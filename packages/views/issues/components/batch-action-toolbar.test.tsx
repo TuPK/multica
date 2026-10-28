@@ -47,6 +47,7 @@ const { WORKFLOWS, PROJECTS } = vi.hoisted(() => {
   };
 });
 
+vi.mock("./batch-queue-order", () => ({ BatchQueueOrder: () => null }));
 vi.mock("@multica/core/hooks", () => ({ useWorkspaceId: () => "ws-1" }));
 vi.mock("@multica/core/issue-workflows", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@multica/core/issue-workflows")>()),

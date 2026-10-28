@@ -54,6 +54,7 @@ export type TableSystemColumnKey =
   | "created_at"
   | "updated_at"
   | "child_progress"
+  | "queue_order"
   | "creator";
 export type TableColumnKey = TableSystemColumnKey | `property:${string}`;
 export interface TableColumnConfig {
@@ -81,6 +82,7 @@ export const TABLE_SYSTEM_COLUMNS: readonly TableSystemColumnKey[] = [
   "created_at",
   "updated_at",
   "child_progress",
+  "queue_order",
   "creator",
 ];
 

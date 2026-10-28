@@ -25,6 +25,7 @@ import { LabelChip } from "../../labels/label-chip";
 import { CustomStatusChip } from "./custom-status-chip";
 import { IssueDuplicateOfMarker } from "./issue-duplicates";
 import { IssueAgentActivityIndicator } from "./issue-agent-activity-indicator";
+import { QueueOrderInput, QueueWaitingLabel } from "./queue-order-input";
 import { useIssueSurfaceSelection } from "../surface/selection-context";
 import {
   PEEKED_ROW_CLASS,
@@ -194,6 +195,17 @@ function ListRowContent({
             />
           )}
         </AppLink>
+        {issue.status === "backlog" && (
+          <div
+            className="flex shrink-0 items-center gap-2"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <QueueWaitingLabel issue={issue} className="text-caption text-muted-foreground" />
+            <QueueOrderInput issue={issue} className="h-6 w-14 px-1.5 text-caption" />
+          </div>
+        )}
       </div>
     </IssueActionsContextMenu>
   );

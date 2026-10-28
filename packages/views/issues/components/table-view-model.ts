@@ -119,6 +119,8 @@ function columnValue(
       return issue.updated_at;
     case "child_progress":
       return undefined;
+    case "queue_order":
+      return issue.queue_order ?? undefined;
     case "creator":
       return issue.creator_id;
   }

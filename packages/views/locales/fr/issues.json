@@ -310,6 +310,7 @@
       "created_at": "Création",
       "updated_at": "Mise à jour",
       "child_progress": "Avancement des sous-tâches",
+      "queue_order": "Ordre d'exécution",
       "creator": "Créé par"
     },
     "calculation": {
@@ -987,6 +988,16 @@
     "create_failed": "Échec de la création de l'étiquette",
     "update_failed": "Échec de la mise à jour de l'étiquette",
     "delete_failed": "Échec de la suppression de l'étiquette"
+  },
+  "queue_order": {
+    "label": "Ordre d'exécution",
+    "placeholder": "Ordre",
+    "waiting": "En attente de #{{n}}",
+    "confirm_title": "Démarrer les tâches en file maintenant ?",
+    "confirm_desc": "{{count}} passeront à À faire maintenant et {{runs}} lanceront une exécution d'agent.",
+    "confirm_action": "Démarrer",
+    "apply": "Appliquer",
+    "clear": "Effacer"
   },
   "backlog_hint": {
     "title": "L'agent est en pause dans À planifier",

@@ -22,6 +22,7 @@ import { commonIssueFields } from "@multica/core/issues/batch";
 import { sharedWorkflowStatusKeys, useIssueWorkflows } from "@multica/core/issue-workflows";
 import { projectListOptions } from "@multica/core/projects/queries";
 import { useBatchUpdateIssues, useBatchDeleteIssues } from "@multica/core/issues/mutations";
+import { BatchQueueOrder } from "./batch-queue-order";
 import { useModalStore } from "@multica/core/modals";
 import { StatusPicker, PriorityPicker, AssigneePicker } from "./pickers";
 import { useT } from "../../i18n";
@@ -288,6 +289,13 @@ export function BatchActionToolbar({
           triggerRender={<Button variant="ghost" size="sm" disabled={loading} />}
           trigger={t(($) => $.batch.assignee)}
           align="center"
+        />
+
+        {/* Run order: only backlog issues join the run queue. */}
+        <BatchQueueOrder
+          issueIds={selectedIssues.filter((i) => i.status === "backlog").map((i) => i.id)}
+          disabled={loading}
+          onApplied={clearSelectionOnApply ? clear : undefined}
         />
 
         {/* Delete */}

@@ -45,6 +45,7 @@ export interface IssueSortParam {
 
 export const issueKeys = {
   all: (wsId: string) => ["issues", wsId] as const,
+  queueFrontiers: (wsId: string) => [...issueKeys.all(wsId), "queue-frontiers"] as const,
   /** PREFIX for invalidation — no sort. */
   list: (wsId: string) => [...issueKeys.all(wsId), "list"] as const,
   /** FULL KEY for queryOptions — includes sort. */
@@ -651,4 +652,28 @@ export function issueAttachmentsOptions(issueId: string) {
     queryKey: issueKeys.attachments(issueId),
     queryFn: () => api.listAttachments(issueId),
   });
+}
+
+/** Lowest unfinished run-queue number per project; drives the "waiting" label. */
+export function queueFrontiersOptions(wsId: string) {
+  return queryOptions({
+    queryKey: issueKeys.queueFrontiers(wsId),
+    queryFn: () => api.listQueueFrontiers(),
+    enabled: !!wsId,
+    staleTime: 30_000,
+  });
+}
+
+/**
+ * The number a queued backlog issue is waiting on, or null when it is not
+ * waiting. `frontiers` is the response of `queueFrontiersOptions`.
+ */
+export function queueWaitingOn(
+  issue: Pick<Issue, "status" | "queue_order" | "project_id">,
+  frontiers: readonly { project_id: string | null; frontier: number }[] | undefined,
+): number | null {
+  if (issue.status !== "backlog" || issue.queue_order == null || !frontiers) return null;
+  const projectId = issue.project_id ?? null;
+  const entry = frontiers.find((f) => f.project_id === projectId);
+  return entry && entry.frontier < issue.queue_order ? entry.frontier : null;
 }

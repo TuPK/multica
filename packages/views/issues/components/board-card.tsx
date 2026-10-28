@@ -30,6 +30,7 @@ import { LabelChip } from "../../labels/label-chip";
 import { IssueAgentActivityIndicator } from "./issue-agent-activity-indicator";
 import { CustomStatusChip, useIsCustomStatus } from "./custom-status-chip";
 import { IssueDuplicateOfMarker } from "./issue-duplicates";
+import { QueueOrderInput, QueueWaitingLabel } from "./queue-order-input";
 import { useIssueSurfaceActionsOptional } from "../surface/actions-context";
 import {
   PEEK_TARGET_ATTR,
@@ -47,6 +48,16 @@ function PickerWrapper({ children, className }: { children: React.ReactNode; cla
     e.stopPropagation();
     e.preventDefault();
   };
+  return (
+    <div onClick={stop} onMouseDown={stop} onPointerDown={stop} className={className}>
+      {children}
+    </div>
+  );
+}
+
+/** Keeps pointer events off the card's link and drag handlers without blocking focus. */
+function FieldWrapper({ children, className }: { children: React.ReactNode; className?: string }) {
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   return (
     <div onClick={stop} onMouseDown={stop} onPointerDown={stop} className={className}>
       {children}
@@ -253,6 +264,20 @@ export const BoardCardContent = memo(function BoardCardContent({
               <CustomPropertyValueDisplay property={property} value={issue.properties?.[property.id]} />
             </span>
           ))}
+        </div>
+      )}
+
+      {issue.status === "backlog" && (canEdit || issue.queue_order != null) && (
+        <div className="mt-1.5 flex items-center gap-1.5">
+          <span className="text-micro text-muted-foreground">{t(($) => $.queue_order.label)}</span>
+          {canEdit ? (
+            <FieldWrapper className="flex">
+              <QueueOrderInput issue={issue} className="h-6 w-16 px-1.5 text-caption" />
+            </FieldWrapper>
+          ) : (
+            <span className="text-caption text-muted-foreground tabular-nums">{issue.queue_order}</span>
+          )}
+          <QueueWaitingLabel issue={issue} className="text-micro text-muted-foreground" />
         </div>
       )}
 

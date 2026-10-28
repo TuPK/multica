@@ -413,6 +413,51 @@ export function useUpdateIssue() {
   });
 }
 
+/**
+ * Sets or clears an issue's place in the automatic run queue. Not optimistic:
+ * arming a number can start the issue at once, so the committed issue is the
+ * only honest thing to show.
+ */
+export function useSetIssueQueueOrder() {
+  const qc = useQueryClient();
+  const wsId = useWorkspaceId();
+  return useMutation({
+    mutationKey: issueWriteMutationKey(wsId),
+    mutationFn: ({ id, queueOrder }: { id: string; queueOrder: number | null }) =>
+      api.setIssueQueueOrder(id, queueOrder),
+    onSuccess: (serverIssue) => {
+      const reconcile = applyIssueChange(qc, wsId, serverIssue.id, serverIssue, {
+        changed: issueChangedDims({ queue_order: serverIssue.queue_order }, serverIssue),
+        baseIssue: serverIssue,
+        acceptCurrent: (current) =>
+          current.revision === undefined ||
+          (serverIssue.revision !== undefined && serverIssue.revision > current.revision),
+      });
+      reconcileIssueFullSnapshotRevision(qc, wsId, serverIssue.id, serverIssue.revision);
+      invalidateStaleListKeys(qc, reconcile.staleKeys);
+    },
+    onSettled: () => {
+      invalidateIssueDerivatives(qc, wsId, { statusOrProjectChanged: true });
+      qc.invalidateQueries({ queryKey: issueKeys.tableAll(wsId) });
+      qc.invalidateQueries({ queryKey: issueKeys.queueFrontiers(wsId) });
+    },
+  });
+}
+
+/** Numbers several issues at once; see useSetIssueQueueOrder. */
+export function useBatchSetIssueQueueOrder() {
+  const qc = useQueryClient();
+  const wsId = useWorkspaceId();
+  return useMutation({
+    mutationKey: issueWriteMutationKey(wsId),
+    mutationFn: ({ ids, queueOrder }: { ids: string[]; queueOrder: number | null }) =>
+      api.batchSetIssueQueueOrder(ids, queueOrder),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: issueKeys.all(wsId) });
+    },
+  });
+}
+
 export function useDeleteIssue() {
   const qc = useQueryClient();
   const wsId = useWorkspaceId();

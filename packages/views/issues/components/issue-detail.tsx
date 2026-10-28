@@ -69,6 +69,7 @@ import { AvatarGroup, AvatarGroupCount } from "@multica/ui/components/ui/avatar"
 import { ActorAvatar } from "../../common/actor-avatar";
 import { ActionShortcutKeycaps } from "../../common/shortcut-keycaps";
 import { PropRow } from "../../common/prop-row";
+import { QueueOrderInput, QueueWaitingLabel } from "./queue-order-input";
 import { TimelineHandoff } from "../../workflows/timeline-handoff";
 import { PropertyIcon } from "../../common/property-icon";
 import type { Attachment, Issue, IssueProperty, IssueStatus, IssueStatusCategory, IssuePriority, TimelineEntry, UpdateIssueRequest } from "@multica/core/types";
@@ -2858,6 +2859,14 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
               isDuplicate={isDuplicateIssue(issue)}
             />
           </PropRow>
+          {issue.status === "backlog" && (
+            <PropRow label={t(($) => $.queue_order.label)}>
+              <div className="flex items-center gap-2">
+                <QueueOrderInput issue={issue} className="h-7 w-24" />
+                <QueueWaitingLabel issue={issue} className="text-caption text-muted-foreground" />
+              </div>
+            </PropRow>
+          )}
           <PropRow label={t(($) => $.detail.prop_assignee)}>
             <AssigneePicker assigneeType={issue.assignee_type} assigneeId={issue.assignee_id} onUpdate={handleUpdateField} align="start" />
           </PropRow>

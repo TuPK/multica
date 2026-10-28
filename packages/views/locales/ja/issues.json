@@ -306,6 +306,7 @@
       "created_at": "作成日",
       "updated_at": "更新日",
       "child_progress": "サブタスクの進捗",
+      "queue_order": "実行順",
       "creator": "作成者"
     },
     "calculation": {
@@ -946,6 +947,16 @@
     "create_failed": "ラベルを作成できませんでした",
     "update_failed": "ラベルを更新できませんでした",
     "delete_failed": "ラベルを削除できませんでした"
+  },
+  "queue_order": {
+    "label": "実行順",
+    "placeholder": "順番",
+    "waiting": "#{{n}} を待機中",
+    "confirm_title": "キューのタスクを今すぐ開始しますか？",
+    "confirm_desc": "{{count}} 件が今すぐ未着手に移り、{{runs}} 件でエージェントが実行を開始します。",
+    "confirm_action": "開始",
+    "apply": "適用",
+    "clear": "クリア"
   },
   "backlog_hint": {
     "title": "バックログではエージェントが一時停止します",

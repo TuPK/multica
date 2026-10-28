@@ -324,6 +324,16 @@ describe("IssueSchema (via ListIssuesResponseSchema)", () => {
     expect(parsed.issues[0]?.stage).toBe(2);
   });
 
+  it("defaults queue_order to null when the server omits it (older backend)", () => {
+    const parsed = ListIssuesResponseSchema.parse({ issues: [baseIssue], total: 1 });
+    expect(parsed.issues[0]?.queue_order).toBeNull();
+  });
+
+  it("accepts a numeric queue_order", () => {
+    const parsed = ListIssuesResponseSchema.parse({ issues: [{ ...baseIssue, queue_order: 3 }], total: 1 });
+    expect(parsed.issues[0]?.queue_order).toBe(3);
+  });
+
   it("defaults stage to null when the server omits it (older backend)", () => {
     const { stage: _omit, ...issueWithoutStage } = baseIssue;
     const payload = { issues: [issueWithoutStage], total: 1 };
