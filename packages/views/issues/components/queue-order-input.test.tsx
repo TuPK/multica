@@ -125,11 +125,13 @@ describe("QueueOrderInput", () => {
 
 describe("queueWaitingOn", () => {
   const frontiers = [
-    { project_id: null, frontier: 2 },
-    { project_id: "p1", frontier: 5 },
+    { project_id: null, unfinished: [2, 3, 7] },
+    { project_id: "p1", unfinished: [5] },
   ];
-  it("names the lowest unfinished number below the issue's own", () => {
-    expect(queueWaitingOn({ status: "backlog", queue_order: 4, project_id: null }, frontiers)).toBe(2);
+  it("names the nearest unfinished number below the issue's own", () => {
+    expect(queueWaitingOn({ status: "backlog", queue_order: 3, project_id: null }, frontiers)).toBe(2);
+    expect(queueWaitingOn({ status: "backlog", queue_order: 4, project_id: null }, frontiers)).toBe(3);
+    expect(queueWaitingOn({ status: "backlog", queue_order: 9, project_id: null }, frontiers)).toBe(7);
     expect(queueWaitingOn({ status: "backlog", queue_order: 6, project_id: "p1" }, frontiers)).toBe(5);
   });
   it("is null when the issue is next, not queued, or not in backlog", () => {

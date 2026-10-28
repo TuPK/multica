@@ -1861,7 +1861,7 @@ func (q *Queries) ListOpenIssues(ctx context.Context, arg ListOpenIssuesParams) 
 }
 
 const listQueueFrontiers = `-- name: ListQueueFrontiers :many
-SELECT p.project_id, MIN(p.queue_order)::int AS frontier
+SELECT p.project_id, array_agg(DISTINCT p.queue_order ORDER BY p.queue_order)::int[] AS unfinished
 FROM issue p
 WHERE p.workspace_id = $1
   AND p.queue_order IS NOT NULL
@@ -1873,12 +1873,12 @@ GROUP BY p.project_id
 `
 
 type ListQueueFrontiersRow struct {
-	ProjectID pgtype.UUID `json:"project_id"`
-	Frontier  int32       `json:"frontier"`
+	ProjectID  pgtype.UUID `json:"project_id"`
+	Unfinished []int32     `json:"unfinished"`
 }
 
-// The lowest queue_order still unfinished in each project (NULL = no project):
-// the number every higher-numbered backlog issue is waiting on.
+// The queue_order numbers still unfinished in each project (NULL = no project),
+// ascending. A backlog issue waits on the nearest one below its own number.
 func (q *Queries) ListQueueFrontiers(ctx context.Context, workspaceID pgtype.UUID) ([]ListQueueFrontiersRow, error) {
 	rows, err := q.db.Query(ctx, listQueueFrontiers, workspaceID)
 	if err != nil {
@@ -1888,7 +1888,7 @@ func (q *Queries) ListQueueFrontiers(ctx context.Context, workspaceID pgtype.UUI
 	items := []ListQueueFrontiersRow{}
 	for rows.Next() {
 		var i ListQueueFrontiersRow
-		if err := rows.Scan(&i.ProjectID, &i.Frontier); err != nil {
+		if err := rows.Scan(&i.ProjectID, &i.Unfinished); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

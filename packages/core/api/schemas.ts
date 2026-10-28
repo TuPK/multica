@@ -3844,5 +3844,5 @@ export const QueueOrderPreviewSchema = z.object({
 
 export const QueueFrontierSchema = z.object({
   project_id: z.string().nullable().default(null),
-  frontier: z.number().int(),
+  unfinished: z.array(z.number().int()).default([]),
 });

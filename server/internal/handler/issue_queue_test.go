@@ -153,14 +153,14 @@ func TestQueueOrderBatchPreviewAndFrontier(t *testing.T) {
 		}
 	}
 
-	// The frontier is the blocker's number.
+	// Unfinished numbers are listed ascending: the blocker's 1 and the batch's 2.
 	fw := httptest.NewRecorder()
 	freq := httptest.NewRequest(http.MethodGet, "/api/issues/queue-frontier", nil)
 	freq.Header.Set("X-User-ID", testUserID)
 	freq.Header.Set("X-Workspace-ID", testWorkspaceID)
 	testHandler.ListQueueFrontiers(fw, freq)
-	if fw.Code != http.StatusOK || !strings.Contains(fw.Body.String(), `"frontier":1`) {
-		t.Fatalf("frontier: %d %s", fw.Code, fw.Body.String())
+	if fw.Code != http.StatusOK || !strings.Contains(fw.Body.String(), `"unfinished":[1,2]`) {
+		t.Fatalf("unfinished: %d %s", fw.Code, fw.Body.String())
 	}
 
 	// Finishing the blocker releases both on the next pass.

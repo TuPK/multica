@@ -316,8 +316,8 @@ func (h *Handler) PreviewQueueOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 type queueFrontierResponse struct {
-	ProjectID *string `json:"project_id"`
-	Frontier  int32   `json:"frontier"`
+	ProjectID  *string `json:"project_id"`
+	Unfinished []int32 `json:"unfinished"`
 }
 
 // ListQueueFrontiers gives, per project, the lowest queue number still
@@ -334,7 +334,7 @@ func (h *Handler) ListQueueFrontiers(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]queueFrontierResponse, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, queueFrontierResponse{ProjectID: uuidToPtr(row.ProjectID), Frontier: row.Frontier})
+		out = append(out, queueFrontierResponse{ProjectID: uuidToPtr(row.ProjectID), Unfinished: row.Unfinished})
 	}
 	writeJSON(w, http.StatusOK, out)
 }

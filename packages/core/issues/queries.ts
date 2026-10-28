@@ -665,15 +665,20 @@ export function queueFrontiersOptions(wsId: string) {
 }
 
 /**
- * The number a queued backlog issue is waiting on, or null when it is not
- * waiting. `frontiers` is the response of `queueFrontiersOptions`.
+ * The number a queued backlog issue directly waits on: the nearest unfinished
+ * number below its own, since numbers run one after another. Null when it is
+ * not waiting. `frontiers` is the response of `queueFrontiersOptions`.
  */
 export function queueWaitingOn(
   issue: Pick<Issue, "status" | "queue_order" | "project_id">,
-  frontiers: readonly { project_id: string | null; frontier: number }[] | undefined,
+  frontiers: readonly { project_id: string | null; unfinished: readonly number[] }[] | undefined,
 ): number | null {
   if (issue.status !== "backlog" || issue.queue_order == null || !frontiers) return null;
   const projectId = issue.project_id ?? null;
   const entry = frontiers.find((f) => f.project_id === projectId);
-  return entry && entry.frontier < issue.queue_order ? entry.frontier : null;
+  let nearest: number | null = null;
+  for (const n of entry?.unfinished ?? []) {
+    if (n < issue.queue_order && (nearest === null || n > nearest)) nearest = n;
+  }
+  return nearest;
 }

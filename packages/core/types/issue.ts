@@ -248,5 +248,6 @@ export interface QueueOrderPreview {
 /** The lowest unfinished queue number of one project (null = no project). */
 export interface QueueFrontier {
   project_id: string | null;
-  frontier: number;
+  /** Unfinished queue numbers in the project, ascending. */
+  unfinished: number[];
 }

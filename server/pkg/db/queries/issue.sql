@@ -812,9 +812,9 @@ WHERE id = ANY(sqlc.arg('ids')::uuid[]) AND workspace_id = $1
 RETURNING *;
 
 -- name: ListQueueFrontiers :many
--- The lowest queue_order still unfinished in each project (NULL = no project):
--- the number every higher-numbered backlog issue is waiting on.
-SELECT p.project_id, MIN(p.queue_order)::int AS frontier
+-- The queue_order numbers still unfinished in each project (NULL = no project),
+-- ascending. A backlog issue waits on the nearest one below its own number.
+SELECT p.project_id, array_agg(DISTINCT p.queue_order ORDER BY p.queue_order)::int[] AS unfinished
 FROM issue p
 WHERE p.workspace_id = $1
   AND p.queue_order IS NOT NULL
