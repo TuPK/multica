@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronRight,
@@ -58,6 +58,7 @@ import {
 } from "./local-directory-mode-dialog";
 import { GithubRefDialog } from "./github-ref-dialog";
 import { GithubRefField, githubRefHasError } from "./github-ref-field";
+import { LocalPathForm, type LocalPathMachine } from "./local-path-form";
 import { localDirectoryLabel } from "./local-directory-label";
 import { useT } from "../../i18n";
 import { githubShortLabel } from "../../common/github-url";
@@ -159,6 +160,21 @@ export function ProjectResourcesSection({ projectId }: { projectId: string }) {
   // yes after a downgrade.
   const advertisesWorktree = (daemonId: string | null) =>
     runtimeAdvertisesLocalWorktree(runtimes, daemonId);
+
+  // Web has no local daemon of its own, so the machine for a typed path is
+  // picked from the workspace's online daemons instead.
+  const machines = useMemo<LocalPathMachine[]>(() => {
+    const byDaemon = new Map<string, LocalPathMachine>();
+    for (const rt of runtimes) {
+      if (!rt.daemon_id || rt.status !== "online") continue;
+      if (byDaemon.has(rt.daemon_id)) continue;
+      byDaemon.set(rt.daemon_id, {
+        daemonId: rt.daemon_id,
+        label: rt.device_info || rt.name,
+      });
+    }
+    return [...byDaemon.values()];
+  }, [runtimes]);
 
   const attachedUrls = new Set(
     resources.filter(isGithubRef).map((r) => r.resource_ref.url),
@@ -275,6 +291,29 @@ export function ProjectResourcesSection({ projectId }: { projectId: string }) {
     }
   };
 
+  const handleAttachTypedLocalDirectory = (path: string, daemonId: string) => {
+    if (
+      resources.some(
+        (r) =>
+          isLocalDirectoryRef(r) && r.resource_ref.daemon_id === daemonId,
+      )
+    ) {
+      toast.error(t(($) => $.resources.toast_local_daemon_already_attached));
+      return;
+    }
+    // Whether the folder is a git repo is unknown from the browser, so the mode
+    // starts on direct edits; the server rejects worktree if it cannot run it.
+    setModeError(null);
+    setModeDialog({
+      path,
+      daemonId,
+      mode: "in_place",
+      isGitRepo: undefined,
+      label: path.split(/[\\/]/).filter(Boolean).pop() ?? path,
+    });
+    setAddOpen(false);
+  };
+
   const handleConfirmMode = async (mode: LocalDirectoryExecutionMode) => {
     if (!modeDialog || modeSaving) return;
     setModeSaving(true);
@@ -296,12 +335,12 @@ export function ProjectResourcesSection({ projectId }: { projectId: string }) {
         });
         toast.success(t(($) => $.resources.toast_local_mode_updated));
       } else {
-        if (!localDaemonId) return;
+        if (!modeDialog.daemonId) return;
         await createResource.mutateAsync({
           resource_type: "local_directory",
           resource_ref: {
             local_path: modeDialog.path,
-            daemon_id: localDaemonId,
+            daemon_id: modeDialog.daemonId,
             label: modeDialog.label ?? modeDialog.path,
             execution_mode: mode,
           },
@@ -406,7 +445,7 @@ export function ProjectResourcesSection({ projectId }: { projectId: string }) {
                           ?.description
                       : undefined
                   }
-                  localDaemonId={localDaemonId}
+                  localDaemonId={desktopMode ? localDaemonId : undefined}
                   onRemove={() => handleRemove(resource)}
                   onEditGithubRef={(target) => {
                     setRefError(null);
@@ -525,6 +564,12 @@ export function ProjectResourcesSection({ projectId }: { projectId: string }) {
                   setAddOpen(false);
                 }}
               />
+              {!desktopMode && (
+                <LocalPathForm
+                  machines={machines}
+                  onSubmit={handleAttachTypedLocalDirectory}
+                />
+              )}
             </PopoverContent>
           </Popover>
           {desktopMode && (
@@ -631,7 +676,8 @@ function worktreeUnavailableReason(
 interface ResourceRowProps {
   resource: ProjectResource;
   githubRepoDescription?: string;
-  localDaemonId: string | null;
+  /** undefined when this client has no local daemon to compare against (web). */
+  localDaemonId: string | null | undefined;
   onRemove: () => void;
   onEditGithubRef: (
     resource: ProjectResource & { resource_ref: GithubRepoResourceRef },
@@ -768,7 +814,8 @@ function ResourceRow({
 
 interface LocalDirectoryRowProps {
   resource: ProjectResource & { resource_ref: LocalDirectoryResourceRef };
-  localDaemonId: string | null;
+  /** undefined when this client has no local daemon to compare against (web). */
+  localDaemonId: string | null | undefined;
   onRemove: () => void;
   onEditMode: (
     resource: ProjectResource & { resource_ref: LocalDirectoryResourceRef },
@@ -786,7 +833,7 @@ function LocalDirectoryRow({
   const mode = executionModeOf(ref);
   const display = localDirectoryLabel(resource);
   const isForeignDaemon =
-    localDaemonId !== null && ref.daemon_id !== localDaemonId;
+    localDaemonId != null && ref.daemon_id !== localDaemonId;
   const isLocalUnknown = localDaemonId === null;
   // "disabled" in the spec sense — visual de-emphasis + no chat hint. Both
   // actions stay available so the user can drop or reconfigure a stale
