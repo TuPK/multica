@@ -4799,6 +4799,11 @@ type TaskCompleteRequest struct {
 	// local_directory tasks never touch the user's working copy, so this is the
 	// only pointer to where the changes went. Empty for every other task kind.
 	BranchName string `json:"branch_name,omitempty"`
+	// BranchMergeStatus and BranchMergeError report the opt-in merge of
+	// BranchName into the user's checked-out branch: merged, skipped (with the
+	// reason) or failed. Empty when the run did not ask for a merge.
+	BranchMergeStatus string `json:"branch_merge_status,omitempty"`
+	BranchMergeError  string `json:"branch_merge_error,omitempty"`
 	// SessionRolloutMissing: the daemon withheld this task's Codex session
 	// because its rollout was missing (MUL-5305). Clear the resume pointer and
 	// flag the continuity gap for the next claim.
@@ -4824,6 +4829,8 @@ func sanitizeTaskCompleteRequest(req *TaskCompleteRequest) {
 	req.WorkDir = util.SanitizeTextForPostgres(req.WorkDir)
 	req.DurableWorkDir = util.SanitizeTextForPostgres(req.DurableWorkDir)
 	req.BranchName = util.SanitizeTextForPostgres(req.BranchName)
+	req.BranchMergeStatus = util.SanitizeTextForPostgres(req.BranchMergeStatus)
+	req.BranchMergeError = util.SanitizeTextForPostgres(req.BranchMergeError)
 	req.RetiredSessionID = util.SanitizeTextForPostgres(req.RetiredSessionID)
 }
 
@@ -4898,7 +4905,8 @@ func (h *Handler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 	// transaction (force session_id NULL + flag the row), so an auto-retry the
 	// same commit creates and wakes can never observe the withheld pointer or a
 	// missing continuity-gap flag.
-	task, transitioned, err := h.TaskService.CompleteTaskWithTransition(r.Context(), parseUUID(taskID), result, req.SessionID, req.WorkDir, req.BranchName, req.SessionRolloutMissing, req.RetiredSessionID, req.DurableWorkDir)
+	merge := service.BranchMerge{Status: req.BranchMergeStatus, Error: req.BranchMergeError}
+	task, transitioned, err := h.TaskService.CompleteTaskWithBranchMerge(r.Context(), parseUUID(taskID), result, req.SessionID, req.WorkDir, req.BranchName, req.SessionRolloutMissing, req.RetiredSessionID, req.DurableWorkDir, merge)
 	if err != nil {
 		// A CompleteTask error is an infrastructure failure (transaction /
 		// assistant-outcome write), not a bad request: an already-finalized

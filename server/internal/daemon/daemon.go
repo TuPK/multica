@@ -255,15 +255,19 @@ const (
 // reportTerminalTask gives the durable outbox one insertion point without
 // revisiting every task exit when it is added.
 type terminalTaskReport struct {
-	kind           terminalTaskReportKind
-	taskID         string
-	output         string
-	branchName     string
-	errorMessage   string
-	sessionID      string
-	workDir        string
-	durableWorkDir string
-	failureReason  string
+	kind       terminalTaskReportKind
+	taskID     string
+	output     string
+	branchName string
+	// branchMergeStatus and branchMergeError carry the opt-in merge outcome of a
+	// completed run (execenv.BranchMerge*); they are reported with the completion.
+	branchMergeStatus string
+	branchMergeError  string
+	errorMessage      string
+	sessionID         string
+	workDir           string
+	durableWorkDir    string
+	failureReason     string
 	// sessionRolloutMissing is true when the daemon withheld this task's Codex
 	// session because its rollout was not in the store (MUL-5305). The server
 	// clears the resume pointer and flags the continuity gap for the next claim.
@@ -6271,6 +6275,8 @@ func (d *Daemon) reportTaskResult(ctx context.Context, taskID string, result Tas
 			taskID:                taskID,
 			output:                result.Comment,
 			branchName:            result.BranchName,
+			branchMergeStatus:     result.BranchMergeStatus,
+			branchMergeError:      result.BranchMergeError,
 			sessionID:             result.SessionID,
 			workDir:               result.WorkDir,
 			durableWorkDir:        result.DurableWorkDir,
@@ -6419,7 +6425,8 @@ func (d *Daemon) sendTerminalTaskReport(ctx context.Context, report terminalTask
 	}
 	switch report.kind {
 	case terminalTaskReportComplete:
-		return d.client.completeTaskWithRetrySchedule(ctx, report.taskID, report.output, report.branchName, report.sessionID, report.workDir, report.sessionRolloutMissing, report.retiredSessionID, report.durableWorkDir, schedule)
+		merge := TaskBranchMerge{Status: report.branchMergeStatus, Error: report.branchMergeError}
+		return d.client.completeTaskWithRetrySchedule(ctx, report.taskID, report.output, report.branchName, report.sessionID, report.workDir, report.sessionRolloutMissing, report.retiredSessionID, report.durableWorkDir, merge, schedule)
 	case terminalTaskReportFail:
 		return d.client.failTaskWithRetrySchedule(ctx, report.taskID, report.errorMessage, report.sessionID, report.workDir, report.branchName, report.failureReason, report.sessionRolloutMissing, report.retiredSessionID, report.durableWorkDir, schedule)
 	default:
@@ -8232,7 +8239,10 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 			Task:                  taskCtx,
 		}
 		if localAssignment.UsesWorktree() {
-			prepParams.LocalWorktree = &execenv.LocalWorktreeParams{LocalPath: localAssignment.AbsPath}
+			prepParams.LocalWorktree = &execenv.LocalWorktreeParams{
+				LocalPath: localAssignment.AbsPath,
+				AutoMerge: localAssignment.Ref.AutoMerge,
+			}
 			// Take the per-path mutex for the snapshot alone, then hand it
 			// straight back — long enough to read a consistent tree, short
 			// enough that worktree tasks still overlap for the run itself.
@@ -8333,10 +8343,18 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 			if taskResult.EnvRoot == "" {
 				taskResult.EnvRoot = env.RootDir
 			}
+			// Only a completed run is merged. A failed or cancelled run may have
+			// stopped partway, and its partial work must not land on the user's
+			// checked-out branch; its branch is kept for a human to review.
+			if taskResult.Status != "completed" {
+				env.LocalWorktree.AutoMerge = false
+			}
 			outcome, finalizeErr := env.LocalWorktree.Finalize(taskLog)
 			if outcome.Branch != "" {
 				taskResult.BranchName = outcome.Branch
 			}
+			taskResult.BranchMergeStatus = outcome.BranchMergeStatus
+			taskResult.BranchMergeError = outcome.BranchMergeError
 			if finalizeErr == nil {
 				// The configured local_directory becomes authoritative only after
 				// Finalize confirms the disposable task worktree is actually gone.

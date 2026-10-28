@@ -81,6 +81,11 @@ function isLocalDirectoryRef(r: ProjectResource): r is ProjectResource & {
   return r.resource_type === "local_directory";
 }
 
+/** Reads the opt-in auto-merge flag off a stored ref. Absent means off. */
+function autoMergeOf(ref: LocalDirectoryResourceRef): boolean {
+  return ref.auto_merge === true;
+}
+
 /**
  * Reads the execution mode off a stored ref. An absent or unrecognised value is
  * reported as in_place, matching the server: the field is optional, and a mode
@@ -102,6 +107,8 @@ type ModeDialogState = {
   isGitRepo: boolean | undefined;
   /** Set for an edit; absent when adding a new resource. */
   resource?: ProjectResource & { resource_ref: LocalDirectoryResourceRef };
+  /** Whether worktree runs merge into the checked-out branch. Only meaningful for worktree. */
+  autoMerge: boolean;
   /** Only used when adding. */
   label?: string;
 };
@@ -266,6 +273,7 @@ export function ProjectResourcesSection({ projectId }: { projectId: string }) {
       setModeDialog({
         path,
         daemonId: localDaemonId,
+        autoMerge: false,
         // Same preselection rule as the create-project flow: a git repo this
         // daemon can actually run worktree mode on starts on parallel, anything
         // else starts on direct. Only the PRESELECTION differs by folder — the
@@ -308,30 +316,44 @@ export function ProjectResourcesSection({ projectId }: { projectId: string }) {
       path,
       daemonId,
       mode: "in_place",
+      autoMerge: false,
       isGitRepo: undefined,
       label: path.split(/[\\/]/).filter(Boolean).pop() ?? path,
     });
     setAddOpen(false);
   };
 
-  const handleConfirmMode = async (mode: LocalDirectoryExecutionMode) => {
+  const handleConfirmMode = async (
+    mode: LocalDirectoryExecutionMode,
+    autoMerge: boolean,
+  ) => {
     if (!modeDialog || modeSaving) return;
     setModeSaving(true);
     setModeError(null);
+    // The server rejects auto_merge outside worktree mode, so it is only ever
+    // sent with it.
+    const enableAutoMerge = mode === "worktree" && autoMerge;
     try {
       if (modeDialog.resource) {
         const ref = modeDialog.resource.resource_ref;
-        if (executionModeOf(ref) === mode) {
+        if (
+          executionModeOf(ref) === mode &&
+          autoMergeOf(ref) === enableAutoMerge
+        ) {
           setModeDialog(null);
           return;
         }
+        // Spread first so every other ref field survives the edit — the
+        // server replaces the whole ref, it does not deep-merge.
+        const nextRef: LocalDirectoryResourceRef = { ...ref, execution_mode: mode };
+        if (enableAutoMerge) {
+          nextRef.auto_merge = true;
+        } else {
+          delete nextRef.auto_merge;
+        }
         await updateResource.mutateAsync({
           resourceId: modeDialog.resource.id,
-          data: {
-            // Spread first so every other ref field survives the edit — the
-            // server replaces the whole ref, it does not deep-merge.
-            resource_ref: { ...ref, execution_mode: mode },
-          },
+          data: { resource_ref: nextRef },
         });
         toast.success(t(($) => $.resources.toast_local_mode_updated));
       } else {
@@ -343,6 +365,7 @@ export function ProjectResourcesSection({ projectId }: { projectId: string }) {
             daemon_id: modeDialog.daemonId,
             label: modeDialog.label ?? modeDialog.path,
             execution_mode: mode,
+            ...(enableAutoMerge ? { auto_merge: true } : {}),
           },
         });
         toast.success(t(($) => $.resources.toast_local_attached));
@@ -457,6 +480,7 @@ export function ProjectResourcesSection({ projectId }: { projectId: string }) {
                       path: target.resource_ref.local_path,
                       daemonId: target.resource_ref.daemon_id,
                       mode: executionModeOf(target.resource_ref),
+                      autoMerge: autoMergeOf(target.resource_ref),
                       // The path is already saved, so there is nothing to
                       // re-validate from the browser; the desktop check only
                       // runs at pick time. Unknown means the option stays
@@ -632,6 +656,7 @@ export function ProjectResourcesSection({ projectId }: { projectId: string }) {
           }}
           path={modeDialog.path}
           value={modeDialog.mode}
+          autoMerge={modeDialog.autoMerge}
           unavailableReason={worktreeUnavailableReason(
             modeDialog.isGitRepo,
             serverValidatesWorktree,
@@ -643,7 +668,7 @@ export function ProjectResourcesSection({ projectId }: { projectId: string }) {
               ? t(($) => $.resources.mode_save)
               : t(($) => $.resources.mode_add)
           }
-          onConfirm={(mode) => void handleConfirmMode(mode)}
+          onConfirm={(mode, autoMerge) => void handleConfirmMode(mode, autoMerge)}
         />
       )}
     </div>

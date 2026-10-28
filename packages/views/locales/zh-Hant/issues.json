@@ -810,7 +810,11 @@
     "detail_cache": "快取命中",
     "cache_hit_value": "{{percent}} · 節省 {{amount}}",
     "detail_time": "時間",
-    "detail_branch": "分支"
+    "detail_branch": "分支",
+    "detail_merge": "合併",
+    "merge_merged": "已合併",
+    "merge_skipped": "未合併",
+    "merge_failed": "合併失敗"
   },
   "terminate_dialog": {
     "title": "確定停止本次執行？",

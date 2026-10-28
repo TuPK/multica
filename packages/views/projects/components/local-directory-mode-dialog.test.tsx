@@ -14,9 +14,10 @@ const TEST_RESOURCES = { en: { projects: enProjects, common: enCommon } };
 function renderDialog(
   overrides: {
     value?: LocalDirectoryExecutionMode;
+    autoMerge?: boolean;
     unavailableReason?: WorktreeUnavailableReason;
     errorMessage?: string;
-    onConfirm?: (mode: LocalDirectoryExecutionMode) => void;
+    onConfirm?: (mode: LocalDirectoryExecutionMode, autoMerge: boolean) => void;
   } = {},
 ) {
   const onConfirm = overrides.onConfirm ?? vi.fn();
@@ -27,6 +28,7 @@ function renderDialog(
         onOpenChange={() => {}}
         path="/Users/dev/work/game-client"
         value={overrides.value ?? "in_place"}
+        autoMerge={overrides.autoMerge ?? false}
         unavailableReason={overrides.unavailableReason}
         errorMessage={overrides.errorMessage}
         confirmLabel="Save"
@@ -58,7 +60,7 @@ describe("LocalDirectoryModeDialog", () => {
     fireEvent.click(worktreeOption());
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(onConfirm).toHaveBeenCalledWith("worktree");
+    expect(onConfirm).toHaveBeenCalledWith("worktree", false);
   });
 
   // A non-git folder cannot produce a branch, so offering the option would
@@ -74,7 +76,7 @@ describe("LocalDirectoryModeDialog", () => {
     fireEvent.click(option);
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     // Still the mode it opened with — the disabled option cannot be selected.
-    expect(onConfirm).toHaveBeenCalledWith("in_place");
+    expect(onConfirm).toHaveBeenCalledWith("in_place", false);
   });
 
   // A server older than the worktree save gate does not reject the mode — it
@@ -92,7 +94,7 @@ describe("LocalDirectoryModeDialog", () => {
 
     fireEvent.click(option);
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(onConfirm).toHaveBeenCalledWith("in_place");
+    expect(onConfirm).toHaveBeenCalledWith("in_place", false);
   });
 
   // The client no longer predicts whether the machine can run the mode — the
@@ -116,6 +118,30 @@ describe("LocalDirectoryModeDialog", () => {
     fireEvent.click(option);
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(onConfirm).toHaveBeenCalledWith("worktree");
+    expect(onConfirm).toHaveBeenCalledWith("worktree", false);
+  });
+
+  // Auto-merge only exists for worktree runs: the switch is offered with that
+  // mode and never reaches the caller for in_place, where it would be rejected.
+  it("confirms auto-merge only when worktree is selected and the switch is on", () => {
+    const onConfirm = vi.fn();
+    renderDialog({ onConfirm });
+
+    expect(screen.queryByRole("switch")).toBeNull();
+    fireEvent.click(worktreeOption());
+    fireEvent.click(screen.getByRole("switch"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(onConfirm).toHaveBeenCalledWith("worktree", true);
+  });
+
+  it("drops auto-merge when the user switches back to in_place", () => {
+    const onConfirm = vi.fn();
+    renderDialog({ value: "worktree", autoMerge: true, onConfirm });
+
+    fireEvent.click(screen.getByText("Edit this folder directly"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(onConfirm).toHaveBeenCalledWith("in_place", false);
   });
 });

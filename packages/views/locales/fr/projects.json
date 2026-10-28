@@ -126,6 +126,8 @@
     "mode_in_place_description": "Une exécution à la fois. Les modifications apparaissent dans votre copie de travail au fur et à mesure, prêtes à être reprises.",
     "mode_worktree_title": "Exécuter en parallèle, en isolation",
     "mode_worktree_description": "Les exécutions ont lieu simultanément sans toucher à votre copie de travail. Chacune restitue une branche agent/… dans ce dépôt pour relecture et fusion.",
+    "mode_auto_merge_label": "Fusionner les exécutions terminées dans la branche active",
+    "mode_auto_merge_description": "Une fois une exécution terminée, sa branche est fusionnée dans la branche active de ce dépôt, puis supprimée. Ignoré si le dépôt a des modifications non commitées ou un HEAD détaché ; un conflit reste à résoudre par vous.",
     "mode_worktree_needs_git": "Ce dossier n'est pas un dépôt git : il n'y a donc nulle part où placer la branche. Choisissez un dépôt, ou continuez à modifier le dossier directement.",
     "mode_worktree_needs_server_upgrade": "Votre serveur Multica est trop ancien pour lancer des exécutions en parallèle : il les lancerait silencieusement dans ce dossier. Mettez le serveur à jour avant d'activer cette option.",
     "mode_cancel": "Annuler",

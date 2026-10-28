@@ -811,7 +811,11 @@
     "detail_cache": "캐시 적중",
     "cache_hit_value": "{{percent}} · {{amount}} 절약",
     "detail_time": "시간",
-    "detail_branch": "브랜치"
+    "detail_branch": "브랜치",
+    "detail_merge": "병합",
+    "merge_merged": "병합됨",
+    "merge_skipped": "병합되지 않음",
+    "merge_failed": "병합 실패"
   },
   "terminate_dialog": {
     "title": "이 실행을 중지할까요?",

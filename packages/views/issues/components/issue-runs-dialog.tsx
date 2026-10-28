@@ -1044,6 +1044,23 @@ function RunDetails({ id, run, reason }: { id: string; run: TimelineRun; reason:
             </dd>
           </>
         )}
+        {run.task.branch_merge_status && (
+          <>
+            <dt className="text-muted-foreground">{t(($) => $.runs_timeline.detail_merge)}</dt>
+            <dd
+              className="min-w-0 truncate text-micro"
+              title={run.task.branch_merge_error || undefined}
+            >
+              {run.task.branch_merge_status === "merged"
+                ? t(($) => $.runs_timeline.merge_merged)
+                : run.task.branch_merge_status === "skipped"
+                  ? t(($) => $.runs_timeline.merge_skipped)
+                  : run.task.branch_merge_status === "failed"
+                    ? t(($) => $.runs_timeline.merge_failed)
+                    : run.task.branch_merge_status}
+            </dd>
+          </>
+        )}
       </dl>
     </div>
   );

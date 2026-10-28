@@ -1022,6 +1022,8 @@ SET status = 'completed', completed_at = now(), result = $2,
     work_dir = $4,
     durable_work_dir = COALESCE(sqlc.narg('durable_work_dir'), durable_work_dir),
     branch_name = COALESCE(sqlc.narg('branch_name'), branch_name),
+    branch_merge_status = COALESCE(sqlc.narg('branch_merge_status'), branch_merge_status),
+    branch_merge_error = COALESCE(sqlc.narg('branch_merge_error'), branch_merge_error),
     session_rollout_missing = sqlc.arg('session_rollout_missing'),
     retired_session_id = COALESCE(sqlc.narg('retired_session_id'), retired_session_id),
     prepare_lease_expires_at = NULL

@@ -27,6 +27,8 @@ import {
   Info,
   Coins,
   GitBranch,
+  GitMerge,
+  TriangleAlert,
 } from "lucide-react";
 import { cn } from "@multica/ui/lib/utils";
 import { copyText } from "@multica/ui/lib/clipboard";
@@ -1093,7 +1095,12 @@ export function AgentTranscriptDialog({
         <RunTriggerRow task={task} />
 
         {/* ── What the run produced ──────────────────────────────────── */}
-        <RunOutcomeRow outcome={outcome} branch={task.branch_name} />
+        <RunOutcomeRow
+          outcome={outcome}
+          branch={task.branch_name}
+          mergeStatus={task.branch_merge_status}
+          mergeError={task.branch_merge_error}
+        />
 
         {/* ── Where the time went ────────────────────────────────────── */}
         {lanes && (
@@ -1355,9 +1362,13 @@ function RunTriggerRow({ task }: { task: AgentTask }) {
 function RunOutcomeRow({
   outcome,
   branch,
+  mergeStatus,
+  mergeError,
 }: {
   outcome: ReturnType<typeof buildRunOutcome>;
   branch?: string | null;
+  mergeStatus?: string;
+  mergeError?: string;
 }) {
   const { t } = useT("agents");
   if (!outcome) return null;
@@ -1394,6 +1405,28 @@ function RunOutcomeRow({
         <span className={cn(chip, "min-w-0")}>
           <GitBranch aria-hidden className="h-3 w-3 shrink-0 text-muted-foreground" />
           <span className="truncate font-mono text-micro">{branch}</span>
+        </span>
+      )}
+      {mergeStatus === "merged" && (
+        <span className={chip}>
+          <GitMerge aria-hidden className="h-3 w-3 text-success" />
+          <span className="font-medium">{t(($) => $.transcript.outcome_merged)}</span>
+        </span>
+      )}
+      {mergeStatus === "skipped" && (
+        <span className={cn(chip, "min-w-0")} title={mergeError || undefined}>
+          <TriangleAlert aria-hidden className="h-3 w-3 shrink-0 text-muted-foreground" />
+          <span className="truncate font-medium">
+            {t(($) => $.transcript.outcome_merge_skipped, { reason: mergeError ?? "" })}
+          </span>
+        </span>
+      )}
+      {mergeStatus === "failed" && (
+        <span className={cn(chip, "min-w-0 text-destructive")} title={mergeError || undefined}>
+          <TriangleAlert aria-hidden className="h-3 w-3 shrink-0" />
+          <span className="truncate font-medium">
+            {t(($) => $.transcript.outcome_merge_failed, { reason: mergeError ?? "" })}
+          </span>
         </span>
       )}
     </div>

@@ -848,7 +848,11 @@
     "detail_cache": "Cache hit",
     "cache_hit_value": "{{percent}} · saved {{amount}}",
     "detail_time": "Time",
-    "detail_branch": "Branch"
+    "detail_branch": "Branch",
+    "detail_merge": "Merge",
+    "merge_merged": "Merged",
+    "merge_skipped": "Not merged",
+    "merge_failed": "Merge failed"
   },
   "terminate_dialog": {
     "title": "Stop this run?",

@@ -125,6 +125,8 @@
     "mode_in_place_description": "実行は一度に1つずつ。エージェントの変更はそのまま作業コピーに現れ、続けて作業できます。",
     "mode_worktree_title": "隔離して並行実行する",
     "mode_worktree_description": "実行は、作業コピーに触れずに並行して進みます。それぞれがこのリポジトリの agent/… ブランチを返すので、レビューしてマージします。",
+    "mode_auto_merge_label": "完了した実行を現在のブランチにマージ",
+    "mode_auto_merge_description": "実行が完了すると、そのブランチをこのリポジトリで checkout 中のブランチにマージし、ブランチを削除します。未コミットの変更がある場合や detached HEAD の場合はスキップされます。コンフリクトは手動で解決してください。",
     "mode_worktree_needs_git": "このフォルダは git リポジトリではないため、ブランチを作成できません。リポジトリを選ぶか、フォルダを直接編集してください。",
     "mode_worktree_needs_server_upgrade": "接続中の Multica サーバーが古いため並行実行に対応できません。このままでは、このフォルダ内で直接実行されます。サーバーを更新してから有効にしてください。",
     "mode_cancel": "キャンセル",

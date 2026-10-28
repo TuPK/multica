@@ -847,7 +847,11 @@
     "detail_cache": "Taux de cache",
     "cache_hit_value": "{{percent}} · {{amount}} économisés",
     "detail_time": "Heure",
-    "detail_branch": "Branche"
+    "detail_branch": "Branche",
+    "detail_merge": "Fusion",
+    "merge_merged": "Fusionnée",
+    "merge_skipped": "Non fusionnée",
+    "merge_failed": "Échec de la fusion"
   },
   "terminate_dialog": {
     "title": "Arrêter cette exécution ?",

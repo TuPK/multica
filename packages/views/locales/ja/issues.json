@@ -811,7 +811,11 @@
     "detail_cache": "キャッシュヒット",
     "cache_hit_value": "{{percent}} · {{amount}} 節約",
     "detail_time": "時刻",
-    "detail_branch": "ブランチ"
+    "detail_branch": "ブランチ",
+    "detail_merge": "マージ",
+    "merge_merged": "マージ済み",
+    "merge_skipped": "マージされず",
+    "merge_failed": "マージ失敗"
   },
   "terminate_dialog": {
     "title": "この実行を停止しますか？",

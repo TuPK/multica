@@ -146,6 +146,9 @@ type localDirectoryRef struct {
 	DaemonID      string `json:"daemon_id"`
 	Label         string `json:"label,omitempty"`
 	ExecutionMode string `json:"execution_mode,omitempty"`
+	// AutoMerge makes a worktree run merge its delivered branch into the branch
+	// checked out in the repo. Only meaningful with execution_mode=worktree.
+	AutoMerge bool `json:"auto_merge,omitempty"`
 }
 
 // requireWorktreeCapableDaemon rejects saving a local_directory ref that asks
@@ -301,6 +304,9 @@ func validateLocalDirectoryRef(ref json.RawMessage) (json.RawMessage, error) {
 	default:
 		return nil, fmt.Errorf("local_directory: execution_mode must be %q or %q, got %q",
 			localDirectoryModeInPlace, localDirectoryModeWorktree, payload.ExecutionMode)
+	}
+	if payload.AutoMerge && payload.ExecutionMode != localDirectoryModeWorktree {
+		return nil, fmt.Errorf("local_directory: auto_merge requires execution_mode %q", localDirectoryModeWorktree)
 	}
 	out, err := json.Marshal(payload)
 	if err != nil {

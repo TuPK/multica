@@ -489,7 +489,11 @@ type AgentTaskResponse struct {
 	// verbatim: it is a ref inside the user's own repo, not a filesystem path.
 	// Populated on both terminal paths — a failed run can still have committed
 	// partial work, and that is when the pointer matters most.
-	BranchName            string                 `json:"branch_name,omitempty"`
+	BranchName string `json:"branch_name,omitempty"`
+	// BranchMergeStatus and BranchMergeError: the outcome of the opt-in merge of
+	// BranchName into the user's checked-out branch (merged, skipped or failed).
+	BranchMergeStatus     string                 `json:"branch_merge_status,omitempty"`
+	BranchMergeError      string                 `json:"branch_merge_error,omitempty"`
 	TriggerCommentID      *string                `json:"trigger_comment_id,omitempty"`    // comment that triggered this task
 	CoalescedCommentIDs   []string               `json:"coalesced_comment_ids,omitempty"` // MUL-4195: earlier comments folded into this run when it had not yet started, so a single run still covers every deliberate comment; trigger_comment_id is the newest. Surfaced so the UI can show which comments a run covered. omitempty so old clients ignore it
 	CoalescedComments     []CoalescedCommentData `json:"coalesced_comments,omitempty"`    // MUL-4195: full detail (thread_id/author/created_at/content) of the folded comments, so the daemon prompt can address each without assuming they share the triggering thread. omitempty so old clients ignore it
@@ -874,6 +878,14 @@ func taskToResponse(t db.AgentTaskQueue, workspaceID string) AgentTaskResponse {
 	if t.BranchName.Valid {
 		branchName = t.BranchName.String
 	}
+	branchMergeStatus := ""
+	if t.BranchMergeStatus.Valid {
+		branchMergeStatus = t.BranchMergeStatus.String
+	}
+	branchMergeError := ""
+	if t.BranchMergeError.Valid {
+		branchMergeError = t.BranchMergeError.String
+	}
 	var wakeupContext struct {
 		ID         string `json:"wakeup_id"`
 		SystemRule string `json:"wakeup_system"`
@@ -902,6 +914,8 @@ func taskToResponse(t db.AgentTaskQueue, workspaceID string) AgentTaskResponse {
 		Error:                  textToPtr(t.Error),
 		FailureReason:          failureReason,
 		BranchName:             branchName,
+		BranchMergeStatus:      branchMergeStatus,
+		BranchMergeError:       branchMergeError,
 		Attempt:                t.Attempt,
 		MaxAttempts:            t.MaxAttempts,
 		ParentTaskID:           uuidToPtr(t.ParentTaskID),
