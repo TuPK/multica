@@ -52,6 +52,18 @@ describe("QueueOrderInput", () => {
     preview.mockResolvedValue({ release_now: 0, run_count: 0 });
   });
 
+  it("does not let a click on the field follow an enclosing card link", () => {
+    render(
+      <I18nProvider resources={TEST_RESOURCES} locale="en">
+        <a href="/issues/issue-1">
+          <QueueOrderInput issue={{ id: "issue-1", queue_order: null }} />
+        </a>
+      </I18nProvider>,
+    );
+    const notCancelled = fireEvent.click(screen.getByRole("textbox", { name: "Run order" }));
+    expect(notCancelled).toBe(false);
+  });
+
   it("rejects letters as they are typed", async () => {
     renderInput(null);
     const input = screen.getByRole("textbox", { name: "Run order" });

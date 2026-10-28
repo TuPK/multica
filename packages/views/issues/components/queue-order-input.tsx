@@ -62,6 +62,10 @@ export function QueueOrderInput({
         placeholder={t(($) => $.queue_order.placeholder)}
         disabled={isPending}
         className={className}
+        // Board cards wrap this field in a link. React stopPropagation does
+        // not cancel the browser's own anchor activation, so the click must
+        // be prevented here to keep the card from opening.
+        onClick={(e) => e.preventDefault()}
         onChange={(e) => setText(sanitizeQueueOrder(e.target.value))}
         onBlur={commit}
         onKeyDown={(e) => {
