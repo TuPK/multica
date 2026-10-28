@@ -7942,6 +7942,7 @@ func IssueToMap(issue db.Issue, issuePrefix string) map[string]any {
 		"project_id":       util.UUIDToPtr(issue.ProjectID),
 		"position":         issue.Position,
 		"stage":            util.Int4ToPtr(issue.Stage),
+		"queue_order":      util.Int4ToPtr(issue.QueueOrder),
 		"start_date":       util.DateToPtr(issue.StartDate),
 		"due_date":         util.DateToPtr(issue.DueDate),
 		"created_at":       util.TimestampToString(issue.CreatedAt),

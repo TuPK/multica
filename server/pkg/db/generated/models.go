@@ -864,6 +864,7 @@ type Issue struct {
 	LastActivityAt     pgtype.Timestamptz `json:"last_activity_at"`
 	TriageState        pgtype.Text        `json:"triage_state"`
 	DuplicateOfIssueID pgtype.UUID        `json:"duplicate_of_issue_id"`
+	QueueOrder         pgtype.Int4        `json:"queue_order"`
 }
 
 type IssueChildEvent struct {
