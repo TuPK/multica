@@ -1852,12 +1852,14 @@ func (h *Handler) processHeartbeat(ctx context.Context, runtimeID string, suppor
 				ack.PendingLocalSkillImport = &protocol.DaemonHeartbeatPendingLocalSkillImport{
 					ID:       pendingImports[0].ID,
 					SkillKey: pendingImports[0].SkillKey,
+					Root:     pendingImports[0].Root,
 				}
 				batch := make([]protocol.DaemonHeartbeatPendingLocalSkillImport, 0, len(pendingImports))
 				for _, p := range pendingImports {
 					batch = append(batch, protocol.DaemonHeartbeatPendingLocalSkillImport{
 						ID:       p.ID,
 						SkillKey: p.SkillKey,
+						Root:     p.Root,
 					})
 				}
 				ack.PendingLocalSkillImports = batch
@@ -1871,6 +1873,7 @@ func (h *Handler) processHeartbeat(ctx context.Context, runtimeID string, suppor
 				ack.PendingLocalSkillImport = &protocol.DaemonHeartbeatPendingLocalSkillImport{
 					ID:       pendingImport.ID,
 					SkillKey: pendingImport.SkillKey,
+					Root:     pendingImport.Root,
 				}
 			}
 		}

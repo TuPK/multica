@@ -68,7 +68,10 @@ import { isNameConflictError } from "../lib/utils";
 // Types
 
 type BulkImportResult = {
+  /** Row identity (root + key); the same skill key can appear in several roots. */
   key: string;
+  skillKey: string;
+  root?: RuntimeLocalSkillSummary["root"];
   name: string;
   description?: string;
   status: "created" | "updated" | "conflict" | "skipped" | "failed";
@@ -76,6 +79,12 @@ type BulkImportResult = {
   error?: string;
   skill?: Skill;
 };
+
+// A skill key can exist in more than one discovery root (for example the
+// provider root and ~/.agents/skills), so UI identity includes the root.
+function rowId(skill: { key: string; root?: string }): string {
+  return `${skill.root ?? ""}\u0000${skill.key}`;
+}
 
 type BulkImportState = {
   phase: "idle" | "importing" | "resolving" | "done" | "cancelled";
@@ -588,7 +597,7 @@ export function RuntimeLocalSkillImportPanel({
   // The single selected skill (for inline editing). Only valid when exactly 1.
   const singleSelectedSkill =
     selectedKeys.size === 1
-      ? runtimeSkills.find((s) => selectedKeys.has(s.key))
+      ? runtimeSkills.find((s) => selectedKeys.has(rowId(s)))
       : undefined;
 
   // -- Selection helpers --
@@ -600,7 +609,7 @@ export function RuntimeLocalSkillImportPanel({
       else next.add(key);
       // Seed edit fields when toggling to exactly-one selection
       if (next.size === 1) {
-        const only = runtimeSkills.find((s) => next.has(s.key));
+        const only = runtimeSkills.find((s) => next.has(rowId(s)));
         if (only) {
           setEditName(only.name);
           setEditDescription(only.description ?? "");
@@ -611,10 +620,10 @@ export function RuntimeLocalSkillImportPanel({
   };
 
   const toggleAll = () => {
-    const visibleKeys = new Set(filteredRuntimeSkills.map((s) => s.key));
+    const visibleKeys = new Set(filteredRuntimeSkills.map((s) => rowId(s)));
     const visibleSelected =
       visibleKeys.size > 0 &&
-      filteredRuntimeSkills.every((s) => selectedKeys.has(s.key));
+      filteredRuntimeSkills.every((s) => selectedKeys.has(rowId(s)));
 
     setSelectedKeys((prev) => {
       const next = new Set(prev);
@@ -624,7 +633,7 @@ export function RuntimeLocalSkillImportPanel({
         for (const key of visibleKeys) next.add(key);
       }
       if (next.size === 1) {
-        const only = runtimeSkills.find((s) => next.has(s.key));
+        const only = runtimeSkills.find((s) => next.has(rowId(s)));
         if (only) {
           setEditName(only.name);
           setEditDescription(only.description ?? "");
@@ -636,9 +645,9 @@ export function RuntimeLocalSkillImportPanel({
 
   const allSelected =
     filteredRuntimeSkills.length > 0 &&
-    filteredRuntimeSkills.every((s) => selectedKeys.has(s.key));
+    filteredRuntimeSkills.every((s) => selectedKeys.has(rowId(s)));
   const someSelected =
-    filteredRuntimeSkills.some((s) => selectedKeys.has(s.key)) && !allSelected;
+    filteredRuntimeSkills.some((s) => selectedKeys.has(rowId(s))) && !allSelected;
   const pendingConflicts = bulkState.results.filter(
     (r) => r.status === "conflict" && r.conflict,
   );
@@ -695,7 +704,7 @@ export function RuntimeLocalSkillImportPanel({
   const handleBulkImport = async () => {
     if (!selectedRuntimeId || selectedKeys.size === 0) return;
 
-    const skillsToImport = runtimeSkills.filter((s) => selectedKeys.has(s.key));
+    const skillsToImport = runtimeSkills.filter((s) => selectedKeys.has(rowId(s)));
     const total = skillsToImport.length;
 
     cancelRef.current = false;
@@ -720,13 +729,16 @@ export function RuntimeLocalSkillImportPanel({
       try {
         const result = await resolveRuntimeLocalSkillImport(selectedRuntimeId, {
           skill_key: skill.key,
+          root: skill.root,
           name: importName,
           description: importDescription,
           supports_conflict: true,
         });
         if (result.status === "conflict") {
           results.push({
-            key: skill.key,
+            key: rowId(skill),
+            skillKey: skill.key,
+            root: skill.root,
             name: importName,
             description: importDescription,
             status: "conflict",
@@ -734,7 +746,9 @@ export function RuntimeLocalSkillImportPanel({
           });
         } else {
           results.push({
-            key: skill.key,
+            key: rowId(skill),
+            skillKey: skill.key,
+            root: skill.root,
             name: result.skill?.name ?? importName,
             description: importDescription,
             status: result.status,
@@ -745,7 +759,9 @@ export function RuntimeLocalSkillImportPanel({
         const msg = error instanceof Error ? error.message : "";
         const isSkipped = isNameConflictError(msg);
         results.push({
-          key: skill.key,
+          key: rowId(skill),
+          skillKey: skill.key,
+          root: skill.root,
           name: skill.name,
           description: importDescription,
           status: isSkipped ? "skipped" : "failed",
@@ -838,7 +854,8 @@ export function RuntimeLocalSkillImportPanel({
 
       try {
         const result = await resolveRuntimeLocalSkillImport(selectedRuntimeId, {
-          skill_key: r.key,
+          skill_key: r.skillKey,
+          root: r.root,
           name:
             resolution.action === "rename"
               ? resolution.renameName.trim()
@@ -1110,17 +1127,17 @@ export function RuntimeLocalSkillImportPanel({
 
             {filteredRuntimeSkills.map((s) => (
               <SkillItem
-                key={s.key}
+                key={rowId(s)}
                 skill={s}
-                checked={selectedKeys.has(s.key)}
-                onToggle={() => toggleSkill(s.key)}
+                checked={selectedKeys.has(rowId(s))}
+                onToggle={() => toggleSkill(rowId(s))}
                 disabled={importing}
-                expanded={singleSelectedSkill?.key === s.key}
+                expanded={singleSelectedSkill != null && rowId(singleSelectedSkill) === rowId(s)}
                 editName={
-                  singleSelectedSkill?.key === s.key ? editName : undefined
+                  singleSelectedSkill != null && rowId(singleSelectedSkill) === rowId(s) ? editName : undefined
                 }
                 editDescription={
-                  singleSelectedSkill?.key === s.key
+                  singleSelectedSkill != null && rowId(singleSelectedSkill) === rowId(s)
                     ? editDescription
                     : undefined
                 }

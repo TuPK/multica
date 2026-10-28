@@ -206,7 +206,7 @@ func TestRuntimeLocalSkills_CodebuddyExcludesClaudePluginSkills(t *testing.T) {
 		t.Fatalf("CodeBuddy must not list Claude plugin skills, got %#v", skills)
 	}
 
-	bundle, supported, err := loadRuntimeLocalSkillBundle("codebuddy", "paper-desktop:design-to-code")
+	bundle, supported, err := loadRuntimeLocalSkillBundle("codebuddy", "paper-desktop:design-to-code", "")
 	if !supported {
 		t.Fatal("codebuddy should be supported for import")
 	}
@@ -241,7 +241,7 @@ func TestListRuntimeLocalSkills_ClaudeEnabledPlugin(t *testing.T) {
 		t.Fatalf("plugin skill origin = %#v", got)
 	}
 
-	bundle, supported, err := loadRuntimeLocalSkillBundle("claude", got.Key)
+	bundle, supported, err := loadRuntimeLocalSkillBundle("claude", got.Key, "")
 	if err != nil || !supported {
 		t.Fatalf("load plugin bundle: supported=%v err=%v", supported, err)
 	}
@@ -405,7 +405,7 @@ func TestLocalSkills_DiscoversACPProviderRoots(t *testing.T) {
 				t.Fatalf("source_path = %q, want %q", skills[0].SourcePath, wantPath)
 			}
 
-			bundle, supported, err := loadRuntimeLocalSkillBundle(tc.provider, "review-helper")
+			bundle, supported, err := loadRuntimeLocalSkillBundle(tc.provider, "review-helper", "")
 			if err != nil {
 				t.Fatalf("loadRuntimeLocalSkillBundle: %v", err)
 			}
@@ -511,7 +511,7 @@ func TestListRuntimeLocalSkills_HermesFollowsTaskHome(t *testing.T) {
 				t.Fatalf("source_path = %q, want %q", skills[0].SourcePath, want)
 			}
 
-			bundle, supported, err := loadRuntimeLocalSkillBundle("hermes", "review-helper")
+			bundle, supported, err := loadRuntimeLocalSkillBundle("hermes", "review-helper", "")
 			if err != nil {
 				t.Fatalf("loadRuntimeLocalSkillBundle: %v", err)
 			}
@@ -558,7 +558,7 @@ func TestListRuntimeLocalSkills_GrokUsesGROKHOME(t *testing.T) {
 		t.Fatalf("source_path = %q, want custom GROK_HOME path", skills[0].SourcePath)
 	}
 
-	bundle, supported, err := loadRuntimeLocalSkillBundle("grok", "review-helper")
+	bundle, supported, err := loadRuntimeLocalSkillBundle("grok", "review-helper", "")
 	if err != nil {
 		t.Fatalf("loadRuntimeLocalSkillBundle: %v", err)
 	}
@@ -593,7 +593,7 @@ func TestListRuntimeLocalSkills_QwenUsesQWENHOME(t *testing.T) {
 		t.Fatalf("source_path = %q, want custom QWEN_HOME path", skills[0].SourcePath)
 	}
 
-	bundle, supported, err := loadRuntimeLocalSkillBundle("qwen", "review-helper")
+	bundle, supported, err := loadRuntimeLocalSkillBundle("qwen", "review-helper", "")
 	if err != nil {
 		t.Fatalf("loadRuntimeLocalSkillBundle: %v", err)
 	}
@@ -640,13 +640,17 @@ func TestListRuntimeLocalSkills_FollowsSymlinkedSkillDirs(t *testing.T) {
 	if !supported {
 		t.Fatal("claude should be supported")
 	}
-	if len(skills) != 2 {
-		t.Fatalf("expected 2 skills, got %d (%v)", len(skills), skills)
+	// lark-doc is listed under the provider root (via the symlink) and again
+	// under the universal root (the real directory), so three rows in total.
+	if len(skills) != 3 {
+		t.Fatalf("expected 3 skills, got %d (%v)", len(skills), skills)
 	}
 
-	bySymlinkKey := skills[0]
-	if bySymlinkKey.Key != "lark-doc" {
-		bySymlinkKey = skills[1]
+	var bySymlinkKey runtimeLocalSkillSummary
+	for _, s := range skills {
+		if s.Key == "lark-doc" && s.Root == localSkillRootProvider {
+			bySymlinkKey = s
+		}
 	}
 	if bySymlinkKey.Key != "lark-doc" {
 		t.Fatalf("symlinked skill missing from result: %v", skills)
@@ -752,7 +756,7 @@ func TestLoadRuntimeLocalSkillBundle_OpenCode(t *testing.T) {
 		"examples/sample.md": "sample body",
 	})
 
-	bundle, supported, err := loadRuntimeLocalSkillBundle("opencode", "release/reporter")
+	bundle, supported, err := loadRuntimeLocalSkillBundle("opencode", "release/reporter", "")
 	if err != nil {
 		t.Fatalf("loadRuntimeLocalSkillBundle: %v", err)
 	}
@@ -813,7 +817,7 @@ func TestLoadRuntimeLocalSkillBundle_Cursor(t *testing.T) {
 		".hidden/skip.txt": "ignore",
 	})
 
-	bundle, supported, err := loadRuntimeLocalSkillBundle("cursor", "docs-helper")
+	bundle, supported, err := loadRuntimeLocalSkillBundle("cursor", "docs-helper", "")
 	if err != nil {
 		t.Fatalf("loadRuntimeLocalSkillBundle: %v", err)
 	}
@@ -887,7 +891,7 @@ func TestLoadRuntimeLocalSkillBundle_ImportsFromUniversalRoot(t *testing.T) {
 		"scripts/run.sh":  "echo hi",
 	})
 
-	bundle, supported, err := loadRuntimeLocalSkillBundle("claude", "shared-skill")
+	bundle, supported, err := loadRuntimeLocalSkillBundle("claude", "shared-skill", "")
 	if err != nil {
 		t.Fatalf("loadRuntimeLocalSkillBundle: %v", err)
 	}
@@ -921,25 +925,32 @@ func TestLocalSkills_ProviderRootWinsOnKeyConflict(t *testing.T) {
 		"SKILL.md": "---\nname: Universal Copy\n---\n# universal\n",
 	})
 
+	// Same key in two roots yields two selectable rows, one per root.
 	skills, _, err := listRuntimeLocalSkills("claude")
 	if err != nil {
 		t.Fatalf("listRuntimeLocalSkills: %v", err)
 	}
-	if len(skills) != 1 {
-		t.Fatalf("expected 1 deduped skill, got %d (%v)", len(skills), skills)
+	if len(skills) != 2 {
+		t.Fatalf("expected 2 rows (one per root), got %d (%v)", len(skills), skills)
 	}
-	if skills[0].Name != "Provider Copy" {
-		t.Fatalf("name = %q, want Provider Copy (provider root must win)", skills[0].Name)
+	byRoot := map[string]runtimeLocalSkillSummary{}
+	for _, s := range skills {
+		if s.Key != "dup" {
+			t.Fatalf("unexpected key %q", s.Key)
+		}
+		byRoot[s.Root] = s
 	}
-	if skills[0].Root != localSkillRootProvider {
-		t.Fatalf("root = %q, want %q", skills[0].Root, localSkillRootProvider)
+	provider, ok := byRoot[localSkillRootProvider]
+	if !ok || provider.Name != "Provider Copy" || provider.SourcePath != "~/.claude/skills/dup" {
+		t.Fatalf("provider row = %+v, want Provider Copy at ~/.claude/skills/dup", provider)
 	}
-	if skills[0].SourcePath != "~/.claude/skills/dup" {
-		t.Fatalf("source_path = %q, want provider path", skills[0].SourcePath)
+	universal, ok := byRoot[localSkillRootUniversal]
+	if !ok || universal.Name != "Universal Copy" || universal.SourcePath != "~/.agents/skills/dup" {
+		t.Fatalf("universal row = %+v, want Universal Copy at ~/.agents/skills/dup", universal)
 	}
 
-	// Load must resolve to the provider copy too, matching the list.
-	bundle, _, err := loadRuntimeLocalSkillBundle("claude", "dup")
+	// Legacy lookup (no root) still resolves to the provider copy.
+	bundle, _, err := loadRuntimeLocalSkillBundle("claude", "dup", "")
 	if err != nil {
 		t.Fatalf("loadRuntimeLocalSkillBundle: %v", err)
 	}
@@ -948,6 +959,30 @@ func TestLocalSkills_ProviderRootWinsOnKeyConflict(t *testing.T) {
 	}
 	if bundle.SourcePath != "~/.claude/skills/dup" {
 		t.Fatalf("bundle source_path = %q, want provider path", bundle.SourcePath)
+	}
+
+	// An explicit root loads exactly the row the user picked, even when the
+	// same key exists in another root.
+	bundle, _, err = loadRuntimeLocalSkillBundle("claude", "dup", localSkillRootUniversal)
+	if err != nil {
+		t.Fatalf("loadRuntimeLocalSkillBundle universal: %v", err)
+	}
+	if bundle.Name != "Universal Copy" || bundle.SourcePath != "~/.agents/skills/dup" {
+		t.Fatalf("universal bundle = %q at %q, want Universal Copy at ~/.agents/skills/dup", bundle.Name, bundle.SourcePath)
+	}
+}
+
+// A root that does not hold the key must not be substituted by another root.
+func TestLoadRuntimeLocalSkillBundle_ExplicitRootDoesNotFallThrough(t *testing.T) {
+	home := t.TempDir()
+	redirectTestHome(t, home)
+
+	writeTestLocalSkill(t, filepath.Join(home, ".claude", "skills"), "only-provider", map[string]string{
+		"SKILL.md": "---\nname: Only Provider\n---\n",
+	})
+
+	if _, _, err := loadRuntimeLocalSkillBundle("claude", "only-provider", localSkillRootUniversal); err == nil {
+		t.Fatal("expected not-found error for universal root, got nil")
 	}
 }
 
@@ -1047,7 +1082,7 @@ func TestListRuntimeLocalSkills_NestedSkillInUniversalRoot(t *testing.T) {
 		t.Fatalf("root = %q, want %q", skills[0].Root, localSkillRootUniversal)
 	}
 
-	bundle, _, err := loadRuntimeLocalSkillBundle("opencode", "release/reporter")
+	bundle, _, err := loadRuntimeLocalSkillBundle("opencode", "release/reporter", "")
 	if err != nil {
 		t.Fatalf("loadRuntimeLocalSkillBundle: %v", err)
 	}
@@ -1070,7 +1105,7 @@ func TestLoadRuntimeLocalSkillBundle_FallsThroughToUniversalOnNotExist(t *testin
 		"SKILL.md": "---\nname: Only Universal\n---\n# only universal\n",
 	})
 
-	bundle, _, err := loadRuntimeLocalSkillBundle("claude", "only-universal")
+	bundle, _, err := loadRuntimeLocalSkillBundle("claude", "only-universal", "")
 	if err != nil {
 		t.Fatalf("loadRuntimeLocalSkillBundle: %v", err)
 	}
@@ -1100,7 +1135,7 @@ func TestLoadRuntimeLocalSkillBundle_DoesNotMaskReadErrorWithUniversalFallback(t
 		"SKILL.md": "---\nname: Universal Clash\n---\n",
 	})
 
-	bundle, _, err := loadRuntimeLocalSkillBundle("claude", "clash")
+	bundle, _, err := loadRuntimeLocalSkillBundle("claude", "clash", "")
 	if err == nil {
 		t.Fatalf("expected an error, got bundle %+v", bundle)
 	}
@@ -1191,7 +1226,7 @@ func TestLoadRuntimeLocalSkillBundle_ProviderDirWithoutSkillMdFallsThrough(t *te
 
 	// load must resolve to the SAME universal skill list showed — not error on
 	// the invalid provider dir.
-	bundle, _, err := loadRuntimeLocalSkillBundle("claude", "shadowed")
+	bundle, _, err := loadRuntimeLocalSkillBundle("claude", "shadowed", "")
 	if err != nil {
 		t.Fatalf("loadRuntimeLocalSkillBundle: %v (load disagreed with list)", err)
 	}
@@ -1222,7 +1257,7 @@ func TestLoadRuntimeLocalSkillBundle_ProviderNonDirFallsThrough(t *testing.T) {
 		"SKILL.md": "---\nname: Filish\n---\n# Filish\n",
 	})
 
-	bundle, _, err := loadRuntimeLocalSkillBundle("claude", "filish")
+	bundle, _, err := loadRuntimeLocalSkillBundle("claude", "filish", "")
 	if err != nil {
 		t.Fatalf("loadRuntimeLocalSkillBundle: %v", err)
 	}

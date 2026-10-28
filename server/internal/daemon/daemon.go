@@ -4837,9 +4837,9 @@ func (d *Daemon) handleLocalSkillList(ctx context.Context, rt Runtime, requestID
 }
 
 func (d *Daemon) handleLocalSkillImport(ctx context.Context, rt Runtime, pending PendingLocalSkillImport) {
-	d.logger.Info("runtime local skill import requested", "runtime_id", rt.ID, "request_id", pending.ID, "provider", rt.Provider, "skill_key", pending.SkillKey)
+	d.logger.Info("runtime local skill import requested", "runtime_id", rt.ID, "request_id", pending.ID, "provider", rt.Provider, "skill_key", pending.SkillKey, "root", pending.Root)
 
-	skill, supported, err := loadRuntimeLocalSkillBundle(rt.Provider, pending.SkillKey)
+	skill, supported, err := loadRuntimeLocalSkillBundle(rt.Provider, pending.SkillKey, pending.Root)
 	if err != nil {
 		d.reportLocalSkillImportResult(ctx, rt, pending.ID, map[string]any{
 			"status": "failed",

@@ -468,4 +468,8 @@ type DaemonHeartbeatPendingLocalSkills struct {
 type DaemonHeartbeatPendingLocalSkillImport struct {
 	ID       string `json:"id"`
 	SkillKey string `json:"skill_key"`
+	// Root selects which discovery root the skill is read from ("provider",
+	// "universal" or "plugin"). Empty means legacy first-match. Old daemons
+	// ignore it and resolve by key alone.
+	Root string `json:"root,omitempty"`
 }

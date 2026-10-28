@@ -796,3 +796,19 @@ func TestCleanOptionalString(t *testing.T) {
 func ptr[T any](value T) *T {
 	return &value
 }
+
+func TestIsValidLocalSkillImportRoot(t *testing.T) {
+	cases := map[string]bool{
+		"":          true,
+		"provider":  true,
+		"universal": true,
+		"plugin":    true,
+		"agents":    false,
+		"Provider":  false,
+	}
+	for root, want := range cases {
+		if got := isValidLocalSkillImportRoot(root); got != want {
+			t.Errorf("isValidLocalSkillImportRoot(%q) = %v, want %v", root, got, want)
+		}
+	}
+}

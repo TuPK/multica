@@ -28,7 +28,7 @@ func TestMuseLocalSkillsUseConfigAndUniversalRoots(t *testing.T) {
 			if err != nil || !supported || len(skills) != 2 {
 				t.Fatalf("supported=%v skills=%v err=%v", supported, skills, err)
 			}
-			_, supported, err = loadRuntimeLocalSkillBundle("muse", "personal")
+			_, supported, err = loadRuntimeLocalSkillBundle("muse", "personal", "")
 			if err != nil || !supported {
 				t.Fatalf("personal skill cannot be imported: %v", err)
 			}
