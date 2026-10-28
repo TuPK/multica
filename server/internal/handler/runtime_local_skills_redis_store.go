@@ -279,6 +279,7 @@ func (s *RedisLocalSkillImportStore) Create(ctx context.Context, input LocalSkil
 		ID:               randomID(),
 		RuntimeID:        input.RuntimeID,
 		SkillKey:         input.SkillKey,
+		Root:             input.Root,
 		Name:             input.Name,
 		Description:      input.Description,
 		Action:           input.Action,

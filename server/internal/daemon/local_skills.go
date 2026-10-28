@@ -523,12 +523,10 @@ func listRuntimeLocalSkills(provider string) ([]runtimeLocalSkillSummary, bool, 
 	//     already accepts slash-delimited keys, so the list endpoint
 	//     must surface those nested skills too.
 	skills := make([]runtimeLocalSkillSummary, 0)
-	// Dedupe strictly by Key. Roots are visited in priority order
-	// (provider-specific first, ~/.agents/skills last); the first
-	// occurrence of a Key wins. This keeps backward compatibility provable:
-	// every skill visible under the single-root behavior keeps its Key,
-	// SourcePath and FileCount, and we only ever *add* non-conflicting Keys
-	// discovered under the universal root.
+	// Dedupe by (Root, Key), not Key alone: the same skill name in the
+	// provider root and in the universal root are two distinct entries, and
+	// the import request carries Root to pick one. Within a single root the
+	// first occurrence wins (roots are visited in priority order).
 	seenKeys := make(map[string]bool)
 	for _, root := range roots {
 		if _, err := os.Stat(root.path); err != nil {
@@ -550,10 +548,11 @@ func listRuntimeLocalSkills(provider string) ([]runtimeLocalSkillSummary, bool, 
 		enumerateLocalSkills(provider, root, root.path, root.path, 0, visited, &rootSkills)
 
 		for _, s := range rootSkills {
-			if seenKeys[s.Key] {
+			dedupeKey := s.Root + "\x00" + s.Key
+			if seenKeys[dedupeKey] {
 				continue
 			}
-			seenKeys[s.Key] = true
+			seenKeys[dedupeKey] = true
 			skills = append(skills, s)
 		}
 	}
@@ -664,7 +663,23 @@ func enumerateLocalSkills(
 	}
 }
 
-func loadRuntimeLocalSkillBundle(provider, skillKey string) (*runtimeLocalSkillBundle, bool, error) {
+// filterLocalSkillRootsByKind keeps only the roots whose kind matches. Roots
+// keep their priority order.
+func filterLocalSkillRootsByKind(roots []localSkillRoot, kind string) []localSkillRoot {
+	filtered := make([]localSkillRoot, 0, len(roots))
+	for _, root := range roots {
+		if root.kind == kind {
+			filtered = append(filtered, root)
+		}
+	}
+	return filtered
+}
+
+// loadRuntimeLocalSkillBundle loads the skill at skillKey. An empty root
+// keeps the legacy first-match behavior (provider root, then universal);
+// a non-empty root ("provider", "universal" or "plugin") restricts the lookup
+// to that root so a same-key skill in another root is never substituted.
+func loadRuntimeLocalSkillBundle(provider, skillKey, root string) (*runtimeLocalSkillBundle, bool, error) {
 	roots, supported, err := localSkillRootsForProvider(provider)
 	if err != nil || !supported {
 		return nil, supported, err
@@ -673,6 +688,9 @@ func loadRuntimeLocalSkillBundle(provider, skillKey string) (*runtimeLocalSkillB
 	key, err := normalizeLocalSkillKey(skillKey)
 	if err != nil {
 		return nil, true, err
+	}
+	if root != "" {
+		roots = filterLocalSkillRootsByKind(roots, root)
 	}
 
 	// Walk the roots in the same priority order as listRuntimeLocalSkills so

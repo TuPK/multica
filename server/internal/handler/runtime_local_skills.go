@@ -104,6 +104,7 @@ type LocalSkillImportRequestInput struct {
 	RuntimeID        string
 	CreatorID        string
 	SkillKey         string
+	Root             string
 	Name             *string
 	Description      *string
 	Action           LocalSkillImportAction
@@ -216,9 +217,12 @@ type RuntimeLocalSkillListRequest struct {
 }
 
 type RuntimeLocalSkillImportRequest struct {
-	ID            string                 `json:"id"`
-	RuntimeID     string                 `json:"runtime_id"`
-	SkillKey      string                 `json:"skill_key"`
+	ID        string `json:"id"`
+	RuntimeID string `json:"runtime_id"`
+	SkillKey  string `json:"skill_key"`
+	// Root is the discovery root the skill was listed under: "provider",
+	// "universal" or "plugin". Empty selects the legacy first-match lookup.
+	Root          string                 `json:"root,omitempty"`
 	Name          *string                `json:"name,omitempty"`
 	Description   *string                `json:"description,omitempty"`
 	Action        LocalSkillImportAction `json:"action,omitempty"`
@@ -373,6 +377,7 @@ func (s *InMemoryLocalSkillImportStore) Create(_ context.Context, input LocalSki
 		ID:               randomID(),
 		RuntimeID:        input.RuntimeID,
 		SkillKey:         input.SkillKey,
+		Root:             input.Root,
 		Name:             input.Name,
 		Description:      input.Description,
 		Action:           input.Action,
@@ -507,7 +512,10 @@ func (s *InMemoryLocalSkillImportStore) Fail(_ context.Context, id string, errMs
 }
 
 type CreateRuntimeLocalSkillImportRequest struct {
-	SkillKey    string  `json:"skill_key"`
+	SkillKey string `json:"skill_key"`
+	// Root picks the listed row when the same skill key exists in more than
+	// one root. Empty keeps the legacy first-match lookup.
+	Root        string  `json:"root,omitempty"`
 	Name        *string `json:"name,omitempty"`
 	Description *string `json:"description,omitempty"`
 	// Action selects create (default) vs overwrite. When overwrite,
@@ -635,6 +643,17 @@ func (h *Handler) GetLocalSkillListRequest(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, req)
 }
 
+// isValidLocalSkillImportRoot accepts the discovery root kinds the daemon
+// reports on each listed skill. Empty means the legacy first-match lookup.
+func isValidLocalSkillImportRoot(root string) bool {
+	switch root {
+	case "", "provider", "universal", "plugin":
+		return true
+	default:
+		return false
+	}
+}
+
 func (h *Handler) InitiateImportLocalSkill(w http.ResponseWriter, r *http.Request) {
 	runtimeID := chi.URLParam(r, "runtimeId")
 	rt, ok := h.requireRuntimeLocalSkillAccess(w, r, obsmetrics.RuntimeLookupSourceRuntimeAPI, runtimeID)
@@ -660,6 +679,10 @@ func (h *Handler) InitiateImportLocalSkill(w http.ResponseWriter, r *http.Reques
 		writeError(w, http.StatusBadRequest, "skill_key is required")
 		return
 	}
+	if !isValidLocalSkillImportRoot(req.Root) {
+		writeError(w, http.StatusBadRequest, "invalid root")
+		return
+	}
 
 	targetSkillID := ""
 	switch req.Action {
@@ -683,6 +706,7 @@ func (h *Handler) InitiateImportLocalSkill(w http.ResponseWriter, r *http.Reques
 		RuntimeID:     rt.runtimeID,
 		CreatorID:     creatorID,
 		SkillKey:      strings.TrimSpace(req.SkillKey),
+		Root:          req.Root,
 		Name:          cleanOptionalString(req.Name),
 		Description:   cleanOptionalString(req.Description),
 		Action:        req.Action,

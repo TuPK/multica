@@ -49,16 +49,25 @@ func TestDevinLocalSkillsMergeAndImportPrecedence(t *testing.T) {
 		writeTestLocalSkill(t, root, keys[i], map[string]string{"SKILL.md": "---\nname: Unique\n---\n"})
 	}
 	skills, supported, err := listRuntimeLocalSkills("devin")
-	if err != nil || !supported || len(skills) != len(roots)+1 {
+	// Six unique keys, plus "duplicate" once per root kind: the provider
+	// copy (first provider root wins) and the universal copy.
+	if err != nil || !supported || len(skills) != len(roots)+2 {
 		t.Fatalf("list = %+v supported=%v err=%v", skills, supported, err)
 	}
 	for _, key := range append([]string{"duplicate"}, keys...) {
-		bundle, supported, err := loadRuntimeLocalSkillBundle("devin", key)
+		bundle, supported, err := loadRuntimeLocalSkillBundle("devin", key, "")
 		if err != nil || !supported {
 			t.Fatalf("import %s: supported=%v err=%v", key, supported, err)
 		}
 		if key == "duplicate" && (bundle.Name != names[0] || bundle.SourcePath != relativizeHomePath(filepath.Join(roots[0], key))) {
 			t.Fatalf("import did not match provider-first listing: %+v", bundle)
 		}
+	}
+	universal, supported, err := loadRuntimeLocalSkillBundle("devin", "duplicate", localSkillRootUniversal)
+	if err != nil || !supported {
+		t.Fatalf("import universal duplicate: supported=%v err=%v", supported, err)
+	}
+	if universal.Name != names[len(names)-1] {
+		t.Fatalf("universal import name = %q, want %q", universal.Name, names[len(names)-1])
 	}
 }
