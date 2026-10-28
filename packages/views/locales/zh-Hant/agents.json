@@ -372,6 +372,19 @@
     "runtime_loading": "正在載入執行時…",
     "runtime_missing": "這個執行時已不可用。",
     "cloud_fields_note": "Skills、MCP 和聊天開場白只在本機和遠端執行時可用，這裡不顯示。",
+    "instruction_templates": {
+      "trigger": "使用範本",
+      "replace_title": "取代目前的指令？",
+      "replace_description": "範本會取代你已經寫好的指令。",
+      "replace_cancel": "保留我的",
+      "replace_confirm": "取代",
+      "items": {
+        "fullstack_developer": {
+          "name": "全端開發者",
+          "description": "端到端交付 Story，遵循 BMAD 狀態流轉，並透過 Agent Team 協作。"
+        }
+      }
+    },
     "done": {
       "loading": "正在完成…",
       "title": "{{name}} 已就緒",

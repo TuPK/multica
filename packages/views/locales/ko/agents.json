@@ -980,6 +980,19 @@
     "runtime_loading": "런타임을 불러오는 중…",
     "runtime_missing": "이 런타임은 더 이상 사용할 수 없습니다.",
     "cloud_fields_note": "Skills, MCP, 대화 시작 문구는 로컬 및 원격 런타임에서만 사용할 수 있습니다.",
+    "instruction_templates": {
+      "trigger": "템플릿 사용",
+      "replace_title": "현재 지침을 바꿀까요?",
+      "replace_description": "템플릿이 지금까지 작성한 지침을 대체합니다.",
+      "replace_cancel": "내 지침 유지",
+      "replace_confirm": "바꾸기",
+      "items": {
+        "fullstack_developer": {
+          "name": "풀스택 개발자",
+          "description": "스토리를 끝까지 완성하고, BMAD 상태 흐름을 따르며, Agent Team으로 작업합니다."
+        }
+      }
+    },
     "done": {
       "loading": "마무리하는 중…",
       "title": "{{name}} 준비 완료",

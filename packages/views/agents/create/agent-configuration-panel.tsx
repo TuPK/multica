@@ -22,6 +22,7 @@ import {
   SettingsSection,
 } from "../../settings/components/settings-layout";
 import { CharCounter } from "../components/char-counter";
+import { InstructionTemplatePicker } from "../components/instruction-template-picker";
 import { ServiceTierSettingField } from "../components/inspector/service-tier-setting-field";
 import { ThinkingSettingField } from "../components/inspector/thinking-prop-row";
 import { ModelDropdown } from "../components/model-dropdown";
@@ -51,6 +52,7 @@ export function AgentConfigurationPanel({
   runtimeSwitchPending = false,
   runtimeSwitchInFlight = false,
   runtimeSummary,
+  showInstructionTemplates = false,
 }: {
   draft: AgentDraft;
   onChange: (draft: AgentDraft) => void;
@@ -74,6 +76,9 @@ export function AgentConfigurationPanel({
   /** Replaces the runtime picker when the runtime was chosen in an earlier
    *  step and changing it means going back there. */
   runtimeSummary?: ReactNode;
+  /** Offers the built-in instruction templates. Only the manual create flow
+   *  sets it; the AI builder owns its instructions through the conversation. */
+  showInstructionTemplates?: boolean;
 }) {
   const { t } = useT("agents");
   const conversationStartersSupported = useConfigStore(
@@ -183,19 +188,31 @@ export function AgentConfigurationPanel({
             label={t(($) => $.create_dialog.instructions.label)}
             htmlFor="agent-create-instructions"
           >
-            <Textarea
-              id="agent-create-instructions"
-              name="agent-instructions"
-              autoComplete="off"
-              aria-label={t(($) => $.create_dialog.instructions.label)}
-              value={draft.instructions}
-              onChange={(event) => set("instructions", event.target.value)}
-              placeholder={t(
-                ($) => $.create_dialog.instructions.editor_placeholder,
-              )}
-              rows={compact ? 9 : 12}
-              className="min-h-44 resize-y font-mono text-label leading-6"
-            />
+            <div className="space-y-2">
+              {showInstructionTemplates ? (
+                <div className="flex justify-end">
+                  <InstructionTemplatePicker
+                    currentInstructions={draft.instructions}
+                    onSelect={(instructions) =>
+                      set("instructions", instructions)
+                    }
+                  />
+                </div>
+              ) : null}
+              <Textarea
+                id="agent-create-instructions"
+                name="agent-instructions"
+                autoComplete="off"
+                aria-label={t(($) => $.create_dialog.instructions.label)}
+                value={draft.instructions}
+                onChange={(event) => set("instructions", event.target.value)}
+                placeholder={t(
+                  ($) => $.create_dialog.instructions.editor_placeholder,
+                )}
+                rows={compact ? 9 : 12}
+                className="min-h-44 resize-y font-mono text-label leading-6"
+              />
+            </div>
           </DraftFieldRow>
           {qoderRuntime ? (
             <p className="px-4 py-3 text-caption text-muted-foreground">
@@ -222,16 +239,16 @@ export function AgentConfigurationPanel({
           >
             <div className="min-w-0">
               {runtimeSummary ?? (
-              <RuntimePicker
-                runtimes={runtimes}
-                runtimesLoading={runtimesLoading}
-                members={members}
-                currentUserId={currentUserId}
-                selectedRuntimeId={draft.runtimeId}
-                onSelect={handleRuntimeSelect}
-                disabled={runtimeLocked}
-                autoSelect={!onRuntimeSelect}
-              />
+                <RuntimePicker
+                  runtimes={runtimes}
+                  runtimesLoading={runtimesLoading}
+                  members={members}
+                  currentUserId={currentUserId}
+                  selectedRuntimeId={draft.runtimeId}
+                  onSelect={handleRuntimeSelect}
+                  disabled={runtimeLocked}
+                  autoSelect={!onRuntimeSelect}
+                />
               )}
               {/* A silently greyed-out picker is the worst version of this: the
                   user reaches for it exactly when the current runtime has gone
@@ -279,9 +296,7 @@ export function AgentConfigurationPanel({
         </SettingsCard>
       </SettingsSection>
 
-      <SettingsSection
-        title={t(($) => $.creation_studio.sections.access)}
-      >
+      <SettingsSection title={t(($) => $.creation_studio.sections.access)}>
         <SettingsCard>
           <div
             className="space-y-1 p-2"

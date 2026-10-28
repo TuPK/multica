@@ -980,6 +980,19 @@
     "runtime_loading": "ランタイムを読み込み中…",
     "runtime_missing": "このランタイムは利用できなくなりました。",
     "cloud_fields_note": "Skills、MCP、会話のきっかけはローカルとリモートのランタイムでのみ利用できます。",
+    "instruction_templates": {
+      "trigger": "テンプレートを使う",
+      "replace_title": "現在の指示を置き換えますか？",
+      "replace_description": "テンプレートは、これまでに書いた指示を置き換えます。",
+      "replace_cancel": "自分の指示を残す",
+      "replace_confirm": "置き換える",
+      "items": {
+        "fullstack_developer": {
+          "name": "フルスタック開発者",
+          "description": "ストーリーをエンドツーエンドで完成させ、BMAD のステータスフローに従い、Agent Team で進めます。"
+        }
+      }
+    },
     "done": {
       "loading": "仕上げています…",
       "title": "{{name}} の準備ができました",

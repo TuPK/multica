@@ -382,6 +382,19 @@
     "runtime_loading": "Loading runtime…",
     "runtime_missing": "This runtime is no longer available.",
     "cloud_fields_note": "Skills, MCP and conversation starters are only available on local and remote runtimes.",
+    "instruction_templates": {
+      "trigger": "Use a template",
+      "replace_title": "Replace current instructions?",
+      "replace_description": "The template replaces the instructions you've written so far.",
+      "replace_cancel": "Keep mine",
+      "replace_confirm": "Replace",
+      "items": {
+        "fullstack_developer": {
+          "name": "Full Stack Developer",
+          "description": "Delivers stories end to end, follows the BMAD status flow, and works through an agent team."
+        }
+      }
+    },
     "done": {
       "loading": "Finishing up…",
       "title": "{{name}} is ready",
