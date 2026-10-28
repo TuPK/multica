@@ -231,6 +231,46 @@ describe("RuntimeLocalSkillImportPanel", () => {
     );
   });
 
+  it("lists a skill present in two roots as two rows and imports the picked root", async () => {
+    mockRuntimeLocalSkillsOptions.mockReturnValue({
+      queryKey: ["runtimes", "local-skills", "runtime-1"],
+      queryFn: () =>
+        Promise.resolve({
+          supported: true,
+          skills: [
+            { ...MOCK_SKILL_A, root: "provider" },
+            {
+              ...MOCK_SKILL_A,
+              root: "universal",
+              source_path: "~/.agents/skills/review-helper",
+            },
+          ],
+        }),
+    });
+    renderPanel();
+
+    const rows = await screen.findAllByRole("button", { name: /Review Helper/i });
+    expect(rows).toHaveLength(2);
+
+    fireEvent.click(rows[1]!);
+    fireEvent.click(
+      screen.getByRole("button", { name: /Import to Workspace/i }),
+    );
+
+    await waitFor(
+      () => {
+        expect(mockResolveRuntimeLocalSkillImport).toHaveBeenCalledWith(
+          "runtime-1",
+          expect.objectContaining({
+            skill_key: "review-helper",
+            root: "universal",
+          }),
+        );
+      },
+      { timeout: 5000 },
+    );
+  });
+
   it("surfaces the runtime alias and provider in the picker, not the raw daemon name (MUL-5248)", async () => {
     mockRuntimeListOptions.mockReturnValue({
       queryKey: ["runtimes", "ws-1", "list"],

@@ -1325,6 +1325,8 @@ export interface RuntimeLocalSkillListRequest {
 
 export interface CreateRuntimeLocalSkillImportRequest {
   skill_key: string;
+  /** Discovery root of the listed row; omit for legacy first-match lookup. */
+  root?: "provider" | "universal" | "plugin";
   name?: string;
   description?: string;
   action?: RuntimeLocalSkillImportAction;
