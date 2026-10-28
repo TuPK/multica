@@ -2,7 +2,7 @@ import type { ZodType } from "zod";
 import { AgentRuntimeSchema, EMPTY_RUNTIME } from "../runtimes/schema";
 import type { IssueWakeup, IssueWakeupInput, IssueWakeupSummaryRow, PausedWakeup, SystemWakeup, WakeupRun, WorkspaceSystemWakeup } from "../types/issue-wakeup";
 import type { WorkspaceWakeupPage, WorkspaceWakeupFilters } from "../types/issue-wakeup";
-import { WorkspaceWakeupPageSchema, IssueWakeupSchema, IssueWakeupSummaryRowSchema, PausedWakeupSchema, SystemWakeupSchema, WakeupRunSchema, WorkspaceSystemWakeupSchema } from "./schemas";
+import { WorkspaceWakeupPageSchema, IssueWakeupSchema, IssueWakeupSummaryRowSchema, PausedWakeupSchema, SystemWakeupSchema, WakeupRunSchema, WorkspaceSystemWakeupSchema, QueueOrderPreviewSchema, QueueFrontierSchema } from "./schemas";
 import type { ArchivedInboxFilters } from "../inbox/filter-store";
 import type { ArchivedInboxPage, ArchivedInboxFacets } from "../types/inbox";
 import { parseQoderConnection, parseQoderCatalog, type QoderInput } from "../runtimes/qoder-schema";
@@ -13,6 +13,8 @@ import type {
   CreateIssueRequest,
   MoveIssueRequest,
   UpdateIssueRequest,
+  QueueFrontier,
+  QueueOrderPreview,
   IssueDuplicates,
   GroupedIssuesResponse,
   ListIssuesResponse,
@@ -1570,6 +1572,33 @@ export class ApiClient {
       method: "PUT",
       body: JSON.stringify(data),
     });
+  }
+
+  async setIssueQueueOrder(id: string, queueOrder: number | null): Promise<Issue> {
+    return this.fetch(`/api/issues/${id}/queue-order`, {
+      method: "PUT",
+      body: JSON.stringify({ queue_order: queueOrder }),
+    });
+  }
+
+  async batchSetIssueQueueOrder(ids: string[], queueOrder: number | null): Promise<{ updated: number }> {
+    return this.fetch(`/api/issues/batch-queue-order`, {
+      method: "POST",
+      body: JSON.stringify({ issue_ids: ids, queue_order: queueOrder }),
+    });
+  }
+
+  async previewQueueOrder(ids: string[], queueOrder: number | null): Promise<QueueOrderPreview> {
+    const raw = await this.fetch<unknown>(`/api/issues/queue-order/preview`, {
+      method: "POST",
+      body: JSON.stringify({ issue_ids: ids, queue_order: queueOrder }),
+    });
+    return parseWithFallback(raw, QueueOrderPreviewSchema, { release_now: 0, run_count: 0 }, { endpoint: "POST /api/issues/queue-order/preview" });
+  }
+
+  async listQueueFrontiers(): Promise<QueueFrontier[]> {
+    const raw = await this.fetch<unknown>(`/api/issues/queue-frontier`);
+    return parseWithFallback(raw, QueueFrontierSchema.array(), [] as QueueFrontier[], { endpoint: "GET /api/issues/queue-frontier" });
   }
 
   async moveIssue(id: string, data: MoveIssueRequest): Promise<Issue> {

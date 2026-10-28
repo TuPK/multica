@@ -225,6 +225,34 @@ func TestWorktreeDeliveryMetadataRoundTripsThroughBothTerminalPaths(t *testing.T
 		}
 	})
 
+	t.Run("complete persists the branch merge outcome", func(t *testing.T) {
+		readMerge := func(t *testing.T, taskID string) (status, errMsg string) {
+			t.Helper()
+			var st, em pgtype.Text
+			if err := testPool.QueryRow(ctx,
+				`SELECT branch_merge_status, branch_merge_error FROM agent_task_queue WHERE id = $1`, taskID).Scan(&st, &em); err != nil {
+				t.Fatalf("read branch merge columns: %v", err)
+			}
+			return st.String, em.String
+		}
+
+		taskID := newRunningTask(t)
+		post(t, taskID, "complete", map[string]any{
+			"output": "done", "branch_name": "agent/j/merge111",
+			"branch_merge_status": "skipped",
+			"branch_merge_error":  "the repository has uncommitted changes to tracked files",
+		}, testHandler.CompleteTask)
+		if status, errMsg := readMerge(t, taskID); status != "skipped" || errMsg == "" {
+			t.Errorf("branch_merge_status/error = %q/%q, want skipped with the reason", status, errMsg)
+		}
+
+		taskID = newRunningTask(t)
+		post(t, taskID, "complete", map[string]any{"output": "done"}, testHandler.CompleteTask)
+		if status, errMsg := readMerge(t, taskID); status != "" || errMsg != "" {
+			t.Errorf("branch merge columns = %q/%q for a run without auto-merge, want empty", status, errMsg)
+		}
+	})
+
 	t.Run("absent stays empty for non-worktree tasks", func(t *testing.T) {
 		taskID := newRunningTask(t)
 		post(t, taskID, "complete", map[string]any{"output": "done"}, testHandler.CompleteTask)

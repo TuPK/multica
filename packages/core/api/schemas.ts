@@ -1465,6 +1465,8 @@ export const IssueSchema = z.object({
   // Older backends predate `stage`; default to null so a missing field parses
   // cleanly into the non-optional Issue.stage (number | null).
   stage: z.number().nullable().default(null),
+  // Older backends predate the run queue; a missing number means not queued.
+  queue_order: z.number().nullable().default(null),
   start_date: z.string().nullable(),
   due_date: z.string().nullable(),
   metadata: IssueMetadataSchema,
@@ -2065,6 +2067,8 @@ export const AgentTaskSchema = z.object({
   durable_work_dir: z.string().optional().catch(undefined),
   relative_durable_work_dir: z.string().optional().catch(undefined),
   branch_name: z.string().optional().catch(undefined),
+  branch_merge_status: z.string().optional().catch(undefined),
+  branch_merge_error: z.string().optional().catch(undefined),
   attribution: TaskAttributionSchema.optional(),
   // Per-run token usage. Same independent-degradation rule as the coverage
   // arrays above: usage is additive display metadata, so one malformed entry
@@ -3832,3 +3836,13 @@ export const RuntimeProfileSchema = z
     runtime_type: profile.runtime_type || profile.protocol_family,
   }));
 export const RuntimeProfileListSchema = z.array(RuntimeProfileSchema);
+
+export const QueueOrderPreviewSchema = z.object({
+  release_now: z.number().int().nonnegative().default(0),
+  run_count: z.number().int().nonnegative().default(0),
+});
+
+export const QueueFrontierSchema = z.object({
+  project_id: z.string().nullable().default(null),
+  unfinished: z.array(z.number().int()).default([]),
+});

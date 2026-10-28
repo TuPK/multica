@@ -25,6 +25,7 @@ vi.mock("@multica/core/issues/mutations", () => ({
   useBatchDeleteIssues: () => ({ mutateAsync: batchDelete, isPending: false }),
 }));
 
+vi.mock("./batch-queue-order", () => ({ BatchQueueOrder: () => null }));
 vi.mock("@multica/core/hooks", () => ({ useWorkspaceId: () => "ws-1" }));
 vi.mock("@multica/core/issue-workflows", () => ({
   useIssueWorkflows: () => ({ workflows: [] }),

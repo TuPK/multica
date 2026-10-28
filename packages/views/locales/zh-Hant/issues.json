@@ -306,6 +306,7 @@
       "created_at": "建立時間",
       "updated_at": "更新時間",
       "child_progress": "子任務進度",
+      "queue_order": "執行順序",
       "creator": "建立者"
     },
     "calculation": {
@@ -809,7 +810,11 @@
     "detail_cache": "快取命中",
     "cache_hit_value": "{{percent}} · 節省 {{amount}}",
     "detail_time": "時間",
-    "detail_branch": "分支"
+    "detail_branch": "分支",
+    "detail_merge": "合併",
+    "merge_merged": "已合併",
+    "merge_skipped": "未合併",
+    "merge_failed": "合併失敗"
   },
   "terminate_dialog": {
     "title": "確定停止本次執行？",
@@ -945,6 +950,16 @@
     "create_failed": "建立標籤失敗",
     "update_failed": "更新標籤失敗",
     "delete_failed": "刪除標籤失敗"
+  },
+  "queue_order": {
+    "label": "執行順序",
+    "placeholder": "序號",
+    "waiting": "等待 #{{n}}",
+    "confirm_title": "現在開始排隊任務？",
+    "confirm_desc": "{{count}} 個任務將立即移到待辦，其中 {{runs}} 個會啟動智慧體執行。",
+    "confirm_action": "開始",
+    "apply": "套用",
+    "clear": "清除"
   },
   "backlog_hint": {
     "title": "智慧體在 backlog 狀態下暫停",

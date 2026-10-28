@@ -7,7 +7,7 @@
 -- "Assigned to me"), and the two filters must produce disjoint result sets.
 SELECT i.id, i.workspace_id, i.title, i.description, i.status, i.priority,
        i.assignee_type, i.assignee_id, i.creator_type, i.creator_id,
-       i.parent_issue_id, i.position, i.start_date, i.due_date, i.created_at, i.updated_at, i.last_activity_at, i.number, i.project_id, i.metadata, i.stage, i.properties,
+       i.parent_issue_id, i.position, i.start_date, i.due_date, i.created_at, i.updated_at, i.last_activity_at, i.number, i.project_id, i.metadata, i.stage, i.queue_order, i.properties,
        i.revision, i.duplicate_of_issue_id
 FROM issue i
 WHERE i.workspace_id = $1
@@ -509,7 +509,7 @@ DELETE FROM issue WHERE issue.id IN (SELECT target.id FROM target);
 -- filter; member-direct assignment is intentionally excluded).
 SELECT i.id, i.workspace_id, i.title, i.description, i.status, i.priority,
        i.assignee_type, i.assignee_id, i.creator_type, i.creator_id,
-       i.parent_issue_id, i.position, i.start_date, i.due_date, i.created_at, i.updated_at, i.last_activity_at, i.number, i.project_id, i.metadata, i.stage, i.properties,
+       i.parent_issue_id, i.position, i.start_date, i.due_date, i.created_at, i.updated_at, i.last_activity_at, i.number, i.project_id, i.metadata, i.stage, i.queue_order, i.properties,
        i.revision, i.duplicate_of_issue_id
 FROM issue i
 WHERE i.workspace_id = $1
@@ -766,3 +766,77 @@ FROM (
     WHERE workspace_id = $1
     LIMIT sqlc.arg('limit')::bigint
 ) bounded_issues;
+
+-- name: SetIssueQueueOrder :one
+-- Arms (or, with NULL, clears) the issue's place in the automatic run queue.
+UPDATE issue SET
+    queue_order = sqlc.narg('queue_order')::integer,
+    revision = revision + 1,
+    updated_at = now()
+WHERE id = $1 AND workspace_id = $2
+RETURNING *;
+
+-- name: ListReleasableQueuedIssues :many
+-- Backlog issues whose turn in the run queue has come: no issue in the same
+-- scope (workspace + project, or no project) holds a lower queue_order while
+-- unfinished. A finished issue is one on done/cancelled or a custom status in
+-- the done/closed category. any_scope reads every scope in every workspace;
+-- otherwise the workspace and project (NULL = no project) are narrowed.
+SELECT i.* FROM issue i
+WHERE i.status = 'backlog'
+  AND i.queue_order IS NOT NULL
+  AND i.triage_state IS NULL
+  AND (sqlc.arg('any_scope')::bool OR (
+        i.workspace_id = sqlc.narg('workspace_id')::uuid
+        AND i.project_id IS NOT DISTINCT FROM sqlc.narg('project_id')::uuid))
+  AND NOT EXISTS (
+    SELECT 1 FROM issue p
+    WHERE p.workspace_id = i.workspace_id
+      AND p.project_id IS NOT DISTINCT FROM i.project_id
+      AND p.queue_order < i.queue_order
+      AND NOT (p.status IN ('done', 'cancelled') OR EXISTS (
+        SELECT 1 FROM issue_status cs
+        WHERE cs.workspace_id = p.workspace_id AND cs.key = p.status
+          AND cs.category IN ('done', 'closed')))
+  )
+ORDER BY i.workspace_id, i.queue_order, i.created_at, i.id
+LIMIT sqlc.arg('page_limit')::int;
+
+-- name: SetIssuesQueueOrder :many
+-- Batch form of SetIssueQueueOrder; ids outside the workspace are skipped.
+UPDATE issue SET
+    queue_order = sqlc.narg('queue_order')::integer,
+    revision = revision + 1,
+    updated_at = now()
+WHERE id = ANY(sqlc.arg('ids')::uuid[]) AND workspace_id = $1
+RETURNING *;
+
+-- name: ListQueueFrontiers :many
+-- The queue_order numbers still unfinished in each project (NULL = no project),
+-- ascending. A backlog issue waits on the nearest one below its own number.
+SELECT p.project_id, array_agg(DISTINCT p.queue_order ORDER BY p.queue_order)::int[] AS unfinished
+FROM issue p
+WHERE p.workspace_id = $1
+  AND p.queue_order IS NOT NULL
+  AND NOT (p.status IN ('done', 'cancelled') OR EXISTS (
+    SELECT 1 FROM issue_status cs
+    WHERE cs.workspace_id = p.workspace_id AND cs.key = p.status
+      AND cs.category IN ('done', 'closed')))
+GROUP BY p.project_id;
+
+-- name: CountQueueBlockers :one
+-- Unfinished issues numbered below `queue_order` in a scope, ignoring the
+-- issues being numbered (they are about to take a new number).
+SELECT COUNT(*)::int FROM issue p
+WHERE p.workspace_id = $1
+  AND p.project_id IS NOT DISTINCT FROM sqlc.narg('project_id')::uuid
+  AND p.queue_order < sqlc.arg('queue_order')::int
+  AND NOT (p.id = ANY(sqlc.arg('exclude_ids')::uuid[]))
+  AND NOT (p.status IN ('done', 'cancelled') OR EXISTS (
+    SELECT 1 FROM issue_status cs
+    WHERE cs.workspace_id = p.workspace_id AND cs.key = p.status
+      AND cs.category IN ('done', 'closed')));
+
+-- name: ListIssuesByIDsInWorkspace :many
+SELECT * FROM issue
+WHERE workspace_id = $1 AND id = ANY(sqlc.arg('ids')::uuid[]);

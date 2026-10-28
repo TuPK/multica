@@ -125,6 +125,8 @@
     "mode_in_place_description": "한 번에 하나의 실행만 진행됩니다. 에이전트의 변경 사항이 작업 사본에 바로 나타나므로 이어서 작업할 수 있습니다.",
     "mode_worktree_title": "격리해서 병렬 실행",
     "mode_worktree_description": "실행이 작업 사본을 건드리지 않고 동시에 진행됩니다. 각 실행은 이 저장소의 agent/… 브랜치를 돌려주며, 검토 후 병합하면 됩니다.",
+    "mode_auto_merge_label": "완료된 실행을 체크아웃된 브랜치에 병합",
+    "mode_auto_merge_description": "실행이 완료되면 해당 브랜치를 이 저장소에서 체크아웃된 브랜치에 병합하고 브랜치를 삭제합니다. 커밋되지 않은 변경 사항이 있거나 detached HEAD이면 건너뜁니다. 충돌은 직접 해결해 주세요.",
     "mode_worktree_needs_git": "이 폴더는 git 저장소가 아니어서 브랜치를 만들 수 없습니다. 저장소를 선택하거나 폴더를 직접 수정하세요.",
     "mode_worktree_needs_server_upgrade": "연결된 Multica 서버가 오래되어 병렬 실행을 지원하지 않습니다. 이대로면 실행이 이 폴더에서 그대로 진행됩니다. 서버를 업데이트한 뒤 켜세요.",
     "mode_cancel": "취소",

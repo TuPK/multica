@@ -91,6 +91,7 @@ import {
 } from "@multica/core/issues/stores/view-store";
 import { useViewStore } from "@multica/core/issues/stores/view-store-context";
 import { propertyListOptions } from "@multica/core/properties";
+import { QueueOrderInput, QueueWaitingLabel } from "./queue-order-input";
 import { projectListOptions } from "@multica/core/projects/queries";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { buildActorNameResolver, useActorName } from "@multica/core/workspace/hooks";
@@ -297,6 +298,7 @@ type ColumnLabelKey =
   | "created_at"
   | "updated_at"
   | "child_progress"
+  | "queue_order"
   | "creator";
 
 const SORTABLE_COLUMNS: Partial<Record<TableSystemColumnKey, SortField>> = {
@@ -1291,6 +1293,24 @@ function IssueTableBodyCell({
             year: "numeric",
           }).format(new Date(issue[key]))}
         </span>
+      );
+    case "queue_order":
+      if (issue.status !== "backlog") {
+        return issue.queue_order != null ? (
+          <span className="text-caption text-muted-foreground tabular-nums">{issue.queue_order}</span>
+        ) : null;
+      }
+      return (
+        <div
+          className="flex items-center gap-2"
+          onClick={stopRowNavigation}
+          onAuxClick={stopRowNavigation}
+          onMouseDown={stopRowNavigation}
+          onPointerDown={stopRowNavigation}
+        >
+          <QueueOrderInput issue={issue} className="h-6 w-14 px-1.5 text-caption" />
+          <QueueWaitingLabel issue={issue} className="truncate text-caption text-muted-foreground" />
+        </div>
       );
     case "child_progress": {
       const progress = meta.childProgressMap.get(issue.id);

@@ -125,6 +125,8 @@
     "mode_in_place_description": "同一時間只處理一次執行。智慧體的改動會直接出現在你的工作區裡，你可以接著改。",
     "mode_worktree_title": "並行隔離執行",
     "mode_worktree_description": "執行可以並行，互不干擾，也不會改動你的工作區。每次執行的結果都是這個倉庫裡的一個 agent/… 分支，由你 review 後合併。",
+    "mode_auto_merge_label": "將完成的執行合併到目前簽出的分支",
+    "mode_auto_merge_description": "執行完成後，其分支會合併到這個儲存庫目前簽出的分支，並刪除該分支。若儲存庫有未提交的修改或處於分離的 HEAD，則略過；發生衝突時需要你自行解決。",
     "mode_worktree_needs_git": "這個資料夾不是 git 倉庫，分支無處可放。請選擇一個倉庫，或者繼續直接修改這個資料夾。",
     "mode_worktree_needs_server_upgrade": "當前 Multica 服務端版本過舊，無法支援並行執行——它會直接在這個資料夾裡執行。升級服務端後即可開啟。",
     "mode_cancel": "取消",

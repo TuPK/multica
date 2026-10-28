@@ -36,6 +36,7 @@ type localDirectoryRef struct {
 	DaemonID      string `json:"daemon_id"`
 	Label         string `json:"label,omitempty"`
 	ExecutionMode string `json:"execution_mode,omitempty"`
+	AutoMerge     bool   `json:"auto_merge,omitempty"`
 }
 
 // localDirectoryAssignment is the resolved view of a task's local_directory

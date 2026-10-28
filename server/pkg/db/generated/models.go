@@ -180,6 +180,8 @@ type AgentTaskQueue struct {
 	CancelledByName           pgtype.Text `json:"cancelled_by_name"`
 	IssueSnapshot             []byte      `json:"issue_snapshot"`
 	WorkflowStep              pgtype.Text `json:"workflow_step"`
+	BranchMergeStatus         pgtype.Text `json:"branch_merge_status"`
+	BranchMergeError          pgtype.Text `json:"branch_merge_error"`
 }
 
 type AgentToLabel struct {
@@ -864,6 +866,7 @@ type Issue struct {
 	LastActivityAt     pgtype.Timestamptz `json:"last_activity_at"`
 	TriageState        pgtype.Text        `json:"triage_state"`
 	DuplicateOfIssueID pgtype.UUID        `json:"duplicate_of_issue_id"`
+	QueueOrder         pgtype.Int4        `json:"queue_order"`
 }
 
 type IssueChildEvent struct {

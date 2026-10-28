@@ -125,6 +125,8 @@
     "mode_in_place_description": "同一时间只处理一次运行。智能体的改动会直接出现在你的工作区里，你可以接着改。",
     "mode_worktree_title": "并行隔离运行",
     "mode_worktree_description": "运行可以并行，互不干扰，也不会改动你的工作区。每次运行的结果都是这个仓库里的一个 agent/… 分支，由你 review 后合并。",
+    "mode_auto_merge_label": "将完成的运行合并到当前检出的分支",
+    "mode_auto_merge_description": "运行完成后，其分支会合并到这个仓库当前检出的分支，并删除该分支。如果仓库有未提交的修改或处于分离的 HEAD，则跳过；发生冲突时需要你自己解决。",
     "mode_worktree_needs_git": "这个文件夹不是 git 仓库，分支无处可放。请选择一个仓库，或者继续直接修改这个文件夹。",
     "mode_worktree_needs_server_upgrade": "当前 Multica 服务端版本过旧，无法支持并行运行——它会直接在这个文件夹里运行。升级服务端后即可开启。",
     "mode_cancel": "取消",

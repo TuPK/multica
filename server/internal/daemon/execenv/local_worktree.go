@@ -107,6 +107,11 @@ type LocalWorktreeParams struct {
 	WorkspaceID    string
 	AgentID        string
 	ConversationID string
+	// AutoMerge opts the task into merging its delivered branch into the branch
+	// checked out in the user's repository once Finalize has delivered it. Off
+	// by default: the merge writes into the user's working copy, which the rest
+	// of this mode never touches. See mergeDeliveredBranch for what it refuses.
+	AutoMerge bool
 }
 
 // owner is the identity a branch created for this task is recorded under.
@@ -150,6 +155,9 @@ type LocalWorktree struct {
 	WorkDir string
 	// Branch is the branch created for this task, in the user's repo.
 	Branch string
+	// AutoMerge carries LocalWorktreeParams.AutoMerge across the daemon's
+	// process boundary, so Finalize knows whether to merge the delivered branch.
+	AutoMerge bool
 	// BaseCommit is the commit the worktree started from — this turn's baseline
 	// when one was committed, otherwise the branch tip it continued. Finalize
 	// compares the delivered tip against it twice: to decide whether the task
@@ -279,6 +287,11 @@ type LocalWorktreeOutcome struct {
 	// changes. The worktree at this path was intentionally left on disk because
 	// it is the only remaining copy of that work.
 	PreservedPath string
+	// BranchMergeStatus and BranchMergeError report the opt-in merge into the
+	// checked-out branch (BranchMerged*). Empty when auto-merge was not requested.
+	// A merge that did not land never fails the task; this is how it is reported.
+	BranchMergeStatus string
+	BranchMergeError  string
 }
 
 // PrepareLocalWorktree creates the task's worktree and replays the user's
@@ -393,6 +406,7 @@ func PrepareLocalWorktree(params LocalWorktreeParams, logger *slog.Logger) (*Loc
 		BaseCommit:    plan.base,
 		Continued:     plan.continues,
 		createdBranch: createdBranch,
+		AutoMerge:     params.AutoMerge,
 		userState:     userState,
 		priorState:    plan.priorState,
 		owner:         plan.owner,
@@ -691,6 +705,12 @@ func (w *LocalWorktree) Finalize(logger *slog.Logger) (LocalWorktreeOutcome, err
 	if dropped {
 		dropBranch(w.GitRoot, w.Branch, logger)
 		outcome.Branch = ""
+	} else if w.AutoMerge {
+		outcome.BranchMergeStatus, outcome.BranchMergeError = mergeDeliveredBranch(w.GitRoot, w.Branch, logger)
+		if outcome.BranchMergeStatus == BranchMergeMerged {
+			// The branch is gone, so nothing points at it any more.
+			outcome.Branch = ""
+		}
 	}
 
 	if logger != nil {
@@ -763,10 +783,10 @@ func (w *LocalWorktree) AbortWithReason(err error) {
 // that makes it distinguishable later from a branch the user creates at the
 // same place — see LocalWorktree.BaseCommit.
 func commitBaseline(worktreePath string, continued, dirty bool) (string, error) {
-	message := "chore(agent): baseline — uncommitted work from the local directory"
+	message := baselineUserStateSubject
 	switch {
 	case continued:
-		message = "chore(agent): uncommitted work from the local directory since the previous turn"
+		message = continuedUserStateSubject
 	case !dirty:
 		message = "chore(agent): baseline — the task worktree started here"
 	}
@@ -779,6 +799,14 @@ func commitBaseline(worktreePath string, continued, dirty bool) (string, error) 
 	}
 	return tip, nil
 }
+
+// Subjects of the commits that carry the user's own uncommitted edits onto a
+// task branch. mergeDeliveredBranch refuses to merge a branch holding one, since
+// merging it would turn the user's drafts into commits on their branch.
+const (
+	baselineUserStateSubject  = "chore(agent): baseline — uncommitted work from the local directory"
+	continuedUserStateSubject = "chore(agent): uncommitted work from the local directory since the previous turn"
+)
 
 // commitAll stages and commits everything the agent left behind. Returns
 // whether a commit was actually created; an error means the changes are still

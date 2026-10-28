@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -1380,6 +1381,50 @@ func TestValidateLocalDirectoryRefExecutionMode(t *testing.T) {
 			}
 			if _, err := validateLocalDirectoryRef(raw); err == nil {
 				t.Errorf("execution_mode %q was accepted, want a validation error", mode)
+			}
+		})
+	}
+}
+
+// auto_merge is opt-in and only means something for a worktree run: the merge
+// writes into the user's checkout, so it must never be saved alongside the
+// in-place mode that already shares that checkout.
+func TestValidateLocalDirectoryRefAutoMerge(t *testing.T) {
+	t.Run("accepted with worktree", func(t *testing.T) {
+		raw, err := json.Marshal(map[string]any{
+			"local_path":     "/Users/foo/work",
+			"daemon_id":      "d1",
+			"execution_mode": "worktree",
+			"auto_merge":     true,
+		})
+		if err != nil {
+			t.Fatalf("marshal: %v", err)
+		}
+		out, err := validateLocalDirectoryRef(raw)
+		if err != nil {
+			t.Fatalf("validateLocalDirectoryRef: %v", err)
+		}
+		var got localDirectoryRef
+		if err := json.Unmarshal(out, &got); err != nil {
+			t.Fatalf("unmarshal normalized ref: %v", err)
+		}
+		if !got.AutoMerge {
+			t.Errorf("AutoMerge = false, want true")
+		}
+	})
+
+	for _, mode := range []string{"", "in_place"} {
+		t.Run("rejected with execution_mode "+strconv.Quote(mode), func(t *testing.T) {
+			ref := map[string]any{"local_path": "/Users/foo/work", "daemon_id": "d1", "auto_merge": true}
+			if mode != "" {
+				ref["execution_mode"] = mode
+			}
+			raw, err := json.Marshal(ref)
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+			if _, err := validateLocalDirectoryRef(raw); err == nil {
+				t.Error("auto_merge without worktree mode was accepted, want a validation error")
 			}
 		})
 	}

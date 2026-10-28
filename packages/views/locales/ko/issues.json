@@ -306,6 +306,7 @@
       "created_at": "생성일",
       "updated_at": "수정일",
       "child_progress": "하위 태스크 진행률",
+      "queue_order": "실행 순서",
       "creator": "작성자"
     },
     "calculation": {
@@ -810,7 +811,11 @@
     "detail_cache": "캐시 적중",
     "cache_hit_value": "{{percent}} · {{amount}} 절약",
     "detail_time": "시간",
-    "detail_branch": "브랜치"
+    "detail_branch": "브랜치",
+    "detail_merge": "병합",
+    "merge_merged": "병합됨",
+    "merge_skipped": "병합되지 않음",
+    "merge_failed": "병합 실패"
   },
   "terminate_dialog": {
     "title": "이 실행을 중지할까요?",
@@ -946,6 +951,16 @@
     "create_failed": "라벨을 만들지 못했습니다",
     "update_failed": "라벨을 업데이트하지 못했습니다",
     "delete_failed": "라벨을 삭제하지 못했습니다"
+  },
+  "queue_order": {
+    "label": "실행 순서",
+    "placeholder": "순서",
+    "waiting": "#{{n}} 대기 중",
+    "confirm_title": "대기열 작업을 지금 시작할까요?",
+    "confirm_desc": "{{count}}개가 지금 할 일로 이동하고 {{runs}}개는 에이전트 실행을 시작합니다.",
+    "confirm_action": "시작",
+    "apply": "적용",
+    "clear": "지우기"
   },
   "backlog_hint": {
     "title": "백로그에서는 에이전트가 대기합니다",

@@ -126,6 +126,8 @@
     "mode_in_place_description": "One run at a time. Changes appear in your working copy as the agent makes them, ready for you to keep working on.",
     "mode_worktree_title": "Run in parallel, isolated",
     "mode_worktree_description": "Runs execute at the same time without touching your working copy. Each one hands back an agent/… branch in this repo for you to review and merge.",
+    "mode_auto_merge_label": "Merge finished runs into the checked-out branch",
+    "mode_auto_merge_description": "Once a run completes, its branch is merged into the branch checked out in this repo and the branch is deleted. Skipped when the repo has uncommitted changes or a detached HEAD; a conflict is left for you to resolve.",
     "mode_worktree_needs_git": "This folder is not a git repository, so there is nowhere to put the branch. Pick a repository, or keep editing the folder directly.",
     "mode_worktree_needs_server_upgrade": "Your Multica server is too old to execute runs in parallel — it would quietly execute them in this folder instead. Update the server, then switch this on.",
     "mode_cancel": "Cancel",

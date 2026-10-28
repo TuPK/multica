@@ -631,14 +631,27 @@ func (c *Client) ReportTaskMessages(ctx context.Context, taskID string, messages
 	}, nil)
 }
 
-func (c *Client) CompleteTask(ctx context.Context, taskID, output, branchName, sessionID, workDir string, sessionRolloutMissing bool, retiredSessionID, durableWorkDir string) error {
-	return c.completeTaskWithRetrySchedule(ctx, taskID, output, branchName, sessionID, workDir, sessionRolloutMissing, retiredSessionID, durableWorkDir, defaultTerminalRetrySchedule)
+// TaskBranchMerge is the outcome of a run's opt-in merge into the checked-out
+// branch, reported with the completion. Zero when auto-merge did not run.
+type TaskBranchMerge struct {
+	Status string
+	Error  string
 }
 
-func (c *Client) completeTaskWithRetrySchedule(ctx context.Context, taskID, output, branchName, sessionID, workDir string, sessionRolloutMissing bool, retiredSessionID, durableWorkDir string, schedule []time.Duration) error {
+func (c *Client) CompleteTask(ctx context.Context, taskID, output, branchName, sessionID, workDir string, sessionRolloutMissing bool, retiredSessionID, durableWorkDir string) error {
+	return c.completeTaskWithRetrySchedule(ctx, taskID, output, branchName, sessionID, workDir, sessionRolloutMissing, retiredSessionID, durableWorkDir, TaskBranchMerge{}, defaultTerminalRetrySchedule)
+}
+
+func (c *Client) completeTaskWithRetrySchedule(ctx context.Context, taskID, output, branchName, sessionID, workDir string, sessionRolloutMissing bool, retiredSessionID, durableWorkDir string, merge TaskBranchMerge, schedule []time.Duration) error {
 	body := map[string]any{"output": output}
 	if branchName != "" {
 		body["branch_name"] = branchName
+	}
+	if merge.Status != "" {
+		body["branch_merge_status"] = merge.Status
+	}
+	if merge.Error != "" {
+		body["branch_merge_error"] = merge.Error
 	}
 	if sessionID != "" {
 		body["session_id"] = sessionID

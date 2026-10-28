@@ -117,7 +117,17 @@ If that state cannot be reproduced faithfully, including when there is more untr
 </Accordion>
 <Accordion title="The result is a branch in your repo" id="result-is-a-branch">
 
-There is one branch per issue rather than one per run: `agent/<agent>/<issue>` (a chat gets `agent/<agent>/chat-<session>`). The run's **Run details** panel shows the branch name (and lets you copy it); you can also find it with `git branch`. Review it with `git log` / `git diff`, and merge or cherry-pick it yourself. Multica never merges it for you.
+There is one branch per issue rather than one per run: `agent/<agent>/<issue>` (a chat gets `agent/<agent>/chat-<session>`). The run's **Run details** panel shows the branch name (and lets you copy it); you can also find it with `git branch`. Review it with `git log` / `git diff`, and merge or cherry-pick it yourself. Multica does not merge it unless you opt in with `auto_merge` (see below).
+
+To opt in, turn on **Merge finished runs into the checked-out branch** when you choose `worktree` for the resource (or set it with `multica project resource add --execution-mode worktree --auto-merge`). Only completed runs are merged: a failed or cancelled run keeps its branch for you to review.
+
+After a completed run, Multica merges its branch into the branch checked out in your repo with `git merge --no-ff`, then deletes the branch. The worktree is removed in both cases, as usual. The run's detail shows the outcome:
+
+- **Merged**: the branch is gone and its work is on your checked-out branch.
+- **Not merged**: the branch is kept for you, with the reason. This happens when your repo is on a detached `HEAD`, has uncommitted changes to tracked files, or the branch carries your own uncommitted edits as commits, which happens when a run started while your directory had uncommitted work.
+- **Merge failed**: git refused the merge, usually because of a conflict. The merge is aborted, your repo is left as it was, and the branch is kept.
+
+A merge that does not land never fails the run.
 
 `<agent>` comes from the agent's name: lowercased, with everything other than a–z and 0–9 turned into `-`, up to 30 characters. A name with no Latin letters or digits becomes `agent`. So Ops helper working on OPS-21 gets `agent/ops-helper/ops-21`, while an agent named 运营助手 gets `agent/agent/ops-21`. `<issue>` is the issue identifier in lowercase.
 

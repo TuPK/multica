@@ -438,6 +438,15 @@ export interface AgentTask {
    */
   branch_name?: string;
   /**
+   * Outcome of the opt-in merge of `branch_name` into the repo's checked-out
+   * branch, for worktree runs whose resource enabled auto-merge. 'merged' means
+   * the branch was merged and deleted (so `branch_name` is empty). 'skipped' and
+   * 'failed' mean the branch was kept; `branch_merge_error` says why. Unknown
+   * values from newer backends should render as a plain note, not an error.
+   */
+  branch_merge_status?: string;
+  branch_merge_error?: string;
+  /**
    * Resolved accountable-human provenance of this run (MUL-4302 §9): who it ran
    * "on behalf of", how that was resolved, and the evidence/lineage. Present on
    * user-facing task surfaces; older backends omit it — render conditionally.

@@ -4591,11 +4591,24 @@ func (s *TaskService) CompleteTask(ctx context.Context, taskID pgtype.UUID, resu
 	return task, err
 }
 
+// BranchMerge is the outcome of a completed run's opt-in merge into the user's
+// checked-out branch. The zero value means the run did not ask for one.
+type BranchMerge struct {
+	Status string
+	Error  string
+}
+
 // CompleteTaskWithTransition reports whether this call won the running ->
 // completed compare-and-swap. Callers with transaction-external side effects
 // must only run them when transitioned is true; a replay against an already
 // terminal task is still an idempotent success but must not emit them again.
 func (s *TaskService) CompleteTaskWithTransition(ctx context.Context, taskID pgtype.UUID, result []byte, sessionID, workDir, branchName string, sessionRolloutMissing bool, retiredSessionID, durableWorkDir string) (*db.AgentTaskQueue, bool, error) {
+	return s.CompleteTaskWithBranchMerge(ctx, taskID, result, sessionID, workDir, branchName, sessionRolloutMissing, retiredSessionID, durableWorkDir, BranchMerge{})
+}
+
+// CompleteTaskWithBranchMerge is CompleteTaskWithTransition for a daemon that
+// also reports the outcome of the run's opt-in branch merge.
+func (s *TaskService) CompleteTaskWithBranchMerge(ctx context.Context, taskID pgtype.UUID, result []byte, sessionID, workDir, branchName string, sessionRolloutMissing bool, retiredSessionID, durableWorkDir string, merge BranchMerge) (*db.AgentTaskQueue, bool, error) {
 	var task db.AgentTaskQueue
 	var change *qoderIssueChange
 	// chatAssistantMsg is the single assistant outcome row written for a chat
@@ -4613,6 +4626,8 @@ func (s *TaskService) CompleteTaskWithTransition(ctx context.Context, taskID pgt
 			WorkDir:               pgtype.Text{String: workDir, Valid: workDir != ""},
 			DurableWorkDir:        pgtype.Text{String: durableWorkDir, Valid: durableWorkDir != ""},
 			BranchName:            pgtype.Text{String: branchName, Valid: branchName != ""},
+			BranchMergeStatus:     pgtype.Text{String: merge.Status, Valid: merge.Status != ""},
+			BranchMergeError:      pgtype.Text{String: merge.Error, Valid: merge.Error != ""},
 			SessionRolloutMissing: sessionRolloutMissing,
 			RetiredSessionID:      pgtype.Text{String: retiredSessionID, Valid: retiredSessionID != ""},
 		})
@@ -7942,6 +7957,7 @@ func IssueToMap(issue db.Issue, issuePrefix string) map[string]any {
 		"project_id":       util.UUIDToPtr(issue.ProjectID),
 		"position":         issue.Position,
 		"stage":            util.Int4ToPtr(issue.Stage),
+		"queue_order":      util.Int4ToPtr(issue.QueueOrder),
 		"start_date":       util.DateToPtr(issue.StartDate),
 		"due_date":         util.DateToPtr(issue.DueDate),
 		"created_at":       util.TimestampToString(issue.CreatedAt),

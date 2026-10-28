@@ -306,6 +306,7 @@
       "created_at": "创建时间",
       "updated_at": "更新时间",
       "child_progress": "子任务进度",
+      "queue_order": "执行顺序",
       "creator": "创建者"
     },
     "calculation": {
@@ -810,7 +811,11 @@
     "detail_cache": "缓存命中",
     "cache_hit_value": "{{percent}} · 节省 {{amount}}",
     "detail_time": "时间",
-    "detail_branch": "分支"
+    "detail_branch": "分支",
+    "detail_merge": "合并",
+    "merge_merged": "已合并",
+    "merge_skipped": "未合并",
+    "merge_failed": "合并失败"
   },
   "terminate_dialog": {
     "title": "确定停止本次运行？",
@@ -946,6 +951,16 @@
     "create_failed": "创建标签失败",
     "update_failed": "更新标签失败",
     "delete_failed": "删除标签失败"
+  },
+  "queue_order": {
+    "label": "执行顺序",
+    "placeholder": "序号",
+    "waiting": "等待 #{{n}}",
+    "confirm_title": "现在开始排队任务？",
+    "confirm_desc": "{{count}} 个任务将立即移到待办，其中 {{runs}} 个会启动智能体运行。",
+    "confirm_action": "开始",
+    "apply": "应用",
+    "clear": "清除"
   },
   "backlog_hint": {
     "title": "智能体在 backlog 状态下暂停",

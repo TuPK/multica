@@ -155,6 +155,7 @@ func init() {
 	projectResourceAddCmd.Flags().String("daemon-id", "", "Shortcut: id of the daemon that owns the local path (only used when --type local_directory)")
 	projectResourceAddCmd.Flags().String("ref-label", "", "Shortcut: optional label embedded in resource_ref (only used when --type local_directory)")
 	projectResourceAddCmd.Flags().String("execution-mode", "", "Shortcut: how runs share the directory — in_place (default, one run at a time) or worktree (each run gets its own git worktree; requires a git repo) (only used when --type local_directory)")
+	projectResourceAddCmd.Flags().Bool("auto-merge", false, "Shortcut: merge each worktree run's branch into the repo's checked-out branch when it is clean (only used when --type local_directory with --execution-mode worktree)")
 	projectResourceAddCmd.Flags().String("ref", "", "Generic JSON resource_ref payload, or a github_repo checkout ref when used with --url")
 	projectResourceAddCmd.Flags().String("label", "", "Optional human-readable label")
 	projectResourceAddCmd.Flags().String("output", "json", "Output format: table or json")
@@ -167,6 +168,7 @@ func init() {
 	projectResourceUpdateCmd.Flags().String("daemon-id", "", "Shortcut: new daemon id (local_directory)")
 	projectResourceUpdateCmd.Flags().String("ref-label", "", "Shortcut: new label embedded in resource_ref (local_directory)")
 	projectResourceUpdateCmd.Flags().String("execution-mode", "", "Shortcut: new execution mode — in_place or worktree (local_directory)")
+	projectResourceUpdateCmd.Flags().Bool("auto-merge", false, "Shortcut: set or clear auto-merge of worktree runs into the checked-out branch (local_directory)")
 	projectResourceUpdateCmd.Flags().String("ref", "", "Generic JSON resource_ref payload, or a github_repo checkout ref")
 	projectResourceUpdateCmd.Flags().String("label", "", "New human-readable label; pass an empty string to clear")
 	projectResourceUpdateCmd.Flags().Bool("clear-label", false, "Clear the human-readable label")
@@ -608,6 +610,9 @@ func runProjectResourceAdd(cmd *cobra.Command, args []string) error {
 			if mode, _ := cmd.Flags().GetString("execution-mode"); strings.TrimSpace(mode) != "" {
 				ref["execution_mode"] = strings.TrimSpace(mode)
 			}
+			if autoMerge, _ := cmd.Flags().GetBool("auto-merge"); autoMerge {
+				ref["auto_merge"] = true
+			}
 			body["resource_ref"] = ref
 		default:
 			return fmt.Errorf("type %q has no built-in CLI shortcut; pass the payload via --ref '<json>'", resourceType)
@@ -847,7 +852,8 @@ func buildResourceRefFromFlags(cmd *cobra.Command, resourceType string, existing
 		daemonSet := cmd.Flags().Changed("daemon-id")
 		labelSet := cmd.Flags().Changed("ref-label")
 		modeSet := cmd.Flags().Changed("execution-mode")
-		if !pathSet && !daemonSet && !labelSet && !modeSet {
+		autoMergeSet := cmd.Flags().Changed("auto-merge")
+		if !pathSet && !daemonSet && !labelSet && !modeSet && !autoMergeSet {
 			return nil, false, nil
 		}
 		ref := map[string]any{}
@@ -863,6 +869,9 @@ func buildResourceRefFromFlags(cmd *cobra.Command, resourceType string, existing
 			}
 			if m, ok := existingRef["execution_mode"].(string); ok && strings.TrimSpace(m) != "" {
 				ref["execution_mode"] = strings.TrimSpace(m)
+			}
+			if b, ok := existingRef["auto_merge"].(bool); ok && b {
+				ref["auto_merge"] = true
 			}
 		}
 		if pathSet {
@@ -897,6 +906,13 @@ func buildResourceRefFromFlags(cmd *cobra.Command, resourceType string, existing
 				ref["execution_mode"] = mode
 			}
 		}
+		if autoMergeSet {
+			if autoMerge, _ := cmd.Flags().GetBool("auto-merge"); autoMerge {
+				ref["auto_merge"] = true
+			} else {
+				delete(ref, "auto_merge")
+			}
+		}
 		if v, ok := ref["local_path"].(string); !ok || v == "" {
 			return nil, false, fmt.Errorf("local_directory: --local-path is required (no existing local_path to merge with)")
 		}
@@ -908,7 +924,8 @@ func buildResourceRefFromFlags(cmd *cobra.Command, resourceType string, existing
 		// Unknown type or empty (resource not found) — caller must use --ref.
 		if cmd.Flags().Changed("url") || cmd.Flags().Changed("default-branch-hint") ||
 			cmd.Flags().Changed("local-path") || cmd.Flags().Changed("daemon-id") ||
-			cmd.Flags().Changed("ref-label") || cmd.Flags().Changed("execution-mode") {
+			cmd.Flags().Changed("ref-label") || cmd.Flags().Changed("execution-mode") ||
+			cmd.Flags().Changed("auto-merge") {
 			return nil, false, fmt.Errorf("no built-in shortcut for resource type %q; pass the full payload via --ref '<json>'", resourceType)
 		}
 		return nil, false, nil

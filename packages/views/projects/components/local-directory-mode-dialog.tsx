@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { GitBranch, Pencil, TriangleAlert } from "lucide-react";
 import type { LocalDirectoryExecutionMode } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
+import { Switch } from "@multica/ui/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -45,9 +46,12 @@ interface LocalDirectoryModeDialogProps {
   /** Server-side rejection to show inline (e.g. a 422 that only the API can detect). */
   errorMessage?: string;
   saving?: boolean;
+  /** Auto-merge of worktree runs into the checked-out branch, preselected as set. */
+  autoMerge: boolean;
   /** Confirm label differs between adding a resource and editing one. */
   confirmLabel: string;
-  onConfirm: (mode: LocalDirectoryExecutionMode) => void;
+  /** autoMerge is only ever true for worktree; the caller must not persist it otherwise. */
+  onConfirm: (mode: LocalDirectoryExecutionMode, autoMerge: boolean) => void;
 }
 
 /**
@@ -64,6 +68,7 @@ export function LocalDirectoryModeDialog({
   onOpenChange,
   path,
   value,
+  autoMerge,
   unavailableReason,
   errorMessage,
   saving = false,
@@ -72,12 +77,16 @@ export function LocalDirectoryModeDialog({
 }: LocalDirectoryModeDialogProps) {
   const { t } = useT("projects");
   const [selected, setSelected] = useState<LocalDirectoryExecutionMode>(value);
+  const [autoMergeSelected, setAutoMergeSelected] = useState(autoMerge);
 
   // Re-sync when the dialog is reopened for a different resource, otherwise the
   // previous row's mode would be preselected for this one.
   useEffect(() => {
-    if (open) setSelected(value);
-  }, [open, value]);
+    if (open) {
+      setSelected(value);
+      setAutoMergeSelected(autoMerge);
+    }
+  }, [open, value, autoMerge]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -99,6 +108,27 @@ export function LocalDirectoryModeDialog({
           unavailableReason={unavailableReason}
         />
 
+        {selected === "worktree" && unavailableReason === undefined && (
+          <div className="flex items-start justify-between gap-3 rounded-md border px-3 py-2.5">
+            <div className="min-w-0">
+              <label
+                htmlFor="local-directory-auto-merge"
+                className="text-caption font-medium"
+              >
+                {t(($) => $.resources.mode_auto_merge_label)}
+              </label>
+              <p className="mt-0.5 text-micro text-muted-foreground">
+                {t(($) => $.resources.mode_auto_merge_description)}
+              </p>
+            </div>
+            <Switch
+              id="local-directory-auto-merge"
+              checked={autoMergeSelected}
+              onCheckedChange={setAutoMergeSelected}
+            />
+          </div>
+        )}
+
         {errorMessage && (
           <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-caption text-destructive">
             <TriangleAlert className="size-3.5 mt-0.5 shrink-0" />
@@ -114,7 +144,12 @@ export function LocalDirectoryModeDialog({
           >
             {t(($) => $.resources.mode_cancel)}
           </Button>
-          <Button onClick={() => onConfirm(selected)} disabled={saving}>
+          <Button
+            onClick={() =>
+              onConfirm(selected, selected === "worktree" && autoMergeSelected)
+            }
+            disabled={saving}
+          >
             {confirmLabel}
           </Button>
         </DialogFooter>
