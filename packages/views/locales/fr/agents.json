@@ -382,6 +382,19 @@
     "runtime_loading": "Chargement du runtime…",
     "runtime_missing": "Ce runtime n'est plus disponible.",
     "cloud_fields_note": "Les Skills, le MCP et les amorces de conversation ne sont disponibles que sur les runtimes locaux et distants.",
+    "instruction_templates": {
+      "trigger": "Utiliser un modèle",
+      "replace_title": "Remplacer les instructions actuelles ?",
+      "replace_description": "Le modèle remplace les instructions que vous avez déjà rédigées.",
+      "replace_cancel": "Garder les miennes",
+      "replace_confirm": "Remplacer",
+      "items": {
+        "fullstack_developer": {
+          "name": "Développeur Full Stack",
+          "description": "Livre les stories de bout en bout, suit le flux de statuts BMAD et travaille avec une Agent Team."
+        }
+      }
+    },
     "done": {
       "loading": "Finalisation…",
       "title": "{{name}} est prêt",

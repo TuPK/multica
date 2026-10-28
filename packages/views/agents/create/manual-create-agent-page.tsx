@@ -239,6 +239,7 @@ export function ManualCreateAgentPage() {
             </div>
           ) : null}
           <AgentConfigurationPanel
+            showInstructionTemplates
             draft={form.draft}
             onChange={form.setDraft}
             runtimes={form.runtimes}
