@@ -86,6 +86,19 @@ func writeAgentIdentity(b *strings.Builder, ctx TaskContextForEnv) {
 	}
 }
 
+// writeEffortPolicy tells a Claude run which effort its delegated work must
+// use. The launch flag sets only the top-level run; subagents and skill-driven
+// reviews pick their own level otherwise, which is how an agent set to high
+// ended up running reviews at max.
+func writeEffortPolicy(b *strings.Builder, provider string, ctx TaskContextForEnv) {
+	if provider != "claude" || ctx.AgentThinkingLevel == "" {
+		return
+	}
+	fmt.Fprintf(b, "## Reasoning Effort\n\n"+
+		"This agent's thinking level is `%[1]s`. Use `%[1]s` for every subagent you spawn with the Agent tool (pass `effort: \"%[1]s\"`) and for every review you run, including `/code-review` (pass `%[1]s` as its level argument). Do not choose a higher level for delegated work, even when a skill or repository document suggests one.\n\n",
+		ctx.AgentThinkingLevel)
+}
+
 // writeRequestingUser emits the Requesting User block when the runtime
 // owner's profile description is non-empty. Sanitisation rules match the
 // legacy implementation; see runtime_config.go for the rationale.
@@ -923,6 +936,7 @@ func buildMetaSkillContentSlim(provider string, ctx TaskContextForEnv) string {
 	writeHeader(&b)
 	writeBackgroundTaskSafetySlim(&b)
 	writeAgentIdentity(&b, ctx)
+	writeEffortPolicy(&b, provider, ctx)
 	writeRequestingUser(&b, ctx)
 	writeWorkspaceContext(&b, ctx)
 
