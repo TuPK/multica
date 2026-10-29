@@ -80,11 +80,9 @@ describe("ProjectResourcesSection — auto-merge save", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
-    const arg = mutateAsync.mock.calls[0][0];
-    expect(arg.resourceId).toBe("res-1");
-    expect(arg.data.resource_ref).toMatchObject({
-      execution_mode: "worktree",
-      auto_merge: true,
+    expect(mutateAsync.mock.calls[0]?.[0]).toMatchObject({
+      resourceId: "res-1",
+      data: { resource_ref: { execution_mode: "worktree", auto_merge: true } },
     });
   });
 });

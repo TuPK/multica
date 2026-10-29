@@ -29,7 +29,7 @@ import {
   GitBranch,
   GitMerge,
   TriangleAlert,
-} from "lucide-react";
+} from "@multica/ui/icons";
 import { cn } from "@multica/ui/lib/utils";
 import { copyText } from "@multica/ui/lib/clipboard";
 import { Button } from "@multica/ui/components/ui/button";
