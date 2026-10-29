@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/testutil"
@@ -171,5 +172,41 @@ func TestQueueOrderBatchPreviewAndFrontier(t *testing.T) {
 
 	if w = queuePost(t, testHandler.BatchSetIssueQueueOrder, "/api/issues/batch-queue-order", `{"issue_ids":["`+a+`"],"queue_order":0}`); w.Code != http.StatusBadRequest {
 		t.Fatalf("batch zero: %d", w.Code)
+	}
+}
+
+// A finished issue still holds the queue while its agent run is queued,
+// dispatched, parked on a local directory or running. The next issue starts
+// only once that run is over.
+func TestPromoteQueuedIssuesWaitsForPredecessorRunToEnd(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("database not available")
+	}
+	agentID := seededReadyAgentID(t)
+	predecessor := queueIssue(t, "queue run predecessor", 93031, 1)
+	successor := queueIssue(t, "queue run successor", 93032, 2)
+	dbfx.Exec(t, `UPDATE issue SET status = 'done' WHERE id = $1`, predecessor)
+	var runtimeID string
+	dbfx.QueryRow(t, `SELECT runtime_id::text FROM agent WHERE id = $1`, agentID).Scan(&runtimeID)
+	taskID := dbfx.Task(t, agentID, testutil.Cols{
+		"issue_id": predecessor, "runtime_id": runtimeID, "status": "queued", "started_at": time.Now(),
+	})
+
+	for _, status := range []string{"queued", "dispatched", "waiting_local_directory", "running"} {
+		dbfx.Exec(t, `UPDATE agent_task_queue SET status = $2 WHERE id = $1`, taskID, status)
+		if n := promoteQueue(t); n != 0 {
+			t.Fatalf("moved %d issues while the finished predecessor's run is %s", n, status)
+		}
+		if got := queuedIssueStatus(t, successor); got != "backlog" {
+			t.Fatalf("successor status = %q while the predecessor's run is %s, want backlog", got, status)
+		}
+	}
+
+	dbfx.Exec(t, `UPDATE agent_task_queue SET status = 'completed', completed_at = now() WHERE id = $1`, taskID)
+	if n := promoteQueue(t); n != 1 {
+		t.Fatalf("moved %d issues after the predecessor's run ended, want 1", n)
+	}
+	if got := queuedIssueStatus(t, successor); got != "todo" {
+		t.Fatalf("successor status = %q, want todo", got)
 	}
 }
