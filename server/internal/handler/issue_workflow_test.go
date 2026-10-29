@@ -1337,3 +1337,35 @@ func TestDescriptionHandoffExplicitMemberOverride(t *testing.T) {
 		t.Fatalf("explicit member overridden: assignee=%s/%s", kind, id)
 	}
 }
+
+// An agent's run may not set done while the workflow still has steps after
+// the one it works on: it hands the issue to the next step, and only the last
+// step finishes the work.
+func TestAgentCannotSkipWorkflowStepToDone(t *testing.T) {
+	seedTestCatalog(t)
+	createTestCustomStatus(t, "qa_review", "in_progress")
+	agentID := seededReadyAgentID(t)
+	wf := createTestWorkflow(t, "Skip done "+workflowTestSuffix(), "in_progress", "in_review", "qa_review")
+	projectID := createWorkflowTestProject(t, "Workflow skip done project")
+	setProjectWorkflow(t, projectID, map[string]any{"workflow_id": wf.ID}).Want(http.StatusOK)
+	setWorkflowHandoff(t, wf.ID, "in_review", handToAgent(agentID, "Review it.")).Want(http.StatusOK)
+	setWorkflowHandoff(t, wf.ID, "qa_review", handToAgent(agentID, "QA it.")).Want(http.StatusOK)
+
+	issueID := dbfx.Issue(t, "skip done", testutil.Cols{"project_id": projectID, "status": "in_review"})
+	var runtimeID string
+	dbfx.QueryRow(t, `SELECT runtime_id::text FROM agent WHERE id = $1`, agentID).Scan(&runtimeID)
+	taskID := dbfx.Task(t, agentID, testutil.Cols{
+		"issue_id": issueID, "runtime_id": runtimeID, "status": "running", "started_at": time.Now(), "workflow_step": "in_review",
+	})
+
+	body := agentUpdateIssue(t, issueID, agentID, taskID, map[string]any{"status": "done"}).Want(http.StatusConflict).Map()
+	if body["code"] != "workflow_step_skipped" || body["next_status"] != "qa_review" {
+		t.Fatalf("refusal = %v", body)
+	}
+	if status, _, _ := issueStatusAndAssignee(t, issueID); status != "in_review" {
+		t.Fatalf("status = %q, the refused move must not apply", status)
+	}
+
+	agentUpdateIssue(t, issueID, agentID, taskID, map[string]any{"status": "qa_review"}).Want(http.StatusOK)
+	agentUpdateIssue(t, issueID, agentID, taskID, map[string]any{"status": "done"}).Want(http.StatusOK)
+}

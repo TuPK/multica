@@ -71,6 +71,14 @@ func (h *Handler) applyIssueWorkflow(ctx context.Context, prev db.Issue, params 
 		statusExplicit && params.Status.Valid && params.Status.String != prev.Status {
 		return nil, h.stepMovedError(ctx, prev, run.WorkflowStep.String)
 	}
+	// An agent run finishes the issue only from the last step before done: the
+	// steps the workflow still has after its own are handed to the next handler.
+	if run != nil && !def.IsDefault && statusExplicit && params.Status.Valid &&
+		params.Status.String == issuestatus.Done && prev.Status != issuestatus.Done {
+		if next := def.NextStatus(prev.Status); next != "" && next != issuestatus.Done {
+			return nil, h.stepSkippedError(ctx, prev, next)
+		}
+	}
 	if assigneeTouched || prev.TriageState.Valid {
 		return nil, nil
 	}
@@ -127,6 +135,16 @@ func writeIssueWorkflowError(w http.ResponseWriter, err error) bool {
 			"code":             "status_not_in_workflow",
 			"workflow_name":    notIn.WorkflowName,
 			"allowed_statuses": notIn.Allowed,
+		})
+		return true
+	}
+	var skipped *issueworkflow.StepSkippedError
+	if errors.As(err, &skipped) {
+		writeJSON(w, http.StatusConflict, map[string]any{
+			"error":       skipped.Error(),
+			"code":        "workflow_step_skipped",
+			"step":        skipped.Step,
+			"next_status": skipped.Next,
 		})
 		return true
 	}
@@ -195,6 +213,19 @@ func (h *Handler) advanceRunStep(ctx context.Context, run *db.AgentTaskQueue, pr
 		WorkflowStep: pgtype.Text{String: issue.Status, Valid: true},
 	}); err != nil {
 		slog.Warn("workflow: advance run step failed", "task_id", uuidToString(run.ID), "error", err)
+	}
+}
+
+// stepSkippedError explains a refused move to done: where the issue is and
+// the step the workflow still has to pass through.
+func (h *Handler) stepSkippedError(ctx context.Context, issue db.Issue, next string) error {
+	resolver := issuestatus.NewResolver(issue.WorkspaceID)
+	return &issueworkflow.StepSkippedError{
+		IssueIdentifier: h.getIssuePrefix(ctx, issue.WorkspaceID) + "-" + strconv.Itoa(int(issue.Number)),
+		Step:            issue.Status,
+		StepName:        resolver.Name(ctx, h.Queries, issue.Status),
+		Next:            next,
+		NextName:        resolver.Name(ctx, h.Queries, next),
 	}
 }
 

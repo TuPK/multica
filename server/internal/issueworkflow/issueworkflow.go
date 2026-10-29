@@ -661,6 +661,22 @@ func (e *StepMovedError) Error() string {
 		e.IssueIdentifier, statusLabel(e.StepName, e.Step), mover, statusLabel(e.CurrentName, e.Current))
 }
 
+// StepSkippedError refuses an agent run's move to done while the workflow
+// still has steps after the one the issue is on. The run hands the issue to
+// the next step; only the last step finishes the work.
+type StepSkippedError struct {
+	IssueIdentifier string
+	// Step is where the issue is; Next is the step the workflow puts after it.
+	Step, StepName string
+	Next, NextName string
+}
+
+func (e *StepSkippedError) Error() string {
+	return fmt.Sprintf("%s is at %s and the workflow continues to %s, so this run cannot set it to done: "+
+		"move it to %s instead, and let the next step finish it.",
+		e.IssueIdentifier, statusLabel(e.StepName, e.Step), statusLabel(e.NextName, e.Next), statusLabel(e.NextName, e.Next))
+}
+
 // statusLabel names a status for an agent: its display name with the key the
 // CLI takes, or the bare key when the two are the same.
 func statusLabel(name, key string) string {
