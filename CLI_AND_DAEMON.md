@@ -73,6 +73,22 @@ multica daemon start
 
 `multica login` automatically discovers all workspaces you belong to and adds them to the daemon watch list.
 
+### Quickstart on a new machine
+
+```bash
+multica quickstart
+```
+
+Brings a fresh machine up to the team's Claude Code setup. Anything already present is left alone; only what is missing is installed:
+
+- the `claude` CLI, through npm, if it is not on `PATH`;
+- the plugin marketplaces and plugins that are not installed yet;
+- the workspace skills that are not in `~/.claude/skills` (or `$CLAUDE_CONFIG_DIR/skills`) yet.
+
+Run `multica login` first. Each step is reported on its own, and the command exits non-zero if any step failed.
+
+The same install can be started from the web app: open a connected local machine on the Runtimes page and click **Quickstart**. The daemon claims the request on its next heartbeat and runs the same steps. The list of plugins, marketplaces and skills lives in [`server/internal/quickstart/bundle.json`](server/internal/quickstart/bundle.json); the server sends it with each request, so editing it is enough.
+
 ## Authentication
 
 ### Browser Login

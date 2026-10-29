@@ -1568,6 +1568,9 @@ func (h *Handler) DaemonHeartbeat(w http.ResponseWriter, r *http.Request) {
 	if ack.PendingLocalSkillImport != nil {
 		resp["pending_local_skill_import"] = ack.PendingLocalSkillImport
 	}
+	if ack.PendingQuickstart != nil {
+		resp["pending_quickstart"] = ack.PendingQuickstart
+	}
 	if len(ack.PendingLocalSkillImports) > 0 {
 		resp["pending_local_skill_imports"] = ack.PendingLocalSkillImports
 	}
@@ -1770,6 +1773,16 @@ func (h *Handler) processHeartbeat(ctx context.Context, runtimeID string, suppor
 		} else {
 			slog.Warn("update HasPending failed", "error", probeUpdateErr, "runtime_id", runtimeID)
 		}
+	}
+
+	// Quickstart requests are claimed directly: the claim is a single indexed
+	// UPDATE, and the request is handed to exactly one daemon.
+	if runtimeUUID, parseErr := util.ParseUUID(runtimeID); parseErr != nil {
+		slog.Warn("quickstart claim skipped: invalid runtime id", "runtime_id", runtimeID)
+	} else if pendingQuickstart, claimErr := h.claimPendingQuickstart(ctx, runtimeUUID); claimErr != nil {
+		slog.Warn("quickstart claim failed", "error", claimErr, "runtime_id", runtimeID)
+	} else {
+		ack.PendingQuickstart = pendingQuickstart
 	}
 
 	// Probe then claim the model list queue. Same pattern as the local-skill

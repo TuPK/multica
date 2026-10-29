@@ -343,6 +343,26 @@
       "timeout": "超时"
     }
   },
+  "quickstart": {
+    "action": "快速开始",
+    "action_title": "在此机器上安装 Claude Code、团队插件和技能，已存在的会跳过。",
+    "offline_title": "请先启动此机器的守护进程，再运行快速开始。",
+    "start_failed": "无法开始快速开始，请重试。",
+    "status": {
+      "pending": "等待机器响应…",
+      "running": "安装中…",
+      "completed": "已完成",
+      "failed": "失败"
+    },
+    "step_status": {
+      "installed": "已安装",
+      "already_installed": "已安装过",
+      "failed": "失败"
+    },
+    "all_present": "全部已安装过。",
+    "some_failed": "部分项目失败，请查看下方详情。",
+    "retry": "重试"
+  },
   "charts": {
     "heatmap_less": "少",
     "heatmap_more": "多",

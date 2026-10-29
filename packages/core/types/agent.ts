@@ -1145,6 +1145,33 @@ export interface RuntimeUpdate {
   updated_at: string;
 }
 
+export type RuntimeQuickstartStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed";
+
+export type RuntimeQuickstartStepStatus =
+  | "installed"
+  | "already_installed"
+  | "failed";
+
+export interface RuntimeQuickstartStep {
+  name: string;
+  status: RuntimeQuickstartStepStatus;
+  detail?: string;
+}
+
+export interface RuntimeQuickstartRequest {
+  id: string;
+  runtime_id: string;
+  status: RuntimeQuickstartStatus;
+  steps: RuntimeQuickstartStep[];
+  error?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface RuntimeModel {
   id: string;
   label: string;

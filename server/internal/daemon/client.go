@@ -761,6 +761,7 @@ type (
 	PendingModelList        = protocol.DaemonHeartbeatPendingModelList
 	PendingLocalSkills      = protocol.DaemonHeartbeatPendingLocalSkills
 	PendingLocalSkillImport = protocol.DaemonHeartbeatPendingLocalSkillImport
+	PendingQuickstart       = protocol.DaemonHeartbeatPendingQuickstart
 )
 
 func (c *Client) SendHeartbeat(ctx context.Context, runtimeID string) (*HeartbeatResponse, error) {
@@ -792,6 +793,19 @@ func (c *Client) ReportLocalSkillListResult(ctx context.Context, runtimeID, requ
 // ReportLocalSkillImportResult sends a runtime-local-skill bundle back to the server.
 func (c *Client) ReportLocalSkillImportResult(ctx context.Context, runtimeID, requestID string, result map[string]any) error {
 	return c.postJSON(ctx, fmt.Sprintf("/api/daemon/runtimes/%s/local-skills/import/%s/result", runtimeID, requestID), result, nil)
+}
+
+// GetRuntimeQuickstartSkills fetches the workspace copies of the quickstart
+// skills for a request this daemon has claimed.
+func (c *Client) GetRuntimeQuickstartSkills(ctx context.Context, runtimeID, requestID string) (protocol.QuickstartSkillBundles, error) {
+	var out protocol.QuickstartSkillBundles
+	err := c.getJSON(ctx, fmt.Sprintf("/api/daemon/runtimes/%s/quickstart/%s/skills", runtimeID, requestID), &out)
+	return out, err
+}
+
+// ReportRuntimeQuickstartResult sends the final quickstart steps to the server.
+func (c *Client) ReportRuntimeQuickstartResult(ctx context.Context, runtimeID, requestID string, result map[string]any) error {
+	return c.postJSON(ctx, fmt.Sprintf("/api/daemon/runtimes/%s/quickstart/%s/result", runtimeID, requestID), result, nil)
 }
 
 // WorkspaceInfo holds minimal workspace metadata returned by the API.

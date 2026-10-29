@@ -356,6 +356,26 @@
       "timeout": "Délai dépassé"
     }
   },
+  "quickstart": {
+    "action": "Quickstart",
+    "action_title": "Installe Claude Code, les plugins et les skills de l'équipe sur cette machine. Ce qui est déjà présent est ignoré.",
+    "offline_title": "Démarrez le daemon de cette machine pour lancer le quickstart.",
+    "start_failed": "Impossible de lancer le quickstart. Réessayez.",
+    "status": {
+      "pending": "En attente de la machine…",
+      "running": "Installation en cours…",
+      "completed": "Terminé",
+      "failed": "Échec"
+    },
+    "step_status": {
+      "installed": "Installé",
+      "already_installed": "Déjà installé",
+      "failed": "Échec"
+    },
+    "all_present": "Tout était déjà installé.",
+    "some_failed": "Certains éléments ont échoué. Voir le détail ci-dessous.",
+    "retry": "Réessayer"
+  },
   "charts": {
     "heatmap_less": "Moins",
     "heatmap_more": "Plus",

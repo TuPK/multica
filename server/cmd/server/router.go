@@ -1595,6 +1595,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 		r.Post("/runtimes/{runtimeId}/models/{requestId}/result", h.ReportModelListResult)
 		r.Post("/runtimes/{runtimeId}/local-skills/{requestId}/result", h.ReportLocalSkillListResult)
 		r.Post("/runtimes/{runtimeId}/local-skills/import/{requestId}/result", h.ReportLocalSkillImportResult)
+		r.Get("/runtimes/{runtimeId}/quickstart/{requestId}/skills", h.GetRuntimeQuickstartSkills)
+		r.Post("/runtimes/{runtimeId}/quickstart/{requestId}/result", h.ReportRuntimeQuickstartResult)
 
 		r.Get("/tasks/{taskId}/status", h.GetTaskStatus)
 		r.Post("/tasks/{taskId}/start", h.StartTask)
@@ -2383,6 +2385,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Get("/local-skills/{requestId}", h.GetLocalSkillListRequest)
 					r.Post("/local-skills/import", h.InitiateImportLocalSkill)
 					r.Get("/local-skills/import/{requestId}", h.GetLocalSkillImportRequest)
+					r.Post("/quickstart", h.InitiateRuntimeQuickstart)
+					r.Get("/quickstart/{requestId}", h.GetRuntimeQuickstart)
 					r.Delete("/", h.DeleteAgentRuntime)
 					// Confirmed variant of DELETE: unbind every agent bound to
 					// this runtime (they keep their configuration and chats and

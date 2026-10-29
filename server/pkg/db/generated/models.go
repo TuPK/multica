@@ -1421,6 +1421,18 @@ type RuntimeProfile struct {
 	RuntimeType    string             `json:"runtime_type"`
 }
 
+type RuntimeQuickstartRequest struct {
+	ID              pgtype.UUID        `json:"id"`
+	RuntimeID       pgtype.UUID        `json:"runtime_id"`
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	InitiatorUserID pgtype.UUID        `json:"initiator_user_id"`
+	Status          string             `json:"status"`
+	Steps           []byte             `json:"steps"`
+	Error           string             `json:"error"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
 type SearchIndexChange struct {
 	EntityType  string             `json:"entity_type"`
 	EntityID    pgtype.UUID        `json:"entity_id"`

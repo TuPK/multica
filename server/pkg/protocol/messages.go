@@ -441,6 +441,7 @@ type DaemonHeartbeatAckPayload struct {
 	PendingUpdate           *DaemonHeartbeatPendingUpdate           `json:"pending_update,omitempty"`
 	PendingModelList        *DaemonHeartbeatPendingModelList        `json:"pending_model_list,omitempty"`
 	PendingLocalSkills      *DaemonHeartbeatPendingLocalSkills      `json:"pending_local_skills,omitempty"`
+	PendingQuickstart       *DaemonHeartbeatPendingQuickstart       `json:"pending_quickstart,omitempty"`
 	PendingLocalSkillImport *DaemonHeartbeatPendingLocalSkillImport `json:"pending_local_skill_import,omitempty"`
 	// PendingLocalSkillImports carries multiple import requests in a single
 	// heartbeat so the daemon can process them concurrently. Old daemons
@@ -464,6 +465,14 @@ type DaemonHeartbeatPendingUpdate struct {
 // enumerate the runtime's supported models.
 type DaemonHeartbeatPendingModelList struct {
 	ID string `json:"id"`
+}
+
+// DaemonHeartbeatPendingQuickstart asks the daemon to install the bundle on
+// its machine. Bundle travels with the request so the daemon installs exactly
+// what the server currently defines.
+type DaemonHeartbeatPendingQuickstart struct {
+	ID     string           `json:"id"`
+	Bundle QuickstartBundle `json:"bundle"`
 }
 
 // DaemonHeartbeatPendingLocalSkills describes a request for the runtime's
