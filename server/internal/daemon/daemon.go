@@ -8137,7 +8137,7 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 			d.markActiveStore(store)
 			defer d.unmarkActiveStore(store)
 		}
-		// The overlay links state.db here so the conversation transcript
+		// The conversation store is the isolated home, so its ordinary state.db
 		// survives the task and a follow-up turn can actually resume it
 		// (GH #6806). Keyed on (agent, resolved source home, conversation):
 		// tasks of one conversation are serial, so the shard has a single
@@ -8718,6 +8718,18 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 		DaemonVersion:  d.cfg.CLIVersion,
 		CodexVersion:   codexVersion,
 		BuiltinRuntime: !usesCustomProfileCommand,
+	}
+	if hermesOverlayActive {
+		// Retire an owner left by a crashed/interrupted daemon before it can
+		// execute tools with the preceding task's frozen environment.
+		if err := agent.StopHermesTaskGateway(backendConfig, env.HermesHome); err != nil {
+			return TaskResult{}, err
+		}
+		defer func() {
+			if err := agent.StopHermesTaskGateway(backendConfig, env.HermesHome); err != nil {
+				d.logger.Warn("failed to stop task Hermes gateway", "home", env.HermesHome, "error", err)
+			}
+		}()
 	}
 	// Register retirement before any fresh-session launch can fail. The check
 	// uses the backend's final binary, environment, working directory and MCP
