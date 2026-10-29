@@ -20,6 +20,7 @@ import {
 } from "../components/step-shell";
 import { useRuntimePicker } from "../components/use-runtime-picker";
 import { MikaRuntimeChoice } from "../../runtimes/components/mika-runtime-choice";
+import { QuickstartSection } from "../../runtimes/components/quickstart-section";
 import { useT } from "../../i18n";
 
 /**
@@ -354,6 +355,15 @@ function FoundView({
         : t(($) => $.step_runtime.status_n_online, { count: onlineCount });
   const statusTone =
     onlineCount === 0 ? "text-muted-foreground" : "text-success";
+  // Quickstart runs on a machine the viewer owns, so it is offered only for
+  // the selected local runtime when the viewer is its owner.
+  const selectedRuntime = runtimes.find((r) => r.id === selectedId) ?? null;
+  const quickstartRuntime =
+    selectedRuntime &&
+    selectedRuntime.runtime_mode === "local" &&
+    selectedRuntime.owner_id === currentUserId
+      ? selectedRuntime
+      : null;
 
   return (
     <div>
@@ -392,6 +402,10 @@ function FoundView({
             if (next.runtimeId !== selectedId) onSelect(next.runtimeId);
             if (next.model !== model) onModelChange(next.model);
           }}
+        />
+        <QuickstartSection
+          runtimeId={quickstartRuntime?.id ?? null}
+          isOnline={quickstartRuntime?.status === "online"}
         />
       </div>
     </div>

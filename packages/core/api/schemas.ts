@@ -81,6 +81,7 @@ import type {
   PluginSurfaceLaunch,
   ResourceLabelsResponse,
   RuntimeModelListRequest,
+  RuntimeQuickstartRequest,
   SearchIssuesResponse,
   SearchProjectsResponse,
   ShareLink,
@@ -3339,6 +3340,42 @@ export const MALFORMED_RUNTIME_MODEL_LIST_REQUEST: RuntimeModelListRequest = {
   status: "failed",
   supported: true,
   error: "invalid model discovery response",
+  created_at: "",
+  updated_at: "",
+};
+
+export const RuntimeQuickstartStepSchema = z
+  .object({
+    name: z.string().default(""),
+    status: z
+      .enum(["installed", "already_installed", "failed"])
+      .catch("failed"),
+    detail: z.string().optional(),
+  })
+  .loose();
+
+export const RuntimeQuickstartRequestSchema = z
+  .object({
+    id: z.string().default(""),
+    runtime_id: z.string().default(""),
+    status: z
+      .enum(["pending", "running", "completed", "failed"])
+      .catch("failed"),
+    steps: z.array(RuntimeQuickstartStepSchema).default([]),
+    error: z.string().optional(),
+    created_at: z.string().default(""),
+    updated_at: z.string().default(""),
+  })
+  .loose();
+
+// Fallback for an unparseable quickstart response. It reads as a failed
+// request so the UI shows an error instead of polling forever.
+export const MALFORMED_RUNTIME_QUICKSTART_REQUEST: RuntimeQuickstartRequest = {
+  id: "",
+  runtime_id: "",
+  status: "failed",
+  steps: [],
+  error: "invalid quickstart response",
   created_at: "",
   updated_at: "",
 };

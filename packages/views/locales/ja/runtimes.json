@@ -343,6 +343,26 @@
       "timeout": "タイムアウト"
     }
   },
+  "quickstart": {
+    "action": "クイックスタート",
+    "action_title": "このマシンに Claude Code、チームのプラグイン、スキルをインストールします。既にあるものはスキップされます。",
+    "offline_title": "クイックスタートを実行するには、このマシンのデーモンを起動してください。",
+    "start_failed": "クイックスタートを開始できませんでした。もう一度お試しください。",
+    "status": {
+      "pending": "マシンの応答を待っています…",
+      "running": "インストール中…",
+      "completed": "完了",
+      "failed": "失敗"
+    },
+    "step_status": {
+      "installed": "インストールしました",
+      "already_installed": "インストール済み",
+      "failed": "失敗"
+    },
+    "all_present": "すべて既にインストールされていました。",
+    "some_failed": "一部の項目が失敗しました。下の詳細を確認してください。",
+    "retry": "再試行"
+  },
   "charts": {
     "heatmap_less": "少ない",
     "heatmap_more": "多い",

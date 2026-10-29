@@ -90,6 +90,7 @@ import type {
   DashboardFailureByAgent,
   RuntimeUpdate,
   RuntimeModelListRequest,
+  RuntimeQuickstartRequest,
   RuntimeLocalSkillListRequest,
   CreateRuntimeLocalSkillImportRequest,
   RuntimeLocalSkillImportRequest,
@@ -456,6 +457,8 @@ import {
   EMPTY_LIST_GITHUB_REPOSITORIES_RESPONSE,
   RuntimeModelListRequestSchema,
   MALFORMED_RUNTIME_MODEL_LIST_REQUEST,
+  RuntimeQuickstartRequestSchema,
+  MALFORMED_RUNTIME_QUICKSTART_REQUEST,
   SkillSchema,
   EMPTY_SKILL,
   SkillSummaryListSchema,
@@ -2731,6 +2734,40 @@ export class ApiClient {
       method: "POST",
       body: JSON.stringify({ target_version: targetVersion }),
     });
+  }
+
+  async initiateRuntimeQuickstart(
+    runtimeId: string,
+  ): Promise<RuntimeQuickstartRequest> {
+    const raw = await this.fetch<unknown>(
+      `/api/runtimes/${runtimeId}/quickstart`,
+      { method: "POST" },
+    );
+    return parseWithFallback<RuntimeQuickstartRequest>(
+      raw,
+      RuntimeQuickstartRequestSchema,
+      { ...MALFORMED_RUNTIME_QUICKSTART_REQUEST, runtime_id: runtimeId },
+      { endpoint: "POST /api/runtimes/{id}/quickstart" },
+    );
+  }
+
+  async getRuntimeQuickstart(
+    runtimeId: string,
+    requestId: string,
+  ): Promise<RuntimeQuickstartRequest> {
+    const raw = await this.fetch<unknown>(
+      `/api/runtimes/${runtimeId}/quickstart/${requestId}`,
+    );
+    return parseWithFallback<RuntimeQuickstartRequest>(
+      raw,
+      RuntimeQuickstartRequestSchema,
+      {
+        ...MALFORMED_RUNTIME_QUICKSTART_REQUEST,
+        id: requestId,
+        runtime_id: runtimeId,
+      },
+      { endpoint: "GET /api/runtimes/{id}/quickstart/{requestId}" },
+    );
   }
 
   async getUpdateResult(

@@ -48,7 +48,9 @@ import {
   ListIssuesResponseSchema,
   ListPropertiesResponseSchema,
   MALFORMED_RUNTIME_MODEL_LIST_REQUEST,
+  MALFORMED_RUNTIME_QUICKSTART_REQUEST,
   RuntimeModelListRequestSchema,
+  RuntimeQuickstartRequestSchema,
   SearchProjectsResponseSchema,
   RuntimeHourlyActivityListSchema,
   RuntimeUsageByAgentListSchema,
@@ -2363,5 +2365,58 @@ describe("AgentActivityBucketListSchema duration", () => {
     expect(parsed[0]?.task_count).toBe(201);
     expect(parsed[0]?.duration_ms).toBeUndefined();
     expect(parsed[0]?.duration_count).toBeUndefined();
+  });
+});
+
+describe("RuntimeQuickstartRequestSchema", () => {
+  it("keeps the steps and the per-item status the UI branches on", () => {
+    const parsed = parseWithFallback(
+      {
+        id: "req-1",
+        runtime_id: "rt-1",
+        status: "completed",
+        steps: [
+          { name: "claude code", status: "already_installed", detail: "/usr/bin/claude" },
+          { name: "plugin x@m", status: "failed", detail: "boom" },
+        ],
+        created_at: "2026-10-29T00:00:00Z",
+        updated_at: "2026-10-29T00:00:01Z",
+      },
+      RuntimeQuickstartRequestSchema,
+      MALFORMED_RUNTIME_QUICKSTART_REQUEST,
+      { endpoint: "test" },
+    );
+    expect(parsed.status).toBe("completed");
+    expect(parsed.steps.map((s) => s.status)).toEqual(["already_installed", "failed"]);
+  });
+
+  it("defaults missing steps and maps unknown statuses to failed", () => {
+    const parsed = parseWithFallback(
+      { id: "req-2", runtime_id: "rt-1", status: "exploded", steps: [{ name: "x", status: "weird" }] },
+      RuntimeQuickstartRequestSchema,
+      MALFORMED_RUNTIME_QUICKSTART_REQUEST,
+      { endpoint: "test" },
+    );
+    expect(parsed.status).toBe("failed");
+    expect(parsed.steps[0]?.status).toBe("failed");
+    expect(
+      parseWithFallback(
+        { id: "req-3", runtime_id: "rt-1", status: "pending" },
+        RuntimeQuickstartRequestSchema,
+        MALFORMED_RUNTIME_QUICKSTART_REQUEST,
+        { endpoint: "test" },
+      ).steps,
+    ).toEqual([]);
+  });
+
+  it("falls back to a failed request for a body that is not an object", () => {
+    const parsed = parseWithFallback(
+      "not json",
+      RuntimeQuickstartRequestSchema,
+      MALFORMED_RUNTIME_QUICKSTART_REQUEST,
+      { endpoint: "test" },
+    );
+    expect(parsed.status).toBe("failed");
+    expect(parsed.error).toBe("invalid quickstart response");
   });
 });

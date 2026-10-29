@@ -27,7 +27,11 @@ import {
 import { RenameMachineDialog } from "./rename-machine-dialog";
 import { RuntimeProfilesDialog } from "./runtime-profiles-dialog";
 import { pendingRuntimesForProfiles } from "./pending-runtime";
-import { MachineCliSection } from "./machine-cli-section";
+import {
+  MachineCliSection,
+  machineUpdateRuntime,
+} from "./machine-cli-section";
+import { QuickstartSection } from "./quickstart-section";
 import { isQoderLocator, QoderDetailPage } from "./qoder-detail-page";
 import { HealthIcon, useHealthLabel } from "./shared";
 import { useT, useTimeAgo } from "../../i18n";
@@ -164,6 +168,10 @@ export function RuntimeDetailPage({
     : null;
   const isAdmin =
     currentMember?.role === "owner" || currentMember?.role === "admin";
+  const quickstartRuntime =
+    machine && machine.mode === "local"
+      ? machineUpdateRuntime(machine, currentUserId, isAdmin)
+      : null;
   const canAddRuntime =
     isAdmin && machine?.mode === "local" && !!machine.daemonId;
   const renameTarget = useMemo(() => {
@@ -280,6 +288,10 @@ export function RuntimeDetailPage({
                     <span>{timeAgo(machine.lastSeenAt)}</span>
                   )}
                 </div>
+                <QuickstartSection
+                  runtimeId={quickstartRuntime?.id ?? null}
+                  isOnline={quickstartRuntime?.status === "online"}
+                />
               </div>
             </div>
 

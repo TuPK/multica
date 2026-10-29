@@ -343,6 +343,26 @@
       "timeout": "시간 초과"
     }
   },
+  "quickstart": {
+    "action": "퀵스타트",
+    "action_title": "이 머신에 Claude Code, 팀 플러그인, 스킬을 설치합니다. 이미 있는 항목은 건너뜁니다.",
+    "offline_title": "퀵스타트를 실행하려면 이 머신의 데몬을 시작하세요.",
+    "start_failed": "퀵스타트를 시작하지 못했습니다. 다시 시도하세요.",
+    "status": {
+      "pending": "머신 응답 대기 중…",
+      "running": "설치 중…",
+      "completed": "완료",
+      "failed": "실패"
+    },
+    "step_status": {
+      "installed": "설치됨",
+      "already_installed": "이미 설치됨",
+      "failed": "실패"
+    },
+    "all_present": "모두 이미 설치되어 있었습니다.",
+    "some_failed": "일부 항목이 실패했습니다. 아래 상세를 확인하세요.",
+    "retry": "다시 시도"
+  },
   "charts": {
     "heatmap_less": "적음",
     "heatmap_more": "많음",
