@@ -780,8 +780,11 @@ RETURNING *;
 -- Backlog issues whose turn in the run queue has come: no issue in the same
 -- scope (workspace + project, or no project) holds a lower queue_order while
 -- unfinished. A finished issue is one on done/cancelled or a custom status in
--- the done/closed category. any_scope reads every scope in every workspace;
--- otherwise the workspace and project (NULL = no project) are narrowed.
+-- the done/closed category, and no agent run of it is still queued, dispatched,
+-- parked on a local directory or running: its status alone can be set before
+-- the run that finishes the work has ended. any_scope reads every scope in
+-- every workspace; otherwise the workspace and project (NULL = no project) are
+-- narrowed.
 SELECT i.* FROM issue i
 WHERE i.status = 'backlog'
   AND i.queue_order IS NOT NULL
@@ -794,10 +797,16 @@ WHERE i.status = 'backlog'
     WHERE p.workspace_id = i.workspace_id
       AND p.project_id IS NOT DISTINCT FROM i.project_id
       AND p.queue_order < i.queue_order
-      AND NOT (p.status IN ('done', 'cancelled') OR EXISTS (
-        SELECT 1 FROM issue_status cs
-        WHERE cs.workspace_id = p.workspace_id AND cs.key = p.status
-          AND cs.category IN ('done', 'closed')))
+      AND (
+        NOT (p.status IN ('done', 'cancelled') OR EXISTS (
+          SELECT 1 FROM issue_status cs
+          WHERE cs.workspace_id = p.workspace_id AND cs.key = p.status
+            AND cs.category IN ('done', 'closed')))
+        OR EXISTS (
+          SELECT 1 FROM agent_task_queue t
+          WHERE t.issue_id = p.id
+            AND t.status IN ('queued', 'dispatched', 'running', 'waiting_local_directory'))
+      )
   )
 ORDER BY i.workspace_id, i.queue_order, i.created_at, i.id
 LIMIT sqlc.arg('page_limit')::int;
