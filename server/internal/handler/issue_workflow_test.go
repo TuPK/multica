@@ -1073,6 +1073,40 @@ func TestAgentStatusChangeRefusedAfterIssueMoved(t *testing.T) {
 	agentUpdateIssue(t, issueID, agentID, fresh, map[string]any{"status": "in_review"}).Want(http.StatusOK)
 }
 
+// A run is queued for the step the issue was at, but it claims later. Its brief
+// is rendered at the claim for the status the issue has then, so its step must
+// follow the claim, or its own status change would be refused for a move that
+// the brief never described.
+func TestClaimRefreshesRunStepBeforeItsMove(t *testing.T) {
+	seedTestCatalog(t)
+	agentID := seededReadyAgentID(t)
+	projectID := deliveryProject(t, "Workflow claim refresh project", agentID)
+	setColumnHandoff(t, projectID, "in_review", handToAgent(agentID, "Review it.")).Want(http.StatusOK)
+	issueID := dbfx.Issue(t, "claim refreshes step", testutil.Cols{"project_id": projectID, "status": "todo"})
+
+	updateIssueForTest(t, issueID, map[string]any{"status": "in_review"}).Want(http.StatusOK)
+	var taskID string
+	dbfx.QueryRow(t, `SELECT id::text FROM agent_task_queue WHERE issue_id = $1 AND agent_id = $2 ORDER BY created_at DESC LIMIT 1`, issueID, agentID).Scan(&taskID)
+	if got := taskWorkflowStep(t, taskID); got != "in_review" {
+		t.Fatalf("queued run step = %q, want in_review", got)
+	}
+
+	// The issue moves on before the run claims.
+	updateIssueForTest(t, issueID, map[string]any{"status": "in_progress"}).Want(http.StatusOK)
+
+	task, err := testHandler.Queries.GetAgentTask(context.Background(), util.MustParseUUID(taskID))
+	if err != nil {
+		t.Fatalf("load task: %v", err)
+	}
+	claimBriefForTest(t, issueID, task)
+	if got := taskWorkflowStep(t, taskID); got != "in_progress" {
+		t.Fatalf("step after claim = %q, want in_progress", got)
+	}
+
+	dbfx.Exec(t, `UPDATE agent_task_queue SET status = 'running', started_at = now() WHERE id = $1`, taskID)
+	agentUpdateIssue(t, issueID, agentID, taskID, map[string]any{"status": "in_review"}).Want(http.StatusOK)
+}
+
 // A project on Default with no handoffs keeps the pre-workflow behavior: a run
 // may still change the status after someone else moved the issue.
 func TestAgentStatusChangeOnDefaultIgnoresStep(t *testing.T) {

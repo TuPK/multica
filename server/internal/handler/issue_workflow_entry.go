@@ -352,6 +352,18 @@ func (h *Handler) claimProjectWorkflow(ctx context.Context, issue db.Issue, task
 			in.AssigneeName = h.actorDisplayName(ctx, issue.WorkspaceID, issue.AssigneeType.String, issue.AssigneeID)
 		}
 	}
+	// The brief names the status as of this claim, so the run's step follows
+	// it. The step was recorded at enqueue, which can be long before the run
+	// starts; judging the run's status change against that older step would
+	// refuse a move the run was told to make.
+	if task != nil && task.WorkflowStep.Valid && task.WorkflowStep.String != issue.Status {
+		step := pgtype.Text{String: issue.Status, Valid: true}
+		if err := h.Queries.SetTaskWorkflowStep(ctx, db.SetTaskWorkflowStepParams{ID: task.ID, WorkflowStep: step}); err != nil {
+			slog.Warn("task claim: refresh run workflow step failed", "task_id", uuidToString(task.ID), "error", err)
+		} else {
+			task.WorkflowStep = step
+		}
+	}
 	return &TaskProjectWorkflowData{Brief: issueworkflow.Brief(in)}
 }
 
