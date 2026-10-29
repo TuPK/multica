@@ -685,6 +685,9 @@ deleted_runtimes AS (
 ),
 deleted_profiles AS (
     DELETE FROM runtime_profile WHERE runtime_profile.workspace_id = $1
+),
+deleted_quickstarts AS (
+    DELETE FROM runtime_quickstart_request WHERE runtime_quickstart_request.workspace_id = $1
 )
 DELETE FROM project WHERE project.workspace_id = $1;
 

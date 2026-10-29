@@ -4533,10 +4533,16 @@ func (d *Daemon) handleHeartbeatActions(ctx context.Context, runtimeID string, r
 			"model_list", resp.PendingModelList != nil,
 			"local_skills", resp.PendingLocalSkills != nil,
 			"local_skill_import", resp.PendingLocalSkillImport != nil,
+			"quickstart", resp.PendingQuickstart != nil,
 		)
 	}
 	if resp.PendingUpdate != nil {
 		go d.handleUpdate(ctx, runtimeID, resp.PendingUpdate)
+	}
+	if resp.PendingQuickstart != nil {
+		if rt := d.findRuntime(runtimeID); rt != nil {
+			go d.handleQuickstart(ctx, *rt, *resp.PendingQuickstart)
+		}
 	}
 	if resp.PendingModelList != nil {
 		if rt := d.findRuntime(runtimeID); rt != nil {
