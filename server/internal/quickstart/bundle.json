@@ -1,0 +1,29 @@
+{
+  "claude_code": {
+    "npm_package": "@anthropic-ai/claude-code"
+  },
+  "marketplaces": [
+    { "name": "claude-plugins-official", "source": "anthropics/claude-plugins-official" },
+    { "name": "supabase-agent-skills", "source": "supabase/agent-skills" },
+    { "name": "superpowers-marketplace", "source": "obra/superpowers-marketplace" },
+    { "name": "bmad", "source": "bmad-code-org/bmad-plugins" }
+  ],
+  "plugins": [
+    "gopls-lsp@claude-plugins-official",
+    "typescript-lsp@claude-plugins-official",
+    "vercel@claude-plugins-official",
+    "supabase@supabase-agent-skills",
+    "postgres-best-practices@supabase-agent-skills",
+    "superpowers@superpowers-marketplace",
+    "bmad-method@bmad"
+  ],
+  "skills": [
+    "accessibility-audit",
+    "accessibility-diff",
+    "accessibility-fix",
+    "accessibility-inspect",
+    "accessibility-scan",
+    "react-doctor",
+    "vitest-skill"
+  ]
+}
