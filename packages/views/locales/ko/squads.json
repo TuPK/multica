@@ -2,6 +2,7 @@
   "page": {
     "title": "스쿼드",
     "new_button": "새 스쿼드",
+    "quickstart_button": "빠른 시작",
     "empty_no_squads": "스쿼드가 없습니다.",
     "empty_no_match": "필터와 일치하는 스쿼드가 없습니다.",
     "table": {

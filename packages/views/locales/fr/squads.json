@@ -2,6 +2,7 @@
   "page": {
     "title": "Squads",
     "new_button": "Nouveau squad",
+    "quickstart_button": "Démarrage rapide",
     "empty_no_squads": "Aucun squad pour l’instant.",
     "empty_no_match": "Aucun squad ne correspond à vos filtres.",
     "table": {

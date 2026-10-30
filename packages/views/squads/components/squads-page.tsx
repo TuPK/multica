@@ -10,6 +10,7 @@ import {
   Loader2,
   MoreHorizontal,
   Plus,
+  Rocket,
   Trash2,
   Users,
   X,
@@ -915,11 +916,18 @@ export function SquadsPage() {
         title={t(($) => $.page.title)}
         count={squads.length}
         actions={
-          <CollectionPageHeaderAction
-            icon={Plus}
-            label={t(($) => $.page.new_button)}
-            onClick={() => useModalStore.getState().open("create-squad")}
-          />
+          <>
+            <CollectionPageHeaderAction
+              icon={Rocket}
+              label={t(($) => $.page.quickstart_button)}
+              onClick={() => useModalStore.getState().open("squad-quickstart")}
+            />
+            <CollectionPageHeaderAction
+              icon={Plus}
+              label={t(($) => $.page.new_button)}
+              onClick={() => useModalStore.getState().open("create-squad")}
+            />
+          </>
         }
       />
 
@@ -928,13 +936,23 @@ export function SquadsPage() {
           icon={Users}
           title={t(($) => $.page.empty_no_squads)}
           actions={
-            <Button
-              size="sm"
-              onClick={() => useModalStore.getState().open("create-squad")}
-            >
-              <Plus aria-hidden="true" className="size-3.5" />
-              {t(($) => $.page.new_button)}
-            </Button>
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => useModalStore.getState().open("squad-quickstart")}
+              >
+                <Rocket aria-hidden="true" className="size-3.5" />
+                {t(($) => $.page.quickstart_button)}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => useModalStore.getState().open("create-squad")}
+              >
+                <Plus aria-hidden="true" className="size-3.5" />
+                {t(($) => $.page.new_button)}
+              </Button>
+            </>
           }
         />
       ) : (

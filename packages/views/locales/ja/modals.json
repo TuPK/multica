@@ -264,5 +264,43 @@
     "toast_failed": "重複としてマークできませんでした",
     "error_target_is_duplicate": "{{identifier}} 自体が重複です。元のタスクを選択してください",
     "error_has_duplicates": "他のタスクがこのタスクの重複としてマークされています。先にそのマークを解除してください"
+  },
+  "squad_quickstart": {
+    "title": "スクワッドのクイックスタート",
+    "template_label": "テンプレート",
+    "templates": {
+      "sdlc_greenfield": {
+        "name": "SDLC · 新規プロダクト",
+        "description": "依頼をアイデアから検証済みのプロダクトまで進めます。ブリーフ、PRD、UX、アーキテクチャ、キュー実行のビルド、最終レポートまでを扱います。"
+      },
+      "sdlc_maintenance": {
+        "name": "SDLC · 既存プロダクト",
+        "description": "バグ、機能、最適化、アップグレードを仕分けて適切なエージェントに振り分け、検証して報告します。"
+      }
+    },
+    "agents_label": "エージェント",
+    "agent_new": "新規",
+    "agent_reused": "作成済み",
+    "workflow_label": "「{{name}}」ワークフローも作成する",
+    "workflow_hint": "プロダクトをビルドするプロジェクトに割り当ててください。ビルドキューが課題を完了させるために必要です。",
+    "create": "スクワッドを作成",
+    "creating": "作成中…",
+    "cancel": "キャンセル",
+    "close": "閉じる",
+    "retry": "再試行",
+    "open_squad": "スクワッドを開く",
+    "result_ready": "スクワッドの準備ができました",
+    "result_problems": "問題があります",
+    "status_created": "作成しました",
+    "status_reused": "既存を再利用",
+    "status_failed": "失敗",
+    "status_existing": "すでに存在するため変更しません",
+    "status_problem": "問題",
+    "squad_row": "スクワッド",
+    "workflow_row": "ワークフロー",
+    "workflow_without_qa": "QA ステップなしで作成しました。ステータスを追加できるのはワークスペースの管理者のみです。",
+    "next_step": "依頼の課題をスクワッドに割り当てると開始します。",
+    "toast_done": "スクワッドを作成しました",
+    "toast_failed": "スクワッドを作成できませんでした"
   }
 }

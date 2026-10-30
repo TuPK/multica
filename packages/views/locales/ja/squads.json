@@ -2,6 +2,7 @@
   "page": {
     "title": "スクワッド",
     "new_button": "新規スクワッド",
+    "quickstart_button": "クイックスタート",
     "empty_no_squads": "スクワッドはありません。",
     "empty_no_match": "フィルターに一致するスクワッドはありません。",
     "table": {

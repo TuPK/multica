@@ -264,5 +264,43 @@
     "toast_failed": "중복으로 표시하지 못했습니다",
     "error_target_is_duplicate": "{{identifier}}은(는) 이미 중복입니다. 원본 태스크를 선택하세요",
     "error_has_duplicates": "다른 태스크가 이 태스크의 중복으로 표시되어 있습니다. 먼저 해당 표시를 해제하세요"
+  },
+  "squad_quickstart": {
+    "title": "스쿼드 빠른 시작",
+    "template_label": "템플릿",
+    "templates": {
+      "sdlc_greenfield": {
+        "name": "SDLC · 신규 제품",
+        "description": "요청을 아이디어에서 검증된 제품까지 진행합니다. 브리프, PRD, UX, 아키텍처, 큐 기반 빌드, 최종 보고서를 다룹니다."
+      },
+      "sdlc_maintenance": {
+        "name": "SDLC · 기존 제품",
+        "description": "버그, 기능, 최적화, 업그레이드를 분류해 적합한 에이전트에게 배정하고, 검증한 뒤 보고합니다."
+      }
+    },
+    "agents_label": "에이전트",
+    "agent_new": "신규",
+    "agent_reused": "이미 있음",
+    "workflow_label": "“{{name}}” 워크플로도 만들기",
+    "workflow_hint": "제품을 빌드하는 프로젝트에 연결하세요. 빌드 큐가 이슈를 마무리하려면 필요합니다.",
+    "create": "스쿼드 만들기",
+    "creating": "만드는 중…",
+    "cancel": "취소",
+    "close": "닫기",
+    "retry": "다시 시도",
+    "open_squad": "스쿼드 열기",
+    "result_ready": "스쿼드 준비 완료",
+    "result_problems": "문제와 함께 끝났습니다",
+    "status_created": "생성됨",
+    "status_reused": "재사용",
+    "status_failed": "실패",
+    "status_existing": "이미 있어 그대로 둠",
+    "status_problem": "문제",
+    "squad_row": "스쿼드",
+    "workflow_row": "워크플로",
+    "workflow_without_qa": "QA 단계 없이 만들었습니다. 상태는 워크스페이스 관리자만 추가할 수 있습니다.",
+    "next_step": "요청 이슈를 스쿼드에 배정하면 시작합니다.",
+    "toast_done": "스쿼드를 만들었습니다",
+    "toast_failed": "스쿼드를 만들 수 없습니다"
   }
 }

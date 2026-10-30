@@ -414,6 +414,10 @@
         "devops_engineer": {
           "name": "DevOps 工程師",
           "description": "將同一個已驗證的 digest 逐環境提升，在正式環境前等待人工核准。"
+        },
+        "ux_designer": {
+          "name": "UX 設計師",
+          "description": "依據需求設計頁面、狀態與設計系統，優先重用既有元件。"
         }
       }
     },

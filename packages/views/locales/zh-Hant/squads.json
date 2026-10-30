@@ -2,6 +2,7 @@
   "page": {
     "title": "小隊",
     "new_button": "新建小隊",
+    "quickstart_button": "快速開始",
     "empty_no_squads": "暫無小隊。",
     "empty_no_match": "沒有匹配篩選條件的小隊。",
     "table": {
