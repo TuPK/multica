@@ -382,6 +382,38 @@
         "fullstack_developer": {
           "name": "全端開發者",
           "description": "端到端交付 Story，遵循 BMAD 狀態流轉，並透過 Agent Team 協作。"
+        },
+        "code_reviewer": {
+          "name": "程式碼審查員",
+          "description": "對照驗收標準審查變更，依據程式碼證據提出結論，不直接修改。"
+        },
+        "qa_tester": {
+          "name": "QA 測試員",
+          "description": "在寫程式前依驗收標準設計測試，再於真實系統上執行。"
+        },
+        "bug_fixer": {
+          "name": "缺陷修復者",
+          "description": "重現缺陷，以最小改動修復，更大的改動交由他人決定。"
+        },
+        "security_reviewer": {
+          "name": "資安審查員",
+          "description": "只有存取控制、資料、相依套件與可觀測性都經過驗證，才放行變更或發佈。"
+        },
+        "tech_lead": {
+          "name": "技術負責人",
+          "description": "為各專項角色分派任務並核對證據，不會僅憑報告就認定完成。"
+        },
+        "architect": {
+          "name": "架構師",
+          "description": "為已核准的需求設計最簡單的方案，並以 ADR 記錄決策。"
+        },
+        "product_analyst": {
+          "name": "產品分析師",
+          "description": "把資料轉化為可測試、可追溯的需求，並提出阻礙推進的問題。"
+        },
+        "devops_engineer": {
+          "name": "DevOps 工程師",
+          "description": "將同一個已驗證的 digest 逐環境提升，在正式環境前等待人工核准。"
         }
       }
     },

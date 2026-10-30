@@ -25,6 +25,23 @@ async function openMenu() {
 describe("InstructionTemplatePicker", () => {
   afterEach(cleanup);
 
+  it("lists every template with its translated name", async () => {
+    renderWithI18n(
+      <InstructionTemplatePicker currentInstructions="" onSelect={vi.fn()} />,
+    );
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Use a template" }));
+
+    expect(await screen.findAllByRole("menuitem")).toHaveLength(
+      AGENT_INSTRUCTION_TEMPLATES.length,
+    );
+    expect(
+      screen.getByRole("menuitem", { name: /Security Reviewer/ }),
+    ).toBeInTheDocument();
+  });
+
   it("fills empty instructions straight from the template", async () => {
     const onSelect = vi.fn();
     renderWithI18n(

@@ -392,6 +392,38 @@
         "fullstack_developer": {
           "name": "Développeur Full Stack",
           "description": "Livre les stories de bout en bout, suit le flux de statuts BMAD et travaille avec une Agent Team."
+        },
+        "code_reviewer": {
+          "name": "Relecteur de code",
+          "description": "Vérifie une modification par rapport à ses critères d'acceptation, preuves à l'appui, et rend un verdict sans rien modifier."
+        },
+        "qa_tester": {
+          "name": "Testeur QA",
+          "description": "Conçoit les tests à partir des critères d'acceptation avant le code, puis les exécute sur le système réel."
+        },
+        "bug_fixer": {
+          "name": "Correcteur de bugs",
+          "description": "Reproduit un défaut, le corrige par le plus petit changement et transmet tout ce qui dépasse."
+        },
+        "security_reviewer": {
+          "name": "Relecteur sécurité",
+          "description": "Ne valide une modification ou une release que sur des contrôles vérifiés : accès, données, dépendances, observabilité."
+        },
+        "tech_lead": {
+          "name": "Tech Lead",
+          "description": "Briefe les spécialistes, vérifie leurs preuves et n'accepte jamais un rapport seul."
+        },
+        "architect": {
+          "name": "Architecte",
+          "description": "Conçoit le système le plus simple qui satisfait les exigences validées et consigne les décisions en ADR."
+        },
+        "product_analyst": {
+          "name": "Analyste produit",
+          "description": "Transforme les sources en exigences testables et traçables et soulève les questions bloquantes."
+        },
+        "devops_engineer": {
+          "name": "Ingénieur DevOps",
+          "description": "Promeut un seul digest vérifié d'un environnement à l'autre et attend une personne avant la production."
         }
       }
     },
