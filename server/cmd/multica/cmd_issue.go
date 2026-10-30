@@ -324,6 +324,21 @@ var issueReorderCmd = &cobra.Command{
 	RunE: runIssueReorder,
 }
 
+var issueQueueOrderCmd = &cobra.Command{
+	Use:   "queue-order <id>...",
+	Short: "Set or clear issues' place in the automatic run queue",
+	Long: "Number backlog issues so they start one at a time in the workspace run queue.\n" +
+		"An issue numbered N moves to todo once every lower number in its project is\n" +
+		"finished; issues sharing a number start together.\n\n" +
+		"Pick exactly one target:\n" +
+		"  --number <n>  set the queue number (1 to 1000000)\n" +
+		"  --clear       take the issues out of the queue\n\n" +
+		"--preview reports how many issues would move to todo now and how many of\n" +
+		"those would start an agent run, without changing anything.",
+	Args: cobra.MinimumNArgs(1),
+	RunE: runIssueQueueOrder,
+}
+
 // Comment subcommands.
 
 var issueCommentCmd = &cobra.Command{
@@ -543,7 +558,7 @@ var validIssueFields = []string{
 	"id", "workspace_id", "number", "identifier", "title", "description",
 	"status", "status_category", "status_name", "priority", "assignee_type",
 	"assignee_id", "creator_type", "creator_id", "parent_issue_id",
-	"duplicate_of", "project_id", "position", "stage", "start_date", "due_date", "created_at",
+	"duplicate_of", "project_id", "position", "stage", "queue_order", "start_date", "due_date", "created_at",
 	"updated_at", "revision", "last_activity_at", "metadata", "properties",
 	"labels",
 }
@@ -609,6 +624,7 @@ func init() {
 	issueCmd.AddCommand(issueAssignCmd)
 	issueCmd.AddCommand(issueStatusCmd)
 	issueCmd.AddCommand(issueReorderCmd)
+	issueCmd.AddCommand(issueQueueOrderCmd)
 	issueCmd.AddCommand(issueCommentCmd)
 	issueCmd.AddCommand(issueSubscriberCmd)
 	issueCmd.AddCommand(issueRunsCmd)
@@ -706,6 +722,14 @@ func init() {
 
 	// issue reorder
 	registerIssueReorderFlags(issueReorderCmd)
+
+	// issue queue-order
+	issueQueueOrderCmd.Flags().Int("number", 0, "Queue number to give the issues (1 to 1000000); issues sharing a number start together")
+	issueQueueOrderCmd.Flags().Bool("clear", false, "Take the issues out of the run queue")
+	issueQueueOrderCmd.Flags().Bool("preview", false, "Report how many issues would move to todo now and start a run, without changing anything")
+	issueQueueOrderCmd.Flags().String("output", "table", "Output format: table or json")
+	issueQueueOrderCmd.MarkFlagsMutuallyExclusive("number", "clear")
+	issueQueueOrderCmd.MarkFlagsOneRequired("number", "clear")
 
 	// issue assign
 	issueAssignCmd.Flags().String("to", "", "Assignee name (member, agent, or squad; fuzzy match)")
@@ -1894,6 +1918,73 @@ func runIssueUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	return cli.PrintJSON(os.Stdout, result)
+}
+
+// runIssueQueueOrder numbers or un-numbers issues in the automatic run queue.
+// The server promotes whatever the change makes ready, so a number on a
+// backlog issue can start its agent run right away; --preview says how many
+// would, before anything is written.
+func runIssueQueueOrder(cmd *cobra.Command, args []string) error {
+	number, _ := cmd.Flags().GetInt("number")
+	clearOrder, _ := cmd.Flags().GetBool("clear")
+	preview, _ := cmd.Flags().GetBool("preview")
+	output, _ := cmd.Flags().GetString("output")
+	if cmd.Flags().Changed("number") && (number < 1 || number > 1000000) {
+		return fmt.Errorf("--number must be a whole number from 1 to 1000000")
+	}
+
+	client, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := cli.APIContext(context.Background())
+	defer cancel()
+
+	ids := make([]string, 0, len(args))
+	for _, arg := range args {
+		issueRef, err := resolveIssueRef(ctx, client, arg)
+		if err != nil {
+			return fmt.Errorf("resolve issue: %w", err)
+		}
+		ids = append(ids, issueRef.ID)
+	}
+
+	var queueOrder any
+	if !clearOrder {
+		queueOrder = number
+	}
+	body := map[string]any{"issue_ids": ids, "queue_order": queueOrder}
+
+	if preview {
+		if clearOrder {
+			return fmt.Errorf("--preview needs --number; clearing the queue never starts a run")
+		}
+		var result map[string]any
+		if err := client.PostJSON(ctx, "/api/issues/queue-order/preview", body, &result); err != nil {
+			return fmt.Errorf("preview queue order: %w", err)
+		}
+		if output == "json" {
+			return cli.PrintJSON(os.Stdout, result)
+		}
+		fmt.Fprintf(os.Stdout, "%d issue(s) would move to todo now; %d would start an agent run.\n",
+			int(floatVal(result, "release_now")), int(floatVal(result, "run_count")))
+		return nil
+	}
+
+	var result map[string]any
+	if err := client.PostJSON(ctx, "/api/issues/batch-queue-order", body, &result); err != nil {
+		return fmt.Errorf("set queue order: %w", err)
+	}
+	if output == "json" {
+		return cli.PrintJSON(os.Stdout, result)
+	}
+	if clearOrder {
+		fmt.Fprintf(os.Stdout, "Cleared the run queue order on %d issue(s).\n", int(floatVal(result, "updated")))
+	} else {
+		fmt.Fprintf(os.Stdout, "Set run queue order %d on %d issue(s).\n", number, int(floatVal(result, "updated")))
+	}
+	return nil
 }
 
 func runIssueAssign(cmd *cobra.Command, args []string) error {
