@@ -210,3 +210,44 @@ func TestPromoteQueuedIssuesWaitsForPredecessorRunToEnd(t *testing.T) {
 		t.Fatalf("successor status = %q, want todo", got)
 	}
 }
+
+// An issue the queue does not number can still be worked by an agent in the
+// project. Its agent moved it on its own, and the checkout is shared, so a
+// numbered issue of that project waits until the agent's run ends.
+func TestPromoteQueuedIssuesWaitsForUnnumberedRunInProject(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("database not available")
+	}
+	agentID := seededReadyAgentID(t)
+	projectID := createWorkflowTestProject(t, "Queue unnumbered run project")
+	inFlight := dbfx.Issue(t, "queue unnumbered in flight", testutil.Cols{"project_id": projectID, "status": "todo"})
+	successor := dbfx.Issue(t, "queue numbered successor", testutil.Cols{
+		"project_id": projectID, "status": "backlog", "number": 93051, "queue_order": 2,
+	})
+	var runtimeID string
+	dbfx.QueryRow(t, `SELECT runtime_id::text FROM agent WHERE id = $1`, agentID).Scan(&runtimeID)
+	taskID := dbfx.Task(t, agentID, testutil.Cols{
+		"issue_id": inFlight, "runtime_id": runtimeID, "status": "running", "started_at": time.Now(),
+	})
+
+	if n := promoteProjectQueue(t, projectID); n != 0 {
+		t.Fatalf("moved %d issues while an unnumbered issue of the project is running", n)
+	}
+	if got := queuedIssueStatus(t, successor); got != "backlog" {
+		t.Fatalf("successor status = %q while the unnumbered run is running, want backlog", got)
+	}
+
+	dbfx.Exec(t, `UPDATE agent_task_queue SET status = 'completed', completed_at = now() WHERE id = $1`, taskID)
+	if n := promoteProjectQueue(t, projectID); n != 1 {
+		t.Fatalf("moved %d issues after the unnumbered run ended, want 1", n)
+	}
+}
+
+func promoteProjectQueue(t *testing.T, projectID string) int {
+	t.Helper()
+	n, err := testHandler.PromoteQueuedIssues(context.Background(), parseUUID(testWorkspaceID), parseUUID(projectID), false)
+	if err != nil {
+		t.Fatalf("PromoteQueuedIssues: %v", err)
+	}
+	return n
+}

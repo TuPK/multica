@@ -782,7 +782,9 @@ RETURNING *;
 -- unfinished. A finished issue is one on done/cancelled or a custom status in
 -- the done/closed category, and no agent run of it is still queued, dispatched,
 -- parked on a local directory or running: its status alone can be set before
--- the run that finishes the work has ended. any_scope reads every scope in
+-- the run that finishes the work has ended. An unnumbered issue of the same
+-- project that an agent is running blocks too: the agent moved it on its own,
+-- outside the queue, and it shares the checkout. any_scope reads every scope in
 -- every workspace; otherwise the workspace and project (NULL = no project) are
 -- narrowed.
 SELECT i.* FROM issue i
@@ -807,6 +809,17 @@ WHERE i.status = 'backlog'
           WHERE t.issue_id = p.id
             AND t.status IN ('queued', 'dispatched', 'running', 'waiting_local_directory'))
       )
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM issue r
+    WHERE i.project_id IS NOT NULL
+      AND r.workspace_id = i.workspace_id
+      AND r.project_id = i.project_id
+      AND r.queue_order IS NULL
+      AND EXISTS (
+        SELECT 1 FROM agent_task_queue t
+        WHERE t.issue_id = r.id
+          AND t.status IN ('queued', 'dispatched', 'running', 'waiting_local_directory'))
   )
 ORDER BY i.workspace_id, i.queue_order, i.created_at, i.id
 LIMIT sqlc.arg('page_limit')::int;
@@ -835,16 +848,31 @@ GROUP BY p.project_id;
 
 -- name: CountQueueBlockers :one
 -- Unfinished issues numbered below `queue_order` in a scope, ignoring the
--- issues being numbered (they are about to take a new number).
-SELECT COUNT(*)::int FROM issue p
-WHERE p.workspace_id = $1
-  AND p.project_id IS NOT DISTINCT FROM sqlc.narg('project_id')::uuid
-  AND p.queue_order < sqlc.arg('queue_order')::int
-  AND NOT (p.id = ANY(sqlc.arg('exclude_ids')::uuid[]))
-  AND NOT (p.status IN ('done', 'cancelled') OR EXISTS (
-    SELECT 1 FROM issue_status cs
-    WHERE cs.workspace_id = p.workspace_id AND cs.key = p.status
-      AND cs.category IN ('done', 'closed')));
+-- issues being numbered (they are about to take a new number). Also counts the
+-- unnumbered issues of the project that an agent is running, as
+-- ListReleasableQueuedIssues does.
+SELECT (
+  (SELECT COUNT(*) FROM issue p
+  WHERE p.workspace_id = $1
+    AND p.project_id IS NOT DISTINCT FROM sqlc.narg('project_id')::uuid
+    AND p.queue_order < sqlc.arg('queue_order')::int
+    AND NOT (p.id = ANY(sqlc.arg('exclude_ids')::uuid[]))
+    AND NOT (p.status IN ('done', 'cancelled') OR EXISTS (
+      SELECT 1 FROM issue_status cs
+      WHERE cs.workspace_id = p.workspace_id AND cs.key = p.status
+        AND cs.category IN ('done', 'closed'))))
+  +
+  (SELECT COUNT(*) FROM issue r
+  WHERE sqlc.narg('project_id')::uuid IS NOT NULL
+    AND r.workspace_id = $1
+    AND r.project_id = sqlc.narg('project_id')::uuid
+    AND r.queue_order IS NULL
+    AND NOT (r.id = ANY(sqlc.arg('exclude_ids')::uuid[]))
+    AND EXISTS (
+      SELECT 1 FROM agent_task_queue t
+      WHERE t.issue_id = r.id
+        AND t.status IN ('queued', 'dispatched', 'running', 'waiting_local_directory')))
+)::int;
 
 -- name: ListIssuesByIDsInWorkspace :many
 SELECT * FROM issue
