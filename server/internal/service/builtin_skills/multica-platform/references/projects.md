@@ -183,7 +183,8 @@ reference (`in_progress` on start, `in_review` on delivery) do not apply.
 - **Entering a step you handle starts your run.** Even when your own run makes
   the move, a run for the new step queues behind the current one, and the
   write skips your own event wakeups so one change starts one run. Do not add
-  a wakeup to catch it.
+  a wakeup to catch it, and do not pass `--no-start` on the status move into
+  that step: the move is what queues the run, and the flag holds it back.
 - **A step without a handler starts nothing.** Entering it keeps the
   assignee and queues no run. If you move the issue into such a step and its
   work is still yours, keep working in this run; ending the run there leaves

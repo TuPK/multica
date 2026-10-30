@@ -1079,6 +1079,47 @@ func TestSameAgentNextStepQueuesARun(t *testing.T) {
 	}
 }
 
+// An agent's status write with suppress_run (the CLI's --no-start) into a step
+// it handles still queues that step's run. Without it the step had no run and
+// nothing advanced the issue after the agent's run ended.
+func TestSuppressRunDoesNotDropHandoffRun(t *testing.T) {
+	seedTestCatalog(t)
+	agentID := seededReadyAgentID(t)
+	projectID := deliveryProject(t, "Workflow suppress handoff project", agentID)
+	setColumnHandoff(t, projectID, "in_review", handToAgent(agentID, "Verify the delivery.")).Want(http.StatusOK)
+	issueID := dbfx.Issue(t, "suppressed handoff", testutil.Cols{"project_id": projectID, "status": "todo"})
+
+	updateIssueForTest(t, issueID, map[string]any{"status": "in_progress"}).Want(http.StatusOK)
+	var taskID string
+	dbfx.QueryRow(t, `SELECT id::text FROM agent_task_queue WHERE issue_id = $1 AND agent_id = $2`, issueID, agentID).Scan(&taskID)
+	dbfx.Exec(t, `UPDATE agent_task_queue SET status = 'running', started_at = now() WHERE id = $1`, taskID)
+
+	agentUpdateIssue(t, issueID, agentID, taskID, map[string]any{"status": "in_review", "suppress_run": true}).Want(http.StatusOK)
+	var queued int
+	dbfx.QueryRow(t, `SELECT count(*) FROM agent_task_queue
+		WHERE issue_id = $1 AND agent_id = $2 AND status = 'queued'`, issueID, agentID).Scan(&queued)
+	if queued != 1 {
+		t.Fatalf("queued runs for the handoff step = %d, want one despite suppress_run", queued)
+	}
+}
+
+// suppress_run still holds back a run for a status change that hands nothing
+// off: the backlog-to-todo start is the run it suppresses.
+func TestSuppressRunStillSkipsNonHandoffRun(t *testing.T) {
+	seedTestCatalog(t)
+	agentID := seededReadyAgentID(t)
+	issueID := dbfx.Issue(t, "suppressed start", testutil.Cols{
+		"status": "backlog", "assignee_type": "agent", "assignee_id": agentID,
+	})
+
+	updateIssueForTest(t, issueID, map[string]any{"status": "todo", "suppress_run": true}).Want(http.StatusOK)
+	var queued int
+	dbfx.QueryRow(t, `SELECT count(*) FROM agent_task_queue WHERE issue_id = $1`, issueID).Scan(&queued)
+	if queued != 0 {
+		t.Fatalf("runs queued = %d, want none when suppress_run holds the start back", queued)
+	}
+}
+
 // A run works on the step the issue was at when it was queued. Once someone
 // else moves the issue, the run's status changes are refused — they were
 // decided for a step the issue has left — and the refusal names the move.
