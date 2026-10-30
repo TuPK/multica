@@ -186,6 +186,7 @@ describe("specialist templates", () => {
         "bmad-create-epics-and-stories",
         "bmad-sprint-planning",
       ],
+      ux_designer: ["bmad-ux", "accessibility-scan", "verification-before-completion"],
       devops_engineer: ["verification-before-completion", "vercel"],
     };
 
@@ -197,6 +198,22 @@ describe("specialist templates", () => {
         ).toContain(skill);
       }
     }
+  });
+
+  it("lets every specialist run unattended but stops it at what cannot be undone", () => {
+    for (const template of specialists) {
+      expect(template.instructions, template.id).toContain("Unattended runs:");
+      expect(template.instructions, template.id).toContain(
+        "Stop only for what cannot be undone",
+      );
+    }
+  });
+
+  it("keeps the UX designer from approving its own design or adding unneeded screens", () => {
+    const ux = instructionsOf("ux_designer");
+
+    expect(ux).toContain("Mark the design approved. A person approves it.");
+    expect(ux).toContain("Add a screen, route, or navigation entry that no requirement needs");
   });
 
   it("tells every specialist what to do when a named skill is missing", () => {

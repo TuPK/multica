@@ -414,6 +414,10 @@
         "devops_engineer": {
           "name": "DevOps 工程师",
           "description": "将同一个已验证的 digest 逐环境提升，在生产前等待人工批准。"
+        },
+        "ux_designer": {
+          "name": "UX 设计师",
+          "description": "依据需求设计页面、状态和设计系统，优先复用现有组件。"
         }
       }
     },

@@ -424,6 +424,10 @@
         "devops_engineer": {
           "name": "Ingénieur DevOps",
           "description": "Promeut un seul digest vérifié d'un environnement à l'autre et attend une personne avant la production."
+        },
+        "ux_designer": {
+          "name": "Designer UX",
+          "description": "Conçoit écrans, états et design system à partir des exigences, en réutilisant d'abord l'existant."
         }
       }
     },

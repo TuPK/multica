@@ -103,6 +103,19 @@ To keep existing work owned, issues and automations currently assigned to the sq
 Archiving cannot be undone.
 </Callout>
 
+## Start from a template [#templates]
+
+On the Squads page, choose **Quickstart** to create a ready-made squad together with the agents it needs. Pick a template and a runtime, and Multica creates the agents, the squad with its instructions and roster, and, if you leave it ticked, the workflow the template needs.
+
+| Template | Use it for |
+|---|---|
+| **SDLC · New product** | A request for a new product. The squad plans it (brief, PRD, UX, architecture, epics), queues one issue per epic in a build project, verifies the result, and reports. |
+| **SDLC · Existing product** | A bug, feature, optimization, or upgrade in an existing project. The squad triages it, routes it to the right agents, verifies the change, and reports. |
+
+Agents and squads that already have the template's names are reused, and nothing that exists is edited, so you can run the quickstart again to finish a partial result.
+
+For a new product, attach the **SDLC Auto** workflow to the project that builds it before you assign the request: the build queue only moves on when an agent can finish an issue. Creating that workflow's QA status needs a workspace admin; otherwise the workflow is created without a QA step.
+
 ## Using the CLI
 
 ```bash

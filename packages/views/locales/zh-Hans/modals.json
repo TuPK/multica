@@ -264,5 +264,43 @@
     "toast_failed": "无法标记为重复",
     "error_target_is_duplicate": "{{identifier}} 本身是重复任务，请选择它的原始任务",
     "error_has_duplicates": "已有任务被标记为此任务的重复，请先解除这些标记"
+  },
+  "squad_quickstart": {
+    "title": "小队快速开始",
+    "template_label": "模板",
+    "templates": {
+      "sdlc_greenfield": {
+        "name": "SDLC · 新产品",
+        "description": "把一个需求从想法推进到经过验证的产品：简报、PRD、UX、架构、排队构建和最终报告。"
+      },
+      "sdlc_maintenance": {
+        "name": "SDLC · 现有产品",
+        "description": "对缺陷、功能、优化或升级进行分诊，分派给合适的智能体，验证后汇报。"
+      }
+    },
+    "agents_label": "智能体",
+    "agent_new": "新建",
+    "agent_reused": "已存在",
+    "workflow_label": "同时创建“{{name}}”工作流",
+    "workflow_hint": "请把它关联到负责构建产品的项目；构建队列需要它来完成任务。",
+    "create": "创建小队",
+    "creating": "创建中…",
+    "cancel": "取消",
+    "close": "关闭",
+    "retry": "重试",
+    "open_squad": "打开小队",
+    "result_ready": "小队已就绪",
+    "result_problems": "已完成，但有问题",
+    "status_created": "已创建",
+    "status_reused": "已复用",
+    "status_failed": "失败",
+    "status_existing": "已存在，保持不变",
+    "status_problem": "问题",
+    "squad_row": "小队",
+    "workflow_row": "工作流",
+    "workflow_without_qa": "已创建，但没有 QA 步骤：只有工作区管理员可以添加状态。",
+    "next_step": "把一个需求任务分配给该小队即可开始。",
+    "toast_done": "小队已创建",
+    "toast_failed": "无法创建小队"
   }
 }

@@ -1025,6 +1025,10 @@
         "devops_engineer": {
           "name": "DevOps エンジニア",
           "description": "検証済みの 1 つの digest を各環境へ昇格し、本番の前に人の承認を待ちます。"
+        },
+        "ux_designer": {
+          "name": "UX デザイナー",
+          "description": "要件から画面、状態、デザインシステムを設計し、まず既存コンポーネントを再利用します。"
         }
       }
     },

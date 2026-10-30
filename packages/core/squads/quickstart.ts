@@ -1,0 +1,271 @@
+import { AGENT_INSTRUCTION_TEMPLATES } from "../agents/instruction-templates";
+import type {
+  Agent,
+  CreateAgentRequest,
+  IssueWorkflow,
+  IssueWorkflowHandler,
+  IssueWorkflowStepInput,
+  IssueWorkflowWriteRequest,
+  ListIssueWorkflowsResponse,
+  Squad,
+  SquadMember,
+} from "../types";
+import {
+  SQUAD_ROLES,
+  type SquadRoleKey,
+  type SquadTemplate,
+  type SquadWorkflowStep,
+} from "./templates";
+
+/** The API calls the quickstart makes; the web client satisfies it as is. */
+export interface SquadQuickstartClient {
+  listAgents(params?: { include_archived?: boolean }): Promise<Agent[]>;
+  createAgent(data: CreateAgentRequest): Promise<Agent>;
+  listSquads(): Promise<Squad[]>;
+  createSquad(data: {
+    name: string;
+    description?: string;
+    leader_id: string;
+  }): Promise<Squad>;
+  updateSquad(id: string, data: { instructions?: string }): Promise<Squad>;
+  addSquadMember(
+    squadId: string,
+    data: { member_type: string; member_id: string; role?: string },
+  ): Promise<SquadMember>;
+  listIssueWorkflows(): Promise<ListIssueWorkflowsResponse>;
+  createIssueWorkflow(data: IssueWorkflowWriteRequest): Promise<IssueWorkflow>;
+}
+
+export type QuickstartAgentStatus = "created" | "reused" | "failed";
+
+export interface QuickstartAgentOutcome {
+  role: SquadRoleKey;
+  name: string;
+  id: string | null;
+  status: QuickstartAgentStatus;
+  error?: string;
+}
+
+export interface QuickstartOutcome {
+  agents: QuickstartAgentOutcome[];
+  squad: {
+    id: string | null;
+    /** "existing": a squad with this name was already there and is left as it is. */
+    status: "created" | "existing" | "failed";
+    /** Members that could not be added, or why the squad was not made. */
+    error?: string;
+  };
+  workflow: {
+    status: "created" | "existing" | "skipped" | "failed";
+    /** "qa_step_left_out": the QA status could not be created, so the workflow has no QA step. */
+    note?: "qa_step_left_out";
+    error?: string;
+  };
+}
+
+export interface QuickstartOptions {
+  runtimeId: string;
+  /** Also create the template's workflow when the workspace has none by that name. */
+  createWorkflow: boolean;
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : "unknown error";
+}
+
+function errorCode(err: unknown): string | undefined {
+  const body = (err as { body?: unknown } | null)?.body;
+  if (body && typeof body === "object" && "code" in body) {
+    const code = (body as { code?: unknown }).code;
+    return typeof code === "string" ? code : undefined;
+  }
+  return undefined;
+}
+
+function instructionsFor(role: SquadRoleKey): string {
+  const id = SQUAD_ROLES[role].agentTemplate;
+  const template = AGENT_INSTRUCTION_TEMPLATES.find((t) => t.id === id);
+  if (!template) throw new Error(`no instruction template "${id}"`);
+  return template.instructions;
+}
+
+/** What the quickstart would do with the agents the workspace already has. */
+export function planQuickstartAgents(
+  template: SquadTemplate,
+  agents: readonly Agent[],
+): { role: SquadRoleKey; name: string; reuse: boolean }[] {
+  const live = new Set(agents.filter((a) => !a.archived_at).map((a) => a.name));
+  return template.roles.map((role) => {
+    const { name } = SQUAD_ROLES[role];
+    return { role, name, reuse: live.has(name) };
+  });
+}
+
+function workflowSteps(
+  steps: readonly SquadWorkflowStep[],
+  agentIds: Partial<Record<SquadRoleKey, string>>,
+  withNewStatuses: boolean,
+): IssueWorkflowStepInput[] | null {
+  const out: IssueWorkflowStepInput[] = [];
+  for (const step of steps) {
+    if ("name" in step.status && !withNewStatuses) continue;
+    let handler: IssueWorkflowHandler;
+    if (step.handler) {
+      const id = agentIds[step.handler];
+      if (!id) return null;
+      handler = { type: "agent", id };
+    } else {
+      handler = { type: "none" };
+    }
+    const base = {
+      handler,
+      instructions: step.instructions,
+      ...(step.back ? { back_status_key: step.back } : {}),
+    };
+    out.push(
+      "key" in step.status
+        ? { status_key: step.status.key, ...base }
+        : { new_status: { name: step.status.name, category: "started" }, ...base },
+    );
+  }
+  return out;
+}
+
+/**
+ * Creates the agents a squad template needs (reusing agents that already have
+ * the template's names), the squad with its instructions and roster, and
+ * optionally its workflow. It never edits something that already exists, so
+ * running it again after a partial failure finishes the job.
+ */
+export async function runSquadQuickstart(
+  client: SquadQuickstartClient,
+  template: SquadTemplate,
+  options: QuickstartOptions,
+  onProgress?: (outcome: QuickstartOutcome) => void,
+): Promise<QuickstartOutcome> {
+  const outcome: QuickstartOutcome = {
+    agents: [],
+    squad: { id: null, status: "failed" },
+    workflow: { status: "skipped" },
+  };
+  const report = () => onProgress?.(structuredClone(outcome));
+
+  const existing = await client.listAgents({ include_archived: false });
+  const byName = new Map(
+    existing.filter((a) => !a.archived_at).map((a) => [a.name, a] as const),
+  );
+  const agentIds: Partial<Record<SquadRoleKey, string>> = {};
+
+  for (const role of template.roles) {
+    const { name, description } = SQUAD_ROLES[role];
+    const found = byName.get(name);
+    if (found) {
+      agentIds[role] = found.id;
+      outcome.agents.push({ role, name, id: found.id, status: "reused" });
+      report();
+      continue;
+    }
+    try {
+      const created = await client.createAgent({
+        name,
+        description,
+        instructions: instructionsFor(role),
+        runtime_id: options.runtimeId,
+      });
+      agentIds[role] = created.id;
+      outcome.agents.push({ role, name, id: created.id, status: "created" });
+    } catch (err) {
+      outcome.agents.push({
+        role,
+        name,
+        id: null,
+        status: "failed",
+        error: errorMessage(err),
+      });
+    }
+    report();
+  }
+
+  const leaderId = agentIds.lead;
+  if (!leaderId) {
+    outcome.squad = {
+      id: null,
+      status: "failed",
+      error: "the squad leader could not be created",
+    };
+    report();
+    return outcome;
+  }
+
+  try {
+    const squads = await client.listSquads();
+    const found = squads.find((s) => !s.archived_at && s.name === template.name);
+    if (found) {
+      outcome.squad = { id: found.id, status: "existing" };
+    } else {
+      const squad = await client.createSquad({
+        name: template.name,
+        description: template.description,
+        leader_id: leaderId,
+      });
+      outcome.squad = { id: squad.id, status: "created" };
+      const failures: string[] = [];
+      try {
+        await client.updateSquad(squad.id, { instructions: template.instructions });
+      } catch (err) {
+        failures.push(`instructions: ${errorMessage(err)}`);
+      }
+      for (const role of template.roles) {
+        const memberId = agentIds[role];
+        if (role === "lead" || !memberId) continue;
+        try {
+          await client.addSquadMember(squad.id, {
+            member_type: "agent",
+            member_id: memberId,
+            role: SQUAD_ROLES[role].role,
+          });
+        } catch (err) {
+          failures.push(`${SQUAD_ROLES[role].name}: ${errorMessage(err)}`);
+        }
+      }
+      if (failures.length > 0) outcome.squad.error = failures.join("; ");
+    }
+  } catch (err) {
+    outcome.squad = { id: null, status: "failed", error: errorMessage(err) };
+  }
+  report();
+
+  if (options.createWorkflow && template.workflow) {
+    try {
+      const { workflows } = await client.listIssueWorkflows();
+      if (workflows.some((w) => w.name === template.workflow!.name)) {
+        outcome.workflow = { status: "existing" };
+      } else {
+        const write = (withNewStatuses: boolean) => {
+          const steps = workflowSteps(template.workflow!.steps, agentIds, withNewStatuses);
+          if (!steps) throw new Error("a workflow step has no agent to hand to");
+          return client.createIssueWorkflow({
+            name: template.workflow!.name,
+            description: template.workflow!.description,
+            steps,
+          });
+        };
+        try {
+          await write(true);
+          outcome.workflow = { status: "created" };
+        } catch (err) {
+          // Only a workspace admin can add a status. Without one the workflow
+          // still builds and reviews; it just has no separate QA step.
+          if (errorCode(err) !== "status_create_forbidden") throw err;
+          await write(false);
+          outcome.workflow = { status: "created", note: "qa_step_left_out" };
+        }
+      }
+    } catch (err) {
+      outcome.workflow = { status: "failed", error: errorMessage(err) };
+    }
+    report();
+  }
+
+  return outcome;
+}

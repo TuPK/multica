@@ -266,5 +266,43 @@
     "toast_failed": "Échec du marquage comme doublon",
     "error_target_is_duplicate": "{{identifier}} est elle-même un doublon. Choisissez plutôt sa tâche d'origine.",
     "error_has_duplicates": "D'autres tâches sont marquées comme doublons de celle-ci. Retirez d'abord ces marques."
+  },
+  "squad_quickstart": {
+    "title": "Démarrage rapide d'un squad",
+    "template_label": "Modèle",
+    "templates": {
+      "sdlc_greenfield": {
+        "name": "SDLC · Nouveau produit",
+        "description": "Mène une demande de l'idée à un produit vérifié : brief, PRD, UX, architecture, build en file d'attente et rapport final."
+      },
+      "sdlc_maintenance": {
+        "name": "SDLC · Produit existant",
+        "description": "Trie un bug, une fonctionnalité, une optimisation ou une mise à niveau, l'oriente vers les bons agents, la vérifie et rend compte."
+      }
+    },
+    "agents_label": "Agents",
+    "agent_new": "Nouveau",
+    "agent_reused": "Existe déjà",
+    "workflow_label": "Créer aussi le workflow « {{name}} »",
+    "workflow_hint": "Rattachez-le au projet qui construit le produit ; la file de build en a besoin pour terminer les issues.",
+    "create": "Créer le squad",
+    "creating": "Création…",
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "retry": "Réessayer",
+    "open_squad": "Ouvrir le squad",
+    "result_ready": "Squad prêt",
+    "result_problems": "Terminé avec des problèmes",
+    "status_created": "Créé",
+    "status_reused": "Réutilisé",
+    "status_failed": "Échec",
+    "status_existing": "Existe déjà, laissé tel quel",
+    "status_problem": "Problème",
+    "squad_row": "Squad",
+    "workflow_row": "Workflow",
+    "workflow_without_qa": "Créé sans étape QA : seuls les administrateurs de l'espace peuvent ajouter un statut.",
+    "next_step": "Assignez une issue de demande au squad pour démarrer.",
+    "toast_done": "Squad créé",
+    "toast_failed": "Impossible de créer le squad"
   }
 }

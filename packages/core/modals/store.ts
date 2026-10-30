@@ -7,6 +7,7 @@ type ModalType =
   | "quick-create-issue"
   | "create-project"
   | "create-squad"
+  | "squad-quickstart"
   | "feedback"
   | "issue-set-parent"
   | "issue-mark-duplicate"

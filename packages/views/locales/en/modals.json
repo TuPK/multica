@@ -266,5 +266,43 @@
     "toast_failed": "Failed to mark as duplicate",
     "error_target_is_duplicate": "{{identifier}} is itself a duplicate. Pick its original instead.",
     "error_has_duplicates": "Other issues are marked as duplicates of this one. Remove those marks first."
+  },
+  "squad_quickstart": {
+    "title": "Squad quickstart",
+    "template_label": "Template",
+    "templates": {
+      "sdlc_greenfield": {
+        "name": "SDLC · New product",
+        "description": "Takes a request from idea to a verified product: brief, PRD, UX, architecture, a queued build, and a final report."
+      },
+      "sdlc_maintenance": {
+        "name": "SDLC · Existing product",
+        "description": "Triages a bug, feature, optimization, or upgrade, routes it to the right agents, verifies it, and reports."
+      }
+    },
+    "agents_label": "Agents",
+    "agent_new": "New",
+    "agent_reused": "Already exists",
+    "workflow_label": "Also create the “{{name}}” workflow",
+    "workflow_hint": "Attach it to the project that builds the product; the build queue needs it to finish issues.",
+    "create": "Create squad",
+    "creating": "Creating…",
+    "cancel": "Cancel",
+    "close": "Close",
+    "retry": "Try again",
+    "open_squad": "Open squad",
+    "result_ready": "Squad ready",
+    "result_problems": "Finished with problems",
+    "status_created": "Created",
+    "status_reused": "Reused",
+    "status_failed": "Failed",
+    "status_existing": "Already there, left unchanged",
+    "status_problem": "Problem",
+    "squad_row": "Squad",
+    "workflow_row": "Workflow",
+    "workflow_without_qa": "Created without a QA step: only workspace admins can add a status.",
+    "next_step": "Assign a request issue to the squad to start.",
+    "toast_done": "Squad created",
+    "toast_failed": "Could not create the squad"
   }
 }

@@ -2,6 +2,7 @@
   "page": {
     "title": "Squads",
     "new_button": "New Squad",
+    "quickstart_button": "Quickstart",
     "empty_no_squads": "No squads yet.",
     "empty_no_match": "No squads match your filters.",
     "table": {
