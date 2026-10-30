@@ -3588,6 +3588,9 @@ type UpdateIssueRequest struct {
 	// ("暂时不启动" — MUL-3375). It is not an undo: the change takes effect and
 	// the issue can be run later via manual run/rerun. Optional; omitted or
 	// false keeps today's behavior. Mirrors comment suppress_agent_ids.
+	// A write that enters a project workflow step with a handler ignores it:
+	// that step is work its handler has not started, and no later write
+	// would start it.
 	SuppressRun bool `json:"suppress_run,omitempty"`
 	// HandoffNote is retained at the API boundary for installed clients that
 	// predate the handoff UI removal. It is consumed only when this write starts
@@ -4149,7 +4152,7 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		},
 		h.issueTriggerWriteProbe(r, actorType, actorID, issue),
 	)
-	willRun = willRun && !req.SuppressRun
+	willRun = willRun && (!req.SuppressRun || handoff != nil)
 
 	updatedPayload := map[string]any{
 		"issue":               resp,
@@ -4954,7 +4957,7 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 			},
 			h.issueTriggerWriteProbe(r, actorType, actorID, issue),
 		)
-		willRun = willRun && !req.Updates.SuppressRun
+		willRun = willRun && (!req.Updates.SuppressRun || handoff != nil)
 		batchPayload := map[string]any{
 			"issue":                      resp,
 			"assignee_changed":           assigneeChanged,
