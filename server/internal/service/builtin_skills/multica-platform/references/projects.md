@@ -192,7 +192,9 @@ reference (`in_progress` on start, `in_review` on delivery) do not apply.
   it was queued, and moves along with your own status changes. If someone else
   moves the issue while you work, your status changes are refused with
   `workflow_step_moved`, naming who moved it. Do not retry; comment if
-  something still needs attention.
+  something still needs attention. A run that has not started yet is cancelled
+  instead of started when its issue has left its step: the issue went back to
+  backlog, to a step no handler takes, or to another assignee.
 - **The assignee owns the step.** Only the issue's assignee gets the step's
   instructions and commands. Any other agent on the issue — mentioned in a
   comment, say — sees the statuses and leaves them to the assignee unless
