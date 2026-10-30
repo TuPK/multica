@@ -863,7 +863,7 @@ func Brief(in BriefInput) string {
 		b.WriteString("These commands are the only status moves for your step: set no status to mark that you started, and none to mark delivery — no separate `in_progress` or `in_review`.\n")
 		b.WriteString("Before your run ends, either run one of them or leave the issue at this step on purpose because its work continues. The system does not advance the status when your run ends.\n")
 	}
-	b.WriteString("When the issue enters a step you handle, you get a run automatically — do not add a wakeup for that. Wakeups for anything else (a time, a PR, another issue, a step someone else handles) are fine.\n")
+	b.WriteString("When the issue enters a step you handle, you get a run automatically — do not add a wakeup for that, and do not pass `--no-start` on the status move into it: that move is what queues the run. Wakeups for anything else (a time, a PR, another issue, a step someone else handles) are fine.\n")
 	return b.String()
 }
 
