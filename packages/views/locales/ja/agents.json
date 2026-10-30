@@ -993,6 +993,38 @@
         "fullstack_developer": {
           "name": "フルスタック開発者",
           "description": "ストーリーをエンドツーエンドで完成させ、BMAD のステータスフローに従い、Agent Team で進めます。"
+        },
+        "code_reviewer": {
+          "name": "コードレビュアー",
+          "description": "変更を受け入れ基準と照らし、コードの証拠にもとづいて判定を報告します。修正はしません。"
+        },
+        "qa_tester": {
+          "name": "QA テスター",
+          "description": "コードを書く前に受け入れ基準からテストを設計し、実システムで実行します。"
+        },
+        "bug_fixer": {
+          "name": "バグ修正担当",
+          "description": "不具合を再現し、最小の変更で直し、それを超える変更は引き継ぎます。"
+        },
+        "security_reviewer": {
+          "name": "セキュリティレビュアー",
+          "description": "アクセス制御、データ、依存関係、可観測性を確認できた場合にのみ、変更やリリースを通します。"
+        },
+        "tech_lead": {
+          "name": "テックリード",
+          "description": "専門担当に指示を出し、その証拠を確認します。報告だけでは完了と認めません。"
+        },
+        "architect": {
+          "name": "アーキテクト",
+          "description": "承認済みの要件を満たす最も単純な構成を設計し、決定を ADR に残します。"
+        },
+        "product_analyst": {
+          "name": "プロダクトアナリスト",
+          "description": "資料をテスト可能で追跡できる要件に変え、先に進めない質問を挙げます。"
+        },
+        "devops_engineer": {
+          "name": "DevOps エンジニア",
+          "description": "検証済みの 1 つの digest を各環境へ昇格し、本番の前に人の承認を待ちます。"
         }
       }
     },

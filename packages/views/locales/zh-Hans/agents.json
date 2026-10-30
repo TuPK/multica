@@ -382,6 +382,38 @@
         "fullstack_developer": {
           "name": "全栈开发者",
           "description": "端到端交付 Story，遵循 BMAD 状态流转，并通过 Agent Team 协作。"
+        },
+        "code_reviewer": {
+          "name": "代码评审员",
+          "description": "对照验收标准评审变更，依据代码证据给出结论，不直接修改。"
+        },
+        "qa_tester": {
+          "name": "QA 测试员",
+          "description": "在编码前根据验收标准设计测试，再在真实系统上执行。"
+        },
+        "bug_fixer": {
+          "name": "缺陷修复者",
+          "description": "复现缺陷，用最小改动修复，更大的改动交由他人决定。"
+        },
+        "security_reviewer": {
+          "name": "安全评审员",
+          "description": "只有访问控制、数据、依赖和可观测性都经过验证，才放行变更或发布。"
+        },
+        "tech_lead": {
+          "name": "技术负责人",
+          "description": "为各专项角色分派任务并核查证据，不会仅凭报告就认定完成。"
+        },
+        "architect": {
+          "name": "架构师",
+          "description": "为已批准的需求设计最简单的方案，并以 ADR 记录决策。"
+        },
+        "product_analyst": {
+          "name": "产品分析师",
+          "description": "把资料转化为可测试、可追溯的需求，并提出阻碍推进的问题。"
+        },
+        "devops_engineer": {
+          "name": "DevOps 工程师",
+          "description": "将同一个已验证的 digest 逐环境提升，在生产前等待人工批准。"
         }
       }
     },

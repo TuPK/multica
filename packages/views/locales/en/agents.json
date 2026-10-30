@@ -392,6 +392,38 @@
         "fullstack_developer": {
           "name": "Full Stack Developer",
           "description": "Delivers stories end to end, follows the BMAD status flow, and works through an agent team."
+        },
+        "code_reviewer": {
+          "name": "Code Reviewer",
+          "description": "Checks a change against its acceptance criteria with evidence from the code, and reports a verdict without editing."
+        },
+        "qa_tester": {
+          "name": "QA Tester",
+          "description": "Designs tests from acceptance criteria before code, then runs them against the real system."
+        },
+        "bug_fixer": {
+          "name": "Bug Fixer",
+          "description": "Reproduces a defect, fixes it with the smallest change, and hands off anything bigger."
+        },
+        "security_reviewer": {
+          "name": "Security Reviewer",
+          "description": "Passes a change or release only on verified controls: access, data, dependencies, observability."
+        },
+        "tech_lead": {
+          "name": "Tech Lead",
+          "description": "Briefs specialists, checks their evidence, and never accepts a report alone."
+        },
+        "architect": {
+          "name": "Architect",
+          "description": "Designs the simplest system that meets approved requirements and records decisions as ADRs."
+        },
+        "product_analyst": {
+          "name": "Product Analyst",
+          "description": "Turns sources into testable, traceable requirements and raises the questions that block them."
+        },
+        "devops_engineer": {
+          "name": "DevOps Engineer",
+          "description": "Promotes one verified digest through the environments and waits for a person before production."
         }
       }
     },
