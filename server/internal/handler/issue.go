@@ -4040,6 +4040,21 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		// A project move remapped the status; guard the key actually written.
 		statusKeyForGuard = params.Status.String
 	}
+	if callerType == "agent" {
+		target := prevIssue.Status
+		if params.Status.Valid {
+			target = params.Status.String
+		}
+		open, err := h.openSubIssuesBlockingClose(r.Context(), prevIssue, target)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to check sub-issues before closing")
+			return
+		}
+		if len(open) > 0 {
+			h.writeSubIssuesOpen(r.Context(), w, prevIssue, open)
+			return
+		}
+	}
 	if touchedType || touchedID || handoff != nil {
 		if status, msg := h.validateAssigneePair(r.Context(), r, workspaceID, params.AssigneeType, params.AssigneeID); status != 0 {
 			writeError(w, status, msg)
@@ -4868,6 +4883,16 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 		handoff, err := h.applyIssueWorkflow(r.Context(), prevIssue, &params, req.Updates.Status != nil, batchTouchedType || batchTouchedID, false, callerRun)
 		if err != nil {
 			continue
+		}
+		if callerType == "agent" {
+			target := prevIssue.Status
+			if params.Status.Valid {
+				target = params.Status.String
+			}
+			// A batch skips an item it cannot apply, as it does for the other guards.
+			if open, err := h.openSubIssuesBlockingClose(r.Context(), prevIssue, target); err != nil || len(open) > 0 {
+				continue
+			}
 		}
 		issueStatusGuard := batchStatusKey
 		if params.Status.Valid {

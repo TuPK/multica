@@ -344,9 +344,9 @@ silent. A sibling set with **no** stages wakes the parent once, when the *last*
 sub-issue finishes. A parent in `backlog` is not woken; it catches up once it
 leaves backlog. A member assignee gets an inbox notification instead of a run.
 
-Advancement is agent-driven: the server only detects the closed barrier and
-wakes the parent assignee, who then decides whether to promote the next stage's
-`backlog` sub-issues to `todo`.
+Advancement is agent-driven: the server only detects the closed barrier and wakes
+the parent assignee, who promotes the next stage's `backlog` sub-issues to `todo`.
+An agent cannot close a parent while sub-issues are open (`sub_issues_open`).
 
 ```bash
 # Stage 1 runs now; later stages parked until promoted
