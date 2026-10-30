@@ -90,7 +90,7 @@ Les erreurs renvoyées par l'agent lui-même ne sont généralement pas relancé
 
 Le mode **Exécution seule** d'une automatisation ne relance pas automatiquement, pour éviter tout chevauchement avec la prochaine exécution planifiée. Le mode **Créer une tâche** produit des exécutions de tâche ordinaires, donc les défaillances d'infrastructure sont toujours relancées selon les règles ci-dessus. Les deux modes affichent leur résultat final dans l'historique des exécutions de l'automatisation.
 
-Lorsqu'une tâche n'a aucune autre exécution active et aucune nouvelle relance en attente, un échec fait repasser une tâche `in_progress` à `todo`.
+Lorsqu'une tâche n'a aucune autre exécution active et aucune nouvelle relance en attente, un échec fait passer une tâche `in_progress` à `blocked`, en attente qu'on corrige la cause. Si le workflow du projet ne liste pas `blocked`, le statut reste inchangé et le commentaire d'échec explique ce qui s'est passé.
 
 ## Référence des motifs d'échec
 

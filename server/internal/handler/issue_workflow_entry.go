@@ -414,6 +414,25 @@ func taskRunsForAssignee(issue db.Issue, task *db.AgentTaskQueue) bool {
 	return false
 }
 
+// handoffRunStale reports whether a run queued by a workflow handoff has lost
+// its work. Such a run is owed to the issue only while it sits on a step that
+// hands off to the run's assignee. Once the issue is back in backlog, on a step
+// no handler takes, or with another assignee, nothing hands the work to this
+// run, and it must not start. Comment, mention, wakeup and delegated runs are
+// not handoffs and are left alone.
+func (h *Handler) handoffRunStale(ctx context.Context, issue db.Issue, task *db.AgentTaskQueue, wakeup bool) bool {
+	if task == nil || !task.WorkflowStep.Valid || wakeup || task.DelegatedFromTaskID.Valid ||
+		task.TriggerCommentID.Valid || len(task.CoalescedCommentIds) > 0 {
+		return false
+	}
+	def, _, err := issueworkflow.ForProject(ctx, h.Queries, issue.WorkspaceID, issue.ProjectID)
+	if err != nil || def == nil || (def.IsDefault && !def.HandsOffAnywhere()) {
+		return false
+	}
+	step, ok := def.Step(issue.Status)
+	return !ok || !step.HandsOff() || !taskRunsForAssignee(issue, task)
+}
+
 // stepHandlerName describes who a step hands the issue to, for briefs.
 func (h *Handler) stepHandlerName(ctx context.Context, issue db.Issue, project db.Project, step issueworkflow.Step) string {
 	t, id, ok := issueworkflow.ResolveHandler(step, project, issue.CreatorType, issue.CreatorID)

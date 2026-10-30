@@ -3187,6 +3187,27 @@ func (h *Handler) buildClaimedTaskResponse(r *http.Request, task *db.AgentTaskQu
 		// (No FK on squad_id — see migration 127.) We append (not replace)
 		// so per-agent instructions stay authoritative; the squad briefing
 		// stacks on top as task-specific squad context.
+		// A handoff run whose issue has left the step it was queued for has no
+		// work left. Cancel it rather than start it: it would take the
+		// checkout from work the queue has released (MUL-7420).
+		if h.handoffRunStale(r.Context(), issue, task, resp.WakeupID != "") {
+			if _, cerr := h.TaskService.CancelTaskWithReason(r.Context(), task.ID, "The issue left the workflow step this run was queued for.", "workflow_step_left"); cerr != nil {
+				slog.Error("task claim: cancel run whose issue left its workflow step failed",
+					"task_id", uuidToString(task.ID), "error", cerr)
+				return resp, deliveredCommentIDs, issueSnapshot, agentSkillCount, builtinSkillCount, &claimBuildFailure{
+					outcome: "error_workflow_step_cancel",
+					status:  http.StatusInternalServerError,
+					message: "failed to cancel a run whose issue left its workflow step",
+				}
+			}
+			slog.Info("task claim: cancelled run whose issue left its workflow step",
+				"task_id", uuidToString(task.ID), "issue_id", uuidToString(issue.ID), "issue_status", issue.Status)
+			return resp, deliveredCommentIDs, issueSnapshot, agentSkillCount, builtinSkillCount, &claimBuildFailure{
+				outcome: "workflow_step_left",
+				status:  http.StatusOK,
+				settled: true,
+			}
+		}
 		// Project workflow (MUL-7420): best-effort, like the status catalog
 		// below — a failure degrades to the workspace-wide status rules.
 		// Resolved before the leader briefing, which words the owning

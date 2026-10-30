@@ -98,7 +98,7 @@ Agents update the issue’s status as work progresses: by default they set `in_p
 <Callout type="info">
 Two changes are made by the system:
 
-- When a run fails, the issue has no other runs, and no retry is triggered, `in_progress` rolls back to `todo`.
+- When a run fails, the issue has no other runs, and no retry is triggered, `in_progress` moves to `blocked`: the work cannot continue until someone fixes the cause. In a project whose workflow does not list `blocked`, the status stays as it is and the failure comment says what happened.
 - When every PR linked to the issue is merged, the issue moves to the status the workspace chose (`done` by default) — unless the workspace leaves status alone or the issue is switched off. See [GitHub integration](/github-integration#when-merged-prs-move-an-issue).
 </Callout>
 

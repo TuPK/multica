@@ -24,6 +24,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/inbox"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
+	"github.com/multica-ai/multica/server/internal/issueworkflow"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/realtime"
 	"github.com/multica-ai/multica/server/internal/runtimeapps"
@@ -6249,11 +6250,27 @@ func (s *TaskService) terminateTasksInTx(ctx context.Context, fail func(*db.Quer
 	return failed, nil
 }
 
+// FailedRunLandingStatus is the status an in_progress issue takes when its run
+// failed for good and no retry or other run follows: blocked, the status for
+// work that cannot continue until someone acts. A workflow that does not list
+// blocked keeps the status, and the failure comment says what happened. Nothing
+// is queued for the landed status, so no run starts on its own.
+func FailedRunLandingStatus(ctx context.Context, q *db.Queries, issue db.Issue) string {
+	def, _, err := issueworkflow.ForProject(ctx, q, issue.WorkspaceID, issue.ProjectID)
+	if err != nil {
+		return ""
+	}
+	if def != nil && issueworkflow.CheckStatus(def, issuestatus.Blocked) != nil {
+		return ""
+	}
+	return issuestatus.Blocked
+}
+
 // HandleFailedTasks runs the post-failure side effects for a batch of
 // freshly-failed tasks: optional auto-retry, task:failed event broadcast,
 // agent status reconciliation, and (when an issue has no remaining active
-// task and isn't being retried) resetting the issue back to todo so the
-// daemon can pick it up again.
+// task and isn't being retried) landing its in_progress status on blocked
+// (FailedRunLandingStatus).
 //
 // The bulk failure paths — sweepers and recover-orphans — funnel through
 // here so the same UI-consistency guarantees apply on each of them.
@@ -6304,8 +6321,9 @@ func (s *TaskService) HandleFailedTasks(ctx context.Context, tasks []db.AgentTas
 		if t.IssueID.Valid {
 			if issue, err := s.Queries.GetIssue(ctx, t.IssueID); err == nil {
 				workspaceID = util.UUIDToString(issue.WorkspaceID)
-				// Reset stuck in_progress issues only when no other active
-				// task exists for the issue and no retry was just enqueued.
+				// Land an in_progress issue whose run failed for good, only when
+				// no other active task exists for it and no retry was just
+				// enqueued.
 				issueKey := util.UUIDToString(t.IssueID)
 				// Only "an agent is actively working" resets, and since
 				// MUL-7240 that is the fixed in_progress key alone. in_review
@@ -6324,20 +6342,21 @@ func (s *TaskService) HandleFailedTasks(ctx context.Context, tasks []db.AgentTas
 							"issue_id", issueKey,
 							"error", checkErr,
 						)
-					} else if !hasActive {
+					} else if landing := FailedRunLandingStatus(ctx, s.Queries, issue); !hasActive && landing != "" {
 						updatedIssue, updateErr := s.Queries.UpdateIssueStatus(ctx, db.UpdateIssueStatusParams{
 							SourceTaskID: t.ID,
 							ID:           t.IssueID,
-							Status:       "todo",
+							Status:       landing,
 							WorkspaceID:  issue.WorkspaceID,
 						})
 						if updateErr != nil {
-							slog.Warn("handle failed tasks: reset stuck issue failed",
+							slog.Warn("handle failed tasks: land failed issue failed",
 								"issue_id", issueKey,
+								"status", landing,
 								"error", updateErr,
 							)
 						} else {
-							// This direct reset bypasses the HTTP UpdateIssue
+							// This direct write bypasses the HTTP UpdateIssue
 							// handler that normally emits issue:updated, so emit
 							// it here too. Without it the board / status-filter
 							// caches keep showing the issue as in_progress until

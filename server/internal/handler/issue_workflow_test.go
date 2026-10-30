@@ -870,6 +870,70 @@ func TestClaimCarriesProjectWorkflow(t *testing.T) {
 	}
 }
 
+// A run queued for a workflow step must not start once its issue has left that
+// step for backlog. Nobody handed the issue to the run any more, and it would
+// otherwise take the checkout from work the queue has released.
+func TestClaimCancelsRunWhoseIssueLeftItsWorkflowStep(t *testing.T) {
+	seedTestCatalog(t)
+	ctx := context.Background()
+	runtimeID := createClaimReclaimRuntime(t, ctx, "Workflow stale run runtime")
+	agentID, _ := createClaimReclaimAgentAndIssue(t, ctx, runtimeID, "Workflow stale run agent")
+	projectID := deliveryProject(t, "Workflow stale run project", agentID)
+	issueID := dbfx.Issue(t, "left its step", testutil.Cols{
+		"project_id": projectID, "status": "backlog", "assignee_type": "agent", "assignee_id": agentID,
+	})
+	taskID := dbfx.Task(t, agentID, testutil.Cols{
+		"issue_id": issueID, "runtime_id": runtimeID, "status": "queued", "workflow_step": "todo",
+	})
+
+	req := newOwnerDaemonRequest("POST", "/api/daemon/runtimes/"+runtimeID+"/tasks/claim", nil)
+	req = withURLParam(req, "runtimeId", runtimeID)
+	w := testutil.Call(t, testHandler.ClaimTaskByRuntime, req).Want(http.StatusOK)
+	var resp struct {
+		Task *struct {
+			ID string `json:"id"`
+		} `json:"task"`
+	}
+	w.JSON(&resp)
+	if resp.Task != nil {
+		t.Fatalf("claimed run %s for a step its issue has left", resp.Task.ID)
+	}
+	var status string
+	dbfx.QueryRow(t, `SELECT status FROM agent_task_queue WHERE id = $1`, taskID).Scan(&status)
+	if status != "cancelled" {
+		t.Fatalf("run status = %q after its issue left the step, want cancelled", status)
+	}
+}
+
+// The same run is claimed when its issue is still on the step that hands it to
+// the assignee: only a run whose handoff has gone is cancelled.
+func TestClaimStartsRunWhoseIssueStillHandsItOff(t *testing.T) {
+	seedTestCatalog(t)
+	ctx := context.Background()
+	runtimeID := createClaimReclaimRuntime(t, ctx, "Workflow live run runtime")
+	agentID, _ := createClaimReclaimAgentAndIssue(t, ctx, runtimeID, "Workflow live run agent")
+	projectID := deliveryProject(t, "Workflow live run project", agentID)
+	issueID := dbfx.Issue(t, "still on its step", testutil.Cols{
+		"project_id": projectID, "status": "in_progress", "assignee_type": "agent", "assignee_id": agentID,
+	})
+	taskID := dbfx.Task(t, agentID, testutil.Cols{
+		"issue_id": issueID, "runtime_id": runtimeID, "status": "queued", "workflow_step": "in_progress",
+	})
+
+	req := newOwnerDaemonRequest("POST", "/api/daemon/runtimes/"+runtimeID+"/tasks/claim", nil)
+	req = withURLParam(req, "runtimeId", runtimeID)
+	w := testutil.Call(t, testHandler.ClaimTaskByRuntime, req).Want(http.StatusOK)
+	var resp struct {
+		Task *struct {
+			ID string `json:"id"`
+		} `json:"task"`
+	}
+	w.JSON(&resp)
+	if resp.Task == nil || resp.Task.ID != taskID {
+		t.Fatalf("run %s was not claimed while its issue is on its step: %s", taskID, w.Body.String())
+	}
+}
+
 // claimBriefForTest renders the workflow brief a claim of task would carry
 // for the issue as it is now.
 func claimBriefForTest(t *testing.T, issueID string, task db.AgentTaskQueue) string {

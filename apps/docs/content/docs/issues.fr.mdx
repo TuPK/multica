@@ -98,7 +98,7 @@ Les agents mettent à jour le statut au fil du travail : par défaut, ils passen
 <Callout type="info">
 Deux changements sont effectués par le système :
 
-- Lorsqu'une exécution échoue, que la tâche n'a aucune autre exécution et qu'aucune relance n'est déclenchée, `in_progress` revient à `todo`.
+- Lorsqu'une exécution échoue, que la tâche n'a aucune autre exécution et qu'aucune relance n'est déclenchée, `in_progress` passe à `blocked` : le travail ne peut pas continuer tant que la cause n'est pas corrigée. Si le workflow du projet ne liste pas `blocked`, le statut reste inchangé et le commentaire d'échec explique ce qui s'est passé.
 - Lorsqu'une PR GitHub liée est fusionnée avec intention de clôture et qu'aucune autre PR liée n'est encore ouverte ou en brouillon, la tâche passe à `done`.
 </Callout>
 
