@@ -143,6 +143,14 @@ func (s *IssueService) WillEnqueueRun(ctx context.Context, in IssueTriggerInput,
 			return IssueRunTrigger{}, false
 		}
 		source = RunSourceStatus
+	case in.StatusChanged && currentStatus == "todo" && prevStatus != "todo":
+		// The status catalog promises that moving an issue to todo starts its
+		// assigned agent, from any status. A returned or reopened issue must
+		// not wait in todo for a run nothing queues.
+		if probe.IsSelfLoop != nil && probe.IsSelfLoop() {
+			return IssueRunTrigger{}, false
+		}
+		source = RunSourceStatus
 	default:
 		return IssueRunTrigger{}, false
 	}

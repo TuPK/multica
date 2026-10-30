@@ -90,7 +90,7 @@ Errors returned by the agent itself are usually not retried automatically. Expir
 
 An Autopilot's **run only** mode does not retry automatically, to avoid overlapping with the next scheduled run. The **create issue** mode produces regular issue runs, so infrastructure failures still retry under the rules above. Both modes show their final result in the Autopilot run history.
 
-When an issue has no other active run and no new retry waiting to run, a failure moves an `in_progress` issue back to `todo`.
+When an issue has no other active run and no new retry waiting to run, a failure moves an `in_progress` issue to `blocked`, which waits for someone to fix the cause. In a project whose workflow does not list `blocked`, the status stays as it is and the failure comment says what happened.
 
 ## Failure reason reference
 
