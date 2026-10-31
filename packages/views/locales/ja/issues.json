@@ -1724,5 +1724,16 @@
   },
   "hover_card": {
     "created_updated": "{{created}}に作成 · {{updated}}に更新"
+  },
+  "office": {
+    "title": "オフィス",
+    "create_in_room": "{{room}}に新規タスク",
+    "staff": "スタッフ",
+    "staff_empty": "スタッフはまだいません",
+    "staff_filter": "{{name}}で絞り込む",
+    "running": "実行中: {{count}}",
+    "assign_denied": "このエージェントは割り当てられません",
+    "grouping_notice": "部屋はステータスに対応します。オフィスを見るにはステータスでグループ化してください。",
+    "grouping_reset": "ステータスでグループ化"
   }
 }

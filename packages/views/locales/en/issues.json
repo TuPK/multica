@@ -1790,5 +1790,16 @@
   },
   "hover_card": {
     "created_updated": "created {{created}} · updated {{updated}}"
+  },
+  "office": {
+    "title": "Office",
+    "create_in_room": "New issue in {{room}}",
+    "staff": "Staff",
+    "staff_empty": "No staff yet",
+    "staff_filter": "Filter by {{name}}",
+    "running": "Running: {{count}}",
+    "assign_denied": "You can't assign this agent",
+    "grouping_notice": "Rooms follow statuses. Group by Status to see the office.",
+    "grouping_reset": "Group by Status"
   }
 }

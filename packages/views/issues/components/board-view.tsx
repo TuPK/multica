@@ -257,17 +257,7 @@ function buildGroups(
 const EMPTY_PROGRESS_MAP = new Map<string, ChildProgress>();
 const EMPTY_IDS: string[] = [];
 
-function BoardViewImpl({
-  issues,
-  visibleStatuses,
-  onMoveIssue,
-  childProgressMap = EMPTY_PROGRESS_MAP,
-  projectMap,
-  projectId,
-  onCreateIssue,
-  statusPagination,
-  groupBranches,
-}: {
+export interface BoardViewProps {
   issues: Issue[];
   visibleStatuses: IssueStatus[];
   onMoveIssue: (issueId: string, updates: DragMoveUpdates, onSettled?: () => void) => void;
@@ -278,7 +268,19 @@ function BoardViewImpl({
   onCreateIssue?: (defaults: IssueCreateDefaults) => void;
   statusPagination?: IssueStatusPagination;
   groupBranches?: IssueGroupBranches;
-}) {
+}
+
+function BoardViewImpl({
+  issues,
+  visibleStatuses,
+  onMoveIssue,
+  childProgressMap = EMPTY_PROGRESS_MAP,
+  projectMap,
+  projectId,
+  onCreateIssue,
+  statusPagination,
+  groupBranches,
+}: BoardViewProps) {
   const { t } = useT("issues");
   const storeGrouping = useViewStore((s) => s.grouping);
   const sortBy = useViewStore((s) => s.sortBy);

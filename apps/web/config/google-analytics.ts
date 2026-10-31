@@ -83,6 +83,7 @@ const WORKSPACE_SECTIONS = new Set([
   "issues",
   "members",
   "my-issues",
+  "office",
   "projects",
   "runtimes",
   "settings",

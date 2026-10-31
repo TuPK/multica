@@ -1724,5 +1724,16 @@
   },
   "hover_card": {
     "created_updated": "创建于 {{created}} · 更新于 {{updated}}"
+  },
+  "office": {
+    "title": "办公室",
+    "create_in_room": "在{{room}}新建任务",
+    "staff": "成员",
+    "staff_empty": "还没有成员",
+    "staff_filter": "按{{name}}筛选",
+    "running": "运行中：{{count}}",
+    "assign_denied": "无法分配该智能体",
+    "grouping_notice": "房间对应任务状态。按状态分组即可查看办公室。",
+    "grouping_reset": "按状态分组"
   }
 }

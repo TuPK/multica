@@ -33,6 +33,7 @@ const WORKSPACE_ROUTE_SEGMENTS = new Set([
   "chat",
   "inbox",
   "my-issues",
+  "office",
   "runtimes",
   "skills",
   "settings",

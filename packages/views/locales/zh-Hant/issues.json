@@ -1723,5 +1723,16 @@
   },
   "hover_card": {
     "created_updated": "建立於 {{created}} · 更新於 {{updated}}"
+  },
+  "office": {
+    "title": "辦公室",
+    "create_in_room": "在{{room}}新增任務",
+    "staff": "成員",
+    "staff_empty": "還沒有成員",
+    "staff_filter": "依{{name}}篩選",
+    "running": "執行中：{{count}}",
+    "assign_denied": "無法分配該智慧體",
+    "grouping_notice": "房間對應任務狀態。依狀態分組即可查看辦公室。",
+    "grouping_reset": "依狀態分組"
   }
 }
