@@ -1789,5 +1789,16 @@
   },
   "hover_card": {
     "created_updated": "a créé {{created}} · mis à jour {{updated}}"
+  },
+  "office": {
+    "title": "Bureau",
+    "create_in_room": "Nouvelle tâche : {{room}}",
+    "staff": "Équipe",
+    "staff_empty": "Aucun membre pour l'instant",
+    "staff_filter": "Filtrer par {{name}}",
+    "running": "En cours : {{count}}",
+    "assign_denied": "Vous ne pouvez pas assigner cet agent",
+    "grouping_notice": "Les salles suivent les statuts. Groupez par statut pour voir le bureau.",
+    "grouping_reset": "Grouper par statut"
   }
 }

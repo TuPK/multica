@@ -31,6 +31,7 @@ export type RouteIconName =
   | "BarChart3"
   | "Monitor"
   | "Server"
+  | "Building2"
   | "BookOpenText"
   | "Settings"
   | "File"
@@ -48,6 +49,7 @@ export type NavLabelKey =
   | "chat"
   | "my_issues"
   | "issues"
+  | "office"
   | "projects"
   | "autopilots"
   | "agents"
@@ -63,6 +65,7 @@ export type WorkspacePageKey =
   | "chat"
   | "myIssues"
   | "issues"
+  | "office"
   | "projects"
   | "autopilots"
   | "agents"
@@ -90,6 +93,7 @@ export const WORKSPACE_PAGES: Record<WorkspacePageKey, WorkspacePage> = {
   chat: { segment: "chat", icon: "MessageSquare", navKey: "chat" },
   myIssues: { segment: "my-issues", icon: "CircleUser", navKey: "my_issues" },
   issues: { segment: "issues", icon: "ListTodo", navKey: "issues" },
+  office: { segment: "office", icon: "Building2", navKey: "office" },
   projects: { segment: "projects", icon: "FolderKanban", navKey: "projects" },
   autopilots: { segment: "autopilots", icon: "Zap", navKey: "autopilots" },
   agents: { segment: "agents", icon: "Bot", navKey: "agents" },
