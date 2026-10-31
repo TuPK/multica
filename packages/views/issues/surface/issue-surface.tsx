@@ -30,7 +30,7 @@ import {
   type IssueScope,
 } from "@multica/core/issues/surface/scope";
 import type { Issue } from "@multica/core/types";
-import { BoardView } from "../components/board-view";
+import { BoardView, type BoardViewProps } from "../components/board-view";
 import { BOARD_COL_WIDTH } from "../components/board-column";
 import { BatchActionToolbar } from "../components/batch-action-toolbar";
 import { GanttView } from "../components/gantt-view";
@@ -63,6 +63,10 @@ interface IssueSurfaceComponentProps extends IssueSurfaceProps {
   showClientEmpty?: (context: IssueSurfaceRenderContext) => boolean;
   batchToolbar?: "always" | "list" | "never";
   contentClassName?: string;
+  /** Replaces the board renderer; receives exactly what `BoardView` would. */
+  renderBoard?: (props: BoardViewProps) => ReactNode;
+  /** `false` keeps the surface out of the scope's saved views. Default `true`. */
+  savedViews?: boolean;
 }
 
 /** An explicit, caller-owned store bypasses saved views and persisted surfaces. */
@@ -91,11 +95,14 @@ export function IssueSurface({
   showClientEmpty,
   batchToolbar = "always",
   contentClassName,
+  renderBoard,
+  savedViews = true,
 }: IssueSurfaceComponentProps) {
   const wsId = useWorkspaceId();
   // Saved views exist on workspace / my / project surfaces only.
-  const viewScope: IssueViewScope | null =
-    scope.type === "workspace"
+  const viewScope: IssueViewScope | null = !savedViews
+    ? null
+    : scope.type === "workspace"
       ? { scope_type: "workspace" }
       : scope.type === "my"
         ? { scope_type: "my" }
@@ -180,6 +187,7 @@ export function IssueSurface({
         showClientEmpty={showClientEmpty}
         batchToolbar={batchToolbar}
         contentClassName={contentClassName}
+        renderBoard={renderBoard}
       />
       </ViewBaselineProvider>
     </ViewStoreProvider>
@@ -198,7 +206,8 @@ function IssueSurfaceContent({
   showClientEmpty,
   batchToolbar,
   contentClassName,
-}: Omit<IssueSurfaceComponentProps, "surfaceKey">) {
+  renderBoard,
+}: Omit<IssueSurfaceComponentProps, "surfaceKey" | "savedViews">) {
   const workspaceId = useWorkspaceId();
   // One polling owner for the whole surface; individual cards only select cache data.
   useQuery({ ...workspaceWakeupSummariesOptions(workspaceId), refetchInterval: 10_000 });
@@ -245,6 +254,17 @@ function IssueSurfaceContent({
     },
     [controller],
   );
+  const boardProps: BoardViewProps = {
+    issues,
+    visibleStatuses: controller.visibleStatuses,
+    onMoveIssue: controller.moveIssue,
+    childProgressMap: controller.childProgressMap,
+    projectMap: controller.projectMap,
+    projectId: controller.projectId,
+    onCreateIssue: openCreateIssue,
+    statusPagination: controller.statusPagination,
+    groupBranches: controller.groupBranches,
+  };
   const shouldShowClientEmpty =
     !!clientFilter &&
     issues.length === 0 &&
@@ -333,19 +353,8 @@ function IssueSurfaceContent({
           )
         ) : (
           <div className={cn("flex flex-col flex-1 min-h-0", contentClassName)}>
-            {controller.viewMode === "board" && (
-              <BoardView
-                issues={issues}
-                visibleStatuses={controller.visibleStatuses}
-                onMoveIssue={controller.moveIssue}
-                childProgressMap={controller.childProgressMap}
-                projectMap={controller.projectMap}
-                projectId={controller.projectId}
-                onCreateIssue={openCreateIssue}
-                statusPagination={controller.statusPagination}
-                groupBranches={controller.groupBranches}
-              />
-            )}
+            {controller.viewMode === "board" &&
+              (renderBoard ? renderBoard(boardProps) : <BoardView {...boardProps} />)}
             {controller.viewMode === "list" && (
               <ListView
                 issues={issues}
