@@ -702,6 +702,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				// is bridge code — it will simply find no rows to update
 				// on a fresh deployment and exit. MUL-2671.
 				go lark.BackfillBotUnionIDs(context.Background(), cs, larkClient, installSvc, slog.Default())
+				go lark.BackfillLegacyInboundReceipts(context.Background(), cs, slog.Default())
 
 				// Upgrade repair for deployments that ran the whole
 				// integration against Lark international via the deployment-
@@ -1049,7 +1050,11 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					// language, resolved when the round is opened and carried
 					// on the handle to whichever closer gets there.
 					Languages: queries,
-					Logger:    slog.Default(),
+					// Who is asking, which is what decides whether their
+					// bubble may show the run's steps. Without it every
+					// bubble falls to the closed tier and shows none.
+					Identities: queries,
+					Logger:     slog.Default(),
 				})
 				// Subscribes task:failed and task:cancelled — neither a failed
 				// nor a cancelled run publishes chat:done, so this is the sole
@@ -1069,6 +1074,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 						store,
 						engine.NewDBMediaIntentLedger(queries),
 						wecomSenders,
+						queries,
 						slog.Default(),
 					)
 				}
@@ -2590,6 +2596,7 @@ func buildLarkConnector(installSvc *lark.InstallationService, apiClient lark.API
 		FrameDecoder:        decoder,
 		Enricher:            enricher,
 		CredentialsProvider: credsProvider,
+		InboundVerifier:     installSvc,
 		Logger:              slog.Default(),
 	})
 	if err != nil {
