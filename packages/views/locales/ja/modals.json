@@ -302,5 +302,33 @@
     "next_step": "依頼の課題をスクワッドに割り当てると開始します。",
     "toast_done": "スクワッドを作成しました",
     "toast_failed": "スクワッドを作成できませんでした"
+  },
+  "agent_pack_install": {
+    "title": "エージェントパックをインストール",
+    "packs": {
+      "market-strategist": {
+        "name": "Market Strategist",
+        "description": "市場を分析し、顧客をセグメント化して、製品の販路を見つけます。お金を使う前や誰かに連絡する前に確認します。"
+      }
+    },
+    "skills_count": "{{count}} 個のスキル",
+    "runtime_label": "ランタイム",
+    "install": "インストール",
+    "installing": "インストール中…",
+    "cancel": "キャンセル",
+    "close": "閉じる",
+    "retry": "再試行",
+    "open_agent": "エージェントを開く",
+    "result_ready": "エージェントパックをインストールしました",
+    "result_problems": "問題が発生して完了しました",
+    "status_created": "作成済み",
+    "status_kept": "既存のため変更なし",
+    "status_failed": "失敗",
+    "agent_row": "エージェント",
+    "attach_row": "エージェントに追加したスキル",
+    "attach_added": "{{count}} 件追加",
+    "attach_kept": "追加済み",
+    "toast_done": "エージェントパックをインストールしました",
+    "toast_failed": "エージェントパックをインストールできませんでした"
   }
 }

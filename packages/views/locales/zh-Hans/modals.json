@@ -302,5 +302,33 @@
     "next_step": "把一个需求任务分配给该小队即可开始。",
     "toast_done": "小队已创建",
     "toast_failed": "无法创建小队"
+  },
+  "agent_pack_install": {
+    "title": "安装 Agent 包",
+    "packs": {
+      "market-strategist": {
+        "name": "Market Strategist",
+        "description": "分析市场、细分客户，并为产品寻找销售渠道。在花钱或联系任何人之前会先询问你。"
+      }
+    },
+    "skills_count": "{{count}} 个技能",
+    "runtime_label": "运行时",
+    "install": "安装",
+    "installing": "安装中…",
+    "cancel": "取消",
+    "close": "关闭",
+    "retry": "重试",
+    "open_agent": "打开 Agent",
+    "result_ready": "Agent 包已安装",
+    "result_problems": "已完成，但有问题",
+    "status_created": "已创建",
+    "status_kept": "已存在，未改动",
+    "status_failed": "失败",
+    "agent_row": "Agent",
+    "attach_row": "已添加到 Agent 的技能",
+    "attach_added": "已添加 {{count}} 个",
+    "attach_kept": "已全部添加",
+    "toast_done": "Agent 包已安装",
+    "toast_failed": "无法安装 Agent 包"
   }
 }

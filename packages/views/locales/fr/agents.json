@@ -3,6 +3,7 @@
     "title": "Agents",
     "learn_more": "En savoir plus →",
     "new_agent": "Nouvel agent",
+    "install_pack": "Installer un pack d’agent",
     "search_placeholder": "Rechercher des agents…",
     "show_archived": "Afficher les archivés ({{count}}) →",
     "of_total": "{{visible}} sur {{total}}",

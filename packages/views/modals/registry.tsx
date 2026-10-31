@@ -6,6 +6,7 @@ import { CreateIssueDialog } from "./create-issue-dialog";
 import { CreateProjectModal } from "./create-project";
 import { CreateSquadModal } from "./create-squad";
 import { SquadQuickstartModal } from "./squad-quickstart";
+import { AgentPackInstallModal } from "./agent-pack-install";
 import { FeedbackModal } from "./feedback";
 import { SetParentIssueModal } from "./set-parent-issue";
 import { MarkDuplicateIssueModal } from "./mark-duplicate-issue";
@@ -51,6 +52,9 @@ export function ModalRegistry() {
       break;
     case "squad-quickstart":
       activeModal = <SquadQuickstartModal onClose={close} />;
+      break;
+    case "agent-pack-install":
+      activeModal = <AgentPackInstallModal onClose={close} />;
       break;
     case "feedback":
       activeModal = <FeedbackModal onClose={close} data={data} />;

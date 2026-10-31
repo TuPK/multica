@@ -3,6 +3,7 @@
     "title": "에이전트",
     "learn_more": "자세히 보기 →",
     "new_agent": "새 에이전트",
+    "install_pack": "에이전트 팩 설치",
     "search_placeholder": "에이전트 검색...",
     "show_archived": "보관된 에이전트 보기 ({{count}}) →",
     "of_total": "{{total}}개 중 {{visible}}개",

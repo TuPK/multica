@@ -304,5 +304,33 @@
     "next_step": "Assign a request issue to the squad to start.",
     "toast_done": "Squad created",
     "toast_failed": "Could not create the squad"
+  },
+  "agent_pack_install": {
+    "title": "Install agent pack",
+    "packs": {
+      "market-strategist": {
+        "name": "Market Strategist",
+        "description": "Analyzes a market, segments customers, and finds outlets for a product. Asks before it spends money or contacts anyone."
+      }
+    },
+    "skills_count": "{{count}} skills",
+    "runtime_label": "Runtime",
+    "install": "Install",
+    "installing": "Installing…",
+    "cancel": "Cancel",
+    "close": "Close",
+    "retry": "Try again",
+    "open_agent": "Open agent",
+    "result_ready": "Agent pack installed",
+    "result_problems": "Finished with problems",
+    "status_created": "Created",
+    "status_kept": "Already there, left unchanged",
+    "status_failed": "Failed",
+    "agent_row": "Agent",
+    "attach_row": "Skills attached to agent",
+    "attach_added": "{{count}} added",
+    "attach_kept": "Already attached",
+    "toast_done": "Agent pack installed",
+    "toast_failed": "Could not install the agent pack"
   }
 }
