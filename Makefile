@@ -1,4 +1,4 @@
-.PHONY: help makehelp dev server daemon cli multica build test migrate-up migrate-down sqlc seed clean setup start stop check worktree-env setup-main start-main stop-main check-main setup-worktree start-worktree stop-worktree check-worktree remove-worktree db-up db-down db-drop db-reset selfhost selfhost-build selfhost-stop up down status list destroy gc env-exec api-dev web-dev desktop-dev
+.PHONY: help makehelp dev server daemon cli agent-pack agent-pack-bundles multica build test migrate-up migrate-down sqlc seed clean setup start stop check worktree-env setup-main start-main stop-main check-main setup-worktree start-worktree stop-worktree check-worktree remove-worktree db-up db-down db-drop db-reset selfhost selfhost-build selfhost-stop up down status list destroy gc env-exec api-dev web-dev desktop-dev
 
 MAIN_ENV_FILE ?= .env
 WORKTREE_ENV_FILE ?= .env.worktree
@@ -317,6 +317,13 @@ daemon: ## Restart the local agent daemon using the CLI's stored auth/session
 
 cli: ## Run the multica CLI with ARGS or MULTICA_ARGS from source
 	@$(MAKE) multica MULTICA_ARGS="$(MULTICA_ARGS)"
+
+agent-pack: ## Install an agent pack into the current workspace (PACK=market-strategist ARGS=--dry-run)
+	@test -n "$(PACK)" || { echo "Usage: make agent-pack PACK=<name> [ARGS=--dry-run]"; ls examples/agent-packs; exit 2; }
+	@bash scripts/install-agent-pack.sh examples/agent-packs/$(PACK) $(ARGS)
+
+agent-pack-bundles: ## Regenerate the web/desktop install bundles from examples/agent-packs
+	@node scripts/build-agent-pack-bundles.mjs
 
 multica: ## Run the multica CLI entrypoint directly from the Go source tree
 	cd server && go run -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildCommit=$(BUILD_COMMIT) -X main.date=$(DATE)" ./cmd/multica $(MULTICA_ARGS)

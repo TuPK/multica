@@ -302,5 +302,33 @@
     "next_step": "요청 이슈를 스쿼드에 배정하면 시작합니다.",
     "toast_done": "스쿼드를 만들었습니다",
     "toast_failed": "스쿼드를 만들 수 없습니다"
+  },
+  "agent_pack_install": {
+    "title": "에이전트 팩 설치",
+    "packs": {
+      "market-strategist": {
+        "name": "Market Strategist",
+        "description": "시장을 분석하고, 고객을 세분화하고, 제품의 판매처를 찾습니다. 돈을 쓰거나 누군가에게 연락하기 전에 먼저 확인합니다."
+      }
+    },
+    "skills_count": "스킬 {{count}}개",
+    "runtime_label": "런타임",
+    "install": "설치",
+    "installing": "설치 중…",
+    "cancel": "취소",
+    "close": "닫기",
+    "retry": "다시 시도",
+    "open_agent": "에이전트 열기",
+    "result_ready": "에이전트 팩을 설치했습니다",
+    "result_problems": "문제와 함께 완료되었습니다",
+    "status_created": "생성됨",
+    "status_kept": "이미 있어 변경하지 않음",
+    "status_failed": "실패",
+    "agent_row": "에이전트",
+    "attach_row": "에이전트에 연결된 스킬",
+    "attach_added": "{{count}}개 추가됨",
+    "attach_kept": "이미 연결됨",
+    "toast_done": "에이전트 팩을 설치했습니다",
+    "toast_failed": "에이전트 팩을 설치하지 못했습니다"
   }
 }

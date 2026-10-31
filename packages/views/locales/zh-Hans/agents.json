@@ -3,6 +3,7 @@
     "title": "智能体",
     "learn_more": "了解更多 →",
     "new_agent": "新建智能体",
+    "install_pack": "安装 Agent 包",
     "search_placeholder": "搜索智能体...",
     "show_archived": "显示已归档（{{count}}）→",
     "of_total": "{{visible}} / {{total}}",

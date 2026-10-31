@@ -8,6 +8,7 @@ type ModalType =
   | "create-project"
   | "create-squad"
   | "squad-quickstart"
+  | "agent-pack-install"
   | "feedback"
   | "issue-set-parent"
   | "issue-mark-duplicate"

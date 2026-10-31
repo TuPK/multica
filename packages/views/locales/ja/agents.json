@@ -3,6 +3,7 @@
     "title": "エージェント",
     "learn_more": "詳細はこちら →",
     "new_agent": "新規エージェント",
+    "install_pack": "エージェントパックをインストール",
     "search_placeholder": "エージェントを検索...",
     "show_archived": "アーカイブ済みを表示 ({{count}}) →",
     "of_total": "{{total}} 件中 {{visible}} 件",

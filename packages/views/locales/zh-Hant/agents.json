@@ -3,6 +3,7 @@
     "title": "智慧體",
     "learn_more": "瞭解更多 →",
     "new_agent": "新建智慧體",
+    "install_pack": "安裝 Agent 套件",
     "search_placeholder": "搜尋智慧體...",
     "show_archived": "顯示已歸檔（{{count}}）→",
     "of_total": "{{visible}} / {{total}}",

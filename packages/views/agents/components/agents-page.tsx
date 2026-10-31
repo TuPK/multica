@@ -5,6 +5,7 @@ import {
   AlertCircle,
   Bot,
   Lock,
+  Package,
   Plus,
 } from "@multica/ui/icons";
 import { useQuery } from "@tanstack/react-query";
@@ -41,6 +42,7 @@ import {
   memberListOptions,
 } from "@multica/core/workspace/queries";
 import { runtimeDisplayLabel, runtimeListOptions } from "@multica/core/runtimes";
+import { useModalStore } from "@multica/core/modals";
 import { Button } from "@multica/ui/components/ui/button";
 import { Checkbox } from "@multica/ui/components/ui/checkbox";
 import {
@@ -267,11 +269,18 @@ function PageHeaderBar({
         label: t(($) => $.page.learn_more),
       }}
       actions={
-        <CollectionPageHeaderAction
-          icon={Plus}
-          label={t(($) => $.page.new_agent)}
-          onClick={onCreate}
-        />
+        <>
+          <CollectionPageHeaderAction
+            icon={Package}
+            label={t(($) => $.page.install_pack)}
+            onClick={() => useModalStore.getState().open("agent-pack-install")}
+          />
+          <CollectionPageHeaderAction
+            icon={Plus}
+            label={t(($) => $.page.new_agent)}
+            onClick={onCreate}
+          />
+        </>
       }
     />
   );
@@ -318,10 +327,21 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
       title={t(($) => $.empty.title)}
       description={t(($) => $.empty.description)}
       actions={
-        <Button type="button" onClick={onCreate} size="sm">
-          <Plus aria-hidden="true" className="size-3" />
-          {t(($) => $.page.new_agent)}
-        </Button>
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => useModalStore.getState().open("agent-pack-install")}
+          >
+            <Package aria-hidden="true" className="size-3" />
+            {t(($) => $.page.install_pack)}
+          </Button>
+          <Button type="button" onClick={onCreate} size="sm">
+            <Plus aria-hidden="true" className="size-3" />
+            {t(($) => $.page.new_agent)}
+          </Button>
+        </>
       }
     />
   );
