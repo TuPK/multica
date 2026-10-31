@@ -1,20 +1,57 @@
 /**
  * @vitest-environment jsdom
  *
- * The office draws the board's status columns as rooms and its issues as
- * desks. Drag-and-drop itself lives in dnd-kit; these tests cover what the
- * view decides: which rooms exist, who sits where, and when it hands the
- * board back.
+ * The office is the pixtuoid engine on a canvas. jsdom has no WebAssembly office,
+ * so the engine is replaced by a stub that records the sessions it is given and
+ * reports a tag for each seated worker. These tests cover what the view decides:
+ * which issues are workers, the tag each one shows, and what a click opens.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ViewStoreProvider } from "@multica/core/issues/stores/view-store-context";
 import { getIssueSurfaceViewStore } from "@multica/core/issues/stores/surface-view-store";
+import { IssuePeekActionsContext } from "../../issues/surface/peek-context";
 import type { Issue, IssueStatus } from "@multica/core/types";
 import { renderWithI18n } from "../../test/i18n";
 import { IssueContextMenuProvider } from "../../issues/actions/issue-actions-context-menu";
 import { OfficeView } from "./office-view";
+
+// The stub engine: the worker is replaced by a fake that seats sessions the way the
+// engine does, and reports a tag for each seated worker.
+const engine = vi.hoisted(() => ({
+  starts: [] as string[],
+  working: new Map<string, boolean>(),
+  ends: [] as string[],
+}));
+
+class FakeWorker {
+  onmessage: ((event: { data: unknown }) => void) | null = null;
+  private seated = new Map<string, boolean>();
+
+  postMessage(message: { type: string; sessions?: { key: string; working: boolean }[] }) {
+    if (message.type !== "sessions" || !message.sessions) return;
+    const wanted = new Map(message.sessions.map((session) => [session.key, session.working]));
+    for (const key of [...this.seated.keys()]) {
+      if (wanted.has(key)) continue;
+      engine.ends.push(key);
+      this.seated.delete(key);
+    }
+    for (const [key, working] of wanted) {
+      if (!this.seated.has(key)) {
+        engine.starts.push(key);
+        this.seated.set(key, false);
+      }
+      if (this.seated.get(key) === working) continue;
+      engine.working.set(key, working);
+      this.seated.set(key, working);
+    }
+    const labels = [...wanted.keys()].map((key, index) => ({ key, x: 20 + index * 10, y: 30 }));
+    queueMicrotask(() => this.onmessage?.({ data: { type: "labels", labels } }));
+  }
+
+  terminate() {}
+}
 
 vi.mock("@multica/core/hooks", () => ({ useWorkspaceId: () => "ws-1" }));
 
@@ -41,23 +78,6 @@ vi.mock("@multica/core/agents", async (importOriginal) => ({
   isAgentRuntimeBound: () => true,
   useAgentPresenceDetail: () => ({ availability: "offline", workload: null }),
   agentTaskSnapshotOptions: () => ({ queryKey: ["task-snapshot"], queryFn: async () => [] }),
-}));
-
-vi.mock("@multica/core/workspace/queries", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@multica/core/workspace/queries")>()),
-  memberListOptions: () => ({
-    queryKey: ["members"],
-    queryFn: async () => [
-      { id: "m-1", workspace_id: "ws-1", user_id: "viewer-1", role: "owner", created_at: "", name: "Grace", email: "", avatar_url: null },
-    ],
-  }),
-  agentListOptions: () => ({
-    queryKey: ["agents"],
-    queryFn: async () => [
-      { id: "agent-1", name: "Hopper", archived_at: null },
-      { id: "agent-2", name: "Retired", archived_at: "2026-01-01T00:00:00Z" },
-    ],
-  }),
 }));
 
 vi.mock("@multica/core/paths", async (importOriginal) => {
@@ -124,6 +144,11 @@ describe("OfficeView", () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
+    engine.starts.length = 0;
+    engine.working.clear();
+    engine.ends.length = 0;
+    vi.stubGlobal("Worker", FakeWorker);
+    HTMLCanvasElement.prototype.transferControlToOffscreen = () => ({}) as OffscreenCanvas;
     vi.stubGlobal("IntersectionObserver", ObserverStub);
     vi.stubGlobal("ResizeObserver", ObserverStub);
     queryClient = new QueryClient({
@@ -134,86 +159,104 @@ describe("OfficeView", () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+    Reflect.deleteProperty(HTMLCanvasElement.prototype, "transferControlToOffscreen");
   });
 
-  function setup(issues: Issue[], options: { grouping?: "status" | "assignee"; onCreateIssue?: () => void } = {}) {
+  function setup(
+    issues: Issue[],
+    options: { grouping?: "status" | "assignee"; open?: (issueId: string) => void } = {},
+  ) {
     const store = getIssueSurfaceViewStore(`office-${Math.floor(Math.random() * 1e9)}`);
     store.getState().setGrouping(options.grouping ?? "status");
+    const peek = { open: options.open ?? (() => {}), toggle: () => {}, close: () => {}, publishColumns: () => {} };
     const view = (list: Issue[]) => (
       <QueryClientProvider client={queryClient}>
         <ViewStoreProvider store={store}>
           <IssueContextMenuProvider>
-            <OfficeView
-              issues={list}
-              visibleStatuses={STATUSES}
-              onMoveIssue={() => {}}
-              onCreateIssue={options.onCreateIssue}
-            />
+            <IssuePeekActionsContext.Provider value={peek}>
+              <OfficeView
+                issues={list}
+                visibleStatuses={STATUSES}
+                onMoveIssue={() => {}}
+              />
+            </IssuePeekActionsContext.Provider>
           </IssueContextMenuProvider>
         </ViewStoreProvider>
       </QueryClientProvider>
     );
     const result = renderWithI18n(view(issues));
-    return {
-      store,
-      container: result.container,
-      rerender: (list: Issue[]) => result.rerender(view(list)),
-    };
+    return { store, rerender: (list: Issue[]) => result.rerender(view(list)) };
   }
 
-  it("builds one room per visible status and seats each issue in its room", () => {
-    setup([makeIssue("a", "todo"), makeIssue("b", "in_progress", "agent-1"), makeIssue("c", "in_progress")]);
+  it("seats one worker for each agent on the project, not one per issue", async () => {
+    setup([
+      makeIssue("a", "todo", "agent-1"),
+      makeIssue("b", "todo"),
+      makeIssue("c", "in_progress", "agent-1"),
+      makeIssue("d", "todo", "agent-2"),
+    ]);
 
-    for (const label of ["Backlog", "Todo", "In Progress", "In Review", "Blocked", "Done"]) {
-      expect(screen.getByRole("region", { name: label })).toBeTruthy();
-    }
-    const working = screen.getByRole("region", { name: "In Progress" });
-    expect(within(working).getByText("Task b")).toBeTruthy();
-    expect(within(working).getByText("Task c")).toBeTruthy();
-    expect(within(screen.getByRole("region", { name: "Todo" })).getByText("Task a")).toBeTruthy();
-    // The room's badge counts its desks.
-    expect(within(working).getByText("2")).toBeTruthy();
+    await screen.findByRole("button", { name: "Todo" });
+    expect(engine.starts).toEqual(["agent-1", "agent-2"]);
   });
 
-  it("seats a worker only at an assigned desk", () => {
-    const { container } = setup([makeIssue("a", "todo", "agent-1"), makeIssue("b", "todo")]);
+  it("shows the status of the agent's issue in progress over its head", async () => {
+    setup([makeIssue("a", "todo", "agent-1"), makeIssue("c", "in_progress", "agent-1")]);
 
-    const desks = container.querySelectorAll("[data-office-desk]");
-    expect(desks).toHaveLength(2);
-    expect(container.querySelectorAll("[data-office-actor]")).toHaveLength(1);
+    expect(await screen.findByRole("button", { name: "In Progress" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Todo" })).toBeNull();
   });
 
-  it("opens a new issue in the room whose button was pressed", () => {
-    const onCreateIssue = vi.fn();
-    setup([makeIssue("a", "todo")], { onCreateIssue });
+  it("shows waiting for work, not the status, when all of an agent's issues are done", async () => {
+    setup([makeIssue("d", "done", "agent-2")]);
 
-    fireEvent.click(screen.getByRole("button", { name: "New issue in In Review" }));
-
-    expect(onCreateIssue).toHaveBeenCalledWith({ status: "in_review" });
+    expect(await screen.findByRole("button", { name: "Waiting for work" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
+    expect(engine.starts).toEqual(["agent-2"]);
   });
 
-  it("moves an issue's desk to its new room when the status changes", () => {
-    const { rerender } = setup([makeIssue("a", "todo")]);
-    expect(within(screen.getByRole("region", { name: "Todo" })).getByText("Task a")).toBeTruthy();
+  it("opens the agent's current issue in peek when its tag is clicked", async () => {
+    const open = vi.fn();
+    setup([makeIssue("c", "in_progress", "agent-1")], { open });
 
-    rerender([makeIssue("a", "in_review")]);
+    fireEvent.click(await screen.findByRole("button", { name: "In Progress" }));
 
-    expect(within(screen.getByRole("region", { name: "In Review" })).getByText("Task a")).toBeTruthy();
-    expect(within(screen.getByRole("region", { name: "Todo" })).queryByText("Task a")).toBeNull();
+    expect(open).toHaveBeenCalledWith("c");
   });
 
-  it("puts every non-archived staff member in the corridor", async () => {
-    setup([makeIssue("a", "todo")]);
+  it("moves the tag to the new status when the agent's issue changes status", async () => {
+    const { rerender } = setup([makeIssue("a", "todo", "agent-1")]);
+    expect(await screen.findByRole("button", { name: "Todo" })).toBeTruthy();
 
-    expect(await screen.findByRole("button", { name: "Filter by Hopper" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Filter by Grace" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Filter by Retired" })).toBeNull();
+    rerender([makeIssue("a", "in_review", "agent-1")]);
+
+    expect(await screen.findByRole("button", { name: "In Review" })).toBeTruthy();
+    expect(engine.starts).toEqual(["agent-1"]);
+    expect(engine.ends).toEqual([]);
+  });
+
+  it("sends a worker home once its agent has no issues on the project", async () => {
+    const { rerender } = setup([makeIssue("a", "todo", "agent-1")]);
+    await screen.findByRole("button", { name: "Todo" });
+
+    rerender([makeIssue("a", "todo")]);
+
+    await vi.waitFor(() => expect(engine.ends).toEqual(["agent-1"]));
+  });
+
+  it("lists the backlog in its chest and opens an issue from it", async () => {
+    const open = vi.fn();
+    setup([makeIssue("b", "backlog")], { open });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Backlog, 1 issues" }));
+    fireEvent.click(screen.getByRole("button", { name: /MUL-b/ }));
+
+    expect(open).toHaveBeenCalledWith("b");
   });
 
   it("hands the board back for any grouping other than status", () => {
     const { store } = setup([makeIssue("a", "todo")], { grouping: "assignee" });
 
-    expect(screen.queryByRole("region", { name: "Todo" })).toBeNull();
     expect(screen.getByText(/Group by Status to see the office/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Group by Status" }));

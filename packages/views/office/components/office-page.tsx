@@ -5,9 +5,9 @@ import { OfficeHeader } from "./office-header";
 import { OfficeView } from "./office-view";
 
 /**
- * The Issues board drawn as a pixel office. It runs on the same issue surface,
- * so filters, drag moves, peek, the context menu and create work unchanged. It
- * keeps its own display state and stays out of the saved views of /issues.
+ * The Issues board drawn as the pixtuoid office. It runs on the same issue
+ * surface, so filters and peek work as they do on the board. It keeps its own
+ * display state and stays out of the saved views of /issues.
  */
 export function OfficePage() {
   return (

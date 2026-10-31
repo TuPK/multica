@@ -1793,13 +1793,12 @@
   },
   "office": {
     "title": "Office",
-    "create_in_room": "New issue in {{room}}",
-    "staff": "Staff",
-    "staff_empty": "No staff yet",
-    "staff_filter": "Filter by {{name}}",
-    "running": "Running: {{count}}",
-    "assign_denied": "You can't assign this agent",
     "grouping_notice": "Rooms follow statuses. Group by Status to see the office.",
-    "grouping_reset": "Group by Status"
+    "grouping_reset": "Group by Status",
+    "idle": "Waiting for work",
+    "storage_count": "{{name}}, {{count}} issues",
+    "storage_empty": "Nothing here yet",
+    "room_product": "Product development",
+    "room_research": "Market research"
   }
 }

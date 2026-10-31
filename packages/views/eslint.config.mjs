@@ -12,6 +12,8 @@ import {
 // `eslint-i18n-guard.mjs` pins shut.
 
 export default [
+  // The wasm engine's generated glue is vendored as built, not written here.
+  { ignores: ["office/lib/pixtuoid/wasm/**"] },
   ...reactConfig,
   {
     files: ["**/*.tsx"],

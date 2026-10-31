@@ -1727,13 +1727,12 @@
   },
   "office": {
     "title": "오피스",
-    "create_in_room": "{{room}}에 새 태스크",
-    "staff": "직원",
-    "staff_empty": "아직 직원이 없습니다",
-    "staff_filter": "{{name}}(으)로 필터",
-    "running": "실행 중: {{count}}",
-    "assign_denied": "이 에이전트는 할당할 수 없습니다",
     "grouping_notice": "방은 상태를 따릅니다. 오피스를 보려면 상태별로 그룹화하세요.",
-    "grouping_reset": "상태별로 그룹화"
+    "grouping_reset": "상태별로 그룹화",
+    "idle": "작업 대기 중",
+    "storage_count": "{{name}}, 이슈 {{count}}개",
+    "storage_empty": "아직 없습니다",
+    "room_product": "제품 개발",
+    "room_research": "시장 조사"
   }
 }

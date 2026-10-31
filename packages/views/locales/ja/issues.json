@@ -1727,13 +1727,12 @@
   },
   "office": {
     "title": "オフィス",
-    "create_in_room": "{{room}}に新規タスク",
-    "staff": "スタッフ",
-    "staff_empty": "スタッフはまだいません",
-    "staff_filter": "{{name}}で絞り込む",
-    "running": "実行中: {{count}}",
-    "assign_denied": "このエージェントは割り当てられません",
     "grouping_notice": "部屋はステータスに対応します。オフィスを見るにはステータスでグループ化してください。",
-    "grouping_reset": "ステータスでグループ化"
+    "grouping_reset": "ステータスでグループ化",
+    "idle": "作業待ち",
+    "storage_count": "{{name}}、{{count}}件",
+    "storage_empty": "まだありません",
+    "room_product": "製品開発",
+    "room_research": "市場調査"
   }
 }
