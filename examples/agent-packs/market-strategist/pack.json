@@ -1,0 +1,30 @@
+{
+  "agent": {
+    "name": "Market Strategist",
+    "description": "Phân tích thị trường, phân khúc khách hàng, định vị, và tìm đầu ra sáng tạo cho sản phẩm",
+    "instructions_file": "instructions.md",
+    "runtime_provider": "claude",
+    "max_concurrent_tasks": 2
+  },
+  "skills": [
+    "product-marketing",
+    "customer-research",
+    "competitor-profiling",
+    "market-sizing",
+    "user-segmentation",
+    "ideal-customer-profile",
+    "beachhead-segment",
+    "jobs-to-be-done",
+    "mom-test",
+    "obviously-awesome",
+    "value-proposition",
+    "marketing-ideas",
+    "growth-loops",
+    "gtm-motions",
+    "distribution-analysis",
+    "cac-modeler",
+    "prioritize-assumptions",
+    "outlet-finder",
+    "evidence-discipline"
+  ]
+}
