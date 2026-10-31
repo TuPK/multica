@@ -1792,13 +1792,12 @@
   },
   "office": {
     "title": "Bureau",
-    "create_in_room": "Nouvelle tâche : {{room}}",
-    "staff": "Équipe",
-    "staff_empty": "Aucun membre pour l'instant",
-    "staff_filter": "Filtrer par {{name}}",
-    "running": "En cours : {{count}}",
-    "assign_denied": "Vous ne pouvez pas assigner cet agent",
     "grouping_notice": "Les salles suivent les statuts. Groupez par statut pour voir le bureau.",
-    "grouping_reset": "Grouper par statut"
+    "grouping_reset": "Grouper par statut",
+    "idle": "En attente de travail",
+    "storage_count": "{{name}}, {{count}} tâches",
+    "storage_empty": "Rien pour l'instant",
+    "room_product": "Développement produit",
+    "room_research": "Étude de marché"
   }
 }

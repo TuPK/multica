@@ -1,0 +1,553 @@
+diff --git a/crates/pixtuoid-scene/src/floor/mod.rs b/crates/pixtuoid-scene/src/floor/mod.rs
+index 1d91f6a..77b4211 100644
+--- a/crates/pixtuoid-scene/src/floor/mod.rs
++++ b/crates/pixtuoid-scene/src/floor/mod.rs
+@@ -39,10 +39,40 @@ pub fn floor_seed(floor_idx: usize) -> u64 {
+     (floor_idx as u64).wrapping_mul(crate::GOLDEN_GAMMA)
+ }
+ 
++/// The studio office's desk count.
++pub const OFFICE_DESKS: usize = 12;
++
++static DESK_CAP: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
++
++/// Caps every floor's desks from now on (`None` lifts it): the web page sets the studio
++/// floor's count once, before it lays out anything.
++pub fn set_desk_cap(cap: Option<usize>) {
++    DESK_CAP.store(cap.unwrap_or(0), std::sync::atomic::Ordering::Relaxed);
++}
++
++static SEATED_ONLY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
++
++/// Keeps every worker at its desk (`true`) instead of letting idle ones wander to a break
++/// area: the web page sets it once, before it seats anyone.
++pub fn set_seated_only(seated: bool) {
++    SEATED_ONLY.store(seated, std::sync::atomic::Ordering::Relaxed);
++}
++
++pub(crate) fn seated_only() -> bool {
++    SEATED_ONLY.load(std::sync::atomic::Ordering::Relaxed)
++}
++
++fn desk_cap() -> Option<usize> {
++    match DESK_CAP.load(std::sync::atomic::Ordering::Relaxed) {
++        0 => None,
++        n => Some(n),
++    }
++}
++
+ /// How many home desks a floor of buffer size `buf_w × buf_h` with `floor_seed`
+ /// fits. Returns `0` when the buffer is too small for even one cubicle.
+ pub fn floor_capacity(buf_w: u16, buf_h: u16, floor_seed: u64) -> usize {
+-    crate::layout::SceneLayout::compute_with_seed(buf_w, buf_h, None, floor_seed)
++    crate::layout::SceneLayout::compute_with_seed(buf_w, buf_h, desk_cap(), floor_seed)
+         .map(|l| l.home_desks.len())
+         .unwrap_or(0)
+ }
+@@ -221,7 +251,7 @@ impl FloorCtx {
+             Some((k, l)) if *k == key => Arc::clone(l),
+             _ => {
+                 let l = Arc::new(crate::layout::SceneLayout::compute_with_seed(
+-                    buf_w, buf_h, None, floor_seed,
++                    buf_w, buf_h, desk_cap(), floor_seed,
+                 )?);
+                 self.layout_memo = Some((key, Arc::clone(&l)));
+                 l
+diff --git a/crates/pixtuoid-scene/src/layout/compute.rs b/crates/pixtuoid-scene/src/layout/compute.rs
+index f697a3a..4eba251 100644
+--- a/crates/pixtuoid-scene/src/layout/compute.rs
++++ b/crates/pixtuoid-scene/src/layout/compute.rs
+@@ -195,15 +195,23 @@ struct FloorPlan {
+     pantry_counter_size: Size,
+     /// Indexed by room id; room 0 is the top room.
+     meeting_rooms: Vec<MeetingRoom>,
++    /// The walled desk rooms of a studio floor, west to east; empty on every other floor.
++    desk_rooms: Vec<Bounds>,
++    /// Whether this is the studio floor: two desk rooms and a row of desks in the open.
++    studio: bool,
+ }
+ 
+ impl FloorPlan {
+     /// The zones a `buf_w`×`buf_h` floor of `floor_seed`'s variant divides into.
+-    fn new(buf_w: u16, buf_h: u16, floor_seed: u64) -> Self {
++    fn new(buf_w: u16, buf_h: u16, floor_seed: u64, studio: bool) -> Self {
+         let top_margin = top_margin(buf_h);
+         let usable_h = buf_h - top_margin;
+ 
+-        let variant = FloorVariant::from_seed(floor_seed);
++        let variant = if studio {
++            FloorVariant::Standard
++        } else {
++            FloorVariant::from_seed(floor_seed)
++        };
+         let has_meeting = variant.has_meeting();
+         let has_dual_meeting = variant == FloorVariant::Dense && usable_h >= MIN_DUAL_MEETING_H;
+         let geom = FloorGeometry {
+@@ -211,7 +219,12 @@ impl FloorPlan {
+             has_dual_meeting,
+         };
+         let has_pantry = geom.has_pantry();
+-        let mid_x = pct(buf_w, geom.mid_x_pct());
++        let mid_pct = if studio {
++            STUDIO_MID_X_PCT
++        } else {
++            geom.mid_x_pct()
++        };
++        let mid_x = pct(buf_w, mid_pct);
+ 
+         const COUNTER_SIDE_CLEARANCE: u16 = 2;
+         // Large counter + a routing clearance each side, else the compact fallback.
+@@ -282,7 +295,7 @@ impl FloorPlan {
+         };
+ 
+         let right_x = mid_x + MID_DIVIDER_W;
+-        let right_w = band_w(buf_w, geom.mid_x_pct());
++        let right_w = band_w(buf_w, mid_pct);
+         let lounge_west_clear = if has_meeting {
+             mid_x + super::WALL_THICK_V
+         } else {
+@@ -331,6 +344,11 @@ impl FloorPlan {
+             let trio = room_fits_furniture(&mr).then(|| MeetingRoom::place_trio(mr, room_idx != 0));
+             meeting_rooms.push(MeetingRoom { bounds: mr, trio });
+         }
++        let desk_rooms = if studio {
++            studio_rooms(&pod_grid.band, top_margin)
++        } else {
++            Vec::new()
++        };
+         Self {
+             buf_w,
+             buf_h,
+@@ -342,6 +360,8 @@ impl FloorPlan {
+             pantry: pantry_room,
+             pantry_counter_size,
+             meeting_rooms,
++            desk_rooms,
++            studio,
+         }
+     }
+ 
+@@ -372,20 +392,32 @@ pub(super) fn compute_with_seed(
+         return None;
+     }
+ 
+-    let plan = FloorPlan::new(buf_w, buf_h, floor_seed);
++    // The studio floor is the web office's: its desk count is the cap, and it needs room for its walls.
++    let studio = max_desks == Some(STUDIO_DESKS)
++        && buf_w >= STUDIO_MIN_W
++        && buf_h >= STUDIO_MIN_H;
++    let plan = FloorPlan::new(buf_w, buf_h, floor_seed, studio);
+ 
+-    let pod_desks = compute_pod_desks(max_desks, plan.pod_grid);
++    let pod_desks = if plan.studio {
++        studio_desks(&plan)
++    } else {
++        compute_pod_desks(max_desks, plan.pod_grid)
++    };
+     let desk_points: Vec<Point> = pod_desks.iter().map(|d| d.at).collect();
+ 
+     let desk_art: Vec<(Point, Size)> = desk_fixtures(desk_points.iter().copied(), plan.buf_h)
+         .chain(desk_chair_fixtures(&pod_desks))
+         .map(|f| art_rect(f.visual))
+         .collect();
+-    let pod_decor = compute_pod_decor(plan.pod_grid, floor_seed, &desk_art);
++    let pod_decor = if plan.studio {
++        Vec::new()
++    } else {
++        compute_pod_decor(plan.pod_grid, floor_seed, &desk_art)
++    };
+ 
+     // Dense's inter-meeting wall is deliberately solid (#557 door policy).
+     let (room_walls, doorways) =
+-        super::rooms::walls::derive_room_walls(&plan.meeting_rooms, plan.pantry);
++        super::rooms::walls::derive_room_walls_with(&plan.meeting_rooms, plan.pantry, &plan.desk_rooms);
+ 
+     // Elevator door — in the window wall's last slot; above the lounge gate so
+     // that gate can check couch↔door clearance.
+@@ -692,6 +724,7 @@ pub(super) fn compute_with_seed(
+         door,
+         door_threshold,
+         meeting_rooms: plan.meeting_rooms,
++        desk_rooms: plan.desk_rooms,
+         pantry: plan.pantry.map(|bounds| PantryRoom {
+             bounds,
+             counter_size: plan.pantry_counter_size,
+@@ -1362,6 +1395,80 @@ fn pod_row_facing(r: u16) -> Facing {
+     if r == 0 { Facing::South } else { Facing::North }
+ }
+ 
++/// The studio floor's desk count: 4 in each of two rooms and 4 in a row in the open.
++pub(crate) const STUDIO_DESKS: usize = 12;
++/// The smallest buffer the studio floor lays out in.
++const STUDIO_MIN_W: u16 = 220;
++const STUDIO_MIN_H: u16 = 150;
++/// The studio's left column, narrower than the standard floor's so the desk rooms have the width.
++const STUDIO_MID_X_PCT: u16 = 20;
++/// A desk room's interior, walls to walls: a 2x2 pod and its aisles.
++const STUDIO_ROOM_W: u16 = 60;
++const STUDIO_ROOM_H: u16 = 42;
++const STUDIO_ROOM_GAP: u16 = 18;
++/// How far below the wall band the rooms start, clear of the lounge's couch.
++const STUDIO_ROOMS_BELOW_TOP: u16 = 22;
++/// The open row's desks are this far apart, edge to edge.
++const STUDIO_ROW_GAP_X: u16 = 22;
++/// The open row sits this far below the rooms' south walls.
++const STUDIO_ROW_BELOW_ROOMS: u16 = 14;
++
++/// The two desk rooms, side by side under the lounge, centred in the band.
++fn studio_rooms(band: &Bounds, top_margin: u16) -> Vec<Bounds> {
++    let total = 2 * STUDIO_ROOM_W + STUDIO_ROOM_GAP;
++    let x0 = band.x + band.width.saturating_sub(total) / 2;
++    let y = top_margin + STUDIO_ROOMS_BELOW_TOP;
++    (0..2)
++        .map(|i| Bounds {
++            x: x0 + i * (STUDIO_ROOM_W + STUDIO_ROOM_GAP),
++            y,
++            width: STUDIO_ROOM_W,
++            height: STUDIO_ROOM_H,
++        })
++        .collect()
++}
++
++/// The studio's twelve desks: a 2x2 pod centred in each desk room, then a row of four
++/// in the open below, all facing south.
++fn studio_desks(plan: &FloorPlan) -> Vec<HomeDesk> {
++    let mut desks = Vec::with_capacity(STUDIO_DESKS);
++    for room in &plan.desk_rooms {
++        let pod_w = POD_SIDE * DESK_W + (POD_SIDE - 1) * INTRA_POD_GAP_X;
++        let pod_h = POD_SIDE * DESK_H + (POD_SIDE - 1) * INTRA_POD_GAP_Y;
++        let ox = room.x + room.width.saturating_sub(pod_w) / 2;
++        let oy = room.y + room.height.saturating_sub(pod_h) / 2;
++        for r in 0..POD_SIDE {
++            for c in 0..POD_SIDE {
++                desks.push(HomeDesk {
++                    at: Point {
++                        x: ox + c * (DESK_W + INTRA_POD_GAP_X),
++                        y: oy + r * (DESK_H + INTRA_POD_GAP_Y),
++                    },
++                    facing: pod_row_facing(r),
++                });
++            }
++        }
++    }
++    let band = plan.pod_grid.band;
++    let row_w = 4 * DESK_W + 3 * STUDIO_ROW_GAP_X;
++    let x0 = band.x + band.width.saturating_sub(row_w) / 2;
++    let rooms_south = plan
++        .desk_rooms
++        .first()
++        .map_or(band.y, |room| room.y + room.height);
++    let y = rooms_south + STUDIO_ROW_BELOW_ROOMS;
++    for i in 0..4 {
++        desks.push(HomeDesk {
++            at: Point {
++                x: x0 + i * (DESK_W + STUDIO_ROW_GAP_X),
++                y,
++            },
++            facing: Facing::South,
++        });
++    }
++    desks
++}
++
+ /// Pod-grid desk placement: full pods, partial columns at right edge,
+ /// partial row at bottom edge.
+ pub(super) fn compute_pod_desks(max_desks: Option<usize>, grid: PodGrid) -> Vec<HomeDesk> {
+@@ -1836,7 +1943,7 @@ mod tests {
+             let scan: Vec<(u16, bool, Option<u16>, u16)> = NARROW_BAND
+                 .map(|w| {
+                     let l = SceneLayout::compute_with_seed(w, h, None, seed).expect("lays out");
+-                    let plan = FloorPlan::new(w, h, seed);
++                    let plan = FloorPlan::new(w, h, seed, false);
+                     let couch =
+                         couch_pos(&plan.pod_grid.band, plan.top_margin, plan.lounge_west_clear);
+                     (
+diff --git a/crates/pixtuoid-scene/src/layout/mod.rs b/crates/pixtuoid-scene/src/layout/mod.rs
+index 9780a0f..58cc514 100644
+--- a/crates/pixtuoid-scene/src/layout/mod.rs
++++ b/crates/pixtuoid-scene/src/layout/mod.rs
+@@ -311,6 +311,8 @@ pub struct SceneLayout {
+     /// Meeting rooms in floor order — the index IS the `room_id` every
+     /// waypoint and painter joins on.
+     pub meeting_rooms: Vec<MeetingRoom>,
++    /// The studio floor's walled desk rooms, west to east; empty on every other floor.
++    pub desk_rooms: Vec<Bounds>,
+     /// The pantry aggregate (bounds + counter size + island) — `None`
+     /// on floors without a pantry (Dense dual-meeting).
+     pub pantry: Option<PantryRoom>,
+diff --git a/crates/pixtuoid-scene/src/layout/rooms/walls.rs b/crates/pixtuoid-scene/src/layout/rooms/walls.rs
+index 01114e0..94f99e9 100644
+--- a/crates/pixtuoid-scene/src/layout/rooms/walls.rs
++++ b/crates/pixtuoid-scene/src/layout/rooms/walls.rs
+@@ -401,12 +401,58 @@ struct WallRequest {
+ /// Derive every interior wall from the rooms themselves. `pantry` is only the
+ /// pantry's BOUNDS: the wall pass runs before the island is placed, so the full
+ /// `PantryRoom` doesn't exist yet.
++#[cfg_attr(not(test), allow(dead_code))]
+ pub(crate) fn derive_room_walls(
+     meeting_rooms: &[MeetingRoom],
+     pantry: Option<Bounds>,
++) -> (Vec<WallSegment>, Vec<Doorway>) {
++    derive_room_walls_with(meeting_rooms, pantry, &[])
++}
++
++/// [`derive_room_walls`] plus the studio's desk rooms: each is walled on all four sides,
++/// with one door in its south wall onto the open floor.
++pub(crate) fn derive_room_walls_with(
++    meeting_rooms: &[MeetingRoom],
++    pantry: Option<Bounds>,
++    desk_rooms: &[Bounds],
+ ) -> (Vec<WallSegment>, Vec<Doorway>) {
+     let mut requests: Vec<WallRequest> = Vec::new();
+ 
++    for b in desk_rooms {
++        requests.push(WallRequest {
++            run: Run::V {
++                x: b.x,
++                y0: b.y,
++                y1: b.y + b.height,
++            },
++            doors: vec![],
++        });
++        requests.push(WallRequest {
++            run: Run::V {
++                x: b.x + b.width,
++                y0: b.y,
++                y1: b.y + b.height,
++            },
++            doors: vec![],
++        });
++        requests.push(WallRequest {
++            run: Run::H {
++                y: b.y,
++                x0: b.x,
++                x1: b.x + b.width,
++            },
++            doors: vec![],
++        });
++        requests.push(WallRequest {
++            run: Run::H {
++                y: b.y + b.height,
++                x0: b.x,
++                x1: b.x + b.width,
++            },
++            doors: vec![DoorAt::Centered],
++        });
++    }
++
+     for (i, room) in meeting_rooms.iter().enumerate() {
+         let b = room.bounds;
+         requests.push(WallRequest {
+diff --git a/crates/pixtuoid-scene/src/layout/roster.rs b/crates/pixtuoid-scene/src/layout/roster.rs
+index a00f9cf..b0f7ba4 100644
+--- a/crates/pixtuoid-scene/src/layout/roster.rs
++++ b/crates/pixtuoid-scene/src/layout/roster.rs
+@@ -463,6 +463,8 @@ impl SceneLayout {
+             // A walkable point, not a thing.
+             door_threshold: _,
+             meeting_rooms,
++            // Walls only: the desks in them are rostered as desks.
++            desk_rooms: _,
+             pantry,
+             // Architecture, which the painters draw from `wall_pieces`; the
+             // pantry mat reads `doorways` through `pantry_entry_mat`.
+diff --git a/crates/pixtuoid-scene/src/sim/mod.rs b/crates/pixtuoid-scene/src/sim/mod.rs
+index 461e477..c1ca6b0 100644
+--- a/crates/pixtuoid-scene/src/sim/mod.rs
++++ b/crates/pixtuoid-scene/src/sim/mod.rs
+@@ -377,7 +377,8 @@ pub(crate) fn sim_step(stores: &mut SimStores<'_>, inputs: SimInputs<'_>) -> Sim
+                     overlay: &*stores.overlay,
+                     history: &mut *stores.history,
+                     walks: &mut *stores.walks,
+-                    wanders: !beat.is_rest(),
++                    // The office's workers sit at their desks: none wanders off to a break area.
++                    wanders: !beat.is_rest() && !crate::floor::seated_only(),
+                 },
+             );
+             (a.agent_id, p)
+diff --git a/crates/pixtuoid-web/src/lib.rs b/crates/pixtuoid-web/src/lib.rs
+index 14fd1b1..6778ba3 100644
+--- a/crates/pixtuoid-web/src/lib.rs
++++ b/crates/pixtuoid-web/src/lib.rs
+@@ -132,6 +132,9 @@ fn page_clock() -> ScreenClock {
+ 
+ /// A live office rendered to a reusable RGBA buffer across frames. Keeping ONE
+ /// handle alive across `step` calls is what keeps walks/poses continuous.
++/// How long before its first frame a seated worker started, so it is already at its desk.
++const SEAT_LEAD: Duration = Duration::from_secs(60);
++
+ #[wasm_bindgen]
+ #[derive(Debug)]
+ pub struct Office {
+@@ -168,6 +171,10 @@ pub struct Office {
+     shown_badges: Vec<pixtuoid_scene::display::Badge>,
+     /// The WebAudio engine — `None` until the site warms the ♩'s buffers.
+     audio: Option<audio::WebAudioDriver>,
++    /// The issue key behind each worker, so an overlay label names its issue.
++    issue_keys: std::collections::HashMap<AgentId, String>,
++    /// The studio's desk rooms as `[x, y, w, h]` layout units, for the page to name.
++    rooms: Vec<[u16; 4]>,
+ }
+ 
+ #[wasm_bindgen]
+@@ -179,6 +186,8 @@ impl Office {
+     /// If the bundled sprite pack fails to parse.
+     #[wasm_bindgen(constructor)]
+     pub fn new(seed: u32) -> Result<Office, JsError> {
++        pixtuoid_scene::floor::set_desk_cap(Some(pixtuoid_scene::floor::OFFICE_DESKS));
++        pixtuoid_scene::floor::set_seated_only(true);
+         let pack =
+             std::sync::Arc::new(load_bundled_pack().map_err(|e| JsError::new(&format!("{e:#}")))?);
+         let density = pack.max_density_variant();
+@@ -208,6 +217,8 @@ impl Office {
+             screen: Screen::on(page_clock()),
+             shown_badges: Vec::new(),
+             audio: None,
++            issue_keys: std::collections::HashMap::new(),
++            rooms: Vec::new(),
+         })
+     }
+ 
+@@ -266,6 +277,82 @@ impl Office {
+         self.screen.landed();
+     }
+ 
++    /// Drop the hero's scripted cast, so only the issues this office is given show.
++    pub fn clear_script(&mut self) {
++        self.beats.clear();
++        self.presence_beats.clear();
++    }
++
++    /// Seat a worker for the issue `key`: a session that walks in to a free desk.
++    /// `false` before the first `step` or when the office has no desk left.
++    pub fn issue_start(&mut self, key: &str) -> bool {
++        let Some(now) = self.last_now else {
++            return false;
++        };
++        let source = pixtuoid_core::source::claude_code::SOURCE_NAME;
++        let id = AgentId::from_parts(source, key);
++        if self.scene.agents.contains_key(&id) {
++            return true;
++        }
++        if self.scene.agents.len() >= self.scene.total_capacity() {
++            return false;
++        }
++        self.issue_keys.insert(id, key.to_string());
++        // Dated before now, so the walk in from the door is over by the first frame: the worker is already at its desk.
++        let at = now.checked_sub(SEAT_LEAD).unwrap_or(now);
++        let event = AgentEvent::SessionStart {
++            agent_id: id,
++            source: source.to_string(),
++            session_id: key.to_string(),
++            cwd: std::path::PathBuf::from("/work").join(key),
++            parent_id: None,
++        };
++        self.reducer.apply(&mut self.scene, event, at, Transport::Hook);
++        true
++    }
++
++    /// The worker for `key` works (`true`) or sits idle (`false`).
++    pub fn issue_working(&mut self, key: &str, working: bool) {
++        let Some(now) = self.last_now else {
++            return;
++        };
++        let id = AgentId::from_parts(pixtuoid_core::source::claude_code::SOURCE_NAME, key);
++        if !self.scene.agents.contains_key(&id) {
++            return;
++        }
++        let tool_use_id = Some(format!("issue:{key}"));
++        let event = if working {
++            AgentEvent::ToolUseStart {
++                agent_id: id,
++                tool_use_id,
++                detail: None,
++            }
++        } else {
++            AgentEvent::ToolUseEnd {
++                agent_id: id,
++                tool_use_id,
++            }
++        };
++        self.reducer.apply(&mut self.scene, event, now, Transport::Hook);
++    }
++
++    /// The worker for `key` leaves its desk.
++    pub fn issue_end(&mut self, key: &str) {
++        let Some(now) = self.last_now else {
++            return;
++        };
++        let id = AgentId::from_parts(pixtuoid_core::source::claude_code::SOURCE_NAME, key);
++        self.issue_keys.remove(&id);
++        if !self.scene.agents.contains_key(&id) {
++            return;
++        }
++        let event = AgentEvent::SessionEnd {
++            agent_id: id,
++            as_child: false,
++        };
++        self.reducer.apply(&mut self.scene, event, now, Transport::Hook);
++    }
++
+     /// Pointer to the RGBA frame in wasm linear memory ([`Office::frame_len`]
+     /// bytes).
+     ///
+@@ -362,6 +449,10 @@ impl Office {
+                 hex(*marker),
+                 hex(name.ink)
+             ));
++            if let Some(key) = self.issue_keys.get(&badge.agent) {
++                out.push_str(",\"key\":");
++                push_json_string(&mut out, key);
++            }
+             out.push('}');
+         }
+         out.push_str(&format!(
+@@ -374,7 +465,17 @@ impl Office {
+         push_board_segments(&mut out, &board.mood, theme);
+         out.push_str(",\"context\":");
+         push_board_segments(&mut out, &board.context, theme);
+-        out.push_str("}}");
++        out.push_str("},\"rooms\":[");
++        for (i, room) in self.rooms.iter().enumerate() {
++            if i > 0 {
++                out.push(',');
++            }
++            out.push_str(&format!(
++                "{{\"x\":{},\"y\":{},\"w\":{},\"h\":{}}}",
++                room[0], room[1], room[2], room[3]
++            ));
++        }
++        out.push_str("]}");
+         out
+     }
+ 
+@@ -535,6 +636,20 @@ impl Office {
+         let cap = floor_capacity(units_w, units_h, self.seed);
+         self.scene.floor_capacities = std::array::from_fn(|i| if i == 0 { cap } else { 0 });
+         self.caps_units = Some((units_w, units_h));
++        self.rooms = pixtuoid_scene::layout::SceneLayout::compute_with_seed(
++            units_w,
++            units_h,
++            Some(pixtuoid_scene::floor::OFFICE_DESKS),
++            self.seed,
++        )
++        .map(|layout| {
++            layout
++                .desk_rooms
++                .iter()
++                .map(|room| [room.x, room.y, room.width, room.height])
++                .collect()
++        })
++        .unwrap_or_default();
+     }
+ 
+     /// Fire every scripted beat due by `now`, each applied at its SCHEDULED time
+@@ -1299,7 +1414,7 @@ mod tests {
+             "the click past exhaustion is refused outright: {admitted:?}"
+         );
+         o.step(T0_MS + 32_000.0, w, h);
+-        let layout = SceneLayout::compute_with_seed(w as u16, h as u16, None, o.seed)
++        let layout = SceneLayout::compute_with_seed(w as u16, h as u16, Some(pixtuoid_scene::floor::OFFICE_DESKS), o.seed)
+             .expect("the portrait buffer lays out");
+         assert_eq!(
+             o.scene.total_capacity(),

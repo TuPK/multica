@@ -1727,13 +1727,12 @@
   },
   "office": {
     "title": "办公室",
-    "create_in_room": "在{{room}}新建任务",
-    "staff": "成员",
-    "staff_empty": "还没有成员",
-    "staff_filter": "按{{name}}筛选",
-    "running": "运行中：{{count}}",
-    "assign_denied": "无法分配该智能体",
     "grouping_notice": "房间对应任务状态。按状态分组即可查看办公室。",
-    "grouping_reset": "按状态分组"
+    "grouping_reset": "按状态分组",
+    "idle": "等待任务",
+    "storage_count": "{{name}}，{{count}} 个",
+    "storage_empty": "暂无内容",
+    "room_product": "产品开发",
+    "room_research": "市场调研"
   }
 }
