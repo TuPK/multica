@@ -617,13 +617,17 @@ index f697a3a..cbeb3eb 100644
                  super::LARGE_COUNTER
              } else {
                  super::COMPACT_COUNTER
-@@ -239,6 +253,16 @@ impl FloorPlan {
+@@ -239,6 +253,20 @@ impl FloorPlan {
          } else {
              top_margin + half_split
          };
 +        // The studio's product office is a quarter of the old room (half as wide, half as tall), and its
 +        // meeting room stands below it at the same size. Their pair fills the top of the column; the pantry keeps the rest.
-+        let studio_room_h = (mid_y_split - top_margin) / 2;
++        let studio_room_h = if studio {
++            STUDIO_MEETING_ROOM_H
++        } else {
++            (mid_y_split - top_margin) / 2
++        };
 +        let mid_y_split = if studio {
 +            top_margin + 2 * studio_room_h
 +        } else {
@@ -797,7 +801,7 @@ index f697a3a..cbeb3eb 100644
          .and_then(|(ground, size)| {
              let y = pod_grid
                  .snap_inter_pod_ground_y(ground.y, size.h)?
-@@ -1362,6 +1436,105 @@ fn pod_row_facing(r: u16) -> Facing {
+@@ -1362,6 +1436,107 @@ fn pod_row_facing(r: u16) -> Facing {
      if r == 0 { Facing::South } else { Facing::North }
  }
  
@@ -822,6 +826,8 @@ index f697a3a..cbeb3eb 100644
 +/// rows of rooms, the lounge above them and the corridor below.
 +const STUDIO_MIN_W: u16 = 416;
 +const STUDIO_MIN_H: u16 = 171;
++/// The studio's two left-column rooms are tall enough for the vertical meeting table and side chairs.
++const STUDIO_MEETING_ROOM_H: u16 = 40;
 +/// The studio's left column, narrower than the standard floor's so the desk rooms have the width.
 +const STUDIO_MID_X_PCT: u16 = 20;
 +/// A desk room's interior, walls to walls: a 5x2 pod and its aisles.
@@ -903,7 +909,7 @@ index f697a3a..cbeb3eb 100644
  /// Pod-grid desk placement: full pods, partial columns at right edge,
  /// partial row at bottom edge.
  pub(super) fn compute_pod_desks(max_desks: Option<usize>, grid: PodGrid) -> Vec<HomeDesk> {
-@@ -1524,6 +1697,105 @@ fn art_rect(b: Bounds) -> (Point, Size) {
+@@ -1524,6 +1697,110 @@ fn art_rect(b: Bounds) -> (Point, Size) {
      )
  }
  
@@ -919,8 +925,17 @@ index f697a3a..cbeb3eb 100644
 +/// The studio's boss seat: the boss's desk, facing south, so the secretary sits north of it.
 +fn boss_seat(office: Bounds) -> HomeDesk {
 +    let visual = furniture_def(Furniture::BossDesk).visual;
++    let centre = boss_desk_centre(office);
++    // Home-desk seating derives its anchor from the standard desk width. Keep
++    // that logical origin centered on the wider boss-desk artwork.
++    let at = anchored_top_left(
++        Pivot::Center,
++        centre,
++        desk_furniture_def().visual.w,
++        visual.h,
++    );
 +    HomeDesk {
-+        at: anchored_top_left(Pivot::Center, boss_desk_centre(office), visual.w, visual.h),
++        at,
 +        facing: Facing::South,
 +    }
 +}
@@ -962,11 +977,9 @@ index f697a3a..cbeb3eb 100644
 +/// along its north wall, and meeting chairs down both sides of the table. The chairs need
 +/// the room's full height, so a shorter room keeps its table and screens only.
 +fn meeting_room_decor(room: Bounds) -> Vec<PodDecorItem> {
-+    /// The room's height from which the chairs stand along the table.
-+    const CHAIRS_FROM_H: u16 = 40;
-+    /// The centre of each meeting table, and of each chair, from the room's middle column.
-+    const TABLE_DX: [i32; 2] = [-6, 5];
-+    const CHAIR_DX: [i32; 3] = [-9, 0, 9];
++    /// The centre rows of the three table pieces and their matching side chairs.
++    const TABLE_DY: [i32; 3] = [-10, 0, 10];
++    const CHAIR_DY: [i32; 3] = [-10, 0, 10];
 +    let cx = i32::from(room.x) + i32::from(room.width / 2);
 +    let at = |dx: i32, y: i32| Point {
 +        x: (cx + dx) as u16,
@@ -991,25 +1004,23 @@ index f697a3a..cbeb3eb 100644
 +        },
 +    ];
 +    let table_y = mid + 1;
-+    items.extend(TABLE_DX.map(|dx| PodDecorItem {
++    items.extend(TABLE_DY.map(|dy| PodDecorItem {
 +        kind: PodDecor::MeetingTable,
-+        pos: at(dx, table_y),
++        pos: at(0, table_y + dy),
 +    }));
-+    if room.height >= CHAIRS_FROM_H {
-+        // The chairs sit a half-chair clear of the table's long sides.
-+        for y in [table_y - 4, table_y + 4] {
-+            items.extend(CHAIR_DX.map(|dx| PodDecorItem {
-+                kind: PodDecor::MeetingChair,
-+                pos: at(dx, y),
-+            }));
-+        }
++    // The chairs sit on both long sides of the vertical table.
++    for dx in [-9, 9] {
++        items.extend(CHAIR_DY.map(|dy| PodDecorItem {
++            kind: PodDecor::MeetingChair,
++            pos: at(dx, table_y + dy),
++        }));
 +    }
 +    items
 +}
  /// Decor items placed in aisles between desk pods, clear of every rect in `desk_art`.
  pub(super) fn compute_pod_decor(
      grid: PodGrid,
-@@ -1821,6 +2093,25 @@ fn compute_waypoints(
+@@ -1821,6 +2093,116 @@ fn compute_waypoints(
  
  #[cfg(test)]
  mod tests {
@@ -1029,6 +1040,97 @@ index f697a3a..cbeb3eb 100644
 +                assert_eq!(layout.home_desks.len(), super::STUDIO_SEATS, "at {w}x{h}");
 +                assert_eq!(layout.desk_rooms.len(), 6, "at {w}x{h}");
 +            }
++        }
++    }
++
++    #[test]
++    fn the_boss_seat_anchor_is_centered_on_the_boss_desk() {
++        use crate::layout::{Facing, PodDecor, anchored_top_left, desk_furniture_def, furniture_def};
++
++        let layout = super::super::SceneLayout::compute_with_seed(
++            super::STUDIO_MIN_W + 30,
++            super::STUDIO_MIN_H + 30,
++            Some(crate::floor::OFFICE_DESKS),
++            2,
++        )
++        .expect("studio floor");
++        let boss = layout
++            .pod_decor
++            .iter()
++            .find(|item| item.kind == PodDecor::BossDesk)
++            .expect("boss desk decor");
++        let desk = layout.home_desks.last().expect("boss home desk");
++        let boss_top_left = anchored_top_left(
++            crate::layout::Pivot::Center,
++            boss.pos,
++            furniture_def(crate::layout::Furniture::BossDesk).visual.w,
++            furniture_def(crate::layout::Furniture::BossDesk).visual.h,
++        );
++
++        assert_eq!(
++            desk.at.x + desk_furniture_def().visual.w / 2,
++            boss.pos.x,
++            "boss occupant's standard desk anchor must be centered on the boss chair"
++        );
++        assert_eq!(desk.at.y, boss_top_left.y);
++        assert_eq!(desk.facing, Facing::South);
++    }
++
++    #[test]
++    fn the_studio_meeting_room_has_a_vertical_table_and_side_chairs() {
++        use crate::layout::{Furniture, Pivot, PodDecor, anchored_top_left, furniture_def};
++
++        let layout = super::super::SceneLayout::compute_with_seed(
++            super::STUDIO_MIN_W,
++            super::STUDIO_MIN_H,
++            Some(crate::floor::OFFICE_DESKS),
++            2,
++        )
++        .expect("studio floor");
++        let room = layout.meeting_rooms[1].bounds;
++        let tables: Vec<_> = layout
++            .pod_decor
++            .iter()
++            .filter(|item| item.kind == PodDecor::MeetingTable)
++            .collect();
++        let chairs: Vec<_> = layout
++            .pod_decor
++            .iter()
++            .filter(|item| item.kind == PodDecor::MeetingChair)
++            .collect();
++
++        assert!(room.height >= super::STUDIO_MEETING_ROOM_H);
++        assert!(
++            tables.len() >= 3,
++            "the meeting table should be larger than one pair"
++        );
++        assert!(
++            tables.windows(2).all(|pair| pair[0].pos.x == pair[1].pos.x),
++            "table pieces should share one vertical axis"
++        );
++        assert!(
++            chairs.len() >= 4,
++            "the meeting room needs at least four chairs"
++        );
++        let table_x = tables[0].pos.x;
++        assert!(chairs.iter().filter(|chair| chair.pos.x < table_x).count() >= 2);
++        assert!(chairs.iter().filter(|chair| chair.pos.x > table_x).count() >= 2);
++
++        for item in tables.iter().chain(chairs.iter()) {
++            let furniture = match item.kind {
++                PodDecor::MeetingTable => Furniture::MeetingTable,
++                PodDecor::MeetingChair => Furniture::MeetingChair,
++                _ => unreachable!(),
++            };
++            let visual = furniture_def(furniture).visual;
++            let top_left = anchored_top_left(Pivot::Center, item.pos, visual.w, visual.h);
++            assert!(
++                top_left.x >= room.x
++                    && top_left.y >= room.y
++                    && top_left.x + visual.w <= room.x + room.width
++                    && top_left.y + visual.h <= room.y + room.height,
++                "meeting furniture {furniture:?} must stay inside {room:?}"
++            );
 +        }
 +    }
 +
