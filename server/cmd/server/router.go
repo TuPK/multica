@@ -2319,6 +2319,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Put("/skills", h.SetSquadSkills)
 					r.Get("/plugins", h.ListSquadPlugins)
 					r.Put("/plugins", h.SetSquadPlugins)
+					r.Put("/runtime", h.SetSquadRuntime)
 					r.Get("/charter", h.GetSquadCharter)
 					// Squad autonomy level (spec 4.3): reads for members; changes for owners and admins.
 					r.Get("/autonomy", h.GetSquadAutonomy)
