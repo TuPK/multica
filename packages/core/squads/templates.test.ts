@@ -128,6 +128,22 @@ describe("squad instructions", () => {
     }
   });
 
+  it("never wait for a person's approval, including the approval gates of a skill", () => {
+    for (const t of SQUAD_TEMPLATES) {
+      expect(t.instructions, t.id).toContain("Never wait for a person to approve");
+      expect(t.instructions, t.id).toContain("superpowers:brainstorming");
+      expect(t.instructions, t.id).toContain("Do not wait for approval; take the recommended default");
+    }
+  });
+
+  it("carry the developer's decision and epic-close rules into every SDLC squad", () => {
+    for (const t of SQUAD_TEMPLATES) {
+      expect(t.instructions, t.id).toContain("is the member's to make, not a reason to stop");
+      expect(t.instructions, t.id).toContain("reversal cost");
+      expect(t.instructions, t.id).toContain("retrospective is accepted");
+    }
+  });
+
   it("say that the squad's sub-issue rule overrides the protocol's mention rule", () => {
     for (const t of SQUAD_TEMPLATES) {
       expect(t.instructions, t.id).toContain("They override the squad protocol's mention rule");

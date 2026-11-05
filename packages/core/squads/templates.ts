@@ -258,6 +258,8 @@ Unattended:
 - Members take the recommended default for every open question and record it as an assumption (id, decision, why, who can reverse it) in docs/sdlc/assumptions.md. You add any default you took yourself.
 - Stop only for what cannot be undone: deleting data, breaking a released contract, a production release, or spending money. Then set the request to blocked, comment what you need, and mention the requester.
 - Never deploy to production, and never delete anything, on your own.
+- A business, product, or naming choice that the documents leave open is the member's to make, not a reason to stop. Each sub-issue description says so. The member researches the decision records, PRD, architecture and code, lists two or three options with evidence, chooses the one that changes no released behavior, database schema or API contract, records the decision (options, evidence, choice, why, reversal cost), and continues.
+- Stop-loss: a member that fails the same command or edit three times changes the approach. An epic is done only when its member's retrospective is accepted, so set it done only after that verdict.
 
 Records: every turn, run multica squad activity on the issue this turn runs on with outcome "action" when you created or moved a sub-issue, and "no_action" otherwise. Keep the request in progress while work remains. Do not do a member's work yourself.
 
