@@ -116,7 +116,15 @@ describe("squad instructions", () => {
       expect(t.instructions, t.id).toContain("You never build");
       expect(t.instructions, t.id).toContain("do not run it yourself");
       expect(t.instructions, t.id).toContain('"/bmad-build-auto Implement epic 01"');
-      expect(t.instructions, t.id).toContain('building an epic or story goes to "SDLC Developer"');
+      expect(t.instructions, t.id).toContain("building an epic or story goes to SDLC Developer");
+    }
+  });
+
+  it("assign sub-issues by the roster member id, never by a name that could match another agent", () => {
+    for (const t of SQUAD_TEMPLATES) {
+      expect(t.instructions, t.id).toContain("--assignee-id <member id>");
+      expect(t.instructions, t.id).not.toContain('--assignee "');
+      expect(t.instructions, t.id).toContain("Assign by that id, never by name");
     }
   });
 
