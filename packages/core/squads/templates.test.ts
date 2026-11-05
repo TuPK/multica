@@ -136,6 +136,14 @@ describe("squad instructions", () => {
     }
   });
 
+  it("carry the developer's decision and epic-close rules into every SDLC squad", () => {
+    for (const t of SQUAD_TEMPLATES) {
+      expect(t.instructions, t.id).toContain("is the member's to make, not a reason to stop");
+      expect(t.instructions, t.id).toContain("reversal cost");
+      expect(t.instructions, t.id).toContain("retrospective is accepted");
+    }
+  });
+
   it("say that the squad's sub-issue rule overrides the protocol's mention rule", () => {
     for (const t of SQUAD_TEMPLATES) {
       expect(t.instructions, t.id).toContain("They override the squad protocol's mention rule");
