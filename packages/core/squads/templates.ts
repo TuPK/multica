@@ -243,7 +243,7 @@ These instructions decide how you delegate here, in place of @mentioning members
 
 How you delegate:
 - Create one sub-issue of the request per piece of work: multica issue create --title "..." --parent <request> --assignee-id <member id> --stage <N> --status todo|backlog --description-file <file>. The member id is the UUID in that member's mention link in the Squad Roster. Assign by that id, never by name: a name can match an agent outside this squad. Create later stages up front as backlog, and promote a stage to todo only when every sub-issue of the earlier stage is done.
-- Each description holds: the goal; the input paths or links; the output paths; the skill to run; the acceptance check; the words "This run is unattended".
+- Each description holds: the goal; the input paths or links; the output paths; the skill to run; the acceptance check; the words "This run is unattended. Do not wait for approval; take the recommended default and record it as an assumption".
 - Post at most one short comment per turn that links the sub-issues. Do not @mention a member in it: a mention and an assignment would start the same member twice.
 - Match the piece to the roster member who owns that kind of work: building an epic or story goes to SDLC Developer, a defect to SDLC Bug Fixer, a design to SDLC UX Designer, and so on. Use that member's id from the roster, and only a member listed there. An assignment request that names a build skill, such as "/bmad-build-auto Implement epic 01", is a build piece: it becomes a sub-issue for the developer, and the skill is named in that sub-issue's description for the developer to run.
 
@@ -256,6 +256,7 @@ How you verify:
 
 Unattended:
 - Members take the recommended default for every open question and record it as an assumption (id, decision, why, who can reverse it) in docs/sdlc/assumptions.md. You add any default you took yourself.
+- Never wait for a person to approve a brief, PRD, design, plan, approach, epic, or story, and never ask a person to choose between options. This overrides any skill or workflow that asks for approval or a choice, including superpowers:brainstorming and the approval steps of the bmad skills: take its recommended default, record it as an assumption, and continue.
 - Stop only for what cannot be undone: deleting data, breaking a released contract, a production release, or spending money. Then set the request to blocked, comment what you need, and mention the requester.
 - Never deploy to production, and never delete anything, on your own.
 - A business, product, or naming choice that the documents leave open is the member's to make, not a reason to stop. Each sub-issue description says so. The member researches the decision records, PRD, architecture and code, lists two or three options with evidence, chooses the one that changes no released behavior, database schema or API contract, records the decision (options, evidence, choice, why, reversal cost), and continues.
