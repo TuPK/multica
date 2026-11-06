@@ -18,3 +18,8 @@ JOIN channel_task_delivery d ON d.task_id = t.id
 WHERE t.chat_session_id = @chat_session_id AND t.id <> @run_id
 ORDER BY t.created_at DESC, t.id DESC
 LIMIT 1;
+
+-- name: SetAgentTaskChatRoute :exec
+-- Records the route the platform gave a Secretary chat turn, in the transaction
+-- that creates the turn.
+UPDATE agent_task_queue SET chat_route = sqlc.arg('chat_route')::text WHERE id = sqlc.arg('id')::uuid;

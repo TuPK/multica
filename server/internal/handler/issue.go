@@ -1310,6 +1310,9 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if h.refuseBoardListForSecretary(w, r, wsUUID) {
+		return
+	}
 
 	// Parse optional filter params. Malformed UUIDs in filters return 400 —
 	// silently coercing them to a zero UUID would mask a client bug and let
@@ -2504,6 +2507,9 @@ func (h *Handler) GetIssue(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if h.refuseOutsideSecretaryTree(w, r, issue) {
+		return
+	}
 	prefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
 	resp := issueToResponse(issue, prefix)
 	h.fillStatusCategory(r.Context(), issue.WorkspaceID, &resp)
@@ -2555,6 +2561,9 @@ func (h *Handler) ListChildIssues(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if h.refuseOutsideSecretaryTree(w, r, issue) {
+		return
+	}
 	children, err := h.Queries.ListChildIssues(r.Context(), issue.ID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list child issues")
@@ -2604,6 +2613,9 @@ func (h *Handler) ListChildrenByParents(w http.ResponseWriter, r *http.Request) 
 	workspaceID := h.resolveWorkspaceID(r)
 	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id")
 	if !ok {
+		return
+	}
+	if h.refuseBoardListForSecretary(w, r, wsUUID) {
 		return
 	}
 
@@ -4925,6 +4937,24 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 	updated := 0
 	// One Resolver for the whole batch — a per-issue filler would query the
 	// catalog once per custom-status row. (MUL-6243)
+	// A batch that closes a child of a Secretary request is refused as a whole when
+	// any child has no answer yet, the same rule as a single close.
+	if batchStatusKey == "done" {
+		for _, issueID := range req.IssueIDs {
+			issueUUID, err := util.ParseUUID(issueID)
+			if err != nil {
+				continue
+			}
+			prevIssue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: issueUUID, WorkspaceID: wsUUID})
+			if err != nil || prevIssue.Status == "done" {
+				continue
+			}
+			if err := service.CheckSecretaryRequestAnswered(r.Context(), h.Queries, prevIssue); err != nil {
+				writeError(w, http.StatusUnprocessableEntity, err.Error())
+				return
+			}
+		}
+	}
 	fillBatch := h.newStatusCategoryFiller(r.Context(), wsUUID)
 	// Parents whose sub-issues changed this batch. Their rules are evaluated
 	// once after the loop against the final state (MUL-4155), not per child

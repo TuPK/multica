@@ -20,6 +20,8 @@ import (
 // ChatReplyRequest is the body of POST /api/chat/sessions/{sessionId}/reply.
 type ChatReplyRequest struct {
 	Content string `json:"content"`
+	// Kind is ack, fact, clarify or assessment; empty is clarify.
+	Kind string `json:"kind"`
 }
 
 // ReplyChatSession lets the workspace's Secretary write an assistant message into
@@ -72,6 +74,8 @@ func (h *Handler) ReplyChatSession(w http.ResponseWriter, r *http.Request) {
 		AgentID:     actorUUID,
 		RunID:       runUUID,
 		Content:     req.Content,
+		Kind:        req.Kind,
+		Verifier:    h.TaskService.SecretaryModel,
 		Now:         time.Now(),
 	})
 	switch {
@@ -85,8 +89,13 @@ func (h *Handler) ReplyChatSession(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, service.ErrChatReplyRateLimited):
 		writeErrorCode(w, http.StatusTooManyRequests, "reply_limit", err.Error())
 		return
-	case errors.Is(err, service.ErrChatReplyEmpty), errors.Is(err, service.ErrChatReplyTooLong):
+	case errors.Is(err, service.ErrChatReplyEmpty), errors.Is(err, service.ErrChatReplyTooLong), errors.Is(err, service.ErrChatReplyKind):
 		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	case errors.Is(err, service.ErrChatReplyAssessmentNotRequest),
+		errors.Is(err, service.ErrChatReplyAssessmentTooEarly),
+		errors.Is(err, service.ErrChatReplyAssessmentUnsupported):
+		writeErrorCode(w, http.StatusConflict, "assessment_refused", err.Error())
 		return
 	case errors.Is(err, service.ErrChatReplyNotSecretary),
 		errors.Is(err, service.ErrChatReplyWrongSession),

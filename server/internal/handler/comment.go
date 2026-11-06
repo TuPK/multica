@@ -352,6 +352,9 @@ func (h *Handler) ListComments(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if h.refuseOutsideSecretaryTree(w, r, issue) {
+		return
+	}
 
 	q := r.URL.Query()
 

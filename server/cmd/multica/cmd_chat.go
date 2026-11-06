@@ -168,7 +168,14 @@ session refuses the reply: report through the inbox instead. A session takes at 
 10 replies a minute.
 
 The reply is Markdown, read from --file (a path inside the working directory) or,
-when --file is omitted, from stdin.`,
+when --file is omitted, from stdin.
+
+--kind says what the reply claims: ack (what you did and when you expect the answers),
+fact (a plain fact the digest holds), clarify (a question or note; the default), or
+assessment (the answer to a judgment question, built from the leaders' answers on a
+request). The server checks an assessment: it must come from the run that reads the
+request, after the leaders have answered or the deadline has passed, and each claim
+must be supported by an answer.`,
 	Args: cobra.NoArgs,
 	RunE: runChatReply,
 }
@@ -176,6 +183,7 @@ when --file is omitted, from stdin.`,
 func init() {
 	chatReplyCmd.Flags().String("session", "", "Chat session id to reply in (required)")
 	chatReplyCmd.Flags().String("file", "", "Markdown file with the reply (default: read stdin)")
+	chatReplyCmd.Flags().String("kind", "clarify", "ack, fact, clarify or assessment")
 	chatCmd.AddCommand(chatReplyCmd)
 }
 
@@ -217,7 +225,8 @@ func runChatReply(cmd *cobra.Command, _ []string) error {
 
 	var resp map[string]any
 	path := "/api/chat/sessions/" + url.PathEscape(strings.TrimSpace(session)) + "/reply"
-	if err := client.PostJSON(ctx, path, map[string]string{"content": content}, &resp); err != nil {
+	kind, _ := cmd.Flags().GetString("kind")
+	if err := client.PostJSON(ctx, path, map[string]string{"content": content, "kind": kind}, &resp); err != nil {
 		return fmt.Errorf("reply in chat: %w", err)
 	}
 	return cli.PrintJSON(os.Stdout, resp)

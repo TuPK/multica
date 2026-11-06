@@ -124,7 +124,12 @@ type ChatReplyParams struct {
 	AgentID     pgtype.UUID
 	RunID       pgtype.UUID
 	Content     string
-	Now         time.Time
+	// Kind is the kind of reply; "" is a clarification. See ParseChatReplyKind.
+	Kind string
+	Now  time.Time
+	// Verifier checks an assessment's claims against the leaders' answers. Nil
+	// disables the model check; the deterministic gate still applies.
+	Verifier JSONLLM
 }
 
 // ChatReplyResult is the stored message and the session owner, who is the only
@@ -178,6 +183,15 @@ func CreateChatReply(ctx context.Context, tx TxStarter, q *db.Queries, p ChatRep
 	}
 	if err := CheckChatReply(facts); err != nil {
 		return ChatReplyResult{}, err
+	}
+	kind, err := ParseChatReplyKind(p.Kind)
+	if err != nil {
+		return ChatReplyResult{}, err
+	}
+	if kind == ChatReplyKindAssessment {
+		if err := checkAssessmentReply(ctx, q, run, content, p.Verifier); err != nil {
+			return ChatReplyResult{}, err
+		}
 	}
 
 	recent, err := q.CountRecentChatAssistantMessages(ctx, db.CountRecentChatAssistantMessagesParams{

@@ -810,6 +810,12 @@ func buildChatPrompt(task Task) string {
 	default:
 		b.WriteString("Audience: direct room.\n\n")
 	}
+	// The route the platform gave a Secretary turn (see service.ChatRouteFor).
+	// It names the skill to read first; the skill and the reply gate decide the rest.
+	if line := chatRouteLine(task.ChatRoute); line != "" {
+		b.WriteString(line)
+		b.WriteString("\n")
+	}
 	// Channel awareness (MUL-3871). When the session is backed by an IM channel,
 	// the agent must KNOW it is operating inside that channel — otherwise an ask
 	// like "what did you just talk about" sends it to read Multica instead of the
@@ -1053,3 +1059,19 @@ func buildEditedTriggerNote(task Task) string {
 // editedCommentGuidance is the shared instruction for any edited comment a
 // resumed session receives, trigger or folded-in (MUL-8218).
 const editedCommentGuidance = "The text quoted in this prompt is the current version and the only one to act on; treat any earlier wording, and plans that depended on it, as withdrawn. Work already done in this session (file changes, commands, posted comments) still happened and was not rolled back — re-evaluate what remains against the current text instead of repeating it or assuming it was undone."
+
+// chatRouteLine states the platform's route for a Secretary turn, and the skill
+// the route points to. It is empty for an unrouted turn.
+func chatRouteLine(route string) string {
+	switch route {
+	case "fact":
+		return "Route for this message (set by the platform): fact. It asks a plain fact the digest holds. Read the secretary-router skill, then the secretary-facts skill."
+	case "judgment":
+		return "Route for this message (set by the platform): judgment. It needs the departments' judgment. Read the secretary-router skill, then the secretary-ask skill; reply with `multica chat reply --kind ack` once the leaders are asked."
+	case "decision":
+		return "Route for this message (set by the platform): decision. The boss is deciding. Read the secretary-router skill, then the secretary-directives skill."
+	case "clarify":
+		return "Route for this message (set by the platform): clarify. The scope or intent is unclear. Read the secretary-router skill; ask the boss one short question."
+	}
+	return ""
+}

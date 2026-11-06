@@ -89,6 +89,10 @@ type TaskService struct {
 	// state for a self-hosted deployment with no MULTICA_LLM_* configuration.
 	// Wired in router.go from the same *llm.Client that backs chat auto-titling.
 	QuickActions ChatQuickActionsLLM
+	// SecretaryModel is the model seam for the Secretary's own checks: the
+	// assessment verifier now, and the reply router. Wired from the same client
+	// as QuickActions; a nil or disabled model turns those checks off.
+	SecretaryModel JSONLLM
 	// quickActionsInFlight (chat session id -> struct{}{}) and
 	// quickActionsRunning admit suggestion passes: one per session, and a
 	// process-wide ceiling. Both zero values are usable, so a TaskService built
@@ -2375,6 +2379,23 @@ func (s *TaskService) SendDirectChatMessage(
 	uploaderType string,
 	uploaderID pgtype.UUID,
 ) (*DirectChatSendResult, error) {
+	return s.SendDirectChatMessageRouted(ctx, session, agent, initiatorUserID, content, attachmentIDs, uploaderType, uploaderID, "")
+}
+
+// SendDirectChatMessageRouted is SendDirectChatMessage for a turn that carries a
+// route the platform chose for it (see ChatRouteFor). The route is written in the
+// transaction that creates the turn; an empty route writes nothing.
+func (s *TaskService) SendDirectChatMessageRouted(
+	ctx context.Context,
+	session db.ChatSession,
+	agent db.Agent,
+	initiatorUserID pgtype.UUID,
+	content string,
+	attachmentIDs []pgtype.UUID,
+	uploaderType string,
+	uploaderID pgtype.UUID,
+	route string,
+) (*DirectChatSendResult, error) {
 	// Build the per-task Composio overlay before the transaction — it can do
 	// network I/O and must not run with a DB transaction open.
 	overlay := s.buildRuntimeMCPOverlay(ctx, initiatorUserID, agent)
@@ -2458,6 +2479,12 @@ func (s *TaskService) SendDirectChatMessage(
 		task, err = qtx.SetChatTaskInputOwnerSelf(ctx, task.ID)
 		if err != nil {
 			return fmt.Errorf("stamp direct chat input owner: %w", err)
+		}
+		if route != "" {
+			if err := qtx.SetAgentTaskChatRoute(ctx, db.SetAgentTaskChatRouteParams{ID: task.ID, ChatRoute: route}); err != nil {
+				return fmt.Errorf("record chat route: %w", err)
+			}
+			task.ChatRoute = pgtype.Text{String: route, Valid: true}
 		}
 		out.Task = task
 
@@ -4926,6 +4953,19 @@ const chatNoResponseFallback = "The agent finished this turn without a text repl
 // immutable channel_ingested stamp on the owned batch — keyed by the batch
 // owner id so an auto-retry clone (which inherits chat_input_task_id) reaches
 // the same verdict as its parent — while a NULL owner marks a legacy task.
+// isSecretaryChatTurn reports whether a task is a turn in the Secretary's own
+// chat with a boss. Only those turns answer through the reply command.
+func (s *TaskService) isSecretaryChatTurn(ctx context.Context, qtx *db.Queries, task db.AgentTaskQueue, wsUUID pgtype.UUID) (bool, error) {
+	if !task.ChatSessionID.Valid || !wsUUID.Valid {
+		return false, nil
+	}
+	ws, err := qtx.GetWorkspace(ctx, wsUUID)
+	if err != nil {
+		return false, fmt.Errorf("load workspace for chat completion: %w", err)
+	}
+	return ws.SecretaryAgentID.Valid && ws.SecretaryAgentID == task.AgentID, nil
+}
+
 func (s *TaskService) writeChatCompletionOutcome(ctx context.Context, qtx *db.Queries, task db.AgentTaskQueue, result []byte) (*db.ChatMessage, error) {
 	// result is the daemon request re-marshalled by the handler, so it is always
 	// valid JSON; an empty Output is the only case this branch cares about.
@@ -4968,6 +5008,31 @@ func (s *TaskService) writeChatCompletionOutcome(ctx context.Context, qtx *db.Qu
 			return nil, fmt.Errorf("count chat attachments: %w", err)
 		}
 		pendingAttachments = n
+	}
+
+	// A Secretary chat turn answers the boss only through `multica chat reply`,
+	// which the server checks by kind. The turn's own output is never written into
+	// the chat: a turn that replied adds no row, and a turn that did not reply
+	// gets the visible no_response outcome instead of an unchecked answer.
+	if secretaryTurn, err := s.isSecretaryChatTurn(ctx, qtx, task, wsUUID); err != nil {
+		return nil, err
+	} else if secretaryTurn {
+		since := task.CreatedAt
+		if task.StartedAt.Valid {
+			since = task.StartedAt
+		}
+		replies, err := qtx.CountRecentChatAssistantMessages(ctx, db.CountRecentChatAssistantMessagesParams{
+			ChatSessionID: task.ChatSessionID,
+			Since:         since,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("count the turn's replies: %w", err)
+		}
+		if replies > 0 {
+			return nil, nil
+		}
+		body = ""
+		isEmpty = true
 	}
 
 	// Channel/legacy empty completion with nothing to show: emit no assistant

@@ -952,7 +952,14 @@ func (h *Handler) SendChatMessage(w http.ResponseWriter, r *http.Request) {
 	// creator-only), so they are the task initiator and the run's originator —
 	// surfaced to the agent under `## On Behalf Of`. actorType/actorID were
 	// resolved above for the invoke gate.
-	sent, err := h.TaskService.SendDirectChatMessage(r.Context(), session, agent, parseUUID(userID), req.Content, attachmentIDs, actorType, parseUUID(actorID))
+	// The Secretary's turns carry the platform's route for the message, so its
+	// first step is known before it reads anything. The route is a guide; the
+	// reply gate is what enforces the answer.
+	route := ""
+	if ws, err := h.Queries.GetWorkspace(r.Context(), session.WorkspaceID); err == nil && ws.SecretaryAgentID == session.AgentID {
+		route = service.ChatRouteFor(r.Context(), h.TaskService.SecretaryModel, req.Content)
+	}
+	sent, err := h.TaskService.SendDirectChatMessageRouted(r.Context(), session, agent, parseUUID(userID), req.Content, attachmentIDs, actorType, parseUUID(actorID), route)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrChatSessionArchived):

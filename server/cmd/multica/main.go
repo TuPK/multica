@@ -99,6 +99,7 @@ func init() {
 	rootCmd.AddCommand(briefCmd)
 	rootCmd.AddCommand(knowledgeCmd)
 	rootCmd.AddCommand(chatCmd)
+	rootCmd.AddCommand(secretaryCmd)
 	rootCmd.AddCommand(daemonCmd)
 	rootCmd.AddCommand(runtimeCmd)
 	rootCmd.AddCommand(authCmd)

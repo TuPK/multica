@@ -57,3 +57,19 @@ func (q *Queries) GetLatestChannelDeliveryTaskInSession(ctx context.Context, arg
 	err := row.Scan(&id)
 	return id, err
 }
+
+const setAgentTaskChatRoute = `-- name: SetAgentTaskChatRoute :exec
+UPDATE agent_task_queue SET chat_route = $1::text WHERE id = $2::uuid
+`
+
+type SetAgentTaskChatRouteParams struct {
+	ChatRoute string      `json:"chat_route"`
+	ID        pgtype.UUID `json:"id"`
+}
+
+// Records the route the platform gave a Secretary chat turn, in the transaction
+// that creates the turn.
+func (q *Queries) SetAgentTaskChatRoute(ctx context.Context, arg SetAgentTaskChatRouteParams) error {
+	_, err := q.db.Exec(ctx, setAgentTaskChatRoute, arg.ChatRoute, arg.ID)
+	return err
+}

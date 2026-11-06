@@ -116,3 +116,39 @@ func CheckSecretaryRequestAnswered(ctx context.Context, q *db.Queries, issue db.
 	}
 	return nil
 }
+
+// IssueInSecretaryTree reports whether an issue is part of the Secretary's own
+// work: a request in the Secretary desk, or a child of one. A Secretary run that
+// reads a request may read this much of the board and no more.
+func IssueInSecretaryTree(ctx context.Context, q *db.Queries, issue db.Issue) (bool, error) {
+	if issue.ProjectID.Valid {
+		project, err := q.GetProjectInWorkspace(ctx, db.GetProjectInWorkspaceParams{ID: issue.ProjectID, WorkspaceID: issue.WorkspaceID})
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return false, err
+		}
+		if err == nil && project.Title == SecretaryDeskProjectTitle {
+			return true, nil
+		}
+	}
+	if !issue.ParentIssueID.Valid {
+		return false, nil
+	}
+	parent, err := q.GetIssue(ctx, issue.ParentIssueID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	ws, err := q.GetWorkspace(ctx, issue.WorkspaceID)
+	if err != nil {
+		return false, err
+	}
+	return isSecretaryRequest(ctx, q, ws, parent)
+}
+
+// SecretaryDeskID returns the Secretary desk project's id, or an invalid id when
+// the workspace has none.
+func SecretaryDeskID(ctx context.Context, q *db.Queries, workspaceID pgtype.UUID) (pgtype.UUID, error) {
+	return findSecretaryDesk(ctx, q, workspaceID)
+}
