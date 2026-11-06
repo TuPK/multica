@@ -1,0 +1,37 @@
+{
+  "origin": "recorded",
+  "cli": "codex",
+  "version": "codex-cli 0.166.0",
+  "captured": "2026-10-30",
+  "command": "just hermetic --record codex",
+  "deidentified": {
+    "method": "decoder-allowlist",
+    "blanked": 80
+  },
+  "aimock": "1.47.0",
+  "script": "tests/sources/codex/hermetic/code-mode-gate.json",
+  "dropped": {
+    "os": "macos",
+    "at": {
+      "/payload/name": [],
+      "/payload/type": [
+        "item_completed",
+        "message",
+        "reasoning",
+        "thread_settings_applied"
+      ],
+      "/type": [
+        "event_msg",
+        "response_item",
+        "session_meta",
+        "token_usage_record",
+        "world_state"
+      ]
+    }
+  },
+  "sentinel_reads": {
+    "rollout-2026-10-30T14-58-49-01a18d52-1464-7940-ae49-350c1a600e3d.jsonl": [
+      "15:/payload/info/last_token_usage/cached_input_tokens"
+    ]
+  }
+}

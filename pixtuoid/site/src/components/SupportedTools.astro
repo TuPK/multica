@@ -1,0 +1,346 @@
+---
+import sources from '../sources.json';
+import { asset, floorById, floorName, REPO } from '../consts';
+import { starText } from '../../config/plaque-stars.mjs';
+
+const floor = floorById('tools');
+
+// Build-time define; null when the GitHub API was unreachable, and the offline
+// build then ships the plaque without a number.
+const stars = __GH_STARS__;
+
+// Single source of truth → site/src/sources.json, whose `supported` set, badge
+// prefixes and badge_color hexes are all pinned to the Rust side by tests, so
+// this matrix can't claim something the app doesn't actually do.
+
+type OsState = 'yes' | 'experimental' | 'planned' | 'no';
+const OSES = [
+  { key: 'macos', label: 'macOS' },
+  { key: 'linux', label: 'Linux' },
+  { key: 'windows', label: 'Windows' },
+] as const;
+// WCAG 1.4.1 shape-not-just-hue: supported is a FILLED glowing disc,
+// experimental a HOLLOW ring, so the distinction survives colour-blindness.
+// PAIRED-COPY PIN: smoke.spec.ts's planned-row probe hand-copies the
+// 'planned'/'soon' branch's markup (this fn is unexported frontmatter it
+// can't call) — change that branch and the probe together.
+const MARK = (s: string): string => {
+  if (s === 'yes')
+    return `<span class="led-dot is-on tools__led tools__led--on" aria-hidden="true"></span>`;
+  if (s === 'experimental')
+    return `<span class="led-dot tools__led tools__led--exp" aria-hidden="true"></span>`;
+  if (s === 'no') return '<span class="tools__mark tools__dash" aria-hidden="true">–</span>';
+  return '<span class="tools__mark tools__soon" aria-hidden="true">soon</span>';
+};
+// aria-label on a roleless <span> is naming-prohibited and gets dropped, so the
+// real value rides a visually-hidden sibling of the aria-hidden mark.
+const STATE_LABEL: Record<OsState, string> = {
+  yes: 'supported',
+  experimental: 'experimental',
+  planned: 'planned',
+  no: 'not supported',
+};
+const stateLabel = (s: string): string => STATE_LABEL[s as OsState] ?? s;
+
+const supported = sources.filter((s) => s.status === 'supported');
+const planned = sources.filter((s) => s.status === 'planned');
+
+// Derived from the states actually on screen — a hand-written legend drifted.
+const present = new Set<string>(supported.flatMap((s) => OSES.map((o) => s.platforms[o.key])));
+if (planned.length > 0) present.add('planned');
+const LEGEND_LABEL: Record<OsState, string> = { ...STATE_LABEL, no: 'n/a' };
+const legendStates = (['yes', 'experimental', 'planned', 'no'] as OsState[]).filter((s) =>
+  present.has(s)
+);
+---
+
+<section id={floor.id} class="tools" data-lit data-floor={floor.fl} data-floor-label={floor.label}>
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">{floor.fl} · {floorName(floor)} — the resident CLIs</p>
+      <h2 class="statement statement--md">Whichever CLI<br />they run.</h2>
+      <p class="lead">
+        Each coding agent shows up as a coworker. Support is per-tool <em>and</em> per-OS — the same
+        matrix as the Sources panel inside the app. New CLIs land via one
+        <a href={asset('contributing')}>Source adapter</a>.
+      </p>
+    </div>
+
+    <div class="tools__lobby">
+      <div class="tools__matrix tools__board hw-panel reveal">
+        <table>
+          <caption class="sr-only">
+            Supported coding agents by operating system
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Tool</th>
+              {OSES.map((o) => <th scope="col">{o.label}</th>)}
+              <th scope="col" class="tools__how-col">How</th>
+            </tr>
+          </thead>
+          <tbody>
+            {supported.map((s) => <tr>
+              <th scope="row">
+                {s.badge && <span
+                  class="tools__badge"
+                  style={s.badge_color ? `--badge:${s.badge_color}` : undefined}
+                  aria-hidden="true"
+                >
+                  {s.badge}
+                </span>}
+                <a href={s.url} target="_blank" rel="noreferrer">
+                  {s.name}
+                </a>
+              </th>
+              {OSES.map((o) => <td class="tools__cell" data-state={s.platforms[o.key]}>
+                <span class="sr-only">{stateLabel(s.platforms[o.key])}</span>
+                <Fragment set:html={MARK(s.platforms[o.key])} />
+              </td>)}
+              <td class="tools__how">{s.transport}</td>
+            </tr>)}
+          </tbody>
+          {planned.length > 0 && <tbody class="tools__planned">
+            <tr class="tools__group">
+              <td colspan={OSES.length + 2}>Planned</td>
+            </tr>
+            {planned.map((s) => <tr>
+              <th scope="row">
+                <a href={s.url} target="_blank" rel="noreferrer">
+                  {s.name}
+                </a>
+              </th>
+              {OSES.map(() => <td class="tools__cell" data-state="planned">
+                <span class="sr-only">planned</span>
+                <Fragment set:html={MARK('planned')} />
+              </td>)}
+              <td class="tools__how">{s.transport}</td>
+            </tr>)}
+          </tbody>}
+        </table>
+        <p class="tools__legend">
+          {legendStates.map((s) => <span class="tools__legend-item">
+            <Fragment set:html={MARK(s)} /> {LEGEND_LABEL[s]}
+          </span>)}
+        </p>
+      </div>
+      <aside class="tools__plaque hw-panel reveal" aria-label="GitHub stars">
+        <p class="tools__plaque-stars">
+          {starText(stars)}<span class="sr-only">GitHub stars</span>
+        </p>
+        {/* the engraving: the same sourced claim showcase.json already ships
+             on the AGENTS channel caption — one sentence, two mounts */}
+        <p class="tools__plaque-engraving">
+          fleets of 100+ agents have run this repo through this very office.
+        </p>
+        <a class="tools__plaque-link" href={REPO} target="_blank" rel="noreferrer">star it →</a>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<style>
+  .tools__lobby {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.6rem;
+    align-items: flex-start;
+  }
+  .tools__plaque {
+    max-width: 240px;
+    padding: 1rem 1.1rem;
+    color: var(--chip-ink);
+    font-family: var(--font-mono);
+  }
+  .tools__plaque-stars {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    color: var(--led);
+    text-shadow: 0 0 6px var(--led-glow);
+    margin: 0 0 0.5rem;
+  }
+  .tools__plaque-engraving {
+    font-size: 0.82rem;
+    color: var(--chip-dim);
+    margin: 0 0 0.8rem;
+  }
+  .tools__plaque-link {
+    font-size: 0.82rem;
+    color: var(--chip-bright);
+  }
+  .tools__matrix {
+    max-width: 760px;
+    /* left-align to the page rail, NOT centered: every other block hangs on the
+       left rail, so a centered table floats out from under its headline. */
+    margin-inline: 0;
+    padding: 0.4rem 0.4rem 0.2rem;
+    overflow-x: auto;
+  }
+  .tools table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+  }
+  .tools th,
+  .tools td {
+    padding: 0.6rem 0.7rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--fg) 15%, transparent);
+    text-align: left;
+    white-space: nowrap;
+  }
+  .tools thead th {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-synthesis: none;
+    font-size: 1.05rem;
+    letter-spacing: 0.03em;
+    opacity: 0.85;
+  }
+  .tools__badge {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 700;
+    /* the app's real per-CLI hue, lightened toward white so the darkest badge
+       still clears WCAG AA on this ALWAYS-dark --screen ground. */
+    color: color-mix(in srgb, var(--badge, var(--led)) 80%, white);
+    background: var(--screen);
+    padding: 0.1rem 0.35rem;
+    margin-right: 0.5rem;
+  }
+  .tools tbody th[scope='row'] {
+    font-weight: 600;
+  }
+  .tools tbody th a {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px dotted currentColor;
+  }
+  .tools tbody th a:hover {
+    opacity: 0.8;
+  }
+  /* td-qualified (0,2,1) so `text-align: center` beats the base `.tools td
+     { text-align: left }` (0,1,1) — bare `.tools__cell` (0,1,0) loses. */
+  .tools td.tools__cell {
+    text-align: center;
+    font-size: 1.05rem;
+  }
+  .tools__cell[data-state='no'] {
+    opacity: 0.35;
+  }
+  .tools__board {
+    padding: 0.9rem 0.9rem 0.4rem;
+    color: var(--chip-ink);
+  }
+  .tools__board th,
+  .tools__board td {
+    border-bottom-color: var(--chip-line);
+  }
+  .tools__board thead th {
+    color: var(--chip-dim);
+  }
+  .tools__board tbody tr:hover {
+    background: var(--hw-hover);
+  }
+  .tools__board .tools__badge {
+    background: none;
+    text-shadow: 0 0 8px color-mix(in srgb, var(--badge, var(--led)) 55%, transparent);
+  }
+  /* `.tools ` prefix lifts this to (0,3,1) so `opacity: 1` beats the base
+     `.tools td.tools__how { opacity: .7 }` below — at equal (0,2,1) the base
+     wins on order and the board's How column renders double-dimmed, sub-AA. */
+  .tools .tools__board td.tools__how {
+    color: var(--chip-dim);
+    opacity: 1;
+  }
+  .tools__board .tools__group td,
+  .tools__board .tools__planned tr th,
+  .tools__board .tools__planned tr td,
+  .tools__board .tools__legend,
+  .tools__board .tools__legend-item:not(:first-child)::before {
+    /* --fg-muted is tuned for the light PAGE background and lands below the AA
+       floor on this ALWAYS-dark --screen board; --chip-dim clears it. */
+    color: var(--chip-dim);
+  }
+  :global(.tools__led) {
+    display: inline-block;
+    vertical-align: -0.1em;
+  }
+  /* the lit fill+glow is .led-dot.is-on's authority (global.css);
+     .tools__led--on stays only as a selector hook for the e2e lobby count. */
+  :global(.tools__led--exp) {
+    background: transparent;
+    border: 2px solid var(--amber);
+    box-shadow: none;
+  }
+  /* the marks are injected via set:html (MARK()), so they carry no scoped
+     data-astro hash — a scoped selector would miss them. */
+  :global(.tools__mark) {
+    width: 1.1em;
+    height: 1.1em;
+    fill: currentColor;
+    vertical-align: -0.16em;
+  }
+  :global(.tools__dash) {
+    color: var(--chip-dim);
+  }
+  :global(.tools__soon) {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--chip-dim);
+  }
+  /* td-qualified: must outrank the `.tools th, .tools td` nowrap above —
+     bare .tools__how loses on specificity and the column clips mid-word */
+  .tools td.tools__how {
+    font-size: 0.82rem;
+    opacity: 0.7;
+    white-space: normal;
+  }
+  .tools__group td {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    /* informative, so a muted AA color and NOT opacity — element opacity put
+       this below WCAG 1.4.3 in day theme. */
+    color: var(--fg-muted);
+    padding-top: 0.9rem;
+    border-bottom: none;
+  }
+  .tools__planned tbody:last-child tr:last-child th,
+  .tools__planned tr th,
+  .tools__planned tr td {
+    /* muted color, not opacity — opacity dropped the tool names below AA */
+    color: var(--fg-muted);
+  }
+  .tools__legend {
+    margin: 0.7rem 0.2rem 0.3rem;
+    font-size: 0.78rem;
+    color: var(--fg-muted);
+  }
+  .tools__legend-item {
+    white-space: nowrap;
+  }
+  .tools__legend-item:not(:first-child)::before {
+    content: '·';
+    margin: 0 0.5rem;
+    color: var(--fg-muted);
+  }
+  @media (max-width: 560px) {
+    .tools__how-col,
+    .tools__how {
+      display: none;
+    }
+  }
+  /* 390px: Tool + 3 OS columns must fit without clipping the Windows column */
+  @media (max-width: 480px) {
+    .tools th,
+    .tools td {
+      padding: 0.5rem 0.35rem;
+      font-size: 0.85rem;
+    }
+    .tools__badge {
+      margin-right: 0.3rem;
+    }
+  }
+</style>

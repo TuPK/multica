@@ -1,0 +1,67 @@
+# cargo-mutants config (`just mutants`). Advisory: exclude only where a surviving
+# mutant is NOISE, never where it is killable. Rationale for each entry lives in
+# the commit that added it. `test_workspace` stays at its default, the mutated
+# package's tests only, so the binary's harness may kill a core/scene survivor:
+# re-run it with `--test-workspace=true` before acting on it. A
+# `--timeout-multiplier` passed through keeps cargo-mutants' timeout above
+# nextest's `[profile.default] slow-timeout`, or a real hang files as `timeout`,
+# not `caught`.
+test_tool = "nextest"
+
+exclude_globs = [
+    # winit / async glue: no headless test can kill these. Shared with codecov.yml's
+    # ignore list — edit together. These five are that list's intersection, so a
+    # decision here is measured by NOTHING: move it out instead of widening (#827).
+    "crates/pixtuoid/src/main.rs",
+    "crates/pixtuoid/src/app/mod.rs",
+    "crates/pixtuoid/src/runtime/pipeline.rs",
+    "crates/pixtuoid/src/floating/mod.rs",
+    "crates/pixtuoid/src/floating/window.rs",
+    # tui/mod.rs + runtime/driver.rs are ignored by codecov but MUTATED here: they
+    # carry unit-tested decision layers, so their glue is excluded by fn below.
+    # Timing/FFI probes: a survivor here is a flaked test, not a missing assertion.
+    "crates/pixtuoid-core/src/source/exit_watch.rs",
+    "crates/pixtuoid-core/src/source/fd_probe.rs",
+    # cfg(windows): never compiled on the unix hosts that run mutants.
+    "crates/pixtuoid-core/src/source/hook/windows.rs",
+]
+
+# Never a regex for a cfg-twin survivor (proc_start.rs `imp`, grok/native.rs
+# `live_grok_session_ids`): its description is the killable twin's too, so the
+# regex would hide both.
+exclude_re = [
+    # Equivalent mutants — each verified UNOBSERVABLE by hand, not merely untested.
+    'unclaim\.rs.*replace < with <= in ChildEndUnclaims',       # same-instant monotonic reads
+    'cc_probe\.rs.*replace pid_start_time_secs',                # cfg-twin; both pinned per-platform
+    'compute\.rs.*plant_ground_in_bounds',                      # targeted retain == clear-all in range
+    'liveness\.rs.*replace > with >= in ProbeSnapshot::bind_pid',  # writes the value already there
+    'jsonl/mod\.rs.*replace no_cwd_from_path ->',               # sole caller collapses both spellings
+    # The empty-vs-comment early return in omp's dotenv line parser. `&&` is
+    # always false (an empty string cannot start with `#`), and every input it
+    # would have skipped is still rejected downstream — a comment head fails
+    # `is_valid_env_name`, a blank line has no `=`. Kept for upstream fidelity.
+    'omp\.rs.*replace \|\| with && in parse_omp_env_line',
+    # Untestable glue inside otherwise-mutated files: ZERO test call sites, so
+    # nothing exists that could kill them. Delete a name the moment a test reaches it.
+    'tui/mod\.rs.*(run_tui|setup_terminal)',
+    'runtime/driver\.rs.*replace (run|run_async|headless_loop) ->',
+    'runtime/driver\.rs.*replace reducer_task with',
+    # Reached under test, but only on a branch where the mutation is unobservable.
+    'unix\.rs.*replace ensure_owned_socket_dir ->',   # tests hit only the no-op branch
+    'liveness\.rs.*replace ProbeSnapshot::from_open_fds ->',  # proc walk finds nothing under test
+    # #828: pure-substitution wrappers whose decision logic + pins live in the
+    # `_resolved` core one line down. Keep them substitutions — logic added here
+    # is unmeasurable, exactly as `ensure_owned_socket_dir` above.
+    'hermes\.rs.*replace hermes_home ->',
+    'grok/native\.rs.*replace grok_probe_root ->',
+    # #828: the `from_open_fds` family — under test the proc walk finds nothing,
+    # so `Some(empty)` is indistinguishable from the real answer. Pinned to the
+    # `Some(Default` spelling: each fn's `-> None` twin IS killable and caught.
+    'omp/native\.rs.*replace live_omp_session_ids -> Option<ProbeSnapshot> with Some\(Default',
+    'codex/native\.rs.*replace live_codex_rollout_ids -> Option<ProbeSnapshot> with Some\(Default',
+    'codex/native\.rs.*replace pid_for_session -> Option<i32> with None',
+    # #828: `cfg!(windows)` short-circuits this comparison to a constant `false`
+    # off Windows, so the operator is unobservable there. Its `&&` sibling one
+    # column left IS killable and is caught.
+    'grok\.rs.*replace == with != in grok_cwd_from_path',
+]

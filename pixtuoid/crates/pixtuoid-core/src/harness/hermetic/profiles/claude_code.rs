@@ -1,0 +1,149 @@
+use super::hook_event_name;
+use crate::harness::hermetic::{
+    ConfigFile, HostConfig, Package, PerOs, Profile, Scenario, Second, Shape, Surface, Turn, tui,
+};
+use crate::harness::host::Hive;
+use crate::harness::plan::Placeholder;
+
+/// Claude Code's TUI. Manual mode asks before a non-read-only Bash call
+/// (code.claude.com/docs/en/permission-modes).
+const TUI: tui::Tui = tui::Tui {
+    args: &["--permission-mode", "manual"],
+    composer: tui::Composer {
+        marker: "❯",
+        border: tui::Border::Rule {
+            glyph: '─',
+            corners: None,
+        },
+    },
+    gates: &[tui::Gate {
+        shows: "Do you want to proceed?",
+        keys: &[tui::Key::Esc],
+        // Past the 6 s an unanswered dialog waits before it fires `Notification`
+        // (`qYt=6000` in `eTe`, the 2.1.302 bundle), and so past the 150 ms it
+        // ignores keys for (`AM=150`).
+        dwell: std::time::Duration::from_secs(7),
+    }],
+    cancel: &[],
+    quit: &[tui::Key::Text("/exit"), tui::Key::Enter],
+    conpty: tui::ConPty::Renders,
+};
+
+pub(crate) const PROFILE: Profile = Profile {
+    source: crate::source::claude_code::SOURCE_NAME,
+    package: Package::Npm("@anthropic-ai/claude-code"),
+    plugin_types: &[],
+    invocation: &["claude", "-p", Placeholder::Prompt.as_str()],
+    // `-r, --resume [value]`: "Resume a conversation by session ID"
+    // (`claude --help` at 2.1.302).
+    second_turn: Some(&[
+        "claude",
+        "-p",
+        Placeholder::Prompt.as_str(),
+        "--resume",
+        Placeholder::Session.as_str(),
+    ]),
+    env: &[
+        ("ANTHROPIC_BASE_URL", "http://127.0.0.1:{port}"),
+        // A bearer token, not `ANTHROPIC_API_KEY`: the TUI asks to approve an API
+        // key once (code.claude.com/docs/en/env-vars), a dialog no run should answer.
+        ("ANTHROPIC_AUTH_TOKEN", "{key}"),
+        // Auto-updates, telemetry, error reporting and the fast-mode probe
+        // (code.claude.com/docs/en/env-vars); the plugin marketplace's
+        // auto-install has its own switch.
+        ("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", "1"),
+        ("CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL", "1"),
+    ],
+    homes: &[],
+    // Managed settings, managed MCP servers and a managed CLAUDE.md, and
+    // on Windows the registry policy beside them
+    // (code.claude.com/docs/en/managed-settings).
+    system_config: PerOs {
+        unix: &[
+            HostConfig::Path("/Library/Application Support/ClaudeCode"),
+            HostConfig::Path("/etc/claude-code"),
+        ],
+        windows: &[
+            HostConfig::Path(r"C:\Program Files\ClaudeCode"),
+            HostConfig::Registry {
+                hive: Hive::Hklm,
+                sub: r"SOFTWARE\Policies\ClaudeCode",
+            },
+            HostConfig::Registry {
+                hive: Hive::Hkcu,
+                sub: r"SOFTWARE\Policies\ClaudeCode",
+            },
+        ],
+    },
+    // Memory files up to `/`, and AGENTS.md where none is found
+    // (code.claude.com/docs/en/memory).
+    ancestor_config: &["CLAUDE.md", "CLAUDE.local.md", ".claude", "AGENTS.md"],
+    // The TUI's first launch: onboarding, then a trust dialog per folder.
+    config: &[ConfigFile {
+        home: "CLAUDE_CONFIG_DIR",
+        path: ".claude.json",
+        template: r#"{"hasCompletedOnboarding":true,"projects":{"{workspace_slashed}":{"hasTrustDialogAccepted":true}}}"#,
+    }],
+    scenarios: &[
+        Scenario {
+            name: "tool-run",
+            shape: Shape::ToolRun,
+            surface: Surface::Headless,
+            expects: &["SessionStart", "PreToolUse", "PostToolUse", "SessionEnd"],
+            turn: Turn::PROFILE,
+        },
+        // Ultracode on enters, a prompt naming ultrathink adds its effort,
+        // and the resumed turn, ultracode off, exits (`GQr`, `jQr` in the
+        // 2.1.302 bundle).
+        Scenario {
+            name: "ultra-effort",
+            shape: Shape::ToolRun,
+            surface: Surface::Headless,
+            expects: &["SessionStart", "PreToolUse", "PostToolUse", "SessionEnd"],
+            turn: Turn {
+                args: &["--effort", "ultracode"],
+                prompt: Some("ultrathink: read NOTE.txt."),
+                second: Some(Second::Prompt("Say done.")),
+                ..Turn::PROFILE
+            },
+        },
+        Scenario {
+            name: "subagent",
+            shape: Shape::Subagent,
+            surface: Surface::Headless,
+            expects: &[
+                "SessionStart",
+                "PreToolUse",
+                "PostToolUse",
+                "SubagentStart",
+                "SubagentStop",
+                "SessionEnd",
+            ],
+            turn: Turn::PROFILE,
+        },
+        Scenario {
+            name: "permission",
+            shape: Shape::Permission,
+            surface: Surface::Tui { row: &TUI },
+            expects: &[
+                "SessionStart",
+                "PreToolUse",
+                "PermissionRequest",
+                "Notification",
+                "SessionEnd",
+            ],
+            turn: Turn::PROFILE,
+        },
+    ],
+    script_vars: &[],
+    not_yet: &[],
+    event_name: hook_event_name,
+    not_yet_fields: &[],
+    not_yet_literals: &[],
+    children_inherit_cwd: false,
+    result_unseen: false,
+    live: None,
+    daemon: None,
+    server_stop: None,
+    turn_exits: &[],
+};

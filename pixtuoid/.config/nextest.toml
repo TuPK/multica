@@ -1,0 +1,35 @@
+[profile.default]
+# Cap a hung test so a deadlock fails THAT test (named) and the rest still run,
+# instead of the job-level timeout killing the whole run blind. NOT a retry —
+# the no-retries stance is preserved (retries stays unset = 0).
+slow-timeout = { period = "60s", terminate-after = 3 }
+
+# A red CI run should report every failure at once, not fix-push-refail. Local
+# `just test` keeps the default fail-fast for fast iteration.
+[profile.ci]
+fail-fast = false
+
+[profile.ci.junit]
+path = "junit.xml"
+
+# These assert wall-clock bounds on a CHILD PROCESS's spawn+exit; under the
+# fully-parallel suite on a loaded machine, exec/dyld scheduling jitter alone
+# blows the bound, so give them the machine to themselves.
+[[profile.default.overrides]]
+filter = 'test(_exits_zero_without_blocking) | test(_within_watchdog_bound) | test(_and_ignores_stdin)'
+threads-required = "num-cpus"
+
+# Same load-sensitivity as the shim bounds above: this pair spawns a real
+# `run --headless` and polls a wall-clock budget for it to reach a state, and a
+# saturated machine starves the child until the budget expires. Raising the
+# budget instead would only lengthen the failure path — they exit on a positive
+# signal, so exclusivity is nearly free.
+[[profile.default.overrides]]
+filter = 'test(connected_codex_rollout_becomes_a_sprite) | test(disconnected_codex_rollout_is_dropped_by_the_gate)'
+threads-required = "num-cpus"
+
+# A layout sweep that splits its floors across the cores, so it holds every
+# test slot while it runs.
+[[profile.default.overrides]]
+filter = 'test(no_route_on_a_short_floor_passes_through_a_wall)'
+threads-required = "num-test-threads"

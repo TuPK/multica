@@ -1,0 +1,97 @@
+name: media regen
+
+# The README's docs/images are rendered from main here and nowhere else: a
+# look-changing PR merges without its media, and this keeps one bot PR that
+# brings them up to date. The write token lives only in `publish`, which
+# builds and runs nothing from the tree.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "crates/**"
+      - Cargo.lock
+      - scripts/gen-media.py
+      - scripts/media.json
+      # themes-composite's `over` file, and the Pillow pin its PNGs come from.
+      - site/src/themes.json
+      - requirements-dev.txt
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: media-regen
+  cancel-in-progress: true
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-alsa
+      - uses: ./.github/actions/setup-cargo-just
+      # The `demo` gif's optimizer; the runner image doesn't ship it.
+      - uses: ./.github/actions/apt-install
+        with:
+          packages: gifsicle
+          recommends: 'false'
+      - run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --quiet -r requirements-dev.txt
+          .venv/bin/python3 scripts/gen-media.py --only docs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: media-${{ github.sha }}
+          path: docs/images/
+          retention-days: 1
+
+  publish:
+    needs: render
+    # A dispatch from another branch would publish that branch's render.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: {}
+    steps:
+      # main at the rendered commit, for the tree the media commit sits on.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: media-${{ github.sha }}
+          path: rendered
+      # An App installation token, because a GITHUB_TOKEN PR starts no CI; it
+      # is minted per run for this repository alone and expires within the hour.
+      - id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_APP_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      - run: |
+          set -euo pipefail
+          rm -rf docs/images
+          mv rendered docs/images
+          # demo.gif isn't byte-stable across gifsicle builds (gen-media.py), so it
+          # rides along with a real change but never opens a PR on its own.
+          if [ -z "$(git status --porcelain -- docs/images ':!docs/images/demo.gif')" ]; then
+            git checkout -- docs/images/demo.gif
+          fi
+      # No diff closes an open media PR and deletes its branch (the action's README).
+      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          branch: bot/media-regen
+          delete-branch: true
+          add-paths: docs/images
+          sign-commits: true
+          commit-message: "chore(media): regenerate from ${{ github.sha }}"
+          title: "chore(media): regenerate"
+          body: "The README's `docs/images`, rendered from main (`media-regen.yml`). A session queues it after reading the images."

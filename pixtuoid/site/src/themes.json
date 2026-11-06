@@ -1,0 +1,39 @@
+[
+  {
+    "id": "normal",
+    "name": "Coworking",
+    "accent": "#d97757",
+    "accent2": "#e6a356"
+  },
+  {
+    "id": "cyberpunk",
+    "name": "Cyberpunk",
+    "accent": "#ff5cc6",
+    "accent2": "#8be9fd",
+    "featured": true
+  },
+  {
+    "id": "dracula",
+    "name": "Dracula",
+    "accent": "#bd93f9",
+    "accent2": "#ff79c6"
+  },
+  {
+    "id": "tokyo-night",
+    "name": "Tokyo Night",
+    "accent": "#7aa2f7",
+    "accent2": "#bb9af7"
+  },
+  {
+    "id": "catppuccin",
+    "name": "Catppuccin",
+    "accent": "#cba6f7",
+    "accent2": "#f5a9c4"
+  },
+  {
+    "id": "gruvbox",
+    "name": "Gruvbox",
+    "accent": "#fabd2f",
+    "accent2": "#fe8019"
+  }
+]

@@ -1,0 +1,41 @@
+[package]
+name        = "pixtuoid-web"
+description  = "WebAssembly canvas painter over the pixtuoid-scene engine — the live office hero"
+# A site build input, never a crates.io artifact: this thin wasm shim must not
+# enter the workspace's semver/release surface.
+publish     = false
+version.workspace      = true
+edition.workspace      = true
+license.workspace      = true
+repository.workspace   = true
+authors.workspace      = true
+homepage.workspace     = true
+
+[lints]
+workspace = true
+
+# cdylib = the wasm-bindgen artifact; rlib = so the pure sim logic is
+# unit-testable natively.
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# default-features = false → pixtuoid-core builds WITHOUT the native async
+# runtime (no tokio/notify) → the whole graph compiles to wasm32.
+pixtuoid-core  = { path = "../pixtuoid-core", version = "0.21.0", default-features = false }
+pixtuoid-scene = { path = "../pixtuoid-scene", version = "0.21.0", default-features = false }
+wasm-bindgen   = { workspace = true }
+# Feature-unions `wasmbind` into scene's chrono so that on wasm32
+# `chrono::Local` resolves the REAL browser timezone via js-sys; without it the
+# office's day/night cycle silently falls back to UTC for most visitors.
+chrono         = { workspace = true, features = ["wasmbind"] }
+
+# The lib has no direct `use chrono` — it's here solely for the feature-union
+# above, which machete can't see.
+[package.metadata.cargo-machete]
+ignored = ["chrono"]
+
+[dev-dependencies]
+# hero_still example only: PNG encode for the wasm-still posters.
+image = { workspace = true }
+serde_json = { workspace = true }

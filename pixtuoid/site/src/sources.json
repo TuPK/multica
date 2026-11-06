@@ -1,0 +1,198 @@
+[
+  {
+    "id": "claude-code",
+    "badge": "cc·",
+    "badge_color": "#c86e12",
+    "name": "Claude Code",
+    "url": "https://code.claude.com",
+    "status": "supported",
+    "transport": "hooks + session transcripts",
+    "platforms": {
+      "macos": "yes",
+      "linux": "yes",
+      "windows": "experimental"
+    }
+  },
+  {
+    "id": "codex",
+    "badge": "cx·",
+    "badge_color": "#1e80c0",
+    "name": "Codex CLI",
+    "url": "https://github.com/openai/codex",
+    "status": "supported",
+    "transport": "hooks + session transcripts (merged per session)",
+    "platforms": {
+      "macos": "yes",
+      "linux": "yes",
+      "windows": "experimental"
+    }
+  },
+  {
+    "id": "antigravity",
+    "badge": "ag·",
+    "badge_color": "#2e9e4a",
+    "name": "Antigravity CLI",
+    "url": "https://github.com/google-antigravity/antigravity-cli",
+    "status": "supported",
+    "transport": "hooks (~/.gemini/config/hooks.json) + session transcripts (~/.gemini/antigravity-cli/brain/)",
+    "platforms": {
+      "macos": "yes",
+      "linux": "yes",
+      "windows": "experimental"
+    }
+  },
+  {
+    "id": "reasonix",
+    "badge": "rx·",
+    "badge_color": "#9c3cc0",
+    "name": "DeepSeek-Reasonix",
+    "url": "https://github.com/esengine/DeepSeek-Reasonix",
+    "status": "supported",
+    "transport": "hooks only (a global Reasonix plugin)",
+    "platforms": {
+      "macos": "yes",
+      "linux": "yes",
+      "windows": "experimental"
+    }
+  },
+  {
+    "id": "codewhale",
+    "badge": "cw·",
+    "badge_color": "#14b8b0",
+    "name": "CodeWhale",
+    "url": "https://github.com/codewhale-hq/Codewhale",
+    "status": "supported",
+    "transport": "hooks only (~/.codewhale/config.toml [hooks])",
+    "platforms": {
+      "macos": "yes",
+      "linux": "yes",
+      "windows": "experimental"
+    }
+  },
+  {
+    "id": "copilot",
+    "badge": "cp·",
+    "badge_color": "#e0609c",
+    "name": "Copilot CLI",
+    "url": "https://github.com/github/copilot-cli",
+    "status": "supported",
+    "transport": "session transcripts only (~/.copilot/session-state/, sub-agents interleave by agentId)",
+    "platforms": {
+      "macos": "yes",
+      "linux": "yes",
+      "windows": "experimental"
+    }
+  },
+  {
+    "id": "opencode",
+    "badge": "oc·",
+    "badge_color": "#d83a3a",
+    "name": "opencode",
+    "url": "https://github.com/anomalyco/opencode",
+    "status": "supported",
+    "transport": "hooks (TS plugin → ~/.config/opencode/plugins/, session-id-keyed)",
+    "platforms": {
+      "macos": "yes",
+      "linux": "yes",
+      "windows": "experimental"
+    }
+  },
+  {
+    "id": "cursor",
+    "badge": "cu·",
+    "badge_color": "#96a0af",
+    "name": "Cursor CLI",
+    "url": "https://cursor.com/cli",
+    "status": "supported",
+    "transport": "hooks (~/.cursor/hooks.json, session-id-keyed)",
+    "platforms": {
+      "macos": "yes",
+      "linux": "yes",
+      "windows": "experimental"
+    }
+  },
+  {
+    "id": "hermes",
+    "badge": "hm·",
+    "badge_color": "#6858e0",
+    "name": "Hermes Agent",
+    "url": "https://hermes-agent.nousresearch.com",
+    "status": "supported",
+    "transport": "hooks (Python plugin → ~/.hermes/plugins/, runs in its gateway, session-id-keyed)",
+    "platforms": {
+      "macos": "yes",
+      "linux": "yes",
+      "windows": "experimental"
+    }
+  },
+  {
+    "id": "omp",
+    "badge": "om·",
+    "badge_color": "#8ac832",
+    "name": "Oh My Pi",
+    "url": "https://omp.sh",
+    "status": "supported",
+    "transport": "session transcripts (default ~/.omp/agent/sessions/, redirectable by profile, PI_CONFIG_DIR, XDG, or .env; subagents nested per-task) + a bridge extension (TS → agent-dir extensions/) for approval waits and instant lifecycle",
+    "platforms": {
+      "macos": "yes",
+      "linux": "yes",
+      "windows": "experimental"
+    }
+  },
+  {
+    "id": "openclaw",
+    "badge": "ok·",
+    "badge_color": "#ffaa30",
+    "name": "OpenClaw",
+    "url": "https://github.com/openclaw/openclaw",
+    "status": "supported",
+    "transport": "hooks (JS plugin → openclaw gateway; a wandering gateway mascot, not a desk agent)",
+    "platforms": {
+      "macos": "yes",
+      "linux": "yes",
+      "windows": "experimental"
+    }
+  },
+  {
+    "id": "grok",
+    "badge": "gk·",
+    "badge_color": "#30d0e8",
+    "name": "Grok Build",
+    "url": "https://github.com/xai-org/grok-build",
+    "status": "supported",
+    "transport": "hooks (~/.grok/hooks/) + session transcripts (~/.grok/sessions/, updates.jsonl)",
+    "platforms": {
+      "macos": "yes",
+      "linux": "yes",
+      "windows": "experimental"
+    }
+  },
+  {
+    "id": "kimi",
+    "badge": "km·",
+    "badge_color": "#c446fe",
+    "name": "Kimi Code CLI",
+    "url": "https://github.com/MoonshotAI/kimi-code",
+    "status": "supported",
+    "transport": "hooks (~/.kimi-code/config.toml [[hooks]], session-id-keyed)",
+    "platforms": {
+      "macos": "yes",
+      "linux": "yes",
+      "windows": "experimental"
+    }
+  },
+  {
+    "id": "dsh",
+    "badge": "ds·",
+    "badge_color": "#4d6bfe",
+    "name": "DeepSeek Harness",
+    "url": "https://github.com/deepseek-ai/deepseek-harness",
+    "status": "supported",
+    "transport": "cordis plugin (zero-import .mjs mounted via $DSH_HOME/cordis.patch.yml, session-id-keyed)",
+    "platforms": {
+      "macos": "yes",
+      "linux": "yes",
+      "windows": "experimental"
+    }
+  }
+]

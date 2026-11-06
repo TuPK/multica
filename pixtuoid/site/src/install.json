@@ -1,0 +1,31 @@
+[
+  {
+    "id": "brew",
+    "label": "Homebrew",
+    "blurb": "Linux, macOS, or WSL2",
+    "cmds": ["brew install pixtuoid"],
+    "readme": true
+  },
+  {
+    "id": "npm",
+    "label": "npm",
+    "blurb": "any OS",
+    "cmds": ["npm install -g pixtuoid"],
+    "readme": true
+  },
+  {
+    "id": "cargo",
+    "label": "Cargo",
+    "cmds": ["cargo install pixtuoid pixtuoid-hook"],
+    "readme": false
+  },
+  {
+    "id": "release",
+    "label": "GitHub Releases",
+    "cmds": [
+      "# prebuilt binaries (macOS · Linux · Windows .zip) + Debian .debs:",
+      "# https://github.com/pixtuoid/pixtuoid/releases/latest"
+    ],
+    "readme": false
+  }
+]

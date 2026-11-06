@@ -1,0 +1,38 @@
+{
+  "origin": "recorded",
+  "cli": "codex",
+  "version": "codex-cli 0.166.0",
+  "captured": "2026-10-30",
+  "command": "just hermetic --record codex",
+  "deidentified": {
+    "method": "decoder-allowlist",
+    "blanked": 94
+  },
+  "aimock": "1.47.0",
+  "script": "tests/sources/codex/hermetic/custom-tool.json",
+  "dropped": {
+    "os": "macos",
+    "at": {
+      "/payload/type": [
+        "item_completed",
+        "message",
+        "reasoning",
+        "thread_settings_applied",
+        "web_search_call"
+      ],
+      "/type": [
+        "event_msg",
+        "response_item",
+        "session_meta",
+        "token_usage_record",
+        "world_state"
+      ]
+    }
+  },
+  "sentinel_reads": {
+    "rollout-2026-10-30T14-55-51-01a18d4f-5ece-77d0-b20e-9b156eb8ae22.jsonl": [
+      "15:/payload/info/last_token_usage/cached_input_tokens",
+      "23:/payload/info/last_token_usage/cached_input_tokens"
+    ]
+  }
+}

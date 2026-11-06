@@ -1,0 +1,19 @@
+# build output
+dist/
+public/wasm/
+# Rendered from the tree by .github/actions/gen-demos (site CI and Pages).
+public/demos/
+# deps
+node_modules/
+# astro
+.astro/
+# lighthouse ci reports
+.lighthouseci/
+# env
+.env
+.env.production
+# misc
+.DS_Store
+# playwright e2e artifacts
+test-results/
+playwright-report/

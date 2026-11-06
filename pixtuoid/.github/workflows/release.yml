@@ -1,0 +1,340 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+# Lossless repo-wide release queue: different tags must not interleave irreversible
+# crates.io/npm publication, and a publish must never be interrupted.
+concurrency:
+  group: pixtuoid-release
+  queue: max
+  cancel-in-progress: false
+
+# Least-privilege (#215): jobs inherit read-only and widen scope per job, so a
+# compromised action anywhere else gets no repo-write.
+permissions:
+  contents: read
+
+# A tag's run restores main's caches, which would reach the builds that are
+# attested and published (https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#controlling-cache-access-with-cache-mode).
+cache-mode: none
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history for the tag-on-main ancestry check below.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup-tools
+      - name: Validate tag commit is on main
+        # A release tag pushed at an arbitrary (unreviewed) commit must not build +
+        # publish (#215). Pre-release tester tags are exempt — they test pre-merge,
+        # on a commit whose PR run gave it a ci-gate.
+        if: ${{ !contains(github.ref_name, '-') }}
+        run: |
+          git fetch origin main --quiet
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tag ${GITHUB_REF_NAME} points at ${GITHUB_SHA}, which is not an ancestor of origin/main — release tags must be cut from main"
+            exit 1
+          fi
+      - name: Validate tag matches Cargo.toml version
+        run: |
+          # A pre-release suffix is release-channel metadata, not a Cargo version,
+          # so it validates against the base version.
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          TAG_VERSION="${TAG_VERSION%%-*}"
+          CARGO_VERSION=$(just workspace-version)
+          if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match Cargo.toml version ${CARGO_VERSION}"
+            exit 1
+          fi
+
+  # Neither check above proves the commit's CI passed.
+  ci-passed:
+    needs: check
+    permissions:
+      checks: read
+    uses: ./.github/workflows/wait-ci-gate.yml
+
+  build:
+    name: build (${{ matrix.target }})
+    needs: ci-passed
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            cross: true
+          # aarch64 cross-links on the same x64 runner (VC ARM64 components preinstalled).
+          # `windows-latest` is validated only at TAG time (release.yml doesn't run on
+          # PRs) — re-pin to a dated label if a runner-image bump regresses it.
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pixtuoid/.github/.github/actions/setup-rust@main
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: ./.github/actions/setup-tools
+
+      - name: Install cross
+        if: matrix.cross
+        uses: taiki-e/install-action@a4d3f3f761dcd95cce1b72cb61cb6d1963438177 # v2.87.30
+        with:
+          tool: cross
+
+      - if: contains(matrix.target, 'musl')
+        uses: ./.github/actions/apt-install
+        with:
+          packages: musl-tools
+
+      - name: Build
+        run: just build-target ${{ matrix.target }} "${{ matrix.cross || 'false' }}"
+
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          DIR="pixtuoid-${VERSION}-${{ matrix.target }}"
+          mkdir "$DIR"
+          cp "target/${{ matrix.target }}/release/pixtuoid" "$DIR/"
+          cp "target/${{ matrix.target }}/release/pixtuoid-hook" "$DIR/"
+          just stage-notices "$DIR"
+          tar czf "${DIR}.tar.gz" "$DIR"
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          # Flat zip — exes at zip root so Expand-Archive doesn't double-wrap.
+          VERSION="${GITHUB_REF_NAME}"
+          DIR="pixtuoid-${VERSION}-${{ matrix.target }}"
+          mkdir "$DIR"
+          cp "target/${{ matrix.target }}/release/pixtuoid.exe" "$DIR/"
+          cp "target/${{ matrix.target }}/release/pixtuoid-hook.exe" "$DIR/"
+          just stage-notices "$DIR"
+          ( cd "$DIR" && 7z a "../${DIR}.zip" . )
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: artifact-${{ matrix.target }}
+          path: |
+            *.tar.gz
+            *.zip
+          if-no-files-found: error
+
+  deb:
+    name: deb (${{ matrix.target }})
+    needs: ci-passed
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+          - target: aarch64-unknown-linux-gnu
+            cross: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pixtuoid/.github/.github/actions/setup-rust@main
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: ./.github/actions/setup-tools
+
+      - name: Install cross
+        if: matrix.cross
+        uses: taiki-e/install-action@a4d3f3f761dcd95cce1b72cb61cb6d1963438177 # v2.87.30
+        with:
+          tool: cross
+
+      - name: Install cargo-deb
+        uses: taiki-e/install-action@a4d3f3f761dcd95cce1b72cb61cb6d1963438177 # v2.87.30
+        with:
+          tool: cargo-deb
+
+      - name: Build
+        run: just build-target ${{ matrix.target }} "${{ matrix.cross || 'false' }}"
+
+      - name: Build .deb packages
+        run: just deb ${{ matrix.target }}
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: deb-${{ matrix.target }}
+          path: target/${{ matrix.target }}/debian/*.deb
+          if-no-files-found: error
+
+  release:
+    name: release
+    needs: [build, deb]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write # fills the draft release release-plz created
+      id-token: write # provenance attestation (OIDC)
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download artifacts
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          sha256sum -- *.tar.gz *.deb *.zip > sha256sums.txt
+
+      # Before the release goes public, so a failed attestation leaves a draft,
+      # never a published release without provenance.
+      - name: Attest build provenance
+        id: attest
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            artifacts/*.tar.gz
+            artifacts/*.deb
+            artifacts/*.zip
+
+      # Lets a download be verified offline (`gh attestation verify --bundle`);
+      # `*.intoto.jsonl` is the name Scorecard's Signed-Releases looks for.
+      - name: Name the attestation bundle
+        env:
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: cp -- "$BUNDLE" "artifacts/pixtuoid-${GITHUB_REF_NAME}.intoto.jsonl"
+
+      # release-plz created this release as a DRAFT carrying the changelog, so
+      # the version is never visible without its binaries. Passing neither
+      # `body` nor `prerelease` keeps what release-plz wrote (the action retains
+      # the existing release's info for every key it isn't given), and omitting
+      # `draft` is what publishes it once the assets are attached.
+      - name: Fill and publish the draft release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3 # zizmor: ignore[superfluous-actions] mature release action avoids hand-rolled gh release behavior
+        with:
+          # Passed rather than inherited because the hand-tag recovery path
+          # (release-plz.yml's own error message) leaves NO draft to inherit
+          # from, and the action then creates the release with this field unset
+          # — an `-rc.N` tag would land as the latest stable release. On the
+          # normal path it restates what `git_release_type = "auto"` chose.
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: |
+            artifacts/*.tar.gz
+            artifacts/*.deb
+            artifacts/*.zip
+            artifacts/sha256sums.txt
+            artifacts/*.intoto.jsonl
+
+  npm:
+    name: publish to npm
+    # The full build matrix gates this one: an npm publish is irreversible (no
+    # unpublish after 72h) and its packages ARE those binaries, so a target that
+    # fails to build must not reach the registry as a missing optional dep.
+    needs: [build, deb]
+    # Never publish a pre-release to npm — tester tags build artifacts only.
+    if: ${{ !contains(github.ref_name, '-') }}
+    # Its required reviewer is the publish approval, and the npm Trusted
+    # Publisher records name it, so no other job can publish.
+    environment: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write # npm provenance (`npm publish --provenance`)
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          # npm Trusted Publishing (#216) authenticates by OIDC only (no
+          # NODE_AUTH_TOKEN), which this triggers.
+          registry-url: https://registry.npmjs.org
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Extract binaries per target
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          TAG="${GITHUB_REF_NAME}"
+          # npm/generate.mjs fails on a target whose binary is absent.
+          for tgz in artifacts/pixtuoid-"${TAG}"-*.tar.gz; do
+            target="${tgz#artifacts/pixtuoid-"${TAG}"-}"
+            dest="npm/dist/${target%.tar.gz}"
+            mkdir -p "$dest"
+            tar xzf "$tgz" -C "$dest" --strip-components=1
+          done
+          for zip in artifacts/pixtuoid-"${TAG}"-*.zip; do
+            target="${zip#artifacts/pixtuoid-"${TAG}"-}"
+            dest="npm/dist/${target%.zip}"
+            mkdir -p "$dest"
+            unzip -o "$zip" -d "$dest"
+          done
+
+      - name: Generate npm packages
+        run: node npm/generate.mjs --version "${GITHUB_REF_NAME#v}" --artifacts npm/dist
+
+      - name: Publish (platform packages first, launcher last)
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Idempotent: swallow "cannot publish over previously published" so a
+          # re-run of a partially-published tag is safe.
+          publish_one() {
+            local dir="$1" name out
+            name=$(node -p "require('./${dir}/package.json').name")
+            if out=$(npm publish "$dir" --access public --provenance 2>&1); then
+              printf '%s\n' "$out"; echo "::notice::${name} published"; return 0
+            elif grep -qiE 'cannot publish over|previously published' <<<"$out"; then
+              # Match ONLY the over-publish phrase — never a bare 403, which npm
+              # also emits for auth/scope/2FA failures we must NOT swallow.
+              printf '%s\n' "$out"; echo "::warning::${name}@${VERSION} already on npm, skipping"; return 0
+            else
+              printf '%s\n' "$out"; echo "::error::${name} publish failed"; return 1
+            fi
+          }
+          # Platform packages first so the launcher's optionalDependencies always
+          # resolve to already-live versions. The `./` prefix is load-bearing:
+          # `npm publish npm/pixtuoid` parses the path as a GitHub `owner/repo`
+          # shorthand and tries to `git ls-remote` it.
+          for dir in ./npm/@pixtuoid/cli-*; do publish_one "$dir"; done
+          publish_one ./npm/pixtuoid

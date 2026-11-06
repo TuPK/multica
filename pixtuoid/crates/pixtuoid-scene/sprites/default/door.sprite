@@ -1,0 +1,20 @@
+# 16x14 elevator door — frame 0 of 3: CLOSED. Two chrome panels (K)
+# meeting in the centre with a 2-px frame-coloured (E) seam. Brushed-
+# steel frame (E) around the perimeter — deliberately lighter than
+# the wall so the elevator pops as a wall-mounted box. Control panel
+# (cyan + yellow floor display) at top.
+@frame 0
+E E E E E E E E E E E E E E E E
+E c y c c c c c c c c c c c c E
+E E E E E E E E E E E E E E E E
+E K K K K K K E E K K K K K K E
+E K K K K K K E E K K K K K K E
+E K K K K K K E E K K K K K K E
+E K K K K K K E E K K K K K K E
+E K K K K K K E E K K K K K K E
+E K K K K K K E E K K K K K K E
+E K K K K K K E E K K K K K K E
+E K K K K K K E E K K K K K K E
+E K K K K K K E E K K K K K K E
+E K K K K K K E E K K K K K K E
+E E E E E E E E E E E E E E E E

@@ -1,0 +1,23 @@
+# 32x10 office pantry — three legible appliances with strong colour
+# identity:
+#
+#   cols 0-7   : SOLID WHITE fridge (w everywhere except handles/divider).
+#                Chrome (E) door-pull columns on outer doors. Bright
+#                chrome (K) divider between freezer/fridge. Cyan + blue
+#                dispenser icons at row 7. Reads as a big white box —
+#                unmistakably an office fridge.
+#   cols 10-19 : Dark espresso machine (M body) with cyan LCD,
+#                chrome portafilter spouts, steam wand pokes up.
+#   cols 22-31 : Dark microwave (M body) with q glass, flanked by
+#                yellow chip-bag and red candy-bar on the counter.
+@frame 0
+w w w w w w w w . . D D D D D D D D D D . . D D D D D D D D D D
+w E w w w w E w . . . n . . . . . . n . . . . n . . . . . . n .
+w E w w w w E w . . . . . . . . . . . . . . . . . . . . . . . .
+w E w w w w E w . . . . . . K . . . . . . . . . . . . . . . . .
+w K K K K K K w . . K K K K K K K K K K . . K K K K K K K K K K
+w E w w w w E w . . . M M M M M M M M . . y . M M M M M M . r .
+w E w w w w E w . . . M c c c c c c M . . y . M q q q q M . r .
+w E w c b w E w . . . M K K M M K K M . . y . M M M M M M . r .
+w w w w w w w w . . D D D D D D D D D D . . D D D D D D D D D D
+n n n n n n n n . . n n n n n n n n n n . . n n n n n n n n n n

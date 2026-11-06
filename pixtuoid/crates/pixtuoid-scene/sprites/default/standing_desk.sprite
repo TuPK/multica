@@ -1,0 +1,13 @@
+# 8x8 sit-stand workstation — wood desktop with a bright cyan-glow
+# laptop (signals "active workstation", differentiates from idle pod
+# desks whose `j` screens read as dark/asleep), a small chrome coaster
+# accent, and visible legs with a height-adjustment crossbar.
+@frame 0
+n n n n n n n n
+n D D D D D D n
+n D c c c c D n
+n D M M K M D n
+n D D D D D D n
+. n . . . . n .
+. n . . . . n .
+. n D D D D n .

@@ -1,0 +1,66 @@
+name: raycast
+
+on:
+  # Called by ci.yml, so its verdict reaches the required `ci-gate`.
+  workflow_call:
+
+jobs:
+  # A PR that leaves the extension and its contract inputs alone skips `check`;
+  # path-changed treats a push or dispatch run as unchanged.
+  scope:
+    name: raycast in scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      changed: ${{ steps.scope.outputs.changed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: ./.github/actions/path-changed
+        id: scope
+        with:
+          # setup-npm installs the site's packageManager, so both are inputs too.
+          paths: integrations/raycast .github/workflows/raycast.yml .github/actions/setup-npm site/package.json
+
+  check:
+    name: types · lint
+    needs: scope
+    if: needs.scope.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: integrations/raycast
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: ./.github/actions/setup-npm
+        with:
+          directory: integrations/raycast
+          # Raycast runs extensions on its own Node 22 runtime, and its CLI
+          # requires 22.22.2+ (developers.raycast.com/misc/changelog).
+          node-version-file: integrations/raycast/.nvmrc
+      # Each schema's own freshness vs its Rust struct is gated separately, by the
+      # `*_schema_matches_the_committed_contract` tests in ci-tests.yml.
+      - name: contract types match the committed schemas
+        run: npm run gen:contract && git diff --exit-code src/contract.ts src/contract-outcome.ts
+      # Writes raycast-env.d.ts (the manifest's generated `Preferences`), which
+      # tsc reads, and validates the manifest, icons and metadata for the store.
+      - run: npx ray build -e dist -I -o "$RUNNER_TEMP/ray-dist"
+      - run: npx ray lint
+      - run: npx tsc --noEmit
+      - run: npm test
+      - run: npx eslint .
+      - uses: ./.github/actions/path-changed
+        id: lockfile
+        with:
+          # package.json holds the audit script and its level.
+          paths: integrations/raycast/package-lock.json integrations/raycast/package.json
+      # LAST: it resolves advisories live, so at step one someone else's publish
+      # skips every check below it (#846/#848).
+      - if: steps.lockfile.outputs.changed == 'true'
+        run: npm run audit

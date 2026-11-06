@@ -1,0 +1,261 @@
+name: release-plz
+
+# Two triggers. `release-pr` is dispatched BY HAND, never on push:
+# release-plz refreshes an open release PR on every main push, and a PR that
+# carries non-bot commits is closed and re-opened fresh, so a bump a human
+# raised on it would be orphaned by the next dependabot merge, and every
+# refresh re-runs the full CI matrix. `release` runs only on a push to main
+# that merges a release PR, once that commit's ci-gate passes.
+#
+# RENAMING THIS FILE BREAKS PUBLISHING: each crate's crates.io Trusted Publisher
+# record is keyed on the workflow filename, so the OIDC claim stops matching
+# until every record is updated.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+# `release-pr` and `release` write through the GitHub API with RELEASE_PLZ_TOKEN,
+# a fine-grained PAT (this repository; Contents + Pull requests read/write):
+# GitHub never starts a workflow off GITHUB_TOKEN, so a tag created with the
+# workflow's own token would leave release.yml silent — the job token itself
+# needs no write.
+# The action's git-config step fails loudly on an empty token.
+#
+# ACCEPTED RISK: both jobs COMPILE inside the step that holds this token —
+# `cargo-semver-checks` on the release PR, `cargo publish` on the tag — so every
+# dependency build script runs with a repository-scoped write credential in its
+# environment, and in `release` with the OIDC claim crates.io trades for a
+# publish token. `release-plz.toml` turned both on deliberately. A GitHub App
+# installation token (~1 h, `actions/create-github-app-token`) would bound the
+# PAT, not the claim. The `release` environment's required reviewer bounds
+# which `release` runs get them; `release-pr` holds the PAT behind its
+# dispatch-from-main `if` alone, and nothing bounds what runs inside either.
+permissions: {}
+
+# A restored cache is written by any main run, so it would reach a build that
+# holds a credential (zizmor cache-poisoning):
+# https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#controlling-cache-access-with-cache-mode
+cache-mode: none
+
+# Push runs go one at a time, in order: a push merged while a release run waits
+# for CI would otherwise check the tag before that release creates it.
+concurrency:
+  group: release-plz-${{ github.event_name }}
+  queue: max
+  cancel-in-progress: false
+
+jobs:
+  release-pr:
+    name: release PR
+    # A dispatch from any other ref would open a release PR computed from that
+    # tree; a fork has no secret. The repository is gated by its id, which a
+    # transfer or rename keeps (policy: `releases-run-only-in-this-repository`).
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.repository_id == '1245333424'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The bump is computed from every commit since the crates.io baseline.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup-alsa
+      # cargo-semver-checks builds the baseline and the current tree, and the
+      # default `audio` feature reaches alsa-sys — hence the ALSA step above.
+      - uses: ./.github/actions/setup-cargo-just
+      # homebrew-core's `test do` runs against every release on its autobump,
+      # and the owner was told to release before updating it
+      # (CONTRIBUTING.md#releasing), so a miss can't hold the release: it names
+      # the update that step 4 there sends after the tag.
+      - name: homebrew-core's test calls only what this tree can run
+        run: |
+          set -euo pipefail
+          owe() {
+            if [ -z "${owed:-}" ]; then
+              owed=1
+              printf '### homebrew-core test update owed after the tag (CONTRIBUTING.md#releasing)\n\n' >>"$GITHUB_STEP_SUMMARY"
+            fi
+            echo "::warning::$1"
+            echo "- $1" >>"$GITHUB_STEP_SUMMARY"
+          }
+          if ! formula="$(curl -fsSL --retry 3 \
+            https://raw.githubusercontent.com/Homebrew/homebrew-core/HEAD/Formula/p/pixtuoid.rb)"; then
+            owe "could not fetch homebrew-core's formula; check its test block by hand"
+            exit 0
+          fi
+          block="$(sed -n '/^  test do/,/^  end/p' <<<"$formula")"
+          subs="$({ grep -oE 'pixtuoid("?, "| )[a-z][a-z0-9-]*' <<<"$block" || true; } \
+            | sed -E 's/^pixtuoid("?, "| )//' | sort -u)"
+          if [ -z "$subs" ]; then
+            owe "found no pixtuoid subcommand in homebrew-core's test block; its shape changed"
+            exit 0
+          fi
+          cargo build --locked -q -p pixtuoid --bin pixtuoid
+          for sub in $subs; do
+            ./target/debug/pixtuoid "$sub" --help >/dev/null 2>&1 \
+              || owe "homebrew-core's test calls \`pixtuoid $sub\`, which this tree dropped"
+          done
+          # Its sandbox has no agent CLI, which a plugin host's connect needs, so
+          # each connect must exit as its `shell_output(…, status)` expects (0 unset),
+          # and an expected failure must still print that source's `failed` row.
+          while IFS= read -r line; do
+            id="$(sed -E 's/.*connect("?, "| )([a-z][a-z0-9-]*).*/\2/' <<<"$line")"
+            want="$(sed -nE 's/.*",[[:space:]]*([0-9]+)\).*/\1/p' <<<"$line")"
+            want="${want:-0}"
+            got=0
+            err="$(mktemp)"
+            row="$(env -i HOME="$(mktemp -d)" PATH=/usr/bin:/bin PIXTUOID_HOOK=/usr/bin/true \
+              ./target/debug/pixtuoid connect "$id" --json 2>"$err")" || got=$?
+            said="$(printf '%s\n' "$row"; cat "$err")"
+            said="${said//$'\n'/ }"
+            if [ "$got" -ne "$want" ]; then
+              owe "homebrew-core's test expects \`connect $id\` to exit $want, and this tree exits $got: $said"
+            elif [ "$want" -ne 0 ] && ! jq -e --arg id "$id" '.[0] | .id == $id and .outcome == "failed"' \
+              <<<"$row" >/dev/null 2>&1; then
+              owe "homebrew-core's test expects \`connect $id\` to print its \`failed\` row, and this tree prints: $said"
+            fi
+          done < <(grep -E 'pixtuoid("?, "| )connect("?, "| )[a-z]' <<<"$block" || true)
+      # SHA-pinned: the step sees the PAT (release-plz's security.md), and the
+      # SHA also pins the release-plz binary the action installs. Dependabot
+      # moves the pin.
+      - id: release-plz
+        uses: release-plz/action@8b5bf233ecb5779f63508db7cd050e948ee77cc2 # v0.5.144
+        with:
+          command: release-pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
+      # A dispatch that opens nothing is a green no-op inside release-plz, and
+      # the human who pressed the button is owed an answer either way.
+      - name: A release PR must have been opened
+        env:
+          PR: ${{ steps.release-plz.outputs.pr }}
+          PRS_CREATED: ${{ steps.release-plz.outputs.prs_created }}
+        run: |
+          set -euo pipefail
+          if [ "$PRS_CREATED" != "true" ]; then
+            echo "::error::release-plz opened no release PR — its log above says why"
+            exit 1
+          fi
+          echo "::notice::release PR: $(jq -r .html_url <<<"$PR")"
+
+  # release-plz's own test with `release_always = false`: the pushed commit's
+  # associated PRs include one whose head branch carries `pr_branch_prefix`
+  # (release_plz_core command/release.rs `should_release`). Every other push
+  # is a no-op for `release`, so nothing after this holds a runner for it.
+  release-merge:
+    name: is this push a merged release PR
+    if: github.event_name == 'push' && github.repository_id == '1245333424'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      release: ${{ steps.detect.outputs.release }}
+    steps:
+      - name: Detect a merged release PR; refuse a stale one
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_BRANCH_PREFIX: release-plz-
+          REPOSITORY: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          head="$(gh api "repos/$REPOSITORY/commits/$SHA/pulls" \
+            --jq "[.[] | select(.head.ref | startswith(\"$PR_BRANCH_PREFIX\")) | .head.sha][0] // \"\"")"
+          release=false
+          if [[ -n "$head" ]]; then
+            # Its CHANGELOG and semver verdict cover only the main release-plz
+            # wrote its commit on, so that commit must sit on the merge's
+            # parent unrewritten: createCommitOnBranch stamps both its dates
+            # at once, and a rebase moves the committer date alone.
+            parent="$(gh api "repos/$REPOSITORY/commits/$SHA" --jq '.parents[0].sha')"
+            stale="$(gh api "repos/$REPOSITORY/compare/$parent...$head" \
+              --jq ".commits[0] | .parents[0].sha != \"$parent\" or .commit.author.date != .commit.committer.date")"
+            if [[ "$stale" != false ]]; then
+              echo "::error::the release PR merged at ${SHA::7} was not cut from main@${parent::7} (main moved after its dispatch, or was merged or rebased into it), so its changelog misses commits and nothing is published. Revert this commit, then re-dispatch release-plz.yml (docs/CONTRIBUTING.md#cutting-the-release)"
+              exit 1
+            fi
+            release=true
+          fi
+          echo "release=$release" >>"$GITHUB_OUTPUT"
+          echo "a merged release PR at ${SHA::7}: $release"
+
+  # A push trigger, not workflow_run, so the OIDC claim and GITHUB_SHA stay the
+  # merge push's own; release-plz's documented gate is a check before
+  # `release` in the publishing workflow (release-plz.dev/docs/github/advanced).
+  ci-passed:
+    needs: release-merge
+    if: needs.release-merge.outputs.release == 'true'
+    permissions:
+      checks: read
+    uses: ./.github/workflows/wait-ci-gate.yml
+
+  release:
+    name: publish and tag a merged release PR
+    needs: [release-merge, ci-passed]
+    if: needs.release-merge.outputs.release == 'true'
+    # Its required reviewer is the publish approval, and the crates.io Trusted
+    # Publisher records name it, so no other job can mint a publish token.
+    environment: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      # crates.io trusted publishing: release-plz exchanges this claim for a
+      # short-lived token, so no CARGO_REGISTRY_TOKEN exists to leak.
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # release-plz walks the merged PR's commits to pick the one to tag,
+          # and decides "already released" from LOCAL tags — a shallow fetch
+          # carries none, so every release would look unreleased.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup-alsa
+      # `cargo publish` BUILDS each crate to verify it, and the default `audio`
+      # feature reaches alsa-sys — hence the ALSA step above.
+      - uses: ./.github/actions/setup-cargo-just
+      - uses: release-plz/action@8b5bf233ecb5779f63508db7cd050e948ee77cc2 # v0.5.144
+        with:
+          command: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
+
+  # release-plz tags only a commit whose PR came from a `release-plz-*` branch,
+  # and exits GREEN when it declines; a detection miss above skips it outright,
+  # and a refused stale release PR leaves its version untagged until reverted.
+  # Each way main is left at a version release.yml never sees, so this runs
+  # on every push, whatever `release` did, to turn that red.
+  #
+  # At rest main always sits at a released version, so "the workspace version
+  # is tagged" holds on every push and needs no diff against the previous
+  # commit (which a multi-commit push would get wrong anyway).
+  version-tagged:
+    name: the workspace version is tagged
+    needs: [release-merge, release]
+    if: ${{ !cancelled() && needs.release-merge.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-tools
+      - name: The workspace version must be tagged
+        run: |
+          set -euo pipefail
+          version="$(just workspace-version)"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null; then
+            echo "v$version is tagged"
+          else
+            echo "::error::main@${GITHUB_SHA::7} is at v$version but no tag v$version exists, so release.yml has not run for it. release-plz tags only a merged release-plz-* branch (release-plz.toml release_always). If release-merge refused a stale release PR at an earlier push, revert that merge and never tag it. Otherwise re-running this workflow is the fix that keeps the changelog: a hand-pushed tag (git tag v$version $GITHUB_SHA && git push origin v$version) still builds and publishes, but its GitHub release has no body, because the changelog lives in the draft release-plz would have created"
+            exit 1
+          fi

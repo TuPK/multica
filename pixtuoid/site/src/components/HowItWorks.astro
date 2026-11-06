@@ -1,0 +1,122 @@
+---
+import { asset, floorById, floorName } from '../consts';
+
+const floor = floorById('how');
+const steps = [
+  {
+    n: '01',
+    cmd: 'pixtuoid',
+    title: 'Open the office',
+    body: 'Launch the TUI in any terminal. Empty desks at first, waiting for someone to show up.',
+  },
+  {
+    n: '02',
+    cmd: 'press s → connect',
+    title: 'Connect your CLI',
+    body: 'Open the Sources panel and bind your agent (Claude Code, Codex, …). pixtuoid wires up the integration for you — everything stays local and read-only, and nothing ever leaves your machine.',
+  },
+  {
+    n: '03',
+    cmd: '# just start coding',
+    title: 'Watch them arrive',
+    body: 'Every session you start shows up at a desk within seconds. Disconnect in the panel and they head for the elevator.',
+  },
+];
+---
+
+<section id={floor.id} class="how" data-lit data-floor={floor.fl} data-floor-label={floor.label}>
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">{floor.fl} · {floorName(floor)} — launch, connect, code</p>
+      <h2 class="statement statement--md">Up and running<br />in a minute.</h2>
+    </div>
+    <ol class="how__steps">
+      {steps.map((s) => <li class="how__step reveal">
+        <span class="how__n" aria-hidden="true">
+          {s.n}
+        </span>
+        <div class="how__detail">
+          <code class="how__cmd">{s.cmd}</code>
+          <h3>{s.title}</h3>
+          <p>{s.body}</p>
+        </div>
+      </li>)}
+    </ol>
+    <p class="how__more reveal">
+      <a href={asset('architecture')}
+        >see how it works under the hood <span class="how__arrow" aria-hidden="true">→</span></a
+      >
+    </p>
+  </div>
+</section>
+
+<style>
+  .how__steps {
+    list-style: none;
+    margin: 2rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2.6rem;
+  }
+  .how__step {
+    display: grid;
+    /* fixed number column — `auto` sized each step by its own Jersey-10
+       digits (non-tabular), so the three bodies didn't share a left edge */
+    grid-template-columns: clamp(2.4rem, 5vw, 3.4rem) 1fr;
+    gap: 0.2rem 1.6rem;
+    align-items: baseline;
+  }
+  .how__n {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-synthesis: none;
+    font-size: clamp(2rem, 4.5vw, 3.4rem);
+    color: color-mix(in srgb, var(--fg) 38%, transparent);
+    line-height: 1;
+  }
+  .how__cmd {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: clamp(1.3rem, 3.2vw, 2.3rem);
+    color: var(--fg);
+    background: none;
+    padding: 0;
+  }
+  .how__detail h3 {
+    display: inline;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 1.05rem;
+    margin: 0;
+  }
+  .how__detail h3::after {
+    content: ' — ';
+    color: var(--fg-muted);
+  }
+  .how__detail p {
+    display: inline;
+    font-family: var(--font-body);
+    color: var(--fg-muted);
+    margin: 0;
+  }
+  .how__more {
+    margin-top: 2.4rem;
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+  }
+  .how__more a {
+    color: var(--coral-deep); /* AA 5.2:1; plain --coral was ~2.7:1 on day */
+    text-decoration: none;
+  }
+  /* color hover was a no-op (rest already --coral-deep; night's a:not(.btn)
+     outranks it) — nudge the arrow instead, contrast-safe in both themes. */
+  .how__arrow {
+    display: inline-block;
+    transition: transform 0.18s ease;
+  }
+  .how__more a:hover .how__arrow,
+  .how__more a:focus-visible .how__arrow {
+    transform: translateX(3px);
+  }
+</style>

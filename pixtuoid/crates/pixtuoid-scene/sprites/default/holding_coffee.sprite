@@ -1,0 +1,17 @@
+# 8x12 standing while holding a coffee cup (V beige — matches the
+# walking_coffee cup + the desk cup (`desk_cup`'s V), so the cup color
+# stays consistent across the whole coffee run).
+# Two-tone: shirt (B) above belt, pants (P) for legs + shoes.
+@frame 0
+. n H H H H n .
+n H H H H H H n
+H H S S S S H H
+H S e S S e S H
+. S S S m S S .
+. n S S S S n .
+. B B B B B B .
+B B B B B B B B
+S B V V V V B S
+. P P V V P P .
+. P P P P P P .
+. P . . . . P .

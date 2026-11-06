@@ -1,0 +1,131 @@
+name: site
+
+on:
+  workflow_call:
+    inputs:
+      full:
+        description: 'False on a PR outside the merge queue: `check` then runs only when `scope` finds the site runtime changed'
+        type: boolean
+        required: true
+
+jobs:
+  # The checks that need no rendered demos run on every PR push.
+  lint:
+    name: format · lint · types · unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: ./.github/actions/setup-npm
+        with:
+          directory: site
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run check
+      - run: npm run knip
+      - run: npm run test:unit
+      - uses: ./.github/actions/path-changed
+        id: lockfile
+        with:
+          # package.json holds the audit script and its level.
+          paths: site/package-lock.json site/package.json
+      # LAST: it resolves advisories live (#846/#848).
+      - if: steps.lockfile.outputs.changed == 'true'
+        run: npm run audit
+
+  # A PR that changes the page or its web crates runs `check` on the light
+  # tier too: the queue can merge it on that tier alone, which is how #1978
+  # reached main past the landing page's Lighthouse budget.
+  scope:
+    name: site runtime in scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      # path-changed reads a push as unchanged; the full tier runs `check` anyway.
+      changed: ${{ inputs.full || steps.scope.outputs.changed == 'true' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: ./.github/actions/path-changed
+        id: scope
+        with:
+          paths: site crates/pixtuoid-web crates/pixtuoid-web-music .github/workflows/site.yml
+
+  check:
+    name: demos · build · e2e
+    needs: scope
+    if: needs.scope.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    # A cold gen-demos (release build plus encodes) on top of a cold gen-wasm.
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # the displayed version is the latest release TAG — a shallow, tag-less
+          # checkout silently falls back to Cargo.toml
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup-npm
+        with:
+          directory: site
+      # The one rust-cache for gen-demos and gen-wasm
+      # (`site-build-composites-leave-rust-cache-to-the-job`).
+      - uses: ./.github/actions/setup-cargo-just
+        with:
+          targets: wasm32-unknown-unknown
+          shared-key: site
+      - uses: ./.github/actions/gen-demos
+      - run: npm run test:demos
+      # Built fresh, so a Rust change that breaks a wasm export the page calls fails before it deploys.
+      - uses: ./.github/actions/gen-wasm
+      - run: npm run build
+        env:
+          GH_STARS_E2E: 1
+      # the empty-render guard runs in the PR gate, not only `verify`/deploy, so a
+      # collapsed doc render is caught pre-merge (#680).
+      - run: npm run check:docs
+      # Only e2e needs Playwright's Chromium (lighthouse rides chrome-launcher's
+      # system Chrome) and the diagram renders in-process, so Chromium lands here,
+      # not in the composite pages.yml also runs.
+      # --with-deps would run its own apt-get update and install
+      # (playwright-core registry/dependencies.ts), outside apt-install's bound
+      # and mirror rotation; its dry run only names what is missing, which
+      # apt-install then fetches.
+      - name: Find Chromium's missing system packages
+        id: pw-deps
+        run: |
+          set -euo pipefail
+          report="$(npx playwright install-deps --dry-run chromium chromium-headless-shell 2>&1)" || true
+          missing="$(sed -n -E 's/^  ([^ ]+)$/\1/p' <<<"$report" | tr '\n' ' ')"
+          echo "packages=$missing" >>"$GITHUB_OUTPUT"
+      - if: steps.pw-deps.outputs.packages != ''
+        uses: ./.github/actions/apt-install
+        with:
+          packages: ${{ steps.pw-deps.outputs.packages }}
+          recommends: 'false'
+      - run: npx playwright install chromium chromium-headless-shell
+        timeout-minutes: 10
+      - run: npm run e2e
+      - run: npm run lighthouse
+      # The run logs carry only failing scores, not element-level violations.
+      # `path` is workspace-root-relative, hence the site/ prefix despite the job cwd.
+      - name: Upload Lighthouse reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lighthouse-reports
+          path: site/.lighthouseci/
+          retention-days: 7
+          include-hidden-files: true
+          if-no-files-found: error

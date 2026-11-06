@@ -1,0 +1,722 @@
+//! The rules every committed capture obeys, over THE enumeration —
+//! `pixtuoid_core::harness::captures`, shared with the recorder's re-strip.
+//! Several walks of this tree with different populations used to exist, so each
+//! rule landed on whichever subset its author picked — the "fix landed on half
+//! the population" class that recurred across four review rounds. So: ONE walk,
+//! and `the_walk_sees_every_provenance_on_disk` fails if a capture falls outside.
+
+use std::collections::BTreeSet;
+use std::path::{Path, PathBuf};
+
+use pixtuoid_core::harness::provenance::{Deidentified, NonEmpty, Provenance, Recorded};
+use pixtuoid_core::source::decoder::SOURCE_STAMP;
+use pixtuoid_core::source::registry;
+
+/// A committed capture: the bytes, the record of where they came from, and the
+/// source the LAYOUT says owns them.
+pub(crate) struct Capture {
+    pub(crate) dir: PathBuf,
+    /// Resolved from the layout, never from the provenance — a record that lies
+    /// about its `cli` must not get to pick which rules apply to it.
+    pub(crate) source: String,
+    pub(crate) provenance_path: PathBuf,
+    pub(crate) provenance: Provenance,
+}
+
+impl Capture {
+    pub(crate) fn recorded(&self) -> &Recorded {
+        self.provenance.recorded()
+    }
+
+    pub(crate) fn note(&self) -> Option<&str> {
+        self.recorded().note.as_ref().map(NonEmpty::as_str)
+    }
+
+    /// The scenario's transcripts — every `.jsonl` that is not the hook payload
+    /// file, RECURSIVELY: a parent-dir-keyed source nests its transcript one
+    /// level down, and a flat read was blind to exactly the fixtures the
+    /// nesting rule forces into that shape.
+    pub(crate) fn transcripts(&self) -> Vec<PathBuf> {
+        transcripts_in(&self.dir)
+    }
+
+    pub(crate) fn hook_payloads(&self) -> Option<PathBuf> {
+        let p = self.dir.join("hook-payloads.jsonl");
+        p.is_file().then_some(p)
+    }
+
+    /// Its directory under `tests/sources`, as the recorder and the issues
+    /// spell it ([`slashed_under`](pixtuoid_core::harness::slashed_under)).
+    pub(crate) fn label(&self) -> String {
+        pixtuoid_core::harness::slashed_under(&sources_root(), &self.dir)
+            .expect("every capture is under tests/sources")
+    }
+
+    /// Every committed byte of this capture, for the rules that read content
+    /// rather than metadata.
+    pub(crate) fn wire_files(&self) -> Vec<PathBuf> {
+        let mut out = self.transcripts();
+        out.extend(self.hook_payloads());
+        out
+    }
+}
+
+/// LOUD, not swallowing: an unreadable capture dir used to make `wire_files()`
+/// return empty, so `a_recorded_capture_that_was_edited_says_so` saw no
+/// sentinels and passed vacuously for that capture.
+fn push_transcripts(dir: &Path, out: &mut Vec<PathBuf>) {
+    for e in read_dir_or_panic(dir) {
+        let p = e.path();
+        if p.is_dir() {
+            push_transcripts(&p, out);
+        } else if p.extension().and_then(|s| s.to_str()) == Some("jsonl")
+            && p.file_name().and_then(|s| s.to_str()) != Some("hook-payloads.jsonl")
+        {
+            out.push(p);
+        }
+    }
+}
+
+/// The non-hook `.jsonl` under a dir, recursively. THE collector — `conformance.rs`
+/// used to keep a byte-identical copy with a different error policy.
+pub(crate) fn transcripts_in(dir: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    push_transcripts(dir, &mut out);
+    out.sort();
+    out
+}
+
+pub(crate) fn transcript_in(dir: &Path) -> PathBuf {
+    let mut t = transcripts_in(dir);
+    assert_eq!(t.len(), 1, "{} must ship one transcript", dir.display());
+    t.remove(0)
+}
+
+/// A fixture's JSONL payload as its non-empty lines — this binary's one line
+/// reader. One definition so a semantics change (a BOM skip, say) cannot reach
+/// one source's tests and miss its siblings (#936's diverging-copies class).
+pub(crate) fn fixture_lines(path: &Path) -> Vec<String> {
+    std::fs::read_to_string(path)
+        .unwrap_or_else(|e| panic!("read {}: {e}", path.display()))
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .map(str::to_string)
+        .collect()
+}
+
+pub(crate) fn sources_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/sources")
+}
+
+/// Every conformance scenario as `(source, dir)`, sorted: the walk's captures
+/// but `harness::OUTSIDE_CONFORMANCE`'s.
+pub(crate) fn conformance_scenarios() -> Vec<(String, PathBuf)> {
+    pixtuoid_core::harness::captures(&sources_root())
+        .into_iter()
+        .filter(pixtuoid_core::harness::Capture::in_conformance)
+        .map(|c| (c.source, c.dir))
+        .collect()
+}
+
+pub(crate) fn read_dir_or_panic(dir: &Path) -> Vec<std::fs::DirEntry> {
+    std::fs::read_dir(dir)
+        .unwrap_or_else(|e| panic!("read_dir {}: {e}", dir.display()))
+        .map(|e| e.unwrap_or_else(|e| panic!("read_dir entry under {}: {e}", dir.display())))
+        .collect()
+}
+
+pub(crate) fn sorted_dirs(dir: &Path) -> Vec<PathBuf> {
+    let mut out: Vec<PathBuf> = read_dir_or_panic(dir)
+        .into_iter()
+        .map(|e| e.path())
+        .filter(|p| p.is_dir())
+        .collect();
+    out.sort();
+    out
+}
+
+/// THE walk. Every capture the layout names, each REQUIRED to declare itself.
+/// Sorted, so failures name captures in a stable order.
+pub(crate) fn every_capture() -> Vec<Capture> {
+    let mut out = Vec::new();
+    for capture in pixtuoid_core::harness::captures(&sources_root()) {
+        let prov = capture.provenance_path();
+        let pixtuoid_core::harness::Capture { dir, source } = capture;
+        assert!(
+            prov.is_file(),
+            "{}: a capture must declare its origin — add provenance.json here. Nothing \
+             else in the bytes separates a capture from a composition, which is the \
+             whole reason provenance exists.",
+            dir.display()
+        );
+        let provenance = Provenance::read(&prov).unwrap_or_else(|e| panic!("{e}"));
+        out.push(Capture {
+            dir,
+            source,
+            provenance_path: prov,
+            provenance,
+        });
+    }
+    out
+}
+
+/// Each recording among `captures`, with its record.
+pub(crate) fn recordings(captures: &[Capture]) -> impl Iterator<Item = (&Capture, &Recorded)> {
+    captures.iter().map(|c| (c, c.recorded()))
+}
+
+/// The completeness pin that makes the single walk load-bearing: a capture the
+/// walk cannot see is one every rule silently skips, which is the failure the
+/// walk exists to make impossible.
+#[test]
+fn the_walk_sees_every_provenance_on_disk() {
+    fn count(dir: &Path, n: &mut usize) {
+        for e in read_dir_or_panic(dir) {
+            let p = e.path();
+            if p.is_dir() {
+                count(&p, n);
+            } else if p.file_name().and_then(|s| s.to_str()) == Some("provenance.json") {
+                *n += 1;
+            }
+        }
+    }
+    let mut on_disk = 0;
+    count(&sources_root(), &mut on_disk);
+    // Derived DIFFERENTLY on purpose: `every_capture()` from the LAYOUT, the
+    // counter above from the FILES — one predicate counted twice is a tautology.
+    let walked = every_capture().len();
+    assert_eq!(
+        walked, on_disk,
+        "the layout names {walked} captures but {on_disk} provenance.json files exist — \
+         a file outside every layout shape is one no rule applies to"
+    );
+    // Provenance counting cannot see an orphan that declares NOTHING, so account
+    // for the WIRE files too: each must belong to a capture the walk returned.
+    let mut wire_on_disk: BTreeSet<PathBuf> = BTreeSet::new();
+    fn wire(dir: &Path, out: &mut BTreeSet<PathBuf>) {
+        for e in read_dir_or_panic(dir) {
+            let p = e.path();
+            if p.is_dir() {
+                wire(&p, out);
+            } else if p.extension().and_then(|s| s.to_str()) == Some("jsonl") {
+                out.insert(p);
+            }
+        }
+    }
+    wire(&sources_root(), &mut wire_on_disk);
+    let claimed: BTreeSet<PathBuf> = every_capture()
+        .iter()
+        .flat_map(|c| {
+            let mut fs = transcripts_in(&c.dir);
+            fs.extend(c.hook_payloads());
+            fs
+        })
+        .collect();
+    let orphans: Vec<String> = wire_on_disk
+        .difference(&claimed)
+        .map(|p| {
+            p.strip_prefix(sources_root())
+                .unwrap_or(p)
+                .display()
+                .to_string()
+        })
+        .collect();
+    assert!(
+        orphans.is_empty(),
+        "wire bytes no capture claims — a `.jsonl` dropped straight into \
+         `<module>/fixtures/`, or a whole unregistered `<name>/fixtures/` dir, \
+         declares no provenance and so nothing decodes or scans it:\n  {}",
+        orphans.join("\n  ")
+    );
+    // The PREMISE, not a hand-picked count floor: three sibling floors for this
+    // one idea were each a fixture cleanup away from firing and blaming the walk.
+    let covered: BTreeSet<String> = every_capture().into_iter().map(|c| c.source).collect();
+    let bare: Vec<&str> = registry::registered_source_names()
+        .filter(|n| !covered.contains(*n))
+        .collect();
+    assert!(
+        bare.is_empty(),
+        "registered sources with no capture at all: {bare:?} — every rule below is \
+         silent for them, which is what makes the per-source statement, not a count \
+         of captures, the thing that keeps those rules non-vacuous"
+    );
+}
+
+/// Every capture's layout resolves to a REGISTERED source. A dir name that
+/// matches no source is a typo that would otherwise route the capture's rules
+/// to a descriptor lookup that silently returns `None`.
+#[test]
+fn every_captures_layout_names_a_registered_source() {
+    for c in every_capture() {
+        assert!(
+            registry::descriptor_for(&c.source).is_some(),
+            "{}: layout names source {:?}, which is not registered",
+            c.dir.display(),
+            c.source
+        );
+    }
+}
+
+/// Every `harness::OUTSIDE_CONFORMANCE` row names a capture the walk finds, so
+/// a renamed or removed capture cannot leave its row behind.
+#[test]
+fn every_outside_conformance_row_is_a_capture() {
+    let walked: BTreeSet<(String, String)> = every_capture()
+        .iter()
+        .map(|c| {
+            let scenario = c.dir.file_name().unwrap_or_default().to_string_lossy();
+            (c.source.clone(), scenario.into_owned())
+        })
+        .collect();
+    for (source, scenario) in pixtuoid_core::harness::OUTSIDE_CONFORMANCE {
+        assert!(
+            walked.contains(&((*source).to_string(), (*scenario).to_string())),
+            "OUTSIDE_CONFORMANCE names {source}/{scenario}, which no capture is"
+        );
+    }
+}
+
+// ── The rules: each an assertion over `every_capture()`, never a subset. ─────
+
+/// `cli` was the one required field nothing could falsify, so a provenance
+/// naming a DIFFERENT CLI than the tree it sits in passed every gate. The
+/// registry's probe argv[0] is the name the user types (`agy`, `cursor-agent`),
+/// which is what a capture command starts with.
+#[test]
+fn a_recorded_captures_cli_is_its_trees_binary() {
+    for (c, r) in recordings(&every_capture()) {
+        let Some(probe) = registry::descriptor_for(&c.source).and_then(|d| d.version_probe) else {
+            continue;
+        };
+        let cli = r.cli.as_str();
+        assert_eq!(
+            cli,
+            probe[0],
+            "{}: `cli` is {cli:?} but this tree is {}, whose binary is {:?}",
+            c.provenance_path.display(),
+            c.source,
+            probe[0]
+        );
+    }
+}
+
+/// Keys whose VALUE is an operator's account rather than the wire's content. Not
+/// a guess at what a vendor might name one — the strip already removes every field
+/// no decoder reads, so this is a tripwire on the names that have actually reached
+/// a fixture, asserting the invariant the strip provides.
+const IDENTITY_KEYS: &[&str] = &[
+    "account_id",
+    "accountId",
+    "api_key",
+    "email",
+    "token",
+    "user_email",
+    "userEmail",
+    "user_id",
+];
+
+/// Collect every `IDENTITY_KEYS` entry holding something, at any depth.
+fn filled_identity_keys(v: &serde_json::Value, out: &mut BTreeSet<String>) {
+    match v {
+        serde_json::Value::Object(m) => {
+            for (k, child) in m {
+                let empty = matches!(child, serde_json::Value::Null)
+                    || *child == serde_json::json!("")
+                    || *child == serde_json::json!(0)
+                    || *child == serde_json::json!(false)
+                    || *child == serde_json::json!([])
+                    || *child == serde_json::json!({});
+                if !empty && IDENTITY_KEYS.contains(&k.as_str()) {
+                    out.insert(k.clone());
+                }
+                filled_identity_keys(child, out);
+            }
+        }
+        serde_json::Value::Array(a) => a.iter().for_each(|c| filled_identity_keys(c, out)),
+        _ => {}
+    }
+}
+
+/// No identity key holds a value — the invariant the strip provides, asserted
+/// on the bytes rather than trusted. It fires on the two ways one could come
+/// back: a hand edit, and a decoder that starts reading such a field so the
+/// strip keeps it.
+#[test]
+fn no_identity_key_holds_a_value() {
+    let mut probe = BTreeSet::new();
+    filled_identity_keys(
+        &serde_json::json!({"a": {"user_id": "u_1"}, "b": [{"token": ""}]}),
+        &mut probe,
+    );
+    assert_eq!(
+        probe.iter().map(String::as_str).collect::<Vec<_>>(),
+        ["user_id"],
+        "the walker must see a filled key at depth and ignore a blanked one"
+    );
+
+    for c in every_capture() {
+        for wire in c.wire_files() {
+            let body = std::fs::read_to_string(&wire).expect("read");
+            let mut found = BTreeSet::new();
+            for (i, line) in body
+                .lines()
+                .enumerate()
+                .filter(|(_, l)| !l.trim().is_empty())
+            {
+                // A line that will not parse is the input `strip_unread` declines a
+                // whole file for, so skipping it here would leave those bytes both
+                // unstripped and unchecked. Loud instead: fix the line.
+                let v: serde_json::Value = serde_json::from_str(line).unwrap_or_else(|e| {
+                    panic!(
+                        "{}:{}: not JSON ({e}), so the strip skipped this whole file",
+                        wire.display(),
+                        i + 1
+                    )
+                });
+                filled_identity_keys(&v, &mut found);
+            }
+            assert!(
+                found.is_empty(),
+                "{}: {found:?} hold values. The strip blanks what no decoder reads, so \
+                 either a decoder now reads one — re-record and redact by hand — or these \
+                 bytes never went through it",
+                wire.display()
+            );
+        }
+    }
+}
+
+/// The strip is disclosed by `deidentified`, so a note that still calls the
+/// bytes verbatim contradicts it.
+#[test]
+fn a_stripped_record_does_not_call_its_bytes_verbatim() {
+    for c in every_capture() {
+        let prov = &c.provenance_path;
+        let Deidentified::Stripped { blanked } = c.recorded().deidentified;
+        let note = c.note().unwrap_or("");
+        assert!(
+            blanked == 0 || !note.to_ascii_lowercase().contains("verbatim"),
+            "{}: {blanked} subtrees were blanked, and the note still says verbatim: {note:?}",
+            prov.display()
+        );
+    }
+}
+
+/// A `recorded` fixture whose bytes were EDITED must say so: nothing in them
+/// separates a capture from a composition — the whole reason provenance exists —
+/// so a redaction sentinel with a silent `note` is the one state the mechanism
+/// cannot tolerate. Sentinels, not a `/Users/dev` grep: the sweep that keyed on
+/// that alone missed kimi's, whose redaction is a captured `ls -la`'s owner column.
+/// HAND edits only: the recorder's own strip plants no sentinel and discloses
+/// itself through `deidentified` in the provenance, not through `note`.
+#[test]
+fn a_recorded_capture_that_was_edited_says_so() {
+    // Placeholders READ from the scanner's own allowlist, never copied: a hand-copy
+    // knew only `/Users/dev`, so a `/home/dev` redaction was edited-but-silent here.
+    let allow = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.gitleaks-identity.toml"),
+    )
+    .expect(".gitleaks-identity.toml");
+    // Both the path rule and the dash-encoded rule carry the placeholder
+    // alternation; they must AGREE, or whichever this positional read lands on
+    // silently narrows the sentinel set.
+    let mut alternations: Vec<&str> = allow
+        .split("(?:dev|")
+        .skip(1)
+        .filter_map(|s| s.split(')').next())
+        .collect();
+    alternations.dedup();
+    assert_eq!(
+        alternations.len(),
+        1,
+        "the placeholder alternations diverged across rules — re-align them: {alternations:?}",
+    );
+    let names = *alternations.first().expect(
+        "the placeholder alternation moved — re-derive this from the rule. Only \
+         the PLACEHOLDER lines: the sibling lines name infrastructure accounts a \
+         real UNEDITED capture can carry, and reading those made an honest note \
+         look like a silent one",
+    );
+    let mut sentinels: Vec<String> = Vec::new();
+    for root in ["/Users/", "/home/"] {
+        for who in std::iter::once("dev").chain(names.split('|')) {
+            sentinels.push(format!("{root}{who}"));
+        }
+    }
+    sentinels.extend([" dev  wheel", " dev  staff", "[redacted", "dev@"].map(String::from));
+    // A hand-placed placeholder is a redaction's own signature, and the path and
+    // address shapes above cannot see one: nine fixtures had their plugin roster
+    // replaced this way while this test stayed green. The recorder's strip removes
+    // a roster now, so these are dormant rather than dead — a hand edit can still
+    // write them, and that edit is what must disclose itself.
+    sentinels.extend(
+        [
+            "example-skill",
+            "example-agent",
+            "example-plugin",
+            "mcp__example",
+        ]
+        .map(String::from),
+    );
+    // A path sentinel must end at a real boundary: bare `contains` let a longer
+    // account name that merely STARTS with a placeholder excuse itself.
+    let hit = |body: &str, s: &str| {
+        body.match_indices(s).any(|(at, _)| {
+            !s.starts_with('/')
+                || body[at + s.len()..].chars().next().is_none_or(
+                    |c| !matches!(c, 'A'..='Z' | 'a'..='z' | '0'..='9' | '.' | '_' | '-'),
+                )
+        })
+    };
+    // A word ending the clause right before "redact" that inverts it.
+    const NEGATIONS: &[&str] = &["no", "not", "nothing", "never", "without"];
+    let mut silent = Vec::new();
+    for (c, _) in recordings(&every_capture()) {
+        let note = c.note().unwrap_or_default().to_ascii_lowercase();
+        // "verbatim" USED to satisfy this, and a bare `contains` re-opens that hole
+        // one word over ("unredacted"). "sanitiz" too — the oldest captures use it.
+        let declares = ["redact", "sanitiz"].iter().any(|stem| {
+            note.match_indices(stem).any(|(at, _)| {
+                let before = note[..at].trim_end();
+                !before.ends_with("un") && !NEGATIONS.iter().any(|n| before.ends_with(n))
+            })
+        });
+        let edited = c.wire_files().iter().any(|p| {
+            std::fs::read_to_string(p)
+                .map(|b| sentinels.iter().any(|s| hit(&b, s)))
+                .unwrap_or(false)
+        });
+        if edited && !declares {
+            silent.push(c.label());
+        }
+    }
+    assert!(
+        silent.is_empty(),
+        "these `recorded` fixtures carry a redaction sentinel and no `note` claiming a \
+         redaction — a reader cannot tell an edited capture from an untouched one, and a \
+         note calling these bytes verbatim is worse than a silent one: {silent:?}"
+    );
+}
+
+/// `verified_version` is the release the hermetic tier installs and the newest
+/// wire we have SEEN (`hermetic::pin`), so a capture of any other release, or of
+/// none, is outdated. The nightly re-records a profiled CLI's scenarios at each
+/// new release and moves its pin, which reds every other capture of that CLI
+/// here until it is re-recorded too; an unprofiled CLI's pin moves by hand,
+/// and the nightly's freshness check says when it must.
+#[test]
+fn every_capture_is_recorded_at_its_sources_pin() {
+    let mut outdated: std::collections::BTreeMap<String, String> = Default::default();
+    let mut current: BTreeSet<String> = BTreeSet::new();
+    for c in every_capture() {
+        let d = registry::descriptor_for(&c.source).expect("a registered source");
+        let version = |s: &str| registry::parse_version(s, d.version_hyphen);
+        let r = c.recorded();
+        let why = match version(r.version.as_str()).zip(version(d.verified_version)) {
+            Some((v, pin)) if v.cmp_precedence(&pin).is_eq() => {
+                current.insert(c.source.clone());
+                continue;
+            }
+            _ => format!("{} is not the pin {}", r.version, d.verified_version),
+        };
+        outdated.insert(c.label(), why);
+    }
+    assert!(
+        outdated.is_empty(),
+        "outdated captures: re-record each at its pin, or delete it once a current \
+         one covers its readers:\n  {}",
+        outdated
+            .iter()
+            .map(|(at, why)| format!("{at}: {why}"))
+            .collect::<Vec<_>>()
+            .join("\n  ")
+    );
+    let bare: Vec<&str> = registry::registered_source_names()
+        .filter(|n| !current.contains(*n))
+        .collect();
+    assert!(
+        bare.is_empty(),
+        "no capture at the pin, so nothing we hold shows its wire: {bare:?}"
+    );
+}
+
+/// A `recorded` provenance must be FALSIFIABLE by its own bytes; one that is not
+/// is a claim, not a record — a wholly false one (`cli: codex`, `version:
+/// 0.0.0-A-LIE`) passed every gate in this tree until an equivalent of this ran.
+/// Three axes the committed bytes can answer, plus the field shapes: `cli` is
+/// `a_recorded_captures_cli_is_its_trees_binary`, this is everything else.
+#[test]
+fn a_recorded_captures_claims_are_falsified_by_its_own_bytes() {
+    let mut bad: Vec<String> = Vec::new();
+    for (c, r) in recordings(&every_capture()) {
+        let at = c.provenance_path.display();
+
+        // A `version` holding the INVOCATION reports a drift of nothing for as long
+        // as it sits there — the live instance was `"grok --permission-mode default"`.
+        let version = r.version.as_str();
+        if !version.chars().any(|ch| ch.is_ascii_digit()) {
+            bad.push(format!(
+                "{at}: `version` carries no version number: {version:?}"
+            ));
+        }
+
+        let captured = r.captured.as_str();
+        if !is_iso_date(captured) {
+            bad.push(format!("{at}: `captured` is not an ISO date: {captured:?}"));
+        }
+
+        let mut stamps: BTreeSet<String> = BTreeSet::new();
+        let mut dates: BTreeSet<String> = BTreeSet::new();
+        if let Some(hooks) = c.hook_payloads() {
+            for line in fixture_lines(&hooks) {
+                let Ok(v) = serde_json::from_str::<serde_json::Value>(&line) else {
+                    continue;
+                };
+                if let Some(src) = v.get(SOURCE_STAMP).and_then(|s| s.as_str()) {
+                    stamps.insert(src.to_string());
+                }
+                if let Some(ms) = v.get("_shim_ts_ms").and_then(serde_json::Value::as_i64) {
+                    dates.insert(utc_date(ms));
+                }
+            }
+        }
+        // codex and omp name transcripts by capture instant — the only date evidence
+        // a transcript-only fixture has, and most captures ship no hook payloads.
+        for f in c.wire_files() {
+            if let Some(d) = date_prefix(&f.file_name().unwrap_or_default().to_string_lossy()) {
+                dates.insert(d);
+            }
+        }
+
+        if stamps.len() > 1 {
+            bad.push(format!(
+                "{at}: payloads carry TWO sources ({stamps:?}) — a capture scooped up another CLI"
+            ));
+        } else if let Some(only) = stamps.iter().next() {
+            // A single WRONG stamp is answerable wherever the layout names the
+            // source, and BOTH layouts do.
+            if *only != c.source {
+                bad.push(format!(
+                    "{at}: payloads are stamped `{only}` but this tree is `{}`",
+                    c.source
+                ));
+            }
+        }
+        if !dates.is_empty() && !dates.contains(captured) {
+            bad.push(format!(
+                "{at}: `captured` {captured} contradicts the stamps in the bytes \
+                 ({dates:?}) — the recorder dates in UTC"
+            ));
+        }
+    }
+    assert!(bad.is_empty(), "{}", bad.join("\n  "));
+}
+
+/// `YYYY-MM-DD`, validated: RFC 3339's `full-date`, which chrono parses only as
+/// a date-time's head.
+fn is_iso_date(s: &str) -> bool {
+    chrono::DateTime::parse_from_rfc3339(&format!("{s}T00:00:00Z")).is_ok()
+}
+
+/// The UTC calendar date of a millisecond epoch stamp: the shim stamps UTC and
+/// `captured` is UTC.
+fn utc_date(ms: i64) -> String {
+    chrono::DateTime::from_timestamp_millis(ms)
+        .map_or_else(|| format!("{ms} ms"), |t| t.date_naive().to_string())
+}
+
+/// The `YYYY-MM-DD` a CLI put at the head of a transcript filename, with codex's
+/// `rollout-` prefix: `rollout-2026-08-14T22-19-03-<uuid>.jsonl`.
+fn date_prefix(name: &str) -> Option<String> {
+    let rest = name.strip_prefix("rollout-").unwrap_or(name);
+    let (date, tail) = rest.split_at_checked(10)?;
+    if !tail.starts_with('T') || !is_iso_date(date) {
+        return None;
+    }
+    Some(date.to_string())
+}
+
+#[test]
+fn the_date_helpers_handle_the_cases_that_break_naive_ones() {
+    assert_eq!(utc_date(0), "1970-01-01");
+    // Pre-epoch: impossible for a real stamp, but a corrupt one must not put a
+    // malformed string into the diagnostic that reports it.
+    assert_eq!(utc_date(-1), "1969-12-31");
+    assert_eq!(utc_date(-86_400_001), "1969-12-30");
+    assert!(!is_iso_date("+026-08-15"), "a signed year is not ISO");
+    assert_eq!(utc_date(1_786_854_010_213), "2026-08-16");
+    // 2024-02-29T00:00:00Z — a real leap day, and the day after it.
+    assert_eq!(utc_date(1_709_164_800_000), "2024-02-29");
+    assert_eq!(utc_date(1_709_251_200_000), "2024-03-01");
+    assert!(is_iso_date("2024-02-29"), "a real leap day");
+    assert!(!is_iso_date("2026-02-29"), "2026 is not a leap year");
+    assert!(!is_iso_date("2026-13-01") && !is_iso_date("2026-00-10"));
+    assert!(!is_iso_date("2026-08-32") && !is_iso_date("2026-08-00"));
+    assert!(!is_iso_date("2026/08/15") && !is_iso_date("20260815") && !is_iso_date("unknown"));
+    assert_eq!(
+        date_prefix("rollout-2026-08-14T22-19-03-01a0.jsonl").as_deref(),
+        Some("2026-08-14")
+    );
+    assert_eq!(
+        date_prefix("2026-08-15T04-14-55-304Z_01a0.jsonl").as_deref(),
+        Some("2026-08-15")
+    );
+    assert_eq!(date_prefix("events.jsonl"), None);
+    assert_eq!(date_prefix("2026-13-45T00-00-00-x.jsonl"), None);
+}
+
+/// Reading the wrong `tool_id_key` is SILENT — every kimi tool call decoded to
+/// `None` for the source's whole life, because a NEW source's conformance
+/// snapshot is generated from whatever key its author copied. Whatever key a real
+/// payload carries its tool id under IS that source's key, so every shared-arm
+/// row's key is proven by real bytes.
+#[test]
+fn each_sources_tool_id_key_is_the_one_its_captures_carry() {
+    const KEYS: &[&str] = &["tool_use_id", "tool_call_id"];
+    let mut proven: BTreeSet<String> = BTreeSet::new();
+    for c in every_capture() {
+        let Some(hooks) = c.hook_payloads() else {
+            continue;
+        };
+        let Some(d) = registry::descriptor_for(&c.source) else {
+            continue;
+        };
+        let Some(registry::HookDecoding::Shared { tool_id_key, .. }) = d.hook() else {
+            continue;
+        };
+        let want = tool_id_key.wire_name();
+        for line in fixture_lines(&hooks) {
+            let Ok(v) = serde_json::from_str::<serde_json::Value>(&line) else {
+                continue;
+            };
+            for wrong in KEYS.iter().filter(|k| **k != want) {
+                assert!(
+                    v.get(wrong).is_none(),
+                    "{}: a payload carries `{wrong}` but {} is registered as \
+                     `{want}` — the per-call id would decode to None for every \
+                     tool call this source ever makes",
+                    hooks.display(),
+                    c.source
+                );
+            }
+            if v.get(want).is_some() {
+                proven.insert(c.source.clone());
+            }
+        }
+    }
+    let mut wrong: Vec<String> = Vec::new();
+    for name in registry::registered_source_names() {
+        let Some(d) = registry::descriptor_for(name) else {
+            continue;
+        };
+        if matches!(d.hook(), Some(registry::HookDecoding::Shared { .. })) && !proven.contains(name)
+        {
+            wrong.push(format!("{name}: no capture carries its tool id"));
+        }
+    }
+    assert!(
+        wrong.is_empty(),
+        "a shared-arm row's tool_id_key is proven by real bytes:\n  {}",
+        wrong.join("\n  ")
+    );
+}

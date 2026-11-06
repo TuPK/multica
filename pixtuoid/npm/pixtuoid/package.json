@@ -1,0 +1,40 @@
+{
+  "name": "pixtuoid",
+  "version": "0.0.0",
+  "description": "Terminal-native pixel-art visualizer for AI coding agents — watch Claude Code, Codex, Cursor, Copilot, and more sessions as coworkers in an ASCII office.",
+  "keywords": [
+    "cli",
+    "tui",
+    "claude-code",
+    "codex",
+    "pixel-art",
+    "ai-agents",
+    "visualizer"
+  ],
+  "homepage": "https://github.com/pixtuoid/pixtuoid",
+  "bugs": {
+    "url": "https://github.com/pixtuoid/pixtuoid/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pixtuoid/pixtuoid.git"
+  },
+  "license": "(MIT AND OFL-1.1)",
+  "bin": {
+    "pixtuoid": "bin/pixtuoid.js",
+    "pixtuoid-hook": "bin/pixtuoid-hook.js"
+  },
+  "files": [
+    "bin/",
+    "LICENSE",
+    "licenses/"
+  ],
+  "optionalDependencies": {
+    "@pixtuoid/cli-darwin-arm64": "0.0.0",
+    "@pixtuoid/cli-darwin-x64": "0.0.0",
+    "@pixtuoid/cli-linux-x64": "0.0.0",
+    "@pixtuoid/cli-linux-arm64": "0.0.0",
+    "@pixtuoid/cli-win32-x64": "0.0.0",
+    "@pixtuoid/cli-win32-arm64": "0.0.0"
+  }
+}

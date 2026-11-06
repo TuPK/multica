@@ -1,0 +1,13 @@
+{
+  "fixtures": [
+    {
+      "match": { "hasToolResult": false },
+      "response": { "toolCalls": [ { "name": "Read", "arguments": { "path": "NOTE.txt" } } ] }
+    },
+    {
+      "match": { "toolResultContains": "{note}" },
+      "response": { "content": "pong" },
+      "latency": 300
+    }
+  ]
+}

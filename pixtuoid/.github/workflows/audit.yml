@@ -1,0 +1,42 @@
+name: security audit
+
+# A dependency set that did not change still meets new advisories: this
+# judges each one daily, and a PR judges only the lockfiles it changes.
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rust:
+    name: cargo-deny advisories
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The same mise.toml key ci-lint's deny job installs; each resolves its version at run time.
+      - uses: ./.github/actions/setup-tools
+        with:
+          tools: cargo-deny
+      - run: just deny-advisories
+
+  npm:
+    name: npm audit (${{ matrix.dir }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: [site, integrations/raycast]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # `npm audit` reads the lockfile; nothing is installed or run.
+      - run: npm run audit
+        working-directory: ${{ matrix.dir }}

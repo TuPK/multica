@@ -1,0 +1,12 @@
+# 20x8 fallback pantry for narrow terminals — vending machine | fridge |
+# counter with coffee + microwave. Same as the original compact design,
+# used when pantry room width < 36 (~96-cell terminals or smaller).
+@frame 0
+M M M . M M M . . . . . . . . . . . . .
+M r y . M c M . . . . . . . . . . . . .
+M b r . M c M . d d d d d d d d d d d .
+M y b . M M M . d K K K d d M M M M d .
+M K K . M M M . d K c K d d M c c M d .
+M M M . n n n . d K K K d d M M M M d .
+. . . . . . . . d d d d d d d d d d d .
+. . . . . . . . n n n n n n n n n n n .

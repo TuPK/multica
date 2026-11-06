@@ -1,0 +1,16 @@
+{
+  "private": true,
+  "type": "module",
+  "description": "The runtime types the plugins here are checked against; `just plugin-types` adds each host's own at its source's verified_version.",
+  "devDependencies": {
+    "@types/bun": "^1.4.4"
+  },
+  "allowScripts": {
+    "@google/genai": false,
+    "onnxruntime-node": false,
+    "esbuild": false,
+    "koffi": false,
+    "openclaw": false,
+    "protobufjs": false
+  }
+}

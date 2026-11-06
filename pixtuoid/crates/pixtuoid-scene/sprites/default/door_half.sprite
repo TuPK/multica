@@ -1,0 +1,19 @@
+# 16x14 elevator door — frame 1 of 3: HALF-OPEN. Panels have parted
+# 4 columns, exposing a narrow strip of dark shaft (j) in the middle.
+# Used as the mid-transition frame between CLOSED (frame 0) and OPEN
+# (frame 2). Same brushed-steel frame (E) as the other two.
+@frame 0
+E E E E E E E E E E E E E E E E
+E c y c c c c c c c c c c c c E
+E E E E E E E E E E E E E E E E
+E K K K K K j j j j K K K K K E
+E K K K K K j j j j K K K K K E
+E K K K K K j j j j K K K K K E
+E K K K K K j j j j K K K K K E
+E K K K K K j j j j K K K K K E
+E K K K K K j j j j K K K K K E
+E K K K K K j j j j K K K K K E
+E K K K K K j j j j K K K K K E
+E K K K K K j j j j K K K K K E
+E K K K K K j j j j K K K K K E
+E E E E E E E E E E E E E E E E

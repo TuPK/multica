@@ -1,0 +1,30 @@
+/target/
+# criterion falls back to <package root>/target/criterion when it can't resolve
+# the workspace target dir. Anchored so a source dir named target isn't hidden.
+/crates/*/target/
+**/*.rs.bk
+Cargo.lock.bak
+.DS_Store
+*.swp
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+/*.png
+.venv
+node_modules/
+.superpowers/
+docs/superpowers/
+.claude/worktrees/
+drift-report.md
+__pycache__/
+codecov.json
+mutants.out/
+mutants.out.old/
+
+# Recorder output awaiting a diff — promote it or delete it, never commit it.
+*.jsonl.new
+provenance.json.new
+
+# Any of these switches Claude Code to CLAUDE.md-only, hiding every AGENTS.md
+# (CLAUDE.md also matches .claude/CLAUDE.md).
+CLAUDE.md
+CLAUDE.local.md

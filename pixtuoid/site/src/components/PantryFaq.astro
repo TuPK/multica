@@ -1,0 +1,134 @@
+---
+// Every answer must stay contract-true — see faq.json's `cite`. Mounted INSIDE
+// section#amenities, so it has no root <section>/.container of its own: width comes
+// from the shared 4F .container, and role="region" restores the landmark a bare
+// div's generic role would drop its aria-label from.
+import faq from '../faq.json';
+import { asset } from '../consts';
+---
+
+<div
+  class="pantry"
+  id="pantry"
+  role="region"
+  aria-label="pantry FAQ: two coworkers answer common questions"
+>
+  <div class="pantry__scene reveal">
+    <figure class="pantry__still">
+      <img
+        class="px"
+        src={asset('demos/space_pantry.png')}
+        width="800"
+        height="620"
+        alt="the office pantry: pixel-art coworkers by the coffee machine"
+        loading="lazy"
+        decoding="async"
+      />
+    </figure>
+    <ol class="pantry__chat" data-pantry-chat>
+      {faq.map((f, i) => <li class="pantry__turn">
+        <p class="pantry__bubble pantry__bubble--q" style={`--turn:${i * 2}`}>
+          {f.q}
+        </p>
+        <p class="pantry__bubble pantry__bubble--a" style={`--turn:${i * 2 + 1}`}>
+          {f.a}
+        </p>
+        {/* same --turn as the answer above, so the citation pops WITH it: an
+              unset var() in calc() computes to 0s, so an un-turned cite would
+              appear from frame one */}
+        <p class="pantry__cite" style={`--turn:${i * 2 + 1}`}>— {f.cite}</p>
+      </li>)}
+    </ol>
+  </div>
+</div>
+
+<script is:inline>
+  // >5s of auto-motion in aggregate, so the bubbles JOIN the pix:paused set.
+  (function () {
+    const scene = document.querySelector('.pantry__scene');
+    // Toggle a class, NOT inline animationPlayState: freezing the pop at t=0 paints
+    // its backwards-fill from-keyframe (opacity:0), so pausing before the pantry
+    // reveals would blank the whole FAQ.
+    document.addEventListener('pix:paused', function (e) {
+      scene.classList.toggle('is-paused', !!(e.detail && e.detail.paused));
+    });
+  })();
+</script>
+
+<style>
+  /* margin-top only, not a symmetric padding-block: .pantry is a SECOND block inside
+     section#amenities, and ProofSplit's bottom padding already closes its side of
+     the gap — a full padding-block here would be pure double-spacing. */
+  .pantry {
+    margin-top: var(--rhythm-adjacent);
+  }
+  .pantry__scene {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(1.4rem, 4vw, 3rem);
+    align-items: center;
+  }
+  .pantry__still {
+    margin: 0;
+    flex: 0 1 380px;
+  }
+  .pantry__still img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .pantry__chat {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    flex: 1 1 300px;
+    min-width: 260px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+  }
+  /* a chitchat bubble as the site draws it: flat mono text on the hardware screen,
+     sharp corners, no border. --screen and --chip-bright are THEME-INDEPENDENT, so
+     one measured pair clears WCAG AA in day/night/dracula alike — no per-theme
+     retune. */
+  .pantry__bubble {
+    width: fit-content;
+    margin: 0 0 0.35rem;
+    padding: 0.4rem 0.7rem;
+    background: var(--screen);
+    color: var(--chip-bright);
+    font-family: var(--font-mono);
+    font-size: 0.88rem;
+  }
+  .pantry__bubble--a {
+    margin-left: clamp(1.2rem, 8%, 2.4rem);
+  }
+  /* bare text over the dimmed office (not on a bubble's --screen plate) — --fg-muted
+     falls under the 4.5:1 floor there; --office-ink is THE token for this ground. */
+  .pantry__cite {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--office-ink);
+  }
+  /* sequential pop, armed by the section reveal ('in'). The base style has no
+     opacity:0, so a no-JS or paused scene simply shows the bubbles; fill-mode:
+     backwards holds the pre-delay opacity 0 without a permanently-hidden element. */
+  @media (prefers-reduced-motion: no-preference) {
+    .pantry__scene.in:not(.is-paused) .pantry__bubble,
+    .pantry__scene.in:not(.is-paused) .pantry__cite {
+      animation: pantry-pop 0.3s ease backwards;
+      animation-delay: calc(var(--turn) * 1.6s + 0.3s);
+    }
+  }
+  @keyframes pantry-pop {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+</style>

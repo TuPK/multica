@@ -1,0 +1,36 @@
+name: 'Generate the site wasm'
+description: 'Runs `just gen-wasm` into site/public/wasm/, on the Rust toolchain (with the wasm32 target) and cache its job set up'
+
+runs:
+  using: 'composite'
+  steps:
+    - id: bindgen
+      shell: bash
+      run: |
+        set -euo pipefail
+        ver="$(just _wasm-bindgen-version)"
+        echo "version=$ver" >> "$GITHUB_OUTPUT"
+    # The pinned install-action knows only the wasm-bindgen versions released
+    # by its own date, and Cargo.lock moves on its own lane: a fallback keeps a
+    # lock bump from reddening this step. cargo-install, not the default
+    # cargo-binstall, which gets the job token and runs prebuilt third-party
+    # binaries in a job whose artifact is deployed (install-action README, Security).
+    - uses: taiki-e/install-action@a4d3f3f761dcd95cce1b72cb61cb6d1963438177 # v2.87.30
+      with:
+        tool: wasm-bindgen@${{ steps.bindgen.outputs.version }}
+        fallback: cargo-install
+
+    # Not via taiki-e/install-action: binaryen is not in its TOOLS.md (checked).
+    - name: Install wasm-opt
+      shell: bash
+      run: |
+        set -euo pipefail
+        ver="$(yq -e -p toml -oy '.tools["aqua:WebAssembly/binaryen"]' mise.toml)"
+        url="https://github.com/WebAssembly/binaryen/releases/download/version_$ver/binaryen-version_${ver}-x86_64-linux.tar.gz"
+        curl -fsSL --retry 5 --retry-all-errors "$url" -o /tmp/binaryen.tar.gz
+        echo "2dc9c7813f5375db93d96ead4b78222fcc3e2677bbb832297af4797782a37489  /tmp/binaryen.tar.gz" | sha256sum -c -
+        tar -xzf /tmp/binaryen.tar.gz -C /tmp "binaryen-version_$ver/bin/wasm-opt"
+        sudo install -m 0755 "/tmp/binaryen-version_$ver/bin/wasm-opt" /usr/local/bin/wasm-opt
+
+    - shell: bash
+      run: just gen-wasm

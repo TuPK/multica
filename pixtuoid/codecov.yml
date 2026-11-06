@@ -1,0 +1,78 @@
+coverage:
+  precision: 2
+  round: down
+  range: "40...100"
+
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 5%
+        informational: true
+    patch:
+      default:
+        target: 70%
+        threshold: 5%
+        informational: true
+
+# Per-crate coverage VIEWS over the merged workspace uploads (a virtual path
+# split - no per-crate CI jobs), so a regression in one crate can't hide behind
+# the binary's untestable TTY paths. `informational`: a lens, not a gate.
+component_management:
+  default_rules:
+    statuses:
+      - type: project
+        target: auto
+        threshold: 5%
+        informational: true
+  individual_components:
+    - component_id: core
+      name: pixtuoid-core
+      paths: ["crates/pixtuoid-core/**"]
+    - component_id: scene
+      name: pixtuoid-scene
+      paths: ["crates/pixtuoid-scene/**"]
+    - component_id: binary
+      name: pixtuoid
+      paths: ["crates/pixtuoid/**"]
+    - component_id: hook
+      name: pixtuoid-hook
+      paths: ["crates/pixtuoid-hook/**"]
+    - component_id: web
+      name: pixtuoid-web
+      paths: ["crates/pixtuoid-web/**"]
+    - component_id: web-music
+      name: pixtuoid-web-music
+      paths: ["crates/pixtuoid-web-music/**"]
+
+comment:
+  layout: "condensed_header, diff, components, files"
+  behavior: default
+  require_changes: true
+  require_base: false
+  require_head: true
+
+ignore:
+  - "scripts/"
+  - "docs/"
+  - "*.md"
+  # Not coverable headlessly - exercising these needs a real TTY / OS / display.
+  # `.cargo/mutants.toml` holds an overlapping but different list (neither is a
+  # subset): it still MUTATES the unit-tested decision layers inside tui/mod.rs +
+  # runtime/driver.rs, which stay WHOLLY ignored here. Keep the shared entries in
+  # sync. When a decision appears in one of these files, move it out rather than
+  # widening this list.
+  - "crates/pixtuoid/src/main.rs"               # binary entry: calls `pixtuoid::run`, reports its error
+  - "crates/pixtuoid/src/app/mod.rs"            # arg-parse + dispatch + terminal preflights
+  - "crates/pixtuoid/src/app/crash.rs"          # panic hook: terminal restore + crash.log (pure helpers stay unit-tested)
+  - "crates/pixtuoid/src/app/logging.rs"        # global tracing-subscriber init (once per process; pure helpers unit-tested)
+  - "crates/pixtuoid/src/app/sources_cli.rs"    # stdout presenters over the real config path (covered by the cli_json e2e binary run)
+  - "crates/pixtuoid/src/tui/mod.rs"            # crossterm event loop + terminal lifecycle: reads/writes the real TTY
+  - "crates/pixtuoid/src/runtime/driver.rs"     # async glue: tokio runtime + block_on + ctrl_c + socket bind (#103)
+  - "crates/pixtuoid/src/runtime/pipeline.rs"   # the shared source-to-reducer spine: same channel/spawn glue class as driver.rs
+  - "crates/pixtuoid/src/floating/mod.rs"       # floating run(): tokio runtime + winit EventLoop glue (the floating twin of driver.rs)
+  - "crates/pixtuoid/src/floating/window.rs"    # winit ApplicationHandler: creates the real OS window + its GPU surface
+  # The testable floating logic IS counted: offscreen.rs, overlays.rs,
+  # compose.rs, gpu.rs, geometry.rs, input.rs, cadence.rs, lifecycle.rs. Keeps the % honest:
+  # "of the code we CAN test headlessly, X% is tested", rather than dragging it
+  # down with paths no test can reach.

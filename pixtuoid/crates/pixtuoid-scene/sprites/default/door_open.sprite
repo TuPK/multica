@@ -1,0 +1,20 @@
+# 16x14 elevator door — frame 2 of 3: FULLY OPEN. Sliding panels (K)
+# have retracted to the left and right edges (3 columns each); the
+# middle 8 columns expose the dark elevator shaft interior (j) —
+# wide enough for a character to walk through. Same brushed-steel
+# frame (E) as the other two states.
+@frame 0
+E E E E E E E E E E E E E E E E
+E c y c c c c c c c c c c c c E
+E E E E E E E E E E E E E E E E
+E K K K j j j j j j j j K K K E
+E K K K j j j j j j j j K K K E
+E K K K j j j j j j j j K K K E
+E K K K j j j j j j j j K K K E
+E K K K j j j j j j j j K K K E
+E K K K j j j j j j j j K K K E
+E K K K j j j j j j j j K K K E
+E K K K j j j j j j j j K K K E
+E K K K j j j j j j j j K K K E
+E K K K j j j j j j j j K K K E
+E E E E E E E E E E E E E E E E

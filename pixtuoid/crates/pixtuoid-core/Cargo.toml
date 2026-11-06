@@ -1,0 +1,155 @@
+[package]
+name                   = "pixtuoid-core"
+description            = "Headless engine for pixtuoid — sources, state, sprites"
+version.workspace      = true
+edition.workspace      = true
+license.workspace      = true
+repository.workspace   = true
+authors.workspace      = true
+homepage.workspace     = true
+keywords.workspace     = true
+categories.workspace   = true
+# Workspace-only tests that reach outside the crate for a sibling file absent
+# from the published tarball — shipping them would make `cargo test` fail on the
+# .crate. Runtime reads need excluding too: they spare the publish build-verify
+# but not `cargo test` on an extracted crate. They stay FLAT so they can be
+# excluded at all: a grouped binary's submodule cannot be excluded on its own.
+exclude                = [
+    # Recorded wire bytes — an operator's roster, instructions, session content —
+    # that a crates.io tarball would freeze where the repo copy can still be
+    # redacted; the grouped `sources` binary shares the dir and goes with them.
+    # A tarball-contents choice, not a green-test one: the extracted crate's
+    # `cargo test` is red regardless (`tests/watcher/sources.rs`, `tests/render/format.rs`).
+    "tests/sources",
+    "tests/pinned_by_claims.rs",
+    "tests/lang_gates.rs",
+    "tests/shim_stamp_parity.rs",
+    "tests/socket_path_parity.rs",
+    "tests/supported_sources_manifest.rs",
+]
+
+[lints]
+workspace = true
+
+# `native` (default) pulls the whole source/ transport+watcher+probe machinery.
+# Without it (`--no-default-features`) the pure core compiles to
+# wasm32-unknown-unknown, which is what pixtuoid-scene's WebAssembly office hero
+# builds against.
+#
+# `harness` (NON-default) adds the offline decode→reduce driver the
+# fixture/corpus/render call sites ride. Dev scaffolding: keeping it out of
+# a default build keeps it out of `cargo public-api` + `cargo semver-checks`, so
+# it never becomes a semver commitment.
+[features]
+default = ["native", "pack-toml"]
+native  = ["dep:tokio", "dep:notify"]
+# A pack manifest in TOML: `load_pack_from_strings` and the loaders on it.
+# Without it a build loads only a manifest transcoded to JSON
+# (`load_pack_from_json`) and links no TOML parser: the WebAssembly office.
+pack-toml = ["dep:toml"]
+# The recorder writes captured lines back; without insertion order every
+# rewritten object would come out alphabetized, an edit past the sanctioned one.
+harness = [
+    "serde_json/preserve_order",
+    # The capture rig's host calls (`harness::{host, tap}`), kept off the
+    # shipped build's feature set.
+    "windows-sys/Win32_Storage_FileSystem",
+    "windows-sys/Win32_System_Com",
+    "windows-sys/Win32_System_Pipes",
+    "windows-sys/Win32_System_Registry",
+    "windows-sys/Win32_UI_Shell",
+    # A release-binary profile's download is checked against its sums file.
+    "dep:sha2",
+    # The literal census parses the decoders (`hermetic::literals`).
+    "dep:syn",
+    # A re-record's capture is read up to the ids its run mints
+    # (`harness::captures::canonical_capture`).
+    "dep:regex",
+]
+
+[dependencies]
+tokio       = { workspace = true, features = ["sync", "rt", "macros", "fs", "net", "time", "io-util"], optional = true }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+toml        = { workspace = true, optional = true }
+anyhow      = { workspace = true }
+thiserror   = { workspace = true }
+tracing     = { workspace = true }
+notify      = { workspace = true, optional = true }
+# `Rgb`'s OKLab: `ramp` and `mix`.
+palette     = { workspace = true }
+strum       = { workspace = true }
+enum-map    = { workspace = true }
+vec1        = { workspace = true }
+# A CLI's version and its ordering, prerelease included: `registry::parse_version`.
+semver      = { workspace = true }
+# A wire stamp's instant: `decoder::rfc3339_to_epoch`.
+chrono      = { workspace = true }
+# A download's digest against its sums file or manifest: `hermetic::digest::digest_hex`.
+sha2        = { workspace = true, optional = true }
+# The literal census reads what the decoders compare (`hermetic::literals`).
+syn         = { workspace = true, optional = true }
+# The id families a re-record may rename: `harness::captures::canonical_capture`.
+regex       = { workspace = true, optional = true }
+
+[target.'cfg(unix)'.dependencies]
+libc = { workspace = true }
+# Safe wrappers for the liveness/exit-watch syscalls the `native` probe layer
+# makes: kqueue+kevent (macOS), pidfd_open+poll+self-pipe (Linux), kill(0).
+# Unix-only like `libc`, so the wasm32 core build never sees it. libc STAYS for
+# the macOS libproc calls rustix doesn't wrap (proc_pidinfo start-time in
+# cc_probe, the fd→path table in fd_probe).
+rustix = { workspace = true, features = ["event", "process", "pipe"] }
+
+[target.'cfg(windows)'.dependencies]
+# Win32_System_Threading: OpenProcess + GetProcessTimes, the `proc_start`
+# creation-FILETIME marker (the Windows half of the pid-recycle guard), and
+# `exit_watch`'s handle wait, whose cap is SystemServices' MAXIMUM_WAIT_OBJECTS.
+windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_System_SystemServices", "Win32_System_Threading"] }
+# The directory id a watch root is reconciled by.
+winapi-util = { workspace = true }
+
+[dev-dependencies]
+# Depending on ourselves BY PATH is how a crate turns its own non-default
+# feature on for its dev targets — Cargo has no direct mechanism for it. The
+# workspace `resolver` (v2's feature unification, which v3 keeps) keeps
+# dev-dependency features out of a normal build (under v1 they would unify in
+# and `harness` would ship).
+pixtuoid-core = { path = ".", features = ["harness"] }
+tokio = { workspace = true, features = ["sync", "rt", "macros", "fs", "net", "time", "io-util", "rt-multi-thread"] }
+proptest = { workspace = true }
+tempfile = { workspace = true }
+dunce = { workspace = true }
+temp-env = { workspace = true }
+schemars = { workspace = true }
+portable-pty = { workspace = true }
+vt100 = { workspace = true }
+process-wrap = { workspace = true }
+filetime = "0.2"
+insta = { workspace = true, features = ["yaml"] }
+tracing-subscriber = { workspace = true }
+# Wire→state benchmarks (`just bench`); same CodSpeed compat passthrough as
+# `pixtuoid-scene`'s.
+criterion = { workspace = true }
+
+[target.'cfg(unix)'.dev-dependencies]
+# `examples/support/bounded.rs`'s `kill_child_on_signal`.
+signal-hook = { workspace = true }
+
+[[bench]]
+name = "decode_reduce"
+harness = false
+
+# Without this an example is not a test target, so its `#[test]`s build and
+# never run — the same wiring `pixtuoid`'s `snapshot` example already carries.
+[[example]]
+name = "capture_fixture"
+test = true
+
+[[example]]
+name = "hermetic"
+test = true
+
+[[example]]
+name = "tui_drive"
+test = true

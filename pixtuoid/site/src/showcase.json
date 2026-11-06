@@ -1,0 +1,112 @@
+[
+  {
+    "id": "agents",
+    "label": "AGENTS",
+    "kind": "clip",
+    "asset": "multi-floor",
+    "w": 1664,
+    "h": 1408,
+    "caption": "every session claims a desk across floors — typing, wandering, coffee runs. swarms scale too: fleets of 100+ agents working on this repo have passed through this very office.",
+    "status": "live"
+  },
+  {
+    "id": "openclaw",
+    "label": "OPENCLAW",
+    "kind": "clip",
+    "asset": "openclaw",
+    "w": 1120,
+    "h": 960,
+    "caption": "a live OpenClaw gateway walks in as a lobster — its wander is the daemon's pulse: idle ambles, running shuttles, failing flushes red, shutdown heads for the elevator.",
+    "status": "live"
+  },
+  {
+    "id": "dashboard",
+    "label": "DASHBOARD",
+    "kind": "variant-set",
+    "variants": [
+      {
+        "id": "tree",
+        "name": "Tab ⇥ agent tree",
+        "src": "agent-tree.png",
+        "featured": true
+      },
+      {
+        "id": "zoom",
+        "name": "Zoom in",
+        "src": "agent-tree-zoom_popup.png"
+      }
+    ],
+    "status": "live"
+  },
+  {
+    "id": "meetings",
+    "label": "MEETINGS",
+    "kind": "clip",
+    "asset": "meetings",
+    "w": 760,
+    "h": 640,
+    "caption": "idle agents drift to the meeting room — “no tests?” “trust me” “ship it!”",
+    "status": "live"
+  },
+  {
+    "id": "pets",
+    "label": "PETS",
+    "kind": "clip",
+    "asset": "pets",
+    "w": 960,
+    "h": 832,
+    "status": "live"
+  },
+  {
+    "id": "spaces",
+    "label": "SPACES",
+    "kind": "variant-set",
+    "w": 800,
+    "h": 620,
+    "variants": [
+      {
+        "id": "cubicles",
+        "name": "Cubicles",
+        "src": "space_cubicles.png",
+        "featured": true
+      },
+      {
+        "id": "meeting",
+        "name": "Meeting lounge",
+        "src": "space_meeting.png"
+      },
+      {
+        "id": "pantry",
+        "name": "Pantry",
+        "src": "space_pantry.png"
+      }
+    ],
+    "caption": "take the office tour — every corner is alive",
+    "status": "live"
+  },
+  {
+    "id": "vibing",
+    "label": "VIBING",
+    "kind": "live",
+    "w": 176,
+    "h": 99,
+    "default": true,
+    "poster": "vibing-poster.png",
+    "timeSlider": true,
+    "variantGroups": [
+      {
+        "key": "weather",
+        "label": "weather",
+        "variantsRef": "weather"
+      },
+      {
+        "key": "theme",
+        "label": "vibe",
+        "variantsRef": "themes",
+        "retint": true
+      }
+    ],
+    "caption": "live — you're driving this one",
+    "status": "live"
+  }
+]

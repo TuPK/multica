@@ -1,0 +1,17 @@
+{
+  "origin": "recorded",
+  "cli": "hermes",
+  "version": "Hermes Agent v0.22.5 (2026.9.24) · stable · local bf0203a794a0",
+  "captured": "2026-10-28",
+  "command": "just hermetic --record hermes",
+  "deidentified": {
+    "method": "decoder-allowlist",
+    "blanked": 2
+  },
+  "aimock": "1.47.0",
+  "script": "tests/sources/hermes/hermetic/tool-run.json",
+  "dropped": {
+    "os": "macos",
+    "at": {}
+  }
+}

@@ -1,0 +1,1178 @@
+---
+import { asset, DIM_RESTING } from '../consts';
+
+const wasmJsUrl = asset('wasm/pixtuoid_web.js');
+const officeHostUrl = asset('office-host.js');
+const musicWorkerUrl = asset('music-worker.js');
+const musicWasmJsUrl = asset('wasm/pixtuoid_web_music.js');
+const musicWorkletUrl = asset('music-worklet.js');
+const officeDriverUrl = asset('office-driver.js');
+---
+
+{/* The wasm office renders into #office-live; the poster is the instant
+     FALLBACK layer — reduced-motion / no-JS / no-wasm / fetch-failure all
+     simply stay on it. */}
+<div class="backdrop" aria-hidden="true">
+  <img
+    class="backdrop__poster px"
+    src={asset('demos/hero-wide.png')}
+    alt=""
+    width="231"
+    height="130"
+    decoding="async"
+    fetchpriority="high"
+  />
+  <canvas id="office-live" class="backdrop__live px"></canvas>
+  {/* Crisp DOM text laid OVER the pixel office: the canvas buffer is upscaled
+       with image-rendering:pixelated, so baked AA text would nearest-neighbor
+       blow up blocky. The engine exports the labels + wall-board as a model
+       (Office.overlay_json) and these spans are positioned at DISPLAY
+       resolution via the object-fit:cover mapping. */}
+  <div id="office-overlay" class="backdrop__overlay" aria-hidden="true"></div>
+</div>
+{/* --dim-rest single-sources the resting opacity with consts DIM_RESTING — a
+     JS↔CSS value that can't share a literal, so it rides an inline custom
+     property both #dimmer rules read. */}
+<div id="dimmer" aria-hidden="true" style={`--dim-rest:${DIM_RESTING}`}></div>
+<button
+  id="office-pause"
+  class="office-ctl"
+  hidden
+  aria-pressed="false"
+  aria-label="Pause the office animation"
+>
+  <svg class="office-ctl__pause" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">
+    <rect x="1" y="1" width="2" height="6"></rect>
+    <rect x="5" y="1" width="2" height="6"></rect>
+  </svg>
+  <svg class="office-ctl__play" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">
+    <rect x="2" y="1" width="1" height="7"></rect>
+    <rect x="3" y="2" width="1" height="5"></rect>
+    <rect x="4" y="3" width="1" height="3"></rect>
+    <rect x="5" y="4" width="1" height="1"></rect>
+  </svg>
+</button>
+{/* The ♩ office-sound toggle starts OFF: muted-by-default + browser autoplay
+     policy (no sound without a gesture). JS un-hides it once the engine is
+     live — no engine, no sound to offer. */}
+<button
+  id="office-audio"
+  class="office-ctl"
+  hidden
+  aria-pressed="false"
+  aria-label="Play the office ambient sound"
+>
+  <svg
+    class="office-ctl__soundon"
+    viewBox="0 0 8 8"
+    shape-rendering="crispEdges"
+    aria-hidden="true"
+  >
+    <rect x="1" y="3" width="1" height="2"></rect>
+    <rect x="2" y="2" width="1" height="4"></rect>
+    <rect x="3" y="1" width="1" height="6"></rect>
+    <rect x="5" y="2" width="1" height="1"></rect>
+    <rect x="6" y="3" width="1" height="2"></rect>
+    <rect x="5" y="5" width="1" height="1"></rect>
+  </svg>
+  <svg
+    class="office-ctl__soundoff"
+    viewBox="0 0 8 8"
+    shape-rendering="crispEdges"
+    aria-hidden="true"
+  >
+    <rect x="1" y="3" width="1" height="2"></rect>
+    <rect x="2" y="2" width="1" height="4"></rect>
+    <rect x="3" y="1" width="1" height="6"></rect>
+    <rect x="5" y="2" width="1" height="1"></rect>
+    <rect x="6" y="3" width="1" height="1"></rect>
+    <rect x="5" y="5" width="1" height="1"></rect>
+    <rect x="6" y="4" width="1" height="1"></rect>
+  </svg>
+</button>
+
+<style is:global>
+  body {
+    background: transparent;
+  }
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: var(--bg);
+    pointer-events: none;
+  }
+  .backdrop__poster,
+  .backdrop__live {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  /* Default 0: every NON-boot path shows the poster, and boot's own bg-tone cover never cross-dissolves a wrong-time still. */
+  .backdrop__live {
+    opacity: 0;
+    background: var(--bg);
+  }
+  /* reduced motion IS the still-poster design — never cover it, and win before the script even runs */
+  @media (prefers-reduced-motion: reduce) {
+    .backdrop__live {
+      opacity: 0 !important;
+    }
+  }
+  .backdrop__overlay {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    font-family: 'Fusion Pixel 8px', var(--font-mono);
+    /* One weight: a synthesized bold smears its pixels. */
+    font-synthesis: none;
+    --ov-label-px: 16px;
+  }
+  .backdrop__overlay.is-on {
+    opacity: 1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .backdrop__overlay {
+      display: none !important;
+    }
+  }
+  .ov-label {
+    position: absolute;
+    left: 0;
+    top: 0;
+    white-space: nowrap;
+    font-size: var(--ov-label-px);
+    line-height: 1;
+    text-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.9),
+      0 0 3px rgba(0, 0, 0, 0.75);
+    will-change: transform;
+  }
+  /* The office marks a badge with a bar in its source's hue, not a dot. */
+  .ov-strip {
+    display: inline-block;
+    width: 0.22em;
+    height: 1.05em;
+    margin-right: 0.25em;
+    vertical-align: -0.12em;
+    overflow: hidden;
+    color: transparent;
+    text-shadow: none;
+  }
+  /* A status lamp with a glint, glowing in its tone, where the glyph was:
+     one column, though the face draws the glyph full-width. */
+  .ov-lamp {
+    display: inline-block;
+    width: 1ch;
+    height: 1em;
+    overflow: hidden;
+    vertical-align: top;
+    color: transparent;
+    text-shadow: none;
+    background: radial-gradient(
+      circle at 38% 38%,
+      #fff 0 10%,
+      var(--lamp) 14% 36%,
+      transparent 40%
+    );
+    filter: drop-shadow(0 0 0.12em var(--lamp));
+  }
+  .ov-board {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    line-height: 1;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+    will-change: transform;
+  }
+  /* The engine BAKES the mood/context separators as spaces and re-cuts the
+     segments every tick of a flap roll: `pre` + no gap keeps each char on its own
+     monospace column, where `nowrap` + a gap collapsed the spaces and let the
+     row jump as the segment count changed. */
+  .ov-brow {
+    display: flex;
+    white-space: pre;
+  }
+  .ov-brow--top {
+    justify-content: space-between;
+    gap: 0.6em;
+  }
+  #dimmer {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: var(--bg);
+    opacity: var(--dim-rest);
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #dimmer {
+      opacity: var(--dim-rest) !important;
+    }
+  }
+  :root {
+    --office-ctl-edge: 10px;
+    --office-ctl-w: 36px;
+  }
+  .office-ctl[hidden] {
+    display: none;
+  }
+  .office-ctl {
+    position: fixed;
+    right: var(--office-ctl-edge);
+    bottom: calc(2rem + env(safe-area-inset-bottom, 0px) + 10px);
+    z-index: 50;
+    width: var(--office-ctl-w);
+    height: var(--office-ctl-w);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: var(--screen);
+    border: 2px solid var(--chip-line);
+    border-radius: 0;
+    box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
+    color: var(--chip-bright);
+    cursor: pointer;
+    opacity: 0.45;
+    transition: opacity 0.15s ease;
+  }
+  /* Footer.astro's row wraps non-monotonically with viewport width, so no flat offset clears it — --footer-h tracks its REAL height, the fallback shows pre-JS only. */
+  @media (max-width: 960px) {
+    .office-ctl {
+      bottom: calc(2rem + env(safe-area-inset-bottom, 0px) + var(--footer-h, 74px) + 10px);
+    }
+  }
+  @media (max-width: 760px) {
+    .container {
+      padding-inline-end: calc(
+        var(--container-pad-x) + var(--office-ctl-edge) + var(--office-ctl-w) + 8px
+      );
+    }
+    .gap-caption {
+      max-width: calc(
+        100% - var(--gap-caption-inset) - var(--office-ctl-edge) - var(--office-ctl-w) - 8px
+      );
+    }
+  }
+  .office-ctl:hover,
+  .office-ctl:focus-visible,
+  .office-ctl[aria-pressed='true'] {
+    opacity: 1;
+  }
+  .office-ctl:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+    border-radius: 0;
+  }
+  .office-ctl:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.45);
+  }
+  .office-ctl svg {
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+  }
+  .office-ctl .office-ctl__play,
+  .office-ctl[aria-pressed='true'] .office-ctl__pause {
+    display: none;
+  }
+  .office-ctl[aria-pressed='true'] .office-ctl__play {
+    display: block;
+    color: var(--led);
+  }
+  #office-audio {
+    bottom: calc(2rem + env(safe-area-inset-bottom, 0px) + 10px + var(--office-ctl-w) + 8px);
+  }
+  @media (max-width: 960px) {
+    #office-audio {
+      bottom: calc(
+        2rem + env(safe-area-inset-bottom, 0px) + var(--footer-h, 74px) + 10px +
+          var(--office-ctl-w) + 8px
+      );
+    }
+  }
+  .office-ctl .office-ctl__soundon {
+    display: none;
+  }
+  .office-ctl[aria-pressed='true'] .office-ctl__soundoff {
+    display: none;
+  }
+  .office-ctl[aria-pressed='true'] .office-ctl__soundon {
+    display: block;
+    color: var(--led);
+  }
+</style>
+
+<script
+  is:inline
+  data-wasm-js-url={wasmJsUrl}
+  data-office-host-url={officeHostUrl}
+  data-music-worker-url={musicWorkerUrl}
+  data-music-wasm-js-url={musicWasmJsUrl}
+  data-music-worklet-url={musicWorkletUrl}
+  data-office-driver-url={officeDriverUrl}
+>
+  (function () {
+    const script = document.currentScript;
+    const {
+      wasmJsUrl,
+      officeHostUrl,
+      musicWorkerUrl,
+      musicWasmJsUrl,
+      musicWorkletUrl,
+      officeDriverUrl,
+    } = script.dataset;
+
+    const wrap = document.querySelector('.backdrop');
+    const canvas = document.getElementById('office-live');
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const hasWasm = typeof WebAssembly !== 'undefined';
+
+    // ONE object, not four flat lets: every re-live restarts ALL of them, and a flat set lets a later edit reset three of four.
+    function freshReveal() {
+      return {
+        elapsed: 0, // accumulated from PAINTED frames only
+        lastSim: 0,
+        ready: 0,
+        waited: 0,
+      };
+    }
+    let reveal = freshReveal();
+    let splashCleared = !!window.__pixRevealed;
+    function cover() {
+      canvas.style.opacity = '1';
+    }
+    function uncover() {
+      canvas.style.opacity = '0';
+    }
+    // A polled flag, not an event: the splash's gate lifts on a RESOLVED boot (up, failed, or unsupported) with no ordering race.
+    function markEngineResolved() {
+      window.__pixEngineReady = true;
+    }
+    document.addEventListener('pix:revealed', function () {
+      splashCleared = true;
+    });
+    if (hasWasm && !mq.matches) cover();
+    else markEngineResolved();
+
+    const UNITS_H = 130;
+    const FRAME_MS = 33;
+    // ONE office for the whole page (user-pinned): seed 0 is the app's 1F Standard look.
+    const SEED = 0;
+    const REVEAL_MS = 1600;
+    // DERIVED from FRAME_MS, never a second literal: a budget the paint gate could later rise to meet
+    // puts EVERY frame over budget, so every reveal takes the MAX_WAIT fallback — green, and untestable.
+    const REVEAL_MAX_STEP_MS = Math.round(FRAME_MS * 1.5);
+    const REVEAL_READY_FRAMES = 3;
+    // A device that never sustains the budget must still get its office: the gate is a courtesy, never a precondition.
+    const REVEAL_READY_MAX_WAIT = Math.round(1000 / FRAME_MS);
+
+    // The office's handle on the office host (office-driver.js's officeHost); a paint asked for while a frame is in
+    // the host waits for it.
+    let hero = null;
+    let hostOffThread = false;
+    let queuedPaint = null;
+    let officeDriver = null;
+    let unitsW = 0;
+    let raf = 0;
+    let last = 0;
+    let live = false;
+    let captionFace = false;
+    const pauseBtn = document.getElementById('office-pause');
+    let paused = false;
+    let pauseOffset = 0;
+    let pausedAt = 0;
+
+    // Sprites are fixed-size, so a smaller office IS zoom — deliberately a closer camera than the app's. The host
+    // sizes the canvas to the units of the frame it draws.
+    function sizeCanvas() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      if (w < 1 || h < 1) return;
+      unitsW = Math.min(640, Math.max(64, Math.round((w / h) * UNITS_H)));
+    }
+
+    const overlayEl = document.getElementById('office-overlay');
+    const labelPool = [];
+    let boardWrap = null;
+    let boardBrand = null;
+    let boardStar = null;
+    let boardMood = null;
+    let boardCtx = null;
+    let lastLabelPx = -1;
+
+    function ensureBoard() {
+      if (boardWrap) return;
+      boardWrap = document.createElement('div');
+      boardWrap.className = 'ov-board';
+      const top = document.createElement('div');
+      top.className = 'ov-brow ov-brow--top';
+      boardBrand = document.createElement('span');
+      boardStar = document.createElement('span');
+      top.appendChild(boardBrand);
+      top.appendChild(boardStar);
+      boardMood = document.createElement('div');
+      boardMood.className = 'ov-brow';
+      boardCtx = document.createElement('div');
+      boardCtx.className = 'ov-brow';
+      boardWrap.appendChild(top);
+      boardWrap.appendChild(boardMood);
+      boardWrap.appendChild(boardCtx);
+      overlayEl.appendChild(boardWrap);
+    }
+
+    // Segment counts vary with the office's mood/context, so rebuild, not diff.
+    function setSegments(rowEl, segs) {
+      while (rowEl.firstChild) rowEl.removeChild(rowEl.firstChild);
+      for (let i = 0; i < segs.length; i++) {
+        const s = document.createElement('span');
+        s.textContent = segs[i].text; // textContent, never innerHTML (agent cwds are untrusted)
+        if (segs[i].lamp) {
+          s.className = 'ov-lamp';
+          s.style.setProperty('--lamp', segs[i].color);
+        } else {
+          s.style.color = segs[i].color;
+        }
+        rowEl.appendChild(s);
+      }
+    }
+
+    // object-fit:cover mapping in CSS px per unit: s = max(disp/units) — cover fills then crops, office centered.
+    function coverMap() {
+      const r = canvas.getBoundingClientRect();
+      const s = Math.max(r.width / unitsW, r.height / UNITS_H);
+      return {
+        s,
+        ox: r.left + (r.width - unitsW * s) / 2,
+        oy: r.top + (r.height - UNITS_H * s) / 2,
+      };
+    }
+
+    // Fusion Pixel 8px's em: its glyph pixels land on whole CSS pixels only at
+    // a multiple, so a size snaps to one; a box under one em keeps its own.
+    const PIXEL_EM = 8;
+    function pixelEm(px, snap) {
+      const ems = snap(px / PIXEL_EM);
+      return ems < 1 ? px : PIXEL_EM * ems;
+    }
+
+    function updateOverlay(data) {
+      const map = coverMap();
+      // Written as a shared CSS var, not per-span, so the labels don't each
+      // reflow every frame.
+      // At least 9 px, snapped to the face's em, at most two ems.
+      const labelPx = Math.min(2 * PIXEL_EM, pixelEm(Math.max(9, map.s * 2.2), Math.round));
+      if (labelPx !== lastLabelPx) {
+        lastLabelPx = labelPx;
+        overlayEl.style.setProperty('--ov-label-px', labelPx + 'px');
+      }
+      const labels = data.labels;
+      const lift = Math.max(2, map.s); // ~1 unit above the head-top
+      let i = 0;
+      for (; i < labels.length; i++) {
+        let el = labelPool[i];
+        if (!el) {
+          el = document.createElement('span');
+          el.className = 'ov-label';
+          // Two fixed child spans (● dot, then the name): their textContent concatenates to
+          // the full label, so hit-tests and text assertions read it unchanged.
+          for (let k = 0; k < 2; k++) el.appendChild(document.createElement('span'));
+          overlayEl.appendChild(el);
+          labelPool[i] = el;
+        }
+        const L = labels[i];
+        const key = L.text + '\u0000' + L.color + '\u0000' + L.badge;
+        if (el._k !== key) {
+          el._k = key;
+          const parts = el.children;
+          parts[0].textContent = L.text.slice(0, 1); // ● dot, drawn as the plate's strip
+          parts[1].textContent = L.text.slice(1);
+          parts[0].className = 'ov-strip';
+          parts[0].style.backgroundColor = L.color;
+          parts[1].style.color = L.badge;
+        }
+        const x = map.ox + L.x * map.s;
+        const y = map.oy + L.y * map.s - lift;
+        el.style.transform = 'translate(' + x + 'px,' + y + 'px) translate(-50%,-100%)';
+        if (el._hidden) {
+          el.style.display = '';
+          el._hidden = false;
+        }
+      }
+      for (; i < labelPool.length; i++) {
+        if (!labelPool[i]._hidden) {
+          labelPool[i].style.display = 'none';
+          labelPool[i]._hidden = true;
+        }
+      }
+      const b = data.board;
+      if (!b) {
+        if (boardWrap) boardWrap.style.display = 'none';
+        return;
+      }
+      ensureBoard();
+      const bx = map.ox + b.rect.x * map.s;
+      const by = map.oy + b.rect.y * map.s;
+      const bw = b.rect.w * map.s;
+      const bh = b.rect.h * map.s;
+      boardWrap.style.display = 'flex';
+      boardWrap.style.transform = 'translate(' + bx + 'px,' + by + 'px)';
+      boardWrap.style.width = bw + 'px';
+      boardWrap.style.height = bh + 'px';
+      boardWrap.style.fontSize = pixelEm((bh / 3) * 0.82, Math.floor) + 'px';
+      boardBrand.textContent = b.brand.text;
+      boardBrand.style.color = b.brand.color;
+      boardStar.textContent = b.star.text;
+      boardStar.style.color = b.star.color;
+      setSegments(boardMood, b.mood);
+      setSegments(boardCtx, b.context);
+    }
+
+    // Step the office to `nowMs` and draw what the reveal lets through, then lay its captions and play its sound.
+    function paint(nowMs) {
+      if (!hero || unitsW < 1) return;
+      if (hero.busy) {
+        queuedPaint = nowMs;
+        return;
+      }
+      const wasLive = live;
+      const draw = revealAt(nowMs);
+      const goesLive = live && !wasLive;
+      // A paused repaint leaves the sound's clock where the pause froze it.
+      const audio = audioReady && !paused;
+      hero
+        .frame({ now: nowMs, w: unitsW, h: UNITS_H, draw, overlay: draw === 1, audio })
+        .then(
+          function (r) {
+            markEngineResolved();
+            // The office announces itself live with its first frame on the canvas, unless reduced motion came first.
+            if (goesLive && live) {
+              wrap.classList.add('is-live');
+              document.dispatchEvent(new CustomEvent('pix:onair', { detail: { live: true } }));
+              showAudioBtn();
+              syncAudioCtx();
+            }
+            // As the page stands when the frame lands: a pause or reduced motion may have come in meanwhile. Caption
+            // the settled office only: labels track the FINAL sprite positions, so they'd smear over the rolling floors.
+            // `live` already folds in reduced motion: the mq listener clears it.
+            if (r.overlay && captionFace && live) {
+              updateOverlay(JSON.parse(r.overlay));
+              overlayEl.classList.add('is-on');
+            }
+            if (r.audio) audioCommands(JSON.parse(r.audio));
+          },
+          function () {
+            /* a host that died leaves the last frame up */
+          }
+        )
+        .finally(function () {
+          if (queuedPaint === null) return;
+          const queued = queuedPaint;
+          queuedPaint = null;
+          paint(queued);
+        });
+    }
+    // What the frame at `nowMs` draws: null holds the canvas on its bg-tone cover, else the roll's progress, 1 once
+    // the office has settled.
+    function revealAt(nowMs) {
+      // Hold on the bg-tone cover until the boot splash lifts: the roll is never played hidden behind the overlay.
+      if (!splashCleared) return null;
+      const step = reveal.lastSim ? nowMs - reveal.lastSim : 0;
+      reveal.lastSim = nowMs;
+      const onBudget = step > 0 && step <= REVEAL_MAX_STEP_MS;
+      // Under reduced motion the office is a poster-still — no stray repaint (a resize, a background tick) may undo the mq listener's de-live.
+      if (!live && !mq.matches) {
+        // Frames must flow before the roll starts: a stall holds on the flat bg tone, and `is-live` / pix:onair / the ♩ button are deferred, so an office about to freeze never announces itself live.
+        reveal.ready = onBudget ? reveal.ready + 1 : 0;
+        reveal.waited++;
+        if (reveal.ready < REVEAL_READY_FRAMES && reveal.waited < REVEAL_READY_MAX_WAIT)
+          return null;
+        live = true;
+      }
+      // Safari blocks the main thread for over a second inside its tab-snapshot IPC, so the roll rides PAINTED
+      // frames: the clamp makes a hitch PAUSE it, and Date.now()'s backward jumps hold it rather than rewind.
+      reveal.elapsed += Math.max(0, Math.min(step, REVEAL_MAX_STEP_MS));
+      const rt = mq.matches ? 1 : reveal.elapsed / REVEAL_MS;
+      return Math.min(1, Math.max(0, rt));
+    }
+
+    function frame(t) {
+      raf = 0;
+      if (document.hidden) return;
+      // A frame still in the host skips this tick rather than queueing behind it.
+      if (t - last >= FRAME_MS && !hero.busy) {
+        last = t;
+        // Date.now(), NOT the rAF timestamp: the engine decodes now_ms as calendar time (browser-local day/night).
+        paint(Date.now() - pauseOffset);
+      }
+      raf = requestAnimationFrame(frame);
+    }
+    function start() {
+      if (!raf && hero && !document.hidden && !mq.matches && !paused) {
+        raf = requestAnimationFrame(frame);
+      }
+    }
+    function stop() {
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+    }
+    // pauseOffset resumes from the frozen moment; tab-hidden stops take NO offset on purpose — the office keeps living while you're away.
+    function setPaused(p) {
+      paused = p;
+      pauseBtn.setAttribute('aria-pressed', String(p));
+      // WCAG 2.2.2 covers the page, not just this canvas — ONE control fans out to every other auto-motion surface.
+      document.dispatchEvent(new CustomEvent('pix:paused', { detail: { paused: p } }));
+      syncAudioCtx();
+      if (p) {
+        pausedAt = Date.now();
+        stop();
+      } else {
+        pauseOffset += Date.now() - pausedAt;
+        start();
+      }
+    }
+    pauseBtn.addEventListener('click', function () {
+      setPaused(!paused);
+    });
+    // The pause control governs the page's wasm-independent ambient motion via pix:paused, so it stays reachable on a no-wasm engine or a failed fetch (#456).
+    function syncPauseBtn() {
+      pauseBtn.hidden = mq.matches;
+    }
+    syncPauseBtn();
+
+    // The engine records per-tick gain/play commands (office.audio_tick, in each frame's reply) and JS is dumb glue — the mixing decisions all live in Rust.
+    const audioBtn = document.getElementById('office-audio');
+    const AUDIO_PREF = 'pix:audio';
+    let audioCtx = null;
+    let audioBus = null;
+    let audioReady = false;
+    let audioPlaying = false;
+    let audioBooting = false;
+    let audioUnavailable = false;
+    let restoreArmed = false;
+    let loopGains = [];
+    let oneShotBufs = {};
+
+    function audioBuffer(samples) {
+      if (!samples.length) return null;
+      const buf = audioCtx.createBuffer(1, samples.length, hero.audio.sampleRate);
+      buf.getChannelData(0).set(samples);
+      return buf;
+    }
+    // `take` is the host's warmed buffers: the loop stems in their wire order, the one-shots by pool wire.
+    function audioUploadBuffers(take) {
+      loopGains = take.loops.map(function (samples) {
+        const g = audioCtx.createGain();
+        g.gain.value = 0;
+        g.connect(audioBus);
+        const s = audioCtx.createBufferSource();
+        s.buffer = audioBuffer(samples);
+        s.loop = true;
+        s.connect(g);
+        s.start();
+        return g;
+      });
+      // The music's worklet plays into it once it starts (musicTick).
+      musicGain = audioCtx.createGain();
+      musicGain.gain.value = 0;
+      musicGain.connect(audioBus);
+      oneShotBufs = {};
+      for (const wire in take.oneshots) oneShotBufs[wire] = take.oneshots[wire].map(audioBuffer);
+    }
+    // The ♩ music (officeDriver.startMusic): 'idle', 'starting', the startMusic handle once it runs, or 'silent'.
+    let music = 'idle';
+    let musicGain = null;
+    let musicAsked = '';
+    window.__pixMusic = music; // e2e observability: idle → starting → playing, or silent
+    function musicSilence() {
+      if (typeof music === 'object') music.stop();
+      music = 'silent';
+      window.__pixMusic = music;
+    }
+    // Started on the first tick that carries the office's controls, since they pick the first song; no AudioWorklet
+    // or a dead worker leaves the music silent and the foley playing.
+    function musicTick(controls) {
+      if (!controls || music === 'silent') return;
+      if (music === 'idle') {
+        music = 'starting';
+        window.__pixMusic = 'starting';
+        const urls = {
+          worklet: musicWorkletUrl,
+          worker: musicWorkerUrl,
+          musicWasm: musicWasmJsUrl,
+        };
+        officeDriver
+          .startMusic(audioCtx, urls, hero.audio.musicAheadS, Date.now(), controls)
+          .then(function (m) {
+            if (music !== 'starting') {
+              m.stop(); // audio went away while the worklet loaded
+              return;
+            }
+            m.node.connect(musicGain);
+            music = m;
+            musicAsked = String(controls);
+            m.primed.then(function () {
+              if (music === m) window.__pixMusic = 'playing';
+            });
+            m.failed.then(function () {
+              if (music === m) musicSilence();
+            });
+          })
+          .catch(function () {
+            if (music === 'starting') musicSilence();
+          });
+        return;
+      }
+      if (typeof music === 'object' && String(controls) !== musicAsked) {
+        musicAsked = String(controls);
+        music.setControls(controls);
+      }
+    }
+    // A frame's sound commands. The frame ticks the engine whenever the ♩ is ready, even MUTED: skipping the tick
+    // freezes the cue tracker, which then replays a stacked one-shot volley on unmute.
+    function audioCommands(cmd) {
+      if (!audioCtx) return;
+      if (cmd.music) musicTick(cmd.music.controls);
+      if (!audible()) return;
+      // A node op can still throw if the context died mid-session — degrade rather than spam the console every frame.
+      try {
+        const now = audioCtx.currentTime;
+        const dezipper = hero.audio.dezipperS;
+        // The wire itself is the width authority here.
+        for (let i = 0; i < cmd.gains.length; i++) {
+          loopGains[i].gain.setTargetAtTime(cmd.gains[i], now, dezipper);
+        }
+        if (cmd.music) musicGain.gain.setTargetAtTime(cmd.music.gain, now, dezipper);
+        for (const p of cmd.plays) {
+          const bank = oneShotBufs[p[0]];
+          const buf = bank && bank[p[1]];
+          if (!buf) continue;
+          const g = audioCtx.createGain();
+          g.gain.value = p[2];
+          g.connect(audioBus);
+          const s = audioCtx.createBufferSource();
+          s.buffer = buf;
+          s.connect(g);
+          s.start();
+        }
+      } catch (e) {
+        audioDisable();
+      }
+    }
+    // The AudioContext runs only while the ♩ plays a live, unpaused office. A suspended one fires every node queued
+    // against it at once on resume, so nothing is scheduled while it is.
+    function audible() {
+      return audioPlaying && !paused && live;
+    }
+    function syncAudioCtx() {
+      if (!audioCtx) return;
+      if (audible()) audioCtx.resume();
+      else audioCtx.suspend();
+    }
+    // WebAudio can fail outright (headless CI, locked-down browser, no output device): hide the ♩ and stop
+    // re-trying, so no "playing" button is left making no sound.
+    function audioDisable() {
+      audioReady = false;
+      audioPlaying = false;
+      audioBooting = false;
+      audioUnavailable = true;
+      musicSilence();
+      if (audioCtx) {
+        try {
+          audioCtx.close();
+        } catch (e) {
+          /* already closed */
+        }
+        audioCtx = null;
+        audioBus = null;
+        musicGain = null;
+      }
+      audioBtn.setAttribute('aria-pressed', 'false');
+      audioBtn.hidden = true;
+    }
+    // rIC-less Safari never idles the callback and a never-idle page never fires it — both bounds are fallbacks, not schedules.
+    const PREWARM_IDLE_FALLBACK_MS = 1500;
+    const PREWARM_IDLE_TIMEOUT_MS = 4000;
+    window.__pixAudioPrewarm = 'idle'; // e2e observability (polled global, like __pixLights): idle → running → ready, or failed
+    // Synthesize the ♩'s buffers at idle, so its click only uploads them. A host on this thread synthesizes on the
+    // click instead — an idle synthesis here starved clicks on slow hardware — and so does reduced motion, a
+    // low-power signal.
+    function prewarm() {
+      if (!hostOffThread || audioUnavailable || audioReady || audioBooting || mq.matches) return;
+      window.__pixAudioPrewarm = 'running';
+      hero.warmAudio(false).then(
+        function () {
+          window.__pixAudioPrewarm = 'ready';
+        },
+        function () {
+          window.__pixAudioPrewarm = 'failed';
+        }
+      );
+    }
+    function audioStart() {
+      if (audioBooting || audioUnavailable || !hero) return;
+      audioBooting = true;
+      try {
+        // iOS mutes default WebAudio on the Ring/Silent switch; 'playback' routes to the media channel so the deliberate ♩ tap plays even on silent.
+        if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
+        // At the engine's rate, so the music's worklet plays its frames unresampled; a rate the browser can't run
+        // throws here, into audioDisable.
+        audioCtx = new AudioContext({ sampleRate: hero.audio.sampleRate });
+        audioBus = officeDriver.audioBus(audioCtx, hero.audio);
+      } catch (e) {
+        // WebAudio unavailable (Tor / hardened Firefox / enterprise lockdown): HIDE the ♩ too, not just a flag-set —
+        // a visible button lets the click handler flip to a silent "playing" state and persist AUDIO_PREF=1.
+        audioDisable();
+        return;
+      }
+      hero.warmAudio(true).then(function (take) {
+        if (audioUnavailable) return;
+        try {
+          audioUploadBuffers(take); // createBuffer here — the usual failure point
+          audioReady = true;
+          audioBooting = false;
+          window.__pixAudioReadyAt = performance.now(); // e2e: click→sound latency
+        } catch (e) {
+          audioDisable();
+        }
+      }, audioDisable);
+    }
+    function setAudioPlaying(on) {
+      audioPlaying = on;
+      audioBtn.setAttribute('aria-pressed', String(on));
+      try {
+        window.localStorage.setItem(AUDIO_PREF, on ? '1' : '0');
+      } catch (e) {
+        /* private mode: fine, just don't remember */
+      }
+      syncAudioCtx();
+    }
+    audioBtn.addEventListener('click', function () {
+      if (audioUnavailable) return;
+      if (!audioReady && !audioBooting) audioStart();
+      if (audioUnavailable) return; // audioStart just failed (ctor threw) → don't flip to a silent "playing"
+      setAudioPlaying(!audioPlaying);
+    });
+    let audioBtnShown = false;
+    // AUDIO_PREF is a remembered CHOICE restored on the visitor's FIRST gesture: autoplay policy forbids resuming without one, so this can never become an on-load restore.
+    function showAudioBtn() {
+      if (mq.matches || audioBtnShown) return;
+      audioBtn.hidden = false;
+      audioBtnShown = true;
+      let remembered = false;
+      try {
+        remembered = window.localStorage.getItem(AUDIO_PREF) === '1';
+      } catch (e) {}
+      if (!remembered) return;
+      const restore = function (e) {
+        // Only a gesture that grants user activation may start audio: HTML's
+        // activation-triggering events, where a touch's pointerdown and an Escape
+        // keydown are not.
+        const ua = navigator.userActivation;
+        const activates = ua
+          ? ua.isActive
+          : e.type === 'keydown'
+            ? e.key !== 'Escape'
+            : (e.pointerType === 'mouse') === (e.type === 'pointerdown');
+        if (!activates) return;
+        window.removeEventListener('pointerdown', restore, true);
+        window.removeEventListener('pointerup', restore, true);
+        window.removeEventListener('keydown', restore, true);
+        // If the gesture IS the ♩ button, let its OWN click handler own the toggle — a capture-phase
+        // restore→on followed by the click→off would invert the returning visitor's very first press.
+        if ((e && e.target && audioBtn.contains(e.target)) || audioReady || audioBooting) return;
+        audioStart();
+        setAudioPlaying(true);
+      };
+      if (restoreArmed) return; // reduce→un-reduce re-runs showAudioBtn — don't double-attach
+      restoreArmed = true;
+      window.addEventListener('pointerdown', restore, true);
+      window.addEventListener('pointerup', restore, true);
+      window.addEventListener('keydown', restore, true);
+    }
+
+    // Publishes --footer-h for .office-ctl's ≤960px clearance. DEFERRED: this is:inline script renders
+    // BEFORE <footer>, so a parse-time querySelector sees no footer yet.
+    function wireFooterHeight() {
+      const footerEl = document.querySelector('.footer');
+      if (!footerEl) return;
+      const root = document.documentElement;
+      const syncFooterHeight = function () {
+        root.style.setProperty('--footer-h', footerEl.offsetHeight + 'px');
+      };
+      syncFooterHeight();
+      if ('ResizeObserver' in window) {
+        new ResizeObserver(syncFooterHeight).observe(footerEl);
+      } else {
+        window.addEventListener('resize', syncFooterHeight);
+      }
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', wireFooterHeight, { once: true });
+    } else {
+      wireFooterHeight();
+    }
+
+    document.addEventListener('pix:install-copy', function () {
+      if (!window.__pixHire) return;
+      window.__pixHire().then(function (admitted) {
+        // the engine's answer IS the admission signal — never mirror the cap here
+        if (admitted)
+          document.dispatchEvent(new CustomEvent('pix:hired', { detail: { name: 'cc·yours' } }));
+      });
+    });
+
+    let booted = false;
+    function boot() {
+      if (booted) return;
+      booted = true;
+      // The captions' face, fetched beside the wasm: `optional` keeps a face
+      // that is late at its first use out for the whole visit.
+      const faceIn = function () {
+        captionFace = true;
+      };
+      document.fonts.load('8px "Fusion Pixel 8px"').then(faceIn, faceIn);
+      import(officeDriverUrl)
+        .then(function (drv) {
+          officeDriver = drv;
+          return drv.officeHost(officeHostUrl, wasmJsUrl);
+        })
+        .then(function (host) {
+          hostOffThread = host.offThread;
+          return host.open(SEED, canvas);
+        })
+        .then(function (o) {
+          hero = o;
+          sizeCanvas();
+          start();
+          if (window.requestIdleCallback) {
+            window.requestIdleCallback(prewarm, { timeout: PREWARM_IDLE_TIMEOUT_MS });
+          } else {
+            setTimeout(prewarm, PREWARM_IDLE_FALLBACK_MS);
+          }
+          window.__pixHire = function () {
+            return hero.call('hire');
+          };
+        })
+        .catch(function () {
+          uncover();
+          markEngineResolved();
+        });
+    }
+    // Kicked after `load`, at idle, so the wasm fetch never competes with the above-fold poster / fonts / CSS (LCP is the H1 text).
+    function deferBoot() {
+      if (mq.matches) return;
+      (
+        window.requestIdleCallback ||
+        function (fn) {
+          return setTimeout(fn, 200);
+        }
+      )(boot);
+    }
+    if (hasWasm) {
+      if (document.readyState === 'complete') deferBoot();
+      else window.addEventListener('load', deferBoot, { once: true });
+    }
+
+    let rraf = 0;
+    window.addEventListener('resize', function () {
+      if (rraf) return;
+      rraf = requestAnimationFrame(function () {
+        rraf = 0;
+        sizeCanvas();
+        // While paused no loop draws the new units, so re-render the ONE frozen
+        // frame at its frozen time.
+        if (paused && live) paint(pausedAt - pauseOffset);
+      });
+    });
+    let bgTimer = 0;
+    function stopBgTicks() {
+      if (bgTimer) clearInterval(bgTimer);
+      bgTimer = 0;
+    }
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) {
+        stop();
+        // Background PLAYBACK (owner decision): the office is a radio first, so switching tabs must not stop the music. The
+        // SAME full tick as frame() at 1 Hz keeps the sim advancing, so the cue tracker sees real edges, not a return-burst volley.
+        if (audioCtx && audible() && !bgTimer) {
+          bgTimer = setInterval(function () {
+            // reduced-motion may engage while hidden: paint() would re-live the poster-still office
+            if (!audible()) return;
+            paint(Date.now() - pauseOffset);
+          }, 1000);
+        }
+      } else {
+        stopBgTicks();
+        start();
+      }
+      syncAudioCtx();
+    });
+    if (mq.addEventListener) {
+      mq.addEventListener('change', function () {
+        if (mq.matches) {
+          stop();
+          stopBgTicks(); // hidden-tab playback must not re-animate a poster-still office
+          // Reduced motion IS the poster-still design: reset the pause flag, or the statusline feed / hero dust stay stuck paused after a later un-reduce.
+          paused = false;
+          pauseBtn.setAttribute('aria-pressed', 'false');
+          document.dispatchEvent(new CustomEvent('pix:paused', { detail: { paused: false } }));
+          wrap.classList.remove('is-live');
+          overlayEl.classList.remove('is-on');
+          live = false;
+          // …and rewind the reveal with it, or the surviving progress leaves rt >= 1 and the office SNAPS back in on un-reduce.
+          reveal = freshReveal();
+          document.dispatchEvent(new CustomEvent('pix:onair', { detail: { live: false } }));
+          // Reduced motion stops the rAF loop, so the sound loops would drone unfed behind the poster — suspend, keeping the
+          // flag on so the office going live again resumes it. Re-arm the ♩, or showAudioBtn's once-guard keeps it hidden through the fresh boot.
+          syncAudioCtx();
+          audioBtn.hidden = true;
+          audioBtnShown = false;
+        } else if (hasWasm) {
+          cover();
+          boot();
+          start();
+        }
+        syncPauseBtn();
+      });
+    }
+  })();
+</script>
+
+<script is:inline>
+  // Scrolling is the light switch: every [data-lit] block pulls darkness in as it approaches the viewport
+  // center and releases it in the gaps. One style.opacity write per changed frame keeps it compositor-only.
+  (function () {
+    const dimmer = document.getElementById('dimmer');
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const DIM_MAX = 0.86;
+
+    let blocks = [];
+    let lastY = -1;
+    let lastOp = -1;
+    let raf = 0;
+    let active = null;
+
+    // smoothstep — darkness eases in/out with approach, no linear pop
+    function ease(t) {
+      return t * t * (3 - 2 * t);
+    }
+
+    // Every caller must run this SYNCHRONOUSLY, re-measure paths included: a content reflow above the viewport moves
+    // window.scrollY in the same task, so deferring paints one wrong frame off stale blocks.
+    function recompute(y) {
+      lastY = y;
+      const center = y + window.innerHeight / 2;
+      const reach = window.innerHeight * 0.55; // how far a block throws shade
+      let best = 0;
+      let bestEl = null;
+      for (let i = 0; i < blocks.length; i++) {
+        const b = blocks[i];
+        const d = center < b.top ? b.top - center : center > b.bottom ? center - b.bottom : 0;
+        const p = d >= reach ? 0 : 1 - d / reach;
+        if (p > best) {
+          best = p;
+          bestEl = b.el;
+        }
+      }
+      // data-lit-max caps a block's own darkness below DIM_MAX: the hero holds a lower ceiling so the LIVE office reads above the fold.
+      const cap = bestEl && bestEl.dataset.litMax ? parseFloat(bestEl.dataset.litMax) : DIM_MAX;
+      const op = cap * ease(best);
+      if (Math.abs(op - lastOp) > 0.002) {
+        lastOp = op;
+        dimmer.style.opacity = op.toFixed(3);
+        // Polled global, deliberately NOT an event (contrast pix:onair): a continuous
+        // per-frame value is read at the consumer's own cadence.
+        window.__pixLights = op;
+      }
+      // Only the active block and the one it replaces are ever written.
+      if (bestEl !== active) {
+        if (active && active.getAttribute('data-lit') === 'fade') {
+          active.style.opacity = '0.001';
+        }
+        active = bestEl;
+      }
+      if (active && active.getAttribute('data-lit') === 'fade') {
+        const t = ease(best);
+        active.style.opacity = (0.15 + 0.85 * t).toFixed(3);
+        active.style.transform = 'translateY(' + Math.round(24 * (1 - t)) + 'px)';
+      }
+    }
+
+    function measure() {
+      const y = window.scrollY;
+      blocks = Array.prototype.map.call(document.querySelectorAll('[data-lit]'), function (el) {
+        const r = el.getBoundingClientRect();
+        return { el, top: r.top + y, bottom: r.bottom + y };
+      });
+      recompute(y); // same task, before paint — see recompute()'s comment
+    }
+
+    function frame() {
+      raf = 0;
+      const y = window.scrollY;
+      if (y !== lastY) recompute(y);
+      raf = requestAnimationFrame(frame);
+    }
+
+    // Registered UNCONDITIONALLY, not behind the reduced-motion gate: a page loaded reduced then un-reduced
+    // mid-session must not run forever on the single stale snapshot the un-reduce branch measured.
+    let rraf = 0;
+    window.addEventListener('resize', function () {
+      if (rraf) return;
+      rraf = requestAnimationFrame(function () {
+        rraf = 0;
+        measure();
+      });
+    });
+    // content below (boot reveal, lazy media) can shift rects after load
+    window.addEventListener('load', measure);
+    // A Showcase channel tune swaps stages of different heights, which resize and load alone miss. Call measure()
+    // DIRECTLY, with no rAF deferral — deferring by a frame is exactly what lets the stale-block glitch reach the screen.
+    if ('ResizeObserver' in window) {
+      new ResizeObserver(measure).observe(document.body);
+    }
+
+    function wire() {
+      if (mq.matches) return; // reduced motion: CSS holds the static level
+      measure();
+      raf = requestAnimationFrame(frame);
+    }
+    // DEFERRED: this is:inline script renders BEFORE <main>, so a parse-time querySelectorAll sees zero [data-lit] blocks.
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', wire, { once: true });
+    } else {
+      wire();
+    }
+    if (mq.addEventListener) {
+      mq.addEventListener('change', function () {
+        if (mq.matches && raf) {
+          cancelAnimationFrame(raf);
+          raf = 0;
+          dimmer.style.opacity = ''; // CSS reduced-motion rule takes over
+          // Reset EVERY faded block, not just `active`: one left at inline opacity 0.001 (invisible h1/CTA)
+          // has no recovery while reduce stays on, and the stranded block is often no longer the active one.
+          document.querySelectorAll('[data-lit="fade"]').forEach(function (el) {
+            el.style.opacity = '';
+            el.style.transform = '';
+          });
+          active = null;
+        } else if (!mq.matches && !raf) {
+          measure();
+          raf = requestAnimationFrame(frame);
+        }
+      });
+    }
+  })();
+</script>
