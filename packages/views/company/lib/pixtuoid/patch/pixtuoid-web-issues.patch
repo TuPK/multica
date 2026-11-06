@@ -409,7 +409,7 @@ index 52cd0df7..eda69a27 100644
 +    }
 +}
 diff --git a/crates/pixtuoid-scene/src/floor/mod.rs b/crates/pixtuoid-scene/src/floor/mod.rs
-index 1d91f6ac..eedcb614 100644
+index 1d91f6ac..0897f033 100644
 --- a/crates/pixtuoid-scene/src/floor/mod.rs
 +++ b/crates/pixtuoid-scene/src/floor/mod.rs
 @@ -39,10 +39,47 @@ pub fn floor_seed(floor_idx: usize) -> u64 {
@@ -418,12 +418,12 @@ index 1d91f6ac..eedcb614 100644
  
 +/// The studio office's desk cap. A cap of 16 is the classic floor's count, so the
 +/// studio asks for a count the classic floor never uses (its rooms' desks plus one)
-+/// and lays out its own 60 desks, six rooms of ten.
-+pub const OFFICE_DESKS: usize = 61;
++/// and lays out its own 55 desks, six rooms of nine.
++pub const OFFICE_DESKS: usize = 55;
 +/// The studio office's desk rooms, in a 3x2 grid.
 +pub const OFFICE_ROOMS: u32 = 6;
-+/// The desks in each of those rooms: a 5x2 pod.
-+pub const OFFICE_ROOM_DESKS: usize = 10;
++/// The desks in each of those rooms: a lead's desk and a 4x2 pod.
++pub const OFFICE_ROOM_DESKS: usize = 9;
 +const _: () = assert!(OFFICE_DESKS == OFFICE_ROOMS as usize * OFFICE_ROOM_DESKS + 1);
 +
 +static DESK_CAP: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
@@ -471,7 +471,7 @@ index 1d91f6ac..eedcb614 100644
                  self.layout_memo = Some((key, Arc::clone(&l)));
                  l
 diff --git a/crates/pixtuoid-scene/src/layout/compute.rs b/crates/pixtuoid-scene/src/layout/compute.rs
-index f697a3ab..60879a0e 100644
+index f697a3ab..fdbba31c 100644
 --- a/crates/pixtuoid-scene/src/layout/compute.rs
 +++ b/crates/pixtuoid-scene/src/layout/compute.rs
 @@ -195,15 +195,23 @@ struct FloorPlan {
@@ -700,25 +700,26 @@ index f697a3ab..60879a0e 100644
          .and_then(|(ground, size)| {
              let y = pod_grid
                  .snap_inter_pod_ground_y(ground.y, size.h)?
-@@ -1362,6 +1433,107 @@ fn pod_row_facing(r: u16) -> Facing {
-     if r == 0 { Facing::South } else { Facing::North }
+@@ -1356,12 +1427,130 @@ impl FloorGeometry {
+     }
  }
  
-+/// The studio floor's desk count: six desk rooms of ten desks each, in a 3x2 grid.
++/// The studio floor's desk count: six desk rooms of nine desks each (a lead and two rows of
++/// four), in a 3x2 grid.
 +pub(crate) const STUDIO_DESKS: usize = STUDIO_GRID_COLS as usize
 +    * STUDIO_GRID_ROWS as usize
-+    * STUDIO_POD_COLS as usize
-+    * STUDIO_POD_ROWS as usize;
++    * (1 + STUDIO_POD_COLS as usize * STUDIO_POD_ROWS as usize);
 +const _: () =
 +    assert!(STUDIO_DESKS == crate::floor::OFFICE_ROOMS as usize * crate::floor::OFFICE_ROOM_DESKS);
-+/// The studio's seats: its sixty desks and the boss seat, the floor's last desk.
++/// The studio's seats: its fifty-four desks and the boss seat, the floor's last desk.
 +const STUDIO_SEATS: usize = STUDIO_DESKS + 1;
 +const _: () = assert!(STUDIO_SEATS == crate::floor::OFFICE_DESKS);
 +/// The desk rooms' grid: 3 across, 2 down.
 +const STUDIO_GRID_COLS: u16 = 3;
 +const STUDIO_GRID_ROWS: u16 = 2;
-+/// The pod of desks in each room: 5 across, 2 down.
-+const STUDIO_POD_COLS: u16 = 5;
++/// The member desks of each room: 4 across, in 2 rows, all facing the viewer. The lead's desk
++/// stands at the head of the rows, on the room's west side.
++const STUDIO_POD_COLS: u16 = 4;
 +const STUDIO_POD_ROWS: u16 = 2;
 +/// The smallest buffer the studio floor lays out in: the page's own minimum.
 +/// The width holds the three rooms and the left column; the height is the two
@@ -740,16 +741,21 @@ index f697a3ab..60879a0e 100644
 +/// grid is centred between the lounge and this corridor, so a tall floor keeps the
 +/// doors open.
 +const STUDIO_CORRIDOR_BELOW: u16 = 12;
-+/// The desks of a room's pod are this far apart, edge to edge. Both steps (desk plus gap)
-+/// are multiples of the coarse cell, so every desk in a row sits on the same grid cells.
++/// The desks of a room's pod are this far apart, edge to edge. The rows' step (desk plus
++/// gap) is a multiple of the coarse cell, so every desk in a row sits on the same grid cells.
++/// The gap between the rows is wide enough for each row's chairs, which sit south of their desks.
 +const STUDIO_POD_GAP_X: u16 = 10;
-+const STUDIO_POD_GAP_Y: u16 = 10;
++const STUDIO_POD_ROW_STEP_Y: u16 = 20;
 +const _: () = assert!((DESK_W + STUDIO_POD_GAP_X).is_multiple_of(COARSE_CELL_SIZE));
-+const _: () = assert!((DESK_H + STUDIO_POD_GAP_Y).is_multiple_of(COARSE_CELL_SIZE));
++const _: () = assert!(STUDIO_POD_ROW_STEP_Y.is_multiple_of(COARSE_CELL_SIZE));
 +const _: () = assert!((STUDIO_ROOM_W + STUDIO_ROOM_GAP_X).is_multiple_of(COARSE_CELL_SIZE));
 +const _: () = assert!((STUDIO_ROOM_H + STUDIO_ROOM_GAP_Y).is_multiple_of(COARSE_CELL_SIZE));
 +/// The pod's first row sits this far below its room's north wall.
 +const STUDIO_POD_TOP: u16 = 8;
++/// The lead's desk sits this far in from its room's west wall, and this far below its north
++/// wall, midway between the two rows, so the lead's chair stands clear of both rows.
++const STUDIO_LEAD_X: u16 = 4;
++const STUDIO_LEAD_Y: u16 = 16;
 +
 +/// Rounds `v` down to the coarse grid the walkable mask routes on, so the studio's
 +/// rooms and desks sit on its cells and a desk's approach is never half a cell.
@@ -781,22 +787,39 @@ index f697a3ab..60879a0e 100644
 +    rooms
 +}
 +
-+/// The studio's sixty desks: a 5x2 pod centred in each desk room, all facing south in
-+/// the pod's first row and north in its second, room by room, then the boss seat.
+ /// Which way a desk on pod row `r` seats its occupant — a pod's two rows face EACH
+ /// OTHER across the inner gap. A partial bottom row is the next pod's row 0.
+ fn pod_row_facing(r: u16) -> Facing {
+     if r == 0 { Facing::South } else { Facing::North }
+ }
+ 
++/// The studio's desks: each room's lead desk at the head of its pod, then the pod's two rows of
++/// four, all facing the viewer, room by room; then the boss seat.
 +fn studio_desks(plan: &FloorPlan) -> Vec<HomeDesk> {
 +    let mut desks = Vec::with_capacity(STUDIO_DESKS);
 +    for room in &plan.desk_rooms {
-+        let pod_w = STUDIO_POD_COLS * DESK_W + (STUDIO_POD_COLS - 1) * STUDIO_POD_GAP_X;
-+        let ox = room.x + snap_to_coarse(room.width.saturating_sub(pod_w) / 2);
++        desks.push(HomeDesk {
++            at: Point {
++                x: room.x + STUDIO_LEAD_X,
++                y: room.y + STUDIO_LEAD_Y,
++            },
++            facing: Facing::North,
++        });
++        let row_w = STUDIO_POD_COLS * DESK_W + (STUDIO_POD_COLS - 1) * STUDIO_POD_GAP_X;
++        let lead_end = STUDIO_LEAD_X + DESK_W + STUDIO_POD_GAP_X;
++        let ox = room.x + lead_end;
++        // The rows sit to the lead's east, centred in what the room has left.
++        let room_left = room.width.saturating_sub(lead_end);
++        let ox = ox + snap_to_coarse(room_left.saturating_sub(row_w) / 2);
 +        let oy = room.y + STUDIO_POD_TOP;
 +        for r in 0..STUDIO_POD_ROWS {
 +            for c in 0..STUDIO_POD_COLS {
 +                desks.push(HomeDesk {
 +                    at: Point {
 +                        x: ox + c * (DESK_W + STUDIO_POD_GAP_X),
-+                        y: oy + r * (DESK_H + STUDIO_POD_GAP_Y),
++                        y: oy + r * STUDIO_POD_ROW_STEP_Y,
 +                    },
-+                    facing: pod_row_facing(r),
++                    facing: Facing::North,
 +                });
 +            }
 +        }
@@ -808,7 +831,7 @@ index f697a3ab..60879a0e 100644
  /// Pod-grid desk placement: full pods, partial columns at right edge,
  /// partial row at bottom edge.
  pub(super) fn compute_pod_desks(max_desks: Option<usize>, grid: PodGrid) -> Vec<HomeDesk> {
-@@ -1524,6 +1696,90 @@ fn art_rect(b: Bounds) -> (Point, Size) {
+@@ -1524,6 +1713,90 @@ fn art_rect(b: Bounds) -> (Point, Size) {
      )
  }
  
@@ -899,7 +922,7 @@ index f697a3ab..60879a0e 100644
  /// Decor items placed in aisles between desk pods, clear of every rect in `desk_art`.
  pub(super) fn compute_pod_decor(
      grid: PodGrid,
-@@ -1821,6 +2077,31 @@ fn compute_waypoints(
+@@ -1821,6 +2094,31 @@ fn compute_waypoints(
  
  #[cfg(test)]
  mod tests {
@@ -931,7 +954,7 @@ index f697a3ab..60879a0e 100644
      use super::{FloorGeometry, FloorVariant};
  
      /// The lounge is kept exactly while its padded ground ends at or west of the
-@@ -1836,7 +2117,7 @@ mod tests {
+@@ -1836,7 +2134,7 @@ mod tests {
              let scan: Vec<(u16, bool, Option<u16>, u16)> = NARROW_BAND
                  .map(|w| {
                      let l = SceneLayout::compute_with_seed(w, h, None, seed).expect("lays out");
@@ -1243,7 +1266,7 @@ index 0a652c07..e1727df6 100644
          _ => kind_key(kind),
      }
 diff --git a/crates/pixtuoid-scene/src/layout/tests.rs b/crates/pixtuoid-scene/src/layout/tests.rs
-index ee19bf2c..5e429622 100644
+index ee19bf2c..49603cac 100644
 --- a/crates/pixtuoid-scene/src/layout/tests.rs
 +++ b/crates/pixtuoid-scene/src/layout/tests.rs
 @@ -665,6 +665,62 @@ fn every_home_desk_has_a_reachable_approach_on_its_own_far_side() {
@@ -1256,16 +1279,16 @@ index ee19bf2c..5e429622 100644
 +    for (w, h) in [(416u16, 171u16), (416, 234), (480, 270), (500, 200), (570, 321)] {
 +        let l = SceneLayout::compute_with_seed(w, h, Some(crate::floor::OFFICE_DESKS), 2)
 +            .expect("the studio fits");
-+        // Sixty desks in six rooms, and the boss seat after them.
-+        assert_eq!(l.home_desks.len(), 61, "{w}x{h}");
++        // Nine desks in six rooms (a lead and two rows of four), and the boss seat after them.
++        assert_eq!(l.home_desks.len(), 55, "{w}x{h}");
 +        assert_eq!(l.desk_rooms.len(), 6, "{w}x{h}");
 +        // Rooms and desks sit on the coarse routing grid the walkable mask routes on.
 +        for room in &l.desk_rooms {
 +            assert_eq!(room.x % 4, 0, "{w}x{h}: room {room:?} off the coarse grid");
 +            assert_eq!(room.y % 4, 0, "{w}x{h}: room {room:?} off the coarse grid");
 +        }
-+        for (i, desk) in l.home_desks.iter().enumerate().take(60) {
-+            let room = l.desk_rooms[i / 10];
++        for (i, desk) in l.home_desks.iter().enumerate().take(54) {
++            let room = l.desk_rooms[i / 9];
 +            assert!(
 +                desk.at.x >= room.x
 +                    && desk.at.x + 10 <= room.x + room.width
@@ -1516,7 +1539,7 @@ index e8434865..95ded108 100644
          Err(_) => {
              eprintln!("bundled sprite pack failed to parse (build bug)");
 diff --git a/crates/pixtuoid-web/src/lib.rs b/crates/pixtuoid-web/src/lib.rs
-index 14fd1b18..dc294a2a 100644
+index 14fd1b18..05d42445 100644
 --- a/crates/pixtuoid-web/src/lib.rs
 +++ b/crates/pixtuoid-web/src/lib.rs
 @@ -1,7 +1,7 @@
@@ -2008,9 +2031,9 @@ index 14fd1b18..dc294a2a 100644
 +    /// sits there on every floor, and no desk room hands its desk out.
 +    #[test]
 +    fn the_boss_seat_is_the_floors_last_desk() {
-+        assert_eq!(room_desk_range(BOSS_ROOM), 60..61);
-+        assert_eq!(room_desk_range(0), 0..10);
-+        assert_eq!(room_desk_range(OFFICE_ROOMS - 1), 50..60);
++        assert_eq!(room_desk_range(BOSS_ROOM), 54..55);
++        assert_eq!(room_desk_range(0), 0..9);
++        assert_eq!(room_desk_range(OFFICE_ROOMS - 1), 45..54);
 +        let mut o = office();
 +        o.step(T0_MS, 416, 243);
 +        assert!(
@@ -2021,7 +2044,7 @@ index 14fd1b18..dc294a2a 100644
 +        let id = AgentId::from_parts(pixtuoid_core::source::claude_code::SOURCE_NAME, "secretary");
 +        let secretary = o.scene.agents.get(&id).expect("the secretary is seated");
 +        assert_eq!(
-+            secretary.desk_index.0, 60,
++            secretary.desk_index.0, 54,
 +            "the secretary sits at the boss seat"
 +        );
 +    }

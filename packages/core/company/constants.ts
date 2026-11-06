@@ -7,8 +7,8 @@ export const COMPANY_SLOTS = 6;
  */
 export const COMPANY_BOSS_SLOT = COMPANY_SLOTS;
 
-/** Desks in one squad room (a 5 x 2 pod). Agents past this show as a `+N` overflow. */
-export const COMPANY_ROOM_DESKS = 10;
+/** Desks in one squad room: the lead's desk and a 4 x 2 pod. Agents past this show as a `+N` overflow. */
+export const COMPANY_ROOM_DESKS = 9;
 
 /** Floors a workspace can have. Mirrors the server cap. */
 export const COMPANY_MAX_FLOORS = 16;
