@@ -62,6 +62,12 @@ Your final message in a turn is not shown. The kind says what the reply claims:
 - The digest answers facts only. Judgment never comes from the digest.
 - In a chat turn or a request run you read only your requests and the answers on them.
   The server refuses other issues, and a lead's work is what the leader answers for.
+- A refusal on a read ("You do not have permission") in a chat turn or a request run is
+  this read scope, working as designed. It is not a fault in the workspace. Never ask a
+  person or a leader to restore access. Get the squad's part with `secretary-ask`, and
+  use the digest for the facts it holds.
+- Use the chat session id the turn gives you (the `Chat session:` line) for every chat
+  command. A task id is not a chat session.
 - You form judgment from the leaders' answers. Read a squad's issues only when the
   digest flags one and you need it to explain the flag.
 - You do not change a department's issue status or assignee, decide a proposal or
