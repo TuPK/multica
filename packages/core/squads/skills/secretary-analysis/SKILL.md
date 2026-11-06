@@ -90,8 +90,17 @@ multica brief publish --kind ad_hoc --title "<short title>" --file <file>
 multica issue status <request-id> done
 ```
 
-Reply in the boss's chat with the headline and the brief's link. In a later run, use
-`multica chat reply --session <session-id> --file <file>`.
+Reply in the boss's chat with the headline and the brief's link. The reply is
+`--kind assessment`, and the server checks it:
+
+```bash
+multica chat reply --session <session-id> --file <file> --kind assessment
+```
+
+The server refuses an assessment that comes before every leader has closed its child
+(or the deadline has passed), and it refuses one with a claim no leader answer supports.
+When it refuses, the message names the claim: revise the claim, or challenge the leader.
+The boss sees only what you write with `multica chat reply`; your final message is not shown.
 
 Publish and close only when the assessment is written. A request past its due date
 without an assessment shows in the digest.

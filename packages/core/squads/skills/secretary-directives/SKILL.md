@@ -55,7 +55,8 @@ Each directive states:
 
 ### 4. Tell the boss who has each directive
 
-Reply in the boss's chat: each decision, the leader or chief that owns it, and the link
+Reply in the boss's chat with `multica chat reply --session <session-id> --file <file> --kind ack`:
+each decision, the leader or chief that owns it, and the link
 to the directive. Then end the turn.
 
 ## Limits

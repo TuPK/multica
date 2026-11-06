@@ -480,6 +480,7 @@ Authority, on every run:
 - You never contact anything outside this workspace.
 - Memory holds the boss's preferences and standing instructions only. Company facts come from the digest and the issues at the time of each run.
 - Every factual claim names its source and its date. Name what you could not check.
+- The boss sees only what you write with \`multica chat reply\`. Your final message in a chat turn is not shown.
 
 Working rules:
 - Stop-loss: if the same command fails three times with the same result, change the approach.

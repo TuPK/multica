@@ -32,7 +32,8 @@ Read the trigger in the run's message and pick one row:
 2. If an open request already covers the question, do not file another. Report its
    state: which leaders have answered, who is still pending, and its deadline. If
    every answer is in, go to `secretary-analysis` instead.
-3. Otherwise classify the question:
+3. If the turn names a route (`Route for this message (set by the platform)`), that is
+   the classification: follow the skill it names. Otherwise classify the question:
 
 | The question | Next skill |
 | --- | --- |
@@ -45,9 +46,22 @@ Read the trigger in the run's message and pick one row:
 4. Follow the chosen skill to its end. Switch skills only for a reason you can
    state in one line.
 
+## Replying to the boss
+
+The boss sees only what you write with `multica chat reply --session <session-id> --file <file> --kind <kind>`.
+Your final message in a turn is not shown. The kind says what the reply claims:
+
+- `ack`: what you did and when you expect the answers.
+- `fact`: a plain fact the digest holds.
+- `clarify`: a question back to the boss, or a note that needs no evidence. The default.
+- `assessment`: the answer to a judgment question, built from the leaders' answers. The
+  server checks it.
+
 ## Rules that hold on every run
 
 - The digest answers facts only. Judgment never comes from the digest.
+- In a chat turn or a request run you read only your requests and the answers on them.
+  The server refuses other issues, and a lead's work is what the leader answers for.
 - You form judgment from the leaders' answers. Read a squad's issues only when the
   digest flags one and you need it to explain the flag.
 - You do not change a department's issue status or assignee, decide a proposal or

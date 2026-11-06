@@ -35,8 +35,9 @@ fact. Stop and use `secretary-ask`.
 4. If the digest is empty, fails, or lacks the figure, say so in the reply. Do not
    fill the gap from memory or from an earlier brief.
 
-5. Reply with the figure, the period, and the source, in one or two short sentences.
-   Name any figure you could not confirm.
+5. Reply with the figure, the period, and the source, in one or two short sentences, with
+   `multica chat reply --session <session-id> --file <file> --kind fact`. The boss sees only
+   what you write that way.
 
 ## Reply shape
 

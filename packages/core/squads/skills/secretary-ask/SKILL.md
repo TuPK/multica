@@ -1,14 +1,14 @@
 ---
 name: secretary-ask
-description: "Use when the boss asks a question that needs the departments' judgment, such as progress against a plan, a risk, a cause, or whether a launch is on track. Chooses the leaders, files the request, writes each ask, and tells the boss who was asked."
+description: "Use when the boss asks a question that needs the departments' judgment, such as progress against a plan, a risk, a cause, or whether a launch is on track. Chooses the leaders, files the request in one call, writes each ask, and tells the boss who was asked."
 ---
 
 # Secretary ask
 
 You do not know the work. The leaders do. Your job here is to choose who answers,
-ask each one well, file the request so the answers can come back to the boss, and
-reply to the boss at once. You do not gather the facts yourself and you do not
-analyse them. That happens in `secretary-analysis`, when the answers arrive.
+ask each one well, file the request in one call so the answers can come back to the
+boss, and reply to the boss at once. You do not gather the facts yourself and you do
+not analyse them. That happens in `secretary-analysis`, when the answers arrive.
 
 A judgment question is never answered from the digest. Stop and use this skill.
 
@@ -18,7 +18,8 @@ A judgment question is never answered from the digest. Stop and use this skill.
 
 Write the question in one line: what the boss wants to know, the project, the period,
 and the date the boss needs it by. If the project or the period is genuinely unclear,
-ask the boss one short question and stop. Do not guess and fan out.
+reply to the boss with one short question (`--kind clarify`) and stop. Do not guess
+and fan out.
 
 ### 2. Choose the addressees
 
@@ -41,35 +42,29 @@ open work.
 
 Platform caps: at most 20 addressees per request and 8 open requests per workspace.
 
-### 3. File the parent request
+### 3. File the request in one call
 
-Find the desk, then file the request assigned to you, with a due date and the chat
-session in its metadata:
-
-```bash
-multica project list                       # find the "Secretary desk" project id
-multica issue create --project <desk-id> --assignee-id <your-agent-id> \
-  --title "<the boss's question, short>" --due-date <YYYY-MM-DD> \
-  --description-file <file>
-multica issue metadata set <request-id> --key chat_session_id --value '"<session-id>"'
-multica issue metadata set <request-id> --key asked_by --value '"<boss-user-id>"'
-```
-
-The description file holds the question in full, the boss's words, and the deadline.
-
-### 4. File one child issue per addressee
+Write the boss's question to a file, and the addressees to a JSON file. Each addressee
+names exactly one of `squad_id` or `agent_id`, and carries a `title` and the
+`description` of its child issue: the ask, written for that addressee.
 
 ```bash
-# a squad, which tags it as a request to that squad
-multica issue create --assignee-squad <squad-id> --parent <request-id> \
-  --title "<what you need from this squad>" --description-file <file>
-
-# a chief or a leader agent
-multica issue create --assignee-id <agent-id> --parent <request-id> \
-  --title "<what you need>" --description-file <file>
+multica secretary ask --chat-session <session-id> \
+  --question-file <question.md> --addressees-file <addressees.json> \
+  --due-date <YYYY-MM-DD> --deadline <RFC3339>
 ```
 
-Write each child in your own words, for its addressee. Include:
+The call files the request in the Secretary desk, one child issue per addressee, the
+request's metadata (the chat, the boss, the deadline), and the deadline wakeup. If any
+step fails, the call cancels what it had filed. Read the response: `request_id` and
+`child_ids` are the ids you name to the boss.
+
+The `chat-session` is the session of the boss's message you are answering. The call is
+refused anywhere else.
+
+### 4. Write each ask
+
+Each child is written in your own words, for its addressee. Include:
 
 - The boss's question and why it matters to the boss now.
 - The period, and the depth that helps: a one-page status or a deep review.
@@ -82,21 +77,17 @@ point to the issues that matter.
 
 Send one question per child. Do not ask the same leader the same question twice.
 
-### 5. Set the deadline
+### 5. Tell the boss
 
-Set a one-shot time wakeup on the request, so the reading starts even if a child never
-closes:
+Reply in the boss's chat at once, with the reply command and `--kind ack`: who you
+asked, about what, and when you expect the answers.
 
 ```bash
-multica issue wakeup create <request-id> --kind at --at <deadline-RFC3339> --mode once \
-  --instruction "The deadline has passed: read the answers and assess what is in."
+multica chat reply --session <session-id> --file <reply.md> --kind ack
 ```
 
-### 6. Tell the boss
-
-Reply in the boss's chat at once: who you asked, about what, and when you expect the
-answers. In this chat turn, your reply is your final message. In a later run, use
-`multica chat reply --session <session-id> --file <file>`.
+The boss sees only what you write with `multica chat reply`. Your final message in this
+turn is not shown to the boss, so do not put the answer there.
 
 Then end the turn. Do not wait for the answers. They arrive in a later run, and the
 `secretary-analysis` skill handles them.

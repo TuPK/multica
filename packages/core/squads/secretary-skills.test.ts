@@ -49,19 +49,15 @@ describe("secretary ask", () => {
     expect(ask).toContain("never guess an id");
   });
 
-  it("files the request in the desk with the chat session in its metadata", () => {
-    expect(ask).toContain("multica project list");
-    expect(ask).toContain("--key chat_session_id");
-    expect(ask).toContain("--key asked_by");
+  it("files the whole request in one call, with the chat session it answers", () => {
+    expect(ask).toContain("multica secretary ask --chat-session <session-id>");
+    expect(ask).toContain("--addressees-file <addressees.json>");
+    expect(ask).toContain("The `chat-session` is the session of the boss's message you are answering.");
   });
 
-  it("files one child per addressee under the request, squads tagged as requests", () => {
-    expect(ask).toContain("--assignee-squad <squad-id> --parent <request-id>");
-    expect(ask).toContain("--assignee-id <agent-id> --parent <request-id>");
-  });
-
-  it("sets the deadline wakeup and does not wait for the answers", () => {
-    expect(ask).toContain("multica issue wakeup create <request-id> --kind at");
+  it("sets the deadline inside that call, and tells the boss with a typed reply", () => {
+    expect(ask).toContain("the deadline wakeup");
+    expect(ask).toContain("multica chat reply --session <session-id> --file <reply.md> --kind ack");
     expect(ask).toContain("Do not wait for the answers.");
   });
 
