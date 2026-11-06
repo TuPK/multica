@@ -471,10 +471,19 @@ index 1d91f6ac..0897f033 100644
                  self.layout_memo = Some((key, Arc::clone(&l)));
                  l
 diff --git a/crates/pixtuoid-scene/src/layout/compute.rs b/crates/pixtuoid-scene/src/layout/compute.rs
-index f697a3ab..fdbba31c 100644
+index f697a3ab..65c9ce83 100644
 --- a/crates/pixtuoid-scene/src/layout/compute.rs
 +++ b/crates/pixtuoid-scene/src/layout/compute.rs
-@@ -195,15 +195,23 @@ struct FloorPlan {
+@@ -76,6 +76,8 @@ const fn pct_at_least(v: u16, n: u16, min: u16) -> u16 {
+ }
+ 
+ const TOP_MARGIN_PCT: u16 = 30;
++/// The studio's north wall band, as a share of the floor's height.
++const STUDIO_TOP_MARGIN_PCT: u16 = 20;
+ 
+ /// The north wall band's depth — [`TOP_MARGIN_PCT`] percent of the buffer, never
+ /// under [`MIN_TOP_MARGIN`].
+@@ -195,15 +197,28 @@ struct FloorPlan {
      pantry_counter_size: Size,
      /// Indexed by room id; room 0 is the top room.
      meeting_rooms: Vec<MeetingRoom>,
@@ -487,8 +496,14 @@ index f697a3ab..fdbba31c 100644
  impl FloorPlan {
      /// The zones a `buf_w`×`buf_h` floor of `floor_seed`'s variant divides into.
 -    fn new(buf_w: u16, buf_h: u16, floor_seed: u64) -> Self {
+-        let top_margin = top_margin(buf_h);
 +    fn new(buf_w: u16, buf_h: u16, floor_seed: u64, studio: bool) -> Self {
-         let top_margin = top_margin(buf_h);
++        // The studio's window band is shallower, so its desk rooms get the height it frees.
++        let top_margin = if studio {
++            pct_at_least(buf_h, STUDIO_TOP_MARGIN_PCT, MIN_TOP_MARGIN)
++        } else {
++            top_margin(buf_h)
++        };
          let usable_h = buf_h - top_margin;
  
 -        let variant = FloorVariant::from_seed(floor_seed);
@@ -500,7 +515,7 @@ index f697a3ab..fdbba31c 100644
          let has_meeting = variant.has_meeting();
          let has_dual_meeting = variant == FloorVariant::Dense && usable_h >= MIN_DUAL_MEETING_H;
          let geom = FloorGeometry {
-@@ -211,13 +219,19 @@ impl FloorPlan {
+@@ -211,13 +226,19 @@ impl FloorPlan {
              has_dual_meeting,
          };
          let has_pantry = geom.has_pantry();
@@ -522,7 +537,7 @@ index f697a3ab..fdbba31c 100644
                  super::LARGE_COUNTER
              } else {
                  super::COMPACT_COUNTER
-@@ -239,6 +253,20 @@ impl FloorPlan {
+@@ -239,6 +260,20 @@ impl FloorPlan {
          } else {
              top_margin + half_split
          };
@@ -543,7 +558,7 @@ index f697a3ab..fdbba31c 100644
  
          // The second room only ever joins a first, so room 0 is always the top one.
          debug_assert!(!has_dual_meeting || has_meeting);
-@@ -250,13 +278,24 @@ impl FloorPlan {
+@@ -250,13 +285,24 @@ impl FloorPlan {
              Some(Bounds {
                  x: 0,
                  y: top_margin,
@@ -571,7 +586,7 @@ index f697a3ab..fdbba31c 100644
              Some(Bounds {
                  x: 0,
                  y: mid_y_split,
-@@ -270,7 +309,7 @@ impl FloorPlan {
+@@ -270,7 +316,7 @@ impl FloorPlan {
              Some(Bounds {
                  x: 0,
                  y: if has_meeting { mid_y_split } else { top_margin },
@@ -580,7 +595,7 @@ index f697a3ab..fdbba31c 100644
                  height: if has_meeting {
                      usable_h - (mid_y_split - top_margin)
                  } else {
-@@ -282,7 +321,7 @@ impl FloorPlan {
+@@ -282,7 +328,7 @@ impl FloorPlan {
          };
  
          let right_x = mid_x + MID_DIVIDER_W;
@@ -589,7 +604,7 @@ index f697a3ab..fdbba31c 100644
          let lounge_west_clear = if has_meeting {
              mid_x + super::WALL_THICK_V
          } else {
-@@ -328,9 +367,17 @@ impl FloorPlan {
+@@ -328,9 +374,17 @@ impl FloorPlan {
          let mut meeting_rooms: Vec<MeetingRoom> = Vec::new();
          for (room_idx, room) in [meeting_room, meeting_room_2].into_iter().enumerate() {
              let Some(mr) = room else { continue };
@@ -601,14 +616,14 @@ index f697a3ab..fdbba31c 100644
              meeting_rooms.push(MeetingRoom { bounds: mr, trio });
          }
 +        let desk_rooms = if studio {
-+            studio_rooms(&pod_grid.band, top_margin, buf_h)
++            studio_rooms(studio_room_w + MID_DIVIDER_W, buf_w, top_margin, buf_h)
 +        } else {
 +            Vec::new()
 +        };
          Self {
              buf_w,
              buf_h,
-@@ -342,6 +389,8 @@ impl FloorPlan {
+@@ -342,6 +396,8 @@ impl FloorPlan {
              pantry: pantry_room,
              pantry_counter_size,
              meeting_rooms,
@@ -617,7 +632,7 @@ index f697a3ab..fdbba31c 100644
          }
      }
  
-@@ -372,20 +421,32 @@ pub(super) fn compute_with_seed(
+@@ -372,20 +428,32 @@ pub(super) fn compute_with_seed(
          return None;
      }
  
@@ -659,7 +674,7 @@ index f697a3ab..fdbba31c 100644
  
      // Elevator door — in the window wall's last slot; above the lounge gate so
      // that gate can check couch↔door clearance.
-@@ -548,13 +609,20 @@ pub(super) fn compute_with_seed(
+@@ -548,13 +616,20 @@ pub(super) fn compute_with_seed(
  
      // Settle only now — AFTER every waypoint exists; filtering at the candidate site
      // checked a subset of the final set.
@@ -681,7 +696,7 @@ index f697a3ab..fdbba31c 100644
      // Folded, not mapped: the corridor's two pots slide toward each other, so each must
      // also clear the ones already placed.
      let mut plants: Vec<PlantItem> = Vec::new();
-@@ -692,6 +760,7 @@ pub(super) fn compute_with_seed(
+@@ -692,6 +767,7 @@ pub(super) fn compute_with_seed(
          door,
          door_threshold,
          meeting_rooms: plan.meeting_rooms,
@@ -689,7 +704,7 @@ index f697a3ab..fdbba31c 100644
          pantry: plan.pantry.map(|bounds| PantryRoom {
              bounds,
              counter_size: plan.pantry_counter_size,
-@@ -780,8 +849,10 @@ fn place_wall_decor(
+@@ -780,8 +856,10 @@ fn place_wall_decor(
      let band_east = pod_grid.band.x + pod_grid.band.width;
      // The westmost spot in the aisle east of the divider that hides no desk, chair,
      // cabinet or pod decor behind the board, or no board.
@@ -700,7 +715,7 @@ index f697a3ab..fdbba31c 100644
          .and_then(|(ground, size)| {
              let y = pod_grid
                  .snap_inter_pod_ground_y(ground.y, size.h)?
-@@ -1356,12 +1427,130 @@ impl FloorGeometry {
+@@ -1356,12 +1434,131 @@ impl FloorGeometry {
      }
  }
  
@@ -731,10 +746,10 @@ index f697a3ab..fdbba31c 100644
 +/// The studio's left column, narrower than the standard floor's so the desk rooms have the width.
 +const STUDIO_MID_X_PCT: u16 = 20;
 +/// A desk room's interior, walls to walls: a 5x2 pod and its aisles.
-+const STUDIO_ROOM_W: u16 = 100;
-+const STUDIO_ROOM_H: u16 = 44;
-+const STUDIO_ROOM_GAP_X: u16 = 8;
-+const STUDIO_ROOM_GAP_Y: u16 = 8;
++const STUDIO_ROOM_W: u16 = 110;
++const STUDIO_ROOM_H: u16 = 52;
++const STUDIO_ROOM_GAP_X: u16 = 14;
++const STUDIO_ROOM_GAP_Y: u16 = 12;
 +/// How far below the wall band the rooms start, clear of the lounge's couch.
 +const STUDIO_ROOMS_BELOW_TOP: u16 = 10;
 +/// The corridor left between the rooms' south doors and the floor's bottom edge: the
@@ -766,10 +781,11 @@ index f697a3ab..fdbba31c 100644
 +/// The six desk rooms in a 3x2 grid centred in the band, in desk order: west to east,
 +/// top row first. The grid sits between the lounge and the floor's bottom edge, with a
 +/// corridor below it for the rooms' south doors.
-+fn studio_rooms(band: &Bounds, top_margin: u16, buf_h: u16) -> Vec<Bounds> {
++fn studio_rooms(floor_x: u16, floor_end_x: u16, top_margin: u16, buf_h: u16) -> Vec<Bounds> {
 +    let total_w = STUDIO_GRID_COLS * STUDIO_ROOM_W + (STUDIO_GRID_COLS - 1) * STUDIO_ROOM_GAP_X;
 +    let grid_h = STUDIO_GRID_ROWS * STUDIO_ROOM_H + (STUDIO_GRID_ROWS - 1) * STUDIO_ROOM_GAP_Y;
-+    let x0 = snap_to_coarse(band.x + band.width.saturating_sub(total_w) / 2);
++    // Centred between the product office's east wall and the floor's east edge.
++    let x0 = snap_to_coarse(floor_x + floor_end_x.saturating_sub(floor_x + total_w) / 2);
 +    let top = top_margin + STUDIO_ROOMS_BELOW_TOP;
 +    let floor_end = buf_h.saturating_sub(STUDIO_CORRIDOR_BELOW);
 +    let y0 = snap_to_coarse(top + floor_end.saturating_sub(top + grid_h) / 2);
@@ -831,7 +847,7 @@ index f697a3ab..fdbba31c 100644
  /// Pod-grid desk placement: full pods, partial columns at right edge,
  /// partial row at bottom edge.
  pub(super) fn compute_pod_desks(max_desks: Option<usize>, grid: PodGrid) -> Vec<HomeDesk> {
-@@ -1524,6 +1713,90 @@ fn art_rect(b: Bounds) -> (Point, Size) {
+@@ -1524,6 +1721,90 @@ fn art_rect(b: Bounds) -> (Point, Size) {
      )
  }
  
@@ -922,7 +938,7 @@ index f697a3ab..fdbba31c 100644
  /// Decor items placed in aisles between desk pods, clear of every rect in `desk_art`.
  pub(super) fn compute_pod_decor(
      grid: PodGrid,
-@@ -1821,6 +2094,31 @@ fn compute_waypoints(
+@@ -1821,6 +2102,31 @@ fn compute_waypoints(
  
  #[cfg(test)]
  mod tests {
@@ -954,7 +970,7 @@ index f697a3ab..fdbba31c 100644
      use super::{FloorGeometry, FloorVariant};
  
      /// The lounge is kept exactly while its padded ground ends at or west of the
-@@ -1836,7 +2134,7 @@ mod tests {
+@@ -1836,7 +2142,7 @@ mod tests {
              let scan: Vec<(u16, bool, Option<u16>, u16)> = NARROW_BAND
                  .map(|w| {
                      let l = SceneLayout::compute_with_seed(w, h, None, seed).expect("lays out");

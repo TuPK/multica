@@ -42,12 +42,13 @@ An agent is drawn at a desk of one squad only, its **home squad**. An agent can 
 
 ## Projects in a room
 
-A squad can hold one project, shown as a label at the foot of its room.
+A squad works on one open project at a time, shown as a label at the foot of its room.
 
 - To give a project to a squad, click the room's name, pick a project, and choose **Assign project**. Owners, admins, and the squad's creator can do this.
 - The project takes the **SDLC Auto** workflow, built on the squad's SDLC agents. Its issues then move through developer, review, and QA. If the project already uses another workflow, change it in the project's settings first.
 - Issues on statuses the SDLC workflow does not have must move somewhere. The dialog asks where they go, and suggests a status for each.
-- A squad's previous project is unassigned when you give it a new one. A project given to another squad moves to this one.
+- A squad with a project cannot take another one. To change it, open the dialog again and choose **Unassign project** first. A project given to another squad moves to this one.
+- Issues handed to the squad's agents, or to the squad, take its project, and the project cannot be changed on those issues until it is unassigned.
 - After the assignment, a backlog panel lists the project's backlog issues. **New issue for the leader** opens the new-issue form, already set to the project and the squad's leader. The workflow starts when the leader takes the issue.
 
 ## The unseated tray

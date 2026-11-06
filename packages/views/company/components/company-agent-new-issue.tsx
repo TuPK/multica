@@ -4,6 +4,10 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { PRIORITY_DISPLAY_ORDER } from "@multica/core/issues/config";
 import { useCreateIssue } from "@multica/core/issues/mutations";
+import { findSquadProject } from "@multica/core/company";
+import { projectListOptions } from "@multica/core/projects/queries";
+import { useWorkspaceId } from "@multica/core/hooks";
+import { useQuery } from "@tanstack/react-query";
 import type { Agent, IssuePriority, IssueStatus } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
@@ -48,6 +52,11 @@ export function CompanyAgentNewIssue({
   const [chosenStatus, setChosenStatus] = useState<IssueStatus | null>(null);
   // Starts from the project the panel was opened in; the picker can move the issue elsewhere.
   const [chosenProject, setChosenProject] = useState<string | null>(projectId ?? null);
+  // An issue handed to an agent of a squad with a project belongs to that project.
+  const wsId = useWorkspaceId();
+  const { data: projects = [] } = useQuery(projectListOptions(wsId));
+  const squadProject = assign ? findSquadProject(projects, agent.home_squad_id) : undefined;
+  const effectiveProjectId = squadProject ? squadProject.id : chosenProject;
   const status: IssueStatus = chosenStatus ?? (assign ? "todo" : "backlog");
   // Only backlog issues join the run queue; the control is hidden for other statuses.
   const [queued, setQueued] = useState(false);
@@ -66,7 +75,7 @@ export function CompanyAgentNewIssue({
         priority,
         status,
         ...(assign ? { assignee_type: "agent" as const, assignee_id: agent.id } : {}),
-        ...(chosenProject ? { project_id: chosenProject } : {}),
+        ...(effectiveProjectId ? { project_id: effectiveProjectId } : {}),
       },
       {
         onSuccess: (issue) => {
@@ -111,7 +120,7 @@ export function CompanyAgentNewIssue({
         <div>
           <StatusPicker
             status={status}
-            projectId={chosenProject}
+            projectId={effectiveProjectId}
             onUpdate={(updates) => {
               if (updates.status) setChosenStatus(updates.status);
             }}
@@ -124,11 +133,12 @@ export function CompanyAgentNewIssue({
         <span className="text-caption font-medium">{t(($) => $.detail.prop_project)}</span>
         <div>
           <ProjectPicker
-            projectId={chosenProject}
+            projectId={effectiveProjectId}
             onUpdate={(updates) => {
               if ("project_id" in updates) setChosenProject(updates.project_id ?? null);
             }}
-            triggerRender={<PillButton />}
+            disabled={!!squadProject}
+            triggerRender={<PillButton disabled={!!squadProject} />}
             align="start"
           />
         </div>

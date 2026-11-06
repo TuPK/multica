@@ -38,6 +38,8 @@ import {
   memberListOptions,
   workspaceKeys,
 } from "@multica/core/workspace/queries";
+import { projectListOptions } from "@multica/core/projects/queries";
+import { findSquadProject } from "@multica/core/company";
 import { runtimeListOptions } from "@multica/core/runtimes";
 import { useAgentPermissions } from "@multica/core/permissions";
 import { Button } from "@multica/ui/components/ui/button";
@@ -118,6 +120,7 @@ interface AgentDetailPageProps {
 
 export function AgentDetailPage({ agentId, onArchived }: AgentDetailPageProps) {
   const { t } = useT("agents");
+  const { t: tIssues } = useT("issues");
   const wsId = useWorkspaceId();
   const [scrollParent, setScrollParent] = useState<HTMLDivElement | null>(null);
   const paths = useWorkspacePaths();
@@ -133,6 +136,7 @@ export function AgentDetailPage({ agentId, onArchived }: AgentDetailPageProps) {
   } = useQuery(agentListOptions(wsId));
   const { data: runtimes = [] } = useQuery(runtimeListOptions(wsId));
   const { data: members = [] } = useQuery(memberListOptions(wsId));
+  const { data: projects = [] } = useQuery(projectListOptions(wsId));
 
   // Single workspace-level presence pass; this page just reads its slot.
   // The hook owns the 30s tick so the failed-window auto-clears here too.
@@ -628,6 +632,9 @@ export function AgentDetailPage({ agentId, onArchived }: AgentDetailPageProps) {
     ),
   ].filter(Boolean);
 
+  // The project of the agent's home squad, shown in the header.
+  const squadProject = findSquadProject(projects, agent.home_squad_id);
+
   return (
     <>
       <ObjectPage
@@ -676,6 +683,11 @@ export function AgentDetailPage({ agentId, onArchived }: AgentDetailPageProps) {
                 ) : null
               }
             />
+            {squadProject ? (
+              <p className="text-caption text-muted-foreground">
+                {tIssues(($) => $.company.panel_project, { title: squadProject.title })}
+              </p>
+            ) : null}
             {notices.length > 0 && <div className="space-y-2">{notices}</div>}
           </div>
 

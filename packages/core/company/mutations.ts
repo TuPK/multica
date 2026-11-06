@@ -126,6 +126,21 @@ export function useSetAgentHomeSquad() {
 }
 
 /**
+ * Takes a squad's project off it. Like assigning, the result is refetched rather than patched.
+ */
+export function useUnassignSquadProject(squadId: string) {
+  const qc = useQueryClient();
+  const wsId = useWorkspaceId();
+  return useMutation<void, Error, void>({
+    mutationFn: () => api.unassignSquadProject(squadId),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: projectKeys.list(wsId) });
+      qc.invalidateQueries({ queryKey: issueKeys.all(wsId) });
+    },
+  });
+}
+
+/**
  * Assigns a project to a squad. The server moves issues and sets the workflow in one
  * transaction, so the result is not predictable on the client: nothing is patched,
  * and the project list and the issues are refetched when the request settles.

@@ -3,9 +3,13 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, screen } from "@testing-library/react";
-import type { Agent, Issue } from "@multica/core/types";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { projectKeys } from "@multica/core/projects/queries";
+import type { Agent, Issue, Project } from "@multica/core/types";
 import { renderWithI18n } from "../../test/i18n";
 import { CompanyAgentNewIssue } from "./company-agent-new-issue";
+
+vi.mock("@multica/core/hooks", () => ({ useWorkspaceId: () => "ws-1" }));
 
 const create = vi.hoisted(() => ({ mutate: vi.fn(), isPending: false }));
 
@@ -34,9 +38,15 @@ vi.mock("../../issues/components/pickers/status-picker", () => ({
 
 const AGENT = { id: "ada", name: "Ada" } as Agent;
 
-function setup(overrides: Partial<Parameters<typeof CompanyAgentNewIssue>[0]> = {}) {
+function setup(overrides: Partial<Parameters<typeof CompanyAgentNewIssue>[0]> = {}, projects: Project[] = []) {
   const props = { agent: AGENT, onCreated: vi.fn(), onCancel: vi.fn(), ...overrides };
-  renderWithI18n(<CompanyAgentNewIssue {...props} />);
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+  queryClient.setQueryData(projectKeys.list("ws-1"), { projects, total: projects.length });
+  renderWithI18n(
+    <QueryClientProvider client={queryClient}>
+      <CompanyAgentNewIssue {...props} />
+    </QueryClientProvider>,
+  );
   return props;
 }
 
@@ -122,6 +132,17 @@ describe("CompanyAgentNewIssue", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create issue" }));
 
     expect(create.mutate.mock.calls[0]![0]).toMatchObject({ project_id: "proj-1" });
+  });
+
+  it("files the issue under its squad's project, which it cannot change", () => {
+    const squadProject = { id: "proj-squad", title: "Shop", status: "in_progress", squad_id: "squad-1" } as Project;
+    setup({ projectId: "proj-1", agent: { ...AGENT, home_squad_id: "squad-1" } as Agent }, [squadProject]);
+    typeTitle("In squad project");
+
+    expect(screen.getByRole("button", { name: "Project proj-squad" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Create issue" }));
+
+    expect(create.mutate.mock.calls[0]![0]).toMatchObject({ project_id: "proj-squad" });
   });
 
   it("reports the new issue once it exists", () => {

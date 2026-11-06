@@ -70,8 +70,21 @@ UPDATE project SET squad_id = sqlc.narg('squad_id'), updated_at = now()
 WHERE id = $1 AND workspace_id = $2
 RETURNING *;
 
+-- name: GetOpenSquadProject :one
+-- The project a squad is working on. A squad works one open project at a time.
+SELECT * FROM project
+WHERE workspace_id = sqlc.arg('workspace_id') AND squad_id = sqlc.arg('squad_id') AND id <> sqlc.arg('id')
+  AND status NOT IN ('completed', 'cancelled')
+LIMIT 1;
+
 -- name: ClearSquadFromOtherProjects :many
--- A squad holds one project: assigning a project unassigns the squad's previous one.
+-- Unlinks the squad from its other projects. Only finished ones can remain once GetOpenSquadProject is clear.
 UPDATE project SET squad_id = NULL, updated_at = now()
 WHERE workspace_id = $1 AND squad_id = $2 AND id <> $3
+RETURNING *;
+
+-- name: ClearSquadProjects :many
+-- Unassigns every project the squad holds.
+UPDATE project SET squad_id = NULL, updated_at = now()
+WHERE workspace_id = $1 AND squad_id = $2
 RETURNING *;
