@@ -57,20 +57,56 @@ describe("SQUAD_TEMPLATES", () => {
     }
   });
 
-  it("ends the build workflow on an agent step so an agent run can close the issue", () => {
-    const flowStatuses = SDLC_AUTO_WORKFLOW.steps
-      .filter((s) => s.handler !== null && !("key" in s.status && s.status.key === "blocked"))
-      .map((s) => ("key" in s.status ? s.status.key : s.status.name));
+  it("hands each planning status to the member who owns that stage", () => {
+    const owners = Object.fromEntries(
+      SDLC_AUTO_WORKFLOW.steps
+        .filter((s) => "name" in s.status)
+        .map((s) => [("name" in s.status ? s.status.name : ""), s.handler]),
+    );
 
-    expect(flowStatuses).toEqual(["todo", "in_progress", "in_review", "QA"]);
-    expect(flowStatuses.length).toBeGreaterThan(0);
-    expect(SDLC_AUTO_WORKFLOW.steps.filter((s) => s.handler !== null).at(-2)?.handler).toBe("qa");
+    expect(owners).toEqual({
+      Analysis: "analyst",
+      Design: "ux",
+      Architecture: "architect",
+      "Plan review": "reviewer",
+      "Security review": "security",
+      "Release prep": "devops",
+      "Stage done": null,
+      "Plan ready": null,
+      QA: "qa",
+    });
   });
 
-  it("sends rejected work back to In Progress, as the Delivery workflow does", () => {
-    const backs = SDLC_AUTO_WORKFLOW.steps.map((s) => s.back ?? null);
+  it("ends every planning step at Stage done, which counts as finished", () => {
+    const planning = SDLC_AUTO_WORKFLOW.steps.filter(
+      (s) => s.handler !== null && "name" in s.status && s.status.name !== "QA",
+    );
 
-    expect(backs).toEqual([null, null, "todo", "in_progress", "in_progress", "in_progress"]);
+    expect(planning.length).toBe(6);
+    for (const step of planning) expect(step.next).toBe("stage_done");
+    const done = SDLC_AUTO_WORKFLOW.steps.find((s) => "name" in s.status && s.status.name === "Stage done");
+    expect(done?.status).toEqual({ name: "Stage done", category: "done" });
+  });
+
+  it("keeps the build flow on the developer, reviewer, and QA, and each rejected step goes back", () => {
+    const byKey = (key: string) => SDLC_AUTO_WORKFLOW.steps.find((s) => "key" in s.status && s.status.key === key)!;
+
+    expect(byKey("todo").handler).toBe("developer");
+    expect(byKey("in_progress")).toMatchObject({ handler: "developer", back: "todo", next: "in_review" });
+    expect(byKey("in_review")).toMatchObject({ handler: "reviewer", back: "in_progress", next: "qa" });
+  });
+
+  it("names only status keys the workflow defines or the built-in statuses", () => {
+    const defined = new Set([
+      ...SDLC_AUTO_WORKFLOW.steps.map((s) => ("key" in s.status ? s.status.key : s.status.name.toLowerCase().replace(/ /g, "_"))),
+      "done",
+      "cancelled",
+    ]);
+    for (const step of SDLC_AUTO_WORKFLOW.steps) {
+      for (const ref of [step.next, step.back]) {
+        if (ref) expect(defined.has(ref), ref).toBe(true);
+      }
+    }
   });
 
   it("hands a blocked build issue to the lead, which sends it back to In Progress", () => {
@@ -78,6 +114,7 @@ describe("SQUAD_TEMPLATES", () => {
 
     expect(blocked?.handler).toBe("lead");
     expect(blocked?.back).toBe("in_progress");
+    expect(blocked?.instructions).toContain("planning sub-issue");
     expect(blocked?.instructions).toContain("Do not leave it here");
   });
 });

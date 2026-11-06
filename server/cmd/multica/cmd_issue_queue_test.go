@@ -18,10 +18,34 @@ const (
 func newIssueQueueTestCmd() *cobra.Command {
 	cmd := &cobra.Command{Use: "queue"}
 	cmd.Flags().StringSlice("after", nil, "")
+	cmd.Flags().String("start-status", "", "")
 	cmd.Flags().Bool("clear", false, "")
 	cmd.Flags().Bool("preview", false, "")
 	cmd.Flags().String("output", "table", "")
 	return cmd
+}
+
+func TestRunIssueQueueSendsStartStatus(t *testing.T) {
+	chdirWithDaemonTaskMarker(t)
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&gotBody); err != nil {
+			t.Fatalf("decode request body: %v", err)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"updated": 1})
+	}))
+	defer srv.Close()
+	setCLITestServerEnv(t, srv.URL)
+	t.Setenv("MULTICA_TOKEN", "mat_test-token")
+
+	cmd := newIssueQueueTestCmd()
+	_ = cmd.Flags().Set("start-status", "analysis")
+	if _, err := captureStdout(t, func() error { return runIssueQueue(cmd, []string{queueIssueA}) }); err != nil {
+		t.Fatalf("runIssueQueue: %v", err)
+	}
+	if gotBody["start_status"] != "analysis" {
+		t.Fatalf("start_status = %#v, want analysis", gotBody["start_status"])
+	}
 }
 
 func TestRunIssueQueueQueuesWithWaits(t *testing.T) {
@@ -93,6 +117,10 @@ func TestRunIssueQueueRejectsBadInputBeforeRequest(t *testing.T) {
 			_ = cmd.Flags().Set("clear", "true")
 			_ = cmd.Flags().Set("after", queueIssueB)
 		},
+		"clear with start status": func(cmd *cobra.Command) {
+			_ = cmd.Flags().Set("clear", "true")
+			_ = cmd.Flags().Set("start-status", "analysis")
+		},
 		"preview with clear": func(cmd *cobra.Command) {
 			_ = cmd.Flags().Set("clear", "true")
 			_ = cmd.Flags().Set("preview", "true")
@@ -117,7 +145,7 @@ func TestIssueQueueCommandRegistration(t *testing.T) {
 	if cmd != issueQueueCmd {
 		t.Fatalf("found command = %q, want issue queue", cmd.CommandPath())
 	}
-	for _, flag := range []string{"after", "clear", "preview"} {
+	for _, flag := range []string{"after", "start-status", "clear", "preview"} {
 		if cmd.Flags().Lookup(flag) == nil {
 			t.Fatalf("queue is missing --%s", flag)
 		}

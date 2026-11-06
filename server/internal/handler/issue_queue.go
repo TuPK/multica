@@ -6,10 +6,13 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/server/internal/issuestatus"
+	"github.com/multica-ai/multica/server/internal/issueworkflow"
 	"github.com/multica-ai/multica/server/internal/service"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
@@ -33,6 +36,38 @@ type runQueueRequest struct {
 	Queued        bool     `json:"queued"`
 	AfterIssueIDs []string `json:"after_issue_ids"`
 	IssueIDs      []string `json:"issue_ids"`
+	// StartStatus is the status the issue moves to when its waits are over.
+	// Empty means todo.
+	StartStatus string `json:"start_status"`
+}
+
+const defaultRunStartStatus = "todo"
+
+// validateStartStatus checks the status a queued issue will start in and returns
+// it with the default applied. It must be a status key the issue's project
+// workflow lists, and not a status that holds no work (backlog, done, cancelled).
+// A project on the Default workflow accepts any key.
+func (h *Handler) validateStartStatus(ctx context.Context, w http.ResponseWriter, workspaceID pgtype.UUID, issues []db.Issue, queued bool, raw string) (string, bool) {
+	status := strings.TrimSpace(raw)
+	if !queued || status == "" {
+		return defaultRunStartStatus, true
+	}
+	if status == issuestatus.Backlog || status == issuestatus.Done || status == issuestatus.Cancelled {
+		writeError(w, http.StatusBadRequest, "start_status cannot be backlog, done or cancelled")
+		return "", false
+	}
+	for _, issue := range issues {
+		def, _, err := issueworkflow.ForProject(ctx, h.Queries, workspaceID, issue.ProjectID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to check start_status")
+			return "", false
+		}
+		if def != nil && !def.IsDefault && !def.Has(status) {
+			writeError(w, http.StatusBadRequest, "start_status must be a status of the project's workflow")
+			return "", false
+		}
+	}
+	return status, true
 }
 
 // validateRunAfter parses the waits and checks them against the issues being
@@ -141,11 +176,16 @@ func (h *Handler) SetIssueRunQueue(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	startStatus, ok := h.validateStartStatus(r.Context(), w, issue.WorkspaceID, []db.Issue{issue}, req.Queued, req.StartStatus)
+	if !ok {
+		return
+	}
 	updated, err := h.Queries.SetIssueRunQueue(r.Context(), db.SetIssueRunQueueParams{
 		ID:               issue.ID,
 		WorkspaceID:      issue.WorkspaceID,
 		RunQueued:        req.Queued,
 		RunAfterIssueIds: after,
+		RunStartStatus:   startStatus,
 	})
 	if err != nil {
 		slog.Warn("set issue run queue failed", "error", err, "issue_id", uuidToString(issue.ID))
@@ -197,7 +237,10 @@ func (h *Handler) PromoteQueuedIssues(ctx context.Context, workspaceID pgtype.UU
 // issue changed under it or its project workflow refuses todo; the next pass
 // looks at it again.
 func (h *Handler) promoteQueuedIssue(ctx context.Context, prev db.Issue) bool {
-	const target = "todo"
+	target := prev.RunStartStatus
+	if target == "" {
+		target = defaultRunStartStatus
+	}
 	params := db.UpdateIssueParams{
 		ID:               prev.ID,
 		AssigneeType:     prev.AssigneeType,
@@ -295,11 +338,21 @@ func (h *Handler) BatchSetRunQueue(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	targets, err := h.Queries.ListIssuesByIDsInWorkspace(r.Context(), db.ListIssuesByIDsInWorkspaceParams{WorkspaceID: workspaceID, Ids: ids})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load issues")
+		return
+	}
+	startStatus, ok := h.validateStartStatus(r.Context(), w, workspaceID, targets, req.Queued, req.StartStatus)
+	if !ok {
+		return
+	}
 	updated, err := h.Queries.SetIssuesRunQueue(r.Context(), db.SetIssuesRunQueueParams{
 		WorkspaceID:      workspaceID,
 		Ids:              ids,
 		RunQueued:        req.Queued,
 		RunAfterIssueIds: after,
+		RunStartStatus:   startStatus,
 	})
 	if err != nil {
 		slog.Warn("batch set run queue failed", "error", err)

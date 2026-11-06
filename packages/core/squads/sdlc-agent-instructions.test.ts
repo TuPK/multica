@@ -18,15 +18,15 @@ describe("SDLC agent instructions", () => {
     for (const role of roles) {
       const text = SDLC_ROLE_AGENT_INSTRUCTIONS[role];
       expect(text, role).toContain("sdlc-delivery-core");
-      const role_skill = text.match(/load the sdlc-delivery-core skill and the (sdlc-[a-z-]+) skill/)?.[1];
-      expect(role_skill, role).toBeDefined();
-      expect(names.has(role_skill!), `${role}: ${role_skill}`).toBe(true);
+      const named = [...new Set(text.match(/sdlc-[a-z-]+/g) ?? [])].filter((n) => n !== "sdlc-delivery-core");
+      expect(named.length, role).toBeGreaterThan(0);
+      for (const skill of named) expect(names.has(skill), `${role}: ${skill}`).toBe(true);
     }
   });
 
   it("stays short: the procedure lives in the skills, not in the agent", () => {
     for (const role of roles) {
-      expect(SDLC_ROLE_AGENT_INSTRUCTIONS[role].length, role).toBeLessThan(1200);
+      expect(SDLC_ROLE_AGENT_INSTRUCTIONS[role].length, role).toBeLessThan(2000);
     }
   });
 

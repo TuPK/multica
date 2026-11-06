@@ -84,11 +84,14 @@ type IssueResponse struct {
 	// issue then starts once every issue in RunAfterIssueIds has finished.
 	RunQueued        bool     `json:"run_queued"`
 	RunAfterIssueIds []string `json:"run_after_issue_ids"`
-	StartDate        *string  `json:"start_date"`
-	DueDate    *string `json:"due_date"`
-	CreatedAt  string  `json:"created_at"`
-	UpdatedAt  string  `json:"updated_at"`
-	Revision   int64   `json:"revision"`
+	// RunStartStatus is the status the issue starts in when it leaves the queue.
+	// Only the responses built from a whole issue row carry it.
+	RunStartStatus string  `json:"run_start_status,omitempty"`
+	StartDate      *string `json:"start_date"`
+	DueDate        *string `json:"due_date"`
+	CreatedAt      string  `json:"created_at"`
+	UpdatedAt      string  `json:"updated_at"`
+	Revision       int64   `json:"revision"`
 	// LastActivityAt is the latest semantic issue activity. It stays nullable
 	// while the operator-run historical backfill is incomplete.
 	LastActivityAt *string `json:"last_activity_at"`
@@ -500,6 +503,7 @@ func issueToResponse(i db.Issue, issuePrefix string) IssueResponse {
 		Position:           i.Position,
 		Stage:              int4ToPtr(i.Stage),
 		RunQueued:          i.RunQueued,
+		RunStartStatus:     i.RunStartStatus,
 		RunAfterIssueIds:   uuidStringsOrEmpty(i.RunAfterIssueIds),
 		StartDate:          dateToPtr(i.StartDate),
 		DueDate:            dateToPtr(i.DueDate),

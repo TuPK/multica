@@ -140,11 +140,17 @@ export const SQUAD_ROLES: Record<SquadRoleKey, SquadRole> = {
 };
 
 export interface SquadWorkflowStep {
-  /** An existing status key, or a status to create under this name. */
-  status: { key: string } | { name: string };
+  /**
+   * An existing status key, or a status to create under this name. The key of a
+   * created status is its name in lower case with underscores, so `next` and
+   * `back` can name it before it exists.
+   */
+  status: { key: string } | { name: string; category?: "started" | "done" };
   /** The role that takes the issue when it enters the step; null keeps the assignee. */
   handler: SquadRoleKey | null;
   instructions: string;
+  /** The status key the handler moves the issue to when its step is done. */
+  next?: string;
   back?: string;
 }
 
@@ -160,34 +166,89 @@ export interface SquadWorkflowTemplate {
  */
 export const SDLC_BLOCKED_INSTRUCTIONS =
   "This issue is blocked. Read the latest comment that says why it cannot proceed, then unblock it yourself. Do not leave it here.\n" +
+  "If it is a planning sub-issue (Analysis, Design, Architecture, Plan review, Security review or Release prep), its owner is not building it, so you decide the next move:\n" +
+  "- A gap in the inputs or a finding the owner can close: comment the gap with its id, create one sub-issue for the owner that closes it, and set this issue back to its status with the same work.\n" +
+  "- A decision only the boss can make: file a proposal with the evidence, and leave the issue at Blocked with a comment saying what is waiting.\n" +
+  "If it is a build issue, unblock it as follows.\n" +
   "1. If the blocker is an environment or tool the developer can restore (a local service that is down, a missing env var, a check that failed to run) and fewer than three environment attempts have failed: comment \"Environment attempt n of 3\", the exact fix the developer must make, and the command that proves it, then send the issue back to In Progress. The developer rebuilds, re-runs the check, and hands it to review again.\n" +
   "2. If three environment attempts have already failed: set the issue to done with a comment that lists each check that did not run, its exact command and error, and the risk it leaves open, so the issues that depend on it know what is unverified. Do not write that a check passed when it did not run.\n" +
-  "3. If the blocker needs a decision only the boss can make: file a proposal for the boss with the evidence, and leave the issue at Blocked with a comment saying what is waiting.\n" +
-  "Never change acceptance criteria to get past a blocker. A missing second reviewer is not a blocker: the squad lead provides one (see the review step).";
+  "3. If the blocker needs a decision only the boss can make, or a check no agent can run here, file a proposal for the boss with the evidence, and leave the issue at Blocked with a comment saying what is waiting.\n" +
+  "4. If the same blocker returns after one resume, do not resume a second time. Escalate under 3.\n" +
+  "Never mark the issue or its Epic done, and never change acceptance criteria to get past a blocker.";
+
+/** The brief a planning step gives its owner. The owner's skill holds the procedure. */
+const planningBrief = (skill: string, done: string) =>
+  `This issue is a planning sub-issue of a request. Load the sdlc-delivery-core and ${skill} skills, and do the work the issue names. ${done} If you cannot proceed, set the issue to blocked and comment the reason.`;
 
 /**
- * The workflow of a build project, the same shape as the Delivery workflow:
- * the developer takes the issue and builds it in progress, an independent
- * reviewer checks, and QA verifies. A rejected step goes back to In Progress,
- * and QA's step is the last one before done, so an agent run can close the
- * issue and the run queue moves on. A blocked issue goes to the squad lead,
- * which sends it back to In Progress.
+ * The SDLC Auto workflow of a build project. Build statuses hand the issue to the
+ * developer, reviewer, QA tester, or lead. The planning statuses (Analysis to
+ * Release prep) hand a planning sub-issue to the member who owns that stage, so a
+ * request can be planned in the build project itself. Every planning step ends at
+ * Stage done, which counts as finished for the queue and the stage barrier. The
+ * request ends at Plan ready, which nobody picks up, so the boss decides when it is done.
  */
 export const SDLC_AUTO_WORKFLOW: SquadWorkflowTemplate = {
   name: "SDLC Auto",
   description:
-    "Build, independent review, then QA, all by agents. A rejected step goes back to the developer.",
+    "Planning and build by agents: a planning step hands the sub-issue to its owner, and a build issue goes through developer, independent review, then QA. A rejected step goes back to the developer.",
   steps: [
-    { status: { key: "backlog" }, handler: null, instructions: "" },
+    { status: { key: "backlog" }, handler: null, instructions: "", next: "todo" },
+    {
+      status: { name: "Analysis" },
+      handler: "analyst",
+      next: "stage_done",
+      back: "blocked",
+      instructions: planningBrief("sdlc-product-analysis", "When the requirements, epics, or ledger in the issue are written and posted, move the issue to Stage done."),
+    },
+    {
+      status: { name: "Design" },
+      handler: "ux",
+      next: "stage_done",
+      back: "blocked",
+      instructions: planningBrief("sdlc-ux-design", "When every screen in the issue has its states and is registered, move the issue to Stage done."),
+    },
+    {
+      status: { name: "Architecture" },
+      handler: "architect",
+      next: "stage_done",
+      back: "blocked",
+      instructions: planningBrief("sdlc-architecture", "When the design, ADRs, and component list are committed and posted, move the issue to Stage done."),
+    },
+    {
+      status: { name: "Plan review" },
+      handler: "reviewer",
+      next: "stage_done",
+      back: "blocked",
+      instructions: planningBrief("sdlc-code-review", "Give one verdict. PASS: move the issue to Stage done. CONCERNS or FAIL: set the issue to blocked and list each gap with its id, so the squad lead can create the gap issues. Do not move it to Stage done on CONCERNS."),
+    },
+    {
+      status: { name: "Security review" },
+      handler: "security",
+      next: "stage_done",
+      back: "blocked",
+      instructions: planningBrief("sdlc-security-review", "PASS: move the issue to Stage done. FAIL or NO_GO: set the issue to blocked and list each finding with its id."),
+    },
+    {
+      status: { name: "Release prep" },
+      handler: "devops",
+      next: "stage_done",
+      back: "blocked",
+      instructions: planningBrief("sdlc-devops-release", "Move the issue to Stage done only when the report lists the version, digests, and rollback steps. Production waits for the named approval: set the issue to blocked and say what the approver must decide."),
+    },
+    { status: { name: "Stage done", category: "done" }, handler: null, instructions: "" },
+    { status: { name: "Plan ready" }, handler: null, instructions: "" },
     {
       status: { key: "todo" },
       handler: "developer",
+      next: "in_progress",
       instructions:
         "Pick up this issue from To Do. Read its spec, stories, and acceptance criteria, then move it to In Progress to start the build.",
     },
     {
       status: { key: "in_progress" },
       handler: "developer",
+      next: "in_review",
       back: "todo",
       instructions:
         "Build everything this issue asks for, story by story, following the story flow in your instructions. Hand it to review only when every story is implemented and verified on the running app. Record what you verified in the spec. If this issue came back from Blocked, read the lead's comment first and re-run the check it names before you hand it to review.",
@@ -195,6 +256,7 @@ export const SDLC_AUTO_WORKFLOW: SquadWorkflowTemplate = {
     {
       status: { key: "in_review" },
       handler: "reviewer",
+      next: "qa",
       back: "in_progress",
       instructions:
         "Review the whole change for this issue against its acceptance criteria. Send it back to In Progress with the blocking findings, or pass it on to QA with your verdict. If you cannot finish the review, set the issue to blocked and comment the exact command, its error, and the fix you need.",
@@ -202,6 +264,7 @@ export const SDLC_AUTO_WORKFLOW: SquadWorkflowTemplate = {
     {
       status: { name: "QA" },
       handler: "qa",
+      next: "done",
       back: "in_progress",
       instructions:
         "Verify the change on the running system against the acceptance criteria. NO GO sends it back to In Progress with the defects. GO or CONDITIONAL GO finishes the issue. If you cannot run the verification (a service is down, a required check cannot run), set the issue to blocked and comment the exact command, its error, and the fix you need.",

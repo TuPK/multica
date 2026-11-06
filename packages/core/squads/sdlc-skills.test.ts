@@ -65,7 +65,19 @@ describe("built-in SDLC skills", () => {
     expect(lead.files.map((f) => f.path)).toEqual(["reference.md"]);
     expect(lead.content).toContain("reference.md");
     expect(lead.content).toContain("multica issue queue <issue> --after <issue>");
-    expect(lead.files[0]!.content).toContain("Greenfield routes");
+    expect(lead.files[0]!.content).toContain("Plan A: BMAD epics exist");
+  });
+
+  it("makes the lead turn a request into queued issues and leave the request alone", () => {
+    const lead = SDLC_BUILTIN_SKILLS.find((s) => s.name === "sdlc-squad-lead")!.content;
+    expect(lead).toContain("## Your whole job: turn the request into issues");
+    expect(lead).toContain("Never change its status or its assignee");
+    expect(lead).toContain("--start-status");
+    expect(lead).toContain("multica issue queue <issue> --after <issue>");
+    for (const status of ["analysis", "design", "architecture", "plan_review", "todo", "qa", "security_review", "release_prep"]) {
+      expect(lead, status).toContain("`" + status + "`");
+    }
+    expect(lead).toContain("--until-issue-state ended");
   });
 
   it("keeps the unattended rules in the shared core, so no role waits for approval", () => {

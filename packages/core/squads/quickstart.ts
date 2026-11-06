@@ -174,11 +174,9 @@ export function planQuickstartAgents(
 function workflowSteps(
   steps: readonly SquadWorkflowStep[],
   agentIds: Partial<Record<SquadRoleKey, string>>,
-  withNewStatuses: boolean,
 ): IssueWorkflowStepInput[] | null {
   const out: IssueWorkflowStepInput[] = [];
   for (const step of steps) {
-    if ("name" in step.status && !withNewStatuses) continue;
     let handler: IssueWorkflowHandler;
     if (step.handler) {
       const id = agentIds[step.handler];
@@ -190,12 +188,16 @@ function workflowSteps(
     const base = {
       handler,
       instructions: step.instructions,
+      ...(step.next ? { next_status_key: step.next } : {}),
       ...(step.back ? { back_status_key: step.back } : {}),
     };
     out.push(
       "key" in step.status
         ? { status_key: step.status.key, ...base }
-        : { new_status: { name: step.status.name, category: "started" }, ...base },
+        : {
+            new_status: { name: step.status.name, category: step.status.category ?? "started" },
+            ...base,
+          },
     );
   }
   return out;
@@ -547,24 +549,23 @@ export async function runSquadQuickstart(
       if (workflows.some((w) => w.name === template.workflow!.name)) {
         outcome.workflow = { status: "existing" };
       } else {
-        const write = (withNewStatuses: boolean) => {
-          const steps = workflowSteps(template.workflow!.steps, agentIds, withNewStatuses);
-          if (!steps) throw new Error("a workflow step has no agent to hand to");
-          return client.createIssueWorkflow({
-            name: template.workflow!.name,
-            description: template.workflow!.description,
+        // The planning and QA statuses are created with the workflow. Without
+        // a workspace admin they cannot be, and the steps that hand to them
+        // would point at nothing, so the workflow is not built at all.
+        const steps = workflowSteps(template.workflow.steps, agentIds);
+        if (!steps) throw new Error("a workflow step has no agent to hand to");
+        try {
+          await client.createIssueWorkflow({
+            name: template.workflow.name,
+            description: template.workflow.description,
             steps,
           });
-        };
-        try {
-          await write(true);
           outcome.workflow = { status: "created" };
         } catch (err) {
-          // Only a workspace admin can add a status. Without one the workflow
-          // still builds and reviews; it just has no separate QA step.
-          if (errorCode(err) !== "status_create_forbidden") throw err;
-          await write(false);
-          outcome.workflow = { status: "created", note: "qa_step_left_out" };
+          if (errorCode(err) === "status_create_forbidden") {
+            throw new Error("the workflow needs statuses a workspace admin must allow: Analysis to Plan ready");
+          }
+          throw err;
         }
       }
     } catch (err) {

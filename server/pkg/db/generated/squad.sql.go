@@ -262,6 +262,27 @@ func (q *Queries) GetSquadInWorkspace(ctx context.Context, arg GetSquadInWorkspa
 	return i, err
 }
 
+const isSquadLeaderInWorkspace = `-- name: IsSquadLeaderInWorkspace :one
+SELECT EXISTS (
+    SELECT 1 FROM squad
+    WHERE workspace_id = $1 AND leader_id = $2 AND archived_at IS NULL
+) AS is_leader
+`
+
+type IsSquadLeaderInWorkspaceParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	LeaderID    pgtype.UUID `json:"leader_id"`
+}
+
+// Whether the agent leads a live squad. A request assigned to a squad leader is
+// worked by the leader, so the project workflow never hands it to anyone else.
+func (q *Queries) IsSquadLeaderInWorkspace(ctx context.Context, arg IsSquadLeaderInWorkspaceParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isSquadLeaderInWorkspace, arg.WorkspaceID, arg.LeaderID)
+	var is_leader bool
+	err := row.Scan(&is_leader)
+	return is_leader, err
+}
+
 const isSquadMember = `-- name: IsSquadMember :one
 SELECT EXISTS(
     SELECT 1 FROM squad_member

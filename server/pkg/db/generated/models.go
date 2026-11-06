@@ -1116,6 +1116,7 @@ type Issue struct {
 	LastReopenedAt     pgtype.Timestamptz `json:"last_reopened_at"`
 	RunQueued          bool               `json:"run_queued"`
 	RunAfterIssueIds   []pgtype.UUID      `json:"run_after_issue_ids"`
+	RunStartStatus     string             `json:"run_start_status"`
 }
 
 type IssueChildEvent struct {

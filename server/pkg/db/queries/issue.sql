@@ -771,11 +771,13 @@ FROM (
 ) bounded_issues;
 
 -- name: SetIssueRunQueue :one
--- Puts the issue in the automatic run queue, waiting on run_after_issue_ids, or
--- with run_queued false takes it out of the queue (the waits are cleared too).
+-- Puts the issue in the automatic run queue, waiting on run_after_issue_ids and
+-- starting in run_start_status, or with run_queued false takes it out of the
+-- queue (the waits are cleared too).
 UPDATE issue SET
     run_queued = sqlc.arg('run_queued')::boolean,
     run_after_issue_ids = sqlc.arg('run_after_issue_ids')::uuid[],
+    run_start_status = sqlc.arg('run_start_status')::text,
     revision = revision + 1,
     updated_at = now()
 WHERE id = $1 AND workspace_id = $2
@@ -786,6 +788,7 @@ RETURNING *;
 UPDATE issue SET
     run_queued = sqlc.arg('run_queued')::boolean,
     run_after_issue_ids = sqlc.arg('run_after_issue_ids')::uuid[],
+    run_start_status = sqlc.arg('run_start_status')::text,
     revision = revision + 1,
     updated_at = now()
 WHERE id = ANY(sqlc.arg('ids')::uuid[]) AND workspace_id = sqlc.arg('workspace_id')::uuid

@@ -333,6 +333,7 @@ var issueQueueCmd = &cobra.Command{
 		"--after waits until every listed issue is finished, then moves to todo and\n" +
 		"starts its agent run. An issue with no --after starts right away.\n\n" +
 		"  --after <id>  wait for this issue (repeatable, up to 100)\n" +
+		"  --start-status <key>  status it moves to when its waits are over (default todo)\n" +
 		"  --clear       take the issues out of the queue\n\n" +
 		"--preview reports how many issues would move to todo now and how many of\n" +
 		"those would start an agent run, without changing anything.",
@@ -730,6 +731,7 @@ func init() {
 
 	// issue queue
 	issueQueueCmd.Flags().StringSlice("after", nil, "Issue this one waits for; repeat for several")
+	issueQueueCmd.Flags().String("start-status", "", "Status the issue moves to when its waits are over (default todo); name the status of the member who should do the work, for example analysis or plan_review")
 	issueQueueCmd.Flags().Bool("clear", false, "Take the issues out of the run queue")
 	issueQueueCmd.Flags().Bool("preview", false, "Report how many issues would move to todo now and start a run, without changing anything")
 	issueQueueCmd.Flags().String("output", "table", "Output format: table or json")
@@ -2002,6 +2004,10 @@ func runIssueQueue(cmd *cobra.Command, args []string) error {
 	clearQueue, _ := cmd.Flags().GetBool("clear")
 	preview, _ := cmd.Flags().GetBool("preview")
 	output, _ := cmd.Flags().GetString("output")
+	startStatus, _ := cmd.Flags().GetString("start-status")
+	if clearQueue && startStatus != "" {
+		return fmt.Errorf("--clear and --start-status cannot be used together")
+	}
 	if clearQueue && len(after) > 0 {
 		return fmt.Errorf("--clear and --after cannot be used together")
 	}
@@ -2038,6 +2044,9 @@ func runIssueQueue(cmd *cobra.Command, args []string) error {
 	}
 
 	body := map[string]any{"issue_ids": ids, "queued": !clearQueue, "after_issue_ids": afterIDs}
+	if startStatus != "" {
+		body["start_status"] = startStatus
+	}
 
 	if preview {
 		var result map[string]any

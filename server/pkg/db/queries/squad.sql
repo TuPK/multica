@@ -185,3 +185,11 @@ LEFT JOIN issue i
        ON i.id = atq.issue_id
 WHERE sm.squad_id = $1
 ORDER BY sm.created_at ASC, atq.dispatched_at DESC NULLS LAST;
+
+-- name: IsSquadLeaderInWorkspace :one
+-- Whether the agent leads a live squad. A request assigned to a squad leader is
+-- worked by the leader, so the project workflow never hands it to anyone else.
+SELECT EXISTS (
+    SELECT 1 FROM squad
+    WHERE workspace_id = $1 AND leader_id = $2 AND archived_at IS NULL
+) AS is_leader;

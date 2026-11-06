@@ -1,61 +1,74 @@
-# Route playbooks and report templates
+# Plans and report templates
 
-Read this after SKILL.md. It holds the detail you need when you triage a request.
+Read this after SKILL.md. It shows what a plan looks like as issues, and the templates for your comments.
 
-## Greenfield routes, and the stages each one creates
+## Plan A: BMAD epics exist
 
-Planning stages (create the ones your route names, all up front; stage 2 and later as backlog):
+One issue per undelivered epic, assigned to the Developer, start status `todo`. An epic waits for the epics its epic file
+names as dependencies and for nothing else. Then the final verification.
 
-1. Product Analyst: product research (users, competitors, market facts, each with a dated source), then the product brief
-   (bmad-product-brief; add bmad-prfaq when the idea is vague).
-2. Product Analyst: PRD (bmad-prd).
-3. UX Designer: UX design (bmad-ux). Skip when the product has no UI.
-4. Architect: architecture (bmad-architecture), then project context (bmad-project-context).
-5. Product Analyst: epics and stories (bmad-create-epics-and-stories).
-6. Code Reviewer: planning readiness check (the readiness gate of bmad-sprint-planning). On CONCERNS or FAIL, send each
-   named gap to the member who owns that document, then run stage 6 again. At most twice.
-7. Product Analyst: publish the build queue (see SKILL.md step 6).
+```
+E1  Epic 1 (delivered)                       created as done, evidence linked
+E2  Epic 2   Developer  --start-status todo   --after E1 (done)    -> starts at once
+E3  Epic 3   Developer  --start-status todo   --after E2
+E4  Epic 4   Developer  --start-status todo   --after E2           (runs with E3 only if they touch different code)
+QA  Final QA        QA Tester          --start-status qa               --after E3 --after E4
+SEC Security review Security Reviewer  --start-status security_review  --after QA
+OPS Release notes   DevOps             --start-status release_prep     --after QA
+```
 
-| Route | Stages created | Notes |
-| --- | --- | --- |
-| A. BMAD epics exist | 6 and 7 | Stage 6 checks the existing PRD, architecture, and epic files. A failing check falls back to route B. |
-| B. Documents, not BMAD | 1 (ledger), 2 only if requirements are missing, 3 only if no UI design, 4 (code state against the documents), 5, 6, 7 | Stage 1 is the coverage ledger of the existing documents; it writes no new brief. |
-| D. Working code, no plan | 1 (Architect code assessment), 2 (requirements for the gap), 5, 6, 7 | Stage 1 finds what runs and what is missing, with file and line. |
-| C. No documents or bare idea | 1 to 7 | Stage 1 starts with product research. |
+## Plans B, C and D: planning first
 
-Checking order: A, B, D, C. A route that is not chosen creates no sub-issues.
+The planning issues, queued behind each other. When the readiness review has passed, create the epic issues as in Plan A.
+
+```
+P1  Research and brief          Product Analyst  --start-status analysis      (Plan C; Plan B writes a requirements ledger,
+                                                                               Plan D starts with the Architect's code assessment)
+P2  PRD and requirements        Product Analyst  --start-status analysis      --after P1
+P3  UX design                   UX Designer      --start-status design        --after P2   (only if the product has a UI)
+P4  Architecture                Architect        --start-status architecture  --after P2
+P5  Epics and stories           Product Analyst  --start-status analysis      --after P3 --after P4
+P6  Planning readiness review   Code Reviewer    --start-status plan_review   --after P5
+```
+
+Register the wakeup on the request for P6 (SKILL.md Step 4). On PASS create the epic issues. On CONCERNS or FAIL create one gap
+issue per gap, queue a new review behind them, at most twice.
 
 ## Maintenance routes
 
-Triage first. Then take the route:
+Triage first, as one comment on the request: the type (bug, feature, optimization, upgrade, upkeep), the risk tier
+(Lightweight, Standard, High-risk), the route, and the assumptions. High-risk means auth, money, data migration or deletion, a
+public contract, a security control, or a production release. Then create the issues of the route:
 
-- **A. Hotfix, or a bug that is Trivial or Small:** stage 1 Bug Fixer, stage 2 Code Reviewer, stage 3 QA Tester.
-- **B. A bug with an unclear cause or a wide effect:** stage 1 Architect (root cause and impact; add Security Reviewer when
-  auth or data is involved), stage 2 one implementation sub-issue per component for the Bug Fixer or Developer, then
-  review, QA, and security stages.
-- **C. Feature or enhancement:** stage 1 Product Analyst (requirements and acceptance criteria; add UX Designer when the UI
-  changes), stage 2 Architect (design delta; skip when there is none), stage 3 one implementation sub-issue per story for the
-  Developer, in dependency order, then review, QA, and security stages.
-- **D. Optimization:** stage 1 Architect (measure the baseline and set a target), stage 2 Developer, then QA compares
-  against the baseline.
-- **E. Upgrade or upkeep:** stage 1 Architect (risks and rollback plan), stage 2 Developer or DevOps, then QA runs the regression.
+- **A. Hotfix, or a bug that is Trivial or Small:** Bug Fixer (`todo`), then Code Reviewer, then QA Tester.
+- **B. A bug with an unclear cause or a wide effect:** Architect (root cause and impact; add Security Reviewer when auth or data
+  is involved), then one implementation issue per component for the Bug Fixer or Developer, then review, QA, and security.
+- **C. Feature or enhancement:** Product Analyst (requirements and acceptance criteria; add UX Designer when the UI changes),
+  Architect (design delta; skip when there is none), then one implementation issue per story for the Developer in dependency
+  order, then review, QA, and security.
+- **D. Optimization:** Architect (measure the baseline and set a target), Developer, then QA compares against the baseline.
+- **E. Upgrade or upkeep:** Architect (risks and rollback plan), Developer or DevOps, then QA runs the regression.
 
-Rules for every Maintenance route:
-- Run sub-issues of a stage in parallel only when they touch different files.
-- Every change gets an independent Code Reviewer sub-issue and a QA Tester sub-issue after it. High-risk changes also get a
-  Security Reviewer sub-issue.
+Rules for every route:
+- Issues that touch different files may run together; give them no dependency on each other.
+- Every change gets an independent Code Reviewer issue and a QA Tester issue after it. High-risk changes also get a Security
+  Reviewer issue.
 - A Medium-sized or larger bug fix, or a changed requirement, goes through bmad-correct-course before anyone builds it.
-- A blocking review or QA verdict sends the work back: a fix sub-issue for the owner, then the check again. At most twice,
-  then the request is blocked and the requester is mentioned.
-
-## Market research (not an SDLC squad)
-
-Use only for the research squad: the scope comes from the issue or the knowledge base, research members report with dated
-links, a critic challenges the evidence, and proposals are filed with `multica proposal create --squad "Market Research"`.
+- A blocking review or QA verdict sends the work back: a fix issue for the owner, then the check again. At most twice, then the
+  request is blocked and the requester is mentioned.
 
 ## Report templates
 
-Final report on the request (Greenfield or Maintenance):
+Plan comment (Step 2):
+
+```
+Plan: <A | B | C | D | Maintenance route and risk tier>
+Evidence read: <paths and what each showed>
+Issues created: <identifier, owner, start status, waits for>
+Assumptions: <id, decision, why>
+```
+
+Final report on the request:
 
 ```
 Outcome: <one line>
@@ -64,13 +77,4 @@ Evidence: <each verification with its result and link; anything not verified>
 Decisions and assumptions: <id, decision, why, reversal cost>
 Open risks and follow-ups: <risk, owner, and what is needed>
 How to run and roll back: <commands and steps>
-```
-
-Route comment (step 2):
-
-```
-Route: <A | B | C | D | Maintenance route and risk tier>
-Evidence read: <paths and what each showed>
-Stages created: <numbers and owners>
-Assumptions: <id, decision, why>
 ```

@@ -115,6 +115,13 @@ func (h *Handler) applyIssueWorkflow(ctx context.Context, prev db.Issue, params 
 	if !ok || !step.HandsOff() {
 		return nil, nil
 	}
+	// A request a squad leader is working is not a step of the workflow: the
+	// leader splits it into issues, and those issues go through the steps.
+	// Handing the request itself to a developer or reviewer would take it away
+	// from the leader.
+	if h.isSquadRequest(ctx, prev) {
+		return nil, nil
+	}
 	assigneeType, assigneeID, ok := issueworkflow.ResolveHandler(step, project, prev.CreatorType, prev.CreatorID)
 	if !ok {
 		return nil, nil
@@ -468,4 +475,23 @@ func (h *Handler) stepHandlerName(ctx context.Context, issue db.Issue, project d
 		return name + " (issue creator)"
 	}
 	return name
+}
+
+// isSquadRequest reports whether the issue is a request to a squad: it has no
+// parent and is assigned to the squad or to the leader of a live squad.
+func (h *Handler) isSquadRequest(ctx context.Context, issue db.Issue) bool {
+	if issue.ParentIssueID.Valid || !issue.AssigneeID.Valid {
+		return false
+	}
+	switch issue.AssigneeType.String {
+	case "squad":
+		return true
+	case "agent":
+		leads, err := h.Queries.IsSquadLeaderInWorkspace(ctx, db.IsSquadLeaderInWorkspaceParams{
+			WorkspaceID: issue.WorkspaceID,
+			LeaderID:    issue.AssigneeID,
+		})
+		return err == nil && leads
+	}
+	return false
 }

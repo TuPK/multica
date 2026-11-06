@@ -83,6 +83,14 @@ describe("runSquadQuickstart", () => {
     const steps = client.createIssueWorkflow.mock.calls[0]![0].steps!;
     expect(steps.map((s) => ("status_key" in s ? s.status_key : s.new_status.name))).toEqual([
       "backlog",
+      "Analysis",
+      "Design",
+      "Architecture",
+      "Plan review",
+      "Security review",
+      "Release prep",
+      "Stage done",
+      "Plan ready",
       "todo",
       "in_progress",
       "in_review",
@@ -261,20 +269,30 @@ describe("runSquadQuickstart", () => {
     });
   });
 
-  it("builds the workflow without a QA step when the workspace admin has not allowed new statuses", async () => {
+  it("does not build the workflow when the workspace admin has not allowed the new statuses", async () => {
     const forbidden = Object.assign(new Error("admins only"), {
       body: { code: "status_create_forbidden" },
     });
-    const createIssueWorkflow = vi
-      .fn()
-      .mockRejectedValueOnce(forbidden)
-      .mockResolvedValueOnce({} as IssueWorkflow);
+    const createIssueWorkflow = vi.fn().mockRejectedValueOnce(forbidden);
     const client = fakeClient({ createIssueWorkflow });
 
     const out = await runSquadQuickstart(client, greenfield, options);
 
-    expect(out.workflow).toEqual({ status: "created", note: "qa_step_left_out" });
-    expect(createIssueWorkflow.mock.calls[1]![0].steps).toHaveLength(5);
+    expect(out.workflow.status).toBe("failed");
+    expect(out.workflow.error).toContain("Analysis to Plan ready");
+    expect(createIssueWorkflow).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends each step's next and back status keys and its status category", async () => {
+    const client = fakeClient();
+
+    await runSquadQuickstart(client, greenfield, options);
+
+    const steps = client.createIssueWorkflow.mock.calls[0]![0].steps!;
+    const analysis = steps.find((s) => "new_status" in s && s.new_status.name === "Analysis")!;
+    expect(analysis).toMatchObject({ next_status_key: "stage_done", back_status_key: "blocked" });
+    const done = steps.find((s) => "new_status" in s && s.new_status.name === "Stage done")!;
+    expect(done).toMatchObject({ new_status: { category: "done" } });
   });
 
   it("skips the workflow when asked not to create it or when the template has none", async () => {
