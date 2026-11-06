@@ -167,6 +167,13 @@ vi.mock("../../navigation", () => ({
   useIntentNavigate: () => () => {},
 }));
 
+/** The tooltip inside a worker's tag, which names its issue on hover. */
+function tooltipOf(tag: HTMLElement): HTMLElement {
+  const tooltip = tag.querySelector<HTMLElement>("[data-tag-tooltip]");
+  if (!tooltip) throw new Error("tag has no tooltip");
+  return tooltip;
+}
+
 function makeIssue(id: string, status: IssueStatus, assignee?: string): Issue {
   return {
     id,
@@ -322,8 +329,9 @@ describe("CompanyView", () => {
   it("does not seat agents of another floor or agents without a home squad", async () => {
     setup([makeIssue("a", "todo", "agent-4"), makeIssue("b", "todo", "agent-3")]);
 
-    await screen.findAllByRole("button", { name: "Waiting for work" });
-    expect(screen.queryByRole("button", { name: "Todo" })).toBeNull();
+    await screen.findByRole("button", { name: "Agent agent-1" });
+    expect(screen.queryByRole("button", { name: "Agent agent-3" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Agent agent-4" })).toBeNull();
     expect(engine.starts).toEqual(["agent-1", "agent-2"]);
   });
 
@@ -378,19 +386,24 @@ describe("CompanyView", () => {
     expect(useModalStore.getState().modal).toBe("squad-quickstart");
   });
 
-  it("tags the leader of a squad with a proposal waiting as Needs you, ahead of the issue status", async () => {
+  it("names a worker over its head, not the status of its issue", async () => {
     setup([makeIssue("c", "in_progress", "agent-1")], { proposals: [pendingProposal("s1")] });
 
-    expect(await screen.findByRole("button", { name: "Needs you" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Agent agent-1" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "In Progress" })).toBeNull();
   });
 
-  it("leaves the Needs you tag off a leader whose only proposal is put aside until a later date", async () => {
-    const putAside = { ...pendingProposal("s1"), snoozed_until: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString() };
-    setup([makeIssue("c", "in_progress", "agent-1")], { proposals: [putAside] });
+  it("shows a Needs you notice in the header while a squad waits on the boss", async () => {
+    setup([], { proposals: [pendingProposal("s1")] });
 
-    expect(await screen.findByRole("button", { name: "In Progress" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Needs you" })).toBeNull();
+    expect(await screen.findByRole("button", { name: /Needs you/ })).toBeTruthy();
+  });
+
+  it("leaves the Needs you notice off when nothing waits on the boss", async () => {
+    setup([]);
+
+    await screen.findByText("Squad s1");
+    expect(screen.queryByRole("button", { name: /Needs you/ })).toBeNull();
   });
 
   it("counts the pending proposals over the room of the squad that filed them", async () => {
@@ -403,31 +416,36 @@ describe("CompanyView", () => {
     expect(screen.getByText("decisions 2 focus none")).toBeTruthy();
   });
 
-  it("shows waiting for work over an agent with no open issue", async () => {
+  it("names every seated worker, with or without an open issue", async () => {
     setup([makeIssue("d", "done", "agent-2")]);
 
-    expect((await screen.findAllByRole("button", { name: "Waiting for work" })).length).toBe(2);
-    expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
+    expect(await screen.findByRole("button", { name: "Agent agent-1" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Agent agent-2" })).toBeTruthy();
   });
 
-  it("shows the status of the agent's issue in progress over its head", async () => {
+  it("shows the issue in progress in the worker's tooltip", async () => {
     setup([makeIssue("a", "todo", "agent-1"), makeIssue("c", "in_progress", "agent-1")]);
 
-    expect(await screen.findByRole("button", { name: "In Progress" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Todo" })).toBeNull();
+    const tag = await screen.findByRole("button", { name: "Agent agent-1" });
+    expect(tooltipOf(tag).style.display).toBe("");
+    expect(tooltipOf(tag).textContent).toContain("Task c");
+    expect(tooltipOf(tag).textContent).toContain("In Progress");
+    expect(tooltipOf(tag).textContent).not.toContain("Task a");
   });
 
   it("shows a squad's issue over the squad leader", async () => {
     const squadIssue = { ...makeIssue("q", "in_review"), assignee_type: "squad", assignee_id: "s1" } as Issue;
     setup([squadIssue]);
 
-    expect(await screen.findByRole("button", { name: "In Review" })).toBeTruthy();
+    const tag = await screen.findByRole("button", { name: "Agent agent-1" });
+    expect(tooltipOf(tag).textContent).toContain("Task q");
+    expect(tooltipOf(tag).textContent).toContain("In Review");
   });
 
   it("opens the agent's panel on its current issue when its tag is clicked", async () => {
     setup([makeIssue("c", "in_progress", "agent-1")]);
 
-    fireEvent.click(await screen.findByRole("button", { name: "In Progress" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Agent agent-1" }));
 
     expect(screen.getByText("panel agent-1 c")).toBeTruthy();
   });
@@ -435,15 +453,14 @@ describe("CompanyView", () => {
   it("opens the same panel, on its chat, when an idle agent's tag is clicked", async () => {
     setup([makeIssue("d", "done", "agent-1")]);
 
-    const tags = await screen.findAllByRole("button", { name: "Waiting for work" });
-    fireEvent.click(tags[0]!);
+    fireEvent.click(await screen.findByRole("button", { name: "Agent agent-1" }));
 
     expect(screen.getByText("panel agent-1 chat")).toBeTruthy();
   });
 
   it("opens the panel on the chat when the worker itself is clicked", async () => {
     setup([makeIssue("c", "in_progress", "agent-1")]);
-    await screen.findByRole("button", { name: "In Progress" });
+    await screen.findByRole("button", { name: "Agent agent-1" });
     const canvas = document.querySelector("canvas") as HTMLCanvasElement;
     // The tag is anchored at (20, 30) in layout units; the figure hangs below it.
     canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 416, height: 171 }) as DOMRect;
@@ -455,30 +472,32 @@ describe("CompanyView", () => {
 
   it("closes the panel", async () => {
     setup([makeIssue("c", "in_progress", "agent-1")]);
-    fireEvent.click(await screen.findByRole("button", { name: "In Progress" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Agent agent-1" }));
 
     fireEvent.click(screen.getByRole("button", { name: "close panel" }));
 
     expect(screen.queryByRole("dialog", { name: "panel" })).toBeNull();
   });
 
-  it("moves the tag to the new status when the agent's issue changes status", async () => {
+  it("shows the new status in the tooltip when the agent's issue changes status", async () => {
     const { rerender } = setup([makeIssue("a", "todo", "agent-1")]);
-    expect(await screen.findByRole("button", { name: "Todo" })).toBeTruthy();
+    const tag = await screen.findByRole("button", { name: "Agent agent-1" });
+    expect(tooltipOf(tag).textContent).toContain("Todo");
 
     rerender([makeIssue("a", "in_review", "agent-1")]);
 
-    expect(await screen.findByRole("button", { name: "In Review" })).toBeTruthy();
+    await vi.waitFor(() => expect(tooltipOf(tag).textContent).toContain("In Review"));
     expect(engine.ends).toEqual([]);
   });
 
-  it("keeps an agent seated when its issue goes away", async () => {
+  it("hides the tooltip when the agent's issue goes away, and keeps the agent seated", async () => {
     const { rerender } = setup([makeIssue("a", "todo", "agent-1")]);
-    await screen.findByRole("button", { name: "Todo" });
+    const tag = await screen.findByRole("button", { name: "Agent agent-1" });
 
     rerender([makeIssue("a", "todo")]);
 
-    await vi.waitFor(() => expect(screen.queryByRole("button", { name: "Todo" })).toBeNull());
+    await vi.waitFor(() => expect(tooltipOf(tag).style.display).toBe("none"));
+    expect(screen.getByRole("button", { name: "Agent agent-1" })).toBeTruthy();
     expect(engine.ends).toEqual([]);
   });
 

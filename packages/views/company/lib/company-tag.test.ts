@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import type { Issue, Squad } from "@multica/core/types";
-import { focusIssues, leadersNeedingYou, companyTagOf } from "./company-tag";
+import { focusIssues } from "./company-tag";
 
 function issue(id: string, status: string, assignee: { type: "agent" | "squad"; id: string } | null): Issue {
   return { id, status, assignee_type: assignee?.type ?? null, assignee_id: assignee?.id ?? null } as Issue;
@@ -37,25 +37,5 @@ describe("focusIssues", () => {
       SQUADS,
     );
     expect(map.size).toBe(0);
-  });
-});
-
-describe("companyTagOf", () => {
-  const focus = new Map([["x", { status: "todo" }]]);
-
-  it("says Needs you before anything else", () => {
-    expect(companyTagOf("x", new Set(["x"]), focus)).toEqual({ kind: "needs_you" });
-  });
-
-  it("falls back to the focus issue's status, then to idle", () => {
-    expect(companyTagOf("x", new Set(), focus)).toEqual({ kind: "status", status: "todo" });
-    expect(companyTagOf("y", new Set(), focus)).toEqual({ kind: "idle" });
-  });
-});
-
-describe("leadersNeedingYou", () => {
-  it("names the leader of each squad with a pending proposal", () => {
-    expect(leadersNeedingYou(SQUADS, new Set(["sq"]))).toEqual(new Set(["lead"]));
-    expect(leadersNeedingYou(SQUADS, new Set())).toEqual(new Set());
   });
 });

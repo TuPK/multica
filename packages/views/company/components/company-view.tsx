@@ -29,7 +29,7 @@ import { useT } from "../../i18n";
 import { useNavigation } from "../../navigation";
 import { BoardView, type BoardViewProps } from "../../issues/components/board-view";
 import { useStatusLabel } from "../../issues/utils/status-label";
-import { focusIssues, leadersNeedingYou, companyTagOf } from "../lib/company-tag";
+import { focusIssues } from "../lib/company-tag";
 import { CompanyAgentPanel, type CompanyAgentTarget } from "./company-agent-panel";
 import { CompanyCanvas, type WorkerSession } from "./company-canvas";
 import { CompanyBoardButton } from "./company-board-button";
@@ -147,11 +147,6 @@ function CompanyScene({ issues, visibleStatuses, projectId }: BoardViewProps) {
 
   // Issues only feed the tag text; they decide nobody's seat.
   const focusOf = useMemo(() => focusIssues(issues, visibleStatuses, squads), [issues, visibleStatuses, squads]);
-  // Leaders of squads with a proposal waiting for the boss, for the Needs you tag.
-  const needsYou = useMemo(
-    () => leadersNeedingYou(squads, new Set(pending.map((proposal) => proposal.squad_id))),
-    [squads, pending],
-  );
   const pendingBySlot = useMemo(
     () => layout.rooms.map((room) => (room.squad ? pending.filter((proposal) => proposal.squad_id === room.squad?.id).length : 0)),
     [layout, pending],
@@ -206,13 +201,15 @@ function CompanyScene({ issues, visibleStatuses, projectId }: BoardViewProps) {
     [layout, workingAgents],
   );
 
-  const tagText = useCallback(
+  // A worker's tag names it; its tooltip names the issue it is on.
+  const agentNames = useMemo(() => new Map(agents.map((agent) => [agent.id, agent.name])), [agents]);
+  const tagName = useCallback((key: string) => agentNames.get(key) ?? "", [agentNames]);
+  const tagDetail = useCallback(
     (key: string) => {
-      const tag = companyTagOf(key, needsYou, focusOf);
-      if (tag.kind === "needs_you") return t(($) => $.company.needs_you);
-      return tag.kind === "status" ? labelOf(tag.status as IssueStatus) : t(($) => $.company.idle);
+      const issue = focusOf.get(key);
+      return issue ? { title: issue.title, status: labelOf(issue.status as IssueStatus) } : null;
     },
-    [needsYou, focusOf, labelOf, t],
+    [focusOf, labelOf],
   );
 
   // One panel manages an agent, whether the click landed on the agent or on its tag.
@@ -281,6 +278,18 @@ function CompanyScene({ issues, visibleStatuses, projectId }: BoardViewProps) {
       <CompanySetupCard />
       <CompanyBriefButton focusBriefId={briefFocus} />
       <SecretaryDeskButton />
+      {pending.length > 0 ? (
+        // A small notice while a squad waits on the boss; it opens the decisions it is waiting for.
+        <button
+          type="button"
+          onClick={() => setDecisionsOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded-full border border-warning/40 px-2.5 py-0.5 text-micro font-semibold text-warning hover:bg-warning/10"
+        >
+          <span aria-hidden="true" className="size-1.5 rounded-full bg-warning" />
+          {t(($) => $.company.needs_you)}
+          <span className="tabular-nums">{pending.length}</span>
+        </button>
+      ) : null}
       {pendingAll.length > 0 ? (
         <Button type="button" variant="outline" size="sm" onClick={() => setDecisionsOpen(true)}>
           {t(($) => $.company.decisions_open)}
@@ -304,7 +313,8 @@ function CompanyScene({ issues, visibleStatuses, projectId }: BoardViewProps) {
         <CompanyCanvas
           key={floor?.id ?? "no-floor"}
           sessions={sessions}
-          tagText={tagText}
+          tagName={tagName}
+          tagDetail={tagDetail}
           onPick={onPick}
           onMove={onOpenAgent}
           roomNames={roomNames}

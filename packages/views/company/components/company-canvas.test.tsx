@@ -66,7 +66,7 @@ describe("CompanyCanvas", () => {
   });
 
   const renderCanvas = () =>
-    render(<CompanyCanvas sessions={[]} tagText={() => ""} onPick={() => {}} onMove={() => {}} />);
+    render(<CompanyCanvas sessions={[]} tagName={() => ""} tagDetail={() => null} onPick={() => {}} onMove={() => {}} />);
 
   it("lays the floor out for the page's own shape", () => {
     renderCanvas();
@@ -102,7 +102,7 @@ describe("CompanyCanvas", () => {
 
   it("names the top rooms above their workers' tags and the lower rooms below the room", () => {
     render(
-      <CompanyCanvas sessions={[]} tagText={() => ""} onPick={() => {}} onMove={() => {}} roomNames={["North", "East", "South", "West"]} />,
+      <CompanyCanvas sessions={[]} tagName={() => ""} tagDetail={() => null} onPick={() => {}} onMove={() => {}} roomNames={["North", "East", "South", "West"]} />,
     );
     act(() =>
       workers[0]!.onmessage?.({

@@ -30,28 +30,3 @@ export function focusIssues(
   }
   return map;
 }
-
-/** The leaders of squads that have a proposal waiting for the boss. */
-export function leadersNeedingYou(
-  squads: readonly Pick<Squad, "id" | "leader_id">[],
-  pendingSquadIds: ReadonlySet<string>,
-): Set<string> {
-  const leaders = new Set<string>();
-  for (const squad of squads) {
-    if (pendingSquadIds.has(squad.id) && squad.leader_id) leaders.add(squad.leader_id);
-  }
-  return leaders;
-}
-
-export type CompanyTag = { kind: "needs_you" } | { kind: "status"; status: string } | { kind: "idle" };
-
-/** The tag over an agent, first match wins: Needs you, the focus issue's status, else Idle. */
-export function companyTagOf(
-  agentId: string,
-  needsYou: ReadonlySet<string>,
-  focus: ReadonlyMap<string, Pick<Issue, "status">>,
-): CompanyTag {
-  if (needsYou.has(agentId)) return { kind: "needs_you" };
-  const issue = focus.get(agentId);
-  return issue ? { kind: "status", status: issue.status } : { kind: "idle" };
-}
