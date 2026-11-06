@@ -25,10 +25,11 @@ type AssignSquadProjectRequest struct {
 
 // AssignSquadProject gives a project to a squad, which shows it in its room. The
 // project takes the SDLC Auto workflow, built on the squad's SDLC agents. A
-// squad holds one project, so its previous one is unassigned. The workflow
-// switch uses the same status mapping as a project's workflow change, in one
-// transaction. A project already on a different workflow is refused: its
-// workflow is changed from the project's settings.
+// squad works one open project at a time, so one already assigned must be
+// unassigned first. The workflow switch uses the same status mapping as a
+// project's workflow change, in one transaction. A project already on a
+// different workflow is refused: its workflow is changed from the project's
+// settings.
 func (h *Handler) AssignSquadProject(w http.ResponseWriter, r *http.Request) {
 	workspaceID := workspaceIDFromURL(r, "workspaceId")
 	member, ok := h.requireWorkspaceMember(w, r, workspaceID, "workspace not found")
@@ -76,6 +77,14 @@ func (h *Handler) AssignSquadProject(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, "project not found")
 			return
 		}
+		writeError(w, http.StatusInternalServerError, "failed to assign project")
+		return
+	}
+
+	if _, err := qtx.GetOpenSquadProject(ctx, db.GetOpenSquadProjectParams{WorkspaceID: wsUUID, SquadID: squad.ID, ID: project.ID}); err == nil {
+		writeErrorCode(w, http.StatusConflict, "squad_has_project", "this squad already has a project; unassign it first")
+		return
+	} else if !errors.Is(err, pgx.ErrNoRows) {
 		writeError(w, http.StatusInternalServerError, "failed to assign project")
 		return
 	}
@@ -162,4 +171,31 @@ func (h *Handler) AssignSquadProject(w http.ResponseWriter, r *http.Request) {
 		"updated_issues": len(changed),
 		"plan":           plan,
 	})
+}
+
+// UnassignSquadProject takes every project off a squad, so the squad can be given
+// another one. The projects keep their workflow and issues.
+func (h *Handler) UnassignSquadProject(w http.ResponseWriter, r *http.Request) {
+	workspaceID := workspaceIDFromURL(r, "workspaceId")
+	member, ok := h.requireWorkspaceMember(w, r, workspaceID, "workspace not found")
+	if !ok {
+		return
+	}
+	squad, _, ok := h.loadSquadInWorkspace(w, r)
+	if !ok {
+		return
+	}
+	if !canManageSquad(member, squad) {
+		writeError(w, http.StatusForbidden, "insufficient permissions")
+		return
+	}
+	unassigned, err := h.Queries.ClearSquadProjects(r.Context(), db.ClearSquadProjectsParams{WorkspaceID: squad.WorkspaceID, SquadID: squad.ID})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to unassign project")
+		return
+	}
+	for _, p := range unassigned {
+		h.publishProjectWorkflowUpdate(r.Context(), workspaceID, member, p)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"unassigned": len(unassigned)})
 }

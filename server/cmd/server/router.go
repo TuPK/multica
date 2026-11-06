@@ -2368,6 +2368,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Delete("/", h.DeleteSquad)
 					r.Get("/members", h.ListSquadMembers)
 					r.Post("/project", h.AssignSquadProject)
+					r.Delete("/project", h.UnassignSquadProject)
 					r.Get("/members/status", h.ListSquadMemberStatus)
 					r.Post("/members", h.AddSquadMember)
 					r.Delete("/members", h.RemoveSquadMember)

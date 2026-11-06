@@ -23,9 +23,59 @@ type ClearSquadFromOtherProjectsParams struct {
 	ID          pgtype.UUID `json:"id"`
 }
 
-// A squad holds one project: assigning a project unassigns the squad's previous one.
+// Unlinks the squad from its other projects. Only finished ones can remain once GetOpenSquadProject is clear.
 func (q *Queries) ClearSquadFromOtherProjects(ctx context.Context, arg ClearSquadFromOtherProjectsParams) ([]Project, error) {
 	rows, err := q.db.Query(ctx, clearSquadFromOtherProjects, arg.WorkspaceID, arg.SquadID, arg.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Project{}
+	for rows.Next() {
+		var i Project
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Title,
+			&i.Description,
+			&i.Icon,
+			&i.Status,
+			&i.LeadType,
+			&i.LeadID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Priority,
+			&i.StartDate,
+			&i.DueDate,
+			&i.WorkflowID,
+			&i.CreatorType,
+			&i.CreatorID,
+			&i.SquadID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const clearSquadProjects = `-- name: ClearSquadProjects :many
+UPDATE project SET squad_id = NULL, updated_at = now()
+WHERE workspace_id = $1 AND squad_id = $2
+RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, start_date, due_date, workflow_id, creator_type, creator_id, squad_id
+`
+
+type ClearSquadProjectsParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	SquadID     pgtype.UUID `json:"squad_id"`
+}
+
+// Unassigns every project the squad holds.
+func (q *Queries) ClearSquadProjects(ctx context.Context, arg ClearSquadProjectsParams) ([]Project, error) {
+	rows, err := q.db.Query(ctx, clearSquadProjects, arg.WorkspaceID, arg.SquadID)
 	if err != nil {
 		return nil, err
 	}
@@ -152,6 +202,45 @@ type DeleteProjectParams struct {
 func (q *Queries) DeleteProject(ctx context.Context, arg DeleteProjectParams) error {
 	_, err := q.db.Exec(ctx, deleteProject, arg.ID, arg.WorkspaceID)
 	return err
+}
+
+const getOpenSquadProject = `-- name: GetOpenSquadProject :one
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, start_date, due_date, workflow_id, creator_type, creator_id, squad_id FROM project
+WHERE workspace_id = $1 AND squad_id = $2 AND id <> $3
+  AND status NOT IN ('completed', 'cancelled')
+LIMIT 1
+`
+
+type GetOpenSquadProjectParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	SquadID     pgtype.UUID `json:"squad_id"`
+	ID          pgtype.UUID `json:"id"`
+}
+
+// The project a squad is working on. A squad works one open project at a time.
+func (q *Queries) GetOpenSquadProject(ctx context.Context, arg GetOpenSquadProjectParams) (Project, error) {
+	row := q.db.QueryRow(ctx, getOpenSquadProject, arg.WorkspaceID, arg.SquadID, arg.ID)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Title,
+		&i.Description,
+		&i.Icon,
+		&i.Status,
+		&i.LeadType,
+		&i.LeadID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Priority,
+		&i.StartDate,
+		&i.DueDate,
+		&i.WorkflowID,
+		&i.CreatorType,
+		&i.CreatorID,
+		&i.SquadID,
+	)
+	return i, err
 }
 
 const getProjectInWorkspace = `-- name: GetProjectInWorkspace :one

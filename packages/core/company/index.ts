@@ -33,5 +33,6 @@ export * from "./company-template-types";
 export * from "./company-template-schema";
 export * from "./company-template-mutations";
 export * from "./squad-open-items";
+export * from "./squad-project";
 export * from "./org-map-schema";
 export * from "./org-map-queries";

@@ -9,6 +9,7 @@ import {
   proposalListOptions,
   squadOpenItemsOptions,
   squadRoutinesOptions,
+  findSquadProject,
   type FloorRoom,
 } from "@multica/core/company";
 import { useActorName } from "@multica/core/workspace/hooks";
@@ -112,7 +113,7 @@ function PanelBody({
   const { data: floors = [] } = useQuery(companyFloorsOptions(wsId));
   const { addSquad, pending: adding } = useAddSquadToCompany(floors, squads);
   const { data: projects = [] } = useQuery(projectListOptions(wsId));
-  const project = projects.find((p) => p.squad_id === squadId && p.status !== "completed" && p.status !== "cancelled");
+  const project = findSquadProject(projects, squadId);
   const { t: tGovernance } = useT("governance");
   const isCompanyAdmin = useCompanyAdmin();
   const userId = useAuthStore((s) => s.user?.id);
@@ -151,7 +152,7 @@ function PanelBody({
         {canManage && squad && onAssignProject ? (
           <div className="pt-1">
             <Button type="button" variant="outline" size="sm" onClick={() => onAssignProject(squadId)}>
-              {t(($) => $.company.assign_open)}
+              {project ? t(($) => $.company.assign_manage) : t(($) => $.company.assign_open)}
             </Button>
           </div>
         ) : null}

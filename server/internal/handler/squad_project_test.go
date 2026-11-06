@@ -40,19 +40,47 @@ func TestAssignSquadProjectSetsSDLCWorkflowAndSquad(t *testing.T) {
 	}
 }
 
-// TestAssignSquadProjectUnassignsPreviousProject: a squad holds one project.
-func TestAssignSquadProjectUnassignsPreviousProject(t *testing.T) {
+// TestAssignSquadProjectRefusesSecondOpenProject: a squad works one open project
+// at a time, so a second one is refused until the first is unassigned.
+func TestAssignSquadProjectRefusesSecondOpenProject(t *testing.T) {
 	fx := newIniWorkspace(t)
 	first := dbfxProject(t, fx, "First")
 	second := dbfxProject(t, fx, "Second")
 	assignSquadProject(t, fx, fx.Build, first, nil).Want(http.StatusOK)
-	assignSquadProject(t, fx, fx.Build, second, nil).Want(http.StatusOK)
+	assignSquadProject(t, fx, fx.Build, second, nil).Want(http.StatusConflict)
+
+	var squadID *string
+	dbfx.QueryRow(t, `SELECT squad_id::text FROM project WHERE id = $1`, first).Scan(&squadID)
+	if squadID == nil || *squadID != fx.Build {
+		t.Fatalf("first project squad_id = %v, want it to stay on %s", squadID, fx.Build)
+	}
+}
+
+// TestAssignSquadProjectReassignsSameProject: re-sending the current project is not a second one.
+func TestAssignSquadProjectReassignsSameProject(t *testing.T) {
+	fx := newIniWorkspace(t)
+	projectID := dbfxProject(t, fx, "Same")
+	assignSquadProject(t, fx, fx.Build, projectID, nil).Want(http.StatusOK)
+	assignSquadProject(t, fx, fx.Build, projectID, nil).Want(http.StatusOK)
+}
+
+// TestUnassignSquadProjectFreesSquad: after unassigning, the squad takes another project.
+func TestUnassignSquadProjectFreesSquad(t *testing.T) {
+	fx := newIniWorkspace(t)
+	first := dbfxProject(t, fx, "First")
+	second := dbfxProject(t, fx, "Second")
+	assignSquadProject(t, fx, fx.Build, first, nil).Want(http.StatusOK)
+
+	req := newRequestAs(fx.AdminID, "DELETE", "/api/squads/"+fx.Build+"/project", nil)
+	req = withURLParams(req, "workspaceId", fx.ID, "id", fx.Build)
+	testutil.Call(t, testHandler.UnassignSquadProject, req).Want(http.StatusOK)
 
 	var squadID *string
 	dbfx.QueryRow(t, `SELECT squad_id::text FROM project WHERE id = $1`, first).Scan(&squadID)
 	if squadID != nil {
-		t.Fatalf("previous project still assigned to %s", *squadID)
+		t.Fatalf("project still assigned to %s after unassign", *squadID)
 	}
+	assignSquadProject(t, fx, fx.Build, second, nil).Want(http.StatusOK)
 }
 
 // TestAssignSquadProjectNeedsSDLCSquad: a squad without the SDLC agents cannot build.

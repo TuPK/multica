@@ -66,6 +66,8 @@ import { useWorkspaceId } from "@multica/core/hooks";
 import { useIssueStatuses } from "@multica/core/issue-statuses/hooks";
 import { useProjectWithWorkflow, useProjectWorkflow, workflowAllowsStatus, workflowStep } from "@multica/core/issue-workflows";
 import { projectListOptions } from "@multica/core/projects/queries";
+import { agentListOptions } from "@multica/core/workspace/queries";
+import { assigneeSquadId, findSquadProject } from "@multica/core/company";
 import { stepHandlerActor, useStepHandlerLabel } from "../workflows/step-handler";
 import { useIssueDraftStore, type IssueCreateDraft } from "@multica/core/issues/stores/draft-store";
 import { useCreateModeStore } from "@multica/core/issues/stores/create-mode-store";
@@ -349,6 +351,14 @@ export function ManualCreatePanel({
   const queryClient = useQueryClient();
   const { categoryOf: draftStatusCategory, colorOf, iconOf } = useIssueStatuses(wsId);
   const { data: workspaceProperties = [] } = useQuery(propertyListOptions(wsId));
+  // Issues handed to a squad's agents, or to the squad, take the squad's project,
+  // which then cannot be changed here.
+  const { data: agentList = [] } = useQuery(agentListOptions(wsId));
+  const { data: projectList = [] } = useQuery(projectListOptions(wsId));
+  const squadProjectId = findSquadProject(projectList, assigneeSquadId(assigneeType, assigneeId, agentList))?.id;
+  useEffect(() => {
+    if (squadProjectId && projectId !== squadProjectId) setProjectId(squadProjectId);
+  }, [squadProjectId, projectId]);
   const { data: parentIssue } = useQuery({
     ...issueDetailOptions(wsId, parentIssueId ?? ""),
     enabled: !!parentIssueId,
@@ -1121,10 +1131,12 @@ export function ManualCreatePanel({
                 <ProjectPicker
                   projectId={projectId ?? null}
                   onUpdate={(u) => updateProject(u.project_id ?? undefined)}
+                  disabled={!!squadProjectId}
                   triggerRender={
                     <ClearablePillButton
-                      onClear={projectId ? () => updateProject(undefined) : undefined}
+                      onClear={projectId && !squadProjectId ? () => updateProject(undefined) : undefined}
                       clearLabel={tProjects(($) => $.picker.clear_aria)}
+                      disabled={!!squadProjectId}
                     />
                   }
                   tooltip={tIssues(($) => $.detail.prop_project)}

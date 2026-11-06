@@ -5,8 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ApiError, errorCode } from "@multica/core/api";
 import {
+  findSquadProject,
   parseSquadProjectMapping,
   useAssignSquadProject,
+  useUnassignSquadProject,
   type SquadProjectStatusMapping,
 } from "@multica/core/company";
 import { projectListOptions } from "@multica/core/projects/queries";
@@ -27,9 +29,10 @@ const SDLC_STATUS_KEYS = ["todo", "in_progress", "in_review", "qa"] as const;
 const CLOSED_PROJECT_STATUSES = new Set(["completed", "cancelled"]);
 
 /**
- * Picks a project for a squad's room. The project takes the SDLC Auto workflow,
- * and the squad's previous project is unassigned. When the project's issues sit on
- * statuses the workflow lacks, the dialog asks where each group moves first.
+ * Picks a project for a squad's room. The project takes the SDLC Auto workflow.
+ * A squad works one project at a time, so once one is assigned the dialog only
+ * offers to unassign it. When the project's issues sit on statuses the workflow
+ * lacks, the dialog asks where each group moves first.
  */
 export function CompanyAssignProjectDialog({
   squad,
@@ -49,7 +52,7 @@ export function CompanyAssignProjectDialog({
     <Dialog open={squad !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="flex max-h-[min(88dvh,36rem)] flex-col gap-0 p-0 sm:max-w-md">
         {squad ? (
-          <AssignBody key={squad.id} squad={squad} onAssigned={onAssigned} onOpenSquad={onOpenSquad} />
+          <AssignBody key={squad.id} squad={squad} onAssigned={onAssigned} onOpenSquad={onOpenSquad} onClose={onClose} />
         ) : null}
       </DialogContent>
     </Dialog>
@@ -60,16 +63,20 @@ function AssignBody({
   squad,
   onAssigned,
   onOpenSquad,
+  onClose,
 }: {
   squad: Squad;
   onAssigned: (project: Project) => void;
   onOpenSquad: () => void;
+  onClose: () => void;
 }) {
   const { t } = useT("issues");
   const wsId = useWorkspaceId();
   const { data: projects = [] } = useQuery(projectListOptions(wsId));
   const { data: squads = [] } = useQuery(squadListOptions(wsId));
   const assign = useAssignSquadProject(squad.id);
+  const unassign = useUnassignSquadProject(squad.id);
+  const current = findSquadProject(projects, squad.id);
 
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -85,6 +92,17 @@ function AssignBody({
       .filter((project) => !needle || project.title.toLowerCase().includes(needle))
       .sort((a, b) => Number(b.squad_id === squad.id) - Number(a.squad_id === squad.id));
   }, [projects, query, squad.id]);
+
+  const removeProject = () => {
+    if (!current) return;
+    unassign.mutate(undefined, {
+      onSuccess: () => {
+        toast.success(t(($) => $.company.assign_unassign_done, { project: current.title, name: squad.name }));
+        onClose();
+      },
+      onError: () => toast.error(t(($) => $.company.assign_unassign_failed)),
+    });
+  };
 
   const submit = () => {
     if (!selectedId) return;
@@ -111,7 +129,9 @@ function AssignBody({
               ? t(($) => $.company.assign_not_sdlc)
               : code === "project_workflow_set"
                 ? t(($) => $.company.assign_workflow_set)
-                : t(($) => $.company.assign_failed),
+                : code === "squad_has_project"
+                  ? t(($) => $.company.assign_squad_has_project)
+                  : t(($) => $.company.assign_failed),
           );
         },
       },
@@ -119,6 +139,31 @@ function AssignBody({
   };
 
   const mappingReady = !mapping || mapping.every((row) => SDLC_STATUS_KEYS.includes(statusMapping[row.status_key] as (typeof SDLC_STATUS_KEYS)[number]));
+
+  if (current) {
+    return (
+      <>
+        <DialogHeader className="gap-1 border-b px-4 py-3 pr-12">
+          <DialogTitle className="text-heading">{t(($) => $.company.assign_manage_title, { name: squad.name })}</DialogTitle>
+          <p className="text-body text-muted-foreground">{t(($) => $.company.assign_assigned_description)}</p>
+        </DialogHeader>
+        <div className="flex flex-col gap-2 px-4 py-3">
+          <div className="flex items-center justify-between gap-3 rounded-md border border-[#1d5fd6] bg-[#1d5fd6]/10 px-3 py-2 text-body">
+            <span className="truncate">{current.title}</span>
+            <span className="shrink-0 text-caption text-muted-foreground">{t(($) => $.company.assign_current)}</span>
+          </div>
+        </div>
+        <DialogFooter className="m-0 flex-row items-center justify-between gap-2 rounded-b-xl border-t px-4 py-3">
+          <Button type="button" variant="ghost" size="sm" onClick={onOpenSquad}>
+            {t(($) => $.company.assign_see_squad)}
+          </Button>
+          <Button type="button" variant="outline" size="sm" disabled={unassign.isPending} aria-busy={unassign.isPending} onClick={removeProject}>
+            {t(($) => $.company.assign_unassign)}
+          </Button>
+        </DialogFooter>
+      </>
+    );
+  }
 
   return (
     <>
@@ -199,7 +244,7 @@ function AssignBody({
         </div>
       )}
 
-      <DialogFooter className="flex-row items-center justify-between gap-2 border-t px-4 py-3">
+      <DialogFooter className="m-0 flex-row items-center justify-between gap-2 rounded-b-xl border-t px-4 py-3">
         <Button type="button" variant="ghost" size="sm" onClick={onOpenSquad}>
           {t(($) => $.company.assign_see_squad)}
         </Button>

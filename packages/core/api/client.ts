@@ -5335,6 +5335,10 @@ export class ApiClient {
     }) as AssignSquadProjectResponse;
   }
 
+  async unassignSquadProject(squadId: string): Promise<void> {
+    await this.fetch(`/api/squads/${squadId}/project`, { method: "DELETE" });
+  }
+
   async setCompanySeats(seats: CompanySeatAssignment[]): Promise<CompanySeatsResponse> {
     const raw = await this.fetch<unknown>("/api/company/seats", { method: "PUT", body: JSON.stringify(seats) });
     return parseWithFallback(raw, CompanySeatsResponseSchema, EMPTY_COMPANY_SEATS_RESPONSE, {
