@@ -38,6 +38,8 @@ pub(crate) use rooms::pantry::{
 pub(crate) use rooms::walls::Doorway;
 pub(crate) use rooms::walls::{WALL_THICK_H, WALL_THICK_V, WallPiece};
 pub use rooms::{MeetingRoom, MeetingTrio, PantryRoom};
+#[cfg(test)]
+pub(crate) use rooms::pantry::pantry_counter_y_pct;
 pub use roster::Station;
 pub(crate) use roster::StationArt;
 pub(crate) use roster::{

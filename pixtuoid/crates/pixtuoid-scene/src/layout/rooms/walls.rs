@@ -418,6 +418,8 @@ pub(crate) fn derive_room_walls_with(
 ) -> (Vec<WallSegment>, Vec<Doorway>) {
     let mut requests: Vec<WallRequest> = Vec::new();
 
+    // The top row stands flush under the window band, so its north side has no wall.
+    let top_row_y = desk_rooms.iter().map(|b| b.y).min();
     for b in desk_rooms {
         requests.push(WallRequest {
             run: Run::V {
@@ -435,14 +437,16 @@ pub(crate) fn derive_room_walls_with(
             },
             doors: vec![],
         });
-        requests.push(WallRequest {
-            run: Run::H {
-                y: b.y,
-                x0: b.x,
-                x1: b.x + b.width,
-            },
-            doors: vec![],
-        });
+        if Some(b.y) != top_row_y {
+            requests.push(WallRequest {
+                run: Run::H {
+                    y: b.y,
+                    x0: b.x,
+                    x1: b.x + b.width,
+                },
+                doors: vec![],
+            });
+        }
         requests.push(WallRequest {
             run: Run::H {
                 y: b.y + b.height,

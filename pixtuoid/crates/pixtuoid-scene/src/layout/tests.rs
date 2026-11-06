@@ -1157,6 +1157,7 @@ fn pantry_and_meeting_procedural_rects_match_the_painted_geometry() {
         },
         counter_size: Size { w: 20, h: 8 },
         kitchen_island: None,
+        counter_pct: super::rooms::pantry::pantry_counter_y_pct(20),
     };
     assert_eq!(
         pantry.water_cooler_rect(),
@@ -1206,6 +1207,7 @@ fn pantry_and_meeting_procedural_rects_match_the_painted_geometry() {
         },
         counter_size: Size { w: 20, h: 8 },
         kitchen_island: None,
+        counter_pct: super::rooms::pantry::pantry_counter_y_pct(20),
     };
     assert_eq!(tiny_pantry.water_cooler_rect(), None);
     assert_eq!(tiny_pantry.trash_bin_rect(), None);

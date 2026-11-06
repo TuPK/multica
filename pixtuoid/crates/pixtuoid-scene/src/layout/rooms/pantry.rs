@@ -51,6 +51,9 @@ pub struct PantryRoom {
     pub(crate) counter_size: Size,
     /// Kitchen-island body centre.
     pub(crate) kitchen_island: Option<Point>,
+    /// The counter's centre line as a percent of the room height ([`pantry_counter_y_pct`]
+    /// unless the floor puts its counter lower).
+    pub(crate) counter_pct: u16,
 }
 
 /// Vertical position of the pantry counter as a percent of the room height.
@@ -70,19 +73,19 @@ impl PantryRoom {
     /// THE one derivation the island clamp, the snack-shelf clamp and the
     /// counter's own waypoint all read, so a percent change can't move one and
     /// strand the others.
-    pub(crate) fn counter_center_y(bounds: Bounds, counter: Size) -> u16 {
-        bounds.y + pct(bounds.height, pantry_counter_y_pct(counter.w))
+    pub(crate) fn counter_center_y(bounds: Bounds, counter_pct: u16) -> u16 {
+        bounds.y + pct(bounds.height, counter_pct)
     }
 
     /// The counter sprite's top less an [`OBSTACLE_PAD_PX`] margin: the anti-merge ceiling
     /// the island body and the snack shelf sit clear of, not a row the mask blocks.
-    pub(crate) fn counter_north(bounds: Bounds, counter: Size) -> u16 {
-        Self::counter_center_y(bounds, counter).saturating_sub(counter.h / 2 + OBSTACLE_PAD_PX)
+    pub(crate) fn counter_north(bounds: Bounds, counter: Size, counter_pct: u16) -> u16 {
+        Self::counter_center_y(bounds, counter_pct).saturating_sub(counter.h / 2 + OBSTACLE_PAD_PX)
     }
 
     /// The counter's centre in a room of `bounds`, or `None` for a room
     /// no wider than the counter: refuse rather than force.
-    pub(crate) fn counter_center(bounds: Bounds, counter: Size) -> Option<Point> {
+    pub(crate) fn counter_center(bounds: Bounds, counter: Size, counter_pct: u16) -> Option<Point> {
         let half_cw = counter.w / 2;
         let max_cx = bounds.x + bounds.width.saturating_sub(half_cw + 1);
         let min_cx = bounds.x + half_cw;
@@ -93,14 +96,15 @@ impl PantryRoom {
                 (bounds.x + pct(bounds.width, 60)).clamp(min_cx, max_cx)
             },
             // Single-sourced with the island clamp.
-            y: Self::counter_center_y(bounds, counter),
+            y: Self::counter_center_y(bounds, counter_pct),
         })
     }
 
     /// The counter's sprite box, centred where [`Self::counter_center`] stands
     /// it.
     pub(crate) fn counter_rect(&self) -> Option<Bounds> {
-        Self::counter_center(self.bounds, self.counter_size).map(|c| centred(c, self.counter_size))
+        Self::counter_center(self.bounds, self.counter_size, self.counter_pct)
+            .map(|c| centred(c, self.counter_size))
     }
 
     /// `r`, or `r` slid out past the counter's nearer end when the counter's
@@ -180,11 +184,11 @@ impl PantryRoom {
     /// since the pantry's only wall-free side is the EAST bridge, which must
     /// stay open; `None` for a room too narrow for the shelf plus an east-side
     /// stander cell, or one with no rows clear of the counter's padded north.
-    pub(crate) fn snack_shelf_center(bounds: Bounds, counter: Size) -> Option<Point> {
+    pub(crate) fn snack_shelf_center(bounds: Bounds, counter: Size, counter_pct: u16) -> Option<Point> {
         let vis = furniture_def(Furniture::SnackShelf).visual;
         let (half_w, half_h) = (vis.w / 2, vis.h / 2);
         let clr = WALL_THICK_H + OBSTACLE_PAD_PX;
-        let counter_north = Self::counter_north(bounds, counter);
+        let counter_north = Self::counter_north(bounds, counter, counter_pct);
         // Width gate: 1px west margin + the shelf + 3px so the east-side stander has
         // an in-room walkable cell.
         let width_fits = bounds.width >= vis.w + 4;
@@ -200,7 +204,7 @@ impl PantryRoom {
     /// The snack shelf's sprite box, where [`Self::snack_shelf_center`]
     /// stands it.
     pub(crate) fn snack_shelf_rect(&self) -> Option<Bounds> {
-        Self::snack_shelf_center(self.bounds, self.counter_size)
+        Self::snack_shelf_center(self.bounds, self.counter_size, self.counter_pct)
             .map(|c| centred(c, furniture_def(Furniture::SnackShelf).visual))
     }
 }
@@ -222,6 +226,7 @@ fn clear_of<const N: usize>(r: Bounds, others: [Option<Bounds>; N]) -> bool {
 pub(crate) fn place_kitchen_island(
     pr: Bounds,
     counter: Size,
+    counter_pct: u16,
     waypoints: &mut Vec<Waypoint>,
 ) -> Option<Point> {
     let island = furniture_def(Furniture::KitchenIsland);
@@ -232,7 +237,7 @@ pub(crate) fn place_kitchen_island(
     // and must stay in-room too — so the x clamps price the stand extent, not the
     // body.
     let stand_dx = half_w + island.pad + 1;
-    let counter_north = PantryRoom::counter_north(pr, counter);
+    let counter_north = PantryRoom::counter_north(pr, counter, counter_pct);
     let min_x = pr.x + clr + stand_dx;
     let max_x = (pr.x + pr.width).saturating_sub(clr + stand_dx);
     // The bartenders' approach lane — the walkable row above the body's padded
@@ -271,8 +276,13 @@ pub(crate) fn place_kitchen_island(
 
 /// Place the snack shelf in room `pr` where [`PantryRoom::snack_shelf_center`]
 /// stands it, pushing its single `WaypointKind::SnackShelf` slot.
-pub(crate) fn place_snack_shelf(pr: Bounds, counter: Size, waypoints: &mut Vec<Waypoint>) {
-    if let Some(pos) = PantryRoom::snack_shelf_center(pr, counter) {
+pub(crate) fn place_snack_shelf(
+    pr: Bounds,
+    counter: Size,
+    counter_pct: u16,
+    waypoints: &mut Vec<Waypoint>,
+) {
+    if let Some(pos) = PantryRoom::snack_shelf_center(pr, counter, counter_pct) {
         waypoints.push(Waypoint {
             pos,
             kind: WaypointKind::SnackShelf,
@@ -342,6 +352,7 @@ mod tests {
                         bounds: bx(x, 0, width, 40),
                         counter_size,
                         kitchen_island: None,
+                        counter_pct: pantry_counter_y_pct(counter_size.w),
                     };
                     let counter = p.counter_rect();
                     assert_eq!(counter.is_some(), width > counter_size.w, "{:?}", p.bounds);

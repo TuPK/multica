@@ -46,14 +46,19 @@ fn studio_rooms_top(top_margin: u16) -> u16 {
     top_margin.next_multiple_of(COARSE_CELL_SIZE)
 }
 
-/// The studio's lounge couch: centred across the floor, in the corridor below the desk rooms.
-/// The aquarium and the greeting plant stand east of the couch, so it sits
+/// The line the studio's pantry counter stands on: the corridor line the lounge stands on too.
+fn studio_counter_line(buf_h: u16, top_margin: u16) -> u16 {
+    let pantry_y = top_margin + 2 * STUDIO_MEETING_ROOM_H;
+    pantry_y + pct(buf_h - pantry_y, STUDIO_PANTRY_COUNTER_PCT)
+}
+
+/// The studio's lounge couch: centred across the floor, on the pantry counter's line. The
+/// aquarium and the greeting plant stand east of the couch, so it sits
 /// [`STUDIO_LOUNGE_EAST_WEIGHT`] columns west of the floor's centre to centre the whole group.
 fn studio_couch_pos(buf_w: u16, buf_h: u16, top_margin: u16) -> Point {
-    let grid_bottom = studio_rooms_top(top_margin) + STUDIO_GRID_H;
     Point {
         x: buf_w / 2 - STUDIO_LOUNGE_EAST_WEIGHT,
-        y: grid_bottom + buf_h.saturating_sub(grid_bottom) / 2,
+        y: studio_counter_line(buf_h, top_margin),
     }
 }
 
@@ -219,6 +224,8 @@ struct FloorPlan {
     pod_grid: PodGrid,
     pantry: Option<Bounds>,
     pantry_counter_size: Size,
+    /// The counter's centre line as a percent of the pantry's height.
+    pantry_counter_pct: u16,
     /// Indexed by room id; room 0 is the top room.
     meeting_rooms: Vec<MeetingRoom>,
     /// The walled desk rooms of a studio floor, west to east, top row first; empty on every other floor.
@@ -232,7 +239,9 @@ impl FloorPlan {
     fn new(buf_w: u16, buf_h: u16, floor_seed: u64, studio: bool) -> Self {
         // The studio's window band is shallower, so its desk rooms get the height it frees.
         let top_margin = if studio {
-            pct_at_least(buf_h, STUDIO_TOP_MARGIN_PCT, MIN_TOP_MARGIN)
+            // Whole coarse cells, so the top row of desk rooms stands on the window band's
+            // edge with no strip of floor between them.
+            pct_at_least(buf_h, STUDIO_TOP_MARGIN_PCT, MIN_TOP_MARGIN).next_multiple_of(COARSE_CELL_SIZE)
         } else {
             top_margin(buf_h)
         };
@@ -272,6 +281,12 @@ impl FloorPlan {
         // cram the trio to its fit gate to buy rows the island still couldn't use.
         let trio_fit_h = MeetingRoom::trio_fit_h();
         let pantry_content_h = PantryRoom::content_fit_h(pantry_counter_size);
+        // The studio's counter sits lower, on the corridor line its lounge stands on.
+        let pantry_counter_pct = if studio {
+            STUDIO_PANTRY_COUNTER_PCT
+        } else {
+            super::rooms::pantry::pantry_counter_y_pct(pantry_counter_size.w)
+        };
         let half_split = usable_h / 2;
         let donated = usable_h.saturating_sub(pantry_content_h);
         let meeting_h = if (trio_fit_h..half_split).contains(&donated) {
@@ -310,22 +325,14 @@ impl FloorPlan {
                 x: 0,
                 y: top_margin,
                 width: if studio { studio_room_w } else { mid_x },
-                height: if studio {
-                    studio_room_h
-                } else {
-                    mid_y_split - top_margin
-                },
+                height: mid_y_split - top_margin,
             })
         } else {
             None
         };
         let meeting_room_2 = if studio {
-            Some(Bounds {
-                x: 0,
-                y: top_margin + studio_room_h,
-                width: studio_room_w,
-                height: studio_room_h,
-            })
+            // The studio's boss room is the product office and its meeting room as one room.
+            None
         } else if has_dual_meeting {
             Some(Bounds {
                 x: 0,
@@ -368,11 +375,24 @@ impl FloorPlan {
             width: right_w,
             height: cubicle_h,
         };
-        let cubicle_aisle = Bounds {
-            x: right_x,
-            y: top_margin + cubicle_h,
-            width: right_w,
-            height: cubicle_aisle_h,
+        // The studio's corridor runner starts on the pantry counter's base, so the pantry and
+        // the lounge stand on its edge; it runs on to the floor's bottom edge.
+        let cubicle_aisle = if studio {
+            let runner_top = studio_counter_line(buf_h, top_margin)
+                + pantry_counter_size.h / 2;
+            Bounds {
+                x: right_x,
+                y: runner_top,
+                width: right_w,
+                height: buf_h - runner_top,
+            }
+        } else {
+            Bounds {
+                x: right_x,
+                y: top_margin + cubicle_h,
+                width: right_w,
+                height: cubicle_aisle_h,
+            }
         };
 
         let pod_w = POD_SIDE * DESK_W + (POD_SIDE - 1) * INTRA_POD_GAP_X;
@@ -423,6 +443,7 @@ impl FloorPlan {
             pod_grid,
             pantry: pantry_room,
             pantry_counter_size,
+            pantry_counter_pct,
             meeting_rooms,
             desk_rooms,
             studio,
@@ -654,10 +675,20 @@ pub(super) fn compute_with_seed(
 
     // The island pushes its 4 slots BEFORE the shelf's — the push order the goldens pin.
     let kitchen_island = plan.pantry.and_then(|pr| {
-        super::rooms::pantry::place_kitchen_island(pr, plan.pantry_counter_size, &mut waypoints)
+        super::rooms::pantry::place_kitchen_island(
+            pr,
+            plan.pantry_counter_size,
+            plan.pantry_counter_pct,
+            &mut waypoints,
+        )
     });
     if let Some(pr) = plan.pantry {
-        super::rooms::pantry::place_snack_shelf(pr, plan.pantry_counter_size, &mut waypoints);
+        super::rooms::pantry::place_snack_shelf(
+            pr,
+            plan.pantry_counter_size,
+            plan.pantry_counter_pct,
+            &mut waypoints,
+        );
     }
 
     let corridor = Bounds {
@@ -825,6 +856,7 @@ pub(super) fn compute_with_seed(
             bounds,
             counter_size: plan.pantry_counter_size,
             kitchen_island,
+            counter_pct: plan.pantry_counter_pct,
         }),
         room_walls,
         doorways,
@@ -1509,6 +1541,9 @@ const STUDIO_POD_ROWS: u16 = 2;
 /// band, the two rows of rooms and the corridor below them.
 const STUDIO_MIN_W: u16 = 416;
 const STUDIO_MIN_H: u16 = 171;
+/// The studio's pantry counter centre line, as a percent of the pantry's height: lower than the
+/// other floors', so the counter sits on the corridor line below the desk rooms.
+const STUDIO_PANTRY_COUNTER_PCT: u16 = 88;
 /// The studio's two left-column rooms are tall enough for the vertical meeting table and side chairs.
 const STUDIO_MEETING_ROOM_H: u16 = 40;
 /// The studio's left column, narrower than the standard floor's so the desk rooms have the width.
@@ -1801,7 +1836,7 @@ fn art_rect(b: Bounds) -> (Point, Size) {
 /// south of it with the screen toward the viewer, as a staff desk of the pods' second row does.
 fn boss_seat(office: Bounds) -> HomeDesk {
     let cx = office.x + office.width / 2;
-    let cy = office.y + office.height / 2;
+    let cy = office.y + STUDIO_BOSS_DESK_FROM_NORTH;
     HomeDesk {
         at: Point {
             x: snap_to_coarse(cx.saturating_sub(DESK_W / 2)),
@@ -1811,69 +1846,51 @@ fn boss_seat(office: Bounds) -> HomeDesk {
     }
 }
 
-/// The studio's two stacked rooms on the left: the product office (room 0) and the meeting room below it.
+/// Rows from the boss room's north wall to the boss desk's centre: the desk stands under the
+/// kanban board, with the meeting table below it.
+const STUDIO_BOSS_DESK_FROM_NORTH: u16 = 16;
+
+/// The studio's boss room: the one room on the left, the boss's desk and the secretary's
+/// stand in the north, and the meeting table south of them.
 fn studio_offices(rooms: &[MeetingRoom]) -> Vec<PodDecorItem> {
-    let [office, meeting] = rooms else {
+    let [boss] = rooms else {
         return Vec::new();
     };
-    let mut items = product_office(office.bounds);
-    items.extend(meeting_room_decor(meeting.bounds));
-    items
+    boss_room_decor(boss.bounds)
 }
 
-/// The studio's product office: a small guest sofa in its south-west corner. Positions are the
-/// pieces' centres.
-fn product_office(room: Bounds) -> Vec<PodDecorItem> {
-    /// Rows between the room's south edge and the guest sofa's centre.
-    const SOFA_FROM_SOUTH: u16 = 9;
-    /// Columns between the room's west edge and the guest sofa's centre.
-    const SOFA_FROM_WEST: u16 = 11;
-    // By the west wall, clear of the doorway cut in the south wall.
-    vec![PodDecorItem {
-        kind: PodDecor::ReceptionSofa,
-        pos: Point {
-            x: room.x + SOFA_FROM_WEST,
-            y: room.y + room.height - SOFA_FROM_SOUTH,
-        },
-    }]
-}
-
-/// The studio's meeting room: a vertical table, a TV and a whiteboard along its north wall,
-/// and meeting chairs down both sides of the table.
-fn meeting_room_decor(room: Bounds) -> Vec<PodDecorItem> {
-    /// The centre rows of the three table pieces and their matching side chairs.
-    const TABLE_DY: [i32; 3] = [-10, 0, 10];
-    const CHAIR_DY: [i32; 3] = [-10, 0, 10];
+/// The boss room's decor: a kanban board flat against the window band, and one long table
+/// running north to south with three chairs down each side. Positions are the pieces' centres.
+fn boss_room_decor(room: Bounds) -> Vec<PodDecorItem> {
+    /// The centre rows of the table's pieces, which stack end to end into one long table.
+    const TABLE_DY: [i32; 3] = [-11, 0, 11];
+    /// The centre rows of the chairs on each side of the table.
+    const CHAIR_DY: [i32; 3] = [-11, 0, 11];
+    /// Columns from the table's centre to each side's chairs.
+    const CHAIR_DX: i32 = 5;
+    /// Rows from the room's north edge down to the table's centre.
+    const TABLE_FROM_NORTH: i32 = 46;
     let cx = i32::from(room.x) + i32::from(room.width / 2);
     let at = |dx: i32, y: i32| Point {
         x: (cx + dx) as u16,
         y: y as u16,
     };
     let top = i32::from(room.y);
-    let mid = top + i32::from(room.height / 2);
-    let mut items = vec![
-        PodDecorItem {
-            kind: PodDecor::Tv,
-            pos: Point {
-                x: room.x + 9,
-                y: room.y + 6,
-            },
+    let board_h = furniture_def(Furniture::Whiteboard).visual.h;
+    let mut items = vec![PodDecorItem {
+        kind: PodDecor::Whiteboard,
+        pos: Point {
+            x: room.x + room.width - 11,
+            y: room.y + board_h / 2,
         },
-        PodDecorItem {
-            kind: PodDecor::Whiteboard,
-            pos: Point {
-                x: room.x + room.width - 11,
-                y: room.y + 6,
-            },
-        },
-    ];
-    let table_y = mid + 1;
+    }];
+    let table_y = top + TABLE_FROM_NORTH;
     items.extend(TABLE_DY.map(|dy| PodDecorItem {
-        kind: PodDecor::MeetingTable,
+        kind: PodDecor::MeetingTableLong,
         pos: at(0, table_y + dy),
     }));
-    // The chairs sit on both long sides of the vertical table.
-    for dx in [-9, 9] {
+    // The chairs sit on both long sides of the table.
+    for dx in [-CHAIR_DX, CHAIR_DX] {
         items.extend(CHAIR_DY.map(|dy| PodDecorItem {
             kind: PodDecor::MeetingChair,
             pos: at(dx, table_y + dy),
@@ -2044,6 +2061,7 @@ fn compute_waypoints(
         buf_h,
         pantry: pantry_room,
         pantry_counter_size,
+        pantry_counter_pct,
         ref pod_grid,
         ref cubicle_aisle,
         ref meeting_rooms,
@@ -2068,7 +2086,7 @@ fn compute_waypoints(
         })
         .collect();
     if let Some(pos) =
-        pantry_room.and_then(|pr| PantryRoom::counter_center(pr, pantry_counter_size))
+        pantry_room.and_then(|pr| PantryRoom::counter_center(pr, pantry_counter_size, pantry_counter_pct))
     {
         waypoints.push(Waypoint {
             pos,

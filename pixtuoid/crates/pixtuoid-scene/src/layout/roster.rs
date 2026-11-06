@@ -278,7 +278,7 @@ impl FixtureKind {
                 PodDecor::StandingDesk => "Standing Desk",
                 PodDecor::StaffDesk => "Staff Desk",
                 PodDecor::ReceptionSofa => "Guest Sofa",
-                PodDecor::MeetingTable => "Meeting Table",
+                PodDecor::MeetingTable | PodDecor::MeetingTableLong => "Meeting Table",
                 PodDecor::MeetingChair => "Meeting Chair",
             },
             FixtureKind::Wall { kind, .. } => match kind {
@@ -468,7 +468,7 @@ impl SceneLayout {
             door_threshold: _,
             meeting_rooms,
             // Walls only: the desks in them are rostered as desks.
-            desk_rooms: _,
+            desk_rooms,
             pantry,
             // Architecture, which the painters draw from `wall_pieces`; the
             // pantry mat reads `doorways` through `pantry_entry_mat`.
@@ -499,6 +499,7 @@ impl SceneLayout {
                     // rect methods.
                     bounds: _,
                     counter_size: _,
+                    counter_pct: _,
                     kitchen_island,
                 },
             ) => (*kitchen_island, Some(p)),
@@ -606,8 +607,13 @@ impl SceneLayout {
                     )
             }))
             .chain(lounge.as_ref().map(|l| {
-                let first_desk_row = home_desks.iter().map(|d| d.at.y).min();
-                let rug = l.rug(first_desk_row.unwrap_or(*buf_h));
+                // The rug ends at the first desk row below the couch, or the floor's bottom edge.
+                let ground_end = home_desks
+                    .iter()
+                    .map(|d| d.at.y)
+                    .filter(|&y| y > l.couch_center.y)
+                    .min();
+                let rug = l.rug(ground_end.unwrap_or(*buf_h));
                 Fixture {
                     kind: FixtureKind::LoungeRug,
                     at: top_left(rug),
@@ -683,6 +689,10 @@ impl SceneLayout {
             )
             .chain(tank.map(|at| centred_row(FixtureKind::FishTank, at, Furniture::FishTank)))
             .chain(rooms.filter_map(move |(room, r, _)| {
+                // The studio's boss room has no coat rack.
+                if !desk_rooms.is_empty() {
+                    return None;
+                }
                 let pole = r.coat_rack_pos()?;
                 Some(upright(
                     FixtureKind::CoatRack { room },

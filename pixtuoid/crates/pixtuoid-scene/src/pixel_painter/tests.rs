@@ -2434,6 +2434,7 @@ fn furniture_painters_fill_exactly_their_rect_authority() {
         bounds: big,
         counter_size: crate::layout::COMPACT_COUNTER,
         kitchen_island: None,
+        counter_pct: crate::layout::pantry_counter_y_pct(crate::layout::COMPACT_COUNTER.w),
     };
     let meeting = crate::layout::MeetingRoom {
         bounds: big,
@@ -4221,6 +4222,7 @@ fn water_cooler_glugs_a_rising_bubble() {
         bounds: pr,
         counter_size: crate::layout::COMPACT_COUNTER,
         kitchen_island: None,
+        counter_pct: crate::layout::pantry_counter_y_pct(crate::layout::COMPACT_COUNTER.w),
     };
     let render = |ms: u64| {
         let mut buf = RgbBuffer::filled(60, 60, bg);
