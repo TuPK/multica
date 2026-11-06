@@ -152,12 +152,13 @@ it blocked.
 
 1. Read the latest comment that says why it cannot proceed.
 2. If the blocker is an environment or a tool the developer can restore (a local service down, a missing
-   environment variable, a check that failed to run) and fewer than three environment attempts have failed:
-   comment "Environment attempt n of 3", the exact fix and the command that proves it, then send the issue back
-   to In Progress. The developer rebuilds, re-runs the check, and hands it on again.
-3. If three environment attempts have already failed: set the issue to done with a comment that lists each check
-   that did not run, its exact command and error, and the risk it leaves open. Dependent issues run on that
-   record, so it must be specific. Never write that a check passed when it did not run.
+   environment variable, a check that failed to run): comment "Environment attempt n", the exact fix and the command
+   that proves it, then send the issue back to In Progress. The developer rebuilds, re-runs the check, and hands it
+   on again.
+3. If earlier attempts did not clear it, never close the issue on a check that did not run, and never set it done to get
+   past it. Change the kind of approach: a different tool, a local stand-in for the dependency, a smaller check that proves
+   part of it, a split into smaller issues, or a different member. Name the approaches already tried in the comment, then send
+   the issue back to In Progress.
 4. If the blocker needs a decision only the boss can make: file a proposal for the boss with the evidence, and
    leave the issue at Blocked with a comment saying what is waiting.
 
@@ -167,11 +168,11 @@ Never change acceptance criteria to get past a blocker. An epic still needs its 
 
 ## Step 8: The final report
 
-When the final verification has passed (or after two fix rounds, blocked), record the squad activity every turn you run
+When the final verification has passed (or keep sending fix rounds, each with a different approach, until it has), record the squad activity every turn you run
 (`multica squad activity` with outcome "action" when you created or moved an issue, and "no_action" otherwise), post
 one final report comment on the request in the format in reference.md, then move the request to Plan ready. Plan ready
 has no owner, and done is left to a person. On NO GO, FAIL, or a blocking finding in the final verification, create a fix
-issue for the Bug Fixer, queue the verification again behind it, and repeat at most twice.
+issue for the Bug Fixer, queue the verification again behind it, and repeat, changing the approach each round, until it passes.
 
 ## Self-check before you report
 

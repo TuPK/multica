@@ -54,8 +54,10 @@ any skill, as it overrides approval steps.
    browser at 1440px and 390px wide, and check: no console errors; no failed or 4xx/5xx backend calls; the data comes from
    the backend, not fixtures or demo text; no horizontal scrolling at 390px; no developer copy (DEMO, fixture, TODO,
    placeholder, internal labels); empty and error states show a clear message to the user.
-7. **Evidence.** Record in the spec each route, viewport, result, and screenshot path. Mark a check you did not run as not verified.
-8. **Acceptance.** Check each acceptance criterion against that evidence. Only then mark the story as in review.
+7. **Evidence.** Record in the spec each route, viewport, result, and screenshot path. A check you have not run yet is work to do, not a result: run it or make it runnable (see "Making a hard criterion verifiable").
+8. **Acceptance.** Check each acceptance criterion against that evidence. A criterion with no evidence means you are not
+   done: produce the evidence in this run (see "Making a hard criterion verifiable"). Mark the story as in review only when
+   every criterion has evidence.
 9. **Progress.** Update the story status and its checkboxes in the spec as you go. After a break or a context reset, rebuild
    your state from the spec, the issue comments, and the recent commits, not from memory.
 
@@ -87,7 +89,29 @@ Browser evidence: when the browser the check needs is not at its default path, f
 `command -v google-chrome chromium chromium-browser` before you record the browser check as a gap. If the repo has no setting
 for it, the repo's own check scripts are part of the story's scope only when the story says so; otherwise report the gap.
 
-A passing unit or build check does not close a runtime check. Record the runtime check as not verified only after steps 1 to 4.
+A passing unit or build check does not close a runtime check.
+
+## Making a hard criterion verifiable
+
+A criterion that looks hard to prove (a dependency failing, a deadline, a race, a state that is slow to reach) is a thing
+to build, not a thing to list as not verified. Make the situation happen locally, then assert what the user or the data
+shows:
+
+- **A dependency fails or is offline** (a service, a private runtime, a supplier): inject the failure at the boundary.
+  Stop the local service, point the URL at a closed port, or make a local stub return the error. Assert the user-visible outcome.
+- **Time decides it** (a cron deadline, an expiry, a timeout): call the scheduled job directly, or move the stored
+  timestamps in the local database, then run the job and assert the result.
+- **Two actors compete** (a concurrent revision, a double submit): send the competing calls in parallel from a script and
+  assert that exactly one wins and the other gets the documented conflict.
+- **A state is slow to reach:** create it through the real API or a setup script with unique identifiers, and clean it up.
+- **A UI path is hard to drive:** use the browser automation the repo has. If the check itself is wrong, fix the check.
+- **It needs a real paid or production service:** build the closest local stand-in at that boundary and run the criterion
+  against it. Record it as "verified against a stand-in: <name>; still unproven: <what>". That is evidence, and the story may
+  go to review with it.
+
+When the repo has no tooling for the kind of check you need, write it beside the repo's tests and keep it. Do the cheapest
+criteria first, but do all of them in this run. Commit as you go, and continue after a long step. Do not stop to ask which
+criterion to prove next.
 
 ## Tools for UI changes
 
@@ -108,7 +132,7 @@ unblock.
 
 ## Self-check before you report
 
-- Every acceptance criterion has a status and evidence, or is listed as not verified.
+- Every acceptance criterion has evidence, real or against a named stand-in. None is left as not verified.
 - Every route you changed was opened at both viewports, or the gap is listed.
 - Every business decision is recorded with options, evidence, the choice, and its reversal cost.
 - No schema or API contract changed without a new forward migration or endpoint.

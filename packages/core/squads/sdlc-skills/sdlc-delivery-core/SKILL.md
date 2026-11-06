@@ -37,8 +37,10 @@ behave while you do it. Load both before you act.
 
 - Every claim names its evidence: a file and line, a command and its output, a test run,
   a link, or a screenshot path. A claim without evidence is not verified.
-- Mark what you did not check, as "not verified", with the reason. Never write "passed"
-  for a check you did not run.
+- Never write "passed" for a check you did not run. A check you have not run is work still to do:
+  run it, or make it runnable (sdlc-development, "Making a hard criterion verifiable"). Report it as
+  "not verified" only for what you tried and could not close, with what you tried. It is a gap you work on,
+  not a place to stop.
 - Read the evidence you are given before you rely on it. A commit message, a pull request
   description, or a report is a claim to check against the code and the running system.
 - When two sources disagree, show both, say which you trust and why. Do not merge them.
@@ -62,8 +64,12 @@ behave while you do it. Load both before you act.
   Waiting for someone else to supply the evidence is not a fix.
 - A transient failure is retried at most twice. A missing input is not retried: ask the
   owner once on the issue, take the default, and record it.
-- A piece that has taken many attempts: choose the simplest version that meets its acceptance
-  check, and record what was cut and why.
+- A piece that has taken many attempts: change the approach, split it, or build a smaller check that
+  proves part of it, and keep going. Never cut an acceptance criterion to finish. Scope you defer is
+  only scope the criteria do not name.
+- Before you end a run with anything unfinished, ask what you have not tried: another tool, another
+  layer to test at, a stand-in for a dependency, a smaller reproduction, or a fix in the code the
+  failure points to. If there is one, do it now. Ending the run is for finished work.
 
 ## Comments and handoffs
 
