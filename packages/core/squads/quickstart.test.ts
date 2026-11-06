@@ -750,6 +750,31 @@ describe("runSquadQuickstart built-in skills", () => {
     expect(out.skills.error).toContain(`${sdlcNames[0]}: the workspace has its own skill`);
   });
 
+  it("attaches a boss's own copy of a built-in skill when its text already matches", async () => {
+    const bundle = bundleOf(sdlcNames[0]!);
+    const copy = {
+      id: "skill-copy",
+      name: sdlcNames[0],
+      description: bundle.description,
+      content: bundle.content,
+      config: {},
+      files: bundle.files.map((f) => ({ ...f, id: `file-${f.path}` })),
+    };
+    const client = fakeClient({
+      listSkills: vi.fn(async () => [copy] as never),
+      getSkill: vi.fn(async () => copy as never),
+    });
+
+    const out = await runSquadQuickstart(client, greenfield, options);
+
+    expect(client.updateSkill).not.toHaveBeenCalled();
+    expect(client.setSquadSkills).toHaveBeenCalledWith(
+      "squad-1",
+      sdlcNames.map((name) => (name === sdlcNames[0] ? "skill-copy" : `skill-${name}`)),
+    );
+    expect(out.skills).toEqual({ status: "ready" });
+  });
+
   it("keeps the squad's other skills when it attaches the built-in ones", async () => {
     const client = fakeClient({
       listSquadSkills: vi.fn(async () => [{ id: "skill-boss", name: "x", description: "" }] as never),

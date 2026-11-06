@@ -323,7 +323,8 @@ function sameAsBuiltin(skill: Skill, bundle: BuiltinSkill): boolean {
  * Imports the built-in skills a template names into the workspace, and attaches
  * them to the squad, so every member gets them. A skill the quickstart made
  * before is updated to the built-in text. A skill the boss made under the same
- * name is left as it is and named in the error; the squad keeps the others.
+ * name is attached when its text already matches the built-in one, and otherwise
+ * left as it is and named in the error; the squad keeps the others.
  */
 async function attachBuiltinSkills(
   client: SquadQuickstartClient,
@@ -355,6 +356,12 @@ async function attachBuiltinSkills(
       }
       const current = await client.getSkill(found.id);
       if (!isBuiltinSkill(current.config)) {
+        // The boss's own copy is attached when it already matches the built-in text,
+        // and left alone otherwise.
+        if (sameAsBuiltin(current, bundle)) {
+          ids.push(found.id);
+          continue;
+        }
         failures.push(`${name}: the workspace has its own skill under this name`);
         continue;
       }
