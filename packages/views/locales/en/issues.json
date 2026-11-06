@@ -1857,6 +1857,7 @@
     "new_description": "Description",
     "new_priority": "Priority",
     "new_assign": "Assign to {{name}}",
+    "new_queue": "Put in run queue",
     "new_cancel": "Cancel",
     "new_create": "Create issue",
     "new_created": "Created {{identifier}}",

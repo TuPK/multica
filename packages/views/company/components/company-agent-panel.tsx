@@ -12,6 +12,8 @@ import { cn } from "@multica/ui/lib/utils";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { useT } from "../../i18n";
 import { IssueDetail } from "../../issues/components/issue-detail";
+import { RunQueueControl, RunQueueWaitingLabel } from "../../issues/components/run-queue-control";
+import { issueDetailOptions } from "@multica/core/issues/queries";
 import { CompanyAgentChat } from "./company-agent-chat";
 import { CompanyAgentNewIssue } from "./company-agent-new-issue";
 import { CompanyAgentWork } from "./company-agent-work";
@@ -139,22 +141,43 @@ function PanelBody({
             />
           ) : null}
           {pane.kind === "issue" ? (
-            <IssueDetail
-              key={pane.issueId}
-              issueId={pane.issueId}
-              variant="peek"
-              defaultSidebarOpen={false}
-              leadingAction={
-                <Button type="button" variant="ghost" size="sm" onClick={backToChat}>
-                  <ArrowLeft className="size-4" />
-                  {t(($) => $.company.issue_back)}
-                </Button>
-              }
-              onDelete={backToChat}
-            />
+            <>
+              <PaneRunQueue issueId={pane.issueId} />
+              <IssueDetail
+                key={pane.issueId}
+                issueId={pane.issueId}
+                variant="peek"
+                defaultSidebarOpen={false}
+                leadingAction={
+                  <Button type="button" variant="ghost" size="sm" onClick={backToChat}>
+                    <ArrowLeft className="size-4" />
+                    {t(($) => $.company.issue_back)}
+                  </Button>
+                }
+                onDelete={backToChat}
+              />
+            </>
           ) : null}
         </section>
       </div>
     </>
+  );
+}
+
+/**
+ * The run-queue control for the open issue. IssueDetail's sidebar, which normally
+ * holds it, stays closed in this panel, so the control sits on its own line here.
+ */
+function PaneRunQueue({ issueId }: { issueId: string }) {
+  const { t } = useT("issues");
+  const wsId = useWorkspaceId();
+  const { data: issue } = useQuery(issueDetailOptions(wsId, issueId));
+  if (!issue || issue.status !== "backlog") return null;
+  return (
+    <div className="flex shrink-0 items-center gap-2 border-b px-4 py-2">
+      <span className="text-caption font-medium">{t(($) => $.run_queue.label)}</span>
+      <RunQueueControl issue={issue} className="h-7 px-2" />
+      <RunQueueWaitingLabel issue={issue} className="text-caption text-muted-foreground" />
+    </div>
   );
 }

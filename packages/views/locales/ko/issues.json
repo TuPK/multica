@@ -1789,6 +1789,7 @@
     "new_description": "설명",
     "new_priority": "우선순위",
     "new_assign": "{{name}}에게 할당",
+    "new_queue": "실행 큐에 추가",
     "new_cancel": "취소",
     "new_create": "이슈 만들기",
     "new_created": "{{identifier}}을(를) 만들었습니다",

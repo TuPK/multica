@@ -1789,6 +1789,7 @@
     "new_description": "説明",
     "new_priority": "優先度",
     "new_assign": "{{name}} に割り当てる",
+    "new_queue": "実行キューに入れる",
     "new_cancel": "キャンセル",
     "new_create": "イシューを作成",
     "new_created": "{{identifier}} を作成しました",

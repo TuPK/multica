@@ -1789,6 +1789,7 @@
     "new_description": "描述",
     "new_priority": "优先级",
     "new_assign": "分配给 {{name}}",
+    "new_queue": "加入运行队列",
     "new_cancel": "取消",
     "new_create": "创建任务",
     "new_created": "已创建 {{identifier}}",

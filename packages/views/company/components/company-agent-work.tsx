@@ -14,6 +14,7 @@ import { Input } from "@multica/ui/components/ui/input";
 import { cn } from "@multica/ui/lib/utils";
 import { useT } from "../../i18n";
 import { PriorityIcon } from "../../issues/components/priority-icon";
+import { RunQueueControl, RunQueueWaitingLabel } from "../../issues/components/run-queue-control";
 import { StatusIcon } from "../../issues/components/status-icon";
 import { DONE_LIMIT, WORK_GROUPS, groupAgentWork, type WorkGroup } from "../lib/agent-work";
 
@@ -115,6 +116,7 @@ export function CompanyAgentWork({
                         issue={issue}
                         selected={issue.id === selectedIssueId}
                         assignable={group === "assignable"}
+                        queueable={group === "next" && issue.status === "backlog"}
                         pending={update.isPending}
                         assigneeName={
                           issue.assignee_type === "agent"
@@ -140,6 +142,7 @@ function WorkRow({
   issue,
   selected,
   assignable,
+  queueable,
   pending,
   assigneeName,
   onSelect,
@@ -148,6 +151,8 @@ function WorkRow({
   issue: Issue;
   selected: boolean;
   assignable: boolean;
+  /** Backlog work the agent already holds, which can be put in the run queue. */
+  queueable: boolean;
   pending: boolean;
   /** Who holds the issue now, when it is listed as work to hand over. */
   assigneeName?: string;
@@ -175,6 +180,12 @@ function WorkRow({
           ) : null}
         </span>
       </button>
+      {queueable ? (
+        <div className="flex shrink-0 items-center gap-1.5">
+          <RunQueueControl issue={issue} className="h-6 px-1.5 text-caption" />
+          <RunQueueWaitingLabel issue={issue} className="text-micro text-muted-foreground" />
+        </div>
+      ) : null}
       {assignable ? (
         <Button type="button" variant="outline" size="xs" disabled={pending} onClick={onAssign}>
           {t(($) => $.company.assign_action)}
