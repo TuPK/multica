@@ -1280,6 +1280,11 @@ func (d *Daemon) notifyRuntimeSetChanged() {
 // workspace, so concurrent recoveries must collapse to one API call.
 const reregisterCoalesceWindow = 30 * time.Second
 
+// maxTaskMessageReportRetries bounds how many flushes resend a failed batch of
+// task messages before the daemon gives the batch up. A batch the server refuses
+// for good (not a timeout) must not be resent forever.
+const maxTaskMessageReportRetries = 10
+
 // reregisterFailureBackoff is the additional wait inserted before the next
 // re-register attempt when the previous one failed. This prevents heartbeat
 // ticks (~15s) from converting a server-side log flood into a re-register
@@ -9913,6 +9918,13 @@ func (d *Daemon) executeAndDrain(ctx context.Context, backend agent.Backend, pro
 		var pendingType string
 		var pendingAt time.Time
 		var batch []TaskMessageData
+		// A report that fails is sent again with the next flush, ahead of newer
+		// messages, so the transcript keeps its seq order without a gap. Each
+		// message carries a key scoped to this execution, so a resend that the
+		// server already stored is ignored.
+		var failedBatch []TaskMessageData
+		reportScope := uuid.NewString()
+		reportFailures := 0
 		callIDToTool := map[string]string{}
 		// Provider IDs can restart on a same-task retry (for example item_0).
 		// Allocate opaque transcript IDs per execution, including orphan results,
@@ -9969,19 +9981,36 @@ func (d *Daemon) executeAndDrain(ctx context.Context, backend agent.Backend, pro
 		flush := func() {
 			mu.Lock()
 			sealPendingLocked()
-			toSend := batch
+			toSend := append(failedBatch, batch...)
+			failedBatch = nil
 			batch = nil
 			mu.Unlock()
 
-			if len(toSend) > 0 {
-				sendCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				if err := d.client.ReportTaskMessages(sendCtx, taskID, toSend); err != nil {
-					taskLog.Debug("failed to report task messages", "error", err)
-				} else {
-					taskLog.Debug("reported task messages", "count", len(toSend), "last_seq", toSend[len(toSend)-1].Seq)
-				}
-				cancel()
+			if len(toSend) == 0 {
+				return
 			}
+			for i := range toSend {
+				toSend[i].IdempotencyKey = reportScope + ":" + strconv.Itoa(toSend[i].Seq)
+			}
+			sendCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			err := d.client.ReportTaskMessages(sendCtx, taskID, toSend)
+			cancel()
+
+			mu.Lock()
+			defer mu.Unlock()
+			if err == nil {
+				reportFailures = 0
+				taskLog.Debug("reported task messages", "count", len(toSend), "last_seq", toSend[len(toSend)-1].Seq)
+				return
+			}
+			reportFailures++
+			if reportFailures > maxTaskMessageReportRetries {
+				taskLog.Warn("dropped task messages after repeated report failures", "count", len(toSend), "first_seq", toSend[0].Seq, "error", err)
+				reportFailures = 0
+				return
+			}
+			taskLog.Debug("failed to report task messages; will retry", "count", len(toSend), "attempt", reportFailures, "error", err)
+			failedBatch = toSend
 		}
 
 		ticker := time.NewTicker(500 * time.Millisecond)

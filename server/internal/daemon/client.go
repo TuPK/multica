@@ -623,6 +623,9 @@ type TaskMessageData struct {
 	// which an older installed daemon talking to a newer server cannot say any
 	// other way, and which the server must not record as "complete".
 	OutputTruncated *bool `json:"output_truncated,omitempty"`
+	// IdempotencyKey names the message within one execution, so a batch the daemon
+	// resends after a failed report lands once on the server.
+	IdempotencyKey string `json:"idempotency_key,omitempty"`
 }
 
 func (c *Client) ReportTaskMessages(ctx context.Context, taskID string, messages []TaskMessageData) error {
