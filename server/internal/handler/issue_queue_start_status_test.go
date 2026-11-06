@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/multica-ai/multica/server/internal/testutil"
 )
@@ -74,9 +75,10 @@ func TestSetIssueRunQueue_RefusesAStartStatusTheProjectWorkflowLacks(t *testing.
 	}
 }
 
-// A request a squad leader is working is not a step of the workflow: moving it
-// does not hand it to the step's handler, but the same move on the leader's
-// child issue, or on an issue nobody leads, does.
+// A request a squad leader is working is not a step of the workflow when a
+// member moves it: that does not hand it to the step's handler. The same move on
+// the leader's child issue, or on an issue nobody leads, does, and so does the
+// leader's own run moving the request (TestSquadLeaderMoveHandsRequestToStepHandler).
 func TestWorkflowDoesNotHandOffASquadRequest(t *testing.T) {
 	seedTestCatalog(t)
 	resetDefaultWorkflow(t)
@@ -109,6 +111,33 @@ func TestWorkflowDoesNotHandOffASquadRequest(t *testing.T) {
 	updateIssueForTest(t, other, map[string]any{"status": "in_progress"}).Want(http.StatusOK)
 	if _, _, assigneeID := issueStatusAndAssignee(t, other); assigneeID != handler {
 		t.Fatalf("other assignee = %q, want the step's handler %q", assigneeID, handler)
+	}
+}
+
+// The leader's own run moves its request into a step another agent handles: the
+// step's handler takes the request, so the work does not stop at the leader.
+func TestSquadLeaderMoveHandsRequestToStepHandler(t *testing.T) {
+	seedTestCatalog(t)
+	resetDefaultWorkflow(t)
+	handler := seededReadyAgentID(t)
+	var runtimeID string
+	dbfx.QueryRow(t, `SELECT runtime_id::text FROM agent WHERE id = $1`, handler).Scan(&runtimeID)
+	leader := dbfx.Agent(t, "handoff leader "+workflowTestSuffix(), runtimeID)
+	squadID := dbfx.Squad(t, "handoff squad "+workflowTestSuffix(), leader)
+	// A leader may assign only to agents in its squad, and the step's handler is one.
+	dbfx.Exec(t, `INSERT INTO squad_member (squad_id, member_type, member_id) VALUES ($1, 'agent', $2)`, squadID, handler)
+	projectID := deliveryProject(t, "Squad leader handoff project", handler)
+
+	request := dbfx.Issue(t, "a request the leader sent back", testutil.Cols{
+		"project_id": projectID, "status": "blocked", "assignee_type": "agent", "assignee_id": leader,
+	})
+	task := dbfx.Task(t, leader, testutil.Cols{
+		"issue_id": request, "runtime_id": runtimeID, "status": "running", "started_at": time.Now(),
+	})
+
+	agentUpdateIssue(t, request, leader, task, map[string]any{"status": "in_progress"}).Want(http.StatusOK)
+	if status, assigneeType, assigneeID := issueStatusAndAssignee(t, request); status != "in_progress" || assigneeType != "agent" || assigneeID != handler {
+		t.Fatalf("request = (%q, %q, %q), want in_progress handed to the step's handler %q", status, assigneeType, assigneeID, handler)
 	}
 }
 

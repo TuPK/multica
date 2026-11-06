@@ -115,11 +115,12 @@ func (h *Handler) applyIssueWorkflow(ctx context.Context, prev db.Issue, params 
 	if !ok || !step.HandsOff() {
 		return nil, nil
 	}
-	// A request a squad leader is working is not a step of the workflow: the
-	// leader splits it into issues, and those issues go through the steps.
-	// Handing the request itself to a developer or reviewer would take it away
-	// from the leader.
-	if h.isSquadRequest(ctx, prev) {
+	// A request a squad leader is working is not a step of the workflow when
+	// someone else moves it: the leader splits it into issues, and those issues
+	// go through the steps. The leader's own run moving the request does hand it
+	// to the step's handler, so the request does not stall with the leader after
+	// the leader sends it on.
+	if h.isSquadRequest(ctx, prev) && !(run != nil && run.AgentID == prev.AssigneeID) {
 		return nil, nil
 	}
 	assigneeType, assigneeID, ok := issueworkflow.ResolveHandler(step, project, prev.CreatorType, prev.CreatorID)
