@@ -167,10 +167,10 @@ export function CompanyCanvas({
     for (const el of tags.querySelectorAll<HTMLButtonElement>("button")) fillTag(el, { tagName, tagDetail });
   }, [tagName, tagDetail]);
 
-  // A click on a figure opens its worker's issue. The figure hangs below its tag, so the nearest tag above the click wins.
-  const pickFigure = (event: MouseEvent<HTMLDivElement>) => {
+  // The worker whose figure is under the pointer. The figure hangs below its tag, so the nearest tag above wins.
+  const figureAt = (event: MouseEvent<HTMLDivElement>): CompanyLabel | null => {
     const target = event.target as HTMLElement;
-    if (target.tagName !== "CANVAS") return;
+    if (target.tagName !== "CANVAS") return null;
     const box = target.getBoundingClientRect();
     const x = ((event.clientX - box.left) / box.width) * units.w;
     const y = ((event.clientY - box.top) / box.height) * units.h;
@@ -181,6 +181,23 @@ export function CompanyCanvas({
       if (dx > FIGURE_HALF_WIDTH || dy < 0 || dy > FIGURE_HEIGHT) continue;
       if (!best || dx < Math.abs(x - best.x)) best = label;
     }
+    return best;
+  };
+
+  // Tags stay hidden until the pointer is over their worker; hovering a figure reveals its tag and tooltip.
+  const hoveredRef = useRef<HTMLElement | null>(null);
+  const setHovered = (key: string | null) => {
+    const next = key
+      ? (tagsRef.current?.querySelector<HTMLElement>(`button[data-key="${CSS.escape(key)}"]`) ?? null)
+      : null;
+    if (next === hoveredRef.current) return;
+    hoveredRef.current?.removeAttribute("data-hover");
+    next?.setAttribute("data-hover", "");
+    hoveredRef.current = next;
+  };
+
+  const pickFigure = (event: MouseEvent<HTMLDivElement>) => {
+    const best = figureAt(event);
     if (best) latest.current.onMove(best.key);
   };
 
@@ -190,6 +207,8 @@ export function CompanyCanvas({
       className="min-h-0 min-w-0 flex-1 overflow-hidden bg-[#343e58]"
       style={{ containerType: "size" }}
       onClick={pickFigure}
+      onMouseMove={(event) => setHovered(figureAt(event)?.key ?? null)}
+      onMouseLeave={() => setHovered(null)}
     >
       <div ref={stageRef} className="relative size-full">
         <div ref={tagsRef} className="pointer-events-none absolute inset-0" />
@@ -271,7 +290,7 @@ function placeTags(
       el.addEventListener("click", () => props.onPick(label.key));
       // The tooltip is a child of the tag, so the tag's hover shows it. Screen readers get the name alone.
       el.className =
-        "group pointer-events-auto absolute left-0 top-0 -translate-x-1/2 -translate-y-full cursor-pointer whitespace-nowrap rounded-[3px] bg-white/90 px-2 py-0.5 text-micro font-semibold text-[#2c2418] shadow-sm";
+        "group pointer-events-auto absolute left-0 top-0 z-10 -translate-x-1/2 -translate-y-full cursor-pointer whitespace-nowrap rounded-[3px] bg-white/90 px-2 py-0.5 text-micro font-semibold text-[#2c2418] opacity-0 shadow-sm transition-opacity hover:opacity-100 focus-visible:opacity-100 data-[hover]:opacity-100";
       const name = document.createElement("span");
       name.dataset.tagName = "";
       el.appendChild(name);
@@ -279,7 +298,7 @@ function placeTags(
       tooltip.dataset.tagTooltip = "";
       tooltip.setAttribute("aria-hidden", "true");
       tooltip.className =
-        "pointer-events-none absolute bottom-full left-1/2 mb-1 hidden w-max max-w-[240px] -translate-x-1/2 whitespace-normal rounded-[3px] bg-[#2c2418] px-2 py-1 text-micro font-normal text-[#fff8ea] shadow-md group-hover:block";
+        "pointer-events-none absolute bottom-full left-1/2 mb-1 hidden w-max max-w-[240px] -translate-x-1/2 whitespace-normal rounded-[3px] bg-[#2c2418] px-2 py-1 text-micro font-normal text-[#fff8ea] shadow-md group-hover:block group-focus-visible:block group-data-[hover]:block";
       el.appendChild(tooltip);
       fillTag(el, props);
       tags.appendChild(el);
