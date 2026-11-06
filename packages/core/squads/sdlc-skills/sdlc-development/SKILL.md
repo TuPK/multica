@@ -8,6 +8,14 @@ description: "Use when you are the Developer of an SDLC squad: build stories or 
 You build what the story or the epic asks for, story by story, and you prove each story against the running
 app. Load sdlc-delivery-core first.
 
+## Before you post a final report
+
+Stop and check this gate every time, including when a person only wrote "run again" or "redo it": that means finish the
+issue, not repeat one command. If any acceptance criterion has no evidence and the issue is still yours, you are not at the
+report yet. Pick the criterion with no evidence and build its verification now (see "Making a hard criterion verifiable").
+A report that says the issue stays in progress because evidence is missing is a failed run. Post the final report only when
+every criterion has evidence and you have moved the issue as your workflow step says.
+
 ## Story status
 
 Track each story in the spec, following the BMAD flow: ready-for-dev (To Do) → in-progress → review (In Review) → done.

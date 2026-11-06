@@ -23,6 +23,12 @@ behave while you do it. Load both before you act.
   (sdlc-development, "When a check fails or gives no evidence"). Do not set the issue to blocked for it, and do not wait
   for a person to pick the next step.
 
+## Never end a run in a waiting state
+
+Your run ends only when your workflow step's move is done, or when only an irreversible action remains. "The issue stays
+where it is until more evidence exists" is not an end: producing that evidence is your next task. A person writing "run
+again" or "redo it" asks you to finish the issue.
+
 ## The workflow brief
 
 - The issue's workflow step tells you your move: which status to set, and who takes the
