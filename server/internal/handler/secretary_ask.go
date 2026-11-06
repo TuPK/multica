@@ -27,7 +27,7 @@ import (
 const (
 	secretaryAskQuestionLimit = 2000
 	secretaryAskAddresseeMax  = 20
-	secretaryAskWakeupInstr   = "The deadline has passed: read the answers and assess what is in."
+	secretaryAskWakeupInstr   = "The request's deadline wakeup has fired. Compare the deadline in the request's metadata with the current time before anything else. If it has passed, read the answers and assess what is in. If it has not, do not assess: reply to the boss with each leader's answer status and the deadline, using --kind ack, and end the run."
 )
 
 type SecretaryAskAddressee struct {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -83,11 +84,11 @@ func linkRequestReplySession(ctx context.Context, q *db.Queries, issue db.Issue,
 
 // ErrSecretaryRequestAnswerRequired refuses closing a child of a Secretary request
 // before an agent has answered on it.
-var ErrSecretaryRequestAnswerRequired = errors.New("this issue is part of a Secretary request: answer it in a comment before you close it, so the Secretary can read the answer")
+var ErrSecretaryRequestAnswerRequired = errors.New("this issue is part of a Secretary request: the squad's leader answers it in a comment, and the leader writes that answer itself, before you close it")
 
 // CheckSecretaryRequestAnswered refuses closing a child of a Secretary request until
-// an agent has commented on it. That comment is the answer the Secretary reads; a
-// close without it leaves the Secretary with nothing to assess.
+// the answering agent has commented on it. That comment is the answer the Secretary
+// reads; a close without it leaves the Secretary with nothing to assess.
 func CheckSecretaryRequestAnswered(ctx context.Context, q *db.Queries, issue db.Issue) error {
 	if !issue.ParentIssueID.Valid {
 		return nil
@@ -107,7 +108,16 @@ func CheckSecretaryRequestAnswered(ctx context.Context, q *db.Queries, issue db.
 	if err != nil || !ok {
 		return err
 	}
-	answers, err := q.CountAgentAnswersOnIssue(ctx, issue.ID)
+	answerer, err := answeringAgentOf(ctx, q, issue)
+	if err != nil {
+		return err
+	}
+	if !answerer.Valid {
+		return ErrSecretaryRequestAnswerRequired
+	}
+	answers, err := q.CountAgentCommentsOnIssue(ctx, db.CountAgentCommentsOnIssueParams{
+		IssueID: issue.ID, WorkspaceID: issue.WorkspaceID, AuthorID: answerer,
+	})
 	if err != nil {
 		return err
 	}
@@ -115,6 +125,26 @@ func CheckSecretaryRequestAnswered(ctx context.Context, q *db.Queries, issue db.
 		return ErrSecretaryRequestAnswerRequired
 	}
 	return nil
+}
+
+// answeringAgentOf returns the agent whose comment answers a request child: the
+// agent it is assigned to, or, for a squad, the squad's leader. The leader writes
+// the squad's answer itself; a comment by any other agent or member does not answer.
+func answeringAgentOf(ctx context.Context, q *db.Queries, child db.Issue) (pgtype.UUID, error) {
+	if !child.AssigneeID.Valid || !child.AssigneeType.Valid {
+		return pgtype.UUID{}, nil
+	}
+	switch child.AssigneeType.String {
+	case "agent":
+		return child.AssigneeID, nil
+	case "squad":
+		squad, err := q.GetSquadInWorkspace(ctx, db.GetSquadInWorkspaceParams{ID: child.AssigneeID, WorkspaceID: child.WorkspaceID})
+		if err != nil {
+			return pgtype.UUID{}, fmt.Errorf("load the squad that answers: %w", err)
+		}
+		return squad.LeaderID, nil
+	}
+	return pgtype.UUID{}, nil
 }
 
 // IssueInSecretaryTree reports whether an issue is part of the Secretary's own

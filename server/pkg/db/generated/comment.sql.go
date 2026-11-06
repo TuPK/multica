@@ -167,20 +167,6 @@ func (q *Queries) CommentHasReplies(ctx context.Context, arg CommentHasRepliesPa
 	return has_replies, err
 }
 
-const countAgentAnswersOnIssue = `-- name: CountAgentAnswersOnIssue :one
-SELECT count(*)::bigint FROM comment
-WHERE issue_id = $1 AND author_type = 'agent'
-`
-
-// How many comments any agent (the assignee, a squad leader, or a member of a
-// squad) has written on the issue. A request child closes only after one exists.
-func (q *Queries) CountAgentAnswersOnIssue(ctx context.Context, issueID pgtype.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countAgentAnswersOnIssue, issueID)
-	var column_1 int64
-	err := row.Scan(&column_1)
-	return column_1, err
-}
-
 const countAgentCommentsOnIssue = `-- name: CountAgentCommentsOnIssue :one
 SELECT count(*) FROM comment
 WHERE issue_id = $1 AND workspace_id = $2 AND author_type = 'agent' AND author_id = $3 AND type = 'comment'

@@ -87,6 +87,11 @@ func (s *IssueWakeupService) Trigger(ctx context.Context, issueID, id, member pg
 	if err = tx.QueryRow(ctx, "SELECT now()").Scan(&now); err != nil {
 		return err
 	}
+	// A one-time rule keeps its time. A run by hand before it comes due would use
+	// up the rule, and the scheduled run would never fire.
+	if w.Mode == "once" && w.Kind == "at" && w.NextFireAt.Valid && w.NextFireAt.Time.After(now) {
+		return fmt.Errorf("%w: this one-time rule fires at %s", ErrWakeupInput, w.NextFireAt.Time.UTC().Format(time.RFC3339))
+	}
 	key := "manual:" + util.UUIDToString(dbid.NewV7())
 	payload, _ := json.Marshal(map[string]any{"event_id": key, "requested_at": now.UTC().Format(time.RFC3339),
 		"actor_type": "member", "actor_id": util.UUIDToString(member)})

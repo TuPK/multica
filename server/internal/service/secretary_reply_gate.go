@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -106,6 +107,13 @@ func checkAssessmentReply(ctx context.Context, q *db.Queries, run db.AgentTaskQu
 		if !deadline {
 			return ErrChatReplyAssessmentTooEarly
 		}
+		passed, err := requestDeadlinePassed(request, time.Now())
+		if err != nil {
+			return err
+		}
+		if !passed {
+			return ErrChatReplyAssessmentTooEarly
+		}
 	}
 
 	if verifier == nil || !verifier.Enabled() {
@@ -126,6 +134,23 @@ func checkAssessmentReply(ctx context.Context, q *db.Queries, run db.AgentTaskQu
 		return fmt.Errorf("%w: %s", ErrChatReplyAssessmentUnsupported, strings.Join(unsupported, "; "))
 	}
 	return nil
+}
+
+// requestDeadlinePassed reports whether the deadline recorded in the request's
+// metadata when it was filed has come. A deadline wakeup can be run by hand before
+// its time, so the wakeup's kind alone does not say the time is up.
+func requestDeadlinePassed(request db.Issue, now time.Time) (bool, error) {
+	var meta struct {
+		Deadline string `json:"deadline"`
+	}
+	if err := json.Unmarshal(request.Metadata, &meta); err != nil {
+		return false, fmt.Errorf("read request metadata: %w", err)
+	}
+	deadline, err := time.Parse(time.RFC3339, meta.Deadline)
+	if err != nil {
+		return false, fmt.Errorf("request has no valid deadline: %w", err)
+	}
+	return !deadline.After(now), nil
 }
 
 // isDeadlineRun reports whether the run was started by a deadline wakeup, which

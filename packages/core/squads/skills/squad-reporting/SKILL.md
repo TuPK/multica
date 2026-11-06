@@ -5,9 +5,10 @@ description: "Use when a squad leader or floor chief is asked by the Secretary f
 
 # Squad reporting
 
-The Secretary asked you, the leader, for an answer about your squad. Answer it
-yourself. You may ask members to look at things, but the assessment is yours. Your
-answer is for a busy boss, read through the Secretary. Worked examples of good and weak
+The Secretary asked you, the leader, for an answer about your squad. You write the
+answer yourself. A member may check a fact or give a judgment you ask for; a member does
+not write the answer, and you do not hand the synthesis to another agent. The assessment
+is yours. Your answer is for a busy boss, read through the Secretary. Worked examples of good and weak
 answers are in [reference.md](reference.md).
 
 ## Gather cheaply first
@@ -68,12 +69,15 @@ A floor chief rolls up its leaders' answers. It does not replace them.
 ## Where it goes
 
 Post the answer as a comment on your child issue, then close the issue. The platform refuses
-to close a child of a Secretary request until an agent has commented on it. If the answer is
+to close a child of a Secretary request until the squad's leader has commented on it. A
+comment that says work was handed to a member, or that a member will report, is not an
+answer: write the answer itself. If the answer is
 long, write a document and link it from the comment. Ask the Secretary, not the boss,
 for anything you need from the boss.
 
 ## Rules
 
+- Do not delegate the report. Do not create a child issue so that a member writes the answer.
 - Report on the squad, not on individuals. Name a person only where the record shows
   that person's own action.
 - Do not change the squad's charter, instructions, or budget.

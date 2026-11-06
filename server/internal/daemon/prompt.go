@@ -810,6 +810,11 @@ func buildChatPrompt(task Task) string {
 	default:
 		b.WriteString("Audience: direct room.\n\n")
 	}
+	// The session this turn answers. Commands that take a chat session (chat reply,
+	// secretary ask) need it, and the run cannot discover it from its environment.
+	if task.ChatSessionID != "" {
+		b.WriteString("Chat session: " + task.ChatSessionID + ". Commands that take --session or --chat-session use this id.\n")
+	}
 	// The route the platform gave a Secretary turn (see service.ChatRouteFor).
 	// It names the skill to read first; the skill and the reply gate decide the rest.
 	if line := chatRouteLine(task.ChatRoute); line != "" {

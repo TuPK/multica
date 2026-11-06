@@ -35,11 +35,16 @@ multica issue comment list <child-id> --thread <thread-id> --tail 30 --compact -
 ### 2. Note what is missing
 
 - A child with no answer and a deadline that has not passed: challenge it once (step 4).
+  Check the deadline against the current time in the request's metadata; a deadline
+  wakeup run by hand before its time does not make the deadline passed.
 - A child with no answer after the deadline: it is unanswered. Name it in the
   assessment, with the leader and what you asked.
 
 ### 3. Read each claim critically
 
+- Check each claim about the squad's work against the digest: `multica brief digest --json`
+  holds the squad's counts, flags, and failed runs. A status, a delegation, or a progress
+  claim that the digest contradicts is disputed.
 - Open the issue or comment each claim cites before you believe the claim.
 - Flag what sounds too tidy, a "green" beside a stale queue, a risk with no owner, a
   number with no source, two answers that contradict each other.

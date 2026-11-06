@@ -872,6 +872,19 @@ func (s *IssueService) createWorkflow(ctx context.Context, qtx *db.Queries, p Is
 	return def, err
 }
 
+// isSecretaryFiling reports whether an agent created a desk issue and assigned it
+// to itself, which is how the Secretary files a request.
+func (s *IssueService) isSecretaryFiling(ctx context.Context, issue db.Issue, creatorType, actorID string) bool {
+	if creatorType != "agent" || !issue.AssigneeID.Valid || !issue.ProjectID.Valid {
+		return false
+	}
+	if actorID != util.UUIDToString(issue.AssigneeID) {
+		return false
+	}
+	desk, err := SecretaryDeskID(ctx, s.Queries, issue.WorkspaceID)
+	return err == nil && desk.Valid && desk == issue.ProjectID
+}
+
 func (s *IssueService) maybeEnqueueOnAssign(ctx context.Context, issue db.Issue, creatorType, actorID string, agentRunFireAt time.Time) pgtype.UUID {
 	if !issue.AssigneeType.Valid || !issue.AssigneeID.Valid {
 		return pgtype.UUID{}
@@ -882,6 +895,12 @@ func (s *IssueService) maybeEnqueueOnAssign(ctx context.Context, issue db.Issue,
 	// Triage refuses for a different reason and so returns just as quietly: the
 	// entry is not yet work anyone agreed to do (MUL-7189 §2.3).
 	if issue.TriageState.Valid || issuestatus.Effective(ctx, s.Queries, issue.WorkspaceID, issue.Status) == "backlog" {
+		return pgtype.UUID{}
+	}
+	// The Secretary files its request into its own desk and assigns it to itself.
+	// That assignment is the filing, not a request for work: the run it would start
+	// is a second turn on the question the chat turn is already answering.
+	if s.isSecretaryFiling(ctx, issue, creatorType, actorID) {
 		return pgtype.UUID{}
 	}
 	verdict, admitted := agentAssigneeVerdict(ctx, s.runtimeLookup(s.Queries), issue)

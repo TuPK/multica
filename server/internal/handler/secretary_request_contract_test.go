@@ -57,7 +57,7 @@ func TestSecretaryRequestContract_DeadlineAndChildDone(t *testing.T) {
 		"kind":        "at",
 		"at":          deadline,
 		"mode":        "once",
-		"instruction": "The deadline has passed: read the answers and assess what is in.",
+		"instruction": secretaryAskWakeupInstr,
 	})
 	wake = withURLParam(wake, "id", request.ID)
 	testutil.Call(t, testHandler.CreateIssueWakeup, wake).Want(http.StatusCreated)
@@ -65,7 +65,7 @@ func TestSecretaryRequestContract_DeadlineAndChildDone(t *testing.T) {
 	var kind, mode, instruction string
 	dbfx.QueryRow(t, `SELECT kind, mode, instruction FROM issue_wakeup
 		WHERE issue_id = $1 AND agent_id = $2 AND kind = 'at'`, request.ID, f.secretaryID).Scan(&kind, &mode, &instruction)
-	if kind != "at" || mode != "once" || !strings.Contains(instruction, "deadline has passed") {
+	if kind != "at" || mode != "once" || !strings.Contains(instruction, "Compare the deadline") {
 		t.Fatalf("deadline wakeup = kind %q mode %q instruction %q", kind, mode, instruction)
 	}
 
