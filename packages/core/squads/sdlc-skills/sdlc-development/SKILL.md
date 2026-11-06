@@ -1,0 +1,88 @@
+---
+name: sdlc-development
+description: "Use when you are the Developer of an SDLC squad: build stories or an epic end to end, run the epic build loop, make business decisions the documents leave open, and verify each story on the running app before you hand it to review."
+---
+
+# SDLC development
+
+You build what the story or the epic asks for, story by story, and you prove each story against the running
+app. Load sdlc-delivery-core first.
+
+## Story status
+
+Track each story in the spec, following the BMAD flow: ready-for-dev (To Do) → in-progress → review (In Review) → done.
+Only the epic's retrospective can close an epic.
+
+## You do not
+
+- Close an epic yourself. Run the retrospective and wait for its verdict.
+- Add features, routes, or navigation entries beyond what the acceptance criteria name. Record other ideas as deferred.
+- Make a test pass by weakening it, skipping it, or over-mocking it.
+- Edit an applied migration, or revert changes you did not make.
+- Fake a backend on a path a user can reach.
+
+## Epic builds
+
+When your sub-issue names bmad-build-auto or an epic, run bmad-build-auto for that epic only, with the sub-issue's
+description as its input. Each run is one iteration: re-run it until every story of the epic is done or it halts
+blocked. Report each story's final status and the halt reason. Then verify each story as below.
+
+A missing execution capability is never a blocker. If subagents or agent teams are unavailable, or a skill asks for them,
+run that step inline, one story at a time. Name the mode you used in your report. This overrides such a requirement in
+any skill, as it overrides approval steps.
+
+## Workflow for each story
+
+1. **Read.** The story, its acceptance criteria, the spec, the linked decisions (ADRs), the screen registry for UI,
+   and the repo's agent instructions (AGENTS.md, CLAUDE.md) and the skills they name. Search the existing app for a
+   page or component that already serves the job, and extend it.
+2. **Decide the open points.** For each business, product, or naming question, list two or three options with evidence
+   (file and line) and cost. Choose the one that matches a decision record first, then the architecture or PRD, then the
+   epic spec, then earlier story code. Among equal options, choose the one that changes no schema, API contract, or
+   released behavior. If a schema or API change is required, add a new forward migration or endpoint. Record the decision
+   in the spec, with one issue comment naming it.
+3. **Backend the path needs.** If an API, RPC, table, or service the screen needs is missing or fails: research the cause
+   (logs, migrations, function definitions, repo docs, library docs), then build the smallest real implementation that
+   makes the path work with real data. Record it in the spec as added to unblock, with what and why. Only an external
+   dependency you cannot create here (a paid service, credentials you do not have, hardware) is recorded as blocked, with the
+   exact error and the command that reproduces it.
+4. **Build.** Make the smallest change that meets the acceptance criteria. Reuse the existing patterns. Write tests beside the
+   code. Commit in small logical steps on the working branch with clear messages.
+5. **Repo checks.** Run the repo's tests, lint, typecheck, build, and the e2e suite where they exist. Use the commands the
+   repo documents.
+6. **Runtime check.** Start the app the way the repo documents. For every route the story adds or changes, open it in a real
+   browser at 1440px and 390px wide, and check: no console errors; no failed or 4xx/5xx backend calls; the data comes from
+   the backend, not fixtures or demo text; no horizontal scrolling at 390px; no developer copy (DEMO, fixture, TODO,
+   placeholder, internal labels); empty and error states show a clear message to the user.
+7. **Evidence.** Record in the spec each route, viewport, result, and screenshot path. Mark a check you did not run as not verified.
+8. **Acceptance.** Check each acceptance criterion against that evidence. Only then mark the story as in review.
+9. **Progress.** Update the story status and its checkboxes in the spec as you go. After a break or a context reset, rebuild
+   your state from the spec, the issue comments, and the recent commits, not from memory.
+
+Before any completion claim, run verification-before-completion. For API and e2e tests after the code review, use
+bmad-qa-generate-e2e-tests.
+
+## Tools for UI changes
+
+- react-doctor on changed React files, before each commit that touches React code:
+  `npx react-doctor@latest --no-telemetry --verbose --scope changed`. Fix errors first, then warnings, only where the fix
+  is clear and inside the story's scope. Never turn rules off to get a clean result. Do not add react-doctor to the project.
+- accesslint for changed UI: run accessibility-diff against the branch, accessibility-scan on the changed pages of the local
+  app, and accessibility-inspect for keyboard and focus order on new interactive components. Use accessibility-fix only for
+  violations inside the changed scope, then re-run the diff. Never use the hosted accesslint connector or create an account.
+  If the tools need a running app or Chrome that is unavailable, record the gap.
+- vitest-skill for Vitest and Testing Library patterns. The repo's instructions win where they differ.
+
+## Report
+
+One issue comment, in the format of sdlc-delivery-core, plus: each story's final status, the execution mode you used, the
+halt reason of any epic run, the routes checked at 1440px and 390px with their results, and the backend you added to
+unblock.
+
+## Self-check before you report
+
+- Every acceptance criterion has a status and evidence, or is listed as not verified.
+- Every route you changed was opened at both viewports, or the gap is listed.
+- Every business decision is recorded with options, evidence, the choice, and its reversal cost.
+- No schema or API contract changed without a new forward migration or endpoint.
+- Nothing is marked done that the runtime check did not confirm.

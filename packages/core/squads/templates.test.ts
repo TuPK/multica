@@ -1,8 +1,10 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { AGENT_INSTRUCTION_TEMPLATES } from "../agents/instruction-templates";
+import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
 import {
   SDLC_AUTO_WORKFLOW,
+  SDLC_SKILL_NAMES,
   SQUAD_ROLES,
   SQUAD_TEMPLATES,
   type SquadTemplate,
@@ -114,121 +116,59 @@ describe("market research template", () => {
 });
 
 describe("squad instructions", () => {
-  it("delegate through sub-issues, not a mention that would start a member twice", () => {
-    for (const t of SQUAD_TEMPLATES) {
-      expect(t.instructions, t.id).toContain("--parent <request>");
-      expect(t.instructions, t.id).toContain("Do not @mention a member");
+  it("point every SDLC squad at the built-in procedure skills, not a copy of it", () => {
+    for (const id of ["sdlc_greenfield", "sdlc_maintenance"] as const) {
+      const instructions = template(id).instructions;
+      expect(instructions, id).toContain("sdlc-delivery-core");
+      expect(instructions, id).toContain("sdlc-squad-lead");
+      expect(instructions, id).toContain("Delegate only to the members listed on your Squad Roster");
     }
   });
 
-  it("make the leader verify a report before closing a sub-issue", () => {
-    for (const t of SQUAD_TEMPLATES) {
-      expect(t.instructions, t.id).toContain("A report is a claim until the evidence supports it");
-      expect(t.instructions, t.id).toContain("Leave done to a person");
-    }
+  it("import the built-in SDLC skills into every SDLC squad and no other", () => {
+    expect(template("sdlc_greenfield").builtinSkills).toEqual(SDLC_SKILL_NAMES);
+    expect(template("sdlc_maintenance").builtinSkills).toEqual(SDLC_SKILL_NAMES);
+    expect(template("market_research").builtinSkills).toEqual([]);
   });
 
-  it("keep the leader from building, and route a build skill request to the developer", () => {
-    for (const t of SQUAD_TEMPLATES) {
-      expect(t.instructions, t.id).toContain("You never build");
-      expect(t.instructions, t.id).toContain("do not run it yourself");
-      expect(t.instructions, t.id).toContain('"/bmad-build-auto Implement epic 01"');
-      expect(t.instructions, t.id).toContain("building an epic or story goes to SDLC Developer");
-    }
+  it("names the Greenfield build project and its route, and the Maintenance triage", () => {
+    expect(template("sdlc_greenfield").instructions).toContain('"SDLC Auto" workflow');
+    expect(template("sdlc_greenfield").instructions).toContain("route (A, B, C, or D)");
+    expect(template("sdlc_maintenance").instructions).toContain("route and a risk tier");
   });
 
-  it("assign sub-issues by the roster member id, never by a name that could match another agent", () => {
-    for (const t of SQUAD_TEMPLATES) {
-      expect(t.instructions, t.id).toContain("--assignee-id <member id>");
-      expect(t.instructions, t.id).not.toContain('--assignee "');
-      expect(t.instructions, t.id).toContain("Your assignees come only from the Squad Roster");
-      expect(t.instructions, t.id).toContain("Do not list the workspace's agents");
-      expect(t.instructions, t.id).toContain("Assign by that id, never by name");
-    }
+  it("keeps the market research squad's own delegation rules", () => {
+    const research = template("market_research").instructions;
+    expect(research).toContain("Do not @mention a member");
+    expect(research).toContain("--assignee-id <member id>");
   });
 
-  it("never wait for a person's approval, including the approval gates of a skill", () => {
-    for (const t of SQUAD_TEMPLATES) {
-      expect(t.instructions, t.id).toContain("Never wait for a person to approve");
-      expect(t.instructions, t.id).toContain("superpowers:brainstorming");
-      expect(t.instructions, t.id).toContain("Do not wait for approval; take the recommended default");
-    }
-  });
-
-  it("carry the developer's decision and epic-close rules into every SDLC squad", () => {
-    for (const t of SQUAD_TEMPLATES) {
-      expect(t.instructions, t.id).toContain("is the member's to make, not a reason to stop");
-      expect(t.instructions, t.id).toContain("reversal cost");
-      expect(t.instructions, t.id).toContain("retrospective is accepted");
-    }
-  });
-
-  it("say that the squad's sub-issue rule overrides the protocol's mention rule", () => {
-    for (const t of SQUAD_TEMPLATES) {
-      expect(t.instructions, t.id).toContain("They override the squad protocol's mention rule");
-    }
-  });
-
-  it("never let the squad deploy to production or delete on its own", () => {
-    for (const t of SQUAD_TEMPLATES) {
-      expect(t.instructions, t.id).toContain(
-        "Never deploy to production, and never delete anything, on your own",
-      );
-    }
-  });
-
-  it("queue the greenfield epics as numbered issues in the build project", () => {
-    const greenfield = template("sdlc_greenfield").instructions;
-
-    expect(greenfield).toContain("multica issue queue <issue> --after <issue>");
-    expect(greenfield).toContain("(an issue, not a sub-issue)");
-    expect(greenfield).toContain("workflow_id is set");
-    expect(greenfield).toContain("holds the queue");
-  });
-
-  it("name the BMAD planning skills in order for a greenfield", () => {
-    const greenfield = template("sdlc_greenfield").instructions;
-    const order = [
-      "bmad-product-brief",
-      "bmad-prd",
-      "bmad-ux",
-      "bmad-architecture",
-      "bmad-project-context",
-      "bmad-create-epics-and-stories",
-      "bmad-sprint-planning",
-    ].map((skill) => greenfield.indexOf(skill));
-
-    expect(order.every((i) => i >= 0)).toBe(true);
-    expect([...order].sort((a, b) => a - b)).toEqual(order);
-  });
-
-  it("route a maintenance request by type and send big changes through course correction", () => {
-    const maintenance = template("sdlc_maintenance").instructions;
-
-    for (const route of ["A. Hotfix", "B. A bug", "C. Feature", "D. Optimization", "E. Upgrade"]) {
-      expect(maintenance).toContain(route);
-    }
-    expect(maintenance).toContain("bmad-correct-course");
-  });
-
-  it("only name BMAD skills that exist", () => {
+  it("only name BMAD skills that exist, in the instructions and in the skills", () => {
     const shipped = new Set([
       "bmad-architecture",
       "bmad-build",
       "bmad-build-auto",
+      "bmad-code-review",
       "bmad-correct-course",
       "bmad-create-epics-and-stories",
       "bmad-prd",
       "bmad-prfaq",
       "bmad-product-brief",
       "bmad-project-context",
+      "bmad-qa-generate-e2e-tests",
+      "bmad-retrospective",
       "bmad-sprint-planning",
+      "bmad-spec",
       "bmad-ux",
     ]);
+    const texts = [
+      ...SQUAD_TEMPLATES.map((t) => [t.id, t.instructions] as const),
+      ...SDLC_BUILTIN_SKILLS.map((skill) => [skill.name, skill.content] as const),
+    ];
 
-    for (const t of SQUAD_TEMPLATES) {
-      for (const skill of t.instructions.match(/\bbmad-[a-z0-9]+(?:-[a-z0-9]+)*/g) ?? []) {
-        expect(shipped.has(skill), `${t.id}: ${skill}`).toBe(true);
+    for (const [id, text] of texts) {
+      for (const skill of text.match(/\bbmad-[a-z0-9]+(?:-[a-z0-9]+)*/g) ?? []) {
+        expect(shipped.has(skill), `${id}: ${skill}`).toBe(true);
       }
     }
   });

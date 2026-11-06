@@ -1,0 +1,93 @@
+// @vitest-environment node
+import { readdirSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
+
+// The bundle the quickstart imports is generated from the SKILL.md folders.
+// This test fails when the generated file is stale: run `pnpm generate:sdlc-skills`.
+const skillsDir = fileURLToPath(new URL("./sdlc-skills", import.meta.url));
+
+const ROLE_SKILLS = [
+  "sdlc-delivery-core",
+  "sdlc-squad-lead",
+  "sdlc-product-analysis",
+  "sdlc-architecture",
+  "sdlc-ux-design",
+  "sdlc-development",
+  "sdlc-bug-fix",
+  "sdlc-code-review",
+  "sdlc-qa-verification",
+  "sdlc-security-review",
+  "sdlc-devops-release",
+];
+
+describe("built-in SDLC skills", () => {
+  it("ships one skill per SDLC role plus the shared core, and nothing else", () => {
+    expect(SDLC_BUILTIN_SKILLS.map((s) => s.name)).toEqual([...ROLE_SKILLS].sort());
+  });
+
+  it("carries every skill folder, unchanged, as the generated bundle", () => {
+    const folders = readdirSync(skillsDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort();
+    expect(SDLC_BUILTIN_SKILLS.map((s) => s.name)).toEqual(folders);
+
+    for (const skill of SDLC_BUILTIN_SKILLS) {
+      const dir = resolve(skillsDir, skill.name);
+      expect(skill.content, skill.name).toBe(readFileSync(resolve(dir, "SKILL.md"), "utf8"));
+      const files = readdirSync(dir)
+        .filter((file) => file !== "SKILL.md" && file.endsWith(".md"))
+        .sort()
+        .map((file) => ({ path: file, content: readFileSync(resolve(dir, file), "utf8") }));
+      expect(skill.files, skill.name).toEqual(files);
+    }
+  });
+
+  it("has frontmatter whose name matches its folder and whose description says when to use it", () => {
+    for (const skill of SDLC_BUILTIN_SKILLS) {
+      expect(skill.content, skill.name).toMatch(new RegExp(`^---\nname: ${skill.name}\n`));
+      expect(skill.description, skill.name).toMatch(/^Use (when|on) /);
+    }
+  });
+
+  it("makes every role skill load the shared core first", () => {
+    for (const skill of SDLC_BUILTIN_SKILLS) {
+      if (skill.name === "sdlc-delivery-core") continue;
+      expect(skill.content, skill.name).toContain("sdlc-delivery-core");
+    }
+  });
+
+  it("gives the squad lead the route playbook and the report templates", () => {
+    const lead = SDLC_BUILTIN_SKILLS.find((s) => s.name === "sdlc-squad-lead")!;
+    expect(lead.files.map((f) => f.path)).toEqual(["reference.md"]);
+    expect(lead.content).toContain("reference.md");
+    expect(lead.content).toContain("multica issue queue <issue> --after <issue>");
+    expect(lead.files[0]!.content).toContain("Greenfield routes");
+  });
+
+  it("keeps the unattended rules in the shared core, so no role waits for approval", () => {
+    const core = SDLC_BUILTIN_SKILLS.find((s) => s.name === "sdlc-delivery-core")!;
+    expect(core.content).toContain("Do not wait for an approval");
+    expect(core.content).toContain("Stop only for what cannot be undone");
+    expect(core.content).toContain("Report format");
+  });
+
+  it("keeps the rules that stop a role from doing another role's work", () => {
+    const get = (name: string) => SDLC_BUILTIN_SKILLS.find((s) => s.name === name)!.content;
+    expect(get("sdlc-squad-lead")).toContain("You never build");
+    expect(get("sdlc-development")).toContain("Close an epic yourself");
+    expect(get("sdlc-code-review")).toContain("you do not fix");
+    expect(get("sdlc-qa-verification")).toContain("Edit product code");
+    expect(get("sdlc-security-review")).toContain("You advise and gate; you do not build");
+    expect(get("sdlc-devops-release")).toContain("Deploy the published image by its digest");
+  });
+
+  it("gives every role skill a self-check before it reports", () => {
+    for (const skill of SDLC_BUILTIN_SKILLS) {
+      expect(skill.content, skill.name).toContain("Self-check before you report");
+    }
+  });
+});

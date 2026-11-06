@@ -4,6 +4,7 @@ import type {
   Autopilot,
   AutopilotTrigger,
   CreateAgentRequest,
+  CreateSkillRequest,
   CreateAutopilotRequest,
   CreateAutopilotTriggerRequest,
   IssueWorkflow,
@@ -12,8 +13,12 @@ import type {
   IssueWorkflowWriteRequest,
   ListAutopilotsResponse,
   ListIssueWorkflowsResponse,
+  Skill,
+  SkillSummary,
   Squad,
   SquadMember,
+  SquadSkill,
+  UpdateSkillRequest,
 } from "../types";
 import {
   CHARTER_DEFAULT_RESPONSE_HOURS,
@@ -28,6 +33,8 @@ import type {
   CompanySeatAssignment,
   CompanySeatsResponse,
 } from "../company/types";
+import { SDLC_ROLE_AGENT_INSTRUCTIONS, type SdlcRoleKey } from "./sdlc-agent-instructions";
+import { SDLC_BUILTIN_SKILLS, type BuiltinSkill } from "./sdlc-skills-data";
 import {
   SQUAD_ROLES,
   type SquadCharterTemplate,
@@ -51,6 +58,12 @@ export interface SquadQuickstartClient {
   createCompanyFloor(data: { name: string }): Promise<CompanyFloor>;
   setCompanySeats(seats: CompanySeatAssignment[]): Promise<CompanySeatsResponse>;
   updateSquad(id: string, data: { instructions?: string }): Promise<Squad>;
+  listSkills(): Promise<SkillSummary[]>;
+  getSkill(id: string): Promise<Skill>;
+  createSkill(data: CreateSkillRequest): Promise<Skill>;
+  updateSkill(id: string, data: UpdateSkillRequest): Promise<Skill>;
+  listSquadSkills(squadId: string): Promise<SquadSkill[]>;
+  setSquadSkills(squadId: string, skillIds: string[]): Promise<SquadSkill[]>;
   updateSquadCharter(squadId: string, data: UpdateSquadCharterRequest): Promise<SquadCharter>;
   createSquadRoutine(squadId: string, data: CreateSquadRoutineRequest): Promise<SquadRoutine>;
   addSquadMember(
@@ -92,6 +105,12 @@ export interface QuickstartOutcome {
     note?: "qa_step_left_out";
     error?: string;
   };
+  /** The built-in SDLC skills: imported into the workspace and attached to every member of the squad. */
+  skills: {
+    /** "partial": some skills were not attached; the error names them. */
+    status: "ready" | "partial" | "skipped" | "failed";
+    error?: string;
+  };
   routine: {
     /** "existing": the squad already has an autopilot with the routine's name, or the routine is already linked. */
     status: "created" | "existing" | "skipped" | "failed";
@@ -131,6 +150,9 @@ function browserTimezone(): string | undefined {
 }
 
 function instructionsFor(role: SquadRoleKey): string {
+  if (role in SDLC_ROLE_AGENT_INSTRUCTIONS) {
+    return SDLC_ROLE_AGENT_INSTRUCTIONS[role as SdlcRoleKey];
+  }
   const id = SQUAD_ROLES[role].agentTemplate;
   const template = AGENT_INSTRUCTION_TEMPLATES.find((t) => t.id === id);
   if (!template) throw new Error(`no instruction template "${id}"`);
@@ -277,6 +299,89 @@ function isQuickstartSquad(squad: Squad, leaderId: string, template: SquadTempla
   return squad.leader_id === leaderId && squad.instructions.trim() === template.instructions.trim();
 }
 
+/** The config marker of a skill the quickstart imported, so a rerun may update it. */
+export const SDLC_SKILL_SOURCE = "sdlc_built_in";
+
+function isBuiltinSkill(config: Record<string, unknown> | undefined): boolean {
+  return config?.source === SDLC_SKILL_SOURCE;
+}
+
+/** Whether a workspace skill already holds the built-in skill's description, body, and files. */
+function sameAsBuiltin(skill: Skill, bundle: BuiltinSkill): boolean {
+  const files = (skill.files ?? []).map((f) => [f.path, f.content]).sort();
+  const wanted = bundle.files.map((f) => [f.path, f.content]).sort();
+  return (
+    skill.description === bundle.description &&
+    skill.content === bundle.content &&
+    JSON.stringify(files) === JSON.stringify(wanted)
+  );
+}
+
+/**
+ * Imports the built-in skills a template names into the workspace, and attaches
+ * them to the squad, so every member gets them. A skill the quickstart made
+ * before is updated to the built-in text. A skill the boss made under the same
+ * name is left as it is and named in the error; the squad keeps the others.
+ */
+async function attachBuiltinSkills(
+  client: SquadQuickstartClient,
+  squadId: string,
+  names: readonly string[],
+): Promise<QuickstartOutcome["skills"]> {
+  if (names.length === 0) return { status: "skipped" };
+  const failures: string[] = [];
+  const byName = new Map((await client.listSkills()).map((s) => [s.name, s] as const));
+  const ids: string[] = [];
+  for (const name of names) {
+    const bundle = SDLC_BUILTIN_SKILLS.find((b) => b.name === name);
+    if (!bundle) {
+      failures.push(`${name}: not a built-in skill`);
+      continue;
+    }
+    try {
+      const found = byName.get(name);
+      if (!found) {
+        const created = await client.createSkill({
+          name,
+          description: bundle.description,
+          content: bundle.content,
+          files: bundle.files,
+          config: { source: SDLC_SKILL_SOURCE },
+        });
+        ids.push(created.id);
+        continue;
+      }
+      const current = await client.getSkill(found.id);
+      if (!isBuiltinSkill(current.config)) {
+        failures.push(`${name}: the workspace has its own skill under this name`);
+        continue;
+      }
+      if (!sameAsBuiltin(current, bundle)) {
+        await client.updateSkill(found.id, {
+          description: bundle.description,
+          content: bundle.content,
+          files: bundle.files,
+        });
+      }
+      ids.push(found.id);
+    } catch (err) {
+      failures.push(`${name}: ${errorMessage(err)}`);
+    }
+  }
+  if (ids.length > 0) {
+    try {
+      // setSquadSkills replaces the whole set, so the squad's other skills are kept.
+      const attached = (await client.listSquadSkills(squadId)).map((s) => s.id);
+      const missing = ids.filter((id) => !attached.includes(id));
+      if (missing.length > 0) await client.setSquadSkills(squadId, [...attached, ...missing]);
+    } catch (err) {
+      failures.push(`attach: ${errorMessage(err)}`);
+    }
+  }
+  if (failures.length === 0) return { status: "ready" };
+  return { status: ids.length > 0 ? "partial" : "failed", error: failures.join("; ") };
+}
+
 /**
  * Creates the agents a squad template needs (reusing agents that already have
  * the template's names), the squad with its instructions and roster, and
@@ -294,6 +399,7 @@ export async function runSquadQuickstart(
     agents: [],
     squad: { id: null, status: "failed" },
     workflow: { status: "skipped" },
+    skills: { status: "skipped" },
     routine: { status: "skipped" },
   };
   const report = () => onProgress?.(structuredClone(outcome));
@@ -356,6 +462,9 @@ export async function runSquadQuickstart(
       // neither led by the template's leader nor carries its instructions, so
       // it is left as it is.
       if (isQuickstartSquad(found, leaderId, template)) {
+        outcome.skills = await attachBuiltinSkills(client, found.id, template.builtinSkills).catch(
+          (err): QuickstartOutcome["skills"] => ({ status: "failed", error: errorMessage(err) }),
+        );
         try {
           await client.updateSquadCharter(found.id, charterRequest(template.charter));
         } catch (err) {
@@ -403,6 +512,9 @@ export async function runSquadQuickstart(
       } catch (err) {
         failures.push(`instructions: ${errorMessage(err)}`);
       }
+      outcome.skills = await attachBuiltinSkills(client, squad.id, template.builtinSkills).catch(
+        (err): QuickstartOutcome["skills"] => ({ status: "failed", error: errorMessage(err) }),
+      );
       // The first charter save also creates the squad's operating review.
       try {
         await client.updateSquadCharter(squad.id, charterRequest(template.charter));

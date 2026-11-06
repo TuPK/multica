@@ -1,4 +1,5 @@
 import type { AgentInstructionTemplate } from "../agents/instruction-templates";
+import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
 
 /**
  * Ready-made squads a user can start from in the Squads quickstart. A template
@@ -253,14 +254,43 @@ export interface SquadTemplate {
   instructions: string;
   /** The workflow its build project needs, when it has one. */
   workflow: SquadWorkflowTemplate | null;
+  /**
+   * Built-in skill names the quickstart imports into the workspace and attaches
+   * to the squad, so every member of the squad gets them.
+   */
+  builtinSkills: readonly string[];
 }
+
+/** The built-in SDLC skills, by name. Every SDLC squad imports all of them. */
+export const SDLC_SKILL_NAMES: readonly string[] = SDLC_BUILTIN_SKILLS.map((skill) => skill.name);
 
 const SDLC_CHARTER_BOUNDARIES =
   "No production deploys and no deletions without the boss. Spending money needs the boss.";
 const SDLC_CHARTER_ESCALATION =
   "A blocked request or an open decision goes to the requester, named on the request.";
 
-const COMMON_INSTRUCTIONS = `You lead an SDLC squad. A request arrives as an issue assigned to this squad. You carry it to the end without asking the requester again. You coordinate and verify; the members do the work.
+/**
+ * The SDLC procedure lives in the built-in SDLC skills (sdlc-skills folder), which
+ * the quickstart attaches to the squad, so every member gets it. The leader's
+ * instructions only say what to load and what the squad is.
+ */
+const SDLC_SQUAD_INSTRUCTIONS = (kind: string) => `You lead an SDLC squad. A request arrives as an issue assigned to this squad, and you carry it to the end without asking the requester again.
+
+Before any action on an issue, load the sdlc-delivery-core and sdlc-squad-lead skills. They hold the procedure: triage and route, delegation by sub-issue, verification of each report, blocked work, the build queue, and the final report. Follow them. Where this text and a skill differ, the skill wins.
+
+${kind}
+
+Delegate only to the members listed on your Squad Roster. Each member loads its own sdlc-<role> skill, which the squad shares with all of them.`;
+
+const GREENFIELD_INSTRUCTIONS = SDLC_SQUAD_INSTRUCTIONS(
+  "This is a Greenfield squad: a product request, which names the Build project with the repository and the \"SDLC Auto\" workflow. Its route (A, B, C, or D) decides the planning stages.",
+);
+
+const MAINTENANCE_INSTRUCTIONS = SDLC_SQUAD_INSTRUCTIONS(
+  "This is a Maintenance squad: changes to an existing product. Triage each bug or change into a route and a risk tier first, as sdlc-squad-lead describes.",
+);
+
+const RESEARCH_COMMON_INSTRUCTIONS = `You lead an SDLC squad. A request arrives as an issue assigned to this squad. You carry it to the end without asking the requester again. You coordinate and verify; the members do the work.
 
 These instructions decide how you delegate here, in place of @mentioning members in a comment. They override the squad protocol's mention rule for this squad: delegation here is by sub-issue only.
 
@@ -296,53 +326,7 @@ Final report, one comment on the request when everything is verified:
 - Open risks and follow-ups, and how to run and roll back.
 Then set the request to in_review. Leave done to a person.`;
 
-const GREENFIELD_INSTRUCTIONS = `${COMMON_INSTRUCTIONS}
-
-Greenfield: build a new product from the request.
-
-Intake:
-- The request should name the Build project: a project with the repository and the "SDLC Auto" workflow. Check with multica project get <id> --output json that workflow_id is set. If there is no Build project or it has no workflow, comment once, set the request to blocked, and stop.
-- Find or create the Planning project "<Build project title> · Planning" with the same repository (multica project create --title "..." --repo <url>) and keep the Default workflow. Move the request issue into it (multica issue update <request> --project <planning>). Your runs then never hold up the build queue.
-- Put every sub-issue of stages 1 to 6 and of the final verification in the Planning project.
-- Fill anything the request leaves out with a default and add it to the assumptions.
-
-Planning stages (create all up front; stage 2 and later as backlog):
-1. Product Analyst: product brief (bmad-product-brief; add bmad-prfaq when the idea is vague).
-2. Product Analyst: PRD (bmad-prd).
-3. UX Designer: UX design (bmad-ux). Skip when the product has no UI.
-4. Architect: architecture (bmad-architecture), then project context (bmad-project-context).
-5. Product Analyst: epics and stories (bmad-create-epics-and-stories).
-6. Code Reviewer: planning readiness check (the readiness gate of bmad-sprint-planning). On CONCERNS or FAIL, send each named gap to the member who owns that document, then run stage 6 again. At most twice.
-7. Product Analyst: publish the build queue. In the Build project, create one issue per epic (an issue, not a sub-issue) assigned to "SDLC Developer", status backlog, describing the epic and linking its stories, then queue it: multica issue queue <issue> --after <issue> for each epic it depends on, or with no --after when it depends on none. An epic waits only for the epics it names, so epics that touch different code and share no dependency need no waits between them. An epic with more than eight stories becomes one issue per story, queued the same way. Create no other unqueued issue in the Build project while the queue runs: one with a running agent holds the queue.
-
-Build: the queue starts by itself. Do not run anything yourself. Register two wakeups on the request with multica issue wakeup create: one when the last epic is done (--until-issue <last epic> --until-issue-state done --on-timeout wake --expires-in 336h), and a check every 2 hours (--kind every --every 2h --expires-in 336h). At each check, list the Build project (multica issue list --project <id> --output json). An issue that is blocked or whose run failed: multica issue rerun once, then comment, and if it is still stuck set the request to blocked and mention the requester. End a check with nothing to report using multica issue wakeup checkin.
-
-Final verification, once the last epic is done: stage 8 QA Tester (full regression and a runtime check from a clean clone), stage 9 Security Reviewer (the whole product), stage 10 DevOps (how to run and deploy, packaging, release notes; no production deploy). On NO GO, FAIL, or a blocking finding, create a fix issue in the Build project for "SDLC Bug Fixer", wait for it to finish, and run that stage again. At most twice.
-
-Then post the final report.`;
-
-const MAINTENANCE_INSTRUCTIONS = `${COMMON_INSTRUCTIONS}
-
-Maintenance: change an existing product (bug, feature, optimization, upgrade, upkeep).
-
-Triage first, as one comment on the request: the type, the risk tier (Lightweight, Standard, High-risk), the route below, and the assumptions you took. Work in the request's project and repository; its workflow stays as it is. High-risk means auth, money, data migration or deletion, a public contract, a security control, or a production release.
-
-Routes:
-A. Hotfix, or a bug that is Trivial or Small: stage 1 Bug Fixer, stage 2 Code Reviewer, stage 3 QA Tester.
-B. A bug with an unclear cause or a wide effect: stage 1 Architect (root cause and impact; add Security Reviewer when auth or data is involved), stage 2 one implementation sub-issue per component for Bug Fixer or Developer, then review, QA, and security stages.
-C. Feature or enhancement: stage 1 Product Analyst (requirements and acceptance criteria; add UX Designer when the UI changes), stage 2 Architect (design delta; skip when there is none), stage 3 one implementation sub-issue per story for Developer, in dependency order, then review, QA, and security stages.
-D. Optimization: stage 1 Architect (measure the baseline and set a target), stage 2 Developer, then QA compares against the baseline.
-E. Upgrade or upkeep: stage 1 Architect (risks and rollback plan), stage 2 Developer or DevOps, then QA runs the regression.
-
-Rules:
-- Run sub-issues of a stage in parallel only when they touch different files.
-- Every change gets an independent Code Reviewer sub-issue and a QA Tester sub-issue after it. High-risk changes also get a Security Reviewer sub-issue.
-- A Medium-sized or larger bug fix, or a changed requirement, goes through bmad-correct-course before anyone builds it.
-- A review or QA verdict that blocks sends the work back: create a fix sub-issue for the owner, then run the check again. At most twice, then set the request to blocked and mention the requester.
-
-Then post the final report.`;
-
-const MARKET_RESEARCH_INSTRUCTIONS = `${COMMON_INSTRUCTIONS}
+const MARKET_RESEARCH_INSTRUCTIONS = `${RESEARCH_COMMON_INSTRUCTIONS}
 
 Market research: a weekly scan of markets, customers, and competitors. The routine opens one issue each week; the leader carries it to a report and proposals.
 
@@ -391,6 +375,7 @@ export const SQUAD_TEMPLATES: readonly SquadTemplate[] = [
     },
     instructions: GREENFIELD_INSTRUCTIONS,
     workflow: SDLC_AUTO_WORKFLOW,
+    builtinSkills: SDLC_SKILL_NAMES,
   },
   {
     id: "sdlc_maintenance",
@@ -426,6 +411,7 @@ export const SQUAD_TEMPLATES: readonly SquadTemplate[] = [
     },
     instructions: MAINTENANCE_INSTRUCTIONS,
     workflow: null,
+    builtinSkills: SDLC_SKILL_NAMES,
   },
   {
     id: "market_research",
@@ -460,5 +446,6 @@ export const SQUAD_TEMPLATES: readonly SquadTemplate[] = [
     },
     instructions: MARKET_RESEARCH_INSTRUCTIONS,
     workflow: null,
+    builtinSkills: [],
   },
 ];

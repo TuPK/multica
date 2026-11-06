@@ -7,6 +7,10 @@ import {
   runSquadQuickstart,
   type SquadQuickstartClient,
 } from "./quickstart";
+import { AGENT_INSTRUCTION_TEMPLATES } from "../agents/instruction-templates";
+import { SDLC_ROLE_AGENT_INSTRUCTIONS } from "./sdlc-agent-instructions";
+import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
+import { SDLC_SKILL_SOURCE } from "./quickstart";
 import { SQUAD_ROLES, SQUAD_TEMPLATES } from "./templates";
 
 const greenfield = SQUAD_TEMPLATES.find((t) => t.id === "sdlc_greenfield")!;
@@ -39,6 +43,12 @@ function fakeClient(over: Partial<FakeClient> = {}): FakeClient {
     listCompanyFloors: vi.fn(async () => [] as CompanyFloor[]),
     createCompanyFloor: vi.fn(async (data) => asFloor(`floor-${data.name}`, data.name, 9)),
     setCompanySeats: vi.fn(async () => ({ squads: [] }) as never),
+    listSkills: vi.fn(async () => [] as never),
+    getSkill: vi.fn(async () => ({}) as never),
+    createSkill: vi.fn(async (data) => ({ id: `skill-${data.name}`, name: data.name }) as never),
+    updateSkill: vi.fn(async () => ({}) as never),
+    listSquadSkills: vi.fn(async () => [] as never),
+    setSquadSkills: vi.fn(async () => [] as never),
     ...over,
   } as FakeClient;
   return client;
@@ -622,6 +632,151 @@ describe("runSquadQuickstart re-run for an existing squad", () => {
 
     expect(client.updateSquadCharter).not.toHaveBeenCalled();
     expect(out.squad).toEqual({ id: "s", status: "existing" });
+  });
+});
+
+describe("runSquadQuickstart SDLC agents", () => {
+  it("creates each SDLC agent from its slim SDLC instructions, not the shared template", async () => {
+    const client = fakeClient();
+
+    await runSquadQuickstart(client, greenfield, options);
+
+    const byName = Object.fromEntries(client.createAgent.mock.calls.map((c) => [c[0].name, c[0].instructions]));
+    expect(byName[SQUAD_ROLES.analyst.name]).toBe(SDLC_ROLE_AGENT_INSTRUCTIONS.analyst);
+    expect(byName[SQUAD_ROLES.developer.name]).toBe(SDLC_ROLE_AGENT_INSTRUCTIONS.developer);
+    expect(byName[SQUAD_ROLES.lead.name]).toBe(SDLC_ROLE_AGENT_INSTRUCTIONS.lead);
+  });
+
+  it("keeps the shared template for a market research role", async () => {
+    const client = fakeClient();
+
+    await runSquadQuickstart(client, marketTemplate, options);
+
+    const scout = client.createAgent.mock.calls.find((c) => c[0].name === SQUAD_ROLES.scout.name)![0];
+    expect(scout.instructions).toBe(
+      AGENT_INSTRUCTION_TEMPLATES.find((t) => t.id === "market_scout")!.instructions,
+    );
+  });
+});
+
+describe("runSquadQuickstart built-in skills", () => {
+  const sdlcNames = greenfield.builtinSkills;
+  const bundleOf = (name: string) => SDLC_BUILTIN_SKILLS.find((b) => b.name === name)!;
+
+  it("imports every built-in SDLC skill and attaches it to the new squad", async () => {
+    const client = fakeClient();
+
+    const out = await runSquadQuickstart(client, greenfield, options);
+
+    expect(client.createSkill).toHaveBeenCalledTimes(sdlcNames.length);
+    const first = client.createSkill.mock.calls[0]![0];
+    expect(first).toMatchObject({
+      name: sdlcNames[0],
+      description: bundleOf(sdlcNames[0]!).description,
+      content: bundleOf(sdlcNames[0]!).content,
+      config: { source: SDLC_SKILL_SOURCE },
+    });
+    expect(client.setSquadSkills).toHaveBeenCalledWith(
+      "squad-1",
+      sdlcNames.map((name) => `skill-${name}`),
+    );
+    expect(out.skills).toEqual({ status: "ready" });
+  });
+
+  it("updates a built-in skill an earlier run made when its text has changed", async () => {
+    const stale = {
+      id: "skill-old",
+      name: sdlcNames[0],
+      description: "old",
+      content: "old body",
+      config: { source: SDLC_SKILL_SOURCE },
+      files: [],
+    };
+    const client = fakeClient({
+      listSkills: vi.fn(async () => [stale] as never),
+      getSkill: vi.fn(async () => stale as never),
+    });
+
+    await runSquadQuickstart(client, greenfield, options);
+
+    expect(client.createSkill.mock.calls.map((c) => c[0].name)).not.toContain(sdlcNames[0]);
+    expect(client.updateSkill).toHaveBeenCalledWith("skill-old", {
+      description: bundleOf(sdlcNames[0]!).description,
+      content: bundleOf(sdlcNames[0]!).content,
+      files: bundleOf(sdlcNames[0]!).files,
+    });
+  });
+
+  it("leaves a skill the boss made under the same name, and reports it", async () => {
+    const own = {
+      id: "skill-own",
+      name: sdlcNames[0],
+      description: "mine",
+      content: "mine",
+      config: {},
+      files: [],
+    };
+    const client = fakeClient({
+      listSkills: vi.fn(async () => [own] as never),
+      getSkill: vi.fn(async () => own as never),
+    });
+
+    const out = await runSquadQuickstart(client, greenfield, options);
+
+    expect(client.updateSkill).not.toHaveBeenCalled();
+    expect(client.setSquadSkills).toHaveBeenCalledWith(
+      "squad-1",
+      sdlcNames.slice(1).map((name) => `skill-${name}`),
+    );
+    expect(out.skills.status).toBe("partial");
+    expect(out.skills.error).toContain(`${sdlcNames[0]}: the workspace has its own skill`);
+  });
+
+  it("keeps the squad's other skills when it attaches the built-in ones", async () => {
+    const client = fakeClient({
+      listSquadSkills: vi.fn(async () => [{ id: "skill-boss", name: "x", description: "" }] as never),
+    });
+
+    await runSquadQuickstart(client, greenfield, options);
+
+    expect(client.setSquadSkills).toHaveBeenCalledWith("squad-1", [
+      "skill-boss",
+      ...sdlcNames.map((name) => `skill-${name}`),
+    ]);
+  });
+
+  it("imports no skill for a template that names none", async () => {
+    const client = fakeClient();
+
+    await runSquadQuickstart(client, marketTemplate, options);
+
+    expect(client.listSkills).not.toHaveBeenCalled();
+    expect(client.setSquadSkills).not.toHaveBeenCalled();
+  });
+
+  it("attaches the skills to an existing quickstart squad on a rerun", async () => {
+    const client = fakeClient({
+      listSquads: vi.fn(async () => [
+        {
+          id: "squad-1",
+          name: greenfield.name,
+          leader_id: "agent-1",
+          instructions: greenfield.instructions,
+          archived_at: null,
+        } as unknown as Squad,
+      ]),
+      listAgents: vi.fn(async () =>
+        greenfield.roles.map((role, i) => asAgent(i === 0 ? "agent-1" : `agent-${i + 1}`, SQUAD_ROLES[role].name)),
+      ),
+    });
+
+    const out = await runSquadQuickstart(client, greenfield, options);
+
+    expect(out.squad.status).toBe("existing");
+    expect(client.setSquadSkills).toHaveBeenCalledWith(
+      "squad-1",
+      sdlcNames.map((name) => `skill-${name}`),
+    );
   });
 });
 
