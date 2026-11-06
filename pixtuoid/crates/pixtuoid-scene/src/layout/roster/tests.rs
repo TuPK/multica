@@ -545,6 +545,7 @@ fn overlap_key(kind: FixtureKind) -> &'static str {
             PodDecor::StaffDesk => "StaffDesk",
             PodDecor::ReceptionSofa => "ReceptionSofa",
             PodDecor::MeetingTable => "MeetingTable",
+            PodDecor::MeetingTableLong => "MeetingTableLong",
             PodDecor::MeetingChair => "MeetingChair",
         },
         _ => kind_key(kind),

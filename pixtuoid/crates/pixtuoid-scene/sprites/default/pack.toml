@@ -549,6 +549,14 @@ frame_ms = 600
 frames   = ["meeting_table@4x.sprite"]
 frame_ms = 600
 
+[animations.meeting_table_long]
+frames   = ["meeting_table_long.sprite"]
+frame_ms = 600
+
+[animations."meeting_table_long@4x"]
+frames   = ["meeting_table_long@4x.sprite"]
+frame_ms = 600
+
 # The fixtures the classic still draws procedurally; the cutaway draws them from this art.
 [animations.kitchen_island]
 frames   = ["kitchen_island.sprite"]

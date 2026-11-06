@@ -340,6 +340,8 @@ pub enum Furniture {
     /// The meeting-room table body — `footprint == visual`, so the mask blocks
     /// exactly what is drawn.
     MeetingTable,
+    /// The meeting table turned to run north to south: the boss room's long table.
+    MeetingTableLong,
     /// The lounge floor lamp, whose footprint width is the base disc only, not
     /// the pole and its empty margins. CENTERED, and far taller than the 1px
     /// disc on purpose: from a centered stamp the tall footprint is what REACHES
@@ -413,6 +415,7 @@ impl Furniture {
         Furniture::MeetingScreen,
         Furniture::MeetingSofaBody,
         Furniture::MeetingTable,
+        Furniture::MeetingTableLong,
         Furniture::FloorLamp,
         Furniture::LoungeSideTable,
         Furniture::KitchenIsland,
@@ -438,6 +441,7 @@ pub(crate) const fn repels_plants(kind: Furniture) -> bool {
         Furniture::FishTank
         | Furniture::MeetingSofaBody
         | Furniture::MeetingTable
+        | Furniture::MeetingTableLong
         | Furniture::KitchenIsland
         | Furniture::FloorLamp
         | Furniture::LoungeSideTable => true,
@@ -688,6 +692,12 @@ pub const fn furniture_def(kind: Furniture) -> FurnitureDef {
         Furniture::MeetingTable => FurnitureDef {
             footprint: Some(Size { w: 11, h: 5 }),
             visual: Size { w: 11, h: 5 },
+            pad: OBSTACLE_PAD_PX,
+            ..DECOR
+        },
+        Furniture::MeetingTableLong => FurnitureDef {
+            footprint: Some(Size { w: 5, h: 11 }),
+            visual: Size { w: 5, h: 11 },
             pad: OBSTACLE_PAD_PX,
             ..DECOR
         },
@@ -1058,6 +1068,8 @@ pub enum PodDecor {
     MeetingTable,
     /// A meeting chair at the studio's meeting room's long table. Placed by the studio's meeting room.
     MeetingChair,
+    /// One piece of the boss room's long table, which runs north to south.
+    MeetingTableLong,
 }
 
 impl PodDecor {
@@ -1084,6 +1096,7 @@ impl PodDecor {
             PodDecor::StaffDesk => Furniture::StaffDesk,
             PodDecor::ReceptionSofa => Furniture::ReceptionSofa,
             PodDecor::MeetingTable => Furniture::MeetingTable,
+            PodDecor::MeetingTableLong => Furniture::MeetingTableLong,
             PodDecor::MeetingChair => Furniture::MeetingChair,
         }
     }
@@ -1100,6 +1113,7 @@ impl PodDecor {
             | PodDecor::StaffDesk
             | PodDecor::ReceptionSofa
             | PodDecor::MeetingTable
+            | PodDecor::MeetingTableLong
             | PodDecor::MeetingChair => None,
         }
     }
@@ -1115,6 +1129,7 @@ impl PodDecor {
             PodDecor::StaffDesk => Piece::StaffDesk,
             PodDecor::ReceptionSofa => Piece::ReceptionSofa,
             PodDecor::MeetingTable => Piece::MeetingTable,
+            PodDecor::MeetingTableLong => Piece::MeetingTableLong,
             PodDecor::MeetingChair => Piece::MeetingChair,
         }
     }
@@ -1135,6 +1150,7 @@ mod tests {
             Furniture::FishTank,
             Furniture::MeetingSofaBody,
             Furniture::MeetingTable,
+            Furniture::MeetingTableLong,
             Furniture::KitchenIsland,
             Furniture::FloorLamp,
             Furniture::LoungeSideTable,
@@ -1146,8 +1162,8 @@ mod tests {
         }
         assert_eq!(
             Furniture::ALL.iter().filter(|&&k| repels_plants(k)).count(),
-            6,
-            "exactly six kinds repel — a new `true` must be deliberate"
+            7,
+            "exactly seven kinds repel — a new `true` must be deliberate"
         );
     }
 
@@ -1247,7 +1263,7 @@ mod tests {
     fn furniture_def_invariants_hold_for_every_row() {
         assert_eq!(
             Furniture::ALL.len(),
-            31,
+            32,
             "Furniture variant added/removed — update ALL (and this count)"
         );
         for &f in Furniture::ALL {

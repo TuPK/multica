@@ -3289,6 +3289,22 @@ def meeting_table():
     return g
 
 
+def rotate_cw(g):
+    """`g` turned a quarter turn clockwise: its rows become its columns."""
+    return [list(row) for row in zip(*g[::-1])]
+
+
+def meeting_table_long():
+    """The meeting table turned to run north to south: the same top, lit along
+    its far edge and shaded at its near one, on its side."""
+    return rotate_cw(meeting_table())
+
+
+def meeting_table_long_1x():
+    """The 1x meeting table turned to run north to south, on its side."""
+    return rotate_cw(meeting_table_1x())
+
+
 def meeting_table_1x():
     """The meeting table at 1x: the lit far edge, the top, a notepad and a cup
     of coffee apart on it, the near edge in shade."""
@@ -5677,6 +5693,7 @@ def main():
         "vending_machine": (doc(vending_machine), vending_machine()),
         "printer": (doc(printer), printer()),
         "meeting_table": (doc(meeting_table), [meeting_table()]),
+        "meeting_table_long": (doc(meeting_table_long), [meeting_table_long()]),
         "kitchen_island": (doc(kitchen_island), [kitchen_island()]),
         "side_table": (doc(side_table), [side_table()]),
         "water_cooler": (doc(water_cooler), water_cooler()),
@@ -5703,6 +5720,10 @@ def main():
         "phone_booth": (doc(phone_booth_1x), [phone_booth_1x()]),
         "printer": (doc(printer_1x), printer_1x()),
         "meeting_table": (doc(meeting_table_1x), [meeting_table_1x()]),
+        "meeting_table_long": (
+            doc(meeting_table_long_1x),
+            [meeting_table_long_1x()],
+        ),
         "kitchen_island": (doc(kitchen_island_1x), [kitchen_island_1x()]),
         "side_table": (doc(side_table_1x), [side_table_1x()]),
         "water_cooler": (doc(water_cooler_1x), water_cooler_1x()),

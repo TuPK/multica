@@ -1672,6 +1672,7 @@ pub enum Piece {
     VendingMachine,
     Printer,
     MeetingTable,
+    MeetingTableLong,
     KitchenIsland,
     SideTable,
     WaterCooler,
