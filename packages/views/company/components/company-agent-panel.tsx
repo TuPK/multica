@@ -13,6 +13,7 @@ import { ActorAvatar } from "../../common/actor-avatar";
 import { useT } from "../../i18n";
 import { IssueDetail } from "../../issues/components/issue-detail";
 import { RunQueueControl, RunQueueWaitingLabel } from "../../issues/components/run-queue-control";
+import { AgentRunTranscriptButton } from "../../issues/components/agent-run-transcript-button";
 import { issueDetailOptions } from "@multica/core/issues/queries";
 import { CompanyAgentChat } from "./company-agent-chat";
 import { CompanyAgentNewIssue } from "./company-agent-new-issue";
@@ -98,7 +99,12 @@ function PanelBody({
     <>
       <header className="flex shrink-0 flex-wrap items-center gap-3 border-b px-4 py-3 pr-12">
         <ActorAvatar actorType="agent" actorId={agent.id} size="lg" showStatusDot />
-        <DialogTitle className="min-w-0 flex-1 truncate text-heading">{agent.name}</DialogTitle>
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <DialogTitle className="min-w-0 truncate text-heading">{agent.name}</DialogTitle>
+          {pane.kind === "issue" ? (
+            <AgentRunTranscriptButton issueId={pane.issueId} agentId={agent.id} agentName={agent.name} />
+          ) : null}
+        </div>
         <Button type="button" variant="outline" size="sm" className="md:hidden" onClick={() => setSide(side === "work" ? "main" : "work")}>
           <ListTodo className="size-4" />
           {t(($) => $.company.panel_work)}

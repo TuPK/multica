@@ -28,6 +28,7 @@ import type { ChildProgress } from "./list-row";
 import { IssueActionsContextMenu } from "../actions";
 import { LabelChip } from "../../labels/label-chip";
 import { IssueAgentActivityIndicator } from "./issue-agent-activity-indicator";
+import { AgentRunTranscriptButton } from "./agent-run-transcript-button";
 import { CustomStatusChip, useIsCustomStatus } from "./custom-status-chip";
 import { IssueDuplicateOfMarker } from "./issue-duplicates";
 import { RunQueueControl, RunQueueWaitingLabel } from "./run-queue-control";
@@ -132,6 +133,9 @@ export const BoardCardContent = memo(function BoardCardContent({
   const showAssigneeName = showAssigneeSection && hasAssignee && !showStartDate && !showDueDate;
   const showUpdatedHint = showAssigneeName && !showChildProgress;
   const { getActorName } = useActorName();
+  // Only an agent assignee has runs whose transcript the card can open.
+  const assigneeAgentId =
+    issue.assignee_type === "agent" && issue.assignee_id ? issue.assignee_id : null;
   const assigneeName =
     showAssigneeName && issue.assignee_type && issue.assignee_id
       ? getActorName(issue.assignee_type, issue.assignee_id)
@@ -217,7 +221,18 @@ export const BoardCardContent = memo(function BoardCardContent({
           <p className="text-caption text-muted-foreground truncate">{issue.identifier}</p>
           <IssueDuplicateOfMarker issue={issue} insideLink />
         </div>
-        <IssueAgentActivityIndicator issueId={issue.id} />
+        <div className="flex items-center gap-1">
+          {assigneeAgentId && (
+            <PickerWrapper className="flex">
+              <AgentRunTranscriptButton
+                issueId={issue.id}
+                agentId={assigneeAgentId}
+                agentName={getActorName("agent", assigneeAgentId)}
+              />
+            </PickerWrapper>
+          )}
+          <IssueAgentActivityIndicator issueId={issue.id} />
+        </div>
       </div>
 
       {/* Row 2: Title */}

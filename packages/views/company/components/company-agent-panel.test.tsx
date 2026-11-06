@@ -48,6 +48,11 @@ vi.mock("./company-agent-new-issue", () => ({
     </div>
   ),
 }));
+vi.mock("../../issues/components/agent-run-transcript-button", () => ({
+  AgentRunTranscriptButton: ({ agentName }: { agentName: string }) => (
+    <span data-testid="run-transcript">{`transcript of ${agentName}`}</span>
+  ),
+}));
 vi.mock("../../issues/components/issue-detail", () => ({
   IssueDetail: ({ issueId, leadingAction }: { issueId: string; leadingAction?: React.ReactNode }) => (
     <div>
@@ -161,6 +166,15 @@ describe("CompanyAgentPanel", () => {
     setup({ target: { agentId: "ada", issueId: "queued" } });
 
     expect(screen.getByText("thread queued")).toBeTruthy();
+  });
+
+  it("offers the agent's run transcript beside its name only while an issue is open", () => {
+    setup();
+    expect(screen.queryByTestId("run-transcript")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /MUL-run/ }));
+
+    expect(screen.getByTestId("run-transcript").textContent).toBe("transcript of Ada");
   });
 
   it("hands over an issue nobody has started", () => {
