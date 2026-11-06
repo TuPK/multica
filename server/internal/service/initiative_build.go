@@ -33,6 +33,7 @@ const (
 // sdlcRoleAgents names the SDLC agents the workflow hands to, as the quickstart
 // names them (SQUAD_ROLES in templates.ts).
 var sdlcRoleAgents = []struct{ role, name string }{
+	{"lead", "SDLC Lead"},
 	{"developer", "SDLC Developer"},
 	{"reviewer", "SDLC Code Reviewer"},
 	{"qa", "SDLC QA Tester"},
@@ -256,8 +257,9 @@ func (s *InitiativeService) sdlcWorkflowFor(ctx context.Context, q *db.Queries, 
 
 // sdlcSteps is SDLC_AUTO_WORKFLOW, the same shape as the Delivery workflow: the
 // developer takes the issue and builds it in progress, the reviewer checks, and
-// QA verifies. Rejected work goes back to In Progress. QA's step is the last
-// before done.
+// QA verifies. Rejected work goes back to In Progress. A blocked issue is handed
+// to the squad's lead, which unblocks it and sends it back to In Progress. QA's
+// step is the last before done.
 func sdlcSteps(agents map[string]pgtype.UUID) []issueworkflow.Step {
 	agent := func(role string) issueworkflow.Handler {
 		return issueworkflow.Handler{Type: issueworkflow.HandlerAgent, ID: util.UUIDToString(agents[role])}
@@ -272,21 +274,33 @@ func sdlcSteps(agents map[string]pgtype.UUID) []issueworkflow.Step {
 		{
 			StatusKey: sdlcInProgressStatusKey, Handler: agent("developer"),
 			BackStatusKey: issuestatus.Todo,
-			Instructions:  "Build everything this issue asks for, story by story, following the story flow in your instructions. Hand it to review only when every story is implemented and verified on the running app. Record what you verified in the spec.",
+			Instructions:  "Build everything this issue asks for, story by story, following the story flow in your instructions. Hand it to review only when every story is implemented and verified on the running app. Record what you verified in the spec. If this issue came back from Blocked, read the lead's comment first and re-run the check it names before you hand it to review.",
 		},
 		{
 			StatusKey: "in_review", Handler: agent("reviewer"),
 			BackStatusKey: sdlcInProgressStatusKey,
-			Instructions:  "Review the whole change for this issue against its acceptance criteria. Send it back to In Progress with the blocking findings, or pass it on to QA with your verdict.",
+			Instructions:  "Review the whole change for this issue against its acceptance criteria. Send it back to In Progress with the blocking findings, or pass it on to QA with your verdict. If you cannot finish the review, set the issue to blocked and comment the exact command, its error, and the fix you need.",
 		},
 		{
 			StatusKey: sdlcQAStatusKey, Handler: agent("qa"),
 			BackStatusKey: sdlcInProgressStatusKey,
-			Instructions:  "Verify the change on the running system against the acceptance criteria. NO GO sends it back to In Progress with the defects. GO or CONDITIONAL GO finishes the issue.",
+			Instructions:  "Verify the change on the running system against the acceptance criteria. NO GO sends it back to In Progress with the defects. GO or CONDITIONAL GO finishes the issue. If you cannot run the verification (a service is down, a required check cannot run), set the issue to blocked and comment the exact command, its error, and the fix you need.",
 		},
-		{StatusKey: issuestatus.Blocked, Handler: none},
+		{
+			StatusKey: issuestatus.Blocked, Handler: agent("lead"),
+			BackStatusKey: sdlcInProgressStatusKey,
+			Instructions:  sdlcBlockedInstructions,
+		},
 	}
 }
+
+// sdlcBlockedInstructions is the lead's brief for a blocked build. Without a
+// handler here, a blocked issue waits with nobody assigned to it.
+const sdlcBlockedInstructions = "This issue is blocked. Read the latest comment that says why it cannot proceed, then unblock it yourself. Do not leave it here.\n" +
+	"1. If the blocker is an environment or tool the developer can restore (a local service that is down, a missing env var, a check that failed to run), comment the exact fix the developer must make and the command that proves it, then send the issue back to In Progress. The developer rebuilds, re-runs the check, and hands it to review again.\n" +
+	"2. If the blocker needs a decision only the boss can make, or a check no agent can run here, file a proposal for the boss with the evidence, and leave the issue at Blocked with a comment saying what is waiting.\n" +
+	"3. If the same blocker returns after one resume, do not resume a second time. Escalate under 2.\n" +
+	"Never mark the issue or its Epic done, and never change acceptance criteria to get past a blocker."
 
 // wakeAgent posts a note on the issue that mentions the agent, so the mention path
 // wakes it, as wakeOwner does for a squad's leader.

@@ -154,11 +154,23 @@ export interface SquadWorkflowTemplate {
 }
 
 /**
+ * The lead's brief for a blocked build issue. A blocked step with no handler
+ * leaves the issue with nobody to unblock it.
+ */
+export const SDLC_BLOCKED_INSTRUCTIONS =
+  "This issue is blocked. Read the latest comment that says why it cannot proceed, then unblock it yourself. Do not leave it here.\n" +
+  "1. If the blocker is an environment or tool the developer can restore (a local service that is down, a missing env var, a check that failed to run), comment the exact fix the developer must make and the command that proves it, then send the issue back to In Progress. The developer rebuilds, re-runs the check, and hands it to review again.\n" +
+  "2. If the blocker needs a decision only the boss can make, or a check no agent can run here, file a proposal for the boss with the evidence, and leave the issue at Blocked with a comment saying what is waiting.\n" +
+  "3. If the same blocker returns after one resume, do not resume a second time. Escalate under 2.\n" +
+  "Never mark the issue or its Epic done, and never change acceptance criteria to get past a blocker.";
+
+/**
  * The workflow of a build project, the same shape as the Delivery workflow:
  * the developer takes the issue and builds it in progress, an independent
  * reviewer checks, and QA verifies. A rejected step goes back to In Progress,
  * and QA's step is the last one before done, so an agent run can close the
- * issue and the run queue moves on.
+ * issue and the run queue moves on. A blocked issue goes to the squad lead,
+ * which sends it back to In Progress.
  */
 export const SDLC_AUTO_WORKFLOW: SquadWorkflowTemplate = {
   name: "SDLC Auto",
@@ -177,23 +189,23 @@ export const SDLC_AUTO_WORKFLOW: SquadWorkflowTemplate = {
       handler: "developer",
       back: "todo",
       instructions:
-        "Build everything this issue asks for, story by story, following the story flow in your instructions. Hand it to review only when every story is implemented and verified on the running app. Record what you verified in the spec.",
+        "Build everything this issue asks for, story by story, following the story flow in your instructions. Hand it to review only when every story is implemented and verified on the running app. Record what you verified in the spec. If this issue came back from Blocked, read the lead's comment first and re-run the check it names before you hand it to review.",
     },
     {
       status: { key: "in_review" },
       handler: "reviewer",
       back: "in_progress",
       instructions:
-        "Review the whole change for this issue against its acceptance criteria. Send it back to In Progress with the blocking findings, or pass it on to QA with your verdict.",
+        "Review the whole change for this issue against its acceptance criteria. Send it back to In Progress with the blocking findings, or pass it on to QA with your verdict. If you cannot finish the review, set the issue to blocked and comment the exact command, its error, and the fix you need.",
     },
     {
       status: { name: "QA" },
       handler: "qa",
       back: "in_progress",
       instructions:
-        "Verify the change on the running system against the acceptance criteria. NO GO sends it back to In Progress with the defects. GO or CONDITIONAL GO finishes the issue.",
+        "Verify the change on the running system against the acceptance criteria. NO GO sends it back to In Progress with the defects. GO or CONDITIONAL GO finishes the issue. If you cannot run the verification (a service is down, a required check cannot run), set the issue to blocked and comment the exact command, its error, and the fix you need.",
     },
-    { status: { key: "blocked" }, handler: null, instructions: "" },
+    { status: { key: "blocked" }, handler: "lead", back: "in_progress", instructions: SDLC_BLOCKED_INSTRUCTIONS },
   ],
 };
 
@@ -264,6 +276,7 @@ You never build:
 
 How you verify:
 - When a sub-issue reaches in_review, read its report and open the files and evidence it names. If it meets the acceptance check, set it done: multica issue status <sub-issue> done. If not, comment the specific gap on the sub-issue and set it back to todo so its assignee reworks it. A report is a claim until the evidence supports it.
+- A build issue in Blocked is unblocked by its workflow step's brief, which overrides the request rule for that issue: comment the fix, send it back to In Progress for its developer, and do not do the developer's work yourself. The request rule above still applies to the request.
 - Treat an empty, malformed, or failed report as no progress. Retry the same piece at most twice, then change the member or the approach, or split it. Never set a sub-issue done to get past a stage.
 
 Unattended:
