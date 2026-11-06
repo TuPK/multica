@@ -967,6 +967,18 @@ fn place_wall_decor(
             pos,
         });
     }
+    // The studio's kanban board hangs on the glass wall at the TV's row, in the boss room's
+    // north-east corner.
+    if let (true, Some(mr)) = (plan.studio, meeting_room) {
+        let board = wb_def.visual;
+        wall_decor.push(WallDecorItem {
+            kind: WallDecor::Whiteboard,
+            pos: Point {
+                x: mr.bounds.x + mr.bounds.width - board.w - 4,
+                y: top_margin.saturating_sub(board.h),
+            },
+        });
+    }
     if let (Some(_), Some(sx)) = (meeting_room, meeting_screen_x) {
         wall_decor.push(WallDecorItem {
             kind: WallDecor::MeetingScreen,
@@ -1859,7 +1871,7 @@ fn studio_offices(rooms: &[MeetingRoom]) -> Vec<PodDecorItem> {
     boss_room_decor(boss.bounds)
 }
 
-/// The boss room's decor: a kanban board flat against the window band, and one long table
+/// The boss room's decor: one long table
 /// running north to south with three chairs down each side. Positions are the pieces' centres.
 fn boss_room_decor(room: Bounds) -> Vec<PodDecorItem> {
     /// The centre rows of the table's pieces, which stack end to end into one long table.
@@ -1876,14 +1888,7 @@ fn boss_room_decor(room: Bounds) -> Vec<PodDecorItem> {
         y: y as u16,
     };
     let top = i32::from(room.y);
-    let board_h = furniture_def(Furniture::Whiteboard).visual.h;
-    let mut items = vec![PodDecorItem {
-        kind: PodDecor::Whiteboard,
-        pos: Point {
-            x: room.x + room.width - 11,
-            y: room.y + board_h / 2,
-        },
-    }];
+    let mut items = Vec::new();
     let table_y = top + TABLE_FROM_NORTH;
     items.extend(TABLE_DY.map(|dy| PodDecorItem {
         kind: PodDecor::MeetingTableLong,
