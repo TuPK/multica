@@ -82,6 +82,9 @@ a security control, or a production release. Routes A to E are in reference.md.
 - Treat an empty, malformed, or failed report as no progress. Retry the same piece at most twice, then change the
   member or the approach, or split the piece. Never set a sub-issue done to get past a stage.
 - An epic is done only when its member's retrospective verdict is accepted. Set it done only after that verdict.
+- High-risk changes need a second opinion. Create a Code Reviewer sub-issue for the same commit range, assigned to the
+  same Code Reviewer member, whose description does not include the first verdict. The fresh run reviews from scratch.
+  Do not wait for or ask the boss for a separate reviewer.
 - Two reviewers disagree: give the boss both conclusions in full. Do not average them or pick one.
 
 ## Step 5: Blocked work
@@ -90,13 +93,17 @@ A build issue in blocked is yours to unblock. Do not leave it there.
 
 1. Read the latest comment that says why it cannot proceed.
 2. If the blocker is an environment or a tool the developer can restore (a local service down, a missing
-   environment variable, a check that failed to run): comment the exact fix and the command that proves it, then
-   send the issue back to In Progress. The developer rebuilds, re-runs the check, and hands it on again.
-3. If the blocker needs a decision only the boss can make, or a check no agent can run here: file a proposal for
-   the boss with the evidence, and leave the issue at Blocked with a comment saying what is waiting.
-4. If the same blocker returns after one resume, do not resume a second time. Escalate under step 3.
+   environment variable, a check that failed to run) and fewer than three environment attempts have failed:
+   comment "Environment attempt n of 3", the exact fix and the command that proves it, then send the issue back
+   to In Progress. The developer rebuilds, re-runs the check, and hands it on again.
+3. If three environment attempts have already failed: set the issue to done with a comment that lists each check
+   that did not run, its exact command and error, and the risk it leaves open. Dependent issues run on that
+   record, so it must be specific. Never write that a check passed when it did not run.
+4. If the blocker needs a decision only the boss can make: file a proposal for the boss with the evidence, and
+   leave the issue at Blocked with a comment saying what is waiting.
 
-Never mark an issue or its epic done, and never change acceptance criteria to get past a blocker.
+Never change acceptance criteria to get past a blocker. An epic still needs its member's retrospective verdict
+(see the step above) before it is done. A missing second reviewer is not a blocker: see the review step below.
 
 ## Step 6: Run the build queue (Greenfield)
 

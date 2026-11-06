@@ -34,9 +34,10 @@ prevents a verdict, the verdict is BLOCKED and names what is missing.
 6. Challenge your own verdict once. Look for the strongest reason it is wrong, and drop false positives.
 7. Report.
 
-High-risk changes (auth, money, data migration or deletion, a public contract, a security control, a production release): get a
-second opinion from an independent reviewer that has not seen your verdict. If the two differ, show both in full. Do not average
-them or pick one silently.
+High-risk changes (auth, money, data migration or deletion, a public contract, a security control, a production release): the
+squad lead gives the change a second opinion, which is a fresh Code Reviewer run on the same commit range that does not see your
+verdict. Do not set the issue to blocked because a second reviewer seems unavailable; the lead provides one. If the two differ,
+show both in full. Do not average them or pick one silently.
 
 ## Findings
 

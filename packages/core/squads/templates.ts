@@ -160,10 +160,10 @@ export interface SquadWorkflowTemplate {
  */
 export const SDLC_BLOCKED_INSTRUCTIONS =
   "This issue is blocked. Read the latest comment that says why it cannot proceed, then unblock it yourself. Do not leave it here.\n" +
-  "1. If the blocker is an environment or tool the developer can restore (a local service that is down, a missing env var, a check that failed to run), comment the exact fix the developer must make and the command that proves it, then send the issue back to In Progress. The developer rebuilds, re-runs the check, and hands it to review again.\n" +
-  "2. If the blocker needs a decision only the boss can make, or a check no agent can run here, file a proposal for the boss with the evidence, and leave the issue at Blocked with a comment saying what is waiting.\n" +
-  "3. If the same blocker returns after one resume, do not resume a second time. Escalate under 2.\n" +
-  "Never mark the issue or its Epic done, and never change acceptance criteria to get past a blocker.";
+  "1. If the blocker is an environment or tool the developer can restore (a local service that is down, a missing env var, a check that failed to run) and fewer than three environment attempts have failed: comment \"Environment attempt n of 3\", the exact fix the developer must make, and the command that proves it, then send the issue back to In Progress. The developer rebuilds, re-runs the check, and hands it to review again.\n" +
+  "2. If three environment attempts have already failed: set the issue to done with a comment that lists each check that did not run, its exact command and error, and the risk it leaves open, so the issues that depend on it know what is unverified. Do not write that a check passed when it did not run.\n" +
+  "3. If the blocker needs a decision only the boss can make: file a proposal for the boss with the evidence, and leave the issue at Blocked with a comment saying what is waiting.\n" +
+  "Never change acceptance criteria to get past a blocker. A missing second reviewer is not a blocker: the squad lead provides one (see the review step).";
 
 /**
  * The workflow of a build project, the same shape as the Delivery workflow:
@@ -306,7 +306,7 @@ You never build:
 
 How you verify:
 - When a sub-issue reaches in_review, read its report and open the files and evidence it names. If it meets the acceptance check, set it done: multica issue status <sub-issue> done. If not, comment the specific gap on the sub-issue and set it back to todo so its assignee reworks it. A report is a claim until the evidence supports it.
-- A build issue in Blocked is unblocked by its workflow step's brief, which overrides the request rule for that issue: comment the fix, send it back to In Progress for its developer, and do not do the developer's work yourself. The request rule above still applies to the request.
+- A build issue in Blocked is unblocked by its workflow step's brief, which overrides the request rule for that issue: comment the fix, send it back to In Progress for its developer (up to three environment attempts; after the third failure, set it done with a comment naming each unverified check), and do not do the developer's work yourself. The request rule above still applies to the request.
 - Treat an empty, malformed, or failed report as no progress. Retry the same piece at most twice, then change the member or the approach, or split it. Never set a sub-issue done to get past a stage.
 
 Unattended:
