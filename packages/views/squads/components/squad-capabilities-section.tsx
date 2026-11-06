@@ -27,8 +27,8 @@ export function SquadCapabilitiesSection({
   skills: SquadSkill[];
   plugins: SquadPlugin[];
   workspaceSkills: SkillSummary[];
-  /** Plugin names found on the runtimes the squad's agents use. */
-  pluginSuggestions: string[];
+  /** Plugins found on the squad's runtimes or in the team catalog, with install hints. */
+  pluginSuggestions: { name: string; hint: string }[];
   canManage: boolean;
   savingSkills: boolean;
   savingPlugins: boolean;
@@ -49,8 +49,8 @@ export function SquadCapabilitiesSection({
   const pluginItems: PickItem[] = useMemo(() => {
     const attached = new Set(plugins.map((p) => p.name));
     return pluginSuggestions
-      .filter((name) => !attached.has(name))
-      .map((name) => ({ key: name, name }));
+      .filter((suggestion) => !attached.has(suggestion.name))
+      .map((suggestion) => ({ key: suggestion.name, name: suggestion.name, hint: suggestion.hint || undefined }));
   }, [pluginSuggestions, plugins]);
 
   return (

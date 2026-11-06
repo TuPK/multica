@@ -12,7 +12,7 @@ import { resolvePublicFileUrl } from "@multica/core/workspace/avatar-url";
 import { isImeComposing } from "@multica/core/utils";
 import { getShortcut, shortcutMatchesEvent } from "@multica/core/shortcuts";
 import { useLocale, useT, useTimeAgo } from "../../i18n";
-import { agentListOptions, memberListOptions, skillListOptions, squadListOptions, squadMemberStatusOptions, squadPluginsOptions, squadSkillsOptions, workspaceKeys } from "@multica/core/workspace/queries";
+import { agentListOptions, memberListOptions, skillListOptions, squadListOptions, squadMemberStatusOptions, squadPluginCatalogOptions, squadPluginsOptions, squadSkillsOptions, workspaceKeys } from "@multica/core/workspace/queries";
 import { isRuntimeUsableForUser, runtimeCapabilitiesOptions, runtimeDisplayLabel, runtimeListOptions, runtimeModelsOptions } from "@multica/core/runtimes";
 import { companyFloorsOptions } from "@multica/core/company";
 import { useAddSquadToCompany } from "../../company/lib/use-add-squad-to-company";
@@ -229,13 +229,20 @@ export function SquadDetailView({
   const pluginDiscovery = useQueries({
     queries: pluginSourceRuntimeIds.map((id) => runtimeCapabilitiesOptions(id)),
   });
-  const pluginSuggestions = [
-    ...new Set(
-      pluginDiscovery.flatMap((q) =>
-        (q.data?.skills ?? []).map((skill) => skill.plugin).filter((name): name is string => !!name),
-      ),
-    ),
-  ].sort();
+  // Plugins the runtimes report, plus the team's quickstart bundle. A bundle
+  // plugin carries its install hint, which the squad leader uses to install it
+  // on a project's runtime when no runtime has it yet.
+  const { data: pluginCatalog = [] } = useQuery(squadPluginCatalogOptions(wsId));
+  const pluginHints = new Map<string, string>();
+  for (const q of pluginDiscovery) {
+    for (const skill of q.data?.skills ?? []) {
+      if (skill.plugin && !pluginHints.has(skill.plugin)) pluginHints.set(skill.plugin, "");
+    }
+  }
+  for (const plugin of pluginCatalog) pluginHints.set(plugin.name, plugin.install_hint);
+  const pluginSuggestions = [...pluginHints]
+    .map(([name, hint]) => ({ name, hint }))
+    .sort((a, b) => a.name.localeCompare(b.name));
   // The squad-wide model and thinking controls need each live agent's runtime
   // model catalog. An offline runtime's catalog is not requested.
   const liveAgentRuntimeIds = useMemo(

@@ -22,6 +22,7 @@ export const workspaceKeys = {
     ["workspaces", wsId, "squads", squadId, "skills"] as const,
   squadPlugins: (wsId: string, squadId: string) =>
     ["workspaces", wsId, "squads", squadId, "plugins"] as const,
+  squadPluginCatalog: (wsId: string) => ["workspaces", wsId, "squads", "plugin-catalog"] as const,
   skills: (wsId: string) => ["workspaces", wsId, "skills"] as const,
   assigneeFrequency: (wsId: string) => ["workspaces", wsId, "assignee-frequency"] as const,
   mcpServers: (wsId: string) => ["workspaces", wsId, "mcp-servers"] as const,
@@ -122,6 +123,14 @@ export function squadPluginsOptions(wsId: string, squadId: string) {
     queryKey: workspaceKeys.squadPlugins(wsId, squadId),
     queryFn: () => api.listSquadPlugins(squadId),
     enabled: !!wsId && !!squadId,
+  });
+}
+
+export function squadPluginCatalogOptions(wsId: string) {
+  return queryOptions({
+    queryKey: workspaceKeys.squadPluginCatalog(wsId),
+    queryFn: () => api.listSquadPluginCatalog(),
+    enabled: !!wsId,
   });
 }
 

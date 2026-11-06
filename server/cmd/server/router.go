@@ -2362,6 +2362,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Post("/", h.CreateSquad)
 				// The directory (spec 3.5) is a static path, so it is matched before /{id}.
 				r.Get("/directory", h.ListSquadDirectory)
+				// The plugin catalog (the quickstart bundle) is static too, for the same reason.
+				r.Get("/plugin-catalog", h.ListSquadPluginCatalog)
 				r.Route("/{id}", func(r chi.Router) {
 					r.Get("/", h.GetSquad)
 					r.Put("/", h.UpdateSquad)

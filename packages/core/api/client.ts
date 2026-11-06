@@ -5260,6 +5260,14 @@ export class ApiClient {
     }) as SquadPlugin[];
   }
 
+  // The plugins of the team's quickstart bundle, offered in the squad picker.
+  async listSquadPluginCatalog(): Promise<SquadPlugin[]> {
+    const raw = await this.fetch<unknown>(`/api/squads/plugin-catalog`);
+    return parseWithFallback(raw, SquadPluginListSchema, EMPTY_SQUAD_PLUGIN_LIST, {
+      endpoint: "GET /api/squads/plugin-catalog",
+    }) as SquadPlugin[];
+  }
+
   // Points every live agent member at one runtime in one request. The
   // response says which agents moved, which were already there, and which were
   // skipped with a reason.

@@ -54,6 +54,7 @@ vi.mock("@multica/core/workspace/queries", () => ({
   skillListOptions: () => ({ queryKey: ["skills"] }),
   squadSkillsOptions: () => ({ queryKey: ["squad-skills"] }),
   squadPluginsOptions: () => ({ queryKey: ["squad-plugins"] }),
+  squadPluginCatalogOptions: () => ({ queryKey: ["squad-plugin-catalog"] }),
   workspaceKeys: { squads: () => ["squads"], agents: () => ["agents"] },
 }));
 vi.mock("@multica/core/runtimes", async (importOriginal) => ({
@@ -416,6 +417,24 @@ describe("SquadDetailPage", () => {
     await user.click(screen.getByRole("button", { name: "Add 1 selected" }));
 
     expect(mocks.api.setSquadSkills).toHaveBeenCalledWith("sq-1", ["sk-2"]);
+  });
+
+  it("offers the team's catalog plugins and sends the install hint with the pick", async () => {
+    const user = userEvent.setup();
+    seed(SQUAD, {
+      "squad-plugin-catalog": {
+        data: [{ name: "bmad-method@bmad", install_hint: "claude plugin install bmad-method@bmad" }],
+      },
+    });
+    renderPage();
+
+    await user.click(within(section("Skills & plugins")).getByRole("button", { name: "Add plugin" }));
+    await user.click(screen.getByRole("checkbox", { name: "Select all (1)" }));
+    await user.click(screen.getByRole("button", { name: "Add 1 selected" }));
+
+    expect(mocks.api.setSquadPlugins).toHaveBeenCalledWith("sq-1", [
+      { name: "bmad-method@bmad", install_hint: "claude plugin install bmad-method@bmad" },
+    ]);
   });
 
   it("offers only runtimes the viewer can bind", async () => {
