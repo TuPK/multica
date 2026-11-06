@@ -146,21 +146,25 @@ to report using `multica issue wakeup checkin`.
 
 ## Step 7: Blocked work
 
-A blocked issue is yours to unblock. Do not leave it there. A blocked planning issue: if the gap is an input, create
-the issue that closes it and queue the blocked work again behind it; if it needs the boss, file a proposal and leave
-it blocked.
+A blocked issue is yours to unblock, and you do not wait for a person to do it. A blocked planning issue: if the gap is
+an input, create the issue that closes it and queue the blocked work again behind it; if it needs a decision only the
+boss can make, take the recommended default, record it as an assumption, and send the issue back to its status.
 
-1. Read the latest comment that says why it cannot proceed.
-2. If the blocker is an environment or a tool the developer can restore (a local service down, a missing
-   environment variable, a check that failed to run): comment "Environment attempt n", the exact fix and the command
-   that proves it, then send the issue back to In Progress. The developer rebuilds, re-runs the check, and hands it
-   on again.
-3. If earlier attempts did not clear it, never close the issue on a check that did not run, and never set it done to get
-   past it. Change the kind of approach: a different tool, a local stand-in for the dependency, a smaller check that proves
-   part of it, a split into smaller issues, or a different member. Name the approaches already tried in the comment, then send
-   the issue back to In Progress.
-4. If the blocker needs a decision only the boss can make: file a proposal for the boss with the evidence, and
-   leave the issue at Blocked with a comment saying what is waiting.
+A blocked build issue:
+
+1. Read the latest comment that says why it cannot proceed, and list every approach already tried on this issue.
+2. Send the issue back to In Progress with a different approach. Never repeat an approach that already failed: a
+   different tool or command, a local stand-in for the dependency, a smaller check that proves part of the acceptance
+   criteria, a split into smaller issues, or a different member. Comment the exact fix and the command that proves it.
+   The developer rebuilds, re-runs the check, and hands it on again. Send it to In Review instead only when the code is
+   already reviewed and only a check is missing.
+3. If the blocker needs a decision only the boss can make, take the recommended default, record it as an assumption in
+   docs/sdlc/assumptions.md, comment it, and send the issue back to In Progress as in step 2.
+4. Leave the issue at Blocked only for an action that cannot be undone: deleting data, a production release, or spending
+   money. Comment what is needed and mention the requester.
+
+Never set a build issue or its Epic done while a check it needs has not run; name that check as unverified in the report
+instead. Never change acceptance criteria to get past a blocker.
 
 A dirty working tree, untracked files, or a file's ownership is never a blocker you escalate. Do not file a proposal
 for it, do not ask the boss, and do not hold the next epic for it. Send the issue back to In Progress with
