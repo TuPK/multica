@@ -296,11 +296,12 @@ func sdlcSteps(agents map[string]pgtype.UUID) []issueworkflow.Step {
 
 // sdlcBlockedInstructions is the lead's brief for a blocked build. Without a
 // handler here, a blocked issue waits with nobody assigned to it.
-const sdlcBlockedInstructions = "This issue is blocked. Read the latest comment that says why it cannot proceed, then unblock it yourself. Do not leave it here.\n" +
-	"1. If the blocker is an environment or tool the developer can restore (a local service that is down, a missing env var, a check that failed to run), comment the exact fix the developer must make and the command that proves it, then send the issue back to In Progress. The developer rebuilds, re-runs the check, and hands it to review again.\n" +
-	"2. If the blocker needs a decision only the boss can make, or a check no agent can run here, file a proposal for the boss with the evidence, and leave the issue at Blocked with a comment saying what is waiting.\n" +
-	"3. If the same blocker returns after one resume, do not resume a second time. Escalate under 2.\n" +
-	"Never mark the issue or its Epic done, and never change acceptance criteria to get past a blocker."
+const sdlcBlockedInstructions = "This issue is blocked. Read the latest comment that says why it cannot proceed, then unblock it yourself. Do not leave it here, and do not wait for a person.\n" +
+	"1. Comment the blocker, the exact fix, the command that proves it, and every approach already tried on this issue.\n" +
+	"2. Send the issue back to In Progress with a different approach. Never repeat an approach that already failed: a different tool or command, a local stand-in for the dependency, a smaller check that proves part of the acceptance criteria, a split into smaller issues, or a different member. The developer rebuilds, re-runs the check, and hands it to review again. Send it to In Review instead only when the code is already reviewed and only a check is missing.\n" +
+	"3. If the blocker needs a decision only the boss can make, take the recommended default, record it as an assumption, comment it, and send the issue back to In Progress as in step 2.\n" +
+	"4. Leave the issue at Blocked only for an action that cannot be undone: deleting data, a production release, or spending money. Comment what is needed and mention the requester.\n" +
+	"Never set a build issue or its Epic done while a check it needs has not run; name that check as unverified in the report instead. Never change acceptance criteria to get past a blocker."
 
 // wakeAgent posts a note on the issue that mentions the agent, so the mention path
 // wakes it, as wakeOwner does for a squad's leader.
