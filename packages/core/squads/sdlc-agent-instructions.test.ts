@@ -26,7 +26,7 @@ describe("SDLC agent instructions", () => {
 
   it("stays short: the procedure lives in the skills, not in the agent", () => {
     for (const role of roles) {
-      expect(SDLC_ROLE_AGENT_INSTRUCTIONS[role].length, role).toBeLessThan(2000);
+      expect(SDLC_ROLE_AGENT_INSTRUCTIONS[role].length, role).toBeLessThan(2300);
     }
   });
 

@@ -78,6 +78,8 @@ describe("built-in SDLC skills", () => {
       expect(lead, status).toContain("`" + status + "`");
     }
     expect(lead).toContain("--until-issue-state ended");
+    expect(lead).toContain("Folder mode `in_place`: one issue at a time, always");
+    expect(lead).toContain("resource_ref.execution_mode");
   });
 
   it("keeps the unattended rules in the shared core, so no role waits for approval", () => {

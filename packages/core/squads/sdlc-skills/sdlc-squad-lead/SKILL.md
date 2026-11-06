@@ -39,6 +39,11 @@ project is done. The Build project is the request's project: the one with the re
 Confirm the Build project: `multica project get <id> --output json` shows `workflow_id` set and the repository. If
 there is no Build project or no workflow, comment once, set the request to blocked, and stop.
 
+Then read how runs use the project's folder: `multica project resource list <build> --output json`, and look at
+`resource_ref.execution_mode` of its `local_directory` resource. `in_place` (or no value) means every run edits the
+working copy directly. `worktree` means each run has its own copy. Write the mode in your plan comment. It decides how
+you order the issues (Step 3).
+
 ## Step 2: Read the project and choose the plan
 
 Read the repository and its docs (docs/, `_bmad-output/`, planning artifacts, README, package manifest, git log).
@@ -87,8 +92,14 @@ Each issue's description holds: the goal; the input paths or links; the output p
 unattended. Do not wait for approval; take the recommended default and record it as an assumption."
 
 Rules for the plan:
-- An issue waits for another only when it needs that issue's output in code, data, or documents. Issues that touch
-  different code and share no dependency wait for nothing in common, so they can run together.
+- **Folder mode `in_place`: one issue at a time, always.** Two runs would edit the same working copy at once, so no two
+  issues of the project may run together. Order all the issues into one line, from the plan and then by epic number,
+  and chain them: each issue waits for the one before it (`--after <previous issue>`), and only the first has no
+  `--after`. This includes the planning issues and the final verification. Issues you add later, such as a gap issue or a
+  fix issue, wait for the last issue still queued or running. Epics that could run together in a worktree still run
+  one after the other here.
+- **Folder mode `worktree`:** an issue waits for another only when it needs that issue's output in code, data, or
+  documents. Issues that touch different code and share no dependency wait for nothing in common, so they can run together.
 - An epic with more than eight stories becomes one issue per story, queued in order.
 - Create no other unqueued issue in the Build project while the queue runs: an unqueued issue with a running agent
   holds the queue.
@@ -167,6 +178,7 @@ issue for the Bug Fixer, queue the verification again behind it, and repeat at m
 - You changed nothing on the request except the move to Plan ready at the end.
 - Every issue has an owner by id, a start status from the table, and the issues it waits for, and each description names the
   skill, the output, and the acceptance check.
+- The folder mode is in your plan comment. In `in_place` mode the issues form one chain and no two can run together.
 - Plan A has one issue per undelivered epic and the final verification queued behind all of them.
 - Plans B, C and D have the planning issues queued, and the wakeup that makes you create the epics.
 - Every report you accepted was checked against the evidence, and every rejected one has its gap on the issue.
