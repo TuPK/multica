@@ -4028,6 +4028,12 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		statusKeyForGuard = statusKey
+		if statusKey == "done" && prevIssue.Status != "done" {
+			if err := service.CheckSecretaryRequestAnswered(r.Context(), h.Queries, prevIssue); err != nil {
+				writeError(w, http.StatusUnprocessableEntity, err.Error())
+				return
+			}
+		}
 		params.Status = pgtype.Text{String: statusKey, Valid: true}
 	}
 	if req.Priority != nil {

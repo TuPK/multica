@@ -77,6 +77,15 @@ func CheckChatReply(f ChatReplyFacts) error {
 	return nil
 }
 
+// replyChatSessionOf is the chat session a run may reply into: its own chat when
+// it is a chat turn, otherwise the reply session a request's wakeup bound to it.
+func replyChatSessionOf(run db.AgentTaskQueue) pgtype.UUID {
+	if run.ReplyChatSessionID.Valid {
+		return run.ReplyChatSessionID
+	}
+	return run.ChatSessionID
+}
+
 func isTerminalRunStatus(status string) bool {
 	switch status {
 	case "completed", "failed", "cancelled":
@@ -163,7 +172,7 @@ func CreateChatReply(ctx context.Context, tx TxStarter, q *db.Queries, p ChatRep
 		SessionArchived:  session.Status == "archived",
 		RunAgentID:       util.UUIDToString(p.AgentID),
 		RunStatus:        run.Status,
-		RunChatSessionID: util.UUIDToString(run.ChatSessionID),
+		RunChatSessionID: util.UUIDToString(replyChatSessionOf(run)),
 		RunOriginatorID:  util.UUIDToString(run.OriginatorUserID),
 		SessionID:        util.UUIDToString(session.ID),
 	}

@@ -40,6 +40,9 @@ func TestSecretaryRequestContract_DeadlineAndChildDone(t *testing.T) {
 		"assignee_id":   f.secretaryID,
 	})).Want(http.StatusCreated).JSON(&request)
 
+	// The Secretary names the chat it answers in on the request, as its skill says.
+	dbfx.Exec(t, `UPDATE issue SET metadata = jsonb_build_object('chat_session_id', $2::text) WHERE id = $1`, request.ID, f.sessionID)
+
 	var child IssueResponse
 	testutil.Call(t, testHandler.CreateIssue, secretaryCall(f, "POST", "/api/issues?workspace_id="+testWorkspaceID, map[string]any{
 		"title":           "Growth: what could delay the launch",
@@ -66,6 +69,7 @@ func TestSecretaryRequestContract_DeadlineAndChildDone(t *testing.T) {
 		t.Fatalf("deadline wakeup = kind %q mode %q instruction %q", kind, mode, instruction)
 	}
 
+	answerAsAgent(t, child.ID, leader, "Answer: the launch holds, with one risk named below.")
 	updateChildStatus(t, child.ID, "done")
 
 	runs := childDoneRuns(t, request.ID)
@@ -77,6 +81,27 @@ func TestSecretaryRequestContract_DeadlineAndChildDone(t *testing.T) {
 	}
 	if strings.Contains(runs[0].Note, service.ChildDoneDefaultInstruction) {
 		t.Errorf("child_done note carries the generic delivery instruction:\n%s", runs[0].Note)
+	}
+
+	// The run a children-done wakeup starts is not a chat turn: its output is not
+	// written into the chat. It carries only the reply link, so the Secretary can
+	// write its assessment into the boss's chat from this run.
+	var replySession, chatSession string
+	dbfx.QueryRow(t, `SELECT COALESCE(reply_chat_session_id::text, ''), COALESCE(chat_session_id::text, '')
+		FROM agent_task_queue WHERE id = $1`, runs[0].ID).Scan(&replySession, &chatSession)
+	if replySession != f.sessionID {
+		t.Fatalf("child_done run reply session = %q, want the chat %q the request names", replySession, f.sessionID)
+	}
+	if chatSession != "" {
+		t.Errorf("child_done run is bound as a chat turn (%q); its output would be written into the chat", chatSession)
+	}
+	var reply ChatMessageResponse
+	replyReq := newRequest("POST", "/api/chat/sessions/"+f.sessionID+"/reply", map[string]string{"content": "Assessment: the launch holds."})
+	replyReq = asAgent(replyReq, f.secretaryID, runs[0].ID)
+	replyReq = withURLParam(replyReq, "sessionId", f.sessionID)
+	testutil.Call(t, testHandler.ReplyChatSession, replyReq).Want(http.StatusCreated).JSON(&reply)
+	if reply.Role != "assistant" || reply.Content != "Assessment: the launch holds." {
+		t.Fatalf("reply from the children-done run = %+v", reply)
 	}
 
 	var bossOfSecretary, bossOfRun string

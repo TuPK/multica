@@ -198,6 +198,7 @@ type AgentTaskQueue struct {
 	BranchMergeStatus         pgtype.Text `json:"branch_merge_status"`
 	BranchMergeError          pgtype.Text `json:"branch_merge_error"`
 	BudgetAccountedMicros     int64       `json:"budget_accounted_micros"`
+	ReplyChatSessionID        pgtype.UUID `json:"reply_chat_session_id"`
 }
 
 type AgentToLabel struct {

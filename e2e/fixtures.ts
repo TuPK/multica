@@ -923,6 +923,21 @@ export class TestApiClient {
     }
   }
 
+  /** Records an agent's answer on an issue: the comment a request child needs before it closes. */
+  async seedAgentAnswer(issueId: string, agentId: string, content: string) {
+    if (!this.workspaceId) throw new Error("Select a workspace before seeding an answer");
+    const client = new pg.Client(DATABASE_URL);
+    await client.connect();
+    try {
+      await client.query(
+        `INSERT INTO comment (issue_id, workspace_id, author_type, author_id, content) VALUES ($1, $2, 'agent', $3, $4)`,
+        [issueId, this.workspaceId, agentId, content],
+      );
+    } finally {
+      await client.end();
+    }
+  }
+
   /** Makes the agent the workspace's Secretary, as company setup does. */
   async setSecretary(agentId: string) {
     if (!this.workspaceId) throw new Error("Select a workspace before naming a Secretary");

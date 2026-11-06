@@ -188,6 +188,7 @@ test.describe("Secretary chief-of-staff plumbing", () => {
         assignee_id: leader.id,
       })) as { id: string };
       await json(await raw(api, workspace, "GET", `/api/issues/${parent.id}/system-wakeups`));
+      await api.seedAgentAnswer(child.id, leader.id, "Answer: on track.");
       await json(await raw(api, workspace, "PUT", `/api/issues/${child.id}`, { status: "done" }));
 
       // The scheduler evaluates the rule on its tick (every 30 seconds); the close is recorded

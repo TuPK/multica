@@ -14,6 +14,7 @@ type directiveRunFixture struct {
 	secretaryID string
 	taskID      string
 	messageID   string
+	sessionID   string
 }
 
 func seedDirectiveRun(t *testing.T, quote string) directiveRunFixture {
@@ -41,7 +42,7 @@ func seedDirectiveRun(t *testing.T, quote string) directiveRunFixture {
 		"content":         quote,
 		"task_id":         taskID,
 	})
-	return directiveRunFixture{secretaryID: secretaryID, taskID: taskID, messageID: messageID}
+	return directiveRunFixture{secretaryID: secretaryID, taskID: taskID, messageID: messageID, sessionID: sessionID}
 }
 
 func directiveCreateRequest(title, agentID, taskID string) *http.Request {

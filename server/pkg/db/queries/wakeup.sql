@@ -320,3 +320,10 @@ WHERE id= @id AND status='dispatched' AND dispatched_at= @dispatched_at RETURNIN
 -- not finished: the run that made a change still knows about it.
 SELECT count(*) FROM agent_task_queue WHERE id=ANY(@ids::uuid[]) AND agent_id= @agent_id AND issue_id= @issue_id
  AND status IN ('dispatched','running','waiting_local_directory');
+
+-- name: SetAgentTaskReplyChatSession :exec
+-- Binds a run to the chat session it may reply into with `multica chat reply`.
+-- It is not chat_session_id: a run bound that way is a chat turn, and its
+-- output would be written into the chat as the turn's outcome.
+UPDATE agent_task_queue SET reply_chat_session_id = sqlc.narg('reply_chat_session_id')::uuid
+WHERE id = $1;

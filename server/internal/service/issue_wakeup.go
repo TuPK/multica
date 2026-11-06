@@ -1369,6 +1369,9 @@ func (s *IssueWakeupService) dispatch(ctx context.Context, prev db.IssueWakeup) 
 	if err != nil {
 		return err
 	}
+	if err = linkRequestReplySession(ctx, q, issue, task, w.CreatedBy); err != nil {
+		return err
+	}
 	if err = q.ConsumeWakeupReceipts(ctx, db.ConsumeWakeupReceiptsParams{Ids: ids, TaskID: task.ID}); err != nil {
 		return err
 	}

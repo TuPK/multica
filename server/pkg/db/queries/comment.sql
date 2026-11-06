@@ -922,3 +922,9 @@ FOR UPDATE OF c;
 -- name: CountAgentCommentsOnIssue :one
 SELECT count(*) FROM comment
 WHERE issue_id = $1 AND workspace_id = $2 AND author_type = 'agent' AND author_id = $3 AND type = 'comment';
+
+-- name: CountAgentAnswersOnIssue :one
+-- How many comments any agent (the assignee, a squad leader, or a member of a
+-- squad) has written on the issue. A request child closes only after one exists.
+SELECT count(*)::bigint FROM comment
+WHERE issue_id = $1 AND author_type = 'agent';

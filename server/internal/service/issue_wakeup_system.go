@@ -101,19 +101,9 @@ const SecretaryRequestChildDoneInstruction = "The answers to this request have c
 // starts with: the Secretary's own text when the parent is a request in the
 // Secretary desk held by the workspace's Secretary, and empty otherwise.
 func secretaryRequestInstruction(ctx context.Context, q *db.Queries, ws db.Workspace, parent db.Issue) (string, error) {
-	if !ws.SecretaryAgentID.Valid || parent.AssigneeType.String != "agent" || !parent.ProjectID.Valid ||
-		util.UUIDToString(parent.AssigneeID) != util.UUIDToString(ws.SecretaryAgentID) {
-		return "", nil
-	}
-	project, err := q.GetProjectInWorkspace(ctx, db.GetProjectInWorkspaceParams{ID: parent.ProjectID, WorkspaceID: parent.WorkspaceID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", nil
-	}
-	if err != nil {
+	ok, err := isSecretaryRequest(ctx, q, ws, parent)
+	if err != nil || !ok {
 		return "", err
-	}
-	if project.Title != SecretaryDeskProjectTitle {
-		return "", nil
 	}
 	return SecretaryRequestChildDoneInstruction, nil
 }
@@ -700,6 +690,9 @@ func (s *IssueWakeupService) dispatchSystem(ctx context.Context, prev db.IssueWa
 		HeadSha: headSHA, WakeupContext: contextJSON, RuntimeMcpOverlay: overlay.Overlay, RuntimeConnectedApps: overlay.ConnectedApps,
 	})
 	if err != nil {
+		return err
+	}
+	if err = linkRequestReplySession(ctx, q, issue, task, attr.UserID); err != nil {
 		return err
 	}
 	if err = q.ConsumeWakeupReceipts(ctx, db.ConsumeWakeupReceiptsParams{Ids: ids, TaskID: task.ID}); err != nil {
