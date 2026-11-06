@@ -56,18 +56,27 @@ describe("SQUAD_TEMPLATES", () => {
   });
 
   it("ends the build workflow on an agent step so an agent run can close the issue", () => {
-    const agentStatuses = SDLC_AUTO_WORKFLOW.steps
-      .filter((s) => s.handler !== null)
+    const flowStatuses = SDLC_AUTO_WORKFLOW.steps
+      .filter((s) => s.handler !== null && !("key" in s.status && s.status.key === "blocked"))
       .map((s) => ("key" in s.status ? s.status.key : s.status.name));
 
-    expect(agentStatuses).toEqual(["todo", "in_progress", "in_review", "QA"]);
-    expect(SDLC_AUTO_WORKFLOW.steps.filter((s) => s.handler !== null).at(-1)?.handler).toBe("qa");
+    expect(flowStatuses).toEqual(["todo", "in_progress", "in_review", "QA"]);
+    expect(flowStatuses.length).toBeGreaterThan(0);
+    expect(SDLC_AUTO_WORKFLOW.steps.filter((s) => s.handler !== null).at(-2)?.handler).toBe("qa");
   });
 
   it("sends rejected work back to In Progress, as the Delivery workflow does", () => {
     const backs = SDLC_AUTO_WORKFLOW.steps.map((s) => s.back ?? null);
 
-    expect(backs).toEqual([null, null, "todo", "in_progress", "in_progress", null]);
+    expect(backs).toEqual([null, null, "todo", "in_progress", "in_progress", "in_progress"]);
+  });
+
+  it("hands a blocked build issue to the lead, which sends it back to In Progress", () => {
+    const blocked = SDLC_AUTO_WORKFLOW.steps.find((s) => "key" in s.status && s.status.key === "blocked");
+
+    expect(blocked?.handler).toBe("lead");
+    expect(blocked?.back).toBe("in_progress");
+    expect(blocked?.instructions).toContain("Do not leave it here");
   });
 });
 
