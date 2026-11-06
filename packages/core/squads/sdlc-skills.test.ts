@@ -23,9 +23,26 @@ const ROLE_SKILLS = [
   "sdlc-devops-release",
 ];
 
+// Every other skill in the bundle: the tools and plugin skills the boss attached to the
+// SDLC squad. They ship beside the role skills, copied from the workspace, so every SDLC
+// squad has them. A folder name stores a colon as `--`.
+const TOOL_SKILLS = readdirSync(skillsDir, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && !ROLE_SKILLS.includes(entry.name))
+  .map((entry) => entry.name.replaceAll("--", ":"))
+  .sort();
+
+// Every file under a skill folder except SKILL.md, at any depth, as the generator reads it.
+function skillFiles(dir: string, prefix = ""): string[] {
+  return readdirSync(resolve(dir, prefix), { withFileTypes: true }).flatMap((entry) => {
+    const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) return skillFiles(dir, rel);
+    return rel === "SKILL.md" ? [] : [rel];
+  });
+}
+
 describe("built-in SDLC skills", () => {
-  it("ships one skill per SDLC role plus the shared core, and nothing else", () => {
-    expect(SDLC_BUILTIN_SKILLS.map((s) => s.name)).toEqual([...ROLE_SKILLS].sort());
+  it("ships one skill per SDLC role plus the shared core, and the attached tool skills", () => {
+    expect(SDLC_BUILTIN_SKILLS.map((s) => s.name)).toEqual([...ROLE_SKILLS, ...TOOL_SKILLS].sort());
   });
 
   it("carries every skill folder, unchanged, as the generated bundle", () => {
@@ -33,13 +50,12 @@ describe("built-in SDLC skills", () => {
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort();
-    expect(SDLC_BUILTIN_SKILLS.map((s) => s.name)).toEqual(folders);
+    expect(SDLC_BUILTIN_SKILLS.map((s) => s.name)).toEqual(folders.map((f) => f.replaceAll("--", ":")));
 
     for (const skill of SDLC_BUILTIN_SKILLS) {
-      const dir = resolve(skillsDir, skill.name);
+      const dir = resolve(skillsDir, skill.name.replaceAll(":", "--"));
       expect(skill.content, skill.name).toBe(readFileSync(resolve(dir, "SKILL.md"), "utf8"));
-      const files = readdirSync(dir)
-        .filter((file) => file !== "SKILL.md" && file.endsWith(".md"))
+      const files = skillFiles(dir)
         .sort()
         .map((file) => ({ path: file, content: readFileSync(resolve(dir, file), "utf8") }));
       expect(skill.files, skill.name).toEqual(files);
@@ -48,13 +64,16 @@ describe("built-in SDLC skills", () => {
 
   it("has frontmatter whose name matches its folder and whose description says when to use it", () => {
     for (const skill of SDLC_BUILTIN_SKILLS) {
-      expect(skill.content, skill.name).toMatch(new RegExp(`^---\nname: ${skill.name}\n`));
-      expect(skill.description, skill.name).toMatch(/^Use (when|on) /);
+      // A plugin-qualified name (`superpowers:brainstorming`) keeps its short name in the frontmatter.
+      const shortName = skill.name.split(":").pop();
+      expect(skill.content, skill.name).toMatch(new RegExp(`^---\nname: ${shortName}\n`));
+      expect(skill.description, skill.name).not.toBe("");
+      if (ROLE_SKILLS.includes(skill.name)) expect(skill.description, skill.name).toMatch(/^Use (when|on) /);
     }
   });
 
   it("makes every role skill load the shared core first", () => {
-    for (const skill of SDLC_BUILTIN_SKILLS) {
+    for (const skill of SDLC_BUILTIN_SKILLS.filter((s) => ROLE_SKILLS.includes(s.name))) {
       if (skill.name === "sdlc-delivery-core") continue;
       expect(skill.content, skill.name).toContain("sdlc-delivery-core");
     }
@@ -100,7 +119,7 @@ describe("built-in SDLC skills", () => {
   });
 
   it("gives every role skill a self-check before it reports", () => {
-    for (const skill of SDLC_BUILTIN_SKILLS) {
+    for (const skill of SDLC_BUILTIN_SKILLS.filter((s) => ROLE_SKILLS.includes(s.name))) {
       expect(skill.content, skill.name).toContain("Self-check before you report");
     }
   });

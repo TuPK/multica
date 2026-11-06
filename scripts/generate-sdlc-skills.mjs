@@ -1,8 +1,12 @@
 #!/usr/bin/env node
-// Regenerates packages/core/squads/sdlc-skills-data.ts, the built-in SDLC skill
-// bundle the squad quickstart imports. The SKILL.md folders under
-// packages/core/squads/sdlc-skills are the source: edit them, then run
-// `pnpm generate:sdlc-skills`. A core test fails when the generated file is stale.
+// Regenerates packages/core/squads/sdlc-skills-data.ts, the built-in skill bundle the
+// squad quickstart imports. The folders under packages/core/squads/sdlc-skills are the
+// source: edit them, then run `pnpm generate:sdlc-skills`. A core test fails when the
+// generated file is stale.
+//
+// A folder holds one skill: its SKILL.md and any other text files beneath it. A skill
+// name with a colon (the plugin-qualified names such as `superpowers:brainstorming`)
+// is stored with `--` in its folder name, because colons are not valid in Windows paths.
 
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -12,17 +16,48 @@ const coreSquads = resolve(dirname(fileURLToPath(import.meta.url)), "../packages
 const skillsDir = resolve(coreSquads, "sdlc-skills");
 const outPath = resolve(coreSquads, "sdlc-skills-data.ts");
 
+// Every file beneath a skill folder except SKILL.md, as paths relative to the folder.
+function skillFiles(dir, prefix = "") {
+  return readdirSync(resolve(dir, prefix), { withFileTypes: true }).flatMap((entry) => {
+    const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) return skillFiles(dir, rel);
+    return rel === "SKILL.md" ? [] : [rel];
+  });
+}
+
+// The description of a SKILL.md frontmatter: a double-quoted, single-quoted (with `''`
+// for an apostrophe) or plain single line, or a folded `>` block whose lines join with spaces.
+function frontmatterDescription(content, name) {
+  const lines = content.split("\n");
+  const start = lines.findIndex((line) => line.startsWith("description:"));
+  if (start === -1) throw new Error(`${name}/SKILL.md has no description`);
+  const value = lines[start].slice("description:".length).trim();
+  if (value === ">" || value === "|") {
+    const block = [];
+    for (const line of lines.slice(start + 1)) {
+      if (!/^\s/.test(line)) break;
+      block.push(line.trim());
+    }
+    return block.join(" ");
+  }
+  const double = /^"(.*)"$/.exec(value);
+  if (double) return double[1];
+  const single = /^'(.*)'$/.exec(value);
+  if (single) return single[1].replaceAll("''", "'");
+  return value;
+}
+
 const skills = readdirSync(skillsDir, { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
   .map((entry) => entry.name)
   .sort()
-  .map((name) => {
-    const dir = resolve(skillsDir, name);
+  .map((folder) => {
+    const dir = resolve(skillsDir, folder);
+    const name = folder.replaceAll("--", ":");
     const content = readFileSync(resolve(dir, "SKILL.md"), "utf8");
-    const description = /^description: "(.*)"$/m.exec(content)?.[1];
-    if (!description) throw new Error(`${name}/SKILL.md has no description`);
-    const files = readdirSync(dir)
-      .filter((file) => file !== "SKILL.md" && file.endsWith(".md"))
+    const description = frontmatterDescription(content, folder);
+    if (!description) throw new Error(`${folder}/SKILL.md has an empty description`);
+    const files = skillFiles(dir)
       .sort()
       .map((file) => ({ path: file, content: readFileSync(resolve(dir, file), "utf8") }));
     return { name, description, content, files };

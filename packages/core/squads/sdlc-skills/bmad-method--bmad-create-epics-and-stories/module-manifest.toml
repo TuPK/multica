@@ -1,0 +1,4 @@
+module = "method"
+version = "6.13.0-next"
+update_source = "plugin:bmad-method"
+knowledge = "`references/help.md` in the `bmad` skill"

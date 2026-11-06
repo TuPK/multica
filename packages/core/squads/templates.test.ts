@@ -181,26 +181,15 @@ describe("squad instructions", () => {
   });
 
   it("only name BMAD skills that exist, in the instructions and in the skills", () => {
-    const shipped = new Set([
-      "bmad-architecture",
-      "bmad-build",
-      "bmad-build-auto",
-      "bmad-code-review",
-      "bmad-correct-course",
-      "bmad-create-epics-and-stories",
-      "bmad-prd",
-      "bmad-prfaq",
-      "bmad-product-brief",
-      "bmad-project-context",
-      "bmad-qa-generate-e2e-tests",
-      "bmad-retrospective",
-      "bmad-sprint-planning",
-      "bmad-spec",
-      "bmad-ux",
-    ]);
+    // The BMAD skills the bundle ships, by their short names (`bmad-method:bmad-prd` is `bmad-prd`).
+    const shipped = new Set(
+      SDLC_BUILTIN_SKILLS.map((skill) => skill.name.split(":").pop()!).filter((name) => name.startsWith("bmad-")),
+    );
     const texts = [
       ...SQUAD_TEMPLATES.map((t) => [t.id, t.instructions] as const),
-      ...SDLC_BUILTIN_SKILLS.map((skill) => [skill.name, skill.content] as const),
+      // The SDLC procedures this repo owns. The attached BMAD skills carry their own text,
+      // which names BMAD skills the squad may not have, so they are not checked here.
+      ...SDLC_BUILTIN_SKILLS.filter((skill) => skill.name.startsWith("sdlc-")).map((skill) => [skill.name, skill.content] as const),
     ];
 
     for (const [id, text] of texts) {
