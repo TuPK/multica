@@ -18,8 +18,10 @@ behave while you do it. Load both before you act.
 - When a question is open, take the recommended default. Record it as an assumption:
   id, decision, why, and who can reverse it. Continue.
 - Stop only for what cannot be undone: deleting data, breaking a released contract, a
-  production release, or spending money. Then set the issue to blocked, comment what you
-  need, and mention the requester on the request.
+  production release, or spending money. Then comment what you need and mention the requester on the request.
+- A failing check, a missing output, or an unexpected error is never a stop. Change the approach and keep working
+  (sdlc-development, "When a check fails or gives no evidence"). Do not set the issue to blocked for it, and do not wait
+  for a person to pick the next step.
 
 ## The workflow brief
 
@@ -55,6 +57,9 @@ behave while you do it. Load both before you act.
 - A command or edit that fails three times with the same result: stop repeating it and change
   the approach. Reproduce the failure with a script, read the exact error, check the repo's
   docs, then try a different method.
+- A check that prints nothing, or that cannot report its result, is a failed check. Run it
+  yourself with its output captured, and fix the cause (sdlc-development, "When a check fails").
+  Waiting for someone else to supply the evidence is not a fix.
 - A transient failure is retried at most twice. A missing input is not retried: ask the
   owner once on the issue, take the default, and record it.
 - A piece that has taken many attempts: choose the simplest version that meets its acceptance

@@ -62,6 +62,33 @@ any skill, as it overrides approval steps.
 Before any completion claim, run verification-before-completion. For API and e2e tests after the code review, use
 bmad-qa-generate-e2e-tests.
 
+## When a check fails or gives no evidence
+
+A failing check, a silent runner, or a missing screenshot is a defect in the product, the test, or the tooling. It is
+not a reason to end the run with the story unfinished. Work through this before you set anything to blocked:
+
+1. **Capture the real failure.** Run the failing command or script directly, with its output written to a file. Read the
+   first failing assertion label and its stack. A runner that hides child output is a tooling defect: run the child
+   script itself and record that the runner hid it.
+2. **Classify.** Test defect (wrong selector, timing, or assertion), environment (missing binary, port, service, or
+   credentials you can set up), or product defect (the page or backend does not meet the criterion). Inspect the code the
+   assertion touches and the page as the test sees it. For accessible names, read the accessibility tree; do not infer
+   them from innerText.
+3. **Fix the cause in scope.** Fix the product, or fix the test when it asserts the wrong thing. Never weaken an assertion,
+   skip it, or mark it passed. When the expected behavior is in doubt, check the acceptance criteria and the decision records.
+4. **Re-run the full check** and then the repo's broader verify command. After each failure, change the approach: a different
+   tool or test layer, a different way to start the environment, a narrower reproduction, or a fix in the code the trace points to.
+   Keep a list of the approaches tried and their output in your report.
+5. **Still failing:** do not stop, do not set the issue to blocked, and do not wait for anyone to decide. Go back to step 1 with
+   the approaches you have not tried yet. Only a criterion that passes on real evidence, or a check that proves the criterion
+   false, ends this loop. Never weaken an assertion or mark a check passed to end it.
+
+Browser evidence: when the browser the check needs is not at its default path, find it with the repo's documented setting or
+`command -v google-chrome chromium chromium-browser` before you record the browser check as a gap. If the repo has no setting
+for it, the repo's own check scripts are part of the story's scope only when the story says so; otherwise report the gap.
+
+A passing unit or build check does not close a runtime check. Record the runtime check as not verified only after steps 1 to 4.
+
 ## Tools for UI changes
 
 - react-doctor on changed React files, before each commit that touches React code:
