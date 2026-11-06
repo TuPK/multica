@@ -1,0 +1,19 @@
+{
+  "fixtures": [
+    {
+      "match": { "systemMessage": "Create a concise title" },
+      "response": { "content": "Hermetic" }
+    },
+    {
+      "match": { "hasToolResult": false },
+      "response": { "reasoning": "Read the note.", "toolCalls": [ { "name": "read", "arguments": { "file_path": "NOTE.txt" } } ], "usage": { "input_tokens": 12, "output_tokens": 7 } }
+    },
+    {
+      "match": { "toolResultContains": "{note}" },
+      "response": {
+        "content": "pong",
+        "usage": { "input_tokens": 12, "output_tokens": 7, "cache_creation_input_tokens": 222, "cache_read_input_tokens": 300 }
+      }
+    }
+  ]
+}

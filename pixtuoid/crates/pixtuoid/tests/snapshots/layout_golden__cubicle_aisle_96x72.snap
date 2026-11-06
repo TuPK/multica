@@ -1,0 +1,10 @@
+---
+source: crates/pixtuoid/tests/layout_golden.rs
+expression: l.cubicle_aisle
+---
+Bounds {
+    x: 27,
+    y: 64,
+    width: 69,
+    height: 8,
+}

@@ -1,0 +1,261 @@
+[
+ {
+  "id": "themes-composite",
+  "kind": "composite",
+  "targets": [
+   "docs"
+  ],
+  "caption": "Every built-in theme, one slice each.",
+  "over": "@themes.json",
+  "slant": -0.2,
+  "look": "cutaway",
+  "cols": 192,
+  "rows": 64,
+  "hour": 19,
+  "day": 1
+ },
+ {
+  "id": "looks-composite",
+  "kind": "composite",
+  "targets": [
+   "docs"
+  ],
+  "caption": "The same moment as the detailed cutaway (left) and the simpler classic look (right).",
+  "axis": "look",
+  "over": [
+   "cutaway",
+   "classic"
+  ],
+  "slant": -0.2,
+  "cols": 192,
+  "rows": 64,
+  "hour": 19,
+  "day": 1,
+  "theme": "normal"
+ },
+ {
+  "id": "demo",
+  "kind": "gif",
+  "targets": [
+   "docs"
+  ],
+  "caption": "Agents walk in, get to work and doze off as the day turns into a snowy night.",
+  "href": "/",
+  "look": "cutaway",
+  "cols": 192,
+  "rows": 64,
+  "day": 1,
+  "theme": "normal",
+  "segments": [
+   {
+    "hour": 13,
+    "weather": "clear",
+    "duration": 5
+   },
+   {
+    "hour": 18,
+    "weather": "clear",
+    "duration": 5
+   },
+   {
+    "hour": 22,
+    "weather": "snow",
+    "duration": 5
+   }
+  ],
+  "fps": 10,
+  "colors": 128
+ },
+ {
+  "id": "day",
+  "kind": "render",
+  "targets": [
+   "site"
+  ],
+  "cols": 200,
+  "rows": 90,
+  "hour": 13
+ },
+ {
+  "id": "agent-tree",
+  "kind": "render",
+  "targets": [
+   "site"
+  ],
+  "cols": 200,
+  "rows": 90,
+  "hour": 20,
+  "extra": [
+   "--dashboard"
+  ]
+ },
+ {
+  "id": "agent-tree-zoom",
+  "kind": "crop",
+  "targets": [
+   "site"
+  ],
+  "from": "agent-tree",
+  "crops": {
+   "popup": "800:720:384:352"
+  }
+ },
+ {
+  "id": "empty",
+  "kind": "render",
+  "targets": [
+   "site"
+  ],
+  "cols": 200,
+  "rows": 90,
+  "hour": 3,
+  "extra": [
+   "--empty"
+  ]
+ },
+ {
+  "id": "space",
+  "kind": "crop",
+  "targets": [
+   "site"
+  ],
+  "from": "day",
+  "crops": {
+   "cubicles": "800:620:680:430",
+   "meeting": "800:620:0:415",
+   "pantry": "800:620:0:775"
+  }
+ },
+ {
+  "id": "hero",
+  "kind": "render",
+  "targets": [
+   "site"
+  ],
+  "cols": 208,
+  "rows": 88,
+  "day": 1,
+  "frames": [
+   {
+    "name": "hero-poster",
+    "hour": 17
+   }
+  ]
+ },
+ {
+  "id": "hero-wide",
+  "kind": "wasm-still",
+  "targets": [
+   "site"
+  ],
+  "w": 231,
+  "h": 130,
+  "t0_ms": 1768498200000,
+  "advance_ms": 100000
+ },
+ {
+  "id": "vibing-poster",
+  "kind": "wasm-still",
+  "targets": [
+   "site"
+  ],
+  "w": 176,
+  "h": 99,
+  "hour": 18,
+  "weather": "clear",
+  "seed": 11,
+  "advance_ms": 100000
+ },
+ {
+  "id": "multi-floor",
+  "kind": "clip",
+  "targets": [
+   "site"
+  ],
+  "cols": 208,
+  "rows": 88,
+  "duration": 10,
+  "fps": 15,
+  "hour": 17,
+  "poster": 9,
+  "extra": [
+   "--max-desks",
+   "16",
+   "--agents",
+   "22",
+   "--navigate-at",
+   "3:1",
+   "--navigate-at",
+   "7:0"
+  ]
+ },
+ {
+  "id": "pets",
+  "kind": "clip",
+  "targets": [
+   "site"
+  ],
+  "cols": 120,
+  "rows": 52,
+  "duration": 12,
+  "fps": 15,
+  "hour": 14,
+  "extra": [
+   "--pets",
+   "cat"
+  ]
+ },
+ {
+  "id": "meetings",
+  "kind": "clip",
+  "targets": [
+   "site"
+  ],
+  "cols": 208,
+  "rows": 88,
+  "duration": 16,
+  "fps": 15,
+  "hour": 15,
+  "poster": 12,
+  "crop": "760:640:0:300",
+  "extra": [
+   "--meeting",
+   "3"
+  ]
+ },
+ {
+  "id": "openclaw",
+  "kind": "clip",
+  "targets": [
+   "site"
+  ],
+  "cols": 140,
+  "rows": 60,
+  "duration": 9,
+  "fps": 12,
+  "hour": 14,
+  "poster": 3,
+  "extra": [
+   "--openclaw",
+   "running",
+   "--agents",
+   "5"
+  ]
+ },
+ {
+  "id": "proof",
+  "kind": "proof",
+  "day": 3,
+  "targets": [
+   "site"
+  ],
+  "cols": 120,
+  "rows": 52,
+  "hour": 21,
+  "theme": "tokyo-night",
+  "duration": 26,
+  "fps": 12,
+  "poster": 10.0,
+  "session": "crates/pixtuoid/examples/snapshot/proof-session/01000000-0000-7000-8000-0000000000f4.jsonl"
+ }
+]

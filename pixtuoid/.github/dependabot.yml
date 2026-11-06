@@ -1,0 +1,161 @@
+version: 2
+updates:
+  - package-ecosystem: cargo
+    # A RED cargo run does not mean the lane stopped: dependabot-core updates one
+    # package at a time, so a release needing a LOCKSTEP SIBLING bump (serde ->
+    # serde_core/serde_derive) leaves the regenerated lock unchanged and raises
+    # `unknown_error`. The group loop skips it and still opens the PR for the
+    # rest; the remedy is a human `cargo update -p <crate>`.
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      rust-deps:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+    ignore:
+      # png's own copy (crates/pixtuoid/Cargo.toml): a bump of ours alone
+      # builds a second copy, so it moves only with png; deny.toml fails CI
+      # when one side moves without the other.
+      - dependency-name: "miniz_oxide"
+        update-types:
+          ["version-update:semver-minor", "version-update:semver-major"]
+      # ratatui-core's copy (Cargo.toml), likewise: it moves only with ratatui.
+      - dependency-name: "lru"
+        update-types:
+          ["version-update:semver-minor", "version-update:semver-major"]
+      # objc2-app-kit MUST track winit's stack: winit 0.30.x still pulls 0.2.x,
+      # so a 0.3+ bump builds a SECOND objc2 stack beside winit's AND breaks the
+      # activate API. Lift when winit itself moves to objc2 0.6.
+      - dependency-name: "objc2-app-kit"
+        update-types:
+          ["version-update:semver-minor", "version-update:semver-major"]
+      # Same discipline for x11rb: winit requires `^0.13.0`,
+      # so a bump past 0.13.x builds a SECOND x11rb stack on Linux, which
+      # deny.toml bans. Lift at winit's x11rb 0.14.
+      - dependency-name: "x11rb"
+        update-types:
+          ["version-update:semver-minor", "version-update:semver-major"]
+      # The floating window's sRGB tag calls wgpu-hal's own CAMetalLayer, so these
+      # MUST stay at the versions wgpu-hal builds: a lone bump is a second copy
+      # whose types the call no longer accepts. Move them with wgpu.
+      - dependency-name: "objc2-core-graphics"
+        update-types:
+          ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: "objc2-quartz-core"
+        update-types:
+          ["version-update:semver-minor", "version-update:semver-major"]
+      # winit's default set is copied verbatim into crates/pixtuoid/Cargo.toml and
+      # cargo cannot subtract one default, so a bump ADDING a default silently
+      # drops a backend — a Linux runtime failure no gate catches. Bump by hand.
+      - dependency-name: "winit"
+        update-types:
+          ["version-update:semver-minor", "version-update:semver-major"]
+    cooldown:
+      default-days: 7
+
+  # rust-toolchain.toml's exact pin, so CodSpeed's base and head build on one
+  # rustc and each release lands as its own PR; hawk and api-surface keep their
+  # own, which `_toolchain-covers` holds at or past it.
+  - package-ecosystem: rust-toolchain
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: github-actions
+    # `directory: /` searches ONLY `.github/workflows` plus a root `action.yml`,
+    # so composite actions need the second entry — and it must be
+    # `/.github/actions/*`, NOT `/.github/actions/*/action.yml`, which silently
+    # degrades back to workflows-only (dependabot-core#6704).
+    directories:
+      - /
+      - /.github/actions/*
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+
+  # requirements-dev.txt pins exact versions and hashes (pip.pypa.io
+  # topics/secure-installs); this moves both.
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      python-deps:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      checkers:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: npm
+    directory: /crates/pixtuoid/src/install
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: npm
+    directory: /site
+    schedule:
+      interval: weekly
+    groups:
+      # playwright + @playwright/test must bump together (version-locked pair)
+      playwright:
+        patterns: ["playwright", "@playwright/*"]
+      site-deps:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+    ignore:
+      # typescript major (→7) is peer-rejected by @astrojs/check and
+      # typescript-eslint, so `npm ci` ERESOLVEs.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: npm
+    directory: /integrations/raycast
+    schedule:
+      interval: weekly
+    groups:
+      raycast-deps:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+    ignore:
+      # @raycast/api peers @types/node EXACTLY; a major ahead of that types APIs
+      # Raycast's Node 22 runtime doesn't have.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # typescript major (→7) is peer-rejected by @raycast/eslint-config's
+      # typescript-eslint, so `npm ci` ERESOLVEs.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+    cooldown:
+      default-days: 7
+
+  # The hermetic tier's scripted model; the full tier runs every profile against
+  # a bump, in the queue's draft PR or on main.
+  - package-ecosystem: npm
+    directory: /crates/pixtuoid-core/tests/sources/hermetic/aimock
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7

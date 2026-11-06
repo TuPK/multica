@@ -1,0 +1,59 @@
+{
+  "origin": "recorded",
+  "cli": "grok",
+  "version": "grok 1.0.70 (f50904eaee6c)",
+  "captured": "2026-10-28",
+  "command": "just hermetic --record grok",
+  "deidentified": {
+    "method": "decoder-allowlist",
+    "blanked": 228
+  },
+  "aimock": "1.47.0",
+  "script": "tests/sources/grok/hermetic/subagent.json",
+  "dropped": {
+    "os": "macos",
+    "at": {
+      "/method": [
+        "_x.ai/session/update",
+        "session/update"
+      ],
+      "/params/update/event_name": [
+        "post_tool_use",
+        "pre_tool_use",
+        "session_start",
+        "stop",
+        "subagent_stop",
+        "user_prompt_submit"
+      ],
+      "/params/update/sessionUpdate": [
+        "agent_message_chunk",
+        "hook_execution",
+        "tool_call_update",
+        "user_message_chunk"
+      ],
+      "/params/update/status": [
+        "completed"
+      ],
+      "/params/update/title": [
+        "Read `NOTE.txt`",
+        "Read the note"
+      ]
+    }
+  },
+  "sentinel_reads": {
+    "01a1803a-d54d-71c1-9353-82519ef50b0b/updates.jsonl": [
+      "4:/params/update/rawInput/background"
+    ],
+    "hook-payloads.jsonl": [
+      "10:/cwd",
+      "1:/cwd",
+      "2:/cwd",
+      "3:/cwd",
+      "3:/toolInput/background",
+      "4:/cwd",
+      "5:/cwd",
+      "6:/cwd",
+      "7:/cwd"
+    ]
+  }
+}

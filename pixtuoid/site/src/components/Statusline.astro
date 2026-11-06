@@ -1,0 +1,752 @@
+---
+// The page's one piece of fixed chrome: a build-time merged-PR feed plus the
+// elevator's organs (floor readout, scrollspy, keys 1–6, jump list). Sits on
+// --screen (the office's own hardware black) and is NEVER subject to the dimmer.
+import sources from '../sources.json';
+import {
+  FLOORS,
+  floorName,
+  DIM_RESTING,
+  FLOOR_SPY_ROOT_MARGIN,
+  BOTTOM_CLAMP_EPSILON_PX,
+  REPO,
+  asset,
+} from '../consts';
+import { GH_API_REPO, GH_FETCH_TIMEOUT_MS } from '../../config/gh-stars.mjs';
+
+interface Props {
+  /** Doc-shell variant: render the path segment instead of the index-only
+   * organs. The #sl-install chip renders in BOTH variants. */
+  doc?: string;
+}
+const { doc } = Astro.props;
+
+// null when the API was unreachable at build: the chip stays, the ★ segment is
+// omitted, and offline builds never fail.
+const ghStars: string | null = __GH_STARS__;
+
+const FALLBACK = [
+  { state: 'running', who: 'claude-code', what: 'editing src/reducer.rs' },
+  { state: 'requires-action', who: 'codex', what: 'awaiting approval' },
+  { state: 'running', who: 'claude-code', what: 'walking to the pantry ☕' },
+  { state: 'running', who: 'codex', what: 'running cargo test' },
+  { state: 'idle', who: 'cursor', what: 'idle at desk' },
+  { state: 'running', who: 'meeting room', what: '“it’s DNS” · “blame git”' },
+  { state: 'running', who: 'claude-code', what: 'git commit -m "feat: ..."' },
+];
+
+interface TickerItem {
+  state: string;
+  who: string;
+  what: string;
+}
+
+let items: TickerItem[] = FALLBACK;
+// Skipped on the doc variant so the doc pages don't each re-hit the GitHub API
+// at build (only the index renders .sl__feed).
+if (!doc) {
+  try {
+    const headers: Record<string, string> = { accept: 'application/vnd.github+json' };
+    if (process.env.GITHUB_TOKEN) headers.authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+    const res = await fetch(
+      `${GH_API_REPO}/pulls?state=closed&base=main&sort=updated&direction=desc&per_page=12`,
+      { headers, signal: AbortSignal.timeout(GH_FETCH_TIMEOUT_MS) }
+    );
+    if (res.ok) {
+      const prs = (await res.json()) as {
+        number: number;
+        title: string;
+        merged_at: string | null;
+        user: { login: string } | null;
+      }[];
+      // bots don't get feed credit — a dependabot bump attributed to the office's
+      // coding agents undercuts the "agents built this" story
+      const merged = prs
+        .filter((p) => p.merged_at && !p.user?.login?.endsWith('[bot]'))
+        .slice(0, 6);
+      if (merged.length >= 4) {
+        const human = (title: string) => {
+          const t = title.replace(/^[a-z]+(\([^)]*\))?!?:\s*/, '');
+          if (t.length <= 64) return t;
+          const cut = t.slice(0, 63);
+          return cut.slice(0, Math.max(40, cut.lastIndexOf(' '))) + '…';
+        };
+        const real: TickerItem[] = merged.map((p, i) => ({
+          state: ['running', 'running', 'idle'][i % 3],
+          who: 'cc·pixtuoid',
+          what: `merged #${p.number} · ${human(p.title)}`,
+        }));
+        const flavor = FALLBACK.filter((f) => f.who !== 'cursor');
+        items = real.flatMap((r, i) => (i % 2 === 1 ? [flavor[(i >> 1) % flavor.length], r] : [r]));
+      }
+    }
+  } catch {
+    // offline / timeout → FALLBACK already in place
+  }
+}
+
+// per-CLI hue for a feed credit like "cc·pixtuoid" — the sources.json `badge`
+// includes the trailing '·', hence the prefix match
+const badgeColor = (who: string): string | undefined => {
+  const hit = sources.find((s) => s.badge && who.startsWith(s.badge));
+  return hit && 'badge_color' in hit ? (hit.badge_color as string) : undefined;
+};
+
+// The CSS fade (`--feed-fade`) and the JS out→in gap derive from ONE value: a
+// fade longer than the gap would re-expose two lines mid-swap (ghosting).
+const FEED_FADE_MS = 300;
+const FEED_SWAP_MARGIN_MS = 50; // headroom so the fade-out fully finishes before the fade-in starts
+const FEED_SWAP_GAP_MS = FEED_FADE_MS + FEED_SWAP_MARGIN_MS;
+const FEED_ROTATE_MS = 6000;
+---
+
+<div class="statusline" id="statusline">
+  {doc ? (
+    <span class="sl__path">~ pixtuoid docs · /{doc}</span>
+  ) : (
+    <>
+      <nav class="sl__nav" aria-label="Floors">
+        <button
+          class="sl__floor"
+          data-floor-toggle
+          aria-expanded="false"
+          aria-controls="sl-floors"
+          aria-label="Jump to a floor"
+        >
+          <span class="sl__digit" data-lift-digit>
+            {FLOORS[0].fl}
+          </span>
+          <span class="sl__name" data-lift-name>
+            {floorName(FLOORS[0])}
+          </span>
+          <span class="sl__caret" aria-hidden="true"> ▴ </span>
+        </button>
+        <div id="sl-floors" class="sl__floors" hidden>
+          {FLOORS.map((f) => <button
+            class="sl__floorbtn"
+            data-floor-btn={f.fl}
+            data-target={f.id}
+            data-name={floorName(f)}
+            aria-current={f.fl === FLOORS[0].fl ? 'location' : undefined}
+          >
+            {f.fl} <span class="sl__floorname">{floorName(f)}</span>
+          </button>)}
+          <div class="sl__keysrow">
+            <span class="sl__keyslabel">keys 1–6</span>
+            <button
+              class="sl__keystoggle"
+              type="button"
+              data-keys-toggle
+              role="switch"
+              aria-checked="true"
+              aria-label="Keyboard shortcuts"
+            >
+              <span data-keys-state>on</span>
+            </button>
+          </div>
+        </div>
+      </nav>
+      <div class="sl__feed" aria-hidden="true">
+        {items.map((it, i) => <span class:list={['sl__item', { 'is-on': i === 0 }]}>
+          <span class:list={['sl__dot', it.state]} />
+          <span class="sl__text">
+            <b style={badgeColor(it.who) ? `--who:${badgeColor(it.who)}` : undefined}>
+              {it.who}
+            </b
+            >{' '} · {it.what}
+          </span>
+        </span>)}
+      </div>
+      <div class="sl__env" aria-hidden="true">
+        <span data-sl-lights>lights ··%</span>
+        <span class="sl__sep">·</span>
+        <span data-sl-clock />
+        <span class="sl__sep">·</span>
+        <span class="sl__onair" data-sl-onair> ○ STATIC </span>
+      </div>
+    </>
+  )}
+  <div class="sl__install hw-panel" id="sl-install">
+    {ghStars && <a
+      class="sl__stars"
+      href={REPO}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={`${ghStars} GitHub stars`}
+    >
+      ★ {ghStars}
+    </a>}
+    <a
+      class="sl__copy"
+      href={doc ? `${asset('')}#install` : '#install'}
+      data-sl-install-link
+      aria-label="Jump to the install section"
+    >
+      <span class="sl__copy-icon" aria-hidden="true">→</span>
+      <span class="sl__copy-icon-flash led-selected" aria-hidden="true">✓</span>
+      <span class="sl__copy-label" aria-hidden="true">install</span>
+    </a>
+    <span class="sr-only" role="status" data-sl-copy-status></span>
+  </div>
+  {
+    /* deliberately AFTER #sl-install: bundling this into the index fragment
+      above silently swaps the two rightmost items */
+    !doc && <span class="sl__keys" aria-hidden="true"> keys 1–6 </span>
+  }
+</div>
+
+<style is:global>
+  /* Reserve room for the fixed bar (the footer must never hide under it). */
+  body {
+    padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+  }
+</style>
+
+<style>
+  .statusline {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    height: calc(2rem + env(safe-area-inset-bottom, 0px));
+    padding: 0 0.9rem env(safe-area-inset-bottom, 0px);
+    background: var(--screen);
+    border-top: 1px solid var(--chip-line);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--chip-ink);
+  }
+  .sl__nav {
+    position: relative;
+    flex: none;
+  }
+  .sl__floor {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    background: none;
+    border: 0;
+    padding: 0.2rem 0.3rem;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
+  .sl__digit {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    color: var(--led);
+    text-shadow: 0 0 6px var(--led-glow);
+    letter-spacing: 0.05em;
+  }
+  .sl__name {
+    color: var(--chip-ink);
+  }
+  .sl__caret {
+    color: var(--chip-dim);
+    font-size: 0.7rem;
+  }
+  /* the class display beats [hidden]'s UA rule — restate it */
+  .sl__floors[hidden] {
+    display: none;
+  }
+  .sl__floors {
+    position: absolute;
+    bottom: calc(100% + 0.4rem);
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--screen);
+    border: 1px solid var(--chip-line);
+    padding: 0.3rem;
+    min-width: 12rem;
+  }
+  .sl__floorbtn {
+    display: flex;
+    gap: 0.6rem;
+    align-items: baseline;
+    background: none;
+    border: 0;
+    padding: 0.35rem 0.5rem;
+    font: inherit;
+    color: var(--chip-ink);
+    cursor: pointer;
+    text-align: left;
+  }
+  .sl__floorbtn:hover,
+  .sl__floorbtn:focus-visible {
+    background: var(--hw-hover);
+  }
+  .sl__floorbtn[aria-current='location'] {
+    color: var(--led);
+  }
+  .sl__floorname {
+    color: var(--chip-dim);
+  }
+  .sl__keysrow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin-top: 0.3rem;
+    padding: 0.4rem 0.5rem 0.15rem;
+    border-top: 1px solid var(--chip-line);
+    font-size: 0.82em;
+    color: var(--chip-dim);
+  }
+  .sl__keystoggle {
+    background: none;
+    border: 1px solid var(--chip-line);
+    padding: 0.05rem 0.45rem;
+    font: inherit;
+    color: var(--chip-dim);
+    cursor: pointer;
+  }
+  .sl__keystoggle[aria-checked='true'] {
+    color: var(--led);
+    border-color: var(--led);
+  }
+  .sl__keystoggle:hover,
+  .sl__keystoggle:focus-visible {
+    color: var(--chip-ink);
+  }
+  .sl__feed {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+  }
+  .sl__item {
+    position: absolute;
+    inset: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    opacity: 0;
+    /* the operative fade is JS-set (--feed-fade); the 0.3s literal is a
+       never-operative pre-JS default, since rotation is JS-only. */
+    transition: opacity var(--feed-fade, 0.3s) ease;
+  }
+  .sl__item.is-on {
+    opacity: 1;
+  }
+  /* .sl__item's own overflow can't clip this: the `<b>` and the raw " · {what}"
+     run are separate anonymous flex items, so the ellipsis has to live on one
+     block-level span. min-width:0 lets it shrink below its content's width
+     (the flex default, auto, never shrinks). */
+  .sl__text {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .sl__item b {
+    color: var(--who, var(--chip-bright));
+    font-weight: 700;
+  }
+  .sl__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex: none;
+  }
+  .sl__dot.running {
+    background: var(--led);
+  }
+  .sl__dot.requires-action {
+    background: var(--amber);
+  }
+  .sl__dot.idle {
+    background: var(--led-off);
+  }
+  .sl__env {
+    flex: none;
+    display: inline-flex;
+    gap: 0.55rem;
+    color: var(--chip-dim);
+  }
+  .sl__sep {
+    color: #4a4438;
+  }
+  .sl__onair.is-live {
+    color: var(--led);
+    text-shadow: 0 0 6px var(--led-glow);
+  }
+  .sl__install {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.1rem 0.55rem;
+  }
+  .sl__stars {
+    color: var(--chip-bright);
+    text-decoration: none;
+  }
+  .sl__stars:hover,
+  .sl__stars:focus-visible {
+    color: var(--led);
+  }
+  .sl__copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: none;
+    border: 0;
+    padding: 0.2rem 0;
+    font: inherit;
+    color: var(--chip-ink);
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .sl__copy:hover,
+  .sl__copy:focus-visible {
+    color: var(--led);
+  }
+  /* hidden everywhere by default — only the icon-only mobile collapse below
+     ever shows it */
+  .sl__copy-icon-flash {
+    display: none;
+  }
+  @keyframes chip-pulse {
+    0% {
+      box-shadow: 0 0 0 0 var(--led-glow);
+    }
+    100% {
+      box-shadow: 0 0 0 8px transparent;
+    }
+  }
+  .sl__keys {
+    flex: none;
+    color: var(--chip-dim);
+  }
+  .sl__path {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--chip-ink);
+  }
+  /* The feed hides earlier than .sl__env/.sl__stars below: under ~200px of
+     available width even a clean ellipsis leaves an unreadable fragment
+     ("cc·pixtuoid · mer…"). It's aria-hidden, so nothing is lost. */
+  @media (max-width: 860px) {
+    .sl__feed {
+      display: none;
+    }
+  }
+  @media (max-width: 760px) {
+    .sl__feed,
+    .sl__env {
+      display: none;
+    }
+    .statusline {
+      justify-content: space-between;
+    }
+    .sl__stars {
+      display: none;
+    }
+    /* the jump link KEEPS its one-word label here — a bare arrow carries no
+       meaning to a first-time visitor. Only the hire-receipt flash swaps to the
+       glyph, since the receipt text is too long for this bar. */
+    .sl__copy.is-flash {
+      animation: chip-pulse 0.6s ease-out;
+    }
+    .sl__copy.is-flash .sl__copy-icon,
+    .sl__copy.is-flash .sl__copy-label {
+      display: none;
+    }
+    .sl__copy.is-flash .sl__copy-icon-flash {
+      display: inline;
+    }
+  }
+  @media (pointer: coarse) {
+    /* a keyboard-only affordance on a keyboardless device */
+    .sl__keys {
+      display: none;
+    }
+    .sl__floorbtn {
+      padding: 0.6rem 0.5rem;
+    }
+  }
+</style>
+
+<script
+  is:inline
+  define:vars={{
+    dimResting: DIM_RESTING,
+    floorSpyRootMargin: FLOOR_SPY_ROOT_MARGIN,
+    bottomClampEpsilonPx: BOTTOM_CLAMP_EPSILON_PX,
+    feedFadeMs: FEED_FADE_MS,
+    feedSwapGapMs: FEED_SWAP_GAP_MS,
+    feedRotateMs: FEED_ROTATE_MS,
+  }}
+>
+  (function () {
+    const bar = document.getElementById('statusline');
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const digit = bar.querySelector('[data-lift-digit]');
+    const name = bar.querySelector('[data-lift-name]');
+    const toggle = bar.querySelector('[data-floor-toggle]');
+    const list = document.getElementById('sl-floors');
+    const btns = Array.prototype.slice.call(bar.querySelectorAll('[data-floor-btn]'));
+
+    function setActive(n) {
+      btns.forEach(function (b) {
+        const on = b.dataset.floorBtn === String(n);
+        if (on) {
+          b.setAttribute('aria-current', 'location');
+          if (digit) digit.textContent = n;
+          if (name) name.textContent = b.dataset.name || '';
+        } else {
+          b.removeAttribute('aria-current');
+        }
+      });
+    }
+    function go(btn) {
+      const sec = document.getElementById(btn.dataset.target);
+      if (!sec) return;
+      sec.scrollIntoView({ behavior: mq.matches ? 'auto' : 'smooth', block: 'start' });
+      sec.setAttribute('tabindex', '-1');
+      sec.focus({ preventScroll: true });
+      closeList();
+    }
+    function closeList() {
+      if (list) list.hidden = true;
+      if (toggle) toggle.setAttribute('aria-expanded', 'false');
+    }
+    if (toggle && list) {
+      toggle.addEventListener('click', function () {
+        const open = list.hidden;
+        list.hidden = !open;
+        toggle.setAttribute('aria-expanded', String(open));
+      });
+      document.addEventListener('click', function (e) {
+        if (!bar.contains(e.target)) closeList();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape' || list.hidden) return;
+        // closing the popup is display:none, which would drop focus to <body>
+        // (WCAG 2.4.3)
+        const inside = list.contains(document.activeElement);
+        closeList();
+        if (inside) toggle.focus();
+      });
+    }
+    btns.forEach(function (b) {
+      b.addEventListener('click', function () {
+        go(b);
+      });
+    });
+    // Keyboard-shortcuts off-switch (WCAG 2.1.4). The FLAG lives in
+    // window.__pixKeys (Base.astro, parse-first); here we only reflect + toggle.
+    const keysToggle = bar.querySelector('[data-keys-toggle]');
+    const keysState = bar.querySelector('[data-keys-state]');
+    function renderKeys(on) {
+      keysToggle.setAttribute('aria-checked', on ? 'true' : 'false');
+      keysState.textContent = on ? 'on' : 'off';
+    }
+    if (keysToggle && window.__pixKeys) {
+      renderKeys(window.__pixKeys.enabled());
+      keysToggle.addEventListener('click', function () {
+        const next = !window.__pixKeys.enabled();
+        window.__pixKeys.setEnabled(next);
+        renderKeys(next);
+      });
+    }
+    // DEFERRED: this is:inline script renders BEFORE <main>, so a parse-time
+    // querySelectorAll sees zero [data-floor] sections.
+    function observeFloors() {
+      if (!('IntersectionObserver' in window)) return;
+      const io = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) setActive(e.target.dataset.floor);
+          });
+        },
+        { rootMargin: floorSpyRootMargin, threshold: 0 }
+      );
+      document.querySelectorAll('[data-floor]').forEach(function (s) {
+        io.observe(s);
+      });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', observeFloors, { once: true });
+    } else {
+      observeFloors();
+    }
+
+    // 1F + the footer rarely fill the center band the observer keys off, so
+    // without this the readout freezes on the SECOND-to-last floor while the
+    // visitor reads the very end of the page. ElevatorShaft mirrors this clamp.
+    function clampToLastFloorAtBottom() {
+      if (!btns.length) return;
+      const atBottom =
+        window.scrollY + window.innerHeight >=
+        document.documentElement.scrollHeight - bottomClampEpsilonPx;
+      if (atBottom) setActive(btns[btns.length - 1].dataset.floorBtn);
+    }
+    // straight from the scroll event: it already fires at the frame rate (MDN scroll_event)
+    window.addEventListener('scroll', clampToLastFloorAtBottom, { passive: true });
+    clampToLastFloorAtBottom(); // a hash-anchored load can already start at the bottom
+
+    // The office pause switch (WCAG 2.2.2) governs every >5s auto-motion, so it
+    // holds the feed ticker too; reduced motion drives the same stop path.
+    let userPaused = false;
+
+    // The feed items are absolutely stacked, so the fade-out → fade-in must be
+    // sequenced: a simultaneous swap double-exposes two lines mid-transition.
+    const feedItems = Array.prototype.slice.call(bar.querySelectorAll('.sl__item'));
+    bar.style.setProperty('--feed-fade', feedFadeMs + 'ms');
+    let feedTimer = 0;
+    // the pending out→in swap: tracked so a mid-transition stop cancels it — a
+    // hidden tab whose timers kept firing would otherwise replay it on refocus
+    let feedSwap = 0;
+    let feedOn = 0;
+    // Exactly one line lit is the crossfade's invariant; snapping to it on every
+    // stop keeps a paused/hidden feed from freezing with two half-faded lines.
+    function showOnlyFeed(idx) {
+      feedItems.forEach(function (it, i) {
+        it.classList.toggle('is-on', i === idx);
+      });
+    }
+    function stopFeed() {
+      if (feedTimer) clearInterval(feedTimer);
+      if (feedSwap) clearTimeout(feedSwap);
+      feedTimer = feedSwap = 0;
+      showOnlyFeed(feedOn);
+    }
+    function startFeed() {
+      if (feedTimer || feedItems.length <= 1 || mq.matches || userPaused || document.hidden) return;
+      feedTimer = setInterval(function () {
+        feedItems[feedOn].classList.remove('is-on');
+        feedOn = (feedOn + 1) % feedItems.length;
+        feedSwap = setTimeout(function () {
+          feedSwap = 0;
+          showOnlyFeed(feedOn);
+        }, feedSwapGapMs);
+      }, feedRotateMs);
+    }
+
+    const lights = bar.querySelector('[data-sl-lights]');
+    const clock = bar.querySelector('[data-sl-clock]');
+    const onair = bar.querySelector('[data-sl-onair]');
+    function tickClock() {
+      if (!clock) return;
+      const d = new Date();
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      // __pixNight is the ONE site clock boundary, defined in Base's head boot
+      const night = window.__pixNight();
+      clock.textContent = hh + ':' + mm + ' ' + (night ? 'night' : 'day');
+    }
+    tickClock();
+    setInterval(tickClock, 60000);
+    if (lights) {
+      const rest = 'lights ' + Math.round((1 - dimResting) * 100) + '%';
+      if (mq.matches) {
+        lights.textContent = rest;
+      } else {
+        // 250ms: fast enough that the readout tracks the dimmer's ease instead
+        // of contradicting a fully-lit gap for a visible beat
+        setInterval(function () {
+          // a mid-session reduce-ON pins the dimmer at the resting level while
+          // __pixLights goes stale — report the pinned value, not the ghost
+          const v = mq.matches
+            ? dimResting
+            : typeof window.__pixLights === 'number'
+              ? window.__pixLights
+              : dimResting;
+          lights.textContent = 'lights ' + Math.round((1 - v) * 100) + '%';
+        }, 250);
+      }
+    }
+    let isLive = false;
+    function renderAir() {
+      if (!onair) return;
+      let text, live;
+      if (userPaused) {
+        text = '❚❚ PAUSED';
+        live = false;
+      } else if (isLive) {
+        text = '● LIVE';
+        live = true;
+      } else {
+        text = mq.matches ? '□ STATIC FRAME' : '○ STATIC';
+        live = false;
+      }
+      onair.textContent = text;
+      onair.classList.toggle('is-live', live);
+    }
+    // the one-shot pix:onair event can fire before this script attaches (fast
+    // wasm load), and a missed event would read STATIC forever
+    if (!mq.matches && document.querySelector('.backdrop.is-live')) isLive = true;
+    renderAir();
+    document.addEventListener('pix:onair', function (e) {
+      isLive = !!(e.detail && e.detail.live);
+      renderAir();
+    });
+
+    // The install chip is a plain jump link — it copies nothing itself
+    // (Install.astro's tabs do); it only flashes a receipt on pix:hired.
+    const installLink = bar.querySelector('[data-sl-install-link]');
+    const copyLabel = bar.querySelector('.sl__copy-label');
+    const copyStatus = bar.querySelector('[data-sl-copy-status]');
+    const CHIP_FLASH_MS = 2000;
+    const CHIP_REST = copyLabel.textContent;
+    let chipTimer = 0;
+    function chipFlash(text, announce) {
+      copyLabel.textContent = text;
+      copyStatus.textContent = announce;
+      // Restart chip-pulse even if a previous flash's class is still on:
+      // toggle('is-flash', true) is a no-op when the class is already there,
+      // so remove, flush a layout read, then re-add.
+      installLink.classList.remove('is-flash');
+      void installLink.offsetWidth;
+      installLink.classList.add('is-flash');
+      clearTimeout(chipTimer);
+      chipTimer = setTimeout(function () {
+        copyLabel.textContent = CHIP_REST;
+        copyStatus.textContent = '';
+        installLink.classList.remove('is-flash');
+      }, CHIP_FLASH_MS);
+    }
+    installLink.addEventListener('click', function (e) {
+      const sec = document.getElementById('install');
+      // Doc/404 pages have no #install — DON'T preventDefault; let the
+      // cross-page href carry the visitor instead of eating the click.
+      if (!sec) return;
+      e.preventDefault();
+      sec.scrollIntoView({ behavior: mq.matches ? 'auto' : 'smooth', block: 'start' });
+      sec.setAttribute('tabindex', '-1');
+      sec.focus({ preventScroll: true });
+    });
+    document.addEventListener('pix:hired', function () {
+      chipFlash('you · hired · just now', 'A coworker walked into the office');
+    });
+
+    document.addEventListener('pix:paused', function (e) {
+      userPaused = !!(e.detail && e.detail.paused);
+      if (userPaused) stopFeed();
+      else startFeed();
+      renderAir();
+    });
+    if (mq.addEventListener) {
+      mq.addEventListener('change', function () {
+        if (mq.matches) stopFeed();
+        else startFeed();
+        renderAir();
+      });
+    }
+    // A hidden tab freezes CSS transitions but keeps setInterval/setTimeout
+    // firing, so a free-running ticker replays every queued fade at once on
+    // refocus (ghosted double text).
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) stopFeed();
+      else startFeed();
+    });
+    startFeed();
+  })();
+</script>

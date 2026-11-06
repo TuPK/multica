@@ -1,0 +1,866 @@
+[palette]
+"." = "transparent"
+"H" = "#2a1a0e"   # hair (per-agent recolor target)
+"S" = "#f4c79a"   # skin (per-agent recolor target)
+"e" = "#1a1a1a"   # eyes
+"m" = "#a04040"   # mouth
+"B" = "#2e62cf"   # shirt (per-agent recolor target)
+"P" = "#2a2e44"   # pants (per-agent recolor target — dark navy default)
+"c" = "#7ed4e2"   # cyan accent
+"j" = "#1c2a36"   # dark screen glass (`SCREEN_GLASS_KEY`)
+"J" = "#34424e"   # dim screen content on idle glass; the cutaway relights it, as text, on a lit desk
+"w" = "#ececec"   # off-white
+"t" = "#d68a4a"   # orange tabby cat
+"u" = "#3a2010"   # cat dark (ears, eyes, nose, tail tip)
+"M" = "#3a3a40"   # charcoal
+"E" = "#6e7280"   # brushed steel, between the wall and chrome (`K`)
+"k" = "#1a1a22"   # near-black: a keyboard, feet and casters, pulls
+"D" = "#8b5a2b"   # wood
+"d" = "#5a3818"   # wood, shaded
+"n" = "#3a2a1c"   # outline / nose shadow
+"l" = "#4a8f3a"   # leaf green
+"L" = "#2f6b25"   # plant leaf shadow
+"g" = "#c2734f"   # terracotta
+"C" = "#4f6d77"   # slate teal, cool against the warm floor
+"G" = "#6a8e98"   # couch cushion highlight (lit upper surfaces)
+"K" = "#a8a8b0"   # chrome
+"V" = "#c8bea8"   # warm beige
+"r" = "#a83232"   # red
+"b" = "#3a5a9e"   # blue
+"y" = "#c8a64c"   # ochre
+"q" = "#1d1d1d"   # ink black
+"x" = "#c8a060"   # tan
+"z" = "#7a5030"   # dark brown
+"R" = "#c45050"   # dog nose/tongue
+"o" = "#d2402f"   # vermilion
+"N" = "#9e2a20"   # dark red
+"Q" = "#f0895a"   # lobster highlight (orange carapace)
+"A" = "#e85540"   # lobster claw (lit)
+"a" = "#c83828"   # lobster antenna
+"T" = "#26262c"   # desk task-chair shell — cool near-black, so it parts from the warm desk
+"I" = "#67676b"   # desk task-chair lit top edge (a flat shell reads as a hole in the floor)
+# --- the generator's materials (scripts/gen-art.py): every @Nx piece and the
+# 1x pieces it owns
+"O" = "#b07a42"   # wood, lit
+"σ" = "#c89058"   # wood, brightest edge
+"ψ" = "#3e2710"   # wood, darkest
+"ω" = "#d6a064"   # desk lamp's warm pool on the wood
+"3" = "#4a4e5a"   # slate: a dark surface's lit edge
+"4" = "#18191f"   # near-black: seams, cast shadow, a dark casing
+"φ" = "#3c3e48"   # charcoal: keycaps and buttons
+"6" = "#626470"   # mid grey
+"7" = "#2e3038"   # gunmetal
+"Θ" = "#5c606c"   # gunmetal, lit
+"9" = "#ffe6a0"   # warm light: a bulb, a lit sign's panel
+"!" = "#b8b2a4"   # off-white, shaded
+"$" = "#969288"   # print: lines on paper, a spine's title
+"%" = "#968c78"   # mug, shaded side
+"/" = "#1e1f25"   # task-chair seat edge and base
+"κ" = "#16121a"   # the @Nx art's outline: one near-black line round each piece's whole silhouette (the 1x art outlines in n)
+"ρ" = "#4a2c18"   # coffee in a mug
+# The city's materials ([city]): a painter colours each by depth and sky, so
+# these are only what a painter that does not resolve them shows.
+"+" = "#2a2e3c"   # a building's facade
+"-" = "#1e212c"   # a facade turned from the light
+"~" = "#3a3f50"   # a roof line or cornice
+"0" = "#3c4152"   # a building's window glass
+"|" = "#16181f"   # a mullion between panes
+"*" = "#242733"   # rooftop plant: a tank, a mast, a unit
+"=" = "#dc8250"   # a rooftop sign's panel
+"¤" = "#d2d4d8"   # off-white: a night office has no pure white
+";" = "#2a2226"   # shoe leather
+":" = "#4a3e40"   # shoe, lit toe
+"&" = "#e2e8f0"   # the brightest neutral, still short of pure white: a lit edge, a glint
+"^" = "#e89a8a"   # pink: a sticky note
+"Φ" = "#76b85c"   # leaf, lit
+"Ψ" = "#1f4a1a"   # leaf midrib / darkest
+"Γ" = "#8f4f33"   # terracotta pot, shaded
+"δ" = "#de946c"   # terracotta pot, lit: its west side and rim
+"ζ" = "#ff9f8a"   # petal highlight
+"Π" = "#a4aab4"   # aluminium frame
+"θ" = "#5e646e"   # aluminium, shaded
+"Λ" = "#3a5058"   # couch fabric, shaded
+"Ω" = "#2a3a40"   # couch fabric's seam: between cushions, inside the arms, the front rail
+"λ" = "#5a8a4e"   # book spine, green
+"Δ" = "#b8895a"   # cork
+"π" = "#8a6440"   # cork grain
+"ξ" = "#7c7c86"   # steel, shaded
+"Ξ" = "#1c2a36"   # j's colour on a key the cutaway never relights: a TV's, a slide's glass
+"Ж" = "#34424e"   # J's colour: a sheen on dark glass (a display, a microwave's window)
+# The corridor appliances' keys, each recoloured from the theme's ApplianceColors
+# (pack::appliance_overrides); the values are theme::normal's.
+"Б" = "#323741"   # vending machine body
+"П" = "#b43c3c"   # vending machine brand panel
+"Ч" = "#dc3232"   # a vending machine's first drink
+"Ш" = "#32a032"   # its second
+"Щ" = "#3250c8"   # its third
+"Э" = "#dcb428"   # its fourth
+"Ф" = "#b4aa64"   # vending machine coin plate
+"Ы" = "#282a30"   # vending machine glass and pickup recess
+"Ю" = "#dcdce1"   # printer chassis
+"Я" = "#3c3c44"   # printer lid
+"Ё" = "#82b4c8"   # printer scanner glass
+"Й" = "#f5f5f0"   # printer paper
+"Ц" = "#b4b4b9"   # printer output tray
+# The fixtures' keys, recoloured from the theme (pack::fixture_overrides);
+# the values are theme::normal's.
+"Д" = "#2e6f86"   # aquarium water
+"З" = "#9adbe8"   # pale aqua
+"И" = "#e0862f"   # the aquarium's first fish
+"Л" = "#d94f1f"   # its second
+"Ь" = "#3f8f3a"   # aquarium weed
+"ж" = "#282a36"   # the aquarium's frame
+"б" = "#3c4152"   # the water cooler's cabinet
+"ы" = "#627ab2"   # a magazine's cover
+"э" = "#323c5c"   # a magazine's edge
+"ч" = "#c83c3c"   # the coat rack's first coat
+"ш" = "#5078c8"   # its second
+"щ" = "#f0f0f0"   # its third
+"ф" = "#c8c8d2"   # the wall clock's rim
+"ц" = "#f0f0f0"   # its face
+"з" = "#141419"   # its hands, ticks and centre pin
+# Un-themed (pack::COOLER_WATER).
+"χ" = "#64b4e6"   # the water cooler's bottle
+# An icon's ink, which the text's colour replaces (pack::ICON_INK_KEY).
+"ι" = "#f0f0f0"
+
+# Shades of a recolor key, derived from it: `level` steps along the key's ramp
+# (`Rgb::ramp`). They carry no colour of their own, so a per-agent recolor
+# re-derives every shade and shaded art keeps its shading.
+[ramps]
+"h" = { of = "H", level = -2 }   # hair, turned from the light
+"Y" = { of = "H", level = 2 }    # hair, catching the light
+"Z" = { of = "H", level = 5 }    # hair, curl highlight
+"s" = { of = "S", level = -1 }   # skin, shaded
+"i" = { of = "S", level = -3 }   # skin, deepest shade: the neck, the mouth, the collar
+"v" = { of = "B", level = -2 }   # shirt, shaded
+"W" = { of = "B", level = 2 }    # shirt, lit shoulder
+"U" = { of = "B", level = -5 }   # shirt, deepest shade: a sleeve's crease
+"ϊ" = { of = "ι", level = 4 }    # icon ink, lit: a lamp's glint
+"ί" = { of = "ι", level = -4 }   # icon ink, dim: a dot's rounded corner, the clock's sides
+"p" = { of = "P", level = -2 }   # pants, shaded
+"(" = { of = "P", level = 2 }    # pants, lit thigh
+"Ъ" = { of = "Б", level = 2 }    # vending machine body, lit top
+"ъ" = { of = "Б", level = -2 }   # vending machine body, shaded east side
+"п" = { of = "П", level = 3 }    # vending machine panel, lit
+"ю" = { of = "Ю", level = -2 }   # printer chassis, shaded east side
+"я" = { of = "Я", level = 2 }    # printer lid, lit edge
+"й" = { of = "Й", level = -2 }   # printer paper, the stack's shaded edge
+"д" = { of = "Д", level = -2 }   # aquarium water, deep
+"и" = { of = "И", level = -2 }   # the first fish's belly and tail
+"л" = { of = "Л", level = -2 }   # the second's
+"ь" = { of = "Ь", level = -2 }   # aquarium weed, shaded
+"ν" = { of = "ж", level = 2 }    # the aquarium's frame, lit top
+"в" = { of = "б", level = 2 }    # the water cooler's cabinet, lit top
+"ё" = { of = "б", level = -2 }   # the water cooler's cabinet, shaded east side
+"α" = { of = "ч", level = -2 }   # the first coat, turned from the pole
+"β" = { of = "ш", level = -2 }   # the second
+"ţ" = { of = "t", level = -2 }   # the cat's fur, shaded
+"Ţ" = { of = "t", level = 2 }    # the cat's fur, lit
+"ƭ" = { of = "x", level = -2 }   # the dog's coat, shaded
+"Ƭ" = { of = "x", level = 2 }    # the dog's coat, lit
+"ȼ" = { of = "o", level = -2 }   # the lobster's shell, shaded
+"Ȼ" = { of = "o", level = 2 }    # the lobster's shell, lit
+"ǩ" = { of = "A", level = -2 }   # the lobster's claws, shaded
+"Ǩ" = { of = "A", level = 2 }    # the lobster's claws, lit
+"γ" = { of = "щ", level = -2 }   # the third
+"η" = { of = "ф", level = 2 }    # the clock's rim, lit upper west
+"ε" = { of = "ц", level = -2 }   # the clock's face, shaded lower east
+"τ" = { of = "χ", level = -3 }   # the water cooler's bottle, shaded
+
+[animations.seated]
+frames   = ["seated.sprite"]
+frame_ms = 600
+
+# Density variants (`@Nx`): crates/pixtuoid-scene/AGENTS.md#the-sprite-format.
+[animations."seated@4x"]
+frames   = ["seated@4x.sprite"]
+frame_ms = 600
+
+[animations.seated_back]
+frames   = ["seated_back.sprite"]
+frame_ms = 600
+
+[animations."seated_back@4x"]
+frames   = ["seated_back@4x.sprite"]
+frame_ms = 600
+
+[animations.side_seated]
+frames   = ["side_seated.sprite"]
+frame_ms = 600
+
+[animations."side_seated@4x"]
+frames   = ["side_seated@4x.sprite"]
+frame_ms = 600
+
+[animations.typing]
+frames   = ["typing_0.sprite", "typing_1.sprite"]
+frame_ms = 125
+
+[animations."typing@4x"]
+frames   = ["typing_0@4x.sprite", "typing_1@4x.sprite"]
+frame_ms = 125
+
+[animations.standing]
+frames   = ["standing.sprite"]
+frame_ms = 600
+
+[animations."standing@4x"]
+frames   = ["standing@4x.sprite"]
+frame_ms = 600
+
+# All three person walks share this stride (base-grid pixels per cycle,
+# docs/CONFIGURATION.md). Seen front or back a foot never shows its travel, so it
+# sets only the cadence: about one cycle a second at a wander's pace.
+[animations.walking]
+frames   = ["walking_0.sprite", "walking_1.sprite", "walking_2.sprite", "walking_3.sprite", "walking_4.sprite", "walking_5.sprite", "walking_6.sprite", "walking_7.sprite"]
+frame_ms = 220
+stride   = 24
+
+[animations."walking@4x"]
+frames   = ["walking_0@4x.sprite", "walking_1@4x.sprite", "walking_2@4x.sprite", "walking_3@4x.sprite", "walking_4@4x.sprite", "walking_5@4x.sprite", "walking_6@4x.sprite", "walking_7@4x.sprite"]
+frame_ms = 220
+
+[animations.walking_back]
+frames   = ["walking_back_0.sprite", "walking_back_1.sprite", "walking_back_2.sprite", "walking_back_3.sprite", "walking_back_4.sprite", "walking_back_5.sprite", "walking_back_6.sprite", "walking_back_7.sprite"]
+frame_ms = 220
+stride   = 24
+
+[animations."walking_back@4x"]
+frames   = ["walking_back_0@4x.sprite", "walking_back_1@4x.sprite", "walking_back_2@4x.sprite", "walking_back_3@4x.sprite", "walking_back_4@4x.sprite", "walking_back_5@4x.sprite", "walking_back_6@4x.sprite", "walking_back_7@4x.sprite"]
+frame_ms = 220
+
+[animations.walking_coffee]
+frames   = ["walking_coffee_0.sprite", "walking_coffee_1.sprite", "walking_coffee_2.sprite", "walking_coffee_3.sprite", "walking_coffee_4.sprite", "walking_coffee_5.sprite", "walking_coffee_6.sprite", "walking_coffee_7.sprite"]
+frame_ms = 220
+stride   = 24
+
+[animations."walking_coffee@4x"]
+frames   = ["walking_coffee_0@4x.sprite", "walking_coffee_1@4x.sprite", "walking_coffee_2@4x.sprite", "walking_coffee_3@4x.sprite", "walking_coffee_4@4x.sprite", "walking_coffee_5@4x.sprite", "walking_coffee_6@4x.sprite", "walking_coffee_7@4x.sprite"]
+frame_ms = 220
+
+# BACK view of the typing pose.
+[animations.typing_back]
+frames   = ["typing_back_0.sprite", "typing_back_1.sprite"]
+frame_ms = 125
+
+[animations."typing_back@4x"]
+frames   = ["typing_back_0@4x.sprite", "typing_back_1@4x.sprite"]
+frame_ms = 125
+
+[animations.desk]
+frames   = ["desk.sprite"]
+frame_ms = 600
+
+[animations."desk@4x"]
+frames   = ["desk@4x.sprite"]
+frame_ms = 600
+
+# The desk of a NORTH-facing seat.
+[animations.desk_north]
+frames   = ["desk_north.sprite"]
+frame_ms = 600
+
+[animations."desk_north@4x"]
+frames   = ["desk_north@4x.sprite"]
+frame_ms = 600
+
+# What of `desk` stands nearer the viewer than its sitter's props, drawn over
+# them on the desk's own canvas: its monitor.
+[animations.desk_front]
+frames   = ["desk_front.sprite"]
+frame_ms = 600
+
+[animations."desk_front@4x"]
+frames   = ["desk_front@4x.sprite"]
+frame_ms = 600
+
+[animations.plant]
+frames   = ["plant.sprite"]
+frame_ms = 600
+
+[animations."plant@4x"]
+frames   = ["plant@4x.sprite"]
+frame_ms = 600
+
+[animations.plant_tall]
+frames   = ["plant_tall.sprite"]
+frame_ms = 600
+
+[animations."plant_tall@4x"]
+frames   = ["plant_tall@4x.sprite"]
+frame_ms = 600
+
+[animations.plant_flower]
+frames   = ["plant_flower.sprite"]
+frame_ms = 600
+
+[animations."plant_flower@4x"]
+frames   = ["plant_flower@4x.sprite"]
+frame_ms = 600
+
+[animations.plant_succulent]
+frames   = ["plant_succulent.sprite"]
+frame_ms = 600
+
+[animations."plant_succulent@4x"]
+frames   = ["plant_succulent@4x.sprite"]
+frame_ms = 600
+
+[animations.floor_lamp]
+frames   = ["floor_lamp.sprite"]
+frame_ms = 600
+
+[animations."floor_lamp@4x"]
+frames   = ["floor_lamp@4x.sprite"]
+frame_ms = 600
+
+[animations.door]
+# The renderer picks the frame manually each tick from entry/exit progress, so
+# `frame_ms` is irrelevant — 999999 only stops accidental cycling blinking the door.
+frames   = ["door.sprite", "door_half.sprite", "door_open.sprite"]
+frame_ms = 999999
+
+[animations."door@4x"]
+frames   = ["door@4x.sprite"]
+frame_ms = 999999
+
+[animations.bulletin_board]
+frames   = ["bulletin_board.sprite"]
+frame_ms = 600
+
+[animations."bulletin_board@4x"]
+frames   = ["bulletin_board@4x.sprite"]
+frame_ms = 600
+
+[animations.exit_sign]
+frames   = ["exit_sign.sprite"]
+frame_ms = 600
+
+[animations."exit_sign@4x"]
+frames   = ["exit_sign@4x.sprite"]
+frame_ms = 600
+
+[animations.desk_chair]
+frames   = ["desk_chair.sprite"]
+frame_ms = 600
+
+[animations."desk_chair@4x"]
+frames   = ["desk_chair@4x.sprite"]
+frame_ms = 600
+
+# A desk's coffee cup, stood at the desk art's `cup` mark while its sitter has one.
+[animations.desk_cup]
+frames   = ["desk_cup.sprite"]
+frame_ms = 600
+
+[animations."desk_cup@4x"]
+frames   = ["desk_cup@4x.sprite"]
+frame_ms = 600
+
+# The token meter's paper tower at the desk art's `tower` mark: a frame per
+# tier, picked by the tier, never played.
+[animations.token_tower]
+frames   = ["token_tower.sprite"]
+frame_ms = 600
+
+[animations."token_tower@4x"]
+frames   = ["token_tower@4x.sprite"]
+frame_ms = 600
+
+# The sheet falling onto the token tower.
+[animations.token_sheet]
+frames   = ["token_sheet.sprite"]
+frame_ms = 600
+
+[animations."token_sheet@4x"]
+frames   = ["token_sheet@4x.sprite"]
+frame_ms = 600
+
+[animations.filing_cabinet]
+frames   = ["filing_cabinet.sprite"]
+frame_ms = 600
+
+[animations."filing_cabinet@4x"]
+frames   = ["filing_cabinet@4x.sprite"]
+frame_ms = 600
+
+[animations.cat_walk]
+frames   = ["cat_walk_0.sprite", "cat_walk_1.sprite", "cat_walk_2.sprite", "cat_walk_3.sprite", "cat_walk_4.sprite", "cat_walk_5.sprite", "cat_walk_6.sprite", "cat_walk_7.sprite"]
+frame_ms = 250
+stride   = 2
+
+[animations."cat_walk@4x"]
+frames   = ["cat_walk_0@4x.sprite", "cat_walk_1@4x.sprite", "cat_walk_2@4x.sprite", "cat_walk_3@4x.sprite", "cat_walk_4@4x.sprite", "cat_walk_5@4x.sprite", "cat_walk_6@4x.sprite", "cat_walk_7@4x.sprite"]
+frame_ms = 250
+
+[animations.cat_sit]
+frames   = ["cat_sit_0.sprite", "cat_sit_1.sprite", "cat_sit_2.sprite", "cat_sit_3.sprite"]
+frame_ms = 500
+
+[animations."cat_sit@4x"]
+frames   = ["cat_sit_0@4x.sprite", "cat_sit_1@4x.sprite", "cat_sit_2@4x.sprite", "cat_sit_3@4x.sprite"]
+frame_ms = 500
+
+[animations.cat_sleep]
+frames   = ["cat_sleep_0.sprite", "cat_sleep_1.sprite", "cat_sleep_2.sprite", "cat_sleep_3.sprite"]
+frame_ms = 750
+
+[animations."cat_sleep@4x"]
+frames   = ["cat_sleep_0@4x.sprite", "cat_sleep_1@4x.sprite", "cat_sleep_2@4x.sprite", "cat_sleep_3@4x.sprite"]
+frame_ms = 750
+
+[animations.dog_walk]
+frames   = ["dog_walk_0.sprite", "dog_walk_1.sprite", "dog_walk_2.sprite", "dog_walk_3.sprite", "dog_walk_4.sprite", "dog_walk_5.sprite", "dog_walk_6.sprite", "dog_walk_7.sprite"]
+frame_ms = 250
+stride   = 2
+
+[animations."dog_walk@4x"]
+frames   = ["dog_walk_0@4x.sprite", "dog_walk_1@4x.sprite", "dog_walk_2@4x.sprite", "dog_walk_3@4x.sprite", "dog_walk_4@4x.sprite", "dog_walk_5@4x.sprite", "dog_walk_6@4x.sprite", "dog_walk_7@4x.sprite"]
+frame_ms = 250
+
+[animations.dog_sit]
+frames   = ["dog_sit_0.sprite", "dog_sit_1.sprite", "dog_sit_2.sprite", "dog_sit_3.sprite"]
+frame_ms = 500
+
+[animations."dog_sit@4x"]
+frames   = ["dog_sit_0@4x.sprite", "dog_sit_1@4x.sprite", "dog_sit_2@4x.sprite", "dog_sit_3@4x.sprite"]
+frame_ms = 500
+
+[animations.dog_sleep]
+frames   = ["dog_sleep_0.sprite", "dog_sleep_1.sprite", "dog_sleep_2.sprite", "dog_sleep_3.sprite"]
+frame_ms = 750
+
+[animations."dog_sleep@4x"]
+frames   = ["dog_sleep_0@4x.sprite", "dog_sleep_1@4x.sprite", "dog_sleep_2@4x.sprite", "dog_sleep_3@4x.sprite"]
+frame_ms = 750
+
+[animations.lobster_walk]
+frames   = ["lobster_walk_0.sprite", "lobster_walk_1.sprite", "lobster_walk_2.sprite", "lobster_walk_3.sprite"]
+frame_ms = 250
+stride   = 6
+
+[animations."lobster_walk@4x"]
+frames   = ["lobster_walk_0@4x.sprite", "lobster_walk_1@4x.sprite", "lobster_walk_2@4x.sprite", "lobster_walk_3@4x.sprite"]
+frame_ms = 250
+
+[animations.lobster_rest]
+frames   = ["lobster_rest_0.sprite", "lobster_rest_1.sprite", "lobster_rest_2.sprite", "lobster_rest_3.sprite"]
+frame_ms = 375
+
+[animations."lobster_rest@4x"]
+frames   = ["lobster_rest_0@4x.sprite", "lobster_rest_1@4x.sprite", "lobster_rest_2@4x.sprite", "lobster_rest_3@4x.sprite"]
+frame_ms = 375
+
+[animations.meeting_sofa]
+# The front view. The classic painter also draws the back view with it, flipped:
+# the south sofa of a meeting trio and the lounge couch.
+frames   = ["meeting_sofa.sprite"]
+frame_ms = 600
+
+[animations."meeting_sofa@4x"]
+frames   = ["meeting_sofa@4x.sprite"]
+frame_ms = 600
+
+[animations.meeting_sofa_north]
+# The meeting sofa seen from behind (the south sofa of a meeting trio and the
+# lounge couch, both facing north), drawn only by the cutaway, which sorts its
+# top rows under the sitter and the rest over their lap.
+frames   = ["meeting_sofa_north.sprite"]
+frame_ms = 600
+
+[animations."meeting_sofa_north@4x"]
+frames   = ["meeting_sofa_north@4x.sprite"]
+frame_ms = 600
+
+[animations.meeting_screen]
+frames   = ["meeting_screen.sprite"]
+frame_ms = 600
+
+[animations."meeting_screen@4x"]
+frames   = ["meeting_screen@4x.sprite"]
+frame_ms = 600
+
+[animations.pantry]
+frames   = ["pantry.sprite"]
+frame_ms = 600
+
+[animations."pantry@4x"]
+frames   = ["pantry@4x.sprite"]
+frame_ms = 600
+
+[animations.pantry_small]
+# Drawn for a counter narrower than `PANTRY_COUNTER_LARGE_W`.
+frames   = ["pantry_small.sprite"]
+frame_ms = 600
+
+[animations."pantry_small@4x"]
+frames   = ["pantry_small@4x.sprite"]
+frame_ms = 600
+
+[animations.whiteboard]
+frames   = ["whiteboard.sprite"]
+frame_ms = 600
+
+[animations."whiteboard@4x"]
+frames   = ["whiteboard@4x.sprite"]
+frame_ms = 600
+
+[animations.bookshelf]
+frames   = ["bookshelf.sprite"]
+frame_ms = 600
+
+[animations."bookshelf@4x"]
+frames   = ["bookshelf@4x.sprite"]
+frame_ms = 600
+
+[animations.snack_shelf]
+frames   = ["snack_shelf.sprite"]
+frame_ms = 600
+
+[animations."snack_shelf@4x"]
+frames   = ["snack_shelf@4x.sprite"]
+frame_ms = 600
+
+# Frame 0 is the appliance at rest; the rest are its busy loop, one frame each
+# `frame_ms` (`pack::appliance_frame_index`).
+[animations.vending_machine]
+frames   = ["vending_machine.sprite"]
+frame_ms = 500
+
+[animations."vending_machine@4x"]
+frames   = ["vending_machine@4x.sprite"]
+frame_ms = 500
+
+# As the vending machine: frame 0 at rest, then its busy loop.
+[animations.printer]
+frames   = ["printer.sprite"]
+frame_ms = 250
+
+[animations."printer@4x"]
+frames   = ["printer@4x.sprite"]
+frame_ms = 250
+
+[animations.meeting_table]
+frames   = ["meeting_table.sprite"]
+frame_ms = 600
+
+[animations."meeting_table@4x"]
+frames   = ["meeting_table@4x.sprite"]
+frame_ms = 600
+
+# The fixtures the classic still draws procedurally; the cutaway draws them from this art.
+[animations.kitchen_island]
+frames   = ["kitchen_island.sprite"]
+frame_ms = 600
+
+[animations."kitchen_island@4x"]
+frames   = ["kitchen_island@4x.sprite"]
+frame_ms = 600
+
+[animations.side_table]
+frames   = ["side_table.sprite"]
+frame_ms = 600
+
+[animations."side_table@4x"]
+frames   = ["side_table@4x.sprite"]
+frame_ms = 600
+
+# The glug: a bubble climbs the bottle, then the water stills.
+[animations.water_cooler]
+frames   = ["water_cooler.sprite"]
+frame_ms = 375
+
+[animations."water_cooler@4x"]
+frames   = ["water_cooler@4x.sprite"]
+frame_ms = 375
+
+[animations.pantry_bin]
+frames   = ["pantry_bin.sprite"]
+frame_ms = 600
+
+[animations."pantry_bin@4x"]
+frames   = ["pantry_bin@4x.sprite"]
+frame_ms = 600
+
+[animations.fish_tank]
+frames   = ["fish_tank.sprite"]
+frame_ms = 500
+
+[animations."fish_tank@4x"]
+frames   = ["fish_tank@4x.sprite"]
+frame_ms = 500
+
+[animations.coat_rack]
+frames   = ["coat_rack.sprite"]
+frame_ms = 600
+
+[animations."coat_rack@4x"]
+frames   = ["coat_rack@4x.sprite"]
+frame_ms = 600
+
+[animations.notice_board]
+frames   = ["notice_board.sprite"]
+frame_ms = 600
+
+[animations."notice_board@4x"]
+frames   = ["notice_board@4x.sprite"]
+frame_ms = 600
+
+# The dial; the painter draws the hands from the time.
+[animations.wall_clock]
+frames   = ["wall_clock.sprite"]
+frame_ms = 600
+
+[animations."wall_clock@4x"]
+frames   = ["wall_clock@4x.sprite"]
+frame_ms = 600
+
+# Back to the west; the painter flips it for the chair across the table.
+[animations.meeting_chair]
+frames   = ["meeting_chair.sprite"]
+frame_ms = 600
+
+[animations."meeting_chair@4x"]
+frames   = ["meeting_chair@4x.sprite"]
+frame_ms = 600
+
+[animations.tv_stand]
+frames   = ["tv_stand.sprite"]
+frame_ms = 600
+
+[animations."tv_stand@4x"]
+frames   = ["tv_stand@4x.sprite"]
+frame_ms = 600
+
+[animations.phone_booth]
+frames   = ["phone_booth.sprite"]
+frame_ms = 600
+
+[animations."phone_booth@4x"]
+frames   = ["phone_booth@4x.sprite"]
+frame_ms = 600
+
+[animations.standing_desk]
+frames   = ["standing_desk.sprite"]
+frame_ms = 600
+
+[animations."standing_desk@4x"]
+frames   = ["standing_desk@4x.sprite"]
+frame_ms = 600
+
+[animations.back_couch]
+frames   = ["back_couch.sprite"]
+frame_ms = 600
+
+[animations."back_couch@4x"]
+frames   = ["back_couch@4x.sprite"]
+frame_ms = 600
+
+[animations.seated_sleeping]
+frames   = ["seated_sleeping.sprite"]
+frame_ms = 600
+
+[animations."seated_sleeping@4x"]
+frames   = ["seated_sleeping@4x.sprite"]
+frame_ms = 600
+
+[animations.seated_sleeping_alt]
+frames   = ["seated_sleeping_alt.sprite"]
+frame_ms = 600
+
+[animations."seated_sleeping_alt@4x"]
+frames   = ["seated_sleeping_alt@4x.sprite"]
+frame_ms = 600
+
+[animations.holding_coffee]
+frames   = ["holding_coffee.sprite"]
+frame_ms = 600
+
+[animations."holding_coffee@4x"]
+frames   = ["holding_coffee@4x.sprite"]
+frame_ms = 600
+
+# The symbols text shows as art, by the name `display::Icon::art` gives: as
+# many cells wide as its terminal glyph takes less the last gap, a line tall.
+[icons]
+alert       = "icon_floor_up.sprite"   # floor_up's: both write ▲ (the icon tests)
+running      = "icon_running.sprite"
+idle        = "icon_idle.sprite"
+star        = "icon_star.sprite"
+gateway     = "icon_gateway.sprite"
+floor_up    = "icon_floor_up.sprite"
+floor_down  = "icon_floor_down.sprite"
+requires_action     = "icon_requires_action.sprite"
+exiting     = "icon_exiting.sprite"
+arrow_left  = "icon_arrow_left.sprite"
+arrow_up    = "icon_arrow_up.sprite"
+arrow_right = "icon_arrow_right.sprite"
+arrow_down  = "icon_arrow_down.sprite"
+link        = "icon_link.sprite"
+child       = "icon_child.sprite"
+more        = "icon_more.sprite"
+enter       = "icon_enter.sprite"
+folder      = "icon_folder.sprite"
+meter_on    = "icon_meter_on.sprite"
+meter_off   = "icon_meter_off.sprite"
+pointer     = "icon_pointer.sprite"
+fold        = "icon_fold.sprite"
+clock       = "icon_clock.sprite"
+coffee      = "icon_coffee.sprite"
+sound       = "icon_sound.sprite"
+warning     = "icon_warning.sprite"
+check       = "icon_check.sprite"
+
+# Hairstyles and the line round every marked @Nx character:
+# crates/pixtuoid-scene/AGENTS.md#the-sprite-format. The layers are scripts/gen-art.py's
+# HAIRSTYLES, registered here by hand (`every_bundled_sprite_is_a_frame_the_pack_loads`
+# fails on one left out).
+[characters]
+outline = "κ"
+
+[hairstyles."bun@4x"]
+front = { behind = "hair_bun_front_behind@4x.sprite", over = "hair_bun_front_over@4x.sprite" }
+back = { behind = "hair_bun_back_behind@4x.sprite", over = "hair_bun_back_over@4x.sprite" }
+side = { behind = "hair_bun_side_behind@4x.sprite", over = "hair_bun_side_over@4x.sprite" }
+crown = { over = "hair_bun_crown_over@4x.sprite" }
+
+[hairstyles."crop@4x"]
+front = { behind = "hair_crop_front_behind@4x.sprite", over = "hair_crop_front_over@4x.sprite" }
+back = { behind = "hair_crop_back_behind@4x.sprite", over = "hair_crop_back_over@4x.sprite" }
+side = { behind = "hair_crop_side_behind@4x.sprite", over = "hair_crop_side_over@4x.sprite" }
+crown = { over = "hair_crop_crown_over@4x.sprite" }
+
+[hairstyles."curls@4x"]
+front = { behind = "hair_curls_front_behind@4x.sprite", over = "hair_curls_front_over@4x.sprite" }
+back = { over = "hair_curls_back_over@4x.sprite" }
+side = { behind = "hair_curls_side_behind@4x.sprite", over = "hair_curls_side_over@4x.sprite" }
+crown = { over = "hair_curls_crown_over@4x.sprite" }
+
+[hairstyles."long@4x"]
+front = { behind = "hair_long_front_behind@4x.sprite", over = "hair_long_front_over@4x.sprite" }
+back = { over = "hair_long_back_over@4x.sprite" }
+side = { behind = "hair_long_side_behind@4x.sprite", over = "hair_long_side_over@4x.sprite" }
+crown = { over = "hair_long_crown_over@4x.sprite" }
+
+[hairstyles."messy@4x"]
+front = { behind = "hair_messy_front_behind@4x.sprite", over = "hair_messy_front_over@4x.sprite" }
+back = { over = "hair_messy_back_over@4x.sprite" }
+side = { behind = "hair_messy_side_behind@4x.sprite", over = "hair_messy_side_over@4x.sprite" }
+crown = { over = "hair_messy_crown_over@4x.sprite" }
+
+[hairstyles."mop@4x"]
+front = { behind = "hair_mop_front_behind@4x.sprite", over = "hair_mop_front_over@4x.sprite" }
+back = { over = "hair_mop_back_over@4x.sprite" }
+side = { behind = "hair_mop_side_behind@4x.sprite", over = "hair_mop_side_over@4x.sprite" }
+crown = { over = "hair_mop_crown_over@4x.sprite" }
+
+[hairstyles."ponytail@4x"]
+front = { behind = "hair_ponytail_front_behind@4x.sprite", over = "hair_ponytail_front_over@4x.sprite" }
+back = { over = "hair_ponytail_back_over@4x.sprite" }
+side = { behind = "hair_ponytail_side_behind@4x.sprite", over = "hair_ponytail_side_over@4x.sprite" }
+crown = { over = "hair_ponytail_crown_over@4x.sprite" }
+
+[hairstyles."shaggy@4x"]
+front = { behind = "hair_shaggy_front_behind@4x.sprite", over = "hair_shaggy_front_over@4x.sprite" }
+back = { over = "hair_shaggy_back_over@4x.sprite" }
+side = { behind = "hair_shaggy_side_behind@4x.sprite", over = "hair_shaggy_side_over@4x.sprite" }
+crown = { over = "hair_shaggy_crown_over@4x.sprite" }
+
+[hairstyles."side_part@4x"]
+front = { behind = "hair_side_part_front_behind@4x.sprite", over = "hair_side_part_front_over@4x.sprite" }
+back = { over = "hair_side_part_back_over@4x.sprite" }
+side = { behind = "hair_side_part_side_behind@4x.sprite", over = "hair_side_part_side_over@4x.sprite" }
+crown = { over = "hair_side_part_crown_over@4x.sprite" }
+
+# The city behind the windows: scripts/gen-art.py's BUILDINGS, registered here
+# by hand (`every_bundled_sprite_is_a_frame_the_pack_loads` fails on one left
+# out), each with the planes it stands in. A tower stands near, where it rises
+# tallest; a low block only in the middle distance, behind the towers.
+[city]
+facade = "+"
+shade = "-"
+roof = "~"
+glass = "0"
+mullion = "|"
+detail = "*"
+sign = "="
+
+[buildings.curtain]
+sprite = "building_curtain.sprite"
+planes = ["mid", "near"]
+
+[buildings."curtain@4x"]
+sprite = "building_curtain@4x.sprite"
+
+[buildings.dome]
+sprite = "building_dome.sprite"
+planes = ["mid"]
+
+[buildings."dome@4x"]
+sprite = "building_dome@4x.sprite"
+
+[buildings.low]
+sprite = "building_low.sprite"
+planes = ["mid"]
+
+[buildings."low@4x"]
+sprite = "building_low@4x.sprite"
+
+[buildings.setback]
+sprite = "building_setback.sprite"
+planes = ["mid", "near"]
+
+[buildings."setback@4x"]
+sprite = "building_setback@4x.sprite"
+
+[buildings.sign]
+sprite = "building_sign.sprite"
+planes = ["mid"]
+
+[buildings."sign@4x"]
+sprite = "building_sign@4x.sprite"
+
+[buildings.slab]
+sprite = "building_slab.sprite"
+planes = ["mid", "near"]
+
+[buildings."slab@4x"]
+sprite = "building_slab@4x.sprite"
+
+[buildings.spire]
+sprite = "building_spire.sprite"
+planes = ["near"]
+
+[buildings."spire@4x"]
+sprite = "building_spire@4x.sprite"
+
+[buildings.twin]
+sprite = "building_twin.sprite"
+planes = ["near"]
+
+[buildings."twin@4x"]
+sprite = "building_twin@4x.sprite"
+
+[buildings.walkup]
+sprite = "building_walkup.sprite"
+planes = ["mid"]
+
+[buildings."walkup@4x"]
+sprite = "building_walkup@4x.sprite"
+
+[animations.staff_desk]
+frames   = ["staff_desk.sprite"]
+frame_ms = 600
+
+[animations."staff_desk@4x"]
+frames   = ["staff_desk@4x.sprite"]
+frame_ms = 600
+
+[animations.reception_sofa]
+frames   = ["reception_sofa.sprite"]
+frame_ms = 600
+
+[animations."reception_sofa@4x"]
+frames   = ["reception_sofa@4x.sprite"]
+frame_ms = 600

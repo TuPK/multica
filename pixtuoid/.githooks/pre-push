@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Pre-push hook: runs `just preflight` (lint + clippy) before pushing; CI runs
+# the tests. Pre-commit only checks formatting.
+#
+# Set up once per clone with:
+#   git config core.hooksPath .githooks
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=SCRIPTDIR/../scripts/lib/hook-just.sh
+source "$here/../scripts/lib/hook-just.sh"
+
+# Resolved before the scrub drops GIT_DIR: when the hook's CWD is outside the
+# worktree (`git --git-dir=… push` from elsewhere) that is the only locator.
+toplevel=$(git rev-parse --show-toplevel)
+
+# A LINKED worktree's hook exports GIT_DIR to its children, and it outranks
+# `git -C <dir>`: anything preflight runs that builds a throwaway repo then
+# silently writes into THIS one (#893) — the unset githooks(5) prescribes
+# (https://git-scm.com/docs/githooks), applied here rather than per-script so
+# nothing downstream has to remember it.
+# `unset $(...)` would discard the substitution's status, which `set -e` needs.
+scrub=$(git rev-parse --local-env-vars)
+# shellcheck disable=SC2086  # the var list must word-split
+unset $scrub
+
+cd "$toplevel"
+
+resolve_just
+
+exec "${just[@]}" preflight

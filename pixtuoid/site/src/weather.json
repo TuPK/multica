@@ -1,0 +1,34 @@
+[
+  {
+    "id": "clear",
+    "name": "Clear"
+  },
+  {
+    "id": "rain",
+    "name": "Rain"
+  },
+  {
+    "id": "storm",
+    "name": "Storm"
+  },
+  {
+    "id": "snow",
+    "name": "Snow"
+  },
+  {
+    "id": "fog",
+    "name": "Fog"
+  },
+  {
+    "id": "overcast",
+    "name": "Overcast"
+  },
+  {
+    "id": "windy",
+    "name": "Windy"
+  },
+  {
+    "id": "smog",
+    "name": "Smog"
+  }
+]

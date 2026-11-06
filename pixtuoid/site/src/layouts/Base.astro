@@ -1,0 +1,475 @@
+---
+// Self-hosted (@fontsource): a CSP with no external font origins, and they load
+// behind the GFW.
+import '@fontsource/jersey-10/400.css';
+// Resolve the LATIN subset woff2 through Vite (?url) so the preload <link> below
+// carries the same hashed asset URL the @fontsource CSS resolves to.
+import jerseyLatinWoff2 from '@fontsource/jersey-10/files/jersey-10-latin-400-normal.woff2?url';
+import monaspaceLatinWoff2 from '@fontsource/monaspace-neon/files/monaspace-neon-latin-400-normal.woff2?url';
+import loraLatinWoff2 from '@fontsource/lora/files/lora-latin-400-normal.woff2?url';
+// Lora 600 (SemiBold) is loaded, not 500: with only 400/500 the `font-weight: 600`
+// call sites silently painted as Medium.
+import '../styles/fonts.css';
+import 'prismjs/themes/prism-tomorrow.css';
+import '../styles/global.css';
+import { asset, THEMES, THEME_BG, THEME_STORAGE_KEY, VALID_THEMES } from '../consts';
+import sources from '../sources.json';
+
+const CLI_COUNT = sources.length;
+
+interface Props {
+  title?: string;
+  description?: string;
+  preloadImage?: string;
+  jsonLd?: Record<string, unknown>;
+}
+
+const {
+  title = 'pixtuoid — your coding agents, alive in a pixel office',
+  description = 'A terminal-native pixel-art office that visualizes your AI coding agents (Claude Code, Codex, and more) as little animated coworkers — day/night lighting, weather, themes, and pets included.',
+  preloadImage,
+  jsonLd,
+} = Astro.props;
+
+const SITE = Astro.site;
+const ogImage = new URL(asset('demos/hero-poster.png'), SITE).href;
+// Astro.url.pathname includes the configured base in the static build, so /config
+// doesn't self-declare the homepage as canonical.
+const canonical = new URL(Astro.url.pathname, SITE).href;
+const version = __PIXTUOID_VERSION__; // the latest release TAG, not Cargo.toml (config/released-version.mjs)
+
+// Escape `<` so no string value can break out of the <script> block (a `</script`
+// or `<!--` in serialized JSON would otherwise close it).
+const jsonLdSafe = jsonLd ? JSON.stringify(jsonLd).replace(/</g, '\\u003c') : null;
+---
+
+<!doctype html>
+<html lang="en" data-theme="day">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {/* CSP: injected here by Astro's built-in security.csp (astro.config.mjs) —
+        hash-based script-src (NO 'unsafe-inline'), each is:inline script
+        whitelisted by content hash via the cspInlineHashes() build hook. */}
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    {/* PNG, not SVG: it's pixel art, and mobile Safari ignores SVG favicons */}
+    <link id="favicon" rel="icon" type="image/png" sizes="32x32" href={asset('favicon-32.png')} />
+    <link rel="icon" type="image/png" sizes="180x180" href={asset('apple-touch-icon.png')} />
+    <link rel="apple-touch-icon" href={asset('apple-touch-icon.png')} />
+    <link rel="canonical" href={canonical} />
+    <meta name="theme-color" content={THEME_BG.day} />
+    {/* `crossorigin` is required even same-origin — font requests are
+        CORS-mode, and a mismatch double-downloads. */}
+    <link rel="preload" as="font" type="font/woff2" href={jerseyLatinWoff2} crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href={monaspaceLatinWoff2} crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href={loraLatinWoff2} crossorigin />
+    {preloadImage && <link rel="preload" as="image" href={preloadImage} fetchpriority="high" />}
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    {jsonLdSafe && <script type="application/ld+json" is:inline set:html={jsonLdSafe} />}
+
+    <!-- No-FOUC theme init: ?theme= override → saved choice → system → day -->
+    <script
+      is:inline
+      define:vars={{
+        themeKey: THEME_STORAGE_KEY,
+        validThemes: VALID_THEMES,
+        themeBG: THEME_BG,
+      }}
+    >
+      // THE site clock boundary (7/19) — one source of truth for this init, the
+      // Escape fallback and the statusline clock, approximating the engine's own
+      // dawn/dusk ramp (pixtuoid-scene's `sky` model).
+      window.__pixNight = function () {
+        const h = new Date().getHours();
+        return h >= 19 || h < 7;
+      };
+      window.__pixTheme = {
+        KEY: themeKey,
+        VALID: validThemes,
+        BG: themeBG,
+        ok: function (v) {
+          return validThemes.indexOf(v) !== -1;
+        },
+        fallback: function () {
+          return window.__pixNight() || window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'night'
+            : 'day';
+        },
+      };
+      // shortcutContext gates a shortcut to a NEUTRAL surface — never a real
+      // interactive control, so dictation or stray focus can't fire it.
+      window.__pixKeys = {
+        typing: function (e) {
+          const t = e && e.target;
+          return !!(
+            t &&
+            (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)
+          );
+        },
+        shortcutContext: function () {
+          const a = document.activeElement;
+          if (!a || a === document.body || a === document.documentElement) return true;
+          if (a.hasAttribute('data-floor')) return true;
+          const sl = document.getElementById('statusline');
+          return !!(sl && sl.contains(a));
+        },
+        // WCAG 2.1.4 off-switch: the digit vocabulary is single-character and NOT
+        // focus-scoped, so it needs a documented turn-off.
+        enabled: function () {
+          try {
+            return localStorage.getItem('pix-keys') !== 'off';
+          } catch (e) {
+            return true;
+          }
+        },
+        setEnabled: function (on) {
+          try {
+            localStorage.setItem('pix-keys', on ? 'on' : 'off');
+          } catch (e) {}
+        },
+      };
+      (function () {
+        try {
+          const T = window.__pixTheme;
+          const forced = new URLSearchParams(location.search).get('theme');
+          const pick = T.ok(forced) ? forced : localStorage.getItem(T.KEY);
+          // Until the visitor chooses a theme the site follows the wall clock,
+          // like the office lighting — but the clock only ever turns night ON, so
+          // a dark-preference user still keeps night at noon via T.fallback.
+          const afterHours = window.__pixNight();
+          const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const theme = T.ok(pick) ? pick : T.fallback();
+          // clock-forced (not chosen, not system) → the footer explains itself
+          if (!T.ok(pick) && afterHours && !sysDark)
+            document.documentElement.dataset.clockNight = '1';
+          document.documentElement.dataset.theme = theme;
+          const meta = document.querySelector('meta[name="theme-color"]');
+          if (meta && T.BG[theme]) meta.setAttribute('content', T.BG[theme]);
+        } catch (e) {
+          document.documentElement.dataset.theme = 'day';
+        }
+      })();
+    </script>
+    <script is:inline>
+      try {
+        if (
+          !window.matchMedia('(prefers-reduced-motion: reduce)').matches &&
+          !sessionStorage.getItem('pix-booted')
+        ) {
+          document.documentElement.dataset.booting = '1';
+        }
+      } catch (e) {}
+    </script>
+    {/* .reveal starts opacity:0 and JS adds .in on scroll, so with JS disabled
+        (or a script/CSP failure) every below-hero section would stay invisible. */}
+    <noscript>
+      <style>
+        .reveal {
+          opacity: 1 !important;
+          transform: none !important;
+        }
+      </style>
+    </noscript>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <div id="boot" class="boot" role="status" aria-label="Loading pixtuoid">
+      <div class="boot__log">
+        <div class="boot__line">pixtuoid <b>v{version}</b></div>
+        <div class="boot__line">▸ booting office… <span class="boot__ok">ok</span></div>
+        <div class="boot__line">▸ loading themes… <span class="boot__ok">ok</span></div>
+        <div class="boot__line">▸ {CLI_COUNT} CLIs connected… <span class="boot__ok">ok</span></div>
+      </div>
+      <div class="boot__hint">
+        <span class="boot__hint-key">press any key to skip</span
+        ><span class="boot__hint-tap">tap to skip</span>
+      </div>
+    </div>
+
+    <slot />
+
+    <script is:inline>
+      (function () {
+        function setup() {
+          const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          const els = document.querySelectorAll('.reveal');
+          if (reduce || !('IntersectionObserver' in window)) {
+            els.forEach(function (el) {
+              el.classList.add('in');
+            });
+            return;
+          }
+          const io = new IntersectionObserver(
+            function (entries) {
+              entries.forEach(function (e) {
+                if (e.isIntersecting) {
+                  e.target.classList.add('in');
+                  io.unobserve(e.target);
+                }
+              });
+            },
+            { threshold: 0.12 }
+          );
+          els.forEach(function (el) {
+            io.observe(el);
+          });
+        }
+        // Wait for the boot overlay to clear, or above-fold sections run their
+        // entrance hidden behind the opaque overlay (#119).
+        document.addEventListener('pix:revealed', setup, { once: true });
+      })();
+    </script>
+    <!-- FX: CRT power-on + a `dracula` easter egg. (No pointer glow / 3D tilt on
+         purpose: perspective transforms smear pixel art's crisp edges.) -->
+    <script is:inline>
+      (function () {
+        const reduceMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const reduce = reduceMQ.matches;
+
+        const themeMeta = document.querySelector('meta[name="theme-color"]');
+        // The favicon and the on-page nav/footer marks are one asset pair; each
+        // path is derived from the current href so the Pages base-path holds.
+        const fav = document.getElementById('favicon');
+        const brandMarks = document.querySelectorAll('.js-brand-mark');
+        function syncBrand() {
+          const night = document.documentElement.dataset.theme !== 'day';
+          function swap(cur) {
+            const day = cur.replace('favicon-32-night.png', 'favicon-32.png');
+            return night ? day.replace('favicon-32.png', 'favicon-32-night.png') : day;
+          }
+          if (fav) fav.href = swap(fav.href);
+          brandMarks.forEach(function (m) {
+            m.src = swap(m.src);
+          });
+        }
+        syncBrand();
+        document.addEventListener('pix:theme', function () {
+          const t = document.documentElement.dataset.theme;
+          if (themeMeta && window.__pixTheme.BG[t])
+            themeMeta.setAttribute('content', window.__pixTheme.BG[t]);
+          syncBrand();
+          delete document.documentElement.dataset.clockNight;
+        });
+
+        // defer until after boot so the CRT doesn't power on hidden behind the
+        // boot overlay (#119)
+        document.addEventListener(
+          'pix:revealed',
+          function () {
+            if (reduce || !('IntersectionObserver' in window)) return;
+            const co = new IntersectionObserver(
+              function (es) {
+                es.forEach(function (e) {
+                  if (e.isIntersecting) {
+                    e.target.classList.add('crt-on');
+                    co.unobserve(e.target);
+                  }
+                });
+              },
+              { threshold: 0.3 }
+            );
+            document.querySelectorAll('.crt').forEach(function (el) {
+              co.observe(el);
+            });
+          },
+          { once: true }
+        );
+
+        function clearRetint() {
+          const s = document.documentElement.style;
+          s.removeProperty('--coral');
+          s.removeProperty('--coral-deep');
+          s.removeProperty('--amber');
+        }
+        let buf = '';
+        // notify the Nav toggle too, or Escape / the dracula egg leave its
+        // icon and aria-label inverted
+        const setTheme = function (t) {
+          document.documentElement.dataset.theme = t;
+          document.dispatchEvent(new CustomEvent('pix:theme'));
+        };
+        document.addEventListener('keydown', function (e) {
+          if (e.ctrlKey || e.metaKey || e.altKey) return;
+          if (window.__pixKeys.typing(e)) return;
+          // Escape "skips the boot" — during boot it must NOT also run setTheme,
+          // which would clear clock-night and fire a spurious pix:theme.
+          if (document.documentElement.dataset.booting === '1') return;
+          const T = window.__pixTheme;
+          if (e.key === 'Escape') {
+            clearRetint();
+            let saved = null;
+            try {
+              saved = localStorage.getItem(T.KEY);
+            } catch (e2) {}
+            // Restore through the SAME validate + fallback chain the no-FOUC init
+            // uses, or an after-hours visitor with no saved choice gets snapped
+            // to day by the Escape that merely closed the Docs dropdown.
+            setTheme(T.ok(saved) ? saved : T.fallback());
+            return;
+          }
+          // WCAG 2.1.4 covers a typed sequence too: the digits' off-switch gates it
+          if (e.key && e.key.length === 1 && window.__pixKeys.enabled()) {
+            buf = (buf + e.key.toLowerCase()).slice(-7);
+            if (buf.indexOf('dracula') !== -1) {
+              clearRetint();
+              setTheme('dracula');
+            }
+          }
+        });
+      })();
+    </script>
+    <!-- the app's literal `t` key: retint the page through the THEMES palette.
+         Decorative hues only — the AA-tuned --coral-deep is deliberately
+         exempt. -->
+    <script is:inline define:vars={{ accents: THEMES.map((t) => ({ a: t.accent, b: t.accent2 })) }}>
+      (function () {
+        let i = -1;
+        document.addEventListener('keydown', function (e) {
+          if (e.key !== 't' || e.ctrlKey || e.metaKey || e.altKey) return;
+          // "press any key to skip" the boot must not also retint (inert blocks
+          // focus/clicks, not document-level keydown)
+          if (document.documentElement.dataset.booting === '1') return;
+          // WCAG 2.1.4: neutral focus context only, so dictation can't retint
+          if (window.__pixKeys.typing(e) || !window.__pixKeys.shortcutContext()) return;
+          i = (i + 1) % accents.length;
+          const s = document.documentElement.style;
+          s.setProperty('--coral', accents[i].a);
+          s.setProperty('--amber', accents[i].b || accents[i].a);
+          document.dispatchEvent(new CustomEvent('pix:theme'));
+        });
+      })();
+    </script>
+    <!-- Digits 1–6 ride to [data-floor] sections from ANY scroll depth, so unlike
+         `t` they are deliberately NOT focus-gated: WCAG 2.1.4 is satisfied by the
+         __pixKeys.enabled() off-switch instead. -->
+    <script is:inline>
+      (function () {
+        document.addEventListener('keydown', function (e) {
+          if (e.ctrlKey || e.metaKey || e.altKey) return;
+          if (document.documentElement.dataset.booting === '1') return;
+          if (window.__pixKeys.typing(e)) return;
+          if (!window.__pixKeys.enabled()) return;
+          if (!/^[1-6]$/.test(e.key)) return;
+          const a = document.activeElement;
+          if (a && a.closest('[data-keys-scope]')) return;
+          const sec = document.querySelector('[data-floor="' + e.key + 'F"]');
+          if (!sec) return; // docs/404 have no floors — inert, not an error
+          const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+          sec.scrollIntoView({ behavior: mq.matches ? 'auto' : 'smooth', block: 'start' });
+          sec.setAttribute('tabindex', '-1');
+          sec.focus({ preventScroll: true });
+        });
+      })();
+    </script>
+    <script is:inline>
+      (function () {
+        const root = document.documentElement;
+        const boot = document.getElementById('boot');
+        function reveal() {
+          // Flag mirrors the one-shot event so a late-attaching listener still
+          // sees the reveal.
+          window.__pixRevealed = true;
+          performance.mark('pixtuoid-revealed');
+          document.dispatchEvent(new Event('pix:revealed'));
+        }
+        if (root.dataset.booting !== '1') {
+          reveal();
+          return;
+        }
+        // inert + aria-hidden the page behind the opaque overlay, so a keyboard
+        // or screen-reader user can't reach controls obscured under it
+        const bg = [];
+        Array.prototype.forEach.call(document.body.children, function (el) {
+          if (el !== boot) {
+            el.setAttribute('inert', '');
+            el.setAttribute('aria-hidden', 'true');
+            bg.push(el);
+          }
+        });
+        const lines = boot.querySelectorAll('.boot__line');
+        // Tuned by eye: per-line readability outranks raw speed, and the splash
+        // stays skippable regardless.
+        const LINE_MS = 390;
+        const FIRST_MS = 100;
+        let i = 0,
+          done = false;
+        function settle() {
+          boot.classList.add('is-done');
+          try {
+            sessionStorage.setItem('pix-booted', '1');
+          } catch (e) {}
+          bg.forEach(function (el) {
+            el.removeAttribute('inert');
+            el.removeAttribute('aria-hidden');
+          });
+          setTimeout(function () {
+            root.removeAttribute('data-booting');
+          }, 460);
+          boot.removeEventListener('click', skip);
+          document.removeEventListener('keydown', onKey);
+          reveal();
+          // Leave focus at the document start — focusing #main would scroll the
+          // page and skip keyboard users past the nav/skip-link.
+        }
+        function finish(force) {
+          if (done) return;
+          if (!force && document.getElementById('office-live')) {
+            // Hold for __pixEngineReady so the splash lifts STRAIGHT into the
+            // office reveal. GATED on #office-live: OfficeBackdrop is its sole
+            // setter and is index-only, so docs/404 would hang the full cap inert.
+            waitForEngine(0);
+          } else {
+            done = true;
+            settle();
+          }
+        }
+        function step() {
+          if (done) return;
+          const line = lines[i];
+          if (!line) {
+            finish();
+            return;
+          }
+          line.classList.add('in');
+          i++;
+          setTimeout(step, LINE_MS);
+        }
+        const MAX_ENGINE_WAITS = 50; // 50 × 80ms ≈ 4s cap after the log finishes
+        function waitForEngine(n) {
+          if (done) return;
+          if (window.__pixEngineReady || n >= MAX_ENGINE_WAITS) {
+            done = true;
+            setTimeout(function () {
+              settle();
+            }, 180);
+            return;
+          }
+          setTimeout(function () {
+            waitForEngine(n + 1);
+          }, 80);
+        }
+        function skip() {
+          for (let j = 0; j < lines.length; j++) lines[j].classList.add('in');
+          // A user gesture always wins over the engine hold, or a tap during the
+          // hold leaves the page inert for up to MAX_ENGINE_WAITS more.
+          finish(true);
+        }
+        function onKey() {
+          skip();
+        }
+        setTimeout(step, FIRST_MS);
+        boot.addEventListener('click', skip);
+        document.addEventListener('keydown', onKey);
+      })();
+    </script>
+  </body>
+</html>

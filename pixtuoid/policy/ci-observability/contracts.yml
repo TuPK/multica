@@ -1,0 +1,597 @@
+# CI failures that stay silent in normal use, cost something when they land,
+# and that neither actionlint nor zizmor can see. A failure that turns CI red,
+# that only an advisory signal would show, or that a release exposes the moment
+# it happens does not belong here: it gets noticed without a contract.
+#
+# check.sh parses each `file` with yq and evaluates `assert` over it with
+# `jq -e`, binding `$expected` to the entry's `expected` when there is one.
+# false, null and a jq error all count as red, so a renamed job or a deleted
+# key fails its contract instead of slipping past it. Each `break` is a jq edit
+# of the same document that must turn `assert` red, and every run applies them
+# all; a clause is proven able to fire only while some break falsifies it alone.
+# A `covers` string makes every file under .github/ holding it one the contract
+# must list.
+
+# ── Scopes that only look narrow
+
+- id: cache-cleanup-stays-inert
+  file: .github/workflows/cache-cleanup.yml
+  why: >-
+    Its jobs hold actions:write and one runs on pull_request_target, which a
+    fork PR author can trigger; that stays harmless only while no job gains a
+    wider scope or runs an action (an action reads `github.token` unasked).
+  assert: |
+    .permissions == {}
+      and all(.jobs[]; .permissions == {"actions": "write"}
+                       and all(.steps[]; has("uses") | not))
+  break:
+    - '.permissions = {"actions": "write"}'
+    - .jobs["closed-pr"].permissions.contents = "write"
+    - .jobs["closed-pr"].steps[0].uses = "actions/checkout@v7"
+
+- id: site-build-composites-leave-rust-cache-to-the-job
+  file:
+    - .github/actions/gen-demos/action.yml
+    - .github/actions/gen-wasm/action.yml
+  why: >-
+    The site jobs run both, and a second rust-cache in one job saves an empty
+    target: the first's cleanup removes cargo before the second's runs
+    `cargo metadata` (Swatinem/rust-cache README, "Known issues"). Every
+    cache miss then rebuilds release from scratch, and nothing goes red.
+  assert: |
+    all(.runs.steps[]; (.uses // "") | test("setup-cargo-just|rust-cache") | not)
+  break:
+    - '.runs.steps += [{"uses": "./.github/actions/setup-cargo-just"}]'
+    - '.runs.steps += [{"uses": "Swatinem/rust-cache@v2"}]'
+
+- id: bot-publish-runs-no-tree-code
+  file:
+    - .github/workflows/media-regen.yml
+    - .github/workflows/hermetic-nightly.yml
+  why: >-
+    publish holds the bot App's key and the write token it mints, and commits
+    what an earlier job produced: the media a render left, or the patch a leg
+    that ran a just-published CLI wrote. Both stay bounded only while no other
+    job can read the key and publish builds and runs nothing from the tree.
+  assert: |
+    ([.jobs.publish.steps[] | .run // ""] | join("\n")) as $publish
+    | .permissions == {}
+      and ([.jobs | to_entries[] | select(.key != "publish") | .value | tostring | test("secrets")] | any | not)
+      and .jobs.publish.permissions == {}
+      and ([.jobs.publish.steps[] | .uses // empty | sub("@.*"; "")] - ["actions/checkout", "actions/download-artifact", "actions/create-github-app-token", "peter-evans/create-pull-request"]) == []
+      and ([.jobs.publish.steps[] | select((.uses // "") | startswith("actions/checkout@")) | .with["persist-credentials"]] | all(. == false))
+      and ($publish | test("\\b(cargo|just|npm|node|pip|python3?|make|bash|sh)\\b|\\./") | not)
+      and ($publish | test("\\bgit\\s+(add|commit|push)\\b") | not)
+  break:
+    - '.jobs.extra = {"runs-on": "ubuntu-latest", "steps": [{"env": {"T": "${{ secrets.BOT_APP_KEY }}"}, "run": "true"}]}'
+    - '.jobs.extra = {"uses": "./.github/workflows/x.yml", "secrets": "inherit"}'
+    - '.jobs.extra = {"runs-on": "ubuntu-latest", "steps": [{"env": {"ALL": "${{ toJSON(secrets) }}"}, "run": "true"}]}'
+    - '.jobs.extra = {"runs-on": "ubuntu-latest", "steps": [{"env": {"T": "${{ secrets[\"BOT_APP_KEY\"] }}"}, "run": "true"}]}'
+    - '.permissions = {"contents": "write"}'
+    - '.jobs.publish.permissions = {"contents": "write"}'
+    - '.jobs.publish.steps += [{"run": "cargo build"}]'
+    - '.jobs.publish.steps += [{"run": "git add -A && git commit -m x"}]'
+    - '.jobs.publish.steps += [{"uses": "./.github/actions/setup-cargo-just"}]'
+    - '.jobs.publish.steps[0].with["persist-credentials"] = true'
+    - '.jobs.publish.steps += [{"run": "bash scripts/x.sh"}]'
+
+- id: media-render-job-only-reads
+  file: .github/workflows/media-regen.yml
+  why: >-
+    Beside `bot-publish-runs-no-tree-code`: the render job runs the tree's code,
+    so it only reads.
+  assert: |
+    .jobs.render.permissions == {"contents": "read"}
+  break:
+    - '.jobs.render.permissions.contents = "write"'
+
+- id: nightly-files-issues-from-a-job-that-runs-no-tree-code
+  file: .github/workflows/hermetic-nightly.yml
+  why: >-
+    The nightly runs code the repo does not vet: the tree with every
+    dependency's build script, and a third-party CLI's latest release. Those
+    jobs' tokens only read. The token that writes issues lives in a job that
+    checks nothing out and runs no build, so no code of the tree ever holds it.
+  assert: |
+    ([.jobs.file.steps[] | .run // "" | split("\n")[] | select(test("^\\s*#") | not)]
+     | join("\n")) as $file
+    | .permissions == {}
+      and .jobs.drift.permissions == {"contents": "read"}
+      and .jobs.file.permissions == {"issues": "write"}
+      and ([.jobs | to_entries[] | select(.key != "file") | .value.permissions // {} | .[]]
+           | all(. != "write"))
+      and ([.jobs.file.steps[] | .uses // empty | sub("@.*"; "")] - ["actions/download-artifact"]) == []
+      and ($file | test("\\b(cargo|just|npm|node|pip|python3?|make|bash|sh)\\b|\\./") | not)
+  break:
+    - '.permissions = {"issues": "write"}'
+    - '.jobs.drift.permissions.issues = "write"'
+    - '.jobs.drift.permissions.actions = "read"'
+    - '.jobs.file.permissions.contents = "read"'
+    - '.jobs.other = {"permissions": {"pull-requests": "write"}}'
+    - '.jobs.file.steps = [{"uses": "actions/checkout@v7"}] + .jobs.file.steps'
+    - '.jobs.file.steps += [{"run": "just hermetic"}]'
+
+- id: hermetic-uploads-every-run-but-a-clean-pass
+  file: .github/workflows/hermetic.yml
+  why: >-
+    A New finding never fails a run, so a run that passed with one uploads its
+    runs only because its `new` step reads `hermetic::issues::VERDICTS`:
+    without them the nightly's issue links no evidence of the new type. A run
+    that timed out or
+    was cancelled sets no `exit` and uploads only through `always()`, which
+    runs "even when canceled", a job timeout being a cancel
+    (docs.github.com/en/actions/reference/workflows-and-actions, `expressions`
+    and `workflow-syntax`'s `timeout-minutes`). A run skipped by a failed setup
+    left no runs to upload.
+  assert: |
+    [.jobs.run.steps[] | select((.uses // "") | startswith("actions/upload-artifact"))
+     | select(.with.path == "target/hermetic/runs") | .if]
+    == ["always() && steps.run.outcome != 'skipped' && (steps.run.outcome != 'success' || steps.run.outputs.exit != '0' || steps.new.outputs.any == 'true')"]
+  break:
+    - |
+      .jobs.run.steps |= map(
+        if (.uses // "") | startswith("actions/upload-artifact") then .if = "always() && steps.run.outcome != 'skipped' && (steps.run.outcome != 'success' || steps.run.outputs.exit != '0')" else . end)
+    - |
+      .jobs.run.steps |= map(
+        if (.uses // "") | startswith("actions/upload-artifact") then .if = "steps.run.outcome != 'skipped' && (steps.run.outcome != 'success' || steps.run.outputs.exit != '0' || steps.new.outputs.any == 'true')" else . end)
+    - |
+      .jobs.run.steps |= map(
+        if (.uses // "") | startswith("actions/upload-artifact") then .if = "always() && steps.run.outcome != 'skipped' && (steps.run.outputs.exit != '0' || steps.new.outputs.any == 'true')" else . end)
+    - |
+      .jobs.run.steps |= map(
+        if (.uses // "") | startswith("actions/upload-artifact") then .if = "always() && (steps.run.outcome != 'success' || steps.run.outputs.exit != '0' || steps.new.outputs.any == 'true')" else . end)
+
+- id: hermetic-nightly-files-a-run-that-passed
+  file: .github/workflows/hermetic-nightly.yml
+  why: >-
+    A leg that passes with a New finding leaves drift green, and so does a
+    clean night that closes issues, so issues planned only on drift's failure
+    would never file the one or close the others.
+  assert: |
+    .jobs.triage.if | test("!cancelled\\(\\)") and (test("needs\\.drift\\.result") | not)
+  break:
+    - |
+      .jobs.triage.if = "${{ always() && github.ref == 'refs/heads/main' && needs.drift.result == 'failure' }}"
+
+- id: only-main-saves-the-rust-cache
+  covers: Swatinem/rust-cache@
+  file:
+    - .github/actions/setup-cargo-just/action.yml
+    - .github/actions/packaging-build/action.yml
+    - .github/workflows/ci-builds.yml
+    - .github/workflows/ci-lint.yml
+  expected: ${{ github.ref == 'refs/heads/main' }}
+  why: >-
+    Every ref restores main's rust-cache, and the 10 GB quota evicts by last
+    access (docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching),
+    so a step that saves on other refs pushes main's full-tier entries out and
+    they rebuild cold, with nothing red.
+  assert: |
+    [(.jobs[]?.steps[]?, .runs.steps[]?) | select((.uses // "") | startswith("Swatinem/rust-cache@"))] as $caches
+    | ($caches | length > 0) and all($caches[]; .with["save-if"] == $expected)
+  break:
+    - (.jobs[]?.steps[]?, .runs.steps[]?) |= (if (.uses // "") | startswith("Swatinem/rust-cache@") then del(.with["save-if"]) else . end)
+    - (.jobs[]?.steps[]?, .runs.steps[]?) |= (if (.uses // "") | startswith("Swatinem/rust-cache@") then .with["save-if"] = "true" else . end)
+    - (.jobs[]?.steps[]?, .runs.steps[]?) |= (if (.uses // "") | startswith("Swatinem/rust-cache@") then .uses = "actions/cache@v5" else . end)
+
+- id: hermetic-caches-restore-only-but-their-one-writer
+  file:
+    - .github/workflows/hermetic.yml
+    - .github/workflows/hermetic-nightly.yml
+  why: >-
+    These workflows run agent CLIs nobody here vets, on runners holding the
+    job's cache token, and a cache saved into main's scope reaches every ref's
+    restore, release builds included. Only `cache-mode` scopes the token, so
+    each workflow defaults to read, and the one job that may write runs no CLI.
+    `run` restores what `build` saved only while both share one rust-cache key:
+    the same shared key, and none of the env rust-cache hashes (Swatinem/rust-cache
+    src/config.ts `envPrefixes`) at workflow or job level; a split key would
+    cold-build every run with nothing red.
+  expected: hermetic
+  assert: |
+    .["cache-mode"] == "read"
+    and ([.jobs | to_entries[] | select((.value["cache-mode"] // "read") | IN("read", "none") | not) | .key]
+         | . == [] or . == ["build"])
+    and (.jobs.build == null
+         or ([.jobs.build.steps[] | .run // empty] == ["just hermetic-build"]
+             and ([.jobs.build.steps[] | .uses // empty | sub("@.*"; "")]
+                  - ["actions/checkout", "./.github/actions/setup-cargo-just"]) == []))
+    and ([.jobs[].steps[]? | select((.uses // "") == "./.github/actions/setup-cargo-just") | .with["shared-key"]]
+         | length > 0 and all(. == $expected))
+    and ([(.env // {}), (.jobs[] | .env // {}) | keys[] | select(test("^(CARGO|CC|CFLAGS|CXX|CMAKE|RUST)"))] == [])
+  break:
+    - del(.["cache-mode"])
+    - '.["cache-mode"] = "write"'
+    - '.jobs.extra = {"runs-on": "macos-latest", "cache-mode": "write-only", "steps": [{"run": "true"}]}'
+    - '.jobs.build = {"runs-on": "macos-latest", "cache-mode": "write", "steps": [{"run": "just hermetic --cli latest"}]}'
+    - '.jobs.build.steps += [{"uses": "anthropics/claude-code-action@v1"}]'
+    - '.env = {"CARGO_TERM_COLOR": "always"}'
+    - '(.jobs[] | select(.steps != null)).env = {"RUST_BACKTRACE": "1"}'
+    - '(.jobs[].steps[]? | select((.uses // "") == "./.github/actions/setup-cargo-just") | .with["shared-key"]) = "other"'
+
+- id: hermetic-build-covers-every-run-os
+  file:
+    - .github/workflows/hermetic.yml
+    - .github/workflows/hermetic-nightly.yml
+  why: >-
+    rust-cache keys a save by OS and arch (Swatinem/rust-cache src/config.ts),
+    so a `run` leg restores only what a `build` leg on its runner saved; a leg
+    `build` lacks cold-builds every run with nothing red.
+  expected: macos-latest windows-latest
+  assert: |
+    [.jobs.run.strategy.matrix.include[]?.runner, .jobs.build.strategy.matrix.runner[]?] | join(" ") == $expected
+  break:
+    - '.jobs.run.strategy.matrix.include += [{"runner": "ubuntu-latest"}]'
+    - '.jobs.build.strategy.matrix.runner += ["ubuntu-latest"]'
+
+- id: oidc-only-on-the-tests-call
+  file: .github/workflows/ci.yml
+  why: >-
+    A called workflow's job that declares no `permissions:` runs with exactly
+    what its caller passes down, since a called workflow can only downgrade it
+    (docs.github.com/en/actions/reference/workflows-and-actions/reusing-workflow-configurations#supported-keywords-for-jobs-that-call-a-reusable-workflow),
+    so id-token on any other group call hands a repository-scoped OIDC token to
+    every job in it; ci-tests.yml's are the jobs that declare their own scopes.
+  assert: |
+    .jobs.tests.permissions == {"contents": "read", "id-token": "write"}
+      and ([.jobs | to_entries[]
+            | select(.key != "tests" and (.value | has("uses")))
+            | select(.value.permissions["id-token"] == "write")]
+           | length == 0)
+  break:
+    - '.jobs.lint.permissions = {"contents": "read", "id-token": "write"}'
+    - .jobs.tests.permissions.contents = "write"
+
+- id: ci-tests-jobs-declare-their-scope
+  file: .github/workflows/ci-tests.yml
+  why: >-
+    ci.yml grants this whole workflow id-token for the Codecov OIDC upload, and
+    a job that omits `permissions:` inherits that grant; every job must declare
+    its own scope, and only a job that uploads to Codecov may keep id-token.
+  assert: |
+    all(.jobs[]; (.permissions | type) == "object"
+                 and (.permissions["id-token"] != "write"
+                      or any(.steps[]?; .uses == "pixtuoid/.github/.github/actions/upload-codecov@main")))
+  break:
+    - del(.jobs.test.permissions)
+    - .jobs.test.steps |= map(select(.uses != "pixtuoid/.github/.github/actions/upload-codecov@main"))
+
+# ── The merge gate
+
+- id: aggregators-judge-every-job
+  file:
+    - .github/workflows/ci.yml
+    - .github/workflows/hermetic.yml
+  why: >-
+    `gate` is the only CI check branch protection requires; hermetic's jobs are
+    all full-tier, and how a call whose every job skipped reports is
+    undocumented, so its `required` is the job that always runs. A job skipped because a job it needs failed reports
+    "Success" and does not block a merge
+    (docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-jobs-with-conditions),
+    so each aggregator must run on `always()`, need every other job, and judge
+    them all through require-jobs, which counts skipped and cancelled as red.
+  assert: |
+    (.jobs.gate // .jobs.required) as $agg
+    | ((.jobs | keys) - ["gate", "required", "tier"]) == ($agg.needs | sort)
+      and $agg.if == "${{ always() }}"
+      and ($agg | has("continue-on-error") | not)
+      and ([$agg.steps[]
+            | select(.uses == "pixtuoid/.github/.github/actions/require-jobs@main")
+            | select(.with.results == "${{ toJSON(needs) }}")
+            | select((has("if") or has("continue-on-error")) | not)]
+           | length == 1)
+  break:
+    - '.jobs.unlisted = {"uses": "./.github/workflows/unlisted.yml"}'
+    - (.jobs.gate // .jobs.required).if = "${{ success() }}"
+    - (.jobs.gate // .jobs.required).needs |= .[1:]
+    - |
+      (.jobs.gate // .jobs.required).steps |= map(
+        if .uses == "pixtuoid/.github/.github/actions/require-jobs@main" then .with.results = "{}" else . end)
+    - (.jobs.gate // .jobs.required)["continue-on-error"] = true
+    - |
+      (.jobs.gate // .jobs.required).steps |= map(
+        if .uses == "pixtuoid/.github/.github/actions/require-jobs@main" then .if = "${{ success() }}" else . end)
+    - |
+      (.jobs.gate // .jobs.required).steps |= map(
+        if .uses == "pixtuoid/.github/.github/actions/require-jobs@main" then .["continue-on-error"] = true else . end)
+
+- id: group-jobs-skip-only-by-tier-or-scope
+  file:
+    - .github/workflows/ci-lint.yml
+    - .github/workflows/ci-builds.yml
+    - .github/workflows/ci-tests.yml
+    - .github/workflows/site.yml
+    - .github/workflows/raycast.yml
+  why: >-
+    A group's own aggregator reaches ci-gate only through the call's result, as
+    its jobs do, so it adds nothing for a failed job; what it judged was a skip,
+    which reads as success
+    (docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-jobs-with-conditions).
+    So these groups have none, and a job may skip only as a light-tier
+    full-only job or on its own path scope, never through `needs` on a job
+    that failed.
+  assert: |
+    all(.jobs[];
+      (.needs == null and (.if == null or .if == "${{ inputs.full }}"))
+      or (.needs == "scope" and .if == "needs.scope.outputs.changed == 'true'"))
+  break:
+    - '.jobs.extra = {"needs": "x", "runs-on": "ubuntu-latest", "steps": [{"run": "true"}]}'
+    - '.jobs.extra = {"if": "${{ !inputs.full }}", "runs-on": "ubuntu-latest", "steps": [{"run": "true"}]}'
+
+- id: only-the-light-tier-passes-skipped-jobs
+  file: .github/workflows/hermetic.yml
+  why: >-
+    A PR's light tier skips its full-only jobs by design and must still pass
+    ci-gate to enter the queue; the full tier judges the same jobs on the
+    queue's draft PR, so a skip counted green there would merge an untested
+    tree.
+  assert: |
+    [.jobs.required.steps[] | select(.uses == "pixtuoid/.github/.github/actions/require-jobs@main")]
+    | all(.with["allow-skipped"] == "${{ !inputs.full }}")
+  break:
+    - |
+      .jobs.required.steps |= map(
+        if .uses == "pixtuoid/.github/.github/actions/require-jobs@main" then .with["allow-skipped"] = "true" else . end)
+
+- id: only-the-queue-buys-the-full-tier
+  file: .github/workflows/ci.yml
+  why: >-
+    `tier` alone decides which PR runs gets the full tier's Windows, macOS and
+    release runners; a PR outside the queue, or a fork naming its branch
+    `mergify/merge-queue/…`, that claimed it would bring back the starvation
+    two-step CI removes.
+  assert: |
+    [.jobs.tier.steps[] | select(.id == "tier") | .env.FULL]
+    == ["${{ github.event_name != 'pull_request' || (startsWith(github.head_ref, 'mergify/merge-queue/') && github.event.pull_request.head.repo.full_name == github.repository) }}"]
+  break:
+    - |
+      .jobs.tier.steps |= map(if .id == "tier" then .env.FULL = "${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'mergify/merge-queue/') }}" else . end)
+    - |
+      .jobs.tier.steps |= map(if .id == "tier" then .env.FULL = "${{ github.event_name != 'pull_request' || (startsWith(github.head_ref, 'mergify/') && github.event.pull_request.head.repo.full_name == github.repository) }}" else . end)
+    - |
+      .jobs.tier.steps |= map(if .id == "tier" then .env.FULL = "true" else . end)
+
+# ── Publishing
+
+- id: releases-run-only-in-this-repository
+  file:
+    - .github/workflows/release-plz.yml
+    - .github/workflows/star-history.yml
+    - .github/workflows/bmc-button.yml
+  expected: "1245333424"
+  why: >-
+    These jobs publish or force-push, so a fork must not run them: every entry
+    job (one with no `needs`; the rest inherit its skip) gates on the
+    repository's id rather than its owner/name. A transfer keeps the id (the
+    old name 301s to /repositories/<id>), while a name gate would skip every
+    release after one, silently.
+  assert: |
+    [.jobs[] | select(has("needs") | not) | .if // ""] as $entries
+    | ($entries | length > 0)
+      and all($entries[]; contains("github.repository_id == '" + $expected + "'")
+                          and (test("github\\.repository ==") | not))
+  break:
+    - (.jobs[] | select(has("if")) | .if) |= sub("repository_id == '[0-9]+'"; "repository_id == '1'")
+    - (.jobs[] | select(has("if")) | .if) |= sub("github.repository_id == '[0-9]+'"; "github.repository == 'pixtuoid/pixtuoid'")
+    - (.jobs[] | select(has("if")) | .if) |= sub("( && )?github.repository_id == '[0-9]+'"; "")
+    - '.jobs.ungated = {"runs-on": "ubuntu-latest", "steps": [{"run": "true"}]}'
+    - .jobs |= with_entries(.value.needs = ["x"])
+
+- id: publishers-need-the-release-environment
+  file: [.github/workflows/release-plz.yml, .github/workflows/release.yml]
+  why: >-
+    The crates.io and npm Trusted Publisher records name environment
+    `release`, whose required reviewer is the only approval a publish gets; a
+    publishing job without it either fails to mint or, once a record drops the
+    environment, publishes unapproved.
+  assert: |
+    [.jobs[] | select(.permissions["id-token"] == "write")
+             | select(any(.steps[]?; ((.uses // "") | startswith("release-plz/action@")) or ((.run // "") | test("npm publish"))))]
+    | length > 0 and all(.[]; .environment == "release")
+  break:
+    - del(.jobs[].environment)
+    - (.jobs[] | select(has("environment")) | .environment) = "staging"
+    - del(.jobs[].permissions["id-token"])
+
+- id: release-workflows-restore-no-cache
+  file:
+    - .github/workflows/release.yml
+    - .github/workflows/release-plz.yml
+  why: >-
+    A tag's run restores main's caches ("Workflow runs can restore caches
+    created in either the current branch or the default branch",
+    docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)
+    into builds that are attested and published, and release-plz's jobs compile
+    with RELEASE_PLZ_TOKEN in scope, `release` with the publish OIDC claim too.
+    zizmor's cache-poisoning audit reads only a job's own steps, never a local
+    composite's (zizmorcore/zizmor v1.30.0
+    crates/zizmor/src/audit/cache_poisoning.rs:796-813), and setup-cargo-just
+    restores by default; only `cache-mode` scopes the token under it.
+  assert: |
+    .["cache-mode"] == "none" and all(.jobs[]; (.["cache-mode"] // "none") == "none")
+  break:
+    - del(.["cache-mode"])
+    - '.["cache-mode"] = "read"'
+    - '.jobs.release["cache-mode"] = "write"'
+
+- id: release-workflows-install-only-just-from-mise
+  file:
+    - .github/workflows/release.yml
+    - .github/workflows/release-plz.yml
+  why: >-
+    These jobs build and publish with the release tokens in scope (see
+    release-workflows-restore-no-cache), and mise.toml's tools are unpinned
+    `latest`: past just, nothing it downloads runs here. cross and cargo-deb
+    stay on install-action's checksum-pinned manifest.
+  assert: |
+    all(.jobs[].steps[]?;
+        ((.uses // "") | test("/(setup-tools|setup-cargo-just)$") | not)
+        or ((.with // {}) | has("tools") | not))
+  break:
+    - '(.jobs[].steps[]? | select((.uses // "") | test("/(setup-tools|setup-cargo-just)$"))) |= (.with = ((.with // {}) + {tools: "uv"}))'
+    - 'limit(1; .jobs[].steps[]? | select((.uses // "") | test("/(setup-tools|setup-cargo-just)$"))) |= (.with = ((.with // {}) + {tools: "uv"}))'
+
+- id: release-publishes-after-ci-gate
+  file: .github/workflows/release-plz.yml
+  why: >-
+    The publish runs on the merge push, and the merge queue can land other PRs
+    while a release PR is open, so only a wait on that commit's own ci-gate
+    proves the published tree passed CI. A job whose need failed or timed out
+    is skipped unless its `if:` calls a status function
+    (docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idneeds),
+    so the publish must need the wait and call none.
+  assert: |
+    .jobs as $jobs
+    | [$jobs[] | select(any(.steps[]?; ((.uses // "") | startswith("release-plz/action@"))
+                                       and .with.command == "release"))] as $publishers
+    | ($publishers | length == 1)
+      and (($publishers[0].if // "") | test("always\\(|failure\\(|cancelled\\(") | not)
+      and ([$publishers[0].needs] | flatten | any(.[]; $jobs[.].uses == "./.github/workflows/wait-ci-gate.yml"))
+  break:
+    - del(.jobs.release.needs)
+    - .jobs.release.if += " || always()"
+    - .jobs["ci-passed"].uses = "./.github/workflows/other.yml"
+    - .jobs.dup = .jobs.release
+
+- id: release-builds-wait-for-ci-gate
+  file: .github/workflows/release.yml
+  why: >-
+    A tag is checked only for its ancestry and version, so a commit whose CI
+    failed or has not finished would build and publish to npm and the GitHub
+    release; every build waits for that commit's own ci-gate, a tester tag's
+    included.
+  assert: |
+    .jobs["ci-passed"].uses == "./.github/workflows/wait-ci-gate.yml"
+      and (.jobs["ci-passed"] | has("if") | not)
+      and .jobs["ci-passed"].permissions.checks == "read"
+      and .jobs.build.needs == "ci-passed"
+      and .jobs.deb.needs == "ci-passed"
+  break:
+    - .jobs["ci-passed"].uses = "./.github/workflows/other.yml"
+    - .jobs["ci-passed"].if = "${{ false }}"
+    - del(.jobs["ci-passed"].permissions.checks)
+    - del(.jobs.build.needs)
+    - .jobs.deb.needs = "check"
+
+- id: the-ci-gate-wait-cannot-pass-unwaited
+  file: .github/workflows/wait-ci-gate.yml
+  why: >-
+    Both release paths proceed on this call's success, so neither its job nor
+    its step may skip or swallow a wait that went red or timed out.
+  assert: |
+    all(.jobs[]; ((has("if") or has("continue-on-error")) | not)
+                 and all(.steps[]; (has("if") or has("continue-on-error")) | not))
+  break:
+    - .jobs.wait["continue-on-error"] = true
+    - .jobs.wait.if = "${{ false }}"
+    - .jobs.wait.steps[0].if = "${{ false }}"
+    - .jobs.wait.steps[0]["continue-on-error"] = true
+
+- id: every-main-push-gets-its-ci-gate
+  file: .github/workflows/ci.yml
+  why: >-
+    The release waits for ci-gate on its own merge commit, and a concurrency
+    group's newer run replaces its pending one
+    (docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#concurrency),
+    so a release commit whose run was replaced never gets one and the publish
+    times out. A main push therefore owns its group, and a run already in
+    progress is never cancelled.
+  expected: ci-${{ github.event_name == 'push' && github.sha || github.ref }}
+  assert: |
+    .concurrency.group == $expected
+      and (.concurrency["cancel-in-progress"] | tostring) == "${{ github.event_name == 'pull_request' }}"
+  break:
+    - .concurrency.group = "ci-${{ github.ref }}"
+    - .concurrency.group = "ci-${{ github.event_name == 'push' && github.ref || github.sha }}"
+    - .concurrency["cancel-in-progress"] = true
+    - .concurrency["cancel-in-progress"] = "${{ github.event_name != 'workflow_dispatch' }}"
+    - del(.concurrency["cancel-in-progress"])
+
+- id: release-wait-only-for-a-release-merge
+  file: .github/workflows/release-plz.yml
+  why: >-
+    The wait holds a runner, from the concurrency CI itself uses, for as long
+    as CI takes, and only a merged release PR has anything to publish
+    (release-plz's `should_release`), so it runs only when the detection says
+    so. The tag check is what turns a detection miss red, so it runs after
+    every push, whatever the publish did.
+  assert: |
+    .jobs as $jobs
+    | [$jobs | to_entries[] | select(any(.value.steps[]?; .env.PR_BRANCH_PREFIX != null
+                                         and ((.run // "") | contains("/commits/$SHA/pulls"))))] as $detectors
+    | [$jobs[] | select(.uses == "./.github/workflows/wait-ci-gate.yml")] as $waits
+    | [$jobs[] | select(any(.steps[]?; (.run // "") | contains("just workspace-version")))] as $tagged
+    | ($detectors | length == 1)
+      and ($waits | length == 1)
+      and $waits[0].if == "needs.\($detectors[0].key).outputs.release == 'true'"
+      and ($tagged | length == 1)
+      and (($tagged[0].if // "") | contains("!cancelled()"))
+      and (($tagged[0].if // "") | contains("outputs.release") | not)
+  break:
+    - del(.jobs["ci-passed"].if)
+    - .jobs["ci-passed"].if = "needs.release-merge.outputs.release != 'false'"
+    - del(.jobs["release-merge"].steps[0].env.PR_BRANCH_PREFIX)
+    - del(.jobs["version-tagged"].if)
+    - .jobs["version-tagged"].if = "${{ !cancelled() && needs.release-merge.outputs.release == 'true' }}"
+    - .jobs.dup = .jobs["ci-passed"]
+    - .jobs.dup = .jobs["version-tagged"]
+
+- id: release-archives-stage-every-notice
+  file: .github/workflows/release.yml
+  why: >-
+    The binary embeds OFL-1.1 fonts, whose license must travel with every copy
+    (crates/*/fonts/), and the archives ship only what these steps stage; npm
+    repackages them. A missing notice fails nothing, and `just stage-notices`
+    globs every embedded font's, so each packaging step must call it.
+  assert: |
+    [.jobs.build.steps[] | select((.name // "") | startswith("Package"))]
+    | length == 2 and all(.run | contains("just stage-notices \"$DIR\""))
+  break:
+    - |
+      (.jobs.build.steps[] | select(.name == "Package (Windows)") | .run)
+      |= sub("just stage-notices \"\\$DIR\""; "cp LICENSE \"$DIR/\"")
+    - .jobs.build.steps |= map(select(.name != "Package (Unix)"))
+
+- id: debs-ship-the-license
+  file:
+    - crates/pixtuoid/Cargo.toml
+    - crates/pixtuoid-hook/Cargo.toml
+  why: >-
+    cargo-deb's generated copyright file names the license without its text,
+    which MIT requires in every copy; without this row a .deb ships none.
+  assert: |
+    .package.name as $name
+    | [.package.metadata.deb.assets[]
+       | select(.[0] == "../../LICENSE" and .[1] == "usr/share/doc/\($name)/")]
+    | length == 1
+  break:
+    - .package.metadata.deb.assets |= map(select(.[0] != "../../LICENSE"))
+    - |
+      (.package.metadata.deb.assets[] | select(.[0] == "../../LICENSE") | .[1])
+      = "usr/share/doc/"
+
+- id: deb-ships-every-font-notice
+  file: crates/pixtuoid/Cargo.toml
+  why: >-
+    The .deb is another copy of the binary, so it carries the embedded fonts'
+    notices by the same glob `just stage-notices` uses; a narrower one drops a
+    font silently.
+  assert: |
+    [.package.metadata.deb.assets[]
+     | select(.[0] == "../*/fonts/**/*.txt" and .[1] == "usr/share/doc/pixtuoid/licenses/")]
+    | length == 1
+  break:
+    - .package.metadata.deb.assets |= map(select(.[0] | startswith("target/")))
+    - |
+      (.package.metadata.deb.assets[] | select(.[0] | contains("fonts")) | .[0])
+      = "../pixtuoid/fonts/*.txt"
+
+- id: queue-merge-conditions-are-ci-gate
+  file: .mergify.yml
+  why: >-
+    Branch protection is not injected (the bots never review the queue's draft
+    PR), so its full-tier ci-gate is the only check that judges the draft.
+  assert: |
+    all(.queue_rules[]; .merge_conditions == ["check-success = ci-gate"])
+  break:
+    - .queue_rules[0].merge_conditions = []

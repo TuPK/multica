@@ -1,0 +1,15 @@
+mod captures;
+mod claude_code;
+mod codewhale;
+mod codex;
+mod conformance;
+mod copilot;
+mod cursor;
+mod decode;
+mod delegation;
+mod grok;
+mod manager;
+mod merge;
+mod omp;
+mod opencode;
+mod reasonix;

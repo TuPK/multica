@@ -1,0 +1,682 @@
+---
+import {
+  SHOWCASE,
+  showcaseVariants,
+  showcaseGroups,
+  floorById,
+  floorName,
+  asset,
+  FEATURES,
+  featureForChannel,
+} from '../consts';
+import ChannelStage from './ChannelStage.astro';
+import PixIcon from './PixIcon.astro';
+
+// features.json is the TOTAL feature collection, partitioned by whether a row
+// carries `channel`: channel-bearing rows drive the dial, the rest render here as
+// the quiet non-interactive grid. `desc` is authored for the README's markdown
+// table, so it may carry backtick code spans — strip them for this plain-text
+// context (a `card.blurb` is backtick-free by convention, so the strip no-ops).
+const roster = FEATURES.filter((f) => !f.channel).map((f) => ({
+  icon: f.icon,
+  pix: f.pix,
+  title: f.name,
+  body: (f.card?.blurb ?? f.desc).replace(/`/g, ''),
+}));
+
+const floor = floorById('showcase');
+const channels = SHOWCASE.map((c, i) => ({
+  ...c,
+  ch: String(i + 1).padStart(2, '0'),
+  variants: showcaseVariants(c),
+  groups: showcaseGroups(c),
+  featureDesc: featureForChannel(c.id).desc,
+}));
+const live = channels.filter((c) => c.status === 'live');
+const def = channels.find((c) => c.default)!;
+// The headline count is derived from the dial itself — a hardcoded "Eight" desyncs
+// the moment a demo is added or dropped.
+const COUNT_WORDS = [
+  'Zero',
+  'One',
+  'Two',
+  'Three',
+  'Four',
+  'Five',
+  'Six',
+  'Seven',
+  'Eight',
+  'Nine',
+  'Ten',
+  'Eleven',
+  'Twelve',
+];
+const countWord = COUNT_WORDS[channels.length] ?? String(channels.length);
+---
+
+<section
+  id={floor.id}
+  class="showcase"
+  data-lit
+  data-floor={floor.fl}
+  data-floor-label={floor.label}
+  data-keys-scope="channels"
+>
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">{floor.fl} · {floorName(floor)} — watch it work</p>
+      <h2 class="statement statement--md">{countWord} demos.<br />One office.</h2>
+      <p class="lead">
+        What's playing is live — the same office running in your browser. Every demo on the list is
+        watchable: pick one and the wall plays it. Drag the clock, roll in a storm, switch the vibe.
+      </p>
+    </div>
+
+    <div class="studio reveal" id="studio">
+      <div class="studio__stages">
+        {live.map((c) => (
+          <ChannelStage channel={c} active={c.id === def.id} />
+        ))}
+      </div>
+      <div class="studio__panel">
+        <div class="dial" role="tablist" aria-label="Demos">
+          {channels.map((c) =>
+            c.status === 'live' ? (
+              <button
+                class="mon dial__ch"
+                id={`dial-${c.id}`}
+                role="tab"
+                data-ch={c.id}
+                data-desc={c.featureDesc}
+                aria-selected={c.id === def.id ? 'true' : 'false'}
+                tabindex={c.id === def.id ? 0 : -1}
+                aria-controls={`stage-${c.id}`}
+              >
+                <span class="dial__num">{c.ch}</span> {c.label}
+                {c.kind === 'live' && <small class="dial__live">live</small>}
+              </button>
+            ) : (
+              <span class="dial__ch dial__ch--soon" role="tab" aria-disabled="true">
+                <span class="dial__num">{c.ch}</span> {c.label} <small>soon</small>
+              </span>
+            )
+          )}
+        </div>
+        <p class="dial__desc" id="dial-desc" aria-live="polite">
+          {def.featureDesc}
+        </p>
+      </div>
+    </div>
+
+    <span id="features" aria-hidden="true"></span>
+    <ul class="roster reveal" aria-label="Feature highlights">
+      {roster.map((r) => <li class="roster__row">
+        <span class="roster__icon" aria-hidden="true">
+          {r.pix ? <PixIcon name={r.pix} scale={2} /> : r.icon}
+        </span>
+        <span class="roster__name">{r.title}</span>
+        <span class="roster__body">{r.body}</span>
+      </li>)}
+    </ul>
+  </div>
+</section>
+
+<script
+  is:inline
+  define:vars={{
+    wasmJsUrl: asset('wasm/pixtuoid_web.js'),
+    officeHostUrl: asset('office-host.js'),
+    officeDriverUrl: asset('office-driver.js'),
+  }}
+>
+  (function () {
+    const studio = document.getElementById('studio');
+    const stages = studio.querySelectorAll('[data-stage]');
+    const monitors = studio.querySelectorAll('button.mon[data-ch]');
+    const dialDesc = studio.querySelector('.dial__desc');
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let inView = false;
+
+    // Retints the page's DECORATIVE hues only. Deliberately NOT --coral-deep:
+    // that's the AA text color, and a raw chip accent drops it below WCAG 1.4.3.
+    function retintPage(accent, accent2) {
+      const root = document.documentElement;
+      root.style.setProperty('--coral', accent);
+      root.style.setProperty('--amber', accent2 || accent);
+    }
+
+    // Promote data-src media on first pick/hover — zero offscreen video bytes.
+    function hydrate(stage) {
+      stage.querySelectorAll('img[data-src]').forEach(function (img) {
+        img.src = img.dataset.src;
+        img.removeAttribute('data-src');
+      });
+      stage.querySelectorAll('video[data-mp4]').forEach(function (v) {
+        // the poster defers too: browsers fetch it even on a [hidden] video
+        if (v.dataset.poster) {
+          v.poster = v.dataset.poster;
+          v.removeAttribute('data-poster');
+        }
+        if (v.dataset.webm) {
+          const sw = document.createElement('source');
+          sw.src = v.dataset.webm;
+          sw.type = 'video/webm';
+          v.appendChild(sw);
+        }
+        const sm = document.createElement('source');
+        sm.src = v.dataset.mp4;
+        sm.type = 'video/mp4';
+        v.appendChild(sm);
+        v.removeAttribute('data-mp4');
+        v.removeAttribute('data-webm');
+        v.load();
+      });
+    }
+
+    // A clip plays iff its stage is picked AND in view AND reduced-motion is off AND
+    // the office isn't paused; under reduced-motion it shows native controls instead.
+    let userPaused = false;
+    function syncVideos() {
+      stages.forEach(function (st) {
+        const v = st.querySelector('video');
+        if (!v) return;
+        if (mq.matches) {
+          v.removeAttribute('autoplay');
+          v.pause();
+          v.setAttribute('controls', '');
+          return;
+        }
+        v.removeAttribute('controls');
+        if (!st.hidden && inView && !userPaused && !v.dataset.mp4) {
+          const p = v.play();
+          if (p && p.catch) p.catch(function () {});
+        } else {
+          v.pause();
+        }
+      });
+    }
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(
+        function (entries) {
+          inView = entries[0].isIntersecting;
+          syncVideos();
+          syncCanvas();
+        },
+        { threshold: 0.15 }
+      ).observe(studio);
+    }
+    if (mq.addEventListener)
+      mq.addEventListener('change', function () {
+        syncVideos();
+        syncCanvas();
+      });
+    // WCAG 2.2.2: the clips carry no visible controls in normal motion, so the
+    // page-wide #office-pause button IS their pause affordance.
+    document.addEventListener('pix:paused', function (e) {
+      userPaused = !!(e.detail && e.detail.paused);
+      syncVideos();
+      syncCanvas();
+    });
+    syncVideos();
+
+    // VIBING demo: a live pixtuoid office (wasm) driven by the time slider +
+    // weather/theme chips. Its Office is a SEPARATE one from OfficeBackdrop's
+    // page-wide one, on the same office host. `syncCanvas` mirrors syncVideos' gate.
+    const vibingStage = studio.querySelector('[data-stage="vibing"]');
+    const vibingCanvas = vibingStage && vibingStage.querySelector('[data-vibing-canvas]');
+    const vibingTime = vibingStage && vibingStage.querySelector('[data-vibing-time]');
+    const vibingTimeLabel = vibingStage && vibingStage.querySelector('[data-vibing-time-label]');
+    const vibingTimeWrap = vibingStage && vibingStage.querySelector('.vibing__time');
+    const vibingWeather =
+      vibingStage && vibingStage.querySelector('.stage__osd[data-group="weather"]');
+    const vibingTheme = vibingStage && vibingStage.querySelector('.stage__osd[data-group="theme"]');
+    const VIBING_SEED = 11; // distinct from OfficeBackdrop's page office (seed 0)
+    const vUnits = vibingCanvas
+      ? [Number(vibingCanvas.dataset.unitsW), Number(vibingCanvas.dataset.unitsH)]
+      : [0, 0];
+    let vOffice = null; // its handle on the office host
+    let vDriver = null; // office-driver.js
+    let vRaf = 0;
+    let vBooted = false;
+    let scrubHour = vibingTime ? parseFloat(vibingTime.value) : 18;
+    let vBase = anchorForHour(scrubHour);
+    let vStart = Date.now();
+
+    // Sets `aria-valuetext` as well as the label, so a screen reader announces
+    // "18:00" instead of the raw 0–24 range value.
+    function updateClock(h) {
+      // Slider max is 24 — wrap so the top of the range reads 00:00, not 24:00.
+      const hh = String(Math.floor(h) % 24).padStart(2, '0');
+      const mm = String(Math.round((h % 1) * 60)).padStart(2, '0');
+      const t = hh + ':' + mm;
+      if (vibingTimeLabel) vibingTimeLabel.textContent = t;
+      if (vibingTime) vibingTime.setAttribute('aria-valuetext', t);
+    }
+    updateClock(scrubHour);
+
+    // Sky-scrubber phase: the day/night boundary is the ENGINE's own Office.is_day,
+    // not a second copy in JS, so the sun/moon can't drift from the office it
+    // previews. The SSR `data-phase` holds until boot.
+    function setSliderPhase(h) {
+      if (!vibingTimeWrap || !vOffice) return;
+      vOffice.call('is_day', h).then(function (day) {
+        if (h === scrubHour) vibingTimeWrap.dataset.phase = day ? 'day' : 'night'; // a later scrub's answer wins
+      });
+    }
+
+    function anchorForHour(h) {
+      const d = new Date();
+      d.setHours(Math.floor(h), Math.round((h % 1) * 60), 0, 0);
+      return d.getTime();
+    }
+    function vFrame() {
+      vRaf = 0;
+      if (!vOffice.busy) {
+        const now = vBase + (Date.now() - vStart);
+        vOffice
+          .frame({ now, w: vUnits[0], h: vUnits[1], draw: 1, overlay: false, audio: false })
+          .catch(function () {
+            /* a host that died leaves the last frame up */
+          });
+      }
+      vRaf = requestAnimationFrame(vFrame);
+    }
+    function startCanvas() {
+      if (!vRaf && vOffice) vRaf = requestAnimationFrame(vFrame);
+    }
+    function stopCanvas() {
+      if (vRaf) cancelAnimationFrame(vRaf);
+      vRaf = 0;
+    }
+    function bootCanvas() {
+      if (vBooted) return;
+      vBooted = true;
+      // The driver is dynamic-imported because this is an is:inline script.
+      import(officeDriverUrl)
+        .then(function (drv) {
+          vDriver = drv;
+          return drv.officeHost(officeHostUrl, wasmJsUrl);
+        })
+        .then(function (host) {
+          return host.open(VIBING_SEED, vibingCanvas);
+        })
+        .then(function (o) {
+          vOffice = o;
+          // Re-apply the active chips so the booted office matches what the OSD
+          // reports: a fresh Office follows the clock (WeatherPolicy::Clock) while the `clear`
+          // chip renders is-active, and a chip clicked DURING this async boot
+          // skipped its `if (vOffice)` setter yet still set aria-pressed.
+          const w0 = vibingStage.querySelector('.osd__chip[data-weather].is-active');
+          if (w0) vOffice.call('set_weather', w0.dataset.weather);
+          const t0 = vibingStage.querySelector('.osd__chip[data-theme].is-active');
+          if (t0) vOffice.call('set_theme', t0.dataset.theme);
+          setSliderPhase(scrubHour);
+          syncCanvas(); // gating may have moved on while the boot was in flight
+        })
+        .catch(function () {
+          /* the stage stays blank; officeHost lets a later consumer retry */
+        });
+    }
+    function syncCanvas() {
+      if (!vibingStage || !vibingCanvas) return;
+      const run = !vibingStage.hidden && inView && !userPaused && !mq.matches;
+      if (run) {
+        if (!vOffice) bootCanvas();
+        else startCanvas();
+      } else {
+        stopCanvas();
+      }
+    }
+    if (vibingTime) {
+      vibingTime.addEventListener('input', function () {
+        scrubHour = parseFloat(vibingTime.value);
+        updateClock(scrubHour);
+        setSliderPhase(scrubHour);
+        // re-anchor: the office keeps living at this hour. A jump can land
+        // mid-strike, so it lands on a strike-free instant instead.
+        const at = anchorForHour(scrubHour);
+        vBase = vDriver ? vDriver.quietInstant(at) : at;
+        vStart = Date.now();
+      });
+    }
+    if (vibingWeather) {
+      vibingWeather.addEventListener('click', function (e) {
+        const chip = e.target.closest('.osd__chip[data-weather]');
+        if (!chip) return;
+        if (vOffice) vOffice.call('set_weather', chip.dataset.weather);
+        vibingWeather.querySelectorAll('.osd__chip').forEach(function (x) {
+          const on = x === chip;
+          x.classList.toggle('is-active', on);
+          x.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+      });
+    }
+    if (vibingTheme) {
+      vibingTheme.addEventListener('click', function (e) {
+        const chip = e.target.closest('.osd__chip[data-theme]');
+        if (!chip) return;
+        if (vOffice) vOffice.call('set_theme', chip.dataset.theme);
+        vibingTheme.querySelectorAll('.osd__chip').forEach(function (x) {
+          const on = x === chip;
+          x.classList.toggle('is-active', on);
+          x.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        if (vibingTheme.dataset.retint && chip.dataset.accent) {
+          retintPage(chip.dataset.accent, chip.dataset.accent2);
+        }
+      });
+      if (vibingTheme.dataset.retint) {
+        // A real theme change elsewhere clears this preview's pressed state. The
+        // chips never DISPATCH pix:theme themselves: this is a decorative preview,
+        // so dispatching would self-clear the is-active state just set above and
+        // wrongly tell Base.astro's listener a real theme change happened.
+        document.addEventListener('pix:theme', function () {
+          vibingTheme.querySelectorAll('.osd__chip').forEach(function (x) {
+            x.classList.remove('is-active');
+            x.setAttribute('aria-pressed', 'false');
+          });
+        });
+      }
+    }
+
+    function tune(id, silent) {
+      const next = studio.querySelector('[data-stage="' + id + '"]');
+      if (!next || !next.hidden) return;
+      hydrate(next);
+      function swap() {
+        stages.forEach(function (s) {
+          s.hidden = s !== next;
+        });
+        monitors.forEach(function (m) {
+          const on = m.dataset.ch === id;
+          m.setAttribute('aria-selected', on ? 'true' : 'false');
+          m.tabIndex = on ? 0 : -1;
+          if (on) dialDesc.textContent = m.dataset.desc || '';
+        });
+        dialDesc.classList.remove('dial__desc--pulse');
+        void dialDesc.offsetWidth;
+        dialDesc.classList.add('dial__desc--pulse');
+        syncVideos();
+        syncCanvas();
+      }
+      if (!mq.matches && document.startViewTransition) document.startViewTransition(swap);
+      else swap();
+      if (!silent) history.replaceState(null, '', '#showcase-' + id);
+    }
+    // WAI-ARIA APG tabs: one tab stop, arrows (and Home/End) move and select.
+    monitors.forEach(function (m, i) {
+      m.addEventListener('click', function () {
+        tune(m.dataset.ch);
+      });
+      m.addEventListener('keydown', function (e) {
+        const to = {
+          ArrowLeft: (i - 1 + monitors.length) % monitors.length,
+          ArrowRight: (i + 1) % monitors.length,
+          Home: 0,
+          End: monitors.length - 1,
+        }[e.key];
+        if (to === undefined) return;
+        e.preventDefault();
+        monitors[to].focus();
+        tune(monitors[to].dataset.ch);
+      });
+      function warm() {
+        const st = studio.querySelector('[data-stage="' + m.dataset.ch + '"]');
+        if (st) hydrate(st);
+      }
+      m.addEventListener('pointerenter', warm);
+      m.addEventListener('focus', warm);
+    });
+
+    // While focus is inside the studio, digits 1–N pick a demo instead of riding the
+    // building's floor elevator: the section's data-keys-scope="channels" makes
+    // Base.astro's document-level floor handler yield these digits to us. The
+    // digit → demo map is read from the rendered dial's own labels, so it can't
+    // desync.
+    const scope = document.querySelector('[data-keys-scope="channels"]');
+    if (scope) {
+      const dialButtons = Array.prototype.slice.call(scope.querySelectorAll('button.dial__ch'));
+      scope.addEventListener('keydown', function (e) {
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        if (window.__pixKeys && window.__pixKeys.typing(e)) return;
+        if (!/^[1-9]$/.test(e.key)) return;
+        const num = e.key.padStart(2, '0');
+        const btn = dialButtons.find(function (b) {
+          const n = b.querySelector('.dial__num');
+          return n && n.textContent.trim() === num;
+        });
+        if (!btn) return; // a soon/absent demo — inert (Base already yielded)
+        e.preventDefault();
+        tune(btn.dataset.ch);
+        btn.focus();
+      });
+    }
+
+    stages.forEach(function (st) {
+      const img = st.querySelector('img.terminal__screen');
+      const title = st.querySelector('[data-stage-title]');
+      // .osd__chip is reused by the VIBING demo's weather/theme groups (no
+      // data-src) — filter to the variant-set chips this loop drives.
+      const chips = Array.prototype.filter.call(st.querySelectorAll('.osd__chip'), function (c) {
+        return !!c.dataset.src;
+      });
+      if (!chips.length || !img) return;
+      const prefetched = {};
+      function prefetch(src) {
+        if (src && !prefetched[src]) {
+          prefetched[src] = new Image();
+          prefetched[src].src = src;
+        }
+      }
+      chips.forEach(function (c) {
+        c.addEventListener('pointerenter', function () {
+          prefetch(c.dataset.src);
+        });
+        c.addEventListener('click', function () {
+          img.src = c.dataset.src;
+          img.alt = c.dataset.alt;
+          if (title) title.textContent = c.dataset.title;
+          if (c.dataset.accent) st.style.setProperty('--accent', c.dataset.accent);
+          st.classList.remove('retint-pulse');
+          void st.offsetWidth;
+          st.classList.add('retint-pulse');
+          chips.forEach(function (x) {
+            const on = x === c;
+            x.classList.toggle('is-active', on);
+            x.setAttribute('aria-pressed', on ? 'true' : 'false');
+          });
+        });
+      });
+    });
+
+    function fromHash() {
+      const h = location.hash;
+      const id = h.indexOf('#showcase-') === 0 ? h.slice('#showcase-'.length) : null;
+      // channel ids are plain slugs; reject anything else so a crafted hash (e.g.
+      // `#showcase-a"]`) can't build a selector querySelector throws on.
+      if (!id || !/^[\w-]+$/.test(id)) return;
+      const exists = studio.querySelector('[data-stage="' + id + '"]');
+      if (!exists) return;
+      tune(id, true);
+      // #showcase-<id> matches no element id, so the browser never scrolls on its
+      // own — bring the studio into view.
+      const sec = document.getElementById('showcase');
+      if (sec) sec.scrollIntoView({ behavior: mq.matches ? 'auto' : 'smooth', block: 'start' });
+    }
+    // wire the listener BEFORE the initial call, so a throw in fromHash can never
+    // leave hashchange unbound.
+    window.addEventListener('hashchange', fromHash);
+    fromHash();
+  })();
+</script>
+
+<style>
+  .dial {
+    display: grid;
+    grid-template-columns: repeat(3, max-content);
+    gap: 0.4rem 1.6rem;
+    margin-top: 1.2rem;
+    font-family: var(--font-mono);
+    font-size: 0.92rem;
+  }
+  @media (max-width: 480px) {
+    /* 3× max-content overflows a phone viewport, and the studio's overflow-x:clip
+       would hide the right dial column outright — untappable. */
+    .dial {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.4rem 1rem;
+    }
+  }
+  .dial__ch {
+    text-align: left;
+  }
+  .dial__ch {
+    background: none;
+    border: 0;
+    padding: 0.3rem 0.2rem;
+    font: inherit;
+    /* bare over the dimmed office → the AA-tuned ink; --fg-muted fails there */
+    color: var(--office-ink);
+    cursor: pointer;
+    transition: color 0.18s ease;
+  }
+  @media (pointer: coarse) {
+    /* lift the row pitch toward the 44px thumb target. MUST sit AFTER the base
+       `padding` shorthand above — equal specificity, so source order decides. */
+    .dial__ch {
+      padding-block: 0.7rem;
+    }
+  }
+  .dial__ch:hover,
+  .dial__ch:focus-visible {
+    color: var(--fg);
+  }
+  .dial__ch[aria-selected='true'] {
+    color: var(--fg);
+  }
+  .dial__ch[aria-selected='true'] .dial__num {
+    /* --led-ink, not --led: the dial is the one LED surface with no --screen under it */
+    color: var(--led-ink);
+    text-shadow: 0 0 6px var(--led-glow);
+  }
+  .dial__num {
+    font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+  .dial__ch--soon {
+    color: color-mix(in srgb, var(--fg-muted) 55%, transparent);
+    cursor: default;
+  }
+  .dial__ch--soon small,
+  .dial__live {
+    font-size: 0.72em;
+    letter-spacing: 0.08em;
+  }
+  .dial__live {
+    color: var(--led-ink);
+    text-shadow: 0 0 6px var(--led-glow);
+  }
+  /* ONE accordion slot for the picked demo's desc, in the panel's existing headroom
+     below the dial — a per-row expander would multiply the panel's height. */
+  .dial__desc {
+    margin: 0.9rem 0 0;
+    padding-top: 0.7rem;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    /* bare over the office → AA ink, not --fg-muted */
+    color: var(--office-ink);
+  }
+  @keyframes dial-desc-in {
+    0% {
+      opacity: 0.35;
+      transform: translateY(-3px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .dial__desc--pulse {
+    animation: dial-desc-in 0.3s ease-out;
+  }
+
+  .showcase {
+    position: relative;
+  }
+  .studio {
+    display: grid;
+    /* the single mobile column must shrink below its content's min-width (the dial's
+       tracks), or a child drags the grid past the viewport and the section's
+       overflow-x:clip cuts off the overflow with no scroll */
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.4rem;
+  }
+  @media (min-width: 980px) {
+    .studio {
+      grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+      align-items: start;
+    }
+  }
+  .studio__stages {
+    min-width: 0;
+  }
+  .studio__panel {
+    min-width: 0;
+  }
+  .roster {
+    list-style: none;
+    margin: 1rem 0 0;
+    padding: 0.8rem 0 0;
+    border-top: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 2.2rem;
+    row-gap: 0.5rem;
+  }
+  @media (max-width: 760px) {
+    .roster {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  .roster__row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas: 'icon name' 'icon body';
+    column-gap: 0.7rem;
+    align-items: start;
+    text-align: left;
+    /* BARE over the dimmed office — no plate: the section's dim backing IS the
+       background (same rule as the hero + tools table) */
+    padding-block: 0.3rem;
+    font: inherit;
+    color: var(--fg);
+  }
+  .roster__icon {
+    grid-area: icon;
+  }
+  .roster__name {
+    grid-area: name;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 0.98rem;
+  }
+  .roster__body {
+    grid-area: body;
+    font-family: var(--font-body);
+    font-size: 0.88rem;
+    /* bare over the office: the tuned ink, not --fg-muted — applied directly here
+       because Astro's scoped specificity beats the global rule */
+    color: var(--office-ink);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    /* the VIBING controls only make sense with the office running, and
+       reduced-motion never boots it. :global because that markup belongs to
+       ChannelStage, not this component's template. */
+    :global([data-stage='vibing'] .vibing__time),
+    :global([data-stage='vibing'] .stage__osd) {
+      display: none;
+    }
+  }
+</style>

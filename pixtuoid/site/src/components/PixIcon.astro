@@ -1,0 +1,48 @@
+---
+// A pixel icon from the generated sheet (src/assets/pix-icons/*.png). Integer
+// scale only: `image-rendering: pixelated` is crisp on UPSCALE only, so the PNGs
+// are authored at 1x and never downscaled.
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+  name: string;
+  scale?: number;
+  /** accessible name; omit for decorative (renders aria-hidden) */
+  alt?: string;
+}
+const { name, scale = 2, alt } = Astro.props;
+if (!Number.isInteger(scale) || scale < 1) {
+  throw new Error(`PixIcon: scale must be a positive integer (got ${scale})`);
+}
+const icons = import.meta.glob<{ default: ImageMetadata }>('../assets/pix-icons/*.png', {
+  eager: true,
+});
+const hit = icons[`../assets/pix-icons/${name}.png`];
+if (!hit) {
+  const known = Object.keys(icons)
+    .map((k) => k.replace(/^.*\/(.+)\.png$/, '$1'))
+    .sort()
+    .join(', ');
+  throw new Error(`PixIcon: unknown icon "${name}" (have: ${known}) — run just gen-icons`);
+}
+const img = hit.default;
+---
+
+<img
+  class="pix-icon"
+  src={img.src}
+  width={img.width * scale}
+  height={img.height * scale}
+  alt={alt ?? ''}
+  aria-hidden={alt ? undefined : 'true'}
+  loading="lazy"
+  decoding="async"
+/>
+
+<style>
+  .pix-icon {
+    display: inline-block;
+    image-rendering: pixelated;
+    vertical-align: middle;
+  }
+</style>

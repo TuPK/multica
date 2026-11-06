@@ -1,0 +1,1059 @@
+/* ============================================================
+   pixtuoid — "Cozy Terminal" skin
+   Claude warmth (paper #faf9f5 · ink #141413 · coral #d97757) kept as the base,
+   pushed toward terminal/pixel character:
+   Display: Jersey 10  ·  UI/code: Monaspace Neon  ·  Body: Lora  ·  Office: Fusion Pixel 8px
+   coral→amber accent gradient · blinking cursor · ASCII dividers · CRT scanlines
+   ============================================================ */
+
+:root {
+  /* Brand constants */
+  /* Warm "Coworking" palette — cream lightened from the office carpet (#8A765F)
+     + Claude coral. Analogous warm harmony so the office art sits INTO the page. */
+  --paper: #f4eee2; /* warm cream (carpet hue, lifted) */
+  --ink: #241c14; /* deep warm wood */
+  --gray: #b3a892;
+  --coral: #d97757; /* Claude coral */
+  --coral-deep: #a8431f; /* darkened for WCAG AA: ~5:1 on the cream --paper */
+  --coral-cta: #b5592f; /* AA-capped coral — white label clears 4.5:1: the CTA gradient stop AND the copy-pill hover. Theme-independent, never retinted. */
+  --amber: #e6a356; /* warm amber — gradient end */
+  --blue: #6a9bcc;
+  --green: #788c5d;
+  --ok: #556b2f; /* AA "ok" green for the boot log — 5.15:1 on cream (raw --green is 3.18:1) */
+  /* Gradient-headline stops, AA-tuned and theme-aware via --grad-2, so the .hl
+     word stays legible (deep coral → deep amber) and — unlike --coral/--amber —
+     is NOT dragged below contrast by the gallery retint. */
+  --grad-2: #9c5a12; /* deep amber — 4.68:1 on the cream --bg */
+  --grad: linear-gradient(100deg, var(--coral-deep), var(--grad-2));
+  /* Focus ring — kept a LITERAL (not `var(--coral-deep)`) and theme-aware, so no
+     retint / theme override can drag the focus affordance below WCAG 1.4.11's
+     3:1 on the cream bg. */
+  --focus-ring: #a8431f;
+
+  /* Hardware tokens — the office's own screens/LEDs (promoted from the
+     .terminal__screen / lift-digit literals; the statusline + every opaque
+     interactive chip sits on --screen regardless of theme). */
+  --screen: #0e0d0c;
+  /* the ONE hardware hover/active ground (statusline floor buttons, tenant
+     board rows, docs elevator rows + callout code) — was 6 copies of the
+     same literal across 3 files before wb-5's review round tokenized it */
+  --hw-hover: #1c1916;
+  /* the "adjacent chunk in one section" rhythm (.section-head's gap; the
+     pantry band reuses it) — one scale, not per-component copies */
+  --rhythm-adjacent: clamp(1.1rem, 3vw, 1.8rem);
+  --led: #8de069;
+  --led-glow: rgba(141, 224, 105, 0.55);
+  --led-off: #6f675a; /* an unlit LED (also the statusline idle dot) */
+  /* The LED hue for the one place it is NOT on --screen: the 5F studio dial,
+     whose active channel number + "live" tag sit BARE over the office. --led is
+     tuned for the always-dark hardware ground, so day's light office composite
+     dropped it to 1.13:1 (measured, worst office pixel + dimmer). This is the
+     --office-ink move applied to the LED: dark for day, unchanged where the
+     office is already dark. Day's #33601e measures 5.12:1 worst-case against the
+     real dial composite (#3f6b28 only reached 4.33). */
+  --led-ink: #33601e;
+  /* opaque-theme --bg at 95% (day) / 94% (night, dracula) — plain rgba() on
+     purpose: the scrim is load-bearing legibility, so it must not depend on
+     color-mix() support (see the @supports fallback note below). Mirrors
+     --bg per theme. Near-opaque (not the old 90%/72%) so the office pixels
+     underneath stop showing through as mud — the crisp terminal-panel idiom
+     (`.text-scrim` below) reads as an intentional card, not a translucent
+     smudge. Worst case (the scrimmed --fg-muted `.install__note`, over the
+     office pixel + this section's dimmer), measured via computed styles in a
+     real render, not estimated: day 5.18:1, night 7.35:1, dracula 7.23:1 —
+     floor 4.5:1. Which office pixel is the worst one FLIPS with the theme: for
+     day's dark-on-light pairing it is the DARKEST underlying pixel, for
+     night/dracula's light-on-dark pairing the BRIGHTEST, so both extremes get
+     measured rather than assuming day's. */
+  --scrim: rgba(244, 238, 226, 0.95);
+
+  /* Semantic tokens — DAY (warm cream) */
+  --bg: var(--paper);
+  --bg-tint: #ede3d1;
+  --surface: #fdf9ef;
+  --surface-2: #ece1cd;
+  --fg: var(--ink);
+  /* Tuned against --surface-2, the TIGHTEST opaque plate muted text lands on
+     (the terminal chrome bar) — not --bg: the old #6f6453 cleared the page at
+     5.02:1 but only reached 4.476:1 on the bar. */
+  --fg-muted: #6c614f;
+  --border: color-mix(in srgb, var(--ink) 12%, transparent);
+  --border-strong: color-mix(in srgb, var(--ink) 20%, transparent);
+  --shadow: 0 1px 2px rgba(36, 28, 20, 0.05), 0 8px 24px rgba(36, 28, 20, 0.09);
+  --shadow-lg: 0 2px 4px rgba(36, 28, 20, 0.06), 0 20px 50px rgba(36, 28, 20, 0.13);
+  --glow: color-mix(in srgb, var(--coral) 15%, transparent);
+
+  /* Type */
+  --font-display: 'Jersey 10', 'Segoe UI', system-ui, sans-serif;
+  /* 'Lora Fallback' = local Georgia, metric-matched to Lora (below), for first
+     visits where the optional web font misses its render deadline. */
+  --font-body: 'Lora', 'Lora Fallback', Georgia, 'Times New Roman', serif;
+  --font-mono: 'Monaspace Neon', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Scale */
+  --maxw: 1120px;
+  --radius: 16px;
+  --radius-sm: 10px;
+  /* The nav bar's row height — single-sourced because THREE consumers must
+     agree: Nav.astro sizes .nav__inner with it; Hero.astro reserves exactly
+     this much top padding so the bottom-anchored hero copy can never rise
+     underneath the index's floating (absolute) nav when the copy outgrows the
+     viewport (the mobile eyebrow-under-logo overlap; headless cleared it by
+     only ~10px, real iOS text metrics crossed the line); and Docs.astro
+     derives its rail top + heading scroll-margin from it (clearing the sticky
+     nav variant). */
+  --nav-h: 60px;
+
+  /* Screen chrome — text that sits on/over the office render, THEME-INDEPENDENT
+     (the office pixels don't change with the site theme, so neither do these):
+     ink/dim/line match the statusline's fixed palette. The halo lifts floating
+     chrome (nav, hero ghost link) off a DARK office only — day sets none. */
+  --chip-ink: #d8cfc0;
+  --chip-bright: #f0e8d8;
+  --chip-dim: #8f8574;
+  --chip-line: #3a332a;
+  --chip-bg: color-mix(in srgb, var(--screen) 82%, transparent);
+  --chrome-halo: none;
+  /* The chip family's ACCENT ink — one branded hue for a chip-borne CTA (the
+     footer's ☕ link). Theme-independent and a LITERAL for the same reason
+     --focus-ring is: on the dark chip, day's --coral measures 3.70:1 and
+     night's 4.26:1, and a gallery retint can move --coral anywhere, so an
+     accent that inherits the theme token cannot hold the 4.5:1 floor. 5.53:1
+     on --chip-bg — the same lightened coral a dark ground wants, which is why
+     it is night's --coral-deep value rather than a fourth invented orange. */
+  --chip-accent: #f0a07f;
+
+  /* Bare-over-office ink (no plate/scrim behind it) — the hero subcopy/eyebrow/
+     platform-line and the 4F intro paragraph read directly against the live
+     office at its RESTING dim level (the hero caps at 0.74, other sections at
+     the shared 0.86 DIM_MAX). Real-canvas-sampled worst case: the office's
+     rendered luminance spans a bright sprite (~236,236,236 — a monitor/window
+     highlight) to a dark floor pixel (~26-29), and DAY's dimmer LIGHTENS that
+     range (its --bg is the light --paper) while NIGHT's DARKENS it (--bg is
+     dark) — opposite directions, so day needs a dark ink and night a light
+     one; --fg-muted/--coral-deep weren't dark/light enough at either extreme
+     (measured worst-case ~2.8-3.7:1, short of the 4.5:1 floor). --office-ink
+     is that nudge for plain body/muted text (measured worst-case ≥5.1:1 in
+     both themes, both widths sampled); --office-ink-accent is the same nudge
+     for the coral-branded eyebrow, which can't reuse --office-ink without
+     losing the coral accent every other section's eyebrow carries (measured
+     worst-case ≥5.2:1 day, ≥5.1:1 night). */
+  --office-ink: #453e34;
+  --office-ink-accent: #6b2a10;
+}
+
+:root[data-theme='night'] {
+  /* warm "after-hours office" dark — pairs with the night-office renders */
+  --coral: #e3845f;
+  --coral-deep: #f0a07f;
+  --amber: #ecae66;
+  --ok: #788c5d; /* 4.79:1 on the night --bg */
+  --grad-2: #ecae66; /* light amber — high contrast on the dark night --bg */
+  --focus-ring: #e3845f; /* literal; matches the night --coral (see :root note) */
+  --bg: #1d1813;
+  --scrim: rgba(29, 24, 19, 0.94);
+  --bg-tint: #18130f;
+  --surface: #271f17;
+  --surface-2: #322820;
+  --fg: #f4eee2;
+  --fg-muted: #b3a890;
+  --border: color-mix(in srgb, #f4eee2 13%, transparent);
+  --border-strong: color-mix(in srgb, #f4eee2 24%, transparent);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 30px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.4), 0 24px 60px rgba(0, 0, 0, 0.6);
+  --glow: color-mix(in srgb, var(--coral) 24%, transparent);
+  --chrome-halo: 0 1px 8px rgba(0, 0, 0, 0.45);
+  /* night's dark --bg darkens the office composite (opposite of day) — reuse
+     the already-light, theme-independent --chip-ink rather than a second
+     literal; --office-ink-accent stays its own (lighter) coral so the
+     eyebrow keeps its brand hue instead of drifting toward --chip-ink's
+     neutral warm gray. */
+  --office-ink: var(--chip-ink);
+  --office-ink-accent: #f5c9a0;
+  /* the office composite is already dark here, so the raw LED is the legible
+     one (9.34:1 measured) — day's darkening would invert the problem. */
+  --led-ink: var(--led);
+}
+
+/* color-mix() landed in Safari 16.2 (Dec 2022). On an older engine an invalid
+   color-mix() poisons the whole declaration at computed-value time, so
+   `border: 1px solid var(--border)` resets to border-style:none (borders VANISH)
+   and --chip-bg goes transparent (light chrome text over the day office drops to
+   low contrast). Mirror the load-bearing translucent tokens in rgba() (which
+   predates color-mix by a decade); component-level decorative color-mix degrades
+   harmlessly — a `color:` use inherits its parent color, a `background:`/
+   `box-shadow:`/gradient-stop use drops to its initial value (transparent/none) —
+   never illegible, so only these load-bearing tokens need the fallback. Every
+   visitor-reachable theme that redefines them in color-mix (day, night, AND the
+   dracula egg) needs an arm here, or its borders vanish on the old engine. */
+@supports not (color: color-mix(in srgb, red, red)) {
+  :root {
+    --border: rgba(36, 28, 20, 0.12);
+    --border-strong: rgba(36, 28, 20, 0.2);
+    --glow: rgba(217, 119, 87, 0.15);
+    --chip-bg: rgba(14, 13, 12, 0.82);
+  }
+  :root[data-theme='night'] {
+    --border: rgba(244, 238, 226, 0.13);
+    --border-strong: rgba(244, 238, 226, 0.24);
+    --glow: rgba(227, 132, 95, 0.24);
+  }
+  :root[data-theme='dracula'] {
+    --border: rgba(248, 248, 242, 0.13); /* #f8f8f2 @ 13% */
+    --border-strong: rgba(248, 248, 242, 0.24); /* #f8f8f2 @ 24% */
+    --glow: rgba(189, 147, 249, 0.26); /* --coral #bd93f9 @ 26% */
+  }
+}
+
+/* Metric-matched fallback for the Lora body face: local Georgia scaled to Lora's
+   metrics so an optional-font miss stays visually close. size-adjust is MEASURED
+   against the built pages (rendered Georgia is ~94.5% of Lora's advance width, so
+   scale it up ~105.85%); ascent/descent overrides come from the real Lora
+   latin-400 (ascent 1006, descent -274 per 1000 em) divided by size-adjust.
+   Re-measure if the body face changes. */
+@font-face {
+  font-family: 'Lora Fallback';
+  src: local('Georgia');
+  size-adjust: 105.85%;
+  ascent-override: 95.04%;
+  descent-override: 25.88%;
+  line-gap-override: 0%;
+}
+
+/* ---------- reset ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+}
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.7;
+  font-size: clamp(1rem, 0.95rem + 0.2vw, 1.115rem);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  transition:
+    background-color 0.5s ease,
+    color 0.5s ease;
+  overflow-x: hidden;
+}
+
+/* warm dawn-glow atmosphere */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 80% at 80% -10%, var(--glow), transparent 60%),
+    radial-gradient(
+      90% 60% at 6% 0%,
+      color-mix(in srgb, var(--amber) 9%, transparent),
+      transparent 55%
+    );
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+a {
+  color: var(--coral-deep);
+  text-underline-offset: 2px;
+}
+/* :not(.btn) keeps this repaint off button-anchors — unscoped it outranks
+   .btn-primary's white label and rendered the CTA coral-on-coral. The theme
+   selector is wrapped in :where() so this night shift carries ZERO extra
+   specificity — the whole selector is (0,1,1). It recolors bare content links
+   (base `a`, (0,0,1)) but must NOT outrank a component's own (0,2,0)+ anchor
+   colour (hero ghost, nav logo, docs pager, plaque) — the old (0,3,1) form
+   flipped those coral AT REST in night only, breaking Hero's documented
+   AA-at-rest-over-office invariant and killing the docs-pager night hover cue
+   (audit C1; day/dracula were already correct). */
+:where(:root[data-theme='night']) a:not(.btn) {
+  color: var(--coral);
+}
+
+/* Visible keyboard focus on every interactive control (WCAG 2.4.7) — the design
+   defined :hover but had no focus affordance. */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* skip-to-content: off-screen until focused (WCAG 2.4.1 Bypass Blocks) */
+.skip-link {
+  position: fixed;
+  top: 0.6rem;
+  left: 0.6rem;
+  z-index: 10000;
+  transform: translateY(-150%);
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--fg);
+  border: 1px solid var(--border-strong);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: transform 0.15s ease;
+}
+.skip-link:focus {
+  transform: none;
+}
+
+/* ---------- type ---------- */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  /* Jersey 10 ships a single weight — request 400 and forbid synthesis so the
+     browser never fake-bolds it (faux-bold smears a pixel font's crisp edges). */
+  font-weight: 400;
+  font-synthesis: none;
+  line-height: 1.04;
+  letter-spacing: 0;
+  color: var(--fg);
+}
+h1 {
+  font-size: clamp(2.5rem, 1.7rem + 3.6vw, 4.6rem);
+}
+h2 {
+  font-size: clamp(1.9rem, 1.4rem + 2vw, 2.9rem);
+}
+h3 {
+  font-size: clamp(1.15rem, 1.04rem + 0.5vw, 1.4rem);
+  /* stays 400: Jersey 10 is single-weight, and a 600 here would only be a dead
+     declaration (the h1,h2,h3 font-synthesis:none guard already blocks faux-bold)
+     until someone relaxes that guard — then h3 would smear. Keep them in sync. */
+  font-weight: 400;
+}
+/* terminal-prompt eyebrow */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.76rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--coral-deep);
+}
+.eyebrow::before {
+  content: '› ';
+  opacity: 0.7;
+}
+:root[data-theme='night'] .eyebrow {
+  color: var(--coral);
+}
+.lead {
+  font-size: clamp(1.08rem, 1rem + 0.5vw, 1.34rem);
+  color: var(--fg-muted);
+  max-width: 42ch;
+  text-wrap: pretty;
+}
+/* coral→amber gradient headline word */
+.hl {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* blinking block cursor */
+/* THE blinking-caret idiom — one declaration block, two consumers: the h1's
+   .cursor span and the hero badge strip's typed-name caret (a ::after that
+   can't carry the class attribute, hence the selector list — the caret is
+   ALWAYS a styled box, never a text glyph: glyph fallback metrics caused the
+   Safari badge jitter). A metrics/color tweak here moves BOTH carets. */
+.cursor,
+.hero__badge-name > span::after {
+  display: inline-block;
+  width: 0.55ch;
+  height: 0.92em;
+  margin-left: 0.08em;
+  transform: translateY(0.08em);
+  background: var(--coral);
+  animation: blink 1.05s steps(1) infinite;
+}
+.hero__badge-name > span::after {
+  content: '';
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ---------- layout ---------- */
+.container {
+  width: 100%;
+  max-width: var(--maxw);
+  margin-inline: auto;
+  /* named so a fixed-chrome clearance (OfficeBackdrop's ≤760px office-ctl
+     gutter) can widen just the end side without retyping this clamp(). */
+  --container-pad-x: clamp(1.1rem, 4vw, 2.5rem);
+  padding-inline: var(--container-pad-x);
+}
+section {
+  /* compression (§4): the pre-redesign clamp(3.2rem, 7vw, 6rem) carried
+     30–39% empty scroll (audit top12 #9); the merged 5F band + retired gap
+     do the heavy lifting, this trims the per-section breathing to match.
+     Tightened a second notch (4rem → 3rem ceiling) toward the measured
+     scroll-budget pin below — see that spec for why 6.5vh itself isn't the
+     final number. */
+  padding-block: clamp(1.6rem, 5vw, 3rem);
+}
+.section-head {
+  max-width: 48ch;
+  margin-bottom: var(--rhythm-adjacent);
+}
+.section-head .lead {
+  margin-top: 0.9rem;
+}
+
+/* ---------- buttons (mono, terminal) ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.92rem;
+  padding: 0.72rem 1.3rem;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+.btn:hover {
+  transform: translateY(-2px);
+}
+.btn-primary {
+  /* deep-coral gradient (NOT the light amber end of --grad) + a text-shadow so
+     the white label stays legible in both day and night. The glow uses a FIXED
+     coral (not var(--coral)) so it matches the baked fill in every theme and
+     gallery retint instead of drifting to the theme hue. */
+  /* The light gradient stop is capped at #b5592f so the white label clears WCAG
+     AA (4.5:1) across the WHOLE fill — the old #c96a45 end was ~3.7:1. */
+  background: linear-gradient(100deg, #ad5230, var(--coral-cta));
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(35, 14, 5, 0.4);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--coral-cta) 42%, transparent);
+}
+.btn-primary:hover {
+  /* DARKEN, don't brighten: brightening the coral drops the white label below AA
+     on the light gradient stop (brightness(1.08) → 4.17:1). Darkening deepens the
+     fill AND keeps white ≥5.2:1 in every state; the -2px lift from .btn:hover is
+     the shared interactive cue, so the CTA still reads as hovered. */
+  filter: brightness(0.94);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--fg);
+  border-color: var(--border-strong);
+}
+.btn-ghost:hover {
+  background: color-mix(in srgb, var(--fg) 5%, transparent);
+}
+
+/* ---------- surfaces ---------- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+/* faux terminal window + subtle CRT scanlines on the screen */
+.terminal {
+  position: relative;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+.terminal__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.terminal__dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--gray);
+}
+.terminal__dot--r {
+  background: #e06a5a;
+}
+.terminal__dot--y {
+  background: #e3b341;
+}
+.terminal__dot--g {
+  background: var(--green);
+}
+.terminal__title {
+  margin-left: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--fg-muted);
+}
+.terminal__screen {
+  display: block;
+  width: 100%;
+  background: var(--screen);
+}
+
+/* ── OPEN FLOOR primitives ─────────────────────────────────────────────
+   The page is one continuous camera hold on the live office; scrolling is
+   the light switch. A .statement is a monumental Jersey-10 block that
+   arrives WITH darkness (the dimmer controller slaves both to viewport-
+   center proximity); an .office-gap is a full-viewport observation hold
+   where the dim releases to 0 and the office alone is the content. */
+.statement {
+  font-family: var(--font-display);
+  font-weight: 400;
+  /* caps chosen for large monitors: 12vw hits the ceiling at ~1170px wide,
+     so a 27"+ screen gets a constant 140px, not a runaway headline */
+  font-size: clamp(3.2rem, 12vw, 8.75rem);
+  line-height: 0.92;
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+.statement--md {
+  font-size: clamp(2.4rem, 6.5vw, 4.75rem);
+}
+.statement-sub {
+  font-family: var(--font-body);
+  /* Hero-only; it co-occurs with .lead. Keep it a hair LARGER than the section
+     leads (.lead caps at 1.34rem) so the most important moment isn't the
+     quietest line on the page — and so its size doesn't hinge on source-order
+     beating .lead (equal specificity). */
+  font-size: clamp(1.1rem, 1.7vw, 1.4rem);
+  max-width: 52ch;
+  text-wrap: pretty;
+}
+/* Local contrast floor: even mid-dim, a lit block carries its own soft
+   radial wash so a stalled scroll never shows low-contrast text. */
+[data-lit] {
+  position: relative;
+  /* A full-width lit block's wash (::before, inset -8% horizontal) pokes 8% past
+     the viewport and widens the page (masked only by body's overflow-x:hidden).
+     Clip the horizontal bleed — it's off-screen on a full-bleed section, so zero
+     visual cost — while overflow-y stays visible so the vertical (-12%) glow
+     still washes above/below the text. `clip` (not hidden) adds no scroll
+     container and doesn't force overflow-y to auto. */
+  overflow-x: clip;
+}
+[data-lit]::before {
+  content: '';
+  position: absolute;
+  inset: -12% -8%;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 90% 75% at 50% 55%,
+    color-mix(in srgb, var(--bg) 38%, transparent),
+    transparent 72%
+  );
+}
+
+/* ── Working Building primitives (§5) ──────────────────────────────────
+   ONE geometry rule: HARDWARE components (screens, boards, the statusline,
+   the elevator shaft) are .hw-panel — sharp corners, 1px light top edge,
+   dark --screen ground. PAPER components (cards, quotes) stay the existing
+   .card — rounded (--radius) + warm shadow. ONE selected-state everywhere:
+   the LED glow (.led-selected / .led-dot.is-on). */
+.hw-panel {
+  background: var(--screen);
+  border: 1px solid var(--chip-line);
+  /* the 1px light edge: hardware catches the ceiling light on top */
+  border-top-color: color-mix(in srgb, var(--chip-ink) 45%, var(--chip-line));
+  border-radius: 0;
+  color: var(--chip-ink);
+}
+.led-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--led-off);
+  flex: none;
+}
+.led-dot.is-on {
+  background: var(--led);
+  box-shadow: 0 0 6px var(--led-glow);
+}
+.led-selected {
+  color: var(--led);
+  text-shadow: 0 0 6px var(--led-glow);
+}
+/* Guaranteed-legibility scrim for text overlapping the live office, so a
+   stalled scroll can never show low-contrast copy regardless of the dimmer's
+   state. Styled as the site's own crisp terminal-panel idiom (same grammar as
+   .card/.terminal's hairline-bordered surface, not the hardware-fixed
+   .hw-panel — the scrim TRACKS the site theme, so its border does too):
+   near-opaque --scrim background, a 1px --border-strong hairline, sharp
+   corners (pixel aesthetic, no --radius). No blur halo — a #U3-era review
+   found a soft glow read as a murky smudge over the office pixels; a flat
+   bordered plate reads as an intentional card instead. margin-inline cancels
+   the padding so the TEXT stays left-aligned with its siblings (h1, eyebrow,
+   CTA row) — only the plate's edge insets around it. Both sides read the
+   SAME --scrim-pad-x custom property (not two independent literals), so a
+   caller needing a tighter plate overrides just that one property and the
+   cancellation stays exact — no way for padding and margin to desync again
+   (#wb-3: a raw padding override left the margin canceling the OLD 0.75em,
+   pushing text ~7px past the edge). No current consumer uses that override;
+   the one live consumer, .install__note, instead deliberately zeroes
+   margin-inline — the IN-CARD exception where the plate edge must align
+   with its column (see Install.astro's own comment). */
+/* Every bare muted-text surface over the office rides the hero's tuned inks
+   (day LIGHTENS the composite, night DARKENS it — stock --fg-muted clears
+   neither extreme; see --office-ink's doc comment above). Lens B measured the
+   5F lead at 2.69-3.88:1 day before this rule; .roster__body gets the same
+   token in Showcase.astro's scoped styles (scoped specificity wins there). */
+section[data-lit] .section-head .lead {
+  color: var(--office-ink);
+}
+section[data-lit] .section-head .eyebrow {
+  /* same nudge for the coral eyebrows (hero's own scoped rule pioneered it) */
+  color: var(--office-ink-accent);
+}
+
+.text-scrim {
+  --scrim-pad-x: 0.75em;
+  background: var(--scrim);
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+  padding: 0.5em var(--scrim-pad-x);
+  margin-inline: calc(-1 * var(--scrim-pad-x));
+}
+
+.office-gap {
+  min-height: 100svh;
+  position: relative;
+}
+@media (max-width: 760px) {
+  .office-gap {
+    min-height: 70svh;
+  }
+}
+/* the closing hold reads at a shorter beat — the caption (and wb-2's install
+   line) sit low, so 55svh keeps the emotional hold without a full empty screen
+   (tightened a second notch from 80svh toward the scroll-budget pin below —
+   the caption is position:absolute off the bottom edge, so this height is
+   pure held-air, never a content floor). Hold #1 (the "real thing" gap)
+   deliberately KEEPS the full-viewport base. */
+.office-gap--closer {
+  min-height: 55svh;
+}
+.office-gap .gap-caption {
+  position: absolute;
+  bottom: 3.2rem;
+  /* named so OfficeBackdrop's ≤760px office-ctl clearance can size a
+     matching max-width without retyping this clamp() (the caption sits
+     outside .container, as a direct <main> child, so that clearance can't
+     reach it via .container's own padding). */
+  --gap-caption-inset: clamp(1rem, 4vw, 3rem);
+  left: var(--gap-caption-inset);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--chip-ink);
+  background: var(--chip-bg);
+  padding: 0.5rem 0.8rem;
+}
+
+/* scanline overlay — very faint, only reads as CRT texture up close */
+.terminal__scan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: 38px; /* below the title bar */
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 0 1px, transparent 1px 3px);
+  mix-blend-mode: multiply;
+}
+
+/* crisp pixel art at any scale */
+.px {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* visually hidden, still screen-reader available (shared; previously copied
+   byte-for-byte into three component <style> blocks). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+/* ---------- reveal-on-scroll ---------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s ease;
+}
+.reveal.in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+  .cursor,
+  .hero__badge-name > span::after,
+  .hl {
+    animation: none;
+  }
+  .crt.crt-on .terminal__screen {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   FX layer — tasteful flair, all reduced-motion-safe above
+   ============================================================ */
+
+/* animated shimmer across the gradient headline word */
+.hl {
+  background-size: 220% 100%;
+  animation: shimmer 7s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* CRT power-on when a terminal scrolls into view */
+.crt.crt-on .terminal__screen {
+  animation: crt-on 0.9s ease-out both;
+}
+@keyframes crt-on {
+  0% {
+    opacity: 0;
+    filter: brightness(3) saturate(0) blur(2px);
+    transform: scaleY(0.7);
+  }
+  9% {
+    opacity: 1;
+    transform: scaleY(1.02);
+  }
+  14% {
+    filter: brightness(1.5) saturate(1.2);
+  }
+  22% {
+    filter: brightness(0.75);
+    transform: scaleY(1);
+  }
+  40% {
+    filter: brightness(1.25);
+  }
+  100% {
+    filter: none;
+  }
+}
+
+/* retint pulse on the theme preview */
+@keyframes retint-pulse {
+  0% {
+    box-shadow:
+      var(--shadow-lg),
+      0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+  100% {
+    box-shadow:
+      var(--shadow-lg),
+      0 0 0 24px transparent;
+  }
+}
+.retint-pulse {
+  animation: retint-pulse 0.6s ease-out;
+}
+
+/* Dracula — hidden easter-egg theme (type "dracula"; Esc restores) */
+:root[data-theme='dracula'] {
+  --coral: #bd93f9;
+  --coral-deep: #caa6fb;
+  --amber: #ff79c6;
+  --ok: #9db87e; /* 6.50:1 on the dracula --bg */
+  --grad-2: #ff79c6; /* light pink — high contrast on the dark dracula --bg */
+  --focus-ring: #caa6fb; /* literal; matches the dracula --coral-deep (see :root note) */
+  --bg: #282a36;
+  --scrim: rgba(40, 42, 54, 0.94);
+  --bg-tint: #21222c;
+  --surface: #343746;
+  --surface-2: #44475a;
+  --fg: #f8f8f2;
+  /* Dracula's own palette steps much further from --bg (#282a36) to --surface-2
+     (#44475a, upstream "Current Line") than day/night do, so the muted ink has
+     to climb to match: the old #8b92bd measured 3.03:1 on the terminal bar and
+     3.90:1 on --surface (the OSD chips, the stage caption, the sky ticks, the
+     docs pager). Lightening the INK, not darkening the plate — no ink clears
+     4.5:1 on #44475a from below #8b92bd's luminance, and the plate hexes are
+     upstream Dracula. */
+  --fg-muted: #b2b9e0;
+  --border: color-mix(in srgb, #f8f8f2 13%, transparent);
+  --border-strong: color-mix(in srgb, #f8f8f2 24%, transparent);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 30px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.4), 0 24px 60px rgba(0, 0, 0, 0.6);
+  --glow: color-mix(in srgb, var(--coral) 26%, transparent);
+  --chrome-halo: 0 1px 8px rgba(0, 0, 0, 0.45);
+  /* dracula's --bg is dark too (same darkening direction as night) — not
+     independently contrast-measured (outside the matrix sweep's scope), but
+     the SAME reasoning applies: reuse --chip-ink, and keep the eyebrow on its
+     own existing --coral-deep rather than day's dark accent. */
+  --office-ink: var(--chip-ink);
+  --office-ink-accent: var(--coral-deep);
+  /* dark office composite, same as night — raw LED stays legible (7.52:1). */
+  --led-ink: var(--led);
+}
+
+/* ---------- boot intro overlay ---------- */
+.boot {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  font-family: var(--font-mono);
+  color: var(--fg-muted);
+  font-size: clamp(0.82rem, 0.74rem + 0.4vw, 1rem);
+  line-height: 1.95;
+  transition: opacity 0.45s ease;
+}
+:root[data-booting='1'] .boot {
+  display: flex;
+}
+.boot.is-done {
+  opacity: 0;
+  pointer-events: none;
+}
+.boot__log {
+  width: min(86vw, 420px);
+}
+.boot__line {
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.boot__line.in {
+  opacity: 1;
+}
+.boot__line b {
+  color: var(--fg);
+}
+.boot__ok {
+  color: var(--ok);
+}
+.boot__hint {
+  margin-top: 1.4rem;
+  font-size: 0.72rem;
+  /* the sole "press any key to skip" instruction — it must stay readable, so the
+     de-emphasis comes from size alone (opacity:0.55 dropped it to ~2.2:1 in day,
+     below WCAG 1.4.3); inherited --fg-muted clears AA in every theme. */
+}
+/* mobile: the whole viewport is the tap target (the overlay's click handler);
+   say so instead of naming a keyboard */
+.boot__hint-tap {
+  display: none;
+}
+@media (pointer: coarse) {
+  .boot__hint-key {
+    display: none;
+  }
+  .boot__hint-tap {
+    display: inline;
+  }
+}
+
+/* ---------- prose: rendered markdown (the /config page) ---------- */
+.prose {
+  line-height: 1.7;
+}
+.prose h1 {
+  font-size: clamp(2.2rem, 1.6rem + 2.2vw, 3.1rem);
+  margin-bottom: 0.5rem;
+}
+.prose h2 {
+  font-size: clamp(1.45rem, 1.2rem + 1.3vw, 1.95rem);
+  margin: 2.2rem 0 0.8rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--border);
+}
+.prose h3 {
+  margin: 1.6rem 0 0.5rem;
+}
+.prose p,
+.prose li {
+  color: var(--fg);
+}
+.prose a {
+  color: var(--coral-deep);
+  font-weight: 600;
+  /* #503: long unbreakable link text (repo paths, URLs) was the widest box on
+     a docs page at phone widths — it expanded the whole mobile layout
+     viewport (375→526). break-word, NOT anywhere: `anywhere` feeds soft-wrap
+     into MIN-CONTENT sizing and re-crushes table columns (the #501 class,
+     documented on the docs-table guard); break-word wraps at overflow time
+     only, leaving intrinsic sizing alone. */
+  overflow-wrap: break-word;
+}
+:root[data-theme='night'] .prose a,
+:root[data-theme='dracula'] .prose a {
+  color: var(--coral);
+}
+/* An inline code chip inside a prose LINK wears the link's accent hue on the
+   chip's --surface-2 plate. Dracula's accent is upstream Dracula Purple
+   (#bd93f9) and its --surface-2 is upstream Current Line (#44475a) — a pairing
+   that measures 3.79:1, and both hexes are palette fidelity, not ours to
+   retune. Dropping this one chip to the calmer --surface plate buys 4.89:1.
+   Day (4.65:1) and night (5.30:1) already clear the floor on --surface-2, so
+   they keep the shared chip shade. */
+:root[data-theme='dracula'] .prose a > code {
+  background: var(--surface);
+}
+.prose ul {
+  padding-left: 1.3rem;
+}
+.prose li {
+  margin: 0.3rem 0;
+}
+/* inline code */
+.prose :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.08rem 0.34rem;
+  /* long unbreakable tokens (paths, socket names) must wrap, not overflow the
+     mobile viewport — body{overflow-x:hidden} would clip them unreachably */
+  overflow-wrap: anywhere;
+}
+/* fenced code blocks (Shiki sets the colors; we frame them) */
+.prose pre {
+  margin: 1.2rem 0;
+  padding: 1rem 1.1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  overflow-x: auto;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+.prose pre code {
+  font-family: var(--font-mono);
+}
+/* tables — display:block + overflow-x:auto gives a bare markdown <table> its OWN
+   horizontal scroll on mobile instead of overflowing the page (which
+   body{overflow-x:hidden} would clip unreachably). Same GOAL as the Tools matrix
+   but a different mechanism: the matrix hangs overflow on a wrapper div and keeps
+   width:100%, whereas markdown has no wrapper — so display:block on the table
+   itself, which drops width:100% (narrow tables shrink to content on desktop). */
+.prose table {
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+  border-collapse: collapse;
+  margin: 1.2rem 0;
+  font-size: 0.95rem;
+}
+.prose th,
+.prose td {
+  text-align: left;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--border);
+  vertical-align: top;
+}
+.prose th {
+  background: var(--surface-2);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-synthesis: none;
+}
+/* inside tables, the inline-code `overflow-wrap:anywhere` guard above is both
+   redundant (the table's own overflow-x:auto handles wide content) and harmful:
+   `anywhere` shrinks min-content to 1ch, so table auto-layout collapses a
+   code-only column and wraps its token letter-by-letter. nowrap also stops the
+   hyphen-break (`max-` / `desks`) a squeezed column would otherwise take.
+   Tradeoff: a genuinely long, break-point-free token in a cell now scrolls the
+   table rather than wrapping — such tokens belong in a fenced block, not a
+   table cell. (`table` in the selector lifts specificity to (0,1,3) so the
+   override beats the (0,1,2) guard above by weight, not source order.) */
+.prose table th code,
+.prose table td code {
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+/* architecture diagram (build-time inline SVG; its colors ride the page's
+   --bg/--fg, see config/rehype-beautiful-mermaid.mjs): frame it on the page
+   ground and keep it responsive (the SVG keeps its viewBox aspect). The
+   library's override hooks read the cascade, so node fill is the page's own
+   --surface (the site's card idiom) while node stroke and secondary text take
+   --fg-muted: the library's 60% text mix misses AA on the day palette, and the
+   page's 12% --border hairline is no 3:1 boundary for a box a reader must
+   parse (smoke.spec.ts's diagram sweep grades every <text>). */
+.prose svg {
+  --muted: var(--fg-muted);
+  --border: var(--fg-muted);
+  display: block;
+  width: 100%;
+  max-width: 820px;
+  height: auto;
+  margin: 1.8rem auto;
+  padding: clamp(0.8rem, 2vw, 1.4rem);
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+}

@@ -1,0 +1,211 @@
+---
+source: crates/pixtuoid/tests/layout_golden.rs
+expression: l.waypoints
+---
+[
+    Waypoint {
+        pos: Point {
+            x: 105,
+            y: 51,
+        },
+        kind: Couch,
+        facing: North,
+        room_id: None,
+    },
+    Waypoint {
+        pos: Point {
+            x: 111,
+            y: 51,
+        },
+        kind: Couch,
+        facing: North,
+        room_id: None,
+    },
+    Waypoint {
+        pos: Point {
+            x: 117,
+            y: 51,
+        },
+        kind: Couch,
+        facing: North,
+        room_id: None,
+    },
+    Waypoint {
+        pos: Point {
+            x: 33,
+            y: 140,
+        },
+        kind: Pantry,
+        facing: South,
+        room_id: None,
+    },
+    Waypoint {
+        pos: Point {
+            x: 120,
+            y: 68,
+        },
+        kind: PhoneBooth,
+        facing: South,
+        room_id: None,
+    },
+    Waypoint {
+        pos: Point {
+            x: 120,
+            y: 108,
+        },
+        kind: StandingDesk,
+        facing: South,
+        room_id: None,
+    },
+    Waypoint {
+        pos: Point {
+            x: 74,
+            y: 152,
+        },
+        kind: VendingMachine,
+        facing: South,
+        room_id: None,
+    },
+    Waypoint {
+        pos: Point {
+            x: 182,
+            y: 155,
+        },
+        kind: Printer,
+        facing: South,
+        room_id: None,
+    },
+    Waypoint {
+        pos: Point {
+            x: 27,
+            y: 59,
+        },
+        kind: MeetingSofa,
+        facing: South,
+        room_id: Some(
+            0,
+        ),
+    },
+    Waypoint {
+        pos: Point {
+            x: 33,
+            y: 59,
+        },
+        kind: MeetingSofa,
+        facing: South,
+        room_id: Some(
+            0,
+        ),
+    },
+    Waypoint {
+        pos: Point {
+            x: 39,
+            y: 59,
+        },
+        kind: MeetingSofa,
+        facing: South,
+        room_id: Some(
+            0,
+        ),
+    },
+    Waypoint {
+        pos: Point {
+            x: 27,
+            y: 92,
+        },
+        kind: MeetingSofa,
+        facing: North,
+        room_id: Some(
+            0,
+        ),
+    },
+    Waypoint {
+        pos: Point {
+            x: 33,
+            y: 92,
+        },
+        kind: MeetingSofa,
+        facing: North,
+        room_id: Some(
+            0,
+        ),
+    },
+    Waypoint {
+        pos: Point {
+            x: 39,
+            y: 92,
+        },
+        kind: MeetingSofa,
+        facing: North,
+        room_id: Some(
+            0,
+        ),
+    },
+    Waypoint {
+        pos: Point {
+            x: 24,
+            y: 75,
+        },
+        kind: MeetingChair,
+        facing: East,
+        room_id: Some(
+            0,
+        ),
+    },
+    Waypoint {
+        pos: Point {
+            x: 42,
+            y: 75,
+        },
+        kind: MeetingChair,
+        facing: West,
+        room_id: Some(
+            0,
+        ),
+    },
+    Waypoint {
+        pos: Point {
+            x: 20,
+            y: 126,
+        },
+        kind: Island,
+        facing: East,
+        room_id: None,
+    },
+    Waypoint {
+        pos: Point {
+            x: 46,
+            y: 126,
+        },
+        kind: Island,
+        facing: West,
+        room_id: None,
+    },
+    Waypoint {
+        pos: Point {
+            x: 28,
+            y: 126,
+        },
+        kind: Island,
+        facing: South,
+        room_id: None,
+    },
+    Waypoint {
+        pos: Point {
+            x: 38,
+            y: 126,
+        },
+        kind: Island,
+        facing: South,
+        room_id: None,
+    },
+    Waypoint {
+        pos: Point {
+            x: 4,
+            y: 120,
+        },
+        kind: SnackShelf,
+        facing: West,
+        room_id: None,
+    },
+]

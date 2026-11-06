@@ -1,0 +1,54 @@
+# Every caller inherits the widened graph here: `just deny` and
+# `just deny-advisories`, local and in CI. Without it the graph is
+# default-features-only, so a dep behind a non-default feature would leave
+# every check, advisories included.
+[graph]
+all-features = true
+
+[advisories]
+# Otherwise a stale `ignore` entry only warns, so a shipped upstream fix would rot
+# behind a green run. Needs cargo-deny 0.20.2 or newer; an older one rejects the
+# whole file over this key.
+unused-ignored-advisory = "deny"
+ignore = []
+
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "CC0-1.0",
+    "ISC",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "Zlib",
+]
+# Our own crates embed OFL fonts; scoped here so a third-party OFL crate still
+# fails, since `just stage-notices` ships only our crates' font notices.
+exceptions = [
+    { allow = ["OFL-1.1"], crate = "pixtuoid" },
+    { allow = ["OFL-1.1"], crate = "pixtuoid-scene" },
+]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+# Pinned to png's own copy (crates/pixtuoid/Cargo.toml), which
+# .github/dependabot.yml stops bumping alone: a second version means one side
+# moved, ours or png's, and the pin needs to follow.
+deny = [
+    { crate = "miniz_oxide", deny-multiple-versions = true },
+    # Pinned to winit's stacks (crates/pixtuoid/Cargo.toml), likewise.
+    { crate = "objc2-app-kit", deny-multiple-versions = true },
+    { crate = "x11rb", deny-multiple-versions = true },
+    # Pinned to ratatui-core's copy (Cargo.toml), likewise.
+    { crate = "lru", deny-multiple-versions = true },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

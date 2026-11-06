@@ -1,0 +1,84 @@
+name: ci-tests
+
+on:
+  workflow_call:
+    inputs:
+      full:
+        description: 'False on a PR outside the merge queue: only the jobs without `if: inputs.full` run'
+        type: boolean
+        required: true
+    secrets:
+      MERGIFY_TOKEN:
+        required: false
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # Unit tests on every platform run on every PR push
+  # (docs.mergify.com/merge-queue/two-step: the preliminary step runs
+  # "linters, formatters, unit tests, basic compile checks").
+  test:
+    name: ${{ matrix.platform }}-test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            runner: ubuntu-latest
+            flag: unit
+            timeout: 25
+          # Track windows-latest deliberately: this gate catches hosted-image
+          # changes. It runs the Windows pipes and atomic-write retries the Linux
+          # entry compiles out, and the full tier uploads their coverage.
+          - platform: windows
+            runner: windows-latest
+            flag: windows
+            timeout: 25
+          # macos-latest is Apple Silicon, so it exercises that build; macOS diverges on BSD
+          # CLI, launchd, and config paths, which the Linux entry compiles out.
+          - platform: macos
+            runner: macos-latest
+            flag: macos
+            timeout: 20
+    runs-on: ${{ matrix.runner }}
+    # nextest owns per-test hang limits.
+    timeout-minutes: ${{ matrix.timeout }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      # A fork's PR gets no secrets; its results simply aren't uploaded.
+      HAS_MERGIFY_TOKEN: ${{ secrets.MERGIFY_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-alsa
+      - uses: ./.github/actions/setup-gpu
+      - uses: ./.github/actions/setup-cargo-just
+        with:
+          components: llvm-tools-preview
+          tools: aqua:nextest-rs/nextest/cargo-nextest aqua:taiki-e/cargo-llvm-cov
+      # Both tiers run the instrumented suite: rust-cache keys a job's cache on
+      # the job and toolchain, not the build, and a PR restores what main's full
+      # tier saved, so a plain PR build recompiled the whole graph.
+      - name: Unit tests under coverage + JUnit XML
+        id: tests
+        run: just coverage
+      - name: Upload coverage to Codecov
+        if: ${{ inputs.full }}
+        uses: pixtuoid/.github/.github/actions/upload-codecov@main
+        with:
+          file: codecov.json
+          flag: ${{ matrix.flag }}
+      - name: Upload test results to Mergify CI Insights
+        if: ${{ !cancelled() && env.HAS_MERGIFY_TOKEN == 'true' }}
+        uses: Mergifyio/gha-mergify-ci@392d123d84a27960993927aec1f2cbb059fb95c1 # v27
+        with:
+          action: junit-process
+          token: ${{ secrets.MERGIFY_TOKEN }}
+          report_path: target/nextest/ci/junit.xml
+          job_name: ${{ matrix.platform }}-test
+          test_step_outcome: ${{ steps.tests.outcome }}

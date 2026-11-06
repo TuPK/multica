@@ -1,0 +1,85 @@
+# release-plz owns the version bump, the changelog, the release PR, the tag and
+# the DRAFT GitHub release; release.yml fills that draft with binaries and
+# publishes it. Each key names the authority it defers to.
+[workspace]
+# crates.io over OIDC trusted publishing — no standing registry token, which is
+# why the `release` job grants id-token. Each crate carries a Trusted Publisher
+# record naming THIS workflow file; renaming release-plz.yml breaks publishing
+# until the records are updated, because the record is keyed on the filename.
+# npm stays in release.yml: it ships the built binaries, which release-plz does
+# not produce.
+publish = true
+# One CHANGELOG.md for the whole workspace, written by `pixtuoid` alone below.
+# NOT a shared `changelog_path` here: every package then writes the same
+# `## [X.Y.Z]` heading to one file, the first one wins, and that crate's commits
+# become the whole release's notes.
+changelog_update = false
+# CONTRIBUTING.md#versioning: pre-1.0, a feature bumps the minor.
+features_always_increment_minor = true
+# One tag and one release per version, both enabled on `pixtuoid` alone below.
+git_tag_enable = false
+git_release_enable = false
+# The ONE tag name, and `release.yml` triggers on `v*`: the two change together.
+# Declared at WORKSPACE level even though only `pixtuoid` tags, because every
+# package looks up its own last release by it, and the per-package default
+# (`pixtuoid-core-v0.18.0`) names a tag that does not exist.
+git_tag_name = "v{{ version }}"
+# Only a merged PR whose head branch carries `pr_branch_prefix` (the release
+# PR, or a hand-made branch for a bot-less release) may tag. A hand-made branch with ONE commit squashes to
+# that commit's title, so title it like `pr_name` below or the changelog lists it.
+release_always = false
+# release-plz's own default, declared because four mechanisms key on it: the
+# tag gate above, the recovery path in CONTRIBUTING.md#releasing, the merge
+# queue's exclusion in .mergify.yml, and release-plz.yml's release-merge job.
+pr_branch_prefix = "release-plz-"
+# The squash-merge title is the PR title, and the `^chore\(release\)` skip parser
+# below keeps it out of the changelog it is announcing. Never `{{ package }}`:
+# unset when more than one package updates.
+pr_name = "chore(release): v{{ version }}"
+
+# THE changelog format, for both CHANGELOG.md and the GitHub release body.
+# `changelog_config` (a git-cliff file) is deprecated upstream in favour of this
+# section, which is why cliff.toml is gone.
+[changelog]
+protect_breaking_commits = true
+commit_parsers = [
+    { message = "^chore\\(release\\)", skip = true },
+    { message = "^feat", group = "Features" },
+    { message = "^fix", group = "Bug Fixes" },
+    { message = "^perf", group = "Performance" },
+    { message = "^refactor", group = "Refactoring" },
+    { message = "^style", group = "Styling" },
+    { message = "^chore", group = "Miscellaneous" },
+    { message = "^doc", group = "Documentation" },
+    { message = "^test", group = "Testing" },
+]
+
+[[package]]
+name = "pixtuoid"
+# release-plz's single-changelog recipe (docs: extra/single-changelog, "One
+# package"): the released package owns the root file and names the crates whose
+# commits it carries. The list is every other PUBLISHED workspace member:
+# release-plz drops a `publish = false` crate (pixtuoid-web) from an update
+# entirely, so naming it would be inert. A commit touching no packaged file —
+# site/, ci, and npm/ or release.yml packaging too — stays out: add a
+# user-facing one by hand on the release PR, as the last act before merging.
+changelog_update = true
+changelog_path = "./CHANGELOG.md"
+changelog_include = ["pixtuoid-core", "pixtuoid-scene", "pixtuoid-hook"]
+# cargo-semver-checks runs on every package with a library, and a detected break
+# raises the shared workspace version. This crate's lib target is the binary's
+# internals, not a contract (the justfile's `PUBLISHED_CRATES` names the crates
+# that are), so a pub change in it must not force a minor release.
+semver_check = false
+git_tag_enable = true
+# Created as a DRAFT so the version is never visible without its binaries:
+# release.yml attaches the assets and `softprops/action-gh-release` publishes the
+# draft on the way out. A draft fires no `release: published` event, which is why
+# release.yml still triggers on the tag.
+git_release_enable = true
+git_release_draft = true
+# Titled as its tag: the default prefixes the package in a multi-package
+# workspace (release-plz.dev/docs/config, `git_release_name`).
+git_release_name = "v{{ version }}"
+# `-rc.N` tags become pre-releases, replacing release.yml's own `prerelease:` test.
+git_release_type = "auto"

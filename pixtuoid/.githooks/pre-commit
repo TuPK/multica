@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Pre-commit hook: format check only.
+# Everything else: pre-push (`just preflight`) and CI.
+#
+# Set up once per clone with:
+#   git config core.hooksPath .githooks
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$(git rev-parse --show-toplevel)"
+# shellcheck source=SCRIPTDIR/../scripts/lib/hook-just.sh
+source "$here/../scripts/lib/hook-just.sh"
+
+resolve_just
+
+printf '\033[36m[pre-commit] just fmt-check\033[0m\n' >&2
+"${just[@]}" fmt-check || {
+    # shellcheck disable=SC2016  # backticks are literal text, not expansion
+    printf '\033[31m[pre-commit] FAILED: run `just fmt` and recommit\033[0m\n' >&2
+    exit 1
+}

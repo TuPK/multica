@@ -1,0 +1,100 @@
+[
+  {
+    "id": "claude-code",
+    "display_name": "Claude Code",
+    "connected": false,
+    "cli_present": false,
+    "health": null
+  },
+  {
+    "id": "codex",
+    "display_name": "Codex",
+    "connected": false,
+    "cli_present": false,
+    "health": null
+  },
+  {
+    "id": "antigravity",
+    "display_name": "Antigravity CLI",
+    "connected": false,
+    "cli_present": false,
+    "health": null
+  },
+  {
+    "id": "dsh",
+    "display_name": "DeepSeek Harness",
+    "connected": false,
+    "cli_present": false,
+    "health": null
+  },
+  {
+    "id": "reasonix",
+    "display_name": "Reasonix",
+    "connected": false,
+    "cli_present": false,
+    "health": null
+  },
+  {
+    "id": "codewhale",
+    "display_name": "CodeWhale",
+    "connected": false,
+    "cli_present": false,
+    "health": null
+  },
+  {
+    "id": "opencode",
+    "display_name": "opencode",
+    "connected": false,
+    "cli_present": false,
+    "health": null
+  },
+  {
+    "id": "copilot",
+    "display_name": "Copilot CLI",
+    "connected": false,
+    "cli_present": true,
+    "health": null
+  },
+  {
+    "id": "cursor",
+    "display_name": "Cursor CLI",
+    "connected": false,
+    "cli_present": false,
+    "health": null
+  },
+  {
+    "id": "hermes",
+    "display_name": "Hermes Agent",
+    "connected": false,
+    "cli_present": false,
+    "health": null
+  },
+  {
+    "id": "omp",
+    "display_name": "Oh My Pi",
+    "connected": false,
+    "cli_present": false,
+    "health": null
+  },
+  {
+    "id": "openclaw",
+    "display_name": "OpenClaw",
+    "connected": false,
+    "cli_present": false,
+    "health": null
+  },
+  {
+    "id": "grok",
+    "display_name": "Grok Build",
+    "connected": false,
+    "cli_present": false,
+    "health": null
+  },
+  {
+    "id": "kimi",
+    "display_name": "Kimi Code CLI",
+    "connected": false,
+    "cli_present": false,
+    "health": null
+  }
+]

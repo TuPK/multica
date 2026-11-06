@@ -1,0 +1,256 @@
+---
+import { Code } from 'astro:components';
+import { REPO, CRATES, floorById, floorName } from '../consts';
+
+const floor = floorById('install');
+// The README regenerates its install block from this same file, so the two
+// can't drift — the site shows every method, the README only `readme: true`.
+import tabs from '../install.json';
+---
+
+<section
+  id={floor.id}
+  class="install"
+  data-lit
+  data-floor={floor.fl}
+  data-floor-label={floor.label}
+>
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">{floor.fl} · {floorName(floor)} — get it</p>
+      <h2 class="statement statement--md">Move them in.</h2>
+      <p class="lead">
+        macOS, Linux &amp; Windows. Install, run <code>pixtuoid</code>, and the office opens.
+      </p>
+    </div>
+
+    <div class="install__box reveal">
+      <div class="install__tabs" role="tablist" aria-label="Install method">
+        {tabs.map((t, i) => <button
+          class:list={['install__tab', { 'is-active': i === 0 }]}
+          id={`install-tab-${t.id}`}
+          role="tab"
+          data-tab={t.id}
+          aria-selected={i === 0 ? 'true' : 'false'}
+          tabindex={i === 0 ? 0 : -1}
+          aria-controls={`install-panel-${t.id}`}
+        >
+          {t.label}
+        </button>)}
+      </div>
+
+      {tabs.map((t, i) => <div
+        id={`install-panel-${t.id}`}
+        class:list={['install__panel', { 'is-active': i === 0 }]}
+        role="tabpanel"
+        aria-labelledby={`install-tab-${t.id}`}
+        data-panel={t.id}
+      >
+        <Code code={t.cmds.join('\n')} lang="bash" theme="vesper" />
+        {/* no aria-label: the visible "Copy" text IS the accessible name, so
+              the textContent swap stays exposed. A name change alone isn't
+              announced, hence the role=status sibling — WCAG 4.1.3. */}
+        <button class="install__copy" data-copy={t.cmds.join('\n')}>Copy</button>
+        <span class="sr-only" role="status" data-copy-status />
+      </div>)}
+
+      <p class="install__note text-scrim">
+        Also on <a href={CRATES} target="_blank" rel="noreferrer">crates.io</a> · prebuilt binaries
+        on <a href={`${REPO}/releases`} target="_blank" rel="noreferrer">Releases</a>.
+      </p>
+    </div>
+  </div>
+</section>
+
+<script is:inline>
+  (function () {
+    const box = document.querySelector('.install__box');
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    // WAI-ARIA APG tabs: one tab stop, arrows (and Home/End) move and select.
+    const tabs = Array.from(box.querySelectorAll('.install__tab'));
+    function select(tab) {
+      const id = tab.dataset.tab;
+      function swap() {
+        tabs.forEach(function (t) {
+          const on = t === tab;
+          t.classList.toggle('is-active', on);
+          t.setAttribute('aria-selected', on ? 'true' : 'false');
+          t.tabIndex = on ? 0 : -1;
+        });
+        box.querySelectorAll('.install__panel').forEach(function (p) {
+          p.classList.toggle('is-active', p.dataset.panel === id);
+        });
+      }
+      if (!mq.matches && document.startViewTransition) document.startViewTransition(swap);
+      else swap();
+    }
+    tabs.forEach(function (tab, i) {
+      tab.addEventListener('click', function () {
+        select(tab);
+      });
+      tab.addEventListener('keydown', function (e) {
+        const to = {
+          ArrowLeft: (i - 1 + tabs.length) % tabs.length,
+          ArrowRight: (i + 1) % tabs.length,
+          Home: 0,
+          End: tabs.length - 1,
+        }[e.key];
+        if (to === undefined) return;
+        e.preventDefault();
+        tabs[to].focus();
+        select(tabs[to]);
+      });
+    });
+    box.querySelectorAll('.install__copy').forEach(function (btn) {
+      let restore = 0;
+      // capture the resting label ONCE — not after a click, or a rapid second
+      // click would capture 'Copied ✓' and the button would stick on it
+      const LABEL = btn.textContent.trim();
+      const status = btn.parentElement.querySelector('[data-copy-status]');
+      function flash(label, announce) {
+        btn.textContent = label;
+        status.textContent = announce;
+        clearTimeout(restore);
+        restore = setTimeout(function () {
+          btn.textContent = LABEL;
+          status.textContent = '';
+        }, 1600);
+      }
+      function manual() {
+        // no / blocked Clipboard API (insecure context, old browser): select
+        // the command so the user can copy it — don't fail silently.
+        const code = btn.parentElement.querySelector('code');
+        const sel = window.getSelection();
+        if (sel) {
+          const range = document.createRange();
+          range.selectNodeContents(code);
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
+        flash('Select & copy', 'Press Ctrl+C to copy the selected command');
+      }
+      btn.addEventListener('click', function () {
+        if (!navigator.clipboard || !navigator.clipboard.writeText) {
+          manual();
+          return;
+        }
+        navigator.clipboard
+          .writeText(btn.dataset.copy)
+          .then(function () {
+            flash('Copied ✓', 'Copied to clipboard');
+            // OfficeBackdrop listens for this, does the hiring, and answers
+            // with pix:hired (the statusline receipt).
+            document.dispatchEvent(
+              new CustomEvent('pix:install-copy', { detail: { source: 'install' } })
+            );
+          })
+          .catch(manual);
+      });
+    });
+  })();
+</script>
+
+<style>
+  .install__box {
+    max-width: 860px;
+  }
+  .install__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem 1.6rem;
+    padding: 0 0 0.7rem;
+    font-family: var(--font-mono);
+  }
+  .install__tab {
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 0.88rem;
+    padding: 0.25rem 0;
+    border: 0;
+    background: none;
+    color: var(--fg-muted);
+    cursor: pointer;
+  }
+  .install__tab.is-active {
+    /* 5.2:1 on the day bg; the tab label is the ONLY text conveying which
+       install method is selected, so --led green (~1.4:1) won't do */
+    color: var(--coral-deep);
+  }
+  .install__panel {
+    display: none;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--chip-line);
+    background: var(--screen);
+    /* lifted off the office, but the edge stays sharp: it's a terminal screen */
+    box-shadow: var(--shadow-lg);
+  }
+  .install__panel.is-active {
+    display: block;
+  }
+  .install__panel :global(pre) {
+    margin: 0;
+    padding: clamp(1.2rem, 3vw, 2.2rem) clamp(1.2rem, 3.4vw, 2.6rem);
+    overflow-x: auto;
+    font-size: clamp(1.1rem, 2.6vw, 2rem);
+    line-height: 1.5;
+    background: transparent !important;
+  }
+  .install__panel :global(pre code) {
+    font-family: var(--font-mono);
+  }
+  .install__copy {
+    position: absolute;
+    top: 0.55rem;
+    right: 0.55rem;
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    font-weight: 600;
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    /* opaque: the pill can sit over a long command's tail at narrow widths */
+    background: color-mix(in srgb, var(--screen) 88%, #fff);
+    color: #f3ede3;
+    cursor: pointer;
+    transition:
+      background-color 0.18s ease,
+      border-color 0.18s ease,
+      color 0.18s ease;
+  }
+  .install__copy:hover {
+    /* --coral-cta is the AA-capped coral (white label ≥4.5:1); raw --coral
+       under #fff is only ~3.1:1 */
+    background: var(--coral-cta);
+    border-color: var(--coral-cta);
+    color: #fff;
+  }
+  .install__note {
+    padding: 0.4rem 0.7rem 0.6rem;
+    /* cancels text-scrim's negative margin: that exists to keep OFFICE-floating
+       text left-aligned, but inside the card the plate edge must line up with
+       the command/tabs column */
+    margin-inline: 0;
+    font-size: 0.9rem;
+    color: var(--fg-muted);
+  }
+  /* pre-wrap breaks at the content box, so the reserved right padding is what
+     keeps every character clear of the Copy pill */
+  @media (max-width: 560px) {
+    .install__panel :global(pre) {
+      padding-right: 4.6rem;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font-size: 1rem;
+    }
+  }
+  @media (pointer: coarse) {
+    .install__tab {
+      padding-block: 0.55rem;
+    }
+    .install__copy {
+      min-height: 44px;
+      padding-block: 0.55rem;
+    }
+  }
+</style>

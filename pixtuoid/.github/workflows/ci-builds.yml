@@ -1,0 +1,127 @@
+name: ci-builds
+
+on:
+  workflow_call:
+    inputs:
+      full:
+        description: 'False on a PR outside the merge queue: only the jobs without `if: inputs.full` run'
+        type: boolean
+        required: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # `just hack` checks the host graph only; this job catches target-gated deps
+  # and native calls escaping the core `native` boundary, and caps the size of
+  # the wasm the site ships.
+  wasm-check:
+    name: wasm-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-cargo-just
+        with:
+          targets: wasm32-unknown-unknown
+          shared-key: gen-wasm
+      - uses: ./.github/actions/gen-wasm
+      - run: just gen-wasm-check
+
+  hack:
+    name: feature combinations
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-alsa
+      - uses: ./.github/actions/setup-cargo-just
+        with:
+          components: clippy
+          tools: github:taiki-e/cargo-hack aqua:nextest-rs/nextest/cargo-nextest
+      - run: just hack
+
+  windows-check:
+    name: windows-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-cargo-just
+        with:
+          targets: x86_64-pc-windows-msvc
+      - run: just check-windows
+
+  other-unix-check:
+    name: other-unix-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-cargo-just
+        with:
+          targets: x86_64-unknown-freebsd
+      - run: just check-other-unix
+
+  # Full tier only: a hawk build on every PR push would lengthen every PR's
+  # wait for the shared runners (AGENTS.md's open-PR cap).
+  hawk:
+    name: hawk
+    if: ${{ inputs.full }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-alsa
+      - uses: ./.github/actions/setup-tools
+      # Before rust-cache, which keys on every installed toolchain, so a
+      # HAWK_RUST bump starts a new cache instead of hitting the old one.
+      - run: just _hawk-toolchain
+      # hawk's own target dir, deps only. Saved from main alone, so a queue
+      # batch restores it and no draft PR spends the 10 GB quota on a copy.
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          prefix-key: v1-rust
+          workspaces: ". -> target/hawk"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - run: just hawk
+
+  packaging-linux:
+    name: packaging-build (ubuntu-latest)
+    if: ${{ inputs.full }}
+    # The only clean `cargo install --locked`, default-features build on both
+    # Homebrew bottle platforms: it catches stale lockfiles and new system
+    # dependencies before an external autobump does.
+    runs-on: ubuntu-latest
+    # Two cold release installs use cargo-install target dirs, which the shared
+    # cache only partially covers.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Packaging does not invoke just, so its setup is narrower than the shared
+      # Rust+just action while keeping the same cache namespace.
+      - uses: ./.github/actions/packaging-build
+
+  packaging-macos:
+    name: packaging-build (macos-latest)
+    if: ${{ inputs.full }}
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/packaging-build

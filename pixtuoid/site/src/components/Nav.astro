@@ -1,0 +1,375 @@
+---
+import { REPO, SPONSOR, asset, DOCS } from '../consts';
+// Absolute home so the section anchors work from any page (e.g. /config).
+const home = asset('');
+// `floating` = the index treatment: corner chrome over the live office that
+// scrolls away, because the statusline is that page's persistent chrome.
+const { floating = false } = Astro.props;
+---
+
+<header class:list={['nav', { 'nav--floating': floating }]}>
+  <div class="container nav__inner">
+    <a class="nav__logo" href={home}>
+      <img
+        class="nav__mark js-brand-mark"
+        src={asset('favicon-32.png')}
+        alt=""
+        aria-hidden="true"
+        width="32"
+        height="32"
+      />
+      pixtuoid
+    </a>
+    <span class="nav__version" aria-hidden="true">v{__PIXTUOID_VERSION__}</span>
+    <nav id="nav-links" class="nav__links" aria-label="Primary">
+      <a class="nav__section-link" href={`${home}#showcase`}>Showcase</a>
+      <a class="nav__section-link" href={`${home}#tools`}>Tools</a>
+      <a class="nav__section-link" href={`${home}#install`}>Install</a>
+      <div class="nav__docs">
+        <button
+          id="docs-btn"
+          class="nav__docs-btn"
+          type="button"
+          aria-expanded="false"
+          aria-controls="docs-menu"
+        >
+          Docs <span aria-hidden="true">▾</span>
+        </button>
+        <div id="docs-menu" class="nav__menu">
+          {DOCS.map((d) => <a href={asset(d.route)}>{d.label}</a>)}
+        </div>
+      </div>
+      <a href={REPO} target="_blank" rel="noreferrer">GitHub ↗</a>
+      <a
+        class="nav__coffee"
+        href={SPONSOR}
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Buy me a coffee (opens in a new tab)"
+      >
+        ☕ Coffee
+      </a>
+    </nav>
+    <button
+      id="nav-burger"
+      class="nav__burger"
+      type="button"
+      aria-label="Menu"
+      aria-expanded="false"
+      aria-controls="nav-links"
+    >
+      <span class="nav__burger-icon" aria-hidden="true">☰</span>
+    </button>
+    <button id="theme-toggle" class="nav__toggle" type="button" aria-label="Toggle day / night">
+      <span class="nav__toggle-icon" aria-hidden="true">🌙</span>
+    </button>
+  </div>
+</header>
+
+<script is:inline>
+  (function () {
+    const btn = document.getElementById('theme-toggle');
+    const icon = btn && btn.querySelector('.nav__toggle-icon');
+    function sync() {
+      // dracula is a DARK theme too — treat anything but day as "dark".
+      const night = document.documentElement.dataset.theme !== 'day';
+      if (icon) icon.textContent = night ? '☀️' : '🌙';
+      if (btn) btn.setAttribute('aria-label', night ? 'Switch to day' : 'Switch to night');
+    }
+    sync();
+    document.addEventListener('pix:theme', sync);
+    if (btn)
+      btn.addEventListener('click', function () {
+        const root = document.documentElement;
+        // clear any per-theme retint a gallery chip applied — those inline vars
+        // would otherwise win the cascade over the clean day/night palette
+        root.style.removeProperty('--coral');
+        root.style.removeProperty('--coral-deep');
+        root.style.removeProperty('--amber');
+        // any dark theme (night OR dracula) → day, matching the "Switch to day"
+        // label so dracula has a one-click path back
+        const next = root.dataset.theme === 'day' ? 'night' : 'day';
+        root.dataset.theme = next;
+        try {
+          localStorage.setItem(window.__pixTheme.KEY, next);
+        } catch (e) {}
+        document.dispatchEvent(new CustomEvent('pix:theme'));
+      });
+
+    // `focusFirst` moves focus into the revealed panel so a menu that renders
+    // BELOW its trigger still follows it in tab order (WCAG 2.4.3).
+    function wireDisclosure(trigger, panel, opts) {
+      opts = opts || {};
+      const isOpen = function () {
+        return panel.classList.contains('is-open');
+      };
+      const set = function (open) {
+        panel.classList.toggle('is-open', open);
+        trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (opts.icon) opts.icon.textContent = open ? opts.iconOpen : opts.iconClosed;
+        if (open && opts.focusFirst) {
+          const first = panel.querySelector('a, button');
+          if (first) first.focus();
+        }
+      };
+      trigger.addEventListener('click', function (e) {
+        e.stopPropagation();
+        set(!isOpen());
+      });
+      panel.querySelectorAll('a').forEach(function (a) {
+        a.addEventListener('click', function () {
+          set(false);
+        });
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape' || !isOpen()) return;
+        // closing the panel is display:none, which would drop focus to <body>
+        // if it were inside (WCAG 2.4.3)
+        const inside = panel.contains(document.activeElement);
+        set(false);
+        if (inside) trigger.focus();
+      });
+      document.addEventListener('click', function (e) {
+        if (!panel.contains(e.target) && !trigger.contains(e.target)) set(false);
+      });
+    }
+
+    const burger = document.getElementById('nav-burger');
+    const links = document.getElementById('nav-links');
+    if (burger && links)
+      wireDisclosure(burger, links, {
+        icon: burger.querySelector('.nav__burger-icon'),
+        iconOpen: '✕',
+        iconClosed: '☰',
+        focusFirst: true,
+      });
+    const docsBtn = document.getElementById('docs-btn');
+    const docsMenu = document.getElementById('docs-menu');
+    if (docsBtn && docsMenu) wireDisclosure(docsBtn, docsMenu);
+  })();
+</script>
+
+<style>
+  /* Default: the sticky bar (docs + 404). The blur is safe here — these pages
+     have no 30fps canvas underneath. */
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    background: color-mix(in srgb, var(--bg) 80%, transparent);
+    border-bottom: 1px solid var(--border);
+  }
+  /* Corner chrome (index). Critically NO backdrop-filter: a live blur over the
+     30fps canvas is the documented compositor-flicker class. */
+  .nav--floating {
+    position: absolute;
+    left: 0;
+    right: 0;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: none;
+    border-bottom: 0;
+  }
+  .nav__version {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    /* --chip-ink, not --chip-dim: the dim tone is tuned for an OPAQUE --screen
+       and this chip is only 72% of it, so the ground shows through and drops it
+       under AA. De-emphasis comes from the 0.75rem size instead. */
+    color: var(--chip-ink);
+    background: color-mix(in srgb, var(--screen) 72%, transparent);
+    padding: 0.15rem 0.45rem;
+    margin-left: -0.4rem;
+  }
+  .nav--floating .nav__logo,
+  .nav--floating .nav__links a,
+  .nav--floating .nav__docs-btn {
+    /* dark themes only — on the day office this black halo read as a smudge */
+    text-shadow: var(--chrome-halo);
+  }
+  .nav__inner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    height: var(--nav-h); /* single-sourced in global.css — Hero reserves the same */
+  }
+  .nav__logo {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-synthesis: none;
+    font-size: 1.3rem;
+    letter-spacing: 0;
+    color: var(--fg);
+    text-decoration: none;
+  }
+  /* The logo mark IS the tab favicon, shown at its native 32px so the pixel bust
+     is device-exact on 1× and a clean double on retina. Size only to 32 or an
+     integer fraction of it — an arbitrary fraction resamples the bust softer. */
+  .nav__mark {
+    height: 32px;
+    width: 32px;
+    image-rendering: pixelated;
+  }
+  .nav__links {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0.5rem clamp(1.1rem, 4vw, 2.5rem) 0.9rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+  }
+  .nav__links.is-open {
+    display: flex;
+  }
+  .nav__links a {
+    color: var(--fg-muted);
+    text-decoration: none;
+    padding: 0.55rem 0.2rem;
+    border-radius: var(--radius-sm);
+    transition: color 0.18s ease;
+  }
+  .nav__links a:hover {
+    color: var(--fg);
+  }
+  /* --coral-deep, not --coral: contrast-safe on both the cream day bar and the
+     dark night bar, and exempt from the gallery retint. */
+  .nav__links a.nav__coffee {
+    color: var(--coral-deep);
+    white-space: nowrap;
+  }
+  .nav__links a.nav__coffee:hover {
+    /* --coral dips below AA on the cream day bar, but ONLY in this transient
+       hover state, so the row can share one hover mechanism instead of the
+       coffee link alone underlining. Deliberate — don't "re-fix" it. */
+    color: var(--coral);
+  }
+  .nav__burger {
+    margin-left: auto;
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--fg);
+    cursor: pointer;
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+  /* display:contents so that on mobile the Docs items render flat inside the
+     burger panel; the desktop media query re-establishes the dropdown. */
+  .nav__docs,
+  .nav__menu {
+    display: contents;
+  }
+  .nav__docs-btn {
+    display: none;
+  }
+  @media (min-width: 760px) {
+    .nav--floating .nav__section-link {
+      display: none; /* index only: floors live in the statusline; corners stay sparse */
+    }
+    .nav__links {
+      display: flex;
+      position: static;
+      flex-direction: row;
+      gap: 1.4rem;
+      margin-left: auto;
+      padding: 0;
+      background: none;
+      border: 0;
+      box-shadow: none;
+      font-size: 0.88rem;
+    }
+    .nav__links a {
+      padding: 0;
+    }
+    .nav__burger {
+      display: none;
+    }
+    .nav__docs {
+      display: inline-flex;
+      position: relative;
+    }
+    .nav__docs-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      color: var(--fg-muted);
+      background: none;
+      border: 0;
+      padding: 0;
+      cursor: pointer;
+      transition: color 0.18s ease;
+    }
+    .nav__docs-btn:hover,
+    .nav__docs-btn[aria-expanded='true'] {
+      color: var(--fg);
+    }
+    .nav__menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 0.5rem);
+      right: 0;
+      flex-direction: column;
+      min-width: 9rem;
+      padding: 0.4rem;
+      gap: 0.1rem;
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-lg);
+    }
+    .nav__menu.is-open {
+      display: flex;
+    }
+    .nav__menu a {
+      padding: 0.45rem 0.7rem;
+      border-radius: var(--radius-sm);
+      white-space: nowrap;
+    }
+    .nav__menu a:hover {
+      background: color-mix(in srgb, var(--fg) 6%, transparent);
+    }
+  }
+  .nav__toggle {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 1rem;
+    transition:
+      transform 0.15s ease,
+      background-color 0.2s ease;
+  }
+  .nav__toggle:hover {
+    transform: translateY(-1px);
+  }
+  /* 44px is the comfortable thumb target; the 40px desktop size mis-taps. */
+  @media (pointer: coarse) {
+    .nav__burger,
+    .nav__toggle {
+      width: 44px;
+      height: 44px;
+    }
+  }
+</style>

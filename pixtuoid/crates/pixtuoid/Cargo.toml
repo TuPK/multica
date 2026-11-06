@@ -1,0 +1,206 @@
+[package]
+name                   = "pixtuoid"
+description            = "Terminal pixel-art office for AI coding agents"
+version.workspace      = true
+edition.workspace      = true
+# Links pixtuoid-scene's Fusion Pixel face (OFL-1.1).
+license                = "MIT AND OFL-1.1"
+repository.workspace   = true
+authors.workspace      = true
+homepage.workspace     = true
+keywords.workspace     = true
+categories.workspace   = true
+# The plugins' type-check tooling beside the templates `include_str!` bakes,
+# which no build or packaged test reads; `contract.rs` reads plugin-contract.json.
+exclude                = [
+    "src/install/package.json",
+    "src/install/package-lock.json",
+    "src/install/tsconfig.json",
+    "src/install/.npmrc",
+    "src/install/*.d.ts",
+    "src/install/*.pyi",
+]
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "pixtuoid"
+path = "src/main.rs"
+
+[dependencies]
+pixtuoid-core  = { path = "../pixtuoid-core", version = "0.21.0" }
+pixtuoid-scene = { path = "../pixtuoid-scene", version = "0.21.0" }
+tokio              = { workspace = true, features = ["rt-multi-thread", "macros", "signal", "sync", "time", "net", "fs", "io-util"] }
+ratatui            = { workspace = true }
+# The base64 of kitty's transmits and of the probe's queries.
+base64-simd        = "0.8"
+# iTerm2's PNG.
+png                = "0.18"
+# SIXEL's per-tile palette map, hot in its encode.
+foldhash           = { workspace = true }
+# SIXEL's numbers, written a run at a time without `core::fmt`'s machinery.
+# Already in the graph through ratatui-core's compact_str.
+itoa               = "1"
+# kitty's zlib: png's own copy, so no second crate.
+miniz_oxide        = "0.8"
+# `event-stream`: the TUI loop awaits input beside its frame clock and signals.
+crossterm          = { workspace = true, features = ["event-stream"] }
+futures-util       = { version = "0.3", default-features = false }
+clap               = { workspace = true }
+serde              = { workspace = true }
+# `preserve_order` is enabled HERE, not workspace-wide: config merges are a
+# READ→MERGE→WRITE round-trip and serde_json's default BTreeMap-backed `Map`
+# re-emits every object ALPHABETICALLY, silently reordering the user's own
+# hand-authored file on a `connect`. Scoped to this crate so `pixtuoid-web` need
+# not pay indexmap's code size in the site's wasm.
+serde_json         = { workspace = true, features = ["preserve_order"] }
+toml               = { workspace = true }
+toml_edit          = { workspace = true }
+# YAML parse+emit for the Hermes install target — the maintained yaml-rust
+# successor, serde_yaml and serde_yml both being abandoned. It data-preserves a
+# user's other config keys on rewrite but does NOT round-trip comments.
+saphyr             = "0.2.1"
+anyhow             = { workspace = true }
+tracing            = { workspace = true }
+tracing-subscriber = { workspace = true }
+which              = "8"
+# clock feature gives us Local::now() w/ system timezone for the wall clock.
+chrono             = { workspace = true, features = ["clock"] }
+open               = "5"
+semver             = { workspace = true }
+# The version popup's notices, wrapped by display width. No line-break or
+# optimal-fit tables: first-fit at spaces is all a short notice needs.
+textwrap           = { version = "0.16", default-features = false, features = ["std", "unicode-width"] }
+# The `pixtuoid floating` desktop window (binary-only — pixtuoid-core stays
+# window-free): winit is the frameless always-on-top window + main-thread event
+# loop, wgpu draws each frame's layers into it (`floating/gpu.rs`).
+#
+# This is winit's own default set with ONE substitution, so dropping
+# `default-features` must keep every other default verbatim — a missing one is a
+# Linux RUNTIME failure (no backend), not a build error. The substitution
+# `wayland-csd-adwaita` -> `-notitle` drops only that decoration's `ab_glyph`
+# title-text renderer, which `with_decorations(false)` never draws into.
+winit = { version = "0.30", default-features = false, features = [
+    "rwh_06",
+    "x11",
+    "wayland",
+    "wayland-dlopen",
+    "wayland-csd-adwaita-notitle",
+] }
+# wgpu's default set minus `webgpu`, a browser backend a native window never
+# takes; `gles` is the old-driver and software fallback.
+wgpu = { version = "30", default-features = false, features = ["std", "parking_lot", "wgsl", "metal", "dx12", "vulkan", "gles"] }
+# Blocks on wgpu's async adapter and device requests, once at window creation.
+pollster = "1"
+clap_complete = "4.6.5"
+clap_mangen = "0.3.0"
+
+# Ambient office audio: rodio's playback half only (cpal underneath) — no decoder
+# features, every sound is synthesized into raw sample buffers at startup.
+# Optional, and left out of `portable`, because cpal needs the ALSA system
+# headers on Linux. `tracing` routes rodio's OWN diagnostics
+# to `tracing::error!/debug!` instead of its default `eprintln!` — a raw stderr
+# write mid-altscreen corrupts the TUI.
+rodio = { version = "0.23.0", default-features = false, features = ["playback", "tracing"], optional = true }
+# The music ring between the audio thread and the device callback: documented
+# wait-free and allocation-free after construction, which `std::sync::mpsc`
+# doesn't promise, with chunks written in place.
+rtrb = { version = "0.4.0", optional = true }
+
+[features]
+# `build-target` builds the Linux release artifacts with `portable` alone, so a
+# new default feature goes in `portable` unless it can't build on those targets.
+default = ["audio", "portable"]
+portable = []
+# Ambient sound (config-OFF at runtime regardless; this gates the DEPENDENCY).
+audio = ["dep:rodio", "dep:rtrb"]
+
+# termios/select for `term::query_tty` (the truecolor and graphics probes),
+# O_NOFOLLOW in install/io.rs, the stderr dup in audio/sink.rs.
+[target.'cfg(unix)'.dependencies]
+libc = { workspace = true }
+# The kitty `t=s` objects (graphics/shm.rs), whose `shm_open` libc types
+# differently on each Unix.
+rustix = { workspace = true, features = ["shm", "mm"] }
+
+# Focus-jump activation (focus/macos.rs). Pinned to the SAME objc2 stack winit
+# already pulls so the bindings don't double-compile. This MUST track winit's
+# objc2-app-kit major, never float ahead: a lone bump to 0.3.x drags in a whole
+# SECOND objc2 stack beside winit's AND breaks the activate API — so dependabot is
+# told to ignore it (.github/dependabot.yml) until winit itself moves, and
+# deny.toml fails CI on a second copy.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-app-kit = { version = "0.2.2", features = ["NSRunningApplication", "libc"] }
+# The floating window tags its Metal layer sRGB (floating/gpu.rs). The same
+# versions and features wgpu-hal already builds, so they add no crate.
+objc2-core-graphics = { version = "0.3.2", default-features = false, features = ["std", "CGColorSpace"] }
+objc2-quartz-core = { version = "0.3.2", default-features = false, features = ["std", "objc2-core-graphics", "CAMetalLayer"] }
+
+# Focus-jump on Linux (focus/linux.rs): the EWMH _NET_ACTIVE_WINDOW protocol needs
+# an X11 client, and x11rb is already in-tree transitively via winit — so this MUST
+# track the version winit resolves to, exactly like the objc2-app-kit
+# stanza above. A grouped dependabot bump to "0.14" once silently built a SECOND
+# x11rb + x11rb-protocol on every Linux build; dependabot holds this at 0.13.x
+# until winit itself moves, and deny.toml fails CI on a second copy.
+[target.'cfg(target_os = "linux")'.dependencies]
+x11rb = "0.13"
+
+# GetShortPathNameW for the Codex Windows hook path: a
+# space/metacharacter-bearing install path resolves to its DOS 8.3 short form so
+# cmd.exe /C can invoke it.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = [
+    "Win32_Storage_FileSystem",
+    # focus/windows.rs: Toolhelp32 ancestor walk + EnumWindows/SetForegroundWindow
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_UI_WindowsAndMessaging",
+    # focus/windows.rs: AttachThreadInput + GetCurrentThreadId, the foreground-lock retry
+    "Win32_System_Threading",
+] }
+
+[dev-dependencies]
+# `tests/wire_to_pixels.rs` drives real fixture bytes through the shared
+# `pixtuoid_core::harness` pipeline, which is behind core's dev-only feature.
+pixtuoid-core = { path = "../pixtuoid-core", version = "0.21.0", features = ["harness"] }
+tempfile = { workspace = true }
+temp-env = { workspace = true }
+# tests/text_coverage.rs parses the source of everything that renders text.
+syn         = { workspace = true }
+proc-macro2 = { workspace = true }
+# End-to-end CLI golden for `sources --json`, the Raycast contract (tests/cli_json.rs).
+# Goldens update with SNAPSHOTS=overwrite.
+snapbox  = { workspace = true, features = ["json"] }
+# Emits the SourceStatus JSON Schema — test/gen only, so the `JsonSchema` derive
+# is `cfg_attr(test)` and this stays a dev-dep. See sources.rs + `just gen-contract`.
+schemars = { workspace = true }
+# test-util: paused-clock tests (tui/mod.rs's frame clock).
+tokio    = { workspace = true, features = ["test-util"] }
+image    = { workspace = true, features = ["gif"] }
+# A decoder our SIXEL encoder's tests did not write.
+icy_sixel = "0.7"
+insta    = { workspace = true }
+# Integration tests parse the `--json` CLI output back (cli_json.rs).
+serde_json = { workspace = true }
+# `benches/render_tiles.rs`.
+criterion  = { workspace = true }
+
+[[example]]
+name = "snapshot"
+path = "examples/snapshot/main.rs"
+test = true
+
+[package.metadata.deb]
+section = "utils"
+assets = [
+    ["target/release/pixtuoid", "usr/bin/", "755"],
+    # cargo-deb's generated copyright names the license; MIT wants its text.
+    ["../../LICENSE", "usr/share/doc/pixtuoid/", "644"],
+    # The embedded fonts' notices, globbed as `just stage-notices` does.
+    ["../*/fonts/**/*.txt", "usr/share/doc/pixtuoid/licenses/", "644"],
+]
+extended-description = "Terminal-native, multi-agent pixel-art visualizer for AI coding agents. Each running Claude Code session appears as an animated sprite in a top-down ASCII office."
+
+[[bench]]
+name              = "render_tiles"
+harness           = false

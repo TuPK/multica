@@ -1,0 +1,31 @@
+{
+  "origin": "recorded",
+  "cli": "codex",
+  "version": "codex-cli 0.166.0",
+  "captured": "2026-10-30",
+  "command": "just hermetic --record codex",
+  "deidentified": {
+    "method": "decoder-allowlist",
+    "blanked": 58
+  },
+  "aimock": "1.47.0",
+  "script": "tests/sources/codex/hermetic/cancel.json",
+  "dropped": {
+    "os": "macos",
+    "at": {
+      "/payload/type": [
+        "item_completed",
+        "message",
+        "reasoning",
+        "thread_settings_applied",
+        "token_count"
+      ],
+      "/type": [
+        "event_msg",
+        "response_item",
+        "session_meta",
+        "world_state"
+      ]
+    }
+  }
+}

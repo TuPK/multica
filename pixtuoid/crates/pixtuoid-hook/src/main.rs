@@ -1,0 +1,215 @@
+// Invariant #5 (non-negotiable): the shim must never block CC — it always exits 0
+// silently (`silence_panics` makes even a panic do so). A panic still drops the
+// event, so `unwrap()`/`expect()`/`panic!` and indexing are compiler-denied here
+// (tests unwrap freely); the parsers fed untrusted process rows are where an
+// out-of-bounds slice would land.
+#![cfg_attr(
+    not(test),
+    deny(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::panic,
+        clippy::indexing_slicing
+    )
+)]
+
+use std::ffi::OsString;
+use std::io::Read;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use serde_json::Value;
+
+mod cli_pid;
+use cli_pid::cli_pid;
+
+mod keys;
+mod paths;
+use paths::default_socket_path;
+
+mod transport;
+
+/// What [`enrich_payload`] stamps, plus the trailing newline.
+const STAMP_HEADROOM: u64 = 256;
+
+/// `STDIN_CAP + STAMP_HEADROOM` is the daemon's pipe `IN_BUFFER_SIZE` (pinned by
+/// `tests/pipe_quota_parity.rs`), so a stamped payload can't stall the sync
+/// write; a pathological body can still exceed it and degrade to
+/// stall→watchdog→drop, never a block of CC.
+const STDIN_CAP: u64 = (1 << 20) - STAMP_HEADROOM;
+
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX))
+}
+
+/// Runs before the panic runtime, so a panic exits 0 silently under abort and unwind.
+fn silence_panics() {
+    std::panic::set_hook(Box::new(|_| std::process::exit(0)));
+}
+
+fn main() {
+    silence_panics();
+    let socket = default_socket_path();
+
+    // `args_os` + lossy, NOT `args()`: `std::env::args()` PANICS on any
+    // non-Unicode argument (legal Unix argv), dropping the event. Lossy
+    // rather than filter_map: dropping a non-UTF-8 arg would shift
+    // `--source <value>` pairing so the NEXT arg gets read as the value.
+    let args: Vec<String> = std::env::args_os()
+        .map(|a| a.to_string_lossy().into_owned())
+        .collect();
+
+    let mut payload: Value = match event_from_argv(&args) {
+        // CodeWhale env-mode: identity arrives as env vars with `--event <name>`
+        // baked into the registered command, so the envelope needs no stdin, and
+        // a read it doesn't need is a wait the watchdog (armed below) never
+        // bounds: invariant 5.
+        Some(event) => Value::Object(env_payload_from(&event, |k| std::env::var_os(k))),
+        None => {
+            let mut buf = String::new();
+            if std::io::stdin()
+                .take(STDIN_CAP)
+                .read_to_string(&mut buf)
+                .is_err()
+            {
+                return;
+            }
+            match serde_json::from_str(&buf) {
+                Ok(v) => v,
+                Err(_) => return,
+            }
+        }
+    };
+
+    // Everything past here is OUR work on CC's clock — `cli_pid` walks a process
+    // table, off-thread but not free — so the bound is armed first (see
+    // `arm_watchdog`).
+    let Some(bound) = transport::arm_watchdog() else {
+        return;
+    };
+
+    if let Value::Object(map) = &mut payload {
+        // Source precedence: the `--source <name>` argv flag (the Windows install
+        // form) wins over the `PIXTUOID_SOURCE` env var (the Unix env-prefix
+        // form; grok delivers the same var via its handler `env` map, so this arm
+        // serves both). `--event` is orthogonal and never implies a source.
+        let source = source_from_argv(&args)
+            .or_else(|| std::env::var_os("PIXTUOID_SOURCE").and_then(|v| v.into_string().ok()));
+        enrich_payload(map, source, hook_event_from_argv(&args), now_ms(), cli_pid);
+    }
+
+    // Best-effort send, hard-bounded so a stuck daemon can never block CC's
+    // subprocess wait — see transport.rs.
+    let mut line = serde_json::to_vec(&payload).unwrap_or_default();
+    line.push(b'\n');
+    transport::send_line(&bound, &socket, &line);
+}
+
+/// Per-field byte cap on env-mode values. The stdin arm enforces `STDIN_CAP`
+/// before parsing; the env arm has no such gate and `DEEPSEEK_TOOL_ARGS` can be
+/// large, so capping each folded field keeps the serialized line under the
+/// daemon's pipe quota instead of building one the watchdog would drop.
+const ENV_FIELD_CAP: usize = 128 * 1024;
+
+fn cap_env_field(mut val: String) -> String {
+    val.truncate(val.floor_char_boundary(ENV_FIELD_CAP));
+    val
+}
+
+/// CodeWhale env-mode: synthesize the hook envelope from CodeWhale's hook env
+/// vars `get` reads, so a test need not mutate process-global env.
+fn env_payload_from(
+    event: &str,
+    get: impl Fn(&str) -> Option<OsString>,
+) -> serde_json::Map<String, Value> {
+    let get = |k: &str| get(k).map(|v| v.to_string_lossy().into_owned());
+    let mut map = serde_json::Map::new();
+    map.insert("event".into(), Value::from(event));
+    for (env_key, field) in [
+        ("DEEPSEEK_WORKSPACE", "cwd"),
+        ("CODEWHALE_SESSION_ID", "session_id"),
+        ("DEEPSEEK_TOOL_NAME", "tool"),
+        ("DEEPSEEK_TOOL_ARGS", "tool_args"),
+        ("CODEWHALE_TOOL_CALL_ID", "tool_call_id"),
+    ] {
+        if let Some(val) = get(env_key).filter(|v| !v.is_empty()) {
+            map.insert(field.into(), Value::from(cap_env_field(val)));
+        }
+    }
+    map
+}
+
+/// The value of `--<flag> <val>` or `--<flag>=<val>` in argv (first match wins),
+/// or `None` if absent or empty.
+fn flag_from_argv(args: &[String], flag: &str) -> Option<String> {
+    let eq_prefix = format!("{flag}=");
+    let mut it = args.iter();
+    while let Some(arg) = it.next() {
+        if let Some(val) = arg.strip_prefix(&eq_prefix) {
+            return Some(val).filter(|s| !s.is_empty()).map(str::to_string);
+        }
+        if arg == flag {
+            return it.next().filter(|s| !s.is_empty()).cloned();
+        }
+    }
+    None
+}
+
+/// CodeWhale's env-mode trigger. Absent → the shim reads its payload from stdin
+/// (the CC/Codex/Reasonix path).
+fn event_from_argv(args: &[String]) -> Option<String> {
+    flag_from_argv(args, "--event")
+}
+
+/// The event a stdin payload fires for, named in argv because the payload omits
+/// it (agy's). Unlike `--event`, it leaves the payload on stdin.
+fn hook_event_from_argv(args: &[String]) -> Option<String> {
+    flag_from_argv(args, "--hook-event")
+}
+
+/// The trusted CLI source, in its Windows install form: the hook command runs
+/// under `cmd.exe /C`, which has no inline `VAR=value cmd` env-prefix syntax (it
+/// would try to exec a program literally named `PIXTUOID_SOURCE=codex`), so the
+/// source rides as a flag. Absent → the caller falls back to `PIXTUOID_SOURCE`.
+fn source_from_argv(args: &[String]) -> Option<String> {
+    flag_from_argv(args, "--source")
+}
+
+/// Stamp the shim timestamp and, when resolved, the trusted CLI source and the
+/// argv-named event under the PRIVATE `_pixtuoid_source`/`_pixtuoid_event` keys.
+///
+/// We deliberately do NOT write the public `source` field: CC's SessionStart
+/// payload already uses `source` for the start *reason* (startup/resume/clear/
+/// compact), and reading that as the CLI source namespaced the agent under
+/// "startup" — an un-reapable ghost. The private keys are shim-OWNED, so an
+/// inbound one (spoofed or replayed) is stripped unconditionally before stamping.
+fn enrich_payload(
+    map: &mut serde_json::Map<String, Value>,
+    source: Option<String>,
+    hook_event: Option<String>,
+    ts_ms: u64,
+    resolve_pid: impl FnOnce() -> Option<u32>,
+) {
+    map.remove(keys::SOURCE_STAMP);
+    map.remove(keys::EVENT_STAMP);
+    map.insert(keys::SHIM_STAMP.into(), Value::from(ts_ms));
+    if let Some(src) = source
+        && !src.is_empty()
+    {
+        map.insert(keys::SOURCE_STAMP.into(), Value::from(src));
+    }
+    if let Some(event) = hook_event {
+        map.insert(keys::EVENT_STAMP.into(), Value::from(event));
+    }
+    // The opencode/OpenClaw plugins stamp `process.pid` from inside the CLI —
+    // keep theirs, and stay LAZY so they never pay for the Windows snapshot.
+    if !map.contains_key(keys::PID_STAMP)
+        && let Some(pid) = resolve_pid()
+    {
+        map.insert(keys::PID_STAMP.into(), Value::from(pid));
+    }
+}
+
+#[cfg(test)]
+mod tests;

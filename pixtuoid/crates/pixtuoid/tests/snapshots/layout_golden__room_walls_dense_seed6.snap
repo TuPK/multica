@@ -1,0 +1,27 @@
+---
+source: crates/pixtuoid/tests/layout_golden.rs
+assertion_line: 118
+expression: l.room_walls
+---
+[
+    Vertical {
+        x: 67,
+        y0: 48,
+        y1: 69,
+    },
+    Vertical {
+        x: 67,
+        y0: 83,
+        y1: 104,
+    },
+    Horizontal {
+        y: 104,
+        x0: 0,
+        x1: 33,
+    },
+    Horizontal {
+        y: 104,
+        x0: 47,
+        x1: 67,
+    },
+]

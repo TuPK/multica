@@ -1,0 +1,30 @@
+name: 'Generate the site demos'
+description: 'Renders site/public/demos/ (clips, posters, stills) from this checkout via gen-media.py --only site, on the Rust toolchain and cache its job set up'
+
+runs:
+  using: 'composite'
+  steps:
+    # The demos are a pure function of the renderer, the manifest and the theme
+    # and weather lists it expands, so an unchanged set restores them instead
+    # of building and encoding again.
+    - id: cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: site/public/demos
+        key: site-demos-${{ hashFiles('crates/**', 'Cargo.lock', 'scripts/gen-media.py', 'scripts/media.json', 'site/src/themes.json', 'site/src/weather.json', 'requirements-dev.txt', '.github/actions/gen-demos/action.yml') }}
+
+    - if: steps.cache.outputs.cache-hit != 'true'
+      uses: ./.github/actions/setup-alsa
+    - if: steps.cache.outputs.cache-hit != 'true'
+      uses: ./.github/actions/apt-install
+      with:
+        packages: ffmpeg
+        recommends: 'false'
+    - name: Render the demos
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        python3 -m venv .venv
+        .venv/bin/pip install --quiet -r requirements-dev.txt
+        .venv/bin/python3 scripts/gen-media.py --only site

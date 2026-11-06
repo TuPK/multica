@@ -1,0 +1,381 @@
+---
+import { REPO, floorById, floorName } from '../consts';
+import sources from '../sources.json';
+
+const floor = floorById('lobby');
+// Same manifest + supported-filter SupportedTools.astro renders its tools table
+// from; a bridge e2e pins this chip count to that table's row count.
+const badges = sources.filter((s) => s.status === 'supported');
+---
+
+<section id={floor.id} class="hero" data-floor={floor.fl} data-floor-label={floor.label}>
+  {/* The engine places the meeting rooms in the layout's left column — this
+      bottom-left title card deliberately sits UNDER them, not over. */}
+  <canvas id="dust" class="dust" aria-hidden="true"></canvas>
+  <div class="container hero__frame">
+    <div class="hero__copy" data-lit="fade" data-lit-max="0.74">
+      <p class="eyebrow">{floor.fl} · {floorName(floor)} — terminal-native, open&nbsp;source</p>
+      <h1 class="statement">
+        Your agents<br /> <span class="hl">work here</span
+        ><span class="cursor" aria-hidden="true"></span>
+      </h1>
+      <p class="statement-sub lead">
+        Every session walks in, sits down, and gets to work — in a pixel office that lives in your
+        terminal.
+      </p>
+      <ul class="hero__badges" aria-label={`Works with ${badges.length} coding CLIs`}>
+        {badges.map((s) => <li
+          class="hero__badge"
+          style={`--badge:${s.badge_color}`}
+          aria-label={s.name}
+        >
+          <span class="hero__badge-code">{s.badge.replace('·', '')}</span>
+          <span class="hero__badge-name" aria-hidden="true">
+            <span>{s.name}</span>
+          </span>
+        </li>)}
+        <li class="hero__badge hero__badge--more">
+          <a href="#tools">{badges.length} CLIs <span aria-hidden="true">→</span></a>
+        </li>
+      </ul>
+      <div class="hero__cta">
+        <a class="btn btn-primary" href="#install">[ install <span aria-hidden="true">→</span> ]</a>
+        <a class="hero__ghost" href="#showcase-vibing"
+          ><span aria-hidden="true">▸</span> play with it live</a
+        >
+        <a class="hero__ghost" href={REPO} target="_blank" rel="noreferrer">star on github ↗</a>
+      </div>
+      <p class="hero__avail">macOS · Linux · Windows · crates.io · MIT&nbsp;licensed</p>
+    </div>
+  </div>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    min-height: 100svh;
+    display: flex;
+    align-items: flex-end;
+    overflow: hidden;
+    /* Top: reserve the floating nav's row — the copy is bottom-anchored, so when it
+       outgrows the viewport its TOP gives way and the eyebrow slid under the nav. */
+    padding-block: calc(var(--nav-h) + 0.75rem) clamp(3.5rem, 8vh, 6rem);
+  }
+  .dust {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .hero__frame {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: var(--maxw);
+  }
+  .hero__copy {
+    max-width: 900px;
+  }
+  .hero__copy .statement .hl {
+    background: var(--grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .hero__cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.4rem;
+    margin-top: 1.8rem;
+  }
+  .hero__ghost {
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    color: var(--fg);
+    text-decoration: none;
+    text-shadow: var(--chrome-halo);
+    transition: color 0.18s ease;
+  }
+  .hero__ghost:hover {
+    /* Over the office --coral dips below AA, but ONLY in this transient hover state
+       — the resting colour is the full --fg. Deliberate, not a bug to re-fix. */
+    color: var(--coral);
+  }
+  .hero__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    /* 2px of margin moved INSIDE as padding on BOTH edges, net geometry identical:
+       an edge row's 1px chip border sitting on the element's own paint edge gets
+       shaved when Safari rasterizes at a fractional device-pixel offset. Keep the
+       compensating negative margin — bare padding grows the page and reds the
+       scroll-budget e2e pin. */
+    margin: calc(1.15rem - 2px) 0 -2px;
+    padding: 2px 0;
+    list-style: none;
+    /* Permanent compositing layer: Safari promotes/demotes elements around hover
+       transitions, and the raster snap on that boundary reads as a text wiggle. */
+    transform: translateZ(0);
+  }
+  .hero__badge {
+    display: inline-flex;
+    align-items: baseline;
+    /* Label chips, not copy text: without these the pointer flips arrow ↔ I-beam per
+       glyph while sweeping the strip, and a drag would blue-select the codes. */
+    cursor: default;
+    user-select: none;
+    /* the gap lives in .hero__badge-name's inner padding instead, so a collapsed
+       name leaves no trailing space after the code */
+    gap: 0;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    letter-spacing: 0.02em;
+    padding: 0.32rem 0.6rem;
+    /* DAY default: the light --surface family — the dark hardware panel read too
+       heavy on the light day office. NIGHT below switches to --screen/--chip-line. */
+    background: color-mix(in srgb, var(--badge) 14%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--badge) 40%, var(--border-strong));
+    color: var(--fg);
+  }
+  /* The one non-source cell. Its --badge is the NEUTRAL border tone so the shared
+     tint formulas above apply unchanged — a per-chip background override would go
+     invalid-at-computed-value on their var(--badge) and fall to transparent. */
+  .hero__badge--more {
+    --badge: var(--border-strong);
+  }
+  .hero__badge--more a {
+    color: var(--fg);
+    text-decoration: none;
+    /* EXPLICIT pointer: the ancestor chips force cursor: default (inherited), and
+       only a UA special case (a:any-link) restores it — not spec-guaranteed. */
+    cursor: pointer;
+    transition: color 0.18s ease;
+  }
+  .hero__badge--more a:hover {
+    color: var(--coral);
+  }
+  .hero__badge-code {
+    font-weight: 700;
+    /* the app's real per-CLI hue, darkened toward black so it clears WCAG AA on the
+       TINTED day cell — same-hue text on a same-hue tint eats contrast. */
+    color: color-mix(in srgb, var(--badge) 50%, black);
+  }
+  /* Collapsed-by-default name: a 0fr grid track animates open on hover. The chip
+     grows RIGHTWARD — its left edge never moves, so the pointer stays inside and
+     the HOVERED chip can't jitter (a trailing sibling can still re-wrap; accepted).
+     Hover-only on purpose: chips carry no tabindex, and the names stay available
+     via aria-label and at the #tools matrix. */
+  .hero__badge-name {
+    display: inline-grid;
+    grid-template-columns: 0fr;
+    opacity: 0;
+    /* steps(), not ease: the track opens in discrete increments, so the name reveals
+       glyph-chunk by glyph-chunk — a terminal TYPING it, not a drawer sliding. */
+    transition:
+      grid-template-columns 0.3s steps(12, end),
+      opacity 0.06s linear;
+  }
+  .hero__badge-name > span {
+    min-width: 0;
+    overflow: hidden;
+    padding-left: 0.4em;
+  }
+  .hero__badge:hover .hero__badge-name {
+    grid-template-columns: 1fr;
+    opacity: 1;
+  }
+  /* The typed name's blinking block caret is declared ENTIRELY in global.css's
+     shared idiom (`.cursor, .hero__badge-name > span::after`) so it can't drift
+     from the h1 cursor — nothing to declare locally. */
+  /* Pressed-key feedback: tint + border deepen a notch, with no geometry change
+     (the strip must never move vertically). These mixes are the deepest that still
+     hold 4.5:1 on rendered pixels across every hue. */
+  .hero__badge:hover {
+    background: color-mix(in srgb, var(--badge) 26%, var(--surface));
+    border-color: color-mix(in srgb, var(--badge) 62%, var(--border-strong));
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease;
+  }
+  /* No per-component reduced-motion arm for the name track: global.css's universal
+     RM clamp already zeroes it, so a local `transition: none` is dead code. */
+  :root[data-theme='night'] .hero__badge,
+  :root[data-theme='dracula'] .hero__badge {
+    /* dracula's --bg is dark too, so it piggybacks on night's measured formula. */
+    background: color-mix(in srgb, var(--badge) 34%, var(--screen));
+    border-color: color-mix(in srgb, var(--badge) 60%, var(--chip-line));
+    color: var(--chip-ink);
+  }
+  :root[data-theme='night'] .hero__badge:hover,
+  :root[data-theme='dracula'] .hero__badge:hover {
+    /* the pressed-key deepen, night flavor — without it the higher-specificity
+       night base above pins hover at the resting tint */
+    background: color-mix(in srgb, var(--badge) 42%, var(--screen));
+    border-color: color-mix(in srgb, var(--badge) 74%, var(--chip-line));
+  }
+  :root[data-theme='night'] .hero__badge-code,
+  :root[data-theme='dracula'] .hero__badge-code {
+    /* lightened toward white to clear 4.5:1 against the TINTED night cell. */
+    color: color-mix(in srgb, var(--badge) 55%, white);
+  }
+  .hero__avail {
+    margin-top: 1.1rem;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    /* bare over the live office — --fg-muted measures short of AA there. */
+    color: var(--office-ink);
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(22px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .hero__copy > * {
+    animation: rise 0.7s both;
+  }
+  .hero__copy .eyebrow {
+    animation-delay: 0.05s;
+    /* bare over the live office — the shared .eyebrow coral measures short of AA
+       there; --office-ink-accent keeps the accent (unlike --office-ink). */
+    color: var(--office-ink-accent);
+  }
+  .hero__copy h1 {
+    animation-delay: 0.14s;
+  }
+  .hero__copy .lead {
+    animation-delay: 0.26s;
+    /* overrides the shared .lead's --fg-muted, hero-scoped: every other section's
+       .lead sits over a deeper dimmer cap than this hero's and stays --fg-muted. */
+    color: var(--office-ink);
+  }
+  .hero__copy .hero__badges {
+    animation-delay: 0.32s;
+  }
+  .hero__copy .hero__cta {
+    animation-delay: 0.4s;
+  }
+  .hero__copy .hero__avail {
+    animation-delay: 0.5s;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero__copy > * {
+      animation: none;
+    }
+  }
+</style>
+
+<script is:inline>
+  // Pixel-dust: warm motes drifting up through the hero, echoing the office's dust.
+  (function () {
+    const c = document.getElementById('dust');
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const ctx = c.getContext('2d');
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let W = 0,
+      H = 0,
+      motes = [];
+    const COLORS = ['#d97757', '#e6a356', '#c9b08a', '#f0e4cf'];
+    function spawn(anywhere) {
+      return {
+        x: Math.random() * W,
+        y: anywhere ? Math.random() * H : H + 4,
+        s: 2 + Math.floor(Math.random() * 2),
+        vy: -(0.12 + Math.random() * 0.3),
+        vx: (Math.random() - 0.5) * 0.2,
+        a: 0.15 + Math.random() * 0.5,
+        tw: Math.random() * 6.28,
+        tws: 0.01 + Math.random() * 0.03,
+        col: COLORS[Math.floor(Math.random() * COLORS.length)],
+      };
+    }
+    function resize() {
+      const r = c.getBoundingClientRect();
+      W = r.width;
+      H = r.height;
+      c.width = Math.round(W * dpr);
+      c.height = Math.round(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const n = Math.max(18, Math.round((W * H) / 13000));
+      motes = [];
+      for (let i = 0; i < n; i++) motes.push(spawn(true));
+    }
+    let raf = 0,
+      on = false,
+      visible = false,
+      userPaused = false;
+    function frame() {
+      ctx.clearRect(0, 0, W, H);
+      for (let i = 0; i < motes.length; i++) {
+        const m = motes[i];
+        m.x += m.vx;
+        m.y += m.vy;
+        m.tw += m.tws;
+        if (m.y < -4) {
+          motes[i] = spawn(false);
+          continue;
+        }
+        ctx.globalAlpha = m.a * (0.55 + 0.45 * Math.sin(m.tw));
+        ctx.fillStyle = m.col;
+        ctx.fillRect(Math.round(m.x), Math.round(m.y), m.s, m.s);
+      }
+      ctx.globalAlpha = 1;
+      raf = requestAnimationFrame(frame);
+    }
+    function start() {
+      if (on || mq.matches || !visible || userPaused) return;
+      on = true;
+      raf = requestAnimationFrame(frame);
+    }
+    function stop() {
+      on = false;
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+    }
+    resize();
+    let rraf = 0;
+    window.addEventListener('resize', function () {
+      if (rraf) return; // coalesce a burst of resize events into one rAF
+      rraf = requestAnimationFrame(function () {
+        rraf = 0;
+        resize();
+      });
+    });
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(
+        function (es) {
+          es.forEach(function (e) {
+            visible = e.isIntersecting;
+            if (visible) start();
+            else stop();
+          });
+        },
+        { threshold: 0 }
+      ).observe(c);
+    } else {
+      visible = true;
+      start();
+    }
+    // CSS @media can't gate a canvas rAF — respond to OS reduce-motion live
+    if (mq.addEventListener)
+      mq.addEventListener('change', function () {
+        if (mq.matches) stop();
+        else start();
+      });
+    // the office pause switch governs page motion (WCAG 2.2.2) — hold the dust too
+    document.addEventListener('pix:paused', function (e) {
+      userPaused = !!(e.detail && e.detail.paused);
+      if (userPaused) stop();
+      else start();
+    });
+  })();
+</script>

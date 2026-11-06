@@ -1,0 +1,69 @@
+---
+source: crates/pixtuoid-core/tests/sources/conformance.rs
+expression: events
+---
+- SessionStart:
+    agent_id: 7928707159598016762
+    source: dsh
+    session_id: session-5933a3f8-6656-40c8-b602-f9c65f72d24b
+    cwd: /private/tmp/pixtuoid-capture/proj
+    parent_id: ~
+- Identity:
+    agent_id: 7928707159598016762
+    source: dsh
+    session_id: session-5933a3f8-6656-40c8-b602-f9c65f72d24b
+    cwd: /private/tmp/pixtuoid-capture/proj
+- Identity:
+    agent_id: 7928707159598016762
+    source: dsh
+    session_id: session-5933a3f8-6656-40c8-b602-f9c65f72d24b
+    cwd: /private/tmp/pixtuoid-capture/proj
+- ModelInfo:
+    agent_id: 7928707159598016762
+    model: deepseek-flash
+    effort: high
+- Identity:
+    agent_id: 7928707159598016762
+    source: dsh
+    session_id: session-5933a3f8-6656-40c8-b602-f9c65f72d24b
+    cwd: /private/tmp/pixtuoid-capture/proj
+- Usage:
+    agent_id: 7928707159598016762
+    fresh_tokens: 19
+- Identity:
+    agent_id: 7928707159598016762
+    source: dsh
+    session_id: session-5933a3f8-6656-40c8-b602-f9c65f72d24b
+    cwd: /private/tmp/pixtuoid-capture/proj
+- ToolUseStart:
+    agent_id: 7928707159598016762
+    tool_use_id: toolu_16aEbsK1XrGwQBbu
+    detail:
+      Generic:
+        display: read
+- Identity:
+    agent_id: 7928707159598016762
+    source: dsh
+    session_id: session-5933a3f8-6656-40c8-b602-f9c65f72d24b
+    cwd: /private/tmp/pixtuoid-capture/proj
+- ToolUseEnd:
+    agent_id: 7928707159598016762
+    tool_use_id: toolu_16aEbsK1XrGwQBbu
+- Identity:
+    agent_id: 7928707159598016762
+    source: dsh
+    session_id: session-5933a3f8-6656-40c8-b602-f9c65f72d24b
+    cwd: /private/tmp/pixtuoid-capture/proj
+- Usage:
+    agent_id: 7928707159598016762
+    fresh_tokens: 241
+- Identity:
+    agent_id: 7928707159598016762
+    source: dsh
+    session_id: session-5933a3f8-6656-40c8-b602-f9c65f72d24b
+    cwd: /private/tmp/pixtuoid-capture/proj
+- TurnEnd:
+    agent_id: 7928707159598016762
+- SessionEnd:
+    agent_id: 7928707159598016762
+    as_child: false

@@ -1,0 +1,48 @@
+name: 'Setup Cargo & Just'
+description: 'Sets up the Rust toolchain, rust-cache, and just plus the given mise.toml tools'
+
+inputs:
+  components:
+    description: 'Comma-separated list of toolchain components'
+    required: false
+    default: ''
+  targets:
+    description: 'Comma-separated list of target triples'
+    required: false
+    default: ''
+  enable-cache:
+    description: 'Whether to enable Swatinem/rust-cache'
+    required: false
+    default: 'true'
+  shared-key:
+    description: 'Swatinem/rust-cache shared-key; empty keys the cache by job'
+    required: false
+    default: ''
+  tools:
+    description: 'Space-separated mise.toml [tools] keys to install beside just'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: pixtuoid/.github/.github/actions/setup-rust@main
+      with:
+        components: ${{ inputs.components }}
+        targets: ${{ inputs.targets }}
+
+    # Keep this prefix fixed so every Rust job shares one cache namespace; a bump
+    # is a deliberate repository-wide invalidation.
+    - if: ${{ inputs.enable-cache == 'true' }}
+      uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      with:
+        prefix-key: v1-rust
+        shared-key: ${{ inputs.shared-key }}
+        # Main's caches are what every ref restores, and the 10 GB quota evicts
+        # the least recently used first, so another ref's copy only pushes
+        # main's full-tier entries out.
+        save-if: ${{ github.ref == 'refs/heads/main' }}
+
+    - uses: ./.github/actions/setup-tools
+      with:
+        tools: ${{ inputs.tools }}

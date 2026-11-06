@@ -1,0 +1,302 @@
+name: hermetic-nightly
+
+# Each profiled CLI's latest release against the scripted model, where a CLI
+# that renamed or reshaped what pixtuoid reads in a recorded scenario turns a
+# verdict red before a user upgrades into it, and one that added a type its
+# decoders drop is filed as New.
+
+on:
+  schedule:
+    - cron: "23 7 * * *" # daily 07:23 UTC
+  workflow_dispatch:
+permissions: {}
+# Every `gh issue` call's, so the file job admits only what triage listed.
+env:
+  HERMETIC_LABEL: hermetic
+  HERMETIC_LIMIT: 1000
+# Only `build` saves (`hermetic-caches-restore-only-but-their-one-writer`).
+cache-mode: read
+
+jobs:
+  build:
+    name: hermetic build (${{ matrix.runner }})
+    # One leg per run leg (`hermetic-build-covers-every-run-os`).
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.runner }}
+    # It only warms a cache, and setup-cargo-just saves from main alone.
+    if: ${{ github.ref == 'refs/heads/main' }}
+    timeout-minutes: 45
+    cache-mode: write
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-cargo-just
+        with:
+          shared-key: hermetic
+      - run: just hermetic-build
+
+  drift:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/hermetic.yml
+    with:
+      full: true
+      cli: latest
+
+  # A release that moved on every leg becomes a bot PR. The legs ran the CLIs,
+  # so what they report and record is untrusted; `bump` holds it to a bump.
+  plan:
+    name: plan the pin bumps
+    needs: drift
+    if: ${{ !cancelled() }}
+    runs-on: macos-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      proposals: ${{ steps.plan.outputs.proposals }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-cargo-just
+        with:
+          shared-key: hermetic
+      - run: cargo build --release -q -p pixtuoid-core --example bump
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRIFT: ${{ toJSON(needs.drift.outputs) }}
+        run: |
+          gh pr list --state all --limit 200 --search 'in:title "chore(hermetic): pin"' \
+            --json title > "$RUNNER_TEMP/taken.json"
+          printf '%s' "$DRIFT" > "$RUNNER_TEMP/drift.json"
+          proposals=$(target/release/examples/bump plan "$RUNNER_TEMP/taken.json" "$RUNNER_TEMP/drift.json")
+          echo "proposals=$proposals" >> "$GITHUB_OUTPUT"
+
+  bump:
+    name: bump ${{ matrix.source }}
+    needs: plan
+    # A bare `if` is `success()`, which a failed drift leg upstream fails; one
+    # CLI's drift must not hold back another's bump.
+    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.proposals != '[]' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.proposals) }}
+    runs-on: macos-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-cargo-just
+        with:
+          shared-key: hermetic
+          # `Package::UvLocked` profiles (hermes) sync their tag's lock with uv.
+          tools: uv
+      - uses: ./.github/actions/setup-npm
+        with:
+          directory: crates/pixtuoid-core/tests/sources/hermetic/aimock
+      # The release every drift leg passed, not a `latest` published since.
+      - env:
+          SOURCE: ${{ matrix.source }}
+          RELEASE: ${{ matrix.version }}
+        run: just hermetic-bump "$SOURCE" "$RELEASE" "$RUNNER_TEMP/$SOURCE.patch"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: patch-${{ matrix.source }}
+          path: ${{ runner.temp }}/${{ matrix.source }}.patch
+          retention-days: 1
+          if-no-files-found: ignore
+
+  check:
+    name: check the bump patches
+    needs: [plan, bump]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.proposals != '[]' }}
+    runs-on: macos-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      approved: ${{ steps.check.outputs.approved }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-cargo-just
+        with:
+          shared-key: hermetic
+      # Built before any patch is on the runner, outside the workspace.
+      - run: cargo build --release -q -p pixtuoid-core --example bump
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: patch-*
+          path: ${{ runner.temp }}/patches
+          merge-multiple: true
+      - id: check
+        env:
+          PROPOSALS: ${{ needs.plan.outputs.proposals }}
+        run: |
+          printf '%s' "$PROPOSALS" > "$RUNNER_TEMP/proposals.json"
+          approved=$(target/release/examples/bump check "$RUNNER_TEMP/proposals.json" "$RUNNER_TEMP/patches")
+          echo "approved=$approved" >> "$GITHUB_OUTPUT"
+
+  # Holds the bot's write token, so it runs nothing from the tree
+  # (`bot-publish-runs-no-tree-code`).
+  publish:
+    name: open the bump PR for ${{ matrix.source }}
+    needs: check
+    if: ${{ !cancelled() && needs.check.result == 'success' && github.ref == 'refs/heads/main' && needs.check.outputs.approved != '[]' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.check.outputs.approved) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: {}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: patch-${{ matrix.source }}
+          path: ${{ runner.temp }}
+      - env:
+          SOURCE: ${{ matrix.source }}
+        run: git apply "$RUNNER_TEMP/$SOURCE.patch"
+      # An App token, because a GITHUB_TOKEN PR starts no CI.
+      - id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_APP_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          branch: ${{ matrix.branch }}
+          delete-branch: true
+          add-paths: ${{ join(matrix.paths, ',') }}
+          sign-commits: true
+          commit-message: ${{ matrix.title }}
+          title: ${{ matrix.title }}
+          body: "${{ matrix.source }}'s latest release passed every hermetic scenario each OS runs, re-recorded here (`hermetic-nightly.yml`). A session reads the whole diff, fixtures included, then queues it."
+
+  # The issues' rules run here, in tested Rust (`hermetic::issues`), with a
+  # read-only token; `file` only carries the plan out.
+  triage:
+    name: plan the hermetic issues
+    needs: drift
+    # A dispatch on a branch is a pre-merge proof, not the nightly's verdict.
+    # A clean night closes issues, so this plans whatever the legs reported,
+    # failed or not.
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+    runs-on: macos-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-cargo-just
+        with:
+          shared-key: hermetic
+      # Built before any leg's verdicts are on the runner, outside the workspace.
+      - run: cargo build --release -q -p pixtuoid-core --example issues --example hermetic
+      # The unprofiled CLIs' latest releases, which no leg installs.
+      - run: target/release/examples/hermetic --freshness >"$RUNNER_TEMP/freshness.json"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: ${{ needs.drift.outputs.verdicts-stem }}*
+          path: ${{ runner.temp }}/verdicts
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          DRIFT: ${{ toJSON(needs.drift.outputs) }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh issue list --label "$HERMETIC_LABEL" --state all --limit "$HERMETIC_LIMIT" \
+            --json number,state,body >"$RUNNER_TEMP/issues.json"
+          printf '%s' "$DRIFT" >"$RUNNER_TEMP/drift.json"
+          target/release/examples/issues plan "$RUNNER_TEMP/drift.json" "$RUNNER_TEMP/issues.json" \
+            "$RUNNER_TEMP/verdicts" "$RUNNER_TEMP/freshness.json" "$RUN_URL" >"$RUNNER_TEMP/plan.json"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: hermetic-issues-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/plan.json
+          retention-days: 1
+          if-no-files-found: error
+
+  file:
+    name: file the hermetic issues
+    needs: triage
+    if: ${{ !cancelled() && needs.triage.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: hermetic-issues-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: File the planned issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          # Every action is tried: one gh error (a rate limit) leaves the rest
+          # filed, and the step red, naming what it could not do.
+          failed=0
+          # The plan is the triage build's output: it acts only on an issue with a
+          # marker line (`hermetic::issues::Subject::of`), and opens one led by one.
+          markers=(--arg source '<!-- hermetic-source: ' --arg leg '<!-- hermetic-leg: ' --arg end ' -->')
+          # shellcheck disable=SC2016 # jq's own variables
+          is_marker='def is_marker: gsub("^\\s+|\\s+$"; "") | (startswith($source) or startswith($leg)) and endswith($end);'
+          gh issue list --label "$HERMETIC_LABEL" --state all --limit "$HERMETIC_LIMIT" \
+            --json number,body >"$RUNNER_TEMP/labelled.json" ||
+            { echo "::error::could not list the hermetic issues"; failed=1; }
+          count=$(jq '.actions | length' plan.json)
+          for ((i = 0; i < count; i++)); do
+            action=$(jq -c ".actions[$i]" plan.json)
+            jq -r '.body' <<<"$action" >"$RUNNER_TEMP/body.md"
+            number=$(jq -r '.number // empty' <<<"$action")
+            what=$(jq -r '.do' <<<"$action")
+            if [[ $what == open ]]; then
+              jq -e "${markers[@]}" "$is_marker"' .body | split("\n")[0] | is_marker' <<<"$action" >/dev/null
+            else
+              jq -e "${markers[@]}" --arg n "$number" "$is_marker"' any(.[]; (.number | tostring) == $n and (.body | split("\n") | any(is_marker)))' \
+                "$RUNNER_TEMP/labelled.json" >/dev/null
+            fi || {
+              echo "::error::refused to $what issue ${number:-$(jq -r '.title' <<<"$action")}: no marker of the planner's"
+              failed=1
+              continue
+            }
+            case $what in
+            open) gh issue create --title "$(jq -r '.title' <<<"$action")" --label "$HERMETIC_LABEL" --body-file "$RUNNER_TEMP/body.md" ;;
+            comment) gh issue comment "$number" --body-file "$RUNNER_TEMP/body.md" ;;
+            reopen) gh issue reopen "$number" && gh issue comment "$number" --body-file "$RUNNER_TEMP/body.md" ;;
+            close) gh issue comment "$number" --body-file "$RUNNER_TEMP/body.md" && gh issue close "$number" ;;
+            *) false ;;
+            esac || { echo "::error::could not $what issue ${number:-$(jq -r '.title' <<<"$action")}"; failed=1; }
+          done
+          while IFS= read -r leg; do
+            echo "::error::$leg"
+            failed=1
+          done < <(jq -r '.lost[]' plan.json)
+          exit "$failed"

@@ -1,0 +1,78 @@
+name: deploy site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Least-privilege: the build job runs third-party code (npm postinstall
+# scripts, withastro/action) and must not hold a token that can publish the
+# site, so only the deploy job carries the Pages-publish + OIDC scopes.
+permissions:
+  contents: read
+
+# one deploy at a time; don't cancel an in-flight publish
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # A cold gen-demos (release build plus encodes) on top of a cold gen-wasm.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # the displayed version is the latest release TAG; a shallow tag-less
+          # checkout silently falls back to Cargo.toml
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup-npm
+        with:
+          directory: site
+        id: site-node
+      # The one rust-cache for gen-demos and gen-wasm
+      # (`site-build-composites-leave-rust-cache-to-the-job`).
+      - uses: ./.github/actions/setup-cargo-just
+        with:
+          targets: wasm32-unknown-unknown
+          shared-key: site
+      # Before the build: astro.config.mjs asserts each demo exists.
+      - uses: ./.github/actions/gen-demos
+      - uses: ./.github/actions/gen-wasm
+      - uses: withastro/action@3eafd002e65cc31b4f0eae0bb05450d521562247 # v6.1.3
+        # the ticker's build-time merged-PR fetch: unauthenticated quota on
+        # shared runner IPs is routinely exhausted -> silent canned-reel fallback
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          path: ./site
+          node-version: ${{ steps.site-node.outputs.node-version }}
+          # DON'T re-enable the action's Astro build cache: its bare
+          # `astro-cache-<os>-` restore-key prefix means a deploy that once
+          # rendered /architecture EMPTY caches that empty <Content /> and every
+          # later deploy serves it back as a cache HIT, never re-rendering the
+          # ```mermaid block. Cost of `false` is a cold content-layer rebuild.
+          cache: false
+          # PIN npm: bypass the action's lockfile sniff. #680 deployed an EMPTY
+          # /architecture when the sniff picked another manager and installed a
+          # tree package-lock.json never pinned.
+          package-manager: npm
+          # Assert every doc page rendered a body IN the action's own context,
+          # before it uploads: a doc's <Content /> can collapse to an empty
+          # <article> WITHOUT erroring `astro build` (#680).
+          build-cmd: npm run build && npm run check:docs
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
