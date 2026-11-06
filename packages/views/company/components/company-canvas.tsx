@@ -29,16 +29,28 @@ export interface CompanyStage {
 const FIGURE_HALF_WIDTH = 8;
 const FIGURE_HEIGHT = 24;
 
+/** The issue a worker's tooltip names: its title and its status. */
+export interface CompanyTagDetail {
+  title: string;
+  status: string;
+}
+
+interface TagProps {
+  tagName: (key: string) => string;
+  tagDetail: (key: string) => CompanyTagDetail | null;
+}
+
 /**
  * The pixtuoid company. The engine runs in a worker that owns the canvas; this
  * component sends it the sessions and places the tags the worker reports above
  * each seated worker's head. A session is a worker at a desk, and its tag names
- * the issue's status. The company fills the page edge to edge: the worker lays
- * the floor out for the page's own shape.
+ * the worker. Hovering a tag shows the issue the worker is on. The company fills
+ * the page edge to edge: the worker lays the floor out for the page's own shape.
  */
 export function CompanyCanvas({
   sessions,
-  tagText,
+  tagName,
+  tagDetail,
   onPick,
   onMove,
   roomNames,
@@ -47,8 +59,10 @@ export function CompanyCanvas({
   children,
 }: {
   sessions: readonly WorkerSession[];
-  /** The text over a worker's head: its issue's status. */
-  tagText: (key: string) => string;
+  /** The name over a worker's head. */
+  tagName: (key: string) => string;
+  /** The issue a worker's tooltip names, or null when it has none. */
+  tagDetail: (key: string) => CompanyTagDetail | null;
   /** A click on a tag: the worker's issue. */
   onPick: (key: string) => void;
   /** A click on a worker's figure: open its panel. */
@@ -74,8 +88,8 @@ export function CompanyCanvas({
   const unitsRef = useRef(units);
   unitsRef.current = units;
   // The worker's callbacks and the tags read the latest props, so they never restart the company.
-  const latest = useRef({ tagText, onPick, onMove });
-  latest.current = { tagText, onPick, onMove };
+  const latest = useRef({ tagName, tagDetail, onPick, onMove });
+  latest.current = { tagName, tagDetail, onPick, onMove };
 
   // The worker starts once per mount. Its canvas is created here because a canvas can move to a worker only once.
   useEffect(() => {
@@ -146,15 +160,12 @@ export function CompanyCanvas({
     workerRef.current?.postMessage({ type: "sessions", sessions: [...sessions] } satisfies ToWorker);
   }, [sessions]);
 
-  // A status change re-words the tags at once, without waiting for the worker to report a move.
+  // A change of issue re-words the tags at once, without waiting for the worker to report a move.
   useEffect(() => {
     const tags = tagsRef.current;
     if (!tags) return;
-    for (const el of tags.querySelectorAll<HTMLButtonElement>("button")) {
-      const text = tagText(el.dataset.key ?? "");
-      if (el.textContent !== text) el.textContent = text;
-    }
-  }, [tagText]);
+    for (const el of tags.querySelectorAll<HTMLButtonElement>("button")) fillTag(el, { tagName, tagDetail });
+  }, [tagName, tagDetail]);
 
   // A click on a figure opens its worker's issue. The figure hangs below its tag, so the nearest tag above the click wins.
   const pickFigure = (event: MouseEvent<HTMLDivElement>) => {
@@ -221,12 +232,31 @@ export function CompanyCanvas({
   );
 }
 
+/** Writes a tag's name and its tooltip. The tooltip is hidden unless there is an issue to show. */
+function fillTag(el: HTMLButtonElement, props: TagProps): void {
+  const key = el.dataset.key ?? "";
+  const name = el.querySelector<HTMLElement>("[data-tag-name]");
+  const text = props.tagName(key);
+  if (name && name.textContent !== text) name.textContent = text;
+  const tooltip = el.querySelector<HTMLElement>("[data-tag-tooltip]");
+  if (!tooltip) return;
+  const detail = props.tagDetail(key);
+  tooltip.style.display = detail ? "" : "none";
+  const title = document.createElement("span");
+  title.className = "block font-semibold";
+  title.textContent = detail?.title ?? "";
+  const status = document.createElement("span");
+  status.className = "block opacity-75";
+  status.textContent = detail?.status ?? "";
+  tooltip.replaceChildren(title, status);
+}
+
 /** Places one tag per labelled worker, making a button the first time a worker is seen. */
 function placeTags(
   tags: HTMLDivElement,
   labels: readonly CompanyLabel[],
   units: CompanyUnits,
-  props: { tagText: (key: string) => string; onPick: (key: string) => void; onMove: (key: string) => void },
+  props: TagProps & { onPick: (key: string) => void; onMove: (key: string) => void },
 ): void {
   const buttons = new Map<string, HTMLButtonElement>();
   for (const el of tags.querySelectorAll<HTMLButtonElement>("button")) buttons.set(el.dataset.key ?? "", el);
@@ -238,10 +268,20 @@ function placeTags(
       el = document.createElement("button");
       el.type = "button";
       el.dataset.key = label.key;
-      el.textContent = props.tagText(label.key);
       el.addEventListener("click", () => props.onPick(label.key));
+      // The tooltip is a child of the tag, so the tag's hover shows it. Screen readers get the name alone.
       el.className =
-        "pointer-events-auto absolute left-0 top-0 -translate-x-1/2 -translate-y-full cursor-pointer whitespace-nowrap rounded-[3px] bg-white/90 px-2 py-0.5 text-micro font-semibold text-[#2c2418] shadow-sm";
+        "group pointer-events-auto absolute left-0 top-0 -translate-x-1/2 -translate-y-full cursor-pointer whitespace-nowrap rounded-[3px] bg-white/90 px-2 py-0.5 text-micro font-semibold text-[#2c2418] shadow-sm";
+      const name = document.createElement("span");
+      name.dataset.tagName = "";
+      el.appendChild(name);
+      const tooltip = document.createElement("span");
+      tooltip.dataset.tagTooltip = "";
+      tooltip.setAttribute("aria-hidden", "true");
+      tooltip.className =
+        "pointer-events-none absolute bottom-full left-1/2 mb-1 hidden w-max max-w-[240px] -translate-x-1/2 whitespace-normal rounded-[3px] bg-[#2c2418] px-2 py-1 text-micro font-normal text-[#fff8ea] shadow-md group-hover:block";
+      el.appendChild(tooltip);
+      fillTag(el, props);
       tags.appendChild(el);
       buttons.set(label.key, el);
     }
