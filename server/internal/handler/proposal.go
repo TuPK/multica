@@ -984,6 +984,21 @@ func (h *Handler) publishProposalDecision(ctx context.Context, userID, prefix st
 		// enqueues the run, attributed to the deciding member.
 		h.triggerTasksForComment(ctx, res.Issue, comment, nil, "member", userID, userID, nil, commentSteerRequest{})
 	}
+
+	// Issues that were blocked waiting for this decision are released, and their
+	// assignee is woken by the comment, as for the note above.
+	for _, r := range res.Resumed {
+		h.publishProposalIssueUpdated(ctx, wsUUID, prefix, "member", userID, r.Issue, r.PrevStatus)
+		h.publish(protocol.EventCommentCreated, workspaceID, "member", userID, map[string]any{
+			"comment":             commentToResponse(r.Comment, nil, nil),
+			"issue_title":         r.Issue.Title,
+			"issue_assignee_type": textToPtr(r.Issue.AssigneeType),
+			"issue_assignee_id":   uuidToPtr(r.Issue.AssigneeID),
+			"issue_status":        r.Issue.Status,
+			"issue_revision":      r.Issue.Revision,
+		})
+		h.triggerTasksForComment(ctx, r.Issue, r.Comment, nil, "member", userID, userID, nil, commentSteerRequest{})
+	}
 }
 
 // alreadyDecidedMessage says who decided a proposal, for the second decision

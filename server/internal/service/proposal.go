@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strings"
 	"time"
 
@@ -528,6 +529,9 @@ type ProposalDecideResult struct {
 	// Project and Kickoff are set when an approval hands off to a squad.
 	Project *db.Project
 	Kickoff *db.Issue
+	// Resumed lists the blocked issues this decision released: the ones the
+	// proposal cites as evidence. Empty when none was waiting.
+	Resumed []ProposalResumedIssue
 	// prev and prevIssue are the proposal and its issue before the decision, kept
 	// so finishSettle can revert it when the kickoff fails.
 	prev      db.Proposal
@@ -709,6 +713,7 @@ func (s *ProposalService) finishSettle(ctx context.Context, p ProposalDecidePara
 		}
 		result.Kickoff = &kickoff
 	}
+	result.Resumed = s.resumeWaitingIssues(ctx, p, result)
 	s.recordDecision(ctx, p, result)
 	return result, nil
 }
@@ -1102,4 +1107,99 @@ func (s *ProposalService) revertDecision(ctx context.Context, proposal db.Propos
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+// ProposalResumedIssue is a blocked issue released by a decision: the issue after
+// the move, its status before, and the comment that wakes its assignee.
+type ProposalResumedIssue struct {
+	Issue      db.Issue
+	PrevStatus string
+	Comment    db.Comment
+}
+
+var issueMentionPattern = regexp.MustCompile(`mention://issue/([0-9a-fA-F-]{36})`)
+
+// resumeWaitingIssues releases the issues that were blocked waiting for this
+// decision. A squad files a proposal and leaves the issue it needs the answer
+// for blocked, citing that issue as evidence; once the boss decides, nobody else
+// would move it. Each blocked issue the proposal cites goes back to its start
+// status, with a comment mentioning its assignee (the leader for a squad) so the
+// ordinary mention path starts the run. The decision has already committed, so a
+// failure is logged and leaves that issue for the squad leader's blocked-work check.
+func (s *ProposalService) resumeWaitingIssues(ctx context.Context, p ProposalDecideParams, res ProposalDecideResult) []ProposalResumedIssue {
+	ctx = context.WithoutCancel(ctx)
+	q := s.Issues.Queries
+	approved := p.Decision == ProposalDecisionApprove
+	seen := map[string]struct{}{util.UUIDToString(res.prevIssue.ID): {}}
+	var resumed []ProposalResumedIssue
+	for _, m := range issueMentionPattern.FindAllStringSubmatch(res.prevIssue.Description.String, -1) {
+		if _, dup := seen[m[1]]; dup {
+			continue
+		}
+		seen[m[1]] = struct{}{}
+		id, err := util.ParseUUID(m[1])
+		if err != nil {
+			continue
+		}
+		waiting, err := q.GetIssueInWorkspace(ctx, db.GetIssueInWorkspaceParams{ID: id, WorkspaceID: p.WorkspaceID})
+		if err != nil || waiting.Status != "blocked" {
+			continue
+		}
+		mention := s.assigneeMention(ctx, q, p.WorkspaceID, waiting)
+		if mention == "" {
+			continue
+		}
+		start := waiting.RunStartStatus
+		if start == "" {
+			start = "todo"
+		}
+		moved, err := q.UpdateIssueStatus(ctx, db.UpdateIssueStatusParams{ID: waiting.ID, WorkspaceID: p.WorkspaceID, Status: start})
+		if err != nil {
+			slog.Warn("proposal decision: could not release a blocked issue",
+				"issue_id", m[1], "error", err)
+			continue
+		}
+		verdict := "The boss approved"
+		follow := "The decision you were waiting for is made. Resume now and finish the work; do not ask again."
+		if !approved {
+			verdict = "The boss rejected"
+			follow = "The decision you were waiting for is a no. Take another route and finish the work; do not ask again."
+		}
+		content := fmt.Sprintf("%s %s the proposal [%s](mention://issue/%s). %s", mention, verdict, res.Issue.Title, util.UUIDToString(res.Issue.ID), follow)
+		if note := strings.TrimSpace(p.Note); note != "" {
+			content += "\n\nNote from the boss: " + note
+		}
+		row, err := q.CreateComment(ctx, db.CreateCommentParams{
+			ID: dbid.NewV7(), IssueID: moved.ID, WorkspaceID: p.WorkspaceID,
+			AuthorType: "member", AuthorID: p.DeciderID, Content: content, Type: "comment",
+		})
+		if err != nil {
+			slog.Warn("proposal decision: could not comment on a released issue", "issue_id", m[1], "error", err)
+			continue
+		}
+		resumed = append(resumed, ProposalResumedIssue{Issue: moved, PrevStatus: waiting.Status, Comment: row.Comment()})
+	}
+	return resumed
+}
+
+// assigneeMention is the mention markdown that wakes an issue's assignee: the
+// agent, or the leader of the squad. Empty when nothing can be woken.
+func (s *ProposalService) assigneeMention(ctx context.Context, q *db.Queries, workspaceID pgtype.UUID, issue db.Issue) string {
+	agentID := issue.AssigneeID
+	switch issue.AssigneeType.String {
+	case "agent":
+	case "squad":
+		squad, err := q.GetSquadInWorkspace(ctx, db.GetSquadInWorkspaceParams{ID: issue.AssigneeID, WorkspaceID: workspaceID})
+		if err != nil {
+			return ""
+		}
+		agentID = squad.LeaderID
+	default:
+		return ""
+	}
+	agent, err := q.GetAgentInWorkspace(ctx, db.GetAgentInWorkspaceParams{ID: agentID, WorkspaceID: workspaceID})
+	if err != nil {
+		return ""
+	}
+	return fmt.Sprintf("[@%s](mention://agent/%s)", agent.Name, util.UUIDToString(agent.ID))
 }

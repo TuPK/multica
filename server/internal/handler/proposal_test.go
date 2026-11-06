@@ -686,3 +686,56 @@ func TestDecideProposal_Authorization(t *testing.T) {
 		testutil.Call(t, testHandler.DecideProposal, asUser(decideRequest(p.ID, body), admin)).Want(http.StatusOK)
 	})
 }
+
+func TestDecideProposal_ReleasesTheBlockedIssueItCites(t *testing.T) {
+	for _, decision := range []string{"approve", "reject"} {
+		t.Run(decision, func(t *testing.T) {
+			fx := newProposalTestFixture(t)
+			blocked := dbfx.Issue(t, fx.title("waiting "+decision), testutil.Cols{
+				"number":        time.Now().UnixNano()%1000000000 + 1000000,
+				"status":        "blocked",
+				"assignee_type": "agent",
+				"assignee_id":   fx.LeaderID,
+			})
+			p := fx.fileProposal(t, "cites "+decision, map[string]any{
+				"evidence": []string{"mention://issue/" + blocked},
+			})
+
+			testutil.Call(t, testHandler.DecideProposal, decideRequest(p.ID, map[string]any{"decision": decision, "note": "Proceed."})).
+				Want(http.StatusOK)
+
+			var status, content string
+			dbfx.QueryRow(t, `SELECT status FROM issue WHERE id = $1`, blocked).Scan(&status)
+			if status != "todo" {
+				t.Errorf("blocked issue status = %s, want todo", status)
+			}
+			dbfx.QueryRow(t, `SELECT content FROM comment WHERE issue_id = $1`, blocked).Scan(&content)
+			wantMention := fmt.Sprintf("[@%s](mention://agent/%s)", fx.LeaderName, fx.LeaderID)
+			if !strings.HasPrefix(content, wantMention) || !strings.Contains(content, "Proceed.") {
+				t.Errorf("comment = %q, want it to mention the assignee and carry the note", content)
+			}
+			if n := dbfx.Count(t, `SELECT count(*) FROM agent_task_queue WHERE issue_id = $1 AND status IN ('queued','dispatched')`, blocked); n != 1 {
+				t.Errorf("queued runs on the released issue = %d, want 1", n)
+			}
+		})
+	}
+}
+
+func TestDecideProposal_LeavesACitedIssueThatIsNotBlocked(t *testing.T) {
+	fx := newProposalTestFixture(t)
+	working := dbfx.Issue(t, fx.title("working"), testutil.Cols{
+		"number": time.Now().UnixNano()%1000000000 + 1000000,
+		"status": "in_progress", "assignee_type": "agent", "assignee_id": fx.LeaderID,
+	})
+	p := fx.fileProposal(t, "cites working", map[string]any{"evidence": []string{"mention://issue/" + working}})
+	testutil.Call(t, testHandler.DecideProposal, decideRequest(p.ID, map[string]any{"decision": "approve"})).Want(http.StatusOK)
+
+	var status string
+	dbfx.QueryRow(t, `SELECT status FROM issue WHERE id = $1`, working).Scan(&status)
+	if status != "in_progress" {
+		t.Errorf("an issue that was not blocked moved to %s", status)
+	}
+	if n := dbfx.Count(t, `SELECT count(*) FROM comment WHERE issue_id = $1`, working); n != 0 {
+		t.Errorf("an issue that was not blocked got %d comments", n)
+	}
+}
