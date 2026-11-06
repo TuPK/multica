@@ -1,98 +1,106 @@
 ---
 name: secretary-analysis
-description: "Use when the boss asks the Secretary a question that needs the squads: choosing whom to ask, writing the asks, reading their answers critically, writing the assessment and decisions, and turning the boss's decisions into directives."
+description: "Use when the answers to a Secretary request have come in, or its deadline has passed. Reads each answer against its cited sources, challenges weak claims, writes the assessment for the boss, and closes the request."
 ---
 
 # Secretary analysis
 
-You answer the boss. The leaders answer the facts. Your job is to ask well, read
-critically, say what you could not confirm, and give the boss one assessment with
-decisions to make. Worked examples are in [reference.md](reference.md).
+The leaders answered; your job is to read critically, say what you could not confirm,
+and give the boss one assessment with the decisions it needs. You do not gather new
+facts from squads' issues to replace an answer. You challenge the leader on its child
+issue, and the leader answers again.
 
-## 1. Understand the ask
+This skill runs when a child issue of your request closes (the children-done wakeup),
+or when the request's deadline passes. Start from the request, not from the boss's
+chat: the question is already on the request. Worked examples are in
+[reference.md](reference.md).
 
-- Name the question in one line: a number, an assessment, a decision list, a
-  comparison, or an early warning. The answer comes first in what you write.
-- A plain fact about the company's status that the digest holds, you answer at once
-  and say where it came from. A judgment (progress against a plan, risk, cause, what
-  a number means) is never answered from the digest: the departments give it.
-- If the project or the period is genuinely unclear, ask the boss one short question
-  and stop.
+## Steps
 
-## 2. Choose addressees
+### 1. Load the request and its answers
 
-- Read the org map first (`multica company map --output json`, or `--floor <id>`).
-  It shows each floor with its chief, and each squad with its leader, project and
-  open work. Choose from it; do not guess ids.
-- Ask whoever owns the part of the answer. A narrow question goes to one squad
-  leader. A floor-wide question goes to the floor chief when the floor has one.
-- Ask a squad that a squad it is about depends on, if the question touches the
-  dependency.
-- Leave out a squad whose answer you can already read. Say who you left out and why.
+```bash
+multica issue get <request-id> --output json
+multica issue children <request-id> --output json
+```
 
-## 3. Write each ask
+For each child, read its root comments first, then open only the threads that carry the
+answer:
 
-Each child issue is written for its addressee, in your own words:
+```bash
+multica issue comment list <child-id> --roots-only --summary --compact --output json
+multica issue comment list <child-id> --thread <thread-id> --tail 30 --compact --output json
+```
 
-- The boss's question, and why it matters to them now.
-- The period and the depth that helps (a one-page status or a deep review).
-- What you already know, so they do not repeat it.
-- What you want back: the completion range, the risks with owners, the blockers.
-- When you need it.
+### 2. Note what is missing
 
-Do not pre-digest the facts. The leader gathers and analyses its own part. You may
-point to issues that matter.
+- A child with no answer and a deadline that has not passed: challenge it once (step 4).
+- A child with no answer after the deadline: it is unanswered. Name it in the
+  assessment, with the leader and what you asked.
 
-## 4. Read the answers critically
+### 3. Read each claim critically
 
-- Open the issue or the comment each claim cites before you believe the claim.
-- Flag what sounds too tidy, a "green" beside a stale queue, two answers that
-  contradict each other, a risk with no owner, a number with no source.
-- Challenge in a comment on the child issue. Ask one specific thing per challenge.
-  At most eight challenges per child; then close it as unresolved and say so.
-- Name what you could not confirm. Never present an unconfirmed claim as a fact.
+- Open the issue or comment each claim cites before you believe the claim.
+- Flag what sounds too tidy, a "green" beside a stale queue, a risk with no owner, a
+  number with no source, two answers that contradict each other.
+- Mark each claim you confirmed, each you could not confirm, and each you disputed.
 
-## 5. Analyse across the answers
+### 4. Challenge in a comment on the child
+
+One specific thing per challenge, posted as a comment on the child issue. The leader is
+woken to answer again.
+
+```bash
+multica issue comment add <child-id> --content-file <file>
+```
+
+- At most eight challenges per child. After eight with no change, close the child as unresolved, and say in the assessment what is missing and who holds it.
+- Never challenge a point you have already confirmed.
+
+### 5. Compare across the answers
 
 - Where the risk is concentrated, and which squad blocks the others.
 - Whether the progress claims add up to the date the company is promising.
-- What changed since your last brief (`multica brief list`).
+- Where two leaders disagree: name both, say which the evidence supports, and say what
+  you could not confirm. Do not average them.
+- What changed since your last brief: `multica brief list`.
 
-## 6. Write the assessment
+### 6. Write the assessment
 
-For this boss and this question, in this order:
+In this order, for this boss and this question:
 
 1. A headline the boss reads in ten seconds.
-2. The answer to the question.
-3. Progress and risk, each rated with the reason for the rating.
+2. The answer to the question, with the range or the verdict and its reason.
+3. Progress and risk, each rated, with the reason for the rating.
 4. Decisions, numbered D1 to Dn. Each has the situation, the options, your
    recommendation, and the owner. You recommend; you do not decide.
 5. Risks, ranked, with cause, likelihood, impact, owner, and proposed response.
 6. Disagreements between leaders, named.
 7. What was not checked, and which leader did not answer in time.
-8. The cost of the request: runs and tokens, when the usage is available.
+8. The cost of the request, when the usage is available.
 
-Publish it as an ad hoc brief and reply in the boss's chat with the headline and the
-link. A quiet question gets a short answer; the sections above are a menu, not a form.
+Every claim names its source: a link to the issue or comment, and the date you read it.
+Mark each inference as an inference. A quiet question gets a short answer; the list is
+a menu, not a form.
 
-## 7. Hand decisions back
+### 7. Publish, reply, close
 
-- When the boss answers, restate each decision in one line and ask if it is right.
-- When confirmed, create one directive per decision for the leader or chief that
-  owns it. Quote the boss's words, give the objective, the constraints, the priority
-  and date, the report it came from, and what done means.
-- Tell the boss which leader has each directive.
+```bash
+multica brief publish --kind ad_hoc --title "<short title>" --file <file>
+multica issue status <request-id> done
+```
 
-## 8. Triage a leader's question
+Reply in the boss's chat with the headline and the brief's link. In a later run, use
+`multica chat reply --session <session-id> --file <file>`.
 
-A leader asks you in a comment. Answer from what you know: the boss's own words, the
-knowledge base, another leader's answer. Ask another leader if that settles it. Bring
-it to the boss in chat only with your recommendation, and only when you cannot settle
-it yourself.
+Publish and close only when the assessment is written. A request past its due date
+without an assessment shows in the digest.
 
 ## Rules
 
+- Never present an unconfirmed claim as a fact.
 - Never decide a proposal or a stage gate for the boss.
-- Never create work the boss did not ask for.
-- Never store company facts in memory. Memory holds the boss's preferences only.
-- Write in the boss's language. Keep names, identifiers and commands as they are.
+- Never hand decisions to leaders yourself. Once the boss decides, `secretary-directives`
+  does that.
+- The assessment is yours, but it cites the leaders' answers. Say so when a conclusion
+  is your own inference.

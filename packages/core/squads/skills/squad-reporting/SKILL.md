@@ -67,7 +67,8 @@ A floor chief rolls up its leaders' answers. It does not replace them.
 
 ## Where it goes
 
-Post the answer as a comment on your child issue and close the issue. If the answer is
+Post the answer as a comment on your child issue, then close the issue. The platform refuses
+to close a child of a Secretary request until an agent has commented on it. If the answer is
 long, write a document and link it from the comment. Ask the Secretary, not the boss,
 for anything you need from the boss.
 

@@ -27,11 +27,17 @@ const skillNames = readdirSync(skillsDir, { withFileTypes: true })
   .sort();
 
 describe("starter skills", () => {
-  it("ships the four skills: three for the starter company and one for squads with goals", () => {
+  it("ships the squad skills and the built-in Secretary bundle", () => {
     expect(skillNames).toEqual([
       "business-metrics",
       "directive-execution",
       "secretary-analysis",
+      "secretary-ask",
+      "secretary-brief",
+      "secretary-directives",
+      "secretary-facts",
+      "secretary-leader-questions",
+      "secretary-router",
       "squad-reporting",
     ]);
   });

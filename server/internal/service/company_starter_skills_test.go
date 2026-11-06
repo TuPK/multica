@@ -3,6 +3,8 @@ package service
 import (
 	"strings"
 	"testing"
+
+	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
 func TestStarterSkillsForRole(t *testing.T) {
@@ -16,10 +18,10 @@ func TestStarterSkillsForRole(t *testing.T) {
 		want []string
 	}{
 		{
-			name: "the Secretary gets the analysis skill only",
+			name: "the Secretary gets its whole built-in bundle, router first",
 			card: companySquad{Key: "executive_office", Leader: "secretary"},
 			role: companyRole{Key: "secretary", Runtime: "secretary"},
-			want: []string{StarterSkillSecretaryAnalysis},
+			want: SecretarySkills,
 		},
 		{
 			name: "a squad leader gets the reporting and directive skills",
@@ -48,13 +50,13 @@ func TestStarterSkillsForRole(t *testing.T) {
 func TestIsStarterSkillConfig(t *testing.T) {
 	t.Parallel()
 	cases := map[string]bool{
-		`{"source":"starter_company"}`: true,
-		`{"source":"someone_else"}`:    false,
-		`{}`:                           false,
-		`null`:                         false,
-		``:                             false,
-		`not json`:                     false,
-		string(starterSkillConfig()):   true,
+		`{"source":"starter_company"}`:      true,
+		`{"source":"someone_else"}`:         false,
+		`{}`:                                false,
+		`null`:                              false,
+		``:                                  false,
+		`not json`:                          false,
+		string(starterSkillConfig("skill")): true,
 	}
 	for in, want := range cases {
 		if got := isStarterSkillConfig([]byte(in)); got != want {
@@ -63,7 +65,7 @@ func TestIsStarterSkillConfig(t *testing.T) {
 	}
 }
 
-// The embedded data carries the three starter skills, each with a SKILL.md whose
+// The embedded data carries every starter skill, each with a SKILL.md whose
 // frontmatter name matches its folder, a description, a body, and reference files.
 func TestStarterSkillsEmbeddedInCompanyData(t *testing.T) {
 	t.Parallel()
@@ -75,7 +77,7 @@ func TestStarterSkillsEmbeddedInCompanyData(t *testing.T) {
 	for _, sk := range data.StarterSkills {
 		byName[sk.Name] = sk
 	}
-	for _, name := range []string{StarterSkillSecretaryAnalysis, StarterSkillSquadReporting, StarterSkillDirectiveExecution} {
+	for _, name := range append([]string{StarterSkillSquadReporting, StarterSkillDirectiveExecution}, SecretarySkills...) {
 		sk, ok := byName[name]
 		if !ok {
 			t.Fatalf("starter skill %q is missing from company_template_data.json", name)
@@ -97,5 +99,63 @@ func TestSecretaryDeskTitleIsStable(t *testing.T) {
 	// Setup finds the desk by this title, so the title is part of the contract.
 	if SecretaryDeskProjectTitle != "Secretary desk" {
 		t.Fatalf("SecretaryDeskProjectTitle = %q", SecretaryDeskProjectTitle)
+	}
+}
+
+func TestSecretarySkillsAreTheBuiltInBundle(t *testing.T) {
+	t.Parallel()
+	want := []string{
+		"secretary-router",
+		"secretary-facts",
+		"secretary-ask",
+		"secretary-analysis",
+		"secretary-brief",
+		"secretary-directives",
+		"secretary-leader-questions",
+	}
+	if strings.Join(SecretarySkills, ",") != strings.Join(want, ",") {
+		t.Fatalf("SecretarySkills = %v, want %v", SecretarySkills, want)
+	}
+}
+
+func TestStarterSkillUpdateDue(t *testing.T) {
+	t.Parallel()
+	const installed = "---\nname: secretary-ask\n---\nold procedure"
+	const bundle = "---\nname: secretary-ask\n---\nnew procedure"
+
+	skill := func(content string, config []byte) db.Skill {
+		return db.Skill{Content: content, Config: config}
+	}
+	next := companyStarterSkill{Name: "secretary-ask", Content: bundle}
+
+	cases := map[string]struct {
+		existing db.Skill
+		want     bool
+	}{
+		"an unedited skill takes the newer bundle": {
+			existing: skill(installed, starterSkillConfig(installed)),
+			want:     true,
+		},
+		"a skill the boss edited keeps the boss's content": {
+			existing: skill("---\nname: secretary-ask\n---\nthe boss's own", starterSkillConfig(installed)),
+			want:     false,
+		},
+		"a skill from before fingerprints is treated as unedited": {
+			existing: skill(installed, []byte(`{"source":"starter_company"}`)),
+			want:     true,
+		},
+		"a skill the boss made under the same name is never touched": {
+			existing: skill(installed, []byte(`{"source":"someone_else"}`)),
+			want:     false,
+		},
+		"a skill already at the bundle's content needs no update": {
+			existing: skill(bundle, starterSkillConfig(bundle)),
+			want:     false,
+		},
+	}
+	for name, tc := range cases {
+		if got := starterSkillUpdateDue(tc.existing, next); got != tc.want {
+			t.Errorf("%s: starterSkillUpdateDue() = %v, want %v", name, got, tc.want)
+		}
 	}
 }

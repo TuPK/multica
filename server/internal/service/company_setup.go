@@ -182,7 +182,7 @@ func (s *CompanySetupService) Setup(ctx context.Context, in CompanySetupInput) (
 			out.Skills = append(out.Skills, skill)
 		}
 	}
-	if _, err := attachStarterSkills(ctx, q, in.WorkspaceID, secretary.ID, []string{StarterSkillSecretaryAnalysis}); err != nil {
+	if _, err := attachStarterSkills(ctx, q, in.WorkspaceID, secretary.ID, SecretarySkills); err != nil {
 		return out, err
 	}
 

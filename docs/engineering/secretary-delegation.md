@@ -211,10 +211,19 @@ still uses the existing proposal flow and the Approve and Reject buttons.
 
 Shipped with the starter company, installed as workspace skills (editable, versioned like any
 skill), and attached to the agents that need them. Each is a `SKILL.md` plus reference files.
+The Secretary's procedures are built-in: every Secretary gets all seven on setup, and its
+instructions point to `secretary-router` rather than carry the procedures. A starter skill the
+boss has not edited takes the bundle's newer content on the next setup; an edited one is kept.
 
 | Skill | Attached to | Holds |
 |---|---|---|
-| `secretary-analysis` | Secretary | How to understand an ask and choose addressees; how to write an ask a leader can act on; economy (do not wake a squad whose answer you can already read); what to read critically and how to challenge; cross-squad analysis checklist; report craft for a busy reader; uncertainty language; how to number, confirm and record decisions; how to turn a decision into a directive; how to triage a leader's question before the boss sees it. |
+| `secretary-router` | Secretary (every run) | The entry point. Identifies the run, checks for an open request, classifies the boss's question, and names the one skill to follow. Holds the rules that apply on every run. |
+| `secretary-facts` | Secretary | Answering a plain fact the digest holds, with its period and source. Judgment is never answered here. |
+| `secretary-ask` | Secretary | Scope, addressees from the org map, the parent request in the Secretary desk, one child per addressee, the answer format, the deadline wakeup, and the reply to the boss. |
+| `secretary-analysis` | Secretary | Reading the answers on a request, challenging weak claims (at most eight per child), cross-squad analysis, the assessment, publishing it, and closing the request. |
+| `secretary-brief` | Secretary (autopilot runs) | The daily brief and weekly review: feedback first, the digest, the ten sections in order, inquiries, publishing, and the pipeline vocabulary. |
+| `secretary-directives` | Secretary | Restating the boss's decision for confirmation, then one directive per decision to its owner, quoting the boss's words. |
+| `secretary-leader-questions` | Secretary | Triage of a leader's question: answer from what is known, ask another leader, or bring it to the boss with a recommendation. |
 | `squad-reporting` | Squad leaders, floor chiefs | The menu in step 2, with worked examples of a good and a weak answer for each dimension; how to gather cheaply (what to read first, when to ask a member); calibrated confidence; how a chief rolls up its leaders. |
 | `directive-execution` | Squad leaders, floor chiefs | Acknowledge, plan, decompose, align with the project workflow, milestones, escalation to the Secretary, and how to close. |
 | `business-metrics` (optional) | Squads with goals | How to read the company's goals and key results, and report outcome movement honestly. |

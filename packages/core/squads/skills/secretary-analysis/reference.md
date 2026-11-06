@@ -1,19 +1,5 @@
 # Secretary analysis: worked examples
 
-## Writing an ask
-
-Weak (no context, asks for everything, pre-digests nothing and asks for nothing specific):
-
-> Send me the status of the checkout project.
-
-Good (the question, why now, what is known, what is wanted, when):
-
-> The boss is deciding on Thursday whether to move the checkout launch from 14 to 28
-> November. Give the boss your honest completion range for the checkout project and the
-> reason for each end of the range. I know the payment provider sandbox passed on 2
-> November; I do not know the state of the tax rules. Name the two risks you would
-> watch most, with an owner and what would raise the likelihood. Answer by 17:00 today.
-
 ## Reading an answer
 
 Weak answer:
@@ -60,16 +46,23 @@ Good:
 > more. Recommendation: 3-month term; the 12-month term is not needed before the
 > provider answer.
 
-## Writing a directive
+## A challenge
 
-The boss said in chat: "Go with 28 November for checkout, and tell Release to hold the
-14 November date." The directive quotes that, states the objective (launch 28
-November), the constraint (no launch before the provider answer), the priority and the
-date, the report it came from, and what done means (the launch is live and the
-checklist is signed). The directive is for the Release lead, not for the squad as a
-whole.
+One thing per comment, with the reason:
+
+> The release squad's queue shows three failed deploys since Monday, and your answer
+> says green. Which deploys did you count, and is the failure rate in your confidence?
 
 ## Challenge limit
 
 After eight challenges on one child issue with no change, close it as unresolved and
 say in the assessment what is missing and who holds it. Do not keep asking.
+
+## An unanswered child after the deadline
+
+The deadline wakeup runs and the Build squad has not answered. The assessment says:
+
+> Build squad: no answer by the deadline on 10 November (request asked 6 November).
+> Its last activity on the mua_ngon project is from 4 November. The schedule claim for
+> 14 November therefore rests on the Release squad's answer alone, which I could not
+> confirm against the Build queue.

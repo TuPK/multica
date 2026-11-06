@@ -484,19 +484,21 @@ func TestPhase2Acceptance_Bullet5_FeedbackIsRecordedAndTheSecretaryReadsIt(t *te
 		t.Fatalf("the Secretary's read does not carry the entry: %+v", entries)
 	}
 
-	src, err := os.ReadFile(filepath.Join("..", "..", "..", "packages", "core", "agents", "instruction-templates.ts"))
+	// The procedure lives in the built-in secretary-brief skill; the instructions
+	// only point every run to the router.
+	src, err := os.ReadFile(filepath.Join("..", "..", "..", "packages", "core", "squads", "skills", "secretary-brief", "SKILL.md"))
 	if err != nil {
-		t.Fatalf("read the instruction templates: %v", err)
+		t.Fatalf("read the secretary-brief skill: %v", err)
 	}
 	text := string(src)
 	const command = "multica brief feedback --recent 14d --json"
 	if !strings.Contains(text, command) {
-		t.Fatalf("the Secretary's template does not run %q", command)
+		t.Fatalf("the Secretary's brief skill does not run %q", command)
 	}
-	if !strings.Contains(text, "Record a standing preference in your memory") {
-		t.Fatal("the Secretary's template does not say to record standing preferences from feedback")
+	if !strings.Contains(text, "Record a standing preference in memory") {
+		t.Fatal("the Secretary's brief skill does not say to record standing preferences from feedback")
 	}
-	if strings.Index(text, command) > strings.Index(text, "Pull, not push") {
-		t.Fatal("the feedback read must come before the digest read in the Secretary's template")
+	if strings.Index(text, command) > strings.Index(text, "multica brief digest") {
+		t.Fatal("the feedback read must come before the digest read in the Secretary's brief skill")
 	}
 }
