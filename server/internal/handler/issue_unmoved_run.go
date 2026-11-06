@@ -24,7 +24,7 @@ const unmovedRunBrief = "Your previous run ended, but this issue is still in pro
 // try a different approach. Only an agent that is the handler of the issue's
 // current workflow step qualifies; a plain issue may legitimately stay in progress.
 func (h *Handler) reconcileUnmovedWorkflowRun(ctx context.Context, task *db.AgentTaskQueue) {
-	if task == nil || !task.IssueID.Valid || !task.AgentID.Valid || !task.StartedAt.Valid {
+	if task == nil || !task.IssueID.Valid || !task.AgentID.Valid {
 		return
 	}
 	issue, err := h.Queries.GetIssue(ctx, task.IssueID)
@@ -35,8 +35,8 @@ func (h *Handler) reconcileUnmovedWorkflowRun(ctx context.Context, task *db.Agen
 	if issue.Status != "in_progress" || issue.AssigneeType.String != "agent" || issue.AssigneeID != task.AgentID {
 		return
 	}
-	// Any write to the issue during the run means the run moved it, so the run is not unmoved.
-	if issue.UpdatedAt.Valid && issue.UpdatedAt.Time.After(task.StartedAt.Time) {
+	// The run started in a different step than the issue is in now: the run moved it.
+	if task.WorkflowStep.Valid && task.WorkflowStep.String != "" && task.WorkflowStep.String != issue.Status {
 		return
 	}
 	def, _, err := issueworkflow.ForProject(ctx, h.Queries, issue.WorkspaceID, issue.ProjectID)

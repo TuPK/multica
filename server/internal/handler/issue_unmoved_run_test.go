@@ -11,8 +11,8 @@ import (
 )
 
 // unmovedRunFixture is a delivery-workflow issue in progress for an agent, with a
-// completed run that started at `started`. The issue was last written at updatedAt.
-func unmovedRunFixture(t *testing.T, name string, updatedAt time.Time) (issue, agent string, run *db.AgentTaskQueue) {
+// completed run that started at `started`. The run started in runStep.
+func unmovedRunFixture(t *testing.T, name, runStep string) (issue, agent string, run *db.AgentTaskQueue) {
 	t.Helper()
 	seedTestCatalog(t)
 	resetDefaultWorkflow(t)
@@ -23,15 +23,15 @@ func unmovedRunFixture(t *testing.T, name string, updatedAt time.Time) (issue, a
 	started := time.Now()
 	issue = dbfx.Issue(t, name, testutil.Cols{
 		"project_id": projectID, "status": "in_progress", "assignee_type": "agent", "assignee_id": agent,
-		"updated_at": updatedAt,
 	})
 	dbfx.Task(t, agent, testutil.Cols{
 		"issue_id": issue, "runtime_id": runtimeID, "status": "completed", "started_at": started,
 	})
 	run = &db.AgentTaskQueue{
-		IssueID:   parseUUID(issue),
-		AgentID:   parseUUID(agent),
-		StartedAt: pgtype.Timestamptz{Time: started, Valid: true},
+		IssueID:      parseUUID(issue),
+		AgentID:      parseUUID(agent),
+		StartedAt:    pgtype.Timestamptz{Time: started, Valid: true},
+		WorkflowStep: pgtype.Text{String: runStep, Valid: true},
 	}
 	return issue, agent, run
 }
@@ -43,10 +43,10 @@ func issueTaskRows(t *testing.T, issue string) int {
 	return n
 }
 
-// A run that wrote nothing to its issue left the step unmoved: the assignee is
+// A run that ended in the step it started in left the issue unmoved: the assignee is
 // queued again with the brief to change approach.
 func TestUnmovedWorkflowRunRequeuesAssignee(t *testing.T) {
-	issue, _, run := unmovedRunFixture(t, "story the run left in progress", time.Now().Add(-time.Hour))
+	issue, _, run := unmovedRunFixture(t, "story the run left in progress", "in_progress")
 	before := issueTaskRows(t, issue)
 	testHandler.reconcileUnmovedWorkflowRun(context.Background(), run)
 	if after := issueTaskRows(t, issue); after != before+1 {
@@ -54,9 +54,9 @@ func TestUnmovedWorkflowRunRequeuesAssignee(t *testing.T) {
 	}
 }
 
-// A run that wrote to its issue moved it, so nothing is queued.
+// A run that started in another step moved the issue, so nothing is queued.
 func TestMovedWorkflowRunIsNotRequeued(t *testing.T) {
-	issue, _, run := unmovedRunFixture(t, "story the run moved", time.Now().Add(time.Hour))
+	issue, _, run := unmovedRunFixture(t, "story the run moved", "todo")
 	before := issueTaskRows(t, issue)
 	testHandler.reconcileUnmovedWorkflowRun(context.Background(), run)
 	if after := issueTaskRows(t, issue); after != before {
@@ -75,7 +75,6 @@ func TestUnmovedRunWithoutHandlerStepIsNotRequeued(t *testing.T) {
 	started := time.Now()
 	issue := dbfx.Issue(t, "plain issue left in progress", testutil.Cols{
 		"status": "in_progress", "assignee_type": "agent", "assignee_id": agent,
-		"updated_at": started.Add(-time.Hour),
 	})
 	run := &db.AgentTaskQueue{IssueID: parseUUID(issue), AgentID: parseUUID(agent), StartedAt: pgtype.Timestamptz{Time: started, Valid: true}}
 	before := issueTaskRows(t, issue)
