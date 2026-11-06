@@ -108,6 +108,35 @@ func (h *Handler) SecretaryAsk(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// A question to a squad's leader is a question to the squad. The leader
+	// coordinates (and skips the directory lock) only on an issue assigned to
+	// its squad; filed to the leader as a plain agent, the child would run as an
+	// ordinary task and queue behind any in-place run on the same directory.
+	for i, a := range req.Addressees {
+		if a.AgentID == "" {
+			continue
+		}
+		agentUUID, err := util.ParseUUID(a.AgentID)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("addressee %d: agent_id is not a valid id", i+1))
+			return
+		}
+		led, err := h.Queries.ListSquadsLedByAgent(r.Context(), db.ListSquadsLedByAgentParams{WorkspaceID: wsUUID, AgentID: agentUUID})
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to check the squads the addressee leads")
+			return
+		}
+		switch len(led) {
+		case 0:
+		case 1:
+			req.Addressees[i].SquadID = util.UUIDToString(led[0])
+			req.Addressees[i].AgentID = ""
+		default:
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("addressee %d leads %d squads; name the squad with squad_id", i+1, len(led)))
+			return
+		}
+	}
+
 	desk, err := service.SecretaryDeskID(r.Context(), h.Queries, wsUUID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to find the Secretary desk")

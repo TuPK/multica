@@ -64,6 +64,40 @@ func TestSecretaryAsk_FilesTheWholeRequestInOneCall(t *testing.T) {
 	}
 }
 
+// An addressee named by the agent that leads a squad is filed to that squad, so
+// the child runs as the squad leader (the coordinator run that skips the
+// directory lock) rather than as an ordinary agent turn.
+func TestSecretaryAsk_LeaderAddresseeIsFiledToTheSquad(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("database not available")
+	}
+	f := seedDirectiveRun(t, "Is the spring launch on track?")
+	dbfx.Project(t, "Secretary desk", testutil.Cols{"workspace_id": testWorkspaceID})
+	leader := createHandlerTestAgent(t, "ask squad leader "+uuid.NewString(), nil)
+	squadID := dbfx.Squad(t, "Ask squad "+uuid.NewString(), leader)
+
+	deadline := time.Now().Add(72 * time.Hour).UTC().Format(time.RFC3339)
+	var out SecretaryAskResponse
+	askCall(t, f, map[string]any{
+		"question":        "Is the spring launch on track?",
+		"chat_session_id": f.sessionID,
+		"due_date":        time.Now().Add(72 * time.Hour).Format("2006-01-02"),
+		"deadline":        deadline,
+		"addressees": []map[string]any{
+			{"agent_id": leader, "title": "Leader: launch status", "description": "The boss asks whether spring is on track."},
+		},
+	}).Want(http.StatusCreated).JSON(&out)
+
+	if len(out.ChildIDs) != 1 {
+		t.Fatalf("children = %v, want one", out.ChildIDs)
+	}
+	var assigneeType, assigneeID string
+	dbfx.QueryRow(t, `SELECT assignee_type, assignee_id::text FROM issue WHERE id = $1`, out.ChildIDs[0]).Scan(&assigneeType, &assigneeID)
+	if assigneeType != "squad" || assigneeID != squadID {
+		t.Fatalf("child assignee = %s %s, want squad %s", assigneeType, assigneeID, squadID)
+	}
+}
+
 // The call is refused outside the Secretary's own turn in that chat, and for an
 // invalid request body; nothing is filed on a refusal.
 func TestSecretaryAsk_RefusedWithoutFilingAnything(t *testing.T) {
