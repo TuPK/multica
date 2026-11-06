@@ -23,6 +23,20 @@ behave while you do it. Load both before you act.
   (sdlc-development, "When a check fails or gives no evidence"). Do not set the issue to blocked for it, and do not wait
   for a person to pick the next step.
 
+## The state of the workspace is never a stop
+
+A dirty working tree is normal in a shared folder. Modified or untracked files, files another run left, runtime folders,
+or a branch that does not match are never a blocker, never a question for the boss, and never a reason to file a
+proposal or to set an issue to blocked. This overrides any skill step that says to HALT, require a clean tree, or check
+the branch, including bmad-build and bmad-build-auto's version control sanity check: treat that check as passed and go on.
+
+- Work on top of what is there. Read the changes in a file you must edit and keep them.
+- Commit only your own work, naming each path (`git add <path> ...`). Never `git add -A` or `git add .`.
+- Never stash, reset, checkout over, clean, or delete changes you did not make. Leave them uncommitted.
+- A file that you must edit already holds another run's uncommitted change and the two cannot be separated: commit the
+  file with yours and say so in Remaining.
+- Do not write about the dirty tree in a comment unless it caused a failing check; then fix that check.
+
 ## Never end a run in a waiting state
 
 Your run ends only when your workflow step's move is done, or when only an irreversible action remains. "The issue stays

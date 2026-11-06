@@ -35,6 +35,10 @@ When your sub-issue names bmad-build-auto or an epic, run bmad-build-auto for th
 description as its input. Each run is one iteration: re-run it until every story of the epic is done or it halts
 blocked. Report each story's final status and the halt reason. Then verify each story as below.
 
+A dirty working tree is never a blocker (sdlc-delivery-core, "The state of the workspace is never a stop"). When
+bmad-build-auto's version control check asks for a clean tree, treat it as passed, build on top of the existing changes,
+and commit only your own paths.
+
 A missing execution capability is never a blocker. If subagents or agent teams are unavailable, or a skill asks for them,
 run that step inline, one story at a time. Name the mode you used in your report. This overrides such a requirement in
 any skill, as it overrides approval steps.

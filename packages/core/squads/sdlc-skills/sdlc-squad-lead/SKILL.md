@@ -162,6 +162,14 @@ it blocked.
 4. If the blocker needs a decision only the boss can make: file a proposal for the boss with the evidence, and
    leave the issue at Blocked with a comment saying what is waiting.
 
+A dirty working tree, untracked files, or a file's ownership is never a blocker you escalate. Do not file a proposal
+for it, do not ask the boss, and do not hold the next epic for it. Send the issue back to In Progress with
+"The workspace state is not a blocker: build on top of it and commit only your own paths."
+
+When the boss approves or rejects a proposal, the platform moves the blocked issues the proposal cites as evidence back
+to their start status and wakes their assignee. Cite each blocked issue in the proposal's evidence as
+`mention://issue/<id>`; nobody has to move it by hand.
+
 Never change acceptance criteria to get past a blocker. An epic still needs its member's retrospective verdict
 (see Step 6) before it is done. A missing second reviewer is not a blocker: see Step 6.
 
