@@ -1789,6 +1789,7 @@
     "new_description": "描述",
     "new_priority": "優先順序",
     "new_assign": "指派給 {{name}}",
+    "new_queue": "加入執行佇列",
     "new_cancel": "取消",
     "new_create": "建立任務",
     "new_created": "已建立 {{identifier}}",

@@ -1857,6 +1857,7 @@
     "new_description": "Description",
     "new_priority": "Priorité",
     "new_assign": "Confier à {{name}}",
+    "new_queue": "Mettre dans la file d'exécution",
     "new_cancel": "Annuler",
     "new_create": "Créer la tâche",
     "new_created": "{{identifier}} créée",

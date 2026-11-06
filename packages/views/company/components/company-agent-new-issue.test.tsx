@@ -11,6 +11,16 @@ const create = vi.hoisted(() => ({ mutate: vi.fn(), isPending: false }));
 
 vi.mock("@multica/core/issues/mutations", () => ({
   useCreateIssue: () => ({ mutate: create.mutate, isPending: create.isPending }),
+  useSetIssueRunQueue: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useBatchSetRunQueue: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+vi.mock("@multica/core/api", () => ({
+  api: { listIssues: () => Promise.resolve({ issues: [] }), previewRunQueue: () => Promise.resolve(null) },
+}));
+
+// The project picker reads the workspace query cache; the form only needs the project id it starts from.
+vi.mock("../../projects/components/project-picker", () => ({
+  ProjectPicker: ({ projectId }: { projectId: string | null }) => <button type="button">Project {projectId ?? "none"}</button>,
 }));
 
 // The real picker reads the workspace providers; the form only needs to hand it a status.

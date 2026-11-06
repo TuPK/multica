@@ -10,7 +10,8 @@ import type { Issue, RunQueueSetting } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@multica/ui/components/ui/popover";
-import { Check, Search } from "@multica/ui/icons";
+import { cn } from "@multica/ui/lib/utils";
+import { Check, ListOrdered, Search } from "@multica/ui/icons";
 import { useT } from "../../i18n";
 import { useRunQueueApply } from "./use-run-queue-apply";
 
@@ -37,10 +38,86 @@ function useWaitCandidates(query: string, excludeIds: readonly string[]) {
 }
 
 /**
- * The picker body: a search field and a list of open issues, each shown as
- * `ISSUE-ID: Title`. Selected issues are the waits; no selection means the
- * queued issues start right away.
+ * Search field and checkable list of open issues, each shown as `ISSUE-ID: Title`.
+ * `waits` is the selection; an empty selection means the queued issues start right away.
+ * Used by the queue popover and by the new-issue form, so it owns no footer or submit.
  */
+export function RunQueueWaitPicker({
+  excludeIds,
+  waits,
+  onChange,
+  autoFocus = false,
+}: {
+  /** Issues that cannot be chosen, such as the queued issue itself. */
+  excludeIds: string[];
+  waits: string[];
+  onChange: (waits: string[]) => void;
+  autoFocus?: boolean;
+}) {
+  const { t } = useT("issues");
+  const [query, setQuery] = useState("");
+  const { issues, isFetching } = useWaitCandidates(query, excludeIds);
+
+  const toggle = (id: string) =>
+    onChange(waits.includes(id) ? waits.filter((w) => w !== id) : [...waits, id]);
+
+  return (
+    <div className="flex flex-col">
+      <div className="p-2 pb-1.5">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            autoFocus={autoFocus}
+            autoComplete="off"
+            aria-label={t(($) => $.run_queue.search_label)}
+            placeholder={t(($) => $.run_queue.search_placeholder)}
+            className="h-7 pl-7 text-caption"
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.stopPropagation()}
+          />
+        </div>
+      </div>
+
+      <div role="listbox" aria-multiselectable="true" className="flex max-h-72 flex-col overflow-y-auto px-1 pb-1">
+        {issues.length === 0 && (
+          <div className="py-4 text-center text-caption text-muted-foreground">
+            {isFetching ? t(($) => $.run_queue.searching) : t(($) => $.run_queue.no_results)}
+          </div>
+        )}
+        {issues.map((issue: Issue) => {
+          const selected = waits.includes(issue.id);
+          return (
+            <button
+              key={issue.id}
+              type="button"
+              role="option"
+              aria-selected={selected}
+              onClick={() => toggle(issue.id)}
+              className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-left text-caption hover:bg-accent"
+            >
+              {/* Visual check box only: the row itself is the button. */}
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "flex size-4 shrink-0 items-center justify-center rounded-xs border",
+                  selected ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background",
+                )}
+              >
+                {selected && <Check className="size-3" />}
+              </span>
+              <span className="min-w-0 truncate">
+                <span className="font-medium tabular-nums">{issue.identifier}</span>: {issue.title}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** The popover body: the wait picker plus the apply footer. */
 function RunQueueForm({
   issueIds,
   initialWaits,
@@ -57,58 +134,13 @@ function RunQueueForm({
   disabled?: boolean;
 }) {
   const { t } = useT("issues");
-  const [query, setQuery] = useState("");
   const [waits, setWaits] = useState<string[]>(initialWaits);
-  const { issues, isFetching } = useWaitCandidates(query, issueIds);
-
-  const toggle = (id: string) =>
-    setWaits((current) => (current.includes(id) ? current.filter((w) => w !== id) : [...current, id]));
 
   return (
-    <div className="flex w-80 flex-col gap-2 p-2">
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={query}
-          autoFocus
-          autoComplete="off"
-          aria-label={t(($) => $.run_queue.search_label)}
-          placeholder={t(($) => $.run_queue.search_placeholder)}
-          className="h-7 pl-7 text-caption"
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.stopPropagation()}
-        />
-      </div>
+    <div className="flex w-80 flex-col">
+      <RunQueueWaitPicker excludeIds={issueIds} waits={waits} onChange={setWaits} autoFocus />
 
-      <div role="listbox" aria-multiselectable="true" className="flex max-h-72 flex-col overflow-y-auto">
-        {issues.length === 0 && (
-          <div className="py-4 text-center text-caption text-muted-foreground">
-            {isFetching ? t(($) => $.run_queue.searching) : t(($) => $.run_queue.no_results)}
-          </div>
-        )}
-        {issues.map((issue: Issue) => {
-          const selected = waits.includes(issue.id);
-          return (
-            <button
-              key={issue.id}
-              type="button"
-              role="option"
-              aria-selected={selected}
-              onClick={() => toggle(issue.id)}
-              className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-left text-caption hover:bg-accent aria-selected:bg-accent/60"
-            >
-              <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
-                {selected && <Check className="h-3.5 w-3.5" />}
-              </span>
-              <span className="min-w-0 truncate">
-                <span className="font-medium tabular-nums">{issue.identifier}</span>: {issue.title}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="flex items-center justify-between gap-2 border-t pt-2">
+      <div className="flex items-center justify-between gap-2 border-t px-2.5 py-2">
         <span className="text-caption text-muted-foreground">
           {waits.length === 0
             ? t(($) => $.run_queue.none_selected)
@@ -154,7 +186,7 @@ export function RunQueueControl({
         <PopoverTrigger
           render={
             <Button
-              variant={queued ? "secondary" : "ghost"}
+              variant={queued ? "brandSubtle" : "outline"}
               size="sm"
               disabled={isPending}
               className={className}
@@ -164,9 +196,10 @@ export function RunQueueControl({
             />
           }
         >
+          <ListOrdered />
           {queued ? t(($) => $.run_queue.queued) : t(($) => $.run_queue.queue)}
         </PopoverTrigger>
-        <PopoverContent align="start" className="p-0">
+        <PopoverContent align="start" className="w-80 gap-0 p-0">
           {open && (
             <RunQueueForm
               issueIds={[issue.id]}
@@ -215,7 +248,7 @@ export function BatchRunQueueControl({
         <PopoverTrigger render={<Button variant="ghost" size="sm" disabled={disabled || isPending} />}>
           {t(($) => $.run_queue.label)}
         </PopoverTrigger>
-        <PopoverContent align="center" className="p-0">
+        <PopoverContent align="center" className="w-80 gap-0 p-0">
           {open && (
             <RunQueueForm
               issueIds={issueIds}
