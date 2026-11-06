@@ -40,6 +40,30 @@ fn couch_pos(cubicle_band: &Bounds, top_margin: u16, west_clear_x: u16) -> Point
     }
 }
 
+/// The row the studio's desk rooms start on: the window band's bottom, rounded up to the
+/// coarse grid so the rooms' desks sit on its cells.
+fn studio_rooms_top(top_margin: u16) -> u16 {
+    top_margin.next_multiple_of(COARSE_CELL_SIZE)
+}
+
+/// The studio's lounge couch: centred across the floor, in the corridor below the desk rooms.
+/// The aquarium and the greeting plant stand east of the couch, so it sits
+/// [`STUDIO_LOUNGE_EAST_WEIGHT`] columns west of the floor's centre to centre the whole group.
+fn studio_couch_pos(buf_w: u16, buf_h: u16, top_margin: u16) -> Point {
+    let grid_bottom = studio_rooms_top(top_margin) + STUDIO_GRID_H;
+    Point {
+        x: buf_w / 2 - STUDIO_LOUNGE_EAST_WEIGHT,
+        y: grid_bottom + buf_h.saturating_sub(grid_bottom) / 2,
+    }
+}
+
+/// Whether a studio lounge couch at `couch_y` leaves the rooms' south doors their approach:
+/// the lounge's top, the aquarium over the couch, must stay this far below the grid.
+fn studio_lounge_clears_rooms(couch_y: u16, top_margin: u16) -> bool {
+    let grid_bottom = studio_rooms_top(top_margin) + STUDIO_GRID_H;
+    couch_y >= grid_bottom + STUDIO_LOUNGE_REACH_UP + STUDIO_LOUNGE_APPROACH
+}
+
 /// The band width that seats ONE desk: the two terms `compute_pod_desks`' x-clamp
 /// compares — the first pod's aisle half, plus the desk's blocked GROUND width (side
 /// cabinets included, so NOT `DESK_W`).
@@ -381,7 +405,11 @@ impl FloorPlan {
             meeting_rooms.push(MeetingRoom { bounds: mr, trio });
         }
         let desk_rooms = if studio {
-            studio_rooms(studio_room_w + MID_DIVIDER_W, buf_w, top_margin, buf_h)
+            studio_rooms(
+                studio_room_w + MID_DIVIDER_W,
+                super::door_x(buf_w),
+                top_margin,
+            )
         } else {
             Vec::new()
         };
@@ -475,14 +503,19 @@ pub(super) fn compute_with_seed(
     let Point {
         x: couch_x,
         y: couch_y,
-    } = couch_pos(&plan.pod_grid.band, plan.top_margin, plan.lounge_west_clear);
+    } = if plan.studio {
+        studio_couch_pos(buf_w, buf_h, plan.top_margin)
+    } else {
+        couch_pos(&plan.pod_grid.band, plan.top_margin, plan.lounge_west_clear)
+    };
     // #566: every lounge piece's padded ground ends west of the threshold column.
     let flanks = LoungeFlanks::of(couch_x);
     let lounge_fits = lounge_east_ground(Point {
         x: couch_x,
         y: couch_y,
     })
-    .is_none_or(|east| east <= door_threshold.x);
+    .is_none_or(|east| east <= door_threshold.x)
+        && (!plan.studio || studio_lounge_clears_rooms(couch_y, plan.top_margin));
     let lounge = lounge_fits.then(|| {
         place_lounge(
             Point {
@@ -573,13 +606,33 @@ pub(super) fn compute_with_seed(
     if plan.pod_grid.band.width >= ROOMY_BAND_MIN_W {
         const FICUS_WEST_OF_DOOR: u16 = 5;
         const FICUS_BELOW_TOP_MARGIN: u16 = 5;
-        plant_candidates.push(PlantItem {
-            kind: PlantKind::Ficus,
-            pos: Point {
-                x: door.x.saturating_sub(FICUS_WEST_OF_DOOR),
-                y: plan.top_margin + FICUS_BELOW_TOP_MARGIN,
-            },
-        });
+        if plan.studio {
+            // The studio's greeting plant moves into the lounge, east of its aquarium, so the
+            // whole lounge stands together in the corridor.
+            if let Some(l) = lounge {
+                // Past the aquarium, which stands on the lamp's east side when it fits there.
+                let east_edge = match l.fish_tank {
+                    Some(tank) => tank.x + furniture_def(Furniture::FishTank).visual.w / 2,
+                    None => l.floor_lamp.x + furniture_def(Furniture::FloorLamp).visual.w / 2,
+                };
+                let ficus = furniture_def(PlantKind::Ficus.furniture());
+                plant_candidates.push(PlantItem {
+                    kind: PlantKind::Ficus,
+                    pos: Point {
+                        x: east_edge + PLANT_OBSTACLE_CLEARANCE_PX + ficus.visual.w / 2,
+                        y: couch_y,
+                    },
+                });
+            }
+        } else {
+            plant_candidates.push(PlantItem {
+                kind: PlantKind::Ficus,
+                pos: Point {
+                    x: door.x.saturating_sub(FICUS_WEST_OF_DOOR),
+                    y: plan.top_margin + FICUS_BELOW_TOP_MARGIN,
+                },
+            });
+        }
         if lounge.is_some() {
             // A plant's clearance west of the side table, and its ground east
             // of the divider, or no Ficus.
@@ -1452,8 +1505,8 @@ const STUDIO_GRID_ROWS: u16 = 2;
 const STUDIO_POD_COLS: u16 = 4;
 const STUDIO_POD_ROWS: u16 = 2;
 /// The smallest buffer the studio floor lays out in: the page's own minimum.
-/// The width holds the three rooms and the left column; the height is the two
-/// rows of rooms, the lounge above them and the corridor below.
+/// The width holds the three rooms and the left column; the height is the window
+/// band, the two rows of rooms and the corridor below them.
 const STUDIO_MIN_W: u16 = 416;
 const STUDIO_MIN_H: u16 = 171;
 /// The studio's two left-column rooms are tall enough for the vertical meeting table and side chairs.
@@ -1463,14 +1516,26 @@ const STUDIO_MID_X_PCT: u16 = 20;
 /// A desk room's interior, walls to walls: a 5x2 pod and its aisles.
 const STUDIO_ROOM_W: u16 = 110;
 const STUDIO_ROOM_H: u16 = 52;
-const STUDIO_ROOM_GAP_X: u16 = 14;
+const STUDIO_ROOM_GAP_X: u16 = 6;
 const STUDIO_ROOM_GAP_Y: u16 = 12;
-/// How far below the wall band the rooms start, clear of the lounge's couch.
-const STUDIO_ROOMS_BELOW_TOP: u16 = 10;
-/// The corridor left between the rooms' south doors and the floor's bottom edge: the
-/// grid is centred between the lounge and this corridor, so a tall floor keeps the
-/// doors open.
-const STUDIO_CORRIDOR_BELOW: u16 = 12;
+const STUDIO_GRID_W: u16 =
+    STUDIO_GRID_COLS * STUDIO_ROOM_W + (STUDIO_GRID_COLS - 1) * STUDIO_ROOM_GAP_X;
+const STUDIO_GRID_H: u16 =
+    STUDIO_GRID_ROWS * STUDIO_ROOM_H + (STUDIO_GRID_ROWS - 1) * STUDIO_ROOM_GAP_Y;
+/// Clear floor the desk rooms keep east of their grid, before the elevator's door: the
+/// walkway from the elevator's threshold down the floor's east side.
+const STUDIO_ELEVATOR_WALK_W: u16 = 4;
+/// The channel kept between the product office and the grid, where the office's east door
+/// opens: a narrower one leaves no coarse cell to route through.
+const STUDIO_WEST_CHANNEL_W: u16 = 6;
+/// How far the lounge's aquarium stands above its couch's centre (`place_lounge`), plus
+/// its half-height: the lounge's top, which must clear the rooms' south doors.
+const STUDIO_LOUNGE_REACH_UP: u16 = 10;
+/// Clear floor kept between the lounge's top and the rooms' south wall, so the doors open.
+const STUDIO_LOUNGE_APPROACH: u16 = 4;
+/// How many columns west of the floor's centre the studio couch sits: the lounge's east pieces
+/// reach that far past its west ones.
+const STUDIO_LOUNGE_EAST_WEIGHT: u16 = 7;
 /// The desks of a room's pod are this far apart, edge to edge. The rows' step (desk plus
 /// gap) is a multiple of the coarse cell, so every desk in a row sits on the same grid cells.
 /// The gap between the rows is wide enough for each row's chairs, which sit south of their desks.
@@ -1493,17 +1558,28 @@ fn snap_to_coarse(v: u16) -> u16 {
     v - v % COARSE_CELL_SIZE
 }
 
-/// The six desk rooms in a 3x2 grid centred in the band, in desk order: west to east,
-/// top row first. The grid sits between the lounge and the floor's bottom edge, with a
-/// corridor below it for the rooms' south doors.
-fn studio_rooms(floor_x: u16, floor_end_x: u16, top_margin: u16, buf_h: u16) -> Vec<Bounds> {
-    let total_w = STUDIO_GRID_COLS * STUDIO_ROOM_W + (STUDIO_GRID_COLS - 1) * STUDIO_ROOM_GAP_X;
-    let grid_h = STUDIO_GRID_ROWS * STUDIO_ROOM_H + (STUDIO_GRID_ROWS - 1) * STUDIO_ROOM_GAP_Y;
-    // Centred between the product office's east wall and the floor's east edge.
-    let x0 = snap_to_coarse(floor_x + floor_end_x.saturating_sub(floor_x + total_w) / 2);
-    let top = top_margin + STUDIO_ROOMS_BELOW_TOP;
-    let floor_end = buf_h.saturating_sub(STUDIO_CORRIDOR_BELOW);
-    let y0 = snap_to_coarse(top + floor_end.saturating_sub(top + grid_h) / 2);
+/// The six desk rooms in a 3x2 grid, in desk order: west to east, top row first. The top
+/// row stands flush under the window band, and the floor below the grid is the corridor.
+/// The grid is centred between the product office and the elevator's walkway, which
+/// keeps the elevator's threshold open down the floor's east side.
+fn studio_rooms(floor_x: u16, door_x: u16, top_margin: u16) -> Vec<Bounds> {
+    let east = door_x.saturating_sub(STUDIO_ELEVATOR_WALK_W);
+    // The product office's east door opens into the channel west of the grid. Its edge is
+    // rounded up to whole coarse cells, so a wider office never narrows the channel below
+    // what the router can use.
+    let channel_end = floor_x + STUDIO_WEST_CHANNEL_W;
+    let west = channel_end.next_multiple_of(COARSE_CELL_SIZE);
+    let east_max = snap_to_coarse(east.saturating_sub(STUDIO_GRID_W)).max(west);
+    // Centred between the channel and the walkway, and held inside both.
+    let centred =
+        snap_to_coarse(channel_end + east.saturating_sub(channel_end + STUDIO_GRID_W) / 2);
+    let x0 = centred.clamp(west, east_max);
+    debug_assert!(
+        x0 + STUDIO_GRID_W <= east,
+        "the grid must leave the elevator its walkway"
+    );
+    // Rounded up, so the rooms' walls stay under the window band.
+    let y0 = studio_rooms_top(top_margin);
     let mut rooms = Vec::with_capacity(STUDIO_GRID_COLS as usize * STUDIO_GRID_ROWS as usize);
     for row in 0..STUDIO_GRID_ROWS {
         for col in 0..STUDIO_GRID_COLS {
