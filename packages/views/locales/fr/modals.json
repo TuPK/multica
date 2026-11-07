@@ -353,5 +353,13 @@
     "saving": "Enregistrement...",
     "toast_saved": "Enregistré dans {{knowledgeBase}}",
     "toast_failed": "Impossible d'enregistrer dans les connaissances"
+  },
+  "copy_parent_fields": {
+    "trigger": "Copier les champs du parent",
+    "title": "Copier les champs du parent",
+    "description": "Depuis {{identifier}}. Remplace une fois les valeurs sélectionnées ; les modifications ultérieures ne sont pas synchronisées.",
+    "apply": "Copier {{count}} champs",
+    "no_labels": "Aucune étiquette",
+    "manual_only": "Les étiquettes, la date de début et les propriétés personnalisées ne concernent que la création manuelle."
   }
 }

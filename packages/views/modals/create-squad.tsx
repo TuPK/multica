@@ -479,6 +479,7 @@ function AdditionalMembersPicker({
             nesting interactive content. Base UI injects click/keyboard/ARIA
             wiring into the rendered element. */}
         <PopoverTrigger
+          nativeButton={false}
           render={
             <div
               role="combobox"

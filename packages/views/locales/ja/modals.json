@@ -351,5 +351,13 @@
     "saving": "保存中...",
     "toast_saved": "{{knowledgeBase}} に保存しました",
     "toast_failed": "ナレッジに保存できませんでした"
+  },
+  "copy_parent_fields": {
+    "trigger": "親タスクのフィールドをコピー",
+    "title": "親タスクのフィールドをコピー",
+    "description": "{{identifier}} から選択した値を一度だけ上書きします。以降の変更は同期されません。",
+    "apply": "{{count}} 項目をコピー",
+    "no_labels": "ラベルなし",
+    "manual_only": "ラベル、開始日、カスタムプロパティは手動作成にのみ適用されます。"
   }
 }

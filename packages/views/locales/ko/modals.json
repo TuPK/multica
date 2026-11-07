@@ -351,5 +351,13 @@
     "saving": "저장 중...",
     "toast_saved": "{{knowledgeBase}}에 저장했습니다",
     "toast_failed": "지식 베이스에 저장하지 못했습니다"
+  },
+  "copy_parent_fields": {
+    "trigger": "상위 태스크 필드 복사",
+    "title": "상위 태스크 필드 복사",
+    "description": "{{identifier}}에서 선택한 값을 한 번 덮어씁니다. 이후 변경 사항은 동기화되지 않습니다.",
+    "apply": "{{count}}개 필드 복사",
+    "no_labels": "라벨 없음",
+    "manual_only": "라벨, 시작일, 사용자 지정 속성은 수동 생성에만 적용됩니다."
   }
 }

@@ -803,6 +803,8 @@ import {
   EMPTY_SHARE_LINK,
   EMPTY_SHARE_LINK_INFO,
   EMPTY_JOIN_SHARE_LINK_RESPONSE,
+  WorkspaceListItemSchema,
+  WorkspacePinnedSchema,
   type IssueView,
   type IssueViewPreference,
   type CreateIssueViewRequest,
@@ -1044,10 +1046,16 @@ function subscriberTarget(
  * explicitly, or a concurrent writer of that singleton silently redirects the
  * write to the wrong workspace.
  */
+type WorkspaceScope = string | { workspaceId: string };
+
 function workspaceHeader(
-  slug?: string,
+  scope?: WorkspaceScope,
 ): Record<string, string> | undefined {
-  return slug ? { "X-Workspace-Slug": slug } : undefined;
+  if (typeof scope === "object") {
+    // The server resolves slugs first, so suppress the ambient route slug.
+    return { "X-Workspace-Slug": "", "X-Workspace-ID": scope.workspaceId };
+  }
+  return scope ? { "X-Workspace-Slug": scope } : undefined;
 }
 
 function dingTalkGroupSearch(params: ListDingTalkGroupsParams): string {
@@ -3513,7 +3521,17 @@ export class ApiClient {
 
   // Workspaces
   async listWorkspaces(): Promise<Workspace[]> {
-    return this.fetch("/api/workspaces");
+    const raw = await this.fetch<unknown>("/api/workspaces");
+    return parseWithFallback(raw, WorkspaceListItemSchema.array(), [] as Workspace[], {
+      endpoint: "GET /api/workspaces",
+    }) as Workspace[];
+  }
+
+  async setWorkspacePinned(id: string, pinned: boolean): Promise<{ pinned_at: string | null }> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${id}/pin`, {
+      method: "PUT", body: JSON.stringify({ pinned }),
+    });
+    return parseWithFallback(raw, WorkspacePinnedSchema, { pinned_at: null }, { endpoint: "PUT /api/workspaces/{id}/pin" });
   }
 
   async getWorkspace(id: string): Promise<Workspace> {
@@ -4200,11 +4218,11 @@ export class ApiClient {
   // Chat Sessions
   async listChatSessions(
     params?: { status?: string },
-    workspaceSlug?: string,
+    workspace?: WorkspaceScope,
   ): Promise<ChatSession[]> {
     const query = params?.status ? `?status=${params.status}` : "";
     const raw: unknown = await this.fetch(`/api/chat/sessions${query}`, {
-      headers: workspaceHeader(workspaceSlug),
+      headers: workspaceHeader(workspace),
     });
     return parseWithFallback(raw, ChatSessionListSchema, EMPTY_CHAT_SESSION_LIST, {
       endpoint: "GET /api/chat/sessions",
@@ -4282,8 +4300,8 @@ export class ApiClient {
   }
 
   // Quick-agent bar: per-user pinned agents.
-  async listChatPinnedAgents(): Promise<ChatPinnedAgent[]> {
-    return this.fetch("/api/chat/pinned-agents");
+  async listChatPinnedAgents(workspace?: WorkspaceScope): Promise<ChatPinnedAgent[]> {
+    return this.fetch("/api/chat/pinned-agents", { headers: workspaceHeader(workspace) });
   }
 
   async pinChatAgent(agentId: string): Promise<ChatPinnedAgent> {
@@ -4445,12 +4463,12 @@ export class ApiClient {
     });
   }
 
-  async listPendingChatTasks(): Promise<PendingChatTasksResponse> {
-    return this.fetch(`/api/chat/pending-tasks`);
+  async listPendingChatTasks(workspace?: WorkspaceScope): Promise<PendingChatTasksResponse> {
+    return this.fetch(`/api/chat/pending-tasks`, { headers: workspaceHeader(workspace) });
   }
 
-  async hasAnyPendingChatTasks(): Promise<HasPendingChatTasksResponse> {
-    return this.fetch(`/api/chat/pending-tasks/has-any`);
+  async hasAnyPendingChatTasks(workspace?: WorkspaceScope): Promise<HasPendingChatTasksResponse> {
+    return this.fetch(`/api/chat/pending-tasks/has-any`, { headers: workspaceHeader(workspace) });
   }
 
   async markChatSessionRead(sessionId: string): Promise<void> {

@@ -262,7 +262,7 @@ func (q *Queries) ExpireProposal(ctx context.Context, arg ExpireProposalParams) 
 }
 
 const getOldestWorkspaceOwnerMember = `-- name: GetOldestWorkspaceOwnerMember :one
-SELECT id, workspace_id, user_id, role, created_at FROM member
+SELECT id, workspace_id, user_id, role, created_at, pinned_at FROM member
 WHERE workspace_id = $1 AND role = 'owner'
 ORDER BY created_at ASC, id ASC
 LIMIT 1
@@ -278,6 +278,7 @@ func (q *Queries) GetOldestWorkspaceOwnerMember(ctx context.Context, workspaceID
 		&i.UserID,
 		&i.Role,
 		&i.CreatedAt,
+		&i.PinnedAt,
 	)
 	return i, err
 }

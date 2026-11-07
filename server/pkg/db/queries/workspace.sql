@@ -1,11 +1,11 @@
 -- name: ListWorkspaces :many
--- w.* so the row is the workspace model: an explicit column list stops sqlc
--- reusing that model once the table has more columns than the list names.
-SELECT w.*
+-- w.* so the row carries every workspace column, including the ones added after
+-- an explicit list was written; pinned_at comes from the member row.
+SELECT w.*, m.pinned_at
 FROM member m
 JOIN workspace w ON w.id = m.workspace_id
 WHERE m.user_id = $1
-ORDER BY w.created_at ASC;
+ORDER BY m.pinned_at DESC NULLS LAST, w.created_at ASC;
 
 -- name: ListDaemonWorkspaces :many
 -- Daemons only need the membership set and display name to discover which
@@ -252,3 +252,9 @@ cleared_client_usage_workspace AS (
     UPDATE client_usage_daily SET workspace_id = NULL WHERE workspace_id = $1
 )
 DELETE FROM workspace WHERE workspace.id = $1;
+
+-- name: SetWorkspacePinned :one
+UPDATE member
+SET pinned_at = CASE WHEN @pinned::bool THEN COALESCE(pinned_at, now()) ELSE NULL END
+WHERE workspace_id = @workspace_id AND user_id = @user_id
+RETURNING pinned_at;

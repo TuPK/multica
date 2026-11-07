@@ -351,5 +351,13 @@
     "saving": "保存中...",
     "toast_saved": "已保存到{{knowledgeBase}}",
     "toast_failed": "无法保存到知识库"
+  },
+  "copy_parent_fields": {
+    "trigger": "复制父任务字段",
+    "title": "复制父任务字段",
+    "description": "从 {{identifier}} 复制所选字段，覆盖当前值；后续不联动。",
+    "apply": "复制所选 {{count}} 项",
+    "no_labels": "无标签",
+    "manual_only": "标签、开始日期和自定义属性仅用于手动创建。"
   }
 }

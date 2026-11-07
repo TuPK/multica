@@ -3116,7 +3116,14 @@ type CreateIssueRequest struct {
 	OriginType *string `json:"origin_type,omitempty"`
 	OriginID   *string `json:"origin_id,omitempty"`
 
-	AllowDuplicate bool `json:"allow_duplicate,omitempty"`
+	AllowDuplicate         bool `json:"allow_duplicate,omitempty"`
+	PRAutoCompleteDisabled bool `json:"pr_auto_complete_disabled,omitempty"`
+}
+
+// CreateIssueResponse echoes the atomic PR setting without expanding issue reads.
+type CreateIssueResponse struct {
+	IssueResponse
+	PRAutoCompleteDisabled bool `json:"pr_auto_complete_disabled"`
 }
 
 // UnmarshalJSON rejects duplicate object members before Go's ordinary map
@@ -3618,27 +3625,28 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, err := h.IssueService.Create(r.Context(), service.IssueCreateParams{
-		WorkspaceID:    wsUUID,
-		Title:          req.Title,
-		Description:    ptrToText(req.Description),
-		Status:         status,
-		Priority:       priority,
-		AssigneeType:   assigneeType,
-		AssigneeID:     assigneeID,
-		CreatorType:    creatorType,
-		CreatorID:      parseUUID(actualCreatorID),
-		ParentIssueID:  parentIssueID,
-		ProjectID:      projectID,
-		StartDate:      startDate,
-		DueDate:        dueDate,
-		OriginType:     originType,
-		OriginID:       originID,
-		Metadata:       originMetadata,
-		Stage:          ptrToInt4(req.Stage),
-		AttachmentIDs:  attachmentIDs,
-		LabelIDs:       labelIDs,
-		Properties:     properties,
-		AllowDuplicate: req.AllowDuplicate,
+		WorkspaceID:            wsUUID,
+		Title:                  req.Title,
+		Description:            ptrToText(req.Description),
+		Status:                 status,
+		Priority:               priority,
+		AssigneeType:           assigneeType,
+		AssigneeID:             assigneeID,
+		CreatorType:            creatorType,
+		CreatorID:              parseUUID(actualCreatorID),
+		ParentIssueID:          parentIssueID,
+		ProjectID:              projectID,
+		StartDate:              startDate,
+		DueDate:                dueDate,
+		OriginType:             originType,
+		OriginID:               originID,
+		Metadata:               originMetadata,
+		Stage:                  ptrToInt4(req.Stage),
+		AttachmentIDs:          attachmentIDs,
+		LabelIDs:               labelIDs,
+		Properties:             properties,
+		AllowDuplicate:         req.AllowDuplicate,
+		PRAutoCompleteDisabled: req.PRAutoCompleteDisabled,
 	}, service.IssueCreateOpts{
 		ActorID:          actualCreatorID,
 		AnalyticsAgentID: analyticsAgentID,
@@ -3713,7 +3721,10 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 	// understood label_ids and skip its legacy post-create attach fallback.
 	labelResponses := labelsToResponse(res.Labels)
 	resp.Labels = &labelResponses
-	writeJSON(w, http.StatusCreated, resp)
+	if req.PRAutoCompleteDisabled {
+		h.recordPRAutoCompleteActivity(r.Context(), issue, creatorType, actualCreatorID, true)
+	}
+	writeJSON(w, http.StatusCreated, CreateIssueResponse{IssueResponse: resp, PRAutoCompleteDisabled: req.PRAutoCompleteDisabled})
 }
 
 type UpdateIssueRequest struct {

@@ -351,5 +351,13 @@
     "saving": "儲存中...",
     "toast_saved": "已儲存到{{knowledgeBase}}",
     "toast_failed": "無法儲存到知識庫"
+  },
+  "copy_parent_fields": {
+    "trigger": "複製父任務欄位",
+    "title": "複製父任務欄位",
+    "description": "從 {{identifier}} 複製所選欄位，覆蓋目前值；後續不連動。",
+    "apply": "複製所選 {{count}} 項",
+    "no_labels": "無標籤",
+    "manual_only": "標籤、開始日期和自訂屬性僅用於手動建立。"
   }
 }
