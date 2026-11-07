@@ -145,7 +145,7 @@ File: `packages/core/squads/templates.ts`.
 
 ## Giai đoạn 2: server mirror và đường nâng cấp
 
-**Trạng thái: T2.1 và T2.2 xong, T2.3 xong (2026-11-07).** Đường nâng cấp là `scripts/upgrade-sdlc-squad.mjs` (dry-run mặc
+**Trạng thái: xong và đã push lên main (2026-11-07).** Đường nâng cấp là `scripts/upgrade-sdlc-squad.mjs` (dry-run mặc
 định, `--apply` để ghi) trên `packages/core/squads/upgrade.ts`; các text cũ nhận ra được lấy từ lịch sử git và nằm trong
 `sdlc-previous-texts.ts`. Dry-run trên squad mua_ngon_ecommerce: nhận ra mọi text hiện có (không text nào bị coi là tuỳ biến),
 sẽ thêm step `environment`, đổi brief của 9 step và instruction của Lead, Developer, DevOps. Chưa `--apply`. Test Go
@@ -198,6 +198,8 @@ cần so thêm cho brief và instruction).
 ---
 
 ## Giai đoạn 3: áp dụng và diễn tập
+
+**Trạng thái: đang làm.**
 
 Giai đoạn này chạy trên dữ liệu và agent thật, nên mọi bước thay đổi dữ liệu hoặc chạy agent
 cần người dùng đồng ý trước.
