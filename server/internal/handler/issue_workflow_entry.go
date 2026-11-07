@@ -484,6 +484,11 @@ func (h *Handler) isSquadRequest(ctx context.Context, issue db.Issue) bool {
 	if issue.ParentIssueID.Valid || !issue.AssigneeID.Valid {
 		return false
 	}
+	// A leader that opened the issue itself routes its own work through the
+	// steps; only a request given to the leader is held by it.
+	if issue.CreatorType == "agent" && uuidToString(issue.CreatorID) == uuidToString(issue.AssigneeID) {
+		return false
+	}
 	switch issue.AssigneeType.String {
 	case "squad":
 		return true

@@ -146,3 +146,26 @@ func runtimeIDAgent(t *testing.T, runtimeID string) string {
 	t.Helper()
 	return dbfx.Agent(t, "plain agent "+workflowTestSuffix(), runtimeID)
 }
+
+// An issue the leader opened itself is its own work, not a request handed to
+// it: a member moving it hands it to the step's handler, as it does any issue.
+func TestWorkflowHandsOffAnIssueTheLeaderCreated(t *testing.T) {
+	seedTestCatalog(t)
+	resetDefaultWorkflow(t)
+	handler := seededReadyAgentID(t)
+	var runtimeID string
+	dbfx.QueryRow(t, `SELECT runtime_id::text FROM agent WHERE id = $1`, handler).Scan(&runtimeID)
+	leader := dbfx.Agent(t, "epic leader "+workflowTestSuffix(), runtimeID)
+	dbfx.Squad(t, "epic squad "+workflowTestSuffix(), leader)
+	projectID := deliveryProject(t, "Leader-opened issue project", handler)
+
+	epic := dbfx.Issue(t, "an epic the leader opened", testutil.Cols{
+		"project_id": projectID, "status": "blocked",
+		"assignee_type": "agent", "assignee_id": leader,
+		"creator_type": "agent", "creator_id": leader,
+	})
+	updateIssueForTest(t, epic, map[string]any{"status": "in_progress"}).Want(http.StatusOK)
+	if status, assigneeType, assigneeID := issueStatusAndAssignee(t, epic); status != "in_progress" || assigneeType != "agent" || assigneeID != handler {
+		t.Fatalf("epic = (%q, %q, %q), want in_progress handed to the step's handler %q", status, assigneeType, assigneeID, handler)
+	}
+}
