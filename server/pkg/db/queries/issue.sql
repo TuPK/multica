@@ -297,6 +297,11 @@ UPDATE issue AS i SET
     project_id = changed.next_project_id,
     stage = changed.next_stage,
     duplicate_of_issue_id = changed.next_duplicate_of_issue_id,
+    -- The run queue holds backlog issues only: moving one out ends its queue
+    -- entry, because the release rule never promotes an issue that left backlog.
+    run_queued = i.run_queued AND changed.next_status = 'backlog',
+    run_after_issue_ids = CASE WHEN i.run_queued AND changed.next_status <> 'backlog'
+        THEN '{}'::uuid[] ELSE i.run_after_issue_ids END,
     revision = i.revision + changed.did_change::integer,
     last_activity_at = CASE WHEN changed.did_activity
         THEN GREATEST(COALESCE(i.last_activity_at, i.updated_at), now())
@@ -325,6 +330,10 @@ UPDATE issue AS i SET
     -- Background writers (GitHub, task recovery) go through here, so they
     -- cannot leave a pointer on a reopened issue.
     duplicate_of_issue_id = CASE WHEN $2 = 'cancelled' AND i.status = 'cancelled' THEN i.duplicate_of_issue_id ELSE NULL END,
+    -- Leaving backlog ends the run queue entry (see UpdateIssue).
+    run_queued = i.run_queued AND $2 = 'backlog',
+    run_after_issue_ids = CASE WHEN i.run_queued AND $2 <> 'backlog'
+        THEN '{}'::uuid[] ELSE i.run_after_issue_ids END,
     position = CASE WHEN i.status IS DISTINCT FROM $2 THEN (
         SELECT COALESCE(MIN(target.position), 0) - 1
         FROM issue AS target

@@ -211,3 +211,23 @@ func queuePost(t *testing.T, fn http.HandlerFunc, path, body string) *httptest.R
 	fn(w, req)
 	return w
 }
+
+// A queued issue waits in backlog only. Once someone moves it out, the queue
+// entry is over: the release rule promotes backlog issues alone, so a stale
+// run_queued would show the issue as queued for good.
+func TestStatusMoveOutOfBacklogEndsTheRunQueue(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("database not available")
+	}
+	predecessor := dbfx.Issue(t, "a predecessor still open", testutil.Cols{"status": "todo"})
+	id := queueIssue(t, "queued, then started by hand", predecessor)
+
+	updateIssueForTest(t, id, map[string]any{"status": "in_progress"}).Want(http.StatusOK)
+
+	var queued bool
+	var waits int
+	dbfx.QueryRow(t, `SELECT run_queued, cardinality(run_after_issue_ids) FROM issue WHERE id = $1`, id).Scan(&queued, &waits)
+	if queued || waits != 0 {
+		t.Fatalf("after leaving backlog run_queued = %v, waits = %d; want false, 0", queued, waits)
+	}
+}
