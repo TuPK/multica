@@ -78,6 +78,13 @@ check whose condition holds, and write the decision, and the reason for each one
 | Acceptance criteria are missing or ambiguous, or the sprint-planning readiness check has not run | Requirements readiness check | Product Analyst, `analysis` |
 | The product has a UI and no screen or state specs | UX readiness | UX Designer, `design` |
 
+**Capability preflight.** Read every epic and story once and list what the whole backlog needs that a plain agent
+runtime may not have: a hosted or preview environment, a cloud or third-party account, a private runtime, a test
+identity, a paid service. Write the table in `docs/sdlc/capabilities.md`: need, the epic that uses it, the minimum
+evidence level (sdlc-delivery-core, "Evidence ladder"), whether DevOps can build it, whether only a person can. Have
+DevOps build what it can before the epic that needs it. Ask the boss for what only a person can in one consolidated
+request (Step 7), with L2 as the default for each item the boss leaves open.
+
 ## Step 3: Create the issues, then queue them
 
 For every work item of the plan, create the issue, then queue it.
@@ -165,6 +172,11 @@ to report using `multica issue wakeup checkin`.
   evidence is a failed round. A ruling may not change an acceptance criterion or an accepted decision unless the
   Product Analyst or the Architect made it, and it may not contradict `docs/sdlc/rulings.md` or an ADR; if it does,
   create an issue for the specialist who owns the conflict instead of choosing.
+- A QA verdict of CONDITIONAL GO, or a review note, may name a check at a higher level of evidence than the acceptance
+  criteria require. That is a release condition (sdlc-delivery-core), not a new issue that blocks the epic: record it in
+  `docs/sdlc/release-conditions.md`, close the epic with it, and attach it by mention to the final QA, security and
+  release issues. Create a gap issue only for a gap that an acceptance criterion names. Never forbid the lower level
+  of evidence unless the criterion does.
 - Before each epic: read it, and add a specialist issue only if it adds an infrastructure component (DevOps), changes a
   contract or schema across epics, or adds an outside provider (Architect), or is High-risk by auth, money, personal
   data, migration, public contract, or security control (Security Reviewer, `security_review`, a threat model before the
@@ -213,6 +225,26 @@ your recommended default, and the one question. Cite each blocked issue in the p
 assignee. Leave the issue at Blocked meanwhile, and mention the requester. If the platform refuses the proposal (weekly limit),
 comment the same question on the root issue and mention the requester there; a refused proposal is not a reason to stop
 asking. Ask the person one consolidated question, never one per blocker.
+
+**Park and proceed.** An issue that waits only for a person (`capability` after the DevOps probe, `irreversible`, or a
+limit reached) is parked, and the chain goes on without it:
+
+1. Add it to `docs/sdlc/parked.md`: the issue, the reason, the question, your default, the deadline.
+2. Read `docs/planning-artifacts/epics.md` (or the plan) for the next epic that does not depend on the parked one. Queue
+   it with `multica issue queue <epic> --start-status <status>` and no `--after`, so the `in_place` chain continues. An
+   epic that does depend on the parked one stays behind it.
+3. When the person answers, take the issue off the list and resume it at its Blocked-from status.
+
+**One request for the boss.** Never file one proposal per blocker. Keep one comment on the request issue that mentions the
+boss: a table of every waiting item, your default for each, the deadline for the default, and what happens if the boss
+stays silent. Edit it as items change. A refused proposal does not stop you. After the deadline, and only in a dev or test
+setting, carry out the default (usually the next lower level of evidence) and record it in `docs/sdlc/assumptions.md`.
+Production, spending money and real users' data always wait for the boss.
+
+**Block budget.** After the third block of class `environment` or `capability` inside one epic, stop routing them one by
+one. Create one DevOps issue: build every capability that epic and the ones after it need, from the table in
+`docs/sdlc/capabilities.md`. Report in the epic's final comment: the number of blocks, their classes, the time from block
+to resume, how many needed a person, and the release conditions still open.
 
 Never set a build issue or its Epic done while a check it needs has not run; name that check as unverified in the report
 instead. Never change acceptance criteria to get past a blocker; only the Product Analyst changes one, through a ruling.

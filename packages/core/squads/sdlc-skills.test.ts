@@ -131,6 +131,24 @@ describe("built-in SDLC skills", () => {
     expect(get("sdlc-security-review")).toContain("**Required**");
   });
 
+  it("keeps the autonomy rules: evidence ladder, release conditions, park and proceed, one request", () => {
+    const get = (name: string) => SDLC_BUILTIN_SKILLS.find((s) => s.name === name)!.content;
+    const core = get("sdlc-delivery-core");
+    expect(core).toContain("## Evidence ladder");
+    expect(core).toContain("reached L2; L1 not run because");
+    expect(core).toContain("## Release conditions");
+    expect(core).toContain("Never add a gate that the acceptance criteria");
+    const lead = get("sdlc-squad-lead");
+    expect(lead).toContain("**Capability preflight.**");
+    expect(lead).toContain("**Park and proceed.**");
+    expect(lead).toContain("**One request for the boss.**");
+    expect(lead).toContain("**Block budget.**");
+    expect(lead).toContain("Never forbid the lower level");
+    expect(get("sdlc-qa-verification")).toContain("release condition");
+    expect(get("sdlc-devops-release")).toContain("**Reach L2 yourself.**");
+    expect(get("sdlc-squad-lead")).toContain("docs/sdlc/parked.md");
+  });
+
   it("gives every role skill a self-check before it reports", () => {
     for (const skill of SDLC_BUILTIN_SKILLS.filter((s) => ROLE_SKILLS.includes(s.name))) {
       expect(skill.content, skill.name).toContain("Self-check before you report");

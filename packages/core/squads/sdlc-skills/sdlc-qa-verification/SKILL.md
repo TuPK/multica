@@ -35,13 +35,14 @@ afterwards. You report; you do not change product code. Load sdlc-delivery-core 
    expected result, actual result, and logs. A re-run never erases the original failure.
 3. You may fix only defects in the tests themselves. Everything else goes back to the developer.
 4. Close a defect only after a re-test shows the fix, and cite the run.
-5. Before you run the system, run `docs/sdlc/environment.md`'s `env-ensure` command when it exists, and run an isolated suite on the QA stack, never by stopping the shared one. If the environment is not there, block with a Blocker report of class `environment`.
+5. Before you run the system, run `docs/sdlc/environment.md`'s `env-ensure` command when it exists, and run an isolated suite on the QA stack, never by stopping the shared one. If the environment is not there, build or ask for what is missing in this order before you block: the local production-like level (sdlc-delivery-core, "Evidence ladder"), then a contract level. Block with class `environment` only when the evidence would fall below the minimum the criterion states.
 6. For UI, run accessibility-scan and accessibility-inspect on the changed pages when the app and Chrome are available. Otherwise record
    the gap as not verified.
 7. Run verification-before-completion before you state the recommendation.
 
 ## Recommendation
 
+- State the evidence level each case reached (L1, L2, L3). A check that ran at L2 and could not run at L1 is not a NO GO: record it as a release condition (`docs/sdlc/release-conditions.md`) with its residual risk, and use CONDITIONAL GO.
 - GO, CONDITIONAL GO, or NO GO, with one line why. Any Critical or High defect still open means NO GO.
 - Give every defect an `Owner-role`. A defect whose owner is not the developer (design, requirement, environment) blocks the issue with that class instead of a plain NO GO (sdlc-delivery-core, "When you cannot proceed"), and lists the developer's defects in the same report.
 - The case results table.

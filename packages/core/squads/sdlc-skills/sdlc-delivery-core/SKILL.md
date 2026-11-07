@@ -116,6 +116,34 @@ administrator, a paid account, or a person's secret store is a last resort: firs
 file with mode `0600` outside the repo, an environment variable from the launcher, a local container). If only the
 heavy one works, say so as a `capability` need before anyone is told to build it.
 
+## Evidence ladder
+
+Every check has a level of evidence. Run it at the highest level you can reach, and say which level you reached.
+
+| Level | Name | Example |
+| --- | --- | --- |
+| L1 | Hosted non-production | A preview deployment with its own backend project and a test identity |
+| L2 | Local, production-like | The production build running locally, a local backend with migrations and seed data, a synthetic user |
+| L3 | Contract or simulation | Contract tests, a test DOM, a mock of an outside service |
+
+- An acceptance criterion or a ruling may name its minimum level. When it names none, the minimum is L2.
+- If L1 is out of reach, run the check at L2 and write: "reached L2; L1 not run because <reason>; residual risk:
+  <what hosted would add, such as HTTPS, CDN, CSP, real Auth>". That is a result, not a blocker.
+- Evidence below the minimum is the only reason to block on the level. Block with the class of what is missing and the
+  exact need. A check that did not run at a higher level than the minimum never makes a NO GO.
+- Never lower a minimum the criterion states, and never turn a missing level into "passed". Only a person may waive it.
+
+## Release conditions
+
+A condition that the work needs before release but that does not belong to the acceptance criteria of one epic (a
+hosted run, an account only a person has, a load test, a production check) is a **release condition**.
+
+- Write it in `docs/sdlc/release-conditions.md`: `RC-<n>`, the condition, the level it needs, why it has not run, who
+  can open it, the epic or issue it came from.
+- It never blocks an epic or its issues. The epic closes "with condition RC-<n>". The final QA, final security and
+  release issues read the list, run what is now possible, and report the rest as not verified.
+- Never add a gate that the acceptance criteria, a specialist's ruling or an owner decision do not name.
+
 ## When you cannot proceed
 
 Try the approaches in "Stop-loss and attempts" first. If the issue is still stuck, set it to blocked

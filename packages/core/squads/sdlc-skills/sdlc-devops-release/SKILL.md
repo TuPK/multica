@@ -36,13 +36,16 @@ stop or alter a stack you did not start.
 4. **Make it self-healing.** If the repo has no single idempotent command, add one (for example `scripts/env-ensure.sh` or a
    Makefile target). It checks health, brings up what is missing, and prints the result. Every role runs it first when it
    needs the running system.
-5. **Give QA its own stack.** Provide a second stack on different ports and a different project id, so an isolated suite
+5. **Reach L2 yourself.** Build the production-like local level (sdlc-delivery-core, "Evidence ladder"): a production build
+   running locally, the local backend with migrations and seed data, and a synthetic test user, with one command to start it.
+   Report L1 (hosted, a cloud account) as class `capability` only when an acceptance criterion states it as the minimum.
+6. **Give QA its own stack.** Provide a second stack on different ports and a different project id, so an isolated suite
    never has to stop the shared one.
-6. **Prove it.** Run the health check, save its output, stop the stack, and bring it up again with the one command to show it
+7. **Prove it.** Run the health check, save its output, stop the stack, and bring it up again with the one command to show it
    rebuilds. Run verification-before-completion.
-7. **Write `docs/sdlc/environment.md`:** the probe result; services and ports; the commands to start, ensure, stop and reset;
+8. **Write `docs/sdlc/environment.md`:** the probe result; services and ports; the commands to start, ensure, stop and reset;
    the QA stack; known limits.
-8. **Report** with a Ruling comment (sdlc-delivery-core) on your own issue only; never move the blocked issue yourself, the lead resumes it. Say: the state achieved, the basis, the artifacts, the resume instruction
+9. **Report** with a Ruling comment (sdlc-delivery-core) on your own issue only; never move the blocked issue yourself, the lead resumes it. Say: the state achieved, the basis, the artifacts, the resume instruction
    (the blocked issue's status and the `env-ensure` command as its Resume-check), and what is not verified.
 
 ## Mode 2: Release

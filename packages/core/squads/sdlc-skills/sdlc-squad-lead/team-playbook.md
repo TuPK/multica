@@ -71,3 +71,19 @@ Read: <artifact paths>
 Run first: <command>
 Do not change: <criteria, decisions>
 ```
+
+## Files the lead keeps
+
+| File | Content |
+| --- | --- |
+| `docs/sdlc/capabilities.md` | Capability preflight: need, epic that uses it, minimum evidence level, who can provide it |
+| `docs/sdlc/release-conditions.md` | `RC-<n>`, condition, level needed, why it has not run, who can open it, source |
+| `docs/sdlc/parked.md` | Parked issue, reason, question, default, deadline |
+
+Request for the boss, one comment that you edit in place:
+
+```
+Waiting for you (edited <time>)
+| Item | What is needed | My default if you stay silent | Default applies at |
+| ---- | -------------- | ----------------------------- | ------------------ |
+```
