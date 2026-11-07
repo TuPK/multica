@@ -127,7 +127,7 @@ export interface QuickstartOptions {
   timezone?: string;
 }
 
-function errorMessage(err: unknown): string {
+export function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : "unknown error";
 }
 
@@ -149,7 +149,7 @@ function browserTimezone(): string | undefined {
   }
 }
 
-function instructionsFor(role: SquadRoleKey): string {
+export function instructionsFor(role: SquadRoleKey): string {
   if (role in SDLC_ROLE_AGENT_INSTRUCTIONS) {
     return SDLC_ROLE_AGENT_INSTRUCTIONS[role as SdlcRoleKey];
   }
@@ -171,7 +171,7 @@ export function planQuickstartAgents(
   });
 }
 
-function workflowSteps(
+export function workflowSteps(
   steps: readonly SquadWorkflowStep[],
   agentIds: Partial<Record<SquadRoleKey, string>>,
 ): IssueWorkflowStepInput[] | null {
@@ -326,7 +326,7 @@ function sameAsBuiltin(skill: Skill, bundle: BuiltinSkill): boolean {
  * name is attached when its text already matches the built-in one, and otherwise
  * left as it is and named in the error; the squad keeps the others.
  */
-async function attachBuiltinSkills(
+export async function attachBuiltinSkills(
   client: SquadQuickstartClient,
   squadId: string,
   names: readonly string[],

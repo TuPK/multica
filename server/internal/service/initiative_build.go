@@ -28,15 +28,30 @@ const (
 	sdlcInProgressStatusKey = "in_progress"
 	sdlcQAStatusKey         = "qa"
 	sdlcQAStatusName        = "QA"
+
+	sdlcEnvironmentStatusKey = "environment"
 )
 
 // sdlcRoleAgents names the SDLC agents the workflow hands to, as the quickstart
 // names them (SQUAD_ROLES in templates.ts).
-var sdlcRoleAgents = []struct{ role, name string }{
-	{"lead", "SDLC Lead"},
-	{"developer", "SDLC Developer"},
-	{"reviewer", "SDLC Code Reviewer"},
-	{"qa", "SDLC QA Tester"},
+//
+// The first four are required to run a build. The specialists are optional: a
+// squad that has one gets its step (an unblock issue or a planning stage can be
+// handed to it), and a squad without it gets no such step, so the lead uses the
+// substitutes in the team playbook.
+var sdlcRoleAgents = []struct {
+	role, name string
+	required   bool
+}{
+	{"lead", "SDLC Lead", true},
+	{"developer", "SDLC Developer", true},
+	{"reviewer", "SDLC Code Reviewer", true},
+	{"qa", "SDLC QA Tester", true},
+	{"analyst", "SDLC Product Analyst", false},
+	{"ux", "SDLC UX Designer", false},
+	{"architect", "SDLC Architect", false},
+	{"security", "SDLC Security Reviewer", false},
+	{"devops", "SDLC DevOps", false},
 }
 
 // ErrBuildNeedsSDLCSquad: the build stage's owner is not an SDLC squad with the
@@ -132,7 +147,7 @@ func (s *InitiativeService) sdlcBuildSetup(ctx context.Context, q *db.Queries, w
 	}
 	var missing []string
 	for _, r := range sdlcRoleAgents {
-		if _, ok := agents[r.role]; !ok {
+		if _, ok := agents[r.role]; !ok && r.required {
 			missing = append(missing, r.name)
 		}
 	}
@@ -142,8 +157,10 @@ func (s *InitiativeService) sdlcBuildSetup(ctx context.Context, q *db.Queries, w
 	if err := issuestatus.Ensure(ctx, q, ws); err != nil {
 		return nil, fmt.Errorf("seed issue statuses: %w", err)
 	}
-	if err := ensureQAStatus(ctx, q, ws); err != nil {
-		return nil, err
+	for _, st := range sdlcStatusesFor(agents) {
+		if err := ensureStatus(ctx, q, ws, st); err != nil {
+			return nil, err
+		}
 	}
 	return agents, nil
 }
@@ -175,29 +192,67 @@ func (s *InitiativeService) sdlcAgentsOf(ctx context.Context, q *db.Queries, ws,
 	return out, nil
 }
 
-// ensureQAStatus makes sure the workspace has the QA status the workflow's last
-// step sits on. A status named QA of any key is used; otherwise one is created.
-func ensureQAStatus(ctx context.Context, q *db.Queries, ws pgtype.UUID) error {
+// sdlcStatus is a status the SDLC workflow sits on.
+type sdlcStatus struct {
+	key, name, description, category, color string
+}
+
+// sdlcStageStatuses are the statuses of the planning and unblock steps, by the
+// role that handles them. Stage done and Plan ready have no handler.
+var sdlcStageStatuses = []struct {
+	role string
+	sdlcStatus
+}{
+	{"analyst", sdlcStatus{"analysis", "Analysis", "Requirements work.", issuestatus.CategoryStarted, "#0ea5e9"}},
+	{"ux", sdlcStatus{"design", "Design", "UX design work.", issuestatus.CategoryStarted, "#ec4899"}},
+	{"architect", sdlcStatus{"architecture", "Architecture", "Architecture work.", issuestatus.CategoryStarted, "#6366f1"}},
+	{"reviewer", sdlcStatus{"plan_review", "Plan review", "Independent review of a plan.", issuestatus.CategoryStarted, "#f59e0b"}},
+	{"security", sdlcStatus{"security_review", "Security review", "Security review.", issuestatus.CategoryStarted, "#ef4444"}},
+	{"devops", sdlcStatus{"release_prep", "Release prep", "Packaging and release notes.", issuestatus.CategoryStarted, "#14b8a6"}},
+	{"devops", sdlcStatus{sdlcEnvironmentStatusKey, "Environment", "Builds and keeps the environment and tools running.", issuestatus.CategoryStarted, "#10b981"}},
+}
+
+var (
+	sdlcStageDoneStatus = sdlcStatus{"stage_done", "Stage done", "A planning or unblock stage that finished.", issuestatus.CategoryDone, "#22c55e"}
+	sdlcPlanReadyStatus = sdlcStatus{"plan_ready", "Plan ready", "The plan is ready; a person decides when it is done.", issuestatus.CategoryStarted, "#a855f7"}
+	sdlcQAStatus        = sdlcStatus{sdlcQAStatusKey, sdlcQAStatusName, "Verifies the change on the running system.", issuestatus.CategoryStarted, "#8b5cf6"}
+)
+
+// sdlcStatusesFor lists the statuses the workflow needs for these agents: QA,
+// the two closing statuses, and the stage status of every specialist present.
+func sdlcStatusesFor(agents map[string]pgtype.UUID) []sdlcStatus {
+	out := []sdlcStatus{sdlcQAStatus, sdlcStageDoneStatus, sdlcPlanReadyStatus}
+	for _, st := range sdlcStageStatuses {
+		if _, ok := agents[st.role]; ok {
+			out = append(out, st.sdlcStatus)
+		}
+	}
+	return out
+}
+
+// ensureStatus makes sure the workspace has a status the workflow sits on. A
+// status with the same name (any case) or the same key is used; otherwise one is created.
+func ensureStatus(ctx context.Context, q *db.Queries, ws pgtype.UUID, st sdlcStatus) error {
 	statuses, err := q.ListIssueStatusEntries(ctx, db.ListIssueStatusEntriesParams{WorkspaceID: ws})
 	if err != nil {
 		return fmt.Errorf("list issue statuses: %w", err)
 	}
-	for _, st := range statuses {
-		if strings.EqualFold(st.Name, sdlcQAStatusName) {
+	for _, have := range statuses {
+		if strings.EqualFold(have.Name, st.name) {
 			return nil
 		}
 	}
-	if _, err := q.GetIssueStatusEntryByKey(ctx, db.GetIssueStatusEntryByKeyParams{WorkspaceID: ws, Key: sdlcQAStatusKey}); err == nil {
+	if _, err := q.GetIssueStatusEntryByKey(ctx, db.GetIssueStatusEntryByKeyParams{WorkspaceID: ws, Key: st.key}); err == nil {
 		return nil
 	} else if !errors.Is(err, pgx.ErrNoRows) {
-		return fmt.Errorf("load QA status: %w", err)
+		return fmt.Errorf("load %s status: %w", st.name, err)
 	}
 	if _, err := q.CreateIssueStatusEntry(ctx, db.CreateIssueStatusEntryParams{
-		WorkspaceID: ws, Key: sdlcQAStatusKey, Name: sdlcQAStatusName,
-		Description: "Verifies the change on the running system.",
-		Category:    issuestatus.CategoryStarted, Color: "#8b5cf6", Icon: "circle",
+		WorkspaceID: ws, Key: st.key, Name: st.name,
+		Description: st.description,
+		Category:    st.category, Color: st.color, Icon: "circle",
 	}); err != nil {
-		return fmt.Errorf("create QA status: %w", err)
+		return fmt.Errorf("create %s status: %w", st.name, err)
 	}
 	return nil
 }
@@ -265,7 +320,7 @@ func sdlcSteps(agents map[string]pgtype.UUID) []issueworkflow.Step {
 		return issueworkflow.Handler{Type: issueworkflow.HandlerAgent, ID: util.UUIDToString(agents[role])}
 	}
 	none := issueworkflow.Handler{Type: issueworkflow.HandlerNone}
-	return []issueworkflow.Step{
+	return append(sdlcStageSteps(agents), []issueworkflow.Step{
 		{StatusKey: issuestatus.Backlog, Handler: none},
 		{
 			StatusKey: issuestatus.Todo, Handler: agent("developer"),
@@ -279,28 +334,72 @@ func sdlcSteps(agents map[string]pgtype.UUID) []issueworkflow.Step {
 		{
 			StatusKey: "in_review", Handler: agent("reviewer"),
 			BackStatusKey: sdlcInProgressStatusKey,
-			Instructions:  "Review the whole change for this issue against its acceptance criteria. Send it back to In Progress with the blocking findings, or pass it on to QA with your verdict. If you cannot finish the review, set the issue to blocked and comment the exact command, its error, and the fix you need.",
+			Instructions:  "Review the whole change for this issue against its acceptance criteria. Send it back to In Progress with the blocking findings, or pass it on to QA with your verdict. If you cannot finish the review, or a blocking finding is not the developer's to fix, set the issue to blocked with the blocker report from sdlc-delivery-core and give each blocking finding an Owner-role.",
 		},
 		{
 			StatusKey: sdlcQAStatusKey, Handler: agent("qa"),
 			BackStatusKey: sdlcInProgressStatusKey,
-			Instructions:  "Verify the change on the running system against the acceptance criteria. NO GO sends it back to In Progress with the defects. GO or CONDITIONAL GO finishes the issue. If you cannot run the verification (a service is down, a required check cannot run), set the issue to blocked and comment the exact command, its error, and the fix you need.",
+			Instructions:  "Verify the change on the running system against the acceptance criteria. NO GO sends it back to In Progress with the defects. GO or CONDITIONAL GO finishes the issue. Run the environment's env-ensure command first when docs/sdlc/environment.md has one. If you cannot run the verification (a service is down, a required check cannot run) or a defect is not the developer's to fix, set the issue to blocked with the blocker report from sdlc-delivery-core and give each defect an Owner-role.",
 		},
 		{
 			StatusKey: issuestatus.Blocked, Handler: agent("lead"),
 			BackStatusKey: sdlcInProgressStatusKey,
 			Instructions:  sdlcBlockedInstructions,
 		},
+	}...)
+}
+
+// sdlcStageSteps are the planning and environment steps, the ones a specialist
+// handles. They exist so the lead can hand an unblock issue to the member who
+// owns the blocker; a squad without that member has no such step. Every one
+// ends at Stage done, which counts as finished for the run queue.
+func sdlcStageSteps(agents map[string]pgtype.UUID) []issueworkflow.Step {
+	done := map[string]string{
+		"analysis":               "When the requirements, epics, or ledger in the issue are written and posted, move the issue to Stage done.",
+		"design":                 "When every screen in the issue has its states and is registered, move the issue to Stage done.",
+		"architecture":           "When the design, ADRs, and component list are committed and posted, move the issue to Stage done.",
+		"plan_review":            "Give one verdict. PASS: move the issue to Stage done. CONCERNS or FAIL: set the issue to blocked and list each gap with its id, so the squad lead can create the gap issues. Do not move it to Stage done on CONCERNS.",
+		"security_review":        "PASS: move the issue to Stage done. FAIL or NO_GO: set the issue to blocked and list each finding with its id.",
+		"release_prep":           "Move the issue to Stage done only when the report lists the version, digests, and rollback steps. Production waits for the named approval: set the issue to blocked and say what the approver must decide.",
+		sdlcEnvironmentStatusKey: "Work in Environment mode. When the environment runs, `docs/sdlc/environment.md` and the one command that rebuilds it are written, and the health output is posted, move the issue to Stage done.",
 	}
+	skill := map[string]string{
+		"analysis": "sdlc-product-analysis", "design": "sdlc-ux-design", "architecture": "sdlc-architecture",
+		"plan_review": "sdlc-code-review", "security_review": "sdlc-security-review",
+		"release_prep": "sdlc-devops-release", sdlcEnvironmentStatusKey: "sdlc-devops-release",
+	}
+	var steps []issueworkflow.Step
+	for _, st := range sdlcStageStatuses {
+		id, ok := agents[st.role]
+		if !ok {
+			continue
+		}
+		steps = append(steps, issueworkflow.Step{
+			StatusKey:     st.key,
+			Handler:       issueworkflow.Handler{Type: issueworkflow.HandlerAgent, ID: util.UUIDToString(id)},
+			NextStatusKey: sdlcStageDoneStatus.key,
+			BackStatusKey: issuestatus.Blocked,
+			Instructions:  sdlcPlanningBrief(skill[st.key], done[st.key]),
+		})
+	}
+	none := issueworkflow.Handler{Type: issueworkflow.HandlerNone}
+	return append(steps,
+		issueworkflow.Step{StatusKey: sdlcStageDoneStatus.key, Handler: none},
+		issueworkflow.Step{StatusKey: sdlcPlanReadyStatus.key, Handler: none},
+	)
+}
+
+// sdlcPlanningBrief is the brief a stage step gives its owner. Keep it the same
+// as planningBrief in packages/core/squads/templates.ts.
+func sdlcPlanningBrief(skill, done string) string {
+	return "This issue is either a planning stage of a request or an unblock ruling; its description says which. Load the sdlc-delivery-core and " + skill +
+		" skills. For a planning stage, do the work the issue names. " + done +
+		" For an unblock ruling, follow your skill's Ruling mode and end with the Ruling comment. If you cannot proceed, set the issue to blocked with the blocker report from sdlc-delivery-core."
 }
 
 // sdlcBlockedInstructions is the lead's brief for a blocked build. Without a
 // handler here, a blocked issue waits with nobody assigned to it.
-const sdlcBlockedInstructions = "This issue is blocked. Read the latest comment that says why it cannot proceed, then unblock it yourself. Do not leave it here, and do not wait for a person.\n" +
-	"1. Comment the blocker, the exact fix, the command that proves it, and every approach already tried on this issue.\n" +
-	"2. Send the issue back to In Progress with a different approach. Never repeat an approach that already failed: a different tool or command, a local stand-in for the dependency, a smaller check that proves part of the acceptance criteria, a split into smaller issues, or a different member. The developer rebuilds, re-runs the check, and hands it to review again. Send it to In Review instead only when the code is already reviewed and only a check is missing.\n" +
-	"3. If the blocker needs a decision only the boss can make, take the recommended default, record it as an assumption, comment it, and send the issue back to In Progress as in step 2.\n" +
-	"4. Leave the issue at Blocked only for an action that cannot be undone: deleting data, a production release, or spending money. Comment what is needed and mention the requester.\n" +
+const sdlcBlockedInstructions = "This issue is blocked. Load the sdlc-delivery-core and sdlc-squad-lead skills and follow the lead's Blocked work (Step 7). Read the blocker report, route its class to the specialist who owns it with an unblock issue, verify the ruling, and resume the issue at its Blocked-from status. Do not do the specialist's work yourself, do not leave the issue here, and do not wait for a person. Only an irreversible action, a person's credential, a capability the host must change, or a reached limit goes to a person, with a proposal that carries your recommendation. " +
 	"Never set a build issue or its Epic done while a check it needs has not run; name that check as unverified in the report instead. Never change acceptance criteria to get past a blocker."
 
 // wakeAgent posts a note on the issue that mentions the agent, so the mention path
