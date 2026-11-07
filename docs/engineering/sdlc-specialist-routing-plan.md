@@ -252,6 +252,8 @@ trước/sau (số liệu "trước" lấy từ mục 2 của spec), những gì
 
 ## Giai đoạn 4 (tuỳ chọn): tự động hoá phía server
 
+**Trạng thái: đang làm (2026-11-07), sau khi người dùng yêu cầu tiếp tục. Phạm vi được chốt ở dưới sau khi đọc mã server.**
+
 AGENTS.md yêu cầu giải thích chi phí và khả năng xảy ra trước khi thêm phức tạp cho trường hợp hiếm. Giai đoạn này **chỉ
 làm khi số liệu Giai đoạn 3 cho thấy cần**, và cần buy-in của người dùng. Ứng viên và điều kiện để xem là đáng:
 
