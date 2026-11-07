@@ -185,7 +185,7 @@ Every role ends with one issue comment, verdict or outcome first, then:
 
 A report with no evidence in Verified is a claim, not a result.
 
-A specialist who answers an unblock issue ends with one Ruling comment instead, in this form. It also adds one line
+A specialist who answers an unblock issue ends with one Ruling comment instead, in this form. You do not move, assign or comment on the blocked issue: only the lead resumes it, after it has verified your ruling. It also adds one line
 to `docs/sdlc/rulings.md`: id R-n, class, question, ruling, issue, date, how to reverse it.
 
 ```

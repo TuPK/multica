@@ -191,7 +191,7 @@ developer go on. [team-playbook.md](team-playbook.md) holds the class table, the
 4. **Wait.** Register a wakeup on the blocked issue and end your run:
    `multica issue wakeup create <blocked issue> --until-issue <unblock issue> --until-issue-state ended --expires-in 72h --on-timeout wake --instruction "Read the ruling. Verify it as Step 7 says, then resume the issue or route again."`
 5. **Verify.** When woken, read the Ruling comment, open its artifacts, run or confirm its Resume-check (Step 6).
-6. **Resume.** Set the issue to its Blocked-from status (`in_progress` unless only a check is missing, then `in_review` or
+6. **Resume.** A specialist does not move the blocked issue; you do. You verify the ruling, you do not give the issue's review or QA verdict, and you do not mark it done. Set the issue to its Blocked-from status (`in_progress` unless only a check is missing, then `in_review` or
    `qa`) with `multica issue status`. Comment the ruling, the paths, the command the member must run first, and what must
    not change. If the ruling says `Needs next`, route that class first.
 

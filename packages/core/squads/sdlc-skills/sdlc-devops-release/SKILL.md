@@ -42,7 +42,7 @@ stop or alter a stack you did not start.
    rebuilds. Run verification-before-completion.
 7. **Write `docs/sdlc/environment.md`:** the probe result; services and ports; the commands to start, ensure, stop and reset;
    the QA stack; known limits.
-8. **Report** with a Ruling comment (sdlc-delivery-core): the state achieved, the basis, the artifacts, the resume instruction
+8. **Report** with a Ruling comment (sdlc-delivery-core) on your own issue only; never move the blocked issue yourself, the lead resumes it. Say: the state achieved, the basis, the artifacts, the resume instruction
    (the blocked issue's status and the `env-ensure` command as its Resume-check), and what is not verified.
 
 ## Mode 2: Release

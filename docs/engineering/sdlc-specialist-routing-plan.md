@@ -199,7 +199,7 @@ cần so thêm cho brief và instruction).
 
 ## Giai đoạn 3: áp dụng và diễn tập
 
-**Trạng thái: đang làm.**
+**Trạng thái: T3.1, T3.2, T3.4 xong; T3.3 xong S1 đến S3, chưa chạy S4 đến S6.** Kết quả và lỗi tìm được: [sdlc-specialist-routing-report.md](sdlc-specialist-routing-report.md).
 
 Giai đoạn này chạy trên dữ liệu và agent thật, nên mọi bước thay đổi dữ liệu hoặc chạy agent
 cần người dùng đồng ý trước.
