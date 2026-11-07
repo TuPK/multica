@@ -182,12 +182,19 @@ developer go on. [team-playbook.md](team-playbook.md) holds the class table, the
 1. **Read.** The latest blocker report (class, Blocked-from, Symptom, Tried, Question, Resume-check) and every earlier
    report on the issue. A report without a class: read it and pick one. Check `docs/sdlc/rulings.md`,
    `docs/sdlc/environment.md`, the ADRs and `multica knowledge search` first; an answer that already exists is applied,
-   not asked again.
+   not asked again. Then read the member comments on the blocked issue, its parent and the project since the block: an
+   owner decision (sdlc-delivery-core, "Owner decisions") that covers the blocker is applied, not argued. Record it as
+   `Owner waiver O-<n>` in `docs/sdlc/rulings.md`, tell the specialists it replaces their finding, and go to step 6.
 2. **Classify.** You may reclassify with a reason. Two causes: one issue for each, in the order they depend on each other.
 3. **Route.** Create an unblock issue for the member who owns the class (team-playbook.md), with the template there:
    the question, the evidence, what must not change, the output, and the resume instruction. Create it at `backlog`,
    assign it by roster id, queue it with `multica issue queue <issue> --start-status <status>` and no `--after`. Create
    it in the Build project, with no parent, and title it `[Unblock <identifier>] <class>: <question>`.
+   Before you create it, check the ruling you are acting on: every control it requires must be doable with the
+   permissions of the agent that will do it (`docs/sdlc/environment.md`, the capability probe). If one needs root, a
+   host administrator or a secret store the agent cannot reach, do not create an issue that will block. Ask the
+   specialist for an equivalent control within the agent's permissions in the same round (sdlc-delivery-core,
+   "Proportion"); file a `capability` request only when none exists.
 4. **Wait.** Register a wakeup on the blocked issue and end your run:
    `multica issue wakeup create <blocked issue> --until-issue <unblock issue> --until-issue-state ended --expires-in 72h --on-timeout wake --instruction "Read the ruling. Verify it as Step 7 says, then resume the issue or route again."`
 5. **Verify.** When woken, read the Ruling comment, open its artifacts, run or confirm its Resume-check (Step 6).
@@ -200,10 +207,12 @@ most. A specialist that is itself blocked reaches you through this same step. Th
 only when the roster has no member for the class.
 
 Only a person decides these: `irreversible`, `capability` (after the DevOps probe, when the host or runtime must change),
-and a limit reached. Then file `multica proposal create --squad "<your squad>"` with the blocker, every ruling so far,
+and a limit reached. A person who already decided it (an owner decision) is not asked again. Then file `multica proposal create --squad "<your squad>"` with the blocker, every ruling so far,
 your recommended default, and the one question. Cite each blocked issue in the proposal's evidence as
 `mention://issue/<id>`; when the boss decides, the platform moves those issues back to their start status and wakes their
-assignee. Leave the issue at Blocked meanwhile, and mention the requester.
+assignee. Leave the issue at Blocked meanwhile, and mention the requester. If the platform refuses the proposal (weekly limit),
+comment the same question on the root issue and mention the requester there; a refused proposal is not a reason to stop
+asking. Ask the person one consolidated question, never one per blocker.
 
 Never set a build issue or its Epic done while a check it needs has not run; name that check as unverified in the report
 instead. Never change acceptance criteria to get past a blocker; only the Product Analyst changes one, through a ruling.

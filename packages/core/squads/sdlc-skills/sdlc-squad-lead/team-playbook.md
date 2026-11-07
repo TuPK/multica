@@ -34,6 +34,9 @@ and the templates for an unblock issue and for a ruling. The class list is the o
 | `capability` | DevOps probes first | `environment` | The probe result and the exact change a person must make to the runtime or host |
 | `irreversible` | A person | proposal | The decision |
 
+An owner decision in a member's comment beats the table: record `Owner waiver O-<n>` (comment id, covered, still in
+force, expiry), drop the controls it makes unnecessary, and resume without a new round.
+
 Order when there are several causes: `requirement`, then `design` and `ux`, then `environment` and `tooling`, then `verification`.
 
 ## Substitutes when the roster lacks the member

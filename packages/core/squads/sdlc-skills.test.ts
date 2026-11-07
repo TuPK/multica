@@ -119,6 +119,18 @@ describe("built-in SDLC skills", () => {
     expect(get("sdlc-devops-release")).toContain("Deploy the published image by its digest");
   });
 
+  it("lets an owner decision replace a specialist finding, and keeps controls within the agent's permissions", () => {
+    const get = (name: string) => SDLC_BUILTIN_SKILLS.find((s) => s.name === name)!.content;
+    expect(get("sdlc-delivery-core")).toContain("## Owner decisions");
+    expect(get("sdlc-delivery-core")).toContain("Owner waiver O-<n>");
+    expect(get("sdlc-delivery-core")).toContain("## Proportion");
+    expect(get("sdlc-squad-lead")).toContain("is applied, not argued");
+    expect(get("sdlc-squad-lead")).toContain("must be doable with the");
+    expect(get("sdlc-squad-lead")).toContain("a refused proposal is not a reason to stop");
+    expect(get("sdlc-security-review")).toContain("## Context and severity");
+    expect(get("sdlc-security-review")).toContain("**Required**");
+  });
+
   it("gives every role skill a self-check before it reports", () => {
     for (const skill of SDLC_BUILTIN_SKILLS.filter((s) => ROLE_SKILLS.includes(s.name))) {
       expect(skill.content, skill.name).toContain("Self-check before you report");

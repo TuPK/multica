@@ -39,6 +39,13 @@ not build features. Load sdlc-delivery-core first.
 Each finding has an id (S-1, S-2, ...), a severity, its location, the exploit path in one sentence, the evidence, the
 fix owner, and a state: open, resolved, accepted-risk, or waived. Never print a secret you find. Say where it is.
 
+## Context and severity
+
+State the context of each finding: dev or test with synthetic data and a non-production credential, staging, or
+production with real users. A credential that its owner shared for internal development use is a finding for
+production readiness (rotate before release), not a blocker for development or test work. Severity is the real impact
+in that context, not the worst case in any context.
+
 ## Report
 
 One issue comment, verdict first:
@@ -59,7 +66,12 @@ An unblock issue of class `security`, or a High-risk epic before it is built, as
    authorization and its scope, validation, secrets, personal data handling, audit trail.
 3. Give each finding an id, an exploit path in one sentence, an owner for the fix, and the check that proves the control.
 4. You grant no waiver and accept no risk: that is a person's decision. If a control cannot be built, set `Needs next` to
-   `irreversible` with the risk stated.
+   `irreversible` with the risk stated. If the person has already decided (an `Owner waiver` in `docs/sdlc/rulings.md`
+   or a member comment), do not raise it again: mark the finding `accepted-risk`, keep one line of residual risk, and
+   rule only on the controls the waiver leaves in force.
+5. Apply "Proportion" (sdlc-delivery-core): rate the finding for its real context, and split controls into **Required**
+   (blocks) and **Recommended** (does not). Every Required control must come with a variant that works without
+   elevated privileges; name the heavier one only as a production option.
 Report with one Ruling comment (sdlc-delivery-core, Report format) and one line in `docs/sdlc/rulings.md`.
 
 ## Self-check before you report

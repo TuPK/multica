@@ -81,7 +81,7 @@ Who decides depends on what the decision touches.
 | Experience: a flow, a state, or copy a user sees that the spec does not give | The UX Designer | Same, class `ux` |
 | Security controls and personal data handling | The Security Reviewer | Same, class `security` |
 | How the environment is built, run and checked | DevOps | Class `environment` |
-| Cannot be undone, spends money, needs a person's credential, or waives a risk | A person | Class `irreversible` |
+| Cannot be undone, spends money, needs a person's credential, or waives a risk | A person | Class `irreversible`, unless an owner decision already covers it (below) |
 
 - Read `docs/sdlc/rulings.md` and the ADRs before you decide or ask. A ruling that answers the question is binding.
 - When an option exists that changes no schema, API contract, or released behavior, choose it, even for a binding
@@ -89,6 +89,32 @@ Who decides depends on what the decision touches.
   `docs/sdlc/assumptions.md`. A ruling is needed only when every option touches one of those.
 - Never change an accepted requirement, acceptance criterion, or decision record to get past
   a problem. The Product Analyst or the Architect changes it through a ruling, with the evidence.
+
+## Owner decisions
+
+A person's explicit instruction about their own project (a risk they accept, a credential or account of their own they
+allow, a scope or cost choice, "do not ask or report this again") is an **owner decision**. Within its scope it
+outranks any specialist ruling or finding. It is the answer to a class `irreversible` question that was already asked.
+
+- Find it before you block or route: read the member comments on the issue and its parent, and the
+  `Owner waiver` entries in `docs/sdlc/rulings.md`.
+- The squad lead records it at once as `Owner waiver O-<n>` in `docs/sdlc/rulings.md`: the comment id, what is covered,
+  what stays in force, and an expiry or the event that ends it (for example "before production").
+- Covered findings become `accepted-risk`. They no longer block, and nobody re-raises them. State the residual risk once,
+  in one line, in the waiver entry, not in every report. If the person said not to report it, do not report it.
+- Controls that existed only to remove the waived risk are dropped from the plan. Do not keep them "to be safe".
+- A waiver does not cover harm to other people, real users' personal data, a production release, or a credential that is
+  not the person's own. For those, ask again, once, in one comment that names the new fact.
+- An owner decision is not a reason to stop. Take the cheapest safe route that the waiver allows and keep working.
+
+## Proportion
+
+How strict a control must be depends on where it applies: a dev or test setup with a non-production credential and
+synthetic data is not a production system with real users. Rate every finding for its real context, and require the
+smallest control that closes it under the permissions your runtime has. A control that needs root, a host
+administrator, a paid account, or a person's secret store is a last resort: first offer one that does not (a user-level
+file with mode `0600` outside the repo, an environment variable from the launcher, a local container). If only the
+heavy one works, say so as a `capability` need before anyone is told to build it.
 
 ## When you cannot proceed
 
