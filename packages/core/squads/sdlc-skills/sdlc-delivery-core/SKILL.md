@@ -116,7 +116,7 @@ Resume-check: <the command or check that proves this is resolved>
 | `security` | A security finding, an access-control design, or a personal-data question |
 | `verification` | There is no way to check a criterion, or the oracle is unclear |
 | `defect` | A defect with an unknown cause or reach |
-| `rework-loop` | The same problem came back from review or QA three times |
+| `rework-loop` | The same problem came back from review or QA three times (the platform blocks the third return itself) |
 | `review-capacity` | An independent reviewer or a second opinion is needed |
 | `capability` | The agent's runtime, sandbox, host, or model does not allow what the work needs |
 | `irreversible` | Deleting data, a production release, spending money, a person's credential, a risk waiver |

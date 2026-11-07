@@ -47,3 +47,18 @@ Sau khi Lead resume S2 và S3, Developer bắt đầu chạy ngay trên issue th
 - Hành vi trên một block thật của mua_ngon: epic 8 trở đi chưa bị block kể từ khi nâng cấp.
 - Chỉ số mục 8 của spec trước/sau: cần các block thật để so; số "trước" nằm ở mục 2 của spec.
 - Lead và DevOps chạy bằng cùng runtime Codex; chưa thử với runtime khác.
+
+## Giai đoạn 4: bộ đếm vòng trả lại phía server
+
+Lý do: S4 chưa chạy được và việc Developer tự đếm là một bước LLM có thể quên; dữ liệu thật có issue bị trả lại 5 lần
+(Epic 1). Hành vi mới (`reworkLoopFor` trong `issue_workflow_entry.go`): khi agent xử lý bước `in_review` hoặc `qa`
+chuyển issue về `in_progress` lần thứ ba kể từ lần block gần nhất, server chuyển issue sang `blocked` thay thế và đăng
+báo cáo `Blocker-class: rework-loop` theo đúng khuôn của delivery-core, nên Lead định tuyến như mọi blocker khác. Chỉ áp
+dụng khi workflow giao `blocked` cho một agent và bước review/QA có `back` về `in_progress`; thao tác của thành viên người
+dùng không bị đổi. Bộ đếm đọc từ `activity_log` (truy vấn `CountWorkflowReturns`) và bắt đầu lại sau mỗi lần block, nên
+sau phán quyết của chuyên gia, vòng review mới có đủ lượt trả lại riêng.
+
+Test (Go, cần DB): lần trả lại thứ ba bị chặn, lần thứ hai vẫn về `in_progress`, đếm lại sau block, thành viên không bị ảnh
+hưởng. `TestHandoffStopsPreviousSquadRuns` fail cả trước thay đổi này.
+
+Chưa kiểm trên agent thật: cần một issue thật bị Reviewer trả lại ba lần.

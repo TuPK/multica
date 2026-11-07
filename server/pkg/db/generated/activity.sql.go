@@ -58,6 +58,34 @@ func (q *Queries) CountAssigneeChangesByActor(ctx context.Context, arg CountAssi
 	return items, nil
 }
 
+const countWorkflowReturns = `-- name: CountWorkflowReturns :one
+SELECT count(*)::bigint FROM activity_log a
+WHERE a.issue_id = $1
+  AND a.action = 'status_changed'
+  AND a.details->>'from' = ANY($2::text[])
+  AND a.details->>'to' = $3::text
+  AND a.created_at > COALESCE((
+    SELECT max(b.created_at) FROM activity_log b
+    WHERE b.issue_id = $1 AND b.action = 'status_changed' AND b.details->>'to' = 'blocked'
+  ), 'epoch'::timestamptz)
+`
+
+type CountWorkflowReturnsParams struct {
+	IssueID      pgtype.UUID `json:"issue_id"`
+	FromStatuses []string    `json:"from_statuses"`
+	ToStatus     string      `json:"to_status"`
+}
+
+// How many times an issue was sent back from a review or QA step to In
+// Progress since it was last blocked. The count restarts after a block, so a
+// ruling that resumes the issue gives the next round a clean start.
+func (q *Queries) CountWorkflowReturns(ctx context.Context, arg CountWorkflowReturnsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countWorkflowReturns, arg.IssueID, arg.FromStatuses, arg.ToStatus)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createActivity = `-- name: CreateActivity :one
 INSERT INTO activity_log (
     workspace_id, issue_id, actor_type, actor_id, action, details, id

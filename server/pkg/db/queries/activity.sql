@@ -66,3 +66,17 @@ SELECT actor_type, actor_id FROM activity_log
 WHERE issue_id = @issue_id AND action = 'status_changed'
 ORDER BY created_at DESC, id DESC
 LIMIT 1;
+
+-- name: CountWorkflowReturns :one
+-- How many times an issue was sent back from a review or QA step to In
+-- Progress since it was last blocked. The count restarts after a block, so a
+-- ruling that resumes the issue gives the next round a clean start.
+SELECT count(*)::bigint FROM activity_log a
+WHERE a.issue_id = $1
+  AND a.action = 'status_changed'
+  AND a.details->>'from' = ANY(sqlc.arg('from_statuses')::text[])
+  AND a.details->>'to' = sqlc.arg('to_status')::text
+  AND a.created_at > COALESCE((
+    SELECT max(b.created_at) FROM activity_log b
+    WHERE b.issue_id = $1 AND b.action = 'status_changed' AND b.details->>'to' = 'blocked'
+  ), 'epoch'::timestamptz);

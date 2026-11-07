@@ -147,6 +147,8 @@ unblock.
 
 ## Returned three times
 
+The platform also enforces this: when a review or QA agent returns the issue for the third time, the server blocks it with a rework-loop report instead. Either way the issue reaches the lead as `rework-loop`.
+
 Count the REQUEST_CHANGES and NO GO comments on this issue. When the issue comes back a third time for the same cause, do
 not try a fourth fix by guessing: block it with `Blocker-class: rework-loop`, and put the findings, what you tried each time,
 and your guess at the root cause (design, criterion, verification) in the report.

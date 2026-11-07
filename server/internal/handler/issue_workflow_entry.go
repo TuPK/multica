@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -13,6 +14,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/multica-ai/multica/server/pkg/dbid"
 )
 
 // Project workflows on the issue write paths (MUL-7420).
@@ -36,6 +38,9 @@ type workflowHandoff struct {
 	def     issueworkflow.Definition
 	step    issueworkflow.Step
 	project db.Project
+	// rework is set when the platform turned a return from review or QA into a
+	// block, because the issue had already been returned too often.
+	rework *reworkLoop
 }
 
 // applyIssueWorkflow enforces prev's (possibly new) project workflow on one
@@ -111,6 +116,14 @@ func (h *Handler) applyIssueWorkflow(ctx context.Context, prev db.Issue, params 
 	default:
 		return nil, nil
 	}
+	var rework *reworkLoop
+	if loop, err := h.reworkLoopFor(ctx, def, prev, entering, projectMoving, run); err != nil {
+		return nil, err
+	} else if loop != nil {
+		rework = loop
+		entering = issuestatus.Blocked
+		params.Status = pgtype.Text{String: entering, Valid: true}
+	}
 	step, ok := def.Step(entering)
 	if !ok || !step.HandsOff() {
 		return nil, nil
@@ -129,7 +142,90 @@ func (h *Handler) applyIssueWorkflow(ctx context.Context, prev db.Issue, params 
 	}
 	params.AssigneeType = pgtype.Text{String: assigneeType, Valid: true}
 	params.AssigneeID = assigneeID
-	return &workflowHandoff{def: *def, step: step, project: project}, nil
+	return &workflowHandoff{def: *def, step: step, project: project, rework: rework}, nil
+}
+
+// reworkReturnLimit is the number of returns from review or QA to In Progress
+// after which the next one blocks the issue instead. A third return means the
+// same findings did not yield to the developer's fixes, so the cause is
+// probably not the developer's to find (sdlc-delivery-core, "rework-loop").
+const reworkReturnLimit = 3
+
+// reworkLoop is a return from review or QA the platform turned into a block.
+type reworkLoop struct {
+	from    string
+	returns int
+	agentID pgtype.UUID
+}
+
+// reworkLoopFor decides whether an agent run's return of an issue from review
+// or QA to In Progress is the one that ends the loop. It applies only to a
+// workflow that hands Blocked to an agent (the lead) and whose review or QA
+// step sends rejected work back to In Progress, and only to a step handler's own
+// move, never a member's. The count restarts after each block.
+func (h *Handler) reworkLoopFor(ctx context.Context, def *issueworkflow.Definition, prev db.Issue, entering string, projectMoving bool, run *db.AgentTaskQueue) (*reworkLoop, error) {
+	if run == nil || projectMoving || entering != issuestatus.InProgress {
+		return nil, nil
+	}
+	if prev.Status != issuestatus.InReview && prev.Status != "qa" {
+		return nil, nil
+	}
+	from, ok := def.Step(prev.Status)
+	if !ok || from.BackStatusKey != entering || from.Handler.Type != issueworkflow.HandlerAgent ||
+		from.Handler.ID != util.UUIDToString(run.AgentID) {
+		return nil, nil
+	}
+	if blocked, ok := def.Step(issuestatus.Blocked); !ok || blocked.Handler.Type != issueworkflow.HandlerAgent {
+		return nil, nil
+	}
+	n, err := h.Queries.CountWorkflowReturns(ctx, db.CountWorkflowReturnsParams{
+		IssueID:      prev.ID,
+		FromStatuses: []string{issuestatus.InReview, "qa"},
+		ToStatus:     issuestatus.InProgress,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if int(n)+1 < reworkReturnLimit {
+		return nil, nil
+	}
+	return &reworkLoop{from: prev.Status, returns: int(n) + 1, agentID: run.AgentID}, nil
+}
+
+// postReworkLoopReport writes the blocker report the lead reads, as the agent
+// whose return the platform turned into a block. The report follows the form of
+// sdlc-delivery-core, so the lead routes it like any other blocker. The lead is
+// already woken by the block, so the comment does not wake it a second time.
+func (h *Handler) postReworkLoopReport(ctx context.Context, issue db.Issue, hand *workflowHandoff) {
+	if hand == nil || hand.rework == nil {
+		return
+	}
+	stage := "review"
+	if hand.rework.from == "qa" {
+		stage = "QA"
+	}
+	content := fmt.Sprintf("BLOCKED\n"+
+		"Blocker-class: rework-loop\n"+
+		"Blocked-from: in_progress\n"+
+		"Symptom: this issue has been sent back from %s to In Progress %d times since it was last blocked. The platform blocked it on the latest return instead of sending it back again. The %s verdicts and the developer's reports on this issue show the findings.\n"+
+		"Tried: the developer's fixes after each return, in the earlier reports on this issue.\n"+
+		"Question: what is the root cause of the findings that keep coming back (the design, an acceptance criterion, or how it is verified), and what change of approach ends the loop?\n"+
+		"Resume-check: the findings of the latest %s verdict are fixed and the next %s of this issue passes\n",
+		stage, hand.rework.returns, stage, stage, stage)
+	_, err := h.Queries.CreateComment(ctx, db.CreateCommentParams{
+		ID:                 dbid.NewV7(),
+		IssueID:            issue.ID,
+		WorkspaceID:        issue.WorkspaceID,
+		AuthorType:         "agent",
+		AuthorID:           hand.rework.agentID,
+		Content:            content,
+		Type:               "comment",
+		SuppressedAgentIds: []pgtype.UUID{issue.AssigneeID},
+	})
+	if err != nil {
+		slog.Warn("workflow: could not post the rework-loop report", "issue_id", util.UUIDToString(issue.ID), "error", err)
+		return
+	}
 }
 
 // workflowHandoffPayload describes a handoff on the issue:updated event, so
