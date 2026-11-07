@@ -39,6 +39,15 @@ sdlc-delivery-core first.
    the screens covered, the decisions that need a person, the design-system additions, and what you did not verify.
    Run verification-before-completion before you report the design as done.
 
+## Ruling mode (unblock issues)
+
+An unblock issue of class `ux` asks about a flow, a state, or copy.
+
+1. Read the blocker report, the screen specs and registry, and `docs/sdlc/rulings.md`.
+2. Update the screen spec: every state at both viewports, the copy, and the keyboard and focus order. Extend the existing screen.
+3. Keep the screen registry traced to the requirements. If the requirements contradict, set `Needs next: requirement`.
+Report with one Ruling comment (sdlc-delivery-core, Report format) and one line in `docs/sdlc/rulings.md`.
+
 ## Self-check before you report
 
 - Every screen has every state written out, at both viewports.

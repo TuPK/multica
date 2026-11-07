@@ -165,20 +165,12 @@ export interface SquadWorkflowTemplate {
  * leaves the issue with nobody to unblock it.
  */
 export const SDLC_BLOCKED_INSTRUCTIONS =
-  "This issue is blocked. Read the latest comment that says why it cannot proceed, then unblock it yourself. Do not leave it here, and do not wait for a person.\n" +
-  "If it is a planning sub-issue (Analysis, Design, Architecture, Plan review, Security review or Release prep), its owner is not building it, so you decide the next move:\n" +
-  "- A gap in the inputs or a finding the owner can close: comment the gap with its id, create one sub-issue for the owner that closes it, and set this issue back to its status with the same work.\n" +
-  "- A decision only the boss can make: take the recommended default, record it as an assumption, and set this issue back to its status with the same work.\n" +
-  "If it is a build issue, unblock it as follows.\n" +
-  "1. Comment the blocker, the exact fix, the command that proves it, and every approach already tried on this issue.\n" +
-  "2. Send the issue back to In Progress with a different approach. Never repeat an approach that already failed: a different tool or command, a local stand-in for the dependency, a smaller check that proves part of the acceptance criteria, a split into smaller issues, or a different member. The developer rebuilds, re-runs the check, and hands it to review again. Send it to In Review instead only when the code is already reviewed and only a check is missing.\n" +
-  "3. If the blocker needs a decision only the boss can make, take the recommended default, record it as an assumption in docs/sdlc/assumptions.md, comment it, and send the issue back to In Progress as in step 2.\n" +
-  "4. Leave the issue at Blocked only for an action that cannot be undone: deleting data, a production release, or spending money. Comment what is needed and mention the requester.\n" +
+  "This issue is blocked. Load the sdlc-delivery-core and sdlc-squad-lead skills and follow the lead's Blocked work (Step 7). Read the blocker report, route its class to the specialist who owns it with an unblock issue, verify the ruling, and resume the issue at its Blocked-from status. Do not do the specialist's work yourself, do not leave the issue here, and do not wait for a person. Only an irreversible action, a person's credential, a capability the host must change, or a reached limit goes to a person, with a proposal that carries your recommendation. " +
   "Never set a build issue or its Epic done while a check it needs has not run; name that check as unverified in the report instead. Never change acceptance criteria to get past a blocker.";
 
 /** The brief a planning step gives its owner. The owner's skill holds the procedure. */
 const planningBrief = (skill: string, done: string) =>
-  `This issue is a planning sub-issue of a request. Load the sdlc-delivery-core and ${skill} skills, and do the work the issue names. ${done} If you cannot proceed, set the issue to blocked and comment the reason.`;
+  `This issue is either a planning stage of a request or an unblock ruling; its description says which. Load the sdlc-delivery-core and ${skill} skills. For a planning stage, do the work the issue names. ${done} For an unblock ruling, follow your skill's Ruling mode and end with the Ruling comment. If you cannot proceed, set the issue to blocked with the blocker report from sdlc-delivery-core.`;
 
 /**
  * The SDLC Auto workflow of a build project. Build statuses hand the issue to the
@@ -236,6 +228,13 @@ export const SDLC_AUTO_WORKFLOW: SquadWorkflowTemplate = {
       back: "blocked",
       instructions: planningBrief("sdlc-devops-release", "Move the issue to Stage done only when the report lists the version, digests, and rollback steps. Production waits for the named approval: set the issue to blocked and say what the approver must decide."),
     },
+    {
+      status: { name: "Environment" },
+      handler: "devops",
+      next: "stage_done",
+      back: "blocked",
+      instructions: planningBrief("sdlc-devops-release", "Work in Environment mode. When the environment runs, `docs/sdlc/environment.md` and the one command that rebuilds it are written, and the health output is posted, move the issue to Stage done."),
+    },
     { status: { name: "Stage done", category: "done" }, handler: null, instructions: "" },
     { status: { name: "Plan ready" }, handler: null, instructions: "" },
     {
@@ -259,7 +258,7 @@ export const SDLC_AUTO_WORKFLOW: SquadWorkflowTemplate = {
       next: "qa",
       back: "in_progress",
       instructions:
-        "Review the whole change for this issue against its acceptance criteria. Send it back to In Progress with the blocking findings, or pass it on to QA with your verdict. If you cannot finish the review, set the issue to blocked and comment the exact command, its error, and the fix you need.",
+        "Review the whole change for this issue against its acceptance criteria. Send it back to In Progress with the blocking findings, or pass it on to QA with your verdict. If you cannot finish the review, or a blocking finding is not the developer's to fix, set the issue to blocked with the blocker report from sdlc-delivery-core and give each blocking finding an Owner-role.",
     },
     {
       status: { name: "QA" },
@@ -267,7 +266,7 @@ export const SDLC_AUTO_WORKFLOW: SquadWorkflowTemplate = {
       next: "done",
       back: "in_progress",
       instructions:
-        "Verify the change on the running system against the acceptance criteria. NO GO sends it back to In Progress with the defects. GO or CONDITIONAL GO finishes the issue. If you cannot run the verification (a service is down, a required check cannot run), set the issue to blocked and comment the exact command, its error, and the fix you need.",
+        "Verify the change on the running system against the acceptance criteria. NO GO sends it back to In Progress with the defects. GO or CONDITIONAL GO finishes the issue. Run the environment's env-ensure command first when docs/sdlc/environment.md has one. If you cannot run the verification (a service is down, a required check cannot run) or a defect is not the developer's to fix, set the issue to blocked with the blocker report from sdlc-delivery-core and give each defect an Owner-role.",
     },
     { status: { key: "blocked" }, handler: "lead", back: "in_progress", instructions: SDLC_BLOCKED_INSTRUCTIONS },
   ],
@@ -369,7 +368,7 @@ You never build:
 
 How you verify:
 - When a sub-issue reaches in_review, read its report and open the files and evidence it names. If it meets the acceptance check, set it done: multica issue status <sub-issue> done. If not, comment the specific gap on the sub-issue and set it back to todo so its assignee reworks it. A report is a claim until the evidence supports it.
-- A build issue in Blocked is unblocked by its workflow step's brief, which overrides the request rule for that issue: comment the fix, send it back to In Progress for its developer with a different approach (the brief lists them), and do not do the developer's work yourself. The request rule above still applies to the request.
+- A build issue in Blocked is unblocked by its workflow step's brief, which overrides the request rule for that issue: route its blocker class to the specialist who owns it with an unblock issue, verify the ruling, then resume the issue (the brief says how), and do not do a member's work yourself. The request rule above still applies to the request.
 - Treat an empty, malformed, or failed report as no progress. Retry the same piece at most twice, then change the member or the approach, or split it. Never set a sub-issue done to get past a stage.
 
 Unattended:

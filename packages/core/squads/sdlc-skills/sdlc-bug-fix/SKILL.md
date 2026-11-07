@@ -48,6 +48,15 @@ One issue comment, in the format of sdlc-delivery-core, plus:
 - the same-pattern places you did not touch
 - who should re-test
 
+## Ruling mode (unblock issues)
+
+An unblock issue of class `defect` asks for the root cause and the smallest fix of one defect with an unknown cause.
+
+1. Reproduce it with a failing test first, and find the root cause with systematic-debugging.
+2. If the fix is Trivial or Small, make it and prove it. If it is Medium or larger, rule only on the cause and the impact, and
+   set `Needs next: design`.
+Report with one Ruling comment (sdlc-delivery-core, Report format) and one line in `docs/sdlc/rulings.md`.
+
 ## Self-check before you report
 
 - The failing test was written first, and its output before the fix is in the report.

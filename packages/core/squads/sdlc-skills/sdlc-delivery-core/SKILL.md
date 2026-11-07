@@ -19,9 +19,13 @@ behave while you do it. Load both before you act.
   id, decision, why, and who can reverse it. Continue.
 - Stop only for what cannot be undone: deleting data, breaking a released contract, a
   production release, or spending money. Then comment what you need and mention the requester on the request.
+  Two more things belong to a person: a credential or account only a person holds, and a risk waiver
+  (classes `irreversible` and `capability`, below).
+- Anything else that stops you belongs to a specialist, not to a person: see "When you cannot proceed".
 - A failing check, a missing output, or an unexpected error is never a stop. Change the approach and keep working
-  (sdlc-development, "When a check fails or gives no evidence"). Do not set the issue to blocked for it, and do not wait
-  for a person to pick the next step.
+  (sdlc-development, "When a check fails or gives no evidence"). Do not wait for a person to pick the next step. Block the
+  issue only when three different approaches did not clear it and its cause belongs to another role: then the report in
+  "When you cannot proceed" sends it to the specialist.
 
 ## The state of the workspace is never a stop
 
@@ -67,12 +71,63 @@ again" or "redo it" asks you to finish the issue.
 
 ## Decisions and assumptions
 
-- Business, product, naming, and design choices that the documents leave open are yours.
-  List two or three options with their evidence and cost. Choose the option that changes
-  no released behavior, no database schema, and no API contract. Record the decision: options,
-  evidence, choice, why, reversal cost. Put it in the spec or in `docs/sdlc/assumptions.md`.
+Who decides depends on what the decision touches.
+
+| Decision | Who decides | How |
+| --- | --- | --- |
+| Local: a name inside a module, internal structure, a library the ADRs already allow, copy the spec gives, test structure | You | Decide, record an assumption |
+| Binding: a schema change that touches existing data, a public API contract, the permission model, a new external dependency or service, a new infrastructure component, a non-functional trade-off | The Architect | Use an existing ADR or ruling. If there is none, block with `Blocker-class: design` |
+| Binding: what an acceptance criterion means, a business rule (price, consent, commission, limits), cutting or adding scope | The Product Analyst | Use the spec or an existing ruling. If there is none, block with `Blocker-class: requirement` |
+| Experience: a flow, a state, or copy a user sees that the spec does not give | The UX Designer | Same, class `ux` |
+| Security controls and personal data handling | The Security Reviewer | Same, class `security` |
+| How the environment is built, run and checked | DevOps | Class `environment` |
+| Cannot be undone, spends money, needs a person's credential, or waives a risk | A person | Class `irreversible` |
+
+- Read `docs/sdlc/rulings.md` and the ADRs before you decide or ask. A ruling that answers the question is binding.
+- When an option exists that changes no schema, API contract, or released behavior, choose it, even for a binding
+  decision, and record it: options, evidence, choice, why, reversal cost. Put it in the spec or in
+  `docs/sdlc/assumptions.md`. A ruling is needed only when every option touches one of those.
 - Never change an accepted requirement, acceptance criterion, or decision record to get past
-  a problem. Send it back to its owner with the evidence.
+  a problem. The Product Analyst or the Architect changes it through a ruling, with the evidence.
+
+## When you cannot proceed
+
+Try the approaches in "Stop-loss and attempts" first. If the issue is still stuck, set it to blocked
+(`multica issue status <id> blocked`) and start the comment with this report. The squad lead reads it and sends
+the question to the specialist who owns the class. A comment alone does not move the issue.
+
+```
+BLOCKED
+Blocker-class: environment | tooling | requirement | design | ux | security | verification | defect | rework-loop | review-capacity | capability | irreversible
+Blocked-from: <the status you were working in>
+Symptom: <the exact command and error, or the two conflicting sources with file and line>
+Tried: <each approach and its result>
+Question: <the one question a specialist must answer, or the one action needed>
+Resume-check: <the command or check that proves this is resolved>
+```
+
+| Class | Use it when |
+| --- | --- |
+| `environment` | A service, database, port, container, variable, seed, or runner does not run or cannot be rebuilt |
+| `tooling` | A tool, script, skill, browser, or CLI the work needs is missing or broken |
+| `requirement` | An acceptance criterion is ambiguous, contradictory, or cannot be measured; a business rule is missing |
+| `design` | An architecture, contract, data model, or component-boundary choice is open |
+| `ux` | A flow, state, or copy is missing or contradictory |
+| `security` | A security finding, an access-control design, or a personal-data question |
+| `verification` | There is no way to check a criterion, or the oracle is unclear |
+| `defect` | A defect with an unknown cause or reach |
+| `rework-loop` | The same problem came back from review or QA three times |
+| `review-capacity` | An independent reviewer or a second opinion is needed |
+| `capability` | The agent's runtime, sandbox, host, or model does not allow what the work needs |
+| `irreversible` | Deleting data, a production release, spending money, a person's credential, a risk waiver |
+
+Pick the closest class; the lead may reclassify. If the blocker has two causes, name the one that comes first. A dirty
+working tree is never a class: see "The state of the workspace is never a stop".
+
+When a review or a QA run finds a blocking problem whose owner is not the developer (for example the design, the
+requirement, or the environment), do not send the issue back with REQUEST_CHANGES or NO GO alone: block it with that
+class, and list the developer's findings in the same report. Give every blocking finding an `Owner-role`: developer,
+architect, analyst, ux, security, devops, or qa.
 
 ## Stop-loss and attempts
 
@@ -104,6 +159,8 @@ again" or "redo it" asks you to finish the issue.
 
 - Read the repo's agent instructions (AGENTS.md, CLAUDE.md) before you change anything, and
   follow them.
+- Read `docs/sdlc/environment.md` (how to start, check and reset the environment), `docs/sdlc/rulings.md` (decisions
+  specialists already made) and `docs/sdlc/assumptions.md` before you ask anyone. Do not ask a question they answer.
 - Search what the company already knows before you start new work:
   `multica knowledge search "<question>"`, and the postmortems:
   `multica knowledge search "<topic>" --kind postmortem`. Cite what you used.
@@ -127,6 +184,20 @@ Every role ends with one issue comment, verdict or outcome first, then:
 - **Remaining**: what was not verified and why, open items, assumptions taken, deferred scope.
 
 A report with no evidence in Verified is a claim, not a result.
+
+A specialist who answers an unblock issue ends with one Ruling comment instead, in this form. It also adds one line
+to `docs/sdlc/rulings.md`: id R-n, class, question, ruling, issue, date, how to reverse it.
+
+```
+Ruling: <one-line decision, or the state achieved>
+Class: <class>   For: <mention://issue/... of the blocked issue>
+Basis: <evidence: file and line, command and output, source documents>
+Binding artifacts: <ADR, spec, runbook, commit ids>
+Impact: <what already built must change, and what must not change>
+Resume: <the status to put the blocked issue in> and <the Resume-check, with its command>
+Residual risk / not verified: <list>
+Needs next: <another class, if the ruling exposes one, otherwise "none">
+```
 
 ## Self-check before you report
 

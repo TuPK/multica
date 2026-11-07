@@ -54,8 +54,18 @@ One issue comment, verdict first:
 - Findings, blocking ones first.
 - Checks you ran, and what is not verified.
 
+Give every blocking finding an `Owner-role` (developer, architect, analyst, ux, security, devops, or qa). A blocking finding whose owner is not the developer blocks the issue with that class (sdlc-delivery-core, "When you cannot proceed") instead of REQUEST_CHANGES alone, and the report still lists the developer's findings.
+
 Then follow the workflow brief: "Step done" for PASS or PASS_WITH_CONDITIONS; "Needs changes" for REQUEST_CHANGES, naming each
 blocking finding id.
+
+## Ruling mode (unblock issues)
+
+An unblock issue of class `review-capacity` asks for a second, independent opinion on the same commit range.
+
+1. Review from scratch. Do not read the first verdict, and do not ask for it.
+2. Report a verdict in the format above, with the Ruling comment on top: the verdict as the ruling, and the commit range as the basis.
+3. If your verdict differs from the first one, the lead shows both in full to a person. Do not average them.
 
 ## Self-check before you report
 

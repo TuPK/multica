@@ -48,29 +48,31 @@ any skill, as it overrides approval steps.
 1. **Read.** The story, its acceptance criteria, the spec, the linked decisions (ADRs), the screen registry for UI,
    and the repo's agent instructions (AGENTS.md, CLAUDE.md) and the skills they name. Search the existing app for a
    page or component that already serves the job, and extend it.
-2. **Decide the open points.** For each business, product, or naming question, list two or three options with evidence
+2. **Decide the open points.** Local choices are yours. A binding decision (sdlc-delivery-core, "Decisions and assumptions") is answered by an existing ADR, spec, or ruling, or else you block with that class. For each question you may decide, list two or three options with evidence
    (file and line) and cost. Choose the one that matches a decision record first, then the architecture or PRD, then the
    epic spec, then earlier story code. Among equal options, choose the one that changes no schema, API contract, or
    released behavior. If a schema or API change is required, add a new forward migration or endpoint. Record the decision
    in the spec, with one issue comment naming it.
 3. **Backend the path needs.** If an API, RPC, table, or service the screen needs is missing or fails: research the cause
    (logs, migrations, function definitions, repo docs, library docs), then build the smallest real implementation that
-   makes the path work with real data. Record it in the spec as added to unblock, with what and why. Only an external
-   dependency you cannot create here (a paid service, credentials you do not have, hardware) is recorded as blocked, with the
-   exact error and the command that reproduces it.
+   makes the path work with real data. Record it in the spec as added to unblock, with what and why. A dependency you
+   cannot create here (a paid service, credentials you do not have, hardware) is `irreversible` or `capability`; an environment you
+   cannot bring up after three different approaches is `environment`. Block with the Blocker report, with the exact error and
+   the command that reproduces it.
 4. **Build.** Make the smallest change that meets the acceptance criteria. Reuse the existing patterns. Write tests beside the
    code. Commit in small logical steps on the working branch with clear messages.
-5. **Repo checks.** Run the repo's tests, lint, typecheck, build, and the e2e suite where they exist. Use the commands the
+5. **Environment.** Before you need the running system, read `docs/sdlc/environment.md` and run its `env-ensure` command when it exists.
+6. **Repo checks.** Run the repo's tests, lint, typecheck, build, and the e2e suite where they exist. Use the commands the
    repo documents.
-6. **Runtime check.** Start the app the way the repo documents. For every route the story adds or changes, open it in a real
+7. **Runtime check.** Start the app the way the repo documents. For every route the story adds or changes, open it in a real
    browser at 1440px and 390px wide, and check: no console errors; no failed or 4xx/5xx backend calls; the data comes from
    the backend, not fixtures or demo text; no horizontal scrolling at 390px; no developer copy (DEMO, fixture, TODO,
    placeholder, internal labels); empty and error states show a clear message to the user.
-7. **Evidence.** Record in the spec each route, viewport, result, and screenshot path. A check you have not run yet is work to do, not a result: run it or make it runnable (see "Making a hard criterion verifiable").
-8. **Acceptance.** Check each acceptance criterion against that evidence. A criterion with no evidence means you are not
+8. **Evidence.** Record in the spec each route, viewport, result, and screenshot path. A check you have not run yet is work to do, not a result: run it or make it runnable (see "Making a hard criterion verifiable").
+9. **Acceptance.** Check each acceptance criterion against that evidence. A criterion with no evidence means you are not
    done: produce the evidence in this run (see "Making a hard criterion verifiable"). Mark the story as in review only when
    every criterion has evidence.
-9. **Progress.** Update the story status and its checkboxes in the spec as you go. After a break or a context reset, rebuild
+10. **Progress.** Update the story status and its checkboxes in the spec as you go. After a break or a context reset, rebuild
    your state from the spec, the issue comments, and the recent commits, not from memory.
 
 Before any completion claim, run verification-before-completion. For API and e2e tests after the code review, use
@@ -93,8 +95,9 @@ not a reason to end the run with the story unfinished. Work through this before 
 4. **Re-run the full check** and then the repo's broader verify command. After each failure, change the approach: a different
    tool or test layer, a different way to start the environment, a narrower reproduction, or a fix in the code the trace points to.
    Keep a list of the approaches tried and their output in your report.
-5. **Still failing:** do not stop, do not set the issue to blocked, and do not wait for anyone to decide. Go back to step 1 with
-   the approaches you have not tried yet. Only a criterion that passes on real evidence, or a check that proves the criterion
+5. **Still failing:** go back to step 1 with the approaches you have not tried yet. When a failure's cause is outside your role
+   (the environment, an ambiguous criterion, a design choice, the tooling) and three different approaches did not clear it, block
+   with the Blocker report and its class: a specialist owns it. Do not wait for a person to decide. Only a criterion that passes on real evidence, or a check that proves the criterion
    false, ends this loop. Never weaken an assertion or mark a check passed to end it.
 
 Browser evidence: when the browser the check needs is not at its default path, find it with the repo's documented setting or
@@ -141,6 +144,12 @@ criterion to prove next.
 One issue comment, in the format of sdlc-delivery-core, plus: each story's final status, the execution mode you used, the
 halt reason of any epic run, the routes checked at 1440px and 390px with their results, and the backend you added to
 unblock.
+
+## Returned three times
+
+Count the REQUEST_CHANGES and NO GO comments on this issue. When the issue comes back a third time for the same cause, do
+not try a fourth fix by guessing: block it with `Blocker-class: rework-loop`, and put the findings, what you tried each time,
+and your guess at the root cause (design, criterion, verification) in the report.
 
 ## Self-check before you report
 

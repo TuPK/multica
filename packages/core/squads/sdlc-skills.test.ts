@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
+import { SDLC_AUTO_WORKFLOW, SQUAD_TEMPLATES } from "./templates";
 
 // The bundle the quickstart imports is generated from the SKILL.md folders.
 // This test fails when the generated file is stale: run `pnpm generate:sdlc-skills`.
@@ -81,7 +82,7 @@ describe("built-in SDLC skills", () => {
 
   it("gives the squad lead the route playbook and the report templates", () => {
     const lead = SDLC_BUILTIN_SKILLS.find((s) => s.name === "sdlc-squad-lead")!;
-    expect(lead.files.map((f) => f.path)).toEqual(["reference.md"]);
+    expect(lead.files.map((f) => f.path).sort()).toEqual(["reference.md", "team-playbook.md"]);
     expect(lead.content).toContain("reference.md");
     expect(lead.content).toContain("multica issue queue <issue> --after <issue>");
     expect(lead.files[0]!.content).toContain("Plan A: BMAD epics exist");
@@ -122,5 +123,85 @@ describe("built-in SDLC skills", () => {
     for (const skill of SDLC_BUILTIN_SKILLS.filter((s) => ROLE_SKILLS.includes(s.name))) {
       expect(skill.content, skill.name).toContain("Self-check before you report");
     }
+  });
+
+  // The classes a blocked issue can carry. The core defines them, the lead's playbook routes them,
+  // and the workflow brief points at both: one list, so the three cannot drift apart.
+  const BLOCKER_CLASSES = [
+    "environment",
+    "tooling",
+    "requirement",
+    "design",
+    "ux",
+    "security",
+    "verification",
+    "defect",
+    "rework-loop",
+    "review-capacity",
+    "capability",
+    "irreversible",
+  ];
+
+  it("defines one set of blocker classes in the core and routes each one in the lead playbook", () => {
+    const core = SDLC_BUILTIN_SKILLS.find((s) => s.name === "sdlc-delivery-core")!.content;
+    const line = core.match(/^Blocker-class: (.+)$/m);
+    expect(line).not.toBeNull();
+    expect(line![1]!.split(" | ")).toEqual(BLOCKER_CLASSES);
+    const playbook = SDLC_BUILTIN_SKILLS.find((s) => s.name === "sdlc-squad-lead")!.files.find(
+      (f) => f.path === "team-playbook.md",
+    )!.content;
+    const routed = playbook.split("## Route a blocker")[1]!.split("## Substitutes")[0]!;
+    for (const cls of BLOCKER_CLASSES) {
+      expect(routed, cls).toContain("| `" + cls + "` |");
+    }
+  });
+
+  it("routes every class to a status the SDLC Auto workflow has, and to a role every SDLC template creates", () => {
+    const playbook = SDLC_BUILTIN_SKILLS.find((s) => s.name === "sdlc-squad-lead")!.files.find(
+      (f) => f.path === "team-playbook.md",
+    )!.content;
+    const routed = playbook.split("## Route a blocker")[1]!.split("## Substitutes")[0]!;
+    const statusKeys = new Set(
+      SDLC_AUTO_WORKFLOW.steps.map((s) =>
+        "key" in s.status ? s.status.key : s.status.name.toLowerCase().replaceAll(" ", "_"),
+      ),
+    );
+    const startStatuses = [...routed.matchAll(/`(analysis|design|architecture|plan_review|security_review|environment|qa|todo)`/g)].map(
+      (m) => m[1]!,
+    );
+    expect(startStatuses.length).toBeGreaterThan(0);
+    for (const key of startStatuses) expect(statusKeys.has(key), key).toBe(true);
+    for (const id of ["sdlc_greenfield", "sdlc_maintenance"] as const) {
+      const roles = SQUAD_TEMPLATES.find((t) => t.id === id)!.roles;
+      for (const role of ["analyst", "ux", "architect", "developer", "reviewer", "qa", "security", "devops"] as const) {
+        expect(roles, `${id}: ${role}`).toContain(role);
+      }
+    }
+  });
+
+  it("gives every specialist a Ruling mode, and DevOps an Environment mode", () => {
+    for (const name of [
+      "sdlc-product-analysis",
+      "sdlc-architecture",
+      "sdlc-ux-design",
+      "sdlc-security-review",
+      "sdlc-qa-verification",
+      "sdlc-bug-fix",
+      "sdlc-code-review",
+    ]) {
+      const skill = SDLC_BUILTIN_SKILLS.find((s) => s.name === name)!;
+      expect(skill.content, name).toContain("## Ruling mode (unblock issues)");
+    }
+    const devops = SDLC_BUILTIN_SKILLS.find((s) => s.name === "sdlc-devops-release")!.content;
+    expect(devops).toContain("## Mode 1: Environment");
+    expect(devops).toContain("## Mode 2: Release");
+  });
+
+  it("lets the lead unblock through a specialist and keeps the unblock issue out of the in_place chain", () => {
+    const lead = SDLC_BUILTIN_SKILLS.find((s) => s.name === "sdlc-squad-lead")!.content;
+    expect(lead).toContain("[Unblock <identifier>]");
+    expect(lead).toContain("Unblock issues are the exception");
+    expect(lead).toContain("--until-issue <unblock issue> --until-issue-state ended");
+    expect(lead).toContain("Readiness checks");
   });
 });

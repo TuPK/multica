@@ -10,6 +10,8 @@ Read it first (`multica project resource list <build> --output json`, `resource_
   show the dependencies each item needs; in this mode you also chain the items that could otherwise run together.
 - **`worktree`:** the dependencies shown are all there is, and items without a dependency between them may run together.
 
+An unblock issue (SKILL.md Step 7) is outside the chain: it waits for nothing, because the issue it unblocks is parked.
+
 In `in_place` mode Plan A looks like this:
 
 ```
@@ -35,6 +37,8 @@ QA  Final QA        QA Tester          --start-status qa               --after E
 SEC Security review Security Reviewer  --start-status security_review  --after QA
 OPS Release notes   DevOps             --start-status release_prep     --after QA
 ```
+
+With an environment bring-up, it is the first issue: `ENV  --start-status environment` (no `--after`), and E2 waits for it.
 
 ## Plans B, C and D: planning first
 
@@ -85,6 +89,7 @@ Plan: <A | B | C | D | Maintenance route and risk tier>
 Folder mode: <in_place | worktree>
 Evidence read: <paths and what each showed>
 Issues created: <identifier, owner, start status, waits for>
+Readiness: <environment | architecture | requirements | UX: created, or skipped and why>
 Assumptions: <id, decision, why>
 ```
 

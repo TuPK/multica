@@ -7,8 +7,10 @@ description: "Use when you are the leader of an SDLC squad and a request arrives
 
 You lead an SDLC squad. A request arrives as an issue assigned to the squad. You carry it to
 the end without asking the requester again. You coordinate and verify; the members do the
-work. Read [reference.md](reference.md) for the route playbooks and the report templates.
-Load sdlc-delivery-core first.
+work. Read [reference.md](reference.md) for the route playbooks and the report templates, and
+[team-playbook.md](team-playbook.md) for who owns what, how to route a problem, and the unblock templates.
+Load sdlc-delivery-core first. Read `docs/sdlc/environment.md`, `docs/sdlc/rulings.md` and `docs/sdlc/assumptions.md`
+at the start of every run, when they exist.
 
 
 ## Your whole job: turn the request into issues
@@ -63,6 +65,19 @@ paths you read as evidence, and your assumptions.
 - **Maintenance** (a bug or a change to an existing product): triage it into a route and a risk tier as
   [reference.md](reference.md) describes, then create the issues of that route the same way.
 
+### Readiness checks (every plan, Plan A included)
+
+Before the first epic, decide from the repository's evidence which of these the plan needs. Create an issue only for a
+check whose condition holds, and write the decision, and the reason for each one you skip, in the plan comment
+(a `Readiness:` line).
+
+| Condition | Issue | Owner, `--start-status` |
+| --- | --- | --- |
+| The repo has runtime dependencies: compose files, Supabase config, migrations, `*:start` scripts, `.env.example`, a database | Environment bring-up, first in the chain | DevOps, `environment` |
+| There are epics but no architecture document or ADRs, or an epic names a component the architecture lacks | Architecture conformance check | Architect, `architecture` |
+| Acceptance criteria are missing or ambiguous, or the sprint-planning readiness check has not run | Requirements readiness check | Product Analyst, `analysis` |
+| The product has a UI and no screen or state specs | UX readiness | UX Designer, `design` |
+
 ## Step 3: Create the issues, then queue them
 
 For every work item of the plan, create the issue, then queue it.
@@ -85,6 +100,7 @@ For every work item of the plan, create the issue, then queue it.
 | QA Tester | regression and runtime check | `qa` |
 | Security Reviewer | security review | `security_review` |
 | DevOps | packaging, run and release notes | `release_prep` |
+| DevOps | environment bring-up, tooling, or an environment unblock | `environment` |
 | Bug Fixer | a defect | `todo` |
 
 Each issue's description holds: the goal; the input paths or links; the output paths; the skill its owner runs
@@ -98,11 +114,14 @@ Rules for the plan:
   `--after`. This includes the planning issues and the final verification. Issues you add later, such as a gap issue or a
   fix issue, wait for the last issue still queued or running. Epics that could run together in a worktree still run
   one after the other here.
+- **Unblock issues are the exception.** An issue you create to unblock a blocked issue (Step 7) waits for nothing. The
+  blocked issue is parked with no run, so no two runs edit the working copy together, and the platform keeps every
+  queued issue waiting while an unqueued issue of the project runs an agent.
 - **Folder mode `worktree`:** an issue waits for another only when it needs that issue's output in code, data, or
   documents. Issues that touch different code and share no dependency wait for nothing in common, so they can run together.
 - An epic with more than eight stories becomes one issue per story, queued in order.
-- Create no other unqueued issue in the Build project while the queue runs: an unqueued issue with a running agent
-  holds the queue.
+- Create no other unqueued issue in the Build project while the queue runs, except an unblock issue (Step 7): an
+  unqueued issue with a running agent holds the queue.
 - You may queue an item only once all its dependencies exist. A dependency cycle is refused.
 - Post one short comment per turn that links the issues you created. Do not @mention a member in it.
 
@@ -123,8 +142,8 @@ Also register a check every 2 hours with `--kind every --every 2h --expires-in 3
 
 You are woken when the platform hands you a blocked issue, when a wakeup fires, or when someone comments. The queue
 runs everything else without you. At each check, list the Build project
-(`multica issue list --project <build> --output json`). An issue that is blocked or whose run failed: `multica issue rerun`
-once, then comment; if it is still stuck, set the request to blocked and mention the requester. End a check with nothing
+(`multica issue list --project <build> --output json`). An issue whose run failed: `multica issue rerun`
+once, then comment; if it is still stuck, treat it as blocked (Step 7). A blocked issue is handled by Step 7, never by a rerun. End a check with nothing
 to report using `multica issue wakeup checkin`.
 
 ## Step 6: Verify every report
@@ -142,40 +161,61 @@ to report using `multica issue wakeup checkin`.
 - High-risk changes need a second opinion. Create a Code Reviewer issue for the same commit range, assigned to the same
   Code Reviewer member, whose description does not include the first verdict. The fresh run reviews from scratch. Do not
   wait for or ask the boss for a separate reviewer.
+- A specialist's ruling: open the artifacts it names and run its Resume-check, or confirm its evidence. A ruling with no
+  evidence is a failed round. A ruling may not change an acceptance criterion or an accepted decision unless the
+  Product Analyst or the Architect made it, and it may not contradict `docs/sdlc/rulings.md` or an ADR; if it does,
+  create an issue for the specialist who owns the conflict instead of choosing.
+- Before each epic: read it, and add a specialist issue only if it adds an infrastructure component (DevOps), changes a
+  contract or schema across epics, or adds an outside provider (Architect), or is High-risk by auth, money, personal
+  data, migration, public contract, or security control (Security Reviewer, `security_review`, a threat model before the
+  build). Otherwise add nothing.
+- When an epic is done: read the new entries in `docs/sdlc/assumptions.md`. An assumption that is a binding decision
+  (see sdlc-delivery-core) goes to its owner to ratify: an ADR moves from Proposed to Accepted by the squad, or is changed.
 - Two reviewers disagree: give the boss both conclusions in full. Do not average them or pick one.
 
 ## Step 7: Blocked work
 
-A blocked issue is yours to unblock, and you do not wait for a person to do it. A blocked planning issue: if the gap is
-an input, create the issue that closes it and queue the blocked work again behind it; if it needs a decision only the
-boss can make, take the recommended default, record it as an assumption, and send the issue back to its status.
+A blocked issue is yours to unblock, and you do not wait for a person to do it. You do not unblock it by doing a
+member's work. You find who owns the problem, ask that member one narrow question, check the answer, and let the
+developer go on. [team-playbook.md](team-playbook.md) holds the class table, the templates, and the substitutes.
 
-A blocked build issue:
+1. **Read.** The latest blocker report (class, Blocked-from, Symptom, Tried, Question, Resume-check) and every earlier
+   report on the issue. A report without a class: read it and pick one. Check `docs/sdlc/rulings.md`,
+   `docs/sdlc/environment.md`, the ADRs and `multica knowledge search` first; an answer that already exists is applied,
+   not asked again.
+2. **Classify.** You may reclassify with a reason. Two causes: one issue for each, in the order they depend on each other.
+3. **Route.** Create an unblock issue for the member who owns the class (team-playbook.md), with the template there:
+   the question, the evidence, what must not change, the output, and the resume instruction. Create it at `backlog`,
+   assign it by roster id, queue it with `multica issue queue <issue> --start-status <status>` and no `--after`. Create
+   it in the Build project, with no parent, and title it `[Unblock <identifier>] <class>: <question>`.
+4. **Wait.** Register a wakeup on the blocked issue and end your run:
+   `multica issue wakeup create <blocked issue> --until-issue <unblock issue> --until-issue-state ended --expires-in 72h --on-timeout wake --instruction "Read the ruling. Verify it as Step 7 says, then resume the issue or route again."`
+5. **Verify.** When woken, read the Ruling comment, open its artifacts, run or confirm its Resume-check (Step 6).
+6. **Resume.** Set the issue to its Blocked-from status (`in_progress` unless only a check is missing, then `in_review` or
+   `qa`) with `multica issue status`. Comment the ruling, the paths, the command the member must run first, and what must
+   not change. If the ruling says `Needs next`, route that class first.
 
-1. Read the latest comment that says why it cannot proceed, and list every approach already tried on this issue.
-2. Send the issue back to In Progress with a different approach. Never repeat an approach that already failed: a
-   different tool or command, a local stand-in for the dependency, a smaller check that proves part of the acceptance
-   criteria, a split into smaller issues, or a different member. Comment the exact fix and the command that proves it.
-   The developer rebuilds, re-runs the check, and hands it on again. Send it to In Review instead only when the code is
-   already reviewed and only a check is missing.
-3. If the blocker needs a decision only the boss can make, take the recommended default, record it as an assumption in
-   docs/sdlc/assumptions.md, comment it, and send the issue back to In Progress as in step 2.
-4. Leave the issue at Blocked only for an action that cannot be undone: deleting data, a production release, or spending
-   money. Comment what is needed and mention the requester.
+Limits: two rounds per class on one issue, four rounds in all, and a ruling that needs another ruling goes two deep at
+most. A specialist that is itself blocked reaches you through this same step. The substitutes in team-playbook.md apply
+only when the roster has no member for the class.
+
+Only a person decides these: `irreversible`, `capability` (after the DevOps probe, when the host or runtime must change),
+and a limit reached. Then file `multica proposal create --squad "<your squad>"` with the blocker, every ruling so far,
+your recommended default, and the one question. Cite each blocked issue in the proposal's evidence as
+`mention://issue/<id>`; when the boss decides, the platform moves those issues back to their start status and wakes their
+assignee. Leave the issue at Blocked meanwhile, and mention the requester.
 
 Never set a build issue or its Epic done while a check it needs has not run; name that check as unverified in the report
-instead. Never change acceptance criteria to get past a blocker.
+instead. Never change acceptance criteria to get past a blocker; only the Product Analyst changes one, through a ruling.
 
 A dirty working tree, untracked files, or a file's ownership is never a blocker you escalate. Do not file a proposal
 for it, do not ask the boss, and do not hold the next epic for it. Send the issue back to In Progress with
 "The workspace state is not a blocker: build on top of it and commit only your own paths."
 
-When the boss approves or rejects a proposal, the platform moves the blocked issues the proposal cites as evidence back
-to their start status and wakes their assignee. Cite each blocked issue in the proposal's evidence as
-`mention://issue/<id>`; nobody has to move it by hand.
-
-Never change acceptance criteria to get past a blocker. An epic still needs its member's retrospective verdict
-(see Step 6) before it is done. A missing second reviewer is not a blocker: see Step 6.
+An issue that came back from review or QA a third time for the same cause arrives as `rework-loop`: route it to the owner
+of the root cause (Architect for design, Product Analyst for criteria, QA Tester for verification), and ask for the cause
+and a change of approach, with a test that ends the loop. An epic still needs its member's retrospective verdict (see Step
+6) before it is done. A missing second reviewer is not a blocker: see Step 6.
 
 
 ## Step 8: The final report
@@ -194,5 +234,8 @@ issue for the Bug Fixer, queue the verification again behind it, and repeat, cha
 - The folder mode is in your plan comment. In `in_place` mode the issues form one chain and no two can run together.
 - Plan A has one issue per undelivered epic and the final verification queued behind all of them.
 - Plans B, C and D have the planning issues queued, and the wakeup that makes you create the epics.
+- Every blocked issue went to the specialist who owns its class, and no unblock issue waited behind the queue.
+- Every ruling you accepted was verified against its evidence, and the issue resumed at its Blocked-from status.
+- No question went to the boss while a specialist could still answer it.
 - Every report you accepted was checked against the evidence, and every rejected one has its gap on the issue.
 - The final report has the outcome, the evidence with links, the decisions and assumptions with ids, and the open risks.

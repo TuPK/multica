@@ -89,6 +89,7 @@ describe("runSquadQuickstart", () => {
       "Plan review",
       "Security review",
       "Release prep",
+      "Environment",
       "Stage done",
       "Plan ready",
       "todo",

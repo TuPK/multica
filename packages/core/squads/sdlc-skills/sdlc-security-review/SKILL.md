@@ -50,6 +50,18 @@ One issue comment, verdict first:
 
 FAIL or NO_GO stops the release step. When evidence is missing, the answer is "not verified", never "passed".
 
+## Ruling mode (unblock issues)
+
+An unblock issue of class `security`, or a High-risk epic before it is built, asks what controls are needed.
+
+1. Read the blocker report, the design, and `docs/sdlc/rulings.md`.
+2. Walk the threats with STRIDE for the part in question, and rule which controls are required: authentication,
+   authorization and its scope, validation, secrets, personal data handling, audit trail.
+3. Give each finding an id, an exploit path in one sentence, an owner for the fix, and the check that proves the control.
+4. You grant no waiver and accept no risk: that is a person's decision. If a control cannot be built, set `Needs next` to
+   `irreversible` with the risk stated.
+Report with one Ruling comment (sdlc-delivery-core, Report format) and one line in `docs/sdlc/rulings.md`.
+
 ## Self-check before you report
 
 - Each threat maps to a requirement and to an abuse-case check.

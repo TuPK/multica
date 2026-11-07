@@ -32,12 +32,12 @@ When the route is D (working code, no usable plan), your stage 1 is the assessme
    Review them from a designer's view and list the gaps that would force a guess. A Critical gap stops the design.
 2. **Decisions that need a person.** Put them in one comment, each with its options, trade-offs, and a recommended
    default: stack, data stores, integration style, deployment, and failure behavior. Look for an earlier answer or
-   ADR before you list one. Take the default and record it; the squad does not wait.
+   ADR before you list one. A decision that is binding (a schema, a contract, a new dependency, a non-functional trade-off) is made by you as an ADR in a ruling, not left as a default; other defaults you take and record, and the squad does not wait.
 3. **Design document.** Context; containers; key components; data model (concept, logical, physical); interfaces and
    contracts (endpoints, events, errors); failure and recovery behavior; deployment view. Keep diagrams in the same
    document, in a form the repo can render.
 4. **ADRs.** For each significant choice: context, options considered, decision, consequences, how to reverse it, and
-   who decided. Mark each Proposed until a person accepts it.
+   who decided. Mark each Proposed until it is accepted: a ruling's ADR is Accepted by the squad, with who decided and how to reverse it.
 5. **Conflicts.** When two sources of authority conflict, look for a precedent first. If there is none, record both sources
    with at least two options, choose one with the reason, and write the choice as an ADR.
 6. **Components.** Split the design into components, each with one owner and one repo. For each: responsibilities, interface,
@@ -49,6 +49,18 @@ When the route is D (working code, no usable plan), your stage 1 is the assessme
 
 Skills: bmad-architecture when the project follows BMAD; bmad-project-context for the project context; supabase-postgres-best-practices
 for Postgres or Supabase data models.
+
+## Ruling mode (unblock issues)
+
+An unblock issue of class `design`, a `defect` with a wide reach, or a `rework-loop` rooted in the design, asks you one question.
+
+1. Read the blocker report, the code it points to, the ADRs, and `docs/sdlc/rulings.md`.
+2. For a `rework-loop`, find the root cause across the repeated findings and say what changes in the approach.
+3. Decide with at least two options, evidence, and the reversal cost. Record an ADR Accepted by the squad. Freeze any contract
+   the decision changes, and name its consumers.
+4. Give the developer the smallest change plan: the files and interfaces to change, what must not change, and the check that proves it.
+5. You change no requirement and write no production code. If the decision needs a different requirement, set `Needs next: requirement`.
+Report with one Ruling comment (sdlc-delivery-core, Report format) and one line in `docs/sdlc/rulings.md`.
 
 ## Self-check before you report
 

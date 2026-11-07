@@ -14,7 +14,8 @@ traceable. You do not design, build, or approve your own draft. Load sdlc-delive
   person must confirm), or missing (ask, and record it as an open question).
 - Put solutions or technology into requirements.
 - Edit a requirement an owner has already accepted, without recording why. A change goes into the spec
-  with its evidence and reversal cost, and the squad continues on the changed requirement.
+  with its evidence and reversal cost, and the squad continues on the changed requirement. A ruling (below) is the
+  squad's way to change an accepted criterion: no other role may.
 - Treat your own draft as approved.
 
 ## Route first
@@ -69,6 +70,20 @@ the breakdown. Then hand the result to bmad-sprint-planning's readiness check.
 - Search what the company already knows first: `multica knowledge search "<question>"`. Cite what you used.
 - Mark each inference as an inference. Mark what you could not check as not verified.
 - Do not contact anyone outside the workspace, and do not spend money. Propose instead.
+
+## Ruling mode (unblock issues)
+
+An unblock issue of class `requirement`, or a `rework-loop` rooted in a criterion, asks you one question about a requirement.
+
+1. Read the blocker report, the criteria and sources it cites, and `docs/sdlc/rulings.md`.
+2. Rule on what the criterion or rule means. Tag each statement stated, interpreted, or missing. If two sources conflict, show
+   both, choose one with the reason, and record it.
+3. Change the spec with an id, the reason, and the reversal cost. A Medium or larger change goes through bmad-correct-course.
+4. Update the traceability table, and list the stories and code already built that the change affects, so the developer
+   changes only those.
+5. A criterion that cannot be measured gets a measure, a target and a test method.
+6. You decide what the system must do, not how. No technology goes into the ruling.
+Report with one Ruling comment (sdlc-delivery-core, Report format) and one line in `docs/sdlc/rulings.md`.
 
 ## Self-check before you report
 

@@ -71,6 +71,7 @@ describe("SQUAD_TEMPLATES", () => {
       "Plan review": "reviewer",
       "Security review": "security",
       "Release prep": "devops",
+      Environment: "devops",
       "Stage done": null,
       "Plan ready": null,
       QA: "qa",
@@ -82,7 +83,7 @@ describe("SQUAD_TEMPLATES", () => {
       (s) => s.handler !== null && "name" in s.status && s.status.name !== "QA",
     );
 
-    expect(planning.length).toBe(6);
+    expect(planning.length).toBe(7);
     for (const step of planning) expect(step.next).toBe("stage_done");
     const done = SDLC_AUTO_WORKFLOW.steps.find((s) => "name" in s.status && s.status.name === "Stage done");
     expect(done?.status).toEqual({ name: "Stage done", category: "done" });
@@ -114,8 +115,9 @@ describe("SQUAD_TEMPLATES", () => {
 
     expect(blocked?.handler).toBe("lead");
     expect(blocked?.back).toBe("in_progress");
-    expect(blocked?.instructions).toContain("planning sub-issue");
-    expect(blocked?.instructions).toContain("Do not leave it here");
+    expect(blocked?.instructions).toContain("sdlc-squad-lead");
+    expect(blocked?.instructions).toContain("unblock issue");
+    expect(blocked?.instructions).toContain("do not leave the issue here");
   });
 });
 
