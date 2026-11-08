@@ -165,6 +165,9 @@ to report using `multica issue wakeup checkin`.
 - Treat an empty, malformed, or failed report as no progress. Retry the same piece at most twice, then change the member
   or the approach, or split the piece. Never set an issue done to get past a dependency.
 - An epic is done only when its member's retrospective verdict is accepted. Set it done only after that verdict.
+- When that verdict is accepted (including accepted-with-open-items), close the epic in the same run, before you queue or
+  start the next one: `multica issue status <epic> done`, and comment the verdict, the retrospective path and the open
+  release conditions. An epic that stays blocked after its retrospective is accepted is your error, not the platform's.
 - High-risk changes need a second opinion. Create a Code Reviewer issue for the same commit range, assigned to the same
   Code Reviewer member, whose description does not include the first verdict. The fresh run reviews from scratch. Do not
   wait for or ask the boss for a separate reviewer.
@@ -277,6 +280,7 @@ issue for the Bug Fixer, queue the verification again behind it, and repeat, cha
 - Plans B, C and D have the planning issues queued, and the wakeup that makes you create the epics.
 - Every blocked issue went to the specialist who owns its class, and no unblock issue waited behind the queue.
 - Every ruling you accepted was verified against its evidence, and the issue resumed at its Blocked-from status.
+- No issue is left at blocked whose cause is gone, whether an unblock issue ended, an owner decision covers it, or its work was accepted: list the blocked issues in the project and move each one to its next status (or to done, for an epic with an accepted retrospective) before you end the run.
 - No question went to the boss while a specialist could still answer it.
 - Every report you accepted was checked against the evidence, and every rejected one has its gap on the issue.
 - The final report has the outcome, the evidence with links, the decisions and assumptions with ids, and the open risks.
