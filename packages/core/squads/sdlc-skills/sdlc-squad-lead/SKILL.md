@@ -213,7 +213,7 @@ developer go on. [team-playbook.md](team-playbook.md) holds the class table, the
 4. **Wait.** Register a wakeup on the blocked issue and end your run:
    `multica issue wakeup create <blocked issue> --until-issue <unblock issue> --until-issue-state ended --expires-in 72h --on-timeout wake --instruction "Read the ruling. Verify it as Step 7 says, then resume the issue or route again."`
    Also register a watchdog, because the wakeup above fires only when the unblock issue ends, and an issue whose run
-   finished without ending it never fires: `multica issue wakeup create <blocked issue> --every 1h --max-fires 24 --instruction "Watchdog: read the unblock issue. If it has no running or queued run and is not ended, act now as Step 7 says."`
+   finished without ending it never fires: `multica issue wakeup create <blocked issue> --kind every --every 1h --max-fires 24 --instruction "Watchdog: read the unblock issue. If it has no running or queued run and is not ended, act now as Step 7 says."`
    Delete it with the wakeup when the blocked issue resumes.
 5. **Verify.** When woken, read the Ruling comment, open its artifacts, run or confirm its Resume-check (Step 6).
 6. **Resume.** A specialist does not move the blocked issue; you do. You verify the ruling, you do not give the issue's review or QA verdict, and you do not mark it done. Set the issue to its Blocked-from status (`in_progress` unless only a check is missing, then `in_review` or
