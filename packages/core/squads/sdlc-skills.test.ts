@@ -150,6 +150,9 @@ describe("built-in SDLC skills", () => {
     expect(lead).toContain("An epic that stays blocked after its retrospective is accepted is your error");
     expect(lead).toContain("No issue is left at blocked whose cause is gone");
     expect(lead).toContain("**Provider limits.**");
+    expect(lead).toContain("**Stalls.**");
+    expect(lead).toContain("Watchdog: read the unblock issue");
+    expect(get("sdlc-bug-fix")).toContain("not finished at a ruling that still needs code");
   });
 
   it("gives every role skill a self-check before it reports", () => {

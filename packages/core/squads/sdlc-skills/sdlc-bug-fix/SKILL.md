@@ -55,6 +55,9 @@ An unblock issue of class `defect` asks for the root cause and the smallest fix 
 1. Reproduce it with a failing test first, and find the root cause with systematic-debugging.
 2. If the fix is Trivial or Small, make it and prove it. If it is Medium or larger, rule only on the cause and the impact, and
    set `Needs next: design`.
+An unblock issue is not finished at a ruling that still needs code. If you rule and the fix is yours to make, make it in
+the same run, run the Resume-check and then report. If you stop with `Needs next`, name the member and say what exactly they
+must produce; the lead creates that issue.
 Report with one Ruling comment (sdlc-delivery-core, Report format) and one line in `docs/sdlc/rulings.md`.
 
 ## Self-check before you report

@@ -212,6 +212,9 @@ developer go on. [team-playbook.md](team-playbook.md) holds the class table, the
    "Proportion"); file a `capability` request only when none exists.
 4. **Wait.** Register a wakeup on the blocked issue and end your run:
    `multica issue wakeup create <blocked issue> --until-issue <unblock issue> --until-issue-state ended --expires-in 72h --on-timeout wake --instruction "Read the ruling. Verify it as Step 7 says, then resume the issue or route again."`
+   Also register a watchdog, because the wakeup above fires only when the unblock issue ends, and an issue whose run
+   finished without ending it never fires: `multica issue wakeup create <blocked issue> --every 1h --max-fires 24 --instruction "Watchdog: read the unblock issue. If it has no running or queued run and is not ended, act now as Step 7 says."`
+   Delete it with the wakeup when the blocked issue resumes.
 5. **Verify.** When woken, read the Ruling comment, open its artifacts, run or confirm its Resume-check (Step 6).
 6. **Resume.** A specialist does not move the blocked issue; you do. You verify the ruling, you do not give the issue's review or QA verdict, and you do not mark it done. Set the issue to its Blocked-from status (`in_progress` unless only a check is missing, then `in_review` or
    `qa`) with `multica issue status`. Comment the ruling, the paths, the command the member must run first, and what must
@@ -249,6 +252,16 @@ one. Create one DevOps issue: build every capability that epic and the ones afte
 `docs/sdlc/capabilities.md`. Report in the epic's final comment: the number of blocks, their classes, the time from block
 to resume, how many needed a person, and the release conditions still open.
 
+**Stalls.** Blocked is a parking state, never a place to wait. Each time you are woken, for any reason, list the
+project's issues that are not done and find the ones with no running or queued run and no wakeup that will fire:
+- An unblock issue whose last run ended with a ruling but the issue is not ended, or whose ruling says `Needs next`: do
+  not wait for it. If the ruling asks for implementation, comment on that same issue "implement the ruling now, then run
+  the Resume-check" and `multica issue rerun <issue>`; if it asks for another member, create that issue (Step 7, 3).
+- A blocked issue whose unblock issues have all ended: verify and resume it (Step 7, 5 and 6).
+- An issue that waits on a queue position that no run will reach (its predecessor is blocked or cancelled): requeue it
+  or tell the owner of the predecessor.
+A stall found is fixed in the same run. Report it only if it needs a person.
+
 **Provider limits.** A run that failed with `provider_quota_limit`, "out of credits" or a rate limit is not a blocker of any class and says nothing about the work. Do not set the epic to blocked for it and do not ask the boss to resume it. Comment once what was lost (which issues, which runs), register a wakeup on the epic (`multica issue wakeup create <epic> --expires-in 2h --on-timeout wake --instruction "Retry the runs that failed on the provider limit, then continue."`) and end your run. When woken, re-run each failed issue (`multica issue rerun <issue>`) and continue. After the third wakeup in a row that still fails the same way, ask once for credits, and keep the wakeup registered so you resume without being told.
 
 Never set a build issue or its Epic done while a check it needs has not run; name that check as unverified in the report
@@ -282,6 +295,7 @@ issue for the Bug Fixer, queue the verification again behind it, and repeat, cha
 - Plans B, C and D have the planning issues queued, and the wakeup that makes you create the epics.
 - Every blocked issue went to the specialist who owns its class, and no unblock issue waited behind the queue.
 - Every ruling you accepted was verified against its evidence, and the issue resumed at its Blocked-from status.
+- No issue sits idle: every non-done issue has a running or queued run, or a wakeup that will fire.
 - No issue is left at blocked whose cause is gone, whether an unblock issue ended, an owner decision covers it, or its work was accepted: list the blocked issues in the project and move each one to its next status (or to done, for an epic with an accepted retrospective) before you end the run.
 - No question went to the boss while a specialist could still answer it.
 - Every report you accepted was checked against the evidence, and every rejected one has its gap on the issue.
