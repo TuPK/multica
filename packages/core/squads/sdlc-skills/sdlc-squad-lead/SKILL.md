@@ -249,6 +249,8 @@ one. Create one DevOps issue: build every capability that epic and the ones afte
 `docs/sdlc/capabilities.md`. Report in the epic's final comment: the number of blocks, their classes, the time from block
 to resume, how many needed a person, and the release conditions still open.
 
+**Provider limits.** A run that failed with `provider_quota_limit`, "out of credits" or a rate limit is not a blocker of any class and says nothing about the work. Do not set the epic to blocked for it and do not ask the boss to resume it. Comment once what was lost (which issues, which runs), register a wakeup on the epic (`multica issue wakeup create <epic> --expires-in 2h --on-timeout wake --instruction "Retry the runs that failed on the provider limit, then continue."`) and end your run. When woken, re-run each failed issue (`multica issue rerun <issue>`) and continue. After the third wakeup in a row that still fails the same way, ask once for credits, and keep the wakeup registered so you resume without being told.
+
 Never set a build issue or its Epic done while a check it needs has not run; name that check as unverified in the report
 instead. Never change acceptance criteria to get past a blocker; only the Product Analyst changes one, through a ruling.
 

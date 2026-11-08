@@ -149,6 +149,7 @@ describe("built-in SDLC skills", () => {
     expect(get("sdlc-squad-lead")).toContain("docs/sdlc/parked.md");
     expect(lead).toContain("An epic that stays blocked after its retrospective is accepted is your error");
     expect(lead).toContain("No issue is left at blocked whose cause is gone");
+    expect(lead).toContain("**Provider limits.**");
   });
 
   it("gives every role skill a self-check before it reports", () => {
