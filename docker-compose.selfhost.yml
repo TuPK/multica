@@ -392,7 +392,9 @@ services:
       # the service user exists (KNOWLEDGE_DISABLE_REGISTRATION=true).
       DISABLE_REGISTRATION: ${KNOWLEDGE_DISABLE_REGISTRATION:-false}
       WEKNORA_TENANT_SELF_SERVICE_CREATION_ENABLED: "true"
-      WEKNORA_TENANT_MAX_OWNED_PER_USER: ${KNOWLEDGE_TENANT_MAX_OWNED_PER_USER:-1000}
+      WEKNORA_TENANT_MAX_OWNED_PER_USER: ${KNOWLEDGE_TENANT_MAX_OWNED_PER_USER:-1000000}
+      # Per-workspace storage cap in GB (WeKnora defaults to 10).
+      WEKNORA_TENANT_DEFAULT_STORAGE_QUOTA_GB: ${KNOWLEDGE_TENANT_STORAGE_QUOTA_GB:-1024}
       # WeKnora creates per-owner logins only for a system administrator, so the
       # service user must be bootstrapped as one (SELF_HOSTING.md, knowledge).
       WEKNORA_BOOTSTRAP_SYSTEM_ADMIN_EMAIL: ${KNOWLEDGE_SERVICE_EMAIL:-}
