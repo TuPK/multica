@@ -23,6 +23,32 @@ vi.mock("@multica/core/api", () => ({
 }));
 
 // The project picker reads the workspace query cache; the form only needs the project id it starts from.
+vi.mock("../../editor/content-editor", async () => {
+  const React = await import("react");
+  return {
+    ContentEditor: React.forwardRef(function ContentEditorMock(
+      { placeholder, onUpdate }: { placeholder?: string; onUpdate?: (v: string) => void },
+      ref: React.Ref<unknown>,
+    ) {
+      const input = React.useRef<HTMLTextAreaElement>(null);
+      React.useImperativeHandle(ref, () => ({
+        getMarkdown: () => input.current?.value ?? "",
+        clearContent: () => {
+          if (input.current) input.current.value = "";
+        },
+        hasActiveUploads: () => false,
+        uploadFile: () => {},
+      }));
+      return (
+        <textarea
+          ref={input}
+          aria-label={placeholder}
+          onChange={(event) => onUpdate?.(event.target.value)}
+        />
+      );
+    }),
+  };
+});
 vi.mock("../../projects/components/project-picker", () => ({
   ProjectPicker: ({ projectId }: { projectId: string | null }) => <button type="button">Project {projectId ?? "none"}</button>,
 }));
@@ -73,7 +99,7 @@ describe("CompanyAgentNewIssue", () => {
   it("hands the issue to the agent as todo by default", () => {
     setup();
     typeTitle(" Ship it ");
-    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "All of it" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Description" }), { target: { value: "All of it" } });
     fireEvent.click(screen.getByRole("button", { name: /High/ }));
 
     fireEvent.click(screen.getByRole("button", { name: "Create issue" }));

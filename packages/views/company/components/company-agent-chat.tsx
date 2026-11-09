@@ -7,7 +7,7 @@ import { ChevronDown, History, Plus, Send } from "@multica/ui/icons";
 import { api, ApiError } from "@multica/core/api";
 import { chatQuickActionsPendingOptions } from "@multica/core/chat/queries";
 import { useQuickActionsPendingTimeout } from "@multica/core/chat/use-quick-actions-pending-timeout";
-import type { Agent } from "@multica/core/types";
+import type { Agent, Attachment } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
 import {
   DropdownMenu,
@@ -16,7 +16,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@multica/ui/components/ui/dropdown-menu";
-import { Textarea } from "@multica/ui/components/ui/textarea";
+import { FileUploadButton } from "@multica/ui/components/common/file-upload-button";
+import { ContentEditor, type ContentEditorRef } from "../../editor/content-editor";
+import { ReadonlyContent } from "../../editor/readonly-content";
+import { FileDropOverlay } from "../../editor/file-drop-overlay";
+import { useLocalEditorUploads } from "../../editor/use-local-editor-uploads";
 import { cn } from "@multica/ui/lib/utils";
 import { ChatConversation } from "../../chat/components/chat-conversation";
 import { useQuickActionsFailureToast } from "../../chat/components/use-quick-actions-failure-toast";
@@ -145,23 +149,35 @@ function TalkPane({ agent, active }: { agent: Agent; active: boolean }) {
 interface SentRequest {
   id: number;
   prompt: string;
+  attachments: Attachment[];
 }
 
 function CreatePane({ agent, projectId }: { agent: Agent; projectId?: string }) {
   const { t } = useT("issues");
-  const [prompt, setPrompt] = useState("");
+  const editorRef = useRef<ContentEditorRef>(null);
+  const uploads = useLocalEditorUploads(editorRef);
+  const [hasPrompt, setHasPrompt] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState<SentRequest[]>([]);
   const nextId = useRef(0);
 
   const send = async () => {
-    const text = prompt.trim();
-    if (!text || sending) return;
+    if (sending || uploads.gate.isBlocked()) return;
+    const text = editorRef.current?.getMarkdown().trim() ?? "";
+    if (!text) return;
+    const attachmentIds = uploads.attachmentIdsIn(text);
     setSending(true);
     try {
-      await api.quickCreateIssue({ agent_id: agent.id, prompt: text, ...(projectId ? { project_id: projectId } : {}) });
-      setSent((list) => [...list, { id: ++nextId.current, prompt: text }]);
-      setPrompt("");
+      await api.quickCreateIssue({
+        agent_id: agent.id,
+        prompt: text,
+        ...(projectId ? { project_id: projectId } : {}),
+        ...(attachmentIds.length > 0 ? { attachment_ids: attachmentIds } : {}),
+      });
+      setSent((list) => [...list, { id: ++nextId.current, prompt: text, attachments: uploads.attachments }]);
+      editorRef.current?.clearContent();
+      uploads.reset();
+      setHasPrompt(false);
       toast.success(t(($) => $.company.create_sent, { name: agent.name }));
     } catch (error) {
       toast.error(error instanceof ApiError && error.message ? error.message : t(($) => $.company.create_failed));
@@ -175,25 +191,29 @@ function CreatePane({ agent, projectId }: { agent: Agent; projectId?: string }) 
       <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
         {sent.map((request) => (
           <li key={request.id} className="ml-auto max-w-[85%] rounded-lg bg-secondary px-3 py-2 text-body">
-            {request.prompt}
+            <ReadonlyContent content={request.prompt} attachments={request.attachments} />
           </li>
         ))}
       </ul>
       <div className="flex shrink-0 items-end gap-2 border-t p-2">
-        <Textarea
-          value={prompt}
-          onChange={(event) => setPrompt(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-              event.preventDefault();
-              void send();
-            }
-          }}
-          placeholder={t(($) => $.company.create_placeholder, { name: agent.name })}
-          aria-label={t(($) => $.company.create_placeholder, { name: agent.name })}
-          className="min-h-16 flex-1 resize-none"
-        />
-        <Button type="button" size="sm" disabled={!prompt.trim() || sending} onClick={() => void send()}>
+        <div
+          {...uploads.dropZoneProps}
+          className="relative max-h-48 min-h-16 flex-1 overflow-y-auto rounded-md border bg-background px-3 py-2 transition-colors focus-within:border-input"
+        >
+          <ContentEditor
+            ref={editorRef}
+            placeholder={t(($) => $.company.create_placeholder, { name: agent.name })}
+            onUpdate={(markdown) => setHasPrompt(markdown.trim().length > 0)}
+            onUploadFile={uploads.onUploadFile}
+            onUploadingChange={uploads.gate.onUploadingChange}
+            attachments={uploads.attachments}
+            onSubmit={() => void send()}
+            debounceMs={150}
+          />
+          {uploads.isDragOver && <FileDropOverlay />}
+        </div>
+        <FileUploadButton onSelect={uploads.uploadFile} multiple />
+        <Button type="button" size="sm" disabled={!hasPrompt || sending || uploads.gate.uploading} onClick={() => void send()}>
           <Send className="size-4" />
           {t(($) => $.company.create_send)}
         </Button>

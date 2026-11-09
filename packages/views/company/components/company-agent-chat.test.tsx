@@ -33,6 +33,32 @@ vi.mock("@multica/core/api", async (importOriginal) => ({
 vi.mock("@multica/core/chat/use-quick-actions-pending-timeout", () => ({ useQuickActionsPendingTimeout: () => {} }));
 vi.mock("../../chat/components/use-quick-actions-failure-toast", () => ({ useQuickActionsFailureToast: () => {} }));
 vi.mock("../../chat/components/use-chat-controller", () => ({ useChatController: () => controller.value }));
+vi.mock("../../editor/content-editor", async () => {
+  const React = await import("react");
+  return {
+    ContentEditor: React.forwardRef(function ContentEditorMock(
+      { placeholder, onUpdate }: { placeholder?: string; onUpdate?: (v: string) => void },
+      ref: React.Ref<unknown>,
+    ) {
+      const input = React.useRef<HTMLTextAreaElement>(null);
+      React.useImperativeHandle(ref, () => ({
+        getMarkdown: () => input.current?.value ?? "",
+        clearContent: () => {
+          if (input.current) input.current.value = "";
+        },
+        hasActiveUploads: () => false,
+        uploadFile: () => {},
+      }));
+      return (
+        <textarea
+          ref={input}
+          aria-label={placeholder}
+          onChange={(event) => onUpdate?.(event.target.value)}
+        />
+      );
+    }),
+  };
+});
 vi.mock("../../chat/components/chat-conversation", () => ({
   ChatConversation: ({ header }: { header: React.ReactNode }) => (
     <div>

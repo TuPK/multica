@@ -9,7 +9,7 @@ import {
 } from "@multica/core/issues/wakeups";
 import type { IssueWakeup } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
-import { Textarea } from "@multica/ui/components/ui/textarea";
+import { AttachableTextarea } from "../../editor/attachable-textarea";
 import {
   Tooltip,
   TooltipContent,
@@ -142,6 +142,7 @@ function InstructionForm({
   const [original] = useState(wakeup);
   const [value, setValue] = useState(wakeup.instruction);
   const [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
   const busy = useRef(false);
   const mutation = useEditWakeupInstruction(workspaceId, wakeup.issue_id);
   return (
@@ -149,7 +150,7 @@ function InstructionForm({
       className="space-y-3"
       onSubmit={async (event) => {
         event.preventDefault();
-        if (busy.current) return;
+        if (busy.current || uploading) return;
         const instruction = value.trim();
         if (!instruction || new TextEncoder().encode(instruction).length > 12000) {
           setError(t(($) => $.wakeups.instruction_invalid));
@@ -177,16 +178,18 @@ function InstructionForm({
       <label htmlFor={id} className="text-caption font-medium">
         {t(($) => $.wakeups.instruction_title)}
       </label>
-      <Textarea
+      <AttachableTextarea
         id={id}
+        issueId={wakeup.issue_id}
+        onUploadingChange={setUploading}
         value={value}
         rows={8}
         className="max-h-[45dvh] resize-y text-base md:text-body"
         disabled={mutation.isPending}
         aria-invalid={!!error}
         aria-describedby={error ? `${id}-error` : undefined}
-        onChange={(event) => {
-          setValue(event.target.value);
+        onValueChange={(next) => {
+          setValue(next);
           setError("");
         }}
         onKeyDown={(event) => {
@@ -205,7 +208,7 @@ function InstructionForm({
         <Button type="button" variant="outline" disabled={mutation.isPending} onClick={onCancel}>
           {t(($) => $.wakeups.instruction_cancel)}
         </Button>
-        <Button type="submit" disabled={mutation.isPending || value.trim() === original.instruction}>
+        <Button type="submit" disabled={mutation.isPending || uploading || value.trim() === original.instruction}>
           {t(($) => mutation.isPending ? $.wakeups.instruction_saving : $.wakeups.instruction_save)}
         </Button>
       </div>

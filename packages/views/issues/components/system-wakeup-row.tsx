@@ -8,7 +8,8 @@ import type { SystemWakeup } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
 import { IconButton } from "@multica/ui/components/common/icon-button";
 import { Switch } from "@multica/ui/components/ui/switch";
-import { Textarea } from "@multica/ui/components/ui/textarea";
+import { WakeupInstructionText } from "./wakeup-instruction-text";
+import { AttachableTextarea } from "../../editor/attachable-textarea";
 import {
   Popover,
   PopoverContent,
@@ -109,7 +110,7 @@ export function SystemWakeupRow({
             <dt className="text-muted-foreground">{t(($) => $.wakeups.source_title)}</dt>
             <dd>{t(($) => $.wakeups.system.source)}</dd>
           </dl>
-          <InstructionEditor rule={rule} pending={update.isPending} onSave={save} />
+          <InstructionEditor issueId={issueId} rule={rule} pending={update.isPending} onSave={save} />
           <div className="flex items-center gap-2 border-t border-border pt-2.5">
             <span className="flex-1 text-caption">{t(($) => $.wakeups.system.enable)}</span>
             <Switch
@@ -147,10 +148,12 @@ function SystemBadge() {
 }
 
 function InstructionEditor({
+  issueId,
   rule,
   pending,
   onSave,
 }: {
+  issueId: string;
   rule: SystemWakeup;
   pending: boolean;
   onSave: (input: { enabled: boolean; instruction: string }) => Promise<unknown>;
@@ -160,6 +163,7 @@ function InstructionEditor({
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(rule.instruction);
   const [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
   const label = t(($) => $.wakeups.system.instruction);
   if (!editing) {
     return (
@@ -181,7 +185,7 @@ function InstructionEditor({
           </IconButton>
         </div>
         {rule.instruction ? (
-          <p className="whitespace-pre-wrap break-words text-caption">{rule.instruction}</p>
+          <WakeupInstructionText text={rule.instruction} className="text-caption" />
         ) : (
           <div className="text-caption text-muted-foreground">
             <p>{t(($) => $.wakeups.system.instruction_default)}</p>
@@ -200,6 +204,7 @@ function InstructionEditor({
       className="space-y-2"
       onSubmit={async (event) => {
         event.preventDefault();
+        if (uploading) return;
         const instruction = value.trim();
         if (new TextEncoder().encode(instruction).length > MAX_INSTRUCTION_BYTES) {
           setError(t(($) => $.wakeups.system.instruction_invalid));
@@ -216,8 +221,10 @@ function InstructionEditor({
       <label htmlFor={id} className="text-caption font-medium">
         {label}
       </label>
-      <Textarea
+      <AttachableTextarea
         id={id}
+        issueId={issueId}
+        onUploadingChange={setUploading}
         rows={5}
         value={value}
         placeholder={rule.default_instruction || t(($) => $.wakeups.system.instruction_placeholder)}
@@ -225,8 +232,8 @@ function InstructionEditor({
         disabled={pending}
         aria-invalid={!!error}
         aria-describedby={error ? `${id}-error` : undefined}
-        onChange={(event) => {
-          setValue(event.target.value);
+        onValueChange={(next) => {
+          setValue(next);
           setError("");
         }}
         onKeyDown={(event) => {
@@ -245,7 +252,7 @@ function InstructionEditor({
         <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => setEditing(false)}>
           {t(($) => $.wakeups.instruction_cancel)}
         </Button>
-        <Button type="submit" size="sm" disabled={pending || value.trim() === rule.instruction}>
+        <Button type="submit" size="sm" disabled={pending || uploading || value.trim() === rule.instruction}>
           {t(($) => (pending ? $.wakeups.instruction_saving : $.wakeups.instruction_save))}
         </Button>
       </div>

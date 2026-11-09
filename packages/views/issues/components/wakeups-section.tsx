@@ -3,6 +3,7 @@
 import { IssueSidebarSectionHeader } from "./issue-sidebar-section";
 
 import { useState } from "react";
+import { WakeupInstructionText } from "./wakeup-instruction-text";
 import { useQuery } from "@tanstack/react-query";
 import { Bell, Clock3, ChevronRight, GitPullRequest, Link2, ListChecks, CircleDot, Play } from "@multica/ui/icons";
 import { toast } from "sonner";
@@ -259,9 +260,7 @@ function WakeupRow({
             <p className="text-caption font-medium">{t(($) => $.wakeups.instruction_title)}</p>
             <WakeupInstructionEditor workspaceId={workspaceId} issueId={wakeup.issue_id} wakeupId={wakeup.id} />
           </div>
-          <p className="whitespace-pre-wrap break-words text-caption">
-            {wakeup.instruction}
-          </p>
+          <WakeupInstructionText text={wakeup.instruction} className="text-caption" />
           {wakeup.kind === "event" && !wakeup.condition && (
             <p className="break-words text-caption text-muted-foreground">
               {t(($) => $.wakeups.any_event)}:{" "}

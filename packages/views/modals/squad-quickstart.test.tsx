@@ -100,6 +100,7 @@ const readyOutcome: QuickstartOutcome = {
   agents: [{ role: "lead", name: "SDLC Lead", id: "a1", status: "created" }],
   squad: { id: "squad-9", status: "created" },
   workflow: { status: "created" },
+  skills: { status: "skipped" },
   routine: { status: "skipped" },
 };
 
@@ -184,6 +185,7 @@ describe("SquadQuickstartModal", () => {
       ],
       squad: { id: "squad-9", status: "created" },
       workflow: { status: "skipped" },
+      skills: { status: "skipped" },
       routine: { status: "skipped" },
     } satisfies QuickstartOutcome);
     renderModal();

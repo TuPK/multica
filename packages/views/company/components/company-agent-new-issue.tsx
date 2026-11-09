@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { PRIORITY_DISPLAY_ORDER } from "@multica/core/issues/config";
 import { useCreateIssue } from "@multica/core/issues/mutations";
@@ -14,8 +14,11 @@ import { Input } from "@multica/ui/components/ui/input";
 import { Label } from "@multica/ui/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@multica/ui/components/ui/popover";
 import { Switch } from "@multica/ui/components/ui/switch";
-import { Textarea } from "@multica/ui/components/ui/textarea";
+import { FileUploadButton } from "@multica/ui/components/common/file-upload-button";
 import { useT } from "../../i18n";
+import { ContentEditor, type ContentEditorRef } from "../../editor/content-editor";
+import { FileDropOverlay } from "../../editor/file-drop-overlay";
+import { useLocalEditorUploads } from "../../editor/use-local-editor-uploads";
 import { PillButton } from "../../common/pill-button";
 import { PriorityIcon } from "../../issues/components/priority-icon";
 import { ProjectPicker } from "../../projects/components/project-picker";
@@ -45,7 +48,8 @@ export function CompanyAgentNewIssue({
   const { t } = useT("issues");
   const create = useCreateIssue();
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const descriptionRef = useRef<ContentEditorRef>(null);
+  const uploads = useLocalEditorUploads(descriptionRef);
   const [priority, setPriority] = useState<IssuePriority>("none");
   const [assign, setAssign] = useState(true);
   // Unset until the user picks, so the status follows the assign switch by default.
@@ -66,12 +70,15 @@ export function CompanyAgentNewIssue({
 
   const submit = () => {
     const trimmed = title.trim();
-    if (!trimmed || create.isPending) return;
+    if (!trimmed || create.isPending || uploads.gate.isBlocked()) return;
+    const description = descriptionRef.current?.getMarkdown().trim() ?? "";
+    const attachmentIds = uploads.attachmentIdsIn(description);
     const queueNew = queued && status === "backlog";
     create.mutate(
       {
         title: trimmed,
-        ...(description.trim() ? { description: description.trim() } : {}),
+        ...(description ? { description } : {}),
+        ...(attachmentIds.length > 0 ? { attachment_ids: attachmentIds } : {}),
         priority,
         status,
         ...(assign ? { assignee_type: "agent" as const, assignee_id: agent.id } : {}),
@@ -107,13 +114,24 @@ export function CompanyAgentNewIssue({
         <Input id="company-new-issue-title" autoFocus value={title} onChange={(event) => setTitle(event.target.value)} />
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="company-new-issue-description">{t(($) => $.company.new_description)}</Label>
-        <Textarea
-          id="company-new-issue-description"
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-          className="min-h-28"
-        />
+        <Label>{t(($) => $.company.new_description)}</Label>
+        <div
+          {...uploads.dropZoneProps}
+          className="relative max-h-64 min-h-28 overflow-y-auto rounded-md border bg-background px-3 py-2 transition-colors focus-within:border-input"
+        >
+          <ContentEditor
+            ref={descriptionRef}
+            placeholder={t(($) => $.company.new_description)}
+            onUploadFile={uploads.onUploadFile}
+            onUploadingChange={uploads.gate.onUploadingChange}
+            attachments={uploads.attachments}
+            debounceMs={150}
+          />
+          {uploads.isDragOver && <FileDropOverlay />}
+        </div>
+        <div className="flex justify-end">
+          <FileUploadButton onSelect={uploads.uploadFile} multiple />
+        </div>
       </div>
       <div className="flex flex-col gap-1.5">
         <span className="text-caption font-medium">{t(($) => $.detail.prop_status)}</span>
@@ -197,7 +215,7 @@ export function CompanyAgentNewIssue({
         <Button type="button" variant="ghost" onClick={onCancel}>
           {t(($) => $.company.new_cancel)}
         </Button>
-        <Button type="submit" disabled={!title.trim() || create.isPending}>
+        <Button type="submit" disabled={!title.trim() || create.isPending || uploads.gate.uploading}>
           {t(($) => $.company.new_create)}
         </Button>
       </div>

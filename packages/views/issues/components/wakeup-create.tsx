@@ -29,7 +29,7 @@ import { shortcutMatchesEvent, useShortcut } from "@multica/core/shortcuts";
 import { Button } from "@multica/ui/components/ui/button";
 import { IconButton } from "@multica/ui/components/common/icon-button";
 import { Input } from "@multica/ui/components/ui/input";
-import { Textarea } from "@multica/ui/components/ui/textarea";
+import { AttachableTextarea } from "../../editor/attachable-textarea";
 import {
   Popover,
   PopoverContent,
@@ -155,6 +155,7 @@ export function WakeupCreateForm({
   const id = useId();
   const [draft, setDraft] = useState(() => emptyWakeupDraft(defaultAgentId, timezone));
   const [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
   const create = useCreateIssueWakeup(workspaceId, issueId);
   const sendShortcut = useShortcut("send");
   const { data: agents = [] } = useQuery(agentListOptions(workspaceId));
@@ -177,7 +178,7 @@ export function WakeupCreateForm({
   };
 
   const submit = async () => {
-    if (create.isPending) return;
+    if (create.isPending || uploading) return;
     const propertyType =
       draft.field === "property" ? properties.find((p) => p.id === draft.fieldTarget)?.type : undefined;
     const result = buildWakeupInput(draft, new Date(), propertyType);
@@ -254,13 +255,15 @@ export function WakeupCreateForm({
       <label htmlFor={`${id}-instruction`} className="mt-4 mb-1.5 block text-caption font-medium">
         {t(($) => $.wakeups.instruction_title)}
       </label>
-      <Textarea
+      <AttachableTextarea
         id={`${id}-instruction`}
+        issueId={issueId}
+        onUploadingChange={setUploading}
         rows={3}
         value={draft.instruction}
         placeholder={t(($) => $.wakeups.create.instruction_placeholder)}
         className="max-h-[30dvh] resize-y text-base md:text-label"
-        onChange={(event) => update({ instruction: event.target.value })}
+        onValueChange={(instruction) => update({ instruction })}
       />
       {draft.condition === "recurring" && (
         <div className="mt-4 grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-y-2.5">
@@ -348,7 +351,7 @@ export function WakeupCreateForm({
         <Button type="button" variant="ghost" size="sm" disabled={create.isPending} onClick={onClose}>
           {t(($) => $.wakeups.create.cancel)}
         </Button>
-        <Button type="submit" size="sm" disabled={create.isPending} aria-busy={create.isPending}>
+        <Button type="submit" size="sm" disabled={create.isPending || uploading} aria-busy={create.isPending || uploading}>
           {t(($) => (create.isPending ? $.wakeups.create.submitting : $.wakeups.create.submit))}
           {sendShortcut && !create.isPending ? (
             <ShortcutKeycaps
