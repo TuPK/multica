@@ -132,7 +132,7 @@ func (h *Handler) applyIssueWorkflow(ctx context.Context, prev db.Issue, params 
 	// go through the steps. The leader's own run moving the request does hand it
 	// to the step's handler, so the request does not stall with the leader after
 	// the leader sends it on.
-	if h.isSquadRequest(ctx, prev) && !(run != nil && run.AgentID == prev.AssigneeID) {
+	if h.isSquadRequest(ctx, prev) && !h.isRunOfRequestLeader(ctx, prev, run) {
 		return nil, nil
 	}
 	assigneeType, assigneeID, ok := issueworkflow.ResolveHandler(step, project, prev.CreatorType, prev.CreatorID)
@@ -579,6 +579,23 @@ func (h *Handler) stepHandlerName(ctx context.Context, issue db.Issue, project d
 
 // isSquadRequest reports whether the issue is a request to a squad: it has no
 // parent and is assigned to the squad or to the leader of a live squad.
+// isRunOfRequestLeader reports whether run is the agent running as the leader
+// of the squad that holds the request. For a squad assignee the assignee id is
+// the squad, so the run's agent must be checked against the squad's leader.
+func (h *Handler) isRunOfRequestLeader(ctx context.Context, issue db.Issue, run *db.AgentTaskQueue) bool {
+	if run == nil {
+		return false
+	}
+	if issue.AssigneeType.String != "squad" {
+		return run.AgentID == issue.AssigneeID
+	}
+	squad, err := h.Queries.GetSquadInWorkspace(ctx, db.GetSquadInWorkspaceParams{
+		ID:          issue.AssigneeID,
+		WorkspaceID: issue.WorkspaceID,
+	})
+	return err == nil && squad.LeaderID == run.AgentID
+}
+
 func (h *Handler) isSquadRequest(ctx context.Context, issue db.Issue) bool {
 	if issue.ParentIssueID.Valid || !issue.AssigneeID.Valid {
 		return false

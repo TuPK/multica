@@ -141,6 +141,34 @@ func TestSquadLeaderMoveHandsRequestToStepHandler(t *testing.T) {
 	}
 }
 
+// The same leader move on a request assigned to the squad itself, the way the
+// squad screen and the assign flow hand work over. The leader's run carries the
+// squad's id on its task, not the request's assignee id.
+func TestSquadLeaderMoveHandsSquadRequestToStepHandler(t *testing.T) {
+	seedTestCatalog(t)
+	resetDefaultWorkflow(t)
+	handler := seededReadyAgentID(t)
+	var runtimeID string
+	dbfx.QueryRow(t, `SELECT runtime_id::text FROM agent WHERE id = $1`, handler).Scan(&runtimeID)
+	leader := dbfx.Agent(t, "squad handoff leader "+workflowTestSuffix(), runtimeID)
+	squadID := dbfx.Squad(t, "squad handoff squad "+workflowTestSuffix(), leader)
+	dbfx.SquadMember(t, squadID, "agent", handler)
+	projectID := deliveryProject(t, "Squad-assigned leader handoff project", handler)
+
+	request := dbfx.Issue(t, "a squad request the leader sent back", testutil.Cols{
+		"project_id": projectID, "status": "blocked", "assignee_type": "squad", "assignee_id": squadID,
+	})
+	task := dbfx.Task(t, leader, testutil.Cols{
+		"issue_id": request, "runtime_id": runtimeID, "status": "running", "started_at": time.Now(),
+		"is_leader_task": true, "squad_id": squadID,
+	})
+
+	agentUpdateIssue(t, request, leader, task, map[string]any{"status": "in_progress"}).Want(http.StatusOK)
+	if status, assigneeType, assigneeID := issueStatusAndAssignee(t, request); status != "in_progress" || assigneeType != "agent" || assigneeID != handler {
+		t.Fatalf("request = (%q, %q, %q), want in_progress handed to the step's handler %q", status, assigneeType, assigneeID, handler)
+	}
+}
+
 // runtimeIDAgent makes an agent that leads no squad.
 func runtimeIDAgent(t *testing.T, runtimeID string) string {
 	t.Helper()
