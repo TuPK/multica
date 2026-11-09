@@ -268,5 +268,54 @@
     "once": "请立即复制，之后不会再次显示。",
     "open": "打开 WeKnora",
     "failed": "无法显示密码"
+  },
+  "explorer": {
+    "tree_label": "资料库结构",
+    "all_documents": "全部文档",
+    "company": "公司",
+    "projects": "项目",
+    "no_projects": "项目创建后会显示在这里。",
+    "wiki_on": "Wiki 已开启",
+    "wiki_off": "Wiki 已关闭",
+    "summaries_on": "摘要已开启",
+    "open_project": "打开项目",
+    "path_label": "文件夹路径",
+    "company_hint": "全公司的知识库。除非受限，工作区内所有人都可阅读。",
+    "project_hint": "该项目专属的知识库。文件会从项目文件夹自动加入，你也可以手动添加文档。",
+    "visibility": {
+      "workspace": "工作区可见",
+      "restricted": "受限"
+    },
+    "tabs": {
+      "documents": "文档",
+      "wiki": "Wiki",
+      "add": "添加文档",
+      "settings": "设置"
+    },
+    "toggle": "展开或收起 {{name}}"
+  },
+  "wiki": {
+    "off_title": "此知识库未开启 Wiki",
+    "no_documents": "请先添加文档，Wiki 由文档生成。",
+    "no_chat_model": "该服务器没有对话模型，无法生成 Wiki。",
+    "off_hint": "根据此知识库的 {{count}} 份文档生成 Wiki：每份文档一个摘要页，以及它们共有的人物、产品和概念页面。每份文档约需几分钟。",
+    "off_member": "所有者或管理员可以开启 Wiki。",
+    "generate": "生成 Wiki",
+    "rewrite": "重写 Wiki",
+    "pages_other": "{{count}} 个页面",
+    "writing": "页面仍在生成中",
+    "none_yet": "暂无页面，生成后会显示在这里。",
+    "pick": "选择一个页面进行阅读。",
+    "type": {
+      "all": "全部",
+      "summary": "摘要",
+      "entity": "实体",
+      "concept": "概念",
+      "unknown": "其他"
+    },
+    "toast": {
+      "queued_other": "正在根据 {{count}} 份文档生成 Wiki",
+      "failed": "无法启动 Wiki"
+    }
   }
 }

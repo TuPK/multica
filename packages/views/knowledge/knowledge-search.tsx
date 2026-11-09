@@ -33,16 +33,19 @@ export function KnowledgeSearch({
   wsId,
   knowledgeBases,
   secretaryAgentId,
+  scopeKb,
 }: {
   wsId: string;
   knowledgeBases: KnowledgeBase[];
   secretaryAgentId: string | null;
+  /** Searches this base only. */
+  scopeKb?: string;
 }) {
   const { t } = useT("knowledge");
   const [draft, setDraft] = useState("");
   const [submitted, setSubmitted] = useState("");
   const [kind, setKind] = useState("");
-  const search = useQuery(knowledgeSearchOptions(wsId, { q: submitted, kind: kind || undefined }));
+  const search = useQuery(knowledgeSearchOptions(wsId, { q: submitted, kb: scopeKb || undefined, kind: kind || undefined }));
   const kinds = useQuery(knowledgeKindsOptions(wsId));
   const askSecretary = useAskSecretary();
 

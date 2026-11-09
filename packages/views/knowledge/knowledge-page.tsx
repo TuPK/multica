@@ -30,11 +30,9 @@ import { canManageKnowledge, useCurrentMember } from "@multica/core/permissions"
 import { useCurrentWorkspace } from "@multica/core/paths";
 import { CollectionPageHeader, CollectionPageState } from "../layout/collection-page";
 import { useT } from "../i18n";
-import { KnowledgeDocuments } from "./knowledge-documents";
+import { KnowledgeExplorer } from "./knowledge-explorer";
 import { KnowledgeDrafts } from "./knowledge-drafts";
 import { KnowledgeGovernance } from "./knowledge-governance";
-import { KnowledgeSearch } from "./knowledge-search";
-import { KnowledgeUploadPanel } from "./knowledge-upload";
 import { KnowledgeSetupPanel } from "./knowledge-setup";
 
 type KnowledgeTab = "library" | "drafts" | "setup" | "governance";
@@ -193,14 +191,13 @@ export function KnowledgePage() {
             {canManage ? <TabsTrigger value="setup">{t(($) => $.tabs.setup)}</TabsTrigger> : null}
             {canManage ? <TabsTrigger value="governance">{t(($) => $.tabs.governance)}</TabsTrigger> : null}
           </TabsList>
-          <TabsContent value="library" className="flex flex-col gap-6 pt-4">
-            <KnowledgeSearch
+          <TabsContent value="library" className="pt-4">
+            <KnowledgeExplorer
               wsId={wsId}
               knowledgeBases={knowledgeBases}
+              canManage={canManage}
               secretaryAgentId={secretaryAgentId}
             />
-            <KnowledgeUploadPanel wsId={wsId} knowledgeBases={knowledgeBases} />
-            <KnowledgeDocuments wsId={wsId} knowledgeBases={knowledgeBases} />
           </TabsContent>
           <TabsContent value="drafts" className="pt-4">
             <KnowledgeDrafts

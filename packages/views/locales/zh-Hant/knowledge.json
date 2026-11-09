@@ -268,5 +268,54 @@
     "once": "請立即複製，之後不會再次顯示。",
     "open": "開啟 WeKnora",
     "failed": "無法顯示密碼"
+  },
+  "explorer": {
+    "tree_label": "資料庫結構",
+    "all_documents": "全部文件",
+    "company": "公司",
+    "projects": "專案",
+    "no_projects": "專案建立後會顯示在這裡。",
+    "wiki_on": "Wiki 已開啟",
+    "wiki_off": "Wiki 已關閉",
+    "summaries_on": "摘要已開啟",
+    "open_project": "開啟專案",
+    "path_label": "資料夾路徑",
+    "company_hint": "全公司的知識庫。除非受限，工作區內所有人都可閱讀。",
+    "project_hint": "此專案專屬的知識庫。檔案會從專案資料夾自動加入，你也可以手動新增文件。",
+    "visibility": {
+      "workspace": "工作區可見",
+      "restricted": "受限"
+    },
+    "tabs": {
+      "documents": "文件",
+      "wiki": "Wiki",
+      "add": "新增文件",
+      "settings": "設定"
+    },
+    "toggle": "展開或收合 {{name}}"
+  },
+  "wiki": {
+    "off_title": "此知識庫未開啟 Wiki",
+    "no_documents": "請先新增文件，Wiki 由文件產生。",
+    "no_chat_model": "此伺服器沒有對話模型，無法產生 Wiki。",
+    "off_hint": "根據此知識庫的 {{count}} 份文件產生 Wiki：每份文件一個摘要頁，以及它們共有的人物、產品和概念頁面。每份文件約需幾分鐘。",
+    "off_member": "擁有者或管理員可以開啟 Wiki。",
+    "generate": "產生 Wiki",
+    "rewrite": "重寫 Wiki",
+    "pages_other": "{{count}} 個頁面",
+    "writing": "頁面仍在產生中",
+    "none_yet": "尚無頁面，產生後會顯示在這裡。",
+    "pick": "選擇一個頁面來閱讀。",
+    "type": {
+      "all": "全部",
+      "summary": "摘要",
+      "entity": "實體",
+      "concept": "概念",
+      "unknown": "其他"
+    },
+    "toast": {
+      "queued_other": "正在根據 {{count}} 份文件產生 Wiki",
+      "failed": "無法啟動 Wiki"
+    }
   }
 }

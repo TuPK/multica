@@ -268,5 +268,54 @@
     "once": "今すぐコピーしてください。再度表示されることはありません。",
     "open": "WeKnora を開く",
     "failed": "パスワードを表示できませんでした"
+  },
+  "explorer": {
+    "tree_label": "ライブラリの構成",
+    "all_documents": "すべてのドキュメント",
+    "company": "会社",
+    "projects": "プロジェクト",
+    "no_projects": "プロジェクトは作成されるとここに表示されます。",
+    "wiki_on": "Wiki オン",
+    "wiki_off": "Wiki オフ",
+    "summaries_on": "要約オン",
+    "open_project": "プロジェクトを開く",
+    "path_label": "フォルダーのパス",
+    "company_hint": "会社全体のナレッジベースです。制限されていない限り、ワークスペースの全員が読めます。",
+    "project_hint": "このプロジェクト専用のナレッジベースです。ファイルはプロジェクトのフォルダーから自動で追加され、手動で追加することもできます。",
+    "visibility": {
+      "workspace": "ワークスペースに公開",
+      "restricted": "制限あり"
+    },
+    "tabs": {
+      "documents": "ドキュメント",
+      "wiki": "Wiki",
+      "add": "ドキュメントを追加",
+      "settings": "設定"
+    },
+    "toggle": "{{name}} を表示または非表示"
+  },
+  "wiki": {
+    "off_title": "このナレッジベースでは Wiki がオフです",
+    "no_documents": "先にドキュメントを追加してください。Wiki はそれらから作成されます。",
+    "no_chat_model": "このサーバーにはチャットモデルがないため、Wiki を作成できません。",
+    "off_hint": "このナレッジベースの {{count}} 件のドキュメントから Wiki を作成します。各ドキュメントの要約ページと、共通する人物・製品・概念のページが作られます。1 件あたり数分かかります。",
+    "off_member": "オーナーまたは管理者が Wiki をオンにできます。",
+    "generate": "Wiki を生成",
+    "rewrite": "Wiki を再作成",
+    "pages_other": "{{count}} ページ",
+    "writing": "ページを作成中です",
+    "none_yet": "まだページがありません。作成されるとここに表示されます。",
+    "pick": "ページを選んで読みます。",
+    "type": {
+      "all": "すべて",
+      "summary": "要約",
+      "entity": "エンティティ",
+      "concept": "概念",
+      "unknown": "その他"
+    },
+    "toast": {
+      "queued_other": "{{count}} 件のドキュメントから Wiki を作成しています",
+      "failed": "Wiki を開始できませんでした"
+    }
   }
 }

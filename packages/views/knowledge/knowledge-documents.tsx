@@ -13,6 +13,7 @@ import {
 } from "@multica/core/knowledge";
 import { useTimeAgo, useT } from "../i18n";
 import { isWebLink } from "./web-link";
+import { inFolder } from "./knowledge-tree";
 
 type DocumentFilter = "all" | Exclude<KnowledgeDocumentState, "unknown">;
 
@@ -26,12 +27,19 @@ const FILTERS: DocumentFilter[] = ["all", "published", "draft", "failed"];
 export function KnowledgeDocuments({
   wsId,
   knowledgeBases,
+  scopeKb,
+  folder = "",
 }: {
   wsId: string;
   knowledgeBases: KnowledgeBase[];
+  /** Fixes the list to one base and hides the base filter. */
+  scopeKb?: string;
+  /** Narrows the list to a folder and what is below it. */
+  folder?: string;
 }) {
   const { t } = useT("knowledge");
-  const [kb, setKb] = useState("");
+  const [pickedKb, setKb] = useState("");
+  const kb = scopeKb ?? pickedKb;
   const [filter, setFilter] = useState<DocumentFilter>("all");
   const documents = useQuery(
     knowledgeDocumentsOptions(wsId, {
@@ -68,14 +76,16 @@ export function KnowledgeDocuments({
         {t(($) => $.offline.title)}
       </p>
     );
-  } else if (documents.data.documents.length === 0) {
+  } else if (documents.data.documents.filter((doc) => inFolder(doc, folder)).length === 0) {
     list = (
       <p className="text-caption text-muted-foreground">{t(($) => $.documents.empty)}</p>
     );
   } else {
     list = (
       <ul className="flex flex-col divide-y rounded-lg border">
-        {documents.data.documents.map((doc, index) => (
+        {documents.data.documents
+          .filter((doc) => inFolder(doc, folder))
+          .map((doc, index) => (
           <DocumentRow
             key={doc.id || `${doc.knowledge_base}-${doc.document_id}-${index}`}
             doc={doc}
@@ -97,7 +107,7 @@ export function KnowledgeDocuments({
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        {kbOptions.map((option) => (
+        {(scopeKb === undefined ? kbOptions : []).map((option) => (
           <Button
             key={option.key || "all"}
             size="sm"
@@ -108,7 +118,7 @@ export function KnowledgeDocuments({
             {option.label}
           </Button>
         ))}
-        <span aria-hidden="true" className="mx-1 h-4 w-px bg-border" />
+        {scopeKb === undefined ? <span aria-hidden="true" className="mx-1 h-4 w-px bg-border" /> : null}
         {FILTERS.map((value) => (
           <Button
             key={value}
@@ -148,6 +158,12 @@ function DocumentRow({
       </div>
       <div className="flex min-w-0 flex-wrap items-center gap-x-2 text-caption text-muted-foreground">
         <span>{knowledgeBaseName}</span>
+        {doc.folder ? (
+          <>
+            <span aria-hidden="true">·</span>
+            <span className="min-w-0 truncate font-mono">{doc.folder}</span>
+          </>
+        ) : null}
         {doc.created_at ? (
           <>
             <span aria-hidden="true">·</span>

@@ -448,6 +448,23 @@ import type {
   SearchKnowledgeParams,
 } from "../knowledge/types";
 import {
+  FALLBACK_KNOWLEDGE_WIKI_GENERATE,
+  FALLBACK_KNOWLEDGE_WIKI_OVERVIEW,
+  FALLBACK_KNOWLEDGE_WIKI_PAGE,
+  FALLBACK_KNOWLEDGE_WIKI_PAGE_LIST,
+  KnowledgeWikiGenerateResultSchema,
+  KnowledgeWikiOverviewSchema,
+  KnowledgeWikiPageListSchema,
+  KnowledgeWikiPageSchema,
+} from "../knowledge/wiki-schemas";
+import type {
+  KnowledgeWikiGenerateResult,
+  KnowledgeWikiOverview,
+  KnowledgeWikiPage,
+  KnowledgeWikiPageList,
+  ListKnowledgeWikiPagesParams,
+} from "../knowledge/wiki-types";
+import {
   EMPTY_INITIATIVES,
   EMPTY_PIPELINES,
   FALLBACK_INITIATIVE,
@@ -6484,6 +6501,48 @@ export class ApiClient {
     });
     return parseWithFallback(raw, KnowledgeBaseSettingsSchema, FALLBACK_KNOWLEDGE_BASE_SETTINGS, {
       endpoint: "PATCH /api/knowledge/bases/:key/settings",
+    });
+  }
+
+  async getKnowledgeWiki(key: string): Promise<KnowledgeWikiOverview> {
+    const raw = await this.fetch<unknown>(`/api/knowledge/bases/${encodeURIComponent(key)}/wiki`);
+    return parseWithFallback(raw, KnowledgeWikiOverviewSchema, FALLBACK_KNOWLEDGE_WIKI_OVERVIEW, {
+      endpoint: "GET /api/knowledge/bases/:key/wiki",
+    });
+  }
+
+  async listKnowledgeWikiPages(
+    key: string,
+    params?: ListKnowledgeWikiPagesParams,
+  ): Promise<KnowledgeWikiPageList> {
+    const search = new URLSearchParams();
+    if (params?.page) search.set("page", String(params.page));
+    if (params?.page_size) search.set("page_size", String(params.page_size));
+    if (params?.type) search.set("type", params.type);
+    const qs = search.toString();
+    const raw = await this.fetch<unknown>(
+      `/api/knowledge/bases/${encodeURIComponent(key)}/wiki/pages${qs ? `?${qs}` : ""}`,
+    );
+    return parseWithFallback(raw, KnowledgeWikiPageListSchema, FALLBACK_KNOWLEDGE_WIKI_PAGE_LIST, {
+      endpoint: "GET /api/knowledge/bases/:key/wiki/pages",
+    });
+  }
+
+  async getKnowledgeWikiPage(key: string, slug: string): Promise<KnowledgeWikiPage> {
+    // A slug has slashes (concept/buyer-taste-mission): escape each part.
+    const path = slug.split("/").map(encodeURIComponent).join("/");
+    const raw = await this.fetch<unknown>(`/api/knowledge/bases/${encodeURIComponent(key)}/wiki/pages/${path}`);
+    return parseWithFallback(raw, KnowledgeWikiPageSchema, FALLBACK_KNOWLEDGE_WIKI_PAGE, {
+      endpoint: "GET /api/knowledge/bases/:key/wiki/pages/:slug",
+    });
+  }
+
+  async generateKnowledgeWiki(key: string): Promise<KnowledgeWikiGenerateResult> {
+    const raw = await this.fetch<unknown>(`/api/knowledge/bases/${encodeURIComponent(key)}/wiki/generate`, {
+      method: "POST",
+    });
+    return parseWithFallback(raw, KnowledgeWikiGenerateResultSchema, FALLBACK_KNOWLEDGE_WIKI_GENERATE, {
+      endpoint: "POST /api/knowledge/bases/:key/wiki/generate",
     });
   }
 

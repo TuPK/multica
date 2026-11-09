@@ -48,6 +48,8 @@ export const KnowledgeBaseSchema = z
     // Off unless the server says otherwise: a missing flag is never shown as on.
     wiki_enabled: z.boolean().default(false),
     summaries_enabled: z.boolean().default(false),
+    project_id: z.string().default(""),
+    project_title: z.string().default(""),
   })
   .loose();
 
@@ -92,6 +94,7 @@ export const KnowledgeDocumentSchema = z
     created_at: z.string().default(""),
     published_at: z.string().nullable().default(null),
     error: z.string().default(""),
+    folder: z.string().default(""),
   })
   .loose();
 

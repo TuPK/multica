@@ -268,5 +268,56 @@
     "once": "Copiez-le maintenant. Il ne sera plus affiché.",
     "open": "Ouvrir WeKnora",
     "failed": "Impossible d'afficher le mot de passe"
+  },
+  "explorer": {
+    "tree_label": "Structure de la bibliothèque",
+    "all_documents": "Tous les documents",
+    "company": "Entreprise",
+    "projects": "Projets",
+    "no_projects": "Les projets apparaissent ici à leur création.",
+    "wiki_on": "Wiki activé",
+    "wiki_off": "Wiki désactivé",
+    "summaries_on": "Résumés activés",
+    "open_project": "Ouvrir le projet",
+    "path_label": "Chemin du dossier",
+    "company_hint": "Une base commune à l'entreprise. Tout l'espace de travail peut la lire, sauf si elle est restreinte.",
+    "project_hint": "La base propre à ce projet. Ses fichiers sont ajoutés automatiquement depuis le dossier du projet, et vous pouvez ajouter des documents à la main.",
+    "visibility": {
+      "workspace": "Visible par l'espace de travail",
+      "restricted": "Restreinte"
+    },
+    "tabs": {
+      "documents": "Documents",
+      "wiki": "Wiki",
+      "add": "Ajouter des documents",
+      "settings": "Paramètres"
+    },
+    "toggle": "Afficher ou masquer {{name}}"
+  },
+  "wiki": {
+    "off_title": "Le wiki est désactivé pour cette base",
+    "no_documents": "Ajoutez d'abord des documents. Le wiki est rédigé à partir d'eux.",
+    "no_chat_model": "Ce serveur n'a pas de modèle de chat, le wiki ne peut donc pas être rédigé.",
+    "off_hint": "Rédigez un wiki à partir des {{count}} documents de cette base : une page de résumé par document et des pages sur les personnes, produits et idées qu'ils partagent. Comptez quelques minutes par document.",
+    "off_member": "Un propriétaire ou un administrateur peut activer le wiki.",
+    "generate": "Générer le wiki",
+    "rewrite": "Réécrire le wiki",
+    "pages_one": "{{count}} page",
+    "pages_other": "{{count}} pages",
+    "writing": "Des pages sont encore en cours de rédaction",
+    "none_yet": "Aucune page pour l'instant. Elles apparaissent ici au fur et à mesure.",
+    "pick": "Choisissez une page pour la lire.",
+    "type": {
+      "all": "Toutes",
+      "summary": "Résumés",
+      "entity": "Entités",
+      "concept": "Concepts",
+      "unknown": "Autres"
+    },
+    "toast": {
+      "queued_one": "Rédaction du wiki à partir de {{count}} document",
+      "queued_other": "Rédaction du wiki à partir de {{count}} documents",
+      "failed": "Impossible de lancer le wiki"
+    }
   }
 }

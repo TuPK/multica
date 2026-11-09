@@ -10,3 +10,7 @@ export * from "./platform-types";
 export * from "./platform-schemas";
 export * from "./platform-queries";
 export * from "./platform-mutations";
+export * from "./wiki-types";
+export * from "./wiki-schemas";
+export * from "./wiki-queries";
+export * from "./wiki-mutations";

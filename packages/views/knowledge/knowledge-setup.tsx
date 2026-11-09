@@ -260,71 +260,89 @@ function KnowledgeRepoSyncSection({ wsId }: { wsId: string }) {
 
 function KnowledgeBasesSection({ wsId, knowledgeBases }: { wsId: string; knowledgeBases: KnowledgeBase[] }) {
   const { t } = useT("knowledge");
-  const setVisibility = useSetKnowledgeVisibility(wsId);
-  const settings = useUpdateKnowledgeBaseSettings(wsId);
-  const [open, setOpen] = useState<string | null>(null);
-
-  const fail = (error: Error) => toast.error(error.message || t(($) => $.bases.toast.failed));
-
   return (
     <section className="flex flex-col gap-3">
       <SectionHeading title={t(($) => $.bases.title)} description={t(($) => $.bases.description)} />
       <ul className="flex flex-col divide-y rounded-md border">
-        {knowledgeBases.map((base) => {
-          const restricted = base.visibility === "restricted";
-          const expanded = open === base.key;
-          return (
-            <li key={base.key} className="flex flex-col gap-3 px-3 py-3 text-sm">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                <span className="flex-1 font-medium">{base.name}</span>
-                <label className="flex items-center gap-2 text-xs">
-                  <Switch
-                    checked={restricted}
-                    disabled={setVisibility.isPending}
-                    aria-label={t(($) => $.bases.restricted)}
-                    onCheckedChange={(checked) =>
-                      setVisibility.mutate(
-                        { key: base.key, visibility: checked ? "restricted" : "workspace" },
-                        { onError: fail, onSuccess: () => setOpen(checked ? base.key : null) },
-                      )
-                    }
-                  />
-                  {t(($) => $.bases.restricted)}
-                </label>
-                <label className="flex items-center gap-2 text-xs">
-                  <Switch
-                    checked={base.wiki_enabled}
-                    disabled={settings.isPending}
-                    aria-label={t(($) => $.bases.wiki)}
-                    onCheckedChange={(checked) =>
-                      settings.mutate({ key: base.key, wiki_enabled: checked }, { onError: fail })
-                    }
-                  />
-                  {t(($) => $.bases.wiki)}
-                </label>
-                <label className="flex items-center gap-2 text-xs">
-                  <Switch
-                    checked={base.summaries_enabled}
-                    disabled={settings.isPending}
-                    aria-label={t(($) => $.bases.summaries)}
-                    onCheckedChange={(checked) =>
-                      settings.mutate({ key: base.key, summaries_enabled: checked }, { onError: fail })
-                    }
-                  />
-                  {t(($) => $.bases.summaries)}
-                </label>
-                {restricted ? (
-                  <Button variant="outline" size="sm" onClick={() => setOpen(expanded ? null : base.key)} aria-expanded={expanded}>
-                    {t(($) => $.bases.access)}
-                  </Button>
-                ) : null}
-              </div>
-              {restricted && expanded ? <KnowledgeAccessEditor wsId={wsId} baseKey={base.key} /> : null}
-            </li>
-          );
-        })}
+        {knowledgeBases.map((base) => (
+          <li key={base.key} className="px-3 py-3 text-sm">
+            <KnowledgeBaseControls wsId={wsId} base={base} showName />
+          </li>
+        ))}
       </ul>
     </section>
+  );
+}
+
+/**
+ * The switches of one base: who can see it, and whether Wiki and summaries are
+ * written for it. A restricted base also shows who may read and write it.
+ * Owners and admins only.
+ */
+export function KnowledgeBaseControls({
+  wsId,
+  base,
+  showName = false,
+}: {
+  wsId: string;
+  base: KnowledgeBase;
+  showName?: boolean;
+}) {
+  const { t } = useT("knowledge");
+  const setVisibility = useSetKnowledgeVisibility(wsId);
+  const settings = useUpdateKnowledgeBaseSettings(wsId);
+  const [expanded, setExpanded] = useState(false);
+  const restricted = base.visibility === "restricted";
+  const fail = (error: Error) => toast.error(error.message || t(($) => $.bases.toast.failed));
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {showName ? <span className="flex-1 font-medium">{base.name}</span> : null}
+        <label className="flex items-center gap-2 text-xs">
+          <Switch
+            checked={restricted}
+            disabled={setVisibility.isPending}
+            aria-label={t(($) => $.bases.restricted)}
+            onCheckedChange={(checked) =>
+              setVisibility.mutate(
+                { key: base.key, visibility: checked ? "restricted" : "workspace" },
+                { onError: fail, onSuccess: () => setExpanded(checked) },
+              )
+            }
+          />
+          {t(($) => $.bases.restricted)}
+        </label>
+        <label className="flex items-center gap-2 text-xs">
+          <Switch
+            checked={base.wiki_enabled ?? false}
+            disabled={settings.isPending}
+            aria-label={t(($) => $.bases.wiki)}
+            onCheckedChange={(checked) =>
+              settings.mutate({ key: base.key, wiki_enabled: checked }, { onError: fail })
+            }
+          />
+          {t(($) => $.bases.wiki)}
+        </label>
+        <label className="flex items-center gap-2 text-xs">
+          <Switch
+            checked={base.summaries_enabled ?? false}
+            disabled={settings.isPending}
+            aria-label={t(($) => $.bases.summaries)}
+            onCheckedChange={(checked) =>
+              settings.mutate({ key: base.key, summaries_enabled: checked }, { onError: fail })
+            }
+          />
+          {t(($) => $.bases.summaries)}
+        </label>
+        {restricted ? (
+          <Button variant="outline" size="sm" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}>
+            {t(($) => $.bases.access)}
+          </Button>
+        ) : null}
+      </div>
+      {restricted && expanded ? <KnowledgeAccessEditor wsId={wsId} baseKey={base.key} /> : null}
+    </div>
   );
 }
 

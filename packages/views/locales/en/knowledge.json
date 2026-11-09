@@ -268,5 +268,56 @@
     "once": "Copy it now. It will not be shown again.",
     "open": "Open WeKnora",
     "failed": "Could not show the password"
+  },
+  "explorer": {
+    "tree_label": "Library structure",
+    "all_documents": "All documents",
+    "company": "Company",
+    "projects": "Projects",
+    "no_projects": "Projects appear here as they are created.",
+    "wiki_on": "Wiki on",
+    "wiki_off": "Wiki off",
+    "summaries_on": "Summaries on",
+    "open_project": "Open project",
+    "path_label": "Folder path",
+    "company_hint": "A company-wide base. Everyone in the workspace can read it unless it is restricted.",
+    "project_hint": "This project's own base. Its files are added automatically from the project folder, and you can add documents by hand.",
+    "visibility": {
+      "workspace": "Visible to the workspace",
+      "restricted": "Restricted"
+    },
+    "tabs": {
+      "documents": "Documents",
+      "wiki": "Wiki",
+      "add": "Add documents",
+      "settings": "Settings"
+    },
+    "toggle": "Show or hide {{name}}"
+  },
+  "wiki": {
+    "off_title": "Wiki is off for this base",
+    "no_documents": "Add documents first. The Wiki is written from them.",
+    "no_chat_model": "This server has no chat model, so a Wiki cannot be written.",
+    "off_hint": "Write a Wiki from this base's {{count}} documents: a summary page for each, and pages for the people, products and ideas they share. It takes a few minutes for each document.",
+    "off_member": "An owner or admin can turn the Wiki on.",
+    "generate": "Generate Wiki",
+    "rewrite": "Rewrite Wiki",
+    "pages_one": "{{count}} page",
+    "pages_other": "{{count}} pages",
+    "writing": "Pages are still being written",
+    "none_yet": "No pages yet. They appear here as they are written.",
+    "pick": "Choose a page to read it.",
+    "type": {
+      "all": "All",
+      "summary": "Summaries",
+      "entity": "Entities",
+      "concept": "Concepts",
+      "unknown": "Other"
+    },
+    "toast": {
+      "queued_one": "Writing the Wiki from {{count}} document",
+      "queued_other": "Writing the Wiki from {{count}} documents",
+      "failed": "Could not start the Wiki"
+    }
   }
 }

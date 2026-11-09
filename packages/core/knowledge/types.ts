@@ -35,6 +35,9 @@ export interface KnowledgeBase {
   wiki_enabled?: boolean;
   /** Documents are summarised when stored. Same convention as wiki_enabled. */
   summaries_enabled?: boolean;
+  /** The project a project base belongs to; empty for the company's own bases. */
+  project_id?: string;
+  project_title?: string;
 }
 
 export interface KnowledgeBases {
@@ -79,6 +82,9 @@ export interface KnowledgeDocument {
   published_at: string | null;
   /** Why the last attempt failed; empty otherwise. */
   error: string;
+  /** Where the document is filed inside its base: a directory path for a project
+   *  file, `INI-<seq>-<slug>` for an initiative's document, empty at the top. */
+  folder?: string;
 }
 
 export interface KnowledgeDocumentList {
