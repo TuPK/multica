@@ -211,6 +211,7 @@ var concurrentIndexCleanups = map[string]string{
 	"768_knowledge_owner_account_uidx":                          "knowledge_owner_account_uidx",
 	"772_knowledge_repo_sync_workspace_uidx":                    "knowledge_repo_sync_workspace_uidx",
 	"773_knowledge_repo_file_key_uidx":                          "knowledge_repo_file_key_uidx",
+	"915_knowledge_project_file_key_uidx":                       "knowledge_project_file_key_uidx",
 	"781_governance_event_workspace_created_index":              "governance_event_workspace_created_idx",
 	"812_approval_policy_workspace_active_index":                "approval_policy_workspace_active_idx",
 	"814_proposal_policy_decided_index":                         "proposal_policy_decided_idx",

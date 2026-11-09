@@ -148,6 +148,7 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"knowledge_health_run":               workspaceDelete,
 	"knowledge_repo_sync":                workspaceDelete,
 	"knowledge_repo_file":                workspaceDelete,
+	"knowledge_project_file":             workspaceDelete,
 	"notification_preference":            workspaceDelete,
 	"company_floor":                      workspaceDelete,
 	"personal_access_token":              workspaceDeleteKeep,

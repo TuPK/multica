@@ -1510,6 +1510,16 @@ type KnowledgeOwnerAccount struct {
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
 }
 
+type KnowledgeProjectFile struct {
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	ProjectID       pgtype.UUID        `json:"project_id"`
+	Path            string             `json:"path"`
+	KnowledgeLinkID pgtype.UUID        `json:"knowledge_link_id"`
+	ContentHash     string             `json:"content_hash"`
+	ArchivedAt      pgtype.Timestamptz `json:"archived_at"`
+	SyncedAt        pgtype.Timestamptz `json:"synced_at"`
+}
+
 type KnowledgePublishPolicy struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	Scope       string             `json:"scope"`

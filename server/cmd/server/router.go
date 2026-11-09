@@ -1680,6 +1680,11 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 		r.Get("/workspaces", h.ListDaemonWorkspaces)
 		r.Get("/workspaces/{workspaceId}/repos", h.GetDaemonWorkspaceRepos)
 		r.Get("/workspaces/{workspaceId}/runtime-profiles", h.DaemonListRuntimeProfiles)
+		// Project docs ingest: the daemon reads a project's local directory and
+		// sends its Markdown into the project's knowledge base.
+		r.Get("/workspaces/{workspaceId}/knowledge/project-sources", h.ListDaemonProjectDocSources)
+		r.Post("/workspaces/{workspaceId}/projects/{projectId}/knowledge/manifest", h.PostDaemonProjectDocsManifest)
+		r.Post("/workspaces/{workspaceId}/projects/{projectId}/knowledge/docs", h.PostDaemonProjectDocs)
 
 		// Agent-triggered plugin hooks. The daemon's local MCP server calls
 		// this when an agent picks one of its tools; the server makes the

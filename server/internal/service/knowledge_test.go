@@ -76,6 +76,7 @@ func newKnowledgeEnv(t *testing.T) *knowledgeEnv {
 			`DELETE FROM knowledge_kind WHERE workspace_id = $1`,
 			`DELETE FROM knowledge_base WHERE workspace_id = $1`,
 			`DELETE FROM knowledge_repo_file WHERE workspace_id = $1`,
+			`DELETE FROM knowledge_project_file WHERE workspace_id = $1`,
 			`DELETE FROM knowledge_repo_sync WHERE workspace_id = $1`,
 			`DELETE FROM initiative WHERE workspace_id = $1`,
 			`DELETE FROM workspace_knowledge WHERE workspace_id = $1`,

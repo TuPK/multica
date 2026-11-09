@@ -52,6 +52,9 @@ func QueueKnowledgeTeardown(ctx context.Context, q *db.Queries, workspaceID pgty
 	if err := q.DeleteWorkspaceKnowledgeRepoFiles(ctx, workspaceID); err != nil {
 		return fmt.Errorf("delete knowledge repo files: %w", err)
 	}
+	if err := q.DeleteWorkspaceKnowledgeProjectFiles(ctx, workspaceID); err != nil {
+		return fmt.Errorf("delete knowledge project files: %w", err)
+	}
 	if err := q.DeleteWorkspaceKnowledgeRepoSync(ctx, workspaceID); err != nil {
 		return fmt.Errorf("delete knowledge repo sync: %w", err)
 	}
