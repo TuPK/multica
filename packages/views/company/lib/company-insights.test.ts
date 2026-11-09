@@ -93,3 +93,100 @@ describe("budgets", () => {
     expect(budgetUsed({ limit_micros: 200, spent_micros: 50 })).toBe(0.25);
   });
 });
+
+import {
+  budgetsInScope,
+  inScope,
+  pipelineSummary,
+  runStats,
+  runStatsBySquad,
+  workHealth,
+  type InsightScope,
+} from "./company-insights";
+
+const dept: InsightScope = { departmentId: "f-1", squadIds: new Set(["s-1", "s-2"]) };
+const all: InsightScope = { departmentId: null, squadIds: new Set(["s-1", "s-2", "s-9"]) };
+
+describe("scope", () => {
+  it("covers every squad for the company and only its own for a department", () => {
+    expect(inScope(all, "anything")).toBe(true);
+    expect(inScope(dept, "s-1")).toBe(true);
+    expect(inScope(dept, "s-9")).toBe(false);
+    expect(inScope(dept, null)).toBe(false);
+  });
+});
+
+describe("workHealth", () => {
+  const squad = (id: string, over: object = {}) => ({
+    id,
+    name: id,
+    done: 1,
+    in_progress: 2,
+    blocked: 0,
+    stale: 0,
+    failed_runs: 0,
+    pending_proposal_count: 1,
+    ...over,
+  });
+
+  it("sums the squads in scope and ranks the ones in trouble first", () => {
+    const out = workHealth([squad("s-1"), squad("s-2", { blocked: 3 }), squad("s-9")], [{ id: "s-3" }], dept, 5);
+    expect(out.rows.map((r) => r.id)).toEqual(["s-2", "s-1"]);
+    expect(out).toMatchObject({ done: 2, inProgress: 4, blocked: 3, pendingProposals: 2, quiet: 0 });
+  });
+
+  it("uses the digest's quiet count for the company", () => {
+    expect(workHealth([], [], all, 4).quiet).toBe(4);
+  });
+});
+
+describe("run stats", () => {
+  const rows = [
+    { agent_id: "a-1", total_seconds: 60, task_count: 10, failed_count: 1, cancelled_count: 1 },
+    { agent_id: "a-2", total_seconds: 30, task_count: 5, failed_count: 0, cancelled_count: 0 },
+  ];
+
+  it("computes success over finished runs and can narrow to some agents", () => {
+    expect(runStats(rows, null)).toMatchObject({ runs: 15, seconds: 90, successRate: 13 / 15 });
+    expect(runStats(rows, new Set(["a-2"]))).toMatchObject({ runs: 5, successRate: 1 });
+    expect(runStats([], null).successRate).toBeNull();
+  });
+
+  it("folds agents into their home squads and drops squads with no runs", () => {
+    const out = runStatsBySquad(
+      rows,
+      [
+        { id: "a-1", home_squad_id: "s-1" },
+        { id: "a-2", home_squad_id: null },
+      ],
+      [
+        { id: "s-1", name: "Alpha" },
+        { id: "s-2", name: "Beta" },
+      ],
+    );
+    expect(out.map((s) => [s.name, s.runs])).toEqual([["Alpha", 10]]);
+  });
+});
+
+describe("budgetsInScope", () => {
+  const b = (scope_type: string, scope_id: string | null) => ({ scope_type, scope_id }) as Budget;
+
+  it("keeps a department's floor, squad and project budgets and drops the company's", () => {
+    const list = [b("company", null), b("floor", "f-1"), b("floor", "f-2"), b("squad", "s-1"), b("squad", "s-9"), b("initiative", "p-1")];
+    expect(budgetsInScope(list, dept, new Set(["p-1"]))).toHaveLength(3);
+    expect(budgetsInScope(list, all, new Set())).toHaveLength(6);
+  });
+});
+
+describe("pipelineSummary", () => {
+  it("groups initiatives by stage within scope and counts the stalled", () => {
+    const item = (owner: string | null, stage: string, stalled = false) => ({
+      owner_squad_id: owner,
+      stage_key: stage,
+      stage_name: stage,
+      stalled,
+    });
+    const out = pipelineSummary([item("s-1", "build", true), item("s-2", "build"), item("s-9", "build"), item(null, "plan")], dept);
+    expect(out).toEqual({ total: 2, stalled: 1, byStage: [{ key: "build", name: "build", count: 2, stalled: 1 }] });
+  });
+});

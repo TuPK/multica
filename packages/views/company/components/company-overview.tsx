@@ -321,11 +321,13 @@ export function CompanyOverview({ selection }: { selection: CompanySelection }) 
               onMoved={(next) => go({ department: next })}
             />
           ) : (
-            department ? (
-            <Summary department={department} />
-          ) : (
-            <CompanyInsights departments={departments} squads={squads} agents={agents} />
-          )
+            <CompanyInsights
+              key={department?.id ?? "company"}
+              departments={departments}
+              squads={squads}
+              agents={agents}
+              department={department}
+            />
           )}
         </main>
       </div>
@@ -358,30 +360,6 @@ export function CompanyOverview({ selection }: { selection: CompanySelection }) 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
-}
-
-function Summary({ department }: { department: Department }) {
-  const { t } = useT("company");
-  const stats = [
-    { label: t(($) => $.squads), value: department.squads.length },
-    {
-      label: t(($) => $.members),
-      value: department.squads.reduce((sum, squad) => sum + (squad.member_count ?? 0), 0),
-    },
-  ];
-  return (
-    <div className="flex flex-col gap-4">
-      <h2 className="text-lg font-semibold">{department.name}</h2>
-      <dl className="grid grid-cols-2 gap-3 md:grid-cols-3">
-        {stats.map((stat) => (
-          <div key={stat.label} className="flex flex-col gap-1 rounded-lg border p-4">
-            <dt className="text-xs text-muted-foreground">{stat.label}</dt>
-            <dd className="text-2xl font-semibold tabular-nums">{stat.value}</dd>
-          </div>
-        ))}
-      </dl>
     </div>
   );
 }
