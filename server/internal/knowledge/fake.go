@@ -50,6 +50,7 @@ type fakeTenant struct {
 	docs      map[string]*fakeDoc
 	endpoints map[string]*MCPEndpoint
 	tags      map[string]*fakeTag
+	wiki      map[string][]WikiPage // by knowledge base id
 }
 
 type fakeTag struct {
@@ -85,6 +86,10 @@ const (
 	OpCreateMCPEndpoint   = "CreateMCPEndpoint"
 	OpRotateMCPToken      = "RotateMCPEndpointToken"
 	OpSetMCPEndpointBases = "SetMCPEndpointKnowledgeBases"
+	OpReparseDocuments    = "ReparseDocuments"
+	OpListWikiPages       = "ListWikiPages"
+	OpGetWikiPage         = "GetWikiPage"
+	OpWikiStats           = "WikiStats"
 )
 
 var _ Knowledge = (*Fake)(nil)
@@ -737,4 +742,109 @@ func (w *fakeWorkspace) SetMCPEndpointKnowledgeBases(_ context.Context, endpoint
 	}
 	e.KnowledgeBaseIDs = append([]string(nil), kbIDs...)
 	return *e, nil
+}
+
+// SeedWikiPage adds a Wiki page to a base, as WeKnora would after parsing. The
+// tenant is the one the key belongs to.
+func (f *Fake) SeedWikiPage(key, kbID string, page WikiPage) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	t, ok := f.tenants[f.keys[key]]
+	if !ok {
+		return
+	}
+	if t.wiki == nil {
+		t.wiki = map[string][]WikiPage{}
+	}
+	t.wiki[kbID] = append(t.wiki[kbID], page)
+}
+
+func (w *fakeWorkspace) wikiBase(op, kbID string) (*fakeTenant, error) {
+	t, err := w.begin(op)
+	if err != nil {
+		return nil, err
+	}
+	kb, ok := t.kbs[kbID]
+	if !ok {
+		w.f.mu.Unlock()
+		return nil, fmt.Errorf("knowledge: knowledge base %s: %w", kbID, ErrNotFound)
+	}
+	if !kb.WikiEnabled {
+		w.f.mu.Unlock()
+		return nil, fmt.Errorf("%w: wiki is not enabled for this knowledge base", ErrInvalid)
+	}
+	return t, nil
+}
+
+func (w *fakeWorkspace) ReparseDocuments(_ context.Context, kbID string, docIDs []string) error {
+	t, err := w.begin(OpReparseDocuments)
+	if err != nil {
+		return err
+	}
+	defer w.f.mu.Unlock()
+	if _, ok := t.kbs[kbID]; !ok {
+		return fmt.Errorf("knowledge: knowledge base %s: %w", kbID, ErrNotFound)
+	}
+	if len(docIDs) == 0 {
+		return fmt.Errorf("knowledge: reparse needs documents: %w", ErrInvalid)
+	}
+	return nil
+}
+
+func (w *fakeWorkspace) ListWikiPages(_ context.Context, kbID string, page, pageSize int, pageType string) (WikiPageList, error) {
+	t, err := w.wikiBase(OpListWikiPages, kbID)
+	if err != nil {
+		return WikiPageList{}, err
+	}
+	defer w.f.mu.Unlock()
+	var all []WikiPage
+	for _, p := range t.wiki[kbID] {
+		if pageType == "" || p.PageType == pageType {
+			p.Content = ""
+			all = append(all, p)
+		}
+	}
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 50
+	}
+	from := (page - 1) * pageSize
+	if from > len(all) {
+		from = len(all)
+	}
+	to := from + pageSize
+	if to > len(all) {
+		to = len(all)
+	}
+	return WikiPageList{Pages: append([]WikiPage{}, all[from:to]...), Total: len(all)}, nil
+}
+
+func (w *fakeWorkspace) GetWikiPage(_ context.Context, kbID, slug string) (WikiPage, error) {
+	t, err := w.wikiBase(OpGetWikiPage, kbID)
+	if err != nil {
+		return WikiPage{}, err
+	}
+	defer w.f.mu.Unlock()
+	for _, p := range t.wiki[kbID] {
+		if p.Slug == slug {
+			return p, nil
+		}
+	}
+	return WikiPage{}, fmt.Errorf("knowledge: wiki page %s: %w", slug, ErrNotFound)
+}
+
+func (w *fakeWorkspace) WikiStats(_ context.Context, kbID string) (WikiStats, error) {
+	t, err := w.wikiBase(OpWikiStats, kbID)
+	if err != nil {
+		return WikiStats{}, err
+	}
+	defer w.f.mu.Unlock()
+	out := WikiStats{PagesByType: map[string]int{}}
+	for _, p := range t.wiki[kbID] {
+		out.TotalPages++
+		out.PagesByType[p.PageType]++
+	}
+	return out, nil
 }

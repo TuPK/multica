@@ -42,17 +42,26 @@ const (
 )
 
 // knowledgeWikiKeys are the bases Wiki is enabled on when a chat model exists,
-// in priority order. Wiki is limited to maxKnowledgeWikiBases bases (spec 3.3).
+// in priority order. Wiki costs model calls for every document, so it is limited
+// to KnowledgeService.WikiMaxBases bases (default defaultKnowledgeWikiBases).
 var knowledgeWikiKeys = []string{"company", "ventures", "decisions"}
 
-const maxKnowledgeWikiBases = 3
+const defaultKnowledgeWikiBases = 20
+
+// wikiLimit is how many bases may have Wiki at once.
+func (s *KnowledgeService) wikiLimit() int {
+	if s.WikiMaxBases > 0 {
+		return s.WikiMaxBases
+	}
+	return defaultKnowledgeWikiBases
+}
 
 var (
 	// ErrKnowledgeLLMNotConfigured means the requested feature needs a chat model
 	// and the deployment has none.
 	ErrKnowledgeLLMNotConfigured = errors.New("no chat model is configured for knowledge")
-	// ErrKnowledgeWikiLimit means three bases already have Wiki.
-	ErrKnowledgeWikiLimit = errors.New("wiki is limited to three knowledge bases")
+	// ErrKnowledgeWikiLimit means the most bases already have Wiki.
+	ErrKnowledgeWikiLimit = errors.New("wiki base limit reached")
 	// ErrKnowledgeOwnerLoginMissing means the owner has no WeKnora login to show.
 	ErrKnowledgeOwnerLoginMissing = errors.New("no WeKnora login exists for this owner")
 	// ErrKnowledgeOwnerPasswordShown means the password was already revealed.
@@ -137,7 +146,7 @@ func (s *KnowledgeService) provisionLLM(ctx context.Context, workspaceID pgtype.
 		if b.LlmDefaultsApplied {
 			continue
 		}
-		wiki := slices.Contains(knowledgeWikiKeys, b.Key) && wikiOn < maxKnowledgeWikiBases
+		wiki := slices.Contains(knowledgeWikiKeys, b.Key) && wikiOn < s.wikiLimit()
 		if err := s.applyBaseSettings(ctx, workspaceID, ws, b, chatID, wiki, true); err != nil {
 			errs = append(errs, err)
 			continue
@@ -209,8 +218,8 @@ func (s *KnowledgeService) UpdateBaseSettings(ctx context.Context, workspaceID p
 		if err != nil {
 			return KnowledgeBaseSettingsView{}, fmt.Errorf("count wiki bases: %w", err)
 		}
-		if n >= maxKnowledgeWikiBases {
-			return KnowledgeBaseSettingsView{}, &KnowledgeConflictError{"Wiki is limited to three knowledge bases; turn it off on another base first"}
+		if int(n) >= s.wikiLimit() {
+			return KnowledgeBaseSettingsView{}, &KnowledgeConflictError{fmt.Sprintf("Wiki is limited to %d knowledge bases; turn it off on another base first", s.wikiLimit())}
 		}
 	}
 	chatID := ""

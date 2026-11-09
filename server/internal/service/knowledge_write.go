@@ -165,6 +165,10 @@ type KnowledgeDocumentView struct {
 	Superseded    bool     `json:"superseded"`
 	Tags          []string `json:"tags"`
 	ReviewVerdict string   `json:"review_verdict"`
+	// Folder is where the document is filed inside its base: a directory path
+	// for a project file, an INI-<seq>-<slug> folder for an initiative's
+	// document, empty at the top level.
+	Folder string `json:"folder"`
 }
 
 // KnowledgeDocumentList is a document listing. State is "ready", or "offline"
@@ -1053,6 +1057,15 @@ func linkViewWith(bases map[string]db.KnowledgeBase, l db.KnowledgeLink) Knowled
 		v.SupersedesID = &id
 	}
 	v.Tags = append([]string{}, l.Tags...)
+	v.Folder = l.Folder
+	if v.Folder == "" {
+		for _, tag := range l.Tags {
+			if initiativeFolderPattern.MatchString(tag) {
+				v.Folder = tag
+				break
+			}
+		}
+	}
 	v.ReviewVerdict = l.ReviewVerdict
 	return v
 }

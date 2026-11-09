@@ -25,3 +25,11 @@ FROM project_resource pr
 JOIN project p ON p.id = pr.project_id AND p.workspace_id = pr.workspace_id
 WHERE pr.workspace_id = $1 AND pr.resource_type = 'local_directory' AND p.status <> 'cancelled'
 ORDER BY pr.created_at;
+
+-- name: SetKnowledgeLinkFolder :exec
+UPDATE knowledge_link SET folder = $3 WHERE id = $1 AND workspace_id = $2;
+
+-- name: ListPublishedKnowledgeLinksByBase :many
+SELECT * FROM knowledge_link
+WHERE workspace_id = $1 AND knowledge_base_id = $2 AND state = 'published'
+ORDER BY created_at ASC, id ASC;

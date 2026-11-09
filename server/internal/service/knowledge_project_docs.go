@@ -227,6 +227,11 @@ func (s *KnowledgeService) IngestProjectDocs(ctx context.Context, workspaceID, p
 		if err != nil {
 			return res, fmt.Errorf("project docs: document id: %w", err)
 		}
+		if dir := path.Dir(f.Path); dir != "." {
+			if err := s.Queries.SetKnowledgeLinkFolder(ctx, db.SetKnowledgeLinkFolderParams{ID: linkID, WorkspaceID: workspaceID, Folder: dir}); err != nil {
+				return res, fmt.Errorf("set project file folder: %w", err)
+			}
+		}
 		if err := s.Queries.UpsertKnowledgeProjectFile(ctx, db.UpsertKnowledgeProjectFileParams{
 			WorkspaceID: workspaceID, ProjectID: projectID, Path: f.Path, KnowledgeLinkID: linkID, ContentHash: hash,
 		}); err != nil {

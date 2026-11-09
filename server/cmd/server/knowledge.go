@@ -76,6 +76,13 @@ func newKnowledgeService(queries *db.Queries, pool *pgxpool.Pool) *service.Knowl
 			slog.Warn("knowledge: ignoring invalid KNOWLEDGE_UPLOAD_MAX_MB", "value", raw)
 		}
 	}
+	if raw := strings.TrimSpace(os.Getenv("KNOWLEDGE_WIKI_MAX_BASES")); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+			svc.WikiMaxBases = n
+		} else {
+			slog.Warn("knowledge: ignoring invalid KNOWLEDGE_WIKI_MAX_BASES", "value", raw)
+		}
+	}
 	slog.Info("knowledge base configured", "model", svc.Embedding.Name, "provider", svc.Embedding.Provider, "offered", svc.Box != nil)
 	return svc
 }

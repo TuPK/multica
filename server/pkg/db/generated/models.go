@@ -1498,6 +1498,7 @@ type KnowledgeLink struct {
 	ReviewedAt         pgtype.Timestamptz `json:"reviewed_at"`
 	ReviewIssueID      pgtype.UUID        `json:"review_issue_id"`
 	AmountMicros       pgtype.Int8        `json:"amount_micros"`
+	Folder             string             `json:"folder"`
 }
 
 type KnowledgeOwnerAccount struct {

@@ -69,6 +69,8 @@ type KnowledgeService struct {
 	DB      knowledgeDB
 	Client  knowledge.Knowledge
 	Box     *secretbox.Box
+	// WikiMaxBases caps the bases with Wiki on; zero means the default.
+	WikiMaxBases int
 	// Embedding is the model created in each tenant before any knowledge base.
 	Embedding knowledge.EmbeddingModelSpec
 	// UIURL is the WeKnora web UI, for the "Open in WeKnora" link.
@@ -109,6 +111,10 @@ type KnowledgeBaseView struct {
 	// WikiEnabled and SummariesEnabled are the LLM-backed switches (plan 10.11).
 	WikiEnabled      bool `json:"wiki_enabled"`
 	SummariesEnabled bool `json:"summaries_enabled"`
+	// ProjectID and ProjectTitle name the project a project base belongs to;
+	// both are empty for the company's own bases.
+	ProjectID    string `json:"project_id"`
+	ProjectTitle string `json:"project_title"`
 }
 
 // KnowledgeStatus is a workspace's knowledge state.
@@ -161,11 +167,21 @@ func (s *KnowledgeService) Status(ctx context.Context, workspaceID pgtype.UUID) 
 	if err != nil {
 		return out, fmt.Errorf("list knowledge bases: %w", err)
 	}
+	projects := map[string]db.Project{}
+	if list, err := s.Queries.ListProjects(ctx, db.ListProjectsParams{WorkspaceID: workspaceID}); err == nil {
+		for _, p := range list {
+			projects[ProjectBaseKey(p.ID)] = p
+		}
+	}
 	for _, b := range bases {
-		out.KnowledgeBases = append(out.KnowledgeBases, KnowledgeBaseView{
+		view := KnowledgeBaseView{
 			ID: util.UUIDToString(b.ID), Key: b.Key, Name: b.Name, Visibility: b.Visibility, Position: b.Position,
 			WikiEnabled: b.WikiEnabled, SummariesEnabled: b.SummariesEnabled,
-		})
+		}
+		if p, ok := projects[b.Key]; ok {
+			view.ProjectID, view.ProjectTitle, view.Name = util.UUIDToString(p.ID), p.Title, p.Title
+		}
+		out.KnowledgeBases = append(out.KnowledgeBases, view)
 	}
 
 	timeout := s.PingTimeout

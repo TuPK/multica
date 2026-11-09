@@ -2161,6 +2161,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Put("/bases/{key}/access/{subject_type}/{subject_id}", h.PutKnowledgeGrant)
 					r.Delete("/bases/{key}/access/{subject_type}/{subject_id}", h.DeleteKnowledgeGrant)
 					r.Patch("/bases/{key}/settings", h.PatchKnowledgeBaseSettings)
+					r.Post("/bases/{key}/wiki/generate", h.GenerateKnowledgeWiki)
 					r.Post("/models/test", h.TestKnowledgeModels)
 					r.Post("/owner-account/reveal", h.RevealKnowledgeOwnerPassword)
 					// The repo-docs sync setting and a run now (plan 10.12).
@@ -2172,6 +2173,9 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				// person is the curator. Agents are refused by RequireHumanActor.
 				r.With(handler.RequireHumanActor).Post("/documents/upload", h.UploadKnowledgeDocument)
 				r.Get("/bases", h.ListKnowledgeBases)
+				r.Get("/bases/{key}/wiki", h.GetKnowledgeWiki)
+				r.Get("/bases/{key}/wiki/pages", h.ListKnowledgeWikiPages)
+				r.Get("/bases/{key}/wiki/pages/*", h.GetKnowledgeWikiPage)
 				r.Get("/documents", h.ListKnowledgeDocuments)
 				r.Post("/documents", h.CreateKnowledgeDocument)
 				r.Post("/documents/{id}/review", h.ReviewKnowledgeDocument)

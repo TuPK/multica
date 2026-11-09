@@ -115,6 +115,86 @@ func (q *Queries) ListProjectDocSources(ctx context.Context, workspaceID pgtype.
 	return items, nil
 }
 
+const listPublishedKnowledgeLinksByBase = `-- name: ListPublishedKnowledgeLinksByBase :many
+SELECT id, workspace_id, knowledge_base_id, weknora_knowledge_id, source_type, source_id, idempotency_key, state, created_by_type, created_by_id, created_at, published_at, title, source_url, pending_content, publish_requested, error, kind, initiative_id, stage_key, squad_id, confidence, valid_until, supersedes_link_id, tags, review_verdict, review_by_id, review_squad_id, review_note, reviewed_at, review_issue_id, amount_micros, folder FROM knowledge_link
+WHERE workspace_id = $1 AND knowledge_base_id = $2 AND state = 'published'
+ORDER BY created_at ASC, id ASC
+`
+
+type ListPublishedKnowledgeLinksByBaseParams struct {
+	WorkspaceID     pgtype.UUID `json:"workspace_id"`
+	KnowledgeBaseID pgtype.UUID `json:"knowledge_base_id"`
+}
+
+func (q *Queries) ListPublishedKnowledgeLinksByBase(ctx context.Context, arg ListPublishedKnowledgeLinksByBaseParams) ([]KnowledgeLink, error) {
+	rows, err := q.db.Query(ctx, listPublishedKnowledgeLinksByBase, arg.WorkspaceID, arg.KnowledgeBaseID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []KnowledgeLink{}
+	for rows.Next() {
+		var i KnowledgeLink
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.KnowledgeBaseID,
+			&i.WeknoraKnowledgeID,
+			&i.SourceType,
+			&i.SourceID,
+			&i.IdempotencyKey,
+			&i.State,
+			&i.CreatedByType,
+			&i.CreatedByID,
+			&i.CreatedAt,
+			&i.PublishedAt,
+			&i.Title,
+			&i.SourceUrl,
+			&i.PendingContent,
+			&i.PublishRequested,
+			&i.Error,
+			&i.Kind,
+			&i.InitiativeID,
+			&i.StageKey,
+			&i.SquadID,
+			&i.Confidence,
+			&i.ValidUntil,
+			&i.SupersedesLinkID,
+			&i.Tags,
+			&i.ReviewVerdict,
+			&i.ReviewByID,
+			&i.ReviewSquadID,
+			&i.ReviewNote,
+			&i.ReviewedAt,
+			&i.ReviewIssueID,
+			&i.AmountMicros,
+			&i.Folder,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setKnowledgeLinkFolder = `-- name: SetKnowledgeLinkFolder :exec
+UPDATE knowledge_link SET folder = $3 WHERE id = $1 AND workspace_id = $2
+`
+
+type SetKnowledgeLinkFolderParams struct {
+	ID          pgtype.UUID `json:"id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	Folder      string      `json:"folder"`
+}
+
+func (q *Queries) SetKnowledgeLinkFolder(ctx context.Context, arg SetKnowledgeLinkFolderParams) error {
+	_, err := q.db.Exec(ctx, setKnowledgeLinkFolder, arg.ID, arg.WorkspaceID, arg.Folder)
+	return err
+}
+
 const upsertKnowledgeProjectFile = `-- name: UpsertKnowledgeProjectFile :exec
 INSERT INTO knowledge_project_file (workspace_id, project_id, path, knowledge_link_id, content_hash, archived_at, synced_at)
 VALUES ($1, $2, $3, $4, $5, NULL, now())

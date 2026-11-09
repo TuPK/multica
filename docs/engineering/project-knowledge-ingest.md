@@ -84,3 +84,10 @@ Do not force project authors to add headings. For project bases, the ingest deri
 - **Server** (`knowledge_project_docs.go`): writes untyped, published documents into the project's base, so no `Summary` heading is needed. A changed file replaces its document. Tracking is in `knowledge_project_file` (migrations 914 and 915), cleaned up when a workspace is deleted.
 - **Measured on `mua_ngon_ecommerce`:** the scan finds 66 files, 0.8 MB.
 - **Not built:** issue digests, decisions, attachments, a Knowledge page panel per project, and project-scoped automatic issue context.
+
+## 7. Library explorer and Wiki
+
+- **One page.** The Knowledge page's Library tab is a tree (company bases, then one base per project, each with the folders its documents are filed under) beside a panel for what is selected: Documents, Wiki, Add documents and, for owners and admins, Settings (visibility, access, Wiki and summaries). Search is scoped to the selected base.
+- **Folders.** `knowledge_link.folder` (migration 916) holds the directory of a project file, such as `docs/planning-artifacts`. An initiative's documents use their `INI-<seq>-<slug>` folder.
+- **Wiki.** `POST /api/knowledge/bases/{key}/wiki/generate` turns Wiki on and has WeKnora rewrite the pages of the base's published documents (batch reparse). Pages are read through `GET .../wiki`, `.../wiki/pages` and `.../wiki/pages/{slug}`. Project bases get summaries by default and Wiki on request, because Wiki costs several model calls per document.
+- **Limits.** Bases with Wiki are capped by `KNOWLEDGE_WIKI_MAX_BASES` (default 20, was 3). WeKnora writes in `WEKNORA_LANGUAGE` (`KNOWLEDGE_LANGUAGE`, default `en-US`); it supports zh-CN, en-US, ru-RU, ko-KR and ja-JP and has no Vietnamese.

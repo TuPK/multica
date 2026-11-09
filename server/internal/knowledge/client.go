@@ -1146,3 +1146,111 @@ func (w *workspace) SetMCPEndpointKnowledgeBases(ctx context.Context, endpointID
 	r.body = map[string]any{"knowledge_base_ids": kbIDs}
 	return w.endpointResult(ctx, r)
 }
+
+// ---- wiki -------------------------------------------------------------------
+
+func (w *workspace) ReparseDocuments(ctx context.Context, kbID string, docIDs []string) error {
+	if kbID == "" || len(docIDs) == 0 {
+		return fmt.Errorf("knowledge: reparse needs a base and documents: %w", ErrInvalid)
+	}
+	r := w.req("reparse documents", http.MethodPost, "/knowledge/batch-reparse")
+	r.body = map[string]any{"kb_id": kbID, "ids": docIDs}
+	return w.c.do(ctx, r, nil)
+}
+
+type wireWikiPage struct {
+	Slug      string   `json:"slug"`
+	Title     string   `json:"title"`
+	PageType  string   `json:"page_type"`
+	Status    string   `json:"status"`
+	Summary   string   `json:"summary"`
+	Content   string   `json:"content"`
+	Aliases   []string `json:"aliases"`
+	Category  []string `json:"category_path"`
+	Sources   []string `json:"source_refs"`
+	UpdatedAt string   `json:"updated_at"`
+}
+
+func (p wireWikiPage) toPage(withContent bool) WikiPage {
+	out := WikiPage{
+		Slug: p.Slug, Title: p.Title, PageType: p.PageType, Status: p.Status, Summary: p.Summary,
+		Aliases: p.Aliases, Category: p.Category, Sources: p.Sources, UpdatedAt: p.UpdatedAt,
+	}
+	if out.Aliases == nil {
+		out.Aliases = []string{}
+	}
+	if out.Category == nil {
+		out.Category = []string{}
+	}
+	if out.Sources == nil {
+		out.Sources = []string{}
+	}
+	if withContent {
+		out.Content = p.Content
+	}
+	return out
+}
+
+// wikiError turns WeKnora's refusal of a base without Wiki into ErrInvalid, so
+// callers can tell "turn Wiki on" from an outage.
+func wikiError(err error) error {
+	var api *APIError
+	if errors.As(err, &api) && api.Status == http.StatusBadRequest && strings.Contains(strings.ToLower(api.Message), "wiki feature is not enabled") {
+		return fmt.Errorf("%w: wiki is not enabled for this knowledge base", ErrInvalid)
+	}
+	return err
+}
+
+func (w *workspace) ListWikiPages(ctx context.Context, kbID string, page, pageSize int, pageType string) (WikiPageList, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 200 {
+		pageSize = 50
+	}
+	q := url.Values{}
+	q.Set("page", strconv.Itoa(page))
+	q.Set("page_size", strconv.Itoa(pageSize))
+	if pageType != "" {
+		q.Set("page_type", pageType)
+	}
+	var resp struct {
+		Pages []wireWikiPage `json:"pages"`
+		Total int            `json:"total"`
+	}
+	path := "/knowledgebase/" + url.PathEscape(kbID) + "/wiki/pages?" + q.Encode()
+	if err := w.c.do(ctx, w.req("list wiki pages", http.MethodGet, path), &resp); err != nil {
+		return WikiPageList{}, wikiError(err)
+	}
+	out := WikiPageList{Pages: make([]WikiPage, 0, len(resp.Pages)), Total: resp.Total}
+	for _, p := range resp.Pages {
+		out.Pages = append(out.Pages, p.toPage(false))
+	}
+	return out, nil
+}
+
+func (w *workspace) GetWikiPage(ctx context.Context, kbID, slug string) (WikiPage, error) {
+	var resp wireWikiPage
+	// The slug carries slashes (concept/buyer-taste-mission): escape each part.
+	parts := strings.Split(slug, "/")
+	for i, part := range parts {
+		parts[i] = url.PathEscape(part)
+	}
+	path := "/knowledgebase/" + url.PathEscape(kbID) + "/wiki/pages/" + strings.Join(parts, "/")
+	if err := w.c.do(ctx, w.req("get wiki page", http.MethodGet, path), &resp); err != nil {
+		return WikiPage{}, wikiError(err)
+	}
+	return resp.toPage(true), nil
+}
+
+func (w *workspace) WikiStats(ctx context.Context, kbID string) (WikiStats, error) {
+	var resp WikiStats
+	path := "/knowledgebase/" + url.PathEscape(kbID) + "/wiki/stats"
+	if err := w.c.do(ctx, w.req("wiki stats", http.MethodGet, path), &resp); err != nil {
+		return WikiStats{}, wikiError(err)
+	}
+	if resp.PagesByType == nil {
+		resp.PagesByType = map[string]int{}
+	}
+	return resp, nil
+}

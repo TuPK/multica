@@ -97,6 +97,14 @@ func (s *KnowledgeService) EnsureProjectBase(ctx context.Context, workspaceID, p
 		"Documents of the project "+title+".", projectBasePosition, remote); err != nil {
 		return err
 	}
+	// Summaries make a project's documents easier to find; Wiki is left to a
+	// person, because it costs model calls for every document.
+	if s.chatConfigured() {
+		on := true
+		if _, err := s.UpdateBaseSettings(ctx, workspaceID, key, KnowledgeBaseSettingsPatch{Summaries: &on}); err != nil {
+			slog.Warn("knowledge: summaries not enabled on a project base", "key", key, "error", err)
+		}
+	}
 	return s.syncReadEndpoint(ctx, workspaceID, ws)
 }
 

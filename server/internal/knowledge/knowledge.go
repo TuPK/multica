@@ -180,6 +180,45 @@ type Workspace interface {
 	// can read. An empty list would mean every base in the tenant, so
 	// implementations reject it.
 	SetMCPEndpointKnowledgeBases(ctx context.Context, endpointID string, kbIDs []string) (MCPEndpoint, error)
+
+	// ReparseDocuments parses and indexes the documents again. A base with Wiki
+	// on regenerates the Wiki pages of each document, which is how documents
+	// stored before Wiki was turned on get their pages.
+	ReparseDocuments(ctx context.Context, kbID string, docIDs []string) error
+	// ListWikiPages returns one page of a base's Wiki pages, without their text.
+	// pageType filters by `summary`, `entity` or `concept`; empty means all.
+	ListWikiPages(ctx context.Context, kbID string, page, pageSize int, pageType string) (WikiPageList, error)
+	// GetWikiPage returns one Wiki page with its text.
+	GetWikiPage(ctx context.Context, kbID, slug string) (WikiPage, error)
+	// WikiStats counts a base's Wiki pages. A base without Wiki is ErrInvalid.
+	WikiStats(ctx context.Context, kbID string) (WikiStats, error)
+}
+
+// WikiPage is one generated Wiki page. Content is empty in a list.
+type WikiPage struct {
+	Slug      string   `json:"slug"`
+	Title     string   `json:"title"`
+	PageType  string   `json:"page_type"`
+	Status    string   `json:"status"`
+	Summary   string   `json:"summary"`
+	Content   string   `json:"content,omitempty"`
+	Aliases   []string `json:"aliases"`
+	Category  []string `json:"category_path"`
+	Sources   []string `json:"source_refs"`
+	UpdatedAt string   `json:"updated_at"`
+}
+
+// WikiPageList is one page of Wiki pages with the totals to page through them.
+type WikiPageList struct {
+	Pages []WikiPage `json:"pages"`
+	Total int        `json:"total"`
+}
+
+// WikiStats counts a base's Wiki pages by type.
+type WikiStats struct {
+	TotalPages  int            `json:"total_pages"`
+	PagesByType map[string]int `json:"pages_by_type"`
+	TotalLinks  int            `json:"total_links"`
 }
 
 // Tenant is a WeKnora workspace. IDs are decimal strings.

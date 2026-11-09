@@ -392,6 +392,9 @@ services:
       # the service user exists (KNOWLEDGE_DISABLE_REGISTRATION=true).
       DISABLE_REGISTRATION: ${KNOWLEDGE_DISABLE_REGISTRATION:-false}
       WEKNORA_TENANT_SELF_SERVICE_CREATION_ENABLED: "true"
+      # Language WeKnora writes Wiki pages, summaries and questions in. It supports
+      # zh-CN, en-US, ru-RU, ko-KR and ja-JP; without this it writes Chinese.
+      WEKNORA_LANGUAGE: ${KNOWLEDGE_LANGUAGE:-en-US}
       WEKNORA_TENANT_MAX_OWNED_PER_USER: ${KNOWLEDGE_TENANT_MAX_OWNED_PER_USER:-1000000}
       # Per-workspace storage cap in GB (WeKnora defaults to 10).
       WEKNORA_TENANT_DEFAULT_STORAGE_QUOTA_GB: ${KNOWLEDGE_TENANT_STORAGE_QUOTA_GB:-1024}
