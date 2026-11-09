@@ -76,3 +76,34 @@ func KnowledgeRepoDocsJob(runner KnowledgeRepoDocsRunner) JobSpec {
 		},
 	}
 }
+
+// JobNameKnowledgeAutoEnable is the pass that keeps knowledge on by default.
+const JobNameKnowledgeAutoEnable = "knowledge_autoenable"
+
+// KnowledgeAutoEnableRunner retries workspaces whose enabling failed and gives
+// each project of a ready workspace its knowledge base.
+type KnowledgeAutoEnableRunner interface {
+	RunAutoEnable(ctx context.Context) (int, error)
+}
+
+// KnowledgeAutoEnableJob returns the hourly auto-enable pass. Both steps are
+// idempotent, so a retry repeats nothing that already succeeded.
+func KnowledgeAutoEnableJob(runner KnowledgeAutoEnableRunner) JobSpec {
+	return JobSpec{
+		Name:              JobNameKnowledgeAutoEnable,
+		Cadence:           time.Hour,
+		CatchUpMode:       CatchUpLatestOnly,
+		CatchUpWindow:     time.Hour,
+		RunTimeout:        30 * time.Minute,
+		StaleTimeout:      45 * time.Minute,
+		HeartbeatInterval: 30 * time.Second,
+		AllowStaleReentry: true,
+		MaxAttempts:       3,
+		RetryBackoff:      []time.Duration{time.Minute, 5 * time.Minute},
+		Scopes:            StaticScopes(ScopeGlobal),
+		Handler: func(ctx context.Context, _ HandlerInput) (HandlerResult, error) {
+			n, err := runner.RunAutoEnable(ctx)
+			return HandlerResult{RowsAffected: int64(n)}, err
+		},
+	}
+}

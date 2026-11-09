@@ -428,6 +428,7 @@ func (h *Handler) CreateProject(w http.ResponseWriter, r *http.Request) {
 		}
 		resp := projectToResponse(project)
 		h.publish(protocol.EventProjectCreated, workspaceID, "member", userID, map[string]any{"project": resp})
+		h.ensureProjectKnowledgeBase(project)
 		writeJSON(w, http.StatusCreated, resp)
 		return
 	}
@@ -488,6 +489,7 @@ func (h *Handler) CreateProject(w http.ResponseWriter, r *http.Request) {
 	}
 	resp := projectToResponse(project)
 	resp.ResourceCount = int64(len(resourceResp))
+	h.ensureProjectKnowledgeBase(project)
 	h.publish(protocol.EventProjectCreated, workspaceID, "member", userID, map[string]any{"project": resp})
 	for _, rr := range resourceResp {
 		h.publish(protocol.EventProjectResourceCreated, workspaceID, "member", userID, map[string]any{
@@ -1006,4 +1008,13 @@ func (h *Handler) SearchProjects(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"projects": resp,
 	})
+}
+
+// ensureProjectKnowledgeBase gives a new project its own knowledge base. It runs
+// off the request path; a failure is logged and retried by the hourly pass.
+func (h *Handler) ensureProjectKnowledgeBase(project db.Project) {
+	if h.Knowledge == nil {
+		return
+	}
+	go h.Knowledge.EnsureProjectBaseLogged(project.WorkspaceID, project.ID, project.Title)
 }

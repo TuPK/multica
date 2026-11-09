@@ -343,27 +343,35 @@ func (s *KnowledgeService) ensureKnowledgeBases(ctx context.Context, workspaceID
 			}
 			remoteLoaded = true
 		}
-		// A crash between creating the base and recording it leaves a base
-		// WeKnora knows and Multica does not; adopt it rather than duplicate.
-		kbID := ""
-		for _, r := range remote {
-			if r.Name == def.Name {
-				kbID = r.ID
-				break
-			}
+		if err := s.createOrAdoptBase(ctx, workspaceID, ws, modelID, def.Key, def.Name, def.Description, int32(i), remote); err != nil {
+			return err
 		}
-		if kbID == "" {
-			created, err := ws.CreateKnowledgeBase(ctx, knowledge.KnowledgeBaseSpec{Name: def.Name, Description: def.Description, EmbeddingModelID: modelID})
-			if err != nil {
-				return fmt.Errorf("create knowledge base %q: %w", def.Key, err)
-			}
-			kbID = created.ID
+	}
+	return nil
+}
+
+// createOrAdoptBase creates the WeKnora base and records it in Multica. A crash
+// between those two steps leaves a base WeKnora knows and Multica does not, so
+// a base of the same name in remote is adopted rather than duplicated.
+func (s *KnowledgeService) createOrAdoptBase(ctx context.Context, workspaceID pgtype.UUID, ws knowledge.Workspace, modelID, key, name, description string, position int32, remote []knowledge.KnowledgeBase) error {
+	kbID := ""
+	for _, r := range remote {
+		if r.Name == name {
+			kbID = r.ID
+			break
 		}
-		if _, err := s.Queries.CreateKnowledgeBase(ctx, db.CreateKnowledgeBaseParams{
-			WorkspaceID: workspaceID, WeknoraKbID: kbID, Key: def.Key, Name: def.Name, Visibility: "workspace", Position: int32(i),
-		}); err != nil {
-			return fmt.Errorf("record knowledge base %q: %w", def.Key, err)
+	}
+	if kbID == "" {
+		created, err := ws.CreateKnowledgeBase(ctx, knowledge.KnowledgeBaseSpec{Name: name, Description: description, EmbeddingModelID: modelID})
+		if err != nil {
+			return fmt.Errorf("create knowledge base %q: %w", key, err)
 		}
+		kbID = created.ID
+	}
+	if _, err := s.Queries.CreateKnowledgeBase(ctx, db.CreateKnowledgeBaseParams{
+		WorkspaceID: workspaceID, WeknoraKbID: kbID, Key: key, Name: name, Visibility: "workspace", Position: position,
+	}); err != nil {
+		return fmt.Errorf("record knowledge base %q: %w", key, err)
 	}
 	return nil
 }

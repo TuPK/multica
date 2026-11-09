@@ -964,6 +964,11 @@ func main() {
 	if err := schedulerMgr.Register(scheduler.KnowledgeRepoDocsJob(h.Knowledge)); err != nil {
 		slog.Error("scheduler: register knowledge repo docs job", "error", err)
 	}
+	// Knowledge is on by default: retry failed workspaces and give every
+	// project its own knowledge base.
+	if err := schedulerMgr.Register(scheduler.KnowledgeAutoEnableJob(h.Knowledge)); err != nil {
+		slog.Error("scheduler: register knowledge auto-enable job", "error", err)
+	}
 	go func() {
 		_ = schedulerMgr.Run(sweepCtx)
 	}()

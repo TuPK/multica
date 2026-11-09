@@ -390,6 +390,12 @@ func (h *Handler) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
 	obsmetrics.RecordEvent(h.Analytics, h.Metrics, analytics.WorkspaceCreated(userID, wsID))
 	h.notifyDaemonWorkspacesChanged(userID)
 
+	// Knowledge is on by default. The work runs off the request path; a failure
+	// is logged and retried by the hourly pass.
+	if h.Knowledge != nil {
+		go h.Knowledge.AutoEnable(ws.ID, parseUUID(userID))
+	}
+
 	slog.Info("workspace created", append(logger.RequestAttrs(r), "workspace_id", wsID, "name", ws.Name, "slug", ws.Slug)...)
 	writeJSON(w, http.StatusCreated, h.workspaceToResponse(ws))
 }
