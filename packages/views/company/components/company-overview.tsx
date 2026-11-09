@@ -47,6 +47,7 @@ import {
 import { CompanySquadDetail } from "./company-squad-detail";
 import { CompanyAgentDetail } from "./company-agent-detail";
 import { FloorNameDialog } from "./company-floor-dialogs";
+import { CompanyInsights } from "./company-insights";
 
 interface Department {
   id: string;
@@ -320,7 +321,11 @@ export function CompanyOverview({ selection }: { selection: CompanySelection }) 
               onMoved={(next) => go({ department: next })}
             />
           ) : (
-            <Summary departments={departments} squads={squads} agents={agents} department={department} />
+            department ? (
+            <Summary department={department} />
+          ) : (
+            <CompanyInsights departments={departments} squads={squads} agents={agents} />
+          )
           )}
         </main>
       </div>
@@ -357,34 +362,18 @@ export function CompanyOverview({ selection }: { selection: CompanySelection }) 
   );
 }
 
-function Summary({
-  departments,
-  squads,
-  agents,
-  department,
-}: {
-  departments: Department[];
-  squads: Squad[];
-  agents: { id: string }[];
-  department: Department | null;
-}) {
+function Summary({ department }: { department: Department }) {
   const { t } = useT("company");
-  const stats = department
-    ? [
-        { label: t(($) => $.squads), value: department.squads.length },
-        {
-          label: t(($) => $.members),
-          value: department.squads.reduce((sum, squad) => sum + (squad.member_count ?? 0), 0),
-        },
-      ]
-    : [
-        { label: t(($) => $.departments), value: departments.filter((d) => d.id !== UNSEATED_DEPARTMENT).length },
-        { label: t(($) => $.squads), value: squads.length },
-        { label: t(($) => $.agents), value: agents.length },
-      ];
+  const stats = [
+    { label: t(($) => $.squads), value: department.squads.length },
+    {
+      label: t(($) => $.members),
+      value: department.squads.reduce((sum, squad) => sum + (squad.member_count ?? 0), 0),
+    },
+  ];
   return (
     <div className="flex flex-col gap-4">
-      {department ? <h2 className="text-lg font-semibold">{department.name}</h2> : null}
+      <h2 className="text-lg font-semibold">{department.name}</h2>
       <dl className="grid grid-cols-2 gap-3 md:grid-cols-3">
         {stats.map((stat) => (
           <div key={stat.label} className="flex flex-col gap-1 rounded-lg border p-4">

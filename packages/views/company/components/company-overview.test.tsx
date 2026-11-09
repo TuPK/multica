@@ -35,6 +35,7 @@ vi.mock("@multica/core/workspace/queries", () => ({
 vi.mock("../lib/use-company-admin", () => ({ useCompanyAdmin: () => false }));
 vi.mock("../../issues/surface/peek-context", () => ({ useIssuePeekActions: () => null }));
 vi.mock("../../modals/create-squad", () => ({ CreateSquadModal: () => null }));
+vi.mock("./company-insights", () => ({ CompanyInsights: () => <div>company insights</div> }));
 // The detail panes have their own tests; this one checks the drill-down wiring.
 vi.mock("./company-squad-detail", () => ({
   CompanySquadDetail: ({ squad }: { squad: { name: string } }) => <div>squad pane: {squad.name}</div>,
@@ -116,6 +117,11 @@ describe("CompanyOverview drill-down", () => {
     expect(screen.getByText("squad pane: Planning")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Executive" }));
     expect(adapter.push).toHaveBeenCalledWith("/acme/company?dept=f-1");
+  });
+
+  it("shows the company insights until a department is chosen", () => {
+    renderOverview();
+    expect(screen.getByText("company insights")).toBeInTheDocument();
   });
 
   it("derives the department from a squad named alone in the URL", () => {
