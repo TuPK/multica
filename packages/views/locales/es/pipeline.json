@@ -1,0 +1,218 @@
+{
+  "title": "Pipeline",
+  "toolbar": {
+    "squad": "Squad responsable",
+    "squad_all": "Todos los squads",
+    "status": "Estado",
+    "status_option": {
+      "open": "Abiertas",
+      "active": "Activas",
+      "operating": "En operación",
+      "shelved": "En suspenso",
+      "closed": "Cerradas"
+    }
+  },
+  "board": {
+    "no_pipeline": "Este espacio de trabajo aún no tiene un pipeline configurado.",
+    "no_initiatives": "Ninguna iniciativa coincide con estos filtros.",
+    "column_empty": "Nada en esta etapa",
+    "unknown_stage": "Etapa desconocida",
+    "load_failed": "No se pudieron cargar las iniciativas."
+  },
+  "card": {
+    "days_in_stage_one": "{{count}} día en la etapa",
+    "days_in_stage_other": "{{count}} días en la etapa",
+    "artifacts": "{{present}}/{{required}} artefactos",
+    "stalled": "Estancada",
+    "no_owner": "Sin responsable"
+  },
+  "status": {
+    "active": "Activa",
+    "operating": "En operación",
+    "shelved": "En suspenso",
+    "closed": "Cerrada",
+    "unknown": "Desconocido"
+  },
+  "stage_sla": {
+    "ok": "Dentro del SLA de la etapa",
+    "stalled": "Fuera del SLA de la etapa"
+  },
+  "panel": {
+    "loading": "Cargando iniciativa…",
+    "unavailable": "No se pudo cargar esta iniciativa.",
+    "overview": "Resumen",
+    "stage": "Etapa",
+    "owner": "Squad responsable",
+    "status": "Estado",
+    "days_in_stage": "Días en la etapa",
+    "exit": "Salida",
+    "exit_mode": {
+      "auto": "Avanza cuando se publican los artefactos requeridos",
+      "attest": "El squad responsable certifica que la etapa está completa",
+      "gate": "Decide el jefe",
+      "unknown": "Regla de salida no reconocida"
+    },
+    "open_issue": "Abrir la tarea de respaldo",
+    "artifacts": "Artefactos",
+    "gates": "Puertas de decisión",
+    "timeline": "Cronología de la etapa",
+    "force": "Forzar movimiento",
+    "sla": "SLA de la etapa",
+    "actions": "Acciones",
+    "thread": "Hilo de la tarea de respaldo"
+  },
+  "artifact": {
+    "required": "Obligatorio",
+    "optional": "Opcional",
+    "published": "Publicado",
+    "missing": "Falta",
+    "waived": "Exento",
+    "open_knowledge": "Abrir en conocimiento",
+    "waive": "Eximir",
+    "waive_note": "Por qué se exime",
+    "waive_note_required": "Se requiere una nota para eximir un artefacto.",
+    "waive_submit": "Eximir artefacto",
+    "none": "No hay artefactos para esta etapa."
+  },
+  "gate": {
+    "state": {
+      "pending": "A la espera de una decisión",
+      "approved": "Aprobada",
+      "rejected": "Rechazada",
+      "revising": "Devuelta para cambios",
+      "expired": "Caducada",
+      "unknown": "Desconocido"
+    },
+    "approve": "Aprobar",
+    "outcome": {
+      "continue": "Continuar",
+      "scale": "Escalar",
+      "sunset": "Retirar"
+    },
+    "outcome_hint": "Continuar mantiene la iniciativa en operación. Escalar inicia una continuación en Definir. Retirar la cierra.",
+    "reject": "Rechazar",
+    "reject_note": "Por qué se rechaza",
+    "reject_note_required": "Se requiere una nota para rechazar una puerta de decisión.",
+    "reject_submit": "Rechazar puerta de decisión",
+    "cancel": "Cancelar",
+    "none": "No hay puertas de decisión para esta iniciativa."
+  },
+  "event": {
+    "created": "Creada",
+    "advanced": "Avanzada",
+    "sent_back": "Devuelta",
+    "shelved": "Suspendida",
+    "resumed": "Reanudada",
+    "closed": "Cerrada",
+    "forced": "Forzada",
+    "attested": "Certificada",
+    "artifact_waived": "Artefacto eximido",
+    "unknown": "Actualizada",
+    "move": "{{from}} → {{to}}",
+    "none": "Aún no hay eventos."
+  },
+  "force": {
+    "to_stage": "Mover a la etapa",
+    "reason": "Motivo",
+    "reason_required": "Se requiere un motivo para forzar un movimiento.",
+    "submit": "Forzar movimiento"
+  },
+  "toast": {
+    "waived": "Artefacto eximido.",
+    "waive_failed": "No se pudo eximir el artefacto.",
+    "approved": "Puerta de decisión aprobada.",
+    "rejected": "Puerta de decisión rechazada.",
+    "decide_failed": "No se pudo registrar la decisión.",
+    "forced": "Movida a {{stage}}.",
+    "force_failed": "No se pudo mover la iniciativa.",
+    "created": "Iniciativa creada.",
+    "advanced": "Iniciativa avanzada.",
+    "attested": "Etapa certificada.",
+    "sent_back": "Iniciativa devuelta.",
+    "shelved": "Iniciativa suspendida.",
+    "resumed": "Iniciativa reanudada.",
+    "closed": "Iniciativa cerrada."
+  },
+  "kind": {
+    "label": {
+      "decision": "Decisión",
+      "opportunity": "Oportunidad",
+      "stage_gate": "Puerta de etapa",
+      "org_change": "Cambio de organización",
+      "budget": "Presupuesto",
+      "standing_approval": "Aprobación permanente",
+      "unknown": "Otro"
+    }
+  },
+  "opportunity": {
+    "thesis": "Tesis",
+    "market": "Mercado",
+    "evidence": "Evidencia",
+    "evidence_item": "Documento {{index}}",
+    "no_evidence": "No hay evidencia adjunta.",
+    "target_stage": "Empieza en {{stage}}"
+  },
+  "stage_gate": {
+    "moving": "{{from}} → {{to}}",
+    "checklist": "Lista de artefactos",
+    "checklist_empty": "No hay artefactos para esta etapa.",
+    "attestation": "Certificación del líder",
+    "attested_by": "Certificada por {{name}}, {{time}}",
+    "not_attested": "Aún sin certificar.",
+    "unavailable": "No se pudo cargar la iniciativa."
+  },
+  "badge": {
+    "label_one": "{{count}} iniciativa a cargo",
+    "label_other": "{{count}} iniciativas a cargo",
+    "open": "Abrir pipeline"
+  },
+  "create": {
+    "button": "Nueva iniciativa",
+    "title": "Nueva iniciativa",
+    "title_label": "Título",
+    "title_required": "El título es obligatorio.",
+    "title_too_long": "El título debe tener como máximo 200 caracteres.",
+    "thesis_label": "Tesis",
+    "thesis_too_long": "La tesis es demasiado larga.",
+    "pipeline_label": "Pipeline",
+    "no_pipeline": "Este espacio de trabajo no tiene un pipeline donde iniciar una iniciativa.",
+    "failed": "No se pudo crear la iniciativa.",
+    "submit": "Crear iniciativa",
+    "cancel": "Cancelar"
+  },
+  "actions": {
+    "advance": "Avanzar",
+    "attest": "Certificar etapa",
+    "send_back": "Devolver",
+    "send_back_note": "Nota para el líder",
+    "send_back_note_required": "Se requiere una nota para devolver una iniciativa.",
+    "send_back_submit": "Devolver",
+    "resume": "Reanudar",
+    "shelve": "Suspender",
+    "shelve_title": "¿Suspender esta iniciativa?",
+    "shelve_description": "El reloj de su etapa se detiene hasta que se reanude.",
+    "shelve_note": "Nota (opcional)",
+    "shelve_submit": "Suspender iniciativa",
+    "close": "Cerrar",
+    "close_title": "¿Cerrar esta iniciativa?",
+    "close_description": "La tarea de respaldo se marca como hecha y la iniciativa sale del pipeline.",
+    "close_reason": "Motivo",
+    "close_reason_required": "Se requiere un motivo para cerrar una iniciativa.",
+    "close_submit": "Cerrar iniciativa",
+    "cancel": "Cancelar"
+  },
+  "action_error": {
+    "generic": "No se pudo cambiar la iniciativa.",
+    "stage_not_ready": "La etapa aún necesita sus artefactos requeridos.",
+    "needs_attest": "El squad responsable debe certificar primero la etapa.",
+    "stage_is_gate": "Una puerta de decisión decide esta etapa.",
+    "not_attest_stage": "Esta etapa no admite certificación.",
+    "initiative_closed": "La iniciativa está cerrada.",
+    "initiative_shelved": "La iniciativa está suspendida. Reanúdala primero.",
+    "initiative_not_shelved": "La iniciativa no está suspendida.",
+    "no_previous_stage": "No hay una etapa anterior a la que volver.",
+    "note_required": "Se requiere una nota para este cambio.",
+    "stage_unowned": "Esta etapa no tiene un squad responsable.",
+    "build_squad_not_sdlc": "La etapa Construir necesita un squad con el flujo de trabajo de software."
+  }
+}

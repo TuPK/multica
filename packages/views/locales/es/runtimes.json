@@ -91,6 +91,7 @@
     "this_machine": "Este dispositivo",
     "local_badge": "Local: esta máquina",
     "pending_custom_runtimes": "Runtimes personalizados pendientes",
+    "daemon_title": "Daemon",
     "busy_count_one": "{{count}} ocupado",
     "busy_count_other": "{{count}} ocupados",
     "no_matches_title": "Sin máquinas",
@@ -129,8 +130,7 @@
       "toast_saved": "Máquina renombrada",
       "toast_cleared": "Nombre de máquina eliminado",
       "toast_failed": "No se ha podido renombrar la máquina"
-    },
-    "daemon_title": "Daemon"
+    }
   },
   "health": {
     "online": {
@@ -161,13 +161,23 @@
     "fact_runtime": "Runtime",
     "fact_daemon_cli": "CLI del daemon",
     "fact_daemon_id": "ID del daemon",
+    "usage_title": "Uso",
     "no_agents": "Todavía no hay agentes vinculados a este runtime.",
     "diagnostics_cli": "CLI",
     "diagnostics_visibility": "Visibilidad",
+    "concurrency_title": "Concurrencia",
+    "concurrency_none": "Sin límite",
+    "concurrency_hint": "Máximo de ejecuciones simultáneas entre todos los agentes de este runtime ({{min}}–{{max}}). Déjalo vacío para no limitarlo.",
+    "toast_concurrency_failed": "No se ha podido actualizar el límite de concurrencia",
     "visibility_label": {
       "private": "Privado",
       "public": "Público",
       "members": "Miembros concretos"
+    },
+    "visibility_choice": {
+      "private": "Privado",
+      "public": "Público",
+      "members": "Miembros"
     },
     "visibility_hint": {
       "private": "Solo tú puedes crear agentes en este runtime.",
@@ -179,8 +189,27 @@
       "public": "Cualquier miembro del espacio de trabajo puede crear agentes en este runtime. Solo el propietario del runtime puede volver a cambiarlo a Privado.",
       "members": "Solo el propietario y los miembros seleccionados pueden crear agentes en este runtime."
     },
+    "visibility_members_title": "Compartir con miembros",
+    "visibility_members_search": "Buscar miembros",
+    "visibility_members_none": "Todavía no hay otros miembros en el espacio de trabajo.",
+    "visibility_members_no_match": "Ningún miembro coincide.",
+    "visibility_members_edit": "Editar",
+    "visibility_members_count_one": "{{count}} miembro",
+    "visibility_members_count_other": "{{count}} miembros",
     "visibility_toast_updated": "Visibilidad establecida en {{visibility}}",
     "visibility_toast_failed": "No se ha podido actualizar la visibilidad",
+    "visibility_revoke_dialog": {
+      "title": "¿Restringir el acceso al runtime?",
+      "description": "Restringir el acceso a \"{{name}}\" desvinculará {{count}} agentes afectados, cancelará {{taskCount}} ejecuciones activas y pausará las automatizaciones activas asignadas a esos agentes. Los agentes y las ejecuciones que conserven el acceso no se verán afectados.",
+      "warning": "El acceso se revoca de inmediato en el servidor. Los daemons conectados se detienen mediante su comprobación normal de cancelación. Una máquina desconectada no puede recibir la orden de parada hasta que se reconecte, así que su proceso local puede seguir en marcha mientras tanto.",
+      "plan_changed": "El plan de acceso cambió mientras este diálogo estaba abierto. Revísalo y vuelve a confirmar.",
+      "checkbox": "Entiendo que los agentes de compañeros de la lista quedarán desvinculados, que se cancelarán sus ejecuciones activas y que se pausarán sus automatizaciones activas.",
+      "cancel": "Cancelar",
+      "confirm": "Restringir acceso",
+      "submitting": "Revocando el acceso...",
+      "toast_success": "Acceso al runtime actualizado",
+      "toast_failed": "No se ha podido revocar el acceso al runtime"
+    },
     "delete_dialog": {
       "self_heal_notice": "Este runtime lo gestiona un daemon local en ejecución. Eliminarlo tendrá éxito, pero el daemon volverá a registrar un runtime nuevo en cuestión de segundos: detén primero el proceso del daemon para eliminarlo permanentemente.",
       "profile_backed_notice": "Este runtime se registró desde un perfil de runtime personalizado. Eliminarlo solo quita la instancia actual del runtime; un daemon en ejecución puede volver a registrarlo mientras el perfil exista. Elimina el perfil de runtime personalizado desde Runtimes personalizados para quitarlo permanentemente.",
@@ -228,36 +257,7 @@
     "running_chip_one": "· {{count}} en ejecución",
     "running_chip_other": "· {{count}} en ejecución",
     "queued_chip_one": "· {{count}} en cola",
-    "queued_chip_other": "· {{count}} en cola",
-    "visibility_choice": {
-      "private": "Privado",
-      "public": "Público",
-      "members": "Miembros"
-    },
-    "visibility_members_title": "Compartir con miembros",
-    "visibility_members_search": "Buscar miembros",
-    "visibility_members_none": "Todavía no hay otros miembros en el espacio de trabajo.",
-    "visibility_members_no_match": "Ningún miembro coincide.",
-    "visibility_members_edit": "Editar",
-    "visibility_members_count_one": "{{count}} miembro",
-    "visibility_members_count_other": "{{count}} miembros",
-    "visibility_revoke_dialog": {
-      "title": "¿Restringir el acceso al runtime?",
-      "description": "Restringir el acceso a \"{{name}}\" desvinculará {{count}} agentes afectados, cancelará {{taskCount}} ejecuciones activas y pausará las automatizaciones activas asignadas a esos agentes. Los agentes y las ejecuciones que conserven el acceso no se verán afectados.",
-      "warning": "El acceso se revoca de inmediato en el servidor. Los daemons conectados se detienen mediante su comprobación normal de cancelación. Una máquina desconectada no puede recibir la orden de parada hasta que se reconecte, así que su proceso local puede seguir en marcha mientras tanto.",
-      "plan_changed": "El plan de acceso cambió mientras este diálogo estaba abierto. Revísalo y vuelve a confirmar.",
-      "checkbox": "Entiendo que los agentes de compañeros de la lista quedarán desvinculados, que se cancelarán sus ejecuciones activas y que se pausarán sus automatizaciones activas.",
-      "cancel": "Cancelar",
-      "confirm": "Restringir acceso",
-      "submitting": "Revocando el acceso...",
-      "toast_success": "Acceso al runtime actualizado",
-      "toast_failed": "No se ha podido revocar el acceso al runtime"
-    },
-    "usage_title": "Uso",
-    "concurrency_title": "Concurrencia",
-    "concurrency_none": "Sin límite",
-    "concurrency_hint": "Máximo de ejecuciones simultáneas entre todos los agentes de este runtime ({{min}}–{{max}}). Déjalo vacío para no limitarlo.",
-    "toast_concurrency_failed": "No se ha podido actualizar el límite de concurrencia"
+    "queued_chip_other": "· {{count}} en cola"
   },
   "detail_page": {
     "not_found_title": "Runtime no encontrado",
@@ -352,6 +352,26 @@
       "failed": "La actualización falló",
       "timeout": "Tiempo agotado"
     }
+  },
+  "quickstart": {
+    "action": "Inicio rápido",
+    "action_title": "Instala Claude Code, los plugins del equipo y las skills en esta máquina. Lo que ya esté presente se omite.",
+    "offline_title": "Inicia el daemon de esta máquina para ejecutar el inicio rápido.",
+    "start_failed": "No se pudo iniciar el inicio rápido. Inténtalo de nuevo.",
+    "status": {
+      "pending": "Esperando a la máquina…",
+      "running": "Instalando…",
+      "completed": "Hecho",
+      "failed": "Falló"
+    },
+    "step_status": {
+      "installed": "Instalado",
+      "already_installed": "Ya instalado",
+      "failed": "Falló"
+    },
+    "all_present": "Todo estaba ya instalado.",
+    "some_failed": "Algunos elementos fallaron. Consulta los detalles abajo.",
+    "retry": "Reintentar"
   },
   "charts": {
     "heatmap_less": "Menos",

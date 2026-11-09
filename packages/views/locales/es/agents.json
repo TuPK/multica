@@ -2,17 +2,18 @@
   "page": {
     "title": "Agentes",
     "new_agent": "Nuevo agente",
+    "install_pack": "Instalar paquete de agentes",
     "show_archived": "Mostrar archivados ({{count}}) →",
     "of_total": "{{visible}} de {{total}}",
     "list_load_failed": "No se han podido cargar los agentes",
     "list_load_failed_default": "Algo ha ido mal al obtener la lista de agentes.",
     "try_again": "Reintentar",
-    "search": "Buscar agentes",
     "scope_title": {
       "mine": "Mis agentes",
       "all": "Todos los agentes",
       "archived": "Agentes archivados"
-    }
+    },
+    "search": "Buscar agentes"
   },
   "scope": {
     "mine": "Míos",
@@ -46,6 +47,8 @@
     "title": "Agentes archivados"
   },
   "empty": {
+    "title": "Aún no hay agentes",
+    "description": "Crea un agente y luego asígnale tareas.",
     "setup": {
       "label": "Pasos de configuración",
       "runtime": "Conectar un runtime",
@@ -57,13 +60,13 @@
   },
   "no_matches": {
     "title": "Sin resultados",
-    "search_archived": "Ningún agente archivado coincide con \"{{query}}\".",
     "no_archived": "Todavía no hay agentes archivados.",
-    "search_active": "Ningún agente coincide con \"{{query}}\".",
-    "search_active_filtered": "Ningún agente coincide con \"{{query}}\" en este filtro.",
     "no_filter_match": "Ningún agente coincide con este filtro.",
     "search_runtime_filtered": "Ningún agente en \"{{machine}}\" coincide con \"{{query}}\".",
-    "runtime_filtered": "No hay agentes en \"{{machine}}\"."
+    "runtime_filtered": "No hay agentes en \"{{machine}}\".",
+    "search_active": "Ningún agente coincide con \"{{query}}\".",
+    "search_active_filtered": "Ningún agente coincide con \"{{query}}\" en este filtro.",
+    "search_archived": "Ningún agente archivado coincide con \"{{query}}\"."
   },
   "runtime_filter": {
     "all": "Todos los runtimes",
@@ -173,15 +176,17 @@
     "runtime_required_toast": "Vincula un runtime antes de ejecutar este agente.",
     "assign_work": "Asignar trabajo",
     "more_actions_aria": "Acciones del agente",
-    "settings": "Ajustes",
+    "advanced_settings": "Ajustes avanzados",
     "copy_link": "Copiar enlace",
     "copy_id": "Copiar ID del agente",
     "link_copied_toast": "Enlace copiado",
-    "id_copied_toast": "ID del agente copiado"
+    "id_copied_toast": "ID del agente copiado",
+    "settings": "Ajustes"
   },
   "inspector": {
     "section_profile": "Perfil",
     "section_execution": "Ejecución",
+    "qoder_execution_note": "El modelo, las herramientas y las skills se configuran en el agente desde Qoder Cloud Agents.",
     "section_access": "Acceso",
     "section_properties": "Propiedades",
     "section_details": "Detalles",
@@ -208,13 +213,30 @@
     "edit_description_title": "Editar descripción",
     "description_placeholder": "¿Qué hace este agente?",
     "save": "Guardar",
-    "cancel": "Cancelar",
-    "qoder_execution_note": "El modelo, las herramientas y las skills se configuran en el agente desde Qoder Cloud Agents."
+    "cancel": "Cancelar"
   },
   "overview": {
     "attention_title": "Ejecuciones que requieren atención",
     "attention_queued_one": "{{count}} ejecución está en cola mientras el runtime no está disponible.",
     "attention_queued_other": "{{count}} ejecuciones están en cola mientras el runtime no está disponible."
+  },
+  "sections": {
+    "runs_count_one": "{{count}} ejecución",
+    "runs_count_other": "{{count}} ejecuciones",
+    "recent_this_week_one": "{{count}} esta semana",
+    "recent_this_week_other": "{{count}} esta semana",
+    "view_all": "Ver todo",
+    "open": "Abrir",
+    "edit": "Editar",
+    "add": "Añadir",
+    "manage": "Gestionar",
+    "instructions_empty": "Aún no hay instrucciones."
+  },
+  "panel": {
+    "status": "Estado",
+    "runs_7d": "Ejecuciones (7 d)",
+    "edit_access_aria": "Acceso: {{value}}. Cambiar acceso",
+    "all_settings": "Todos los ajustes"
   },
   "skill_attach": {
     "trigger_aria": "Adjuntar una skill del espacio de trabajo",
@@ -285,11 +307,11 @@
     "composio_mcp": "Apps MCP",
     "integrations": "Integraciones",
     "runtime_config": "Enrutado",
+    "qoder_agent": "Qoder Cloud Agents",
     "discard_dialog_title": "¿Descartar los cambios sin guardar?",
     "discard_dialog_description": "Hay cambios sin guardar en esta pestaña. Si sales ahora, se descartarán.",
     "discard_keep": "Seguir editando",
-    "discard_confirm": "Descartar cambios",
-    "qoder_agent": "Qoder Cloud Agents"
+    "discard_confirm": "Descartar cambios"
   },
   "creation_studio": {
     "title": "Crear un agente",
@@ -335,6 +357,7 @@
       "setup_description": "Este runtime alimenta la configuración y es el predeterminado para el nuevo agente.",
       "start": "Iniciar conversación",
       "connect_runtime": "Conectar un runtime",
+      "draft_parse_failed": "Esta respuesta no pudo rellenar el formulario. Pide al asistente que vuelva a generar el borrador o rellénalo a mano.",
       "start_failed": "No se ha podido iniciar Agent Builder.",
       "send_failed": "No se ha podido enviar tu mensaje.",
       "stop_failed": "No se ha podido detener la generación actual.",
@@ -352,13 +375,13 @@
       "thinking": "Actualizando el borrador…",
       "placeholder": "Describe el agente que necesitas…",
       "send": "Enviar mensaje",
-      "draft_parse_failed": "Esta respuesta no pudo rellenar el formulario. Pide al asistente que vuelva a generar el borrador o rellénalo a mano.",
       "conversation_tab": "Conversación"
     },
     "live_draft": "Configuración del agente",
     "live_draft_hint": "Puedes editar el borrador directamente.",
     "duplicate_env_notice": "Se copian las instrucciones, las skills y los argumentos de comando. Las variables de entorno, los servidores MCP y la config de runtime local de la máquina no.",
     "duplicate_runtime_reset_notice": "El runtime original no está disponible, así que esta copia se ejecuta en otro. El modelo, el nivel de razonamiento y la velocidad se limpiaron porque solo se aplican al runtime en el que se eligieron.",
+    "create_agent": "Crear agente",
     "create_and_add": "Crear y añadir al squad",
     "creating": "Creando agente…",
     "create_failed": "No se ha podido crear el agente.",
@@ -373,7 +396,6 @@
       "banner": "Tienes {{count}} borradores sin terminar",
       "pick_hint": "Elige uno para continuar."
     },
-    "create_agent": "Crear agente",
     "close": "Cerrar",
     "steps": {
       "runtime": "Elige runtime",
@@ -389,6 +411,151 @@
     "runtime_loading": "Cargando runtime…",
     "runtime_missing": "Este runtime ya no está disponible.",
     "cloud_fields_note": "Las skills, MCP y las sugerencias de conversación solo están disponibles en runtimes locales y remotos.",
+    "instruction_templates": {
+      "trigger": "Usar una plantilla",
+      "replace_title": "¿Reemplazar las instrucciones actuales?",
+      "replace_description": "La plantilla reemplaza las instrucciones que has escrito hasta ahora.",
+      "replace_cancel": "Conservar las mías",
+      "replace_confirm": "Reemplazar",
+      "items": {
+        "fullstack_developer": {
+          "name": "Desarrollador full stack",
+          "description": "Entrega historias de principio a fin, sigue el flujo de estados de BMAD y trabaja con un equipo de agentes."
+        },
+        "code_reviewer": {
+          "name": "Revisor de código",
+          "description": "Contrasta un cambio con sus criterios de aceptación con evidencia del código e informa de un veredicto sin editar."
+        },
+        "qa_tester": {
+          "name": "Tester de QA",
+          "description": "Diseña pruebas a partir de los criterios de aceptación antes del código y luego las ejecuta contra el sistema real."
+        },
+        "bug_fixer": {
+          "name": "Corrector de errores",
+          "description": "Reproduce un defecto, lo corrige con el cambio más pequeño y traspasa cualquier cosa mayor."
+        },
+        "security_reviewer": {
+          "name": "Revisor de seguridad",
+          "description": "Aprueba un cambio o una versión solo con controles verificados: acceso, datos, dependencias, observabilidad."
+        },
+        "tech_lead": {
+          "name": "Tech lead",
+          "description": "Informa a los especialistas, comprueba su evidencia y nunca acepta un informe sin más."
+        },
+        "architect": {
+          "name": "Arquitecto",
+          "description": "Diseña el sistema más simple que cumple los requisitos aprobados y registra las decisiones como ADR."
+        },
+        "product_analyst": {
+          "name": "Analista de producto",
+          "description": "Convierte las fuentes en requisitos comprobables y trazables y plantea las preguntas que los bloquean."
+        },
+        "devops_engineer": {
+          "name": "Ingeniero DevOps",
+          "description": "Promueve un único digest verificado por los entornos y espera a una persona antes de producción."
+        },
+        "secretary": {
+          "name": "Secretaria",
+          "description": "Lee la empresa a través del digest diario, redacta el brief del jefe y responde preguntas en el chat. Consulta, nunca empuja."
+        },
+        "research_lead": {
+          "name": "Líder de investigación",
+          "description": "Define la pregunta de mercado, delega la exploración y registra solo las propuestas que respalda la evidencia."
+        },
+        "market_scout": {
+          "name": "Explorador de mercado",
+          "description": "Encuentra y lee fuentes de mercado, clientes y tendencias, y cita fecha y enlace en cada afirmación."
+        },
+        "competitor_analyst": {
+          "name": "Analista de competidores",
+          "description": "Compara productos, precios y movimientos de los competidores a partir de fuentes primarias, con una fuente junto a cada dato."
+        },
+        "critic": {
+          "name": "Crítico",
+          "description": "Cuestiona la evidencia antes de registrar nada y nunca escribe hallazgos propios."
+        },
+        "ux_designer": {
+          "name": "Diseñador UX",
+          "description": "Diseña pantallas, estados y el sistema de diseño a partir de los requisitos, reutilizando primero los componentes existentes."
+        },
+        "knowledge_curator": {
+          "name": "Bibliotecario",
+          "description": "Clasifica los borradores cada día y comprueba la vigencia, la recuperación y la taxonomía de la base de conocimiento."
+        },
+        "opportunity_lead": {
+          "name": "Líder de oportunidades",
+          "description": "Define la pregunta de la semana para generar oportunidades y registra solo las que respalda la evidencia."
+        },
+        "opportunity_analyst": {
+          "name": "Analista de oportunidades",
+          "description": "Dimensiona un candidato como un rango, con sus supuestos y la evidencia en contra."
+        },
+        "competitor_lead": {
+          "name": "Líder de competidores",
+          "description": "Dirige la vigilancia semanal de competidores y los perfiles mensuales, con una fuente para cada afirmación."
+        },
+        "customer_lead": {
+          "name": "Líder de clientes",
+          "description": "Revisa las señales de soporte de la semana por tema y redacta el análisis mensual de clientes."
+        },
+        "discovery_lead": {
+          "name": "Líder de descubrimiento",
+          "description": "Valida una oportunidad con evidencia y recomienda al jefe seguir adelante o no."
+        },
+        "validation_analyst": {
+          "name": "Analista de validación",
+          "description": "Contrasta cada parte de la tesis de una oportunidad con evidencia de clientes y de mercado."
+        },
+        "product_analysis_lead": {
+          "name": "Líder de análisis de producto",
+          "description": "Redacta el brief de producto y comprueba cada cifra del análisis contra su supuesto."
+        },
+        "feasibility_analyst": {
+          "name": "Analista de viabilidad",
+          "description": "Calcula coste, retorno y viabilidad, indicando cada supuesto y su fuente."
+        },
+        "planning_lead": {
+          "name": "Líder de planificación",
+          "description": "Redacta la hoja de ruta, el esquema del lanzamiento y la solicitud de presupuesto para que el jefe los apruebe con el plan."
+        },
+        "prd_writer": {
+          "name": "Redactor de PRD",
+          "description": "Redacta cada requisito con un criterio de aceptación que un tester pueda comprobar."
+        },
+        "release_lead": {
+          "name": "Líder de lanzamientos",
+          "description": "Mantiene la lista de verificación del lanzamiento y las notas de la versión, y prepara cada versión para la decisión de salida a producción del jefe."
+        },
+        "growth_lead": {
+          "name": "Líder de crecimiento",
+          "description": "Redacta el plan de salida al mercado y, cada semana, el informe de métricas de las iniciativas lanzadas."
+        },
+        "support_lead": {
+          "name": "Líder de soporte",
+          "description": "Clasifica cada día las solicitudes de clientes, escala los errores con pasos para reproducirlos y devuelve las respuestas a la base de conocimiento."
+        },
+        "support_agent": {
+          "name": "Agente de soporte",
+          "description": "Responde a las solicitudes de clientes con el conocimiento de la empresa y escala lo que no puede responder."
+        },
+        "finance_lead": {
+          "name": "Líder de finanzas",
+          "description": "Revisa las propuestas de gasto sobre las que pregunta el jefe y mantiene al día el registro de riesgos. No aprueba nada."
+        },
+        "people_performance": {
+          "name": "Líder de personas",
+          "description": "Revisa el historial de cada squad frente a su carta y comunica lo que va con retraso o en silencio. No fija objetivos."
+        },
+        "people_reviewer": {
+          "name": "Revisor de personas",
+          "description": "Publica una revisión mensual de cada squad o agente puntuado, con propuestas sobre las que decide el jefe. No fija objetivos."
+        },
+        "floor_chief": {
+          "name": "Jefe de planta",
+          "description": "Redacta el brief diario de la planta para la Secretaria a partir del digest de la planta. No decide nada ni cambia ningún squad."
+        }
+      }
+    },
     "done": {
       "loading": "Terminando…",
       "title": "{{name}} está listo",
@@ -724,6 +891,9 @@
       "mode_label": "Modo de enrutado",
       "mode_local": "Local",
       "mode_gateway": "Gateway",
+      "model_override_label": "Sobrescritura del modelo subyacente",
+      "model_override_hint": "Se aplica a todas las ejecuciones que reclame este agente hasta que se cambie o se limpie. Al limpiarla se usa el modelo vinculado al agente OpenClaw seleccionado, y su identidad no cambia.",
+      "model_override_placeholder": "openrouter/@preset/agent-reasoning",
       "mode_local_hint": "Se ejecuta en este ordenador.",
       "mode_gateway_hint": "El daemon marca a un OpenClaw Gateway. Deja los campos de endpoint en blanco para heredarlos del `~/.openclaw/openclaw.json` del host del daemon.",
       "gateway_legend": "Endpoint del gateway",
@@ -737,10 +907,7 @@
       "tls_label": "Usar TLS",
       "tls_hint": "Usa https:// en lugar de http://",
       "saved_toast": "Configuración de enrutado guardada",
-      "save_failed_toast": "No se ha podido guardar la configuración de enrutado",
-      "model_override_label": "Sobrescritura del modelo subyacente",
-      "model_override_hint": "Se aplica a todas las ejecuciones que reclame este agente hasta que se cambie o se limpie. Al limpiarla se usa el modelo vinculado al agente OpenClaw seleccionado, y su identidad no cambia.",
-      "model_override_placeholder": "openrouter/@preset/agent-reasoning"
+      "save_failed_toast": "No se ha podido guardar la configuración de enrutado"
     },
     "skills": {
       "assigned_title": "Asignadas al agente",
@@ -962,6 +1129,9 @@
     "lane_model": "Modelo",
     "lane_tool": "Herramientas",
     "outcome_label": "Produjo",
+    "outcome_merged": "Fusionado en tu rama activa",
+    "outcome_merge_skipped": "No se fusionó: {{reason}}",
+    "outcome_merge_failed": "Falló la fusión: {{reason}}",
     "outcome_files_one": "{{count}} archivo",
     "outcome_files_other": "{{count}} archivos",
     "outcome_commands_one": "{{count}} comando",
@@ -969,6 +1139,7 @@
     "search_placeholder": "Buscar en esta ejecución…",
     "no_matches": "Ningún paso coincide con esta búsqueda.",
     "more_actions": "Más",
+    "kind_text": "Agente",
     "kind_tool": "Herramienta",
     "kind_thinking": "Razonamiento",
     "kind_error": "Error",
@@ -990,8 +1161,7 @@
     "tool_kind_write": "Ediciones",
     "tool_kind_read": "Lecturas",
     "tool_kind_misc": "Otros",
-    "trigger_wakeup": "Activación",
-    "kind_text": "Agente"
+    "trigger_wakeup": "Activación"
   },
   "task_failure": {
     "cancelled_by_system": "Cancelada por el sistema",
@@ -1050,23 +1220,28 @@
     "section_model": "Modelo"
   },
   "actions": {},
-  "sections": {
-    "runs_count_one": "{{count}} ejecución",
-    "runs_count_other": "{{count}} ejecuciones",
-    "recent_this_week_one": "{{count}} esta semana",
-    "recent_this_week_other": "{{count}} esta semana",
-    "view_all": "Ver todo",
-    "open": "Abrir",
-    "edit": "Editar",
-    "add": "Añadir",
-    "manage": "Gestionar",
-    "instructions_empty": "Aún no hay instrucciones."
-  },
-  "panel": {
-    "status": "Estado",
-    "runs_7d": "Ejecuciones (7 d)",
-    "edit_access_aria": "Acceso: {{value}}. Cambiar acceso",
-    "all_settings": "Todos los ajustes"
+  "instruction_revisions": {
+    "title": "Historial de revisiones",
+    "show": "Mostrar revisiones",
+    "hide": "Ocultar revisiones",
+    "loading": "Cargando revisiones…",
+    "load_failed": "No se pudo cargar el historial de revisiones.",
+    "empty": "Aún no hay revisiones guardadas.",
+    "revision_label": "Revisión {{revision}}",
+    "current": "Actual",
+    "source": {
+      "human": "Editada",
+      "proposal": "De una propuesta aprobada",
+      "rollback": "Restaurada",
+      "unknown": "Modificada"
+    },
+    "show_text": "Mostrar texto",
+    "hide_text": "Ocultar texto",
+    "restore": "Restaurar",
+    "restore_named": "Restaurar la revisión {{revision}}",
+    "restored": "Revisión {{revision}} restaurada",
+    "restore_failed": "No se pudo restaurar esta revisión. Inténtalo de nuevo.",
+    "restore_unchanged": "El agente ya tiene estas instrucciones."
   },
   "intro": {
     "title": "Incorpora a tu primer compañero de IA",

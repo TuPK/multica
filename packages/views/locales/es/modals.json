@@ -19,6 +19,16 @@
     "toast_deleted": "Tarea eliminada",
     "toast_delete_failed": "No se ha podido eliminar la tarea"
   },
+  "rename_issue": {
+    "title": "Renombrar tarea",
+    "placeholder": "Título de la tarea",
+    "input_aria_label": "Renombrar {{identifier}}",
+    "submit": "Guardar",
+    "saving": "Guardando...",
+    "title_required": "Escribe un título",
+    "toast_renamed": "Tarea renombrada",
+    "toast_failed": "No se ha podido renombrar la tarea"
+  },
   "feedback": {
     "title": "Comentarios",
     "placeholder": "Cuéntanos tu experiencia, errores que hayas encontrado o funciones que te gustaría ver…",
@@ -50,6 +60,12 @@
     "description": "Busca una tarea para añadirla como subtarea",
     "toast_failed": "No se ha podido añadir la subtarea",
     "toast_success": "{{identifier}} añadida como subtarea"
+  },
+  "add_project_issue": {
+    "title": "Añadir tarea existente",
+    "description": "Busca una tarea para moverla a este proyecto",
+    "toast_success": "{{identifier}} movida al proyecto",
+    "toast_failed": "No se ha podido mover la tarea"
   },
   "run_confirm": {
     "title_assign": "¿Confirmar asignación?",
@@ -242,12 +258,12 @@
       "sent_label": "Enviado",
       "sent_count": "{{count}} enviados",
       "version_blocked_tooltip": "La CLI del daemon debe ser ≥ {{min}}",
+      "qoder_attachments_unsupported": "Qoder Cloud Agents no puede leer adjuntos. Quítalos o elige otro agente.",
       "toast_sent": "Enviado al agente: recibirás una notificación en la bandeja cuando termine",
       "error_agent_unavailable_fallback": "El agente no está disponible. Elige otro agente.",
       "error_daemon_version": "La CLI del daemon de este agente ({{current}}) es inferior a la requerida ({{min}}). Actualiza el daemon para usar Crear con agente.",
       "error_unknown": "No se ha podido enviar. Inténtalo de nuevo.",
-      "sub_issue_of": "Subtarea de {{identifier}}",
-      "qoder_attachments_unsupported": "Qoder Cloud Agents no puede leer adjuntos. Quítalos o elige otro agente."
+      "sub_issue_of": "Subtarea de {{identifier}}"
     }
   },
   "mark_duplicate": {
@@ -258,21 +274,85 @@
     "error_target_is_duplicate": "{{identifier}} es en sí misma una duplicada. Elige su original.",
     "error_has_duplicates": "Otras tareas están marcadas como duplicadas de esta. Elimina esas marcas primero."
   },
-  "rename_issue": {
-    "title": "Renombrar tarea",
-    "placeholder": "Título de la tarea",
-    "input_aria_label": "Renombrar {{identifier}}",
+  "squad_quickstart": {
+    "title": "Inicio rápido de squad",
+    "template_label": "Plantilla",
+    "templates": {
+      "sdlc_greenfield": {
+        "name": "SDLC · Producto nuevo",
+        "description": "Lleva una solicitud de la idea a un producto verificado: resumen, PRD, UX, arquitectura, una compilación en cola y un informe final."
+      },
+      "market_research": {
+        "name": "Estudio de mercado",
+        "description": "Analiza mercados y competidores cada semana, hace que el crítico cuestione la evidencia y presenta al jefe solo las propuestas que la respaldan."
+      },
+      "sdlc_maintenance": {
+        "name": "SDLC · Producto existente",
+        "description": "Clasifica un error, una función, una optimización o una actualización, lo dirige a los agentes adecuados, lo verifica e informa."
+      }
+    },
+    "agents_label": "Agentes",
+    "agent_new": "Nuevo",
+    "agent_reused": "Ya existe",
+    "workflow_label": "Crear también el flujo de trabajo «{{name}}»",
+    "workflow_hint": "Asócialo al proyecto que construye el producto; la cola de compilación lo necesita para cerrar tareas.",
+    "create": "Crear squad",
+    "creating": "Creando…",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "retry": "Reintentar",
+    "open_squad": "Abrir squad",
+    "result_ready": "Squad listo",
+    "result_problems": "Terminó con problemas",
+    "status_created": "Creado",
+    "status_reused": "Reutilizado",
+    "status_failed": "Falló",
+    "status_existing": "Ya existía, sin cambios",
+    "status_problem": "Problema",
+    "squad_row": "Squad",
+    "workflow_row": "Flujo de trabajo",
+    "workflow_without_qa": "Creado sin paso de QA: solo los administradores del espacio de trabajo pueden añadir un estado.",
+    "next_step": "Asigna una tarea de solicitud al squad para empezar.",
+    "toast_done": "Squad creado",
+    "toast_failed": "No se pudo crear el squad"
+  },
+  "agent_pack_install": {
+    "title": "Instalar paquete de agentes",
+    "packs": {
+      "market-strategist": {
+        "name": "Estratega de mercado",
+        "description": "Analiza un mercado, segmenta clientes y encuentra canales para un producto. Pregunta antes de gastar dinero o contactar a alguien."
+      }
+    },
+    "skills_count": "{{count}} skills",
+    "runtime_label": "Runtime",
+    "install": "Instalar",
+    "installing": "Instalando…",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "retry": "Reintentar",
+    "open_agent": "Abrir agente",
+    "result_ready": "Paquete de agentes instalado",
+    "result_problems": "Terminó con problemas",
+    "status_created": "Creado",
+    "status_kept": "Ya existía, sin cambios",
+    "status_failed": "Falló",
+    "agent_row": "Agente",
+    "attach_row": "Skills adjuntas al agente",
+    "attach_added": "{{count}} añadidas",
+    "attach_kept": "Ya adjuntadas",
+    "toast_done": "Paquete de agentes instalado",
+    "toast_failed": "No se pudo instalar el paquete de agentes"
+  },
+  "save_issue_to_knowledge": {
+    "title": "Guardar en conocimiento",
+    "knowledge_base": "Base de conocimiento",
+    "published_note": "El documento se publica de inmediato, así que los agentes pueden encontrarlo enseguida.",
+    "empty_description": "Esta tarea no tiene descripción que guardar.",
     "submit": "Guardar",
     "saving": "Guardando...",
-    "title_required": "Escribe un título",
-    "toast_renamed": "Tarea renombrada",
-    "toast_failed": "No se ha podido renombrar la tarea"
-  },
-  "add_project_issue": {
-    "title": "Añadir tarea existente",
-    "description": "Busca una tarea para moverla a este proyecto",
-    "toast_success": "{{identifier}} movida al proyecto",
-    "toast_failed": "No se ha podido mover la tarea"
+    "toast_saved": "Guardado en {{knowledgeBase}}",
+    "toast_failed": "No se pudo guardar en conocimiento"
   },
   "copy_parent_fields": {
     "trigger": "Copiar campos de la tarea principal",

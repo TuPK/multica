@@ -61,6 +61,8 @@
   },
   "detail": {
     "not_found": "Automatización no encontrada",
+    "not_found_description": "Puede haberse eliminado o puede que no tengas acceso.",
+    "back_to_list": "Todas las automatizaciones",
     "pause_aria": "Pausar automatización",
     "activate_aria": "Activar automatización",
     "paused_runtime_required": "En pausa porque el asignado ha perdido su runtime. Vincula un runtime y reactiva esta automatización.",
@@ -91,6 +93,16 @@
     "field_prompt": "Prompt",
     "field_subscribers": "Suscriptores",
     "field_subscribers_none": "Ninguno",
+    "no_prompt": "Aún no hay prompt.",
+    "copy_link": "Copiar enlace",
+    "link_copied": "Enlace copiado",
+    "link_copy_failed": "No se ha podido copiar el enlace",
+    "open_project": "Abrir proyecto",
+    "summary": {
+      "create_issue": "{{agent}} crea una tarea en cada ejecución",
+      "run_only": "{{agent}} lo ejecuta sin crear una tarea",
+      "with_trigger": "{{trigger}} · {{action}}"
+    },
     "add_trigger": "Añadir disparador",
     "no_triggers": "Sin disparadores configurados. Añade una programación para que se ejecute automáticamente.",
     "no_runs": "Sin ejecuciones todavía. Haz clic en \"Ejecutar ahora\" para dispararla manualmente.",
@@ -103,18 +115,6 @@
       "cancel": "Cancelar",
       "confirm": "Eliminar",
       "deleting": "Eliminando..."
-    },
-    "not_found_description": "Puede haberse eliminado o puede que no tengas acceso.",
-    "back_to_list": "Todas las automatizaciones",
-    "no_prompt": "Aún no hay prompt.",
-    "copy_link": "Copiar enlace",
-    "link_copied": "Enlace copiado",
-    "link_copy_failed": "No se ha podido copiar el enlace",
-    "open_project": "Abrir proyecto",
-    "summary": {
-      "create_issue": "{{agent}} crea una tarea en cada ejecución",
-      "run_only": "{{agent}} lo ejecuta sin crear una tarea",
-      "with_trigger": "{{trigger}} · {{action}}"
     }
   },
   "access": {
@@ -136,16 +136,24 @@
     "running": "En ejecución",
     "skipped": "Omitida",
     "completed": "Completada",
-    "failed": "Fallida"
+    "failed": "Fallida",
+    "deferred": "Aplazada",
+    "held": "Retenida"
   },
   "run_source": {
     "schedule": "Programación",
     "manual": "Manual",
     "webhook": "Webhook",
-    "api": "API"
+    "api": "API",
+    "catchup": "Recuperación"
   },
   "run": {
     "issue_linked": "Tarea enlazada",
+    "held_reason": {
+      "company_paused": "Retenida: la empresa está en pausa",
+      "budget_hold": "Retenida: el presupuesto llegó a su límite",
+      "quiet_hours": "Retenida: horario de silencio"
+    },
     "view_log": "Ver log de ejecución",
     "skipped_group": {
       "label": "Omitidas",

@@ -85,6 +85,24 @@
     "workflow_usage_other": "{{count}} flujos de trabajo lo usan",
     "workflow_usage_none": "En ningún flujo de trabajo"
   },
+  "wakeups": {
+    "description": "Reglas de la plataforma que se aplican a cada tarea. Cada tarea puede cambiarlas en su sección de Despertares.",
+    "child_done_title": "Al terminar las subtareas",
+    "child_done_description": "Despierta al responsable del padre cuando una etapa termina y otra posterior está en espera, y una vez más cuando todas las subtareas se cierran. Si el responsable es un miembro, recibe una notificación en la bandeja de entrada.",
+    "enabled": "Activado por defecto",
+    "instruction": "Instrucción predeterminada",
+    "instruction_hint": "Se envía al agente despertado. Déjala vacía para usar la instrucción integrada de abajo.",
+    "instruction_placeholder": "Déjala vacía para usar la instrucción integrada",
+    "builtin": "Instrucción integrada",
+    "instruction_invalid": "Mantén la instrucción dentro de 4.000 bytes.",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "save_error": "No se ha podido guardar el valor predeterminado.",
+    "customized_one": "{{count}} tarea abierta tiene su propio ajuste e ignora este valor predeterminado.",
+    "customized_other": "{{count}} tareas abiertas tienen su propio ajuste e ignoran este valor predeterminado.",
+    "admin_only": "Solo los propietarios y administradores pueden cambiar estos valores predeterminados.",
+    "load_error": "No se han podido cargar los valores predeterminados de despertares."
+  },
   "quick_actions": {
     "title": "Acciones rápidas",
     "description": "Ejecuta un agente y un prompt predefinidos desde el panel lateral de una tarea.",
@@ -125,14 +143,14 @@
     "field_name": "Nombre",
     "field_name_placeholder": "Revisión de código",
     "field_target": "Se ejecuta como",
+    "no_target": "Sin objetivo",
+    "no_target_hint": "Publica un mensaje sin mencionar a nadie.",
     "field_prompt": "Prompt",
     "field_prompt_placeholder": "Revisa el código vinculado a esta tarea. Céntrate en la corrección y los casos límite.",
     "prompt_hint": "Se envía tal cual. El agente ya ve la tarea.",
     "template_not_supported": "Las variables aún no se admiten: elimina {{token}}. El agente ya lee esta tarea.",
     "delete_title": "¿Eliminar esta acción rápida?",
-    "delete_description": "Desaparecerá del panel lateral de todas las tareas. Las ejecuciones anteriores quedan en el registro de ejecución. Archívala si puede que la quieras recuperar.",
-    "no_target": "Sin objetivo",
-    "no_target_hint": "Publica un mensaje sin mencionar a nadie."
+    "delete_description": "Desaparecerá del panel lateral de todas las tareas. Las ejecuciones anteriores quedan en el registro de ejecución. Archívala si puede que la quieras recuperar."
   },
   "auto_save": {
     "saving": "Guardando…",
@@ -164,8 +182,8 @@
       "browser_suffix": " (navegador)",
       "hint": "Se usa para fechas y gráficas en todos tus espacios de trabajo.",
       "sync_failed": "No se ha podido guardar tu preferencia de zona horaria.",
-      "empty": "Ninguna zona horaria coincide",
-      "search": "Buscar zonas horarias..."
+      "search": "Buscar zonas horarias...",
+      "empty": "Ninguna zona horaria coincide"
     },
     "sticky_comment_bar": {
       "title": "Fijar la barra de comentarios abajo"
@@ -177,15 +195,15 @@
       "hint": "Solo establece el valor predeterminado. Puedes cambiarlo para cualquier mensaje antes de enviarlo."
     },
     "comments_title": "Comentarios",
+    "region_title": "Idioma y región",
     "appearance_title": "Apariencia",
+    "issue_fields_title": "Campos al crear tareas",
     "issue_fields": {
       "field": "Campo",
-      "manual": "Creación manual",
       "quick": "Crear con agente",
+      "manual": "Creación manual",
       "unsupported": "No disponible al crear con un agente"
-    },
-    "issue_fields_title": "Campos al crear tareas",
-    "region_title": "Idioma y región"
+    }
   },
   "shortcuts": {
     "title": "Atajos de teclado",
@@ -324,6 +342,13 @@
     "floating_hint": "Muestra el botón de chat flotante en todas las páginas."
   },
   "issue": {
+    "opening": {
+      "title": "Apertura de tareas",
+      "click": "Al hacer clic en una tarjeta o fila se abre",
+      "page": "Página completa",
+      "peek": "Vista previa lateral",
+      "hint": "Mayús+Clic abre la otra opción."
+    },
     "description": "Elige qué campos mantiene cada diálogo de creación en su barra de herramientas. Los campos ocultos siguen disponibles en el menú ⋯ y reaparecen mientras tengan un valor.",
     "fields": {
       "status": "Estado",
@@ -333,13 +358,6 @@
       "project": "Proyecto",
       "due_date": "Fecha de entrega",
       "start_date": "Fecha de inicio"
-    },
-    "opening": {
-      "click": "Al hacer clic en una tarjeta o fila se abre",
-      "hint": "Mayús+Clic abre la otra opción.",
-      "page": "Página completa",
-      "peek": "Vista previa lateral",
-      "title": "Apertura de tareas"
     }
   },
   "mcp": {
@@ -388,15 +406,15 @@
       "members": "Miembros",
       "labels": "Etiquetas",
       "issue_statuses": "Estados de tarea",
+      "wakeups": "Despertares",
       "properties": "Propiedades",
       "quick_actions": "Acciones rápidas",
       "plugins": "Plugins",
       "mcp": "MCP",
       "billing": "Facturación",
-      "apps": "Apps conectadas",
-      "channels": "Mensajería",
       "code": "Código",
-      "wakeups": "Despertares",
+      "channels": "Mensajería",
+      "apps": "Apps conectadas",
       "workflows": "Flujos de trabajo"
     },
     "groups": {
@@ -407,12 +425,12 @@
       "device": "Aplicación de escritorio"
     },
     "navigate": "Ir a la página de configuración",
-    "admin_only": "Solo los propietarios y administradores pueden cambiar esto",
     "search": "Buscar ajustes",
     "search_clear": "Borrar búsqueda",
     "search_empty": "Ningún ajuste coincide",
     "search_results_one": "{{count}} resultado",
-    "search_results_other": "{{count}} resultados"
+    "search_results_other": "{{count}} resultados",
+    "admin_only": "Solo los propietarios y administradores pueden cambiar esto"
   },
   "plugins": {
     "title": "Plugins",
@@ -757,17 +775,24 @@
     "toast_delete_failed": "Error al eliminar el espacio de trabajo",
     "confirm_cancel": "Cancelar",
     "confirm_action": "Confirmar",
-    "change_prefix": "Cambiar prefijo...",
     "context_hint": "Se da a cada agente de este espacio de trabajo en cada ejecución.",
-    "copy_failed": "No se ha podido copiar al portapapeles",
+    "slug_hint": "Forma parte de cada URL del espacio de trabajo. No se puede cambiar.",
     "copy_slug": "Copiar slug",
-    "prefix_confirm_action": "Cambiar a {{prefix}}",
-    "prefix_dialog_description": "Todas las tareas se renumeran, incluidas las completadas y canceladas.",
+    "copy_failed": "No se ha podido copiar al portapapeles",
+    "change_prefix": "Cambiar prefijo...",
     "prefix_dialog_title": "Cambiar el prefijo de tarea",
-    "prefix_external_warning": "Las claves antiguas como {{oldExample}} en títulos de PR, nombres de rama, documentación y chat no se actualizan, así que esos enlaces dejan de funcionar.",
+    "prefix_dialog_description": "Todas las tareas se renumeran, incluidas las completadas y canceladas.",
     "prefix_new_label": "Nuevo prefijo",
     "prefix_rule": "Solo letras y números, hasta 10 caracteres.",
-    "slug_hint": "Forma parte de cada URL del espacio de trabajo. No se puede cambiar."
+    "prefix_confirm_action": "Cambiar a {{prefix}}",
+    "prefix_external_warning": "Las claves antiguas como {{oldExample}} en títulos de PR, nombres de rama, documentación y chat no se actualizan, así que esos enlaces dejan de funcionar.",
+    "brief_catchup_section": "Resumen diario",
+    "brief_catchup_label": "Recuperar un resumen omitido",
+    "brief_catchup_description": "Si el resumen diario no se ejecutó, la Secretaria lo redacta una vez pasada la hora indicada abajo.",
+    "brief_catchup_hour_label": "Hora de recuperación",
+    "brief_catchup_hour_option": "{{hour}}:00",
+    "brief_catchup_saved": "Ajustes del resumen diario guardados",
+    "brief_catchup_failed": "No se pudieron guardar los ajustes del resumen diario"
   },
   "delete_workspace_dialog": {
     "title": "Eliminar espacio de trabajo",
@@ -810,9 +835,9 @@
     "feature_auto_link_label": "Vincular tareas y PR automáticamente",
     "toast_failed": "Error al actualizar la configuración de GitHub",
     "feature_auto_link_description": "Enlaza un PR con la tarea cuyo ID, p. ej. {{example}}, aparece en su título o nombre de rama, o tras “Closes” en su descripción.",
+    "status_paused": "En pausa",
     "pause": "Pausar funciones de GitHub",
-    "resume": "Reanudar funciones de GitHub",
-    "status_paused": "En pausa"
+    "resume": "Reanudar funciones de GitHub"
   },
   "vcs": {
     "section_title": "Proveedores de Git (self-hosted)",
@@ -852,9 +877,9 @@
     "rotate_confirm_action": "Regenerar",
     "rotating": "Regenerando...",
     "toast_rotate_failed": "No se ha podido regenerar el secreto del webhook",
+    "hosts_hint": "GitLab, Gitea o Forgejo.",
     "connect_another": "Conectar otro",
     "connection_actions": "Acciones de {{url}}",
-    "hosts_hint": "GitLab, Gitea o Forgejo.",
     "webhook_done": "Ya lo he guardado"
   },
   "lark": {
@@ -1121,7 +1146,6 @@
     "byo_credentials_rejected": "WeCom rechazó este Bot ID y secreto. Comprueba ambos en la consola de administración de WeCom, y que sea un smart bot con la conexión larga activada.",
     "byo_credentials_unverifiable": "No se ha podido contactar con WeCom para verificar este bot. Tus credenciales no se modificaron: inténtalo de nuevo en un momento.",
     "byo_install_failed": "No se ha podido guardar este bot: algo falló en nuestro lado. Tus credenciales no se modificaron; inténtalo de nuevo y contacta con soporte si sigue fallando.",
-    "byo_failed_toast": "No se ha podido conectar el bot de WeCom",
     "scan_option_title": "Crear un bot nuevo",
     "scan_option_description": "Escanea un código QR en WeCom para crear y conectar un bot inteligente nuevo.",
     "byo_option_title": "Conectar un bot existente",
@@ -1142,7 +1166,8 @@
     "scan_error_internal_error": "Algo ha ido mal. Inténtalo de nuevo.",
     "scan_error_session_lost": "Esta sesión de instalación ya no está disponible. Obtén un código nuevo.",
     "scan_error_already_connected": "Este agente ya tiene un bot de WeCom conectado. Desconéctalo primero.",
-    "scan_error_rate_limited": "Demasiados intentos. Espera unos minutos y vuelve a intentarlo."
+    "scan_error_rate_limited": "Demasiados intentos. Espera unos minutos y vuelve a intentarlo.",
+    "byo_failed_toast": "No se ha podido conectar el bot de WeCom"
   },
   "telegram": {
     "section_title": "Telegram",
@@ -1223,14 +1248,14 @@
     "delete_confirm_action": "Eliminar repositorio",
     "manage_hint": "Solo los administradores y propietarios pueden gestionar repositorios.",
     "toast_save_failed": "Error al guardar los repositorios",
-    "actions_aria": "Acciones de {{url}}",
     "add_manually": "Introduce una URL...",
     "add_title": "Añadir repositorio",
+    "edit_title": "Editar repositorio",
+    "edit": "Editar",
+    "url_label": "URL del repositorio",
     "description_label": "Descripción",
     "duplicate": "Este repositorio ya está añadido.",
-    "edit": "Editar",
-    "edit_title": "Editar repositorio",
-    "url_label": "URL del repositorio"
+    "actions_aria": "Acciones de {{url}}"
   },
   "desktop": {
     "tabs": {
@@ -1398,24 +1423,24 @@
     "expiry_7d": "7 días",
     "expiry_30d": "30 días",
     "expiry_never": "Nunca",
-    "email_label": "Correo electrónico",
-    "expiry_label": "Caduca después de",
-    "invitation_meta": "Enviada {{sent}} · Caduca {{expires}}",
-    "joined": "Se unió el {{date}}",
-    "manage_seats": "Gestionar puestos",
-    "member_actions": "Acciones de {{name}}",
     "members_label": "Miembros",
-    "no_invitations": "No hay invitaciones pendientes.",
-    "no_results": "Ningún miembro coincide con esta búsqueda.",
-    "no_share_links": "Aún no hay enlaces de invitación.",
     "pending_label": "Invitaciones pendientes",
-    "revoke_invitation_aria": "Revocar invitación de {{email}}",
-    "role_label": "Rol",
-    "search_placeholder": "Buscar por nombre o correo electrónico",
-    "seats_used": "{{used}} de {{purchased}} puestos usados",
-    "share_links_description": "Cualquiera con el enlace puede unirse con el rol elegido hasta que caduque o lo revoques.",
     "share_links_label": "Enlaces de invitación",
-    "you": "Tú"
+    "share_links_description": "Cualquiera con el enlace puede unirse con el rol elegido hasta que caduque o lo revoques.",
+    "search_placeholder": "Buscar por nombre o correo electrónico",
+    "no_results": "Ningún miembro coincide con esta búsqueda.",
+    "no_invitations": "No hay invitaciones pendientes.",
+    "no_share_links": "Aún no hay enlaces de invitación.",
+    "email_label": "Correo electrónico",
+    "role_label": "Rol",
+    "expiry_label": "Caduca después de",
+    "you": "Tú",
+    "joined": "Se unió el {{date}}",
+    "member_actions": "Acciones de {{name}}",
+    "invitation_meta": "Enviada {{sent}} · Caduca {{expires}}",
+    "revoke_invitation_aria": "Revocar invitación de {{email}}",
+    "seats_used": "{{used}} de {{purchased}} puestos usados",
+    "manage_seats": "Gestionar puestos"
   },
   "integrations": {
     "status_connected": "Conectado",
@@ -1423,62 +1448,44 @@
     "status_loading": "Comprobando...",
     "status_unknown": "Estado no disponible"
   },
-  "channels": {
-    "breadcrumb": "Migas de pan"
-  },
-  "code": {
-    "github_actions": "Acciones de GitHub",
-    "hosting_title": "Alojamiento de código",
-    "pr_linking_title": "Pull requests y tareas"
+  "pr_merge_status": {
+    "label": "Al fusionarse los PR, mover la tarea a",
+    "description": "Se aplica cuando todos los PR enlazados a una tarea se hayan fusionado, y solo a fusiones a partir de ahora.",
+    "none": "No cambiar"
   },
   "layout": {
-    "read_only": {
-      "contact": "Solo los propietarios y administradores pueden cambiar estos ajustes. Pídeselo a {{names}}.",
-      "description": "Solo los propietarios y administradores del espacio de trabajo pueden cambiar estos ajustes.",
-      "separator": ", ",
-      "title": "Solo lectura"
-    },
     "scope": {
       "account": "Cuenta · sincronizado",
       "device": "Solo este dispositivo",
       "device_workspace": "Este dispositivo · {{name}}",
       "workspace": "Espacio de trabajo {{name}}",
       "workspace_only": "Solo en {{name}}"
+    },
+    "read_only": {
+      "title": "Solo lectura",
+      "description": "Solo los propietarios y administradores del espacio de trabajo pueden cambiar estos ajustes.",
+      "contact": "Solo los propietarios y administradores pueden cambiar estos ajustes. Pídeselo a {{names}}.",
+      "separator": ", "
     }
   },
-  "mcp_sources": {
-    "apps": "Autorizadas con tu propia cuenta a través de Composio y activadas en agentes que posees.",
-    "current": "Esta página",
-    "mcp": "Añadidas por administradores y compartidas en todo el espacio de trabajo, y luego asignadas por agente.",
-    "plugins": "Paquetes instalados que pueden añadir herramientas, ganchos programados y almacenamiento, cada uno con sus propios permisos.",
-    "title": "Formas de dar herramientas a los agentes"
+  "code": {
+    "hosting_title": "Alojamiento de código",
+    "pr_linking_title": "Pull requests y tareas",
+    "github_actions": "Acciones de GitHub"
+  },
+  "channels": {
+    "breadcrumb": "Migas de pan"
   },
   "mcp_usage": {
     "agent_count_one": "La usa {{count}} agente",
     "agent_count_other": "La usan {{count}} agentes",
     "none": "No asignada a ningún agente"
   },
-  "pr_merge_status": {
-    "description": "Se aplica cuando todos los PR enlazados a una tarea se hayan fusionado, y solo a fusiones a partir de ahora.",
-    "label": "Al fusionarse los PR, mover la tarea a",
-    "none": "No cambiar"
-  },
-  "wakeups": {
-    "admin_only": "Solo los propietarios y administradores pueden cambiar estos valores predeterminados.",
-    "builtin": "Instrucción integrada",
-    "child_done_description": "Despierta al responsable del padre cuando una etapa termina y otra posterior está en espera, y una vez más cuando todas las subtareas se cierran. Si el responsable es un miembro, recibe una notificación en la bandeja de entrada.",
-    "child_done_title": "Al terminar las subtareas",
-    "customized_one": "{{count}} tarea abierta tiene su propio ajuste e ignora este valor predeterminado.",
-    "customized_other": "{{count}} tareas abiertas tienen su propio ajuste e ignoran este valor predeterminado.",
-    "description": "Reglas de la plataforma que se aplican a cada tarea. Cada tarea puede cambiarlas en su sección de Despertares.",
-    "enabled": "Activado por defecto",
-    "instruction": "Instrucción predeterminada",
-    "instruction_hint": "Se envía al agente despertado. Déjala vacía para usar la instrucción integrada de abajo.",
-    "instruction_invalid": "Mantén la instrucción dentro de 4.000 bytes.",
-    "instruction_placeholder": "Déjala vacía para usar la instrucción integrada",
-    "load_error": "No se han podido cargar los valores predeterminados de despertares.",
-    "save": "Guardar",
-    "save_error": "No se ha podido guardar el valor predeterminado.",
-    "saving": "Guardando…"
+  "mcp_sources": {
+    "title": "Formas de dar herramientas a los agentes",
+    "current": "Esta página",
+    "mcp": "Añadidas por administradores y compartidas en todo el espacio de trabajo, y luego asignadas por agente.",
+    "apps": "Autorizadas con tu propia cuenta a través de Composio y activadas en agentes que posees.",
+    "plugins": "Paquetes instalados que pueden añadir herramientas, ganchos programados y almacenamiento, cada uno con sus propios permisos."
   }
 }

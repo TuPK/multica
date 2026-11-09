@@ -198,6 +198,10 @@ import esUsage from "./es/usage.json";
 import esUi from "./es/ui.json";
 import esSquads from "./es/squads.json";
 import esBilling from "./es/billing.json";
+import esKnowledge from "./es/knowledge.json";
+import esPipeline from "./es/pipeline.json";
+import esGovernance from "./es/governance.json";
+import esCompany from "./es/company.json";
 
 // Single source of truth for the resource bundle. Both apps (web layout +
 // desktop App.tsx) import from here so adding a locale or namespace happens
@@ -415,5 +419,9 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     ui: esUi,
     squads: esSquads,
     billing: esBilling,
+    knowledge: esKnowledge,
+    pipeline: esPipeline,
+    governance: esGovernance,
+    company: esCompany,
   },
 };

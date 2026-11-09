@@ -1,0 +1,328 @@
+{
+  "title": "Conocimiento",
+  "tabs": {
+    "library": "Biblioteca",
+    "drafts": "Borradores",
+    "governance": "Gobernanza",
+    "setup": "Configuración"
+  },
+  "state": {
+    "ready": "Listo",
+    "provisioning": "Configurando",
+    "offline": "Sin conexión",
+    "failed": "Falló la configuración",
+    "disabled": "No habilitado",
+    "unknown": "Desconocido"
+  },
+  "not_offered": {
+    "title": "Este servidor no ofrece Conocimiento"
+  },
+  "disabled": {
+    "title": "Conocimiento no está habilitado",
+    "description": "Pide a un propietario o administrador que lo habilite."
+  },
+  "enable": "Habilitar Conocimiento",
+  "retry": "Reintentar la configuración",
+  "provisioning": {
+    "title": "Configurando Conocimiento"
+  },
+  "failed": {
+    "title": "La configuración de Conocimiento no terminó"
+  },
+  "offline": {
+    "title": "El servicio de conocimiento está sin conexión",
+    "description": "Los agentes siguen trabajando sin el conocimiento de la empresa hasta que vuelva."
+  },
+  "kb": {
+    "all": "Todas"
+  },
+  "documents": {
+    "filter": {
+      "all": "Todos",
+      "published": "Publicados",
+      "failed": "Fallidos",
+      "draft": "Borrador"
+    },
+    "empty": "No hay documentos"
+  },
+  "search": {
+    "label": "Buscar en el conocimiento de la empresa",
+    "placeholder": "Buscar en el conocimiento de la empresa",
+    "submit": "Buscar",
+    "results": "Resultados",
+    "no_results": "Sin coincidencias",
+    "score": "Puntuación {{score}}",
+    "source": "Fuente",
+    "error": "Falló la búsqueda"
+  },
+  "drafts": {
+    "empty": "No hay borradores",
+    "publish": "Publicar",
+    "discard": "Descartar",
+    "author": {
+      "agent": "Agente",
+      "member": "Miembro",
+      "system": "Sistema"
+    }
+  },
+  "discard_title": "¿Descartar el borrador?",
+  "discard_description": "El borrador se elimina y no se puede recuperar.",
+  "cancel": "Cancelar",
+  "open_in_weknora": "Abrir en WeKnora",
+  "toast": {
+    "enabled": "Conocimiento habilitado",
+    "enable_failed": "No se pudo habilitar Conocimiento",
+    "published": "Borrador publicado",
+    "publish_failed": "No se pudo publicar el borrador",
+    "discarded": "Borrador descartado",
+    "discard_failed": "No se pudo descartar el borrador"
+  },
+  "load_error": {
+    "title": "No se pudo cargar Conocimiento",
+    "retry": "Reintentar"
+  },
+  "ask_secretary": {
+    "button": "Preguntar a la Secretaria",
+    "prompt": "Responde a mi pregunta con estos resultados del conocimiento de la empresa. Cita cada documento que uses por su título y enlace, y dilo si los resultados no la responden.\n\nPregunta: {{question}}\n\nResultados:\n{{results}}"
+  },
+  "taxonomy": {
+    "kind": {
+      "label": "Tipo",
+      "all": "Todos los tipos"
+    },
+    "policy": {
+      "title": "Política de publicación",
+      "description": "Cómo se publica el borrador de un agente. La política de un tipo prevalece sobre la de su base de conocimiento. Sin política, los borradores esperan a una persona.",
+      "scope_base": "Base de conocimiento",
+      "scope_kind": "Tipo",
+      "inherited": "usando la predeterminada",
+      "reset": "Restablecer",
+      "load_error": "No se pudieron cargar las políticas de publicación",
+      "aria_mode": "Modo de publicación de {{name}}",
+      "toast_failed": "No se pudo cambiar la política de publicación",
+      "toast_reset": "Política de publicación restablecida",
+      "mode": {
+        "manual": "Manual: la publica una persona",
+        "auto_after_review": "Tras la revisión de un crítico",
+        "auto": "Automático",
+        "unknown": "Modo desconocido"
+      }
+    },
+    "add_eval": {
+      "button": "Añadir como caso de evaluación",
+      "title": "Añadir como caso de evaluación",
+      "description": "La búsqueda debería devolver este documento para la pregunta. La próxima evaluación lo comprueba.",
+      "question": "Pregunta",
+      "document": "Documento esperado",
+      "submit": "Añadir caso",
+      "toast_added": "Caso de evaluación añadido",
+      "toast_failed": "No se pudo añadir el caso de evaluación"
+    },
+    "retrieval": {
+      "title": "Calidad de la recuperación",
+      "run": "Ejecutar evaluación",
+      "last_run": "Tasa de aciertos {{rate}} % ({{hits}} de {{total}} casos)",
+      "no_runs": "Aún no hay evaluaciones. Añade un caso desde un resultado de búsqueda para empezar.",
+      "ran": "Evaluación registrada: tasa de aciertos {{rate}} %",
+      "offline": "No se registró nada: el servicio de conocimiento está sin conexión",
+      "run_failed": "No se pudo ejecutar la evaluación"
+    },
+    "routines": {
+      "title": "Rutinas del bibliotecario",
+      "empty": "Aún no se ha ejecutado ninguna rutina.",
+      "load_error": "No se pudieron cargar las rutinas",
+      "nothing": "Nada que informar",
+      "count": "{{label}}: {{count}}",
+      "triage": "Clasificación de borradores",
+      "freshness": "Revisión de vigencia",
+      "audit": "Auditoría de taxonomía",
+      "eval": "Evaluación de recuperación",
+      "backfill": "Relleno de la configuración",
+      "counts": {
+        "review_due": "pendientes de revisión",
+        "duplicate": "títulos duplicados",
+        "missing_sections": "encabezados que faltan",
+        "missing_kind": "sin tipo",
+        "orphaned": "desaparecidos de WeKnora",
+        "repaired": "reparados",
+        "new_drafts": "borradores nuevos"
+      }
+    }
+  },
+  "upload": {
+    "title": "Añadir un archivo",
+    "drop_hint": "Suelta un archivo aquí o elige uno. Se publica en cuanto se añade.",
+    "choose": "Elegir archivo",
+    "base_label": "Base de conocimiento",
+    "kind_label": "Tipo",
+    "kind_hint": "Usa minúsculas, dígitos y guiones bajos, como market_report.",
+    "submit": "Subir",
+    "toast": {
+      "uploaded": "{{name}} ya está en la base de conocimiento",
+      "failed": "No se pudo subir el archivo"
+    }
+  },
+  "import": {
+    "title": "Importar una página web",
+    "url_label": "Dirección de la página",
+    "title_label": "Título (opcional)",
+    "submit": "Importar",
+    "toast": {
+      "imported": "La página ya está en la base de conocimiento",
+      "failed": "No se pudo importar la página"
+    }
+  },
+  "sources": {
+    "title": "Fuentes",
+    "description": "Conexiones que WeKnora sincroniza con las bases de conocimiento. Los fallos se muestran aquí; corrígelos en WeKnora.",
+    "load_error": "No se pudieron cargar las fuentes",
+    "offline": "El servicio de conocimiento está sin conexión, así que no se pueden leer las fuentes.",
+    "empty": "No hay fuentes conectadas.",
+    "create": "Añadir una fuente en WeKnora",
+    "never_synced": "Nunca sincronizada",
+    "last_sync": "Última sincronización {{when}}",
+    "items": "{{count}} elementos",
+    "status": {
+      "active": "Activa",
+      "paused": "En pausa",
+      "error": "Fallida",
+      "unknown": "Desconocido"
+    }
+  },
+  "repo": {
+    "title": "Documentación del repositorio",
+    "description": "Mantiene la carpeta de documentación de un repositorio en la base de conocimiento de ingeniería. Cada archivo Markdown se convierte en un documento de referencia; cada archivo necesita un encabezado Summary.",
+    "load_error": "No se pudo cargar la sincronización del repositorio",
+    "enabled": "Sincronizar este repositorio cada día",
+    "repo_url": "Dirección del repositorio (https)",
+    "branch": "Rama",
+    "docs_path": "Carpeta de documentación",
+    "base": "Base de conocimiento",
+    "save": "Guardar",
+    "run": "Sincronizar ahora",
+    "last_sync": "Última sincronización {{when}}",
+    "never_synced": "Nunca sincronizado",
+    "last_error": "La última sincronización tuvo fallos; consulta abajo",
+    "toast": {
+      "saved": "Sincronización del repositorio guardada",
+      "synced": "Repositorio sincronizado",
+      "failed": "No se pudo guardar la sincronización del repositorio"
+    }
+  },
+  "bases": {
+    "title": "Bases de conocimiento",
+    "description": "Restringe una base a los squads, departamentos o agentes que indiques. Wiki está limitada a tres bases; los resúmenes consumen llamadas a modelos.",
+    "restricted": "Restringida",
+    "wiki": "Wiki",
+    "summaries": "Resúmenes",
+    "access": "Acceso",
+    "toast": {
+      "failed": "El cambio no se guardó"
+    }
+  },
+  "access": {
+    "loading": "Cargando el acceso",
+    "load_error": "No se pudo cargar la lista de acceso",
+    "empty": "Solo los propietarios y administradores pueden ver esta base.",
+    "remove": "Quitar acceso",
+    "level": {
+      "read": "Lectura",
+      "write": "Escritura"
+    },
+    "subject": {
+      "squad": "Squad",
+      "floor": "Departamento",
+      "agent": "Agente",
+      "unknown": "Desconocido"
+    },
+    "add": {
+      "subject_type": "Concedido a",
+      "subject": "Quién",
+      "subject_placeholder": "Elegir",
+      "level": "Acceso",
+      "submit": "Conceder acceso"
+    },
+    "toast": {
+      "failed": "No se cambió el acceso"
+    }
+  },
+  "models": {
+    "title": "Modelos",
+    "description": "Ejecuta una vez cada modelo de chat, reranking y visión configurado e informa de cuáles fallaron y por qué.",
+    "test": "Probar modelos",
+    "not_configured": "No hay ningún modelo configurado en este servidor, así que los resúmenes y la Wiki están desactivados.",
+    "ok": "Funciona",
+    "failed": "Falló",
+    "role": {
+      "chat": "Chat",
+      "rerank": "Reranking",
+      "vision": "Visión",
+      "unknown": "Modelo"
+    }
+  },
+  "owner_login": {
+    "title": "Tu acceso a WeKnora",
+    "description": "Inicia sesión en la propia interfaz de WeKnora para los ajustes avanzados. La contraseña se muestra una sola vez.",
+    "show": "Mostrar mi contraseña",
+    "email": "Correo: {{email}}",
+    "once": "Cópiala ahora. No se volverá a mostrar.",
+    "open": "Abrir WeKnora",
+    "failed": "No se pudo mostrar la contraseña"
+  },
+  "explorer": {
+    "tree_label": "Estructura de la biblioteca",
+    "all_documents": "Todos los documentos",
+    "company": "Empresa",
+    "projects": "Proyectos",
+    "no_projects": "Los proyectos aparecen aquí a medida que se crean.",
+    "wiki_on": "Wiki activada",
+    "wiki_off": "Wiki desactivada",
+    "summaries_on": "Resúmenes activados",
+    "open_project": "Abrir proyecto",
+    "path_label": "Ruta de la carpeta",
+    "company_hint": "Una base de toda la empresa. Todos en el espacio de trabajo pueden leerla salvo que esté restringida.",
+    "project_hint": "La base propia de este proyecto. Sus archivos se añaden automáticamente desde la carpeta del proyecto y puedes añadir documentos a mano.",
+    "visibility": {
+      "workspace": "Visible para el espacio de trabajo",
+      "restricted": "Restringida"
+    },
+    "tabs": {
+      "documents": "Documentos",
+      "wiki": "Wiki",
+      "add": "Añadir documentos",
+      "settings": "Ajustes"
+    },
+    "toggle": "Mostrar u ocultar {{name}}"
+  },
+  "wiki": {
+    "off_title": "La Wiki está desactivada en esta base",
+    "no_documents": "Añade primero documentos. La Wiki se redacta a partir de ellos.",
+    "no_chat_model": "Este servidor no tiene modelo de chat, así que no se puede redactar una Wiki.",
+    "off_hint": "Redacta una Wiki a partir de los {{count}} documentos de esta base: una página de resumen para cada uno y páginas sobre las personas, productos e ideas que comparten. Tarda unos minutos por documento.",
+    "off_member": "Un propietario o administrador puede activar la Wiki.",
+    "generate": "Generar Wiki",
+    "rewrite": "Reescribir Wiki",
+    "pages_one": "{{count}} página",
+    "pages_other": "{{count}} páginas",
+    "writing": "Las páginas aún se están redactando",
+    "none_yet": "Aún no hay páginas. Aparecen aquí a medida que se redactan.",
+    "pick": "Elige una página para leerla.",
+    "type": {
+      "all": "Todas",
+      "summary": "Resúmenes",
+      "entity": "Entidades",
+      "concept": "Conceptos",
+      "unknown": "Otras"
+    },
+    "toast": {
+      "queued_one": "Redactando la Wiki a partir de {{count}} documento",
+      "queued_other": "Redactando la Wiki a partir de {{count}} documentos",
+      "failed": "No se pudo iniciar la Wiki"
+    },
+    "view": {
+      "label": "Vista",
+      "rendered": "Renderizada",
+      "source": "Markdown"
+    }
+  }
+}

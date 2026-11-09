@@ -4,6 +4,7 @@
     "chat": "Chat",
     "my_issues": "Mis tareas",
     "issues": "Tareas",
+    "company": "Empresa",
     "projects": "Proyectos",
     "autopilots": "Automatizaciones",
     "agents": "Agentes",
@@ -11,6 +12,9 @@
     "usage": "Analítica",
     "runtimes": "Runtimes",
     "skills": "Skills",
+    "knowledge": "Conocimiento",
+    "pipeline": "Pipeline",
+    "governance": "Gobernanza",
     "settings": "Ajustes",
     "views": "Vistas"
   },
@@ -26,8 +30,8 @@
     "runtime": "Runtime",
     "attachment": "Adjunto",
     "create_agent": "Crear agente",
-    "unknown": "Página desconocida",
-    "my_agents": "Trabajo de mis agentes"
+    "my_agents": "Trabajo de mis agentes",
+    "unknown": "Página desconocida"
   },
   "help": {
     "trigger": "Ayuda",
@@ -37,31 +41,6 @@
     "discord": "Discord",
     "feedback": "Comentarios",
     "server_version": "Versión del servidor {{version}}"
-  },
-  "workspace_loader": {
-    "loading_workspace": "Cargando espacio de trabajo…",
-    "loading_named_prefix": "Cargando"
-  },
-  "sidebar": {
-    "unpin_tooltip": "Dejar de fijar",
-    "workspaces_label": "Espacios de trabajo",
-    "create_workspace": "Crear espacio de trabajo",
-    "pending_invitations_label": "Invitaciones pendientes",
-    "invitation_workspace_fallback": "Espacio de trabajo",
-    "invitation_join": "Unirse",
-    "invitation_decline": "Rechazar",
-    "log_out": "Cerrar sesión",
-    "new_issue": "Nueva tarea",
-    "pinned_label": "Fijados",
-    "show_more_pins": "Mostrar {{count}} más…",
-    "show_fewer_pins": "Mostrar menos"
-  },
-  "window": {
-    "go_back": "Atrás",
-    "go_forward": "Adelante",
-    "hold_for_history": "Mantén pulsado para ver el historial",
-    "back_history": "Historial hacia atrás",
-    "forward_history": "Historial hacia delante"
   },
   "whats_new": {
     "trigger": "Novedades",
@@ -78,6 +57,31 @@
       "learn_more": "Más información"
     }
   },
+  "workspace_loader": {
+    "loading_workspace": "Cargando espacio de trabajo…",
+    "loading_named_prefix": "Cargando"
+  },
+  "window": {
+    "go_back": "Atrás",
+    "go_forward": "Adelante",
+    "hold_for_history": "Mantén pulsado para ver el historial",
+    "back_history": "Historial hacia atrás",
+    "forward_history": "Historial hacia delante"
+  },
+  "sidebar": {
+    "unpin_tooltip": "Dejar de fijar",
+    "workspaces_label": "Espacios de trabajo",
+    "create_workspace": "Crear espacio de trabajo",
+    "pending_invitations_label": "Invitaciones pendientes",
+    "invitation_workspace_fallback": "Espacio de trabajo",
+    "invitation_join": "Unirse",
+    "invitation_decline": "Rechazar",
+    "log_out": "Cerrar sesión",
+    "new_issue": "Nueva tarea",
+    "pinned_label": "Fijados",
+    "show_more_pins": "Mostrar {{count}} más…",
+    "show_fewer_pins": "Mostrar menos"
+  },
   "spaces": {
     "work": "Trabajo",
     "team": "Equipo"
@@ -86,6 +90,7 @@
     "label": "Navegación de la app",
     "sheet_description": "Cambia de sección y de espacio de trabajo.",
     "inbox": "Bandeja de entrada",
+    "company": "Empresa",
     "work": "Trabajo",
     "team": "Equipo",
     "chat": "Chat",

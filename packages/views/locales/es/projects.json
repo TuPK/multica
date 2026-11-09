@@ -2,6 +2,9 @@
   "page": {
     "title": "Proyectos",
     "new_project": "Nuevo proyecto",
+    "scope_all": "Todos los proyectos",
+    "scope_active": "Proyectos activos",
+    "scope_closed": "Proyectos cerrados",
     "view_compact": "Compacto",
     "view_comfortable": "Cómodo",
     "no_search_results": "Ningún resultado coincide con tu búsqueda",
@@ -11,10 +14,7 @@
     "pin": "Fijar en la barra lateral",
     "unpin": "Dejar de fijar",
     "delete": "Eliminar",
-    "no_matches": "Ningún proyecto coincide",
-    "scope_all": "Todos los proyectos",
-    "scope_active": "Proyectos activos",
-    "scope_closed": "Proyectos cerrados"
+    "no_matches": "Ningún proyecto coincide"
   },
   "table": {
     "name": "Nombre",
@@ -54,6 +54,8 @@
   },
   "detail": {
     "not_found": "Proyecto no encontrado",
+    "not_found_description": "Puede haberse eliminado o puede que no tengas acceso.",
+    "back_to_list": "Todos los proyectos",
     "breadcrumb_fallback": "Proyectos",
     "title_placeholder": "Título del proyecto",
     "icon_tooltip": "Cambiar icono",
@@ -74,13 +76,11 @@
     "empty_issues_title": "Aún no hay tareas en este proyecto",
     "empty_issues_hint": "Crea una o mueve aquí una tarea existente.",
     "empty_issues_new_button": "Nueva tarea",
+    "empty_issues_add_existing": "Añadir tarea existente",
     "no_issues_yet": "Aún no hay tareas",
     "toast_link_copied": "Enlace copiado",
     "toast_project_deleted": "Proyecto eliminado",
-    "toast_move_issue_failed": "No se ha podido mover la tarea",
-    "not_found_description": "Puede haberse eliminado o puede que no tengas acceso.",
-    "back_to_list": "Todos los proyectos",
-    "empty_issues_add_existing": "Añadir tarea existente"
+    "toast_move_issue_failed": "No se ha podido mover la tarea"
   },
   "resources": {
     "section_header": "Recursos",
@@ -93,6 +93,10 @@
     "remove_tooltip": "Quitar",
     "url_placeholder": "https://github.com/owner/repo o git@github.com:owner/repo.git",
     "url_submit": "Añadir",
+    "local_path_heading": "Carpeta local en una máquina",
+    "local_path_placeholder": "/ruta/absoluta/a/la/carpeta",
+    "local_path_machine_label": "Máquina",
+    "local_path_no_machines": "No hay ninguna máquina en línea. Inicia un daemon local para adjuntar una carpeta desde ella.",
     "toast_attached": "Repositorio adjuntado",
     "toast_attach_failed": "No se ha podido adjuntar",
     "toast_removed": "Recurso eliminado",
@@ -122,6 +126,8 @@
     "mode_in_place_description": "Una ejecución cada vez. Los cambios aparecen en tu copia de trabajo según los hace el agente, listos para que sigas trabajando.",
     "mode_worktree_title": "Ejecutar en paralelo, aislado",
     "mode_worktree_description": "Las ejecuciones se ejecutan a la vez sin tocar tu copia de trabajo. Cada una devuelve una rama agent/… en este repositorio para que la revises y la fusiones.",
+    "mode_auto_merge_label": "Fusionar las ejecuciones terminadas en la rama activa",
+    "mode_auto_merge_description": "Cuando una ejecución termina, su rama se fusiona en la rama activa de este repositorio y se elimina. Se omite si el repositorio tiene cambios sin confirmar o un HEAD desacoplado; los conflictos quedan para que los resuelvas.",
     "mode_worktree_needs_git": "Esta carpeta no es un repositorio git, así que no hay dónde crear la rama. Elige un repositorio o sigue editando la carpeta directamente.",
     "mode_worktree_needs_server_upgrade": "Tu servidor de Multica es demasiado antiguo para ejecutar ejecuciones en paralelo; las ejecutaría en silencio en esta carpeta. Actualiza el servidor y activa esta opción.",
     "mode_cancel": "Cancelar",
