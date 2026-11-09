@@ -406,8 +406,11 @@ vi.mock("@multica/core/issues/stores", async () => ({
     collapsedByIssue: Record<string, string[]>;
     isCollapsed: (issueId: string, commentId: string) => boolean;
     toggle: (issueId: string, commentId: string) => void;
+    collapseAll: (issueId: string, commentIds: readonly string[]) => void;
   }>()((set, get) => ({
     collapsedByIssue: {},
+    collapseAll: (issueId, commentIds) =>
+      set((s) => ({ collapsedByIssue: { ...s.collapsedByIssue, [issueId]: [...commentIds] } })),
     isCollapsed: (issueId, commentId) => get().collapsedByIssue[issueId]?.includes(commentId) ?? false,
     toggle: (issueId, commentId) =>
       set((s) => {
@@ -1642,6 +1645,10 @@ describe("IssueDetail (shared)", () => {
     mockApiObj.listTimeline.mockResolvedValue([root, answer]);
     mockApiObj.listTasksByIssue.mockResolvedValue([first, second]);
     const { container } = renderIssueDetail();
+    // Entering an issue folds every thread but the newest; these assertions
+    // are about ordering, so reopen them once that default has applied.
+    await waitFor(() => expect(useCommentCollapseStore.getState().collapsedByIssue["issue-1"]).toBeDefined());
+    act(() => useCommentCollapseStore.setState({ collapsedByIssue: {} }));
     await screen.findByText(answer.content);
     await waitFor(() => expect(container.querySelectorAll(`[data-run-id="${second.id}"]`)).toHaveLength(1));
     expect(container.querySelector(`#comment-${root.id}`)?.querySelector(`[data-run-id="${second.id}"]`)).not.toBeNull();
@@ -3766,6 +3773,10 @@ describe("IssueDetail (shared)", () => {
     }]);
 
     const { container } = renderIssueDetail();
+    // Entering an issue folds every thread but the newest; these assertions
+    // are about ordering, so reopen them once that default has applied.
+    await waitFor(() => expect(useCommentCollapseStore.getState().collapsedByIssue["issue-1"]).toBeDefined());
+    act(() => useCommentCollapseStore.setState({ collapsedByIssue: {} }));
     await screen.findByText("Step 2 done");
     await screen.findByText("Step 3 done");
 

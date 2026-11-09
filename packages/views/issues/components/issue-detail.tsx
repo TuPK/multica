@@ -114,7 +114,7 @@ import { useCommentAnnotations } from "./use-comment-annotations";
 import { CurrentIssueRenderContextProvider } from "../current-issue-render-context";
 import { ResolvedThreadBar } from "./resolved-thread-bar";
 import { ThreadMinimap, type ThreadMinimapThread } from "./thread-minimap";
-import { collectThreadParticipants, collectThreadReplies, deriveThreadResolution } from "./thread-utils";
+import { collectThreadParticipants, collectThreadReplies, deriveThreadResolution, rootCommentIds } from "./thread-utils";
 import { IssueAgentHeaderChip } from "./issue-agent-header-chip";
 import { IssueWakeupHeaderChip } from "./issue-wakeup-header-chip";
 import { ExecutionLogSection } from "./execution-log-section";
@@ -1700,6 +1700,16 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     submitComment, submitReply,
     editComment, deleteComment, toggleResolveComment, toggleReaction: handleToggleReaction,
   } = useIssueTimeline(id, user?.id);
+
+  // On entering an issue, fold every comment thread except the newest one.
+  // Runs once per issue after the first timeline load so it overrides the
+  // persisted per-issue collapse state, then leaves later user toggles alone.
+  const defaultFoldedIssueRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (timelineLoading || defaultFoldedIssueRef.current === id) return;
+    defaultFoldedIssueRef.current = id;
+    useCommentCollapseStore.getState().collapseAll(id, rootCommentIds(timeline).slice(0, -1));
+  }, [id, timelineLoading, timeline]);
 
   const { data: commentTasks } = useQuery(issueTasksOptions(id));
   const enteringRunIds = useNewRunIds(id, commentTasks);
