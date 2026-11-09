@@ -252,8 +252,8 @@ export function CompanyInsights({
   const costPerRun = runs.runs > 0 ? rollup.total / runs.runs : null;
 
   const health = useMemo(
-    () => workHealth(digest?.squads ?? [], digest?.quiet.squads ?? [], scope, digest?.quiet.count ?? 0),
-    [digest, scope],
+    () => workHealth(digest?.squads ?? [], digest?.quiet.squads ?? [], scopedSquads, scope),
+    [digest, scopedSquads, scope],
   );
   const pipeline = useMemo(() => pipelineSummary(digest?.pipeline ?? [], scope), [digest, scope]);
   const goals = useMemo(

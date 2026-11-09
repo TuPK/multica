@@ -128,15 +128,24 @@ describe("workHealth", () => {
     pending_proposal_count: 1,
     ...over,
   });
+  const scopeSquads = [
+    { id: "s-1", name: "s-1" },
+    { id: "s-2", name: "s-2" },
+    { id: "s-3", name: "s-3" },
+    { id: "s-9", name: "s-9" },
+  ];
 
   it("sums the squads in scope and ranks the ones in trouble first", () => {
-    const out = workHealth([squad("s-1"), squad("s-2", { blocked: 3 }), squad("s-9")], [{ id: "s-3" }], dept, 5);
+    const out = workHealth([squad("s-1"), squad("s-2", { blocked: 3 }), squad("s-9")], [], scopeSquads, dept);
     expect(out.rows.map((r) => r.id)).toEqual(["s-2", "s-1"]);
     expect(out).toMatchObject({ done: 2, inProgress: 4, blocked: 3, pendingProposals: 2, quiet: 0 });
   });
 
-  it("uses the digest's quiet count for the company", () => {
-    expect(workHealth([], [], all, 4).quiet).toBe(4);
+  it("takes in-progress counts from the quiet squads and counts squads without activity", () => {
+    const out = workHealth([], [{ id: "s-1", in_progress: 5 }], scopeSquads, all);
+    expect(out.inProgress).toBe(5);
+    expect(out.rows.map((r) => r.id)).toEqual(["s-1"]);
+    expect(out.quiet).toBe(3);
   });
 });
 

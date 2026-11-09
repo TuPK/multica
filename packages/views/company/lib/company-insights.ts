@@ -182,27 +182,45 @@ interface DigestSquadLike {
   pending_proposal_count: number;
 }
 
-/** Issue flow of the squads in scope, from the digest's per-squad counters. Squads with no news are the quiet ones. */
+/**
+ * Issue flow of the squads in scope. The digest splits squads into those with news
+ * (full counters) and quiet ones (only an in-progress count), and drops the ones past
+ * its cap, so every squad of the scope is rebuilt here and unknown ones count as zero.
+ * Rows with no activity at all are left out of `rows` and counted in `quiet`.
+ */
 export function workHealth(
   squads: DigestSquadLike[],
-  quiet: { id: string }[],
+  quiet: { id: string; in_progress: number }[],
+  scopeSquads: { id: string; name: string }[],
   scope: InsightScope,
-  quietCount: number,
 ): WorkHealth {
-  const rows = squads
-    .filter((s) => inScope(scope, s.id))
-    .map((s) => ({
-      id: s.id,
-      name: s.name,
-      done: s.done,
-      inProgress: s.in_progress,
-      blocked: s.blocked,
-      stale: s.stale,
-      failedRuns: s.failed_runs,
-      pendingProposals: s.pending_proposal_count,
-    }))
-    .toSorted((a, b) => b.blocked + b.stale + b.failedRuns - (a.blocked + a.stale + a.failedRuns) || b.done - a.done);
-  const sum = (pick: (r: (typeof rows)[number]) => number) => rows.reduce((n, r) => n + pick(r), 0);
+  const news = new Map(squads.map((s) => [s.id, s]));
+  const quietInProgress = new Map(quiet.map((q) => [q.id, q.in_progress]));
+  const all = scopeSquads
+    .filter((squad) => inScope(scope, squad.id))
+    .map((squad) => {
+      const n = news.get(squad.id);
+      return {
+        id: squad.id,
+        name: squad.name,
+        done: n?.done ?? 0,
+        inProgress: n?.in_progress ?? quietInProgress.get(squad.id) ?? 0,
+        blocked: n?.blocked ?? 0,
+        stale: n?.stale ?? 0,
+        failedRuns: n?.failed_runs ?? 0,
+        pendingProposals: n?.pending_proposal_count ?? 0,
+      };
+    });
+  const active = (r: (typeof all)[number]) =>
+    r.done + r.inProgress + r.blocked + r.stale + r.failedRuns + r.pendingProposals > 0;
+  const rows = all
+    .filter(active)
+    .toSorted(
+      (a, b) =>
+        b.blocked + b.stale + b.failedRuns - (a.blocked + a.stale + a.failedRuns) ||
+        b.done + b.inProgress - (a.done + a.inProgress),
+    );
+  const sum = (pick: (r: (typeof all)[number]) => number) => all.reduce((n, r) => n + pick(r), 0);
   return {
     done: sum((r) => r.done),
     inProgress: sum((r) => r.inProgress),
@@ -211,7 +229,7 @@ export function workHealth(
     failedRuns: sum((r) => r.failedRuns),
     pendingProposals: sum((r) => r.pendingProposals),
     rows,
-    quiet: scope.departmentId === null ? quietCount : quiet.filter((q) => inScope(scope, q.id)).length,
+    quiet: all.length - rows.length,
   };
 }
 
