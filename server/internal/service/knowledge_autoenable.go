@@ -93,8 +93,23 @@ func (s *KnowledgeService) EnsureProjectBase(ctx context.Context, workspaceID, p
 	if err != nil {
 		return fmt.Errorf("list remote knowledge bases: %w", err)
 	}
-	return s.createOrAdoptBase(ctx, workspaceID, ws, model.ID, key, projectBaseName(projectID, title),
-		"Documents of the project "+title+".", projectBasePosition, remote)
+	if err := s.createOrAdoptBase(ctx, workspaceID, ws, model.ID, key, projectBaseName(projectID, title),
+		"Documents of the project "+title+".", projectBasePosition, remote); err != nil {
+		return err
+	}
+	return s.syncReadEndpoint(ctx, workspaceID, ws)
+}
+
+// syncReadEndpoint makes the agents' read-only endpoint cover every
+// workspace-visible base. The endpoint holds a fixed list of bases, so a base
+// created after provisioning is invisible to agents until the list is updated.
+// The library entry already exists once knowledge is ready, so no actor is
+// needed.
+func (s *KnowledgeService) syncReadEndpoint(ctx context.Context, workspaceID pgtype.UUID, ws knowledge.Workspace) error {
+	if _, err := s.ensureMCPServer(ctx, workspaceID, pgtype.UUID{}, ws); err != nil {
+		return fmt.Errorf("sync agent read endpoint: %w", err)
+	}
+	return nil
 }
 
 // EnsureProjectBaseLogged is EnsureProjectBase for the create path: the project
@@ -148,6 +163,14 @@ func (s *KnowledgeService) RunAutoEnable(ctx context.Context) (int, error) {
 		return done, fmt.Errorf("list knowledge workspaces: %w", err)
 	}
 	for _, id := range ids {
+		if ws, err := s.workspaceClient(ctx, id); err == nil {
+			if err := s.syncReadEndpoint(ctx, id, ws); err != nil {
+				if errors.Is(err, knowledge.ErrUnavailable) {
+					return done, err
+				}
+				failures = append(failures, fmt.Errorf("workspace %s: %w", util.UUIDToString(id), err))
+			}
+		}
 		projects, err := s.Queries.ListProjects(ctx, db.ListProjectsParams{WorkspaceID: id})
 		if err != nil {
 			failures = append(failures, fmt.Errorf("list projects of %s: %w", util.UUIDToString(id), err))

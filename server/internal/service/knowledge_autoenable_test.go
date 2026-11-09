@@ -60,3 +60,38 @@ func TestEnsureProjectBaseCreatesOnceAndSkipsDisabledWorkspace(t *testing.T) {
 		t.Fatalf("want one project base, got %d", n)
 	}
 }
+
+func TestProjectBaseJoinsTheAgentReadEndpoint(t *testing.T) {
+	env := newKnowledgeEnv(t)
+	ctx := context.Background()
+	if _, err := env.svc.Enable(ctx, env.ws, env.user); err != nil {
+		t.Fatalf("enable: %v", err)
+	}
+	project := mustUUID(t, "25cbad1a-a0ee-457f-8424-55ac56cba436")
+	if err := env.svc.EnsureProjectBase(ctx, env.ws, project, "Mua Ngon"); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	base, err := env.q.GetKnowledgeBaseByKey(ctx, db.GetKnowledgeBaseByKeyParams{WorkspaceID: env.ws, Key: ProjectBaseKey(project)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ws, err := env.svc.workspaceClient(ctx, env.ws)
+	if err != nil {
+		t.Fatal(err)
+	}
+	endpoints, err := ws.ListMCPEndpoints(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range endpoints {
+		if e.Name != KnowledgeMCPServerName {
+			continue
+		}
+		for _, id := range e.KnowledgeBaseIDs {
+			if id == base.WeknoraKbID {
+				return
+			}
+		}
+	}
+	t.Fatal("agents cannot read the project base: the company-read endpoint lacks it")
+}
