@@ -6,15 +6,14 @@
  * toolbar. Property chips are part of the form, not pinned above keyboard.
  * MentionSuggestionBar floats above keyboard only when the user is mid-@.
  *
- * No markdown toolbar / upload buttons in v1: mobile users creating an
- * issue rarely format markdown, and attachment upload is deferred to a
- * later release (see plan-issue-majestic-rabin.md "skip uploads").
+ * The keyboard toolbar below the form carries the image / file pickers; the
+ * uploaded files are bound to the issue through `attachment_ids` on create.
  *
  * Mention pipeline shares `useMentionInput` with `issue/[id]/new-comment.tsx`
  * — both surfaces produce canonical `[@name](mention://type/id)` markdown
  * recognised by util.ParseMentions on the server.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -25,6 +24,8 @@ import {
 import { Stack, router } from "expo-router";
 import { SubmitIssueButton } from "@/components/issue/submit-issue-button";
 import { CreateFormAttributeRow } from "@/components/issue/create-form-attribute-row";
+import { MarkdownToolbar } from "@/components/editor/markdown-toolbar";
+import { useFileAttach, type FileAttachResult } from "@/components/editor/use-file-attach";
 import { MentionSuggestionBar } from "@/components/issue/mention-suggestion-bar";
 import { DescriptionField } from "@/components/issue/description-field";
 import { MOBILE_PLACEHOLDER_COLOR } from "@/components/ui/input-tokens";
@@ -57,20 +58,40 @@ export default function NewIssueModal() {
   }, [resetDraft]);
 
   const createIssue = useCreateIssue();
+  const { pickAndUploadImage, pickAndUploadFile, uploading } = useFileAttach();
+  const uploadedRef = useRef<FileAttachResult[]>([]);
+
+  const attachImage = useCallback(async () => {
+    const result = await pickAndUploadImage();
+    if (!result) return;
+    uploadedRef.current.push(result);
+    description.insertAtCursor(`\n![${result.filename}](${result.url})\n`);
+  }, [pickAndUploadImage, description]);
+
+  const attachFile = useCallback(async () => {
+    const result = await pickAndUploadFile();
+    if (!result) return;
+    uploadedRef.current.push(result);
+    description.insertAtCursor(`\n[📎 ${result.filename}](${result.url})\n`);
+  }, [pickAndUploadFile, description]);
   const isSubmitting = createIssue.isPending;
 
-  const canSubmit = !isSubmitting && title.trim().length > 0;
+  const canSubmit = !isSubmitting && !uploading && title.trim().length > 0;
 
   const onSubmit = useCallback(async () => {
     const trimmedTitle = title.trim();
     if (trimmedTitle.length === 0) return;
     const finalDescription = description.serialize().trim();
+    const attachmentIds = uploadedRef.current
+      .filter((a) => finalDescription.includes(a.url))
+      .map((a) => a.id);
     try {
       await createIssue.mutateAsync({
         title: trimmedTitle,
         description: finalDescription || undefined,
         status,
         priority,
+        ...(attachmentIds.length > 0 ? { attachment_ids: attachmentIds } : {}),
         ...(assignee
           ? { assignee_type: assignee.type, assignee_id: assignee.id }
           : {}),
@@ -140,6 +161,16 @@ export default function NewIssueModal() {
             types `@`. Self-hides via `if (!visible) return null` so it
             doesn't take space at rest. */}
         <MentionSuggestionBar {...description.suggestionBar} />
+        <MarkdownToolbar
+          onAt={description.handlers.onAtButtonPress}
+          onList={() => description.insertAtLineStart("- ")}
+          onCheckbox={() => description.insertAtLineStart("- [ ] ")}
+          onCode={() => description.insertAtCursor("\n```\n\n```", 4)}
+          onQuote={() => description.insertAtLineStart("> ")}
+          onImage={() => void attachImage()}
+          onFile={() => void attachFile()}
+          disabled={isSubmitting || uploading}
+        />
       </KeyboardAvoidingView>
     </>
   );
