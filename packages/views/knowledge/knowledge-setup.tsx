@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Badge } from "@multica/ui/components/ui/badge";
-import { Button } from "@multica/ui/components/ui/button";
+import { Button, buttonVariants } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
 import { Label } from "@multica/ui/components/ui/label";
 import { Switch } from "@multica/ui/components/ui/switch";
@@ -113,10 +113,15 @@ function KnowledgeSourcesSection({ wsId }: { wsId: string }) {
       )}
       {sources.data?.ui_url ? (
         <div>
-          <Button variant="outline" size="sm" render={<a href={sources.data.ui_url} target="_blank" rel="noreferrer" />}>
+          <a
+            href={sources.data.ui_url}
+            target="_blank"
+            rel="noreferrer"
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
             <ExternalLink />
             {t(($) => $.sources.create)}
-          </Button>
+          </a>
         </div>
       ) : null}
     </section>
@@ -384,10 +389,15 @@ function KnowledgeOwnerLoginSection() {
           <span className="text-xs text-muted-foreground">{t(($) => $.owner_login.once)}</span>
           {login.ui_url ? (
             <div>
-              <Button variant="outline" size="sm" render={<a href={login.ui_url} target="_blank" rel="noreferrer" />}>
+              <a
+                href={login.ui_url}
+                target="_blank"
+                rel="noreferrer"
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
                 <ExternalLink />
                 {t(($) => $.owner_login.open)}
-              </Button>
+              </a>
             </div>
           ) : null}
         </div>

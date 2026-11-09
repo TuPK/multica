@@ -11,7 +11,7 @@ import {
   WifiOff,
 } from "@multica/ui/icons";
 import { Badge } from "@multica/ui/components/ui/badge";
-import { Button } from "@multica/ui/components/ui/button";
+import { Button, buttonVariants } from "@multica/ui/components/ui/button";
 import { Spinner } from "@multica/ui/components/ui/spinner";
 import {
   Tabs,
@@ -37,7 +37,7 @@ import { KnowledgeSearch } from "./knowledge-search";
 import { KnowledgeUploadPanel } from "./knowledge-upload";
 import { KnowledgeSetupPanel } from "./knowledge-setup";
 
-type KnowledgeTab = "library" | "drafts" | "governance";
+type KnowledgeTab = "library" | "drafts" | "setup" | "governance";
 
 /**
  * The Knowledge page: one state dispatch over the knowledge service's state,
@@ -99,14 +99,15 @@ export function KnowledgePage() {
       }
       actions={
         uiUrl ? (
-          <Button
-            variant="outline"
-            size="sm"
-            render={<a href={uiUrl} target="_blank" rel="noreferrer" />}
+          <a
+            href={uiUrl}
+            target="_blank"
+            rel="noreferrer"
+            className={buttonVariants({ variant: "outline", size: "sm" })}
           >
             <ExternalLink />
             {t(($) => $.open_in_weknora)}
-          </Button>
+          </a>
         ) : null
       }
     />
@@ -184,7 +185,7 @@ export function KnowledgePage() {
     );
   } else if (state === "ready") {
     body = (
-      <div className="flex min-h-0 flex-1 flex-col gap-4 px-6 py-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 py-4">
         <Tabs value={tab} onValueChange={(value) => setTab(value as KnowledgeTab)}>
           <TabsList variant="line">
             <TabsTrigger value="library">{t(($) => $.tabs.library)}</TabsTrigger>
