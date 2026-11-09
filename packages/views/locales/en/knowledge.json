@@ -318,6 +318,11 @@
       "queued_one": "Writing the Wiki from {{count}} document",
       "queued_other": "Writing the Wiki from {{count}} documents",
       "failed": "Could not start the Wiki"
+    },
+    "view": {
+      "label": "View",
+      "rendered": "Rendered",
+      "source": "Markdown"
     }
   }
 }

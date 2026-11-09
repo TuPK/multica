@@ -318,6 +318,11 @@
       "queued_one": "Rédaction du wiki à partir de {{count}} document",
       "queued_other": "Rédaction du wiki à partir de {{count}} documents",
       "failed": "Impossible de lancer le wiki"
+    },
+    "view": {
+      "label": "Affichage",
+      "rendered": "Mis en forme",
+      "source": "Markdown"
     }
   }
 }

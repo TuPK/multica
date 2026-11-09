@@ -18,6 +18,7 @@ import {
 } from "@multica/core/knowledge";
 import { useT } from "../i18n";
 import { ReadonlyContent } from "../editor/readonly-content";
+import { wikiLinksToMarkdown, wikiSlugFromHref } from "./wiki-links";
 
 type TypeFilter = "all" | Exclude<KnowledgeWikiPageType, "unknown">;
 
@@ -41,6 +42,7 @@ export function KnowledgeWikiPanel({
   const { t } = useT("knowledge");
   const [filter, setFilter] = useState<TypeFilter>("all");
   const [slug, setSlug] = useState("");
+  const [view, setView] = useState<"rendered" | "source">("rendered");
   // Set after a generation request so the panel keeps refreshing while the
   // pages appear; the server has no "still writing" signal to read instead.
   const [watching, setWatching] = useState(false);
@@ -194,11 +196,46 @@ export function KnowledgeWikiPanel({
               </p>
             ) : (
               <div className="flex flex-col gap-3">
-                <h3 className="text-body font-semibold">{selected.title}</h3>
-                {selected.category_path.length > 0 ? (
-                  <p className="text-caption text-muted-foreground">{selected.category_path.join(" / ")}</p>
-                ) : null}
-                <ReadonlyContent content={selected.content} />
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <h3 className="text-body font-semibold">{selected.title}</h3>
+                    {selected.category_path.length > 0 ? (
+                      <p className="text-caption text-muted-foreground">{selected.category_path.join(" / ")}</p>
+                    ) : null}
+                  </div>
+                  <div role="group" aria-label={t(($) => $.wiki.view.label)} className="flex shrink-0 gap-1">
+                    {(["rendered", "source"] as const).map((value) => (
+                      <Button
+                        key={value}
+                        type="button"
+                        size="sm"
+                        variant={view === value ? "secondary" : "ghost"}
+                        aria-pressed={view === value}
+                        onClick={() => setView(value)}
+                      >
+                        {t(($) => $.wiki.view[value])}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                {view === "source" ? (
+                  <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-3 font-mono text-caption">
+                    {selected.content}
+                  </pre>
+                ) : (
+                  <div
+                    onClick={(event) => {
+                      const anchor = (event.target as HTMLElement).closest("a");
+                      const target = wikiSlugFromHref(anchor?.getAttribute("href"));
+                      if (!target) return;
+                      event.preventDefault();
+                      setFilter("all");
+                      setSlug(target);
+                    }}
+                  >
+                    <ReadonlyContent content={wikiLinksToMarkdown(selected.content)} />
+                  </div>
+                )}
               </div>
             )}
           </article>

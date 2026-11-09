@@ -316,6 +316,11 @@
     "toast": {
       "queued_other": "正在根据 {{count}} 份文档生成 Wiki",
       "failed": "无法启动 Wiki"
+    },
+    "view": {
+      "label": "视图",
+      "rendered": "渲染",
+      "source": "Markdown"
     }
   }
 }

@@ -316,6 +316,11 @@
     "toast": {
       "queued_other": "{{count}} 件のドキュメントから Wiki を作成しています",
       "failed": "Wiki を開始できませんでした"
+    },
+    "view": {
+      "label": "表示",
+      "rendered": "整形表示",
+      "source": "Markdown"
     }
   }
 }

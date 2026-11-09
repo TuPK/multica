@@ -316,6 +316,11 @@
     "toast": {
       "queued_other": "문서 {{count}}개로 Wiki를 작성하고 있습니다",
       "failed": "Wiki를 시작하지 못했습니다"
+    },
+    "view": {
+      "label": "보기",
+      "rendered": "서식 적용",
+      "source": "Markdown"
     }
   }
 }
