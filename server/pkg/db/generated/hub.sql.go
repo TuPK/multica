@@ -94,7 +94,7 @@ func (q *Queries) DeleteHubItem(ctx context.Context, arg DeleteHubItemParams) er
 }
 
 const deleteHubItemsBySource = `-- name: DeleteHubItemsBySource :exec
-DELETE FROM hub_item WHERE workspace_id = $1 AND source_id = $2
+DELETE FROM hub_item WHERE hub_item.workspace_id = $1 AND source_id = $2
 `
 
 type DeleteHubItemsBySourceParams struct {
@@ -118,6 +118,37 @@ type DeleteHubSourceParams struct {
 
 func (q *Queries) DeleteHubSource(ctx context.Context, arg DeleteHubSourceParams) error {
 	_, err := q.db.Exec(ctx, deleteHubSource, arg.ID, arg.WorkspaceID)
+	return err
+}
+
+const deleteWorkspaceHubData = `-- name: DeleteWorkspaceHubData :exec
+WITH
+deleted_activity AS (
+    DELETE FROM hub_activity WHERE hub_activity.workspace_id = $1
+),
+deleted_blobs AS (
+    DELETE FROM hub_item_version_blob WHERE hub_item_version_blob.workspace_id = $1
+),
+deleted_items AS (
+    DELETE FROM hub_item WHERE hub_item.workspace_id = $1
+)
+DELETE FROM hub_source WHERE hub_source.workspace_id = $1
+`
+
+// Workspace teardown: the Hub tables carry no foreign keys, so they are removed
+// explicitly. Bundles in object storage are removed by the handler after commit.
+func (q *Queries) DeleteWorkspaceHubData(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteWorkspaceHubData, workspaceID)
+	return err
+}
+
+const deleteWorkspaceKnowledgePropertyHistory = `-- name: DeleteWorkspaceKnowledgePropertyHistory :exec
+DELETE FROM knowledge_property_history WHERE knowledge_property_history.workspace_id = $1
+`
+
+// No foreign keys on this table either (migration 925), so teardown removes it.
+func (q *Queries) DeleteWorkspaceKnowledgePropertyHistory(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteWorkspaceKnowledgePropertyHistory, workspaceID)
 	return err
 }
 

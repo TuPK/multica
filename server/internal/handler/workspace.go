@@ -1590,6 +1590,14 @@ func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 			run:  func() error { return qtx.DeleteWorkspaceApprovalPolicies(ctx, requester.WorkspaceID) },
 		},
 		{
+			name: "delete hub data",
+			run:  func() error { return qtx.DeleteWorkspaceHubData(ctx, requester.WorkspaceID) },
+		},
+		{
+			name: "delete knowledge property history",
+			run:  func() error { return qtx.DeleteWorkspaceKnowledgePropertyHistory(ctx, requester.WorkspaceID) },
+		},
+		{
 			name: "delete plugin data",
 			run:  func() error { return qtx.DeleteWorkspacePluginData(ctx, requester.WorkspaceID) },
 		},
@@ -1629,6 +1637,7 @@ func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 		h.NotifyRuntimeGone(uuidToString(runtimeID))
 	}
 	h.deleteS3Objects(r.Context(), append(sourceContextAttachmentURLs, sourceContextIntentURLs...))
+	h.deleteHubObjects(r.Context(), workspaceID)
 
 	slog.Info("workspace deleted", append(logger.RequestAttrs(r), "workspace_id", workspaceID)...)
 	h.publish(protocol.EventWorkspaceDeleted, workspaceID, "member", requestUserID(r), map[string]any{

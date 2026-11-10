@@ -75,7 +75,7 @@ WHERE workspace_id = $1 AND source_id = $2;
 DELETE FROM hub_item WHERE id = $1 AND workspace_id = $2;
 
 -- name: DeleteHubItemsBySource :exec
-DELETE FROM hub_item WHERE workspace_id = $1 AND source_id = $2;
+DELETE FROM hub_item WHERE hub_item.workspace_id = $1 AND source_id = $2;
 
 -- name: UpsertHubItem :one
 INSERT INTO hub_item (
@@ -136,3 +136,22 @@ WHERE p.workspace_id = $1
       WHERE v.package_id = p.id
   )
 ORDER BY p.name ASC;
+
+-- name: DeleteWorkspaceHubData :exec
+-- Workspace teardown: the Hub tables carry no foreign keys, so they are removed
+-- explicitly. Bundles in object storage are removed by the handler after commit.
+WITH
+deleted_activity AS (
+    DELETE FROM hub_activity WHERE hub_activity.workspace_id = $1
+),
+deleted_blobs AS (
+    DELETE FROM hub_item_version_blob WHERE hub_item_version_blob.workspace_id = $1
+),
+deleted_items AS (
+    DELETE FROM hub_item WHERE hub_item.workspace_id = $1
+)
+DELETE FROM hub_source WHERE hub_source.workspace_id = $1;
+
+-- name: DeleteWorkspaceKnowledgePropertyHistory :exec
+-- No foreign keys on this table either (migration 925), so teardown removes it.
+DELETE FROM knowledge_property_history WHERE knowledge_property_history.workspace_id = $1;

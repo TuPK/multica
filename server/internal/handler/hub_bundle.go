@@ -340,3 +340,27 @@ func hubPluginBundleFiles(manifest []byte, rows []db.ListHubPluginVersionFilesRo
 func bundleFileEntry(path string, content []byte) hub.FileEntry {
 	return hub.FileEntry{Path: path, Size: int64(len(content)), Content: content}
 }
+
+// deleteHubObjects removes a deleted workspace's bundles and staged previews
+// from the Hub store. Best effort: the rows are already gone, so a failure only
+// leaves orphaned objects, which is logged rather than failing the delete.
+func (h *Handler) deleteHubObjects(ctx context.Context, workspaceID string) {
+	lister, ok := h.HubStorage.(storage.Lister)
+	if !ok || h.HubStorage == nil {
+		return
+	}
+	for _, prefix := range []string{"hub/" + workspaceID + "/", "staging/" + workspaceID + "/"} {
+		objects, err := lister.ListPrefix(ctx, prefix)
+		if err != nil {
+			slog.Warn("list hub objects for deleted workspace failed", "error", err, "workspace_id", workspaceID, "prefix", prefix)
+			continue
+		}
+		keys := make([]string, 0, len(objects))
+		for _, object := range objects {
+			keys = append(keys, object.Key)
+		}
+		if len(keys) > 0 {
+			h.HubStorage.DeleteKeys(ctx, keys)
+		}
+	}
+}
