@@ -1,0 +1,78 @@
+---
+title: Hub
+description: One place for the skills and plugins a workspace uses, where each came from, and how to keep them current.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+The Hub lists every [skill](/skills) and plugin in the workspace. Each item shows where it came from, its version, and whether its source has a newer version.
+
+## Sources
+
+A source is a place Multica checks for updates. Workspace admins and owners add sources on the Hub's **Sources** tab.
+
+| Type | What it points to |
+|---|---|
+| **GitHub** | A repository, with an optional branch or tag and subdirectory |
+| **Zip URL** | A `.zip` or `.skill` archive at an HTTP or HTTPS address |
+| **Skills.sh** | A skill published on skills.sh |
+| **ClawHub** | A skill published on ClawHub |
+| **Registry** | An index file (JSON) that you host, listing items and where to download them |
+
+**Sync now** checks every item from a source. When you edit a source you can also set an auto-sync interval. Removing a source asks what to do with its items: keep them (they stay in the Hub without a source), or delete them. Deletion stops if an agent uses one of them.
+
+## Adding items
+
+Select **Add** on the Hub. The dialog offers four ways in:
+
+- **From URL**: preview a GitHub repository, zip, skills.sh, or ClawHub source, then import it.
+- **From registry**: pick items from a registry you have added as a source.
+- **Upload**: drop a `.zip`, a `.skill` archive, or a folder.
+- **Blank**: create an empty skill.
+
+Every import is scanned before anything is installed. The scan reports **No issues**, **Warnings**, or **Blocked**. Blocked imports cannot be installed. Warnings must be acknowledged before the import is committed. If an item with the same name already exists, you can import under a new name, replace it, or skip the import.
+
+## Item pages
+
+Open an item to see its details. The tabs are:
+
+- **Files**: browse, preview, and edit the item's files. Skill edits save directly. A plugin's published versions cannot change: edits form a draft until an admin or owner publishes a new version.
+- **Overview**: the item's README or manifest and its version list.
+- **Versions**: the item's history. Skills can restore an earlier version.
+- **Usage**: the agents that use a skill, or the workspace installs of a plugin.
+- **Source**: where the item came from and its tracking state.
+- **Activity**: what has happened to this item.
+
+Members can view the Hub. Anyone who can edit a skill can edit its files. Only admins and owners manage sources, publish plugin versions, and export.
+
+## Updates and forks
+
+When an item's source has a newer version, the item shows **Update available**. Open the item, review the changed files and their diffs, then apply the update. If you have edited the item locally, choose one of two options:
+
+- **Overwrite**: replace the item with the source's version. Your local edits are lost.
+- **Fork**: keep your edits. The item is detached from its source and stops receiving updates.
+
+Nothing is overwritten silently. An item's tracking state is one of **Tracking** (follows its source), **Forked** (detached), or **Manual** (no source).
+
+## Activity
+
+Each item and the workspace as a whole have an activity log. It records sources added, changed, and synced, imports, applied updates, forks, file saves, plugin versions published, and exports. Each entry shows who did it and when. Use **Load more** to see older entries.
+
+## Quotas
+
+The Hub meter shows how many items and how many bytes of bundles the workspace uses. Defaults are 500 items and 1 GiB. Self-hosters can change them with `HUB_MAX_ITEMS_PER_WORKSPACE` and `HUB_MAX_STORAGE_BYTES_PER_WORKSPACE`. A value of `0` means unlimited.
+
+The meter turns amber at 80% of a limit. At the limit, adding or syncing items fails with a quota error until something is removed.
+
+## Export
+
+- **Download bundle** on an item's page downloads a zip of the item's files. The link is created for each download and expires after a short time.
+- **Export all** (admins and owners) on the Hub downloads one zip with a folder per item (`{kind}/{name}.zip`) and a `manifest.json` that lists them.
+
+## Where the files live
+
+Each item version is stored as an immutable bundle in object storage. Downloads, backups, and sync read from there. Plugin runtime files stay in the database, so installed plugins keep running when object storage is unavailable. To choose or change the object store, see [Hub object storage](/hub-object-storage).
+
+<Callout type="info">
+  Hub storage is separate from attachment storage. Setting up the Hub's store does not change where existing attachments are read from.
+</Callout>

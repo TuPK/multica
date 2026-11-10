@@ -272,7 +272,8 @@
       "files": {
         "title_other": "{{count}} 个文件",
         "list_label": "此导入的文件"
-      }
+      },
+      "quota_error": "此工作区已达到扩展中心的上限。请删除项目，或请管理员提高上限。"
     },
     "toast": {
       "imported": "已导入 {{name}}",
@@ -280,6 +281,107 @@
       "skipped": "{{name}} 已在 Hub 中",
       "failed": "导入失败"
     }
+  },
+  "sync": {
+    "now": "立即同步",
+    "aria": "立即同步 {{name}}",
+    "failed": "无法同步此来源。",
+    "done": "已检查 {{checked}} 项。更新：{{updates}}；未变化：{{unchanged}}；错误：{{errors}}。",
+    "disabled_hint": "启用来源后才能同步。",
+    "auto": "自动同步：{{interval}}",
+    "interval": {
+      "label": "自动同步",
+      "off": "关闭",
+      "every_15m": "每 15 分钟",
+      "every_1h": "每小时",
+      "every_6h": "每 6 小时",
+      "every_24h": "每天",
+      "custom": "自定义"
+    }
+  },
+  "update": {
+    "available": "有可用更新",
+    "filter": "有可用更新",
+    "banner": "此条目在来源中有更新版本。",
+    "review": "查看更新",
+    "dialog_title": "更新 {{name}}",
+    "check_failed": "无法检查更新。",
+    "changes": "新增：{{added}} · 修改：{{modified}} · 删除：{{removed}}",
+    "files_label": "已更改的文件",
+    "status": {
+      "added": "新增",
+      "modified": "修改",
+      "removed": "删除",
+      "unchanged": "未更改"
+    },
+    "size_change": "{{from}} → {{to}}",
+    "size_none": "—",
+    "cancel": "取消",
+    "apply": "更新",
+    "applying": "正在更新…",
+    "choose_local": "请选择一个选项以继续。",
+    "local": {
+      "legend": "本地编辑",
+      "description": "更新会替换这些文件。请先决定如何处理此处做过的编辑。",
+      "overwrite": "覆盖我的编辑",
+      "fork": "Fork（保留我的编辑，停止跟踪）"
+    },
+    "diff": {
+      "region": "{{path}} 的更改",
+      "select_file": "选择文件以查看更改。",
+      "load_error": "无法加载此差异。",
+      "binary": "二进制文件。请在 Hub 之外比较。",
+      "no_changes": "没有行级更改。",
+      "approximate": "此文件过大，无法逐行匹配，因此旧内容的每一行都显示为删除，新内容的每一行都显示为新增。",
+      "gap": "已隐藏 {{count}} 行未更改内容",
+      "added_line": "新增：",
+      "removed_line": "删除："
+    },
+    "toast": {
+      "updated": "已更新 {{name}}"
+    },
+    "errors": {
+      "quota": "工作区已达到 Hub 条目数量上限。",
+      "failed": "无法应用此更新。"
+    }
+  },
+  "fork": {
+    "action": "Fork",
+    "title": "要 Fork {{name}} 吗？",
+    "description": "它将停止接收来自 {{source}} 的更新。当前文件保持不变。",
+    "confirm": "Fork",
+    "cancel": "取消",
+    "toast": "已 Fork {{name}}",
+    "failed": "无法 Fork 此条目。"
+  },
+  "source_tab": {
+    "title": "来源",
+    "provenance": "来源信息",
+    "source": "来源",
+    "source_ref": "引用",
+    "no_source_ref": "—",
+    "version": "版本",
+    "digest": "摘要",
+    "size": "大小",
+    "files": "文件",
+    "last_checked": "上次检查",
+    "never_checked": "从未检查",
+    "up_to_date": "已是最新",
+    "tracking": "跟踪",
+    "tracking_state": {
+      "tracking": "跟踪来源",
+      "forked": "已 Fork",
+      "manual": "在此创建"
+    },
+    "tracking_help": {
+      "tracking": "来自 {{source}} 的更新可在审阅后应用。",
+      "forked": "此副本不再接收来源的更新。",
+      "manual": "未关联来源，因此没有可检查的更新。"
+    },
+    "local_edits_warning": "此条目包含在此处所做的编辑。应用更新时会询问如何处理这些编辑。",
+    "check": "检查更新",
+    "checking": "正在检查…",
+    "read_only": "请让有编辑权限的成员检查或应用更新。"
   },
   "sources": {
     "add": "添加来源",
@@ -342,5 +444,54 @@
       "confirm": "移除",
       "failed": "无法移除此来源。"
     }
+  },
+  "activity": {
+    "tab": "活动",
+    "list_label": "活动",
+    "loading": "正在加载活动",
+    "load_error": "无法加载活动。",
+    "empty": "还没有活动。",
+    "load_more": "加载更多",
+    "actor": {
+      "system": "系统",
+      "unknown": "某人"
+    },
+    "actions": {
+      "source_created": "已添加来源",
+      "source_updated": "已更新来源",
+      "source_deleted": "已移除来源",
+      "import_committed": "已导入项目",
+      "source_synced": "已同步来源",
+      "update_applied": "已应用更新",
+      "item_forked": "已分叉项目",
+      "item_exported": "已导出项目",
+      "file_saved": "已保存文件",
+      "plugin_published": "已发布插件版本",
+      "other": "已记录活动"
+    },
+    "detail": {
+      "version": "版本 {{version}}",
+      "items_other": "{{count}} 个项目",
+      "files_other": "{{count}} 个文件",
+      "checked": "已检查 {{count}} 个",
+      "updates": "{{count}} 个有更新",
+      "path": "{{path}}",
+      "size": "{{size}}"
+    }
+  },
+  "quota": {
+    "label": "用量",
+    "items": "项目",
+    "storage": "存储空间",
+    "usage": "{{used}} / {{limit}}",
+    "usage_unlimited": "已用 {{used}}",
+    "warning": "即将用满",
+    "full": "已达上限"
+  },
+  "export": {
+    "bundle": "下载压缩包",
+    "bundle_failed": "无法准备下载。",
+    "all": "导出全部",
+    "all_failed": "无法导出 Hub。"
   }
 }

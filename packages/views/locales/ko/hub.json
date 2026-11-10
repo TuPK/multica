@@ -272,7 +272,8 @@
       "files": {
         "title_other": "파일 {{count}}개",
         "list_label": "이 가져오기의 파일"
-      }
+      },
+      "quota_error": "이 워크스페이스가 허브 한도에 도달했습니다. 항목을 삭제하거나 관리자에게 한도 상향을 요청하세요."
     },
     "toast": {
       "imported": "{{name}}을(를) 가져왔습니다",
@@ -280,6 +281,107 @@
       "skipped": "{{name}}은(는) 이미 Hub에 있습니다",
       "failed": "가져올 수 없습니다"
     }
+  },
+  "sync": {
+    "now": "지금 동기화",
+    "aria": "{{name}} 지금 동기화",
+    "failed": "이 소스를 동기화할 수 없습니다.",
+    "done": "확인 {{checked}}개. 업데이트 {{updates}}개, 변경 없음 {{unchanged}}개, 오류 {{errors}}개.",
+    "disabled_hint": "동기화하려면 소스를 사용하도록 설정하세요.",
+    "auto": "자동 동기화: {{interval}}",
+    "interval": {
+      "label": "자동 동기화",
+      "off": "끔",
+      "every_15m": "15분마다",
+      "every_1h": "1시간마다",
+      "every_6h": "6시간마다",
+      "every_24h": "매일",
+      "custom": "사용자 지정"
+    }
+  },
+  "update": {
+    "available": "업데이트 있음",
+    "filter": "업데이트 있음",
+    "banner": "이 항목의 새 버전이 소스에서 제공됩니다.",
+    "review": "업데이트 검토",
+    "dialog_title": "{{name}} 업데이트",
+    "check_failed": "업데이트를 확인할 수 없습니다.",
+    "changes": "추가: {{added}} · 수정: {{modified}} · 삭제: {{removed}}",
+    "files_label": "변경된 파일",
+    "status": {
+      "added": "추가",
+      "modified": "수정",
+      "removed": "삭제",
+      "unchanged": "변경 없음"
+    },
+    "size_change": "{{from}} → {{to}}",
+    "size_none": "—",
+    "cancel": "취소",
+    "apply": "업데이트",
+    "applying": "업데이트 중…",
+    "choose_local": "계속하려면 옵션을 선택하세요.",
+    "local": {
+      "legend": "로컬 편집",
+      "description": "업데이트하면 파일이 교체됩니다. 여기서 한 편집을 어떻게 할지 선택하세요.",
+      "overwrite": "내 편집 덮어쓰기",
+      "fork": "포크 (내 편집 유지, 추적 중지)"
+    },
+    "diff": {
+      "region": "{{path}} 변경 사항",
+      "select_file": "파일을 선택하면 변경 사항이 표시됩니다.",
+      "load_error": "이 차이를 불러올 수 없습니다.",
+      "binary": "바이너리 파일입니다. Hub 밖에서 비교하세요.",
+      "no_changes": "줄 변경이 없습니다.",
+      "approximate": "이 파일은 너무 커서 줄 단위로 맞출 수 없으므로, 이전 줄은 모두 삭제, 새 줄은 모두 추가로 표시됩니다.",
+      "gap": "변경 없는 줄 {{count}}줄 숨김",
+      "added_line": "추가:",
+      "removed_line": "삭제:"
+    },
+    "toast": {
+      "updated": "{{name}} 업데이트됨"
+    },
+    "errors": {
+      "quota": "워크스페이스가 Hub 항목 한도에 도달했습니다.",
+      "failed": "이 업데이트를 적용할 수 없습니다."
+    }
+  },
+  "fork": {
+    "action": "포크",
+    "title": "{{name}}을(를) 포크할까요?",
+    "description": "{{source}}의 업데이트를 더 이상 받지 않습니다. 현재 파일은 그대로 유지됩니다.",
+    "confirm": "포크",
+    "cancel": "취소",
+    "toast": "{{name}} 포크됨",
+    "failed": "이 항목을 포크할 수 없습니다."
+  },
+  "source_tab": {
+    "title": "소스",
+    "provenance": "출처",
+    "source": "소스",
+    "source_ref": "참조",
+    "no_source_ref": "—",
+    "version": "버전",
+    "digest": "다이제스트",
+    "size": "크기",
+    "files": "파일",
+    "last_checked": "마지막 확인",
+    "never_checked": "확인한 적 없음",
+    "up_to_date": "최신 상태",
+    "tracking": "추적",
+    "tracking_state": {
+      "tracking": "소스 추적 중",
+      "forked": "포크됨",
+      "manual": "여기서 생성"
+    },
+    "tracking_help": {
+      "tracking": "{{source}}의 업데이트는 검토 후 적용할 수 있습니다.",
+      "forked": "이 사본은 소스에서 더 이상 업데이트를 받지 않습니다.",
+      "manual": "소스에 연결되어 있지 않아 확인할 업데이트가 없습니다."
+    },
+    "local_edits_warning": "이 항목에는 여기서 한 편집이 있습니다. 업데이트를 적용하면 편집을 어떻게 할지 묻습니다.",
+    "check": "업데이트 확인",
+    "checking": "확인 중…",
+    "read_only": "이 항목을 편집할 수 있는 사람에게 업데이트 확인이나 적용을 요청하세요."
   },
   "sources": {
     "add": "소스 추가",
@@ -342,5 +444,54 @@
       "confirm": "제거",
       "failed": "이 소스를 제거할 수 없습니다."
     }
+  },
+  "activity": {
+    "tab": "활동",
+    "list_label": "활동",
+    "loading": "활동을 불러오는 중",
+    "load_error": "활동을 불러올 수 없습니다.",
+    "empty": "아직 활동이 없습니다.",
+    "load_more": "더 보기",
+    "actor": {
+      "system": "시스템",
+      "unknown": "누군가"
+    },
+    "actions": {
+      "source_created": "소스 추가됨",
+      "source_updated": "소스 업데이트됨",
+      "source_deleted": "소스 삭제됨",
+      "import_committed": "항목 가져옴",
+      "source_synced": "소스 동기화됨",
+      "update_applied": "업데이트 적용됨",
+      "item_forked": "항목 포크됨",
+      "item_exported": "항목 내보냄",
+      "file_saved": "파일 저장됨",
+      "plugin_published": "플러그인 버전 게시됨",
+      "other": "활동 기록됨"
+    },
+    "detail": {
+      "version": "버전 {{version}}",
+      "items_other": "항목 {{count}}개",
+      "files_other": "파일 {{count}}개",
+      "checked": "{{count}}개 확인",
+      "updates": "업데이트 {{count}}개",
+      "path": "{{path}}",
+      "size": "{{size}}"
+    }
+  },
+  "quota": {
+    "label": "사용량",
+    "items": "항목",
+    "storage": "저장공간",
+    "usage": "{{used}} / {{limit}}",
+    "usage_unlimited": "{{used}} 사용",
+    "warning": "거의 가득 참",
+    "full": "한도에 도달"
+  },
+  "export": {
+    "bundle": "번들 다운로드",
+    "bundle_failed": "다운로드를 준비하지 못했습니다.",
+    "all": "전체 내보내기",
+    "all_failed": "Hub를 내보내지 못했습니다."
   }
 }

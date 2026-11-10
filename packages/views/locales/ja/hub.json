@@ -272,7 +272,8 @@
       "files": {
         "title_other": "{{count}}件のファイル",
         "list_label": "このインポートのファイル"
-      }
+      },
+      "quota_error": "このワークスペースはハブの上限に達しました。アイテムを削除するか、管理者に上限の引き上げを依頼してください。"
     },
     "toast": {
       "imported": "{{name}}をインポートしました",
@@ -280,6 +281,107 @@
       "skipped": "{{name}}は既にHubにあります",
       "failed": "インポートできませんでした"
     }
+  },
+  "sync": {
+    "now": "今すぐ同期",
+    "aria": "{{name}} を今すぐ同期",
+    "failed": "このソースを同期できませんでした。",
+    "done": "確認 {{checked}} 件。更新 {{updates}} 件、変更なし {{unchanged}} 件、エラー {{errors}} 件。",
+    "disabled_hint": "同期するにはソースを有効にしてください。",
+    "auto": "自動同期: {{interval}}",
+    "interval": {
+      "label": "自動同期",
+      "off": "オフ",
+      "every_15m": "15分ごと",
+      "every_1h": "1時間ごと",
+      "every_6h": "6時間ごと",
+      "every_24h": "1日ごと",
+      "custom": "カスタム"
+    }
+  },
+  "update": {
+    "available": "アップデートあり",
+    "filter": "アップデートあり",
+    "banner": "このアイテムの新しいバージョンがソースで利用できます。",
+    "review": "アップデートを確認",
+    "dialog_title": "{{name}} をアップデート",
+    "check_failed": "アップデートを確認できませんでした。",
+    "changes": "追加: {{added}} · 変更: {{modified}} · 削除: {{removed}}",
+    "files_label": "変更されたファイル",
+    "status": {
+      "added": "追加",
+      "modified": "変更",
+      "removed": "削除",
+      "unchanged": "変更なし"
+    },
+    "size_change": "{{from}} → {{to}}",
+    "size_none": "—",
+    "cancel": "キャンセル",
+    "apply": "アップデート",
+    "applying": "アップデート中…",
+    "choose_local": "続行するにはオプションを選んでください。",
+    "local": {
+      "legend": "ローカルの編集",
+      "description": "アップデートではファイルが置き換わります。ここで行った編集の扱いを選んでください。",
+      "overwrite": "編集内容を上書き",
+      "fork": "フォーク（編集を残し、追跡を停止）"
+    },
+    "diff": {
+      "region": "{{path}} の変更",
+      "select_file": "ファイルを選ぶと変更内容を表示します。",
+      "load_error": "差分を読み込めませんでした。",
+      "binary": "バイナリファイルです。Hub の外で比較してください。",
+      "no_changes": "行の変更はありません。",
+      "approximate": "このファイルは大きすぎて行単位で照合できないため、古い行はすべて削除、新しい行はすべて追加として表示します。",
+      "gap": "変更のない {{count}} 行を非表示",
+      "added_line": "追加:",
+      "removed_line": "削除:"
+    },
+    "toast": {
+      "updated": "{{name}} をアップデートしました"
+    },
+    "errors": {
+      "quota": "ワークスペースの Hub アイテム数の上限に達しています。",
+      "failed": "このアップデートを適用できませんでした。"
+    }
+  },
+  "fork": {
+    "action": "フォーク",
+    "title": "{{name}} をフォークしますか？",
+    "description": "{{source}} からの更新を受け取らなくなります。現在のファイルはそのままです。",
+    "confirm": "フォーク",
+    "cancel": "キャンセル",
+    "toast": "{{name}} をフォークしました",
+    "failed": "このアイテムをフォークできませんでした。"
+  },
+  "source_tab": {
+    "title": "ソース",
+    "provenance": "来歴",
+    "source": "ソース",
+    "source_ref": "参照",
+    "no_source_ref": "—",
+    "version": "バージョン",
+    "digest": "ダイジェスト",
+    "size": "サイズ",
+    "files": "ファイル",
+    "last_checked": "最終確認",
+    "never_checked": "未確認",
+    "up_to_date": "最新です",
+    "tracking": "追跡",
+    "tracking_state": {
+      "tracking": "ソースを追跡中",
+      "forked": "フォーク済み",
+      "manual": "ここで作成"
+    },
+    "tracking_help": {
+      "tracking": "{{source}} からの更新は、確認後に適用できます。",
+      "forked": "このコピーはソースからの更新を受け取りません。",
+      "manual": "ソースに紐づいていないため、確認する更新はありません。"
+    },
+    "local_edits_warning": "このアイテムにはここで行った編集があります。アップデートを適用すると、その扱いを選ぶ必要があります。",
+    "check": "アップデートを確認",
+    "checking": "確認中…",
+    "read_only": "このアイテムを編集できるメンバーに、アップデートの確認や適用を依頼してください。"
   },
   "sources": {
     "add": "ソースを追加",
@@ -342,5 +444,54 @@
       "confirm": "削除",
       "failed": "このソースを削除できませんでした。"
     }
+  },
+  "activity": {
+    "tab": "アクティビティ",
+    "list_label": "アクティビティ",
+    "loading": "アクティビティを読み込み中",
+    "load_error": "アクティビティを読み込めませんでした。",
+    "empty": "アクティビティはまだありません。",
+    "load_more": "さらに読み込む",
+    "actor": {
+      "system": "システム",
+      "unknown": "誰か"
+    },
+    "actions": {
+      "source_created": "ソースを追加",
+      "source_updated": "ソースを更新",
+      "source_deleted": "ソースを削除",
+      "import_committed": "アイテムをインポート",
+      "source_synced": "ソースを同期",
+      "update_applied": "更新を適用",
+      "item_forked": "アイテムを分岐",
+      "item_exported": "アイテムをエクスポート",
+      "file_saved": "ファイルを保存",
+      "plugin_published": "プラグインのバージョンを公開",
+      "other": "アクティビティを記録"
+    },
+    "detail": {
+      "version": "バージョン {{version}}",
+      "items_other": "{{count}} 件",
+      "files_other": "{{count}} ファイル",
+      "checked": "{{count}} 件を確認",
+      "updates": "{{count}} 件に更新あり",
+      "path": "{{path}}",
+      "size": "{{size}}"
+    }
+  },
+  "quota": {
+    "label": "使用状況",
+    "items": "アイテム",
+    "storage": "ストレージ",
+    "usage": "{{used}} / {{limit}}",
+    "usage_unlimited": "{{used}} 使用中",
+    "warning": "残りわずか",
+    "full": "上限に到達"
+  },
+  "export": {
+    "bundle": "バンドルをダウンロード",
+    "bundle_failed": "ダウンロードを準備できませんでした。",
+    "all": "すべてエクスポート",
+    "all_failed": "Hub をエクスポートできませんでした。"
   }
 }

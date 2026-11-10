@@ -21,6 +21,7 @@ import {
   buildHubItems,
   EMPTY_HUB_FILTERS,
   filterHubItems,
+  hubItemMetaListOptions,
   sortHubItems,
   type HubItem,
   type HubItemKind,
@@ -37,9 +38,13 @@ import {
 } from "../layout/collection-page";
 import { PAGE_GUTTER } from "../layout/page-header";
 import { AddToHubDialog } from "./add-to-hub-dialog";
+import { HubActivityList } from "./hub-activity-list";
+import { HubExportAllButton } from "./hub-export-actions";
+import { HubQuotaMeter } from "./hub-quota-meter";
 import { HubSourcesManager } from "./hub-sources-manager";
+import { UpdateAvailableBadge } from "./hub-update-banner";
 
-type Tab = "items" | "sources";
+type Tab = "items" | "sources" | "activity";
 type ViewMode = "list" | "catalog";
 
 const SORT_DEFAULT_DIRECTION: Record<HubSortField, "asc" | "desc"> = {
@@ -57,6 +62,7 @@ export function HubPage() {
   const [kind, setKind] = useState<"all" | HubItemKind>("all");
   const [sortField, setSortField] = useState<HubSortField>("updated");
   const [blankOpen, setBlankOpen] = useState(false);
+  const [updatesOnly, setUpdatesOnly] = useState(false);
   const navigation = useNavigation();
   const p = useWorkspacePaths();
   const { role } = useCurrentMember(wsId);
@@ -74,10 +80,19 @@ export function HubPage() {
     () => ({ ...EMPTY_HUB_FILTERS, query, kinds: kind === "all" ? [] : [kind] }),
     [query, kind],
   );
-  const items = useMemo(
-    () => sortHubItems(filterHubItems(all, filters), sortField, SORT_DEFAULT_DIRECTION[sortField]),
-    [all, filters, sortField],
+  // Meta is an overlay: a failure here leaves the list usable, just without update badges.
+  const metaQuery = useQuery({ ...hubItemMetaListOptions(wsId), retry: false });
+  const updateKeys = useMemo(
+    () =>
+      new Set(
+        (metaQuery.data ?? []).filter((meta) => meta.update_available).map((meta) => `${meta.kind}:${meta.ref_id}`),
+      ),
+    [metaQuery.data],
   );
+  const items = useMemo(() => {
+    const sorted = sortHubItems(filterHubItems(all, filters), sortField, SORT_DEFAULT_DIRECTION[sortField]);
+    return updatesOnly ? sorted.filter((item) => updateKeys.has(item.key)) : sorted;
+  }, [all, filters, sortField, updatesOnly, updateKeys]);
 
   const loading = skills.isLoading;
   const failed = skills.isError;
@@ -91,6 +106,7 @@ export function HubPage() {
         actions={
           <div className="flex items-center gap-2">
             {tab === "items" ? <ViewToggle view={view} onChange={setView} /> : null}
+            {canManageSources ? <HubExportAllButton wsId={wsId} /> : null}
             <AddToHubDialog onBlank={() => setBlankOpen(true)} />
           </div>
         }
@@ -102,6 +118,7 @@ export function HubPage() {
           options={[
             { value: "items", label: t(($) => $.tabs.items) },
             { value: "sources", label: t(($) => $.tabs.sources) },
+            { value: "activity", label: t(($) => $.activity.tab) },
           ]}
         />
         {tab === "items" ? (
@@ -115,13 +132,28 @@ export function HubPage() {
                 { value: "plugin", label: t(($) => $.kinds.plugin) },
               ]}
             />
+            <Button
+              variant={updatesOnly ? "secondary" : "ghost"}
+              size="sm"
+              aria-pressed={updatesOnly}
+              onClick={() => setUpdatesOnly((on) => !on)}
+            >
+              {t(($) => $.update.filter)}
+            </Button>
             <SortMenu value={sortField} onChange={setSortField} />
           </>
         ) : null}
+        <div className="ml-auto">
+          <HubQuotaMeter wsId={wsId} />
+        </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {tab === "sources" ? (
           <HubSourcesManager wsId={wsId} canManage={canManageSources} />
+        ) : tab === "activity" ? (
+          <div className={cn("py-4", PAGE_GUTTER)}>
+            <HubActivityList wsId={wsId} showItem />
+          </div>
         ) : failed ? (
           <CollectionPageState
             icon={Package}
@@ -139,16 +171,17 @@ export function HubPage() {
           <CollectionNoMatches
             title={t(($) => $.no_matches)}
             hasSearch={query !== ""}
-            hasFilters={kind !== "all"}
+            hasFilters={kind !== "all" || updatesOnly}
             onReset={() => {
               setQuery("");
               setKind("all");
+              setUpdatesOnly(false);
             }}
           />
         ) : view === "list" ? (
-          <ItemList items={items} />
+          <ItemList items={items} updateKeys={updateKeys} />
         ) : (
-          <ItemCatalog items={items} />
+          <ItemCatalog items={items} updateKeys={updateKeys} />
         )}
       </div>
       {blankOpen ? (
@@ -280,7 +313,7 @@ function SourceBadge({ item }: { item: HubItem }) {
   );
 }
 
-function ItemList({ items }: { items: HubItem[] }) {
+function ItemList({ items, updateKeys }: { items: HubItem[]; updateKeys: ReadonlySet<string> }) {
   const { t } = useT("hub");
   const timeAgo = useTimeAgo();
   return (
@@ -298,7 +331,10 @@ function ItemList({ items }: { items: HubItem[] }) {
         {items.map((item) => (
           <tr key={item.key} className="border-b last:border-b-0 hover:bg-muted/50">
             <td className={cn("flex min-w-0 flex-col py-2", PAGE_GUTTER)}>
-              <ItemName item={item} />
+              <span className="flex min-w-0 items-center gap-2">
+                <ItemName item={item} />
+                {updateKeys.has(item.key) ? <UpdateAvailableBadge /> : null}
+              </span>
               {item.description ? (
                 <span className="truncate text-caption text-muted-foreground">{item.description}</span>
               ) : null}
@@ -316,7 +352,7 @@ function ItemList({ items }: { items: HubItem[] }) {
   );
 }
 
-function ItemCatalog({ items }: { items: HubItem[] }) {
+function ItemCatalog({ items, updateKeys }: { items: HubItem[]; updateKeys: ReadonlySet<string> }) {
   const { t } = useT("hub");
   return (
     <ul className={cn("grid gap-3 py-4 sm:grid-cols-2 xl:grid-cols-3", PAGE_GUTTER)}>
@@ -324,6 +360,7 @@ function ItemCatalog({ items }: { items: HubItem[] }) {
         <li key={item.key} className="flex min-w-0 flex-col gap-2 rounded-lg border bg-card p-3">
           <div className="flex min-w-0 items-center justify-between gap-2">
             <ItemName item={item} />
+            {updateKeys.has(item.key) ? <UpdateAvailableBadge /> : null}
             <span className="shrink-0 text-caption text-muted-foreground">
               {t(($) => $.kind_singular[item.kind])}
             </span>

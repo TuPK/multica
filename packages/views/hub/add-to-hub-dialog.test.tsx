@@ -197,7 +197,7 @@ describe("AddToHubDialog", () => {
     expect(mocks.preview).toHaveBeenLastCalledWith({
       wsId: "ws-1",
       source: {
-        type: "registry",
+        type: "url_zip",
         url: "https://example.com/items/pulse.zip",
         sha256: "abc",
       },

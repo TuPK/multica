@@ -1,0 +1,92 @@
+---
+title: Hub 对象存储
+description: 配置保存 Hub 压缩包的 S3 兼容存储，自托管默认使用 SeaweedFS。
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+[Hub](/hub) 为每个项目的每个版本保存一份不可变的压缩包，也就是该版本文件的 zip。这些压缩包保存在 S3 兼容的对象存储中。存储通过 `HUB_S3_*` 变量配置，与附件使用的 `S3_*` 变量相互独立。
+
+## 数据存放位置
+
+| 数据 | 存放位置 |
+|---|---|
+| 项目压缩包（每个版本一份）、导入预览的暂存文件 | Hub 对象存储；未设置 Hub 存储时使用附件存储 |
+| 插件运行时文件 | Postgres，因此即使对象存储不可用，已安装的插件仍能运行 |
+| 附件 | 附件存储（`S3_*` 或本地磁盘） |
+
+## 自托管默认：SeaweedFS
+
+自托管的 compose 文件会启动 SeaweedFS，服务名为 `seaweedfs`。SeaweedFS 兼容 S3，采用 Apache 2.0 许可证。其数据保存在 `seaweedfs-data` 卷中。
+
+1. 生成一个密钥，并添加到 `.env`：
+
+   ```bash
+   openssl rand -hex 24
+   ```
+
+   ```bash
+   HUB_S3_SECRET_KEY=<你生成的值>
+   # 可选，默认为 multica-hub
+   HUB_S3_ACCESS_KEY=multica-hub
+   ```
+
+   如果没有设置 `HUB_S3_SECRET_KEY`，compose 文件会拒绝启动 SeaweedFS。
+
+2. 让后端连接该存储。设置了 `HUB_S3_ENDPOINT` 时，后端会在启动时创建不存在的存储桶。
+
+   ```bash
+   HUB_S3_BUCKET=multica-hub
+   HUB_S3_ENDPOINT=http://seaweedfs:8333
+   HUB_S3_ACCESS_KEY=multica-hub
+   HUB_S3_SECRET_KEY=<与上面相同的值>
+   ```
+
+3. 使用 `docker compose up -d` 重新启动服务。
+
+如果不设置 `HUB_S3_BUCKET`，压缩包会改为保存在附件存储中。
+
+## 变量
+
+| 变量 | 默认值 | 含义 |
+|---|---|---|
+| `HUB_S3_BUCKET` | 未设置 | 存储桶名称。设置后启用 Hub 存储；未设置时，Hub 使用附件存储。 |
+| `HUB_S3_REGION` | `us-east-1` | 存储桶所在的区域。 |
+| `HUB_S3_ENDPOINT` | 未设置 | S3 兼容端点的地址，例如 `http://seaweedfs:8333`。未设置时使用 AWS 端点。 |
+| `HUB_S3_ACCESS_KEY` | 未设置 | 访问密钥。未设置时使用默认的 AWS 凭证链。 |
+| `HUB_S3_SECRET_KEY` | 未设置 | `HUB_S3_ACCESS_KEY` 对应的密钥。 |
+| `HUB_S3_USE_PATH_STYLE` | 设置了 `HUB_S3_ENDPOINT` 时为 `true` | 以 `endpoint/bucket` 的形式访问存储桶，而不是 `bucket.endpoint`。大多数自托管存储需要设为 `true`。 |
+| `HUB_S3_PUBLIC_ENDPOINT` | 未设置 | 浏览器和桌面客户端访问存储的地址。下载链接会使用该地址签名。 |
+
+### 下载链接
+
+未设置 `HUB_S3_PUBLIC_ENDPOINT` 时，Hub 会通过 Multica 服务器提供压缩包下载。浏览器无法访问 `http://seaweedfs:8333` 这类内部端点，因此指向它的链接不可用。当客户端可以直接访问存储时，请将 `HUB_S3_PUBLIC_ENDPOINT` 设置为公开地址。这样下载会直接指向存储。
+
+<Callout type="info">
+  修改 `HUB_S3_PUBLIC_ENDPOINT` 只影响之后创建的链接。已经创建的链接在过期前仍然有效。
+</Callout>
+
+## 切换到其他 S3 端点
+
+任何支持 S3 API 的存储都可以使用。切换步骤如下：
+
+1. 在新存储上创建存储桶，并创建一个对该存储桶有读、写、列出和删除权限的访问密钥。
+2. 为新存储设置 `HUB_S3_BUCKET`、`HUB_S3_ENDPOINT`、`HUB_S3_REGION`、`HUB_S3_ACCESS_KEY`、`HUB_S3_SECRET_KEY` 和 `HUB_S3_USE_PATH_STYLE`。
+3. 重新启动后端。
+
+切换时不会自动复制旧存储中已有的压缩包。请先把存储桶中的内容复制到新存储，否则现有项目的下载和更新会失败。确认切换成功之前，请保留旧存储。
+
+<Callout type="warn">
+  MinIO Community Edition 已不再维护，其代码仓库已归档。Multica 不建议在新安装中使用它。请使用 SeaweedFS 或其他仍在积极维护的 S3 兼容存储。
+</Callout>
+
+## 备份与生命周期
+
+- 按照与数据库相同的计划备份 Hub 存储桶。数据库引用这些压缩包，因此恢复数据库时也需要恢复压缩包。
+- 不要为 Hub 存储桶添加会让对象过期的生命周期规则。过期的压缩包会导致下载、更新和回滚失败。
+- 插件运行时文件保存在 Postgres 中，因此只需备份数据库即可覆盖它们。
+
+## 相关内容
+
+- [环境变量](/environment-variables)：查看全部配置项。
+- [Hub](/hub)：了解存储的内容，以及项目如何使用它。

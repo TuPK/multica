@@ -275,7 +275,8 @@
         "title_one": "{{count}} file",
         "title_other": "{{count}} files",
         "list_label": "Files in this import"
-      }
+      },
+      "quota_error": "This workspace has reached its Hub limit. Remove items or ask an admin to raise it."
     },
     "toast": {
       "imported": "Imported {{name}}",
@@ -283,6 +284,107 @@
       "skipped": "{{name}} is already in the Hub",
       "failed": "Couldn't import"
     }
+  },
+  "sync": {
+    "now": "Sync now",
+    "aria": "Sync {{name}} now",
+    "failed": "Couldn't sync this source.",
+    "done": "Checked {{checked}}. Updates: {{updates}}. Unchanged: {{unchanged}}. Errors: {{errors}}.",
+    "disabled_hint": "Enable the source to sync it.",
+    "auto": "Auto-sync: {{interval}}",
+    "interval": {
+      "label": "Auto-sync",
+      "off": "Off",
+      "every_15m": "Every 15 minutes",
+      "every_1h": "Every hour",
+      "every_6h": "Every 6 hours",
+      "every_24h": "Every day",
+      "custom": "Custom"
+    }
+  },
+  "update": {
+    "available": "Update available",
+    "filter": "Updates available",
+    "banner": "A newer version of this item is available from its source.",
+    "review": "Review update",
+    "dialog_title": "Update {{name}}",
+    "check_failed": "Couldn't check for updates.",
+    "changes": "Added: {{added}} · Modified: {{modified}} · Removed: {{removed}}",
+    "files_label": "Changed files",
+    "status": {
+      "added": "Added",
+      "modified": "Modified",
+      "removed": "Removed",
+      "unchanged": "Unchanged"
+    },
+    "size_change": "{{from}} → {{to}}",
+    "size_none": "—",
+    "cancel": "Cancel",
+    "apply": "Update",
+    "applying": "Updating…",
+    "choose_local": "Choose an option to continue.",
+    "local": {
+      "legend": "Local edits",
+      "description": "Updating replaces these files. Decide what happens to the edits made here.",
+      "overwrite": "Overwrite my edits",
+      "fork": "Fork (keep my edits, stop tracking)"
+    },
+    "diff": {
+      "region": "Changes to {{path}}",
+      "select_file": "Select a file to see its changes.",
+      "load_error": "Couldn't load this diff.",
+      "binary": "Binary file. Compare it outside the Hub.",
+      "no_changes": "No line changes.",
+      "approximate": "This file is too large to match line by line, so every old line shows as removed and every new line as added.",
+      "gap": "{{count}} unchanged lines hidden",
+      "added_line": "Added:",
+      "removed_line": "Removed:"
+    },
+    "toast": {
+      "updated": "Updated {{name}}"
+    },
+    "errors": {
+      "quota": "This workspace has reached its Hub item limit.",
+      "failed": "Couldn't apply this update."
+    }
+  },
+  "fork": {
+    "action": "Fork",
+    "title": "Fork {{name}}?",
+    "description": "It stops receiving updates from {{source}}. Its current files stay as they are.",
+    "confirm": "Fork",
+    "cancel": "Cancel",
+    "toast": "Forked {{name}}",
+    "failed": "Couldn't fork this item."
+  },
+  "source_tab": {
+    "title": "Source",
+    "provenance": "Provenance",
+    "source": "Source",
+    "source_ref": "Reference",
+    "no_source_ref": "—",
+    "version": "Version",
+    "digest": "Digest",
+    "size": "Size",
+    "files": "Files",
+    "last_checked": "Last checked",
+    "never_checked": "Never checked",
+    "up_to_date": "Up to date",
+    "tracking": "Tracking",
+    "tracking_state": {
+      "tracking": "Tracking source",
+      "forked": "Forked",
+      "manual": "Created here"
+    },
+    "tracking_help": {
+      "tracking": "Updates from {{source}} can be applied after you review them.",
+      "forked": "This copy no longer receives updates from its source.",
+      "manual": "Not linked to a source, so there are no updates to check."
+    },
+    "local_edits_warning": "This item has edits made here. Applying an update asks what to do with them.",
+    "check": "Check for updates",
+    "checking": "Checking…",
+    "read_only": "Ask someone who can edit this item to check for or apply updates."
   },
   "sources": {
     "add": "Add source",
@@ -346,5 +448,56 @@
       "confirm": "Remove",
       "failed": "Couldn't remove this source."
     }
+  },
+  "activity": {
+    "tab": "Activity",
+    "list_label": "Activity",
+    "loading": "Loading activity",
+    "load_error": "Couldn't load activity.",
+    "empty": "No activity yet.",
+    "load_more": "Load more",
+    "actor": {
+      "system": "System",
+      "unknown": "Someone"
+    },
+    "actions": {
+      "source_created": "Source added",
+      "source_updated": "Source updated",
+      "source_deleted": "Source removed",
+      "import_committed": "Item imported",
+      "source_synced": "Source synced",
+      "update_applied": "Update applied",
+      "item_forked": "Item forked",
+      "item_exported": "Item exported",
+      "file_saved": "File saved",
+      "plugin_published": "Plugin version published",
+      "other": "Activity recorded"
+    },
+    "detail": {
+      "version": "Version {{version}}",
+      "items_one": "{{count}} item",
+      "items_other": "{{count}} items",
+      "files_one": "{{count}} file",
+      "files_other": "{{count}} files",
+      "checked": "{{count}} checked",
+      "updates": "{{count}} with updates",
+      "path": "{{path}}",
+      "size": "{{size}}"
+    }
+  },
+  "quota": {
+    "label": "Usage",
+    "items": "Items",
+    "storage": "Storage",
+    "usage": "{{used}} of {{limit}}",
+    "usage_unlimited": "{{used}} used",
+    "warning": "Nearly full",
+    "full": "Limit reached"
+  },
+  "export": {
+    "bundle": "Download bundle",
+    "bundle_failed": "Couldn't prepare the download.",
+    "all": "Export all",
+    "all_failed": "Couldn't export the Hub."
   }
 }

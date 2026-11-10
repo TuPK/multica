@@ -1,4 +1,4 @@
-import { CircleDot, Command, Gauge, Globe, History, Layers, ListPlus, PanelLeft, Pin, Terminal, Users, Workflow, type IconComponent } from "@multica/ui/icons";
+import { CircleDot, Command, Gauge, Globe, History, Layers, ListPlus, Package, PanelLeft, Pin, Terminal, Users, Workflow, type IconComponent } from "@multica/ui/icons";
 import type { SupportedLocale } from "@multica/core/i18n";
 import type { WorkspacePaths } from "@multica/core/paths";
 import type { ReleaseStamp } from "@multica/core/whats-new";
@@ -35,6 +35,44 @@ export interface WhatsNewRelease extends ReleaseStamp {
  * match the changelog entry the highlights come from.
  */
 export const WHATS_NEW_RELEASES: WhatsNewRelease[] = [
+  {
+    // Not cut yet: hidden until a server at this version is connected. Confirm the version and date at release.
+    version: "0.8.2",
+    date: "2026-11-11",
+    highlights: [
+      {
+        id: "hub",
+        icon: Package,
+        action: { kind: "route", to: (p) => p.hub() },
+        copy: {
+          en: {
+            title: "Keep skills and plugins up to date in the Hub",
+            body: "Open the Hub to see every skill and plugin in your workspace, where each came from, and whether a newer version is available. Download an item's bundle, or export the whole Hub as one archive.",
+          },
+          "zh-Hans": {
+            title: "在 Hub 中保持 skill 和插件最新",
+            body: "打开 Hub 可以查看工作区中的每个 skill 和插件、它们的来源，以及是否有更新版本。可以下载单个项目的压缩包，也可以把整个 Hub 导出为一个压缩文件。",
+          },
+          "zh-Hant": {
+            title: "在 Hub 中保持 skill 和外掛最新",
+            body: "開啟 Hub 可以查看工作區中的每個 skill 和外掛、它們的來源，以及是否有較新的版本。可以下載單一項目的壓縮檔，也可以把整個 Hub 匯出為一個壓縮檔。",
+          },
+          ja: {
+            title: "Hub でスキルとプラグインを最新に保つ",
+            body: "Hub を開くと、ワークスペースのすべてのスキルとプラグイン、それぞれの取得元、新しいバージョンの有無を確認できます。項目のバンドルをダウンロードしたり、Hub 全体を 1 つのアーカイブとしてエクスポートしたりできます。",
+          },
+          ko: {
+            title: "Hub에서 스킬과 플러그인을 최신 상태로 유지",
+            body: "Hub를 열면 워크스페이스의 모든 스킬과 플러그인, 각 항목의 출처, 새 버전이 있는지 확인할 수 있습니다. 항목의 번들을 다운로드하거나 Hub 전체를 하나의 아카이브로 내보낼 수 있습니다.",
+          },
+          fr: {
+            title: "Gardez vos skills et plugins à jour dans le Hub",
+            body: "Ouvrez le Hub pour voir chaque skill et plugin de votre espace de travail, sa source et si une version plus récente est disponible. Téléchargez le paquet d'un élément, ou exportez tout le Hub dans une seule archive.",
+          },
+        },
+      },
+    ],
+  },
   {
     version: "0.8.1",
     date: "2026-11-06",

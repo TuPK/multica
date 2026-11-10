@@ -144,7 +144,12 @@ export function HubFileViewer({
 
   if (mode === "preview" && kind === "markdown") {
     return (
-      <div className="h-full overflow-y-auto">
+      <div
+        role="region"
+        tabIndex={0}
+        aria-label={t(($) => $.files.editor_label, { path })}
+        className="h-full overflow-y-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      >
         <div className="mx-auto max-w-[68ch] px-6 pb-12 pt-7 sm:px-8">
           <RichContent content={body} density="document" phase="settled" />
         </div>
@@ -154,7 +159,12 @@ export function HubFileViewer({
 
   if (mode === "preview" && kind === "svg") {
     return (
-      <div className="flex h-full items-center justify-center overflow-auto p-6">
+      <div
+        role="region"
+        tabIndex={0}
+        aria-label={t(($) => $.files.editor_label, { path })}
+        className="flex h-full items-center justify-center overflow-auto p-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      >
         {/* An SVG loaded through <img> runs no scripts, so the text is safe to show here. */}
         <img
           src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(content)}`}
@@ -167,7 +177,12 @@ export function HubFileViewer({
 
   if (mode === "preview" && kind === "json" && pretty !== null) {
     return (
-      <pre className="h-full overflow-auto whitespace-pre px-6 pb-12 pt-5 font-mono text-caption leading-relaxed sm:px-8">
+      <pre
+        role="region"
+        tabIndex={0}
+        aria-label={t(($) => $.files.editor_label, { path })}
+        className="h-full overflow-auto whitespace-pre px-6 pb-12 pt-5 font-mono text-caption leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-8"
+      >
         {pretty}
       </pre>
     );
@@ -184,7 +199,7 @@ export function HubFileViewer({
         onChange={(event) => onChange(event.target.value)}
         aria-label={t(($) => $.files.editor_label, { path })}
         spellCheck={false}
-        className="h-full min-h-full resize-none rounded-none border-0 px-6 pb-12 pt-5 font-mono text-body leading-relaxed read-only:cursor-default focus-visible:ring-0 sm:px-8"
+        className="h-full min-h-full resize-none rounded-none border-0 px-6 pb-12 pt-5 font-mono text-body leading-relaxed read-only:cursor-default focus-visible:ring-inset sm:px-8"
       />
     </>
   );

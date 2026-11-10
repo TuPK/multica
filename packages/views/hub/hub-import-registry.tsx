@@ -70,8 +70,9 @@ export function HubImportRegistry({
     try {
       await onPreview({
         kind: "source",
+        // A picked item is a plain zip download; only the index itself is previewed as "registry".
         source: {
-          type: "registry",
+          type: "url_zip",
           url: resolveRegistryItemUrl(loaded.url, item.url),
           sha256: item.sha256,
         },

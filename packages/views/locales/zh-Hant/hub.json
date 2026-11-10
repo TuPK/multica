@@ -272,7 +272,8 @@
       "files": {
         "title_other": "{{count}} 個檔案",
         "list_label": "此匯入的檔案"
-      }
+      },
+      "quota_error": "此工作區已達到擴充中心的上限。請刪除項目，或請管理員提高上限。"
     },
     "toast": {
       "imported": "已匯入 {{name}}",
@@ -280,6 +281,107 @@
       "skipped": "{{name}} 已在 Hub 中",
       "failed": "匯入失敗"
     }
+  },
+  "sync": {
+    "now": "立即同步",
+    "aria": "立即同步 {{name}}",
+    "failed": "無法同步此來源。",
+    "done": "已檢查 {{checked}} 項。更新：{{updates}}；未變更：{{unchanged}}；錯誤：{{errors}}。",
+    "disabled_hint": "啟用來源後才能同步。",
+    "auto": "自動同步：{{interval}}",
+    "interval": {
+      "label": "自動同步",
+      "off": "關閉",
+      "every_15m": "每 15 分鐘",
+      "every_1h": "每小時",
+      "every_6h": "每 6 小時",
+      "every_24h": "每天",
+      "custom": "自訂"
+    }
+  },
+  "update": {
+    "available": "有可用更新",
+    "filter": "有可用更新",
+    "banner": "此項目在來源中有較新的版本。",
+    "review": "檢視更新",
+    "dialog_title": "更新 {{name}}",
+    "check_failed": "無法檢查更新。",
+    "changes": "新增：{{added}} · 修改：{{modified}} · 刪除：{{removed}}",
+    "files_label": "已變更的檔案",
+    "status": {
+      "added": "新增",
+      "modified": "修改",
+      "removed": "刪除",
+      "unchanged": "未變更"
+    },
+    "size_change": "{{from}} → {{to}}",
+    "size_none": "—",
+    "cancel": "取消",
+    "apply": "更新",
+    "applying": "正在更新…",
+    "choose_local": "請選擇一個選項以繼續。",
+    "local": {
+      "legend": "本機編輯",
+      "description": "更新會取代這些檔案。請先決定如何處理在此做過的編輯。",
+      "overwrite": "覆寫我的編輯",
+      "fork": "Fork（保留我的編輯，停止追蹤）"
+    },
+    "diff": {
+      "region": "{{path}} 的變更",
+      "select_file": "選擇檔案以查看變更。",
+      "load_error": "無法載入此差異。",
+      "binary": "二進位檔案。請在 Hub 之外比較。",
+      "no_changes": "沒有列級變更。",
+      "approximate": "此檔案過大，無法逐行比對，因此舊內容的每一行都顯示為刪除，新內容的每一行都顯示為新增。",
+      "gap": "已隱藏 {{count}} 行未變更內容",
+      "added_line": "新增：",
+      "removed_line": "刪除："
+    },
+    "toast": {
+      "updated": "已更新 {{name}}"
+    },
+    "errors": {
+      "quota": "工作區已達到 Hub 項目數量上限。",
+      "failed": "無法套用此更新。"
+    }
+  },
+  "fork": {
+    "action": "Fork",
+    "title": "要 Fork {{name}} 嗎？",
+    "description": "它將停止接收來自 {{source}} 的更新。目前檔案保持不變。",
+    "confirm": "Fork",
+    "cancel": "取消",
+    "toast": "已 Fork {{name}}",
+    "failed": "無法 Fork 此項目。"
+  },
+  "source_tab": {
+    "title": "來源",
+    "provenance": "來源資訊",
+    "source": "來源",
+    "source_ref": "參照",
+    "no_source_ref": "—",
+    "version": "版本",
+    "digest": "摘要",
+    "size": "大小",
+    "files": "檔案",
+    "last_checked": "上次檢查",
+    "never_checked": "從未檢查",
+    "up_to_date": "已是最新",
+    "tracking": "追蹤",
+    "tracking_state": {
+      "tracking": "追蹤來源",
+      "forked": "已 Fork",
+      "manual": "在此建立"
+    },
+    "tracking_help": {
+      "tracking": "來自 {{source}} 的更新可在審閱後套用。",
+      "forked": "此副本不再接收來源的更新。",
+      "manual": "未連結來源，因此沒有可檢查的更新。"
+    },
+    "local_edits_warning": "此項目包含在此處所做的編輯。套用更新時會詢問如何處理這些編輯。",
+    "check": "檢查更新",
+    "checking": "正在檢查…",
+    "read_only": "請讓有編輯權限的成員檢查或套用更新。"
   },
   "sources": {
     "add": "新增來源",
@@ -342,5 +444,54 @@
       "confirm": "移除",
       "failed": "無法移除此來源。"
     }
+  },
+  "activity": {
+    "tab": "活動",
+    "list_label": "活動",
+    "loading": "正在載入活動",
+    "load_error": "無法載入活動。",
+    "empty": "還沒有活動。",
+    "load_more": "載入更多",
+    "actor": {
+      "system": "系統",
+      "unknown": "某人"
+    },
+    "actions": {
+      "source_created": "已新增來源",
+      "source_updated": "已更新來源",
+      "source_deleted": "已移除來源",
+      "import_committed": "已匯入項目",
+      "source_synced": "已同步來源",
+      "update_applied": "已套用更新",
+      "item_forked": "已分支項目",
+      "item_exported": "已匯出項目",
+      "file_saved": "已儲存檔案",
+      "plugin_published": "已發佈外掛版本",
+      "other": "已記錄活動"
+    },
+    "detail": {
+      "version": "版本 {{version}}",
+      "items_other": "{{count}} 個項目",
+      "files_other": "{{count}} 個檔案",
+      "checked": "已檢查 {{count}} 個",
+      "updates": "{{count}} 個有更新",
+      "path": "{{path}}",
+      "size": "{{size}}"
+    }
+  },
+  "quota": {
+    "label": "用量",
+    "items": "項目",
+    "storage": "儲存空間",
+    "usage": "{{used}} / {{limit}}",
+    "usage_unlimited": "已用 {{used}}",
+    "warning": "即將用滿",
+    "full": "已達上限"
+  },
+  "export": {
+    "bundle": "下載壓縮檔",
+    "bundle_failed": "無法準備下載。",
+    "all": "匯出全部",
+    "all_failed": "無法匯出 Hub。"
   }
 }

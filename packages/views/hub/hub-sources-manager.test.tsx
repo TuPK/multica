@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   update: vi.fn(),
   remove: vi.fn(),
+  sync: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
 }));
@@ -35,6 +36,7 @@ vi.mock("@multica/core/hub", async (importOriginal) => {
     useCreateHubSource: () => ({ mutateAsync: mocks.create, isPending: false }),
     useUpdateHubSource: () => ({ mutateAsync: mocks.update, isPending: false }),
     useDeleteHubSource: () => ({ mutateAsync: mocks.remove, isPending: false }),
+    useSyncHubSource: () => ({ mutateAsync: mocks.sync, isPending: false }),
   };
 });
 
@@ -231,7 +233,61 @@ describe("HubSourcesManager for members", () => {
     expect(screen.queryByRole("button", { name: "Add source" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Edit Team skills" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove Team skills" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sync Team skills now" })).not.toBeInTheDocument();
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
     expect(within(screen.getByRole("row", { name: /Team skills/ })).getByText("Enabled")).toBeInTheDocument();
+  });
+});
+
+describe("HubSourcesManager sync", () => {
+  it("runs a manual sync and reports the counts in a toast", async () => {
+    mocks.sync.mockResolvedValueOnce({
+      status: "ok",
+      checked: 4,
+      updates_available: 1,
+      unchanged: 3,
+      items: [
+        { kind: "skill", id: "s1", name: "deploy", change: "update_available" },
+        { kind: "skill", id: "s2", name: "review", change: "error", error: "gone" },
+      ],
+    });
+    renderManager(true);
+    await userEvent.click(screen.getByRole("button", { name: "Sync Team skills now" }));
+    await waitFor(() => expect(mocks.sync).toHaveBeenCalledWith({ wsId: "ws-1", id: "src-1" }));
+    expect(mocks.toastSuccess).toHaveBeenCalledWith("Checked 4. Updates: 1. Unchanged: 3. Errors: 1.");
+  });
+
+  it("shows the sync error in a toast when the sync fails", async () => {
+    mocks.sync.mockResolvedValueOnce({
+      status: "error",
+      checked: 0,
+      updates_available: 0,
+      unchanged: 0,
+      error: "GitHub rate limit reached",
+      items: [],
+    });
+    renderManager(true);
+    await userEvent.click(screen.getByRole("button", { name: "Sync Team skills now" }));
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith("GitHub rate limit reached"));
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it("reports a thrown sync error", async () => {
+    mocks.sync.mockRejectedValueOnce(new Error("Network down"));
+    renderManager(true);
+    await userEvent.click(screen.getByRole("button", { name: "Sync Team skills now" }));
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith("Network down"));
+  });
+
+  it("disables sync for a source that is switched off", () => {
+    mocks.sources = [source({ enabled: false })];
+    renderManager(true);
+    expect(screen.getByRole("button", { name: "Sync Team skills now" })).toBeDisabled();
+  });
+
+  it("shows the auto-sync schedule beside the last sync", () => {
+    mocks.sources = [source({ auto_sync_interval_sec: 3600 })];
+    renderManager(true);
+    expect(screen.getByText("Auto-sync: Every hour")).toBeInTheDocument();
   });
 });

@@ -13,6 +13,7 @@ import {
   HubImportBlockedError,
   HubImportWarningsError,
   HubPreviewExpiredError,
+  HubQuotaExceededError,
   useCommitHubImport,
   usePreviewHubImport,
   type HubImportCommitResult,
@@ -90,6 +91,8 @@ export function HubImportPreviewStep({
     } catch (err) {
       if (err instanceof HubPreviewExpiredError) {
         setExpired(true);
+      } else if (err instanceof HubQuotaExceededError) {
+        setError(t(($) => $.add.preview.quota_error));
       } else if (err instanceof HubImportBlockedError) {
         setError(t(($) => $.add.preview.scan.blocked_error));
       } else if (err instanceof HubImportWarningsError) {

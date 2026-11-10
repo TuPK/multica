@@ -180,10 +180,10 @@ describe("skill files: tree and preview", () => {
     const user = userEvent.setup();
     renderFiles({ kind: "skill", canEdit: true });
 
-    const guide = await screen.findByRole("button", { name: "guide.md" });
+    const guide = await screen.findByRole("treeitem", { name: "guide.md" });
     await user.click(guide);
 
-    expect(guide).toHaveAttribute("aria-current", "true");
+    expect(guide).toHaveAttribute("aria-selected", "true");
     expect(await screen.findByTestId("rich-content")).toHaveTextContent("# Guide");
   });
 
@@ -191,7 +191,7 @@ describe("skill files: tree and preview", () => {
     seedSkill();
     renderFiles({ kind: "skill", canEdit: true });
 
-    await screen.findByRole("button", { name: "guide.md" });
+    await screen.findByRole("treeitem", { name: "guide.md" });
     expect(screen.queryByRole("button", { name: "Actions for SKILL.md" })).toBeNull();
     expect(screen.getByRole("button", { name: "Actions for docs/guide.md" })).toBeInTheDocument();
   });
@@ -232,11 +232,11 @@ describe("skill files: editing, dirty state and save", () => {
     await user.click(await screen.findByRole("button", { name: "Edit" }));
     typeInto(await editor("SKILL.md"), "!");
 
-    await user.click(screen.getByRole("button", { name: "guide.md" }));
+    await user.click(screen.getByRole("treeitem", { name: "guide.md" }));
     const dialog = await screen.findByRole("dialog", { name: "Save changes to SKILL.md?" });
     await user.click(within(dialog).getByRole("button", { name: "Discard changes" }));
 
-    expect(screen.getByRole("button", { name: "guide.md" })).toHaveAttribute("aria-current", "true");
+    expect(screen.getByRole("treeitem", { name: "guide.md" })).toHaveAttribute("aria-selected", "true");
     expect(mocks.saveMutate).not.toHaveBeenCalled();
   });
 
@@ -247,7 +247,7 @@ describe("skill files: editing, dirty state and save", () => {
 
     await user.click(await screen.findByRole("button", { name: "Edit" }));
     typeInto(await editor("SKILL.md"), "!");
-    await user.click(screen.getByRole("button", { name: "guide.md" }));
+    await user.click(screen.getByRole("treeitem", { name: "guide.md" }));
 
     const dialog = await screen.findByRole("dialog", { name: "Save changes to SKILL.md?" });
     await user.click(within(dialog).getByRole("button", { name: "Keep editing" }));
@@ -255,7 +255,7 @@ describe("skill files: editing, dirty state and save", () => {
     await waitFor(() =>
       expect(screen.queryByRole("dialog", { name: "Save changes to SKILL.md?" })).toBeNull(),
     );
-    expect(screen.getByRole("button", { name: /^SKILL\.md/ })).toHaveAttribute("aria-current", "true");
+    expect(screen.getByRole("treeitem", { name: /^SKILL\.md/ })).toHaveAttribute("aria-selected", "true");
   });
 });
 
@@ -312,7 +312,7 @@ describe("skill files: create and delete", () => {
     const user = userEvent.setup();
     renderFiles({ kind: "skill", canEdit: true });
 
-    await screen.findByRole("button", { name: "guide.md" });
+    await screen.findByRole("treeitem", { name: "guide.md" });
     await user.click(screen.getByRole("button", { name: "New file" }));
     const input = screen.getByRole("textbox", { name: "New file" });
 
@@ -324,7 +324,7 @@ describe("skill files: create and delete", () => {
     await user.click(screen.getByRole("button", { name: "Create" }));
 
     // The dirty marker joins the row's name, so match the path by prefix.
-    expect(await screen.findByRole("button", { name: /^notes\.md/ })).toHaveAttribute("aria-current", "true");
+    expect(await screen.findByRole("treeitem", { name: /^notes\.md/ })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
     expect(mocks.saveMutate).not.toHaveBeenCalled();
   });
@@ -369,7 +369,7 @@ describe("plugin files: immutable versions and draft publish", () => {
       ),
     ).toBeInTheDocument();
 
-    await user.click(await screen.findByRole("button", { name: "index.js" }));
+    await user.click(await screen.findByRole("treeitem", { name: "index.js" }));
     const text = await editor("index.js");
     await waitFor(() => expect(text).toHaveValue("export const a = 1;"));
     typeInto(text, "\nexport const b = 2;");
@@ -389,7 +389,7 @@ describe("plugin files: immutable versions and draft publish", () => {
       publishedVersions: ["2.0.0", "1.0.0"],
     });
 
-    await user.click(await screen.findByRole("button", { name: "index.js" }));
+    await user.click(await screen.findByRole("treeitem", { name: "index.js" }));
     const text = await editor("index.js");
     await waitFor(() => expect(text).toHaveValue("export const a = 1;"));
     typeInto(text, "!");
@@ -435,7 +435,7 @@ describe("plugin files: immutable versions and draft publish", () => {
       await screen.findByText("Only workspace admins and owners can edit a plugin."),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Publish new version" })).toBeNull();
-    await screen.findByRole("button", { name: "index.js" });
+    await screen.findByRole("treeitem", { name: "index.js" });
     expect(await editor("index.js")).toHaveAttribute("readonly");
   });
 
@@ -444,7 +444,7 @@ describe("plugin files: immutable versions and draft publish", () => {
     const user = userEvent.setup();
     renderFiles({ kind: "plugin", canEdit: true, versionId: "ver-2" });
 
-    await user.click(await screen.findByRole("button", { name: "logo.png" }));
+    await user.click(await screen.findByRole("treeitem", { name: "logo.png" }));
     expect(
       await screen.findByText("Binary file. Preview and editing aren't available here."),
     ).toBeInTheDocument();

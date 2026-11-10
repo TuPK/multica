@@ -15,6 +15,8 @@ import { PAGE_GUTTER } from "../layout/page-header";
 import { errorMessage } from "./hub-import-request";
 import { HubSourceDeleteDialog, HubSourceFormDialog } from "./hub-source-dialogs";
 import { isKnownSourceType, safeSourceLink, syncStatusKind } from "./hub-source-meta";
+import { SyncSourceButton } from "./hub-source-sync-button";
+import { autoSyncKey } from "./hub-source-sync";
 
 /** Sources table on the Hub's Sources tab. Only admins and owners can change anything. */
 export function HubSourcesManager({ wsId, canManage }: { wsId: string; canManage: boolean }) {
@@ -76,7 +78,7 @@ export function HubSourcesManager({ wsId, canManage }: { wsId: string; canManage
                 <th className="w-20 py-2 pr-3 font-normal">{t(($) => $.sources.columns.items)}</th>
                 <th className="w-44 py-2 pr-3 font-normal">{t(($) => $.sources.columns.last_sync)}</th>
                 <th className="w-28 py-2 pr-3 font-normal">{t(($) => $.sources.columns.enabled)}</th>
-                {canManage ? <th className="w-20 py-2 font-normal" aria-label={t(($) => $.sources.columns.actions)} /> : null}
+                {canManage ? <th className="w-28 py-2 font-normal" aria-label={t(($) => $.sources.columns.actions)} /> : null}
               </tr>
             </thead>
             <tbody>
@@ -176,6 +178,9 @@ function SourceRow({
               {source.last_sync_error}
             </span>
           ) : null}
+          <span className="truncate text-caption text-muted-foreground">
+            {t(($) => $.sync.auto, { interval: t(($) => $.sync.interval[autoSyncKey(source.auto_sync_interval_sec)]) })}
+          </span>
         </div>
       </td>
       <td className="py-2 pr-3">
@@ -195,6 +200,7 @@ function SourceRow({
       {canManage ? (
         <td className="py-2">
           <div className="flex items-center justify-end gap-1">
+            <SyncSourceButton wsId={wsId} source={source} />
             <Button
               variant="ghost"
               size="icon-xs"

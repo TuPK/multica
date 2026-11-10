@@ -1,0 +1,92 @@
+---
+title: Hub object storage
+description: Configure the S3-compatible store that holds Hub bundles, with SeaweedFS as the self-host default.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+The [Hub](/hub) keeps an immutable bundle for each version of each item: a zip of the item's files. Bundles are kept in an S3-compatible object store. The store is configured with `HUB_S3_*` variables, which are separate from the attachment variables (`S3_*`).
+
+## What goes where
+
+| Data | Where it is kept |
+|---|---|
+| Item bundles (one per version), staged import previews | Hub object storage, or attachment storage if no Hub store is set |
+| Plugin runtime files | Postgres, so installed plugins keep running without the object store |
+| Attachments | Attachment storage (`S3_*`, or local disk) |
+
+## Default: SeaweedFS in self-host
+
+The self-host compose file starts SeaweedFS as the `seaweedfs` service. SeaweedFS is S3-compatible and licensed under Apache 2.0. Its data is kept in the `seaweedfs-data` volume.
+
+1. Generate a secret key and add it to `.env`:
+
+   ```bash
+   openssl rand -hex 24
+   ```
+
+   ```bash
+   HUB_S3_SECRET_KEY=<the value you generated>
+   # Optional. Defaults to multica-hub.
+   HUB_S3_ACCESS_KEY=multica-hub
+   ```
+
+   The compose file refuses to start SeaweedFS without `HUB_S3_SECRET_KEY`.
+
+2. Point the backend at the store. When `HUB_S3_ENDPOINT` is set, the backend creates the bucket on startup if it does not exist.
+
+   ```bash
+   HUB_S3_BUCKET=multica-hub
+   HUB_S3_ENDPOINT=http://seaweedfs:8333
+   HUB_S3_ACCESS_KEY=multica-hub
+   HUB_S3_SECRET_KEY=<the same value>
+   ```
+
+3. Restart the stack with `docker compose up -d`.
+
+Leave `HUB_S3_BUCKET` unset to keep bundles in the attachment store instead.
+
+## Variables
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `HUB_S3_BUCKET` | unset | Bucket name. Setting it enables the Hub store. Unset, the Hub uses the attachment store. |
+| `HUB_S3_REGION` | `us-east-1` | Region the bucket lives in. |
+| `HUB_S3_ENDPOINT` | unset | Address of an S3-compatible endpoint, such as `http://seaweedfs:8333`. Unset, the AWS endpoint is used. |
+| `HUB_S3_ACCESS_KEY` | unset | Access key. Unset, the default AWS credential chain is used. |
+| `HUB_S3_SECRET_KEY` | unset | Secret key for `HUB_S3_ACCESS_KEY`. |
+| `HUB_S3_USE_PATH_STYLE` | `true` when `HUB_S3_ENDPOINT` is set | Address buckets as `endpoint/bucket` instead of `bucket.endpoint`. Most self-hosted stores need `true`. |
+| `HUB_S3_PUBLIC_ENDPOINT` | unset | Address that browsers and the desktop app use to reach the store. Download links are signed against it. |
+
+### Download links
+
+If `HUB_S3_PUBLIC_ENDPOINT` is unset, the Hub serves bundles through the Multica server. Browsers cannot reach an internal endpoint such as `http://seaweedfs:8333`, so a link to it would not work. Set `HUB_S3_PUBLIC_ENDPOINT` to a public address when clients can reach the store directly. Downloads then go straight to the store.
+
+<Callout type="info">
+  Changing `HUB_S3_PUBLIC_ENDPOINT` affects only links created after the change. Links that have already been created stay valid until they expire.
+</Callout>
+
+## Switching to another S3 endpoint
+
+Any store that speaks the S3 API works. To switch:
+
+1. Create a bucket on the new store and an access key that can read, write, list, and delete in it.
+2. Set `HUB_S3_BUCKET`, `HUB_S3_ENDPOINT`, `HUB_S3_REGION`, `HUB_S3_ACCESS_KEY`, `HUB_S3_SECRET_KEY`, and `HUB_S3_USE_PATH_STYLE` for the new store.
+3. Restart the backend.
+
+Bundles already in the old store are not copied automatically. Copy the bucket's contents to the new store before you switch, or the existing items' downloads and updates will fail. Keep the old store until you have confirmed the switch.
+
+<Callout type="warn">
+  MinIO Community Edition is no longer maintained: its repository has been archived. Multica does not recommend it for new installations. Use SeaweedFS or another actively maintained S3-compatible store.
+</Callout>
+
+## Backups and lifecycle
+
+- Back up the Hub bucket with the same schedule as the database. Bundles are referenced by the database, so a restored database needs its bundles too.
+- Do not add a lifecycle rule that expires objects in the Hub bucket. Expired bundles break downloads, updates, and rollbacks.
+- Plugin runtime files are in Postgres, so they are covered by the database backup alone.
+
+## Related
+
+- [Environment variables](/environment-variables) for the full list of settings.
+- [Hub](/hub) for what the store holds and how items use it.

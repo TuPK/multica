@@ -275,7 +275,8 @@
         "title_one": "{{count}} fichier",
         "title_other": "{{count}} fichiers",
         "list_label": "Fichiers de cet import"
-      }
+      },
+      "quota_error": "Cet espace de travail a atteint sa limite du Hub. Supprimez des éléments ou demandez à un administrateur de l'augmenter."
     },
     "toast": {
       "imported": "{{name}} importé",
@@ -283,6 +284,107 @@
       "skipped": "{{name}} est déjà dans le Hub",
       "failed": "Import impossible"
     }
+  },
+  "sync": {
+    "now": "Synchroniser maintenant",
+    "aria": "Synchroniser {{name}} maintenant",
+    "failed": "Impossible de synchroniser cette source.",
+    "done": "Vérifiés : {{checked}}. Mises à jour : {{updates}}. Inchangés : {{unchanged}}. Erreurs : {{errors}}.",
+    "disabled_hint": "Activez la source pour la synchroniser.",
+    "auto": "Synchronisation auto : {{interval}}",
+    "interval": {
+      "label": "Synchronisation automatique",
+      "off": "Désactivée",
+      "every_15m": "Toutes les 15 minutes",
+      "every_1h": "Toutes les heures",
+      "every_6h": "Toutes les 6 heures",
+      "every_24h": "Tous les jours",
+      "custom": "Personnalisée"
+    }
+  },
+  "update": {
+    "available": "Mise à jour disponible",
+    "filter": "Mises à jour disponibles",
+    "banner": "Une version plus récente de cet élément est disponible depuis sa source.",
+    "review": "Examiner la mise à jour",
+    "dialog_title": "Mettre à jour {{name}}",
+    "check_failed": "Impossible de rechercher les mises à jour.",
+    "changes": "Ajoutés : {{added}} · Modifiés : {{modified}} · Supprimés : {{removed}}",
+    "files_label": "Fichiers modifiés",
+    "status": {
+      "added": "Ajouté",
+      "modified": "Modifié",
+      "removed": "Supprimé",
+      "unchanged": "Inchangé"
+    },
+    "size_change": "{{from}} → {{to}}",
+    "size_none": "—",
+    "cancel": "Annuler",
+    "apply": "Mettre à jour",
+    "applying": "Mise à jour…",
+    "choose_local": "Choisissez une option pour continuer.",
+    "local": {
+      "legend": "Modifications locales",
+      "description": "La mise à jour remplace ces fichiers. Choisissez ce qu'il advient des modifications faites ici.",
+      "overwrite": "Écraser mes modifications",
+      "fork": "Dupliquer (garder mes modifications, arrêter le suivi)"
+    },
+    "diff": {
+      "region": "Modifications de {{path}}",
+      "select_file": "Sélectionnez un fichier pour voir ses modifications.",
+      "load_error": "Impossible de charger ce diff.",
+      "binary": "Fichier binaire. Comparez-le en dehors du Hub.",
+      "no_changes": "Aucune modification de ligne.",
+      "approximate": "Ce fichier est trop volumineux pour une comparaison ligne à ligne : chaque ancienne ligne est affichée comme supprimée et chaque nouvelle comme ajoutée.",
+      "gap": "{{count}} lignes inchangées masquées",
+      "added_line": "Ajoutée :",
+      "removed_line": "Supprimée :"
+    },
+    "toast": {
+      "updated": "{{name}} mis à jour"
+    },
+    "errors": {
+      "quota": "Cet espace de travail a atteint sa limite d'éléments du Hub.",
+      "failed": "Impossible d'appliquer cette mise à jour."
+    }
+  },
+  "fork": {
+    "action": "Dupliquer",
+    "title": "Dupliquer {{name}} ?",
+    "description": "Il ne recevra plus de mises à jour de {{source}}. Ses fichiers actuels restent inchangés.",
+    "confirm": "Dupliquer",
+    "cancel": "Annuler",
+    "toast": "{{name}} dupliqué",
+    "failed": "Impossible de dupliquer cet élément."
+  },
+  "source_tab": {
+    "title": "Source",
+    "provenance": "Provenance",
+    "source": "Source",
+    "source_ref": "Référence",
+    "no_source_ref": "—",
+    "version": "Version",
+    "digest": "Empreinte",
+    "size": "Taille",
+    "files": "Fichiers",
+    "last_checked": "Dernière vérification",
+    "never_checked": "Jamais vérifié",
+    "up_to_date": "À jour",
+    "tracking": "Suivi",
+    "tracking_state": {
+      "tracking": "Suit une source",
+      "forked": "Dupliqué",
+      "manual": "Créé ici"
+    },
+    "tracking_help": {
+      "tracking": "Les mises à jour de {{source}} peuvent être appliquées après examen.",
+      "forked": "Cette copie ne reçoit plus de mises à jour de sa source.",
+      "manual": "Non lié à une source : aucune mise à jour à vérifier."
+    },
+    "local_edits_warning": "Cet élément contient des modifications faites ici. Appliquer une mise à jour demande quoi en faire.",
+    "check": "Rechercher les mises à jour",
+    "checking": "Recherche…",
+    "read_only": "Demandez à une personne qui peut modifier cet élément de rechercher ou d'appliquer les mises à jour."
   },
   "sources": {
     "add": "Ajouter une source",
@@ -346,5 +448,56 @@
       "confirm": "Supprimer",
       "failed": "Impossible de supprimer cette source."
     }
+  },
+  "activity": {
+    "tab": "Activité",
+    "list_label": "Activité",
+    "loading": "Chargement de l'activité",
+    "load_error": "Impossible de charger l'activité.",
+    "empty": "Aucune activité pour l'instant.",
+    "load_more": "Charger plus",
+    "actor": {
+      "system": "Système",
+      "unknown": "Quelqu'un"
+    },
+    "actions": {
+      "source_created": "Source ajoutée",
+      "source_updated": "Source mise à jour",
+      "source_deleted": "Source supprimée",
+      "import_committed": "Élément importé",
+      "source_synced": "Source synchronisée",
+      "update_applied": "Mise à jour appliquée",
+      "item_forked": "Élément dupliqué",
+      "item_exported": "Élément exporté",
+      "file_saved": "Fichier enregistré",
+      "plugin_published": "Version du plugin publiée",
+      "other": "Activité enregistrée"
+    },
+    "detail": {
+      "version": "Version {{version}}",
+      "items_one": "{{count}} élément",
+      "items_other": "{{count}} éléments",
+      "files_one": "{{count}} fichier",
+      "files_other": "{{count}} fichiers",
+      "checked": "{{count}} vérifiés",
+      "updates": "{{count}} avec mises à jour",
+      "path": "{{path}}",
+      "size": "{{size}}"
+    }
+  },
+  "quota": {
+    "label": "Utilisation",
+    "items": "Éléments",
+    "storage": "Stockage",
+    "usage": "{{used}} sur {{limit}}",
+    "usage_unlimited": "{{used}} utilisés",
+    "warning": "Presque plein",
+    "full": "Limite atteinte"
+  },
+  "export": {
+    "bundle": "Télécharger le paquet",
+    "bundle_failed": "Impossible de préparer le téléchargement.",
+    "all": "Tout exporter",
+    "all_failed": "Impossible d'exporter le Hub."
   }
 }

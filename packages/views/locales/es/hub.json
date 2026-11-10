@@ -275,7 +275,8 @@
         "title_one": "{{count}} archivo",
         "title_other": "{{count}} archivos",
         "list_label": "Archivos de esta importación"
-      }
+      },
+      "quota_error": "Este espacio de trabajo alcanzó su límite del Hub. Elimina elementos o pide a un administrador que lo aumente."
     },
     "toast": {
       "imported": "Importado {{name}}",
@@ -283,6 +284,107 @@
       "skipped": "{{name}} ya está en el Hub",
       "failed": "No se pudo importar"
     }
+  },
+  "sync": {
+    "now": "Sincronizar ahora",
+    "aria": "Sincronizar {{name}} ahora",
+    "failed": "No se pudo sincronizar este origen.",
+    "done": "Revisados {{checked}}. Actualizaciones: {{updates}}. Sin cambios: {{unchanged}}. Errores: {{errors}}.",
+    "disabled_hint": "Activa el origen para sincronizarlo.",
+    "auto": "Sincronización automática: {{interval}}",
+    "interval": {
+      "label": "Sincronización automática",
+      "off": "Desactivada",
+      "every_15m": "Cada 15 minutos",
+      "every_1h": "Cada hora",
+      "every_6h": "Cada 6 horas",
+      "every_24h": "Cada día",
+      "custom": "Personalizada"
+    }
+  },
+  "update": {
+    "available": "Actualización disponible",
+    "filter": "Con actualizaciones",
+    "banner": "Hay una versión más reciente de este elemento en su origen.",
+    "review": "Revisar actualización",
+    "dialog_title": "Actualizar {{name}}",
+    "check_failed": "No se pudieron buscar actualizaciones.",
+    "changes": "Añadidos: {{added}} · Modificados: {{modified}} · Eliminados: {{removed}}",
+    "files_label": "Archivos modificados",
+    "status": {
+      "added": "Añadido",
+      "modified": "Modificado",
+      "removed": "Eliminado",
+      "unchanged": "Sin cambios"
+    },
+    "size_change": "{{from}} → {{to}}",
+    "size_none": "—",
+    "cancel": "Cancelar",
+    "apply": "Actualizar",
+    "applying": "Actualizando…",
+    "choose_local": "Elige una opción para continuar.",
+    "local": {
+      "legend": "Cambios locales",
+      "description": "Actualizar reemplaza estos archivos. Decide qué pasa con los cambios hechos aquí.",
+      "overwrite": "Sobrescribir mis cambios",
+      "fork": "Bifurcar (conservar mis cambios y dejar de seguir el origen)"
+    },
+    "diff": {
+      "region": "Cambios en {{path}}",
+      "select_file": "Selecciona un archivo para ver sus cambios.",
+      "load_error": "No se pudo cargar esta comparación.",
+      "binary": "Archivo binario. Compáralo fuera de Hub.",
+      "no_changes": "Sin cambios de líneas.",
+      "approximate": "Este archivo es demasiado grande para compararlo línea a línea: cada línea anterior aparece como eliminada y cada línea nueva como añadida.",
+      "gap": "{{count}} líneas sin cambios ocultas",
+      "added_line": "Añadida:",
+      "removed_line": "Eliminada:"
+    },
+    "toast": {
+      "updated": "{{name}} actualizado"
+    },
+    "errors": {
+      "quota": "Este espacio de trabajo alcanzó su límite de elementos de Hub.",
+      "failed": "No se pudo aplicar esta actualización."
+    }
+  },
+  "fork": {
+    "action": "Bifurcar",
+    "title": "¿Bifurcar {{name}}?",
+    "description": "Dejará de recibir actualizaciones de {{source}}. Sus archivos actuales no cambian.",
+    "confirm": "Bifurcar",
+    "cancel": "Cancelar",
+    "toast": "{{name}} bifurcado",
+    "failed": "No se pudo bifurcar este elemento."
+  },
+  "source_tab": {
+    "title": "Origen",
+    "provenance": "Procedencia",
+    "source": "Origen",
+    "source_ref": "Referencia",
+    "no_source_ref": "—",
+    "version": "Versión",
+    "digest": "Digest",
+    "size": "Tamaño",
+    "files": "Archivos",
+    "last_checked": "Última comprobación",
+    "never_checked": "Nunca comprobado",
+    "up_to_date": "Al día",
+    "tracking": "Seguimiento",
+    "tracking_state": {
+      "tracking": "Sigue un origen",
+      "forked": "Bifurcado",
+      "manual": "Creado aquí"
+    },
+    "tracking_help": {
+      "tracking": "Las actualizaciones de {{source}} se pueden aplicar después de revisarlas.",
+      "forked": "Esta copia ya no recibe actualizaciones de su origen.",
+      "manual": "No está vinculado a un origen, así que no hay actualizaciones que comprobar."
+    },
+    "local_edits_warning": "Este elemento tiene cambios hechos aquí. Al aplicar una actualización se pregunta qué hacer con ellos.",
+    "check": "Buscar actualizaciones",
+    "checking": "Buscando…",
+    "read_only": "Pide a alguien que pueda editar este elemento que busque o aplique actualizaciones."
   },
   "sources": {
     "add": "Añadir origen",
@@ -346,5 +448,56 @@
       "confirm": "Quitar",
       "failed": "No se pudo quitar este origen."
     }
+  },
+  "activity": {
+    "tab": "Actividad",
+    "list_label": "Actividad",
+    "loading": "Cargando actividad",
+    "load_error": "No se pudo cargar la actividad.",
+    "empty": "Aún no hay actividad.",
+    "load_more": "Cargar más",
+    "actor": {
+      "system": "Sistema",
+      "unknown": "Alguien"
+    },
+    "actions": {
+      "source_created": "Fuente añadida",
+      "source_updated": "Fuente actualizada",
+      "source_deleted": "Fuente eliminada",
+      "import_committed": "Elemento importado",
+      "source_synced": "Fuente sincronizada",
+      "update_applied": "Actualización aplicada",
+      "item_forked": "Elemento bifurcado",
+      "item_exported": "Elemento exportado",
+      "file_saved": "Archivo guardado",
+      "plugin_published": "Versión del plugin publicada",
+      "other": "Actividad registrada"
+    },
+    "detail": {
+      "version": "Versión {{version}}",
+      "items_one": "{{count}} elemento",
+      "items_other": "{{count}} elementos",
+      "files_one": "{{count}} archivo",
+      "files_other": "{{count}} archivos",
+      "checked": "{{count}} comprobados",
+      "updates": "{{count}} con actualizaciones",
+      "path": "{{path}}",
+      "size": "{{size}}"
+    }
+  },
+  "quota": {
+    "label": "Uso",
+    "items": "Elementos",
+    "storage": "Almacenamiento",
+    "usage": "{{used}} de {{limit}}",
+    "usage_unlimited": "{{used}} usados",
+    "warning": "Casi lleno",
+    "full": "Límite alcanzado"
+  },
+  "export": {
+    "bundle": "Descargar paquete",
+    "bundle_failed": "No se pudo preparar la descarga.",
+    "all": "Exportar todo",
+    "all_failed": "No se pudo exportar el Hub."
   }
 }

@@ -32,6 +32,7 @@ import {
 import { useT } from "../i18n";
 import { errorMessage, parseWebAddress } from "./hub-import-request";
 import { USER_SOURCE_TYPES, isKnownSourceType } from "./hub-source-meta";
+import { AUTO_SYNC_INTERVALS, autoSyncKey } from "./hub-source-sync";
 
 export function HubSourceFormDialog({
   wsId,
@@ -58,10 +59,11 @@ function SourceForm({ wsId, source, onClose }: { wsId: string; source: HubSource
   const { t } = useT("hub");
   const create = useCreateHubSource();
   const update = useUpdateHubSource();
-  const ids = { name: useId(), type: useId(), url: useId() };
+  const ids = { name: useId(), type: useId(), url: useId(), interval: useId() };
   const [name, setName] = useState(source?.name ?? "");
   const [type, setType] = useState<HubSourceType>(source?.type ?? USER_SOURCE_TYPES[0]!);
   const [url, setUrl] = useState(source?.url ?? "");
+  const [autoSync, setAutoSync] = useState(String(source?.auto_sync_interval_sec ?? 0));
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; url?: string }>({});
   const [error, setError] = useState("");
   const pending = create.isPending || update.isPending;
@@ -72,6 +74,18 @@ function SourceForm({ wsId, source, onClose }: { wsId: string; source: HubSource
     value,
     label: isKnownSourceType(value) ? t(($) => $.source_types[value]) : value,
   }));
+
+  // Auto-sync is set from the edit dialog only: the create request has no interval field.
+  const intervalItems = AUTO_SYNC_INTERVALS.map((seconds) => ({
+    value: String(seconds),
+    label: t(($) => $.sync.interval[autoSyncKey(seconds)]),
+  }));
+  if (source && !intervalItems.some((item) => item.value === String(source.auto_sync_interval_sec))) {
+    intervalItems.push({
+      value: String(source.auto_sync_interval_sec),
+      label: t(($) => $.sync.interval.custom),
+    });
+  }
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -86,7 +100,14 @@ function SourceForm({ wsId, source, onClose }: { wsId: string; source: HubSource
     setError("");
     try {
       if (source) {
-        await update.mutateAsync({ wsId, id: source.id, name: trimmedName, url: trimmedUrl });
+        const patch: { name: string; url: string; auto_sync_interval_sec?: number } = {
+          name: trimmedName,
+          url: trimmedUrl,
+        };
+        // Sent only when changed, so saving the other fields leaves the schedule alone.
+        const nextInterval = Number(autoSync);
+        if (nextInterval !== source.auto_sync_interval_sec) patch.auto_sync_interval_sec = nextInterval;
+        await update.mutateAsync({ wsId, id: source.id, ...patch });
         toast.success(t(($) => $.sources.toast.updated));
       } else {
         await create.mutateAsync({ wsId, name: trimmedName, type, url: trimmedUrl });
@@ -161,6 +182,31 @@ function SourceForm({ wsId, source, onClose }: { wsId: string; source: HubSource
         />
         {fieldErrors.url ? <p className="text-caption text-destructive">{fieldErrors.url}</p> : null}
       </div>
+
+      {source ? (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={ids.interval} className="text-caption text-muted-foreground">
+            {t(($) => $.sync.interval.label)}
+          </Label>
+          <Select
+            items={intervalItems}
+            value={autoSync}
+            disabled={pending}
+            onValueChange={(next) => next && setAutoSync(next)}
+          >
+            <SelectTrigger id={ids.interval} className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {intervalItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
 
       {error ? (
         <p role="alert" className="text-caption text-destructive">

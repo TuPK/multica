@@ -9,9 +9,11 @@ import { renderWithI18n } from "../test/i18n";
 import { NavigationProvider, type NavigationAdapter } from "../navigation";
 
 const mocks = vi.hoisted(() => ({
+  activity: [] as Array<Record<string, unknown>>,
   item: undefined as undefined | Record<string, unknown>,
   packages: [] as PluginPackage[],
   installs: [] as Array<Record<string, unknown>>,
+  meta: undefined as undefined | Record<string, unknown>,
 }));
 
 vi.mock("@multica/core/hooks", () => ({ useWorkspaceId: () => "ws-1" }));
@@ -31,12 +33,25 @@ vi.mock("@multica/core/hub", async (importOriginal) => {
   return {
     ...actual,
     useHubItem: () => ({ item: mocks.item, isLoading: false, isError: false }),
+    useHubItemMeta: () => ({ meta: mocks.meta, isLoading: false }),
+    hubItemMetaListOptions: () => ({ queryKey: ["hub-item-meta"], queryFn: async () => [] }),
+    hubUpdateCheckOptions: () => ({ queryKey: ["hub-update-check"], queryFn: async () => null }),
+    hubUpdateDiffOptions: () => ({ queryKey: ["hub-update-diff"], queryFn: async () => null }),
+    useApplyHubUpdate: () => ({ mutateAsync: vi.fn(), isPending: false }),
+    useForkHubItem: () => ({ mutateAsync: vi.fn(), isPending: false }),
     hubFileListOptions: () => ({ queryKey: ["hub-list"], queryFn: async () => [] }),
     hubFileContentOptions: () => ({ queryKey: ["hub-content"], queryFn: async () => null }),
     useSaveHubFile: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useDeleteHubFile: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useRenameHubFile: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useSavePluginDraft: () => ({ mutateAsync: vi.fn(), isPending: false }),
+    hubActivityInfiniteOptions: () => ({
+      queryKey: ["hub-activity-item"],
+      queryFn: async () => ({ entries: mocks.activity, next_cursor: null }),
+      initialPageParam: null,
+      getNextPageParam: () => undefined,
+    }),
+    fetchHubBundleDownload: vi.fn(async () => ({ kind: "url", url: "https://files.example.com/sales-kit.zip", version: "1" })),
   };
 });
 
@@ -112,9 +127,11 @@ const plugin: PluginPackage = {
 };
 
 beforeEach(() => {
+  mocks.activity = [];
   mocks.item = undefined;
   mocks.packages = [];
   mocks.installs = [];
+  mocks.meta = undefined;
 });
 
 describe("HubItemPage", () => {
@@ -126,6 +143,29 @@ describe("HubItemPage", () => {
   it("says the item is not in the Hub when the list does not contain it", () => {
     renderPage("plugin", "missing");
     expect(screen.getByText("This item isn't in the Hub.")).toBeInTheDocument();
+  });
+
+  it("shows an update banner without a review action for a member who cannot edit", () => {
+    mocks.item = {
+      key: "plugin:p1",
+      kind: "plugin",
+      refId: "p1",
+      name: "Sales kit",
+      description: "acme.sales-kit",
+      source: "plugin",
+      sourceUrl: null,
+      version: "2.0.0",
+      labels: [],
+      updatedAt: "2026-07-02T00:00:00Z",
+      createdAt: "2026-07-01T00:00:00Z",
+    };
+    mocks.packages = [plugin];
+    mocks.meta = { tracking: "tracking", update_available: true, local_modified: false };
+    renderPage("plugin", "p1");
+    expect(
+      screen.getByText("A newer version of this item is available from its source."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Review update" })).not.toBeInTheDocument();
   });
 
   it("shows a plugin's identity, its source, and its installed state under Usage", async () => {
@@ -175,4 +215,81 @@ describe("HubItemPage", () => {
     expect(screen.getByText("Version 2.0.0")).toBeInTheDocument();
     expect(screen.getByText("Enabled")).toBeInTheDocument();
   });
+
+  it("lists this item's activity, newest first, with the detail of each entry", async () => {
+    mocks.item = pluginItem();
+    mocks.packages = [plugin];
+    mocks.activity = [
+      activityEntry({ id: "a1", action: "update_applied", actor_name: "Ada", detail: { version: "2.0.0" } }),
+      activityEntry({ id: "a2", action: "future_action", actor_name: "", detail: {} }),
+    ];
+    const user = userEvent.setup();
+    renderPage("plugin", "p1");
+
+    await user.click(await screen.findByRole("tab", { name: "Activity" }));
+    const list = await screen.findByRole("list", { name: "Activity" });
+    const entries = within(list).getAllByRole("listitem");
+    expect(entries).toHaveLength(2);
+    expect(within(entries[0]!).getByText("Update applied")).toBeInTheDocument();
+    expect(within(entries[0]!).getByText("Version 2.0.0")).toBeInTheDocument();
+    expect(within(entries[0]!).getByText("Ada")).toBeInTheDocument();
+    // An action the client does not know yet still gets a readable label.
+    expect(within(entries[1]!).getByText("Activity recorded")).toBeInTheDocument();
+    expect(within(entries[1]!).getByText("Someone")).toBeInTheDocument();
+  });
+
+  it("says so when the item has no activity yet", async () => {
+    mocks.item = pluginItem();
+    mocks.packages = [plugin];
+    const user = userEvent.setup();
+    renderPage("plugin", "p1");
+
+    await user.click(await screen.findByRole("tab", { name: "Activity" }));
+    expect(await screen.findByText("No activity yet.")).toBeInTheDocument();
+  });
+
+  it("opens a fresh bundle link for the item", async () => {
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    const { fetchHubBundleDownload } = await import("@multica/core/hub");
+    mocks.item = pluginItem();
+    mocks.packages = [plugin];
+    const user = userEvent.setup();
+    renderPage("plugin", "p1");
+
+    await user.click(screen.getByRole("button", { name: "Download bundle" }));
+    await waitFor(() =>
+      expect(open).toHaveBeenCalledWith("https://files.example.com/sales-kit.zip", "_blank", "noopener,noreferrer"),
+    );
+    expect(fetchHubBundleDownload).toHaveBeenCalledWith("ws-1", "plugin", "p1");
+    open.mockRestore();
+  });
 });
+
+function pluginItem() {
+  return {
+    key: "plugin:p1",
+    kind: "plugin",
+    refId: "p1",
+    name: "Sales kit",
+    description: "acme.sales-kit",
+    source: "plugin",
+    sourceUrl: null,
+    version: "2.0.0",
+    labels: [],
+    updatedAt: "2026-07-02T00:00:00Z",
+    createdAt: "2026-07-01T00:00:00Z",
+  };
+}
+
+function activityEntry(overrides: Record<string, unknown>) {
+  return {
+    actor_type: "member",
+    actor_id: null,
+    kind: "plugin",
+    ref_id: "p1",
+    item_name: "Sales kit",
+    source_id: null,
+    created_at: "2026-07-02T00:00:00Z",
+    ...overrides,
+  };
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   ChevronDown,
@@ -42,10 +42,23 @@ function rowIcon(row: HubTreeRow) {
   return File;
 }
 
+/** The nearest row above `index` that is one level shallower: the parent folder. */
+function parentIndex(rows: readonly HubTreeRow[], index: number): number {
+  const depth = rows[index]?.depth ?? 0;
+  for (let i = index - 1; i >= 0; i--) {
+    if (rows[i]!.depth < depth) return i;
+  }
+  return -1;
+}
+
 /**
- * Folder tree of a Hub item's files. Only the visible window is mounted, so a
- * large plugin does not put every row in the DOM. Folders are inferred from
- * paths; collapsing a folder hides its rows without changing the paths.
+ * Folder tree of a Hub item's files, as an ARIA tree. Only the visible window is
+ * mounted, so a large plugin does not put every row in the DOM. Folders are
+ * inferred from paths; collapsing a folder hides its rows without changing the paths.
+ *
+ * Keyboard: Up/Down move, Home/End jump, Right expands or enters a folder, Left
+ * collapses or moves to the parent, Enter or Space opens a row. One row is in the
+ * tab order at a time (roving tabindex).
  */
 export function HubFileTree({
   paths,
@@ -61,9 +74,15 @@ export function HubFileTree({
   actions?: HubFileTreeActions;
   onSelect: (path: string) => void;
 }) {
+  const { t } = useT("hub");
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
+  // The row the user last moved to or clicked. Null until the user interacts.
+  const [focusPath, setFocusPath] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const rowElements = useRef(new Map<string, HTMLDivElement>());
+  // Set when a key press moves focus to a row that may not be mounted yet.
+  const focusPending = useRef(false);
 
   const rows = useMemo(() => flattenHubTree(paths, collapsed), [paths, collapsed]);
 
@@ -72,6 +91,20 @@ export function HubFileTree({
     getScrollElement: () => scrollRef.current,
     estimateSize: () => ROW_HEIGHT,
     overscan: 8,
+  });
+
+  // The tab stop: the focused row if it is still shown, else the selected file, else the first row.
+  const tabStop =
+    rows.find((row) => row.path === focusPath)?.path ??
+    rows.find((row) => !row.isFolder && row.path === selectedPath)?.path ??
+    rows[0]?.path;
+
+  useEffect(() => {
+    if (!focusPending.current || tabStop === undefined) return;
+    const element = rowElements.current.get(tabStop);
+    if (!element) return;
+    focusPending.current = false;
+    element.focus();
   });
 
   const toggleFolder = (path: string) => {
@@ -83,16 +116,73 @@ export function HubFileTree({
     });
   };
 
+  const moveFocus = (index: number) => {
+    const row = rows[index];
+    if (!row) return;
+    setFocusPath(row.path);
+    focusPending.current = true;
+    virtualizer.scrollToIndex(index);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    // Only the row itself handles keys; the rename field and the row menu keep their own.
+    const path = (event.target as HTMLElement).dataset.treePath;
+    if (path === undefined) return;
+    const index = rows.findIndex((row) => row.path === path);
+    const row = rows[index];
+    if (!row) return;
+
+    switch (event.key) {
+      case "ArrowDown":
+        moveFocus(Math.min(index + 1, rows.length - 1));
+        break;
+      case "ArrowUp":
+        moveFocus(Math.max(index - 1, 0));
+        break;
+      case "Home":
+        moveFocus(0);
+        break;
+      case "End":
+        moveFocus(rows.length - 1);
+        break;
+      case "ArrowRight":
+        if (row.isFolder && !row.expanded) toggleFolder(row.path);
+        else if (row.isFolder && rows[index + 1] && rows[index + 1]!.depth > row.depth) moveFocus(index + 1);
+        break;
+      case "ArrowLeft":
+        if (row.isFolder && row.expanded) toggleFolder(row.path);
+        else {
+          const parent = parentIndex(rows, index);
+          if (parent >= 0) moveFocus(parent);
+        }
+        break;
+      case "Enter":
+      case " ":
+        if (row.isFolder) toggleFolder(row.path);
+        else onSelect(row.path);
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+  };
+
   return (
-    <div ref={scrollRef} className="h-full overflow-y-auto py-1">
-      <div role="list" className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
+    <div
+      ref={scrollRef}
+      role="tree"
+      aria-label={t(($) => $.files.list)}
+      onKeyDown={handleKeyDown}
+      className="h-full overflow-y-auto py-1"
+    >
+      <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
         {virtualizer.getVirtualItems().map((item) => {
           const row = rows[item.index];
           if (!row) return null;
           return (
             <div
               key={item.key}
-              role="listitem"
+              role="none"
               className="absolute left-0 top-0 w-full"
               style={{ height: ROW_HEIGHT, transform: `translateY(${item.start}px)` }}
             >
@@ -111,7 +201,13 @@ export function HubFileTree({
                   row={row}
                   selected={!row.isFolder && row.path === selectedPath}
                   dirty={dirtyPaths.has(row.path)}
+                  tabStop={row.path === tabStop}
+                  registerElement={(element) => {
+                    if (element) rowElements.current.set(row.path, element);
+                    else rowElements.current.delete(row.path);
+                  }}
                   actions={actions && row.path !== actions.reservedPath ? actions : undefined}
+                  onFocusRow={() => setFocusPath(row.path)}
                   onToggle={() => toggleFolder(row.path)}
                   onSelect={() => onSelect(row.path)}
                   onRename={() => setRenamingPath(row.path)}
@@ -130,7 +226,10 @@ function TreeRow({
   row,
   selected,
   dirty,
+  tabStop,
+  registerElement,
   actions,
+  onFocusRow,
   onToggle,
   onSelect,
   onRename,
@@ -139,7 +238,10 @@ function TreeRow({
   row: HubTreeRow;
   selected: boolean;
   dirty: boolean;
+  tabStop: boolean;
+  registerElement: (element: HTMLDivElement | null) => void;
   actions?: HubFileTreeActions;
+  onFocusRow: () => void;
   onToggle: () => void;
   onSelect: () => void;
   onRename: () => void;
@@ -148,59 +250,59 @@ function TreeRow({
   const { t } = useT("hub");
   const Icon = rowIcon(row);
   const indent = { paddingLeft: `${row.depth * 12 + 8}px` };
+  const label = dirty ? `${row.name}, ${t(($) => $.files.dirty)}` : row.name;
 
-  if (row.isFolder) {
-    const Chevron = row.expanded ? ChevronDown : ChevronRight;
-    return (
-      <div className="group/row relative flex h-full items-center rounded-md hover:bg-surface-hover">
-        <button
-          type="button"
-          aria-expanded={row.expanded}
-          onClick={onToggle}
-          style={indent}
-          className="flex h-full min-w-0 flex-1 items-center gap-1.5 pr-2 text-left text-caption text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
-        >
-          <Chevron className="size-3 shrink-0" aria-hidden="true" />
-          <Icon className="size-3.5 shrink-0" aria-hidden="true" />
-          <span className="truncate">{row.name}</span>
-        </button>
-        {actions && <RowMenu path={row.path} onRename={onRename} onDelete={onDelete} />}
-      </div>
-    );
-  }
-
-  return (
+  const item = (
     <div
+      ref={registerElement}
+      role="treeitem"
+      tabIndex={tabStop ? 0 : -1}
+      aria-level={row.depth + 1}
+      aria-expanded={row.isFolder ? row.expanded : undefined}
+      aria-selected={selected}
+      aria-label={label}
+      data-tree-path={row.path}
+      style={indent}
+      onFocus={onFocusRow}
+      onClick={row.isFolder ? onToggle : onSelect}
       className={cn(
-        "group/row relative flex h-full items-center rounded-md",
-        selected ? "bg-surface-selected" : "hover:bg-surface-hover",
+        "flex h-full min-w-0 flex-1 items-center gap-2 rounded-md pr-2 text-left text-caption transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        row.isFolder
+          ? "text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+          : selected
+            ? "bg-surface-selected text-surface-selected-foreground"
+            : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
       )}
     >
-      <button
-        type="button"
-        aria-current={selected ? "true" : undefined}
-        onClick={onSelect}
-        style={indent}
-        className={cn(
-          "flex h-full min-w-0 flex-1 items-center gap-2 rounded-md pr-2 text-left text-caption transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          selected ? "text-surface-selected-foreground" : "text-muted-foreground group-hover/row:text-foreground",
-        )}
-      >
-        <Icon className="size-3.5 shrink-0" aria-hidden="true" />
-        <span className="min-w-0 truncate" title={row.path}>
-          {row.name}
-        </span>
-        {dirty && (
-          <span
-            role="img"
-            aria-label={t(($) => $.files.dirty)}
-            className="size-1.5 shrink-0 rounded-full bg-brand"
-          />
-        )}
-      </button>
+      {row.isFolder ? (
+        <ChevronCaret expanded={row.expanded} />
+      ) : null}
+      <Icon className="size-3.5 shrink-0" aria-hidden="true" />
+      <span className="min-w-0 truncate" title={row.path}>
+        {row.name}
+      </span>
+      {dirty && !row.isFolder && (
+        <span
+          role="img"
+          aria-label={t(($) => $.files.dirty)}
+          title={t(($) => $.files.dirty)}
+          className="size-1.5 shrink-0 rounded-full bg-brand"
+        />
+      )}
+    </div>
+  );
+
+  return (
+    <div className="group/row relative flex h-full items-center rounded-md" role="none">
+      {item}
       {actions && <RowMenu path={row.path} onRename={onRename} onDelete={onDelete} />}
     </div>
   );
+}
+
+function ChevronCaret({ expanded }: { expanded: boolean }) {
+  const Chevron = expanded ? ChevronDown : ChevronRight;
+  return <Chevron className="size-3 shrink-0" aria-hidden="true" />;
 }
 
 function RowMenu({
@@ -222,7 +324,7 @@ function RowMenu({
             aria-label={t(($) => $.files.actions.label, { path })}
             // Hidden until the row is hovered or focused; the 2px negative inset
             // widens the hit area past the glyph without covering the name.
-            className="relative mr-1 shrink-0 rounded-xs p-0.5 text-faint-foreground opacity-0 transition-opacity after:absolute after:-inset-1 hover:text-foreground focus-visible:opacity-100 group-hover/row:opacity-100 aria-expanded:opacity-100"
+            className="relative mr-1 shrink-0 rounded-xs p-0.5 text-faint-foreground opacity-0 transition-opacity after:absolute after:-inset-1 hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring group-hover/row:opacity-100 aria-expanded:opacity-100"
             onClick={(event) => event.stopPropagation()}
           >
             <MoreHorizontal className="size-3.5" aria-hidden="true" />
@@ -273,6 +375,8 @@ function RenameRow({
         autoFocus
         value={value}
         aria-label={t(($) => $.files.rename_aria, { path: row.path })}
+        aria-invalid={error !== null}
+        aria-describedby={error ? `rename-error-${row.path}` : undefined}
         onChange={(event) => {
           setValue(event.target.value);
           setError(null);
@@ -288,7 +392,7 @@ function RenameRow({
         className="h-7 font-mono text-caption"
       />
       {error && (
-        <p role="alert" className="mt-1 text-caption text-destructive">
+        <p id={`rename-error-${row.path}`} role="alert" className="mt-1 text-caption text-destructive">
           {message(error)}
         </p>
       )}

@@ -13,6 +13,7 @@ import { useWorkspacePaths } from "@multica/core/paths";
 import {
   hubKeys,
   useHubItem,
+  useHubItemMeta,
   type HubItem,
   type HubItemKind,
 } from "@multica/core/hub";
@@ -28,13 +29,17 @@ import { ObjectIconMark, ObjectIdentity, ObjectPage } from "../layout/object-pag
 import { PAGE_GUTTER, PAGE_RAIL } from "../layout/page-header";
 import { SkillVersionsTab } from "../skills/components/skill-versions-tab";
 import { useCanEditSkill } from "../skills/hooks/use-can-edit-skill";
+import { HubActivityList } from "./hub-activity-list";
+import { HubDownloadBundleButton } from "./hub-export-actions";
 import { HubItemFiles } from "./hub-item-files";
 import { PluginOverview, PluginUsage, PluginVersions, SkillOverview, SkillUsage } from "./hub-item-sections";
+import { HubItemSourceTab } from "./hub-source-tab";
+import { HubUpdateBanner } from "./hub-update-banner";
 import { formatHubSize } from "./hub-files";
 import { useHubFiles } from "./use-hub-files";
 
 const HUB_ITEM_LAYOUT_ID = "multica_hub_item_layout";
-const TABS = ["files", "overview", "versions", "usage"] as const;
+const TABS = ["files", "overview", "versions", "usage", "source", "activity"] as const;
 type HubItemTab = (typeof TABS)[number];
 
 export function isHubItemKind(value: string): value is HubItemKind {
@@ -144,6 +149,7 @@ function HubItemView({ item, wsId }: { item: HubItem; wsId: string }) {
   // Publishing a plugin version is an admin decision: owners and admins only.
   const canEditPlugin = myRole === "admin" || myRole === "owner";
   const canEdit = isSkill ? canEditSkill : canEditPlugin;
+  const itemMeta = useHubItemMeta(wsId, kind, refId);
 
   const files = useHubFiles({
     wsId,
@@ -179,6 +185,7 @@ function HubItemView({ item, wsId }: { item: HubItem; wsId: string }) {
           </span>
         ) : null}
         <span>{t(($) => $.item.updated, { time: timeAgo(item.updatedAt) })}</span>
+        <HubDownloadBundleButton wsId={wsId} kind={kind} refId={refId} />
       </div>
     </div>
   );
@@ -195,6 +202,8 @@ function HubItemView({ item, wsId }: { item: HubItem; wsId: string }) {
           <TabsTrigger value="overview">{t(($) => $.tabs.overview)}</TabsTrigger>
           <TabsTrigger value="versions">{t(($) => $.tabs.versions)}</TabsTrigger>
           <TabsTrigger value="usage">{t(($) => $.tabs.usage)}</TabsTrigger>
+          <TabsTrigger value="source">{t(($) => $.source_tab.title)}</TabsTrigger>
+          <TabsTrigger value="activity">{t(($) => $.activity.tab)}</TabsTrigger>
         </TabsList>
       </div>
 
@@ -245,6 +254,22 @@ function HubItemView({ item, wsId }: { item: HubItem; wsId: string }) {
         )}
       </TabsContent>
 
+      <TabsContent value="source" className="py-6">
+        <HubItemSourceTab
+          wsId={wsId}
+          item={item}
+          meta={itemMeta.meta}
+          metaLoading={itemMeta.isLoading}
+          canEdit={canEdit}
+        />
+      </TabsContent>
+
+      <TabsContent value="activity" className="py-6">
+        <div className="mx-auto w-full max-w-[760px] px-4">
+          <HubActivityList wsId={wsId} filter={{ kind, refId }} />
+        </div>
+      </TabsContent>
+
       <TabsContent value="usage" className="py-6">
         {isSkill ? (
           <SkillUsage wsId={wsId} refId={refId} />
@@ -263,6 +288,16 @@ function HubItemView({ item, wsId }: { item: HubItem; wsId: string }) {
     >
       <div className="flex min-h-full flex-col md:h-full">
         {header}
+        <div className={cn(PAGE_RAIL, PAGE_GUTTER, "pt-3 empty:hidden")}>
+          <HubUpdateBanner
+            wsId={wsId}
+            kind={kind}
+            refId={refId}
+            name={item.name}
+            meta={itemMeta.meta}
+            canEdit={canEdit}
+          />
+        </div>
         {body}
       </div>
     </ObjectPage>
