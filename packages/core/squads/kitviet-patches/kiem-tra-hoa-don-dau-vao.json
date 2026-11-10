@@ -1,0 +1,6 @@
+[
+  {
+    "find": "4. **Thuế suất:** 0%, 5%, 8%, 10%, KCT, KKKNT. Dòng 8% chỉ đúng nếu hàng hóa thuộc diện giảm theo nghị quyết giảm thuế đang hiệu lực -> ghi \"kiểm tra diện được giảm và thời hạn áp dụng trong văn bản hiện hành\".",
+    "replace": "4. **Thuế suất:** theo dòng \"Thuế suất\" của Sổ quy định của squad. Dòng thuế suất được giảm chỉ đúng khi còn hiệu lực và đúng diện; ghi \"kiểm tra diện được giảm và thời hạn áp dụng trong Sổ quy định\"."
+  }
+]

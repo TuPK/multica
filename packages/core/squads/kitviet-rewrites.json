@@ -1,0 +1,172 @@
+{
+  "removeBlocks": [
+    {
+      "start": "<!-- kv:pro:start -->",
+      "end": "<!-- kv:pro:end -->"
+    }
+  ],
+  "removeSections": [
+    "Chạy trên từng nền tảng",
+    "Chạy trên từng môi trường",
+    "Cài đặt theo môi trường",
+    "Ba môi trường"
+  ],
+  "verdictSection": "Kết luận",
+  "verdictLine": "VERDICT: QUA|CHẶN - <lý do một câu>",
+  "droppedSkills": [
+    "dieu-phoi-day-chuyen",
+    "ho-so-ca-nhan",
+    "dong-goi-skill-moi"
+  ],
+  "renamedSkills": {
+    "phap-ly": {
+      "soan-don-tu": "soan-don-tu-phap-ly"
+    }
+  },
+  "rules": [
+    {
+      "name": "web-only-line",
+      "pattern": "^[ \\t]*(?:\\d+\\.|-) \\*\\*Claude web[^\\n]*\\n",
+      "flags": "gm",
+      "replace": ""
+    },
+    {
+      "name": "python-script-path",
+      "pattern": "python scripts/([\\w.-]+\\.py)",
+      "flags": "g",
+      "replace": "python \"<thư mục chứa SKILL.md này>/scripts/$1\""
+    },
+    {
+      "name": "pip-install-hint",
+      "pattern": "script in (?:hướng dẫn )?`pip install [^`]+`(?:; báo người dùng cài \\(nên trong môi trường ảo\\))?",
+      "flags": "g",
+      "replace": "dừng loại 1 và ghi tên thư viện thiếu, không tự cài"
+    },
+    {
+      "name": "codex-bash-label",
+      "pattern": "\\*\\*Claude Code \\/ Codex:\\*\\*",
+      "flags": "g",
+      "replace": "**Khi có công cụ Bash:**"
+    },
+    {
+      "name": "platform-pair-web",
+      "pattern": " \\(Claude Code, Codex có web\\)",
+      "flags": "g",
+      "replace": ""
+    },
+    {
+      "name": "platform-pair-slash",
+      "pattern": " \\(Claude Code\\/Codex\\)",
+      "flags": "g",
+      "replace": ""
+    },
+    {
+      "name": "kv-run-folder",
+      "pattern": "(?:[Tt]hư mục chạy )?`?\\.kv-run(?:\\/[^\\s`,;)]*)?`?",
+      "flags": "g",
+      "replace": "tệp đính kèm trên issue"
+    },
+    {
+      "name": "ket-qua-folder",
+      "pattern": "`?ket-qua\\/[^\\s`]*`?",
+      "flags": "g",
+      "replace": "tệp đính kèm trên issue"
+    },
+    {
+      "name": "work-folder-words",
+      "pattern": "[Tt]hư mục (?:tháng|deal|chạy|làm việc)",
+      "flags": "g",
+      "replace": "tệp đính kèm trên issue"
+    },
+    {
+      "name": "file-00-plan",
+      "pattern": "`?00-ke-hoach(?:\\.md)?`?",
+      "flags": "g",
+      "replace": "comment Kế hoạch của lead trên issue gốc"
+    },
+    {
+      "name": "file-01-collect",
+      "pattern": "`?(?:01-thu-thap|thu-thap)[\\w*<>-]*(?:\\.md)?`?",
+      "flags": "g",
+      "replace": "comment kết quả của sub-issue thu thập"
+    },
+    {
+      "name": "file-02-draft",
+      "pattern": "`?(?:02-[\\w*<>-]+(?:\\.(?:md|csv|\\*))?|bao-gia-nhap(?:\\.md)?|proposal-nhap(?:\\.md)?)`?",
+      "flags": "g",
+      "replace": "tệp đính kèm của sub-issue soạn"
+    },
+    {
+      "name": "file-03-gate",
+      "pattern": "`?03-soat-[\\w*<>-]*(?:\\.(?:md|csv))?`?",
+      "flags": "g",
+      "replace": "comment `VERDICT:` của sub-issue gác cổng"
+    },
+    {
+      "name": "file-04-handover",
+      "pattern": "`?04-ban-giao(?:\\.md)?`?",
+      "flags": "g",
+      "replace": "comment bàn giao"
+    },
+    {
+      "name": "file-05-after-care",
+      "pattern": "`?05-[\\w*<>-]+(?:\\.(?:md|csv))?`?",
+      "flags": "g",
+      "replace": "comment trạng thái hậu cần"
+    },
+    {
+      "name": "profile-doc",
+      "pattern": "`?(?:CLAUDE|AGENTS)\\.md`?",
+      "flags": "g",
+      "replace": "tài liệu KB `Hồ sơ đơn vị`"
+    },
+    {
+      "name": "brand-doc",
+      "pattern": "`?(?:thuong-hieu\\/)?giong-thuong-hieu\\.md`?",
+      "flags": "g",
+      "replace": "tài liệu KB `Cẩm nang giọng thương hiệu`"
+    },
+    {
+      "name": "dropped-skill-refs",
+      "pattern": "`?(?:kv:)?(?:dieu-phoi-day-chuyen|ho-so-ca-nhan|dong-goi-skill-moi)`?",
+      "flags": "g",
+      "replace": "nhờ lead"
+    },
+    {
+      "name": "on-claude-prefix",
+      "pattern": "[Tt]rên Claude (?:Code|web|Desktop)(?: với nhiều file| \\/ desktop)? (?:nên |thì )?",
+      "flags": "g",
+      "replace": ""
+    },
+    {
+      "name": "claude-web-search-off",
+      "pattern": "Claude web tắt tìm kiếm",
+      "flags": "g",
+      "replace": "công cụ web đang tắt"
+    },
+    {
+      "name": "call-agent",
+      "pattern": "(?:gọi|giao|Gọi|Giao) agent(?=[ :])",
+      "flags": "g",
+      "replace": "lead giao sub-issue cho vai"
+    },
+    {
+      "name": "call-kv-agent",
+      "pattern": "(?:gọi|giao|Gọi|Giao) `kv:",
+      "flags": "g",
+      "replace": "lead giao sub-issue cho vai `kv:"
+    },
+    {
+      "name": "phien-chinh",
+      "pattern": "Phiên chính",
+      "flags": "g",
+      "replace": "Lead"
+    },
+    {
+      "name": "phien-chinh-lower",
+      "pattern": "phiên chính",
+      "flags": "g",
+      "replace": "lead"
+    }
+  ]
+}

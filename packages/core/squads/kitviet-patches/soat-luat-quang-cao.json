@@ -1,0 +1,10 @@
+[
+  {
+    "find": "1. **Xác định khung quy định áp dụng.** Luật Quảng cáo 2012 đã được sửa đổi bởi Luật số 75/2025/QH15 (hiệu lực 01/01/2026), cùng quy định chuyên ngành (an toàn thực phẩm, dược, mỹ phẩm, thương mại điện tử). Luật Thương mại điện tử số 122/2025/QH15 áp dụng thêm cho livestream bán hàng từ tháng 7/2026. Luôn ghi: \"kiểm tra bản hiện hành trên cổng văn bản pháp luật\" - quy định nhóm này thay đổi nhanh.",
+    "replace": "1. **Xác định khung quy định áp dụng.** Lấy khung (luật quảng cáo, thương mại điện tử, quy định chuyên ngành) từ dòng \"Quảng cáo\" của Sổ quy định của squad; chưa có sổ thì ghi [chưa có sổ quy định] và tự tra nguồn chính thức. Luôn ghi: \"kiểm tra bản hiện hành trên cổng văn bản pháp luật\" - nhóm quy định này thay đổi nhanh."
+  },
+  {
+    "find": "Khung quy định: Luật Quảng cáo (sửa đổi 2025) + <quy định chuyên ngành> - kiểm tra bản hiện hành.",
+    "replace": "Khung quy định: tra dòng \"Quảng cáo\" của Sổ quy định của squad + <quy định chuyên ngành> - kiểm tra bản hiện hành."
+  }
+]

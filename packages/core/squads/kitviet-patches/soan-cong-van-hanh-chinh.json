@@ -1,0 +1,6 @@
+[
+  {
+    "find": "8. Nhắc thông số trình bày (khổ A4, phông Times New Roman, cỡ chữ, lề) theo quy định về công tác văn thư hiện hành - với cơ quan nhà nước là Nghị định 30/2020/NĐ-CP, cần kiểm tra văn bản sửa đổi, thay thế; doanh nghiệp ngoài nhà nước thường tham chiếu cùng chuẩn này hoặc theo quy chế văn thư nội bộ.",
+    "replace": "8. Nhắc thông số trình bày (khổ giấy, phông, cỡ chữ, lề) theo dòng \"Văn thư\" của Sổ quy định của squad; chưa có sổ thì ghi [chưa có sổ quy định] và tự tra nguồn chính thức, không dùng mốc nhớ từ trí nhớ. Doanh nghiệp ngoài nhà nước thường tham chiếu cùng chuẩn này hoặc theo quy chế văn thư nội bộ."
+  }
+]

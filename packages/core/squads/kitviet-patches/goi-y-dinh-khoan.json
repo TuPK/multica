@@ -1,0 +1,6 @@
+[
+  {
+    "find": "chế độ cho doanh nghiệp nhỏ và vừa (Thông tư 133/2016/TT-BTC) hay chế độ kế toán doanh nghiệp chung (Thông tư 99/2025/TT-BTC thay Thông tư 200/2014/TT-BTC từ 01/01/2026 - kiểm tra bản hiện hành). Chưa biết thì hỏi, không tự chọn.",
+    "replace": "ba lựa chọn (chế độ doanh nghiệp siêu nhỏ, chế độ doanh nghiệp nhỏ và vừa, chế độ chung), tra dòng \"Chế độ kế toán\" của Sổ quy định của squad. Chưa biết thì hỏi, không tự chọn."
+  }
+]

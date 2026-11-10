@@ -1,0 +1,18 @@
+[
+  {
+    "find": "   - Gắn với mua hàng, dùng dịch vụ, hoặc nhằm quảng bá hàng hóa của doanh nghiệp -> thường được coi là **khuyến mại** theo Luật Thương mại và Nghị định 81/2018/NĐ-CP (đã sửa bởi Nghị định 128/2024/NĐ-CP, hiệu lực 01/12/2024).",
+    "replace": "   - Gắn với mua hàng, dùng dịch vụ, hoặc nhằm quảng bá hàng hóa của doanh nghiệp -> thường được coi là **khuyến mại** theo dòng \"Khuyến mại\" của Sổ quy định của squad."
+  },
+  {
+    "find": "   - Ghi rõ: \"kiểm tra bản hiện hành\" - quy định khuyến mại vừa sửa (Nghị định 128/2024, Nghị định 239/2026).",
+    "replace": "   - Ghi rõ: \"kiểm tra bản hiện hành\" - tra dòng \"Khuyến mại\" của Sổ quy định của squad (ngày kiểm và người kiểm)."
+  },
+  {
+    "find": "4. **Chọn người thắng minh bạch:** công cụ quay số có ghi hình màn hình hoặc livestream; danh sách hợp lệ chốt trước khi quay; có người chứng kiến. Với khuyến mại may rủi, Nghị định 239/2026 yêu cầu việc xác định trúng thưởng có sự chứng kiến trực tiếp hoặc trực tuyến của khách hàng - kiểm tra bản hiện hành. Lập biên bản xác định trúng thưởng.",
+    "replace": "4. **Chọn người thắng minh bạch:** công cụ quay số có ghi hình màn hình hoặc livestream; danh sách hợp lệ chốt trước khi quay; có người chứng kiến. Với khuyến mại may rủi, tra dòng \"Khuyến mại may rủi\" của Sổ quy định của squad về việc chứng kiến khi xác định trúng thưởng - kiểm tra bản hiện hành. Lập biên bản xác định trúng thưởng."
+  },
+  {
+    "find": "5. **Thuế thu nhập cá nhân từ trúng thưởng:** đơn vị trả thưởng khấu trừ 10% trên phần giá trị giải vượt ngưỡng, tính **theo từng lần trúng** (giải hiện vật quy theo giá thị trường). Ngưỡng 10 triệu đồng/lần áp dụng đến 30/6/2026; nhiều nguồn nêu Luật Thuế TNCN 2025 nâng lên 20 triệu đồng/lần từ 01/7/2026 -> **kế toán phải xác minh** trước khi trao giải. Ghi trong thể lệ ai chịu khoản thuế này.",
+    "replace": "5. **Thuế thu nhập cá nhân từ trúng thưởng:** đơn vị trả thưởng khấu trừ theo tỷ lệ và ngưỡng ở dòng \"Thuế trúng thưởng\" của Sổ quy định của squad, tính **theo từng lần trúng** (giải hiện vật quy theo giá thị trường). Chưa có dòng đó thì **kế toán phải xác minh** trước khi trao giải. Ghi trong thể lệ ai chịu khoản thuế này."
+  }
+]

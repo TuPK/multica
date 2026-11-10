@@ -1,0 +1,18 @@
+[
+  {
+    "find": "   - Khai tháng (GTGT, TNCN khấu trừ): chậm nhất ngày 20 của tháng sau.",
+    "replace": "   - Khai tháng (GTGT, TNCN khấu trừ): hạn lấy từ dòng \"Khai tháng\" của Sổ quy định của squad; chưa có sổ thì ghi [chưa có sổ quy định], không tự nhớ mốc."
+  },
+  {
+    "find": "   - Khai quý: chậm nhất ngày cuối cùng của tháng đầu quý sau.",
+    "replace": "   - Khai quý: hạn lấy từ dòng \"Khai quý\" của Sổ quy định của squad; chưa có sổ thì ghi [chưa có sổ quy định]."
+  },
+  {
+    "find": "   - Tạm nộp TNDN quý: chậm nhất ngày 30 của tháng đầu quý sau.",
+    "replace": "   - Tạm nộp TNDN quý: hạn lấy từ dòng \"Tạm nộp TNDN\" của Sổ quy định của squad; chưa có sổ thì ghi [chưa có sổ quy định]."
+  },
+  {
+    "find": "   - Quyết toán năm TNDN, TNCN (tổ chức trả thu nhập) và báo cáo tài chính năm: chậm nhất ngày cuối cùng của tháng thứ 3 sau khi kết thúc năm tài chính.",
+    "replace": "   - Quyết toán năm và báo cáo tài chính năm: hạn lấy từ dòng \"Quyết toán năm\" của Sổ quy định của squad; chưa có sổ thì ghi [chưa có sổ quy định]."
+  }
+]
