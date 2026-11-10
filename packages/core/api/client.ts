@@ -291,6 +291,26 @@ import { type Logger, noopLogger } from "../logger";
 import { createRequestId, createSafeId } from "../utils";
 import { getCurrentSlug } from "../platform/workspace-storage";
 import { parseWithFallback } from "./schema";
+import { mapHubImportCommitError, mapHubSourceDeleteError } from "../hub/errors";
+import {
+  HubSourceSchema,
+  HubSourceListSchema,
+  EMPTY_HUB_SOURCE,
+  HubImportPreviewSchema,
+  EMPTY_HUB_IMPORT_PREVIEW,
+  HubImportCommitResultSchema,
+  EMPTY_HUB_IMPORT_COMMIT_RESULT,
+} from "./schemas";
+import type {
+  CreateHubSourceRequest,
+  HubImportCommitRequest,
+  HubImportPreview,
+  HubImportCommitResult,
+  HubImportSourceRequest,
+  HubSource,
+  HubSourceDeleteItems,
+  UpdateHubSourceRequest,
+} from "../types/hub";
 import { EMPTY_ORG_MAP, OrgMapSchema, type OrgMap } from "../company/org-map-schema";
 import {
   parseInstructionRevisions,
@@ -1130,6 +1150,20 @@ function isReplayableBody(body: BodyInit | null | undefined): boolean {
   if (typeof URLSearchParams !== "undefined" && body instanceof URLSearchParams)
     return true;
   return false;
+}
+
+function hubSourceFromResponse(raw: unknown, endpoint: string): HubSource {
+  const source = parseWithFallback<HubSource>(raw, HubSourceSchema, EMPTY_HUB_SOURCE, { endpoint });
+  if (!source.id) throw new Error(`${endpoint} returned no source id`);
+  return source;
+}
+
+function hubImportPreviewFromResponse(raw: unknown): HubImportPreview {
+  const preview = parseWithFallback<HubImportPreview>(raw, HubImportPreviewSchema, EMPTY_HUB_IMPORT_PREVIEW, {
+    endpoint: "POST /api/hub/import/preview",
+  });
+  if (!preview.preview_id) throw new Error("The import preview returned no preview id");
+  return preview;
 }
 
 export class ApiClient {
@@ -7229,5 +7263,90 @@ export class ApiClient {
     return parseWithFallback<PluginVersionFileContent>(raw, PluginVersionFileContentSchema, { path, content: null, is_binary: true, size_bytes: 0, sha256: "" }, {
       endpoint: "GET /api/workspaces/{id}/plugins/packages/{packageId}/versions/{versionId}/files/content",
     });
+  }
+
+  // Hub sources and import. Workspace identity travels in X-Workspace-ID, from
+  // the workspace id the caller holds, not the route slug.
+
+  async listHubSources(workspaceId: string): Promise<HubSource[]> {
+    const raw = await this.fetch<unknown>("/api/hub/sources", {
+      headers: workspaceHeader({ workspaceId }),
+    });
+    return parseWithFallback<HubSource[]>(raw, HubSourceListSchema, [], {
+      endpoint: "GET /api/hub/sources",
+    });
+  }
+
+  async createHubSource(workspaceId: string, data: CreateHubSourceRequest): Promise<HubSource> {
+    const raw = await this.fetch<unknown>("/api/hub/sources", {
+      method: "POST",
+      headers: workspaceHeader({ workspaceId }),
+      body: JSON.stringify(data),
+    });
+    return hubSourceFromResponse(raw, "POST /api/hub/sources");
+  }
+
+  async updateHubSource(workspaceId: string, id: string, data: UpdateHubSourceRequest): Promise<HubSource> {
+    const raw = await this.fetch<unknown>(`/api/hub/sources/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: workspaceHeader({ workspaceId }),
+      body: JSON.stringify(data),
+    });
+    return hubSourceFromResponse(raw, "PATCH /api/hub/sources/{id}");
+  }
+
+  /** A 409 with `in_use` rejects as HubSourceInUseError. */
+  async deleteHubSource(workspaceId: string, id: string, items: HubSourceDeleteItems): Promise<void> {
+    try {
+      await this.fetch<void>(`/api/hub/sources/${encodeURIComponent(id)}?items=${items}`, {
+        method: "DELETE",
+        headers: workspaceHeader({ workspaceId }),
+      });
+    } catch (error) {
+      throw mapHubSourceDeleteError(error);
+    }
+  }
+
+  async previewHubImport(workspaceId: string, source: HubImportSourceRequest): Promise<HubImportPreview> {
+    const raw = await this.fetch<unknown>("/api/hub/import/preview", {
+      method: "POST",
+      headers: workspaceHeader({ workspaceId }),
+      body: JSON.stringify({ source }),
+    });
+    return hubImportPreviewFromResponse(raw);
+  }
+
+  /**
+   * Uploads a zip as multipart/form-data. The JSON Content-Type is left off so
+   * the browser sets the multipart boundary.
+   */
+  async previewHubImportUpload(workspaceId: string, file: File): Promise<HubImportPreview> {
+    const formData = new FormData();
+    formData.append("file", file, file.name || "upload.zip");
+    const res = await this.fetchRaw("/api/hub/import/preview", {
+      method: "POST",
+      headers: workspaceHeader({ workspaceId }),
+      body: formData,
+    });
+    return hubImportPreviewFromResponse(await res.json());
+  }
+
+  /** 409 codes and 410 expiry reject as HubImportBlockedError, HubImportWarningsError or HubPreviewExpiredError. */
+  async commitHubImport(workspaceId: string, data: HubImportCommitRequest): Promise<HubImportCommitResult> {
+    let raw: unknown;
+    try {
+      raw = await this.fetch<unknown>("/api/hub/import/commit", {
+        method: "POST",
+        headers: workspaceHeader({ workspaceId }),
+        body: JSON.stringify(data),
+      });
+    } catch (error) {
+      throw mapHubImportCommitError(error);
+    }
+    const result = parseWithFallback<HubImportCommitResult>(raw, HubImportCommitResultSchema, EMPTY_HUB_IMPORT_COMMIT_RESULT, {
+      endpoint: "POST /api/hub/import/commit",
+    });
+    if (!result.id) throw new Error("The import finished without an item id");
+    return result;
   }
 }

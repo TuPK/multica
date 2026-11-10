@@ -1,0 +1,74 @@
+import { queryOptions, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { api } from "../api";
+import { pluginKeys } from "../plugins/queries";
+import type {
+  CreateHubSourceRequest,
+  HubSourceDeleteItems,
+  UpdateHubSourceRequest,
+} from "../types/hub";
+import { workspaceKeys } from "../workspace/queries";
+import { hubKeys } from "./files";
+
+export const hubSourceKeys = {
+  all: (wsId: string) => [...hubKeys.all(wsId), "sources"] as const,
+  list: (wsId: string) => [...hubSourceKeys.all(wsId), "list"] as const,
+};
+
+export function hubSourcesOptions(wsId: string) {
+  return queryOptions({
+    queryKey: hubSourceKeys.list(wsId),
+    queryFn: () => api.listHubSources(wsId),
+    enabled: wsId.length > 0,
+  });
+}
+
+/**
+ * Source changes can add or remove items, so the skill and plugin lists are
+ * refreshed alongside the sources themselves.
+ */
+export function invalidateHubCatalog(qc: QueryClient, wsId: string) {
+  qc.invalidateQueries({ queryKey: hubSourceKeys.all(wsId) });
+  qc.invalidateQueries({ queryKey: workspaceKeys.skills(wsId) });
+  qc.invalidateQueries({ queryKey: pluginKeys.packages(wsId) });
+}
+
+export interface CreateHubSourceVars extends CreateHubSourceRequest {
+  wsId: string;
+}
+
+export interface UpdateHubSourceVars extends UpdateHubSourceRequest {
+  wsId: string;
+  id: string;
+}
+
+export interface DeleteHubSourceVars {
+  wsId: string;
+  id: string;
+  items: HubSourceDeleteItems;
+}
+
+/** Awaits the server before the caches change. Nothing is added optimistically. */
+export function useCreateHubSource() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ wsId, ...data }: CreateHubSourceVars) => api.createHubSource(wsId, data),
+    onSuccess: (_source, vars) => invalidateHubCatalog(qc, vars.wsId),
+  });
+}
+
+export function useUpdateHubSource() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ wsId, id, ...patch }: UpdateHubSourceVars) => api.updateHubSource(wsId, id, patch),
+    onSuccess: (_source, vars) => invalidateHubCatalog(qc, vars.wsId),
+  });
+}
+
+/** Rejects with HubSourceInUseError when items from the source are still used by agents. */
+export function useDeleteHubSource() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: DeleteHubSourceVars) => api.deleteHubSource(vars.wsId, vars.id, vars.items),
+    onSuccess: (_result, vars) => invalidateHubCatalog(qc, vars.wsId),
+  });
+}

@@ -3,3 +3,7 @@ export * from "./files";
 export * from "./files-mutations";
 export * from "./plugin-draft";
 export * from "./use-hub-item";
+export * from "./errors";
+export * from "./sources";
+export * from "./import";
+export * from "../types/hub";

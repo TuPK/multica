@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { normalizeHubSourceType } from "../hub/items";
+import type { HubImportPreview, HubImportCommitResult, HubSource } from "../types/hub";
 import { normalizeIssueStatusCategory } from "../issues/config/status";
 import type {
   WorkflowHandoffPreview,
@@ -4193,3 +4195,115 @@ export const WorkspaceListItemSchema = z.object({
 export const WorkspacePinnedSchema = z.object({
   pinned_at: z.iso.datetime({ offset: true }).nullable().catch(null),
 });
+
+// Hub sources and import. Unknown enums fall back so an older client keeps
+// rendering a newer server's rows: unknown source types show as manual, unknown
+// finding severities as info, and an unknown or missing scan status as warn,
+// which still requires confirmation before a commit.
+
+export const HubSourceSchema = z.object({
+  id: z.string().default(""),
+  name: z.string().default(""),
+  type: z.string().default("").transform((value) => normalizeHubSourceType(value)),
+  url: z.string().default(""),
+  config: z.record(z.string(), z.unknown()).catch({}),
+  enabled: z.boolean().default(true),
+  auto_sync_interval_sec: z.number().default(0),
+  last_sync_at: z.string().nullable().default(null),
+  last_sync_status: z.string().default(""),
+  last_sync_error: z.string().nullable().default(null),
+  item_count: z.number().default(0),
+  created_at: z.string().default(""),
+  updated_at: z.string().default(""),
+}).loose();
+
+export const HubSourceListSchema = z.array(HubSourceSchema);
+
+export const EMPTY_HUB_SOURCE: HubSource = {
+  id: "",
+  name: "",
+  type: "manual",
+  url: "",
+  config: {},
+  enabled: true,
+  auto_sync_interval_sec: 0,
+  last_sync_at: null,
+  last_sync_status: "",
+  last_sync_error: null,
+  item_count: 0,
+  created_at: "",
+  updated_at: "",
+};
+
+const HubFindingSchema = z.object({
+  rule: z.string().default(""),
+  severity: z.enum(["info", "warn", "block"]).catch("info"),
+  path: z.string().default(""),
+  message: z.string().default(""),
+}).loose();
+
+const HubImportScanSchema = z.object({
+  status: z.enum(["clean", "warn", "blocked"]).catch("warn"),
+  findings: z.array(HubFindingSchema).default([]),
+}).loose();
+
+const HubImportConflictSchema = z.object({
+  exists: z.boolean().default(false),
+  item_id: z.string().optional(),
+  kind: z.enum(["skill", "plugin"]).optional().catch(undefined),
+}).loose();
+
+const HubRegistryItemSchema = z.object({
+  kind: z.enum(["skill", "plugin"]).catch("skill"),
+  name: z.string().default(""),
+  description: z.string().default(""),
+  version: z.string().nullable().default(null),
+  url: z.string().default(""),
+  sha256: z.string().default(""),
+  tags: z.array(z.string()).default([]),
+}).loose();
+
+const HubRegistryIndexSchema = z.object({
+  name: z.string().default(""),
+  items: z.array(HubRegistryItemSchema).default([]),
+}).loose();
+
+export const HubImportPreviewSchema = z.object({
+  preview_id: z.string().default(""),
+  kind: z.enum(["skill", "plugin", "registry"]).catch("skill"),
+  name: z.string().default(""),
+  description: z.string().default(""),
+  version: z.string().nullable().default(null),
+  files: z.array(z.object({
+    path: z.string().default(""),
+    size_bytes: z.number().default(0),
+  }).loose()).default([]),
+  scan: HubImportScanSchema.default({ status: "warn", findings: [] }),
+  conflict: HubImportConflictSchema.default({ exists: false }),
+  registry: HubRegistryIndexSchema.optional(),
+}).loose();
+
+export const EMPTY_HUB_IMPORT_PREVIEW: HubImportPreview = {
+  preview_id: "",
+  kind: "skill",
+  name: "",
+  description: "",
+  version: null,
+  files: [],
+  scan: { status: "warn", findings: [] },
+  conflict: { exists: false },
+};
+
+export const HubImportCommitResultSchema = z.object({
+  kind: z.enum(["skill", "plugin"]).catch("skill"),
+  id: z.string().default(""),
+  hub_item_id: z.string().default(""),
+  skipped: z.boolean().default(false),
+}).loose();
+
+export const EMPTY_HUB_IMPORT_COMMIT_RESULT: HubImportCommitResult = {
+  kind: "skill",
+  id: "",
+  hub_item_id: "",
+  skipped: false,
+};

@@ -2,14 +2,17 @@ import type { PluginPackage, SkillSummary } from "../types";
 
 export type HubItemKind = "skill" | "plugin";
 
-/** Where an item came from. `upload`/`registry`/`url_zip` arrive with the add flows. */
+/** Where an item came from. `url_zip`, `registry` and `upload` are the add-flow sources. */
 export type HubSourceType =
   | "manual"
   | "runtime_local"
   | "clawhub"
   | "skills_sh"
   | "github"
-  | "plugin";
+  | "plugin"
+  | "url_zip"
+  | "registry"
+  | "upload";
 
 /** One row of the Hub: a skill or a published plugin, seen through one shape. */
 export interface HubItem {
@@ -37,6 +40,13 @@ export interface HubFilters {
 }
 
 export const EMPTY_HUB_FILTERS: HubFilters = { query: "", kinds: [], sources: [] };
+
+const KNOWN_SOURCE_TYPES = new Set<string>(["github", "skills_sh", "clawhub", "url_zip", "registry", "upload"]);
+
+/** A source type from the server that this client does not know is shown as manual. */
+export function normalizeHubSourceType(value: string): HubSourceType {
+  return KNOWN_SOURCE_TYPES.has(value) ? (value as HubSourceType) : "manual";
+}
 
 const KNOWN_SKILL_ORIGINS = new Set<string>(["runtime_local", "clawhub", "skills_sh", "github"]);
 
