@@ -532,6 +532,16 @@ The three WeKnora images are pinned to `v0.9.0` through `KNOWLEDGE_VERSION`; nev
 
 See [Advanced Configuration](SELF_HOSTING_ADVANCED.md#company-knowledge-base) for every variable.
 
+## Skill / Plugin Hub Storage
+
+The self-host compose file runs SeaweedFS (S3-compatible, Apache-2.0). The Hub keeps its immutable bundles there, in the bucket `HUB_S3_BUCKET` (default `multica-hub`). The bucket is separate from the attachment bucket, so enabling it does not move attachments. The backend creates the bucket at startup if it is missing.
+
+Set `HUB_S3_SECRET_KEY` before the first start. The compose file refuses to start without it; generate one with `openssl rand -hex 24`. The backend and SeaweedFS read the same value.
+
+Plugin files used at runtime stay in Postgres. The bucket holds only bundles and staged import previews.
+
+The runbook covers backups of the SeaweedFS volume, the lifecycle rule for staged previews, credential rotation and moving to another S3 endpoint: [Hub object storage](docs/engineering/runbooks/hub-object-storage.md).
+
 ## Stopping Services
 
 If you installed via the install script:

@@ -99,11 +99,12 @@ Core / views / apps
 - Exit: update-available badge, diff, apply or fork all work end to end.
 
 ## Phase 6 — Hardening, permissions, docs, release (2–3 days)
-- [ ] Permissions matrix tests (member view, editor edit, admin manage), audit/activity log.
-- [ ] Quotas (storage bytes, item count) with clear errors.
-- [ ] Export bundle / export all.
-- [ ] a11y pass on tree and editor (`accessibility-scan`), keyboard navigation.
-- [ ] Fumadocs pages (en + zh) for Hub and object-storage setup; whats-new entry.
+- [x] Activity log: server `GET /api/hub/activity`; Activity tab on each item and a workspace Activity tab on the Hub.
+- [ ] Permissions matrix tests (member view, editor edit, admin manage). Server tests exist in `hub_permissions_test.go`; matrix coverage was not reviewed in this pass.
+- [ ] Quotas (storage bytes, item count) with clear errors. Limits are enforced server-side (`HUB_MAX_ITEMS_PER_WORKSPACE`, `HUB_MAX_STORAGE_BYTES_PER_WORKSPACE`) and the Hub shows a usage meter. Not done: the `quota_exceeded` error is not yet shown in the add, sync, or update flows.
+- [x] Export bundle / export all: per-item "Download bundle" and admin-only "Export all" on the Hub.
+- [ ] a11y pass on tree and editor (`accessibility-scan`), keyboard navigation. Done: the file tree is an ARIA tree with arrow, Home/End, and Enter keys, a roving tab stop, and labelled editor and preview regions. Not done: `accessibility-scan` was not run (no dev server in this pass), and dialog focus return was not checked.
+- [x] Fumadocs pages (en + zh) for Hub and object-storage setup (`hub`, `hub-object-storage`); whats-new entry for the Hub (version 0.8.2 is unconfirmed; hidden until a server at that version connects).
 - [ ] Full `make check`, Playwright suite, remove `hub_v1` flag after soak.
 
 ## Risks and mitigations
