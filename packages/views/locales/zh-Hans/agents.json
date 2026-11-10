@@ -367,7 +367,7 @@
     },
     "live_draft": "智能体配置",
     "live_draft_hint": "可直接修改草稿。",
-    "duplicate_env_notice": "指令、skill 和命令行参数会被复制。环境变量、MCP 服务器和本机运行时配置不会复制。",
+    "duplicate_env_notice": "指令、skill、命令行参数、环境变量和 MCP 服务器会被复制。本机运行时配置不会复制。",
     "duplicate_runtime_reset_notice": "原运行时当前不可用，副本已改用其他运行时。模型、思考等级和速度只在所选运行时上有效，因此已被清空。",
     "create_agent": "创建智能体",
     "create_and_add": "创建并加入小队",

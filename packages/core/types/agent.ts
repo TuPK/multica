@@ -700,6 +700,11 @@ export interface CreateAgentRequest {
   runtime_config?: Record<string, unknown>;
   custom_env?: Record<string, string>;
   custom_args?: string[];
+  /**
+   * Copies custom_env and mcp_config from this agent on the server, so the
+   * values never reach the client. A field sent in the same request wins.
+   */
+  copy_secrets_from_agent_id?: string;
   visibility?: AgentVisibility;
   /**
    * Invocation permission mode (MUL-3963). When present it is authoritative;

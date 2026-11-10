@@ -148,10 +148,14 @@ func TestAgentCopySameRuntimeCopiesPortableFields(t *testing.T) {
 	if !reflect.DeepEqual(gotBody["skill_ids"], []any{"skill-1", "skill-2"}) {
 		t.Errorf("skill_ids = %v, want [skill-1 skill-2]", gotBody["skill_ids"])
 	}
-	// Secrets / machine-local config must never be copied.
+	// The server copies env and MCP config from the source; the CLI never
+	// carries their values. runtime_config is machine-local and never copied.
+	if gotBody["copy_secrets_from_agent_id"] != "agent-src" {
+		t.Errorf("copy_secrets_from_agent_id = %v, want agent-src", gotBody["copy_secrets_from_agent_id"])
+	}
 	for _, k := range []string{"custom_env", "mcp_config", "runtime_config", "has_custom_env"} {
 		if _, ok := gotBody[k]; ok {
-			t.Errorf("body must not contain %q, got %v", k, gotBody[k])
+			t.Errorf("body must not contain %q without an explicit flag, got %v", k, gotBody[k])
 		}
 	}
 }
@@ -333,8 +337,8 @@ func TestAgentCopyPermissionOverrideReplacesSource(t *testing.T) {
 	}
 }
 
-// custom_env is never read from the source, but an explicit --custom-env sets a
-// fresh map on the copy.
+// An explicit --custom-env is sent in the copy request, so it replaces the env
+// the server would copy from the source.
 func TestAgentCopyAcceptsExplicitCustomEnv(t *testing.T) {
 	var gotBody map[string]any
 	srv := copyMockServer(t, fullSourceAgent(), &gotBody)

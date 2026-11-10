@@ -202,6 +202,27 @@ describe("agent draft execution overrides", () => {
     expect(request.thinking_level).toBe("high");
   });
 
+  it("asks the server to copy the source's env and MCP config", () => {
+    const request = buildCreateAgentRequest({
+      draft: draft(),
+      runtimeId: "runtime-1",
+      duplicateSource: sourceAgent(),
+    });
+
+    expect(request.copy_secrets_from_agent_id).toBe(sourceAgent().id);
+    expect(request).not.toHaveProperty("custom_env");
+    expect(request).not.toHaveProperty("mcp_config");
+  });
+
+  it("sends no secret copy request outside a duplicate", () => {
+    const request = buildCreateAgentRequest({
+      draft: draft(),
+      runtimeId: "runtime-1",
+    });
+
+    expect(request).not.toHaveProperty("copy_secrets_from_agent_id");
+  });
+
   it.each([0, -1, 51])(
     "omits an invalid historical duplicate concurrency of %i",
     (maxConcurrentTasks) => {

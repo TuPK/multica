@@ -367,7 +367,7 @@
     },
     "live_draft": "AI 代理配置",
     "live_draft_hint": "可直接修改草稿。",
-    "duplicate_env_notice": "指令、skill 和命令列引數會被複制。環境變數、MCP 伺服器和本機執行時配置不會複製。",
+    "duplicate_env_notice": "指令、skill、命令列引數、環境變數和 MCP 伺服器會被複製。本機執行時配置不會複製。",
     "duplicate_runtime_reset_notice": "原執行時當前不可用，副本已改用其他執行時。模型、思考等級和速度只在所選執行時上有效，因此已被清空。",
     "create_agent": "建立 AI 代理",
     "create_and_add": "建立並加入小隊",

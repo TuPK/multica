@@ -32,6 +32,9 @@ const envSentinel = "****"
 const (
 	agentEnvActivityRevealed = "agent_env_revealed"
 	agentEnvActivityUpdated  = "agent_env_updated"
+	// agentSecretsActivityCopied records a server-side copy of custom_env and
+	// mcp_config from one agent into a new one. Keys and flags only, no values.
+	agentSecretsActivityCopied = "agent_secrets_copied"
 )
 
 // AgentEnvResponse is the wire shape for the dedicated env-management

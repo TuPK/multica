@@ -264,6 +264,8 @@ export function buildCreateAgentRequest(options: {
     template,
   };
   if (duplicateSource) {
+    // Secrets are copied on the server; the client never holds their values.
+    request.copy_secrets_from_agent_id = duplicateSource.id;
     if (!qoder && duplicateSource.custom_args.length > 0) {
       request.custom_args = duplicateSource.custom_args;
     }

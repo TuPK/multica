@@ -196,7 +196,7 @@ multica agent mcp add <agent-id> <server-id>
 
 ## Duplicating an agent
 
-Duplicating carries over most working configuration except the name, including instructions, conversation starters, skills, custom arguments, avatar, concurrency limit, and Access settings. The model, thinking level, and service tier come along too; if the original runtime is unavailable and the copy is forced onto another runtime, those three are cleared and must be re-selected.
+Duplicating carries over most working configuration except the name, including instructions, conversation starters, skills, custom arguments, avatar, concurrency limit, Access settings, environment variables, and MCP servers. The server copies the secret values directly, so they never reach your browser. The model, thinking level, and service tier come along too; if the original runtime is unavailable and the copy is forced onto another runtime, those three are cleared and must be re-selected.
 
 Environment variable values, MCP configuration, and workspace MCP server assignments are never copied and must be set again on the new agent.
 
@@ -219,7 +219,7 @@ When a similarly configured agent already exists, copy it directly:
 multica agent copy <agent-id>
 ```
 
-By default the copy stays on the same runtime; add `--runtime-id` to move it to another runtime, which also requires `--model`. Environment variables, MCP configuration, and `runtime_config` are never copied; the runtime binding itself is kept. Full flags in [Using the CLI](/cli).
+By default the copy stays on the same runtime; add `--runtime-id` to move it to another runtime, which also requires `--model`. Environment variables and MCP configuration are copied on the server, so the values never pass through the CLI. `runtime_config` is machine-local and is never copied. A value given with `--custom-env` or `--mcp-config` replaces the copied one. MCP configuration is not copied when the workspace always redacts it. The runtime binding itself is kept. Full flags in [Using the CLI](/cli).
 
 ## Next steps
 

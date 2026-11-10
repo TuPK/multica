@@ -379,7 +379,7 @@
     },
     "live_draft": "Configuration de l'agent",
     "live_draft_hint": "Vous pouvez modifier le brouillon directement.",
-    "duplicate_env_notice": "Les instructions, les skills et les arguments de commande sont copiés. Les variables d'environnement, les serveurs MCP et la configuration de runtime locale à la machine ne le sont pas.",
+    "duplicate_env_notice": "Les instructions, les skills, les arguments de commande, les variables d'environnement et les serveurs MCP sont copiés. La configuration de runtime locale à la machine ne l'est pas.",
     "duplicate_runtime_reset_notice": "Le runtime d'origine est indisponible : cette copie s'exécute donc sur un autre. Le modèle, le niveau de réflexion et la vitesse ont été effacés car ils ne valent que pour le runtime sur lequel ils ont été choisis.",
     "create_agent": "Créer l'agent",
     "create_and_add": "Créer et ajouter au squad",

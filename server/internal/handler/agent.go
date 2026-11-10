@@ -29,6 +29,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/util"
 	"github.com/multica-ai/multica/server/pkg/agent"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/multica-ai/multica/server/pkg/dbid"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 	"github.com/multica-ai/multica/server/pkg/remotemcp"
 )
@@ -1407,7 +1408,13 @@ type CreateAgentRequest struct {
 	CustomEnv            map[string]string          `json:"custom_env"`
 	CustomArgs           []string                   `json:"custom_args"`
 	McpConfig            json.RawMessage            `json:"mcp_config"`
-	Visibility           string                     `json:"visibility"`
+	// CopySecretsFromAgentID names an agent whose custom_env and mcp_config the
+	// new agent takes over. The copy happens on the server, so the values never
+	// reach the client. A field the request sends itself wins over the source.
+	// The caller must be able to manage the source (the rule that reveals its
+	// env), and agent actors are refused.
+	CopySecretsFromAgentID *string `json:"copy_secrets_from_agent_id"`
+	Visibility             string  `json:"visibility"`
 	// PermissionMode + InvocationTargets are the new invocation-permission
 	// inputs (MUL-3963). When permission_mode is present it is authoritative
 	// and Visibility is ignored; when absent, legacy Visibility is mapped
@@ -1635,6 +1642,8 @@ func (h *Handler) CreateAgent(w http.ResponseWriter, r *http.Request) {
 	if req.CustomEnv == nil {
 		ce = []byte("{}")
 	}
+	_, sendsCustomEnv := rawFields["custom_env"]
+	_, sendsMcpConfig := rawFields["mcp_config"]
 
 	ca, _ := json.Marshal(req.CustomArgs)
 	if req.CustomArgs == nil {
@@ -1646,6 +1655,59 @@ func (h *Handler) CreateAgent(w http.ResponseWriter, r *http.Request) {
 	var mc []byte
 	if rawMcpConfig, ok := rawFields["mcp_config"]; ok && !bytes.Equal(bytes.TrimSpace(rawMcpConfig), []byte("null")) {
 		mc = append([]byte(nil), rawMcpConfig...)
+	}
+
+	// Secrets to copy from the source agent, resolved before the transaction
+	// so a refused copy never creates the agent. Nil means nothing to copy.
+	var secretsSource *db.Agent
+	var copiedEnvKeys []string
+	if req.CopySecretsFromAgentID != nil {
+		if actorType, _ := h.resolveActor(r, ownerID, workspaceID); actorType == "agent" {
+			writeError(w, http.StatusForbidden, "agents may not copy another agent's secrets")
+			return
+		}
+		srcUUID, ok := parseUUIDOrBadRequest(w, *req.CopySecretsFromAgentID, "copy_secrets_from_agent_id")
+		if !ok {
+			return
+		}
+		source, err := h.Queries.GetAgentInWorkspace(r.Context(), db.GetAgentInWorkspaceParams{
+			ID:          srcUUID,
+			WorkspaceID: wsUUID,
+		})
+		if err != nil {
+			writeError(w, http.StatusNotFound, "source agent not found")
+			return
+		}
+		if !canManageAgentEnv(source, member) {
+			writeError(w, http.StatusForbidden, "only the source agent's owner or a workspace owner/admin can copy its secrets")
+			return
+		}
+		secretsSource = &source
+		if !sendsCustomEnv {
+			copiedEnvKeys = sortedKeys(unmarshalCustomEnv(source))
+			if len(source.CustomEnv) > 0 {
+				ce = append([]byte(nil), source.CustomEnv...)
+			}
+		}
+		if !sendsMcpConfig {
+			// mcp_config follows the workspace's always-redact policy, so a copy
+			// is only made where a reader could see the value unredacted.
+			ws, err := h.Queries.GetWorkspace(r.Context(), wsUUID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "failed to load workspace")
+				return
+			}
+			if !workspaceAlwaysRedactSecrets(ws.Settings) && len(source.McpConfig) > 0 {
+				mc = append([]byte(nil), source.McpConfig...)
+			}
+		}
+		if runtime.Provider == "qoder_cloud" {
+			overrides := qoderOverrides{customEnv: len(copiedEnvKeys), mcpConfig: mc}
+			if err := overrides.validate(); err != nil {
+				writeError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+		}
 	}
 
 	// composio_toolkit_allowlist: the JSON field is a list-of-slugs that gets
@@ -1740,6 +1802,27 @@ func (h *Handler) CreateAgent(w http.ResponseWriter, r *http.Request) {
 		slog.Warn("create agent failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
 		writeError(w, http.StatusInternalServerError, "failed to create agent")
 		return
+	}
+	if secretsSource != nil {
+		details, _ := json.Marshal(map[string]any{
+			"source_agent_id":   uuidToString(secretsSource.ID),
+			"agent_id":          uuidToString(created.ID),
+			"copied_env_keys":   copiedEnvKeys,
+			"mcp_config_copied": len(mc) > 0 && !sendsMcpConfig,
+		})
+		// Fail closed like the env reveal: a copy of secrets without its audit
+		// row is not allowed to commit.
+		if _, err := qtx.CreateActivity(r.Context(), db.CreateActivityParams{
+			ID:          dbid.NewV7(),
+			WorkspaceID: wsUUID,
+			ActorType:   pgtype.Text{String: "member", Valid: true},
+			ActorID:     parseUUID(ownerID),
+			Action:      agentSecretsActivityCopied,
+			Details:     details,
+		}); err != nil {
+			writeError(w, http.StatusInternalServerError, "audit log write failed; refusing to copy secrets without a recorded copy")
+			return
+		}
 	}
 	if req.Instructions != "" {
 		if _, err := service.WriteAgentInstructionRevision(r.Context(), qtx, wsUUID, created.ID, req.Instructions, service.InstructionChange{

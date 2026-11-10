@@ -379,7 +379,7 @@
     },
     "live_draft": "Agent configuration",
     "live_draft_hint": "You can edit the draft directly.",
-    "duplicate_env_notice": "Instructions, skills and command arguments are copied. Environment variables, MCP servers and machine-local runtime config are not.",
+    "duplicate_env_notice": "Instructions, skills, command arguments, environment variables and MCP servers are copied. Machine-local runtime config is not.",
     "duplicate_runtime_reset_notice": "The original runtime is unavailable, so this copy runs on another one. Model, thinking level and speed were cleared because they only apply to the runtime they were chosen on.",
     "create_agent": "Create agent",
     "create_and_add": "Create & add to squad",

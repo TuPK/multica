@@ -379,7 +379,7 @@
     },
     "live_draft": "Configuración del agente",
     "live_draft_hint": "Puedes editar el borrador directamente.",
-    "duplicate_env_notice": "Se copian las instrucciones, las skills y los argumentos de comando. Las variables de entorno, los servidores MCP y la config de runtime local de la máquina no.",
+    "duplicate_env_notice": "Se copian las instrucciones, las skills, los argumentos de comando, las variables de entorno y los servidores MCP. La config de runtime local de la máquina no.",
     "duplicate_runtime_reset_notice": "El runtime original no está disponible, así que esta copia se ejecuta en otro. El modelo, el nivel de razonamiento y la velocidad se limpiaron porque solo se aplican al runtime en el que se eligieron.",
     "create_agent": "Crear agente",
     "create_and_add": "Crear y añadir al squad",

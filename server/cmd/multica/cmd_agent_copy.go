@@ -36,9 +36,13 @@ invocation permission (permission_mode + allow-list), assigned workspace skills,
 and — only when the target runtime is unchanged — model, thinking_level and
 service_tier.
 
-Secret and machine-local fields are never copied: custom_env, mcp_config and
-runtime_config. Supply fresh values for the copy with the same secret-safe flags
-as 'agent create' when the target machine needs them.
+custom_env and mcp_config are copied on the server, so the values never pass
+through the CLI. A value given with --custom-env or --mcp-config replaces the
+copied one. mcp_config is not copied when the workspace always-redacts it. The
+source's caller must be able to manage the source agent.
+
+runtime_config is machine-local and never copied: supply it with --runtime-config
+when the target machine needs it.
 
 Runtime-specific fields do not travel across a runtime change: when --runtime-id
 selects a different runtime, --model is required (pass --model "" to accept the
@@ -72,20 +76,21 @@ func registerAgentCopyFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("no-skills", false, "Do not copy the source agent's workspace skill assignments.")
 	// Secret / machine-local fields are never copied from the source; these
 	// flags provide fresh values for the copy, mirroring 'agent create'.
-	cmd.Flags().String("custom-env", "", "Set custom_env on the copy as a JSON object (never copied from the source). Prefer --custom-env-stdin/--custom-env-file for secrets. Pass '{}' for an empty map.")
+	cmd.Flags().String("custom-env", "", "Set custom_env on the copy as a JSON object, replacing the copied one. Prefer --custom-env-stdin/--custom-env-file for secrets. Pass '{}' for an empty map.")
 	cmd.Flags().Bool("custom-env-stdin", false, "Read --custom-env from stdin. Mutually exclusive with --custom-env and --custom-env-file.")
 	cmd.Flags().String("custom-env-file", "", "Read --custom-env from a file path (suggested mode: 0600). Mutually exclusive with --custom-env and --custom-env-stdin.")
-	cmd.Flags().String("mcp-config", "", "Set mcp_config on the copy as a JSON object (never copied from the source). Prefer --mcp-config-stdin/--mcp-config-file for secrets.")
+	cmd.Flags().String("mcp-config", "", "Set mcp_config on the copy as a JSON object, replacing the copied one. Prefer --mcp-config-stdin/--mcp-config-file for secrets.")
 	cmd.Flags().Bool("mcp-config-stdin", false, "Read --mcp-config from stdin. Mutually exclusive with --mcp-config and --mcp-config-file.")
 	cmd.Flags().String("mcp-config-file", "", "Read --mcp-config from a file path (suggested mode: 0600). Mutually exclusive with --mcp-config and --mcp-config-stdin.")
-	cmd.Flags().String("runtime-config", "", "Set runtime_config on the copy as a JSON string (never copied from the source).")
+	cmd.Flags().String("runtime-config", "", "Set runtime_config on the copy as a JSON string (machine-local, never copied from the source).")
 	cmd.Flags().String("output", "json", "Output format: table or json")
 }
 
 // runAgentCopy reads the source agent and assembles a create request from its
-// portable fields, then POSTs it. custom_env, mcp_config and runtime_config are
-// never read back from the source — GET redacts / masks them anyway — and are
-// set only when supplied explicitly on the command line.
+// portable fields, then POSTs it. custom_env and mcp_config are not read back
+// here: the server copies them from copy_secrets_from_agent_id, unless the
+// request sets the field itself. runtime_config is set only from the command
+// line.
 func runAgentCopy(cmd *cobra.Command, args []string) error {
 	var maxConcurrentTasksOverride *int32
 	if cmd.Flags().Changed("max-concurrent-tasks") {
@@ -258,9 +263,9 @@ func runAgentCopy(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Secret / machine-local fields are never copied from the source (they are
-	// redacted or masked on GET). Set them only when supplied explicitly, via
-	// the same secret-safe channels as 'agent create'.
+	// The server copies custom_env and mcp_config from the source. A value
+	// supplied here is sent in the same request, so it replaces the copy.
+	body["copy_secrets_from_agent_id"] = args[0]
 	if ce, ok, err := resolveCustomEnv(cmd); err != nil {
 		return err
 	} else if ok {
