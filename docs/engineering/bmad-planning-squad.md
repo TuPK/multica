@@ -36,7 +36,12 @@ a planning squad" trong skill.
 - Server kiểm gói bàn giao theo chuỗi cố định (`## Planning handoff` và `Readiness verdict: PASS`) cho lần lead hỏi; nút bấm tay của
   boss không cần gói.
 
-Chưa làm: đóng vòng (4.7, comment ngược khi request đích xong), diễn tập với agent thật (mục 7).
+- Việc tạo request đích chạy dưới khoá advisory theo dòng handoff: hai người duyệt cùng lúc (hoặc lead hỏi lúc boss duyệt) chỉ tạo một
+  request. Nếu lần trước tạo được request nhưng ghi trạng thái lỗi, lần sau tìm lại theo origin và nhận lại request đó, không tạo bản thứ hai.
+- Đóng vòng (4.7) đã làm: khi request đích xong hoặc bị huỷ, server để một comment hệ thống trên request nguồn
+  (`SquadHandoffService.CloseLoop`, listener `registerSquadHandoffListeners`). Comment hệ thống không đánh thức ai.
+
+Chưa làm: diễn tập với agent thật (mục 7).
 
 ## 1. Tóm tắt
 
@@ -362,10 +367,10 @@ của bạn: nó giao issue khởi động cho **developer**, không phải SDLC
 cầu ad hoc kiểu "bổ sung tính năng X" không đi qua một initiative. Hai cơ chế cùng tồn tại được: bước Plan của initiative
 có thể có chủ là squad BMAD Planning, và lúc đó handoff của initiative vẫn do pipeline lo, rule chỉ áp cho yêu cầu ad hoc.
 
-### 4.7 Đóng vòng (tuỳ chọn, giai đoạn sau)
+### 4.7 Đóng vòng (đã làm)
 
-Khi request đích xong, comment ngược lên request nguồn ("Delivered: <kết quả>, bằng chứng") để người xem một chỗ thấy cả
-đường đi. Không bắt buộc cho bản đầu.
+Khi request đích xong hoặc bị huỷ, server comment hệ thống lên request nguồn ("The build request <link> is done / was cancelled")
+để người xem một chỗ thấy cả đường đi. Comment chỉ gắn link và trạng thái; kết quả và bằng chứng nằm ở request đích.
 
 ## 5. Thay đổi theo thành phần
 
