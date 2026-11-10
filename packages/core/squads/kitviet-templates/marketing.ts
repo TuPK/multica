@@ -105,7 +105,7 @@ export const KV_MARKETING_TEMPLATE: SquadTemplate = {
   id: "kv_marketing",
   name: squad.name,
   description:
-    "Drafts campaign content and ad copy, and checks every claim against the Marketing regulation register before a person publishes. Posts and runs nothing.",
+    "Drafts campaign content and ad copy from Growth & GTM briefs, and checks every claim against the Marketing regulation register before a person publishes. Posts and runs nothing.",
   roles: [...MARKETING_ROLE_KEYS],
   leader: "mkt_lead",
   floorName: "Launch",

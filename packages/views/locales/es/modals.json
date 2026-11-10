@@ -300,7 +300,7 @@
       },
       "kv_marketing": {
         "name": "Marketing Studio (Marketing)",
-        "description": "Redacta el contenido de las campañas y los textos publicitarios, y verifica cada afirmación antes de que una persona publique. No publica ni ejecuta nada."
+        "description": "Redacta el contenido de las campañas y los textos publicitarios a partir de los briefs de Growth & GTM, y verifica cada afirmación antes de que una persona publique. No publica ni ejecuta nada."
       },
       "kv_legal": {
         "name": "Legal & Contracts (Pháp lý)",
@@ -308,7 +308,7 @@
       },
       "kv_accounting": {
         "name": "Accounting & Tax (Kế toán, thuế)",
-        "description": "Conciliaciones de cierre mensual y cifras de IVA e impuesto sobre la renta, calculadas con script. No presenta nada; necesita Bash y Python en el runtime."
+        "description": "Cubre tờ khai, hóa đơn, công nợ y khóa sổ, con cifras calculadas por script. No presenta nada; necesita Bash y Python en el runtime."
       },
       "sales_loop": {
         "name": "Ciclo de ventas",

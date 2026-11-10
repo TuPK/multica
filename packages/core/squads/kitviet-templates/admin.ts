@@ -82,7 +82,7 @@ export const KV_ADMIN_TEMPLATE: SquadTemplate = {
     ],
     outputs: [
       { key: "drafts", kind: "issue", cadenceHint: "per request" },
-      { key: "register", kind: "kb_document", cadenceHint: "monthly" },
+      { key: "register", kind: "issue", cadenceHint: "per signed document" },
     ],
     boundaries: `Does not assign document numbers to unsigned documents, sign, stamp or issue. ${CHARTER_SHARED_BOUNDARY}`,
     escalation: "Signer or purpose missing: block the issue and mention the requester.",

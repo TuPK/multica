@@ -298,7 +298,7 @@
       },
       "kv_marketing": {
         "name": "Marketing Studio (Marketing)",
-        "description": "캠페인 콘텐츠와 광고 문구를 작성하고, 사람이 게시하기 전에 모든 주장을 검증합니다. 게시하거나 광고를 집행하지 않습니다."
+        "description": "Growth & GTM의 브리프를 바탕으로 캠페인 콘텐츠와 광고 문구를 작성하고, 사람이 게시하기 전에 모든 주장을 검증합니다. 게시하거나 광고를 집행하지 않습니다."
       },
       "kv_legal": {
         "name": "Legal & Contracts (Pháp lý)",
@@ -306,7 +306,7 @@
       },
       "kv_accounting": {
         "name": "Accounting & Tax (Kế toán, thuế)",
-        "description": "월말 결산 대사와 부가가치세·소득세 수치를 스크립트로 계산합니다. 신고나 제출은 하지 않으며, 런타임에 Bash와 Python이 필요합니다."
+        "description": "tờ khai, hóa đơn, công nợ, khóa sổ 등을 다루며, 수치는 스크립트로 계산합니다. 신고나 제출은 하지 않으며, 런타임에 Bash와 Python이 필요합니다."
       },
       "sales_loop": {
         "name": "영업 루프",

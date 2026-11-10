@@ -131,7 +131,7 @@ export const KV_ACCOUNTING_TEMPLATE: SquadTemplate = {
   id: "kv_accounting",
   name: "Accounting & Tax (Kế toán, thuế)",
   description:
-    "Month-end reconciliations, VAT and income tax figures, and tax letters. Computes by script and files nothing; needs Bash and Python on the runtime.",
+    "Covers tờ khai, hóa đơn, công nợ and khóa sổ, with figures computed by script. Files nothing; needs Bash and Python on the runtime.",
   roles: [...ROLE_ORDER],
   leader: "acct_lead",
   floorName: "Governance",

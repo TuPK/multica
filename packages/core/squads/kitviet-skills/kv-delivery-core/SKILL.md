@@ -68,6 +68,7 @@ Stop only for these three. Everywhere else, take the recommended default, write 
 ## Files and knowledge base
 
 - Drafts and handovers you write are attachments of your comment, or a document filed with `multica knowledge add --kind <kind> --title "..." --file <file> --confidence <low|medium|high> --valid-until <YYYY-MM-DD>`. Everything you file is a draft. A person publishes it with `multica knowledge publish <id>`.
+- The server refuses a filing that lacks its kind's headings. A `reference` document (Hồ sơ đơn vị, Sổ quy định) starts with `## Summary`. A `playbook` (Cẩm nang giọng thương hiệu) has `## Purpose` and `## Steps`. Use the headings exactly as written, and keep each one as a line of its own.
 - Do not name files with numbers (`01-...md`) or keep folders such as `ket-qua/` or `.kv-run/`. Those belonged to the old single-session workflow. Use the issue protocol above.
 - Lead, gates and drafters never publish or discard knowledge documents.
 

@@ -298,7 +298,7 @@
       },
       "kv_marketing": {
         "name": "Marketing Studio (Marketing)",
-        "description": "起草活动内容和广告文案，并在人员发布前核查每一项宣称。不发布，也不投放广告。"
+        "description": "根据 Growth & GTM 的简报起草活动内容和广告文案，并在人员发布前核查每一项宣称。不发布，也不投放广告。"
       },
       "kv_legal": {
         "name": "Legal & Contracts (Pháp lý)",
@@ -306,7 +306,7 @@
       },
       "kv_accounting": {
         "name": "Accounting & Tax (Kế toán, thuế)",
-        "description": "用脚本计算月末对账以及增值税、所得税数字。不申报，也不提交任何文件；运行时需要 Bash 和 Python。"
+        "description": "涵盖 tờ khai、hóa đơn、công nợ、khóa sổ，数字由脚本计算。不申报，也不提交任何文件；运行时需要 Bash 和 Python。"
       },
       "sales_loop": {
         "name": "销售循环",

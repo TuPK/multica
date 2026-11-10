@@ -43,19 +43,29 @@ Put each section under its own heading so a squad reads only its own part.
 
 File the draft with `multica knowledge add --kind reference --title "Hồ sơ đơn vị" --file <file> --confidence <low|medium|high> --valid-until <YYYY-MM-DD>`. Use `low` when any field is still `[cần bổ sung]`, `medium` when only minor fields are missing, and `high` when every field is sourced. The `--valid-until` date is one year after today's date from the request. You never publish. The company owner or an admin publishes it with `multica knowledge publish <id>`.
 
-## Output template (Vietnamese)
+## Document template (Vietnamese)
+
+The filed profile is a `reference` document. The server refuses a `reference` filing without a `## Summary` heading, so the file starts with it. The same headings are your report to the lead.
 
 ```
-Hồ sơ đơn vị · bản nháp
-Mã tài liệu: <id>
-Độ tin cậy: <low | medium | high>
-Đã điền: <count> trường; còn [cần bổ sung]: <count>
-Cần bạn xác nhận trước khi đăng:
+## Summary
+Hồ sơ đơn vị · bản nháp <dd/mm/yyyy>
+Độ tin cậy: <low | medium | high>. Đã điền: <count> trường; còn [cần bổ sung]: <count>.
+
+## Cần bạn xác nhận trước khi đăng
 - <each field marked [cần bổ sung] or chosen from a set of options, one line each>
-Không lưu: <fields left out as sensitive, or "không có">
-Nguồn: <attachment names and knowledge ids used>
-Chưa xác minh: <facts you could not check against a source>
+
+## Không lưu
+<fields left out as sensitive, or "không có">
+
+## Nguồn
+<attachment names and knowledge ids used>
+
+## Chưa xác minh
+<facts you could not check against a source>
 ```
+
+The profile's own sections (Đơn vị, Vai trò và người nhận, and the rest) follow the Summary, in the order of "What the profile holds".
 
 ## Limits
 
