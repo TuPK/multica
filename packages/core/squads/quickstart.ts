@@ -99,6 +99,12 @@ export interface SquadQuickstartClient {
   createKnowledgeDocument(data: CreateKnowledgeDocumentRequest): Promise<KnowledgeDocument>;
 }
 
+/** The calls that import built-in skills and attach them to a squad; the Kit Viet extension attach uses these alone. */
+export type BuiltinSkillsClient = Pick<
+  SquadQuickstartClient,
+  "listSkills" | "getSkill" | "createSkill" | "updateSkill" | "listSquadSkills" | "setSquadSkills"
+>;
+
 export type QuickstartAgentStatus = "created" | "reused" | "failed";
 
 export interface QuickstartAgentOutcome {
@@ -530,7 +536,7 @@ function sameAsBuiltin(skill: Skill, bundle: BuiltinSkill): boolean {
  * left as it is and named in the failures. `pack` is the Kit Viet pack of the squad, if any.
  */
 async function importBuiltinSkills(
-  client: SquadQuickstartClient,
+  client: BuiltinSkillsClient,
   names: readonly string[],
   pack: string | undefined,
 ): Promise<{ ids: Map<string, string>; failures: string[] }> {
@@ -591,7 +597,7 @@ async function importBuiltinSkills(
  * left as it is and named in the error; the squad keeps the others.
  */
 export async function attachBuiltinSkills(
-  client: SquadQuickstartClient,
+  client: BuiltinSkillsClient,
   squadId: string,
   names: readonly string[],
   pack: string | undefined,
