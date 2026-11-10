@@ -1,10 +1,13 @@
 import { z } from "zod";
+import { KnowledgeDocumentSchema } from "./schemas";
 import type {
   KnowledgeEvalCase,
   KnowledgeEvalCases,
   KnowledgeEvalRun,
   KnowledgeEvalRuns,
   KnowledgeHealth,
+  KindField,
+  KnowledgeCollection,
   KnowledgeKind,
   KnowledgeKinds,
   KnowledgePublishMode,
@@ -41,6 +44,27 @@ const EvalStateSchema = z
     (KNOWN_EVAL_STATES as readonly string[]).includes(s) ? (s as "ready" | "offline") : "unknown",
   );
 
+const KNOWN_FIELD_TYPES = ["text", "select", "number", "date", "bool", "url"] as const;
+
+// A field type this client does not know is "unknown": the value is shown as text.
+const FieldTypeSchema = z
+  .string()
+  .default("unknown")
+  .transform((s): KindField["type"] =>
+    (KNOWN_FIELD_TYPES as readonly string[]).includes(s) ? (s as KindField["type"]) : "unknown",
+  );
+
+export const KindFieldSchema = z
+  .object({
+    key: z.string().default(""),
+    label: z.string().default(""),
+    type: FieldTypeSchema,
+    options: stringList,
+    required: z.boolean().default(false),
+    ordered: z.boolean().default(false),
+  })
+  .loose();
+
 export const KnowledgeKindSchema = z
   .object({
     key: z.string().default(""),
@@ -49,6 +73,24 @@ export const KnowledgeKindSchema = z
     template: z.string().default(""),
     review_days: z.number().default(0),
     required_sections: stringList,
+    fields: z
+      .array(KindFieldSchema)
+      .nullish()
+      .transform((v) => v ?? []),
+  })
+  .loose();
+
+export const KnowledgeCollectionSchema = z
+  .object({
+    kind: z.string().default(""),
+    fields: z
+      .array(KindFieldSchema)
+      .nullish()
+      .transform((v) => v ?? []),
+    documents: z
+      .array(KnowledgeDocumentSchema)
+      .nullish()
+      .transform((v) => v ?? []),
   })
   .loose();
 
@@ -174,6 +216,13 @@ export const FALLBACK_KNOWLEDGE_KIND: KnowledgeKind = {
   template: "",
   review_days: 0,
   required_sections: [],
+  fields: [],
+};
+
+export const FALLBACK_KNOWLEDGE_COLLECTION: KnowledgeCollection = {
+  kind: "",
+  fields: [],
+  documents: [],
 };
 export const FALLBACK_KNOWLEDGE_POLICY: KnowledgePublishPolicy = {
   scope: "",

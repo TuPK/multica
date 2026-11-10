@@ -14,11 +14,12 @@ import { KnowledgeDocuments } from "./knowledge-documents";
 import { KnowledgeSearch } from "./knowledge-search";
 import { KnowledgeUploadPanel } from "./knowledge-upload";
 import { KnowledgeBaseControls } from "./knowledge-setup";
+import { KnowledgeCollections } from "./knowledge-collections";
 import { KnowledgeWikiPanel } from "./knowledge-wiki";
 import { buildKnowledgeTree, isProjectBase } from "./knowledge-tree";
 import { ALL_DOCUMENTS, KnowledgeTreeView, type KnowledgeSelection } from "./knowledge-tree-view";
 
-type BaseTab = "documents" | "wiki" | "add" | "settings";
+type BaseTab = "documents" | "collections" | "wiki" | "add" | "settings";
 
 /**
  * The library on one screen: the tree of bases and folders on the left, and on
@@ -160,12 +161,16 @@ function KnowledgeBasePanel({
       <Tabs value={tab} onValueChange={(value) => setTab(value as BaseTab)}>
         <TabsList variant="line">
           <TabsTrigger value="documents">{t(($) => $.explorer.tabs.documents)}</TabsTrigger>
+          <TabsTrigger value="collections">{t(($) => $.explorer.tabs.collections)}</TabsTrigger>
           <TabsTrigger value="wiki">{t(($) => $.explorer.tabs.wiki)}</TabsTrigger>
           <TabsTrigger value="add">{t(($) => $.explorer.tabs.add)}</TabsTrigger>
           {canManage ? <TabsTrigger value="settings">{t(($) => $.explorer.tabs.settings)}</TabsTrigger> : null}
         </TabsList>
         <TabsContent value="documents" className="pt-4">
           <KnowledgeDocuments wsId={wsId} knowledgeBases={knowledgeBases} scopeKb={base.key} folder={folder} />
+        </TabsContent>
+        <TabsContent value="collections" className="pt-4">
+          <KnowledgeCollections wsId={wsId} base={base} />
         </TabsContent>
         <TabsContent value="wiki" className="pt-4">
           <KnowledgeWikiPanel wsId={wsId} base={base} canManage={canManage} />

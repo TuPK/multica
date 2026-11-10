@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiClient } from "../api/client";
 import { parseWithFallback } from "../api/schema";
 import {
+  KnowledgeCollectionSchema,
+  FALLBACK_KNOWLEDGE_COLLECTION,
   FALLBACK_KNOWLEDGE_EVAL_CASES,
   FALLBACK_KNOWLEDGE_EVAL_RUN,
   FALLBACK_KNOWLEDGE_EVAL_RUNS,
@@ -281,5 +283,26 @@ describe("eval and health client methods", () => {
     await client().deleteKnowledgeEvalCase("case/1");
     expect(String(fetchMock.mock.calls[0]![0])).toBe("http://api.test/api/knowledge/eval-cases/case%2F1");
     expect((fetchMock.mock.calls[0]![1] as RequestInit).method).toBe("DELETE");
+  });
+});
+
+describe("sales collections and kind fields (phase 1)", () => {
+  it("reads a kind's fields, and keeps a field type it cannot read as unknown", () => {
+    const kind = KnowledgeKindSchema.parse({
+      key: "sales_account",
+      fields: [
+        { key: "stage", label: "Stage", type: "select", options: ["new", "won"], ordered: true },
+        { key: "mood", label: "Mood", type: "gradient" },
+      ],
+    });
+    expect(kind.fields[0]).toMatchObject({ key: "stage", type: "select", ordered: true, required: false });
+    expect(kind.fields[1]!.type).toBe("unknown");
+  });
+
+  it("answers a collection with no fields and no documents as empty, not as data", () => {
+    const parsed = KnowledgeCollectionSchema.parse({});
+    expect(parsed.fields).toEqual([]);
+    expect(parsed.documents).toEqual([]);
+    expect(FALLBACK_KNOWLEDGE_COLLECTION.documents).toEqual([]);
   });
 });

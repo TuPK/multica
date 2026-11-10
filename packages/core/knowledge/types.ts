@@ -85,6 +85,8 @@ export interface KnowledgeDocument {
   /** Where the document is filed inside its base: a directory path for a project
    *  file, `INI-<seq>-<slug>` for an initiative's document, empty at the top. */
   folder?: string;
+  /** The typed values of the kind's fields (spec 7.1). */
+  properties?: Record<string, unknown>;
 }
 
 export interface KnowledgeDocumentList {
@@ -128,6 +130,8 @@ export interface CreateKnowledgeDocumentRequest {
   kb: string;
   title: string;
   content?: string;
+  /** The typed values of the kind's fields; the Record section fills the rest. */
+  properties?: Record<string, unknown>;
   url?: string;
   source_type?: string;
   source_id?: string;

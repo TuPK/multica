@@ -416,14 +416,22 @@ import {
   KnowledgeEvalCasesSchema,
   KnowledgeEvalRunSchema,
   KnowledgeEvalRunsSchema,
+  FALLBACK_KNOWLEDGE_COLLECTION,
+  KnowledgeCollectionSchema,
   KnowledgeHealthSchema,
   KnowledgeKindSchema,
   KnowledgeKindsSchema,
   KnowledgePublishPoliciesSchema,
   KnowledgePublishPolicySchema,
 } from "../knowledge/taxonomy";
+import {
+  FALLBACK_SALES_INTAKE,
+  SalesIntakeSchema,
+  type SalesIntake,
+} from "../squads/sales-intake";
 import type {
   CreateKnowledgeEvalCaseRequest,
+  KnowledgeCollection,
   KnowledgeEvalCase,
   KnowledgeEvalCases,
   KnowledgeEvalRun,
@@ -5244,7 +5252,14 @@ export class ApiClient {
     }) as Squad;
   }
 
-  async createSquad(data: { name: string; description?: string; leader_id: string; avatar_url?: string; floor_name?: string }): Promise<Squad> {
+  async createSquad(data: {
+    name: string;
+    description?: string;
+    leader_id: string;
+    avatar_url?: string;
+    floor_name?: string;
+    template_key?: string;
+  }): Promise<Squad> {
     const raw = await this.fetch<unknown>("/api/squads", { method: "POST", body: JSON.stringify(data) });
     return parseWithFallback(raw, SquadSchema, EMPTY_SQUAD, {
       endpoint: "POST /api/squads",
@@ -6367,6 +6382,61 @@ export class ApiClient {
     return parseWithFallback(raw, KnowledgeSearchResultSchema, FALLBACK_KNOWLEDGE_SEARCH, {
       endpoint: "GET /api/knowledge/search",
     });
+  }
+
+  /** Changes some typed properties of a document; a null value clears its key. Content and index are untouched. */
+  async updateKnowledgeProperties(
+    id: string,
+    properties: Record<string, unknown>,
+  ): Promise<KnowledgeDocument> {
+    const raw = await this.fetch<unknown>(`/api/knowledge/documents/${encodeURIComponent(id)}/properties`, {
+      method: "PATCH",
+      body: JSON.stringify({ properties }),
+    });
+    return parseWithFallback(raw, KnowledgeDocumentSchema, FALLBACK_KNOWLEDGE_DOCUMENT, {
+      endpoint: "PATCH /api/knowledge/documents/:id/properties",
+    });
+  }
+
+  /** The Collections view of a kind: its fields and the matching published documents. */
+  async listKnowledgeCollection(params: {
+    kind: string;
+    kb?: string;
+    match?: Record<string, string>;
+    dueKey?: string;
+    dueOn?: string;
+    limit?: number;
+  }): Promise<KnowledgeCollection> {
+    const qs = new URLSearchParams({ kind: params.kind });
+    if (params.kb) qs.set("kb", params.kb);
+    for (const [key, value] of Object.entries(params.match ?? {})) qs.set(`field.${key}`, value);
+    if (params.dueKey && params.dueOn) {
+      qs.set("due_key", params.dueKey);
+      qs.set("due_on", params.dueOn);
+    }
+    if (params.limit) qs.set("limit", String(params.limit));
+    const raw = await this.fetch<unknown>(`/api/knowledge/collections?${qs.toString()}`);
+    return parseWithFallback(raw, KnowledgeCollectionSchema, FALLBACK_KNOWLEDGE_COLLECTION, {
+      endpoint: "GET /api/knowledge/collections",
+    });
+  }
+
+  /** Adds a source to a Sales Loop squad: a knowledge document and a request issue for the squad. */
+  async createSquadSource(squadId: string, body: { input: string; lane?: string }): Promise<SalesIntake> {
+    return this.postSalesIntake(`/api/squads/${encodeURIComponent(squadId)}/sources`, body);
+  }
+
+  /** Adds a shared post to a Sales Loop squad. */
+  async createSquadShare(
+    squadId: string,
+    body: { input: string; text?: string; lane?: string },
+  ): Promise<SalesIntake> {
+    return this.postSalesIntake(`/api/squads/${encodeURIComponent(squadId)}/shares`, body);
+  }
+
+  private async postSalesIntake(path: string, body: unknown): Promise<SalesIntake> {
+    const raw = await this.fetch<unknown>(path, { method: "POST", body: JSON.stringify(body) });
+    return parseWithFallback(raw, SalesIntakeSchema, FALLBACK_SALES_INTAKE, { endpoint: `POST ${path}` });
   }
 
   async createKnowledgeDocument(data: CreateKnowledgeDocumentRequest): Promise<KnowledgeDocument> {

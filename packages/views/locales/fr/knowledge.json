@@ -290,7 +290,8 @@
       "documents": "Documents",
       "wiki": "Wiki",
       "add": "Ajouter des documents",
-      "settings": "Paramètres"
+      "settings": "Paramètres",
+      "collections": "Collections"
     },
     "toggle": "Afficher ou masquer {{name}}"
   },
@@ -324,5 +325,22 @@
       "rendered": "Mis en forme",
       "source": "Markdown"
     }
+  },
+  "collections": {
+    "no_kinds": "Aucun type de cette base n'a encore de champs.",
+    "browse": "Parcourir",
+    "views": {
+      "pipeline": "Pipeline",
+      "needs_you": "À traiter",
+      "due": "Échéances",
+      "lessons": "Leçons",
+      "sources": "Santé des sources"
+    },
+    "kind_label": "Type",
+    "empty": "Aucun document ne correspond à cette vue.",
+    "load_error": "Impossible de charger cette collection. Réessayez.",
+    "title_column": "Titre",
+    "save_error": "Impossible d'enregistrer la modification.",
+    "no_properties": "Ce document n'a pas encore de propriétés."
   }
 }

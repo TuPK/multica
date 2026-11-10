@@ -4,6 +4,7 @@ import { knowledgeKeys } from "./queries";
 import type { KnowledgeDocument } from "./types";
 import type {
   CreateKnowledgeEvalCaseRequest,
+  KnowledgeCollection,
   KnowledgeEvalCase,
   KnowledgeEvalRun,
   KnowledgeKind,
@@ -139,6 +140,47 @@ export function useRunKnowledgeEval(wsId: string) {
     mutationFn: () => api.runKnowledgeEval(),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: knowledgeTaxonomyKeys.evalRuns(wsId) });
+    },
+  });
+}
+
+/** The parameters of a Collections listing: a kind, and the filters a saved view applies. */
+export interface KnowledgeCollectionParams {
+  kind: string;
+  kb?: string;
+  match?: Record<string, string>;
+  dueKey?: string;
+  dueOn?: string;
+  limit?: number;
+}
+
+/** A collection is a filtered listing: the workspace's knowledge prefix, then the kind and filters. */
+export function knowledgeCollectionOptions(wsId: string, params: KnowledgeCollectionParams) {
+  return queryOptions({
+    queryKey: [
+      ...knowledgeKeys.all(wsId),
+      "collection",
+      params.kind,
+      params.kb ?? "",
+      JSON.stringify(params.match ?? {}),
+      params.dueKey ?? "",
+      params.dueOn ?? "",
+      params.limit ?? 0,
+    ] as const,
+    queryFn: (): Promise<KnowledgeCollection> => api.listKnowledgeCollection(params),
+  });
+}
+
+/**
+ * Changes some properties of a document. A value a person sets here is the person's: an agent cannot
+ * move an ordered value back afterwards. Nothing is optimistic: the server answers, then the lists refetch.
+ */
+export function useUpdateKnowledgeProperties(wsId: string) {
+  const qc = useQueryClient();
+  return useMutation<KnowledgeDocument, Error, { id: string; properties: Record<string, unknown> }>({
+    mutationFn: ({ id, properties }) => api.updateKnowledgeProperties(id, properties),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: knowledgeKeys.all(wsId) });
     },
   });
 }

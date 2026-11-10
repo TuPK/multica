@@ -290,7 +290,8 @@
       "documents": "文件",
       "wiki": "Wiki",
       "add": "新增文件",
-      "settings": "設定"
+      "settings": "設定",
+      "collections": "集合"
     },
     "toggle": "展開或收合 {{name}}"
   },
@@ -322,5 +323,22 @@
       "rendered": "渲染",
       "source": "Markdown"
     }
+  },
+  "collections": {
+    "no_kinds": "此知識庫中還沒有帶欄位的類型。",
+    "browse": "瀏覽",
+    "views": {
+      "pipeline": "管道",
+      "needs_you": "待你處理",
+      "due": "到期",
+      "lessons": "經驗",
+      "sources": "來源健康"
+    },
+    "kind_label": "類型",
+    "empty": "還沒有符合此檢視的文件。",
+    "load_error": "無法載入此集合，請重試。",
+    "title_column": "標題",
+    "save_error": "無法儲存此變更。",
+    "no_properties": "此文件還沒有屬性。"
   }
 }

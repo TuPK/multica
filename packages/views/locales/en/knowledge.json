@@ -290,7 +290,8 @@
       "documents": "Documents",
       "wiki": "Wiki",
       "add": "Add documents",
-      "settings": "Settings"
+      "settings": "Settings",
+      "collections": "Collections"
     },
     "toggle": "Show or hide {{name}}"
   },
@@ -324,5 +325,22 @@
       "rendered": "Rendered",
       "source": "Markdown"
     }
+  },
+  "collections": {
+    "no_kinds": "No kind in this base has fields yet.",
+    "browse": "Browse",
+    "views": {
+      "pipeline": "Pipeline",
+      "needs_you": "Needs you",
+      "due": "Due",
+      "lessons": "Lessons",
+      "sources": "Source health"
+    },
+    "kind_label": "Kind",
+    "empty": "No documents match this view yet.",
+    "load_error": "Could not load this collection. Try again.",
+    "title_column": "Title",
+    "save_error": "Could not save the change.",
+    "no_properties": "This document has no properties yet."
   }
 }

@@ -1,10 +1,25 @@
 // Types of the knowledge taxonomy. The schemas in taxonomy.ts parse the server's
 // answers into these; a field the server leaves out takes its default there.
 
+import type { KnowledgeDocument } from "./types";
+
 /** The publish policy of a scope. "unknown" is a mode this client cannot read. */
 export type KnowledgePublishMode = "manual" | "auto_after_review" | "auto" | "unknown";
 
-/** The default mode, and the knowledge kind's freshness and template. */
+/** A field a kind declares. "unknown" is a type this client cannot read: shown as text, never guessed. */
+export type KindFieldType = "text" | "select" | "number" | "date" | "bool" | "url" | "unknown";
+
+export interface KindField {
+  key: string;
+  label: string;
+  type: KindFieldType;
+  options: string[];
+  required: boolean;
+  /** A select whose options run from the first value to the last, such as a pipeline stage. */
+  ordered: boolean;
+}
+
+/** The default mode, and the knowledge kind's freshness, template and fields. */
 export interface KnowledgeKind {
   key: string;
   name: string;
@@ -12,7 +27,17 @@ export interface KnowledgeKind {
   template: string;
   review_days: number;
   required_sections: string[];
+  fields: KindField[];
 }
+
+/** The Collections view of a kind: its fields, and the documents that match, with their properties. */
+export interface KnowledgeCollection {
+  kind: string;
+  fields: KindField[];
+  documents: KnowledgeDocument[];
+}
+
+
 
 export interface KnowledgeKinds {
   kinds: KnowledgeKind[];

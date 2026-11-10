@@ -290,7 +290,8 @@
       "documents": "Documentos",
       "wiki": "Wiki",
       "add": "Añadir documentos",
-      "settings": "Ajustes"
+      "settings": "Ajustes",
+      "collections": "Colecciones"
     },
     "toggle": "Mostrar u ocultar {{name}}"
   },
@@ -324,5 +325,22 @@
       "rendered": "Renderizada",
       "source": "Markdown"
     }
+  },
+  "collections": {
+    "no_kinds": "Ningún tipo de esta base tiene campos todavía.",
+    "browse": "Explorar",
+    "views": {
+      "pipeline": "Embudo",
+      "needs_you": "Pendiente de ti",
+      "due": "Vencidos",
+      "lessons": "Lecciones",
+      "sources": "Salud de fuentes"
+    },
+    "kind_label": "Tipo",
+    "empty": "Ningún documento coincide con esta vista todavía.",
+    "load_error": "No se pudo cargar esta colección. Inténtalo de nuevo.",
+    "title_column": "Título",
+    "save_error": "No se pudo guardar el cambio.",
+    "no_properties": "Este documento aún no tiene propiedades."
   }
 }

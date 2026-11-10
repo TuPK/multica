@@ -25,7 +25,7 @@ const bases: KnowledgeBase[] = [
   { id: "b1", key: "engineering", name: "Engineering", visibility: "workspace", position: 0 } as KnowledgeBase,
 ];
 const kinds: KnowledgeKind[] = [
-  { key: "adr", name: "Architecture decision", default_base_key: "engineering", template: "", review_days: 0, required_sections: [] },
+  { key: "adr", name: "Architecture decision", default_base_key: "engineering", template: "", review_days: 0, required_sections: [], fields: [] },
 ];
 
 function renderWith(ui: React.ReactElement) {

@@ -290,7 +290,8 @@
       "documents": "ドキュメント",
       "wiki": "Wiki",
       "add": "ドキュメントを追加",
-      "settings": "設定"
+      "settings": "設定",
+      "collections": "コレクション"
     },
     "toggle": "{{name}} を表示または非表示"
   },
@@ -322,5 +323,22 @@
       "rendered": "整形表示",
       "source": "Markdown"
     }
+  },
+  "collections": {
+    "no_kinds": "このベースにはまだフィールドを持つ種類がありません。",
+    "browse": "閲覧",
+    "views": {
+      "pipeline": "パイプライン",
+      "needs_you": "要対応",
+      "due": "期限",
+      "lessons": "学び",
+      "sources": "情報源の状態"
+    },
+    "kind_label": "種類",
+    "empty": "この表示に一致する文書はまだありません。",
+    "load_error": "このコレクションを読み込めません。もう一度お試しください。",
+    "title_column": "タイトル",
+    "save_error": "変更を保存できませんでした。",
+    "no_properties": "この文書にはまだプロパティがありません。"
   }
 }

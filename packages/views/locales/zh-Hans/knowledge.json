@@ -290,7 +290,8 @@
       "documents": "文档",
       "wiki": "Wiki",
       "add": "添加文档",
-      "settings": "设置"
+      "settings": "设置",
+      "collections": "集合"
     },
     "toggle": "展开或收起 {{name}}"
   },
@@ -322,5 +323,22 @@
       "rendered": "渲染",
       "source": "Markdown"
     }
+  },
+  "collections": {
+    "no_kinds": "此知识库中还没有带字段的类型。",
+    "browse": "浏览",
+    "views": {
+      "pipeline": "管道",
+      "needs_you": "待你处理",
+      "due": "到期",
+      "lessons": "经验",
+      "sources": "来源健康"
+    },
+    "kind_label": "类型",
+    "empty": "还没有符合此视图的文档。",
+    "load_error": "无法加载此集合，请重试。",
+    "title_column": "标题",
+    "save_error": "无法保存此修改。",
+    "no_properties": "此文档还没有属性。"
   }
 }

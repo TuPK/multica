@@ -95,6 +95,11 @@ export const KnowledgeDocumentSchema = z
     published_at: z.string().nullable().default(null),
     error: z.string().default(""),
     folder: z.string().default(""),
+    // The typed values of the kind's fields (spec 7.1). A value the client cannot read is kept as is.
+    properties: z
+      .record(z.string(), z.unknown())
+      .nullish()
+      .transform((v) => v ?? {}),
   })
   .loose();
 
@@ -171,4 +176,5 @@ export const FALLBACK_KNOWLEDGE_DOCUMENT: KnowledgeDocument = {
   created_at: "",
   published_at: null,
   error: "",
+  properties: {},
 };
