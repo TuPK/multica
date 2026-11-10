@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { api } from "@multica/core/api";
 import { renderWithI18n } from "../../test/i18n";
@@ -13,6 +13,7 @@ vi.mock("@multica/core/api", () => ({
     listKnowledgeCollection: vi.fn(),
     createSquadSource: vi.fn(),
     createSquadShare: vi.fn(),
+    updateKnowledgeProperties: vi.fn(),
   },
 }));
 
@@ -50,7 +51,9 @@ describe("SquadSourcesSection", () => {
     vi.clearAllMocks();
     vi.mocked(api.listKnowledgeCollection).mockResolvedValue({
       kind: "sales_source",
-      fields: [],
+      fields: [
+        { key: "status", label: "Status", type: "select", options: ["active", "proposed", "needs_connector"], required: false, ordered: false },
+      ],
       documents: [
         sourceDoc("s1", "active", "Google News expansion"),
         sourceDoc("s2", "needs_connector", "Facebook own page"),
@@ -79,5 +82,12 @@ describe("SquadSourcesSection", () => {
     renderSection(false);
     await screen.findByText("Google News expansion");
     expect(screen.queryByRole("button", { name: "Add source" })).toBeNull();
+  });
+
+  it("opens a source's typed properties from its name, read from the kind's fields", async () => {
+    renderSection();
+    fireEvent.click(await screen.findByRole("button", { name: "Google News expansion" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Status")).toBeTruthy();
   });
 });

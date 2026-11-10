@@ -7,9 +7,14 @@ import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
 import { Textarea } from "@multica/ui/components/ui/textarea";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import { knowledgeCollectionOptions, type KnowledgeDocument } from "@multica/core/knowledge";
+import {
+  knowledgeCollectionOptions,
+  useUpdateKnowledgeProperties,
+  type KnowledgeDocument,
+} from "@multica/core/knowledge";
 import { useCreateSquadShare, useCreateSquadSource } from "@multica/core/squads";
 import { useT } from "../../i18n";
+import { PropertyDialog } from "../../knowledge/knowledge-collections";
 
 /** The status values a source document can hold, in the order the Studio lists them. */
 const STATUS_ORDER = ["active", "proposed", "needs_connector", "manual_only", "degraded", "blocked", "disabled"] as const;
@@ -39,6 +44,8 @@ export function SquadSourcesSection({
   const sources = useQuery(knowledgeCollectionOptions(wsId, { kind: "sales_source", kb: "sales" }));
   const addSource = useCreateSquadSource(wsId, squadId);
   const share = useCreateSquadShare(wsId, squadId);
+  const update = useUpdateKnowledgeProperties(wsId);
+  const [open, setOpen] = useState<KnowledgeDocument | null>(null);
   const [input, setInput] = useState("");
   const [shared, setShared] = useState("");
   const [message, setMessage] = useState("");
@@ -145,7 +152,15 @@ export function SquadSourcesSection({
             <tbody>
               {docs.map((doc) => (
                 <tr key={doc.id} className="border-t">
-                  <td className="px-3 py-2">{doc.title}</td>
+                  <td className="px-3 py-2">
+                    <button
+                      type="button"
+                      className="text-left hover:underline"
+                      onClick={() => setOpen(doc)}
+                    >
+                      {doc.title}
+                    </button>
+                  </td>
                   <td className="px-3 py-2 text-muted-foreground">{String(doc.properties?.platform ?? "")}</td>
                   <td className="px-3 py-2 text-muted-foreground">{String(doc.properties?.rung ?? "")}</td>
                   <td className="px-3 py-2">{t(($) => $.sources.status[statusOf(doc)])}</td>
@@ -157,6 +172,15 @@ export function SquadSourcesSection({
           </table>
         </div>
       )}
+
+      {open ? (
+        <PropertyDialog
+          doc={open}
+          fields={sources.data?.fields ?? []}
+          onClose={() => setOpen(null)}
+          onSave={(properties) => update.mutateAsync({ id: open.id, properties })}
+        />
+      ) : null}
     </section>
   );
 }

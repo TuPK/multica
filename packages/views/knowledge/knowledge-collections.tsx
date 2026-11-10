@@ -288,7 +288,7 @@ export function KnowledgeCollections({ wsId, base }: { wsId: string; base: Knowl
 }
 
 /** The detail of one document: its properties, edited in place. A failed save is shown, not kept. */
-function PropertyDialog({
+export function PropertyDialog({
   doc,
   fields,
   onClose,
