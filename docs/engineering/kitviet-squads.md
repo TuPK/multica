@@ -1,6 +1,6 @@
 # Kit Việt squads: đưa các quy trình nghề của Kit Việt vào squad template / quickstart
 
-Spec (nghiên cứu, thiết kế và triển khai trên nhánh `kitviet-pack`, chưa merge vào `main`). Đã có: generator và pack đã sinh, năm template squad, locale bảy ngôn ngữ, runbook, test; quickstart giữ tạm dừng của routine qua lần chạy lại và báo `partial` khi routine đã chạy trước khi người dùng bật (mục 5.7, Q9). Chưa làm: diễn tập thật (mục 8.2, chỉ chạy khi người dùng cho phép); `upgradeKitvietSquad` chưa có điểm gọi trong giao diện (mục 10.3). Sai lệch về cách chia commit, đường dẫn và hash: mục 8.1. Cùng họ với [bmad-planning-squad.md](bmad-planning-squad.md),
+Spec (nghiên cứu, thiết kế và triển khai trên nhánh `kitviet-pack`, chưa merge vào `main`). Đã có: generator và pack đã sinh, mười template squad (năm P0, năm P1 theo mục 9.1), skill mở rộng mục 7 gắn vào squad công ty có sẵn qua apply, floor `Revenue`, locale bảy ngôn ngữ, runbook, test; quickstart giữ tạm dừng của routine qua lần chạy lại và báo `partial` khi routine đã chạy trước khi người dùng bật (mục 5.7, Q9). Chưa làm: diễn tập thật (mục 8.2, chỉ chạy khi người dùng cho phép); `upgradeKitvietSquad` chưa có điểm gọi trong giao diện (mục 10.3). Sai lệch về cách chia commit, đường dẫn và hash: mục 8.1. Cùng họ với [bmad-planning-squad.md](bmad-planning-squad.md),
 [sales-loop-squad.md](sales-loop-squad.md) và [digital-company.md](digital-company.md).
 
 Ngôn ngữ: tiếng Việt để người dùng đọc; tên lệnh, status, file, kind, skill, role key và đoạn văn bản dành cho agent giữ tiếng Anh.
@@ -14,7 +14,7 @@ Kit Việt là 20 bộ nghề tiếng Việt: mỗi bộ có 30–43 skill, 12�
 Giá trị của nó không nằm ở số skill mà ở **các gác cổng chống bịa** (số liệu, điều luật, cam kết thương mại, claim quảng cáo, thể thức văn bản)
 và ở **kiến thức thể thức Việt Nam**. Spec này đề xuất:
 
-1. **Năm squad template P0** (mục 6): `kv_legal`, `kv_accounting`, `kv_b2b`, `kv_marketing`, `kv_admin`; bốn squad P1 (mục 9).
+1. **Năm squad template P0** (mục 6): `kv_legal`, `kv_accounting`, `kv_b2b`, `kv_marketing`, `kv_admin`; **năm squad P1** (mục 9.1): `kv_talent`, `kv_pr`, `kv_ecom`, `kv_officeops`, `kv_academic`.
    Mỗi squad là một dây chuyền của Kit Việt, chạy theo khuôn `market_research` (lead giao sub-issue, không workflow), không theo khuôn SDLC.
 2. **Không chạy nguyên văn.** Skill của Kit Việt phải qua một bước chuyển đổi tự động và có kiểm thử (mục 4, 5.5): bỏ khối quảng cáo Pro,
    bỏ mục nền tảng, thay giao thức `.kv-run/` bằng giao thức issue của Multica, thay `CLAUDE.md` bằng hồ sơ đơn vị trong KB.
@@ -295,6 +295,8 @@ Người dùng đổi room bằng kéo-thả hoặc `setCompanySeats`.
 | Launch | Release & Ops, Growth & GTM, Support | Marketing Studio, B2B Proposal Desk | 5/6 |
 | Research, Product, Build | không đổi | không | không đổi |
 
+Sau P1 (theo mục 9.1): Governance có 5/6 ô (thêm Talent Acquisition), Launch 6/6 (thêm PR & Comms), `Revenue` 1/6 (E-commerce Shop Ops, floor mới), Executive 3/6 (thêm Office Ops), Research 5/6 (thêm Academic Evidence Desk).
+
 Quan hệ với squad hiện có, để Secretary định tuyến đúng:
 - **Accounting & Tax** làm hồ sơ và đối chiếu; **Finance & Risk** vẫn là nơi phân tích và đề xuất tài chính. Mô tả của Accounting phải nêu "tờ khai, hóa đơn, công nợ, khóa sổ".
 - **Marketing Studio** sản xuất và soát nội dung; **Growth & GTM** lập chiến lược. Studio nhận brief từ Growth & GTM.
@@ -335,7 +337,7 @@ Issue cố định tạo ở lần chạy đầu cần sổ đó, bằng tiêu �
 
 ### 5.9 Dữ liệu template
 
-`SquadTemplateId` thêm `kv_legal`, `kv_accounting`, `kv_b2b`, `kv_marketing`, `kv_admin`. Thêm vào `SquadRoleKey` các role có tiền tố squad (`legal_*`, `acct_*`,
+`SquadTemplateId` thêm `kv_legal`, `kv_accounting`, `kv_b2b`, `kv_marketing`, `kv_admin` (P0) và `kv_talent`, `kv_pr`, `kv_ecom`, `kv_officeops`, `kv_academic` (P1). Role P1 có tiền tố `talent_*`, `pr_*`, `ecom_*`, `officeops_*`, `acad_*`. Thêm vào `SquadRoleKey` các role có tiền tố squad (`legal_*`, `acct_*`,
 `b2b_*`, `mkt_*`, `admin_*`). `AgentInstructionTemplate["id"]` là union đóng; thay vì 40 id mới, thêm **bốn** id loại vai (`kv_collector`, `kv_drafter`,
 `kv_gate`, `kv_handover`) và `kv_lead`, mỗi role chọn một id và nhận instructions riêng từ `KV_ROLE_AGENT_INSTRUCTIONS`, như `PLANNING_ROLE_AGENT_INSTRUCTIONS`
 đang làm. Tên agent giữ tiếng Anh, có tiền tố squad, để chạy lại quickstart tái dùng agent đã có: tên hiển thị là role key viết hoa chữ đầu, bỏ dấu gạch dưới (`legal_reader` → `Legal Reader`), `runtime: "worker"`, và `role` là một dòng lấy từ `description` của agent gốc, bỏ tiền tố loại ("Thu thập - ", "Gác cổng - ").
@@ -483,7 +485,7 @@ Secretary trong Executive Office giữ vai định tuyến; Office Admin không 
 
 ## 7. Cấu hình các squad nằm ngoài P0 nhưng cần gắn skill
 
-Không tạo squad mới, chỉ gắn skill vào squad có sẵn (qua `setSquadSkills`), sau cổng rà soát nội dung:
+Không tạo squad mới, chỉ gắn skill vào squad có sẵn. Đã làm: `kitviet-extension-attach.ts` khớp squad công ty theo tên card (squad công ty không có `template_key`) và thêm bundle bằng `attachBuiltinSkills`, không xóa skill nào; client chạy sau mỗi lần apply công ty (`useApplyCompanyTemplate`). Cổng rà soát nội dung không còn là điều kiện (Q1). Danh sách skill:
 - **Support** ← CSKH của `kinh-doanh`: `kich-ban-tong-dai-cskh`, `phan-hoi-khieu-nai-cskh`, `phan-tich-nps-csat`.
 - **People & Performance** ← HR vận hành của `nhan-su`: `soat-hop-dong-lao-dong`, `soat-bang-cham-cong`, `onboarding-30-60-90`, `quy-trinh-ky-luat-lao-dong`, `danh-gia-thu-viec`.
 - **Product Analysis / Planning / Build** ← CNTT: `dac-ta-yeu-cau-srs`, `viet-user-story-tieu-chi`, `sinh-test-case-tu-yeu-cau`, `chuyen-yeu-cau-khach-thanh-task`,
@@ -497,7 +499,7 @@ Không tạo squad mới, chỉ gắn skill vào squad có sẵn (qua `setSquadS
 | P0-B · Rà soát nội dung | Đã làm một phần ở mục 3.2. Mỗi PR squad kèm một đoạn "đã đọc gì" trong mô tả PR; không có bước xác minh pháp lý (Q1). Xác nhận script PDF không gọi shell; kiểm tay trên runtime theo runbook mục 4 (F9, F19) | Mô tả PR ghi phạm vi đã đọc; biên bản kiểm tay đính kèm |
 | P0-C · Office Admin, B2B, Marketing | Ba template theo thứ tự này (Q1), charter, locale 7 ngôn ngữ, doc runbook; cổng rà soát nội dung cho từng squad trước khi bật (Marketing có claim quảng cáo, F8) | `pnpm test`, `make check`; chạy thử một request mẫu mỗi squad trên workspace thử |
 | P0-D · Legal + Accounting | Hai template, sổ quy định, routine; Accounting không có preflight: thiếu Bash hoặc Python thì các vai tính số dừng loại 1 (Q5, Q8, F19) | như trên, cộng bài chạy thật F19 |
-| Sau P0 | Bốn squad P1 (mục 9), gắn skill mục 7 | |
+| Sau P0 | Năm squad P1 (mục 9.1), gắn skill mục 7 | Đã làm: xem mục 9.1 và bảng trạng thái trong [kitviet-squads-plan.md](kitviet-squads-plan.md) |
 
 ### 8.1 Danh mục thay đổi và cách chia PR
 
@@ -534,12 +536,15 @@ cố tình cam kết vượt khung hoặc trích sai điều luật (kỳ vọng
 ## 9. Phần còn lại của Kit Việt
 
 ### 9.1 P1 (khuôn đã có từ P0)
+
+Đã làm (2026-11-11). Mỗi squad có template, locale bảy ngôn ngữ, test và mục trong [runbook](kitviet-runbook.md) (mục 8). Office Ops dùng luồng viết tay (`flow: authored`); E-commerce tạo floor `Revenue`.
+
 | Squad | Nghề | Floor | Ghi |
 | --- | --- | --- | --- |
 | Talent Acquisition | `nhan-su` · `day-chuyen-tuyen-dung` | Governance (5/6) | gate `soat-thien-kien-tuyen-dung`, `soat-du-lieu-nhan-su`: dữ liệu ứng viên nhạy cảm |
 | PR & Comms | `bao-chi-truyen-thong` · `day-chuyen-bai-bao-kiem-chung` | Launch (6/6) | Mô tả dùng "thông cáo", "khủng hoảng truyền thông" |
-| E-commerce Shop Ops | `ban-hang-online` · `day-chuyen-len-san-pham-moi` | Floor mới `Revenue` | Floor `Revenue` còn Sales Loop |
-| Office Ops | `hanh-chinh-van-phong` (13 skill vận hành văn phòng, mục 5.10) | Executive (3/6 sau Office Admin) | Chưa có dây chuyền riêng: cần viết một dây chuyền ngắn hoặc chạy theo từng skill |
+| E-commerce Shop Ops | `ban-hang-online` · `day-chuyen-len-san-pham-moi` | Floor mới `Revenue` (Q4) | Squad đầu tiên trên `Revenue`; Sales Loop có thể vào floor này sau, là quyết định riêng |
+| Office Ops | `hanh-chinh-van-phong` (chín skill vận hành, mục 5.10) | Executive (3/6 sau Office Admin) | Không có dây chuyền upstream: luồng lead viết tay (`flow: authored`, `KV_LEAD_NOTES.kv_officeops`). Không có cổng soát dự toán: việc chi tiêu chỉ dừng loại 1 khi thiếu trần ngân sách |
 | Academic Evidence Desk | `hoc-thuat-nghien-cuu` | Research (5/6) | `kiem-tra-trich-dan-co-that` là cổng chống bịa trích dẫn |
 
 ### 9.2 P2: các nghề dọc, chỉ khi phục vụ ngành đó
@@ -560,7 +565,7 @@ Mục này trước đây là bảy câu hỏi mở. Tôi tự trả lời hết
 | Q1 | Ai xác minh sổ quy định và rà nội dung Legal/Accounting? | **Không ai, và không có cổng.** Chủ sản phẩm quyết bỏ qua việc xác minh pháp lý và nhãn "bản thử". Legal và Accounting ra bình thường, **sau** ba squad còn lại chỉ vì khối lượng việc (Office Admin → B2B → Marketing → Legal → Accounting). Các câu rào có sẵn trong skill ("[CẦN LUẬT SƯ]", "kiểm tra văn bản hiện hành", "chưa tìm thấy trên nguồn chính thức") và quy tắc "không bịa căn cứ" của các gác cổng giữ nguyên. Sổ quy định vẫn có, vì lớp vá cần chỗ để trỏ tới, nhưng nó là công cụ tra cứu, không phải điều kiện bật | Người dùng thật gặp một câu trả lời sai về luật: lúc đó mới thêm cổng |
 | Q2 | Vendor hay lấy khi build? | **Vendor có pin commit** `faee4f1`, kèm LICENSE và NOTICE | Build lặp lại được, review được diff khi nâng, không phụ thuộc một repo nhỏ lúc build. Chi phí là khoảng 2 MB nguồn trong repo (không vào bundle trang khác, mục 5.5) | Upstream đổi giấy phép hoặc bị gỡ: không ảnh hưởng, vì đã vendor |
 | Q3 | Có công tắc `unattended` cho Marketing không? | **Không ở P0.** Cổng người loại 1–3 áp cho mọi squad, mọi chế độ | AGENTS.md cấm thêm độ phức tạp cho nhu cầu chưa có. Marketing chỉ soạn nháp, không đăng; cổng loại 2 chỉ là một lần duyệt. Một công tắc thứ hai thêm một nhánh phải test cho mỗi squad | Sau P0, người dùng thật phàn nàn rằng cổng loại 2 của Marketing quá chặt: thêm công tắc riêng cho squad đó |
-| Q4 | Tạo floor `Revenue` ngay? | **Không.** Để P1, cùng lúc quyết định số phận Sales Loop. B2B ở Launch (5/6 ô sau P0) | Một floor trống chỉ để chờ squad chưa tồn tại là rác. Launch còn 1 ô nên P0 vừa đủ | Sales Loop được duyệt trước P1: tạo `Revenue` cùng đợt và chuyển B2B sang đó |
+| Q4 | Tạo floor `Revenue` ngay? | **Có, khi P1 làm E-commerce Shop Ops** (mục 9.1): squad E-commerce là squad đầu tiên đặt ô trên `Revenue`, và `Revenue` được thêm vào `COMPANY_FLOOR_KEYS` (không dùng cho starter company vì không card nào nằm ở đó). Sales Loop vẫn không có template trong P1; P2 ngoài phạm vi. B2B vẫn ở Launch | Một floor trống chỉ để chờ squad chưa tồn tại là rác. Đến khi có squad thật, floor có chủ. Launch còn 1 ô nên P0 vừa đủ | Sales Loop được duyệt: đưa squad đó vào `Revenue` cùng floor; nếu muốn chuyển B2B sang `Revenue` thì đó là quyết định riêng |
 | Q5 | Phụ thuộc Python cho xuất file? | **Chấp nhận**, với lối lùi (không có preflight mã, Q8): thiếu thư viện thì đính kèm Markdown/CSV đã duyệt và ghi định dạng chưa xuất được (F9). Không viết lại bộ xuất | Bốn script đã chạy được, 22 KB của Word là phần lớn công; viết lại là việc tuần chứ không phải ngày và không thêm giá trị kiểm soát. **Ngoại lệ**: Accounting cần Bash và Python để tính (F19). Không có preflight (Q8), nên thiếu hai thứ đó thì các vai tính số dừng loại 1 và ghi thiếu gì | Daemon chạy ở môi trường không cho cài Python: đánh giá lại riêng cho xuất file |
 | Q6 | Tên hiển thị tiếng Việt? | **Tên squad = tên tiếng Anh + từ tiếng Việt trong ngoặc**, ví dụ `Legal & Contracts (Pháp lý)`; card dịch theo 7 locale hiện có, không thêm `vi` | Secretary định tuyến theo tên squad (mục 5.6), nên tên cần có từ người Việt gõ. Thêm locale `vi` là thay đổi lớn hơn mục tiêu của spec này | Multica thêm locale `vi`: dịch card sang đó |
 | Q8 | Quickstart kiểm công cụ của runtime (Bash, Python, thư viện, web) trước khi bật squad? | **Không.** Quickstart không phát hiện được công cụ của runtime, nên không có preflight mã. Vai cần công cụ nào thì tự dừng loại 1 và ghi tên thứ thiếu: Accounting cần Bash và Python (F19), mọi squad cần thư viện xuất file (F9), vai tra cứu cần web (F25). Người bật squad kiểm tay theo runbook mục 4 | Đoán thay vì đo là tệ hơn không kiểm: một cờ sai khiến người dùng tin rằng squad đã sẵn sàng. Một preflight thật cần daemon hoặc server báo công cụ của runtime qua API, việc hiện không có | Server hoặc daemon báo được công cụ của runtime qua API: thêm preflight có kiểm, và Accounting bật có kiểm tra |

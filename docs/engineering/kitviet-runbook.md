@@ -72,7 +72,7 @@ Một squad chạy được khi runtime của agent có các công cụ sau. Thi
 | `python-docx`, `openpyxl`, `python-pptx`, `reportlab` | Xuất Word, Excel, PowerPoint, PDF | Thiếu thư viện nào: ghi tên thư viện thiếu, dừng loại 1, không tự cài |
 | LibreOffice (tùy chọn) | Chuyển đổi một số định dạng | Bỏ qua, ghi rõ |
 | Font tiếng Việt | PDF có dấu | Ghi rõ font thiếu trong biên bản |
-| Công cụ web (`WebSearch`, `WebFetch`) | Vai tra cứu: `legal_sources`, `legal_validity`, `acct_tax_research`, `b2b_company_lookup`, `mkt_scout`, `admin_format_lookup` | Vai tra web dừng loại 1 và xin người dán nguyên văn nguồn. Không trả lời từ trí nhớ (F25) |
+| Công cụ web (`WebSearch`, `WebFetch`) | Vai tra cứu: `legal_sources`, `legal_validity`, `acct_tax_research`, `b2b_company_lookup`, `mkt_scout`, `admin_format_lookup`, `talent_market`, `pr_source`, `ecom_rival_scout`, `acad_finder` | Vai tra web dừng loại 1 và xin người dán nguyên văn nguồn. Không trả lời từ trí nhớ (F25) |
 | Ghi comment và đính kèm (`multica issue comment add --attachment`) | Mọi khâu | Không chạy được squad |
 
 Không có preflight mã: quickstart không phát hiện được công cụ của runtime (spec 10.1, Q8). Trước khi bật squad, hoặc khi đổi runtime, người bật kiểm tay trong môi trường của runtime bằng các lệnh sau; thiếu lệnh nào thì squad dừng loại 1 khi chạy, không tự cài:
@@ -282,6 +282,117 @@ Bảng sổ quy định Accounting, dòng theo F20 (ngày kiểm 10/11/2026; m�
 - Giả định mặc định: thể thức văn bản theo tra cứu của `admin_format_lookup` tại thời điểm chạy; có ghi ngày truy cập.
 - Chưa xác minh: thể thức, quy tắc đánh số và các mốc pháp luật chưa đối chiếu với nguồn chính thức; không có cổng xác minh (Q1).
 - Diễn tập: chưa chạy.
+
+## Talent Acquisition (Tuyển dụng)
+
+- Template: `kv_talent`, floor: Governance, routine: không
+- Vai (role key · loại · agent gốc):
+  - `talent_lead` · lead · `lap-ke-hoach-dieu-phoi`
+  - `talent_reader` · collector · `doc-ho-so-ung-vien`
+  - `talent_market` · collector · `tra-cuu-thi-truong-tuyen-dung` (web; chỉ nhận chức danh, không nhận dữ liệu ứng viên)
+  - `talent_screener` · drafter · `lap-bang-sang-loc-ung-vien`
+  - `talent_drafter` · drafter · `soan-tai-lieu-tuyen-dung`
+  - `talent_bias_gate` · gate · `soat-thien-kien-tuyen-dung`
+  - `talent_data_gate` · gate · `soat-du-lieu-nhan-su`
+  - `talent_handover` · handover · `kiem-dinh-ban-giao`
+- Điểm dừng loại 1: thiếu JD đã duyệt, tiêu chí đã duyệt có trọng số, hoặc thư mục CV. Nếu chỉ thiếu tiêu chí, vai đọc CV vẫn chạy; vai sàng lọc ghi tiêu chí đề xuất kèm `CHỜ NGƯỜI DÙNG DUYỆT` và không chấm điểm.
+- Điểm dừng loại 2: handover QUA thì `in_review`, comment việc người dùng phải làm: chốt danh sách vào vòng, gửi thư, xếp lịch phỏng vấn. Squad không liên hệ, không hẹn, không quyết định tuyển ai.
+- Điểm dừng loại 3: vòng sửa tối đa 2. Hết vòng mà cổng còn CHẶN thì `blocked`, comment bản nháp và các lỗi còn mở, mention người yêu cầu.
+- Tài liệu bền: không có sổ quy định hay KB riêng. Hồ sơ đơn vị: lead qua `kv-company-profile` (mục 5.8).
+- Phụ thuộc runtime riêng: web cho `talent_market`; Bash và Python để tính điểm sàng lọc bằng script (mục 4).
+- Routine: không.
+- Giả định mặc định: điểm theo trọng số đã duyệt, mỗi điểm khác 0 có một câu trích từ CV.
+- Chưa xác minh: mức lương và tin tuyển dụng công khai (`talent_market`) ghi kèm ngày truy cập. Không có cổng xác minh pháp lý (Q1); cổng thiên kiến soát văn bản, không thay cho đánh giá pháp lý về phân biệt đối xử.
+- Diễn tập: chưa chạy.
+
+## PR & Comms (Truyền thông báo chí)
+
+- Template: `kv_pr`, floor: Launch, routine: không
+- Vai (role key · loại · agent gốc):
+  - `pr_lead` · lead · `lap-ke-hoach-dieu-phoi`
+  - `pr_source` · collector · `tra-cuu-nguon-bao-chi` (web)
+  - `pr_transcript` · collector · `trich-xuat-bang-ghi-phong-van`
+  - `pr_writer` · drafter · `soan-bai-bao-chi`
+  - `pr_release` · drafter · `soan-tai-lieu-pr`
+  - `pr_fact_gate` · gate · `soat-su-that-bai-bao`
+  - `pr_ethics_gate` · gate · `soat-phap-ly-dao-duc-bao-chi`
+  - `pr_numbers_gate` · gate · `soat-so-lieu` (dùng chung)
+  - `pr_handover` · handover · `kiem-dinh-ban-giao`
+- Điểm dừng loại 1: thông điệp chính hoặc người phát ngôn chưa duyệt (trừ khi request đã ghi là đã duyệt); khủng hoảng mà sự việc chưa xác minh hoặc thiếu lập trường của công ty; một nhận định không có nguồn.
+- Điểm dừng loại 2: handover QUA thì `in_review`, comment việc người dùng phải làm. Squad không gửi cho phóng viên, không đăng và không xuất bản.
+- Điểm dừng loại 3: vòng sửa tối đa 2. Hết vòng thì mention người yêu cầu kèm các dòng bị chặn.
+- Tài liệu bền: Hồ sơ đơn vị (lead qua `kv-company-profile`). Không có sổ quy định.
+- Phụ thuộc runtime riêng: web cho `pr_source`; Bash và Python cho số liệu (mục 4).
+- Routine: không.
+- Chưa xác minh: luật báo chí và quy định đạo đức nghề báo hiện hành. Bản soát của `pr_ethics_gate` ghi rõ không thay ý kiến pháp chế, luật sư hay quyết định của tổng biên tập. Không có cổng xác minh pháp lý (Q1).
+- Diễn tập: chưa chạy.
+
+## E-commerce Shop Ops (Bán hàng online)
+
+- Template: `kv_ecom`, floor: Revenue (floor mới của P1; squad này là nơi đầu tiên đặt ô trên floor này, Q4), routine: không
+- Vai (role key · loại · agent gốc):
+  - `ecom_lead` · lead · `lap-ke-hoach-dieu-phoi`
+  - `ecom_intake` · collector · `doc-file-xuat-don-san` và `gom-du-lieu-shop` (hai agent chung một vai)
+  - `ecom_rival_scout` · collector · `tra-cuu-doi-thu-san` (web)
+  - `ecom_listing_drafter` · drafter · `soan-listing-san-pham`
+  - `ecom_cskh_drafter` · drafter · `soan-tin-cskh-shop`
+  - `ecom_policy_gate` · gate · `soat-tu-cam-quang-cao-san`
+  - `ecom_margin_gate` · gate · `soat-bien-loi-nhuan-shop`
+  - `ecom_numbers_gate` · gate · `soat-so-lieu` (dùng chung)
+  - `ecom_handover` · handover · `kiem-dinh-ban-giao`
+- Điểm dừng loại 1: thiếu thông số nhà cung cấp, giá vốn, sàn mục tiêu hoặc biểu phí đã xác nhận; hoặc các nguồn của chủ shop mâu thuẫn nhau.
+- Điểm dừng loại 2: handover QUA thì `in_review`, comment danh sách quyết định chủ shop phải làm trước khi đăng. Chủ shop đăng sản phẩm và trả lời khách.
+- Điểm dừng loại 3: vòng sửa tối đa 2. Hết vòng thì mention người yêu cầu kèm bản nháp và lỗi còn lại.
+- Tài liệu bền: Hồ sơ đơn vị (lead). Biểu phí sàn, phí thanh toán, trợ giá vận chuyển và thuế do chủ shop cung cấp kèm ngày xác nhận; thiếu thì `[cần xác nhận]`, và cổng biên lợi nhuận chặn giá phụ thuộc vào khoản đó.
+- Phụ thuộc runtime riêng: web cho `ecom_rival_scout`; Bash và Python cho biên lợi nhuận và số liệu (mục 4).
+- Routine: không.
+- Chưa xác minh: chính sách sàn hiện hành và danh sách từ bị cấm. Cổng không chứng nhận tin đăng đúng chính sách của sàn; chủ shop kiểm chính sách trước khi đăng.
+- Diễn tập: chưa chạy.
+
+## Office Ops (Vận hành văn phòng)
+
+- Template: `kv_officeops`, floor: Executive, routine: không. Luồng lead viết tay (không có dây chuyền upstream): `KV_LEAD_NOTES.kv_officeops`.
+- Vai (role key · loại · agent gốc):
+  - `officeops_lead` · lead · `lap-ke-hoach-dieu-phoi` (luồng viết tay)
+  - `officeops_files` · collector · `gom-ho-so-van-thu`
+  - `officeops_drafter` · drafter · `lap-bang-hanh-chinh` (chạy skill của việc được chọn)
+  - `officeops_numbers_gate` · gate · `soat-so-lieu` (dùng chung)
+  - `officeops_handover` · handover · `kiem-dinh-ban-giao`
+- Việc vận hành (chín skill, mục 5.10): ba skill ở tầng lõi cho mọi vai (`to-chuc-su-kien-hoi-nghi`, `theo-doi-hop-dong-dich-vu-vp`, `tiep-khach-thu-cam-on`); `officeops_drafter` nhận thêm sáu skill theo vai (đặt phòng, đặt vé và dự toán công tác, tài sản, văn phòng phẩm, lưu trữ, báo cáo tháng).
+- Không có cổng soát dự toán mua sắm. Việc chi tiêu chỉ dừng loại 1 khi thiếu trần ngân sách; soát số liệu do `officeops_numbers_gate` làm.
+- Điểm dừng loại 1: việc chi tiêu thiếu trần ngân sách; đặt phòng hoặc sự kiện thiếu ngày, số người hoặc địa điểm; báo cáo tài sản thiếu danh sách hoặc file sổ; báo cáo tháng thiếu file nguồn. Yêu cầu không thuộc chín việc trên thì `blocked`, comment danh sách việc.
+- Điểm dừng loại 2: không đặt, không cọc, không đặt hàng, không thanh toán, không ký, không gửi, không mời. Handover QUA thì `in_review`, comment việc người yêu cầu phải đặt, trả tiền, gửi hoặc ký.
+- Điểm dừng loại 3: vòng sửa tối đa 2. Hết vòng thì mention người yêu cầu kèm bản nháp và lỗi còn lại.
+- Tài liệu bền: Hồ sơ đơn vị (lead). Sổ tài sản, văn phòng phẩm và lưu trữ là bản nội bộ theo tháng; số lượng không có trong file ghi `[cần bổ sung: số lượng]`, không ước lượng.
+- Phụ thuộc runtime riêng: Bash và Python cho số liệu (mục 4). Không có vai web.
+- Routine: không.
+- Chưa xác minh: điều khoản hợp đồng dịch vụ và thời hạn lưu trữ chưa đối chiếu với nguồn chính thức; thiếu điều khoản thì ghi `[cần bổ sung: điều khoản]`. Không có cổng xác minh (Q1).
+- Diễn tập: chưa chạy.
+
+## Academic Evidence Desk (Học thuật, nghiên cứu)
+
+- Template: `kv_academic`, floor: Research, routine: không
+- Vai (role key · loại · agent gốc):
+  - `acad_lead` · lead · `lap-ke-hoach-dieu-phoi`
+  - `acad_reader` · collector · `doc-pdf-bai-bao`
+  - `acad_finder` · collector · `tim-tai-lieu-hoc-thuat` (web; mở DOI hoặc trang tạp chí trước khi báo cáo)
+  - `acad_matrix` · drafter · `lap-ma-tran-tai-lieu` (ghi vào Sổ tài liệu)
+  - `acad_drafter` · drafter · `soan-ban-thao-hoc-thuat`
+  - `acad_citation_gate` · gate · `soat-trich-dan-hoc-thuat` (cổng chống trích dẫn bịa)
+  - `acad_integrity_gate` · gate · `soat-liem-chinh-hoc-thuat`
+  - `acad_handover` · handover · `kiem-dinh-ban-giao`
+- Điểm dừng loại 1: thiếu thư mục tài liệu, dàn ý, hoặc quy định của trường về dùng AI. Vai tìm nguồn không có web thì dừng và xin người dùng dán nguyên văn từng nguồn.
+- Điểm dừng loại 2: squad không nộp bài và không biến bản nháp thành bài làm; tác giả tự viết lại. Yêu cầu nộp bản cuối là việc của tác giả. Handover QUA thì `in_review`.
+- Điểm dừng loại 3: hai vòng CHẶN ở cổng trích dẫn hoặc cổng liêm chính, hoặc bất kỳ nguồn bịa nào. Đánh dấu `[CẦN NGƯỜI HƯỚNG DẪN]`, giao lại người yêu cầu với các dòng còn mở, không đổi nội dung.
+- Tài liệu bền: Sổ tài liệu là issue cố định của squad; `acad_matrix` thêm mỗi bản ma trận thành một comment kèm CSV. Hồ sơ đơn vị (lead) nếu là đơn vị.
+- Phụ thuộc runtime riêng: web cho `acad_finder`; công cụ đọc PDF trên runtime cho `acad_reader`; Bash và Python cho số liệu (mục 4).
+- Routine: không.
+- Chưa xác minh: một tài liệu chưa được mở thì ghi `[chưa xác minh]`, không báo là thật. Cổng liêm chính không thay cho kiểm tra đạo văn của trường.
+- Diễn tập: chưa chạy.
+
+## 8b. Skill mở rộng trên squad có sẵn (spec 7)
+
+Extension skills on existing squads (spec 7). The Kit Viet extension skills attach to the company starter squads Support, People & Performance, Product Analysis, Planning and Build (kitvietExtensionTargetOf in packages/core/squads/kitviet-extension-attach.ts). Company squads carry no template_key, so they match by card name. After a company apply, the client runs attachKitvietExtensions (useApplyCompanyTemplate). It imports each target's bundles with the extension pack only, and adds them to the squad's skills without removing any. Running the company apply again on an earlier workspace attaches the skills to its existing squads. A renamed company squad is not matched; a hand-made squad named like a card with no template is matched too. A failed squad is logged; the apply is not affected.
 
 ## 9. Việc còn mở
 

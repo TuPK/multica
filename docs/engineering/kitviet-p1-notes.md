@@ -1,8 +1,8 @@
 # Kit Việt P1 notes: foundation, recipe and per-trade data
 
-Status: the foundation for the P1 squads (spec `kitviet-squads.md` section 9.1) and the section 7 extensions is built.
-This file is the input for the squad agents. It states how to add a squad, what the generator enforces, what each new
-trade contains, and the decisions still open. Commands run from the repository root.
+Status (2026-11-11): the five P1 squads (spec `kitviet-squads.md` section 9.1), the section 7 extension attach and the Revenue
+floor are built on `kitviet-pack`, not committed yet. Section 6 lists what is resolved and what is still open. The runbook
+(`kitviet-runbook.md`, sections 8 and 8b) describes each squad and the extension. Commands run from the repository root.
 
 ## 1. What is in place
 
@@ -65,30 +65,37 @@ description starting "Gác cổng" -> gate; anything else -> collector. A mappin
 | `soan-don-tu` (+ `references/khung-don-theo-loai.md`) | `phap-ly` (renamed `soan-don-tu-phap-ly`), `hanh-chinh-van-phong`, `nhan-su` | `admin` lists it (`roleSkills.admin_drafter`). Talent Acquisition must not list it: it is shipped by admin already. |
 | `viet-giong-gen-z` (+ `references/tu-dien-gen-z.md`) | `marketing`, `ban-hang-online` | `marketing` (`mkt_content`). E-commerce does not list it. |
 
-## 6. Open decisions and deviations
+## 6. Decisions, deviations and open items
 
-1. **Company squads are not `SquadTemplate`s.** Section 7 names `support`, `people_performance`, `product_analysis`, `planning` and `build`:
-   these are company starter cards (`company-template.ts`, keys in `COMPANY_SQUAD_KEYS`). They are materialised by the server
-   (`server/internal/service/company_setup.go`, `company_template_data.json`), which knows nothing about Kit Việt. The extension
-   map is keyed by those keys, so the pack is reachable from the client, but **attaching the skills to the squads needs a decision**:
-   either the server learns the Kit Việt pack, or the client attaches them after the company apply. Nothing wires it yet.
-2. **Office Ops needs the nine ops skills moved out of admin.** They are `admin.json` `deferredSkills` today
-   (`bao-cao-hanh-chinh-thang`, `dat-phong-hop-hau-can`, `dat-ve-du-toan-cong-tac`, `luu-tru-ho-so-van-phong`, `quan-ly-van-phong-pham`,
-   `so-tai-san-van-phong`, `theo-doi-hop-dong-dich-vu-vp`, `tiep-khach-thu-cam-on`, `to-chuc-su-kien-hoi-nghi`). The Office Ops author
-   removes them from `admin.json` and lists them in `office-ops.json`; the build refuses both.
-3. **E-commerce needs a `Revenue` floor** (spec 9.1). Not added: `floorName` must be a default floor, and the floor list is not in this change.
-4. **People closure cuts.** `people` closure pulls `xay-kpi-okr-vi-tri` and `tra-cuu-quy-dinh-lao-dong` (nhan-su skills nobody lists yet).
-   If Talent Acquisition lists them, `people` cuts them silently (see `cut`); list them in one place on purpose.
-5. **Section 7 skill names:** all 14 of 14 exist upstream (checked): `kich-ban-tong-dai-cskh`, `phan-hoi-khieu-nai-cskh`, `phan-tich-nps-csat`,
-   `soat-hop-dong-lao-dong`, `soat-bang-cham-cong`, `onboarding-30-60-90`, `quy-trinh-ky-luat-lao-dong`, `danh-gia-thu-viec`,
-   `dac-ta-yeu-cau-srs`, `viet-user-story-tieu-chi`, `sinh-test-case-tu-yeu-cau`, `chuyen-yeu-cau-khach-thanh-task`, `release-note-song-ngu`,
-   `soat-du-lieu-ca-nhan-phan-mem`. The support extension adds `account-plan-khach-lon` (closure of `phan-tich-nps-csat`).
-6. **Moved out of b2b.** `kich-ban-tong-dai-cskh`, `phan-hoi-khieu-nai-cskh`, `phan-tich-nps-csat` and `account-plan-khach-lon` left
-   `b2b`'s deferred list for `support`. Object check against the pre-change pack: every other P0 skill and agent is byte-identical;
-   `admin`, `marketing`, `legal`, `accounting`, `common` change only the generated header line.
-7. **Header of every generated file** now names `kitviet-squads/, kitviet-extensions/` instead of `kitviet-squads.json`; `squads.ts` comment likewise.
-8. **Support bodies** that named `b2b` roles now read "(vai không có trong squad: nhờ lead)": an extension has no roles.
-9. The runbook and spec already describe the `kitviet-squads/` layout; they do not yet mention `kitviet-extensions/`. The integrator updates them.
+Resolved since the foundation:
+
+1. **Company squads attach (was open).** The extension skills attach to the company starter squads after each company apply:
+   `kitviet-extension-attach.ts` (`attachKitvietExtensions`) runs from `useApplyCompanyTemplate`. The server is unchanged.
+2. **Office Ops (was open).** The nine operations skills left `admin.json`, which now defers nothing. They are listed in
+   `office-ops.json` (`officeops_drafter` takes six by role, three are core). Office Ops is `flow: "authored"`.
+3. **Revenue floor (was open).** `revenue` is in `COMPANY_FLOOR_KEYS` and `COMPANY_FLOOR_NAMES`; `company_template_data.json` is
+   regenerated; the wizard hides a floor no starter card sits on. E-commerce is the first squad on it (Q4).
+4. **Section 7 names and the runbook/spec wording (was open).** The runbook has the extension paragraph (8b); the spec and this
+   file state the mechanism.
+5. **Generator and comments.** `pr` is written `PR` in role names (`PR Lead`). The hand-written `kitviet-extensions.ts` header
+   describes the attach design; it used to say it was generated.
+
+Still open:
+
+- **People closure.** `people` pulls `xay-kpi-okr-vi-tri` and `tra-cuu-quy-dinh-lao-dong` (nhan-su skills nobody lists yet). If
+  Talent Acquisition lists them, `people` cuts them silently (see `cut`); list them in one place on purpose.
+- **Section 7 skill names.** All 14 of 14 exist upstream (checked): `kich-ban-tong-dai-cskh`, `phan-hoi-khieu-nai-cskh`, `phan-tich-nps-csat`,
+  `soat-hop-dong-lao-dong`, `soat-bang-cham-cong`, `onboarding-30-60-90`, `quy-trinh-ky-luat-lao-dong`, `danh-gia-thu-viec`,
+  `dac-ta-yeu-cau-srs`, `viet-user-story-tieu-chi`, `sinh-test-case-tu-yeu-cau`, `chuyen-yeu-cau-khach-thanh-task`, `release-note-song-ngu`,
+  `soat-du-lieu-ca-nhan-phan-mem`. The support extension adds `account-plan-khach-lon` (closure of `phan-tich-nps-csat`).
+- **Live runs (S7).** Not run. The three runs of spec 8.2 per squad need the user's go-ahead.
+- **Lead notes.** All lead rules of the squads live in `KV_LEAD_NOTES` (`kitviet-agent-instructions.ts`). A squad without an entry
+  gets only the generic lead text.
+- **Moved out of b2b.** `kich-ban-tong-dai-cskh`, `phan-hoi-khieu-nai-cskh`, `phan-tich-nps-csat` and `account-plan-khach-lon` left
+  `b2b`'s deferred list for `support`. Object check against the pre-change pack: every other P0 skill and agent is byte-identical;
+  `admin`, `marketing`, `legal`, `accounting`, `common` change only the generated header line.
+- **Support bodies** that named `b2b` roles now read "(vai không có trong squad: nhờ lead)": an extension has no roles.
+- **Cuts.** `support` cuts `chuan-bi-dam-phan-b2b` (B2B), so that skill reads "(việc ngoài squad: nhờ lead tạo yêu cầu)".
 
 ## 7. Per-trade data
 
