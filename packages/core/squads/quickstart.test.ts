@@ -8,6 +8,7 @@ import {
   type SquadQuickstartClient,
 } from "./quickstart";
 import { AGENT_INSTRUCTION_TEMPLATES } from "../agents/instruction-templates";
+import { PLANNING_ROLE_AGENT_INSTRUCTIONS } from "./planning-agent-instructions";
 import { SDLC_ROLE_AGENT_INSTRUCTIONS } from "./sdlc-agent-instructions";
 import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
 import { SDLC_SKILL_SOURCE } from "./quickstart";
@@ -834,5 +835,48 @@ describe("planQuickstartAgents", () => {
     expect(plan.find((p) => p.role === "lead")?.reuse).toBe(true);
     expect(plan.find((p) => p.role === "qa")?.reuse).toBe(false);
     expect(plan).toHaveLength(greenfield.roles.length);
+  });
+});
+
+describe("runSquadQuickstart planning squad", () => {
+  const planning = SQUAD_TEMPLATES.find((t) => t.id === "bmad_planning")!;
+
+  it("creates seven agents with the planning instructions, the squad, its workflow and its own skills", async () => {
+    const client = fakeClient();
+
+    const out = await runSquadQuickstart(client, planning, options);
+
+    expect(client.createAgent).toHaveBeenCalledTimes(7);
+    const byName = Object.fromEntries(client.createAgent.mock.calls.map((c) => [c[0].name, c[0].instructions]));
+    expect(byName[SQUAD_ROLES.plan_lead.name]).toBe(PLANNING_ROLE_AGENT_INSTRUCTIONS.plan_lead);
+    expect(byName[SQUAD_ROLES.plan_pm.name]).toBe(PLANNING_ROLE_AGENT_INSTRUCTIONS.plan_pm);
+    expect(client.createSquad).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "BMAD Planning", leader_id: "agent-1" }),
+    );
+    expect(client.addSquadMember).toHaveBeenCalledTimes(6);
+    expect(client.createIssueWorkflow.mock.calls[0]![0]).toMatchObject({ name: "BMAD Planning Auto" });
+    expect(client.createSkill.mock.calls.map((c) => c[0].name)).toEqual(planning.builtinSkills);
+    expect(out.skills).toEqual({ status: "ready" });
+    expect(out.workflow.status).toBe("created");
+  });
+
+  it("reuses a planning agent that already has its name, and creates the rest", async () => {
+    const client = fakeClient({
+      listAgents: vi.fn(async () => [asAgent("keep", SQUAD_ROLES.plan_ux.name)]),
+    });
+
+    const out = await runSquadQuickstart(client, planning, options);
+
+    expect(out.agents.find((a) => a.role === "plan_ux")).toMatchObject({ status: "reused", id: "keep" });
+    expect(client.createAgent).toHaveBeenCalledTimes(6);
+  });
+
+  it("names the new statuses of the planning workflow when a workspace admin must allow them", async () => {
+    const forbidden = Object.assign(new Error("admins only"), { body: { code: "status_create_forbidden" } });
+    const client = fakeClient({ createIssueWorkflow: vi.fn().mockRejectedValueOnce(forbidden) });
+
+    const out = await runSquadQuickstart(client, planning, options);
+
+    expect(out.workflow.error).toContain("Research to Plan ready");
   });
 });

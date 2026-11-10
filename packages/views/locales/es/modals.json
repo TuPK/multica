@@ -286,6 +286,10 @@
         "name": "Estudio de mercado",
         "description": "Analiza mercados y competidores cada semana, hace que el crítico cuestione la evidencia y presenta al jefe solo las propuestas que la respaldan."
       },
+      "bmad_planning": {
+        "name": "Planificación · BMAD",
+        "description": "Convierte una solicitud en documentos de planificación revisados: investigación, brief, PRD, UX, arquitectura y epics. Amplía los que un producto ya tiene."
+      },
       "sdlc_maintenance": {
         "name": "SDLC · Producto existente",
         "description": "Clasifica un error, una función, una optimización o una actualización, lo dirige a los agentes adecuados, lo verifica e informa."

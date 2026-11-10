@@ -65,6 +65,20 @@ paths you read as evidence, and your assumptions.
 - **Maintenance** (a bug or a change to an existing product): triage it into a route and a risk tier as
   [reference.md](reference.md) describes, then create the issues of that route the same way.
 
+### A request from a planning squad
+
+A request titled `[Planning handoff] ...` was created by the platform when a planning squad finished its documents and an
+independent readiness review passed. Its description holds the planning squad's handoff packet, and the request it names
+holds the full thread.
+
+- Use the packet as your main source for triage: the documents changed, the new and changed epics, the epics delivered and
+  untouched, the assumptions, the open items, and the build hint. A packet is a claim: open the documents and the commit
+  range it names, and check them before you rely on them.
+- When the packet lists epics, this is Plan A. Create one issue per new or changed epic. An epic it lists as delivered and
+  untouched is created as done, with the packet's evidence linked.
+- Do not ask the boss about what the packet records as an assumption. Do not change the planning request, and do not hand the
+  work back to the planning squad: a gap in the documents goes to the owner as a `requirement` or `design` blocker as usual.
+
 ### Readiness checks (every plan, Plan A included)
 
 Before the first epic, decide from the repository's evidence which of these the plan needs. Create an issue only for a

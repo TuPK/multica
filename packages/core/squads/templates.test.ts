@@ -3,11 +3,14 @@ import { describe, expect, it } from "vitest";
 import { AGENT_INSTRUCTION_TEMPLATES } from "../agents/instruction-templates";
 import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
 import {
+  PLANNING_AUTO_WORKFLOW,
+  PLANNING_SKILL_NAMES,
   SDLC_AUTO_WORKFLOW,
   SDLC_SKILL_NAMES,
   SQUAD_ROLES,
   SQUAD_TEMPLATES,
   type SquadTemplate,
+  type SquadWorkflowStep,
 } from "./templates";
 
 const template = (id: SquadTemplate["id"]) =>
@@ -146,7 +149,7 @@ describe("market research template", () => {
   });
 
   it("keeps the SDLC templates without a routine or a floor name", () => {
-    for (const t of SQUAD_TEMPLATES.filter((x) => x.id !== "market_research")) {
+    for (const t of SQUAD_TEMPLATES.filter((x) => x.id.startsWith("sdlc_"))) {
       expect(t.routine, t.id).toBeNull();
       expect(t.floorName, t.id).toBeNull();
       expect(t.leader, t.id).toBe("lead");
@@ -191,7 +194,7 @@ describe("squad instructions", () => {
       ...SQUAD_TEMPLATES.map((t) => [t.id, t.instructions] as const),
       // The SDLC procedures this repo owns. The attached BMAD skills carry their own text,
       // which names BMAD skills the squad may not have, so they are not checked here.
-      ...SDLC_BUILTIN_SKILLS.filter((skill) => skill.name.startsWith("sdlc-")).map((skill) => [skill.name, skill.content] as const),
+      ...SDLC_BUILTIN_SKILLS.filter((skill) => skill.name.startsWith("sdlc-") || skill.name.startsWith("planning-")).map((skill) => [skill.name, skill.content] as const),
     ];
 
     for (const [id, text] of texts) {
@@ -199,5 +202,89 @@ describe("squad instructions", () => {
         expect(shipped.has(skill), `${id}: ${skill}`).toBe(true);
       }
     }
+  });
+});
+
+describe("bmad planning template", () => {
+  const planning = template("bmad_planning");
+  const statusKey = (s: SquadWorkflowStep) =>
+    "key" in s.status ? s.status.key : s.status.name.toLowerCase().replace(/ /g, "_");
+
+  it("leads with the planning lead and has seven members with names no other squad uses", () => {
+    expect(planning.leader).toBe("plan_lead");
+    expect(planning.roles).toEqual([
+      "plan_lead",
+      "plan_researcher",
+      "plan_analyst",
+      "plan_pm",
+      "plan_ux",
+      "plan_architect",
+      "plan_reviewer",
+    ]);
+    expect(planning.routine).toBeNull();
+    expect(planning.floorName).toBeNull();
+    const others = new Set(
+      Object.values(SQUAD_ROLES)
+        .filter((r) => !planning.roles.includes(r.key))
+        .map((r) => r.name),
+    );
+    for (const role of planning.roles) {
+      expect(SQUAD_ROLES[role].name, role).not.toMatch(/^BMAD/);
+      expect(others.has(SQUAD_ROLES[role].name), role).toBe(false);
+    }
+  });
+
+  it("hands each planning status to the member who owns that document", () => {
+    const owners = Object.fromEntries(
+      PLANNING_AUTO_WORKFLOW.steps
+        .filter((s) => "name" in s.status)
+        .map((s) => [("name" in s.status ? s.status.name : ""), s.handler]),
+    );
+    expect(owners).toEqual({
+      Research: "plan_researcher",
+      Brief: "plan_analyst",
+      PRD: "plan_pm",
+      Design: "plan_ux",
+      Architecture: "plan_architect",
+      Epics: "plan_pm",
+      "Plan review": "plan_reviewer",
+      "Stage done": null,
+      "Plan ready": null,
+    });
+    const blocked = PLANNING_AUTO_WORKFLOW.steps.find((s) => "key" in s.status && s.status.key === "blocked");
+    expect(blocked?.handler).toBe("plan_lead");
+    expect(blocked?.instructions).toContain("planning-squad-lead");
+  });
+
+  it("ends every stage at Stage done and names only statuses the workflow defines", () => {
+    const defined = new Set([...PLANNING_AUTO_WORKFLOW.steps.map(statusKey), "done", "cancelled"]);
+    const stages = PLANNING_AUTO_WORKFLOW.steps.filter((s) => s.handler !== null && "name" in s.status);
+    expect(stages.length).toBe(7);
+    for (const step of stages) expect(step.next).toBe("stage_done");
+    for (const step of PLANNING_AUTO_WORKFLOW.steps) {
+      for (const ref of [step.next, step.back]) if (ref) expect(defined.has(ref), ref).toBe(true);
+      expect([...step.instructions].length).toBeLessThanOrEqual(8000);
+      if (step.handler) expect(planning.roles).toContain(step.handler);
+    }
+  });
+
+  it("imports its own skills, and the SDLC squads import none of them", () => {
+    expect(planning.builtinSkills).toEqual(PLANNING_SKILL_NAMES);
+    const shipped = new Set(SDLC_BUILTIN_SKILLS.map((s) => s.name));
+    for (const name of PLANNING_SKILL_NAMES) expect(shipped.has(name), name).toBe(true);
+    const planningOnly = [
+      ...PLANNING_SKILL_NAMES.filter((n) => n.startsWith("planning-") || n.startsWith("bmad-toolbox:")),
+      "frontend-design:frontend-design",
+    ];
+    for (const name of planningOnly) expect(SDLC_SKILL_NAMES, name).not.toContain(name);
+    for (const name of SDLC_SKILL_NAMES) expect(shipped.has(name), name).toBe(true);
+  });
+
+  it("points the leader at the planning procedure skills and keeps the squad to planning documents", () => {
+    expect(planning.instructions).toContain("planning-delivery-core");
+    expect(planning.instructions).toContain("planning-squad-lead");
+    expect(planning.instructions).toContain("Delegate only to the members listed on your Squad Roster");
+    expect(planning.instructions).toContain("writes no product code");
+    expect(planning.workflow).toBe(PLANNING_AUTO_WORKFLOW);
   });
 });

@@ -284,6 +284,10 @@
         "name": "市场调研",
         "description": "每周扫描市场与竞品，由评审员质疑证据，只把有依据的提案交给老板。"
       },
+      "bmad_planning": {
+        "name": "规划 · BMAD",
+        "description": "把需求变成经过评审的规划文档：调研、简报、PRD、UX、架构和史诗；也能补充产品已有的文档。"
+      },
       "sdlc_maintenance": {
         "name": "SDLC · 现有产品",
         "description": "对缺陷、功能、优化或升级进行分诊，分派给合适的智能体，验证后汇报。"

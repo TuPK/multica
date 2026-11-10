@@ -24,11 +24,22 @@ const ROLE_SKILLS = [
   "sdlc-devops-release",
 ];
 
+// The planning squad's procedure skills (planning-skills.test.ts owns their content).
+const PLANNING_ROLE_SKILLS = [
+  "planning-delivery-core",
+  "planning-squad-lead",
+  "planning-research",
+  "planning-product",
+  "planning-ux",
+  "planning-architecture",
+  "planning-readiness",
+];
+
 // Every other skill in the bundle: the tools and plugin skills the boss attached to the
 // SDLC squad. They ship beside the role skills, copied from the workspace, so every SDLC
 // squad has them. A folder name stores a colon as `--`.
 const TOOL_SKILLS = readdirSync(skillsDir, { withFileTypes: true })
-  .filter((entry) => entry.isDirectory() && !ROLE_SKILLS.includes(entry.name))
+  .filter((entry) => entry.isDirectory() && !ROLE_SKILLS.includes(entry.name) && !PLANNING_ROLE_SKILLS.includes(entry.name))
   .map((entry) => entry.name.replaceAll("--", ":"))
   .sort();
 
@@ -43,7 +54,7 @@ function skillFiles(dir: string, prefix = ""): string[] {
 
 describe("built-in SDLC skills", () => {
   it("ships one skill per SDLC role plus the shared core, and the attached tool skills", () => {
-    expect(SDLC_BUILTIN_SKILLS.map((s) => s.name)).toEqual([...ROLE_SKILLS, ...TOOL_SKILLS].sort());
+    expect(SDLC_BUILTIN_SKILLS.map((s) => s.name)).toEqual([...ROLE_SKILLS, ...PLANNING_ROLE_SKILLS, ...TOOL_SKILLS].sort());
   });
 
   it("carries every skill folder, unchanged, as the generated bundle", () => {

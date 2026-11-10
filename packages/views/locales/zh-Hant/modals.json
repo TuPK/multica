@@ -284,6 +284,10 @@
         "name": "市場調研",
         "description": "每週掃描市場與競品，由審查員質疑證據，只把有依據的提案交給老闆。"
       },
+      "bmad_planning": {
+        "name": "規劃 · BMAD",
+        "description": "把需求變成經過審查的規劃文件：調研、簡報、PRD、UX、架構和史詩；也能補充產品既有的文件。"
+      },
       "sdlc_maintenance": {
         "name": "SDLC · 既有產品",
         "description": "對缺陷、功能、最佳化或升級進行分流，分派給合適的智慧體，驗證後回報。"

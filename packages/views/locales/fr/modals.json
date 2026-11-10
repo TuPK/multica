@@ -286,6 +286,10 @@
         "name": "Étude de marché",
         "description": "Scanne chaque semaine les marchés et les concurrents, fait challenger les preuves par le critique et ne soumet au patron que les propositions qu'elles soutiennent."
       },
+      "bmad_planning": {
+        "name": "Planification · BMAD",
+        "description": "Transforme une demande en documents de planification relus : étude, brief, PRD, UX, architecture et epics. Complète ceux qu'un produit possède déjà."
+      },
       "sdlc_maintenance": {
         "name": "SDLC · Produit existant",
         "description": "Trie un bug, une fonctionnalité, une optimisation ou une mise à niveau, l'oriente vers les bons agents, la vérifie et rend compte."

@@ -33,6 +33,7 @@ import type {
   CompanySeatAssignment,
   CompanySeatsResponse,
 } from "../company/types";
+import { PLANNING_ROLE_AGENT_INSTRUCTIONS, type PlanningRoleKey } from "./planning-agent-instructions";
 import { SDLC_ROLE_AGENT_INSTRUCTIONS, type SdlcRoleKey } from "./sdlc-agent-instructions";
 import { SDLC_BUILTIN_SKILLS, type BuiltinSkill } from "./sdlc-skills-data";
 import {
@@ -153,6 +154,9 @@ export function instructionsFor(role: SquadRoleKey): string {
   if (role in SDLC_ROLE_AGENT_INSTRUCTIONS) {
     return SDLC_ROLE_AGENT_INSTRUCTIONS[role as SdlcRoleKey];
   }
+  if (role in PLANNING_ROLE_AGENT_INSTRUCTIONS) {
+    return PLANNING_ROLE_AGENT_INSTRUCTIONS[role as PlanningRoleKey];
+  }
   const id = SQUAD_ROLES[role].agentTemplate;
   const template = AGENT_INSTRUCTION_TEMPLATES.find((t) => t.id === id);
   if (!template) throw new Error(`no instruction template "${id}"`);
@@ -201,6 +205,13 @@ export function workflowSteps(
     );
   }
   return out;
+}
+
+/** The new statuses a workflow creates, as a range for an error message: "Analysis to Plan ready". */
+function newStatusRange(steps: readonly SquadWorkflowStep[]): string {
+  const names = steps.flatMap((s) => ("name" in s.status ? [s.status.name] : []));
+  const last = names.includes("Plan ready") ? "Plan ready" : names[names.length - 1];
+  return names.length > 1 ? `${names[0]} to ${last}` : (names[0] ?? "");
 }
 
 /**
@@ -570,7 +581,7 @@ export async function runSquadQuickstart(
           outcome.workflow = { status: "created" };
         } catch (err) {
           if (errorCode(err) === "status_create_forbidden") {
-            throw new Error("the workflow needs statuses a workspace admin must allow: Analysis to Plan ready");
+            throw new Error(`the workflow needs statuses a workspace admin must allow: ${newStatusRange(template.workflow.steps)}`);
           }
           throw err;
         }

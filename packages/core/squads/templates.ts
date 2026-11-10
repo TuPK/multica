@@ -9,7 +9,7 @@ import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
  * names below so that running the quickstart twice reuses them.
  */
 
-export type SquadTemplateId = "sdlc_greenfield" | "sdlc_maintenance" | "market_research";
+export type SquadTemplateId = "sdlc_greenfield" | "sdlc_maintenance" | "market_research" | "bmad_planning";
 
 export type SquadRoleKey =
   | "lead"
@@ -25,7 +25,14 @@ export type SquadRoleKey =
   | "research_lead"
   | "scout"
   | "competitor"
-  | "critic";
+  | "critic"
+  | "plan_lead"
+  | "plan_researcher"
+  | "plan_analyst"
+  | "plan_pm"
+  | "plan_ux"
+  | "plan_architect"
+  | "plan_reviewer";
 
 export interface SquadRole {
   key: SquadRoleKey;
@@ -136,6 +143,55 @@ export const SQUAD_ROLES: Record<SquadRoleKey, SquadRole> = {
     name: "Research Critic",
     description: "Challenges the evidence before anything is filed, and writes no findings of its own.",
     role: "Challenges the evidence",
+  },
+  plan_lead: {
+    key: "plan_lead",
+    agentTemplate: "tech_lead",
+    name: "Blueprint Lead",
+    description: "Leads planning squads: reads the request, maps its impact, delegates the documents, and verifies them.",
+    role: "Squad leader",
+  },
+  plan_researcher: {
+    key: "plan_researcher",
+    agentTemplate: "market_scout",
+    name: "Blueprint Researcher",
+    description: "Researches markets, domains, competitors, technology, and users, with a dated source for each claim.",
+    role: "Market, domain, competitor, technical and user research",
+  },
+  plan_analyst: {
+    key: "plan_analyst",
+    agentTemplate: "product_analyst",
+    name: "Blueprint Analyst",
+    description: "Turns a request and its research into a product brief or PRFAQ, and tests weak ideas.",
+    role: "Product brief, PRFAQ, requirement clarification",
+  },
+  plan_pm: {
+    key: "plan_pm",
+    agentTemplate: "product_analyst",
+    name: "Blueprint PM",
+    description: "Writes or extends the PRD, epics and stories, and corrects course when scope changes.",
+    role: "PRD, epics and stories, readiness check, course correction",
+  },
+  plan_ux: {
+    key: "plan_ux",
+    agentTemplate: "ux_designer",
+    name: "Blueprint UX Designer",
+    description: "Designs or extends the screens, flows, states, and design system the requirements need.",
+    role: "UX design, screens and flows",
+  },
+  plan_architect: {
+    key: "plan_architect",
+    agentTemplate: "architect",
+    name: "Blueprint Architect",
+    description: "Designs the simplest system that fits, analyses the impact of a change, and records decisions.",
+    role: "Architecture, ADRs, impact analysis, project context",
+  },
+  plan_reviewer: {
+    key: "plan_reviewer",
+    agentTemplate: "code_reviewer",
+    name: "Blueprint Reviewer",
+    description: "Independent review of the planning documents for consistency and readiness to build.",
+    role: "Independent review, readiness verdict",
   },
 };
 
@@ -272,6 +328,86 @@ export const SDLC_AUTO_WORKFLOW: SquadWorkflowTemplate = {
   ],
 };
 
+/**
+ * The lead's brief for a blocked planning issue. A blocked step with no handler
+ * leaves the issue with nobody to unblock it.
+ */
+export const PLANNING_BLOCKED_INSTRUCTIONS =
+  "This issue is blocked. Load the planning-delivery-core and planning-squad-lead skills and follow the lead's Blocked work (Step 6). Read the blocker report, route its class to the member who owns it with an unblock issue, verify the answer, and resume the issue at its Blocked-from status. Do not write the member's document yourself, do not leave the issue here, and do not wait for a person. Only scope-reversal, irreversible, or a capability the host must change goes to a person, once, with your recommended default. " +
+  "Never change an acceptance criterion or an accepted decision to get past a blocker.";
+
+/** The brief a planning stage gives its owner. The owner's skill holds the procedure. */
+const stageBrief = (skill: string, done: string) =>
+  `This issue is either a planning stage of a request or an unblock answer; its description says which. Load the planning-delivery-core and ${skill} skills. For a planning stage, do the work the issue names, edit only the documents you own and only the parts its impact map part names, and record what you did. ${done} For an unblock answer, answer the one question with evidence and end with the answer comment. If you cannot proceed, set the issue to blocked with the blocker report from planning-delivery-core.`;
+
+/**
+ * The BMAD Planning Auto workflow of a planning project. Each stage hands the issue to the
+ * member who owns that document. Every stage ends at Stage done, which counts as finished
+ * for the queue and the stage barrier. The request ends at Plan ready, which nobody picks
+ * up, so the boss decides what happens to the plan next.
+ */
+export const PLANNING_AUTO_WORKFLOW: SquadWorkflowTemplate = {
+  name: "BMAD Planning Auto",
+  description:
+    "Planning by agents: research, brief, PRD, design, architecture, epics, then an independent readiness review. A stage hands the issue to the member who owns that document.",
+  steps: [
+    { status: { key: "backlog" }, handler: null, instructions: "", next: "todo" },
+    { status: { key: "todo" }, handler: null, instructions: "" },
+    {
+      status: { name: "Research" },
+      handler: "plan_researcher",
+      next: "stage_done",
+      back: "blocked",
+      instructions: stageBrief("planning-research", "When the report is written, sourced and committed, move the issue to Stage done."),
+    },
+    {
+      status: { name: "Brief" },
+      handler: "plan_analyst",
+      next: "stage_done",
+      back: "blocked",
+      instructions: stageBrief("planning-product", "Work the Brief stage. When the brief is written and committed, move the issue to Stage done."),
+    },
+    {
+      status: { name: "PRD" },
+      handler: "plan_pm",
+      next: "stage_done",
+      back: "blocked",
+      instructions: stageBrief("planning-product", "Work the PRD stage. When the PRD is written or extended, its ids are stable, and its Change log is updated, move the issue to Stage done."),
+    },
+    {
+      status: { name: "Design" },
+      handler: "plan_ux",
+      next: "stage_done",
+      back: "blocked",
+      instructions: stageBrief("planning-ux", "When every screen in the issue has its states and is registered, move the issue to Stage done."),
+    },
+    {
+      status: { name: "Architecture" },
+      handler: "plan_architect",
+      next: "stage_done",
+      back: "blocked",
+      instructions: stageBrief("planning-architecture", "When the design, ADRs, and component list are committed and posted, move the issue to Stage done."),
+    },
+    {
+      status: { name: "Epics" },
+      handler: "plan_pm",
+      next: "stage_done",
+      back: "blocked",
+      instructions: stageBrief("planning-product", "Work the Epics stage. When the epics, stories, traceability table, and readiness check are written, move the issue to Stage done."),
+    },
+    {
+      status: { name: "Plan review" },
+      handler: "plan_reviewer",
+      next: "stage_done",
+      back: "blocked",
+      instructions: stageBrief("planning-readiness", "Give one verdict. PASS: move the issue to Stage done. CONCERNS or FAIL: set the issue to blocked and list each gap with its id, so the squad lead can create the gap issues. Do not move it to Stage done on CONCERNS."),
+    },
+    { status: { name: "Stage done", category: "done" }, handler: null, instructions: "" },
+    { status: { name: "Plan ready" }, handler: null, instructions: "" },
+    { status: { key: "blocked" }, handler: "plan_lead", instructions: PLANNING_BLOCKED_INSTRUCTIONS },
+  ],
+};
+
 /** A recurring autopilot the template creates for its squad. */
 export interface SquadRoutineTemplate {
   /** Name of the autopilot. A non-archived autopilot with this name on the squad is reused. */
@@ -323,8 +459,58 @@ export interface SquadTemplate {
   builtinSkills: readonly string[];
 }
 
-/** The built-in SDLC skills, by name. Every SDLC squad imports all of them. */
-export const SDLC_SKILL_NAMES: readonly string[] = SDLC_BUILTIN_SKILLS.map((skill) => skill.name);
+/**
+ * The built-in skills the planning squad imports. The SDLC squads do not: the planning
+ * procedure skills and the research and design tools below ship in the same bundle folder
+ * but belong to the planning template alone.
+ */
+export const PLANNING_SKILL_NAMES: readonly string[] = [
+  "planning-delivery-core",
+  "planning-squad-lead",
+  "planning-research",
+  "planning-product",
+  "planning-ux",
+  "planning-architecture",
+  "planning-readiness",
+  "bmad-method:bmad-product-brief",
+  "bmad-method:bmad-prfaq",
+  "bmad-method:bmad-prd",
+  "bmad-method:bmad-ux",
+  "bmad-method:bmad-architecture",
+  "bmad-method:bmad-create-epics-and-stories",
+  "bmad-method:bmad-sprint-planning",
+  "bmad-method:bmad-correct-course",
+  "bmad-method:bmad-project-context",
+  "bmad-method:bmad-retrospective",
+  "bmad-method:bmad-walkthrough",
+  "bmad-method:bmad-spec",
+  "bmad-method:bmad-agent-analyst",
+  "bmad-method:bmad-agent-pm",
+  "bmad-method:bmad-agent-architect",
+  "bmad-method:bmad-agent-ux-designer",
+  "bmad-toolbox:bmad-deep-recon",
+  "bmad-toolbox:bmad-forge-idea",
+  "bmad-toolbox:bmad-review",
+  "bmad-toolbox:bmad-advanced-elicitation",
+  "frontend-design:frontend-design",
+  "superpowers:brainstorming",
+  "superpowers:writing-plans",
+  "superpowers:dispatching-parallel-agents",
+  "superpowers:verification-before-completion",
+];
+
+/** Skills that ship in the bundle for the planning squad only. */
+const PLANNING_ONLY_SKILLS: readonly string[] = SDLC_BUILTIN_SKILLS.map((skill) => skill.name).filter(
+  (name) =>
+    name.startsWith("planning-") ||
+    name.startsWith("bmad-toolbox:") ||
+    name === "frontend-design:frontend-design",
+);
+
+/** The built-in SDLC skills, by name. Every SDLC squad imports all of them, and none of the planning-only ones. */
+export const SDLC_SKILL_NAMES: readonly string[] = SDLC_BUILTIN_SKILLS.map((skill) => skill.name).filter(
+  (name) => !PLANNING_ONLY_SKILLS.includes(name),
+);
 
 const SDLC_CHARTER_BOUNDARIES =
   "No production deploys and no deletions without the boss. Spending money needs the boss.";
@@ -402,6 +588,14 @@ Proposals:
 - Do not write product code, make product decisions, or contact anyone outside the workspace. A proposal is a request for the boss's decision.
 
 Final report, one comment on the request: the window scanned, the proposals filed with their ids, what the critic objected to, the assumptions you took, and what is not verified.`;
+
+const BMAD_PLANNING_INSTRUCTIONS = `You lead a planning squad. A request arrives as an issue assigned to this squad, and you carry it to reviewed planning documents without asking the requester again.
+
+Before any action on an issue, load the planning-delivery-core and planning-squad-lead skills. They hold the procedure: choose new or extend mode, write the impact map, split the work into queued issues, verify each report, route blocked work, and close with the planning handoff packet. Follow them. Where this text and a skill differ, the skill wins.
+
+This squad writes planning documents only: research, brief, PRD, UX design, architecture, epics and stories. It writes no product code. A request names the project with the repository and the "BMAD Planning Auto" workflow.
+
+Delegate only to the members listed on your Squad Roster. Each member loads its own planning skill, which the squad shares with all of them.`;
 
 export const SQUAD_TEMPLATES: readonly SquadTemplate[] = [
   {
@@ -509,5 +703,42 @@ export const SQUAD_TEMPLATES: readonly SquadTemplate[] = [
     instructions: MARKET_RESEARCH_INSTRUCTIONS,
     workflow: null,
     builtinSkills: [],
+  },
+  {
+    id: "bmad_planning",
+    name: "BMAD Planning",
+    description:
+      "Turns a request into reviewed planning documents: research, brief, PRD, UX design, architecture, epics and stories. Extends the documents a product already has.",
+    roles: [
+      "plan_lead",
+      "plan_researcher",
+      "plan_analyst",
+      "plan_pm",
+      "plan_ux",
+      "plan_architect",
+      "plan_reviewer",
+    ],
+    leader: "plan_lead",
+    floorName: null,
+    routine: null,
+    charter: {
+      mission: "Turn a request into planning documents the build squad can follow, and keep the documents of an existing product current.",
+      responsibilities: [
+        { key: "research", text: "Research the market, domain, competitors and users, with a dated source for each claim." },
+        { key: "documents", text: "Write or extend the brief, PRD, UX design, architecture, epics and stories, keeping existing ids stable." },
+        { key: "readiness", text: "Have an independent reviewer check the documents agree and can be built before anyone calls the plan ready." },
+      ],
+      outputs: [
+        { key: "planning_handoff", kind: "report", cadenceHint: "per request" },
+        { key: "planning_documents", kind: "kb_document", cadenceHint: "per request" },
+      ],
+      boundaries:
+        "Writes planning documents only, no product code. Does not reverse an accepted decision or change a criterion of work already built without the requester. Spending money needs the boss.",
+      escalation: "A change that reverses an accepted decision or a built criterion goes to the requester, named on the request.",
+      intake: "Requests arrive as issues assigned to this squad.",
+    },
+    instructions: BMAD_PLANNING_INSTRUCTIONS,
+    workflow: PLANNING_AUTO_WORKFLOW,
+    builtinSkills: PLANNING_SKILL_NAMES,
   },
 ];

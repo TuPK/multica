@@ -286,6 +286,10 @@
         "name": "Market research",
         "description": "Scans markets and competitors each week, has the critic challenge the evidence, and brings the boss only the proposals it supports."
       },
+      "bmad_planning": {
+        "name": "Planning · BMAD",
+        "description": "Turns a request into reviewed planning documents: research, brief, PRD, UX, architecture, and epics. Extends the ones a product already has."
+      },
       "sdlc_maintenance": {
         "name": "SDLC · Existing product",
         "description": "Triages a bug, feature, optimization, or upgrade, routes it to the right agents, verifies it, and reports."
