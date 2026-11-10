@@ -24,7 +24,8 @@ type AssignSquadProjectRequest struct {
 }
 
 // AssignSquadProject gives a project to a squad, which shows it in its room. The
-// project takes the SDLC Auto workflow, built on the squad's SDLC agents. A
+// project takes the squad's workflow: SDLC Auto, built on the squad's SDLC agents,
+// or BMAD Planning Auto for a planning squad, which the quickstart creates. A
 // squad works one open project at a time, so one already assigned must be
 // unassigned first. The workflow switch uses the same status mapping as a
 // project's workflow change, in one transaction. A project already on a
@@ -89,13 +90,17 @@ func (h *Handler) AssignSquadProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sdlc, err := h.initiativeService().EnsureSDLCWorkflow(ctx, qtx, wsUUID, squad.ID)
+	sdlc, err := h.initiativeService().EnsureSquadProjectWorkflow(ctx, qtx, wsUUID, squad.ID)
 	if err != nil {
 		if errors.Is(err, service.ErrBuildNeedsSDLCSquad) {
 			writeErrorCode(w, http.StatusUnprocessableEntity, "build_squad_not_sdlc", err.Error())
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "failed to set up the SDLC workflow")
+		if errors.Is(err, service.ErrPlanningWorkflowMissing) {
+			writeErrorCode(w, http.StatusUnprocessableEntity, "planning_workflow_missing", err.Error())
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to set up the squad's workflow")
 		return
 	}
 

@@ -1,10 +1,15 @@
 package handler
 
 import (
+	"context"
 	"net/http"
+	"strings"
 	"testing"
 
+	"github.com/multica-ai/multica/server/internal/issueworkflow"
 	"github.com/multica-ai/multica/server/internal/testutil"
+	"github.com/multica-ai/multica/server/internal/util"
+	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
 // assignSquadProject posts the assignment as the workspace admin.
@@ -112,4 +117,71 @@ func projectWorkflowName(t *testing.T, projectID string) string {
 		return ""
 	}
 	return *name
+}
+
+// planningSquad makes a squad led by the quickstart's planning lead, and returns its id
+// and the lead's id.
+func planningSquad(t *testing.T, fx iniWorkspace, name string) (string, string) {
+	t.Helper()
+	lead := iniAgent(t, fx.ID, "Blueprint Lead")
+	squad := dbfx.Squad(t, name+" "+fx.ID[:8], lead, testutil.Cols{"workspace_id": fx.ID})
+	dbfx.SquadMember(t, squad, "agent", lead, testutil.Cols{"role": "leader"})
+	return squad, lead
+}
+
+// createPlanningWorkflow stores a "BMAD Planning Auto" workflow whose blocked step is handed to the lead,
+// as the quickstart creates it.
+func createPlanningWorkflow(t *testing.T, fx iniWorkspace, lead string) {
+	t.Helper()
+	steps, err := issueworkflow.EncodeSteps(issueworkflow.Arrange([]issueworkflow.Step{
+		{StatusKey: "backlog", Handler: issueworkflow.Handler{Type: issueworkflow.HandlerNone}},
+		{StatusKey: "blocked", Handler: issueworkflow.Handler{Type: issueworkflow.HandlerAgent, ID: lead}},
+	}))
+	if err != nil {
+		t.Fatalf("encode steps: %v", err)
+	}
+	if _, err := testHandler.Queries.CreateIssueWorkflow(context.Background(), db.CreateIssueWorkflowParams{
+		WorkspaceID:      util.MustParseUUID(fx.ID),
+		Name:             "BMAD Planning Auto",
+		InitialStatusKey: "todo",
+		Steps:            steps,
+	}); err != nil {
+		t.Fatalf("create planning workflow: %v", err)
+	}
+	t.Cleanup(func() {
+		testPool.Exec(context.Background(), `DELETE FROM issue_workflow WHERE workspace_id = $1`, fx.ID)
+	})
+}
+
+// TestAssignSquadProjectGivesAPlanningSquadItsWorkflow: a squad led by the planning lead takes
+// the planning workflow the quickstart made, not SDLC Auto.
+func TestAssignSquadProjectGivesAPlanningSquadItsWorkflow(t *testing.T) {
+	fx := newIniWorkspace(t)
+	squad, lead := planningSquad(t, fx, "Planning")
+	createPlanningWorkflow(t, fx, lead)
+	projectID := dbfxProject(t, fx, "Plans")
+
+	assignSquadProject(t, fx, squad, projectID, nil).Want(http.StatusOK)
+
+	if got := projectWorkflowName(t, projectID); got != "BMAD Planning Auto" {
+		t.Fatalf("project workflow = %q, want BMAD Planning Auto", got)
+	}
+}
+
+// TestAssignSquadProjectNeedsThePlanningWorkflow: without the workflow the quickstart creates, the
+// assignment says so instead of falling back to the SDLC workflow.
+func TestAssignSquadProjectNeedsThePlanningWorkflow(t *testing.T) {
+	fx := newIniWorkspace(t)
+	squad, _ := planningSquad(t, fx, "Planning")
+	projectID := dbfxProject(t, fx, "Plans")
+
+	resp := assignSquadProject(t, fx, squad, projectID, nil).Want(http.StatusUnprocessableEntity)
+	if got := resp.Text(); !strings.Contains(got, "planning_workflow_missing") {
+		t.Fatalf("body = %s, want code planning_workflow_missing", got)
+	}
+	var withWorkflow int
+	dbfx.QueryRow(t, `SELECT count(*) FROM project WHERE id = $1 AND workflow_id IS NOT NULL`, projectID).Scan(&withWorkflow)
+	if withWorkflow != 0 {
+		t.Fatalf("the project got a workflow although the planning workflow is missing")
+	}
 }
