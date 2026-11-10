@@ -1,13 +1,25 @@
 #!/usr/bin/env node
-// Generates packages/core/squads/kitviet-skills-data/*.ts, the Kit Viet skill and agent bundles the
-// squad quickstart imports, from the vendored upstream in packages/core/squads/kitviet-upstream.
-// Inputs: kitviet-rewrites.json (the rewrite table) and kitviet-patches/<skill>.json (exact-match
-// patches). Run `pnpm generate:kitviet`; `--check` regenerates in memory and fails when the
-// committed output is stale. The upstream is never read from the network.
+// Generates packages/core/squads/kitviet-skills-data/*.ts, the Kit Viet skill, agent and squad data
+// the squad quickstart imports, from the vendored upstream in packages/core/squads/kitviet-upstream.
+// Inputs:
+//   kitviet-rewrites.json   the rewrite table (Pro blocks, platform sections, file names, verdicts)
+//   kitviet-patches/<name>.json  exact-match patches per skill or agent (upstream text)
+//   kitviet-squads.json     per squad: trade folder, agent -> role key and kind, core skills,
+//                           promoted skills, leader skills and role skills (spec 5.10, 6, F17)
+//   kitviet-skills/<kv-*>/  authored skills (spec 5.5), shared by every squad
+// Run `pnpm generate:kitviet`; `--check` regenerates in memory and fails when the committed output is
+// stale. The upstream is never read from the network.
 //
-// Order per skill or agent body: drop the Pro blocks, drop the platform sections, apply the patches
-// (their `find` strings are upstream text, so they run before the rewrite table), apply the rewrite
-// table, then rename skills the pack keeps under another name. Guards throw on leftovers.
+// Each squad has its own pack file (admin.ts, ...): its trade skills, its agents rendered with that
+// squad's role keys, and its per-role instruction data. The shared skills (common.ts) are rendered
+// once, with neutral wording for agent names, because every squad loads them.
+//
+// Reference rules (F17), applied per squad to every skill and agent body:
+//   kv:<skill> in the squad's resolution set (core + roleSkills)  -> the bundle name kv--<skill>
+//   kv:<skill> elsewhere                                          -> "nhờ lead tạo yêu cầu"
+//   <agent> mapped to a role of the squad                         -> the role key
+//   <agent> not in the squad                                      -> "nhờ lead"
+// Guards throw (or list every violation) on leftovers, unknown references and stale data.
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -18,20 +30,33 @@ const here = dirname(fileURLToPath(import.meta.url));
 const squadsDir = resolve(here, "../packages/core/squads");
 const upstreamDir = join(squadsDir, "kitviet-upstream");
 const patchesDir = join(squadsDir, "kitviet-patches");
+const authoredDir = join(squadsDir, "kitviet-skills");
 const outDir = join(squadsDir, "kitviet-skills-data");
 
-// Pack id, output file and the upstream trade folder it reads (null for the shared base).
+const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
+const squadConfig = readJson(join(squadsDir, "kitviet-squads.json"));
+const rewrites = readJson(join(squadsDir, "kitviet-rewrites.json"));
+const upstream = readJson(join(upstreamDir, "UPSTREAM.json"));
+
+// Squads in file order; each one is a pack file named after its id.
+export const SQUADS = Object.entries(squadConfig.squads).map(([id, squad]) => ({ id, ...squad }));
+
+// The shared pack, then one pack per squad. The file name is the pack id.
 export const PACKS = [
   { id: "common", file: "common", trade: null },
-  { id: "admin", file: "admin", trade: "hanh-chinh-van-phong" },
-  { id: "b2b", file: "b2b", trade: "kinh-doanh" },
-  { id: "marketing", file: "marketing", trade: "marketing" },
-  { id: "legal", file: "legal", trade: "phap-ly" },
-  { id: "accounting", file: "accounting", trade: "ke-toan" },
+  ...SQUADS.map((squad) => ({ id: squad.id, file: squad.id, trade: squad.trade })),
 ];
 
-// The lead replaces this agent (kv-squad-lead), so its instructions are not generated.
-const EXCLUDED_AGENTS = new Set(["lap-ke-hoach-dieu-phoi"]);
+// What a reference outside the squad becomes (F17). Parenthesised so it reads inside a sentence.
+const NO_AGENT = "(vai không có trong squad: nhờ lead)";
+const NO_SKILL = "(việc ngoài squad: nhờ lead tạo yêu cầu)";
+const ROLE_KIND_CLASS = {
+  kv_lead: "lead",
+  kv_collector: "collector",
+  kv_drafter: "drafter",
+  kv_gate: "gate",
+  kv_handover: "handover",
+};
 
 // Text that must not survive into a generated body (spec 5.5 and F1, F3, F4, F7, F22).
 const FORBIDDEN = [
@@ -46,9 +71,8 @@ const FORBIDDEN = [
   { re: /Claude Desktop/, what: "platform name" },
   { re: /Codex/, what: "platform name" },
   { re: /\d\d-[a-z-]+\.md/, what: "numbered stage file" },
+  { re: /kv:[a-z0-9-]/, what: "unresolved kv: reference" },
 ];
-
-const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
 
 export function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -101,15 +125,6 @@ function expandReplacement(template, args) {
   return template.replace(/\$(\d)/g, (_, n) => args[Number(n)] ?? "");
 }
 
-// Renames `kv:<from>` references and the skill itself, e.g. the Legal copy of soan-don-tu.
-export function renameReferences(text, renames) {
-  let out = text;
-  for (const [from, to] of Object.entries(renames)) {
-    out = out.replace(new RegExp(`kv:${escapeRegExp(from)}(?![\\w-])`, "g"), `kv:${to}`);
-  }
-  return out;
-}
-
 // Replaces the first non-empty line under the verdict heading with the one VERDICT line (F18).
 // Gate and handover agents only; their template wording differs (QUA/CHẶN, Đạt/Chưa đạt, ...).
 export function applyVerdictTemplate(text, section, line) {
@@ -153,19 +168,19 @@ export function classifyAgent(tools, description) {
   return "collector";
 }
 
-// Transforms one text file (skill body, reference file, or agent body) with the rewrite table.
-export function transformText(text, { rewrites, patches, patchHits, renames, label, hits }) {
-  let out = text;
-  for (const block of rewrites.removeBlocks) out = removeBlocks(out, block);
-  for (const title of rewrites.removeSections) out = removeSection(out, title);
-  out = applyPatches(out, patches, label, patchHits);
-  out = applyRules(out, rewrites.rules, hits);
-  out = renameReferences(out, renames);
-  return out;
+// The role display name of a role key: `legal_reader` -> `Legal Reader`.
+export function displayRole(role) {
+  return role
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 }
 
 // Leftover checks collect every violation so one run lists them all; buildPacks throws at the end.
 let violations = [];
+let ruleHits = new Map();
+let allPatchHits = [];
+let allPatches = [];
 
 function guard(text, label) {
   const lines = text.split("\n");
@@ -184,163 +199,80 @@ function listFolders(dir) {
     .sort();
 }
 
-function listAgentFiles(dir) {
+function listAgentNames(dir) {
   if (!existsSync(dir)) return [];
   return readdirSync(dir, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
-    .map((entry) => entry.name)
+    .map((entry) => entry.name.replace(/\.md$/, ""))
     .sort();
 }
 
-// Loads the patch file for one skill (or agent) name, or nothing.
+// The patch list for one skill folder or agent name, or none.
 function patchesFor(name) {
   const path = join(patchesDir, `${name}.json`);
   return existsSync(path) ? readJson(path) : [];
 }
 
-export function buildPacks() {
-  const rewrites = readJson(join(squadsDir, "kitviet-rewrites.json"));
-  const upstream = readJson(join(upstreamDir, "UPSTREAM.json"));
-  for (const file of ["LICENSE", "NOTICE.md", "UPSTREAM.json"]) {
-    if (!existsSync(join(upstreamDir, file))) throw new Error(`kitviet-upstream/${file} is missing`);
-  }
-  const config = { source: "kitviet", upstream: upstream.repo, ref: upstream.ref, license: upstream.license };
-  const hits = new Map();
-  violations = [];
-  const usedPatchFiles = new Set();
-  const allPatches = readJson(join(patchesDir, "_all.json"));
-  const allPatchHits = allPatches.map(() => 0);
-  const packs = new Map();
-  // The dropped skills and the renames are per pack; a skill folder name is unique across packs.
-  for (const pack of PACKS) {
-    const renames = pack.trade ? (rewrites.renamedSkills[pack.trade] ?? {}) : {};
-    const skills = [];
-    const agents = [];
-    // The shared base is generated once, into the common pack; trade packs read only their trade folder.
-    if (pack.id === "common") {
-      for (const folder of listFolders(join(upstreamDir, "common", "skills"))) {
-        if (rewrites.droppedSkills.includes(folder)) continue;
-        skills.push(buildSkill({ folder, dir: join(upstreamDir, "common", "skills", folder), renames, rewrites, config, hits, usedPatchFiles, allPatches, allPatchHits }));
-      }
-      for (const file of listAgentFiles(join(upstreamDir, "common", "agents"))) {
-        const name = file.replace(/\.md$/, "");
-        if (EXCLUDED_AGENTS.has(name)) continue;
-        agents.push(buildAgent({ name, path: join(upstreamDir, "common", "agents", file), renames, rewrites, hits, usedPatchFiles, allPatches, allPatchHits }));
-      }
-    } else {
-      for (const folder of listFolders(join(upstreamDir, pack.trade, "skills"))) {
-        if (rewrites.droppedSkills.includes(folder)) continue;
-        skills.push(buildSkill({ folder, dir: join(upstreamDir, pack.trade, "skills", folder), renames, rewrites, config, hits, usedPatchFiles, allPatches, allPatchHits }));
-      }
-      for (const file of listAgentFiles(join(upstreamDir, pack.trade, "agents"))) {
-        const name = file.replace(/\.md$/, "");
-        if (EXCLUDED_AGENTS.has(name)) continue;
-        agents.push(buildAgent({ name, path: join(upstreamDir, pack.trade, "agents", file), renames, rewrites, hits, usedPatchFiles, allPatches, allPatchHits }));
-      }
-    }
-    packs.set(pack.id, { pack, skills, agents });
-  }
-  if (violations.length > 0) {
-    throw new Error(`${violations.length} leftovers:\n${violations.slice(0, 80).join("\n")}`);
-  }
-  // Guards on the whole build.
-  for (const name of readdirSync(patchesDir)) {
-    if (!name.endsWith(".json") || name === "_all.json") continue;
-    if (!usedPatchFiles.has(name.replace(/\.json$/, ""))) {
-      throw new Error(`kitviet-patches/${name} matches no skill or agent`);
-    }
-  }
-  allPatches.forEach((patch, index) => {
-    if (allPatchHits[index] === 0) throw new Error(`_all.json patch matched nothing: ${patch.find.slice(0, 90)}`);
-  });
-  for (const rule of rewrites.rules) {
-    if (!hits.has(rule.name)) throw new Error(`rewrite rule ${rule.name} matched nothing (stale rule)`);
-  }
-  return packs;
+// The bundle name of an upstream skill: `kv:` written as `kv--` (spec 5.5).
+function bundleName(short) {
+  return `kv--${short}`;
 }
 
-function buildSkill({ folder, dir, renames, rewrites, config, hits, usedPatchFiles, allPatches, allPatchHits }) {
-  const original = readFileSync(join(dir, "SKILL.md"), "utf8");
-  const short = renames[folder] ?? folder;
-  const name = `kv:${short}`;
-  const { frontmatterLines, body } = splitFrontmatter(original, folder);
-  const label = `skill ${folder}`;
-  // The frontmatter (description included) goes through the rewrite table too, then the name is set.
-  const rewrittenFrontmatter = renameReferences(applyRules(frontmatterLines.join("\n"), rewrites.rules, hits), renames);
-  const description = unescapeYamlQuotes(frontmatterDescription(rewrittenFrontmatter, folder));
-  if (!description) throw new Error(`${folder}/SKILL.md has an empty description`);
-  usedPatchFiles.add(folder);
-  const ownPatches = patchesFor(folder);
-  const ownHits = ownPatches.map(() => 0);
-  const allTexts = [];
-  const transform = (text, lab) => {
-    const local = transformText(text, { rewrites, patches: ownPatches, patchHits: ownHits, renames, label: lab, hits });
-    return applyAllPatches(local, allPatches, allPatchHits, lab);
-  };
-  const frontmatter = rewrittenFrontmatter
-    .split("\n")
-    .map((line) => (line.startsWith("name:") ? `name: ${short}` : line))
-    .join("\n");
-  const content = `---\n${frontmatter}\n---\n${transform(body, label)}`;
-  guard(content, `${label}/SKILL.md`);
-  allTexts.push({ path: "SKILL.md", content });
-  for (const file of skillFiles(dir).sort()) {
-    const raw = readFileSync(join(dir, file), "utf8");
-    const transformed = file.endsWith(".md") ? transform(raw, `${label}/${file}`) : raw;
-    if (file.endsWith(".md")) guard(transformed, `${label}/${file}`);
-    allTexts.push({ path: file, content: transformed });
-  }
-  ownHits.forEach((count, index) => {
-    if (count === 0) violations.push(`skill ${folder}: patch ${index + 1} matched no file: ${ownPatches[index].find.slice(0, 90)}`);
-  });
-  const skillFile = allTexts.find((file) => file.path === "SKILL.md");
-  return {
-    name,
-    description,
-    content: skillFile.content,
-    files: allTexts.filter((file) => file.path !== "SKILL.md"),
-    config,
-  };
+// Shared skill keys and their bundle names: the base skills and the authored skills.
+function authoredKey(folder) {
+  return folder;
 }
 
-function buildAgent({ name, path, renames, rewrites, hits, usedPatchFiles, allPatches, allPatchHits }) {
-  const original = readFileSync(path, "utf8");
-  const label = `agent ${name}`;
-  usedPatchFiles.add(name);
-  const { fields, body, frontmatterLines } = splitFrontmatter(original, name);
-  const description = unescapeYamlQuotes(
-    frontmatterDescription(renameReferences(applyRules(frontmatterLines.join("\n"), rewrites.rules, hits), renames), name),
-  );
-  if (/\d\d-[a-z-]+\.md|kv:pro|\.kv-run|CLAUDE\.md|AGENTS\.md/.test(description)) {
-    violations.push(`agent ${name}: description still contains a leftover: ${description.slice(0, 160)}`);
-  }
-  const role = classifyAgent(fields.tools ?? "", description);
-  const ownPatches = patchesFor(name);
-  const ownHits = ownPatches.map(() => 0);
-  let text = transformText(body, { rewrites, patches: ownPatches, patchHits: ownHits, renames, label, hits });
-  ownHits.forEach((count, index) => {
-    if (count === 0) violations.push(`agent ${name}: patch ${index + 1} matched nothing: ${ownPatches[index].find.slice(0, 90)}`);
+// Reference resolution for one body. `mode` is "squad" (one squad's wording) or "neutral" (shared
+// skills, loaded by every squad, so agent names become generic phrases).
+//   skills:       key -> bundle name, the skills this body may name
+//   knownSkills:  every skill key in the pack set (a key outside `skills` is out of the squad)
+//   roles:        upstream agent name -> role key (squad mode)
+//   knownAgents:  every upstream agent name
+export function resolveReferences(text, ctx, label) {
+  const withSkills = text.replace(/(`?)kv:([a-z0-9-]+)(`?)/g, (match, open, ref, close) => {
+    if (ctx.roles.has(ref)) return `${open}${ctx.roles.get(ref)}${close}`;
+    if (ctx.knownAgents.has(ref)) return agentPhrase(ref, ctx);
+    if (ctx.skills.has(ref)) return `${open}${ctx.skills.get(ref)}${close}`;
+    if (ctx.knownSkills.has(ref)) {
+      if (ctx.mode === "neutral") violations.push(`${label}: shared skill names kv:${ref}, which is not in the shared core`);
+      return NO_SKILL;
+    }
+    violations.push(`${label}: unknown reference ${match}`);
+    return match;
   });
-  text = applyAllPatches(text, allPatches, allPatchHits, label);
-  if (role === "gate" || role === "handover") {
-    text = applyVerdictTemplate(text, rewrites.verdictSection, rewrites.verdictLine);
+  let out = withSkills;
+  for (const name of ctx.agentNamesByLength) {
+    const re = new RegExp(`(?<![\\w-])${escapeRegExp(name)}(?![\\w-])`, "g");
+    out = out.replace(re, () => agentPhrase(name, ctx));
   }
-  guard(text, label);
-  if (role === "gate" || role === "handover") {
-    const verdicts = verdictLines(text);
-    if (verdicts.length !== 1) violations.push(`${label} (${role}) must have exactly one VERDICT line, found ${verdicts.length}`);
-  }
-  return {
-    name,
-    description,
-    role,
-    tools: (fields.tools ?? "").split(",").map((tool) => tool.trim()).filter(Boolean),
-    instructions: text.trim(),
-  };
+  return out;
+}
+
+function agentPhrase(name, ctx) {
+  // Squad mode: a mapped role key, else the lead request. Neutral mode: the shared phrase, else the lead request.
+  if (ctx.roles.has(name)) return ctx.roles.get(name);
+  if (ctx.mode === "neutral") return ctx.agentPhrases[name] ?? NO_AGENT;
+  return NO_AGENT;
+}
+
+// Runs one text (a body or one reference file) through the rewrite table, the patches and the
+// reference rules, then guards it. `hits` counts, per own patch, the texts it matched; the caller
+// reports a patch that matched no text of its skill or agent.
+function transformBody(text, { patches, hits, ctx, label }) {
+  let out = text;
+  for (const block of rewrites.removeBlocks) out = removeBlocks(out, block);
+  for (const title of rewrites.removeSections) out = removeSection(out, title);
+  out = applyPatches(out, patches, label, hits);
+  out = applyAllPatches(out, label);
+  out = applyRules(out, rewrites.rules, ruleHits);
+  out = resolveReferences(out, ctx, label);
+  guard(out, label);
+  return out;
 }
 
 // `_all.json` patches apply to every text file; each may match at most once per file.
-function applyAllPatches(text, allPatches, allPatchHits, label) {
+function applyAllPatches(text, label) {
   let out = text;
   allPatches.forEach((patch, index) => {
     const count = out.split(patch.find).length - 1;
@@ -353,28 +285,386 @@ function applyAllPatches(text, allPatches, allPatchHits, label) {
   return out;
 }
 
-// Every pack module exports the same two names, so kitviet-packs.ts can load any of them.
+// Rebuilds the frontmatter: the bundle name and the resolved description, then the other fields.
+function buildFrontmatter(lines, bundle, description) {
+  const rest = [];
+  let folded = false;
+  for (const line of lines) {
+    if (line.startsWith("description:")) {
+      folded = true;
+      continue;
+    }
+    if (folded && /^\s/.test(line)) continue;
+    folded = false;
+    if (line.startsWith("name:")) continue;
+    rest.push(line);
+  }
+  return [`name: ${bundle}`, `description: ${JSON.stringify(description)}`, ...rest].join("\n");
+}
+
+// Renders one skill folder. `key` is the skill key; `bundle` is its name in the pack.
+function renderSkill({ dir, key, bundle, ctx, config, label, files }) {
+  const original = readFileSync(join(dir, "SKILL.md"), "utf8");
+  const { frontmatterLines, body } = splitFrontmatter(original, key);
+  const ruled = applyRules(frontmatterLines.join("\n"), rewrites.rules, ruleHits).split("\n");
+  const rawDescription = unescapeYamlQuotes(frontmatterDescription(ruled.join("\n"), key));
+  if (!rawDescription) throw new Error(`${label} has an empty description`);
+  const description = resolveReferences(rawDescription, ctx, `${label} description`);
+  guard(description, `${label} description`);
+  const ownPatches = patchesFor(key);
+  const hits = ownPatches.map(() => 0);
+  const content = transformBody(body, { patches: ownPatches, hits, ctx, label: `${label}/SKILL.md` });
+  const skillBody = `---\n${buildFrontmatter(ruled, bundle, description)}\n---\n${content}`;
+  const bundleFiles = [];
+  for (const file of files) {
+    const raw = readFileSync(join(dir, file), "utf8");
+    // Markdown goes through the whole table. Scripts only get their references resolved (a docstring
+    // may name a skill), since the rewrite rules are for prose.
+    const text = file.endsWith(".md")
+      ? transformBody(raw, { patches: ownPatches, hits, ctx, label: `${label}/${file}` })
+      : resolveReferences(raw, ctx, `${label}/${file}`);
+    guard(text, `${label}/${file}`);
+    bundleFiles.push({ path: file, content: text });
+  }
+  reportUnmatchedPatches(ownPatches, hits, label);
+  return { name: bundle, description, content: skillBody, files: bundleFiles, config };
+}
+
+// A patch that matched no text of its own skill or agent means upstream changed under it.
+function reportUnmatchedPatches(patches, hits, label) {
+  hits.forEach((count, index) => {
+    if (count === 0) violations.push(`${label}: patch ${index + 1} matched nothing: ${patches[index].find.slice(0, 90)}`);
+  });
+}
+
+// Renders an agent's body and frontmatter fields for one role source.
+function renderAgentSource(source, ctx) {
+  const original = readFileSync(source.path, "utf8");
+  const { fields, body, frontmatterLines } = splitFrontmatter(original, source.upstream);
+  const description = unescapeYamlQuotes(frontmatterDescription(frontmatterLines.join("\n"), source.upstream));
+  const label = `agent ${source.upstream}`;
+  const ownPatches = patchesFor(source.upstream);
+  const hits = ownPatches.map(() => 0);
+  const text = transformBody(body, { patches: ownPatches, hits, ctx, label });
+  reportUnmatchedPatches(ownPatches, hits, label);
+  const ruledDescription = resolveReferences(
+    applyRules(description, rewrites.rules, ruleHits),
+    ctx,
+    `${label} description`,
+  );
+  guard(ruledDescription, `${label} description`);
+  const tools = (fields.tools ?? "").split(",").map((tool) => tool.trim()).filter(Boolean);
+  return { description: ruledDescription, rawDescription: description, tools, body: text.trim() };
+}
+
+// The per-squad context: which skills a body may name, and the agent role keys of the squad.
+export function buildContext({ mode, skills, knownSkills, roles, knownAgents, agentPhrases }) {
+  const agentNamesByLength = [...knownAgents].sort((a, b) => b.length - a.length);
+  return { mode, skills, knownSkills, roles, knownAgents, agentNamesByLength, agentPhrases };
+}
+
+// Loads the upstream folders once: skill folders by key, agent files by name, per pack.
+function loadUpstream() {
+  const dropped = new Set(rewrites.droppedSkills);
+  const commonSkills = new Map();
+  for (const folder of listFolders(join(upstreamDir, "common", "skills"))) {
+    if (dropped.has(folder)) continue;
+    commonSkills.set(folder, { dir: join(upstreamDir, "common", "skills", folder) });
+  }
+  const tradeSkills = new Map();
+  const tradeAgents = new Map();
+  for (const squad of SQUADS) {
+    const skills = new Map();
+    for (const folder of listFolders(join(upstreamDir, squad.trade, "skills"))) {
+      if (dropped.has(folder)) continue;
+      skills.set(folder, { dir: join(upstreamDir, squad.trade, "skills", folder) });
+    }
+    tradeSkills.set(squad.trade, skills);
+    const agents = new Map();
+    for (const name of listAgentNames(join(upstreamDir, squad.trade, "agents"))) {
+      agents.set(name, join(upstreamDir, squad.trade, "agents", `${name}.md`));
+    }
+    tradeAgents.set(squad.trade, agents);
+  }
+  const commonAgents = new Map();
+  for (const name of listAgentNames(join(upstreamDir, "common", "agents"))) {
+    commonAgents.set(name, join(upstreamDir, "common", "agents", `${name}.md`));
+  }
+  const authored = new Map();
+  for (const folder of listFolders(authoredDir)) {
+    authored.set(authoredKey(folder), { dir: join(authoredDir, folder), folder });
+  }
+  return { dropped, commonSkills, tradeSkills, tradeAgents, commonAgents, authored };
+}
+
+// Every skill key the pack set knows (any trade, shared or authored), for "outside the squad" checks.
+function allSkillKeys(up) {
+  const keys = new Set([...up.commonSkills.keys(), ...up.authored.keys()]);
+  for (const skills of up.tradeSkills.values()) for (const key of skills.keys()) keys.add(key);
+  return keys;
+}
+
+function allAgentNames(up) {
+  const names = new Set(up.commonAgents.keys());
+  for (const agents of up.tradeAgents.values()) for (const name of agents.keys()) names.add(name);
+  return names;
+}
+
+// The skill keys a squad owns for resolution: shared, its own trade, and the renames of its trade.
+function squadSkillBundles(up, squad) {
+  const renames = rewrites.renamedSkills[squad.trade] ?? {};
+  const map = new Map();
+  for (const key of up.commonSkills.keys()) map.set(key, bundleName(key));
+  for (const key of up.authored.keys()) map.set(key, bundleName(key.replace(/^kv-/, "")));
+  for (const key of up.tradeSkills.get(squad.trade).keys()) map.set(key, bundleName(renames[key] ?? key));
+  return map;
+}
+
+// The shared skill keys: base skills and the authored core skill, in the file's order.
+function sharedKeys() {
+  return squadConfig.sharedBuiltinSkills;
+}
+
+// Maps each role of a squad to its sources (agents in mapping order) and the role kind.
+function squadRoles(squad, up) {
+  const roles = new Map();
+  const roleOf = new Map();
+  for (const [name, spec] of Object.entries(squad.agents)) {
+    const path = up.tradeAgents.get(squad.trade).get(name) ?? up.commonAgents.get(name);
+    if (!path) {
+      violations.push(`${squad.id}: agent ${name} is in neither ${squad.trade} nor the shared agents`);
+      continue;
+    }
+    if (!ROLE_KIND_CLASS[spec.kind]) violations.push(`${squad.id}: ${name} has an unknown kind ${spec.kind}`);
+    if (!roles.has(spec.role)) roles.set(spec.role, { kind: spec.kind, sources: [] });
+    const role = roles.get(spec.role);
+    if (role.kind !== spec.kind) violations.push(`${squad.id}: role ${spec.role} has two kinds`);
+    role.sources.push({ upstream: name, path, kind: spec.kind });
+    roleOf.set(name, spec.role);
+  }
+  return { roles, roleOf };
+}
+
+function buildPacks() {
+  violations = [];
+  ruleHits = new Map();
+  allPatches = readJson(join(patchesDir, "_all.json"));
+  allPatchHits = allPatches.map(() => 0);
+  for (const file of ["LICENSE", "NOTICE.md", "UPSTREAM.json"]) {
+    if (!existsSync(join(upstreamDir, file))) throw new Error(`kitviet-upstream/${file} is missing`);
+  }
+  const config = { source: "kitviet", upstream: upstream.repo, ref: upstream.ref, license: upstream.license };
+  const authoredConfig = { source: "kitviet", upstream: "authored in this repository", ref: "authored", license: "repository" };
+  const up = loadUpstream();
+  const knownSkills = allSkillKeys(up);
+  const knownAgents = allAgentNames(up);
+  const usedPatchFiles = new Set();
+  const packs = new Map();
+
+  // The shared pack: base skills and authored skills, in neutral wording. Every authored skill must
+  // be shared or a leader skill of some squad, and every shared key must exist.
+  const sharedBundles = new Map([
+    ...[...up.commonSkills.keys()].map((key) => [key, bundleName(key)]),
+    ...[...up.authored.keys()].map((key) => [key, bundleName(key.replace(/^kv-/, ""))]),
+  ]);
+  const leaderKeys = new Set(SQUADS.flatMap((squad) => squad.leaderSkills));
+  for (const key of up.authored.keys()) {
+    if (!sharedKeys().includes(key) && !leaderKeys.has(key)) violations.push(`authored skill ${key} is used by no squad`);
+  }
+  for (const key of sharedKeys()) {
+    if (!sharedBundles.has(key)) violations.push(`kitviet-squads.json names shared skill ${key}, which does not exist`);
+  }
+  const sharedCtx = buildContext({
+    mode: "neutral",
+    skills: new Map([...sharedBundles].filter(([key]) => sharedKeys().includes(key))),
+    knownSkills,
+    roles: new Map(),
+    knownAgents,
+    agentPhrases: squadConfig.sharedAgentPhrases,
+  });
+  const commonSkills = [];
+  for (const key of [...up.commonSkills.keys()].sort()) {
+    const entry = up.commonSkills.get(key);
+    usedPatchFiles.add(key);
+    commonSkills.push(
+      renderSkill({ dir: entry.dir, key, bundle: bundleName(key), ctx: sharedCtx, config, label: `skill ${key}`, files: skillFiles(entry.dir).sort() }),
+    );
+  }
+  for (const [key, entry] of [...up.authored.entries()].sort()) {
+    commonSkills.push(
+      renderSkill({
+        dir: entry.dir,
+        key,
+        bundle: bundleName(key.replace(/^kv-/, "")),
+        ctx: sharedCtx,
+        config: authoredConfig,
+        label: `authored ${key}`,
+        files: skillFiles(entry.dir).sort(),
+      }),
+    );
+  }
+  packs.set("common", { skills: commonSkills, agents: [], roles: {}, squad: null });
+
+  // One pack per squad.
+  for (const squad of SQUADS) {
+    const bundles = squadSkillBundles(up, squad);
+    const { roles, roleOf } = squadRoles(squad, up);
+    const core = [...sharedKeys(), ...squad.builtinSkills];
+    const roleSkillKeys = Object.values(squad.roleSkills ?? {}).flat();
+    const resolution = new Set([...core, ...roleSkillKeys]);
+    for (const key of resolution) {
+      if (!bundles.has(key)) violations.push(`${squad.id}: ${key} is in neither the shared pack nor the ${squad.trade} trade`);
+    }
+    for (const key of squad.builtinSkills) {
+      if (!up.tradeSkills.get(squad.trade).has(key)) violations.push(`${squad.id}: builtinSkills names ${key}, which is not in ${squad.trade}`);
+    }
+    for (const key of squad.promoted ?? []) {
+      if (!squad.builtinSkills.includes(key)) violations.push(`${squad.id}: promoted ${key} is not in builtinSkills`);
+    }
+    for (const key of squad.leaderSkills) {
+      if (!up.authored.has(key)) violations.push(`${squad.id}: leaderSkills names ${key}, which is not an authored skill`);
+    }
+    for (const [role, keys] of Object.entries(squad.roleSkills ?? {})) {
+      if (!roles.has(role)) violations.push(`${squad.id}: roleSkills names ${role}, which is not a role of the squad`);
+      if (keys.length > 6) violations.push(`${squad.id}: ${role} has ${keys.length} role skills (max 6)`);
+    }
+    if (roles.size > 9) violations.push(`${squad.id}: ${roles.size} roles (max 9 desks with the lead)`);
+
+    // The squad's trade skills are all rendered (core and extended); a body names only what the
+    // squad resolves, so the rest of the trade reads as "nhờ lead tạo yêu cầu".
+    const resolved = new Map();
+    for (const key of resolution) resolved.set(key, bundles.get(key));
+    const squadCtx = buildContext({
+      mode: "squad",
+      skills: resolved,
+      knownSkills,
+      roles: roleOf,
+      knownAgents,
+      agentPhrases: {},
+    });
+    const skills = [];
+    for (const key of [...up.tradeSkills.get(squad.trade).keys()].sort()) {
+      const entry = up.tradeSkills.get(squad.trade).get(key);
+      usedPatchFiles.add(key);
+      skills.push(
+        renderSkill({
+          dir: entry.dir,
+          key,
+          bundle: bundles.get(key),
+          ctx: squadCtx,
+          config,
+          label: `skill ${squad.trade}/${key}`,
+          files: skillFiles(entry.dir).sort(),
+        }),
+      );
+    }
+
+    const agents = [];
+    const roleInstructions = {};
+    for (const [role, role0] of roles) {
+      const display = displayRole(role);
+      roleInstructions[role] = { name: display, kind: role0.kind, header: `You are the ${display} in a ${squad.name} squad.` };
+      if (role0.kind === "kv_lead") continue;
+      const rendered = role0.sources.map((source) => {
+        usedPatchFiles.add(source.upstream);
+        return { source, ...renderAgentSource(source, squadCtx) };
+      });
+      for (const item of rendered) {
+        const expected = ROLE_KIND_CLASS[role0.kind];
+        const actual = classifyAgent(item.tools.join(", "), item.rawDescription);
+        if (actual !== expected) violations.push(`${squad.id}: ${item.source.upstream} is a ${actual} by its tools, but the squad maps it as ${expected}`);
+      }
+      let text = rendered.map((item) => item.body).join("\n\n---\n\n");
+      if (role0.kind === "kv_gate" || role0.kind === "kv_handover") {
+        text = applyVerdictTemplate(text, rewrites.verdictSection, rewrites.verdictLine);
+        const verdicts = verdictLines(text);
+        if (verdicts.length !== 1) violations.push(`${squad.id}/${role} (${role0.kind}) must have exactly one VERDICT line, found ${verdicts.length}`);
+      }
+      guard(text, `${squad.id}/${role}`);
+      const tools = [...new Set(rendered.flatMap((item) => item.tools))];
+      agents.push({
+        name: role,
+        upstream: rendered.map((item) => item.source.upstream),
+        description: rendered[0].description,
+        role: ROLE_KIND_CLASS[role0.kind],
+        kind: role0.kind,
+        tools,
+        instructions: text.trim(),
+      });
+    }
+
+    const squadData = {
+      id: squad.id,
+      templateId: squad.templateId,
+      name: squad.name,
+      builtinSkills: core.map((key) => bundles.get(key)),
+      leaderSkills: squad.leaderSkills.map((key) => bundleName(key.replace(/^kv-/, ""))),
+      roleSkills: Object.fromEntries(
+        Object.entries(squad.roleSkills ?? {}).map(([role, keys]) => [role, keys.map((key) => bundles.get(key))]),
+      ),
+      roles: [...roles.keys()],
+      promoted: (squad.promoted ?? []).map((key) => bundles.get(key)),
+    };
+    packs.set(squad.id, { skills, agents, roles: roleInstructions, squad: squadData });
+  }
+
+  for (const name of readdirSync(patchesDir)) {
+    if (!name.endsWith(".json") || name === "_all.json") continue;
+    if (!usedPatchFiles.has(name.replace(/\.json$/, ""))) {
+      violations.push(`kitviet-patches/${name} matches no skill or agent`);
+    }
+  }
+  allPatches.forEach((patch, index) => {
+    if (allPatchHits[index] === 0) violations.push(`_all.json patch matched nothing: ${patch.find.slice(0, 90)}`);
+  });
+  for (const rule of rewrites.rules) {
+    if (!ruleHits.has(rule.name)) violations.push(`rewrite rule ${rule.name} matched nothing (stale rule)`);
+  }
+  // Bundle names are unique across the packs, so the quickstart's name lookup is unambiguous.
+  const seen = new Map();
+  for (const [pack, entry] of packs) {
+    for (const skill of entry.skills) {
+      if (seen.has(skill.name)) violations.push(`skill name ${skill.name} is in ${seen.get(skill.name)} and ${pack}`);
+      seen.set(skill.name, pack);
+    }
+  }
+  if (violations.length > 0) {
+    throw new Error(`${violations.length} violations:\n${violations.slice(0, 120).join("\n")}`);
+  }
+  return packs;
+}
+
+// Every pack module exports the same names, so kitviet-packs.ts can load any of them.
 export function renderPack(pack, entry) {
   const skills = JSON.stringify(entry.skills, null, 2);
   const agents = JSON.stringify(entry.agents, null, 2);
+  const roles = JSON.stringify(entry.roles, null, 2);
+  const squad = entry.squad ? JSON.stringify(entry.squad, null, 2) : "null";
   return `${HEADER}
-import type { KitvietAgent, KitvietSkill } from "./types";
+import type { KitvietAgent, KitvietRoleInstruction, KitvietSkill, KitvietSquadConfig } from "./types";
 
 /** Skills of the ${pack.id} pack. The quickstart loads this file on demand. */
 export const KITVIET_BUILTIN_SKILLS: readonly KitvietSkill[] = ${skills};
 
-/** Agents of the ${pack.id} pack, classified by loop role. */
+/** Agents of the ${pack.id} pack, by role key, with the body each role runs on. */
 export const KITVIET_AGENTS: readonly KitvietAgent[] = ${agents};
+
+/** Per role key: the display name, the role kind and the "You are the ..." header. */
+export const KITVIET_ROLE_INSTRUCTIONS: Readonly<Record<string, KitvietRoleInstruction>> = ${roles};
+
+/** The squad's skill sets and roles, or null for the shared pack. */
+export const KITVIET_SQUAD: KitvietSquadConfig | null = ${squad};
 `;
 }
 
-const HEADER = `// Generated by scripts/generate-kitviet-pack.mjs from packages/core/squads/kitviet-upstream.
-// Do not edit by hand; run \`pnpm generate:kitviet\`.`;
+const HEADER = `// Generated by scripts/generate-kitviet-pack.mjs from packages/core/squads/kitviet-upstream,
+// kitviet-squads.json and kitviet-skills. Do not edit by hand; run \`pnpm generate:kitviet\`.`;
 
 const TYPES = `${HEADER}
 
 export type { BuiltinSkill, BuiltinSkillFile } from "../sdlc-skills-data";
 import type { BuiltinSkill } from "../sdlc-skills-data";
+import type { KvRoleKind } from "../kitviet-agent-instructions";
 
 /** Where a Kit Viet skill came from; a separate source from SDLC_SKILL_SOURCE. */
 export interface KitvietSkillSource {
@@ -392,11 +682,34 @@ export interface KitvietSkill extends BuiltinSkill {
 export type KitvietRole = "collector" | "drafter" | "gate" | "handover";
 
 export interface KitvietAgent {
+  /** The role key of the squad, e.g. \`legal_reader\`. */
   name: string;
+  /** The upstream agent names this role runs on (two for a merged role). */
+  upstream: readonly string[];
   description: string;
   role: KitvietRole;
+  kind: KvRoleKind;
   tools: readonly string[];
+  /** The role body without its header; the template adds the kind text and the header. */
   instructions: string;
+}
+
+export interface KitvietRoleInstruction {
+  name: string;
+  kind: KvRoleKind;
+  header: string;
+}
+
+export interface KitvietSquadConfig {
+  id: string;
+  templateId: string;
+  name: string;
+  /** The core skills every member gets: shared, authored and this trade's core. */
+  builtinSkills: readonly string[];
+  leaderSkills: readonly string[];
+  roleSkills: Readonly<Record<string, readonly string[]>>;
+  roles: readonly string[];
+  promoted: readonly string[];
 }
 `;
 
@@ -405,8 +718,8 @@ export function generateOutputs() {
   const packs = buildPacks();
   const outputs = new Map([["types.ts", TYPES]]);
   for (const pack of PACKS) {
-    const { skills, agents } = packs.get(pack.id);
-    outputs.set(`${pack.file}.ts`, renderPack(pack, { skills, agents }));
+    const entry = packs.get(pack.id);
+    outputs.set(`${pack.file}.ts`, renderPack(pack, entry));
   }
   return outputs;
 }

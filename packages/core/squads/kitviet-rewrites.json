@@ -109,12 +109,6 @@
       "replace": "comment bàn giao"
     },
     {
-      "name": "file-05-after-care",
-      "pattern": "`?05-[\\w*<>-]+(?:\\.(?:md|csv))?`?",
-      "flags": "g",
-      "replace": "comment trạng thái hậu cần"
-    },
-    {
       "name": "profile-doc",
       "pattern": "`?(?:CLAUDE|AGENTS)\\.md`?",
       "flags": "g",

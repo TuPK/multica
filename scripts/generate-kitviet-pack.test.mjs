@@ -9,11 +9,12 @@ import { fileURLToPath } from "node:url";
 import {
   applyPatches,
   applyVerdictTemplate,
+  buildContext,
   classifyAgent,
   generateOutputs,
   removeBlocks,
   removeSection,
-  renameReferences,
+  resolveReferences,
   unescapeYamlQuotes,
 } from "./generate-kitviet-pack.mjs";
 
@@ -129,12 +130,41 @@ describe("verdict template and classes", () => {
   });
 });
 
-describe("renames and descriptions", () => {
-  it("renames kv: references and leaves other names alone", () => {
+describe("reference resolution (F17)", () => {
+  // A squad whose core has viet-email and whose role skills add soan-don-tu, with one mapped agent and
+  // one agent outside the squad. Skills outside the set are known, so they read as out of squad.
+  const ctx = buildContext({
+    mode: "squad",
+    skills: new Map([
+      ["viet-email", "kv--viet-email"],
+      ["soan-don-tu", "kv--soan-don-tu-phap-ly"],
+    ]),
+    knownSkills: new Set(["viet-email", "soan-don-tu", "bao-gia-dieu-kien-thuong-mai"]),
+    roles: new Map([["soat-so-lieu", "admin_numbers_gate"]]),
+    knownAgents: new Set(["soat-so-lieu", "doc-nhieu-tai-lieu"]),
+    agentPhrases: {},
+  });
+
+  it("names an in-set skill by its bundle name, keeping the backticks it had", () => {
+    assert.equal(resolveReferences("dùng `kv:viet-email` và kv:soan-don-tu", ctx, "t"), "dùng `kv--viet-email` và kv--soan-don-tu-phap-ly");
+  });
+
+  it("turns a skill outside the squad into a request to the lead", () => {
     assert.equal(
-      renameReferences("kv:soan-don-tu, kv:soan-don-tu-khac, kv:soan-don-tu.", { "soan-don-tu": "soan-don-tu-phap-ly" }),
-      "kv:soan-don-tu-phap-ly, kv:soan-don-tu-khac, kv:soan-don-tu-phap-ly.",
+      resolveReferences("Luồng: `kv:bao-gia-dieu-kien-thuong-mai`.", ctx, "t"),
+      "Luồng: (việc ngoài squad: nhờ lead tạo yêu cầu).",
     );
+  });
+
+  it("names a mapped agent by its role key and an unmapped agent as a lead request", () => {
+    assert.equal(
+      resolveReferences("giao `kv:soat-so-lieu`; bare doc-nhieu-tai-lieu", ctx, "t"),
+      "giao `admin_numbers_gate`; bare (vai không có trong squad: nhờ lead)",
+    );
+  });
+
+  it("does not change a name that only contains a known name", () => {
+    assert.equal(resolveReferences("soat-so-lieu-thi-truong", ctx, "t"), "soat-so-lieu-thi-truong");
   });
 
   it("turns escaped YAML quotes into plain quotes", () => {

@@ -1,0 +1,217 @@
+{
+  "$comment": "Squad data for the Kit Viet pack, read by scripts/generate-kitviet-pack.mjs. Skill and agent names are upstream folder names (Kit Viet's own), except kv-* authored skills, which are folder names under kitviet-skills/. Spec: docs/engineering/kitviet-squads.md sections 5.5, 5.10, 6 and F17.",
+  "sharedBuiltinSkills": [
+    "an-thong-tin-nhay-cam",
+    "kiem-tra-chong-bia",
+    "nghien-cuu-nguon-uy-tin",
+    "tom-tat-tai-lieu",
+    "viet-bao-cao",
+    "viet-email",
+    "viet-de-cuong",
+    "viet-tin-nhan-cong-viec",
+    "tao-bang-kiem",
+    "lap-ke-hoach-tuan",
+    "ghi-chu-hop",
+    "xuat-word",
+    "xuat-excel",
+    "xuat-pdf",
+    "xuat-pptx",
+    "kv-delivery-core"
+  ],
+  "sharedAgentPhrases": {
+    "soat-so-lieu": "vai gác số liệu của squad",
+    "kiem-dinh-ban-giao": "vai kiểm bàn giao của squad",
+    "soat-bao-mat": "vai soát bảo mật của squad",
+    "doc-nhieu-tai-lieu": "vai đọc nhiều tài liệu của squad",
+    "nghien-cuu-nguon": "vai tra cứu nguồn của squad"
+  },
+  "squads": {
+    "admin": {
+      "templateId": "kv_admin",
+      "trade": "hanh-chinh-van-phong",
+      "name": "Office Admin (Hành chính)",
+      "agents": {
+        "lap-ke-hoach-dieu-phoi": { "role": "admin_lead", "kind": "kv_lead" },
+        "gom-ho-so-van-thu": { "role": "admin_files", "kind": "kv_collector" },
+        "tra-cuu-the-thuc-van-ban": { "role": "admin_format_lookup", "kind": "kv_collector" },
+        "soan-van-ban-hanh-chinh": { "role": "admin_drafter", "kind": "kv_drafter" },
+        "soat-the-thuc-van-ban": { "role": "admin_format_gate", "kind": "kv_gate" },
+        "soat-so-lieu": { "role": "admin_numbers_gate", "kind": "kv_gate" },
+        "kiem-dinh-ban-giao": { "role": "admin_handover", "kind": "kv_handover" }
+      },
+      "builtinSkills": [
+        "day-chuyen-van-ban-hanh-chinh",
+        "soan-cong-van-hanh-chinh",
+        "soan-quyet-dinh-noi-bo",
+        "soan-to-trinh-de-xuat",
+        "soan-thong-bao-hanh-chinh",
+        "soan-quy-che-noi-bo",
+        "so-cong-van-den-di"
+      ],
+      "promoted": [],
+      "leaderSkills": ["kv-squad-lead", "kv-company-profile"],
+      "roleSkills": {
+        "admin_lead": ["quan-ly-lich-giam-doc"],
+        "admin_drafter": ["soan-don-tu", "so-sanh-bao-gia-mua-sam", "chuan-bi-hop-hdqt"]
+      }
+    },
+    "b2b": {
+      "templateId": "kv_b2b",
+      "trade": "kinh-doanh",
+      "name": "B2B Proposal Desk (Chào giá B2B)",
+      "agents": {
+        "lap-ke-hoach-dieu-phoi": { "role": "b2b_lead", "kind": "kv_lead" },
+        "doc-lich-su-giao-dich-khach": { "role": "b2b_history", "kind": "kv_collector" },
+        "tra-cuu-doanh-nghiep-cong-khai": { "role": "b2b_company_lookup", "kind": "kv_collector" },
+        "soan-ho-so-chao-gia": { "role": "b2b_quote_drafter", "kind": "kv_drafter" },
+        "soat-cam-ket-thuong-mai": { "role": "b2b_commit_gate", "kind": "kv_gate" },
+        "soat-quyen-dung-du-lieu-khach": { "role": "b2b_data_gate", "kind": "kv_gate" },
+        "soat-giong-van-gui-khach": { "role": "b2b_tone_gate", "kind": "kv_gate" },
+        "soat-so-lieu": { "role": "b2b_numbers_gate", "kind": "kv_gate" },
+        "kiem-dinh-ban-giao": { "role": "b2b_handover", "kind": "kv_handover" }
+      },
+      "builtinSkills": [
+        "day-chuyen-chao-gia-b2b",
+        "bao-gia-dieu-kien-thuong-mai",
+        "proposal-giai-phap-b2b",
+        "chuan-bi-dam-phan-b2b",
+        "bien-ban-gap-khach-b2b"
+      ],
+      "promoted": ["bien-ban-gap-khach-b2b"],
+      "leaderSkills": ["kv-squad-lead", "kv-company-profile"],
+      "roleSkills": {
+        "b2b_quote_drafter": ["xu-ly-tu-choi-b2b"],
+        "b2b_company_lookup": ["ho-so-khach-truoc-buoi-gap"]
+      }
+    },
+    "marketing": {
+      "templateId": "kv_marketing",
+      "trade": "marketing",
+      "name": "Marketing Studio (Marketing)",
+      "agents": {
+        "lap-ke-hoach-dieu-phoi": { "role": "mkt_lead", "kind": "kv_lead" },
+        "do-tham-doi-thu-web": { "role": "mkt_scout", "kind": "kv_collector" },
+        "nghien-cuu-thi-truong-web": { "role": "mkt_scout", "kind": "kv_collector" },
+        "gom-insight-khach-hang": { "role": "mkt_insight", "kind": "kv_collector" },
+        "soan-noi-dung-da-kenh": { "role": "mkt_content", "kind": "kv_drafter" },
+        "soan-ad-copy-landing": { "role": "mkt_ads", "kind": "kv_drafter" },
+        "soat-claim-quang-cao": { "role": "mkt_claim_gate", "kind": "kv_gate" },
+        "soat-giong-thuong-hieu": { "role": "mkt_voice_gate", "kind": "kv_gate" },
+        "soat-so-lieu-thi-truong": { "role": "mkt_numbers_gate", "kind": "kv_gate" },
+        "kiem-dinh-ban-giao": { "role": "mkt_handover", "kind": "kv_handover" }
+      },
+      "builtinSkills": [
+        "day-chuyen-chien-dich-marketing",
+        "bai-dang-fanpage",
+        "bao-cao-hieu-qua-chien-dich",
+        "cam-nang-giong-thuong-hieu",
+        "ke-hoach-truyen-thong-chien-dich",
+        "soat-luat-quang-cao",
+        "the-le-minigame-khuyen-mai",
+        "persona-tu-du-lieu-that"
+      ],
+      "promoted": ["persona-tu-du-lieu-that"],
+      "leaderSkills": ["kv-squad-lead", "kv-company-profile"],
+      "roleSkills": {
+        "mkt_content": [
+          "kich-ban-video-ngan",
+          "chuyen-the-noi-dung-da-kenh",
+          "chuoi-email-cham-soc",
+          "viet-giong-gen-z",
+          "lich-noi-dung-thang",
+          "bai-blog-chuan-seo"
+        ],
+        "mkt_ads": [
+          "ad-copy-nhieu-bien-the",
+          "noi-dung-landing-page",
+          "brief-kol-koc",
+          "brief-thiet-ke-key-visual",
+          "toi-uu-tieu-de-thumbnail"
+        ],
+        "mkt_insight": ["insight-tu-binh-luan-review"],
+        "mkt_scout": [
+          "phan-tich-doi-thu-noi-dung",
+          "nghien-cuu-thi-truong-marketing",
+          "nghien-cuu-tu-khoa-topic-cluster",
+          "lich-marketing-mua-vu"
+        ],
+        "mkt_lead": ["lich-dang-tra-loi-binh-luan"]
+      }
+    },
+    "legal": {
+      "templateId": "kv_legal",
+      "trade": "phap-ly",
+      "name": "Legal & Contracts (Pháp lý)",
+      "agents": {
+        "lap-ke-hoach-dieu-phoi": { "role": "legal_lead", "kind": "kv_lead" },
+        "doc-ho-so-phap-ly": { "role": "legal_reader", "kind": "kv_collector" },
+        "tra-cuu-nguon-luat-chinh-thuc": { "role": "legal_sources", "kind": "kv_collector" },
+        "soan-thao-van-ban-phap-ly": { "role": "legal_drafter", "kind": "kv_drafter" },
+        "soat-dien-giai-hop-dong": { "role": "legal_reading_gate", "kind": "kv_gate" },
+        "soat-can-cu-phap-ly": { "role": "legal_citation_gate", "kind": "kv_gate" },
+        "kiem-tra-hieu-luc-van-ban": { "role": "legal_validity", "kind": "kv_collector" },
+        "kiem-dinh-ban-giao": { "role": "legal_handover", "kind": "kv_handover" }
+      },
+      "builtinSkills": [
+        "day-chuyen-ra-soat-hop-dong",
+        "ra-soat-hop-dong-theo-vi-the",
+        "memo-phap-ly-noi-bo",
+        "so-quan-ly-hop-dong",
+        "soan-cong-van-phap-ly",
+        "lich-thoi-han-phap-ly",
+        "tra-cuu-van-ban-phap-luat",
+        "dong-thoi-gian-vu-viec"
+      ],
+      "promoted": ["dong-thoi-gian-vu-viec"],
+      "leaderSkills": ["kv-squad-lead", "kv-company-profile"],
+      "roleSkills": {
+        "legal_drafter": [
+          "ra-soat-thoa-thuan-bao-mat",
+          "so-sanh-phien-ban-hop-dong",
+          "soan-bien-ban-thanh-ly-hop-dong",
+          "soan-hop-dong-tu-mau",
+          "soan-don-tu"
+        ],
+        "legal_sources": ["de-cuong-nghien-cuu-phap-ly", "tom-tat-ban-an"],
+        "legal_reader": ["checklist-tham-dinh-phap-ly"]
+      }
+    },
+    "accounting": {
+      "templateId": "kv_accounting",
+      "trade": "ke-toan",
+      "name": "Accounting & Tax (Kế toán, thuế)",
+      "agents": {
+        "lap-ke-hoach-dieu-phoi": { "role": "acct_lead", "kind": "kv_lead" },
+        "gom-chung-tu-ke-toan": { "role": "acct_collector", "kind": "kv_collector" },
+        "tra-cuu-van-ban-thue": { "role": "acct_tax_research", "kind": "kv_collector" },
+        "lap-so-lieu-doi-chieu": { "role": "acct_reconciler", "kind": "kv_drafter" },
+        "soan-ho-so-thue": { "role": "acct_tax_drafter", "kind": "kv_drafter" },
+        "soat-chung-tu-hoa-don": { "role": "acct_voucher_gate", "kind": "kv_gate" },
+        "soat-so-lieu": { "role": "acct_numbers_gate", "kind": "kv_gate" },
+        "soat-tuan-thu-thue": { "role": "acct_tax_gate", "kind": "kv_gate" },
+        "kiem-dinh-ban-giao": { "role": "acct_handover", "kind": "kv_handover" }
+      },
+      "builtinSkills": [
+        "day-chuyen-khoa-so-thang",
+        "doi-chieu-cong-no",
+        "doi-chieu-so-phu-ngan-hang",
+        "kiem-tra-hoa-don-dau-vao",
+        "chuan-bi-to-khai-gtgt",
+        "chuan-bi-so-lieu-tncn-tndn",
+        "cong-van-giai-trinh-thue",
+        "doc-bctc-cho-chu-dn",
+        "lich-han-nop-thue",
+        "goi-y-dinh-khoan",
+        "soat-chi-phi-duoc-tru",
+        "tinh-luong-thue-tncn-bhxh"
+      ],
+      "promoted": ["goi-y-dinh-khoan", "soat-chi-phi-duoc-tru", "tinh-luong-thue-tncn-bhxh"],
+      "leaderSkills": ["kv-squad-lead", "kv-company-profile"],
+      "roleSkills": {
+        "acct_reconciler": ["thu-hoi-no-qua-han", "bang-ke-thanh-toan-khong-tien-mat", "thu-xac-nhan-so-du-kiem-toan"],
+        "acct_tax_drafter": ["thuyet-minh-bctc-don-gian", "phan-tich-bien-dong-bctc", "du-bao-dong-tien-13-tuan"],
+        "acct_tax_research": ["nghien-cuu-van-ban-thue"]
+      }
+    }
+  }
+}
