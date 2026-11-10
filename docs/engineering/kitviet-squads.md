@@ -1,6 +1,6 @@
 # Kit Việt squads: đưa các quy trình nghề của Kit Việt vào squad template / quickstart
 
-Spec (nghiên cứu, thiết kế và triển khai trên nhánh `kitviet-pack`, chưa merge vào `main`). Đã có: generator và pack đã sinh, năm template squad, locale bảy ngôn ngữ, runbook, test. Chưa làm: diễn tập thật (mục 8.2, chỉ chạy khi người dùng cho phép). Sai lệch về cách chia commit: mục 8.1. Cùng họ với [bmad-planning-squad.md](bmad-planning-squad.md),
+Spec (nghiên cứu, thiết kế và triển khai trên nhánh `kitviet-pack`, chưa merge vào `main`). Đã có: generator và pack đã sinh, năm template squad, locale bảy ngôn ngữ, runbook, test; quickstart giữ tạm dừng của routine qua lần chạy lại và báo `partial` khi routine đã chạy trước khi người dùng bật (mục 5.7, Q9). Chưa làm: diễn tập thật (mục 8.2, chỉ chạy khi người dùng cho phép); `upgradeKitvietSquad` chưa có điểm gọi trong giao diện (mục 10.3). Sai lệch về cách chia commit, đường dẫn và hash: mục 8.1. Cùng họ với [bmad-planning-squad.md](bmad-planning-squad.md),
 [sales-loop-squad.md](sales-loop-squad.md) và [digital-company.md](digital-company.md).
 
 Ngôn ngữ: tiếng Việt để người dùng đọc; tên lệnh, status, file, kind, skill, role key và đoạn văn bản dành cho agent giữ tiếng Anh.
@@ -224,7 +224,10 @@ Không thêm vào `SDLC_BUILTIN_SKILLS`: mọi squad SDLC nạp cả mảng đó
 | --- | --- |
 | `00-ke-hoach.md` | "comment Kế hoạch của lead trên issue gốc" |
 | `01-thu-thap*.md`, `thu-thap.md` | "comment kết quả của sub-issue thu thập" |
-| `02-ban-nhap*.md`, `bao-gia-nhap.md`, `proposal-nhap.md`, `…-v1.md`, `…-v2.md` | "tệp đính kèm của sub-issue soạn, phiên bản vN" |
+| `02-ban-nhap*.md`, `bao-gia-nhap.md`, `proposal-nhap.md` | "tệp đính kèm của sub-issue soạn" |
+| `<tên>-vN.md`, mọi N (luật `versioned-file`) | "tệp đính kèm bản vN" |
+| `python scripts/X.py` (luật `python-script-path`) | `python "<thư mục chứa SKILL.md này>/scripts/X.py"` |
+| `pip install …`, `apt install …`, "hoặc cài LibreOffice" (luật `pip-install-hint`) | thân skill: "dừng loại 1 và ghi tên thư viện thiếu, không tự cài"; script: "Thiếu thư viện <tên>." |
 | `03-soat-*.md` | "comment `VERDICT:` của sub-issue gác cổng" |
 | `04-ban-giao.md` | "comment bàn giao" |
 | `ket-qua/`, `.kv-run/<…>/`, "thư mục tháng", "thư mục deal", "thư mục chạy", "thư mục làm việc" | "tệp đính kèm trên issue" |
@@ -256,7 +259,7 @@ khi xóa Pro và viết lại tên tệp; **thất bại** nếu một `find` kh
 | `soat-the-thuc-van-ban`, `soat-quyen-dung-du-lieu-khach`, `soat-giong-van-gui-khach`, `soat-chung-tu-hoa-don`, `soat-tuan-thu-thue`, `soat-dien-giai-hop-dong`, `soat-can-cu-phap-ly`, `soat-so-lieu`, `kiem-dinh-ban-giao`, `soat-luat-quang-cao`, `day-chuyen-khoa-so-thang`, `day-chuyen-chao-gia-b2b` | mức lỗi "Nặng / Vừa / Nhẹ", "Phải sửa / Phải bỏ", "Gợi ý", "Lưu ý", "Đạt" / "Gửi được" trong kết luận và "đạt/chưa đạt từng tiêu chí" | một bộ mức: "Chặn / Cần giấy tờ / Nên sửa / Góp ý"; kết luận "QUA / CHẶN"; từng tiêu chí "Đạt / Không đạt / Không kiểm được" (F18) |
 | mọi skill và agent trong P0 | dòng "Trên Claude Code giao agent …" và mục nền tảng còn sót | xóa hoặc viết lại theo bảng trên |
 
-Tên tệp có phiên bản `…-v1.md`, `…-v2.md` được viết lại thành "tệp đính kèm bản vN" bằng luật `versioned-file` trong `kitviet-rewrites.json` (F22). Bản vá cho script `.py` đi qua cùng lớp vá và bảng viết lại như văn bản (F9).
+Luật `versioned-file` trong `kitviet-rewrites.json` nhận mọi tên `…-vN.md` (N là chữ số), không liệt kê từng tên (F22). Bảng viết lại và lớp vá áp cho cả thân skill lẫn script `.py` của skill, qua cùng một đường trong generator, nên lệnh `pip install` trong script đi qua luật `pip-install-hint` và bản vá (F9, F26). Bảng bản vá dưới đây là các mốc đã biết khi viết spec. Tệp thực tế có 26 tệp và 66 cặp `find`/`replace`, gồm thêm bản vá cho các trích dẫn có ngày (commit `1dea9d3c7`, mục 8.1).
 
 **Tầng skill của một squad.**
 - **Tầng lõi** (gắn ở squad): skill dây chuyền gốc (giữ làm tài liệu quy trình của nghề nhưng bỏ phần điều phối), các skill nghề mà agent của dây chuyền
@@ -307,6 +310,7 @@ Quan hệ với squad hiện có, để Secretary định tuyến đúng:
 
 Template hiện chỉ có **một** routine. Chỉ Legal và Accounting có routine vì chỉ hai việc này không cần đầu vào mới; các squad còn lại chạy theo request.
 Routine tạo issue bằng tiếng Việt, **tạo ở trạng thái tạm dừng** (như thẻ công ty: không chi tiêu bất ngờ) và hiện trong charter.
+Chạy lại quickstart không bật lại routine: chỉ autopilot do quickstart tạo, đang hoạt động, chưa có trigger nào và còn đúng mô tả và tiêu đề issue của template (tức lần tạm dừng trước đã thất bại) được tạm dừng lại trước khi thêm lịch. Routine đã có lịch, hoặc do người dùng sửa, giữ nguyên trạng thái. Nếu quickstart thêm lịch vào một autopilot đang chạy trong khi template muốn tạm dừng, kết quả là `partial` (routine đã nối và đã có lịch, chỉ thiếu tạm dừng). Quyết định và lý do: Q9 (mục 10.1).
 
 | Squad | Routine | Cron | Việc |
 | --- | --- | --- | --- |
@@ -512,7 +516,8 @@ Mỗi PR là một commit nguyên tử theo quy ước của repo (`feat(squads)
 `docs/engineering/kitviet-runbook.md` (viết ở PR 2 và mở rộng sau) ghi: cách nâng commit upstream (sửa pin, `pnpm generate:kitviet`, đọc diff và bản vá), cách đăng sổ quy định, cách rút chu kỳ xem lại, danh sách phụ thuộc runtime (Bash, Python và bốn thư viện, LibreOffice, font), cách đọc lỗi `VERDICT:` thiếu.
 Câu chữ card theo mục "UI descriptions" của `conventions.mdx`: mô tả chỉ giữ điều không hiển nhiên (điều kiện bật, chẳng hạn Accounting cần Bash và Python), không nhắc lại tên squad.
 
-**Sai lệch so với kế hoạch (ghi ngày 2026-11-11).** Plan yêu cầu mỗi task một commit. Nhánh `kitviet-pack` có 14 commit, và nhiều commit gom nhiều task: `e87f38ec8` (năm template), `4bc6dc2bb` (tên và mô tả của năm squad trong locale), `c139b28a9` (runbook và đóng cổng code). Commit `8deaae911` là việc lint không có trong plan. Sáu PR của bảng trên chưa tách: cả nhánh là một luồng để review. Nội dung từng task vẫn có; lịch sử commit không được sửa.
+**Sai lệch so với kế hoạch (ghi ngày 2026-11-11).** Plan yêu cầu mỗi task một commit. Nhiều commit gom nhiều task: `049b82605` (năm template, S1), `a4e7b0bf9` (tên và mô tả của năm squad trong locale, S3), `a33cdaa96` (runbook và đóng cổng code, S5 và K9). Commit `600536b21` (bỏ qua thư mục upstream khi lint) và các commit `7e9325df8`, `1dea9d3c7`, `46eaae782` không có trong plan. Các hash `e87f38ec8`, `4bc6dc2bb`, `c139b28a9`, `8deaae911` ghi trong bản trước của mục này không còn trên nhánh; tiêu đề commit tương ứng nằm ở hash mới ở trên. Sáu PR của bảng trên chưa tách: cả nhánh là một luồng để review. Nội dung từng task vẫn có; lịch sử commit không được sửa.
+Đường dẫn khác với bảng trên: `kitviet-templates/` (một `.ts` và một test mỗi squad); cấu hình squad nằm ở `kitviet-squads/` (một JSON mỗi nghề và `base.json`), tách từ `kitviet-squads.json` lúc ghi mục này; dữ liệu sinh ra nằm ở `kitviet-skills-data/` (một tệp mỗi pack và tệp dùng chung), không phải một tệp `kitviet-skills-data.ts`. Trạng thái từng task: [kitviet-squads-plan.md](kitviet-squads-plan.md), mục "Trạng thái".
 
 **Tiêu chí xong của một PR squad:**
 1. `pnpm typecheck`, `pnpm lint`, `pnpm test` xanh; `pnpm generate:kitviet --check` không đổi tệp.
@@ -559,6 +564,7 @@ Mục này trước đây là bảy câu hỏi mở. Tôi tự trả lời hết
 | Q5 | Phụ thuộc Python cho xuất file? | **Chấp nhận**, với lối lùi (không có preflight mã, Q8): thiếu thư viện thì đính kèm Markdown/CSV đã duyệt và ghi định dạng chưa xuất được (F9). Không viết lại bộ xuất | Bốn script đã chạy được, 22 KB của Word là phần lớn công; viết lại là việc tuần chứ không phải ngày và không thêm giá trị kiểm soát. **Ngoại lệ**: Accounting cần Bash và Python để tính (F19). Không có preflight (Q8), nên thiếu hai thứ đó thì các vai tính số dừng loại 1 và ghi thiếu gì | Daemon chạy ở môi trường không cho cài Python: đánh giá lại riêng cho xuất file |
 | Q6 | Tên hiển thị tiếng Việt? | **Tên squad = tên tiếng Anh + từ tiếng Việt trong ngoặc**, ví dụ `Legal & Contracts (Pháp lý)`; card dịch theo 7 locale hiện có, không thêm `vi` | Secretary định tuyến theo tên squad (mục 5.6), nên tên cần có từ người Việt gõ. Thêm locale `vi` là thay đổi lớn hơn mục tiêu của spec này | Multica thêm locale `vi`: dịch card sang đó |
 | Q8 | Quickstart kiểm công cụ của runtime (Bash, Python, thư viện, web) trước khi bật squad? | **Không.** Quickstart không phát hiện được công cụ của runtime, nên không có preflight mã. Vai cần công cụ nào thì tự dừng loại 1 và ghi tên thứ thiếu: Accounting cần Bash và Python (F19), mọi squad cần thư viện xuất file (F9), vai tra cứu cần web (F25). Người bật squad kiểm tay theo runbook mục 4 | Đoán thay vì đo là tệ hơn không kiểm: một cờ sai khiến người dùng tin rằng squad đã sẵn sàng. Một preflight thật cần daemon hoặc server báo công cụ của runtime qua API, việc hiện không có | Server hoặc daemon báo được công cụ của runtime qua API: thêm preflight có kiểm, và Accounting bật có kiểm tra |
+| Q9 | Chạy lại quickstart có bật hoặc tạm dừng lại routine không? | **Chỉ tạm dừng lại, và chỉ trong một trường hợp.** Routine có `startPaused` được tạm dừng lại khi autopilot cùng tên là do quickstart tạo, đang hoạt động, chưa có trigger nào và còn đúng mô tả và tiêu đề issue của template: đó là trạng thái mà một lần tạm dừng thất bại để lại. Mọi autopilot khác giữ nguyên trạng thái, và không bao giờ được bật. Nếu quickstart thêm lịch vào autopilot đang chạy mà template muốn tạm dừng, lần chạy đó báo `partial` (routine đã nối và đã có lịch, chỉ thiếu tạm dừng); lần chạy sau báo `existing` và không đổi gì | Tạm dừng là lớp chặn chi phí và việc chạy ngoài ý muốn. Một lần chạy lại không được âm thầm bật lại thứ boss đã tắt, và cũng không được âm thầm để một routine chạy mà không ai biết. Dấu hiệu "do quickstart tạo" là mô tả và tiêu đề issue đúng từng chữ, vì quickstart tự ghi hai trường đó và boss ít khi sửa. Autopilot cùng tên do boss tạo, không có trigger và mô tả khác, được coi là của boss | Máy chủ trả nguồn tạo của autopilot (quickstart hay người dùng) hoặc cờ tạm dừng do hệ thống: thay dấu hiệu bằng cờ thật |
 
 ### 10.2 Các điều tôi đã kiểm trong code (trước đây là Q7)
 
@@ -587,6 +593,7 @@ Mục này trước đây là bảy câu hỏi mở. Tôi tự trả lời hết
 - Xác minh ba mốc F20 và sổ quy định: **không làm** (Q1).
 - Đọc phần chưa đọc ở mục 3.2: cổng rà soát P0-B.
 - Hai điều trước đây chờ lần chạy thử P0-A (a, c) đã được trả lời bằng đọc mã; lần chạy thật chỉ còn xác nhận lại, không quyết định thiết kế.
+- Nâng cấp squad đã tạo (`upgradeKitvietSquad` và `upgradeSdlcSquad` trong `upgrade.ts`): hai hàm có test, nhưng chưa có điểm gọi nào trong giao diện hay mutation (kiểm: chỉ `upgrade.ts` và test của nó gọi). Gắn vào giao diện là việc riêng, cần quyết định nơi đặt nút và có xác nhận trước khi ghi đè văn bản của người dùng.
 
 ## Phụ lục A: cách đo
 

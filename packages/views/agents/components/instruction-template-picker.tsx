@@ -5,6 +5,7 @@ import { ChevronDown } from "@multica/ui/icons";
 import {
   AGENT_INSTRUCTION_TEMPLATES,
   type AgentInstructionTemplate,
+  type StandaloneInstructionTemplate,
 } from "@multica/core/agents";
 import { Button } from "@multica/ui/components/ui/button";
 import {
@@ -30,7 +31,7 @@ import { useT } from "../../i18n";
  * the registry for the quickstart; their instructions name skills a standalone agent does not have.
  */
 const PICKER_TEMPLATES = AGENT_INSTRUCTION_TEMPLATES.filter(
-  (template) => !template.id.startsWith("kv_"),
+  (template): template is StandaloneInstructionTemplate => !template.id.startsWith("kv_"),
 );
 
 /**

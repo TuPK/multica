@@ -2,6 +2,17 @@ import { SHARED_BLOCKS, WORKING_RULES } from "./instruction-blocks";
 import { composeKvAgentInstructions } from "../squads/kitviet-agent-instructions";
 
 /**
+ * The Kit Viet role templates. The squad quickstart gives them to its agents. The standalone
+ * picker does not offer them, so they have no name or description in the views locales.
+ */
+export type KitvietInstructionTemplateId =
+  | "kv_lead"
+  | "kv_collector"
+  | "kv_drafter"
+  | "kv_gate"
+  | "kv_handover";
+
+/**
  * Ready-made instructions a user can start an agent from in the Configure
  * step. Only the instructions text lives here; names and descriptions are
  * translated in the views package, keyed by `id`.
@@ -42,13 +53,14 @@ export interface AgentInstructionTemplate {
     | "people_performance"
     | "people_reviewer"
     | "floor_chief"
-    | "kv_lead"
-    | "kv_collector"
-    | "kv_drafter"
-    | "kv_gate"
-    | "kv_handover";
+    | KitvietInstructionTemplateId;
   instructions: string;
 }
+
+/** A template the standalone picker offers: every id except the Kit Viet role templates. */
+export type StandaloneInstructionTemplate = AgentInstructionTemplate & {
+  id: Exclude<AgentInstructionTemplate["id"], KitvietInstructionTemplateId>;
+};
 
 /**
  * Added to the templates of roles that own or work a pipeline stage. The

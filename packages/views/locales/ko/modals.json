@@ -334,6 +334,7 @@
     "status_reused": "재사용",
     "status_failed": "실패",
     "status_existing": "이미 있어 그대로 둠",
+    "status_partial": "일부만 완료",
     "status_problem": "문제",
     "squad_row": "스쿼드",
     "workflow_row": "워크플로",

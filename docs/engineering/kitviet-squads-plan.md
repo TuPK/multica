@@ -1,6 +1,6 @@
 # Kit Việt squads: implementation plan
 
-Kế hoạch triển khai cho [kitviet-squads.md](kitviet-squads.md). Trạng thái (2026-11-11): đã triển khai trên nhánh `kitviet-pack` bằng 14 commit gộp (sai lệch ghi ở spec 8.1); diễn tập S7 chưa chạy. Đọc spec trước; các mục "5.x", "6.x", "8.x", "10.x", Fxx và Qx dưới đây trỏ về spec.
+Kế hoạch triển khai cho [kitviet-squads.md](kitviet-squads.md). Trạng thái (2026-11-11): các task đã làm nằm trên nhánh `kitviet-pack`, nhiều task gom vào một commit (bảng "Trạng thái" dưới đây; sai lệch ghi ở spec 8.1); diễn tập S7 chưa chạy. Đọc spec trước; các mục "5.x", "6.x", "8.x", "10.x", Fxx và Qx dưới đây trỏ về spec.
 
 Quy ước thực hiện (theo AGENTS.md):
 
@@ -12,6 +12,31 @@ Quy ước thực hiện (theo AGENTS.md):
 - Test mặc định **không** gọi mạng, không gọi nhà cung cấp trả phí, không chạy agent CLI thật. Phần chạy thật (mục 8.2 của spec) nằm ở các bước "diễn tập" và chỉ chạy khi người dùng cho phép.
 - Chỉ stage đường dẫn của task mình. Cây làm việc có thể có thay đổi của phiên khác; không `git add -A`.
 - Không dùng khóa ngoại hay cascade; kế hoạch này không đụng schema hay server Go, trừ khi một cổng ở Giai đoạn G cho kết quả "không".
+
+## Trạng thái
+
+Ghi ngày 2026-11-11. Commit là hash trên nhánh `kitviet-pack` hiện tại. Mục "Lệch" nêu khác biệt với kế hoạch; danh sách đầy đủ ở spec 8.1.
+
+| Task | Trạng thái | Commit | Lệch |
+| --- | --- | --- | --- |
+| G1–G4 | Đóng (spec 10.2) | — | Không cần thêm phương thức client: `addAgentSkills` và `updateAutopilot` đã có. |
+| K1 chia hàm dùng chung | Xong | `5e9547703` | — |
+| K2 vendor | Xong | `263803bce` | `kitviet-upstream/**` nằm trong lint ignore (`600536b21`, không có trong plan). Thư mục có cây của nhiều nghề hơn năm P0, còn `NOTICE.md` ghi năm nghề; cần đối chiếu trước khi nâng commit. |
+| K3 viết lại và vá | Xong | `fb8076c3f`, `1dea9d3c7` | 26 tệp vá với 66 cặp, kế hoạch là 6 tệp. Thêm vá cho trích dẫn có ngày và chuẩn hóa từ kết luận gác cổng. 24 luật viết lại, áp cả cho script. |
+| K4 generator | Xong | `9f72f664a`, `5ad3ebee3`, `4cc9bc641` | Phân giải tham chiếu theo squad tách thành commit riêng. Đọc tệp upstream theo LF (`46eaae782`, không có trong plan). `--check` xanh. |
+| K5 skill và instructions viết mới | Xong | `aa996c9bb`, `e787f2217` | Compose lười và tách tên khỏi dữ liệu pack là commit riêng. |
+| K6 kiểu template | Xong | `f1f749001` | Gộp với K7. Có `startPaused`, `leaderSkills`, `roleSkills`. |
+| K7 nạp pack và gắn theo vai | Xong, có thêm | `f1f749001`, `7e9325df8` | Nạp theo pack (`kitvietPackOf`). Tạm dừng routine: chỉ tạm dừng lại autopilot của quickstart khi lần chạy trước thất bại; trạng thái `partial` (spec Q9). Phần này là thay đổi của phiên ngày 2026-11-11. |
+| K8 test pack | Xong | `4224e0784` | Chưa có số kích thước bundle trong nhánh; plan yêu cầu hai số. |
+| K9 runbook và cổng | Xong | `9ce28b243`, `a33cdaa96` | Runbook có mục 6a (routine tạm dừng khi chạy lại) và mục 9 (nâng cấp chưa có điểm gọi). |
+| S1 template | Xong, gộp năm squad | `049b82605` | Một commit cho năm template, không tách từng squad. |
+| S2 dữ liệu pack | Xong, gộp | trong K4 | Không có commit riêng cho từng squad. |
+| S3 locale | Xong, gộp năm squad, bảy ngôn ngữ | `a4e7b0bf9` | Phiên ngày 2026-11-11: bỏ khóa `kv_*` không dùng khỏi `agents.json` (bảy ngôn ngữ) và thêm `status_partial` vào `modals.json`. Kiểu `StandaloneInstructionTemplate` khiến bộ chọn mẫu chỉ tra khóa dịch của mẫu độc lập. |
+| S4 test template | Xong | `049b82605` | Mỗi squad một test trong `kitviet-templates/`. |
+| S5 runbook từng squad | Xong, gộp | `a33cdaa96` | Mục từng squad ở runbook mục 8. |
+| S6 cổng PR | Một phần | — | Phiên ngày 2026-11-11: `vitest` core 40 tệp, 723 test; `vitest` views 87 tệp, 1218 test; `tsc` core và views; eslint trên tệp đã đổi; `generate:kitviet --check`. Chưa tách PR từng squad; chưa chạy `pnpm lint` và `pnpm test` cho toàn repo. |
+| S7 diễn tập | Chưa chạy | — | Chờ người dùng cho phép (spec 8.2). |
+| Nâng cấp (ngoài plan) | Hàm có, chưa gọi | `7e9325df8` | `upgradeKitvietSquad` và `upgradeSdlcSquad` không có điểm gọi trong giao diện hay mutation (spec 10.3). |
 
 ## Nền đã có và ranh giới
 

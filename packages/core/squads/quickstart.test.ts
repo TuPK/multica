@@ -591,7 +591,7 @@ describe("runSquadQuickstart for market research", () => {
     ]);
   });
 
-  it("never unpauses a routine it finds without a schedule, and flags the schedule it adds to an active one", async () => {
+  it("never unpauses an autopilot the boss made, and reports the schedule it adds to an active one as partial", async () => {
     const client = fakeClient({
       listAutopilots: vi.fn(async () => ({
         autopilots: [
@@ -610,13 +610,13 @@ describe("runSquadQuickstart for market research", () => {
     expect(out.routines).toEqual([
       {
         title: "Market scan",
-        status: "failed",
+        status: "partial",
         error: "the schedule was added to an active autopilot that should start paused; pause it on the autopilot if it should wait",
       },
     ]);
   });
 
-  it("a rerun after a failed pause finds the autopilot, adds the schedule once, and says so", async () => {
+  it("a rerun after a failed pause re-pauses the quickstart's own unscheduled autopilot before it adds the schedule", async () => {
     const client = fakeClient({
       updateAutopilot: vi.fn(async () => {
         throw new Error("pause refused");
@@ -626,23 +626,155 @@ describe("runSquadQuickstart for market research", () => {
     const first = await runSquadQuickstart(client, paused, options);
     expect(first.routines[0]!.status).toBe("failed");
 
-    // The autopilot the first run made is now listed: active, no schedule.
+    // The autopilot the first run made is now listed: active, no trigger, the text the quickstart wrote.
+    const routine = market.routines[0]!;
     client.listAutopilots.mockResolvedValue({
       autopilots: [
-        { id: "ap-1", title: "Market scan", assignee_type: "squad", assignee_id: "squad-1", status: "active" },
+        {
+          id: "ap-1",
+          title: "Market scan",
+          description: routine.description,
+          issue_title_template: routine.issueTitleTemplate,
+          assignee_type: "squad",
+          assignee_id: "squad-1",
+          status: "active",
+        },
       ] as never[],
       total: 1,
     });
+    client.updateAutopilot.mockResolvedValue({} as never);
     client.createAutopilotTrigger.mockClear();
     client.createAutopilot.mockClear();
+    client.updateAutopilot.mockClear();
 
     const second = await runSquadQuickstart(client, paused, options);
 
     expect(client.createAutopilot).not.toHaveBeenCalled();
+    expect(client.updateAutopilot).toHaveBeenCalledTimes(1);
+    expect(client.updateAutopilot).toHaveBeenCalledWith("ap-1", { status: "paused" });
+    expect(client.updateAutopilot.mock.invocationCallOrder[0]!).toBeLessThan(
+      client.createAutopilotTrigger.mock.invocationCallOrder[0]!,
+    );
     expect(client.createAutopilotTrigger).toHaveBeenCalledTimes(1);
     expect(client.createAutopilotTrigger.mock.calls[0]![0]).toBe("ap-1");
-    expect(second.routines[0]!.status).toBe("failed");
-    expect(second.routines[0]!.error).toContain("should start paused");
+    expect(second.routines).toEqual([{ title: "Market scan", status: "existing" }]);
+  });
+
+  it("a rerun whose re-pause fails sets no schedule, so the autopilot cannot fire", async () => {
+    const routine = market.routines[0]!;
+    const client = fakeClient({
+      listAutopilots: vi.fn(async () => ({
+        autopilots: [
+          {
+            id: "ap-1",
+            title: "Market scan",
+            description: routine.description,
+            issue_title_template: routine.issueTitleTemplate,
+            assignee_type: "squad",
+            assignee_id: "squad-1",
+            status: "active",
+          },
+        ] as never[],
+        total: 1,
+      })),
+      updateAutopilot: vi.fn(async () => {
+        throw new Error("pause refused");
+      }),
+    });
+    const paused = { ...market, routines: [{ ...routine, startPaused: true }] };
+
+    const out = await runSquadQuickstart(client, paused, options);
+
+    expect(client.createAutopilotTrigger).not.toHaveBeenCalled();
+    expect(client.createSquadRoutine).not.toHaveBeenCalled();
+    expect(out.routines).toEqual([
+      {
+        title: "Market scan",
+        status: "failed",
+        error: "pause: pause refused; the autopilot is active without a schedule, pause or delete it",
+      },
+    ]);
+  });
+
+  it("leaves an active autopilot the boss edited alone, even with no schedule, and never pauses it", async () => {
+    const client = fakeClient({
+      listAutopilots: vi.fn(async () => ({
+        autopilots: [
+          {
+            id: "ap-1",
+            title: "Market scan",
+            description: "The boss's own scan brief",
+            issue_title_template: market.routines[0]!.issueTitleTemplate,
+            assignee_type: "squad",
+            assignee_id: "squad-1",
+            status: "active",
+          },
+        ] as never[],
+        total: 1,
+      })),
+    });
+    const paused = { ...market, routines: [{ ...market.routines[0]!, startPaused: true }] };
+
+    const out = await runSquadQuickstart(client, paused, options);
+
+    expect(client.updateAutopilot).not.toHaveBeenCalled();
+    expect(client.createAutopilotTrigger).toHaveBeenCalledTimes(1);
+    expect(out.routines).toEqual([expect.objectContaining({ title: "Market scan", status: "partial" })]);
+  });
+
+  it("keeps the schedule the boss set on an active routine, and changes nothing on a rerun", async () => {
+    const routine = market.routines[0]!;
+    const client = fakeClient({
+      listAutopilots: vi.fn(async () => ({
+        autopilots: [
+          {
+            id: "ap-1",
+            title: "Market scan",
+            description: routine.description,
+            issue_title_template: routine.issueTitleTemplate,
+            assignee_type: "squad",
+            assignee_id: "squad-1",
+            status: "active",
+          },
+        ] as never[],
+        total: 1,
+      })),
+      getAutopilot: vi.fn(async () => ({ autopilot: {}, triggers: [{ kind: "schedule", enabled: true }] }) as never),
+    });
+    const paused = { ...market, routines: [{ ...routine, startPaused: true }] };
+
+    const out = await runSquadQuickstart(client, paused, options);
+
+    expect(client.updateAutopilot).not.toHaveBeenCalled();
+    expect(client.createAutopilotTrigger).not.toHaveBeenCalled();
+    expect(out.routines).toEqual([{ title: "Market scan", status: "existing" }]);
+  });
+
+  it("adds the schedule to a paused autopilot the quickstart made, without a second pause", async () => {
+    const routine = market.routines[0]!;
+    const client = fakeClient({
+      listAutopilots: vi.fn(async () => ({
+        autopilots: [
+          {
+            id: "ap-1",
+            title: "Market scan",
+            description: routine.description,
+            issue_title_template: routine.issueTitleTemplate,
+            assignee_type: "squad",
+            assignee_id: "squad-1",
+            status: "paused",
+          },
+        ] as never[],
+        total: 1,
+      })),
+    });
+    const paused = { ...market, routines: [{ ...routine, startPaused: true }] };
+
+    const out = await runSquadQuickstart(client, paused, options);
+
+    expect(client.updateAutopilot).not.toHaveBeenCalled();
+    expect(client.createAutopilotTrigger).toHaveBeenCalledTimes(1);
+    expect(out.routines).toEqual([{ title: "Market scan", status: "existing" }]);
   });
 
   it("reports a routine whose schedule could not be set, so the boss can add it", async () => {

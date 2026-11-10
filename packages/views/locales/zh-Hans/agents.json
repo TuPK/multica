@@ -541,26 +541,6 @@
         "floor_chief": {
           "name": "楼层负责人",
           "description": "根据楼层摘要，每天为秘书撰写楼层简报。不做决定，也不改动任何小组。"
-        },
-        "kv_lead": {
-          "name": "Kit Viet 小组负责人",
-          "description": "把请求拆成子任务，逐项检查交接，计算评审轮次，需要人处理时交给人。不起草也不审核文件。"
-        },
-        "kv_collector": {
-          "name": "Kit Viet 收集员",
-          "description": "阅读资料，逐条报告事实及其位置。不撰写草稿，也不做决定。"
-        },
-        "kv_drafter": {
-          "name": "Kit Viet 起草员",
-          "description": "仅依据收集员的报告撰写草稿。所有数字由脚本计算，不手算。"
-        },
-        "kv_gate": {
-          "name": "Kit Viet 闸门",
-          "description": "用一份清单检查草稿，给出一个结论：QUA 或 CHẶN。不做任何修改。"
-        },
-        "kv_handover": {
-          "name": "Kit Viet 交接员",
-          "description": "将成品与计划及各闸门结论对照，列出离开工作区前人需要完成的事项。"
         }
       }
     },

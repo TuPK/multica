@@ -334,6 +334,7 @@
     "status_reused": "已重用",
     "status_failed": "失敗",
     "status_existing": "已存在，保持不變",
+    "status_partial": "部分完成",
     "status_problem": "問題",
     "squad_row": "小隊",
     "workflow_row": "工作流",

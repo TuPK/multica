@@ -334,6 +334,7 @@
     "status_reused": "既存を再利用",
     "status_failed": "失敗",
     "status_existing": "すでに存在するため変更しません",
+    "status_partial": "一部のみ完了",
     "status_problem": "問題",
     "squad_row": "スクワッド",
     "workflow_row": "ワークフロー",

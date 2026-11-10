@@ -9,9 +9,10 @@ Vận hành bộ Kit Việt (spec [kitviet-squads.md](kitviet-squads.md), kế h
 | `packages/core/squads/kitviet-upstream/` | Bản vendor đã ghim commit, kèm `LICENSE`, `NOTICE.md`, `UPSTREAM.json` | Không. Chỉ thay bằng bản vendor mới |
 | `packages/core/squads/kitviet-rewrites.json` | Bảng viết lại: khối Pro, mục nền tảng, tên tệp, `VERDICT:` | Có, rồi sinh lại |
 | `packages/core/squads/kitviet-patches/*.json` | Bản vá khớp đúng một câu gốc (`find` → `replace`) | Có, rồi sinh lại |
-| `packages/core/squads/kitviet-squads.json` | Mỗi squad: nghề, vai và loại vai, tầng lõi, skill lead, skill theo vai | Có, rồi sinh lại |
+| `packages/core/squads/kitviet-squads/` | Cấu hình squad: mỗi nghề một JSON (`<nghề>.json`) gồm vai và loại vai, tầng lõi, skill lead, skill theo vai; `base.json` chung | Có, rồi sinh lại |
+| `packages/core/squads/kitviet-templates/` | Mỗi squad một `.ts` và một test: charter, routine, floor, tên và mô tả | Có |
 | `packages/core/squads/kitviet-skills/kv-*/` | Skill viết tay (`kv-delivery-core`, `kv-squad-lead`, `kv-company-profile`) | Có (đây là nguồn) |
-| `packages/core/squads/kitviet-skills-data/*.ts` | Dữ liệu sinh ra, một tệp mỗi squad và `common.ts` | Không. Chạy `pnpm generate:kitviet` |
+| `packages/core/squads/kitviet-skills-data/*.ts` | Dữ liệu sinh ra: một tệp mỗi pack (`common.ts` và từng nghề) và tệp dùng chung | Không. Chạy `pnpm generate:kitviet` |
 | `scripts/generate-kitviet-pack.mjs` | Generator | Có |
 
 Lệnh:
@@ -33,7 +34,7 @@ Làm trên một nhánh riêng. Không sửa tay tệp trong `kitviet-upstream/`
 4. Chạy `pnpm generate:kitviet`. Generator dừng với danh sách lỗi nếu:
    - một `find` của bản vá không còn khớp đúng một chỗ: đọc lại câu mới, sửa `find` trong `kitviet-patches/`;
    - một quy tắc viết lại không khớp nữa: hoặc upstream đã bỏ thứ đó (xóa quy tắc khỏi `kitviet-rewrites.json`), hoặc mẫu cần đổi;
-   - một agent đổi loại (ví dụ thêm `Write`): sửa `kind` trong `kitviet-squads.json`;
+   - một agent đổi loại (ví dụ thêm `Write`): sửa `kind` trong `kitviet-squads/<nghề>.json`;
    - một tham chiếu không biết (`unknown reference`): thêm skill vào squad hoặc viết lại.
 5. Đọc diff của `kitviet-skills-data/*.ts` theo từng squad, không chỉ số dòng. Kiểm bằng mắt: khối mới có chứa quảng cáo, đường dẫn cũ, mốc pháp luật mới không? Mốc pháp luật phải đi qua Sổ quy định, không nhúng vào skill (F8, F23).
 6. Chạy test: `node --test scripts/generate-kitviet-pack.test.mjs` và vitest của `squads`. Chạy `--check` hai lần.
@@ -103,6 +104,13 @@ Không bao giờ đổi CHẶN hay thiếu dòng thành QUA bằng tay để đi
 - Loại 3 · hết vòng sửa: như loại 1, kèm bản nháp và lỗi còn lại.
 
 Ngoài ba loại này, agent lấy mặc định, ghi giả định và đi tiếp.
+
+## 6a. Routine tạm dừng khi chạy lại (spec 5.7, Q9)
+
+- Routine có `startPaused` (Legal, Accounting) được tạo ở trạng thái tạm dừng, trước khi thêm lịch.
+- Chạy lại quickstart chỉ tạm dừng lại autopilot mà chính quickstart tạo và lần tạm dừng trước thất bại: đang hoạt động, chưa có trigger, mô tả và tiêu đề issue còn đúng từng chữ của template. Tạm dừng xong mới thêm lịch; nếu tạm dừng thất bại thì không thêm lịch, và báo lỗi `pause:`.
+- Autopilot đã có lịch, hoặc do người dùng sửa mô tả, giữ nguyên trạng thái. Không bao giờ bật lại.
+- Kết quả `partial` trên quickstart: routine đã nối và đã có lịch, nhưng đang chạy trong khi template muốn tạm dừng (thường là autopilot của người dùng cùng tên). Mở autopilot và tạm dừng nếu muốn chờ. Lần chạy sau báo `existing` và không đổi gì.
 
 ## 7. Diễn tập (spec 8.2)
 
@@ -278,5 +286,6 @@ Bảng sổ quy định Accounting, dòng theo F20 (ngày kiểm 10/11/2026; m�
 ## 9. Việc còn mở
 
 - Ngưỡng dung lượng của Accounting: tầng lõi đo được 146,9 KiB (ngày 2026-11-11); ngưỡng riêng của squad này là 160 KiB (test K8) vì ba skill được nâng lên là chính dây chuyền và chỉ được đọc khi cần. Các squad khác đo được 107,8–127,6 KiB, dưới ngưỡng 140 KiB.
+- Nâng cấp squad đã tạo (`upgradeKitvietSquad`, `upgrade.ts`) chưa có điểm gọi trong giao diện. Đến khi có, việc nâng cấp là việc của người phát triển, chạy bằng hàm với `dryRun` trước; hàm không ghi đè văn bản đã bị sửa.
 - `soan-don-tu` ở Hành chính và Pháp lý là hai bản byte giống nhau (F11). Bản Pháp lý đổi tên thành `soan-don-tu-phap-ly` theo kế hoạch; nội dung không khác nên tên chỉ là nhãn.
 - Tham chiếu `chuan-bi-dam-phan-hoa-giai` trong `soan-bien-ban-thanh-ly-hop-dong` (Pháp lý) không nằm trong tầng lõi hay vai; ở P0 nó thành "nhờ lead tạo yêu cầu" (spec mục 6 để ngoài P0).

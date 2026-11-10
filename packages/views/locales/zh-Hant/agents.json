@@ -541,26 +541,6 @@
         "floor_chief": {
           "name": "樓層負責人",
           "description": "根據樓層摘要，每天為秘書撰寫樓層簡報。不做決定，也不更動任何小組。"
-        },
-        "kv_lead": {
-          "name": "Kit Viet 小組負責人",
-          "description": "把請求拆成子任務，逐項檢查交接，計算審查輪次，需要人處理時交給人。不起草也不審核文件。"
-        },
-        "kv_collector": {
-          "name": "Kit Viet 蒐集員",
-          "description": "閱讀資料，逐條回報事實及其位置。不撰寫草稿，也不做決定。"
-        },
-        "kv_drafter": {
-          "name": "Kit Viet 起草員",
-          "description": "僅依據蒐集員的報告撰寫草稿。所有數字由腳本計算，不手算。"
-        },
-        "kv_gate": {
-          "name": "Kit Viet 閘門",
-          "description": "用一份清單檢查草稿，給出一個結論：QUA 或 CHẶN。不做任何修改。"
-        },
-        "kv_handover": {
-          "name": "Kit Viet 交接員",
-          "description": "將成品與計畫及各閘門結論對照，列出離開工作區前人需要完成的事項。"
         }
       }
     },

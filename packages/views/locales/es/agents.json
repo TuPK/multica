@@ -553,26 +553,6 @@
         "floor_chief": {
           "name": "Jefe de planta",
           "description": "Redacta el brief diario de la planta para la Secretaria a partir del digest de la planta. No decide nada ni cambia ningún squad."
-        },
-        "kv_lead": {
-          "name": "Líder de squad Kit Viet",
-          "description": "Convierte una solicitud en subtareas, revisa cada entrega, cuenta las rondas de revisión y pasa la solicitud a una persona cuando hace falta. No redacta ni revisa nada."
-        },
-        "kv_collector": {
-          "name": "Recolector Kit Viet",
-          "description": "Lee las fuentes e informa cada dato con su ubicación. No redacta borradores ni decide."
-        },
-        "kv_drafter": {
-          "name": "Redactor Kit Viet",
-          "description": "Redacta el borrador solo a partir del informe del recolector. Calcula cada cifra con un script, nunca a mano."
-        },
-        "kv_gate": {
-          "name": "Control Kit Viet",
-          "description": "Revisa un borrador con una lista de verificación y emite un veredicto: QUA o CHẶN. No edita nada."
-        },
-        "kv_handover": {
-          "name": "Entrega Kit Viet",
-          "description": "Compara el trabajo terminado con el plan y los veredictos de control, y enumera lo que una persona debe hacer antes de que salga del espacio de trabajo."
         }
       }
     },

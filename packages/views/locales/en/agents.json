@@ -553,26 +553,6 @@
         "floor_chief": {
           "name": "Floor Chief",
           "description": "Writes the floor's daily brief for the Secretary from the floor's digest. Decides nothing and changes no squad."
-        },
-        "kv_lead": {
-          "name": "Kit Viet Squad Lead",
-          "description": "Turns a request into sub-issues, checks each handover, counts review rounds, and hands the request to a person when it needs one. Drafts and reviews nothing."
-        },
-        "kv_collector": {
-          "name": "Kit Viet Collector",
-          "description": "Reads the sources and reports each fact with its location. Writes no draft and makes no decision."
-        },
-        "kv_drafter": {
-          "name": "Kit Viet Drafter",
-          "description": "Writes the draft from the collector's report only. Computes every figure with a script, never by hand."
-        },
-        "kv_gate": {
-          "name": "Kit Viet Gate",
-          "description": "Checks one draft against one checklist and gives one verdict, QUA or CHẶN. Edits nothing."
-        },
-        "kv_handover": {
-          "name": "Kit Viet Handover",
-          "description": "Compares the finished work with the plan and the gate verdicts, and lists what a person must do before it leaves the workspace."
         }
       }
     },

@@ -553,26 +553,6 @@
         "floor_chief": {
           "name": "Chef d'étage",
           "description": "Rédige chaque jour le rapport de l'étage pour le Secrétaire, à partir de son digest. Ne décide rien et ne modifie aucune équipe."
-        },
-        "kv_lead": {
-          "name": "Responsable d'équipe Kit Viet",
-          "description": "Transforme une demande en sous-tâches, contrôle chaque remise, compte les tours de révision et confie la demande à une personne quand c'est nécessaire. Ne rédige ni ne relit rien."
-        },
-        "kv_collector": {
-          "name": "Collecteur Kit Viet",
-          "description": "Lit les sources et rapporte chaque fait avec son emplacement. Ne rédige aucun brouillon et ne décide rien."
-        },
-        "kv_drafter": {
-          "name": "Rédacteur Kit Viet",
-          "description": "Rédige le brouillon à partir du seul rapport du collecteur. Calcule chaque chiffre par script, jamais à la main."
-        },
-        "kv_gate": {
-          "name": "Contrôleur Kit Viet",
-          "description": "Vérifie un brouillon selon une liste de contrôle et rend un seul verdict, QUA ou CHẶN. Ne modifie rien."
-        },
-        "kv_handover": {
-          "name": "Remise Kit Viet",
-          "description": "Compare le travail terminé au plan et aux verdicts des contrôles, et liste ce qu'une personne doit faire avant sa sortie de l'espace de travail."
         }
       }
     },

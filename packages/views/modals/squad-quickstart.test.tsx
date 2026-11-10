@@ -203,6 +203,30 @@ describe("SquadQuickstartModal", () => {
     await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(2));
   });
 
+  it("shows a routine left active without its paused start as partly done, not ready", async () => {
+    mocks.toastSuccess.mockClear();
+    mocks.mutateAsync.mockResolvedValueOnce({
+      ...readyOutcome,
+      routines: [
+        {
+          title: "Weekly scan",
+          status: "partial",
+          error: "the schedule was added to an active autopilot that should start paused; pause it on the autopilot if it should wait",
+        },
+      ],
+    } satisfies QuickstartOutcome);
+    renderModal();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "pick runtime" }));
+    await user.click(screen.getByRole("button", { name: "Create squad" }));
+
+    expect(await screen.findByText("Finished with problems")).toBeInTheDocument();
+    expect(screen.getByText(/^Partly done: the schedule was added/)).toBeInTheDocument();
+    expect(screen.queryByText("Squad ready")).not.toBeInTheDocument();
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+  });
+
   it("opens the new squad", async () => {
     mocks.mutateAsync.mockResolvedValue(readyOutcome);
     const { onClose } = renderModal();

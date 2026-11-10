@@ -36,7 +36,7 @@ function hasProblems(outcome: QuickstartOutcome): boolean {
     outcome.squad.status === "failed" ||
     !!outcome.squad.error ||
     outcome.workflow.status === "failed" ||
-    outcome.routines.some((r) => r.status === "failed") ||
+    outcome.routines.some((r) => r.status === "failed" || r.status === "partial") ||
     outcome.sources.status === "failed"
   );
 }
@@ -96,6 +96,7 @@ export function SquadQuickstartModal({ onClose }: { onClose: () => void }) {
     reused: t(($) => $.squad_quickstart.status_reused),
     failed: t(($) => $.squad_quickstart.status_failed),
     existing: t(($) => $.squad_quickstart.status_existing),
+    partial: t(($) => $.squad_quickstart.status_partial),
     skipped: "",
   };
 
@@ -256,12 +257,16 @@ export function SquadQuickstartModal({ onClose }: { onClose: () => void }) {
                     <span>{r.title}</span>
                     <span
                       className={`shrink-0 text-caption ${
-                        r.status === "failed" ? "text-destructive" : "text-muted-foreground"
+                        r.status === "failed" || r.status === "partial"
+                          ? "text-destructive"
+                          : "text-muted-foreground"
                       }`}
                     >
                       {r.status === "failed"
                         ? `${t(($) => $.squad_quickstart.status_failed)}: ${r.error}`
-                        : statusText[r.status]}
+                        : r.status === "partial"
+                          ? `${statusText.partial}: ${r.error}`
+                          : statusText[r.status]}
                     </span>
                   </li>
                 ))}

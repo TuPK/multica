@@ -146,8 +146,12 @@ export interface QuickstartOutcome {
 export interface QuickstartRoutineOutcome {
   title: string;
   /** "existing": the squad already has an autopilot with the routine's name, or the routine is already linked. */
-  status: "created" | "existing" | "failed";
-  /** A routine created without its schedule reports that here; add the schedule on the autopilot. */
+  status: "created" | "existing" | "partial" | "failed";
+  /**
+   * "partial": the routine is linked and scheduled, but the autopilot is active although the template
+   * asks for a paused start (see ensureRoutine). A later run reports it "existing" and changes nothing.
+   * "failed": the routine is not made, or it is made without its schedule. The error says which.
+   */
   error?: string;
 }
 
@@ -270,11 +274,36 @@ async function ensureCompanyFloor(
 }
 
 /**
+ * Whether an autopilot with the routine's name is one this quickstart made and left without a
+ * schedule: no trigger of any kind, and the description and issue title the quickstart wrote on
+ * creation, unedited. A failed pause leaves exactly that state (active, unscheduled). A schedule
+ * or any edit marks the autopilot as the boss's, and its status is kept.
+ */
+function isUnscheduledQuickstartRoutine(
+  autopilot: Autopilot,
+  triggers: readonly AutopilotTrigger[],
+  routine: SquadRoutineTemplate,
+): boolean {
+  return (
+    triggers.length === 0 &&
+    (autopilot.description ?? "") === routine.description &&
+    (autopilot.issue_title_template ?? "") === routine.issueTitleTemplate
+  );
+}
+
+/**
  * Creates the routine's autopilot for the squad, assigned to the squad so each
  * run opens an issue for its leader, and its weekly schedule. Then links it as
  * a routine of the squad, so the charter and the digest see it. A squad that
  * already has an autopilot with the routine's name keeps it, and it is linked
  * when it is not a routine yet.
+ *
+ * A paused start is kept across reruns: a new autopilot is paused before its schedule is set.
+ * An existing one is paused again only when it is the quickstart's own unscheduled autopilot
+ * (isUnscheduledQuickstartRoutine), which is what a failed pause leaves behind. Any other active
+ * autopilot without a schedule is the boss's: its schedule is added as before, and the outcome is
+ * "partial" so the boss sees that it runs and should be paused. A schedule the boss disabled
+ * counts as a schedule, so nothing is added to it.
  */
 async function ensureRoutine(
   client: SquadQuickstartClient,
@@ -293,7 +322,7 @@ async function ensureRoutine(
   );
   let autopilotId: string;
   let status: "created" | "existing" = "created";
-  // Set when the autopilot runs, or is left active, without the paused start the template asks for.
+  // Set when the schedule is added to an autopilot that stays active although the template asks for a paused start.
   let warning: string | undefined;
   if (found) {
     autopilotId = found.id;
@@ -301,17 +330,32 @@ async function ensureRoutine(
     // A schedule the boss disabled still counts: adding one would switch the boss's choice back on.
     const { triggers } = await client.getAutopilot(found.id);
     if (!triggers.some((t) => t.kind === "schedule")) {
-      const active = found.status === "active";
-      const pausedStart = routine.startPaused === true && active;
+      let stillActive = found.status === "active";
+      if (routine.startPaused === true && stillActive && isUnscheduledQuickstartRoutine(found, triggers, routine)) {
+        try {
+          await client.updateAutopilot(found.id, { status: "paused" });
+        } catch (err) {
+          // No schedule is set, so the autopilot cannot fire. The next run tries the pause again.
+          return {
+            title: routine.title,
+            status: "failed",
+            error: `pause: ${errorMessage(err)}; the autopilot is active without a schedule, pause or delete it`,
+          };
+        }
+        stillActive = false;
+      }
       try {
         await client.createAutopilotTrigger(found.id, scheduleRequest);
       } catch (err) {
         // The autopilot is active and has no schedule, so it does not run. Left as it is for the boss to see.
-        const note = pausedStart ? "; the autopilot is active without a schedule, pause or delete it" : "";
+        const note =
+          routine.startPaused === true && stillActive
+            ? "; the autopilot is active without a schedule, pause or delete it"
+            : "";
         return { title: routine.title, status: "failed", error: `schedule: ${errorMessage(err)}${note}` };
       }
       // The schedule is now set on an autopilot that should have started paused. It is not unpaused here.
-      if (pausedStart) {
+      if (routine.startPaused === true && stillActive) {
         warning = "the schedule was added to an active autopilot that should start paused; pause it on the autopilot if it should wait";
       }
     }
@@ -330,7 +374,7 @@ async function ensureRoutine(
       try {
         await client.updateAutopilot(autopilot.id, { status: "paused" });
       } catch (err) {
-        // No schedule is set, so the autopilot cannot fire. A rerun adds the schedule, see above.
+        // No schedule is set, so the autopilot cannot fire. A rerun re-pauses it and adds the schedule, see above.
         return {
           title: routine.title,
           status: "failed",
@@ -354,11 +398,14 @@ async function ensureRoutine(
   } catch (err) {
     // Already linked: an earlier run finished the job.
     if (errorCode(err) === "routine_already_linked") {
-      return warning ? { title: routine.title, status: "failed", error: warning } : { title: routine.title, status: "existing" };
+      return warning
+        ? { title: routine.title, status: "partial", error: warning }
+        : { title: routine.title, status: "existing" };
     }
     return { title: routine.title, status: "failed", error: `routine: ${errorMessage(err)}` };
   }
-  if (warning) return { title: routine.title, status: "failed", error: warning };
+  // Linked and scheduled, so the routine works; only its paused start is missing.
+  if (warning) return { title: routine.title, status: "partial", error: warning };
   return { title: routine.title, status };
 }
 

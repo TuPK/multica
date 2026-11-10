@@ -336,6 +336,7 @@
     "status_reused": "Reused",
     "status_failed": "Failed",
     "status_existing": "Already there, left unchanged",
+    "status_partial": "Partly done",
     "status_problem": "Problem",
     "squad_row": "Squad",
     "workflow_row": "Workflow",

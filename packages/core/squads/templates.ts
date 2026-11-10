@@ -494,8 +494,9 @@ export interface SquadRoutineTemplate {
   /** The issue body each run starts from: the scan scope and the bar for a proposal. */
   description: string;
   /**
-   * Create the autopilot paused. Only a newly created autopilot is paused: an
-   * existing one keeps its status, so a rerun never resumes a routine the boss paused.
+   * Create the autopilot paused. A rerun re-pauses only the quickstart's own autopilot that a
+   * failed pause left active and unscheduled (ensureRoutine); any other existing autopilot keeps its
+   * status, so a rerun never resumes a routine the boss paused or enabled.
    */
   startPaused?: boolean;
 }
