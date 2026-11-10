@@ -32,6 +32,7 @@
     "generate:attachment-text-preview": "node scripts/generate-attachment-text-preview.mjs",
     "generate:company-template": "node scripts/generate-company-template.mjs",
     "generate:reserved-slugs": "node scripts/generate-reserved-slugs.mjs",
+    "generate:kitviet": "node scripts/generate-kitviet-pack.mjs",
     "generate:sdlc-skills": "node scripts/generate-sdlc-skills.mjs"
   },
   "engines": {
