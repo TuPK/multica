@@ -57,10 +57,10 @@ INSERT INTO knowledge_link (
     workspace_id, knowledge_base_id, weknora_knowledge_id, source_type, source_id,
     idempotency_key, state, created_by_type, created_by_id,
     title, source_url, pending_content, publish_requested, error,
-    kind, initiative_id, stage_key, squad_id, confidence, valid_until, supersedes_link_id, tags
+    kind, initiative_id, stage_key, squad_id, confidence, valid_until, supersedes_link_id, tags, properties
 ) VALUES (
     $1, $2, '', $3, $4, $5, 'failed', $6, $7, $8, $9, $10, $11, 'not sent yet',
-    $12, $13, $14, $15, $16, $17, $18, $19
+    $12, $13, $14, $15, $16, $17, $18, $19, COALESCE(sqlc.narg('properties')::jsonb, '{}'::jsonb)
 )
 ON CONFLICT (workspace_id, idempotency_key) DO NOTHING;
 

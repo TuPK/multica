@@ -635,7 +635,7 @@ func (q *Queries) SetOrgChangeRollbackProposal(ctx context.Context, arg SetOrgCh
 const unarchiveSquad = `-- name: UnarchiveSquad :one
 UPDATE squad SET archived_at = NULL, archived_by = NULL, updated_at = now()
 WHERE id = $1 AND workspace_id = $2
-RETURNING id, workspace_id, name, description, leader_id, creator_id, created_at, updated_at, archived_at, archived_by, avatar_url, instructions, floor_id, company_slot, autonomy_level
+RETURNING id, workspace_id, name, description, leader_id, creator_id, created_at, updated_at, archived_at, archived_by, avatar_url, instructions, floor_id, company_slot, autonomy_level, template_key
 `
 
 type UnarchiveSquadParams struct {
@@ -662,6 +662,7 @@ func (q *Queries) UnarchiveSquad(ctx context.Context, arg UnarchiveSquadParams) 
 		&i.FloorID,
 		&i.CompanySlot,
 		&i.AutonomyLevel,
+		&i.TemplateKey,
 	)
 	return i, err
 }

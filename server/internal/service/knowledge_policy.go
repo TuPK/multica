@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sort"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -297,4 +298,52 @@ func trimNote(s string) string {
 		return string(r[:max])
 	}
 	return s
+}
+
+// defaultKindPublishModes are the publish modes a default kind starts with when it is
+// not manual, which is the default for every kind. Sales records publish at once: the
+// squad writes them to be read by its next run, and a person still approves each outreach
+// before it is sent. A lesson waits for another squad's review before it is published.
+var defaultKindPublishModes = map[string]string{
+	"sales_lane":        PublishModeAuto,
+	"sales_source":      PublishModeAuto,
+	"sales_account":     PublishModeAuto,
+	"sales_opportunity": PublishModeAuto,
+	"sales_outreach":    PublishModeAuto,
+	"sales_share":       PublishModeAuto,
+	"sales_report":      PublishModeAuto,
+	"sales_lesson":      PublishModeAfterReview,
+}
+
+// seedDefaultPublishModes saves the default publish mode of each kind that has one and no
+// saved policy yet, so a mode an admin saved is kept. It acts as actorID, and does nothing
+// when the workspace has no owner or admin to act as.
+func (s *KnowledgeService) seedDefaultPublishModes(ctx context.Context, workspaceID, actorID pgtype.UUID) error {
+	if !actorID.Valid {
+		return nil
+	}
+	existing, err := s.ListPublishPolicies(ctx, workspaceID)
+	if err != nil {
+		return err
+	}
+	saved := map[string]bool{}
+	for _, p := range existing {
+		if p.Scope == PublishScopeKind {
+			saved[p.Key] = true
+		}
+	}
+	keys := make([]string, 0, len(defaultKindPublishModes))
+	for key := range defaultKindPublishModes {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		if saved[key] {
+			continue
+		}
+		if _, err := s.SetPublishPolicy(ctx, workspaceID, actorID, PublishScopeKind, key, defaultKindPublishModes[key]); err != nil {
+			return fmt.Errorf("seed publish policy %q: %w", key, err)
+		}
+	}
+	return nil
 }

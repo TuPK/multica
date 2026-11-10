@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -132,6 +133,9 @@ type KnowledgeDocumentInput struct {
 	SupersedesLinkID pgtype.UUID
 	// Tags are extra labels pushed to WeKnora with the kind and the folder.
 	Tags []string
+	// Properties are the typed values of the kind's fields. Values the Record section states
+	// fill the rest; a value given here wins over the Record.
+	Properties map[string]any
 }
 
 // KnowledgeDocumentView is one document as the API reports it. ID is the
@@ -165,6 +169,8 @@ type KnowledgeDocumentView struct {
 	Superseded    bool     `json:"superseded"`
 	Tags          []string `json:"tags"`
 	ReviewVerdict string   `json:"review_verdict"`
+	// Properties are the typed values of the document's kind fields (spec 7.1).
+	Properties map[string]any `json:"properties"`
 	// Folder is where the document is filed inside its base: a directory path
 	// for a project file, an INI-<seq>-<slug> folder for an initiative's
 	// document, empty at the top level.
@@ -385,6 +391,10 @@ func (s *KnowledgeService) CreateDocument(ctx context.Context, workspaceID pgtyp
 	if in.KB == "" {
 		return KnowledgeDocumentView{}, false, &KnowledgeInvalidError{"kb is required; kind " + in.Kind + " has no default base"}
 	}
+	properties, err := s.documentProperties(ctx, workspaceID, in)
+	if err != nil {
+		return KnowledgeDocumentView{}, false, err
+	}
 	base, err := s.Queries.GetKnowledgeBaseByKey(ctx, db.GetKnowledgeBaseByKeyParams{WorkspaceID: workspaceID, Key: in.KB})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return KnowledgeDocumentView{}, false, ErrKnowledgeBaseNotFound
@@ -447,6 +457,7 @@ func (s *KnowledgeService) CreateDocument(ctx context.Context, workspaceID pgtyp
 		Kind: in.Kind, InitiativeID: in.InitiativeID, StageKey: in.StageKey, SquadID: authorSq,
 		Confidence: pgtype.Text{String: in.Confidence, Valid: in.Confidence != ""},
 		ValidUntil: in.ValidUntil, SupersedesLinkID: in.SupersedesLinkID, Tags: documentTagNames(in),
+		Properties: properties,
 	})
 	if err != nil {
 		return KnowledgeDocumentView{}, false, fmt.Errorf("record knowledge write: %w", err)
@@ -1016,6 +1027,31 @@ func (s *KnowledgeService) linkView(ctx context.Context, workspaceID pgtype.UUID
 	return linkViewWith(bases, l), nil
 }
 
+// documentProperties is the stored form of a document's properties: the values its Record section
+// states, with the values the caller gave on top. A kind without fields takes none.
+func (s *KnowledgeService) documentProperties(ctx context.Context, workspaceID pgtype.UUID, in KnowledgeDocumentInput) ([]byte, error) {
+	fields, err := s.kindFieldsFor(ctx, workspaceID, in.Kind)
+	if err != nil {
+		return nil, err
+	}
+	if len(in.Properties) > 0 && len(fields) == 0 {
+		return nil, &KnowledgeInvalidError{"kind " + in.Kind + " has no fields, so it takes no properties"}
+	}
+	given, err := CheckProperties(fields, in.Properties)
+	if err != nil {
+		return nil, err
+	}
+	merged := PropertiesFromRecord(in.Content, fields)
+	for k, v := range given {
+		merged[k] = v
+	}
+	raw, err := json.Marshal(merged)
+	if err != nil {
+		return nil, fmt.Errorf("encode properties: %w", err)
+	}
+	return raw, nil
+}
+
 func linkViewWith(bases map[string]db.KnowledgeBase, l db.KnowledgeLink) KnowledgeDocumentView {
 	v := KnowledgeDocumentView{
 		ID: util.UUIDToString(l.ID), DocumentID: l.WeknoraKnowledgeID,
@@ -1026,6 +1062,7 @@ func linkViewWith(bases map[string]db.KnowledgeBase, l db.KnowledgeLink) Knowled
 	if l.SourceUrl != "" {
 		v.Kind = "url"
 	}
+	v.Properties = propertiesOf(l.Properties)
 	if l.SourceID.Valid {
 		id := util.UUIDToString(l.SourceID)
 		v.SourceID = &id

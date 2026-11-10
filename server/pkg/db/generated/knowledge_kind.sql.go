@@ -12,7 +12,7 @@ import (
 )
 
 const getKnowledgeKind = `-- name: GetKnowledgeKind :one
-SELECT workspace_id, key, name, default_base_key, template, review_days, required_sections, created_at, updated_at FROM knowledge_kind WHERE workspace_id = $1 AND key = $2
+SELECT workspace_id, key, name, default_base_key, template, review_days, required_sections, created_at, updated_at, fields FROM knowledge_kind WHERE workspace_id = $1 AND key = $2
 `
 
 type GetKnowledgeKindParams struct {
@@ -33,12 +33,13 @@ func (q *Queries) GetKnowledgeKind(ctx context.Context, arg GetKnowledgeKindPara
 		&i.RequiredSections,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Fields,
 	)
 	return i, err
 }
 
 const listKnowledgeKinds = `-- name: ListKnowledgeKinds :many
-SELECT workspace_id, key, name, default_base_key, template, review_days, required_sections, created_at, updated_at FROM knowledge_kind WHERE workspace_id = $1 ORDER BY key ASC
+SELECT workspace_id, key, name, default_base_key, template, review_days, required_sections, created_at, updated_at, fields FROM knowledge_kind WHERE workspace_id = $1 ORDER BY key ASC
 `
 
 func (q *Queries) ListKnowledgeKinds(ctx context.Context, workspaceID pgtype.UUID) ([]KnowledgeKind, error) {
@@ -60,6 +61,7 @@ func (q *Queries) ListKnowledgeKinds(ctx context.Context, workspaceID pgtype.UUI
 			&i.RequiredSections,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Fields,
 		); err != nil {
 			return nil, err
 		}
@@ -98,8 +100,8 @@ func (q *Queries) ListReadyKnowledgeWorkspaceIDs(ctx context.Context) ([]pgtype.
 }
 
 const seedKnowledgeKind = `-- name: SeedKnowledgeKind :execrows
-INSERT INTO knowledge_kind (workspace_id, key, name, default_base_key, template, review_days, required_sections)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO knowledge_kind (workspace_id, key, name, default_base_key, template, review_days, required_sections, fields)
+VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8::jsonb, '[]'::jsonb))
 ON CONFLICT (workspace_id, key) DO NOTHING
 `
 
@@ -111,6 +113,7 @@ type SeedKnowledgeKindParams struct {
 	Template         string      `json:"template"`
 	ReviewDays       int32       `json:"review_days"`
 	RequiredSections []string    `json:"required_sections"`
+	Fields           []byte      `json:"fields"`
 }
 
 // Provisioning and the backfill insert the default kinds. An existing row, which
@@ -124,6 +127,7 @@ func (q *Queries) SeedKnowledgeKind(ctx context.Context, arg SeedKnowledgeKindPa
 		arg.Template,
 		arg.ReviewDays,
 		arg.RequiredSections,
+		arg.Fields,
 	)
 	if err != nil {
 		return 0, err
@@ -140,7 +144,7 @@ UPDATE knowledge_kind SET
     default_base_key = $7,
     updated_at = now()
 WHERE workspace_id = $1 AND key = $2
-RETURNING workspace_id, key, name, default_base_key, template, review_days, required_sections, created_at, updated_at
+RETURNING workspace_id, key, name, default_base_key, template, review_days, required_sections, created_at, updated_at, fields
 `
 
 type UpdateKnowledgeKindParams struct {
@@ -174,6 +178,7 @@ func (q *Queries) UpdateKnowledgeKind(ctx context.Context, arg UpdateKnowledgeKi
 		&i.RequiredSections,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Fields,
 	)
 	return i, err
 }

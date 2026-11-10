@@ -527,9 +527,10 @@ func (s *KnowledgeService) runLibrarianFor(ctx context.Context, workspaceID pgty
 }
 
 // backfillTaxonomy brings a workspace provisioned before phase 3 up to date: its
-// missing default kinds, and the ventures base with its MCP access. It reuses
-// the provisioning steps, which are idempotent. It takes the provisioning lock,
-// and skips the workspace when an enable is running; the next pass retries.
+// missing default kinds, the default publish modes of those kinds, and the ventures
+// and sales bases with their MCP access. It reuses the provisioning steps, which are
+// idempotent. A missing base takes the provisioning lock and skips the workspace when
+// an enable is running; the next pass retries.
 func (s *KnowledgeService) backfillTaxonomy(ctx context.Context, workspaceID pgtype.UUID) error {
 	kinds, err := s.Queries.ListKnowledgeKinds(ctx, workspaceID)
 	if err != nil {
@@ -544,10 +545,13 @@ func (s *KnowledgeService) backfillTaxonomy(ctx context.Context, workspaceID pgt
 	if err != nil {
 		return fmt.Errorf("list knowledge bases: %w", err)
 	}
+	have := map[string]bool{}
 	for _, b := range bases {
-		if b.Key == KnowledgeVentureBaseKey {
-			return nil
-		}
+		have[b.Key] = true
+	}
+	actor := s.workspaceActor(ctx, workspaceID)
+	if have[KnowledgeVentureBaseKey] && have[KnowledgeSalesBaseKey] {
+		return s.seedDefaultPublishModes(ctx, workspaceID, actor)
 	}
 	release, err := s.lock(ctx, workspaceID)
 	if errors.Is(err, ErrKnowledgeBusy) {
@@ -561,9 +565,17 @@ func (s *KnowledgeService) backfillTaxonomy(ctx context.Context, workspaceID pgt
 	if err != nil {
 		return err
 	}
-	actor := pgtype.UUID{}
-	if owners, err := s.Queries.ListWorkspaceManagerUserIDs(ctx, workspaceID); err == nil && len(owners) > 0 {
-		actor = owners[0]
+	if err := s.provision(ctx, workspaceID, actor, ws); err != nil {
+		return err
 	}
-	return s.provision(ctx, workspaceID, actor, ws)
+	return s.seedDefaultPublishModes(ctx, workspaceID, actor)
+}
+
+// workspaceActor is the first owner or admin of the workspace, who a backfill acts as
+// when it saves a setting. It is invalid when the workspace has none.
+func (s *KnowledgeService) workspaceActor(ctx context.Context, workspaceID pgtype.UUID) pgtype.UUID {
+	if owners, err := s.Queries.ListWorkspaceManagerUserIDs(ctx, workspaceID); err == nil && len(owners) > 0 {
+		return owners[0]
+	}
+	return pgtype.UUID{}
 }

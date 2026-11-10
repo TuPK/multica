@@ -7,8 +7,8 @@ SELECT * FROM knowledge_kind WHERE workspace_id = $1 AND key = $2;
 -- name: SeedKnowledgeKind :execrows
 -- Provisioning and the backfill insert the default kinds. An existing row, which
 -- an admin may have edited, is left alone.
-INSERT INTO knowledge_kind (workspace_id, key, name, default_base_key, template, review_days, required_sections)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO knowledge_kind (workspace_id, key, name, default_base_key, template, review_days, required_sections, fields)
+VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE(sqlc.narg('fields')::jsonb, '[]'::jsonb))
 ON CONFLICT (workspace_id, key) DO NOTHING;
 
 -- name: UpdateKnowledgeKind :one

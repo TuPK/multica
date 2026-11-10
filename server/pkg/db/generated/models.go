@@ -1463,6 +1463,7 @@ type KnowledgeKind struct {
 	RequiredSections []string           `json:"required_sections"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	Fields           []byte             `json:"fields"`
 }
 
 type KnowledgeLink struct {
@@ -1499,6 +1500,7 @@ type KnowledgeLink struct {
 	ReviewIssueID      pgtype.UUID        `json:"review_issue_id"`
 	AmountMicros       pgtype.Int8        `json:"amount_micros"`
 	Folder             string             `json:"folder"`
+	Properties         []byte             `json:"properties"`
 }
 
 type KnowledgeOwnerAccount struct {
@@ -1519,6 +1521,17 @@ type KnowledgeProjectFile struct {
 	ContentHash     string             `json:"content_hash"`
 	ArchivedAt      pgtype.Timestamptz `json:"archived_at"`
 	SyncedAt        pgtype.Timestamptz `json:"synced_at"`
+}
+
+type KnowledgePropertyHistory struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	LinkID      pgtype.UUID        `json:"link_id"`
+	ActorType   string             `json:"actor_type"`
+	ActorID     pgtype.UUID        `json:"actor_id"`
+	ChangedKeys []string           `json:"changed_keys"`
+	Changes     []byte             `json:"changes"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
 type KnowledgePublishPolicy struct {
@@ -2150,6 +2163,7 @@ type Squad struct {
 	FloorID       pgtype.UUID        `json:"floor_id"`
 	CompanySlot   pgtype.Int2        `json:"company_slot"`
 	AutonomyLevel int32              `json:"autonomy_level"`
+	TemplateKey   pgtype.Text        `json:"template_key"`
 }
 
 type SquadAttention struct {

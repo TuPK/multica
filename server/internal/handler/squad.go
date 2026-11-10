@@ -22,6 +22,8 @@ import (
 // ── Response types ──────────────────────────────────────────────────────────
 
 type SquadResponse struct {
+	// TemplateKey is the template the squad was made from, or null.
+	TemplateKey   *string                      `json:"template_key"`
 	ID            string                       `json:"id"`
 	WorkspaceID   string                       `json:"workspace_id"`
 	Name          string                       `json:"name"`
@@ -89,6 +91,7 @@ func (h *Handler) squadToResponse(s db.Squad) SquadResponse {
 		MemberPreview: []SquadMemberPreviewResponse{},
 		FloorID:       uuidToPtr(s.FloorID),
 		CompanySlot:   companySlot,
+		TemplateKey:   textToPtr(s.TemplateKey),
 	}
 }
 
@@ -257,6 +260,9 @@ func (h *Handler) CreateSquad(w http.ResponseWriter, r *http.Request) {
 		// floor is full (a template names its own floor). It is ignored when
 		// the squad fits on an existing floor.
 		FloorName string `json:"floor_name"`
+		// TemplateKey names the template the squad is made from (spec 7.5), for the views that
+		// only a template's squad has. Optional; empty for a squad made by hand.
+		TemplateKey string `json:"template_key"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -335,6 +341,7 @@ func (h *Handler) CreateSquad(w http.ResponseWriter, r *http.Request) {
 		LeaderID:    leaderUUID,
 		CreatorID:   member.UserID,
 		AvatarUrl:   avatarURL,
+		TemplateKey: pgtype.Text{String: req.TemplateKey, Valid: req.TemplateKey != ""},
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create squad")

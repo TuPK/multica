@@ -116,7 +116,7 @@ func (q *Queries) ListProjectDocSources(ctx context.Context, workspaceID pgtype.
 }
 
 const listPublishedKnowledgeLinksByBase = `-- name: ListPublishedKnowledgeLinksByBase :many
-SELECT id, workspace_id, knowledge_base_id, weknora_knowledge_id, source_type, source_id, idempotency_key, state, created_by_type, created_by_id, created_at, published_at, title, source_url, pending_content, publish_requested, error, kind, initiative_id, stage_key, squad_id, confidence, valid_until, supersedes_link_id, tags, review_verdict, review_by_id, review_squad_id, review_note, reviewed_at, review_issue_id, amount_micros, folder FROM knowledge_link
+SELECT id, workspace_id, knowledge_base_id, weknora_knowledge_id, source_type, source_id, idempotency_key, state, created_by_type, created_by_id, created_at, published_at, title, source_url, pending_content, publish_requested, error, kind, initiative_id, stage_key, squad_id, confidence, valid_until, supersedes_link_id, tags, review_verdict, review_by_id, review_squad_id, review_note, reviewed_at, review_issue_id, amount_micros, folder, properties FROM knowledge_link
 WHERE workspace_id = $1 AND knowledge_base_id = $2 AND state = 'published'
 ORDER BY created_at ASC, id ASC
 `
@@ -169,6 +169,7 @@ func (q *Queries) ListPublishedKnowledgeLinksByBase(ctx context.Context, arg Lis
 			&i.ReviewIssueID,
 			&i.AmountMicros,
 			&i.Folder,
+			&i.Properties,
 		); err != nil {
 			return nil, err
 		}

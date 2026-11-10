@@ -254,8 +254,10 @@ func TestCompanyApplyInstallsTheWholeCompanyOnAnEmptyWorkspace(t *testing.T) {
 			t.Fatalf("publish policy of %s: %d auto rows, want 1", kind, got)
 		}
 	}
-	if got := e.count(`SELECT count(*) FROM knowledge_publish_policy WHERE workspace_id = $1`); got != len(systemWriterKinds) {
-		t.Fatalf("publish policy rows = %d, want only the %d system writer kinds", got, len(systemWriterKinds))
+	// The Sales Loop kinds carry their own defaults, seeded when knowledge is enabled (spec 6.1).
+	want := len(systemWriterKinds) + len(defaultKindPublishModes)
+	if got := e.count(`SELECT count(*) FROM knowledge_publish_policy WHERE workspace_id = $1`); got != want {
+		t.Fatalf("publish policy rows = %d, want the %d system writer kinds and the %d sales defaults", got, len(systemWriterKinds), len(defaultKindPublishModes))
 	}
 
 	// Every role has a live agent: private to the boss, on the chosen runtime,

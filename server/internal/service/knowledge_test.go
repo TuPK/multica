@@ -127,7 +127,7 @@ func TestKnowledgeEnableProvisionsEverything(t *testing.T) {
 	for _, kb := range status.KnowledgeBases {
 		keys = append(keys, kb.Key)
 	}
-	if strings.Join(keys, ",") != "company,market,product,engineering,decisions,ventures" {
+	if strings.Join(keys, ",") != "company,market,product,engineering,decisions,ventures,sales" {
 		t.Fatalf("knowledge bases = %v", keys)
 	}
 
@@ -149,7 +149,7 @@ func TestKnowledgeEnableProvisionsEverything(t *testing.T) {
 	}
 
 	// The embedding model was ensured exactly once, before the bases.
-	if e.fake.Calls(knowledge.OpEnsureModel) != 1 || e.fake.Calls(knowledge.OpCreateKB) != 6 {
+	if e.fake.Calls(knowledge.OpEnsureModel) != 1 || e.fake.Calls(knowledge.OpCreateKB) != 7 {
 		t.Fatalf("model calls = %d, kb creates = %d", e.fake.Calls(knowledge.OpEnsureModel), e.fake.Calls(knowledge.OpCreateKB))
 	}
 
@@ -165,7 +165,7 @@ func TestKnowledgeEnableProvisionsEverything(t *testing.T) {
 	}
 	ws := e.fake.Workspace(string(plain))
 	endpoints, _ := ws.ListMCPEndpoints(context.Background())
-	if len(endpoints) != 1 || endpoints[0].Name != "company-read" || len(endpoints[0].KnowledgeBaseIDs) != 6 || len(endpoints[0].Tools) != 8 {
+	if len(endpoints) != 1 || endpoints[0].Name != "company-read" || len(endpoints[0].KnowledgeBaseIDs) != 7 || len(endpoints[0].Tools) != 8 {
 		t.Fatalf("endpoints = %+v", endpoints)
 	}
 	for _, tool := range endpoints[0].Tools {
@@ -190,11 +190,11 @@ func TestKnowledgeEnableIsIdempotent(t *testing.T) {
 	}
 	before := e.libraryEntry()
 	status, err := e.enable()
-	if err != nil || status.State != KnowledgeStateReady || len(status.KnowledgeBases) != 6 {
+	if err != nil || status.State != KnowledgeStateReady || len(status.KnowledgeBases) != 7 {
 		t.Fatalf("second Enable = %+v, %v", status, err)
 	}
 	for op, want := range map[string]int{
-		knowledge.OpEnsureTenant: 1, knowledge.OpCreateWorkspaceKey: 1, knowledge.OpCreateKB: 6,
+		knowledge.OpEnsureTenant: 1, knowledge.OpCreateWorkspaceKey: 1, knowledge.OpCreateKB: 7,
 		knowledge.OpCreateMCPEndpoint: 1, knowledge.OpRotateMCPToken: 0,
 	} {
 		if got := e.fake.Calls(op); got != want {
@@ -224,7 +224,7 @@ func TestKnowledgeEnableResumesAfterFailureAtEachStep(t *testing.T) {
 				t.Fatalf("state after failure = %q, want failed", row.State)
 			}
 			status, err := e.enable()
-			if err != nil || status.State != KnowledgeStateReady || len(status.KnowledgeBases) != 6 {
+			if err != nil || status.State != KnowledgeStateReady || len(status.KnowledgeBases) != 7 {
 				t.Fatalf("retry = %+v, %v", status, err)
 			}
 			// Nothing was created twice.
@@ -235,7 +235,7 @@ func TestKnowledgeEnableResumesAfterFailureAtEachStep(t *testing.T) {
 				t.Fatalf("endpoint creates = %d", got)
 			}
 			ws := e.fake.Workspace(e.openKey())
-			if kbs, _ := ws.ListKnowledgeBases(context.Background()); len(kbs) != 6 {
+			if kbs, _ := ws.ListKnowledgeBases(context.Background()); len(kbs) != 7 {
 				t.Fatalf("remote knowledge bases = %d", len(kbs))
 			}
 			if eps, _ := ws.ListMCPEndpoints(context.Background()); len(eps) != 1 {
@@ -279,10 +279,10 @@ func TestKnowledgeEnableAdoptsWhatACrashLeftBehind(t *testing.T) {
 		t.Fatal(err)
 	}
 	status, err := e.enable()
-	if err != nil || len(status.KnowledgeBases) != 6 {
+	if err != nil || len(status.KnowledgeBases) != 7 {
 		t.Fatalf("Enable = %+v, %v", status, err)
 	}
-	if got := e.fake.Calls(knowledge.OpCreateKB); got != 6 {
+	if got := e.fake.Calls(knowledge.OpCreateKB); got != 7 {
 		t.Fatalf("knowledge base creates = %d, want the lost base adopted, not recreated", got)
 	}
 	if got := e.fake.Calls(knowledge.OpCreateMCPEndpoint); got != 1 {
@@ -308,7 +308,8 @@ func TestKnowledgeRestrictedBasesStayOutOfCompanyRead(t *testing.T) {
 		t.Fatal(err)
 	}
 	eps, _ := e.fake.Workspace(e.openKey()).ListMCPEndpoints(context.Background())
-	if len(eps) != 1 || len(eps[0].KnowledgeBaseIDs) != 5 {
+	// Seven default bases less the restricted engineering base: the sales base is company-wide.
+	if len(eps) != 1 || len(eps[0].KnowledgeBaseIDs) != 6 {
 		t.Fatalf("endpoint bases = %+v", eps)
 	}
 }
@@ -337,7 +338,7 @@ func TestKnowledgeUnavailableSidecarDegrades(t *testing.T) {
 	}
 	e.fake.SetUnavailable(true)
 	status, err = e.svc.Status(context.Background(), e.ws)
-	if err != nil || !status.Enabled || status.State != KnowledgeStateOffline || len(status.KnowledgeBases) != 6 {
+	if err != nil || !status.Enabled || status.State != KnowledgeStateOffline || len(status.KnowledgeBases) != 7 {
 		t.Fatalf("offline status = %+v, %v", status, err)
 	}
 }

@@ -52,6 +52,7 @@ var defaultKnowledgeBases = []struct{ Key, Name, Description string }{
 	{"engineering", "Engineering", "Architecture decisions, runbooks, post-mortems."},
 	{"decisions", "Decisions", "Every proposal decision with its note, and the archive of briefs."},
 	{KnowledgeVentureBaseKey, "Ventures", "Every initiative's documents, one folder per initiative."},
+	{KnowledgeSalesBaseKey, "Sales", "Sales lanes, accounts, outreach drafts, opportunities, lessons and sources."},
 }
 
 // knowledgeDB is the part of *pgxpool.Pool the service needs: a transaction
@@ -223,6 +224,10 @@ func (s *KnowledgeService) Enable(ctx context.Context, workspaceID, actorID pgty
 		return KnowledgeStatus{}, err
 	}
 	if err := s.SeedKnowledgeKinds(ctx, workspaceID); err != nil {
+		s.markFailed(workspaceID)
+		return KnowledgeStatus{}, err
+	}
+	if err := s.seedDefaultPublishModes(ctx, workspaceID, actorID); err != nil {
 		s.markFailed(workspaceID)
 		return KnowledgeStatus{}, err
 	}

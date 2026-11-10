@@ -145,3 +145,92 @@ func TestInitiativeFolderNeedsAnInitiative(t *testing.T) {
 		t.Fatalf("err = %v, want invalid", err)
 	}
 }
+
+func TestSalesKindsLiveInTheSalesBaseWithARecordSection(t *testing.T) {
+	bases := map[string]bool{}
+	for _, b := range defaultKnowledgeBases {
+		bases[b.Key] = true
+	}
+	if !bases[KnowledgeSalesBaseKey] {
+		t.Fatalf("the default bases lack %q", KnowledgeSalesBaseKey)
+	}
+	sales := 0
+	for _, def := range defaultKnowledgeKinds {
+		if !bases[def.DefaultBase] {
+			t.Errorf("kind %s defaults to base %q, which is not a default base", def.Key, def.DefaultBase)
+		}
+		if def.DefaultBase != KnowledgeSalesBaseKey {
+			continue
+		}
+		sales++
+		if !strings.HasPrefix(def.Key, "sales_") {
+			t.Errorf("kind %s is in the sales base but not named sales_*", def.Key)
+		}
+		if def.Required[0] != "Record" {
+			t.Errorf("kind %s must open its required sections with Record, got %v", def.Key, def.Required)
+		}
+	}
+	if sales != 13 {
+		t.Fatalf("the sales base has %d kinds, want 13", sales)
+	}
+}
+
+func TestDefaultPublishModesAreValidAndNameSalesKinds(t *testing.T) {
+	kinds := map[string]bool{}
+	for _, def := range defaultKnowledgeKinds {
+		kinds[def.Key] = true
+	}
+	for key, mode := range defaultKindPublishModes {
+		if !kinds[key] {
+			t.Errorf("publish mode for %q, which is not a default kind", key)
+		}
+		if !validPublishMode(mode) {
+			t.Errorf("publish mode %q for %q is not a policy mode", mode, key)
+		}
+		if !strings.HasPrefix(key, "sales_") {
+			t.Errorf("%q has a default publish mode but is not a sales kind", key)
+		}
+	}
+	if defaultKindPublishModes["sales_icp"] != "" {
+		t.Error("sales_icp must stay manual: its default is manual, so it has no seeded mode")
+	}
+}
+
+func TestSeedDefaultPublishModesKeepsAnAdminsMode(t *testing.T) {
+	e := newKnowledgeEnv(t).enabled()
+	ctx := context.Background()
+
+	if _, err := e.svc.SetPublishPolicy(ctx, e.ws, e.user, PublishScopeKind, "sales_outreach", PublishModeManual); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.svc.seedDefaultPublishModes(ctx, e.ws, e.user); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.svc.seedDefaultPublishModes(ctx, e.ws, e.user); err != nil {
+		t.Fatalf("a second seed must change nothing and not fail: %v", err)
+	}
+	policies, err := e.svc.ListPublishPolicies(ctx, e.ws)
+	if err != nil {
+		t.Fatal(err)
+	}
+	byKey := map[string]string{}
+	count := map[string]int{}
+	for _, p := range policies {
+		if p.Scope == PublishScopeKind {
+			byKey[p.Key] = p.Mode
+			count[p.Key]++
+		}
+	}
+	if byKey["sales_lane"] != PublishModeAuto {
+		t.Errorf("sales_lane = %q, want auto", byKey["sales_lane"])
+	}
+	if byKey["sales_lesson"] != PublishModeAfterReview {
+		t.Errorf("sales_lesson = %q, want auto_after_review", byKey["sales_lesson"])
+	}
+	if byKey["sales_outreach"] != PublishModeManual {
+		t.Errorf("the admin's manual mode on sales_outreach was overwritten: %q", byKey["sales_outreach"])
+	}
+	if count["sales_lane"] != 1 {
+		t.Errorf("sales_lane has %d policy rows, want one", count["sales_lane"])
+	}
+}

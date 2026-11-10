@@ -24,6 +24,11 @@ import (
 // one folder per initiative (see initiativeFolderPattern).
 const KnowledgeVentureBaseKey = "ventures"
 
+// KnowledgeSalesBaseKey is the base of the Sales Loop squad: its accounts, sources,
+// drafts, opportunities and lessons. It is kept apart from "market" so pipeline
+// records do not crowd market research in search.
+const KnowledgeSalesBaseKey = "sales"
+
 // KnowledgeMaxReviewDays bounds a kind's freshness interval (ten years).
 const KnowledgeMaxReviewDays = 3650
 
@@ -76,6 +81,21 @@ var defaultKnowledgeKinds = []defaultKnowledgeKind{
 	{"policy", "Policy", "company", 365, []string{"Scope", "Rule", "Owner"}},
 	{"playbook", "Playbook", "company", 180, []string{"Purpose", "Steps"}},
 	{"reference", "Reference", "company", 365, []string{"Summary"}},
+	// The Sales Loop kinds (base "sales"). A kind's Record section holds the key: value
+	// fields the squad filters on; every sales kind carries one.
+	{"sales_lane", "Sales lane", KnowledgeSalesBaseKey, 90, []string{"Record", "Goal", "Segment", "Offer", "Signals", "Sources"}},
+	{"sales_source", "Sales source", KnowledgeSalesBaseKey, 30, []string{"Record", "What it gives", "How to read it", "Recipe", "Terms and limits", "Probe log"}},
+	{"sales_account", "Sales account", KnowledgeSalesBaseKey, 90, []string{"Record", "Why now", "Evidence", "Contact path", "Fit"}},
+	{"sales_opportunity", "Sales opportunity", KnowledgeSalesBaseKey, 30, []string{"Record", "Need", "Decision", "Next step"}},
+	{"sales_outreach", "Sales outreach", KnowledgeSalesBaseKey, 0, []string{"Record", "Message"}},
+	{"sales_lesson", "Sales lesson", KnowledgeSalesBaseKey, 180, []string{"Record", "Pattern", "Evidence", "Applies to"}},
+	{"sales_share", "Shared post", KnowledgeSalesBaseKey, 90, []string{"Record", "Shared content", "What it says", "Outcome"}},
+	{"sales_icp", "Ideal customer profile", KnowledgeSalesBaseKey, 180, []string{"Record", "Segments", "Buyers", "Triggers", "Disqualifiers", "Regions"}},
+	{"sales_offer", "Sales offer", KnowledgeSalesBaseKey, 90, []string{"Record", "Offerings", "Price book", "Terms"}},
+	{"sales_proof", "Sales proof", KnowledgeSalesBaseKey, 180, []string{"Record", "Cases", "Capabilities", "Numbers"}},
+	{"sales_voice", "Sales voice", KnowledgeSalesBaseKey, 365, []string{"Record", "Tone", "Say", "Avoid"}},
+	{"sales_templates", "Sales templates", KnowledgeSalesBaseKey, 365, []string{"Record", "Approved templates"}},
+	{"sales_report", "Sales report", KnowledgeSalesBaseKey, 0, []string{"Record", "Window", "Stages", "Needs you", "Due", "Source health"}},
 }
 
 // KnowledgeKindView is one kind as the API reports it.
@@ -86,6 +106,8 @@ type KnowledgeKindView struct {
 	Template         string   `json:"template"`
 	ReviewDays       int      `json:"review_days"`
 	RequiredSections []string `json:"required_sections"`
+	// Fields are the typed fields the kind's documents carry (spec 6.2).
+	Fields []KindField `json:"fields"`
 }
 
 // KnowledgeKindPatch is an admin edit. A nil field is left as it is.
@@ -158,9 +180,13 @@ func kindView(k db.KnowledgeKind) KnowledgeKindView {
 	if required == nil {
 		required = []string{}
 	}
+	fields := decodeKindFields(k.Fields)
+	if fields == nil {
+		fields = []KindField{}
+	}
 	return KnowledgeKindView{
 		Key: k.Key, Name: k.Name, DefaultBaseKey: k.DefaultBaseKey, Template: k.Template,
-		ReviewDays: int(k.ReviewDays), RequiredSections: required,
+		ReviewDays: int(k.ReviewDays), RequiredSections: required, Fields: fields,
 	}
 }
 
@@ -169,6 +195,11 @@ func kindView(k db.KnowledgeKind) KnowledgeKindView {
 // including admin edits, are never overwritten.
 func (s *KnowledgeService) SeedKnowledgeKinds(ctx context.Context, workspaceID pgtype.UUID) error {
 	for _, def := range defaultKnowledgeKinds {
+		fields := salesKindFields[def.Key]
+		raw, err := encodeKindFields(fields)
+		if err != nil {
+			return err
+		}
 		if _, err := s.Queries.SeedKnowledgeKind(ctx, db.SeedKnowledgeKindParams{
 			WorkspaceID:      workspaceID,
 			Key:              def.Key,
@@ -177,8 +208,18 @@ func (s *KnowledgeService) SeedKnowledgeKinds(ctx context.Context, workspaceID p
 			Template:         defaultTemplate(def.Name, def.Required),
 			ReviewDays:       int32(def.ReviewDays),
 			RequiredSections: def.Required,
+			Fields:           raw,
 		}); err != nil {
 			return fmt.Errorf("seed knowledge kind %q: %w", def.Key, err)
+		}
+		// A kind that an earlier seed created without its fields gets them; a kind an admin
+		// already changed keeps its own (SetKnowledgeKindFields only fills an empty list).
+		if len(fields) > 0 {
+			if _, err := s.Queries.SetKnowledgeKindFields(ctx, db.SetKnowledgeKindFieldsParams{
+				WorkspaceID: workspaceID, Key: def.Key, Fields: raw,
+			}); err != nil {
+				return fmt.Errorf("set fields of knowledge kind %q: %w", def.Key, err)
+			}
 		}
 	}
 	return nil

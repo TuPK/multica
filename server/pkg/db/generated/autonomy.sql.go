@@ -66,7 +66,7 @@ func (q *Queries) GetSquadAutonomyLevel(ctx context.Context, arg GetSquadAutonom
 
 const lockSquadForAutonomy = `-- name: LockSquadForAutonomy :one
 
-SELECT id, workspace_id, name, description, leader_id, creator_id, created_at, updated_at, archived_at, archived_by, avatar_url, instructions, floor_id, company_slot, autonomy_level FROM squad WHERE id = $1::uuid AND workspace_id = $2::uuid FOR UPDATE
+SELECT id, workspace_id, name, description, leader_id, creator_id, created_at, updated_at, archived_at, archived_by, avatar_url, instructions, floor_id, company_slot, autonomy_level, template_key FROM squad WHERE id = $1::uuid AND workspace_id = $2::uuid FOR UPDATE
 `
 
 type LockSquadForAutonomyParams struct {
@@ -98,6 +98,7 @@ func (q *Queries) LockSquadForAutonomy(ctx context.Context, arg LockSquadForAuto
 		&i.FloorID,
 		&i.CompanySlot,
 		&i.AutonomyLevel,
+		&i.TemplateKey,
 	)
 	return i, err
 }
@@ -106,7 +107,7 @@ const setSquadAutonomyLevel = `-- name: SetSquadAutonomyLevel :one
 UPDATE squad
 SET autonomy_level = $1::integer, updated_at = now()
 WHERE id = $2::uuid AND workspace_id = $3::uuid
-RETURNING id, workspace_id, name, description, leader_id, creator_id, created_at, updated_at, archived_at, archived_by, avatar_url, instructions, floor_id, company_slot, autonomy_level
+RETURNING id, workspace_id, name, description, leader_id, creator_id, created_at, updated_at, archived_at, archived_by, avatar_url, instructions, floor_id, company_slot, autonomy_level, template_key
 `
 
 type SetSquadAutonomyLevelParams struct {
@@ -134,6 +135,7 @@ func (q *Queries) SetSquadAutonomyLevel(ctx context.Context, arg SetSquadAutonom
 		&i.FloorID,
 		&i.CompanySlot,
 		&i.AutonomyLevel,
+		&i.TemplateKey,
 	)
 	return i, err
 }
