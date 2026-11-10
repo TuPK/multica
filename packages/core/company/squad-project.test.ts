@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import type { Agent, Project } from "../types";
-import { assigneeSquadId, findSquadProject } from "./squad-project";
+import { assigneeSquadId, findSquadProject, openSquadProjects } from "./squad-project";
 
 function project(id: string, squadId: string | null, status = "in_progress"): Project {
   return { id, squad_id: squadId, status } as Project;
@@ -25,6 +25,17 @@ describe("findSquadProject", () => {
   it("returns nothing without a squad", () => {
     expect(findSquadProject([project("p1", "s1")], null)).toBeUndefined();
     expect(findSquadProject([project("p1", "s1")], undefined)).toBeUndefined();
+  });
+});
+
+describe("openSquadProjects", () => {
+  it("keeps open projects that have a squad to assign", () => {
+    const projects = [
+      project("p1", "s1"),
+      project("unassigned", null),
+      project("done", "s1", "completed"),
+    ];
+    expect(openSquadProjects(projects).map((p) => p.id)).toEqual(["p1"]);
   });
 });
 

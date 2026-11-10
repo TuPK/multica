@@ -8,8 +8,10 @@ import {
   agentBuilderSessionKeys,
   toStoredAgentDraft,
 } from "@multica/core/agents";
+import { findSquadProject, openSquadProjects } from "@multica/core/company";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
+import { projectListOptions } from "@multica/core/projects/queries";
 import { runtimeDisplayLabel } from "@multica/core/runtimes";
 import type { RuntimeDevice } from "@multica/core/types";
 import { agentListOptions } from "@multica/core/workspace/queries";
@@ -70,6 +72,22 @@ export function ManualCreateAgentPage() {
     ? agents.find((agent) => agent.id === duplicateId) ?? null
     : null;
 
+  // A duplicate's copy joins the squad of the project picked here. Until the
+  // user picks, it follows the source's project, so an untouched copy keeps
+  // the source's place. `undefined` means "not picked yet".
+  const { data: projects = [], isPending: projectsPending } = useQuery(
+    projectListOptions(wsId),
+  );
+  const [pickedProjectId, setPickedProjectId] = useState<string | null | undefined>(
+    undefined,
+  );
+  const sourceProject = findSquadProject(projects, duplicateAgent?.home_squad_id);
+  const projectId =
+    pickedProjectId !== undefined ? pickedProjectId : sourceProject?.id ?? null;
+  const joinedSquadId = duplicateId
+    ? projects.find((project) => project.id === projectId)?.squad_id ?? null
+    : squadId;
+
   // True when a duplicate had to fall back to another runtime, which drops the
   // source's model / thinking / speed. The notice explains the empty fields.
   const [duplicateRuntimeReset, setDuplicateRuntimeReset] = useState(false);
@@ -112,7 +130,7 @@ export function ManualCreateAgentPage() {
     draft: form.draft,
     runtimeId: form.selectedRuntime?.id ?? null,
     runtimeProvider: form.selectedRuntime?.provider,
-    squadId,
+    squadId: joinedSquadId,
     duplicateSource: duplicateAgent,
     // The work is committed; leaving it stored would hand the finished agent's
     // fields to whoever opens this form next. Only this flow's slot — another
@@ -175,8 +193,13 @@ export function ManualCreateAgentPage() {
     }
   };
 
+  // Creating before the project list lands would drop the squad the copy is
+  // meant to join, so the button waits for it.
   const canCreate =
-    form.draft.name.trim().length > 0 && form.draftReady && !submit.creating;
+    form.draft.name.trim().length > 0 &&
+    form.draftReady &&
+    !submit.creating &&
+    !(duplicateId && projectsPending);
 
   if (needsRuntime) return null;
 
@@ -264,6 +287,15 @@ export function ManualCreateAgentPage() {
                 />
               )
             }
+            projectField={
+              duplicateId
+                ? {
+                    projects: openSquadProjects(projects),
+                    value: projectId,
+                    onChange: setPickedProjectId,
+                  }
+                : undefined
+            }
           />
         </div>
       </div>
@@ -271,7 +303,7 @@ export function ManualCreateAgentPage() {
         stepIndex={duplicateId ? undefined : 2}
         canCreate={canCreate}
         creating={submit.creating}
-        squad={!!squadId}
+        squad={!!joinedSquadId}
         error={submit.formError}
         onCreate={() => void submit.create()}
         onCancel={leave}

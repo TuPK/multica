@@ -12,9 +12,16 @@ import {
   type AgentPermissionScope,
 } from "@multica/core/agents";
 import { useConfigStore } from "@multica/core/config";
-import type { MemberWithUser, RuntimeDevice } from "@multica/core/types";
+import type { MemberWithUser, Project, RuntimeDevice } from "@multica/core/types";
 import { Checkbox } from "@multica/ui/components/ui/checkbox";
 import { Input } from "@multica/ui/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@multica/ui/components/ui/select";
 import { Textarea } from "@multica/ui/components/ui/textarea";
 import { cn } from "@multica/ui/lib/utils";
 import { ActorAvatar } from "../../common/actor-avatar";
@@ -40,6 +47,19 @@ const PERMISSION_SCOPES: AgentPermissionScope[] = [
   "members",
 ];
 
+const NO_PROJECT_VALUE = "__no_project__";
+
+/**
+ * The project a copy is assigned to. Its squad is what seats the agent, so
+ * choosing a project here decides the squad the copy joins on create.
+ */
+export interface AgentProjectField {
+  /** Projects that can take a squad, offered in the picker. */
+  projects: Project[];
+  value: string | null;
+  onChange: (projectId: string | null) => void;
+}
+
 export function AgentConfigurationPanel({
   draft,
   onChange,
@@ -56,6 +76,7 @@ export function AgentConfigurationPanel({
   runtimeSwitchInFlight = false,
   runtimeSummary,
   showInstructionTemplates = false,
+  projectField,
 }: {
   draft: AgentDraft;
   onChange: (draft: AgentDraft) => void;
@@ -82,6 +103,9 @@ export function AgentConfigurationPanel({
   /** Offers the built-in instruction templates. Only the manual create flow
    *  sets it; the AI builder owns its instructions through the conversation. */
   showInstructionTemplates?: boolean;
+  /** Offers the project picker. Only a duplicate sets it: a new agent joins
+   *  the squad of the page's `?squad=` param instead. */
+  projectField?: AgentProjectField;
 }) {
   const { t } = useT("agents");
   const conversationStartersSupported = useConfigStore(
@@ -138,6 +162,9 @@ export function AgentConfigurationPanel({
             error={nameError}
             onChange={onNameChange}
           />
+          {projectField ? (
+            <AgentProjectRow compact={compact} field={projectField} />
+          ) : null}
           <DraftFieldRow
             compact={compact}
             align="start"
@@ -486,6 +513,50 @@ export function AgentExecutionOverrides({
         onChange={(serviceTier) => onChange({ ...draft, serviceTier })}
       />
     </>
+  );
+}
+
+function AgentProjectRow({
+  compact,
+  field,
+}: {
+  compact: boolean;
+  field: AgentProjectField;
+}) {
+  const { t } = useT("agents");
+  const items = [
+    { value: NO_PROJECT_VALUE, label: t(($) => $.create_dialog.project_none) },
+    ...field.projects.map((project) => ({
+      value: project.id,
+      label: project.title,
+    })),
+  ];
+  return (
+    <DraftFieldRow
+      compact={compact}
+      label={t(($) => $.create_dialog.project_label)}
+      description={t(($) => $.create_dialog.project_hint)}
+      htmlFor="agent-create-project"
+    >
+      <Select
+        items={items}
+        value={field.value ?? NO_PROJECT_VALUE}
+        onValueChange={(next) =>
+          field.onChange(next && next !== NO_PROJECT_VALUE ? next : null)
+        }
+      >
+        <SelectTrigger id="agent-create-project" className="w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent alignItemWithTrigger={false}>
+          {items.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </DraftFieldRow>
   );
 }
 
