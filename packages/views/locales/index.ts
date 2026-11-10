@@ -16,6 +16,7 @@ import enWorkspace from "./en/workspace.json";
 import enProjects from "./en/projects.json";
 import enAutopilots from "./en/autopilots.json";
 import enSkills from "./en/skills.json";
+import enHub from "./en/hub.json";
 import enKnowledge from "./en/knowledge.json";
 import enChat from "./en/chat.json";
 import enModals from "./en/modals.json";
@@ -55,6 +56,7 @@ import zhHansWorkspace from "./zh-Hans/workspace.json";
 import zhHansProjects from "./zh-Hans/projects.json";
 import zhHansAutopilots from "./zh-Hans/autopilots.json";
 import zhHansSkills from "./zh-Hans/skills.json";
+import zhHansHub from "./zh-Hans/hub.json";
 import zhHansKnowledge from "./zh-Hans/knowledge.json";
 import zhHansChat from "./zh-Hans/chat.json";
 import zhHansModals from "./zh-Hans/modals.json";
@@ -82,6 +84,7 @@ import zhHantWorkspace from "./zh-Hant/workspace.json";
 import zhHantProjects from "./zh-Hant/projects.json";
 import zhHantAutopilots from "./zh-Hant/autopilots.json";
 import zhHantSkills from "./zh-Hant/skills.json";
+import zhHantHub from "./zh-Hant/hub.json";
 import zhHantKnowledge from "./zh-Hant/knowledge.json";
 import zhHantChat from "./zh-Hant/chat.json";
 import zhHantModals from "./zh-Hant/modals.json";
@@ -109,6 +112,7 @@ import koWorkspace from "./ko/workspace.json";
 import koProjects from "./ko/projects.json";
 import koAutopilots from "./ko/autopilots.json";
 import koSkills from "./ko/skills.json";
+import koHub from "./ko/hub.json";
 import koKnowledge from "./ko/knowledge.json";
 import koChat from "./ko/chat.json";
 import koModals from "./ko/modals.json";
@@ -136,6 +140,7 @@ import jaWorkspace from "./ja/workspace.json";
 import jaProjects from "./ja/projects.json";
 import jaAutopilots from "./ja/autopilots.json";
 import jaSkills from "./ja/skills.json";
+import jaHub from "./ja/hub.json";
 import jaKnowledge from "./ja/knowledge.json";
 import jaChat from "./ja/chat.json";
 import jaModals from "./ja/modals.json";
@@ -163,6 +168,7 @@ import frWorkspace from "./fr/workspace.json";
 import frProjects from "./fr/projects.json";
 import frAutopilots from "./fr/autopilots.json";
 import frSkills from "./fr/skills.json";
+import frHub from "./fr/hub.json";
 import frKnowledge from "./fr/knowledge.json";
 import frChat from "./fr/chat.json";
 import frModals from "./fr/modals.json";
@@ -190,6 +196,7 @@ import esWorkspace from "./es/workspace.json";
 import esProjects from "./es/projects.json";
 import esAutopilots from "./es/autopilots.json";
 import esSkills from "./es/skills.json";
+import esHub from "./es/hub.json";
 import esChat from "./es/chat.json";
 import esModals from "./es/modals.json";
 import esRuntimes from "./es/runtimes.json";
@@ -225,6 +232,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     projects: enProjects,
     autopilots: enAutopilots,
     skills: enSkills,
+    hub: enHub,
     knowledge: enKnowledge,
     chat: enChat,
     modals: enModals,
@@ -256,6 +264,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     projects: zhHansProjects,
     autopilots: zhHansAutopilots,
     skills: zhHansSkills,
+    hub: zhHansHub,
     knowledge: zhHansKnowledge,
     chat: zhHansChat,
     modals: zhHansModals,
@@ -287,6 +296,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     projects: zhHantProjects,
     autopilots: zhHantAutopilots,
     skills: zhHantSkills,
+    hub: zhHantHub,
     knowledge: zhHantKnowledge,
     chat: zhHantChat,
     modals: zhHantModals,
@@ -318,6 +328,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     projects: koProjects,
     autopilots: koAutopilots,
     skills: koSkills,
+    hub: koHub,
     knowledge: koKnowledge,
     chat: koChat,
     modals: koModals,
@@ -349,6 +360,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     projects: jaProjects,
     autopilots: jaAutopilots,
     skills: jaSkills,
+    hub: jaHub,
     knowledge: jaKnowledge,
     chat: jaChat,
     modals: jaModals,
@@ -380,6 +392,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     projects: frProjects,
     autopilots: frAutopilots,
     skills: frSkills,
+    hub: frHub,
     knowledge: frKnowledge,
     chat: frChat,
     modals: frModals,
@@ -411,6 +424,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     projects: esProjects,
     autopilots: esAutopilots,
     skills: esSkills,
+    hub: esHub,
     chat: esChat,
     modals: esModals,
     runtimes: esRuntimes,

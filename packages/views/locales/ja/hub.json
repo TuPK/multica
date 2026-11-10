@@ -1,0 +1,182 @@
+{
+  "title": "ハブ",
+  "search_placeholder": "スキルとプラグインを検索",
+  "view_label": "表示",
+  "tabs": {
+    "items": "アイテム",
+    "sources": "ソース",
+    "files": "ファイル",
+    "overview": "概要",
+    "versions": "バージョン",
+    "usage": "使用状況"
+  },
+  "kinds": {
+    "all": "すべて",
+    "skill": "スキル",
+    "plugin": "プラグイン"
+  },
+  "kind_singular": {
+    "skill": "スキル",
+    "plugin": "プラグイン"
+  },
+  "view": {
+    "list": "リスト",
+    "catalog": "カタログ"
+  },
+  "sort": {
+    "label": "並べ替え",
+    "name": "名前",
+    "updated": "更新日",
+    "created": "作成日"
+  },
+  "columns": {
+    "name": "名前",
+    "kind": "種類",
+    "source": "ソース",
+    "version": "バージョン",
+    "updated": "更新日"
+  },
+  "source_types": {
+    "manual": "ここで作成",
+    "runtime_local": "ランタイム",
+    "clawhub": "ClawHub",
+    "skills_sh": "Skills.sh",
+    "github": "GitHub",
+    "plugin": "公開済みプラグイン"
+  },
+  "sources_table": {
+    "source": "ソース",
+    "count": "アイテム",
+    "skills": "スキル",
+    "plugins": "プラグイン",
+    "last": "最終更新"
+  },
+  "open_source": "ソースを開く",
+  "empty_title": "ハブにはまだ何もありません",
+  "no_matches": "一致するアイテムがありません",
+  "load_error": "ハブを読み込めませんでした",
+  "retry": "再試行",
+  "item": {
+    "not_found": "このアイテムはハブにありません。",
+    "load_error": "このアイテムを読み込めませんでした。",
+    "version": "v{{version}}",
+    "updated": "{{time}}に更新",
+    "checksum": "チェックサム"
+  },
+  "files": {
+    "list": "ファイル",
+    "list_error": "ファイルを読み込めませんでした。",
+    "new_file": "新規ファイル",
+    "new_folder": "新規フォルダ",
+    "file_placeholder": "path/to/file.md",
+    "folder_placeholder": "フォルダ名",
+    "create": "作成",
+    "cancel": "キャンセル",
+    "errors": {
+      "empty": "名前を入力してください。",
+      "absolute": "パスは / で始められません。",
+      "double_dot": "パスに .. は使えません。",
+      "reserved": "SKILL.md は既に存在します。",
+      "exists": "同じ名前のファイルが既にあります。",
+      "is_directory": "同じ名前のフォルダが既にあります。",
+      "under_file": "このパスの一部は既にファイルが使っています。"
+    },
+    "actions": {
+      "label": "{{path}} の操作",
+      "rename": "名前を変更",
+      "delete": "削除"
+    },
+    "rename_aria": "{{path}} の新しい名前",
+    "rename_dirty": "名前を変更する前に、このファイルの変更を保存するか破棄してください。",
+    "empty": "ファイルはありません",
+    "select": "ファイルを選択してください",
+    "mode": {
+      "aria": "表示モード",
+      "preview": "プレビュー",
+      "source": "ソース",
+      "edit": "編集"
+    },
+    "dirty": "未保存の変更",
+    "save": "保存",
+    "discard": "破棄",
+    "unavailable": "このファイルはここでプレビューできません。",
+    "binary": "バイナリファイルのため、ここではプレビューと編集ができません。",
+    "invalid_json": "有効な JSON ではありません。入力されたテキストを表示しています。",
+    "load_error": "このファイルを読み込めませんでした。",
+    "editor_label": "{{path}} の内容",
+    "plugin_banner": "公開済みのバージョンは変更できません。ここでの編集は、新しいバージョンを公開するまで下書きとして保持されます。",
+    "plugin_readonly": "プラグインを編集できるのはワークスペースの管理者とオーナーだけです。",
+    "draft_count_other": "未公開の変更 {{count}} 件",
+    "draft_discard": "下書きを破棄",
+    "draft_publish": "新しいバージョンを公開",
+    "draft_count_one": "未公開の変更 {{count}} 件",
+    "discard_draft_title": "下書きを破棄しますか？",
+    "discard_draft_description": "未公開の変更は削除されます。公開済みのバージョンは変わりません。"
+  },
+  "guard": {
+    "title": "{{path}} の変更を保存しますか？",
+    "save": "保存して続行",
+    "discard": "変更を破棄",
+    "keep": "編集を続ける"
+  },
+  "conflict": {
+    "title": "{{path}} がサーバー上で変更されました",
+    "description": "編集中に、このファイルが別の人によって保存されました。再読み込みすると編集内容は破棄されます。自分の内容で上書きすることもできます。",
+    "reload": "再読み込み",
+    "overwrite": "上書き"
+  },
+  "delete": {
+    "title": "{{path}} を削除しますか？",
+    "confirm": "削除",
+    "description_file": "この操作は元に戻せません。",
+    "description_folder_other": "{{count}} 件のファイルを削除します。この操作は元に戻せません。",
+    "description_draft": "削除は、新しいバージョンを公開するまで下書きに残ります。",
+    "description_folder_one": "{{count}} 件のファイルを削除します。この操作は元に戻せません。"
+  },
+  "publish": {
+    "title": "新しいバージョンを公開",
+    "version_label": "バージョン",
+    "version_placeholder": "1.1.0",
+    "current": "最新は {{version}}",
+    "errors": {
+      "format": "1.2.0 のような形式で入力してください。",
+      "exists": "バージョン {{version}} は既に公開されています。"
+    },
+    "confirm": "公開",
+    "cancel": "キャンセル"
+  },
+  "overview": {
+    "no_content": "このスキルにはまだ SKILL.md の内容がありません。",
+    "no_readme": "このバージョンには README がありません。",
+    "plugin_key": "プラグインキー",
+    "latest": "最新バージョン",
+    "published": "公開日",
+    "versions": "バージョン数",
+    "manifest": "マニフェスト",
+    "readme": "README"
+  },
+  "versions": {
+    "none": "バージョンはまだありません。",
+    "installed": "インストール済み",
+    "published": "{{time}}に公開"
+  },
+  "usage": {
+    "agents_title": "このスキルを使用しているエージェント",
+    "agents_empty": "このスキルを使用しているエージェントはまだありません。",
+    "installs_title": "このワークスペースへのインストール",
+    "installs_empty": "このワークスペースにはインストールされていません。",
+    "install_version": "バージョン {{version}}",
+    "enabled": "有効",
+    "disabled": "無効"
+  },
+  "toast": {
+    "saved": "{{path}} を保存しました",
+    "save_failed": "{{path}} を保存できませんでした",
+    "renamed": "{{path}} に名前を変更しました",
+    "rename_failed": "{{path}} の名前を変更できませんでした",
+    "deleted": "{{path}} を削除しました",
+    "delete_failed": "{{path}} を削除できませんでした",
+    "published": "バージョン {{version}} を公開しました",
+    "publish_failed": "新しいバージョンを公開できませんでした"
+  }
+}

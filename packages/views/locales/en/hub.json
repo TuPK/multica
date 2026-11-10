@@ -1,0 +1,182 @@
+{
+  "title": "Hub",
+  "search_placeholder": "Search skills and plugins",
+  "view_label": "View",
+  "tabs": {
+    "items": "Items",
+    "sources": "Sources",
+    "files": "Files",
+    "overview": "Overview",
+    "versions": "Versions",
+    "usage": "Usage"
+  },
+  "kinds": {
+    "all": "All",
+    "skill": "Skills",
+    "plugin": "Plugins"
+  },
+  "kind_singular": {
+    "skill": "Skill",
+    "plugin": "Plugin"
+  },
+  "view": {
+    "list": "List",
+    "catalog": "Catalog"
+  },
+  "sort": {
+    "label": "Sort",
+    "name": "Name",
+    "updated": "Updated",
+    "created": "Created"
+  },
+  "columns": {
+    "name": "Name",
+    "kind": "Type",
+    "source": "Source",
+    "version": "Version",
+    "updated": "Updated"
+  },
+  "source_types": {
+    "manual": "Created here",
+    "runtime_local": "Runtime",
+    "clawhub": "ClawHub",
+    "skills_sh": "Skills.sh",
+    "github": "GitHub",
+    "plugin": "Published plugin"
+  },
+  "sources_table": {
+    "source": "Source",
+    "count": "Items",
+    "skills": "Skills",
+    "plugins": "Plugins",
+    "last": "Last updated"
+  },
+  "open_source": "Open source",
+  "empty_title": "Nothing in the Hub yet",
+  "no_matches": "No items match",
+  "load_error": "Couldn't load the Hub",
+  "retry": "Retry",
+  "item": {
+    "not_found": "This item isn't in the Hub.",
+    "load_error": "Couldn't load this item.",
+    "version": "v{{version}}",
+    "updated": "Updated {{time}}",
+    "checksum": "Checksum"
+  },
+  "files": {
+    "list": "Files",
+    "list_error": "Couldn't load the files.",
+    "new_file": "New file",
+    "new_folder": "New folder",
+    "file_placeholder": "path/to/file.md",
+    "folder_placeholder": "folder-name",
+    "create": "Create",
+    "cancel": "Cancel",
+    "errors": {
+      "empty": "Enter a name.",
+      "absolute": "Paths can't start with /.",
+      "double_dot": "Paths can't contain ..",
+      "reserved": "SKILL.md already exists.",
+      "exists": "A file with this name already exists.",
+      "is_directory": "A folder already has this name.",
+      "under_file": "A file already uses part of this path."
+    },
+    "actions": {
+      "label": "Actions for {{path}}",
+      "rename": "Rename",
+      "delete": "Delete"
+    },
+    "rename_aria": "New name for {{path}}",
+    "rename_dirty": "Save or discard changes to this file before renaming it.",
+    "empty": "No files",
+    "select": "Select a file",
+    "mode": {
+      "aria": "View mode",
+      "preview": "Preview",
+      "source": "Source",
+      "edit": "Edit"
+    },
+    "dirty": "Unsaved changes",
+    "save": "Save",
+    "discard": "Discard",
+    "unavailable": "This file can't be previewed here.",
+    "binary": "Binary file. Preview and editing aren't available here.",
+    "invalid_json": "Not valid JSON. Showing the text as written.",
+    "load_error": "Couldn't load this file.",
+    "editor_label": "Contents of {{path}}",
+    "plugin_banner": "Published versions can't change. Edits here form a draft until you publish a new version.",
+    "plugin_readonly": "Only workspace admins and owners can edit a plugin.",
+    "draft_count_one": "{{count}} unpublished change",
+    "draft_count_other": "{{count}} unpublished changes",
+    "draft_discard": "Discard draft",
+    "draft_publish": "Publish new version",
+    "discard_draft_title": "Discard the draft?",
+    "discard_draft_description": "Unpublished changes are removed. Published versions stay as they are."
+  },
+  "guard": {
+    "title": "Save changes to {{path}}?",
+    "save": "Save and continue",
+    "discard": "Discard changes",
+    "keep": "Keep editing"
+  },
+  "conflict": {
+    "title": "{{path}} changed on the server",
+    "description": "Someone saved this file while you were editing. Reload to discard your edits, or overwrite their version with yours.",
+    "reload": "Reload",
+    "overwrite": "Overwrite"
+  },
+  "delete": {
+    "title": "Delete {{path}}?",
+    "confirm": "Delete",
+    "description_file": "This can't be undone.",
+    "description_folder_one": "This deletes {{count}} file and can't be undone.",
+    "description_folder_other": "This deletes {{count}} files and can't be undone.",
+    "description_draft": "The removal stays in the draft until you publish a new version."
+  },
+  "publish": {
+    "title": "Publish new version",
+    "version_label": "Version",
+    "version_placeholder": "1.1.0",
+    "current": "Latest is {{version}}",
+    "errors": {
+      "format": "Use a version like 1.2.0.",
+      "exists": "Version {{version}} is already published."
+    },
+    "confirm": "Publish",
+    "cancel": "Cancel"
+  },
+  "overview": {
+    "no_content": "This skill has no SKILL.md content yet.",
+    "no_readme": "This version has no README.",
+    "plugin_key": "Plugin key",
+    "latest": "Latest version",
+    "published": "Published",
+    "versions": "Versions",
+    "manifest": "Manifest",
+    "readme": "README"
+  },
+  "versions": {
+    "none": "No versions yet.",
+    "installed": "Installed",
+    "published": "Published {{time}}"
+  },
+  "usage": {
+    "agents_title": "Agents using this skill",
+    "agents_empty": "No agent uses this skill yet.",
+    "installs_title": "Installed in this workspace",
+    "installs_empty": "Not installed in this workspace.",
+    "install_version": "Version {{version}}",
+    "enabled": "Enabled",
+    "disabled": "Disabled"
+  },
+  "toast": {
+    "saved": "Saved {{path}}",
+    "save_failed": "Couldn't save {{path}}",
+    "renamed": "Renamed to {{path}}",
+    "rename_failed": "Couldn't rename {{path}}",
+    "deleted": "Deleted {{path}}",
+    "delete_failed": "Couldn't delete {{path}}",
+    "published": "Published version {{version}}",
+    "publish_failed": "Couldn't publish the new version"
+  }
+}

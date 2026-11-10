@@ -1,0 +1,182 @@
+{
+  "title": "扩展中心",
+  "search_placeholder": "搜索技能和插件",
+  "view_label": "视图",
+  "tabs": {
+    "items": "项目",
+    "sources": "来源",
+    "files": "文件",
+    "overview": "概览",
+    "versions": "版本",
+    "usage": "使用情况"
+  },
+  "kinds": {
+    "all": "全部",
+    "skill": "技能",
+    "plugin": "插件"
+  },
+  "kind_singular": {
+    "skill": "技能",
+    "plugin": "插件"
+  },
+  "view": {
+    "list": "列表",
+    "catalog": "目录"
+  },
+  "sort": {
+    "label": "排序",
+    "name": "名称",
+    "updated": "更新时间",
+    "created": "创建时间"
+  },
+  "columns": {
+    "name": "名称",
+    "kind": "类型",
+    "source": "来源",
+    "version": "版本",
+    "updated": "更新时间"
+  },
+  "source_types": {
+    "manual": "在此创建",
+    "runtime_local": "运行时",
+    "clawhub": "ClawHub",
+    "skills_sh": "Skills.sh",
+    "github": "GitHub",
+    "plugin": "已发布的插件"
+  },
+  "sources_table": {
+    "source": "来源",
+    "count": "项目数",
+    "skills": "技能",
+    "plugins": "插件",
+    "last": "最近更新"
+  },
+  "open_source": "打开来源",
+  "empty_title": "扩展中心还没有内容",
+  "no_matches": "没有匹配的项目",
+  "load_error": "无法加载扩展中心",
+  "retry": "重试",
+  "item": {
+    "not_found": "这个项目不在扩展中心。",
+    "load_error": "无法加载这个项目。",
+    "version": "v{{version}}",
+    "updated": "{{time}}更新",
+    "checksum": "校验和"
+  },
+  "files": {
+    "list": "文件",
+    "list_error": "无法加载文件。",
+    "new_file": "新建文件",
+    "new_folder": "新建文件夹",
+    "file_placeholder": "path/to/file.md",
+    "folder_placeholder": "文件夹名称",
+    "create": "创建",
+    "cancel": "取消",
+    "errors": {
+      "empty": "请输入名称。",
+      "absolute": "路径不能以 / 开头。",
+      "double_dot": "路径不能包含 ..",
+      "reserved": "SKILL.md 已存在。",
+      "exists": "已存在同名文件。",
+      "is_directory": "已存在同名文件夹。",
+      "under_file": "已有文件占用了这个路径的一部分。"
+    },
+    "actions": {
+      "label": "{{path}} 的操作",
+      "rename": "重命名",
+      "delete": "删除"
+    },
+    "rename_aria": "{{path}} 的新名称",
+    "rename_dirty": "重命名前，请先保存或放弃此文件的修改。",
+    "empty": "没有文件",
+    "select": "选择一个文件",
+    "mode": {
+      "aria": "查看方式",
+      "preview": "预览",
+      "source": "源码",
+      "edit": "编辑"
+    },
+    "dirty": "未保存的修改",
+    "save": "保存",
+    "discard": "放弃",
+    "unavailable": "此文件无法在这里预览。",
+    "binary": "二进制文件，无法在这里预览或编辑。",
+    "invalid_json": "不是有效的 JSON，按原文显示。",
+    "load_error": "无法加载此文件。",
+    "editor_label": "{{path}} 的内容",
+    "plugin_banner": "已发布的版本不可更改。这里的修改会形成草稿，直到你发布新版本。",
+    "plugin_readonly": "只有工作区的管理员和所有者可以编辑插件。",
+    "draft_count_other": "{{count}} 项未发布的修改",
+    "draft_discard": "放弃草稿",
+    "draft_publish": "发布新版本",
+    "draft_count_one": "{{count}} 项未发布的修改",
+    "discard_draft_title": "放弃草稿？",
+    "discard_draft_description": "未发布的修改将被移除。已发布的版本保持不变。"
+  },
+  "guard": {
+    "title": "保存对 {{path}} 的修改？",
+    "save": "保存并继续",
+    "discard": "放弃修改",
+    "keep": "继续编辑"
+  },
+  "conflict": {
+    "title": "{{path}} 在服务器上已被修改",
+    "description": "你编辑时，有人保存了这个文件。重新加载会放弃你的修改；覆盖则用你的内容替换对方的版本。",
+    "reload": "重新加载",
+    "overwrite": "覆盖"
+  },
+  "delete": {
+    "title": "删除 {{path}}？",
+    "confirm": "删除",
+    "description_file": "此操作无法撤销。",
+    "description_folder_other": "将删除 {{count}} 个文件，此操作无法撤销。",
+    "description_draft": "删除会保留在草稿中，直到你发布新版本。",
+    "description_folder_one": "将删除 {{count}} 个文件，此操作无法撤销。"
+  },
+  "publish": {
+    "title": "发布新版本",
+    "version_label": "版本",
+    "version_placeholder": "1.1.0",
+    "current": "最新版本为 {{version}}",
+    "errors": {
+      "format": "请使用类似 1.2.0 的版本号。",
+      "exists": "版本 {{version}} 已发布。"
+    },
+    "confirm": "发布",
+    "cancel": "取消"
+  },
+  "overview": {
+    "no_content": "这个技能还没有 SKILL.md 内容。",
+    "no_readme": "这个版本没有 README。",
+    "plugin_key": "插件标识",
+    "latest": "最新版本",
+    "published": "发布于",
+    "versions": "版本数",
+    "manifest": "清单",
+    "readme": "README"
+  },
+  "versions": {
+    "none": "还没有版本。",
+    "installed": "已安装",
+    "published": "{{time}}发布"
+  },
+  "usage": {
+    "agents_title": "使用此技能的智能体",
+    "agents_empty": "还没有智能体使用此技能。",
+    "installs_title": "在此工作区中安装",
+    "installs_empty": "未在此工作区中安装。",
+    "install_version": "版本 {{version}}",
+    "enabled": "已启用",
+    "disabled": "已停用"
+  },
+  "toast": {
+    "saved": "已保存 {{path}}",
+    "save_failed": "无法保存 {{path}}",
+    "renamed": "已重命名为 {{path}}",
+    "rename_failed": "无法重命名 {{path}}",
+    "deleted": "已删除 {{path}}",
+    "delete_failed": "无法删除 {{path}}",
+    "published": "已发布版本 {{version}}",
+    "publish_failed": "无法发布新版本"
+  }
+}

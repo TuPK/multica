@@ -191,6 +191,12 @@ export function AppRail({
       label: t(($) => $.rail.company),
       fullLabel: t(($) => $.nav.company),
     },
+    hub: {
+      href: p.hub(),
+      icon: routeIconForPath(p.hub()),
+      label: t(($) => $.rail.hub),
+      fullLabel: t(($) => $.nav.hub),
+    },
     work: {
       href: p.issues(),
       icon: routeIconForPath(p.issues()),

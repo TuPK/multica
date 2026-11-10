@@ -20,6 +20,7 @@ import type workspace from "../locales/en/workspace.json";
 import type projects from "../locales/en/projects.json";
 import type autopilots from "../locales/en/autopilots.json";
 import type skills from "../locales/en/skills.json";
+import type hub from "../locales/en/hub.json";
 import type knowledge from "../locales/en/knowledge.json";
 import type pipeline from "../locales/en/pipeline.json";
 import type governance from "../locales/en/governance.json";
@@ -65,6 +66,7 @@ declare global {
     projects: typeof projects;
     autopilots: typeof autopilots;
     skills: typeof skills;
+    hub: typeof hub;
     knowledge: typeof knowledge;
     pipeline: typeof pipeline;
     governance: typeof governance;

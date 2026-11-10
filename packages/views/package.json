@@ -28,6 +28,7 @@
     "./company": "./company/index.ts",
     "./pipeline": "./pipeline/index.ts",
     "./governance": "./governance/index.ts",
+    "./hub": "./hub/index.ts",
     "./skills": "./skills/index.ts",
     "./knowledge": "./knowledge/index.ts",
     "./agents": "./agents/index.ts",

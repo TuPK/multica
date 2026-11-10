@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect } from "react";
-import { createMemoryRouter, Outlet, useLocation, useMatches } from "react-router-dom";
+import { createMemoryRouter, Outlet, useLocation, useMatches, useParams } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import { IssueDetailPage } from "./pages/issue-detail-page";
 import { ProjectDetailPage } from "./pages/project-detail-page";
@@ -23,6 +23,7 @@ import { KnowledgePage } from "@multica/views/knowledge";
 import { PipelinePage } from "@multica/views/pipeline";
 import { GovernancePage } from "@multica/views/governance";
 import { SkillsPage } from "@multica/views/skills";
+import { HubItemPage, HubPage } from "@multica/views/hub";
 import { DesktopRuntimesPage } from "./components/desktop-runtimes-page";
 import { DesktopAgentsPage } from "./components/desktop-agents-page";
 import {
@@ -47,6 +48,11 @@ import { useRenderedRouteStore } from "./stores/rendered-route-store";
 
 const WORKSPACE_VIEW_SCOPE = { scope_type: "workspace" } as const;
 const MY_VIEW_SCOPE = { scope_type: "my" } as const;
+
+function HubItemRoute() {
+  const { kind = "", id = "" } = useParams();
+  return <HubItemPage kind={kind} refId={id} />;
+}
 
 /**
  * Wraps `SettingsPage` so the desktop-only extra tabs can pull their labels
@@ -218,6 +224,8 @@ export const appRoutes: RouteObject[] = [
           { path: "knowledge", element: <KnowledgePage />, handle: { title: "Knowledge" } },
           { path: "pipeline", element: <PipelinePage />, handle: { title: "Pipeline" } },
           { path: "governance", element: <GovernancePage />, handle: { title: "Governance" } },
+          { path: "hub", element: <HubPage />, handle: { title: "Hub" } },
+          { path: "hub/:kind/:id", element: <HubItemRoute />, handle: { title: "Hub" } },
           { path: "skills", element: <SkillsPage />, handle: { title: "Skills" } },
           {
             path: "skills/:id",

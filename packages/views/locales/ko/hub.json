@@ -1,0 +1,182 @@
+{
+  "title": "허브",
+  "search_placeholder": "스킬 및 플러그인 검색",
+  "view_label": "보기",
+  "tabs": {
+    "items": "항목",
+    "sources": "소스",
+    "files": "파일",
+    "overview": "개요",
+    "versions": "버전",
+    "usage": "사용 현황"
+  },
+  "kinds": {
+    "all": "전체",
+    "skill": "스킬",
+    "plugin": "플러그인"
+  },
+  "kind_singular": {
+    "skill": "스킬",
+    "plugin": "플러그인"
+  },
+  "view": {
+    "list": "목록",
+    "catalog": "카탈로그"
+  },
+  "sort": {
+    "label": "정렬",
+    "name": "이름",
+    "updated": "업데이트",
+    "created": "생성"
+  },
+  "columns": {
+    "name": "이름",
+    "kind": "유형",
+    "source": "소스",
+    "version": "버전",
+    "updated": "업데이트"
+  },
+  "source_types": {
+    "manual": "여기서 생성",
+    "runtime_local": "런타임",
+    "clawhub": "ClawHub",
+    "skills_sh": "Skills.sh",
+    "github": "GitHub",
+    "plugin": "게시된 플러그인"
+  },
+  "sources_table": {
+    "source": "소스",
+    "count": "항목",
+    "skills": "스킬",
+    "plugins": "플러그인",
+    "last": "마지막 업데이트"
+  },
+  "open_source": "소스 열기",
+  "empty_title": "허브에 아직 아무것도 없습니다",
+  "no_matches": "일치하는 항목이 없습니다",
+  "load_error": "허브를 불러오지 못했습니다",
+  "retry": "다시 시도",
+  "item": {
+    "not_found": "이 항목은 허브에 없습니다.",
+    "load_error": "이 항목을 불러오지 못했습니다.",
+    "version": "v{{version}}",
+    "updated": "{{time}} 수정",
+    "checksum": "체크섬"
+  },
+  "files": {
+    "list": "파일",
+    "list_error": "파일을 불러오지 못했습니다.",
+    "new_file": "새 파일",
+    "new_folder": "새 폴더",
+    "file_placeholder": "path/to/file.md",
+    "folder_placeholder": "폴더 이름",
+    "create": "만들기",
+    "cancel": "취소",
+    "errors": {
+      "empty": "이름을 입력하세요.",
+      "absolute": "경로는 /로 시작할 수 없습니다.",
+      "double_dot": "경로에 ..를 포함할 수 없습니다.",
+      "reserved": "SKILL.md는 이미 있습니다.",
+      "exists": "같은 이름의 파일이 이미 있습니다.",
+      "is_directory": "같은 이름의 폴더가 이미 있습니다.",
+      "under_file": "이 경로의 일부를 이미 파일이 사용하고 있습니다."
+    },
+    "actions": {
+      "label": "{{path}} 작업",
+      "rename": "이름 바꾸기",
+      "delete": "삭제"
+    },
+    "rename_aria": "{{path}}의 새 이름",
+    "rename_dirty": "이름을 바꾸기 전에 이 파일의 변경 사항을 저장하거나 취소하세요.",
+    "empty": "파일 없음",
+    "select": "파일을 선택하세요",
+    "mode": {
+      "aria": "보기 모드",
+      "preview": "미리보기",
+      "source": "소스",
+      "edit": "편집"
+    },
+    "dirty": "저장되지 않은 변경 사항",
+    "save": "저장",
+    "discard": "취소",
+    "unavailable": "이 파일은 여기서 미리볼 수 없습니다.",
+    "binary": "바이너리 파일이라 여기서는 미리보기와 편집을 할 수 없습니다.",
+    "invalid_json": "올바른 JSON이 아닙니다. 입력한 텍스트 그대로 표시합니다.",
+    "load_error": "이 파일을 불러오지 못했습니다.",
+    "editor_label": "{{path}} 내용",
+    "plugin_banner": "게시된 버전은 변경할 수 없습니다. 여기서의 수정은 새 버전을 게시하기 전까지 초안으로 남습니다.",
+    "plugin_readonly": "워크스페이스 관리자와 소유자만 플러그인을 편집할 수 있습니다.",
+    "draft_count_other": "게시되지 않은 변경 {{count}}개",
+    "draft_discard": "초안 버리기",
+    "draft_publish": "새 버전 게시",
+    "draft_count_one": "게시되지 않은 변경 {{count}}개",
+    "discard_draft_title": "초안을 버릴까요?",
+    "discard_draft_description": "게시되지 않은 변경 사항은 삭제됩니다. 게시된 버전은 그대로 유지됩니다."
+  },
+  "guard": {
+    "title": "{{path}}의 변경 사항을 저장할까요?",
+    "save": "저장하고 계속",
+    "discard": "변경 사항 버리기",
+    "keep": "계속 편집"
+  },
+  "conflict": {
+    "title": "{{path}}이(가) 서버에서 변경되었습니다",
+    "description": "편집하는 동안 다른 사람이 이 파일을 저장했습니다. 다시 불러오면 편집 내용이 사라지고, 덮어쓰면 내 내용으로 상대의 버전을 대체합니다.",
+    "reload": "다시 불러오기",
+    "overwrite": "덮어쓰기"
+  },
+  "delete": {
+    "title": "{{path}}을(를) 삭제할까요?",
+    "confirm": "삭제",
+    "description_file": "이 작업은 되돌릴 수 없습니다.",
+    "description_folder_other": "파일 {{count}}개를 삭제합니다. 이 작업은 되돌릴 수 없습니다.",
+    "description_draft": "삭제 내용은 새 버전을 게시하기 전까지 초안에 남습니다.",
+    "description_folder_one": "파일 {{count}}개를 삭제합니다. 이 작업은 되돌릴 수 없습니다."
+  },
+  "publish": {
+    "title": "새 버전 게시",
+    "version_label": "버전",
+    "version_placeholder": "1.1.0",
+    "current": "최신 버전은 {{version}}",
+    "errors": {
+      "format": "1.2.0 같은 형식으로 입력하세요.",
+      "exists": "버전 {{version}}은(는) 이미 게시되었습니다."
+    },
+    "confirm": "게시",
+    "cancel": "취소"
+  },
+  "overview": {
+    "no_content": "이 스킬에는 아직 SKILL.md 내용이 없습니다.",
+    "no_readme": "이 버전에는 README가 없습니다.",
+    "plugin_key": "플러그인 키",
+    "latest": "최신 버전",
+    "published": "게시일",
+    "versions": "버전 수",
+    "manifest": "매니페스트",
+    "readme": "README"
+  },
+  "versions": {
+    "none": "아직 버전이 없습니다.",
+    "installed": "설치됨",
+    "published": "{{time}} 게시"
+  },
+  "usage": {
+    "agents_title": "이 스킬을 사용하는 에이전트",
+    "agents_empty": "이 스킬을 사용하는 에이전트가 아직 없습니다.",
+    "installs_title": "이 워크스페이스에 설치됨",
+    "installs_empty": "이 워크스페이스에 설치되어 있지 않습니다.",
+    "install_version": "버전 {{version}}",
+    "enabled": "사용",
+    "disabled": "사용 안 함"
+  },
+  "toast": {
+    "saved": "{{path}} 저장됨",
+    "save_failed": "{{path}}을(를) 저장하지 못했습니다",
+    "renamed": "{{path}}(으)로 이름을 바꿨습니다",
+    "rename_failed": "{{path}}의 이름을 바꾸지 못했습니다",
+    "deleted": "{{path}} 삭제됨",
+    "delete_failed": "{{path}}을(를) 삭제하지 못했습니다",
+    "published": "버전 {{version}} 게시됨",
+    "publish_failed": "새 버전을 게시하지 못했습니다"
+  }
+}

@@ -1,0 +1,182 @@
+{
+  "title": "Hub",
+  "search_placeholder": "Buscar skills y plugins",
+  "view_label": "Vista",
+  "tabs": {
+    "items": "Elementos",
+    "sources": "Fuentes",
+    "files": "Archivos",
+    "overview": "Resumen",
+    "versions": "Versiones",
+    "usage": "Uso"
+  },
+  "kinds": {
+    "all": "Todo",
+    "skill": "Skills",
+    "plugin": "Plugins"
+  },
+  "kind_singular": {
+    "skill": "Skill",
+    "plugin": "Plugin"
+  },
+  "view": {
+    "list": "Lista",
+    "catalog": "Catálogo"
+  },
+  "sort": {
+    "label": "Ordenar",
+    "name": "Nombre",
+    "updated": "Actualizado",
+    "created": "Creado"
+  },
+  "columns": {
+    "name": "Nombre",
+    "kind": "Tipo",
+    "source": "Fuente",
+    "version": "Versión",
+    "updated": "Actualizado"
+  },
+  "source_types": {
+    "manual": "Creado aquí",
+    "runtime_local": "Runtime",
+    "clawhub": "ClawHub",
+    "skills_sh": "Skills.sh",
+    "github": "GitHub",
+    "plugin": "Plugin publicado"
+  },
+  "sources_table": {
+    "source": "Fuente",
+    "count": "Elementos",
+    "skills": "Skills",
+    "plugins": "Plugins",
+    "last": "Última actualización"
+  },
+  "open_source": "Abrir fuente",
+  "empty_title": "Aún no hay nada en el Hub",
+  "no_matches": "Ningún elemento coincide",
+  "load_error": "No se pudo cargar el Hub",
+  "retry": "Reintentar",
+  "item": {
+    "not_found": "Este elemento no está en el Hub.",
+    "load_error": "No se ha podido cargar este elemento.",
+    "version": "v{{version}}",
+    "updated": "Actualizado {{time}}",
+    "checksum": "Suma de comprobación"
+  },
+  "files": {
+    "list": "Archivos",
+    "list_error": "No se han podido cargar los archivos.",
+    "new_file": "Archivo nuevo",
+    "new_folder": "Carpeta nueva",
+    "file_placeholder": "ruta/al/archivo.md",
+    "folder_placeholder": "nombre-carpeta",
+    "create": "Crear",
+    "cancel": "Cancelar",
+    "errors": {
+      "empty": "Escribe un nombre.",
+      "absolute": "Las rutas no pueden empezar por /.",
+      "double_dot": "Las rutas no pueden contener ..",
+      "reserved": "SKILL.md ya existe.",
+      "exists": "Ya existe un archivo con este nombre.",
+      "is_directory": "Ya hay una carpeta con este nombre.",
+      "under_file": "Un archivo ya usa parte de esta ruta."
+    },
+    "actions": {
+      "label": "Acciones para {{path}}",
+      "rename": "Renombrar",
+      "delete": "Eliminar"
+    },
+    "rename_aria": "Nuevo nombre para {{path}}",
+    "rename_dirty": "Guarda o descarta los cambios de este archivo antes de renombrarlo.",
+    "empty": "Sin archivos",
+    "select": "Selecciona un archivo",
+    "mode": {
+      "aria": "Modo de vista",
+      "preview": "Vista previa",
+      "source": "Fuente",
+      "edit": "Editar"
+    },
+    "dirty": "Cambios sin guardar",
+    "save": "Guardar",
+    "discard": "Descartar",
+    "unavailable": "Este archivo no se puede previsualizar aquí.",
+    "binary": "Archivo binario. Aquí no están disponibles la vista previa ni la edición.",
+    "invalid_json": "No es JSON válido. Se muestra el texto tal cual.",
+    "load_error": "No se ha podido cargar este archivo.",
+    "editor_label": "Contenido de {{path}}",
+    "plugin_banner": "Las versiones publicadas no cambian. Las ediciones forman un borrador hasta que publiques una nueva versión.",
+    "plugin_readonly": "Solo los administradores y propietarios del espacio de trabajo pueden editar un plugin.",
+    "draft_count_one": "{{count}} cambio sin publicar",
+    "draft_count_other": "{{count}} cambios sin publicar",
+    "draft_discard": "Descartar borrador",
+    "draft_publish": "Publicar nueva versión",
+    "discard_draft_title": "¿Descartar el borrador?",
+    "discard_draft_description": "Se eliminan los cambios sin publicar. Las versiones publicadas no cambian."
+  },
+  "guard": {
+    "title": "¿Guardar los cambios de {{path}}?",
+    "save": "Guardar y continuar",
+    "discard": "Descartar cambios",
+    "keep": "Seguir editando"
+  },
+  "conflict": {
+    "title": "{{path}} cambió en el servidor",
+    "description": "Alguien guardó este archivo mientras editabas. Recárgalo para descartar tus cambios, o sobrescribe su versión con la tuya.",
+    "reload": "Recargar",
+    "overwrite": "Sobrescribir"
+  },
+  "delete": {
+    "title": "¿Eliminar {{path}}?",
+    "confirm": "Eliminar",
+    "description_file": "Esto no se puede deshacer.",
+    "description_folder_one": "Esto elimina {{count}} archivo y no se puede deshacer.",
+    "description_folder_other": "Esto elimina {{count}} archivos y no se puede deshacer.",
+    "description_draft": "La eliminación queda en el borrador hasta que publiques una nueva versión."
+  },
+  "publish": {
+    "title": "Publicar nueva versión",
+    "version_label": "Versión",
+    "version_placeholder": "1.1.0",
+    "current": "La última es {{version}}",
+    "errors": {
+      "format": "Usa una versión como 1.2.0.",
+      "exists": "La versión {{version}} ya está publicada."
+    },
+    "confirm": "Publicar",
+    "cancel": "Cancelar"
+  },
+  "overview": {
+    "no_content": "Esta skill aún no tiene contenido en SKILL.md.",
+    "no_readme": "Esta versión no tiene README.",
+    "plugin_key": "Clave del plugin",
+    "latest": "Última versión",
+    "published": "Publicada",
+    "versions": "Versiones",
+    "manifest": "Manifiesto",
+    "readme": "README"
+  },
+  "versions": {
+    "none": "Aún no hay versiones.",
+    "installed": "Instalada",
+    "published": "Publicada {{time}}"
+  },
+  "usage": {
+    "agents_title": "Agentes que usan esta skill",
+    "agents_empty": "Ningún agente usa esta skill todavía.",
+    "installs_title": "Instalado en este espacio de trabajo",
+    "installs_empty": "No está instalado en este espacio de trabajo.",
+    "install_version": "Versión {{version}}",
+    "enabled": "Activado",
+    "disabled": "Desactivado"
+  },
+  "toast": {
+    "saved": "{{path}} guardado",
+    "save_failed": "No se ha podido guardar {{path}}",
+    "renamed": "Renombrado a {{path}}",
+    "rename_failed": "No se ha podido renombrar {{path}}",
+    "deleted": "{{path}} eliminado",
+    "delete_failed": "No se ha podido eliminar {{path}}",
+    "published": "Versión {{version}} publicada",
+    "publish_failed": "No se ha podido publicar la nueva versión"
+  }
+}

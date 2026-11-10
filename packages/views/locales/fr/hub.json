@@ -1,0 +1,182 @@
+{
+  "title": "Hub",
+  "search_placeholder": "Rechercher des skills et plugins",
+  "view_label": "Vue",
+  "tabs": {
+    "items": "Éléments",
+    "sources": "Sources",
+    "files": "Fichiers",
+    "overview": "Aperçu",
+    "versions": "Versions",
+    "usage": "Utilisation"
+  },
+  "kinds": {
+    "all": "Tout",
+    "skill": "Skills",
+    "plugin": "Plugins"
+  },
+  "kind_singular": {
+    "skill": "Skill",
+    "plugin": "Plugin"
+  },
+  "view": {
+    "list": "Liste",
+    "catalog": "Catalogue"
+  },
+  "sort": {
+    "label": "Trier",
+    "name": "Nom",
+    "updated": "Mis à jour",
+    "created": "Créé"
+  },
+  "columns": {
+    "name": "Nom",
+    "kind": "Type",
+    "source": "Source",
+    "version": "Version",
+    "updated": "Mis à jour"
+  },
+  "source_types": {
+    "manual": "Créé ici",
+    "runtime_local": "Runtime",
+    "clawhub": "ClawHub",
+    "skills_sh": "Skills.sh",
+    "github": "GitHub",
+    "plugin": "Plugin publié"
+  },
+  "sources_table": {
+    "source": "Source",
+    "count": "Éléments",
+    "skills": "Skills",
+    "plugins": "Plugins",
+    "last": "Dernière mise à jour"
+  },
+  "open_source": "Ouvrir la source",
+  "empty_title": "Rien dans le Hub pour l'instant",
+  "no_matches": "Aucun élément ne correspond",
+  "load_error": "Impossible de charger le Hub",
+  "retry": "Réessayer",
+  "item": {
+    "not_found": "Cet élément n'est pas dans le Hub.",
+    "load_error": "Impossible de charger cet élément.",
+    "version": "v{{version}}",
+    "updated": "Mis à jour {{time}}",
+    "checksum": "Somme de contrôle"
+  },
+  "files": {
+    "list": "Fichiers",
+    "list_error": "Impossible de charger les fichiers.",
+    "new_file": "Nouveau fichier",
+    "new_folder": "Nouveau dossier",
+    "file_placeholder": "chemin/vers/fichier.md",
+    "folder_placeholder": "nom-du-dossier",
+    "create": "Créer",
+    "cancel": "Annuler",
+    "errors": {
+      "empty": "Saisissez un nom.",
+      "absolute": "Les chemins ne peuvent pas commencer par /.",
+      "double_dot": "Les chemins ne peuvent pas contenir ..",
+      "reserved": "SKILL.md existe déjà.",
+      "exists": "Un fichier porte déjà ce nom.",
+      "is_directory": "Un dossier porte déjà ce nom.",
+      "under_file": "Un fichier utilise déjà une partie de ce chemin."
+    },
+    "actions": {
+      "label": "Actions pour {{path}}",
+      "rename": "Renommer",
+      "delete": "Supprimer"
+    },
+    "rename_aria": "Nouveau nom pour {{path}}",
+    "rename_dirty": "Enregistrez ou annulez les modifications de ce fichier avant de le renommer.",
+    "empty": "Aucun fichier",
+    "select": "Sélectionnez un fichier",
+    "mode": {
+      "aria": "Mode d'affichage",
+      "preview": "Aperçu",
+      "source": "Source",
+      "edit": "Modifier"
+    },
+    "dirty": "Modifications non enregistrées",
+    "save": "Enregistrer",
+    "discard": "Annuler les modifications",
+    "unavailable": "Ce fichier ne peut pas être prévisualisé ici.",
+    "binary": "Fichier binaire. L'aperçu et la modification ne sont pas disponibles ici.",
+    "invalid_json": "JSON non valide. Le texte est affiché tel quel.",
+    "load_error": "Impossible de charger ce fichier.",
+    "editor_label": "Contenu de {{path}}",
+    "plugin_banner": "Les versions publiées ne changent pas. Les modifications forment un brouillon jusqu'à la publication d'une nouvelle version.",
+    "plugin_readonly": "Seuls les administrateurs et propriétaires de l'espace de travail peuvent modifier un plugin.",
+    "draft_count_one": "{{count}} modification non publiée",
+    "draft_count_other": "{{count}} modifications non publiées",
+    "draft_discard": "Abandonner le brouillon",
+    "draft_publish": "Publier une nouvelle version",
+    "discard_draft_title": "Abandonner le brouillon ?",
+    "discard_draft_description": "Les modifications non publiées sont supprimées. Les versions publiées ne changent pas."
+  },
+  "guard": {
+    "title": "Enregistrer les modifications de {{path}} ?",
+    "save": "Enregistrer et continuer",
+    "discard": "Abandonner les modifications",
+    "keep": "Continuer la modification"
+  },
+  "conflict": {
+    "title": "{{path}} a changé sur le serveur",
+    "description": "Quelqu'un a enregistré ce fichier pendant votre modification. Rechargez pour abandonner vos modifications, ou écrasez sa version par la vôtre.",
+    "reload": "Recharger",
+    "overwrite": "Écraser"
+  },
+  "delete": {
+    "title": "Supprimer {{path}} ?",
+    "confirm": "Supprimer",
+    "description_file": "Cette action est irréversible.",
+    "description_folder_one": "Cela supprime {{count}} fichier. Cette action est irréversible.",
+    "description_folder_other": "Cela supprime {{count}} fichiers. Cette action est irréversible.",
+    "description_draft": "La suppression reste dans le brouillon jusqu'à la publication d'une nouvelle version."
+  },
+  "publish": {
+    "title": "Publier une nouvelle version",
+    "version_label": "Version",
+    "version_placeholder": "1.1.0",
+    "current": "La dernière est {{version}}",
+    "errors": {
+      "format": "Utilisez une version comme 1.2.0.",
+      "exists": "La version {{version}} est déjà publiée."
+    },
+    "confirm": "Publier",
+    "cancel": "Annuler"
+  },
+  "overview": {
+    "no_content": "Ce skill n'a pas encore de contenu SKILL.md.",
+    "no_readme": "Cette version n'a pas de README.",
+    "plugin_key": "Clé du plugin",
+    "latest": "Dernière version",
+    "published": "Publiée",
+    "versions": "Versions",
+    "manifest": "Manifeste",
+    "readme": "README"
+  },
+  "versions": {
+    "none": "Aucune version pour l'instant.",
+    "installed": "Installée",
+    "published": "Publiée {{time}}"
+  },
+  "usage": {
+    "agents_title": "Agents utilisant ce skill",
+    "agents_empty": "Aucun agent n'utilise encore ce skill.",
+    "installs_title": "Installé dans cet espace de travail",
+    "installs_empty": "Non installé dans cet espace de travail.",
+    "install_version": "Version {{version}}",
+    "enabled": "Activé",
+    "disabled": "Désactivé"
+  },
+  "toast": {
+    "saved": "{{path}} enregistré",
+    "save_failed": "Impossible d'enregistrer {{path}}",
+    "renamed": "Renommé en {{path}}",
+    "rename_failed": "Impossible de renommer {{path}}",
+    "deleted": "{{path}} supprimé",
+    "delete_failed": "Impossible de supprimer {{path}}",
+    "published": "Version {{version}} publiée",
+    "publish_failed": "Impossible de publier la nouvelle version"
+  }
+}
