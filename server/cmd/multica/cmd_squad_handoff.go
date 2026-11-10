@@ -118,6 +118,11 @@ Pass no --to to remove the rule.`,
 }
 
 func runSquadHandoffRuleSet(cmd *cobra.Command, args []string) error {
+	to, _ := cmd.Flags().GetString("to")
+	mode, _ := cmd.Flags().GetString("mode")
+	if to != "" && mode != "off" && mode != "ask" && mode != "auto" {
+		return fmt.Errorf("--mode is required with --to: off, ask or auto")
+	}
 	client, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -168,7 +173,7 @@ func init() {
 
 	squadHandoffRuleGetCmd.Flags().String("output", "table", "Output format: table or json")
 	squadHandoffRuleSetCmd.Flags().String("to", "", "The squad to hand finished requests to (name or ID); omit to remove the rule")
-	squadHandoffRuleSetCmd.Flags().String("mode", "off", "off, ask or auto")
+	squadHandoffRuleSetCmd.Flags().String("mode", "", "off, ask or auto (required with --to)")
 	squadHandoffRuleSetCmd.Flags().String("output", "table", "Output format: table or json")
 
 	squadHandoffRuleCmd.AddCommand(squadHandoffRuleGetCmd)

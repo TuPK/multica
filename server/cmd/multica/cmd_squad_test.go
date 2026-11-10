@@ -90,3 +90,88 @@ func TestRunSquadMemberSetRoleValidatesRequiredFlags(t *testing.T) {
 		t.Fatal("expected missing --role error")
 	}
 }
+
+func newSquadHandoffTestCmd() *cobra.Command {
+	cmd := &cobra.Command{Use: "handoff"}
+	cmd.Flags().String("server-url", "", "")
+	cmd.Flags().String("workspace-id", "", "")
+	cmd.Flags().String("profile", "", "")
+	cmd.Flags().String("to", "", "")
+	cmd.Flags().String("mode", "", "")
+	cmd.Flags().String("output", "json", "")
+	return cmd
+}
+
+func TestRunSquadHandoffPostsTheRequest(t *testing.T) {
+	redirectTestHome(t, t.TempDir())
+	t.Setenv("MULTICA_TOKEN", "test-token")
+	t.Setenv("MULTICA_WORKSPACE_ID", "workspace-123")
+
+	const issueID = "11111111-1111-4111-8111-111111111111"
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"status": "off"})
+	}))
+	defer srv.Close()
+	t.Setenv("MULTICA_SERVER_URL", srv.URL)
+
+	if err := runSquadHandoff(newSquadHandoffTestCmd(), []string{issueID}); err != nil {
+		t.Fatalf("runSquadHandoff: %v", err)
+	}
+	if gotMethod != http.MethodPost || gotPath != "/api/issues/"+issueID+"/handoff" {
+		t.Fatalf("request = %s %s, want POST /api/issues/%s/handoff", gotMethod, gotPath, issueID)
+	}
+}
+
+func TestRunSquadHandoffRuleSetSendsTargetAndMode(t *testing.T) {
+	redirectTestHome(t, t.TempDir())
+	t.Setenv("MULTICA_TOKEN", "test-token")
+	t.Setenv("MULTICA_WORKSPACE_ID", "workspace-123")
+
+	const (
+		source = "22222222-2222-4222-8222-222222222222"
+		target = "33333333-3333-4333-8333-333333333333"
+	)
+	var gotMethod, gotPath string
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		gotBody = nil
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"squad_id": source, "target_squad_id": target, "mode": "auto"})
+	}))
+	defer srv.Close()
+	t.Setenv("MULTICA_SERVER_URL", srv.URL)
+
+	cmd := newSquadHandoffTestCmd()
+	_ = cmd.Flags().Set("to", target)
+	_ = cmd.Flags().Set("mode", "auto")
+	if err := runSquadHandoffRuleSet(cmd, []string{source}); err != nil {
+		t.Fatalf("runSquadHandoffRuleSet: %v", err)
+	}
+	if gotMethod != http.MethodPut || gotPath != "/api/squads/"+source+"/handoff-rule" {
+		t.Fatalf("request = %s %s, want PUT /api/squads/%s/handoff-rule", gotMethod, gotPath, source)
+	}
+	if gotBody["target_squad_id"] != target || gotBody["mode"] != "auto" {
+		t.Fatalf("body = %#v, want target %s and mode auto", gotBody, target)
+	}
+
+	// No --to removes the rule: the body carries no target.
+	if err := runSquadHandoffRuleSet(newSquadHandoffTestCmd(), []string{source}); err != nil {
+		t.Fatalf("runSquadHandoffRuleSet (remove): %v", err)
+	}
+	if _, has := gotBody["target_squad_id"]; has {
+		t.Fatalf("removing the rule sent a target: %#v", gotBody)
+	}
+}
+
+func TestRunSquadHandoffRuleSetNeedsAMode(t *testing.T) {
+	cmd := newSquadHandoffTestCmd()
+	_ = cmd.Flags().Set("to", "33333333-3333-4333-8333-333333333333")
+	if err := runSquadHandoffRuleSet(cmd, []string{"22222222-2222-4222-8222-222222222222"}); err == nil {
+		t.Fatal("expected a missing --mode error")
+	}
+}
