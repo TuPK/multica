@@ -2486,3 +2486,7 @@ taken while building phase 1. Decisions 11 to 22 are the design choices of phase
 - **Prompt compliance.** The attention limits are enforced by the server, but
   proposal quality (evidence, a real recommendation) depends on the leader's
   briefing and the critic role. The first loop is also the test of that.
+
+## Sales Loop squad
+
+Squad bán hàng đa ngành (tìm và chăm sóc cơ hội, dùng KB làm nơi lưu sự thật, có nguồn tự thêm và đọc được): xem [sales-loop-squad.md](sales-loop-squad.md) và kế hoạch [sales-loop-squad-plan.md](sales-loop-squad-plan.md). Web engine tùy chọn (Crawl4AI): [runbooks/web-engine-crawl4ai.md](runbooks/web-engine-crawl4ai.md).

@@ -883,6 +883,38 @@ bỏ nhóm nguồn bị chặn (TopCV, VietnamWorks, TopDev, LinkedIn) ở bản
 16. Có bật Crawl4AI MCP cho Sales Scout theo mặc định hay chỉ khi người dùng chạy engine (đề xuất: chỉ khi engine đang chạy).
 17. Phiên bản Crawl4AI cần ghim (hiện 0.9.5, ngày 14/10/2026) và chính sách nâng cấp.
 
+**Kết quả các cổng G (đọc mã và phép thử, 2026-11-10; xem [kế hoạch](sales-loop-squad-plan.md) giai đoạn G).**
+
+- **G1 (base và seed): đạt.** Base `sales` thêm vào `defaultKnowledgeBases`, nên workspace mới có ngay khi bật KB. Workspace đã có được bổ sung bởi `backfillTaxonomy` (nó
+  chỉ bỏ qua khi có đủ `ventures` và `sales`). Policy không seed được qua kind mặc định, vì mặc định của policy là `manual`; server seed các mode `auto` và
+  `auto_after_review` (`seedDefaultPublishModes`) bằng một người owner/admin làm tác nhân, và giữ mode mà admin đã đặt.
+- **G2 (kết nối Composio): đạt, có điều kiện.** Kết nối thuộc người dùng (`composio_user_id` = id người dùng). `BuildTaskOverlay` lấy kết nối của *chủ agent*, và
+  được gọi khi tạo mọi task (`service/task.go`), kể cả task do lịch khởi tạo. Điều kiện: agent có `composio_toolkit_allowlist` chứa toolkit, và chủ agent còn là
+  thành viên kết nối. Nếu chủ agent rời workspace, bậc 1 và 6 ngừng.
+- **G3 (kind proposal): đạt, không cần kind riêng.** Dùng `decision` (`multica proposal create --kind decision`), vì kind này không nhận payload nên câu hỏi
+  đi trong `--summary` và đáp án đi trong ghi chú khi duyệt. Không có nút đáp án đề xuất bấm một lần; đó là phần thiếu đẩy sang P1.
+- **G4 (đường ghi KB của CLI): đạt cho P0.** `knowledge add` có `--kind`, `--idempotency-key`, `--supersedes`, `--confidence`, `--valid-until`, `--tag`. `--field`
+  là việc của P1 (đã làm trong phần triển khai).
+- **G5 (thư viện HTML): đạt, không thêm dependency.** `golang.org/x/net` là dependency trực tiếp trong `server/go.mod`, nên `golang.org/x/net/html` có sẵn. Bộ chọn
+  CSS là một tập con tự viết (thẻ, `#id`, `.class`, `[attr]`, khoảng trắng và `>`); phần ngoài tập con bị từ chối có nêu rõ token.
+- **G6 (tạo `sales_source` từ quickstart): đạt.** `POST /api/knowledge/documents` mở cho thành viên (chỉ các route quản trị mới là owner/admin). Quickstart tạo nguồn
+  với `publish: true` và idempotency key `sales:source:<id>`, khi KB đã sẵn sàng; nếu chưa, nó bỏ qua và nói rõ lý do.
+- **G7 (chia sẻ từ app di động): không.** `apps/mobile/app.config.ts` không có intent filter, ACTION_SEND hay share extension nào. Bỏ "chia sẻ từ di động" khỏi P2;
+  chỉ giữ bookmarklet hoặc tiện ích trình duyệt.
+- **G8 (spike Crawl4AI): đã chạy, kết quả ở phụ lục A.** Chưa đo bộ nhớ theo từng trang.
+- **G9 (luật sư): chưa làm.** Chặn việc bật bậc 6 cho dữ liệu có người Việt, không chặn viết mã.
+
+**Quyết định khi triển khai (2026-11-10), thay đổi so với các mục trên:**
+
+- Kind thứ mười ba `sales_report` thay cho `report` trong các mục trước, để không đụng kind chung của công ty.
+- Chỉ mục `sales_report` mặc định `auto`: squad tự ghi, không cần người duyệt. Các kind `sales_*` còn lại theo bảng ở mục 6.1.
+- Bộ chạy đọc recipe từ một tệp (`--recipe-file`) và đọc CSV từ `--csv`, không đọc từ `--source <id>`. Lý do: một đường dẫn tệp do recipe chỉ định là đường đọc tệp tùy ý trên máy chạy daemon.
+- Kết nối Composio thuộc người sở hữu agent (G2); một squad cần người đó còn trong workspace.
+- Endpoint danh sách có bộ lọc là `GET /api/knowledge/collections`, không phải thêm bộ lọc vào `GET /api/knowledge/documents`; danh sách cũ vẫn trả theo WeKnora.
+- Intake (`POST /api/squads/{id}/sources`, `/shares`) tạo issue giao cho squad, không giao cho Scout. Lead định tuyến route E hoặc F, và việc đó đã nằm trong skill.
+- Lane ở `draft` không được quét: skill Lead bỏ qua và liệt kê trong báo cáo (mục 5). Skill Writer chỉ soạn cho tài khoản `qualified` trở lên, nên lane nháp không sinh thư. `sales_lane` vẫn mặc định `auto` theo bảng 6.1.
+- Bậc 6 (nhà cung cấp) chưa chạy trong bộ chạy: `collect` từ chối với lý do. Trần chi phí mặc định 0 trong các nguồn starter.
+
 ## Phụ lục A. Nhật ký gọi thử 2026-11-10
 
 Gọi từ máy phát triển, User-Agent trình duyệt chung; "000" là không kết nối được. Phản hồi đã theo chuyển hướng ở các dòng ghi "sau chuyển hướng".
@@ -965,7 +997,25 @@ Giá và hạn mức lấy từ các trang này và từ bài tổng hợp 2026;
 Crawl4AI: [kho mã](https://github.com/unclecode/crawl4ai) (Apache-2.0, bản 0.9.5 ngày 14/10/2026), [hướng dẫn tự chạy](https://docs.crawl4ai.com/core/self-hosting/) (token bắt buộc từ 0.9.0, MCP qua SSE/WebSocket,
 crawl sâu tắt mặc định), cùng các so sánh độc lập 2026 với Firecrawl và Apify ([PkgPulse](https://www.pkgpulse.com/guides/crawl4ai-vs-firecrawl-vs-apify-ai-web-scraping-2026),
 [String](https://usestring.ai/comparisons/firecrawl-alternatives), [serp.fast](https://serp.fast/guides/best-web-scraping-api-for-ai-agents)). Lần cài thử `crawl4ai` trong phiên nghiên cứu (pip rồi uv, môi trường cô lập) bị kẹt khi tải
-Playwright, patchright và scipy trên máy phát triển, đã dừng và dọn; **không có số đo thành công trực tiếp**.
+Playwright, patchright và scipy trên máy phát triển, đã dừng và dọn. Lần sau, cài lại trong môi trường đã có Chromium cho Playwright, và spike đã chạy (bảng dưới).
+
+**Spike Crawl4AI 0.9.5 (2026-11-10, máy phát triển, Chromium có sẵn, không stealth, không proxy, `delay_before_return_html` 3 giây).** Mỗi trang gọi một lần, không đăng nhập, không CAPTCHA. Đo: HTTP cuối cùng của trình duyệt, số ký tự Markdown, số khối JSON-LD, và giây.
+
+| Trang | HTTP | Markdown (ký tự) | JSON-LD | Giây | Nhận xét |
+| --- | --- | --- | --- | --- | --- |
+| ITviec, danh sách việc IT | 200 | 62.393 | 3 | 5,8 | Đọc được; JSON-LD có khối ItemList |
+| CareerViet, việc chung | 200 | 114.299 | 4 | 6,5 | Đọc được; cờ "đăng nhập" là thanh điều hướng (dương tính giả) |
+| TopCV | 301 | 234.789 | 2 | 34,9 | `curl` nhận 403, trình duyệt đọc được. Chậm nhất; điều khoản chưa đọc |
+| VietnamWorks (SPA) | 200 | 9.019 | 1 | 5,0 | Ngắn: trang dựng bằng JS, danh sách có thể chưa đủ |
+| Facebook, Page công khai (Meta) | 200 | 24.631 | 0 | 4,4 | Chỉ có vỏ và nút đăng nhập; không có bài |
+| Facebook Ad Library (từ khóa VN) | 403 | 2.311 | 0 | 5,4 | Bị chặn |
+| Instagram, hồ sơ công khai | 200 | 23.429 | 0 | 4,6 | Chỉ có vỏ |
+| LinkedIn, trang công ty | — | 0 | 0 | 30,2 | Hết thời gian chờ |
+| Telegram, kênh công khai | 200 | 39.311 | 0 | 5,5 | Đọc được (20 tin) |
+| voz.vn, danh sách diễn đàn | 301 | 23.883 | 0 | 5,1 | Đọc được |
+| masothue.com | 200 | 40.500 | 2 | 3,6 | `curl` nhận 403, trình duyệt đọc được |
+
+Kết luận: trong 11 trang, Crawl4AI đọc được 8 trang có nội dung (gồm 2 trang mà `curl` bị 403), 2 trang là vỏ hoặc bị chặn (Facebook Ad Library, Instagram), và 1 trang hết giờ (LinkedIn). Mỗi trang mất 3,6 đến 35 giây. Chưa đo: bộ nhớ theo trang (sau lần chạy còn 16 tiến trình Chromium), `generate_schema` (không có LLM trong spike), và độ phủ trường trên các trang này. Khuyến nghị: Web engine là **tùy chọn** (mục 4.13), không mặc định; bật khi một nguồn bậc 5 cần, và đo bộ nhớ trước khi đặt trần.
 
 Dữ liệu mẫu đã xem: Arbeitnow 300 job (Anh, Thụy Sĩ, Pháp, Đức, Hà Lan là các địa điểm nhiều nhất); RemoteOK 100 job và điều khoản ghi nguồn trong chính phản hồi;
 Himalayas 119.590 job với phân trang cursor; HN thread "Who is hiring" tháng 11/2026 có 323 comment; ITviec có JSON-LD; robots.txt của ITviec và CareerViet cho phép.

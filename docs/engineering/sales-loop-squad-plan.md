@@ -2,6 +2,44 @@
 
 Kế hoạch triển khai cho [sales-loop-squad.md](sales-loop-squad.md). Đọc spec trước; các mục "4.x", "7.x", "8.x" dưới đây trỏ về spec.
 
+## Trạng thái triển khai (2026-11-10)
+
+Đã làm, kiểm bằng test: giai đoạn G (kết luận ghi ở spec §15), phần lớn giai đoạn 0, phần server và giao diện danh sách của giai đoạn 1. Các mục còn lại ghi rõ lý do dưới bảng.
+
+| Mục | Trạng thái | Ghi chú |
+| --- | --- | --- |
+| G1–G8 | Xong | Kết luận ở spec §15; G8 là spike có số đo (phụ lục A) |
+| G9 | Chưa làm | Luật sư xem spec mục 10; chặn việc bật bậc 6 cho dữ liệu có người Việt |
+| T0.1 `routines[]` | Xong | Ba routine của Sales Loop |
+| T0.2 kind, base, policy | Xong | 13 kind `sales_*` (có `sales_report`), base `sales`, policy seed phía server; test DB |
+| T0.3 skill `sales-*` | Xong, lệch nhỏ | 7 skill. `reference.md` chỉ có ở `sales-delivery-core`, `sales-scouting`, `sales-writing`; các skill còn lại giữ nội dung trong `SKILL.md` |
+| T0.4 role, instruction, template | Xong | 5 agent, `SALES_SKILL_NAMES`, bộ lọc SDLC loại skill sales |
+| T0.5 thẻ quickstart, i18n | Xong | Bảy ngôn ngữ; parity test qua |
+| T0.6 nâng cấp | Xong | Dùng `upgradeSdlcSquad` có sẵn với `--template sales_loop`; test |
+| T0.7 schema recipe | Xong | Hai lớp: bản nháp (hình dạng) và bản chạy được (đủ trường) |
+| T0.8 adapter, SSRF, robots | Xong | rss, json_api, html_jsonld, html_list, csv_drop; chặn địa chỉ nội bộ kể cả qua chuyển hướng và DNS; fixture là phản hồi thật đã cắt |
+| T0.9 CLI probe và collect | Xong, lệch nhỏ | `collect` nhận `--recipe-file` (không phải `--source <id>`): Scout lấy recipe từ tài liệu rồi truyền file; `--source-id` chỉ để gắn nhãn |
+| T0.10 nguồn starter | Xong | 38 nguồn; 15 dòng mạng xã hội (spec có 16, tính cả tìm kiếm web, mục này không dùng); quickstart ghi vào KB, khóa idempotent |
+| T0.11 route trong skill Lead | Xong | Route A–G |
+| T0.12 tài liệu và diễn tập | Một phần | Runbook Crawl4AI viết xong (REST chưa kiểm với container). **Diễn tập R1–R11 trên agent thật chưa chạy**: cần bạn cho phép (tốn quota) |
+| T1.1 migration | Xong | 922–926, mỗi chỉ mục một file `CONCURRENTLY`, có down |
+| T1.2 SQL và sqlc | Xong | Lọc theo thuộc tính, lọc đến hạn, lịch sử. Sắp xếp chỉ theo thời gian tạo |
+| T1.3 service | Một phần | Kiểm theo `fields`, cập nhật thuộc tính, lịch sử, luật stage, điền thuộc tính từ mục Record khi viết. **Chưa có backfill** cho tài liệu P0 đã viết: cần đọc nội dung từ WeKnora; hiện chưa có tài liệu P0 nào được ghi ở môi trường thật |
+| T1.4 API | Xong, lệch | `GET /api/knowledge/collections` thay vì lọc trên `GET /documents`. Intake squad tạo issue giao cho **squad** (Lead định tuyến route E/F), không giao thẳng cho Scout |
+| T1.5 CLI | Xong | `add --field`, `update --field/--unset`, `list --kind --field --due` |
+| T1.6 core TS | Xong | Schema zod có fallback; query và mutation có `wsId` |
+| T1.7 Collections | Xong, thiếu test thành phần | Bảng, bảng kanban có kéo thả, khung chi tiết sửa thuộc tính, năm view lưu sẵn; có test hàm thuần |
+| T1.8 Source Studio | Một phần | Có: danh sách nguồn với trạng thái, ô thêm nguồn, ô chia sẻ, test thành phần. **Chưa có**: chi tiết và recipe, bước xem mẫu 10 tín hiệu, nút kích hoạt/thử bậc khác, mục connector, thẻ Web engine, ngân sách |
+| T1.9 ngân sách | Chưa làm | Trần trong recipe có; chưa có trần theo squad và theo nguồn, chưa có số đã dùng |
+| T1.10 Web engine | Chưa làm trong code | Spike xong, runbook xong. Bộ chạy từ chối `render: browser` với lý do rõ; chưa có phát hiện engine và chưa gọi engine |
+| T1.11 kiểm chứng | Một phần | Test Go và TS cho phần đã làm; **chưa có Playwright E2E** |
+| T2.1 Gmail | Một phần | Chỉ có hướng dẫn trong skill: nháp Gmail khi đã kết nối và `approved`, không gửi. Chưa kiểm với Gmail thật |
+| T2.2 Lịch | Chưa làm | Chưa có trigger cho sự kiện lịch |
+| T2.3 chia sẻ nhanh | Chưa làm | Không có bookmarklet hay tiện ích. Chia sẻ từ di động: không (G7) |
+| T3 handoff khi won | Một phần | Dùng `multica squad handoff <request-id>` có sẵn, theo route G trong skill Lead. Không có mã mới; chưa có test ca bán hàng |
+
+Kiểm chứng đã chạy: `go test` cho `internal/salescollect`, `internal/service` (phần knowledge), `internal/handler` (phần knowledge và squad intake), `cmd/multica` (phần sales và field); `pnpm --filter @multica/core` (squads, knowledge) và `@multica/views` (knowledge, squads, modals, locales); `tsc --noEmit` cho core và views. `pnpm lint` còn lỗi ở các file script có sẵn trong skill `superpowers--*` (không do thay đổi này).
+
 Quy ước thực hiện (theo AGENTS.md):
 
 - Commit nhỏ, mỗi task một commit, kiểu conventional (`feat(squads): ...`). Kết thúc commit bằng dòng `Co-Authored-By` theo hướng dẫn của phiên làm việc.
