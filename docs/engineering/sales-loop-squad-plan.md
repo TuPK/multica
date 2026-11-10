@@ -36,7 +36,7 @@ Kế hoạch triển khai cho [sales-loop-squad.md](sales-loop-squad.md). Đọc
 | T2.1 Gmail | Một phần | Chỉ có hướng dẫn trong skill: nháp Gmail khi đã kết nối và `approved`, không gửi. Chưa kiểm với Gmail thật |
 | T2.2 Lịch | Chưa làm | Chưa có trigger cho sự kiện lịch |
 | T2.3 chia sẻ nhanh | Chưa làm | Không có bookmarklet hay tiện ích. Chia sẻ từ di động: không (G7) |
-| T3 handoff khi won | Một phần | Dùng `multica squad handoff <request-id>` có sẵn, theo route G trong skill Lead. Không có mã mới; chưa có test ca bán hàng |
+| T3 handoff khi won | Một phần | Dùng `multica squad handoff <request-id>` có sẵn, theo route G trong skill Lead. Không có mã mới. Test kiểm skill nêu đúng lệnh và đúng điều kiện `won`. **Chưa có** test đi qua cả chuỗi (deal `won` → handoff) với squad thật |
 
 Kiểm chứng đã chạy: `go test` cho `internal/salescollect`, `internal/service` (phần knowledge), `internal/handler` (phần knowledge và squad intake), `cmd/multica` (phần sales và field); `pnpm --filter @multica/core` (squads, knowledge) và `@multica/views` (knowledge, squads, modals, locales); `tsc --noEmit` cho core và views. `pnpm lint` còn lỗi ở các file script có sẵn trong skill `superpowers--*` (không do thay đổi này).
 
