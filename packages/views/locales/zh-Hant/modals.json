@@ -308,6 +308,26 @@
         "name": "Accounting & Tax (Kế toán, thuế)",
         "description": "涵蓋 tờ khai、hóa đơn、công nợ、khóa sổ，數字以腳本計算。不申報，也不提交任何文件；執行環境需要 Bash 與 Python。"
       },
+      "kv_talent": {
+        "name": "Talent Acquisition (Tuyển dụng)",
+        "description": "依據已核准的標準篩選履歷，草擬招募啟事、面試問題與信函，並檢查每份資料是否有偏見或個人資料。不聯絡候選人、不安排面試，也不決定錄用。"
+      },
+      "kv_pr": {
+        "name": "PR & Comms (Truyền thông báo chí)",
+        "description": "依據已查證的事實草擬新聞稿（thông cáo báo chí）、問答集與危機回應聲明（khủng hoảng truyền thông），並在人員向媒體發出任何內容前，逐一查核每項事實、引述與法律用語。不發送，也不發布。"
+      },
+      "kv_ecom": {
+        "name": "E-commerce Shop Ops (Bán hàng online)",
+        "description": "把新商品從供應商資料整理成電商平台的商品文案與定價，在店主發布前檢查違禁用語、宣稱與利潤率。"
+      },
+      "kv_officeops": {
+        "name": "Office Ops (Vận hành văn phòng)",
+        "description": "規劃會議室與差旅安排、活動、辦公用品、資產台帳、檔案歸檔、服務合約和月度行政報告。不預訂、不採購、不付款，也不發送。"
+      },
+      "kv_academic": {
+        "name": "Academic Evidence Desk (Học thuật, nghiên cứu)",
+        "description": "把一個 PDF 資料夾與參考文獻清單整理成來源矩陣，以及由作者重寫的研究草稿。每條引註都會先打開查證，才會回報為真實；缺漏處保持標註。"
+      },
       "sales_loop": {
         "name": "銷售循環",
         "description": "每週為你的業務線尋找商機，起草外聯訊息供你審核，並從結果中學習。資料來源開箱即用。"

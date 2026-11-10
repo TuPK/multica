@@ -2241,7 +2241,8 @@
       "product": "Producto",
       "build": "Construcción",
       "launch": "Lanzamiento",
-      "governance": "Gobernanza"
+      "governance": "Gobernanza",
+      "revenue": "Ingresos"
     },
     "company_stages": {
       "validate": "Validar",

@@ -308,6 +308,26 @@
         "name": "Accounting & Tax (Kế toán, thuế)",
         "description": "tờ khai、hóa đơn、công nợ、khóa sổ を対象に、数値はスクリプトで計算します。申告や提出は行わず、ランタイムに Bash と Python が必要です。"
       },
+      "kv_talent": {
+        "name": "Talent Acquisition (Tuyển dụng)",
+        "description": "承認済みの基準で履歴書を選別し、求人票、面接質問、通知文を作成します。各資料に偏りや個人情報がないかを確認します。候補者への連絡、面接の日程調整、採否の決定はしません。"
+      },
+      "kv_pr": {
+        "name": "PR & Comms (Truyền thông báo chí)",
+        "description": "検証済みの事実から、プレスリリース（thông cáo báo chí）、想定問答、危機対応の声明（khủng hoảng truyền thông）を作成し、報道機関に何かを送る前に、すべての事実、引用、法的な記述を確認します。送信も公開もしません。"
+      },
+      "kv_ecom": {
+        "name": "E-commerce Shop Ops (Bán hàng online)",
+        "description": "仕入先のデータから新商品のマーケットプレイス掲載文と価格を作成し、禁止表現と利益率を確認したうえで、ショップ運営者が投稿します。"
+      },
+      "kv_officeops": {
+        "name": "Office Ops (Vận hành văn phòng)",
+        "description": "会議室と出張の手配、イベント、文房具、備品台帳、文書の保管、サービス契約、月次の総務報告を計画します。予約、購入、支払い、送付はしません。"
+      },
+      "kv_academic": {
+        "name": "Academic Evidence Desk (Học thuật, nghiên cứu)",
+        "description": "PDF のフォルダと参考文献リストを、著者が書き直す出典マトリクスと研究の下書きにまとめます。すべての引用は、実在すると報告する前に開いて確認し、不足箇所は印を付けたままにします。"
+      },
       "sales_loop": {
         "name": "営業ループ",
         "description": "事業ラインごとの商機を毎週見つけ、承認してもらう営業文の下書きを作り、結果から学びます。情報源は設定なしで使えます。"

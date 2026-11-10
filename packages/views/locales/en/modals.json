@@ -310,6 +310,26 @@
         "name": "Accounting & Tax (Kế toán, thuế)",
         "description": "Covers tờ khai, hóa đơn, công nợ and khóa sổ, with figures computed by script. Files nothing; needs Bash and Python on the runtime."
       },
+      "kv_talent": {
+        "name": "Talent Acquisition (Tuyển dụng)",
+        "description": "Screens CVs against approved criteria, drafts job posts, interview questions and letters, and checks each pack for bias and personal data. Does not contact, schedule or decide on candidates."
+      },
+      "kv_pr": {
+        "name": "PR & Comms (Truyền thông báo chí)",
+        "description": "Drafts press releases (thông cáo báo chí), Q&A and crisis holding statements (khủng hoảng truyền thông) from verified facts, and checks every fact, quote and legal line before a person sends anything to the press. Sends and publishes nothing."
+      },
+      "kv_ecom": {
+        "name": "E-commerce Shop Ops (Bán hàng online)",
+        "description": "Takes a new product from supplier data to a marketplace listing and price, checked for banned claims and margin before the shop owner posts it."
+      },
+      "kv_officeops": {
+        "name": "Office Ops (Vận hành văn phòng)",
+        "description": "Plans room and travel logistics, events, stationery, the asset register, archiving, service contracts and the monthly admin report. Does not book, buy, pay or send."
+      },
+      "kv_academic": {
+        "name": "Academic Evidence Desk (Học thuật, nghiên cứu)",
+        "description": "Turns a folder of PDFs and a reference list into a source matrix and a study draft that the author rewrites. Every citation is opened before it is reported as real; gaps stay marked."
+      },
       "sales_loop": {
         "name": "Sales loop",
         "description": "Finds opportunities for your lanes each week, drafts outreach for you to approve, and learns from the results. Sources come ready to use."

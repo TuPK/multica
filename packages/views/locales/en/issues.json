@@ -2241,7 +2241,8 @@
       "product": "Product",
       "build": "Build",
       "launch": "Launch",
-      "governance": "Governance"
+      "governance": "Governance",
+      "revenue": "Revenue"
     },
     "company_stages": {
       "validate": "Validate",

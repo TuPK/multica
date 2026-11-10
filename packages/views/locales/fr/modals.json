@@ -310,6 +310,26 @@
         "name": "Accounting & Tax (Kế toán, thuế)",
         "description": "Couvre tờ khai, hóa đơn, công nợ et khóa sổ, avec des chiffres calculés par script. Ne dépose rien ; nécessite Bash et Python sur le runtime."
       },
+      "kv_talent": {
+        "name": "Talent Acquisition (Tuyển dụng)",
+        "description": "Filtre les CV selon les critères approuvés, rédige les offres d'emploi, les questions d'entretien et les courriers, et vérifie chaque lot pour les biais et les données personnelles. Ne contacte, ne planifie et ne décide rien concernant les candidats."
+      },
+      "kv_pr": {
+        "name": "PR & Comms (Truyền thông báo chí)",
+        "description": "Rédige des communiqués de presse (thông cáo báo chí), des questions-réponses et des déclarations de crise (khủng hoảng truyền thông) à partir de faits vérifiés, et contrôle chaque fait, citation et point juridique avant qu'une personne n'envoie quoi que ce soit à la presse. N'envoie et ne publie rien."
+      },
+      "kv_ecom": {
+        "name": "E-commerce Shop Ops (Bán hàng online)",
+        "description": "Mène un nouveau produit des données fournisseur à la fiche et au prix sur la place de marché, contrôlés pour les allégations interdites et la marge, avant que le propriétaire de la boutique ne le publie."
+      },
+      "kv_officeops": {
+        "name": "Office Ops (Vận hành văn phòng)",
+        "description": "Planifie la logistique des salles et des déplacements, les événements, les fournitures, le registre des biens, l'archivage, les contrats de service et le rapport administratif mensuel. Ne réserve, n'achète, ne paie et n'envoie rien."
+      },
+      "kv_academic": {
+        "name": "Academic Evidence Desk (Học thuật, nghiên cứu)",
+        "description": "Transforme un dossier de PDF et une liste de références en matrice de sources et en brouillon d'étude que l'auteur réécrit. Chaque citation est ouverte avant d'être donnée comme réelle ; les lacunes restent signalées."
+      },
       "sales_loop": {
         "name": "Boucle commerciale",
         "description": "Repère chaque semaine des opportunités pour vos axes, prépare des messages à valider et apprend des résultats. Les sources sont prêtes à l'emploi."

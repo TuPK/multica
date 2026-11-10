@@ -310,6 +310,26 @@
         "name": "Accounting & Tax (Kế toán, thuế)",
         "description": "Cubre tờ khai, hóa đơn, công nợ y khóa sổ, con cifras calculadas por script. No presenta nada; necesita Bash y Python en el runtime."
       },
+      "kv_talent": {
+        "name": "Talent Acquisition (Tuyển dụng)",
+        "description": "Revisa CV según criterios aprobados, redacta anuncios de empleo, preguntas de entrevista y cartas, y revisa cada paquete en busca de sesgos y datos personales. No contacta, no agenda ni decide sobre candidatos."
+      },
+      "kv_pr": {
+        "name": "PR & Comms (Truyền thông báo chí)",
+        "description": "Redacta comunicados de prensa (thông cáo báo chí), preguntas y respuestas y declaraciones de crisis (khủng hoảng truyền thông) a partir de hechos verificados, y revisa cada dato, cita y punto legal antes de que una persona envíe algo a la prensa. No envía ni publica nada."
+      },
+      "kv_ecom": {
+        "name": "E-commerce Shop Ops (Bán hàng online)",
+        "description": "Lleva un producto nuevo desde los datos del proveedor hasta la ficha y el precio en el marketplace, revisados por palabras prohibidas y margen antes de que el dueño de la tienda lo publique."
+      },
+      "kv_officeops": {
+        "name": "Office Ops (Vận hành văn phòng)",
+        "description": "Planifica la logística de salas y viajes, eventos, papelería, el registro de activos, el archivo, los contratos de servicio y el informe administrativo mensual. No reserva, compra, paga ni envía nada."
+      },
+      "kv_academic": {
+        "name": "Academic Evidence Desk (Học thuật, nghiên cứu)",
+        "description": "Convierte una carpeta de PDF y una lista de referencias en una matriz de fuentes y un borrador de estudio que el autor reescribe. Cada cita se abre antes de darla por real; los vacíos quedan marcados."
+      },
       "sales_loop": {
         "name": "Ciclo de ventas",
         "description": "Busca oportunidades para tus líneas de negocio cada semana, prepara mensajes para que los apruebes y aprende de los resultados. Las fuentes ya vienen listas."

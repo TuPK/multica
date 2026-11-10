@@ -2167,7 +2167,8 @@
       "product": "產品",
       "build": "建構",
       "launch": "發布",
-      "governance": "治理"
+      "governance": "治理",
+      "revenue": "營收"
     },
     "company_stages": {
       "validate": "驗證",
