@@ -1481,6 +1481,30 @@
       "rate": "más de 12 ejecuciones en una hora"
     }
   },
+  "handoff": {
+    "title": "Traspaso",
+    "not_yet": "Aún sin traspasar. Siguiente: {{squad}}.",
+    "pending": "Esperando aprobación para traspasar a {{squad}}.",
+    "handed_off": "Traspasado a {{squad}}.",
+    "declined": "Traspaso a {{squad}} rechazado.",
+    "open_request": "Abrir su solicitud",
+    "hand_off": "Traspasar a {{squad}}",
+    "approve": "Aprobar y traspasar",
+    "decline": "Rechazar",
+    "failed": "No se pudo traspasar la solicitud",
+    "panel_heading": "Traspaso",
+    "panel_target": "Traspasar las solicitudes terminadas a",
+    "panel_none": "Ningún equipo",
+    "panel_mode": "Cómo",
+    "modes": {
+      "off": "Desactivado",
+      "ask": "Preguntarme antes",
+      "auto": "Automáticamente"
+    },
+    "auto_hint": "Inicia el trabajo del otro equipo en cuanto el líder de este lo pida, sin esperarte.",
+    "panel_summary": "Traspasa las solicitudes terminadas a {{squad}} ({{mode}}).",
+    "save_failed": "No se pudo guardar el traspaso"
+  },
   "duplicates": {
     "banner_prefix": "Duplicada de",
     "unmark": "No es una duplicada",

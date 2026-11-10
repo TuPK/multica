@@ -147,6 +147,7 @@
       "goal_activated": "目標を有効化",
       "goal_imported": "目標をインポート",
       "review_published": "レビューを公開",
+      "squad_handoff": "スクワッド引き継ぎ",
       "unknown": "不明なイベント"
     },
     "actor_type": {

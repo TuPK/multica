@@ -27,6 +27,7 @@ import { useCompanyAdmin } from "../lib/use-company-admin";
 import { CompanyCharterTab } from "./company-charter-tab";
 import { CompanyRoutines } from "./company-routines";
 import { CompanySquadAttention } from "./company-squad-attention";
+import { CompanySquadHandoff } from "./company-squad-handoff";
 import { CompanySquadSeatMenu } from "./company-squad-seat-menu";
 import { projectListOptions } from "@multica/core/projects/queries";
 import { useAddSquadToCompany } from "../lib/use-add-squad-to-company";
@@ -231,6 +232,7 @@ function PanelBody({
           </p>
           {autonomy?.reason ? <p className="text-caption text-muted-foreground">{autonomy.reason}</p> : null}
         </section>
+        <CompanySquadHandoff squadId={squadId} canEdit={isCompanyAdmin} />
         {openItems && openItems.issues.length > 0 ? (
           <section aria-label={t(($) => $.company.squad_open_items)} className="flex flex-col gap-1">
             <h3 className="flex items-center gap-2 text-caption font-medium text-muted-foreground">

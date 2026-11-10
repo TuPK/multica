@@ -147,6 +147,7 @@
       "goal_activated": "目标已启用",
       "goal_imported": "目标已导入",
       "review_published": "评审已发布",
+      "squad_handoff": "小队移交",
       "unknown": "未知事件"
     },
     "actor_type": {

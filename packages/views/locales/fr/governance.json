@@ -147,6 +147,7 @@
       "goal_activated": "Objectif activé",
       "goal_imported": "Objectif importé",
       "review_published": "Évaluation publiée",
+      "squad_handoff": "Transfert entre équipes",
       "unknown": "Événement inconnu"
     },
     "actor_type": {

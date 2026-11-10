@@ -1481,6 +1481,30 @@
       "rate": "more than 12 runs in an hour"
     }
   },
+  "handoff": {
+    "title": "Handoff",
+    "not_yet": "Not handed off yet. Next: {{squad}}.",
+    "pending": "Waiting for approval to hand off to {{squad}}.",
+    "handed_off": "Handed off to {{squad}}.",
+    "declined": "Handoff to {{squad}} declined.",
+    "open_request": "Open its request",
+    "hand_off": "Hand off to {{squad}}",
+    "approve": "Approve and hand off",
+    "decline": "Decline",
+    "failed": "Could not hand off the request",
+    "panel_heading": "Handoff",
+    "panel_target": "Hand finished requests to",
+    "panel_none": "No squad",
+    "panel_mode": "How",
+    "modes": {
+      "off": "Off",
+      "ask": "Ask me first",
+      "auto": "Automatically"
+    },
+    "auto_hint": "Starts the other squad's work as soon as this squad's leader asks, without waiting for you.",
+    "panel_summary": "Hands finished requests to {{squad}} ({{mode}}).",
+    "save_failed": "Could not save the handoff"
+  },
   "duplicates": {
     "banner_prefix": "Duplicate of",
     "unmark": "Not a duplicate",
@@ -1832,8 +1856,8 @@
     "board_title": "Board",
     "board_project": "Project",
     "board_all_projects": "All projects",
-    "assign_done": "Assigned {{identifier}} to {{name}}",
-    "assign_failed": "Couldn't assign the issue",
+    "assign_done": "{{project}} is now {{name}}'s project",
+    "assign_failed": "Couldn't assign the project",
     "panel_work": "Work",
     "work_search": "Search issues",
     "work_empty": "No issues",
@@ -1919,7 +1943,6 @@
     "assign_submit_mapped": "Assign and move issues",
     "assign_mapping_intro": "Some issues are on statuses the SDLC workflow does not have. Choose where they move.",
     "assign_mapping_row": "{{count}} issue(s) on {{status}} move to",
-    "assign_done": "{{project}} is now {{name}}'s project",
     "assign_not_sdlc": "This squad needs the SDLC developer, reviewer and QA agents.",
     "assign_workflow_set": "This project already uses another workflow. Change it in the project's settings first.",
     "assign_manage": "Manage project",
@@ -1929,7 +1952,6 @@
     "assign_unassign_done": "{{project}} is no longer {{name}}'s project",
     "assign_unassign_failed": "Couldn't unassign the project",
     "assign_squad_has_project": "This squad already has a project. Unassign it first.",
-    "assign_failed": "Couldn't assign the project",
     "backlog_title": "Backlog · {{project}}",
     "backlog_description": "Create an issue and assign it to {{name}}. The SDLC workflow starts when the leader takes it.",
     "backlog_list": "Backlog issues",

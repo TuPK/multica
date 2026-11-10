@@ -147,6 +147,7 @@
       "goal_activated": "Goal activated",
       "goal_imported": "Goal imported",
       "review_published": "Review published",
+      "squad_handoff": "Squad handoff",
       "unknown": "Unknown event"
     },
     "actor_type": {

@@ -1432,6 +1432,30 @@
       "rate": "1 小时内触发超过 12 次"
     }
   },
+  "handoff": {
+    "title": "移交",
+    "not_yet": "尚未移交。下一站：{{squad}}。",
+    "pending": "等待批准后移交给 {{squad}}。",
+    "handed_off": "已移交给 {{squad}}。",
+    "declined": "移交给 {{squad}} 已被拒绝。",
+    "open_request": "打开对方的需求",
+    "hand_off": "移交给 {{squad}}",
+    "approve": "批准并移交",
+    "decline": "拒绝",
+    "failed": "无法移交该需求",
+    "panel_heading": "移交",
+    "panel_target": "把完成的需求交给",
+    "panel_none": "不移交",
+    "panel_mode": "方式",
+    "modes": {
+      "off": "关闭",
+      "ask": "先问我",
+      "auto": "自动"
+    },
+    "auto_hint": "本小队负责人一提出，就立即启动对方小队的工作，不再等你。",
+    "panel_summary": "把完成的需求交给 {{squad}}（{{mode}}）。",
+    "save_failed": "无法保存移交设置"
+  },
   "duplicates": {
     "banner_prefix": "重复于",
     "unmark": "不是重复",
@@ -1764,8 +1788,8 @@
     "board_title": "看板",
     "board_project": "项目",
     "board_all_projects": "所有项目",
-    "assign_done": "已将 {{identifier}} 分配给 {{name}}",
-    "assign_failed": "无法分配该任务",
+    "assign_done": "{{project}} 现在是 {{name}} 的项目",
+    "assign_failed": "无法分配项目",
     "panel_work": "工作",
     "work_search": "搜索任务",
     "work_empty": "暂无任务",
@@ -1847,7 +1871,6 @@
     "assign_submit_mapped": "分配并移动议题",
     "assign_mapping_intro": "部分议题的状态不在 SDLC 工作流中。请选择它们的移动目标。",
     "assign_mapping_row": "{{status}} 状态的 {{count}} 个议题移至",
-    "assign_done": "{{project}} 现在是 {{name}} 的项目",
     "assign_not_sdlc": "此小组需要 SDLC 开发、评审和 QA 智能体。",
     "assign_workflow_set": "该项目已使用其他工作流。请先在项目设置中更改。",
     "assign_manage": "管理项目",
@@ -1857,7 +1880,6 @@
     "assign_unassign_done": "{{project}} 不再是 {{name}} 的项目",
     "assign_unassign_failed": "无法取消分配项目",
     "assign_squad_has_project": "这个小组已经有一个项目，请先取消分配。",
-    "assign_failed": "无法分配项目",
     "backlog_title": "待办 · {{project}}",
     "backlog_description": "创建议题并分配给 {{name}}。负责人接手后，SDLC 工作流开始运行。",
     "backlog_list": "待办议题",

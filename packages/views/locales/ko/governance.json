@@ -147,6 +147,7 @@
       "goal_activated": "목표 활성화",
       "goal_imported": "목표 가져오기",
       "review_published": "검토 게시",
+      "squad_handoff": "스쿼드 인계",
       "unknown": "알 수 없는 이벤트"
     },
     "actor_type": {

@@ -1481,6 +1481,30 @@
       "rate": "plus de 12 exécutions en une heure"
     }
   },
+  "handoff": {
+    "title": "Transfert",
+    "not_yet": "Pas encore transféré. Prochaine étape : {{squad}}.",
+    "pending": "En attente d'approbation pour transférer à {{squad}}.",
+    "handed_off": "Transféré à {{squad}}.",
+    "declined": "Transfert à {{squad}} refusé.",
+    "open_request": "Ouvrir sa demande",
+    "hand_off": "Transférer à {{squad}}",
+    "approve": "Approuver et transférer",
+    "decline": "Refuser",
+    "failed": "Impossible de transférer la demande",
+    "panel_heading": "Transfert",
+    "panel_target": "Transférer les demandes terminées à",
+    "panel_none": "Aucune équipe",
+    "panel_mode": "Comment",
+    "modes": {
+      "off": "Désactivé",
+      "ask": "Me demander d'abord",
+      "auto": "Automatiquement"
+    },
+    "auto_hint": "Lance le travail de l'autre équipe dès que le responsable de celle-ci le demande, sans vous attendre.",
+    "panel_summary": "Transfère les demandes terminées à {{squad}} ({{mode}}).",
+    "save_failed": "Impossible d'enregistrer le transfert"
+  },
   "duplicates": {
     "banner_prefix": "Doublon de",
     "unmark": "Pas un doublon",
@@ -1832,8 +1856,8 @@
     "board_title": "Tableau",
     "board_project": "Projet",
     "board_all_projects": "Tous les projets",
-    "assign_done": "{{identifier}} confiée à {{name}}",
-    "assign_failed": "Impossible d'assigner la tâche",
+    "assign_done": "{{project}} est maintenant le projet de {{name}}",
+    "assign_failed": "Impossible d'assigner le projet",
     "panel_work": "Travail",
     "work_search": "Rechercher une tâche",
     "work_empty": "Aucune tâche",
@@ -1919,7 +1943,6 @@
     "assign_submit_mapped": "Assigner et déplacer les tickets",
     "assign_mapping_intro": "Certains tickets sont sur des statuts absents du workflow SDLC. Choisissez où ils passent.",
     "assign_mapping_row": "{{count}} ticket(s) en {{status}} passent à",
-    "assign_done": "{{project}} est maintenant le projet de {{name}}",
     "assign_not_sdlc": "Cette squad a besoin des agents SDLC développeur, relecteur et QA.",
     "assign_workflow_set": "Ce projet utilise déjà un autre workflow. Changez-le d'abord dans les paramètres du projet.",
     "assign_manage": "Gérer le projet",
@@ -1929,7 +1952,6 @@
     "assign_unassign_done": "{{project}} n'est plus le projet de {{name}}",
     "assign_unassign_failed": "Impossible de retirer le projet",
     "assign_squad_has_project": "Cette squad a déjà un projet. Retirez-le d'abord.",
-    "assign_failed": "Impossible d'assigner le projet",
     "backlog_title": "Backlog · {{project}}",
     "backlog_description": "Créez un ticket et assignez-le à {{name}}. Le workflow SDLC démarre quand le lead le prend.",
     "backlog_list": "Tickets du backlog",

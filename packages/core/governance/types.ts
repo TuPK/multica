@@ -53,6 +53,7 @@ export const GOVERNANCE_EVENT_KINDS = [
   "goal_activated",
   "goal_imported",
   "review_published",
+  "squad_handoff",
 ] as const;
 
 export type GovernanceEventKind = (typeof GOVERNANCE_EVENT_KINDS)[number] | "unknown";

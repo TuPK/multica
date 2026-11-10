@@ -1432,6 +1432,30 @@
       "rate": "1시간에 12회 넘게 실행됨"
     }
   },
+  "handoff": {
+    "title": "인계",
+    "not_yet": "아직 인계되지 않았습니다. 다음: {{squad}}.",
+    "pending": "{{squad}}에 인계하기 위한 승인을 기다리는 중입니다.",
+    "handed_off": "{{squad}}에 인계했습니다.",
+    "declined": "{{squad}}로의 인계가 거절되었습니다.",
+    "open_request": "상대 요청 열기",
+    "hand_off": "{{squad}}에 인계",
+    "approve": "승인하고 인계",
+    "decline": "거절",
+    "failed": "요청을 인계하지 못했습니다",
+    "panel_heading": "인계",
+    "panel_target": "완료된 요청을 넘길 스쿼드",
+    "panel_none": "없음",
+    "panel_mode": "방식",
+    "modes": {
+      "off": "끔",
+      "ask": "먼저 묻기",
+      "auto": "자동"
+    },
+    "auto_hint": "이 스쿼드의 리더가 요청하는 즉시, 기다리지 않고 상대 스쿼드의 작업을 시작합니다.",
+    "panel_summary": "완료된 요청을 {{squad}}에 인계합니다({{mode}}).",
+    "save_failed": "인계 설정을 저장하지 못했습니다"
+  },
   "duplicates": {
     "banner_prefix": "중복 원본:",
     "unmark": "중복 아님",
@@ -1764,8 +1788,8 @@
     "board_title": "보드",
     "board_project": "프로젝트",
     "board_all_projects": "모든 프로젝트",
-    "assign_done": "{{identifier}}을(를) {{name}}에게 할당했습니다",
-    "assign_failed": "이슈를 할당하지 못했습니다",
+    "assign_done": "{{project}} 프로젝트가 이제 {{name}} 담당입니다",
+    "assign_failed": "프로젝트를 할당하지 못했습니다",
     "panel_work": "작업",
     "work_search": "이슈 검색",
     "work_empty": "이슈가 없습니다",
@@ -1847,7 +1871,6 @@
     "assign_submit_mapped": "할당하고 이슈 이동",
     "assign_mapping_intro": "SDLC 워크플로에 없는 상태의 이슈가 있습니다. 이동할 상태를 고르세요.",
     "assign_mapping_row": "{{status}} 상태의 이슈 {{count}}개 이동 대상",
-    "assign_done": "{{project}} 프로젝트가 이제 {{name}} 담당입니다",
     "assign_not_sdlc": "이 스쿼드에는 SDLC 개발자, 리뷰어, QA 에이전트가 필요합니다.",
     "assign_workflow_set": "이 프로젝트는 이미 다른 워크플로를 사용합니다. 먼저 프로젝트 설정에서 변경하세요.",
     "assign_manage": "프로젝트 관리",
@@ -1857,7 +1880,6 @@
     "assign_unassign_done": "{{project}}은(는) 더 이상 {{name}}의 프로젝트가 아닙니다",
     "assign_unassign_failed": "프로젝트 할당을 해제하지 못했습니다",
     "assign_squad_has_project": "이 스쿼드에는 이미 프로젝트가 있습니다. 먼저 할당을 해제하세요.",
-    "assign_failed": "프로젝트를 할당하지 못했습니다",
     "backlog_title": "백로그 · {{project}}",
     "backlog_description": "이슈를 만들어 {{name}}에게 할당하세요. 리더가 이슈를 받으면 SDLC 워크플로가 시작됩니다.",
     "backlog_list": "백로그 이슈",

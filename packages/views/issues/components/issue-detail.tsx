@@ -119,6 +119,7 @@ import { IssueAgentHeaderChip } from "./issue-agent-header-chip";
 import { IssueWakeupHeaderChip } from "./issue-wakeup-header-chip";
 import { ExecutionLogSection } from "./execution-log-section";
 import { WakeupsSection } from "./wakeups-section";
+import { HandoffSection } from "./handoff-section";
 import { QuickActionsSection } from "./quick-actions-section";
 import { PluginPanelSection } from "../../plugins";
 import { PullRequestsSection } from "./pull-requests-section";
@@ -3110,6 +3111,8 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
         closed={["done", "closed"].includes(resolveStatusCategory(issue.status))}
         defaultAgentId={issue.assignee_type === "agent" ? (issue.assignee_id ?? undefined) : undefined}
       />
+
+      {issue.assignee_type === "squad" ? <HandoffSection issueId={issue.id} /> : null}
 
       <PluginPanelSection issueId={issue.id} />
 

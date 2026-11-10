@@ -1432,6 +1432,30 @@
       "rate": "1 小時內觸發超過 12 次"
     }
   },
+  "handoff": {
+    "title": "移交",
+    "not_yet": "尚未移交。下一站：{{squad}}。",
+    "pending": "等待核准後移交給 {{squad}}。",
+    "handed_off": "已移交給 {{squad}}。",
+    "declined": "移交給 {{squad}} 已被拒絕。",
+    "open_request": "開啟對方的需求",
+    "hand_off": "移交給 {{squad}}",
+    "approve": "核准並移交",
+    "decline": "拒絕",
+    "failed": "無法移交該需求",
+    "panel_heading": "移交",
+    "panel_target": "把完成的需求交給",
+    "panel_none": "不移交",
+    "panel_mode": "方式",
+    "modes": {
+      "off": "關閉",
+      "ask": "先問我",
+      "auto": "自動"
+    },
+    "auto_hint": "本小隊負責人一提出，就立即啟動對方小隊的工作，不再等你。",
+    "panel_summary": "把完成的需求交給 {{squad}}（{{mode}}）。",
+    "save_failed": "無法儲存移交設定"
+  },
   "duplicates": {
     "banner_prefix": "重複於",
     "unmark": "不是重複",
@@ -1764,8 +1788,8 @@
     "board_title": "看板",
     "board_project": "專案",
     "board_all_projects": "所有專案",
-    "assign_done": "已將 {{identifier}} 指派給 {{name}}",
-    "assign_failed": "無法指派該任務",
+    "assign_done": "{{project}} 現在是 {{name}} 的專案",
+    "assign_failed": "無法指派專案",
     "panel_work": "工作",
     "work_search": "搜尋任務",
     "work_empty": "尚無任務",
@@ -1847,7 +1871,6 @@
     "assign_submit_mapped": "指派並移動議題",
     "assign_mapping_intro": "部分議題的狀態不在 SDLC 工作流中。請選擇它們的移動目標。",
     "assign_mapping_row": "{{status}} 狀態的 {{count}} 個議題移至",
-    "assign_done": "{{project}} 現在是 {{name}} 的專案",
     "assign_not_sdlc": "此小組需要 SDLC 開發、審查和 QA 代理。",
     "assign_workflow_set": "該專案已使用其他工作流。請先在專案設定中變更。",
     "assign_manage": "管理專案",
@@ -1857,7 +1880,6 @@
     "assign_unassign_done": "{{project}} 不再是 {{name}} 的專案",
     "assign_unassign_failed": "無法取消指派專案",
     "assign_squad_has_project": "這個小組已有一個專案，請先取消指派。",
-    "assign_failed": "無法指派專案",
     "backlog_title": "待辦 · {{project}}",
     "backlog_description": "建立議題並指派給 {{name}}。負責人接手後，SDLC 工作流開始執行。",
     "backlog_list": "待辦議題",

@@ -1432,6 +1432,30 @@
       "rate": "1 時間に 12 回を超えて起動"
     }
   },
+  "handoff": {
+    "title": "引き継ぎ",
+    "not_yet": "まだ引き継がれていません。次: {{squad}}。",
+    "pending": "{{squad}}への引き継ぎの承認待ちです。",
+    "handed_off": "{{squad}}に引き継ぎました。",
+    "declined": "{{squad}}への引き継ぎは却下されました。",
+    "open_request": "相手の依頼を開く",
+    "hand_off": "{{squad}}に引き継ぐ",
+    "approve": "承認して引き継ぐ",
+    "decline": "却下",
+    "failed": "依頼を引き継げませんでした",
+    "panel_heading": "引き継ぎ",
+    "panel_target": "完了した依頼の引き継ぎ先",
+    "panel_none": "なし",
+    "panel_mode": "方法",
+    "modes": {
+      "off": "オフ",
+      "ask": "先に確認",
+      "auto": "自動"
+    },
+    "auto_hint": "このスクワッドのリーダーが依頼した時点で、待たずに相手スクワッドの作業を開始します。",
+    "panel_summary": "完了した依頼を{{squad}}に引き継ぎます（{{mode}}）。",
+    "save_failed": "引き継ぎ設定を保存できませんでした"
+  },
   "duplicates": {
     "banner_prefix": "重複元:",
     "unmark": "重複ではない",
@@ -1764,8 +1788,8 @@
     "board_title": "ボード",
     "board_project": "プロジェクト",
     "board_all_projects": "すべてのプロジェクト",
-    "assign_done": "{{identifier}} を {{name}} に割り当てました",
-    "assign_failed": "イシューを割り当てられませんでした",
+    "assign_done": "{{project}} が {{name}} のプロジェクトになりました",
+    "assign_failed": "プロジェクトを割り当てできませんでした",
     "panel_work": "作業",
     "work_search": "イシューを検索",
     "work_empty": "イシューはありません",
@@ -1847,7 +1871,6 @@
     "assign_submit_mapped": "割り当てて課題を移動",
     "assign_mapping_intro": "SDLC ワークフローにないステータスの課題があります。移動先を選んでください。",
     "assign_mapping_row": "{{status}} の課題 {{count}} 件の移動先",
-    "assign_done": "{{project}} が {{name}} のプロジェクトになりました",
     "assign_not_sdlc": "このスクワッドには SDLC の開発・レビュー・QA エージェントが必要です。",
     "assign_workflow_set": "このプロジェクトは別のワークフローを使っています。先にプロジェクト設定で変更してください。",
     "assign_manage": "プロジェクトを管理",
@@ -1857,7 +1880,6 @@
     "assign_unassign_done": "{{project}} は {{name}} のプロジェクトではなくなりました",
     "assign_unassign_failed": "プロジェクトの割り当てを解除できませんでした",
     "assign_squad_has_project": "このチームにはすでにプロジェクトがあります。先に割り当てを解除してください。",
-    "assign_failed": "プロジェクトを割り当てできませんでした",
     "backlog_title": "バックログ · {{project}}",
     "backlog_description": "課題を作成して {{name}} に割り当てます。リーダーが受け取ると SDLC ワークフローが始まります。",
     "backlog_list": "バックログの課題",

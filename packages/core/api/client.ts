@@ -517,6 +517,13 @@ import { governanceEventSearch } from "../governance/params";
 import { parseHealthReport, type HealthReport } from "../governance/health";
 import { parseSquadAutonomy, type SetSquadAutonomyRequest, type SquadAutonomy } from "../governance/autonomy";
 import {
+  parseIssueHandoff,
+  parseSquadHandoffRule,
+  type IssueHandoff,
+  type SetSquadHandoffRuleRequest,
+  type SquadHandoffRule,
+} from "../squads/handoff";
+import {
   parseApprovalPolicies,
   parseApprovalPolicy,
   parsePolicyAutoApprovals,
@@ -6754,6 +6761,39 @@ export class ApiClient {
       body: JSON.stringify(data),
     });
     return parseSquadAutonomy(raw, "PUT /api/squads/:id/autonomy");
+  }
+
+  /** A squad's handoff rule: where it hands its finished requests, and how. */
+  async getSquadHandoffRule(squadId: string): Promise<SquadHandoffRule> {
+    const raw = await this.fetch<unknown>(`/api/squads/${squadId}/handoff-rule`);
+    return parseSquadHandoffRule(raw, "GET /api/squads/:id/handoff-rule");
+  }
+
+  /** Saves a squad's handoff rule, or removes it with no target. Owners and admins only. */
+  async setSquadHandoffRule(squadId: string, data: SetSquadHandoffRuleRequest): Promise<SquadHandoffRule> {
+    const raw = await this.fetch<unknown>(`/api/squads/${squadId}/handoff-rule`, {
+      method: "PUT",
+      body: JSON.stringify(data.target_squad_id ? data : {}),
+    });
+    return parseSquadHandoffRule(raw, "PUT /api/squads/:id/handoff-rule");
+  }
+
+  /** Where a request stands in its squad's handoff. */
+  async getIssueHandoff(issueId: string): Promise<IssueHandoff> {
+    const raw = await this.fetch<unknown>(`/api/issues/${issueId}/handoff`);
+    return parseIssueHandoff(raw, "GET /api/issues/:id/handoff");
+  }
+
+  /** Hands a request to the squad its rule names, now. Owners and admins only. */
+  async handOffIssue(issueId: string): Promise<IssueHandoff> {
+    const raw = await this.fetch<unknown>(`/api/issues/${issueId}/handoff`, { method: "POST", body: JSON.stringify({}) });
+    return parseIssueHandoff(raw, "POST /api/issues/:id/handoff");
+  }
+
+  /** Declines a pending handoff. Owners and admins only. */
+  async declineIssueHandoff(issueId: string): Promise<IssueHandoff> {
+    const raw = await this.fetch<unknown>(`/api/issues/${issueId}/handoff/decline`, { method: "POST", body: JSON.stringify({}) });
+    return parseIssueHandoff(raw, "POST /api/issues/:id/handoff/decline");
   }
 
   /** The workspace's standing approvals, with this week's counts and flags (spec 4.4). */
