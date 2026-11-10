@@ -1,3 +1,5 @@
+import { KV_ROLE_AGENT_INSTRUCTIONS } from "../squads/kitviet-agent-instructions";
+
 /**
  * Ready-made instructions a user can start an agent from in the Configure
  * step. Only the instructions text lives here; names and descriptions are
@@ -38,7 +40,12 @@ export interface AgentInstructionTemplate {
     | "finance_lead"
     | "people_performance"
     | "people_reviewer"
-    | "floor_chief";
+    | "floor_chief"
+    | "kv_lead"
+    | "kv_collector"
+    | "kv_drafter"
+    | "kv_gate"
+    | "kv_handover";
   instructions: string;
 }
 
@@ -948,6 +955,46 @@ What you do not do:
 - You do not report on individuals. Report on squads.
 
 Report, as a comment on your routine's issue or on the Secretary's request: the brief's title and link, the squads you covered, and what you could not check.
+
+${SHARED_BLOCKS}
+
+${WORKING_RULES}`,
+    },
+    {
+      id: "kv_lead",
+      instructions: `${KV_ROLE_AGENT_INSTRUCTIONS.kv_lead}
+
+${SHARED_BLOCKS}
+
+${WORKING_RULES}`,
+    },
+    {
+      id: "kv_collector",
+      instructions: `${KV_ROLE_AGENT_INSTRUCTIONS.kv_collector}
+
+${SHARED_BLOCKS}
+
+${WORKING_RULES}`,
+    },
+    {
+      id: "kv_drafter",
+      instructions: `${KV_ROLE_AGENT_INSTRUCTIONS.kv_drafter}
+
+${SHARED_BLOCKS}
+
+${WORKING_RULES}`,
+    },
+    {
+      id: "kv_gate",
+      instructions: `${KV_ROLE_AGENT_INSTRUCTIONS.kv_gate}
+
+${SHARED_BLOCKS}
+
+${WORKING_RULES}`,
+    },
+    {
+      id: "kv_handover",
+      instructions: `${KV_ROLE_AGENT_INSTRUCTIONS.kv_handover}
 
 ${SHARED_BLOCKS}
 
