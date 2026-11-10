@@ -31,6 +31,20 @@
       "replace": ""
     },
     {
+      "name": "codex-bullet",
+      "optional": true,
+      "pattern": "^[ \\t]*(?:\\d+\\.|-) \\*\\*Codex:\\*\\*[^\\n]*\\n",
+      "flags": "gm",
+      "replace": ""
+    },
+    {
+      "name": "claude-code-bullet",
+      "optional": true,
+      "pattern": "^[ \\t]*(?:\\d+\\.|-) \\*\\*Claude Code:\\*\\*[^\\n]*\\n",
+      "flags": "gm",
+      "replace": ""
+    },
+    {
       "name": "python-script-path",
       "pattern": "python scripts/([\\w.-]+\\.py)",
       "flags": "g",

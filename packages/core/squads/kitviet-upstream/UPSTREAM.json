@@ -2,5 +2,17 @@
   "repo": "mochistudio-vn/kitviet",
   "ref": "faee4f14cd21672325a7f442b19c7239a5d7f152",
   "license": "MIT",
-  "fetchedAt": "2026-11-10"
+  "fetchedAt": "2026-11-10",
+  "trades": [
+    "phap-ly",
+    "ke-toan",
+    "kinh-doanh",
+    "marketing",
+    "hanh-chinh-van-phong",
+    "nhan-su",
+    "bao-chi-truyen-thong",
+    "ban-hang-online",
+    "hoc-thuat-nghien-cuu",
+    "cong-nghe-thong-tin"
+  ]
 }

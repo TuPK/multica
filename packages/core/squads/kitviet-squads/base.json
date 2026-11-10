@@ -1,0 +1,28 @@
+{
+  "$comment": "Shared base of the Kit Viet squad configs. Each squad is one file in this folder (kitviet-squads/<id>.json), read by scripts/generate-kitviet-pack.mjs; the file name is the squad id and the pack id. Spec: docs/engineering/kitviet-squads.md sections 5.5, 5.10, 6 and F17. sharedBuiltinSkills: the skills every squad loads (common pack, neutral wording). sharedAgentPhrases: the phrase a shared body uses for an upstream agent it cannot name.",
+  "sharedBuiltinSkills": [
+    "an-thong-tin-nhay-cam",
+    "kiem-tra-chong-bia",
+    "nghien-cuu-nguon-uy-tin",
+    "tom-tat-tai-lieu",
+    "viet-bao-cao",
+    "viet-email",
+    "viet-de-cuong",
+    "viet-tin-nhan-cong-viec",
+    "tao-bang-kiem",
+    "lap-ke-hoach-tuan",
+    "ghi-chu-hop",
+    "xuat-word",
+    "xuat-excel",
+    "xuat-pdf",
+    "xuat-pptx",
+    "kv-delivery-core"
+  ],
+  "sharedAgentPhrases": {
+    "soat-so-lieu": "vai gác số liệu của squad",
+    "kiem-dinh-ban-giao": "vai kiểm bàn giao của squad",
+    "soat-bao-mat": "vai soát bảo mật của squad",
+    "doc-nhieu-tai-lieu": "vai đọc nhiều tài liệu của squad",
+    "nghien-cuu-nguon": "vai tra cứu nguồn của squad"
+  }
+}

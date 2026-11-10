@@ -1,10 +1,13 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { KITVIET_EXTENSIONS } from "./kitviet-skills-data/extensions";
+import { KITVIET_PACK_LOADERS } from "./kitviet-skills-data/packs";
 import { KITVIET_SQUADS } from "./kitviet-skills-data/squads";
 
 // Each pack chunk is stubbed, and the stub records its import. A test gets a fresh module registry
 // with fresh stubs, so each call below shows exactly which chunks it pulled in.
-const CHUNKS = ["common", "admin", "b2b", "marketing", "legal", "accounting"] as const;
+// Every pack the configs generate (common, the squads, the extensions), so a new config is covered too.
+const CHUNKS = Object.keys(KITVIET_PACK_LOADERS);
 const loaded = vi.hoisted(() => ({ chunks: [] as string[] }));
 
 // The legal squad's first role with a body, so the role loader finds an agent in its stub.
@@ -58,6 +61,20 @@ describe("kitvietPackOf", () => {
       expect(kitvietPacks.kitvietPackOf(squad.templateId), squad.templateId).toBe(squad.pack);
     }
     expect(kitvietPacks.kitvietPackOf("sdlc_greenfield")).toBeUndefined();
+  });
+
+  it("maps each extension target to its extension pack (spec 7)", () => {
+    for (const extension of KITVIET_EXTENSIONS) {
+      for (const target of extension.targets) {
+        expect(kitvietPacks.kitvietPackOf(target), target).toBe(extension.pack);
+      }
+    }
+  });
+
+  it("loads an extension pack with common, and nothing else", async () => {
+    const extension = KITVIET_EXTENSIONS[0]!;
+    await kitvietPacks.loadKitvietSkillPacks(extension.pack);
+    expect(loaded.chunks.sort()).toEqual(["common", extension.pack].sort());
   });
 });
 

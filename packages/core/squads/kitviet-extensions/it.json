@@ -1,0 +1,18 @@
+{
+  "$comment": "Extension pack (spec 7): Kit Viet skills attached to existing squads (targets), not a squad of its own. Listed skills plus their kv: dependency closure are generated into the pack named by this file.",
+  "name": "Product Analysis, Planning, Build (CNTT)",
+  "trade": "cong-nghe-thong-tin",
+  "targets": [
+    "product_analysis",
+    "planning",
+    "build"
+  ],
+  "skills": [
+    "dac-ta-yeu-cau-srs",
+    "viet-user-story-tieu-chi",
+    "sinh-test-case-tu-yeu-cau",
+    "chuyen-yeu-cau-khach-thanh-task",
+    "release-note-song-ngu",
+    "soat-du-lieu-ca-nhan-phan-mem"
+  ]
+}

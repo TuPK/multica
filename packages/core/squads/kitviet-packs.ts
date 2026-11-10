@@ -1,5 +1,7 @@
 import type { BuiltinSkill } from "./sdlc-skills-data";
 import type { KitvietAgent } from "./kitviet-skills-data/types";
+import { KITVIET_EXTENSIONS } from "./kitviet-skills-data/extensions";
+import { KITVIET_PACK_LOADERS as GENERATED_PACK_LOADERS } from "./kitviet-skills-data/packs";
 import { KITVIET_SQUADS } from "./kitviet-skills-data/squads";
 import { findKitvietRole, kvLeadInstructions, kvRoleInstructionsWithBody, kvRolePack } from "./kitviet-squad-roles";
 
@@ -11,21 +13,21 @@ export interface KitvietPackModule {
 
 /**
  * One chunk per pack, so a squad that uses none of them never downloads them. The quickstart is the
- * only caller, and only when it attaches a Kit Viet skill or creates a Kit Viet agent. The keys are
- * pack ids (the squad ids in kitviet-squads.json); `common` holds the skills every squad shares.
+ * only caller, and only when it attaches a Kit Viet skill or creates a Kit Viet agent. The loaders are
+ * generated (kitviet-skills-data/packs.ts) from the configs: a pack id is a squad id, an extension id,
+ * or `common`, which holds the skills every squad shares.
  */
-const KITVIET_PACK_LOADERS: Readonly<Record<string, () => Promise<KitvietPackModule>>> = {
-  common: () => import("./kitviet-skills-data/common"),
-  admin: () => import("./kitviet-skills-data/admin"),
-  b2b: () => import("./kitviet-skills-data/b2b"),
-  marketing: () => import("./kitviet-skills-data/marketing"),
-  legal: () => import("./kitviet-skills-data/legal"),
-  accounting: () => import("./kitviet-skills-data/accounting"),
-};
+const KITVIET_PACK_LOADERS: Readonly<Record<string, () => Promise<KitvietPackModule>>> = GENERATED_PACK_LOADERS;
 
-/** The pack id of the Kit Viet squad with this template id, or undefined for any other template. */
+/**
+ * The pack of the Kit Viet squad with this template id, or of the extension that attaches to this
+ * target (a SquadTemplate id or a company squad key, spec 7). Undefined for any other template.
+ */
 export function kitvietPackOf(templateId: string): string | undefined {
-  return KITVIET_SQUADS.find((squad) => squad.templateId === templateId)?.pack;
+  return (
+    KITVIET_SQUADS.find((squad) => squad.templateId === templateId)?.pack ??
+    KITVIET_EXTENSIONS.find((extension) => extension.targets.includes(templateId))?.pack
+  );
 }
 
 /**

@@ -1,0 +1,87 @@
+{
+  "order": 5,
+  "templateId": "kv_accounting",
+  "trade": "ke-toan",
+  "name": "Accounting & Tax (Kế toán, thuế)",
+  "agents": {
+    "lap-ke-hoach-dieu-phoi": {
+      "role": "acct_lead",
+      "kind": "kv_lead"
+    },
+    "gom-chung-tu-ke-toan": {
+      "role": "acct_collector",
+      "kind": "kv_collector"
+    },
+    "tra-cuu-van-ban-thue": {
+      "role": "acct_tax_research",
+      "kind": "kv_collector"
+    },
+    "lap-so-lieu-doi-chieu": {
+      "role": "acct_reconciler",
+      "kind": "kv_drafter"
+    },
+    "soan-ho-so-thue": {
+      "role": "acct_tax_drafter",
+      "kind": "kv_drafter"
+    },
+    "soat-chung-tu-hoa-don": {
+      "role": "acct_voucher_gate",
+      "kind": "kv_gate"
+    },
+    "soat-so-lieu": {
+      "role": "acct_numbers_gate",
+      "kind": "kv_gate"
+    },
+    "soat-tuan-thu-thue": {
+      "role": "acct_tax_gate",
+      "kind": "kv_gate"
+    },
+    "kiem-dinh-ban-giao": {
+      "role": "acct_handover",
+      "kind": "kv_handover"
+    }
+  },
+  "builtinSkills": [
+    "day-chuyen-khoa-so-thang",
+    "doi-chieu-cong-no",
+    "doi-chieu-so-phu-ngan-hang",
+    "kiem-tra-hoa-don-dau-vao",
+    "chuan-bi-to-khai-gtgt",
+    "chuan-bi-so-lieu-tncn-tndn",
+    "cong-van-giai-trinh-thue",
+    "doc-bctc-cho-chu-dn",
+    "lich-han-nop-thue",
+    "goi-y-dinh-khoan",
+    "soat-chi-phi-duoc-tru",
+    "tinh-luong-thue-tncn-bhxh"
+  ],
+  "leaderSkills": [
+    "kv-squad-lead",
+    "kv-company-profile"
+  ],
+  "roleSkills": {
+    "acct_reconciler": [
+      "thu-hoi-no-qua-han",
+      "bang-ke-thanh-toan-khong-tien-mat",
+      "thu-xac-nhan-so-du-kiem-toan"
+    ],
+    "acct_tax_drafter": [
+      "thuyet-minh-bctc-don-gian",
+      "phan-tich-bien-dong-bctc",
+      "du-bao-dong-tien-13-tuan"
+    ],
+    "acct_tax_research": [
+      "nghien-cuu-van-ban-thue"
+    ]
+  },
+  "promoted": [
+    "goi-y-dinh-khoan",
+    "soat-chi-phi-duoc-tru",
+    "tinh-luong-thue-tncn-bhxh"
+  ],
+  "deferredSkills": [
+    "chuan-bi-kiem-toan-bctc",
+    "tra-loi-thu-quan-ly-kiem-toan",
+    "ho-kinh-doanh-ke-khai-thue"
+  ]
+}

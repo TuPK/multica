@@ -1,0 +1,71 @@
+{
+  "order": 1,
+  "templateId": "kv_admin",
+  "trade": "hanh-chinh-van-phong",
+  "name": "Office Admin (Hành chính)",
+  "agents": {
+    "lap-ke-hoach-dieu-phoi": {
+      "role": "admin_lead",
+      "kind": "kv_lead"
+    },
+    "gom-ho-so-van-thu": {
+      "role": "admin_files",
+      "kind": "kv_collector"
+    },
+    "tra-cuu-the-thuc-van-ban": {
+      "role": "admin_format_lookup",
+      "kind": "kv_collector"
+    },
+    "soan-van-ban-hanh-chinh": {
+      "role": "admin_drafter",
+      "kind": "kv_drafter"
+    },
+    "soat-the-thuc-van-ban": {
+      "role": "admin_format_gate",
+      "kind": "kv_gate"
+    },
+    "soat-so-lieu": {
+      "role": "admin_numbers_gate",
+      "kind": "kv_gate"
+    },
+    "kiem-dinh-ban-giao": {
+      "role": "admin_handover",
+      "kind": "kv_handover"
+    }
+  },
+  "builtinSkills": [
+    "day-chuyen-van-ban-hanh-chinh",
+    "soan-cong-van-hanh-chinh",
+    "soan-quyet-dinh-noi-bo",
+    "soan-to-trinh-de-xuat",
+    "soan-thong-bao-hanh-chinh",
+    "soan-quy-che-noi-bo",
+    "so-cong-van-den-di"
+  ],
+  "leaderSkills": [
+    "kv-squad-lead",
+    "kv-company-profile"
+  ],
+  "roleSkills": {
+    "admin_lead": [
+      "quan-ly-lich-giam-doc"
+    ],
+    "admin_drafter": [
+      "soan-don-tu",
+      "so-sanh-bao-gia-mua-sam",
+      "chuan-bi-hop-hdqt"
+    ]
+  },
+  "promoted": [],
+  "deferredSkills": [
+    "bao-cao-hanh-chinh-thang",
+    "dat-phong-hop-hau-can",
+    "dat-ve-du-toan-cong-tac",
+    "luu-tru-ho-so-van-phong",
+    "quan-ly-van-phong-pham",
+    "so-tai-san-van-phong",
+    "theo-doi-hop-dong-dich-vu-vp",
+    "tiep-khach-thu-cam-on",
+    "to-chuc-su-kien-hoi-nghi"
+  ]
+}

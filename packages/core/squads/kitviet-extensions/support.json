@@ -1,0 +1,14 @@
+{
+  "$comment": "Extension pack (spec 7): Kit Viet skills attached to existing squads (targets), not a squad of its own. Listed skills plus their kv: dependency closure are generated into the pack named by this file.",
+  "name": "Support (CSKH)",
+  "trade": "kinh-doanh",
+  "targets": [
+    "support"
+  ],
+  "skills": [
+    "kich-ban-tong-dai-cskh",
+    "phan-hoi-khieu-nai-cskh",
+    "phan-tich-nps-csat",
+    "account-plan-khach-lon"
+  ]
+}

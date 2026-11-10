@@ -1,0 +1,79 @@
+{
+  "order": 4,
+  "templateId": "kv_legal",
+  "trade": "phap-ly",
+  "name": "Legal & Contracts (Pháp lý)",
+  "agents": {
+    "lap-ke-hoach-dieu-phoi": {
+      "role": "legal_lead",
+      "kind": "kv_lead"
+    },
+    "doc-ho-so-phap-ly": {
+      "role": "legal_reader",
+      "kind": "kv_collector"
+    },
+    "tra-cuu-nguon-luat-chinh-thuc": {
+      "role": "legal_sources",
+      "kind": "kv_collector"
+    },
+    "soan-thao-van-ban-phap-ly": {
+      "role": "legal_drafter",
+      "kind": "kv_drafter"
+    },
+    "soat-dien-giai-hop-dong": {
+      "role": "legal_reading_gate",
+      "kind": "kv_gate"
+    },
+    "soat-can-cu-phap-ly": {
+      "role": "legal_citation_gate",
+      "kind": "kv_gate"
+    },
+    "kiem-tra-hieu-luc-van-ban": {
+      "role": "legal_validity",
+      "kind": "kv_collector"
+    },
+    "kiem-dinh-ban-giao": {
+      "role": "legal_handover",
+      "kind": "kv_handover"
+    }
+  },
+  "builtinSkills": [
+    "day-chuyen-ra-soat-hop-dong",
+    "ra-soat-hop-dong-theo-vi-the",
+    "memo-phap-ly-noi-bo",
+    "so-quan-ly-hop-dong",
+    "soan-cong-van-phap-ly",
+    "lich-thoi-han-phap-ly",
+    "tra-cuu-van-ban-phap-luat",
+    "dong-thoi-gian-vu-viec"
+  ],
+  "leaderSkills": [
+    "kv-squad-lead",
+    "kv-company-profile"
+  ],
+  "roleSkills": {
+    "legal_drafter": [
+      "ra-soat-thoa-thuan-bao-mat",
+      "so-sanh-phien-ban-hop-dong",
+      "soan-bien-ban-thanh-ly-hop-dong",
+      "soan-hop-dong-tu-mau",
+      "soan-don-tu"
+    ],
+    "legal_sources": [
+      "de-cuong-nghien-cuu-phap-ly",
+      "tom-tat-ban-an"
+    ],
+    "legal_reader": [
+      "checklist-tham-dinh-phap-ly"
+    ]
+  },
+  "promoted": [
+    "dong-thoi-gian-vu-viec"
+  ],
+  "deferredSkills": [
+    "chuan-bi-dam-phan-hoa-giai",
+    "dao-tao-phap-ly-noi-bo",
+    "ho-so-thay-doi-dang-ky-doanh-nghiep",
+    "khung-chinh-sach-du-lieu-ca-nhan"
+  ]
+}

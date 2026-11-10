@@ -1,54 +1,69 @@
 // @vitest-environment node
 // Guards the generated Kit Viet pack: no leftovers from the upstream (Pro ads, platform notes, the
-// shared run folder, install hints, versioned file names), references that resolve inside each squad,
-// one VERDICT line per gate and one severity vocabulary, legal citations that are patched or listed as
-// stable, sections that survive the cleanup, every patch applied, names that match their folders and
-// their sanitized slugs, size ceilings, and freshness against the generator.
+// shared run folder, install hints, versioned file names), references that resolve inside each squad and
+// extension, one VERDICT line per gate and one severity vocabulary, legal citations that are patched or
+// listed as stable, sections that survive the cleanup, every patch applied, names that match their folders
+// and their sanitized slugs, size ceilings, and freshness against the generator. The packs and configs are
+// read from the generated loaders and the config folders, so a new squad or extension is covered as it lands.
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { COMPANY_SQUAD_KEYS } from "./company-template";
 import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
 import { KV_ROLE_KINDS, composeKvAgentInstructions } from "./kitviet-agent-instructions";
-import * as adminPack from "./kitviet-skills-data/admin";
-import * as b2bPack from "./kitviet-skills-data/b2b";
-import * as accountingPack from "./kitviet-skills-data/accounting";
-import * as commonPack from "./kitviet-skills-data/common";
-import * as legalPack from "./kitviet-skills-data/legal";
-import * as marketingPack from "./kitviet-skills-data/marketing";
+import { KITVIET_EXTENSIONS } from "./kitviet-skills-data/extensions";
+import { KITVIET_PACK_LOADERS } from "./kitviet-skills-data/packs";
 import { KITVIET_SQUADS } from "./kitviet-skills-data/squads";
 import type { KitvietAgent, KitvietSkill, KitvietSquad } from "./kitviet-skills-data/types";
+import { SQUAD_TEMPLATES } from "./templates";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const upstreamDir = join(here, "kitviet-upstream");
 const patchesDir = join(here, "kitviet-patches");
 const authoredDir = join(here, "kitviet-skills");
-const squadsConfig = JSON.parse(readFileSync(join(here, "kitviet-squads.json"), "utf8")) as {
-  sharedBuiltinSkills: string[];
-  squads: Record<
-    string,
-    { trade: string; builtinSkills: string[]; roleSkills?: Record<string, string[]>; deferredSkills?: string[] }
-  >;
-};
+
+// The config files: one per squad (base.json is the shared part) and one per extension.
+interface SquadConfigFile {
+  id: string;
+  trade: string;
+  builtinSkills: string[];
+  leaderSkills: string[];
+  roleSkills?: Record<string, string[]>;
+  deferredSkills?: string[];
+}
+interface ExtensionConfigFile {
+  id: string;
+  trade: string;
+  targets: string[];
+  skills: string[];
+}
+const readConfigFolder = <T extends { id: string }>(folder: string): T[] =>
+  readdirSync(join(here, folder))
+    .filter((file) => file.endsWith(".json") && file !== "base.json")
+    .sort()
+    .map((file) => ({ id: file.replace(/\.json$/, ""), ...(JSON.parse(readFileSync(join(here, folder, file), "utf8")) as Omit<T, "id">) }) as T);
+const squadsConfig = readConfigFolder<SquadConfigFile>("kitviet-squads");
+const extensionsConfig = readConfigFolder<ExtensionConfigFile>("kitviet-extensions");
+const configOf = new Map(squadsConfig.map((config) => [config.id, config]));
 const rewrites = JSON.parse(readFileSync(join(here, "kitviet-rewrites.json"), "utf8")) as {
   droppedSkills: string[];
   renamedSkills: Record<string, Record<string, string>>;
 };
 
-const PACKS = [
-  { id: "common", module: commonPack },
-  { id: "admin", module: adminPack },
-  { id: "b2b", module: b2bPack },
-  { id: "marketing", module: marketingPack },
-  { id: "legal", module: legalPack },
-  { id: "accounting", module: accountingPack },
-] as const;
+// The trades the configs use: each squad's trade and each extension's trade.
+const configTrades = [...new Set([...squadsConfig, ...extensionsConfig].map((config) => config.trade))];
 
-const SQUAD_PACKS = PACKS.filter((pack) => pack.id !== "common");
+// Every pack the generator writes, loaded through the generated loaders.
+const extensionIds = new Set(extensionsConfig.map((extension) => extension.id));
+const PACKS: { id: string; module: { KITVIET_BUILTIN_SKILLS: readonly KitvietSkill[]; KITVIET_AGENTS: readonly KitvietAgent[] } }[] =
+  await Promise.all(Object.entries(KITVIET_PACK_LOADERS).map(async ([id, load]) => ({ id, module: await load() })));
+const SQUAD_PACKS = PACKS.filter((pack) => pack.id !== "common" && !extensionIds.has(pack.id));
+const EXTENSION_PACKS = PACKS.filter((pack) => extensionIds.has(pack.id));
 
-// Every skill in every pack, and the squad config of each squad pack.
+// Every skill in every pack, and the generated squad of each squad pack.
 const allSkills: KitvietSkill[] = PACKS.flatMap((pack) => [...pack.module.KITVIET_BUILTIN_SKILLS]);
 const skillByName = new Map(allSkills.map((skill) => [skill.name, skill]));
 const squadConfigs = new Map<string, KitvietSquad>(KITVIET_SQUADS.map((squad) => [squad.pack, squad]));
@@ -157,22 +172,102 @@ describe("references resolve inside each squad (F17)", () => {
 });
 
 describe("no orphan skills (spec 5.10, K8)", () => {
-  // Every skill a squad pack ships is either attached to the squad or to one of its roles, or it is
-  // named in the squad's deferredSkills (kitviet-squads.json): the P0 list of trade skills that no
-  // squad attaches yet, for import by name. A skill in neither is a leftover.
+  // A squad pack ships only what its config lists: attached to the squad or its roles, or deferred by name
+  // (kitviet-squads/<id>.json). A skill in neither is a leftover. Every skill of a squad trade is shipped by
+  // some pack, so none is lost between configs (a shared trade may have one pack per skill, see below).
   for (const pack of SQUAD_PACKS) {
-    it(`${pack.id}: every skill is attached, or deferred by name`, () => {
-      const config = squadsConfig.squads[pack.id];
+    it(`${pack.id}: every skill it ships is attached, or deferred by name`, () => {
+      const config = configOf.get(pack.id);
       if (!config) throw new Error(`no squad config for ${pack.id}`);
       const squad = squadConfigs.get(pack.id)!;
       const attached = new Set([...squad.builtinSkills, ...squad.leaderSkills, ...Object.values(squad.roleSkills).flat()]);
       const renames = rewrites.renamedSkills[config.trade] ?? {};
       const deferred = new Set((config.deferredSkills ?? []).map((folder) => `kv--${renames[folder] ?? folder}`));
-      const trade = pack.module.KITVIET_BUILTIN_SKILLS.map((skill) => skill.name);
-      const orphans = trade.filter((name) => !attached.has(name) && !deferred.has(name));
+      const orphans = pack.module.KITVIET_BUILTIN_SKILLS.map((skill) => skill.name).filter((name) => !attached.has(name) && !deferred.has(name));
       expect(orphans).toEqual([]);
       const stale = [...deferred].filter((name) => attached.has(name));
       expect(stale).toEqual([]);
+    });
+  }
+
+  for (const config of squadsConfig) {
+    it(`${config.id}: every skill of its trade is shipped by some pack`, () => {
+      const dir = join(upstreamDir, config.trade, "skills");
+      const renames = rewrites.renamedSkills[config.trade] ?? {};
+      const folders = readdirSync(dir, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory() && !rewrites.droppedSkills.includes(entry.name))
+        .map((entry) => entry.name);
+      const missing = folders.filter((folder) => !skillByName.has(`kv--${renames[folder] ?? folder}`));
+      expect(missing).toEqual([]);
+    });
+  }
+});
+
+describe("extension packs (spec 7)", () => {
+  const squadTemplateIds = new Set<string>(SQUAD_TEMPLATES.map((template) => template.id));
+  const kitvietTemplateIds = new Set(KITVIET_SQUADS.map((squad) => squad.templateId));
+
+  it("has an extension pack for each extension config", () => {
+    expect(EXTENSION_PACKS.map((pack) => pack.id).sort()).toEqual(extensionsConfig.map((extension) => extension.id).sort());
+  });
+
+  it("names only existing squads as targets: a company squad key or a SquadTemplate id", () => {
+    for (const extension of KITVIET_EXTENSIONS) {
+      for (const target of extension.targets) {
+        expect(COMPANY_SQUAD_KEYS.includes(target as (typeof COMPANY_SQUAD_KEYS)[number]) || squadTemplateIds.has(target), target).toBe(true);
+      }
+    }
+  });
+
+  it("gives each target to one extension, and never to a Kit Viet squad", () => {
+    const targets = KITVIET_EXTENSIONS.flatMap((extension) => extension.targets);
+    expect(new Set(targets).size).toBe(targets.length);
+    for (const target of targets) expect(kitvietTemplateIds.has(target), target).toBe(false);
+  });
+
+  for (const config of extensionsConfig) {
+    const pack = EXTENSION_PACKS.find((candidate) => candidate.id === config.id)!;
+    const generated = KITVIET_EXTENSIONS.find((extension) => extension.id === config.id)!;
+    const renames = rewrites.renamedSkills[config.trade] ?? {};
+
+    it(`${config.id}: every listed skill is a skill of its trade, in its pack`, () => {
+      const names = new Set(pack.module.KITVIET_BUILTIN_SKILLS.map((skill) => skill.name));
+      const missing = config.skills.filter((folder) => !names.has(`kv--${renames[folder] ?? folder}`));
+      expect(missing).toEqual([]);
+    });
+
+    it(`${config.id}: attaches only bundles that exist, and its bodies name only those`, () => {
+      const attached = new Set(generated.builtinSkills);
+      const missing = [...attached].filter((name) => !skillByName.has(name));
+      expect(missing).toEqual([]);
+      const dangling = new Set<string>();
+      for (const skill of pack.module.KITVIET_BUILTIN_SKILLS) {
+        for (const match of allTextOf(skill).matchAll(/kv--[a-z0-9-]+/g)) {
+          if (!attached.has(match[0])) dangling.add(match[0]);
+        }
+      }
+      expect([...dangling]).toEqual([]);
+    });
+
+    it(`${config.id}: a skill another pack renders stays out of this pack`, () => {
+      const names = new Set(pack.module.KITVIET_BUILTIN_SKILLS.map((skill) => skill.name));
+      for (const name of generated.cut) {
+        expect(names.has(name), name).toBe(false);
+        expect(skillByName.has(name), name).toBe(true);
+      }
+    });
+
+    it(`${config.id}: its core stays under 140 KB of prose`, () => {
+      const bytes = pack.module.KITVIET_BUILTIN_SKILLS.reduce(
+        (sum, skill) =>
+          sum +
+          Buffer.byteLength(skill.content, "utf8") +
+          skill.files
+            .filter((file) => file.path.endsWith(".md"))
+            .reduce((s, file) => s + Buffer.byteLength(file.content, "utf8"), 0),
+        0,
+      );
+      expect(bytes).toBeLessThan(140 * 1024);
     });
   }
 });
@@ -231,7 +326,8 @@ describe("patches apply exactly once", () => {
 
 describe("names and folders", () => {
   it("names every upstream skill after its folder, or its rename for that trade", () => {
-    const trades = ["common", ...new Set(Object.values(squadsConfig.squads).map((squad) => squad.trade))];
+    // A squad trade ships every folder (the orphan guard); an extension trade ships only what it lists.
+    const trades = ["common", ...new Set(squadsConfig.map((config) => config.trade))];
     for (const trade of trades) {
       const dir = join(upstreamDir, trade, "skills");
       const folders = readdirSync(dir, { withFileTypes: true })
@@ -400,7 +496,7 @@ describe("legal citations point at the Sổ quy định (F8, F23)", () => {
 // every upstream skill carries. Skills with neither section (the authored ones) are not forced to have one.
 describe("sections survive the cleanup (K8)", () => {
   const SECTIONS = ["## Dùng khi nào", "## Không được làm"];
-  const trades = ["common", ...new Set(Object.values(squadsConfig.squads).map((squad) => squad.trade))];
+  const trades = ["common", ...configTrades];
   const upstreamSkills = trades.flatMap((trade) => {
     const dir = join(upstreamDir, trade, "skills");
     return readdirSync(dir, { withFileTypes: true })
@@ -419,7 +515,9 @@ describe("sections survive the cleanup (K8)", () => {
         if (!new RegExp(`^${section}`, "m").test(text)) continue;
         const short = rewrites.renamedSkills[trade]?.[folder] ?? folder;
         const skill = skillByName.get(`kv--${short}`);
-        if (!skill || !skill.content.includes(`\n${section}`)) missing.push(`${trade}/${folder}`);
+        // A folder no pack ships (an extension trade's unlisted skill) has no text to check.
+        if (!skill) continue;
+        if (!skill.content.includes(`\n${section}`)) missing.push(`${trade}/${folder}`);
       }
       expect(missing).toEqual([]);
     });

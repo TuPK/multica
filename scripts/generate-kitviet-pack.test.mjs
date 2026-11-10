@@ -2,7 +2,8 @@
 // removal, the verdict template, and the agent role classes. Run with `node --test`.
 
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -14,6 +15,7 @@ import {
   displayRole,
   generateOutputs,
   indefiniteArticle,
+  loadConfig,
   removeBlocks,
   removeSection,
   resolveReferences,
@@ -180,11 +182,19 @@ describe("generated output", () => {
   const outputs = generateOutputs();
   const dataDir = join(squadsDir, "kitviet-skills-data");
 
-  it("builds the six packs and the shared types", () => {
-    assert.deepEqual(
-      [...outputs.keys()].sort(),
-      ["accounting.ts", "admin.ts", "b2b.ts", "common.ts", "legal.ts", "marketing.ts", "squads.ts", "types.ts"],
-    );
+  it("builds one pack per config file, and the shared files", () => {
+    const ids = (dir) =>
+      readdirSync(join(squadsDir, dir))
+        .filter((file) => file.endsWith(".json") && file !== "base.json")
+        .map((file) => file.replace(/\.json$/, ""));
+    const packs = ["common", ...ids("kitviet-squads"), ...ids("kitviet-extensions")].map((id) => `${id}.ts`);
+    assert.deepEqual([...outputs.keys()].sort(), [...packs, "extensions.ts", "packs.ts", "squads.ts", "types.ts"].sort());
+  });
+
+  it("names every squad and extension in packs.ts, so the loader reaches each pack", () => {
+    const loaders = outputs.get("packs.ts");
+    for (const id of loadConfig(squadsDir).squads.map((squad) => squad.id)) assert.match(loaders, new RegExp(`"${id}": \\(\\) => import`));
+    for (const extension of loadConfig(squadsDir).extensions) assert.match(loaders, new RegExp(`"${extension.id}": \\(\\) => import`));
   });
 
   it("is deterministic: a second build yields the same text", () => {
@@ -237,5 +247,63 @@ describe("display names and the squad header", () => {
     assert.doesNotMatch(squads, /"instructions"/, "squads.ts must hold no agent body");
     assert.doesNotMatch(squads, /"content"/, "squads.ts must hold no skill text");
     assert.match(squads, /"templateId": "kv_b2b"/);
+  });
+});
+
+// Each guard of the config split fires on a bad config (spec 5.5, 5.10, 7). The fixture is a copy of the
+// real base config plus the configs under test, so the other packs stay as they are.
+describe("config guards", () => {
+  const readConfig = (path) => JSON.parse(readFileSync(join(squadsDir, path), "utf8"));
+  // A copy of the real configs (so the global patch and rule checks see every P0 entry), with the files
+  // under test written over it. A test then fails only on the guard it names.
+  function fixture(files) {
+    const root = mkdtempSync(join(tmpdir(), "kv-config-"));
+    for (const folder of ["kitviet-squads", "kitviet-extensions"]) {
+      mkdirSync(join(root, folder), { recursive: true });
+      for (const file of readdirSync(join(squadsDir, folder))) copyFileSync(join(squadsDir, folder, file), join(root, folder, file));
+    }
+    for (const [path, value] of Object.entries(files)) writeFileSync(join(root, path), JSON.stringify(value, null, 2));
+    return root;
+  }
+  const admin = readConfig("kitviet-squads/admin.json");
+  const lead = { "lap-ke-hoach-dieu-phoi": { role: "office_lead", kind: "kv_lead" } };
+  const bareSquad = (id, extra) => ({
+    templateId: `kv_${id}`,
+    name: "Test Squad",
+    trade: "hanh-chinh-van-phong",
+    agents: lead,
+    builtinSkills: [],
+    leaderSkills: ["kv-squad-lead", "kv-company-profile"],
+    roleSkills: {},
+    promoted: [],
+    ...extra,
+  });
+
+  it("rejects a skill listed by a squad and by an extension", () => {
+    const root = fixture({
+      "kitviet-squads/admin.json": admin,
+      "kitviet-extensions/dup.json": { trade: "hanh-chinh-van-phong", targets: ["some_target"], skills: ["soan-don-tu"] },
+    });
+    assert.throws(() => generateOutputs({ configRoot: root }), /soan-don-tu \(hanh-chinh-van-phong\) is listed by squad admin and by extension dup/);
+  });
+
+  it("rejects a pipeline squad with no upstream role besides its lead", () => {
+    const root = fixture({ "kitviet-squads/lonely.json": bareSquad("lonely", {}) });
+    assert.throws(() => generateOutputs({ configRoot: root }), /a pipeline squad needs an upstream role besides the lead/);
+  });
+
+  it("rejects an authored squad that attaches an upstream pipeline skill", () => {
+    const root = fixture({
+      "kitviet-squads/office.json": bareSquad("office", { flow: "authored", builtinSkills: ["day-chuyen-van-ban-hanh-chinh"] }),
+    });
+    assert.throws(() => generateOutputs({ configRoot: root }), /an authored flow cannot attach the upstream pipeline day-chuyen-van-ban-hanh-chinh/);
+  });
+
+  it("accepts an authored squad with only its lead, and gives it an empty pack", () => {
+    const root = fixture({ "kitviet-squads/office.json": bareSquad("office", { flow: "authored" }) });
+    const packs = generateOutputs({ configRoot: root });
+    assert.match(packs.get("packs.ts"), /"office": \(\) => import/);
+    assert.match(packs.get("squads.ts"), /"templateId": "kv_office"/);
+    assert.match(packs.get("office.ts"), /export const KITVIET_BUILTIN_SKILLS: readonly KitvietSkill\[\] = \[\];/);
   });
 });

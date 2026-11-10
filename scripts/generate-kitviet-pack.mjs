@@ -2,24 +2,33 @@
 // Generates packages/core/squads/kitviet-skills-data/*.ts, the Kit Viet skill, agent and squad data
 // the squad quickstart imports, from the vendored upstream in packages/core/squads/kitviet-upstream.
 // Inputs:
-//   kitviet-rewrites.json   the rewrite table (Pro blocks, platform sections, file names, verdicts)
+//   kitviet-rewrites.json        the rewrite table (Pro blocks, platform sections, file names, verdicts)
 //   kitviet-patches/<name>.json  exact-match patches per skill or agent (upstream text)
-//   kitviet-squads.json     per squad: trade folder, agent -> role key and kind, core skills,
-//                           promoted skills, leader skills and role skills (spec 5.10, 6, F17)
-//   kitviet-skills/<kv-*>/  authored skills (spec 5.5), shared by every squad
+//   kitviet-squads/base.json     the shared skills and phrases every squad loads
+//   kitviet-squads/<id>.json     one squad: trade folder, agent -> role key and kind, core skills,
+//                                role skills, deferred skills, leader skills (spec 5.10, 6, F17)
+//   kitviet-extensions/<id>.json one extension pack: skills attached to existing squads (spec 7)
+//   kitviet-skills/<kv-*>/       authored skills (spec 5.5), shared by every squad
+// A new squad or extension is one config file; nothing in this script names a trade or a squad.
 // Run `pnpm generate:kitviet`; `--check` regenerates in memory and fails when the committed output is
 // stale. The upstream is never read from the network.
 //
-// Each squad has its own pack file (admin.ts, ...): its trade skills, its agents rendered with that
-// squad's role keys and agent bodies. squads.ts holds the names and roles of every squad, with no text,
-// so the template registry can import it. The shared skills (common.ts) are rendered
-// once, with neutral wording for agent names, because every squad loads them.
+// Each squad has its own pack file (admin.ts, ...): the trade skills it lists and its agents rendered
+// with that squad's role keys. An extension has a pack file too (support.ts, ...): its listed skills
+// plus their kv: dependency closure, rendered with neutral agent wording (it has no roles). squads.ts
+// and extensions.ts hold names only; packs.ts maps each pack id to its loader. The shared skills
+// (common.ts) are rendered once, with neutral wording for agent names, because every squad loads them.
 //
-// Reference rules (F17), applied per squad to every skill and agent body:
-//   kv:<skill> in the squad's resolution set (core + roleSkills)  -> the bundle name kv--<skill>
-//   kv:<skill> elsewhere                                          -> "nhờ lead tạo yêu cầu"
-//   <agent> mapped to a role of the squad                         -> the role key
-//   <agent> not in the squad                                      -> "nhờ lead"
+// Ownership (one owner per skill): a skill is rendered by one pack only. A squad lists its skills in
+// builtinSkills, roleSkills or deferredSkills; an extension lists its own in skills and the generator
+// adds the skills they reference. Listing one skill in two configs, or a closure member a squad renders,
+// fails the build.
+//
+// Reference rules (F17), applied per pack to every skill and agent body:
+//   kv:<skill> in the pack's resolution set (core + roleSkills; extension: its whole set) -> bundle kv--<skill>
+//   kv:<skill> elsewhere                                                       -> "nhờ lead tạo yêu cầu"
+//   <agent> mapped to a role of the squad                                      -> the role key
+//   <agent> not in the squad                                                   -> "nhờ lead"
 // Guards throw (or list every violation) on leftovers, unknown references and stale data.
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
@@ -35,18 +44,43 @@ const authoredDir = join(squadsDir, "kitviet-skills");
 const outDir = join(squadsDir, "kitviet-skills-data");
 
 const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
-const squadConfig = readJson(join(squadsDir, "kitviet-squads.json"));
 const rewrites = readJson(join(squadsDir, "kitviet-rewrites.json"));
 const upstream = readJson(join(upstreamDir, "UPSTREAM.json"));
 
-// Squads in file order; each one is a pack file named after its id.
-export const SQUADS = Object.entries(squadConfig.squads).map(([id, squad]) => ({ id, ...squad }));
+// The configs of one run: the shared base, one entry per squad (sorted by `order`, then id) and one per
+// extension (sorted by id). The file name without .json is the id, which is also the pack id.
+function readConfigFolder(dir) {
+  if (!existsSync(dir)) throw new Error(`${dir} is missing`);
+  return readdirSync(dir)
+    .filter((file) => file.endsWith(".json"))
+    .sort()
+    .map((file) => ({ id: file.replace(/\.json$/, ""), ...readJson(join(dir, file)) }));
+}
 
-// The shared pack, then one pack per squad. The file name is the pack id.
-export const PACKS = [
-  { id: "common", file: "common", trade: null },
-  ...SQUADS.map((squad) => ({ id: squad.id, file: squad.id, trade: squad.trade })),
-];
+const byId = (a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+
+export function loadConfig(root) {
+  const base = readJson(join(root, "kitviet-squads", "base.json"));
+  const squads = readConfigFolder(join(root, "kitviet-squads"))
+    .filter((squad) => squad.id !== "base")
+    .sort((a, b) => (a.order ?? 1000) - (b.order ?? 1000) || byId(a, b));
+  const extensions = readConfigFolder(join(root, "kitviet-extensions")).sort(byId);
+  return { shared: base.sharedBuiltinSkills, sharedAgentPhrases: base.sharedAgentPhrases ?? {}, squads, extensions };
+}
+
+// The configs of the current run. generateOutputs sets it from its configRoot.
+let kvConfig = loadConfig(squadsDir);
+
+// Every pack the run writes, in order: common, then the squads, then the extensions. A pack's file
+// name is its id.
+export function packList() {
+  return [
+    { id: "common", file: "common" },
+    ...kvConfig.squads.map((squad) => ({ id: squad.id, file: squad.id })),
+    ...kvConfig.extensions.map((extension) => ({ id: extension.id, file: extension.id })),
+  ];
+}
+
 
 // What a reference outside the squad becomes (F17). Parenthesised so it reads inside a sentence.
 const NO_AGENT = "(vai không có trong squad: nhờ lead)";
@@ -379,7 +413,12 @@ export function buildContext({ mode, skills, knownSkills, roles, knownAgents, ag
   return { mode, skills, knownSkills, roles, knownAgents, agentNamesByLength, agentPhrases };
 }
 
-// Loads the upstream folders once: skill folders by key, agent files by name, per pack.
+// Loads the upstream folders once: skill folders by key, agent files by name, per trade and per shared
+// folder. Every trade a config names is loaded; a trade with no folder fails the run.
+function configTrades() {
+  return [...new Set([...kvConfig.squads.map((squad) => squad.trade), ...kvConfig.extensions.map((extension) => extension.trade)])];
+}
+
 function loadUpstream() {
   const dropped = new Set(rewrites.droppedSkills);
   const commonSkills = new Map();
@@ -389,18 +428,18 @@ function loadUpstream() {
   }
   const tradeSkills = new Map();
   const tradeAgents = new Map();
-  for (const squad of SQUADS) {
+  for (const trade of configTrades()) {
+    const dir = join(upstreamDir, trade);
+    if (!existsSync(dir)) throw new Error(`kitviet-upstream/${trade} is missing; vendor it and list it in NOTICE.md`);
     const skills = new Map();
-    for (const folder of listFolders(join(upstreamDir, squad.trade, "skills"))) {
+    for (const folder of listFolders(join(dir, "skills"))) {
       if (dropped.has(folder)) continue;
-      skills.set(folder, { dir: join(upstreamDir, squad.trade, "skills", folder) });
+      skills.set(folder, { dir: join(dir, "skills", folder) });
     }
-    tradeSkills.set(squad.trade, skills);
+    tradeSkills.set(trade, skills);
     const agents = new Map();
-    for (const name of listAgentNames(join(upstreamDir, squad.trade, "agents"))) {
-      agents.set(name, join(upstreamDir, squad.trade, "agents", `${name}.md`));
-    }
-    tradeAgents.set(squad.trade, agents);
+    for (const name of listAgentNames(join(dir, "agents"))) agents.set(name, join(dir, "agents", `${name}.md`));
+    tradeAgents.set(trade, agents);
   }
   const commonAgents = new Map();
   for (const name of listAgentNames(join(upstreamDir, "common", "agents"))) {
@@ -436,9 +475,9 @@ function squadSkillBundles(up, squad) {
   return map;
 }
 
-// The shared skill keys: base skills and the authored core skill, in the file's order.
+// The shared skill keys: base skills and the authored core skill, in the base config's order.
 function sharedKeys() {
-  return squadConfig.sharedBuiltinSkills;
+  return kvConfig.shared;
 }
 
 // Maps each role of a squad to its sources (agents in mapping order) and the role kind.
@@ -461,27 +500,99 @@ function squadRoles(squad, up) {
   return { roles, roleOf };
 }
 
+// The prose a skill's references are read from: SKILL.md and its markdown reference files, with the Pro
+// block and the platform sections removed as transformBody removes them.
+function skillProse(dir) {
+  const files = ["SKILL.md", ...skillFiles(dir).filter((file) => file.endsWith(".md"))];
+  return files
+    .map((file) => {
+      let text = readFileSync(join(dir, file), "utf8").replace(/\r\n/g, "\n");
+      for (const block of rewrites.removeBlocks) text = removeBlocks(text, block);
+      for (const title of rewrites.removeSections) text = removeSection(text, title);
+      return text;
+    })
+    .join("\n");
+}
+
+// The skills an extension renders (spec 7): its listed skills, then every trade or shared skill their
+// prose names with kv:<key>, transitively. An agent name wins over a skill of the same name, as in
+// resolveReferences. A shared skill is attached by name and rendered once, in common. A trade skill that
+// another config renders (`elsewhere(key)`) is not pulled in: it is returned in `cut`, and the reference
+// reads "nhờ lead tạo yêu cầu" (F17), the same as a reference outside any pack.
+function extensionMembers(extension, up, elsewhere) {
+  const trade = up.tradeSkills.get(extension.trade);
+  const agents = allAgentNames(up);
+  const members = [...new Set(extension.skills)];
+  const cut = [];
+  for (let at = 0; at < members.length; at += 1) {
+    const entry = trade.get(members[at]);
+    if (!entry) continue;
+    for (const match of skillProse(entry.dir).matchAll(/kv:([a-z0-9-]+)/g)) {
+      const ref = match[1];
+      if (ref === "pro" || agents.has(ref)) continue;
+      if (!trade.has(ref) && !up.commonSkills.has(ref) && !up.authored.has(ref)) continue;
+      if (members.includes(ref) || cut.includes(ref)) continue;
+      if (trade.has(ref) && elsewhere(ref)) cut.push(ref);
+      else members.push(ref);
+    }
+  }
+  return { members, cut };
+}
+
+// The bundle name of a skill key: a shared key keeps its name (kv--<key>), a trade key takes its rename.
+function bundleFor(key, trade, up) {
+  if (up.commonSkills.has(key)) return bundleName(key);
+  if (up.authored.has(key)) return bundleName(key.replace(/^kv-/, ""));
+  return bundleName((rewrites.renamedSkills[trade] ?? {})[key] ?? key);
+}
+
+const FLOWS = ["pipeline", "authored"];
+
+// Ownership and rendering (spec 5.5, 5.10, 7). One config owns each (trade, skill): a squad lists its
+// skills in builtinSkills, roleSkills and deferredSkills; an extension lists its own in skills, and
+// its closure is added. A (trade, skill) listed twice, or a closure member a squad owns, fails the run.
+// Every bundle name is rendered by one pack (checked below, as before).
 function buildPacks() {
   violations = [];
   ruleHits = new Map();
   for (const file of ["LICENSE", "NOTICE.md", "UPSTREAM.json"]) {
     if (!existsSync(join(upstreamDir, file))) throw new Error(`kitviet-upstream/${file} is missing`);
   }
-  const config = { source: "kitviet", upstream: upstream.repo, ref: upstream.ref, license: upstream.license };
+  const sourceConfig = { source: "kitviet", upstream: upstream.repo, ref: upstream.ref, license: upstream.license };
   const authoredConfig = { source: "kitviet", upstream: "authored in this repository", ref: "authored", license: "repository" };
   const up = loadUpstream();
   const knownSkills = allSkillKeys(up);
   const knownAgents = allAgentNames(up);
   const usedPatchFiles = new Set();
   const packs = new Map();
+  const squads = kvConfig.squads;
+  const extensions = kvConfig.extensions;
 
-  // The shared pack: base skills and authored skills, in neutral wording. Every authored skill must
-  // be shared or a leader skill of some squad, and every shared key must exist.
+  // Pack ids are unique across squads and extensions. A target (a SquadTemplate id or a company squad
+  // key) belongs to one extension only.
+  const packIds = [...squads, ...extensions].map((entry) => entry.id);
+  for (const id of new Set(packIds)) {
+    if (packIds.filter((other) => other === id).length > 1) violations.push(`pack id ${id} is used by two configs`);
+  }
+  if (packIds.includes("common")) violations.push("a squad or extension may not be named common");
+  const targetOwner = new Map();
+  for (const extension of extensions) {
+    if (!Array.isArray(extension.targets) || extension.targets.length === 0) {
+      violations.push(`${extension.id}: targets must name at least one squad`);
+    }
+    for (const target of extension.targets ?? []) {
+      if (targetOwner.has(target)) violations.push(`${extension.id}: target ${target} is also in ${targetOwner.get(target)}`);
+      targetOwner.set(target, extension.id);
+    }
+  }
+
+  // The shared pack: base skills and authored skills, in neutral wording. Every authored skill must be
+  // shared or a leader skill of some squad, and every shared key must exist.
   const sharedBundles = new Map([
     ...[...up.commonSkills.keys()].map((key) => [key, bundleName(key)]),
     ...[...up.authored.keys()].map((key) => [key, bundleName(key.replace(/^kv-/, ""))]),
   ]);
-  const leaderKeys = new Set(SQUADS.flatMap((squad) => squad.leaderSkills));
+  const leaderKeys = new Set(squads.flatMap((squad) => squad.leaderSkills));
   for (const key of up.commonSkills.keys()) {
     if (!sharedKeys().includes(key)) violations.push(`common skill ${key} is not in sharedBuiltinSkills (orphan)`);
   }
@@ -489,7 +600,7 @@ function buildPacks() {
     if (!sharedKeys().includes(key) && !leaderKeys.has(key)) violations.push(`authored skill ${key} is used by no squad`);
   }
   for (const key of sharedKeys()) {
-    if (!sharedBundles.has(key)) violations.push(`kitviet-squads.json names shared skill ${key}, which does not exist`);
+    if (!sharedBundles.has(key)) violations.push(`kitviet-squads/base.json names shared skill ${key}, which does not exist`);
   }
   const sharedCtx = buildContext({
     mode: "neutral",
@@ -497,14 +608,14 @@ function buildPacks() {
     knownSkills,
     roles: new Map(),
     knownAgents,
-    agentPhrases: squadConfig.sharedAgentPhrases,
+    agentPhrases: kvConfig.sharedAgentPhrases,
   });
   const commonSkills = [];
   for (const key of [...up.commonSkills.keys()].sort()) {
     const entry = up.commonSkills.get(key);
     usedPatchFiles.add(key);
     commonSkills.push(
-      renderSkill({ dir: entry.dir, key, bundle: bundleName(key), ctx: sharedCtx, config, label: `skill ${key}`, files: skillFiles(entry.dir).sort() }),
+      renderSkill({ dir: entry.dir, key, bundle: bundleName(key), ctx: sharedCtx, config: sourceConfig, label: `skill ${key}`, files: skillFiles(entry.dir).sort() }),
     );
   }
   for (const [key, entry] of [...up.authored.entries()].sort()) {
@@ -522,8 +633,18 @@ function buildPacks() {
   }
   packs.set("common", { skills: commonSkills, agents: [], squad: null });
 
-  // One pack per squad.
-  for (const squad of SQUADS) {
+  // Claims: which config lists each (trade, skill). A second claim by another config is a violation.
+  const claims = new Map();
+  const claim = (trade, key, owner) => {
+    const id = `${trade}/${key}`;
+    if (claims.has(id) && claims.get(id) !== owner) violations.push(`${key} (${trade}) is listed by ${claims.get(id)} and by ${owner}`);
+    else claims.set(id, owner);
+  };
+
+  // Squads: the checks that were per squad, and what each one lists.
+  const plans = squads.map((squad) => {
+    const owner = `squad ${squad.id}`;
+    const trade = up.tradeSkills.get(squad.trade);
     const bundles = squadSkillBundles(up, squad);
     const { roles, roleOf } = squadRoles(squad, up);
     const core = [...sharedKeys(), ...squad.builtinSkills];
@@ -533,7 +654,7 @@ function buildPacks() {
       if (!bundles.has(key)) violations.push(`${squad.id}: ${key} is in neither the shared pack nor the ${squad.trade} trade`);
     }
     for (const key of squad.builtinSkills) {
-      if (!up.tradeSkills.get(squad.trade).has(key)) violations.push(`${squad.id}: builtinSkills names ${key}, which is not in ${squad.trade}`);
+      if (!trade.has(key)) violations.push(`${squad.id}: builtinSkills names ${key}, which is not in ${squad.trade}`);
     }
     for (const key of squad.promoted ?? []) {
       if (!squad.builtinSkills.includes(key)) violations.push(`${squad.id}: promoted ${key} is not in builtinSkills`);
@@ -547,33 +668,71 @@ function buildPacks() {
     }
     if (roles.size > 9) violations.push(`${squad.id}: ${roles.size} roles (max 9 desks with the lead)`);
 
-    // Orphan guard (spec 5.10, K8): every trade skill is attached to a role or the squad, or it is
-    // deferred by name with the reason in kitviet-squads.json. A skill in neither is a leftover.
-    const deferred = new Set(squad.deferredSkills ?? []);
-    const tradeKeys = up.tradeSkills.get(squad.trade);
-    for (const key of deferred) {
-      if (!tradeKeys.has(key)) violations.push(`${squad.id}: deferredSkills names ${key}, which is not in ${squad.trade}`);
-      if (resolution.has(key)) violations.push(`${squad.id}: ${key} is deferred and also attached`);
-    }
-    for (const key of tradeKeys.keys()) {
-      if (!resolution.has(key) && !deferred.has(key)) violations.push(`${squad.id}: ${key} is attached to nothing and not deferred (orphan)`);
+    // flow "pipeline" (default): the squad maps upstream agents to roles beyond the lead. flow "authored":
+    // the trade has no pipeline for this squad; its lead flow is written in the template, and it may not
+    // attach an upstream pipeline skill (day-chuyen-*), whose text describes another squad's stages.
+    const flow = squad.flow ?? "pipeline";
+    if (!FLOWS.includes(flow)) violations.push(`${squad.id}: flow ${flow} is not one of ${FLOWS.join(", ")}`);
+    if (flow === "pipeline" && [...roles.values()].every((role) => role.kind === "kv_lead")) {
+      violations.push(`${squad.id}: a pipeline squad needs an upstream role besides the lead (or set "flow": "authored")`);
     }
 
-    // The squad's trade skills are all rendered (core and extended); a body names only what the
-    // squad resolves, so the rest of the trade reads as "nhờ lead tạo yêu cầu".
-    const resolved = new Map();
-    for (const key of resolution) resolved.set(key, bundles.get(key));
+    const deferred = new Set(squad.deferredSkills ?? []);
+    for (const key of deferred) {
+      if (!trade.has(key)) violations.push(`${squad.id}: deferredSkills names ${key}, which is not in ${squad.trade}`);
+      if (resolution.has(key)) violations.push(`${squad.id}: ${key} is deferred and also attached`);
+    }
+    const listed = [...new Set([...squad.builtinSkills, ...roleSkillKeys, ...deferred])];
+    for (const key of listed) {
+      if (flow === "authored" && key.startsWith("day-chuyen-")) {
+        violations.push(`${squad.id}: an authored flow cannot attach the upstream pipeline ${key}`);
+      }
+      claim(squad.trade, key, owner);
+    }
+    return { squad, trade, bundles, roles, roleOf, resolution, listed };
+  });
+
+  // Extensions: the skills each one lists, then its closure. A closure member a squad lists is a
+  // violation (list it in the extension and remove it from the squad, or drop the reference).
+  const extensionPlans = extensions.map((extension) => {
+    const owner = `extension ${extension.id}`;
+    const trade = up.tradeSkills.get(extension.trade);
+    for (const key of extension.skills) {
+      if (!trade.has(key)) violations.push(`${extension.id}: skills names ${key}, which is not in ${extension.trade}`);
+      claim(extension.trade, key, owner);
+    }
+    return { extension, trade, owner, members: [] };
+  });
+  for (const plan of extensionPlans) {
+    const { extension, owner } = plan;
+    const elsewhere = (key) => {
+      const holder = claims.get(`${extension.trade}/${key}`);
+      return holder !== undefined && holder !== owner;
+    };
+    const { members, cut } = extensionMembers(extension, up, elsewhere);
+    plan.members = members;
+    plan.cut = cut;
+    for (const key of members) {
+      if (up.commonSkills.has(key) || up.authored.has(key) || extension.skills.includes(key)) continue;
+      claim(extension.trade, key, owner);
+    }
+  }
+
+  // Squad packs: the listed skills, rendered in the squad's wording, then its agents.
+  for (const plan of plans) {
+    const { squad, trade, bundles, roles, roleOf, resolution, listed } = plan;
     const squadCtx = buildContext({
       mode: "squad",
-      skills: resolved,
+      skills: new Map([...resolution].map((key) => [key, bundles.get(key)])),
       knownSkills,
       roles: roleOf,
       knownAgents,
       agentPhrases: {},
     });
     const skills = [];
-    for (const key of [...up.tradeSkills.get(squad.trade).keys()].sort()) {
-      const entry = up.tradeSkills.get(squad.trade).get(key);
+    for (const key of [...listed].sort()) {
+      const entry = trade.get(key);
+      if (!entry) continue;
       usedPatchFiles.add(key);
       skills.push(
         renderSkill({
@@ -581,7 +740,7 @@ function buildPacks() {
           key,
           bundle: bundles.get(key),
           ctx: squadCtx,
-          config,
+          config: sourceConfig,
           label: `skill ${squad.trade}/${key}`,
           files: skillFiles(entry.dir).sort(),
         }),
@@ -633,7 +792,7 @@ function buildPacks() {
       pack: squad.id,
       templateId: squad.templateId,
       name: squad.name,
-      builtinSkills: core.map((key) => bundles.get(key)),
+      builtinSkills: [...sharedKeys(), ...squad.builtinSkills].map((key) => bundles.get(key)),
       leaderSkills: squad.leaderSkills.map((key) => bundleName(key.replace(/^kv-/, ""))),
       roleSkills: Object.fromEntries(
         Object.entries(squad.roleSkills ?? {}).map(([role, keys]) => [role, keys.map((key) => bundles.get(key))]),
@@ -644,6 +803,61 @@ function buildPacks() {
     packs.set(squad.id, { skills, agents, squad: squadData });
   }
 
+  // Extension packs: the listed skills and their closure, in neutral wording (an extension has no roles),
+  // and the bundle names each target attaches (its shared skills included, by name).
+  for (const plan of extensionPlans) {
+    const { extension, trade, members } = plan;
+    const memberBundles = new Map(members.map((key) => [key, bundleFor(key, extension.trade, up)]));
+    const extensionCtx = buildContext({
+      mode: "squad",
+      skills: memberBundles,
+      knownSkills,
+      roles: new Map(),
+      knownAgents,
+      agentPhrases: {},
+    });
+    const skills = [];
+    for (const key of members.filter((key) => trade.has(key) && !up.commonSkills.has(key) && !up.authored.has(key)).sort()) {
+      const entry = trade.get(key);
+      usedPatchFiles.add(key);
+      skills.push(
+        renderSkill({
+          dir: entry.dir,
+          key,
+          bundle: memberBundles.get(key),
+          ctx: extensionCtx,
+          config: sourceConfig,
+          label: `skill ${extension.trade}/${key}`,
+          files: skillFiles(entry.dir).sort(),
+        }),
+      );
+    }
+    packs.set(extension.id, {
+      skills,
+      agents: [],
+      squad: null,
+      extension: {
+        id: extension.id,
+        name: extension.name,
+        pack: extension.id,
+        targets: [...extension.targets],
+        builtinSkills: members.map((key) => memberBundles.get(key)),
+        cut: plan.cut.map((key) => bundleFor(key, extension.trade, up)),
+      },
+    });
+  }
+
+  // Orphan guard (spec 5.10, K8): every skill of a squad's trade is rendered by some pack (attached,
+  // deferred or extension-owned) or shared under another trade's bundle name. A skill in none is a leftover.
+  const renderedNames = new Set([...packs.values()].flatMap((entry) => entry.skills.map((skill) => skill.name)));
+  for (const plan of plans) {
+    for (const key of plan.trade.keys()) {
+      if (!renderedNames.has(bundleFor(key, plan.squad.trade, up))) {
+        violations.push(`${plan.squad.id}: ${key} is attached to nothing and not deferred (orphan)`);
+      }
+    }
+  }
+
   for (const name of readdirSync(patchesDir)) {
     if (!name.endsWith(".json")) continue;
     if (!usedPatchFiles.has(name.replace(/\.json$/, ""))) {
@@ -651,7 +865,8 @@ function buildPacks() {
     }
   }
   for (const rule of rewrites.rules) {
-    if (!ruleHits.has(rule.name)) violations.push(`rewrite rule ${rule.name} matched nothing (stale rule)`);
+    // An optional rule (its text is also caught by the forbidden-text guard) may match nothing in this run.
+    if (!ruleHits.has(rule.name) && !rule.optional) violations.push(`rewrite rule ${rule.name} matched nothing (stale rule)`);
   }
   // Bundle names are unique across the packs, so the quickstart's name lookup is unambiguous.
   const seen = new Map();
@@ -687,17 +902,42 @@ export const KITVIET_AGENTS: readonly KitvietAgent[] = ${agents};
 // The names-only module: every squad's skill names and roles, with no skill text and no
 // agent body. It is small enough for the template registry to import statically.
 export function renderSquads(packs) {
-  const squads = SQUADS.map((squad) => packs.get(squad.id).squad);
+  const squads = kvConfig.squads.map((squad) => packs.get(squad.id).squad);
   return `${HEADER}
 import type { KitvietSquad } from "./types";
 
-/** The Kit Viet squads of the pack, in the order of kitviet-squads.json. */
+/** The Kit Viet squads of the pack, in the order of kitviet-squads/ (by order, then id). */
 export const KITVIET_SQUADS: readonly KitvietSquad[] = ${JSON.stringify(squads, null, 2)};
 `;
 }
 
+// The names-only module of the extension packs: which existing squads each one attaches to, and the
+// bundle names it attaches. No skill text; the extension's pack file holds the text.
+export function renderExtensions(packs) {
+  const extensions = kvConfig.extensions.map((extension) => packs.get(extension.id).extension);
+  return `${HEADER}
+import type { KitvietExtension } from "./types";
+
+/** The Kit Viet extension packs (spec 7), in the order of kitviet-extensions/. */
+export const KITVIET_EXTENSIONS: readonly KitvietExtension[] = ${JSON.stringify(extensions, null, 2)};
+`;
+}
+
+// The loader of every pack by its id. kitviet-packs.ts imports a pack only through its loader, so a
+// pack no squad or extension uses is never downloaded.
+export function renderLoaders() {
+  const lines = packList().map((pack) => `  ${JSON.stringify(pack.id)}: () => import(${JSON.stringify(`./${pack.file}`)}),`);
+  return `${HEADER}
+
+/** One loader per pack id: common, then each squad and extension. */
+export const KITVIET_PACK_LOADERS = {
+${lines.join("\n")}
+} as const;
+`;
+}
+
 const HEADER = `// Generated by scripts/generate-kitviet-pack.mjs from packages/core/squads/kitviet-upstream,
-// kitviet-squads.json and kitviet-skills. Do not edit by hand; run \`pnpm generate:kitviet\`.`;
+// kitviet-squads/, kitviet-extensions/ and kitviet-skills. Do not edit by hand; run \`pnpm generate:kitviet\`.`;
 
 const TYPES = `${HEADER}
 
@@ -746,6 +986,20 @@ export interface KitvietSquadRole {
   hasBody: boolean;
 }
 
+/** One extension pack (spec 7): the Kit Viet skills attached to the existing squads it targets. */
+export interface KitvietExtension {
+  id: string;
+  name: string;
+  /** The pack file that holds its skills (its id). */
+  pack: string;
+  /** The existing squads it attaches to: a SquadTemplate id or a company squad key. */
+  targets: readonly string[];
+  /** The bundle names attached to each target: the listed skills, their closure, and shared skills. */
+  builtinSkills: readonly string[];
+  /** Referenced skills another squad or extension renders; they stay out, and their references read "nhờ lead". */
+  cut: readonly string[];
+}
+
 export interface KitvietSquad {
   id: string;
   /** The pack file that holds this squad's skills and agent bodies (its id). */
@@ -761,15 +1015,17 @@ export interface KitvietSquad {
 }
 `;
 
-// Every generated file as { path, content }, keyed by its file name in kitviet-skills-data.
-export function generateOutputs() {
+// Every generated file as { path, content }, keyed by its file name in kitviet-skills-data. configRoot is
+// a folder holding kitviet-squads/ and kitviet-extensions/ (the tests point it at a copy); it defaults to
+// the repository's configs.
+export function generateOutputs({ configRoot = squadsDir } = {}) {
+  kvConfig = loadConfig(configRoot);
   const packs = buildPacks();
   const outputs = new Map([["types.ts", TYPES]]);
-  for (const pack of PACKS) {
-    const entry = packs.get(pack.id);
-    outputs.set(`${pack.file}.ts`, renderPack(pack, entry));
-  }
+  for (const pack of packList()) outputs.set(`${pack.file}.ts`, renderPack(pack, packs.get(pack.id)));
   outputs.set("squads.ts", renderSquads(packs));
+  outputs.set("extensions.ts", renderExtensions(packs));
+  outputs.set("packs.ts", renderLoaders());
   return outputs;
 }
 

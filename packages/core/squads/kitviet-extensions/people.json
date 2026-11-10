@@ -1,0 +1,15 @@
+{
+  "$comment": "Extension pack (spec 7): Kit Viet skills attached to existing squads (targets), not a squad of its own. Listed skills plus their kv: dependency closure are generated into the pack named by this file.",
+  "name": "People & Performance (HR vận hành)",
+  "trade": "nhan-su",
+  "targets": [
+    "people_performance"
+  ],
+  "skills": [
+    "soat-hop-dong-lao-dong",
+    "soat-bang-cham-cong",
+    "onboarding-30-60-90",
+    "quy-trinh-ky-luat-lao-dong",
+    "danh-gia-thu-viec"
+  ]
+}

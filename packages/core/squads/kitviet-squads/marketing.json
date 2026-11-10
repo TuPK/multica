@@ -1,0 +1,95 @@
+{
+  "order": 3,
+  "templateId": "kv_marketing",
+  "trade": "marketing",
+  "name": "Marketing Studio (Marketing)",
+  "agents": {
+    "lap-ke-hoach-dieu-phoi": {
+      "role": "mkt_lead",
+      "kind": "kv_lead"
+    },
+    "do-tham-doi-thu-web": {
+      "role": "mkt_scout",
+      "kind": "kv_collector"
+    },
+    "nghien-cuu-thi-truong-web": {
+      "role": "mkt_scout",
+      "kind": "kv_collector"
+    },
+    "gom-insight-khach-hang": {
+      "role": "mkt_insight",
+      "kind": "kv_collector"
+    },
+    "soan-noi-dung-da-kenh": {
+      "role": "mkt_content",
+      "kind": "kv_drafter"
+    },
+    "soan-ad-copy-landing": {
+      "role": "mkt_ads",
+      "kind": "kv_drafter"
+    },
+    "soat-claim-quang-cao": {
+      "role": "mkt_claim_gate",
+      "kind": "kv_gate"
+    },
+    "soat-giong-thuong-hieu": {
+      "role": "mkt_voice_gate",
+      "kind": "kv_gate"
+    },
+    "soat-so-lieu-thi-truong": {
+      "role": "mkt_numbers_gate",
+      "kind": "kv_gate"
+    },
+    "kiem-dinh-ban-giao": {
+      "role": "mkt_handover",
+      "kind": "kv_handover"
+    }
+  },
+  "builtinSkills": [
+    "day-chuyen-chien-dich-marketing",
+    "bai-dang-fanpage",
+    "bao-cao-hieu-qua-chien-dich",
+    "cam-nang-giong-thuong-hieu",
+    "ke-hoach-truyen-thong-chien-dich",
+    "soat-luat-quang-cao",
+    "the-le-minigame-khuyen-mai",
+    "persona-tu-du-lieu-that"
+  ],
+  "leaderSkills": [
+    "kv-squad-lead",
+    "kv-company-profile"
+  ],
+  "roleSkills": {
+    "mkt_content": [
+      "kich-ban-video-ngan",
+      "chuyen-the-noi-dung-da-kenh",
+      "chuoi-email-cham-soc",
+      "viet-giong-gen-z",
+      "lich-noi-dung-thang",
+      "bai-blog-chuan-seo"
+    ],
+    "mkt_ads": [
+      "ad-copy-nhieu-bien-the",
+      "noi-dung-landing-page",
+      "brief-kol-koc",
+      "brief-thiet-ke-key-visual",
+      "toi-uu-tieu-de-thumbnail"
+    ],
+    "mkt_insight": [
+      "insight-tu-binh-luan-review"
+    ],
+    "mkt_scout": [
+      "phan-tich-doi-thu-noi-dung",
+      "nghien-cuu-thi-truong-marketing",
+      "nghien-cuu-tu-khoa-topic-cluster",
+      "lich-marketing-mua-vu"
+    ],
+    "mkt_lead": [
+      "lich-dang-tra-loi-binh-luan"
+    ]
+  },
+  "promoted": [
+    "persona-tu-du-lieu-that"
+  ],
+  "deferredSkills": []
+}

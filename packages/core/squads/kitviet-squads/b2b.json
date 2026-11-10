@@ -1,0 +1,72 @@
+{
+  "order": 2,
+  "templateId": "kv_b2b",
+  "trade": "kinh-doanh",
+  "name": "B2B Proposal Desk (Chào giá B2B)",
+  "agents": {
+    "lap-ke-hoach-dieu-phoi": {
+      "role": "b2b_lead",
+      "kind": "kv_lead"
+    },
+    "doc-lich-su-giao-dich-khach": {
+      "role": "b2b_history",
+      "kind": "kv_collector"
+    },
+    "tra-cuu-doanh-nghiep-cong-khai": {
+      "role": "b2b_company_lookup",
+      "kind": "kv_collector"
+    },
+    "soan-ho-so-chao-gia": {
+      "role": "b2b_quote_drafter",
+      "kind": "kv_drafter"
+    },
+    "soat-cam-ket-thuong-mai": {
+      "role": "b2b_commit_gate",
+      "kind": "kv_gate"
+    },
+    "soat-quyen-dung-du-lieu-khach": {
+      "role": "b2b_data_gate",
+      "kind": "kv_gate"
+    },
+    "soat-giong-van-gui-khach": {
+      "role": "b2b_tone_gate",
+      "kind": "kv_gate"
+    },
+    "soat-so-lieu": {
+      "role": "b2b_numbers_gate",
+      "kind": "kv_gate"
+    },
+    "kiem-dinh-ban-giao": {
+      "role": "b2b_handover",
+      "kind": "kv_handover"
+    }
+  },
+  "builtinSkills": [
+    "day-chuyen-chao-gia-b2b",
+    "bao-gia-dieu-kien-thuong-mai",
+    "proposal-giai-phap-b2b",
+    "chuan-bi-dam-phan-b2b",
+    "bien-ban-gap-khach-b2b"
+  ],
+  "leaderSkills": [
+    "kv-squad-lead",
+    "kv-company-profile"
+  ],
+  "roleSkills": {
+    "b2b_quote_drafter": [
+      "xu-ly-tu-choi-b2b"
+    ],
+    "b2b_company_lookup": [
+      "ho-so-khach-truoc-buoi-gap"
+    ]
+  },
+  "promoted": [
+    "bien-ban-gap-khach-b2b"
+  ],
+  "deferredSkills": [
+    "bao-cao-tuan-doi-sales",
+    "chuoi-email-tiep-can-b2b",
+    "kich-ban-goi-telesales",
+    "ra-soat-pipeline-doanh-so"
+  ]
+}
