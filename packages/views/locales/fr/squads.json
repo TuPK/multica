@@ -224,5 +224,34 @@
       "role_testing": "Tests",
       "role_product": "Produit"
     }
+  },
+  "sources": {
+    "title": "Sources",
+    "add_placeholder": "Collez un lien, un @identifiant, un flux RSS, une requête, ou décrivez la source",
+    "add": "Ajouter la source",
+    "share_placeholder": "Collez une publication ou son lien, d'un groupe dont vous êtes membre",
+    "share": "Partager",
+    "added": "Ajoutée. Le responsable de l'équipe vérifiera la source et rendra compte.",
+    "shared": "Partagée. L'équipe lira la publication et rendra compte.",
+    "error": "Impossible de l'ajouter. Réessayez.",
+    "empty": "Aucune source pour le moment.",
+    "columns": {
+      "name": "Source",
+      "platform": "Plateforme",
+      "rung": "Niveau",
+      "status": "Statut",
+      "last_run": "Dernière exécution",
+      "items": "Éléments, 7 jours"
+    },
+    "status": {
+      "active": "Active",
+      "proposed": "Proposée",
+      "needs_connector": "Connexion requise",
+      "manual_only": "Partage seul",
+      "degraded": "Dégradée",
+      "blocked": "Bloquée",
+      "disabled": "Désactivée",
+      "unknown": "Inconnu"
+    }
   }
 }

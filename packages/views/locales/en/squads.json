@@ -224,5 +224,34 @@
       "role_testing": "Testing",
       "role_product": "Product"
     }
+  },
+  "sources": {
+    "title": "Sources",
+    "add_placeholder": "Paste a link, @handle, RSS feed, search query, or describe the source",
+    "add": "Add source",
+    "share_placeholder": "Paste a post or its link, from a group you belong to",
+    "share": "Share",
+    "added": "Added. The squad's leader will check the source and report what it finds.",
+    "shared": "Shared. The squad will read the post and report what it finds.",
+    "error": "Could not add it. Try again.",
+    "empty": "No sources yet.",
+    "columns": {
+      "name": "Source",
+      "platform": "Platform",
+      "rung": "Rung",
+      "status": "Status",
+      "last_run": "Last run",
+      "items": "Items, 7 days"
+    },
+    "status": {
+      "active": "Active",
+      "proposed": "Proposed",
+      "needs_connector": "Needs a connection",
+      "manual_only": "Share only",
+      "degraded": "Degraded",
+      "blocked": "Blocked",
+      "disabled": "Off",
+      "unknown": "Unknown"
+    }
   }
 }

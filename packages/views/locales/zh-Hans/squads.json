@@ -222,5 +222,34 @@
       "role_testing": "测试",
       "role_product": "产品"
     }
+  },
+  "sources": {
+    "title": "信息源",
+    "add_placeholder": "粘贴链接、@账号、RSS、搜索词，或描述这个信息源",
+    "add": "添加信息源",
+    "share_placeholder": "粘贴你所在群里的帖子或其链接",
+    "share": "分享",
+    "added": "已添加。团队负责人会检查这个信息源并汇报发现。",
+    "shared": "已分享。团队会阅读这条帖子并汇报发现。",
+    "error": "无法添加，请重试。",
+    "empty": "还没有信息源。",
+    "columns": {
+      "name": "信息源",
+      "platform": "平台",
+      "rung": "层级",
+      "status": "状态",
+      "last_run": "上次运行",
+      "items": "近 7 天条目"
+    },
+    "status": {
+      "active": "运行中",
+      "proposed": "待确认",
+      "needs_connector": "需要连接",
+      "manual_only": "仅分享",
+      "degraded": "质量下降",
+      "blocked": "已阻止",
+      "disabled": "已关闭",
+      "unknown": "未知"
+    }
   }
 }

@@ -1,7 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
 import { issueWorkflowKeys } from "../issue-workflows/queries";
+import { knowledgeKeys } from "../knowledge/queries";
 import { workspaceKeys } from "../workspace/queries";
+import type { SalesIntake } from "./sales-intake";
 import {
   runSquadQuickstart,
   type QuickstartOptions,
@@ -31,6 +33,32 @@ export function useSquadQuickstart(wsId: string) {
       qc.invalidateQueries({ queryKey: workspaceKeys.agents(wsId) });
       qc.invalidateQueries({ queryKey: workspaceKeys.squads(wsId) });
       qc.invalidateQueries({ queryKey: issueWorkflowKeys.all(wsId) });
+    },
+  });
+}
+
+/**
+ * Adds a source to a Sales Loop squad. The server writes the source document and a request issue for
+ * the squad; nothing runs until the squad's leader routes it. Awaits the server before the lists refetch.
+ */
+export function useCreateSquadSource(wsId: string, squadId: string) {
+  const qc = useQueryClient();
+  return useMutation<SalesIntake, Error, { input: string; lane?: string }>({
+    mutationFn: (body) => api.createSquadSource(squadId, body),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: knowledgeKeys.all(wsId) });
+      qc.invalidateQueries({ queryKey: workspaceKeys.squads(wsId) });
+    },
+  });
+}
+
+/** Adds a shared post to a Sales Loop squad, the same way as a source. */
+export function useCreateSquadShare(wsId: string, squadId: string) {
+  const qc = useQueryClient();
+  return useMutation<SalesIntake, Error, { input: string; text?: string; lane?: string }>({
+    mutationFn: (body) => api.createSquadShare(squadId, body),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: knowledgeKeys.all(wsId) });
     },
   });
 }

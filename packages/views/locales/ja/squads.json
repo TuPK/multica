@@ -222,5 +222,34 @@
       "role_testing": "テスト",
       "role_product": "プロダクト"
     }
+  },
+  "sources": {
+    "title": "情報源",
+    "add_placeholder": "リンク、@ハンドル、RSS、検索語を貼り付けるか、情報源を説明してください",
+    "add": "情報源を追加",
+    "share_placeholder": "参加しているグループの投稿またはそのリンクを貼り付けてください",
+    "share": "共有",
+    "added": "追加しました。チームのリーダーが情報源を確認し、結果を報告します。",
+    "shared": "共有しました。チームが投稿を読み、結果を報告します。",
+    "error": "追加できませんでした。もう一度お試しください。",
+    "empty": "情報源はまだありません。",
+    "columns": {
+      "name": "情報源",
+      "platform": "プラットフォーム",
+      "rung": "段階",
+      "status": "状態",
+      "last_run": "最終実行",
+      "items": "7日間の件数"
+    },
+    "status": {
+      "active": "有効",
+      "proposed": "提案中",
+      "needs_connector": "接続が必要",
+      "manual_only": "共有のみ",
+      "degraded": "品質低下",
+      "blocked": "ブロック中",
+      "disabled": "オフ",
+      "unknown": "不明"
+    }
   }
 }

@@ -222,5 +222,34 @@
       "role_testing": "測試",
       "role_product": "產品"
     }
+  },
+  "sources": {
+    "title": "資料來源",
+    "add_placeholder": "貼上連結、@帳號、RSS、搜尋詞，或描述這個資料來源",
+    "add": "新增資料來源",
+    "share_placeholder": "貼上你所在群組的貼文或其連結",
+    "share": "分享",
+    "added": "已新增。團隊負責人會檢查這個資料來源並回報發現。",
+    "shared": "已分享。團隊會閱讀這則貼文並回報發現。",
+    "error": "無法新增，請重試。",
+    "empty": "還沒有資料來源。",
+    "columns": {
+      "name": "資料來源",
+      "platform": "平台",
+      "rung": "層級",
+      "status": "狀態",
+      "last_run": "上次執行",
+      "items": "近 7 天項目"
+    },
+    "status": {
+      "active": "運作中",
+      "proposed": "待確認",
+      "needs_connector": "需要連接",
+      "manual_only": "僅分享",
+      "degraded": "品質下降",
+      "blocked": "已阻擋",
+      "disabled": "已關閉",
+      "unknown": "未知"
+    }
   }
 }

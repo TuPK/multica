@@ -222,5 +222,34 @@
       "role_testing": "테스트",
       "role_product": "프로덕트"
     }
+  },
+  "sources": {
+    "title": "출처",
+    "add_placeholder": "링크, @핸들, RSS 피드, 검색어를 붙여넣거나 출처를 설명하세요",
+    "add": "출처 추가",
+    "share_placeholder": "속한 그룹의 게시물 또는 그 링크를 붙여넣으세요",
+    "share": "공유",
+    "added": "추가했습니다. 팀 리더가 출처를 확인하고 결과를 보고합니다.",
+    "shared": "공유했습니다. 팀이 게시물을 읽고 결과를 보고합니다.",
+    "error": "추가하지 못했습니다. 다시 시도하세요.",
+    "empty": "아직 출처가 없습니다.",
+    "columns": {
+      "name": "출처",
+      "platform": "플랫폼",
+      "rung": "단계",
+      "status": "상태",
+      "last_run": "마지막 실행",
+      "items": "7일 항목 수"
+    },
+    "status": {
+      "active": "활성",
+      "proposed": "제안됨",
+      "needs_connector": "연결 필요",
+      "manual_only": "공유만",
+      "degraded": "품질 저하",
+      "blocked": "차단됨",
+      "disabled": "꺼짐",
+      "unknown": "알 수 없음"
+    }
   }
 }

@@ -224,5 +224,34 @@
       "role_testing": "Pruebas",
       "role_product": "Producto"
     }
+  },
+  "sources": {
+    "title": "Fuentes",
+    "add_placeholder": "Pega un enlace, un @usuario, un feed RSS, una búsqueda o describe la fuente",
+    "add": "Añadir fuente",
+    "share_placeholder": "Pega una publicación o su enlace, de un grupo al que perteneces",
+    "share": "Compartir",
+    "added": "Añadida. El líder del equipo revisará la fuente e informará de lo que encuentre.",
+    "shared": "Compartida. El equipo leerá la publicación e informará de lo que encuentre.",
+    "error": "No se pudo añadir. Inténtalo de nuevo.",
+    "empty": "Todavía no hay fuentes.",
+    "columns": {
+      "name": "Fuente",
+      "platform": "Plataforma",
+      "rung": "Nivel",
+      "status": "Estado",
+      "last_run": "Última ejecución",
+      "items": "Elementos, 7 días"
+    },
+    "status": {
+      "active": "Activa",
+      "proposed": "Propuesta",
+      "needs_connector": "Necesita conexión",
+      "manual_only": "Solo compartida",
+      "degraded": "Degradada",
+      "blocked": "Bloqueada",
+      "disabled": "Desactivada",
+      "unknown": "Desconocido"
+    }
   }
 }

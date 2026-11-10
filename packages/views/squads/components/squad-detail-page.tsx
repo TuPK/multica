@@ -100,6 +100,7 @@ import {
 import { toast } from "sonner";
 import { SquadRuntimeSelect } from "./squad-runtime-select";
 import { SquadCapabilitiesSection } from "./squad-capabilities-section";
+import { SquadSourcesSection } from "./squad-sources-section";
 import { sharedSquadRuntimeId } from "../lib/squad-runtime";
 import { SquadModelSelect } from "./squad-model-select";
 import { SquadThinkingSelect } from "./squad-thinking-select";
@@ -695,6 +696,10 @@ export function SquadDetailView({
           onSetSkills={async (skillIds) => { await setSquadSkillsMut.mutateAsync(skillIds); }}
           onSetPlugins={async (plugins) => { await setSquadPluginsMut.mutateAsync(plugins); }}
         />
+
+        {squad.template_key === "sales_loop" ? (
+          <SquadSourcesSection wsId={wsId} squadId={squadId} canManage={canManage && !archived} />
+        ) : null}
 
         <SquadInstructionsSection
           squad={squad}
