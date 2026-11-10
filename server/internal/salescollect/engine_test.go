@@ -20,7 +20,9 @@ func (e *fakeEngine) HTML(_ context.Context, rawURL string) (*Response, error) {
 	return &Response{Status: 200, ContentType: "text/html", Body: []byte(e.html), FinalURL: rawURL}, nil
 }
 
-func (e *fakeEngine) Status(context.Context) WebEngineStatus { return WebEngineStatus{Status: "running"} }
+func (e *fakeEngine) Status(context.Context) WebEngineStatus {
+	return WebEngineStatus{Status: "running"}
+}
 
 func TestNewCrawl4AIRefusesAnAddressOtherMachinesCanReach(t *testing.T) {
 	for _, base := range []string{"http://10.0.0.5:11235", "http://example.com:11235", "ftp://127.0.0.1"} {
@@ -39,10 +41,10 @@ func TestNewCrawl4AIRefusesAnAddressOtherMachinesCanReach(t *testing.T) {
 func TestCrawl4AIHTMLSendsTheTokenAndReadsTheReply(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/health" {
-			_, _ = w.Write([]byte(`{"status":"ok"}`))
+			_, _ = w.Write([]byte(`{"status":"ok","version":"0.9.5"}`))
 			return
 		}
-		if r.URL.Path != "/html" || r.Method != http.MethodPost {
+		if r.URL.Path != "/crawl" || r.Method != http.MethodPost {
 			http.NotFound(w, r)
 			return
 		}
@@ -51,7 +53,7 @@ func TestCrawl4AIHTMLSendsTheTokenAndReadsTheReply(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"success":true,"html":"<ul><li>Mở chi nhánh</li></ul>","status_code":200}`))
+		_, _ = w.Write([]byte(`{"success":true,"results":[{"success":true,"html":"<ul><li>Mở chi nhánh</li></ul>","status_code":200,"error_message":""}]}`))
 	}))
 	defer srv.Close()
 	engine, err := NewCrawl4AI(srv.URL, "secret-token")
@@ -65,14 +67,14 @@ func TestCrawl4AIHTMLSendsTheTokenAndReadsTheReply(t *testing.T) {
 	if !strings.Contains(string(resp.Body), "Mở chi nhánh") {
 		t.Fatalf("the rendered HTML did not come back: %q", resp.Body)
 	}
-	if engine.Status(context.Background()).Status != "running" {
-		t.Fatal("a reachable engine must report running")
+	if got := engine.Status(context.Background()); got.Status != "running" || got.Version != "0.9.5" {
+		t.Fatalf("a reachable engine must report running with its version, got %+v", got)
 	}
 }
 
 func TestCrawl4AIRefusesAFailedRender(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(`{"success":false,"error_message":"timeout"}`))
+		_, _ = w.Write([]byte(`{"success":true,"results":[{"success":false,"html":"","status_code":0,"error_message":"timeout"}]}`))
 	}))
 	defer srv.Close()
 	engine, _ := NewCrawl4AI(srv.URL, "t")

@@ -22,9 +22,11 @@ type ProbeReport struct {
 	Candidates []ProbeCandidate `json:"candidates"`
 }
 
-// WebEngineStatus says whether a Web engine is reachable: "running" or "not_running".
+// WebEngineStatus says whether a Web engine is reachable: "running" or "not_running", and its version
+// when it answers.
 type WebEngineStatus struct {
-	Status string `json:"status"`
+	Status  string `json:"status"`
+	Version string `json:"version,omitempty"`
 }
 
 // ProbeCandidate is one way to read the input: its recipe, what the fetch returned, and a sample.

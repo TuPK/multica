@@ -5,9 +5,12 @@ The Sales Loop squad reads public web pages that need a browser to render (acces
 such a source stays `needs_connector` with the sentence "Needs the Web engine", and nothing runs
 half-way. This runbook starts the engine on the machine that runs the daemon.
 
-Status: the spike (appendix A of the spec) used the Crawl4AI Python library, not this container. The
-REST and MCP shapes below come from the Crawl4AI documentation for the pinned version, and have not
-been run against this container yet. Check them the first time you start it.
+Status: the REST shape below was checked against image `unclecode/crawl4ai:0.9.5`. `GET /health` answers
+`{"status":"ok","version":"0.9.5"}` and needs no token. `POST /crawl` with `{"urls":[url]}` answers
+`{"success":true,"results":[{"html":...,"status_code":200,"success":true,"error_message":""}]}`; the raw `html`
+keeps attributes such as a link's `href`. `POST /html` strips attributes, so the squad does not use it. A
+refused request answers `{"detail":"..."}`. The engine also refuses loopback and private URLs itself
+(`URL blocked (SSRF protection)`), which is a second check on top of the collector's.
 
 ## Pinned version
 
@@ -33,8 +36,12 @@ URLs that people add, and an open engine could be used to read internal services
 
 ```bash
 curl -s -H "Authorization: Bearer $CRAWL4AI_API_TOKEN" -H "Content-Type: application/json" \
-  -d '{"url":"https://example.com"}' http://127.0.0.1:11235/html | head -c 300
+  -d '{"urls":["https://example.com"]}' http://127.0.0.1:11235/crawl | head -c 300
 ```
+
+If the port mapping fails with `timed out starting the userland proxy` or `address already in use`, the
+host's `docker-proxy` is stuck; restart the Docker daemon before retrying. Do not publish the port on another
+interface to work around it.
 
 ## Stop and remove
 

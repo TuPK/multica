@@ -57,24 +57,28 @@ func NewCrawl4AI(baseURL, token string) (*Crawl4AI, error) {
 // engineHTMLTimeout bounds one page, the runbook's per-page limit.
 const engineHTMLTimeout = 45 * time.Second
 
-// crawlHTMLReply is the body the engine returns for /html.
-type crawlHTMLReply struct {
-	Success    bool   `json:"success"`
-	HTML       string `json:"html"`
-	StatusCode int    `json:"status_code"`
-	Error      string `json:"error_message"`
+// crawlReply is the body the engine returns for /crawl. The raw html keeps the attributes a
+// recipe reads, such as a link's href; /html returns a cleaned page without them.
+type crawlReply struct {
+	Success bool `json:"success"`
+	Results []struct {
+		Success      bool   `json:"success"`
+		HTML         string `json:"html"`
+		StatusCode   int    `json:"status_code"`
+		ErrorMessage string `json:"error_message"`
+	} `json:"results"`
 }
 
-// HTML asks the engine to render one page and returns its HTML. The engine's answer is
-// read with the same size cap as plain HTTP.
+// HTML asks the engine to render one page and returns its raw HTML. The reply is read with the
+// same size cap as plain HTTP.
 func (c *Crawl4AI) HTML(ctx context.Context, rawURL string) (*Response, error) {
 	ctx, cancel := context.WithTimeout(ctx, engineHTMLTimeout)
 	defer cancel()
-	payload, err := json.Marshal(map[string]string{"url": rawURL})
+	payload, err := json.Marshal(map[string][]string{"urls": {rawURL}})
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/html", bytes.NewReader(payload))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/crawl", bytes.NewReader(payload))
 	if err != nil {
 		return nil, err
 	}
@@ -90,23 +94,38 @@ func (c *Crawl4AI) HTML(ctx context.Context, rawURL string) (*Response, error) {
 		return nil, fmt.Errorf("web engine read: %w", err)
 	}
 	if int64(len(body)) > defaultMaxBytes {
-		return nil, fmt.Errorf("web engine: page is larger than %d bytes", defaultMaxBytes)
+		return nil, fmt.Errorf("web engine: reply is larger than %d bytes", defaultMaxBytes)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("web engine answered %d", resp.StatusCode)
+		return nil, fmt.Errorf("web engine answered %d: %s", resp.StatusCode, engineDetail(body))
 	}
-	var reply crawlHTMLReply
+	var reply crawlReply
 	if err := json.Unmarshal(body, &reply); err != nil {
 		return nil, fmt.Errorf("web engine: unreadable reply: %w", err)
 	}
-	if !reply.Success {
-		return nil, fmt.Errorf("web engine could not render the page: %s", reply.Error)
+	if !reply.Success || len(reply.Results) != 1 {
+		return nil, errors.New("web engine returned no result for the page")
 	}
-	return &Response{Status: reply.StatusCode, ContentType: "text/html", Body: []byte(reply.HTML), FinalURL: rawURL}, nil
+	got := reply.Results[0]
+	if !got.Success {
+		return nil, fmt.Errorf("web engine could not render the page: %s", got.ErrorMessage)
+	}
+	return &Response{Status: got.StatusCode, ContentType: "text/html", Body: []byte(got.HTML), FinalURL: rawURL}, nil
 }
 
-// Status reports whether the engine answers its health endpoint. A missing token or a
-// non-loopback address is "not_running" with the reason in the error, not a crash.
+// engineDetail reads the message of an error reply, which the engine sends as {"detail": "..."}.
+func engineDetail(body []byte) string {
+	var e struct {
+		Detail string `json:"detail"`
+	}
+	if json.Unmarshal(body, &e) == nil && e.Detail != "" {
+		return e.Detail
+	}
+	return "no detail"
+}
+
+// Status reports whether the engine answers its health endpoint, with the version it reports. An
+// unreachable engine is "not_running", not an error.
 func (c *Crawl4AI) Status(ctx context.Context) WebEngineStatus {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -123,5 +142,9 @@ func (c *Crawl4AI) Status(ctx context.Context) WebEngineStatus {
 	if resp.StatusCode != http.StatusOK {
 		return WebEngineStatus{Status: "not_running"}
 	}
-	return WebEngineStatus{Status: "running"}
+	var health struct {
+		Version string `json:"version"`
+	}
+	_ = json.NewDecoder(io.LimitReader(resp.Body, 4096)).Decode(&health)
+	return WebEngineStatus{Status: "running", Version: health.Version}
 }
