@@ -943,6 +943,11 @@ func main() {
 	if err := schedulerMgr.Register(scheduler.PluginHookScheduleDispatchJob(queries, h.PluginService)); err != nil {
 		slog.Warn("scheduler: failed to register plugin_hook_schedule_dispatch job", "error", err)
 	}
+	// Scheduled skill/plugin hub source sync (spec 5.6): each due source is
+	// refetched and its tracking items are checked for updates.
+	if err := schedulerMgr.Register(scheduler.HubSourceSyncJob(queries, h)); err != nil {
+		slog.Warn("scheduler: failed to register hub_source_sync job", "error", err)
+	}
 	// The Librarian's routines (spec 3.3, plan 10.9). Each runs for every
 	// workspace with ready knowledge; a deployment without knowledge has none.
 	// The taxonomy backfill is hourly and does nothing once every workspace is

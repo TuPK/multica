@@ -253,8 +253,12 @@ type Handler struct {
 	LivenessStore      LivenessStore
 	HeartbeatScheduler HeartbeatScheduler
 	Storage            storage.Storage
-	CFSigner           *auth.CloudFrontSigner
-	Analytics          analytics.Client
+	// HubStorage holds Skill/Plugin Hub objects: staged previews and immutable
+	// bundles. It is HUB_S3_* when configured, otherwise the attachment store.
+	// Set by the router after New.
+	HubStorage storage.Storage
+	CFSigner   *auth.CloudFrontSigner
+	Analytics  analytics.Client
 	// DaemonPendingWork pushes "heartbeat now" hints for queued
 	// heartbeat-carried requests (MUL-5444). Optional: when nil,
 	// requestDaemonPendingWork falls back to the local DaemonHub, which is the

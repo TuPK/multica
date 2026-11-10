@@ -141,7 +141,7 @@ func (q *Queries) DetachHubItemsBySource(ctx context.Context, arg DetachHubItems
 }
 
 const getHubItemByRef = `-- name: GetHubItemByRef :one
-SELECT id, workspace_id, kind, ref_id, source_id, source_ref, source_digest, tracking, latest_version, bundle_key, bundle_digest, size_bytes, file_count, scan_status, scan_report, created_at, updated_at FROM hub_item
+SELECT id, workspace_id, kind, ref_id, source_id, source_ref, source_digest, tracking, latest_version, bundle_key, bundle_digest, size_bytes, file_count, scan_status, scan_report, created_at, updated_at, update_available, remote_digest, checked_at, local_modified FROM hub_item
 WHERE workspace_id = $1 AND kind = $2 AND ref_id = $3
 `
 
@@ -172,6 +172,10 @@ func (q *Queries) GetHubItemByRef(ctx context.Context, arg GetHubItemByRefParams
 		&i.ScanReport,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UpdateAvailable,
+		&i.RemoteDigest,
+		&i.CheckedAt,
+		&i.LocalModified,
 	)
 	return i, err
 }
@@ -246,7 +250,7 @@ func (q *Queries) ListHubItemsBySource(ctx context.Context, arg ListHubItemsBySo
 }
 
 const listHubItemsByWorkspace = `-- name: ListHubItemsByWorkspace :many
-SELECT id, workspace_id, kind, ref_id, source_id, source_ref, source_digest, tracking, latest_version, bundle_key, bundle_digest, size_bytes, file_count, scan_status, scan_report, created_at, updated_at FROM hub_item
+SELECT id, workspace_id, kind, ref_id, source_id, source_ref, source_digest, tracking, latest_version, bundle_key, bundle_digest, size_bytes, file_count, scan_status, scan_report, created_at, updated_at, update_available, remote_digest, checked_at, local_modified FROM hub_item
 WHERE workspace_id = $1
 ORDER BY kind ASC, created_at ASC, id ASC
 `
@@ -278,6 +282,10 @@ func (q *Queries) ListHubItemsByWorkspace(ctx context.Context, workspaceID pgtyp
 			&i.ScanReport,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.UpdateAvailable,
+			&i.RemoteDigest,
+			&i.CheckedAt,
+			&i.LocalModified,
 		); err != nil {
 			return nil, err
 		}
@@ -520,7 +528,7 @@ ON CONFLICT (workspace_id, kind, ref_id) DO UPDATE SET
     scan_status = EXCLUDED.scan_status,
     scan_report = EXCLUDED.scan_report,
     updated_at = now()
-RETURNING id, workspace_id, kind, ref_id, source_id, source_ref, source_digest, tracking, latest_version, bundle_key, bundle_digest, size_bytes, file_count, scan_status, scan_report, created_at, updated_at
+RETURNING id, workspace_id, kind, ref_id, source_id, source_ref, source_digest, tracking, latest_version, bundle_key, bundle_digest, size_bytes, file_count, scan_status, scan_report, created_at, updated_at, update_available, remote_digest, checked_at, local_modified
 `
 
 type UpsertHubItemParams struct {
@@ -576,6 +584,10 @@ func (q *Queries) UpsertHubItem(ctx context.Context, arg UpsertHubItemParams) (H
 		&i.ScanReport,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UpdateAvailable,
+		&i.RemoteDigest,
+		&i.CheckedAt,
+		&i.LocalModified,
 	)
 	return i, err
 }

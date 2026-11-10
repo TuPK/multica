@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS hub_item_version_blob_item_version_digest_key;

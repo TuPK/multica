@@ -266,6 +266,13 @@ func (h *Handler) CreateHubSource(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to create source")
 		return
 	}
+	h.recordHubActivity(r.Context(), r, hubActivityEntry{
+		WorkspaceID: source.WorkspaceID,
+		Action:      hubActionSourceCreated,
+		ItemName:    source.Name,
+		SourceID:    source.ID,
+		Detail:      map[string]any{"type": source.Type, "url": source.Url},
+	})
 	writeJSON(w, http.StatusCreated, hubSourceToResponse(source, 0))
 }
 
@@ -342,6 +349,13 @@ func (h *Handler) UpdateHubSource(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to count source items")
 		return
 	}
+	h.recordHubActivity(r.Context(), r, hubActivityEntry{
+		WorkspaceID: updated.WorkspaceID,
+		Action:      hubActionSourceUpdated,
+		ItemName:    updated.Name,
+		SourceID:    updated.ID,
+		Detail:      map[string]any{"enabled": updated.Enabled, "auto_sync_interval_sec": updated.AutoSyncIntervalSec},
+	})
 	writeJSON(w, http.StatusOK, hubSourceToResponse(updated, count))
 }
 
@@ -395,7 +409,20 @@ func (h *Handler) removeHubSourceKeepingItems(w http.ResponseWriter, r *http.Req
 		writeError(w, http.StatusInternalServerError, "failed to commit source deletion")
 		return
 	}
+	h.recordHubSourceDeleted(r, source, "keep")
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// recordHubSourceDeleted writes the source_deleted entry. Best effort, like every
+// activity write: the deletion has already happened.
+func (h *Handler) recordHubSourceDeleted(r *http.Request, source db.HubSource, items string) {
+	h.recordHubActivity(r.Context(), r, hubActivityEntry{
+		WorkspaceID: source.WorkspaceID,
+		Action:      hubActionSourceDeleted,
+		ItemName:    source.Name,
+		SourceID:    source.ID,
+		Detail:      map[string]any{"items": items},
+	})
 }
 
 // removeHubSourceWithItems deletes the source's items with it. The in-use check
@@ -518,6 +545,7 @@ func (h *Handler) removeHubSourceWithItems(w http.ResponseWriter, r *http.Reques
 	for _, skillID := range deletedSkillIDs {
 		h.publish(protocol.EventSkillDeleted, uuidToString(source.WorkspaceID), actorType, actorID, map[string]any{"skill_id": skillID})
 	}
+	h.recordHubSourceDeleted(r, source, "delete")
 	w.WriteHeader(http.StatusNoContent)
 }
 

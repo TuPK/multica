@@ -3,6 +3,7 @@ package storage
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -17,6 +18,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
@@ -28,6 +30,87 @@ type S3Storage struct {
 	cdnDomain    string // if set, returned URLs use this instead of bucket name
 	endpointURL  string // custom S3-compatible endpoint (e.g. MinIO)
 	usePathStyle bool   // controls path-style S3 addressing
+	// presign signs presigned URLs against a client-reachable endpoint. Nil
+	// means sign with client (the attachment default).
+	presign *s3.PresignClient
+	// presignOff makes presign methods return ErrPresignUnsupported.
+	presignOff bool
+}
+
+// S3Options configures NewS3Storage. Attachment and Hub stores differ only in
+// where these values come from.
+type S3Options struct {
+	Bucket string
+	// Region is the signing region.
+	Region string
+	// Endpoint is a custom S3-compatible endpoint (MinIO, SeaweedFS, ...). Empty means AWS.
+	Endpoint string
+	// AccessKey and SecretKey are used together as static credentials. When either
+	// is empty the default AWS credential chain is used.
+	AccessKey string
+	SecretKey string
+	// UsePathStyle selects path-style addressing.
+	UsePathStyle bool
+	// CDNDomain, when set, makes uploaded URLs point at this domain.
+	CDNDomain string
+	// PresignEndpoint, when set, signs presigned URLs against this URL instead of
+	// Endpoint. Use it when clients reach the store at a different address than
+	// the server does; the signature covers the host, so it cannot be rewritten later.
+	PresignEndpoint string
+	// NoPresign makes presign methods return ErrPresignUnsupported unless
+	// PresignEndpoint is set. Set it when the server's endpoint is not reachable
+	// by clients.
+	NoPresign bool
+}
+
+// NewS3Storage builds an S3-compatible store from explicit options.
+func NewS3Storage(opts S3Options) (*S3Storage, error) {
+	cfgOpts := []func(*config.LoadOptions) error{
+		config.WithRegion(opts.Region),
+	}
+	if opts.AccessKey != "" && opts.SecretKey != "" {
+		cfgOpts = append(cfgOpts, config.WithCredentialsProvider(
+			credentials.NewStaticCredentialsProvider(opts.AccessKey, opts.SecretKey, ""),
+		))
+	}
+	cfg, err := config.LoadDefaultConfig(context.Background(), cfgOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("load AWS config: %w", err)
+	}
+
+	s := &S3Storage{
+		client:       s3.NewFromConfig(cfg, s3ClientOptions(opts.Endpoint, opts.UsePathStyle)...),
+		bucket:       opts.Bucket,
+		region:       opts.Region,
+		cdnDomain:    opts.CDNDomain,
+		endpointURL:  opts.Endpoint,
+		usePathStyle: opts.UsePathStyle,
+		presignOff:   opts.NoPresign && opts.PresignEndpoint == "",
+	}
+	if opts.PresignEndpoint != "" {
+		s.presign = s3.NewPresignClient(s3.NewFromConfig(cfg, s3ClientOptions(opts.PresignEndpoint, opts.UsePathStyle)...))
+	}
+	return s, nil
+}
+
+// s3ClientOptions pins the endpoint and addressing style explicitly. An empty
+// endpoint clears any AWS_ENDPOINT_URL that the SDK config picked up from the
+// environment, so a store built for AWS never talks to another store's endpoint.
+func s3ClientOptions(endpoint string, usePathStyle bool) []func(*s3.Options) {
+	opts := []func(*s3.Options){func(o *s3.Options) {
+		if endpoint != "" {
+			o.BaseEndpoint = aws.String(endpoint)
+		} else {
+			o.BaseEndpoint = nil
+		}
+		o.UsePathStyle = usePathStyle
+	}}
+	if isGCSEndpoint(endpoint) {
+		opts = append(opts, func(o *s3.Options) {
+			o.APIOptions = append(o.APIOptions, excludeGCSAcceptEncoding)
+		})
+	}
+	return opts
 }
 
 // NewS3StorageFromEnv creates an S3Storage from environment variables.
@@ -39,6 +122,7 @@ type S3Storage struct {
 //   - AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY (optional; falls back to default credential chain)
 //   - AWS_ENDPOINT_URL (optional S3-compatible endpoint)
 //   - S3_USE_PATH_STYLE (optional; defaults to true when AWS_ENDPOINT_URL is set)
+//   - CLOUDFRONT_DOMAIN (optional; public URL domain for uploads)
 func NewS3StorageFromEnv() *S3Storage {
 	bucket := os.Getenv("S3_BUCKET")
 	if bucket == "" {
@@ -56,53 +140,26 @@ func NewS3StorageFromEnv() *S3Storage {
 	if region == "" {
 		region = "us-west-2"
 	}
+	cdnDomain := os.Getenv("CLOUDFRONT_DOMAIN")
+	endpointURL := os.Getenv("AWS_ENDPOINT_URL")
+	usePathStyle := s3UsePathStyleFromEnv(endpointURL)
 
-	opts := []func(*config.LoadOptions) error{
-		config.WithRegion(region),
-	}
-
-	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
-	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
-	if accessKey != "" && secretKey != "" {
-		opts = append(opts, config.WithCredentialsProvider(
-			credentials.NewStaticCredentialsProvider(accessKey, secretKey, ""),
-		))
-	}
-
-	cfg, err := config.LoadDefaultConfig(context.Background(), opts...)
+	store, err := NewS3Storage(S3Options{
+		Bucket:       bucket,
+		Region:       region,
+		Endpoint:     endpointURL,
+		AccessKey:    os.Getenv("AWS_ACCESS_KEY_ID"),
+		SecretKey:    os.Getenv("AWS_SECRET_ACCESS_KEY"),
+		UsePathStyle: usePathStyle,
+		CDNDomain:    cdnDomain,
+	})
 	if err != nil {
 		slog.Error("failed to load AWS config", "error", err)
 		return nil
 	}
 
-	cdnDomain := os.Getenv("CLOUDFRONT_DOMAIN")
-
-	endpointURL := os.Getenv("AWS_ENDPOINT_URL")
-	usePathStyle := s3UsePathStyleFromEnv(endpointURL)
-	s3Opts := []func(*s3.Options){}
-	if endpointURL != "" || usePathStyle {
-		s3Opts = append(s3Opts, func(o *s3.Options) {
-			if endpointURL != "" {
-				o.BaseEndpoint = aws.String(endpointURL)
-			}
-			o.UsePathStyle = usePathStyle
-		})
-	}
-	if isGCSEndpoint(endpointURL) {
-		s3Opts = append(s3Opts, func(o *s3.Options) {
-			o.APIOptions = append(o.APIOptions, excludeGCSAcceptEncoding)
-		})
-	}
-
 	slog.Info("S3 storage initialized", "bucket", bucket, "region", region, "cdn_domain", cdnDomain, "endpoint_url", endpointURL, "use_path_style", usePathStyle)
-	return &S3Storage{
-		client:       s3.NewFromConfig(cfg, s3Opts...),
-		bucket:       bucket,
-		region:       region,
-		cdnDomain:    cdnDomain,
-		endpointURL:  endpointURL,
-		usePathStyle: usePathStyle,
-	}
+	return store
 }
 
 func (s *S3Storage) CdnDomain() string {
@@ -119,14 +176,19 @@ func looksLikeS3Hostname(bucket string) bool {
 }
 
 func s3UsePathStyleFromEnv(endpointURL string) bool {
-	defaultValue := endpointURL != ""
-	raw, ok := os.LookupEnv("S3_USE_PATH_STYLE")
+	return s3UsePathStyleFromEnvVar("S3_USE_PATH_STYLE", endpointURL != "")
+}
+
+// s3UsePathStyleFromEnvVar reads a boolean addressing-style variable, falling
+// back to defaultValue when it is unset or malformed.
+func s3UsePathStyleFromEnvVar(name string, defaultValue bool) bool {
+	raw, ok := os.LookupEnv(name)
 	if !ok || strings.TrimSpace(raw) == "" {
 		return defaultValue
 	}
 	parsed, err := parseBoolEnv(raw)
 	if err != nil {
-		slog.Warn("invalid S3_USE_PATH_STYLE value, using default", "value", raw, "default", defaultValue)
+		slog.Warn("invalid "+name+" value, using default", "value", raw, "default", defaultValue)
 		return defaultValue
 	}
 	return parsed
@@ -341,13 +403,141 @@ func (s *S3Storage) PresignGetWithContentDisposition(ctx context.Context, key st
 	if contentDisposition != "" {
 		input.ResponseContentDisposition = aws.String(contentDisposition)
 	}
-	out, err := s3.NewPresignClient(s.client).PresignGetObject(ctx, input, func(opts *s3.PresignOptions) {
+	presign, err := s.presignClient()
+	if err != nil {
+		return "", err
+	}
+	out, err := presign.PresignGetObject(ctx, input, func(opts *s3.PresignOptions) {
 		opts.Expires = ttl
 	})
 	if err != nil {
 		return "", fmt.Errorf("s3 PresignGetObject: %w", err)
 	}
 	return out.URL, nil
+}
+
+// PresignPut returns a URL that accepts one PUT of key within ttl. A client
+// that uses it must send the same Content-Type. Returns ErrPresignUnsupported
+// when the store has no client-reachable endpoint.
+func (s *S3Storage) PresignPut(ctx context.Context, key string, ttl time.Duration, contentType string) (string, error) {
+	if key == "" {
+		return "", fmt.Errorf("s3 PresignPut: empty key")
+	}
+	if ttl <= 0 {
+		ttl = 30 * time.Minute
+	}
+	presign, err := s.presignClient()
+	if err != nil {
+		return "", err
+	}
+	input := &s3.PutObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(key),
+	}
+	if contentType != "" {
+		input.ContentType = aws.String(contentType)
+	}
+	out, err := presign.PresignPutObject(ctx, input, func(opts *s3.PresignOptions) {
+		opts.Expires = ttl
+	})
+	if err != nil {
+		return "", fmt.Errorf("s3 PresignPutObject: %w", err)
+	}
+	return out.URL, nil
+}
+
+// presignClient returns the client that signs presigned URLs.
+func (s *S3Storage) presignClient() (*s3.PresignClient, error) {
+	if s.presignOff {
+		return nil, ErrPresignUnsupported
+	}
+	if s.presign != nil {
+		return s.presign, nil
+	}
+	return s3.NewPresignClient(s.client), nil
+}
+
+// ListPrefix returns every object whose key starts with prefix. It follows
+// continuation tokens, so the result covers the whole prefix; keep prefixes
+// narrow when the store is large.
+func (s *S3Storage) ListPrefix(ctx context.Context, prefix string) ([]ObjectInfo, error) {
+	var out []ObjectInfo
+	pages := s3.NewListObjectsV2Paginator(s.client, &s3.ListObjectsV2Input{
+		Bucket: aws.String(s.bucket),
+		Prefix: aws.String(prefix),
+	})
+	for pages.HasMorePages() {
+		page, err := pages.NextPage(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("s3 ListObjectsV2: %w", err)
+		}
+		for _, obj := range page.Contents {
+			out = append(out, ObjectInfo{
+				Key:          aws.ToString(obj.Key),
+				Size:         aws.ToInt64(obj.Size),
+				LastModified: aws.ToTime(obj.LastModified),
+			})
+		}
+	}
+	return out, nil
+}
+
+// CopyObject copies srcKey to dstKey inside the bucket, replacing dstKey. S3's
+// single-request copy is limited to 5 GiB; the Hub's bundles are far below that.
+func (s *S3Storage) CopyObject(ctx context.Context, srcKey, dstKey string) error {
+	if srcKey == "" || dstKey == "" {
+		return fmt.Errorf("s3 CopyObject: empty key")
+	}
+	_, err := s.client.CopyObject(ctx, &s3.CopyObjectInput{
+		Bucket:       aws.String(s.bucket),
+		Key:          aws.String(dstKey),
+		CopySource:   aws.String(copySourceHeader(s.bucket, srcKey)),
+		StorageClass: s.storageClass(),
+	})
+	if err != nil {
+		return fmt.Errorf("s3 CopyObject: %w", err)
+	}
+	return nil
+}
+
+// copySourceHeader is the x-amz-copy-source value: bucket/key with each path
+// segment percent-encoded. The SDK does not encode this header itself.
+func copySourceHeader(bucket, key string) string {
+	segments := strings.Split(key, "/")
+	for i, segment := range segments {
+		segments[i] = escapeCopySourceSegment(segment)
+	}
+	return escapeCopySourceSegment(bucket) + "/" + strings.Join(segments, "/")
+}
+
+// escapeCopySourceSegment encodes a space as %20, not +: a literal + must stay
+// %2B, because S3 decodes + in this header as a space.
+func escapeCopySourceSegment(segment string) string {
+	return strings.ReplaceAll(url.QueryEscape(segment), "+", "%20")
+}
+
+// EnsureBucket creates the bucket when it does not exist. S3-compatible servers
+// answer "already exists" in more than one way, and both mean the bucket is
+// there, so both count as success. Only meaningful for custom endpoints; AWS
+// buckets are provisioned out of band.
+func (s *S3Storage) EnsureBucket(ctx context.Context) error {
+	_, err := s.client.CreateBucket(ctx, &s3.CreateBucketInput{Bucket: aws.String(s.bucket)})
+	if err == nil {
+		return nil
+	}
+	var owned *types.BucketAlreadyOwnedByYou
+	var exists *types.BucketAlreadyExists
+	if errors.As(err, &owned) || errors.As(err, &exists) {
+		return nil
+	}
+	var apiErr smithy.APIError
+	if errors.As(err, &apiErr) {
+		switch apiErr.ErrorCode() {
+		case "BucketAlreadyOwnedByYou", "BucketAlreadyExists":
+			return nil
+		}
+	}
+	return fmt.Errorf("s3 CreateBucket %q: %w", s.bucket, err)
 }
 
 // Delete removes an object from S3. Errors are logged but not fatal.

@@ -88,6 +88,17 @@ func (h *Handler) PublishPluginPackage(w http.ResponseWriter, r *http.Request) {
 		writePluginError(w, err, "failed to publish the Plugin")
 		return
 	}
+	// Best effort: the publish has happened, so a failed hub note only delays it.
+	pkgID := parseUUID(published.ID)
+	h.recordHubActivity(r.Context(), r, hubActivityEntry{
+		WorkspaceID: workspaceID,
+		Action:      hubActionPluginPublish,
+		Kind:        "plugin",
+		RefID:       pkgID,
+		ItemName:    published.Name,
+		Detail:      map[string]any{"plugin_key": published.PluginKey},
+	})
+	h.markHubItemLocalModified(r.Context(), workspaceID, "plugin", pkgID)
 	writeJSON(w, http.StatusCreated, published)
 }
 

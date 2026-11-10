@@ -30,13 +30,13 @@ func setupHubImportTest(t *testing.T) {
 	if store == nil {
 		t.Fatal("local storage did not initialize")
 	}
-	prevStorage := testHandler.Storage
-	testHandler.Storage = store
+	prevStorage := testHandler.HubStorage
+	testHandler.HubStorage = store
 	prevFetcher := hubImportFetcher
 	hubImportFetcher = hub.NewSafeFetcher(hub.FetcherOptions{AllowPrivate: true})
 	prevTTL := hubPreviewTTL
 	t.Cleanup(func() {
-		testHandler.Storage = prevStorage
+		testHandler.HubStorage = prevStorage
 		hubImportFetcher = prevFetcher
 		hubPreviewTTL = prevTTL
 	})
@@ -455,7 +455,7 @@ func TestHubImportCommitSkillCreatesHubRows(t *testing.T) {
 		t.Fatalf("bundle key %q does not name the skill", bundleKey)
 	}
 	dbfx.Cleanup(t, "DELETE FROM hub_source WHERE workspace_id = $1 AND type = 'url_zip' AND url = $2", testWorkspaceID, srvURL)
-	if _, err := testHandler.Storage.GetReader(context.Background(), bundleKey); err != nil {
+	if _, err := testHandler.HubStorage.GetReader(context.Background(), bundleKey); err != nil {
 		t.Fatalf("bundle %q was not stored: %v", bundleKey, err)
 	}
 }

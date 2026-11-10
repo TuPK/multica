@@ -1004,24 +1004,54 @@ type GovernanceEvent struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
+type HubActivity struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	ActorType   string             `json:"actor_type"`
+	ActorID     pgtype.UUID        `json:"actor_id"`
+	Action      string             `json:"action"`
+	Kind        pgtype.Text        `json:"kind"`
+	RefID       pgtype.UUID        `json:"ref_id"`
+	ItemName    string             `json:"item_name"`
+	SourceID    pgtype.UUID        `json:"source_id"`
+	Detail      []byte             `json:"detail"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
 type HubItem struct {
-	ID            pgtype.UUID        `json:"id"`
-	WorkspaceID   pgtype.UUID        `json:"workspace_id"`
-	Kind          string             `json:"kind"`
-	RefID         pgtype.UUID        `json:"ref_id"`
-	SourceID      pgtype.UUID        `json:"source_id"`
-	SourceRef     string             `json:"source_ref"`
-	SourceDigest  string             `json:"source_digest"`
-	Tracking      string             `json:"tracking"`
-	LatestVersion string             `json:"latest_version"`
-	BundleKey     string             `json:"bundle_key"`
-	BundleDigest  string             `json:"bundle_digest"`
-	SizeBytes     int64              `json:"size_bytes"`
-	FileCount     int32              `json:"file_count"`
-	ScanStatus    string             `json:"scan_status"`
-	ScanReport    []byte             `json:"scan_report"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	ID              pgtype.UUID        `json:"id"`
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	Kind            string             `json:"kind"`
+	RefID           pgtype.UUID        `json:"ref_id"`
+	SourceID        pgtype.UUID        `json:"source_id"`
+	SourceRef       string             `json:"source_ref"`
+	SourceDigest    string             `json:"source_digest"`
+	Tracking        string             `json:"tracking"`
+	LatestVersion   string             `json:"latest_version"`
+	BundleKey       string             `json:"bundle_key"`
+	BundleDigest    string             `json:"bundle_digest"`
+	SizeBytes       int64              `json:"size_bytes"`
+	FileCount       int32              `json:"file_count"`
+	ScanStatus      string             `json:"scan_status"`
+	ScanReport      []byte             `json:"scan_report"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	UpdateAvailable bool               `json:"update_available"`
+	RemoteDigest    string             `json:"remote_digest"`
+	CheckedAt       pgtype.Timestamptz `json:"checked_at"`
+	LocalModified   bool               `json:"local_modified"`
+}
+
+type HubItemVersionBlob struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	ItemID      pgtype.UUID        `json:"item_id"`
+	Version     string             `json:"version"`
+	BundleKey   string             `json:"bundle_key"`
+	Digest      string             `json:"digest"`
+	SizeBytes   int64              `json:"size_bytes"`
+	CreatedBy   pgtype.UUID        `json:"created_by"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
 type HubSource struct {

@@ -454,6 +454,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 		GitExtraCACerts:                gitca.Load(slog.Default()),
 	}
 	h := handler.New(queries, pool, hub, bus, emailSvc, store, cfSigner, analyticsClient, signupConfig, daemonHub)
+	// The Hub has its own store (HUB_S3_*), falling back to the attachment store.
+	h.HubStorage = storage.HubStorageFromEnv(store)
 	h.BriefPush = service.NewBriefPushService(queries, appURLFromEnv())
 	invitationRateLimits := handler.DefaultInvitationRateLimits()
 	invitationRateLimits.Actor.Limit = envNonNegativeInt("RATE_LIMIT_INVITATION_ACTOR_10M", invitationRateLimits.Actor.Limit)
@@ -2738,12 +2740,25 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			// Skill / plugin hub sources and the import preview/commit flow.
 			r.Route("/api/hub", func(r chi.Router) {
 				r.Get("/sources", h.ListHubSources)
+				r.Get("/items", h.ListHubItems)
+				r.Route("/items/{kind}/{id}", func(r chi.Router) {
+					r.Get("/bundle", h.GetHubItemBundle)
+					r.Get("/bundle/download", h.DownloadHubItemBundle)
+					r.Get("/update", h.GetHubItemUpdate)
+					r.Get("/update/diff", h.GetHubItemUpdateDiff)
+					r.Post("/update/apply", h.ApplyHubItemUpdate)
+					r.Post("/fork", h.ForkHubItem)
+				})
+				r.Get("/activity", h.GetHubActivity)
+				r.Get("/quota", h.GetHubQuota)
+				r.Get("/export", h.ExportHubItems)
 				r.Post("/import/preview", h.PreviewHubImport)
 				r.Post("/import/commit", h.CommitHubImport)
 				r.Post("/sources", h.CreateHubSource)
 				r.Route("/sources/{id}", func(r chi.Router) {
 					r.Patch("/", h.UpdateHubSource)
 					r.Delete("/", h.DeleteHubSource)
+					r.Post("/sync", h.SyncHubSource)
 				})
 			})
 

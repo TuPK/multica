@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS hub_activity_workspace_created_idx;

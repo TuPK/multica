@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"io"
 	"time"
 )
@@ -26,10 +27,40 @@ type Storage interface {
 	GetReader(ctx context.Context, key string) (io.ReadCloser, error)
 }
 
+// ErrPresignUnsupported is returned by presign methods on a store that cannot
+// issue a URL a client can use: local disk has no URLs, and an S3 store with no
+// client-reachable endpoint must not hand out a link the client cannot open.
+// Callers fall back to serving the bytes through the server.
+var ErrPresignUnsupported = errors.New("storage: presigned URLs are not available for this store")
+
 type Presigner interface {
 	PresignGet(ctx context.Context, key string, ttl time.Duration) (string, error)
 }
 
 type DownloadPresigner interface {
 	PresignGetWithContentDisposition(ctx context.Context, key string, ttl time.Duration, contentDisposition string) (string, error)
+}
+
+// PresignPutter issues a time-limited URL a client can PUT one object body to.
+// Local storage returns ErrPresignUnsupported.
+type PresignPutter interface {
+	PresignPut(ctx context.Context, key string, ttl time.Duration, contentType string) (string, error)
+}
+
+// ObjectInfo describes one stored object.
+type ObjectInfo struct {
+	Key          string
+	Size         int64
+	LastModified time.Time
+}
+
+// Lister lists the objects whose keys start with prefix, sorted by key.
+// An empty prefix lists the whole store.
+type Lister interface {
+	ListPrefix(ctx context.Context, prefix string) ([]ObjectInfo, error)
+}
+
+// Copier copies an object within the same store, replacing dstKey if it exists.
+type Copier interface {
+	CopyObject(ctx context.Context, srcKey, dstKey string) error
 }

@@ -31,11 +31,13 @@ import (
 // Skill / plugin hub import (spec 5.3, 6, 8, 9).
 //
 // Preview fetches a bundle through the SSRF-safe fetcher, detects and scans it,
-// and stages the normalized zip plus a small metadata object in storage under
-// hub/{workspace}/staging/{preview}. Commit reloads the staged bytes, re-runs
-// detection and the scan (the staged metadata is never trusted for the
-// decision), writes the skill or plugin through the same paths the existing
-// import routes use, then records a hub_source and hub_item and keeps the bundle.
+// and stages the normalized zip plus a small metadata object in the Hub store
+// under staging/{workspace}/{preview}. The top-level staging/ prefix is the one
+// the bucket's expiry rule targets (docs/engineering/runbooks/hub-object-storage.md).
+// Commit reloads the staged bytes, re-runs detection and the scan (the staged
+// metadata is never trusted for the decision), writes the skill or plugin through
+// the same paths the existing import routes use, then records a hub_source and
+// hub_item and keeps the bundle.
 
 const (
 	hubImportBodyLimit          = 64 << 10
@@ -165,16 +167,39 @@ type hubScanReport struct {
 }
 
 func hubStagingZipKey(workspaceID, previewID string) string {
-	return "hub/" + workspaceID + "/staging/" + previewID + ".zip"
+	return "staging/" + workspaceID + "/" + previewID + ".zip"
 }
 
 func hubStagingMetaKey(workspaceID, previewID string) string {
-	return "hub/" + workspaceID + "/staging/" + previewID + ".json"
+	return "staging/" + workspaceID + "/" + previewID + ".json"
 }
 
 // hubBundleKey is the immutable copy of the bundle a hub item was created from.
 func hubBundleKey(workspaceID, kind, refID, digest string) string {
 	return fmt.Sprintf("hub/%s/%s/%s/%s/bundle.zip", workspaceID, kind, refID, digest)
+}
+
+// hubItemVersion names the version a hub item's bundle is recorded under: the
+// manifest version of a plugin, or the bundle digest for a skill, which has none.
+func hubItemVersion(latestVersion, digest string) string {
+	if latestVersion != "" {
+		return latestVersion
+	}
+	return digest
+}
+
+// writeHubVersionBlob records the bundle a commit stored as one immutable version
+// row. A repeat of the same version and digest is a no-op.
+func writeHubVersionBlob(ctx context.Context, q *db.Queries, item db.HubItem, createdBy pgtype.UUID) error {
+	return q.InsertHubItemVersionBlob(ctx, db.InsertHubItemVersionBlobParams{
+		WorkspaceID: item.WorkspaceID,
+		ItemID:      item.ID,
+		Version:     hubItemVersion(item.LatestVersion, item.BundleDigest),
+		BundleKey:   item.BundleKey,
+		Digest:      item.BundleDigest,
+		SizeBytes:   item.SizeBytes,
+		CreatedBy:   createdBy,
+	})
 }
 
 // hubImportCaller resolves the workspace and the acting user and checks that the
@@ -255,6 +280,40 @@ func hubLegacyFetch(source importSource) hub.LegacyFetch {
 	}
 }
 
+// errHubURLMismatch means a legacy source type was given a URL of the other
+// legacy host. errHubUnsupportedSource means the type is not fetched by URL.
+var (
+	errHubURLMismatch       = errors.New("hub: url does not match the source type")
+	errHubUnsupportedSource = errors.New("hub: unsupported source type")
+)
+
+// hubImporterFor picks the importer for a fetched source type. The ref is returned
+// with the URL normalized for the legacy hosts, which is the URL a source records.
+// Preview and sync share it, so both fetch an item the same way.
+func hubImporterFor(ref hub.SourceRef) (hub.Importer, hub.SourceRef, error) {
+	switch ref.Type {
+	case hub.SourceGitHub:
+		return hub.NewGitHubImporter(), ref, nil
+	case hub.SourceURLZip:
+		return hub.NewURLZipImporter(), ref, nil
+	case hub.SourceClawHub, hub.SourceSkillsSh:
+		want := sourceClawHub
+		if ref.Type == hub.SourceSkillsSh {
+			want = sourceSkillsSh
+		}
+		detected, normalized, err := detectImportSource(ref.URL)
+		if err != nil || detected != want {
+			return nil, ref, errHubURLMismatch
+		}
+		ref.URL = normalized
+		if want == sourceSkillsSh {
+			return hub.NewSkillsShImporter(hubLegacyFetch(want)), ref, nil
+		}
+		return hub.NewClawHubImporter(hubLegacyFetch(want)), ref, nil
+	}
+	return nil, ref, errHubUnsupportedSource
+}
+
 func importedSkillToHubBundle(imported *importedSkill) *hub.Bundle {
 	bundle := &hub.Bundle{}
 	add := func(p, content string) {
@@ -306,31 +365,13 @@ func (h *Handler) PreviewHubImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var (
-		importer hub.Importer
-		ref      = hub.SourceRef{Type: hub.SourceType(src.Type), URL: src.URL, Ref: src.Ref, Subdir: src.Subdir, SHA256: src.SHA256}
-	)
-	switch hub.SourceType(src.Type) {
-	case hub.SourceGitHub:
-		importer = hub.NewGitHubImporter()
-	case hub.SourceURLZip:
-		importer = hub.NewURLZipImporter()
-	case hub.SourceClawHub, hub.SourceSkillsSh:
-		want := sourceClawHub
-		if hub.SourceType(src.Type) == hub.SourceSkillsSh {
-			want = sourceSkillsSh
-		}
-		detected, normalized, err := detectImportSource(src.URL)
-		if err != nil || detected != want {
-			writeError(w, http.StatusBadRequest, "url does not match the source type")
-			return
-		}
-		ref.URL = normalized
-		importer = hub.NewClawHubImporter(hubLegacyFetch(want))
-		if want == sourceSkillsSh {
-			importer = hub.NewSkillsShImporter(hubLegacyFetch(want))
-		}
-	default:
+	ref := hub.SourceRef{Type: hub.SourceType(src.Type), URL: src.URL, Ref: src.Ref, Subdir: src.Subdir, SHA256: src.SHA256}
+	importer, ref, err := hubImporterFor(ref)
+	if errors.Is(err, errHubURLMismatch) {
+		writeError(w, http.StatusBadRequest, "url does not match the source type")
+		return
+	}
+	if err != nil {
 		writeError(w, http.StatusBadRequest, "unsupported source type")
 		return
 	}
@@ -460,7 +501,7 @@ func (h *Handler) stageHubPreview(w http.ResponseWriter, r *http.Request, worksp
 		writeError(w, http.StatusInternalServerError, "failed to check for an existing item")
 		return
 	}
-	if h.Storage == nil {
+	if h.HubStorage == nil {
 		writeError(w, http.StatusServiceUnavailable, "file storage is not configured")
 		return
 	}
@@ -485,12 +526,12 @@ func (h *Handler) stageHubPreview(w http.ResponseWriter, r *http.Request, worksp
 		writeError(w, http.StatusInternalServerError, "failed to stage the bundle")
 		return
 	}
-	if _, err := h.Storage.Upload(ctx, hubStagingZipKey(workspaceID, previewID), zipBytes, "application/zip", ""); err != nil {
+	if _, err := h.HubStorage.Upload(ctx, hubStagingZipKey(workspaceID, previewID), zipBytes, "application/zip", ""); err != nil {
 		slog.Warn("hub staging upload failed", append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "failed to stage the bundle")
 		return
 	}
-	if _, err := h.Storage.Upload(ctx, hubStagingMetaKey(workspaceID, previewID), metaBytes, hubImportStagingContentType, ""); err != nil {
+	if _, err := h.HubStorage.Upload(ctx, hubStagingMetaKey(workspaceID, previewID), metaBytes, hubImportStagingContentType, ""); err != nil {
 		slog.Warn("hub staging metadata upload failed", append(logger.RequestAttrs(r), "error", err)...)
 		h.deleteHubStaging(ctx, workspaceID, previewID)
 		writeError(w, http.StatusInternalServerError, "failed to stage the bundle")
@@ -547,7 +588,7 @@ func (h *Handler) hubImportConflict(ctx context.Context, ws pgtype.UUID, detecte
 // this workspace and user. Another caller's or another workspace's preview is
 // reported as not found.
 func (h *Handler) loadHubPreview(w http.ResponseWriter, r *http.Request, workspaceID, userID, previewID string) (hubStagedMeta, bool) {
-	rc, err := h.Storage.GetReader(r.Context(), hubStagingMetaKey(workspaceID, previewID))
+	rc, err := h.HubStorage.GetReader(r.Context(), hubStagingMetaKey(workspaceID, previewID))
 	if err != nil {
 		var noSuchKey *types.NoSuchKey
 		if errors.Is(err, os.ErrNotExist) || errors.As(err, &noSuchKey) {
@@ -577,7 +618,7 @@ func (h *Handler) loadHubPreview(w http.ResponseWriter, r *http.Request, workspa
 
 // readHubStagedZip loads the staged zip bytes.
 func (h *Handler) readHubStagedZip(ctx context.Context, workspaceID, previewID string) ([]byte, error) {
-	rc, err := h.Storage.GetReader(ctx, hubStagingZipKey(workspaceID, previewID))
+	rc, err := h.HubStorage.GetReader(ctx, hubStagingZipKey(workspaceID, previewID))
 	if err != nil {
 		return nil, err
 	}
@@ -589,7 +630,7 @@ func (h *Handler) readHubStagedZip(ctx context.Context, workspaceID, previewID s
 // object only costs storage, and it is never read after its expiry.
 func (h *Handler) deleteHubStaging(ctx context.Context, workspaceID, previewID string) {
 	for _, key := range []string{hubStagingZipKey(workspaceID, previewID), hubStagingMetaKey(workspaceID, previewID)} {
-		if err := h.Storage.DeleteObject(ctx, key); err != nil {
+		if err := h.HubStorage.DeleteObject(ctx, key); err != nil {
 			slog.Warn("hub staging cleanup failed", "key", key, "error", err)
 		}
 	}
@@ -636,7 +677,7 @@ func (h *Handler) CommitHubImport(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "on_conflict must be one of: rename, replace, skip")
 		return
 	}
-	if h.Storage == nil {
+	if h.HubStorage == nil {
 		writeError(w, http.StatusServiceUnavailable, "file storage is not configured")
 		return
 	}
@@ -762,12 +803,26 @@ func (h *Handler) commitHubSkill(w http.ResponseWriter, r *http.Request, c *hubC
 // hubSkillInputs builds the skill fields from the bundle. Config carries the
 // provenance that the skill import path records in config.origin.
 func hubSkillInputs(c *hubCommit) (content string, config map[string]any, files []CreateSkillFileRequest) {
-	skillPath := c.detected.SkillMDPath
+	content, files = hubSkillParts(c.bundle, c.detected.SkillMDPath)
+	config = map[string]any{"origin": map[string]any{
+		"type":       c.meta.SourceType,
+		"source_url": c.meta.SourceURL,
+	}}
+	return content, config, files
+}
+
+// hubSkillParts lays a bundle out the way a skill stores it: the SKILL.md content,
+// and the text supporting files beside it, with paths relative to SKILL.md's
+// directory. Sync compares a remote bundle and a local skill through this same
+// layout, so both are judged by what the skill would hold.
+func hubSkillParts(bundle *hub.Bundle, skillPath string) (string, []CreateSkillFileRequest) {
+	var content string
+	var files []CreateSkillFileRequest
 	prefix := ""
 	if dir := path.Dir(skillPath); dir != "." {
 		prefix = dir + "/"
 	}
-	for _, f := range c.bundle.Files {
+	for _, f := range bundle.Files {
 		if f.Path == skillPath {
 			content = string(f.Content)
 			continue
@@ -786,18 +841,16 @@ func hubSkillInputs(c *hubCommit) (content string, config map[string]any, files 
 		}
 		files = append(files, CreateSkillFileRequest{Path: rel, Content: string(f.Content)})
 	}
-	config = map[string]any{"origin": map[string]any{
-		"type":       c.meta.SourceType,
-		"source_url": c.meta.SourceURL,
-	}}
-	return content, config, files
+	return content, files
 }
 
 func (h *Handler) createHubSkill(w http.ResponseWriter, r *http.Request, c *hubCommit, name string) {
 	ctx := r.Context()
 	content, config, files := hubSkillInputs(c)
-	bundleDigest := c.meta.BundleDigest
 
+	if !h.checkHubCommitQuota(ctx, w, c.ws, 1, c.bundle.TotalSize) {
+		return
+	}
 	tx, err := h.TxStarter.Begin(ctx)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to save the import")
@@ -828,17 +881,13 @@ func (h *Handler) createHubSkill(w http.ResponseWriter, r *http.Request, c *hubC
 
 	// The bundle is stored before the commit, so a committed hub item never
 	// points at a missing object. If the commit fails, the object is orphaned.
-	if _, err := h.Storage.Upload(ctx, hubBundleKey(c.workspaceID, "skill", resp.ID, bundleDigest), c.zipBytes, "application/zip", ""); err != nil {
+	bundleKey, err := h.hubStoreBundle(ctx, c, "skill", resp.ID)
+	if err != nil {
 		slog.Warn("hub import: bundle upload failed", append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "failed to store the bundle")
 		return
 	}
-	sourceID, err := h.hubSourceForCommit(ctx, qtx, c)
-	if err != nil {
-		writeHubCommitFailure(w, r, err)
-		return
-	}
-	item, err := qtx.UpsertHubItem(ctx, hubItemParams(c, sourceID, parseUUID(resp.ID), "", hubBundleKey(c.workspaceID, "skill", resp.ID, bundleDigest)))
+	item, err := h.recordHubCommitItem(ctx, qtx, c, parseUUID(resp.ID), "", bundleKey)
 	if err != nil {
 		writeHubCommitFailure(w, r, err)
 		return
@@ -850,6 +899,7 @@ func (h *Handler) createHubSkill(w http.ResponseWriter, r *http.Request, c *hubC
 
 	actorType, actorID := h.resolveActor(r, c.userID, c.workspaceID)
 	h.publish(protocol.EventSkillCreated, c.workspaceID, actorType, actorID, map[string]any{"skill": resp})
+	h.recordHubImportActivity(r, c, name, item)
 	h.deleteHubStaging(ctx, c.workspaceID, c.previewID)
 	writeJSON(w, http.StatusOK, HubImportCommitResponse{Kind: "skill", ID: resp.ID, HubItemID: uuidToString(item.ID)})
 }
@@ -863,7 +913,16 @@ func (h *Handler) replaceHubSkill(w http.ResponseWriter, r *http.Request, c *hub
 	content, config, files := hubSkillInputs(c)
 	refID := uuidToString(existing.ID)
 
-	if _, err := h.Storage.Upload(ctx, hubBundleKey(c.workspaceID, "skill", refID, c.meta.BundleDigest), c.zipBytes, "application/zip", ""); err != nil {
+	exists, oldSize, err := h.hubItemFootprint(ctx, c.ws, "skill", existing.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to save the import")
+		return
+	}
+	if !h.checkHubCommitQuota(ctx, w, c.ws, hubNewItemCount(exists), c.bundle.TotalSize-oldSize) {
+		return
+	}
+	bundleKey, err := h.hubStoreBundle(ctx, c, "skill", refID)
+	if err != nil {
 		slog.Warn("hub import: bundle upload failed", append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "failed to store the bundle")
 		return
@@ -893,13 +952,7 @@ func (h *Handler) replaceHubSkill(w http.ResponseWriter, r *http.Request, c *hub
 		return
 	}
 	defer tx.Rollback(ctx)
-	qtx := h.Queries.WithTx(tx)
-	sourceID, err := h.hubSourceForCommit(ctx, qtx, c)
-	if err != nil {
-		writeHubCommitFailure(w, r, err)
-		return
-	}
-	item, err := qtx.UpsertHubItem(ctx, hubItemParams(c, sourceID, existing.ID, "", hubBundleKey(c.workspaceID, "skill", refID, c.meta.BundleDigest)))
+	item, err := h.recordHubCommitItem(ctx, h.Queries.WithTx(tx), c, existing.ID, "", bundleKey)
 	if err != nil {
 		writeHubCommitFailure(w, r, err)
 		return
@@ -911,6 +964,7 @@ func (h *Handler) replaceHubSkill(w http.ResponseWriter, r *http.Request, c *hub
 
 	actorType, actorID := h.resolveActor(r, c.userID, c.workspaceID)
 	h.publish(protocol.EventSkillUpdated, c.workspaceID, actorType, actorID, map[string]any{"skill": resp})
+	h.recordHubImportActivity(r, c, target, item)
 	h.deleteHubStaging(ctx, c.workspaceID, c.previewID)
 	writeJSON(w, http.StatusOK, HubImportCommitResponse{Kind: "skill", ID: resp.ID, HubItemID: uuidToString(item.ID)})
 }
@@ -948,13 +1002,27 @@ func (h *Handler) commitHubPlugin(w http.ResponseWriter, r *http.Request, c *hub
 		// replace: publish the bundle as a new version of the existing package.
 	}
 
+	addItems, oldSize := 1, int64(0)
+	if found {
+		exists, size, err := h.hubItemFootprint(ctx, c.ws, "plugin", existing.ID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to save the import")
+			return
+		}
+		addItems, oldSize = hubNewItemCount(exists), size
+	}
+	if !h.checkHubCommitQuota(ctx, w, c.ws, addItems, c.bundle.TotalSize-oldSize) {
+		return
+	}
+
 	published, err := h.PluginService.PublishBundle(ctx, c.ws, c.user, c.zipBytes)
 	if err != nil {
 		writePluginError(w, err, "failed to publish the Plugin")
 		return
 	}
 	pkgID := parseUUID(published.ID)
-	if _, err := h.Storage.Upload(ctx, hubBundleKey(c.workspaceID, "plugin", published.ID, c.meta.BundleDigest), c.zipBytes, "application/zip", ""); err != nil {
+	bundleKey, err := h.hubStoreBundle(ctx, c, "plugin", published.ID)
+	if err != nil {
 		slog.Warn("hub import: plugin bundle upload failed", append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "the plugin was published but its bundle could not be stored")
 		return
@@ -966,13 +1034,7 @@ func (h *Handler) commitHubPlugin(w http.ResponseWriter, r *http.Request, c *hub
 		return
 	}
 	defer tx.Rollback(ctx)
-	qtx := h.Queries.WithTx(tx)
-	sourceID, err := h.hubSourceForCommit(ctx, qtx, c)
-	if err != nil {
-		writeHubCommitFailure(w, r, err)
-		return
-	}
-	item, err := qtx.UpsertHubItem(ctx, hubItemParams(c, sourceID, pkgID, c.detected.Version, hubBundleKey(c.workspaceID, "plugin", published.ID, c.meta.BundleDigest)))
+	item, err := h.recordHubCommitItem(ctx, h.Queries.WithTx(tx), c, pkgID, c.detected.Version, bundleKey)
 	if err != nil {
 		writeHubCommitFailure(w, r, err)
 		return
@@ -982,6 +1044,7 @@ func (h *Handler) commitHubPlugin(w http.ResponseWriter, r *http.Request, c *hub
 		return
 	}
 
+	h.recordHubImportActivity(r, c, published.Name, item)
 	h.deleteHubStaging(ctx, c.workspaceID, c.previewID)
 	writeJSON(w, http.StatusOK, HubImportCommitResponse{Kind: "plugin", ID: published.ID, HubItemID: uuidToString(item.ID)})
 }
@@ -1104,4 +1167,92 @@ func writeHubCommitFailure(w http.ResponseWriter, r *http.Request, err error) {
 	}
 	slog.Warn("hub import: save failed", append(logger.RequestAttrs(r), "error", err)...)
 	writeError(w, http.StatusInternalServerError, "failed to save the import")
+}
+
+// hubStoreBundle writes a commit's zip under its immutable key and returns the key.
+// It runs before the hub rows are written, so a committed row never points at a
+// missing object.
+func (h *Handler) hubStoreBundle(ctx context.Context, c *hubCommit, kind, refID string) (string, error) {
+	key := hubBundleKey(c.workspaceID, kind, refID, c.meta.BundleDigest)
+	if _, err := h.HubStorage.Upload(ctx, key, c.zipBytes, "application/zip", ""); err != nil {
+		return "", err
+	}
+	return key, nil
+}
+
+// recordHubCommitItem writes the hub row of a committed skill or plugin and its
+// version blob, on the caller's transaction, so the row commits with the write
+// that produced the item.
+func (h *Handler) recordHubCommitItem(ctx context.Context, q *db.Queries, c *hubCommit, refID pgtype.UUID, latestVersion, bundleKey string) (db.HubItem, error) {
+	sourceID, err := h.hubSourceForCommit(ctx, q, c)
+	if err != nil {
+		return db.HubItem{}, err
+	}
+	item, err := q.UpsertHubItem(ctx, hubItemParams(c, sourceID, refID, latestVersion, bundleKey))
+	if err != nil {
+		return db.HubItem{}, err
+	}
+	if err := writeHubVersionBlob(ctx, q, item, c.user); err != nil {
+		return db.HubItem{}, err
+	}
+	return item, nil
+}
+
+// hubItemFootprint reports whether a skill or plugin already has a hub row, and the
+// bytes that row counts toward the storage quota. A commit that replaces the row
+// adds only the difference, and a commit that creates one adds an item.
+func (h *Handler) hubItemFootprint(ctx context.Context, ws pgtype.UUID, kind string, refID pgtype.UUID) (bool, int64, error) {
+	item, err := h.Queries.GetHubItemByRef(ctx, db.GetHubItemByRefParams{WorkspaceID: ws, Kind: kind, RefID: refID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, 0, nil
+	}
+	if err != nil {
+		return false, 0, err
+	}
+	return true, item.SizeBytes, nil
+}
+
+// hubNewItemCount is the item count a write adds: one when it creates the row.
+func hubNewItemCount(exists bool) int {
+	if exists {
+		return 0
+	}
+	return 1
+}
+
+// checkHubCommitQuota refuses a write that would put the workspace over a hub
+// quota. It writes the response and returns false when the write must stop. A
+// write that adds nothing is never refused, so an over-quota workspace can still
+// replace an item with a smaller one.
+func (h *Handler) checkHubCommitQuota(ctx context.Context, w http.ResponseWriter, ws pgtype.UUID, addItems int, addBytes int64) bool {
+	if addItems <= 0 && addBytes <= 0 {
+		return true
+	}
+	if err := h.checkHubQuota(ctx, ws, addItems, addBytes); err != nil {
+		if !writeHubQuotaError(w, err) {
+			slog.Warn("hub quota check failed", "error", err)
+			writeError(w, http.StatusInternalServerError, "failed to check the hub quota")
+		}
+		return false
+	}
+	return true
+}
+
+// recordHubImportActivity writes the import_committed entry for a commit.
+// The commit has already happened, so the entry is best effort.
+func (h *Handler) recordHubImportActivity(r *http.Request, c *hubCommit, name string, item db.HubItem) {
+	h.recordHubActivity(r.Context(), r, hubActivityEntry{
+		WorkspaceID: c.ws,
+		Action:      hubActionImportCommit,
+		Kind:        string(c.detected.Kind),
+		RefID:       item.RefID,
+		ItemName:    name,
+		SourceID:    item.SourceID,
+		Detail: map[string]any{
+			"version":     hubItemVersion(item.LatestVersion, item.BundleDigest),
+			"source_type": c.meta.SourceType,
+			"scan_status": c.scan.Status,
+			"on_conflict": c.req.OnConflict,
+		},
+	})
 }

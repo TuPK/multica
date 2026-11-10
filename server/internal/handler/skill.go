@@ -715,6 +715,7 @@ func (h *Handler) UpdateSkill(w http.ResponseWriter, r *http.Request) {
 	wsID := h.resolveWorkspaceID(r)
 	actorType, actorID := h.resolveActor(r, requestUserID(r), wsID)
 	h.publish(protocol.EventSkillUpdated, wsID, actorType, actorID, map[string]any{"skill": resp})
+	h.noteSkillEdit(r, skill)
 	writeJSON(w, http.StatusOK, resp)
 }
 
@@ -2591,6 +2592,7 @@ func (h *Handler) UpsertSkillFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.publishSkillFilesChanged(r, resp)
+	h.noteSkillEdit(r, skill)
 	writeJSON(w, http.StatusOK, skillFileToResponse(sf))
 }
 
@@ -2665,6 +2667,7 @@ func (h *Handler) DeleteSkillFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.publishSkillFilesChanged(r, resp)
+	h.noteSkillEdit(r, skill)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -2688,6 +2691,21 @@ func skillWithFilesInTx(ctx context.Context, qtx *db.Queries, skill db.Skill) (S
 // publishSkillFilesChanged announces a supporting-file write the same way
 // UpdateSkill announces an edit: a file change is a change to the skill, and
 // clients holding the skill (detail page, agent skill lists) must refetch it.
+// noteSkillEdit records a saved skill edit for the hub: a file_saved activity entry,
+// and the local-edit flag on the skill's hub item when it tracks a source. Both are
+// best effort; the edit has already been committed.
+func (h *Handler) noteSkillEdit(r *http.Request, skill db.Skill) {
+	ctx := r.Context()
+	h.recordHubActivity(ctx, r, hubActivityEntry{
+		WorkspaceID: skill.WorkspaceID,
+		Action:      hubActionFileSaved,
+		Kind:        "skill",
+		RefID:       skill.ID,
+		ItemName:    skill.Name,
+	})
+	h.markHubItemLocalModified(ctx, skill.WorkspaceID, "skill", skill.ID)
+}
+
 func (h *Handler) publishSkillFilesChanged(r *http.Request, resp SkillWithFilesResponse) {
 	wsID := h.resolveWorkspaceID(r)
 	actorType, actorID := h.resolveActor(r, requestUserID(r), wsID)
