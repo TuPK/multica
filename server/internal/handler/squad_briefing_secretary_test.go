@@ -54,6 +54,22 @@ func TestSecretaryDirectiveBlockContent(t *testing.T) {
 	}
 }
 
+// A request's child closes as done: the Secretary wakes when every child is
+// closed, and in_review is not closed. The note must beat the leader's generic
+// "move the parent to in_review" rule, and a directive keeps its own closing.
+func TestSecretaryDirectiveBlockClosesRequestChildAsDone(t *testing.T) {
+	request := secretaryDirectiveBlock(secretaryIssueRequest, map[string]bool{})
+	for _, want := range []string{"multica issue status", "done", "in_review", "overrides"} {
+		if !strings.Contains(request, want) {
+			t.Errorf("request note missing %q:\n%s", want, request)
+		}
+	}
+	directive := secretaryDirectiveBlock(secretaryIssueDirective, map[string]bool{})
+	if strings.Contains(directive, "multica issue status") {
+		t.Errorf("directive note must not set the status itself:\n%s", directive)
+	}
+}
+
 func TestSecretaryDirectiveBlockSkillNamedOnlyWhenInstalled(t *testing.T) {
 	none := secretaryDirectiveBlock(secretaryIssueDirective, map[string]bool{})
 	if strings.Contains(none, "squad-reporting") || strings.Contains(none, "directive-execution") {

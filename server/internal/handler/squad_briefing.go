@@ -814,6 +814,9 @@ func secretaryDirectiveBlock(kind secretaryIssueKind, installedSkills map[string
 	sb.WriteString("- Your answer is for the Secretary, not for the boss. Post it as a comment on this issue and lead with the answer.\n")
 	sb.WriteString("- For this issue only, you analyse the question yourself, or have members gather the facts, and then write the assessment yourself. The usual rule that a leader does not do the work itself does not apply here.\n")
 	sb.WriteString("- When you need a decision, a fact your squad cannot get, or a change of scope, ask the Secretary in a comment on this issue, addressed to it by name. Do not ask the boss directly: the Secretary decides what reaches the boss.\n")
+	if kind == secretaryIssueRequest {
+		sb.WriteString("- When your answer is posted, close this issue with `multica issue status <this-issue-id> done`. The Secretary reads the answers once every request issue is closed, and `in_review` is not closed, so the request stalls and the boss gets no report. This overrides any rule above or in your runtime instructions to set `in_review` or to leave `done` to a human.\n")
+	}
 	if kind == secretaryIssueDirective && installedSkills[directiveExecutionSkill] {
 		sb.WriteString("- The `" + directiveExecutionSkill + "` skill sets out how to acknowledge, plan, decompose and close a directive. Follow it.\n")
 	}
