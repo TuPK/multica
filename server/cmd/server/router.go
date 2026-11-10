@@ -1893,6 +1893,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Post("/plugins/packages", h.PublishPluginPackage)
 					r.Post("/plugins/packages/local", h.PublishLocalPluginPackage)
 					r.Delete("/plugins/packages/{packageId}", h.DeletePluginPackage)
+					r.Get("/plugins/packages/{packageId}/versions/{versionId}/files", h.ListPluginPackageVersionFiles)
+					r.Get("/plugins/packages/{packageId}/versions/{versionId}/files/content", h.GetPluginPackageVersionFileContent)
 					// Installing a Plugin is two steps on purpose: preview
 					// reads the published version's manifest and returns the
 					// scope list without writing anything, so the consent
