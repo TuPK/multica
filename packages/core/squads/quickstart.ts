@@ -18,11 +18,13 @@ import type {
   IssueWorkflowWriteRequest,
   ListAutopilotsResponse,
   ListIssueWorkflowsResponse,
+  SetAgentSkillsRequest,
   Skill,
   SkillSummary,
   Squad,
   SquadMember,
   SquadSkill,
+  UpdateAutopilotRequest,
   UpdateSkillRequest,
 } from "../types";
 import {
@@ -38,6 +40,7 @@ import type {
   CompanySeatAssignment,
   CompanySeatsResponse,
 } from "../company/types";
+import { loadKitvietPacks } from "./kitviet-packs";
 import { PLANNING_ROLE_AGENT_INSTRUCTIONS, type PlanningRoleKey } from "./planning-agent-instructions";
 import { SDLC_ROLE_AGENT_INSTRUCTIONS, type SdlcRoleKey } from "./sdlc-agent-instructions";
 import { SDLC_BUILTIN_SKILLS, type BuiltinSkill } from "./sdlc-skills-data";
@@ -73,6 +76,7 @@ export interface SquadQuickstartClient {
   updateSkill(id: string, data: UpdateSkillRequest): Promise<Skill>;
   listSquadSkills(squadId: string): Promise<SquadSkill[]>;
   setSquadSkills(squadId: string, skillIds: string[]): Promise<SquadSkill[]>;
+  addAgentSkills(agentId: string, data: SetAgentSkillsRequest): Promise<void>;
   updateSquadCharter(squadId: string, data: UpdateSquadCharterRequest): Promise<SquadCharter>;
   createSquadRoutine(squadId: string, data: CreateSquadRoutineRequest): Promise<SquadRoutine>;
   addSquadMember(
@@ -83,6 +87,7 @@ export interface SquadQuickstartClient {
   createIssueWorkflow(data: IssueWorkflowWriteRequest): Promise<IssueWorkflow>;
   listAutopilots(params?: { status?: string }): Promise<ListAutopilotsResponse>;
   createAutopilot(data: CreateAutopilotRequest): Promise<Autopilot>;
+  updateAutopilot(id: string, data: UpdateAutopilotRequest): Promise<Autopilot>;
   createAutopilotTrigger(
     autopilotId: string,
     data: CreateAutopilotTriggerRequest,
@@ -285,6 +290,14 @@ async function ensureRoutine(
       issue_title_template: routine.issueTitleTemplate,
     });
     autopilotId = autopilot.id;
+    // Paused before the schedule is set, so the routine cannot fire while it is being made.
+    if (routine.startPaused) {
+      try {
+        await client.updateAutopilot(autopilot.id, { status: "paused" });
+      } catch (err) {
+        return { title: routine.title, status: "failed", error: `pause: ${errorMessage(err)}` };
+      }
+    }
     try {
       await client.createAutopilotTrigger(autopilot.id, {
         kind: "schedule",
@@ -371,8 +384,38 @@ function isQuickstartSquad(squad: Squad, leaderId: string, template: SquadTempla
 /** The config marker of a skill the quickstart imported, so a rerun may update it. */
 export const SDLC_SKILL_SOURCE = "sdlc_built_in";
 
+/** The config marker of a Kit Viet skill the quickstart imported. Reruns treat it the same way. */
+export const KITVIET_SKILL_SOURCE = "kitviet";
+
 function isBuiltinSkill(config: Record<string, unknown> | undefined): boolean {
-  return config?.source === SDLC_SKILL_SOURCE;
+  return config?.source === SDLC_SKILL_SOURCE || config?.source === KITVIET_SKILL_SOURCE;
+}
+
+/** A Kit Viet skill name: `kv--<name>` as stored, or `kv:<name>` as the upstream writes it. */
+export function isKitvietSkillName(name: string): boolean {
+  return name.startsWith("kv--") || name.startsWith("kv:");
+}
+
+let kitvietSkills: Promise<ReadonlyMap<string, BuiltinSkill>> | null = null;
+
+/** The Kit Viet skills by name. A failed load is dropped, so the next call tries again. */
+function loadKitvietSkills(): Promise<ReadonlyMap<string, BuiltinSkill>> {
+  kitvietSkills ??= loadKitvietPacks()
+    .then(
+      (packs) =>
+        new Map(packs.flatMap((pack) => pack.KITVIET_BUILTIN_SKILLS).map((skill) => [skill.name, skill] as const)),
+    )
+    .catch((err: unknown) => {
+      kitvietSkills = null;
+      throw err;
+    });
+  return kitvietSkills;
+}
+
+/** The built-in skill with this name, from the Kit Viet packs or the SDLC bundle. */
+async function builtinSkillNamed(name: string): Promise<BuiltinSkill | undefined> {
+  if (isKitvietSkillName(name)) return (await loadKitvietSkills()).get(name);
+  return SDLC_BUILTIN_SKILLS.find((b) => b.name === name);
 }
 
 /** Whether a workspace skill already holds the built-in skill's description, body, and files. */
@@ -384,6 +427,65 @@ function sameAsBuiltin(skill: Skill, bundle: BuiltinSkill): boolean {
     skill.content === bundle.content &&
     JSON.stringify(files) === JSON.stringify(wanted)
   );
+}
+
+/**
+ * Imports the named built-in skills into the workspace and returns the workspace id of each one
+ * it holds. A skill the quickstart made before is updated to the built-in text. A skill the boss
+ * made under the same name is used when its text already matches the built-in one, and otherwise
+ * left as it is and named in the failures.
+ */
+async function importBuiltinSkills(
+  client: SquadQuickstartClient,
+  names: readonly string[],
+): Promise<{ ids: Map<string, string>; failures: string[] }> {
+  const failures: string[] = [];
+  const ids = new Map<string, string>();
+  const byName = new Map((await client.listSkills()).map((s) => [s.name, s] as const));
+  for (const name of names) {
+    try {
+      const bundle = await builtinSkillNamed(name);
+      if (!bundle) {
+        failures.push(`${name}: not a built-in skill`);
+        continue;
+      }
+      const source = isKitvietSkillName(name) ? KITVIET_SKILL_SOURCE : SDLC_SKILL_SOURCE;
+      const found = byName.get(name);
+      if (!found) {
+        const created = await client.createSkill({
+          name,
+          description: bundle.description,
+          content: bundle.content,
+          files: bundle.files,
+          config: { source },
+        });
+        ids.set(name, created.id);
+        continue;
+      }
+      const current = await client.getSkill(found.id);
+      if (!isBuiltinSkill(current.config)) {
+        // The boss's own copy is attached when it already matches the built-in text,
+        // and left alone otherwise.
+        if (sameAsBuiltin(current, bundle)) {
+          ids.set(name, found.id);
+          continue;
+        }
+        failures.push(`${name}: the workspace has its own skill under this name`);
+        continue;
+      }
+      if (!sameAsBuiltin(current, bundle)) {
+        await client.updateSkill(found.id, {
+          description: bundle.description,
+          content: bundle.content,
+          files: bundle.files,
+        });
+      }
+      ids.set(name, found.id);
+    } catch (err) {
+      failures.push(`${name}: ${errorMessage(err)}`);
+    }
+  }
+  return { ids, failures };
 }
 
 /**
@@ -399,63 +501,66 @@ export async function attachBuiltinSkills(
   names: readonly string[],
 ): Promise<QuickstartOutcome["skills"]> {
   if (names.length === 0) return { status: "skipped" };
-  const failures: string[] = [];
-  const byName = new Map((await client.listSkills()).map((s) => [s.name, s] as const));
-  const ids: string[] = [];
-  for (const name of names) {
-    const bundle = SDLC_BUILTIN_SKILLS.find((b) => b.name === name);
-    if (!bundle) {
-      failures.push(`${name}: not a built-in skill`);
-      continue;
-    }
-    try {
-      const found = byName.get(name);
-      if (!found) {
-        const created = await client.createSkill({
-          name,
-          description: bundle.description,
-          content: bundle.content,
-          files: bundle.files,
-          config: { source: SDLC_SKILL_SOURCE },
-        });
-        ids.push(created.id);
-        continue;
-      }
-      const current = await client.getSkill(found.id);
-      if (!isBuiltinSkill(current.config)) {
-        // The boss's own copy is attached when it already matches the built-in text,
-        // and left alone otherwise.
-        if (sameAsBuiltin(current, bundle)) {
-          ids.push(found.id);
-          continue;
-        }
-        failures.push(`${name}: the workspace has its own skill under this name`);
-        continue;
-      }
-      if (!sameAsBuiltin(current, bundle)) {
-        await client.updateSkill(found.id, {
-          description: bundle.description,
-          content: bundle.content,
-          files: bundle.files,
-        });
-      }
-      ids.push(found.id);
-    } catch (err) {
-      failures.push(`${name}: ${errorMessage(err)}`);
-    }
-  }
-  if (ids.length > 0) {
+  const { ids, failures } = await importBuiltinSkills(client, names);
+  if (ids.size > 0) {
     try {
       // setSquadSkills replaces the whole set, so the squad's other skills are kept.
       const attached = (await client.listSquadSkills(squadId)).map((s) => s.id);
-      const missing = ids.filter((id) => !attached.includes(id));
+      const missing = [...ids.values()].filter((id) => !attached.includes(id));
       if (missing.length > 0) await client.setSquadSkills(squadId, [...attached, ...missing]);
     } catch (err) {
       failures.push(`attach: ${errorMessage(err)}`);
     }
   }
   if (failures.length === 0) return { status: "ready" };
-  return { status: ids.length > 0 ? "partial" : "failed", error: failures.join("; ") };
+  return { status: ids.size > 0 ? "partial" : "failed", error: failures.join("; ") };
+}
+
+/**
+ * Attaches the leader's skills (`leaderSkills`) and each role's skills (`roleSkills`) to that
+ * agent alone, with addAgentSkills, which adds to what the agent has. The server keeps one row
+ * per skill, so a rerun adds nothing twice. Returns the failures; a skill that cannot be imported
+ * is attached to nobody, and the rest still are.
+ */
+async function attachAgentSkills(
+  client: SquadQuickstartClient,
+  template: SquadTemplate,
+  agentIds: Partial<Record<SquadRoleKey, string>>,
+): Promise<string[]> {
+  const grants = template.roles.flatMap((role) => {
+    const agentId = agentIds[role];
+    const names = [
+      ...new Set([
+        ...(role === template.leader ? (template.leaderSkills ?? []) : []),
+        ...(template.roleSkills?.[role] ?? []),
+      ]),
+    ];
+    return agentId && names.length > 0 ? [{ role, agentId, names }] : [];
+  });
+  if (grants.length === 0) return [];
+  const { ids, failures } = await importBuiltinSkills(
+    client,
+    [...new Set(grants.flatMap((grant) => grant.names))],
+  );
+  for (const grant of grants) {
+    const skillIds = grant.names.flatMap((name) => ids.get(name) ?? []);
+    if (skillIds.length === 0) continue;
+    try {
+      await client.addAgentSkills(grant.agentId, { skill_ids: skillIds });
+    } catch (err) {
+      failures.push(`${SQUAD_ROLES[grant.role].name}: ${errorMessage(err)}`);
+    }
+  }
+  return failures;
+}
+
+/** Adds the agents' skill failures to the squad's skill outcome, which they make partial. */
+function withAgentSkillFailures(
+  skills: QuickstartOutcome["skills"],
+  failures: readonly string[],
+): QuickstartOutcome["skills"] {
+  const error = [skills.error, ...failures].filter(Boolean).join("; ");
+  return { status: skills.status === "failed" ? "failed" : "partial", error };
 }
 
 /**
@@ -527,6 +632,10 @@ export async function runSquadQuickstart(
     report();
     return outcome;
   }
+
+  const agentSkillFailures = await attachAgentSkills(client, template, agentIds).catch((err) => [
+    `skills: ${errorMessage(err)}`,
+  ]);
 
   try {
     const squads = await client.listSquads();
@@ -616,6 +725,9 @@ export async function runSquadQuickstart(
     }
   } catch (err) {
     outcome.squad = { id: null, status: "failed", error: errorMessage(err) };
+  }
+  if (agentSkillFailures.length > 0) {
+    outcome.skills = withAgentSkillFailures(outcome.skills, agentSkillFailures);
   }
   report();
 

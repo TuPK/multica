@@ -42,6 +42,7 @@ function fakeClient(over: Partial<FakeClient> = {}): FakeClient {
     listAutopilots: vi.fn(async () => ({ autopilots: [], total: 0 })),
     createAutopilot: vi.fn(async () => ({ id: "ap-1" }) as never),
     createAutopilotTrigger: vi.fn(async () => ({}) as never),
+    updateAutopilot: vi.fn(async () => ({}) as never),
     listCompanyFloors: vi.fn(async () => [] as CompanyFloor[]),
     createCompanyFloor: vi.fn(async (data) => asFloor(`floor-${data.name}`, data.name, 9)),
     setCompanySeats: vi.fn(async () => ({ squads: [] }) as never),
@@ -51,6 +52,7 @@ function fakeClient(over: Partial<FakeClient> = {}): FakeClient {
     updateSkill: vi.fn(async () => ({}) as never),
     listSquadSkills: vi.fn(async () => [] as never),
     setSquadSkills: vi.fn(async () => [] as never),
+    addAgentSkills: vi.fn(async () => undefined),
     getKnowledgeStatus: vi.fn(async () => ({ state: "ready" }) as never),
     createKnowledgeDocument: vi.fn(async () => ({ id: "doc-1" }) as never),
     ...over,
@@ -525,6 +527,59 @@ describe("runSquadQuickstart for market research", () => {
     const out = await runSquadQuickstart(client, market, options);
 
     expect(out.routines).toEqual([{ title: "Market scan", status: "failed", error: "schedule: bad cron" }]);
+  });
+
+  it("pauses a routine's autopilot it creates, before the schedule is set", async () => {
+    const client = fakeClient();
+    const paused = { ...market, routines: [{ ...market.routines[0]!, startPaused: true }] };
+
+    const out = await runSquadQuickstart(client, paused, options);
+
+    expect(client.updateAutopilot).toHaveBeenCalledWith("ap-1", { status: "paused" });
+    expect(client.updateAutopilot.mock.invocationCallOrder[0]!).toBeLessThan(
+      client.createAutopilotTrigger.mock.invocationCallOrder[0]!,
+    );
+    expect(out.routines).toEqual([{ title: "Market scan", status: "created" }]);
+  });
+
+  it("leaves a routine active when the template does not ask for it paused", async () => {
+    const client = fakeClient();
+
+    await runSquadQuickstart(client, market, options);
+
+    expect(client.updateAutopilot).not.toHaveBeenCalled();
+  });
+
+  it("never pauses or resumes a routine that already exists", async () => {
+    const client = fakeClient({
+      listAutopilots: vi.fn(async () => ({
+        autopilots: [
+          { id: "old", title: "Market scan", assignee_type: "squad", assignee_id: "squad-1", status: "active" },
+        ] as never[],
+        total: 1,
+      })),
+    });
+    const paused = { ...market, routines: [{ ...market.routines[0]!, startPaused: true }] };
+
+    await runSquadQuickstart(client, paused, options);
+
+    expect(client.updateAutopilot).not.toHaveBeenCalled();
+  });
+
+  it("reports a pause that fails, and sets no schedule on that autopilot", async () => {
+    const client = fakeClient({
+      updateAutopilot: vi.fn(async () => {
+        throw new Error("pause refused");
+      }),
+    });
+    const paused = { ...market, routines: [{ ...market.routines[0]!, startPaused: true }] };
+
+    const out = await runSquadQuickstart(client, paused, options);
+
+    expect(client.createAutopilotTrigger).not.toHaveBeenCalled();
+    expect(out.routines).toEqual([
+      { title: "Market scan", status: "failed", error: "pause: pause refused" },
+    ]);
   });
 
   it("makes no routine for a template without one, or when the squad was not made", async () => {

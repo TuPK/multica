@@ -9,7 +9,17 @@ import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
  * names below so that running the quickstart twice reuses them.
  */
 
-export type SquadTemplateId = "sdlc_greenfield" | "sdlc_maintenance" | "market_research" | "bmad_planning" | "sales_loop";
+export type SquadTemplateId =
+  | "sdlc_greenfield"
+  | "sdlc_maintenance"
+  | "market_research"
+  | "bmad_planning"
+  | "sales_loop"
+  | "kv_legal"
+  | "kv_accounting"
+  | "kv_b2b"
+  | "kv_marketing"
+  | "kv_admin";
 
 export type SquadRoleKey =
   | "lead"
@@ -458,6 +468,11 @@ export interface SquadRoutineTemplate {
   cron: string;
   /** The issue body each run starts from: the scan scope and the bar for a proposal. */
   description: string;
+  /**
+   * Create the autopilot paused. Only a newly created autopilot is paused: an
+   * existing one keeps its status, so a rerun never resumes a routine the boss paused.
+   */
+  startPaused?: boolean;
 }
 
 /** The charter a template saves for its squad on creation. */
@@ -497,6 +512,16 @@ export interface SquadTemplate {
    * to the squad, so every member of the squad gets them.
    */
   builtinSkills: readonly string[];
+  /**
+   * Built-in skill names the leader agent gets on top of the squad's skills. The
+   * quickstart attaches them to the leader alone with addAgentSkills.
+   */
+  leaderSkills?: readonly string[];
+  /**
+   * Built-in skill names each role's agent gets on top of the squad's skills, attached
+   * to that agent alone with addAgentSkills. Roles without an entry get none.
+   */
+  roleSkills?: Partial<Record<SquadRoleKey, readonly string[]>>;
 }
 
 /**
