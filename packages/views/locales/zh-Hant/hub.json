@@ -42,14 +42,10 @@
     "clawhub": "ClawHub",
     "skills_sh": "Skills.sh",
     "github": "GitHub",
-    "plugin": "已發布的外掛"
-  },
-  "sources_table": {
-    "source": "來源",
-    "count": "項目數",
-    "skills": "技能",
-    "plugins": "外掛",
-    "last": "最近更新"
+    "plugin": "已發布的外掛",
+    "url_zip": "ZIP 連結",
+    "registry": "登錄",
+    "upload": "上傳"
   },
   "open_source": "開啟來源",
   "empty_title": "擴充中心還沒有內容",
@@ -176,5 +172,175 @@
     "delete_failed": "無法刪除 {{path}}",
     "published": "已發布版本 {{version}}",
     "publish_failed": "無法發布新版本"
+  },
+  "add": {
+    "button": "新增",
+    "title": "新增至 Hub",
+    "review_title": "檢查匯入內容",
+    "tabs": {
+      "url": "從 URL",
+      "registry": "從登錄",
+      "upload": "上傳",
+      "blank": "空白"
+    },
+    "url": {
+      "type_label": "來源",
+      "types": {
+        "github": "GitHub",
+        "url_zip": "ZIP 連結",
+        "skills_sh": "skills.sh",
+        "clawhub": "ClawHub"
+      },
+      "url_label": "URL",
+      "url_placeholder": {
+        "github": "https://github.com/擁有者/儲存庫",
+        "url_zip": "https://example.com/skill.zip",
+        "skills_sh": "https://skills.sh/擁有者/儲存庫",
+        "clawhub": "clawhub 代號"
+      },
+      "ref_label": "分支或標籤",
+      "ref_placeholder": "main",
+      "subdir_label": "子目錄",
+      "subdir_placeholder": "skills/my-skill",
+      "submit": "預覽",
+      "invalid_url": "請輸入有效的 http:// 或 https:// 網址。",
+      "preview_failed": "無法讀取此來源。"
+    },
+    "registry": {
+      "url_label": "登錄 URL",
+      "url_placeholder": "https://example.com/hub-index.json",
+      "load": "載入",
+      "invalid_url": "請輸入有效的 http:// 或 https:// 網址。",
+      "load_failed": "無法載入此登錄。",
+      "empty": "此登錄沒有項目。",
+      "search_label": "搜尋登錄項目",
+      "search_placeholder": "搜尋項目",
+      "no_matches": "沒有符合搜尋的項目。",
+      "version": "v{{version}}",
+      "preview": "預覽",
+      "preview_item": "預覽 {{name}}",
+      "preview_failed": "無法讀取此項目。"
+    },
+    "upload": {
+      "drop": "將 .zip、.skill 封存檔或資料夾拖放到這裡",
+      "reading": "正在讀取檔案…",
+      "choose_archive": "選擇封存檔",
+      "choose_folder": "選擇資料夾",
+      "read_failed": "無法讀取這些檔案。",
+      "errors": {
+        "missing_skill_md": "最上層找不到 SKILL.md。",
+        "empty": "沒有可匯入的檔案。",
+        "too_large": "封存檔太大。",
+        "too_many_files": "此匯入的檔案太多。"
+      }
+    },
+    "blank": {
+      "create": "建立空白技能"
+    },
+    "preview": {
+      "back": "返回",
+      "commit": "匯入",
+      "committing": "正在匯入…",
+      "version": "v{{version}}",
+      "expired": "此預覽已過期。",
+      "preview_again": "重新預覽",
+      "preview_failed": "無法重新預覽。",
+      "scan": {
+        "title": "掃描",
+        "clean": "沒有問題",
+        "warn": "警告",
+        "blocked": "已封鎖",
+        "blocked_hint": "此匯入無法安裝。請返回並選擇其他來源。",
+        "warn_hint": "匯入前請檢查掃描結果。",
+        "blocked_error": "此匯入已被封鎖，無法安裝。",
+        "warn_error": "匯入前請確認警告。",
+        "acknowledge": "我已了解這些警告",
+        "severity": {
+          "info": "資訊",
+          "warn": "警告",
+          "block": "已封鎖"
+        }
+      },
+      "conflict": {
+        "legend": "Hub 中已有「{{name}}」",
+        "rename": "以新名稱匯入",
+        "rename_label": "新名稱",
+        "replace": "取代現有項目",
+        "replace_hint": "現有檔案將被此次匯入覆寫。",
+        "skip": "保留現有項目並略過此次匯入"
+      },
+      "files": {
+        "title_other": "{{count}} 個檔案",
+        "list_label": "此匯入的檔案"
+      }
+    },
+    "toast": {
+      "imported": "已匯入 {{name}}",
+      "replaced": "已取代 {{name}}",
+      "skipped": "{{name}} 已在 Hub 中",
+      "failed": "匯入失敗"
+    }
+  },
+  "sources": {
+    "add": "新增來源",
+    "empty_title": "還沒有來源",
+    "read_only": "只有工作區管理員和擁有者可以管理來源。",
+    "load_error": "無法載入來源。",
+    "loading": "正在載入來源",
+    "cancel": "取消",
+    "no_url": "無 URL",
+    "columns": {
+      "name": "名稱",
+      "type": "類型",
+      "url": "URL",
+      "items": "項目數",
+      "last_sync": "上次同步",
+      "enabled": "啟用",
+      "actions": "操作"
+    },
+    "sync": {
+      "ok": "正常",
+      "syncing": "同步中",
+      "error": "錯誤",
+      "never": "從未同步",
+      "unknown": "未知"
+    },
+    "enabled": "已啟用",
+    "disabled": "已停用",
+    "toggle_aria": "啟用 {{name}}",
+    "toggle_failed": "無法變更此來源。",
+    "edit_aria": "編輯 {{name}}",
+    "remove_aria": "移除 {{name}}",
+    "form": {
+      "add_title": "新增來源",
+      "edit_title": "編輯來源",
+      "name": "名稱",
+      "type": "類型",
+      "url": "URL",
+      "url_placeholder": "https://example.com/source",
+      "create": "新增",
+      "save": "儲存",
+      "save_failed": "無法儲存此來源。",
+      "errors": {
+        "name_required": "請輸入名稱。",
+        "url_invalid": "請輸入有效的 http:// 或 https:// 網址。"
+      }
+    },
+    "toast": {
+      "added": "已新增來源",
+      "updated": "已儲存來源",
+      "removed": "已移除來源"
+    },
+    "delete": {
+      "title": "移除 {{name}}？",
+      "items_legend_other": "有 {{count}} 個項目來自此來源。",
+      "keep": "保留項目",
+      "keep_hint": "項目會保留在 Hub 中，但不再關聯來源。",
+      "delete_items": "刪除項目",
+      "delete_hint": "若有任何項目正被代理使用，刪除會停止。",
+      "in_use": "這些項目正被代理使用，因此無法移除來源。",
+      "confirm": "移除",
+      "failed": "無法移除此來源。"
+    }
   }
 }

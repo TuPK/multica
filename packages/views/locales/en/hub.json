@@ -42,14 +42,10 @@
     "clawhub": "ClawHub",
     "skills_sh": "Skills.sh",
     "github": "GitHub",
-    "plugin": "Published plugin"
-  },
-  "sources_table": {
-    "source": "Source",
-    "count": "Items",
-    "skills": "Skills",
-    "plugins": "Plugins",
-    "last": "Last updated"
+    "plugin": "Published plugin",
+    "url_zip": "Zip URL",
+    "registry": "Registry",
+    "upload": "Upload"
   },
   "open_source": "Open source",
   "empty_title": "Nothing in the Hub yet",
@@ -178,5 +174,177 @@
     "delete_failed": "Couldn't delete {{path}}",
     "published": "Published version {{version}}",
     "publish_failed": "Couldn't publish the new version"
+  },
+  "add": {
+    "button": "Add",
+    "title": "Add to Hub",
+    "review_title": "Review import",
+    "tabs": {
+      "url": "From URL",
+      "registry": "From registry",
+      "upload": "Upload",
+      "blank": "Blank"
+    },
+    "url": {
+      "type_label": "Source",
+      "types": {
+        "github": "GitHub",
+        "url_zip": "Zip URL",
+        "skills_sh": "skills.sh",
+        "clawhub": "ClawHub"
+      },
+      "url_label": "URL",
+      "url_placeholder": {
+        "github": "https://github.com/owner/repo",
+        "url_zip": "https://example.com/skill.zip",
+        "skills_sh": "https://skills.sh/owner/repo",
+        "clawhub": "clawhub-slug"
+      },
+      "ref_label": "Branch or tag",
+      "ref_placeholder": "main",
+      "subdir_label": "Subdirectory",
+      "subdir_placeholder": "skills/my-skill",
+      "submit": "Preview",
+      "invalid_url": "Enter a valid http:// or https:// URL.",
+      "preview_failed": "Couldn't read this source."
+    },
+    "registry": {
+      "url_label": "Registry URL",
+      "url_placeholder": "https://example.com/hub-index.json",
+      "load": "Load",
+      "invalid_url": "Enter a valid http:// or https:// URL.",
+      "load_failed": "Couldn't load this registry.",
+      "empty": "This registry has no items.",
+      "search_label": "Search registry items",
+      "search_placeholder": "Search items",
+      "no_matches": "No items match your search.",
+      "version": "v{{version}}",
+      "preview": "Preview",
+      "preview_item": "Preview {{name}}",
+      "preview_failed": "Couldn't read this item."
+    },
+    "upload": {
+      "drop": "Drop a .zip, .skill archive or folder here",
+      "reading": "Reading files…",
+      "choose_archive": "Choose archive",
+      "choose_folder": "Choose folder",
+      "read_failed": "Couldn't read these files.",
+      "errors": {
+        "missing_skill_md": "No SKILL.md found at the top level.",
+        "empty": "No files to import.",
+        "too_large": "This archive is too large.",
+        "too_many_files": "This import has too many files."
+      }
+    },
+    "blank": {
+      "create": "Create blank skill"
+    },
+    "preview": {
+      "back": "Back",
+      "commit": "Import",
+      "committing": "Importing…",
+      "version": "v{{version}}",
+      "expired": "This preview has expired.",
+      "preview_again": "Preview again",
+      "preview_failed": "Couldn't preview again.",
+      "scan": {
+        "title": "Scan",
+        "clean": "No issues",
+        "warn": "Warnings",
+        "blocked": "Blocked",
+        "blocked_hint": "This import can't be installed. Go back and choose another source.",
+        "warn_hint": "Review the findings before importing.",
+        "blocked_error": "This import is blocked and can't be installed.",
+        "warn_error": "Confirm the warnings before importing.",
+        "acknowledge": "I understand the warnings",
+        "severity": {
+          "info": "Info",
+          "warn": "Warning",
+          "block": "Blocked"
+        }
+      },
+      "conflict": {
+        "legend": "“{{name}}” already exists in the Hub",
+        "rename": "Import under a new name",
+        "rename_label": "New name",
+        "replace": "Replace the existing item",
+        "replace_hint": "Its files are overwritten by this import.",
+        "skip": "Keep the existing item and skip this import"
+      },
+      "files": {
+        "title_one": "{{count}} file",
+        "title_other": "{{count}} files",
+        "list_label": "Files in this import"
+      }
+    },
+    "toast": {
+      "imported": "Imported {{name}}",
+      "replaced": "Replaced {{name}}",
+      "skipped": "{{name}} is already in the Hub",
+      "failed": "Couldn't import"
+    }
+  },
+  "sources": {
+    "add": "Add source",
+    "empty_title": "No sources yet",
+    "read_only": "Only workspace admins and owners can manage sources.",
+    "load_error": "Couldn't load sources.",
+    "loading": "Loading sources",
+    "cancel": "Cancel",
+    "no_url": "No URL",
+    "columns": {
+      "name": "Name",
+      "type": "Type",
+      "url": "URL",
+      "items": "Items",
+      "last_sync": "Last sync",
+      "enabled": "Enabled",
+      "actions": "Actions"
+    },
+    "sync": {
+      "ok": "OK",
+      "syncing": "Syncing",
+      "error": "Error",
+      "never": "Never synced",
+      "unknown": "Unknown"
+    },
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "toggle_aria": "Enable {{name}}",
+    "toggle_failed": "Couldn't change this source.",
+    "edit_aria": "Edit {{name}}",
+    "remove_aria": "Remove {{name}}",
+    "form": {
+      "add_title": "Add source",
+      "edit_title": "Edit source",
+      "name": "Name",
+      "type": "Type",
+      "url": "URL",
+      "url_placeholder": "https://example.com/source",
+      "create": "Add",
+      "save": "Save",
+      "save_failed": "Couldn't save this source.",
+      "errors": {
+        "name_required": "Enter a name.",
+        "url_invalid": "Enter a valid http:// or https:// URL."
+      }
+    },
+    "toast": {
+      "added": "Source added",
+      "updated": "Source saved",
+      "removed": "Source removed"
+    },
+    "delete": {
+      "title": "Remove {{name}}?",
+      "items_legend_one": "{{count}} item comes from this source.",
+      "items_legend_other": "{{count}} items come from this source.",
+      "keep": "Keep items",
+      "keep_hint": "They stay in the Hub without a source.",
+      "delete_items": "Delete items",
+      "delete_hint": "Removal stops if an agent uses any of them.",
+      "in_use": "Agents use these items, so the source can't be removed.",
+      "confirm": "Remove",
+      "failed": "Couldn't remove this source."
+    }
   }
 }

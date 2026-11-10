@@ -42,14 +42,10 @@
     "clawhub": "ClawHub",
     "skills_sh": "Skills.sh",
     "github": "GitHub",
-    "plugin": "Plugin publicado"
-  },
-  "sources_table": {
-    "source": "Fuente",
-    "count": "Elementos",
-    "skills": "Skills",
-    "plugins": "Plugins",
-    "last": "Última actualización"
+    "plugin": "Plugin publicado",
+    "url_zip": "URL de ZIP",
+    "registry": "Registro",
+    "upload": "Subida"
   },
   "open_source": "Abrir fuente",
   "empty_title": "Aún no hay nada en el Hub",
@@ -178,5 +174,177 @@
     "delete_failed": "No se ha podido eliminar {{path}}",
     "published": "Versión {{version}} publicada",
     "publish_failed": "No se ha podido publicar la nueva versión"
+  },
+  "add": {
+    "button": "Añadir",
+    "title": "Añadir al Hub",
+    "review_title": "Revisar importación",
+    "tabs": {
+      "url": "Desde URL",
+      "registry": "Desde registro",
+      "upload": "Subir",
+      "blank": "En blanco"
+    },
+    "url": {
+      "type_label": "Origen",
+      "types": {
+        "github": "GitHub",
+        "url_zip": "URL de ZIP",
+        "skills_sh": "skills.sh",
+        "clawhub": "ClawHub"
+      },
+      "url_label": "URL",
+      "url_placeholder": {
+        "github": "https://github.com/propietario/repositorio",
+        "url_zip": "https://ejemplo.com/skill.zip",
+        "skills_sh": "https://skills.sh/propietario/repositorio",
+        "clawhub": "slug-de-clawhub"
+      },
+      "ref_label": "Rama o etiqueta",
+      "ref_placeholder": "main",
+      "subdir_label": "Subdirectorio",
+      "subdir_placeholder": "skills/mi-skill",
+      "submit": "Previsualizar",
+      "invalid_url": "Introduce una URL válida que empiece por http:// o https://.",
+      "preview_failed": "No se pudo leer este origen."
+    },
+    "registry": {
+      "url_label": "URL del registro",
+      "url_placeholder": "https://ejemplo.com/hub-index.json",
+      "load": "Cargar",
+      "invalid_url": "Introduce una URL válida que empiece por http:// o https://.",
+      "load_failed": "No se pudo cargar este registro.",
+      "empty": "Este registro no tiene elementos.",
+      "search_label": "Buscar elementos del registro",
+      "search_placeholder": "Buscar elementos",
+      "no_matches": "Ningún elemento coincide con la búsqueda.",
+      "version": "v{{version}}",
+      "preview": "Previsualizar",
+      "preview_item": "Previsualizar {{name}}",
+      "preview_failed": "No se pudo leer este elemento."
+    },
+    "upload": {
+      "drop": "Suelta aquí un archivo .zip, un archivo .skill o una carpeta",
+      "reading": "Leyendo archivos…",
+      "choose_archive": "Elegir archivo",
+      "choose_folder": "Elegir carpeta",
+      "read_failed": "No se pudieron leer estos archivos.",
+      "errors": {
+        "missing_skill_md": "No se encontró SKILL.md en el nivel superior.",
+        "empty": "No hay archivos que importar.",
+        "too_large": "Este archivo es demasiado grande.",
+        "too_many_files": "Esta importación tiene demasiados archivos."
+      }
+    },
+    "blank": {
+      "create": "Crear skill en blanco"
+    },
+    "preview": {
+      "back": "Atrás",
+      "commit": "Importar",
+      "committing": "Importando…",
+      "version": "v{{version}}",
+      "expired": "Esta previsualización ha caducado.",
+      "preview_again": "Volver a previsualizar",
+      "preview_failed": "No se pudo volver a previsualizar.",
+      "scan": {
+        "title": "Análisis",
+        "clean": "Sin problemas",
+        "warn": "Advertencias",
+        "blocked": "Bloqueado",
+        "blocked_hint": "Esta importación no se puede instalar. Vuelve atrás y elige otro origen.",
+        "warn_hint": "Revisa los hallazgos antes de importar.",
+        "blocked_error": "Esta importación está bloqueada y no se puede instalar.",
+        "warn_error": "Confirma las advertencias antes de importar.",
+        "acknowledge": "Entiendo las advertencias",
+        "severity": {
+          "info": "Info",
+          "warn": "Advertencia",
+          "block": "Bloqueado"
+        }
+      },
+      "conflict": {
+        "legend": "“{{name}}” ya existe en el Hub",
+        "rename": "Importar con otro nombre",
+        "rename_label": "Nuevo nombre",
+        "replace": "Reemplazar el elemento existente",
+        "replace_hint": "Esta importación sobrescribe sus archivos.",
+        "skip": "Mantener el elemento existente y omitir esta importación"
+      },
+      "files": {
+        "title_one": "{{count}} archivo",
+        "title_other": "{{count}} archivos",
+        "list_label": "Archivos de esta importación"
+      }
+    },
+    "toast": {
+      "imported": "Importado {{name}}",
+      "replaced": "Reemplazado {{name}}",
+      "skipped": "{{name}} ya está en el Hub",
+      "failed": "No se pudo importar"
+    }
+  },
+  "sources": {
+    "add": "Añadir origen",
+    "empty_title": "Aún no hay orígenes",
+    "read_only": "Solo los administradores y propietarios del espacio de trabajo pueden gestionar los orígenes.",
+    "load_error": "No se pudieron cargar los orígenes.",
+    "loading": "Cargando orígenes",
+    "cancel": "Cancelar",
+    "no_url": "Sin URL",
+    "columns": {
+      "name": "Nombre",
+      "type": "Tipo",
+      "url": "URL",
+      "items": "Elementos",
+      "last_sync": "Última sincronización",
+      "enabled": "Activado",
+      "actions": "Acciones"
+    },
+    "sync": {
+      "ok": "Correcto",
+      "syncing": "Sincronizando",
+      "error": "Error",
+      "never": "Nunca sincronizado",
+      "unknown": "Desconocido"
+    },
+    "enabled": "Activado",
+    "disabled": "Desactivado",
+    "toggle_aria": "Activar {{name}}",
+    "toggle_failed": "No se pudo cambiar este origen.",
+    "edit_aria": "Editar {{name}}",
+    "remove_aria": "Quitar {{name}}",
+    "form": {
+      "add_title": "Añadir origen",
+      "edit_title": "Editar origen",
+      "name": "Nombre",
+      "type": "Tipo",
+      "url": "URL",
+      "url_placeholder": "https://ejemplo.com/origen",
+      "create": "Añadir",
+      "save": "Guardar",
+      "save_failed": "No se pudo guardar este origen.",
+      "errors": {
+        "name_required": "Introduce un nombre.",
+        "url_invalid": "Introduce una URL válida que empiece por http:// o https://."
+      }
+    },
+    "toast": {
+      "added": "Origen añadido",
+      "updated": "Origen guardado",
+      "removed": "Origen eliminado"
+    },
+    "delete": {
+      "title": "¿Quitar {{name}}?",
+      "items_legend_one": "{{count}} elemento procede de este origen.",
+      "items_legend_other": "{{count}} elementos proceden de este origen.",
+      "keep": "Conservar los elementos",
+      "keep_hint": "Seguirán en el Hub sin origen.",
+      "delete_items": "Eliminar los elementos",
+      "delete_hint": "La eliminación se detiene si un agente usa alguno de ellos.",
+      "in_use": "Hay agentes que usan estos elementos, así que el origen no se puede quitar.",
+      "confirm": "Quitar",
+      "failed": "No se pudo quitar este origen."
+    }
   }
 }

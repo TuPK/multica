@@ -42,14 +42,10 @@
     "clawhub": "ClawHub",
     "skills_sh": "Skills.sh",
     "github": "GitHub",
-    "plugin": "已发布的插件"
-  },
-  "sources_table": {
-    "source": "来源",
-    "count": "项目数",
-    "skills": "技能",
-    "plugins": "插件",
-    "last": "最近更新"
+    "plugin": "已发布的插件",
+    "url_zip": "ZIP 链接",
+    "registry": "注册表",
+    "upload": "上传"
   },
   "open_source": "打开来源",
   "empty_title": "扩展中心还没有内容",
@@ -176,5 +172,175 @@
     "delete_failed": "无法删除 {{path}}",
     "published": "已发布版本 {{version}}",
     "publish_failed": "无法发布新版本"
+  },
+  "add": {
+    "button": "添加",
+    "title": "添加到 Hub",
+    "review_title": "检查导入内容",
+    "tabs": {
+      "url": "从 URL",
+      "registry": "从注册表",
+      "upload": "上传",
+      "blank": "空白"
+    },
+    "url": {
+      "type_label": "来源",
+      "types": {
+        "github": "GitHub",
+        "url_zip": "ZIP 链接",
+        "skills_sh": "skills.sh",
+        "clawhub": "ClawHub"
+      },
+      "url_label": "URL",
+      "url_placeholder": {
+        "github": "https://github.com/所有者/仓库",
+        "url_zip": "https://example.com/skill.zip",
+        "skills_sh": "https://skills.sh/所有者/仓库",
+        "clawhub": "clawhub 标识"
+      },
+      "ref_label": "分支或标签",
+      "ref_placeholder": "main",
+      "subdir_label": "子目录",
+      "subdir_placeholder": "skills/my-skill",
+      "submit": "预览",
+      "invalid_url": "请输入有效的 http:// 或 https:// 地址。",
+      "preview_failed": "无法读取此来源。"
+    },
+    "registry": {
+      "url_label": "注册表 URL",
+      "url_placeholder": "https://example.com/hub-index.json",
+      "load": "加载",
+      "invalid_url": "请输入有效的 http:// 或 https:// 地址。",
+      "load_failed": "无法加载此注册表。",
+      "empty": "此注册表没有条目。",
+      "search_label": "搜索注册表条目",
+      "search_placeholder": "搜索条目",
+      "no_matches": "没有匹配搜索的条目。",
+      "version": "v{{version}}",
+      "preview": "预览",
+      "preview_item": "预览 {{name}}",
+      "preview_failed": "无法读取此条目。"
+    },
+    "upload": {
+      "drop": "将 .zip、.skill 压缩包或文件夹拖到此处",
+      "reading": "正在读取文件…",
+      "choose_archive": "选择压缩包",
+      "choose_folder": "选择文件夹",
+      "read_failed": "无法读取这些文件。",
+      "errors": {
+        "missing_skill_md": "顶层没有找到 SKILL.md。",
+        "empty": "没有可导入的文件。",
+        "too_large": "压缩包太大。",
+        "too_many_files": "此导入的文件太多。"
+      }
+    },
+    "blank": {
+      "create": "创建空白技能"
+    },
+    "preview": {
+      "back": "返回",
+      "commit": "导入",
+      "committing": "正在导入…",
+      "version": "v{{version}}",
+      "expired": "此预览已过期。",
+      "preview_again": "重新预览",
+      "preview_failed": "无法重新预览。",
+      "scan": {
+        "title": "扫描",
+        "clean": "无问题",
+        "warn": "警告",
+        "blocked": "已阻止",
+        "blocked_hint": "此导入无法安装。请返回并选择其他来源。",
+        "warn_hint": "导入前请检查扫描结果。",
+        "blocked_error": "此导入已被阻止，无法安装。",
+        "warn_error": "导入前请确认警告。",
+        "acknowledge": "我已了解这些警告",
+        "severity": {
+          "info": "信息",
+          "warn": "警告",
+          "block": "已阻止"
+        }
+      },
+      "conflict": {
+        "legend": "Hub 中已存在“{{name}}”",
+        "rename": "以新名称导入",
+        "rename_label": "新名称",
+        "replace": "替换现有条目",
+        "replace_hint": "现有文件将被此次导入覆盖。",
+        "skip": "保留现有条目并跳过此次导入"
+      },
+      "files": {
+        "title_other": "{{count}} 个文件",
+        "list_label": "此导入的文件"
+      }
+    },
+    "toast": {
+      "imported": "已导入 {{name}}",
+      "replaced": "已替换 {{name}}",
+      "skipped": "{{name}} 已在 Hub 中",
+      "failed": "导入失败"
+    }
+  },
+  "sources": {
+    "add": "添加来源",
+    "empty_title": "还没有来源",
+    "read_only": "只有工作区管理员和所有者可以管理来源。",
+    "load_error": "无法加载来源。",
+    "loading": "正在加载来源",
+    "cancel": "取消",
+    "no_url": "无 URL",
+    "columns": {
+      "name": "名称",
+      "type": "类型",
+      "url": "URL",
+      "items": "条目数",
+      "last_sync": "上次同步",
+      "enabled": "启用",
+      "actions": "操作"
+    },
+    "sync": {
+      "ok": "正常",
+      "syncing": "同步中",
+      "error": "错误",
+      "never": "从未同步",
+      "unknown": "未知"
+    },
+    "enabled": "已启用",
+    "disabled": "已禁用",
+    "toggle_aria": "启用 {{name}}",
+    "toggle_failed": "无法更改此来源。",
+    "edit_aria": "编辑 {{name}}",
+    "remove_aria": "移除 {{name}}",
+    "form": {
+      "add_title": "添加来源",
+      "edit_title": "编辑来源",
+      "name": "名称",
+      "type": "类型",
+      "url": "URL",
+      "url_placeholder": "https://example.com/source",
+      "create": "添加",
+      "save": "保存",
+      "save_failed": "无法保存此来源。",
+      "errors": {
+        "name_required": "请输入名称。",
+        "url_invalid": "请输入有效的 http:// 或 https:// 地址。"
+      }
+    },
+    "toast": {
+      "added": "已添加来源",
+      "updated": "已保存来源",
+      "removed": "已移除来源"
+    },
+    "delete": {
+      "title": "移除 {{name}}？",
+      "items_legend_other": "有 {{count}} 个条目来自此来源。",
+      "keep": "保留条目",
+      "keep_hint": "条目将保留在 Hub 中，但不再关联来源。",
+      "delete_items": "删除条目",
+      "delete_hint": "如果有任何条目正被智能体使用，删除将停止。",
+      "in_use": "这些条目正被智能体使用，因此无法移除来源。",
+      "confirm": "移除",
+      "failed": "无法移除此来源。"
+    }
   }
 }

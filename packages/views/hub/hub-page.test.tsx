@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { HubSource } from "@multica/core/hub";
 import type { PluginPackage, SkillSummary } from "@multica/core/types";
 import { renderWithI18n } from "../test/i18n";
 import { NavigationProvider, type NavigationAdapter } from "../navigation";
@@ -10,15 +11,38 @@ import { NavigationProvider, type NavigationAdapter } from "../navigation";
 const mocks = vi.hoisted(() => ({
   skills: [] as SkillSummary[],
   packages: [] as PluginPackage[],
+  sources: [] as HubSource[],
   skillsError: false,
 }));
 
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: (options: { queryKey?: readonly unknown[] }) =>
-    options.queryKey?.[0] === "skills"
-      ? { data: mocks.skills, isLoading: false, isError: mocks.skillsError, refetch: vi.fn() }
-      : { data: { packages: mocks.packages }, isLoading: false, isError: false },
+  useQuery: (options: { queryKey?: readonly unknown[] }) => {
+    const key = options.queryKey?.[0];
+    if (key === "skills") {
+      return { data: mocks.skills, isLoading: false, isError: mocks.skillsError, refetch: vi.fn() };
+    }
+    if (key === "hub-sources") {
+      return { data: mocks.sources, isLoading: false, isError: false, refetch: vi.fn() };
+    }
+    return { data: { packages: mocks.packages }, isLoading: false, isError: false };
+  },
 }));
+vi.mock("@multica/core/permissions", () => ({
+  useCurrentMember: () => ({ userId: "u1", role: "member", member: null, isLoading: false }),
+}));
+vi.mock("@multica/core/hub", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@multica/core/hub")>();
+  const idle = { mutateAsync: vi.fn(), isPending: false };
+  return {
+    ...actual,
+    hubSourcesOptions: () => ({ queryKey: ["hub-sources"] }),
+    usePreviewHubImport: () => idle,
+    useCommitHubImport: () => idle,
+    useCreateHubSource: () => idle,
+    useUpdateHubSource: () => idle,
+    useDeleteHubSource: () => idle,
+  };
+});
 vi.mock("@multica/core/hooks", () => ({ useWorkspaceId: () => "ws-1" }));
 vi.mock("@multica/core/paths", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@multica/core/paths")>()),
@@ -67,6 +91,7 @@ function renderPage() {
 
 beforeEach(() => {
   mocks.skillsError = false;
+  mocks.sources = [];
   mocks.skills = [
     skill("s1", "deploy", { origin: { type: "github", source_url: "https://github.com/a/b" } }),
     skill("s2", "review"),
@@ -98,11 +123,33 @@ describe("HubPage", () => {
     expect(screen.getByText("Pulse")).toBeInTheDocument();
   });
 
-  it("summarizes sources on the Sources tab", async () => {
+  it("shows the real sources on the Sources tab", async () => {
+    mocks.sources = [
+      {
+        id: "src-1",
+        name: "Team skills",
+        type: "github",
+        url: "https://github.com/acme/skills",
+        config: {},
+        enabled: true,
+        auto_sync_interval_sec: 0,
+        last_sync_at: null,
+        last_sync_status: "",
+        last_sync_error: null,
+        item_count: 2,
+        created_at: "2026-07-01T00:00:00Z",
+        updated_at: "2026-07-01T00:00:00Z",
+      },
+    ];
     renderPage();
     await userEvent.click(screen.getByRole("button", { name: "Sources" }));
-    expect(screen.getByText("Created here")).toBeInTheDocument();
-    expect(screen.getByText("GitHub")).toBeInTheDocument();
+    expect(screen.getByRole("row", { name: /Team skills/ })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "deploy" })).not.toBeInTheDocument();
+  });
+
+  it("offers the Add action on the header", () => {
+    renderPage();
+    expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
   });
 
   it("shows an error state when skills fail to load", () => {

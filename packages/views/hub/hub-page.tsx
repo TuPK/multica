@@ -14,6 +14,7 @@ import {
 import { cn } from "@multica/ui/lib/utils";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
+import { useCurrentMember } from "@multica/core/permissions";
 import { skillListOptions } from "@multica/core/workspace/queries";
 import { pluginPackagesOptions } from "@multica/core/plugins";
 import {
@@ -21,12 +22,12 @@ import {
   EMPTY_HUB_FILTERS,
   filterHubItems,
   sortHubItems,
-  summarizeHubSources,
   type HubItem,
   type HubItemKind,
   type HubSortField,
 } from "@multica/core/hub";
-import { AppLink } from "../navigation";
+import { CreateSkillDialog } from "../skills/components/create-skill-dialog";
+import { AppLink, useNavigation } from "../navigation";
 import { useT, useTimeAgo } from "../i18n";
 import {
   CollectionNoMatches,
@@ -35,6 +36,8 @@ import {
   CollectionSearch,
 } from "../layout/collection-page";
 import { PAGE_GUTTER } from "../layout/page-header";
+import { AddToHubDialog } from "./add-to-hub-dialog";
+import { HubSourcesManager } from "./hub-sources-manager";
 
 type Tab = "items" | "sources";
 type ViewMode = "list" | "catalog";
@@ -53,6 +56,11 @@ export function HubPage() {
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<"all" | HubItemKind>("all");
   const [sortField, setSortField] = useState<HubSortField>("updated");
+  const [blankOpen, setBlankOpen] = useState(false);
+  const navigation = useNavigation();
+  const p = useWorkspacePaths();
+  const { role } = useCurrentMember(wsId);
+  const canManageSources = role === "owner" || role === "admin";
 
   const skills = useQuery(skillListOptions(wsId));
   // The plugins backend sits behind a feature flag; its failure must not hide skills.
@@ -70,7 +78,6 @@ export function HubPage() {
     () => sortHubItems(filterHubItems(all, filters), sortField, SORT_DEFAULT_DIRECTION[sortField]),
     [all, filters, sortField],
   );
-  const sources = useMemo(() => summarizeHubSources(all), [all]);
 
   const loading = skills.isLoading;
   const failed = skills.isError;
@@ -82,9 +89,10 @@ export function HubPage() {
         title={t(($) => $.title)}
         tools={<CollectionSearch value={query} onChange={setQuery} label={t(($) => $.search_placeholder)} />}
         actions={
-          tab === "items" ? (
-            <ViewToggle view={view} onChange={setView} />
-          ) : undefined
+          <div className="flex items-center gap-2">
+            {tab === "items" ? <ViewToggle view={view} onChange={setView} /> : null}
+            <AddToHubDialog onBlank={() => setBlankOpen(true)} />
+          </div>
         }
       />
       <div className={cn("flex flex-wrap items-center gap-2 border-b py-2", PAGE_GUTTER)}>
@@ -112,7 +120,9 @@ export function HubPage() {
         ) : null}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {failed ? (
+        {tab === "sources" ? (
+          <HubSourcesManager wsId={wsId} canManage={canManageSources} />
+        ) : failed ? (
           <CollectionPageState
             icon={Package}
             tone="destructive"
@@ -125,8 +135,6 @@ export function HubPage() {
           />
         ) : loading ? null : all.length === 0 ? (
           <CollectionPageState icon={Package} title={t(($) => $.empty_title)} />
-        ) : tab === "sources" ? (
-          <SourcesTable rows={sources} />
         ) : items.length === 0 ? (
           <CollectionNoMatches
             title={t(($) => $.no_matches)}
@@ -143,6 +151,13 @@ export function HubPage() {
           <ItemCatalog items={items} />
         )}
       </div>
+      {blankOpen ? (
+        <CreateSkillDialog
+          initialMethod="manual"
+          onClose={() => setBlankOpen(false)}
+          onCreated={(skill) => navigation.push(p.hubItem("skill", skill.id))}
+        />
+      ) : null}
     </div>
   );
 }
@@ -323,34 +338,5 @@ function ItemCatalog({ items }: { items: HubItem[] }) {
         </li>
       ))}
     </ul>
-  );
-}
-
-function SourcesTable({ rows }: { rows: ReturnType<typeof summarizeHubSources> }) {
-  const { t } = useT("hub");
-  const timeAgo = useTimeAgo();
-  return (
-    <table className="w-full table-fixed text-label">
-      <thead className="text-left text-caption text-muted-foreground">
-        <tr className="border-b">
-          <th className={cn("py-2 font-normal", PAGE_GUTTER)}>{t(($) => $.sources_table.source)}</th>
-          <th className="w-24 py-2 font-normal">{t(($) => $.sources_table.count)}</th>
-          <th className="w-24 py-2 font-normal">{t(($) => $.sources_table.skills)}</th>
-          <th className="w-24 py-2 font-normal">{t(($) => $.sources_table.plugins)}</th>
-          <th className="w-32 py-2 pr-4 font-normal">{t(($) => $.sources_table.last)}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => (
-          <tr key={row.source} className="border-b last:border-b-0">
-            <td className={cn("py-2 font-medium", PAGE_GUTTER)}>{t(($) => $.source_types[row.source])}</td>
-            <td className="py-2">{row.count}</td>
-            <td className="py-2">{row.skills}</td>
-            <td className="py-2">{row.plugins}</td>
-            <td className="py-2 pr-4 text-muted-foreground">{timeAgo(row.lastUpdatedAt)}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
   );
 }

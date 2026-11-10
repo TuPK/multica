@@ -42,14 +42,10 @@
     "clawhub": "ClawHub",
     "skills_sh": "Skills.sh",
     "github": "GitHub",
-    "plugin": "公開済みプラグイン"
-  },
-  "sources_table": {
-    "source": "ソース",
-    "count": "アイテム",
-    "skills": "スキル",
-    "plugins": "プラグイン",
-    "last": "最終更新"
+    "plugin": "公開済みプラグイン",
+    "url_zip": "ZIP URL",
+    "registry": "レジストリ",
+    "upload": "アップロード"
   },
   "open_source": "ソースを開く",
   "empty_title": "ハブにはまだ何もありません",
@@ -176,5 +172,175 @@
     "delete_failed": "{{path}} を削除できませんでした",
     "published": "バージョン {{version}} を公開しました",
     "publish_failed": "新しいバージョンを公開できませんでした"
+  },
+  "add": {
+    "button": "追加",
+    "title": "Hubに追加",
+    "review_title": "インポート内容の確認",
+    "tabs": {
+      "url": "URLから",
+      "registry": "レジストリから",
+      "upload": "アップロード",
+      "blank": "空から"
+    },
+    "url": {
+      "type_label": "ソース",
+      "types": {
+        "github": "GitHub",
+        "url_zip": "ZIPのURL",
+        "skills_sh": "skills.sh",
+        "clawhub": "ClawHub"
+      },
+      "url_label": "URL",
+      "url_placeholder": {
+        "github": "https://github.com/所有者/リポジトリ",
+        "url_zip": "https://example.com/skill.zip",
+        "skills_sh": "https://skills.sh/所有者/リポジトリ",
+        "clawhub": "clawhubのslug"
+      },
+      "ref_label": "ブランチまたはタグ",
+      "ref_placeholder": "main",
+      "subdir_label": "サブディレクトリ",
+      "subdir_placeholder": "skills/my-skill",
+      "submit": "プレビュー",
+      "invalid_url": "http:// または https:// で始まる有効なURLを入力してください。",
+      "preview_failed": "このソースを読み込めませんでした。"
+    },
+    "registry": {
+      "url_label": "レジストリURL",
+      "url_placeholder": "https://example.com/hub-index.json",
+      "load": "読み込む",
+      "invalid_url": "http:// または https:// で始まる有効なURLを入力してください。",
+      "load_failed": "このレジストリを読み込めませんでした。",
+      "empty": "このレジストリにはアイテムがありません。",
+      "search_label": "レジストリのアイテムを検索",
+      "search_placeholder": "アイテムを検索",
+      "no_matches": "検索に一致するアイテムはありません。",
+      "version": "v{{version}}",
+      "preview": "プレビュー",
+      "preview_item": "{{name}}をプレビュー",
+      "preview_failed": "このアイテムを読み込めませんでした。"
+    },
+    "upload": {
+      "drop": "ここに .zip、.skill アーカイブ、またはフォルダーをドロップ",
+      "reading": "ファイルを読み込み中…",
+      "choose_archive": "アーカイブを選択",
+      "choose_folder": "フォルダーを選択",
+      "read_failed": "これらのファイルを読み込めませんでした。",
+      "errors": {
+        "missing_skill_md": "最上位にSKILL.mdが見つかりません。",
+        "empty": "インポートするファイルがありません。",
+        "too_large": "このアーカイブは大きすぎます。",
+        "too_many_files": "このインポートはファイル数が多すぎます。"
+      }
+    },
+    "blank": {
+      "create": "空のスキルを作成"
+    },
+    "preview": {
+      "back": "戻る",
+      "commit": "インポート",
+      "committing": "インポート中…",
+      "version": "v{{version}}",
+      "expired": "このプレビューは期限切れです。",
+      "preview_again": "再プレビュー",
+      "preview_failed": "再プレビューできませんでした。",
+      "scan": {
+        "title": "スキャン",
+        "clean": "問題なし",
+        "warn": "警告",
+        "blocked": "ブロック",
+        "blocked_hint": "このインポートはインストールできません。戻って別のソースを選んでください。",
+        "warn_hint": "インポートの前に検出内容を確認してください。",
+        "blocked_error": "このインポートはブロックされているため、インストールできません。",
+        "warn_error": "インポートの前に警告を確認してください。",
+        "acknowledge": "警告内容を理解しました",
+        "severity": {
+          "info": "情報",
+          "warn": "警告",
+          "block": "ブロック"
+        }
+      },
+      "conflict": {
+        "legend": "「{{name}}」は既にHubにあります",
+        "rename": "別の名前でインポート",
+        "rename_label": "新しい名前",
+        "replace": "既存のアイテムを置き換え",
+        "replace_hint": "このインポートで既存のファイルが上書きされます。",
+        "skip": "既存のアイテムを残してスキップ"
+      },
+      "files": {
+        "title_other": "{{count}}件のファイル",
+        "list_label": "このインポートのファイル"
+      }
+    },
+    "toast": {
+      "imported": "{{name}}をインポートしました",
+      "replaced": "{{name}}を置き換えました",
+      "skipped": "{{name}}は既にHubにあります",
+      "failed": "インポートできませんでした"
+    }
+  },
+  "sources": {
+    "add": "ソースを追加",
+    "empty_title": "ソースはまだありません",
+    "read_only": "ソースを管理できるのはワークスペースの管理者とオーナーだけです。",
+    "load_error": "ソースを読み込めませんでした。",
+    "loading": "ソースを読み込み中",
+    "cancel": "キャンセル",
+    "no_url": "URLなし",
+    "columns": {
+      "name": "名前",
+      "type": "種類",
+      "url": "URL",
+      "items": "アイテム数",
+      "last_sync": "最終同期",
+      "enabled": "有効",
+      "actions": "操作"
+    },
+    "sync": {
+      "ok": "正常",
+      "syncing": "同期中",
+      "error": "エラー",
+      "never": "未同期",
+      "unknown": "不明"
+    },
+    "enabled": "有効",
+    "disabled": "無効",
+    "toggle_aria": "{{name}}を有効にする",
+    "toggle_failed": "このソースを変更できませんでした。",
+    "edit_aria": "{{name}}を編集",
+    "remove_aria": "{{name}}を削除",
+    "form": {
+      "add_title": "ソースを追加",
+      "edit_title": "ソースを編集",
+      "name": "名前",
+      "type": "種類",
+      "url": "URL",
+      "url_placeholder": "https://example.com/source",
+      "create": "追加",
+      "save": "保存",
+      "save_failed": "このソースを保存できませんでした。",
+      "errors": {
+        "name_required": "名前を入力してください。",
+        "url_invalid": "http:// または https:// で始まる有効なURLを入力してください。"
+      }
+    },
+    "toast": {
+      "added": "ソースを追加しました",
+      "updated": "ソースを保存しました",
+      "removed": "ソースを削除しました"
+    },
+    "delete": {
+      "title": "{{name}}を削除しますか？",
+      "items_legend_other": "このソースから{{count}}件のアイテムが取り込まれています。",
+      "keep": "アイテムを残す",
+      "keep_hint": "ソースなしでHubに残ります。",
+      "delete_items": "アイテムも削除",
+      "delete_hint": "いずれかのアイテムをエージェントが使用中の場合、削除は止まります。",
+      "in_use": "これらのアイテムはエージェントが使用しているため、ソースを削除できません。",
+      "confirm": "削除",
+      "failed": "このソースを削除できませんでした。"
+    }
   }
 }
