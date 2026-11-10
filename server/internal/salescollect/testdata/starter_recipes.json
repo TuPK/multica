@@ -1,0 +1,1692 @@
+[
+ {
+  "id": "news-gnews-expansion",
+  "status": "active",
+  "method": "rss",
+  "rung": 2,
+  "family": "expansion",
+  "recipe": {
+   "version": 1,
+   "rung": 2,
+   "method": "rss",
+   "fetch": {
+    "engine": "http",
+    "url": "https://news.google.com/rss/search?q=khai+tr%C6%B0%C6%A1ng+OR+m%E1%BB%9F+chi+nh%C3%A1nh&hl=vi&gl=VN&ceid=VN:vi",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "title",
+     "url": "link",
+     "observed_at": "pubDate",
+     "text": "description"
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "expansion",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": "2026-11-10",
+   "sample_count": 5,
+   "field_coverage": 1,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "news-gnews-funding",
+  "status": "proposed",
+  "method": "rss",
+  "rung": 2,
+  "family": "funding",
+  "recipe": {
+   "version": 1,
+   "rung": 2,
+   "method": "rss",
+   "fetch": {
+    "engine": "http",
+    "url": "https://news.google.com/rss/search?q=g%E1%BB%8Di+v%E1%BB%91n&hl=vi&gl=VN&ceid=VN:vi",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "title",
+     "url": "link",
+     "observed_at": "pubDate",
+     "text": "description"
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "funding",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "news-gnews-regulatory",
+  "status": "proposed",
+  "method": "rss",
+  "rung": 2,
+  "family": "regulatory",
+  "recipe": {
+   "version": 1,
+   "rung": 2,
+   "method": "rss",
+   "fetch": {
+    "engine": "http",
+    "url": "https://news.google.com/rss/search?q=ngh%E1%BB%8B+%C4%91%E1%BB%8Bnh+m%E1%BB%9Bi&hl=vi&gl=VN&ceid=VN:vi",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "title",
+     "url": "link",
+     "observed_at": "pubDate",
+     "text": "description"
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "regulatory",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "news-vnexpress-business",
+  "status": "proposed",
+  "method": "rss",
+  "rung": 2,
+  "family": "expansion",
+  "recipe": {
+   "version": 1,
+   "rung": 2,
+   "method": "rss",
+   "fetch": {
+    "engine": "http",
+    "url": "https://vnexpress.net/rss/kinh-doanh.rss",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "title",
+     "url": "link",
+     "observed_at": "pubDate",
+     "text": "description"
+    }
+   },
+   "filter": {
+    "keywords_any": [
+     "mở rộng",
+     "khai trương",
+     "chi nhánh"
+    ],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "expansion",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "news-techinasia",
+  "status": "active",
+  "method": "rss",
+  "rung": 2,
+  "family": "funding",
+  "recipe": {
+   "version": 1,
+   "rung": 2,
+   "method": "rss",
+   "fetch": {
+    "engine": "http",
+    "url": "https://www.techinasia.com/feed",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "title",
+     "url": "link",
+     "observed_at": "pubDate",
+     "text": "description"
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "funding",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": "2026-11-10",
+   "sample_count": 5,
+   "field_coverage": 1,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "launch-producthunt",
+  "status": "active",
+  "method": "rss",
+  "rung": 2,
+  "family": "launch",
+  "recipe": {
+   "version": 1,
+   "rung": 2,
+   "method": "rss",
+   "fetch": {
+    "engine": "http",
+    "url": "https://www.producthunt.com/feed",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "title",
+     "url": "link",
+     "observed_at": "published",
+     "text": "summary"
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "launch",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": "2026-11-10",
+   "sample_count": 5,
+   "field_coverage": 1,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "trends-google-vn",
+  "status": "proposed",
+  "method": "rss",
+  "rung": 2,
+  "family": "pain",
+  "recipe": {
+   "version": 1,
+   "rung": 2,
+   "method": "rss",
+   "fetch": {
+    "engine": "http",
+    "url": "https://trends.google.com/trending/rss?geo=VN",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "title",
+     "url": "link",
+     "observed_at": "pubDate",
+     "text": "description"
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "pain",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "jobs-remotive",
+  "status": "active",
+  "method": "json_api",
+  "rung": 3,
+  "family": "hiring",
+  "recipe": {
+   "version": 1,
+   "rung": 3,
+   "method": "json_api",
+   "fetch": {
+    "engine": "http",
+    "url": "https://remotive.com/api/remote-jobs",
+    "render": "none"
+   },
+   "parse": {
+    "items": "jobs",
+    "fields": {
+     "entity": "company_name",
+     "url": "url",
+     "observed_at": "publication_date",
+     "text": "title"
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "hiring",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": "2026-11-10",
+   "sample_count": 5,
+   "field_coverage": 1,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "jobs-remoteok",
+  "status": "active",
+  "method": "json_api",
+  "rung": 3,
+  "family": "hiring",
+  "recipe": {
+   "version": 1,
+   "rung": 3,
+   "method": "json_api",
+   "fetch": {
+    "engine": "http",
+    "url": "https://remoteok.com/api",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "company",
+     "url": "url",
+     "observed_at": "date",
+     "text": "position"
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "hiring",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": "2026-11-10",
+   "sample_count": 5,
+   "field_coverage": 1,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "jobs-arbeitnow",
+  "status": "active",
+  "method": "json_api",
+  "rung": 3,
+  "family": "hiring",
+  "recipe": {
+   "version": 1,
+   "rung": 3,
+   "method": "json_api",
+   "fetch": {
+    "engine": "http",
+    "url": "https://www.arbeitnow.com/api/job-board-api",
+    "render": "none"
+   },
+   "parse": {
+    "items": "data",
+    "fields": {
+     "entity": "company_name",
+     "url": "url",
+     "observed_at": "created_at",
+     "text": "title"
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "hiring",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": "2026-11-10",
+   "sample_count": 5,
+   "field_coverage": 1,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "jobs-weworkremotely",
+  "status": "proposed",
+  "method": "rss",
+  "rung": 2,
+  "family": "hiring",
+  "recipe": {
+   "version": 1,
+   "rung": 2,
+   "method": "rss",
+   "fetch": {
+    "engine": "http",
+    "url": "https://weworkremotely.com/remote-jobs.rss",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "title",
+     "url": "link",
+     "observed_at": "pubDate",
+     "text": "description"
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "hiring",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "jobs-itviec",
+  "status": "proposed",
+  "method": "html_jsonld",
+  "rung": 4,
+  "family": "hiring",
+  "recipe": {
+   "version": 1,
+   "rung": 4,
+   "method": "html_jsonld",
+   "fetch": {
+    "engine": "http",
+    "url": "https://itviec.com/it-jobs",
+    "render": "none"
+   },
+   "parse": {
+    "items": "ListItem",
+    "fields": {
+     "entity": "",
+     "url": "url",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "hiring",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "jobs-careerviet",
+  "status": "proposed",
+  "method": "html_list",
+  "rung": 4,
+  "family": "hiring",
+  "recipe": {
+   "version": 1,
+   "rung": 4,
+   "method": "html_list",
+   "fetch": {
+    "engine": "http",
+    "url": "https://careerviet.vn/viec-lam/cntt-phan-mem-c1-vi.html",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "hiring",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "tender-worldbank",
+  "status": "proposed",
+  "method": "json_api",
+  "rung": 3,
+  "family": "tender",
+  "recipe": {
+   "version": 1,
+   "rung": 3,
+   "method": "json_api",
+   "fetch": {
+    "engine": "http",
+    "url": "https://search.worldbank.org/api/v2/procnotices?format=json&rows=50",
+    "render": "none"
+   },
+   "parse": {
+    "items": "procnotices",
+    "fields": {
+     "entity": "project_name",
+     "url": "url",
+     "observed_at": "noticedate",
+     "text": "notice_type"
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "tender",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "tender-uk-contracts",
+  "status": "proposed",
+  "method": "json_api",
+  "rung": 3,
+  "family": "tender",
+  "recipe": {
+   "version": 1,
+   "rung": 3,
+   "method": "json_api",
+   "fetch": {
+    "engine": "http",
+    "url": "https://www.contractsfinder.service.gov.uk/Search/Results",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "tender",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "tender-muasamcong",
+  "status": "proposed",
+  "method": "html_list",
+  "rung": 4,
+  "family": "tender",
+  "recipe": {
+   "version": 1,
+   "rung": 4,
+   "method": "html_list",
+   "fetch": {
+    "engine": "http",
+    "url": "https://muasamcong.mof.gov.vn",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "tender",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "tender-ted-eu",
+  "status": "proposed",
+  "method": "json_api",
+  "rung": 3,
+  "family": "tender",
+  "recipe": {
+   "version": 1,
+   "rung": 3,
+   "method": "json_api",
+   "fetch": {
+    "engine": "http",
+    "url": "https://ted.europa.eu",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "tender",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "registry-dkkd",
+  "status": "proposed",
+  "method": "html_list",
+  "rung": 4,
+  "family": "registry",
+  "recipe": {
+   "version": 1,
+   "rung": 4,
+   "method": "html_list",
+   "fetch": {
+    "engine": "http",
+    "url": "https://dangkykinhdoanh.gov.vn",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "registry",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "forum-voz",
+  "status": "proposed",
+  "method": "rss",
+  "rung": 2,
+  "family": "pain",
+  "recipe": {
+   "version": 1,
+   "rung": 2,
+   "method": "rss",
+   "fetch": {
+    "engine": "http",
+    "url": "https://voz.vn/forums/-/index.rss",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "title",
+     "url": "link",
+     "observed_at": "pubDate",
+     "text": "description"
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "pain",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "community-reddit",
+  "status": "proposed",
+  "method": "rss",
+  "rung": 2,
+  "family": "pain",
+  "recipe": {
+   "version": 1,
+   "rung": 2,
+   "method": "rss",
+   "fetch": {
+    "engine": "http",
+    "url": "https://www.reddit.com/r/<subreddit>/new/.rss",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "title",
+     "url": "link",
+     "observed_at": "pubDate",
+     "text": "description"
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "pain",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "community-telegram",
+  "status": "proposed",
+  "method": "html_list",
+  "rung": 2,
+  "family": "pain",
+  "recipe": {
+   "version": 1,
+   "rung": 2,
+   "method": "html_list",
+   "fetch": {
+    "engine": "http",
+    "url": "https://t.me/s/<channel>",
+    "render": "none"
+   },
+   "parse": {
+    "items": ".tgme_widget_message",
+    "fields": {
+     "entity": "",
+     "url": ".tgme_widget_message_date@href",
+     "observed_at": "time@datetime",
+     "text": ".tgme_widget_message_text"
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "pain",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "own-customers-csv",
+  "status": "manual_only",
+  "method": "csv_drop",
+  "rung": 7,
+  "family": "own_data",
+  "recipe": {
+   "version": 1,
+   "rung": 7,
+   "method": "csv_drop",
+   "fetch": {
+    "engine": "http",
+    "url": "",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "own_data",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "kb-competitor-customers",
+  "status": "active",
+  "method": "kb_internal",
+  "rung": 1,
+  "family": "competitor_customer",
+  "recipe": {
+   "version": 1,
+   "rung": 1,
+   "method": "kb_internal",
+   "fetch": {
+    "engine": "http",
+    "url": "kb:competitor_profile",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "competitor_customer",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "social-facebook-own-page",
+  "status": "needs_connector",
+  "method": "social_connector",
+  "rung": 1,
+  "family": null,
+  "recipe": {
+   "version": 1,
+   "rung": 1,
+   "method": "social_connector",
+   "fetch": {
+    "engine": "http",
+    "url": "https://www.facebook.com/<your-page>",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "inbound",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "social-facebook-public-pages",
+  "status": "needs_connector",
+  "method": "provider",
+  "rung": 6,
+  "family": null,
+  "recipe": {
+   "version": 1,
+   "rung": 6,
+   "method": "provider",
+   "fetch": {
+    "engine": "http",
+    "url": "https://www.facebook.com/<organisation-page>",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": null,
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": [],
+   "provider": {
+    "toolkit": "APIFY",
+    "actor": "to confirm (spec section 15, item 9)",
+    "input": {},
+    "cost_cap_usd": 0
+   }
+  }
+ },
+ {
+  "id": "social-facebook-public-groups",
+  "status": "needs_connector",
+  "method": "provider",
+  "rung": 6,
+  "family": null,
+  "recipe": {
+   "version": 1,
+   "rung": 6,
+   "method": "provider",
+   "fetch": {
+    "engine": "http",
+    "url": "https://www.facebook.com/groups/<public-group>",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "pain",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": [],
+   "provider": {
+    "toolkit": "APIFY",
+    "actor": "to confirm (spec section 15, item 9)",
+    "input": {},
+    "cost_cap_usd": 0
+   }
+  }
+ },
+ {
+  "id": "social-facebook-ad-library",
+  "status": "needs_connector",
+  "method": "provider",
+  "rung": 6,
+  "family": "ad_activity",
+  "recipe": {
+   "version": 1,
+   "rung": 6,
+   "method": "provider",
+   "fetch": {
+    "engine": "http",
+    "url": "https://www.facebook.com/ads/library/",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "ad_activity",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": [
+    {
+     "rung": 7
+    }
+   ],
+   "provider": {
+    "toolkit": "APIFY",
+    "actor": "to confirm (spec section 15, item 9)",
+    "input": {},
+    "cost_cap_usd": 0
+   }
+  }
+ },
+ {
+  "id": "social-facebook-marketplace",
+  "status": "needs_connector",
+  "method": "provider",
+  "rung": 6,
+  "family": "directory",
+  "recipe": {
+   "version": 1,
+   "rung": 6,
+   "method": "provider",
+   "fetch": {
+    "engine": "http",
+    "url": "https://www.facebook.com/marketplace/",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "directory",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": [],
+   "provider": {
+    "toolkit": "APIFY",
+    "actor": "to confirm (spec section 15, item 9)",
+    "input": {},
+    "cost_cap_usd": 0
+   }
+  }
+ },
+ {
+  "id": "social-instagram-own",
+  "status": "needs_connector",
+  "method": "social_connector",
+  "rung": 1,
+  "family": null,
+  "recipe": {
+   "version": 1,
+   "rung": 1,
+   "method": "social_connector",
+   "fetch": {
+    "engine": "http",
+    "url": "https://www.instagram.com/<your-account>",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "inbound",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "social-instagram-public",
+  "status": "needs_connector",
+  "method": "provider",
+  "rung": 6,
+  "family": null,
+  "recipe": {
+   "version": 1,
+   "rung": 6,
+   "method": "provider",
+   "fetch": {
+    "engine": "http",
+    "url": "https://www.instagram.com/<organisation>",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": null,
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": [],
+   "provider": {
+    "toolkit": "APIFY",
+    "actor": "to confirm (spec section 15, item 9)",
+    "input": {},
+    "cost_cap_usd": 0
+   }
+  }
+ },
+ {
+  "id": "social-zalo-oa",
+  "status": "needs_connector",
+  "method": "social_connector",
+  "rung": 1,
+  "family": null,
+  "recipe": {
+   "version": 1,
+   "rung": 1,
+   "method": "social_connector",
+   "fetch": {
+    "engine": "http",
+    "url": "https://oa.zalo.me",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "inbound",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "social-tiktok-business",
+  "status": "needs_connector",
+  "method": "social_connector",
+  "rung": 1,
+  "family": null,
+  "recipe": {
+   "version": 1,
+   "rung": 1,
+   "method": "social_connector",
+   "fetch": {
+    "engine": "http",
+    "url": "https://www.tiktok.com/business",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "inbound",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "social-tiktok-public",
+  "status": "needs_connector",
+  "method": "provider",
+  "rung": 6,
+  "family": null,
+  "recipe": {
+   "version": 1,
+   "rung": 6,
+   "method": "provider",
+   "fetch": {
+    "engine": "http",
+    "url": "https://www.tiktok.com/tag/<hashtag>",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "pain",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": [],
+   "provider": {
+    "toolkit": "APIFY",
+    "actor": "to confirm (spec section 15, item 9)",
+    "input": {},
+    "cost_cap_usd": 0
+   }
+  }
+ },
+ {
+  "id": "social-youtube-channels",
+  "status": "needs_connector",
+  "method": "json_api",
+  "rung": 3,
+  "family": null,
+  "recipe": {
+   "version": 1,
+   "rung": 3,
+   "method": "json_api",
+   "fetch": {
+    "engine": "http",
+    "url": "https://www.googleapis.com/youtube/v3/commentThreads",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "pain",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "social-linkedin-own",
+  "status": "needs_connector",
+  "method": "social_connector",
+  "rung": 1,
+  "family": null,
+  "recipe": {
+   "version": 1,
+   "rung": 1,
+   "method": "social_connector",
+   "fetch": {
+    "engine": "http",
+    "url": "https://www.linkedin.com/company/<your-company>",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "inbound",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "social-linkedin-exports",
+  "status": "manual_only",
+  "method": "csv_drop",
+  "rung": 7,
+  "family": null,
+  "recipe": {
+   "version": 1,
+   "rung": 7,
+   "method": "csv_drop",
+   "fetch": {
+    "engine": "http",
+    "url": "",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": null,
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": []
+  }
+ },
+ {
+  "id": "social-x-search",
+  "status": "needs_connector",
+  "method": "provider",
+  "rung": 3,
+  "family": null,
+  "recipe": {
+   "version": 1,
+   "rung": 3,
+   "method": "provider",
+   "fetch": {
+    "engine": "http",
+    "url": "https://api.x.com/2/tweets/search/recent",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "pain",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": [],
+   "provider": {
+    "toolkit": "TWITTER",
+    "actor": "search",
+    "input": {},
+    "cost_cap_usd": 0
+   }
+  }
+ },
+ {
+  "id": "social-google-maps-reviews",
+  "status": "needs_connector",
+  "method": "provider",
+  "rung": 6,
+  "family": "directory",
+  "recipe": {
+   "version": 1,
+   "rung": 6,
+   "method": "provider",
+   "fetch": {
+    "engine": "http",
+    "url": "https://www.google.com/maps",
+    "render": "none"
+   },
+   "parse": {
+    "items": "",
+    "fields": {
+     "entity": "",
+     "url": "",
+     "observed_at": "",
+     "text": ""
+    }
+   },
+   "filter": {
+    "keywords_any": [],
+    "keywords_none": [],
+    "language": "",
+    "since_days": 30
+   },
+   "map": {
+    "family": "directory",
+    "entity_from": "field"
+   },
+   "cadence": "daily",
+   "rate_limit": "1/s",
+   "max_items": 100,
+   "verified_at": null,
+   "sample_count": 0,
+   "field_coverage": 0,
+   "fallbacks": [],
+   "provider": {
+    "toolkit": "APIFY",
+    "actor": "to confirm (spec section 15, item 9)",
+    "input": {},
+    "cost_cap_usd": 0
+   }
+  }
+ }
+]

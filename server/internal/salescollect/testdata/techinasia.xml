@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"
+	xmlns:content="http://purl.org/rss/1.0/modules/content/"
+	xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:atom="http://www.w3.org/2005/Atom"
+	xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
+	xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
+	xmlns:media="http://search.yahoo.com/mrss/">
+
+<channel>
+	<title>Tech in Asia</title>
+	<atom:link href="https://www.techinasia.com/feed" rel="self" type="application/rss+xml" />
+	<link>https://www.techinasia.com</link>
+	<description>Connecting Asia&#039;s startup ecosystem</description>
+	<lastBuildDate>Tue, 10 Nov 2026 07:48:31 +0000</lastBuildDate>
+	<language>en-US</language>
+	<sy:updatePeriod>
+	hourly	</sy:updatePeriod>
+	<sy:updateFrequency>
+	1	</sy:updateFrequency>
+	<generator>https://wordpress.org/?v=5.8.3</generator>
+	<item>
+		<title>Google.org grants $2.3m for Indian AI disease-screening app</title>
+		<link>https://www.techinasia.com/news/googleorg-grants-23m-indian-ai-diseasescreening-app</link>
+		
+		<dc:creator><![CDATA[Minh Le]]></dc:creator>
+		<pubDate>Tue, 10 Nov 2026 07:35:33 +0000</pubDate>
+				<category><![CDATA[Artificial Intelligence]]></category>
+		<category><![CDATA[Investments]]></category>
+		<category><![CDATA[News]]></category>
+		<category><![CDATA[Startups]]></category>
+		<category><![CDATA[Froncort.AI]]></category>
+		<category><![CDATA[Google org]]></category>
+		<category><![CDATA[healthtech]]></category>
+		<category><![CDATA[India]]></category>
+		<guid isPermaLink="false">https://www.techinasia.com/?post_type=short&#038;p=1031304</guid>
+
+					<description><![CDATA[Froncort.AI is one of 15 recipients of Google.org’s Impact Challenge: AI for Government Innovation.]]></description>
+		
+		
+		
+		<media:content url="https://cdn.techinasia.com/wp-content/uploads/2026/11/1794296097_1771249576184.jpeg" medium="image" />
+<enclosure url="https://cdn.techinasia.com/wp-content/uploads/2026/11/1794296097_1771249576184.jpeg" length="0" type="image/jpeg" />
+<shortRelatedPosts><title>Endowus&#039; 2023 loss widens, revenue doubles</title><link>https://www.techinasia.com/endowus-ceo-gregory-van-optimistic-profitability</link></shortRelatedPosts>	</item><item>
+		<title>ByteDance launches Seedream 5.5 with 100-round image editing</title>
+		<link>https://www.techinasia.com/news/bytedance-launches-seedream-55-100round-image-editing</link>
+		
+		<dc:creator><![CDATA[Aiko Gao Ishida]]></dc:creator>
+		<pubDate>Tue, 10 Nov 2026 07:22:37 +0000</pubDate>
+				<category><![CDATA[Artificial Intelligence]]></category>
+		<category><![CDATA[News]]></category>
+		<category><![CDATA[ByteDance]]></category>
+		<category><![CDATA[China]]></category>
+		<category><![CDATA[generative AI]]></category>
+		<category><![CDATA[Seedream]]></category>
+		<guid isPermaLink="false">https://www.techinasia.com/?post_type=short&#038;p=1031266</guid>
+
+					<description><![CDATA[Tests found the model still made errors with human anatomy and small objects such as glasses.]]></description>
+		
+		
+		
+		<media:content url="https://cdn.techinasia.com/wp-content/uploads/2026/11/1794286103_1788824300_1785456913_1778308464_1721037977_shutterstock_2398460997.jpg" medium="image" />
+<enclosure url="https://cdn.techinasia.com/wp-content/uploads/2026/11/1794286103_1788824300_1785456913_1778308464_1721037977_shutterstock_2398460997.jpg" length="0" type="image/jpeg" />
+<shortRelatedPosts><title>ByteDance to fold Trae, Coze into Doubao in China: sources</title><link>https://www.techinasia.com/bytedance-fold-trae-coze-doubao-china-sources</link></shortRelatedPosts>	</item><item>
+		<title>This startup helps enterprises adopt AI safely</title>
+		<link>https://www.techinasia.com/startup-helps-enterprises-adopt-ai-safely</link>
+		
+		<dc:creator><![CDATA[Adinda Pryanka]]></dc:creator>
+		<pubDate>Tue, 10 Nov 2026 07:00:19 +0000</pubDate>
+				<category><![CDATA[Startups]]></category>
+		<category><![CDATA[Paypal]]></category>
+		<category><![CDATA[Raz Kotler]]></category>
+		<category><![CDATA[scouter]]></category>
+		<category><![CDATA[singapore startup]]></category>
+		<category><![CDATA[Startup spotlight]]></category>
+		<guid isPermaLink="false">https://www.techinasia.com/?p=1031123</guid>
+
+					<description><![CDATA[Backed by local groups Dart and Aleph, Scouter helps Singapore's enterprises implement the right AI security tools ahead of new regulations.]]></description>
+		
+		
+		
+		<media:content url="https://cdn.techinasia.com/wp-content/uploads/2026/11/1794215346_Scouter.jpg" medium="image" />
+<enclosure url="https://cdn.techinasia.com/wp-content/uploads/2026/11/1794215346_Scouter.jpg" length="0" type="image/jpeg" />
+	</item><item>
+		<title>Southeast Asia&#8217;s top-funded tech companies in the last decade</title>
+		<link>https://www.techinasia.com/visual-story/southeast-asias-topfunded-tech-companies-decade</link>
+		
+		<dc:creator><![CDATA[Aya Lin]]></dc:creator>
+		<pubDate>Tue, 10 Nov 2026 07:00:00 +0000</pubDate>
+				<category><![CDATA[Startups]]></category>
+		<category><![CDATA[Visual Stories]]></category>
+		<category><![CDATA[Funding]]></category>
+		<category><![CDATA[investments]]></category>
+		<category><![CDATA[startups]]></category>
+		<category><![CDATA[visual stories team]]></category>
+		<guid isPermaLink="false">https://www.techinasia.com/?post_type=visual-story&#038;p=748288</guid>
+
+					<description><![CDATA[As investors in Southeast Asia race to back the next industry leader, which tech firm will claim the region's funding crown?]]></description>
+		
+		
+		
+		<media:content url="https://cdn.techinasia.com/wp-content/uploads/2022/05/1653040665_southeast-asia.png" medium="image" />
+<enclosure url="https://cdn.techinasia.com/wp-content/uploads/2022/05/1653040665_southeast-asia.png" length="0" type="image/png" />
+	</item><item>
+		<title>Meet Southeast Asia’s top angel investors</title>
+		<link>https://www.techinasia.com/visual-story/meet-southeast-asias-top-angel-investors</link>
+		
+		<dc:creator><![CDATA[Aya Lin]]></dc:creator>
+		<pubDate>Tue, 10 Nov 2026 07:00:00 +0000</pubDate>
+				<category><![CDATA[Featured Stories]]></category>
+		<category><![CDATA[Investments]]></category>
+		<category><![CDATA[Premium Content]]></category>
+		<category><![CDATA[Visual Stories]]></category>
+		<category><![CDATA[Angel Investors]]></category>
+		<category><![CDATA[angel investors in SEA]]></category>
+		<category><![CDATA[angel investors in singapore]]></category>
+		<category><![CDATA[investors in SEA]]></category>
+		<category><![CDATA[startup investors]]></category>
+		<category><![CDATA[startups in SEA]]></category>
+		<category><![CDATA[storyed duc@techinasia.com]]></category>
+		<guid isPermaLink="false">https://www.techinasia.com/?post_type=visual-story&#038;p=919789</guid>
+
+					<description><![CDATA[Our constantly updated list shows the most active angel investors for founders in Southeast Asia.]]></description>
+		
+		
+		
+		<media:content url="https://cdn.techinasia.com/wp-content/uploads/2025/06/1749040117_Angel-investor.png" medium="image" />
+<enclosure url="https://cdn.techinasia.com/wp-content/uploads/2025/06/1749040117_Angel-investor.png" length="0" type="image/png" />
+	</item></channel>
+</rss>
