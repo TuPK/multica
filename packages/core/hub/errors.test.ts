@@ -5,9 +5,12 @@ import {
   HubImportBlockedError,
   HubImportWarningsError,
   HubPreviewExpiredError,
+  HubLocalChangesError,
+  HubQuotaExceededError,
   HubSourceInUseError,
   mapHubImportCommitError,
   mapHubSourceDeleteError,
+  mapHubUpdateApplyError,
 } from "./errors";
 
 describe("mapHubSourceDeleteError", () => {
@@ -52,5 +55,42 @@ describe("mapHubImportCommitError", () => {
   it("leaves non-HTTP failures untouched", () => {
     const network = new TypeError("fetch failed");
     expect(mapHubImportCommitError(network)).toBe(network);
+  });
+});
+
+describe("quota mapping on import commit", () => {
+  it("maps quota_exceeded on 409 to HubQuotaExceededError", () => {
+    const full = new ApiError("quota reached", 409, "Conflict", { error: "quota reached", code: "quota_exceeded" });
+    const mapped = mapHubImportCommitError(full);
+    expect(mapped).toBeInstanceOf(HubQuotaExceededError);
+    expect((mapped as Error).message).toBe("quota reached");
+  });
+});
+
+describe("mapHubUpdateApplyError", () => {
+  it("maps local_changes on 409 to HubLocalChangesError", () => {
+    const local = new ApiError("edited locally", 409, "Conflict", { error: "edited locally", code: "local_changes" });
+    expect(mapHubUpdateApplyError(local)).toBeInstanceOf(HubLocalChangesError);
+  });
+
+  it("maps quota_exceeded on 409 to HubQuotaExceededError", () => {
+    const full = new ApiError("full", 409, "Conflict", { error: "full", code: "quota_exceeded" });
+    expect(mapHubUpdateApplyError(full)).toBeInstanceOf(HubQuotaExceededError);
+  });
+
+  it("maps the scan codes onto the import errors, since the same scanner gates updates", () => {
+    const blocked = new ApiError("blocked", 409, "Conflict", { error: "blocked", code: "scan_blocked" });
+    expect(mapHubUpdateApplyError(blocked)).toBeInstanceOf(HubImportBlockedError);
+    const warned = new ApiError("confirm", 409, "Conflict", { error: "confirm", code: "warnings_unconfirmed" });
+    expect(mapHubUpdateApplyError(warned)).toBeInstanceOf(HubImportWarningsError);
+  });
+
+  it("leaves unknown codes, other statuses and non-HTTP failures unchanged", () => {
+    const unknown = new ApiError("busy", 409, "Conflict", { error: "busy", code: "something_else" });
+    expect(mapHubUpdateApplyError(unknown)).toBe(unknown);
+    const notFound = new ApiError("missing", 404, "Not Found", { error: "missing", code: "local_changes" });
+    expect(mapHubUpdateApplyError(notFound)).toBe(notFound);
+    const network = new TypeError("fetch failed");
+    expect(mapHubUpdateApplyError(network)).toBe(network);
   });
 });

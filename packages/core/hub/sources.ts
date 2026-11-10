@@ -8,6 +8,7 @@ import type {
 } from "../types/hub";
 import { workspaceKeys } from "../workspace/queries";
 import { hubKeys } from "./files";
+import { invalidateHubItemState } from "./item-keys";
 
 export const hubSourceKeys = {
   all: (wsId: string) => [...hubKeys.all(wsId), "sources"] as const,
@@ -30,6 +31,7 @@ export function invalidateHubCatalog(qc: QueryClient, wsId: string) {
   qc.invalidateQueries({ queryKey: hubSourceKeys.all(wsId) });
   qc.invalidateQueries({ queryKey: workspaceKeys.skills(wsId) });
   qc.invalidateQueries({ queryKey: pluginKeys.packages(wsId) });
+  invalidateHubItemState(qc, wsId);
 }
 
 export interface CreateHubSourceVars extends CreateHubSourceRequest {

@@ -1,6 +1,18 @@
 import { z } from "zod";
 import { normalizeHubSourceType } from "../hub/items";
-import type { HubImportPreview, HubImportCommitResult, HubSource } from "../types/hub";
+import type {
+  HubActivityPage,
+  HubApplyUpdateResult,
+  HubBundle,
+  HubForkResult,
+  HubImportPreview,
+  HubImportCommitResult,
+  HubQuota,
+  HubSource,
+  HubSyncResult,
+  HubUpdateCheck,
+  HubUpdateDiff,
+} from "../types/hub";
 import { normalizeIssueStatusCategory } from "../issues/config/status";
 import type {
   WorkflowHandoffPreview,
@@ -4307,3 +4319,170 @@ export const EMPTY_HUB_IMPORT_COMMIT_RESULT: HubImportCommitResult = {
   hub_item_id: "",
   skipped: false,
 };
+
+// Hub items, bundles, sync, updates, activity and quota (phases 4-6). Every
+// field falls back, so an older client keeps rendering a newer server's rows.
+// Tracking and scan status fall back to the conservative value: an unknown
+// tracking mode is shown as manual, an unknown scan status as warn.
+
+const HubItemKindSchema = z.enum(["skill", "plugin"]).catch("skill");
+
+const HubCountSchema = z.number().catch(0);
+
+export const HubItemMetaSchema = z.object({
+  id: z.string().catch(""),
+  kind: HubItemKindSchema,
+  ref_id: z.string().catch(""),
+  source_id: z.string().nullable().catch(null),
+  source_ref: z.string().catch(""),
+  tracking: z
+    .string()
+    .catch("manual")
+    .transform((value): "tracking" | "forked" | "manual" =>
+      value === "tracking" || value === "forked" ? value : "manual",
+    ),
+  latest_version: z.string().catch(""),
+  bundle_digest: z.string().catch(""),
+  size_bytes: HubCountSchema,
+  file_count: HubCountSchema,
+  scan_status: z.enum(["clean", "warn", "blocked"]).catch("warn"),
+  update_available: z.boolean().catch(false),
+  remote_digest: z.string().catch(""),
+  checked_at: z.string().nullable().catch(null),
+  local_modified: z.boolean().catch(false),
+  created_at: z.string().catch(""),
+  updated_at: z.string().catch(""),
+}).loose();
+
+export const HubItemMetaListSchema = z.array(HubItemMetaSchema);
+
+export const HubBundleSchema = z.object({
+  url: z.string().catch(""),
+  expires_in: HubCountSchema,
+  digest: z.string().catch(""),
+  size_bytes: HubCountSchema,
+  version: z.string().catch(""),
+}).loose();
+
+const HubSyncItemSchema = z.object({
+  kind: HubItemKindSchema,
+  id: z.string().catch(""),
+  name: z.string().catch(""),
+  change: z.enum(["update_available", "unchanged", "error"]).catch("error"),
+  error: z.string().optional().catch(undefined),
+}).loose();
+
+export const HubSyncResultSchema = z.object({
+  status: z.enum(["ok", "error"]).catch("error"),
+  checked: HubCountSchema,
+  updates_available: HubCountSchema,
+  unchanged: HubCountSchema,
+  error: z.string().optional().catch(undefined),
+  items: z.array(HubSyncItemSchema).catch([]),
+}).loose();
+
+export const EMPTY_HUB_SYNC_RESULT: HubSyncResult = {
+  status: "error",
+  checked: 0,
+  updates_available: 0,
+  unchanged: 0,
+  items: [],
+};
+
+const HubUpdateFileSchema = z.object({
+  path: z.string().catch(""),
+  // An unknown status is shown as modified, so it is reviewed rather than hidden.
+  status: z.enum(["added", "modified", "removed", "unchanged"]).catch("modified"),
+  old_size: z.number().nullable().catch(null),
+  new_size: z.number().nullable().catch(null),
+}).loose();
+
+export const HubUpdateCheckSchema = z.object({
+  update_available: z.boolean().catch(false),
+  current_digest: z.string().catch(""),
+  remote_digest: z.string().catch(""),
+  local_modified: z.boolean().catch(false),
+  files: z.array(HubUpdateFileSchema).catch([]),
+}).loose();
+
+export const EMPTY_HUB_UPDATE_CHECK: HubUpdateCheck = {
+  update_available: false,
+  current_digest: "",
+  remote_digest: "",
+  local_modified: false,
+  files: [],
+};
+
+export const HubUpdateDiffSchema = z.object({
+  path: z.string().catch(""),
+  old: z.string().nullable().catch(null),
+  new: z.string().nullable().catch(null),
+  binary: z.boolean().catch(false),
+}).loose();
+
+export const HubApplyUpdateResultSchema = z.object({
+  kind: HubItemKindSchema,
+  id: z.string().catch(""),
+  version: z.string().catch(""),
+  tracking: z
+    .string()
+    .catch("manual")
+    .transform((value): "tracking" | "forked" | "manual" =>
+      value === "tracking" || value === "forked" ? value : "manual",
+    ),
+}).loose();
+
+export const HubForkResultSchema = z.object({
+  kind: HubItemKindSchema,
+  id: z.string().catch(""),
+  tracking: z.literal("forked").catch("forked"),
+}).loose();
+
+export const HubActivityEntrySchema = z.object({
+  id: z.string().catch(""),
+  action: z.string().catch(""),
+  actor_type: z.string().catch(""),
+  actor_id: z.string().nullable().catch(null),
+  actor_name: z.string().catch(""),
+  kind: z.enum(["skill", "plugin"]).nullable().catch(null),
+  ref_id: z.string().nullable().catch(null),
+  item_name: z.string().catch(""),
+  source_id: z.string().nullable().catch(null),
+  detail: z.record(z.string(), z.unknown()).catch({}),
+  created_at: z.string().catch(""),
+}).loose();
+
+export const HubActivityPageSchema = z.object({
+  entries: z.array(HubActivityEntrySchema).catch([]),
+  next_cursor: z.string().nullable().catch(null),
+}).loose();
+
+export const EMPTY_HUB_ACTIVITY_PAGE: HubActivityPage = { entries: [], next_cursor: null };
+
+const HubQuotaUsageSchema = z.object({
+  used: HubCountSchema,
+  limit: HubCountSchema,
+}).loose();
+
+export const HubQuotaSchema = z.object({
+  items: HubQuotaUsageSchema.catch({ used: 0, limit: 0 }),
+  storage_bytes: HubQuotaUsageSchema.catch({ used: 0, limit: 0 }),
+}).loose();
+
+export const EMPTY_HUB_QUOTA: HubQuota = {
+  items: { used: 0, limit: 0 },
+  storage_bytes: { used: 0, limit: 0 },
+};
+
+export const EMPTY_HUB_BUNDLE: HubBundle = { url: "", expires_in: 0, digest: "", size_bytes: 0, version: "" };
+
+export const EMPTY_HUB_APPLY_UPDATE_RESULT: HubApplyUpdateResult = {
+  kind: "skill",
+  id: "",
+  version: "",
+  tracking: "manual",
+};
+
+export const EMPTY_HUB_FORK_RESULT: HubForkResult = { kind: "skill", id: "", tracking: "forked" };
+
+export const EMPTY_HUB_UPDATE_DIFF: HubUpdateDiff = { path: "", old: null, new: null, binary: false };

@@ -291,7 +291,12 @@ import { type Logger, noopLogger } from "../logger";
 import { createRequestId, createSafeId } from "../utils";
 import { getCurrentSlug } from "../platform/workspace-storage";
 import { parseWithFallback } from "./schema";
-import { mapHubImportCommitError, mapHubSourceDeleteError } from "../hub/errors";
+import type { HubItemKind } from "../hub/items";
+import {
+  mapHubImportCommitError,
+  mapHubSourceDeleteError,
+  mapHubUpdateApplyError,
+} from "../hub/errors";
 import {
   HubSourceSchema,
   HubSourceListSchema,
@@ -300,15 +305,43 @@ import {
   EMPTY_HUB_IMPORT_PREVIEW,
   HubImportCommitResultSchema,
   EMPTY_HUB_IMPORT_COMMIT_RESULT,
+  HubItemMetaListSchema,
+  HubBundleSchema,
+  EMPTY_HUB_BUNDLE,
+  HubSyncResultSchema,
+  EMPTY_HUB_SYNC_RESULT,
+  HubUpdateCheckSchema,
+  EMPTY_HUB_UPDATE_CHECK,
+  HubUpdateDiffSchema,
+  EMPTY_HUB_UPDATE_DIFF,
+  HubApplyUpdateResultSchema,
+  EMPTY_HUB_APPLY_UPDATE_RESULT,
+  HubForkResultSchema,
+  EMPTY_HUB_FORK_RESULT,
+  HubActivityPageSchema,
+  EMPTY_HUB_ACTIVITY_PAGE,
+  HubQuotaSchema,
+  EMPTY_HUB_QUOTA,
 } from "./schemas";
 import type {
   CreateHubSourceRequest,
+  HubActivityFilter,
+  HubActivityPage,
+  HubApplyUpdateResult,
+  HubBundle,
+  HubForkResult,
   HubImportCommitRequest,
   HubImportPreview,
   HubImportCommitResult,
   HubImportSourceRequest,
+  HubItemMeta,
+  HubLocalChangesPolicy,
+  HubQuota,
   HubSource,
   HubSourceDeleteItems,
+  HubSyncResult,
+  HubUpdateCheck,
+  HubUpdateDiff,
   UpdateHubSourceRequest,
 } from "../types/hub";
 import { EMPTY_ORG_MAP, OrgMapSchema, type OrgMap } from "../company/org-map-schema";
@@ -7348,5 +7381,157 @@ export class ApiClient {
     });
     if (!result.id) throw new Error("The import finished without an item id");
     return result;
+  }
+
+  // Hub items, bundles, sync, updates, activity, quota and export (phases 4-6).
+  // Items are addressed by kind and ref id, the skill or plugin package id.
+
+  private hubItemPath(kind: HubItemKind, refId: string): string {
+    return `/api/hub/items/${kind}/${encodeURIComponent(refId)}`;
+  }
+
+  async listHubItems(workspaceId: string): Promise<HubItemMeta[]> {
+    const raw = await this.fetch<unknown>("/api/hub/items", {
+      headers: workspaceHeader({ workspaceId }),
+    });
+    return parseWithFallback<HubItemMeta[]>(raw, HubItemMetaListSchema, [], {
+      endpoint: "GET /api/hub/items",
+    });
+  }
+
+  /** The url is a presigned GET, or a same-origin download path when the store cannot presign. */
+  async getHubBundle(workspaceId: string, kind: HubItemKind, refId: string): Promise<HubBundle> {
+    const raw = await this.fetch<unknown>(`${this.hubItemPath(kind, refId)}/bundle`, {
+      headers: workspaceHeader({ workspaceId }),
+    });
+    const bundle = parseWithFallback<HubBundle>(raw, HubBundleSchema, EMPTY_HUB_BUNDLE, {
+      endpoint: "GET /api/hub/items/{kind}/{id}/bundle",
+    });
+    if (!bundle.url) throw new Error("The bundle response has no download url");
+    return bundle;
+  }
+
+  async syncHubSource(workspaceId: string, id: string): Promise<HubSyncResult> {
+    const raw = await this.fetch<unknown>(`/api/hub/sources/${encodeURIComponent(id)}/sync`, {
+      method: "POST",
+      headers: workspaceHeader({ workspaceId }),
+    });
+    return parseWithFallback<HubSyncResult>(raw, HubSyncResultSchema, EMPTY_HUB_SYNC_RESULT, {
+      endpoint: "POST /api/hub/sources/{id}/sync",
+    });
+  }
+
+  async getHubUpdateCheck(workspaceId: string, kind: HubItemKind, refId: string): Promise<HubUpdateCheck> {
+    const raw = await this.fetch<unknown>(`${this.hubItemPath(kind, refId)}/update`, {
+      headers: workspaceHeader({ workspaceId }),
+    });
+    return parseWithFallback<HubUpdateCheck>(raw, HubUpdateCheckSchema, EMPTY_HUB_UPDATE_CHECK, {
+      endpoint: "GET /api/hub/items/{kind}/{id}/update",
+    });
+  }
+
+  async getHubUpdateDiff(
+    workspaceId: string,
+    kind: HubItemKind,
+    refId: string,
+    path: string,
+  ): Promise<HubUpdateDiff> {
+    const raw = await this.fetch<unknown>(
+      `${this.hubItemPath(kind, refId)}/update/diff?path=${encodeURIComponent(path)}`,
+      { headers: workspaceHeader({ workspaceId }) },
+    );
+    return parseWithFallback<HubUpdateDiff>(raw, HubUpdateDiffSchema, { ...EMPTY_HUB_UPDATE_DIFF, path }, {
+      endpoint: "GET /api/hub/items/{kind}/{id}/update/diff",
+    });
+  }
+
+  /**
+   * A 409 with code `local_changes` rejects as HubLocalChangesError, and
+   * `quota_exceeded` as HubQuotaExceededError. Other errors pass through.
+   */
+  async applyHubUpdate(
+    workspaceId: string,
+    kind: HubItemKind,
+    refId: string,
+    onLocalChanges: HubLocalChangesPolicy,
+  ): Promise<HubApplyUpdateResult> {
+    let raw: unknown;
+    try {
+      raw = await this.fetch<unknown>(`${this.hubItemPath(kind, refId)}/update/apply`, {
+        method: "POST",
+        headers: workspaceHeader({ workspaceId }),
+        body: JSON.stringify({ on_local_changes: onLocalChanges }),
+      });
+    } catch (error) {
+      throw mapHubUpdateApplyError(error);
+    }
+    const result = parseWithFallback<HubApplyUpdateResult>(raw, HubApplyUpdateResultSchema, EMPTY_HUB_APPLY_UPDATE_RESULT, {
+      endpoint: "POST /api/hub/items/{kind}/{id}/update/apply",
+    });
+    if (!result.id) throw new Error("The update response has no item id");
+    return result;
+  }
+
+  async forkHubItem(workspaceId: string, kind: HubItemKind, refId: string): Promise<HubForkResult> {
+    const raw = await this.fetch<unknown>(`${this.hubItemPath(kind, refId)}/fork`, {
+      method: "POST",
+      headers: workspaceHeader({ workspaceId }),
+    });
+    return parseWithFallback<HubForkResult>(raw, HubForkResultSchema, EMPTY_HUB_FORK_RESULT, {
+      endpoint: "POST /api/hub/items/{kind}/{id}/fork",
+    });
+  }
+
+  /** One page of activity, newest first. Pass the previous page's `next_cursor` as `before`. */
+  async listHubActivity(
+    workspaceId: string,
+    params: HubActivityFilter & { limit?: number; before?: string | null } = {},
+  ): Promise<HubActivityPage> {
+    const search = new URLSearchParams();
+    if (params.kind) search.set("kind", params.kind);
+    if (params.refId) search.set("ref_id", params.refId);
+    if (params.sourceId) search.set("source_id", params.sourceId);
+    if (params.limit !== undefined) search.set("limit", String(params.limit));
+    if (params.before) search.set("before", params.before);
+    const suffix = search.toString();
+    const raw = await this.fetch<unknown>(`/api/hub/activity${suffix ? `?${suffix}` : ""}`, {
+      headers: workspaceHeader({ workspaceId }),
+    });
+    return parseWithFallback<HubActivityPage>(raw, HubActivityPageSchema, EMPTY_HUB_ACTIVITY_PAGE, {
+      endpoint: "GET /api/hub/activity",
+    });
+  }
+
+  async getHubQuota(workspaceId: string): Promise<HubQuota> {
+    const raw = await this.fetch<unknown>("/api/hub/quota", {
+      headers: workspaceHeader({ workspaceId }),
+    });
+    return parseWithFallback<HubQuota>(raw, HubQuotaSchema, EMPTY_HUB_QUOTA, {
+      endpoint: "GET /api/hub/quota",
+    });
+  }
+
+  /**
+   * The export zip, fetched with the standard auth headers. A bearer token
+   * (desktop) cannot be sent by a plain link, so the caller saves these bytes.
+   * Admin and owner only; the server answers 403 otherwise.
+   */
+  async getHubExportBlob(workspaceId: string): Promise<Blob> {
+    const res = await this.fetchRaw("/api/hub/export", {
+      headers: workspaceHeader({ workspaceId }),
+    });
+    return res.blob();
+  }
+
+  /**
+   * Fetches a same-origin hub bundle download route with the client's auth
+   * headers. Used when the store cannot presign and the bundle url is a
+   * relative API path that a plain link could not authenticate.
+   */
+  async getHubBundleBlob(workspaceId: string, path: string): Promise<Blob> {
+    const res = await this.fetchRaw(path, {
+      headers: workspaceHeader({ workspaceId }),
+    });
+    return res.blob();
   }
 }

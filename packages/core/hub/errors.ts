@@ -3,6 +3,8 @@ import type { HubSourceInUseRef } from "../types/hub";
 /** Machine-readable `code` values on 409 responses from the import commit endpoint. */
 export const HUB_BLOCKED_CODE = "scan_blocked";
 export const HUB_WARNINGS_CODE = "warnings_unconfirmed";
+export const HUB_QUOTA_CODE = "quota_exceeded";
+export const HUB_LOCAL_CHANGES_CODE = "local_changes";
 
 export class HubSourceInUseError extends Error {
   readonly inUse: HubSourceInUseRef[];
@@ -35,6 +37,22 @@ export class HubPreviewExpiredError extends Error {
   constructor(message = "This import preview has expired. Preview it again") {
     super(message);
     this.name = "HubPreviewExpiredError";
+  }
+}
+
+/** The item was edited locally, so an update needs an explicit choice: overwrite or fork. */
+export class HubLocalChangesError extends Error {
+  constructor(message = "This item has local changes. Choose to overwrite them or fork the item") {
+    super(message);
+    this.name = "HubLocalChangesError";
+  }
+}
+
+/** The workspace is at its item or storage limit. */
+export class HubQuotaExceededError extends Error {
+  constructor(message = "The workspace has reached its hub quota") {
+    super(message);
+    this.name = "HubQuotaExceededError";
   }
 }
 
@@ -84,6 +102,21 @@ export function mapHubImportCommitError(error: unknown): unknown {
   if (error.status === 410) return new HubPreviewExpiredError(error.message || undefined);
   if (error.status !== 409) return error;
   const code = bodyRecord(error.body)?.code;
+  if (code === HUB_BLOCKED_CODE) return new HubImportBlockedError(error.message || undefined);
+  if (code === HUB_WARNINGS_CODE) return new HubImportWarningsError(error.message || undefined);
+  if (code === HUB_QUOTA_CODE) return new HubQuotaExceededError(error.message || undefined);
+  return error;
+}
+
+/**
+ * Maps the update apply endpoint's 409 codes onto typed errors. The scan codes
+ * reuse the import errors, since the same scanner gates both.
+ */
+export function mapHubUpdateApplyError(error: unknown): unknown {
+  if (!isHttpErrorLike(error) || error.status !== 409) return error;
+  const code = bodyRecord(error.body)?.code;
+  if (code === HUB_LOCAL_CHANGES_CODE) return new HubLocalChangesError(error.message || undefined);
+  if (code === HUB_QUOTA_CODE) return new HubQuotaExceededError(error.message || undefined);
   if (code === HUB_BLOCKED_CODE) return new HubImportBlockedError(error.message || undefined);
   if (code === HUB_WARNINGS_CODE) return new HubImportWarningsError(error.message || undefined);
   return error;
