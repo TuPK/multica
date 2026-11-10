@@ -40,7 +40,7 @@ import type {
   CompanySeatAssignment,
   CompanySeatsResponse,
 } from "../company/types";
-import { loadKitvietPacks } from "./kitviet-packs";
+import { loadKitvietPacks, loadKitvietRoleInstructions } from "./kitviet-packs";
 import { PLANNING_ROLE_AGENT_INSTRUCTIONS, type PlanningRoleKey } from "./planning-agent-instructions";
 import { SDLC_ROLE_AGENT_INSTRUCTIONS, type SdlcRoleKey } from "./sdlc-agent-instructions";
 import { SDLC_BUILTIN_SKILLS, type BuiltinSkill } from "./sdlc-skills-data";
@@ -178,7 +178,13 @@ function browserTimezone(): string | undefined {
   }
 }
 
-export function instructionsFor(role: SquadRoleKey): string {
+/**
+ * The instructions an agent of this role starts from. A Kit Viet role is composed from its pack
+ * (header, kind text, body, squad notes, shared blocks; see kitviet-agent-instructions.ts), which
+ * loads on demand. Other roles use the text of their SDLC, sales or planning set, or the standalone
+ * instruction template of their agent kind.
+ */
+export async function instructionsFor(role: SquadRoleKey): Promise<string> {
   if (role in SALES_ROLE_AGENT_INSTRUCTIONS) {
     return SALES_ROLE_AGENT_INSTRUCTIONS[role as SalesRoleKey];
   }
@@ -188,6 +194,8 @@ export function instructionsFor(role: SquadRoleKey): string {
   if (role in PLANNING_ROLE_AGENT_INSTRUCTIONS) {
     return PLANNING_ROLE_AGENT_INSTRUCTIONS[role as PlanningRoleKey];
   }
+  const kitviet = await loadKitvietRoleInstructions(role);
+  if (kitviet !== undefined) return kitviet;
   const id = SQUAD_ROLES[role].agentTemplate;
   const template = AGENT_INSTRUCTION_TEMPLATES.find((t) => t.id === id);
   if (!template) throw new Error(`no instruction template "${id}"`);
@@ -605,7 +613,7 @@ export async function runSquadQuickstart(
       const created = await client.createAgent({
         name,
         description,
-        instructions: instructionsFor(role),
+        instructions: await instructionsFor(role),
         runtime_id: options.runtimeId,
       });
       agentIds[role] = created.id;

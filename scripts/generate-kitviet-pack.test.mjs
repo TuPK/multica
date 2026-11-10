@@ -11,10 +11,13 @@ import {
   applyVerdictTemplate,
   buildContext,
   classifyAgent,
+  displayRole,
   generateOutputs,
+  indefiniteArticle,
   removeBlocks,
   removeSection,
   resolveReferences,
+  roleHeader,
   unescapeYamlQuotes,
 } from "./generate-kitviet-pack.mjs";
 
@@ -179,7 +182,7 @@ describe("generated output", () => {
   it("builds the six packs and the shared types", () => {
     assert.deepEqual(
       [...outputs.keys()].sort(),
-      ["accounting.ts", "admin.ts", "b2b.ts", "common.ts", "legal.ts", "marketing.ts", "types.ts"],
+      ["accounting.ts", "admin.ts", "b2b.ts", "common.ts", "legal.ts", "marketing.ts", "squads.ts", "types.ts"],
     );
   });
 
@@ -194,5 +197,36 @@ describe("generated output", () => {
       assert.ok(existsSync(path), `${file} is missing`);
       assert.equal(readFileSync(path, "utf8"), content, `${file} is stale; run pnpm generate:kitviet`);
     }
+  });
+});
+
+describe("display names and the squad header", () => {
+  it("writes an acronym in capitals, not as a capitalised word", () => {
+    assert.equal(displayRole("b2b_lead"), "B2B Lead");
+    assert.equal(displayRole("b2b_numbers_gate"), "B2B Numbers Gate");
+    assert.equal(displayRole("legal_reader"), "Legal Reader");
+  });
+
+  it("takes \"an\" before a vowel-initial squad name and \"a\" otherwise", () => {
+    assert.equal(indefiniteArticle("Office Admin (Hành chính)"), "an");
+    assert.equal(indefiniteArticle("Accounting & Tax (Kế toán, thuế)"), "an");
+    assert.equal(indefiniteArticle("B2B Proposal Desk (Chào giá B2B)"), "a");
+    assert.equal(indefiniteArticle("Legal & Contracts (Pháp lý)"), "a");
+    assert.equal(indefiniteArticle("Marketing Studio (Marketing)"), "a");
+  });
+
+  it("opens each role header with one \"You are\" sentence naming the role and the squad", () => {
+    assert.equal(
+      roleHeader("Admin Lead", "Office Admin (Hành chính)"),
+      "You are the Admin Lead in an Office Admin (Hành chính) squad, unattended.",
+    );
+  });
+
+  it("writes every squad name and role into squads.ts without any agent body", () => {
+    const squads = generateOutputs().get("squads.ts");
+    assert.ok(squads, "squads.ts is generated");
+    assert.doesNotMatch(squads, /"instructions"/, "squads.ts must hold no agent body");
+    assert.doesNotMatch(squads, /"content"/, "squads.ts must hold no skill text");
+    assert.match(squads, /"templateId": "kv_b2b"/);
   });
 });

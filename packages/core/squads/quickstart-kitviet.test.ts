@@ -1,12 +1,12 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
 import type { Agent } from "../types";
-import { runSquadQuickstart, KITVIET_SKILL_SOURCE, SDLC_SKILL_SOURCE, type SquadQuickstartClient } from "./quickstart";
-import { SQUAD_TEMPLATES, type SquadTemplate } from "./templates";
+import { instructionsFor, runSquadQuickstart, KITVIET_SKILL_SOURCE, SDLC_SKILL_SOURCE, type SquadQuickstartClient } from "./quickstart";
+import { SQUAD_ROLES, SQUAD_TEMPLATES, type SquadTemplate } from "./templates";
+import { KITVIET_AGENTS as KITVIET_AGENTS_ADMIN } from "./kitviet-skills-data/admin";
 
-// The Kit Viet packs are mocked at the loader, which is the only module that
-// imports the generated pack files: the tests need a few skills, not the real
-// packs. The loader records each call, so a test can tell whether it ran.
+// The Kit Viet skill packs are faked at the loader: the tests need a few skills, not the real packs.
+// The loader records each call, so a test can tell whether it ran.
 const kv = vi.hoisted(() => {
   const bundle = (name: string) => ({
     name,
@@ -17,13 +17,16 @@ const kv = vi.hoisted(() => {
   return { bundle, loads: [] as string[] };
 });
 
-vi.mock("./kitviet-packs", () => ({
+// Only the skill packs are faked. The agent instruction loader is the real one, so the agent test
+// below creates the Office Admin agents with their generated bodies.
+vi.mock("./kitviet-packs", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./kitviet-packs")>()),
   loadKitvietPacks: async () => {
     kv.loads.push("packs");
     return [
-      { KITVIET_BUILTIN_SKILLS: [kv.bundle("kv--viet-email"), kv.bundle("kv--squad-lead")] },
+      { KITVIET_BUILTIN_SKILLS: [kv.bundle("kv--viet-email"), kv.bundle("kv--squad-lead")], KITVIET_AGENTS: [] },
       // The colon form, as the upstream writes the name in a reference.
-      { KITVIET_BUILTIN_SKILLS: [kv.bundle("kv:dev-extra")] },
+      { KITVIET_BUILTIN_SKILLS: [kv.bundle("kv:dev-extra")], KITVIET_AGENTS: [] },
     ];
   },
 }));
@@ -237,5 +240,36 @@ describe("runSquadQuickstart Kit Viet skills: per agent", () => {
       "skill-old",
       expect.objectContaining({ content: expect.stringContaining("body of kv--viet-email") }),
     );
+  });
+});
+
+describe("runSquadQuickstart Kit Viet agents: instructions", () => {
+  it("creates each Office Admin agent with its header, kind text and generated body; the lead has no body", async () => {
+    const admin = SQUAD_TEMPLATES.find((t) => t.id === "kv_admin")!;
+    const bodies = new Map(KITVIET_AGENTS_ADMIN.map((agent) => [agent.name, agent.instructions]));
+    const client = fakeClient();
+
+    await run(client, admin);
+
+    const created = new Map(
+      client.createAgent.mock.calls.map((c) => {
+        const data = c[0] as { name: string; instructions: string };
+        return [data.name, data] as const;
+      }),
+    );
+    expect(created.size).toBe(admin.roles.length);
+    for (const role of admin.roles) {
+      const name = SQUAD_ROLES[role].name;
+      const instructions = created.get(name)?.instructions;
+      expect(instructions, name).toBe(await instructionsFor(role));
+      expect(instructions?.startsWith(`You are the ${name} in an Office Admin`), name).toBe(true);
+      expect(instructions?.match(/^You are /gm)?.length ?? 0, name).toBe(1);
+      const body = bodies.get(role);
+      if (body === undefined) {
+        expect(role, "only the lead has no body").toBe(admin.leader);
+      } else {
+        expect(instructions?.includes(body), name).toBe(true);
+      }
+    }
   });
 });

@@ -1,5 +1,5 @@
 ---
-name: kv-delivery-core
+name: kv--delivery-core
 description: "Use on every task in a Kit Viet squad, before any other step: the issue protocol, VERDICT lines and the two-round limit, the three human stops, unattended defaults, figures computed by script, and what must never leave the workspace. Load it with your role skill."
 ---
 

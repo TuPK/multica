@@ -17,8 +17,8 @@ export interface KitvietSkill extends BuiltinSkill {
   config: KitvietSkillSource;
 }
 
-/** The loop role an agent plays (spec 5.1). `lead` is written by hand, not generated. */
-export type KitvietRole = "collector" | "drafter" | "gate" | "handover";
+/** The loop role an agent plays (spec 5.1). A lead is not an upstream agent: it has no body. */
+export type KitvietRole = "lead" | "collector" | "drafter" | "gate" | "handover";
 
 export interface KitvietAgent {
   /** The role key of the squad, e.g. `legal_reader`. */
@@ -33,20 +33,29 @@ export interface KitvietAgent {
   instructions: string;
 }
 
-export interface KitvietRoleInstruction {
-  name: string;
+/** One role of a squad, names only. The agent body of a role is in its pack file, loaded on demand. */
+export interface KitvietSquadRole {
+  /** The role key, e.g. `legal_reader`. */
+  key: string;
   kind: KvRoleKind;
+  /** The display name the agent is created with, e.g. `Legal Reader`. */
+  name: string;
+  /** "You are the <name> in a <squad> squad, unattended." The only opener of the agent. */
   header: string;
+  /** Whether the role has a body in its pack file. A lead does not. */
+  hasBody: boolean;
 }
 
-export interface KitvietSquadConfig {
+export interface KitvietSquad {
   id: string;
+  /** The pack file that holds this squad's skills and agent bodies (its id). */
+  pack: string;
   templateId: string;
   name: string;
   /** The core skills every member gets: shared, authored and this trade's core. */
   builtinSkills: readonly string[];
   leaderSkills: readonly string[];
   roleSkills: Readonly<Record<string, readonly string[]>>;
-  roles: readonly string[];
   promoted: readonly string[];
+  roles: readonly KitvietSquadRole[];
 }

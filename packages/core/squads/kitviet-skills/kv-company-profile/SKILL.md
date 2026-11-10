@@ -1,11 +1,11 @@
 ---
-name: kv-company-profile
+name: kv--company-profile
 description: "Use when a Kit Viet squad needs the company profile (Hồ sơ đơn vị): gather the facts that every document depends on, fill what the request gives, mark the rest, and file a draft of the profile in the knowledge base for a person to publish. Never stores identity or account numbers."
 ---
 
 # Kit Viet company profile
 
-The profile replaces a `CLAUDE.md` file. It is one knowledge document with the title `Hồ sơ đơn vị`. Every squad's lead reads it at the start of a request, and every drafter follows its wording, numbering and signatory rules. You write the profile once and the person who owns the company publishes it. Load kv-delivery-core first.
+The profile replaces a `CLAUDE.md` file. It is one knowledge document with the title `Hồ sơ đơn vị`. Every squad's lead reads it at the start of a request, and every drafter follows its wording, numbering and signatory rules. You write the profile once and the person who owns the company publishes it. Load kv--delivery-core first.
 
 ## What the profile holds
 
@@ -36,7 +36,7 @@ Put each section under its own heading so a squad reads only its own part.
 
 1. Read the request and its attachments first. Many facts are already there (a company registration extract, an existing brand document, an accounting export header). Use them, and cite the attachment name next to each fact.
 2. Search the knowledge base for a current profile or a draft: `multica knowledge search "Hồ sơ đơn vị"`. If one exists, you update it as a new draft: you do not edit the published document.
-3. For each field still empty, decide by the rule of kv-delivery-core: a field that cannot be defaulted (the signatory, the accounting regime, the discount approver) is `[cần bổ sung: <field>]` and a stop 1 only if the squad cannot run without it. Every other empty field is written as `[cần bổ sung: <field>]` and does not stop the run; the squad works from the skill's defaults.
+3. For each field still empty, decide by the rule of kv--delivery-core: a field that cannot be defaulted (the signatory, the accounting regime, the discount approver) is `[cần bổ sung: <field>]` and a stop 1 only if the squad cannot run without it. Every other empty field is written as `[cần bổ sung: <field>]` and does not stop the run; the squad works from the skill's defaults.
 4. Never invent a fact to fill a field: no company name, address, number, signatory or date that is not in the request, the attachments or a source you opened.
 
 ## Filing the draft

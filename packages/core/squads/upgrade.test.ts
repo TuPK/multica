@@ -105,7 +105,7 @@ describe("upgradeSdlcSquad", () => {
     const client = fakeClient({ workflow: oldWorkflow() });
     const result = await upgradeSdlcSquad(client, template);
     expect(result.agents.every((a) => a.status === "upgraded" || a.status === "current")).toBe(true);
-    expect(client.updateAgent).toHaveBeenCalledWith("id-lead", { instructions: instructionsFor("lead") });
+    expect(client.updateAgent).toHaveBeenCalledWith("id-lead", { instructions: await instructionsFor("lead") });
     // The squad text did not change in this release, so it is already current.
     expect(result.squad.status).toBe("current");
     expect(result.workflow.status).toBe("upgraded");
@@ -147,13 +147,15 @@ describe("upgradeSdlcSquad", () => {
 describe("upgradeSdlcSquad for the sales loop", () => {
   const sales = SQUAD_TEMPLATES.find((t) => t.id === "sales_loop")!;
 
-  function salesClient(overrides: { scoutInstructions?: string; squadInstructions?: string } = {}) {
-    const agents = sales.roles.map((role, i) => ({
-      id: `sales-${i}`,
-      name: SQUAD_ROLES[role].name,
-      archived_at: null,
-      instructions: role === "sales_scout" && overrides.scoutInstructions !== undefined ? overrides.scoutInstructions : instructionsFor(role),
-    }));
+  async function salesClient(overrides: { scoutInstructions?: string; squadInstructions?: string } = {}) {
+    const agents = await Promise.all(
+      sales.roles.map(async (role, i) => ({
+        id: `sales-${i}`,
+        name: SQUAD_ROLES[role].name,
+        archived_at: null,
+        instructions: role === "sales_scout" && overrides.scoutInstructions !== undefined ? overrides.scoutInstructions : await instructionsFor(role),
+      })),
+    );
     const client = {
       listAgents: vi.fn(async () => agents as unknown as Agent[]),
       listSquads: vi.fn(async () => [
@@ -175,7 +177,7 @@ describe("upgradeSdlcSquad for the sales loop", () => {
   }
 
   it("finds the sales squad and its agents current, and imports the sales skills", async () => {
-    const client = salesClient();
+    const client = await salesClient();
     const result = await upgradeSdlcSquad(client, sales);
     expect(result.squad.status).toBe("current");
     expect(result.agents.every((a) => a.status === "current")).toBe(true);
@@ -185,7 +187,7 @@ describe("upgradeSdlcSquad for the sales loop", () => {
   });
 
   it("keeps a sales agent's instructions the boss edited", async () => {
-    const client = salesClient({ scoutInstructions: "Scout, my own rules." });
+    const client = await salesClient({ scoutInstructions: "Scout, my own rules." });
     const result = await upgradeSdlcSquad(client, sales);
     expect(result.agents.find((a) => a.role === "sales_scout")!.status).toBe("kept");
     expect(client.updateAgent).not.toHaveBeenCalledWith("sales-1", expect.anything());

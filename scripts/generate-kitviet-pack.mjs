@@ -11,7 +11,8 @@
 // stale. The upstream is never read from the network.
 //
 // Each squad has its own pack file (admin.ts, ...): its trade skills, its agents rendered with that
-// squad's role keys, and its per-role instruction data. The shared skills (common.ts) are rendered
+// squad's role keys and agent bodies. squads.ts holds the names and roles of every squad, with no text,
+// so the template registry can import it. The shared skills (common.ts) are rendered
 // once, with neutral wording for agent names, because every squad loads them.
 //
 // Reference rules (F17), applied per squad to every skill and agent body:
@@ -72,6 +73,8 @@ const FORBIDDEN = [
   { re: /Codex/, what: "platform name" },
   { re: /\d\d-[a-z-]+\.md/, what: "numbered stage file" },
   { re: /kv:[a-z0-9-]/, what: "unresolved kv: reference" },
+  // The authored skills are folders (kv-delivery-core); the bundle name has two dashes (kv--delivery-core).
+  { re: /(?<![\w-])kv-(delivery-core|squad-lead|company-profile)/, what: "authored folder name instead of its bundle name" },
 ];
 
 export function escapeRegExp(text) {
@@ -168,12 +171,28 @@ export function classifyAgent(tools, description) {
   return "collector";
 }
 
+// Words of a role key that are written as acronyms, not capitalised: `b2b_lead` -> `B2B Lead`.
+const ACRONYMS = new Map([["b2b", "B2B"]]);
+
 // The role display name of a role key: `legal_reader` -> `Legal Reader`.
 export function displayRole(role) {
   return role
     .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word) => ACRONYMS.get(word) ?? word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+}
+
+// The indefinite article before a squad name: "an Office Admin", "a B2B Proposal Desk". A name that
+// starts with a vowel letter takes "an". The squad names of this pack are checked by the test below
+// (a name starting with an acronym read as a vowel would need a rule here).
+export function indefiniteArticle(name) {
+  return /^[aeiou]/i.test(name) ? "an" : "a";
+}
+
+// The squad header of a role: "You are the Admin Files in an Office Admin (Hành chính) squad, unattended."
+// It is the only "You are" opener of an agent of that squad; the kind text starts with "Your job".
+export function roleHeader(display, squadName) {
+  return `You are the ${display} in ${indefiniteArticle(squadName)} ${squadName} squad, unattended.`;
 }
 
 // Leftover checks collect every violation so one run lists them all; buildPacks throws at the end.
@@ -468,6 +487,9 @@ function buildPacks() {
     ...[...up.authored.keys()].map((key) => [key, bundleName(key.replace(/^kv-/, ""))]),
   ]);
   const leaderKeys = new Set(SQUADS.flatMap((squad) => squad.leaderSkills));
+  for (const key of up.commonSkills.keys()) {
+    if (!sharedKeys().includes(key)) violations.push(`common skill ${key} is not in sharedBuiltinSkills (orphan)`);
+  }
   for (const key of up.authored.keys()) {
     if (!sharedKeys().includes(key) && !leaderKeys.has(key)) violations.push(`authored skill ${key} is used by no squad`);
   }
@@ -503,7 +525,7 @@ function buildPacks() {
       }),
     );
   }
-  packs.set("common", { skills: commonSkills, agents: [], roles: {}, squad: null });
+  packs.set("common", { skills: commonSkills, agents: [], squad: null });
 
   // One pack per squad.
   for (const squad of SQUADS) {
@@ -529,6 +551,18 @@ function buildPacks() {
       if (keys.length > 6) violations.push(`${squad.id}: ${role} has ${keys.length} role skills (max 6)`);
     }
     if (roles.size > 9) violations.push(`${squad.id}: ${roles.size} roles (max 9 desks with the lead)`);
+
+    // Orphan guard (spec 5.10, K8): every trade skill is attached to a role or the squad, or it is
+    // deferred by name with the reason in kitviet-squads.json. A skill in neither is a leftover.
+    const deferred = new Set(squad.deferredSkills ?? []);
+    const tradeKeys = up.tradeSkills.get(squad.trade);
+    for (const key of deferred) {
+      if (!tradeKeys.has(key)) violations.push(`${squad.id}: deferredSkills names ${key}, which is not in ${squad.trade}`);
+      if (resolution.has(key)) violations.push(`${squad.id}: ${key} is deferred and also attached`);
+    }
+    for (const key of tradeKeys.keys()) {
+      if (!resolution.has(key) && !deferred.has(key)) violations.push(`${squad.id}: ${key} is attached to nothing and not deferred (orphan)`);
+    }
 
     // The squad's trade skills are all rendered (core and extended); a body names only what the
     // squad resolves, so the rest of the trade reads as "nhờ lead tạo yêu cầu".
@@ -560,11 +594,15 @@ function buildPacks() {
     }
 
     const agents = [];
-    const roleInstructions = {};
+    const roleEntries = [];
     for (const [role, role0] of roles) {
       const display = displayRole(role);
-      roleInstructions[role] = { name: display, kind: role0.kind, header: `You are the ${display} in a ${squad.name} squad.` };
-      if (role0.kind === "kv_lead") continue;
+      const header = roleHeader(display, squad.name);
+      if (role0.kind === "kv_lead") {
+        // The lead has no upstream agent, so it has no body; its squad notes are written by hand.
+        roleEntries.push({ key: role, kind: role0.kind, name: display, header, hasBody: false });
+        continue;
+      }
       const rendered = role0.sources.map((source) => {
         usedPatchFiles.add(source.upstream);
         return { source, ...renderAgentSource(source, squadCtx) };
@@ -582,10 +620,12 @@ function buildPacks() {
       }
       guard(text, `${squad.id}/${role}`);
       const tools = [...new Set(rendered.flatMap((item) => item.tools))];
+      const description = rendered[0].description;
+      roleEntries.push({ key: role, kind: role0.kind, name: display, header, hasBody: true });
       agents.push({
         name: role,
         upstream: rendered.map((item) => item.source.upstream),
-        description: rendered[0].description,
+        description,
         role: ROLE_KIND_CLASS[role0.kind],
         kind: role0.kind,
         tools,
@@ -595,6 +635,7 @@ function buildPacks() {
 
     const squadData = {
       id: squad.id,
+      pack: squad.id,
       templateId: squad.templateId,
       name: squad.name,
       builtinSkills: core.map((key) => bundles.get(key)),
@@ -602,10 +643,10 @@ function buildPacks() {
       roleSkills: Object.fromEntries(
         Object.entries(squad.roleSkills ?? {}).map(([role, keys]) => [role, keys.map((key) => bundles.get(key))]),
       ),
-      roles: [...roles.keys()],
       promoted: (squad.promoted ?? []).map((key) => bundles.get(key)),
+      roles: roleEntries,
     };
-    packs.set(squad.id, { skills, agents, roles: roleInstructions, squad: squadData });
+    packs.set(squad.id, { skills, agents, squad: squadData });
   }
 
   for (const name of readdirSync(patchesDir)) {
@@ -634,26 +675,32 @@ function buildPacks() {
   return packs;
 }
 
-// Every pack module exports the same names, so kitviet-packs.ts can load any of them.
+// Every pack module exports the same names, so kitviet-packs.ts can load any of them. A pack file holds
+// the heavy text only (skills and agent bodies); it is imported on demand. The names and roles of every
+// squad are in squads.ts, which the template registry imports.
 export function renderPack(pack, entry) {
   const skills = JSON.stringify(entry.skills, null, 2);
   const agents = JSON.stringify(entry.agents, null, 2);
-  const roles = JSON.stringify(entry.roles, null, 2);
-  const squad = entry.squad ? JSON.stringify(entry.squad, null, 2) : "null";
   return `${HEADER}
-import type { KitvietAgent, KitvietRoleInstruction, KitvietSkill, KitvietSquadConfig } from "./types";
+import type { KitvietAgent, KitvietSkill } from "./types";
 
 /** Skills of the ${pack.id} pack. The quickstart loads this file on demand. */
 export const KITVIET_BUILTIN_SKILLS: readonly KitvietSkill[] = ${skills};
 
-/** Agents of the ${pack.id} pack, by role key, with the body each role runs on. */
+/** Agents of the ${pack.id} pack, by role key, with the body each role runs on (none for a lead). */
 export const KITVIET_AGENTS: readonly KitvietAgent[] = ${agents};
+`;
+}
 
-/** Per role key: the display name, the role kind and the "You are the ..." header. */
-export const KITVIET_ROLE_INSTRUCTIONS: Readonly<Record<string, KitvietRoleInstruction>> = ${roles};
+// The names-only module: every squad's skill names and roles, with no skill text and no
+// agent body. It is small enough for the template registry to import statically.
+export function renderSquads(packs) {
+  const squads = SQUADS.map((squad) => packs.get(squad.id).squad);
+  return `${HEADER}
+import type { KitvietSquad } from "./types";
 
-/** The squad's skill sets and roles, or null for the shared pack. */
-export const KITVIET_SQUAD: KitvietSquadConfig | null = ${squad};
+/** The Kit Viet squads of the pack, in the order of kitviet-squads.json. */
+export const KITVIET_SQUADS: readonly KitvietSquad[] = ${JSON.stringify(squads, null, 2)};
 `;
 }
 
@@ -678,8 +725,8 @@ export interface KitvietSkill extends BuiltinSkill {
   config: KitvietSkillSource;
 }
 
-/** The loop role an agent plays (spec 5.1). \`lead\` is written by hand, not generated. */
-export type KitvietRole = "collector" | "drafter" | "gate" | "handover";
+/** The loop role an agent plays (spec 5.1). A lead is not an upstream agent: it has no body. */
+export type KitvietRole = "lead" | "collector" | "drafter" | "gate" | "handover";
 
 export interface KitvietAgent {
   /** The role key of the squad, e.g. \`legal_reader\`. */
@@ -694,22 +741,31 @@ export interface KitvietAgent {
   instructions: string;
 }
 
-export interface KitvietRoleInstruction {
-  name: string;
+/** One role of a squad, names only. The agent body of a role is in its pack file, loaded on demand. */
+export interface KitvietSquadRole {
+  /** The role key, e.g. \`legal_reader\`. */
+  key: string;
   kind: KvRoleKind;
+  /** The display name the agent is created with, e.g. \`Legal Reader\`. */
+  name: string;
+  /** "You are the <name> in a <squad> squad, unattended." The only opener of the agent. */
   header: string;
+  /** Whether the role has a body in its pack file. A lead does not. */
+  hasBody: boolean;
 }
 
-export interface KitvietSquadConfig {
+export interface KitvietSquad {
   id: string;
+  /** The pack file that holds this squad's skills and agent bodies (its id). */
+  pack: string;
   templateId: string;
   name: string;
   /** The core skills every member gets: shared, authored and this trade's core. */
   builtinSkills: readonly string[];
   leaderSkills: readonly string[];
   roleSkills: Readonly<Record<string, readonly string[]>>;
-  roles: readonly string[];
   promoted: readonly string[];
+  roles: readonly KitvietSquadRole[];
 }
 `;
 
@@ -721,6 +777,7 @@ export function generateOutputs() {
     const entry = packs.get(pack.id);
     outputs.set(`${pack.file}.ts`, renderPack(pack, entry));
   }
+  outputs.set("squads.ts", renderSquads(packs));
   return outputs;
 }
 

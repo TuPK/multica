@@ -142,13 +142,14 @@ export async function upgradeSdlcSquad(
       continue;
     }
     agentIds[role] = agent.id;
-    const verdict = decide(agent.instructions ?? "", instructionsFor(role), SDLC_PREVIOUS_AGENT_INSTRUCTIONS[role] ?? []);
+    const wanted = await instructionsFor(role);
+    const verdict = decide(agent.instructions ?? "", wanted, SDLC_PREVIOUS_AGENT_INSTRUCTIONS[role] ?? []);
     if (verdict !== "replace") {
       result.agents.push({ role, name, status: verdict, ...(verdict === "kept" ? { detail: "instructions differ from every earlier text; kept" } : {}) });
       continue;
     }
     try {
-      if (!dry) await client.updateAgent(agent.id, { instructions: instructionsFor(role) });
+      if (!dry) await client.updateAgent(agent.id, { instructions: wanted });
       result.agents.push({ role, name, status: "upgraded" });
     } catch (err) {
       result.agents.push({ role, name, status: "failed", detail: errorMessage(err) });

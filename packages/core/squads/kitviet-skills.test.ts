@@ -16,7 +16,8 @@ import * as accountingPack from "./kitviet-skills-data/accounting";
 import * as commonPack from "./kitviet-skills-data/common";
 import * as legalPack from "./kitviet-skills-data/legal";
 import * as marketingPack from "./kitviet-skills-data/marketing";
-import type { KitvietAgent, KitvietSkill, KitvietSquadConfig } from "./kitviet-skills-data/types";
+import { KITVIET_SQUADS } from "./kitviet-skills-data/squads";
+import type { KitvietAgent, KitvietSkill, KitvietSquad } from "./kitviet-skills-data/types";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const upstreamDir = join(here, "kitviet-upstream");
@@ -24,7 +25,10 @@ const patchesDir = join(here, "kitviet-patches");
 const authoredDir = join(here, "kitviet-skills");
 const squadsConfig = JSON.parse(readFileSync(join(here, "kitviet-squads.json"), "utf8")) as {
   sharedBuiltinSkills: string[];
-  squads: Record<string, { trade: string; builtinSkills: string[]; roleSkills?: Record<string, string[]> }>;
+  squads: Record<
+    string,
+    { trade: string; builtinSkills: string[]; roleSkills?: Record<string, string[]>; deferredSkills?: string[] }
+  >;
 };
 const rewrites = JSON.parse(readFileSync(join(here, "kitviet-rewrites.json"), "utf8")) as {
   droppedSkills: string[];
@@ -45,13 +49,11 @@ const SQUAD_PACKS = PACKS.filter((pack) => pack.id !== "common");
 // Every skill in every pack, and the squad config of each squad pack.
 const allSkills: KitvietSkill[] = PACKS.flatMap((pack) => [...pack.module.KITVIET_BUILTIN_SKILLS]);
 const skillByName = new Map(allSkills.map((skill) => [skill.name, skill]));
-const squadConfigs = new Map<string, KitvietSquadConfig>(
-  SQUAD_PACKS.map((pack) => [pack.id, pack.module.KITVIET_SQUAD as KitvietSquadConfig]),
-);
+const squadConfigs = new Map<string, KitvietSquad>(KITVIET_SQUADS.map((squad) => [squad.pack, squad]));
 
 // The text a squad's body is made of: its attached skills (core and role skills) and its agents.
-function squadSkills(squad: KitvietSquadConfig): KitvietSkill[] {
-  const attached = new Set([...squad.builtinSkills, ...Object.values(squad.roleSkills).flat()]);
+function squadSkills(squad: KitvietSquad): KitvietSkill[] {
+  const attached = new Set([...squad.builtinSkills, ...squad.leaderSkills, ...Object.values(squad.roleSkills).flat()]);
   return allSkills.filter((skill) => attached.has(skill.name));
 }
 
@@ -76,6 +78,7 @@ const FORBIDDEN: [RegExp, string][] = [
   [/phiên chính/i, "main session"],
   [/\d\d-[a-z-]+\.md/, "numbered stage file"],
   [/kv:[a-z0-9-]/, "unresolved kv: reference"],
+  [/(?<![\w-])kv-(delivery-core|squad-lead|company-profile)/, "authored folder name instead of its bundle name"],
 ];
 
 describe("Kit Viet pack leftovers", () => {
@@ -95,8 +98,8 @@ describe("Kit Viet pack leftovers", () => {
   });
 
   it("has no platform-specific header in any squad role header", () => {
-    for (const pack of SQUAD_PACKS) {
-      for (const role of Object.values(pack.module.KITVIET_ROLE_INSTRUCTIONS)) {
+    for (const squad of KITVIET_SQUADS) {
+      for (const role of squad.roles) {
         for (const [re, what] of FORBIDDEN) expect(re.test(role.header), `${role.name}: ${what}`).toBe(false);
       }
     }
@@ -105,10 +108,11 @@ describe("Kit Viet pack leftovers", () => {
 
 describe("references resolve inside each squad (F17)", () => {
   for (const pack of SQUAD_PACKS) {
-    it(`${pack.id}: every kv-- name in the squad's skills and agents is in its core or role skills`, () => {
+    it(`${pack.id}: every kv-- name in the squad's skills and agents is in its core, leader or role skills`, () => {
       const squad = squadConfigs.get(pack.id);
       if (!squad) throw new Error(`no squad config for ${pack.id}`);
-      const resolution = new Set([...squad.builtinSkills, ...Object.values(squad.roleSkills).flat()]);
+      // The lead holds the leader skills; its kind text names them, so they resolve too.
+      const resolution = new Set([...squad.builtinSkills, ...squad.leaderSkills, ...Object.values(squad.roleSkills).flat()]);
       const texts: string[] = [
         ...squadSkills(squad).map(allTextOf),
         ...pack.module.KITVIET_AGENTS.map((agent) => `${agent.description}\n${agent.instructions}`),
@@ -144,6 +148,27 @@ describe("references resolve inside each squad (F17)", () => {
       }
     }
   });
+});
+
+describe("no orphan skills (spec 5.10, K8)", () => {
+  // Every skill a squad pack ships is either attached to the squad or to one of its roles, or it is
+  // named in the squad's deferredSkills (kitviet-squads.json): the P0 list of trade skills that no
+  // squad attaches yet, for import by name. A skill in neither is a leftover.
+  for (const pack of SQUAD_PACKS) {
+    it(`${pack.id}: every skill is attached, or deferred by name`, () => {
+      const config = squadsConfig.squads[pack.id];
+      if (!config) throw new Error(`no squad config for ${pack.id}`);
+      const squad = squadConfigs.get(pack.id)!;
+      const attached = new Set([...squad.builtinSkills, ...squad.leaderSkills, ...Object.values(squad.roleSkills).flat()]);
+      const renames = rewrites.renamedSkills[config.trade] ?? {};
+      const deferred = new Set((config.deferredSkills ?? []).map((folder) => `kv--${renames[folder] ?? folder}`));
+      const trade = pack.module.KITVIET_BUILTIN_SKILLS.map((skill) => skill.name);
+      const orphans = trade.filter((name) => !attached.has(name) && !deferred.has(name));
+      expect(orphans).toEqual([]);
+      const stale = [...deferred].filter((name) => attached.has(name));
+      expect(stale).toEqual([]);
+    });
+  }
 });
 
 describe("gates and handovers carry one VERDICT line (F18)", () => {
