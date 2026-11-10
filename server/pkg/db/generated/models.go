@@ -1004,6 +1004,43 @@ type GovernanceEvent struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
+type HubItem struct {
+	ID            pgtype.UUID        `json:"id"`
+	WorkspaceID   pgtype.UUID        `json:"workspace_id"`
+	Kind          string             `json:"kind"`
+	RefID         pgtype.UUID        `json:"ref_id"`
+	SourceID      pgtype.UUID        `json:"source_id"`
+	SourceRef     string             `json:"source_ref"`
+	SourceDigest  string             `json:"source_digest"`
+	Tracking      string             `json:"tracking"`
+	LatestVersion string             `json:"latest_version"`
+	BundleKey     string             `json:"bundle_key"`
+	BundleDigest  string             `json:"bundle_digest"`
+	SizeBytes     int64              `json:"size_bytes"`
+	FileCount     int32              `json:"file_count"`
+	ScanStatus    string             `json:"scan_status"`
+	ScanReport    []byte             `json:"scan_report"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
+type HubSource struct {
+	ID                  pgtype.UUID        `json:"id"`
+	WorkspaceID         pgtype.UUID        `json:"workspace_id"`
+	Name                string             `json:"name"`
+	Type                string             `json:"type"`
+	Url                 string             `json:"url"`
+	Config              []byte             `json:"config"`
+	Enabled             bool               `json:"enabled"`
+	AutoSyncIntervalSec int32              `json:"auto_sync_interval_sec"`
+	LastSyncAt          pgtype.Timestamptz `json:"last_sync_at"`
+	LastSyncStatus      string             `json:"last_sync_status"`
+	LastSyncError       string             `json:"last_sync_error"`
+	CreatedBy           pgtype.UUID        `json:"created_by"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+}
+
 type InboxItem struct {
 	ID            pgtype.UUID        `json:"id"`
 	WorkspaceID   pgtype.UUID        `json:"workspace_id"`

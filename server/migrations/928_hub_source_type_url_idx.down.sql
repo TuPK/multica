@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS hub_source_workspace_type_url_key;

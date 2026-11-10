@@ -2735,6 +2735,18 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				})
 			})
 
+			// Skill / plugin hub sources and the import preview/commit flow.
+			r.Route("/api/hub", func(r chi.Router) {
+				r.Get("/sources", h.ListHubSources)
+				r.Post("/import/preview", h.PreviewHubImport)
+				r.Post("/import/commit", h.CommitHubImport)
+				r.Post("/sources", h.CreateHubSource)
+				r.Route("/sources/{id}", func(r chi.Router) {
+					r.Patch("/", h.UpdateHubSource)
+					r.Delete("/", h.DeleteHubSource)
+				})
+			})
+
 			// Dashboard — workspace-wide token + run-time rollups for the
 			// "/{slug}/dashboard" page. Optional ?project_id filter scopes
 			// the rollup to a single project.
