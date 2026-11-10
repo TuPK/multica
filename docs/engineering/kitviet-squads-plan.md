@@ -1,6 +1,6 @@
 # Kit Việt squads: implementation plan
 
-Kế hoạch triển khai cho [kitviet-squads.md](kitviet-squads.md). Đọc spec trước; các mục "5.x", "6.x", "8.x", "10.x", Fxx và Qx dưới đây trỏ về spec.
+Kế hoạch triển khai cho [kitviet-squads.md](kitviet-squads.md). Trạng thái (2026-11-11): đã triển khai trên nhánh `kitviet-pack` bằng 14 commit gộp (sai lệch ghi ở spec 8.1); diễn tập S7 chưa chạy. Đọc spec trước; các mục "5.x", "6.x", "8.x", "10.x", Fxx và Qx dưới đây trỏ về spec.
 
 Quy ước thực hiện (theo AGENTS.md):
 
@@ -71,7 +71,7 @@ Files: `packages/core/squads/kitviet-upstream/{LICENSE,NOTICE.md,UPSTREAM.json}`
 
 ### K3 Dữ liệu viết lại và bản vá
 
-Files: `packages/core/squads/kitviet-rewrites.json` (bảng ở spec 5.5), `packages/core/squads/kitviet-patches/{lich-han-nop-thue,kiem-tra-hoa-don-dau-vao,goi-y-dinh-khoan,soat-luat-quang-cao,the-le-minigame-khuyen-mai,soan-cong-van-hanh-chinh}.json` và một `_all.json` cho các câu áp mọi skill.
+Files: `packages/core/squads/kitviet-rewrites.json` (bảng ở spec 5.5), `packages/core/squads/kitviet-patches/{lich-han-nop-thue,kiem-tra-hoa-don-dau-vao,goi-y-dinh-khoan,soat-luat-quang-cao,the-le-minigame-khuyen-mai,soan-cong-van-hanh-chinh}.json` cùng các bản vá cho trích dẫn luật nằm ngoài sáu skill đó (xem bảng ở spec 5.5). Không có `_all.json`: quy tắc áp mọi skill nằm trong `kitviet-rewrites.json`.
 
 - Mỗi bản vá là `[{ "find": "...", "replace": "..." }]`, `find` là câu nguyên văn lấy từ upstream đã vendor (copy bằng máy, không gõ).
 - `replace` luôn trỏ vào sổ quy định ("tra dòng <id> của Sổ quy định - <squad>"), không viết lại mốc. Nếu sổ chưa tồn tại: câu thay ghi "chưa có sổ quy định: tự tra nguồn chính thức và ghi `[chưa tìm thấy trên nguồn chính thức]` nếu không có" (Q1: sổ không phải điều kiện).
@@ -122,7 +122,7 @@ Files: `packages/core/squads/quickstart.ts` (`attachBuiltinSkills`, `isBuiltinSk
 
 Files: `packages/core/squads/kitviet-skills.test.ts`.
 
-- Gồm: không còn `kv:pro`, `mochistudio`, `Bản Pro`, `.kv-run`, `CLAUDE.md`, `AGENTS.md`, `ket-qua/`, "phiên chính", `Claude Desktop`, `Codex`, `\d\d-[a-z-]+\.md` trong thân skill và agent sinh ra; mọi `kv:x` phân giải được **theo từng squad** (F17); mọi gate có đúng một dòng `VERDICT:` (F18); mỗi bản vá áp đúng một lần; `name` bằng thư mục; không trùng tên với skill khác; `LICENSE` và `NOTICE.md` có mặt; dung lượng mỗi pack dưới ngưỡng (tầng lõi dưới 140 KB, dưới 30 skill); `description` dưới 400 ký tự; dữ liệu sinh khớp nguồn (`--check`).
+- Gồm: không còn `kv:pro`, `mochistudio`, `Bản Pro`, `.kv-run`, `CLAUDE.md`, `AGENTS.md`, `ket-qua/`, "phiên chính", `Claude Desktop`, `Codex`, `\d\d-[a-z-]+\.md` trong thân skill và agent sinh ra; mọi `kv:x` phân giải được **theo từng squad** (F17); mọi gate có đúng một dòng `VERDICT:` (F18); mỗi bản vá áp đúng một lần; `name` bằng thư mục; không trùng tên với skill khác; `LICENSE` và `NOTICE.md` có mặt; dung lượng mỗi pack dưới ngưỡng (tầng lõi dưới 140 KiB, Accounting dưới 160 KiB theo ngưỡng riêng ở spec 5.5, dưới 30 skill); `description` dưới 400 ký tự; dữ liệu sinh khớp nguồn (`--check`).
 - Kiểm kích thước bundle: dựng web trước và sau (`pnpm --filter @multica/web build` hoặc lệnh đang dùng), so chunk của trang không dùng kitviet; PR ghi hai số.
 - Commit: `test(squads): guard the Kit Viet pack against stale data, leftovers and dangling references`.
 
@@ -158,7 +158,7 @@ Mỗi PR squad có cùng khuôn task; chỉ khác dữ liệu ở bảng dưới
 | 3 | `B2B Proposal Desk (Chào giá B2B)` | Launch | `b2b_lead`, `b2b_history`, `b2b_company_lookup`, `b2b_quote_drafter`, `b2b_commit_gate`, `b2b_data_gate`, `b2b_tone_gate`, `b2b_numbers_gate`, `b2b_handover` | Không routine. Phần "NỘI BỘ - KHÔNG GỬI KHÁCH" tách khỏi bản gửi và bị `b2b_data_gate` soát. Nâng `bien-ban-gap-khach-b2b` lên tầng lõi. Không tạo squad thứ hai soạn báo giá (Sales Loop giao deal, mục 5.6) |
 | 4 | `Marketing Studio (Marketing)` | Launch | `mkt_lead`, `mkt_scout`, `mkt_insight`, `mkt_content`, `mkt_ads`, `mkt_claim_gate`, `mkt_voice_gate`, `mkt_numbers_gate`, `mkt_handover` | Không routine, không `unattended` (Q3). "Chốt thông điệp" là điểm dừng loại 1 trừ khi request đã nêu thông điệp. Sổ quy định Marketing (luật quảng cáo, khuyến mại, thuế trúng thưởng) và Cẩm nang giọng thương hiệu (KB `playbook`). Bản vá `soat-luat-quang-cao`, `the-le-minigame-khuyen-mai`. Nâng `persona-tu-du-lieu-that`. Launch đạt 5/6 sau PR 3 và 4 (mục 5.6) |
 | 5 | `Legal & Contracts (Pháp lý)` | Governance | `legal_lead`, `legal_reader`, `legal_sources`, `legal_validity`, `legal_drafter`, `legal_reading_gate`, `legal_citation_gate`, `legal_handover` | Routine `Rà hiệu lực sổ quy định` (`0 8 * * 1`, `startPaused`). Sổ hợp đồng là issue cố định. Gắn skill theo mục 5.10; bản `soan-don-tu-phap-ly` đổi tên. Nâng `dong-thoi-gian-vu-viec` |
-| 6 | `Accounting & Tax (Kế toán, thuế)` | Governance | `acct_lead`, `acct_collector`, `acct_tax_research`, `acct_reconciler`, `acct_tax_drafter`, `acct_voucher_gate`, `acct_numbers_gate`, `acct_tax_gate`, `acct_handover` | Routine `Lịch hạn nộp thuế` (`0 8 * * 1`, `startPaused`). Tầng lõi lớn nhất (28 skill). Nâng `goi-y-dinh-khoan`, `soat-chi-phi-duoc-tru`, `tinh-luong-thue-tncn-bhxh`. Bản vá `lich-han-nop-thue`, `kiem-tra-hoa-don-dau-vao`, `goi-y-dinh-khoan`. Chỉ bật khi runtime có Bash và Python (Q5, F19); thêm bài kiểm F19 (đối chiếu hai bảng 200 dòng có một dòng lệch cố ý) vào diễn tập. Thêm dòng GTGT 8% hết hạn 31/12/2026 vào hướng dẫn Sổ quy định (F20) |
+| 6 | `Accounting & Tax (Kế toán, thuế)` | Governance | `acct_lead`, `acct_collector`, `acct_tax_research`, `acct_reconciler`, `acct_tax_drafter`, `acct_voucher_gate`, `acct_numbers_gate`, `acct_tax_gate`, `acct_handover` | Routine `Lịch hạn nộp thuế` (`0 8 * * 1`, `startPaused`). Tầng lõi lớn nhất (28 skill). Nâng `goi-y-dinh-khoan`, `soat-chi-phi-duoc-tru`, `tinh-luong-thue-tncn-bhxh`. Bản vá `lich-han-nop-thue`, `kiem-tra-hoa-don-dau-vao`, `goi-y-dinh-khoan`. Không có preflight (Q8): thiếu Bash hoặc Python thì các vai tính số dừng loại 1 (Q5, F19); thêm bài kiểm F19 (đối chiếu hai bảng 200 dòng có một dòng lệch cố ý) vào diễn tập. Thêm dòng GTGT 8% hết hạn 31/12/2026 vào hướng dẫn Sổ quy định (F20) |
 
 ---
 

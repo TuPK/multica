@@ -57,6 +57,7 @@ Quy tắc:
 - Muốn rút chu kỳ xem lại của `reference` xuống 30 ngày cho một tài liệu thì admin dùng `multica knowledge kind set`. Đây là việc của admin, không thuộc code.
 - Mỗi dòng của sổ quy định có: văn bản, điều khoản dùng, hiệu lực, nguồn và ngày truy cập, người xác minh, ngày xác minh. Dòng không có nguồn chính thức ghi `[chưa tìm thấy trên nguồn chính thức]`.
 - Sổ hợp đồng (Legal) và sổ công văn (Admin) là issue cố định, không phải KB: tạo ở lần chạy đầu, tìm lại bằng tiêu đề chuẩn hóa (`multica issue list`), không tạo bản trùng.
+- Đầu đề bắt buộc (server từ chối khi thiếu): `reference` (Hồ sơ đơn vị, Sổ quy định) cần `## Summary`; `playbook` (Cẩm nang giọng thương hiệu) cần `## Purpose` và `## Steps`. Mẫu của từng loại nằm trong lead notes của squad và được test `kitviet-knowledge-format.test.ts` kiểm.
 - Routine tạo issue ở trạng thái tạm dừng. Bật routine là việc của người đặt, sau khi đọc charter.
 
 ## 4. Phụ thuộc runtime
@@ -65,7 +66,7 @@ Một squad chạy được khi runtime của agent có các công cụ sau. Thi
 
 | Phụ thuộc | Dùng cho | Nếu thiếu |
 | --- | --- | --- |
-| Bash | Chạy script tính toán và xuất file (`xuat-*`), đọc `.xlsx` | Mọi vai tính số bằng script phải dừng loại 1. **Accounting không bật** nếu thiếu Bash (F19) |
+| Bash | Chạy script tính toán và xuất file (`xuat-*`), đọc `.xlsx` | Mọi vai tính số bằng script phải dừng loại 1. Accounting không có kiểm tự động (spec 10.1, Q8); thiếu Bash thì vai tính số dừng loại 1 (F19) |
 | Python 3 | Script `xuat-*` và script tính | Như trên; đính kèm Markdown hoặc CSV đã duyệt và ghi định dạng chưa xuất được (F9) |
 | `python-docx`, `openpyxl`, `python-pptx`, `reportlab` | Xuất Word, Excel, PowerPoint, PDF | Thiếu thư viện nào: ghi tên thư viện thiếu, dừng loại 1, không tự cài |
 | LibreOffice (tùy chọn) | Chuyển đổi một số định dạng | Bỏ qua, ghi rõ |
@@ -73,7 +74,12 @@ Một squad chạy được khi runtime của agent có các công cụ sau. Thi
 | Công cụ web (`WebSearch`, `WebFetch`) | Vai tra cứu: `legal_sources`, `legal_validity`, `acct_tax_research`, `b2b_company_lookup`, `mkt_scout`, `admin_format_lookup` | Vai tra web dừng loại 1 và xin người dán nguyên văn nguồn. Không trả lời từ trí nhớ (F25) |
 | Ghi comment và đính kèm (`multica issue comment add --attachment`) | Mọi khâu | Không chạy được squad |
 
-Preflight tự động không có (F9). Người chạy diễn tập kiểm tay bằng lệnh `python3 -c "import docx, openpyxl, pptx, reportlab"` và `which bash` trong môi trường của runtime.
+Không có preflight mã: quickstart không phát hiện được công cụ của runtime (spec 10.1, Q8). Trước khi bật squad, hoặc khi đổi runtime, người bật kiểm tay trong môi trường của runtime bằng các lệnh sau; thiếu lệnh nào thì squad dừng loại 1 khi chạy, không tự cài:
+
+- `which bash` (Accounting và mọi vai tính số)
+- `python3 --version` (Python 3)
+- `python3 -c "import docx, openpyxl, pptx, reportlab"` (thư viện xuất file; thiếu thì báo tên thư viện)
+- `command -v soffice` (tùy chọn; thiếu thì ghi định dạng PDF chưa xuất)
 
 ## 5. Đọc `VERDICT:` thiếu hoặc sai
 
@@ -148,7 +154,7 @@ Danh sách squad và trạng thái nằm trong spec mục 6. Mục riêng cho t�
 - Điểm dừng loại 3: vòng sửa tối đa 2. Hết vòng, dừng với bản nháp và lỗi còn lại.
 - Tài liệu bền:
   - `Sổ quy định - Legal`: KB, loại `reference`. `legal_validity` và routine rà hiệu lực đề xuất bản draft mới; không sửa bản đã đăng. Chủ hoặc admin đăng; không phải điều kiện bật squad.
-  - `Sổ hợp đồng`: issue cố định trong squad. Bản hiện hành là tệp đính kèm của comment mới nhất. `legal_drafter` thêm comment; `legal_lead` kiểm; người duyệt khi thêm hoặc đổi hợp đồng.
+  - `Sổ hợp đồng`: issue cố định trong squad, tiêu đề đúng "Sổ hợp đồng". Bản hiện hành là tệp đính kèm của comment mới nhất. `legal_drafter` thêm comment; `legal_lead` kiểm; người duyệt khi thêm hoặc đổi hợp đồng.
   - `Hồ sơ đơn vị`: KB, lead ghi qua `kv-company-profile`.
 - Phụ thuộc runtime riêng: web cho `legal_sources` và `legal_validity`. Thiếu web thì vai đó dừng loại 1 và xin người dùng dán nguyên văn nguồn (F25). Python chỉ cần khi xuất Word.
 - Routine: `Rà hiệu lực sổ quy định` (issue `Rà hiệu lực sổ quy định, tuần {{date}}`), tạo ở trạng thái tạm dừng. Mỗi lần chạy kiểm từng dòng của sổ: còn hiệu lực không, có văn bản thay thế không, nguồn chính thức và ngày truy cập. Chỉ đề xuất sửa bằng draft. Bật: trang Autopilot, đổi routine từ tạm dừng sang hoạt động, sau khi đọc charter.
@@ -175,9 +181,18 @@ Danh sách squad và trạng thái nằm trong spec mục 6. Mục riêng cho t�
 - Điểm dừng loại 3: vòng sửa tối đa 2. Hết vòng, bàn giao kèm các dòng còn mở.
 - Tài liệu bền:
   - `Hồ sơ đơn vị`: KB, lead ghi qua `kv-company-profile`. Chứa câu trả lời về chế độ kế toán.
-  - `Sổ quy định - Accounting`: KB, loại `reference`. Phải có dòng GTGT 8% hết hạn 31/12/2026 (F20). Người ghi chưa được spec chỉ định (routine chỉ đọc); cần quyết khi đăng sổ.
+  - `Sổ quy định - Accounting`: KB, loại `reference`, đầu đề `## Summary`. Người ghi: `acct_tax_research`, vai tra cứu nguồn chính thức (quyết định của runbook này, chủ squad có thể đổi); routine chỉ đọc. Chủ hoặc admin đăng. Các dòng KT-01 đến KT-04 bên dưới là bản đầu tiên, đều chưa xác minh.
   - Lịch hạn: không lưu riêng; mỗi lần routine chạy là một comment trên issue của routine.
-- Phụ thuộc runtime riêng: Bash và Python là bắt buộc để tính bằng script (F19). Thiếu một trong hai thì không bật squad này. Web cho `acct_tax_research`, thiếu thì dừng loại 1 (F25).
+Bảng sổ quy định Accounting, dòng theo F20 (ngày kiểm 10/11/2026; mọi dòng chưa xác minh vì Q1 không có cổng xác minh; cột "Nguồn và ngày truy cập" là ngày kiểm). Cùng nội dung nằm trong lead notes của `kv_accounting`:
+
+| id | Văn bản | Điều khoản dùng | Hiệu lực / valid_until | Nguồn và ngày truy cập | Người xác minh | Ngày xác minh |
+| --- | --- | --- | --- | --- | --- | --- |
+| KT-01 | Luật Quản lý thuế 108/2025/QH15; Nghị định 252/2026/NĐ-CP; Thông tư 89/2026/TT-BTC | Hạn nộp tờ khai và kỳ khai bổ sung | Từ 01/07/2026 (nguồn tin, chưa đối chiếu) | nguồn tin và tư vấn, truy cập 10/11/2026 | [chưa xác minh] | [chưa xác minh] |
+| KT-02 | Thông tư 99/2025/TT-BTC (thay 200/2014 và 75/2015); Thông tư 58/2026/TT-BTC (thay 132/2018, doanh nghiệp siêu nhỏ) | Chế độ kế toán đang áp dụng | 99/2025 từ 01/01/2026; 58/2026 từ 01/07/2026 | nguồn tin và tư vấn, truy cập 10/11/2026 | [chưa xác minh] | [chưa xác minh] |
+| KT-03 | Thời hạn khai bổ sung hồ sơ thuế, 10 năm đổi thành 5 năm (Luật 108/2025) | Khai bổ sung và lưu hồ sơ thuế | Theo Luật 108/2025 (chưa đối chiếu) | nguồn tin, truy cập 10/11/2026 | [chưa xác minh] | [chưa xác minh] |
+| KT-04 | Nghị quyết 204/2025/QH15: giảm 8% thuế GTGT | Kê khai GTGT | Đến hết 31/12/2026 | nguồn tin, truy cập 10/11/2026 | [chưa xác minh] | [chưa xác minh] |
+
+- Phụ thuộc runtime riêng: Bash và Python là bắt buộc để tính bằng script (F19). Thiếu một trong hai thì vai tính số dừng loại 1; không có preflight nên đây là chốt duy nhất (mục 4). Web cho `acct_tax_research`, thiếu thì dừng loại 1 (F25).
 - Routine: `Lịch hạn nộp thuế` (issue `Lịch hạn nộp thuế, tuần {{date}}`), tạo ở trạng thái tạm dừng. Mỗi lần chạy liệt kê hạn trong 14 ngày tới theo đơn vị, đầu vào còn thiếu, và dòng sổ quy định có hiệu lực kết thúc trong 60 ngày. Thiếu lịch nghỉ thì ghi `[chưa có lịch nghỉ]`, không tự lùi hạn. Bật: trang Autopilot, đổi routine từ tạm dừng sang hoạt động, sau khi đọc charter.
 - Skill gắn thêm: lead nhận `kv-squad-lead`, `kv-company-profile`; `acct_reconciler`, `acct_tax_drafter`, `acct_tax_research` nhận skill theo mục 5.10.
 - Giả định mặc định: không tự chọn chế độ kế toán; không tính nhẩm số liệu; không chọn hạn nộp khi lịch nghỉ thiếu.
@@ -226,7 +241,7 @@ Danh sách squad và trạng thái nằm trong spec mục 6. Mục riêng cho t�
 - Điểm dừng loại 3: vòng sửa tối đa 2. Claim vẫn bị chặn sau vòng 2 thì bàn giao cho người yêu cầu kèm các dòng bị chặn.
 - Tài liệu bền:
   - `Sổ quy định - Marketing`: KB, loại `reference`, gồm luật quảng cáo, khuyến mại, thuế trúng thưởng. Agent ghi bản draft; chủ hoặc admin đăng.
-  - `Cẩm nang giọng thương hiệu`: KB, loại `playbook` (180 ngày). `mkt_lead` ghi qua `cam-nang-giong-thuong-hieu`; chủ hoặc admin đăng.
+  - `Cẩm nang giọng thương hiệu`: KB, loại `playbook` (180 ngày), đầu đề bắt buộc `## Purpose` và `## Steps`. `mkt_lead` ghi qua `cam-nang-giong-thuong-hieu`; chủ hoặc admin đăng.
 - Phụ thuộc runtime riêng: web cho `mkt_scout`. Thiếu web thì dừng loại 1 (F25).
 - Routine: không.
 - Quan hệ: Growth & GTM lập chiến lược và giao brief; Studio sản xuất và soát nội dung (mục 5.6).
@@ -251,7 +266,7 @@ Danh sách squad và trạng thái nằm trong spec mục 6. Mục riêng cho t�
 - Tài liệu bền:
   - `Hồ sơ đơn vị`: KB, lead ghi qua `kv-company-profile`. Phải có các mục ở điểm dừng loại 1.
   - `Sổ quy định - Admin`: KB, loại `reference` (mục 5.8). Agent ghi bản draft; chủ hoặc admin đăng.
-  - `Sổ công văn đến/đi <năm>`: issue cố định trong squad, tạo ở lần chạy đầu của năm; tìm lại bằng tiêu đề chuẩn hóa. `admin_drafter` ghi; người xác nhận văn bản đã ký duyệt.
+  - `Sổ công văn <năm>`: issue cố định trong squad, một issue mỗi năm (spec 5.8), tạo ở lần chạy đầu của năm; tìm lại bằng tiêu đề chuẩn hóa. `admin_drafter` ghi một comment mỗi văn bản; số văn bản chỉ ghi khi người xác nhận đã ký.
 - Phụ thuộc runtime riêng: web cho `admin_format_lookup`. Thiếu web thì dừng loại 1 (F25).
 - Routine: không.
 - Skill gắn thêm: lead nhận `quan-ly-lich-giam-doc`; `admin_drafter` nhận `soan-don-tu`, `so-sanh-bao-gia-mua-sam`, `chuan-bi-hop-hdqt` (mục 5.10).
@@ -262,6 +277,6 @@ Danh sách squad và trạng thái nằm trong spec mục 6. Mục riêng cho t�
 
 ## 9. Việc còn mở
 
-- Ngưỡng dung lượng của Accounting: tầng lõi đo được khoảng 146,6 KiB chữ; ngưỡng riêng của squad này là 160 KiB (test K8) vì ba skill được nâng lên là chính dây chuyền và chỉ được đọc khi cần. Các squad khác giữ 140 KiB.
+- Ngưỡng dung lượng của Accounting: tầng lõi đo được 146,9 KiB (ngày 2026-11-11); ngưỡng riêng của squad này là 160 KiB (test K8) vì ba skill được nâng lên là chính dây chuyền và chỉ được đọc khi cần. Các squad khác đo được 107,8–127,6 KiB, dưới ngưỡng 140 KiB.
 - `soan-don-tu` ở Hành chính và Pháp lý là hai bản byte giống nhau (F11). Bản Pháp lý đổi tên thành `soan-don-tu-phap-ly` theo kế hoạch; nội dung không khác nên tên chỉ là nhãn.
 - Tham chiếu `chuan-bi-dam-phan-hoa-giai` trong `soan-bien-ban-thanh-ly-hop-dong` (Pháp lý) không nằm trong tầng lõi hay vai; ở P0 nó thành "nhờ lead tạo yêu cầu" (spec mục 6 để ngoài P0).
