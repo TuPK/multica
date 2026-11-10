@@ -265,6 +265,8 @@ export function CompanyStarterWizard({ open, onClose }: { open: boolean; onClose
                 </div>
                 {COMPANY_FLOOR_KEYS.map((floor) => {
                   const cards = COMPANY_SQUAD_CARDS.filter((card) => card.floor === floor);
+                  // A floor no starter card sits on (revenue, until a Kit Viet squad seats there) has no group.
+                  if (cards.length === 0) return null;
                   return (
                     <div key={floor} className="space-y-1">
                       <p className="text-caption font-medium">{t(($) => $.company.company_floors[floor])}</p>

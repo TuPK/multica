@@ -6,7 +6,8 @@
     "product",
     "build",
     "launch",
-    "governance"
+    "governance",
+    "revenue"
   ],
   "floor_names": {
     "executive": "Executive",
@@ -14,7 +15,8 @@
     "product": "Product",
     "build": "Build",
     "launch": "Launch",
-    "governance": "Governance"
+    "governance": "Governance",
+    "revenue": "Revenue"
   },
   "start_options": [
     "all",

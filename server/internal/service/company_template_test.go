@@ -229,8 +229,14 @@ func TestCompanyApplyInstallsTheWholeCompanyOnAnEmptyWorkspace(t *testing.T) {
 	if got := e.count(`SELECT count(*) FROM squad WHERE workspace_id = $1 AND archived_at IS NULL`); got != len(e.data.Squads) {
 		t.Fatalf("squads = %d, want %d", got, len(e.data.Squads))
 	}
-	if got := e.count(`SELECT count(*) FROM company_floor WHERE workspace_id = $1`); got != len(e.data.FloorKeys) {
-		t.Fatalf("floors = %d, want %d", got, len(e.data.FloorKeys))
+	// A floor exists only when a chosen squad sits on it, so the expected count is the floors of the
+	// squads, not every floor key (revenue is seated by the E-commerce Kit Viet squad, not the starter).
+	seated := map[string]bool{}
+	for _, s := range e.data.Squads {
+		seated[s.Floor] = true
+	}
+	if got := e.count(`SELECT count(*) FROM company_floor WHERE workspace_id = $1`); got != len(seated) {
+		t.Fatalf("floors = %d, want %d", got, len(seated))
 	}
 	if got := e.count(`SELECT count(*) FROM squad_charter WHERE workspace_id = $1`); got != len(e.data.Squads) {
 		t.Fatalf("charters = %d, want one per squad", got)
