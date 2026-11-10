@@ -795,6 +795,14 @@ func (c *Client) ReportUpdateResult(ctx context.Context, runtimeID, updateID str
 	return c.postJSON(ctx, fmt.Sprintf("/api/daemon/runtimes/%s/update/%s/result", runtimeID, updateID), result, nil)
 }
 
+// ReportWebEngineStatus sends the Web engine's status on this runtime's machine to the server.
+func (c *Client) ReportWebEngineStatus(ctx context.Context, runtimeID, status, version string) error {
+	return c.postJSON(ctx, fmt.Sprintf("/api/daemon/runtimes/%s/web-engine", runtimeID), map[string]string{
+		"status":  status,
+		"version": version,
+	}, nil)
+}
+
 // ReportModelListResult sends the model-discovery result back to the server.
 func (c *Client) ReportModelListResult(ctx context.Context, runtimeID, requestID string, result map[string]any) error {
 	return c.postJSON(ctx, fmt.Sprintf("/api/daemon/runtimes/%s/models/%s/result", runtimeID, requestID), result, nil)

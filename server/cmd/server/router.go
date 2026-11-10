@@ -1705,6 +1705,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 		r.Get("/runtimes/{runtimeId}/tasks/pending", h.ListPendingTasksByRuntime)
 		r.Post("/runtimes/{runtimeId}/update/{updateId}/result", h.ReportUpdateResult)
 		r.Post("/runtimes/{runtimeId}/models/{requestId}/result", h.ReportModelListResult)
+		// The Web engine's status on the daemon's machine (spec 4.13): sent on change and on a refresh.
+		r.Post("/runtimes/{runtimeId}/web-engine", h.ReportWebEngineStatus)
 		r.Post("/runtimes/{runtimeId}/local-skills/{requestId}/result", h.ReportLocalSkillListResult)
 		r.Post("/runtimes/{runtimeId}/local-skills/import/{requestId}/result", h.ReportLocalSkillImportResult)
 		r.Get("/runtimes/{runtimeId}/quickstart/{requestId}/skills", h.GetRuntimeQuickstartSkills)

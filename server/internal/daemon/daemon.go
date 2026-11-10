@@ -2086,6 +2086,7 @@ func (d *Daemon) run(ctx context.Context, healthLn net.Listener) error {
 	d.cancelFunc = cancel
 	d.setLifecycleCtx(ctx)
 	d.rootCtx = ctx
+	go d.runWebEngineReporter(ctx)
 
 	// Bind health port early to detect another running daemon.
 	if healthLn == nil {

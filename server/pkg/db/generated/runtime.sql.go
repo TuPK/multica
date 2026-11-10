@@ -1911,6 +1911,25 @@ func (q *Queries) SetAgentRuntimeOfflineWithReason(ctx context.Context, arg SetA
 	return err
 }
 
+const setAgentRuntimeWebEngine = `-- name: SetAgentRuntimeWebEngine :exec
+UPDATE agent_runtime
+SET metadata = metadata || jsonb_build_object('web_engine', $1::jsonb)
+WHERE id = $2
+`
+
+type SetAgentRuntimeWebEngineParams struct {
+	WebEngine []byte      `json:"web_engine"`
+	ID        pgtype.UUID `json:"id"`
+}
+
+// The Web engine's status on the machine that runs this runtime (spec 4.13), reported by the daemon.
+// Merged into metadata like offline_reason: a registration overwrites metadata, and the daemon reports
+// again on its next refresh, so the status comes back without a separate clearing path.
+func (q *Queries) SetAgentRuntimeWebEngine(ctx context.Context, arg SetAgentRuntimeWebEngineParams) error {
+	_, err := q.db.Exec(ctx, setAgentRuntimeWebEngine, arg.WebEngine, arg.ID)
+	return err
+}
+
 const touchAgentRuntimeLastSeen = `-- name: TouchAgentRuntimeLastSeen :execrows
 UPDATE agent_runtime
 SET last_seen_at = now()

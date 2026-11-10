@@ -269,6 +269,14 @@ SET status = 'offline',
     updated_at = now()
 WHERE id = $1;
 
+-- name: SetAgentRuntimeWebEngine :exec
+-- The Web engine's status on the machine that runs this runtime (spec 4.13), reported by the daemon.
+-- Merged into metadata like offline_reason: a registration overwrites metadata, and the daemon reports
+-- again on its next refresh, so the status comes back without a separate clearing path.
+UPDATE agent_runtime
+SET metadata = metadata || jsonb_build_object('web_engine', @web_engine::jsonb)
+WHERE id = @id;
+
 -- name: SelectStaleOnlineRuntimes :many
 -- Lists online runtimes whose last_seen_at exceeds the stale window. The
 -- sweeper uses this as a candidate set, then optionally filters via the
