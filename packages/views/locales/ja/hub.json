@@ -109,7 +109,6 @@
     "draft_count_other": "未公開の変更 {{count}} 件",
     "draft_discard": "下書きを破棄",
     "draft_publish": "新しいバージョンを公開",
-    "draft_count_one": "未公開の変更 {{count}} 件",
     "discard_draft_title": "下書きを破棄しますか？",
     "discard_draft_description": "未公開の変更は削除されます。公開済みのバージョンは変わりません。"
   },
@@ -130,8 +129,7 @@
     "confirm": "削除",
     "description_file": "この操作は元に戻せません。",
     "description_folder_other": "{{count}} 件のファイルを削除します。この操作は元に戻せません。",
-    "description_draft": "削除は、新しいバージョンを公開するまで下書きに残ります。",
-    "description_folder_one": "{{count}} 件のファイルを削除します。この操作は元に戻せません。"
+    "description_draft": "削除は、新しいバージョンを公開するまで下書きに残ります。"
   },
   "publish": {
     "title": "新しいバージョンを公開",

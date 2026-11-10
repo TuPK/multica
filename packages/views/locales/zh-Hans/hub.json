@@ -109,7 +109,6 @@
     "draft_count_other": "{{count}} 项未发布的修改",
     "draft_discard": "放弃草稿",
     "draft_publish": "发布新版本",
-    "draft_count_one": "{{count}} 项未发布的修改",
     "discard_draft_title": "放弃草稿？",
     "discard_draft_description": "未发布的修改将被移除。已发布的版本保持不变。"
   },
@@ -130,8 +129,7 @@
     "confirm": "删除",
     "description_file": "此操作无法撤销。",
     "description_folder_other": "将删除 {{count}} 个文件，此操作无法撤销。",
-    "description_draft": "删除会保留在草稿中，直到你发布新版本。",
-    "description_folder_one": "将删除 {{count}} 个文件，此操作无法撤销。"
+    "description_draft": "删除会保留在草稿中，直到你发布新版本。"
   },
   "publish": {
     "title": "发布新版本",

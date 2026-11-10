@@ -109,7 +109,6 @@
     "draft_count_other": "게시되지 않은 변경 {{count}}개",
     "draft_discard": "초안 버리기",
     "draft_publish": "새 버전 게시",
-    "draft_count_one": "게시되지 않은 변경 {{count}}개",
     "discard_draft_title": "초안을 버릴까요?",
     "discard_draft_description": "게시되지 않은 변경 사항은 삭제됩니다. 게시된 버전은 그대로 유지됩니다."
   },
@@ -130,8 +129,7 @@
     "confirm": "삭제",
     "description_file": "이 작업은 되돌릴 수 없습니다.",
     "description_folder_other": "파일 {{count}}개를 삭제합니다. 이 작업은 되돌릴 수 없습니다.",
-    "description_draft": "삭제 내용은 새 버전을 게시하기 전까지 초안에 남습니다.",
-    "description_folder_one": "파일 {{count}}개를 삭제합니다. 이 작업은 되돌릴 수 없습니다."
+    "description_draft": "삭제 내용은 새 버전을 게시하기 전까지 초안에 남습니다."
   },
   "publish": {
     "title": "새 버전 게시",
