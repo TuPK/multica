@@ -280,7 +280,7 @@ func scalar(v any) string {
 var jsonLDPattern = regexp.MustCompile(`(?is)<script[^>]*type\s*=\s*["']application/ld\+json["'][^>]*>(.*?)</script>`)
 
 func jsonLDAdapter(ctx context.Context, f *fetcher, r *Recipe, opts Options) (fetched, error) {
-	resp, err := f.get(ctx, r.Fetch.URL)
+	resp, err := f.page(ctx, r.Fetch.URL, r.usesEngine())
 	if err != nil {
 		return fetched{}, err
 	}

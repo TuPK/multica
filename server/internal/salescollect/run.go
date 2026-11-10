@@ -39,6 +39,10 @@ func Run(ctx context.Context, r *Recipe, opts Options) *Result {
 		res.Error = err.Error()
 		return res
 	}
+	if r.usesEngine() && opts.Engine == nil {
+		res.Error = "needs the Web engine: none is running; start the container in docs/engineering/runbooks/web-engine-crawl4ai.md"
+		return res
+	}
 	run := adapterFor(r.Method)
 	if run == nil {
 		res.Error = fmt.Sprintf("no collector for method %s", r.Method)

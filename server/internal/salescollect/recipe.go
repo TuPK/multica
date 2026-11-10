@@ -274,12 +274,17 @@ func (r *Recipe) ValidateDraft() error {
 // agent task, and the reason is returned when they do not.
 func (r *Recipe) Collectable() error {
 	if collectorMethods[r.Method] {
-		if r.Fetch.Render == "browser" || r.Fetch.Engine == "crawl4ai" {
-			return errors.New("needs the Web engine: this build of the collector reads plain HTTP only")
+		if r.usesEngine() && r.Method != "html_list" && r.Method != "html_jsonld" {
+			return fmt.Errorf("a browser render applies to html_list and html_jsonld, not %s", r.Method)
 		}
 		return nil
 	}
 	return fmt.Errorf("method %s runs in an agent task, not in multica sales collect", r.Method)
+}
+
+// usesEngine reports whether the recipe reads its page through the Web engine.
+func (r *Recipe) usesEngine() bool {
+	return r.Fetch.Render == "browser" || r.Fetch.Engine == "crawl4ai"
 }
 
 // MaxItemsOrDefault is the item cap of a run.

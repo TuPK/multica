@@ -29,9 +29,9 @@ Kế hoạch triển khai cho [sales-loop-squad.md](sales-loop-squad.md). Đọc
 | T1.5 CLI | Xong | `add --field`, `update --field/--unset`, `list --kind --field --due` |
 | T1.6 core TS | Xong | Schema zod có fallback; query và mutation có `wsId` |
 | T1.7 Collections | Xong, thiếu test thành phần | Bảng, bảng kanban có kéo thả, khung chi tiết sửa thuộc tính, năm view lưu sẵn; có test hàm thuần |
-| T1.8 Source Studio | Một phần | Có: danh sách nguồn với trạng thái, ô thêm nguồn, ô chia sẻ, test thành phần. **Chưa có**: chi tiết và recipe, bước xem mẫu 10 tín hiệu, nút kích hoạt/thử bậc khác, mục connector, thẻ Web engine, ngân sách |
-| T1.9 ngân sách | Chưa làm | Trần trong recipe có; chưa có trần theo squad và theo nguồn, chưa có số đã dùng |
-| T1.10 Web engine | Chưa làm trong code | Spike xong, runbook xong. Bộ chạy từ chối `render: browser` với lý do rõ; chưa có phát hiện engine và chưa gọi engine |
+| T1.8 Source Studio | Một phần | Có: danh sách nguồn với trạng thái, ô thêm nguồn, ô chia sẻ, bấm tên nguồn để xem và sửa thuộc tính (cùng hộp với Collections), test thành phần. **Chưa có**: nội dung recipe trong hộp chi tiết (đọc nội dung cần WeKnora, chưa có đường đọc một tài liệu), bước xem mẫu 10 tín hiệu, nút kích hoạt/thử bậc khác, mục connector, ngân sách |
+| T1.9 ngân sách | Chưa làm | Trần trong recipe có. Chưa có trần theo squad và theo nguồn, chưa có số đã dùng. Hoãn đến khi có bộ chạy bậc 6: hiện không có adapter nhà cung cấp nào, và bậc 6 chờ G9 (luật sư), nên chưa có chi phí để đếm |
+| T1.10 Web engine | Một phần | Spike và runbook xong. Có trong code: client `Crawl4AI` chỉ nghe loopback, token từ môi trường, `fetch.engine`/`render: browser` đi qua engine có kiểm địa chỉ trước, `probe` báo `web_engine.status`. **Hình dạng REST `/health` và `/html` chưa kiểm với container**: chỉ kiểm bằng máy chủ giả trong test. Ngân sách trang và xếp hàng nguồn dùng engine chưa có |
 | T1.11 kiểm chứng | Một phần | Test Go và TS cho phần đã làm; **chưa có Playwright E2E** |
 | T2.1 Gmail | Một phần | Chỉ có hướng dẫn trong skill: nháp Gmail khi đã kết nối và `approved`, không gửi. Chưa kiểm với Gmail thật |
 | T2.2 Lịch | Chưa làm | Chưa có trigger cho sự kiện lịch |

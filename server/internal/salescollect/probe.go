@@ -22,8 +22,7 @@ type ProbeReport struct {
 	Candidates []ProbeCandidate `json:"candidates"`
 }
 
-// WebEngineStatus says whether a Web engine is reachable. The build reads plain HTTP, so it
-// reports not_running; the engine is wired in a later phase.
+// WebEngineStatus says whether a Web engine is reachable: "running" or "not_running".
 type WebEngineStatus struct {
 	Status string `json:"status"`
 }
@@ -113,6 +112,9 @@ func Probe(ctx context.Context, input string, opts Options) ProbeReport {
 		Input:     strings.TrimSpace(input),
 		Platform:  detectPlatform(input),
 		WebEngine: WebEngineStatus{Status: "not_running"},
+	}
+	if opts.Engine != nil {
+		report.WebEngine = opts.Engine.Status(ctx)
 	}
 	if opts.Limit == 0 {
 		opts.Limit = SampleBar * 4

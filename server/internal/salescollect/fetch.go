@@ -41,6 +41,9 @@ type Options struct {
 	CSVPath string
 	// Limit caps the signals a run keeps, below the recipe's max_items. Zero keeps the recipe's cap.
 	Limit int
+	// Engine renders the pages a recipe marks as browser pages. Nil when no Web engine is running;
+	// such a recipe is then refused with the reason, never read as plain HTML.
+	Engine Engine
 
 	// allowPrivate lets requests reach private and loopback addresses. Tests set it, through
 	// the test-only helper in export_test.go; no production path can.
@@ -123,9 +126,11 @@ func newClient(opts Options) *http.Client {
 // fetcher performs the requests of one run: it enforces the rate limit per host, checks
 // robots.txt once per host, and caps the body size.
 type fetcher struct {
-	client   *http.Client
-	maxBytes int64
-	interval time.Duration
+	client       *http.Client
+	maxBytes     int64
+	interval     time.Duration
+	engine       Engine
+	allowPrivate bool
 
 	mu      sync.Mutex
 	lastHit map[string]time.Time
@@ -142,11 +147,13 @@ func newFetcher(opts Options) *fetcher {
 		interval = defaultInterval
 	}
 	return &fetcher{
-		client:   newClient(opts),
-		maxBytes: maxBytes,
-		interval: interval,
-		lastHit:  map[string]time.Time{},
-		robots:   map[string]*robotsRules{},
+		client:       newClient(opts),
+		maxBytes:     maxBytes,
+		interval:     interval,
+		engine:       opts.Engine,
+		allowPrivate: opts.allowPrivate,
+		lastHit:      map[string]time.Time{},
+		robots:       map[string]*robotsRules{},
 	}
 }
 
@@ -161,6 +168,39 @@ type Response struct {
 // get fetches a URL after the robots check and the host's rate limit. A disallowed path is
 // an error, not a silent empty result.
 func (f *fetcher) get(ctx context.Context, rawURL string) (*Response, error) {
+	u, err := f.admit(ctx, rawURL)
+	if err != nil {
+		return nil, err
+	}
+	return f.do(ctx, u.String())
+}
+
+// page fetches a page through the Web engine when the recipe asks for a browser render, and
+// with plain HTTP otherwise. The engine loads the page itself, so the address is checked here
+// first: a host that resolves to a private or loopback address is refused before the engine
+// is asked.
+func (f *fetcher) page(ctx context.Context, rawURL string, rendered bool) (*Response, error) {
+	if !rendered {
+		return f.get(ctx, rawURL)
+	}
+	if f.engine == nil {
+		return nil, errors.New("needs the Web engine: none is running")
+	}
+	u, err := f.admit(ctx, rawURL)
+	if err != nil {
+		return nil, err
+	}
+	if !f.allowPrivate {
+		if err := checkResolves(ctx, u.Hostname()); err != nil {
+			return nil, err
+		}
+	}
+	return f.engine.HTML(ctx, u.String())
+}
+
+// admit parses a URL and applies the checks every request shares: scheme, host, robots.txt and
+// the host's rate limit.
+func (f *fetcher) admit(ctx context.Context, rawURL string) (*url.URL, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, fmt.Errorf("url: %w", err)
@@ -177,7 +217,24 @@ func (f *fetcher) get(ctx context.Context, rawURL string) (*Response, error) {
 	if err := f.pace(ctx, u.Host); err != nil {
 		return nil, err
 	}
-	return f.do(ctx, u.String())
+	return u, nil
+}
+
+// checkResolves refuses a host whose addresses include one the collector never connects to.
+// It is a check before the engine is asked, so it can be bypassed by a host that changes its
+// address between the check and the engine's own lookup; the engine listens on loopback only
+// (docs/engineering/runbooks/web-engine-crawl4ai.md) to keep the exposure to the local machine.
+func checkResolves(ctx context.Context, host string) error {
+	ips, err := net.DefaultResolver.LookupNetIP(ctx, "ip", host)
+	if err != nil {
+		return fmt.Errorf("resolve %s: %w", host, err)
+	}
+	for _, ip := range ips {
+		if blockedAddr(ip.Unmap()) {
+			return fmt.Errorf("%s resolves to a private or internal address", host)
+		}
+	}
+	return nil
 }
 
 func (f *fetcher) do(ctx context.Context, rawURL string) (*Response, error) {

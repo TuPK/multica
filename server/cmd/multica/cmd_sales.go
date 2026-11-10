@@ -62,7 +62,11 @@ func runSalesProbe(cmd *cobra.Command, args []string) error {
 	if sample <= 0 {
 		return errors.New("--sample must be a positive number")
 	}
-	report := salescollect.Probe(commandContext(cmd), args[0], salescollect.Options{Limit: sample})
+	engine, err := webEngineFromEnv()
+	if err != nil {
+		return err
+	}
+	report := salescollect.Probe(commandContext(cmd), args[0], salescollect.Options{Limit: sample, Engine: engine})
 	return writeJSON(cmd.OutOrStdout(), report)
 }
 
@@ -88,8 +92,13 @@ func runSalesCollect(cmd *cobra.Command, _ []string) error {
 	if dryRun && (limit == 0 || limit > 5) {
 		limit = 5
 	}
+	engine, err := webEngineFromEnv()
+	if err != nil {
+		return err
+	}
 	result := salescollect.Run(commandContext(cmd), recipe, salescollect.Options{
 		CSVPath: csvPath, SourceID: sourceID, Region: region, Sector: sector, Limit: limit,
+		Engine: engine,
 	})
 	if err := writeJSON(cmd.OutOrStdout(), result); err != nil {
 		return err
@@ -114,4 +123,23 @@ func writeJSON(w io.Writer, v any) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(v)
+}
+
+// webEngineFromEnv returns the Web engine the runbook starts, or nil when none is configured. The
+// token comes from the environment only: a recipe never names it. An address that is not loopback
+// is an error for the command, never a silent fallback to plain HTTP.
+func webEngineFromEnv() (salescollect.Engine, error) {
+	token := os.Getenv("CRAWL4AI_API_TOKEN")
+	if token == "" {
+		return nil, nil
+	}
+	base := os.Getenv("CRAWL4AI_URL")
+	if base == "" {
+		base = salescollect.DefaultEngineURL
+	}
+	engine, err := salescollect.NewCrawl4AI(base, token)
+	if err != nil {
+		return nil, err
+	}
+	return engine, nil
 }

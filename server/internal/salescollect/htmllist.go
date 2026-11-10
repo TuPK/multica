@@ -32,7 +32,7 @@ func htmlListAdapter(ctx context.Context, f *fetcher, r *Recipe, opts Options) (
 		fields[name] = spec
 	}
 
-	resp, err := f.get(ctx, r.Fetch.URL)
+	resp, err := f.page(ctx, r.Fetch.URL, r.usesEngine())
 	if err != nil {
 		return fetched{}, err
 	}

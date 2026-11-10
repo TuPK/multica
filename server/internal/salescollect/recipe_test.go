@@ -70,8 +70,8 @@ func TestCollectableRefusesWhatRunsElsewhere(t *testing.T) {
 	}
 	browser := strings.Replace(validRSS, `"render": "none"`, `"render": "browser"`, 1)
 	r, _ = ParseRecipe([]byte(browser))
-	if err := r.Collectable(); err == nil || !strings.Contains(err.Error(), "Web engine") {
-		t.Fatalf("a browser-rendered recipe must name the Web engine, got %v", err)
+	if err := r.Collectable(); err == nil || !strings.Contains(err.Error(), "html_list and html_jsonld") {
+		t.Fatalf("a browser render on a feed must be refused with the methods it applies to, got %v", err)
 	}
 }
 
