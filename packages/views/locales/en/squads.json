@@ -252,6 +252,12 @@
       "blocked": "Blocked",
       "disabled": "Off",
       "unknown": "Unknown"
+    },
+    "bookmarklet": {
+      "title": "Quick share",
+      "help": "Copy this bookmarklet, save it as a bookmark, then click it on any page to send that page to this squad.",
+      "copy": "Copy",
+      "copied": "Copied"
     }
   }
 }

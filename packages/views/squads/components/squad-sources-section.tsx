@@ -14,6 +14,7 @@ import {
 } from "@multica/core/knowledge";
 import { useCreateSquadShare, useCreateSquadSource } from "@multica/core/squads";
 import { useT } from "../../i18n";
+import { useOptionalNavigation } from "../../navigation";
 import { PropertyDialog } from "../../knowledge/knowledge-collections";
 
 /** The status values a source document can hold, in the order the Studio lists them. */
@@ -28,6 +29,15 @@ function isSourceStatus(value: string): value is SourceStatus {
 function statusOf(doc: KnowledgeDocument): SourceStatus | "unknown" {
   const value = doc.properties?.status;
   return typeof value === "string" && isSourceStatus(value) ? value : "unknown";
+}
+
+/**
+ * The bookmarklet that sends the current page to this squad's share box. It only exists on the
+ * web: the desktop app loads its pages from a file, so there is no address to open. It opens the
+ * squad page with the page's address in `share`; the box is filled, and the person still submits it.
+ */
+export function shareBookmarklet(squadPath: string, origin: string): string {
+  return `javascript:window.open(${JSON.stringify(origin + squadPath)}+"?share="+encodeURIComponent(location.href))`;
 }
 
 /** The sources of a Sales Loop squad: a list the knowledge base holds, and the two intake boxes. */
@@ -47,8 +57,15 @@ export function SquadSourcesSection({
   const update = useUpdateKnowledgeProperties(wsId);
   const [open, setOpen] = useState<KnowledgeDocument | null>(null);
   const [input, setInput] = useState("");
-  const [shared, setShared] = useState("");
+  const navigation = useOptionalNavigation();
+  // A bookmarklet opens the squad page with the shared page's address in `share`: prefill the box.
+  const [shared, setShared] = useState(() => navigation?.searchParams.get("share") ?? "");
   const [message, setMessage] = useState("");
+  const [copied, setCopied] = useState(false);
+  const webOrigin =
+    typeof window !== "undefined" && /^https?:$/.test(window.location.protocol) ? window.location.origin : null;
+  const bookmarklet =
+    webOrigin && navigation ? shareBookmarklet(navigation.pathname, webOrigin) : null;
 
   const submit = async (fn: () => Promise<unknown>, done: string) => {
     setMessage("");
@@ -126,6 +143,25 @@ export function SquadSourcesSection({
               {t(($) => $.sources.share)}
             </Button>
           </form>
+        </div>
+      ) : null}
+      {canManage && bookmarklet ? (
+        <div className="space-y-2">
+          <h3 className="text-caption font-medium">{t(($) => $.sources.bookmarklet.title)}</h3>
+          <p className="text-caption text-muted-foreground">{t(($) => $.sources.bookmarklet.help)}</p>
+          <div className="flex items-center gap-2">
+            <code className="min-w-0 flex-1 truncate rounded border bg-muted/40 px-2 py-1 text-caption">{bookmarklet}</code>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                void navigator.clipboard.writeText(bookmarklet).then(() => setCopied(true));
+              }}
+            >
+              {copied ? t(($) => $.sources.bookmarklet.copied) : t(($) => $.sources.bookmarklet.copy)}
+            </Button>
+          </div>
         </div>
       ) : null}
       {message ? <p className="text-caption text-muted-foreground">{message}</p> : null}

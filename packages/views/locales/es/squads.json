@@ -252,6 +252,12 @@
       "blocked": "Bloqueada",
       "disabled": "Desactivada",
       "unknown": "Desconocido"
+    },
+    "bookmarklet": {
+      "title": "Compartir rápido",
+      "help": "Copia este marcador, guárdalo en tus favoritos y haz clic en él en cualquier página para enviarla a este squad.",
+      "copy": "Copiar",
+      "copied": "Copiado"
     }
   }
 }
