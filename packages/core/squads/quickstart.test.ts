@@ -40,6 +40,8 @@ function fakeClient(over: Partial<FakeClient> = {}): FakeClient {
     listIssueWorkflows: vi.fn(async () => ({ workflows: [], total: 0 })),
     createIssueWorkflow: vi.fn(async () => ({}) as IssueWorkflow),
     listAutopilots: vi.fn(async () => ({ autopilots: [], total: 0 })),
+    getAutopilot: vi.fn(async () => ({ autopilot: {}, triggers: [] }) as never),
+    listSquadMembers: vi.fn(async () => [] as never[]),
     createAutopilot: vi.fn(async () => ({ id: "ap-1" }) as never),
     createAutopilotTrigger: vi.fn(async () => ({}) as never),
     updateAutopilot: vi.fn(async () => ({}) as never),
@@ -505,7 +507,28 @@ describe("runSquadQuickstart for market research", () => {
     const client = fakeClient({
       listAutopilots: vi.fn(async () => ({
         autopilots: [
-          { id: "old", title: "Market scan", assignee_type: "squad", assignee_id: "squad-1" },
+          { id: "old", title: "Market scan", assignee_type: "squad", assignee_id: "squad-1", status: "active" },
+        ] as never[],
+        total: 1,
+      })),
+      getAutopilot: vi.fn(async () => ({
+        autopilot: {},
+        triggers: [{ kind: "schedule", enabled: true }],
+      }) as never),
+    });
+
+    const out = await runSquadQuickstart(client, market, options);
+
+    expect(client.createAutopilot).not.toHaveBeenCalled();
+    expect(client.createAutopilotTrigger).not.toHaveBeenCalled();
+    expect(out.routines).toEqual([{ title: "Market scan", status: "existing" }]);
+  });
+
+  it("adds the schedule to a routine that exists without one, so a rerun finishes the job", async () => {
+    const client = fakeClient({
+      listAutopilots: vi.fn(async () => ({
+        autopilots: [
+          { id: "old", title: "Market scan", assignee_type: "squad", assignee_id: "squad-1", status: "paused" },
         ] as never[],
         total: 1,
       })),
@@ -514,7 +537,112 @@ describe("runSquadQuickstart for market research", () => {
     const out = await runSquadQuickstart(client, market, options);
 
     expect(client.createAutopilot).not.toHaveBeenCalled();
+    expect(client.createAutopilotTrigger).toHaveBeenCalledWith("old", {
+      kind: "schedule",
+      cron_expression: market.routines[0]!.cron,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    });
     expect(out.routines).toEqual([{ title: "Market scan", status: "existing" }]);
+  });
+
+  it("leaves a schedule the boss disabled alone, and adds no second one", async () => {
+    const client = fakeClient({
+      listAutopilots: vi.fn(async () => ({
+        autopilots: [
+          { id: "old", title: "Market scan", assignee_type: "squad", assignee_id: "squad-1", status: "paused" },
+        ] as never[],
+        total: 1,
+      })),
+      getAutopilot: vi.fn(async () => ({
+        autopilot: {},
+        triggers: [{ kind: "schedule", enabled: false }],
+      }) as never),
+    });
+
+    const out = await runSquadQuickstart(client, market, options);
+
+    expect(client.createAutopilotTrigger).not.toHaveBeenCalled();
+    expect(out.routines).toEqual([{ title: "Market scan", status: "existing" }]);
+  });
+
+  it("flags an active routine that should start paused and has no schedule, when its schedule cannot be set", async () => {
+    const client = fakeClient({
+      listAutopilots: vi.fn(async () => ({
+        autopilots: [
+          { id: "ap-1", title: "Market scan", assignee_type: "squad", assignee_id: "squad-1", status: "active" },
+        ] as never[],
+        total: 1,
+      })),
+      createAutopilotTrigger: vi.fn(async () => {
+        throw new Error("boom");
+      }),
+    });
+    const paused = { ...market, routines: [{ ...market.routines[0]!, startPaused: true }] };
+
+    const out = await runSquadQuickstart(client, paused, options);
+
+    expect(client.updateAutopilot).not.toHaveBeenCalled();
+    expect(out.routines).toEqual([
+      {
+        title: "Market scan",
+        status: "failed",
+        error: "schedule: boom; the autopilot is active without a schedule, pause or delete it",
+      },
+    ]);
+  });
+
+  it("never unpauses a routine it finds without a schedule, and flags the schedule it adds to an active one", async () => {
+    const client = fakeClient({
+      listAutopilots: vi.fn(async () => ({
+        autopilots: [
+          { id: "ap-1", title: "Market scan", assignee_type: "squad", assignee_id: "squad-1", status: "active" },
+        ] as never[],
+        total: 1,
+      })),
+    });
+    const paused = { ...market, routines: [{ ...market.routines[0]!, startPaused: true }] };
+
+    const out = await runSquadQuickstart(client, paused, options);
+
+    expect(client.updateAutopilot).not.toHaveBeenCalled();
+    expect(client.createAutopilotTrigger).toHaveBeenCalledTimes(1);
+    expect(client.createSquadRoutine).toHaveBeenCalledWith("squad-1", expect.objectContaining({ autopilot_id: "ap-1" }));
+    expect(out.routines).toEqual([
+      {
+        title: "Market scan",
+        status: "failed",
+        error: "the schedule was added to an active autopilot that should start paused; pause it on the autopilot if it should wait",
+      },
+    ]);
+  });
+
+  it("a rerun after a failed pause finds the autopilot, adds the schedule once, and says so", async () => {
+    const client = fakeClient({
+      updateAutopilot: vi.fn(async () => {
+        throw new Error("pause refused");
+      }),
+    });
+    const paused = { ...market, routines: [{ ...market.routines[0]!, startPaused: true }] };
+    const first = await runSquadQuickstart(client, paused, options);
+    expect(first.routines[0]!.status).toBe("failed");
+
+    // The autopilot the first run made is now listed: active, no schedule.
+    client.listAutopilots.mockResolvedValue({
+      autopilots: [
+        { id: "ap-1", title: "Market scan", assignee_type: "squad", assignee_id: "squad-1", status: "active" },
+      ] as never[],
+      total: 1,
+    });
+    client.createAutopilotTrigger.mockClear();
+    client.createAutopilot.mockClear();
+
+    const second = await runSquadQuickstart(client, paused, options);
+
+    expect(client.createAutopilot).not.toHaveBeenCalled();
+    expect(client.createAutopilotTrigger).toHaveBeenCalledTimes(1);
+    expect(client.createAutopilotTrigger.mock.calls[0]![0]).toBe("ap-1");
+    expect(second.routines[0]!.status).toBe("failed");
+    expect(second.routines[0]!.error).toContain("should start paused");
   });
 
   it("reports a routine whose schedule could not be set, so the boss can add it", async () => {
@@ -578,7 +706,11 @@ describe("runSquadQuickstart for market research", () => {
 
     expect(client.createAutopilotTrigger).not.toHaveBeenCalled();
     expect(out.routines).toEqual([
-      { title: "Market scan", status: "failed", error: "pause: pause refused" },
+      {
+        title: "Market scan",
+        status: "failed",
+        error: "pause: pause refused; the autopilot is active without a schedule, pause or delete it",
+      },
     ]);
   });
 

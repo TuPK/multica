@@ -26,6 +26,14 @@ import {
 import { useT } from "../../i18n";
 
 /**
+ * The templates a standalone agent can start from. The Kit Viet role templates (`kv_*`) stay in
+ * the registry for the quickstart; their instructions name skills a standalone agent does not have.
+ */
+const PICKER_TEMPLATES = AGENT_INSTRUCTION_TEMPLATES.filter(
+  (template) => !template.id.startsWith("kv_"),
+);
+
+/**
  * Starts the Instructions field from a built-in template. Replacing text the
  * user already wrote needs a confirmation, since the template overwrites it.
  */
@@ -59,7 +67,7 @@ export function InstructionTemplatePicker({
           }
         />
         <DropdownMenuContent align="end" className="w-72">
-          {AGENT_INSTRUCTION_TEMPLATES.map((template) => (
+          {PICKER_TEMPLATES.map((template) => (
             <DropdownMenuItem
               key={template.id}
               onClick={() => apply(template)}

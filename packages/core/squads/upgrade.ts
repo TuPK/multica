@@ -4,14 +4,22 @@ import type {
   IssueWorkflowStepInput,
   ListIssueWorkflowsResponse,
   Squad,
+  SquadMember,
   UpdateAgentRequest,
 } from "../types";
+import { kitvietPackOf } from "./kitviet-packs";
 import {
+  KITVIET_PREVIOUS_AGENT_INSTRUCTIONS,
+  KITVIET_PREVIOUS_SQUAD_INSTRUCTIONS,
+} from "./kitviet-previous-texts";
+import {
+  attachAgentSkills,
   attachBuiltinSkills,
   errorMessage,
   instructionsFor,
   type QuickstartOutcome,
   type SquadQuickstartClient,
+  withAgentSkillFailures,
   workflowSteps,
 } from "./quickstart";
 import {
@@ -171,7 +179,7 @@ export async function upgradeSdlcSquad(
       result.squad = { status: verdict, ...(verdict === "kept" ? { detail: "instructions differ from every earlier text; kept" } : {}) };
     }
     if (!dry) {
-      result.skills = await attachBuiltinSkills(client, squad.id, template.builtinSkills).catch(
+      result.skills = await attachBuiltinSkills(client, squad.id, template.builtinSkills, undefined).catch(
         (err): QuickstartOutcome["skills"] => ({ status: "failed", error: errorMessage(err) }),
       );
     }
@@ -207,6 +215,104 @@ export async function upgradeSdlcSquad(
       }
     } catch (err) {
       result.workflow = { ...result.workflow, status: "failed", detail: errorMessage(err) };
+    }
+  }
+  return result;
+}
+
+export interface KitvietUpgradeClient extends SquadQuickstartClient {
+  updateAgent(id: string, data: UpdateAgentRequest): Promise<Agent>;
+}
+
+export interface KitvietUpgradeResult {
+  squad: { status: UpgradeStatus; detail?: string };
+  skills: QuickstartOutcome["skills"];
+  agents: { role: SquadRoleKey; name: string; status: UpgradeStatus; detail?: string }[];
+}
+
+/**
+ * Brings a Kit Viet squad the quickstart made earlier up to the current text: the agents' and the
+ * squad's instructions, and the skills of the squad and of its agents. The quickstart reuses an
+ * agent that already has the template's name, so a rerun alone never changes its text. This does,
+ * but only where the existing text still equals an earlier text of ours (kitviet-previous-texts.ts).
+ * Anything the boss edited is kept and named in the result. The squad is touched only when it has
+ * the template's leader, so a hand-made squad with the same name is left alone. Running it twice
+ * changes nothing the second time. `previous` defaults to the registry; a test passes its own.
+ */
+export async function upgradeKitvietSquad(
+  client: KitvietUpgradeClient,
+  template: SquadTemplate,
+  options: {
+    dryRun?: boolean;
+    previous?: { agents: Record<string, readonly string[]>; squad: readonly string[] };
+  } = {},
+): Promise<KitvietUpgradeResult> {
+  const dry = options.dryRun === true;
+  const previous = options.previous ?? {
+    agents: KITVIET_PREVIOUS_AGENT_INSTRUCTIONS,
+    squad: KITVIET_PREVIOUS_SQUAD_INSTRUCTIONS,
+  };
+  const result: KitvietUpgradeResult = { squad: { status: "missing" }, skills: { status: "skipped" }, agents: [] };
+
+  const agents = (await client.listAgents({ include_archived: false })).filter((a) => !a.archived_at);
+  const byName = new Map(agents.map((a) => [a.name, a] as const));
+  const agentIds: Partial<Record<SquadRoleKey, string>> = {};
+
+  for (const role of template.roles) {
+    const { name } = SQUAD_ROLES[role];
+    const agent = byName.get(name);
+    if (!agent) {
+      result.agents.push({ role, name, status: "missing" });
+      continue;
+    }
+    agentIds[role] = agent.id;
+    const wanted = await instructionsFor(role);
+    const verdict = decide(agent.instructions ?? "", wanted, previous.agents[role] ?? []);
+    if (verdict !== "replace") {
+      result.agents.push({ role, name, status: verdict, ...(verdict === "kept" ? { detail: "instructions differ from every earlier text; kept" } : {}) });
+      continue;
+    }
+    try {
+      if (!dry) await client.updateAgent(agent.id, { instructions: wanted });
+      result.agents.push({ role, name, status: "upgraded" });
+    } catch (err) {
+      result.agents.push({ role, name, status: "failed", detail: errorMessage(err) });
+    }
+  }
+
+  const leaderId = agentIds[template.leader];
+  const squads: Squad[] = await client.listSquads();
+  const squad = squads.find((s) => !s.archived_at && s.name === template.name);
+  if (!squad) return result;
+  if (!leaderId || squad.leader_id !== leaderId) {
+    result.squad = { status: "kept", detail: "led by another agent; not the quickstart's squad" };
+    return result;
+  }
+  const verdict = decide(squad.instructions ?? "", template.instructions, previous.squad);
+  if (verdict === "replace") {
+    try {
+      if (!dry) await client.updateSquad(squad.id, { instructions: template.instructions });
+      result.squad = { status: "upgraded" };
+    } catch (err) {
+      result.squad = { status: "failed", detail: errorMessage(err) };
+    }
+  } else {
+    result.squad = { status: verdict, ...(verdict === "kept" ? { detail: "instructions differ from every earlier text; kept" } : {}) };
+  }
+
+  if (!dry) {
+    const pack = kitvietPackOf(template.id);
+    result.skills = await attachBuiltinSkills(client, squad.id, template.builtinSkills, pack).catch(
+      (err): QuickstartOutcome["skills"] => ({ status: "failed", error: errorMessage(err) }),
+    );
+    try {
+      // Only the quickstart's own squad gives its leader and members the agent skills.
+      const members: SquadMember[] = await client.listSquadMembers(squad.id);
+      const eligible = new Set([leaderId, ...members.map((m) => m.member_id)]);
+      const failures = await attachAgentSkills(client, template, agentIds, eligible, pack);
+      if (failures.length > 0) result.skills = withAgentSkillFailures(result.skills, failures);
+    } catch (err) {
+      result.skills = { status: "failed", error: errorMessage(err) };
     }
   }
   return result;

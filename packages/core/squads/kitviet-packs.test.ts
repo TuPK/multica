@@ -1,0 +1,76 @@
+// @vitest-environment node
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { KITVIET_SQUADS } from "./kitviet-skills-data/squads";
+
+// Each pack chunk is stubbed, and the stub records its import. A test gets a fresh module registry
+// with fresh stubs, so each call below shows exactly which chunks it pulled in.
+const CHUNKS = ["common", "admin", "b2b", "marketing", "legal", "accounting"] as const;
+const loaded = vi.hoisted(() => ({ chunks: [] as string[] }));
+
+// The legal squad's first role with a body, so the role loader finds an agent in its stub.
+const legalRole = KITVIET_SQUADS.find((squad) => squad.pack === "legal")!.roles.find((r) => r.hasBody)!.key;
+
+let kitvietPacks: typeof import("./kitviet-packs");
+
+beforeEach(async () => {
+  vi.resetModules();
+  loaded.chunks.length = 0;
+  for (const chunk of CHUNKS) {
+    vi.doMock(`./kitviet-skills-data/${chunk}`, () => {
+      loaded.chunks.push(chunk);
+      return {
+        KITVIET_BUILTIN_SKILLS: [],
+        KITVIET_AGENTS: chunk === "legal" ? [{ name: legalRole, kind: "kv_drafter", instructions: "legal body" }] : [],
+      };
+    });
+  }
+  kitvietPacks = await import("./kitviet-packs");
+});
+
+describe("loadKitvietSkillPacks", () => {
+  it("imports only common and the squad's own pack", async () => {
+    const packs = await kitvietPacks.loadKitvietSkillPacks("legal");
+
+    expect(packs).toHaveLength(2);
+    expect(loaded.chunks.sort()).toEqual(["common", "legal"]);
+  });
+
+  it("imports common alone for a squad with no pack", async () => {
+    await kitvietPacks.loadKitvietSkillPacks(undefined);
+
+    expect(loaded.chunks).toEqual(["common"]);
+  });
+
+  it("does not import common twice when the squad's pack is common", async () => {
+    await kitvietPacks.loadKitvietSkillPacks("common");
+
+    expect(loaded.chunks).toEqual(["common"]);
+  });
+
+  it("rejects a pack with no loader, naming it", async () => {
+    await expect(kitvietPacks.loadKitvietSkillPacks("nope")).rejects.toThrow(/no pack loader for nope/);
+  });
+});
+
+describe("kitvietPackOf", () => {
+  it("maps each Kit Viet squad template to its pack, and any other template to none", () => {
+    for (const squad of KITVIET_SQUADS) {
+      expect(kitvietPacks.kitvietPackOf(squad.templateId), squad.templateId).toBe(squad.pack);
+    }
+    expect(kitvietPacks.kitvietPackOf("sdlc_greenfield")).toBeUndefined();
+  });
+});
+
+describe("loadKitvietRoleInstructions", () => {
+  it("loads only the role's own pack for its body", async () => {
+    const text = await kitvietPacks.loadKitvietRoleInstructions(legalRole);
+
+    expect(text).toContain("legal body");
+    expect(loaded.chunks).toEqual(["legal"]);
+  });
+
+  it("returns undefined for a role that is not a Kit Viet role, and loads nothing", async () => {
+    expect(await kitvietPacks.loadKitvietRoleInstructions("sdlc_developer")).toBeUndefined();
+    expect(loaded.chunks).toEqual([]);
+  });
+});

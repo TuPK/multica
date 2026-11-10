@@ -6,7 +6,7 @@ import { SQUAD_ROLES, SQUAD_TEMPLATES, type SquadTemplate } from "./templates";
 import { KITVIET_AGENTS as KITVIET_AGENTS_ADMIN } from "./kitviet-skills-data/admin";
 
 // The Kit Viet skill packs are faked at the loader: the tests need a few skills, not the real packs.
-// The loader records each call, so a test can tell whether it ran.
+// The loader records the pack each call asks for, so a test can tell which pack a squad loads.
 const kv = vi.hoisted(() => {
   const bundle = (name: string) => ({
     name,
@@ -14,15 +14,16 @@ const kv = vi.hoisted(() => {
     content: `---\nname: ${name}\n---\nbody of ${name}`,
     files: [] as { path: string; content: string }[],
   });
-  return { bundle, loads: [] as string[] };
+  return { bundle, loads: [] as (string | undefined)[] };
 });
 
 // Only the skill packs are faked. The agent instruction loader is the real one, so the agent test
-// below creates the Office Admin agents with their generated bodies.
+// below creates the Office Admin agents with their generated bodies. The chunk-level loading is
+// tested against the real loader in kitviet-packs.test.ts.
 vi.mock("./kitviet-packs", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./kitviet-packs")>()),
-  loadKitvietPacks: async () => {
-    kv.loads.push("packs");
+  loadKitvietSkillPacks: async (pack: string | undefined) => {
+    kv.loads.push(pack);
     return [
       { KITVIET_BUILTIN_SKILLS: [kv.bundle("kv--viet-email"), kv.bundle("kv--squad-lead")], KITVIET_AGENTS: [] },
       // The colon form, as the upstream writes the name in a reference.
@@ -34,10 +35,11 @@ vi.mock("./kitviet-packs", async (importOriginal) => ({
 const greenfield = SQUAD_TEMPLATES.find((t) => t.id === "sdlc_greenfield")!;
 const options = { runtimeId: "rt-1", createWorkflow: false };
 
-// A Kit Viet squad: no floor (so no seat calls), the common skill for the squad,
-// the leader's own skill, and one role's skill in the legal pack.
+// A Kit Viet squad: the Office Admin template id (so its pack is `admin`), no floor (so no seat
+// calls), the common skill for the squad, the leader's own skill, and one role's skill.
 const kvSquad: SquadTemplate = {
   ...greenfield,
+  id: "kv_admin",
   floorName: null,
   builtinSkills: ["kv--viet-email"],
   leaderSkills: ["kv--squad-lead"],
@@ -95,7 +97,8 @@ function fakeClient(over: Record<string, unknown> = {}) {
     }),
     listSquadSkills: vi.fn(async () => [] as never[]),
     setSquadSkills: vi.fn(async () => []),
-    addAgentSkills: vi.fn(async () => undefined),
+    listSquadMembers: vi.fn(async () => [] as never[]),
+    addAgentSkills: vi.fn(async (_agentId: string, _data: unknown) => undefined),
     setAgentSkills: vi.fn(async () => undefined),
     ...over,
   };
@@ -117,6 +120,8 @@ describe("runSquadQuickstart Kit Viet skills: loading", () => {
 
     await fresh.runSquadQuickstart(fakeClient() as unknown as SquadQuickstartClient, kvSquad, options);
     expect(kv.loads.length).toBe(before + 1);
+    // The squad's own pack, not the others.
+    expect(kv.loads.at(-1)).toBe("admin");
   });
 
   it("imports the Kit Viet skill under its name, tagged kitviet, and attaches it to the squad", async () => {
@@ -183,6 +188,11 @@ describe("runSquadQuickstart Kit Viet skills: per agent", () => {
     client.listSquads.mockResolvedValue([
       { id: "squad-1", name: kvSquad.name, leader_id: "agent-1", instructions: kvSquad.instructions, archived_at: null } as never,
     ]);
+    client.listSquadMembers.mockResolvedValue(
+      first.agents
+        .filter((a) => a.role !== kvSquad.leader)
+        .map((a) => ({ member_type: "agent", member_id: a.id, role: "" }) as never),
+    );
 
     const second = await run(client, kvSquad);
 
@@ -273,3 +283,89 @@ describe("runSquadQuickstart Kit Viet agents: instructions", () => {
     }
   });
 });
+
+describe("runSquadQuickstart Kit Viet skills: which agents get them", () => {
+  const developerName = SQUAD_ROLES.developer.name;
+  const leaderName = SQUAD_ROLES[kvSquad.leader].name;
+
+  it("does not attach a role's skills to a same-named agent in a squad the quickstart did not make", async () => {
+    // The boss's own developer agent and their own squad under the template's name.
+    const client = fakeClient({
+      listAgents: vi.fn(async () => [{ id: "boss-dev", name: developerName, archived_at: null }] as Agent[]),
+      listSquads: vi.fn(async () => [
+        { id: "hand", name: kvSquad.name, leader_id: "boss-lead", instructions: "mine", archived_at: null } as never,
+      ]),
+    });
+
+    const out = await run(client, kvSquad);
+
+    const granted = client.addAgentSkills.mock.calls.map((c) => c[0]);
+    expect(granted).not.toContain("boss-dev");
+    expect(out.agents.find((a) => a.role === "developer")).toMatchObject({ id: "boss-dev", status: "reused" });
+    // The leader is made by this run, so it still gets its skill.
+    expect(granted).toEqual([out.agents.find((a) => a.role === kvSquad.leader)!.id]);
+    expect(out.skills).toEqual({ status: "skipped" });
+  });
+
+  it("does not attach skills to a reused agent that is not a member of the quickstart's squad", async () => {
+    // The squad is the quickstart's (leader and instructions match), but the developer agent was
+    // reused from outside it and never joined.
+    const client = fakeClient({
+      listAgents: vi.fn(async () => [{ id: "boss-dev", name: developerName, archived_at: null }] as Agent[]),
+      listSquads: vi.fn(async () => [
+        { id: "squad-1", name: kvSquad.name, leader_id: "agent-1", instructions: kvSquad.instructions, archived_at: null } as never,
+      ]),
+      listSquadMembers: vi.fn(async () => []),
+    });
+
+    await run(client, kvSquad);
+
+    expect(client.addAgentSkills.mock.calls.map((c) => c[0])).not.toContain("boss-dev");
+  });
+
+  it("attaches skills to a reused agent that is a member of the quickstart's own squad", async () => {
+    const client = fakeClient({
+      listAgents: vi.fn(async () => [{ id: "member-dev", name: developerName, archived_at: null }] as Agent[]),
+      listSquads: vi.fn(async () => [
+        { id: "squad-1", name: kvSquad.name, leader_id: "agent-1", instructions: kvSquad.instructions, archived_at: null } as never,
+      ]),
+      listSquadMembers: vi.fn(async () => [{ member_type: "agent", member_id: "member-dev", role: "" }]),
+    });
+
+    await run(client, kvSquad);
+
+    expect(client.addAgentSkills).toHaveBeenCalledWith("member-dev", { skill_ids: ["skill-kv:dev-extra"] });
+  });
+
+  it("names the members the quickstart could not read, and still attaches to the agents it made", async () => {
+    const client = fakeClient({
+      listAgents: vi.fn(async () => [{ id: "boss-dev", name: developerName, archived_at: null }] as Agent[]),
+      listSquads: vi.fn(async () => [
+        { id: "squad-1", name: kvSquad.name, leader_id: "agent-1", instructions: kvSquad.instructions, archived_at: null } as never,
+      ]),
+      listSquadMembers: vi.fn(async () => {
+        throw new Error("members unavailable");
+      }),
+    });
+
+    const out = await run(client, kvSquad);
+
+    expect(out.skills.status).toBe("partial");
+    expect(out.skills.error).toBe("members: members unavailable");
+    expect(client.addAgentSkills.mock.calls.map((c) => c[0])).toEqual([out.agents.find((a) => a.role === kvSquad.leader)!.id]);
+  });
+
+  it("does not attach skills to a reused leader that leads a squad the quickstart did not make", async () => {
+    const client = fakeClient({
+      listAgents: vi.fn(async () => [{ id: "boss-lead", name: leaderName, archived_at: null }] as Agent[]),
+      listSquads: vi.fn(async () => [
+        { id: "hand", name: kvSquad.name, leader_id: "boss-lead", instructions: "mine", archived_at: null } as never,
+      ]),
+    });
+
+    await run(client, kvSquad);
+
+    expect(client.addAgentSkills.mock.calls.map((c) => c[0])).not.toContain("boss-lead");
+  });
+});
+

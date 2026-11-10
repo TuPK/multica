@@ -34,12 +34,33 @@ describe("InstructionTemplatePicker", () => {
       .setup()
       .click(screen.getByRole("button", { name: "Use a template" }));
 
+    const standalone = AGENT_INSTRUCTION_TEMPLATES.filter(
+      (template) => !template.id.startsWith("kv_"),
+    );
     expect(await screen.findAllByRole("menuitem")).toHaveLength(
-      AGENT_INSTRUCTION_TEMPLATES.length,
+      standalone.length,
     );
     expect(
       screen.getByRole("menuitem", { name: /Security Reviewer/ }),
     ).toBeInTheDocument();
+  });
+
+  it("does not offer the Kit Viet role templates, which need skills a standalone agent lacks", async () => {
+    renderWithI18n(
+      <InstructionTemplatePicker currentInstructions="" onSelect={vi.fn()} />,
+    );
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Use a template" }));
+
+    const kitviet = AGENT_INSTRUCTION_TEMPLATES.filter((template) =>
+      template.id.startsWith("kv_"),
+    );
+    expect(kitviet.length).toBeGreaterThan(0);
+    const items = await screen.findAllByRole("menuitem");
+    expect(items.some((item) => /^Kit Viet /.test(item.textContent ?? ""))).toBe(false);
+    expect(items).toHaveLength(AGENT_INSTRUCTION_TEMPLATES.length - kitviet.length);
   });
 
   it("fills empty instructions straight from the template", async () => {
