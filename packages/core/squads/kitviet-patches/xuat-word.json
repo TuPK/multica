@@ -8,7 +8,7 @@
     "replace": "- Không tự cài thư viện Python; thiếu thư viện thì dừng loại 1 và ghi tên thư viện thiếu."
   },
   {
-    "find": "Thiếu thư viện python-docx. Cài bằng lệnh:\\n    pip install python-docx\\n\"\r\n          \"rồi chạy lại. (Nên cài trong môi trường ảo: python -m venv .venv)",
+    "find": "Thiếu thư viện python-docx. Cài bằng lệnh:\\n    pip install python-docx\\n\"\n          \"rồi chạy lại. (Nên cài trong môi trường ảo: python -m venv .venv)",
     "replace": "Thiếu thư viện python-docx."
   }
 ]

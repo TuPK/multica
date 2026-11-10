@@ -321,7 +321,7 @@ function buildFrontmatter(lines, bundle, description) {
 
 // Renders one skill folder. `key` is the skill key; `bundle` is its name in the pack.
 function renderSkill({ dir, key, bundle, ctx, config, label, files }) {
-  const original = readFileSync(join(dir, "SKILL.md"), "utf8");
+  const original = readFileSync(join(dir, "SKILL.md"), "utf8").replace(/\r\n/g, "\n");
   const { frontmatterLines, body } = splitFrontmatter(original, key);
   const ruled = applyRules(frontmatterLines.join("\n"), rewrites.rules, ruleHits).split("\n");
   const rawDescription = unescapeYamlQuotes(frontmatterDescription(ruled.join("\n"), key));
@@ -334,7 +334,7 @@ function renderSkill({ dir, key, bundle, ctx, config, label, files }) {
   const skillBody = `---\n${buildFrontmatter(ruled, bundle, description)}\n---\n${content}`;
   const bundleFiles = [];
   for (const file of files) {
-    const raw = readFileSync(join(dir, file), "utf8");
+    const raw = readFileSync(join(dir, file), "utf8").replace(/\r\n/g, "\n");
     // Markdown goes through the whole table; a script goes through the patches and the rules (F9).
     const text = file.endsWith(".md")
       ? transformBody(raw, { patches: ownPatches, hits, ctx, label: `${label}/${file}` })
@@ -355,7 +355,7 @@ function reportUnmatchedPatches(patches, hits, label) {
 
 // Renders an agent's body and frontmatter fields for one role source.
 function renderAgentSource(source, ctx) {
-  const original = readFileSync(source.path, "utf8");
+  const original = readFileSync(source.path, "utf8").replace(/\r\n/g, "\n");
   const { fields, body, frontmatterLines } = splitFrontmatter(original, source.upstream);
   const description = unescapeYamlQuotes(frontmatterDescription(frontmatterLines.join("\n"), source.upstream));
   const label = `agent ${source.upstream}`;
