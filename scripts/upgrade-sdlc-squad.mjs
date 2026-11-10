@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// Upgrades an SDLC squad the quickstart made earlier to the current template: the built-in
+// Upgrades an SDLC or sales squad the quickstart made earlier to the current template: the built-in
 // skills, the agents' and the squad's instructions, and the SDLC Auto workflow (the Environment
 // step and the new briefs). A text is replaced only when it still equals an earlier text of ours;
 // a text the boss edited is kept and named in the report. See docs/engineering/sdlc-specialist-routing.md.
 //
-//   node scripts/upgrade-sdlc-squad.mjs [--template sdlc_greenfield|sdlc_maintenance] [--apply]
+//   node scripts/upgrade-sdlc-squad.mjs [--template sdlc_greenfield|sdlc_maintenance|sales_loop] [--apply]
 //
 // Without --apply it writes nothing: it reports what would change and asks the server to check the
 // workflow write (a dry run). It reads the server, workspace and token of `multica login` from

@@ -9,6 +9,8 @@ export interface SquadMemberPreview {
 }
 
 export interface Squad {
+  /** The template the squad was made from, or null for a squad made by hand (spec 7.5). */
+  template_key?: string | null;
   id: string;
   workspace_id: string;
   name: string;
@@ -77,6 +79,8 @@ export interface CreateSquadRequest {
    * template uses it to name its floor; ignored when a free seat exists.
    */
   floor_name?: string;
+  /** The template the squad is made from (spec 7.5). Empty for a squad made by hand. */
+  template_key?: string;
 }
 
 export interface UpdateSquadRequest {

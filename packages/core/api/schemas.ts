@@ -2456,6 +2456,8 @@ export const SquadSchema = z.object({
   name: z.string(),
   description: z.string().default(""),
   instructions: z.string().default(""),
+  // The template the squad was made from; null for a squad made by hand (spec 7.5).
+  template_key: z.string().nullable().default(null),
   system_key: z.string().optional(),
   system_instructions: z.string().optional(),
   avatar_url: z.string().nullable().optional().transform((v) => v ?? null),

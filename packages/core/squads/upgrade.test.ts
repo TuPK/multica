@@ -143,3 +143,51 @@ describe("upgradeSdlcSquad", () => {
     expect(result.workflow.detail).toContain("admin");
   });
 });
+
+describe("upgradeSdlcSquad for the sales loop", () => {
+  const sales = SQUAD_TEMPLATES.find((t) => t.id === "sales_loop")!;
+
+  function salesClient(overrides: { scoutInstructions?: string; squadInstructions?: string } = {}) {
+    const agents = sales.roles.map((role, i) => ({
+      id: `sales-${i}`,
+      name: SQUAD_ROLES[role].name,
+      archived_at: null,
+      instructions: role === "sales_scout" && overrides.scoutInstructions !== undefined ? overrides.scoutInstructions : instructionsFor(role),
+    }));
+    const client = {
+      listAgents: vi.fn(async () => agents as unknown as Agent[]),
+      listSquads: vi.fn(async () => [
+        { id: "sq-sales", name: sales.name, archived_at: null, instructions: overrides.squadInstructions ?? sales.instructions },
+      ] as unknown as Squad[]),
+      listIssueWorkflows: vi.fn(async () => ({ workflows: [], total: 0 })),
+      updateAgent: vi.fn(async () => ({}) as Agent),
+      updateSquad: vi.fn(async () => ({}) as Squad),
+      updateIssueWorkflow: vi.fn(),
+      dryRunIssueWorkflowUpdate: vi.fn(async () => ({})),
+      listSkills: vi.fn(async () => []),
+      createSkill: vi.fn(async (data: { name: string }) => ({ id: `skill-${data.name}`, name: data.name })),
+      updateSkill: vi.fn(),
+      getSkill: vi.fn(),
+      listSquadSkills: vi.fn(async () => []),
+      setSquadSkills: vi.fn(async () => []),
+    };
+    return client as unknown as SdlcUpgradeClient & typeof client;
+  }
+
+  it("finds the sales squad and its agents current, and imports the sales skills", async () => {
+    const client = salesClient();
+    const result = await upgradeSdlcSquad(client, sales);
+    expect(result.squad.status).toBe("current");
+    expect(result.agents.every((a) => a.status === "current")).toBe(true);
+    expect(client.updateAgent).not.toHaveBeenCalled();
+    expect(result.skills.status).toBe("ready");
+    expect(client.createSkill).toHaveBeenCalledTimes(sales.builtinSkills.length);
+  });
+
+  it("keeps a sales agent's instructions the boss edited", async () => {
+    const client = salesClient({ scoutInstructions: "Scout, my own rules." });
+    const result = await upgradeSdlcSquad(client, sales);
+    expect(result.agents.find((a) => a.role === "sales_scout")!.status).toBe("kept");
+    expect(client.updateAgent).not.toHaveBeenCalledWith("sales-1", expect.anything());
+  });
+});

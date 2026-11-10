@@ -1,5 +1,10 @@
 import { AGENT_INSTRUCTION_TEMPLATES } from "../agents/instruction-templates";
 import type {
+  CreateKnowledgeDocumentRequest,
+  KnowledgeDocument,
+  KnowledgeStatus,
+} from "../knowledge/types";
+import type {
   Agent,
   Autopilot,
   AutopilotTrigger,
@@ -36,6 +41,8 @@ import type {
 import { PLANNING_ROLE_AGENT_INSTRUCTIONS, type PlanningRoleKey } from "./planning-agent-instructions";
 import { SDLC_ROLE_AGENT_INSTRUCTIONS, type SdlcRoleKey } from "./sdlc-agent-instructions";
 import { SDLC_BUILTIN_SKILLS, type BuiltinSkill } from "./sdlc-skills-data";
+import { SALES_ROLE_AGENT_INSTRUCTIONS, type SalesRoleKey } from "./sales-agent-instructions";
+import { SALES_STARTER_SOURCES, starterSourceDocument } from "./sales-starter-sources";
 import {
   SQUAD_ROLES,
   type SquadCharterTemplate,
@@ -54,6 +61,7 @@ export interface SquadQuickstartClient {
     name: string;
     description?: string;
     leader_id: string;
+    template_key?: string;
   }): Promise<Squad>;
   listCompanyFloors(): Promise<CompanyFloor[]>;
   createCompanyFloor(data: { name: string }): Promise<CompanyFloor>;
@@ -79,6 +87,8 @@ export interface SquadQuickstartClient {
     autopilotId: string,
     data: CreateAutopilotTriggerRequest,
   ): Promise<AutopilotTrigger>;
+  getKnowledgeStatus(): Promise<KnowledgeStatus>;
+  createKnowledgeDocument(data: CreateKnowledgeDocumentRequest): Promise<KnowledgeDocument>;
 }
 
 export type QuickstartAgentStatus = "created" | "reused" | "failed";
@@ -112,12 +122,25 @@ export interface QuickstartOutcome {
     status: "ready" | "partial" | "skipped" | "failed";
     error?: string;
   };
-  routine: {
-    /** "existing": the squad already has an autopilot with the routine's name, or the routine is already linked. */
-    status: "created" | "existing" | "skipped" | "failed";
-    /** A routine created without its schedule reports that here; add the schedule on the autopilot. */
+  /** One entry per routine the template creates. */
+  routines: QuickstartRoutineOutcome[];
+  /** The starter sources of a sales squad, written to the knowledge base. Skipped for other templates. */
+  sources: {
+    status: "created" | "skipped" | "failed";
+    /** Documents written; a rerun writes the same documents again under the same keys. */
+    written: number;
+    /** Documents that were refused, with the first reason. */
+    failed: number;
     error?: string;
   };
+}
+
+export interface QuickstartRoutineOutcome {
+  title: string;
+  /** "existing": the squad already has an autopilot with the routine's name, or the routine is already linked. */
+  status: "created" | "existing" | "failed";
+  /** A routine created without its schedule reports that here; add the schedule on the autopilot. */
+  error?: string;
 }
 
 export interface QuickstartOptions {
@@ -151,6 +174,9 @@ function browserTimezone(): string | undefined {
 }
 
 export function instructionsFor(role: SquadRoleKey): string {
+  if (role in SALES_ROLE_AGENT_INSTRUCTIONS) {
+    return SALES_ROLE_AGENT_INSTRUCTIONS[role as SalesRoleKey];
+  }
   if (role in SDLC_ROLE_AGENT_INSTRUCTIONS) {
     return SDLC_ROLE_AGENT_INSTRUCTIONS[role as SdlcRoleKey];
   }
@@ -239,7 +265,7 @@ async function ensureRoutine(
   squadId: string,
   routine: SquadRoutineTemplate,
   timezone: string | undefined,
-): Promise<QuickstartOutcome["routine"]> {
+): Promise<QuickstartRoutineOutcome> {
   const { autopilots } = await client.listAutopilots();
   const found = autopilots.find(
     (a) => a.assignee_type === "squad" && a.assignee_id === squadId && a.title === routine.title,
@@ -266,7 +292,7 @@ async function ensureRoutine(
         ...(timezone ? { timezone } : {}),
       });
     } catch (err) {
-      return { status: "failed", error: `schedule: ${errorMessage(err)}` };
+      return { title: routine.title, status: "failed", error: `schedule: ${errorMessage(err)}` };
     }
   }
   try {
@@ -278,10 +304,40 @@ async function ensureRoutine(
     });
   } catch (err) {
     // Already linked: an earlier run finished the job.
-    if (errorCode(err) === "routine_already_linked") return { status: "existing" };
-    return { status: "failed", error: `routine: ${errorMessage(err)}` };
+    if (errorCode(err) === "routine_already_linked") return { title: routine.title, status: "existing" };
+    return { title: routine.title, status: "failed", error: `routine: ${errorMessage(err)}` };
   }
-  return { status };
+  return { title: routine.title, status };
+}
+
+/**
+ * Writes the sales squad's starter sources into the knowledge base, one document each, under the
+ * source's idempotency key. Knowledge that is not enabled skips them with the reason, so the squad
+ * is still made and the rerun after enabling finishes the job.
+ */
+async function ensureStarterSources(client: SquadQuickstartClient): Promise<QuickstartOutcome["sources"]> {
+  const knowledge = await client.getKnowledgeStatus();
+  if (knowledge.state !== "ready") {
+    return {
+      status: "skipped",
+      written: 0,
+      failed: 0,
+      error: "Enable the company knowledge base, then run the quickstart again to add the starter sources.",
+    };
+  }
+  let written = 0;
+  let failed = 0;
+  let error: string | undefined;
+  for (const source of SALES_STARTER_SOURCES) {
+    try {
+      await client.createKnowledgeDocument(starterSourceDocument(source));
+      written += 1;
+    } catch (err) {
+      failed += 1;
+      error ??= `${source.id}: ${errorMessage(err)}`;
+    }
+  }
+  return { status: failed > 0 ? "failed" : "created", written, failed, ...(error ? { error } : {}) };
 }
 
 /** The charter a template saves on creation. Revision 0 is the first save; operating review stays on. */
@@ -420,7 +476,8 @@ export async function runSquadQuickstart(
     squad: { id: null, status: "failed" },
     workflow: { status: "skipped" },
     skills: { status: "skipped" },
-    routine: { status: "skipped" },
+    routines: [],
+    sources: { status: "skipped", written: 0, failed: 0 },
   };
   const report = () => onProgress?.(structuredClone(outcome));
 
@@ -510,6 +567,7 @@ export async function runSquadQuickstart(
         name: template.name,
         description: template.description,
         leader_id: leaderId,
+        template_key: template.id,
       });
       outcome.squad = { id: squad.id, status: "created" };
       if (floor) {
@@ -592,16 +650,23 @@ export async function runSquadQuickstart(
     report();
   }
 
-  if (template.routine && outcome.squad.id) {
+  for (const routine of template.routines) {
+    if (!outcome.squad.id) break;
     try {
-      outcome.routine = await ensureRoutine(
-        client,
-        outcome.squad.id,
-        template.routine,
-        options.timezone ?? browserTimezone(),
+      outcome.routines.push(
+        await ensureRoutine(client, outcome.squad.id, routine, options.timezone ?? browserTimezone()),
       );
     } catch (err) {
-      outcome.routine = { status: "failed", error: errorMessage(err) };
+      outcome.routines.push({ title: routine.title, status: "failed", error: errorMessage(err) });
+    }
+    report();
+  }
+
+  if (template.id === "sales_loop" && outcome.squad.id) {
+    try {
+      outcome.sources = await ensureStarterSources(client);
+    } catch (err) {
+      outcome.sources = { status: "failed", written: 0, failed: 0, error: errorMessage(err) };
     }
     report();
   }

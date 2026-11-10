@@ -101,7 +101,8 @@ const readyOutcome: QuickstartOutcome = {
   squad: { id: "squad-9", status: "created" },
   workflow: { status: "created" },
   skills: { status: "skipped" },
-  routine: { status: "skipped" },
+  routines: [],
+  sources: { status: "skipped", written: 0, failed: 0 },
 };
 
 describe("SquadQuickstartModal", () => {
@@ -186,7 +187,8 @@ describe("SquadQuickstartModal", () => {
       squad: { id: "squad-9", status: "created" },
       workflow: { status: "skipped" },
       skills: { status: "skipped" },
-      routine: { status: "skipped" },
+      routines: [],
+      sources: { status: "skipped", written: 0, failed: 0 },
     } satisfies QuickstartOutcome);
     renderModal();
     const user = userEvent.setup();

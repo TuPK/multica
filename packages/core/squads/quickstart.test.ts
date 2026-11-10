@@ -13,6 +13,7 @@ import { SDLC_ROLE_AGENT_INSTRUCTIONS } from "./sdlc-agent-instructions";
 import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
 import { SDLC_SKILL_SOURCE } from "./quickstart";
 import { SQUAD_ROLES, SQUAD_TEMPLATES } from "./templates";
+import { SALES_STARTER_SOURCES } from "./sales-starter-sources";
 
 const greenfield = SQUAD_TEMPLATES.find((t) => t.id === "sdlc_greenfield")!;
 const marketTemplate = SQUAD_TEMPLATES.find((t) => t.id === "market_research")!;
@@ -50,6 +51,8 @@ function fakeClient(over: Partial<FakeClient> = {}): FakeClient {
     updateSkill: vi.fn(async () => ({}) as never),
     listSquadSkills: vi.fn(async () => [] as never),
     setSquadSkills: vi.fn(async () => [] as never),
+    getKnowledgeStatus: vi.fn(async () => ({ state: "ready" }) as never),
+    createKnowledgeDocument: vi.fn(async () => ({ id: "doc-1" }) as never),
     ...over,
   } as FakeClient;
   return client;
@@ -245,7 +248,7 @@ describe("runSquadQuickstart", () => {
     const linked = fakeClient(existing);
     const relinked = await runSquadQuickstart(linked, marketTemplate, options);
     expect(linked.createSquadRoutine).toHaveBeenCalledWith("squad-1", expect.objectContaining({ autopilot_id: "old" }));
-    expect(relinked.routine).toEqual({ status: "existing" });
+    expect(relinked.routines).toEqual([{ title: "Market scan", status: "existing" }]);
 
     const alreadyLinked = fakeClient({
       ...existing,
@@ -253,7 +256,9 @@ describe("runSquadQuickstart", () => {
         throw Object.assign(new Error("already"), { body: { code: "routine_already_linked" } });
       }),
     });
-    expect((await runSquadQuickstart(alreadyLinked, marketTemplate, options)).routine).toEqual({ status: "existing" });
+    expect((await runSquadQuickstart(alreadyLinked, marketTemplate, options)).routines).toEqual([
+      { title: "Market scan", status: "existing" },
+    ]);
   });
 
   it("reports a routine the server refuses to link, with the autopilot left for the boss", async () => {
@@ -265,10 +270,13 @@ describe("runSquadQuickstart", () => {
 
     const out = await runSquadQuickstart(client, marketTemplate, options);
 
-    expect(out.routine).toEqual({
-      status: "failed",
-      error: "routine: autopilot must be assigned to this squad",
-    });
+    expect(out.routines).toEqual([
+      {
+        title: "Market scan",
+        status: "failed",
+        error: "routine: autopilot must be assigned to this squad",
+      },
+    ]);
   });
 
   it("does not build the workflow when the workspace admin has not allowed the new statuses", async () => {
@@ -467,7 +475,7 @@ describe("runSquadQuickstart for market research", () => {
 
     expect(client.createAutopilot).toHaveBeenCalledWith({
       title: "Market scan",
-      description: market.routine!.description,
+      description: market.routines[0]!.description,
       assignee_type: "squad",
       assignee_id: "squad-1",
       execution_mode: "create_issue",
@@ -478,7 +486,7 @@ describe("runSquadQuickstart for market research", () => {
       cron_expression: "0 8 * * 1",
       timezone: "Europe/Paris",
     });
-    expect(out.routine).toEqual({ status: "created" });
+    expect(out.routines).toEqual([{ title: "Market scan", status: "created" }]);
   });
 
   it("uses the browser's timezone when the caller passes none", async () => {
@@ -504,7 +512,7 @@ describe("runSquadQuickstart for market research", () => {
     const out = await runSquadQuickstart(client, market, options);
 
     expect(client.createAutopilot).not.toHaveBeenCalled();
-    expect(out.routine).toEqual({ status: "existing" });
+    expect(out.routines).toEqual([{ title: "Market scan", status: "existing" }]);
   });
 
   it("reports a routine whose schedule could not be set, so the boss can add it", async () => {
@@ -516,12 +524,12 @@ describe("runSquadQuickstart for market research", () => {
 
     const out = await runSquadQuickstart(client, market, options);
 
-    expect(out.routine).toEqual({ status: "failed", error: "schedule: bad cron" });
+    expect(out.routines).toEqual([{ title: "Market scan", status: "failed", error: "schedule: bad cron" }]);
   });
 
   it("makes no routine for a template without one, or when the squad was not made", async () => {
     const greenfieldClient = fakeClient();
-    expect((await runSquadQuickstart(greenfieldClient, greenfield, options)).routine.status).toBe("skipped");
+    expect((await runSquadQuickstart(greenfieldClient, greenfield, options)).routines).toEqual([]);
     expect(greenfieldClient.createAutopilot).not.toHaveBeenCalled();
 
     const failedClient = fakeClient({
@@ -529,7 +537,7 @@ describe("runSquadQuickstart for market research", () => {
         throw new Error("nope");
       }),
     });
-    expect((await runSquadQuickstart(failedClient, market, options)).routine.status).toBe("skipped");
+    expect((await runSquadQuickstart(failedClient, market, options)).routines).toEqual([]);
     expect(failedClient.createAutopilot).not.toHaveBeenCalled();
   });
 
@@ -570,13 +578,8 @@ describe("runSquadQuickstart for every template", () => {
 
       const out = await runSquadQuickstart(client, template, options);
 
-      if (template.routine) {
-        expect(out.routine.status).toBe("created");
-        expect(client.createAutopilot).toHaveBeenCalledTimes(1);
-      } else {
-        expect(out.routine.status).toBe("skipped");
-        expect(client.createAutopilot).not.toHaveBeenCalled();
-      }
+      expect(out.routines.map((r) => r.status)).toEqual(template.routines.map(() => "created"));
+      expect(client.createAutopilot).toHaveBeenCalledTimes(template.routines.length);
     },
   );
 });
@@ -878,5 +881,64 @@ describe("runSquadQuickstart planning squad", () => {
     const out = await runSquadQuickstart(client, planning, options);
 
     expect(out.workflow.error).toContain("Research to Plan ready");
+  });
+});
+
+describe("runSquadQuickstart for the sales loop", () => {
+  const sales = SQUAD_TEMPLATES.find((t) => t.id === "sales_loop")!;
+
+  it("makes the three routines and writes every starter source under its own key", async () => {
+    const client = fakeClient();
+
+    const out = await runSquadQuickstart(client, sales, options);
+
+    expect(out.routines.map((r) => r.title)).toEqual(["Weekly scan", "Weekly review", "Source health"]);
+    expect(out.sources.status).toBe("created");
+    expect(out.sources.written).toBe(SALES_STARTER_SOURCES.length);
+    const keys = client.createKnowledgeDocument.mock.calls.map((call) => call[0].idempotency_key);
+    expect(new Set(keys).size).toBe(SALES_STARTER_SOURCES.length);
+    expect(client.createKnowledgeDocument.mock.calls.every((call) => call[0].kind === "sales_source" && call[0].kb === "sales")).toBe(true);
+  });
+
+  it("writes the same keys again on a rerun, so the knowledge base keeps one document each", async () => {
+    const client = fakeClient();
+
+    await runSquadQuickstart(client, sales, options);
+    const first = client.createKnowledgeDocument.mock.calls.map((call) => call[0].idempotency_key);
+    await runSquadQuickstart(client, sales, options);
+    const second = client.createKnowledgeDocument.mock.calls.map((call) => call[0].idempotency_key);
+
+    expect(second).toEqual([...first, ...first]);
+  });
+
+  it("skips the sources, with the reason, while the knowledge base is not enabled", async () => {
+    const client = fakeClient({
+      getKnowledgeStatus: vi.fn(async () => ({ state: "disabled" }) as never),
+    });
+
+    const out = await runSquadQuickstart(client, sales, options);
+
+    expect(out.squad.status).toBe("created");
+    expect(out.sources.status).toBe("skipped");
+    expect(out.sources.error).toMatch(/Enable the company knowledge base/);
+    expect(client.createKnowledgeDocument).not.toHaveBeenCalled();
+  });
+
+  it("counts a refused document and keeps writing the rest", async () => {
+    let calls = 0;
+    const client = fakeClient({
+      createKnowledgeDocument: vi.fn(async () => {
+        calls += 1;
+        if (calls === 2) throw new Error("kind sales_source is not in this workspace");
+        return { id: `doc-${calls}` } as never;
+      }),
+    });
+
+    const out = await runSquadQuickstart(client, sales, options);
+
+    expect(out.sources.status).toBe("failed");
+    expect(out.sources.failed).toBe(1);
+    expect(out.sources.written).toBe(SALES_STARTER_SOURCES.length - 1);
+    expect(out.sources.error).toContain("kind sales_source is not in this workspace");
   });
 });

@@ -288,6 +288,10 @@
         "name": "规划 · BMAD",
         "description": "把需求变成经过评审的规划文档：调研、简报、PRD、UX、架构和史诗；也能补充产品已有的文档。"
       },
+      "sales_loop": {
+        "name": "销售循环",
+        "description": "每周为你的业务线寻找商机，起草外联消息供你审批，并从结果中学习。信息源开箱即用。"
+      },
       "sdlc_maintenance": {
         "name": "SDLC · 现有产品",
         "description": "对缺陷、功能、优化或升级进行分诊，分派给合适的智能体，验证后汇报。"
@@ -316,7 +320,10 @@
     "workflow_without_qa": "已创建，但没有 QA 步骤：只有工作区管理员可以添加状态。",
     "next_step": "把一个需求任务分配给该小队即可开始。",
     "toast_done": "小队已创建",
-    "toast_failed": "无法创建小队"
+    "toast_failed": "无法创建小队",
+    "sources_row": "入门信息源",
+    "sources_need_knowledge": "请先启用公司知识库，然后重新运行快速开始。",
+    "sources_written": "已写入：{{count}}"
   },
   "agent_pack_install": {
     "title": "安装 Agent 包",

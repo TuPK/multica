@@ -9,7 +9,7 @@ import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
  * names below so that running the quickstart twice reuses them.
  */
 
-export type SquadTemplateId = "sdlc_greenfield" | "sdlc_maintenance" | "market_research" | "bmad_planning";
+export type SquadTemplateId = "sdlc_greenfield" | "sdlc_maintenance" | "market_research" | "bmad_planning" | "sales_loop";
 
 export type SquadRoleKey =
   | "lead"
@@ -32,7 +32,12 @@ export type SquadRoleKey =
   | "plan_pm"
   | "plan_ux"
   | "plan_architect"
-  | "plan_reviewer";
+  | "plan_reviewer"
+  | "sales_lead"
+  | "sales_scout"
+  | "sales_writer"
+  | "sales_analyst"
+  | "sales_checker";
 
 export interface SquadRole {
   key: SquadRoleKey;
@@ -185,6 +190,41 @@ export const SQUAD_ROLES: Record<SquadRoleKey, SquadRole> = {
     name: "Blueprint Architect",
     description: "Designs the simplest system that fits, analyses the impact of a change, and records decisions.",
     role: "Architecture, ADRs, impact analysis, project context",
+  },
+  sales_lead: {
+    key: "sales_lead",
+    agentTemplate: "research_lead",
+    name: "Sales Lead",
+    description: "Leads Sales Loop squads: calibrates lanes, routes requests, verifies reports, and writes the weekly snapshot.",
+    role: "Squad leader",
+  },
+  sales_scout: {
+    key: "sales_scout",
+    agentTemplate: "market_scout",
+    name: "Sales Scout",
+    description: "Runs the lane's sources, scores organisations, and onboards new sources with a sample before they go live.",
+    role: "Source collection and scoring",
+  },
+  sales_writer: {
+    key: "sales_writer",
+    agentTemplate: "growth_lead",
+    name: "Sales Writer",
+    description: "Drafts messages, follow-ups and public replies for approval. Sends nothing.",
+    role: "Outreach drafts",
+  },
+  sales_analyst: {
+    key: "sales_analyst",
+    agentTemplate: "opportunity_analyst",
+    name: "Sales Deal Analyst",
+    description: "Turns meeting notes into opportunities and quotes from the offer, and writes lessons from outcomes.",
+    role: "Opportunities, quotes and lessons",
+  },
+  sales_checker: {
+    key: "sales_checker",
+    agentTemplate: "critic",
+    name: "Sales Checker",
+    description: "Checks every draft and quote against the channel and compliance rules. Writes no drafts of its own.",
+    role: "Independent review",
   },
   plan_reviewer: {
     key: "plan_reviewer",
@@ -444,8 +484,8 @@ export interface SquadTemplate {
    * it has to make a new floor, so the squad may land on an existing floor.
    */
   floorName: string | null;
-  /** The recurring autopilot the template creates for its squad, when it has one. */
-  routine: SquadRoutineTemplate | null;
+  /** The recurring autopilots the template creates for its squad. Empty when it has none. */
+  routines: readonly SquadRoutineTemplate[];
   /** The charter saved on creation. Saving it also creates the squad's operating review. */
   charter: SquadCharterTemplate;
   /** Squad instructions: what the leader follows. */
@@ -499,17 +539,29 @@ export const PLANNING_SKILL_NAMES: readonly string[] = [
   "superpowers:verification-before-completion",
 ];
 
-/** Skills that ship in the bundle for the planning squad only. */
-const PLANNING_ONLY_SKILLS: readonly string[] = SDLC_BUILTIN_SKILLS.map((skill) => skill.name).filter(
+/** The built-in skills of the sales squad. They ship in the bundle folder with the sales- prefix. */
+export const SALES_SKILL_NAMES: readonly string[] = [
+  "sales-delivery-core",
+  "sales-squad-lead",
+  "sales-scouting",
+  "sales-source-builder",
+  "sales-writing",
+  "sales-deal-analysis",
+  "sales-review",
+];
+
+/** Skills that ship in the bundle for other squads only: planning and sales. No SDLC squad imports them. */
+const NON_SDLC_SKILLS: readonly string[] = SDLC_BUILTIN_SKILLS.map((skill) => skill.name).filter(
   (name) =>
     name.startsWith("planning-") ||
+    name.startsWith("sales-") ||
     name.startsWith("bmad-toolbox:") ||
     name === "frontend-design:frontend-design",
 );
 
-/** The built-in SDLC skills, by name. Every SDLC squad imports all of them, and none of the planning-only ones. */
+/** The built-in SDLC skills, by name. Every SDLC squad imports all of them, and none of the planning or sales ones. */
 export const SDLC_SKILL_NAMES: readonly string[] = SDLC_BUILTIN_SKILLS.map((skill) => skill.name).filter(
-  (name) => !PLANNING_ONLY_SKILLS.includes(name),
+  (name) => !NON_SDLC_SKILLS.includes(name),
 );
 
 const SDLC_CHARTER_BOUNDARIES =
@@ -589,6 +641,14 @@ Proposals:
 
 Final report, one comment on the request: the window scanned, the proposals filed with their ids, what the critic objected to, the assumptions you took, and what is not verified.`;
 
+const SALES_LOOP_INSTRUCTIONS = `You lead a Sales Loop squad. A request arrives as an issue assigned to this squad, or a routine opens the week's issue. You carry it to the end without asking the requester again.
+
+Before any action on an issue, load the sales-delivery-core and sales-squad-lead skills. They hold the procedure: the route (calibration, weekly scan, after a meeting, weekly review, source onboarding, share and dig), delegation by sub-issue, verification against the knowledge base, and the weekly snapshot. Follow them. Where this text and a skill differ, the skill wins.
+
+This squad finds and cares for business opportunities across industries. Its knowledge base is the base "sales": accounts, opportunities, drafts, lessons and sources are documents there. Nothing is sent by the squad: drafts wait for a person, and a person sends them.
+
+Delegate only to the members listed on your Squad Roster. Each member loads its own sales skill, which the squad shares with all of them.`;
+
 const BMAD_PLANNING_INSTRUCTIONS = `You lead a planning squad. A request arrives as an issue assigned to this squad, and you carry it to reviewed planning documents without asking the requester again.
 
 Before any action on an issue, load the planning-delivery-core and planning-squad-lead skills. They hold the procedure: choose new or extend mode, write the impact map, split the work into queued issues, verify each report, route blocked work, and close with the planning handoff packet. Follow them. Where this text and a skill differ, the skill wins.
@@ -616,7 +676,7 @@ export const SQUAD_TEMPLATES: readonly SquadTemplate[] = [
     ],
     leader: "lead",
     floorName: null,
-    routine: null,
+    routines: [],
     charter: {
       mission: "Take a product request from brief to a verified build, with a report the boss can act on.",
       responsibilities: [
@@ -652,7 +712,7 @@ export const SQUAD_TEMPLATES: readonly SquadTemplate[] = [
     ],
     leader: "lead",
     floorName: null,
-    routine: null,
+    routines: [],
     charter: {
       mission: "Keep an existing product correct, safe and current: fix bugs, ship changes, and keep it up to date.",
       responsibilities: [
@@ -677,13 +737,15 @@ export const SQUAD_TEMPLATES: readonly SquadTemplate[] = [
     roles: ["research_lead", "scout", "competitor", "critic"],
     leader: "research_lead",
     floorName: "Research",
-    routine: {
-      title: "Market scan",
+    routines: [
+      {
+        title: "Market scan",
       issueTitleTemplate: "Market scan, week of {{date}}",
       cron: "0 8 * * 1",
       description:
         "Weekly market scan. Scope: the markets, customer segments, and named competitors in the research notes; if none are named, start from the company knowledge base (multica knowledge search) and say which markets you chose. Look for changes in the last seven days: pricing, product launches, customer wins and complaints, regulation, and funding. Bar for a proposal: a change that touches a decision the company can make this quarter, backed by at least two dated sources, with its cost and risk stated. File zero to three proposals; no proposal this week is a valid result. Write the report in English.",
-    },
+      },
+    ],
     charter: {
       mission: "Scan markets, customers and competitors each week, and file only the proposals the evidence supports.",
       responsibilities: [
@@ -705,6 +767,59 @@ export const SQUAD_TEMPLATES: readonly SquadTemplate[] = [
     builtinSkills: [],
   },
   {
+    id: "sales_loop",
+    name: "Sales Loop",
+    description:
+      "Finds business opportunities for your lanes each week, drafts outreach for a person to approve, and learns from the results. Works from the knowledge base; sources come ready to use.",
+    roles: ["sales_lead", "sales_scout", "sales_writer", "sales_analyst", "sales_checker"],
+    leader: "sales_lead",
+    floorName: null,
+    routines: [
+      {
+        title: "Weekly scan",
+        issueTitleTemplate: "Weekly scan, week of {{date}}",
+        cron: "0 8 * * 1",
+        description:
+          "Weekly scan of every active lane in the sales base. For each lane: run its active sources (multica sales collect), score the organisations, write their accounts, draft outreach only for qualified accounts, have the checker review each draft, then write the sales report. Scope and caps come from each sales_lane document. A lane still in draft is skipped and listed. No new qualified account this week is a valid result.",
+      },
+      {
+        title: "Weekly review",
+        issueTitleTemplate: "Weekly review, week of {{date}}",
+        cron: "0 20 * * 0",
+        description:
+          "Weekly review of the sales base: accounts won, lost and stale; the sources that are degraded or blocked; the drafts a person changed before approval. Write lessons at low confidence with their evidence counts. Only a confirmed lesson may change a weight, filter or template. Close with the sales report.",
+      },
+      {
+        title: "Source health",
+        issueTitleTemplate: "Source health, {{date}}",
+        cron: "0 7 * * *",
+        description:
+          "Daily source health. Run multica sales collect with --dry-run for each active source that is not a paid provider or a connector, record last_run, last_http, hits_7d and status on each source document, and repair at most two sources a week. Report every source that failed twice in a row.",
+      },
+    ],
+    charter: {
+      mission: "Find, reach, track and learn from business opportunities for each lane, from sources that are ready to use, with every draft approved by a person before it is sent.",
+      responsibilities: [
+        { key: "calibration", text: "Calibrate each lane's offer, ICP and sources with the boss, once, before any outreach is drafted." },
+        { key: "discovery", text: "Scan the lane's sources, score the organisations, and keep the sales base current with a source and a date for each claim." },
+        { key: "outreach", text: "Draft outreach for qualified accounts in the channel the lane allows, check each draft, and never send it." },
+        { key: "learning", text: "Review outcomes weekly and write lessons whose confidence matches their evidence." },
+      ],
+      outputs: [
+        { key: "sales_report", kind: "report", cadenceHint: "weekly" },
+        { key: "sales_documents", kind: "kb_document", cadenceHint: "per request" },
+        { key: "calibration_proposal", kind: "proposal", cadenceHint: "once per lane" },
+      ],
+      boundaries:
+        "Never sends, posts, quotes or contacts anyone. Quotes come only from the lane's offer. Spending money, a paid provider beyond its cap, and any connection need the boss.",
+      escalation: "A decision the boss must make goes to a proposal; a blocked request goes to the requester, named on the request.",
+      intake: "Requests arrive as issues assigned to this squad, and the weekly routines open the scan and review issues.",
+    },
+    instructions: SALES_LOOP_INSTRUCTIONS,
+    workflow: null,
+    builtinSkills: SALES_SKILL_NAMES,
+  },
+  {
     id: "bmad_planning",
     name: "BMAD Planning",
     description:
@@ -720,7 +835,7 @@ export const SQUAD_TEMPLATES: readonly SquadTemplate[] = [
     ],
     leader: "plan_lead",
     floorName: null,
-    routine: null,
+    routines: [],
     charter: {
       mission: "Turn a request into planning documents the build squad can follow, and keep the documents of an existing product current.",
       responsibilities: [

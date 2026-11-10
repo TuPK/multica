@@ -6,6 +6,7 @@ import {
   PLANNING_AUTO_WORKFLOW,
   PLANNING_SKILL_NAMES,
   SDLC_AUTO_WORKFLOW,
+  SALES_SKILL_NAMES,
   SDLC_SKILL_NAMES,
   SQUAD_ROLES,
   SQUAD_TEMPLATES,
@@ -135,8 +136,9 @@ describe("market research template", () => {
   });
 
   it("runs a Monday-morning routine that opens a dated issue for the squad", () => {
-    const routine = market.routine!;
+    const routine = market.routines[0]!;
 
+    expect(market.routines).toHaveLength(1);
     expect(routine.cron).toBe("0 8 * * 1");
     expect(routine.issueTitleTemplate).toContain("{{date}}");
     expect(routine.description).toContain("File zero to three proposals");
@@ -150,7 +152,7 @@ describe("market research template", () => {
 
   it("keeps the SDLC templates without a routine or a floor name", () => {
     for (const t of SQUAD_TEMPLATES.filter((x) => x.id.startsWith("sdlc_"))) {
-      expect(t.routine, t.id).toBeNull();
+      expect(t.routines, t.id).toEqual([]);
       expect(t.floorName, t.id).toBeNull();
       expect(t.leader, t.id).toBe("lead");
     }
@@ -221,7 +223,7 @@ describe("bmad planning template", () => {
       "plan_architect",
       "plan_reviewer",
     ]);
-    expect(planning.routine).toBeNull();
+    expect(planning.routines).toEqual([]);
     expect(planning.floorName).toBeNull();
     const others = new Set(
       Object.values(SQUAD_ROLES)
@@ -286,5 +288,42 @@ describe("bmad planning template", () => {
     expect(planning.instructions).toContain("Delegate only to the members listed on your Squad Roster");
     expect(planning.instructions).toContain("writes no product code");
     expect(planning.workflow).toBe(PLANNING_AUTO_WORKFLOW);
+  });
+});
+
+describe("sales loop template", () => {
+  const sales = template("sales_loop");
+
+  it("leads with the sales lead and names five agents with the Sales prefix", () => {
+    expect(sales.leader).toBe("sales_lead");
+    expect(sales.roles).toEqual(["sales_lead", "sales_scout", "sales_writer", "sales_analyst", "sales_checker"]);
+    for (const role of sales.roles) {
+      expect(SQUAD_ROLES[role].name.startsWith("Sales "), role).toBe(true);
+    }
+    expect(sales.floorName).toBeNull();
+    expect(sales.workflow).toBeNull();
+  });
+
+  it("creates three routines with the weekly and daily schedules of the spec", () => {
+    expect(sales.routines.map((r) => r.title)).toEqual(["Weekly scan", "Weekly review", "Source health"]);
+    expect(sales.routines.map((r) => r.cron)).toEqual(["0 8 * * 1", "0 20 * * 0", "0 7 * * *"]);
+    for (const r of sales.routines) expect(r.issueTitleTemplate, r.title).toMatch(/\{\{date\}\}|^Source health/);
+  });
+
+  it("keeps its agent names apart from every other role's name", () => {
+    const others = new Set(
+      Object.values(SQUAD_ROLES)
+        .filter((r) => !sales.roles.includes(r.key))
+        .map((r) => r.name),
+    );
+    for (const role of sales.roles) expect(others.has(SQUAD_ROLES[role].name), role).toBe(false);
+  });
+
+  it("imports the sales skills and states the no-send rule in its instructions", () => {
+    expect(sales.builtinSkills).toEqual(SALES_SKILL_NAMES);
+    expect(sales.instructions).toContain("sales-delivery-core");
+    expect(sales.instructions).toContain("sales-squad-lead");
+    expect(sales.instructions).toContain("Nothing is sent by the squad");
+    expect(sales.charter.boundaries).toContain("Never sends");
   });
 });

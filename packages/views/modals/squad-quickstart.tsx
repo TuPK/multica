@@ -36,7 +36,8 @@ function hasProblems(outcome: QuickstartOutcome): boolean {
     outcome.squad.status === "failed" ||
     !!outcome.squad.error ||
     outcome.workflow.status === "failed" ||
-    outcome.routine.status === "failed"
+    outcome.routines.some((r) => r.status === "failed") ||
+    outcome.sources.status === "failed"
   );
 }
 
@@ -250,6 +251,38 @@ export function SquadQuickstartModal({ onClose }: { onClose: () => void }) {
                     </span>
                   </li>
                 )}
+                {outcome.routines.map((r) => (
+                  <li key={r.title} className="flex items-start justify-between gap-3 text-body font-medium">
+                    <span>{r.title}</span>
+                    <span
+                      className={`shrink-0 text-caption ${
+                        r.status === "failed" ? "text-destructive" : "text-muted-foreground"
+                      }`}
+                    >
+                      {r.status === "failed"
+                        ? `${t(($) => $.squad_quickstart.status_failed)}: ${r.error}`
+                        : statusText[r.status]}
+                    </span>
+                  </li>
+                ))}
+                {outcome.sources.status !== "skipped" || outcome.sources.error ? (
+                  <li className="flex items-start justify-between gap-3 text-body font-medium">
+                    <span>{t(($) => $.squad_quickstart.sources_row)}</span>
+                    <span
+                      className={`shrink-0 text-caption ${
+                        outcome.sources.status === "failed" || outcome.sources.status === "skipped"
+                          ? "text-destructive"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {outcome.sources.status === "skipped"
+                        ? t(($) => $.squad_quickstart.sources_need_knowledge)
+                        : outcome.sources.status === "failed"
+                          ? `${t(($) => $.squad_quickstart.status_failed)}: ${outcome.sources.failed}`
+                          : t(($) => $.squad_quickstart.sources_written, { count: outcome.sources.written })}
+                    </span>
+                  </li>
+                ) : null}
               </ul>
               {finished && !hasProblems(outcome) && (
                 <p className="text-caption text-muted-foreground">

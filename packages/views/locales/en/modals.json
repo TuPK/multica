@@ -290,6 +290,10 @@
         "name": "Planning · BMAD",
         "description": "Turns a request into reviewed planning documents: research, brief, PRD, UX, architecture, and epics. Extends the ones a product already has."
       },
+      "sales_loop": {
+        "name": "Sales loop",
+        "description": "Finds opportunities for your lanes each week, drafts outreach for you to approve, and learns from the results. Sources come ready to use."
+      },
       "sdlc_maintenance": {
         "name": "SDLC · Existing product",
         "description": "Triages a bug, feature, optimization, or upgrade, routes it to the right agents, verifies it, and reports."
@@ -318,7 +322,10 @@
     "workflow_without_qa": "Created without a QA step: only workspace admins can add a status.",
     "next_step": "Assign a request issue to the squad to start.",
     "toast_done": "Squad created",
-    "toast_failed": "Could not create the squad"
+    "toast_failed": "Could not create the squad",
+    "sources_row": "Starter sources",
+    "sources_need_knowledge": "Enable the company knowledge base, then run the quickstart again.",
+    "sources_written": "Written: {{count}}"
   },
   "agent_pack_install": {
     "title": "Install agent pack",

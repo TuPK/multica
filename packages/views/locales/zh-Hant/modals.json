@@ -288,6 +288,10 @@
         "name": "規劃 · BMAD",
         "description": "把需求變成經過審查的規劃文件：調研、簡報、PRD、UX、架構和史詩；也能補充產品既有的文件。"
       },
+      "sales_loop": {
+        "name": "銷售循環",
+        "description": "每週為你的業務線尋找商機，起草外聯訊息供你審核，並從結果中學習。資料來源開箱即用。"
+      },
       "sdlc_maintenance": {
         "name": "SDLC · 既有產品",
         "description": "對缺陷、功能、最佳化或升級進行分流，分派給合適的智慧體，驗證後回報。"
@@ -316,7 +320,10 @@
     "workflow_without_qa": "已建立，但沒有 QA 步驟：只有工作區管理員可以新增狀態。",
     "next_step": "把一個需求任務指派給該小隊即可開始。",
     "toast_done": "小隊已建立",
-    "toast_failed": "無法建立小隊"
+    "toast_failed": "無法建立小隊",
+    "sources_row": "入門資料來源",
+    "sources_need_knowledge": "請先啟用公司知識庫，然後重新執行快速開始。",
+    "sources_written": "已寫入：{{count}}"
   },
   "agent_pack_install": {
     "title": "安裝 Agent 套件",

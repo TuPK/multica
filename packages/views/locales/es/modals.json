@@ -290,6 +290,10 @@
         "name": "Planificación · BMAD",
         "description": "Convierte una solicitud en documentos de planificación revisados: investigación, brief, PRD, UX, arquitectura y epics. Amplía los que un producto ya tiene."
       },
+      "sales_loop": {
+        "name": "Ciclo de ventas",
+        "description": "Busca oportunidades para tus líneas de negocio cada semana, prepara mensajes para que los apruebes y aprende de los resultados. Las fuentes ya vienen listas."
+      },
       "sdlc_maintenance": {
         "name": "SDLC · Producto existente",
         "description": "Clasifica un error, una función, una optimización o una actualización, lo dirige a los agentes adecuados, lo verifica e informa."
@@ -318,7 +322,10 @@
     "workflow_without_qa": "Creado sin paso de QA: solo los administradores del espacio de trabajo pueden añadir un estado.",
     "next_step": "Asigna una tarea de solicitud al squad para empezar.",
     "toast_done": "Squad creado",
-    "toast_failed": "No se pudo crear el squad"
+    "toast_failed": "No se pudo crear el squad",
+    "sources_row": "Fuentes iniciales",
+    "sources_need_knowledge": "Activa la base de conocimiento de la empresa y vuelve a ejecutar el inicio rápido.",
+    "sources_written": "Escritas: {{count}}"
   },
   "agent_pack_install": {
     "title": "Instalar paquete de agentes",
