@@ -249,6 +249,38 @@ services:
       KNOWLEDGE_EMBEDDING_API_KEY: ${KNOWLEDGE_EMBEDDING_API_KEY:-}
     restart: unless-stopped
 
+  # Central object store for the Skill / Plugin Hub (S3-compatible, Apache-2.0).
+  # Deliberately separate from the attachment bucket (S3_BUCKET above): turning
+  # this on must not redirect where existing attachments are read from.
+  # The backend reaches it through HUB_S3_* (see .env.example).
+  seaweedfs:
+    image: chrislusf/seaweedfs:${SEAWEEDFS_IMAGE_TAG:-4.53}
+    command:
+      - server
+      - -dir=/data
+      - -s3
+      - -s3.port=8333
+      - -s3.config=/etc/seaweedfs/s3.json
+      - -master.volumeSizeLimitMB=1024
+    environment:
+      HUB_S3_ACCESS_KEY: ${HUB_S3_ACCESS_KEY:-multica-hub}
+      HUB_S3_SECRET_KEY: ${HUB_S3_SECRET_KEY:?HUB_S3_SECRET_KEY must be set — generate one with 'openssl rand -hex 24'}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        printf '{"identities":[{"name":"hub","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}' "$$HUB_S3_ACCESS_KEY" "$$HUB_S3_SECRET_KEY" > /etc/seaweedfs/s3.json
+        exec /usr/bin/weed "$$@"
+      - weed
+    volumes:
+      - seaweedfs-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9333/cluster/status >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   frontend:
     image: ${MULTICA_WEB_IMAGE:-ghcr.io/multica-ai/multica-web}:${MULTICA_IMAGE_TAG:-latest}
     depends_on:
@@ -446,6 +478,7 @@ networks:
 volumes:
   pgdata:
   backend_uploads:
+  seaweedfs-data:
   # Knowledge sidecar. Back up knowledge-postgres-data and knowledge-data-files
   # together (and keep KNOWLEDGE_SYSTEM_AES_KEY); see SELF_HOSTING.md.
   knowledge-postgres-data:
