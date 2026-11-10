@@ -1,0 +1,14 @@
+[
+  {
+    "find": "mức (Nặng: sai số tiền/khấu trừ sai; Vừa: thiếu hồ sơ; Nhẹ: trình bày).",
+    "replace": "mức (Chặn: sai số tiền/khấu trừ sai; Cần giấy tờ: thiếu hồ sơ; Góp ý: trình bày)."
+  },
+  {
+    "find": "5. Kết luận: **QUA** (đạt) / **CHẶN** (chưa đạt). Còn bất kỳ lỗi Nặng nào là CHẶN.",
+    "replace": "5. Kết luận: **QUA** / **CHẶN**. Còn bất kỳ lỗi Chặn nào là CHẶN."
+  },
+  {
+    "find": "Không kết luận QUA khi còn lỗi Nặng.",
+    "replace": "Không kết luận QUA khi còn lỗi Chặn."
+  }
+]

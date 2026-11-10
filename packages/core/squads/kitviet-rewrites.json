@@ -38,7 +38,7 @@
     },
     {
       "name": "pip-install-hint",
-      "pattern": "script in (?:hướng dẫn )?`pip install [^`]+`(?:; báo người dùng cài \\(nên trong môi trường ảo\\))?",
+      "pattern": "script in (?:hướng dẫn )?`pip install [^`]+`(?:; báo người dùng cài \\(nên trong môi trường ảo\\))?(?:, không tự cài vào máy họ khi chưa hỏi)?(?: hoặc cài LibreOffice)?",
       "flags": "g",
       "replace": "dừng loại 1 và ghi tên thư viện thiếu, không tự cài"
     },
@@ -77,6 +77,12 @@
       "pattern": "[Tt]hư mục (?:tháng|deal|chạy|làm việc)",
       "flags": "g",
       "replace": "tệp đính kèm trên issue"
+    },
+    {
+      "name": "versioned-file",
+      "pattern": "`?[\\w/<>-]*-v(\\d)\\.md`?",
+      "flags": "g",
+      "replace": "tệp đính kèm bản v$1"
     },
     {
       "name": "file-00-plan",

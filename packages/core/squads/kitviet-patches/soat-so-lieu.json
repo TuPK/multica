@@ -1,0 +1,6 @@
+[
+  {
+    "find": "Không kết luận \"gửi được\" khi còn bất kỳ dòng Trái nguồn nào.",
+    "replace": "Không kết luận QUA khi còn bất kỳ dòng Trái nguồn nào."
+  }
+]

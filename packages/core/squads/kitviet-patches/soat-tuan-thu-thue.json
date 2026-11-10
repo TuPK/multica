@@ -1,0 +1,26 @@
+[
+  {
+    "find": "lỗi Nặng \"căn cứ chưa kiểm chứng\"",
+    "replace": "lỗi Chặn \"căn cứ chưa kiểm chứng\""
+  },
+  {
+    "find": "sai sót\" -> lỗi Nặng.",
+    "replace": "sai sót\" -> lỗi Chặn."
+  },
+  {
+    "find": "-> lỗi Vừa.",
+    "replace": "-> lỗi Nên sửa."
+  },
+  {
+    "find": "-> lỗi Nhẹ/Vừa.",
+    "replace": "-> lỗi Góp ý hoặc Nên sửa."
+  },
+  {
+    "find": "Còn lỗi Nặng là CHẶN.",
+    "replace": "Còn lỗi Chặn là CHẶN."
+  },
+  {
+    "find": "Không kết luận QUA khi còn lỗi Nặng.",
+    "replace": "Không kết luận QUA khi còn lỗi Chặn."
+  }
+]

@@ -1,0 +1,14 @@
+[
+  {
+    "find": "Đối tượng bắt buộc kiểm toán được mở rộng từ khi Luật Kiểm toán độc lập sửa đổi có hiệu lực 01/01/2025 - đối chiếu văn bản hợp nhất hiện hành, không tự kết luận.",
+    "replace": "Đối tượng bắt buộc kiểm toán theo luật hiện hành (tra dòng \"Kiểm toán\" của Sổ quy định của squad), không tự kết luận."
+  },
+  {
+    "find": "**Năm đầu áp dụng Thông tư 99/2025/TT-BTC** (thay Thông tư 200 từ 01/01/2026 - kiểm tra bản hiện hành):",
+    "replace": "**Năm đầu áp dụng chế độ kế toán mới** (tra dòng \"Chế độ kế toán\" của Sổ quy định của squad):"
+  },
+  {
+    "find": "- [ ] Có mục chuyển đổi Thông tư 99 nếu là năm tài chính 2026.",
+    "replace": "- [ ] Có mục chuyển đổi chế độ kế toán nếu là năm tài chính 2026."
+  }
+]

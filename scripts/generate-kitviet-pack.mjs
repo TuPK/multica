@@ -59,7 +59,7 @@ const ROLE_KIND_CLASS = {
   kv_handover: "handover",
 };
 
-// Text that must not survive into a generated body (spec 5.5 and F1, F3, F4, F7, F22).
+// Text that must not survive into a generated body or script (spec 5.5 and F1, F3, F4, F7, F9, F22).
 const FORBIDDEN = [
   { re: /kv:pro(?![\w-])/, what: "Pro block reference" },
   { re: /mochistudio/i, what: "vendor advertising" },
@@ -72,6 +72,10 @@ const FORBIDDEN = [
   { re: /Claude Desktop/, what: "platform name" },
   { re: /Codex/, what: "platform name" },
   { re: /\d\d-[a-z-]+\.md/, what: "numbered stage file" },
+  { re: /-v\d\.md/, what: "versioned file name" },
+  { re: /pip install|apt install/, what: "install hint (agents do not install)" },
+  { re: /hoặc cài LibreOffice/, what: "LibreOffice install hint" },
+  { re: /Cài bằng lệnh/, what: "install instruction" },
   { re: /kv:[a-z0-9-]/, what: "unresolved kv: reference" },
   // The authored skills are folders (kv-delivery-core); the bundle name has two dashes (kv--delivery-core).
   { re: /(?<![\w-])kv-(delivery-core|squad-lead|company-profile)/, what: "authored folder name instead of its bundle name" },
@@ -198,8 +202,6 @@ export function roleHeader(display, squadName) {
 // Leftover checks collect every violation so one run lists them all; buildPacks throws at the end.
 let violations = [];
 let ruleHits = new Map();
-let allPatchHits = [];
-let allPatches = [];
 
 function guard(text, label) {
   const lines = text.split("\n");
@@ -275,32 +277,28 @@ function agentPhrase(name, ctx) {
   return NO_AGENT;
 }
 
-// Runs one text (a body or one reference file) through the rewrite table, the patches and the
-// reference rules, then guards it. `hits` counts, per own patch, the texts it matched; the caller
-// reports a patch that matched no text of its skill or agent.
+// Runs one markdown text (a body or one reference file) through the block and section removal, the
+// patches, the rewrite table and the reference rules, then guards it. `hits` counts, per own patch,
+// the texts it matched; the caller reports a patch that matched no text of its skill or agent.
 function transformBody(text, { patches, hits, ctx, label }) {
   let out = text;
   for (const block of rewrites.removeBlocks) out = removeBlocks(out, block);
   for (const title of rewrites.removeSections) out = removeSection(out, title);
   out = applyPatches(out, patches, label, hits);
-  out = applyAllPatches(out, label);
   out = applyRules(out, rewrites.rules, ruleHits);
   out = resolveReferences(out, ctx, label);
   guard(out, label);
   return out;
 }
 
-// `_all.json` patches apply to every text file; each may match at most once per file.
-function applyAllPatches(text, label) {
-  let out = text;
-  allPatches.forEach((patch, index) => {
-    const count = out.split(patch.find).length - 1;
-    if (count > 1) throw new Error(`${label}: _all patch matched ${count} times`);
-    if (count === 1) {
-      out = out.replace(patch.find, () => patch.replace);
-      allPatchHits[index] += 1;
-    }
-  });
+// A script of a skill (xuat-*): the same patches and rewrite rules as the prose, so an install hint
+// in a message is reworded too (F9), then its references are resolved and it is guarded. Blocks and
+// platform sections are prose-only and are not removed here.
+function transformScript(text, { patches, hits, ctx, label }) {
+  let out = applyPatches(text, patches, label, hits);
+  out = applyRules(out, rewrites.rules, ruleHits);
+  out = resolveReferences(out, ctx, label);
+  guard(out, label);
   return out;
 }
 
@@ -337,11 +335,10 @@ function renderSkill({ dir, key, bundle, ctx, config, label, files }) {
   const bundleFiles = [];
   for (const file of files) {
     const raw = readFileSync(join(dir, file), "utf8");
-    // Markdown goes through the whole table. Scripts only get their references resolved (a docstring
-    // may name a skill), since the rewrite rules are for prose.
+    // Markdown goes through the whole table; a script goes through the patches and the rules (F9).
     const text = file.endsWith(".md")
       ? transformBody(raw, { patches: ownPatches, hits, ctx, label: `${label}/${file}` })
-      : resolveReferences(raw, ctx, `${label}/${file}`);
+      : transformScript(raw, { patches: ownPatches, hits, ctx, label: `${label}/${file}` });
     guard(text, `${label}/${file}`);
     bundleFiles.push({ path: file, content: text });
   }
@@ -467,8 +464,6 @@ function squadRoles(squad, up) {
 function buildPacks() {
   violations = [];
   ruleHits = new Map();
-  allPatches = readJson(join(patchesDir, "_all.json"));
-  allPatchHits = allPatches.map(() => 0);
   for (const file of ["LICENSE", "NOTICE.md", "UPSTREAM.json"]) {
     if (!existsSync(join(upstreamDir, file))) throw new Error(`kitviet-upstream/${file} is missing`);
   }
@@ -650,14 +645,11 @@ function buildPacks() {
   }
 
   for (const name of readdirSync(patchesDir)) {
-    if (!name.endsWith(".json") || name === "_all.json") continue;
+    if (!name.endsWith(".json")) continue;
     if (!usedPatchFiles.has(name.replace(/\.json$/, ""))) {
       violations.push(`kitviet-patches/${name} matches no skill or agent`);
     }
   }
-  allPatches.forEach((patch, index) => {
-    if (allPatchHits[index] === 0) violations.push(`_all.json patch matched nothing: ${patch.find.slice(0, 90)}`);
-  });
   for (const rule of rewrites.rules) {
     if (!ruleHits.has(rule.name)) violations.push(`rewrite rule ${rule.name} matched nothing (stale rule)`);
   }

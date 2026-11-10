@@ -1,0 +1,14 @@
+[
+  {
+    "find": "Thiếu thư viện reportlab (và python-docx nếu nguồn là .docx). Cài bằng lệnh:\\n\"\n              \"    pip install reportlab python-docx\\nhoặc cài LibreOffice để chuyển .docx.",
+    "replace": "Thiếu thư viện reportlab (và python-docx nếu nguồn là .docx)."
+  },
+  {
+    "find": "Thiếu python-docx để đọc .docx khi không có LibreOffice:\\n    pip install python-docx",
+    "replace": "Thiếu thư viện python-docx."
+  },
+  {
+    "find": "ví dụ DejaVuSans.ttf (Linux: apt install fonts-dejavu-core).",
+    "replace": "ví dụ DejaVuSans.ttf."
+  }
+]

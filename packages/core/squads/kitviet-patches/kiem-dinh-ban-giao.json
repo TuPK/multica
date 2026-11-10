@@ -1,0 +1,14 @@
+[
+  {
+    "find": "Còn CHẶN, hoặc QUA nhưng còn lỗi mức nặng -> ghi lại.",
+    "replace": "Còn CHẶN -> ghi lại."
+  },
+  {
+    "find": "mọi gác cổng QUA, không còn lỗi nặng.",
+    "replace": "mọi gác cổng QUA, không còn lỗi Chặn."
+  },
+  {
+    "find": "## Tiêu chí chưa đạt",
+    "replace": "## Tiêu chí không đạt"
+  }
+]

@@ -1,0 +1,14 @@
+[
+  {
+    "find": "(hiện nay thường dẫn Nghị định 30/2020/NĐ-CP về công tác văn thư)",
+    "replace": "(tra dòng \"Văn thư\" của Sổ quy định của squad)"
+  },
+  {
+    "find": "- Không cài thư viện vào máy người dùng khi chưa được đồng ý.",
+    "replace": "- Không tự cài thư viện Python; thiếu thư viện thì dừng loại 1 và ghi tên thư viện thiếu."
+  },
+  {
+    "find": "Thiếu thư viện python-docx. Cài bằng lệnh:\\n    pip install python-docx\\n\"\r\n          \"rồi chạy lại. (Nên cài trong môi trường ảo: python -m venv .venv)",
+    "replace": "Thiếu thư viện python-docx."
+  }
+]

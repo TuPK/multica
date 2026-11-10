@@ -1,0 +1,14 @@
+[
+  {
+    "find": "theo Nghị quyết 01/2017/NQ-HĐTP; biểu mẫu khiếu nại theo Nghị định 124/2020/NĐ-CP được thay một phần từ 01/7/2026.",
+    "replace": "theo dòng \"Biểu mẫu tố tụng\" của Sổ quy định của squad; biểu mẫu khiếu nại theo dòng \"Khiếu nại\" của Sổ quy định (có thể đã thay một phần)."
+  },
+  {
+    "find": "Mẫu số 23-DS (Nghị quyết 01/2017/NQ-HĐTP) - kiểm tra hiện hành.",
+    "replace": "Mẫu số 23-DS (tra dòng \"Biểu mẫu tố tụng\" của Sổ quy định) - kiểm tra hiện hành."
+  },
+  {
+    "find": "biểu mẫu theo Nghị định hướng dẫn Luật Khiếu nại (Nghị định 124/2020/NĐ-CP, một số mẫu thay từ 01/7/2026) - kiểm tra hiện hành.",
+    "replace": "biểu mẫu theo dòng \"Khiếu nại\" của Sổ quy định (một số mẫu có thể đã thay) - kiểm tra hiện hành."
+  }
+]

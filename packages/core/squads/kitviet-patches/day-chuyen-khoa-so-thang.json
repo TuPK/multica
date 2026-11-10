@@ -1,0 +1,10 @@
+[
+  {
+    "find": "Bàn giao: <đạt / chưa đạt tiêu chí 00-ke-hoach>",
+    "replace": "Bàn giao: <Đạt / Không đạt / Không kiểm được theo tiêu chí trong Kế hoạch>"
+  },
+  {
+    "find": "không còn lỗi Nặng)",
+    "replace": "không còn lỗi Chặn)"
+  }
+]

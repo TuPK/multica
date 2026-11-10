@@ -1,0 +1,6 @@
+[
+  {
+    "find": "Thiếu thư viện openpyxl. Cài bằng lệnh:\\n    pip install openpyxl\\nrồi chạy lại.",
+    "replace": "Thiếu thư viện openpyxl."
+  }
+]

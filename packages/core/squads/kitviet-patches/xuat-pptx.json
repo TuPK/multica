@@ -1,0 +1,6 @@
+[
+  {
+    "find": "Thiếu thư viện python-pptx. Cài bằng lệnh:\\n    pip install python-pptx\\nrồi chạy lại.",
+    "replace": "Thiếu thư viện python-pptx."
+  }
+]

@@ -1,0 +1,30 @@
+[
+  {
+    "find": "4. Xếp mức: **Phải sửa** (làm khách phật ý, lộ nội bộ, đổ lỗi, gây áp lực sai) / **Nên sửa** (kém rõ, sai kênh) / **Gợi ý** (sở thích văn phong).",
+    "replace": "4. Xếp mức: **Chặn** (làm khách phật ý, lộ nội bộ, đổ lỗi, gây áp lực sai) / **Nên sửa** (kém rõ, sai kênh) / **Góp ý** (sở thích văn phong)."
+  },
+  {
+    "find": "5. Kết luận: còn ít nhất một dòng \"Phải sửa\" -> **CHẶN**; không còn -> **QUA**.",
+    "replace": "5. Kết luận: còn ít nhất một dòng \"Chặn\" -> **CHẶN**; không còn -> **QUA**."
+  },
+  {
+    "find": "## Phải sửa\n| Vị trí | Trích | Loại | Gợi ý hướng sửa |",
+    "replace": "## Chặn\n| Vị trí | Trích | Loại | Đề xuất sửa |"
+  },
+  {
+    "find": "## Nên sửa\n| Vị trí | Trích | Loại | Gợi ý hướng sửa |",
+    "replace": "## Nên sửa\n| Vị trí | Trích | Loại | Đề xuất sửa |"
+  },
+  {
+    "find": "## Gợi ý\n- <...>",
+    "replace": "## Góp ý\n- <...>"
+  },
+  {
+    "find": "Gợi ý hướng sửa ngắn cho từng dòng.",
+    "replace": "Đề xuất hướng sửa ngắn cho từng dòng."
+  },
+  {
+    "find": "Không kết luận QUA khi còn dòng \"Phải sửa\".",
+    "replace": "Không kết luận QUA khi còn dòng \"Chặn\"."
+  }
+]

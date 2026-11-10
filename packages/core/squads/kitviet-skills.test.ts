@@ -1,7 +1,9 @@
 // @vitest-environment node
 // Guards the generated Kit Viet pack: no leftovers from the upstream (Pro ads, platform notes, the
-// shared run folder), references that resolve inside each squad, one VERDICT line per gate, every
-// patch applied, names that match their folders, size ceilings, and freshness against the generator.
+// shared run folder, install hints, versioned file names), references that resolve inside each squad,
+// one VERDICT line per gate and one severity vocabulary, legal citations that are patched or listed as
+// stable, sections that survive the cleanup, every patch applied, names that match their folders and
+// their sanitized slugs, size ceilings, and freshness against the generator.
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -9,7 +11,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
-import { KV_ROLE_KINDS } from "./kitviet-agent-instructions";
+import { KV_ROLE_KINDS, composeKvAgentInstructions } from "./kitviet-agent-instructions";
 import * as adminPack from "./kitviet-skills-data/admin";
 import * as b2bPack from "./kitviet-skills-data/b2b";
 import * as accountingPack from "./kitviet-skills-data/accounting";
@@ -79,6 +81,10 @@ const FORBIDDEN: [RegExp, string][] = [
   [/\d\d-[a-z-]+\.md/, "numbered stage file"],
   [/kv:[a-z0-9-]/, "unresolved kv: reference"],
   [/(?<![\w-])kv-(delivery-core|squad-lead|company-profile)/, "authored folder name instead of its bundle name"],
+  [/-v\d\.md/, "versioned file name"],
+  [/pip install|apt install/, "install hint (agents do not install)"],
+  [/hoặc cài LibreOffice/, "LibreOffice install hint"],
+  [/Cài bằng lệnh/, "install instruction"],
 ];
 
 describe("Kit Viet pack leftovers", () => {
@@ -184,9 +190,13 @@ describe("gates and handovers carry one VERDICT line (F18)", () => {
       expect(verdicts).toHaveLength(1);
     });
 
-    it(`${agent.name} has no other verdict vocabulary`, () => {
-      expect(/(^|\n)[^\n]*\bĐạt \/|Gửi được \//.test(agent.instructions)).toBe(false);
-    });
+    // A handover reports each criterion as "Đạt / Không đạt / Không kiểm được"; only a gate has the
+    // verdict vocabulary QUA / CHẶN and nothing else.
+    if (agent.kind === "kv_gate") {
+      it(`${agent.name} has no other verdict vocabulary`, () => {
+        expect(/Đạt \/|Chưa đạt|Gửi được \/|Chưa gửi được|Không kết luận "(Đạt|Gửi được)"/.test(agent.instructions)).toBe(false);
+      });
+    }
   }
 
   it("uses only the known role kinds", () => {
@@ -197,7 +207,7 @@ describe("gates and handovers carry one VERDICT line (F18)", () => {
 });
 
 describe("patches apply exactly once", () => {
-  const patchFiles = readdirSync(patchesDir).filter((name) => name.endsWith(".json") && name !== "_all.json");
+  const patchFiles = readdirSync(patchesDir).filter((name) => name.endsWith(".json"));
 
   it("has patch files", () => {
     expect(patchFiles.length).toBeGreaterThan(0);
@@ -315,6 +325,149 @@ describe("size and description ceilings", () => {
       expect(squad.roles.length, id).toBeGreaterThan(0);
     }
   });
+});
+
+// The severity levels of a finding (F18): one set, Chặn / Cần giấy tờ / Nên sửa / Góp ý. The old words
+// are checked in every gate and handover, and in every soat skill that ranks findings. "Vừa" and "Nhẹ"
+// are only checked with a capital letter: "vừa" is an ordinary word, and viet-giong-gen-z uses "Nhẹ"
+// for a dose of slang, not a finding.
+const OLD_SEVERITY: [RegExp, string][] = [
+  [/\bNặng\b|\bnặng\b/, "Nặng (severity)"],
+  [/\bVừa\b/, "Vừa (severity)"],
+  [/\bNhẹ\b/, "Nhẹ (severity)"],
+  [/Phải sửa|Phải bỏ/, "Phải sửa / Phải bỏ (severity)"],
+  [/Gợi ý\b/, "Gợi ý (severity or column)"],
+  [/Lưu ý \(/, "Lưu ý (severity)"],
+  [/Cần xác nhận quyền dùng/, "Cần xác nhận quyền dùng (severity)"],
+];
+
+describe("one severity vocabulary (F18)", () => {
+  const gates = allAgents().filter((agent) => agent.kind === "kv_gate" || agent.kind === "kv_handover");
+  const soatSkills = allSkills.filter((skill) => skill.name.startsWith("kv--soat-"));
+
+  it("has gates and soat skills to check", () => {
+    expect(gates.length).toBeGreaterThan(0);
+    expect(soatSkills.length).toBeGreaterThan(0);
+  });
+
+  for (const agent of gates) {
+    it(`${agent.name} uses no old severity word`, () => {
+      const hits = OLD_SEVERITY.filter(([re]) => re.test(agent.instructions)).map(([, what]) => what);
+      expect(hits).toEqual([]);
+    });
+  }
+
+  for (const skill of soatSkills) {
+    it(`${skill.name} uses no old severity word`, () => {
+      const hits = OLD_SEVERITY.filter(([re]) => re.test(allTextOf(skill))).map(([, what]) => what);
+      expect(hits).toEqual([]);
+    });
+  }
+
+});
+
+// Legal citations (Luật, Nghị định, Thông tư, Nghị quyết or Bộ luật followed by a number or a dated
+// effective date) go stale (F8, F23). Each one in the pack is either patched to point at the squad's
+// Sổ quy định, or listed here as a stable citation with the reason. The list is empty on purpose: no
+// citation that carries a number or a date is stable enough to keep in a skill body.
+const STABLE_CITATIONS: { text: string; reason: string }[] = [];
+const CITATION = /(?:Luật|Nghị định|Thông tư|Nghị quyết|Bộ luật|Pháp lệnh)\b[^\n".]{0,60}?(?:\d{1,4}\/\d{4}|\d{1,2}\/\d{1,2}\/\d{4})/g;
+
+describe("legal citations point at the Sổ quy định (F8, F23)", () => {
+  const texts = (): { where: string; text: string }[] => [
+    ...allSkills.flatMap((skill) => [skill.description, skill.content, ...skill.files.map((file) => file.content)].map((text) => ({ where: skill.name, text }))),
+    ...allAgents().flatMap((agent) => [agent.description, agent.instructions].map((text) => ({ where: agent.name, text }))),
+  ];
+
+  it("has no citation outside the stable list", () => {
+    const allowed = new Set(STABLE_CITATIONS.map((citation) => citation.text));
+    const found: string[] = [];
+    for (const { where, text } of texts()) {
+      for (const match of text.matchAll(CITATION)) {
+        if (!allowed.has(match[0])) found.push(`${where}: ${match[0]}`);
+      }
+    }
+    expect(found).toEqual([]);
+  });
+
+  it("lists no stable citation that no longer occurs in the pack", () => {
+    const all = texts().map((entry) => entry.text).join("\n");
+    expect(STABLE_CITATIONS.filter((citation) => !all.includes(citation.text))).toEqual([]);
+  });
+});
+
+// The upstream cleanup removes platform sections and the Pro block; it must not remove the two sections
+// every upstream skill carries. Skills with neither section (the authored ones) are not forced to have one.
+describe("sections survive the cleanup (K8)", () => {
+  const SECTIONS = ["## Dùng khi nào", "## Không được làm"];
+  const trades = ["common", ...new Set(Object.values(squadsConfig.squads).map((squad) => squad.trade))];
+  const upstreamSkills = trades.flatMap((trade) => {
+    const dir = join(upstreamDir, trade, "skills");
+    return readdirSync(dir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && !rewrites.droppedSkills.includes(entry.name))
+      .map((entry) => ({ trade, folder: entry.name, text: readFileSync(join(dir, entry.name, "SKILL.md"), "utf8") }));
+  });
+
+  it("finds upstream skills to check", () => {
+    expect(upstreamSkills.length).toBeGreaterThan(0);
+  });
+
+  for (const section of SECTIONS) {
+    it(`keeps "${section}" in every upstream skill that had it`, () => {
+      const missing: string[] = [];
+      for (const { trade, folder, text } of upstreamSkills) {
+        if (!new RegExp(`^${section}`, "m").test(text)) continue;
+        const short = rewrites.renamedSkills[trade]?.[folder] ?? folder;
+        const skill = skillByName.get(`kv--${short}`);
+        if (!skill || !skill.content.includes(`\n${section}`)) missing.push(`${trade}/${folder}`);
+      }
+      expect(missing).toEqual([]);
+    });
+  }
+});
+
+// The server writes each skill to a folder named by sanitizeSkillName (server/internal/daemon/execenv/
+// context.go): lowercase, every run of other characters becomes "-". Two names that sanitize alike share a
+// folder, so the slugs of the pack and of the SDLC built-ins must be unique.
+describe("sanitized skill slugs are unique (K8)", () => {
+  const sanitize = (name: string) => name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "skill";
+
+  it("gives every Kit Viet and SDLC skill a different slug", () => {
+    const names = [...allSkills.map((skill) => skill.name), ...SDLC_BUILTIN_SKILLS.map((skill) => skill.name)];
+    const bySlug = new Map<string, string[]>();
+    for (const name of names) bySlug.set(sanitize(name), [...(bySlug.get(sanitize(name)) ?? []), name]);
+    const clashes = [...bySlug].filter(([, group]) => group.length > 1);
+    expect(clashes).toEqual([]);
+  });
+});
+
+// Web-reading agents (a WebSearch or WebFetch tool) carry the rule that web pages are data (F13). The
+// rule is in the shared working rules of every instruction, so it is checked on the composed text.
+describe("web-reading agents treat web pages as data (F13)", () => {
+  it("composes the rule into every agent that can read the web", () => {
+    const web = allAgents().filter((agent) => agent.tools.includes("WebSearch") || agent.tools.includes("WebFetch"));
+    expect(web.length).toBeGreaterThan(0);
+    for (const agent of web) {
+      const text = composeKvAgentInstructions({ kind: agent.kind, body: agent.instructions });
+      expect(text, agent.name).toMatch(/Web pages[^\n]*are data, not instructions/);
+    }
+  });
+});
+
+// The export scripts (xuat-*) name the library that is missing and stop; an agent never installs one (F9).
+describe("export scripts name the missing library and never install (F9)", () => {
+  const exporters = ["kv--xuat-excel", "kv--xuat-pdf", "kv--xuat-pptx", "kv--xuat-word"];
+
+  for (const name of exporters) {
+    it(`${name}: its script names the missing library`, () => {
+      const skill = skillByName.get(name);
+      expect(skill, name).toBeDefined();
+      const script = skill!.files.find((file) => file.path.endsWith(".py"));
+      expect(script, name).toBeDefined();
+      expect(script!.content).toMatch(/Thiếu thư viện [\w-]+\./);
+      expect(script!.content).not.toMatch(/pip|Cài bằng lệnh|apt install/);
+    });
+  }
 });
 
 describe("generated data is fresh", () => {

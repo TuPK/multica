@@ -27,12 +27,13 @@ const upstreamDir = join(squadsDir, "kitviet-upstream");
 const patchesDir = join(squadsDir, "kitviet-patches");
 const rewrites = JSON.parse(readFileSync(join(squadsDir, "kitviet-rewrites.json"), "utf8"));
 
-// Every text file of the vendored upstream, so a patch can be checked against its source.
+// Every text file of the vendored upstream (prose and the export scripts), so a patch can be checked
+// against its source.
 function upstreamTextFiles(dir = upstreamDir) {
   return readdirSync(dir).flatMap((entry) => {
     const path = join(dir, entry);
     if (statSync(path).isDirectory()) return upstreamTextFiles(path);
-    return entry.endsWith(".md") ? [path] : [];
+    return entry.endsWith(".md") || entry.endsWith(".py") ? [path] : [];
   });
 }
 
@@ -65,7 +66,7 @@ describe("applyPatches", () => {
 
 describe("every patch in kitviet-patches matches the vendored upstream", () => {
   const skillFiles = upstreamTextFiles();
-  const patchFiles = readdirSync(patchesDir).filter((name) => name.endsWith(".json") && name !== "_all.json");
+  const patchFiles = readdirSync(patchesDir).filter((name) => name.endsWith(".json"));
 
   it("has at least one patch file", () => {
     assert.ok(patchFiles.length > 0);
@@ -196,6 +197,14 @@ describe("generated output", () => {
       const path = join(dataDir, file);
       assert.ok(existsSync(path), `${file} is missing`);
       assert.equal(readFileSync(path, "utf8"), content, `${file} is stale; run pnpm generate:kitviet`);
+    }
+  });
+
+  // The generator guard throws on these too; this test names them so a failure reads as F9 or F22.
+  it("carries no install hint, versioned file name or install instruction (F9, F22)", () => {
+    const leftovers = [/pip install|apt install/, /hoặc cài LibreOffice/, /Cài bằng lệnh/, /-v\d\.md/];
+    for (const [file, content] of outputs) {
+      for (const re of leftovers) assert.doesNotMatch(content, re, `${file} still matches ${re}`);
     }
   });
 });

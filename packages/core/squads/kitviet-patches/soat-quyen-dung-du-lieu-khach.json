@@ -1,0 +1,22 @@
+[
+  {
+    "find": "3. Xếp mức: Phải bỏ / Cần xác nhận quyền dùng / Nên che bớt / Không vấn đề.",
+    "replace": "3. Xếp mức: **Chặn** (phải bỏ), **Cần giấy tờ** (cần xác nhận quyền dùng), **Nên sửa** (nên che bớt). Không có vấn đề thì không ghi."
+  },
+  {
+    "find": "## Phải bỏ",
+    "replace": "## Chặn"
+  },
+  {
+    "find": "## Cần xác nhận quyền dùng",
+    "replace": "## Cần giấy tờ"
+  },
+  {
+    "find": "## Nên che bớt\n| Nội dung | Gợi ý |",
+    "replace": "## Nên sửa\n| Nội dung | Đề xuất sửa |"
+  },
+  {
+    "find": "Không kết luận QUA khi còn dòng \"Phải bỏ\".",
+    "replace": "Không kết luận QUA khi còn dòng Chặn."
+  }
+]

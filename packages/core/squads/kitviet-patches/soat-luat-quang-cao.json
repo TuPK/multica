@@ -6,5 +6,13 @@
   {
     "find": "Khung quy định: Luật Quảng cáo (sửa đổi 2025) + <quy định chuyên ngành> - kiểm tra bản hiện hành.",
     "replace": "Khung quy định: tra dòng \"Quảng cáo\" của Sổ quy định của squad + <quy định chuyên ngành> - kiểm tra bản hiện hành."
+  },
+  {
+    "find": "Luật Quảng cáo (sửa đổi bởi Luật số 75/2025/QH15, hiệu lực 01/01/2026)",
+    "replace": "luật quảng cáo (tra dòng \"Quảng cáo\" của Sổ quy định của squad)"
+  },
+  {
+    "find": "**Lưu ý** (nên rõ hơn)",
+    "replace": "**Góp ý** (nên rõ hơn)"
   }
 ]
