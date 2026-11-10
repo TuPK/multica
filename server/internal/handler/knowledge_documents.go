@@ -43,6 +43,8 @@ type CreateKnowledgeDocumentRequest struct {
 	ValidUntil       string   `json:"valid_until"`
 	SupersedesID     *string  `json:"supersedes_id"`
 	Tags             []string `json:"tags"`
+	// Properties are the typed values of the kind's fields (spec 7.1).
+	Properties map[string]any `json:"properties"`
 }
 
 // knowledgeStateBody is a response that carries a knowledge state next to its
@@ -178,7 +180,7 @@ func (h *Handler) CreateKnowledgeDocument(w http.ResponseWriter, r *http.Request
 		// whatever it sends (the service enforces the same).
 		Publish: req.Publish && actorType == "member",
 		Kind:    req.Kind, InitiativeFolder: req.InitiativeFolder, StageKey: req.StageKey,
-		Confidence: req.Confidence, Tags: req.Tags,
+		Confidence: req.Confidence, Tags: req.Tags, Properties: req.Properties,
 	}
 	if req.InitiativeID != nil && *req.InitiativeID != "" {
 		if in.InitiativeID, ok = parseUUIDOrBadRequest(w, *req.InitiativeID, "initiative_id"); !ok {
@@ -262,4 +264,68 @@ func (h *Handler) DeleteKnowledgeDocument(w http.ResponseWriter, r *http.Request
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// UpdateKnowledgeDocumentProperties (PATCH /api/knowledge/documents/{id}/properties) changes some
+// typed properties of a document: members and agents may, and a null value clears a key. The
+// content and the index are not touched.
+func (h *Handler) UpdateKnowledgeDocumentProperties(w http.ResponseWriter, r *http.Request) {
+	workspaceID := h.resolveWorkspaceID(r)
+	id, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "id"), "id")
+	if !ok {
+		return
+	}
+	var req struct {
+		Properties map[string]any `json:"properties"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.Properties == nil {
+		writeError(w, http.StatusBadRequest, "properties is required")
+		return
+	}
+	view, err := h.Knowledge.UpdateDocumentProperties(r.Context(), parseUUID(workspaceID), h.knowledgeReadActor(r, workspaceID), id, req.Properties)
+	if err != nil {
+		writeKnowledgeError(w, r, workspaceID, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, view)
+}
+
+// ListKnowledgeCollection (GET /api/knowledge/collections) returns the published documents of a kind
+// that match a query: kind, kb, one field.<key>=<value> per field to match, and due_key with due_on
+// for a date field on or before a day. The response carries the kind's fields, so a view can
+// render its columns.
+func (h *Handler) ListKnowledgeCollection(w http.ResponseWriter, r *http.Request) {
+	workspaceID := h.resolveWorkspaceID(r)
+	q := r.URL.Query()
+	query := service.CollectionQuery{
+		Kind: q.Get("kind"), KB: q.Get("kb"), DueKey: q.Get("due_key"), DueOn: q.Get("due_on"),
+		Match: map[string]string{},
+	}
+	for key, values := range q {
+		if len(key) > len("field.") && key[:len("field.")] == "field." && len(values) > 0 {
+			query.Match[key[len("field."):]] = values[0]
+		}
+	}
+	if raw := q.Get("limit"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 1 {
+			writeError(w, http.StatusBadRequest, "limit must be a positive number")
+			return
+		}
+		query.Limit = n
+	}
+	if query.Kind == "" {
+		writeError(w, http.StatusBadRequest, "kind is required")
+		return
+	}
+	view, err := h.Knowledge.ListCollection(r.Context(), parseUUID(workspaceID), query)
+	if err != nil {
+		writeKnowledgeError(w, r, workspaceID, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, view)
 }

@@ -2178,6 +2178,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Get("/bases/{key}/wiki/pages/*", h.GetKnowledgeWikiPage)
 				r.Get("/documents", h.ListKnowledgeDocuments)
 				r.Post("/documents", h.CreateKnowledgeDocument)
+				r.Patch("/documents/{id}/properties", h.UpdateKnowledgeDocumentProperties)
+				r.Get("/collections", h.ListKnowledgeCollection)
 				r.Post("/documents/{id}/review", h.ReviewKnowledgeDocument)
 				r.Get("/search", h.SearchKnowledge)
 				r.Get("/kinds", h.ListKnowledgeKinds)
@@ -2383,6 +2385,9 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Put("/", h.UpdateSquad)
 					r.Delete("/", h.DeleteSquad)
 					r.Get("/members", h.ListSquadMembers)
+					// Source Studio intake (spec 7.5): a Sales Loop squad only.
+					r.Post("/sources", h.CreateSquadSource)
+					r.Post("/shares", h.CreateSquadShare)
 					r.Post("/project", h.AssignSquadProject)
 					r.Delete("/project", h.UnassignSquadProject)
 					r.Get("/members/status", h.ListSquadMemberStatus)

@@ -96,12 +96,16 @@ func addKnowledgeAddFlags(cmd *cobra.Command) {
 	cmd.Flags().String("valid-until", "", "The date the document stops being current, YYYY-MM-DD")
 	cmd.Flags().String("supersedes", "", "The document (its id) this one replaces; the old one is hidden once this is published")
 	cmd.Flags().StringSlice("tag", nil, "A label for the document; repeat for several")
+	cmd.Flags().StringArray("field", nil, "A typed property of the kind, as key=value (for example stage=qualified); repeat for several")
 	cmd.Flags().String("output", "table", "Output format: table or json")
 }
 
 func addKnowledgeListFlags(cmd *cobra.Command) {
 	cmd.Flags().String("kb", "", "Only this knowledge base")
 	cmd.Flags().String("state", "", "Only draft, published or failed documents")
+	cmd.Flags().String("kind", "", "Only documents of this kind; with --field, the kind's collection")
+	cmd.Flags().StringArray("field", nil, "Only documents whose property matches, as key=value (needs --kind); repeat for several")
+	cmd.Flags().String("due", "", "With --kind: a date field and a day, as field:YYYY-MM-DD, for documents due on or before that day")
 	cmd.Flags().String("output", "table", "Output format: table or json")
 }
 
@@ -246,6 +250,13 @@ func runKnowledgeAdd(cmd *cobra.Command, _ []string) error {
 	}
 	body["idempotency_key"] = in.retryKey(content, sourceID)
 	addTaxonomyFields(body, in)
+	props, err := fieldFlags(cmd)
+	if err != nil {
+		return err
+	}
+	if len(props) > 0 {
+		body["properties"] = props
+	}
 
 	var result map[string]any
 	if err := client.PostJSON(ctx, "/api/knowledge/documents", body, &result); err != nil {
@@ -286,6 +297,9 @@ func knowledgeStateNote(state string) string {
 }
 
 func runKnowledgeList(cmd *cobra.Command, _ []string) error {
+	if fields, _ := cmd.Flags().GetStringArray("field"); len(fields) > 0 {
+		return runKnowledgeCollection(cmd)
+	}
 	query := url.Values{}
 	if kb, _ := cmd.Flags().GetString("kb"); kb != "" {
 		query.Set("kb", kb)
@@ -335,6 +349,141 @@ func runKnowledgeList(cmd *cobra.Command, _ []string) error {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", strVal(d, "id"), strVal(d, "knowledge_base"), strVal(d, "state"), strVal(d, "title"))
 	}
 	return w.Flush()
+}
+
+// fieldFlags reads the --field flags as a map of key to text value. The server reads each value as
+// its field's type, so the CLI sends text.
+func fieldFlags(cmd *cobra.Command) (map[string]any, error) {
+	raw, _ := cmd.Flags().GetStringArray("field")
+	out := map[string]any{}
+	for _, f := range raw {
+		key, value, ok := strings.Cut(f, "=")
+		key = strings.TrimSpace(key)
+		if !ok || key == "" {
+			return nil, fmt.Errorf("--field %q must be key=value", f)
+		}
+		out[key] = value
+	}
+	return out, nil
+}
+
+// runKnowledgeCollection lists the published documents of a kind that match the --field values,
+// through the collections endpoint.
+func runKnowledgeCollection(cmd *cobra.Command) error {
+	kind, _ := cmd.Flags().GetString("kind")
+	if kind == "" {
+		return errors.New("--field needs --kind: a property belongs to a kind")
+	}
+	query := url.Values{"kind": {kind}}
+	if kb, _ := cmd.Flags().GetString("kb"); kb != "" {
+		query.Set("kb", kb)
+	}
+	fields, _ := cmd.Flags().GetStringArray("field")
+	for _, f := range fields {
+		key, value, ok := strings.Cut(f, "=")
+		if !ok || strings.TrimSpace(key) == "" {
+			return fmt.Errorf("--field %q must be key=value", f)
+		}
+		query.Set("field."+strings.TrimSpace(key), value)
+	}
+	if due, _ := cmd.Flags().GetString("due"); due != "" {
+		key, day, ok := strings.Cut(due, ":")
+		if !ok {
+			return errors.New("--due must be field:YYYY-MM-DD")
+		}
+		query.Set("due_key", key)
+		query.Set("due_on", day)
+	}
+	client, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := cli.APIContext(context.Background())
+	defer cancel()
+	var result struct {
+		Kind      string           `json:"kind"`
+		Fields    []map[string]any `json:"fields"`
+		Documents []map[string]any `json:"documents"`
+	}
+	if err := client.GetJSON(ctx, "/api/knowledge/collections?"+query.Encode(), &result); err != nil {
+		return knowledgeError(fmt.Errorf("list collection: %w", err))
+	}
+	if output, _ := cmd.Flags().GetString("output"); output == "json" {
+		if result.Documents == nil {
+			result.Documents = []map[string]any{}
+		}
+		return cli.PrintJSON(os.Stdout, result)
+	}
+	if len(result.Documents) == 0 {
+		fmt.Fprintln(os.Stderr, "No documents found.")
+		return nil
+	}
+	w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+	fmt.Fprintln(w, "ID\tKB\tTITLE\tPROPERTIES")
+	for _, d := range result.Documents {
+		props, _ := d["properties"].(map[string]any)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", strVal(d, "id"), strVal(d, "knowledge_base"), strVal(d, "title"), propertyLine(props))
+	}
+	return w.Flush()
+}
+
+// propertyLine renders properties as sorted key=value pairs.
+func propertyLine(props map[string]any) string {
+	keys := make([]string, 0, len(props))
+	for k := range props {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		parts = append(parts, fmt.Sprintf("%s=%v", k, props[k]))
+	}
+	return strings.Join(parts, " ")
+}
+
+var knowledgeUpdateCmd = &cobra.Command{
+	Use:   "update <id>",
+	Short: "Change the typed properties of a document (no new version, no re-index)",
+	Long: `Change the properties of a document: stage, dates, scores and the other fields its kind
+declares. A property is not the document's text, so the document is not re-indexed; to change the
+text, write a new document with --supersedes.`,
+	Args: cobra.ExactArgs(1),
+	RunE: runKnowledgeUpdate,
+}
+
+func runKnowledgeUpdate(cmd *cobra.Command, args []string) error {
+	props, err := fieldFlags(cmd)
+	if err != nil {
+		return err
+	}
+	unset, _ := cmd.Flags().GetStringArray("unset")
+	for _, key := range unset {
+		props[strings.TrimSpace(key)] = nil
+	}
+	if len(props) == 0 {
+		return errors.New("nothing to change: pass --field key=value or --unset key")
+	}
+	client, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := cli.APIContext(context.Background())
+	defer cancel()
+	var result map[string]any
+	path := "/api/knowledge/documents/" + url.PathEscape(args[0]) + "/properties"
+	if err := client.PatchJSON(ctx, path, map[string]any{"properties": props}, &result); err != nil {
+		return knowledgeError(err)
+	}
+	if output, _ := cmd.Flags().GetString("output"); output == "json" {
+		return cli.PrintJSON(os.Stdout, result)
+	}
+	fmt.Printf("Updated %s: %s\n", strVal(result, "id"), propertyLine(asMap(result["properties"])))
+	return nil
+}
+
+func asMap(v any) map[string]any {
+	m, _ := v.(map[string]any)
+	return m
 }
 
 func knowledgeUnavailableNote(state string) string {
@@ -983,6 +1132,10 @@ func init() {
 	knowledgeEvalCmd.AddCommand(knowledgeEvalAddCmd, knowledgeEvalListCmd, knowledgeEvalRunCmd, knowledgeEvalDeleteCmd)
 	addKnowledgeActionFlags(knowledgeHealthCmd)
 
+	knowledgeUpdateCmd.Flags().StringArray("field", nil, "A property to set, as key=value; repeat for several")
+	knowledgeUpdateCmd.Flags().StringArray("unset", nil, "A property to clear; repeat for several")
+	addKnowledgeActionFlags(knowledgeUpdateCmd)
+	knowledgeCmd.AddCommand(knowledgeUpdateCmd)
 	knowledgeCmd.AddCommand(knowledgeAddCmd, knowledgeListCmd, knowledgeSearchCmd, knowledgePublishCmd, knowledgeDiscardCmd,
 		knowledgeKindsCmd, knowledgeTemplateCmd, knowledgeKindCmd, knowledgeReviewCmd, knowledgePolicyCmd,
 		knowledgeEvalCmd, knowledgeHealthCmd)
