@@ -1,6 +1,6 @@
 # Kit Việt squads: runbook
 
-Vận hành bộ Kit Việt (spec [kitviet-squads.md](kitviet-squads.md), kế hoạch [kitviet-squads-plan.md](kitviet-squads-plan.md)). Tài liệu này dành cho người nâng cấp upstream, người đăng sổ quy định và người chạy diễn tập. Nội dung của từng squad nằm ở mục riêng cuối tài liệu.
+Vận hành bộ Kit Việt (spec [kitviet-squads.md](kitviet-squads.md), kế hoạch [kitviet-squads-plan.md](kitviet-squads-plan.md)). Tài liệu này dành cho người nâng cấp upstream, người đăng sổ quy định và người chạy diễn tập. Nội dung của từng squad nằm ở các mục riêng sau mục 8.
 
 ## 1. Nguồn và dữ liệu sinh ra
 
@@ -130,6 +130,135 @@ Mỗi squad thêm một mục theo khung này. Các mục chưa điền để tr
 ```
 
 Danh sách squad và trạng thái nằm trong spec mục 6. Mục riêng cho từng squad được thêm vào khi squad đó có template (PR S5 của kế hoạch).
+
+## Legal & Contracts (Pháp lý)
+
+- Template: `kv_legal`, floor: Governance, routine: có, `0 8 * * 1` (thứ Hai 08:00), `startPaused: true`
+- Vai (role key · loại · agent gốc):
+  - `legal_lead` · lead · phiên chính + `lap-ke-hoach-dieu-phoi`
+  - `legal_reader` · collector · `doc-ho-so-phap-ly`
+  - `legal_sources` · collector · `tra-cuu-nguon-luat-chinh-thuc` (web)
+  - `legal_drafter` · drafter · `soan-thao-van-ban-phap-ly`
+  - `legal_reading_gate` · gate · `soat-dien-giai-hop-dong`
+  - `legal_citation_gate` · gate · `soat-can-cu-phap-ly`
+  - `legal_validity` · collector · `kiem-tra-hieu-luc-van-ban` (web; chạy routine rà hiệu lực)
+  - `legal_handover` · handover · `kiem-dinh-ban-giao`
+- Điểm dừng loại 1: thiếu bên mình hoặc thiếu phụ lục mà hợp đồng dẫn chiếu. Kết luận rủi ro cao, về hiệu lực hoặc trách nhiệm: đánh dấu `[CẦN LUẬT SƯ]` và giao người yêu cầu (escalation của charter). Hợp đồng có câu lệnh chèn thì ghi cảnh báo, không dừng.
+- Điểm dừng loại 2: báo cáo rà soát là tài liệu nội bộ, không gửi đối tác. Handover QUA thì request chuyển `in_review`.
+- Điểm dừng loại 3: vòng sửa tối đa 2. Hết vòng, dừng với bản nháp và lỗi còn lại.
+- Tài liệu bền:
+  - `Sổ quy định - Legal`: KB, loại `reference`. `legal_validity` và routine rà hiệu lực đề xuất bản draft mới; không sửa bản đã đăng. Chủ hoặc admin đăng; không phải điều kiện bật squad.
+  - `Sổ hợp đồng`: issue cố định trong squad. Bản hiện hành là tệp đính kèm của comment mới nhất. `legal_drafter` thêm comment; `legal_lead` kiểm; người duyệt khi thêm hoặc đổi hợp đồng.
+  - `Hồ sơ đơn vị`: KB, lead ghi qua `kv-company-profile`.
+- Phụ thuộc runtime riêng: web cho `legal_sources` và `legal_validity`. Thiếu web thì vai đó dừng loại 1 và xin người dùng dán nguyên văn nguồn (F25). Python chỉ cần khi xuất Word.
+- Routine: `Rà hiệu lực sổ quy định` (issue `Rà hiệu lực sổ quy định, tuần {{date}}`), tạo ở trạng thái tạm dừng. Mỗi lần chạy kiểm từng dòng của sổ: còn hiệu lực không, có văn bản thay thế không, nguồn chính thức và ngày truy cập. Chỉ đề xuất sửa bằng draft. Bật: trang Autopilot, đổi routine từ tạm dừng sang hoạt động, sau khi đọc charter.
+- Skill gắn thêm: lead nhận `kv-squad-lead`, `kv-company-profile`; `legal_drafter` nhận năm skill (mục 5.10), trong đó `soan-don-tu` đổi thành `soan-don-tu-phap-ly`.
+- Giả định mặc định: không đưa ý kiến pháp lý thay luật sư; mọi trích dẫn phải có nguồn chính thức, không có thì ghi `[chưa tìm thấy trên nguồn chính thức]`.
+- Chưa xác minh: mọi mốc pháp luật trong skill và sổ quy định (F8). Theo Q1 không có cổng xác minh pháp lý, nên không có bước nào xác nhận trước khi ra.
+- Diễn tập: chưa chạy.
+
+## Accounting & Tax (Kế toán, thuế)
+
+- Template: `kv_accounting`, floor: Governance, routine: có, `0 8 * * 1` (thứ Hai 08:00), `startPaused: true`
+- Vai (role key · loại · agent gốc):
+  - `acct_lead` · lead · phiên chính + `lap-ke-hoach-dieu-phoi`
+  - `acct_collector` · collector · `gom-chung-tu-ke-toan`
+  - `acct_tax_research` · collector · `tra-cuu-van-ban-thue` (web)
+  - `acct_reconciler` · drafter · `lap-so-lieu-doi-chieu`
+  - `acct_tax_drafter` · drafter · `soan-ho-so-thue`
+  - `acct_voucher_gate` · gate · `soat-chung-tu-hoa-don`
+  - `acct_numbers_gate` · gate · `soat-so-lieu` (dùng chung)
+  - `acct_tax_gate` · gate · `soat-tuan-thu-thue`
+  - `acct_handover` · handover · `kiem-dinh-ban-giao`
+- Điểm dừng loại 1: thiếu sổ chi tiết hoặc sao kê (không soạn trên dữ liệu thiếu). Chưa biết chế độ kế toán đang áp dụng: người dùng chọn một trong ba lựa chọn (doanh nghiệp chung theo Thông tư 99/2025; doanh nghiệp nhỏ và vừa theo Thông tư 133/2016; doanh nghiệp siêu nhỏ), câu hỏi nằm trong Hồ sơ đơn vị (F20). Thiếu CSV, hoặc không chạy được script tính, cũng dừng loại 1 (F19).
+- Điểm dừng loại 2: không ghi sổ phần mềm, không nộp tờ khai, không gửi email. Kết quả là hồ sơ nháp chờ kế toán trưởng duyệt. Số liệu nhạy cảm (lương, tài khoản) được che trước khi đính kèm sang sub-issue khác (`an-thong-tin-nhay-cam`).
+- Điểm dừng loại 3: vòng sửa tối đa 2. Hết vòng, bàn giao kèm các dòng còn mở.
+- Tài liệu bền:
+  - `Hồ sơ đơn vị`: KB, lead ghi qua `kv-company-profile`. Chứa câu trả lời về chế độ kế toán.
+  - `Sổ quy định - Accounting`: KB, loại `reference`. Phải có dòng GTGT 8% hết hạn 31/12/2026 (F20). Người ghi chưa được spec chỉ định (routine chỉ đọc); cần quyết khi đăng sổ.
+  - Lịch hạn: không lưu riêng; mỗi lần routine chạy là một comment trên issue của routine.
+- Phụ thuộc runtime riêng: Bash và Python là bắt buộc để tính bằng script (F19). Thiếu một trong hai thì không bật squad này. Web cho `acct_tax_research`, thiếu thì dừng loại 1 (F25).
+- Routine: `Lịch hạn nộp thuế` (issue `Lịch hạn nộp thuế, tuần {{date}}`), tạo ở trạng thái tạm dừng. Mỗi lần chạy liệt kê hạn trong 14 ngày tới theo đơn vị, đầu vào còn thiếu, và dòng sổ quy định có hiệu lực kết thúc trong 60 ngày. Thiếu lịch nghỉ thì ghi `[chưa có lịch nghỉ]`, không tự lùi hạn. Bật: trang Autopilot, đổi routine từ tạm dừng sang hoạt động, sau khi đọc charter.
+- Skill gắn thêm: lead nhận `kv-squad-lead`, `kv-company-profile`; `acct_reconciler`, `acct_tax_drafter`, `acct_tax_research` nhận skill theo mục 5.10.
+- Giả định mặc định: không tự chọn chế độ kế toán; không tính nhẩm số liệu; không chọn hạn nộp khi lịch nghỉ thiếu.
+- Chưa xác minh: ba mốc F20 (chế độ kế toán, dòng GTGT 8%) chưa đối chiếu với nguồn chính thức; Q1 không có cổng xác minh. Ngưỡng dung lượng riêng 160 KiB (mục 9).
+- Diễn tập: chưa chạy. Bắt buộc có bài F19 (mục 7): hai bảng 200 dòng, có một dòng lệch cố ý, agent phải tìm bằng script.
+
+## B2B Proposal Desk (Chào giá B2B)
+
+- Template: `kv_b2b`, floor: Launch, routine: không (`routine: null`)
+- Vai (role key · loại · agent gốc):
+  - `b2b_lead` · lead · phiên chính + `lap-ke-hoach-dieu-phoi`
+  - `b2b_history` · collector · `doc-lich-su-giao-dich-khach`
+  - `b2b_company_lookup` · collector · `tra-cuu-doanh-nghiep-cong-khai` (web)
+  - `b2b_quote_drafter` · drafter · `soan-ho-so-chao-gia`
+  - `b2b_commit_gate` · gate · `soat-cam-ket-thuong-mai`
+  - `b2b_data_gate` · gate · `soat-quyen-dung-du-lieu-khach`
+  - `b2b_tone_gate` · gate · `soat-giong-van-gui-khach`
+  - `b2b_numbers_gate` · gate · `soat-so-lieu` (dùng chung)
+  - `b2b_handover` · handover · `kiem-dinh-ban-giao`
+- Điểm dừng loại 1: thiếu bảng giá hiện hành hoặc khung chiết khấu đã duyệt. Khách đòi vượt khung: không tự duyệt, chuyển `proposal` cho người có thẩm quyền.
+- Điểm dừng loại 2: báo giá không rời workspace; không gửi email. Phần "NỘI BỘ - KHÔNG GỬI KHÁCH" (giá vốn, khung chiết khấu) tách khỏi bản gửi và bị `b2b_data_gate` soát. Handover QUA thì request chuyển `in_review`.
+- Điểm dừng loại 3: vòng sửa tối đa 2. Hết vòng, bàn giao kèm bản nháp và lỗi còn lại.
+- Tài liệu bền: không có sổ riêng (mục 5.8). Dùng `Hồ sơ đơn vị` chung. Bảng giá và khung chiết khấu do người dùng cung cấp làm đầu vào.
+- Phụ thuộc runtime riêng: web cho `b2b_company_lookup`. Thiếu web thì dừng loại 1 (F25).
+- Routine: không.
+- Quan hệ: nhận deal đã qua sàng lọc từ Sales Loop; không tạo squad thứ hai soạn báo giá (mục 5.6).
+- Giả định mặc định: không giảm giá hay kéo dài điều khoản ngoài khung; không đưa giá vốn hay biên lợi nhuận vào bản gửi khách.
+- Chưa xác minh: thông tin doanh nghiệp tra cứu công khai chỉ được ghi kèm nguồn và ngày; không có mốc pháp luật riêng.
+- Diễn tập: chưa chạy.
+
+## Marketing Studio (Marketing)
+
+- Template: `kv_marketing`, floor: Launch, routine: không (`routine: null`), không có chế độ `unattended` (Q3)
+- Vai (role key · loại · agent gốc):
+  - `mkt_lead` · lead · phiên chính + `lap-ke-hoach-dieu-phoi`
+  - `mkt_scout` · collector · `do-tham-doi-thu-web` + `nghien-cuu-thi-truong-web` (web, gộp một vai)
+  - `mkt_insight` · collector · `gom-insight-khach-hang`
+  - `mkt_content` · drafter · `soan-noi-dung-da-kenh`
+  - `mkt_ads` · drafter · `soan-ad-copy-landing`
+  - `mkt_claim_gate` · gate · `soat-claim-quang-cao`
+  - `mkt_voice_gate` · gate · `soat-giong-thuong-hieu`
+  - `mkt_numbers_gate` · gate · `soat-so-lieu-thi-truong`
+  - `mkt_handover` · handover · `kiem-dinh-ban-giao`
+- Điểm dừng loại 1: "chốt thông điệp" (một thông điệp chính và ba ý hỗ trợ) là điểm dừng trước khi soạn. Lead trình thông điệp bằng `proposal` hoặc comment mention người yêu cầu, và chờ duyệt. Nếu request đã nêu thông điệp đã duyệt thì lead ghi "duyệt trong request" và bỏ qua điểm này. Ngành nhạy cảm (thực phẩm, mỹ phẩm, y tế, giáo dục) luôn đi qua `mkt_claim_gate`.
+- Điểm dừng loại 2: không đăng, không chạy quảng cáo, không gửi brief cho KOL/KOC. Handover QUA thì request chuyển `in_review`.
+- Điểm dừng loại 3: vòng sửa tối đa 2. Claim vẫn bị chặn sau vòng 2 thì bàn giao cho người yêu cầu kèm các dòng bị chặn.
+- Tài liệu bền:
+  - `Sổ quy định - Marketing`: KB, loại `reference`, gồm luật quảng cáo, khuyến mại, thuế trúng thưởng. Agent ghi bản draft; chủ hoặc admin đăng.
+  - `Cẩm nang giọng thương hiệu`: KB, loại `playbook` (180 ngày). `mkt_lead` ghi qua `cam-nang-giong-thuong-hieu`; chủ hoặc admin đăng.
+- Phụ thuộc runtime riêng: web cho `mkt_scout`. Thiếu web thì dừng loại 1 (F25).
+- Routine: không.
+- Quan hệ: Growth & GTM lập chiến lược và giao brief; Studio sản xuất và soát nội dung (mục 5.6).
+- Giả định mặc định: mọi nội dung là nháp; không dùng số liệu thị trường không có nguồn và ngày.
+- Chưa xác minh: luật quảng cáo, khuyến mại, thuế trúng thưởng và các mốc gắn ngày (F8) chưa đối chiếu với nguồn chính thức; mốc thời hạn trong `soat-luat-quang-cao` và `the-le-minigame-khuyen-mai` phải đi qua Sổ quy định.
+- Diễn tập: chưa chạy.
+
+## Office Admin (Hành chính)
+
+- Template: `kv_admin`, floor: Executive, routine: không (`routine: null`)
+- Vai (role key · loại · agent gốc):
+  - `admin_lead` · lead · phiên chính + `lap-ke-hoach-dieu-phoi`
+  - `admin_files` · collector · `gom-ho-so-van-thu`
+  - `admin_format_lookup` · collector · `tra-cuu-the-thuc-van-ban` (web)
+  - `admin_drafter` · drafter · `soan-van-ban-hanh-chinh`
+  - `admin_format_gate` · gate · `soat-the-thuc-van-ban`
+  - `admin_numbers_gate` · gate · `soat-so-lieu` (dùng chung)
+  - `admin_handover` · handover · `kiem-dinh-ban-giao`
+- Điểm dừng loại 1: thiếu người ký hoặc mục đích của văn bản. Hồ sơ đơn vị thiếu tên, ký hiệu, địa danh, quy tắc đánh số, danh sách người ký hoặc quyền hạn cũng dừng loại 1.
+- Điểm dừng loại 2: không cấp số, không ký, không phát hành văn bản. Số văn bản để `[cần bổ sung]`. Handover QUA thì request chuyển `in_review`. Trước khi cấp số đi, người xác nhận văn bản đã ký.
+- Điểm dừng loại 3: vòng sửa tối đa 2. Hết vòng, bàn giao kèm bản nháp và lỗi còn lại.
+- Tài liệu bền:
+  - `Hồ sơ đơn vị`: KB, lead ghi qua `kv-company-profile`. Phải có các mục ở điểm dừng loại 1.
+  - `Sổ quy định - Admin`: KB, loại `reference` (mục 5.8). Agent ghi bản draft; chủ hoặc admin đăng.
+  - `Sổ công văn đến/đi <năm>`: issue cố định trong squad, tạo ở lần chạy đầu của năm; tìm lại bằng tiêu đề chuẩn hóa. `admin_drafter` ghi; người xác nhận văn bản đã ký duyệt.
+- Phụ thuộc runtime riêng: web cho `admin_format_lookup`. Thiếu web thì dừng loại 1 (F25).
+- Routine: không.
+- Skill gắn thêm: lead nhận `quan-ly-lich-giam-doc`; `admin_drafter` nhận `soan-don-tu`, `so-sanh-bao-gia-mua-sam`, `chuan-bi-hop-hdqt` (mục 5.10).
+- Quan hệ: Secretary ở Executive Office giữ việc định tuyến; Office Admin không nhận việc của Secretary và báo cáo cho boss.
+- Giả định mặc định: thể thức văn bản theo tra cứu của `admin_format_lookup` tại thời điểm chạy; có ghi ngày truy cập.
+- Chưa xác minh: thể thức, quy tắc đánh số và các mốc pháp luật chưa đối chiếu với nguồn chính thức; không có cổng xác minh (Q1).
+- Diễn tập: chưa chạy.
 
 ## 9. Việc còn mở
 
