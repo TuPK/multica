@@ -288,6 +288,26 @@
         "name": "規劃 · BMAD",
         "description": "把需求變成經過審查的規劃文件：調研、簡報、PRD、UX、架構和史詩；也能補充產品既有的文件。"
       },
+      "kv_admin": {
+        "name": "Office Admin (Hành chính)",
+        "description": "依規定格式草擬公文，並維護公文登記簿。不編文號，也不簽署。"
+      },
+      "kv_b2b": {
+        "name": "B2B Proposal Desk (Chào giá B2B)",
+        "description": "在已核准的價格範圍內，把合格商機整理成報價與提案。發送前先經過四項檢查。"
+      },
+      "kv_marketing": {
+        "name": "Marketing Studio (Marketing)",
+        "description": "草擬活動內容與廣告文案，並在人員發布前查核每一項宣稱。不發布，也不投放廣告。"
+      },
+      "kv_legal": {
+        "name": "Legal & Contracts (Pháp lý)",
+        "description": "草擬供律師或授權人員核准的文件。不提供法律意見，每條引註都對照官方來源查證。"
+      },
+      "kv_accounting": {
+        "name": "Accounting & Tax (Kế toán, thuế)",
+        "description": "以腳本計算月底對帳及營業稅、所得稅數字。不申報，也不提交任何文件；執行環境需要 Bash 與 Python。"
+      },
       "sales_loop": {
         "name": "銷售循環",
         "description": "每週為你的業務線尋找商機，起草外聯訊息供你審核，並從結果中學習。資料來源開箱即用。"

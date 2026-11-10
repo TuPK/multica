@@ -288,6 +288,26 @@
         "name": "企画 · BMAD",
         "description": "依頼をレビュー済みの企画ドキュメントにします：調査、ブリーフ、PRD、UX、アーキテクチャ、エピック。既存のドキュメントの拡張にも対応します。"
       },
+      "kv_admin": {
+        "name": "Office Admin (Hành chính)",
+        "description": "正式な文書を所定の形式で作成し、文書台帳を管理します。文書番号は付与せず、署名もしません。"
+      },
+      "kv_b2b": {
+        "name": "B2B Proposal Desk (Chào giá B2B)",
+        "description": "承認済みの価格の範囲内で、見込みの高い取引を見積と提案書にまとめます。送付前に四つのチェックを行います。"
+      },
+      "kv_marketing": {
+        "name": "Marketing Studio (Marketing)",
+        "description": "キャンペーンのコンテンツと広告文を作成し、人が公開する前にすべての主張を検証します。投稿や広告の実行はしません。"
+      },
+      "kv_legal": {
+        "name": "Legal & Contracts (Pháp lý)",
+        "description": "弁護士または権限のある担当者の承認を得るための文書を作成します。法的意見は述べず、すべての引用は公式情報源で確認します。"
+      },
+      "kv_accounting": {
+        "name": "Accounting & Tax (Kế toán, thuế)",
+        "description": "月次決算の照合と付加価値税・所得税の数値をスクリプトで計算します。申告や提出は行わず、ランタイムに Bash と Python が必要です。"
+      },
       "sales_loop": {
         "name": "営業ループ",
         "description": "事業ラインごとの商機を毎週見つけ、承認してもらう営業文の下書きを作り、結果から学びます。情報源は設定なしで使えます。"

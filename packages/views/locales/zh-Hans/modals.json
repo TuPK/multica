@@ -288,6 +288,26 @@
         "name": "规划 · BMAD",
         "description": "把需求变成经过评审的规划文档：调研、简报、PRD、UX、架构和史诗；也能补充产品已有的文档。"
       },
+      "kv_admin": {
+        "name": "Office Admin (Hành chính)",
+        "description": "按规范格式起草公文，并维护公文登记簿。不编文号，也不签署。"
+      },
+      "kv_b2b": {
+        "name": "B2B Proposal Desk (Chào giá B2B)",
+        "description": "在已批准的价格范围内，把合格商机整理成报价和方案。发送前先经过四项检查。"
+      },
+      "kv_marketing": {
+        "name": "Marketing Studio (Marketing)",
+        "description": "起草活动内容和广告文案，并在人员发布前核查每一项宣称。不发布，也不投放广告。"
+      },
+      "kv_legal": {
+        "name": "Legal & Contracts (Pháp lý)",
+        "description": "起草供律师或授权人员审批的文书。不给出法律意见，每条引用都对照官方来源核实。"
+      },
+      "kv_accounting": {
+        "name": "Accounting & Tax (Kế toán, thuế)",
+        "description": "用脚本计算月末对账以及增值税、所得税数字。不申报，也不提交任何文件；运行时需要 Bash 和 Python。"
+      },
       "sales_loop": {
         "name": "销售循环",
         "description": "每周为你的业务线寻找商机，起草外联消息供你审批，并从结果中学习。信息源开箱即用。"

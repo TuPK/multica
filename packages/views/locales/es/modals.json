@@ -290,6 +290,26 @@
         "name": "Planificación · BMAD",
         "description": "Convierte una solicitud en documentos de planificación revisados: investigación, brief, PRD, UX, arquitectura y epics. Amplía los que un producto ya tiene."
       },
+      "kv_admin": {
+        "name": "Office Admin (Hành chính)",
+        "description": "Redacta documentos oficiales con el formato correcto y lleva el registro de documentos. No asigna números de documento ni firma nada."
+      },
+      "kv_b2b": {
+        "name": "B2B Proposal Desk (Chào giá B2B)",
+        "description": "Convierte un negocio calificado en cotización y propuesta dentro de los precios aprobados. Se ejecutan cuatro controles antes de que alguien envíe algo."
+      },
+      "kv_marketing": {
+        "name": "Marketing Studio (Marketing)",
+        "description": "Redacta el contenido de las campañas y los textos publicitarios, y verifica cada afirmación antes de que una persona publique. No publica ni ejecuta nada."
+      },
+      "kv_legal": {
+        "name": "Legal & Contracts (Pháp lý)",
+        "description": "Redacta para que un abogado o una persona autorizada lo apruebe. No da opinión legal; cada cita se verifica con una fuente oficial."
+      },
+      "kv_accounting": {
+        "name": "Accounting & Tax (Kế toán, thuế)",
+        "description": "Conciliaciones de cierre mensual y cifras de IVA e impuesto sobre la renta, calculadas con script. No presenta nada; necesita Bash y Python en el runtime."
+      },
       "sales_loop": {
         "name": "Ciclo de ventas",
         "description": "Busca oportunidades para tus líneas de negocio cada semana, prepara mensajes para que los apruebes y aprende de los resultados. Las fuentes ya vienen listas."

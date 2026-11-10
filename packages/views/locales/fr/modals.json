@@ -290,6 +290,26 @@
         "name": "Planification · BMAD",
         "description": "Transforme une demande en documents de planification relus : étude, brief, PRD, UX, architecture et epics. Complète ceux qu'un produit possède déjà."
       },
+      "kv_admin": {
+        "name": "Office Admin (Hành chính)",
+        "description": "Rédige les documents officiels dans la forme requise et tient le registre des documents. N'attribue aucun numéro et ne signe rien."
+      },
+      "kv_b2b": {
+        "name": "B2B Proposal Desk (Chào giá B2B)",
+        "description": "Transforme une affaire qualifiée en devis et proposition dans les tarifs approuvés. Quatre contrôles s'exécutent avant tout envoi."
+      },
+      "kv_marketing": {
+        "name": "Marketing Studio (Marketing)",
+        "description": "Rédige le contenu des campagnes et les textes publicitaires, et vérifie chaque affirmation avant publication par une personne. Ne publie ni ne lance rien."
+      },
+      "kv_legal": {
+        "name": "Legal & Contracts (Pháp lý)",
+        "description": "Rédige pour validation par un avocat ou une personne habilitée. Ne donne aucun avis juridique ; chaque citation est vérifiée auprès d'une source officielle."
+      },
+      "kv_accounting": {
+        "name": "Accounting & Tax (Kế toán, thuế)",
+        "description": "Rapprochements de fin de mois et chiffres de TVA et d'impôt sur le revenu, calculés par script. Ne dépose rien ; nécessite Bash et Python sur le runtime."
+      },
       "sales_loop": {
         "name": "Boucle commerciale",
         "description": "Repère chaque semaine des opportunités pour vos axes, prépare des messages à valider et apprend des résultats. Les sources sont prêtes à l'emploi."
