@@ -28,6 +28,11 @@ describe("parseTabSubject", () => {
     ["/acme/projects/p1", { kind: "project", id: "p1" }],
     ["/acme/autopilots/a1", { kind: "autopilot", id: "a1" }],
     ["/acme/skills/s1", { kind: "skill", id: "s1" }],
+    ["/acme/hub/skill/s1", { kind: "hub", itemKind: "skill", id: "s1" }],
+    ["/acme/hub/plugin/p1", { kind: "hub", itemKind: "plugin", id: "p1" }],
+    ["/acme/hub", { kind: "page", page: "hub" }],
+    ["/acme/hub/sources", { kind: "page", page: "hub" }],
+    ["/acme/hub/skill", { kind: "page", page: "hub" }],
     ["/acme/attachments/att1/preview", { kind: "attachment", id: "att1", filename: null }],
     [
       "/acme/attachments/att1/preview?name=report.pdf",

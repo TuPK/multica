@@ -141,6 +141,9 @@ export type {
   PluginInvocation,
   PluginMCPTool,
   PluginTokenIssue,
+  PluginVersionFile,
+  PluginVersionFileContent,
+  PluginVersionFileListResponse,
 } from "./plugin";
 export type { InboxItem, InboxSeverity, InboxItemType, InboxWorkspaceUnread, ArchivedInboxPage, ArchivedInboxFacets } from "./inbox";
 export type { NotificationGroupKey, NotificationGroupValue, NotificationPreferences, NotificationPreferenceResponse } from "./notification-preference";

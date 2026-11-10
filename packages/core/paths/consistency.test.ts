@@ -17,6 +17,7 @@ describe("paths.workspace() shape", () => {
       ["usage", "usage"],
       ["issues", "issues"],
       ["company", "company"],
+      ["hub", "hub"],
       ["projects", "projects"],
       ["autopilots", "autopilots"],
       ["agents", "agents"],

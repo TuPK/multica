@@ -85,6 +85,8 @@ export interface TabEntityData {
   /** Resolved display name for an actor subject. */
   actorName?: string;
   skill?: { name: string };
+  /** A Hub item's name; the pending title is the Hub page name. */
+  hubItem?: { name: string };
   machine?: { name: string };
   runtime?: { name: string };
   /** Resolved chat session title (already includes the "New chat" fallback). */
@@ -192,6 +194,13 @@ export function resolveTabPresentation(
         visual: { kind: "icon", icon: "BookOpenText" },
         title: textOr(data.skill?.name, "skill"),
       };
+    case "hub": {
+      const name = data.hubItem?.name?.trim();
+      return {
+        visual: { kind: "icon", icon: "Package" },
+        title: name ? { kind: "text", text: name } : { kind: "nav", navKey: "hub" },
+      };
+    }
     case "machine":
       return {
         visual: { kind: "icon", icon: "Monitor" },

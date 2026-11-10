@@ -33,6 +33,8 @@ export type TabSubject =
   | { kind: "actor"; actorType: TabActorType; id: string }
   /** A single skill detail. */
   | { kind: "skill"; id: string }
+  /** A Hub item detail: a skill or a published plugin, by its Hub kind. */
+  | { kind: "hub"; itemKind: "skill" | "plugin"; id: string }
   /** A runtime machine detail. */
   | { kind: "machine"; machineId: string }
   /** A runtime nested under a machine. */
@@ -85,6 +87,15 @@ export function parseTabSubject(url: string): TabSubject {
       return isMyAgentsSearch(query) ? { kind: "myAgents" } : { kind: "page", page: "myIssues" };
     case "company":
       return { kind: "page", page: "company" };
+    case "hub": {
+      // `/hub/{kind}/{id}` is one item; `/hub` and `/hub/sources` are the collection.
+      const itemKind = segments[2];
+      const itemId = segments[3];
+      if ((itemKind === "skill" || itemKind === "plugin") && itemId) {
+        return { kind: "hub", itemKind, id: itemId };
+      }
+      return { kind: "page", page: "hub" };
+    }
     case "knowledge":
       return { kind: "page", page: "knowledge" };
     case "pipeline":
@@ -166,6 +177,8 @@ export function tabSubjectKey(subject: TabSubject): string {
       return `actor:${subject.actorType}:${subject.id}`;
     case "skill":
       return `skill:${subject.id}`;
+    case "hub":
+      return `hub:${subject.itemKind}:${subject.id}`;
     case "machine":
       return `machine:${subject.machineId}`;
     case "runtime":

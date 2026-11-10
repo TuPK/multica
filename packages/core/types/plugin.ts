@@ -228,3 +228,29 @@ export interface PluginMCPTool {
   approved: boolean;
   drifted: boolean;
 }
+
+/**
+ * One file of an immutable published version, as the version file listing
+ * reports it. `sha256` is the file's etag: it changes exactly when the bytes do.
+ */
+export interface PluginVersionFile {
+  path: string;
+  size_bytes: number;
+  sha256: string;
+}
+
+export interface PluginVersionFileListResponse {
+  files: PluginVersionFile[];
+}
+
+/**
+ * One file of a published version. `content` is null when the file is binary or
+ * larger than 1 MiB; those files can be listed and downloaded, never edited as text.
+ */
+export interface PluginVersionFileContent {
+  path: string;
+  content: string | null;
+  is_binary: boolean;
+  size_bytes: number;
+  sha256: string;
+}

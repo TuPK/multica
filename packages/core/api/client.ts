@@ -91,6 +91,7 @@ import type {
   MemberWithUser,
   User,
   Skill,
+  SkillFile,
   SkillSummary,
   SkillVersion,
   SkillVersionSummary,
@@ -200,6 +201,8 @@ import type {
   PluginInstallationListResponse,
   PluginPackage,
   PluginPackageListResponse,
+  PluginVersionFileContent,
+  PluginVersionFileListResponse,
   PluginSurfaceLaunch,
   PluginInvocation,
   PluginMCPTool,
@@ -796,6 +799,7 @@ import {
   RuntimeQuickstartRequestSchema,
   MALFORMED_RUNTIME_QUICKSTART_REQUEST,
   SkillSchema,
+  SkillFileSchema,
   EMPTY_SKILL,
   SkillSummaryListSchema,
   EMPTY_SKILL_SUMMARY_LIST,
@@ -816,6 +820,9 @@ import {
   EMPTY_PLUGIN_PACKAGE,
   EMPTY_PLUGIN_PACKAGE_LIST,
   EMPTY_PLUGIN_SURFACE_LAUNCH,
+  EMPTY_PLUGIN_VERSION_FILE_LIST,
+  PluginVersionFileContentSchema,
+  PluginVersionFileListResponseSchema,
   PluginHookResultSchema,
   PluginInstallationListResponseSchema,
   PluginPackageListResponseSchema,
@@ -7185,6 +7192,42 @@ export class ApiClient {
     });
     return parseWithFallback<Initiative>(raw, InitiativeSchema, FALLBACK_INITIATIVE, {
       endpoint: "POST /api/initiatives/:id/close",
+    });
+  }
+
+  // Skill files other than SKILL.md. Reads come from getSkill; SKILL.md itself is
+  // saved through updateSkill. The server has no ETag here: callers compare
+  // updated_at client-side before writing.
+  async upsertSkillFile(skillId: string, data: { path: string; content: string }): Promise<SkillFile> {
+    const raw = await this.fetch<unknown>(`/api/skills/${skillId}/files`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback<SkillFile>(raw, SkillFileSchema, { id: "", skill_id: skillId, path: data.path, content: data.content, created_at: "", updated_at: "" }, {
+      endpoint: "PUT /api/skills/:id/files",
+    });
+  }
+
+  async deleteSkillFile(skillId: string, fileId: string): Promise<void> {
+    await this.fetch<void>(`/api/skills/${skillId}/files/${fileId}`, { method: "DELETE" });
+  }
+
+  /** Files of one immutable published version. Manifest-referenced paths are the ones publish keeps. */
+  async listPluginVersionFiles(workspaceId: string, packageId: string, versionId: string): Promise<PluginVersionFileListResponse> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${workspaceId}/plugins/packages/${packageId}/versions/${versionId}/files`);
+    return parseWithFallback(raw, PluginVersionFileListResponseSchema, EMPTY_PLUGIN_VERSION_FILE_LIST, {
+      endpoint: "GET /api/workspaces/{id}/plugins/packages/{packageId}/versions/{versionId}/files",
+    });
+  }
+
+  async getPluginVersionFileContent(workspaceId: string, packageId: string, versionId: string, path: string): Promise<PluginVersionFileContent> {
+    const raw = await this.fetch<unknown>(
+      `/api/workspaces/${workspaceId}/plugins/packages/${packageId}/versions/${versionId}/files/content?path=${encodeURIComponent(path)}`,
+    );
+    // Unreadable content is reported as binary, so a draft never copies a
+    // file it could not actually read.
+    return parseWithFallback<PluginVersionFileContent>(raw, PluginVersionFileContentSchema, { path, content: null, is_binary: true, size_bytes: 0, sha256: "" }, {
+      endpoint: "GET /api/workspaces/{id}/plugins/packages/{packageId}/versions/{versionId}/files/content",
     });
   }
 }

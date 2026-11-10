@@ -9,6 +9,7 @@
 export type AppSpaceId =
   | "inbox"
   | "company"
+  | "hub"
   | "work"
   | "team"
   | "chat"
@@ -22,6 +23,7 @@ export type RailSpaceId = Exclude<AppSpaceId, "settings">;
 export const RAIL_SPACES: readonly RailSpaceId[] = [
   "inbox",
   "company",
+  "hub",
   "work",
   "team",
   "chat",
@@ -33,6 +35,7 @@ const SPACE_BY_SEGMENT: Record<string, AppSpaceId> = {
   "my-issues": "work",
   issues: "work",
   company: "company",
+  hub: "hub",
   pipeline: "work",
   governance: "work",
   projects: "work",

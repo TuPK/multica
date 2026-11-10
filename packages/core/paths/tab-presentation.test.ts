@@ -79,6 +79,17 @@ describe("resolveTabPresentation — direct resources", () => {
     });
   });
 
+  it("a Hub item uses the Package icon, its name, and the Hub page name until loaded", () => {
+    expect(present("/acme/hub/plugin/p1", { hubItem: { name: "Sales kit" } })).toEqual({
+      visual: { kind: "icon", icon: "Package" },
+      title: { kind: "text", text: "Sales kit" },
+    });
+    expect(present("/acme/hub/skill/s1")).toEqual({
+      visual: { kind: "icon", icon: "Package" },
+      title: { kind: "nav", navKey: "hub" },
+    });
+  });
+
   it("autopilot / skill / machine / runtime use a type icon + name", () => {
     expect(present("/acme/autopilots/a1", { autopilot: { title: "Nightly" } })).toEqual({
       visual: { kind: "icon", icon: "Zap" },

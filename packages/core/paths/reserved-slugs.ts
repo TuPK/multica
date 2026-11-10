@@ -91,6 +91,7 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "knowledge",
   "pipeline",
   "skills",
+  "hub",
   "settings",
   "workspaces",
   "teams",

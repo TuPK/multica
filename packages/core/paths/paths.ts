@@ -103,6 +103,9 @@ function workspaceScoped(slug: string) {
     runtimeDetail: (id: string) => `${ws}/runtimes/${encode(id)}`,
     runtimeSettings: (machineId: string, runtimeId: string) =>
       `${ws}/runtimes/${encode(machineId)}/runtime/${encode(runtimeId)}`,
+    hub: () => `${ws}/hub`,
+    hubSources: () => `${ws}/hub/sources`,
+    hubItem: (kind: "skill" | "plugin", id: string) => `${ws}/hub/${kind}/${encode(id)}`,
     skills: () => `${ws}/skills`,
     skillDetail: (id: string) => `${ws}/skills/${encode(id)}`,
     settings: () => `${ws}/settings`,

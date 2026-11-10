@@ -84,6 +84,7 @@ import type {
   PluginPackage,
   PluginPackageListResponse,
   PluginPreview,
+  PluginVersionFileListResponse,
   PluginSurfaceLaunch,
   ResourceLabelsResponse,
   RuntimeModelListRequest,
@@ -328,6 +329,29 @@ export const PluginPackageListResponseSchema = z.object({
 export const EMPTY_PLUGIN_PACKAGE_LIST: PluginPackageListResponse = {
   packages: [],
 };
+
+/** One file of a published version. `path` is required: a listing entry without one is malformed. */
+export const PluginVersionFileSchema = z.object({
+  path: z.string(),
+  size_bytes: z.number().default(0),
+  sha256: z.string().default(""),
+}).loose();
+
+export const PluginVersionFileListResponseSchema = z.object({
+  files: z.array(PluginVersionFileSchema).default([]),
+}).loose();
+
+export const EMPTY_PLUGIN_VERSION_FILE_LIST: PluginVersionFileListResponse = {
+  files: [],
+};
+
+export const PluginVersionFileContentSchema = z.object({
+  path: z.string(),
+  content: z.string().nullable().default(null),
+  is_binary: z.boolean().default(false),
+  size_bytes: z.number().default(0),
+  sha256: z.string().default(""),
+}).loose();
 
 export const EMPTY_PLUGIN_PACKAGE: PluginPackage = {
   id: "",
