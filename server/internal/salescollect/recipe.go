@@ -279,6 +279,11 @@ func (r *Recipe) Collectable() error {
 		}
 		return nil
 	}
+	if r.Method == "provider" {
+		// A paid provider is never called from here. Its monthly budget (spec 4.12) defaults to 0 USD
+		// and is set by an owner; until the provider adapter exists, the budget is not spent.
+		return errors.New("method provider runs in an agent task, not in multica sales collect: a paid provider needs a monthly budget set by an owner, and it is 0 USD until then")
+	}
 	return fmt.Errorf("method %s runs in an agent task, not in multica sales collect", r.Method)
 }
 
