@@ -257,5 +257,21 @@
       "copy": "複製",
       "copied": "已複製"
     }
+  },
+  "web_engine": {
+    "title": "Web 引擎",
+    "empty": "還沒有機器回報 Web 引擎狀態。請依執行手冊在守護程序所在機器上啟動容器，約一分鐘內會顯示狀態。",
+    "columns": {
+      "runtime": "機器",
+      "status": "狀態",
+      "version": "版本",
+      "checked": "檢查時間"
+    },
+    "status": {
+      "running": "執行中",
+      "not_running": "無法連線",
+      "not_configured": "未設定",
+      "unknown": "未知"
+    }
   }
 }

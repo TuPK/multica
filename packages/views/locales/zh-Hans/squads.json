@@ -257,5 +257,21 @@
       "copy": "复制",
       "copied": "已复制"
     }
+  },
+  "web_engine": {
+    "title": "Web 引擎",
+    "empty": "还没有机器报告 Web 引擎状态。请按运行手册在守护进程所在机器上启动容器，约一分钟内会显示状态。",
+    "columns": {
+      "runtime": "机器",
+      "status": "状态",
+      "version": "版本",
+      "checked": "检查时间"
+    },
+    "status": {
+      "running": "运行中",
+      "not_running": "无法连接",
+      "not_configured": "未配置",
+      "unknown": "未知"
+    }
   }
 }

@@ -257,5 +257,21 @@
       "copy": "コピー",
       "copied": "コピーしました"
     }
+  },
+  "web_engine": {
+    "title": "Web エンジン",
+    "empty": "まだ Web エンジンの状態を報告したマシンがありません。ランブックどおりデーモンのマシンでコンテナを起動してください。1分ほどで状態が表示されます。",
+    "columns": {
+      "runtime": "マシン",
+      "status": "状態",
+      "version": "バージョン",
+      "checked": "確認日時"
+    },
+    "status": {
+      "running": "稼働中",
+      "not_running": "接続不可",
+      "not_configured": "未設定",
+      "unknown": "不明"
+    }
   }
 }

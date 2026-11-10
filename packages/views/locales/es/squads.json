@@ -259,5 +259,21 @@
       "copy": "Copiar",
       "copied": "Copiado"
     }
+  },
+  "web_engine": {
+    "title": "Motor Web",
+    "empty": "Ninguna máquina ha informado todavía del motor Web. Inicia el contenedor en la máquina del daemon, como indica el runbook; el estado aparece en un minuto.",
+    "columns": {
+      "runtime": "Máquina",
+      "status": "Estado",
+      "version": "Versión",
+      "checked": "Comprobado"
+    },
+    "status": {
+      "running": "En marcha",
+      "not_running": "No accesible",
+      "not_configured": "Sin configurar",
+      "unknown": "Desconocido"
+    }
   }
 }

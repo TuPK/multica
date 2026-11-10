@@ -259,5 +259,21 @@
       "copy": "Copy",
       "copied": "Copied"
     }
+  },
+  "web_engine": {
+    "title": "Web engine",
+    "empty": "No machine has reported the Web engine yet. Start the container on the daemon's machine, as the runbook says; the status appears within a minute.",
+    "columns": {
+      "runtime": "Machine",
+      "status": "Status",
+      "version": "Version",
+      "checked": "Checked"
+    },
+    "status": {
+      "running": "Running",
+      "not_running": "Not reachable",
+      "not_configured": "Not configured",
+      "unknown": "Unknown"
+    }
   }
 }

@@ -257,5 +257,21 @@
       "copy": "복사",
       "copied": "복사됨"
     }
+  },
+  "web_engine": {
+    "title": "웹 엔진",
+    "empty": "아직 웹 엔진 상태를 보고한 머신이 없습니다. 런북대로 데몬이 실행되는 머신에서 컨테이너를 시작하세요. 1분 안에 상태가 표시됩니다.",
+    "columns": {
+      "runtime": "머신",
+      "status": "상태",
+      "version": "버전",
+      "checked": "확인 시각"
+    },
+    "status": {
+      "running": "실행 중",
+      "not_running": "연결 안 됨",
+      "not_configured": "설정 안 됨",
+      "unknown": "알 수 없음"
+    }
   }
 }

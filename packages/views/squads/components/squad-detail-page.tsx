@@ -101,6 +101,7 @@ import { toast } from "sonner";
 import { SquadRuntimeSelect } from "./squad-runtime-select";
 import { SquadCapabilitiesSection } from "./squad-capabilities-section";
 import { SquadSourcesSection } from "./squad-sources-section";
+import { WebEngineCard } from "./web-engine-card";
 import { sharedSquadRuntimeId } from "../lib/squad-runtime";
 import { SquadModelSelect } from "./squad-model-select";
 import { SquadThinkingSelect } from "./squad-thinking-select";
@@ -698,7 +699,10 @@ export function SquadDetailView({
         />
 
         {squad.template_key === "sales_loop" ? (
-          <SquadSourcesSection wsId={wsId} squadId={squadId} canManage={canManage && !archived} />
+          <>
+            <SquadSourcesSection wsId={wsId} squadId={squadId} canManage={canManage && !archived} />
+            <WebEngineCard wsId={wsId} />
+          </>
         ) : null}
 
         <SquadInstructionsSection
