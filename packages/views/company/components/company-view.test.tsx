@@ -74,6 +74,13 @@ class FakeWorker {
 
 vi.mock("@multica/core/hooks", () => ({ useWorkspaceId: () => "ws-1" }));
 
+// The seat writes are checked here; the seat menu has its own tests.
+const seats = vi.hoisted(() => ({ mutate: vi.fn() }));
+vi.mock("@multica/core/company", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@multica/core/company")>()),
+  useSetCompanySeats: () => ({ mutate: seats.mutate }),
+}));
+
 // The location the links are read from. Each test sets `search` before it renders.
 const nav = vi.hoisted(() => ({ search: "", replace: vi.fn() }));
 
@@ -367,6 +374,19 @@ describe("CompanyView", () => {
     expect(await screen.findByText("1 squad is outside the company")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Add all to company" })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Not on a floor/ })).toBeTruthy();
+  });
+
+  it("seats a squad outside the company in an empty room of the floor from the room's menu", async () => {
+    seats.mutate.mockReset();
+    setup([], { squads: [...SQUADS, makeSquad("loose", "agent-4")] });
+
+    fireEvent.click((await screen.findAllByRole("button", { name: "Add squad" }))[0]!);
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Squad loose" }));
+
+    expect(seats.mutate).toHaveBeenCalledWith(
+      [{ squad_id: "loose", floor_id: "f1", slot: 1 }],
+      expect.any(Object),
+    );
   });
 
   it("keeps Add all to company for the owner or an admin", async () => {

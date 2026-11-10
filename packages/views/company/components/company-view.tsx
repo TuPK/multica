@@ -3,7 +3,9 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQueries, useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { agentTaskSnapshotOptions } from "@multica/core/agents";
+import { ApiError } from "@multica/core/api";
 import { initiativeListOptions, type Initiative } from "@multica/core/pipeline";
 import { useWorkspacePaths } from "@multica/core/paths";
 import {
@@ -11,9 +13,11 @@ import {
   companyFloorsOptions,
   companySetupOptions,
   companySquadMembersOptions,
+  parseCompanySeatConflict,
   proposalDetailOptions,
   proposalListOptions,
   useCompanyFloorStore,
+  useSetCompanySeats,
   type Proposal,
 } from "@multica/core/company";
 import { agentListOptions, squadListOptions } from "@multica/core/workspace/queries";
@@ -252,6 +256,22 @@ function CompanyScene({ issues, visibleStatuses, projectId }: BoardViewProps) {
   );
   const { seatAll, pending: seating } = useSeatAll(floors, squads);
   const canSeat = useCallback((squad: Squad) => canManage || squad.creator_id === userId, [canManage, userId]);
+  // An empty room offers the squads outside the company that the viewer may seat.
+  const seatableSquads = useMemo(() => layout.unseatedSquads.filter(canSeat), [layout, canSeat]);
+  const { mutate: setSeats } = useSetCompanySeats();
+  const seatInRoom = useCallback(
+    (squad: Squad, slot: number) => {
+      if (!floor) return;
+      setSeats([{ squad_id: squad.id, floor_id: floor.id, slot }], {
+        onSuccess: () => toast.success(t(($) => $.company.seat_done, { name: squad.name })),
+        onError: (error) => {
+          const holder = error instanceof ApiError ? parseCompanySeatConflict(error.body) : null;
+          toast.error(holder ? t(($) => $.company.seat_taken, { name: holder.squad_name }) : t(($) => $.company.seat_failed));
+        },
+      });
+    },
+    [floor, setSeats, t],
+  );
   // A click on a room's name gives the room a project; a squad the member cannot manage opens its panel instead.
   const pickRoom = useCallback(
     (slot: number) => {
@@ -330,7 +350,9 @@ function CompanyScene({ issues, visibleStatuses, projectId }: BoardViewProps) {
                 pendingBySlot={pendingBySlot}
                 initiativesBySlot={initiativesBySlot}
                 projectBySlot={projectBySlot}
+                seatableSquads={seatableSquads}
                 onCreateSquad={openCreateSquad}
+                onSeatSquad={seatInRoom}
                 onOpenSquad={openSquad}
                 onOpenDecisions={() => setDecisionsOpen(true)}
                 onOpenPipeline={(squadId) => navigation.push(paths.pipelineForSquad(squadId))}

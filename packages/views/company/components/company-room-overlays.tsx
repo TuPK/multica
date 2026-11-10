@@ -2,12 +2,71 @@
 
 import { Plus } from "@multica/ui/icons";
 import type { FloorRoom } from "@multica/core/company";
+import type { Squad } from "@multica/core/types";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@multica/ui/components/ui/dropdown-menu";
 import { useT } from "../../i18n";
 import type { CompanyStage } from "./company-canvas";
 
+const ROOM_CONTROL =
+  "pointer-events-auto absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center gap-1 whitespace-nowrap rounded-[3px] bg-[#2c2418]/90 px-2 py-1 text-micro font-semibold text-[#fff8ea] shadow hover:bg-[#1d5fd6]";
+
 /**
- * Controls pinned over the rooms the engine reports, by slot: "Create squad" in
- * an empty room, the `+N` chip of a room whose squad has more agents than
+ * The control at the middle of an empty room. With no squad waiting outside the
+ * company it creates one directly; otherwise it opens a menu that creates one or
+ * seats one of the waiting squads in this room.
+ */
+function EmptyRoomAction({
+  squads,
+  onCreate,
+  onSeat,
+}: {
+  /** Squads outside the company that the viewer may seat. */
+  squads: readonly Squad[];
+  onCreate: () => void;
+  onSeat: (squad: Squad) => void;
+}) {
+  const { t } = useT("issues");
+  if (squads.length === 0) {
+    return (
+      <button type="button" onClick={onCreate} className={ROOM_CONTROL}>
+        <Plus className="size-3" />
+        {t(($) => $.company.create_squad)}
+      </button>
+    );
+  }
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<button type="button" className={ROOM_CONTROL} />}>
+        <Plus className="size-3" />
+        {t(($) => $.company.add_squad)}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="center" className="max-h-72 w-56 overflow-y-auto">
+        <DropdownMenuItem onClick={onCreate}>{t(($) => $.company.create_new_squad)}</DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>{t(($) => $.company.pick_squad)}</DropdownMenuLabel>
+          {squads.map((squad) => (
+            <DropdownMenuItem key={squad.id} onClick={() => onSeat(squad)}>
+              <span className="truncate">{squad.name}</span>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/**
+ * Controls pinned over the rooms the engine reports, by slot: the add-squad
+ * control in an empty room, the `+N` chip of a room whose squad has more agents than
  * desks, a count of the proposals waiting in it, a count of the open
  * initiatives its squad owns, which opens the pipeline filtered to the squad,
  * and the name of the project the squad was given. Each sits at its room's own
@@ -19,7 +78,9 @@ export function CompanyRoomOverlays({
   pendingBySlot,
   initiativesBySlot,
   projectBySlot,
+  seatableSquads,
   onCreateSquad,
+  onSeatSquad,
   onOpenSquad,
   onOpenDecisions,
   onOpenPipeline,
@@ -33,7 +94,11 @@ export function CompanyRoomOverlays({
   initiativesBySlot: readonly number[];
   /** The title of the project each room's squad holds, per slot; null when none. */
   projectBySlot: readonly (string | null)[];
+  /** Squads outside the company that the viewer may seat in an empty room. */
+  seatableSquads: readonly Squad[];
   onCreateSquad: () => void;
+  /** Seats a squad in the room at `slot` of this floor. */
+  onSeatSquad: (squad: Squad, slot: number) => void;
   onOpenSquad: (slot: number) => void;
   onOpenDecisions: () => void;
   onOpenPipeline: (squadId: string) => void;
@@ -80,14 +145,11 @@ export function CompanyRoomOverlays({
               </button>
             ) : null}
             {!room.squad ? (
-              <button
-                type="button"
-                onClick={onCreateSquad}
-                className="pointer-events-auto absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center gap-1 whitespace-nowrap rounded-[3px] bg-[#2c2418]/90 px-2 py-1 text-micro font-semibold text-[#fff8ea] shadow hover:bg-[#1d5fd6]"
-              >
-                <Plus className="size-3" />
-                {t(($) => $.company.create_squad)}
-              </button>
+              <EmptyRoomAction
+                squads={seatableSquads}
+                onCreate={onCreateSquad}
+                onSeat={(squad) => onSeatSquad(squad, index)}
+              />
             ) : null}
             {room.squad ? (
               <span

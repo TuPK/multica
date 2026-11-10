@@ -3,6 +3,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { FloorRoom } from "@multica/core/company";
 import type { Squad } from "@multica/core/types";
 import { renderWithI18n } from "../../test/i18n";
@@ -32,7 +33,9 @@ function renderOverlays(initiativesBySlot: number[], onOpenPipeline = vi.fn()) {
       pendingBySlot={[0, 0]}
       initiativesBySlot={initiativesBySlot}
       projectBySlot={[]}
+      seatableSquads={[]}
       onCreateSquad={vi.fn()}
+      onSeatSquad={vi.fn()}
       onOpenSquad={vi.fn()}
       onOpenDecisions={vi.fn()}
       onOpenPipeline={onOpenPipeline}
@@ -58,5 +61,60 @@ describe("CompanyRoomOverlays initiative badge", () => {
     const { onOpenPipeline } = renderOverlays([1, 0]);
     fireEvent.click(screen.getByRole("button", { name: "1 initiative owned" }));
     expect(onOpenPipeline).toHaveBeenCalledWith("sq-research");
+  });
+});
+
+describe("CompanyRoomOverlays empty room", () => {
+  afterEach(cleanup);
+
+  const WAITING = { id: "sq-loose", name: "Loose squad", archived_at: null } as Squad;
+
+  function renderEmpty(seatable: Squad[]) {
+    const onCreateSquad = vi.fn();
+    const onSeatSquad = vi.fn();
+    renderWithI18n(
+      <CompanyRoomOverlays
+        stage={STAGE}
+        rooms={ROOMS}
+        pendingBySlot={[0, 0]}
+        initiativesBySlot={[0, 0]}
+        projectBySlot={[]}
+        seatableSquads={seatable}
+        onCreateSquad={onCreateSquad}
+        onSeatSquad={onSeatSquad}
+        onOpenSquad={vi.fn()}
+        onOpenDecisions={vi.fn()}
+        onOpenPipeline={vi.fn()}
+      />,
+    );
+    return { onCreateSquad, onSeatSquad };
+  }
+
+  it("creates a squad straight away when no squad waits outside the company", () => {
+    const { onCreateSquad, onSeatSquad } = renderEmpty([]);
+    fireEvent.click(screen.getByRole("button", { name: "Create squad" }));
+    expect(onCreateSquad).toHaveBeenCalledOnce();
+    expect(onSeatSquad).not.toHaveBeenCalled();
+  });
+
+  it("seats a waiting squad in the empty room from the menu", async () => {
+    const user = userEvent.setup();
+    const { onCreateSquad, onSeatSquad } = renderEmpty([WAITING]);
+
+    await user.click(screen.getByRole("button", { name: "Add squad" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Loose squad" }));
+
+    expect(onSeatSquad).toHaveBeenCalledWith(WAITING, 1);
+    expect(onCreateSquad).not.toHaveBeenCalled();
+  });
+
+  it("creates a new squad from the menu when squads wait outside the company", async () => {
+    const user = userEvent.setup();
+    const { onCreateSquad } = renderEmpty([WAITING]);
+
+    await user.click(screen.getByRole("button", { name: "Add squad" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Create new squad" }));
+
+    expect(onCreateSquad).toHaveBeenCalledOnce();
   });
 });
