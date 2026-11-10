@@ -18,8 +18,11 @@ import (
 // Handoff between squads: the rule a squad hands its finished requests by, and the
 // handoff of one request. The service decides; these handlers resolve the caller.
 
+// SquadHandoffService is the handoff service wired to this handler's stores, for the listeners that close the loop.
+func (h *Handler) SquadHandoffService() *service.SquadHandoffService { return h.squadHandoffService() }
+
 func (h *Handler) squadHandoffService() *service.SquadHandoffService {
-	return &service.SquadHandoffService{Queries: h.Queries, TxStarter: h.TxStarter, Issues: h.IssueService}
+	return &service.SquadHandoffService{Queries: h.Queries, TxStarter: h.TxStarter, Issues: h.IssueService, Bus: h.Bus}
 }
 
 // SquadHandoffRuleResponse is a squad's rule. A squad with no rule reports mode off and no target.

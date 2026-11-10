@@ -731,6 +731,7 @@ func main() {
 	taskSvc, autopilotSvc := backgroundServices(h)
 	registerAutopilotListeners(bus, autopilotSvc)
 	registerIssueQueueListeners(bus, h)
+	registerSquadHandoffListeners(bus, h)
 
 	// Construct a LivenessStore that mirrors the one wired into the HTTP
 	// handler. Both the heartbeat write path (handler) and the sweeper read

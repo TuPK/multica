@@ -10,9 +10,12 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/events"
+	"github.com/multica-ai/multica/server/internal/issuestatus"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
+	"github.com/multica-ai/multica/server/pkg/protocol"
 )
 
 // Handoff between squads: when a squad has finished a request (the planning squad
@@ -40,6 +43,9 @@ const (
 // The packet a planning lead posts on its request before it asks for the handoff
 // (the planning-squad-lead skill, "Planning handoff packet"). An automatic handoff
 // needs it, so the receiving squad starts from what the planning squad verified.
+// handoffTitlePrefix starts the title of the request a handoff creates in the target squad.
+const handoffTitlePrefix = "[Planning handoff] "
+
 const (
 	handoffPacketHeading = "## Planning handoff"
 	handoffPacketVerdict = "Readiness verdict: PASS"
@@ -90,6 +96,8 @@ type SquadHandoffService struct {
 	Queries   *db.Queries
 	TxStarter TxStarter
 	Issues    *IssueService
+	// Bus publishes the note CloseLoop leaves; nil leaves the note without a live update.
+	Bus *events.Bus
 	// Now is the clock; nil means time.Now.
 	Now func() time.Time
 }
@@ -297,6 +305,12 @@ func (s *SquadHandoffService) HandOff(ctx context.Context, ws pgtype.UUID, issue
 		row, err = s.Queries.RetargetPendingSquadHandoff(ctx, db.RetargetPendingSquadHandoffParams{
 			WorkspaceID: ws, ID: existing.ID, TargetSquadID: rule.TargetSquadID, Mode: rule.Mode,
 		})
+		if errors.Is(err, pgx.ErrNoRows) {
+			// Another caller handed it off between the read above and this write.
+			if done, gerr := s.Get(ctx, ws, issue.ID); gerr == nil && done != nil {
+				return s.resultOf(ctx, ws, *done, "")
+			}
+		}
 		if err != nil {
 			return HandoffResult{}, fmt.Errorf("reopen handoff: %w", err)
 		}
@@ -365,10 +379,31 @@ func (s *SquadHandoffService) fileHandoff(ctx context.Context, ws pgtype.UUID, i
 }
 
 // perform creates the request in the target squad's project and settles the row.
+//
+// Two callers can reach a pending row at once (the lead's request and the boss's
+// approval, or a double click), and the create and the settle are separate commits. So
+// the whole step runs under a lock on the row: the second caller waits, then reads the
+// first one's answer. A create that landed before a failed settle is found again by its
+// origin and adopted, never created twice.
 func (s *SquadHandoffService) perform(ctx context.Context, ws pgtype.UUID, source db.Issue, row db.SquadHandoff, actor HandoffActor, decidedBy pgtype.UUID) (HandoffResult, error) {
-	if row.Status == HandoffStatusHandedOff {
-		return s.resultOf(ctx, ws, row, "")
+	tx, err := s.TxStarter.Begin(ctx)
+	if err != nil {
+		return HandoffResult{}, fmt.Errorf("begin tx: %w", err)
 	}
+	defer tx.Rollback(ctx)
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", "squad_handoff:"+util.UUIDToString(row.ID)); err != nil {
+		return HandoffResult{}, fmt.Errorf("lock handoff: %w", err)
+	}
+	q := s.Queries.WithTx(tx)
+	current, err := q.GetSquadHandoffForIssue(ctx, db.GetSquadHandoffForIssueParams{WorkspaceID: ws, SourceIssueID: source.ID})
+	if err != nil {
+		return HandoffResult{}, fmt.Errorf("reload handoff: %w", err)
+	}
+	if current.Status == HandoffStatusHandedOff {
+		return s.resultOf(ctx, ws, current, "")
+	}
+	row = current
+
 	target, err := s.liveSquad(ctx, ws, row.TargetSquadID)
 	if err != nil {
 		return HandoffResult{}, ErrHandoffTargetInvalid
@@ -382,13 +417,62 @@ func (s *SquadHandoffService) perform(ctx context.Context, ws pgtype.UUID, sourc
 	}
 	packet, _ := s.packetOf(ctx, ws, source)
 
+	created, err := s.targetRequest(ctx, ws, source, target, project, packet, actor)
+	if err != nil {
+		return HandoffResult{}, err
+	}
+
+	settled, err := q.SettleSquadHandoff(ctx, db.SettleSquadHandoffParams{
+		WorkspaceID: ws, ID: row.ID, Status: HandoffStatusHandedOff, TargetIssueID: created.ID, DecidedBy: decidedBy,
+	})
+	if err != nil {
+		return HandoffResult{}, fmt.Errorf("settle handoff: %w", err)
+	}
+	if _, err := q.CreateComment(ctx, db.CreateCommentParams{
+		ID: dbid.NewV7(), IssueID: source.ID, WorkspaceID: ws, AuthorType: actor.Type, AuthorID: actor.ID,
+		Content: fmt.Sprintf("Handed off to %s: [%s](mention://issue/%s).", target.Name, created.Title, util.UUIDToString(created.ID)),
+		Type:    "comment",
+	}); err != nil {
+		return HandoffResult{}, fmt.Errorf("post the handoff note: %w", err)
+	}
+	if err := NewGovernanceLog().Record(ctx, q, GovernanceEvent{
+		WorkspaceID: ws, Kind: GovernanceKindSquadHandoff, ActorType: actor.Type, ActorID: actor.ID,
+		SubjectType: "squad", SubjectID: row.SourceSquadID,
+		Summary: fmt.Sprintf("Handed %q to %s (%s)", source.Title, target.Name, row.Mode),
+		Details: map[string]any{
+			"event": "handed_off", "mode": row.Mode,
+			"source_issue_id": util.UUIDToString(source.ID), "target_issue_id": util.UUIDToString(created.ID),
+			"target_squad_id": util.UUIDToString(target.ID),
+		},
+	}); err != nil {
+		return HandoffResult{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return HandoffResult{}, fmt.Errorf("commit: %w", err)
+	}
+	return HandoffResult{Status: HandoffStatusHandedOff, Handoff: &settled, TargetIssue: &created, TargetSquad: &target}, nil
+}
+
+// targetRequest returns the request a handoff of this issue made in the target squad: the
+// one an earlier attempt created before its settle failed, or a new one.
+func (s *SquadHandoffService) targetRequest(ctx context.Context, ws pgtype.UUID, source db.Issue, target db.Squad, project db.Project, packet string, actor HandoffActor) (db.Issue, error) {
+	if earlier, err := s.Queries.GetIssueByOrigin(ctx, db.GetIssueByOriginParams{
+		WorkspaceID: ws, OriginType: pgtype.Text{String: "squad_request", Valid: true}, OriginID: source.ID,
+	}); err == nil {
+		if earlier.AssigneeType.String == "squad" && earlier.AssigneeID == target.ID && strings.HasPrefix(earlier.Title, handoffTitlePrefix) {
+			return earlier, nil
+		}
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return db.Issue{}, fmt.Errorf("look for an earlier target request: %w", err)
+	}
+
 	creatorType := "member"
 	if actor.Type == GovernanceActorAgent {
 		creatorType = "agent"
 	}
 	created, err := s.Issues.Create(ctx, IssueCreateParams{
 		WorkspaceID:    ws,
-		Title:          "[Planning handoff] " + source.Title,
+		Title:          handoffTitlePrefix + source.Title,
 		Description:    pgtype.Text{String: handoffDescription(source, packet), Valid: true},
 		Status:         "todo",
 		Priority:       source.Priority,
@@ -402,45 +486,57 @@ func (s *SquadHandoffService) perform(ctx context.Context, ws pgtype.UUID, sourc
 		AllowDuplicate: true,
 	}, IssueCreateOpts{ActorID: util.UUIDToString(actor.ID)})
 	if err != nil {
-		return HandoffResult{}, fmt.Errorf("create the target squad's request: %w", err)
+		return db.Issue{}, fmt.Errorf("create the target squad's request: %w", err)
 	}
+	return created.Issue, nil
+}
 
-	tx, err := s.TxStarter.Begin(ctx)
-	if err != nil {
-		return HandoffResult{}, fmt.Errorf("begin tx: %w", err)
+// CloseLoop leaves a note on the source request when the request a handoff made reaches
+// a finished status, so one request shows the whole path. It does nothing for any other
+// issue. The note is a system comment: it wakes no one.
+func (s *SquadHandoffService) CloseLoop(ctx context.Context, issue db.Issue) error {
+	if !issue.OriginType.Valid || issue.OriginType.String != "squad_request" {
+		return nil
 	}
-	defer tx.Rollback(ctx)
-	q := s.Queries.WithTx(tx)
-	settled, err := q.SettleSquadHandoff(ctx, db.SettleSquadHandoffParams{
-		WorkspaceID: ws, ID: row.ID, Status: HandoffStatusHandedOff, TargetIssueID: created.Issue.ID, DecidedBy: decidedBy,
+	row, err := s.Queries.GetSquadHandoffByTargetIssue(ctx, db.GetSquadHandoffByTargetIssueParams{WorkspaceID: issue.WorkspaceID, TargetIssueID: issue.ID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("load handoff: %w", err)
+	}
+	var verb string
+	switch issuestatus.Effective(ctx, s.Queries, issue.WorkspaceID, issue.Status) {
+	case issuestatus.Done:
+		verb = "is done"
+	case issuestatus.Cancelled:
+		verb = "was cancelled"
+	default:
+		return nil
+	}
+	comment, err := s.Queries.CreateComment(ctx, db.CreateCommentParams{
+		ID: dbid.NewV7(), IssueID: row.SourceIssueID, WorkspaceID: issue.WorkspaceID,
+		AuthorType: "system", AuthorID: pgtype.UUID{Valid: true},
+		Content: fmt.Sprintf("The build request [%s](mention://issue/%s) %s.", issue.Title, util.UUIDToString(issue.ID), verb),
+		Type:    "system",
 	})
 	if err != nil {
-		return HandoffResult{}, fmt.Errorf("settle handoff: %w", err)
+		return fmt.Errorf("post the closing note: %w", err)
 	}
-	if _, err := q.CreateComment(ctx, db.CreateCommentParams{
-		ID: dbid.NewV7(), IssueID: source.ID, WorkspaceID: ws, AuthorType: actor.Type, AuthorID: actor.ID,
-		Content: fmt.Sprintf("Handed off to %s: [%s](mention://issue/%s).", target.Name, created.Issue.Title, util.UUIDToString(created.Issue.ID)),
-		Type:    "comment",
-	}); err != nil {
-		return HandoffResult{}, fmt.Errorf("post the handoff note: %w", err)
+	if s.Bus != nil {
+		c := comment.Comment()
+		s.Bus.Publish(events.Event{
+			Type: protocol.EventCommentCreated, WorkspaceID: util.UUIDToString(issue.WorkspaceID), ActorType: "system",
+			Payload: map[string]any{
+				"comment": map[string]any{
+					"id": util.UUIDToString(c.ID), "issue_id": util.UUIDToString(c.IssueID), "author_type": c.AuthorType,
+					"author_id": util.UUIDToString(c.AuthorID), "content": c.Content, "type": c.Type, "revision": c.Revision,
+				},
+				"issue_revision": comment.IssueRevision,
+			},
+		})
 	}
-	if err := NewGovernanceLog().Record(ctx, q, GovernanceEvent{
-		WorkspaceID: ws, Kind: GovernanceKindSquadHandoff, ActorType: actor.Type, ActorID: actor.ID,
-		SubjectType: "squad", SubjectID: row.SourceSquadID,
-		Summary: fmt.Sprintf("Handed %q to %s (%s)", source.Title, target.Name, row.Mode),
-		Details: map[string]any{
-			"event": "handed_off", "mode": row.Mode,
-			"source_issue_id": util.UUIDToString(source.ID), "target_issue_id": util.UUIDToString(created.Issue.ID),
-			"target_squad_id": util.UUIDToString(target.ID),
-		},
-	}); err != nil {
-		return HandoffResult{}, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return HandoffResult{}, fmt.Errorf("commit: %w", err)
-	}
-	issue := created.Issue
-	return HandoffResult{Status: HandoffStatusHandedOff, Handoff: &settled, TargetIssue: &issue, TargetSquad: &target}, nil
+	return nil
 }
 
 // resultOf reads a row as a result, with the target issue and squad when it has them.

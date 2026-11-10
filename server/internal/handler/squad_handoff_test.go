@@ -1,8 +1,11 @@
 package handler
 
 import (
+	"context"
 	"net/http"
+	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/multica-ai/multica/server/internal/testutil"
@@ -264,4 +267,107 @@ func TestSquadHandoffNeedsAnOpenProjectAndDoesNotChain(t *testing.T) {
 	dbfx.Exec(t, `UPDATE issue SET assignee_id = $1 WHERE id = $2`, fx.Planning, *out.Handoff.TargetIssueID)
 	req := fx.as(newRequest("POST", "/api/issues/"+*out.Handoff.TargetIssueID+"/handoff", nil), fx.AdminID)
 	testutil.Call(t, testHandler.RequestIssueHandoff, withURLParams(req, "id", *out.Handoff.TargetIssueID)).Want(http.StatusConflict)
+}
+
+// TestSquadHandoffApprovedTwiceAtOnceCreatesOneRequest: the boss approving a pending handoff from two
+// windows, or the lead asking while the boss approves, hands the request over once.
+func TestSquadHandoffApprovedTwiceAtOnceCreatesOneRequest(t *testing.T) {
+	fx := newHandoffFx(t)
+	fx.setRule(t, "ask").Want(http.StatusOK)
+	issue := fx.request(t, "Add feature X")
+	fx.packet(t, issue)
+	fx.leadAsks(t, issue).Want(http.StatusOK)
+
+	const callers = 4
+	codes := make([]int, callers)
+	var wg sync.WaitGroup
+	for i := 0; i < callers; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			req := fx.as(newRequest("POST", "/api/issues/"+issue+"/handoff", nil), fx.AdminID)
+			w := httptest.NewRecorder()
+			testHandler.RequestIssueHandoff(w, withURLParams(req, "id", issue))
+			codes[i] = w.Code
+		}(i)
+	}
+	wg.Wait()
+	for i, code := range codes {
+		if code != http.StatusOK {
+			t.Fatalf("caller %d: status %d, want 200", i, code)
+		}
+	}
+	if n := countBuildRequests(t, fx); n != 1 {
+		t.Fatalf("build requests = %d, want exactly 1", n)
+	}
+}
+
+// TestSquadHandoffAdoptsARequestAnEarlierAttemptLeft: a create that landed before its handoff could be
+// settled is found again and adopted, not created a second time.
+func TestSquadHandoffAdoptsARequestAnEarlierAttemptLeft(t *testing.T) {
+	fx := newHandoffFx(t)
+	fx.setRule(t, "auto").Want(http.StatusOK)
+	issue := fx.request(t, "Add feature X")
+	fx.packet(t, issue)
+	orphan := dbfx.Issue(t, "[Planning handoff] Add feature X", testutil.Cols{
+		"workspace_id": fx.ID, "project_id": fx.Project, "assignee_type": "squad", "assignee_id": fx.Build,
+		"origin_type": "squad_request", "origin_id": issue,
+	})
+
+	var out handoffOut
+	fx.leadAsks(t, issue).Want(http.StatusOK).JSON(&out)
+	if out.Status != "handed_off" || out.Handoff == nil || out.Handoff.TargetIssueID == nil || *out.Handoff.TargetIssueID != orphan {
+		t.Fatalf("answer = %+v, want handed_off to the request already there (%s)", out, orphan)
+	}
+	if n := countBuildRequests(t, fx); n != 1 {
+		t.Fatalf("build requests = %d, want exactly 1", n)
+	}
+}
+
+// TestSquadHandoffNotesTheSourceWhenTheBuildRequestFinishes: when the request the handoff made is done,
+// the source request gets one system note that links it; a status that is not finished adds none.
+func TestSquadHandoffNotesTheSourceWhenTheBuildRequestFinishes(t *testing.T) {
+	fx := newHandoffFx(t)
+	fx.setRule(t, "auto").Want(http.StatusOK)
+	issue := fx.request(t, "Add feature X")
+	fx.packet(t, issue)
+	var out handoffOut
+	fx.leadAsks(t, issue).Want(http.StatusOK).JSON(&out)
+	target := *out.Handoff.TargetIssueID
+
+	closing := func() int {
+		var n int
+		dbfx.QueryRow(t, `SELECT count(*) FROM comment WHERE issue_id = $1 AND type = 'system' AND content LIKE '%'||$2||'%'`, issue, target).Scan(&n)
+		return n
+	}
+	closeLoop := func() {
+		row, err := testHandler.Queries.GetIssue(context.Background(), parseUUID(target))
+		if err != nil {
+			t.Fatalf("load target: %v", err)
+		}
+		if err := testHandler.SquadHandoffService().CloseLoop(context.Background(), row); err != nil {
+			t.Fatalf("CloseLoop: %v", err)
+		}
+	}
+
+	dbfx.Exec(t, `UPDATE issue SET status = 'in_progress' WHERE id = $1`, target)
+	closeLoop()
+	if n := closing(); n != 0 {
+		t.Fatalf("an unfinished build request left %d notes, want none", n)
+	}
+	dbfx.Exec(t, `UPDATE issue SET status = 'done' WHERE id = $1`, target)
+	closeLoop()
+	if n := closing(); n != 1 {
+		t.Fatalf("a finished build request left %d notes, want 1", n)
+	}
+
+	// An issue no handoff made is never noted.
+	other := dbfx.Issue(t, "Unrelated", testutil.Cols{"workspace_id": fx.ID, "status": "done", "origin_type": "squad_request", "origin_id": issue})
+	row, _ := testHandler.Queries.GetIssue(context.Background(), parseUUID(other))
+	if err := testHandler.SquadHandoffService().CloseLoop(context.Background(), row); err != nil {
+		t.Fatalf("CloseLoop on an unrelated issue: %v", err)
+	}
+	if n := closing(); n != 1 {
+		t.Fatalf("notes = %d after an unrelated issue, want still 1", n)
+	}
 }
