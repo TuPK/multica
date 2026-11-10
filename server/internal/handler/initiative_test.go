@@ -111,6 +111,8 @@ func cleanInitiativeRows(ws string) {
 		`DELETE FROM initiative_stage_event WHERE workspace_id = $1`,
 		`DELETE FROM initiative WHERE workspace_id = $1`,
 		`DELETE FROM pipeline WHERE workspace_id = $1`,
+		`DELETE FROM squad_handoff WHERE workspace_id = $1`,
+		`DELETE FROM squad_handoff_rule WHERE workspace_id = $1`,
 		`DELETE FROM proposal WHERE workspace_id = $1`,
 		`DELETE FROM comment WHERE workspace_id = $1`,
 		`DELETE FROM issue WHERE workspace_id = $1`,

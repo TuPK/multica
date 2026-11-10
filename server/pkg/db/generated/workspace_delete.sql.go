@@ -419,6 +419,12 @@ deleted_squad_skills AS (
 deleted_squad_plugins AS (
     DELETE FROM squad_plugin WHERE workspace_id = $1
 ),
+deleted_squad_handoff_rules AS (
+    DELETE FROM squad_handoff_rule WHERE workspace_id = $1
+),
+deleted_squad_handoffs AS (
+    DELETE FROM squad_handoff WHERE workspace_id = $1
+),
 deleted_project_resources AS (
     DELETE FROM project_resource WHERE workspace_id = $1
 ),

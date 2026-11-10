@@ -181,6 +181,8 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"squad_plugin":                       workspaceDelete,
 	"squad_routine":                      workspaceDelete,
 	"squad_skill":                        workspaceDelete,
+	"squad_handoff_rule":                 workspaceDelete,
+	"squad_handoff":                      workspaceDelete,
 	"sys_cron_executions":                workspaceDeleteKeep,
 	"task_message":                       workspaceDelete,
 	"task_supplement":                    workspaceDelete,

@@ -2182,6 +2182,34 @@ type SquadCharter struct {
 	UpdatedAt              pgtype.Timestamptz `json:"updated_at"`
 }
 
+type SquadHandoff struct {
+	ID              pgtype.UUID        `json:"id"`
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	SourceSquadID   pgtype.UUID        `json:"source_squad_id"`
+	TargetSquadID   pgtype.UUID        `json:"target_squad_id"`
+	SourceIssueID   pgtype.UUID        `json:"source_issue_id"`
+	TargetIssueID   pgtype.UUID        `json:"target_issue_id"`
+	Mode            string             `json:"mode"`
+	Status          string             `json:"status"`
+	RequestedByType string             `json:"requested_by_type"`
+	RequestedByID   pgtype.UUID        `json:"requested_by_id"`
+	DecidedBy       pgtype.UUID        `json:"decided_by"`
+	Note            string             `json:"note"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	DecidedAt       pgtype.Timestamptz `json:"decided_at"`
+}
+
+type SquadHandoffRule struct {
+	ID            pgtype.UUID        `json:"id"`
+	WorkspaceID   pgtype.UUID        `json:"workspace_id"`
+	SourceSquadID pgtype.UUID        `json:"source_squad_id"`
+	TargetSquadID pgtype.UUID        `json:"target_squad_id"`
+	Mode          string             `json:"mode"`
+	UpdatedBy     pgtype.UUID        `json:"updated_by"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
 type SquadMember struct {
 	ID         pgtype.UUID        `json:"id"`
 	SquadID    pgtype.UUID        `json:"squad_id"`

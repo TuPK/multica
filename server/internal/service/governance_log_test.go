@@ -59,11 +59,13 @@ func TestGovernanceRecordRefusesUnknownKindsAndBadFieldsBeforeWriting(t *testing
 }
 
 func TestGovernanceKindsCoverTheSpecList(t *testing.T) {
-	// Spec 4.5 names these kinds; the log must accept every one of them.
+	// Spec 4.5 names these kinds, and the squad handoff spec (bmad-planning-squad.md) adds squad_handoff;
+	// the log must accept every one of them.
 	spec := []string{
 		"policy_auto_approve", "policy_created", "policy_revoked", "budget_set", "budget_extended",
 		"budget_hold", "budget_release", "autonomy_changed", "org_change_applied", "org_change_reverted",
 		"auto_publish", "initiative_forced", "company_paused", "company_resumed", "goal_activated", "review_published",
+		"squad_handoff",
 	}
 	got := map[string]bool{}
 	for _, k := range GovernanceKinds() {
@@ -75,7 +77,7 @@ func TestGovernanceKindsCoverTheSpecList(t *testing.T) {
 		}
 	}
 	if len(got) != len(spec) {
-		t.Errorf("the log accepts %d kinds, spec 4.5 names %d", len(got), len(spec))
+		t.Errorf("the log accepts %d kinds, the list names %d", len(got), len(spec))
 	}
 }
 

@@ -2237,6 +2237,10 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Get("/comments", h.ListComments)
 					r.Get("/timeline", h.ListTimeline)
 					r.Get("/workflow-handoff", h.PreviewWorkflowHandoff)
+					// A request's handoff to another squad (the squad's lead asks; an admin decides).
+					r.Get("/handoff", h.GetIssueHandoff)
+					r.Post("/handoff", h.RequestIssueHandoff)
+					r.Post("/handoff/decline", h.DeclineIssueHandoff)
 					r.Get("/subscribers", h.ListIssueSubscribers)
 					r.Post("/subscribe", h.SubscribeToIssue)
 					r.Post("/unsubscribe", h.UnsubscribeFromIssue)
@@ -2394,6 +2398,9 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					// Squad autonomy level (spec 4.3): reads for members; changes for owners and admins.
 					r.Get("/autonomy", h.GetSquadAutonomy)
 					r.Put("/autonomy", h.SetSquadAutonomy)
+					// Handoff rule: where the squad hands its finished requests, and how. Reads for members; changes for owners and admins.
+					r.Get("/handoff-rule", h.GetSquadHandoffRule)
+					r.Put("/handoff-rule", h.SetSquadHandoffRule)
 					r.Put("/charter", h.UpdateSquadCharter)
 					r.Get("/attention", h.GetSquadAttention)
 					r.Put("/attention/pin", h.PinSquadAttention)

@@ -40,6 +40,7 @@ const (
 	GovernanceKindGoalActivated     = "goal_activated"
 	GovernanceKindGoalImported      = "goal_imported"
 	GovernanceKindReviewPublished   = "review_published"
+	GovernanceKindSquadHandoff      = "squad_handoff"
 )
 
 // Actor types the log records. A policy acts as policy:<id>, a system writer
@@ -73,6 +74,7 @@ var governanceKinds = map[string]bool{
 	GovernanceKindGoalActivated:     true,
 	GovernanceKindGoalImported:      true,
 	GovernanceKindReviewPublished:   true,
+	GovernanceKindSquadHandoff:      true,
 }
 
 // GovernanceKinds lists every kind the log accepts, for filters and the CLI.
@@ -84,6 +86,7 @@ func GovernanceKinds() []string {
 		GovernanceKindAutonomyChanged, GovernanceKindOrgChangeApplied, GovernanceKindOrgChangeReverted,
 		GovernanceKindAutoPublish, GovernanceKindInitiativeForced, GovernanceKindCompanyPaused,
 		GovernanceKindCompanyResumed, GovernanceKindGoalActivated, GovernanceKindReviewPublished,
+		GovernanceKindSquadHandoff,
 	} {
 		if governanceKinds[k] {
 			out = append(out, k)
