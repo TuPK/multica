@@ -1,0 +1,18 @@
+[
+  {
+    "find": "**Phải sửa trước khi đăng** / **Nên sửa** / **Lưu ý**.",
+    "replace": "**Chặn** (không đăng được) / **Nên sửa** / **Góp ý**."
+  },
+  {
+    "find": "## Phải sửa trước khi đăng",
+    "replace": "## Chặn trước khi đăng"
+  },
+  {
+    "find": "khi còn mục \"Phải sửa\".",
+    "replace": "khi còn mục \"Chặn\"."
+  },
+  {
+    "find": "## Lưu ý",
+    "replace": "## Góp ý"
+  }
+]

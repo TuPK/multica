@@ -1,0 +1,80 @@
+{
+  "order": 12,
+  "templateId": "kv_academic",
+  "trade": "hoc-thuat-nghien-cuu",
+  "name": "Academic Evidence Desk (Học thuật, nghiên cứu)",
+  "agents": {
+    "lap-ke-hoach-dieu-phoi": {
+      "role": "acad_lead",
+      "kind": "kv_lead"
+    },
+    "doc-pdf-bai-bao": {
+      "role": "acad_reader",
+      "kind": "kv_collector"
+    },
+    "tim-tai-lieu-hoc-thuat": {
+      "role": "acad_finder",
+      "kind": "kv_collector"
+    },
+    "lap-ma-tran-tai-lieu": {
+      "role": "acad_matrix",
+      "kind": "kv_drafter"
+    },
+    "soan-ban-thao-hoc-thuat": {
+      "role": "acad_drafter",
+      "kind": "kv_drafter"
+    },
+    "soat-trich-dan-hoc-thuat": {
+      "role": "acad_citation_gate",
+      "kind": "kv_gate"
+    },
+    "soat-liem-chinh-hoc-thuat": {
+      "role": "acad_integrity_gate",
+      "kind": "kv_gate"
+    },
+    "kiem-dinh-ban-giao": {
+      "role": "acad_handover",
+      "kind": "kv_handover"
+    }
+  },
+  "builtinSkills": [
+    "day-chuyen-viet-chuong-luan-van",
+    "trich-dan-apa-ieee-harvard"
+  ],
+  "leaderSkills": [
+    "kv-squad-lead",
+    "kv-company-profile"
+  ],
+  "roleSkills": {
+    "acad_reader": [
+      "tom-tat-bai-bao-khoa-hoc"
+    ],
+    "acad_finder": [
+      "tong-quan-tai-lieu-hoc-thuat"
+    ],
+    "acad_matrix": [
+      "quan-ly-tai-lieu-tham-khao"
+    ],
+    "acad_drafter": [
+      "viet-chuong-luan-van",
+      "dien-dat-lai-hoc-thuat",
+      "abstract-song-ngu-hoc-thuat"
+    ],
+    "acad_citation_gate": [
+      "kiem-tra-trich-dan-co-that"
+    ],
+    "acad_integrity_gate": [
+      "khai-bao-dung-ai-hoc-thuat"
+    ]
+  },
+  "promoted": [],
+  "deferredSkills": [
+    "chuan-bi-bao-ve-luan-van",
+    "de-cuong-nghien-cuu-khoa-hoc",
+    "de-xuat-xin-tai-tro-nghien-cuu",
+    "ke-hoach-phan-tich-du-lieu",
+    "thiet-ke-bang-hoi-khao-sat",
+    "tra-loi-phan-bien-bai-bao",
+    "xay-khung-ly-thuyet-nghien-cuu"
+  ]
+}

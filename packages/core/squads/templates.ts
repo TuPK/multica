@@ -5,6 +5,11 @@ import { KV_B2B_ROLES, KV_B2B_TEMPLATE, type KvB2bRoleKey } from "./kitviet-temp
 import { KV_ACCOUNTING_ROLES, KV_ACCOUNTING_TEMPLATE, type AcctRoleKey } from "./kitviet-templates/accounting";
 import { LEGAL_ROLES, KV_LEGAL_TEMPLATE, type LegalRoleKey } from "./kitviet-templates/legal";
 import { MARKETING_ROLES, KV_MARKETING_TEMPLATE, type MarketingRoleKey } from "./kitviet-templates/marketing";
+import { KV_TALENT_ROLES, KV_TALENT_TEMPLATE, type KvTalentRoleKey } from "./kitviet-templates/talent";
+import { PR_ROLES, KV_PR_TEMPLATE, type PrRoleKey } from "./kitviet-templates/pr";
+import { KV_ECOM_ROLES, KV_ECOM_TEMPLATE, type KvEcomRoleKey } from "./kitviet-templates/ecom";
+import { KV_OFFICEOPS_ROLES, KV_OFFICEOPS_TEMPLATE, type KvOfficeOpsRoleKey } from "./kitviet-templates/officeops";
+import { ACADEMIC_ROLES, KV_ACADEMIC_TEMPLATE, type AcademicRoleKey } from "./kitviet-templates/academic";
 
 /**
  * Ready-made squads a user can start from in the Squads quickstart. A template
@@ -24,7 +29,12 @@ export type SquadTemplateId =
   | "kv_accounting"
   | "kv_b2b"
   | "kv_marketing"
-  | "kv_admin";
+  | "kv_admin"
+  | "kv_talent"
+  | "kv_pr"
+  | "kv_ecom"
+  | "kv_officeops"
+  | "kv_academic";
 
 /** Role keys of the SDLC, research, planning and Sales Loop squads. */
 type BaseSquadRoleKey =
@@ -62,7 +72,12 @@ export type SquadRoleKey =
   | KvB2bRoleKey
   | MarketingRoleKey
   | LegalRoleKey
-  | AcctRoleKey;
+  | AcctRoleKey
+  | KvTalentRoleKey
+  | PrRoleKey
+  | KvEcomRoleKey
+  | KvOfficeOpsRoleKey
+  | AcademicRoleKey;
 
 export interface SquadRole {
   key: SquadRoleKey;
@@ -268,6 +283,11 @@ export const SQUAD_ROLES: Record<SquadRoleKey, SquadRole> = {
   ...MARKETING_ROLES,
   ...LEGAL_ROLES,
   ...KV_ACCOUNTING_ROLES,
+  ...KV_TALENT_ROLES,
+  ...PR_ROLES,
+  ...KV_ECOM_ROLES,
+  ...KV_OFFICEOPS_ROLES,
+  ...ACADEMIC_ROLES,
 };
 
 export interface SquadWorkflowStep {
@@ -917,4 +937,9 @@ export const SQUAD_TEMPLATES: readonly SquadTemplate[] = [
   KV_MARKETING_TEMPLATE,
   KV_LEGAL_TEMPLATE,
   KV_ACCOUNTING_TEMPLATE,
+  KV_TALENT_TEMPLATE,
+  KV_PR_TEMPLATE,
+  KV_ECOM_TEMPLATE,
+  KV_OFFICEOPS_TEMPLATE,
+  KV_ACADEMIC_TEMPLATE,
 ];

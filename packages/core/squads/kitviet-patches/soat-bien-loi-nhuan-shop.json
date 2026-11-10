@@ -1,0 +1,6 @@
+[
+  {
+    "find": "Không kết luận \"Đạt\" khi còn dòng Lỗ ẩn hoặc còn khoản phí lớn chưa xác nhận.",
+    "replace": "Không kết luận QUA khi còn dòng Lỗ ẩn hoặc còn khoản phí lớn chưa xác nhận."
+  }
+]

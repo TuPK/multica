@@ -1,0 +1,50 @@
+{
+  "order": 5,
+  "templateId": "kv_officeops",
+  "trade": "hanh-chinh-van-phong",
+  "name": "Office Ops (Vận hành văn phòng)",
+  "flow": "authored",
+  "agents": {
+    "lap-ke-hoach-dieu-phoi": {
+      "role": "officeops_lead",
+      "kind": "kv_lead"
+    },
+    "gom-ho-so-van-thu": {
+      "role": "officeops_files",
+      "kind": "kv_collector"
+    },
+    "lap-bang-hanh-chinh": {
+      "role": "officeops_drafter",
+      "kind": "kv_drafter"
+    },
+    "soat-so-lieu": {
+      "role": "officeops_numbers_gate",
+      "kind": "kv_gate"
+    },
+    "kiem-dinh-ban-giao": {
+      "role": "officeops_handover",
+      "kind": "kv_handover"
+    }
+  },
+  "builtinSkills": [
+    "to-chuc-su-kien-hoi-nghi",
+    "theo-doi-hop-dong-dich-vu-vp",
+    "tiep-khach-thu-cam-on"
+  ],
+  "leaderSkills": [
+    "kv-squad-lead",
+    "kv-company-profile"
+  ],
+  "roleSkills": {
+    "officeops_drafter": [
+      "dat-phong-hop-hau-can",
+      "dat-ve-du-toan-cong-tac",
+      "so-tai-san-van-phong",
+      "quan-ly-van-phong-pham",
+      "luu-tru-ho-so-van-phong",
+      "bao-cao-hanh-chinh-thang"
+    ]
+  },
+  "promoted": [],
+  "deferredSkills": []
+}

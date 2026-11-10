@@ -18,6 +18,7 @@ export const COMPANY_FLOOR_KEYS = [
   "build",
   "launch",
   "governance",
+  "revenue",
 ] as const;
 export type CompanyFloorKey = (typeof COMPANY_FLOOR_KEYS)[number];
 
@@ -32,6 +33,7 @@ export const COMPANY_FLOOR_NAMES: Record<CompanyFloorKey, string> = {
   build: "Build",
   launch: "Launch",
   governance: "Governance",
+  revenue: "Revenue",
 };
 
 export const COMPANY_SQUAD_KEYS = [

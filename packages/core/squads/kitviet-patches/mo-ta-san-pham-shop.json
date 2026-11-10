@@ -1,0 +1,6 @@
+[
+  {
+    "find": "(Luật Quảng cáo, quy định về ghi nhãn hàng hóa, chính sách sàn)",
+    "replace": "(luật quảng cáo, quy định ghi nhãn hàng hóa, chính sách sàn - tra nguồn chính thức; chưa có sổ quy định của squad thì ghi [chưa có sổ quy định])"
+  }
+]

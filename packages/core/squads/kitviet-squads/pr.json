@@ -1,0 +1,81 @@
+{
+  "order": 4,
+  "templateId": "kv_pr",
+  "trade": "bao-chi-truyen-thong",
+  "name": "PR & Comms (Truyền thông báo chí)",
+  "agents": {
+    "lap-ke-hoach-dieu-phoi": {
+      "role": "pr_lead",
+      "kind": "kv_lead"
+    },
+    "tra-cuu-nguon-bao-chi": {
+      "role": "pr_source",
+      "kind": "kv_collector"
+    },
+    "trich-xuat-bang-ghi-phong-van": {
+      "role": "pr_transcript",
+      "kind": "kv_collector"
+    },
+    "soan-bai-bao-chi": {
+      "role": "pr_writer",
+      "kind": "kv_drafter"
+    },
+    "soan-tai-lieu-pr": {
+      "role": "pr_release",
+      "kind": "kv_drafter"
+    },
+    "soat-su-that-bai-bao": {
+      "role": "pr_fact_gate",
+      "kind": "kv_gate"
+    },
+    "soat-phap-ly-dao-duc-bao-chi": {
+      "role": "pr_ethics_gate",
+      "kind": "kv_gate"
+    },
+    "soat-so-lieu": {
+      "role": "pr_numbers_gate",
+      "kind": "kv_gate"
+    },
+    "kiem-dinh-ban-giao": {
+      "role": "pr_handover",
+      "kind": "kv_handover"
+    }
+  },
+  "builtinSkills": [
+    "day-chuyen-bai-bao-kiem-chung",
+    "viet-thong-cao-bao-chi",
+    "viet-tin-kim-tu-thap-nguoc",
+    "hoi-dap-chuan-bi-hop-bao",
+    "kich-ban-xu-ly-khung-hoang-truyen-thong"
+  ],
+  "leaderSkills": [
+    "kv-squad-lead",
+    "kv-company-profile"
+  ],
+  "roleSkills": {
+    "pr_lead": [
+      "ke-hoach-truyen-thong-su-kien"
+    ],
+    "pr_source": [
+      "nghien-cuu-de-tai-bao-chi",
+      "diem-bao-theo-doi-tin-tuc"
+    ],
+    "pr_transcript": [
+      "go-bang-phong-van-thanh-bai"
+    ],
+    "pr_writer": [
+      "bien-tap-tit-sapo"
+    ],
+    "pr_fact_gate": [
+      "kiem-chung-thong-tin-da-nguon"
+    ],
+    "pr_ethics_gate": [
+      "soat-dao-van-dao-duc-bai-bao"
+    ]
+  },
+  "promoted": [],
+  "deferredSkills": [
+    "bo-cau-hoi-phong-van-bao-chi",
+    "de-cuong-bai-dieu-tra-phong-su"
+  ]
+}

@@ -426,9 +426,10 @@ describe("size and description ceilings", () => {
 // The severity levels of a finding (F18): one set, Chặn / Cần giấy tờ / Nên sửa / Góp ý. The old words
 // are checked in every gate and handover, and in every soat skill that ranks findings. "Vừa" and "Nhẹ"
 // are only checked with a capital letter: "vừa" is an ordinary word, and viet-giong-gen-z uses "Nhẹ"
-// for a dose of slang, not a finding.
+// for a dose of slang, not a finding. "cân nặng" (body weight) is a bias criterion in the talent gate,
+// not a severity, so the lowercase "nặng" skips that phrase.
 const OLD_SEVERITY: [RegExp, string][] = [
-  [/\bNặng\b|\bnặng\b/, "Nặng (severity)"],
+  [/\bNặng\b|(?<!cân )\bnặng\b/, "Nặng (severity)"],
   [/\bVừa\b/, "Vừa (severity)"],
   [/\bNhẹ\b/, "Nhẹ (severity)"],
   [/Phải sửa|Phải bỏ/, "Phải sửa / Phải bỏ (severity)"],

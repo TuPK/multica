@@ -1,0 +1,89 @@
+{
+  "order": 8,
+  "templateId": "kv_ecom",
+  "trade": "ban-hang-online",
+  "name": "E-commerce Shop Ops (Bán hàng online)",
+  "agents": {
+    "lap-ke-hoach-dieu-phoi": {
+      "role": "ecom_lead",
+      "kind": "kv_lead"
+    },
+    "doc-file-xuat-don-san": {
+      "role": "ecom_intake",
+      "kind": "kv_collector"
+    },
+    "gom-du-lieu-shop": {
+      "role": "ecom_intake",
+      "kind": "kv_collector"
+    },
+    "tra-cuu-doi-thu-san": {
+      "role": "ecom_rival_scout",
+      "kind": "kv_collector"
+    },
+    "soan-listing-san-pham": {
+      "role": "ecom_listing_drafter",
+      "kind": "kv_drafter"
+    },
+    "soan-tin-cskh-shop": {
+      "role": "ecom_cskh_drafter",
+      "kind": "kv_drafter"
+    },
+    "soat-tu-cam-quang-cao-san": {
+      "role": "ecom_policy_gate",
+      "kind": "kv_gate"
+    },
+    "soat-bien-loi-nhuan-shop": {
+      "role": "ecom_margin_gate",
+      "kind": "kv_gate"
+    },
+    "soat-so-lieu": {
+      "role": "ecom_numbers_gate",
+      "kind": "kv_gate"
+    },
+    "kiem-dinh-ban-giao": {
+      "role": "ecom_handover",
+      "kind": "kv_handover"
+    }
+  },
+  "builtinSkills": [
+    "day-chuyen-len-san-pham-moi"
+  ],
+  "leaderSkills": [
+    "kv-squad-lead",
+    "kv-company-profile"
+  ],
+  "roleSkills": {
+    "ecom_intake": [
+      "bao-cao-doanh-so-sku",
+      "phan-tich-huy-hoan-don-san"
+    ],
+    "ecom_rival_scout": [
+      "nghien-cuu-doi-thu-san"
+    ],
+    "ecom_listing_drafter": [
+      "mo-ta-san-pham-shop",
+      "tieu-de-seo-san-tmdt",
+      "tinh-gia-ban-san"
+    ],
+    "ecom_cskh_drafter": [
+      "cham-soc-sau-ban-shop",
+      "chot-don-inbox-zalo",
+      "tra-loi-danh-gia-shop",
+      "xu-ly-doi-tra-khieu-nai-don"
+    ],
+    "ecom_policy_gate": [
+      "loc-tu-cam-san-tmdt"
+    ],
+    "ecom_margin_gate": [
+      "tinh-gia-ban-san"
+    ]
+  },
+  "promoted": [],
+  "deferredSkills": [
+    "ke-hoach-nhap-hang-ton-kho",
+    "ke-hoach-noi-dung-kenh-ban-hang",
+    "kich-ban-livestream-chot-don",
+    "thiet-ke-khuyen-mai-san",
+    "y-tuong-video-ngan-ban-hang"
+  ]
+}

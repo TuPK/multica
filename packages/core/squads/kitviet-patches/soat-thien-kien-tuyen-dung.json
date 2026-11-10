@@ -1,0 +1,14 @@
+[
+  {
+    "find": "5. Xếp mức: **Chặn** (phân biệt rõ, phải sửa) / **Cần sửa** (thiếu bằng chứng, tính sai, câu mơ hồ) / **Gợi ý**.",
+    "replace": "5. Xếp mức: **Chặn** (phân biệt rõ, phải sửa) / **Nên sửa** (thiếu bằng chứng, tính sai, câu mơ hồ) / **Góp ý**."
+  },
+  {
+    "find": "## Cần sửa\n",
+    "replace": "## Nên sửa\n"
+  },
+  {
+    "find": "## Gợi ý\n",
+    "replace": "## Góp ý\n"
+  }
+]

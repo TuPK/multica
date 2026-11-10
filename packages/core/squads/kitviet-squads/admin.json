@@ -57,15 +57,5 @@
     ]
   },
   "promoted": [],
-  "deferredSkills": [
-    "bao-cao-hanh-chinh-thang",
-    "dat-phong-hop-hau-can",
-    "dat-ve-du-toan-cong-tac",
-    "luu-tru-ho-so-van-phong",
-    "quan-ly-van-phong-pham",
-    "so-tai-san-van-phong",
-    "theo-doi-hop-dong-dich-vu-vp",
-    "tiep-khach-thu-cam-on",
-    "to-chuc-su-kien-hoi-nghi"
-  ]
+  "deferredSkills": []
 }

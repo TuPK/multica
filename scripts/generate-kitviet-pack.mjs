@@ -209,8 +209,11 @@ export function classifyAgent(tools, description) {
   return "collector";
 }
 
-// Words of a role key that are written as acronyms, not capitalised: `b2b_lead` -> `B2B Lead`.
-const ACRONYMS = new Map([["b2b", "B2B"]]);
+// Words of a role key that are written as acronyms, not capitalised: `b2b_lead` -> `B2B Lead`, `pr_lead` -> `PR Lead`.
+const ACRONYMS = new Map([
+  ["b2b", "B2B"],
+  ["pr", "PR"],
+]);
 
 // The role display name of a role key: `legal_reader` -> `Legal Reader`.
 export function displayRole(role) {

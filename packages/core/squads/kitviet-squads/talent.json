@@ -1,0 +1,64 @@
+{
+  "order": 7,
+  "templateId": "kv_talent",
+  "trade": "nhan-su",
+  "name": "Talent Acquisition (Tuyển dụng)",
+  "agents": {
+    "lap-ke-hoach-dieu-phoi": {
+      "role": "talent_lead",
+      "kind": "kv_lead"
+    },
+    "doc-ho-so-ung-vien": {
+      "role": "talent_reader",
+      "kind": "kv_collector"
+    },
+    "tra-cuu-thi-truong-tuyen-dung": {
+      "role": "talent_market",
+      "kind": "kv_collector"
+    },
+    "lap-bang-sang-loc-ung-vien": {
+      "role": "talent_screener",
+      "kind": "kv_drafter"
+    },
+    "soan-tai-lieu-tuyen-dung": {
+      "role": "talent_drafter",
+      "kind": "kv_drafter"
+    },
+    "soat-thien-kien-tuyen-dung": {
+      "role": "talent_bias_gate",
+      "kind": "kv_gate"
+    },
+    "soat-du-lieu-nhan-su": {
+      "role": "talent_data_gate",
+      "kind": "kv_gate"
+    },
+    "kiem-dinh-ban-giao": {
+      "role": "talent_handover",
+      "kind": "kv_handover"
+    }
+  },
+  "builtinSkills": [
+    "day-chuyen-tuyen-dung"
+  ],
+  "leaderSkills": [
+    "kv-squad-lead",
+    "kv-company-profile"
+  ],
+  "roleSkills": {
+    "talent_screener": [
+      "sang-loc-cv-co-trong-so"
+    ],
+    "talent_drafter": [
+      "viet-jd-tuyen-dung",
+      "dang-tin-tuyen-dung-da-kenh",
+      "bo-cau-hoi-phong-van-star",
+      "thu-gui-ung-vien"
+    ]
+  },
+  "promoted": [],
+  "deferredSkills": [
+    "ke-hoach-dao-tao-nam",
+    "khao-sat-gan-ket-nhan-vien",
+    "phong-van-thoi-viec"
+  ]
+}

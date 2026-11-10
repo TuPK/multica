@@ -1,0 +1,6 @@
+[
+  {
+    "find": "Mức: **Nặng** (phải sửa) / **Vừa** (nên sửa) / **Lưu ý**. Kết luận **CHẶN** nếu có ít nhất 1 mục Nặng.",
+    "replace": "Mức: **Chặn** (phải sửa) / **Nên sửa** / **Góp ý**. Kết luận **CHẶN** nếu có ít nhất 1 mục Chặn."
+  }
+]

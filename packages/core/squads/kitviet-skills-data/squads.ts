@@ -457,6 +457,126 @@ export const KITVIET_SQUADS: readonly KitvietSquad[] = [
     ]
   },
   {
+    "id": "pr",
+    "pack": "pr",
+    "templateId": "kv_pr",
+    "name": "PR & Comms (Truyền thông báo chí)",
+    "builtinSkills": [
+      "kv--an-thong-tin-nhay-cam",
+      "kv--kiem-tra-chong-bia",
+      "kv--nghien-cuu-nguon-uy-tin",
+      "kv--tom-tat-tai-lieu",
+      "kv--viet-bao-cao",
+      "kv--viet-email",
+      "kv--viet-de-cuong",
+      "kv--viet-tin-nhan-cong-viec",
+      "kv--tao-bang-kiem",
+      "kv--lap-ke-hoach-tuan",
+      "kv--ghi-chu-hop",
+      "kv--xuat-word",
+      "kv--xuat-excel",
+      "kv--xuat-pdf",
+      "kv--xuat-pptx",
+      "kv--delivery-core",
+      "kv--day-chuyen-bai-bao-kiem-chung",
+      "kv--viet-thong-cao-bao-chi",
+      "kv--viet-tin-kim-tu-thap-nguoc",
+      "kv--hoi-dap-chuan-bi-hop-bao",
+      "kv--kich-ban-xu-ly-khung-hoang-truyen-thong"
+    ],
+    "leaderSkills": [
+      "kv--squad-lead",
+      "kv--company-profile"
+    ],
+    "roleSkills": {
+      "pr_lead": [
+        "kv--ke-hoach-truyen-thong-su-kien"
+      ],
+      "pr_source": [
+        "kv--nghien-cuu-de-tai-bao-chi",
+        "kv--diem-bao-theo-doi-tin-tuc"
+      ],
+      "pr_transcript": [
+        "kv--go-bang-phong-van-thanh-bai"
+      ],
+      "pr_writer": [
+        "kv--bien-tap-tit-sapo"
+      ],
+      "pr_fact_gate": [
+        "kv--kiem-chung-thong-tin-da-nguon"
+      ],
+      "pr_ethics_gate": [
+        "kv--soat-dao-van-dao-duc-bai-bao"
+      ]
+    },
+    "promoted": [],
+    "roles": [
+      {
+        "key": "pr_lead",
+        "kind": "kv_lead",
+        "name": "PR Lead",
+        "header": "You are the PR Lead in a PR & Comms (Truyền thông báo chí) squad, unattended.",
+        "hasBody": false
+      },
+      {
+        "key": "pr_source",
+        "kind": "kv_collector",
+        "name": "PR Source",
+        "header": "You are the PR Source in a PR & Comms (Truyền thông báo chí) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "pr_transcript",
+        "kind": "kv_collector",
+        "name": "PR Transcript",
+        "header": "You are the PR Transcript in a PR & Comms (Truyền thông báo chí) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "pr_writer",
+        "kind": "kv_drafter",
+        "name": "PR Writer",
+        "header": "You are the PR Writer in a PR & Comms (Truyền thông báo chí) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "pr_release",
+        "kind": "kv_drafter",
+        "name": "PR Release",
+        "header": "You are the PR Release in a PR & Comms (Truyền thông báo chí) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "pr_fact_gate",
+        "kind": "kv_gate",
+        "name": "PR Fact Gate",
+        "header": "You are the PR Fact Gate in a PR & Comms (Truyền thông báo chí) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "pr_ethics_gate",
+        "kind": "kv_gate",
+        "name": "PR Ethics Gate",
+        "header": "You are the PR Ethics Gate in a PR & Comms (Truyền thông báo chí) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "pr_numbers_gate",
+        "kind": "kv_gate",
+        "name": "PR Numbers Gate",
+        "header": "You are the PR Numbers Gate in a PR & Comms (Truyền thông báo chí) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "pr_handover",
+        "kind": "kv_handover",
+        "name": "PR Handover",
+        "header": "You are the PR Handover in a PR & Comms (Truyền thông báo chí) squad, unattended.",
+        "hasBody": true
+      }
+    ]
+  },
+  {
     "id": "accounting",
     "pack": "accounting",
     "templateId": "kv_accounting",
@@ -577,6 +697,416 @@ export const KITVIET_SQUADS: readonly KitvietSquad[] = [
         "kind": "kv_handover",
         "name": "Acct Handover",
         "header": "You are the Acct Handover in an Accounting & Tax (Kế toán, thuế) squad, unattended.",
+        "hasBody": true
+      }
+    ]
+  },
+  {
+    "id": "officeops",
+    "pack": "officeops",
+    "templateId": "kv_officeops",
+    "name": "Office Ops (Vận hành văn phòng)",
+    "builtinSkills": [
+      "kv--an-thong-tin-nhay-cam",
+      "kv--kiem-tra-chong-bia",
+      "kv--nghien-cuu-nguon-uy-tin",
+      "kv--tom-tat-tai-lieu",
+      "kv--viet-bao-cao",
+      "kv--viet-email",
+      "kv--viet-de-cuong",
+      "kv--viet-tin-nhan-cong-viec",
+      "kv--tao-bang-kiem",
+      "kv--lap-ke-hoach-tuan",
+      "kv--ghi-chu-hop",
+      "kv--xuat-word",
+      "kv--xuat-excel",
+      "kv--xuat-pdf",
+      "kv--xuat-pptx",
+      "kv--delivery-core",
+      "kv--to-chuc-su-kien-hoi-nghi",
+      "kv--theo-doi-hop-dong-dich-vu-vp",
+      "kv--tiep-khach-thu-cam-on"
+    ],
+    "leaderSkills": [
+      "kv--squad-lead",
+      "kv--company-profile"
+    ],
+    "roleSkills": {
+      "officeops_drafter": [
+        "kv--dat-phong-hop-hau-can",
+        "kv--dat-ve-du-toan-cong-tac",
+        "kv--so-tai-san-van-phong",
+        "kv--quan-ly-van-phong-pham",
+        "kv--luu-tru-ho-so-van-phong",
+        "kv--bao-cao-hanh-chinh-thang"
+      ]
+    },
+    "promoted": [],
+    "roles": [
+      {
+        "key": "officeops_lead",
+        "kind": "kv_lead",
+        "name": "Officeops Lead",
+        "header": "You are the Officeops Lead in an Office Ops (Vận hành văn phòng) squad, unattended.",
+        "hasBody": false
+      },
+      {
+        "key": "officeops_files",
+        "kind": "kv_collector",
+        "name": "Officeops Files",
+        "header": "You are the Officeops Files in an Office Ops (Vận hành văn phòng) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "officeops_drafter",
+        "kind": "kv_drafter",
+        "name": "Officeops Drafter",
+        "header": "You are the Officeops Drafter in an Office Ops (Vận hành văn phòng) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "officeops_numbers_gate",
+        "kind": "kv_gate",
+        "name": "Officeops Numbers Gate",
+        "header": "You are the Officeops Numbers Gate in an Office Ops (Vận hành văn phòng) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "officeops_handover",
+        "kind": "kv_handover",
+        "name": "Officeops Handover",
+        "header": "You are the Officeops Handover in an Office Ops (Vận hành văn phòng) squad, unattended.",
+        "hasBody": true
+      }
+    ]
+  },
+  {
+    "id": "talent",
+    "pack": "talent",
+    "templateId": "kv_talent",
+    "name": "Talent Acquisition (Tuyển dụng)",
+    "builtinSkills": [
+      "kv--an-thong-tin-nhay-cam",
+      "kv--kiem-tra-chong-bia",
+      "kv--nghien-cuu-nguon-uy-tin",
+      "kv--tom-tat-tai-lieu",
+      "kv--viet-bao-cao",
+      "kv--viet-email",
+      "kv--viet-de-cuong",
+      "kv--viet-tin-nhan-cong-viec",
+      "kv--tao-bang-kiem",
+      "kv--lap-ke-hoach-tuan",
+      "kv--ghi-chu-hop",
+      "kv--xuat-word",
+      "kv--xuat-excel",
+      "kv--xuat-pdf",
+      "kv--xuat-pptx",
+      "kv--delivery-core",
+      "kv--day-chuyen-tuyen-dung"
+    ],
+    "leaderSkills": [
+      "kv--squad-lead",
+      "kv--company-profile"
+    ],
+    "roleSkills": {
+      "talent_screener": [
+        "kv--sang-loc-cv-co-trong-so"
+      ],
+      "talent_drafter": [
+        "kv--viet-jd-tuyen-dung",
+        "kv--dang-tin-tuyen-dung-da-kenh",
+        "kv--bo-cau-hoi-phong-van-star",
+        "kv--thu-gui-ung-vien"
+      ]
+    },
+    "promoted": [],
+    "roles": [
+      {
+        "key": "talent_lead",
+        "kind": "kv_lead",
+        "name": "Talent Lead",
+        "header": "You are the Talent Lead in a Talent Acquisition (Tuyển dụng) squad, unattended.",
+        "hasBody": false
+      },
+      {
+        "key": "talent_reader",
+        "kind": "kv_collector",
+        "name": "Talent Reader",
+        "header": "You are the Talent Reader in a Talent Acquisition (Tuyển dụng) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "talent_market",
+        "kind": "kv_collector",
+        "name": "Talent Market",
+        "header": "You are the Talent Market in a Talent Acquisition (Tuyển dụng) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "talent_screener",
+        "kind": "kv_drafter",
+        "name": "Talent Screener",
+        "header": "You are the Talent Screener in a Talent Acquisition (Tuyển dụng) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "talent_drafter",
+        "kind": "kv_drafter",
+        "name": "Talent Drafter",
+        "header": "You are the Talent Drafter in a Talent Acquisition (Tuyển dụng) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "talent_bias_gate",
+        "kind": "kv_gate",
+        "name": "Talent Bias Gate",
+        "header": "You are the Talent Bias Gate in a Talent Acquisition (Tuyển dụng) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "talent_data_gate",
+        "kind": "kv_gate",
+        "name": "Talent Data Gate",
+        "header": "You are the Talent Data Gate in a Talent Acquisition (Tuyển dụng) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "talent_handover",
+        "kind": "kv_handover",
+        "name": "Talent Handover",
+        "header": "You are the Talent Handover in a Talent Acquisition (Tuyển dụng) squad, unattended.",
+        "hasBody": true
+      }
+    ]
+  },
+  {
+    "id": "ecom",
+    "pack": "ecom",
+    "templateId": "kv_ecom",
+    "name": "E-commerce Shop Ops (Bán hàng online)",
+    "builtinSkills": [
+      "kv--an-thong-tin-nhay-cam",
+      "kv--kiem-tra-chong-bia",
+      "kv--nghien-cuu-nguon-uy-tin",
+      "kv--tom-tat-tai-lieu",
+      "kv--viet-bao-cao",
+      "kv--viet-email",
+      "kv--viet-de-cuong",
+      "kv--viet-tin-nhan-cong-viec",
+      "kv--tao-bang-kiem",
+      "kv--lap-ke-hoach-tuan",
+      "kv--ghi-chu-hop",
+      "kv--xuat-word",
+      "kv--xuat-excel",
+      "kv--xuat-pdf",
+      "kv--xuat-pptx",
+      "kv--delivery-core",
+      "kv--day-chuyen-len-san-pham-moi"
+    ],
+    "leaderSkills": [
+      "kv--squad-lead",
+      "kv--company-profile"
+    ],
+    "roleSkills": {
+      "ecom_intake": [
+        "kv--bao-cao-doanh-so-sku",
+        "kv--phan-tich-huy-hoan-don-san"
+      ],
+      "ecom_rival_scout": [
+        "kv--nghien-cuu-doi-thu-san"
+      ],
+      "ecom_listing_drafter": [
+        "kv--mo-ta-san-pham-shop",
+        "kv--tieu-de-seo-san-tmdt",
+        "kv--tinh-gia-ban-san"
+      ],
+      "ecom_cskh_drafter": [
+        "kv--cham-soc-sau-ban-shop",
+        "kv--chot-don-inbox-zalo",
+        "kv--tra-loi-danh-gia-shop",
+        "kv--xu-ly-doi-tra-khieu-nai-don"
+      ],
+      "ecom_policy_gate": [
+        "kv--loc-tu-cam-san-tmdt"
+      ],
+      "ecom_margin_gate": [
+        "kv--tinh-gia-ban-san"
+      ]
+    },
+    "promoted": [],
+    "roles": [
+      {
+        "key": "ecom_lead",
+        "kind": "kv_lead",
+        "name": "Ecom Lead",
+        "header": "You are the Ecom Lead in an E-commerce Shop Ops (Bán hàng online) squad, unattended.",
+        "hasBody": false
+      },
+      {
+        "key": "ecom_intake",
+        "kind": "kv_collector",
+        "name": "Ecom Intake",
+        "header": "You are the Ecom Intake in an E-commerce Shop Ops (Bán hàng online) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "ecom_rival_scout",
+        "kind": "kv_collector",
+        "name": "Ecom Rival Scout",
+        "header": "You are the Ecom Rival Scout in an E-commerce Shop Ops (Bán hàng online) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "ecom_listing_drafter",
+        "kind": "kv_drafter",
+        "name": "Ecom Listing Drafter",
+        "header": "You are the Ecom Listing Drafter in an E-commerce Shop Ops (Bán hàng online) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "ecom_cskh_drafter",
+        "kind": "kv_drafter",
+        "name": "Ecom Cskh Drafter",
+        "header": "You are the Ecom Cskh Drafter in an E-commerce Shop Ops (Bán hàng online) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "ecom_policy_gate",
+        "kind": "kv_gate",
+        "name": "Ecom Policy Gate",
+        "header": "You are the Ecom Policy Gate in an E-commerce Shop Ops (Bán hàng online) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "ecom_margin_gate",
+        "kind": "kv_gate",
+        "name": "Ecom Margin Gate",
+        "header": "You are the Ecom Margin Gate in an E-commerce Shop Ops (Bán hàng online) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "ecom_numbers_gate",
+        "kind": "kv_gate",
+        "name": "Ecom Numbers Gate",
+        "header": "You are the Ecom Numbers Gate in an E-commerce Shop Ops (Bán hàng online) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "ecom_handover",
+        "kind": "kv_handover",
+        "name": "Ecom Handover",
+        "header": "You are the Ecom Handover in an E-commerce Shop Ops (Bán hàng online) squad, unattended.",
+        "hasBody": true
+      }
+    ]
+  },
+  {
+    "id": "academic",
+    "pack": "academic",
+    "templateId": "kv_academic",
+    "name": "Academic Evidence Desk (Học thuật, nghiên cứu)",
+    "builtinSkills": [
+      "kv--an-thong-tin-nhay-cam",
+      "kv--kiem-tra-chong-bia",
+      "kv--nghien-cuu-nguon-uy-tin",
+      "kv--tom-tat-tai-lieu",
+      "kv--viet-bao-cao",
+      "kv--viet-email",
+      "kv--viet-de-cuong",
+      "kv--viet-tin-nhan-cong-viec",
+      "kv--tao-bang-kiem",
+      "kv--lap-ke-hoach-tuan",
+      "kv--ghi-chu-hop",
+      "kv--xuat-word",
+      "kv--xuat-excel",
+      "kv--xuat-pdf",
+      "kv--xuat-pptx",
+      "kv--delivery-core",
+      "kv--day-chuyen-viet-chuong-luan-van",
+      "kv--trich-dan-apa-ieee-harvard"
+    ],
+    "leaderSkills": [
+      "kv--squad-lead",
+      "kv--company-profile"
+    ],
+    "roleSkills": {
+      "acad_reader": [
+        "kv--tom-tat-bai-bao-khoa-hoc"
+      ],
+      "acad_finder": [
+        "kv--tong-quan-tai-lieu-hoc-thuat"
+      ],
+      "acad_matrix": [
+        "kv--quan-ly-tai-lieu-tham-khao"
+      ],
+      "acad_drafter": [
+        "kv--viet-chuong-luan-van",
+        "kv--dien-dat-lai-hoc-thuat",
+        "kv--abstract-song-ngu-hoc-thuat"
+      ],
+      "acad_citation_gate": [
+        "kv--kiem-tra-trich-dan-co-that"
+      ],
+      "acad_integrity_gate": [
+        "kv--khai-bao-dung-ai-hoc-thuat"
+      ]
+    },
+    "promoted": [],
+    "roles": [
+      {
+        "key": "acad_lead",
+        "kind": "kv_lead",
+        "name": "Acad Lead",
+        "header": "You are the Acad Lead in an Academic Evidence Desk (Học thuật, nghiên cứu) squad, unattended.",
+        "hasBody": false
+      },
+      {
+        "key": "acad_reader",
+        "kind": "kv_collector",
+        "name": "Acad Reader",
+        "header": "You are the Acad Reader in an Academic Evidence Desk (Học thuật, nghiên cứu) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "acad_finder",
+        "kind": "kv_collector",
+        "name": "Acad Finder",
+        "header": "You are the Acad Finder in an Academic Evidence Desk (Học thuật, nghiên cứu) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "acad_matrix",
+        "kind": "kv_drafter",
+        "name": "Acad Matrix",
+        "header": "You are the Acad Matrix in an Academic Evidence Desk (Học thuật, nghiên cứu) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "acad_drafter",
+        "kind": "kv_drafter",
+        "name": "Acad Drafter",
+        "header": "You are the Acad Drafter in an Academic Evidence Desk (Học thuật, nghiên cứu) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "acad_citation_gate",
+        "kind": "kv_gate",
+        "name": "Acad Citation Gate",
+        "header": "You are the Acad Citation Gate in an Academic Evidence Desk (Học thuật, nghiên cứu) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "acad_integrity_gate",
+        "kind": "kv_gate",
+        "name": "Acad Integrity Gate",
+        "header": "You are the Acad Integrity Gate in an Academic Evidence Desk (Học thuật, nghiên cứu) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "acad_handover",
+        "kind": "kv_handover",
+        "name": "Acad Handover",
+        "header": "You are the Acad Handover in an Academic Evidence Desk (Học thuật, nghiên cứu) squad, unattended.",
         "hasBody": true
       }
     ]
