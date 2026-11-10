@@ -1,5 +1,10 @@
 import type { AgentInstructionTemplate } from "../agents/instruction-templates";
 import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
+import { KV_ADMIN_ROLES, KV_ADMIN_TEMPLATE, type KvAdminRoleKey } from "./kitviet-templates/admin";
+import { KV_B2B_ROLES, KV_B2B_TEMPLATE, type KvB2bRoleKey } from "./kitviet-templates/b2b";
+import { KV_ACCOUNTING_ROLES, KV_ACCOUNTING_TEMPLATE, type AcctRoleKey } from "./kitviet-templates/accounting";
+import { LEGAL_ROLES, KV_LEGAL_TEMPLATE, type LegalRoleKey } from "./kitviet-templates/legal";
+import { MARKETING_ROLES, KV_MARKETING_TEMPLATE, type MarketingRoleKey } from "./kitviet-templates/marketing";
 
 /**
  * Ready-made squads a user can start from in the Squads quickstart. A template
@@ -21,7 +26,8 @@ export type SquadTemplateId =
   | "kv_marketing"
   | "kv_admin";
 
-export type SquadRoleKey =
+/** Role keys of the SDLC, research, planning and Sales Loop squads. */
+type BaseSquadRoleKey =
   | "lead"
   | "analyst"
   | "ux"
@@ -49,6 +55,15 @@ export type SquadRoleKey =
   | "sales_analyst"
   | "sales_checker";
 
+/** Every role key: the base keys above and the roles of each Kit Viet squad. */
+export type SquadRoleKey =
+  | BaseSquadRoleKey
+  | KvAdminRoleKey
+  | KvB2bRoleKey
+  | MarketingRoleKey
+  | LegalRoleKey
+  | AcctRoleKey;
+
 export interface SquadRole {
   key: SquadRoleKey;
   /** The agent instruction template the created agent starts from. */
@@ -60,7 +75,7 @@ export interface SquadRole {
   role: string;
 }
 
-export const SQUAD_ROLES: Record<SquadRoleKey, SquadRole> = {
+const BASE_SQUAD_ROLES: Record<BaseSquadRoleKey, SquadRole> = {
   lead: {
     key: "lead",
     agentTemplate: "tech_lead",
@@ -243,6 +258,16 @@ export const SQUAD_ROLES: Record<SquadRoleKey, SquadRole> = {
     description: "Independent review of the planning documents for consistency and readiness to build.",
     role: "Independent review, readiness verdict",
   },
+};
+
+/** Every role the quickstart can create, by key. A Kit Viet role's agent text is loaded on demand. */
+export const SQUAD_ROLES: Record<SquadRoleKey, SquadRole> = {
+  ...BASE_SQUAD_ROLES,
+  ...KV_ADMIN_ROLES,
+  ...KV_B2B_ROLES,
+  ...MARKETING_ROLES,
+  ...LEGAL_ROLES,
+  ...KV_ACCOUNTING_ROLES,
 };
 
 export interface SquadWorkflowStep {
@@ -682,7 +707,7 @@ This squad writes planning documents only: research, brief, PRD, UX design, arch
 
 Delegate only to the members listed on your Squad Roster. Each member loads its own planning skill, which the squad shares with all of them.`;
 
-export const SQUAD_TEMPLATES: readonly SquadTemplate[] = [
+const BASE_SQUAD_TEMPLATES: readonly SquadTemplate[] = [
   {
     id: "sdlc_greenfield",
     name: "SDLC Greenfield",
@@ -881,4 +906,14 @@ export const SQUAD_TEMPLATES: readonly SquadTemplate[] = [
     workflow: PLANNING_AUTO_WORKFLOW,
     builtinSkills: PLANNING_SKILL_NAMES,
   },
+];
+
+/** The templates the Squads quickstart offers. */
+export const SQUAD_TEMPLATES: readonly SquadTemplate[] = [
+  ...BASE_SQUAD_TEMPLATES,
+  KV_ADMIN_TEMPLATE,
+  KV_B2B_TEMPLATE,
+  KV_MARKETING_TEMPLATE,
+  KV_LEGAL_TEMPLATE,
+  KV_ACCOUNTING_TEMPLATE,
 ];
