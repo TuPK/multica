@@ -194,9 +194,9 @@ multica agent mcp add <agent-id> <server-id>
 
 ## Dupliquer un agent
 
-La duplication reprend l'essentiel de la configuration de travail, sauf le nom : instructions, amorces de conversation, skills, arguments personnalisés, avatar, limite de parallélisme et paramètres d'Accès. Le modèle, le niveau de réflexion et la vitesse (niveau de service) sont également repris ; si le runtime d'origine est indisponible et que la copie doit passer sur un autre runtime, ces trois valeurs sont effacées et doivent être choisies à nouveau.
+La duplication reprend l'essentiel de la configuration de travail, sauf le nom : instructions, amorces de conversation, skills, arguments personnalisés, avatar, limite de parallélisme, paramètres d'Accès, variables d'environnement et configuration MCP. Le serveur copie directement les valeurs secrètes, qui n'atteignent donc jamais votre navigateur. Le modèle, le niveau de réflexion et la vitesse (niveau de service) sont également repris ; si le runtime d'origine est indisponible et que la copie doit passer sur un autre runtime, ces trois valeurs sont effacées et doivent être choisies à nouveau.
 
-Les valeurs des variables d'environnement, la configuration MCP et les assignations de serveurs MCP de l'espace de travail ne sont jamais copiées et doivent être redéfinies sur le nouvel agent.
+Les assignations de serveurs MCP de l'espace de travail ne sont jamais copiées et doivent être redéfinies sur le nouvel agent. La configuration MCP n'est pas copiée lorsque l'espace de travail la masque toujours.
 
 ## Créer avec le CLI
 
@@ -217,7 +217,7 @@ Lorsqu'un agent configuré de façon similaire existe déjà, copiez-le directem
 multica agent copy <agent-id>
 ```
 
-Par défaut, la copie reste sur le même runtime ; ajoutez `--runtime-id` pour la déplacer vers un autre runtime, ce qui requiert aussi `--model`. Les variables d'environnement, la configuration MCP et `runtime_config` ne sont jamais copiés ; le rattachement au runtime lui-même est conservé. Toutes les options dans [Utiliser le CLI](/cli).
+Par défaut, la copie reste sur le même runtime ; ajoutez `--runtime-id` pour la déplacer vers un autre runtime, ce qui requiert aussi `--model`. Les variables d'environnement et la configuration MCP sont copiées côté serveur, si bien que leurs valeurs ne passent jamais par le CLI. `runtime_config` est propre à la machine et n'est jamais copié. Une valeur donnée avec `--custom-env` ou `--mcp-config` remplace la valeur copiée ; la configuration MCP n'est pas copiée lorsque l'espace de travail la masque toujours. Le rattachement au runtime lui-même est conservé. Toutes les options dans [Utiliser le CLI](/cli).
 
 ## Étapes suivantes
 

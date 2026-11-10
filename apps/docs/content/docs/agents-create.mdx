@@ -198,7 +198,7 @@ multica agent mcp add <agent-id> <server-id>
 
 Duplicating carries over most working configuration except the name, including instructions, conversation starters, skills, custom arguments, avatar, concurrency limit, Access settings, environment variables, and MCP servers. The server copies the secret values directly, so they never reach your browser. The model, thinking level, and service tier come along too; if the original runtime is unavailable and the copy is forced onto another runtime, those three are cleared and must be re-selected.
 
-Environment variable values, MCP configuration, and workspace MCP server assignments are never copied and must be set again on the new agent.
+Workspace MCP server assignments are never copied and must be set again on the new agent. MCP configuration is not copied when the workspace always redacts it.
 
 ## Creating with the CLI
 
