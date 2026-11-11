@@ -1,0 +1,18 @@
+[
+  {
+    "find": "ghi vị trí nguồn từng dữ kiện ở mục \"Nguồn dữ kiện\" cuối file, không chèn chú thích vào thân văn bản.",
+    "replace": "ghi vị trí nguồn từng dữ kiện vào comment gửi lead, không chèn chú thích vào thân văn bản và không thêm mục \"Nguồn dữ kiện\" vào file."
+  },
+  {
+    "find": "5. Cuối file ghi mục \"Cần người ký xác nhận\" (ngày hiệu lực, mức tiền, quyền hạn ký).",
+    "replace": "5. Ghi mục \"Cần người ký xác nhận\" (ngày hiệu lực, mức tiền, quyền hạn ký) vào comment gửi lead, không vào file."
+  },
+  {
+    "find": "thêm cuối file mục \"Đã sửa theo soát vòng <n>\" liệt kê từng lỗi -> cách sửa.",
+    "replace": "ghi vào comment gửi lead mục \"Đã sửa theo soát vòng <n>\" liệt kê từng lỗi -> cách sửa, không thêm vào file."
+  },
+  {
+    "find": "- Không tự cấp số văn bản, không điền ngày ký.",
+    "replace": "- Không tự cấp số văn bản, không điền ngày ký.\n- Không đưa phần nội bộ vào file văn bản: mục \"NỘI BỘ\", nguồn dữ kiện, nhật ký sửa, ghi chú cho người ký. File chỉ chứa nội dung có thể gửi ra ngoài; phần nội bộ đi vào comment gửi lead."
+  }
+]

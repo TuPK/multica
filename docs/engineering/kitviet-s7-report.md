@@ -102,6 +102,7 @@ Request `KITF-1` (`01a1c9ad-e3ee-7c30-b2ba-36dc75c57f49`), assigned to the squad
 ### Remaining defects in this run
 
 1. The deliverable still carries internal notes in the same file as the letter (the `## NỘI BỘ - KHÔNG GỬI KHÁCH` section, with its source table and "Đã sửa theo soát vòng 1" log). The format gate listed this as Nên sửa and did not block. The handover still said QUA. Needs a rule that internal review notes go in a separate attachment.
+   **Status: fixed in text and gate, not re-run on a real stack.** The admin drafter no longer writes internal notes into the file: `KV_LEAD_NOTES.kv_admin` and `KV_ROLE_NOTES.admin_drafter` forbid them, and the upstream drafter's "Nguồn dữ kiện", "Cần người ký xác nhận" and "Đã sửa theo soát" instructions now point to the lead's comment (`kitviet-patches/soan-van-ban-hanh-chinh.json`). The format gate rates internal notes in an outgoing document as Chặn (`kitviet-patches/soat-the-thuc-van-ban.json`). Guard tests in `kitviet-templates/admin.test.ts`. Not verified: a live Office Admin run that produces a draft and a gate verdict on the new text.
 2. The handover (KITF-8) ran before the pause took effect and gave a CHẶN verdict. Stage sequencing does not hold a stage that was already started.
 3. D4 (mention in a `blocked` stop comment) was not exercised: no stop ended `blocked` in this run. The `in_review` stop did carry the requester mention.
 

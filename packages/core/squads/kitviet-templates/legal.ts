@@ -77,6 +77,7 @@ export const KV_LEGAL_TEMPLATE: SquadTemplate = {
   roles: [...LEGAL_ROLE_KEYS],
   leader: "legal_lead",
   floorName: "Governance",
+  operatingReview: false,
   routines: [
     {
       title: "Rà hiệu lực sổ quy định",

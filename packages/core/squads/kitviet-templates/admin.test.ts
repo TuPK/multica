@@ -86,6 +86,28 @@ describe("Office Admin (kv_admin) squad template", () => {
     expect(t.instructions).toContain("kv--squad-lead");
   });
 
+  it("forbids internal notes in the outgoing document, in the lead notes", () => {
+    expect(t.instructions).toMatch(/^- Internal notes never go into an outgoing document\./m);
+    expect(t.instructions).toMatch(/no section headed NỘI BỘ, no source table, no fix log, no note for the signer/);
+  });
+
+  it("keeps internal notes out of the file in the drafter's instructions, overriding the NỘI BỘ bullet", async () => {
+    const drafter = await loadKitvietRoleInstructions("admin_drafter");
+    if (drafter === undefined) throw new Error("no Kit Viet instructions for admin_drafter");
+    expect(drafter).toContain("the NỘI BỘ bullet above does not apply to this squad");
+    expect(drafter).toMatch(/^- Không đưa phần nội bộ vào file văn bản: mục "NỘI BỘ"/m);
+    expect(drafter).not.toMatch(/mục "Nguồn dữ kiện" cuối file/);
+    expect(drafter).not.toMatch(/^5\. Cuối file ghi mục/m);
+    expect(drafter).not.toMatch(/thêm cuối file mục "Đã sửa theo soát/);
+  });
+
+  it("rates internal notes inside an outgoing document as Chặn in the format gate", async () => {
+    const gate = await loadKitvietRoleInstructions("admin_format_gate");
+    if (gate === undefined) throw new Error("no Kit Viet instructions for admin_format_gate");
+    expect(gate).toMatch(/Chặn: [^\n]*phần nội bộ nằm trong file văn bản đi \(mục NỘI BỘ/);
+    expect(gate).not.toMatch(/Nặng/);
+  });
+
   it("has no workflow", () => {
     expect(t.workflow).toBeNull();
   });

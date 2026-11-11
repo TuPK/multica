@@ -145,6 +145,18 @@ ${UNATTENDED}`,
 };
 
 /**
+ * Rules one non-lead role needs that its kind text and pack body do not state, keyed by role key.
+ * A note that overrides a line of the kind text says so, because both reach the agent. The kind
+ * text of a drafter allows a NỘI BỘ section in the file for squads that send it through a gate
+ * (the quote squads); an Office Admin file never leaves with one.
+ */
+export const KV_ROLE_NOTES: Readonly<Partial<Record<string, string>>> = {
+  admin_drafter: [
+    "Squad rule for Office Admin drafters: the NỘI BỘ bullet above does not apply to this squad. Nothing internal goes into the document you write: no section headed NỘI BỘ - KHÔNG GỬI KHÁCH, no source table, no fix log, no note for the signer. Those go in your comment to the lead. The file holds only text that may leave the workspace.",
+  ].join("\n"),
+};
+
+/**
  * The headings the server requires of each knowledge kind a Kit Viet squad files
  * (server/internal/service/knowledge_kind.go). A filing without them is refused, so every draft
  * below starts from them.
@@ -262,6 +274,7 @@ Delegate only to the members listed on your Squad Roster. Each member loads its 
     "Register format (Sổ quy định, kind reference):",
     KV_REGISTER_DRAFT,
     "",
+    "- Internal notes never go into an outgoing document. The draft file holds only text that may leave the workspace: no section headed NỘI BỘ, no source table, no fix log, no note for the signer. admin_drafter puts those in its comment to you. A draft that still carries one is a Chặn finding from admin_format_gate, so the round stays open until the draft is clean.",
     "- Nothing is signed, numbered as issued, or sent from this squad. The handover moves the request to in_review; the requester signs and sends.",
   ].join("\n"),
 

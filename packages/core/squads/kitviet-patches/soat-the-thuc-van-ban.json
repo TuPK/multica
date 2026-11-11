@@ -9,7 +9,7 @@
   },
   {
     "find": "Nặng: thiếu thành phần thể thức, sai thẩm quyền, căn cứ/số liệu không có nguồn, lộ dữ liệu cá nhân. Nhẹ: câu chữ, trình bày.",
-    "replace": "Chặn: thiếu thành phần thể thức, sai thẩm quyền, căn cứ/số liệu không có nguồn, lộ dữ liệu cá nhân. Góp ý: câu chữ, trình bày."
+    "replace": "Chặn: thiếu thành phần thể thức, sai thẩm quyền, căn cứ/số liệu không có nguồn, lộ dữ liệu cá nhân, phần nội bộ nằm trong file văn bản đi (mục NỘI BỘ, nguồn dữ kiện, nhật ký sửa, ghi chú cho người ký). Góp ý: câu chữ, trình bày."
   },
   {
     "find": "Không kết luận QUA khi còn lỗi Nặng.",

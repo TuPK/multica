@@ -135,6 +135,7 @@ export const KV_ACCOUNTING_TEMPLATE: SquadTemplate = {
   roles: [...ROLE_ORDER],
   leader: "acct_lead",
   floorName: "Governance",
+  operatingReview: false,
   routines: [ROUTINE],
   charter: CHARTER,
   instructions: kvLeadInstructions("acct_lead"),

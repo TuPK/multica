@@ -1,4 +1,4 @@
-import { composeKvAgentInstructions, KV_LEAD_NOTES } from "./kitviet-agent-instructions";
+import { composeKvAgentInstructions, KV_LEAD_NOTES, KV_ROLE_NOTES } from "./kitviet-agent-instructions";
 import { KITVIET_SQUADS } from "./kitviet-skills-data/squads";
 import type { KitvietSquad, KitvietSquadRole } from "./kitviet-skills-data/types";
 import type { SquadRole, SquadRoleKey } from "./templates";
@@ -79,5 +79,5 @@ export function kvRolePack(key: string): string | undefined {
 /** The composition of a non-lead role's instructions around its pack body (see kitviet-agent-instructions.ts). */
 export function kvRoleInstructionsWithBody(key: string, body: string): string {
   const { role } = kitvietRole(key);
-  return composeKvAgentInstructions({ kind: role.kind, header: role.header, body });
+  return composeKvAgentInstructions({ kind: role.kind, header: role.header, body, notes: KV_ROLE_NOTES[key] });
 }
