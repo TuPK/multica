@@ -103,8 +103,11 @@ const FORBIDDEN = [
   { re: /AGENTS\.md/, what: "AGENTS.md profile" },
   { re: /ket-qua\//, what: "result folder" },
   { re: /phiên chính/i, what: "main session" },
-  { re: /Claude Desktop/, what: "platform name" },
+  // Platform names of the source apps (F4): a skill must not tell the user which app it runs in. The bare word
+  // "Claude" stays allowed: a skill may name an AI tool as an example (an AI-use log row).
+  { re: /Claude (?:Code|web|Desktop)|Claude\.ai/i, what: "platform name (Claude Code, Claude web, Claude Desktop, Claude.ai)" },
   { re: /Codex/, what: "platform name" },
+  { re: /Cursor/, what: "platform name" },
   { re: /\d\d-[a-z-]+\.md/, what: "numbered stage file" },
   { re: /-v\d\.md/, what: "versioned file name" },
   { re: /pip install|apt install/, what: "install hint (agents do not install)" },
@@ -215,6 +218,7 @@ const ACRONYMS = new Map([
   ["b2b", "B2B"],
   ["pr", "PR"],
   ["fnb", "F&B"],
+  ["tm", "TM"],
 ]);
 
 // The role display name of a role key: `legal_reader` -> `Legal Reader`.

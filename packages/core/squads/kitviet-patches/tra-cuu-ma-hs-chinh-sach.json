@@ -1,6 +1,6 @@
 [
   {
     "find": "| 1 | Cục Hải quan (trước đây là Tổng cục Hải quan) - customs.gov.vn:",
-    "replace": "| 1 | Cơ quan Hải quan - customs.gov.vn (kiểm lại địa chỉ trước khi dùng):"
+    "replace": "| 1 | cơ quan hải quan (tên cơ quan hiện hành: xem nguồn chính thức) - customs.gov.vn:"
   }
 ]

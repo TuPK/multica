@@ -1,0 +1,6 @@
+[
+  {
+    "find": "(hoặc agent `kv:nghien-cuu-nguon` trên Claude Code)",
+    "replace": "(hoặc nhờ lead giao sub-issue nghiên cứu nguồn)"
+  }
+]

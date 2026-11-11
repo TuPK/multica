@@ -1,0 +1,10 @@
+[
+  {
+    "find": "(Claude Code đọc trực tiếp; Claude web/desktop: người dùng dán danh sách hoặc tải file)",
+    "replace": "(đọc trực tiếp nếu có công cụ đọc tệp; không thì người dùng dán danh sách hoặc tải file)"
+  },
+  {
+    "find": "Claude Code chỉ đổi tên khi người dùng đồng ý.",
+    "replace": "chỉ đổi tên khi người dùng đồng ý."
+  }
+]

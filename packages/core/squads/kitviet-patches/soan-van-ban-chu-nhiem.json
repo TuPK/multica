@@ -1,0 +1,6 @@
+[
+  {
+    "find": "Ghi file vào thư mục giáo viên chỉ định (ví dụ `nhap/nhan-xet.md`, `nhap/tin-nhan.md`).",
+    "replace": "Ghi bản nháp thành tệp đính kèm của sub-issue soạn (ví dụ bản nhận xét, bản tin nhắn phụ huynh)."
+  }
+]

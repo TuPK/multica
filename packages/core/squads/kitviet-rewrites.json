@@ -159,6 +159,18 @@
       "replace": "công cụ web đang tắt"
     },
     {
+      "name": "paste-into-chat-web",
+      "pattern": "(lên|vào) Claude web",
+      "flags": "g",
+      "replace": "$1 khung chat"
+    },
+    {
+      "name": "claude-code-colon-note",
+      "pattern": "\\((?:trên )?Claude Code: ",
+      "flags": "g",
+      "replace": "(nếu có quyền đọc tệp, "
+    },
+    {
       "name": "call-agent",
       "pattern": "(?:gọi|giao|Gọi|Giao) agent(?=[ :])",
       "flags": "g",
@@ -194,6 +206,18 @@
       "pattern": "Kết luận Đạt/Chưa đạt",
       "flags": "g",
       "replace": "kết luận QUA hoặc CHẶN"
+    },
+    {
+      "name": "customs-agency-name",
+      "pattern": "Cục Hải quan",
+      "flags": "g",
+      "replace": "cơ quan hải quan"
+    },
+    {
+      "name": "statistics-agency-history",
+      "pattern": "Tổng cục Thống kê \\(nay là Cục Thống kê, Bộ Tài chính\\)",
+      "flags": "g",
+      "replace": "cơ quan thống kê nhà nước (tên cơ quan hiện hành: xem nguồn chính thức)"
     }
   ]
 }

@@ -1,0 +1,34 @@
+[
+  {
+    "find": "Đọc bản nháp và các file nguồn trong thư mục làm việc (kể cả `.kv-run/.../01-thu-thap.md` nếu có).",
+    "replace": "Đọc bản nháp và các file nguồn trong tệp đính kèm trên issue (kể cả tệp thu thập của lead nếu có)."
+  },
+  {
+    "find": "2. Với mỗi khẳng định: có nguồn không; nguồn đủ tên - đơn vị - năm - link/trang - ngày truy cập chưa; bậc mấy.",
+    "replace": "2. Với mỗi khẳng định: có nguồn không; nguồn đủ tên - đơn vị - năm - link/trang - ngày truy cập chưa; bậc mấy. Nguồn chỉ có tên hoặc link, không có nội dung đã đọc trong file đính kèm hoặc trong mục \"Đã đọc\" của bản thu thập, là chưa chứng minh đã mở nguồn -> Cần giấy tờ."
+  },
+  {
+    "find": "4. Nguồn bậc 4 làm căn cứ -> lỗi Nghiêm trọng. Số liệu cũ hơn 5 năm mà trình bày như hiện tại -> Nên sửa.",
+    "replace": "4. Nguồn bậc 4 làm căn cứ -> lỗi Chặn. Số liệu cũ hơn 5 năm mà trình bày như hiện tại -> Nên sửa."
+  },
+  {
+    "find": "6. Đề cương nghiên cứu, sáng kiến: có bảng kết quả, giá trị thống kê mà không có file số liệu gốc -> Nghiêm trọng.",
+    "replace": "6. Đề cương nghiên cứu, sáng kiến: có bảng kết quả, giá trị thống kê mà không có file số liệu gốc -> Chặn."
+  },
+  {
+    "find": "7. Đoạn văn dài giống nguyên văn nguồn mà không ghi trích dẫn -> Nên sửa (nguy cơ đạo văn).",
+    "replace": "7. Đoạn văn dài giống nguyên văn nguồn mà không ghi trích dẫn -> Chặn (nguy cơ đạo văn, vi phạm bản quyền). Hình, bảng hoặc số liệu chép từ nguồn có bản quyền mà không ghi tác giả hoặc nguồn -> Cần giấy tờ."
+  },
+  {
+    "find": "8. Kết luận **QUA** chỉ khi không còn lỗi Nghiêm trọng.",
+    "replace": "8. Kết luận **QUA** chỉ khi không còn lỗi Chặn hoặc mục Cần giấy tờ; còn một lỗi Chặn là CHẶN."
+  },
+  {
+    "find": "| Mức (Nghiêm trọng/Nên sửa) |",
+    "replace": "| Mức (Chặn / Cần giấy tờ / Nên sửa / Góp ý) |"
+  },
+  {
+    "find": "3. Nguồn là file có trong thư mục -> Grep đối chiếu câu chữ, số liệu có khớp không.",
+    "replace": "3. Nguồn là file đính kèm -> Grep đối chiếu câu chữ, số liệu có khớp không."
+  }
+]

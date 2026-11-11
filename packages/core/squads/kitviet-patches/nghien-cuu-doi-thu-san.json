@@ -1,0 +1,6 @@
+[
+  {
+    "find": "hoặc (trên Claude Code) giao agent `kv:tra-cuu-doi-thu-san` tra trang công khai",
+    "replace": "hoặc nhờ lead giao sub-issue tra trang công khai"
+  }
+]

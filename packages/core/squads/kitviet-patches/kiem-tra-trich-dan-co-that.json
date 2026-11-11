@@ -1,0 +1,6 @@
+[
+  {
+    "find": "Claude Code có công cụ tra mạng thì tra; Claude web/desktop bật tìm kiếm web nếu có; không tra được",
+    "replace": "có công cụ tra mạng thì tra; không tra được"
+  }
+]

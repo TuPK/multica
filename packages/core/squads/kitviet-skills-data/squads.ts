@@ -2131,5 +2131,103 @@ export const KITVIET_SQUADS: readonly KitvietSquad[] = [
         "hasBody": true
       }
     ]
+  },
+  {
+    "id": "teaching",
+    "pack": "teaching",
+    "templateId": "kv_teaching",
+    "name": "Teaching Materials (Tư liệu giảng dạy)",
+    "builtinSkills": [
+      "kv--an-thong-tin-nhay-cam",
+      "kv--kiem-tra-chong-bia",
+      "kv--nghien-cuu-nguon-uy-tin",
+      "kv--tom-tat-tai-lieu",
+      "kv--viet-bao-cao",
+      "kv--viet-email",
+      "kv--viet-de-cuong",
+      "kv--viet-tin-nhan-cong-viec",
+      "kv--tao-bang-kiem",
+      "kv--lap-ke-hoach-tuan",
+      "kv--ghi-chu-hop",
+      "kv--xuat-word",
+      "kv--xuat-excel",
+      "kv--xuat-pdf",
+      "kv--xuat-pptx",
+      "kv--delivery-core"
+    ],
+    "leaderSkills": [
+      "kv--squad-lead",
+      "kv--company-profile"
+    ],
+    "roleSkills": {
+      "tm_drafter": [
+        "kv--nhan-xet-hoc-ba",
+        "kv--tin-nhan-phu-huynh-zalo",
+        "kv--hop-phu-huynh-lop",
+        "kv--ke-hoach-chu-nhiem-lop"
+      ],
+      "tm_sources": [
+        "kv--nghien-cuu-tu-lieu-bai-giang"
+      ]
+    },
+    "promoted": [],
+    "roles": [
+      {
+        "key": "tm_lead",
+        "kind": "kv_lead",
+        "name": "TM Lead",
+        "header": "You are the TM Lead in a Teaching Materials (Tư liệu giảng dạy) squad, unattended.",
+        "hasBody": false
+      },
+      {
+        "key": "tm_sources",
+        "kind": "kv_collector",
+        "name": "TM Sources",
+        "header": "You are the TM Sources in a Teaching Materials (Tư liệu giảng dạy) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "tm_records",
+        "kind": "kv_collector",
+        "name": "TM Records",
+        "header": "You are the TM Records in a Teaching Materials (Tư liệu giảng dạy) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "tm_drafter",
+        "kind": "kv_drafter",
+        "name": "TM Drafter",
+        "header": "You are the TM Drafter in a Teaching Materials (Tư liệu giảng dạy) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "tm_source_gate",
+        "kind": "kv_gate",
+        "name": "TM Source Gate",
+        "header": "You are the TM Source Gate in a Teaching Materials (Tư liệu giảng dạy) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "tm_student_gate",
+        "kind": "kv_gate",
+        "name": "TM Student Gate",
+        "header": "You are the TM Student Gate in a Teaching Materials (Tư liệu giảng dạy) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "tm_numbers_gate",
+        "kind": "kv_gate",
+        "name": "TM Numbers Gate",
+        "header": "You are the TM Numbers Gate in a Teaching Materials (Tư liệu giảng dạy) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "tm_handover",
+        "kind": "kv_handover",
+        "name": "TM Handover",
+        "header": "You are the TM Handover in a Teaching Materials (Tư liệu giảng dạy) squad, unattended.",
+        "hasBody": true
+      }
+    ]
   }
 ];

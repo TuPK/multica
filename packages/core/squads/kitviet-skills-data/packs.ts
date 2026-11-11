@@ -24,6 +24,7 @@ export const KITVIET_PACK_LOADERS = {
   "health": () => import("./health"),
   "hospitality": () => import("./hospitality"),
   "edu": () => import("./edu"),
+  "teaching": () => import("./teaching"),
   "it": () => import("./it"),
   "people": () => import("./people"),
   "support": () => import("./support"),

@@ -1,0 +1,6 @@
+[
+  {
+    "find": "Log nhiều file lớn: Claude Code dùng agent `kv:doc-log-he-thong` để lọc trước.",
+    "replace": "Log nhiều file lớn: nhờ lead giao một sub-issue lọc trước."
+  }
+]
