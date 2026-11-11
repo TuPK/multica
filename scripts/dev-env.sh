@@ -1443,7 +1443,13 @@ cmd_gc() {
     (
       load_manifest "$name"
       reason=""
-      [ -d "$DIR" ] || reason="its checkout directory is gone"
+      # A missing checkout directory can be a move, a rename or an unmounted volume, and its
+      # database still holds someone's work. Only an explicit gc may collect such an environment;
+      # the automatic run on every up collects expired environments and nothing else.
+      if [ ! -d "$DIR" ]; then
+        [ "$automatic" = 1 ] && exit 0
+        reason="its checkout directory is gone"
+      fi
       if [ -z "$reason" ] && [ "${TTL_HOURS:-0}" != 0 ]; then
         if [ -n "${EXPIRES_AT:-}" ]; then
           expiry_epoch="$(node -e 'process.stdout.write(String(Math.floor(Date.parse(process.argv[1]) / 1000)))' "$EXPIRES_AT" 2>/dev/null || echo 0)"

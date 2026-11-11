@@ -233,8 +233,11 @@ node -e '
   if (payload.backend_port !== 18981) throw new Error("backend_port = " + payload.backend_port);
   for (const key of ["api", "web", "daemon", "desktop"]) {
     if (!payload.components[key]) throw new Error("missing component " + key);
-    if (payload.components[key].state !== "stopped") {
-      throw new Error(key + " state = " + payload.components[key].state);
+    // A profile the daemon has never registered reports unknown_profile: nothing runs under it, so
+    // it is as stopped as "stopped" and the status contract accepts either.
+    const state = payload.components[key].state;
+    if (state !== "stopped" && !(key === "daemon" && state === "unknown_profile")) {
+      throw new Error(key + " state = " + state);
     }
   }
 ' "$out" || fail "status --json is not machine-readable"
@@ -315,6 +318,12 @@ if grep -Fq "probe-901 would be collected" "$out"; then
   fail "gc must not collect an environment whose directory still exists"
 fi
 [ -f "$MULTICA_DEV_HOME/envs/orphan-902/manifest.env" ] || fail "gc --dry-run deleted a manifest"
+# The automatic gc that runs on every up must not collect an environment whose checkout
+# directory is only missing: a moved or unmounted checkout still owns a live database.
+dev_env gc --auto --dry-run > "$out" 2>&1 || fail "gc --auto --dry-run must succeed"
+if grep -Fq "orphan-902" "$out"; then
+  fail "automatic gc collected an environment whose checkout directory is missing"
+fi
 
 # A failed database drop keeps the manifest and slot so cleanup can be retried;
 # destroy must never print success and forget the only deletion recipe.
