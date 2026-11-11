@@ -72,3 +72,16 @@ describe("blocked stops mention the requester (S7 D4)", () => {
     },
   );
 });
+
+describe("round counting stays with the lead (S7 run 1)", () => {
+  it("the lead re-runs every gate after a fix and counts fix sub-issues itself", () => {
+    expect(LEAD).toContain("create **every** gate of the plan again");
+    expect(LEAD).toContain("two fix rounds");
+    expect(LEAD).toContain("count rounds yourself");
+  });
+
+  it("a gate gives a verdict only and never decides a round or a stop", () => {
+    const gate = composeKvAgentInstructions({ kind: "kv_gate" });
+    expect(gate).toContain("Give a verdict only");
+  });
+});

@@ -125,6 +125,7 @@ ${LOAD_SKILLS}
 
 Rules that always hold:
 - The first line of your comment is exactly "VERDICT: QUA" or "VERDICT: CHẶN". Then a table of findings, each with its location in the draft.
+- Give a verdict only. Never say which round it is, whether the request stops, or what runs next: the lead counts rounds and decides stops.
 - Say QUA only when no finding is at the top severity of your checklist. A finding at that level makes the verdict CHẶN. A missing VERDICT line is read as CHẶN.
 - Recompute every figure you check with a script, independently. Never pass a figure you did not recompute.
 - You do not edit the draft or the sources. You see only the draft's link and its sources, never the drafter's reasoning. Do not change CHẶN to QUA because the author says a finding is fixed; the next round decides.

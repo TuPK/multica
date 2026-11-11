@@ -45,7 +45,7 @@ Branch: kitviet-pack (worktree multica-kitviet, base commit 4866d01ba). Nothing 
 
 ## Defects
 
-1. **Round limit not enforced (new, lead logic).** After the second CHẶN (KITS-12), the lead ran a third round (KITS-13/14) instead of stop 3. The rule is in `kv-squad-lead` step 6 and the stop templates, but the lead did not follow it. Needs a stronger rule or an explicit round counter.
+1. **Round counting was ambiguous (fixed in text).** The lead opened two fix sub-issues (KITS-10 and KITS-13), which is within the limit of two fix rounds; the gate and the handover comments, however, counted check rounds ("the second CHẶN: stop 3", "past the two-round limit") and contradicted the lead. `kv-squad-lead` step 6 now defines a round as one fix sub-issue the lead opened, says the third check after the second fix decides stop 3, and tells the lead to ignore round or stop wording in a gate comment; every gate role text now says to give a verdict only. A K8-style test guards the wording. Not re-run on a real stack.
 2. **Numbers gate not re-run after a drafter change.** The drafter revised the document in rounds 1-2 and the numbers gate (QUA on v1) was not re-run; KITS-15 noted this. The lead rule says to re-run only the gate that blocked. Should be: re-run every gate on any changed draft, or the handover must refuse.
 3. **Operating review object stays (decision, see above).** Created, but paused. Spec says `routine: null`.
 4. **Run 3 (earlier drill) mention gap (D4, low severity, one sample).** KITS-3 in the first drill had a `blocked` comment without the mention markup. Not re-tested in this run; the fix is in the text, not verified by a stop-1 run.

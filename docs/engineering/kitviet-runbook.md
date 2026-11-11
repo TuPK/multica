@@ -260,6 +260,7 @@ Bảng sổ quy định Accounting, dòng theo F20 (ngày kiểm 10/11/2026; m�
 ## Office Admin (Hành chính)
 
 - Template: `kv_admin`, floor: Executive, routine: không (`routine: null`)
+- Chú ý: tạo squad vẫn sinh một đối tượng "Operating review" ở trạng thái tạm dừng (server tạo mặc định); quickstart gửi `operating_review_enabled: false` nên nó không chạy. Xóa hẳn đối tượng này cần đổi phía server, chưa làm.
 - Vai (role key · loại · agent gốc):
   - `admin_lead` · lead · phiên chính + `lap-ke-hoach-dieu-phoi`
   - `admin_files` · collector · `gom-ho-so-van-thu`
