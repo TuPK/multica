@@ -8,7 +8,7 @@ import {
   agentBuilderSessionKeys,
   toStoredAgentDraft,
 } from "@multica/core/agents";
-import { findSquadProject, openSquadProjects } from "@multica/core/company";
+import { findSquadProject, openSquadProjects, projectSquadIds } from "@multica/core/company";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { projectListOptions } from "@multica/core/projects/queries";
@@ -85,7 +85,7 @@ export function ManualCreateAgentPage() {
   const projectId =
     pickedProjectId !== undefined ? pickedProjectId : sourceProject?.id ?? null;
   const joinedSquadId = duplicateId
-    ? projects.find((project) => project.id === projectId)?.squad_id ?? null
+    ? projectSquadIds(projects.find((project) => project.id === projectId) ?? {})[0] ?? null
     : squadId;
 
   // True when a duplicate had to fall back to another runtime, which drops the

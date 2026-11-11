@@ -14,6 +14,7 @@ import {
   companySetupOptions,
   companySquadMembersOptions,
   parseCompanySeatConflict,
+  projectHasSquad,
   proposalDetailOptions,
   proposalListOptions,
   useCompanyFloorStore,
@@ -243,7 +244,7 @@ function CompanyScene({ issues, visibleStatuses, projectId }: BoardViewProps) {
       layout.rooms.map((room) => {
         if (!room.squad) return null;
         const squadId = room.squad.id;
-        return projects.find((p) => p.squad_id === squadId && !CLOSED_PROJECT_STATUSES.has(p.status))?.title ?? null;
+        return projects.find((p) => projectHasSquad(p, squadId) && !CLOSED_PROJECT_STATUSES.has(p.status))?.title ?? null;
       }),
     [layout, projects],
   );

@@ -15,14 +15,13 @@ import {
 import { useActorName } from "@multica/core/workspace/hooks";
 import { agentListOptions, squadListOptions, squadMemberStatusOptions } from "@multica/core/workspace/queries";
 import { useWorkspaceId } from "@multica/core/hooks";
-import { autonomyLevelName, squadAutonomyOptions } from "@multica/core/governance";
 import type { SquadMemberStatus } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@multica/ui/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@multica/ui/components/ui/tabs";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { useT } from "../../i18n";
-import { AUTONOMY_LEVEL_KEYS } from "../../governance/autonomy-levels";
+import { SquadAutonomyEditor } from "../../governance/squad-autonomy-editor";
 import { useCompanyAdmin } from "../lib/use-company-admin";
 import { CompanyCharterTab } from "./company-charter-tab";
 import { CompanyRoutines } from "./company-routines";
@@ -110,7 +109,6 @@ function PanelBody({
   const { data: routines = [] } = useQuery(squadRoutinesOptions(wsId, squadId));
   const { data: openItems } = useQuery(squadOpenItemsOptions(wsId, squadId));
   const peek = useIssuePeekActions();
-  const { data: autonomy } = useQuery(squadAutonomyOptions(wsId, squadId));
   const { data: floors = [] } = useQuery(companyFloorsOptions(wsId));
   const { addSquad, pending: adding } = useAddSquadToCompany(floors, squads);
   const { data: projects = [] } = useQuery(projectListOptions(wsId));
@@ -219,19 +217,12 @@ function PanelBody({
           })}
         </section>
         <CompanySquadAttention squadId={squadId} canPin={isCompanyAdmin} />
-        <section aria-label={tGovernance(($) => $.autonomy.panel_heading)} className="flex flex-col gap-1">
-          <h3 className="text-caption font-medium text-muted-foreground">{tGovernance(($) => $.autonomy.panel_heading)}</h3>
-          <p className="text-body">
-            {tGovernance(($) => $.autonomy.level_tag, { level: autonomy?.level ?? squad?.autonomy_level ?? 1 })}
-            {" "}
-            {(() => {
-              const level = autonomy?.level ?? squad?.autonomy_level ?? 1;
-              const key = AUTONOMY_LEVEL_KEYS[level];
-              return key ? tGovernance(($) => $.autonomy.levels[key].name) : autonomyLevelName(level);
-            })()}
-          </p>
-          {autonomy?.reason ? <p className="text-caption text-muted-foreground">{autonomy.reason}</p> : null}
-        </section>
+        {squad ? (
+          <section aria-label={tGovernance(($) => $.autonomy.panel_heading)} className="flex flex-col gap-2">
+            <h3 className="text-caption font-medium text-muted-foreground">{tGovernance(($) => $.autonomy.panel_heading)}</h3>
+            <SquadAutonomyEditor wsId={wsId} squad={squad} editable={isCompanyAdmin} />
+          </section>
+        ) : null}
         <CompanySquadHandoff squadId={squadId} canEdit={isCompanyAdmin} />
         {openItems && openItems.issues.length > 0 ? (
           <section aria-label={t(($) => $.company.squad_open_items)} className="flex flex-col gap-1">

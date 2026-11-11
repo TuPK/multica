@@ -32,6 +32,12 @@ export interface Project {
   workflow_id?: string | null;
   /** The squad this project is assigned to; its company room shows it. Null when none. Older servers omit it. */
   squad_id?: string | null;
+  /**
+   * Every squad assigned to this project; several rooms can work one project at
+   * once. Older servers omit it: read the squads with projectSquadIds, which falls
+   * back to squad_id.
+   */
+  squad_ids?: string[] | null;
 }
 
 export interface CreateProjectRequest {

@@ -6,7 +6,7 @@ import { useWorkspaceId } from "@multica/core/hooks";
 import type { Agent, AgentStatus, ProjectStatus, Squad } from "@multica/core/types";
 import { projectListOptions } from "@multica/core/projects/queries";
 import { budgetPace, budgetsOptions, type Budget, type BudgetState } from "@multica/core/governance";
-import { digestOptions } from "@multica/core/company";
+import { digestOptions, projectSquadIds } from "@multica/core/company";
 import {
   dashboardAgentRunTimeOptions,
   dashboardFailuresDailyOptions,
@@ -195,7 +195,7 @@ export function CompanyInsights({
   });
 
   const projects = useMemo(
-    () => (department ? allProjects.filter((p) => inScope(scope, p.squad_id)) : allProjects),
+    () => (department ? allProjects.filter((p) => projectSquadIds(p).some((id) => inScope(scope, id))) : allProjects),
     [department, allProjects, scope],
   );
   const projectIds = useMemo(() => new Set(projects.map((p) => p.id)), [projects]);

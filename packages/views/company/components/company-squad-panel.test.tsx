@@ -11,6 +11,7 @@ import {
   proposalKeys,
   type SquadRoutine,
 } from "@multica/core/company";
+import { squadAutonomyKey } from "@multica/core/governance";
 import { workspaceKeys } from "@multica/core/workspace/queries";
 import { autopilotKeys } from "@multica/core/autopilots/queries";
 import type { Agent, Squad, SquadMember } from "@multica/core/types";
@@ -106,6 +107,9 @@ describe("CompanySquadPanel", () => {
         },
       ],
     });
+    queryClient.setQueryData(squadAutonomyKey("ws-1", "sq"), {
+      squad_id: "sq", level: 1, level_name: "Work", reason: "", changed_at: null,
+    });
     queryClient.setQueryData(proposalKeys.listFiltered("ws-1", { state: "pending", squad_id: "sq" }), [PROPOSAL]);
     queryClient.setQueryData(charterKeys.routines("ws-1", "sq"), routines);
     queryClient.setQueryData(charterKeys.charter("ws-1", "sq"), {
@@ -199,5 +203,22 @@ describe("CompanySquadPanel", () => {
     expect(within(screen.getByRole("region", { name: "Routines" })).getByRole("button", { name: "Run now" })).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "Charter" }));
     expect(screen.getByRole("button", { name: "Edit" })).toBeTruthy();
+  });
+
+  it("shows a member the room's autonomy level without the change form", () => {
+    setup();
+
+    expect(screen.getByText("L1 Work")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Save level" })).toBeNull();
+  });
+
+  it("lets a workspace admin change the room's autonomy level, with a reason", () => {
+    viewer.companyAdmin = true;
+    setup();
+
+    const save = screen.getByRole("button", { name: "Save level" }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    fireEvent.change(screen.getByRole("textbox", { name: /reason/i }), { target: { value: "Two clean weeks." } });
+    expect(save.disabled).toBe(true); // the level has not changed yet
   });
 });

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import type { Agent, Project } from "../types";
-import { assigneeSquadId, findSquadProject, openSquadProjects } from "./squad-project";
+import { assigneeSquadId, findSquadProject, openSquadProjects, projectHasSquad, projectSquadIds } from "./squad-project";
 
 function project(id: string, squadId: string | null, status = "in_progress"): Project {
   return { id, squad_id: squadId, status } as Project;
@@ -11,7 +11,35 @@ function agent(id: string, homeSquadId: string | null): Agent {
   return { id, home_squad_id: homeSquadId } as Agent;
 }
 
+function sharedProject(id: string, squadIds: string[] | null, status = "in_progress"): Project {
+  return { id, squad_id: squadIds?.[0] ?? null, squad_ids: squadIds, status } as Project;
+}
+
+describe("projectSquadIds", () => {
+  it("reads every squad a project is assigned to", () => {
+    expect(projectSquadIds(sharedProject("p1", ["s1", "s2"]))).toEqual(["s1", "s2"]);
+  });
+
+  it("falls back to squad_id from a server that does not send squad_ids", () => {
+    expect(projectSquadIds(project("p1", "s1"))).toEqual(["s1"]);
+    expect(projectSquadIds(project("p1", null))).toEqual([]);
+  });
+
+  it("answers membership for either squad", () => {
+    const shared = sharedProject("p1", ["s1", "s2"]);
+    expect(projectHasSquad(shared, "s2")).toBe(true);
+    expect(projectHasSquad(shared, "s3")).toBe(false);
+    expect(projectHasSquad(shared, null)).toBe(false);
+  });
+});
+
 describe("findSquadProject", () => {
+  it("finds a project that another room shares", () => {
+    const projects = [sharedProject("p1", ["s1", "s2"])];
+    expect(findSquadProject(projects, "s2")?.id).toBe("p1");
+    expect(findSquadProject(projects, "s1")?.id).toBe("p1");
+  });
+
   it("returns the open project assigned to the squad", () => {
     const projects = [project("p1", "s2"), project("p2", "s1")];
     expect(findSquadProject(projects, "s1")?.id).toBe("p2");
@@ -29,6 +57,10 @@ describe("findSquadProject", () => {
 });
 
 describe("openSquadProjects", () => {
+  it("keeps a shared project that has more than one squad", () => {
+    expect(openSquadProjects([sharedProject("p1", ["s1", "s2"])]).map((p) => p.id)).toEqual(["p1"]);
+  });
+
   it("keeps open projects that have a squad to assign", () => {
     const projects = [
       project("p1", "s1"),

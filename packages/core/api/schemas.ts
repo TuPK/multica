@@ -1640,6 +1640,8 @@ export const ProjectSchema = z.object({
   done_count: z.number().default(0),
   resource_count: z.number().default(0),
   workflow_id: z.string().nullable().default(null),
+  // Older backends omit squad_ids; projectSquadIds falls back to squad_id.
+  squad_ids: z.array(z.string()).nullish(),
 }).loose();
 
 export const EMPTY_PROJECT: Project = {

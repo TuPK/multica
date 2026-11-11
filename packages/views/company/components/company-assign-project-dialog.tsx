@@ -7,6 +7,8 @@ import { ApiError, errorCode } from "@multica/core/api";
 import {
   findSquadProject,
   parseSquadProjectMapping,
+  projectHasSquad,
+  projectSquadIds,
   useAssignSquadProject,
   useUnassignSquadProject,
   type SquadProjectStatusMapping,
@@ -90,7 +92,7 @@ function AssignBody({
     return projects
       .filter((project) => !CLOSED_PROJECT_STATUSES.has(project.status))
       .filter((project) => !needle || project.title.toLowerCase().includes(needle))
-      .sort((a, b) => Number(b.squad_id === squad.id) - Number(a.squad_id === squad.id));
+      .sort((a, b) => Number(projectHasSquad(b, squad.id)) - Number(projectHasSquad(a, squad.id)));
   }, [projects, query, squad.id]);
 
   const removeProject = () => {
@@ -217,7 +219,13 @@ function AssignBody({
             ) : null}
             {candidates.map((project) => {
               const selected = project.id === selectedId;
-              const elsewhere = project.squad_id && project.squad_id !== squad.id ? squadName.get(project.squad_id) : null;
+              // Other rooms may work this project too; name them rather than block the pick.
+              const elsewhere =
+                projectSquadIds(project)
+                  .filter((id) => id !== squad.id)
+                  .map((id) => squadName.get(id))
+                  .filter((name): name is string => !!name)
+                  .join(", ") || null;
               return (
                 <li key={project.id}>
                   <button
@@ -229,7 +237,7 @@ function AssignBody({
                     }`}
                   >
                     <span className="truncate">{project.title}</span>
-                    {project.squad_id === squad.id ? (
+                    {projectHasSquad(project, squad.id) ? (
                       <span className="shrink-0 text-caption text-muted-foreground">{t(($) => $.company.assign_current)}</span>
                     ) : elsewhere ? (
                       <span className="shrink-0 text-caption text-muted-foreground">
