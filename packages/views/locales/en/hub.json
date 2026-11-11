@@ -292,6 +292,7 @@
     "done": "Checked {{checked}}. Updates: {{updates}}. Unchanged: {{unchanged}}. Errors: {{errors}}.",
     "disabled_hint": "Enable the source to sync it.",
     "auto": "Auto-sync: {{interval}}",
+    "auto_paused": "Auto-sync: {{interval}} (paused while the source is disabled)",
     "interval": {
       "label": "Auto-sync",
       "off": "Off",
@@ -299,7 +300,7 @@
       "every_1h": "Every hour",
       "every_6h": "Every 6 hours",
       "every_24h": "Every day",
-      "custom": "Custom"
+      "custom": "Every {{duration}}"
     }
   },
   "update": {
@@ -338,7 +339,14 @@
       "approximate": "This file is too large to match line by line, so every old line shows as removed and every new line as added.",
       "gap": "{{count}} unchanged lines hidden",
       "added_line": "Added:",
-      "removed_line": "Removed:"
+      "removed_line": "Removed:",
+      "layout": {
+        "aria": "Diff layout",
+        "unified": "Unified",
+        "side_by_side": "Side by side"
+      },
+      "before": "Before",
+      "after": "After"
     },
     "toast": {
       "updated": "Updated {{name}}"

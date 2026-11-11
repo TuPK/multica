@@ -25,6 +25,8 @@ export interface CreateHubSourceRequest {
   type: HubSourceType;
   url: string;
   config?: Record<string, unknown>;
+  /** Seconds between automatic syncs; 0 or omitted leaves auto-sync off. */
+  auto_sync_interval_sec?: number;
 }
 
 export interface UpdateHubSourceRequest {

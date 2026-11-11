@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collapseHubDiff, diffHubLines, splitHubLines } from "./hub-update-diff";
+import { collapseHubDiff, diffHubLines, pairHubDiffRows, splitHubLines } from "./hub-update-diff";
 
 describe("splitHubLines", () => {
   it("returns no lines for empty or missing text", () => {
@@ -75,5 +75,31 @@ describe("collapseHubDiff", () => {
 
   it("returns no rows for an empty diff", () => {
     expect(collapseHubDiff([])).toEqual([]);
+  });
+});
+
+describe("pairHubDiffRows", () => {
+  it("puts a changed line opposite its replacement", () => {
+    const rows = pairHubDiffRows(collapseHubDiff(diffHubLines("a\nold\nc", "a\nnew\nc").lines));
+    expect(rows).toEqual([
+      { type: "pair", left: { kind: "same", text: "a" }, right: { kind: "same", text: "a" } },
+      { type: "pair", left: { kind: "removed", text: "old" }, right: { kind: "added", text: "new" } },
+      { type: "pair", left: { kind: "same", text: "c" }, right: { kind: "same", text: "c" } },
+    ]);
+  });
+
+  it("leaves the shorter side empty when a block grows or shrinks", () => {
+    const grew = pairHubDiffRows(collapseHubDiff(diffHubLines("x", "x\ny\nz").lines));
+    expect(grew.at(-1)).toEqual({ type: "pair", left: null, right: { kind: "added", text: "z" } });
+
+    const shrank = pairHubDiffRows(collapseHubDiff(diffHubLines("x\ny\nz", "x").lines));
+    expect(shrank.at(-1)).toEqual({ type: "pair", left: { kind: "removed", text: "z" }, right: null });
+  });
+
+  it("keeps folded gaps as full-width rows", () => {
+    const old = Array.from({ length: 20 }, (_, i) => `line ${i}`).join("\n");
+    const edited = old.replace("line 10", "changed");
+    const rows = pairHubDiffRows(collapseHubDiff(diffHubLines(old, edited).lines));
+    expect(rows.some((row) => row.type === "gap")).toBe(true);
   });
 });

@@ -289,6 +289,7 @@
     "done": "已檢查 {{checked}} 項。更新：{{updates}}；未變更：{{unchanged}}；錯誤：{{errors}}。",
     "disabled_hint": "啟用來源後才能同步。",
     "auto": "自動同步：{{interval}}",
+    "auto_paused": "自動同步：{{interval}}（來源停用時暫停）",
     "interval": {
       "label": "自動同步",
       "off": "關閉",
@@ -296,7 +297,7 @@
       "every_1h": "每小時",
       "every_6h": "每 6 小時",
       "every_24h": "每天",
-      "custom": "自訂"
+      "custom": "每 {{duration}}"
     }
   },
   "update": {
@@ -335,7 +336,14 @@
       "approximate": "此檔案過大，無法逐行比對，因此舊內容的每一行都顯示為刪除，新內容的每一行都顯示為新增。",
       "gap": "已隱藏 {{count}} 行未變更內容",
       "added_line": "新增：",
-      "removed_line": "刪除："
+      "removed_line": "刪除：",
+      "layout": {
+        "aria": "差異檢視",
+        "unified": "統一",
+        "side_by_side": "左右並排"
+      },
+      "before": "修改前",
+      "after": "修改後"
     },
     "toast": {
       "updated": "已更新 {{name}}"

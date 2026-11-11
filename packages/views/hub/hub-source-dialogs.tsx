@@ -32,7 +32,7 @@ import {
 import { useT } from "../i18n";
 import { errorMessage, parseWebAddress } from "./hub-import-request";
 import { USER_SOURCE_TYPES, isKnownSourceType } from "./hub-source-meta";
-import { AUTO_SYNC_INTERVALS, autoSyncKey } from "./hub-source-sync";
+import { AUTO_SYNC_INTERVALS, useAutoSyncLabel } from "./hub-source-sync";
 
 export function HubSourceFormDialog({
   wsId,
@@ -64,6 +64,7 @@ function SourceForm({ wsId, source, onClose }: { wsId: string; source: HubSource
   const [type, setType] = useState<HubSourceType>(source?.type ?? USER_SOURCE_TYPES[0]!);
   const [url, setUrl] = useState(source?.url ?? "");
   const [autoSync, setAutoSync] = useState(String(source?.auto_sync_interval_sec ?? 0));
+  const intervalLabel = useAutoSyncLabel();
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; url?: string }>({});
   const [error, setError] = useState("");
   const pending = create.isPending || update.isPending;
@@ -75,16 +76,13 @@ function SourceForm({ wsId, source, onClose }: { wsId: string; source: HubSource
     label: isKnownSourceType(value) ? t(($) => $.source_types[value]) : value,
   }));
 
-  // Auto-sync is set from the edit dialog only: the create request has no interval field.
   const intervalItems = AUTO_SYNC_INTERVALS.map((seconds) => ({
     value: String(seconds),
-    label: t(($) => $.sync.interval[autoSyncKey(seconds)]),
+    label: intervalLabel(seconds),
   }));
-  if (source && !intervalItems.some((item) => item.value === String(source.auto_sync_interval_sec))) {
-    intervalItems.push({
-      value: String(source.auto_sync_interval_sec),
-      label: t(($) => $.sync.interval.custom),
-    });
+  // A value set by another client or a newer backend keeps its own label.
+  if (!intervalItems.some((item) => item.value === autoSync)) {
+    intervalItems.push({ value: autoSync, label: intervalLabel(Number(autoSync)) });
   }
 
   const submit = async (event: FormEvent) => {
@@ -110,7 +108,15 @@ function SourceForm({ wsId, source, onClose }: { wsId: string; source: HubSource
         await update.mutateAsync({ wsId, id: source.id, ...patch });
         toast.success(t(($) => $.sources.toast.updated));
       } else {
-        await create.mutateAsync({ wsId, name: trimmedName, type, url: trimmedUrl });
+        // Sent only when auto-sync is on: a new source without a schedule needs no field.
+        const interval = Number(autoSync);
+        await create.mutateAsync({
+          wsId,
+          name: trimmedName,
+          type,
+          url: trimmedUrl,
+          ...(interval > 0 ? { auto_sync_interval_sec: interval } : {}),
+        });
         toast.success(t(($) => $.sources.toast.added));
       }
       onClose();
@@ -183,30 +189,28 @@ function SourceForm({ wsId, source, onClose }: { wsId: string; source: HubSource
         {fieldErrors.url ? <p className="text-caption text-destructive">{fieldErrors.url}</p> : null}
       </div>
 
-      {source ? (
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor={ids.interval} className="text-caption text-muted-foreground">
-            {t(($) => $.sync.interval.label)}
-          </Label>
-          <Select
-            items={intervalItems}
-            value={autoSync}
-            disabled={pending}
-            onValueChange={(next) => next && setAutoSync(next)}
-          >
-            <SelectTrigger id={ids.interval} className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {intervalItems.map((item) => (
-                <SelectItem key={item.value} value={item.value}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      ) : null}
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={ids.interval} className="text-caption text-muted-foreground">
+          {t(($) => $.sync.interval.label)}
+        </Label>
+        <Select
+          items={intervalItems}
+          value={autoSync}
+          disabled={pending}
+          onValueChange={(next) => next && setAutoSync(next)}
+        >
+          <SelectTrigger id={ids.interval} className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {intervalItems.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       {error ? (
         <p role="alert" className="text-caption text-destructive">

@@ -292,6 +292,7 @@
     "done": "Vérifiés : {{checked}}. Mises à jour : {{updates}}. Inchangés : {{unchanged}}. Erreurs : {{errors}}.",
     "disabled_hint": "Activez la source pour la synchroniser.",
     "auto": "Synchronisation auto : {{interval}}",
+    "auto_paused": "Synchronisation auto : {{interval}} (en pause tant que la source est désactivée)",
     "interval": {
       "label": "Synchronisation automatique",
       "off": "Désactivée",
@@ -299,7 +300,7 @@
       "every_1h": "Toutes les heures",
       "every_6h": "Toutes les 6 heures",
       "every_24h": "Tous les jours",
-      "custom": "Personnalisée"
+      "custom": "Toutes les {{duration}}"
     }
   },
   "update": {
@@ -338,7 +339,14 @@
       "approximate": "Ce fichier est trop volumineux pour une comparaison ligne à ligne : chaque ancienne ligne est affichée comme supprimée et chaque nouvelle comme ajoutée.",
       "gap": "{{count}} lignes inchangées masquées",
       "added_line": "Ajoutée :",
-      "removed_line": "Supprimée :"
+      "removed_line": "Supprimée :",
+      "layout": {
+        "aria": "Affichage des différences",
+        "unified": "Unifiée",
+        "side_by_side": "Côte à côte"
+      },
+      "before": "Avant",
+      "after": "Après"
     },
     "toast": {
       "updated": "{{name}} mis à jour"

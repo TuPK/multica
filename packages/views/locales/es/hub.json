@@ -292,6 +292,7 @@
     "done": "Revisados {{checked}}. Actualizaciones: {{updates}}. Sin cambios: {{unchanged}}. Errores: {{errors}}.",
     "disabled_hint": "Activa el origen para sincronizarlo.",
     "auto": "Sincronización automática: {{interval}}",
+    "auto_paused": "Sincronización automática: {{interval}} (en pausa mientras la fuente esté deshabilitada)",
     "interval": {
       "label": "Sincronización automática",
       "off": "Desactivada",
@@ -299,7 +300,7 @@
       "every_1h": "Cada hora",
       "every_6h": "Cada 6 horas",
       "every_24h": "Cada día",
-      "custom": "Personalizada"
+      "custom": "Cada {{duration}}"
     }
   },
   "update": {
@@ -338,7 +339,14 @@
       "approximate": "Este archivo es demasiado grande para compararlo línea a línea: cada línea anterior aparece como eliminada y cada línea nueva como añadida.",
       "gap": "{{count}} líneas sin cambios ocultas",
       "added_line": "Añadida:",
-      "removed_line": "Eliminada:"
+      "removed_line": "Eliminada:",
+      "layout": {
+        "aria": "Vista del diff",
+        "unified": "Unificada",
+        "side_by_side": "Lado a lado"
+      },
+      "before": "Antes",
+      "after": "Después"
     },
     "toast": {
       "updated": "{{name}} actualizado"

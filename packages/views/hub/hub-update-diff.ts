@@ -125,3 +125,40 @@ export function collapseHubDiff(lines: HubDiffLine[], context = 3): HubDiffRow[]
   if (hidden > 0) rows.push({ type: "gap", count: hidden });
   return rows;
 }
+
+/** One row of the side-by-side view: a line on each side, or null where that side has nothing. */
+export type HubSideBySideRow =
+  | { type: "pair"; left: HubDiffLine | null; right: HubDiffLine | null }
+  | { type: "gap"; count: number };
+
+/**
+ * Lays unified rows out as before/after pairs. A run of removed lines followed by
+ * added lines is paired by position, so a changed line sits opposite its replacement.
+ */
+export function pairHubDiffRows(rows: HubDiffRow[]): HubSideBySideRow[] {
+  const out: HubSideBySideRow[] = [];
+  let removed: HubDiffLine[] = [];
+  let added: HubDiffLine[] = [];
+  const flush = () => {
+    const count = Math.max(removed.length, added.length);
+    for (let index = 0; index < count; index += 1) {
+      out.push({ type: "pair", left: removed[index] ?? null, right: added[index] ?? null });
+    }
+    removed = [];
+    added = [];
+  };
+
+  for (const row of rows) {
+    if (row.type === "line" && row.line.kind === "removed") {
+      removed.push(row.line);
+    } else if (row.type === "line" && row.line.kind === "added") {
+      added.push(row.line);
+    } else {
+      flush();
+      if (row.type === "gap") out.push({ type: "gap", count: row.count });
+      else out.push({ type: "pair", left: row.line, right: row.line });
+    }
+  }
+  flush();
+  return out;
+}

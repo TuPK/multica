@@ -289,6 +289,7 @@
     "done": "已检查 {{checked}} 项。更新：{{updates}}；未变化：{{unchanged}}；错误：{{errors}}。",
     "disabled_hint": "启用来源后才能同步。",
     "auto": "自动同步：{{interval}}",
+    "auto_paused": "自动同步：{{interval}}（来源停用时暂停）",
     "interval": {
       "label": "自动同步",
       "off": "关闭",
@@ -296,7 +297,7 @@
       "every_1h": "每小时",
       "every_6h": "每 6 小时",
       "every_24h": "每天",
-      "custom": "自定义"
+      "custom": "每 {{duration}}"
     }
   },
   "update": {
@@ -335,7 +336,14 @@
       "approximate": "此文件过大，无法逐行匹配，因此旧内容的每一行都显示为删除，新内容的每一行都显示为新增。",
       "gap": "已隐藏 {{count}} 行未更改内容",
       "added_line": "新增：",
-      "removed_line": "删除："
+      "removed_line": "删除：",
+      "layout": {
+        "aria": "差异视图",
+        "unified": "统一",
+        "side_by_side": "左右并排"
+      },
+      "before": "修改前",
+      "after": "修改后"
     },
     "toast": {
       "updated": "已更新 {{name}}"

@@ -114,6 +114,36 @@ describe("HubUpdateDialog change list", () => {
     expect(within(region).getByText("Added:")).toBeInTheDocument();
   });
 
+  it("shows the unified diff by default and switches to a before and after table", async () => {
+    renderDialog();
+    const region = await screen.findByRole("region", { name: "Changes to SKILL.md" });
+    const layouts = screen.getByRole("group", { name: "Diff layout" });
+    expect(within(layouts).getByRole("button", { name: "Unified" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(region).queryByRole("table")).not.toBeInTheDocument();
+
+    await userEvent.click(within(layouts).getByRole("button", { name: "Side by side" }));
+    expect(within(layouts).getByRole("button", { name: "Side by side" })).toHaveAttribute("aria-pressed", "true");
+    const table = within(region).getByRole("table");
+    expect(within(table).getByRole("columnheader", { name: "Before" })).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: "After" })).toBeInTheDocument();
+    // The changed line sits in both columns of one row, with its change named in text.
+    const row = within(table).getByText("old line").closest("tr");
+    expect(row).not.toBeNull();
+    expect(within(row!).getByText("new line")).toBeInTheDocument();
+    expect(within(row!).getByText("Removed:")).toBeInTheDocument();
+    expect(within(row!).getByText("Added:")).toBeInTheDocument();
+  });
+
+  it("keeps the chosen layout when another file is selected", async () => {
+    renderDialog();
+    await screen.findByRole("region", { name: "Changes to SKILL.md" });
+    const layouts = screen.getByRole("group", { name: "Diff layout" });
+    await userEvent.click(within(layouts).getByRole("button", { name: "Side by side" }));
+    await userEvent.click(screen.getByRole("button", { name: /notes\.md/ }));
+    const region = await screen.findByRole("region", { name: "Changes to notes.md" });
+    expect(within(region).getByRole("table")).toBeInTheDocument();
+  });
+
   it("loads another file's diff when it is selected", async () => {
     renderDialog();
     await screen.findByRole("region", { name: "Changes to SKILL.md" });

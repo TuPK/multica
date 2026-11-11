@@ -1,5 +1,12 @@
 import "@testing-library/jest-dom/vitest";
+import { configure } from "@testing-library/react";
 import "@multica/vitest-setup/web-storage";
+
+// waitFor / findBy* default to 1s. Under the parallel full run a first render
+// can take longer than that, so the async-util budget gets the same headroom
+// as the per-test timeout in vitest.config.ts. A genuinely missing element
+// still fails, only after 5s instead of 1s.
+configure({ asyncUtilTimeout: 5_000 });
 
 // Everything below patches gaps in jsdom. Pure-logic suites opt out of jsdom
 // with `// @vitest-environment node` and share this file, so there is no DOM to

@@ -490,6 +490,12 @@ export class TestApiClient {
     await this.authedFetch(`/api/issues/${id}`, { method: "DELETE" });
   }
 
+  /** Removes a skill made through the UI, so the shared workspace keeps only what later suites expect. */
+  async deleteSkill(id: string) {
+    const res = await this.authedFetch(`/api/skills/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error(`delete skill failed: ${res.status}`);
+  }
+
   async createComment(issueId: string, content: string) {
     const res = await this.authedFetch(`/api/issues/${issueId}/comments`, {
       method: "POST",

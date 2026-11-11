@@ -289,6 +289,7 @@
     "done": "確認 {{checked}} 件。更新 {{updates}} 件、変更なし {{unchanged}} 件、エラー {{errors}} 件。",
     "disabled_hint": "同期するにはソースを有効にしてください。",
     "auto": "自動同期: {{interval}}",
+    "auto_paused": "自動同期: {{interval}}（ソースが無効の間は一時停止）",
     "interval": {
       "label": "自動同期",
       "off": "オフ",
@@ -296,7 +297,7 @@
       "every_1h": "1時間ごと",
       "every_6h": "6時間ごと",
       "every_24h": "1日ごと",
-      "custom": "カスタム"
+      "custom": "{{duration}}ごと"
     }
   },
   "update": {
@@ -335,7 +336,14 @@
       "approximate": "このファイルは大きすぎて行単位で照合できないため、古い行はすべて削除、新しい行はすべて追加として表示します。",
       "gap": "変更のない {{count}} 行を非表示",
       "added_line": "追加:",
-      "removed_line": "削除:"
+      "removed_line": "削除:",
+      "layout": {
+        "aria": "差分の表示形式",
+        "unified": "統合",
+        "side_by_side": "左右に並べる"
+      },
+      "before": "変更前",
+      "after": "変更後"
     },
     "toast": {
       "updated": "{{name}} をアップデートしました"

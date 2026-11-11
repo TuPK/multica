@@ -89,6 +89,57 @@ describe("HubSourcesManager for admins", () => {
     expect(screen.getByRole("switch", { name: "Enable Team skills" })).toBeChecked();
   });
 
+  it("shows a custom interval as its real duration", () => {
+    mocks.sources = [source({ auto_sync_interval_sec: 600 })];
+    renderManager(true);
+    const row = screen.getByRole("row", { name: /Team skills/ });
+    expect(within(row).getByText("Auto-sync: Every 10 minutes")).toBeInTheDocument();
+  });
+
+  it("says a disabled source's schedule is paused, not running", () => {
+    mocks.sources = [source({ enabled: false, auto_sync_interval_sec: 3600 })];
+    renderManager(true);
+    const row = screen.getByRole("row", { name: /Team skills/ });
+    expect(
+      within(row).getByText("Auto-sync: Every hour (paused while the source is disabled)"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows auto-sync as off when the interval is zero, whatever the enabled state", () => {
+    renderManager(true);
+    const row = screen.getByRole("row", { name: /Team skills/ });
+    expect(within(row).getByText("Auto-sync: Off")).toBeInTheDocument();
+  });
+
+  it("shows the edit dialog's current interval as its label", async () => {
+    mocks.sources = [source({ auto_sync_interval_sec: 21600 })];
+    renderManager(true);
+    await userEvent.click(screen.getByRole("button", { name: "Edit Team skills" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("combobox", { name: "Auto-sync" })).toHaveTextContent("Every 6 hours");
+  });
+
+  it("sets an auto-sync schedule while adding a source", async () => {
+    renderManager(true);
+    await userEvent.click(screen.getByRole("button", { name: "Add source" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText("Name"), "Partner skills");
+    await userEvent.type(within(dialog).getByLabelText("URL"), "https://example.com/partner.zip");
+    await userEvent.click(within(dialog).getByRole("combobox", { name: "Auto-sync" }));
+    await userEvent.click(await screen.findByRole("option", { name: "Every hour" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Add" }));
+
+    await waitFor(() =>
+      expect(mocks.create).toHaveBeenCalledWith({
+        wsId: "ws-1",
+        name: "Partner skills",
+        type: "github",
+        url: "https://example.com/partner.zip",
+        auto_sync_interval_sec: 3600,
+      }),
+    );
+  });
+
   it("shows the last sync error on a failed source", () => {
     mocks.sources = [source({ last_sync_status: "error", last_sync_error: "401 from GitHub" })];
     renderManager(true);

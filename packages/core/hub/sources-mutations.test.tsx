@@ -59,6 +59,30 @@ describe("hub source mutations", () => {
     expect(invalidatedKeys(spy)).toEqual(expect.arrayContaining(INVALIDATED_BY_CATALOG_CHANGE));
   });
 
+  it("sends the auto-sync interval chosen at creation with the new source", async () => {
+    qc = createQueryClient();
+    const createHubSource = vi.fn().mockResolvedValue({ id: "src-2" });
+    fakeApi({ createHubSource });
+    const { result } = renderHook(() => useCreateHubSource(), { wrapper: withClient(qc) });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        wsId: "ws-1",
+        name: "Team",
+        type: "github",
+        url: "https://github.com/a/b",
+        auto_sync_interval_sec: 3600,
+      });
+    });
+
+    expect(createHubSource).toHaveBeenCalledWith("ws-1", {
+      name: "Team",
+      type: "github",
+      url: "https://github.com/a/b",
+      auto_sync_interval_sec: 3600,
+    });
+  });
+
   it("does not invalidate anything when the server rejects the update", async () => {
     qc = createQueryClient();
     const spy = vi.spyOn(qc, "invalidateQueries");

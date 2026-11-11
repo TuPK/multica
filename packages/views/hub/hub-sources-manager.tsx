@@ -16,7 +16,7 @@ import { errorMessage } from "./hub-import-request";
 import { HubSourceDeleteDialog, HubSourceFormDialog } from "./hub-source-dialogs";
 import { isKnownSourceType, safeSourceLink, syncStatusKind } from "./hub-source-meta";
 import { SyncSourceButton } from "./hub-source-sync-button";
-import { autoSyncKey } from "./hub-source-sync";
+import { useAutoSyncLabel } from "./hub-source-sync";
 
 /** Sources table on the Hub's Sources tab. Only admins and owners can change anything. */
 export function HubSourcesManager({ wsId, canManage }: { wsId: string; canManage: boolean }) {
@@ -124,11 +124,17 @@ function SourceRow({
   const { t } = useT("hub");
   const timeAgo = useTimeAgo();
   const update = useUpdateHubSource();
+  const scheduleLabel = useAutoSyncLabel();
   const typeLabel = isKnownSourceType(source.type)
     ? t(($) => $.source_types[source.type])
     : source.type;
   const link = source.url ? safeSourceLink(source.url) : null;
   const status = syncStatusKind(source);
+  // The scheduler only runs enabled sources, so a disabled one says it is paused.
+  const schedule =
+    source.auto_sync_interval_sec === 0 || source.enabled
+      ? t(($) => $.sync.auto, { interval: scheduleLabel(source.auto_sync_interval_sec) })
+      : t(($) => $.sync.auto_paused, { interval: scheduleLabel(source.auto_sync_interval_sec) });
 
   const toggle = async (enabled: boolean) => {
     try {
@@ -179,7 +185,7 @@ function SourceRow({
             </span>
           ) : null}
           <span className="truncate text-caption text-muted-foreground">
-            {t(($) => $.sync.auto, { interval: t(($) => $.sync.interval[autoSyncKey(source.auto_sync_interval_sec)]) })}
+            {schedule}
           </span>
         </div>
       </td>
