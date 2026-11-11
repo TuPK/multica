@@ -154,6 +154,8 @@ fill_hub_secrets() {
   set_if_empty HUB_S3_BUCKET "multica-hub"
   set_if_empty HUB_S3_REGION "us-east-1"
   set_if_empty HUB_S3_USE_PATH_STYLE "true"
+  # Encrypts the access tokens of private Hub sources at rest (base64, 32 bytes).
+  set_if_empty MULTICA_HUB_SECRET_KEY "$(openssl rand -base64 32)"
 }
 
 # Postgres applies POSTGRES_PASSWORD only when its data volume is created, and the

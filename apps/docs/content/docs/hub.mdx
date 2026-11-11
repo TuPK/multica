@@ -19,6 +19,12 @@ A source is a place Multica checks for updates. Workspace admins and owners add 
 | **ClawHub** | A skill published on ClawHub |
 | **Registry** | An index file (JSON) that you host, listing items and where to download them |
 
+### Private sources
+
+GitHub, zip URL and registry sources can carry an access token for a private repository or host. Admins and owners enter it when they add or edit the source. It is stored encrypted, is never shown again (the source shows only that a token is saved), and is sent only to the source's own host. A redirect to another host does not receive it. Changing a source's URL to another host removes the saved token. Saving a token needs the server's `MULTICA_HUB_SECRET_KEY`; without it, the server refuses the token.
+
+When you preview an import from a private source, pick the saved source rather than typing its URL, so the preview uses its token. The URL must match the source exactly.
+
 **Sync now** checks every item from a source. When you edit a source you can also set an auto-sync interval. Removing a source asks what to do with its items: keep them (they stay in the Hub without a source), or delete them. Deletion stops if an agent uses one of them.
 
 ## Adding items
@@ -57,6 +63,10 @@ Nothing is overwritten silently. An item's tracking state is one of **Tracking**
 ## Activity
 
 Each item and the workspace as a whole have an activity log. It records sources added, changed, and synced, imports, applied updates, forks, file saves, plugin versions published, and exports. Each entry shows who did it and when. Use **Load more** to see older entries.
+
+## Limits
+
+An uploaded `.zip` or `.skill` archive is limited to 16 MiB by default. Self-hosters can raise or lower the limit with `HUB_MAX_UPLOAD_BYTES`.
 
 ## Quotas
 

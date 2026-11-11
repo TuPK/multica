@@ -33,6 +33,11 @@ Hub storage reads `HUB_S3_*`. It is separate from the attachment bucket (`S3_*`)
 | `HUB_S3_USE_PATH_STYLE` | `true` when `HUB_S3_ENDPOINT` is set | Path-style addressing. |
 | `HUB_S3_PUBLIC_ENDPOINT` | unset | The address clients reach the store at. Presigned download links are signed against it. Unset, bundles download through the server. |
 
+| `HUB_MAX_UPLOAD_BYTES` | `16777216` (16 MiB) | Archive cap for a zip uploaded to the import preview. Any positive byte count; zero, blank or non-numeric values keep the default. Commit reads the staged copy under the same cap. The cap for fetched sources (GitHub, zip URL) stays 16 MiB. |
+| `MULTICA_HUB_SECRET_KEY` | unset | Base64 of 32 random bytes. Seals the access token of a private source (GitHub, zip URL, registry). Unset, saving a credential fails with `409 secrets_not_configured`; nothing is stored in plaintext. Changing the key makes stored tokens unreadable: previews answer `409 secrets_not_configured` and syncs record a credential error until the owner saves the token again. |
+
+Generate the Hub key with `openssl rand -base64 32`. It is separate from every other secret key, so it rotates on its own. Tokens are pinned to the source's host: a redirect to another host drops them, and a source whose URL moves to another host loses its stored token.
+
 With a custom endpoint the backend creates the bucket at startup when it is missing. A
 failure is logged and does not stop the server. Startup logs `hub storage initialized`
 with the bucket, the endpoint and whether presigning is on. Without `HUB_S3_ENDPOINT`
@@ -178,7 +183,23 @@ No code change is needed. The Hub talks only to the S3 API.
 Rollback: restore the old variables and restart the backend. Objects written to the new
 bucket after the switch are not copied back.
 
-## 7. Troubleshooting
+## 7. Metrics
+
+Exposed on the server's `/metrics` endpoint, in the `multica_hub_` family. Every series is present from startup at zero.
+
+| Metric | Labels | Meaning |
+|---|---|---|
+| `multica_hub_sync_duration_seconds` | none | Histogram of one source sync, from its lock to its recorded result. |
+| `multica_hub_sync_runs_total` | `result` = `ok` \| `error` | Source syncs. `error` means at least one item could not be checked. |
+| `multica_hub_sync_items_checked_total` | none | Items checked against their remote by syncs, successful or not. |
+| `multica_hub_sync_updates_found_total` | none | Items a sync found with a newer remote version. |
+| `multica_hub_import_commits_total` | `kind` = `skill` \| `plugin`, `result` = `ok` \| `skipped` \| `error` | Import commits. `skipped` is a conflict strategy that kept the existing item. |
+| `multica_hub_bundle_builds_total` | `result` = `ok` \| `error` | Bundle builds and stores. |
+| `multica_hub_storage_errors_total` | `operation` = `put` \| `get` \| `delete` | Failed Hub object-store operations. A missing object is not counted. |
+
+A rising `multica_hub_storage_errors_total` with a flat `multica_hub_bundle_builds_total` points at the store (section 2 and section 8 below). A rising `multica_hub_sync_runs_total{result="error"}` on one source points at that source: its last sync error names the cause, and a credential error means the Hub key changed or is unset.
+
+## 8. Troubleshooting
 
 | Symptom | Cause and action |
 |---|---|
@@ -188,7 +209,7 @@ bucket after the switch are not copied back.
 | `404 preview not found` for an import committed right after a deploy | The preview was staged under the old `hub/…/staging/` key. It expires within 30 minutes; preview again. |
 | `500 InternalError`, and the SeaweedFS log says `Not enough data nodes found` or `No writable volumes` for a collection | SeaweedFS has a default cap of 8 volumes per volume server (`Max` in `http://<HUB_S3_UI_PORT>/vol/status`). Each bucket is a collection that takes volumes, and the first one takes most of them, so a second bucket in the same store cannot take writes. The Hub uses one bucket, so this does not affect it. A test or other bucket in the same store does. Use a separate store for another bucket, or raise the cap in the compose command (`-volume.max`). The compose file does not set it. |
 
-## 8. Verification record
+## 9. Verification record
 
 | Check | Result |
 |---|---|

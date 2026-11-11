@@ -61,6 +61,8 @@ On a development checkout, `make dev-full` starts the same SeaweedFS service and
 | `HUB_S3_SECRET_KEY` | unset | Secret key for `HUB_S3_ACCESS_KEY`. |
 | `HUB_S3_USE_PATH_STYLE` | `true` when `HUB_S3_ENDPOINT` is set | Address buckets as `endpoint/bucket` instead of `bucket.endpoint`. Most self-hosted stores need `true`. |
 | `HUB_S3_PUBLIC_ENDPOINT` | unset | Address that browsers and the desktop app use to reach the store. Download links are signed against it. |
+| `HUB_MAX_UPLOAD_BYTES` | `16777216` (16 MiB) | Largest `.zip` or `.skill` archive accepted by the upload preview. Zero, blank or non-numeric values keep the default. |
+| `MULTICA_HUB_SECRET_KEY` | unset | Base64 of 32 random bytes (`openssl rand -base64 32`). Seals the access tokens of private sources. Unset, a source cannot take a credential. See [Hub sources](/hub#private-sources). |
 
 ### Download links
 

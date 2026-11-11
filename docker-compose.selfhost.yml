@@ -152,6 +152,8 @@ services:
       # this backend. Both settings are optional only in the sense that leaving
       # either empty disables plugin surfaces rather than weakening isolation.
       MULTICA_PLUGIN_SECRET_KEY: ${MULTICA_PLUGIN_SECRET_KEY:-}
+      MULTICA_HUB_SECRET_KEY: ${MULTICA_HUB_SECRET_KEY:-}
+      HUB_MAX_UPLOAD_BYTES: ${HUB_MAX_UPLOAD_BYTES:-}
       MULTICA_PLUGIN_SURFACE_ORIGIN: ${MULTICA_PLUGIN_SURFACE_ORIGIN:-}
       MULTICA_PLUGIN_API_URL: ${MULTICA_PLUGIN_API_URL:-}
       MULTICA_PLUGIN_DIR: ${MULTICA_PLUGIN_DIR:-}

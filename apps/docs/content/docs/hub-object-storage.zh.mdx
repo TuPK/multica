@@ -61,6 +61,8 @@ import { Callout } from "fumadocs-ui/components/callout";
 | `HUB_S3_SECRET_KEY` | 未设置 | `HUB_S3_ACCESS_KEY` 对应的密钥。 |
 | `HUB_S3_USE_PATH_STYLE` | 设置了 `HUB_S3_ENDPOINT` 时为 `true` | 以 `endpoint/bucket` 的形式访问存储桶，而不是 `bucket.endpoint`。大多数自托管存储需要设为 `true`。 |
 | `HUB_S3_PUBLIC_ENDPOINT` | 未设置 | 浏览器和桌面客户端访问存储的地址。下载链接会使用该地址签名。 |
+| `HUB_MAX_UPLOAD_BYTES` | `16777216`（16 MiB） | 上传预览接受的最大 `.zip` 或 `.skill` 压缩包大小。设为零、留空或不是数字时保持默认值。 |
+| `MULTICA_HUB_SECRET_KEY` | 未设置 | 32 个随机字节的 base64 编码（可用 `openssl rand -base64 32` 生成）。用于加密私有来源的访问令牌。未设置时，来源无法保存凭证。详见 [Hub 来源](/hub#私有来源)。 |
 
 ### 下载链接
 

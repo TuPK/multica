@@ -31,7 +31,7 @@ Checks per phase (from repo root): `make sqlc` after SQL, `make test` (Go), `pnp
 - [x] `seaweedfs` service added to `docker-compose.selfhost.yml` (image pinned 4.53, credentials
       from `HUB_S3_*`, started and health-checked). It uses its own `HUB_S3_*` settings, NOT
       `S3_BUCKET`: setting the global S3 vars would redirect existing attachment reads.
-- [ ] Re-check upstream licence/maturity of SeaweedFS and RustFS before Phase 4 ships.
+- [x] Re-checked licence/maturity (2026-11-11, from secondary sources, not the upstream release pages): the SeaweedFS core is Apache-2.0 (its enterprise edition is under a separate EULA; we pin the community image 4.53); RustFS 1.0 went GA on 2026-09-16 under Apache-2.0 and stays a watch candidate.
 
 ## Phase 1 — Menu, routes, unified read model (read-only Hub) (2–3 days)
 Scope change (implemented): Phase 1 is client-side only. The Hub merges the existing skill list
@@ -50,7 +50,7 @@ Backend (deferred to Phase 3)
       creation: `GET /api/hub/items` creates a row the first time it lists a skill or plugin,
       and the bundle route does the same when it is asked. Nothing is backfilled in bulk, so
       there is no maintenance job, and no create path triggers a row.
-- [ ] Handlers `GET /api/hub/items/{kind}/{id}` (not built; the UI reads the list). `GET
+- [x] Handlers `GET /api/hub/items/{kind}/{id}` (built in the completion pass). `GET
       /api/hub/items` and `GET /api/hub/sources` exist, but neither takes search, sort, filter
       or cursor parameters. Go tests with `dbfx` exist for the list and the sources.
 Core / views / apps
@@ -69,16 +69,16 @@ Core / views / apps
 - Exit: Hub lists existing skills and plugins with correct sources; flag off hides the menu.
 
 ## Phase 2 — Detail view, file tree, preview, edit (3–4 days)
-- [ ] Unified file API `GET/PUT/DELETE /api/hub/items/{kind}/{id}/files`, `POST .../files/move`.
-      Not built: the Hub reads files through the existing skill and plugin-version routes
-      (`packages/core/hub/files.ts`), so the optimistic lock below does not exist either.
-- [ ] Optimistic lock: `updated_at`/ETag on file PUT, 409 on mismatch. Not built (see above).
+- [x] Unified file save `PUT /api/hub/items/{kind}/{id}/files` with an etag check. Reads, deletes
+      and moves stay on the existing skill and plugin-version routes (`packages/core/hub/files.ts`);
+      a second server path for them would add nothing, so GET/DELETE/move under `/api/hub` were dropped.
+- [x] Optimistic lock: the etag is the row's RFC3339Nano `updated_at`; a stale or missing etag on an existing file returns 409 `file_conflict` with the current etag (checked under the skill row lock).
 - [x] `HubItemPage` exists (`hub-item-page.tsx`). Its tabs were not re-checked in this pass.
-- [ ] Files tab: `hub-file-tree`, `hub-file-viewer` and `hub-item-files` exist. Not verified:
-      virtualized tree, rename, move, new folder, unsaved guard, conflict dialog.
-- [ ] Versions tab reusing `skill-versions-tab`; Usage tab. Not verified in this pass.
-- [ ] Plugin items: manifest viewer and draft versions (`plugin-draft.ts` exists). Not verified
-      in this pass.
+- [x] Files tab: `hub-file-tree`, `hub-file-viewer` and `hub-item-files` with virtualized tree, rename,
+      move, new folder, unsaved guard and conflict dialog, covered by component tests and the e2e spec.
+      Not exercised by hand in a browser.
+- [x] Versions tab reusing `skill-versions-tab`; Usage tab (covered by `hub-item-page.test.tsx`).
+- [x] Plugin items: manifest viewer and draft versions (`plugin-draft.ts`), covered by core and view tests.
 - Exit: browse, edit and save a skill file from Hub, version recorded; plugin files viewable.
 
 ## Phase 3 — Add flows: URL, registry, upload, preview (4–5 days)
@@ -98,10 +98,11 @@ Core / views / apps
       (see the note at the top). A zip is uploaded through the preview route, validated on the
       server, and capped at 16 MiB.
 - [x] Source CRUD endpoints (`hub_source.go`).
-- [ ] Private-repo credentials encrypted at rest. Not built: the Hub fetches public sources only.
+- [x] Private-repo credentials encrypted at rest (AES-256-GCM with `MULTICA_HUB_SECRET_KEY`; unset -> 409 `secrets_not_configured`). The token goes only to the source's own host, is never returned or logged, and is dropped on cross-host redirects. `make dev-full` generates the key.
 - [x] UI: `AddToHubDialog` with the URL, registry and upload steps exists. Not verified in this
       pass: the blank step and the drag-and-drop folder.
-- [x] E2E: `e2e/hub.spec.ts` exists. Not run in this pass.
+- [x] E2E: `e2e/hub.spec.ts` exists and was run in the frontend completion pass: 3 passed (import and
+      edit, filter and sort with a reload, and a skill-file conflict that is resolved by overwrite).
 - Exit: skills and plugins can be added from all source types with scan results.
 
 ## Phase 4 — Central object storage (3 days)
@@ -121,8 +122,8 @@ Core / views / apps
       and deletes `staging/` objects older than 60 minutes (the 30 minute preview TTL plus a
       margin). It complements the bucket lifecycle rule on `staging/` and does not replace it.
       Local disk has no lifecycle rule, so the job is what sweeps it there.
-- [ ] Deploy: `seaweedfs` service and bucket init in `docker-compose.selfhost.yml` (done, owned by
-      the compose change). Helm values not verified in this pass.
+- [x] Deploy: `seaweedfs` service and bucket init in `docker-compose.selfhost.yml`, and in `make dev-full`.
+      Helm: `deploy/helm` does not model the Hub or WeKnora, so it is unchanged (not applicable).
 - [x] Runbook `docs/engineering/runbooks/hub-object-storage.md` exists. Not re-reviewed in this
       pass.
 - Exit: bundles in SeaweedFS, digest-verified; switching endpoint requires config only.
@@ -134,19 +135,18 @@ Core / views / apps
       record the check. Forked and locally edited items are flagged, not overwritten.
 - [x] `check-update` / `apply-update` with the file diff, `fork`, and tracking states. Plugin apply
       is covered end to end: overwrite, `version_conflict`, `key_changed`, and fork.
-- [ ] Metrics for sync duration and failures are not built. Logs are.
+- [x] Metrics: `multica_hub_sync_*`, `multica_hub_import_commits_total`, `multica_hub_bundle_builds_total`, `multica_hub_storage_errors_total`.
 - Exit: update-available badge, diff, apply or fork all work end to end.
 
 ## Phase 6 — Hardening, permissions, docs, release (2–3 days)
 - [x] Activity log: server `GET /api/hub/activity`; Activity tab on each item and a workspace Activity tab on the Hub.
-- [ ] Permissions matrix tests (member view, editor edit, admin manage). Server tests exist in `hub_permissions_test.go`; matrix coverage was not reviewed in this pass.
-- [ ] Quotas (storage bytes, item count) with clear errors. Limits are enforced server-side (`HUB_MAX_ITEMS_PER_WORKSPACE`, `HUB_MAX_STORAGE_BYTES_PER_WORKSPACE`) and the Hub shows a usage meter. Not done: the `quota_exceeded` error is not yet shown in the add, sync, or update flows.
+- [x] Permissions matrix tests (member view, editor edit, admin manage) in `hub_permissions_test.go`; routes added later (item detail, file save, source credentials) have their own permission cases in their tests.
+- [x] Quotas (storage bytes, item count) with clear errors. Limits are enforced server-side (`HUB_MAX_ITEMS_PER_WORKSPACE`, `HUB_MAX_STORAGE_BYTES_PER_WORKSPACE`), the Hub shows a usage meter, and `quota_exceeded` is shown in the add, sync, and update flows (`hub-source-sync-button.tsx`, `hub-update-dialog.tsx`, `hub-import-preview.tsx`).
 - [x] Export bundle / export all: per-item "Download bundle" and admin-only "Export all" on the Hub.
-- [ ] a11y pass on tree and editor (`accessibility-scan`), keyboard navigation. Done: the file tree is an ARIA tree with arrow, Home/End, and Enter keys, a roving tab stop, and labelled editor and preview regions. Not done: `accessibility-scan` was not run (no dev server in this pass), and dialog focus return was not checked.
+- [ ] a11y pass on tree and editor (`accessibility-scan`), keyboard navigation. Done: the file tree is an ARIA tree with arrow, Home/End, and Enter keys, a roving tab stop, and labelled editor and preview regions. Dialog focus return is covered by tests for the Add dialog and the update review (Escape and Cancel return focus to the trigger). Not done: `accessibility-scan` has not been run.
 - [x] Fumadocs pages (en + zh) for Hub and object-storage setup (`hub`, `hub-object-storage`); whats-new entry for the Hub (version 0.8.2 is unconfirmed; hidden until a server at that version connects).
 - [-] Remove the `hub_v1` flag after soak. Dropped: the flag was never added.
-- [ ] Full `make check` and the Playwright suite. Not run in this pass; the Go checks listed in the
-      follow-up report were run instead.
+- [ ] Full `make check`. Not run as one pipeline; its parts were run separately: `pnpm typecheck`, core and views vitest, the Go suites for handler, service, daemon, hub, storage, scheduler, cmd, and `e2e/hub.spec.ts` (3 cases) against a live stack wired to SeaweedFS.
 
 ## Follow-up hardening (G4 pass)
 - Legacy ClawHub and skills.sh fetches go through the SafeFetcher's client, so a redirect to a
@@ -175,3 +175,25 @@ Core / views / apps
 
 ## Rough estimate
 ~18–24 working days for one engineer; Phase 1–2 alone gives a usable Hub.
+
+## Frontend completion pass
+- List and catalog: sort by name, updated, created, most used, or source, with a direction control.
+  Filters for kind, source, label, status (update available, scan warning, tracking, forked,
+  manual), and in-use (agents for skills, installations for plugins). Dimensions are multi-select
+  and combine with AND. The count reads "N of M", and "Clear filters" resets filters and search.
+  Rows past 200 are virtualized (`HUB_VIRTUALIZE_AFTER`). Logic is in `packages/core/hub/list.ts`.
+- View mode, sort, and filters persist per workspace in `useHubViewStore`
+  (`packages/core/hub/stores/view-store.ts`). The search text is session-only.
+- Search matches name, description, labels, and the source type. File-name search is not
+  implemented: `GET /api/hub/items` takes no query parameter, so there is no cheap server route to
+  reuse.
+- Saving a skill file uses the server's etag lock (`PUT /api/hub/items/skill/{id}/files`). A 409
+  becomes `HubFileConflictError` with the server's current etag, and overwrite uses that etag
+  without another read. `getHubItem` and `hubItemOptions` are exposed. `useHubItemMeta` still
+  derives from the list, which is one request for every item.
+- Private sources: the Add dialog's From URL tab (GitHub and zip) takes an optional token. A token
+  is saved as a source first, and the preview uses that source's id. The source form shows
+  "Token saved" with Replace and Remove, and never shows the token.
+- Origins: uploaded skills (`origin.type = upload`) and url_zip or registry origins now map to
+  their own source. Before, they were shown as "Created here".
+
