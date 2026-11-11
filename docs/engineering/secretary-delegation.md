@@ -252,7 +252,7 @@ state machine, a fixed question-type router, digest-only routing rules.
 Platform facts it reuses (verified in the code): `issue create --assignee-squad` with
 `--parent`; the `squad_request` origin on that pair; `child_done`; one-shot time wakeups;
 issue metadata; the brief table with kind `ad_hoc`; `originator_user_id` on every task and
-`invokeOriginatorFromRequest`; the squad directory; `project.squad_id`; the `floor_chief`
+`invokeOriginatorFromRequest`; the squad directory; `project.squad_ids`; the `floor_chief`
 template; skills; the proposal flow.
 
 ### G1. Answering from a run that is not a chat turn

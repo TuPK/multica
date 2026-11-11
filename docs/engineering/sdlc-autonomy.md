@@ -205,4 +205,5 @@ Cần một Owner decision `O-2`:
 - **Loại: tăng hạn mức proposal** như giải pháp chính. Nó không sửa nguyên nhân (cổng tự đặt, chặn đầu hàng đợi).
 - **Loại: cho agent bỏ qua điều kiện khi bị block lâu.** Dễ che lỗi thật. Hạ bậc có ghi chép an toàn hơn.
 - **Loại: song song hoá nhiều Epic ở thư mục `in_place`.** Mutex theo thư mục tồn tại để tránh xung đột; đỗ và đi tiếp
-  giữ nguyên nó.
+  giữ nguyên nó. (Riêng các issue của hai phòng khác nhau trong cùng dự án nay chạy song song: xem lane theo phòng
+  trong `ListReleasableQueuedIssues` và `LocalPathLocker`. Epic trong cùng một phòng vẫn xếp tuần tự.)
