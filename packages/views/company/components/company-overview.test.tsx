@@ -1,15 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithI18n } from "../../test/i18n";
 import { NavigationProvider, type NavigationAdapter } from "../../navigation";
 import { CompanyOverview } from "./company-overview";
 import { readCompanySelection } from "../lib/company-selection";
 
-type QueryResult = { data?: unknown };
+type QueryResult = { data?: unknown; isSuccess?: boolean };
 
 const mocks = vi.hoisted(() => ({
   queries: {} as Record<string, QueryResult>,
+  admin: false,
 }));
 
 vi.mock("@tanstack/react-query", () => ({
@@ -21,6 +22,7 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 vi.mock("@multica/core/hooks", () => ({ useWorkspaceId: () => "ws-1" }));
 vi.mock("@multica/core/company", () => ({
+  COMPANY_SLOTS: 6,
   companyFloorsOptions: () => ({ queryKey: ["floors"] }),
   useDeleteCompanyFloor: () => ({ mutate: vi.fn(), isPending: false }),
   useUpdateCompanyFloor: () => ({ mutate: vi.fn(), isPending: false }),
@@ -32,7 +34,7 @@ vi.mock("@multica/core/workspace/queries", () => ({
   squadListOptions: () => ({ queryKey: ["squads"] }),
   workspaceKeys: { squads: () => ["squads"], agents: () => ["agents"] },
 }));
-vi.mock("../lib/use-company-admin", () => ({ useCompanyAdmin: () => false }));
+vi.mock("../lib/use-company-admin", () => ({ useCompanyAdmin: () => mocks.admin }));
 vi.mock("../../issues/surface/peek-context", () => ({ useIssuePeekActions: () => null }));
 vi.mock("../../modals/create-squad", () => ({ CreateSquadModal: () => null }));
 vi.mock("./company-insights", () => ({
@@ -57,6 +59,7 @@ function seed() {
       ],
     },
     squads: {
+      isSuccess: true,
       data: [
         { id: "s-1", name: "Planning", floor_id: "f-1", leader_id: "a-1", member_count: 2 },
         { id: "s-2", name: "Discovery", floor_id: "f-2", leader_id: "a-2", member_count: 3 },
@@ -92,6 +95,7 @@ function renderOverview(search = "") {
 
 beforeEach(() => {
   seed();
+  mocks.admin = false;
 });
 
 describe("CompanyOverview drill-down", () => {
@@ -136,5 +140,29 @@ describe("CompanyOverview drill-down", () => {
   it("derives the department from a squad named alone in the URL", () => {
     renderOverview("squad=s-2");
     expect(screen.getByText("squad pane: Discovery")).toBeInTheDocument();
+  });
+});
+
+describe("CompanyOverview department delete", () => {
+  it("confirms the delete and names the squads seated in the department", async () => {
+    mocks.admin = true;
+    renderOverview();
+
+    await userEvent.click(screen.getByRole("button", { name: "Executive options" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Delete department" }));
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText("Delete Executive?")).toBeInTheDocument();
+    expect(within(dialog).getByText(/1 squad will lose its room\. It is kept\./)).toBeInTheDocument();
+  });
+
+  it("keeps delete off until the squad list has loaded", async () => {
+    mocks.admin = true;
+    mocks.queries.squads = { data: mocks.queries.squads?.data };
+    renderOverview();
+
+    await userEvent.click(screen.getByRole("button", { name: "Executive options" }));
+
+    expect((await screen.findByRole("menuitem", { name: "Delete department" })).getAttribute("aria-disabled")).toBe("true");
   });
 });

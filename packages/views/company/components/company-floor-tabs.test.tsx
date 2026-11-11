@@ -4,17 +4,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { toast } from "sonner";
 import type { CompanyFloor } from "@multica/core/company";
 import { renderWithI18n } from "../../test/i18n";
 import { CompanyFloorTabs } from "./company-floor-tabs";
 
 const mutations = vi.hoisted(() => ({ create: vi.fn(), update: vi.fn(), remove: vi.fn() }));
 
+vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
+
 vi.mock("@multica/core/company", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@multica/core/company")>()),
   useCreateCompanyFloor: () => ({ mutate: mutations.create, isPending: false }),
   useUpdateCompanyFloor: () => ({ mutate: mutations.update }),
-  useDeleteCompanyFloor: () => ({ mutate: mutations.remove }),
+  useDeleteCompanyFloor: () => ({ mutate: mutations.remove, isPending: false }),
 }));
 
 function floor(id: string, name: string, position: number): CompanyFloor {
@@ -28,6 +31,7 @@ describe("CompanyFloorTabs", () => {
 
   beforeEach(() => {
     Object.values(mutations).forEach((fn) => fn.mockReset());
+    vi.mocked(toast.error).mockReset();
     onSelect.mockReset();
   });
   afterEach(cleanup);
@@ -37,7 +41,7 @@ describe("CompanyFloorTabs", () => {
       <CompanyFloorTabs
         floors={FLOORS}
         currentId="f2"
-        occupied={new Set(["f1"])}
+        seated={new Map([["f1", 2]])}
         canManage
         onSelect={onSelect}
         {...props}
@@ -97,19 +101,58 @@ describe("CompanyFloorTabs", () => {
     expect(mutations.update).toHaveBeenCalledWith({ id: "f2", position: 0 }, expect.any(Object));
   });
 
-  it("deletes an empty floor and refuses one that holds a squad", async () => {
+  it("asks for confirmation, then deletes the floor and moves off it", async () => {
     const user = userEvent.setup();
-    const { rerender } = setup();
+    mutations.remove.mockImplementation((_id: string, options: { onSuccess: () => void }) => options.onSuccess());
+    setup({ seated: new Map() });
 
     await user.click(screen.getByRole("button", { name: "Build options" }));
     await user.click(await screen.findByRole("menuitem", { name: "Delete floor" }));
-    expect(mutations.remove).toHaveBeenCalledWith("f2", expect.any(Object));
 
-    rerender(
-      <CompanyFloorTabs floors={FLOORS} currentId="f1" occupied={new Set(["f1"])} canManage onSelect={onSelect} />,
-    );
-    await user.click(await screen.findByRole("button", { name: "Research options" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText("Delete Build?")).toBeTruthy();
+    expect(mutations.remove).not.toHaveBeenCalled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Delete floor" }));
+    expect(mutations.remove).toHaveBeenCalledWith("f2", expect.any(Object));
+    expect(onSelect).toHaveBeenCalledWith("f1");
+  });
+
+  it("states how many squads on the floor lose their rooms", async () => {
+    const user = userEvent.setup();
+    setup({ currentId: "f1", seated: new Map([["f1", 2]]) });
+
+    await user.click(screen.getByRole("button", { name: "Research options" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Delete floor" }));
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText(/Its 6 rooms will be removed\./)).toBeTruthy();
+    expect(within(dialog).getByText(/2 squads will lose their rooms\. They are kept\./)).toBeTruthy();
+  });
+
+  it("keeps delete off until the squad list has loaded", async () => {
+    const user = userEvent.setup();
+    setup({ seated: null });
+
+    await user.click(screen.getByRole("button", { name: "Build options" }));
+
     expect((await screen.findByRole("menuitem", { name: "Delete floor" })).getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("keeps the floor and reports a delete that fails", async () => {
+    const user = userEvent.setup();
+    mutations.remove.mockImplementation((_id: string, options: { onError: (error: unknown) => void }) =>
+      options.onError(new Error("network")),
+    );
+    setup({ seated: new Map() });
+
+    await user.click(screen.getByRole("button", { name: "Build options" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Delete floor" }));
+    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Delete floor" }));
+
+    expect(toast.error).toHaveBeenCalledWith("Couldn't delete the floor");
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(screen.getByRole("alertdialog")).toBeTruthy();
   });
 
   it("only switches floors for someone who cannot manage them", () => {

@@ -280,32 +280,75 @@ func TestCompanyFloors_OnlyOwnersAndAdminsManage(t *testing.T) {
 	createFloor(t, adminID, testWorkspaceID, "Admin floor")
 }
 
-func TestCompanyFloors_DeleteRefusedWhileOccupied(t *testing.T) {
+func TestCompanyFloors_DeleteUnseatsSquadsAndClearsChief(t *testing.T) {
 	requireCompanyDB(t)
 	resetCompany(t)
 	leader := createHandlerTestAgent(t, "company-delete-leader", nil)
-	floor := createFloor(t, "", testWorkspaceID, "Busy")
-	squadID := seedCompanySquad(t, "Company delete squad", leader)
+	chief := createHandlerTestAgent(t, "company-delete-chief", nil)
+	busy := createFloor(t, "", testWorkspaceID, "Busy")
+	other := createFloor(t, "", testWorkspaceID, "Other")
+	seated := seedCompanySquad(t, "Company delete squad", leader)
+	elsewhere := seedCompanySquad(t, "Company elsewhere squad", leader)
 
-	w := putSeats("", testWorkspaceID, []map[string]any{{"squad_id": squadID, "floor_id": floor.ID, "slot": 3}})
-	wantStatus(t, w, http.StatusOK)
+	wantStatus(t, putSeats("", testWorkspaceID, []map[string]any{
+		{"squad_id": seated, "floor_id": busy.ID, "slot": 3},
+		{"squad_id": elsewhere, "floor_id": other.ID, "slot": 1},
+	}), http.StatusOK)
+	wantStatus(t, floorCall(testHandler.SetFloorChief, floorReq("", testWorkspaceID, "PUT", "/api/company/floors/"+busy.ID+"/chief", map[string]any{"agent_id": chief}, map[string]string{"id": busy.ID})), http.StatusOK)
 
-	del := func() *httptest.ResponseRecorder {
-		return floorCall(testHandler.DeleteCompanyFloor, floorReq("", testWorkspaceID, "DELETE", "/api/company/floors/"+floor.ID, nil, map[string]string{"id": floor.ID}))
-	}
-	w = del()
-	wantStatus(t, w, http.StatusConflict)
-	if code := decodeBody[map[string]any](t, w)["code"]; code != "floor_not_empty" {
-		t.Fatalf("code = %v, want floor_not_empty", code)
-	}
-	if len(listFloors(t, testWorkspaceID)) != 1 {
-		t.Fatal("the occupied floor must survive")
+	ctx := context.Background()
+	var routineID string
+	if err := testPool.QueryRow(ctx,
+		`SELECT brief_autopilot_id::text FROM floor_chief WHERE workspace_id = $1 AND floor_id = $2`,
+		testWorkspaceID, busy.ID).Scan(&routineID); err != nil {
+		t.Fatalf("read the floor's chief routine: %v", err)
 	}
 
-	// Unseating the squad empties the floor.
-	w = putSeats("", testWorkspaceID, []map[string]any{{"squad_id": squadID, "floor_id": nil, "slot": nil}})
-	wantStatus(t, w, http.StatusOK)
-	wantStatus(t, del(), http.StatusNoContent)
+	// Deleting a floor with a seated squad succeeds.
+	wantStatus(t, floorCall(testHandler.DeleteCompanyFloor, floorReq("", testWorkspaceID, "DELETE", "/api/company/floors/"+busy.ID, nil, map[string]string{"id": busy.ID})), http.StatusNoContent)
+
+	// The seated squad is unseated and kept.
+	if f, s := seatOf(t, seated); f != "" || s != -1 {
+		t.Fatalf("the squad on the deleted floor must be unseated, got floor=%q slot=%d", f, s)
+	}
+	var live bool
+	if err := testPool.QueryRow(ctx, `SELECT archived_at IS NULL FROM squad WHERE id = $1`, seated).Scan(&live); err != nil {
+		t.Fatalf("read the unseated squad: %v", err)
+	}
+	if !live {
+		t.Fatal("an unseated squad must not be archived")
+	}
+
+	// Nothing still points at the deleted floor: its rooms, its chief and the floor itself are gone.
+	for _, check := range []struct{ name, query string }{
+		{"squads on the floor", `SELECT COUNT(*) FROM squad WHERE workspace_id = $1 AND floor_id = $2`},
+		{"chief rows", `SELECT COUNT(*) FROM floor_chief WHERE workspace_id = $1 AND floor_id = $2`},
+		{"floor row", `SELECT COUNT(*) FROM company_floor WHERE workspace_id = $1 AND id = $2`},
+	} {
+		var n int
+		if err := testPool.QueryRow(ctx, check.query, testWorkspaceID, busy.ID).Scan(&n); err != nil {
+			t.Fatalf("count %s: %v", check.name, err)
+		}
+		if n != 0 {
+			t.Fatalf("%s still reference the deleted floor: %d", check.name, n)
+		}
+	}
+	var status string
+	if err := testPool.QueryRow(ctx, `SELECT status FROM autopilot WHERE id = $1`, routineID).Scan(&status); err != nil {
+		t.Fatalf("read the chief's routine: %v", err)
+	}
+	if status != "paused" {
+		t.Fatalf("the chief's floor brief routine must be paused, got %q", status)
+	}
+
+	// The other floor and its squad are untouched.
+	if f, s := seatOf(t, elsewhere); f != other.ID || s != 1 {
+		t.Fatalf("a squad on another floor must keep its seat, got %s/%d", f, s)
+	}
+	floors := listFloors(t, testWorkspaceID)
+	if len(floors) != 1 || floors[0].ID != other.ID {
+		t.Fatalf("only the other floor should remain, got %+v", floors)
+	}
 }
 
 func TestCompanyFloors_ArchivedSquadDoesNotBlockDelete(t *testing.T) {
@@ -1198,4 +1241,42 @@ func mustUUID(t *testing.T, s string) pgtype.UUID {
 		t.Fatalf("parse uuid %q: %v", s, err)
 	}
 	return u
+}
+
+func TestCompanyFloors_DeleteClearsChief(t *testing.T) {
+	requireCompanyDB(t)
+	resetCompany(t)
+	chief := createHandlerTestAgent(t, "company-floor-delete-chief", nil)
+	floor := createFloor(t, "", testWorkspaceID, "Chaired then deleted")
+
+	w := floorCall(testHandler.SetFloorChief, floorReq("", testWorkspaceID, "PUT", "/api/company/floors/"+floor.ID+"/chief", map[string]any{"agent_id": chief}, map[string]string{"id": floor.ID}))
+	wantStatus(t, w, http.StatusOK)
+
+	ctx := context.Background()
+	var routineID string
+	if err := testPool.QueryRow(ctx,
+		`SELECT brief_autopilot_id::text FROM floor_chief WHERE workspace_id = $1 AND floor_id = $2`,
+		testWorkspaceID, floor.ID).Scan(&routineID); err != nil {
+		t.Fatalf("read the floor's chief routine: %v", err)
+	}
+
+	del := floorCall(testHandler.DeleteCompanyFloor, floorReq("", testWorkspaceID, "DELETE", "/api/company/floors/"+floor.ID, nil, map[string]string{"id": floor.ID}))
+	wantStatus(t, del, http.StatusNoContent)
+
+	var chiefRows int
+	if err := testPool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM floor_chief WHERE workspace_id = $1 AND floor_id = $2`,
+		testWorkspaceID, floor.ID).Scan(&chiefRows); err != nil {
+		t.Fatalf("count the floor's chief rows: %v", err)
+	}
+	if chiefRows != 0 {
+		t.Fatalf("deleting the floor must remove its chief, %d row(s) left", chiefRows)
+	}
+	var status string
+	if err := testPool.QueryRow(ctx, `SELECT status FROM autopilot WHERE id = $1`, routineID).Scan(&status); err != nil {
+		t.Fatalf("read the chief's routine: %v", err)
+	}
+	if status != "paused" {
+		t.Fatalf("the chief's floor brief routine must be paused, got %q", status)
+	}
 }

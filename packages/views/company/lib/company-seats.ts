@@ -1,5 +1,15 @@
-import { COMPANY_SLOTS } from "@multica/core/company";
+import { COMPANY_SLOTS, type FloorRoom } from "@multica/core/company";
 import type { Squad } from "@multica/core/types";
+
+/**
+ * The squads an empty room can take: every live squad that holds no room of
+ * the floor on show. A squad seated on another floor is included. Seating it
+ * here moves it, as the seat menu does.
+ */
+export function roomCandidates(squads: readonly Squad[], rooms: readonly FloorRoom[]): Squad[] {
+  const inRoom = new Set(rooms.flatMap((room) => (room.squad ? [room.squad.id] : [])));
+  return squads.filter((squad) => !squad.archived_at && !inRoom.has(squad.id));
+}
 
 /**
  * The first room of `floorId` that no active squad holds, or null when the

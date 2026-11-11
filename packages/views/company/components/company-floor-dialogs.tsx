@@ -3,10 +3,22 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import {
+  COMPANY_SLOTS,
   useCreateCompanyFloor,
+  useDeleteCompanyFloor,
   useUpdateCompanyFloor,
   type CompanyFloor,
 } from "@multica/core/company";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@multica/ui/components/ui/alert-dialog";
 import { Button } from "@multica/ui/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@multica/ui/components/ui/dialog";
 import { Input } from "@multica/ui/components/ui/input";
@@ -79,5 +91,53 @@ export function FloorNameDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Confirms a floor delete from either the org chart or the company tabs. The
+ * floor's rooms are removed and its squads lose their rooms but are kept. The
+ * dialog closes only after the server confirms the delete.
+ */
+export function FloorDeleteDialog({
+  floor,
+  seatedCount,
+  onClose,
+  onDeleted,
+}: {
+  floor: CompanyFloor;
+  /** Live squads seated on the floor, from the squad list the caller has loaded. */
+  seatedCount: number;
+  onClose: () => void;
+  onDeleted: (floor: CompanyFloor) => void;
+}) {
+  const { t } = useT("issues");
+  const { t: tc } = useT("common");
+  const remove = useDeleteCompanyFloor();
+
+  const confirm = () =>
+    remove.mutate(floor.id, {
+      onSuccess: () => onDeleted(floor),
+      onError: () => toast.error(t(($) => $.company.floor_delete_failed)),
+    });
+
+  return (
+    <AlertDialog open onOpenChange={(open) => !open && !remove.isPending && onClose()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t(($) => $.company.floor_delete_title, { name: floor.name })}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t(($) => $.company.floor_delete_rooms, { rooms: COMPANY_SLOTS })}
+            {seatedCount > 0 ? ` ${t(($) => $.company.floor_delete_squads, { count: seatedCount })}` : null}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={remove.isPending}>{tc(($) => $.cancel)}</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" disabled={remove.isPending} onClick={confirm}>
+            {t(($) => $.company.floor_delete)}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

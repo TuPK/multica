@@ -55,6 +55,7 @@ import { ownedOpenCount } from "../../pipeline/pipeline-filters";
 import { useCompanyAdmin } from "../lib/use-company-admin";
 import { useDecisionQueue } from "../lib/decision-queue";
 import { useSeatAll } from "../lib/use-seat-all";
+import { roomCandidates } from "../lib/company-seats";
 
 const EMPTY_TASKS: AgentTask[] = [];
 const EMPTY_AGENTS: Agent[] = [];
@@ -250,15 +251,18 @@ function CompanyScene({ issues, visibleStatuses, projectId }: BoardViewProps) {
   );
   const openCreateSquad = useCallback(() => useModalStore.getState().open("create-squad"), []);
 
-  // Floors that still hold a live squad, and whether any squad is seated at all.
-  const occupied = useMemo(
-    () => new Set(squads.filter((squad) => !squad.archived_at && squad.floor_id).map((squad) => squad.floor_id as string)),
-    [squads],
-  );
+  // Live squads seated on each floor, and whether any squad is seated at all.
+  const seatedByFloor = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const squad of squads) {
+      if (!squad.archived_at && squad.floor_id) counts.set(squad.floor_id, (counts.get(squad.floor_id) ?? 0) + 1);
+    }
+    return counts;
+  }, [squads]);
   const { seatAll, pending: seating } = useSeatAll(floors, squads);
   const canSeat = useCallback((squad: Squad) => canManage || squad.creator_id === userId, [canManage, userId]);
-  // An empty room offers the squads outside the company that the viewer may seat.
-  const seatableSquads = useMemo(() => layout.unseatedSquads.filter(canSeat), [layout, canSeat]);
+  // An empty room offers every squad that holds no room of this floor, including squads seated on other floors.
+  const seatableSquads = useMemo(() => roomCandidates(squads, layout.rooms).filter(canSeat), [squads, layout, canSeat]);
   const { mutate: setSeats } = useSetCompanySeats();
   const seatInRoom = useCallback(
     (squad: Squad, slot: number) => {
@@ -292,7 +296,7 @@ function CompanyScene({ issues, visibleStatuses, projectId }: BoardViewProps) {
     <CompanyFloorTabs
       floors={floors}
       currentId={floor?.id ?? null}
-      occupied={occupied}
+      seated={squadsQuery.isSuccess ? seatedByFloor : null}
       canManage={canManage}
       onSelect={selectFloor}
     >

@@ -9,6 +9,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -17,9 +18,9 @@ import {
 import { useT } from "../../i18n";
 
 /**
- * A menu that seats a squad in a room of any floor, or moves a seated squad to another floor or
- * room. The server moves it in one request, so the menu lists every free room and a seated squad
- * can be picked again.
+ * A menu that seats a squad in a room of any floor, moves a seated squad to another floor or
+ * room, or takes it out of its room. The server moves it in one request, so the menu lists every
+ * free room and a seated squad can be picked again.
  */
 export function CompanySquadSeatMenu({
   squad,
@@ -47,6 +48,13 @@ export function CompanySquadSeatMenu({
       },
     });
 
+  // A null floor and slot clear the seat. The squad list refreshes once the server answers.
+  const unseat = () =>
+    setSeats.mutate([{ squad_id: squad.id, floor_id: null, slot: null }], {
+      onSuccess: () => toast.success(t(($) => $.company.seat_removed, { name: squad.name })),
+      onError: () => toast.error(t(($) => $.company.seat_remove_failed)),
+    });
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={trigger}>{children}</DropdownMenuTrigger>
@@ -66,6 +74,12 @@ export function CompanySquadSeatMenu({
             </DropdownMenuSub>
           );
         })}
+        {squad.floor_id ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={unseat}>{t(($) => $.company.seat_remove)}</DropdownMenuItem>
+          </>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );

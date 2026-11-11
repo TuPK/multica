@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { useWorkspaceId } from "@multica/core/hooks";
 import {
   companyFloorsOptions,
-  useDeleteCompanyFloor,
   useSetCompanySeats,
   useUpdateCompanyFloor,
   type CompanyFloor,
@@ -21,16 +20,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@multica/ui/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@multica/ui/components/ui/alert-dialog";
 import { ArrowDown, ArrowUp, ChevronRight, MoreHorizontal, Pencil, Plus, Trash2 } from "@multica/ui/icons";
 import { CreateSquadModal } from "../../modals/create-squad";
 import { useIssuePeekActions } from "../../issues/surface/peek-context";
@@ -46,7 +35,7 @@ import {
 } from "../lib/company-selection";
 import { CompanySquadDetail } from "./company-squad-detail";
 import { CompanyAgentDetail } from "./company-agent-detail";
-import { FloorNameDialog } from "./company-floor-dialogs";
+import { FloorDeleteDialog, FloorNameDialog } from "./company-floor-dialogs";
 import { CompanyInsights } from "./company-insights";
 
 interface Department {
@@ -63,17 +52,15 @@ interface Department {
  */
 export function CompanyOverview({ selection }: { selection: CompanySelection }) {
   const { t } = useT("company");
-  const { t: tc } = useT("common");
   const wsId = useWorkspaceId();
   const isAdmin = useCompanyAdmin();
   const peek = useIssuePeekActions();
   const queryClient = useQueryClient();
   const { pathname, push } = useNavigation();
   const { data: floors = [] } = useQuery(companyFloorsOptions(wsId));
-  const { data: squadsAll = [] } = useQuery(squadListOptions(wsId));
+  const { data: squadsAll = [], isSuccess: squadsLoaded } = useQuery(squadListOptions(wsId));
   const { data: agentsAll = [] } = useQuery(agentListOptions(wsId));
   const updateFloor = useUpdateCompanyFloor();
-  const deleteFloor = useDeleteCompanyFloor();
   const setSeats = useSetCompanySeats();
 
   const [editingFloor, setEditingFloor] = useState<CompanyFloor | "new" | null>(null);
@@ -83,6 +70,14 @@ export function CompanyOverview({ selection }: { selection: CompanySelection }) 
   const squads = useMemo(() => squadsAll.filter((squad) => !squad.archived_at), [squadsAll]);
   const agents = useMemo(() => agentsAll.filter((agent) => !agent.archived_at), [agentsAll]);
   const sortedFloors = useMemo(() => [...floors].sort((a, b) => a.position - b.position), [floors]);
+  // Live squads seated on each floor. The floor delete dialog states this count.
+  const seatedByFloor = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const squad of squads) {
+      if (squad.floor_id) counts.set(squad.floor_id, (counts.get(squad.floor_id) ?? 0) + 1);
+    }
+    return counts;
+  }, [squads]);
 
   const departments = useMemo<Department[]>(() => {
     const list: Department[] = sortedFloors.map((floor) => ({
@@ -137,16 +132,6 @@ export function CompanyOverview({ selection }: { selection: CompanySelection }) 
       { id: floor.id, position: target.position },
       { onError: () => toast.error(t(($) => $.department_move_failed)) },
     );
-  };
-
-  const removeFloor = (floor: CompanyFloor) => {
-    deleteFloor.mutate(floor.id, {
-      onSuccess: () => {
-        setFloorToDelete(null);
-        if (departmentId === floor.id) go({ department: null, squad: null, agent: null });
-      },
-      onError: () => toast.error(t(($) => $.department_delete_failed)),
-    });
   };
 
   // A new squad joins the department it was made in when that department has a free room.
@@ -251,7 +236,11 @@ export function CompanyOverview({ selection }: { selection: CompanySelection }) 
                         <ArrowDown />
                         {t(($) => $.department_move_down)}
                       </DropdownMenuItem>
-                      <DropdownMenuItem variant="destructive" onClick={() => setFloorToDelete(floor)}>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        disabled={!squadsLoaded}
+                        onClick={() => setFloorToDelete(floor)}
+                      >
                         <Trash2 />
                         {t(($) => $.department_delete)}
                       </DropdownMenuItem>
@@ -346,20 +335,17 @@ export function CompanyOverview({ selection }: { selection: CompanySelection }) 
         <CreateSquadModal onClose={() => setCreatingSquad(false)} onCreated={handleSquadCreated} />
       ) : null}
 
-      <AlertDialog open={!!floorToDelete} onOpenChange={(open) => !open && setFloorToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t(($) => $.department_delete_title, { name: floorToDelete?.name ?? "" })}</AlertDialogTitle>
-            <AlertDialogDescription>{t(($) => $.department_delete_body)}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{tc(($) => $.cancel)}</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={() => floorToDelete && removeFloor(floorToDelete)}>
-              {t(($) => $.department_delete)}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {floorToDelete ? (
+        <FloorDeleteDialog
+          floor={floorToDelete}
+          seatedCount={seatedByFloor.get(floorToDelete.id) ?? 0}
+          onClose={() => setFloorToDelete(null)}
+          onDeleted={(deleted) => {
+            setFloorToDelete(null);
+            if (departmentId === deleted.id) go({ department: null, squad: null, agent: null });
+          }}
+        />
+      ) : null}
     </div>
   );
 }

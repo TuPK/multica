@@ -521,15 +521,26 @@ describe("CompanyView", () => {
     expect(engine.ends).toEqual([]);
   });
 
-  it("names the rooms after their squads and offers to create one in an empty room", async () => {
+  it("names the rooms after their squads and offers an empty room the squads of the company or a new one", async () => {
     setup([]);
 
     expect(await screen.findByText("Squad s1")).toBeTruthy();
     expect(screen.getByText("Empty room")).toBeTruthy();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Create squad" }));
+    fireEvent.click((await screen.findAllByRole("button", { name: "Add squad" }))[0]!);
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Create new squad" }));
 
     expect(useModalStore.getState().modal).toBe("create-squad");
+  });
+
+  it("seats a squad from another floor in an empty room, which moves it", async () => {
+    seats.mutate.mockReset();
+    setup([]);
+
+    fireEvent.click((await screen.findAllByRole("button", { name: "Add squad" }))[0]!);
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Squad s2" }));
+
+    expect(seats.mutate).toHaveBeenCalledWith([{ squad_id: "s2", floor_id: "f1", slot: 1 }], expect.any(Object));
   });
 
   it("opens the kanban board from the wall board", async () => {

@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
+import { autopilotKeys } from "../autopilots/queries";
 import { useWorkspaceId } from "../hooks";
 import type { Agent } from "../types";
 import { workspaceKeys } from "../workspace/queries";
@@ -17,7 +18,7 @@ import type {
 
 /*
  * Creates, deletes and seat moves wait for the server: they can be refused
- * (floor cap, occupied floor, a taken seat) and their result is not something
+ * (floor cap, a taken seat) and their result is not something
  * the client can predict. Only a rename and a home-squad change, each a single
  * predictable field with a trivial rollback, patch the cache first.
  */
@@ -63,7 +64,7 @@ export function useUpdateCompanyFloor() {
   });
 }
 
-/** Empty floors only; a floor that still holds a squad is refused (409 `floor_not_empty`). */
+/** Deletes a floor with its rooms and chief. Squads seated on it are unseated, not deleted. */
 export function useDeleteCompanyFloor() {
   const qc = useQueryClient();
   const wsId = useWorkspaceId();
@@ -71,6 +72,10 @@ export function useDeleteCompanyFloor() {
     mutationFn: (id) => api.deleteCompanyFloor(id),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: companyKeys.floors(wsId) });
+      // The layout is derived from floors and squads, so the squad list covers the rooms.
+      qc.invalidateQueries({ queryKey: workspaceKeys.squads(wsId) });
+      // A deleted floor's chief routine is paused on the server.
+      qc.invalidateQueries({ queryKey: autopilotKeys.list(wsId) });
     },
   });
 }

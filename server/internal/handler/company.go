@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"unicode/utf8"
@@ -12,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/server/internal/service"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
@@ -357,9 +359,10 @@ func (h *Handler) UpdateCompanyFloor(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// DeleteCompanyFloor removes an empty floor. A floor that still holds a live
-// squad is refused: the caller moves or unseats the squads first (one
-// PUT /api/company/seats request), nothing cascades.
+// DeleteCompanyFloor removes a floor in one transaction. Squads seated on it are
+// unseated, not deleted. Its rooms go with it: a room is one of the floor's fixed
+// slots and has no row of its own. Its chief is cleared and the chief's routine
+// paused. There are no foreign keys, so the dependents are cleaned here.
 func (h *Handler) DeleteCompanyFloor(w http.ResponseWriter, r *http.Request) {
 	workspaceID := workspaceIDFromURL(r, "workspaceId")
 	if _, ok := h.requireWorkspaceRole(w, r, workspaceID, "workspace not found", "owner", "admin"); !ok {
@@ -389,13 +392,29 @@ func (h *Handler) DeleteCompanyFloor(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "floor not found")
 		return
 	}
-	occupants, err := qtx.CountLiveSquadsOnFloor(r.Context(), db.CountLiveSquadsOnFloorParams{WorkspaceID: wsUUID, FloorID: floorUUID})
+	// Unseat the squads on this floor. A squad is kept and only loses its seat.
+	// ListSquads returns live squads only, so archived squads are never touched.
+	squads, err := qtx.ListSquads(r.Context(), wsUUID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete floor")
 		return
 	}
-	if occupants > 0 {
-		writeErrorCode(w, http.StatusConflict, "floor_not_empty", "move or unseat the squads on this floor before deleting it")
+	var unseated []db.Squad
+	for _, squad := range squads {
+		if squad.FloorID != floorUUID {
+			continue
+		}
+		cleared, err := qtx.SetSquadSeat(r.Context(), db.SetSquadSeatParams{ID: squad.ID, WorkspaceID: wsUUID})
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to delete floor")
+			return
+		}
+		unseated = append(unseated, cleared)
+	}
+	// The floor's chief goes with it, and its brief routine is paused. Without this
+	// the routine would keep running for a floor that no longer exists.
+	if err := service.ClearFloorChiefIn(r.Context(), qtx, wsUUID, floorUUID); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to delete floor")
 		return
 	}
 	if _, err := qtx.DeleteCompanyFloor(r.Context(), db.DeleteCompanyFloorParams{ID: floorUUID, WorkspaceID: wsUUID}); err != nil {
@@ -407,6 +426,17 @@ func (h *Handler) DeleteCompanyFloor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The seat change is committed, so a failure to build a response is logged
+	// and skipped rather than reported as a failed delete.
+	for _, squad := range unseated {
+		h.recomputeSquadKnowledgeAccess(r, wsUUID, squad.ID)
+		sr, err := h.squadToResponseWithPreview(r.Context(), squad)
+		if err != nil {
+			slog.Warn("unseated squad not published after floor delete", "squad_id", uuidToString(squad.ID), "error", err)
+			continue
+		}
+		h.publish(protocol.EventSquadUpdated, workspaceID, "member", requestUserID(r), map[string]any{"squad": sr})
+	}
 	h.publish(protocol.EventCompanyFloorDeleted, workspaceID, "member", requestUserID(r), map[string]any{
 		"floor_id": uuidToString(floorUUID),
 	})

@@ -7,7 +7,6 @@ import {
   COMPANY_FLOOR_NAME_MAX_LENGTH,
   COMPANY_MAX_FLOORS,
   useCreateCompanyFloor,
-  useDeleteCompanyFloor,
   useUpdateCompanyFloor,
   type CompanyFloor,
 } from "@multica/core/company";
@@ -22,6 +21,7 @@ import {
 import { Input } from "@multica/ui/components/ui/input";
 import { cn } from "@multica/ui/lib/utils";
 import { useT } from "../../i18n";
+import { FloorDeleteDialog } from "./company-floor-dialogs";
 
 /**
  * The company's floors as tabs. For the owner or an admin a double-click renames
@@ -31,7 +31,7 @@ import { useT } from "../../i18n";
 export function CompanyFloorTabs({
   floors,
   currentId,
-  occupied,
+  seated,
   attention,
   canManage,
   onSelect,
@@ -39,8 +39,8 @@ export function CompanyFloorTabs({
 }: {
   floors: readonly CompanyFloor[];
   currentId: string | null;
-  /** Floors that still hold a live squad; only an empty floor can be deleted. */
-  occupied: ReadonlySet<string>;
+  /** Live squads seated on each floor, keyed by floor id, or null while the squad list loads. Delete waits for it so the confirmation can state the count. */
+  seated: ReadonlyMap<string, number> | null;
   /** Floors with a pending proposal. */
   attention?: ReadonlySet<string>;
   canManage: boolean;
@@ -51,8 +51,8 @@ export function CompanyFloorTabs({
   const { t } = useT("issues");
   const create = useCreateCompanyFloor();
   const update = useUpdateCompanyFloor();
-  const remove = useDeleteCompanyFloor();
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [floorToDelete, setFloorToDelete] = useState<CompanyFloor | null>(null);
 
   const addFloor = () => {
     const used = new Set(floors.map((floor) => floor.name));
@@ -77,16 +77,7 @@ export function CompanyFloorTabs({
   const move = (floor: CompanyFloor, position: number) =>
     update.mutate({ id: floor.id, position }, { onError: () => toast.error(t(($) => $.company.floor_move_failed)) });
 
-  const deleteFloor = (floor: CompanyFloor) =>
-    remove.mutate(floor.id, {
-      onSuccess: () => {
-        if (floor.id === currentId) {
-          const next = floors.find((other) => other.id !== floor.id);
-          if (next) onSelect(next.id);
-        }
-      },
-      onError: () => toast.error(t(($) => $.company.floor_delete_failed)),
-    });
+  const deleteFloor = (floor: CompanyFloor) => setFloorToDelete(floor);
 
   return (
     <div className="flex min-w-0 flex-1 items-center gap-1">
@@ -138,7 +129,11 @@ export function CompanyFloorTabs({
                       {t(($) => $.company.floor_move_right)}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem variant="destructive" disabled={occupied.has(floor.id)} onClick={() => deleteFloor(floor)}>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      disabled={!seated}
+                      onClick={() => deleteFloor(floor)}
+                    >
                       {t(($) => $.company.floor_delete)}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -161,6 +156,20 @@ export function CompanyFloorTabs({
         ) : null}
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-1">{children}</div>
+      {floorToDelete ? (
+        <FloorDeleteDialog
+          floor={floorToDelete}
+          seatedCount={seated?.get(floorToDelete.id) ?? 0}
+          onClose={() => setFloorToDelete(null)}
+          onDeleted={(deleted) => {
+            setFloorToDelete(null);
+            if (deleted.id === currentId) {
+              const next = floors.find((other) => other.id !== deleted.id);
+              if (next) onSelect(next.id);
+            }
+          }}
+        />
+      ) : null}
     </div>
   );
 }

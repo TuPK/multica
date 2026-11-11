@@ -5461,7 +5461,7 @@ export class ApiClient {
     }) as CompanyFloor;
   }
 
-  /** Empty floors only: a floor that still holds a live squad is refused with 409 `floor_not_empty`. */
+  /** Deletes the floor with its rooms and chief. Squads seated on it are unseated, not deleted. */
   async deleteCompanyFloor(id: string): Promise<void> {
     await this.fetch(`/api/company/floors/${id}`, { method: "DELETE" });
   }

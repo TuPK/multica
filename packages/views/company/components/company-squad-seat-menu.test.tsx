@@ -30,11 +30,11 @@ describe("CompanySquadSeatMenu", () => {
   beforeEach(() => seats.mutate.mockReset());
   afterEach(cleanup);
 
-  function setup() {
+  function setup(squad: Squad = sdlc) {
     return renderWithI18n(
       <QueryClientProvider client={new QueryClient()}>
         <CompanySquadSeatMenu
-          squad={sdlc}
+          squad={squad}
           floors={FLOORS}
           allSquads={[sdlc, other]}
           trigger={<Button type="button" variant="outline" size="sm" />}
@@ -57,5 +57,28 @@ describe("CompanySquadSeatMenu", () => {
       [{ squad_id: "sdlc", floor_id: "f2", slot: 1 }],
       expect.any(Object),
     );
+  });
+
+  it("takes a seated squad out of its room in one request", async () => {
+    const user = userEvent.setup();
+    setup();
+
+    await user.click(screen.getByRole("button", { name: "Move to floor" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Remove from room" }));
+
+    expect(seats.mutate).toHaveBeenCalledWith(
+      [{ squad_id: "sdlc", floor_id: null, slot: null }],
+      expect.any(Object),
+    );
+  });
+
+  it("offers no removal for a squad that holds no room", async () => {
+    const user = userEvent.setup();
+    setup({ ...sdlc, floor_id: null, company_slot: null } as Squad);
+
+    await user.click(screen.getByRole("button", { name: "Move to floor" }));
+    await screen.findByRole("menuitem", { name: "Build" });
+
+    expect(screen.queryByRole("menuitem", { name: "Remove from room" })).toBeNull();
   });
 });

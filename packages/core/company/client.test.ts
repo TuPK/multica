@@ -144,14 +144,6 @@ describe("ApiClient company endpoints", () => {
     expect(await client.updateCompanyFloor("f1", { name: "x" })).toEqual(EMPTY_COMPANY_FLOOR);
   });
 
-  it("DELETE /api/company/floors/:id surfaces a refusal with its code", async () => {
-    respond({ error: "move or unseat the squads", code: "floor_not_empty" }, 409);
-    const err = await new ApiClient("https://api.test").deleteCompanyFloor("f1").catch((e: unknown) => e);
-    expect(err).toBeInstanceOf(ApiError);
-    expect((err as ApiError).status).toBe(409);
-    expect((err as ApiError).body).toMatchObject({ code: "floor_not_empty" });
-  });
-
   it("PUT /api/company/seats sends the array, parses squads and tolerates a malformed body", async () => {
     const fetchMock = respond({ squads: [{ ...squad, floor_id: "f1", company_slot: 1 }] });
     const client = new ApiClient("https://api.test");
