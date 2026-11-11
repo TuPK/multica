@@ -44,22 +44,5 @@
     ]
   },
   "promoted": [],
-  "deferredSkills": [
-    "ke-hoach-bai-day-gdpt",
-    "day-hoc-phan-hoa-trinh-do",
-    "ke-hoach-on-tap-cuoi-ky",
-    "phieu-hoc-tap-nhom",
-    "de-cuong-chuyen-de-bai-giang",
-    "nghien-cuu-tu-lieu-bai-giang",
-    "nhan-xet-hoc-ba",
-    "hop-phu-huynh-lop",
-    "tin-nhan-phu-huynh-zalo",
-    "bao-cao-to-chuyen-mon",
-    "sang-kien-kinh-nghiem",
-    "ke-hoach-chu-nhiem-lop",
-    "tro-choi-khoi-dong-on-tap",
-    "bai-trinh-chieu-tu-giao-an",
-    "de-cuong-nckh-su-pham-ung-dung",
-    "phan-hoi-bai-viet-hoc-sinh"
-  ]
+  "deferredSkills": []
 }

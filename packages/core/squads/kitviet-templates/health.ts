@@ -121,6 +121,7 @@ export const KV_HEALTH_TEMPLATE: SquadTemplate = {
   roles: [...HEALTH_ROLE_KEYS],
   leader: "health_lead",
   floorName: KITVIET_P2_FLOOR_NAMES.health,
+  expertReview: true,
   routines: [],
   charter: HEALTH_CHARTER,
   instructions: kvLeadInstructions("health_lead"),

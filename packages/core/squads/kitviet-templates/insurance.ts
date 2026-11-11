@@ -104,6 +104,7 @@ export const KV_INSURANCE_TEMPLATE: SquadTemplate = {
   roles: [...INSURANCE_ROLE_KEYS],
   leader: "insurance_lead",
   floorName: KITVIET_P2_FLOOR_NAMES.insurance,
+  expertReview: true,
   routines: [],
   charter: INSURANCE_CHARTER,
   instructions: kvLeadInstructions("insurance_lead"),

@@ -98,6 +98,7 @@ export const KV_FACTORY_TEMPLATE: SquadTemplate = {
   roles: [...FACTORY_ROLE_KEYS],
   leader: "factory_lead",
   floorName: KITVIET_P2_FLOOR_NAMES.factory,
+  expertReview: true,
   routines: [],
   charter: FACTORY_CHARTER,
   instructions: kvLeadInstructions("factory_lead"),

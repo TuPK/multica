@@ -1267,7 +1267,7 @@ describe("Kit Viet P2 squads on their own floors", () => {
   const p2 = SQUAD_TEMPLATES.filter((template) => KITVIET_P2_FLOOR_NAME_LIST.includes(template.floorName ?? ""));
   const executive = asFloor("floor-exec", "Executive", 0);
 
-  it("has one floor name per P2 squad, and every P2 squad names its own floor", () => {
+  it("has the eleven P2 squads, and each names its own floor except the one documented shared Education floor", () => {
     expect(p2.map((template) => template.id).sort()).toEqual(
       [
         "kv_banking",
@@ -1279,13 +1279,18 @@ describe("Kit Viet P2 squads on their own floors", () => {
         "kv_hospitality",
         "kv_insurance",
         "kv_realestate",
+        "kv_teaching",
         "kv_trade",
       ].sort(),
     );
-    expect(new Set(p2.map((template) => template.floorName)).size).toBe(p2.length);
+    // Teaching Materials sits on the Education floor with Education Desk, by design (spec 9.2).
+    const owners = new Map<string, string[]>();
+    for (const template of p2) owners.set(template.floorName!, [...(owners.get(template.floorName!) ?? []), template.id]);
+    const shared = [...owners].filter(([, ids]) => ids.length > 1).map(([floor, ids]) => [floor, [...ids].sort()]);
+    expect(shared).toEqual([["Education", ["kv_education", "kv_teaching"]]]);
   });
 
-  it.each(["kv_health", "kv_construction", "kv_fnb", "kv_insurance", "kv_banking", "kv_realestate", "kv_hospitality", "kv_trade", "kv_factory", "kv_education"])(
+  it.each(["kv_health", "kv_construction", "kv_fnb", "kv_insurance", "kv_banking", "kv_realestate", "kv_hospitality", "kv_trade", "kv_factory", "kv_education", "kv_teaching"])(
     "%s creates its floor when the workspace has none, and seats the squad at slot 0 on it",
     async (id) => {
       const template = p2.find((candidate) => candidate.id === id)!;

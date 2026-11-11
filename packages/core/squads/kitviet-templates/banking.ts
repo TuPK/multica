@@ -107,6 +107,7 @@ export const KV_BANKING_TEMPLATE: SquadTemplate = {
   roles: [...KV_BANKING_ROLE_KEYS],
   leader: "banking_lead",
   floorName: KITVIET_P2_FLOOR_NAMES.banking,
+  expertReview: true,
   routines: [],
   charter: KV_BANKING_CHARTER,
   instructions: kvLeadInstructions("banking_lead"),

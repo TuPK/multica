@@ -1,0 +1,71 @@
+{
+  "order": 34,
+  "templateId": "kv_teaching",
+  "trade": "giao-duc",
+  "name": "Teaching Materials (Tư liệu giảng dạy)",
+  "flow": "authored",
+  "agents": {
+    "lap-ke-hoach-dieu-phoi": {
+      "role": "tm_lead",
+      "kind": "kv_lead"
+    },
+    "tim-tu-lieu-bai-giang": {
+      "role": "tm_sources",
+      "kind": "kv_collector"
+    },
+    "tong-hop-ho-so-lop-hoc": {
+      "role": "tm_records",
+      "kind": "kv_collector"
+    },
+    "soan-van-ban-chu-nhiem": {
+      "role": "tm_drafter",
+      "kind": "kv_drafter"
+    },
+    "soat-nguon-tu-lieu-giang-day": {
+      "role": "tm_source_gate",
+      "kind": "kv_gate"
+    },
+    "soat-an-toan-hoc-sinh": {
+      "role": "tm_student_gate",
+      "kind": "kv_gate"
+    },
+    "soat-so-lieu": {
+      "role": "tm_numbers_gate",
+      "kind": "kv_gate"
+    },
+    "kiem-dinh-ban-giao": {
+      "role": "tm_handover",
+      "kind": "kv_handover"
+    }
+  },
+  "builtinSkills": [],
+  "leaderSkills": [
+    "kv-squad-lead",
+    "kv-company-profile"
+  ],
+  "roleSkills": {
+    "tm_drafter": [
+      "nhan-xet-hoc-ba",
+      "tin-nhan-phu-huynh-zalo",
+      "hop-phu-huynh-lop",
+      "ke-hoach-chu-nhiem-lop"
+    ],
+    "tm_sources": [
+      "nghien-cuu-tu-lieu-bai-giang"
+    ]
+  },
+  "promoted": [],
+  "deferredSkills": [
+    "ke-hoach-bai-day-gdpt",
+    "day-hoc-phan-hoa-trinh-do",
+    "ke-hoach-on-tap-cuoi-ky",
+    "phieu-hoc-tap-nhom",
+    "de-cuong-chuyen-de-bai-giang",
+    "bao-cao-to-chuyen-mon",
+    "sang-kien-kinh-nghiem",
+    "tro-choi-khoi-dong-on-tap",
+    "bai-trinh-chieu-tu-giao-an",
+    "de-cuong-nckh-su-pham-ung-dung",
+    "phan-hoi-bai-viet-hoc-sinh"
+  ]
+}

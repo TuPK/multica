@@ -333,6 +333,7 @@ Delegate only to the members listed on your Squad Roster. Each member loads its 
     "- Acceptance (biên bản nghiệm thu), handover (biên bản giao ban, bàn giao) and completion files (hồ sơ hoàn công) are drafts. No line in them says accepted, signed or approved; the parties sign on paper or in their own system. The squad never issues one as final.",
     "- Standards: every cited TCVN, QCVN, decree or circular comes with its status from the standards research. A standard whose status is not checked is written as [chưa kiểm tra hiệu lực]. Never cite an article number that is not on an official source.",
     "- Personal data on site (ID numbers, phone numbers, addresses of workers, the name of an injured person) goes through the sensitive-data skill before a document leaves the team. The safety gate flags it; it is not a stop by itself.",
+    "- Reviewer: a qualified person (a site engineer or the person with signing authority) reads each site document before it is used. Stop type 1 when the request does not name that person.",
     "- Nothing leaves the workspace. The handover moves the request to in_review with the list of checks and signatures a person must do; the person who asked sends, prints, signs and files.",
   ].join("\n"),
 
@@ -345,6 +346,7 @@ Delegate only to the members listed on your Squad Roster. Each member loads its 
     "- Figures: the drafter computes every total and food cost figure by a script and pastes the command and output. The margin gate recomputes them independently. A figure that is not recomputed is not passed.",
     "- Price and fees: the squad proposes 2-3 selling prices with the gross margin of each. The owner chooses the price. A delivery-app commission, a VAT rate and a yield the owner has not confirmed stay [cần xác nhận] and the margin gate blocks a price that depends on them.",
     "- Food safety claims: the squad never writes a dish as free of an allergen, vegan, organic, healthy or safe for allergy sufferers unless the owner confirms the source in a comment. A regulation with no source is written [chưa có nguồn], never stated.",
+    "- Reviewer: the owner or the chef reads each menu, price and allergen line before use. Stop type 1 when the request does not name who reviews them.",
     "- Stop 2: the handover is QUA. Set the request to in_review and comment what the owner and chef must confirm: each ingredient label, each price, the delivery-app fee, the VAT rate, and the dish names.",
     "- Nothing is printed, posted to a delivery app or a social page, ordered from a supplier, or sent to a customer from this squad. The owner or the chef does that.",
     "- Routine: this squad has none. Do not create one.",
@@ -372,6 +374,7 @@ Delegate only to the members listed on your Squad Roster. Each member loads its 
     "- Advice gate (soat-tuan-thu-tu-van-tai-chinh): it runs on every piece of customer-facing text a drafter writes, such as a customer letter or a section for the customer. It is never skipped. Investment advice and return or profit promises are outside this squad: a request that asks for them is not run; set the request to blocked and say so to the requester.",
     "- Customer-facing pieces that are not in the memo (product comparisons, call scripts, reminder letters, financial plans for individuals) are outside this roster. Note them in the plan and ask the requester to route them to a squad that carries those skills.",
     "- Borrower identifiers (ID card number, account number, card number, full seal or series numbers) are kept out of the memo unless the template needs them. Information about other customers found in the file is left out and named in the handover.",
+    "- Reviewer: a credit officer reads each memo and customer-facing text before use. Stop type 1 when the request does not name the officer who reviews them.",
     "- Nothing leaves the workspace. The memo and the analysis are internal drafts for the credit officer. The handover moves the request to in_review (human stop 2), with the list of decisions the officer must make: the credit decision, the rates and fees marked [cần xác nhận], and the collateral valuation.",
   ].join("\n"),
 
@@ -432,6 +435,7 @@ Delegate only to the members listed on your Squad Roster. Each member loads its 
     "- Numbers: every KPI uses the definition in the plan. An OEE for several machines is not an average of machine OEEs when their planned times differ. A definition that changed since the last period is noted in the draft, not silently replaced.",
     "- Review rounds: count them as \"Round n/2\" in a comment on the request. A gate still at CHẶN after round 2 is a type 3 stop: set the request to blocked, attach the draft and the open lines, and mention the requester.",
     "- Stop 2: the handover is QUA. Set the request to in_review and comment the list of decisions a person must make before anything is issued or sent. The squad does not send the report to a board, a customer or an authority.",
+    "- Reviewer: a qualified person (a safety officer or the production manager) reads each record and safety table before use. Stop type 1 when the request does not name that person.",
     "- Routine: this squad has none. Do not create one.",
     "",
     "- Nothing leaves the workspace. The report, the record drafts and the checklists are internal documents; the requester decides what to issue.",
@@ -450,5 +454,19 @@ Delegate only to the members listed on your Squad Roster. Each member loads its 
     "- Handover: a QUA verdict from edu_handover moves the request to in_review. The handover comment lists what the teacher must do: check the answers, approve the matrix, print or share the test. A CHẶN verdict or an open stop keeps the request at its status.",
     "",
     "- Nothing leaves the workspace. The test, the answer key and the grading guide are drafts for the teacher. Printing, sharing with students or parents, uploading to a learning platform and publishing are the teacher's acts (human stop 2).",
+  ].join("\n"),
+
+  kv_teaching: [
+    "Squad rules for Teaching Materials:",
+    "- Before you plan a request, search the knowledge base for \"Hồ sơ đơn vị\" (the school's or the tổ's profile). A missing profile is not a stop: note \"chưa có hồ sơ\" and continue with the skill defaults.",
+    "- Student records (stop type 1 at intake): a request that attaches class records (names with scores, attendance, conduct or family notes, health or disability notes, ID numbers, phone numbers, parent contacts) is blocked at intake. The records are read only when the request states that they are anonymised (codes only, no names, no contacts) or approved, and names who approved them. Without that statement, set the request to blocked, ask the teacher to remove those columns or to confirm the anonymisation or the approval, and do not run tm_records on guessed inputs.",
+    "- Records stay in the workspace. tm_records returns codes (HS01, HS02...) and totals only. The name-to-code table stays with the teacher and never goes into an output, a draft, a knowledge base document or a comment. A sensitive note is reported as \"có ghi chú nhạy cảm - GV tự xử lý\" and is never passed to tm_drafter.",
+    "- Sources: tm_sources records each idea with its source name, unit, year, link or page, access date and level (1 to 4). A source it did not open is written as [chưa mở nguồn], never as a source. A level 4 source is never a basis. A claim with no source is written as [không tìm thấy nguồn], never filled from memory.",
+    "- Gates: tm_source_gate runs on every teaching draft and its source list before use. tm_student_gate runs on every text a student or parent will see: a class message, a comment, a parent-meeting slide, a handout. tm_numbers_gate runs when a draft carries a figure from the class records. CHẶN blocks a text, and Cần giấy tờ blocks it until the missing document is attached. A gate sees only the link to the draft and its sources, never the drafter's reasoning.",
+    "- Review rounds: a gate that returns CHẶN sends the lead back to the drafter with the list of errors, and the lead reruns only the gate that blocked. Count the rounds in the comment as Round n/2. After round 2 with CHẶN still standing, stop at human stop 3 and hand the open lines to the teacher.",
+    "- Safety sign: a document or record that describes violence, abuse or self-harm involving a student stops the request at once. Set the request to blocked, name the sign in a comment, and mention the requester. No drafter runs after that; the school leadership handles the case through its own process.",
+    "- Handover: a QUA verdict from tm_handover moves the request to in_review. The handover comment lists what the teacher must do: check the sources, approve each text, and decide each figure. A CHẶN verdict or an open stop keeps the request at its status.",
+    "",
+    "- Nothing leaves the workspace. Parent messages, class notices, comments, slides and handouts are drafts for the teacher. Sending to parents or students, posting in a group chat, uploading to a school system and publishing are the teacher's acts (human stop 2).",
   ].join("\n"),
 };

@@ -20,6 +20,7 @@ import { HOSPITALITY_ROLES, KV_HOSPITALITY_TEMPLATE, type HospitalityRoleKey } f
 import { TRADE_ROLES, KV_TRADE_TEMPLATE, type TradeRoleKey } from "./kitviet-templates/trade";
 import { FACTORY_ROLES, KV_FACTORY_TEMPLATE, type FactoryRoleKey } from "./kitviet-templates/factory";
 import { EDU_ROLES, KV_EDU_TEMPLATE, type EduRoleKey } from "./kitviet-templates/edu";
+import { TEACHING_ROLES, KV_TEACHING_TEMPLATE, type TeachingRoleKey } from "./kitviet-templates/teaching";
 
 /**
  * Ready-made squads a user can start from in the Squads quickstart. A template
@@ -54,7 +55,8 @@ export type SquadTemplateId =
   | "kv_hospitality"
   | "kv_trade"
   | "kv_factory"
-  | "kv_education";
+  | "kv_education"
+  | "kv_teaching";
 
 /** Role keys of the SDLC, research, planning and Sales Loop squads. */
 type BaseSquadRoleKey =
@@ -107,7 +109,8 @@ export type SquadRoleKey =
   | HospitalityRoleKey
   | TradeRoleKey
   | FactoryRoleKey
-  | EduRoleKey;
+  | EduRoleKey
+  | TeachingRoleKey;
 
 export interface SquadRole {
   key: SquadRoleKey;
@@ -328,6 +331,7 @@ export const SQUAD_ROLES: Record<SquadRoleKey, SquadRole> = {
   ...TRADE_ROLES,
   ...FACTORY_ROLES,
   ...EDU_ROLES,
+  ...TEACHING_ROLES,
 };
 
 export interface SquadWorkflowStep {
@@ -571,11 +575,33 @@ export interface SquadCharterTemplate {
   intake: string;
 }
 
+/**
+ * The group a template is listed under in the Squads quickstart: the base squads, the Kit Viet
+ * squads for general office work, or the Kit Viet squads for a specific trade or sector.
+ */
+export type SquadTemplateCategory = "core" | "kitviet" | "vertical";
+
+/** The quickstart's groups, in the order they are listed. */
+export const SQUAD_TEMPLATE_CATEGORIES: readonly SquadTemplateCategory[] = ["core", "kitviet", "vertical"];
+
+/** The group of a template. A template with no category is listed with the verticals. */
+export function squadTemplateCategory(template: SquadTemplate): SquadTemplateCategory {
+  return template.category ?? "vertical";
+}
+
 export interface SquadTemplate {
   id: SquadTemplateId;
   /** Name of the created squad. */
   name: string;
   description: string;
+  /** The quickstart group. Missing means "vertical"; see squadTemplateCategory. */
+  category?: SquadTemplateCategory;
+  /**
+   * True when a qualified person (a clinician, a licensed agent, a credit officer, a safety
+   * engineer) must read the squad's output before it is used. The quickstart asks the user to
+   * acknowledge that before it creates the squad. Missing means false.
+   */
+  expertReview?: boolean;
   /** Roles in the squad; the leader leads and the others are members. */
   roles: SquadRoleKey[];
   /** The role that leads. It is created first and is the squad's leader. */
@@ -969,27 +995,37 @@ const BASE_SQUAD_TEMPLATES: readonly SquadTemplate[] = [
   },
 ];
 
-/** The templates the Squads quickstart offers. */
+/** Sets the quickstart group of each template in a list. */
+function inCategory(category: SquadTemplateCategory, templates: readonly SquadTemplate[]): SquadTemplate[] {
+  return templates.map((template) => ({ category, ...template }));
+}
+
+/** The templates the Squads quickstart offers, in the order it lists them within each group. */
 export const SQUAD_TEMPLATES: readonly SquadTemplate[] = [
-  ...BASE_SQUAD_TEMPLATES,
-  KV_ADMIN_TEMPLATE,
-  KV_B2B_TEMPLATE,
-  KV_MARKETING_TEMPLATE,
-  KV_LEGAL_TEMPLATE,
-  KV_ACCOUNTING_TEMPLATE,
-  KV_TALENT_TEMPLATE,
-  KV_PR_TEMPLATE,
-  KV_ECOM_TEMPLATE,
-  KV_OFFICEOPS_TEMPLATE,
-  KV_ACADEMIC_TEMPLATE,
-  KV_HEALTH_TEMPLATE,
-  KV_CONSTRUCTION_TEMPLATE,
-  KV_FNB_TEMPLATE,
-  KV_INSURANCE_TEMPLATE,
-  KV_BANKING_TEMPLATE,
-  KV_REALESTATE_TEMPLATE,
-  KV_HOSPITALITY_TEMPLATE,
-  KV_TRADE_TEMPLATE,
-  KV_FACTORY_TEMPLATE,
-  KV_EDU_TEMPLATE,
+  ...inCategory("core", BASE_SQUAD_TEMPLATES),
+  ...inCategory("kitviet", [
+    KV_ADMIN_TEMPLATE,
+    KV_B2B_TEMPLATE,
+    KV_MARKETING_TEMPLATE,
+    KV_LEGAL_TEMPLATE,
+    KV_ACCOUNTING_TEMPLATE,
+    KV_TALENT_TEMPLATE,
+    KV_PR_TEMPLATE,
+    KV_ECOM_TEMPLATE,
+    KV_OFFICEOPS_TEMPLATE,
+    KV_ACADEMIC_TEMPLATE,
+  ]),
+  ...inCategory("vertical", [
+    KV_HEALTH_TEMPLATE,
+    KV_CONSTRUCTION_TEMPLATE,
+    KV_FNB_TEMPLATE,
+    KV_INSURANCE_TEMPLATE,
+    KV_BANKING_TEMPLATE,
+    KV_REALESTATE_TEMPLATE,
+    KV_HOSPITALITY_TEMPLATE,
+    KV_TRADE_TEMPLATE,
+    KV_FACTORY_TEMPLATE,
+    KV_EDU_TEMPLATE,
+    KV_TEACHING_TEMPLATE,
+  ]),
 ];

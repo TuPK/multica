@@ -103,6 +103,7 @@ export const KV_FNB_TEMPLATE: SquadTemplate = {
   roles: [...FNB_ROLE_KEYS],
   leader: "fnb_lead",
   floorName: KITVIET_P2_FLOOR_NAMES.fnb,
+  expertReview: true,
   routines: [],
   charter: FNB_CHARTER,
   instructions: kvLeadInstructions("fnb_lead"),

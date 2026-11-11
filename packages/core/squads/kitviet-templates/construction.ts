@@ -111,6 +111,7 @@ export const KV_CONSTRUCTION_TEMPLATE: SquadTemplate = {
   roles: [...CONSTRUCTION_ROLE_KEYS],
   leader: "construction_lead",
   floorName: KITVIET_P2_FLOOR_NAMES.construction,
+  expertReview: true,
   routines: [],
   charter: CONSTRUCTION_CHARTER,
   instructions: kvLeadInstructions("construction_lead"),
