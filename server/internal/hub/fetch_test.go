@@ -315,3 +315,49 @@ func portOf(t *testing.T, rawURL string) string {
 	}
 	return port
 }
+
+// The legacy ClawHub and skills.sh fetchers use HTTPClient. Their requests must get
+// the same dial-time check as Get, and their redirects the same policy.
+func TestSafeFetcherHTTPClientRefusesLoopbackAndRedirectsToIt(t *testing.T) {
+	var targetHits atomic.Int32
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		targetHits.Add(1)
+		_, _ = w.Write([]byte("internal"))
+	}))
+	t.Cleanup(target.Close)
+	_, targetPort, _ := net.SplitHostPort(strings.TrimPrefix(target.URL, "http://"))
+
+	// Only the origin's address is exempt. 127.0.0.2 is loopback too, but it is not
+	// exempt, so a redirect to it must be refused before anything connects.
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "http://127.0.0.2:"+targetPort+"/internal", http.StatusFound)
+	}))
+	t.Cleanup(origin.Close)
+
+	f := NewSafeFetcher(FetcherOptions{})
+	f.exempt = func(ip net.IP) bool { return ip.Equal(net.ParseIP("127.0.0.1")) }
+	client := f.HTTPClient()
+	if client.Timeout != defaultFetchTimeout {
+		t.Fatalf("client timeout = %v, want %v", client.Timeout, defaultFetchTimeout)
+	}
+
+	resp, err := client.Get(origin.URL)
+	if resp != nil {
+		resp.Body.Close()
+	}
+	if !errors.Is(err, ErrBlockedAddress) {
+		t.Fatalf("redirect to loopback: err = %v, want ErrBlockedAddress", err)
+	}
+	if n := targetHits.Load(); n != 0 {
+		t.Fatalf("redirect target was reached %d times", n)
+	}
+
+	// With the zero options even the origin is refused: the client has no exemption.
+	strict := NewSafeFetcher(FetcherOptions{}).HTTPClient()
+	if resp, err := strict.Get(origin.URL); err == nil {
+		resp.Body.Close()
+		t.Fatal("loopback origin reached through a production client")
+	} else if !errors.Is(err, ErrBlockedAddress) {
+		t.Fatalf("loopback origin: err = %v, want ErrBlockedAddress", err)
+	}
+}

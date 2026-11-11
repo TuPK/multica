@@ -751,6 +751,7 @@ func (h *Handler) DeleteSkill(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to commit skill deletion")
 		return
 	}
+	h.removeHubItemForRef(r.Context(), skill.WorkspaceID, "skill", skill.ID)
 	actorType, actorID := h.resolveActor(r, requestUserID(r), uuidToString(skill.WorkspaceID))
 	h.publish(protocol.EventSkillDeleted, uuidToString(skill.WorkspaceID), actorType, actorID, map[string]any{"skill_id": uuidToString(skill.ID)})
 	w.WriteHeader(http.StatusNoContent)

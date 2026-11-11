@@ -158,5 +158,7 @@ func (h *Handler) DeletePluginPackage(w http.ResponseWriter, r *http.Request) {
 		writePluginError(w, err, "failed to delete the published Plugin")
 		return
 	}
+	// The service accepted the id, so it parses.
+	h.removeHubItemForRef(r.Context(), workspaceID, "plugin", parseUUID(chi.URLParam(r, "packageId")))
 	w.WriteHeader(http.StatusNoContent)
 }

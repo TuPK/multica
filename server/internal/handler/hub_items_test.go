@@ -46,7 +46,8 @@ func insertHubItemsPlugin(t *testing.T, workspaceID, pluginKey, version string) 
 		"name":         "Hub items plugin",
 		"created_by":   testUserID,
 	})
-	manifest := `{"key":"` + pluginKey + `","version":"` + version + `"}`
+	// A valid manifest: a bundle build parses the stored manifest again.
+	manifest := strings.Replace(packageManifest(version), "com.example.published", pluginKey, 1)
 	versionID := dbfx.Insert(t, "plugin_package_version", testutil.Cols{
 		"package_id":   pkgID,
 		"workspace_id": workspaceID,
@@ -309,7 +310,7 @@ func TestHubBundleReturnsPresignedLinkWhenTheStoreCanSign(t *testing.T) {
 func TestHubBundlePluginUsesThePublishedVersion(t *testing.T) {
 	setupHubImportTest(t)
 	ws := testWorkspaceID
-	pkg := insertHubItemsPlugin(t, ws, "com.example.hubbundle."+hubItemsSuffix(), "2.0.1")
+	pkg := insertHubItemsPlugin(t, ws, "com.example.hubbundle"+hubItemsSuffix(), "2.0.1")
 
 	got := getHubItemBundleForTest(t, ws, testUserID, "plugin", pkg)
 	if got.Version != "2.0.1" {

@@ -157,10 +157,12 @@ func (h *Handler) hubFetchRemote(ctx context.Context, source db.HubSource, sourc
 	return hubRemoteFromBundle(bundle, meta)
 }
 
-// hubLocal is an item's current local copy in the canonical layout.
+// hubLocal is an item's current local copy in the canonical layout. version is the
+// newest published version of a plugin, and empty for a skill.
 type hubLocal struct {
-	name  string
-	files []hub.FileEntry
+	name    string
+	version string
+	files   []hub.FileEntry
 }
 
 // hubLoadLocal reads the item's current skill or the newest published plugin version.
@@ -201,7 +203,11 @@ func (h *Handler) hubLoadLocal(ctx context.Context, ws pgtype.UUID, item db.HubI
 		if err != nil {
 			return hubLocal{}, err
 		}
-		return hubLocal{name: pkg.Name, files: hubPluginBundleFiles(versions[0].Manifest, rows)}, nil
+		files, err := hubPluginBundleFiles(versions[0].Manifest, rows)
+		if err != nil {
+			return hubLocal{}, err
+		}
+		return hubLocal{name: pkg.Name, version: versions[0].Version, files: files}, nil
 	}
 	return hubLocal{}, errHubItemNotFound
 }

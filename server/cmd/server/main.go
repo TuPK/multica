@@ -948,6 +948,11 @@ func main() {
 	if err := schedulerMgr.Register(scheduler.HubSourceSyncJob(queries, h)); err != nil {
 		slog.Warn("scheduler: failed to register hub_source_sync job", "error", err)
 	}
+	// Sweeps abandoned hub previews from staging/ in the Hub store. Stores that
+	// cannot list their objects are skipped inside the job.
+	if err := schedulerMgr.Register(scheduler.HubStagingGCJob(h.HubStorage)); err != nil {
+		slog.Warn("scheduler: failed to register hub_staging_gc job", "error", err)
+	}
 	// The Librarian's routines (spec 3.3, plan 10.9). Each runs for every
 	// workspace with ready knowledge; a deployment without knowledge has none.
 	// The taxonomy backfill is hourly and does nothing once every workspace is

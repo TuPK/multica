@@ -44,8 +44,10 @@ var (
 	gitRefPattern      = regexp.MustCompile(`^[A-Za-z0-9._/-]{1,255}$`)
 )
 
-// githubCodeloadBase is where GitHub serves repository zips.
-const githubCodeloadBase = "https://codeload.github.com"
+// GitHubCodeloadBase is where GitHub serves repository zips. It is a variable so
+// handler tests can point the importer at an httptest origin. Production never
+// changes it. NewGitHubImporter reads it when the importer is built.
+var GitHubCodeloadBase = "https://codeload.github.com"
 
 // GitHubImporter downloads a repository zip from codeload.github.com.
 type GitHubImporter struct {
@@ -56,7 +58,7 @@ type GitHubImporter struct {
 // NewGitHubImporter returns an importer for github.com repository URLs of the
 // form https://github.com/{owner}/{repo}[/tree/{ref}[/{subdir}]].
 func NewGitHubImporter() Importer {
-	return &GitHubImporter{codeloadBase: githubCodeloadBase, lim: DefaultLimits}
+	return &GitHubImporter{codeloadBase: GitHubCodeloadBase, lim: DefaultLimits}
 }
 
 // Fetch downloads the repository archive, verifies SHA256 when given, extracts

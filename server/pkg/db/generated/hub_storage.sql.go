@@ -11,6 +11,21 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteHubItemVersionBlobs = `-- name: DeleteHubItemVersionBlobs :exec
+DELETE FROM hub_item_version_blob WHERE workspace_id = $1 AND item_id = $2
+`
+
+type DeleteHubItemVersionBlobsParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	ItemID      pgtype.UUID `json:"item_id"`
+}
+
+// Removes an item's version rows. Their bundle objects are removed by the caller.
+func (q *Queries) DeleteHubItemVersionBlobs(ctx context.Context, arg DeleteHubItemVersionBlobsParams) error {
+	_, err := q.db.Exec(ctx, deleteHubItemVersionBlobs, arg.WorkspaceID, arg.ItemID)
+	return err
+}
+
 const getHubSourceByTypeURL = `-- name: GetHubSourceByTypeURL :one
 SELECT id, workspace_id, name, type, url, config, enabled, auto_sync_interval_sec, last_sync_at, last_sync_status, last_sync_error, created_by, created_at, updated_at FROM hub_source
 WHERE workspace_id = $1 AND type = $2 AND url = $3
@@ -40,6 +55,36 @@ func (q *Queries) GetHubSourceByTypeURL(ctx context.Context, arg GetHubSourceByT
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getLatestHubItemVersionBlob = `-- name: GetLatestHubItemVersionBlob :one
+SELECT id, workspace_id, item_id, version, bundle_key, digest, size_bytes, created_by, created_at FROM hub_item_version_blob
+WHERE workspace_id = $1 AND item_id = $2
+ORDER BY created_at DESC, id DESC
+LIMIT 1
+`
+
+type GetLatestHubItemVersionBlobParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	ItemID      pgtype.UUID `json:"item_id"`
+}
+
+// The most recent bundle recorded for an item: the one a download must still match.
+func (q *Queries) GetLatestHubItemVersionBlob(ctx context.Context, arg GetLatestHubItemVersionBlobParams) (HubItemVersionBlob, error) {
+	row := q.db.QueryRow(ctx, getLatestHubItemVersionBlob, arg.WorkspaceID, arg.ItemID)
+	var i HubItemVersionBlob
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.ItemID,
+		&i.Version,
+		&i.BundleKey,
+		&i.Digest,
+		&i.SizeBytes,
+		&i.CreatedBy,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -116,6 +161,37 @@ func (q *Queries) InsertHubItemVersionBlob(ctx context.Context, arg InsertHubIte
 		arg.CreatedBy,
 	)
 	return err
+}
+
+const listHubItemVersionBlobKeys = `-- name: ListHubItemVersionBlobKeys :many
+SELECT bundle_key FROM hub_item_version_blob
+WHERE workspace_id = $1 AND item_id = $2
+`
+
+type ListHubItemVersionBlobKeysParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	ItemID      pgtype.UUID `json:"item_id"`
+}
+
+// Every bundle object an item ever recorded, for removal with the item.
+func (q *Queries) ListHubItemVersionBlobKeys(ctx context.Context, arg ListHubItemVersionBlobKeysParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, listHubItemVersionBlobKeys, arg.WorkspaceID, arg.ItemID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var bundle_key string
+		if err := rows.Scan(&bundle_key); err != nil {
+			return nil, err
+		}
+		items = append(items, bundle_key)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listHubPluginVersionFiles = `-- name: ListHubPluginVersionFiles :many
@@ -250,6 +326,68 @@ func (q *Queries) ListSkillBundleStatsByIDs(ctx context.Context, arg ListSkillBu
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateHubItemBundle = `-- name: UpdateHubItemBundle :one
+UPDATE hub_item SET
+    bundle_key = $1,
+    bundle_digest = $2,
+    latest_version = $3,
+    size_bytes = $4,
+    file_count = $5,
+    updated_at = now()
+WHERE id = $6 AND workspace_id = $7
+RETURNING id, workspace_id, kind, ref_id, source_id, source_ref, source_digest, tracking, latest_version, bundle_key, bundle_digest, size_bytes, file_count, scan_status, scan_report, created_at, updated_at, update_available, remote_digest, checked_at, local_modified
+`
+
+type UpdateHubItemBundleParams struct {
+	BundleKey     string      `json:"bundle_key"`
+	BundleDigest  string      `json:"bundle_digest"`
+	LatestVersion string      `json:"latest_version"`
+	SizeBytes     int64       `json:"size_bytes"`
+	FileCount     int32       `json:"file_count"`
+	ID            pgtype.UUID `json:"id"`
+	WorkspaceID   pgtype.UUID `json:"workspace_id"`
+}
+
+// Records a rebuilt bundle on an item whose recorded bundle no longer matches its
+// content (an edit to a skill, or a newer plugin version). Unlike the first build,
+// this replaces the recorded bundle.
+func (q *Queries) UpdateHubItemBundle(ctx context.Context, arg UpdateHubItemBundleParams) (HubItem, error) {
+	row := q.db.QueryRow(ctx, updateHubItemBundle,
+		arg.BundleKey,
+		arg.BundleDigest,
+		arg.LatestVersion,
+		arg.SizeBytes,
+		arg.FileCount,
+		arg.ID,
+		arg.WorkspaceID,
+	)
+	var i HubItem
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Kind,
+		&i.RefID,
+		&i.SourceID,
+		&i.SourceRef,
+		&i.SourceDigest,
+		&i.Tracking,
+		&i.LatestVersion,
+		&i.BundleKey,
+		&i.BundleDigest,
+		&i.SizeBytes,
+		&i.FileCount,
+		&i.ScanStatus,
+		&i.ScanReport,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.UpdateAvailable,
+		&i.RemoteDigest,
+		&i.CheckedAt,
+		&i.LocalModified,
+	)
+	return i, err
 }
 
 const updateHubItemBundleIfUnset = `-- name: UpdateHubItemBundleIfUnset :one

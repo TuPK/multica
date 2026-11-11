@@ -70,3 +70,33 @@ ORDER BY v.package_id, v.created_at DESC, v.id DESC;
 SELECT path, content FROM plugin_package_file
 WHERE version_id = $1
 ORDER BY path ASC;
+
+-- name: UpdateHubItemBundle :one
+-- Records a rebuilt bundle on an item whose recorded bundle no longer matches its
+-- content (an edit to a skill, or a newer plugin version). Unlike the first build,
+-- this replaces the recorded bundle.
+UPDATE hub_item SET
+    bundle_key = sqlc.arg('bundle_key'),
+    bundle_digest = sqlc.arg('bundle_digest'),
+    latest_version = sqlc.arg('latest_version'),
+    size_bytes = sqlc.arg('size_bytes'),
+    file_count = sqlc.arg('file_count'),
+    updated_at = now()
+WHERE id = sqlc.arg('id') AND workspace_id = sqlc.arg('workspace_id')
+RETURNING *;
+
+-- name: GetLatestHubItemVersionBlob :one
+-- The most recent bundle recorded for an item: the one a download must still match.
+SELECT * FROM hub_item_version_blob
+WHERE workspace_id = $1 AND item_id = $2
+ORDER BY created_at DESC, id DESC
+LIMIT 1;
+
+-- name: ListHubItemVersionBlobKeys :many
+-- Every bundle object an item ever recorded, for removal with the item.
+SELECT bundle_key FROM hub_item_version_blob
+WHERE workspace_id = $1 AND item_id = $2;
+
+-- name: DeleteHubItemVersionBlobs :exec
+-- Removes an item's version rows. Their bundle objects are removed by the caller.
+DELETE FROM hub_item_version_blob WHERE workspace_id = $1 AND item_id = $2;

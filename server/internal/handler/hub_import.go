@@ -44,7 +44,6 @@ const (
 	hubImportMultipartOverhead  = 64 << 10
 	hubImportFetchTimeout       = 45 * time.Second
 	hubImportMaxURLLength       = 2048
-	hubImportLegacyClientWindow = 30 * time.Second
 	hubImportStagingContentType = "application/json"
 )
 
@@ -258,12 +257,13 @@ func hubImportFailure(ctx context.Context, err error) (int, string) {
 	return http.StatusBadGateway, "failed to fetch the source"
 }
 
-// hubLegacyFetch adapts the existing ClawHub and skills.sh fetchers. They use
-// their own HTTP clients and do not go through the SafeFetcher; their hosts are
-// fixed and the request URLs are normalized by detectImportSource first.
+// hubLegacyFetch adapts the existing ClawHub and skills.sh fetchers. Their hosts
+// are fixed and the request URLs are normalized by detectImportSource first. The
+// client is the SafeFetcher's, so a redirect to a blocked address is refused at
+// dial time, the same as for every other network source.
 func hubLegacyFetch(source importSource) hub.LegacyFetch {
 	return func(ctx context.Context, rawURL string) (*hub.Bundle, error) {
-		client := &http.Client{Timeout: hubImportLegacyClientWindow}
+		client := hubImportFetcher.HTTPClient()
 		var (
 			imported *importedSkill
 			err      error

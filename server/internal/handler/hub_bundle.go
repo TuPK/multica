@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -8,6 +9,8 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"slices"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
@@ -70,7 +73,9 @@ func (h *Handler) GetHubItemBundle(w http.ResponseWriter, r *http.Request) {
 }
 
 // DownloadHubItemBundle handles GET /api/hub/items/{kind}/{id}/bundle/download. It
-// streams the stored zip through the server, for stores that cannot presign.
+// streams the stored zip through the server, for stores that cannot presign. The
+// bytes are checked against the recorded digest before anything is sent, so a store
+// that returns other bytes cannot pass them off as the item's bundle.
 func (h *Handler) DownloadHubItemBundle(w http.ResponseWriter, r *http.Request) {
 	item, ok := h.hubBundleForRequest(w, r)
 	if !ok {
@@ -88,16 +93,58 @@ func (h *Handler) DownloadHubItemBundle(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, "failed to read the bundle")
 		return
 	}
-	defer rc.Close()
+	data, err := io.ReadAll(io.LimitReader(rc, hubBundleReadLimit+1))
+	rc.Close()
+	if err != nil || int64(len(data)) > hubBundleReadLimit {
+		slog.Warn("hub bundle: read failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to read the bundle")
+		return
+	}
+	// The log carries digests only, never the bundle's content or its file names.
+	if got := hubBundleContentDigest(data); got != item.BundleDigest {
+		slog.Error("hub bundle: stored bytes do not match the recorded digest",
+			append(logger.RequestAttrs(r),
+				"item_id", uuidToString(item.ID), "kind", item.Kind, "bundle_key", item.BundleKey,
+				"recorded_digest", item.BundleDigest, "stored_digest", got)...)
+		writeError(w, http.StatusInternalServerError, "the stored bundle failed verification")
+		return
+	}
 
 	filename := fmt.Sprintf("%s-%s.zip", item.Kind, uuidToString(item.RefID))
 	w.Header().Set("Content-Type", "application/zip")
 	w.Header().Set("Content-Disposition", storage.ContentDisposition("application/zip", filename))
+	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
 	w.WriteHeader(http.StatusOK)
-	if _, err := io.Copy(w, rc); err != nil {
-		// The status is already sent; the client sees a truncated body.
-		slog.Warn("hub bundle: stream failed", append(logger.RequestAttrs(r), "error", err)...)
+	_, _ = w.Write(data)
+}
+
+// hubBundleReadLimit bounds what a download reads from the store. A bundle is at
+// most the archive cap the hub builds within.
+var hubBundleReadLimit = hub.DefaultLimits.MaxArchiveBytes
+
+// hubBundleVerifyLimits bound the re-read of a stored bundle. The bytes were built
+// from content the hub already accepted, so the file caps stay as they are, but two
+// limits differ from the import's. The file count is 1024, because a skill bundle
+// can hold SKILL.md plus 512 supporting files. The compression ratio is loose,
+// because a repetitive skill compresses past the import ratio, and the ratio check
+// would refuse a bundle the hub itself wrote.
+var hubBundleVerifyLimits = hub.Limits{
+	MaxFiles:            1024,
+	MaxFileBytes:        hub.DefaultLimits.MaxFileBytes,
+	MaxTotalBytes:       hubBundleReadLimit,
+	MaxArchiveBytes:     hubBundleReadLimit,
+	MaxCompressionRatio: 1 << 16,
+}
+
+// hubBundleContentDigest is the content digest of a stored zip: the digest of the
+// files it holds, the same figure hub.Digest gives the bundle it was built from.
+// It returns "" when the bytes are not a readable bundle.
+func hubBundleContentDigest(data []byte) string {
+	bundle, err := hub.ExtractZip(bytes.NewReader(data), int64(len(data)), hubBundleVerifyLimits)
+	if err != nil {
+		return ""
 	}
+	return hub.Digest(bundle)
 }
 
 // hubBundleURL returns a presigned GET link to the stored bundle, or the item's
@@ -154,17 +201,15 @@ func (h *Handler) hubBundleForRequest(w http.ResponseWriter, r *http.Request) (d
 		writeError(w, http.StatusInternalServerError, "failed to load the item")
 		return db.HubItem{}, false
 	}
-	if item.BundleKey == "" {
-		item, err = h.buildHubBundle(ctx, ws, user, item)
-		switch {
-		case errors.Is(err, errHubItemNotFound):
-			writeError(w, http.StatusNotFound, "item not found")
-			return db.HubItem{}, false
-		case err != nil:
-			slog.Warn("hub bundle: build failed", append(logger.RequestAttrs(r), "error", err)...)
-			writeError(w, http.StatusInternalServerError, "failed to build the bundle")
-			return db.HubItem{}, false
-		}
+	item, err = h.currentHubBundle(ctx, ws, user, item)
+	switch {
+	case errors.Is(err, errHubItemNotFound):
+		writeError(w, http.StatusNotFound, "item not found")
+		return db.HubItem{}, false
+	case err != nil:
+		slog.Warn("hub bundle: build failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to build the bundle")
+		return db.HubItem{}, false
 	}
 	return item, true
 }
@@ -221,51 +266,42 @@ func (h *Handler) hubItemForRef(ctx context.Context, ws pgtype.UUID, kind string
 	return item, err
 }
 
-// buildHubBundle builds an item's bundle from the database, stores it and records
-// it on the item and as a version row. The record is written only where no bundle
-// is recorded yet, so when two requests race, the first one wins and the other
-// serves what was recorded.
-func (h *Handler) buildHubBundle(ctx context.Context, ws, user pgtype.UUID, item db.HubItem) (db.HubItem, error) {
-	var files []hub.FileEntry
-	var version string
-	switch item.Kind {
-	case "skill":
-		skill, err := h.Queries.GetSkillInWorkspace(ctx, db.GetSkillInWorkspaceParams{ID: item.RefID, WorkspaceID: ws})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return db.HubItem{}, errHubItemNotFound
-		}
-		if err != nil {
-			return db.HubItem{}, err
-		}
-		rows, err := h.Queries.ListSkillFiles(ctx, skill.ID)
-		if err != nil {
-			return db.HubItem{}, err
-		}
-		files = hubSkillBundleFiles(skill.Content, rows)
-	case "plugin":
-		versions, err := h.Queries.ListLatestPluginPackageVersionsByIDs(ctx, db.ListLatestPluginPackageVersionsByIDsParams{
-			WorkspaceID: ws,
-			PackageIds:  []pgtype.UUID{item.RefID},
-		})
-		if err != nil {
-			return db.HubItem{}, err
-		}
-		if len(versions) == 0 {
-			return db.HubItem{}, errHubItemNotFound
-		}
-		latest := versions[0]
-		rows, err := h.Queries.ListHubPluginVersionFiles(ctx, latest.ID)
-		if err != nil {
-			return db.HubItem{}, err
-		}
-		files = hubPluginBundleFiles(latest.Manifest, rows)
-		version = latest.Version
-	default:
-		return db.HubItem{}, fmt.Errorf("unknown hub item kind %q", item.Kind)
+// currentHubBundle returns the item with a bundle that matches its content. An item
+// with no bundle gets its first one. A recorded bundle is kept while the content
+// still hashes to the latest recorded version. An edited skill, or a plugin with a
+// newer version, gets a new bundle, recorded as a new version. The bundle is
+// rebuilt before it is served, so a download never returns stale content.
+func (h *Handler) currentHubBundle(ctx context.Context, ws, user pgtype.UUID, item db.HubItem) (db.HubItem, error) {
+	local, err := h.hubLoadLocal(ctx, ws, item)
+	if err != nil {
+		return db.HubItem{}, err
 	}
+	if item.BundleKey == "" {
+		return h.recordHubBundle(ctx, ws, user, item, local, false)
+	}
+	recorded := item.BundleDigest
+	latest, err := h.Queries.GetLatestHubItemVersionBlob(ctx, db.GetLatestHubItemVersionBlobParams{WorkspaceID: ws, ItemID: item.ID})
+	switch {
+	case err == nil:
+		recorded = latest.Digest
+	case errors.Is(err, pgx.ErrNoRows):
+	default:
+		return db.HubItem{}, err
+	}
+	if hub.Digest(&hub.Bundle{Files: local.files}) == recorded {
+		return item, nil
+	}
+	return h.recordHubBundle(ctx, ws, user, item, local, true)
+}
 
-	bundle := &hub.Bundle{Files: files}
-	for _, f := range files {
+// recordHubBundle zips the item's current content, stores it under its digest and
+// records it on the item and as a version row, in one transaction. When replace is
+// false the record is written only where no bundle is recorded yet, so when two
+// requests race on a first build, the first one wins and the other serves what was
+// recorded. When replace is true the record is overwritten.
+func (h *Handler) recordHubBundle(ctx context.Context, ws, user pgtype.UUID, item db.HubItem, local hubLocal, replace bool) (db.HubItem, error) {
+	bundle := &hub.Bundle{Files: local.files}
+	for _, f := range local.files {
 		bundle.TotalSize += f.Size
 	}
 	zipBytes, err := hub.BuildZip(bundle)
@@ -273,9 +309,7 @@ func (h *Handler) buildHubBundle(ctx context.Context, ws, user pgtype.UUID, item
 		return db.HubItem{}, fmt.Errorf("build zip: %w", err)
 	}
 	digest := hub.Digest(bundle)
-	wsID := uuidToString(ws)
-	refID := uuidToString(item.RefID)
-	key := hubBundleKey(wsID, item.Kind, refID, digest)
+	key := hubBundleKey(uuidToString(ws), item.Kind, uuidToString(item.RefID), digest)
 	if _, err := h.HubStorage.Upload(ctx, key, zipBytes, "application/zip", ""); err != nil {
 		return db.HubItem{}, fmt.Errorf("store bundle: %w", err)
 	}
@@ -286,18 +320,31 @@ func (h *Handler) buildHubBundle(ctx context.Context, ws, user pgtype.UUID, item
 	}
 	defer tx.Rollback(ctx)
 	qtx := h.Queries.WithTx(tx)
-	recorded, err := qtx.UpdateHubItemBundleIfUnset(ctx, db.UpdateHubItemBundleIfUnsetParams{
-		BundleKey:     key,
-		BundleDigest:  digest,
-		LatestVersion: version,
-		SizeBytes:     bundle.TotalSize,
-		FileCount:     int32(len(files)),
-		ID:            item.ID,
-		WorkspaceID:   ws,
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		// Another request recorded its bundle first; serve that one.
-		return h.Queries.GetHubItemByRef(ctx, db.GetHubItemByRefParams{WorkspaceID: ws, Kind: item.Kind, RefID: item.RefID})
+	var recorded db.HubItem
+	if replace {
+		recorded, err = qtx.UpdateHubItemBundle(ctx, db.UpdateHubItemBundleParams{
+			BundleKey:     key,
+			BundleDigest:  digest,
+			LatestVersion: local.version,
+			SizeBytes:     bundle.TotalSize,
+			FileCount:     int32(len(local.files)),
+			ID:            item.ID,
+			WorkspaceID:   ws,
+		})
+	} else {
+		recorded, err = qtx.UpdateHubItemBundleIfUnset(ctx, db.UpdateHubItemBundleIfUnsetParams{
+			BundleKey:     key,
+			BundleDigest:  digest,
+			LatestVersion: local.version,
+			SizeBytes:     bundle.TotalSize,
+			FileCount:     int32(len(local.files)),
+			ID:            item.ID,
+			WorkspaceID:   ws,
+		})
+		if errors.Is(err, pgx.ErrNoRows) {
+			// Another request recorded its bundle first; serve that one.
+			return h.Queries.GetHubItemByRef(ctx, db.GetHubItemByRefParams{WorkspaceID: ws, Kind: item.Kind, RefID: item.RefID})
+		}
 	}
 	if err != nil {
 		return db.HubItem{}, err
@@ -325,8 +372,15 @@ func hubSkillBundleFiles(content string, rows []db.SkillFile) []hub.FileEntry {
 }
 
 // hubPluginBundleFiles is a plugin version's bundle: the manifest, which is stored
-// on the version row and not as a file, then the package files.
-func hubPluginBundleFiles(manifest []byte, rows []db.ListHubPluginVersionFilesRow) []hub.FileEntry {
+// on the version row and not as a file, then the package files. The stored manifest
+// is JSONB, which does not keep the byte layout the publish canonicalized, so it is
+// canonicalized again. Without that, every plugin would read as locally modified
+// against the bundle it was imported from.
+func hubPluginBundleFiles(storedManifest []byte, rows []db.ListHubPluginVersionFilesRow) ([]hub.FileEntry, error) {
+	_, manifest, err := plugincontract.ParseManifest(storedManifest)
+	if err != nil {
+		return nil, fmt.Errorf("stored plugin manifest: %w", err)
+	}
 	files := []hub.FileEntry{bundleFileEntry(plugincontract.ManifestFilename, manifest)}
 	for _, row := range rows {
 		if row.Path == plugincontract.ManifestFilename {
@@ -334,7 +388,7 @@ func hubPluginBundleFiles(manifest []byte, rows []db.ListHubPluginVersionFilesRo
 		}
 		files = append(files, bundleFileEntry(row.Path, row.Content))
 	}
-	return files
+	return files, nil
 }
 
 func bundleFileEntry(path string, content []byte) hub.FileEntry {
@@ -362,5 +416,43 @@ func (h *Handler) deleteHubObjects(ctx context.Context, workspaceID string) {
 		if len(keys) > 0 {
 			h.HubStorage.DeleteKeys(ctx, keys)
 		}
+	}
+}
+
+// removeHubItemForRef removes the hub row of a skill or plugin package that was
+// deleted, with its version rows and their bundle objects. It runs after the delete
+// has committed and is best effort: a failure is logged and the delete still
+// succeeds. The list and the bundle route already ignore a row whose item is gone,
+// so a leftover row is harmless.
+func (h *Handler) removeHubItemForRef(ctx context.Context, ws pgtype.UUID, kind string, refID pgtype.UUID) {
+	item, err := h.Queries.GetHubItemByRef(ctx, db.GetHubItemByRefParams{WorkspaceID: ws, Kind: kind, RefID: refID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return
+	}
+	if err != nil {
+		slog.Warn("hub: load item of deleted ref failed", "error", err, "kind", kind, "ref_id", uuidToString(refID))
+		return
+	}
+	keys, err := h.Queries.ListHubItemVersionBlobKeys(ctx, db.ListHubItemVersionBlobKeysParams{WorkspaceID: ws, ItemID: item.ID})
+	if err != nil {
+		slog.Warn("hub: list bundles of deleted ref failed", "error", err, "kind", kind, "ref_id", uuidToString(refID))
+		return
+	}
+	if err := h.Queries.DeleteHubItemVersionBlobs(ctx, db.DeleteHubItemVersionBlobsParams{WorkspaceID: ws, ItemID: item.ID}); err != nil {
+		slog.Warn("hub: delete versions of deleted ref failed", "error", err, "kind", kind, "ref_id", uuidToString(refID))
+		return
+	}
+	if err := h.Queries.DeleteHubItem(ctx, db.DeleteHubItemParams{ID: item.ID, WorkspaceID: ws}); err != nil {
+		slog.Warn("hub: delete item of deleted ref failed", "error", err, "kind", kind, "ref_id", uuidToString(refID))
+		return
+	}
+	if h.HubStorage == nil {
+		return
+	}
+	if item.BundleKey != "" && !slices.Contains(keys, item.BundleKey) {
+		keys = append(keys, item.BundleKey)
+	}
+	if len(keys) > 0 {
+		h.HubStorage.DeleteKeys(ctx, keys)
 	}
 }

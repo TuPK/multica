@@ -146,6 +146,19 @@ func NewSafeFetcher(opts FetcherOptions) *SafeFetcher {
 	return f
 }
 
+// HTTPClient returns a client for requests the fetcher does not shape itself, such
+// as the legacy ClawHub and skills.sh fetchers. It shares the fetcher's transport,
+// so every connection gets the dial-time address check, and its redirect policy,
+// so the redirect cap and scheme check apply. It adds the fetcher's timeout, which
+// bounds one request. Callers must not change the transport or redirect policy.
+func (f *SafeFetcher) HTTPClient() *http.Client {
+	return &http.Client{
+		Transport:     f.client.Transport,
+		CheckRedirect: f.client.CheckRedirect,
+		Timeout:       f.opts.Timeout,
+	}
+}
+
 // Get downloads rawURL and returns its body and the final URL after redirects.
 // It fails when the body exceeds maxBytes. The size is checked against
 // Content-Length first and then while streaming, so nothing above the cap is
