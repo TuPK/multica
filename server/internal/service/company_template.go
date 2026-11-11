@@ -675,7 +675,7 @@ func companyRoleNamed(card companySquad, key string) (companyRole, bool) {
 
 // companyRoutinesOf lists the routines of a card, with the squad's operating
 // review last. A card that lists the review sets its flags; the rest get a
-// paused review, which the charter path makes for every squad.
+// review with no start flags, so only the "all" start option creates it.
 func companyRoutinesOf(card companySquad) []companyRoutine {
 	out := append([]companyRoutine(nil), card.Routines...)
 	for _, r := range out {
@@ -699,12 +699,12 @@ type charterOutputJSON struct {
 	CadenceHint string `json:"cadence_hint"`
 }
 
-// ensureCharter saves the card's charter the first time, and its first save
-// creates the operating review, as the charter handler does. A squad that has a
-// charter keeps it.
+// ensureCharter saves the card's charter the first time. As the charter handler
+// does, its first save creates the operating review when the review's start
+// option wants it. A squad that has a charter keeps it.
 func (r *companyRun) ensureCharter(ctx context.Context, card companySquad) (string, string, error) {
-	var review db.Autopilot
-	created := false
+	var review *db.Autopilot
+	saved := false
 	err := r.inTx(ctx, func(q *db.Queries) error {
 		squad, found, err := r.squadNamed(ctx, q, card.Name)
 		if err != nil {
@@ -758,21 +758,28 @@ func (r *companyRun) ensureCharter(ctx context.Context, card companySquad) (stri
 		if err != nil {
 			return err
 		}
+		saved = true
+		if !charter.OperatingReviewEnabled {
+			return nil
+		}
 		tz := companyTimezone(ctx, q, r.in.ActorUserID)
-		review, err = CreateOperatingReview(ctx, q, squad, charter, r.in.ActorUserID, tz)
+		ap, err := CreateOperatingReview(ctx, q, squad, charter, r.in.ActorUserID, tz)
 		if err != nil {
 			return err
 		}
-		created = true
+		review = &ap
 		return nil
 	})
 	if err != nil {
 		return "", "", err
 	}
-	if !created {
+	if !saved {
 		return CompanyStepReused, "the charter exists", nil
 	}
-	r.res.Autopilots = append(r.res.Autopilots, review)
+	if review == nil {
+		return CompanyStepCreated, "saved the charter; its operating review is off", nil
+	}
+	r.res.Autopilots = append(r.res.Autopilots, *review)
 	return CompanyStepCreated, "saved the charter and its operating review", nil
 }
 
@@ -808,6 +815,7 @@ func (r *companyRun) ensureRoutine(ctx context.Context, card companySquad, routi
 	}
 	var created *db.Autopilot
 	resumed := false
+	off := false
 	err := r.inTx(ctx, func(q *db.Queries) error {
 		squad, found, err := r.squadNamed(ctx, q, card.Name)
 		if err != nil {
@@ -817,7 +825,8 @@ func (r *companyRun) ensureRoutine(ctx context.Context, card companySquad, routi
 			return companyErr("the squad %s is missing; its squad step did not finish", card.Name)
 		}
 		if routine.Title == OperatingReviewTitle {
-			return r.ensureOperatingReview(ctx, q, squad, wanted, &resumed, &created)
+			off, err = r.ensureOperatingReview(ctx, q, squad, wanted, &resumed, &created)
+			return err
 		}
 		ap, found, err := findAutopilotTitled(ctx, q, r.in.WorkspaceID, "squad", squad.ID, routine.Title)
 		if err != nil {
@@ -866,41 +875,47 @@ func (r *companyRun) ensureRoutine(ctx context.Context, card companySquad, routi
 	if err != nil {
 		return "", "", err
 	}
+	if off {
+		return CompanyStepReused, "the operating review is off for this squad; none was created", nil
+	}
 	return r.routineOutcome(created, resumed, routine.Title, wanted)
 }
 
-// ensureOperatingReview reuses the squad's review and starts it when wanted. A
-// squad with a charter but no review gets one here.
-func (r *companyRun) ensureOperatingReview(ctx context.Context, q *db.Queries, squad db.Squad, wanted bool, resumed *bool, created **db.Autopilot) error {
+// ensureOperatingReview makes the squad's review when the start option wants it and
+// the squad has none, and resumes it when wanted. A review that is not wanted and
+// does not exist is not created; the result reports that it skipped.
+func (r *companyRun) ensureOperatingReview(ctx context.Context, q *db.Queries, squad db.Squad, wanted bool, resumed *bool, created **db.Autopilot) (bool, error) {
 	routine, err := q.GetOperatingReviewRoutine(ctx, db.GetOperatingReviewRoutineParams{
 		SquadID: squad.ID, WorkspaceID: r.in.WorkspaceID, Purpose: OperatingReviewPurpose,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
+		if !wanted {
+			return true, nil
+		}
 		charter, err := q.GetSquadCharter(ctx, db.GetSquadCharterParams{SquadID: squad.ID, WorkspaceID: r.in.WorkspaceID})
 		if err != nil {
-			return companyErr("the charter of %s is missing; its charter step did not finish", squad.Name)
+			return false, companyErr("the charter of %s is missing; its charter step did not finish", squad.Name)
 		}
-		charter.OperatingReviewEnabled = wanted
 		ap, err := CreateOperatingReview(ctx, q, squad, charter, r.in.ActorUserID, companyTimezone(ctx, q, r.in.ActorUserID))
 		if err != nil {
-			return err
+			return false, err
 		}
 		*created = &ap
-		return nil
+		return false, nil
 	}
 	if err != nil {
-		return err
+		return false, err
 	}
 	ap, err := q.GetAutopilotInWorkspace(ctx, db.GetAutopilotInWorkspaceParams{ID: routine.AutopilotID, WorkspaceID: r.in.WorkspaceID})
 	if err != nil {
-		return err
+		return false, err
 	}
 	_, changed, err := r.activateIfWanted(ctx, q, ap, wanted)
 	if err != nil {
-		return err
+		return false, err
 	}
 	*resumed = changed
-	return nil
+	return false, nil
 }
 
 // ensureBrief makes sure one of the Secretary's brief autopilots exists, with the

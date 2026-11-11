@@ -95,10 +95,10 @@ func OperatingReviewDescription(charter db.SquadCharter) (string, error) {
 // does not name one. It matches the handler's default.
 const routineDefaultGraceHours = 24
 
-// CreateOperatingReview makes a squad's weekly operating review and its routine.
-// The first charter save calls it (the handler and the starter company both
-// reach it), so the review is created the same way on both paths. It starts
-// paused when the charter's switch is off. The caller runs it in its transaction.
+// CreateOperatingReview makes a squad's weekly operating review, active, and its
+// routine. Callers make it only when the review is wanted: a charter save that
+// turns the switch on, or the starter company's start option. The caller runs it
+// in its transaction.
 func CreateOperatingReview(ctx context.Context, q *db.Queries, squad db.Squad, charter db.SquadCharter, actorUserID pgtype.UUID, timezone string) (db.Autopilot, error) {
 	nextRun, err := ComputeNextRun(OperatingReviewCadence, timezone)
 	if err != nil {
@@ -108,17 +108,13 @@ func CreateOperatingReview(ctx context.Context, q *db.Queries, squad db.Squad, c
 	if err != nil {
 		return db.Autopilot{}, err
 	}
-	status := "active"
-	if !charter.OperatingReviewEnabled {
-		status = "paused"
-	}
 	ap, err := CreateSquadScheduledAutopilot(ctx, q, SquadScheduledAutopilot{
 		WorkspaceID: squad.WorkspaceID,
 		SquadID:     squad.ID,
 		ActorUserID: actorUserID,
 		Title:       OperatingReviewTitle,
 		Description: pgtype.Text{String: description, Valid: true},
-		Status:      status,
+		Status:      "active",
 		Cron:        OperatingReviewCadence,
 		Timezone:    timezone,
 		NextRun:     nextRun,

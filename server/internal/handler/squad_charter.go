@@ -315,8 +315,9 @@ func (h *Handler) UpdateSquadCharter(w http.ResponseWriter, r *http.Request) {
 			UpdatedByType:          "member",
 			UpdatedByID:            member.UserID,
 		})
-		if err == nil {
-			// A conflicting first save returns no rows and creates no review.
+		if err == nil && charter.OperatingReviewEnabled {
+			// A review is made only when the switch is on. A conflicting first save
+			// returns no rows and creates no review.
 			review, reviewErr := h.createOperatingReview(r, qtx, squad, charter, member)
 			if reviewErr != nil {
 				writeError(w, http.StatusInternalServerError, "failed to save squad charter")
@@ -351,12 +352,16 @@ func (h *Handler) UpdateSquadCharter(w http.ResponseWriter, r *http.Request) {
 		// Only a change of the switch moves the review. A save that leaves it alone
 		// keeps whatever state an admin gave the review by hand.
 		if err == nil && beforeErr == nil && before.OperatingReviewEnabled != charter.OperatingReviewEnabled {
-			changed, switchErr := h.setOperatingReviewActive(r, qtx, squad, member, charter.OperatingReviewEnabled)
+			changed, created, switchErr := h.setOperatingReviewActive(r, qtx, squad, charter, member)
 			if switchErr != nil {
 				writeError(w, http.StatusInternalServerError, "failed to save squad charter")
 				return
 			}
-			changedReview = changed
+			if created {
+				createdReview = changed
+			} else {
+				changedReview = changed
+			}
 		}
 	}
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -392,10 +397,9 @@ func (h *Handler) UpdateSquadCharter(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// createOperatingReview makes the squad's weekly operating review, once: it runs
-// inside the first charter save, and a squad has one first save. The review is
-// assigned to the squad, required, and expected to produce a report. It starts
-// paused when the first save turns the review off.
+// createOperatingReview makes the squad's weekly operating review, active. Callers
+// make it only when the charter's switch is on. The review is assigned to the
+// squad, required, and expected to produce a report.
 func (h *Handler) createOperatingReview(r *http.Request, qtx *db.Queries, squad db.Squad, charter db.SquadCharter, actor db.Member) (db.Autopilot, error) {
 	timezone, err := h.resolveRoutineTimezone(r, actor.UserID, nil)
 	if err != nil {
@@ -404,34 +408,42 @@ func (h *Handler) createOperatingReview(r *http.Request, qtx *db.Queries, squad 
 	return service.CreateOperatingReview(r.Context(), qtx, squad, charter, actor.UserID, timezone)
 }
 
-// setOperatingReviewActive pauses or resumes the squad's operating review to match
-// the switch. It returns the review when its status changed, and nil when there is
-// nothing to change (no review, or it already matches).
-func (h *Handler) setOperatingReviewActive(r *http.Request, qtx *db.Queries, squad db.Squad, actor db.Member, enabled bool) (*db.Autopilot, error) {
+// setOperatingReviewActive follows the switch on a save that changes it. A squad
+// with no review gets one when the switch turns on, and none when it turns off. A
+// squad with a review has it resumed or paused to match. It returns the review,
+// which is nil when nothing changed, and whether this call created it.
+func (h *Handler) setOperatingReviewActive(r *http.Request, qtx *db.Queries, squad db.Squad, charter db.SquadCharter, actor db.Member) (*db.Autopilot, bool, error) {
 	routine, err := qtx.GetOperatingReviewRoutine(r.Context(), db.GetOperatingReviewRoutineParams{
 		SquadID:     squad.ID,
 		WorkspaceID: squad.WorkspaceID,
 		Purpose:     service.OperatingReviewPurpose,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil
+		if !charter.OperatingReviewEnabled {
+			return nil, false, nil
+		}
+		review, err := h.createOperatingReview(r, qtx, squad, charter, actor)
+		if err != nil {
+			return nil, false, err
+		}
+		return &review, true, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	ap, err := qtx.GetAutopilotInWorkspace(r.Context(), db.GetAutopilotInWorkspaceParams{
 		ID:          routine.AutopilotID,
 		WorkspaceID: squad.WorkspaceID,
 	})
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	want := "paused"
-	if enabled {
+	if charter.OperatingReviewEnabled {
 		want = "active"
 	}
 	if ap.Status == want || ap.Status == "archived" {
-		return nil, nil
+		return nil, false, nil
 	}
 	updated, err := qtx.UpdateAutopilot(r.Context(), db.UpdateAutopilotParams{
 		ID:                 ap.ID,
@@ -440,12 +452,12 @@ func (h *Handler) setOperatingReviewActive(r *http.Request, qtx *db.Queries, squ
 		ProjectID:          ap.ProjectID,
 	})
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if err := h.recordAutopilotRuleVersion(r.Context(), qtx, updated, "member", actor.UserID); err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return &updated, nil
+	return &updated, false, nil
 }
 
 // nonNilSlice keeps an omitted list from marshalling to JSON null, which the

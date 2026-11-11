@@ -179,7 +179,7 @@ func routineWanted(start string, r companyRoutine) bool {
 
 // operatingReviewRoutine is the review a squad's charter creates. A card that
 // lists the review sets its start flags; a card that does not gets the defaults
-// of a paused review, which the charter path makes for every squad.
+// of a review no start flag wants.
 func operatingReviewRoutine(s companySquad) companyRoutine {
 	for _, r := range s.Routines {
 		if r.Title == OperatingReviewTitle {

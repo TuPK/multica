@@ -155,6 +155,13 @@ func (e *companyEnv) expectRoutines(start string, keys []string) {
 			if routineWanted(start, routine) {
 				want = "active"
 			}
+			if routine.Title == OperatingReviewTitle && !routineWanted(start, routine) {
+				// A review the start option does not want is never created, so it is absent.
+				if n := e.count(`SELECT count(*) FROM autopilot WHERE workspace_id = $1 AND assignee_type = 'squad' AND assignee_id = $2 AND title = $3`, squad.ID, routine.Title); n != 0 {
+					e.t.Errorf("%s / %s (%s): %d reviews, want none", card.Name, routine.Title, start, n)
+				}
+				continue
+			}
 			if card.Key == "executive_office" && (routine.Title == DailyBriefTitle || routine.Title == WeeklyReviewTitle) {
 				if got := e.autopilotStatus("agent", secretary, routine.Title); got != want {
 					e.t.Errorf("%s (%s): status %s, want %s", routine.Title, start, got, want)
@@ -241,8 +248,16 @@ func TestCompanyApplyInstallsTheWholeCompanyOnAnEmptyWorkspace(t *testing.T) {
 	if got := e.count(`SELECT count(*) FROM squad_charter WHERE workspace_id = $1`); got != len(e.data.Squads) {
 		t.Fatalf("charters = %d, want one per squad", got)
 	}
-	if got := e.count(`SELECT count(*) FROM autopilot WHERE workspace_id = $1 AND assignee_type = 'squad' AND title = $2`, OperatingReviewTitle); got != len(e.data.Squads) {
-		t.Fatalf("operating reviews = %d, want one per squad", got)
+	// A review is created only when its start option wants it running; leave_paused
+	// wants none of the template's reviews, so the company has no review rows.
+	wantReviews := 0
+	for _, card := range e.data.Squads {
+		if routineWanted(CompanyStartLeavePaused, operatingReviewRoutine(card)) {
+			wantReviews++
+		}
+	}
+	if got := e.count(`SELECT count(*) FROM autopilot WHERE workspace_id = $1 AND assignee_type = 'squad' AND title = $2`, OperatingReviewTitle); got != wantReviews {
+		t.Fatalf("operating reviews = %d, want %d (the squads whose review leave_paused starts)", got, wantReviews)
 	}
 	if got := e.count(`SELECT count(*) FROM pipeline WHERE workspace_id = $1 AND is_default`); got != 1 {
 		t.Fatalf("default pipelines = %d, want 1", got)

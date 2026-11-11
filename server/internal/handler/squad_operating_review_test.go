@@ -147,16 +147,56 @@ func TestOperatingReviewSwitchPausesAndResumes(t *testing.T) {
 	}
 }
 
-// TestOperatingReviewOffAtFirstSaveStartsPaused: a first save that turns the review
-// off creates it paused, so turning it on later resumes it rather than finding
-// nothing.
-func TestOperatingReviewOffAtFirstSaveStartsPaused(t *testing.T) {
+// TestOperatingReviewOffAtFirstSaveCreatesNothing: a first save that turns the
+// review off creates no review, neither the autopilot nor its routine row.
+func TestOperatingReviewOffAtFirstSaveCreatesNothing(t *testing.T) {
 	leaderID := createHandlerTestAgent(t, "review-off-leader-"+uniqueSuffix(), nil)
 	squadID := newCharterSquad(t, "Review Off Squad", leaderID)
 	saveCharterWithSwitch(t, squadID, 0, false)
+	if reviewID := operatingReviewOf(t, squadID); reviewID != "" {
+		t.Fatalf("first save with the review off created review %s", reviewID)
+	}
+	if n := dbfx.Count(t, `SELECT count(*) FROM autopilot WHERE assignee_type = 'squad' AND assignee_id = $1 AND title = 'Operating review'`, squadID); n != 0 {
+		t.Fatalf("first save with the review off created %d review autopilots, want none", n)
+	}
+	if n := countRoutineRows(t, `squad_id = $1 AND purpose = 'Operating review'`, squadID); n != 0 {
+		t.Fatalf("first save with the review off created %d review routines, want none", n)
+	}
+}
+
+// TestOperatingReviewTurnedOnLaterIsCreatedActive: a squad saved with the review off
+// has none; turning the switch on creates it, active, once. Switching it off and on
+// again pauses and resumes that same review.
+func TestOperatingReviewTurnedOnLaterIsCreatedActive(t *testing.T) {
+	leaderID := createHandlerTestAgent(t, "review-later-leader-"+uniqueSuffix(), nil)
+	squadID := newCharterSquad(t, "Review Later Squad", leaderID)
+	first := saveCharterWithSwitch(t, squadID, 0, false)
+	if operatingReviewOf(t, squadID) != "" {
+		t.Fatalf("first save with the review off: want no review")
+	}
+
+	saveCharterWithSwitch(t, squadID, first.Revision, true)
 	reviewID := operatingReviewOf(t, squadID)
-	if reviewID == "" || autopilotStatus(t, reviewID) != "paused" {
-		t.Fatalf("first save with the review off: want a paused review, got %q", reviewID)
+	if reviewID == "" {
+		t.Fatalf("switch on later: no operating review was created")
+	}
+	if got := autopilotStatus(t, reviewID); got != "active" {
+		t.Fatalf("switch on later: review is %s, want active", got)
+	}
+
+	saveCharterWithSwitch(t, squadID, first.Revision+1, false)
+	if got := autopilotStatus(t, reviewID); got != "paused" {
+		t.Fatalf("switch off: review is %s, want paused", got)
+	}
+	saveCharterWithSwitch(t, squadID, first.Revision+2, true)
+	if got := operatingReviewOf(t, squadID); got != reviewID {
+		t.Fatalf("switching again made review %s, want the first review %s", got, reviewID)
+	}
+	if got := autopilotStatus(t, reviewID); got != "active" {
+		t.Fatalf("switch on again: review is %s, want active", got)
+	}
+	if n := countRoutineRows(t, `squad_id = $1 AND purpose = 'Operating review'`, squadID); n != 1 {
+		t.Fatalf("expected one review routine after switching, got %d", n)
 	}
 }
 
