@@ -106,6 +106,7 @@ export const KV_INSURANCE_TEMPLATE: SquadTemplate = {
   floorName: KITVIET_P2_FLOOR_NAMES.insurance,
   expertReview: true,
   routines: [],
+  operatingReview: false,
   charter: INSURANCE_CHARTER,
   instructions: kvLeadInstructions("insurance_lead"),
   workflow: null,

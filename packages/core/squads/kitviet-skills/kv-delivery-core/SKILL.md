@@ -13,6 +13,7 @@ Every role in a Kit Viet squad works under these rules. Your role skill says wha
 - Read your task's inputs as attachments of the issue. Download each with `multica attachment download <id>`; the file lands in your working directory. A file you did not download, or that is not in the issue, does not exist for you.
 - Attach your output with `multica issue comment add <issue> --content-file <file> --attachment <file>`. The file must be inside your working directory; a path outside it is refused unless you pass `--allow-external-file`, which you do not.
 - Your stage's sub-issue names your stage (stage 1 collect, stage 2 draft, stage 3 gate, stage 4 handover, or the export stage). Post your result as the last comment on that sub-issue. Use the output template of your role skill.
+- Then set that sub-issue's status. `done` when your result passes: a collector, drafter, gate or handover that posted its output, including a gate that says `VERDICT: CHẶN` (the verdict is the result, and the lead decides the next round). `blocked` when you stop at stop 1 or stop 3 of your own stage. Never `in_review`: that status belongs to the request root only, after handover QUA (stop 2). The lead's stage barrier counts a sub-issue as finished only when it is `done`, so a stage holds until every one of its sub-issues is `done`.
 - A gate sees only the link to the draft and to its sources. It never sees the drafter's reasoning, and the drafter never sees the gate's checklist.
 
 ## Verdict lines and the two-round limit
@@ -30,7 +31,15 @@ Stop only for these three. Everywhere else, take the recommended default, write 
 2. **Before anything leaves the workspace.** Every final product: sent to a customer, filed with a tax office, published, signed, or submitted for signature. Handover passes, then the request goes to `in_review` with a comment that lists the things the person must do. Only the requester sets `done`. A Kit Viet squad has no tool to send and must not try to get one.
 3. **Round limit reached.** A gate is still CHẶN after round 2. Stop as in stop 1, with the draft and the remaining findings attached.
 
-**How a stop reaches a person.** Set the status on the request, not only on your sub-issue: `blocked` for stops 1 and 3, `in_review` for stop 2. Those two statuses hand the issue to a human, so the requester is notified. Also mention the requester in the comment. The sub-issue you are working in may also be set to `blocked`, so the lead sees it.
+**How a stop reaches a person.** Set the status on the request, not only on your sub-issue: `blocked` for stops 1 and 3, `in_review` for stop 2. Those two statuses hand the issue to a human, so the requester is notified. The sub-issue you are working in is set to `blocked` as well, so the lead sees it.
+
+**Every `blocked` stop comment mentions the requester.** This applies to the lead and to every stage agent. Write the mention as a markdown link with this exact shape, one per requester:
+
+`[@<requester name>](mention://member/<requester id>)`
+
+Read the requester id from the request: run `multica issue get <request> --output json` and take `creator_id`, provided `creator_type` is `member`. Use the request's own id, not your sub-issue's. A bare `@name` is not a mention and notifies nobody. If `creator_type` is not `member`, name the requester in plain words and say so in the comment.
+
+**Resuming a blocked run.** A `blocked` sub-issue does not release the stage barrier, so the lead is not woken by a finished stage. A person resumes the run with a comment on the request that mentions the lead, `[@<lead name>](mention://agent/<lead id>)`; that mention wakes the lead, which re-runs triage from the answer. Nothing else restarts a stop.
 
 **Decisions with authority.** A choice that needs someone with authority (a discount beyond the frame, a commitment on price or contract) is a proposal, not a comment: `multica proposal create --squad "<your squad>"` with the cost, the risk and the exact decision needed. Then continue with the work that does not depend on the answer.
 
@@ -85,11 +94,13 @@ Stop only for these three. Everywhere else, take the recommended default, write 
 - [ ] No legal date, rate or threshold came from memory.
 - [ ] Gates: the first line is `VERDICT:`, and the comment has the findings table.
 - [ ] Your report says what you did not verify.
+- [ ] Your sub-issue's status is `done` (output posted, or a gate or handover verdict posted) or `blocked` (your stop). Never `in_review`.
+- [ ] A `blocked` comment mentions the requester with the `[@name](mention://member/<id>)` markup.
 
 ## Report format
 
 ```
-Kết quả: <stage> <done | blocked | in_review>
+Kết quả: <stage> <done | blocked>
 Đầu ra: <file or comment, with id>
 Giả định: <each default you took, one line each>
 Chưa xác minh: <what you could not check, and why>

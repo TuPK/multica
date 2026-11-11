@@ -124,6 +124,7 @@ export const KV_TEACHING_TEMPLATE: SquadTemplate = {
   leader: "tm_lead",
   floorName: KITVIET_P2_FLOOR_NAMES.edu,
   routines: [],
+  operatingReview: false,
   charter: TEACHING_CHARTER,
   instructions: kvLeadInstructions("tm_lead"),
   workflow: null,

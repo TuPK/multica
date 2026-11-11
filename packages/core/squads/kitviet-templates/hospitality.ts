@@ -117,6 +117,7 @@ export const KV_HOSPITALITY_TEMPLATE: SquadTemplate = {
   leader: "hospitality_lead",
   floorName: KITVIET_P2_FLOOR_NAMES.hospitality,
   routines: [],
+  operatingReview: false,
   charter: HOSPITALITY_CHARTER,
   instructions: kvLeadInstructions("hospitality_lead"),
   workflow: null,

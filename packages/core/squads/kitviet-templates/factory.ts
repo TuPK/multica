@@ -100,6 +100,7 @@ export const KV_FACTORY_TEMPLATE: SquadTemplate = {
   floorName: KITVIET_P2_FLOOR_NAMES.factory,
   expertReview: true,
   routines: [],
+  operatingReview: false,
   charter: FACTORY_CHARTER,
   instructions: kvLeadInstructions("factory_lead"),
   workflow: null,

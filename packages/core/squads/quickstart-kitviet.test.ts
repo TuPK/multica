@@ -369,3 +369,41 @@ describe("runSquadQuickstart Kit Viet skills: which agents get them", () => {
   });
 });
 
+
+describe("Kit Viet operating review (S7 D1)", () => {
+  const kitviet = SQUAD_TEMPLATES.filter((t) => t.id.startsWith("kv_"));
+
+  it("every Kit Viet template without a routine turns the operating review off", () => {
+    const bare = kitviet.filter((t) => t.routines.length === 0);
+    expect(bare.length).toBeGreaterThan(0);
+    for (const t of bare) expect(t.operatingReview, t.id).toBe(false);
+  });
+
+  it("a Kit Viet template with a routine keeps the server default", () => {
+    const withRoutine = kitviet.filter((t) => t.routines.length > 0).map((t) => t.id);
+    expect(withRoutine).toEqual(expect.arrayContaining(["kv_legal", "kv_accounting"]));
+    for (const t of kitviet.filter((t) => t.routines.length > 0)) {
+      expect(t.operatingReview, t.id).toBeUndefined();
+    }
+  });
+
+  it("the first charter save of Office Admin sends operating_review_enabled false", async () => {
+    const admin = SQUAD_TEMPLATES.find((t) => t.id === "kv_admin")!;
+    const client = fakeClient();
+
+    await run(client, admin);
+
+    const request = (client.updateSquadCharter.mock.calls[0] as unknown as [string, Record<string, unknown>])[1];
+    expect(request).toMatchObject({ revision: 0, operating_review_enabled: false });
+  });
+
+  it("the first charter save of Legal, which has a routine, sends no flag", async () => {
+    const legal = SQUAD_TEMPLATES.find((t) => t.id === "kv_legal")!;
+    const client = fakeClient();
+
+    await run(client, legal);
+
+    const request = (client.updateSquadCharter.mock.calls[0] as unknown as [string, Record<string, unknown>])[1];
+    expect(request).not.toHaveProperty("operating_review_enabled");
+  });
+});

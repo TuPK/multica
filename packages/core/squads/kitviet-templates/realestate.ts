@@ -116,6 +116,7 @@ export const KV_REALESTATE_TEMPLATE: SquadTemplate = {
   leader: "realestate_lead",
   floorName: KITVIET_P2_FLOOR_NAMES.realestate,
   routines: [],
+  operatingReview: false,
   charter: REALESTATE_CHARTER,
   instructions: kvLeadInstructions("realestate_lead"),
   workflow: null,

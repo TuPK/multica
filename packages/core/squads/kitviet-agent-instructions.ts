@@ -41,7 +41,15 @@ export function composeKvAgentInstructions({
   body?: string;
   notes?: string;
 }): string {
-  return [header ?? KV_ROLE_OPENERS[kind], KV_ROLE_KIND_TEXT[kind], body, notes, SHARED_BLOCKS, KV_WORKING_RULES]
+  return [
+    header ?? KV_ROLE_OPENERS[kind],
+    KV_ROLE_KIND_TEXT[kind],
+    kind === "kv_lead" ? undefined : STAGE_STATUS_RULES,
+    body,
+    notes,
+    SHARED_BLOCKS,
+    KV_WORKING_RULES,
+  ]
     .filter((part): part is string => part !== undefined && part.trim() !== "")
     .join("\n\n");
 }
@@ -67,6 +75,11 @@ const KV_ROLE_OPENERS: Record<KvRoleKind, string> = {
 
 const LOAD_SKILLS = `Before you act on an issue, load the kv--delivery-core skill and the skills your role's instructions name. They hold the procedure, the output template, and the self-check. Where they differ from anything else you know, they win.`;
 
+// The stage barrier releases the next stage only when every sub-issue is done (server: children_done
+// counts done and closed categories). A blocked or in_review sub-issue holds the stage, so these rules
+// are the same for every stage role; kv--delivery-core repeats them with the output template.
+const STAGE_STATUS_RULES = `Your stage sub-issue ends as done when your result is posted, including a gate's CHẶN result, because the result is the verdict and the lead decides the next round. It ends as blocked only at your own stop. Never set it to in_review: that status is the request's, after handover QUA. A blocked comment mentions the requester as [@<requester name>](mention://member/<requester id>), with the id from the request's creator_id when creator_type is member; a bare @name notifies nobody.`;
+
 const UNATTENDED = `No person reads your output before the next stage. Do not wait for an answer, an approval, or a choice. Take the recommended default, write it as an assumption in your comment, and continue. Stop only at the three human stops in kv--delivery-core. Never print a secret.`;
 
 const KV_ROLE_KIND_TEXT: Record<KvRoleKind, string> = {
@@ -76,6 +89,7 @@ Before you act on an issue, load the kv--delivery-core and kv--squad-lead skills
 
 Rules that always hold:
 - Never change the status or the assignee of the request, except to set blocked or in_review at a human stop. Never set it to done.
+- Stage sub-issues are yours to close: set each one to done when its result is posted, or to blocked at a stop. Never set a stage sub-issue to in_review. A stage that stays blocked or in_review never releases you to the next stage.
 - Every piece of work is a sub-issue assigned to a member of your Squad Roster, by their id. A gate is never assigned to the member who drafted the same piece.
 - A gate receives the link to the draft and to the sources, never the drafter's reasoning.
 - Count the rounds with a "Round n/2" comment on the request. After round 2, a gate still at CHẶN is a human stop.

@@ -56,6 +56,7 @@ export const KV_OFFICEOPS_TEMPLATE: SquadTemplate = {
   leader: "officeops_lead",
   floorName: "Executive",
   routines: [],
+  operatingReview: false,
   charter: {
     mission: "Run the day-to-day office operations: rooms, travel, events, stock, assets, records, contracts and the monthly report.",
     responsibilities: [

@@ -49,7 +49,6 @@ import { SALES_ROLE_AGENT_INSTRUCTIONS, type SalesRoleKey } from "./sales-agent-
 import { SALES_STARTER_SOURCES, starterSourceDocument } from "./sales-starter-sources";
 import {
   SQUAD_ROLES,
-  type SquadCharterTemplate,
   type SquadRoleKey,
   type SquadRoutineTemplate,
   type SquadTemplate,
@@ -445,10 +444,18 @@ async function ensureStarterSources(client: SquadQuickstartClient): Promise<Quic
   return { status: failed > 0 ? "failed" : "created", written, failed, ...(error ? { error } : {}) };
 }
 
-/** The charter a template saves on creation. Revision 0 is the first save; operating review stays on. */
-function charterRequest(charter: SquadCharterTemplate): UpdateSquadCharterRequest {
+/**
+ * The charter a template saves on creation. Revision 0 is the first save. The first save also creates the
+ * operating review; a template that sets operatingReview to false turns that off, and an omitted flag keeps
+ * the server default.
+ */
+function charterRequest(template: SquadTemplate): UpdateSquadCharterRequest {
+  const charter = template.charter;
   return {
     revision: 0,
+    ...(template.operatingReview === undefined
+      ? {}
+      : { operating_review_enabled: template.operatingReview }),
     mission: charter.mission,
     responsibilities: charter.responsibilities,
     outputs: charter.outputs.map((o) => ({
@@ -770,7 +777,7 @@ export async function runSquadQuickstart(
           kitvietPackOf(template.id),
         ).catch((err): QuickstartOutcome["skills"] => ({ status: "failed", error: errorMessage(err) }));
         try {
-          await client.updateSquadCharter(found.id, charterRequest(template.charter));
+          await client.updateSquadCharter(found.id, charterRequest(template));
         } catch (err) {
           // A charter that already exists refuses a revision-0 save: already chartered.
           if (errorCode(err) !== "charter_revision_conflict") {
@@ -823,7 +830,7 @@ export async function runSquadQuickstart(
       );
       // The first charter save also creates the squad's operating review.
       try {
-        await client.updateSquadCharter(squad.id, charterRequest(template.charter));
+        await client.updateSquadCharter(squad.id, charterRequest(template));
       } catch (err) {
         failures.push(`charter: ${errorMessage(err)}`);
       }

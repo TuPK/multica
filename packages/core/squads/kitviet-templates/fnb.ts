@@ -105,6 +105,7 @@ export const KV_FNB_TEMPLATE: SquadTemplate = {
   floorName: KITVIET_P2_FLOOR_NAMES.fnb,
   expertReview: true,
   routines: [],
+  operatingReview: false,
   charter: FNB_CHARTER,
   instructions: kvLeadInstructions("fnb_lead"),
   workflow: null,

@@ -109,6 +109,7 @@ export const KV_BANKING_TEMPLATE: SquadTemplate = {
   floorName: KITVIET_P2_FLOOR_NAMES.banking,
   expertReview: true,
   routines: [],
+  operatingReview: false,
   charter: KV_BANKING_CHARTER,
   instructions: kvLeadInstructions("banking_lead"),
   workflow: null,

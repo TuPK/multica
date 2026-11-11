@@ -615,6 +615,11 @@ export interface SquadTemplate {
   routines: readonly SquadRoutineTemplate[];
   /** The charter saved on creation. Saving it also creates the squad's operating review. */
   charter: SquadCharterTemplate;
+  /**
+   * Whether the first charter save turns on the squad's weekly operating review. Omitted: the server
+   * default (on). A template with no routine sets false, so no review routine is created behind its back.
+   */
+  operatingReview?: boolean;
   /** Squad instructions: what the leader follows. */
   instructions: string;
   /** The workflow its build project needs, when it has one. */

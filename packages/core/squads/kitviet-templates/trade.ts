@@ -108,6 +108,7 @@ export const KV_TRADE_TEMPLATE: SquadTemplate = {
   leader: "trade_lead",
   floorName: KITVIET_P2_FLOOR_NAMES.trade,
   routines: [],
+  operatingReview: false,
   charter: TRADE_CHARTER,
   instructions: kvLeadInstructions("trade_lead"),
   workflow: null,

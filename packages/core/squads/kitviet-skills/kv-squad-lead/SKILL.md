@@ -20,9 +20,9 @@ You replace the old single-session coordinator. You plan, delegate, check handov
 2. **Triage.** For each required input of the squad, decide whether the request has it. A missing input that cannot be defaulted is stop 1: set the request to `blocked` and post the comment below. Do not create sub-issues.
 3. **Plan.** Post one comment on the request with the heading `## Plan`: the goal in one line, the sources (the attachments of the request, by name), the stages you chose and skipped, the measurable criterion each stage must meet, and the gates that apply. Start the request's run counter with `Round 0/2`.
 4. **Delegate.** Create one sub-issue per stage with `multica issue create --parent <request> --title "stage <n> · <task>" --assignee-id <member id> --status backlog --description-file <file>`. A stage 1 collector gets the request's sources. A stage 2 drafter gets the link to the stage 1 comment. Create all gates for a draft in the same step, each linked to the draft and to the sources, not to the drafter's comments. Queue the stages in order with `multica issue queue <issue> --after <issue> --start-status todo`.
-5. **Check each handover.** When a stage's sub-issue is finished, read its last comment and check: the required output is attached or posted; a gate's first line is one `VERDICT:` line; the gate's sub-issue has no file or commit from the gate itself; and the drafter did not also run the gate. A failed check goes back to that stage's member with the exact item, not to a new member.
+5. **Check each handover.** When a stage's sub-issue is finished, read its last comment and check: the required output is attached or posted; a gate's first line is one `VERDICT:` line; the gate's sub-issue has no file or commit from the gate itself; and the drafter did not also run the gate. A stage sub-issue that is not `done` (or `blocked` at a stop) after its stage has run is a failed check: the stage agent must set it to `done`. Ask for the status, then wait; do not set a stage sub-issue to `in_review` yourself. A failed check goes back to that stage's member with the exact item, not to a new member.
 6. **Rounds.** When a gate says `VERDICT: CHẶN`, create one fix sub-issue for the drafter with the list of findings, then create again only the gates that said CHẶN, and post `Round n/2` on the request. A gate with no `VERDICT:` line counts as CHẶN. After round 2 a gate still CHẶN is stop 3.
-7. **Stop.** At a human stop, set the request to the right status and post the matching comment. Stop 1 and stop 3 set `blocked`; stop 2 sets `in_review` after the handover is QUA. Set the status on the request itself, so the requester is notified, and mention the requester in the comment.
+7. **Stop.** At a human stop, set the request to the right status and post the matching comment. Stop 1 and stop 3 set the request to `blocked`; stop 2 sets the request to `in_review` after the handover is QUA. Set the status on the request itself, so the requester is notified, and mention the requester in the comment with the `[@name](mention://member/<id>)` markup from kv--delivery-core: the requester id is the request's `creator_id` when `creator_type` is `member`. A bare `@name` notifies nobody.
 8. **Export.** Only after the handover is QUA and the stop 2 comment is posted, create one sub-issue for the drafter that produced the product: `multica issue create --parent <request> --title "stage 5 · xuất file" --assignee-id <drafter id> --status backlog --description-file <file>`. Its description names the format the requester asked for and the export skill that produces it (kv--xuat-word, kv--xuat-excel, kv--xuat-pdf or kv--xuat-pptx), and says to attach each output with `--attachment`. The drafter runs the skill and posts its last comment with the outputs. A gate never runs the export. If the export is blocked (a missing library), the export sub-issue is blocked, the request stays in_review, and the stop 2 comment names the missing library, so the Markdown or CSV product is still the one the person receives.
 9. **Report.** When the request is at a stop or the chain is finished, post one summary comment: the plan, the rounds run, each assumption, what is not verified, and the list of things the person must decide or do.
 
@@ -35,7 +35,7 @@ BLOCKED · stop 1 · thiếu căn cứ
 Thiếu: <each missing input, with the stage it blocks>
 Mâu thuẫn: <each conflicting source against the frame, with both values and where>
 Cần từ bạn: <the exact item to send, one line each>
-@<requester>
+[@<requester>](mention://member/<requester id>)
 ```
 
 Stop 2 (before anything leaves the workspace):
@@ -46,7 +46,7 @@ Sản phẩm: <attachment name and id>
 Kết luận handover: VERDICT: QUA (<sub-issue id>)
 Việc bạn phải làm: <each action: send, file, sign, pay, publish, with its deadline if the register gives one>
 Chưa xác minh: <what the checks did not cover>
-@<requester>
+[@<requester>](mention://member/<requester id>)
 ```
 
 Stop 3 (round limit):
@@ -57,7 +57,7 @@ Vòng: Round 2/2
 Bản nháp: <attachment>
 Còn lỗi: <each finding that is still CHẶN, with its location and gate>
 Cần từ bạn: <the decision that changes the draft: the fact, the source or the approval>
-@<requester>
+[@<requester>](mention://member/<requester id>)
 ```
 
 ## Rules for the summary

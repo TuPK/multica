@@ -110,6 +110,7 @@ export const KV_MARKETING_TEMPLATE: SquadTemplate = {
   leader: "mkt_lead",
   floorName: "Launch",
   routines: [],
+  operatingReview: false,
   charter: MARKETING_CHARTER,
   instructions: kvLeadInstructions("mkt_lead"),
   workflow: null,

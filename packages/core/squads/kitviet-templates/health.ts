@@ -123,6 +123,7 @@ export const KV_HEALTH_TEMPLATE: SquadTemplate = {
   floorName: KITVIET_P2_FLOOR_NAMES.health,
   expertReview: true,
   routines: [],
+  operatingReview: false,
   charter: HEALTH_CHARTER,
   instructions: kvLeadInstructions("health_lead"),
   workflow: null,

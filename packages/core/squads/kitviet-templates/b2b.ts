@@ -75,6 +75,7 @@ export const KV_B2B_TEMPLATE: SquadTemplate = {
   leader: "b2b_lead",
   floorName: "Launch",
   routines: [],
+  operatingReview: false,
   charter: {
     mission: "Turn a qualified deal into a quote and proposal that stay inside approved pricing.",
     responsibilities: [

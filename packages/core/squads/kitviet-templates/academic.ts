@@ -81,6 +81,7 @@ export const KV_ACADEMIC_TEMPLATE: SquadTemplate = {
   leader: "acad_lead",
   floorName: "Research",
   routines: [],
+  operatingReview: false,
   charter: {
     mission:
       "Check every source behind a thesis chapter, literature review or paper, and prepare study drafts that the author rewrites in their own words, with every citation either opened or marked unverified.",

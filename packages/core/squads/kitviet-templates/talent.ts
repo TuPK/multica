@@ -68,6 +68,7 @@ export const KV_TALENT_TEMPLATE: SquadTemplate = {
   leader: "talent_lead",
   floorName: "Governance",
   routines: [],
+  operatingReview: false,
   charter: {
     mission: "Screen candidates against approved criteria and prepare hiring documents, with bias and personal-data checks before anything leaves the workspace.",
     responsibilities: [

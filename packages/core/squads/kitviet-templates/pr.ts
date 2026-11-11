@@ -111,6 +111,7 @@ export const KV_PR_TEMPLATE: SquadTemplate = {
   leader: "pr_lead",
   floorName: "Launch",
   routines: [],
+  operatingReview: false,
   charter: PR_CHARTER,
   instructions: kvLeadInstructions("pr_lead"),
   workflow: null,

@@ -64,6 +64,7 @@ export const KV_ADMIN_TEMPLATE: SquadTemplate = {
   leader: "admin_lead",
   floorName: "Executive",
   routines: [],
+  operatingReview: false,
   charter: {
     mission: "Draft administrative documents in the right form and keep the document registers current.",
     responsibilities: [

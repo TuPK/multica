@@ -76,6 +76,7 @@ export const KV_ECOM_TEMPLATE: SquadTemplate = {
   leader: "ecom_lead",
   floorName: KV_ECOM_FLOOR_NAME,
   routines: [],
+  operatingReview: false,
   charter: {
     mission: "Turn a product's supplier data into a listing and a price that clear the policy and margin checks, ready for the shop owner to post.",
     responsibilities: [

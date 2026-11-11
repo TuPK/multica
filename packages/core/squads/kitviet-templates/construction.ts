@@ -113,6 +113,7 @@ export const KV_CONSTRUCTION_TEMPLATE: SquadTemplate = {
   floorName: KITVIET_P2_FLOOR_NAMES.construction,
   expertReview: true,
   routines: [],
+  operatingReview: false,
   charter: CONSTRUCTION_CHARTER,
   instructions: kvLeadInstructions("construction_lead"),
   workflow: null,
