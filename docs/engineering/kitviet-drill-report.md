@@ -60,3 +60,68 @@ Totals: run A 20 of 20 `blocked` with requester mention (5 with a second self-tr
 - No full end-to-end run for any squad (out of scope for this pass).
 - Accounting F19 test (two 200-row tables) and the Go test suite were not run.
 - The Monitor watch on drill.log was left armed; it expires on its own.
+
+## Follow-up status (D1 to D5)
+
+Recorded after the follow-up change. Nothing below was run again on a live stack, and no live agent was called. The text changes are checked by guard tests that read wording only. The Go test for the unmatched-task path was written but did not run, because no dedicated test database was available. See the runbook, section 9, for the same table in Vietnamese.
+
+| Defect | Status | What changed | Not verified |
+| --- | --- | --- | --- |
+| D1. Lead re-runs on its own stop comment | Fixed for the squad-assigned route (`89ca0c07e`, on main). Cause of the five live cases (KVM-7, 9, 17, 27, 31): the lead's own stop comment carried a `mention://agent/<lead id>` link, which the delivery core told the lead to write. Each such mention queued a new run of the lead. Text fixed. | `CreateComment` does not wake the assigned squad leader for the leader's own stop while the request is `blocked` or `in_review` (`89ca0c07e`). `kv--delivery-core` no longer shows the lead how to write its own mention and forbids a mention of the lead in its own stop comment. Guard test `kitviet-lead-self-mention.test.ts`, red before the change. The unmatched `X-Task-ID` branch was removed: it is not reachable over HTTP. | No live re-drill, so it is not known whether the lead still writes its own mention. The server still allows self-mention on purpose; see the runbook, section 9. |
+| D2. Gate sub-issue left `in_progress` after CHẶN | Text fix (`4ddd14f7f`): a gate ends `done` after its VERDICT, CHẶN included, and the status change is its last command. | No server change. | No live re-drill. The last-command rule is text only. A run that ends before that command still leaves the stage open. |
+| D3. No VERDICT line for an inline draft | Text fix (`4ddd14f7f`), plus the description case in the delivery core: text in a comment or a description is not a draft. With no attached draft, the gate posts `VERDICT: CHẶN - không có bản nháp đính kèm` and ends `done`. | Decided: gates do not accept inline drafts (runbook, section 9). | Guard test `kitviet-verdict-line.test.ts`, which covers the no-draft line and the inline rule. No live re-drill. |
+| D4. Real-estate gate set `blocked` and missed promises | Text and patch fix (`4ddd14f7f`): the gate ends `done`, and each guarantee or profit promise is its own finding (`soat-tin-dang-bds.json` and related patches). | No server change. | No live re-drill. |
+| D5. Lead stop comment starts with a plan | Text fix: a stop is its own comment, and its first line is the header. The rule is in `kv-squad-lead/SKILL.md`, the lead kind text in `kitviet-agent-instructions.ts`, and the Marketing and PR lead notes. | Guard test `kitviet-stop-header.test.ts`. | No live re-drill. |
+
+Also changed: the gate kind text now states the one-line VERDICT rule in the same words as `kv-delivery-core` (guard test `kitviet-verdict-line.test.ts`). The guard reads the wording only. No gate output is tested.
+
+Test results for this change:
+
+- `node --test scripts/generate-kitviet-pack.test.mjs`: 121 pass, 0 fail.
+- `node scripts/generate-kitviet-pack.mjs --check`: up to date (29 files).
+- `pnpm exec vitest run packages/core/squads packages/core/agents`: 61 files, 1522 tests pass. The `company-template-data` test failed once after the instruction text changed. `pnpm generate:company-template` regenerated `server/internal/service/company_template_data.json`, which changed only the lead and gate instruction texts. The rerun passed.
+- `pnpm -C packages/core exec tsc --noEmit`: exit 0.
+- `go build ./...` (server): exit 0. `go vet ./internal/handler/`: exit 0. `gofmt -l` on the three changed Go files: clean.
+- `go test -run TestSquadLeaderSelfWakeSuppressed ./internal/dispatch/`: pass (7 subtests).
+- `go test -run TestCreateComment_SquadLeaderStopCommentDoesNotSelfWake` and `…UnmatchedTaskDoesNotSelfWake` in `./internal/handler/`: not run. The handler `TestMain` uses `DATABASE_URL`, and falls back to the dev database when it is unset. Running it there would write fixtures to a shared database, and `make test` migrates its target database first. A dedicated test database is needed.
+
+## Second follow-up: D1 live path and runbook section 9
+
+Still nothing run on a live stack, and no real agent was called. The read-only SQL below ran against the drill database `multica_multica_kitviet_332`.
+
+What the drill database shows for the five D1 cases (KVM-7, 9, 17, 27, 31):
+
+- Each lead run that followed a stop was created by the trigger comment, `trigger_evidence_kind = 'comment'`, and the trigger comment was the lead's own stop comment (`author_type = 'agent'`, `author_id` equal to the run's agent).
+- Each stop comment contained `mention://agent/<lead id>`, the lead's own mention, copied from the resume rule in `kv--delivery-core`.
+- The unmatched `X-Task-ID` path was removed from the code. Over HTTP it is not reachable: `Auth` and `DaemonAuth` strip client `X-Agent-ID` and `X-Task-ID`, and the `mat_` branch sets them with `X-Actor-Source=task_token`, which `resolveActor` trusts first.
+- The committed fix `89ca0c07e` covers the squad-assigned fallback. The drill assigned each lead request directly to the lead agent, so that fallback was not the route. The self-mention route is `resolveMentionedAgentCommentTriggers`, which allows self-mention on purpose. The text was changed, not the server.
+
+Changes in this step:
+
+- `server/internal/handler/squad.go`, `comment.go`, `squad_leader_stop_comment_test.go`: the unmatched-task helper, its wiring and its test were removed. These three files now match `89ca0c07e`.
+- `packages/core/squads/kitviet-skills/kv-delivery-core/SKILL.md`: the resume rule no longer gives the lead's mention as text to copy. A stop comment never mentions its own agent. Inline text in a comment or a description is not a draft (D3).
+- `packages/core/squads/kitviet-skills-data/common.ts`: regenerated with `node scripts/generate-kitviet-pack.mjs`.
+- `packages/core/squads/kitviet-lead-self-mention.test.ts` (new) and `kitviet-verdict-line.test.ts` (D3 guards). The self-mention test was run before the wording change and failed on all three assertions.
+- `docs/engineering/kitviet-runbook.md`, section 9: each open item is fixed or decided, with the reason.
+
+Checks run for this step, with the results:
+
+| Command | Result |
+| --- | --- |
+| `node scripts/generate-kitviet-pack.mjs --check` | `kitviet pack data is up to date (29 files)`, exit 0 |
+| `node --test scripts/generate-kitviet-pack.test.mjs` | 121 pass, 0 fail |
+| `pnpm exec vitest run packages/core/squads packages/core/agents` | 63 files, 1569 tests pass |
+| `pnpm -C packages/core exec tsc --noEmit` | exit 0 |
+| `cd packages/core && pnpm exec eslint squads/kitviet-lead-self-mention.test.ts squads/kitviet-verdict-line.test.ts` | exit 0 |
+| `cd server && go build ./...` | exit 0 |
+| `cd server && go vet ./internal/handler/` | exit 0 |
+| `gofmt -l` on `squad.go`, `comment.go`, `squad_leader_stop_comment_test.go` | no output |
+| `go test -run TestSquadLeaderSelfWakeSuppressed ./internal/dispatch/ -count=1` | pass, 7 subtests |
+| `DATABASE_URL=<multica_multica_51> go test -run 'TestCreateComment_SquadLeaderStopCommentDoesNotSelfWake$' ./internal/handler/ -count=1` | pass at HEAD |
+| The same test on a copy of `89ca0c07e^` in `/tmp` | fail: `queued 1 leader tasks, want 0` |
+| `DATABASE_URL=<multica_multica_51> go test -run 'TestNotification_TaskFailed' ./cmd/server/ -count=1` | 3 pass |
+| `git diff --check` | exit 0 |
+
+The DB tests ran on the isolated database of this checkout (`multica_multica_51`, from `.env.worktree`). They did not run on the dev database `multica`.
+
+Not verified: a live re-drill of D1 to D5, the D1 self-mention path under a real agent, and the handler test for the squad-assigned unmatched path, which no longer exists.

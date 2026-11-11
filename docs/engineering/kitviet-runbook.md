@@ -677,9 +677,45 @@ Gác nào trả CHẶN sau hai vòng thì squad dừng loại 3. Gác nào QUA m
 
 ## 9. Việc còn mở
 
-- Ngưỡng dung lượng của Accounting: tầng lõi đo được 146,9 KiB (ngày 2026-11-11); ngưỡng riêng của squad này là 160 KiB (test K8) vì ba skill được nâng lên là chính dây chuyền và chỉ được đọc khi cần. Các squad khác đo được 107,8–127,6 KiB, dưới ngưỡng 140 KiB.
-- Nâng cấp squad đã tạo (`upgradeKitvietSquad`, `upgrade.ts`) chưa có điểm gọi trong giao diện. Đến khi có, việc nâng cấp là việc của người phát triển, chạy bằng hàm với `dryRun` trước; hàm không ghi đè văn bản đã bị sửa.
-- `soan-don-tu` ở Hành chính và Pháp lý là hai bản byte giống nhau (F11). Bản Pháp lý đổi tên thành `soan-don-tu-phap-ly` theo kế hoạch; nội dung không khác nên tên chỉ là nhãn.
-- Tham chiếu `chuan-bi-dam-phan-hoa-giai` trong `soan-bien-ban-thanh-ly-hop-dong` (Pháp lý) không nằm trong tầng lõi hay vai; ở P0 nó thành "nhờ lead tạo yêu cầu" (spec mục 6 để ngoài P0).
+- Ngưỡng dung lượng của Accounting: tầng lõi đo được 146,9 KiB (ngày 2026-11-11); ngưỡng riêng của squad này là 160 KiB (test K8) vì ba skill được nâng lên là chính dây chuyền và chỉ được đọc khi cần. Các squad khác đo được 107,8–127,6 KiB, dưới ngưỡng 140 KiB. **Quyết định: giữ 160 KiB.** Lý do: ba skill nâng lên được đọc khi cần, không nạp ở mọi lần chạy, và test K8 khóa ngưỡng này.
+- Nâng cấp squad đã tạo (`upgradeKitvietSquad`, `upgrade.ts`) chưa có điểm gọi trong giao diện. **Quyết định: giữ là mục mở, không thêm giao diện trong nhánh này.** Lý do: nút nâng cấp là việc sản phẩm, nằm ngoài phạm vi. Đến khi có, việc nâng cấp là việc của người phát triển, chạy hàm với `dryRun` trước; hàm không ghi đè văn bản đã bị sửa.
+- `soan-don-tu` ở Hành chính và Pháp lý là hai bản byte giống nhau (F11). **Đã làm.** Bản Pháp lý được đổi tên thành `soan-don-tu-phap-ly` qua `renamedSkills` trong `kitviet-rewrites.json`. Đầu ra có `kv--soan-don-tu-phap-ly` trong `legal.ts` và `squads.ts`; Hành chính giữ `kv--soan-don-tu`. Test `scripts/generate-kitviet-pack.test.mjs` khóa tên này. Nội dung không khác nên tên chỉ là nhãn.
+- Tham chiếu `chuan-bi-dam-phan-hoa-giai` trong `soan-bien-ban-thanh-ly-hop-dong` (Pháp lý) không nằm trong tầng lõi hay vai. **Quyết định: giữ cách ghi P0.** Tham chiếu được viết thành "(việc ngoài squad: nhờ lead tạo yêu cầu)" trong `legal.ts`. Skill đích nằm trong `deferredSkills` của Pháp lý và không được đóng gói, nên không có liên kết hỏng. Spec mục 6 để ngoài P0.
 - P2 và Teaching Materials (mười một squad, mục 8 đến 8e): chưa chạy thật (S7). Bốn agent nghề giáo dục không được Education Desk ghép nay thuộc Teaching Materials (mục 8, sau Education Desk).
-- Gác số liệu của Factory (`soat-so-lieu-chat-luong`) không chặn số không có nguồn, giữ theo gác số liệu chung P0. Gác khối lượng của Construction chặn "Cần giấy tờ" (quyết định ở spec 10.1, Q12).
+- Gác số liệu của Factory (`soat-so-lieu-chat-luong`) không chặn số không có nguồn. **Quyết định: giữ theo gác số liệu chung P0**, không thêm chặn riêng cho Factory. Lý do: đây là quyết định P0 đã chốt; đổi nó là thay đổi spec, không phải việc của nhánh này.
+- Gác khối lượng của Construction chặn "Cần giấy tờ" (quyết định ở spec 10.1, Q12). **Quyết định: giữ.** Gác khối lượng (`construction.ts`) không kết luận QUA khi còn lỗi "Cần giấy tờ". Hệ quả: một bảng thiếu giấy tờ dừng ở QUA, và người làm phải bổ sung giấy tờ rồi chạy lại gác.
+
+### Trạng thái D1–D5 của diễn tập 2026-11-11
+
+Chi tiết và số liệu diễn tập nằm trong [kitviet-drill-report.md](kitviet-drill-report.md). Các thay đổi dưới đây chưa chạy lại trên môi trường thật. Chúng chỉ được kiểm bằng test văn bản (`kitviet-stop-header.test.ts`, `kitviet-verdict-line.test.ts`, `kitviet-lead-self-mention.test.ts`, `kitviet-stage-status.test.ts`) và test Go (đơn vị và DB cô lập, xem ghi chú bên dưới).
+
+| Mục | Trạng thái | Đã đổi | Chưa xác minh trên stack thật |
+| --- | --- | --- | --- |
+| D1: lead chạy lại sau stop comment của chính nó | Đã sửa cho đường lead được gán theo squad (`89ca0c07e`, trên main). Nguyên nhân thật của 5 ca: comment dừng của lead có mention `mention://agent/<chính lead>`, do văn bản `kv--delivery-core` hướng dẫn cách viết; mention đó enqueue một lần chạy mới của lead. | Đường squad: `CreateComment` không đánh thức leader khi comment là stop của leader lúc request `blocked` hoặc `in_review` (`89ca0c07e`). Văn bản: `kv--delivery-core` không còn cho lead cách viết mention của chính nó; test `kitviet-lead-self-mention.test.ts` (đã thấy đỏ trước khi sửa). Nhánh `X-Task-ID` không khớp đã gỡ khỏi code, vì không tới được qua HTTP. | Chưa diễn tập lại: chưa biết lead có còn tự mention không. Server vẫn cho phép self-mention có chủ đích; xem quyết định dưới. |
+| D2: gate để sub-issue ở `in_progress` sau CHẶN | Sửa văn bản (`4ddd14f7f`): gate kết thúc `done` sau VERDICT, kể cả CHẶN. Lệnh đổi trạng thái là lệnh cuối của lần chạy. | Không đổi code server. | Chưa diễn tập. Lệnh cuối chỉ là văn bản. Lần chạy kết thúc trước lệnh đó vẫn để chặng ở `in_progress`. |
+| D3: gate không có VERDICT khi bản nháp là văn bản dán | Sửa văn bản: quy tắc nêu rõ văn bản dán trong comment hoặc description không là bản nháp; không có bản nháp đính kèm thì gate ghi `VERDICT: CHẶN - không có bản nháp đính kèm` và kết thúc `done`. | Quyết định: không nhận bản nháp dán (xem dưới). | Test `kitviet-verdict-line.test.ts` chỉ kiểm chữ. Chưa diễn tập. |
+| D4: gate bất động sản đặt `blocked` và bỏ sót lời hứa | Sửa văn bản và patch (`4ddd14f7f`): gate kết thúc `done`; mỗi cam kết hoặc lời hứa là một phát hiện riêng. | Patch `soat-tin-dang-bds.json` và các patch gate liên quan. | Chưa diễn tập. |
+| D5: stop comment của lead mở bằng kế hoạch | Sửa văn bản: stop là comment riêng, dòng đầu là header. Áp dụng trong `kv-squad-lead/SKILL.md`, kind text của lead, và ghi chú của Marketing và PR. | `kitviet-stop-header.test.ts`. | Chưa diễn tập. |
+| Gate ghi đúng một dòng VERDICT | Sửa văn bản: kind text của gate ghi rõ dòng `VERDICT: QUA` hoặc `VERDICT: CHẶN` là dòng đầu, và `kv-delivery-core` dùng cùng một câu. | `kitviet-verdict-line.test.ts`. | Test chỉ kiểm chữ. Không có test nào kiểm gate thật có xuất đúng một dòng. |
+
+Ghi chú về test Go: `TestSquadLeaderSelfWakeSuppressed` (package `dispatch`) pass. Trên DB cô lập của checkout (`multica_multica_51`, lấy từ `.env.worktree`), `TestCreateComment_SquadLeaderStopCommentDoesNotSelfWake` pass ở HEAD và đỏ trên cây trước `89ca0c07e` (`queued 1 leader tasks, want 0`). `TestNotification_TaskFailed*` (package `cmd/server`) pass trên cùng DB. Không chạy test DB trên `multica`: `DATABASE_URL` mặc định của package handler trỏ tới DB đó, và test ghi fixture vào DB đích.
+
+Quyết định (đã chốt, không đổi trong nhánh này):
+
+- **Trạng thái nền tảng khi lần chạy cấp cao nhất của lead thất bại không retry.** Giữ mô hình trạng thái hiện tại: request không đổi trạng thái và không có loại chặn mới. Người yêu cầu được báo qua đường có sẵn. Creator là subscriber từ `issue:created` (`cmd/server/subscriber_listeners.go`). Khi `task:failed` không còn retry, `notifySubscribers` ghi inbox `task_failed` loại `action_required` cho subscriber (`cmd/server/notification_listeners.go`). Test: `TestNotification_TaskFailed_FinalFailureNotifiesCreator`, pass. Lý do: đường thông báo đã đủ; đổi trạng thái request sẽ đổi cách dừng và tiếp tục run, nên cần một quyết định riêng. Hệ quả: request vẫn `todo` cho đến khi người yêu cầu xem inbox. Lý do: đường thông báo đã đủ. Đổi trạng thái request sẽ đổi cách dừng và tiếp tục run, nên cần một quyết định riêng. Hệ quả: request vẫn `todo` cho đến khi người yêu cầu xem inbox.
+- **D3: gate không nhận bản nháp dán.** Chỉ bản nháp đính kèm được tính. Gate không có bản nháp đính kèm ghi đúng một dòng `VERDICT: CHẶN - không có bản nháp đính kèm` kèm lý do, rồi kết thúc `done`. Lý do: bản nháp dán vào comment hoặc description không có tệp để kiểm lại. Test: `kitviet-verdict-line.test.ts`.
+- **D1: đường thật và cách sửa.** Trên DB diễn tập (`multica_multica_kitviet_332`, chỉ đọc), cả 5 ca D1 có task được enqueue bởi chính comment dừng của lead (`trigger_evidence_kind = 'comment'`), và comment đó có mention `mention://agent/<lead>`. Đã sửa văn bản của `kv--delivery-core`: bỏ cách viết mention lead trong comment dừng, và ghi rõ không mention chính mình. Nguồn văn bản được suy ra từ cách viết trùng với đoạn này trong comment; chưa đối chiếu với prompt của lần chạy. Không sửa server, vì server cố ý cho phép self-mention (ghi trong `resolveMentionedAgentCommentTriggers`). Chặn self-mention cùng issue ở server là phương án khác, bị loại vì đổi hành vi chung cho mọi agent. Rủi ro còn lại: lead vẫn có thể tự mention nếu không làm theo văn bản. Cần diễn tập lại để xác nhận. Nếu tái diễn, chặn ở server là bước tiếp theo, với quyết định riêng.
+- **Đường `X-Task-ID` không khớp: đã gỡ.** Không tới được qua HTTP. `Auth` và `DaemonAuth` xóa `X-Agent-ID` và `X-Task-ID` của client. Nhánh `mat_` đặt lại chúng cùng `X-Actor-Source=task_token`, và `resolveActor` trả về `agent` trước khi tới nhánh fallback.
+
+Kiểm trên stack thật còn lại (chưa chạy; cần người dùng cho phép chạy agent thật):
+
+1. D1, chỉ đọc, trên DB của môi trường diễn tập. Kỳ vọng: 0 dòng cho các issue diễn tập.
+
+   ```
+   psql "$DRILL_DATABASE_URL" -c "SELECT i.number, t.created_at FROM agent_task_queue t JOIN comment c ON c.id = t.trigger_comment_id JOIN issue i ON i.id = t.issue_id WHERE c.author_type = 'agent' AND c.author_id = t.agent_id;"
+   ```
+
+2. D2 và D4: với mỗi sub-issue gate, `multica issue get <id> --output json` phải có `status` là `done`, và dòng đầu của comment cuối là `VERDICT:`.
+3. D3: chạy lại Run B của diễn tập với bản nháp đính kèm và với bản nháp dán. Với bản nháp dán, kỳ vọng dòng đầu là `VERDICT: CHẶN - không có bản nháp đính kèm`, sub-issue `done`. Với bản nháp đính kèm, kỳ vọng dòng đầu là `VERDICT: QUA` hoặc `VERDICT: CHẶN` theo nội dung.
+4. D5: dòng đầu của mỗi stop comment là header.
+5. Test DB cô lập: `cd server && DATABASE_URL='<DATABASE_URL trong .env.worktree>' go test -run 'TestCreateComment_SquadLeaderStopCommentDoesNotSelfWake$' ./internal/handler/ -count=1`.

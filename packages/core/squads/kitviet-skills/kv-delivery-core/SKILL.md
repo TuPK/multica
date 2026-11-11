@@ -18,10 +18,10 @@ Every role in a Kit Viet squad works under these rules. Your role skill says wha
 
 ## Verdict lines and the two-round limit
 
-- A gate ends its comment with exactly one line that starts with `VERDICT:`, as the first line of the comment: `VERDICT: QUA` or `VERDICT: CHẶN`. Then the table of findings, each with its location in the draft.
+- A gate posts exactly one line that starts with `VERDICT: QUA` or `VERDICT: CHẶN`, as the first line of its comment. Then the table of findings, each with its location in the draft.
 - A gate says QUA only when no finding is at the top severity of its checklist. Any finding at that level makes it CHẶN. A gate never changes a CHẶN to QUA, and never edits the draft.
 - A gate with no `VERDICT:` line did not pass. The lead counts it as CHẶN.
-- A gate whose draft is missing or not attached posts `VERDICT: CHẶN - không có bản nháp đính kèm`, with the reason and a list of what it could not check, and then stops. A draft is a file attached to the sub-issue and present in the working directory; text pasted into a comment does not count.
+- A gate whose draft is missing or not attached posts `VERDICT: CHẶN - không có bản nháp đính kèm`, with the reason and a list of what it could not check, and then stops. A draft is a file attached to the sub-issue and present in the working directory; text pasted into a comment or a description does not count.
 - A gate whose source is missing posts `VERDICT: CHẶN - thiếu <source>` and still checks every finding that needs no source: promises, guarantees, personal data and absolute claims. Each finding has its quote and its location.
 - A gate's sub-issue is `blocked` only when the gate cannot run at all, for example when the runtime cannot read files. A missing draft or source is never a reason to block it.
 - The lead counts rounds with a comment `Round n/2` on the request. After two rounds, a gate still at CHẶN stops the run at stop 3 below. Nobody else decides that the draft is good enough.
@@ -42,7 +42,7 @@ Stop only for these three. Everywhere else, take the recommended default, write 
 
 Read the requester id from the request: run `multica issue get <request> --output json` and take `creator_id`, provided `creator_type` is `member`. Use the request's own id, not your sub-issue's. A bare `@name` is not a mention and notifies nobody. If `creator_type` is not `member`, name the requester in plain words and say so in the comment.
 
-**Resuming a blocked run.** A `blocked` sub-issue does not release the stage barrier, so the lead is not woken by a finished stage. A person resumes the run with a comment on the request that mentions the lead, `[@<lead name>](mention://agent/<lead id>)`; that mention wakes the lead, which re-runs triage from the answer. Nothing else restarts a stop.
+**Resuming a blocked run.** A `blocked` sub-issue does not release the stage barrier, so the lead is not woken by a finished stage. A person resumes the run with a comment on the request that mentions the lead by name; that mention wakes the lead, which re-runs triage from the answer. Nothing else restarts a stop. Your own stop comment never contains a `mention://agent/` link, not even one to yourself: a mention of your own agent id enqueues a new run of you on the same request, which finds only the stop you just posted. In your stop comment, name the lead in plain words and say that a reply that mentions the lead re-runs triage.
 
 **Decisions with authority.** A choice that needs someone with authority (a discount beyond the frame, a commitment on price or contract) is a proposal, not a comment: `multica proposal create --squad "<your squad>"` with the cost, the risk and the exact decision needed. Then continue with the work that does not depend on the answer.
 
