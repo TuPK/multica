@@ -453,66 +453,101 @@ func isGitWorkTree(ctx context.Context, path string) bool {
 	return strings.TrimSpace(string(out)) == "true"
 }
 
-// LocalPathLocker serialises agent tasks that share the same on-disk path.
-// The lock is owned for the entire lifetime of a task (claim → context
-// write → agent execution → result report), not just the agent execution
-// window, because the context files and skill scratch directories the
-// daemon writes at task-prepare time can race with a sibling task on the
-// same path.
+// LocalPathLocker decides which agent tasks may share one on-disk path at once.
+// The lock is held for the task's whole life (claim, context write, agent run,
+// result report), since the context files a task writes at prepare time can race
+// with a sibling task on the same path.
 //
-// Implementation: per-key sync.Mutex inside a map guarded by mu. When a
-// task can't take the lock immediately, the waiter blocks on the per-key
-// Mutex itself — that gives FIFO-ish behaviour from the Go scheduler
-// (sufficient for our load; the issue body asks for a wait queue, not a
-// strict-priority queue). Holder bookkeeping (current holder task id) is
-// surfaced via Holder so callers can build a UI-friendly wait_reason.
+// Two kinds of run, by room (the lane, a squad id):
+//   - A run with a lane holds the path shared and its lane exclusively. Runs of
+//     different rooms therefore share the path side by side; runs of one room
+//     stay serial.
+//   - A run with no lane holds the path exclusively. It waits for every lane to
+//     go idle and blocks new lanes while it waits, so it is never starved.
+//
+// A blocked Acquire waits on a channel that closes whenever the state changes,
+// so cancelling its context needs no helper goroutine and leaves nothing held.
 type LocalPathLocker struct {
-	mu    sync.Mutex
-	locks map[string]*pathLockEntry
+	mu     sync.Mutex
+	states map[string]*localPathState
 }
 
-type pathLockEntry struct {
-	mu       sync.Mutex // serialises holders for this key
-	mu2      sync.Mutex // guards holderID under contention
-	holderID string     // current owner, for UI hints; empty when free
+// localPathState is one path's bookkeeping. Holder ids are kept for the
+// wait_reason hint the daemon posts to the server.
+type localPathState struct {
+	exclusive     string            // task holding the path for a laneless run
+	exclusiveWait int               // laneless runs waiting for the path
+	lanes         map[string]string // lane squad id -> task holding that lane
+	changed       chan struct{}     // closed and replaced on every state change
 }
 
 // NewLocalPathLocker returns an empty locker. Safe for concurrent use.
 func NewLocalPathLocker() *LocalPathLocker {
-	return &LocalPathLocker{locks: make(map[string]*pathLockEntry)}
+	return &LocalPathLocker{states: make(map[string]*localPathState)}
 }
 
-// Holder returns the task id currently holding the lock for realPath, or
-// "" if no task holds it. Used to populate the wait_reason hint the daemon
-// posts to the server when it parks a task — the UI then shows "waiting for
-// <path> (held by task <short id>)".
+func (l *LocalPathLocker) stateLocked(realPath string) *localPathState {
+	st, ok := l.states[realPath]
+	if !ok {
+		st = &localPathState{lanes: make(map[string]string), changed: make(chan struct{})}
+		l.states[realPath] = st
+	}
+	return st
+}
+
+// canTakeLocked reports whether a run with this lane may take the path now.
+func (st *localPathState) canTakeLocked(lane string) bool {
+	if st.exclusive != "" {
+		return false
+	}
+	if lane == "" {
+		return len(st.lanes) == 0
+	}
+	return st.exclusiveWait == 0 && st.lanes[lane] == ""
+}
+
+// holderLocked names a task that blocks a run with this lane, for the wait hint.
+func (st *localPathState) holderLocked(lane string) string {
+	if st.exclusive != "" {
+		return st.exclusive
+	}
+	if lane != "" {
+		if holder := st.lanes[lane]; holder != "" {
+			return holder
+		}
+	}
+	for _, holder := range st.lanes {
+		return holder
+	}
+	return ""
+}
+
+// notifyLocked wakes every waiter on this path so each rechecks its condition.
+func (st *localPathState) notifyLocked() {
+	close(st.changed)
+	st.changed = make(chan struct{})
+}
+
+// Holder returns a task id currently holding realPath, or "" when it is free.
+// Used to populate the wait_reason hint the daemon posts when it parks a task.
 func (l *LocalPathLocker) Holder(realPath string) string {
 	l.mu.Lock()
-	entry, ok := l.locks[realPath]
-	l.mu.Unlock()
+	defer l.mu.Unlock()
+	st, ok := l.states[realPath]
 	if !ok {
 		return ""
 	}
-	entry.mu2.Lock()
-	defer entry.mu2.Unlock()
-	return entry.holderID
+	return st.holderLocked("")
 }
 
-// Acquire takes the lock for realPath on behalf of taskID. If the lock is
-// already held, onWait is invoked (synchronously, before this goroutine
-// blocks) with the current holder id so callers can flip the task into the
-// server-side waiting_local_directory state. onWait may be nil for callers
-// that don't need the side effect.
+// Acquire takes realPath for taskID in the given lane (a squad id, or "" for a
+// run that needs the whole path). If the lock is contended, onWait is invoked
+// once, before blocking, with a task currently holding it. onWait may be nil.
 //
-// Returns a release func that the caller must invoke (typically deferred)
-// to free the lock. The release is idempotent.
-//
-// Acquire is cancellable via ctx. When ctx is cancelled while the goroutine
-// is blocked on the lock, Acquire returns ctx.Err() and the lock is NOT
-// taken. This is the same contract as sync.Mutex.Lock paired with
-// context-aware cancellation — a daemon shutdown won't wedge inside the
-// per-path wait queue.
-func (l *LocalPathLocker) Acquire(ctx context.Context, realPath, taskID string, onWait func(holder string)) (func(), error) {
+// Returns a release func the caller must invoke (typically deferred). The
+// release is idempotent. Acquire is cancellable via ctx: a cancelled wait takes
+// nothing.
+func (l *LocalPathLocker) Acquire(ctx context.Context, realPath, lane, taskID string, onWait func(holder string)) (func(), error) {
 	if realPath == "" {
 		return nil, errors.New("local_directory: realpath required for lock")
 	}
@@ -521,75 +556,71 @@ func (l *LocalPathLocker) Acquire(ctx context.Context, realPath, taskID string, 
 	}
 
 	l.mu.Lock()
-	entry, ok := l.locks[realPath]
-	if !ok {
-		entry = &pathLockEntry{}
-		l.locks[realPath] = entry
+	st := l.stateLocked(realPath)
+	if st.canTakeLocked(lane) {
+		l.takeLocked(st, lane, taskID)
+		l.mu.Unlock()
+		return l.releaser(st, lane), nil
 	}
+	if lane == "" {
+		st.exclusiveWait++
+	}
+	holder := st.holderLocked(lane)
 	l.mu.Unlock()
 
-	// Try the fast path first — no allocation, no waiter goroutine.
-	if entry.mu.TryLock() {
-		entry.mu2.Lock()
-		entry.holderID = taskID
-		entry.mu2.Unlock()
-		return l.releaser(realPath, entry), nil
-	}
-
-	// Slow path: somebody else holds the lock. Fire onWait once with the
-	// current holder so the daemon can stamp the server-side wait state,
-	// then block until either we win the lock or ctx is cancelled.
 	if onWait != nil {
-		entry.mu2.Lock()
-		holder := entry.holderID
-		entry.mu2.Unlock()
 		onWait(holder)
 	}
 
-	acquired := make(chan struct{})
-	go func() {
-		entry.mu.Lock()
-		close(acquired)
-	}()
+	for {
+		l.mu.Lock()
+		if st.canTakeLocked(lane) {
+			if lane == "" {
+				st.exclusiveWait--
+			}
+			l.takeLocked(st, lane, taskID)
+			l.mu.Unlock()
+			return l.releaser(st, lane), nil
+		}
+		changed := st.changed
+		l.mu.Unlock()
 
-	select {
-	case <-acquired:
-		entry.mu2.Lock()
-		entry.holderID = taskID
-		entry.mu2.Unlock()
-		return l.releaser(realPath, entry), nil
-	case <-ctx.Done():
-		// We lost the wait — the goroutine above will still complete and
-		// take the lock. Spin off a clean-up goroutine that releases it
-		// the moment the acquire returns so a future caller isn't stuck
-		// behind a phantom holder. The bookkeeping is best-effort: no
-		// holder id is set, since this task never owned the lock.
-		go func() {
-			<-acquired
-			entry.mu.Unlock()
-		}()
-		return nil, ctx.Err()
+		select {
+		case <-changed:
+		case <-ctx.Done():
+			l.mu.Lock()
+			if lane == "" {
+				st.exclusiveWait--
+				// Lanes that waited behind this run may go now.
+				st.notifyLocked()
+			}
+			l.mu.Unlock()
+			return nil, ctx.Err()
+		}
 	}
 }
 
-// releaser returns the unlock callback. Idempotent via a once flag so a
-// deferred release is safe even when the caller has already explicitly
-// released after task completion.
-func (l *LocalPathLocker) releaser(realPath string, entry *pathLockEntry) func() {
+func (l *LocalPathLocker) takeLocked(st *localPathState, lane, taskID string) {
+	if lane == "" {
+		st.exclusive = taskID
+		return
+	}
+	st.lanes[lane] = taskID
+}
+
+// releaser returns the unlock callback for one held lane or exclusive hold.
+func (l *LocalPathLocker) releaser(st *localPathState, lane string) func() {
 	var once sync.Once
 	return func() {
 		once.Do(func() {
-			entry.mu2.Lock()
-			entry.holderID = ""
-			entry.mu2.Unlock()
-			entry.mu.Unlock()
-			// We deliberately keep the entry in the map even when nothing
-			// is queued. The cost is one *pathLockEntry per distinct path
-			// the daemon has ever served, which is bounded by the number
-			// of local_directory project resources a workspace has — tiny
-			// in practice. Pruning would race with a sibling caller that
-			// just looked up the same entry and is about to TryLock.
-			_ = realPath
+			l.mu.Lock()
+			defer l.mu.Unlock()
+			if lane == "" {
+				st.exclusive = ""
+			} else {
+				delete(st.lanes, lane)
+			}
+			st.notifyLocked()
 		})
 	}
 }

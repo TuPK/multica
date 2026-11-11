@@ -44,7 +44,7 @@ func TestHandleTask_LocalDirectoryWaitCancellation(t *testing.T) {
 				t.Fatal(err)
 			}
 			locker := NewLocalPathLocker()
-			release, err := locker.Acquire(context.Background(), realDir, "holder", nil)
+			release, err := locker.Acquire(context.Background(), realDir, "", "holder", nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -167,7 +167,7 @@ func TestHandleTask_LocalDirectoryWaitCancellation(t *testing.T) {
 			release()
 			nextCtx, nextCancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer nextCancel()
-			nextRelease, err := locker.Acquire(nextCtx, realDir, "next", nil)
+			nextRelease, err := locker.Acquire(nextCtx, realDir, "", "next", nil)
 			if err != nil {
 				t.Fatalf("cancelled waiter leaked lock: %v", err)
 			}

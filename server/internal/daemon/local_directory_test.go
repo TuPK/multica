@@ -408,7 +408,7 @@ func TestLocalPathLockerSerializes(t *testing.T) {
 	locker := NewLocalPathLocker()
 	const path = "/some/path"
 
-	rel1, err := locker.Acquire(context.Background(), path, "task-1", nil)
+	rel1, err := locker.Acquire(context.Background(), path, "", "task-1", nil)
 	if err != nil {
 		t.Fatalf("acquire 1: %v", err)
 	}
@@ -421,7 +421,7 @@ func TestLocalPathLockerSerializes(t *testing.T) {
 	var sawHolder atomic.Value
 	done := make(chan error, 1)
 	go func() {
-		rel, err := locker.Acquire(context.Background(), path, "task-2", func(holder string) {
+		rel, err := locker.Acquire(context.Background(), path, "", "task-2", func(holder string) {
 			waitCalls.Add(1)
 			sawHolder.Store(holder)
 		})
@@ -469,7 +469,7 @@ func TestLocalPathLockerCtxCancel(t *testing.T) {
 	locker := NewLocalPathLocker()
 	const path = "/some/path"
 
-	rel1, err := locker.Acquire(context.Background(), path, "task-1", nil)
+	rel1, err := locker.Acquire(context.Background(), path, "", "task-1", nil)
 	if err != nil {
 		t.Fatalf("acquire 1: %v", err)
 	}
@@ -478,7 +478,7 @@ func TestLocalPathLockerCtxCancel(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
-	_, err = locker.Acquire(ctx, path, "task-2", nil)
+	_, err = locker.Acquire(ctx, path, "", "task-2", nil)
 	if err == nil {
 		t.Fatalf("expected ctx error, got nil")
 	}
@@ -490,7 +490,7 @@ func TestLocalPathLockerCtxCancel(t *testing.T) {
 func TestLocalPathLockerDistinctPathsParallel(t *testing.T) {
 	locker := NewLocalPathLocker()
 
-	rel1, err := locker.Acquire(context.Background(), "/a", "task-1", nil)
+	rel1, err := locker.Acquire(context.Background(), "/a", "", "task-1", nil)
 	if err != nil {
 		t.Fatalf("acquire 1: %v", err)
 	}
@@ -502,7 +502,7 @@ func TestLocalPathLockerDistinctPathsParallel(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		rel2, err := locker.Acquire(context.Background(), "/b", "task-2", nil)
+		rel2, err := locker.Acquire(context.Background(), "/b", "", "task-2", nil)
 		if err != nil {
 			t.Errorf("acquire 2: %v", err)
 			return
@@ -582,7 +582,7 @@ func TestAcquireLocalDirectoryLock_CancelDuringWait(t *testing.T) {
 	locker := NewLocalPathLocker()
 	// Pre-claim the lock so the new task has to wait. Use the resolved
 	// realpath as the key to match findLocalDirectoryAssignment.
-	release, err := locker.Acquire(context.Background(), realDir, heldByTaskID, nil)
+	release, err := locker.Acquire(context.Background(), realDir, "", heldByTaskID, nil)
 	if err != nil {
 		t.Fatalf("preclaim acquire: %v", err)
 	}
@@ -668,7 +668,7 @@ func TestAcquireLocalDirectoryLock_ParentCancellationReportsWaitFailure(t *testi
 
 	const daemonID = "d-test"
 	locker := NewLocalPathLocker()
-	release, err := locker.Acquire(context.Background(), realDir, "task-holder", nil)
+	release, err := locker.Acquire(context.Background(), realDir, "", "task-holder", nil)
 	if err != nil {
 		t.Fatalf("preclaim acquire: %v", err)
 	}

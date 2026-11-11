@@ -6268,7 +6268,7 @@ func (d *Daemon) acquireLocalDirectoryLockIfNeeded(ctx context.Context, task Tas
 			}()
 		})
 	}
-	release, err = d.localPathLocks.Acquire(waitCtx, assignment.RealPath, task.ID, onWait)
+	release, err = d.localPathLocks.Acquire(waitCtx, assignment.RealPath, task.LaneSquadID, task.ID, onWait)
 	if err != nil {
 		// If the wait was cut short because the server finalized the task
 		// (terminal state) or deleted the row, the row is already in a
@@ -8414,7 +8414,8 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 			// LocalPathLocker invokes onWait synchronously, in this goroutine,
 			// at most once per Acquire — see the in-place call site.
 			waitCounted := false
-			release, lockErr := d.localPathLocks.Acquire(waitCtx, localAssignment.RealPath, task.ID, func(holder string) {
+			// A snapshot reads the whole path, so it takes the path with no lane.
+			release, lockErr := d.localPathLocks.Acquire(waitCtx, localAssignment.RealPath, "", task.ID, func(holder string) {
 				d.resourceWaitTasks.Add(1)
 				waitCounted = true
 				reason := fmt.Sprintf("local_directory %s", localAssignment.AbsPath)

@@ -172,6 +172,10 @@ type Task struct {
 	ChatSource *protocol.ChatSource `json:"chat_source,omitempty"`
 
 	SquadID               string `json:"squad_id,omitempty"`                // when the picker was a squad, the squad's UUID; Agent is still the resolved leader
+	// LaneSquadID is the room of an issue run: the squad the issue is assigned to,
+	// or its agent's home squad. In-place runs of different rooms share a
+	// directory side by side; "" (older servers, no room) keeps the whole directory.
+	LaneSquadID string `json:"lane_squad_id,omitempty"`
 	SquadName             string `json:"squad_name,omitempty"`              // display name for the picker squad, used in prompt text
 	ParentIssueID         string `json:"parent_issue_id,omitempty"`         // for quick-create tasks opened from "Add sub issue" — UUID of the parent issue the new issue should be filed under
 	ParentIssueIdentifier string `json:"parent_issue_identifier,omitempty"` // human-readable identifier (e.g. MUL-123) of the quick-create parent issue, used in prompt context
