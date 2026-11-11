@@ -27,7 +27,9 @@
     "label": "排序",
     "name": "名稱",
     "updated": "更新時間",
-    "created": "建立時間"
+    "created": "建立時間",
+    "usedBy": "最常用",
+    "source": "來源"
   },
   "columns": {
     "name": "名稱",
@@ -204,7 +206,10 @@
       "subdir_placeholder": "skills/my-skill",
       "submit": "預覽",
       "invalid_url": "請輸入有效的 http:// 或 https:// 網址。",
-      "preview_failed": "無法讀取此來源。"
+      "preview_failed": "無法讀取此來源。",
+      "token_label": "存取權杖（選填）",
+      "token_help": "用於私人儲存庫。權杖會隨新來源一起儲存，因此本次匯入和之後的同步都可以使用。",
+      "submit_with_token": "儲存來源並預覽"
     },
     "registry": {
       "url_label": "登錄 URL",
@@ -298,7 +303,8 @@
       "every_6h": "每 6 小時",
       "every_24h": "每天",
       "custom": "每 {{duration}}"
-    }
+    },
+    "quota_error": "此工作區已達到 Hub 上限，同步已停止。請刪除項目，或請管理員提高上限。"
   },
   "update": {
     "available": "有可用更新",
@@ -433,8 +439,16 @@
       "save_failed": "無法儲存此來源。",
       "errors": {
         "name_required": "請輸入名稱。",
-        "url_invalid": "請輸入有效的 http:// 或 https:// 網址。"
-      }
+        "url_invalid": "請輸入有效的 http:// 或 https:// 網址。",
+        "token_required": "請輸入新權杖，或保留已儲存的權杖。"
+      },
+      "token_label": "存取權杖",
+      "token_help": "僅用於從此來源下載。權杖加密儲存，之後不會再顯示。",
+      "token_saved": "權杖已儲存",
+      "token_replace": "取代",
+      "token_remove": "移除",
+      "token_removing": "儲存時將移除權杖。",
+      "token_keep": "保留權杖"
     },
     "toast": {
       "added": "已新增來源",
@@ -501,5 +515,27 @@
     "bundle_failed": "無法準備下載。",
     "all": "匯出全部",
     "all_failed": "無法匯出 Hub。"
+  },
+  "list": {
+    "filters": "篩選",
+    "filter_source": "來源",
+    "filter_label": "標籤",
+    "filter_status": "狀態",
+    "filter_usage": "使用情況",
+    "status": {
+      "update_available": "有更新",
+      "scan_warning": "掃描警告",
+      "tracking": "追蹤來源",
+      "forked": "已分岔",
+      "manual": "在此建立"
+    },
+    "usage": {
+      "used": "使用中",
+      "unused": "未使用"
+    },
+    "clear": "清除篩選",
+    "count": "{{shown}} / {{total}}",
+    "sort_direction": "排序方向",
+    "table_label": "Hub 項目"
   }
 }

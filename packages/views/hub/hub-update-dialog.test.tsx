@@ -49,8 +49,9 @@ vi.mock("@multica/core/hub", async (importOriginal) => {
   };
 });
 
-import { HubLocalChangesError, HubQuotaExceededError } from "@multica/core/hub";
+import { HubLocalChangesError, HubQuotaExceededError, type HubItemMeta } from "@multica/core/hub";
 import { HubUpdateDialog } from "./hub-update-dialog";
+import { HubUpdateBanner } from "./hub-update-banner";
 
 const files = [
   { path: "SKILL.md", status: "modified", old_size: 1200, new_size: 1500 },
@@ -244,3 +245,41 @@ describe("HubUpdateDialog with local edits", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 });
+
+describe("HubUpdateBanner focus", () => {
+  function renderBanner() {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    renderWithI18n(
+      <QueryClientProvider client={client}>
+        <HubUpdateBanner
+          wsId="ws-1"
+          kind="skill"
+          refId="sk1"
+          name="Team kit"
+          meta={{ update_available: true, tracking: "tracking" } as HubItemMeta}
+          canEdit
+        />
+      </QueryClientProvider>,
+    );
+    return screen.getByRole("button", { name: "Review update" });
+  }
+
+  it("returns focus to Review update when the review is dismissed with Escape", async () => {
+    const trigger = renderBanner();
+    await userEvent.click(trigger);
+    await screen.findByRole("dialog");
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
+  });
+
+  it("returns focus to Review update when the review is closed with its Cancel button", async () => {
+    const trigger = renderBanner();
+    await userEvent.click(trigger);
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
+  });
+});
+

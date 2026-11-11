@@ -27,7 +27,9 @@
     "label": "並べ替え",
     "name": "名前",
     "updated": "更新日",
-    "created": "作成日"
+    "created": "作成日",
+    "usedBy": "使用数順",
+    "source": "ソース"
   },
   "columns": {
     "name": "名前",
@@ -204,7 +206,10 @@
       "subdir_placeholder": "skills/my-skill",
       "submit": "プレビュー",
       "invalid_url": "http:// または https:// で始まる有効なURLを入力してください。",
-      "preview_failed": "このソースを読み込めませんでした。"
+      "preview_failed": "このソースを読み込めませんでした。",
+      "token_label": "アクセストークン（任意）",
+      "token_help": "非公開リポジトリ用です。トークンは新しいソースと一緒に保存されるため、このインポートと以後の同期で使えます。",
+      "submit_with_token": "ソースを保存してプレビュー"
     },
     "registry": {
       "url_label": "レジストリURL",
@@ -298,7 +303,8 @@
       "every_6h": "6時間ごと",
       "every_24h": "1日ごと",
       "custom": "{{duration}}ごと"
-    }
+    },
+    "quota_error": "このワークスペースは Hub の上限に達したため、同期を停止しました。アイテムを削除するか、管理者に上限の引き上げを依頼してください。"
   },
   "update": {
     "available": "アップデートあり",
@@ -433,8 +439,16 @@
       "save_failed": "このソースを保存できませんでした。",
       "errors": {
         "name_required": "名前を入力してください。",
-        "url_invalid": "http:// または https:// で始まる有効なURLを入力してください。"
-      }
+        "url_invalid": "http:// または https:// で始まる有効なURLを入力してください。",
+        "token_required": "新しいトークンを入力するか、保存済みのものを維持してください。"
+      },
+      "token_label": "アクセストークン",
+      "token_help": "このソースからのダウンロードにのみ使われます。暗号化して保存され、再表示されません。",
+      "token_saved": "トークンを保存済み",
+      "token_replace": "差し替え",
+      "token_remove": "削除",
+      "token_removing": "保存するとトークンは削除されます。",
+      "token_keep": "トークンを維持"
     },
     "toast": {
       "added": "ソースを追加しました",
@@ -501,5 +515,27 @@
     "bundle_failed": "ダウンロードを準備できませんでした。",
     "all": "すべてエクスポート",
     "all_failed": "Hub をエクスポートできませんでした。"
+  },
+  "list": {
+    "filters": "フィルター",
+    "filter_source": "ソース",
+    "filter_label": "ラベル",
+    "filter_status": "状態",
+    "filter_usage": "使用状況",
+    "status": {
+      "update_available": "更新あり",
+      "scan_warning": "スキャンの警告",
+      "tracking": "ソースを追跡",
+      "forked": "分岐済み",
+      "manual": "ここで作成"
+    },
+    "usage": {
+      "used": "使用中",
+      "unused": "未使用"
+    },
+    "clear": "フィルターを解除",
+    "count": "{{shown}} / {{total}} 件",
+    "sort_direction": "並び順の方向",
+    "table_label": "Hub のアイテム"
   }
 }

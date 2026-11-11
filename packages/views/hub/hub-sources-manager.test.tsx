@@ -40,7 +40,7 @@ vi.mock("@multica/core/hub", async (importOriginal) => {
   };
 });
 
-import { HubSourceInUseError } from "@multica/core/hub";
+import { HubQuotaExceededError, HubSourceInUseError } from "@multica/core/hub";
 import { HubSourcesManager } from "./hub-sources-manager";
 
 function source(overrides: Partial<HubSource> = {}): HubSource {
@@ -56,6 +56,7 @@ function source(overrides: Partial<HubSource> = {}): HubSource {
     last_sync_status: "ok",
     last_sync_error: null,
     item_count: 4,
+    has_credential: false,
     created_at: "2026-07-01T00:00:00Z",
     updated_at: "2026-08-01T10:00:00Z",
     ...overrides,
@@ -342,3 +343,113 @@ describe("HubSourcesManager sync", () => {
     expect(screen.getByText("Auto-sync: Every hour")).toBeInTheDocument();
   });
 });
+
+describe("HubSourcesManager credentials", () => {
+  it("offers a write-only token for a new GitHub source and sends it on create", async () => {
+    renderManager(true);
+    await userEvent.click(screen.getByRole("button", { name: "Add source" }));
+    const dialog = await screen.findByRole("dialog");
+    const token = within(dialog).getByLabelText("Access token");
+    expect(token).toHaveAttribute("type", "password");
+    await userEvent.type(within(dialog).getByLabelText("Name"), "Private skills");
+    await userEvent.type(within(dialog).getByLabelText("URL"), "https://github.com/acme/private");
+    await userEvent.type(token, "ghp_secret");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Add" }));
+
+    await waitFor(() =>
+      expect(mocks.create).toHaveBeenCalledWith({
+        wsId: "ws-1",
+        name: "Private skills",
+        type: "github",
+        url: "https://github.com/acme/private",
+        credential: "ghp_secret",
+      }),
+    );
+  });
+
+  it("shows a saved token as saved, never as its value", async () => {
+    mocks.sources = [source({ has_credential: true })];
+    renderManager(true);
+    await userEvent.click(screen.getByRole("button", { name: "Edit Team skills" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Token saved")).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText("Access token")).not.toBeInTheDocument();
+    expect(within(dialog).queryByDisplayValue(/ghp_/)).not.toBeInTheDocument();
+  });
+
+  it("replaces a saved token only when a new one is entered", async () => {
+    mocks.sources = [source({ has_credential: true })];
+    renderManager(true);
+    await userEvent.click(screen.getByRole("button", { name: "Edit Team skills" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Replace" }));
+    await userEvent.type(within(dialog).getByLabelText("Access token"), "ghp_new");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(mocks.update).toHaveBeenCalledWith({
+        wsId: "ws-1",
+        id: "src-1",
+        name: "Team skills",
+        url: "https://github.com/acme/skills",
+        credential: "ghp_new",
+      }),
+    );
+  });
+
+  it("asks for a new token when Replace is picked and left empty, and sends nothing", async () => {
+    mocks.sources = [source({ has_credential: true })];
+    renderManager(true);
+    await userEvent.click(screen.getByRole("button", { name: "Edit Team skills" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Replace" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(within(dialog).getByText("Enter the new token, or keep the saved one.")).toBeInTheDocument();
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it("removes a saved token with clear_credential, and Keep token undoes it", async () => {
+    mocks.sources = [source({ has_credential: true })];
+    renderManager(true);
+    await userEvent.click(screen.getByRole("button", { name: "Edit Team skills" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Remove" }));
+    expect(within(dialog).getByText("The token is removed when you save.")).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Keep token" }));
+    expect(within(dialog).getByText("Token saved")).toBeInTheDocument();
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Remove" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(mocks.update).toHaveBeenCalledWith({
+        wsId: "ws-1",
+        id: "src-1",
+        name: "Team skills",
+        url: "https://github.com/acme/skills",
+        clear_credential: true,
+      }),
+    );
+  });
+
+  it("does not offer a token for a source type that cannot take one", async () => {
+    mocks.sources = [source({ type: "clawhub", url: "https://clawhub.ai/acme" })];
+    renderManager(true);
+    await userEvent.click(screen.getByRole("button", { name: "Edit Team skills" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).queryByLabelText("Access token")).not.toBeInTheDocument();
+    expect(within(dialog).queryByText("Token saved")).not.toBeInTheDocument();
+  });
+});
+
+describe("HubSourcesManager quota on sync", () => {
+  it("says the quota stopped the sync, not a generic failure", async () => {
+    mocks.sync.mockRejectedValueOnce(new HubQuotaExceededError());
+    renderManager(true);
+    await userEvent.click(screen.getByRole("button", { name: "Sync Team skills now" }));
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "This workspace has reached its Hub limit, so the sync stopped. Remove items or ask an admin to raise it.",
+      ),
+    );
+  });
+});
+

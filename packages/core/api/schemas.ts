@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { normalizeHubSourceType } from "../hub/items";
 import type {
+  HubItemMeta,
+  SaveHubSkillFileResult,
   HubActivityPage,
   HubApplyUpdateResult,
   HubBundle,
@@ -4225,6 +4227,7 @@ export const HubSourceSchema = z.object({
   last_sync_status: z.string().default(""),
   last_sync_error: z.string().nullable().default(null),
   item_count: z.number().default(0),
+  has_credential: z.boolean().default(false),
   created_at: z.string().default(""),
   updated_at: z.string().default(""),
 }).loose();
@@ -4243,6 +4246,7 @@ export const EMPTY_HUB_SOURCE: HubSource = {
   last_sync_status: "",
   last_sync_error: null,
   item_count: 0,
+  has_credential: false,
   created_at: "",
   updated_at: "",
 };
@@ -4355,6 +4359,34 @@ export const HubItemMetaSchema = z.object({
 }).loose();
 
 export const HubItemMetaListSchema = z.array(HubItemMetaSchema);
+
+export const EMPTY_HUB_ITEM_META: HubItemMeta = {
+  id: "",
+  kind: "skill",
+  ref_id: "",
+  source_id: null,
+  source_ref: "",
+  tracking: "manual",
+  latest_version: "",
+  bundle_digest: "",
+  size_bytes: 0,
+  file_count: 0,
+  scan_status: "warn",
+  update_available: false,
+  remote_digest: "",
+  checked_at: null,
+  local_modified: false,
+  created_at: "",
+  updated_at: "",
+};
+
+/** The save response of a skill file write. `etag` is the file's new etag. */
+export const HubSaveSkillFileResultSchema = z.object({
+  path: z.string().default(""),
+  etag: z.string().default(""),
+}).loose();
+
+export const EMPTY_HUB_SAVE_SKILL_FILE_RESULT: SaveHubSkillFileResult = { path: "", etag: "" };
 
 export const HubBundleSchema = z.object({
   url: z.string().catch(""),

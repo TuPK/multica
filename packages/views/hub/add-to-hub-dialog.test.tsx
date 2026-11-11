@@ -10,6 +10,7 @@ import { NavigationProvider, type NavigationAdapter } from "../navigation";
 const mocks = vi.hoisted(() => ({
   preview: vi.fn(),
   commit: vi.fn(),
+  createSource: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
   push: vi.fn(),
@@ -31,6 +32,7 @@ vi.mock("@multica/core/hub", async (importOriginal) => {
     ...actual,
     usePreviewHubImport: () => ({ mutateAsync: mocks.preview, isPending: false }),
     useCommitHubImport: () => ({ mutateAsync: mocks.commit, isPending: false }),
+    useCreateHubSource: () => ({ mutateAsync: mocks.createSource, isPending: false }),
   };
 });
 
@@ -355,4 +357,93 @@ describe("AddToHubDialog", () => {
     expect(onBlank).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
+
+  it("returns focus to the Add trigger when the dialog is dismissed with Escape", async () => {
+    renderWizard();
+    const trigger = screen.getByRole("button", { name: "Add" });
+    await userEvent.click(trigger);
+    await screen.findByRole("dialog");
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
+  });
+
+  it("returns focus to the Add trigger after the Blank path closes the wizard", async () => {
+    const { onBlank } = renderWizard();
+    const trigger = screen.getByRole("button", { name: "Add" });
+    await userEvent.click(trigger);
+    await userEvent.click(await screen.findByRole("tab", { name: "Blank" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create blank skill" }));
+    expect(onBlank).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
+  });
+
+  it("keeps focus on the trigger when the dialog is opened and closed from the keyboard", async () => {
+    renderWizard();
+    const trigger = screen.getByRole("button", { name: "Add" });
+    trigger.focus();
+    await userEvent.keyboard("{Enter}");
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
+  });
+
+  it("offers an optional access token as a password field for GitHub", async () => {
+    renderWizard();
+    await openWizard();
+    expect(screen.getByLabelText("Access token (optional)")).toHaveAttribute("type", "password");
+  });
+
+  it("saves a token as a source first, then previews with that source", async () => {
+    mocks.createSource.mockResolvedValue({ id: "src-9" });
+    renderWizard();
+    await openWizard();
+    await userEvent.type(screen.getByLabelText("URL"), "https://github.com/acme/private-skills");
+    await userEvent.type(screen.getByLabelText("Access token (optional)"), "ghp_private");
+    await userEvent.click(screen.getByRole("button", { name: "Save source and preview" }));
+
+    await waitFor(() =>
+      expect(mocks.createSource).toHaveBeenCalledWith({
+        wsId: "ws-1",
+        name: "acme/private-skills",
+        type: "github",
+        url: "https://github.com/acme/private-skills",
+        credential: "ghp_private",
+      }),
+    );
+    await waitFor(() =>
+      expect(mocks.preview).toHaveBeenCalledWith({
+        wsId: "ws-1",
+        source: { type: "github", url: "https://github.com/acme/private-skills", source_id: "src-9" },
+      }),
+    );
+    expect(await screen.findByRole("heading", { name: "deploy" })).toBeInTheDocument();
+  });
+
+  it("previews without creating a source when no token is entered", async () => {
+    renderWizard();
+    await openWizard();
+    await previewGithub();
+    expect(mocks.createSource).not.toHaveBeenCalled();
+    expect(mocks.preview).toHaveBeenCalledWith({
+      wsId: "ws-1",
+      source: { type: "github", url: "https://github.com/acme/skills" },
+    });
+  });
+
+  it("keeps the form and shows the error when saving the token fails", async () => {
+    mocks.createSource.mockRejectedValue(new Error("A source with this name already exists"));
+    renderWizard();
+    await openWizard();
+    await userEvent.type(screen.getByLabelText("URL"), "https://github.com/acme/skills");
+    await userEvent.type(screen.getByLabelText("Access token (optional)"), "ghp_x");
+    await userEvent.click(screen.getByRole("button", { name: "Save source and preview" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("already exists");
+    expect(mocks.preview).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Access token (optional)")).toHaveValue("ghp_x");
+  });
 });
+

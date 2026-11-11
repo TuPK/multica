@@ -41,19 +41,25 @@ export interface HubFilters {
 
 export const EMPTY_HUB_FILTERS: HubFilters = { query: "", kinds: [], sources: [] };
 
-const KNOWN_SOURCE_TYPES = new Set<string>(["github", "skills_sh", "clawhub", "url_zip", "registry", "upload"]);
+const KNOWN_SOURCE_TYPES = new Set<string>([
+  "manual",
+  "runtime_local",
+  "github",
+  "skills_sh",
+  "clawhub",
+  "url_zip",
+  "registry",
+  "upload",
+]);
 
 /** A source type from the server that this client does not know is shown as manual. */
 export function normalizeHubSourceType(value: string): HubSourceType {
   return KNOWN_SOURCE_TYPES.has(value) ? (value as HubSourceType) : "manual";
 }
 
-const KNOWN_SKILL_ORIGINS = new Set<string>(["runtime_local", "clawhub", "skills_sh", "github"]);
-
 function skillSource(skill: SkillSummary): { source: HubSourceType; sourceUrl: string | null } {
   const origin = skill.config?.origin as { type?: unknown; source_url?: unknown } | undefined;
-  const type = typeof origin?.type === "string" ? origin.type : "manual";
-  const source = KNOWN_SKILL_ORIGINS.has(type) ? (type as HubSourceType) : "manual";
+  const source = normalizeHubSourceType(typeof origin?.type === "string" ? origin.type : "manual");
   const url = typeof origin?.source_url === "string" ? origin.source_url : "";
   return { source, sourceUrl: /^https?:\/\//.test(url) ? url : null };
 }
@@ -96,7 +102,7 @@ export function buildHubItems(
   return items;
 }
 
-export function filterHubItems(items: readonly HubItem[], filters: HubFilters): HubItem[] {
+export function filterHubItems<T extends HubItem>(items: readonly T[], filters: HubFilters): T[] {
   const query = filters.query.trim().toLowerCase();
   return items.filter((item) => {
     if (filters.kinds.length > 0 && !filters.kinds.includes(item.kind)) return false;
@@ -105,16 +111,17 @@ export function filterHubItems(items: readonly HubItem[], filters: HubFilters): 
     return (
       item.name.toLowerCase().includes(query) ||
       item.description.toLowerCase().includes(query) ||
+      item.source.includes(query) ||
       item.labels.some((label) => label.toLowerCase().includes(query))
     );
   });
 }
 
-export function sortHubItems(
-  items: readonly HubItem[],
+export function sortHubItems<T extends HubItem>(
+  items: readonly T[],
   field: HubSortField,
   direction: "asc" | "desc",
-): HubItem[] {
+): T[] {
   const sign = direction === "asc" ? 1 : -1;
   return [...items].sort((a, b) => {
     const cmp =

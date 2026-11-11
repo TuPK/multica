@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiClient, ApiError } from "../api/client";
-import { HubLocalChangesError, HubQuotaExceededError } from "./errors";
+import { HubFileConflictError, HubLocalChangesError, HubQuotaExceededError } from "./errors";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -249,5 +249,104 @@ describe("hub activity, quota and export client methods", () => {
     await expect(
       client.commitHubImport("ws-1", { preview_id: "pv-1", on_conflict: "rename", confirm_warnings: false }),
     ).rejects.toBeInstanceOf(HubQuotaExceededError);
+  });
+});
+
+describe("hub item detail, skill file save and quota-blocked sync", () => {
+  it("reads one item from the detail route and parses it like a list row", async () => {
+    const fetchMock = stubFetch(jsonResponse(ITEM));
+    const client = new ApiClient(BASE);
+    const item = await client.getHubItem("ws-1", "skill", "sk-1");
+    const { url, headers } = requestOf(fetchMock);
+    expect(url).toBe(`${BASE}/api/hub/items/skill/sk-1`);
+    expect(headers.get("X-Workspace-ID")).toBe("ws-1");
+    expect(item).toMatchObject({ id: "hi-1", ref_id: "sk-1", tracking: "forked", update_available: true });
+  });
+
+  it("refuses an item body without an id", async () => {
+    stubFetch(jsonResponse({ ref_id: "sk-1" }));
+    const client = new ApiClient(BASE);
+    await expect(client.getHubItem("ws-1", "skill", "sk-1")).rejects.toThrow(/no id/);
+  });
+
+  it("puts the file with its etag to the item route and returns the new etag", async () => {
+    const fetchMock = stubFetch(jsonResponse({ path: "docs/a.md", etag: "2026-04-01T00:00:00Z" }));
+    const client = new ApiClient(BASE);
+    const saved = await client.saveHubSkillFile("ws-1", "sk 1", {
+      path: "docs/a.md",
+      content: "hello",
+      etag: "2026-03-01T00:00:00Z",
+    });
+    const { url, init, headers } = requestOf(fetchMock);
+    expect(url).toBe(`${BASE}/api/hub/items/skill/sk%201/files`);
+    expect(init.method).toBe("PUT");
+    expect(headers.get("X-Workspace-ID")).toBe("ws-1");
+    expect(JSON.parse(String(init.body))).toEqual({ path: "docs/a.md", content: "hello", etag: "2026-03-01T00:00:00Z" });
+    expect(saved).toEqual({ path: "docs/a.md", etag: "2026-04-01T00:00:00Z" });
+  });
+
+  it("maps a 409 file_conflict to HubFileConflictError carrying the server's current etag", async () => {
+    stubFetch(
+      jsonResponse({ error: "file changed", code: "file_conflict", etag: "2026-05-05T00:00:00Z" }, 409),
+    );
+    const client = new ApiClient(BASE);
+    const error = await client
+      .saveHubSkillFile("ws-1", "sk-1", { path: "a.md", content: "x", etag: "old" })
+      .catch((err: unknown) => err);
+    expect(error).toBeInstanceOf(HubFileConflictError);
+    expect((error as HubFileConflictError).currentEtag).toBe("2026-05-05T00:00:00Z");
+  });
+
+  it("passes other save errors through unchanged", async () => {
+    stubFetch(jsonResponse({ error: "boom" }, 500));
+    const client = new ApiClient(BASE);
+    const error = await client
+      .saveHubSkillFile("ws-1", "sk-1", { path: "a.md", content: "x", etag: "" })
+      .catch((err: unknown) => err);
+    expect(error).toBeInstanceOf(ApiError);
+  });
+
+  it("rejects a save response with no etag rather than returning an unusable one", async () => {
+    stubFetch(jsonResponse({ path: "a.md" }));
+    const client = new ApiClient(BASE);
+    await expect(
+      client.saveHubSkillFile("ws-1", "sk-1", { path: "a.md", content: "x", etag: "" }),
+    ).rejects.toThrow(/no etag/);
+  });
+
+  it("maps a sync blocked by the quota to HubQuotaExceededError", async () => {
+    stubFetch(jsonResponse({ error: "limit reached", code: "quota_exceeded" }, 409));
+    const client = new ApiClient(BASE);
+    await expect(client.syncHubSource("ws-1", "src-1")).rejects.toBeInstanceOf(HubQuotaExceededError);
+  });
+
+  it("parses has_credential and never expects the token back", async () => {
+    stubFetch(jsonResponse([{ id: "src-1", name: "Acme", type: "github", url: "https://github.com/a/b", has_credential: true }]));
+    const client = new ApiClient(BASE);
+    const [source] = await client.listHubSources("ws-1");
+    expect(source?.has_credential).toBe(true);
+  });
+
+  it("sends a write-only credential when creating a source", async () => {
+    const fetchMock = stubFetch(jsonResponse({ id: "src-1", name: "Acme", type: "github", url: "https://github.com/a/b", has_credential: true }));
+    const client = new ApiClient(BASE);
+    const source = await client.createHubSource("ws-1", {
+      name: "Acme",
+      type: "github",
+      url: "https://github.com/a/b",
+      credential: "ghp_secret",
+    });
+    const { init } = requestOf(fetchMock);
+    expect(JSON.parse(String(init.body))).toMatchObject({ credential: "ghp_secret" });
+    expect(source.has_credential).toBe(true);
+  });
+
+  it("sends clear_credential to remove a stored token", async () => {
+    const fetchMock = stubFetch(jsonResponse({ id: "src-1", name: "Acme", type: "github", url: "https://github.com/a/b", has_credential: false }));
+    const client = new ApiClient(BASE);
+    const source = await client.updateHubSource("ws-1", "src-1", { clear_credential: true });
+    const { init } = requestOf(fetchMock);
+    expect(JSON.parse(String(init.body))).toEqual({ clear_credential: true });
+    expect(source.has_credential).toBe(false);
   });
 });

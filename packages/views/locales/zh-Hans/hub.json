@@ -27,7 +27,9 @@
     "label": "排序",
     "name": "名称",
     "updated": "更新时间",
-    "created": "创建时间"
+    "created": "创建时间",
+    "usedBy": "最常用",
+    "source": "来源"
   },
   "columns": {
     "name": "名称",
@@ -204,7 +206,10 @@
       "subdir_placeholder": "skills/my-skill",
       "submit": "预览",
       "invalid_url": "请输入有效的 http:// 或 https:// 地址。",
-      "preview_failed": "无法读取此来源。"
+      "preview_failed": "无法读取此来源。",
+      "token_label": "访问令牌（可选）",
+      "token_help": "用于私有仓库。令牌会随新来源一起保存，因此本次导入和之后的同步都可以使用。",
+      "submit_with_token": "保存来源并预览"
     },
     "registry": {
       "url_label": "注册表 URL",
@@ -298,7 +303,8 @@
       "every_6h": "每 6 小时",
       "every_24h": "每天",
       "custom": "每 {{duration}}"
-    }
+    },
+    "quota_error": "此工作区已达到 Hub 上限，同步已停止。请删除条目，或请管理员提高上限。"
   },
   "update": {
     "available": "有可用更新",
@@ -433,8 +439,16 @@
       "save_failed": "无法保存此来源。",
       "errors": {
         "name_required": "请输入名称。",
-        "url_invalid": "请输入有效的 http:// 或 https:// 地址。"
-      }
+        "url_invalid": "请输入有效的 http:// 或 https:// 地址。",
+        "token_required": "请输入新令牌，或保留已保存的令牌。"
+      },
+      "token_label": "访问令牌",
+      "token_help": "仅用于从此来源下载。令牌加密保存，之后不会再显示。",
+      "token_saved": "令牌已保存",
+      "token_replace": "替换",
+      "token_remove": "移除",
+      "token_removing": "保存时将移除令牌。",
+      "token_keep": "保留令牌"
     },
     "toast": {
       "added": "已添加来源",
@@ -501,5 +515,27 @@
     "bundle_failed": "无法准备下载。",
     "all": "导出全部",
     "all_failed": "无法导出 Hub。"
+  },
+  "list": {
+    "filters": "筛选",
+    "filter_source": "来源",
+    "filter_label": "标签",
+    "filter_status": "状态",
+    "filter_usage": "使用情况",
+    "status": {
+      "update_available": "有更新",
+      "scan_warning": "扫描警告",
+      "tracking": "跟踪来源",
+      "forked": "已分叉",
+      "manual": "在此创建"
+    },
+    "usage": {
+      "used": "使用中",
+      "unused": "未使用"
+    },
+    "clear": "清除筛选",
+    "count": "{{shown}} / {{total}}",
+    "sort_direction": "排序方向",
+    "table_label": "Hub 条目"
   }
 }

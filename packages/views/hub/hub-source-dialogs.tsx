@@ -23,11 +23,13 @@ import {
 } from "@multica/ui/components/ui/select";
 import {
   HubSourceInUseError,
+  supportsHubCredential,
   useCreateHubSource,
   useDeleteHubSource,
   useUpdateHubSource,
   type HubSource,
   type HubSourceType,
+  type UpdateHubSourceRequest,
 } from "@multica/core/hub";
 import { useT } from "../i18n";
 import { errorMessage, parseWebAddress } from "./hub-import-request";
@@ -55,19 +57,31 @@ export function HubSourceFormDialog({
   );
 }
 
+/**
+ * What the form does with the stored token on save. The token itself is write-only: it is
+ * typed into the field, sent once, and never read back from the server.
+ */
+type CredentialAction = "keep" | "replace" | "remove";
+
 function SourceForm({ wsId, source, onClose }: { wsId: string; source: HubSource | null; onClose: () => void }) {
   const { t } = useT("hub");
   const create = useCreateHubSource();
   const update = useUpdateHubSource();
-  const ids = { name: useId(), type: useId(), url: useId(), interval: useId() };
+  const ids = { name: useId(), type: useId(), url: useId(), interval: useId(), token: useId() };
   const [name, setName] = useState(source?.name ?? "");
   const [type, setType] = useState<HubSourceType>(source?.type ?? USER_SOURCE_TYPES[0]!);
   const [url, setUrl] = useState(source?.url ?? "");
   const [autoSync, setAutoSync] = useState(String(source?.auto_sync_interval_sec ?? 0));
   const intervalLabel = useAutoSyncLabel();
-  const [fieldErrors, setFieldErrors] = useState<{ name?: string; url?: string }>({});
+  const [token, setToken] = useState("");
+  const [credentialAction, setCredentialAction] = useState<CredentialAction>("keep");
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; url?: string; token?: string }>({});
   const [error, setError] = useState("");
   const pending = create.isPending || update.isPending;
+  const takesToken = supportsHubCredential(type);
+  const hasSavedToken = source?.has_credential === true;
+  // The input shows for a new token: on create, or after Replace on an edit.
+  const showTokenInput = takesToken && (!hasSavedToken || credentialAction === "replace");
 
   // An edit keeps the type: the server ties a source's config to its type.
   const typeOptions: HubSourceType[] = source ? [source.type] : [...USER_SOURCE_TYPES];
@@ -89,22 +103,25 @@ function SourceForm({ wsId, source, onClose }: { wsId: string; source: HubSource
     event.preventDefault();
     const trimmedName = name.trim();
     const trimmedUrl = url.trim();
-    const nextErrors: { name?: string; url?: string } = {};
+    const trimmedToken = token.trim();
+    const nextErrors: { name?: string; url?: string; token?: string } = {};
     if (!trimmedName) nextErrors.name = t(($) => $.sources.form.errors.name_required);
     if (!parseWebAddress(trimmedUrl)) nextErrors.url = t(($) => $.sources.form.errors.url_invalid);
+    if (showTokenInput && credentialAction === "replace" && !trimmedToken) {
+      nextErrors.token = t(($) => $.sources.form.errors.token_required);
+    }
     setFieldErrors(nextErrors);
-    if (nextErrors.name || nextErrors.url) return;
+    if (nextErrors.name || nextErrors.url || nextErrors.token) return;
 
     setError("");
     try {
       if (source) {
-        const patch: { name: string; url: string; auto_sync_interval_sec?: number } = {
-          name: trimmedName,
-          url: trimmedUrl,
-        };
+        const patch: UpdateHubSourceRequest = { name: trimmedName, url: trimmedUrl };
         // Sent only when changed, so saving the other fields leaves the schedule alone.
         const nextInterval = Number(autoSync);
         if (nextInterval !== source.auto_sync_interval_sec) patch.auto_sync_interval_sec = nextInterval;
+        if (takesToken && credentialAction === "replace") patch.credential = trimmedToken;
+        if (takesToken && credentialAction === "remove") patch.clear_credential = true;
         await update.mutateAsync({ wsId, id: source.id, ...patch });
         toast.success(t(($) => $.sources.toast.updated));
       } else {
@@ -116,9 +133,11 @@ function SourceForm({ wsId, source, onClose }: { wsId: string; source: HubSource
           type,
           url: trimmedUrl,
           ...(interval > 0 ? { auto_sync_interval_sec: interval } : {}),
+          ...(takesToken && trimmedToken ? { credential: trimmedToken } : {}),
         });
         toast.success(t(($) => $.sources.toast.added));
       }
+      setToken("");
       onClose();
     } catch (err) {
       // Stays open with the input intact so the user can correct and retry.
@@ -188,6 +207,64 @@ function SourceForm({ wsId, source, onClose }: { wsId: string; source: HubSource
         />
         {fieldErrors.url ? <p className="text-caption text-destructive">{fieldErrors.url}</p> : null}
       </div>
+
+      {takesToken ? (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={ids.token} className="text-caption text-muted-foreground">
+            {t(($) => $.sources.form.token_label)}
+          </Label>
+          {hasSavedToken && credentialAction === "keep" ? (
+            <div className="flex flex-wrap items-center gap-2 text-label">
+              <span className="text-muted-foreground">{t(($) => $.sources.form.token_saved)}</span>
+              <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => setCredentialAction("replace")}>
+                {t(($) => $.sources.form.token_replace)}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => setCredentialAction("remove")}>
+                {t(($) => $.sources.form.token_remove)}
+              </Button>
+            </div>
+          ) : hasSavedToken && credentialAction === "remove" ? (
+            <div className="flex flex-wrap items-center gap-2 text-label">
+              <span className="text-muted-foreground">{t(($) => $.sources.form.token_removing)}</span>
+              <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => setCredentialAction("keep")}>
+                {t(($) => $.sources.form.token_keep)}
+              </Button>
+            </div>
+          ) : showTokenInput ? (
+            <div className="flex flex-col gap-1.5">
+              <Input
+                id={ids.token}
+                type="password"
+                autoComplete="new-password"
+                spellCheck={false}
+                value={token}
+                onChange={(event) => setToken(event.target.value)}
+                aria-invalid={fieldErrors.token ? true : undefined}
+                aria-describedby={`${ids.token}-help`}
+              />
+              {fieldErrors.token ? <p className="text-caption text-destructive">{fieldErrors.token}</p> : null}
+              {hasSavedToken ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="self-start"
+                  disabled={pending}
+                  onClick={() => {
+                    setToken("");
+                    setCredentialAction("keep");
+                  }}
+                >
+                  {t(($) => $.sources.form.token_keep)}
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+          <p id={`${ids.token}-help`} className="text-caption text-muted-foreground">
+            {t(($) => $.sources.form.token_help)}
+          </p>
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={ids.interval} className="text-caption text-muted-foreground">

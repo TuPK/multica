@@ -75,57 +75,73 @@ afterEach(() => {
 });
 
 describe("useSaveHubFile", () => {
-  it("refuses to overwrite a file that changed since it was loaded", async () => {
+  it("sends the loaded etag to the server's lock and returns the new etag", async () => {
     qc = createQueryClient();
-    const upsertSkillFile = vi.fn();
-    fakeApi({ getSkill: vi.fn(async () => makeSkill([file("README.md", "someone else's edit", "f1")])), upsertSkillFile });
+    const saveHubSkillFile = vi.fn(async () => ({ path: "README.md", etag: "2026-02-01T00:00:00Z" }));
+    const getSkill = vi.fn();
+    fakeApi({ getSkill, saveHubSkillFile });
+    const { result } = renderHook(() => useSaveHubFile(), { wrapper: withClient(qc) });
+
+    const outcome = await runMutation(result.current.mutateAsync, {
+      wsId: "ws-1", refId: "skill-1", path: "README.md", content: "mine", etag: README_UPDATED,
+    });
+    expect(saveHubSkillFile).toHaveBeenCalledWith("ws-1", "skill-1", {
+      path: "README.md", content: "mine", etag: README_UPDATED,
+    });
+    expect(getSkill).not.toHaveBeenCalled();
+    expect(outcome.data).toEqual({ path: "README.md", content: "mine", is_binary: false, size_bytes: 4, etag: "2026-02-01T00:00:00Z" });
+  });
+
+  it("surfaces a server conflict as HubFileConflictError with the current etag", async () => {
+    qc = createQueryClient();
+    const saveHubSkillFile = vi.fn(async () => {
+      throw new HubFileConflictError("README.md changed", "2026-03-03T00:00:00Z");
+    });
+    fakeApi({ saveHubSkillFile });
     const { result } = renderHook(() => useSaveHubFile(), { wrapper: withClient(qc) });
 
     const outcome = await runMutation(result.current.mutateAsync, {
       wsId: "ws-1", refId: "skill-1", path: "README.md", content: "mine", etag: "2025-12-01T00:00:00Z",
     });
     expect(outcome.error).toBeInstanceOf(HubFileConflictError);
-    expect(upsertSkillFile).not.toHaveBeenCalled();
+    expect((outcome.error as HubFileConflictError).currentEtag).toBe("2026-03-03T00:00:00Z");
   });
 
-  it("writes a non-SKILL.md file with upsertSkillFile and returns its new etag", async () => {
+  it("creates a new file with an empty etag", async () => {
     qc = createQueryClient();
-    const upsertSkillFile = vi.fn(async () => file("README.md", "mine", "f1"));
-    fakeApi({ getSkill: vi.fn(async () => makeSkill()), upsertSkillFile, updateSkill: vi.fn() });
+    const saveHubSkillFile = vi.fn(async () => ({ path: "new.md", etag: "2026-01-09T00:00:00Z" }));
+    fakeApi({ saveHubSkillFile });
+    const { result } = renderHook(() => useSaveHubFile(), { wrapper: withClient(qc) });
+    await runMutation(result.current.mutateAsync, {
+      wsId: "ws-1", refId: "skill-1", path: "new.md", content: "x", etag: "",
+    });
+    expect(saveHubSkillFile).toHaveBeenCalledWith("ws-1", "skill-1", { path: "new.md", content: "x", etag: "" });
+  });
+
+  it("saves SKILL.md through the same route, normalised to its canonical path", async () => {
+    qc = createQueryClient();
+    const saveHubSkillFile = vi.fn(async () => ({ path: "SKILL.md", etag: "2026-02-01T00:00:00Z" }));
+    fakeApi({ saveHubSkillFile });
     const { result } = renderHook(() => useSaveHubFile(), { wrapper: withClient(qc) });
 
     const outcome = await runMutation(result.current.mutateAsync, {
-      wsId: "ws-1", refId: "skill-1", path: "README.md", content: "mine", etag: README_UPDATED,
+      wsId: "ws-1", refId: "skill-1", path: "skill.md", content: "# New", etag: UPDATED,
     });
-    expect(upsertSkillFile).toHaveBeenCalledWith("skill-1", { path: "README.md", content: "mine" });
-    expect(outcome.data).toEqual({ path: "README.md", content: "mine", is_binary: false, size_bytes: 4, etag: README_UPDATED });
-  });
-
-  it("saves SKILL.md through updateSkill, checked against the skill updated_at", async () => {
-    qc = createQueryClient();
-    const updateSkill = vi.fn(async () => ({ ...makeSkill(), updated_at: "2026-02-01T00:00:00Z" }));
-    const upsertSkillFile = vi.fn();
-    fakeApi({ getSkill: vi.fn(async () => makeSkill()), updateSkill, upsertSkillFile });
-    const { result } = renderHook(() => useSaveHubFile(), { wrapper: withClient(qc) });
-
-    const outcome = await runMutation(result.current.mutateAsync, {
-      wsId: "ws-1", refId: "skill-1", path: "SKILL.md", content: "# New", etag: UPDATED,
-    });
-    expect(updateSkill).toHaveBeenCalledWith("skill-1", { content: "# New" });
-    expect(upsertSkillFile).not.toHaveBeenCalled();
+    expect(saveHubSkillFile).toHaveBeenCalledWith("ws-1", "skill-1", { path: "SKILL.md", content: "# New", etag: UPDATED });
+    expect(outcome.data?.path).toBe("SKILL.md");
     expect(outcome.data?.etag).toBe("2026-02-01T00:00:00Z");
   });
 
   it("refuses a body over 1 MiB before any request", async () => {
     qc = createQueryClient();
-    const getSkill = vi.fn();
-    fakeApi({ getSkill });
+    const saveHubSkillFile = vi.fn();
+    fakeApi({ saveHubSkillFile });
     const { result } = renderHook(() => useSaveHubFile(), { wrapper: withClient(qc) });
     const outcome = await runMutation(result.current.mutateAsync, {
       wsId: "ws-1", refId: "skill-1", path: "big.txt", content: "x".repeat((1 << 20) + 1), etag: "",
     });
     expectError(outcome.error, "larger than 1 MiB");
-    expect(getSkill).not.toHaveBeenCalled();
+    expect(saveHubSkillFile).not.toHaveBeenCalled();
   });
 });
 

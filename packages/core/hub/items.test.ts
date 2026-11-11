@@ -63,6 +63,33 @@ describe("buildHubItems", () => {
   });
 });
 
+describe("skill origins map to their source", () => {
+  it("keeps every origin the server records, not only the first four", () => {
+    const origins = ["upload", "url_zip", "registry", "runtime_local", "skills_sh", "clawhub", "github"];
+    const items = buildHubItems(
+      origins.map((type, index) => ({
+        id: `s${index}`,
+        name: type,
+        description: "",
+        config: { origin: { type, source_url: "" } },
+        labels: [],
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+      })) as unknown as SkillSummary[],
+      [],
+    );
+    expect(items.map((item) => item.source)).toEqual(origins);
+  });
+
+  it("shows an origin it does not know as created here", () => {
+    const [item] = buildHubItems(
+      [{ id: "s1", name: "x", description: "", config: { origin: { type: "future_source" } }, labels: [], created_at: "", updated_at: "" } as unknown as SkillSummary],
+      [],
+    );
+    expect(item?.source).toBe("manual");
+  });
+});
+
 describe("filter, sort and summarize", () => {
   const items = buildHubItems(
     [

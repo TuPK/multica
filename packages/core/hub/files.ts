@@ -3,6 +3,9 @@ import { api } from "../api";
 import { MAX_SKILL_FILE_BYTES } from "../skills/pack-archive";
 import type { Skill } from "../types";
 import type { HubItemKind } from "./items";
+import { HubFileConflictError } from "./errors";
+
+export { HubFileConflictError };
 
 /** A skill's SKILL.md is shown as a file, but it lives in the skill's `content` field. */
 export const SKILL_CONTENT_PATH = "SKILL.md";
@@ -20,13 +23,6 @@ export interface HubFileContent {
   size_bytes: number;
   /** Skill file `updated_at`, or plugin file `sha256`. Pass it back when saving. */
   etag: string;
-}
-
-export class HubFileConflictError extends Error {
-  constructor(message = "The file changed since it was loaded") {
-    super(message);
-    this.name = "HubFileConflictError";
-  }
 }
 
 export const hubKeys = {
@@ -97,22 +93,6 @@ export function skillFileContent(skill: Skill, path: string): HubFileContent {
     size_bytes: size,
     etag,
   };
-}
-
-/**
- * Refuses a write when the file changed since the caller read it. `etag` "" means
- * the caller expects the file not to exist yet. There is no server-side compare,
- * so a change landing between this read and the write is not caught.
- */
-export function assertSkillFileUnchanged(skill: Skill, path: string, etag: string): void {
-  const current = skillFileEtag(skill, path);
-  if (current === null) {
-    if (etag === "") return;
-    throw new HubFileConflictError(`${path} was deleted since it was loaded`);
-  }
-  if (etag === "" || current !== etag) {
-    throw new HubFileConflictError(`${path} changed since it was loaded`);
-  }
 }
 
 /** The newest published version when none is named. Versions are newest first. */

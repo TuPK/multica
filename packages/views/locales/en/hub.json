@@ -27,7 +27,9 @@
     "label": "Sort",
     "name": "Name",
     "updated": "Updated",
-    "created": "Created"
+    "created": "Created",
+    "usedBy": "Most used",
+    "source": "Source"
   },
   "columns": {
     "name": "Name",
@@ -206,7 +208,10 @@
       "subdir_placeholder": "skills/my-skill",
       "submit": "Preview",
       "invalid_url": "Enter a valid http:// or https:// URL.",
-      "preview_failed": "Couldn't read this source."
+      "preview_failed": "Couldn't read this source.",
+      "token_label": "Access token (optional)",
+      "token_help": "For private repositories. The token is saved with a new source, so this import and later syncs can use it.",
+      "submit_with_token": "Save source and preview"
     },
     "registry": {
       "url_label": "Registry URL",
@@ -301,7 +306,8 @@
       "every_6h": "Every 6 hours",
       "every_24h": "Every day",
       "custom": "Every {{duration}}"
-    }
+    },
+    "quota_error": "This workspace has reached its Hub limit, so the sync stopped. Remove items or ask an admin to raise it."
   },
   "update": {
     "available": "Update available",
@@ -436,8 +442,16 @@
       "save_failed": "Couldn't save this source.",
       "errors": {
         "name_required": "Enter a name.",
-        "url_invalid": "Enter a valid http:// or https:// URL."
-      }
+        "url_invalid": "Enter a valid http:// or https:// URL.",
+        "token_required": "Enter the new token, or keep the saved one."
+      },
+      "token_label": "Access token",
+      "token_help": "Used only to download from this source. It is stored encrypted and never shown again.",
+      "token_saved": "Token saved",
+      "token_replace": "Replace",
+      "token_remove": "Remove",
+      "token_removing": "The token is removed when you save.",
+      "token_keep": "Keep token"
     },
     "toast": {
       "added": "Source added",
@@ -507,5 +521,27 @@
     "bundle_failed": "Couldn't prepare the download.",
     "all": "Export all",
     "all_failed": "Couldn't export the Hub."
+  },
+  "list": {
+    "filters": "Filters",
+    "filter_source": "Source",
+    "filter_label": "Label",
+    "filter_status": "Status",
+    "filter_usage": "In use",
+    "status": {
+      "update_available": "Update available",
+      "scan_warning": "Scan warning",
+      "tracking": "Tracking source",
+      "forked": "Forked",
+      "manual": "Created here"
+    },
+    "usage": {
+      "used": "In use",
+      "unused": "Not in use"
+    },
+    "clear": "Clear filters",
+    "count": "{{shown}} of {{total}}",
+    "sort_direction": "Sort direction",
+    "table_label": "Hub items"
   }
 }

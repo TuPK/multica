@@ -27,7 +27,9 @@
     "label": "Trier",
     "name": "Nom",
     "updated": "Mis à jour",
-    "created": "Créé"
+    "created": "Créé",
+    "usedBy": "Les plus utilisés",
+    "source": "Source"
   },
   "columns": {
     "name": "Nom",
@@ -206,7 +208,10 @@
       "subdir_placeholder": "skills/mon-skill",
       "submit": "Prévisualiser",
       "invalid_url": "Saisissez une URL valide commençant par http:// ou https://.",
-      "preview_failed": "Impossible de lire cette source."
+      "preview_failed": "Impossible de lire cette source.",
+      "token_label": "Jeton d’accès (facultatif)",
+      "token_help": "Pour les dépôts privés. Le jeton est enregistré avec une nouvelle source, afin que cet import et les synchronisations suivantes puissent l’utiliser.",
+      "submit_with_token": "Enregistrer la source et prévisualiser"
     },
     "registry": {
       "url_label": "URL du registre",
@@ -301,7 +306,8 @@
       "every_6h": "Toutes les 6 heures",
       "every_24h": "Tous les jours",
       "custom": "Toutes les {{duration}}"
-    }
+    },
+    "quota_error": "Cet espace de travail a atteint sa limite du Hub, la synchronisation s’est arrêtée. Supprimez des éléments ou demandez à un administrateur de l’augmenter."
   },
   "update": {
     "available": "Mise à jour disponible",
@@ -436,8 +442,16 @@
       "save_failed": "Impossible d'enregistrer cette source.",
       "errors": {
         "name_required": "Saisissez un nom.",
-        "url_invalid": "Saisissez une URL valide commençant par http:// ou https://."
-      }
+        "url_invalid": "Saisissez une URL valide commençant par http:// ou https://.",
+        "token_required": "Saisissez le nouveau jeton ou gardez l’enregistré."
+      },
+      "token_label": "Jeton d’accès",
+      "token_help": "Utilisé uniquement pour télécharger depuis cette source. Il est stocké chiffré et n’est jamais réaffiché.",
+      "token_saved": "Jeton enregistré",
+      "token_replace": "Remplacer",
+      "token_remove": "Supprimer",
+      "token_removing": "Le jeton sera supprimé à l’enregistrement.",
+      "token_keep": "Garder le jeton"
     },
     "toast": {
       "added": "Source ajoutée",
@@ -507,5 +521,27 @@
     "bundle_failed": "Impossible de préparer le téléchargement.",
     "all": "Tout exporter",
     "all_failed": "Impossible d'exporter le Hub."
+  },
+  "list": {
+    "filters": "Filtres",
+    "filter_source": "Source",
+    "filter_label": "Libellé",
+    "filter_status": "Statut",
+    "filter_usage": "Utilisé",
+    "status": {
+      "update_available": "Mise à jour disponible",
+      "scan_warning": "Alerte d’analyse",
+      "tracking": "Suit la source",
+      "forked": "Dupliqué",
+      "manual": "Créé ici"
+    },
+    "usage": {
+      "used": "Utilisé",
+      "unused": "Non utilisé"
+    },
+    "clear": "Effacer les filtres",
+    "count": "{{shown}} sur {{total}}",
+    "sort_direction": "Sens du tri",
+    "table_label": "Éléments du Hub"
   }
 }

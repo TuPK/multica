@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -131,6 +131,8 @@ export function useHubFiles({
   const [changes, setChanges] = useState<PluginChanges>({});
   const [guardAction, setGuardAction] = useState<(() => void) | null>(null);
   const [conflictPath, setConflictPath] = useState<string | null>(null);
+  // The etag the server reported with the conflict, so overwrite does not need another read.
+  const conflictEtagRef = useRef<string | null>(null);
 
   const saveFile = useSaveHubFile();
   const deleteFile = useDeleteHubFile();
@@ -264,6 +266,7 @@ export function useHubFiles({
         return true;
       } catch (error) {
         if (error instanceof HubFileConflictError) {
+          conflictEtagRef.current = error.currentEtag;
           setConflictPath(path);
         } else {
           toast.error(t(($) => $.toast.save_failed, { path }));
@@ -318,21 +321,27 @@ export function useHubFiles({
       setConflictPath(null);
       if (!path) return;
       if (choice === "reload") {
+        conflictEtagRef.current = null;
         setDrafts((prev) => omitKey(prev, path));
         await qc.invalidateQueries({
           queryKey: hubFileContentOptions(wsId, kind, refId, path).queryKey,
         });
         return;
       }
-      // Overwrite: read the newer etag, then save this draft over it.
+      // Overwrite: save this draft over the newer version, using the etag the server reported.
       const draft = drafts[path];
       if (!draft) return;
       try {
-        const fresh = await qc.fetchQuery({
-          ...hubFileContentOptions(wsId, kind, refId, path),
-          staleTime: 0,
-        });
-        await saveDraft(path, fresh.etag, draft.content);
+        let etag = conflictEtagRef.current;
+        if (etag === null) {
+          const fresh = await qc.fetchQuery({
+            ...hubFileContentOptions(wsId, kind, refId, path),
+            staleTime: 0,
+          });
+          etag = fresh.etag;
+        }
+        conflictEtagRef.current = null;
+        await saveDraft(path, etag, draft.content);
       } catch {
         toast.error(t(($) => $.toast.save_failed, { path }));
       }

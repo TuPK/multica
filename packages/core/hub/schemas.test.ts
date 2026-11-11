@@ -21,6 +21,7 @@ const SOURCE = {
   last_sync_status: "error",
   last_sync_error: "rate limited",
   item_count: 4,
+  has_credential: false,
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-02-01T00:00:00Z",
 };
@@ -44,6 +45,7 @@ describe("HubSourceSchema", () => {
       last_sync_status: "",
       last_sync_error: null,
       item_count: 0,
+      has_credential: false,
     });
   });
 

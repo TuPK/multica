@@ -41,6 +41,26 @@ export function resolveRegistryItemUrl(registryUrl: string, itemUrl: string): st
   }
 }
 
+/**
+ * A default name for a source saved from a URL: "owner/repo" for GitHub, otherwise the host
+ * and last path segment. The user can rename it later in the sources manager.
+ */
+export function suggestSourceName(type: UrlImportType, rawUrl: string): string {
+  const trimmed = rawUrl.trim();
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return trimmed;
+  }
+  const segments = url.pathname.split("/").filter(Boolean);
+  if (type === "github" && segments.length >= 2) {
+    return `${segments[0]}/${segments[1]!.replace(/\.git$/, "")}`;
+  }
+  const last = segments.at(-1);
+  return last ? `${url.host}/${last}` : url.host;
+}
+
 export function errorMessage(err: unknown, fallback: string): string {
   return err instanceof Error && err.message ? err.message : fallback;
 }

@@ -3,7 +3,6 @@ import { api } from "../api";
 import { MAX_SKILL_FILE_BYTES } from "../skills/pack-archive";
 import { workspaceKeys } from "../workspace/queries";
 import {
-  assertSkillFileUnchanged,
   hubKeys,
   isSkillContentPath,
   SKILL_CONTENT_PATH,
@@ -45,8 +44,9 @@ function assertNotSkillContent(path: string, action: string) {
 }
 
 /**
- * Saves one skill file. Compares the etag against a fresh read first and throws
- * HubFileConflictError when the file changed. SKILL.md goes through the skill update call.
+ * Saves one skill file. The server checks the etag under its own lock: a stale etag
+ * is refused with 409 and surfaces as HubFileConflictError, carrying the current etag.
+ * SKILL.md is saved through the same route.
  */
 export function useSaveHubFile() {
   const qc = useQueryClient();
@@ -56,15 +56,13 @@ export function useSaveHubFile() {
       const size = utf8ByteLength(vars.content);
       if (size > MAX_SKILL_FILE_BYTES) throw new Error("File is larger than 1 MiB");
 
-      const current = await api.getSkill(vars.refId);
-      assertSkillFileUnchanged(current, path, vars.etag);
-
-      if (isSkillContentPath(path)) {
-        const updated = await api.updateSkill(vars.refId, { content: vars.content });
-        return { path: SKILL_CONTENT_PATH, content: vars.content, is_binary: false, size_bytes: size, etag: updated.updated_at };
-      }
-      const saved = await api.upsertSkillFile(vars.refId, { path, content: vars.content });
-      return { path, content: vars.content, is_binary: false, size_bytes: size, etag: saved.updated_at };
+      const savePath = isSkillContentPath(path) ? SKILL_CONTENT_PATH : path;
+      const saved = await api.saveHubSkillFile(vars.wsId, vars.refId, {
+        path: savePath,
+        content: vars.content,
+        etag: vars.etag,
+      });
+      return { path: savePath, content: vars.content, is_binary: false, size_bytes: size, etag: saved.etag };
     },
     onSettled: (_data, _error, vars) => {
       if (vars) invalidateSkillFiles(qc, vars.wsId, vars.refId);

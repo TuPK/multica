@@ -23,7 +23,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@multica/ui/components/ui/tabs";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
-import { usePreviewHubImport, type HubImportCommitResult, type HubImportPreview } from "@multica/core/hub";
+import {
+  supportsHubCredential,
+  useCreateHubSource,
+  usePreviewHubImport,
+  type HubImportCommitResult,
+  type HubImportPreview,
+} from "@multica/core/hub";
 import { useNavigation } from "../navigation";
 import { useT } from "../i18n";
 import { HubImportPreviewStep } from "./hub-import-preview";
@@ -34,6 +40,7 @@ import {
   importNeedsWebAddress,
   parseWebAddress,
   previewVars,
+  suggestSourceName,
   type HubImportRequest,
   type HubImportState,
   type UrlImportType,
@@ -148,13 +155,17 @@ export function AddToHubDialog({ onBlank }: { onBlank: () => void }) {
 
 function UrlImportForm({ onPreview }: { onPreview: (request: HubImportRequest) => Promise<void> }) {
   const { t } = useT("hub");
-  const ids = { type: useId(), url: useId(), ref: useId(), subdir: useId() };
+  const wsId = useWorkspaceId();
+  const createSource = useCreateHubSource();
+  const ids = { type: useId(), url: useId(), ref: useId(), subdir: useId(), token: useId() };
   const [type, setType] = useState<UrlImportType>("github");
   const [url, setUrl] = useState("");
   const [ref, setRef] = useState("");
   const [subdir, setSubdir] = useState("");
+  const [token, setToken] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const takesToken = supportsHubCredential(type);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -165,9 +176,22 @@ function UrlImportForm({ onPreview }: { onPreview: (request: HubImportRequest) =
       return;
     }
     const isGithub = type === "github";
+    const secret = takesToken ? token.trim() : "";
     setBusy(true);
     setError("");
     try {
+      // A preview can only use a token that a saved source holds, so a token first becomes a source.
+      let sourceId: string | undefined;
+      if (secret) {
+        const saved = await createSource.mutateAsync({
+          wsId,
+          name: suggestSourceName(type, trimmed),
+          type,
+          url: trimmed,
+          credential: secret,
+        });
+        sourceId = saved.id;
+      }
       await onPreview({
         kind: "source",
         source: {
@@ -175,8 +199,10 @@ function UrlImportForm({ onPreview }: { onPreview: (request: HubImportRequest) =
           url: trimmed,
           ...(isGithub && ref.trim() ? { ref: ref.trim() } : {}),
           ...(isGithub && subdir.trim() ? { subdir: subdir.trim() } : {}),
+          ...(sourceId ? { source_id: sourceId } : {}),
         },
       });
+      setToken("");
     } catch (err) {
       setError(errorMessage(err, t(($) => $.add.url.preview_failed)));
     } finally {
@@ -262,6 +288,26 @@ function UrlImportForm({ onPreview }: { onPreview: (request: HubImportRequest) =
         </div>
       ) : null}
 
+      {takesToken ? (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={ids.token} className="text-caption text-muted-foreground">
+            {t(($) => $.add.url.token_label)}
+          </Label>
+          <Input
+            id={ids.token}
+            type="password"
+            autoComplete="new-password"
+            spellCheck={false}
+            value={token}
+            onChange={(event) => setToken(event.target.value)}
+            aria-describedby={`${ids.token}-help`}
+          />
+          <p id={`${ids.token}-help`} className="text-caption text-muted-foreground">
+            {t(($) => $.add.url.token_help)}
+          </p>
+        </div>
+      ) : null}
+
       {error ? (
         <p role="alert" className="text-caption text-destructive">
           {error}
@@ -271,7 +317,7 @@ function UrlImportForm({ onPreview }: { onPreview: (request: HubImportRequest) =
       <DialogFooter>
         <Button type="submit" disabled={busy || !url.trim()} aria-busy={busy}>
           {busy ? <Loader2 className="animate-spin" aria-hidden="true" /> : <FileArchive aria-hidden="true" />}
-          {t(($) => $.add.url.submit)}
+          {takesToken && token.trim() ? t(($) => $.add.url.submit_with_token) : t(($) => $.add.url.submit)}
         </Button>
       </DialogFooter>
     </form>

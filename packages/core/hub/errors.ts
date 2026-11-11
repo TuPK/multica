@@ -5,6 +5,21 @@ export const HUB_BLOCKED_CODE = "scan_blocked";
 export const HUB_WARNINGS_CODE = "warnings_unconfirmed";
 export const HUB_QUOTA_CODE = "quota_exceeded";
 export const HUB_LOCAL_CHANGES_CODE = "local_changes";
+export const HUB_FILE_CONFLICT_CODE = "file_conflict";
+
+/**
+ * A skill file save was refused because the stored file changed since the editor loaded it.
+ * `currentEtag` is the server's etag for the file now, so a caller can reload or overwrite.
+ */
+export class HubFileConflictError extends Error {
+  readonly currentEtag: string | null;
+
+  constructor(message = "The file changed since it was loaded", currentEtag: string | null = null) {
+    super(message);
+    this.name = "HubFileConflictError";
+    this.currentEtag = currentEtag;
+  }
+}
 
 export class HubSourceInUseError extends Error {
   readonly inUse: HubSourceInUseRef[];
@@ -105,6 +120,22 @@ export function mapHubImportCommitError(error: unknown): unknown {
   if (code === HUB_BLOCKED_CODE) return new HubImportBlockedError(error.message || undefined);
   if (code === HUB_WARNINGS_CODE) return new HubImportWarningsError(error.message || undefined);
   if (code === HUB_QUOTA_CODE) return new HubQuotaExceededError(error.message || undefined);
+  return error;
+}
+
+/** Maps a skill file save's 409 `file_conflict` onto HubFileConflictError, carrying the server's etag. */
+export function mapHubFileSaveError(error: unknown): unknown {
+  if (!isHttpErrorLike(error) || error.status !== 409) return error;
+  const body = bodyRecord(error.body);
+  if (body?.code !== HUB_FILE_CONFLICT_CODE) return error;
+  const etag = typeof body.etag === "string" ? body.etag : null;
+  return new HubFileConflictError(error.message || undefined, etag);
+}
+
+/** A sync that the workspace quota blocks reports `quota_exceeded`; every other sync error passes through. */
+export function mapHubSyncError(error: unknown): unknown {
+  if (!isHttpErrorLike(error) || error.status !== 409) return error;
+  if (bodyRecord(error.body)?.code === HUB_QUOTA_CODE) return new HubQuotaExceededError(error.message || undefined);
   return error;
 }
 

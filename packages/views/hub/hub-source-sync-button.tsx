@@ -3,7 +3,7 @@
 import { toast } from "sonner";
 import { Loader2, RefreshCw } from "@multica/ui/icons";
 import { Button } from "@multica/ui/components/ui/button";
-import { useSyncHubSource, type HubSource } from "@multica/core/hub";
+import { HubQuotaExceededError, useSyncHubSource, type HubSource } from "@multica/core/hub";
 import { useT } from "../i18n";
 import { errorMessage } from "./hub-import-request";
 import { syncCounts } from "./hub-source-sync";
@@ -30,6 +30,10 @@ export function SyncSourceButton({ wsId, source }: { wsId: string; source: HubSo
         }),
       );
     } catch (err) {
+      if (err instanceof HubQuotaExceededError) {
+        toast.error(t(($) => $.sync.quota_error));
+        return;
+      }
       toast.error(errorMessage(err, t(($) => $.sync.failed)));
     }
   };

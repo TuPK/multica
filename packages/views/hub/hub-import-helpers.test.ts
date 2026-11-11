@@ -6,6 +6,7 @@ import {
   importNeedsWebAddress,
   parseWebAddress,
   resolveRegistryItemUrl,
+  suggestSourceName,
 } from "./hub-import-request";
 import { filesFromDrop, filesFromEntries, prepareImportFiles } from "./hub-upload-drop";
 import { isKnownSourceType, safeSourceLink, syncStatusKind } from "./hub-source-meta";
@@ -124,5 +125,21 @@ describe("dropped folders", () => {
     Object.defineProperty(folderFile, "webkitRelativePath", { value: "deploy/SKILL.md" });
     const folder = await prepareImportFiles([folderFile]);
     expect(folder).toMatchObject({ ok: true, preview: { source: "folder" } });
+  });
+});
+
+describe("suggestSourceName", () => {
+  it("names a GitHub source owner/repo, without a .git suffix", () => {
+    expect(suggestSourceName("github", " https://github.com/acme/skills.git ")).toBe("acme/skills");
+    expect(suggestSourceName("github", "https://github.com/acme/skills/tree/main/x")).toBe("acme/skills");
+  });
+
+  it("names a zip source by its host and last path segment", () => {
+    expect(suggestSourceName("url_zip", "https://example.com/dist/skill.zip")).toBe("example.com/skill.zip");
+    expect(suggestSourceName("url_zip", "https://example.com/")).toBe("example.com");
+  });
+
+  it("falls back to the trimmed text when it is not a URL", () => {
+    expect(suggestSourceName("github", "  not a url  ")).toBe("not a url");
   });
 });

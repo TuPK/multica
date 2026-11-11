@@ -27,7 +27,9 @@
     "label": "Ordenar",
     "name": "Nombre",
     "updated": "Actualizado",
-    "created": "Creado"
+    "created": "Creado",
+    "usedBy": "Más usados",
+    "source": "Origen"
   },
   "columns": {
     "name": "Nombre",
@@ -206,7 +208,10 @@
       "subdir_placeholder": "skills/mi-skill",
       "submit": "Previsualizar",
       "invalid_url": "Introduce una URL válida que empiece por http:// o https://.",
-      "preview_failed": "No se pudo leer este origen."
+      "preview_failed": "No se pudo leer este origen.",
+      "token_label": "Token de acceso (opcional)",
+      "token_help": "Para repositorios privados. El token se guarda con una fuente nueva, así que esta importación y las sincronizaciones posteriores pueden usarlo.",
+      "submit_with_token": "Guardar fuente y previsualizar"
     },
     "registry": {
       "url_label": "URL del registro",
@@ -301,7 +306,8 @@
       "every_6h": "Cada 6 horas",
       "every_24h": "Cada día",
       "custom": "Cada {{duration}}"
-    }
+    },
+    "quota_error": "Este espacio de trabajo ha alcanzado su límite del Hub, así que la sincronización se detuvo. Elimina elementos o pide a un administrador que lo aumente."
   },
   "update": {
     "available": "Actualización disponible",
@@ -436,8 +442,16 @@
       "save_failed": "No se pudo guardar este origen.",
       "errors": {
         "name_required": "Introduce un nombre.",
-        "url_invalid": "Introduce una URL válida que empiece por http:// o https://."
-      }
+        "url_invalid": "Introduce una URL válida que empiece por http:// o https://.",
+        "token_required": "Escribe el nuevo token o mantén el guardado."
+      },
+      "token_label": "Token de acceso",
+      "token_help": "Solo se usa para descargar desde esta fuente. Se guarda cifrado y nunca se vuelve a mostrar.",
+      "token_saved": "Token guardado",
+      "token_replace": "Reemplazar",
+      "token_remove": "Quitar",
+      "token_removing": "El token se quitará al guardar.",
+      "token_keep": "Mantener token"
     },
     "toast": {
       "added": "Origen añadido",
@@ -507,5 +521,27 @@
     "bundle_failed": "No se pudo preparar la descarga.",
     "all": "Exportar todo",
     "all_failed": "No se pudo exportar el Hub."
+  },
+  "list": {
+    "filters": "Filtros",
+    "filter_source": "Origen",
+    "filter_label": "Etiqueta",
+    "filter_status": "Estado",
+    "filter_usage": "En uso",
+    "status": {
+      "update_available": "Actualización disponible",
+      "scan_warning": "Aviso del análisis",
+      "tracking": "Sigue su origen",
+      "forked": "Bifurcado",
+      "manual": "Creado aquí"
+    },
+    "usage": {
+      "used": "En uso",
+      "unused": "Sin usar"
+    },
+    "clear": "Quitar filtros",
+    "count": "{{shown}} de {{total}}",
+    "sort_direction": "Dirección del orden",
+    "table_label": "Elementos del Hub"
   }
 }

@@ -38,6 +38,7 @@ const SOURCE = {
   last_sync_status: "ok",
   last_sync_error: null,
   item_count: 2,
+  has_credential: false,
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
 };

@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => ({
   role: "member" as "member" | "admin" | "owner",
   quota: null as Record<string, unknown> | null,
   activityEntries: [] as Array<Record<string, unknown>>,
+  agents: [] as Array<Record<string, unknown>>,
+  installations: [] as Array<Record<string, unknown>>,
 }));
 
 vi.mock("@tanstack/react-query", () => ({
@@ -33,6 +35,12 @@ vi.mock("@tanstack/react-query", () => ({
     }
     if (key === "hub-quota") {
       return { data: mocks.quota, isLoading: false, isError: false, refetch: vi.fn() };
+    }
+    if (key === "agents") {
+      return { data: mocks.agents, isLoading: false, isError: false };
+    }
+    if (key === "plugin-installations") {
+      return { data: { plugins: mocks.installations }, isLoading: false, isError: false };
     }
     return { data: { packages: mocks.packages }, isLoading: false, isError: false };
   },
@@ -74,14 +82,18 @@ vi.mock("@multica/core/paths", async (importOriginal) => ({
     hubItem: (kind: string, id: string) => `/acme/hub/${kind}/${id}`,
   }),
 }));
-vi.mock("@multica/core/workspace/queries", () => ({
+vi.mock("@multica/core/workspace/queries", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@multica/core/workspace/queries")>()),
   skillListOptions: () => ({ queryKey: ["skills"] }),
+  agentListOptions: () => ({ queryKey: ["agents"] }),
 }));
 vi.mock("@multica/core/plugins", () => ({
   pluginPackagesOptions: () => ({ queryKey: ["plugin-packages"] }),
+  pluginInstallationsOptions: () => ({ queryKey: ["plugin-installations"] }),
 }));
 
-import { HubPage } from "./hub-page";
+import { EMPTY_HUB_LIST_FILTERS, useHubViewStore } from "@multica/core/hub";
+import { HubPage, HUB_VIRTUALIZE_AFTER } from "./hub-page";
 
 const skill = (id: string, name: string, config: Record<string, unknown> = {}): SkillSummary =>
   ({
@@ -113,12 +125,22 @@ function renderPage() {
 }
 
 beforeEach(() => {
+  localStorage.clear();
+  useHubViewStore.setState({
+    view: "list",
+    sortField: "updated",
+    sortDirection: "desc",
+    filters: EMPTY_HUB_LIST_FILTERS,
+    search: "",
+  });
   mocks.skillsError = false;
   mocks.role = "member";
   mocks.quota = null;
   mocks.activityEntries = [];
   mocks.sources = [];
   mocks.metas = [];
+  mocks.agents = [];
+  mocks.installations = [];
   mocks.skills = [
     skill("s1", "deploy", { origin: { type: "github", source_url: "https://github.com/a/b" } }),
     skill("s2", "review"),
@@ -164,6 +186,7 @@ describe("HubPage", () => {
         last_sync_status: "",
         last_sync_error: null,
         item_count: 2,
+        has_credential: false,
         created_at: "2026-07-01T00:00:00Z",
         updated_at: "2026-07-01T00:00:00Z",
       },
@@ -180,9 +203,9 @@ describe("HubPage", () => {
       { id: "m2", kind: "skill", ref_id: "s2", tracking: "tracking", update_available: false },
     ];
     renderPage();
-    const deploy = screen.getByRole("link", { name: "deploy" }).closest("td")!;
+    const deploy = screen.getByRole("link", { name: "deploy" }).closest<HTMLElement>("[role=\"cell\"]")!;
     expect(within(deploy).getByText("Update available")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "review" }).closest("td")!).not.toHaveTextContent("Update available");
+    expect(screen.getByRole("link", { name: "review" }).closest<HTMLElement>("[role=\"cell\"]")!).not.toHaveTextContent("Update available");
 
     const chip = screen.getByRole("button", { name: "Updates available" });
     expect(chip).toHaveAttribute("aria-pressed", "false");
@@ -190,6 +213,61 @@ describe("HubPage", () => {
     expect(chip).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("link", { name: "deploy" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "review" })).not.toBeInTheDocument();
+  });
+
+  it("shows how many items match against the total, and clears the filters", async () => {
+    renderPage();
+    expect(screen.getByText("3 of 3")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Filters/ }));
+    await userEvent.click(await screen.findByRole("menuitemcheckbox", { name: "GitHub" }));
+    await userEvent.keyboard("{Escape}");
+    expect(screen.getByText("1 of 3")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "deploy" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "review" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(screen.getByText("3 of 3")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
+  });
+
+  it("filters by usage, using the agents that hold each skill", async () => {
+    mocks.agents = [{ id: "a1", archived_at: null, skills: [{ id: "s1" }] }];
+    renderPage();
+    await userEvent.click(screen.getByRole("button", { name: /Filters/ }));
+    await userEvent.click(await screen.findByRole("menuitemcheckbox", { name: "Not in use" }));
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("link", { name: "deploy" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "review" })).toBeInTheDocument();
+    // The plugin has no installation, so it is not in use either.
+    expect(screen.getByText("Pulse")).toBeInTheDocument();
+  });
+
+  it("sorts by most used when chosen from the sort menu", async () => {
+    mocks.agents = [
+      { id: "a1", archived_at: null, skills: [{ id: "s2" }] },
+      { id: "a2", archived_at: null, skills: [{ id: "s2" }] },
+    ];
+    renderPage();
+    await userEvent.click(screen.getByRole("button", { name: /^Sort:/ }));
+    await userEvent.click(await screen.findByRole("menuitemradio", { name: "Most used" }));
+    const names = screen.getAllByRole("link").map((link) => link.textContent ?? "");
+    expect(names[0]).toBe("review");
+    expect(useHubViewStore.getState().sortField).toBe("usedBy");
+  });
+
+  it("restores the catalog view from the saved preference", () => {
+    useHubViewStore.setState({ view: "catalog" });
+    renderPage();
+    expect(screen.getByRole("button", { name: "Catalog" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("renders only the rows in view once the list is long", () => {
+    mocks.skills = Array.from({ length: HUB_VIRTUALIZE_AFTER + 50 }, (_, index) => skill(`n${index}`, `item-${index}`));
+    mocks.packages = [];
+    renderPage();
+    expect(screen.getByText(`${HUB_VIRTUALIZE_AFTER + 50} of ${HUB_VIRTUALIZE_AFTER + 50}`)).toBeInTheDocument();
+    expect(screen.getAllByRole("row").length).toBeLessThan(HUB_VIRTUALIZE_AFTER);
   });
 
   it("offers the Add action on the header", () => {

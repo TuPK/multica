@@ -5,7 +5,6 @@ import type { ApiClient } from "../api/client";
 import { MAX_SKILL_FILE_BYTES } from "../skills/pack-archive";
 import type { PluginPackage, Skill } from "../types";
 import {
-  assertSkillFileUnchanged,
   HubFileConflictError,
   hubFileContentOptions,
   hubFileListOptions,
@@ -117,30 +116,13 @@ describe("skill file mapping", () => {
   });
 });
 
-describe("conflict detection", () => {
-  const skill = makeSkill();
-
-  it("passes when the etag still matches", () => {
-    expect(() => assertSkillFileUnchanged(skill, "README.md", "2026-01-02T00:00:00Z")).not.toThrow();
-  });
-
-  it("throws HubFileConflictError when the file changed since it was loaded", () => {
-    expect(() => assertSkillFileUnchanged(skill, "README.md", "2025-12-31T00:00:00Z")).toThrow(HubFileConflictError);
-  });
-
-  it("throws when the file was deleted since it was loaded", () => {
-    expect(() => assertSkillFileUnchanged(skill, "gone.md", "2026-01-02T00:00:00Z")).toThrow(HubFileConflictError);
-  });
-
-  it("allows an empty etag only for a file that does not exist yet", () => {
-    expect(() => assertSkillFileUnchanged(skill, "new.md", "")).not.toThrow();
-    expect(() => assertSkillFileUnchanged(skill, "README.md", "")).toThrow(HubFileConflictError);
-  });
-
-  it("is a conflict error that is also an Error", () => {
-    const error = new HubFileConflictError();
+describe("conflict error", () => {
+  it("is a conflict error that is also an Error and carries the server's current etag", () => {
+    const error = new HubFileConflictError("changed", "2026-02-02T00:00:00Z");
     expect(error).toBeInstanceOf(Error);
     expect(error.name).toBe("HubFileConflictError");
+    expect(error.currentEtag).toBe("2026-02-02T00:00:00Z");
+    expect(new HubFileConflictError().currentEtag).toBeNull();
   });
 });
 

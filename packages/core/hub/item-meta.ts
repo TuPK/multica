@@ -5,6 +5,18 @@ import type { HubItemMeta } from "../types/hub";
 import type { HubItemKind } from "./items";
 import { hubItemKeys } from "./item-keys";
 
+/**
+ * One item's metadata from GET /api/hub/items/{kind}/{id}. Lists refresh it through the
+ * `items` prefix, so an invalidated list also refreshes open detail reads.
+ */
+export function hubItemOptions(wsId: string, kind: HubItemKind, refId: string) {
+  return queryOptions({
+    queryKey: hubItemKeys.item(wsId, kind, refId),
+    queryFn: () => api.getHubItem(wsId, kind, refId),
+    enabled: wsId.length > 0 && refId.length > 0,
+  });
+}
+
 /** Every skill and plugin package of the workspace, with its sync and tracking state. */
 export function hubItemMetaListOptions(wsId: string) {
   return queryOptions({

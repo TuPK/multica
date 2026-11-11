@@ -6,9 +6,17 @@ import type {
   HubSourceDeleteItems,
   UpdateHubSourceRequest,
 } from "../types/hub";
+import type { HubSourceType } from "./items";
 import { workspaceKeys } from "../workspace/queries";
 import { hubKeys } from "./files";
 import { invalidateHubItemState } from "./item-keys";
+
+/** Source types that accept a private-access token. The server rejects `credential` for any other type. */
+export const HUB_CREDENTIAL_SOURCE_TYPES: readonly HubSourceType[] = ["github", "url_zip", "registry"];
+
+export function supportsHubCredential(type: HubSourceType): boolean {
+  return HUB_CREDENTIAL_SOURCE_TYPES.includes(type);
+}
 
 export const hubSourceKeys = {
   all: (wsId: string) => [...hubKeys.all(wsId), "sources"] as const,

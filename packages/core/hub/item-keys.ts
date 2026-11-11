@@ -6,6 +6,7 @@ import { hubKeys } from "./files";
 /** Query keys for item metadata, updates, activity and quota. All are workspace-scoped. */
 export const hubItemKeys = {
   items: (wsId: string) => [...hubKeys.all(wsId), "items"] as const,
+  item: (wsId: string, kind: HubItemKind, refId: string) => [...hubItemKeys.items(wsId), kind, refId] as const,
   updates: (wsId: string) => [...hubKeys.all(wsId), "update"] as const,
   update: (wsId: string, kind: HubItemKind, refId: string) =>
     [...hubItemKeys.updates(wsId), kind, refId] as const,

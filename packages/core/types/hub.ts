@@ -16,6 +16,8 @@ export interface HubSource {
   last_sync_status: string;
   last_sync_error: string | null;
   item_count: number;
+  /** True when a token is stored for this source. The token itself is never returned. */
+  has_credential: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -27,6 +29,8 @@ export interface CreateHubSourceRequest {
   config?: Record<string, unknown>;
   /** Seconds between automatic syncs; 0 or omitted leaves auto-sync off. */
   auto_sync_interval_sec?: number;
+  /** Write-only access token, sent to the source host as a bearer token. */
+  credential?: string;
 }
 
 export interface UpdateHubSourceRequest {
@@ -35,6 +39,10 @@ export interface UpdateHubSourceRequest {
   config?: Record<string, unknown>;
   enabled?: boolean;
   auto_sync_interval_sec?: number;
+  /** Replaces the stored token. Write-only. */
+  credential?: string;
+  /** Removes the stored token. */
+  clear_credential?: boolean;
 }
 
 /** "keep" detaches the source's items; "delete" removes the ones no agent uses. */
@@ -55,6 +63,8 @@ export interface HubImportSourceRequest {
   ref?: string;
   subdir?: string;
   sha256?: string;
+  /** A saved source whose stored token the server uses for this fetch. */
+  source_id?: string;
 }
 
 export type HubImportKind = "skill" | "plugin" | "registry";
@@ -156,6 +166,18 @@ export interface HubItemMeta {
   local_modified: boolean;
   created_at: string;
   updated_at: string;
+}
+
+/** PUT /api/hub/items/skill/{id}/files. `etag` is the etag the editor loaded with; "" for a new file. */
+export interface SaveHubSkillFileRequest {
+  path: string;
+  content: string;
+  etag: string;
+}
+
+export interface SaveHubSkillFileResult {
+  path: string;
+  etag: string;
 }
 
 export interface HubBundle {

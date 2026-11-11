@@ -293,8 +293,10 @@ import { getCurrentSlug } from "../platform/workspace-storage";
 import { parseWithFallback } from "./schema";
 import type { HubItemKind } from "../hub/items";
 import {
+  mapHubFileSaveError,
   mapHubImportCommitError,
   mapHubSourceDeleteError,
+  mapHubSyncError,
   mapHubUpdateApplyError,
 } from "../hub/errors";
 import {
@@ -306,6 +308,7 @@ import {
   HubImportCommitResultSchema,
   EMPTY_HUB_IMPORT_COMMIT_RESULT,
   HubItemMetaListSchema,
+  HubItemMetaSchema,
   HubBundleSchema,
   EMPTY_HUB_BUNDLE,
   HubSyncResultSchema,
@@ -322,6 +325,9 @@ import {
   EMPTY_HUB_ACTIVITY_PAGE,
   HubQuotaSchema,
   EMPTY_HUB_QUOTA,
+  EMPTY_HUB_ITEM_META,
+  HubSaveSkillFileResultSchema,
+  EMPTY_HUB_SAVE_SKILL_FILE_RESULT,
 } from "./schemas";
 import type {
   CreateHubSourceRequest,
@@ -336,6 +342,8 @@ import type {
   HubImportSourceRequest,
   HubItemMeta,
   HubLocalChangesPolicy,
+  SaveHubSkillFileRequest,
+  SaveHubSkillFileResult,
   HubQuota,
   HubSource,
   HubSourceDeleteItems,
@@ -7411,14 +7419,59 @@ export class ApiClient {
     return bundle;
   }
 
+  /** A 409 with code `quota_exceeded` rejects as HubQuotaExceededError. Other errors pass through. */
   async syncHubSource(workspaceId: string, id: string): Promise<HubSyncResult> {
-    const raw = await this.fetch<unknown>(`/api/hub/sources/${encodeURIComponent(id)}/sync`, {
-      method: "POST",
-      headers: workspaceHeader({ workspaceId }),
-    });
+    let raw: unknown;
+    try {
+      raw = await this.fetch<unknown>(`/api/hub/sources/${encodeURIComponent(id)}/sync`, {
+        method: "POST",
+        headers: workspaceHeader({ workspaceId }),
+      });
+    } catch (error) {
+      throw mapHubSyncError(error);
+    }
     return parseWithFallback<HubSyncResult>(raw, HubSyncResultSchema, EMPTY_HUB_SYNC_RESULT, {
       endpoint: "POST /api/hub/sources/{id}/sync",
     });
+  }
+
+  /** One item, in the same shape as a row of listHubItems. Rejects with the server's 404 when the item does not exist. */
+  async getHubItem(workspaceId: string, kind: HubItemKind, refId: string): Promise<HubItemMeta> {
+    const raw = await this.fetch<unknown>(this.hubItemPath(kind, refId), {
+      headers: workspaceHeader({ workspaceId }),
+    });
+    const item = parseWithFallback<HubItemMeta>(raw, HubItemMetaSchema, EMPTY_HUB_ITEM_META, {
+      endpoint: "GET /api/hub/items/{kind}/{id}",
+    });
+    if (!item.id) throw new Error("The item response has no id");
+    return item;
+  }
+
+  /**
+   * Saves one skill file through the server's optimistic lock. A 409 `file_conflict`
+   * rejects as HubFileConflictError carrying the file's current etag. SKILL.md is saved
+   * through the same route, with the skill's updated_at as its etag.
+   */
+  async saveHubSkillFile(
+    workspaceId: string,
+    refId: string,
+    data: SaveHubSkillFileRequest,
+  ): Promise<SaveHubSkillFileResult> {
+    let raw: unknown;
+    try {
+      raw = await this.fetch<unknown>(`${this.hubItemPath("skill", refId)}/files`, {
+        method: "PUT",
+        headers: workspaceHeader({ workspaceId }),
+        body: JSON.stringify(data),
+      });
+    } catch (error) {
+      throw mapHubFileSaveError(error);
+    }
+    const result = parseWithFallback<SaveHubSkillFileResult>(raw, HubSaveSkillFileResultSchema, EMPTY_HUB_SAVE_SKILL_FILE_RESULT, {
+      endpoint: "PUT /api/hub/items/skill/{id}/files",
+    });
+    if (!result.etag) throw new Error("The save response has no etag");
+    return result;
   }
 
   async getHubUpdateCheck(workspaceId: string, kind: HubItemKind, refId: string): Promise<HubUpdateCheck> {

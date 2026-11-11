@@ -306,6 +306,30 @@ describe("skill files: save conflicts", () => {
   });
 });
 
+describe("skill files: overwrite uses the etag the conflict reported", () => {
+  it("saves over the etag carried by the conflict, without another read", async () => {
+    seedSkill();
+    mocks.saveMutate
+      .mockRejectedValueOnce(new HubFileConflictError("changed", "e-from-conflict"))
+      .mockResolvedValueOnce({});
+    const user = userEvent.setup();
+    renderFiles({ kind: "skill", canEdit: true });
+
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    typeInto(await editor("SKILL.md"), "!");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "SKILL.md changed on the server" });
+    await user.click(within(dialog).getByRole("button", { name: "Overwrite" }));
+
+    await waitFor(() =>
+      expect(mocks.saveMutate).toHaveBeenLastCalledWith(
+        expect.objectContaining({ path: "SKILL.md", etag: "e-from-conflict" }),
+      ),
+    );
+  });
+});
+
 describe("skill files: create and delete", () => {
   it("rejects SKILL.md as a new file name and creates a valid one as a draft", async () => {
     seedSkill();
