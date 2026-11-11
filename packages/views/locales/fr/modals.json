@@ -330,6 +330,46 @@
         "name": "Academic Evidence Desk (Học thuật, nghiên cứu)",
         "description": "Transforme un dossier de PDF et une liste de références en matrice de sources et en brouillon d'étude que l'auteur réécrit. Chaque citation est ouverte avant d'être donnée comme réelle ; les lacunes restent signalées."
       },
+      "kv_health": {
+        "name": "Healthcare (Y tế)",
+        "description": "Rédige des SOP, des dépliants pour patients, des supports de formation du personnel, des plannings de garde et des rapports d'expiration des médicaments à partir des sources propres à l'établissement. Ne produit que des documents administratifs et pédagogiques : aucun diagnostic, aucune prescription ni conseil de traitement. Deux contrôles vérifient chaque brouillon (affirmations cliniques hors périmètre, données de patients) et un clinicien valide avant usage. N'envoie ni ne publie rien."
+      },
+      "kv_construction": {
+        "name": "Construction (Xây dựng)",
+        "description": "Rédige, à partir des registres de chantier, les comptes rendus, journaux de chantier, procès-verbaux, listes de réserves et tableaux de quantités (bảng khối lượng, dự toán sơ bộ), et vérifie chaque quantité et chaque ligne de sécurité avant qu'une personne ne les utilise. Ne signe, n'accepte et ne délivre rien."
+      },
+      "kv_fnb": {
+        "name": "F&B Ops (Nhà hàng, quán ăn)",
+        "description": "Chiffre les nouveaux plats et les modifications de carte à partir des fiches techniques et des factures d'achat, et vérifie chaque ligne d'allergènes et chaque chiffre de coût matière avec deux contrôles indépendants avant toute impression ou publication. N'imprime, ne publie et ne commande rien."
+      },
+      "kv_insurance": {
+        "name": "Insurance Advisory (Bảo hiểm)",
+        "description": "Rédige des supports de conseil en assurance (đề xuất bảo hiểm) : analyse des besoins, comparaison des garanties, explication des exclusions, listes de pièces pour les sinistres (hồ sơ bồi thường) et courriers d'accompagnement, destinés à être relus par un agent agréé. Ne souscrit aucune garantie, ne promet ni l'issue d'un sinistre ni un rendement, et n'envoie rien."
+      },
+      "kv_banking": {
+        "name": "Banking Credit Desk (Tài chính, ngân hàng)",
+        "description": "Rédige la note de crédit (tờ trình tín dụng) et l'analyse de prêt d'un emprunteur à partir du dossier, chaque chiffre étant rattaché à sa source. Les contrôles de crédit et de conformité s'exécutent avant que le chargé de crédit ne le lise. N'accorde aucun crédit, ne donne aucun conseil en investissement et n'envoie rien."
+      },
+      "kv_realestate": {
+        "name": "Real Estate Desk (Bất động sản)",
+        "description": "Transforme le dossier d'un bien ou d'un emprunteur en projet d'annonce, en plan de financement immobilier ou en note de secteur, chaque chiffre étant rattaché à sa source. Les contrôles d'urbanisme, de prêt et d'annonce vérifient chaque brouillon avant qu'un agent immobilier ne le lise. Ne promet aucun prix, n'approuve aucun prêt, ne donne aucun avis sur le titre de propriété et ne publie ni n'envoie rien."
+      },
+      "kv_hospitality": {
+        "name": "Hospitality Ops (Du lịch, khách sạn)",
+        "description": "Rédige les itinéraires et devis de voyages de groupe, ainsi que les textes destinés aux clients de l'hôtel (confirmations, fiches OTA, réponses aux avis, scripts de réception) à partir des informations fournisseurs et hôtelières. Deux contrôles vérifient chaque prix, chaque engagement et chaque donnée client avant que le responsable n'envoie quoi que ce soit. Ne réserve, n'encaisse et n'envoie rien."
+      },
+      "kv_trade": {
+        "name": "Import & Export Desk (Xuất nhập khẩu)",
+        "description": "Constitue le dossier d'expédition d'import ou d'export à partir de ses documents, et vérifie la cohérence des chiffres entre documents ainsi que le projet de déclaration en douane avec deux contrôles indépendants. Ne déclare, ne dépose et n'envoie rien."
+      },
+      "kv_factory": {
+        "name": "Factory Ops (Sản xuất nhà máy)",
+        "description": "Rédige le rapport mensuel de KPI de production et de qualité, les rapports de poste et de maintenance, et les brouillons de NCR, CAPA et d'incidents à partir des registres de l'usine, et vérifie chaque chiffre et chaque ligne de sécurité avant qu'une personne ne diffuse quoi que ce soit. Ne fait tourner aucune machine et n'émet aucun document officiel."
+      },
+      "kv_education": {
+        "name": "Education Desk (Giáo dục)",
+        "description": "Rédige les contrôles périodiques (đề kiểm tra định kỳ) avec leur matrice, leur spécification, leur corrigé et leur grille de notation à partir des acquis du programme. Des contrôles vérifient chaque réponse et chaque ligne que l'élève ou le parent verra ; l'enseignant imprime et partage, et l'équipe n'envoie rien."
+      },
       "sales_loop": {
         "name": "Boucle commerciale",
         "description": "Repère chaque semaine des opportunités pour vos axes, prépare des messages à valider et apprend des résultats. Les sources sont prêtes à l'emploi."

@@ -330,6 +330,46 @@
         "name": "Academic Evidence Desk (Học thuật, nghiên cứu)",
         "description": "Convierte una carpeta de PDF y una lista de referencias en una matriz de fuentes y un borrador de estudio que el autor reescribe. Cada cita se abre antes de darla por real; los vacíos quedan marcados."
       },
+      "kv_health": {
+        "name": "Healthcare (Y tế)",
+        "description": "Redacta SOP, folletos para pacientes, formación del personal, turnos de guardia e informes de caducidad de medicamentos a partir de las fuentes propias de la unidad. Solo redacta material administrativo y educativo: ni diagnóstico, ni receta, ni consejo de tratamiento. Dos filtros revisan cada borrador por afirmaciones clínicas fuera de alcance y por datos de pacientes, y un clínico lo aprueba antes de usarlo. No envía ni publica nada."
+      },
+      "kv_construction": {
+        "name": "Construction (Xây dựng)",
+        "description": "Redacta informes de obra, diarios, actas, listas de pendientes y tablas de cantidades (bảng khối lượng, dự toán sơ bộ) a partir de los registros de obra, y revisa cada cantidad y cada línea de seguridad antes de que una persona las use. No firma, no acepta ni emite nada."
+      },
+      "kv_fnb": {
+        "name": "F&B Ops (Nhà hàng, quán ăn)",
+        "description": "Calcula el coste de platos nuevos y cambios de carta a partir de las recetas y facturas de compra del local, y revisa cada línea de alérgenos y cada cifra de coste de alimentos con dos filtros independientes antes de imprimir o publicar nada. No imprime, no publica y no hace pedidos."
+      },
+      "kv_insurance": {
+        "name": "Insurance Advisory (Bảo hiểm)",
+        "description": "Redacta materiales de asesoramiento en seguros (đề xuất bảo hiểm): análisis de necesidades, comparación de coberturas, explicación de exclusiones, listas de documentos para reclamaciones (hồ sơ bồi thường) y cartas de orientación, para que un agente con licencia los revise. No contrata ninguna cobertura, no promete el resultado de una reclamación ni una rentabilidad, y no envía nada."
+      },
+      "kv_banking": {
+        "name": "Banking Credit Desk (Tài chính, ngân hàng)",
+        "description": "Redacta el informe de crédito (tờ trình tín dụng) y el análisis de préstamo de un prestatario a partir del expediente, con cada cifra vinculada a su fuente. Los controles de crédito y de filtro se ejecutan antes de que lo lea un oficial de crédito. No aprueba créditos, no da asesoramiento de inversión y no envía nada."
+      },
+      "kv_realestate": {
+        "name": "Real Estate Desk (Bất động sản)",
+        "description": "Convierte el expediente de un inmueble o de un prestatario en un borrador de anuncio, un plan de préstamo hipotecario o una nota de zona, con cada cifra vinculada a su fuente. Los filtros de planeamiento, préstamo y anuncio revisan cada borrador antes de que lo lea un agente inmobiliario. No promete precios, no aprueba préstamos, no opina sobre títulos de propiedad y no publica ni envía nada."
+      },
+      "kv_hospitality": {
+        "name": "Hospitality Ops (Du lịch, khách sạn)",
+        "description": "Redacta itinerarios y presupuestos de viajes de grupo, y textos para huéspedes de hotel (confirmaciones, anuncios OTA, respuestas a reseñas, guiones de recepción) a partir de los datos del proveedor y del hotel. Dos filtros revisan cada precio, promesa y dato del huésped antes de que un gerente envíe nada. No reserva, no cobra y no envía nada."
+      },
+      "kv_trade": {
+        "name": "Import & Export Desk (Xuất nhập khẩu)",
+        "description": "Reúne el expediente de un envío de importación o exportación a partir de sus documentos, y revisa las cifras cruzadas entre documentos y el borrador de la declaración aduanera con dos filtros independientes. No declara, no presenta y no envía nada."
+      },
+      "kv_factory": {
+        "name": "Factory Ops (Sản xuất nhà máy)",
+        "description": "Redacta el informe mensual de KPI de producción y calidad, los informes de turno y de mantenimiento, y los borradores de NCR, CAPA e incidentes a partir de los registros de la planta, y revisa cada cifra y cada línea de seguridad antes de que una persona emita nada. No pone en marcha ninguna máquina ni emite registros oficiales."
+      },
+      "kv_education": {
+        "name": "Education Desk (Giáo dục)",
+        "description": "Redacta pruebas periódicas (đề kiểm tra định kỳ) con su matriz, especificación, clave de respuestas y guía de calificación a partir de los resultados del currículo. Los filtros revisan cada respuesta y cada línea que vaya a ver un estudiante o un padre; el docente imprime y comparte, y el equipo no envía nada."
+      },
       "sales_loop": {
         "name": "Ciclo de ventas",
         "description": "Busca oportunidades para tus líneas de negocio cada semana, prepara mensajes para que los apruebes y aprende de los resultados. Las fuentes ya vienen listas."

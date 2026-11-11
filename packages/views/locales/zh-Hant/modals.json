@@ -328,6 +328,46 @@
         "name": "Academic Evidence Desk (Học thuật, nghiên cứu)",
         "description": "把一個 PDF 資料夾與參考文獻清單整理成來源矩陣，以及由作者重寫的研究草稿。每條引註都會先打開查證，才會回報為真實；缺漏處保持標註。"
       },
+      "kv_health": {
+        "name": "Healthcare (Y tế)",
+        "description": "根據單位自有資料草擬 SOP、病患衛教單張、員工訓練教材、值班表與藥品效期報告。只草擬行政與教育文件：不做診斷、不開處方、不提供治療建議。兩道關卡逐份檢查草稿中超出範圍的臨床敘述與病患資訊，臨床人員使用前須核准。不發送也不發布任何內容。"
+      },
+      "kv_construction": {
+        "name": "Construction (Xây dựng)",
+        "description": "根據現場紀錄草擬工地報告、日誌、會議紀錄、缺失改善清單與工程數量表（bảng khối lượng、dự toán sơ bộ），並在人員使用前核對每項數量與每條安全內容。不簽署、不驗收、不出具文件。"
+      },
+      "kv_fnb": {
+        "name": "F&B Ops (Nhà hàng, quán ăn)",
+        "description": "根據店內食譜與採購發票核算新菜與菜單調整的成本，並由兩道獨立關卡核對每一條過敏原標示與食材成本率，才能列印或發布。不列印、不發布、不訂貨。"
+      },
+      "kv_insurance": {
+        "name": "Insurance Advisory (Bảo hiểm)",
+        "description": "草擬保險建議資料（đề xuất bảo hiểm）：需求分析、保障比較、除外責任說明、理賠文件清單（hồ sơ bồi thường）與指引函，供持照代理人審閱。不承保、不承諾理賠結果或收益，也不發送任何內容。"
+      },
+      "kv_banking": {
+        "name": "Banking Credit Desk (Tài chính, ngân hàng)",
+        "description": "根據案件檔案為一位借款人草擬授信簽呈（tờ trình tín dụng）與貸款分析，每個數字都標註來源。授信與關卡檢查在授信人員閱讀前完成。不核准授信、不提供投資建議，也不發送任何內容。"
+      },
+      "kv_realestate": {
+        "name": "Real Estate Desk (Bất động sản)",
+        "description": "將一筆房產或一位借款人的檔案轉成刊登草稿、房貸方案或區域說明，每個數字都標註來源。規劃、貸款與刊登三道關卡在經紀人閱讀前檢查每份草稿。不承諾價格、不核准貸款、不出具產權意見，也不發布或發送任何內容。"
+      },
+      "kv_hospitality": {
+        "name": "Hospitality Ops (Du lịch, khách sạn)",
+        "description": "根據供應商與飯店資訊草擬團體旅遊行程與報價，以及飯店住客文字（確認信、OTA 房源描述、評論回覆、櫃檯話術）。兩道關卡在經理發送前檢查每個價格、承諾與住客資訊。不訂房、不收款、不發送任何內容。"
+      },
+      "kv_trade": {
+        "name": "Import & Export Desk (Xuất nhập khẩu)",
+        "description": "根據單據組裝進出口貨運檔案，並由兩道獨立關卡核對各單據之間的數字與報關單草稿。不申報、不提交、不發送任何內容。"
+      },
+      "kv_factory": {
+        "name": "Factory Ops (Sản xuất nhà máy)",
+        "description": "根據工廠紀錄草擬月度生產與品質 KPI 報告、班次與維護報告，以及 NCR、CAPA 與事件草稿，並在人員簽發前檢查每個數字與每條安全內容。不開動任何機台，也不出具正式紀錄。"
+      },
+      "kv_education": {
+        "name": "Education Desk (Giáo dục)",
+        "description": "根據課程學習目標草擬定期考試（đề kiểm tra định kỳ），包括命題雙向細目表、試題規格、參考答案與評分標準。關卡檢查每個答案以及學生或家長會看到的每一行；由教師列印並分享，團隊不發送任何內容。"
+      },
       "sales_loop": {
         "name": "銷售循環",
         "description": "每週為你的業務線尋找商機，起草外聯訊息供你審核，並從結果中學習。資料來源開箱即用。"
