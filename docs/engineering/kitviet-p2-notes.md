@@ -1,7 +1,8 @@
 # Kit Việt P2 notes: vertical trades, floors and the per-trade proposals
 
-Status (2026-11-11): the ten P2 squads are built on `kitviet-pack` (spec `kitviet-squads.md` section 9.2): config, generated
-pack, template, lead rules in `KV_LEAD_NOTES`, seven-language locale, tests and runbook (sections 8, 8c, 8d). Section 10 records
+Status (2026-11-11): the ten P2 squads and Teaching Materials (`kv_teaching`, the second Education squad, section 11) are built on
+`kitviet-pack` (spec `kitviet-squads.md` section 9.2): config, generated pack, template, lead rules in `KV_LEAD_NOTES`, seven-language
+locale, tests and runbook (sections 8, 8c, 8d, 8e). Section 10 records
 what changed while integrating them, and where that differs from the proposals in sections 6 to 9. Not committed yet. Commands run from the repository root.
 The recipe is `kitviet-p1-notes.md` section 2; this file adds only what differs for P2.
 
@@ -15,9 +16,11 @@ The recipe is `kitviet-p1-notes.md` section 2; this file adds only what differs 
 - **Generator.** No change to the pack discovery or the agent-kind classifier was needed (section 4). Two general changes to the
   rewrite table (section 3).
 - **Floors.** `packages/core/squads/kitviet-floors.ts` (`KITVIET_P2_FLOOR_NAMES`, `KITVIET_P2_FLOOR_NAME_LIST`) and its test.
-- **Checks run (2026-11-11):** `pnpm generate:kitviet --check` up to date (18 files, unchanged P0/P1 output);
-  `node --test scripts/generate-kitviet-pack.test.mjs` 62 of 62; `npx vitest run squads` 30 files, 712 tests; `npx tsc --noEmit`
-  in `packages/core` clean. `kitviet-floors.test.ts` 3 of 3.
+- **Checks run (2026-11-11, after Teaching Materials and the guard/flag work):** `node scripts/generate-kitviet-pack.mjs --check`
+  up to date (29 files); `node --test scripts/generate-kitviet-pack.test.mjs` 118 of 118; `pnpm typecheck` clean; `pnpm lint` 0 errors
+  (warnings are in files this work does not touch); `pnpm --filter @multica/core test` 317 files, 4688 passed, 1 skipped;
+  `pnpm --filter @multica/views test` 673 files, 8231 passed (including `locales/parity.test.ts`); `git diff --check` clean;
+  `cd server && go build ./...` ok; `go test ./internal/service -run 'Company|Template' -count=1` ok. The P2 floor test is 3 of 3.
 
 ## 2. Floors (decision)
 
@@ -32,7 +35,7 @@ The recipe is `kitviet-p1-notes.md` section 2; this file adds only what differs 
 | Du lịch, khách sạn | `hospitality` | `kv_hospitality` | `Hospitality` | |
 | Xuất nhập khẩu | `trade` | `kv_trade` | `Import & Export` | |
 | Sản xuất nhà máy | `factory` | `kv_factory` | `Manufacturing` | |
-| Giáo dục | `edu` | `kv_education` | `Education` | |
+| Giáo dục | `edu` | `kv_education` | `Education` | shared with `kv_teaching` (section 11) |
 
 Decisions:
 
@@ -116,14 +119,14 @@ Leftovers that the guard does not catch (per trade, for the squad agent, section
 1. **Floor cap (section 2).** Blocking for "one floor per trade". Needs a decision and a two-constant change in server code.
 2. **Own floors but shared work.** Each P2 squad is on its own floor (spec 9.2). A squad is seated by quickstart; the user moves it
    with drag-and-drop or `setCompanySeats`. No P2 squad is on an existing floor.
-3. **Platform strings are not guarded yet.** Adding `Claude Code|Claude web` to `FORBIDDEN` would fail P1 (`academic`, `talent`,
-   `ecom`, `it`, `people`: 16 inline lines) and P2 (section 7). It is the next change to make together with the P1 cleanup, not now.
+3. **Platform strings: resolved (2026-11-11).** `FORBIDDEN` now bans `Claude Code`, `Claude web`, `Claude Desktop`, `Claude.ai`, `Codex`
+   and `Cursor` (spec Q14, runbook 8e). The inline lines that remained in P1 and P2 are handled by rewrite rules and patches; `--check` passes.
 4. **Severity scale in P2 is per file.** The unified scale is `Chặn / Cần giấy tờ / Nên sửa / Góp ý`, verdict `QUA / CHẶN`, criterion
    `Đạt / Không đạt / Không kiểm được` (P0 rule, F18). The P2 gates mix scales (`Nặng/Vừa/Nhẹ`, `Nghiêm trọng`, `Phải sửa / Nên bổ sung`).
    The squad agent maps them per skill with patches.
-5. **Three squads have a second-stage agent not in the first squad.** giao-duc has 8 trade agents; the Education squad maps 4 of them
-   plus the lead and the handover (9 desks max), so `tim-tu-lieu-bai-giang`, `soan-van-ban-chu-nhiem`, `tong-hop-ho-so-lop-hoc` and
-   `soat-nguon-tu-lieu-giang-day` stay out (a skill that names them reads "nhờ lead"). Possible later squad: "Teaching Materials".
+5. **Education's four unmapped agents: resolved.** giao-duc has 8 trade agents; Education Desk maps 4 of them plus the lead and the
+   handover. The other four (`tim-tu-lieu-bai-giang`, `soan-van-ban-chu-nhiem`, `tong-hop-ho-so-lop-hoc`, `soat-nguon-tu-lieu-giang-day`)
+   now form Teaching Materials (section 11).
 6. **Risky gates (spec 9.2).** `gac-pham-vi-chuyen-mon` and `gac-du-lieu-nguoi-benh` (y-te), `soat-cam-ket-tu-van` (bao-hiem),
    `soat-tuan-thu-tu-van-tai-chinh` and `soat-to-trinh-tin-dung` (tai-chinh-ngan-hang) need a person in the trade to read the
    output before the squad is switched on. Their descriptions are in section 7. `soat-an-toan-hoc-sinh` (giao-duc) handles student
@@ -557,4 +560,20 @@ The "Desks" column counts the lead. Every squad has the shared handover (`kiem-d
 - **Role skills.** The per-role skills follow the pack configs, which differ from the lists in sections 7.1 to 7.10 (for example Education's test drafter takes three skills, Healthcare's drafter takes five). The runbook lists the configured skills.
 - **Copy.** Ten squads in seven languages: names keep "English (Vietnamese)"; descriptions follow each template's English proposal, checked against the UI description rules.
 - **Floors.** Quickstart creates a P2 floor when missing, reuses it when present, and seats the squad at the first free slot. Tested for all ten squads (`quickstart.test.ts`).
-- **Open.** Education's four unmapped agents (possible "Teaching Materials"); live runs (S7) of all ten; the platform-string guard (section 6, item 3).
+- **Expert review (spec Q13).** `expertReview: true` on the six templates whose gates need a trade reader (runbook 8d). The quickstart
+  picker shows a badge and a confirmation checkbox that gates Create; the server does not read the flag.
+- **Picker groups.** `SQUAD_TEMPLATE_CATEGORIES` (`core`, `kitviet`, `vertical`) with `squad_quickstart.groups` labels in seven languages.
+- **Open.** Live runs (S7) of all eleven, to be done last and only with the user's go-ahead for real agents.
+
+## 11. Teaching Materials (`kv_teaching`, 2026-11-11)
+
+- **Why a squad.** Education Desk maps four of giao-duc's eight trade agents. The other four form a second squad with its own
+  purpose: sources with levels, coded class records, class documents for a teacher, and three gates (sources, student text,
+  figures), plus the lead and the handover. Eight desks in all (the cap is nine).
+- **Floor.** Shares the Education floor with Education Desk (`KITVIET_P2_FLOOR_NAMES.edu`). This is the only shared floor; the
+  quickstart seats the second squad on the next free slot. The floor-uniqueness test allows exactly this pair (`quickstart.test.ts`).
+- **Expert review: no.** The gates check sources and student text, but no licensed professional's signature is needed. The student-data
+  gate needs a school reader before the first runs (runbook section "Teaching Materials").
+- **Records.** Class records are read only when the request says they are anonymised or approved (stop type 1 at intake). The lead's
+  rules are `KV_LEAD_NOTES.kv_teaching`; `TEACHING_LEAD_NOTES` is gone.
+- **Tests.** `kitviet-templates/teaching.test.ts`, the quickstart P2 test (eleven squads, one shared floor), and the generator tests.

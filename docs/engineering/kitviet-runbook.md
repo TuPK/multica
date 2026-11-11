@@ -592,7 +592,7 @@ Bảng sổ quy định Accounting, dòng theo F20 (ngày kiểm 10/11/2026; m�
 ## Education Desk (Giáo dục)
 
 - Template: `kv_education`, floor: Education, routine: không. Pipeline `day-chuyen-de-kiem-tra-dinh-ky`.
-- Vai (sáu vai, gồm lead và handover; bốn vai nghề còn lại không được ghép, xem mục 9):
+- Vai (sáu vai, gồm lead và handover; bốn vai nghề còn lại không được ghép ở squad này, squad Teaching Materials dưới đây nhận chúng):
   - `edu_lead` · lead · `lap-ke-hoach-dieu-phoi`
   - `edu_curriculum` · collector · `tra-yeu-cau-can-dat` (web)
   - `edu_test_drafter` · drafter · `soan-de-va-dap-an`
@@ -610,13 +610,38 @@ Bảng sổ quy định Accounting, dòng theo F20 (ngày kiểm 10/11/2026; m�
 - Trước khi bật: **rủi ro về trẻ em và dữ liệu học sinh**. Một cán bộ nhà trường đọc đầu ra của `edu_student_gate` trước khi bật. Gác này chặn dữ liệu cá nhân, sai kênh, cam kết vượt thẩm quyền, nhãn tính cách và dấu hiệu an toàn. Đáp án đề chặn mọi câu sai, câu hai đáp án đúng, câu không có đáp án đúng.
 - Diễn tập: chưa chạy.
 
+## Teaching Materials (Tư liệu giảng dạy)
+
+- Template: `kv_teaching`, floor: Education (dùng chung với Education Desk, mục 8c), routine: không, dây chuyền: không (squad viết tay, `flow: authored`, cấu hình `kitviet-squads/teaching.json`). Cờ `expertReview`: không. Squad này và Education Desk không làm cùng một việc: Education Desk soạn đề và đáp án, Teaching Materials làm tư liệu bài giảng, nhận xét, thông báo phụ huynh và văn bản chủ nhiệm.
+- Vai (tám vai, gồm lead và handover):
+  - `tm_lead` · lead · `lap-ke-hoach-dieu-phoi`
+  - `tm_sources` · collector · `tim-tu-lieu-bai-giang` (web)
+  - `tm_records` · collector · `tong-hop-ho-so-lop-hoc`
+  - `tm_drafter` · drafter · `soan-van-ban-chu-nhiem`
+  - `tm_source_gate` · gate · `soat-nguon-tu-lieu-giang-day`
+  - `tm_student_gate` · gate · `soat-an-toan-hoc-sinh`
+  - `tm_numbers_gate` · gate · `soat-so-lieu` (gác dùng chung)
+  - `tm_handover` · handover · `kiem-dinh-ban-giao`
+- Skill theo vai: `tm_drafter`: `nhan-xet-hoc-ba`, `tin-nhan-phu-huynh-zalo`, `hop-phu-huynh-lop`, `ke-hoach-chu-nhiem-lop`; `tm_sources`: `nghien-cuu-tu-lieu-bai-giang`. Mười một skill còn lại của giáo dục nằm trong `deferredSkills`, chưa gắn cho squad nào.
+- Điểm dừng loại 1 (khi nhận yêu cầu): yêu cầu thiếu lớp, môn hoặc mục tiêu bài; hoặc hồ sơ đính kèm có cột học sinh (tên kèm điểm, chuyên cần, ghi chú hạnh kiểm hay gia đình, sức khỏe, khuyết tật, số định danh, số điện thoại, phụ huynh) mà yêu cầu không nói rõ là đã ẩn danh (chỉ mã, không tên, không liên hệ) hoặc đã được duyệt (kèm người duyệt). Lead đặt `blocked`, comment danh sách cột cần bỏ hoặc xác nhận, mention người yêu cầu; không chạy `tm_records` trên đầu vào đoán.
+- Mã hóa: `tm_records` chỉ trả mã (HS01, HS02...) và tổng; bảng tên-mã ở lại với giáo viên, không vào đầu ra, tài liệu, tài liệu KB hay comment. Ghi chú nhạy cảm được báo "có ghi chú nhạy cảm - GV tự xử lý" và không chuyển cho `tm_drafter`.
+- Nguồn: mỗi ý ghi tên nguồn, đơn vị, năm, liên kết hoặc trang, ngày truy cập và mức (1 đến 4). Nguồn chưa mở ghi `[chưa mở nguồn]`; mức 4 không làm căn cứ; ý không có nguồn ghi `[không tìm thấy nguồn]`.
+- Điểm dừng loại 2: handover QUA thì `in_review`, comment việc giáo viên phải làm: kiểm nguồn, duyệt từng văn bản, quyết từng số. Squad không gửi phụ huynh hay học sinh, không đăng nhóm chat, không tải lên hệ thống nhà trường.
+- Điểm dừng loại 3: vòng sửa tối đa 2 cho gác nguồn, gác học sinh và gác số liệu. Gác còn CHẶN sau vòng 2 thì `blocked`, giao các dòng còn mở cho giáo viên.
+- Dấu hiệu an toàn (bạo hành, xâm hại, tự hại liên quan đến học sinh) trong tài liệu hoặc hồ sơ: dừng ngay, `blocked`, nêu dấu hiệu trong comment và mention người yêu cầu; không chạy vai nào sau đó. Ban giám hiệu xử lý theo quy trình riêng.
+- Phụ thuộc runtime riêng: web cho `tm_sources` (chỉ khi cho phép). Không có Bash, không cần thư viện xuất file.
+- Routine: không.
+- Chưa xác minh: chương trình và tài liệu hiện hành (`tm_sources` ghi `[không tìm thấy nguồn]` khi không có nguồn chính thức).
+- Trước khi bật: **rủi ro về trẻ em và dữ liệu học sinh**, giống Education Desk. Gác `soat-an-toan-hoc-sinh` đọc mọi văn bản gửi học sinh và phụ huynh; nên có một cán bộ nhà trường đọc đầu ra của gác này trong các lần chạy đầu. Gác này không nằm trong bảng mục 8d vì không có cờ chuyên gia.
+- Diễn tập: chưa chạy.
+
 ## 8b. Skill mở rộng trên squad có sẵn (spec 7)
 
 Extension skills on existing squads (spec 7). The Kit Viet extension skills attach to the company starter squads Support, People & Performance, Product Analysis, Planning and Build (kitvietExtensionTargetOf in packages/core/squads/kitviet-extension-attach.ts). Company squads carry no template_key, so they match by card name. After a company apply, the client runs attachKitvietExtensions (useApplyCompanyTemplate). It imports each target's bundles with the extension pack only, and adds them to the squad's skills without removing any. Running the company apply again on an earlier workspace attaches the skills to its existing squads. A renamed company squad is not matched; a hand-made squad named like a card with no template is matched too. A failed squad is logged; the apply is not affected.
 
 ## 8c. Floor của squad P2
 
-Mười squad P2 mỗi squad một floor, tên floor là `floorName` của template (`packages/core/squads/kitviet-floors.ts`): Healthcare, Construction, F&B, Insurance, Banking, Real Estate, Hospitality, Import & Export, Manufacturing, Education. Floor không nằm trong `COMPANY_FLOOR_NAMES`, nên bộ chọn công ty không hiện chúng; quickstart tự tạo floor khi chưa có (`ensureCompanyFloor` tìm theo tên, không thấy thì tạo) rồi xếp squad vào ô trống đầu tiên. Floor đầy thì squad vẫn được tạo, báo `no free seat on the <tên> floor`.
+Mười nghề P2 mỗi nghề một floor, tên floor là `floorName` của template (`packages/core/squads/kitviet-floors.ts`): Healthcare, Construction, F&B, Insurance, Banking, Real Estate, Hospitality, Import & Export, Manufacturing, Education. Teaching Materials dùng chung floor Education với Education Desk, là ngoại lệ duy nhất. Floor không nằm trong `COMPANY_FLOOR_NAMES`, nên bộ chọn công ty không hiện chúng; quickstart tự tạo floor khi chưa có (`ensureCompanyFloor` tìm theo tên, không thấy thì tạo) rồi xếp squad vào ô trống đầu tiên. Floor đầy thì squad vẫn được tạo, báo `no free seat on the <tên> floor`.
 
 Trần số floor của workspace là 24 (`CompanyMaxFloors` ở `server/internal/service/company_setup.go`, `companyMaxFloors` ở `server/internal/handler/company.go`, `COMPANY_MAX_FLOORS` ở `packages/core/company/constants.ts`). Một công ty khởi đầu đủ dùng bảy floor mặc định; mười floor P2 đưa tổng lên 17, còn chỗ cho các floor khác.
 
@@ -633,9 +658,19 @@ Sáu squad có gác phải có người trong ngành đọc đầu ra trước k
 | F&B Ops | `fnb_allergen_gate` | Dị ứng; chỉ tin nhãn nguyên liệu của nhà cung cấp |
 | Construction | `construction_safety_gate` | An toàn công trường và thẩm quyền ký |
 
+Sáu squad trên là các squad có cờ `expertReview` (mục 8e): bộ chọn yêu cầu xác nhận trước khi tạo.
+
 Ngoài sáu squad trên, Education có `edu_student_gate` (dữ liệu học sinh), Real Estate có `realestate_loan_gate` và `realestate_listing_gate` (tiền và lời hứa), Hospitality có `hospitality_quote_gate` và `hospitality_promise_gate` (giá và cam kết với khách). Các gác này cũng chặn cho đến khi có xác nhận, nhưng không yêu cầu người trong ngành đọc trước.
 
 Gác nào trả CHẶN sau hai vòng thì squad dừng loại 3. Gác nào QUA mà người đọc thấy sai thì sửa gác (bản vá trong `packages/core/squads/kitviet-patches/`) trước khi chạy tiếp, không sửa đầu ra bằng tay.
+
+## 8e. Bộ chọn squad, cờ xem xét chuyên môn và chuỗi cấm
+
+- **Bộ chọn.** Các template chia nhóm theo `SQUAD_TEMPLATE_CATEGORIES` trong `packages/core/squads/templates.ts`: `core` (squad SDLC, nghiên cứu, lập kế hoạch, Sales Loop), `kitviet` (P0 và P1), `vertical` (P2 và Teaching Materials). Tiêu đề nhóm là `squad_quickstart.groups.<nhóm>` ở bảy ngôn ngữ. Template không có `category` rơi vào nhóm `vertical`. Thêm một squad Kit Việt: đưa template vào `inCategory(...)` đúng nhóm, rồi thêm khóa dịch.
+- **Cờ xem xét chuyên môn (`expertReview`, Q13).** Cờ nằm ở file template (`SquadTemplate.expertReview`). Hiện có sáu: Healthcare (`health.ts`), Construction, F&B Ops, Insurance Advisory, Banking Credit Desk, Factory Ops, đúng bằng bảng mục 8d. Bộ chọn hiện huy hiệu "Expert review" (`expert_review_badge`) và, khi được chọn, thông báo (`expert_review_notice`) cùng ô xác nhận (`expert_review_ack`) đứng trước nút tạo; nút tạo bị khóa đến khi tích. Chọn squad khác sẽ xóa xác nhận. Máy chủ không kiểm cờ. Đổi danh sách: sửa cờ trong file template, cập nhật bảng mục 8d và test "marks only the squads that need expert review" (`packages/views/modals/squad-quickstart.test.tsx`).
+- **Chuỗi nền tảng (guard, Q14).** Generator (`FORBIDDEN` trong `scripts/generate-kitviet-pack.mjs`) và test `kitviet-skills.test.ts` cùng cấm trong mọi thân skill và agent: `kv:pro`, `mochistudio`, `Bản Pro`, `.kv-run`, `CLAUDE.md`, `AGENTS.md`, `ket-qua/`, `phiên chính`, `Claude Code`, `Claude web`, `Claude Desktop`, `Claude.ai` (không phân biệt hoa thường), `Codex`, `Cursor`, tệp đánh số (`01-…md`), tệp có phiên bản (`-v2.md`), lệnh cài (`pip install`, `apt install`, "hoặc cài LibreOffice", "Cài bằng lệnh"), tham chiếu `kv:` chưa phân giải, và tên thư mục tác giả (`kv-delivery-core` thay vì `kv--delivery-core`). Từ "Claude" đứng một mình được giữ: một ví dụ nhật ký dùng AI (bảng ghi "Claude" là tên công cụ) nằm trong một skill và là ví dụ hợp lệ. Thêm chuỗi cấm: sửa cả generator và test, rồi chạy `pnpm generate:kitviet`.
+- **Tên cơ quan (quy tắc viết lại).** Tên cơ quan không gắn cứng vào một mốc đổi tên: `Cục Hải quan` thành `cơ quan hải quan` (`customs-agency-name`); `Tổng cục Thống kê (nay là Cục Thống kê, Bộ Tài chính)` thành `cơ quan thống kê nhà nước (tên cơ quan hiện hành: xem nguồn chính thức)` (`statistics-agency-history`). Tên hiện hành phải đến từ nguồn chính thức, không từ skill.
+- **Mục nền tảng và dòng nhắc nền tảng trong bản vá.** Các câu như "(Claude Code: …)" và "lên Claude web" được viết lại qua `kitviet-rewrites.json` (`claude-code-colon-note`, `paste-into-chat-web`), không cần bản vá riêng.
 
 ## 9. Việc còn mở
 
@@ -643,5 +678,5 @@ Gác nào trả CHẶN sau hai vòng thì squad dừng loại 3. Gác nào QUA m
 - Nâng cấp squad đã tạo (`upgradeKitvietSquad`, `upgrade.ts`) chưa có điểm gọi trong giao diện. Đến khi có, việc nâng cấp là việc của người phát triển, chạy bằng hàm với `dryRun` trước; hàm không ghi đè văn bản đã bị sửa.
 - `soan-don-tu` ở Hành chính và Pháp lý là hai bản byte giống nhau (F11). Bản Pháp lý đổi tên thành `soan-don-tu-phap-ly` theo kế hoạch; nội dung không khác nên tên chỉ là nhãn.
 - Tham chiếu `chuan-bi-dam-phan-hoa-giai` trong `soan-bien-ban-thanh-ly-hop-dong` (Pháp lý) không nằm trong tầng lõi hay vai; ở P0 nó thành "nhờ lead tạo yêu cầu" (spec mục 6 để ngoài P0).
-- P2 (mười squad, mục 8 đến 8d): chưa chạy thật (S7). Hai squad chưa có: `edu` có bốn agent nghề không được ghép (`tim-tu-lieu-bai-giang`, `soan-van-ban-chu-nhiem`, `tong-hop-ho-so-lop-hoc`, `soat-nguon-tu-lieu-giang-day`); nếu cần, có thể là squad thứ hai "Teaching Materials", một quyết định riêng.
+- P2 và Teaching Materials (mười một squad, mục 8 đến 8e): chưa chạy thật (S7). Bốn agent nghề giáo dục không được Education Desk ghép nay thuộc Teaching Materials (mục 8, sau Education Desk).
 - Gác số liệu của Factory (`soat-so-lieu-chat-luong`) không chặn số không có nguồn, giữ theo gác số liệu chung P0. Gác khối lượng của Construction chặn "Cần giấy tờ" (quyết định ở spec 10.1, Q12).
