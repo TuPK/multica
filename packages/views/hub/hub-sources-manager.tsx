@@ -68,20 +68,20 @@ export function HubSourcesManager({ wsId, canManage }: { wsId: string; canManage
       {rows.length === 0 ? (
         <CollectionPageState icon={Globe} title={t(($) => $.sources.empty_title)} />
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-md border">
           <table className="w-full min-w-[44rem] table-fixed text-label">
-            <thead className="text-left text-caption text-muted-foreground">
+            <thead className="bg-muted/40 text-left text-caption text-muted-foreground">
               <tr className="border-b">
-                <th className="py-2 pr-3 font-normal">{t(($) => $.sources.columns.name)}</th>
-                <th className="w-28 py-2 pr-3 font-normal">{t(($) => $.sources.columns.type)}</th>
-                <th className="py-2 pr-3 font-normal">{t(($) => $.sources.columns.url)}</th>
-                <th className="w-20 py-2 pr-3 font-normal">{t(($) => $.sources.columns.items)}</th>
-                <th className="w-44 py-2 pr-3 font-normal">{t(($) => $.sources.columns.last_sync)}</th>
-                <th className="w-28 py-2 pr-3 font-normal">{t(($) => $.sources.columns.enabled)}</th>
-                {canManage ? <th className="w-28 py-2 font-normal" aria-label={t(($) => $.sources.columns.actions)} /> : null}
+                <th className="py-2.5 pl-3 pr-3 font-normal">{t(($) => $.sources.columns.name)}</th>
+                <th className="w-28 py-2.5 pr-3 font-normal">{t(($) => $.sources.columns.type)}</th>
+                <th className="py-2.5 pr-3 font-normal">{t(($) => $.sources.columns.url)}</th>
+                <th className="w-20 py-2.5 pr-3 font-normal">{t(($) => $.sources.columns.items)}</th>
+                <th className="w-44 py-2.5 pr-3 font-normal">{t(($) => $.sources.columns.last_sync)}</th>
+                <th className="w-28 py-2.5 pr-3 font-normal">{t(($) => $.sources.columns.enabled)}</th>
+                {canManage ? <th className="w-28 py-2.5 pr-3 font-normal" aria-label={t(($) => $.sources.columns.actions)} /> : null}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y">
               {rows.map((source) => (
                 <SourceRow
                   key={source.id}
@@ -145,16 +145,16 @@ function SourceRow({
   };
 
   return (
-    <tr className="border-b last:border-b-0 align-middle">
-      <td className="min-w-0 py-2 pr-3">
+    <tr className="border-b last:border-b-0 align-middle transition-colors hover:bg-muted/30">
+      <td className="min-w-0 py-2.5 pl-3 pr-3">
         <span className="block truncate font-medium">{source.name}</span>
       </td>
-      <td className="py-2 pr-3">
+      <td className="py-2.5 pr-3">
         <span className="inline-block max-w-full truncate rounded-sm bg-muted px-1.5 py-0.5 text-caption text-muted-foreground">
           {typeLabel}
         </span>
       </td>
-      <td className="min-w-0 py-2 pr-3">
+      <td className="min-w-0 py-2.5 pr-3">
         {link ? (
           <a
             href={link}
@@ -170,11 +170,21 @@ function SourceRow({
           <span className="block truncate text-muted-foreground">{source.url || t(($) => $.sources.no_url)}</span>
         )}
       </td>
-      <td className="py-2 pr-3 tabular-nums">{source.item_count}</td>
-      <td className="min-w-0 py-2 pr-3">
+      <td className="py-2.5 pr-3 tabular-nums">{source.item_count}</td>
+      <td className="min-w-0 py-2.5 pr-3">
         <div className="flex min-w-0 flex-col">
-          <span className="text-caption">
-            {t(($) => $.sources.sync[status])}
+          <span className="flex items-center gap-1.5 text-caption">
+            <span
+              className={cn(
+                "size-1.5 shrink-0 rounded-full",
+                status === "ok" && "bg-success",
+                status === "syncing" && "bg-warning animate-pulse",
+                status === "error" && "bg-destructive",
+                (status === "never" || status === "unknown") && "bg-muted-foreground/40",
+              )}
+              aria-hidden="true"
+            />
+            <span>{t(($) => $.sources.sync[status])}</span>
             {source.last_sync_at ? (
               <span className="text-muted-foreground"> · {timeAgo(source.last_sync_at)}</span>
             ) : null}
@@ -189,7 +199,7 @@ function SourceRow({
           </span>
         </div>
       </td>
-      <td className="py-2 pr-3">
+      <td className="py-2.5 pr-3">
         {canManage ? (
           <Switch
             checked={source.enabled}
@@ -204,7 +214,7 @@ function SourceRow({
         )}
       </td>
       {canManage ? (
-        <td className="py-2">
+        <td className="py-2.5 pr-3">
           <div className="flex items-center justify-end gap-1">
             <SyncSourceButton wsId={wsId} source={source} />
             <Button

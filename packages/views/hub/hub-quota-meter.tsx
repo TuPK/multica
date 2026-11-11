@@ -77,14 +77,18 @@ function QuotaUsage({
         aria-valuetext={text}
         className="h-1.5 w-20 shrink-0 overflow-hidden rounded-full bg-muted"
       >
-        <div className={cn("h-full rounded-full", barClass(level))} style={{ width: `${ratio * 100}%` }} />
+        <div className={cn("h-full rounded-full transition-all duration-300 ease-out", barClass(level))} style={{ width: `${ratio * 100}%` }} />
       </div>
       <span className={cn("truncate", textClass(level))}>{text}</span>
       {level === "warning" ? (
-        <span className="shrink-0 font-medium text-warning">{t(($) => $.quota.warning)}</span>
+        <span className="shrink-0 rounded-xs bg-warning/15 px-1.5 py-0.5 text-micro font-medium text-warning">
+          {t(($) => $.quota.warning)}
+        </span>
       ) : null}
       {level === "full" ? (
-        <span className="shrink-0 font-medium text-destructive">{t(($) => $.quota.full)}</span>
+        <span className="shrink-0 rounded-xs bg-destructive/15 px-1.5 py-0.5 text-micro font-medium text-destructive">
+          {t(($) => $.quota.full)}
+        </span>
       ) : null}
     </div>
   );

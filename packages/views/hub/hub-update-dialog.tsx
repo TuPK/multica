@@ -171,28 +171,30 @@ function UpdateBody({
           <fieldset className="flex flex-col gap-2 rounded-md border p-3">
             <legend className="px-1 text-caption text-muted-foreground">{t(($) => $.update.local.legend)}</legend>
             <p className="text-caption text-muted-foreground">{t(($) => $.update.local.description)}</p>
-            <label className="flex items-start gap-2 text-label">
-              <input
-                type="radio"
-                name={radioName}
-                value="overwrite"
-                checked={choice === "overwrite"}
-                onChange={() => setChoice("overwrite")}
-                className="mt-1 accent-primary"
-              />
-              <span>{t(($) => $.update.local.overwrite)}</span>
-            </label>
-            <label className="flex items-start gap-2 text-label">
-              <input
-                type="radio"
-                name={radioName}
-                value="fork"
-                checked={choice === "fork"}
-                onChange={() => setChoice("fork")}
-                className="mt-1 accent-primary"
-              />
-              <span>{t(($) => $.update.local.fork)}</span>
-            </label>
+            <div className="grid gap-2 pt-1 sm:grid-cols-2">
+              <label className="flex cursor-pointer items-start gap-2 rounded-md border p-2.5 text-label transition-colors hover:bg-muted/40">
+                <input
+                  type="radio"
+                  name={radioName}
+                  value="overwrite"
+                  checked={choice === "overwrite"}
+                  onChange={() => setChoice("overwrite")}
+                  className="mt-0.5 accent-primary"
+                />
+                <span className="font-medium">{t(($) => $.update.local.overwrite)}</span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-2 rounded-md border p-2.5 text-label transition-colors hover:bg-muted/40">
+                <input
+                  type="radio"
+                  name={radioName}
+                  value="fork"
+                  checked={choice === "fork"}
+                  onChange={() => setChoice("fork")}
+                  className="mt-0.5 accent-primary"
+                />
+                <span className="font-medium">{t(($) => $.update.local.fork)}</span>
+              </label>
+            </div>
             {choice === null ? (
               <p className="text-caption text-destructive">{t(($) => $.update.choose_local)}</p>
             ) : null}
@@ -252,6 +254,12 @@ function FileList({
       <ul aria-label={t(($) => $.update.files_label)} className="flex max-h-64 flex-col gap-0.5 overflow-y-auto md:max-h-none">
         {changed.map((file) => {
           const selected = file.path === activePath;
+          const statusTone =
+            file.status === "added"
+              ? "bg-success/15 text-success border-success/30"
+              : file.status === "modified"
+                ? "bg-warning/15 text-warning border-warning/30"
+                : "bg-destructive/15 text-destructive border-destructive/30";
           return (
             <li key={file.path}>
               <button
@@ -259,13 +267,15 @@ function FileList({
                 aria-pressed={selected}
                 onClick={() => onSelect(file.path)}
                 className={cn(
-                  "flex w-full min-w-0 flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "flex w-full min-w-0 flex-col items-start gap-1 rounded-md px-2.5 py-2 text-left transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
                   selected ? "bg-muted font-medium" : "hover:bg-muted/60",
                 )}
               >
-                <span className="flex w-full min-w-0 items-center gap-2 text-caption">
-                  <span className="shrink-0 text-muted-foreground">{t(($) => $.update.status[file.status])}</span>
+                <span className="flex w-full min-w-0 items-center justify-between gap-2 text-caption">
                   <span className="truncate font-mono">{file.path}</span>
+                  <span className={cn("shrink-0 rounded-xs border px-1.5 py-0.5 text-micro font-medium", statusTone)}>
+                    {t(($) => $.update.status[file.status])}
+                  </span>
                 </span>
                 <span className="text-caption tabular-nums text-muted-foreground">
                   {t(($) => $.update.size_change, {

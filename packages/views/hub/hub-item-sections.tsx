@@ -193,19 +193,21 @@ export function PluginVersions({ wsId, pkg }: { wsId: string; pkg: PluginPackage
   return (
     <div className={OBJECT_PAGE_BODY}>
       <ObjectSectionCard>
-        {pkg.versions.map((version) => (
-          <div key={version.id} className="flex min-h-11 flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 text-caption">
-            <span className="font-mono font-medium">{version.version}</span>
-            {installedVersionIds.has(version.id) && (
-              <Badge variant="secondary">{t(($) => $.versions.installed)}</Badge>
-            )}
-            <span className="text-muted-foreground">{t(($) => $.versions.published, { time: timeAgo(version.published_at) })}</span>
-            <span className="text-muted-foreground">{formatHubSize(version.size_bytes)}</span>
-            <span className="ml-auto font-mono text-muted-foreground" title={version.digest}>
-              {formatDigest(version.digest)}
-            </span>
-          </div>
-        ))}
+        <div className="divide-y">
+          {pkg.versions.map((version) => (
+            <div key={version.id} className="flex min-h-11 flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 text-caption transition-colors hover:bg-muted/30">
+              <span className="font-mono font-medium">{version.version}</span>
+              {installedVersionIds.has(version.id) && (
+                <Badge variant="secondary">{t(($) => $.versions.installed)}</Badge>
+              )}
+              <span className="text-muted-foreground">{t(($) => $.versions.published, { time: timeAgo(version.published_at) })}</span>
+              <span className="text-muted-foreground">{formatHubSize(version.size_bytes)}</span>
+              <span className="ml-auto font-mono text-muted-foreground" title={version.digest}>
+                {formatDigest(version.digest)}
+              </span>
+            </div>
+          ))}
+        </div>
       </ObjectSectionCard>
     </div>
   );
@@ -226,23 +228,25 @@ export function SkillUsage({ wsId, refId }: { wsId: string; refId: string }) {
           <ObjectSectionEmpty icon={Bot} description={t(($) => $.usage.agents_empty)} />
         ) : (
           <ObjectSectionCard>
-            {assigned.map((agent) => (
-              <div key={agent.id} className="flex min-h-11 items-center gap-2.5 px-3 py-2">
-                <ActorAvatar
-                  name={agent.name}
-                  initials={agent.name.slice(0, 2).toUpperCase()}
-                  avatarUrl={resolvePublicFileUrl(agent.avatar_url)}
-                  isAgent
-                  size="md"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-body font-medium">{agent.name}</div>
-                  {agent.description && (
-                    <div className="truncate text-caption text-muted-foreground">{agent.description}</div>
-                  )}
+            <div className="divide-y">
+              {assigned.map((agent) => (
+                <div key={agent.id} className="flex min-h-11 items-center gap-2.5 px-3 py-2 transition-colors hover:bg-muted/30">
+                  <ActorAvatar
+                    name={agent.name}
+                    initials={agent.name.slice(0, 2).toUpperCase()}
+                    avatarUrl={resolvePublicFileUrl(agent.avatar_url)}
+                    isAgent
+                    size="md"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-body font-medium">{agent.name}</div>
+                    {agent.description && (
+                      <div className="truncate text-caption text-muted-foreground">{agent.description}</div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </ObjectSectionCard>
         )}
       </ObjectSection>
@@ -262,17 +266,19 @@ export function PluginUsage({ wsId, pluginKey }: { wsId: string; pluginKey: stri
           <ObjectSectionEmpty icon={Bot} description={t(($) => $.usage.installs_empty)} />
         ) : (
           <ObjectSectionCard>
-            {rows.map((install) => (
-              <div key={install.id} className="flex min-h-11 flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 text-caption">
-                <span className="min-w-0 flex-1 truncate font-medium">{install.name}</span>
-                <span className="font-mono text-muted-foreground">
-                  {t(($) => $.usage.install_version, { version: install.version })}
-                </span>
-                <Badge variant={install.enabled ? "secondary" : "outline"}>
-                  {install.enabled ? t(($) => $.usage.enabled) : t(($) => $.usage.disabled)}
-                </Badge>
-              </div>
-            ))}
+            <div className="divide-y">
+              {rows.map((install) => (
+                <div key={install.id} className="flex min-h-11 flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 text-caption transition-colors hover:bg-muted/30">
+                  <span className="min-w-0 flex-1 truncate font-medium">{install.name}</span>
+                  <span className="font-mono text-muted-foreground">
+                    {t(($) => $.usage.install_version, { version: install.version })}
+                  </span>
+                  <Badge variant={install.enabled ? "secondary" : "outline"}>
+                    {install.enabled ? t(($) => $.usage.enabled) : t(($) => $.usage.disabled)}
+                  </Badge>
+                </div>
+              ))}
+            </div>
           </ObjectSectionCard>
         )}
       </ObjectSection>

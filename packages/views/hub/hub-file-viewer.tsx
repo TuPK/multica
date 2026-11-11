@@ -39,7 +39,7 @@ export function HubViewModeToggle({
           onClick={() => onChange(value)}
           className={cn(
             "h-6 rounded-xs px-2 text-caption font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            mode === value ? "bg-surface text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+            mode === value ? "bg-surface font-medium text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
           )}
         >
           {value === "preview"
@@ -99,10 +99,11 @@ export function HubFileViewer({
     () => (kind === "json" && content !== null ? prettyJson(content) : null),
     [kind, content],
   );
-  const body = useMemo(
-    () => (kind === "markdown" && content !== null ? parseFrontmatter(content).body : ""),
-    [kind, content],
-  );
+  const { body, frontmatter } = useMemo(() => {
+    if (kind !== "markdown" || content === null) return { body: "", frontmatter: null };
+    const parsed = parseFrontmatter(content);
+    return { body: parsed.body, frontmatter: parsed.frontmatter };
+  }, [kind, content]);
 
   if (isLoading) {
     return (
@@ -137,6 +138,7 @@ export function HubFileViewer({
   if (content === null) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-muted-foreground">
+        <File className="size-5 text-faint-foreground" aria-hidden="true" />
         <p className="max-w-sm text-caption">{t(($) => $.files.unavailable)}</p>
       </div>
     );
@@ -151,6 +153,18 @@ export function HubFileViewer({
         className="h-full overflow-y-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       >
         <div className="mx-auto max-w-[68ch] px-6 pb-12 pt-7 sm:px-8">
+          {frontmatter && Object.keys(frontmatter).length > 0 && (
+            <div className="mb-6 rounded-md border bg-muted/30 p-3 text-caption">
+              <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 font-mono">
+                {Object.entries(frontmatter).map(([k, v]) => (
+                  <div key={k} className="contents">
+                    <span className="select-none text-muted-foreground">{k}:</span>
+                    <span className="break-all text-foreground">{v}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <RichContent content={body} density="document" phase="settled" />
         </div>
       </div>

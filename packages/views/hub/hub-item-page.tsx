@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpenText, Package } from "@multica/ui/icons";
+import { BookOpenText, ExternalLink, Package } from "@multica/ui/icons";
 import { Badge } from "@multica/ui/components/ui/badge";
 import { Skeleton } from "@multica/ui/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@multica/ui/components/ui/tabs";
@@ -108,16 +108,18 @@ function HubItemFrame({ leaf, children }: { leaf: ReactNode; children: ReactNode
 function SourceBadge({ item }: { item: HubItem }) {
   const { t } = useT("hub");
   const label = t(($) => $.source_types[item.source]);
-  const className = "truncate rounded-sm bg-muted px-1.5 py-0.5 text-caption text-muted-foreground";
+  const className =
+    "inline-flex items-center gap-1 truncate rounded-sm bg-muted px-1.5 py-0.5 text-caption text-muted-foreground transition-colors";
   return item.sourceUrl ? (
     <a
       href={item.sourceUrl}
       target="_blank"
       rel="noreferrer noopener"
       title={t(($) => $.open_source)}
-      className={cn(className, "hover:text-foreground")}
+      className={cn(className, "hover:bg-muted/80 hover:text-foreground")}
     >
-      {label}
+      <span>{label}</span>
+      <ExternalLink className="size-2.5 shrink-0 opacity-70" aria-hidden="true" />
     </a>
   ) : (
     <span className={className}>{label}</span>
@@ -172,20 +174,24 @@ function HubItemView({ item, wsId }: { item: HubItem; wsId: string }) {
         description={item.description || undefined}
         trailing={<Badge variant="outline">{t(($) => $.kind_singular[kind])}</Badge>}
       />
-      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-caption text-muted-foreground">
-        {version ? <span className="font-mono">{t(($) => $.item.version, { version })}</span> : null}
-        <SourceBadge item={item} />
-        {files.totalBytes !== null ? <span>{formatHubSize(files.totalBytes)}</span> : null}
-        {newest ? (
-          <span className="flex min-w-0 items-center gap-1">
-            <span>{t(($) => $.item.checksum)}</span>
-            <code className="truncate font-mono" title={newest.digest}>
-              {newest.digest.slice(0, 12)}
-            </code>
-          </span>
-        ) : null}
-        <span>{t(($) => $.item.updated, { time: timeAgo(item.updatedAt) })}</span>
-        <HubDownloadBundleButton wsId={wsId} kind={kind} refId={refId} />
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 text-caption text-muted-foreground">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
+          {version ? <span className="font-mono">{t(($) => $.item.version, { version })}</span> : null}
+          <SourceBadge item={item} />
+          {files.totalBytes !== null ? <span>{formatHubSize(files.totalBytes)}</span> : null}
+          {newest ? (
+            <span className="flex min-w-0 items-center gap-1">
+              <span>{t(($) => $.item.checksum)}</span>
+              <code className="truncate font-mono" title={newest.digest}>
+                {newest.digest.slice(0, 12)}
+              </code>
+            </span>
+          ) : null}
+          <span>{t(($) => $.item.updated, { time: timeAgo(item.updatedAt) })}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <HubDownloadBundleButton wsId={wsId} kind={kind} refId={refId} />
+        </div>
       </div>
     </div>
   );
@@ -198,7 +204,15 @@ function HubItemView({ item, wsId }: { item: HubItem; wsId: string }) {
     >
       <div className={cn(PAGE_RAIL, PAGE_GUTTER, "shrink-0 pt-4")}>
         <TabsList variant="line" className="border-b">
-          <TabsTrigger value="files">{t(($) => $.tabs.files)}</TabsTrigger>
+          <TabsTrigger value="files" className="relative">
+            {t(($) => $.tabs.files)}
+            {files.isDirty && (
+              <span
+                className="ml-1.5 inline-block size-1.5 shrink-0 rounded-full bg-brand"
+                aria-hidden="true"
+              />
+            )}
+          </TabsTrigger>
           <TabsTrigger value="overview">{t(($) => $.tabs.overview)}</TabsTrigger>
           <TabsTrigger value="versions">{t(($) => $.tabs.versions)}</TabsTrigger>
           <TabsTrigger value="usage">{t(($) => $.tabs.usage)}</TabsTrigger>

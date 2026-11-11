@@ -361,31 +361,31 @@ function DeleteSourceBody({ wsId, source, onClose }: { wsId: string; source: Hub
         <legend className="mb-1 text-caption text-muted-foreground">
           {t(($) => $.sources.delete.items_legend, { count: source.item_count })}
         </legend>
-        <label className="flex items-start gap-2 text-label">
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-md border p-3 text-label transition-colors hover:bg-muted/40">
           <input
             type="radio"
             name={radioName}
             value="keep"
             checked={mode === "keep"}
             onChange={() => setMode("keep")}
-            className="mt-1 accent-primary"
+            className="mt-0.5 accent-primary"
           />
           <span className="flex flex-col">
-            {t(($) => $.sources.delete.keep)}
+            <span className="font-medium">{t(($) => $.sources.delete.keep)}</span>
             <span className="text-caption text-muted-foreground">{t(($) => $.sources.delete.keep_hint)}</span>
           </span>
         </label>
-        <label className="flex items-start gap-2 text-label">
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-md border p-3 text-label transition-colors hover:bg-muted/40">
           <input
             type="radio"
             name={radioName}
             value="delete"
             checked={mode === "delete"}
             onChange={() => setMode("delete")}
-            className="mt-1 accent-primary"
+            className="mt-0.5 accent-primary"
           />
           <span className="flex flex-col">
-            {t(($) => $.sources.delete.delete_items)}
+            <span className="font-medium">{t(($) => $.sources.delete.delete_items)}</span>
             <span className="text-caption text-muted-foreground">{t(($) => $.sources.delete.delete_hint)}</span>
           </span>
         </label>

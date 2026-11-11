@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { FilePlus, FolderPlus, Loader2, Plus, Save, Undo2 } from "@multica/ui/icons";
+import { FilePlus, FileText, FolderPlus, Loader2, Plus, Save, Undo2 } from "@multica/ui/icons";
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
 import { Skeleton } from "@multica/ui/components/ui/skeleton";
@@ -192,7 +192,10 @@ export function HubItemFiles({
             onRetry={files.file.retry}
           />
         ) : (
-          <p className="p-6 text-caption text-muted-foreground">{t(($) => $.files.select)}</p>
+          <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-muted-foreground">
+            <FileText className="size-8 text-faint-foreground" aria-hidden="true" />
+            <p className="max-w-sm text-caption text-muted-foreground">{t(($) => $.files.select)}</p>
+          </div>
         )}
       </div>
     </div>
@@ -273,7 +276,7 @@ export function HubItemFiles({
               )}
             </div>
             {creating && (
-              <form onSubmit={submitCreate} noValidate className="flex flex-col gap-1.5 px-2.5 pb-2">
+              <form onSubmit={submitCreate} noValidate className="mx-2 mb-2 flex flex-col gap-1.5 rounded-md border bg-muted/30 p-2">
                 <Input
                   autoFocus
                   value={createValue}
@@ -291,14 +294,14 @@ export function HubItemFiles({
                   onKeyDown={(event) => {
                     if (event.key === "Escape") cancelCreate();
                   }}
-                  className="h-7 font-mono text-caption"
+                  className="h-7 bg-background font-mono text-caption"
                 />
                 {createError && (
                   <p role="alert" className="text-caption text-destructive">
                     {errorMessage(createError)}
                   </p>
                 )}
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 pt-0.5">
                   <Button type="submit" size="xs">
                     <Plus aria-hidden="true" />
                     {t(($) => $.files.create)}

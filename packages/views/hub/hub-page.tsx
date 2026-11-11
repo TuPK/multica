@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ArrowUpDown, Filter, LayoutGrid, List, Package } from "@multica/ui/icons";
+import { ArrowDown, ArrowUp, BookOpenText, ExternalLink, Filter, LayoutGrid, List, Package } from "@multica/ui/icons";
 import { Button } from "@multica/ui/components/ui/button";
 import {
   DropdownMenu,
@@ -185,7 +185,11 @@ export function HubPage() {
   } else if (all.length === 0) {
     content = (
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <CollectionPageState icon={Package} title={t(($) => $.empty_title)} />
+        <CollectionPageState
+          icon={Package}
+          title={t(($) => $.empty_title)}
+          actions={<AddToHubDialog onBlank={() => setBlankOpen(true)} />}
+        />
       </div>
     );
   } else if (items.length === 0) {
@@ -261,7 +265,11 @@ export function HubPage() {
               title={t(($) => $.list.sort_direction)}
               onClick={() => setSortDirection(sortDirection === "asc" ? "desc" : "asc")}
             >
-              <ArrowUpDown aria-hidden="true" />
+              {sortDirection === "asc" ? (
+                <ArrowUp aria-hidden="true" />
+              ) : (
+                <ArrowDown aria-hidden="true" />
+              )}
             </Button>
             {activeCount > 0 ? (
               <Button variant="ghost" size="sm" onClick={resetAll}>
@@ -309,8 +317,8 @@ function Segmented<T extends string>({
           aria-pressed={option.value === value}
           onClick={() => onChange(option.value)}
           className={cn(
-            "h-6 rounded-sm px-2 text-label text-muted-foreground transition-colors hover:text-foreground",
-            option.value === value && "bg-background text-foreground shadow-xs",
+            "h-6 rounded-sm px-2 text-label text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
+            option.value === value && "bg-background font-medium text-foreground shadow-xs",
           )}
         >
           {option.label}
@@ -486,16 +494,18 @@ function ItemName({ item }: { item: HubListRow }) {
 function SourceBadge({ item }: { item: HubListRow }) {
   const { t } = useT("hub");
   const label = t(($) => $.source_types[item.source]);
-  const className = "truncate rounded-sm bg-muted px-1.5 py-0.5 text-caption text-muted-foreground";
+  const className =
+    "inline-flex items-center gap-1 truncate rounded-sm bg-muted px-1.5 py-0.5 text-caption text-muted-foreground transition-colors";
   return item.sourceUrl ? (
     <a
       href={item.sourceUrl}
       target="_blank"
       rel="noreferrer noopener"
       title={t(($) => $.open_source)}
-      className={cn(className, "hover:text-foreground")}
+      className={cn(className, "hover:bg-muted/80 hover:text-foreground")}
     >
-      {label}
+      <span>{label}</span>
+      <ExternalLink className="size-2.5 shrink-0 opacity-70" aria-hidden="true" />
     </a>
   ) : (
     <span className={className}>{label}</span>
@@ -538,29 +548,42 @@ function ItemList({ items }: { items: HubListRow[] }) {
           {visibleRows.map(({ index, start }) => {
             const item = items[index]!;
             const rowStyle: CSSProperties = { top: 0, height: ROW_HEIGHT, transform: `translateY(${start}px)` };
+            const Icon = item.kind === "skill" ? BookOpenText : Package;
             return (
               <div
                 key={item.key}
                 role="row"
                 aria-rowindex={index + 2}
                 style={rowStyle}
-                className={cn(ROW_GRID, "absolute inset-x-0 border-b hover:bg-muted/50", PAGE_GUTTER)}
+                className={cn(ROW_GRID, "absolute inset-x-0 border-b transition-colors hover:bg-muted/40", PAGE_GUTTER)}
               >
                 <div role="cell" className="flex min-w-0 flex-col justify-center">
                   <span className="flex min-w-0 items-center gap-2">
+                    <Icon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
                     <ItemName item={item} />
                     {item.updateAvailable ? <UpdateAvailableBadge /> : null}
                   </span>
                   {item.description ? (
                     <span className="truncate text-caption text-muted-foreground">{item.description}</span>
                   ) : null}
+                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-caption text-muted-foreground md:hidden">
+                    <span>{t(($) => $.kind_singular[item.kind])}</span>
+                    {item.version ? (
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <span>{item.version}</span>
+                      </>
+                    ) : null}
+                    <span aria-hidden="true">·</span>
+                    <span>{timeAgo(item.updatedAt)}</span>
+                  </div>
                 </div>
                 <div role="cell" className="hidden md:block">{t(($) => $.kind_singular[item.kind])}</div>
                 <div role="cell" className="hidden min-w-0 md:block">
                   <SourceBadge item={item} />
                 </div>
-                <div role="cell" className="hidden text-muted-foreground md:block">{item.version ?? ""}</div>
-                <div role="cell" className="hidden text-muted-foreground md:block">{timeAgo(item.updatedAt)}</div>
+                <div role="cell" className="hidden font-mono text-caption text-muted-foreground md:block">{item.version ?? ""}</div>
+                <div role="cell" className="hidden text-caption text-muted-foreground md:block">{timeAgo(item.updatedAt)}</div>
               </div>
             );
           })}
@@ -572,26 +595,41 @@ function ItemList({ items }: { items: HubListRow[] }) {
 
 function ItemCatalog({ items }: { items: HubListRow[] }) {
   const { t } = useT("hub");
+  const timeAgo = useTimeAgo();
   return (
     <ul className={cn("grid gap-3 py-4 sm:grid-cols-2 xl:grid-cols-3", PAGE_GUTTER)}>
-      {items.map((item) => (
-        <li key={item.key} className="flex min-w-0 flex-col gap-2 rounded-lg border bg-card p-3">
-          <div className="flex min-w-0 items-center justify-between gap-2">
-            <ItemName item={item} />
-            {item.updateAvailable ? <UpdateAvailableBadge /> : null}
-            <span className="shrink-0 text-caption text-muted-foreground">
-              {t(($) => $.kind_singular[item.kind])}
-            </span>
-          </div>
-          {item.description ? (
-            <p className="line-clamp-2 text-label text-muted-foreground">{item.description}</p>
-          ) : null}
-          <div className="mt-auto flex items-center gap-2">
-            <SourceBadge item={item} />
-            {item.version ? <span className="text-caption text-muted-foreground">{item.version}</span> : null}
-          </div>
-        </li>
-      ))}
+      {items.map((item) => {
+        const Icon = item.kind === "skill" ? BookOpenText : Package;
+        return (
+          <li
+            key={item.key}
+            className="group flex min-w-0 flex-col gap-2 rounded-lg border bg-card p-3.5 transition-all hover:border-surface-border hover:bg-card/90 hover:shadow-xs"
+          >
+            <div className="flex min-w-0 items-center justify-between gap-2">
+              <span className="flex min-w-0 items-center gap-2">
+                <Icon className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" aria-hidden="true" />
+                <ItemName item={item} />
+              </span>
+              <div className="flex shrink-0 items-center gap-1.5">
+                {item.updateAvailable ? <UpdateAvailableBadge /> : null}
+                <span className="text-caption text-muted-foreground">
+                  {t(($) => $.kind_singular[item.kind])}
+                </span>
+              </div>
+            </div>
+            {item.description ? (
+              <p className="line-clamp-2 text-label text-muted-foreground">{item.description}</p>
+            ) : null}
+            <div className="mt-auto flex items-center gap-2 pt-1 text-caption text-muted-foreground">
+              <SourceBadge item={item} />
+              {item.version ? <span className="font-mono">{item.version}</span> : null}
+              <span className="ml-auto text-caption text-muted-foreground">
+                {timeAgo(item.updatedAt)}
+              </span>
+            </div>
+          </li>
+        );
+      })}
     </ul>
   );
 }

@@ -239,9 +239,9 @@ function ScanSection({ scan }: { scan: HubImportPreview["scan"] }) {
         <p className="text-caption text-muted-foreground">{t(($) => $.add.preview.scan.warn_hint)}</p>
       ) : null}
       {scan.findings.length > 0 ? (
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col gap-1.5 divide-y divide-border/40 rounded-md border bg-muted/20 p-2">
           {scan.findings.map((finding, index) => (
-            <li key={`${finding.rule}-${finding.path}-${index}`} className="flex min-w-0 items-start gap-2 text-caption">
+            <li key={`${finding.rule}-${finding.path}-${index}`} className="flex min-w-0 items-start gap-2 pt-1.5 first:pt-0 text-caption">
               <Badge variant={SEVERITY_VARIANT[finding.severity]} className="shrink-0">
                 {t(($) => $.add.preview.scan.severity[finding.severity])}
               </Badge>
@@ -277,7 +277,7 @@ function FilesSection({ files }: { files: HubImportPreview["files"] }) {
           return (
             <li
               key={`${row.isFolder ? "dir" : "file"}:${row.path}`}
-              className="flex min-w-0 items-center gap-2 py-1 pr-2"
+              className="flex min-w-0 items-center gap-2 rounded-xs py-1 pr-2 transition-colors hover:bg-muted/40"
               style={{ paddingLeft: `${row.depth * 16 + 8}px` }}
             >
               <Icon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />

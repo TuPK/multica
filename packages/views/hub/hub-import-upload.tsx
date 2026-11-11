@@ -69,13 +69,15 @@ export function HubImportUpload({
           void run(async () => prepareImportFiles(await filesFromDrop(event.dataTransfer)));
         }}
         data-dragging={dragging || undefined}
-        className="flex flex-col items-center gap-3 rounded-lg border border-dashed px-6 py-8 text-center data-dragging:border-primary data-dragging:bg-muted/40"
+        className="flex flex-col items-center gap-3 rounded-lg border border-dashed px-6 py-8 text-center transition-colors hover:border-muted-foreground/40 data-dragging:border-primary data-dragging:bg-muted/40"
       >
-        {busy ? (
-          <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden="true" />
-        ) : (
-          <Upload className="size-5 text-muted-foreground" aria-hidden="true" />
-        )}
+        <div className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          {busy ? (
+            <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+          ) : (
+            <Upload className="size-5" aria-hidden="true" />
+          )}
+        </div>
         <p className="text-label text-muted-foreground">
           {busy ? t(($) => $.add.upload.reading) : t(($) => $.add.upload.drop)}
         </p>

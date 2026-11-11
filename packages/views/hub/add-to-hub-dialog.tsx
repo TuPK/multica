@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState, type FormEvent } from "react";
-import { FileArchive, Loader2, Plus } from "@multica/ui/icons";
+import { FileArchive, FileText, Loader2, Plus } from "@multica/ui/icons";
 import { Button } from "@multica/ui/components/ui/button";
 import {
   Dialog,
@@ -134,15 +134,18 @@ export function AddToHubDialog({ onBlank }: { onBlank: () => void }) {
             <HubImportUpload onPreview={preview} />
           </TabsContent>
           <TabsContent value="blank">
-            <div className="flex flex-col items-start gap-3">
+            <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-8 text-center">
+              <div className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <FileText className="size-5" aria-hidden="true" />
+              </div>
               <Button
                 type="button"
-                variant="outline"
                 onClick={() => {
                   handleOpenChange(false);
                   onBlank();
                 }}
               >
+                <Plus aria-hidden="true" />
                 {t(($) => $.add.blank.create)}
               </Button>
             </div>

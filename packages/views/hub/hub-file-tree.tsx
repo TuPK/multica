@@ -38,7 +38,22 @@ export interface HubFileTreeActions {
 function rowIcon(row: HubTreeRow) {
   if (row.isFolder) return row.expanded ? FolderOpen : Folder;
   if (row.name.endsWith(".md") || row.name.endsWith(".mdx")) return FileText;
-  if (row.name.endsWith(".json")) return FileCode;
+  if (
+    row.name.endsWith(".json") ||
+    row.name.endsWith(".ts") ||
+    row.name.endsWith(".tsx") ||
+    row.name.endsWith(".js") ||
+    row.name.endsWith(".jsx") ||
+    row.name.endsWith(".py") ||
+    row.name.endsWith(".sh") ||
+    row.name.endsWith(".bash") ||
+    row.name.endsWith(".yml") ||
+    row.name.endsWith(".yaml") ||
+    row.name.endsWith(".toml") ||
+    row.name.endsWith(".css")
+  ) {
+    return FileCode;
+  }
   return File;
 }
 
@@ -266,11 +281,11 @@ function TreeRow({
       onFocus={onFocusRow}
       onClick={row.isFolder ? onToggle : onSelect}
       className={cn(
-        "flex h-full min-w-0 flex-1 items-center gap-2 rounded-md pr-2 text-left text-caption transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "flex h-full min-w-0 flex-1 items-center gap-2 rounded-md pr-2 text-left text-caption transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
         row.isFolder
           ? "text-muted-foreground hover:bg-surface-hover hover:text-foreground"
           : selected
-            ? "bg-surface-selected text-surface-selected-foreground"
+            ? "bg-surface-selected font-medium text-surface-selected-foreground hover:bg-surface-selected/90"
             : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
       )}
     >
@@ -324,7 +339,7 @@ function RowMenu({
             aria-label={t(($) => $.files.actions.label, { path })}
             // Hidden until the row is hovered or focused; the 2px negative inset
             // widens the hit area past the glyph without covering the name.
-            className="relative mr-1 shrink-0 rounded-xs p-0.5 text-faint-foreground opacity-0 transition-opacity after:absolute after:-inset-1 hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring group-hover/row:opacity-100 aria-expanded:opacity-100"
+            className="relative mr-1 shrink-0 rounded-xs p-0.5 text-faint-foreground opacity-0 transition-opacity after:absolute after:-inset-1 hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring group-hover/row:opacity-100 group-focus-within/row:opacity-100 aria-expanded:opacity-100"
             onClick={(event) => event.stopPropagation()}
           >
             <MoreHorizontal className="size-3.5" aria-hidden="true" />
