@@ -3077,7 +3077,7 @@ func (h *Handler) routeAssignedSquadLeaderFallback(ctx context.Context, issue db
 		return commentAgentTrigger{}, false
 	}
 	if authorType == "agent" && authorID == uuidToString(squad.LeaderID) &&
-		h.shouldSuppressSquadLeaderSelfTrigger(ctx, issue.ID, squad.LeaderID, squad.ID) {
+		h.assignedLeaderSelfWakeSuppressed(ctx, issue, squad) {
 		return commentAgentTrigger{}, false
 	}
 	agent, err := h.Queries.GetAgentInWorkspace(ctx, db.GetAgentInWorkspaceParams{

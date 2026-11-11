@@ -11,6 +11,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/analytics"
+	"github.com/multica-ai/multica/server/internal/dispatch"
+	"github.com/multica-ai/multica/server/internal/issuestatus"
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/util"
@@ -1324,6 +1326,24 @@ func (h *Handler) shouldSuppressSquadLeaderSelfTrigger(ctx context.Context, issu
 		return true
 	}
 	return !latest.SquadID.Valid || uuidToString(latest.SquadID) != uuidToString(squadID)
+}
+
+// assignedLeaderSelfWakeSuppressed reports whether the assigned squad's leader,
+// as author of a comment on its assigned request, is kept from enqueuing itself
+// again through the assigned-squad fallback. A request at a human stop (blocked or
+// in_review) suppresses that self-wake whatever task the leader ran: the comment
+// hands the request to a person, and only a person's reply should restart the run.
+func (h *Handler) assignedLeaderSelfWakeSuppressed(ctx context.Context, issue db.Issue, squad db.Squad) bool {
+	status := issuestatus.Effective(ctx, h.Queries, issue.WorkspaceID, issue.Status)
+	atHumanStop := status == "blocked" || status == "in_review"
+	latest, err := h.Queries.GetLatestTaskRoleForIssueAndAgent(ctx, db.GetLatestTaskRoleForIssueAndAgentParams{
+		IssueID: issue.ID,
+		AgentID: squad.LeaderID,
+	})
+	found := err == nil
+	sameSquadWorker := found && !latest.IsLeaderTask && latest.SquadID.Valid &&
+		uuidToString(latest.SquadID) == uuidToString(squad.ID)
+	return dispatch.SquadLeaderSelfWakeSuppressed(atHumanStop, found, sameSquadWorker)
 }
 
 // commentMentionsAnyone returns true when the comment body contains at least
