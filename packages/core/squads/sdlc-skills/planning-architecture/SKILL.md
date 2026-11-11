@@ -31,8 +31,9 @@ design, and you do not change a requirement. Load planning-delivery-core first.
    status. Supersede, never erase.
 6. **Component list and interfaces.** Name each component, its responsibility, and its interfaces, so the build squad can map
    each epic to components. Name the non-functional measures and how each is met (security, performance, availability, data).
-7. **Project context.** Update the project context with bmad-project-context so the build agents see the current stack,
-   conventions and decisions.
+7. **Project context.** Write or update `AGENTS.md` and `CLAUDE.md` with sdlc-harness (headless; bmad-project-context supplies
+   the method) until `check-harness` passes every blocking check, so the build agents see the current stack, commands,
+   boundaries and decisions.
 8. The plan reviewer is the squad's independent gate. Where the skill's reviewer gate would wait for a person, skip it and say so.
 
 ## Self-check before you report

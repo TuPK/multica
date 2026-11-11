@@ -76,6 +76,7 @@ describe("SQUAD_TEMPLATES", () => {
       "Security review": "security",
       "Release prep": "devops",
       Environment: "devops",
+      Harness: "architect",
       "Stage done": null,
       "Plan ready": null,
       QA: "qa",
@@ -87,7 +88,7 @@ describe("SQUAD_TEMPLATES", () => {
       (s) => s.handler !== null && "name" in s.status && s.status.name !== "QA",
     );
 
-    expect(planning.length).toBe(7);
+    expect(planning.length).toBe(8);
     for (const step of planning) expect(step.next).toBe("stage_done");
     const done = SDLC_AUTO_WORKFLOW.steps.find((s) => "name" in s.status && s.status.name === "Stage done");
     expect(done?.status).toEqual({ name: "Stage done", category: "done" });

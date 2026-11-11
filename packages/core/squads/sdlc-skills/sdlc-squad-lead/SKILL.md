@@ -88,9 +88,13 @@ check whose condition holds, and write the decision, and the reason for each one
 | Condition | Issue | Owner, `--start-status` |
 | --- | --- | --- |
 | The repo has runtime dependencies: compose files, Supabase config, migrations, `*:start` scripts, `.env.example`, a database | Environment bring-up, first in the chain | DevOps, `environment` |
+| `check-harness` (sdlc-harness) fails a blocking check, or the repo has no `AGENTS.md`. Run it yourself, full, before you plan | Harness, after Environment bring-up and before every epic; then a Harness smoke issue for the Developer (`todo`) | Architect, `harness` |
 | There are epics but no architecture document or ADRs, or an epic names a component the architecture lacks | Architecture conformance check | Architect, `architecture` |
 | Acceptance criteria are missing or ambiguous, or the sprint-planning readiness check has not run | Requirements readiness check | Product Analyst, `analysis` |
 | The product has a UI and no screen or state specs | UX readiness | UX Designer, `design` |
+
+**Harness gate.** While `check-harness` fails a blocking check, create no `todo` issue for the Developer or the Bug Fixer.
+The first epic waits for the Harness smoke issue (`--after`). A repo that passes needs no Harness issue. sdlc-harness holds the rest.
 
 **Capability preflight.** Read every epic and story once and list what the whole backlog needs that a plain agent
 runtime may not have: a hosted or preview environment, a cloud or third-party account, a private runtime, a test
@@ -122,6 +126,7 @@ For every work item of the plan, create the issue, then queue it.
 | Security Reviewer | security review | `security_review` |
 | DevOps | packaging, run and release notes | `release_prep` |
 | DevOps | environment bring-up, tooling, or an environment unblock | `environment` |
+| Architect | harness: write, repair or refresh `AGENTS.md` and its checks | `harness` |
 | Bug Fixer | a defect | `todo` |
 
 Each issue's description holds: the goal; the input paths or links; the output paths; the skill its owner runs
@@ -198,6 +203,9 @@ to report using `multica issue wakeup checkin`.
   contract or schema across epics, or adds an outside provider (Architect), or is High-risk by auth, money, personal
   data, migration, public contract, or security control (Security Reviewer, `security_review`, a threat model before the
   build). Otherwise add nothing.
+- Harness refresh: after an epic retrospective is accepted, run `check-harness --refresh`. If `needsRefresh` is true, or the
+  second accepted `environment`, `tooling` or `rework-loop` ruling had the same cause as the first, create a Harness issue
+  for the Architect, `harness`, queued before the next epic (sdlc-harness, Mode 3).
 - When an epic is done: read the new entries in `docs/sdlc/assumptions.md`. An assumption that is a binding decision
   (see sdlc-delivery-core) goes to its owner to ratify: an ADR moves from Proposed to Accepted by the squad, or is changed.
 - Two reviewers disagree: give the boss both conclusions in full. Do not average them or pick one.
@@ -314,3 +322,4 @@ issue for the Bug Fixer, queue the verification again behind it, and repeat, cha
 - No question went to the boss while a specialist could still answer it.
 - Every report you accepted was checked against the evidence, and every rejected one has its gap on the issue.
 - The final report has the outcome, the evidence with links, the decisions and assumptions with ids, and the open risks.
+- You ran `check-harness` before planning, no Developer issue was created while a blocking check failed, and the report states the check result and the Harness smoke outcome.

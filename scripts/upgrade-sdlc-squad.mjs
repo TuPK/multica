@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Upgrades an SDLC or sales squad the quickstart made earlier to the current template: the built-in
 // skills, the agents' and the squad's instructions, and the SDLC Auto workflow (the Environment
-// step and the new briefs). A text is replaced only when it still equals an earlier text of ours;
+// and Harness steps and the new briefs). A text is replaced only when it still equals an earlier text of ours;
 // a text the boss edited is kept and named in the report. See docs/engineering/sdlc-specialist-routing.md.
 //
 //   node scripts/upgrade-sdlc-squad.mjs [--template sdlc_greenfield|sdlc_maintenance|sales_loop] [--apply]

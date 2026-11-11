@@ -206,7 +206,7 @@ export async function upgradeSdlcSquad(
             result.workflow.status = "failed";
             result.workflow.detail =
               (err as { body?: { code?: string } } | null)?.body?.code === "status_create_forbidden"
-                ? "a workspace admin must allow the new status (Environment)"
+                ? `a workspace admin must allow the new status (${merged.added.join(", ")})`
                 : errorMessage(err);
           }
         } else if (merged.kept.length > 0) {

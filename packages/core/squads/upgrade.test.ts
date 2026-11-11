@@ -13,11 +13,11 @@ import { SQUAD_ROLES, SQUAD_TEMPLATES, type SquadRoleKey } from "./templates";
 const template = SQUAD_TEMPLATES.find((t) => t.id === "sdlc_greenfield")!;
 const agentIds = Object.fromEntries(template.roles.map((r) => [r, `id-${r}`])) as Record<SquadRoleKey, string>;
 
-/** The workflow as an earlier release stored it: no Environment step, earlier briefs. */
-function oldWorkflow(overrides: Record<string, string> = {}): IssueWorkflow {
+/** The workflow as an earlier release stored it: no Environment or Harness step (unless named), earlier briefs. */
+function oldWorkflow(overrides: Record<string, string> = {}, keep: readonly string[] = []): IssueWorkflow {
   const current = workflowSteps(template.workflow!.steps, agentIds)!;
   const steps = current
-    .filter((s) => !("new_status" in s && s.new_status.name === "Environment"))
+    .filter((s) => !("new_status" in s && ["Environment", "Harness"].includes(s.new_status.name) && !keep.includes(s.new_status.name)))
     .map((s) => {
       const key = "status_key" in s ? s.status_key : s.new_status.name.toLowerCase().replaceAll(" ", "_");
       const previous = SDLC_PREVIOUS_STEP_INSTRUCTIONS[key] ?? SDLC_PREVIOUS_STEP_INSTRUCTIONS[
@@ -64,15 +64,24 @@ function fakeClient(opts: { workflow: IssueWorkflow; agentInstructions?: Partial
 describe("mergeWorkflowSteps", () => {
   const wanted = workflowSteps(template.workflow!.steps, agentIds)!;
 
-  it("adds the Environment step before Stage done, keeps handlers, and replaces a known earlier brief", () => {
+  it("adds the Environment and Harness steps before Stage done, keeps handlers, and replaces a known earlier brief", () => {
     const merged = mergeWorkflowSteps(oldWorkflow(), wanted);
     const keys = merged.steps.map((s) => ("status_key" in s ? s.status_key : s.new_status.name));
-    expect(merged.added).toEqual(["environment"]);
-    expect(keys.indexOf("Environment")).toBe(keys.indexOf("stage_done") - 1);
+    expect(merged.added).toEqual(["environment", "harness"]);
+    expect(keys.indexOf("Environment")).toBe(keys.indexOf("stage_done") - 2);
+    expect(keys.indexOf("Harness")).toBe(keys.indexOf("stage_done") - 1);
+    const harness = merged.steps.find((s) => "new_status" in s && s.new_status.name === "Harness")!;
+    expect(harness.handler).toEqual({ type: "agent", id: "id-architect" });
+    expect(harness.instructions).toContain("sdlc-harness");
     expect(merged.updated).toContain("blocked");
     const blocked = merged.steps.find((s) => "status_key" in s && s.status_key === "blocked")!;
     expect(blocked.instructions).toContain("sdlc-squad-lead");
     expect(blocked.handler).toEqual({ type: "agent", id: "id-lead" });
+  });
+
+  it("adds only the Harness step to a workflow that already has Environment", () => {
+    const merged = mergeWorkflowSteps(oldWorkflow({}, ["Environment"]), wanted);
+    expect(merged.added).toEqual(["harness"]);
   });
 
   it("keeps a brief the boss edited and says so", () => {
@@ -132,7 +141,7 @@ describe("upgradeSdlcSquad", () => {
     expect(client.updateSquad).not.toHaveBeenCalled();
     expect(client.updateIssueWorkflow).not.toHaveBeenCalled();
     expect(client.dryRunIssueWorkflowUpdate).toHaveBeenCalledTimes(1);
-    expect(result.workflow.added).toEqual(["environment"]);
+    expect(result.workflow.added).toEqual(["environment", "harness"]);
   });
 
   it("reports a status a workspace admin must allow", async () => {
@@ -141,6 +150,16 @@ describe("upgradeSdlcSquad", () => {
     const result = await upgradeSdlcSquad(client, template);
     expect(result.workflow.status).toBe("failed");
     expect(result.workflow.detail).toContain("admin");
+    expect(result.workflow.detail).toContain("harness");
+  });
+
+  it("loads the harness skill, with its checker script, into the squad's workspace", async () => {
+    const client = fakeClient({ workflow: oldWorkflow() });
+    client.createSkill.mockImplementation(async (data: { name: string }) => ({ id: `skill-${data.name}`, name: data.name }) as never);
+    const result = await upgradeSdlcSquad(client, template);
+    expect(result.skills.status).toBe("ready");
+    const harness = client.createSkill.mock.calls.map((c) => c[0] as { name: string; files: { path: string }[] }).find((c) => c.name === "sdlc-harness");
+    expect(harness?.files.map((f) => f.path)).toContain("scripts/check-harness.mjs");
   });
 });
 

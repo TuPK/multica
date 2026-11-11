@@ -22,6 +22,7 @@ const ROLE_SKILLS = [
   "sdlc-qa-verification",
   "sdlc-security-review",
   "sdlc-devops-release",
+  "sdlc-harness",
 ];
 
 // The planning squad's procedure skills (planning-skills.test.ts owns their content).
@@ -250,5 +251,53 @@ describe("built-in SDLC skills", () => {
     expect(lead).toContain("Unblock issues are the exception");
     expect(lead).toContain("--until-issue <unblock issue> --until-issue-state ended");
     expect(lead).toContain("Readiness checks");
+  });
+
+  it("ships the harness skill with its checker, template and profiles", () => {
+    const harness = SDLC_BUILTIN_SKILLS.find((s) => s.name === "sdlc-harness")!;
+    expect(harness.files.map((f) => f.path).sort()).toEqual([
+      "references/agents-md-template.md",
+      "references/profile-baas.md",
+      "references/profile-backend.md",
+      "references/profile-mobile.md",
+      "references/profile-web.md",
+      "scripts/check-harness.mjs",
+    ]);
+    expect(harness.content).toContain("## Headless");
+    expect(harness.content).toContain("check-harness --quick");
+    for (const id of ["H1", "H2", "H3", "H4", "H6", "H7", "H8", "H10"]) {
+      expect(harness.content, id).toMatch(new RegExp(`\\| ${id} \\|.*\\| blocks \\|$`, "m"));
+    }
+    for (const id of ["H5", "H9", "H11", "H12", "H13"]) {
+      expect(harness.content, id).toMatch(new RegExp(`\\| ${id} \\|.*\\| warns \\|$`, "m"));
+    }
+  });
+
+  it("gates the Developer on the harness and adds no blocker class for it", () => {
+    const get = (name: string) => SDLC_BUILTIN_SKILLS.find((s) => s.name === name)!;
+    const lead = get("sdlc-squad-lead");
+    expect(lead.content).toContain("**Harness gate.**");
+    expect(lead.content).toContain("create no `todo` issue for the Developer or the Bug Fixer");
+    expect(lead.content).toMatch(/\| Architect \| harness: .* \| `harness` \|/);
+    expect(lead.content).toContain("`check-harness --refresh`");
+    expect(lead.files.find((f) => f.path === "reference.md")!.content).toContain("Route 0. Audit the harness");
+    expect(lead.files.find((f) => f.path === "team-playbook.md")!.content).toContain("`check-harness` ids");
+    expect(get("sdlc-delivery-core").content).toContain("`check-harness --quick`");
+    expect(get("sdlc-development").content).toContain("Run `check-harness --quick`");
+    expect(get("sdlc-development").content).toContain("block with class `tooling`");
+    expect(get("sdlc-devops-release").content).toContain("Ensure command:");
+    expect(get("sdlc-architecture").content).toContain("sdlc-harness");
+    expect(get("planning-architecture").content).toContain("`check-harness` passes every blocking check");
+    // The harness failure uses an existing class: the list stays the one the core defines.
+    const line = get("sdlc-delivery-core").content.match(/^Blocker-class: (.+)$/m)!;
+    expect(line[1]!.split(" | ")).not.toContain("harness");
+  });
+
+  it("starts the Harness status after Environment, handled by the Architect", () => {
+    const keys = SDLC_AUTO_WORKFLOW.steps.map((s) => ("key" in s.status ? s.status.key : s.status.name));
+    expect(keys.indexOf("Harness")).toBe(keys.indexOf("Environment") + 1);
+    const step = SDLC_AUTO_WORKFLOW.steps[keys.indexOf("Harness")]!;
+    expect(step.handler).toBe("architect");
+    expect(step.instructions).toContain("sdlc-harness");
   });
 });

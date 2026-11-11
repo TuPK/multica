@@ -430,6 +430,13 @@ export const SDLC_AUTO_WORKFLOW: SquadWorkflowTemplate = {
       back: "blocked",
       instructions: planningBrief("sdlc-devops-release", "Work in Environment mode. When the environment runs, `docs/sdlc/environment.md` and the one command that rebuilds it are written, and the health output is posted, move the issue to Stage done."),
     },
+    {
+      status: { name: "Harness" },
+      handler: "architect",
+      next: "stage_done",
+      back: "blocked",
+      instructions: planningBrief("sdlc-harness", "Work in the mode the issue names (Mode 1 by default, Mode 3 for a refresh). When `check-harness` passes every blocking check and the result is posted, move the issue to Stage done."),
+    },
     { status: { name: "Stage done", category: "done" }, handler: null, instructions: "" },
     { status: { name: "Plan ready" }, handler: null, instructions: "" },
     {

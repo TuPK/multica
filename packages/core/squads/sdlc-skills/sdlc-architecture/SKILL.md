@@ -47,7 +47,8 @@ When the route is D (working code, no usable plan), your stage 1 is the assessme
 8. **Publish.** Commit the design document, the ADRs, the interface contracts, and the component list to the repo. Post one
    issue comment with the decisions that need a person, the risks, and what you assumed.
 
-Skills: bmad-architecture when the project follows BMAD; bmad-project-context for the project context; supabase-postgres-best-practices
+Skills: bmad-architecture when the project follows BMAD; sdlc-harness for `AGENTS.md`, `CLAUDE.md` and the Done command (you
+own their content, and it must pass `check-harness`; headless, so you take defaults and record assumptions); supabase-postgres-best-practices
 for Postgres or Supabase data models.
 
 ## Ruling mode (unblock issues)

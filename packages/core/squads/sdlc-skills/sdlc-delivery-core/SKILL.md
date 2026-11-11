@@ -212,7 +212,8 @@ architect, analyst, ux, security, devops, or qa.
 ## Rules that apply to all work
 
 - Read the repo's agent instructions (AGENTS.md, CLAUDE.md) before you change anything, and
-  follow them.
+  follow them. A role that changes code first runs `check-harness --quick` (sdlc-harness). If a blocking check fails, block
+  with class `tooling` and name the check ids; do not repair the harness inside the issue. The Harness stage itself is the exception.
 - Read `docs/sdlc/environment.md` (how to start, check and reset the environment), `docs/sdlc/rulings.md` (decisions
   specialists already made) and `docs/sdlc/assumptions.md` before you ask anyone. Do not ask a question they answer.
 - Search what the company already knows before you start new work:
