@@ -140,6 +140,23 @@ var pgBigmOperatorClass = extensionOperatorClass{
 // they are still pending: a fresh self-hosted install, which is exactly where an
 // interrupted build would otherwise leave a permanently unusable index.
 var concurrentIndexCleanups = map[string]string{
+	"940_hub_source_auto_sync_idx":                              "hub_source_auto_sync_due_idx",
+	"951_hub_activity_workspace_created_idx":                    "hub_activity_workspace_created_idx",
+	"952_hub_activity_ref_created_idx":                          "hub_activity_workspace_ref_created_idx",
+	"905_issue_directive_origin_index":                          "idx_issue_directive_origin",
+	"907_squad_skill_unique_index":                              "idx_squad_skill_squad_skill",
+	"908_squad_plugin_unique_index":                             "idx_squad_plugin_squad_name",
+	"918_squad_handoff_rule_source_uidx":                        "squad_handoff_rule_source_uidx",
+	"920_squad_handoff_source_issue_uidx":                       "squad_handoff_source_issue_uidx",
+	"921_squad_handoff_target_issue_idx":                        "squad_handoff_target_issue_idx",
+	"926_knowledge_property_history_idx":                        "knowledge_property_history_link_idx",
+	"928_hub_source_type_url_idx":                               "hub_source_workspace_type_url_key",
+	"929_hub_source_id_idx":                                     "hub_source_id_key",
+	"931_hub_item_ref_idx":                                      "hub_item_workspace_kind_ref_key",
+	"932_hub_item_source_idx":                                   "hub_item_workspace_source_idx",
+	"933_hub_item_id_idx":                                       "hub_item_id_key",
+	"936_hub_item_version_blob_key":                             "hub_item_version_blob_item_version_digest_key",
+	"937_hub_item_version_blob_id":                              "hub_item_version_blob_id_key",
 	"704_squad_routine_squad_index":                             "idx_squad_routine_squad",
 	"702_squad_routine_pkey_index":                              "squad_routine_pkey_uidx",
 	"701_squad_charter_pkey_index":                              "squad_charter_pkey_uidx",
