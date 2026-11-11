@@ -210,6 +210,7 @@ var sdlcStageStatuses = []struct {
 	{"security", sdlcStatus{"security_review", "Security review", "Security review.", issuestatus.CategoryStarted, "#ef4444"}},
 	{"devops", sdlcStatus{"release_prep", "Release prep", "Packaging and release notes.", issuestatus.CategoryStarted, "#14b8a6"}},
 	{"devops", sdlcStatus{sdlcEnvironmentStatusKey, "Environment", "Builds and keeps the environment and tools running.", issuestatus.CategoryStarted, "#10b981"}},
+	{"architect", sdlcStatus{"harness", "Harness", "Checks the repository is ready for agents to build in.", issuestatus.CategoryStarted, "#06b6d4"}},
 }
 
 var (
@@ -362,11 +363,13 @@ func sdlcStageSteps(agents map[string]pgtype.UUID) []issueworkflow.Step {
 		"security_review":        "PASS: move the issue to Stage done. FAIL or NO_GO: set the issue to blocked and list each finding with its id.",
 		"release_prep":           "Move the issue to Stage done only when the report lists the version, digests, and rollback steps. Production waits for the named approval: set the issue to blocked and say what the approver must decide.",
 		sdlcEnvironmentStatusKey: "Work in Environment mode. When the environment runs, `docs/sdlc/environment.md` and the one command that rebuilds it are written, and the health output is posted, move the issue to Stage done.",
+		"harness":                "Work in the mode the issue names (Mode 1 by default, Mode 3 for a refresh). When `check-harness` passes every blocking check and the result is posted, move the issue to Stage done.",
 	}
 	skill := map[string]string{
 		"analysis": "sdlc-product-analysis", "design": "sdlc-ux-design", "architecture": "sdlc-architecture",
 		"plan_review": "sdlc-code-review", "security_review": "sdlc-security-review",
 		"release_prep": "sdlc-devops-release", sdlcEnvironmentStatusKey: "sdlc-devops-release",
+		"harness": "sdlc-harness",
 	}
 	var steps []issueworkflow.Step
 	for _, st := range sdlcStageStatuses {

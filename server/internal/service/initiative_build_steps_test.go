@@ -63,7 +63,7 @@ func TestSDLCStepsHandSpecialistStagesToTheirOwners(t *testing.T) {
 	steps := sdlcSteps(agents)
 	want := map[string]string{
 		"analysis": "analyst", "design": "ux", "architecture": "architect", "plan_review": "reviewer",
-		"security_review": "security", "release_prep": "devops", sdlcEnvironmentStatusKey: "devops",
+		"security_review": "security", "release_prep": "devops", sdlcEnvironmentStatusKey: "devops", "harness": "architect",
 	}
 	for key, role := range want {
 		step, ok := sdlcStepByKey(steps, key)
@@ -91,7 +91,7 @@ func TestSDLCStepsHandSpecialistStagesToTheirOwners(t *testing.T) {
 // A squad without a specialist has no step for it; the lead's playbook names the substitute.
 func TestSDLCStepsOmitStagesWithoutAnAgent(t *testing.T) {
 	steps := sdlcSteps(sdlcTestAgents("lead", "developer", "reviewer", "qa"))
-	for _, key := range []string{"analysis", "design", "architecture", "security_review", "release_prep", sdlcEnvironmentStatusKey} {
+	for _, key := range []string{"analysis", "design", "architecture", "security_review", "release_prep", sdlcEnvironmentStatusKey, "harness"} {
 		if _, ok := sdlcStepByKey(steps, key); ok {
 			t.Fatalf("unexpected %s step with no agent for it", key)
 		}
