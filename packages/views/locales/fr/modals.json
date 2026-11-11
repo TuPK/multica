@@ -370,6 +370,10 @@
         "name": "Education Desk (Giáo dục)",
         "description": "Rédige les contrôles périodiques (đề kiểm tra định kỳ) avec leur matrice, leur spécification, leur corrigé et leur grille de notation à partir des acquis du programme. Des contrôles vérifient chaque réponse et chaque ligne que l'élève ou le parent verra ; l'enseignant imprime et partage, et l'équipe n'envoie rien."
       },
+      "kv_teaching": {
+        "name": "Teaching Materials (Tư liệu giảng dạy)",
+        "description": "Trouve des sources pédagogiques avec leur niveau, transforme les relevés de classe en synthèses codées et rédige pour l'enseignant les documents de classe. Des contrôles vérifient chaque source, chaque chiffre et chaque ligne que l'élève ou le parent verra ; l'enseignant lit, envoie et publie, et l'équipe n'envoie rien."
+      },
       "sales_loop": {
         "name": "Boucle commerciale",
         "description": "Repère chaque semaine des opportunités pour vos axes, prépare des messages à valider et apprend des résultats. Les sources sont prêtes à l'emploi."
@@ -379,6 +383,14 @@
         "description": "Trie un bug, une fonctionnalité, une optimisation ou une mise à niveau, l'oriente vers les bons agents, la vérifie et rend compte."
       }
     },
+    "groups": {
+      "core": "Essentiels",
+      "kitviet": "Kit Viet",
+      "vertical": "Sectoriels"
+    },
+    "expert_review_badge": "Revue par un expert",
+    "expert_review_notice": "Une personne qualifiée doit relire les résultats de ce squad avant de les utiliser.",
+    "expert_review_ack": "Je prendrai en charge cette relecture.",
     "agents_label": "Agents",
     "agent_new": "Nouveau",
     "agent_reused": "Existe déjà",

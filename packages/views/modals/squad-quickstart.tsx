@@ -9,7 +9,9 @@ import { useWorkspacePaths } from "@multica/core/paths";
 import { isRuntimeUsableForUser, runtimeListOptions } from "@multica/core/runtimes";
 import {
   planQuickstartAgents,
+  SQUAD_TEMPLATE_CATEGORIES,
   SQUAD_TEMPLATES,
+  squadTemplateCategory,
   useSquadQuickstart,
   type QuickstartOutcome,
   type SquadTemplate,
@@ -41,6 +43,12 @@ function hasProblems(outcome: QuickstartOutcome): boolean {
   );
 }
 
+/** The template groups in list order, leaving out an empty group. */
+const TEMPLATE_GROUPS = SQUAD_TEMPLATE_CATEGORIES.map((category) => ({
+  category,
+  templates: SQUAD_TEMPLATES.filter((tpl) => squadTemplateCategory(tpl) === category),
+})).filter((group) => group.templates.length > 0);
+
 export function SquadQuickstartModal({ onClose }: { onClose: () => void }) {
   const { t } = useT("modals");
   const router = useNavigation();
@@ -59,6 +67,7 @@ export function SquadQuickstartModal({ onClose }: { onClose: () => void }) {
   );
   const [runtimeId, setRuntimeId] = useState("");
   const [createWorkflow, setCreateWorkflow] = useState(true);
+  const [reviewAcknowledged, setReviewAcknowledged] = useState(false);
   const [outcome, setOutcome] = useState<QuickstartOutcome | null>(null);
   const quickstart = useSquadQuickstart(wsId);
 
@@ -68,7 +77,15 @@ export function SquadQuickstartModal({ onClose }: { onClose: () => void }) {
   const needsRuntime = plan.some((p) => !p.reuse);
   const runtimeOk = !needsRuntime || (!!runtime && isRuntimeUsableForUser(runtime, currentUserId));
   const running = quickstart.isPending;
-  const canSubmit = runtimeOk && !running;
+  // The acknowledgement belongs to one template: choosing another one clears it.
+  const reviewOk = !template.expertReview || reviewAcknowledged;
+  const canSubmit = runtimeOk && reviewOk && !running;
+
+  const selectTemplate = (id: SquadTemplate["id"]) => {
+    if (id === templateId) return;
+    setTemplateId(id);
+    setReviewAcknowledged(false);
+  };
 
   const run = async () => {
     if (!canSubmit) return;
@@ -116,30 +133,50 @@ export function SquadQuickstartModal({ onClose }: { onClose: () => void }) {
                 <Label className="text-caption text-muted-foreground">
                   {t(($) => $.squad_quickstart.template_label)}
                 </Label>
-                <div role="radiogroup" className="grid gap-2">
-                  {SQUAD_TEMPLATES.map((tpl) => {
-                    const selected = tpl.id === templateId;
-                    return (
-                      <button
-                        key={tpl.id}
-                        type="button"
-                        role="radio"
-                        aria-checked={selected}
-                        onClick={() => setTemplateId(tpl.id)}
-                        className={`flex flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left transition-colors hover:bg-accent/50 ${
-                          selected ? "border-primary bg-accent/50" : ""
-                        }`}
+                {TEMPLATE_GROUPS.map((group) => {
+                  const headingId = `squad-quickstart-group-${group.category}`;
+                  return (
+                    <div key={group.category} className="space-y-2">
+                      <h3
+                        id={headingId}
+                        className="text-caption font-medium text-muted-foreground"
                       >
-                        <span className="text-body font-medium">
-                          {t(($) => $.squad_quickstart.templates[tpl.id].name)}
-                        </span>
-                        <span className="text-caption text-muted-foreground">
-                          {t(($) => $.squad_quickstart.templates[tpl.id].description)}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                        {t(($) => $.squad_quickstart.groups[group.category])}
+                      </h3>
+                      <div role="radiogroup" aria-labelledby={headingId} className="grid gap-2">
+                        {group.templates.map((tpl) => {
+                          const selected = tpl.id === templateId;
+                          return (
+                            <button
+                              key={tpl.id}
+                              type="button"
+                              role="radio"
+                              aria-checked={selected}
+                              onClick={() => selectTemplate(tpl.id)}
+                              className={`flex w-full min-w-0 flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left transition-colors hover:bg-accent/50 ${
+                                selected ? "border-primary bg-accent/50" : ""
+                              }`}
+                            >
+                              <span className="flex w-full min-w-0 items-center justify-between gap-2">
+                                <span className="min-w-0 break-words text-body font-medium">
+                                  {t(($) => $.squad_quickstart.templates[tpl.id].name)}
+                                </span>
+                                {tpl.expertReview && (
+                                  <span className="shrink-0 text-caption text-warning">
+                                    {t(($) => $.squad_quickstart.expert_review_badge)}
+                                  </span>
+                                )}
+                              </span>
+                              <span className="min-w-0 break-words text-caption text-muted-foreground">
+                                {t(($) => $.squad_quickstart.templates[tpl.id].description)}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
               <div className="space-y-2">
@@ -297,6 +334,26 @@ export function SquadQuickstartModal({ onClose }: { onClose: () => void }) {
             </div>
           )}
         </div>
+
+        {!outcome && template.expertReview && (
+          <div className="space-y-2 border-t px-5 py-3">
+            <p id="squad-quickstart-review-notice" className="text-body">
+              {t(($) => $.squad_quickstart.expert_review_notice)}
+            </p>
+            <div className="flex items-start gap-2">
+              <Checkbox
+                id="squad-quickstart-review"
+                checked={reviewAcknowledged}
+                onCheckedChange={(v) => setReviewAcknowledged(v === true)}
+                aria-describedby="squad-quickstart-review-notice"
+                className="mt-0.5"
+              />
+              <Label htmlFor="squad-quickstart-review" className="text-body">
+                {t(($) => $.squad_quickstart.expert_review_ack)}
+              </Label>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center justify-end gap-2 border-t px-5 py-3">
           {finished ? (

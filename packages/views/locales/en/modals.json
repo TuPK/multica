@@ -370,6 +370,10 @@
         "name": "Education Desk (Giáo dục)",
         "description": "Drafts periodic tests (đề kiểm tra định kỳ) with their matrix, specification, answer key and grading guide from the curriculum outcomes. Gates check every answer and every line a student or parent will see; a teacher prints and shares, and the squad sends nothing."
       },
+      "kv_teaching": {
+        "name": "Teaching Materials (Tư liệu giảng dạy)",
+        "description": "Finds teaching sources with their levels, turns class records into coded summaries and drafts class documents for a teacher. Gates check every source, every figure and every line a student or parent will see; the teacher reads, sends and posts. The squad sends nothing."
+      },
       "sales_loop": {
         "name": "Sales loop",
         "description": "Finds opportunities for your lanes each week, drafts outreach for you to approve, and learns from the results. Sources come ready to use."
@@ -379,6 +383,14 @@
         "description": "Triages a bug, feature, optimization, or upgrade, routes it to the right agents, verifies it, and reports."
       }
     },
+    "groups": {
+      "core": "Core",
+      "kitviet": "Kit Viet",
+      "vertical": "Verticals"
+    },
+    "expert_review_badge": "Expert review",
+    "expert_review_notice": "A qualified person must review this squad's output before it is used.",
+    "expert_review_ack": "I will arrange that review.",
     "agents_label": "Agents",
     "agent_new": "New",
     "agent_reused": "Already exists",

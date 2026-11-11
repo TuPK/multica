@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { I18nProvider } from "@multica/core/i18n/react";
 import type { Agent } from "@multica/core/types";
@@ -252,5 +252,74 @@ describe("SquadQuickstartModal", () => {
     await user.click(screen.getByRole("button", { name: "Create squad" }));
 
     expect(await screen.findByText(/Created without a QA step/)).toBeInTheDocument();
+  });
+
+  it("groups the templates under Core, Kit Viet and Verticals", () => {
+    renderModal();
+
+    expect(
+      screen.getByRole("radiogroup", { name: "Core" }),
+    ).toContainElement(screen.getByRole("radio", { name: /SDLC · New product/ }));
+    expect(
+      screen.getByRole("radiogroup", { name: "Kit Viet" }),
+    ).toContainElement(screen.getByRole("radio", { name: /Office Admin/ }));
+    expect(
+      screen.getByRole("radiogroup", { name: "Verticals" }),
+    ).toContainElement(screen.getByRole("radio", { name: /Healthcare/ }));
+  });
+
+  it("marks only the squads that need expert review", () => {
+    renderModal();
+
+    expect(
+      within(screen.getByRole("radio", { name: /Healthcare/ })).getByText("Expert review"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("radio", { name: /Office Admin/ })).queryByText("Expert review"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("holds Create until the expert review is acknowledged", async () => {
+    mocks.mutateAsync.mockResolvedValue(readyOutcome);
+    renderModal();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("radio", { name: /Healthcare/ }));
+    await user.click(screen.getByRole("button", { name: "pick runtime" }));
+
+    expect(
+      screen.getByText("A qualified person must review this squad's output before it is used."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create squad" })).toBeDisabled();
+
+    await user.click(screen.getByRole("checkbox", { name: "I will arrange that review." }));
+    expect(screen.getByRole("button", { name: "Create squad" })).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: "Create squad" }));
+    expect(mocks.mutateAsync.mock.calls[0]![0].template.id).toBe("kv_health");
+  });
+
+  it("asks for no acknowledgement on a squad without expert review", async () => {
+    renderModal();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("radio", { name: /Office Admin/ }));
+    await user.click(screen.getByRole("button", { name: "pick runtime" }));
+
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(screen.queryByText("A qualified person must review this squad's output before it is used.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create squad" })).toBeEnabled();
+  });
+
+  it("clears the acknowledgement when another squad is chosen", async () => {
+    renderModal();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("radio", { name: /Healthcare/ }));
+    await user.click(screen.getByRole("checkbox", { name: "I will arrange that review." }));
+    await user.click(screen.getByRole("radio", { name: /Office Admin/ }));
+    await user.click(screen.getByRole("radio", { name: /Healthcare/ }));
+
+    expect(screen.getByRole("checkbox", { name: "I will arrange that review." })).not.toBeChecked();
   });
 });

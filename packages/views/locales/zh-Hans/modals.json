@@ -368,6 +368,10 @@
         "name": "Education Desk (Giáo dục)",
         "description": "根据课程学习目标起草定期考试（đề kiểm tra định kỳ），包括命题双向细目表、试题规格、参考答案和评分标准。关口检查每个答案以及学生或家长会看到的每一行；由教师打印并分发，团队不发送任何内容。"
       },
+      "kv_teaching": {
+        "name": "Teaching Materials (Tư liệu giảng dạy)",
+        "description": "查找教学资料来源及其等级，把班级记录整理成编码摘要，并为教师起草班级文件。关口检查每个来源、每个数据，以及学生或家长会看到的每一行；由教师阅读、发送和发布，团队不发送任何内容。"
+      },
       "sales_loop": {
         "name": "销售循环",
         "description": "每周为你的业务线寻找商机，起草外联消息供你审批，并从结果中学习。信息源开箱即用。"
@@ -377,6 +381,14 @@
         "description": "对缺陷、功能、优化或升级进行分诊，分派给合适的智能体，验证后汇报。"
       }
     },
+    "groups": {
+      "core": "核心",
+      "kitviet": "Kit Viet",
+      "vertical": "行业专用"
+    },
+    "expert_review_badge": "需专业审核",
+    "expert_review_notice": "使用此小队的产出前，必须由具备资质的人员审核。",
+    "expert_review_ack": "我会安排该审核。",
     "agents_label": "智能体",
     "agent_new": "新建",
     "agent_reused": "已存在",

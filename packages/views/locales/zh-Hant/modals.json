@@ -368,6 +368,10 @@
         "name": "Education Desk (Giáo dục)",
         "description": "根據課程學習目標草擬定期考試（đề kiểm tra định kỳ），包括命題雙向細目表、試題規格、參考答案與評分標準。關卡檢查每個答案以及學生或家長會看到的每一行；由教師列印並分享，團隊不發送任何內容。"
       },
+      "kv_teaching": {
+        "name": "Teaching Materials (Tư liệu giảng dạy)",
+        "description": "尋找教學資料來源及其等級，把班級紀錄整理成編碼摘要，並為教師草擬班級文件。關卡檢查每個來源、每個數字，以及學生或家長會看到的每一行；由教師閱讀、發送和發布，團隊不發送任何內容。"
+      },
       "sales_loop": {
         "name": "銷售循環",
         "description": "每週為你的業務線尋找商機，起草外聯訊息供你審核，並從結果中學習。資料來源開箱即用。"
@@ -377,6 +381,14 @@
         "description": "對缺陷、功能、最佳化或升級進行分流，分派給合適的智慧體，驗證後回報。"
       }
     },
+    "groups": {
+      "core": "核心",
+      "kitviet": "Kit Viet",
+      "vertical": "產業專用"
+    },
+    "expert_review_badge": "需專業審核",
+    "expert_review_notice": "使用此小隊的產出前，必須由具備資格的人員審核。",
+    "expert_review_ack": "我會安排該審核。",
     "agents_label": "智慧體",
     "agent_new": "新建",
     "agent_reused": "已存在",

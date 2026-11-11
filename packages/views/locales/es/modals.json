@@ -370,6 +370,10 @@
         "name": "Education Desk (Giáo dục)",
         "description": "Redacta pruebas periódicas (đề kiểm tra định kỳ) con su matriz, especificación, clave de respuestas y guía de calificación a partir de los resultados del currículo. Los filtros revisan cada respuesta y cada línea que vaya a ver un estudiante o un padre; el docente imprime y comparte, y el equipo no envía nada."
       },
+      "kv_teaching": {
+        "name": "Teaching Materials (Tư liệu giảng dạy)",
+        "description": "Encuentra fuentes didácticas con sus niveles, convierte los registros de clase en resúmenes codificados y redacta documentos de clase para un docente. Los filtros revisan cada fuente, cada cifra y cada línea que vaya a ver un estudiante o un padre; el docente lee, envía y publica. El equipo no envía nada."
+      },
       "sales_loop": {
         "name": "Ciclo de ventas",
         "description": "Busca oportunidades para tus líneas de negocio cada semana, prepara mensajes para que los apruebes y aprende de los resultados. Las fuentes ya vienen listas."
@@ -379,6 +383,14 @@
         "description": "Clasifica un error, una función, una optimización o una actualización, lo dirige a los agentes adecuados, lo verifica e informa."
       }
     },
+    "groups": {
+      "core": "Básicos",
+      "kitviet": "Kit Viet",
+      "vertical": "Verticales"
+    },
+    "expert_review_badge": "Revisión experta",
+    "expert_review_notice": "Una persona cualificada debe revisar el resultado de este squad antes de usarlo.",
+    "expert_review_ack": "Me encargaré de esa revisión.",
     "agents_label": "Agentes",
     "agent_new": "Nuevo",
     "agent_reused": "Ya existe",
