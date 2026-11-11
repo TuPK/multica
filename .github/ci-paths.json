@@ -83,6 +83,8 @@
     "scripts/worktree-db.test.sh",
     "scripts/dev-env.sh",
     "scripts/dev-env.test.sh",
+    "scripts/dev-full.sh",
+    "scripts/dev-full.test.sh",
     "scripts/perf-compare.mjs",
     "scripts/perf-compare.test.sh",
     "scripts/selfhost-wait.sh",

@@ -38,6 +38,20 @@ failure is logged and does not stop the server. Startup logs `hub storage initia
 with the bucket, the endpoint and whether presigning is on. Without `HUB_S3_ENDPOINT`
 (AWS) the bucket must already exist.
 
+### Local development with `make dev-full`
+
+`make dev-full` starts the same `seaweedfs` service on loopback ports and writes what the host-run
+backend (`make dev`) needs to the env file: `HUB_S3_ENDPOINT=http://localhost:<HUB_S3_API_PORT>`, the
+bucket, region and path style, and the credentials. It then confirms the bucket with a signed request
+and creates it if it is missing. The ports are free ports from 8333 and 9333, kept in the env file.
+A SeaweedFS that is already running (for example, from another checkout that uses the same compose
+project) is adopted with its ports and credentials, so the containers are not recreated. The
+published ports are also the loopback addresses listed in `SELF_HOSTING.md`.
+
+The store is shared by every checkout that uses the compose project `multica`, as the WeKnora
+services are. Its data is the `multica_seaweedfs-data` volume. `make dev-full` does not remove it.
+The cleanup commands are in [fresh-machine-install.md](fresh-machine-install.md#removing-the-local-stores).
+
 Why `HUB_S3_PUBLIC_ENDPOINT` is separate: the compose endpoint `http://seaweedfs:8333`
 resolves only inside the compose network. A presigned link to it cannot be opened by a
 browser or a desktop client. Without a public endpoint the bundle route answers with
@@ -94,6 +108,8 @@ Staged previews are removed by the application when they are committed, and they
 never read after 30 minutes. A preview that is abandoned leaves its objects behind, and
 the expiry rule removes them. The rule targets the top-level `staging/` prefix, which is
 why staging is kept apart from the bundles under `hub/`.
+
+The backend also runs an hourly sweep (`jobs_hub_staging.go`) that deletes `staging/` objects older than 60 minutes. It complements the bucket rule, which stays the backstop for stores or periods where the sweep does not run.
 
 Apply the rule once the bucket exists. The application does not set it. The rule is:
 
@@ -170,6 +186,7 @@ bucket after the switch are not copied back.
 | `503 file storage is not configured` on bundle or import routes | Neither the Hub store nor the attachment store could be built. Check the log for `failed to load AWS config`, or the local upload directory. |
 | `404 bundle not found` on the download route | The item's `bundle_key` names an object that is missing from the store. Restore the volume or copy the bundle back (section 3). |
 | `404 preview not found` for an import committed right after a deploy | The preview was staged under the old `hub/…/staging/` key. It expires within 30 minutes; preview again. |
+| `500 InternalError`, and the SeaweedFS log says `Not enough data nodes found` or `No writable volumes` for a collection | SeaweedFS has a default cap of 8 volumes per volume server (`Max` in `http://<HUB_S3_UI_PORT>/vol/status`). Each bucket is a collection that takes volumes, and the first one takes most of them, so a second bucket in the same store cannot take writes. The Hub uses one bucket, so this does not affect it. A test or other bucket in the same store does. Use a separate store for another bucket, or raise the cap in the compose command (`-volume.max`). The compose file does not set it. |
 
 ## 8. Verification record
 
@@ -179,3 +196,6 @@ bucket after the switch are not copied back.
 | Staging expiry rule accepted by SeaweedFS 4.53 | Accepted and returned by get. Expiry not yet observed. |
 | Volume backup and restore on a copy | Not run. |
 | Credential rotation on a copy | Not run. |
+| `make dev-full` Hub path (`scripts/dev-full.sh`, functions loaded with `DEV_FULL_LIB=1`) against an isolated compose project on the same host, 2026-11-11 | Passed: first start publishes 8333/9333, the status page answers, the bucket is created. A second checkout with its own generated secret adopts the running store's ports and credentials, and the container is not recreated. Stopped with `down -v`, volume removed. Not run: the full `make dev-full`. |
+| Repo S3 integration test (`TestS3StorageAgainstEndpoint`) against that store, bucket `multica-hub` | Passed. Against bucket `hub-it` it failed with the volume cap above, because the store had no free volumes left. |
+| Backend env contract (`TestNewHubS3StorageFromEnv*`) | Passed. |

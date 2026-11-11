@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Fresh-machine bootstrap: installs and configures Hermes, starts the WeKnora
-# knowledge services, fills in the knowledge secrets that are still empty, then
-# runs `make dev` (migrations, API, web) and starts the daemon when a Multica
-# login exists. Re-running is safe: values already in the env file are kept,
-# existing config files are backed up before they are changed, and containers
+# knowledge services and the SeaweedFS Hub object store, fills in the secrets that
+# are still empty, then runs `make dev` (migrations, API, web) and starts the daemon
+# when a Multica login exists. Re-running is safe: values already in the env file are
+# kept, existing config files are backed up before they are changed, and containers
 # that already exist are not stopped.
 #
 # The Multica account, the first workspace and the CLI login are browser steps.
@@ -16,6 +16,13 @@ cd "$REPO_ROOT"
 GUIDE="docs/engineering/runbooks/fresh-machine-install.md"
 COMPOSE_FILE="docker-compose.selfhost.yml"
 KNOWLEDGE_SERVICES=(knowledge-postgres knowledge-redis knowledge-docreader knowledge-app knowledge-ui)
+# The Hub object store (SeaweedFS). It has no compose profile, and it is shared by
+# every checkout that uses the same compose project, as the WeKnora services are.
+HUB_SERVICES=(seaweedfs)
+# Ports SeaweedFS listens on inside its container: the S3 API and the master, whose
+# /cluster/status is the health URL and whose page is the console.
+HUB_DEFAULT_API_PORT=8333
+HUB_DEFAULT_UI_PORT=9333
 REQUIRED_KNOWLEDGE=(
   KNOWLEDGE_SERVICE_EMAIL
   KNOWLEDGE_SERVICE_PASSWORD
@@ -35,6 +42,7 @@ HERMES_PIN_COMMIT="bf0203a794a07aac3ff764972ab9087baa4e4f4e"
 # the Go toolchain and builds the API before /health answers, which can take 20 minutes.
 WAIT_TRIES=480
 HERMES_STATUS="not installed"
+HUB_STORE_STATUS="not started"
 DAEMON_STATUS="not started"
 
 info() { echo "==> $*"; }
@@ -78,19 +86,31 @@ resolve_env_file() {
   ok "Using $ENV_FILE"
 }
 
-sed_in_place() {
-  if [ "$(uname)" = "Darwin" ]; then
-    sed -i '' "$@"
-  else
-    sed -i "$@"
-  fi
-}
-
 # Value of the last uncommented KEY= line in a file; empty when unset or commented out.
 env_value() {
   local line
   line=$(grep -E "^$2=" "$1" | tail -n 1 || true)
   printf '%s' "${line#"$2="}"
+}
+
+# Sets KEY to VALUE, replacing the line when KEY is present, and appending it otherwise.
+# awk reads the key and value from the environment, so a value with sed's special
+# characters (such as & or \) is written as it is. The file keeps its mode.
+set_env_value() {
+  local key=$1 value=$2 tmp
+  if grep -qE "^${key}=" "$ENV_FILE"; then
+    tmp=$(mktemp "${ENV_FILE}.XXXXXX")
+    KEY="$key" VALUE="$value" awk \
+      'index($0, ENVIRON["KEY"] "=") == 1 { print ENVIRON["KEY"] "=" ENVIRON["VALUE"]; next } { print }' \
+      "$ENV_FILE" >"$tmp"
+    cat "$tmp" >"$ENV_FILE"
+    rm -f "$tmp"
+  else
+    if [ -s "$ENV_FILE" ] && [ -n "$(tail -c 1 "$ENV_FILE")" ]; then
+      printf '\n' >> "$ENV_FILE"
+    fi
+    printf '%s=%s\n' "$key" "$value" >> "$ENV_FILE"
+  fi
 }
 
 # Sets KEY to VALUE only when KEY is empty or absent. Values are never printed.
@@ -99,14 +119,7 @@ set_if_empty() {
   if [ -n "$(env_value "$ENV_FILE" "$key")" ]; then
     return 0
   fi
-  if grep -qE "^${key}=" "$ENV_FILE"; then
-    sed_in_place "s#^${key}=.*#${key}=${value}#" "$ENV_FILE"
-  else
-    if [ -s "$ENV_FILE" ] && [ -n "$(tail -c 1 "$ENV_FILE")" ]; then
-      printf '\n' >> "$ENV_FILE"
-    fi
-    printf '%s=%s\n' "$key" "$value" >> "$ENV_FILE"
-  fi
+  set_env_value "$key" "$value"
   ok "Set $key in $ENV_FILE"
 }
 
@@ -129,6 +142,18 @@ fill_knowledge_secrets() {
   set_if_empty MULTICA_KNOWLEDGE_SECRET_KEY "$(openssl rand -base64 32)"
   set_if_empty KNOWLEDGE_REDIS_PASSWORD "$(openssl rand -hex 16)"
   set_if_empty KNOWLEDGE_DB_PASSWORD "$(openssl rand -hex 16)"
+}
+
+# The Hub store's credentials are written once and kept. SeaweedFS reads them when its
+# container starts, and the host-run backend reads the same values from this file.
+# The compose file refuses to parse without HUB_S3_SECRET_KEY, so this runs before any
+# compose call.
+fill_hub_secrets() {
+  set_if_empty HUB_S3_ACCESS_KEY "multica-hub"
+  set_if_empty HUB_S3_SECRET_KEY "$(openssl rand -hex 24)"
+  set_if_empty HUB_S3_BUCKET "multica-hub"
+  set_if_empty HUB_S3_REGION "us-east-1"
+  set_if_empty HUB_S3_USE_PATH_STYLE "true"
 }
 
 # Postgres applies POSTGRES_PASSWORD only when its data volume is created, and the
@@ -284,6 +309,180 @@ start_knowledge() {
 # file leaves it empty.
 compose_cli_hint() {
   echo "JWT_SECRET=unused docker compose --env-file $ENV_FILE -f $COMPOSE_FILE --profile knowledge"
+}
+
+### Hub object store: SeaweedFS, which the host-run backend reaches on a published port.
+### Ports are free-by-default and persisted; a running container's ports always win.
+
+# Host port that a running container publishes for CONTAINER_PORT, or nothing.
+published_port() {
+  local out
+  out=$(compose port "$1" "$2" 2>/dev/null) || return 0
+  printf '%s' "${out##*:}"
+}
+
+# True when nothing listens on 127.0.0.1:PORT.
+port_is_free() {
+  ! (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null
+}
+
+# First free port from START, skipping SKIP. Prints nothing and fails when there is none.
+free_port() {
+  local port=$1 skip=${2:-} end
+  end=$((port + 100))
+  while [ "$port" -lt "$end" ]; do
+    if [ "$port" != "$skip" ] && port_is_free "$port"; then
+      printf '%s' "$port"
+      return 0
+    fi
+    port=$((port + 1))
+  done
+  return 1
+}
+
+# A value of a running container's environment, or nothing. Read with docker inspect, so the
+# value is never printed.
+container_env() {
+  docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$1" \
+    | sed -n "s/^$2=//p" | tail -n 1
+}
+
+# Sets KEY to VALUE when VALUE is known and differs. The value is never printed.
+adopt_env_value() {
+  local key=$1 value=$2
+  if [ -z "$value" ] || [ "$(env_value "$ENV_FILE" "$key")" = "$value" ]; then
+    return 0
+  fi
+  set_env_value "$key" "$value"
+  ok "Set $key in $ENV_FILE to the value the running SeaweedFS uses"
+}
+
+# Writes the store's ports and credentials to the env file. A running SeaweedFS container
+# wins: this checkout and the other worktrees share one compose project, so a container that
+# is already running is adopted, not recreated. Recreating it with this checkout's ports or
+# key would stop the store for the other checkout. Otherwise an explicit value is kept (and
+# must be free), and an empty one takes the first free port. Re-runs keep the same values.
+resolve_hub_ports() {
+  local api ui cid
+  api=$(published_port seaweedfs "$HUB_DEFAULT_API_PORT")
+  ui=$(published_port seaweedfs "$HUB_DEFAULT_UI_PORT")
+  if [ -n "$api" ] && [ -n "$ui" ]; then
+    cid=$(compose ps -q seaweedfs)
+    adopt_env_value HUB_S3_ACCESS_KEY "$(container_env "$cid" HUB_S3_ACCESS_KEY)"
+    adopt_env_value HUB_S3_SECRET_KEY "$(container_env "$cid" HUB_S3_SECRET_KEY)"
+    info "SeaweedFS is already running on ports $api and $ui; using its ports and credentials"
+  else
+    api=$(env_value "$ENV_FILE" HUB_S3_API_PORT)
+    if [ -z "$api" ]; then
+      if ! api=$(free_port "$HUB_DEFAULT_API_PORT"); then
+        fail "No free port from $HUB_DEFAULT_API_PORT for the Hub store. Set HUB_S3_API_PORT in $ENV_FILE and run make dev-full again."
+      fi
+    elif ! port_is_free "$api"; then
+      fail "HUB_S3_API_PORT=$api in $ENV_FILE is already in use. Choose another port there and run make dev-full again."
+    fi
+    ui=$(env_value "$ENV_FILE" HUB_S3_UI_PORT)
+    if [ -z "$ui" ]; then
+      if ! ui=$(free_port "$HUB_DEFAULT_UI_PORT" "$api"); then
+        fail "No free port from $HUB_DEFAULT_UI_PORT for the SeaweedFS UI. Set HUB_S3_UI_PORT in $ENV_FILE and run make dev-full again."
+      fi
+    elif ! port_is_free "$ui"; then
+      fail "HUB_S3_UI_PORT=$ui in $ENV_FILE is already in use. Choose another port there and run make dev-full again."
+    fi
+  fi
+  if [ "$(env_value "$ENV_FILE" HUB_S3_API_PORT)" != "$api" ]; then
+    set_env_value HUB_S3_API_PORT "$api"
+    ok "Set HUB_S3_API_PORT to $api in $ENV_FILE"
+  fi
+  if [ "$(env_value "$ENV_FILE" HUB_S3_UI_PORT)" != "$ui" ]; then
+    set_env_value HUB_S3_UI_PORT "$ui"
+    ok "Set HUB_S3_UI_PORT to $ui in $ENV_FILE"
+  fi
+}
+
+# The endpoint the host-run backend uses. Multica runs on this machine, where the compose
+# service name does not resolve, so the published port is used (the same rule as
+# KNOWLEDGE_URL). A value that names the compose service is refused. A loopback value on
+# another port is moved to the published port, because the store may have been recreated
+# on other ports since the env file was written. Other hosts are kept as they are.
+resolve_hub_urls() {
+  local api endpoint
+  api=$(env_value "$ENV_FILE" HUB_S3_API_PORT)
+  set_if_empty HUB_S3_ENDPOINT "http://localhost:${api}"
+  endpoint=$(env_value "$ENV_FILE" HUB_S3_ENDPOINT)
+  case "$endpoint" in
+    http://seaweedfs|http://seaweedfs:*|http://seaweedfs/*)
+      fail "HUB_S3_ENDPOINT=$endpoint uses the Docker network name. make dev runs Multica on this machine, so set HUB_S3_ENDPOINT=http://localhost:${api} in $ENV_FILE and run make dev-full again."
+      ;;
+    http://localhost:"$api"|http://127.0.0.1:"$api")
+      ;;
+    http://localhost:*|http://127.0.0.1:*)
+      set_env_value HUB_S3_ENDPOINT "http://localhost:${api}"
+      ok "Set HUB_S3_ENDPOINT to http://localhost:${api} to match the published SeaweedFS port"
+      ;;
+  esac
+}
+
+# One S3 request signed with the Hub credentials. Prints the HTTP status, 000 when the
+# endpoint does not answer. The request is passed to curl as a config file on stdin, so
+# the secret never reaches the process list.
+hub_s3_status() {
+  local method=$1 path=$2 ak sk region endpoint
+  ak=$(env_value "$ENV_FILE" HUB_S3_ACCESS_KEY)
+  sk=$(env_value "$ENV_FILE" HUB_S3_SECRET_KEY)
+  region=$(env_value "$ENV_FILE" HUB_S3_REGION)
+  endpoint=$(env_value "$ENV_FILE" HUB_S3_ENDPOINT)
+  printf 'url = "%s%s"\nrequest = "%s"\nuser = "%s:%s"\naws-sigv4 = "aws:amz:%s:s3"\nsilent\nmax-time = 10\noutput = /dev/null\nwrite-out = "%%{http_code}"\n' \
+    "$(json_string "$endpoint")" "$(json_string "$path")" "$method" \
+    "$(json_string "$ak")" "$(json_string "$sk")" "$(json_string "$region")" \
+    | curl -K - 2>/dev/null || true
+}
+
+# Confirms that the backend's bucket exists, and creates it when it does not. The backend
+# creates the bucket at startup too; this check says so before Multica starts.
+ensure_hub_bucket() {
+  local bucket endpoint code i
+  bucket=$(env_value "$ENV_FILE" HUB_S3_BUCKET)
+  endpoint=$(env_value "$ENV_FILE" HUB_S3_ENDPOINT)
+  code=000
+  for i in $(seq 1 60); do
+    code=$(hub_s3_status HEAD "/$bucket")
+    [ "$code" != 000 ] && break
+    sleep 3
+  done
+  case "$code" in
+    200)
+      HUB_STORE_STATUS="running; bucket $bucket exists"
+      ok "S3 answers at $endpoint; bucket $bucket exists"
+      ;;
+    404)
+      code=$(hub_s3_status PUT "/$bucket")
+      if [ "$code" != 200 ]; then
+        fail "Could not create bucket $bucket at $endpoint (HTTP $code). Logs: $(compose_cli_hint) logs --tail 100 seaweedfs"
+      fi
+      HUB_STORE_STATUS="running; bucket $bucket created"
+      ok "S3 answers at $endpoint; bucket $bucket created"
+      ;;
+    403)
+      fail "SeaweedFS rejected HUB_S3_ACCESS_KEY and HUB_S3_SECRET_KEY in $ENV_FILE (HTTP 403). The container keeps the credentials it started with. See the credential rotation steps in docs/engineering/runbooks/hub-object-storage.md, section 5."
+      ;;
+    000)
+      fail "SeaweedFS did not answer its S3 API at $endpoint after about 3 minutes. Logs: $(compose_cli_hint) logs --tail 100 seaweedfs. Check that HUB_S3_API_PORT is published: docker ps"
+      ;;
+    *)
+      fail "SeaweedFS answered bucket $bucket with HTTP $code. Logs: $(compose_cli_hint) logs --tail 100 seaweedfs"
+      ;;
+  esac
+}
+
+start_hub_store() {
+  local ui
+  ui=$(env_value "$ENV_FILE" HUB_S3_UI_PORT)
+  info "Starting the Hub object store: ${HUB_SERVICES[*]}"
+  info "The first start pulls the pinned SeaweedFS image."
+  compose up -d "${HUB_SERVICES[@]}"
+  wait_for_url "SeaweedFS" "http://localhost:${ui}/cluster/status" \
+    || fail "SeaweedFS is not healthy. Logs: $(compose_cli_hint) logs --tail 100 seaweedfs. Troubleshooting: $GUIDE#troubleshooting"
+  ensure_hub_bucket
 }
 
 ### Hermes: the agent CLI that Multica's Hermes runtime runs. Installed only when it is
@@ -484,14 +683,17 @@ start_daemon() {
 
 print_summary() {
   echo ""
-  echo "Multica and WeKnora are up."
+  echo "Multica, WeKnora and the Hub store are up."
   echo ""
   echo "  Web app       http://localhost:${FRONTEND_PORT}"
   echo "  Multica API   http://localhost:${PORT}  (health: /health)"
   echo "  WeKnora API   ${KNOWLEDGE_URL}  (health: /health)"
   echo "  WeKnora UI    ${KNOWLEDGE_UI_URL}"
+  echo "  Hub store     ${HUB_S3_ENDPOINT}  (S3 API, bucket ${HUB_S3_BUCKET})"
+  echo "  SeaweedFS UI  http://localhost:${HUB_S3_UI_PORT}  (cluster status: /cluster/status)"
   echo ""
-  echo "  Running       Multica API, Multica web, WeKnora (${KNOWLEDGE_SERVICES[*]})"
+  echo "  Running       Multica API, Multica web, WeKnora (${KNOWLEDGE_SERVICES[*]}), SeaweedFS (${HUB_SERVICES[*]})"
+  echo "  Hub store     $HUB_STORE_STATUS"
   echo "  Hermes        $HERMES_STATUS"
   echo "  Daemon        $DAEMON_STATUS"
   echo ""
@@ -506,9 +708,9 @@ print_summary() {
     echo "  4. Office: Set up your company, then Build your company."
     echo ""
   fi
-  echo "Ctrl-C stops Multica. The daemon and WeKnora keep running. To stop them:"
+  echo "Ctrl-C stops Multica. The daemon, WeKnora and the Hub store keep running. To stop them:"
   echo "  make cli ARGS=\"daemon stop\""
-  echo "  $(compose_cli_hint) stop ${KNOWLEDGE_SERVICES[*]}"
+  echo "  $(compose_cli_hint) stop ${KNOWLEDGE_SERVICES[*]} ${HUB_SERVICES[*]}"
   echo ""
 }
 
@@ -532,12 +734,19 @@ main() {
   check_prerequisites
   resolve_env_file
   fill_knowledge_secrets
+  fill_hub_secrets
   check_required_knowledge
   resolve_knowledge_urls
+  resolve_hub_ports
+  resolve_hub_urls
   load_env
   start_knowledge
+  start_hub_store
   setup_hermes
   start_multica
 }
 
-main "$@"
+# DEV_FULL_LIB=1 loads the functions without running the bootstrap (scripts/dev-full.test.sh).
+if [ "${DEV_FULL_LIB:-0}" != 1 ]; then
+  main "$@"
+fi

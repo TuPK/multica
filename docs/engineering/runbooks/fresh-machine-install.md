@@ -29,7 +29,8 @@ Also needed:
   `pgvector/pgvector:pg17` for Multica's own database.
 - Free loopback ports: 3000 (web), 8080 (API), 5432 (Multica Postgres), 8085 and 8090
   (WeKnora UI and API). If another stack already uses 8085 or 8090, see
-  [Troubleshooting](#troubleshooting).
+  [Troubleshooting](#troubleshooting). SeaweedFS (the Hub store) takes the first free ports
+  from 8333 and 9333, unless the env file sets `HUB_S3_API_PORT` and `HUB_S3_UI_PORT`.
 - Room for the knowledge containers, which idle at roughly 650 MB of RAM together, plus
   an embedding model (see [Environment variables](#environment-variables)).
 - Hermes is installed by `make dev-full` when it is missing. Its endpoint values come from
@@ -53,28 +54,37 @@ make dev-full
    `scripts/init-worktree-env.sh`, which gives the worktree its own database and ports.
 3. **Secrets.** It fills in the knowledge secrets that are empty: `KNOWLEDGE_SYSTEM_AES_KEY`,
    `KNOWLEDGE_JWT_SECRET`, `MULTICA_KNOWLEDGE_SECRET_KEY`, `KNOWLEDGE_DB_PASSWORD` and
-   `KNOWLEDGE_REDIS_PASSWORD`. Values that are already set are never changed, and no value
-   is printed.
+   `KNOWLEDGE_REDIS_PASSWORD`. It also fills the Hub store's `HUB_S3_SECRET_KEY` and
+   `HUB_S3_ACCESS_KEY`, and the `HUB_S3_BUCKET`, `HUB_S3_REGION` and `HUB_S3_USE_PATH_STYLE`
+   defaults. Values that are already set are never changed, and no value is printed.
 4. **Required values.** It checks the knowledge values only you can supply (see the table
    below). If any is empty, it lists them with what each is for, and stops. Nothing is
    started.
 5. **WeKnora.** It starts the five knowledge services (`knowledge-postgres`,
    `knowledge-redis`, `knowledge-docreader`, `knowledge-app`, `knowledge-ui`) and waits for
    `http://localhost:8090/health`.
-6. **Hermes.** If `hermes` is not on PATH, it runs the official installer pinned to commit
+6. **Hub store.** It starts `seaweedfs`, the S3-compatible store for Hub bundles, and waits for
+   its cluster status page. It then confirms the bucket with a signed S3 request and creates
+   the bucket if it is missing. The backend creates the bucket too, at its own startup. The
+   ports are chosen the first time: a free port from 8333 for the S3 API and from 9333 for the
+   status page. A SeaweedFS that is already running is adopted with its ports and credentials,
+   so two checkouts that share the compose project use one store. `HUB_S3_ENDPOINT` is set to
+   `http://localhost:<HUB_S3_API_PORT>`, the address `make dev` uses.
+7. **Hermes.** If `hermes` is not on PATH, it runs the official installer pinned to commit
    `bf0203a7` (Hermes Agent v0.22.5) with `--non-interactive`. It then writes the custom
    endpoint into `~/.hermes/config.yaml` and `~/.hermes/.env`, backing up any existing file
    first, and runs `hermes -z` to confirm a reply. If the `HERMES_*` values are empty, it
    lists them and continues: Multica still runs, but Hermes is not configured.
-7. **Multica.** It runs `make dev` (migrations, API, web). Once the API and the web app
+8. **Multica.** It runs `make dev` (migrations, API, web). Once the API and the web app
    answer, it creates the local CLI profile if it is missing, and starts the daemon if the
-   profile has a login. Otherwise it prints the login steps. Then it prints a summary.
+   profile has a login. Otherwise it prints the login steps. Then it prints a summary, which
+   lists the Hub store's endpoint and the SeaweedFS status page next to the WeKnora lines.
 
 The first run usually stops at step 4 on a fresh machine. That is expected: fill in the
 listed values in `.env`, then run `make dev-full` again. Re-running is safe.
 
-Ctrl-C stops Multica. The daemon and WeKnora keep running. The summary shows the commands
-that stop them.
+Ctrl-C stops Multica. The daemon, WeKnora and the Hub store keep running. The summary shows
+the commands that stop them.
 
 `make dev-full` does not create the Multica account, the first workspace, or the CLI login.
 Those are browser steps, described below.
@@ -118,6 +128,14 @@ random value when it is empty. The `HERMES_*` values are read only by `make dev-
 | `MULTICA_KNOWLEDGE_SECRET_KEY` | generated | 32-byte base64 key that encrypts each workspace's WeKnora API key in Multica's database. Knowledge cannot be enabled without it | `openssl rand -base64 32` |
 | `KNOWLEDGE_DB_PASSWORD` | generated | WeKnora Postgres password. Postgres reads it only when its volume is first created | `<generated>` |
 | `KNOWLEDGE_REDIS_PASSWORD` | generated | WeKnora Redis password | `<generated>` |
+| `HUB_S3_SECRET_KEY` | generated | Secret of the Hub store. SeaweedFS and the backend read it. Changing it recreates the store's credentials (see `hub-object-storage.md`, section 5) | `openssl rand -hex 24` |
+| `HUB_S3_ACCESS_KEY` | set by make dev-full | Access key of the Hub store | `multica-hub` |
+| `HUB_S3_BUCKET` | set by make dev-full | Bucket for Hub bundles | `multica-hub` |
+| `HUB_S3_REGION` | set by make dev-full | Signing region | `us-east-1` |
+| `HUB_S3_USE_PATH_STYLE` | set by make dev-full | Path-style addressing, which SeaweedFS needs | `true` |
+| `HUB_S3_API_PORT` | set by make dev-full | Loopback port of the Hub store's S3 API. Chosen when first free; a running store's port is kept | `8333` |
+| `HUB_S3_UI_PORT` | set by make dev-full | Loopback port of the SeaweedFS status page (`/cluster/status`) | `9333` |
+| `HUB_S3_ENDPOINT` | set by make dev-full | Where the host-run backend reaches the store. Use the published port, not `seaweedfs` (that name resolves only inside Docker) | `http://localhost:8333` |
 
 Keep `KNOWLEDGE_SYSTEM_AES_KEY` and `MULTICA_KNOWLEDGE_SECRET_KEY` with your backups. The
 backup list is in `SELF_HOSTING.md`, Company Knowledge Base.
@@ -259,6 +277,7 @@ Run each check. A step passes only when its "Passes when" column holds.
 | 2 | Web app | open `http://localhost:3000` | sign-in page loads |
 | 3 | WeKnora API | `curl -fsS http://localhost:8090/health` | exit 0. This is the route the `knowledge-app` healthcheck uses |
 | 4 | WeKnora UI | open `http://localhost:8085` | WeKnora login page loads |
+| 4a | Hub store | `curl -fsS http://localhost:<HUB_S3_UI_PORT>/cluster/status` | exit 0. The bucket check in `make dev-full` also reports `bucket multica-hub exists` |
 | 5 | Daemon | `make cli ARGS="daemon status"` | reports running |
 | 6 | Hermes registered | Settings > Runtimes, or `make cli ARGS="runtime list"` | a Hermes runtime is listed as online |
 | 6a | Hermes replies | `hermes -z "Reply with the word ok."` | prints a reply (`make dev-full` runs this check and prints the reply) |
@@ -312,6 +331,19 @@ did not start.
 **`make dev-full` refuses `KNOWLEDGE_URL=http://knowledge-app:8080`.** That name resolves only
 inside Docker. Use `http://localhost:8090`, or your `KNOWLEDGE_API_PORT`.
 
+**`make dev-full` refuses `HUB_S3_ENDPOINT=http://seaweedfs:8333`.** The same reason: the host-run
+backend cannot resolve `seaweedfs`. Use `http://localhost:<HUB_S3_API_PORT>`, or remove the line
+so `make dev-full` sets it. `make selfhost` reads the same env file and needs the Docker name,
+so an env file that runs both stacks cannot set the value for both. Use separate env files.
+
+**`make dev-full` fails with "HUB_S3_API_PORT=... is already in use".** Another program holds the
+port. Set `HUB_S3_API_PORT` (and `HUB_S3_UI_PORT`) to free ports in the env file, and run
+`make dev-full` again.
+
+**`make dev-full` reports HTTP 403 from SeaweedFS.** The store was started with other credentials
+than the env file holds. The container keeps the credentials it started with. Restore the values
+it uses, or follow the rotation steps in [hub-object-storage.md](hub-object-storage.md#5-credential-rotation).
+
 **WeKnora does not answer after six minutes.** Check the container status and logs:
 
 ```bash
@@ -345,3 +377,25 @@ is not served by the endpoint, or the key is wrong. The failure text names the c
 **Summaries or Wiki are missing.** The chat variables were unset when the API started. Set
 `KNOWLEDGE_LLM_BASE_URL`, `KNOWLEDGE_LLM_API_KEY` and `KNOWLEDGE_LLM_MODEL`, restart
 `make dev`, then run Setup > Models > **Test models**.
+
+## Removing the local stores
+
+`make dev-full` never removes a volume, and `make destroy` only drops this checkout's Multica
+database. WeKnora and SeaweedFS keep their data in Docker volumes named with the compose project
+`multica`, which every checkout on the machine shares. Removing them affects all of those
+checkouts. Stop the services, then remove the volumes:
+
+```bash
+# WeKnora: the knowledge bases, their documents and files are lost
+JWT_SECRET=unused docker compose --env-file .env -f docker-compose.selfhost.yml --profile knowledge stop knowledge-ui knowledge-app knowledge-docreader knowledge-redis knowledge-postgres
+docker volume rm multica_knowledge-postgres-data multica_knowledge-data-files multica_knowledge-redis-data multica_knowledge-docreader-tmp
+
+# SeaweedFS: the Hub's bundles are lost. Hub items keep their rows, and their bundles answer 404
+JWT_SECRET=unused docker compose --env-file .env -f docker-compose.selfhost.yml rm -s -f seaweedfs
+docker volume rm multica_seaweedfs-data
+```
+
+Use `.env.worktree` in place of `.env` in a worktree. `JWT_SECRET=unused` only lets compose parse
+the file; these services do not use it. Do not run `docker compose down -v` with this file: the
+self-host stack and the local Postgres use the same project name, so `-v` removes their volumes too. For the Hub store, see [hub-object-storage.md](hub-object-storage.md),
+section 7.

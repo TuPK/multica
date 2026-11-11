@@ -46,6 +46,10 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 如果不设置 `HUB_S3_BUCKET`，压缩包会改为保存在附件存储中。
 
+## 使用 make dev-full 进行本地开发
+
+在开发检出目录中，`make dev-full` 会启动同一个 SeaweedFS 服务，并把宿主机上运行的后端（`make dev`）所需的值写入 `.env` 或 `.env.worktree`。你不需要手动设置这些值。S3 API 和 SeaweedFS 状态页会发布到空闲的本机回环端口（从 8333 和 9333 开始），`HUB_S3_ENDPOINT` 指向 `localhost` 上的 S3 端口。如果发现存储已在运行，另一个工作树或检出目录会使用它的端口和凭据。存储数据保存在 `multica_seaweedfs-data` 卷中。移除方法见[全新机器安装手册](https://github.com/multica-ai/multica/blob/main/docs/engineering/runbooks/fresh-machine-install.md#removing-the-local-stores)。
+
 ## 变量
 
 | 变量 | 默认值 | 含义 |

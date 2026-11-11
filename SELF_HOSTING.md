@@ -538,6 +538,8 @@ The self-host compose file runs SeaweedFS (S3-compatible, Apache-2.0). The Hub k
 
 Set `HUB_S3_SECRET_KEY` before the first start. The compose file refuses to start without it; generate one with `openssl rand -hex 24`. The backend and SeaweedFS read the same value.
 
+SeaweedFS publishes its S3 API on `127.0.0.1:${HUB_S3_API_PORT:-8333}` and its cluster status page on `127.0.0.1:${HUB_S3_UI_PORT:-9333}`. Like the other services, these are loopback only. Change the ports in `.env` if they are taken.
+
 Plugin files used at runtime stay in Postgres. The bucket holds only bundles and staged import previews.
 
 The runbook covers backups of the SeaweedFS volume, the lifecycle rule for staged previews, credential rotation and moving to another S3 endpoint: [Hub object storage](docs/engineering/runbooks/hub-object-storage.md).

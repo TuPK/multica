@@ -11,6 +11,8 @@ cd "$ROOT_DIR"
 # include .env and bare-`export` it to the recipe environment, clobbering
 # this value, so run_recipe seeds it into the recipe .env as well.
 export JWT_SECRET=test-secret-for-config-test
+# The Hub store secret is required the same way (the backend and SeaweedFS both read it).
+export HUB_S3_SECRET_KEY=test-hub-secret-for-config-test
 
 require_config() {
   local config=$1
@@ -53,6 +55,13 @@ config="$(
 
 require_config "$config" 'published: "3100"'
 require_config "$config" 'published: "9100"'
+# SeaweedFS publishes its S3 API and master UI on loopback, on the ports make dev-full writes.
+require_config "$config" 'published: "8333"'
+require_config "$config" 'published: "9333"'
+hub_ports_config="$(HUB_S3_API_PORT=18333 HUB_S3_UI_PORT=19333 docker compose --env-file "$tmp_env" -f docker-compose.selfhost.yml config)"
+require_config "$hub_ports_config" 'published: "18333"'
+require_config "$hub_ports_config" 'published: "19333"'
+require_config "$hub_ports_config" 'HUB_S3_ENDPOINT: http://seaweedfs:8333'
 require_config "$config" 'FRONTEND_ORIGIN: http://localhost:3100'
 require_config "$config" 'GOOGLE_REDIRECT_URI: http://localhost:3100/auth/callback'
 require_config "$config" 'MULTICA_APP_URL: http://localhost:3100'

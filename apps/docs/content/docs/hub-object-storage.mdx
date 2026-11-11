@@ -46,6 +46,10 @@ The self-host compose file starts SeaweedFS as the `seaweedfs` service. SeaweedF
 
 Leave `HUB_S3_BUCKET` unset to keep bundles in the attachment store instead.
 
+## Local development with make dev-full
+
+On a development checkout, `make dev-full` starts the same SeaweedFS service and writes the values the host-run backend (`make dev`) reads into `.env` or `.env.worktree`. You do not set them by hand. The S3 API and the SeaweedFS status page are published on free loopback ports (from 8333 and 9333), and `HUB_S3_ENDPOINT` points at the S3 port on `localhost`. A worktree or a second checkout that finds the store already running uses its ports and credentials. The store's data stays in the `multica_seaweedfs-data` volume. See the [fresh-machine install runbook](https://github.com/multica-ai/multica/blob/main/docs/engineering/runbooks/fresh-machine-install.md#removing-the-local-stores) for how to remove it.
+
 ## Variables
 
 | Variable | Default | Meaning |

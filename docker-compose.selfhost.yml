@@ -273,6 +273,8 @@ services:
       - -s3.port=8333
       - -s3.config=/etc/seaweedfs/s3.json
       - -master.volumeSizeLimitMB=1024
+      # 0 sizes the volume count from free disk; the default of 8 runs out after the first bucket.
+      - -volume.max=0
     environment:
       HUB_S3_ACCESS_KEY: ${HUB_S3_ACCESS_KEY:-multica-hub}
       HUB_S3_SECRET_KEY: ${HUB_S3_SECRET_KEY:?HUB_S3_SECRET_KEY must be set — generate one with 'openssl rand -hex 24'}
@@ -283,6 +285,13 @@ services:
         printf '{"identities":[{"name":"hub","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}' "$$HUB_S3_ACCESS_KEY" "$$HUB_S3_SECRET_KEY" > /etc/seaweedfs/s3.json
         exec /usr/bin/weed "$$@"
       - weed
+    # Loopback only. The S3 API is what the backend uses; the master port serves the
+    # cluster status page (the health check below) and is the closest thing SeaweedFS
+    # has to a console. make dev-full picks free host ports and writes them to the env
+    # file as HUB_S3_API_PORT and HUB_S3_UI_PORT.
+    ports:
+      - "127.0.0.1:${HUB_S3_API_PORT:-8333}:8333"
+      - "127.0.0.1:${HUB_S3_UI_PORT:-9333}:9333"
     volumes:
       - seaweedfs-data:/data
     restart: unless-stopped
