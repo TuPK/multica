@@ -208,7 +208,7 @@ LEFT JOIN agent_runtime lrt ON lrt.id = la.runtime_id
 LEFT JOIN LATERAL (
     SELECT p.id, p.title, p.workflow_id
     FROM project p
-    WHERE p.workspace_id = s.workspace_id AND p.squad_id = s.id
+    WHERE p.workspace_id = s.workspace_id AND s.id = ANY(p.squad_ids)
     ORDER BY p.created_at ASC, p.id ASC
     LIMIT 1
 ) pr ON true

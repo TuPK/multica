@@ -54,10 +54,8 @@ func TestAssignSquadProjectRefusesSecondOpenProject(t *testing.T) {
 	assignSquadProject(t, fx, fx.Build, first, nil).Want(http.StatusOK)
 	assignSquadProject(t, fx, fx.Build, second, nil).Want(http.StatusConflict)
 
-	var squadID *string
-	dbfx.QueryRow(t, `SELECT squad_id::text FROM project WHERE id = $1`, first).Scan(&squadID)
-	if squadID == nil || *squadID != fx.Build {
-		t.Fatalf("first project squad_id = %v, want it to stay on %s", squadID, fx.Build)
+	if got := projectSquadIDs(t, first); len(got) != 1 || got[0] != fx.Build {
+		t.Fatalf("first project squad_ids = %v, want it to stay on %s", got, fx.Build)
 	}
 }
 
@@ -80,10 +78,8 @@ func TestUnassignSquadProjectFreesSquad(t *testing.T) {
 	req = withURLParams(req, "workspaceId", fx.ID, "id", fx.Build)
 	testutil.Call(t, testHandler.UnassignSquadProject, req).Want(http.StatusOK)
 
-	var squadID *string
-	dbfx.QueryRow(t, `SELECT squad_id::text FROM project WHERE id = $1`, first).Scan(&squadID)
-	if squadID != nil {
-		t.Fatalf("project still assigned to %s after unassign", *squadID)
+	if got := projectSquadIDs(t, first); len(got) != 0 {
+		t.Fatalf("project still assigned to %v after unassign", got)
 	}
 	assignSquadProject(t, fx, fx.Build, second, nil).Want(http.StatusOK)
 }
@@ -102,6 +98,83 @@ func TestAssignSquadProjectRefusesProjectOnAnotherWorkflow(t *testing.T) {
 	projectID := dbfxProject(t, fx, "Custom flow")
 	dbfx.Exec(t, `UPDATE project SET workflow_id = gen_random_uuid() WHERE id = $1`, projectID)
 	assignSquadProject(t, fx, fx.Build, projectID, nil).Want(http.StatusConflict)
+}
+
+// TestAssignSquadProjectLetsSeveralSquadsShareAProject: a project can be worked
+// by two rooms at once. Each squad still holds one open project; unassigning one
+// squad leaves the other on the project.
+func TestAssignSquadProjectLetsSeveralSquadsShareAProject(t *testing.T) {
+	fx := newIniWorkspace(t)
+	projectID := dbfxProject(t, fx, "Shared")
+	second := sdlcSquad(t, fx, "Second build")
+
+	assignSquadProject(t, fx, fx.Build, projectID, nil).Want(http.StatusOK)
+	var out struct {
+		Project struct {
+			SquadIDs []string `json:"squad_ids"`
+			SquadID  *string  `json:"squad_id"`
+		} `json:"project"`
+	}
+	assignSquadProject(t, fx, second, projectID, nil).Want(http.StatusOK).JSON(&out)
+	if got := projectSquadIDs(t, projectID); len(got) != 2 || got[0] != fx.Build || got[1] != second {
+		t.Fatalf("project squad_ids = %v, want [%s %s]", got, fx.Build, second)
+	}
+	if len(out.Project.SquadIDs) != 2 || out.Project.SquadID == nil || *out.Project.SquadID != fx.Build {
+		t.Fatalf("response squad_ids = %v squad_id = %v, want both squads and the first as squad_id", out.Project.SquadIDs, out.Project.SquadID)
+	}
+
+	// The squad that is not unassigned keeps the project.
+	req := newRequestAs(fx.AdminID, "DELETE", "/api/squads/"+fx.Build+"/project", nil)
+	req = withURLParams(req, "workspaceId", fx.ID, "id", fx.Build)
+	testutil.Call(t, testHandler.UnassignSquadProject, req).Want(http.StatusOK)
+	if got := projectSquadIDs(t, projectID); len(got) != 1 || got[0] != second {
+		t.Fatalf("project squad_ids after unassigning %s = %v, want [%s]", fx.Build, got, second)
+	}
+}
+
+// TestAssignSquadProjectStillRefusesSecondOpenProjectWhenShared: sharing a project
+// does not let a squad take a second open project.
+func TestAssignSquadProjectStillRefusesSecondOpenProjectWhenShared(t *testing.T) {
+	fx := newIniWorkspace(t)
+	shared := dbfxProject(t, fx, "Shared")
+	other := dbfxProject(t, fx, "Other")
+	second := sdlcSquad(t, fx, "Second build")
+	assignSquadProject(t, fx, fx.Build, shared, nil).Want(http.StatusOK)
+	assignSquadProject(t, fx, second, shared, nil).Want(http.StatusOK)
+	assignSquadProject(t, fx, fx.Build, other, nil).Want(http.StatusConflict)
+}
+
+// sdlcSquad makes a second build squad with the SDLC agents of the fixture's build
+// squad, so a project can take it as a second room.
+func sdlcSquad(t *testing.T, fx iniWorkspace, name string) string {
+	t.Helper()
+	leader := iniAgent(t, fx.ID, name+" lead")
+	squad := dbfx.Squad(t, name, leader, testutil.Cols{"workspace_id": fx.ID})
+	dbfx.SquadMember(t, squad, "agent", leader, testutil.Cols{"role": "leader"})
+	rows, err := testPool.Query(context.Background(), `SELECT member_id::text, role FROM squad_member WHERE squad_id = $1 AND member_type = 'agent'`, fx.Build)
+	if err != nil {
+		t.Fatalf("list build squad members: %v", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var member, role string
+		if err := rows.Scan(&member, &role); err != nil {
+			t.Fatalf("scan member: %v", err)
+		}
+		dbfx.SquadMember(t, squad, "agent", member, testutil.Cols{"role": role})
+	}
+	return squad
+}
+
+// projectSquadIDs reads a project's squad list as the database holds it.
+func projectSquadIDs(t *testing.T, projectID string) []string {
+	t.Helper()
+	var joined string
+	dbfx.QueryRow(t, `SELECT COALESCE(array_to_string(squad_ids, ','), '') FROM project WHERE id = $1`, projectID).Scan(&joined)
+	if joined == "" {
+		return nil
+	}
+	return strings.Split(joined, ",")
 }
 
 func dbfxProject(t *testing.T, fx iniWorkspace, title string) string {

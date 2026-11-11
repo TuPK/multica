@@ -55,6 +55,7 @@ DELETE FROM squad_handoff WHERE workspace_id = $1 AND id = $2 AND status = 'pend
 -- name: GetSquadOpenProject :one
 -- The project a squad is working on now, with no project excluded.
 SELECT * FROM project
-WHERE workspace_id = $1 AND squad_id = $2 AND status NOT IN ('completed', 'cancelled')
+WHERE workspace_id = sqlc.arg('workspace_id') AND sqlc.arg('squad_id')::uuid = ANY(squad_ids)
+  AND status NOT IN ('completed', 'cancelled')
 ORDER BY created_at DESC
 LIMIT 1;

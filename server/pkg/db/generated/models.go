@@ -1990,7 +1990,7 @@ type Project struct {
 	WorkflowID  pgtype.UUID        `json:"workflow_id"`
 	CreatorType pgtype.Text        `json:"creator_type"`
 	CreatorID   pgtype.UUID        `json:"creator_id"`
-	SquadID     pgtype.UUID        `json:"squad_id"`
+	SquadIds    []pgtype.UUID      `json:"squad_ids"`
 }
 
 type ProjectResource struct {

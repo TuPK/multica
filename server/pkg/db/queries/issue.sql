@@ -809,9 +809,13 @@ RETURNING *;
 -- the done/closed category, and no agent run of it is still queued, dispatched,
 -- parked on a local directory or running: its status alone can be set before
 -- the run that finishes the work has ended. A queued issue also waits while an
--- unqueued issue of its project is running an agent, because they share the
--- checkout. any_scope reads every workspace; otherwise only the given one.
+-- unqueued issue of its project is running an agent in the same room, because
+-- they share the checkout. A room is the squad an issue is assigned to, or the
+-- home squad of its agent (see the lane expressions below). An issue with no
+-- room conflicts with every issue of its project. any_scope reads every
+-- workspace; otherwise only the given one.
 SELECT i.* FROM issue i
+LEFT JOIN agent ia ON ia.id = i.assignee_id AND i.assignee_type = 'agent'
 WHERE i.status = 'backlog'
   AND i.run_queued
   AND i.triage_state IS NULL
@@ -833,10 +837,17 @@ WHERE i.status = 'backlog'
   )
   AND NOT EXISTS (
     SELECT 1 FROM issue r
+    LEFT JOIN agent ra ON ra.id = r.assignee_id AND r.assignee_type = 'agent'
     WHERE i.project_id IS NOT NULL
       AND r.workspace_id = i.workspace_id
       AND r.project_id = i.project_id
       AND NOT r.run_queued
+      AND (
+        COALESCE(CASE WHEN i.assignee_type = 'squad' THEN i.assignee_id END, ia.home_squad_id) IS NULL
+        OR COALESCE(CASE WHEN r.assignee_type = 'squad' THEN r.assignee_id END, ra.home_squad_id) IS NULL
+        OR COALESCE(CASE WHEN i.assignee_type = 'squad' THEN i.assignee_id END, ia.home_squad_id)
+           = COALESCE(CASE WHEN r.assignee_type = 'squad' THEN r.assignee_id END, ra.home_squad_id)
+      )
       AND EXISTS (
         SELECT 1 FROM agent_task_queue t
         WHERE t.issue_id = r.id

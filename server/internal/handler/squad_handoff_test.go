@@ -27,7 +27,7 @@ func newHandoffFx(t *testing.T) handoffFx {
 	dbfx.Exec(t, `UPDATE workspace SET issue_counter = 1000 WHERE id = $1`, fx.ID)
 	squad, lead := planningSquad(t, fx, "Planning")
 	project := dbfxProject(t, fx, "Build repo")
-	dbfx.Exec(t, `UPDATE project SET squad_id = $1 WHERE id = $2`, fx.Build, project)
+	dbfx.Exec(t, `UPDATE project SET squad_ids = ARRAY[$1::uuid] WHERE id = $2`, fx.Build, project)
 	return handoffFx{iniWorkspace: fx, Planning: squad, Lead: lead, LeadTask: createHandlerTestTaskForAgent(t, lead), Project: project}
 }
 
@@ -249,13 +249,13 @@ func TestSquadHandoffNeedsAnOpenProjectAndDoesNotChain(t *testing.T) {
 	issue := fx.request(t, "Add feature X")
 	fx.packet(t, issue)
 
-	dbfx.Exec(t, `UPDATE project SET squad_id = NULL WHERE id = $1`, fx.Project)
+	dbfx.Exec(t, `UPDATE project SET squad_ids = '{}' WHERE id = $1`, fx.Project)
 	resp := fx.leadAsks(t, issue).Want(http.StatusUnprocessableEntity)
 	if !strings.Contains(resp.Text(), "handoff_target_unavailable") {
 		t.Fatalf("body = %s, want handoff_target_unavailable", resp.Text())
 	}
 
-	dbfx.Exec(t, `UPDATE project SET squad_id = $1 WHERE id = $2`, fx.Build, fx.Project)
+	dbfx.Exec(t, `UPDATE project SET squad_ids = ARRAY[$1::uuid] WHERE id = $2`, fx.Build, fx.Project)
 	var out handoffOut
 	fx.leadAsks(t, issue).Want(http.StatusOK).JSON(&out)
 	if out.Status != "handed_off" {

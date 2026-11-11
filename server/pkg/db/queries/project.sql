@@ -64,27 +64,29 @@ WHERE workspace_id = sqlc.arg('workspace_id')::uuid
   AND project_id = ANY(sqlc.arg('project_ids')::uuid[])
 GROUP BY project_id;
 
--- name: SetProjectSquad :one
--- Assigns the project to a squad. The handler clears the squad's other projects first.
-UPDATE project SET squad_id = sqlc.narg('squad_id'), updated_at = now()
-WHERE id = $1 AND workspace_id = $2
+-- name: SetProjectSquadIDs :one
+-- Replaces the project's squad list. The handler computes it under the project's row lock.
+UPDATE project SET squad_ids = sqlc.arg('squad_ids')::uuid[], updated_at = now()
+WHERE id = sqlc.arg('id') AND workspace_id = sqlc.arg('workspace_id')
 RETURNING *;
 
 -- name: GetOpenSquadProject :one
--- The project a squad is working on. A squad works one open project at a time.
+-- An open project the squad is assigned to. A squad works one open project at a time.
 SELECT * FROM project
-WHERE workspace_id = sqlc.arg('workspace_id') AND squad_id = sqlc.arg('squad_id') AND id <> sqlc.arg('id')
+WHERE workspace_id = sqlc.arg('workspace_id')
+  AND sqlc.arg('squad_id')::uuid = ANY(squad_ids) AND id <> sqlc.arg('id')
   AND status NOT IN ('completed', 'cancelled')
 LIMIT 1;
 
 -- name: ClearSquadFromOtherProjects :many
--- Unlinks the squad from its other projects. Only finished ones can remain once GetOpenSquadProject is clear.
-UPDATE project SET squad_id = NULL, updated_at = now()
-WHERE workspace_id = $1 AND squad_id = $2 AND id <> $3
+-- Removes the squad from its other projects. Only finished ones can remain once GetOpenSquadProject is clear.
+UPDATE project SET squad_ids = array_remove(squad_ids, sqlc.arg('squad_id')::uuid), updated_at = now()
+WHERE workspace_id = sqlc.arg('workspace_id')
+  AND sqlc.arg('squad_id')::uuid = ANY(squad_ids) AND id <> sqlc.arg('id')
 RETURNING *;
 
 -- name: ClearSquadProjects :many
--- Unassigns every project the squad holds.
-UPDATE project SET squad_id = NULL, updated_at = now()
-WHERE workspace_id = $1 AND squad_id = $2
+-- Removes the squad from every project it is assigned to.
+UPDATE project SET squad_ids = array_remove(squad_ids, sqlc.arg('squad_id')::uuid), updated_at = now()
+WHERE workspace_id = sqlc.arg('workspace_id') AND sqlc.arg('squad_id')::uuid = ANY(squad_ids)
 RETURNING *;

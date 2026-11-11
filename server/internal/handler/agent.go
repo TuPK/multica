@@ -591,6 +591,11 @@ type AgentTaskResponse struct {
 	HandoffNote              string               `json:"handoff_note,omitempty"`            // legacy assignment handoff instruction retained for installed clients; rendered by the daemon only in the per-turn prompt
 	SquadID                  string               `json:"squad_id,omitempty"`                // for quick-create tasks where the picker was a squad; Agent is still the resolved leader
 	SquadName                string               `json:"squad_name,omitempty"`              // display name for the picker squad
+	// LaneSquadID is the room this issue run belongs to: the squad the issue is
+	// assigned to, or the home squad of its agent. Empty when the issue has no
+	// room. A daemon runs in-place tasks of different rooms side by side and
+	// keeps the rest serial; an old server omits it, which serialises as before.
+	LaneSquadID string `json:"lane_squad_id,omitempty"`
 	ParentIssueID            string               `json:"parent_issue_id,omitempty"`         // for quick-create tasks opened from "Add sub issue" — UUID of the parent issue the new issue should be filed under
 	ParentIssueIdentifier    string               `json:"parent_issue_identifier,omitempty"` // human-readable identifier (e.g. MUL-123) of the quick-create parent issue, resolved on claim for prompt context
 	// ParentIssue is the parent of the issue this run works on, for issue-bound

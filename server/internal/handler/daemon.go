@@ -2855,6 +2855,27 @@ func claimResponseAgentIdentityMatches(resp AgentTaskResponse) bool {
 // feed the same delivery receipt into FinalizeTaskClaim. A non-nil failure
 // means the task must not be dispatched; the builder has already cancelled it
 // where the failure semantics require it.
+// issueLaneSquadID returns the room an issue's runs belong to, as ListReleasableQueuedIssues
+// reads it: the squad an issue is assigned to, or the home squad of its agent. It returns
+// "" when there is no room, or when the agent cannot be read, so the run keeps the whole
+// directory's lock.
+func (h *Handler) issueLaneSquadID(ctx context.Context, issue db.Issue) string {
+	if !issue.AssigneeID.Valid {
+		return ""
+	}
+	switch issue.AssigneeType.String {
+	case "squad":
+		return uuidToString(issue.AssigneeID)
+	case "agent":
+		agent, err := h.Queries.GetAgent(ctx, issue.AssigneeID)
+		if err != nil || !agent.HomeSquadID.Valid {
+			return ""
+		}
+		return uuidToString(agent.HomeSquadID)
+	}
+	return ""
+}
+
 func (h *Handler) buildClaimedTaskResponse(r *http.Request, task *db.AgentTaskQueue, runtime db.AgentRuntime, runtimeID, runtimeWorkspaceID string) (resp AgentTaskResponse, deliveredCommentIDs []pgtype.UUID, issueSnapshot []byte, agentSkillCount, builtinSkillCount int, failure *claimBuildFailure) {
 	// Build response with fresh agent data (name + skills + custom_env + custom_args).
 	resp = taskToResponse(*task, runtimeWorkspaceID)
@@ -3138,6 +3159,7 @@ func (h *Handler) buildClaimedTaskResponse(r *http.Request, task *db.AgentTaskQu
 			return resp, deliveredCommentIDs, issueSnapshot, agentSkillCount, builtinSkillCount, failure
 		}
 		resp.ThreadName = issue.Title
+		resp.LaneSquadID = h.issueLaneSquadID(r.Context(), issue)
 		issueNumber = issue.Number
 
 		// Issue-state delta (MUL-7344). Every field below already sits on the

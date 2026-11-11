@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -23,8 +24,17 @@ type AssignSquadProjectRequest struct {
 	StatusMapping map[string]string `json:"status_mapping,omitempty"`
 }
 
-// AssignSquadProject gives a project to a squad, which shows it in its room. The
-// project takes the squad's workflow: SDLC Auto, built on the squad's SDLC agents,
+// squadsWithSquad returns the project's squads with squadID added once. The
+// project row is locked by the caller, so the list cannot change under it.
+func squadsWithSquad(current []pgtype.UUID, squadID pgtype.UUID) []pgtype.UUID {
+	if slices.Contains(current, squadID) {
+		return current
+	}
+	return append(slices.Clone(current), squadID)
+}
+
+// AssignSquadProject adds a project to a squad, which shows it in its room. Other
+// squads may work the same project. The project takes the squad's workflow: SDLC Auto, built on the squad's SDLC agents,
 // or BMAD Planning Auto for a planning squad, which the quickstart creates. A
 // squad works one open project at a time, so one already assigned must be
 // unassigned first. The workflow switch uses the same status mapping as a
@@ -153,7 +163,9 @@ func (h *Handler) AssignSquadProject(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to assign project")
 		return
 	}
-	assigned, err := qtx.SetProjectSquad(ctx, db.SetProjectSquadParams{ID: project.ID, WorkspaceID: wsUUID, SquadID: squad.ID})
+	assigned, err := qtx.SetProjectSquadIDs(ctx, db.SetProjectSquadIDsParams{
+		ID: project.ID, WorkspaceID: wsUUID, SquadIds: squadsWithSquad(project.SquadIds, squad.ID),
+	})
 	if err != nil {
 		slog.Warn("AssignSquadProject set squad failed", append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "failed to assign project")
@@ -178,8 +190,8 @@ func (h *Handler) AssignSquadProject(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// UnassignSquadProject takes every project off a squad, so the squad can be given
-// another one. The projects keep their workflow and issues.
+// UnassignSquadProject removes the squad from every project it works, so it can
+// be given another one. The projects keep their workflow, issues and other squads.
 func (h *Handler) UnassignSquadProject(w http.ResponseWriter, r *http.Request) {
 	workspaceID := workspaceIDFromURL(r, "workspaceId")
 	member, ok := h.requireWorkspaceMember(w, r, workspaceID, "workspace not found")

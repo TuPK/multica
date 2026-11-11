@@ -49,8 +49,11 @@ type ProjectResponse struct {
 	// WorkflowID is the workflow this project uses; null means the workspace
 	// Default workflow. (MUL-7420)
 	WorkflowID *string `json:"workflow_id"`
-	// SquadID is the squad this project is assigned to, which its company room
-	// shows. Null when no squad has it.
+	// SquadIDs are the squads assigned to this project; each one's company room
+	// shows it. A project can be worked by several rooms at once.
+	SquadIDs []string `json:"squad_ids"`
+	// SquadID is the first of SquadIDs, kept for clients that read one squad.
+	// Null when no squad has the project.
 	SquadID *string `json:"squad_id"`
 }
 
@@ -72,8 +75,24 @@ func projectToResponse(p db.Project) ProjectResponse {
 		CreatedAt:   timestampToString(p.CreatedAt),
 		UpdatedAt:   timestampToString(p.UpdatedAt),
 		WorkflowID:  uuidToPtr(p.WorkflowID),
-		SquadID:     uuidToPtr(p.SquadID),
+		SquadIDs:    projectSquadIDStrings(p.SquadIds),
+		SquadID:     firstSquadIDPtr(p.SquadIds),
 	}
+}
+
+func projectSquadIDStrings(ids []pgtype.UUID) []string {
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, uuidToString(id))
+	}
+	return out
+}
+
+func firstSquadIDPtr(ids []pgtype.UUID) *string {
+	if len(ids) == 0 {
+		return nil
+	}
+	return uuidToPtr(ids[0])
 }
 
 func (h *Handler) loadProjectIssueStats(ctx context.Context, workspaceID, projectID pgtype.UUID) (int64, int64) {
