@@ -6654,6 +6654,11 @@ func delegatedFailureRecoveryContent(failed, source db.AgentTaskQueue) string {
 // intentional no-op: non-terminal rows, retry-pending rows, autopilot work,
 // recovery tasks themselves, unavailable source agents, and self-delegation
 // must never start a recovery loop.
+// A top-level failed run (no DelegatedFromTaskID, e.g. a squad lead on a
+// request) returns nil here on purpose: nothing waits on its result, so there
+// is no coordinator to wake. Its requester is told by the task:failed inbox
+// listener (cmd/server/notification_listeners.go). The request's status is not
+// changed here either; FailedRunLandingStatus only lands in_progress issues.
 // Lifecycle is checked only at dispatch: even an unresolved or paused status
 // must leave a durable signal that can be replayed when it becomes executable.
 func loadDelegatedFailureRecoveryTarget(ctx context.Context, q *db.Queries, failed db.AgentTaskQueue) (*delegatedFailureRecoveryTarget, error) {

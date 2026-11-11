@@ -737,6 +737,98 @@ func TestNotification_TaskFailed(t *testing.T) {
 	}
 }
 
+// issueInboxItemsForRecipient returns the non-archived inbox items for one
+// recipient that point at issueID. Other tests share this workspace, so the
+// assertions must not count rows for other issues.
+func issueInboxItemsForRecipient(t *testing.T, queries *db.Queries, recipientID, issueID string) []db.ListInboxItemsRow {
+	t.Helper()
+	var out []db.ListInboxItemsRow
+	for _, item := range inboxItemsForRecipient(t, queries, recipientID) {
+		if util.UUIDToString(item.IssueID) == issueID {
+			out = append(out, item)
+		}
+	}
+	return out
+}
+
+// TestNotification_TaskFailed_FinalFailureNotifiesCreator covers a top-level run
+// on a request that fails for good with a non-retryable usage limit. The
+// requester who created the request must get one task_failed item for it.
+func TestNotification_TaskFailed_FinalFailureNotifiesCreator(t *testing.T) {
+	queries := db.New(testPool)
+	bus := newNotificationBus(t, queries)
+
+	issueID := createTestIssue(t, testWorkspaceID, testUserID)
+	t.Cleanup(func() {
+		cleanupInboxForIssue(t, issueID)
+		cleanupTestIssue(t, issueID)
+	})
+
+	agentID := "00000000-0000-0000-0000-aaaaaaaaaaaa"
+	addTestSubscriber(t, issueID, "member", testUserID, "creator")
+	addTestSubscriber(t, issueID, "agent", agentID, "assignee")
+
+	bus.Publish(events.Event{
+		Type:        protocol.EventTaskFailed,
+		WorkspaceID: testWorkspaceID,
+		ActorType:   "system",
+		Payload: map[string]any{
+			"task_id":        "00000000-0000-0000-0000-bbbbbbbbbbbb",
+			"agent_id":       agentID,
+			"issue_id":       issueID,
+			"status":         "failed",
+			"failure_reason": "agent_error.provider_quota_limit",
+			"error":          "You've hit your 5-hour limit · resets 2:40pm",
+			"retry_pending":  false,
+		},
+	})
+
+	items := issueInboxItemsForRecipient(t, queries, testUserID, issueID)
+	if len(items) != 1 {
+		t.Fatalf("expected 1 inbox item for creator on the issue, got %d", len(items))
+	}
+	if items[0].Type != "task_failed" {
+		t.Fatalf("expected type 'task_failed', got %q", items[0].Type)
+	}
+}
+
+// TestNotification_TaskFailed_RetryPendingStaysSilent verifies that an attempt
+// whose failure is retried notifies nobody. Its retry child reports the run's
+// terminal outcome, so a notice here would announce a failure that is about to
+// be retried. The unread listener and the channel outbounds already skip
+// retry_pending; the inbox listener must do the same.
+func TestNotification_TaskFailed_RetryPendingStaysSilent(t *testing.T) {
+	queries := db.New(testPool)
+	bus := newNotificationBus(t, queries)
+
+	issueID := createTestIssue(t, testWorkspaceID, testUserID)
+	t.Cleanup(func() {
+		cleanupInboxForIssue(t, issueID)
+		cleanupTestIssue(t, issueID)
+	})
+
+	agentID := "00000000-0000-0000-0000-aaaaaaaaaaaa"
+	addTestSubscriber(t, issueID, "member", testUserID, "creator")
+
+	bus.Publish(events.Event{
+		Type:        protocol.EventTaskFailed,
+		WorkspaceID: testWorkspaceID,
+		ActorType:   "system",
+		Payload: map[string]any{
+			"task_id":        "00000000-0000-0000-0000-bbbbbbbbbbbb",
+			"agent_id":       agentID,
+			"issue_id":       issueID,
+			"status":         "failed",
+			"failure_reason": "agent_error.timeout",
+			"retry_pending":  true,
+		},
+	})
+
+	if items := issueInboxItemsForRecipient(t, queries, testUserID, issueID); len(items) != 0 {
+		t.Fatalf("expected no inbox item for a retry-pending failure, got %d", len(items))
+	}
+}
+
 // TestNotification_PriorityChanged verifies that all subscribers except the actor
 // receive a "priority_changed" notification when an issue priority changes.
 func TestNotification_PriorityChanged(t *testing.T) {

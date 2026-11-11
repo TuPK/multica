@@ -1052,10 +1052,18 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 
 	// task:completed — no inbox notification (completion is visible from status change)
 
-	// task:failed — notify all subscribers except the agent
+	// task:failed — notify all subscribers except the agent. A failed attempt
+	// with a retry pending is not the run's outcome: its retry child reports
+	// that, so this attempt stays silent (same contract as
+	// registerIssueUnreadListeners and the channel outbounds). A run that fails
+	// for good, including a top-level run on a request, reaches the creator here
+	// as a subscriber.
 	bus.Subscribe(protocol.EventTaskFailed, func(e events.Event) {
 		payload, ok := e.Payload.(map[string]any)
 		if !ok {
+			return
+		}
+		if retryPending, _ := payload["retry_pending"].(bool); retryPending {
 			return
 		}
 		agentID, _ := payload["agent_id"].(string)
