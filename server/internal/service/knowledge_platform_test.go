@@ -461,6 +461,9 @@ func TestTenantQueueFollowsTheDeleteTransaction(t *testing.T) {
 func TestModelsStepRegistersAndTestsEachModel(t *testing.T) {
 	e := newPlatformEnv(t)
 	e.svc.LLM = &KnowledgeLLM{BaseURL: "https://llm.example.test/v1", ChatModel: "summary-chat", RerankModel: "rerank-model"}
+	// The production default is 20 bases (defaultKnowledgeWikiBases); this test
+	// pins the three-base limit the assertions below describe.
+	e.svc.WikiMaxBases = 3
 	e.enabled()
 	ctx := context.Background()
 

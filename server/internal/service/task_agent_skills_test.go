@@ -95,8 +95,8 @@ func (d *skillReadDBTX) Query(_ context.Context, sql string, _ ...any) (pgx.Rows
 	case strings.Contains(sql, "ListSkillFiles"):
 		d.perSkillFileCall++
 		return &sliceRows{}, nil
-	case strings.Contains(sql, "ListAgentSkills"):
-		if d.failQuery == "ListAgentSkills" {
+	case strings.Contains(sql, "ListEffectiveAgentSkills"):
+		if d.failQuery == "ListEffectiveAgentSkills" {
 			return nil, errInjectedSkillRead
 		}
 		return &sliceRows{rows: d.skills}, nil
@@ -105,7 +105,7 @@ func (d *skillReadDBTX) Query(_ context.Context, sql string, _ ...any) (pgx.Rows
 }
 
 // skillRow / skillFileRow build result rows in the column order the generated
-// ListAgentSkills / ListSkillFilesBySkillIDs scanners read.
+// ListEffectiveAgentSkills / ListSkillFilesBySkillIDs scanners read.
 func skillRow(id pgtype.UUID, name, description, content string) []any {
 	return []any{
 		id, testUUID(0xF0), name, description, content,
@@ -121,7 +121,7 @@ func skillFileRow(skillID pgtype.UUID, path, content string) []any {
 }
 
 // TestLoadAgentSkills_GroupsBatchedFilesBySkillID pins the batch assembly.
-// ListAgentSkills orders by name and ListSkillFilesBySkillIDs orders by
+// ListEffectiveAgentSkills orders by name and ListSkillFilesBySkillIDs orders by
 // skill_id, so the two result sets are in DIFFERENT orders — the fixture makes
 // them disagree deliberately. Grouping must be by skill_id; a positional zip
 // of the two would hand each skill another skill's files.
@@ -129,7 +129,7 @@ func TestLoadAgentSkills_GroupsBatchedFilesBySkillID(t *testing.T) {
 	alpha, beta, gamma := testUUID(3), testUUID(1), testUUID(2)
 
 	fake := &skillReadDBTX{
-		// ListAgentSkills order: name ASC.
+		// ListEffectiveAgentSkills order: name ASC.
 		skills: [][]any{
 			skillRow(alpha, "alpha", "first", "alpha body"),
 			skillRow(beta, "beta", "second", "beta body"),
@@ -153,7 +153,7 @@ func TestLoadAgentSkills_GroupsBatchedFilesBySkillID(t *testing.T) {
 		t.Fatalf("loaded %d skills, want 3", len(got))
 	}
 
-	// Skill order follows ListAgentSkills, not the file result set.
+	// Skill order follows ListEffectiveAgentSkills, not the file result set.
 	wantNames := []string{"alpha", "beta", "gamma"}
 	for i, want := range wantNames {
 		if got[i].Name != want {
@@ -194,7 +194,7 @@ func TestLoadAgentSkills_ReportsReadFailures(t *testing.T) {
 		failQuery string
 	}{
 		{name: "batch file query fails", failQuery: "ListSkillFilesBySkillIDs"},
-		{name: "agent skill query fails", failQuery: "ListAgentSkills"},
+		{name: "agent skill query fails", failQuery: "ListEffectiveAgentSkills"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

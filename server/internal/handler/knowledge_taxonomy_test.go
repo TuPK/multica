@@ -95,7 +95,9 @@ func TestKnowledgePoliciesAreSetByAdminsOnly(t *testing.T) {
 		DefaultMode string                      `json:"default_mode"`
 	}
 	testutil.Call(t, testHandler.ListKnowledgePolicies, newRequest("GET", "/api/knowledge/policies", nil)).Want(http.StatusOK).JSON(&list)
-	if len(list.Policies) != 1 || list.DefaultMode != "manual" {
+	// The saved engineering policy plus the eight publish modes the Sales Loop
+	// kinds are seeded with when knowledge is enabled (defaultKindPublishModes).
+	if len(list.Policies) != 9 || list.DefaultMode != "manual" {
 		t.Fatalf("policies = %+v", list)
 	}
 

@@ -26,10 +26,12 @@ import (
 // full-set lookup used to do.
 
 // Query markers include the trailing kind so they cannot match a sibling query
-// whose name shares a prefix (ListAgentSkills vs ListAgentSkillsByIDs).
+// whose name shares a prefix (ListEffectiveAgentSkills vs ListEffectiveAgentSkillsByIDs).
+// The skill set a task runs with is the squad-aware effective set (see
+// ListEffectiveAgentSkills), so these are the queries resolve can reach.
 const (
-	queryFullAgentSkills   = "-- name: ListAgentSkills :many"
-	queryScopedAgentSkills = "-- name: ListAgentSkillsByIDs :many"
+	queryFullAgentSkills   = "-- name: ListEffectiveAgentSkills :many"
+	queryScopedAgentSkills = "-- name: ListEffectiveAgentSkillsByIDs :many"
 	querySkillFilesByIDs   = "-- name: ListSkillFilesBySkillIDs :many"
 )
 

@@ -1344,8 +1344,12 @@ func TestHandoffStopsPreviousSquadRuns(t *testing.T) {
 	projectID := createWorkflowTestProject(t, "Workflow squad stop project")
 	setColumnHandoff(t, projectID, "in_progress", map[string]any{"handler": map[string]any{"type": "member", "id": testUserID}}).Want(http.StatusOK)
 	setColumnHandoff(t, projectID, "in_review", map[string]any{"handler": map[string]any{"type": "squad", "id": squadID}}).Want(http.StatusBadRequest)
+	// A member's move of a squad's top-level request is not a handoff
+	// (TestWorkflowDoesNotHandOffASquadRequest), so the squad's issue here is a
+	// piece of a request, which the workflow does hand off.
+	requestID := dbfx.Issue(t, "squad request", testutil.Cols{"project_id": projectID, "status": "in_review"})
 	issueID := dbfx.Issue(t, "squad reviewing", testutil.Cols{
-		"project_id": projectID, "status": "in_review", "assignee_type": "squad", "assignee_id": squadID,
+		"project_id": projectID, "status": "in_review", "assignee_type": "squad", "assignee_id": squadID, "parent_issue_id": requestID,
 	})
 	var runtimeID string
 	dbfx.QueryRow(t, `SELECT runtime_id::text FROM agent WHERE id = $1`, agentID).Scan(&runtimeID)

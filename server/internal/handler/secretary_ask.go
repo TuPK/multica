@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/logger"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -195,7 +197,8 @@ func (h *Handler) SecretaryAsk(w http.ResponseWriter, r *http.Request) {
 		if _, err := h.Queries.SetIssueMetadataKey(r.Context(), db.SetIssueMetadataKeyParams{
 			Key: key.name, Value: raw, ID: id, WorkspaceID: wsUUID,
 		}); err != nil {
-			fail(http.StatusInternalServerError, "set request metadata: "+err.Error())
+			slog.Warn("secretary ask: set request metadata failed", append(logger.RequestAttrs(r), "error", err, "metadata_key", key.name)...)
+			fail(http.StatusInternalServerError, "failed to set request metadata")
 			return
 		}
 	}

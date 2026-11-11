@@ -108,7 +108,7 @@ func TestKnowledgeEnableAndStatus(t *testing.T) {
 	}
 
 	code, status, body = callKnowledge(t, testUserID, http.MethodPost)
-	if code != http.StatusOK || !status.Enabled || status.State != "ready" || len(status.KnowledgeBases) != 6 {
+	if code != http.StatusOK || !status.Enabled || status.State != "ready" || len(status.KnowledgeBases) != 7 {
 		t.Fatalf("POST enable = %d %s", code, body)
 	}
 	// The JSON contract: snake_case, no secrets.
