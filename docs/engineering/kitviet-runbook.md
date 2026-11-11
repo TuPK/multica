@@ -88,6 +88,8 @@ Mỗi gác cổng và bàn giao phải có đúng một dòng bắt đầu bằn
 
 - Thiếu dòng `VERDICT:` (hoặc có hai dòng) được tính là **CHẶN** (quy tắc trong `kv_gate`, agent tự áp dụng).
 - Dòng viết kiểu cũ (`Đạt`, `Chưa đạt`, `Gửi được`, `Chưa gửi được`) không phải kết luận hợp lệ. Generator đã thay mọi dòng mẫu của gác cổng bằng `VERDICT:`, nên dòng kiểu cũ chỉ xuất hiện khi agent tự viết sai; lead coi là thiếu và chạy lại.
+- Gác cổng thiếu bản nháp đính kèm (chỉ có nội dung dán trong comment, hoặc không có tệp) hoặc thiếu nguồn không là điểm dừng loại 1. Gác cổng ghi `VERDICT: CHẶN - không có bản nháp đính kèm` hoặc `VERDICT: CHẶN - thiếu <nguồn>`, liệt kê mục không soát được, và đặt sub-issue `done`. Gác cổng thiếu nguồn vẫn soát các mục không cần nguồn (cam kết, lời hứa, thông tin cá nhân). Sub-issue gác cổng chỉ `blocked` khi gác cổng không chạy được (ví dụ runtime không đọc được tệp).
+- Lệnh `multica issue status <sub-issue> done` là lệnh cuối cùng của lần chạy gác cổng. Server không đặt trạng thái sub-issue khi một lần chạy hoàn thành; đường xử lý lần chạy thất bại là nơi duy nhất server ghi trạng thái issue khi lần chạy kết thúc. Gác cổng nào kết thúc mà chưa đặt `done` sẽ giữ chặng ở `in_progress`, và lead phải kiểm tay.
 
 Khi lead thấy `VERDICT:` thiếu:
 
