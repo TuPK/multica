@@ -224,6 +224,9 @@ describe("display names and the squad header", () => {
     assert.equal(displayRole("b2b_lead"), "B2B Lead");
     assert.equal(displayRole("b2b_numbers_gate"), "B2B Numbers Gate");
     assert.equal(displayRole("legal_reader"), "Legal Reader");
+    assert.equal(displayRole("fnb_lead"), "F&B Lead");
+    assert.equal(displayRole("fnb_allergen_gate"), "F&B Allergen Gate");
+    assert.equal(displayRole("edu_lead"), "Edu Lead");
   });
 
   it("takes \"an\" before a vowel-initial squad name and \"a\" otherwise", () => {

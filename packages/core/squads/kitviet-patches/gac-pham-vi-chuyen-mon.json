@@ -1,0 +1,18 @@
+[
+  {
+    "find": "3. Xếp mức: **Chặn** (vượt phạm vi, thông số lệch nguồn, cam kết khỏi bệnh) / **Nên sửa** / **Lưu ý**.",
+    "replace": "3. Xếp mức: **Chặn** (vượt phạm vi, thông số lệch nguồn, cam kết khỏi bệnh, ý chuyên môn không có trong nguồn, thiếu dấu hiệu cần đến cơ sở y tế mà nguồn có) / **Cần giấy tờ** (thiếu ô người duyệt chuyên môn, thông số không có nguồn trong bảng nguồn, quảng cáo hoặc so sánh không có nguồn: \"100%\", \"tốt nhất\", \"số 1\", lời chứng thực, ảnh trước-sau) / **Nên sửa** (trình bày) / **Góp ý**."
+  },
+  {
+    "find": "5. Kết luận: còn bất kỳ lỗi Chặn -> \"Chặn\". Không còn -> \"Qua\".",
+    "replace": "5. Kết luận: còn lỗi Chặn hoặc Cần giấy tờ -> \"Chặn\". Không còn -> \"Qua\"."
+  },
+  {
+    "find": "## Nên sửa\n| Vị trí | Nội dung | Đề xuất |\n|---|---|---|\n\n## Lưu ý\n## Thông số đã khớp nguồn",
+    "replace": "## Cần giấy tờ\n| Vị trí | Thiếu gì | Đề xuất |\n|---|---|---|\n\n## Nên sửa\n| Vị trí | Nội dung | Đề xuất |\n|---|---|---|\n\n## Góp ý\n## Thông số đã khớp nguồn"
+  },
+  {
+    "find": "- Không cho \"Qua\" khi còn lỗi Chặn, kể cả lỗi nhỏ về đơn vị.",
+    "replace": "- Không cho \"Qua\" khi còn lỗi Chặn hoặc Cần giấy tờ, kể cả lỗi nhỏ về đơn vị."
+  }
+]

@@ -1,0 +1,26 @@
+[
+  {
+    "find": "6. Xếp mức từng lỗi: **Nghiêm trọng** (ảnh hưởng thông quan, ưu đãi thuế, thanh toán), **Cần sửa** (lệch chính tả, định dạng), **Lưu ý** (chấp nhận được nhưng nên thống nhất).",
+    "replace": "6. Xếp mức từng lỗi: **Chặn** (ảnh hưởng thông quan, ưu đãi thuế, thanh toán), **Nên sửa** (lệch chính tả, định dạng), **Góp ý** (chấp nhận được nhưng nên thống nhất)."
+  },
+  {
+    "find": "Chưa dùng được - 2 lỗi nghiêm trọng, 3 lỗi cần sửa.",
+    "replace": "Chưa dùng được - 2 lỗi Chặn, 3 lỗi Nên sửa."
+  },
+  {
+    "find": "420 ctns | Nghiêm trọng (B/L) |",
+    "replace": "420 ctns | Chặn (B/L) |"
+  },
+  {
+    "find": "| 8516.79 | Nghiêm trọng (C/O) |",
+    "replace": "| 8516.79 | Chặn (C/O) |"
+  },
+  {
+    "find": "INV-0951 | Cần sửa |",
+    "replace": "INV-0951 | Nên sửa |"
+  },
+  {
+    "find": "ABC Company Ltd | ABC Co., Ltd | Cần sửa (B/L) |",
+    "replace": "ABC Company Ltd | ABC Co., Ltd | Nên sửa (B/L) |"
+  }
+]

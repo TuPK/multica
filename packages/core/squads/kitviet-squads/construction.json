@@ -1,0 +1,74 @@
+{
+  "order": 13,
+  "templateId": "kv_construction",
+  "trade": "xay-dung",
+  "name": "Construction (Xây dựng)",
+  "agents": {
+    "lap-ke-hoach-dieu-phoi": {
+      "role": "construction_lead",
+      "kind": "kv_lead"
+    },
+    "doc-ho-so-cong-truong": {
+      "role": "construction_reader",
+      "kind": "kv_collector"
+    },
+    "tra-cuu-quy-chuan-xay-dung": {
+      "role": "construction_standards",
+      "kind": "kv_collector"
+    },
+    "lap-bang-khoi-luong": {
+      "role": "construction_quantity",
+      "kind": "kv_drafter"
+    },
+    "soan-van-ban-cong-truong": {
+      "role": "construction_site_drafter",
+      "kind": "kv_drafter"
+    },
+    "soat-khoi-luong-don-vi": {
+      "role": "construction_quantity_gate",
+      "kind": "kv_gate"
+    },
+    "soat-an-toan-cong-truong": {
+      "role": "construction_safety_gate",
+      "kind": "kv_gate"
+    },
+    "kiem-dinh-ban-giao": {
+      "role": "construction_handover",
+      "kind": "kv_handover"
+    }
+  },
+  "builtinSkills": [
+    "day-chuyen-ho-so-cong-truong"
+  ],
+  "leaderSkills": [
+    "kv-squad-lead",
+    "kv-company-profile"
+  ],
+  "roleSkills": {
+    "construction_quantity": [
+      "kiem-tra-khoi-luong-xay-dung",
+      "du-toan-so-bo-cong-trinh"
+    ],
+    "construction_standards": [
+      "de-cuong-thuyet-minh-thi-cong",
+      "dan-y-bien-phap-thi-cong"
+    ],
+    "construction_site_drafter": [
+      "nhat-ky-thi-cong",
+      "bao-cao-tuan-ban-chi-huy",
+      "bao-cao-su-co-cong-truong",
+      "bien-ban-giao-ban-cong-truong",
+      "bao-cao-anh-hien-truong",
+      "tong-hop-loi-hoan-thien"
+    ]
+  },
+  "promoted": [],
+  "deferredSkills": [
+    "bien-ban-nghiem-thu-cong-viec",
+    "checklist-an-toan-hang-muc",
+    "de-nghi-phat-sinh-rfi",
+    "soat-ho-so-hoan-cong",
+    "tien-do-thi-cong-duong-gang",
+    "yeu-cau-vat-tu-cong-truong"
+  ]
+}

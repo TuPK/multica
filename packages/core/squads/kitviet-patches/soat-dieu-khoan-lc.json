@@ -1,0 +1,30 @@
+[
+  {
+    "find": "7. Xếp mức: **Phải tu chỉnh** / **Nên tu chỉnh** / **Chấp nhận được nhưng lưu ý khi làm chứng từ**.",
+    "replace": "7. Xếp mức: **Chặn** (phải tu chỉnh trước khi giao hàng) / **Nên sửa** / **Góp ý** (chấp nhận được, lưu ý khi làm chứng từ)."
+  },
+  {
+    "find": "Phải tu chỉnh trước khi giao hàng - 2 điều khoản không làm được, 1 điều khoản mềm.",
+    "replace": "Chặn: 2 điều khoản không làm được, 1 điều khoản mềm; sửa trước khi giao hàng."
+  },
+  {
+    "find": "| Điều khoản mềm - phụ thuộc người mua | Phải tu chỉnh |",
+    "replace": "| Điều khoản mềm - phụ thuộc người mua | Chặn |"
+  },
+  {
+    "find": "| Chứng từ phải đến nước ngoài trước hạn | Nên tu chỉnh |",
+    "replace": "| Chứng từ phải đến nước ngoài trước hạn | Nên sửa |"
+  },
+  {
+    "find": "| Hợp đồng ghi WW320, Grade A | Nên tu chỉnh |",
+    "replace": "| Hợp đồng ghi WW320, Grade A | Nên sửa |"
+  },
+  {
+    "find": "| Bất lợi | Lưu ý |",
+    "replace": "| Bất lợi | Góp ý |"
+  },
+  {
+    "find": "điều khoản \"Phải tu chỉnh\" chưa được sửa",
+    "replace": "điều khoản \"Chặn\" chưa được sửa"
+  }
+]

@@ -1,0 +1,14 @@
+[
+  {
+    "find": "- Đọc file trong thư mục người dùng chỉ định:",
+    "replace": "- Đọc các file người dùng đính kèm trên issue:"
+  },
+  {
+    "find": "Kết quả trả về cho phiên chính lưu thành `01-thu-thap.md`.",
+    "replace": "Kết quả của bạn được đăng thành comment trên sub-issue này."
+  },
+  {
+    "find": "6. Gom danh sách `[cần bổ sung]` theo mức ảnh hưởng: chặn tính giá vốn / chặn ghi dị ứng / chỉ ảnh hưởng độ chính xác.",
+    "replace": "6. Gom danh sách `[cần bổ sung]` theo mức: Chặn (thiếu để tính giá vốn hoặc để ghi dị ứng) / Góp ý (chỉ ảnh hưởng độ chính xác)."
+  }
+]

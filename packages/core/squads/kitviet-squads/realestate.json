@@ -1,0 +1,81 @@
+{
+  "order": 25,
+  "templateId": "kv_realestate",
+  "trade": "bat-dong-san",
+  "name": "Real Estate Desk (Bất động sản)",
+  "agents": {
+    "lap-ke-hoach-dieu-phoi": {
+      "role": "realestate_lead",
+      "kind": "kv_lead"
+    },
+    "doc-ho-so-nha-dat": {
+      "role": "realestate_reader",
+      "kind": "kv_collector"
+    },
+    "tra-cuu-khu-vuc-bds": {
+      "role": "realestate_area_research",
+      "kind": "kv_collector"
+    },
+    "lap-phuong-an-vay-bds": {
+      "role": "realestate_loan_drafter",
+      "kind": "kv_drafter"
+    },
+    "soan-tin-dang-bds": {
+      "role": "realestate_listing_drafter",
+      "kind": "kv_drafter"
+    },
+    "soat-nguon-quy-hoach-bds": {
+      "role": "realestate_planning_gate",
+      "kind": "kv_gate"
+    },
+    "soat-phuong-an-vay-bds": {
+      "role": "realestate_loan_gate",
+      "kind": "kv_gate"
+    },
+    "soat-tin-dang-bds": {
+      "role": "realestate_listing_gate",
+      "kind": "kv_gate"
+    },
+    "kiem-dinh-ban-giao": {
+      "role": "realestate_handover",
+      "kind": "kv_handover"
+    }
+  },
+  "builtinSkills": [
+    "day-chuyen-ho-so-can-ban"
+  ],
+  "leaderSkills": [
+    "kv-squad-lead",
+    "kv-company-profile"
+  ],
+  "roleSkills": {
+    "realestate_listing_drafter": [
+      "viet-tin-dang-nha-dat",
+      "ho-so-gioi-thieu-can-nha",
+      "kich-ban-video-tour-nha"
+    ],
+    "realestate_loan_drafter": [
+      "tinh-phuong-an-vay-mua-nha"
+    ],
+    "realestate_area_research": [
+      "phan-tich-khu-vuc-bds",
+      "nghien-cuu-quy-hoach-khu-vuc"
+    ],
+    "realestate_reader": [
+      "ra-soat-hop-dong-dat-coc"
+    ]
+  },
+  "promoted": [],
+  "deferredSkills": [
+    "bang-kiem-phap-ly-nha-dat",
+    "dinh-gia-tham-khao-nha-dat",
+    "kich-ban-cho-thue-nha",
+    "so-sanh-can-ho-du-an",
+    "xu-ly-tu-choi-khach-bds",
+    "cham-soc-khach-cu-bds",
+    "ghi-chu-gap-khach-bds",
+    "ho-so-nhu-cau-khach-bds",
+    "cham-soc-sau-xem-nha",
+    "bao-cao-tuan-san-bds"
+  ]
+}

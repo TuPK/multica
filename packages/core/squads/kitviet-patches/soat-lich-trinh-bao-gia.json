@@ -1,0 +1,14 @@
+[
+  {
+    "find": "8. Xếp lỗi: **Nặng** (sai số tiền, lộ giá vốn, không khả thi, thiếu điều kiện an toàn) / **Vừa** (thiếu nguồn, thiếu xác nhận) / **Nhẹ** (trình bày).",
+    "replace": "8. Xếp mức: **Chặn** (sai số tiền, lộ giá vốn, không khả thi, thiếu điều kiện an toàn) / **Cần giấy tờ** (thiếu nguồn đơn giá, thiếu xác nhận; giờ mở cửa, giá vé, giờ bay viết như chắc chắn) / **Góp ý** (trình bày)."
+  },
+  {
+    "find": "| 1 | Nặng |",
+    "replace": "| 1 | Chặn |"
+  },
+  {
+    "find": "CHẶN khi có bất kỳ lỗi Nặng nào.",
+    "replace": "CHẶN khi có lỗi mức Chặn hoặc Cần giấy tờ."
+  }
+]

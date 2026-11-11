@@ -1,0 +1,18 @@
+[
+  {
+    "find": "trích số điều không có nguồn -> Cần xác nhận.",
+    "replace": "trích số điều không có nguồn -> Cần giấy tờ."
+  },
+  {
+    "find": "người bị nạn trong bản phổ biến rộng -> Cần xác nhận,",
+    "replace": "người bị nạn trong bản phổ biến rộng -> Cần giấy tờ,"
+  },
+  {
+    "find": "## Cần xác nhận",
+    "replace": "## Cần giấy tờ"
+  },
+  {
+    "find": "- Không kết luận QUA khi còn sự cố trong nguồn chưa được nêu.",
+    "replace": "- Không kết luận QUA khi còn sự cố trong nguồn chưa được nêu, lỗi Chặn, hoặc mục Cần giấy tờ."
+  }
+]

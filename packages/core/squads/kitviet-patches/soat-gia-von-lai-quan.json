@@ -1,0 +1,22 @@
+[
+  {
+    "find": "giá cũ hơn 30 ngày ghi lưu ý; tỷ lệ thu hồi chưa đo, phí app, thuế suất chưa có \"người dùng xác nhận\" -> \"Chưa xác nhận\".",
+    "replace": "giá cũ hơn 30 ngày ghi Góp ý; tỷ lệ thu hồi chưa đo, phí app, thuế suất chưa có \"người dùng xác nhận\" -> Cần giấy tờ."
+  },
+  {
+    "find": "8. Xếp mức: **CHẶN** (lỗ ẩn, sai công thức làm lệch > 5% giá vốn món, giá đề xuất dưới mục tiêu mà ghi là đạt) - **Sửa** (sai đơn vị nhỏ, thiếu nguồn ngày) - **Chưa xác nhận** - **Lưu ý**.",
+    "replace": "8. Xếp mức: **Chặn** (lỗ ẩn, sai công thức làm lệch > 5% giá vốn món, giá đề xuất dưới mục tiêu mà ghi là đạt) - **Cần giấy tờ** (khoản thu hồi, phí app, thuế suất chưa xác nhận) - **Nên sửa** (sai đơn vị nhỏ, thiếu nguồn ngày) - **Góp ý**. Một lỗi Chặn hoặc một mục Cần giấy tờ làm kết luận CHẶN."
+  },
+  {
+    "find": "## Chưa xác nhận",
+    "replace": "## Cần giấy tờ"
+  },
+  {
+    "find": "Kết quả trả cho phiên chính lưu `03-soat-gia-von.md`.",
+    "replace": "Kết quả của bạn là comment trên sub-issue gác cổng này, dòng đầu là `VERDICT:`."
+  },
+  {
+    "find": "- Không kết luận QUA khi còn dòng CHẶN.",
+    "replace": "- Không kết luận QUA khi còn dòng Chặn hoặc mục Cần giấy tờ."
+  }
+]

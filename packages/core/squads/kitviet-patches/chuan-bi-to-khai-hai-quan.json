@@ -1,0 +1,14 @@
+[
+  {
+    "find": "7. Lập danh sách câu hỏi cho người khai trước khi truyền tờ khai.",
+    "replace": "7. Lập danh sách câu hỏi cho người khai trước khi người khai nhập tờ khai vào phần mềm."
+  },
+  {
+    "find": "## Cần kiểm tra trước khi truyền",
+    "replace": "## Cần kiểm tra trước khi người khai nhập"
+  },
+  {
+    "find": "4. **Thuế dự tính:** chỉ tính khi có thuế suất người dùng cung cấp.",
+    "replace": "4. **Thuế dự tính:** chỉ tính khi có thuế suất người dùng cung cấp. Công thức lấy từ văn bản thuế hiện hành; kiểm lại văn bản trước khi dùng."
+  }
+]

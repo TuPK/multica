@@ -1,0 +1,6 @@
+[
+  {
+    "find": "## Kết luận: QUA | CHẶN\n<lý do một câu>",
+    "replace": "VERDICT: QUA|CHẶN - <lý do một câu>"
+  }
+]

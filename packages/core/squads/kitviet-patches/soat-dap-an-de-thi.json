@@ -1,0 +1,14 @@
+[
+  {
+    "find": "## Lỗi phải sửa",
+    "replace": "## Lỗi Chặn"
+  },
+  {
+    "find": "6. Kết luận: **Đạt** chỉ khi không còn lỗi thuộc 3 loại đầu.",
+    "replace": "6. Kết luận: QUA chỉ khi không còn lỗi Chặn (ba loại đầu); còn một lỗi Chặn là CHẶN."
+  },
+  {
+    "find": "- Không kết luận \"Đạt\" khi còn câu đáp án sai, nhiều đáp án đúng, hoặc không có đáp án đúng.",
+    "replace": "- Không kết luận QUA khi còn câu đáp án sai, nhiều đáp án đúng, hoặc không có đáp án đúng."
+  }
+]

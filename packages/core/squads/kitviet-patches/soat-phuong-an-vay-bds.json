@@ -1,0 +1,18 @@
+[
+  {
+    "find": "| Tính lại đúng (phép tính) | Mức |",
+    "replace": "| Tính lại đúng (phép tính) | Mức (Chặn / Cần giấy tờ / Nên sửa / Góp ý) |"
+  },
+  {
+    "find": "Không kết luận \"Gửi khách được\" khi thiếu giai đoạn thả nổi",
+    "replace": "Không kết luận QUA khi thiếu giai đoạn thả nổi"
+  },
+  {
+    "find": "tính ở tháng nặng nhất, không phải tháng đầu ưu đãi.",
+    "replace": "tính ở tháng trả nhiều nhất, không phải tháng đầu ưu đãi."
+  },
+  {
+    "find": "hoặc còn lỗi công thức.",
+    "replace": "hoặc còn lỗi công thức, lãi suất GIẢ ĐỊNH chưa có nguồn ngân hàng, hoặc câu \"chắc chắn duyệt\" không có điều kiện."
+  }
+]

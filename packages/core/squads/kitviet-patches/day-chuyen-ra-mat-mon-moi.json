@@ -1,0 +1,50 @@
+[
+  {
+    "find": "Bạn là người điều phối ở phiên chính, chạy theo Giao thức chạy Kit Việt (`kv:dieu-phoi-day-chuyen`).",
+    "replace": "Bạn là lead của dây chuyền này, đi theo các bước dưới đây."
+  },
+  {
+    "find": "- **Thư mục món** (gợi ý `menu/<dot-ra-mon>/`): công thức định lượng,",
+    "replace": "- **File đầu vào đính kèm trên issue**: công thức định lượng,"
+  },
+  {
+    "find": "thì dừng và hỏi, không chạy dây chuyền trên dữ liệu rỗng.",
+    "replace": "thì dừng ở stop 1, ghi chỗ thiếu lên issue và không chạy dây chuyền trên dữ liệu rỗng."
+  },
+  {
+    "find": "Hỏi người dùng đồng ý trước khi chạy.",
+    "replace": "Ghi kế hoạch thành comment trên issue gốc; thiếu đầu vào thì dừng ở stop 1."
+  },
+  {
+    "find": "Còn thiếu giá nhập hoặc thành phần nước sốt thì hỏi người dùng trước khi sang bước 3.",
+    "replace": "Còn thiếu giá nhập hoặc thành phần nước sốt thì dừng ở stop 1 trước khi sang bước 3."
+  },
+  {
+    "find": "- Mỗi file kết luận **QUA** hoặc **CHẶN** kèm danh sách lỗi.",
+    "replace": "- Mỗi gác cổng kết luận **QUA** hoặc **CHẶN** kèm danh sách lỗi."
+  },
+  {
+    "find": "quá 2 vòng thì dừng, trình người dùng các lỗi còn lại.",
+    "replace": "quá 2 vòng thì dừng ở stop 3, ghi các lỗi còn lại lên issue và đặt request là blocked."
+  },
+  {
+    "find": "QUA - lưu ý ly mang đi chưa tính cho kênh app",
+    "replace": "QUA - Góp ý: ly mang đi chưa tính cho kênh app"
+  },
+  {
+    "find": "- [ ] Có `00-ke-hoach.md` và người dùng đã đồng ý.",
+    "replace": "- [ ] Có kế hoạch của lead trên issue gốc và request không ở trạng thái blocked."
+  },
+  {
+    "find": "- [ ] Mỗi khâu có file riêng đúng thứ tự 00-04.",
+    "replace": "- [ ] Mỗi khâu có kết quả riêng, theo đúng thứ tự: kế hoạch, thu thập, soạn, gác cổng, bàn giao."
+  },
+  {
+    "find": "- [ ] Khâu soạn chỉ dùng dữ liệu trong `01-thu-thap.md`.",
+    "replace": "- [ ] Khâu soạn chỉ dùng dữ liệu trong comment thu thập."
+  },
+  {
+    "find": "Từ 6 món trở lên hoặc nhiều nguồn rời: gọi `kv:lap-ke-hoach-dieu-phoi` lập kế hoạch.",
+    "replace": "Từ 6 món trở lên hoặc nhiều nguồn rời: lập kế hoạch chi tiết hơn trước khi chạy khâu đầu."
+  }
+]

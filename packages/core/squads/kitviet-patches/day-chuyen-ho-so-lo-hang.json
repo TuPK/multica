@@ -1,0 +1,10 @@
+[
+  {
+    "find": "không còn lỗi Nghiêm trọng)",
+    "replace": "không còn lỗi Chặn)"
+  },
+  {
+    "find": "Tỷ giá tính thuế ngày truyền tờ khai.",
+    "replace": "Tỷ giá tính thuế ngày người khai nhập tờ khai."
+  }
+]

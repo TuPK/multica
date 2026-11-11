@@ -1,0 +1,6 @@
+[
+  {
+    "find": "(Claude web/desktop: tự tra, chỉ giữ bậc 1-2)",
+    "replace": "(nếu không có agent: tự tra, chỉ giữ bậc 1-2)"
+  }
+]

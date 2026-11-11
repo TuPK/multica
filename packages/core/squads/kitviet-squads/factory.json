@@ -1,0 +1,74 @@
+{
+  "order": 26,
+  "templateId": "kv_factory",
+  "trade": "san-xuat-nha-may",
+  "name": "Factory Ops (Sản xuất nhà máy)",
+  "agents": {
+    "lap-ke-hoach-dieu-phoi": {
+      "role": "factory_lead",
+      "kind": "kv_lead"
+    },
+    "doc-du-lieu-san-xuat": {
+      "role": "factory_reader",
+      "kind": "kv_collector"
+    },
+    "tra-cuu-tieu-chuan-nha-may": {
+      "role": "factory_standards",
+      "kind": "kv_collector"
+    },
+    "lap-bang-so-lieu-san-xuat": {
+      "role": "factory_kpi_drafter",
+      "kind": "kv_drafter"
+    },
+    "soan-ho-so-nha-may": {
+      "role": "factory_doc_drafter",
+      "kind": "kv_drafter"
+    },
+    "soat-so-lieu-chat-luong": {
+      "role": "factory_numbers_gate",
+      "kind": "kv_gate"
+    },
+    "soat-an-toan-nha-may": {
+      "role": "factory_safety_gate",
+      "kind": "kv_gate"
+    },
+    "kiem-dinh-ban-giao": {
+      "role": "factory_handover",
+      "kind": "kv_handover"
+    }
+  },
+  "builtinSkills": [
+    "day-chuyen-bao-cao-kpi-nha-may"
+  ],
+  "leaderSkills": [
+    "kv-squad-lead",
+    "kv-company-profile"
+  ],
+  "roleSkills": {
+    "factory_kpi_drafter": [
+      "tinh-oee-tu-so-lieu",
+      "bao-cao-ca-san-xuat"
+    ],
+    "factory_doc_drafter": [
+      "bao-cao-ncr-capa",
+      "bao-cao-su-co-tai-nan-nha-may",
+      "phan-tich-nguyen-nhan-goc-loi"
+    ],
+    "factory_standards": [
+      "chuan-bi-danh-gia-iso"
+    ],
+    "factory_reader": [
+      "ke-hoach-kiem-tra-dau-vao-iqc"
+    ]
+  },
+  "promoted": [],
+  "deferredSkills": [
+    "checklist-5s-nha-xuong",
+    "danh-gia-nha-cung-cap-vat-tu",
+    "danh-gia-rui-ro-an-toan-lao-dong",
+    "dao-tao-cong-nhan-moi",
+    "ke-hoach-bao-tri-phong-ngua",
+    "ke-hoach-san-xuat-tuan-theo-may",
+    "soan-wi-sop-tai-may"
+  ]
+}

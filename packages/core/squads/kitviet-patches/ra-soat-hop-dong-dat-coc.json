@@ -1,0 +1,14 @@
+[
+  {
+    "find": "3. Đánh dấu mức: **Phải sửa trước khi ký / Nên bổ sung / Ghi nhận**.",
+    "replace": "3. Đánh dấu mức: **Chặn trước khi ký / Nên sửa / Góp ý**."
+  },
+  {
+    "find": "## Phải sửa trước khi ký",
+    "replace": "## Chặn trước khi ký"
+  },
+  {
+    "find": "## Nên bổ sung",
+    "replace": "## Nên sửa"
+  }
+]

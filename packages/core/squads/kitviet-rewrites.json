@@ -106,7 +106,7 @@
     },
     {
       "name": "file-01-collect",
-      "pattern": "`?(?:01-thu-thap|thu-thap)[\\w*<>-]*(?:\\.md)?`?",
+      "pattern": "`?(?:01-(?:thu-thap|nguon)|thu-thap)[\\w*<>-]*(?:\\.md)?`?",
       "flags": "g",
       "replace": "comment kết quả của sub-issue thu thập"
     },
@@ -177,10 +177,23 @@
       "replace": "Lead"
     },
     {
+      "name": "verdict-gui-duoc-quoted",
+      "optional": true,
+      "pattern": "\"Gửi được\"",
+      "flags": "g",
+      "replace": "QUA"
+    },
+    {
       "name": "phien-chinh-lower",
       "pattern": "phiên chính",
       "flags": "g",
       "replace": "lead"
+    },
+    {
+      "name": "gate-description-verdict",
+      "pattern": "Kết luận Đạt/Chưa đạt",
+      "flags": "g",
+      "replace": "kết luận QUA hoặc CHẶN"
     }
   ]
 }

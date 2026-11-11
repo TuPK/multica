@@ -1,0 +1,10 @@
+[
+  {
+    "find": "- Đọc file trong thư mục làm việc (hồ sơ quán, câu hỏi cần tra) và tra web.",
+    "replace": "- Đọc file đính kèm trên sub-issue (hồ sơ quán, câu hỏi cần tra) và tra web."
+  },
+  {
+    "find": "Kết quả trả về cho phiên chính lưu.",
+    "replace": "Kết quả của bạn được đăng thành comment trên sub-issue này."
+  }
+]

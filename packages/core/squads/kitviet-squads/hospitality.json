@@ -1,0 +1,74 @@
+{
+  "order": 31,
+  "templateId": "kv_hospitality",
+  "trade": "du-lich-khach-san",
+  "name": "Hospitality Ops (Du lịch, khách sạn)",
+  "agents": {
+    "lap-ke-hoach-dieu-phoi": {
+      "role": "hospitality_lead",
+      "kind": "kv_lead"
+    },
+    "gom-yeu-cau-doan-khach": {
+      "role": "hospitality_intake",
+      "kind": "kv_collector"
+    },
+    "tra-cuu-diem-den-du-lich": {
+      "role": "hospitality_destination",
+      "kind": "kv_collector"
+    },
+    "soan-ho-so-tour": {
+      "role": "hospitality_tour_drafter",
+      "kind": "kv_drafter"
+    },
+    "soan-noi-dung-khach-san": {
+      "role": "hospitality_hotel_drafter",
+      "kind": "kv_drafter"
+    },
+    "soat-lich-trinh-bao-gia": {
+      "role": "hospitality_quote_gate",
+      "kind": "kv_gate"
+    },
+    "soat-cam-ket-dich-vu-luu-tru": {
+      "role": "hospitality_promise_gate",
+      "kind": "kv_gate"
+    },
+    "kiem-dinh-ban-giao": {
+      "role": "hospitality_handover",
+      "kind": "kv_handover"
+    }
+  },
+  "builtinSkills": [
+    "day-chuyen-ho-so-tour-doan"
+  ],
+  "leaderSkills": [
+    "kv-squad-lead",
+    "kv-company-profile"
+  ],
+  "roleSkills": {
+    "hospitality_tour_drafter": [
+      "bao-gia-tour-chi-phi",
+      "thiet-ke-lich-trinh-tour",
+      "checklist-an-toan-tour"
+    ],
+    "hospitality_hotel_drafter": [
+      "mo-ta-phong-listing-ota",
+      "email-xac-nhan-dat-phong",
+      "tra-loi-review-khach-san"
+    ],
+    "hospitality_intake": [
+      "de-xuat-tour-mice-doan-cong-ty"
+    ],
+    "hospitality_destination": [
+      "nghien-cuu-diem-den-du-lich",
+      "thuyet-minh-diem-tham-quan"
+    ]
+  },
+  "promoted": [],
+  "deferredSkills": [
+    "sop-buong-phong-khach-san",
+    "kich-ban-le-tan-check-in-out",
+    "xu-ly-overbooking-khieu-nai",
+    "gia-phong-theo-mua",
+    "bao-cao-cong-suat-phong"
+  ]
+}

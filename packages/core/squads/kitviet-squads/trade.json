@@ -1,0 +1,67 @@
+{
+  "order": 27,
+  "templateId": "kv_trade",
+  "trade": "xuat-nhap-khau",
+  "name": "Import & Export Desk (Xuất nhập khẩu)",
+  "agents": {
+    "lap-ke-hoach-dieu-phoi": {
+      "role": "trade_lead",
+      "kind": "kv_lead"
+    },
+    "gom-chung-tu-lo-hang": {
+      "role": "trade_docs_reader",
+      "kind": "kv_collector"
+    },
+    "tra-cuu-chinh-sach-hai-quan": {
+      "role": "trade_customs_research",
+      "kind": "kv_collector"
+    },
+    "lap-bang-doi-chieu-xnk": {
+      "role": "trade_crosscheck_drafter",
+      "kind": "kv_drafter"
+    },
+    "soat-chung-tu-xnk": {
+      "role": "trade_docs_gate",
+      "kind": "kv_gate"
+    },
+    "soat-khai-bao-hai-quan": {
+      "role": "trade_customs_gate",
+      "kind": "kv_gate"
+    },
+    "kiem-dinh-ban-giao": {
+      "role": "trade_handover",
+      "kind": "kv_handover"
+    }
+  },
+  "builtinSkills": [
+    "day-chuyen-ho-so-lo-hang"
+  ],
+  "leaderSkills": [
+    "kv-squad-lead",
+    "kv-company-profile"
+  ],
+  "roleSkills": {
+    "trade_crosscheck_drafter": [
+      "chuan-bi-to-khai-hai-quan",
+      "tinh-landed-cost",
+      "bao-cao-lo-hang-cho-khach"
+    ],
+    "trade_customs_research": [
+      "tra-cuu-ma-hs-chinh-sach",
+      "chon-uu-dai-thue-fta"
+    ],
+    "trade_docs_gate": [
+      "soat-bo-chung-tu-xnk",
+      "soat-dieu-khoan-lc"
+    ]
+  },
+  "promoted": [],
+  "deferredSkills": [
+    "giai-thich-incoterms",
+    "xu-ly-claim-hang-hu-hong",
+    "ra-soat-hop-dong-ngoai-thuong",
+    "email-dam-phan-nha-cung-cap",
+    "so-sanh-bao-gia-cuoc",
+    "theo-doi-booking-lich-tau"
+  ]
+}

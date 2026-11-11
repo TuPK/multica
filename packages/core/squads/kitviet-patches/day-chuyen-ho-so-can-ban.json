@@ -1,0 +1,14 @@
+[
+  {
+    "find": "Chạy theo Giao thức chạy Kit Việt (xem `kv:dieu-phoi-day-chuyen`).",
+    "replace": "Chạy theo các bước dưới đây."
+  },
+  {
+    "find": "(agent kết luận \"Đăng được\")",
+    "replace": "(agent kết luận QUA)"
+  },
+  {
+    "find": "(`02-ban-nhap.md` + `02-ban-nhap.csv`)",
+    "replace": "(phương án và lịch trả nợ)"
+  }
+]

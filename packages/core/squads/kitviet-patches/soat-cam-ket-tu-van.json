@@ -1,0 +1,38 @@
+[
+  {
+    "find": "   - Cam kết lợi nhuận / gọi khoản minh họa là đảm bảo - **Nặng**.",
+    "replace": "   - Cam kết lợi nhuận / gọi khoản minh họa là đảm bảo - **Chặn**."
+  },
+  {
+    "find": "   - Số trái tài liệu hoặc không có trong tài liệu - **Nặng**.",
+    "replace": "   - Số trái tài liệu hoặc không có trong tài liệu - **Chặn**."
+  },
+  {
+    "find": "   - So sánh với sản phẩm/doanh nghiệp không có tài liệu, chê đối thủ - **Nặng**.",
+    "replace": "   - So sánh với sản phẩm/doanh nghiệp không có tài liệu, chê đối thủ - **Chặn**."
+  },
+  {
+    "find": "   - Thiếu hoặc làm nhẹ loại trừ, thời gian chờ, thiệt hại khi hủy sớm - **Nặng**.",
+    "replace": "   - Thiếu hoặc làm nhẹ loại trừ, thời gian chờ, thiệt hại khi hủy sớm - **Chặn**."
+  },
+  {
+    "find": "   - Khuyến khích kê khai sai sức khỏe, thay hợp đồng cũ mà không nêu thiệt hại - **Nặng**.",
+    "replace": "   - Khuyến khích kê khai sai sức khỏe, thay hợp đồng cũ mà không nêu thiệt hại - **Chặn**."
+  },
+  {
+    "find": "   - Áp lực giả, dọa bệnh tật - **Vừa**.",
+    "replace": "   - Áp lực giả, dọa bệnh tật - **Chặn**."
+  },
+  {
+    "find": "   - Lộ CCCD, số tài khoản, bệnh án; thiếu minh bạch vai trò đại lý; hứa kết quả bồi thường - **Vừa**.",
+    "replace": "   - Lộ CCCD, số tài khoản, bệnh án; thiếu minh bạch vai trò đại lý; hứa kết quả bồi thường - **Chặn**."
+  },
+  {
+    "find": "5. Kết luận: **QUA** khi không còn lỗi Nặng; **CHẶN** khi còn ≥ 1 lỗi Nặng.",
+    "replace": "5. Kết luận: **QUA** khi không còn lỗi mức Chặn; **CHẶN** khi còn ≥ 1 lỗi mức Chặn."
+  },
+  {
+    "find": "- Không kết luận QUA khi còn lỗi Nặng hoặc khi chưa đối chiếu được số quyền lợi nào với tài liệu.",
+    "replace": "- Không kết luận QUA khi còn lỗi mức Chặn hoặc khi chưa đối chiếu được số quyền lợi nào với tài liệu."
+  }
+]

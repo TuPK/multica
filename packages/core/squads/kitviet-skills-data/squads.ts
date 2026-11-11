@@ -1110,5 +1110,1026 @@ export const KITVIET_SQUADS: readonly KitvietSquad[] = [
         "hasBody": true
       }
     ]
+  },
+  {
+    "id": "construction",
+    "pack": "construction",
+    "templateId": "kv_construction",
+    "name": "Construction (Xây dựng)",
+    "builtinSkills": [
+      "kv--an-thong-tin-nhay-cam",
+      "kv--kiem-tra-chong-bia",
+      "kv--nghien-cuu-nguon-uy-tin",
+      "kv--tom-tat-tai-lieu",
+      "kv--viet-bao-cao",
+      "kv--viet-email",
+      "kv--viet-de-cuong",
+      "kv--viet-tin-nhan-cong-viec",
+      "kv--tao-bang-kiem",
+      "kv--lap-ke-hoach-tuan",
+      "kv--ghi-chu-hop",
+      "kv--xuat-word",
+      "kv--xuat-excel",
+      "kv--xuat-pdf",
+      "kv--xuat-pptx",
+      "kv--delivery-core",
+      "kv--day-chuyen-ho-so-cong-truong"
+    ],
+    "leaderSkills": [
+      "kv--squad-lead",
+      "kv--company-profile"
+    ],
+    "roleSkills": {
+      "construction_quantity": [
+        "kv--kiem-tra-khoi-luong-xay-dung",
+        "kv--du-toan-so-bo-cong-trinh"
+      ],
+      "construction_standards": [
+        "kv--de-cuong-thuyet-minh-thi-cong",
+        "kv--dan-y-bien-phap-thi-cong"
+      ],
+      "construction_site_drafter": [
+        "kv--nhat-ky-thi-cong",
+        "kv--bao-cao-tuan-ban-chi-huy",
+        "kv--bao-cao-su-co-cong-truong",
+        "kv--bien-ban-giao-ban-cong-truong",
+        "kv--bao-cao-anh-hien-truong",
+        "kv--tong-hop-loi-hoan-thien"
+      ]
+    },
+    "promoted": [],
+    "roles": [
+      {
+        "key": "construction_lead",
+        "kind": "kv_lead",
+        "name": "Construction Lead",
+        "header": "You are the Construction Lead in a Construction (Xây dựng) squad, unattended.",
+        "hasBody": false
+      },
+      {
+        "key": "construction_reader",
+        "kind": "kv_collector",
+        "name": "Construction Reader",
+        "header": "You are the Construction Reader in a Construction (Xây dựng) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "construction_standards",
+        "kind": "kv_collector",
+        "name": "Construction Standards",
+        "header": "You are the Construction Standards in a Construction (Xây dựng) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "construction_quantity",
+        "kind": "kv_drafter",
+        "name": "Construction Quantity",
+        "header": "You are the Construction Quantity in a Construction (Xây dựng) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "construction_site_drafter",
+        "kind": "kv_drafter",
+        "name": "Construction Site Drafter",
+        "header": "You are the Construction Site Drafter in a Construction (Xây dựng) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "construction_quantity_gate",
+        "kind": "kv_gate",
+        "name": "Construction Quantity Gate",
+        "header": "You are the Construction Quantity Gate in a Construction (Xây dựng) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "construction_safety_gate",
+        "kind": "kv_gate",
+        "name": "Construction Safety Gate",
+        "header": "You are the Construction Safety Gate in a Construction (Xây dựng) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "construction_handover",
+        "kind": "kv_handover",
+        "name": "Construction Handover",
+        "header": "You are the Construction Handover in a Construction (Xây dựng) squad, unattended.",
+        "hasBody": true
+      }
+    ]
+  },
+  {
+    "id": "insurance",
+    "pack": "insurance",
+    "templateId": "kv_insurance",
+    "name": "Insurance Advisory (Bảo hiểm)",
+    "builtinSkills": [
+      "kv--an-thong-tin-nhay-cam",
+      "kv--kiem-tra-chong-bia",
+      "kv--nghien-cuu-nguon-uy-tin",
+      "kv--tom-tat-tai-lieu",
+      "kv--viet-bao-cao",
+      "kv--viet-email",
+      "kv--viet-de-cuong",
+      "kv--viet-tin-nhan-cong-viec",
+      "kv--tao-bang-kiem",
+      "kv--lap-ke-hoach-tuan",
+      "kv--ghi-chu-hop",
+      "kv--xuat-word",
+      "kv--xuat-excel",
+      "kv--xuat-pdf",
+      "kv--xuat-pptx",
+      "kv--delivery-core",
+      "kv--day-chuyen-de-xuat-bao-hiem"
+    ],
+    "leaderSkills": [
+      "kv--squad-lead",
+      "kv--company-profile"
+    ],
+    "roleSkills": {
+      "insurance_proposal": [
+        "kv--so-sanh-quyen-loi-bao-hiem",
+        "kv--phan-tich-nhu-cau-bao-ve",
+        "kv--giai-thich-dieu-khoan-loai-tru",
+        "kv--xu-ly-tu-choi-bao-hiem"
+      ],
+      "insurance_claim_drafter": [
+        "kv--ho-so-boi-thuong-bao-hiem"
+      ],
+      "insurance_advice_gate": [
+        "kv--soat-loi-tu-van-bao-hiem"
+      ]
+    },
+    "promoted": [],
+    "roles": [
+      {
+        "key": "insurance_lead",
+        "kind": "kv_lead",
+        "name": "Insurance Lead",
+        "header": "You are the Insurance Lead in an Insurance Advisory (Bảo hiểm) squad, unattended.",
+        "hasBody": false
+      },
+      {
+        "key": "insurance_gather",
+        "kind": "kv_collector",
+        "name": "Insurance Gather",
+        "header": "You are the Insurance Gather in an Insurance Advisory (Bảo hiểm) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "insurance_claim_reader",
+        "kind": "kv_collector",
+        "name": "Insurance Claim Reader",
+        "header": "You are the Insurance Claim Reader in an Insurance Advisory (Bảo hiểm) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "insurance_proposal",
+        "kind": "kv_drafter",
+        "name": "Insurance Proposal",
+        "header": "You are the Insurance Proposal in an Insurance Advisory (Bảo hiểm) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "insurance_claim_drafter",
+        "kind": "kv_drafter",
+        "name": "Insurance Claim Drafter",
+        "header": "You are the Insurance Claim Drafter in an Insurance Advisory (Bảo hiểm) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "insurance_advice_gate",
+        "kind": "kv_gate",
+        "name": "Insurance Advice Gate",
+        "header": "You are the Insurance Advice Gate in an Insurance Advisory (Bảo hiểm) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "insurance_handover",
+        "kind": "kv_handover",
+        "name": "Insurance Handover",
+        "header": "You are the Insurance Handover in an Insurance Advisory (Bảo hiểm) squad, unattended.",
+        "hasBody": true
+      }
+    ]
+  },
+  {
+    "id": "banking",
+    "pack": "banking",
+    "templateId": "kv_banking",
+    "name": "Banking Credit Desk (Tài chính, ngân hàng)",
+    "builtinSkills": [
+      "kv--an-thong-tin-nhay-cam",
+      "kv--kiem-tra-chong-bia",
+      "kv--nghien-cuu-nguon-uy-tin",
+      "kv--tom-tat-tai-lieu",
+      "kv--viet-bao-cao",
+      "kv--viet-email",
+      "kv--viet-de-cuong",
+      "kv--viet-tin-nhan-cong-viec",
+      "kv--tao-bang-kiem",
+      "kv--lap-ke-hoach-tuan",
+      "kv--ghi-chu-hop",
+      "kv--xuat-word",
+      "kv--xuat-excel",
+      "kv--xuat-pdf",
+      "kv--xuat-pptx",
+      "kv--delivery-core",
+      "kv--day-chuyen-to-trinh-tin-dung"
+    ],
+    "leaderSkills": [
+      "kv--squad-lead",
+      "kv--company-profile"
+    ],
+    "roleSkills": {
+      "banking_memo_drafter": [
+        "kv--to-trinh-tin-dung-khung",
+        "kv--bang-kiem-ho-so-vay-von",
+        "kv--danh-gia-tai-san-bao-dam"
+      ],
+      "banking_analyst": [
+        "kv--phan-tich-bctc-doanh-nghiep-vay",
+        "kv--phan-tich-dong-tien-du-an-vay",
+        "kv--lich-tra-no-khoan-vay"
+      ],
+      "banking_industry": [
+        "kv--nghien-cuu-nganh-khach-hang-vay"
+      ],
+      "banking_reader": [
+        "kv--bao-cao-danh-muc-khach-hang-rm"
+      ]
+    },
+    "promoted": [],
+    "roles": [
+      {
+        "key": "banking_lead",
+        "kind": "kv_lead",
+        "name": "Banking Lead",
+        "header": "You are the Banking Lead in a Banking Credit Desk (Tài chính, ngân hàng) squad, unattended.",
+        "hasBody": false
+      },
+      {
+        "key": "banking_reader",
+        "kind": "kv_collector",
+        "name": "Banking Reader",
+        "header": "You are the Banking Reader in a Banking Credit Desk (Tài chính, ngân hàng) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "banking_industry",
+        "kind": "kv_collector",
+        "name": "Banking Industry",
+        "header": "You are the Banking Industry in a Banking Credit Desk (Tài chính, ngân hàng) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "banking_analyst",
+        "kind": "kv_drafter",
+        "name": "Banking Analyst",
+        "header": "You are the Banking Analyst in a Banking Credit Desk (Tài chính, ngân hàng) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "banking_memo_drafter",
+        "kind": "kv_drafter",
+        "name": "Banking Memo Drafter",
+        "header": "You are the Banking Memo Drafter in a Banking Credit Desk (Tài chính, ngân hàng) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "banking_credit_gate",
+        "kind": "kv_gate",
+        "name": "Banking Credit Gate",
+        "header": "You are the Banking Credit Gate in a Banking Credit Desk (Tài chính, ngân hàng) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "banking_advice_gate",
+        "kind": "kv_gate",
+        "name": "Banking Advice Gate",
+        "header": "You are the Banking Advice Gate in a Banking Credit Desk (Tài chính, ngân hàng) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "banking_handover",
+        "kind": "kv_handover",
+        "name": "Banking Handover",
+        "header": "You are the Banking Handover in a Banking Credit Desk (Tài chính, ngân hàng) squad, unattended.",
+        "hasBody": true
+      }
+    ]
+  },
+  {
+    "id": "fnb",
+    "pack": "fnb",
+    "templateId": "kv_fnb",
+    "name": "F&B Ops (Nhà hàng, quán ăn)",
+    "builtinSkills": [
+      "kv--an-thong-tin-nhay-cam",
+      "kv--kiem-tra-chong-bia",
+      "kv--nghien-cuu-nguon-uy-tin",
+      "kv--tom-tat-tai-lieu",
+      "kv--viet-bao-cao",
+      "kv--viet-email",
+      "kv--viet-de-cuong",
+      "kv--viet-tin-nhan-cong-viec",
+      "kv--tao-bang-kiem",
+      "kv--lap-ke-hoach-tuan",
+      "kv--ghi-chu-hop",
+      "kv--xuat-word",
+      "kv--xuat-excel",
+      "kv--xuat-pdf",
+      "kv--xuat-pptx",
+      "kv--delivery-core",
+      "kv--day-chuyen-ra-mat-mon-moi"
+    ],
+    "leaderSkills": [
+      "kv--squad-lead",
+      "kv--company-profile"
+    ],
+    "roleSkills": {
+      "fnb_drafter": [
+        "kv--thiet-ke-menu-mo-ta-mon",
+        "kv--tinh-food-cost-mon",
+        "kv--noi-dung-mxh-quan-an",
+        "kv--sop-ve-sinh-an-toan-thuc-pham",
+        "kv--checklist-mo-dong-ca-quan",
+        "kv--xep-lich-ca-nhan-vien-quan"
+      ],
+      "fnb_regulation": [
+        "kv--ho-so-giay-phep-fnb"
+      ],
+      "fnb_reader": [
+        "kv--bao-cao-doanh-thu-quan",
+        "kv--nhap-nguyen-lieu-ton-kho-bep"
+      ]
+    },
+    "promoted": [],
+    "roles": [
+      {
+        "key": "fnb_lead",
+        "kind": "kv_lead",
+        "name": "F&B Lead",
+        "header": "You are the F&B Lead in a F&B Ops (Nhà hàng, quán ăn) squad, unattended.",
+        "hasBody": false
+      },
+      {
+        "key": "fnb_reader",
+        "kind": "kv_collector",
+        "name": "F&B Reader",
+        "header": "You are the F&B Reader in a F&B Ops (Nhà hàng, quán ăn) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "fnb_regulation",
+        "kind": "kv_collector",
+        "name": "F&B Regulation",
+        "header": "You are the F&B Regulation in a F&B Ops (Nhà hàng, quán ăn) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "fnb_drafter",
+        "kind": "kv_drafter",
+        "name": "F&B Drafter",
+        "header": "You are the F&B Drafter in a F&B Ops (Nhà hàng, quán ăn) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "fnb_allergen_gate",
+        "kind": "kv_gate",
+        "name": "F&B Allergen Gate",
+        "header": "You are the F&B Allergen Gate in a F&B Ops (Nhà hàng, quán ăn) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "fnb_margin_gate",
+        "kind": "kv_gate",
+        "name": "F&B Margin Gate",
+        "header": "You are the F&B Margin Gate in a F&B Ops (Nhà hàng, quán ăn) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "fnb_handover",
+        "kind": "kv_handover",
+        "name": "F&B Handover",
+        "header": "You are the F&B Handover in a F&B Ops (Nhà hàng, quán ăn) squad, unattended.",
+        "hasBody": true
+      }
+    ]
+  },
+  {
+    "id": "realestate",
+    "pack": "realestate",
+    "templateId": "kv_realestate",
+    "name": "Real Estate Desk (Bất động sản)",
+    "builtinSkills": [
+      "kv--an-thong-tin-nhay-cam",
+      "kv--kiem-tra-chong-bia",
+      "kv--nghien-cuu-nguon-uy-tin",
+      "kv--tom-tat-tai-lieu",
+      "kv--viet-bao-cao",
+      "kv--viet-email",
+      "kv--viet-de-cuong",
+      "kv--viet-tin-nhan-cong-viec",
+      "kv--tao-bang-kiem",
+      "kv--lap-ke-hoach-tuan",
+      "kv--ghi-chu-hop",
+      "kv--xuat-word",
+      "kv--xuat-excel",
+      "kv--xuat-pdf",
+      "kv--xuat-pptx",
+      "kv--delivery-core",
+      "kv--day-chuyen-ho-so-can-ban"
+    ],
+    "leaderSkills": [
+      "kv--squad-lead",
+      "kv--company-profile"
+    ],
+    "roleSkills": {
+      "realestate_listing_drafter": [
+        "kv--viet-tin-dang-nha-dat",
+        "kv--ho-so-gioi-thieu-can-nha",
+        "kv--kich-ban-video-tour-nha"
+      ],
+      "realestate_loan_drafter": [
+        "kv--tinh-phuong-an-vay-mua-nha"
+      ],
+      "realestate_area_research": [
+        "kv--phan-tich-khu-vuc-bds",
+        "kv--nghien-cuu-quy-hoach-khu-vuc"
+      ],
+      "realestate_reader": [
+        "kv--ra-soat-hop-dong-dat-coc"
+      ]
+    },
+    "promoted": [],
+    "roles": [
+      {
+        "key": "realestate_lead",
+        "kind": "kv_lead",
+        "name": "Realestate Lead",
+        "header": "You are the Realestate Lead in a Real Estate Desk (Bất động sản) squad, unattended.",
+        "hasBody": false
+      },
+      {
+        "key": "realestate_reader",
+        "kind": "kv_collector",
+        "name": "Realestate Reader",
+        "header": "You are the Realestate Reader in a Real Estate Desk (Bất động sản) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "realestate_area_research",
+        "kind": "kv_collector",
+        "name": "Realestate Area Research",
+        "header": "You are the Realestate Area Research in a Real Estate Desk (Bất động sản) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "realestate_loan_drafter",
+        "kind": "kv_drafter",
+        "name": "Realestate Loan Drafter",
+        "header": "You are the Realestate Loan Drafter in a Real Estate Desk (Bất động sản) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "realestate_listing_drafter",
+        "kind": "kv_drafter",
+        "name": "Realestate Listing Drafter",
+        "header": "You are the Realestate Listing Drafter in a Real Estate Desk (Bất động sản) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "realestate_planning_gate",
+        "kind": "kv_gate",
+        "name": "Realestate Planning Gate",
+        "header": "You are the Realestate Planning Gate in a Real Estate Desk (Bất động sản) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "realestate_loan_gate",
+        "kind": "kv_gate",
+        "name": "Realestate Loan Gate",
+        "header": "You are the Realestate Loan Gate in a Real Estate Desk (Bất động sản) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "realestate_listing_gate",
+        "kind": "kv_gate",
+        "name": "Realestate Listing Gate",
+        "header": "You are the Realestate Listing Gate in a Real Estate Desk (Bất động sản) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "realestate_handover",
+        "kind": "kv_handover",
+        "name": "Realestate Handover",
+        "header": "You are the Realestate Handover in a Real Estate Desk (Bất động sản) squad, unattended.",
+        "hasBody": true
+      }
+    ]
+  },
+  {
+    "id": "factory",
+    "pack": "factory",
+    "templateId": "kv_factory",
+    "name": "Factory Ops (Sản xuất nhà máy)",
+    "builtinSkills": [
+      "kv--an-thong-tin-nhay-cam",
+      "kv--kiem-tra-chong-bia",
+      "kv--nghien-cuu-nguon-uy-tin",
+      "kv--tom-tat-tai-lieu",
+      "kv--viet-bao-cao",
+      "kv--viet-email",
+      "kv--viet-de-cuong",
+      "kv--viet-tin-nhan-cong-viec",
+      "kv--tao-bang-kiem",
+      "kv--lap-ke-hoach-tuan",
+      "kv--ghi-chu-hop",
+      "kv--xuat-word",
+      "kv--xuat-excel",
+      "kv--xuat-pdf",
+      "kv--xuat-pptx",
+      "kv--delivery-core",
+      "kv--day-chuyen-bao-cao-kpi-nha-may"
+    ],
+    "leaderSkills": [
+      "kv--squad-lead",
+      "kv--company-profile"
+    ],
+    "roleSkills": {
+      "factory_kpi_drafter": [
+        "kv--tinh-oee-tu-so-lieu",
+        "kv--bao-cao-ca-san-xuat"
+      ],
+      "factory_doc_drafter": [
+        "kv--bao-cao-ncr-capa",
+        "kv--bao-cao-su-co-tai-nan-nha-may",
+        "kv--phan-tich-nguyen-nhan-goc-loi"
+      ],
+      "factory_standards": [
+        "kv--chuan-bi-danh-gia-iso"
+      ],
+      "factory_reader": [
+        "kv--ke-hoach-kiem-tra-dau-vao-iqc"
+      ]
+    },
+    "promoted": [],
+    "roles": [
+      {
+        "key": "factory_lead",
+        "kind": "kv_lead",
+        "name": "Factory Lead",
+        "header": "You are the Factory Lead in a Factory Ops (Sản xuất nhà máy) squad, unattended.",
+        "hasBody": false
+      },
+      {
+        "key": "factory_reader",
+        "kind": "kv_collector",
+        "name": "Factory Reader",
+        "header": "You are the Factory Reader in a Factory Ops (Sản xuất nhà máy) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "factory_standards",
+        "kind": "kv_collector",
+        "name": "Factory Standards",
+        "header": "You are the Factory Standards in a Factory Ops (Sản xuất nhà máy) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "factory_kpi_drafter",
+        "kind": "kv_drafter",
+        "name": "Factory Kpi Drafter",
+        "header": "You are the Factory Kpi Drafter in a Factory Ops (Sản xuất nhà máy) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "factory_doc_drafter",
+        "kind": "kv_drafter",
+        "name": "Factory Doc Drafter",
+        "header": "You are the Factory Doc Drafter in a Factory Ops (Sản xuất nhà máy) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "factory_numbers_gate",
+        "kind": "kv_gate",
+        "name": "Factory Numbers Gate",
+        "header": "You are the Factory Numbers Gate in a Factory Ops (Sản xuất nhà máy) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "factory_safety_gate",
+        "kind": "kv_gate",
+        "name": "Factory Safety Gate",
+        "header": "You are the Factory Safety Gate in a Factory Ops (Sản xuất nhà máy) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "factory_handover",
+        "kind": "kv_handover",
+        "name": "Factory Handover",
+        "header": "You are the Factory Handover in a Factory Ops (Sản xuất nhà máy) squad, unattended.",
+        "hasBody": true
+      }
+    ]
+  },
+  {
+    "id": "trade",
+    "pack": "trade",
+    "templateId": "kv_trade",
+    "name": "Import & Export Desk (Xuất nhập khẩu)",
+    "builtinSkills": [
+      "kv--an-thong-tin-nhay-cam",
+      "kv--kiem-tra-chong-bia",
+      "kv--nghien-cuu-nguon-uy-tin",
+      "kv--tom-tat-tai-lieu",
+      "kv--viet-bao-cao",
+      "kv--viet-email",
+      "kv--viet-de-cuong",
+      "kv--viet-tin-nhan-cong-viec",
+      "kv--tao-bang-kiem",
+      "kv--lap-ke-hoach-tuan",
+      "kv--ghi-chu-hop",
+      "kv--xuat-word",
+      "kv--xuat-excel",
+      "kv--xuat-pdf",
+      "kv--xuat-pptx",
+      "kv--delivery-core",
+      "kv--day-chuyen-ho-so-lo-hang"
+    ],
+    "leaderSkills": [
+      "kv--squad-lead",
+      "kv--company-profile"
+    ],
+    "roleSkills": {
+      "trade_crosscheck_drafter": [
+        "kv--chuan-bi-to-khai-hai-quan",
+        "kv--tinh-landed-cost",
+        "kv--bao-cao-lo-hang-cho-khach"
+      ],
+      "trade_customs_research": [
+        "kv--tra-cuu-ma-hs-chinh-sach",
+        "kv--chon-uu-dai-thue-fta"
+      ],
+      "trade_docs_gate": [
+        "kv--soat-bo-chung-tu-xnk",
+        "kv--soat-dieu-khoan-lc"
+      ]
+    },
+    "promoted": [],
+    "roles": [
+      {
+        "key": "trade_lead",
+        "kind": "kv_lead",
+        "name": "Trade Lead",
+        "header": "You are the Trade Lead in an Import & Export Desk (Xuất nhập khẩu) squad, unattended.",
+        "hasBody": false
+      },
+      {
+        "key": "trade_docs_reader",
+        "kind": "kv_collector",
+        "name": "Trade Docs Reader",
+        "header": "You are the Trade Docs Reader in an Import & Export Desk (Xuất nhập khẩu) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "trade_customs_research",
+        "kind": "kv_collector",
+        "name": "Trade Customs Research",
+        "header": "You are the Trade Customs Research in an Import & Export Desk (Xuất nhập khẩu) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "trade_crosscheck_drafter",
+        "kind": "kv_drafter",
+        "name": "Trade Crosscheck Drafter",
+        "header": "You are the Trade Crosscheck Drafter in an Import & Export Desk (Xuất nhập khẩu) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "trade_docs_gate",
+        "kind": "kv_gate",
+        "name": "Trade Docs Gate",
+        "header": "You are the Trade Docs Gate in an Import & Export Desk (Xuất nhập khẩu) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "trade_customs_gate",
+        "kind": "kv_gate",
+        "name": "Trade Customs Gate",
+        "header": "You are the Trade Customs Gate in an Import & Export Desk (Xuất nhập khẩu) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "trade_handover",
+        "kind": "kv_handover",
+        "name": "Trade Handover",
+        "header": "You are the Trade Handover in an Import & Export Desk (Xuất nhập khẩu) squad, unattended.",
+        "hasBody": true
+      }
+    ]
+  },
+  {
+    "id": "health",
+    "pack": "health",
+    "templateId": "kv_health",
+    "name": "Healthcare (Y tế)",
+    "builtinSkills": [
+      "kv--an-thong-tin-nhay-cam",
+      "kv--kiem-tra-chong-bia",
+      "kv--nghien-cuu-nguon-uy-tin",
+      "kv--tom-tat-tai-lieu",
+      "kv--viet-bao-cao",
+      "kv--viet-email",
+      "kv--viet-de-cuong",
+      "kv--viet-tin-nhan-cong-viec",
+      "kv--tao-bang-kiem",
+      "kv--lap-ke-hoach-tuan",
+      "kv--ghi-chu-hop",
+      "kv--xuat-word",
+      "kv--xuat-excel",
+      "kv--xuat-pdf",
+      "kv--xuat-pptx",
+      "kv--delivery-core",
+      "kv--day-chuyen-tai-lieu-y-te"
+    ],
+    "leaderSkills": [
+      "kv--squad-lead",
+      "kv--company-profile"
+    ],
+    "roleSkills": {
+      "health_drafter": [
+        "kv--soan-sop-phong-kham",
+        "kv--tai-lieu-giao-duc-suc-khoe",
+        "kv--dao-tao-noi-bo-y-te",
+        "kv--bao-cao-su-co-y-khoa",
+        "kv--nhac-lich-tai-kham-zalo"
+      ],
+      "health_table": [
+        "kv--theo-doi-han-dung-thuoc",
+        "kv--xep-lich-truc-dieu-duong",
+        "kv--bang-kiem-an-toan-thu-thuat",
+        "kv--chuan-bi-doan-kiem-tra-chat-luong",
+        "kv--khao-sat-hai-long-nguoi-benh"
+      ],
+      "health_research": [
+        "kv--tong-quan-tai-lieu-y-khoa",
+        "kv--tom-tat-phac-do-dieu-tri"
+      ]
+    },
+    "promoted": [],
+    "roles": [
+      {
+        "key": "health_lead",
+        "kind": "kv_lead",
+        "name": "Health Lead",
+        "header": "You are the Health Lead in a Healthcare (Y tế) squad, unattended.",
+        "hasBody": false
+      },
+      {
+        "key": "health_reader",
+        "kind": "kv_collector",
+        "name": "Health Reader",
+        "header": "You are the Health Reader in a Healthcare (Y tế) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "health_research",
+        "kind": "kv_collector",
+        "name": "Health Research",
+        "header": "You are the Health Research in a Healthcare (Y tế) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "health_regulation",
+        "kind": "kv_collector",
+        "name": "Health Regulation",
+        "header": "You are the Health Regulation in a Healthcare (Y tế) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "health_drafter",
+        "kind": "kv_drafter",
+        "name": "Health Drafter",
+        "header": "You are the Health Drafter in a Healthcare (Y tế) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "health_table",
+        "kind": "kv_drafter",
+        "name": "Health Table",
+        "header": "You are the Health Table in a Healthcare (Y tế) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "health_scope_gate",
+        "kind": "kv_gate",
+        "name": "Health Scope Gate",
+        "header": "You are the Health Scope Gate in a Healthcare (Y tế) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "health_privacy_gate",
+        "kind": "kv_gate",
+        "name": "Health Privacy Gate",
+        "header": "You are the Health Privacy Gate in a Healthcare (Y tế) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "health_handover",
+        "kind": "kv_handover",
+        "name": "Health Handover",
+        "header": "You are the Health Handover in a Healthcare (Y tế) squad, unattended.",
+        "hasBody": true
+      }
+    ]
+  },
+  {
+    "id": "hospitality",
+    "pack": "hospitality",
+    "templateId": "kv_hospitality",
+    "name": "Hospitality Ops (Du lịch, khách sạn)",
+    "builtinSkills": [
+      "kv--an-thong-tin-nhay-cam",
+      "kv--kiem-tra-chong-bia",
+      "kv--nghien-cuu-nguon-uy-tin",
+      "kv--tom-tat-tai-lieu",
+      "kv--viet-bao-cao",
+      "kv--viet-email",
+      "kv--viet-de-cuong",
+      "kv--viet-tin-nhan-cong-viec",
+      "kv--tao-bang-kiem",
+      "kv--lap-ke-hoach-tuan",
+      "kv--ghi-chu-hop",
+      "kv--xuat-word",
+      "kv--xuat-excel",
+      "kv--xuat-pdf",
+      "kv--xuat-pptx",
+      "kv--delivery-core",
+      "kv--day-chuyen-ho-so-tour-doan"
+    ],
+    "leaderSkills": [
+      "kv--squad-lead",
+      "kv--company-profile"
+    ],
+    "roleSkills": {
+      "hospitality_tour_drafter": [
+        "kv--bao-gia-tour-chi-phi",
+        "kv--thiet-ke-lich-trinh-tour",
+        "kv--checklist-an-toan-tour"
+      ],
+      "hospitality_hotel_drafter": [
+        "kv--mo-ta-phong-listing-ota",
+        "kv--email-xac-nhan-dat-phong",
+        "kv--tra-loi-review-khach-san"
+      ],
+      "hospitality_intake": [
+        "kv--de-xuat-tour-mice-doan-cong-ty"
+      ],
+      "hospitality_destination": [
+        "kv--nghien-cuu-diem-den-du-lich",
+        "kv--thuyet-minh-diem-tham-quan"
+      ]
+    },
+    "promoted": [],
+    "roles": [
+      {
+        "key": "hospitality_lead",
+        "kind": "kv_lead",
+        "name": "Hospitality Lead",
+        "header": "You are the Hospitality Lead in a Hospitality Ops (Du lịch, khách sạn) squad, unattended.",
+        "hasBody": false
+      },
+      {
+        "key": "hospitality_intake",
+        "kind": "kv_collector",
+        "name": "Hospitality Intake",
+        "header": "You are the Hospitality Intake in a Hospitality Ops (Du lịch, khách sạn) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "hospitality_destination",
+        "kind": "kv_collector",
+        "name": "Hospitality Destination",
+        "header": "You are the Hospitality Destination in a Hospitality Ops (Du lịch, khách sạn) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "hospitality_tour_drafter",
+        "kind": "kv_drafter",
+        "name": "Hospitality Tour Drafter",
+        "header": "You are the Hospitality Tour Drafter in a Hospitality Ops (Du lịch, khách sạn) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "hospitality_hotel_drafter",
+        "kind": "kv_drafter",
+        "name": "Hospitality Hotel Drafter",
+        "header": "You are the Hospitality Hotel Drafter in a Hospitality Ops (Du lịch, khách sạn) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "hospitality_quote_gate",
+        "kind": "kv_gate",
+        "name": "Hospitality Quote Gate",
+        "header": "You are the Hospitality Quote Gate in a Hospitality Ops (Du lịch, khách sạn) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "hospitality_promise_gate",
+        "kind": "kv_gate",
+        "name": "Hospitality Promise Gate",
+        "header": "You are the Hospitality Promise Gate in a Hospitality Ops (Du lịch, khách sạn) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "hospitality_handover",
+        "kind": "kv_handover",
+        "name": "Hospitality Handover",
+        "header": "You are the Hospitality Handover in a Hospitality Ops (Du lịch, khách sạn) squad, unattended.",
+        "hasBody": true
+      }
+    ]
+  },
+  {
+    "id": "edu",
+    "pack": "edu",
+    "templateId": "kv_education",
+    "name": "Education Desk (Giáo dục)",
+    "builtinSkills": [
+      "kv--an-thong-tin-nhay-cam",
+      "kv--kiem-tra-chong-bia",
+      "kv--nghien-cuu-nguon-uy-tin",
+      "kv--tom-tat-tai-lieu",
+      "kv--viet-bao-cao",
+      "kv--viet-email",
+      "kv--viet-de-cuong",
+      "kv--viet-tin-nhan-cong-viec",
+      "kv--tao-bang-kiem",
+      "kv--lap-ke-hoach-tuan",
+      "kv--ghi-chu-hop",
+      "kv--xuat-word",
+      "kv--xuat-excel",
+      "kv--xuat-pdf",
+      "kv--xuat-pptx",
+      "kv--delivery-core",
+      "kv--day-chuyen-de-kiem-tra-dinh-ky"
+    ],
+    "leaderSkills": [
+      "kv--squad-lead",
+      "kv--company-profile"
+    ],
+    "roleSkills": {
+      "edu_test_drafter": [
+        "kv--ma-tran-dac-ta-de-kiem-tra",
+        "kv--ngan-hang-cau-hoi-trac-nghiem",
+        "kv--rubric-cham-bai-hoc-sinh"
+      ]
+    },
+    "promoted": [],
+    "roles": [
+      {
+        "key": "edu_lead",
+        "kind": "kv_lead",
+        "name": "Edu Lead",
+        "header": "You are the Edu Lead in an Education Desk (Giáo dục) squad, unattended.",
+        "hasBody": false
+      },
+      {
+        "key": "edu_curriculum",
+        "kind": "kv_collector",
+        "name": "Edu Curriculum",
+        "header": "You are the Edu Curriculum in an Education Desk (Giáo dục) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "edu_test_drafter",
+        "kind": "kv_drafter",
+        "name": "Edu Test Drafter",
+        "header": "You are the Edu Test Drafter in an Education Desk (Giáo dục) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "edu_answer_gate",
+        "kind": "kv_gate",
+        "name": "Edu Answer Gate",
+        "header": "You are the Edu Answer Gate in an Education Desk (Giáo dục) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "edu_student_gate",
+        "kind": "kv_gate",
+        "name": "Edu Student Gate",
+        "header": "You are the Edu Student Gate in an Education Desk (Giáo dục) squad, unattended.",
+        "hasBody": true
+      },
+      {
+        "key": "edu_handover",
+        "kind": "kv_handover",
+        "name": "Edu Handover",
+        "header": "You are the Edu Handover in an Education Desk (Giáo dục) squad, unattended.",
+        "hasBody": true
+      }
+    ]
   }
 ];

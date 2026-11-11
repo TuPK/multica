@@ -1,0 +1,14 @@
+[
+  {
+    "find": "4. Xếp mức: **Chặn** (định danh trực tiếp, sức khỏe gắn định danh, xác nhận quan hệ khám chữa bệnh trên kênh công khai) / **Nên sửa** (định danh gián tiếp) / **Lưu ý**.",
+    "replace": "4. Xếp mức: **Chặn** (định danh trực tiếp, sức khỏe gắn định danh, xác nhận quan hệ khám chữa bệnh trên kênh công khai) / **Cần giấy tờ** (ảnh hoặc câu chuyện người bệnh không kèm văn bản đồng ý; định danh gián tiếp mà người đọc có thể nhận ra) / **Nên sửa** (che chưa gọn, trình bày) / **Góp ý**."
+  },
+  {
+    "find": "6. Kết luận: còn lỗi Chặn -> \"Chặn\".",
+    "replace": "6. Kết luận: còn lỗi Chặn hoặc Cần giấy tờ -> \"Chặn\"."
+  },
+  {
+    "find": "## Nên sửa\n| Vị trí | Vấn đề | Đề xuất |\n|---|---|---|\n\n## Lưu ý",
+    "replace": "## Cần giấy tờ\n| Vị trí | Thiếu gì | Đề xuất |\n|---|---|---|\n\n## Nên sửa\n| Vị trí | Vấn đề | Đề xuất |\n|---|---|---|\n\n## Góp ý"
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "find": "không có nguồn -> Cần xác nhận.",
+    "replace": "không có nguồn -> Cần giấy tờ."
+  },
+  {
+    "find": "gửi rộng -> Cần xác nhận,",
+    "replace": "gửi rộng -> Cần giấy tờ,"
+  },
+  {
+    "find": "## Cần xác nhận",
+    "replace": "## Cần giấy tờ"
+  },
+  {
+    "find": "Không kết luận \"Đạt\" khi còn rủi ro an toàn trong nguồn chưa được nêu.",
+    "replace": "Không kết luận QUA khi còn rủi ro an toàn trong nguồn chưa được nêu, lỗi Chặn, hoặc mục Cần giấy tờ."
+  }
+]

@@ -1,0 +1,22 @@
+[
+  {
+    "find": "7. Xếp mức: **CHẶN** (sót/sai dị ứng, nhãn chay sai, claim an toàn dị ứng) - **Sửa** (claim sức khỏe, quy định không nguồn, thiếu nhiễm chéo) - **Lưu ý**.",
+    "replace": "7. Xếp mức: **Chặn** (sót/sai dị ứng, nhãn chay sai, claim an toàn dị ứng, thiếu nhiễm chéo đã có trong nguồn) - **Cần giấy tờ** (thành phần nước sốt hoặc đóng gói của món sắp in chưa xác minh, claim sức khỏe không có căn cứ, quy định ATTP không nguồn) - **Nên sửa** (trình bày) - **Góp ý**. Một lỗi Chặn hoặc một mục Cần giấy tờ làm kết luận CHẶN."
+  },
+  {
+    "find": "và nhóm quán ghi thêm trong `CLAUDE.md`.",
+    "replace": "và nhóm quán ghi thêm trong tài liệu KB `Hồ sơ đơn vị`. Danh sách này là danh sách làm việc theo các nhóm dị ứng thường gặp trong quy định quốc tế và của Liên minh châu Âu, không phải căn cứ pháp lý Việt Nam: nhóm nào phải ghi trên nhãn theo quy định hiện hành thì người dùng đối chiếu."
+  },
+  {
+    "find": "Kết quả trả cho phiên chính lưu `03-soat-di-ung.md`.",
+    "replace": "Kết quả của bạn là comment trên sub-issue gác cổng này, dòng đầu là `VERDICT:`."
+  },
+  {
+    "find": "- Không kết luận QUA khi còn bất kỳ dòng CHẶN hoặc thành phần nước sốt/đóng gói chưa xác minh của món sắp in.",
+    "replace": "- Không kết luận QUA khi còn bất kỳ dòng Chặn hoặc mục Cần giấy tờ, kể cả thành phần nước sốt/đóng gói chưa xác minh của món sắp in."
+  },
+  {
+    "find": "đậu nành (gồm nước tương, tương), mè, cần tây, mù tạt, sulfit,",
+    "replace": "đậu nành (gồm nước tương, tương), mè, cần tây, mù tạt, sulfit, đậu lupin,"
+  }
+]

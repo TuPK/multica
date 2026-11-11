@@ -1,0 +1,14 @@
+[
+  {
+    "find": "8. Xếp lỗi Nặng (cam kết tiền chưa duyệt, lộ dữ liệu, sai chính sách, thừa nhận pháp lý) / Vừa (thổi phồng, thiếu căn cứ) / Nhẹ (giọng, trình bày).",
+    "replace": "8. Xếp mức: **Chặn** (cam kết tiền chưa duyệt, lộ dữ liệu, sai chính sách, thừa nhận pháp lý) / **Cần giấy tờ** (thổi phồng, thiếu căn cứ: có căn cứ hoặc bỏ câu) / **Góp ý** (giọng, trình bày)."
+  },
+  {
+    "find": "| 1 | Nặng | R07 |",
+    "replace": "| 1 | Chặn | R07 |"
+  },
+  {
+    "find": "CHẶN khi có bất kỳ lỗi Nặng nào.",
+    "replace": "CHẶN khi có lỗi mức Chặn hoặc Cần giấy tờ."
+  }
+]

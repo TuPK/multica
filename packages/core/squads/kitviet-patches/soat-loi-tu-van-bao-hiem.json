@@ -1,0 +1,54 @@
+[
+  {
+    "find": "   - **Cam kết lợi nhuận / bảo đảm sai** (Nặng): \"chắc chắn lãi\", \"không bao giờ mất vốn\", \"lãi cao hơn ngân hàng\", gọi quyền lợi minh họa là đảm bảo.",
+    "replace": "   - **Cam kết lợi nhuận / bảo đảm sai** (Chặn): \"chắc chắn lãi\", \"không bao giờ mất vốn\", \"lãi cao hơn ngân hàng\", gọi quyền lợi minh họa là đảm bảo."
+  },
+  {
+    "find": "   - **Số quyền lợi không có trong tài liệu hoặc trái tài liệu** (Nặng): đối chiếu từng số, ghi vị trí.",
+    "replace": "   - **Số quyền lợi không có trong tài liệu hoặc trái tài liệu** (Chặn): đối chiếu từng số, ghi vị trí."
+  },
+  {
+    "find": "   - **So sánh sai, chê đối thủ** (Nặng): so với sản phẩm/doanh nghiệp khác không có tài liệu, hạ thấp người khác.",
+    "replace": "   - **So sánh sai, chê đối thủ** (Chặn): so với sản phẩm/doanh nghiệp khác không có tài liệu, hạ thấp người khác."
+  },
+  {
+    "find": "   - **Che giấu, làm nhẹ giới hạn** (Nặng): nêu quyền lợi mà bỏ loại trừ, thời gian chờ, thiệt hại khi hủy sớm; \"bệnh gì cũng trả\".",
+    "replace": "   - **Che giấu, làm nhẹ giới hạn** (Chặn): nêu quyền lợi mà bỏ loại trừ, thời gian chờ, thiệt hại khi hủy sớm; \"bệnh gì cũng trả\"."
+  },
+  {
+    "find": "   - **Áp lực giả** (Vừa): hạn chót, khuyến mại không có thật, dọa bệnh tật.",
+    "replace": "   - **Áp lực giả** (Nên sửa): hạn chót, khuyến mại không có thật, dọa bệnh tật."
+  },
+  {
+    "find": "   - **Khuyến khích kê khai sai, thay thế hợp đồng bất lợi** (Nặng): \"không cần khai bệnh cũ\", \"hủy hợp đồng cũ mua cái này lợi hơn\" mà không nêu thiệt hại.",
+    "replace": "   - **Khuyến khích kê khai sai, thay thế hợp đồng bất lợi** (Chặn): \"không cần khai bệnh cũ\", \"hủy hợp đồng cũ mua cái này lợi hơn\" mà không nêu thiệt hại."
+  },
+  {
+    "find": "   - **Lộ thông tin cá nhân, thiếu minh bạch** (Vừa): CCCD, bệnh án của khách khác; không nêu mình là đại lý của doanh nghiệp nào.",
+    "replace": "   - **Lộ thông tin cá nhân, thiếu minh bạch** (Nên sửa): CCCD, bệnh án của khách khác; không nêu mình là đại lý của doanh nghiệp nào."
+  },
+  {
+    "find": "4. Kết luận: **QUA** (không còn lỗi Nặng) hoặc **CHẶN** (còn ≥ 1 lỗi Nặng).",
+    "replace": "4. Kết luận: **QUA** (không còn lỗi mức Chặn) hoặc **CHẶN** (còn ≥ 1 lỗi mức Chặn)."
+  },
+  {
+    "find": "CHẶN - 2 lỗi Nặng: cam kết lãi suất, số quyền lợi bệnh hiểm nghèo không khớp tài liệu.",
+    "replace": "CHẶN - 2 lỗi mức Chặn: cam kết lãi suất, số quyền lợi bệnh hiểm nghèo không khớp tài liệu."
+  },
+  {
+    "find": "| 1 | \"lãi đều 7%/năm\" | Cam kết lợi nhuận | Nặng | \"Bảng minh họa giả định lãi suất ...; đây là minh họa, không đảm bảo\" |",
+    "replace": "| 1 | \"lãi đều 7%/năm\" | Cam kết lợi nhuận | Chặn | \"Bảng minh họa giả định lãi suất ...; đây là minh họa, không đảm bảo\" |"
+  },
+  {
+    "find": "| 2 | \"chi trả 100 bệnh hiểm nghèo\" | Trái tài liệu | Nặng | Theo QTĐK trang 6: [số bệnh theo tài liệu] |",
+    "replace": "| 2 | \"chi trả 100 bệnh hiểm nghèo\" | Trái tài liệu | Chặn | Theo QTĐK trang 6: [số bệnh theo tài liệu] |"
+  },
+  {
+    "find": "| 3 | \"chỉ còn hôm nay\" | Áp lực giả | Vừa | Bỏ |",
+    "replace": "| 3 | \"chỉ còn hôm nay\" | Áp lực giả | Nên sửa | Bỏ |"
+  },
+  {
+    "find": "- [ ] Kết luận CHẶN khi còn lỗi Nặng.",
+    "replace": "- [ ] Kết luận CHẶN khi còn lỗi mức Chặn."
+  }
+]

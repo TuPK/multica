@@ -209,10 +209,12 @@ export function classifyAgent(tools, description) {
   return "collector";
 }
 
-// Words of a role key that are written as acronyms, not capitalised: `b2b_lead` -> `B2B Lead`, `pr_lead` -> `PR Lead`.
+// Words of a role key that are written as acronyms, not capitalised: `b2b_lead` -> `B2B Lead`, `pr_lead` -> `PR Lead`,
+// `fnb_lead` -> `F&B Lead`. "&" is safe here: role names are display text, not identifiers (the role key is the id).
 const ACRONYMS = new Map([
   ["b2b", "B2B"],
   ["pr", "PR"],
+  ["fnb", "F&B"],
 ]);
 
 // The role display name of a role key: `legal_reader` -> `Legal Reader`.

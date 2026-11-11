@@ -1,0 +1,10 @@
+[
+  {
+    "find": "## Cần sửa ngay",
+    "replace": "## Chặn trước khi đăng"
+  },
+  {
+    "find": "Không kết luận \"Đăng được\" khi còn bất kỳ lỗi Trái nguồn",
+    "replace": "Không kết luận QUA khi còn bất kỳ lỗi Trái nguồn, khẳng định Tự suy hoặc Không có trong nguồn, pháp lý làm đẹp"
+  }
+]

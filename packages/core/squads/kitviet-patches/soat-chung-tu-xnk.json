@@ -1,0 +1,14 @@
+[
+  {
+    "find": "thông quan phải là Nghiêm trọng).",
+    "replace": "thông quan phải là Chặn)."
+  },
+  {
+    "find": "- Không kết luận QUA khi còn một lỗi Nghiêm trọng hoặc tổng số không khớp.",
+    "replace": "- Không kết luận QUA khi còn một lỗi Chặn hoặc tổng số không khớp."
+  },
+  {
+    "find": "## Lưu ý (không chặn)",
+    "replace": "## Góp ý (không chặn)"
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "find": "/ **Cần xác nhận** (giả định, thiếu nguồn) / **Gợi ý**.",
+    "replace": "/ **Cần giấy tờ** (giả định, thiếu nguồn) / **Góp ý**."
+  },
+  {
+    "find": "## Cần xác nhận",
+    "replace": "## Cần giấy tờ"
+  },
+  {
+    "find": "## Gợi ý",
+    "replace": "## Góp ý"
+  },
+  {
+    "find": "Không kết luận \"Đạt\" khi còn bất kỳ lỗi Chặn nào.",
+    "replace": "Không kết luận QUA khi còn bất kỳ lỗi Chặn hoặc Cần giấy tờ nào."
+  }
+]

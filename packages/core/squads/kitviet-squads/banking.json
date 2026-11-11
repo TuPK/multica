@@ -1,0 +1,75 @@
+{
+  "order": 22,
+  "templateId": "kv_banking",
+  "trade": "tai-chinh-ngan-hang",
+  "name": "Banking Credit Desk (Tài chính, ngân hàng)",
+  "agents": {
+    "lap-ke-hoach-dieu-phoi": {
+      "role": "banking_lead",
+      "kind": "kv_lead"
+    },
+    "doc-ho-so-tin-dung": {
+      "role": "banking_reader",
+      "kind": "kv_collector"
+    },
+    "tra-cuu-nganh-tai-chinh": {
+      "role": "banking_industry",
+      "kind": "kv_collector"
+    },
+    "lap-bang-phan-tich-tin-dung": {
+      "role": "banking_analyst",
+      "kind": "kv_drafter"
+    },
+    "soan-to-trinh-tin-dung": {
+      "role": "banking_memo_drafter",
+      "kind": "kv_drafter"
+    },
+    "soat-to-trinh-tin-dung": {
+      "role": "banking_credit_gate",
+      "kind": "kv_gate"
+    },
+    "soat-tuan-thu-tu-van-tai-chinh": {
+      "role": "banking_advice_gate",
+      "kind": "kv_gate"
+    },
+    "kiem-dinh-ban-giao": {
+      "role": "banking_handover",
+      "kind": "kv_handover"
+    }
+  },
+  "builtinSkills": [
+    "day-chuyen-to-trinh-tin-dung"
+  ],
+  "leaderSkills": [
+    "kv-squad-lead",
+    "kv-company-profile"
+  ],
+  "roleSkills": {
+    "banking_memo_drafter": [
+      "to-trinh-tin-dung-khung",
+      "bang-kiem-ho-so-vay-von",
+      "danh-gia-tai-san-bao-dam"
+    ],
+    "banking_analyst": [
+      "phan-tich-bctc-doanh-nghiep-vay",
+      "phan-tich-dong-tien-du-an-vay",
+      "lich-tra-no-khoan-vay"
+    ],
+    "banking_industry": [
+      "nghien-cuu-nganh-khach-hang-vay"
+    ],
+    "banking_reader": [
+      "bao-cao-danh-muc-khach-hang-rm"
+    ]
+  },
+  "promoted": [],
+  "deferredSkills": [
+    "nhan-dien-giao-dich-bat-thuong",
+    "so-sanh-san-pham-tien-gui-vay",
+    "kich-ban-tu-van-khach-ngan-hang",
+    "thu-nhac-no-khach-vay",
+    "email-cham-soc-khach-vip-ngan-hang",
+    "ke-hoach-tai-chinh-ca-nhan-khach",
+    "tom-tat-quy-dinh-noi-bo-ngan-hang"
+  ]
+}

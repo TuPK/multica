@@ -1,0 +1,14 @@
+[
+  {
+    "find": "Tạo thư mục `.kv-run/de-<mon>-<lop>-<yyyymmdd>/`, ghi `00-ke-hoach.md`:",
+    "replace": "Ghi comment Kế hoạch của lead trên issue gốc:"
+  },
+  {
+    "find": "| đọc, ghi trong `.kv-run/` | `00-ke-hoach.md` |",
+    "replace": "| đọc, ghi comment | comment Kế hoạch trên issue gốc |"
+  },
+  {
+    "find": "Thư mục chạy: .kv-run/de-toan-7-hk1-20261215/\n",
+    "replace": "Tệp đính kèm: bản đề, đáp án và ma trận của bộ đề.\n"
+  }
+]

@@ -1,0 +1,66 @@
+{
+  "order": 24,
+  "templateId": "kv_fnb",
+  "trade": "nha-hang-fnb",
+  "name": "F&B Ops (Nhà hàng, quán ăn)",
+  "agents": {
+    "lap-ke-hoach-dieu-phoi": {
+      "role": "fnb_lead",
+      "kind": "kv_lead"
+    },
+    "doc-so-lieu-quan-an": {
+      "role": "fnb_reader",
+      "kind": "kv_collector"
+    },
+    "tra-cuu-quy-dinh-fnb": {
+      "role": "fnb_regulation",
+      "kind": "kv_collector"
+    },
+    "soan-tai-lieu-quan-an": {
+      "role": "fnb_drafter",
+      "kind": "kv_drafter"
+    },
+    "soat-di-ung-attp-mon": {
+      "role": "fnb_allergen_gate",
+      "kind": "kv_gate"
+    },
+    "soat-gia-von-lai-quan": {
+      "role": "fnb_margin_gate",
+      "kind": "kv_gate"
+    },
+    "kiem-dinh-ban-giao": {
+      "role": "fnb_handover",
+      "kind": "kv_handover"
+    }
+  },
+  "builtinSkills": [
+    "day-chuyen-ra-mat-mon-moi"
+  ],
+  "leaderSkills": [
+    "kv-squad-lead",
+    "kv-company-profile"
+  ],
+  "roleSkills": {
+    "fnb_drafter": [
+      "thiet-ke-menu-mo-ta-mon",
+      "tinh-food-cost-mon",
+      "noi-dung-mxh-quan-an",
+      "sop-ve-sinh-an-toan-thuc-pham",
+      "checklist-mo-dong-ca-quan",
+      "xep-lich-ca-nhan-vien-quan"
+    ],
+    "fnb_regulation": [
+      "ho-so-giay-phep-fnb"
+    ],
+    "fnb_reader": [
+      "bao-cao-doanh-thu-quan",
+      "nhap-nguyen-lieu-ton-kho-bep"
+    ]
+  },
+  "promoted": [],
+  "deferredSkills": [
+    "phan-hoi-review-khieu-nai-quan",
+    "khuyen-mai-quan-tinh-lai",
+    "dao-tao-nhan-vien-phuc-vu"
+  ]
+}

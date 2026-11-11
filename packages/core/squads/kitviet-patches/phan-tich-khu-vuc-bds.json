@@ -1,0 +1,6 @@
+[
+  {
+    "find": "Muốn tra web thì gọi agent `kv:tra-cuu-khu-vuc-bds` (Claude Code) hoặc",
+    "replace": "Muốn tra web thì nhờ vai `realestate_area_research`, hoặc"
+  }
+]

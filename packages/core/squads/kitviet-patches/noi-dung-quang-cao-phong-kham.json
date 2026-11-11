@@ -1,0 +1,14 @@
+[
+  {
+    "find": "**Cao** (phải bỏ), **Vừa** (nên sửa), **Thấp**.",
+    "replace": "**Chặn** (phải bỏ), **Nên sửa**, **Góp ý**."
+  },
+  {
+    "find": "| Cao | Cam kết hiệu quả điều trị |",
+    "replace": "| Chặn | Cam kết hiệu quả điều trị |"
+  },
+  {
+    "find": "| Vừa | Dễ gây hiểu nhầm kết quả |",
+    "replace": "| Nên sửa | Dễ gây hiểu nhầm kết quả |"
+  }
+]

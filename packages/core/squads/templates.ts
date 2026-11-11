@@ -10,6 +10,16 @@ import { PR_ROLES, KV_PR_TEMPLATE, type PrRoleKey } from "./kitviet-templates/pr
 import { KV_ECOM_ROLES, KV_ECOM_TEMPLATE, type KvEcomRoleKey } from "./kitviet-templates/ecom";
 import { KV_OFFICEOPS_ROLES, KV_OFFICEOPS_TEMPLATE, type KvOfficeOpsRoleKey } from "./kitviet-templates/officeops";
 import { ACADEMIC_ROLES, KV_ACADEMIC_TEMPLATE, type AcademicRoleKey } from "./kitviet-templates/academic";
+import { HEALTH_ROLES, KV_HEALTH_TEMPLATE, type HealthRoleKey } from "./kitviet-templates/health";
+import { CONSTRUCTION_ROLES, KV_CONSTRUCTION_TEMPLATE, type ConstructionRoleKey } from "./kitviet-templates/construction";
+import { FNB_ROLES, KV_FNB_TEMPLATE, type FnbRoleKey } from "./kitviet-templates/fnb";
+import { INSURANCE_ROLES, KV_INSURANCE_TEMPLATE, type InsuranceRoleKey } from "./kitviet-templates/insurance";
+import { KV_BANKING_ROLES, KV_BANKING_TEMPLATE, type KvBankingRoleKey } from "./kitviet-templates/banking";
+import { REALESTATE_ROLES, KV_REALESTATE_TEMPLATE, type RealestateRoleKey } from "./kitviet-templates/realestate";
+import { HOSPITALITY_ROLES, KV_HOSPITALITY_TEMPLATE, type HospitalityRoleKey } from "./kitviet-templates/hospitality";
+import { TRADE_ROLES, KV_TRADE_TEMPLATE, type TradeRoleKey } from "./kitviet-templates/trade";
+import { FACTORY_ROLES, KV_FACTORY_TEMPLATE, type FactoryRoleKey } from "./kitviet-templates/factory";
+import { EDU_ROLES, KV_EDU_TEMPLATE, type EduRoleKey } from "./kitviet-templates/edu";
 
 /**
  * Ready-made squads a user can start from in the Squads quickstart. A template
@@ -34,7 +44,17 @@ export type SquadTemplateId =
   | "kv_pr"
   | "kv_ecom"
   | "kv_officeops"
-  | "kv_academic";
+  | "kv_academic"
+  | "kv_health"
+  | "kv_construction"
+  | "kv_fnb"
+  | "kv_insurance"
+  | "kv_banking"
+  | "kv_realestate"
+  | "kv_hospitality"
+  | "kv_trade"
+  | "kv_factory"
+  | "kv_education";
 
 /** Role keys of the SDLC, research, planning and Sales Loop squads. */
 type BaseSquadRoleKey =
@@ -77,7 +97,17 @@ export type SquadRoleKey =
   | PrRoleKey
   | KvEcomRoleKey
   | KvOfficeOpsRoleKey
-  | AcademicRoleKey;
+  | AcademicRoleKey
+  | HealthRoleKey
+  | ConstructionRoleKey
+  | FnbRoleKey
+  | InsuranceRoleKey
+  | KvBankingRoleKey
+  | RealestateRoleKey
+  | HospitalityRoleKey
+  | TradeRoleKey
+  | FactoryRoleKey
+  | EduRoleKey;
 
 export interface SquadRole {
   key: SquadRoleKey;
@@ -288,6 +318,16 @@ export const SQUAD_ROLES: Record<SquadRoleKey, SquadRole> = {
   ...KV_ECOM_ROLES,
   ...KV_OFFICEOPS_ROLES,
   ...ACADEMIC_ROLES,
+  ...HEALTH_ROLES,
+  ...CONSTRUCTION_ROLES,
+  ...FNB_ROLES,
+  ...INSURANCE_ROLES,
+  ...KV_BANKING_ROLES,
+  ...REALESTATE_ROLES,
+  ...HOSPITALITY_ROLES,
+  ...TRADE_ROLES,
+  ...FACTORY_ROLES,
+  ...EDU_ROLES,
 };
 
 export interface SquadWorkflowStep {
@@ -942,4 +982,14 @@ export const SQUAD_TEMPLATES: readonly SquadTemplate[] = [
   KV_ECOM_TEMPLATE,
   KV_OFFICEOPS_TEMPLATE,
   KV_ACADEMIC_TEMPLATE,
+  KV_HEALTH_TEMPLATE,
+  KV_CONSTRUCTION_TEMPLATE,
+  KV_FNB_TEMPLATE,
+  KV_INSURANCE_TEMPLATE,
+  KV_BANKING_TEMPLATE,
+  KV_REALESTATE_TEMPLATE,
+  KV_HOSPITALITY_TEMPLATE,
+  KV_TRADE_TEMPLATE,
+  KV_FACTORY_TEMPLATE,
+  KV_EDU_TEMPLATE,
 ];

@@ -1,0 +1,10 @@
+[
+  {
+    "find": "Vì sao cần: tung tin quy hoạch sai có thể bị xử lý về đưa tin sai sự thật và làm khách thiệt hại tiền thật.",
+    "replace": "Vì sao cần: quy hoạch sai làm khách mất tiền thật và dễ thành tranh chấp."
+  },
+  {
+    "find": "## Lỗi phải sửa",
+    "replace": "## Chặn: lỗi phải sửa trước khi gửi"
+  }
+]

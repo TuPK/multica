@@ -1,0 +1,6 @@
+[
+  {
+    "find": "Claude Code có thể giao agent `kv:tra-cuu-khu-vuc-bds` tra web; tài liệu dài nhiều file thì giao `kv:doc-nhieu-tai-lieu`.",
+    "replace": "Vai `realestate_area_research` tra web."
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "find": "| Nặng | Đối chiếu giấy tờ |",
+    "replace": "| Chặn | Đối chiếu giấy tờ |"
+  },
+  {
+    "find": "| Nặng | Máy đo MFI |",
+    "replace": "| Chặn | Máy đo MFI |"
+  },
+  {
+    "find": "| Nặng | Cân sấy ẩm",
+    "replace": "| Chặn | Cân sấy ẩm"
+  },
+  {
+    "find": "| Nhẹ | Mắt thường |",
+    "replace": "| Góp ý | Mắt thường |"
+  }
+]

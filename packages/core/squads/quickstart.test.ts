@@ -14,6 +14,7 @@ import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
 import { SDLC_SKILL_SOURCE } from "./quickstart";
 import { SQUAD_ROLES, SQUAD_TEMPLATES } from "./templates";
 import { SALES_STARTER_SOURCES } from "./sales-starter-sources";
+import { KITVIET_P2_FLOOR_NAME_LIST } from "./kitviet-floors";
 
 const greenfield = SQUAD_TEMPLATES.find((t) => t.id === "sdlc_greenfield")!;
 const marketTemplate = SQUAD_TEMPLATES.find((t) => t.id === "market_research")!;
@@ -1259,5 +1260,57 @@ describe("runSquadQuickstart for the sales loop", () => {
     expect(out.sources.failed).toBe(1);
     expect(out.sources.written).toBe(SALES_STARTER_SOURCES.length - 1);
     expect(out.sources.error).toContain("kind sales_source is not in this workspace");
+  });
+});
+
+describe("Kit Viet P2 squads on their own floors", () => {
+  const p2 = SQUAD_TEMPLATES.filter((template) => KITVIET_P2_FLOOR_NAME_LIST.includes(template.floorName ?? ""));
+  const executive = asFloor("floor-exec", "Executive", 0);
+
+  it("has one floor name per P2 squad, and every P2 squad names its own floor", () => {
+    expect(p2.map((template) => template.id).sort()).toEqual(
+      [
+        "kv_banking",
+        "kv_construction",
+        "kv_education",
+        "kv_factory",
+        "kv_fnb",
+        "kv_health",
+        "kv_hospitality",
+        "kv_insurance",
+        "kv_realestate",
+        "kv_trade",
+      ].sort(),
+    );
+    expect(new Set(p2.map((template) => template.floorName)).size).toBe(p2.length);
+  });
+
+  it.each(["kv_health", "kv_construction", "kv_fnb", "kv_insurance", "kv_banking", "kv_realestate", "kv_hospitality", "kv_trade", "kv_factory", "kv_education"])(
+    "%s creates its floor when the workspace has none, and seats the squad at slot 0 on it",
+    async (id) => {
+      const template = p2.find((candidate) => candidate.id === id)!;
+      const client = fakeClient({ listCompanyFloors: vi.fn(async () => [executive]) });
+
+      const out = await runSquadQuickstart(client, template, options);
+
+      expect(client.createCompanyFloor).toHaveBeenCalledWith({ name: template.floorName });
+      expect(client.setCompanySeats).toHaveBeenCalledWith([
+        { squad_id: "squad-1", floor_id: `floor-${template.floorName}`, slot: 0 },
+      ]);
+      expect(out.squad.error ?? "").not.toMatch(/floor|seat/);
+    },
+  );
+
+  it("reuses the floor of its name when it exists, and does not create a second one", async () => {
+    const health = p2.find((candidate) => candidate.id === "kv_health")!;
+    const existing = asFloor("floor-health", health.floorName!, 3);
+    const client = fakeClient({ listCompanyFloors: vi.fn(async () => [executive, existing]) });
+
+    const out = await runSquadQuickstart(client, health, options);
+
+    expect(client.createCompanyFloor).not.toHaveBeenCalled();
+    expect(client.setCompanySeats).toHaveBeenCalledWith([{ squad_id: "squad-1", floor_id: "floor-health", slot: 0 }]);
+    expect(out.squad.status).toBe("created");
+    expect(out.squad.error ?? "").not.toMatch(/floor|seat/);
   });
 });

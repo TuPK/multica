@@ -1,0 +1,6 @@
+[
+  {
+    "find": "Hồ sơ khách nếu có (từ `kv:ho-so-nhu-cau-khach-bds`).",
+    "replace": "Hồ sơ nhu cầu khách nếu có."
+  }
+]

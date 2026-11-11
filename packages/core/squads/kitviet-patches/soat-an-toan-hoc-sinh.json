@@ -1,0 +1,14 @@
+[
+  {
+    "find": "8. Kết luận: **Gửi được** chỉ khi không còn lỗi mức Nghiêm trọng.",
+    "replace": "8. Kết luận: QUA chỉ khi không còn lỗi Chặn hoặc mục Cần giấy tờ; một lỗi Chặn là CHẶN."
+  },
+  {
+    "find": "| Vị trí (dòng/đoạn) | Loại | Mức (Nghiêm trọng/Nên sửa) | Trích | Đề xuất |",
+    "replace": "| Vị trí (dòng/đoạn) | Loại | Mức (Chặn / Cần giấy tờ / Nên sửa / Góp ý) | Trích | Đề xuất |"
+  },
+  {
+    "find": "từ chê nặng, dán nhãn",
+    "replace": "từ chê gay gắt, dán nhãn"
+  }
+]

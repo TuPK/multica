@@ -1,0 +1,6 @@
+[
+  {
+    "find": "**Lưu ý:** free time tại cảng 5 ngày tính từ ngày tàu đến; quá hạn phát sinh phí lưu cont theo biểu của hãng tàu.",
+    "replace": "**Lưu ý:** free time tại cảng và phí lưu cont lấy theo phiếu của hãng tàu trên lô này, không tự đặt số ngày."
+  }
+]

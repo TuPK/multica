@@ -1,0 +1,77 @@
+{
+  "order": 30,
+  "templateId": "kv_health",
+  "trade": "y-te",
+  "name": "Healthcare (Y tế)",
+  "agents": {
+    "lap-ke-hoach-dieu-phoi": {
+      "role": "health_lead",
+      "kind": "kv_lead"
+    },
+    "doc-tai-lieu-chuyen-mon-y-te": {
+      "role": "health_reader",
+      "kind": "kv_collector"
+    },
+    "tra-cuu-y-van": {
+      "role": "health_research",
+      "kind": "kv_collector"
+    },
+    "tra-cuu-quy-dinh-y-te": {
+      "role": "health_regulation",
+      "kind": "kv_collector"
+    },
+    "soan-tai-lieu-y-te": {
+      "role": "health_drafter",
+      "kind": "kv_drafter"
+    },
+    "lap-bang-bieu-y-te": {
+      "role": "health_table",
+      "kind": "kv_drafter"
+    },
+    "gac-pham-vi-chuyen-mon": {
+      "role": "health_scope_gate",
+      "kind": "kv_gate"
+    },
+    "gac-du-lieu-nguoi-benh": {
+      "role": "health_privacy_gate",
+      "kind": "kv_gate"
+    },
+    "kiem-dinh-ban-giao": {
+      "role": "health_handover",
+      "kind": "kv_handover"
+    }
+  },
+  "builtinSkills": [
+    "day-chuyen-tai-lieu-y-te"
+  ],
+  "leaderSkills": [
+    "kv-squad-lead",
+    "kv-company-profile"
+  ],
+  "roleSkills": {
+    "health_drafter": [
+      "soan-sop-phong-kham",
+      "tai-lieu-giao-duc-suc-khoe",
+      "dao-tao-noi-bo-y-te",
+      "bao-cao-su-co-y-khoa",
+      "nhac-lich-tai-kham-zalo"
+    ],
+    "health_table": [
+      "theo-doi-han-dung-thuoc",
+      "xep-lich-truc-dieu-duong",
+      "bang-kiem-an-toan-thu-thuat",
+      "chuan-bi-doan-kiem-tra-chat-luong",
+      "khao-sat-hai-long-nguoi-benh"
+    ],
+    "health_research": [
+      "tong-quan-tai-lieu-y-khoa",
+      "tom-tat-phac-do-dieu-tri"
+    ]
+  },
+  "promoted": [],
+  "deferredSkills": [
+    "ban-giao-ca-sbar",
+    "noi-dung-quang-cao-phong-kham",
+    "tra-loi-danh-gia-nguoi-benh"
+  ]
+}

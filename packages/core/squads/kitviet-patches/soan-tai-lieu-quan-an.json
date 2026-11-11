@@ -1,0 +1,18 @@
+[
+  {
+    "find": "- Đọc file trong thư mục làm việc và `.kv-run/<viec>/`.",
+    "replace": "- Đọc file đính kèm trên sub-issue và comment kết quả thu thập."
+  },
+  {
+    "find": "- Ghi `02-ban-nhap.md` (và `02-ban-nhap.csv` khi có bảng số) trong thư mục chạy được giao. Không ghi đè file nguồn, không ghi ra ngoài thư mục đó.",
+    "replace": "- Ghi bản nháp thành tệp đính kèm của sub-issue (kèm CSV khi có bảng số). Không ghi đè file nguồn."
+  },
+  {
+    "find": "ghi vào mục lưu ý.",
+    "replace": "ghi vào mục Ghi chú của bản nháp."
+  },
+  {
+    "find": "- .kv-run/<viec>/02-ban-nhap.md (+ .csv nếu có)",
+    "replace": "- Bản nháp của sub-issue này (tệp đính kèm, kèm CSV nếu có bảng số)"
+  }
+]

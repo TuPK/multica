@@ -1,0 +1,65 @@
+{
+  "order": 21,
+  "templateId": "kv_insurance",
+  "trade": "bao-hiem",
+  "name": "Insurance Advisory (Bảo hiểm)",
+  "agents": {
+    "lap-ke-hoach-dieu-phoi": {
+      "role": "insurance_lead",
+      "kind": "kv_lead"
+    },
+    "gom-du-kien-tu-van-bao-hiem": {
+      "role": "insurance_gather",
+      "kind": "kv_collector"
+    },
+    "kiem-ke-ho-so-boi-thuong": {
+      "role": "insurance_claim_reader",
+      "kind": "kv_collector"
+    },
+    "soan-de-xuat-bao-hiem": {
+      "role": "insurance_proposal",
+      "kind": "kv_drafter"
+    },
+    "soan-thu-huong-dan-claim": {
+      "role": "insurance_claim_drafter",
+      "kind": "kv_drafter"
+    },
+    "soat-cam-ket-tu-van": {
+      "role": "insurance_advice_gate",
+      "kind": "kv_gate"
+    },
+    "kiem-dinh-ban-giao": {
+      "role": "insurance_handover",
+      "kind": "kv_handover"
+    }
+  },
+  "builtinSkills": [
+    "day-chuyen-de-xuat-bao-hiem"
+  ],
+  "leaderSkills": [
+    "kv-squad-lead",
+    "kv-company-profile"
+  ],
+  "roleSkills": {
+    "insurance_proposal": [
+      "so-sanh-quyen-loi-bao-hiem",
+      "phan-tich-nhu-cau-bao-ve",
+      "giai-thich-dieu-khoan-loai-tru",
+      "xu-ly-tu-choi-bao-hiem"
+    ],
+    "insurance_claim_drafter": [
+      "ho-so-boi-thuong-bao-hiem"
+    ],
+    "insurance_advice_gate": [
+      "soat-loi-tu-van-bao-hiem"
+    ]
+  },
+  "promoted": [],
+  "deferredSkills": [
+    "kich-ban-tu-van-bao-hiem",
+    "ke-hoach-tuyen-dai-ly",
+    "lich-cham-soc-nhac-phi",
+    "noi-dung-mxh-bao-hiem",
+    "bao-cao-tuan-kinh-doanh-bao-hiem"
+  ]
+}

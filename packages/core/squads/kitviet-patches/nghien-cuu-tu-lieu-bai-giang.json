@@ -1,0 +1,6 @@
+[
+  {
+    "find": "gọi agent `kv:tim-tu-lieu-bai-giang` thu thập (Claude Code/Codex); Claude web/desktop tự tra và ghi rõ đang ở khâu thu thập.",
+    "replace": "nhờ lead giao việc thu thập cho một vai khác nếu squad có; nếu không, tự tra và ghi rõ đang ở khâu thu thập."
+  }
+]

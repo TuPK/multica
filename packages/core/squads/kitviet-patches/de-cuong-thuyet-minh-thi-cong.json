@@ -1,0 +1,6 @@
+[
+  {
+    "find": "(Claude Code có thể gọi `kv:tra-cuu-quy-chuan-xay-dung` hoặc `kv:nghien-cuu-nguon`)",
+    "replace": "(vai `construction_standards` tra cứu)"
+  }
+]
