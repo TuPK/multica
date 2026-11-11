@@ -21,7 +21,7 @@ import (
 // at most one seat (floor_id, company_slot); an agent is drawn in its home squad.
 // All relationships are validated here, never by foreign keys.
 const (
-	companyMaxFloors     = 16
+	companyMaxFloors     = 24
 	companySlotsPerFloor = 6
 	companyFloorNameMax  = 64
 	// A request can never name more squads than there are seats.

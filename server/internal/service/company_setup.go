@@ -19,7 +19,7 @@ import (
 const (
 	// CompanyMaxFloors caps the floors a workspace can have. The company handlers
 	// enforce the same limit.
-	CompanyMaxFloors = 16
+	CompanyMaxFloors = 24
 	// CompanySlotsPerFloor is the number of squad rooms on a floor.
 	CompanySlotsPerFloor = 6
 
@@ -46,7 +46,7 @@ var (
 	// ErrExecutiveFloorFull: every seat on the Executive floor is taken.
 	ErrExecutiveFloorFull = errors.New("every seat on the Executive floor is taken")
 	// ErrCompanyFloorLimit: the workspace has no room for another floor.
-	ErrCompanyFloorLimit = errors.New("a workspace can have at most 16 floors")
+	ErrCompanyFloorLimit = errors.New("a workspace can have at most 24 floors")
 )
 
 // DailyBriefDescription is the run prompt of the daily brief. The autopilot

@@ -11,7 +11,7 @@ export const COMPANY_BOSS_SLOT = COMPANY_SLOTS;
 export const COMPANY_ROOM_DESKS = 9;
 
 /** Floors a workspace can have. Mirrors the server cap. */
-export const COMPANY_MAX_FLOORS = 16;
+export const COMPANY_MAX_FLOORS = 24;
 
 /** Longest floor name, in characters. Mirrors the server and column rule. */
 export const COMPANY_FLOOR_NAME_MAX_LENGTH = 64;

@@ -193,7 +193,7 @@ Rules enforced in the handler and service, not by constraints:
   home to its first squad sets it.
 - Deleting a floor requires it to be empty of live squads (their seats are
   cleared first by the caller in one request, never cascaded).
-- At most 16 floors per workspace.
+- At most 24 floors per workspace.
 
 `agent.office_room` is replaced by the above. The column and `OFFICE_ROOMS` were
 added in `fe7e59a59` and `9eb52ffe0`, which are not in an upstream release, so

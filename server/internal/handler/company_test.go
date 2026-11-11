@@ -1101,7 +1101,7 @@ func TestCompanyIsolation_Handlers(t *testing.T) {
 		t.Fatal("cross-workspace requests must not seat anything")
 	}
 
-	// The 16-floor cap is per workspace.
+	// The floor cap is per workspace.
 	for i := 0; i < companyMaxFloors-1; i++ {
 		createFloor(t, "", ws2, fmt.Sprintf("WS2 %d", i))
 	}
