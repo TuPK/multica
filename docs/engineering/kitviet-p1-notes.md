@@ -9,7 +9,7 @@ floor are built on `kitviet-pack`, not committed yet. Section 6 lists what is re
 - **Vendored trades.** `packages/core/squads/kitviet-upstream/` now holds the five P1 trades (`nhan-su`,
   `bao-chi-truyen-thong`, `ban-hang-online`, `hoc-thuat-nghien-cuu`, `cong-nghe-thong-tin`) at the pinned commit
   `faee4f14cd21672325a7f442b19c7239a5d7f152`. The 30 paths identical in all ten trades stay in `common/`. Every vendored file
-  equals the pinned file after LF normalisation (563 checks, see `NOTICE.md`). P2 trades are not vendored.
+  equals the pinned file after LF normalisation (563 checks, see `NOTICE.md`). P2 trades are vendored too (`kitviet-p2-notes.md`, section 1).
 - **One config file per squad.** `packages/core/squads/kitviet-squads/base.json` (shared skills and phrases) and one
   `kitviet-squads/<id>.json` per squad. The generator reads the folder; nothing in it names a trade or a squad.
 - **Extension configs (spec 7).** `packages/core/squads/kitviet-extensions/<id>.json`: `support`, `people`, `it`.

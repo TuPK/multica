@@ -40,6 +40,9 @@ Ghi ngày 2026-11-11. Commit là hash trên nhánh `kitviet-pack` hiện tại. 
 | F18 · Sửa cổng severity | Xong | chưa commit | Ngoài plan. Ba bản vá `kitviet-patches/` (`soat-thien-kien-tuyen-dung`, `soat-phap-ly-dao-duc-bao-chi`, `soat-liem-chinh-hoc-thuat`) đưa mức về Chặn / Nên sửa / Góp ý và "Cảnh báo chưa chặn". Test `OLD_SEVERITY` bỏ nhầm "cân nặng" (tiêu chí ngoại hình), không phải mức. |
 | P1 · năm squad (Talent, PR, E-commerce, Office Ops, Academic) | Xong: template, pack, locale 7 ngôn ngữ, test, runbook mục 8 | chưa commit | Lệch: Office Ops là luồng viết tay (`flow: authored`), không có dây chuyền upstream. Lời dặn lead của mọi squad P1 nằm trong `KV_LEAD_NOTES` (`kitviet-agent-instructions.ts`), không còn trong file template. Floor `Revenue` thêm vào `COMPANY_FLOOR_KEYS` (Q4). Không có cổng soát dự toán (quyết định của người làm Office Ops). Generator: `pr` → `PR` trong tên vai. Sổ quy định không có cho P1 (Q1). |
 | Mục 7 · skill mở rộng | Xong | chưa commit | Lệch: không qua `setSquadSkills` mà `attachKitvietExtensions` (`kitviet-extension-attach.ts`) sau mỗi apply công ty (`useApplyCompanyTemplate`), dùng `attachBuiltinSkills` và chỉ thêm skill, không xóa. Runbook mục 8b. Cổng rà soát nội dung không áp dụng (Q1). |
+| P2 · mười squad (Healthcare, Construction, F&B, Insurance, Banking, Real Estate, Hospitality, Import & Export, Manufacturing, Education) | Xong: template, pack, locale 7 ngôn ngữ, test, runbook mục 8, 8c và 8d | chưa commit | Lệch: trần floor 16 → 24 (spec Q11). Gác rủi ro chặn mức "Cần giấy tờ" (spec Q12); gác cam kết tư vấn của Insurance chặn mọi lỗi; "Vừa" của gác báo giá và gác cam kết lưu trú thành "Cần giấy tờ". `roleSkills` lấy từ cấu hình pack, không từ bản nháp của `kitviet-p2-notes.md`. Lời dặn lead trong `KV_LEAD_NOTES`; test lead đọc từ đó. Floor P2 không vào `COMPANY_FLOOR_NAMES`, quickstart tạo khi thiếu. Tên vai `F&B Lead`. Education giữ bốn agent ngoài squad. |
+| Trần floor 16 → 24 (spec Q11) | Xong | chưa commit | `CompanyMaxFloors`, `companyMaxFloors`, `COMPANY_MAX_FLOORS` và các chuỗi thông báo, tài liệu đều là 24. Test Go `Company|Floor|Template` xanh trên cơ sở dữ liệu của worktree. |
+
 | Floor `Revenue` (Q4) | Xong | chưa commit | `company-template.ts` và `company_template_data.json` (đã sinh lại). Starter company không tạo floor này vì không card nào nằm trên đó; nút chọn squad không hiện nhóm rỗng. Test Go đếm floor theo squad đã chọn, không theo mọi key. |
 
 ## Nền đã có và ranh giới
@@ -205,4 +208,4 @@ Mỗi PR squad có cùng khuôn task; chỉ khác dữ liệu ở bảng dưới
 
 ## Việc không thuộc kế hoạch này
 
-Chưa làm: P2 (spec mục 9.2), xác minh pháp lý (Q1), locale `vi` (Q6), công tắc `unattended` (Q3), diễn tập thật của P1 (S7, chờ người dùng cho phép), và điểm gọi cho `upgradeKitvietSquad`.
+Chưa làm: diễn tập P2 (S7, chờ người dùng cho phép), xác minh pháp lý (Q1), locale `vi` (Q6), công tắc `unattended` (Q3), diễn tập thật của P1 (S7, chờ người dùng cho phép), và điểm gọi cho `upgradeKitvietSquad`.

@@ -390,9 +390,252 @@ Bảng sổ quy định Accounting, dòng theo F20 (ngày kiểm 10/11/2026; m�
 - Chưa xác minh: một tài liệu chưa được mở thì ghi `[chưa xác minh]`, không báo là thật. Cổng liêm chính không thay cho kiểm tra đạo văn của trường.
 - Diễn tập: chưa chạy.
 
+## Healthcare (Y tế)
+
+- Template: `kv_health`, floor: Healthcare (tạo khi quickstart chạy lần đầu, mục 8c), routine: không. Pipeline `day-chuyen-tai-lieu-y-te`.
+- Vai (role key · loại · agent gốc):
+  - `health_lead` · lead · `lap-ke-hoach-dieu-phoi`
+  - `health_reader` · collector · `doc-tai-lieu-chuyen-mon-y-te`
+  - `health_research` · collector · `tra-cuu-y-van` (web)
+  - `health_regulation` · collector · `tra-cuu-quy-dinh-y-te` (web)
+  - `health_drafter` · drafter · `soan-tai-lieu-y-te`
+  - `health_table` · drafter · `lap-bang-bieu-y-te`
+  - `health_scope_gate` · gate · `gac-pham-vi-chuyen-mon` (không ghi, không web)
+  - `health_privacy_gate` · gate · `gac-du-lieu-nguoi-benh` (không ghi, không web)
+  - `health_handover` · handover · `kiem-dinh-ban-giao`
+- Điểm dừng loại 1: yêu cầu chẩn đoán, kê đơn, chỉnh liều, điều trị cho một người cụ thể, hoặc tài liệu bảo người bệnh uống, ngừng hay đổi thuốc; tài liệu có nội dung lâm sàng mà không có người duyệt chuyên môn được nêu; không có nguồn đã duyệt; yêu cầu web khi không được phép. Nguồn có định danh người bệnh: dừng, ghi tên tệp, không chép dữ liệu.
+- Điểm dừng loại 2: handover QUA thì `in_review`, comment việc bác sĩ hoặc đơn vị phải làm trước khi dùng (duyệt nội dung lâm sàng, điền dòng người duyệt, kiểm tra ngày, quyết định in). Không gửi, không in phát, không đăng, không kê đơn.
+- Điểm dừng loại 3: vòng sửa tối đa 2 cho từng gác. Gác phạm vi hoặc gác dữ liệu còn CHẶN sau vòng 2 thì `blocked`, mention người yêu cầu kèm các dòng còn mở.
+- Tài liệu bền: không có sổ. Hồ sơ đơn vị (lead) là nguồn duy nhất về quy trình của đơn vị.
+- Phụ thuộc runtime riêng: web cho `health_research` và `health_regulation`, chỉ khi yêu cầu cho phép. Không có Bash.
+- Routine: không.
+- Giả định mặc định đã biết: đơn vị là phòng khám hoặc cơ sở y tế, không phải bệnh viện có hồ sơ bệnh án điện tử; tài liệu đầu vào là tài liệu của đơn vị.
+- Chưa xác minh: quy định y tế hiện hành (`health_regulation` ghi số, ngày, trạng thái, liên kết, không kết luận được phép hay không); liều và ngưỡng trong nguồn được chép nguyên văn, không kiểm đối chiếu với dược thư.
+- Trước khi bật: **rủi ro cao**. Một bác sĩ hoặc dược sĩ của đơn vị đọc đầu ra của `health_scope_gate` trong ba đến năm lần chạy đầu. Nếu gác để lọt một chỉ định hoặc một liều, không bật squad cho đến khi sửa xong gác. Gác dữ liệu người bệnh cũng được đọc một lần.
+- Diễn tập: chưa chạy.
+
+## Construction (Xây dựng)
+
+- Template: `kv_construction`, floor: Construction, routine: không. Pipeline `day-chuyen-ho-so-cong-truong`.
+- Vai:
+  - `construction_lead` · lead · `lap-ke-hoach-dieu-phoi`
+  - `construction_reader` · collector · `doc-ho-so-cong-truong`
+  - `construction_standards` · collector · `tra-cuu-quy-chuan-xay-dung` (web)
+  - `construction_quantity` · drafter · `lap-bang-khoi-luong`
+  - `construction_site_drafter` · drafter · `soan-van-ban-cong-truong`
+  - `construction_quantity_gate` · gate · `soat-khoi-luong-don-vi`
+  - `construction_safety_gate` · gate · `soat-an-toan-cong-truong`
+  - `construction_handover` · handover · `kiem-dinh-ban-giao`
+- Điểm dừng loại 1: thiếu đơn giá hoặc căn cứ khối lượng đã duyệt; thiếu bản vẽ hay thiết kế mà khối lượng phụ thuộc vào; thiếu hạng mục hoặc công việc được nêu tên; bản ghi hiện trường mâu thuẫn với nhật ký. Yêu cầu không thuộc các việc trên thì `blocked`.
+- Điểm dừng loại 2: handover QUA thì `in_review`, comment danh sách kiểm tra và chữ ký người phải làm. Biên bản nghiệm thu, biên bản giao ban và hồ sơ hoàn công là bản nháp, không có dòng nào ghi "đã nghiệm thu" hay "đã ký"; người có trách nhiệm ký trên giấy hoặc trên hệ thống của họ.
+- Điểm dừng loại 3: vòng sửa tối đa 2 cho gác khối lượng và gác an toàn. Hết vòng thì `blocked`, mention người yêu cầu.
+- Tài liệu bền: không có sổ. Hồ sơ đơn vị (lead) cho tên công trình và đơn vị đo.
+- Phụ thuộc runtime riêng: web cho `construction_standards` (chỉ khi cho phép). Không có Bash.
+- Routine: không.
+- Giả định mặc định đã biết: khối lượng là khối lượng của bên làm việc, chưa có đơn giá đã duyệt thì bảng không có tiền.
+- Chưa xác minh: hiệu lực của TCVN, QCVN và nghị định; số điều khoản không có nguồn chính thức được ghi `[chưa kiểm tra hiệu lực]`. Squad không tính kết cấu, tải trọng hay độ ổn định.
+- Trước khi bật: **rủi ro cao ở gác an toàn** (`soat-an-toan-cong-truong`). Cán bộ an toàn hoặc kỹ sư có chứng chỉ của công trình đọc đầu ra trong các lần chạy đầu. Gác này chặn mọi rủi ro trong nguồn mà bản nháp không nêu, và chặn "Cần giấy tờ" (điều khoản không có nguồn, thông tin cá nhân của công nhân trong văn bản gửi rộng).
+- Diễn tập: chưa chạy.
+
+## F&B Ops (Nhà hàng, quán ăn)
+
+- Template: `kv_fnb`, floor: `F&B` (tách với Hospitality), routine: không. Pipeline `day-chuyen-ra-mat-mon-moi`.
+- Vai:
+  - `fnb_lead` · lead · `lap-ke-hoach-dieu-phoi`
+  - `fnb_reader` · collector · `doc-so-lieu-quan-an`
+  - `fnb_regulation` · collector · `tra-cuu-quy-dinh-fnb` (web)
+  - `fnb_drafter` · drafter · `soan-tai-lieu-quan-an`
+  - `fnb_allergen_gate` · gate · `soat-di-ung-attp-mon`
+  - `fnb_margin_gate` · gate · `soat-gia-von-lai-quan`
+  - `fnb_handover` · handover · `kiem-dinh-ban-giao`
+- Điểm dừng loại 1: món không có công thức có định lượng, nguyên liệu không có giá mua, hoặc nước sốt, gia vị, bột tẩm đóng gói không có danh sách thành phần từ nhãn. Dừng, comment tên món, mention người yêu cầu. Không tính giá vốn trên công thức đoán.
+- Điểm dừng loại 2: handover QUA thì `in_review`, comment việc chủ quán và bếp trưởng phải xác nhận: từng nhãn nguyên liệu, từng giá, phí app giao hàng, thuế suất VAT, tên món. Không in, không đăng lên app giao hàng hay mạng xã hội, không đặt hàng nhà cung cấp, không gửi khách.
+- Điểm dừng loại 3: vòng sửa tối đa 2. Gác dị ứng còn CHẶN sau vòng 2 thì `blocked`, mention người yêu cầu.
+- Tài liệu bền: không có sổ. Hồ sơ đơn vị (lead) cho tên quán và các dữ liệu cố định của quán.
+- Phụ thuộc runtime riêng: web cho `fnb_regulation`. Không có Bash hay Python bắt buộc.
+- Routine: không.
+- Chưa xác minh: quy định an toàn thực phẩm và ghi nhãn chay, thuần chay; phí app giao hàng; tỷ lệ hao hụt. Mọi giá trị này là `[cần xác nhận]` cho đến khi chủ quán xác nhận trong comment.
+- Trước khi bật: **rủi ro dị ứng**. Bếp trưởng đọc đầu ra của `fnb_allergen_gate` trong các lần chạy đầu và đối chiếu với nhãn nguyên liệu của nhà cung cấp. Danh sách nhóm dị ứng trong gác là danh sách làm việc, không phải căn cứ pháp lý Việt Nam. Gác này chặn mọi dị ứng bị sót, nhiễm chéo đã có trong nguồn, nhãn chay sai; claim sức khỏe và quy định không nguồn đi vào "Cần giấy tờ" và chặn cho đến khi có xác nhận.
+- Diễn tập: chưa chạy.
+
+## Insurance Advisory (Bảo hiểm)
+
+- Template: `kv_insurance`, floor: Insurance, routine: không. Pipeline `day-chuyen-de-xuat-bao-hiem`.
+- Vai:
+  - `insurance_lead` · lead · `lap-ke-hoach-dieu-phoi`
+  - `insurance_gather` · collector · `gom-du-kien-tu-van-bao-hiem`
+  - `insurance_claim_reader` · collector · `kiem-ke-ho-so-boi-thuong`
+  - `insurance_proposal` · drafter · `soan-de-xuat-bao-hiem`
+  - `insurance_claim_drafter` · drafter · `soan-thu-huong-dan-claim`
+  - `insurance_advice_gate` · gate · `soat-cam-ket-tu-van`
+  - `insurance_handover` · handover · `kiem-dinh-ban-giao`
+- Điểm dừng loại 1: yêu cầu thiếu hồ sơ khách (ghi chú liên hệ, hợp đồng đang có), thiếu tài liệu sản phẩm của gói sẽ trình bày, hoặc thiếu phạm vi (nhu cầu, so sánh, loại trừ hay kịch bản). Yêu cầu không nêu đại lý có giấy phép đọc và trình bày bản nháp thì dừng loại 1.
+- Điểm dừng loại 2: handover QUA thì `in_review`, comment việc đại lý có giấy phép phải quyết và gửi (chọn gói, gửi báo giá, ký, nộp hồ sơ). Squad không ràng buộc bảo hiểm, không nộp hồ sơ, không thu phí, không ký, không gửi cho khách.
+- Điểm dừng loại 3: vòng sửa tối đa 2. Gác cam kết còn CHẶN sau vòng 2 thì `blocked`, đính kèm bản nháp và các dòng còn mở, mention người yêu cầu.
+- Tài liệu bền: không có sổ. Số CCCD, số tài khoản và bệnh án không được chép vào đầu ra (`[đã có, không chép]`).
+- Phụ thuộc runtime riêng: không. Không có web (quy định bán hàng và điều kiện bảo hiểm hiện hành được ghi `[cần kiểm tra quy định hiện hành]` cho đại lý).
+- Routine: không.
+- Chưa xác minh: quy định hiện hành về bán hàng bảo hiểm và điều kiện của từng doanh nghiệp bảo hiểm; mọi số quyền lợi phải khớp tài liệu gốc của sản phẩm.
+- Trước khi bật: **rủi ro cao**. Một đại lý có giấy phép đọc đầu ra của `insurance_advice_gate` trước khi bật squad. Gác này coi mọi lỗi là CHẶN (không còn mức nhẹ): lời hứa lợi nhuận hoặc bồi thường, số không có trong tài liệu, so sánh không có tài liệu, che loại trừ, áp lực giả, lộ dữ liệu.
+- Diễn tập: chưa chạy.
+
+## Banking Credit Desk (Tài chính, ngân hàng)
+
+- Template: `kv_banking`, floor: Banking, routine: không. Pipeline `day-chuyen-to-trinh-tin-dung`.
+- Vai:
+  - `banking_lead` · lead · `lap-ke-hoach-dieu-phoi`
+  - `banking_reader` · collector · `doc-ho-so-tin-dung`
+  - `banking_industry` · collector · `tra-cuu-nganh-tai-chinh` (web)
+  - `banking_analyst` · drafter · `lap-bang-phan-tich-tin-dung`
+  - `banking_memo_drafter` · drafter · `soan-to-trinh-tin-dung`
+  - `banking_credit_gate` · gate · `soat-to-trinh-tin-dung`
+  - `banking_advice_gate` · gate · `soat-tuan-thu-tu-van-tai-chinh`
+  - `banking_handover` · handover · `kiem-dinh-ban-giao`
+- Điểm dừng loại 1: thiếu thư mục hồ sơ của khách vay, thiếu đề xuất (sản phẩm, số tiền, kỳ hạn, mục đích), hoặc thiếu báo cáo tài chính khi tờ trình cần. Dừng, comment việc thiếu, mention người yêu cầu. Yêu cầu đòi quyết định tín dụng, lãi suất hay hạn mức vượt thẩm quyền ghi trong yêu cầu thì dừng.
+- Điểm dừng loại 2: handover QUA thì `in_review`, comment các quyết định cán bộ tín dụng phải đưa ra: quyết định tín dụng, lãi suất và phí `[cần xác nhận]`, định giá tài sản bảo đảm. Squad không phê duyệt, không định giá, không gửi cho khách.
+- Điểm dừng loại 3: vòng sửa tối đa 2 cho gác tờ trình và gác tư vấn. Gác còn CHẶN sau vòng 2 thì `blocked`, mention người yêu cầu.
+- Tài liệu bền: không có sổ. Mẫu tờ trình và ngưỡng nội bộ là tài liệu của ngân hàng, do người dùng cung cấp hoặc để `[cần bổ sung]`.
+- Phụ thuộc runtime riêng: web cho `banking_industry` (chỉ khi cho phép). Python cho script lịch trả nợ của `lich-tra-no-khoan-vay` (mục 4).
+- Routine: không.
+- Chưa xác minh: lãi suất, phí, hạn mức và ngưỡng tỷ lệ; mọi con số là `[cần bổ sung]` cho đến khi có nguồn của ngân hàng và ngày.
+- Trước khi bật: **rủi ro cao**. Một cán bộ tín dụng đọc đầu ra của hai gác trong các lần chạy đầu, vì squad này soạn tài liệu cho quyết định tín dụng. Squad không đưa ra "khách được duyệt", không tư vấn đầu tư, không hứa lợi nhuận; yêu cầu loại này bị dừng.
+- Diễn tập: chưa chạy.
+
+## Real Estate Desk (Bất động sản)
+
+- Template: `kv_realestate`, floor: Real Estate, routine: không. Pipeline `day-chuyen-ho-so-can-ban`.
+- Vai:
+  - `realestate_lead` · lead · `lap-ke-hoach-dieu-phoi`
+  - `realestate_reader` · collector · `doc-ho-so-nha-dat`
+  - `realestate_area_research` · collector · `tra-cuu-khu-vuc-bds` (web)
+  - `realestate_loan_drafter` · drafter · `lap-phuong-an-vay-bds`
+  - `realestate_listing_drafter` · drafter · `soan-tin-dang-bds`
+  - `realestate_planning_gate` · gate · `soat-nguon-quy-hoach-bds`
+  - `realestate_loan_gate` · gate · `soat-phuong-an-vay-bds`
+  - `realestate_listing_gate` · gate · `soat-tin-dang-bds`
+  - `realestate_handover` · handover · `kiem-dinh-ban-giao`
+- Điểm dừng loại 1: thiếu thư mục hồ sơ; tin không có thông tin sổ, loại sổ hoặc giá; phương án vay thiếu số tiền, kỳ hạn, lãi ưu đãi và số tháng, hoặc mục đích; sổ mâu thuẫn với nguồn. Yêu cầu hứa giá, hứa lợi nhuận hay hứa duyệt vay thì dừng và nói rõ với người yêu cầu.
+- Điểm dừng loại 2: handover QUA thì `in_review`, comment việc môi giới phải làm: xác nhận thông tin sổ và loại sổ, xác nhận từng lãi suất và phí, đưa câu hỏi pháp lý về sổ cho công chứng viên hoặc luật sư, quyết định kênh đăng và số liên hệ. Không đăng, không gửi, không ký, không nộp vay.
+- Điểm dừng loại 3: vòng sửa tối đa 2 cho từng gác. Gác còn CHẶN sau vòng 2 thì `blocked`, mention người yêu cầu.
+- Tài liệu bền: không có sổ. Số sổ, số CCCD, số tài khoản và địa chỉ đầy đủ của chủ nhà không vào đầu ra.
+- Phụ thuộc runtime riêng: web cho `realestate_area_research` (chỉ khi cho phép). Python cho script lịch trả nợ (`tinh-phuong-an-vay-mua-nha`) và script kiểm tin (`viet-tin-dang-nha-dat`), mục 4.
+- Routine: không.
+- Chưa xác minh: quy hoạch và hạ tầng (gác nguồn chỉ chấp nhận nguồn bậc 1-2 có số và ngày); lãi suất ưu đãi và lãi thả nổi; tình trạng pháp lý của sổ (squad không kết luận sổ sạch hay không tranh chấp).
+- Trước khi bật: **rủi ro về tiền và lời hứa**. Môi giới có kinh nghiệm đọc đầu ra của `realestate_loan_gate` và `realestate_listing_gate` trong các lần chạy đầu. Gác tin đăng chặn trái nguồn, không có trong nguồn, tự suy, lời hứa lợi nhuận và tin quy hoạch không nguồn.
+- Diễn tập: chưa chạy.
+
+## Hospitality Ops (Du lịch, khách sạn)
+
+- Template: `kv_hospitality`, floor: Hospitality, routine: không. Pipeline `day-chuyen-ho-so-tour-doan`.
+- Vai:
+  - `hospitality_lead` · lead · `lap-ke-hoach-dieu-phoi`
+  - `hospitality_intake` · collector · `gom-yeu-cau-doan-khach`
+  - `hospitality_destination` · collector · `tra-cuu-diem-den-du-lich` (web)
+  - `hospitality_tour_drafter` · drafter · `soan-ho-so-tour`
+  - `hospitality_hotel_drafter` · drafter · `soan-noi-dung-khach-san`
+  - `hospitality_quote_gate` · gate · `soat-lich-trinh-bao-gia`
+  - `hospitality_promise_gate` · gate · `soat-cam-ket-dich-vu-luu-tru`
+  - `hospitality_handover` · handover · `kiem-dinh-ban-giao`
+- Điểm dừng loại 1: thiếu số khách, ngày, hoặc bảng giá nhà cung cấp cho báo giá; chính sách hủy, đặt cọc hay nhận phòng không có trong nguồn đã duyệt. Dừng, comment việc thiếu, mention người yêu cầu. Yêu cầu bảo squad đặt phòng, cọc hay hoàn tiền thì không chạy.
+- Điểm dừng loại 2: handover QUA thì `in_review`, comment việc quản lý phải làm trước khi dùng: xác nhận từng đơn giá với nhà cung cấp, kiểm tra phòng trống, duyệt điều khoản cọc và hủy, gửi báo giá, đăng listing. Squad không đặt, không giữ chỗ, không thu tiền, không hoàn tiền, không gửi cho khách, đại lý, nhà cung cấp hay nền tảng.
+- Điểm dừng loại 3: vòng sửa tối đa 2 cho từng gác. Gác báo giá hoặc gác cam kết còn CHẶN sau vòng 2 thì `blocked`, mention người yêu cầu.
+- Tài liệu bền: không có sổ. Thông tin khách (họ tên kèm phòng, số điện thoại, email, giấy tờ, mã đặt chỗ) không vào kế hoạch, tiêu đề sub-issue hay báo cáo.
+- Phụ thuộc runtime riêng: web cho `hospitality_destination` (chỉ khi cho phép). Không có Bash.
+- Routine: không.
+- Chưa xác minh: giờ mở cửa, giá vé, giờ bay và giá phòng theo mùa; mọi con số thiếu nguồn ở mức `Cần giấy tờ` và chặn báo giá.
+- Trước khi bật: **rủi ro giá và lời hứa với khách**. Quản lý khách sạn đọc đầu ra của hai gác trong các lần chạy đầu. Gác báo giá chặn sai số tiền, lộ giá vốn, lịch trình không khả thi, và chặn đơn giá thiếu nguồn hay thiếu xác nhận. Gác cam kết chặn hoàn tiền, giảm giá, đền bù chưa duyệt, và chặn lộ dữ liệu khách.
+- Diễn tập: chưa chạy.
+
+## Import & Export Desk (Xuất nhập khẩu)
+
+- Template: `kv_trade`, floor: `Import & Export`, routine: không. Pipeline `day-chuyen-ho-so-lo-hang`.
+- Vai:
+  - `trade_lead` · lead · `lap-ke-hoach-dieu-phoi`
+  - `trade_docs_reader` · collector · `gom-chung-tu-lo-hang`
+  - `trade_customs_research` · collector · `tra-cuu-chinh-sach-hai-quan` (web)
+  - `trade_crosscheck_drafter` · drafter · `lap-bang-doi-chieu-xnk`
+  - `trade_docs_gate` · gate · `soat-chung-tu-xnk`
+  - `trade_customs_gate` · gate · `soat-khai-bao-hai-quan`
+  - `trade_handover` · handover · `kiem-dinh-ban-giao`
+- Điểm dừng loại 1: thiếu hóa đơn, packing list hoặc chứng từ vận tải (B/L, AWB); người khai chưa nói loại hình (loại hình xuất nhập). Dừng, comment việc thiếu kèm mã lô, mention người yêu cầu.
+- Điểm dừng loại 2: handover QUA thì `in_review`, comment việc người khai phải quyết: từng mã HS có độ tin cậy thấp, từng thuế suất, ngày tỷ giá, loại hình, khóa phân bổ cước và bảo hiểm, giấy phép hoặc kiểm tra chuyên ngành nếu hàng cần. Không khai báo hải quan, không nhập ECUS hay VNACCS, không ký, không thanh toán, không gửi nhà cung cấp, ngân hàng hay người mua.
+- Điểm dừng loại 3: vòng sửa tối đa 2. Một trong hai gác còn CHẶN sau vòng 2 thì `blocked`, mention người yêu cầu.
+- Tài liệu bền: không có sổ. Hồ sơ đơn vị (lead) cho thông tin doanh nghiệp.
+- Phụ thuộc runtime riêng: web cho `trade_customs_research` (chỉ khi cho phép). Không có Bash hay Python bắt buộc.
+- Routine: không.
+- Chưa xác minh: mã HS, thuế suất, thuế ưu đãi FTA, tỷ giá. Squad không khẳng định con số nào; mọi giá trị là đề xuất kèm nguồn, hoặc `[cần tra biểu thuế]`, và gác hải quan chặn thuế không có nguồn.
+- Trước khi bật: không có gác nào cần người trong ngành đọc trước, nhưng người khai hải quan vẫn phải xác nhận mọi mã và thuế trước khi khai (squad không khai).
+- Diễn tập: chưa chạy.
+
+## Factory Ops (Sản xuất nhà máy)
+
+- Template: `kv_factory`, floor: Manufacturing, routine: không. Pipeline `day-chuyen-bao-cao-kpi-nha-may`.
+- Vai:
+  - `factory_lead` · lead · `lap-ke-hoach-dieu-phoi`
+  - `factory_reader` · collector · `doc-du-lieu-san-xuat`
+  - `factory_standards` · collector · `tra-cuu-tieu-chuan-nha-may` (web)
+  - `factory_kpi_drafter` · drafter · `lap-bang-so-lieu-san-xuat`
+  - `factory_doc_drafter` · drafter · `soan-ho-so-nha-may`
+  - `factory_numbers_gate` · gate · `soat-so-lieu-chat-luong`
+  - `factory_safety_gate` · gate · `soat-an-toan-nha-may`
+  - `factory_handover` · handover · `kiem-dinh-ban-giao`
+- Điểm dừng loại 1: yêu cầu chỉnh máy, đặt thông số quy trình, quyết định lô hàng, hoặc đóng NCR, CAPA; yêu cầu thiếu định nghĩa KPI và mục tiêu, thiếu kỳ báo cáo, hoặc thiếu thư mục nguồn; báo cáo tháng thiếu danh sách ca (ca thiếu được ghi là thiếu, không lấp bằng trung bình).
+- Điểm dừng loại 2: handover QUA thì `in_review`, comment các quyết định người phụ trách phải làm trước khi phát hành: duyệt số liệu, quyết định gửi báo cáo, ký NCR hay CAPA, đóng sự cố. Squad không gửi báo cáo cho hội đồng, khách hàng hay cơ quan quản lý.
+- Điểm dừng loại 3: vòng sửa tối đa 2 cho gác số liệu và gác an toàn. Gác còn CHẶN sau vòng 2 thì `blocked`, đính kèm bản nháp và các dòng còn mở.
+- Tài liệu bền: không có sổ. Số NCR, CAPA và ngày ghi `[cần bổ sung]` cho đến khi người yêu cầu xác nhận trong comment.
+- Phụ thuộc runtime riêng: web cho `factory_standards` (chỉ khi cho phép). Không có Bash hay Python bắt buộc.
+- Routine: không.
+- Chưa xác minh: thông số quy trình, dung sai và chu kỳ bảo trì phải có nguồn của nhà máy; squad không đặt giá trị từ trí nhớ.
+- Trước khi bật: **rủi ro an toàn lao động**. Cán bộ an toàn hoặc người phụ trách an toàn của nhà máy đọc đầu ra của `factory_safety_gate` trong các lần chạy đầu. Gác này chặn mọi sự cố trong nguồn mà bản nháp không nêu, nguyên nhân gán khi chưa có điều tra, và thông số an toàn tự đặt. Gác số liệu không chặn số không có nguồn (giữ theo chuẩn P0).
+- Diễn tập: chưa chạy.
+
+## Education Desk (Giáo dục)
+
+- Template: `kv_education`, floor: Education, routine: không. Pipeline `day-chuyen-de-kiem-tra-dinh-ky`.
+- Vai (sáu vai, gồm lead và handover; bốn vai nghề còn lại không được ghép, xem mục 9):
+  - `edu_lead` · lead · `lap-ke-hoach-dieu-phoi`
+  - `edu_curriculum` · collector · `tra-yeu-cau-can-dat` (web)
+  - `edu_test_drafter` · drafter · `soan-de-va-dap-an`
+  - `edu_answer_gate` · gate · `soat-dap-an-de-thi`
+  - `edu_student_gate` · gate · `soat-an-toan-hoc-sinh`
+  - `edu_handover` · handover · `kiem-dinh-ban-giao`
+- Điểm dừng loại 1: thiếu môn, khối, thời lượng, hình thức, tỷ lệ mức (Biết, Hiểu, Vận dụng), thang điểm hoặc mẫu ma trận của tổ; tài liệu đính kèm có dữ liệu học sinh (tên kèm điểm, số định danh, số điện thoại, phụ huynh, nhận xét hạnh kiểm). Dừng, comment việc thiếu hoặc cột cần bỏ, mention người yêu cầu.
+- Điểm dừng loại 2: handover QUA thì `in_review`, comment việc giáo viên phải làm: kiểm đáp án, duyệt ma trận, in hoặc chia sẻ đề. Đề và đáp án không đưa vào bản học sinh; squad không gửi học sinh, phụ huynh hay nền tảng học tập nào.
+- Điểm dừng loại 3: vòng sửa tối đa 2 cho gác đáp án và gác học sinh. Gác còn CHẶN sau vòng 2 thì `blocked`, giao các dòng còn mở cho giáo viên.
+- Dấu hiệu an toàn (bạo hành, xâm hại, tự hại liên quan đến học sinh) trong tài liệu: dừng ngay, `blocked`, nêu dấu hiệu trong comment và mention người yêu cầu; không chạy vai nào sau đó. Ban giám hiệu xử lý theo quy trình riêng.
+- Tài liệu bền: không có sổ. Đề kiểm tra và đáp án là hai tệp riêng, gắn nhãn bản học sinh và bản giáo viên.
+- Phụ thuộc runtime riêng: web cho `edu_curriculum` (chỉ khi cho phép). Không có Bash.
+- Routine: không.
+- Chưa xác minh: yêu cầu cần đạt theo chương trình hiện hành (`edu_curriculum` ghi `[không tìm thấy nguồn]` khi không có nguồn chính thức).
+- Trước khi bật: **rủi ro về trẻ em và dữ liệu học sinh**. Một cán bộ nhà trường đọc đầu ra của `edu_student_gate` trước khi bật. Gác này chặn dữ liệu cá nhân, sai kênh, cam kết vượt thẩm quyền, nhãn tính cách và dấu hiệu an toàn. Đáp án đề chặn mọi câu sai, câu hai đáp án đúng, câu không có đáp án đúng.
+- Diễn tập: chưa chạy.
+
 ## 8b. Skill mở rộng trên squad có sẵn (spec 7)
 
 Extension skills on existing squads (spec 7). The Kit Viet extension skills attach to the company starter squads Support, People & Performance, Product Analysis, Planning and Build (kitvietExtensionTargetOf in packages/core/squads/kitviet-extension-attach.ts). Company squads carry no template_key, so they match by card name. After a company apply, the client runs attachKitvietExtensions (useApplyCompanyTemplate). It imports each target's bundles with the extension pack only, and adds them to the squad's skills without removing any. Running the company apply again on an earlier workspace attaches the skills to its existing squads. A renamed company squad is not matched; a hand-made squad named like a card with no template is matched too. A failed squad is logged; the apply is not affected.
+
+## 8c. Floor của squad P2
+
+Mười squad P2 mỗi squad một floor, tên floor là `floorName` của template (`packages/core/squads/kitviet-floors.ts`): Healthcare, Construction, F&B, Insurance, Banking, Real Estate, Hospitality, Import & Export, Manufacturing, Education. Floor không nằm trong `COMPANY_FLOOR_NAMES`, nên bộ chọn công ty không hiện chúng; quickstart tự tạo floor khi chưa có (`ensureCompanyFloor` tìm theo tên, không thấy thì tạo) rồi xếp squad vào ô trống đầu tiên. Floor đầy thì squad vẫn được tạo, báo `no free seat on the <tên> floor`.
+
+Trần số floor của workspace là 24 (`CompanyMaxFloors` ở `server/internal/service/company_setup.go`, `companyMaxFloors` ở `server/internal/handler/company.go`, `COMPANY_MAX_FLOORS` ở `packages/core/company/constants.ts`). Một công ty khởi đầu đủ dùng bảy floor mặc định; mười floor P2 đưa tổng lên 17, còn chỗ cho các floor khác.
+
+## 8d. Trước khi bật các squad rủi ro
+
+Sáu squad có gác phải có người trong ngành đọc đầu ra trước khi bật. Người đọc không thay gác, và gác không thay người đọc.
+
+| Squad | Gác cần người đọc | Lý do |
+| --- | --- | --- |
+| Healthcare | `health_scope_gate` (và `health_privacy_gate`) | Phạm vi lâm sàng: chẩn đoán, liều, cam kết khỏi bệnh |
+| Insurance Advisory | `insurance_advice_gate` | Cam kết tư vấn cho khách; mọi lỗi đều chặn |
+| Banking Credit Desk | `banking_credit_gate`, `banking_advice_gate` | Tờ trình tín dụng và tài liệu gửi khách |
+| Factory Ops | `factory_safety_gate` | An toàn lao động; không đặt thông số tự do |
+| F&B Ops | `fnb_allergen_gate` | Dị ứng; chỉ tin nhãn nguyên liệu của nhà cung cấp |
+| Construction | `construction_safety_gate` | An toàn công trường và thẩm quyền ký |
+
+Ngoài sáu squad trên, Education có `edu_student_gate` (dữ liệu học sinh), Real Estate có `realestate_loan_gate` và `realestate_listing_gate` (tiền và lời hứa), Hospitality có `hospitality_quote_gate` và `hospitality_promise_gate` (giá và cam kết với khách). Các gác này cũng chặn cho đến khi có xác nhận, nhưng không yêu cầu người trong ngành đọc trước.
+
+Gác nào trả CHẶN sau hai vòng thì squad dừng loại 3. Gác nào QUA mà người đọc thấy sai thì sửa gác (bản vá trong `packages/core/squads/kitviet-patches/`) trước khi chạy tiếp, không sửa đầu ra bằng tay.
 
 ## 9. Việc còn mở
 
@@ -400,3 +643,5 @@ Extension skills on existing squads (spec 7). The Kit Viet extension skills atta
 - Nâng cấp squad đã tạo (`upgradeKitvietSquad`, `upgrade.ts`) chưa có điểm gọi trong giao diện. Đến khi có, việc nâng cấp là việc của người phát triển, chạy bằng hàm với `dryRun` trước; hàm không ghi đè văn bản đã bị sửa.
 - `soan-don-tu` ở Hành chính và Pháp lý là hai bản byte giống nhau (F11). Bản Pháp lý đổi tên thành `soan-don-tu-phap-ly` theo kế hoạch; nội dung không khác nên tên chỉ là nhãn.
 - Tham chiếu `chuan-bi-dam-phan-hoa-giai` trong `soan-bien-ban-thanh-ly-hop-dong` (Pháp lý) không nằm trong tầng lõi hay vai; ở P0 nó thành "nhờ lead tạo yêu cầu" (spec mục 6 để ngoài P0).
+- P2 (mười squad, mục 8 đến 8d): chưa chạy thật (S7). Hai squad chưa có: `edu` có bốn agent nghề không được ghép (`tim-tu-lieu-bai-giang`, `soan-van-ban-chu-nhiem`, `tong-hop-ho-so-lop-hoc`, `soat-nguon-tu-lieu-giang-day`); nếu cần, có thể là squad thứ hai "Teaching Materials", một quyết định riêng.
+- Gác số liệu của Factory (`soat-so-lieu-chat-luong`) không chặn số không có nguồn, giữ theo gác số liệu chung P0. Gác khối lượng của Construction chặn "Cần giấy tờ" (quyết định ở spec 10.1, Q12).
