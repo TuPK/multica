@@ -22,6 +22,7 @@ import (
 
 	"github.com/multica-ai/multica/server/internal/hub"
 	"github.com/multica-ai/multica/server/internal/logger"
+	"github.com/multica-ai/multica/server/internal/metrics"
 	skillpkg "github.com/multica-ai/multica/server/internal/skill"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/plugincontract"
@@ -62,6 +63,10 @@ type HubImportSource struct {
 	Ref    string `json:"ref,omitempty"`
 	Subdir string `json:"subdir,omitempty"`
 	SHA256 string `json:"sha256,omitempty"`
+	// SourceID names a saved source whose credential the preview may use. The
+	// type and URL must be exactly the saved source's, so the token only ever
+	// reaches the URL it was saved for.
+	SourceID string `json:"source_id,omitempty"`
 }
 
 type HubImportPreviewRequest struct {
@@ -360,12 +365,30 @@ func (h *Handler) PreviewHubImport(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), hubImportFetchTimeout)
 	defer cancel()
 
+	var cred hub.Credential
+	if src.SourceID != "" {
+		saved, ok := h.loadHubSource(w, r, workspaceID, src.SourceID)
+		if !ok {
+			return
+		}
+		if saved.Type != src.Type || saved.Url != src.URL {
+			writeError(w, http.StatusBadRequest, "type and url must match the saved source")
+			return
+		}
+		credential, err := h.hubSourceCredential(saved)
+		if err != nil {
+			writeHubCredentialUnavailable(w)
+			return
+		}
+		cred = credential
+	}
+
 	if hub.SourceType(src.Type) == hub.SourceRegistry {
-		h.previewHubRegistry(ctx, w, src.URL)
+		h.previewHubRegistry(ctx, w, src.URL, cred)
 		return
 	}
 
-	ref := hub.SourceRef{Type: hub.SourceType(src.Type), URL: src.URL, Ref: src.Ref, Subdir: src.Subdir, SHA256: src.SHA256}
+	ref := hub.SourceRef{Type: hub.SourceType(src.Type), URL: src.URL, Ref: src.Ref, Subdir: src.Subdir, SHA256: src.SHA256, Credential: cred}
 	importer, ref, err := hubImporterFor(ref)
 	if errors.Is(err, errHubURLMismatch) {
 		writeError(w, http.StatusBadRequest, "url does not match the source type")
@@ -390,10 +413,22 @@ func (h *Handler) PreviewHubImport(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// hubUploadLimits are the limits a zip uploaded to the Hub is held to, from the
+// preview to the commit that reads its staged copy. They are the defaults with the
+// archive cap set by HUB_MAX_UPLOAD_BYTES.
+func (h *Handler) hubUploadLimits() hub.Limits {
+	lim := hub.DefaultLimits
+	if h.HubMaxUploadBytes > 0 {
+		lim.MaxArchiveBytes = h.HubMaxUploadBytes
+	}
+	return lim
+}
+
 // hubUploadBundle reads a zip upload. The body is bounded before the multipart
 // parser sees it, so an oversized upload is refused without being spooled.
 func (h *Handler) hubUploadBundle(w http.ResponseWriter, r *http.Request) (*hub.Bundle, bool) {
-	r.Body = http.MaxBytesReader(w, r.Body, hub.DefaultLimits.MaxArchiveBytes+hubImportMultipartOverhead)
+	lim := h.hubUploadLimits()
+	r.Body = http.MaxBytesReader(w, r.Body, lim.MaxArchiveBytes+hubImportMultipartOverhead)
 	if err := r.ParseMultipartForm(1 << 20); err != nil {
 		var maxErr *http.MaxBytesError
 		if errors.As(err, &maxErr) {
@@ -416,16 +451,16 @@ func (h *Handler) hubUploadBundle(w http.ResponseWriter, r *http.Request) (*hub.
 	}
 	defer file.Close()
 
-	data, err := io.ReadAll(io.LimitReader(file, hub.DefaultLimits.MaxArchiveBytes+1))
+	data, err := io.ReadAll(io.LimitReader(file, lim.MaxArchiveBytes+1))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "failed to read the uploaded file")
 		return nil, false
 	}
-	if int64(len(data)) > hub.DefaultLimits.MaxArchiveBytes {
+	if int64(len(data)) > lim.MaxArchiveBytes {
 		writeError(w, http.StatusRequestEntityTooLarge, "the upload is too large to import")
 		return nil, false
 	}
-	bundle, err := hub.ExtractZip(bytes.NewReader(data), int64(len(data)), hub.DefaultLimits)
+	bundle, err := hub.ExtractZip(bytes.NewReader(data), int64(len(data)), lim)
 	if err != nil {
 		status, msg := hubImportFailure(r.Context(), err)
 		writeError(w, status, msg)
@@ -436,12 +471,12 @@ func (h *Handler) hubUploadBundle(w http.ResponseWriter, r *http.Request) (*hub.
 
 // previewHubRegistry lists the items of a registry index. Nothing is staged:
 // the user picks an item and previews that item's archive as its own source.
-func (h *Handler) previewHubRegistry(ctx context.Context, w http.ResponseWriter, rawURL string) {
+func (h *Handler) previewHubRegistry(ctx context.Context, w http.ResponseWriter, rawURL string, cred hub.Credential) {
 	if rawURL == "" {
 		writeError(w, http.StatusBadRequest, "url is required for a registry")
 		return
 	}
-	registry, err := hub.FetchRegistry(ctx, hubImportFetcher, hub.RegistryIndexURL(rawURL))
+	registry, err := hub.FetchRegistry(ctx, hubImportFetcher, hub.RegistryIndexURL(rawURL), cred)
 	if err != nil {
 		status, msg := hubImportFailure(ctx, err)
 		writeError(w, status, msg)
@@ -527,11 +562,13 @@ func (h *Handler) stageHubPreview(w http.ResponseWriter, r *http.Request, worksp
 		return
 	}
 	if _, err := h.HubStorage.Upload(ctx, hubStagingZipKey(workspaceID, previewID), zipBytes, "application/zip", ""); err != nil {
+		h.recordHubStorageError(metrics.HubStorageOpPut, err)
 		slog.Warn("hub staging upload failed", append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "failed to stage the bundle")
 		return
 	}
 	if _, err := h.HubStorage.Upload(ctx, hubStagingMetaKey(workspaceID, previewID), metaBytes, hubImportStagingContentType, ""); err != nil {
+		h.recordHubStorageError(metrics.HubStorageOpPut, err)
 		slog.Warn("hub staging metadata upload failed", append(logger.RequestAttrs(r), "error", err)...)
 		h.deleteHubStaging(ctx, workspaceID, previewID)
 		writeError(w, http.StatusInternalServerError, "failed to stage the bundle")
@@ -590,6 +627,7 @@ func (h *Handler) hubImportConflict(ctx context.Context, ws pgtype.UUID, detecte
 func (h *Handler) loadHubPreview(w http.ResponseWriter, r *http.Request, workspaceID, userID, previewID string) (hubStagedMeta, bool) {
 	rc, err := h.HubStorage.GetReader(r.Context(), hubStagingMetaKey(workspaceID, previewID))
 	if err != nil {
+		h.recordHubStorageError(metrics.HubStorageOpGet, err)
 		var noSuchKey *types.NoSuchKey
 		if errors.Is(err, os.ErrNotExist) || errors.As(err, &noSuchKey) {
 			writeError(w, http.StatusNotFound, "preview not found")
@@ -620,10 +658,11 @@ func (h *Handler) loadHubPreview(w http.ResponseWriter, r *http.Request, workspa
 func (h *Handler) readHubStagedZip(ctx context.Context, workspaceID, previewID string) ([]byte, error) {
 	rc, err := h.HubStorage.GetReader(ctx, hubStagingZipKey(workspaceID, previewID))
 	if err != nil {
+		h.recordHubStorageError(metrics.HubStorageOpGet, err)
 		return nil, err
 	}
 	defer rc.Close()
-	return io.ReadAll(io.LimitReader(rc, hub.DefaultLimits.MaxArchiveBytes+1))
+	return io.ReadAll(io.LimitReader(rc, h.hubUploadLimits().MaxArchiveBytes+1))
 }
 
 // deleteHubStaging removes a preview's staged objects. Best effort: a leftover
@@ -631,6 +670,7 @@ func (h *Handler) readHubStagedZip(ctx context.Context, workspaceID, previewID s
 func (h *Handler) deleteHubStaging(ctx context.Context, workspaceID, previewID string) {
 	for _, key := range []string{hubStagingZipKey(workspaceID, previewID), hubStagingMetaKey(workspaceID, previewID)} {
 		if err := h.HubStorage.DeleteObject(ctx, key); err != nil {
+			h.recordHubStorageError(metrics.HubStorageOpDelete, err)
 			slog.Warn("hub staging cleanup failed", "key", key, "error", err)
 		}
 	}
@@ -653,6 +693,8 @@ type hubCommit struct {
 	sourceID pgtype.UUID
 	// name is the trimmed request name, used by rename.
 	name string
+	// skipped is set when the conflict strategy kept the existing item.
+	skipped bool
 }
 
 // CommitHubImport handles POST /api/hub/import/commit.
@@ -700,7 +742,7 @@ func (h *Handler) CommitHubImport(w http.ResponseWriter, r *http.Request) {
 
 	// Re-derive everything from the staged bytes. The metadata only names what
 	// was previewed; a mismatch means the preview no longer describes the zip.
-	bundle, err := hub.ExtractZip(bytes.NewReader(zipBytes), int64(len(zipBytes)), hub.DefaultLimits)
+	bundle, err := hub.ExtractZip(bytes.NewReader(zipBytes), int64(len(zipBytes)), h.hubUploadLimits())
 	if err != nil {
 		status, msg := hubImportFailure(r.Context(), err)
 		writeError(w, status, msg)
@@ -757,14 +799,50 @@ func (h *Handler) CommitHubImport(w http.ResponseWriter, r *http.Request) {
 		c.sourceID = sourceUUID
 	}
 
+	sw := &hubCommitWriter{ResponseWriter: w}
 	switch detected.Kind {
 	case hub.KindSkill:
-		h.commitHubSkill(w, r, c)
+		h.commitHubSkill(sw, r, c)
 	case hub.KindPlugin:
-		h.commitHubPlugin(w, r, c)
+		h.commitHubPlugin(sw, r, c)
 	default:
-		writeError(w, http.StatusBadRequest, "unsupported bundle kind")
+		writeError(sw, http.StatusBadRequest, "unsupported bundle kind")
 	}
+	h.recordHubCommit(string(detected.Kind), sw, c)
+}
+
+// hubCommitWriter remembers the status a commit answered with, so the commit's
+// metric can tell an error from a write.
+type hubCommitWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (w *hubCommitWriter) WriteHeader(code int) {
+	if w.status == 0 {
+		w.status = code
+	}
+	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w *hubCommitWriter) Write(b []byte) (int, error) {
+	if w.status == 0 {
+		w.status = http.StatusOK
+	}
+	return w.ResponseWriter.Write(b)
+}
+
+// recordHubCommit counts one import commit: an error for a 4xx or 5xx answer, a
+// skip for a conflict strategy that kept the existing item, and ok otherwise.
+func (h *Handler) recordHubCommit(kind string, w *hubCommitWriter, c *hubCommit) {
+	result := metrics.HubResultOK
+	switch {
+	case w.status >= http.StatusBadRequest:
+		result = metrics.HubResultError
+	case c.skipped:
+		result = metrics.HubResultSkipped
+	}
+	h.Metrics.RecordHubImportCommit(kind, result)
 }
 
 // commitHubSkill applies the on_conflict strategy for a skill and writes it.
@@ -1052,6 +1130,7 @@ func (h *Handler) commitHubPlugin(w http.ResponseWriter, r *http.Request, c *hub
 // writeHubSkipped answers a skip without writing anything. The existing item's
 // hub row is reported when there is one.
 func (h *Handler) writeHubSkipped(w http.ResponseWriter, r *http.Request, c *hubCommit, kind string, refID pgtype.UUID) {
+	c.skipped = true
 	hubItemID := ""
 	if item, err := h.Queries.GetHubItemByRef(r.Context(), db.GetHubItemByRefParams{WorkspaceID: c.ws, Kind: kind, RefID: refID}); err == nil {
 		hubItemID = uuidToString(item.ID)
@@ -1175,6 +1254,7 @@ func writeHubCommitFailure(w http.ResponseWriter, r *http.Request, err error) {
 func (h *Handler) hubStoreBundle(ctx context.Context, c *hubCommit, kind, refID string) (string, error) {
 	key := hubBundleKey(c.workspaceID, kind, refID, c.meta.BundleDigest)
 	if _, err := h.HubStorage.Upload(ctx, key, c.zipBytes, "application/zip", ""); err != nil {
+		h.recordHubStorageError(metrics.HubStorageOpPut, err)
 		return "", err
 	}
 	return key, nil

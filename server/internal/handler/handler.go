@@ -257,8 +257,16 @@ type Handler struct {
 	// bundles. It is HUB_S3_* when configured, otherwise the attachment store.
 	// Set by the router after New.
 	HubStorage storage.Storage
-	CFSigner   *auth.CloudFrontSigner
-	Analytics  analytics.Client
+	// HubSecrets seals the access token of a private Hub source. Nil when
+	// MULTICA_HUB_SECRET_KEY is unset; saving a credential then fails with
+	// 409 secrets_not_configured rather than storing plaintext. Wired in
+	// cmd/server/router.go after New.
+	HubSecrets *secretbox.Box
+	// HubMaxUploadBytes caps a zip uploaded to the import preview (HUB_MAX_UPLOAD_BYTES).
+	// Zero means hub.DefaultLimits.MaxArchiveBytes. Wired in cmd/server/router.go.
+	HubMaxUploadBytes int64
+	CFSigner          *auth.CloudFrontSigner
+	Analytics         analytics.Client
 	// DaemonPendingWork pushes "heartbeat now" hints for queued
 	// heartbeat-carried requests (MUL-5444). Optional: when nil,
 	// requestDaemonPendingWork falls back to the local DaemonHub, which is the

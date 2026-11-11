@@ -1055,20 +1055,21 @@ type HubItemVersionBlob struct {
 }
 
 type HubSource struct {
-	ID                  pgtype.UUID        `json:"id"`
-	WorkspaceID         pgtype.UUID        `json:"workspace_id"`
-	Name                string             `json:"name"`
-	Type                string             `json:"type"`
-	Url                 string             `json:"url"`
-	Config              []byte             `json:"config"`
-	Enabled             bool               `json:"enabled"`
-	AutoSyncIntervalSec int32              `json:"auto_sync_interval_sec"`
-	LastSyncAt          pgtype.Timestamptz `json:"last_sync_at"`
-	LastSyncStatus      string             `json:"last_sync_status"`
-	LastSyncError       string             `json:"last_sync_error"`
-	CreatedBy           pgtype.UUID        `json:"created_by"`
-	CreatedAt           pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+	ID                   pgtype.UUID        `json:"id"`
+	WorkspaceID          pgtype.UUID        `json:"workspace_id"`
+	Name                 string             `json:"name"`
+	Type                 string             `json:"type"`
+	Url                  string             `json:"url"`
+	Config               []byte             `json:"config"`
+	Enabled              bool               `json:"enabled"`
+	AutoSyncIntervalSec  int32              `json:"auto_sync_interval_sec"`
+	LastSyncAt           pgtype.Timestamptz `json:"last_sync_at"`
+	LastSyncStatus       string             `json:"last_sync_status"`
+	LastSyncError        string             `json:"last_sync_error"`
+	CreatedBy            pgtype.UUID        `json:"created_by"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+	CredentialCiphertext []byte             `json:"credential_ciphertext"`
 }
 
 type InboxItem struct {

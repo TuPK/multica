@@ -27,7 +27,7 @@ func (q *Queries) DeleteHubItemVersionBlobs(ctx context.Context, arg DeleteHubIt
 }
 
 const getHubSourceByTypeURL = `-- name: GetHubSourceByTypeURL :one
-SELECT id, workspace_id, name, type, url, config, enabled, auto_sync_interval_sec, last_sync_at, last_sync_status, last_sync_error, created_by, created_at, updated_at FROM hub_source
+SELECT id, workspace_id, name, type, url, config, enabled, auto_sync_interval_sec, last_sync_at, last_sync_status, last_sync_error, created_by, created_at, updated_at, credential_ciphertext FROM hub_source
 WHERE workspace_id = $1 AND type = $2 AND url = $3
 `
 
@@ -55,6 +55,7 @@ func (q *Queries) GetHubSourceByTypeURL(ctx context.Context, arg GetHubSourceByT
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CredentialCiphertext,
 	)
 	return i, err
 }

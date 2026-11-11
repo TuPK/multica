@@ -13,7 +13,7 @@ import (
 
 const getHubSourceByID = `-- name: GetHubSourceByID :one
 
-SELECT id, workspace_id, name, type, url, config, enabled, auto_sync_interval_sec, last_sync_at, last_sync_status, last_sync_error, created_by, created_at, updated_at FROM hub_source WHERE id = $1
+SELECT id, workspace_id, name, type, url, config, enabled, auto_sync_interval_sec, last_sync_at, last_sync_status, last_sync_error, created_by, created_at, updated_at, credential_ciphertext FROM hub_source WHERE id = $1
 `
 
 // Skill / plugin hub: source sync and item update state (Phase 5). Every query
@@ -38,12 +38,13 @@ func (q *Queries) GetHubSourceByID(ctx context.Context, id pgtype.UUID) (HubSour
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CredentialCiphertext,
 	)
 	return i, err
 }
 
 const listDueHubSources = `-- name: ListDueHubSources :many
-SELECT id, workspace_id, name, type, url, config, enabled, auto_sync_interval_sec, last_sync_at, last_sync_status, last_sync_error, created_by, created_at, updated_at FROM hub_source
+SELECT id, workspace_id, name, type, url, config, enabled, auto_sync_interval_sec, last_sync_at, last_sync_status, last_sync_error, created_by, created_at, updated_at, credential_ciphertext FROM hub_source
 WHERE enabled
   AND auto_sync_interval_sec > 0
   AND (last_sync_at IS NULL OR last_sync_at <= now() - make_interval(secs => auto_sync_interval_sec))
@@ -77,6 +78,7 @@ func (q *Queries) ListDueHubSources(ctx context.Context, rowLimit int32) ([]HubS
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CredentialCiphertext,
 		); err != nil {
 			return nil, err
 		}

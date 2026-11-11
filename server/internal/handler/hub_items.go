@@ -135,6 +135,61 @@ func (h *Handler) ListHubItems(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// GetHubItem handles GET /api/hub/items/{kind}/{id}: one item in the shape of an
+// element of GET /api/hub/items. It applies the same lazy row creation, so an
+// item that is listed is also found here, and one that is absent is a 404.
+func (h *Handler) GetHubItem(w http.ResponseWriter, r *http.Request) {
+	workspaceID, kind, refID, ok := h.hubItemRoute(w, r)
+	if !ok {
+		return
+	}
+	ctx := r.Context()
+	ws := parseUUID(workspaceID)
+
+	switch kind {
+	case "skill":
+		skill, err := h.Queries.GetSkillInWorkspace(ctx, db.GetSkillInWorkspaceParams{ID: refID, WorkspaceID: ws})
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "item not found")
+			return
+		}
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to load item")
+			return
+		}
+		if err := h.ensureSkillHubRows(ctx, ws, []hubSkillRef{{id: skill.ID, config: skill.Config}}); err != nil {
+			slog.Warn("hub item: create skill row failed", append(logger.RequestAttrs(r), "error", err)...)
+			writeError(w, http.StatusInternalServerError, "failed to load item")
+			return
+		}
+	case "plugin":
+		if _, err := h.Queries.GetWorkspacePluginPackage(ctx, db.GetWorkspacePluginPackageParams{WorkspaceID: ws, ID: refID}); errors.Is(err, pgx.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "item not found")
+			return
+		} else if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to load item")
+			return
+		}
+		if err := h.ensurePluginHubRows(ctx, ws, []pgtype.UUID{refID}); err != nil {
+			slog.Warn("hub item: create plugin row failed", append(logger.RequestAttrs(r), "error", err)...)
+			writeError(w, http.StatusInternalServerError, "failed to load item")
+			return
+		}
+	}
+
+	row, err := h.Queries.GetHubItemByRef(ctx, db.GetHubItemByRefParams{WorkspaceID: ws, Kind: kind, RefID: refID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		// A plugin package with no published version has no row, and no item.
+		writeError(w, http.StatusNotFound, "item not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load item")
+		return
+	}
+	writeJSON(w, http.StatusOK, hubItemToResponse(row))
+}
+
 func hubItemToResponse(row db.HubItem) HubItemResponse {
 	var sourceID *string
 	if row.SourceID.Valid {

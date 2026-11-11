@@ -155,3 +155,16 @@ DELETE FROM hub_source WHERE hub_source.workspace_id = $1;
 -- name: DeleteWorkspaceKnowledgePropertyHistory :exec
 -- No foreign keys on this table either (migration 925), so teardown removes it.
 DELETE FROM knowledge_property_history WHERE knowledge_property_history.workspace_id = $1;
+
+-- name: SetHubSourceCredential :one
+-- Stores a source's sealed credential, or clears it with a NULL ciphertext.
+UPDATE hub_source SET
+    credential_ciphertext = sqlc.narg('credential_ciphertext'),
+    updated_at = now()
+WHERE id = sqlc.arg('id') AND workspace_id = sqlc.arg('workspace_id')
+RETURNING *;
+
+-- name: GetHubSkillFileByPath :one
+-- A supporting file of a skill by its path, for the optimistic-lock check of a save.
+SELECT * FROM skill_file
+WHERE skill_id = $1 AND path = $2;

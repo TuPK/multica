@@ -180,7 +180,7 @@ func skillToResponse(s db.Skill) SkillResponse {
 		Config:      decodeSkillConfig(s.Config),
 		CreatedBy:   uuidToPtr(s.CreatedBy),
 		CreatedAt:   timestampToString(s.CreatedAt),
-		UpdatedAt:   timestampToString(s.UpdatedAt),
+		UpdatedAt:   skillTimestamp(s.UpdatedAt),
 	}
 }
 
@@ -249,7 +249,7 @@ func skillFileToResponse(f db.SkillFile) SkillFileResponse {
 		Path:      f.Path,
 		Content:   f.Content,
 		CreatedAt: timestampToString(f.CreatedAt),
-		UpdatedAt: timestampToString(f.UpdatedAt),
+		UpdatedAt: skillTimestamp(f.UpdatedAt),
 	}
 }
 
@@ -2534,10 +2534,62 @@ func (h *Handler) UpsertSkillFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sf, _, ok := h.saveSkillSupportingFile(w, r, skill, req.Path, req.Content, nil)
+	if !ok {
+		return
+	}
+	writeJSON(w, http.StatusOK, skillFileToResponse(sf))
+}
+
+// skillTimestamp is a skill or skill file updated_at as the API returns it. It
+// keeps sub-second precision, because that value is the etag an optimistic save
+// is checked against: whole seconds would let two saves in one second look the same.
+func skillTimestamp(t pgtype.Timestamptz) string {
+	if !t.Valid {
+		return ""
+	}
+	return t.Time.Format(time.RFC3339Nano)
+}
+
+// skillEtagMatches reports whether a save's expected etag names the stored row.
+// A file that does not exist matches only the empty etag, which is how a caller
+// says it expects to create the file.
+func skillEtagMatches(exists bool, updatedAt pgtype.Timestamptz, expected string) bool {
+	if !exists {
+		return expected == ""
+	}
+	return expected != "" && expected == skillEtag(exists, updatedAt)
+}
+
+// skillEtag is the etag a stored row currently has: its updated_at, in the form
+// skillTimestamp returns. A row that does not exist has the empty etag.
+func skillEtag(exists bool, updatedAt pgtype.Timestamptz) string {
+	if !exists {
+		return ""
+	}
+	return skillTimestamp(updatedAt)
+}
+
+// writeSkillFileConflict answers a save that was refused because the stored file
+// changed. It carries the current etag so the client can show what it is replacing.
+func writeSkillFileConflict(w http.ResponseWriter, current string) {
+	writeJSON(w, http.StatusConflict, map[string]any{
+		"error": "the file changed since it was loaded",
+		"code":  "file_conflict",
+		"etag":  current,
+	})
+}
+
+// saveSkillSupportingFile writes one supporting file of a skill and records the
+// skill as edited. expectedEtag nil skips the etag check, which is the legacy
+// upsert route; otherwise the check runs under the skill's row lock, inside the
+// write's transaction, so a concurrent save cannot slip in between the check and
+// the write. It reports a stale save with a 409 and returns ok false.
+func (h *Handler) saveSkillSupportingFile(w http.ResponseWriter, r *http.Request, skill db.Skill, path, content string, expectedEtag *string) (db.SkillFile, string, bool) {
 	tx, err := h.TxStarter.Begin(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to start transaction")
-		return
+		return db.SkillFile{}, "", false
 	}
 	defer tx.Rollback(r.Context())
 	qtx := h.Queries.WithTx(tx)
@@ -2548,7 +2600,19 @@ func (h *Handler) UpsertSkillFile(w http.ResponseWriter, r *http.Request) {
 	if err := ensureSkillVersionBaseline(r.Context(), qtx, skill.ID); err != nil {
 		slog.Warn("skill version baseline failed", append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "failed to upsert skill file")
-		return
+		return db.SkillFile{}, "", false
+	}
+	if expectedEtag != nil {
+		stored, err := qtx.GetHubSkillFileByPath(r.Context(), db.GetHubSkillFileByPathParams{SkillID: skill.ID, Path: path})
+		exists := err == nil
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			writeError(w, http.StatusInternalServerError, "failed to upsert skill file")
+			return db.SkillFile{}, "", false
+		}
+		if !skillEtagMatches(exists, stored.UpdatedAt, *expectedEtag) {
+			writeSkillFileConflict(w, skillEtag(exists, stored.UpdatedAt))
+			return db.SkillFile{}, "", false
+		}
 	}
 	// Touch the parent first so its row lock is taken before the file write,
 	// in the same order UpdateSkill takes them.
@@ -2558,21 +2622,21 @@ func (h *Handler) UpsertSkillFile(w http.ResponseWriter, r *http.Request) {
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeError(w, http.StatusNotFound, "skill not found")
-		return
+		return db.SkillFile{}, "", false
 	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to update skill")
-		return
+		return db.SkillFile{}, "", false
 	}
 	sf, err := qtx.UpsertSkillFile(r.Context(), db.UpsertSkillFileParams{
 		SkillID: skill.ID,
-		Path:    sanitizeNullBytes(req.Path),
-		Content: sanitizeNullBytes(req.Content),
+		Path:    sanitizeNullBytes(path),
+		Content: sanitizeNullBytes(content),
 	})
 	if err != nil {
 		slog.Warn("upsert skill file failed", append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "failed to upsert skill file")
-		return
+		return db.SkillFile{}, "", false
 	}
 	if _, err := recordSkillVersion(r.Context(), qtx, skill.ID, skillVersionRecord{
 		Source:    skillVersionSourceUpdate,
@@ -2580,21 +2644,81 @@ func (h *Handler) UpsertSkillFile(w http.ResponseWriter, r *http.Request) {
 	}); err != nil {
 		slog.Warn("record skill version failed", append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "failed to upsert skill file")
-		return
+		return db.SkillFile{}, "", false
 	}
 	resp, err := skillWithFilesInTx(r.Context(), qtx, skill)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list skill files")
-		return
+		return db.SkillFile{}, "", false
 	}
 	if err := tx.Commit(r.Context()); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to commit")
-		return
+		return db.SkillFile{}, "", false
 	}
 
 	h.publishSkillFilesChanged(r, resp)
 	h.noteSkillEdit(r, skill)
-	writeJSON(w, http.StatusOK, skillFileToResponse(sf))
+	return sf, skillEtag(true, sf.UpdatedAt), true
+}
+
+// saveSkillMarkdown writes SKILL.md, which is the skill's content rather than a
+// row of skill_file. It follows saveSkillSupportingFile: the same lock, the same
+// etag check (against the skill's updated_at), the same version record and the same
+// events. The etag it returns is the skill's new updated_at.
+func (h *Handler) saveSkillMarkdown(w http.ResponseWriter, r *http.Request, skill db.Skill, content string, expectedEtag string) (string, bool) {
+	tx, err := h.TxStarter.Begin(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to start transaction")
+		return "", false
+	}
+	defer tx.Rollback(r.Context())
+	qtx := h.Queries.WithTx(tx)
+
+	if err := ensureSkillVersionBaseline(r.Context(), qtx, skill.ID); err != nil {
+		slog.Warn("skill version baseline failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to update skill")
+		return "", false
+	}
+	// Read after the lock: the check must see the row the write will replace.
+	current, err := qtx.GetSkillInWorkspace(r.Context(), db.GetSkillInWorkspaceParams{ID: skill.ID, WorkspaceID: skill.WorkspaceID})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load skill")
+		return "", false
+	}
+	if !skillEtagMatches(true, current.UpdatedAt, expectedEtag) {
+		writeSkillFileConflict(w, skillEtag(true, current.UpdatedAt))
+		return "", false
+	}
+	updated, err := qtx.UpdateSkill(r.Context(), db.UpdateSkillParams{
+		ID:      skill.ID,
+		Content: pgtype.Text{String: sanitizeNullBytes(content), Valid: true},
+	})
+	if err != nil {
+		slog.Warn("update skill content failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to update skill")
+		return "", false
+	}
+	if _, err := recordSkillVersion(r.Context(), qtx, skill.ID, skillVersionRecord{
+		Source:    skillVersionSourceUpdate,
+		CreatedBy: parseUUID(requestUserID(r)),
+	}); err != nil {
+		slog.Warn("record skill version failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to update skill")
+		return "", false
+	}
+	resp, err := skillWithFilesInTx(r.Context(), qtx, updated)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list skill files")
+		return "", false
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to commit")
+		return "", false
+	}
+
+	h.publishSkillFilesChanged(r, resp)
+	h.noteSkillEdit(r, updated)
+	return skillEtag(true, updated.UpdatedAt), true
 }
 
 func (h *Handler) DeleteSkillFile(w http.ResponseWriter, r *http.Request) {

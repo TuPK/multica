@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/hub"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
@@ -20,7 +21,24 @@ import (
 // Every route is workspace-scoped; reads need membership, writes need owner or
 // admin, and agents never manage sources.
 
-const hubSourceNameMaxRunes = 160
+const (
+	hubSourceNameMaxRunes = 160
+	// hubCredentialMaxBytes bounds a source's access token before it is sealed.
+	hubCredentialMaxBytes = 4096
+)
+
+// hubCredentialTypes are the source types that can carry an access token. The
+// other types are fetched by clients that bring their own transport (ClawHub,
+// skills.sh) or have no URL at all (upload).
+var hubCredentialTypes = map[string]bool{
+	"github":   true,
+	"url_zip":  true,
+	"registry": true,
+}
+
+// errHubCredentialUnavailable means a source has a stored credential this server
+// cannot open: the Hub secret key is unset or no longer the one that sealed it.
+var errHubCredentialUnavailable = errors.New("hub: stored source credential cannot be opened")
 
 // hubSourceNetworkTypes are fetched from a URL. The upload type has no URL: its
 // content arrives through the import routes.
@@ -53,8 +71,10 @@ type HubSourceResponse struct {
 	LastSyncStatus      string         `json:"last_sync_status"`
 	LastSyncError       string         `json:"last_sync_error"`
 	ItemCount           int64          `json:"item_count"`
-	CreatedAt           string         `json:"created_at"`
-	UpdatedAt           string         `json:"updated_at"`
+	// HasCredential reports whether a token is stored. The token itself is never returned.
+	HasCredential bool   `json:"has_credential"`
+	CreatedAt     string `json:"created_at"`
+	UpdatedAt     string `json:"updated_at"`
 }
 
 type CreateHubSourceRequest struct {
@@ -64,6 +84,8 @@ type CreateHubSourceRequest struct {
 	Config              map[string]any `json:"config"`
 	Enabled             *bool          `json:"enabled"`
 	AutoSyncIntervalSec *int32         `json:"auto_sync_interval_sec"`
+	// Credential is a write-only access token for a private source.
+	Credential *string `json:"credential"`
 }
 
 // UpdateHubSourceRequest is a partial update. The type is fixed at creation:
@@ -75,6 +97,10 @@ type UpdateHubSourceRequest struct {
 	Config              *map[string]any `json:"config"`
 	Enabled             *bool           `json:"enabled"`
 	AutoSyncIntervalSec *int32          `json:"auto_sync_interval_sec"`
+	// Credential replaces the stored token. An empty string is refused; use
+	// ClearCredential to remove it.
+	Credential      *string `json:"credential"`
+	ClearCredential bool    `json:"clear_credential"`
 }
 
 // hubSourceInUse names an item whose skill or plugin is still used, so a
@@ -98,6 +124,7 @@ func hubSourceToResponse(s db.HubSource, itemCount int64) HubSourceResponse {
 		LastSyncStatus:      s.LastSyncStatus,
 		LastSyncError:       s.LastSyncError,
 		ItemCount:           itemCount,
+		HasCredential:       len(s.CredentialCiphertext) > 0,
 		CreatedAt:           timestampToString(s.CreatedAt),
 		UpdatedAt:           timestampToString(s.UpdatedAt),
 	}
@@ -145,6 +172,68 @@ func validateHubSourceFields(sourceType, name, rawURL string, autoSyncIntervalSe
 		return "", "", "url must be an http or https URL"
 	}
 	return name, rawURL, ""
+}
+
+// hubSourceHost is the host[:port] of a source URL, lower-cased. It is the host a
+// source's credential is pinned to.
+func hubSourceHost(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return ""
+	}
+	return strings.ToLower(u.Host)
+}
+
+// hubSourceCredential opens a source's stored token for one request. The result is
+// empty when the source has no credential. The token is pinned to the source's own
+// host; the fetchers refuse to send it anywhere else.
+func (h *Handler) hubSourceCredential(source db.HubSource) (hub.Credential, error) {
+	if len(source.CredentialCiphertext) == 0 {
+		return hub.Credential{}, nil
+	}
+	if h.HubSecrets == nil {
+		return hub.Credential{}, errHubCredentialUnavailable
+	}
+	token, err := h.HubSecrets.Open(source.CredentialCiphertext)
+	if err != nil {
+		return hub.Credential{}, errHubCredentialUnavailable
+	}
+	return hub.Credential{Host: hubSourceHost(source.Url), Token: string(token)}, nil
+}
+
+// writeHubCredentialUnavailable answers a request that needs a stored credential
+// the server cannot open.
+func writeHubCredentialUnavailable(w http.ResponseWriter) {
+	writeErrorCode(w, http.StatusConflict, "secrets_not_configured",
+		"the saved credential of this source cannot be used: the Hub secret key is not configured or has changed")
+}
+
+// sealHubCredential validates a write-only token for a source type and seals it.
+// It returns nil, nil when there is nothing to store.
+func (h *Handler) sealHubCredential(w http.ResponseWriter, sourceType string, token string) ([]byte, bool) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return nil, true
+	}
+	if !hubCredentialTypes[sourceType] {
+		writeError(w, http.StatusBadRequest, "only github, url_zip and registry sources take a credential")
+		return nil, false
+	}
+	if len(token) > hubCredentialMaxBytes {
+		writeError(w, http.StatusBadRequest, "credential must be 4096 bytes or fewer")
+		return nil, false
+	}
+	if h.HubSecrets == nil {
+		writeErrorCode(w, http.StatusConflict, "secrets_not_configured",
+			"source credentials are disabled: the Hub secret key (MULTICA_HUB_SECRET_KEY) is not configured")
+		return nil, false
+	}
+	sealed, err := h.HubSecrets.Seal([]byte(token))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to store the credential")
+		return nil, false
+	}
+	return sealed, true
 }
 
 // requireHubSourceAdmin gates writes: owner or admin, and never an agent.
@@ -197,20 +286,21 @@ func (h *Handler) ListHubSources(w http.ResponseWriter, r *http.Request) {
 	resp := make([]HubSourceResponse, len(rows))
 	for i, row := range rows {
 		resp[i] = hubSourceToResponse(db.HubSource{
-			ID:                  row.ID,
-			WorkspaceID:         row.WorkspaceID,
-			Name:                row.Name,
-			Type:                row.Type,
-			Url:                 row.Url,
-			Config:              row.Config,
-			Enabled:             row.Enabled,
-			AutoSyncIntervalSec: row.AutoSyncIntervalSec,
-			LastSyncAt:          row.LastSyncAt,
-			LastSyncStatus:      row.LastSyncStatus,
-			LastSyncError:       row.LastSyncError,
-			CreatedBy:           row.CreatedBy,
-			CreatedAt:           row.CreatedAt,
-			UpdatedAt:           row.UpdatedAt,
+			ID:                   row.ID,
+			WorkspaceID:          row.WorkspaceID,
+			Name:                 row.Name,
+			Type:                 row.Type,
+			Url:                  row.Url,
+			Config:               row.Config,
+			Enabled:              row.Enabled,
+			AutoSyncIntervalSec:  row.AutoSyncIntervalSec,
+			LastSyncAt:           row.LastSyncAt,
+			LastSyncStatus:       row.LastSyncStatus,
+			LastSyncError:        row.LastSyncError,
+			CredentialCiphertext: row.CredentialCiphertext,
+			CreatedBy:            row.CreatedBy,
+			CreatedAt:            row.CreatedAt,
+			UpdatedAt:            row.UpdatedAt,
 		}, row.ItemCount)
 	}
 	writeJSON(w, http.StatusOK, resp)
@@ -247,8 +337,23 @@ func (h *Handler) CreateHubSource(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "config must be a JSON object")
 		return
 	}
+	var sealed []byte
+	if req.Credential != nil {
+		var ok bool
+		if sealed, ok = h.sealHubCredential(w, req.Type, *req.Credential); !ok {
+			return
+		}
+	}
 
-	source, err := h.Queries.CreateHubSource(r.Context(), db.CreateHubSourceParams{
+	ctx := r.Context()
+	tx, err := h.TxStarter.Begin(ctx)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to create source")
+		return
+	}
+	defer tx.Rollback(ctx)
+	qtx := h.Queries.WithTx(tx)
+	source, err := qtx.CreateHubSource(ctx, db.CreateHubSourceParams{
 		WorkspaceID:         parseUUID(workspaceID),
 		Name:                name,
 		Type:                req.Type,
@@ -263,6 +368,21 @@ func (h *Handler) CreateHubSource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to create source")
+		return
+	}
+	if sealed != nil {
+		source, err = qtx.SetHubSourceCredential(ctx, db.SetHubSourceCredentialParams{
+			ID:                   source.ID,
+			WorkspaceID:          source.WorkspaceID,
+			CredentialCiphertext: sealed,
+		})
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to create source")
+			return
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create source")
 		return
 	}
@@ -298,6 +418,14 @@ func (h *Handler) UpdateHubSource(w http.ResponseWriter, r *http.Request) {
 	}
 
 	name, rawURL, config, enabled, interval := source.Name, source.Url, hubSourceConfig(source.Config), source.Enabled, source.AutoSyncIntervalSec
+	if req.Credential != nil && req.ClearCredential {
+		writeError(w, http.StatusBadRequest, "credential and clear_credential cannot be sent together")
+		return
+	}
+	if req.Credential != nil && strings.TrimSpace(*req.Credential) == "" {
+		writeError(w, http.StatusBadRequest, "credential must not be empty; send clear_credential to remove it")
+		return
+	}
 	if req.Name != nil {
 		name = *req.Name
 	}
@@ -324,7 +452,28 @@ func (h *Handler) UpdateHubSource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updated, err := h.Queries.UpdateHubSource(r.Context(), db.UpdateHubSourceParams{
+	// The credential is changed in the same transaction as the source. A token
+	// is pinned to its source's host, so a move to another host drops the stored
+	// one unless the request brings a new one.
+	credentialChanged := req.ClearCredential || (hubSourceHost(rawURL) != hubSourceHost(source.Url) && len(source.CredentialCiphertext) > 0)
+	var sealed []byte
+	if req.Credential != nil {
+		var ok bool
+		if sealed, ok = h.sealHubCredential(w, source.Type, *req.Credential); !ok {
+			return
+		}
+		credentialChanged = true
+	}
+
+	ctx := r.Context()
+	tx, err := h.TxStarter.Begin(ctx)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to update source")
+		return
+	}
+	defer tx.Rollback(ctx)
+	qtx := h.Queries.WithTx(tx)
+	updated, err := qtx.UpdateHubSource(ctx, db.UpdateHubSourceParams{
 		ID:                  source.ID,
 		WorkspaceID:         source.WorkspaceID,
 		Name:                name,
@@ -338,6 +487,21 @@ func (h *Handler) UpdateHubSource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to update source")
+		return
+	}
+	if credentialChanged {
+		updated, err = qtx.SetHubSourceCredential(ctx, db.SetHubSourceCredentialParams{
+			ID:                   source.ID,
+			WorkspaceID:          source.WorkspaceID,
+			CredentialCiphertext: sealed,
+		})
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to update source")
+			return
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to update source")
 		return
 	}

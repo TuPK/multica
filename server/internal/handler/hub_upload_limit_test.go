@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"crypto/rand"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -51,4 +52,49 @@ func TestHubImportPreviewUploadOverTheArchiveCapIs413(t *testing.T) {
 	wayOver := bytes.Repeat([]byte("a"), int(archiveCap)+(256<<10))
 	testutil.Call(t, testHandler.PreviewHubImport, hubUploadRequest(t, wayOver)).
 		Want(http.StatusRequestEntityTooLarge)
+}
+
+// HUB_MAX_UPLOAD_BYTES replaces the archive cap of the upload preview: a zip over
+// the configured cap is refused and one under it is accepted, whatever the default is.
+func TestHubImportPreviewUploadCapFollowsHubMaxUploadBytes(t *testing.T) {
+	setupHubImportTest(t)
+	prev := testHandler.HubMaxUploadBytes
+	t.Cleanup(func() { testHandler.HubMaxUploadBytes = prev })
+
+	const cap = 64 << 10
+	testHandler.HubMaxUploadBytes = cap
+
+	// Incompressible content, so the archive is about as large as the bytes given.
+	noise := make([]byte, cap+(16<<10))
+	if _, err := rand.Read(noise); err != nil {
+		t.Fatalf("rand: %v", err)
+	}
+	testutil.Call(t, testHandler.PreviewHubImport, hubUploadRequest(t, noise)).
+		Want(http.StatusRequestEntityTooLarge)
+
+	small := hubImportZip(t, map[string]string{
+		"SKILL.md": "---\nname: small-cap\ndescription: Fits under the raised cap.\n---\n\nBody.\n",
+	})
+	if len(small) >= cap {
+		t.Fatalf("test archive is %d bytes, expected under %d", len(small), cap)
+	}
+	testutil.Call(t, testHandler.PreviewHubImport, hubUploadRequest(t, small)).Want(http.StatusOK)
+}
+
+// A cap raised above the default admits an archive the default would refuse.
+func TestHubImportPreviewUploadCapCanBeRaisedAboveTheDefault(t *testing.T) {
+	setupHubImportTest(t)
+	prev := testHandler.HubMaxUploadBytes
+	t.Cleanup(func() { testHandler.HubMaxUploadBytes = prev })
+
+	raised := hub.DefaultLimits.MaxArchiveBytes + (1 << 20)
+	testHandler.HubMaxUploadBytes = raised
+
+	// Over the default cap, so refused by the default; under the raised cap, so the
+	// body is read and the content is judged as an archive (not as too large).
+	big := bytes.Repeat([]byte("z"), int(hub.DefaultLimits.MaxArchiveBytes)+1)
+	rec := testutil.Call(t, testHandler.PreviewHubImport, hubUploadRequest(t, big))
+	if rec.Code == http.StatusRequestEntityTooLarge {
+		t.Fatalf("an archive under the raised cap was refused as too large")
+	}
 }

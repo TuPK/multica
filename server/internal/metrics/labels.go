@@ -34,6 +34,7 @@ const (
 	labelOp           = "op"
 	labelGate         = "gate"
 	labelOutcome      = "outcome"
+	labelOperation    = "operation"
 	labelStage        = "stage"
 	labelClaimPath    = "claim_path"
 )
@@ -109,6 +110,10 @@ var businessMetricLabels = map[string][]string{
 	"multica_entitlement_decision_total":               {labelGate, labelAction, labelReason},
 	"multica_entitlement_version_regression_total":     {},
 	"multica_autopilot_quota_decision_total":           {labelAction, labelSource, labelResult},
+	"multica_hub_sync_runs_total":                      {labelResult},
+	"multica_hub_import_commits_total":                 {labelKind, labelResult},
+	"multica_hub_bundle_builds_total":                  {labelResult},
+	"multica_hub_storage_errors_total":                 {labelOperation},
 }
 
 var forbiddenMetricLabels = map[string]struct{}{

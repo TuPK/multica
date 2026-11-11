@@ -192,9 +192,10 @@ func RegistryIndexURL(base string) string {
 	return strings.TrimSuffix(base, "/") + "/" + registryIndexFile
 }
 
-// FetchRegistry downloads and parses an index through the SafeFetcher.
-func FetchRegistry(ctx context.Context, f *SafeFetcher, indexURL string) (*Registry, error) {
-	data, _, err := f.Get(ctx, indexURL, MaxRegistryBytes)
+// FetchRegistry downloads and parses an index through the SafeFetcher. cred is
+// sent only to the index host, the same as any other source request.
+func FetchRegistry(ctx context.Context, f *SafeFetcher, indexURL string, cred Credential) (*Registry, error) {
+	data, _, err := f.GetAuthorized(ctx, indexURL, MaxRegistryBytes, cred)
 	if err != nil {
 		return nil, err
 	}

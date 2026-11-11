@@ -95,6 +95,10 @@ type BusinessMetrics struct {
 	// PR3 funnel / community / commercial counters. See business_events.go
 	// for the field-level docs and labels.
 	events *businessEventMetrics
+
+	// hub covers the skill and plugin hub's sync, import, bundle and storage
+	// paths. See hub.go.
+	hub *hubMetrics
 }
 
 func NewBusinessMetrics() *BusinessMetrics {
@@ -311,6 +315,7 @@ func NewBusinessMetrics() *BusinessMetrics {
 		}, metricLabels("multica_issue_metadata_mutation_duration_seconds")),
 		activeTasks: map[string]activeTaskLabels{},
 		events:      newBusinessEventMetrics(),
+		hub:         newHubMetrics(),
 	}
 	m.prewarmFailureReasons()
 	m.prewarmClaimDecisions()
@@ -368,7 +373,7 @@ func (m *BusinessMetrics) Collectors() []prometheus.Collector {
 		m.agentRuntimeLookup,
 		m.issueMetadataMutation,
 		m.issueMetadataMutationDuration,
-	}, m.events.collectors()...)
+	}, append(m.events.collectors(), m.hub.collectors()...)...)
 }
 
 // RecordIssueMetadataMutation records the UPDATE and, for a no-row result, its

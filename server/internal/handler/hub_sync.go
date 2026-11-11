@@ -20,6 +20,7 @@ import (
 
 	"github.com/multica-ai/multica/server/internal/hub"
 	"github.com/multica-ai/multica/server/internal/logger"
+	"github.com/multica-ai/multica/server/internal/metrics"
 	skillpkg "github.com/multica-ai/multica/server/internal/skill"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -146,7 +147,16 @@ func hubPluginFiles(manifest []byte, files []hub.FileEntry) []hub.FileEntry {
 // hubFetchRemote refetches an item's bundle from its source, the way the import
 // fetched it. sourceRef is the ref the item was fetched at.
 func (h *Handler) hubFetchRemote(ctx context.Context, source db.HubSource, sourceRef string) (hubRemote, error) {
-	importer, ref, err := hubImporterFor(hub.SourceRef{Type: hub.SourceType(source.Type), URL: source.Url, Ref: sourceRef})
+	cred, err := h.hubSourceCredential(source)
+	if err != nil {
+		return hubRemote{}, err
+	}
+	importer, ref, err := hubImporterFor(hub.SourceRef{
+		Type:       hub.SourceType(source.Type),
+		URL:        source.Url,
+		Ref:        sourceRef,
+		Credential: cred,
+	})
 	if err != nil {
 		return hubRemote{}, err
 	}
@@ -221,6 +231,7 @@ func (h *Handler) hubBaseline(ctx context.Context, item db.HubItem) ([]hub.FileE
 	}
 	rc, err := h.HubStorage.GetReader(ctx, item.BundleKey)
 	if err != nil {
+		h.recordHubStorageError(metrics.HubStorageOpGet, err)
 		slog.Warn("hub: snapshot unreadable; comparing with the remote instead", "item_id", uuidToString(item.ID), "error", err)
 		return nil, false
 	}
@@ -298,6 +309,8 @@ func hubCheckMessage(ctx context.Context, err error) string {
 		return "the item no longer exists"
 	case errors.Is(err, errHubKindChanged):
 		return err.Error()
+	case errors.Is(err, errHubCredentialUnavailable):
+		return "the source's saved credential cannot be used; the Hub secret key is not configured or has changed"
 	}
 	_, msg := hubImportFailure(ctx, err)
 	return msg
@@ -328,6 +341,18 @@ type HubSourceSyncResponse struct {
 // with bounded concurrency and an overall deadline. One item's failure is its own
 // error line; it never stops the others. The caller holds the source's sync lock.
 func (h *Handler) syncHubSourceItems(ctx context.Context, source db.HubSource) (HubSourceSyncResponse, error) {
+	start := time.Now()
+	resp, err := h.runHubSourceSync(ctx, source)
+	if err != nil {
+		h.Metrics.RecordHubSync(metrics.HubResultError, time.Since(start), 0, 0)
+	} else {
+		h.Metrics.RecordHubSync(resp.Status, time.Since(start), resp.Checked, resp.UpdatesAvailable)
+	}
+	return resp, err
+}
+
+// runHubSourceSync is syncHubSourceItems without the metrics.
+func (h *Handler) runHubSourceSync(ctx context.Context, source db.HubSource) (HubSourceSyncResponse, error) {
 	items, err := h.Queries.ListTrackedHubItemsBySource(ctx, db.ListTrackedHubItemsBySourceParams{
 		WorkspaceID: source.WorkspaceID,
 		SourceID:    source.ID,

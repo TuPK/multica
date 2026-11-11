@@ -13,13 +13,15 @@ import (
 )
 
 // SourceRef describes where to fetch an item from. Ref and Subdir are optional;
-// SHA256 is an optional expected digest of the downloaded archive.
+// SHA256 is an optional expected digest of the downloaded archive. Credential is
+// the saved source's token, if it has one; its Host names the host it may go to.
 type SourceRef struct {
-	Type   SourceType
-	URL    string
-	Ref    string
-	Subdir string
-	SHA256 string
+	Type       SourceType
+	URL        string
+	Ref        string
+	Subdir     string
+	SHA256     string
+	Credential Credential
 }
 
 // SourceMeta is provenance recorded with an imported item. SourceRef holds the
@@ -91,7 +93,7 @@ func (g *GitHubImporter) Fetch(ctx context.Context, f *SafeFetcher, ref SourceRe
 	)
 	for _, candidate := range candidates {
 		zipURL := g.codeloadBase + "/" + url.PathEscape(owner) + "/" + url.PathEscape(repo) + "/zip/" + escapeRefPath(candidate)
-		body, _, err := f.Get(ctx, zipURL, g.lim.MaxArchiveBytes)
+		body, _, err := f.GetAuthorized(ctx, zipURL, g.lim.MaxArchiveBytes, g.credentialFor(ref))
 		if err == nil {
 			data, fetched = body, candidate
 			break
@@ -117,6 +119,17 @@ func (g *GitHubImporter) Fetch(ctx context.Context, f *SafeFetcher, ref SourceRe
 		return nil, SourceMeta{}, err
 	}
 	return bundle, SourceMeta{SourceURL: ref.URL, SourceRef: fetched, Digest: Digest(bundle)}, nil
+}
+
+// credentialFor is the credential a GitHub archive request carries. The archive
+// is served by the codeload host, not by github.com, so that is the host the
+// token is pinned to.
+func (g *GitHubImporter) credentialFor(ref SourceRef) Credential {
+	host := ""
+	if u, err := url.Parse(g.codeloadBase); err == nil {
+		host = u.Host
+	}
+	return Credential{Host: host, Token: ref.Credential.Token}
 }
 
 // parseGitHubURL accepts github.com URLs only. Any other host is refused, so
@@ -170,7 +183,7 @@ func NewURLZipImporter() Importer {
 
 // Fetch downloads the archive, verifies SHA256 when given, and extracts it.
 func (u *URLZipImporter) Fetch(ctx context.Context, f *SafeFetcher, ref SourceRef) (*Bundle, SourceMeta, error) {
-	data, _, err := f.Get(ctx, ref.URL, u.lim.MaxArchiveBytes)
+	data, _, err := f.GetAuthorized(ctx, ref.URL, u.lim.MaxArchiveBytes, ref.Credential)
 	if err != nil {
 		return nil, SourceMeta{}, err
 	}

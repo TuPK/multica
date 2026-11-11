@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/netip"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -144,6 +145,22 @@ func allowedOrigins() []string {
 // MULTICA_APP_URL and falls back to FRONTEND_ORIGIN, matching how the backend
 // resolves the app URL elsewhere (handler.daemonSetupURLsFromEnv) and the CLI
 // login flow (cmd/multica tryResolveAppURL). Empty when neither is set.
+// hubMaxUploadBytesFromEnv reads HUB_MAX_UPLOAD_BYTES, the archive cap for a zip
+// uploaded to the Hub import preview. Unset, empty or not a positive number, it is
+// zero, which keeps the default (16 MiB).
+func hubMaxUploadBytesFromEnv() int64 {
+	raw := strings.TrimSpace(os.Getenv("HUB_MAX_UPLOAD_BYTES"))
+	if raw == "" {
+		return 0
+	}
+	n, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || n <= 0 {
+		slog.Warn("hub: HUB_MAX_UPLOAD_BYTES must be a positive byte count; using the default", "value", raw)
+		return 0
+	}
+	return n
+}
+
 func appURLFromEnv() string {
 	if v := strings.TrimRight(strings.TrimSpace(os.Getenv("MULTICA_APP_URL")), "/"); v != "" {
 		return v
@@ -456,6 +473,19 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	h := handler.New(queries, pool, hub, bus, emailSvc, store, cfSigner, analyticsClient, signupConfig, daemonHub)
 	// The Hub has its own store (HUB_S3_*), falling back to the attachment store.
 	h.HubStorage = storage.HubStorageFromEnv(store)
+	h.HubMaxUploadBytes = hubMaxUploadBytesFromEnv()
+	// Source credentials get their own key, like the other integration secrets.
+	// Without it a credential is refused (409 secrets_not_configured), never stored in plaintext.
+	if hubKey, err := secretbox.LoadKey("MULTICA_HUB_SECRET_KEY"); err == nil {
+		box, err := secretbox.New(hubKey)
+		if err != nil {
+			slog.Error("hub: secretbox.New failed; source credentials disabled", "error", err)
+		} else {
+			h.HubSecrets = box
+		}
+	} else {
+		slog.Info("Hub source credentials disabled (MULTICA_HUB_SECRET_KEY not set)")
+	}
 	h.BriefPush = service.NewBriefPushService(queries, appURLFromEnv())
 	invitationRateLimits := handler.DefaultInvitationRateLimits()
 	invitationRateLimits.Actor.Limit = envNonNegativeInt("RATE_LIMIT_INVITATION_ACTOR_10M", invitationRateLimits.Actor.Limit)
@@ -2742,6 +2772,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Get("/sources", h.ListHubSources)
 				r.Get("/items", h.ListHubItems)
 				r.Route("/items/{kind}/{id}", func(r chi.Router) {
+					r.Get("/", h.GetHubItem)
+					r.Put("/files", h.SaveHubItemFile)
 					r.Get("/bundle", h.GetHubItemBundle)
 					r.Get("/bundle/download", h.DownloadHubItemBundle)
 					r.Get("/update", h.GetHubItemUpdate)

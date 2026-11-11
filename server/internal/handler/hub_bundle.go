@@ -20,6 +20,7 @@ import (
 
 	"github.com/multica-ai/multica/server/internal/hub"
 	"github.com/multica-ai/multica/server/internal/logger"
+	"github.com/multica-ai/multica/server/internal/metrics"
 	skillpkg "github.com/multica-ai/multica/server/internal/skill"
 	"github.com/multica-ai/multica/server/internal/storage"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -84,6 +85,7 @@ func (h *Handler) DownloadHubItemBundle(w http.ResponseWriter, r *http.Request) 
 	ctx := r.Context()
 	rc, err := h.HubStorage.GetReader(ctx, item.BundleKey)
 	if err != nil {
+		h.recordHubStorageError(metrics.HubStorageOpGet, err)
 		var noSuchKey *types.NoSuchKey
 		if errors.Is(err, fs.ErrNotExist) || errors.As(err, &noSuchKey) {
 			writeError(w, http.StatusNotFound, "bundle not found")
@@ -300,6 +302,17 @@ func (h *Handler) currentHubBundle(ctx context.Context, ws, user pgtype.UUID, it
 // requests race on a first build, the first one wins and the other serves what was
 // recorded. When replace is true the record is overwritten.
 func (h *Handler) recordHubBundle(ctx context.Context, ws, user pgtype.UUID, item db.HubItem, local hubLocal, replace bool) (db.HubItem, error) {
+	recorded, err := h.recordHubBundleOnce(ctx, ws, user, item, local, replace)
+	result := metrics.HubResultOK
+	if err != nil {
+		result = metrics.HubResultError
+	}
+	h.Metrics.RecordHubBundleBuild(result)
+	return recorded, err
+}
+
+// recordHubBundleOnce builds an item's bundle, stores it and records it on the item.
+func (h *Handler) recordHubBundleOnce(ctx context.Context, ws, user pgtype.UUID, item db.HubItem, local hubLocal, replace bool) (db.HubItem, error) {
 	bundle := &hub.Bundle{Files: local.files}
 	for _, f := range local.files {
 		bundle.TotalSize += f.Size
@@ -311,6 +324,7 @@ func (h *Handler) recordHubBundle(ctx context.Context, ws, user pgtype.UUID, ite
 	digest := hub.Digest(bundle)
 	key := hubBundleKey(uuidToString(ws), item.Kind, uuidToString(item.RefID), digest)
 	if _, err := h.HubStorage.Upload(ctx, key, zipBytes, "application/zip", ""); err != nil {
+		h.recordHubStorageError(metrics.HubStorageOpPut, err)
 		return db.HubItem{}, fmt.Errorf("store bundle: %w", err)
 	}
 
@@ -393,6 +407,19 @@ func hubPluginBundleFiles(storedManifest []byte, rows []db.ListHubPluginVersionF
 
 func bundleFileEntry(path string, content []byte) hub.FileEntry {
 	return hub.FileEntry{Path: path, Size: int64(len(content)), Content: content}
+}
+
+// recordHubStorageError counts a failed Hub object-store operation. A missing
+// object is an answer, not a failure of the store, so it is not counted.
+func (h *Handler) recordHubStorageError(operation string, err error) {
+	if err == nil || errors.Is(err, fs.ErrNotExist) {
+		return
+	}
+	var noSuchKey *types.NoSuchKey
+	if errors.As(err, &noSuchKey) {
+		return
+	}
+	h.Metrics.RecordHubStorageError(operation)
 }
 
 // deleteHubObjects removes a deleted workspace's bundles and staged previews

@@ -181,7 +181,7 @@ func TestFetchRegistry(t *testing.T) {
 	defer srv.Close()
 
 	f := NewSafeFetcher(FetcherOptions{AllowPrivate: true})
-	reg, err := FetchRegistry(context.Background(), f, RegistryIndexURL(srv.URL+"/hub"))
+	reg, err := FetchRegistry(context.Background(), f, RegistryIndexURL(srv.URL+"/hub"), Credential{})
 	if err != nil {
 		t.Fatalf("FetchRegistry: %v", err)
 	}
@@ -189,11 +189,11 @@ func TestFetchRegistry(t *testing.T) {
 		t.Fatalf("registry = %+v", reg)
 	}
 
-	if _, err := FetchRegistry(context.Background(), f, srv.URL+"/nope/hub-index.json"); !errors.Is(err, ErrNotFound) {
+	if _, err := FetchRegistry(context.Background(), f, srv.URL+"/nope/hub-index.json", Credential{}); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("missing index err = %v, want ErrNotFound", err)
 	}
 	blocked := NewSafeFetcher(FetcherOptions{})
-	if _, err := FetchRegistry(context.Background(), blocked, srv.URL+"/hub/hub-index.json"); !errors.Is(err, ErrBlockedAddress) {
+	if _, err := FetchRegistry(context.Background(), blocked, srv.URL+"/hub/hub-index.json", Credential{}); !errors.Is(err, ErrBlockedAddress) {
 		t.Fatalf("loopback index err = %v, want ErrBlockedAddress", err)
 	}
 }

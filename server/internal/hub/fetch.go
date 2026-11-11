@@ -164,6 +164,22 @@ func (f *SafeFetcher) HTTPClient() *http.Client {
 // Content-Length first and then while streaming, so nothing above the cap is
 // buffered.
 func (f *SafeFetcher) Get(ctx context.Context, rawURL string, maxBytes int64) ([]byte, string, error) {
+	return f.GetAuthorized(ctx, rawURL, maxBytes, Credential{})
+}
+
+// Credential is a bearer token for one host. The token is sent only to requests
+// for Host, and a redirect that leaves Host drops it. The zero value sends nothing.
+type Credential struct {
+	// Host is the host[:port] the token may be sent to, compared case-insensitively.
+	Host string
+	// Token is the bearer token. It is never part of an error or a log line.
+	Token string
+}
+
+// GetAuthorized is Get with a bearer credential. The Authorization header is set
+// only when the request's host matches cred.Host, and it is removed from any
+// redirect that moves to another host, including a subdomain of it.
+func (f *SafeFetcher) GetAuthorized(ctx context.Context, rawURL string, maxBytes int64, cred Credential) ([]byte, string, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, "", fmt.Errorf("%w: %v", ErrBadURL, err)
@@ -182,8 +198,15 @@ func (f *SafeFetcher) Get(ctx context.Context, rawURL string, maxBytes int64) ([
 		return nil, "", fmt.Errorf("%w: %v", ErrBadURL, err)
 	}
 	req.Header.Set("User-Agent", fetchUserAgent)
+	client := f.client
+	if cred.Token != "" {
+		if strings.EqualFold(u.Host, cred.Host) {
+			req.Header.Set("Authorization", "Bearer "+cred.Token)
+		}
+		client = f.clientPinnedTo(cred.Host)
+	}
 
-	resp, err := f.client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, "", fmt.Errorf("hub: fetch %s: %w", u.Redacted(), err)
 	}
@@ -206,6 +229,22 @@ func (f *SafeFetcher) Get(ctx context.Context, rawURL string, maxBytes int64) ([
 		return nil, "", fmt.Errorf("%w: %s exceeds %d bytes", ErrTooLarge, resp.Request.URL.Redacted(), maxBytes)
 	}
 	return body, resp.Request.URL.String(), nil
+}
+
+// clientPinnedTo returns a copy of the fetcher's client whose redirects drop the
+// Authorization header once they leave host. The copy shares the transport and
+// the redirect cap. Go's own redirect rule forwards Authorization to subdomains
+// of the original host, which is wider than the token is allowed to go.
+func (f *SafeFetcher) clientPinnedTo(host string) *http.Client {
+	c := *f.client
+	base := f.client.CheckRedirect
+	c.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if !strings.EqualFold(req.URL.Host, host) {
+			req.Header.Del("Authorization")
+		}
+		return base(req, via)
+	}
+	return &c
 }
 
 // dialContext resolves the host, drops blocked addresses, and dials the first

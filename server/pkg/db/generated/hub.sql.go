@@ -34,7 +34,7 @@ INSERT INTO hub_source (
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8
 )
-RETURNING id, workspace_id, name, type, url, config, enabled, auto_sync_interval_sec, last_sync_at, last_sync_status, last_sync_error, created_by, created_at, updated_at
+RETURNING id, workspace_id, name, type, url, config, enabled, auto_sync_interval_sec, last_sync_at, last_sync_status, last_sync_error, created_by, created_at, updated_at, credential_ciphertext
 `
 
 type CreateHubSourceParams struct {
@@ -75,6 +75,7 @@ func (q *Queries) CreateHubSource(ctx context.Context, arg CreateHubSourceParams
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CredentialCiphertext,
 	)
 	return i, err
 }
@@ -211,8 +212,33 @@ func (q *Queries) GetHubItemByRef(ctx context.Context, arg GetHubItemByRefParams
 	return i, err
 }
 
+const getHubSkillFileByPath = `-- name: GetHubSkillFileByPath :one
+SELECT id, skill_id, path, content, created_at, updated_at FROM skill_file
+WHERE skill_id = $1 AND path = $2
+`
+
+type GetHubSkillFileByPathParams struct {
+	SkillID pgtype.UUID `json:"skill_id"`
+	Path    string      `json:"path"`
+}
+
+// A supporting file of a skill by its path, for the optimistic-lock check of a save.
+func (q *Queries) GetHubSkillFileByPath(ctx context.Context, arg GetHubSkillFileByPathParams) (SkillFile, error) {
+	row := q.db.QueryRow(ctx, getHubSkillFileByPath, arg.SkillID, arg.Path)
+	var i SkillFile
+	err := row.Scan(
+		&i.ID,
+		&i.SkillID,
+		&i.Path,
+		&i.Content,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getHubSourceInWorkspace = `-- name: GetHubSourceInWorkspace :one
-SELECT id, workspace_id, name, type, url, config, enabled, auto_sync_interval_sec, last_sync_at, last_sync_status, last_sync_error, created_by, created_at, updated_at FROM hub_source
+SELECT id, workspace_id, name, type, url, config, enabled, auto_sync_interval_sec, last_sync_at, last_sync_status, last_sync_error, created_by, created_at, updated_at, credential_ciphertext FROM hub_source
 WHERE id = $1 AND workspace_id = $2
 `
 
@@ -239,6 +265,7 @@ func (q *Queries) GetHubSourceInWorkspace(ctx context.Context, arg GetHubSourceI
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CredentialCiphertext,
 	)
 	return i, err
 }
@@ -331,7 +358,7 @@ func (q *Queries) ListHubItemsByWorkspace(ctx context.Context, workspaceID pgtyp
 const listHubSourcesWithItemCount = `-- name: ListHubSourcesWithItemCount :many
 
 SELECT
-    hs.id, hs.workspace_id, hs.name, hs.type, hs.url, hs.config, hs.enabled, hs.auto_sync_interval_sec, hs.last_sync_at, hs.last_sync_status, hs.last_sync_error, hs.created_by, hs.created_at, hs.updated_at,
+    hs.id, hs.workspace_id, hs.name, hs.type, hs.url, hs.config, hs.enabled, hs.auto_sync_interval_sec, hs.last_sync_at, hs.last_sync_status, hs.last_sync_error, hs.created_by, hs.created_at, hs.updated_at, hs.credential_ciphertext,
     (SELECT count(*) FROM hub_item hi
         WHERE hi.workspace_id = hs.workspace_id AND hi.source_id = hs.id)::bigint AS item_count
 FROM hub_source hs
@@ -340,21 +367,22 @@ ORDER BY hs.created_at ASC, hs.id ASC
 `
 
 type ListHubSourcesWithItemCountRow struct {
-	ID                  pgtype.UUID        `json:"id"`
-	WorkspaceID         pgtype.UUID        `json:"workspace_id"`
-	Name                string             `json:"name"`
-	Type                string             `json:"type"`
-	Url                 string             `json:"url"`
-	Config              []byte             `json:"config"`
-	Enabled             bool               `json:"enabled"`
-	AutoSyncIntervalSec int32              `json:"auto_sync_interval_sec"`
-	LastSyncAt          pgtype.Timestamptz `json:"last_sync_at"`
-	LastSyncStatus      string             `json:"last_sync_status"`
-	LastSyncError       string             `json:"last_sync_error"`
-	CreatedBy           pgtype.UUID        `json:"created_by"`
-	CreatedAt           pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
-	ItemCount           int64              `json:"item_count"`
+	ID                   pgtype.UUID        `json:"id"`
+	WorkspaceID          pgtype.UUID        `json:"workspace_id"`
+	Name                 string             `json:"name"`
+	Type                 string             `json:"type"`
+	Url                  string             `json:"url"`
+	Config               []byte             `json:"config"`
+	Enabled              bool               `json:"enabled"`
+	AutoSyncIntervalSec  int32              `json:"auto_sync_interval_sec"`
+	LastSyncAt           pgtype.Timestamptz `json:"last_sync_at"`
+	LastSyncStatus       string             `json:"last_sync_status"`
+	LastSyncError        string             `json:"last_sync_error"`
+	CreatedBy            pgtype.UUID        `json:"created_by"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+	CredentialCiphertext []byte             `json:"credential_ciphertext"`
+	ItemCount            int64              `json:"item_count"`
 }
 
 // Skill / plugin hub: sources and the items they produced. Every query filters
@@ -384,6 +412,7 @@ func (q *Queries) ListHubSourcesWithItemCount(ctx context.Context, workspaceID p
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CredentialCiphertext,
 			&i.ItemCount,
 		); err != nil {
 			return nil, err
@@ -483,6 +512,44 @@ func (q *Queries) ListSkillsInUseByIDs(ctx context.Context, arg ListSkillsInUseB
 	return items, nil
 }
 
+const setHubSourceCredential = `-- name: SetHubSourceCredential :one
+UPDATE hub_source SET
+    credential_ciphertext = $1,
+    updated_at = now()
+WHERE id = $2 AND workspace_id = $3
+RETURNING id, workspace_id, name, type, url, config, enabled, auto_sync_interval_sec, last_sync_at, last_sync_status, last_sync_error, created_by, created_at, updated_at, credential_ciphertext
+`
+
+type SetHubSourceCredentialParams struct {
+	CredentialCiphertext []byte      `json:"credential_ciphertext"`
+	ID                   pgtype.UUID `json:"id"`
+	WorkspaceID          pgtype.UUID `json:"workspace_id"`
+}
+
+// Stores a source's sealed credential, or clears it with a NULL ciphertext.
+func (q *Queries) SetHubSourceCredential(ctx context.Context, arg SetHubSourceCredentialParams) (HubSource, error) {
+	row := q.db.QueryRow(ctx, setHubSourceCredential, arg.CredentialCiphertext, arg.ID, arg.WorkspaceID)
+	var i HubSource
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.Type,
+		&i.Url,
+		&i.Config,
+		&i.Enabled,
+		&i.AutoSyncIntervalSec,
+		&i.LastSyncAt,
+		&i.LastSyncStatus,
+		&i.LastSyncError,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CredentialCiphertext,
+	)
+	return i, err
+}
+
 const updateHubSource = `-- name: UpdateHubSource :one
 UPDATE hub_source SET
     name = $3,
@@ -492,7 +559,7 @@ UPDATE hub_source SET
     auto_sync_interval_sec = $7,
     updated_at = now()
 WHERE id = $1 AND workspace_id = $2
-RETURNING id, workspace_id, name, type, url, config, enabled, auto_sync_interval_sec, last_sync_at, last_sync_status, last_sync_error, created_by, created_at, updated_at
+RETURNING id, workspace_id, name, type, url, config, enabled, auto_sync_interval_sec, last_sync_at, last_sync_status, last_sync_error, created_by, created_at, updated_at, credential_ciphertext
 `
 
 type UpdateHubSourceParams struct {
@@ -531,6 +598,7 @@ func (q *Queries) UpdateHubSource(ctx context.Context, arg UpdateHubSourceParams
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CredentialCiphertext,
 	)
 	return i, err
 }
@@ -636,7 +704,7 @@ ON CONFLICT (workspace_id, type, url) DO UPDATE SET
     enabled = EXCLUDED.enabled,
     auto_sync_interval_sec = EXCLUDED.auto_sync_interval_sec,
     updated_at = now()
-RETURNING id, workspace_id, name, type, url, config, enabled, auto_sync_interval_sec, last_sync_at, last_sync_status, last_sync_error, created_by, created_at, updated_at
+RETURNING id, workspace_id, name, type, url, config, enabled, auto_sync_interval_sec, last_sync_at, last_sync_status, last_sync_error, created_by, created_at, updated_at, credential_ciphertext
 `
 
 type UpsertHubSourceByTypeURLParams struct {
@@ -679,6 +747,7 @@ func (q *Queries) UpsertHubSourceByTypeURL(ctx context.Context, arg UpsertHubSou
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CredentialCiphertext,
 	)
 	return i, err
 }
