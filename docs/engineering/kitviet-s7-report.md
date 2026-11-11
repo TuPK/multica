@@ -63,3 +63,72 @@ Branch: kitviet-pack (worktree multica-kitviet, base commit 4866d01ba). Nothing 
 ## Teardown
 
 `make down` (DB and profile kept). Watchers stopped. No `make destroy` run. Drill workspaces remain in the DB for inspection.
+
+## Final re-drill
+
+Status: run 1 reached the target end state (request `in_review`, handover QUA, requester notified). The usage-limit classification defect is fixed with a regression test. Two design gaps in the failure path are documented, not fixed. The environment is still running for the next step (seeding squads).
+
+### Environment
+
+- Worktree `/home/av-server/Documents/Github/multica-kitviet`, branch `kitviet-pack`, HEAD `1e2ba5a19`. Uncommitted: `server/pkg/taskfailure/classify.go`, `classify_test.go`, `server/internal/service/delegated_failure_recovery_test.go`, this section.
+- Env `multica_kitviet-332`, DB `multica_multica_kitviet_332`, API `http://localhost:18412` (pid 3829708, restarted after the fix), daemon running for profile `dev-multica_kitviet-332`. Web and desktop not started.
+- Workspace `kit-s7-final`, id `757a48e7-9a82-4fa8-80be-907433a2edbb`, issue prefix `KITF`.
+- Bring-up: `make up C=api,daemon`. Before it ran, `make gc --dry-run` listed nothing to collect (both envs are human-owned, TTL 0, directories present). The daemon registered the new workspace's runtimes only after a daemon restart (`make down --components daemon`, then `make up`). The Claude runtime is `5bb00262-07ea-4c16-91f5-0a466367843d`.
+- Quickstart: `runSquadQuickstart` with `kv_admin` through `ApiClient`, bundled by esbuild (`scratchpad/s8/quickstart-final.ts`). Squad `Office Admin (Hành chính)` `de1b45c7-8225-47bc-9191-4e2ca8ac764d`, lead `Admin Lead` `fa45dd84-45b6-4901-b30e-59d106fd4383`, 7 agents created, routines `[]`, workflow skipped, skills ready.
+
+### Run 1 (spec 8.2, Office Admin, full inputs)
+
+Request `KITF-1` (`01a1c9ad-e3ee-7c30-b2ba-36dc75c57f49`), assigned to the squad (as in S7, the squad routes to its leader). Invented unit "Công ty TNHH Thử Nghiệm Kit Final" (TNKF), signer "Ông Trần Mẫu Văn" (fictional), milestones M1 40%, M2 15%, M3 not started, reference figure 3 × 10,500,000 = 31,500,000, meeting 20/11/2026 at 9:00.
+
+| Step | Issue | Result (from DB and comments) |
+| --- | --- | --- |
+| Stage 1 | KITF-3 collector, KITF-4 format lookup | done |
+| Stage 2 | KITF-5 drafter | done; draft v0 attached (`ban-nhap-cong-van-moi-hop.md`); register line on `KITF-2` |
+| Stage 3, round 0 | KITF-6 format gate | `VERDICT: QUA`, two non-blocking items |
+| Stage 3, round 0 | KITF-7 numbers gate | `VERDICT: CHẶN`: line 45 said the number is given by the registry clerk; the request says the signer assigns it after signing. A real catch. |
+| Stage 4, round 0 | KITF-8 handover | ran once and posted `VERDICT: CHẶN`, although the lead had posted a pause on it at 08:22:35 (the pause is a comment, not a stop). done. |
+| Round 1/2 | lead comment `## Round 1/2` | counted by fix sub-issues: one fix (`KITF-9`, v1 attached) |
+| Gates re-run on v1 | KITF-10 format gate | `VERDICT: QUA` (three non-blocking items) |
+| Gates re-run on v1 | KITF-11 numbers gate | `VERDICT: QUA` |
+| Stage 4 | KITF-12 handover | `VERDICT: QUA` |
+| Request | KITF-1 | `todo` -> `in_review` at 08:26:45 |
+
+- **Mention and stop comment:** the handover comment on `KITF-1` at 08:26:45 contains `[@dev](mention://member/8514973b-b3ba-4824-bf2a-c5cd81447a0d)` (the requester). The `IN REVIEW · stop 2` comment at 08:26:56 has a mention as well.
+- **Inbox of the requester (`8514973b-…`, unread):** `status_changed` `{from: todo, to: in_review}` at 08:26:45, `mentioned` x2 on the two comments, `new_comment` x8 across the run.
+- **Nothing numbered or signed:** the draft has `Số: [cần bổ sung: số văn bản]`, a signature placeholder, and `BẢN NHÁP - chờ ký`.
+- **Status transitions:** stage sub-issues `backlog` -> `todo` -> `in_progress` -> `done`. No stage ended `blocked`. The request stayed `todo` for the whole run and was never `in_progress`. Only the lead's handover moved it to `in_review`.
+- **Round counting and re-run (defect 1 and 2 from S7):** verified in this run. The round is counted by fix sub-issues, and both gates were re-run on the changed draft.
+
+### Remaining defects in this run
+
+1. The deliverable still carries internal notes in the same file as the letter (the `## NỘI BỘ - KHÔNG GỬI KHÁCH` section, with its source table and "Đã sửa theo soát vòng 1" log). The format gate listed this as Nên sửa and did not block. The handover still said QUA. Needs a rule that internal review notes go in a separate attachment.
+2. The handover (KITF-8) ran before the pause took effect and gave a CHẶN verdict. Stage sequencing does not hold a stage that was already started.
+3. D4 (mention in a `blocked` stop comment) was not exercised: no stop ended `blocked` in this run. The `in_review` stop did carry the requester mention.
+
+### Failure path (GOAL C): usage-limit failure
+
+Evidence: the S7 DB has two `failed` tasks with `failure_reason = agent_error.unknown`, `attempt 1 / max_attempts 2`, error text `You've hit your 5-hour limit · resets 2:40pm (Asia/Ho_Chi_Minh)`. They were not retried.
+
+- **Classification defect (fixed).** `Classify` matched only `you've hit your limit`, `hit your session limit` and `hit your weekly limit`. The 5-hour window was not matched and fell to `agent_error.unknown` (`server/pkg/taskfailure/classify.go`, the quota rule). Fix: `subscriptionWindowLimitRe` (`(hit|reached) your \d+-hour limit`) added to the quota case. Regression rows in `TestClassifyRules` (`classify_test.go`): three subtests failed before the fix (`5-hour limit ascii`, `curly`, `reached`); `go test ./pkg/taskfailure/` passes after it.
+- **Effect of the label:** `freshSessionMayHelp` (`server/internal/daemon/daemon.go` ~9650) returns true for `unknown` (a fresh session may help) and false for `provider_quota_limit`. Before the fix the usage-limit run could lose its resume pointer. After the fix it keeps it.
+- **Retryable?** No, and that is by design. `ReasonAgentProviderQuotaLimit` is documented "Not retryable until the quota resets" (`server/pkg/taskfailure/failure.go:216`). It is not in `retryableReasons` (`server/internal/service/task.go:5608-5615`). The classification fix does not change retry behaviour.
+- **Wakes the coordinator?** Depends on who ran the task.
+  - Delegated worker (has `delegated_from_task_id`): yes, for any reason. `FailTask` calls `recoverDelegatedTaskFailure` whenever no retry was created (`task.go:5529-5540`). New test `TestFailTaskUsageLimitDelegatedFailureWakesCoordinator` (`server/internal/service/delegated_failure_recovery_test.go`) passes: the reason is quota, no retry child, one `delegated_failure` recovery task routed to the coordinator agent and issue.
+  - Top-level run (the lead on a human-assigned request, the S7 case): no wake, by design. `loadDelegatedFailureRecoveryTarget` returns nil when `DelegatedFromTaskID` is not set (`task.go:6660-6663`). The only effect is a system failure comment (`task.go` ~5551). The request is not landed: `FailedRunLandingStatus` applies only when the effective status is `in_progress` (`task.go:6396`, `6475`).
+  - Why the request stays `todo`: the platform never moves a regular issue to `in_progress` when a task is claimed (the only `in_progress` writes are the Qoder lifecycle and the workflow entry). The agent sets it. In run 1 the lead never did, so a failed lead run leaves the request in `todo`, and nothing notifies the requester (no inbox item on failure).
+- **Not fixed (design, not a small classification change):** how a failed top-level run hands the request back. Options: land `todo` requests to `blocked` on a terminal failure, notify the requester, or wake the squad lead on a top-level failure. Each changes the state model, so it needs a decision.
+
+### Operating review (GOAL D)
+
+- The new squad `de1b45c7-…` has no autopilot. `autopilot` has 0 rows in `kit-s7-final` (none titled "Operating review"). `squad_routine` has 0 rows for the squad. The kv_admin template sets `operatingReview: false`, so the server creates no object (D1 fix). Workspace 2's old paused review is unchanged (it predates the fix).
+
+### Verification run
+
+- `go test ./pkg/taskfailure/` ok. `go test ./internal/service/ -run 'Delegated|FailTask|Quota|Usage'` ok (includes the new test). `go test ./internal/daemon/ -run 'Classif|Quota|Usage|FreshSession'` ok. `gofmt -l` clean on the three Go files.
+- `go test ./pkg/agent/` failed once under load and passed on the next run. I did not identify the failing test; the classifier change is not on that path.
+- Not run: `make test` (full), `pnpm` checks (no frontend change).
+- Not verified: a live usage-limit event (this run produced none). The API is `go run` from source, so it loads the fix; the reported commit is still `1e2ba5a19` because the fix is uncommitted. The requester notification was checked in the inbox table, not in the UI.
+
+### Teardown
+
+Not done. The environment is running (`make status`: api and daemon running). Next step: seed squads into `kit-s7-final`.

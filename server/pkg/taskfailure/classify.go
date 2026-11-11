@@ -55,6 +55,11 @@ const concurrentRequestLimitWitness = "concurrent request limit"
 
 var httpForbiddenCodeRe = regexp.MustCompile(`(^|[^0-9a-z])403([^0-9a-z]|$)`)
 
+// subscriptionWindowLimitRe matches Claude subscription windows named by their
+// length ("You've hit your 5-hour limit"). The generic "hit your limit" witness
+// only matches the bare phrase, so these fell through to agent_error.unknown.
+var subscriptionWindowLimitRe = regexp.MustCompile(`(hit|reached) your \d+-hour limit`)
+
 // isUsageLimit403 is shared by Classify and NormalizeDaemonReason so new and
 // old daemons land on the same reason.
 func isUsageLimit403(lower string) bool {
@@ -180,6 +185,7 @@ func Classify(rawError string) Reason {
 	// 4. Quota / billing. 402 / insufficient balance / monthly usage
 	//    limit / credits exhausted.
 	case httpQuotaCodeRe.MatchString(lower),
+		subscriptionWindowLimitRe.MatchString(lower),
 		containsAny(lower,
 			"insufficient_balance",
 			"balance is too low",

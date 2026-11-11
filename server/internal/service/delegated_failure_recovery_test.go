@@ -16,6 +16,7 @@ import (
 	dbfx "github.com/multica-ai/multica/server/internal/testutil"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/multica-ai/multica/server/pkg/taskfailure"
 )
 
 func TestPendingDelegatedFailureSweepDoesNotStarveOtherWorkspaces(t *testing.T) {
@@ -414,6 +415,53 @@ func (f *delegatedFailureFixture) pending(t *testing.T, svc *TaskService, commen
 		}
 	}
 	return false
+}
+
+// A subscription usage limit is not retryable, but a delegated worker that hits
+// one must still wake the coordinator so the request can be re-planned.
+func TestFailTaskUsageLimitDelegatedFailureWakesCoordinator(t *testing.T) {
+	f, svc := seedDelegatedFailureFixture(t)
+	ctx := context.Background()
+	failedID := f.insertWorkerTask(t, "running", "comment", 1, 2)
+	raw := "You've hit your 5-hour limit · resets 2:40pm (Asia/Ho_Chi_Minh)"
+
+	reason := taskfailure.Classify(raw).String()
+	if reason != taskfailure.ReasonAgentProviderQuotaLimit.String() {
+		t.Fatalf("Classify(usage limit) = %q, want %q", reason, taskfailure.ReasonAgentProviderQuotaLimit)
+	}
+	if _, err := svc.FailTask(ctx, failedID, raw, "", "", "", reason, false, "", ""); err != nil {
+		t.Fatalf("FailTask: %v", err)
+	}
+
+	var storedReason string
+	if err := f.pool.QueryRow(ctx, `SELECT failure_reason FROM agent_task_queue WHERE id = $1`, failedID).Scan(&storedReason); err != nil {
+		t.Fatalf("read failure reason: %v", err)
+	}
+	if storedReason != reason {
+		t.Fatalf("stored failure_reason = %q, want %q", storedReason, reason)
+	}
+
+	var retryCount, recoveryCount int
+	var recoveryAgent, recoveryIssue string
+	if err := f.pool.QueryRow(ctx, `SELECT count(*) FROM agent_task_queue WHERE parent_task_id = $1`, failedID).Scan(&retryCount); err != nil {
+		t.Fatalf("count retries: %v", err)
+	}
+	if retryCount != 0 {
+		t.Fatalf("usage-limit retry count = %d, want 0 (quota is not retryable)", retryCount)
+	}
+	if err := f.pool.QueryRow(ctx, `
+		SELECT count(*), COALESCE(max(agent_id::text), ''), COALESCE(max(issue_id::text), '')
+		FROM agent_task_queue
+		WHERE trigger_evidence_kind = 'delegated_failure' AND trigger_evidence_ref_id = $1`, failedID).
+		Scan(&recoveryCount, &recoveryAgent, &recoveryIssue); err != nil {
+		t.Fatalf("read recovery task: %v", err)
+	}
+	if recoveryCount != 1 {
+		t.Fatalf("coordinator recovery task count = %d, want 1", recoveryCount)
+	}
+	if recoveryAgent != f.coordinator || recoveryIssue != f.issueID {
+		t.Fatalf("recovery target = agent %s issue %s, want %s/%s", recoveryAgent, recoveryIssue, f.coordinator, f.issueID)
+	}
 }
 
 func TestFailTaskFinalDelegatedFailureWakesCoordinatorOnce(t *testing.T) {

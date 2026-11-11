@@ -78,6 +78,11 @@ func TestClassifyRules(t *testing.T) {
 		{"session limit ascii", "You've hit your session limit \u00b7 resets 2pm (UTC)", ReasonAgentProviderQuotaLimit},
 		{"session limit curly", "You\u2019ve hit your session limit \u00b7 resets 2pm (UTC)", ReasonAgentProviderQuotaLimit},
 		{"weekly limit", "You've hit your weekly limit \u00b7 resets Nov 3, 9am (UTC)", ReasonAgentProviderQuotaLimit},
+		// Observed in a real run (Claude CLI 2.1.312): the 5-hour window is
+		// named by its length, so the generic "hit your limit" witness misses it.
+		{"5-hour limit ascii", "You've hit your 5-hour limit \u00b7 resets 2:40pm (Asia/Ho_Chi_Minh)", ReasonAgentProviderQuotaLimit},
+		{"5-hour limit curly", "You\u2019ve hit your 5-hour limit \u00b7 resets 2:40pm (Asia/Ho_Chi_Minh)", ReasonAgentProviderQuotaLimit},
+		{"5-hour limit reached", "You've reached your 5-hour limit", ReasonAgentProviderQuotaLimit},
 		{"credits", "Your account has 0 credits remaining", ReasonAgentProviderQuotaLimit},
 		{"quota", "quota exceeded for project foo", ReasonAgentProviderQuotaLimit},
 
