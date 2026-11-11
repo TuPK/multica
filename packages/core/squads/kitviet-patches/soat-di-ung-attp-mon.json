@@ -18,5 +18,9 @@
   {
     "find": "đậu nành (gồm nước tương, tương), mè, cần tây, mù tạt, sulfit,",
     "replace": "đậu nành (gồm nước tương, tương), mè, cần tây, mù tạt, sulfit, đậu lupin,"
+  },
+  {
+    "find": "Thiếu công thức hoặc thành phần nguồn -> trả về ngay \"Không soát được - thiếu nguồn thành phần\", kèm danh sách file đã thấy.",
+    "replace": "Thiếu công thức hoặc thành phần nguồn: kết luận CHẶN ở mục Kết luận với lý do thiếu nguồn thành phần, soát tiếp mọi khẳng định không cần công thức (an toàn dị ứng, chay, không chứa, claim sức khỏe), và liệt kê kèm danh sách file đã thấy cùng mục không soát được."
   }
 ]

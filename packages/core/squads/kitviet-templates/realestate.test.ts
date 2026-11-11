@@ -247,3 +247,28 @@ describe("Real Estate Desk agent instructions", () => {
     }
   });
 });
+
+// The listing gate names each return, price or approval promise as its own finding (S7 D4). The drill's
+// listing gate named only the missing source and not the two planted promises.
+describe("listing gate promise findings (S7 D4)", () => {
+  it("the listing gate lists each promise as its own finding, with its quote and location", async () => {
+    const text = await instructionOf("realestate_listing_gate");
+    expect(text).toContain("là một dòng riêng");
+    expect(text).toContain("nguyên văn trích dẫn và vị trí");
+  });
+
+  it("a promise is a finding even when no source is attached", async () => {
+    const text = await instructionOf("realestate_listing_gate");
+    expect(text).toContain("dù có hay không có nguồn");
+  });
+
+  it("the lead notes state the promise finding rule in English", () => {
+    expect(KV_LEAD_NOTES.kv_realestate).toContain("promise is its own finding");
+  });
+
+  it("the listing gate role description names the promise findings", () => {
+    const description = REALESTATE_ROLES.realestate_listing_gate.description;
+    expect(description).toContain("its own finding");
+    expect([...description].length).toBeLessThanOrEqual(255);
+  });
+});

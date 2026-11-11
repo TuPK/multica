@@ -18,5 +18,9 @@
   {
     "find": "- Không kết luận QUA khi còn dòng CHẶN.",
     "replace": "- Không kết luận QUA khi còn dòng Chặn hoặc mục Cần giấy tờ."
+  },
+  {
+    "find": "Thiếu nguồn giá nhập -> trả về \"Không soát được - thiếu hóa đơn/phiếu nhập\".",
+    "replace": "Thiếu nguồn giá nhập: kết luận CHẶN ở mục Kết luận với lý do thiếu hóa đơn/phiếu nhập, soát tiếp mọi phép tính không cần giá nhập, và liệt kê mục không soát được."
   }
 ]

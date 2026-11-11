@@ -577,3 +577,37 @@ describe("generated data is fresh", () => {
     expect(output).toContain("up to date");
   });
 });
+
+// A gate never goes silent: a missing draft or a missing source ends in a VERDICT line, not in an early
+// return that posts no verdict (S7 D3). The shared delivery core and the gate kind text both state the rule.
+describe("gates always post a VERDICT line (S7 D3)", () => {
+  const gates = allAgents().filter((agent) => agent.kind === "kv_gate");
+
+  it("there are gate agents to check", () => {
+    expect(gates.length).toBeGreaterThan(0);
+  });
+
+  it("the gate kind text states the missing-draft VERDICT rule", () => {
+    expect(composeKvAgentInstructions({ kind: "kv_gate" })).toContain('"VERDICT: CHẶN - không có bản nháp đính kèm"');
+  });
+
+  it("the gate kind text states the missing-source rule and that the gate still checks what needs no source", () => {
+    const gate = composeKvAgentInstructions({ kind: "kv_gate" });
+    expect(gate).toContain('"VERDICT: CHẶN - thiếu <source>"');
+    expect(gate).toContain("still check every finding that needs no source");
+  });
+
+  it("the shared delivery core states the missing-draft and missing-source rules", () => {
+    const delivery = skillByName.get("kv--delivery-core")?.content ?? "";
+    expect(delivery).toContain("VERDICT: CHẶN - không có bản nháp đính kèm");
+    expect(delivery).toContain("VERDICT: CHẶN - thiếu <source>");
+  });
+
+  it.each(gates.map((agent) => [agent.upstream.join("+"), agent] as const))(
+    "gate %s has no early return that ends without a VERDICT line",
+    (_upstream, agent) => {
+      expect(agent.instructions).not.toMatch(/trả (về )?ngay/);
+      expect(agent.instructions).not.toMatch(/->\s*trả/);
+    },
+  );
+});

@@ -1,0 +1,6 @@
+[
+  {
+    "find": "Thiếu khung chiết khấu hoặc bảng giá thì trả về ngay: \"Không soát được - thiếu căn cứ duyệt\", kèm danh sách file đã thấy.",
+    "replace": "Thiếu khung chiết khấu hoặc bảng giá: kết luận CHẶN ở mục Kết luận với lý do thiếu căn cứ duyệt, soát tiếp mọi cam kết không cần khung đó, và liệt kê kèm danh sách file đã thấy cùng mục không soát được."
+  }
+]

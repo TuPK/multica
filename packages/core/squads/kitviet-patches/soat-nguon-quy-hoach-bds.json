@@ -6,5 +6,9 @@
   {
     "find": "## Lỗi phải sửa",
     "replace": "## Chặn: lỗi phải sửa trước khi gửi"
+  },
+  {
+    "find": "Thiếu ghi chú nguồn thì trả ngay: **CHẶN - không có nguồn để đối chiếu**.",
+    "replace": "Thiếu ghi chú nguồn: kết luận CHẶN ở mục Kết luận với lý do không có nguồn để đối chiếu, và liệt kê từng khẳng định quy hoạch, hạ tầng hoặc giá tăng không có nguồn như một lỗi riêng."
   }
 ]

@@ -1,0 +1,6 @@
+[
+  {
+    "find": "Thiếu file thu thập hoặc tư liệu gốc: trả về ngay \"Không soát được - thiếu nguồn\", kèm danh sách file đã thấy, kết luận CHẶN.",
+    "replace": "Thiếu file thu thập hoặc tư liệu gốc: kết luận CHẶN ở mục Kết luận với lý do thiếu nguồn, soát tiếp mọi khẳng định không cần tư liệu gốc, và liệt kê kèm danh sách file đã thấy cùng mục không soát được."
+  }
+]

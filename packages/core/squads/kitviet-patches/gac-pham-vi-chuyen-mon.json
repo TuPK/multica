@@ -14,5 +14,9 @@
   {
     "find": "- Không cho \"Qua\" khi còn lỗi Chặn, kể cả lỗi nhỏ về đơn vị.",
     "replace": "- Không cho \"Qua\" khi còn lỗi Chặn hoặc Cần giấy tờ, kể cả lỗi nhỏ về đơn vị."
+  },
+  {
+    "find": "Thiếu bản nháp hoặc nguồn thì trả ngay: \"Không soát được - thiếu <...>\".",
+    "replace": "Thiếu nguồn: kết luận CHẶN ở mục Kết luận với lý do thiếu nguồn, soát tiếp mọi khẳng định không cần nguồn (cam kết khỏi bệnh, phạm vi chuyên môn, thông số không có nguồn), và liệt kê mục không soát được."
   }
 ]

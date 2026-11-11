@@ -13,7 +13,7 @@ Every role in a Kit Viet squad works under these rules. Your role skill says wha
 - Read your task's inputs as attachments of the issue. Download each with `multica attachment download <id>`; the file lands in your working directory. A file you did not download, or that is not in the issue, does not exist for you.
 - Attach your output with `multica issue comment add <issue> --content-file <file> --attachment <file>`. The file must be inside your working directory; a path outside it is refused unless you pass `--allow-external-file`, which you do not.
 - Your stage's sub-issue names your stage (stage 1 collect, stage 2 draft, stage 3 gate, stage 4 handover, or the export stage). Post your result as the last comment on that sub-issue. Use the output template of your role skill.
-- Then set that sub-issue's status. `done` when your result passes: a collector, drafter, gate or handover that posted its output, including a gate that says `VERDICT: CHẶN` (the verdict is the result, and the lead decides the next round). `blocked` when you stop at stop 1 or stop 3 of your own stage. Never `in_review`: that status belongs to the request root only, after handover QUA (stop 2). The lead's stage barrier counts a sub-issue as finished only when it is `done`, so a stage holds until every one of its sub-issues is `done`.
+- Then set that sub-issue's status. `done` when your result passes: a collector, drafter, gate or handover that posted its output, including a gate that says `VERDICT: CHẶN` (the verdict is the result, and the lead decides the next round). `blocked` when you stop at stop 1 or stop 3 of your own stage. Never `in_review`: that status belongs to the request root only, after handover QUA (stop 2). The lead's stage barrier counts a sub-issue as finished only when it is `done`, so a stage holds until every one of its sub-issues is `done`. Set the status as the last command of the run, after the result comment: `multica issue status <sub-issue> done`.
 - A gate sees only the link to the draft and to its sources. It never sees the drafter's reasoning, and the drafter never sees the gate's checklist.
 
 ## Verdict lines and the two-round limit
@@ -21,13 +21,16 @@ Every role in a Kit Viet squad works under these rules. Your role skill says wha
 - A gate ends its comment with exactly one line that starts with `VERDICT:`, as the first line of the comment: `VERDICT: QUA` or `VERDICT: CHẶN`. Then the table of findings, each with its location in the draft.
 - A gate says QUA only when no finding is at the top severity of its checklist. Any finding at that level makes it CHẶN. A gate never changes a CHẶN to QUA, and never edits the draft.
 - A gate with no `VERDICT:` line did not pass. The lead counts it as CHẶN.
+- A gate whose draft is missing or not attached posts `VERDICT: CHẶN - không có bản nháp đính kèm`, with the reason and a list of what it could not check, and then stops. A draft is a file attached to the sub-issue and present in the working directory; text pasted into a comment does not count.
+- A gate whose source is missing posts `VERDICT: CHẶN - thiếu <source>` and still checks every finding that needs no source: promises, guarantees, personal data and absolute claims. Each finding has its quote and its location.
+- A gate's sub-issue is `blocked` only when the gate cannot run at all, for example when the runtime cannot read files. A missing draft or source is never a reason to block it.
 - The lead counts rounds with a comment `Round n/2` on the request. After two rounds, a gate still at CHẶN stops the run at stop 3 below. Nobody else decides that the draft is good enough.
 
 ## The three human stops
 
 Stop only for these three. Everywhere else, take the recommended default, write it as an assumption in your report, and continue.
 
-1. **Missing basis.** A required input of the squad is missing (price list, discount frame, contract appendix, detailed ledger, signatory), or a source conflicts with the approved frame (a customer asks for 30% when the frame allows 12%). Set the request to `blocked`, and post a comment that lists exactly what is missing or conflicting, mentioning the requester. Do not run the drafting stage on guessed data.
+1. **Missing basis.** A required input of the squad is missing (price list, discount frame, contract appendix, detailed ledger, signatory), or a source conflicts with the approved frame (a customer asks for 30% when the frame allows 12%). Set the request to `blocked`, and post a comment that lists exactly what is missing or conflicting, mentioning the requester. Do not run the drafting stage on guessed data. A gate's missing draft or source is not this stop: the gate reports it as CHẶN, as described under Verdict lines.
 2. **Before anything leaves the workspace.** Every final product: sent to a customer, filed with a tax office, published, signed, or submitted for signature. Handover passes, then the request goes to `in_review` with a comment that lists the things the person must do. Only the requester sets `done`. A Kit Viet squad has no tool to send and must not try to get one.
 3. **Round limit reached.** A gate is still CHẶN after round 2. Stop as in stop 1, with the draft and the remaining findings attached.
 
@@ -92,7 +95,7 @@ Read the requester id from the request: run `multica issue get <request> --outpu
 - [ ] No `[cần bổ sung]` marker hides a fact you could have found in the inputs.
 - [ ] Every figure comes from a script run that you can show.
 - [ ] No legal date, rate or threshold came from memory.
-- [ ] Gates: the first line is `VERDICT:`, and the comment has the findings table.
+- [ ] Gates: the first line is `VERDICT:`, the comment has the findings table, and the status is `done` set as the last command of the run (`blocked` only if the gate could not run at all).
 - [ ] Your report says what you did not verify.
 - [ ] Your sub-issue's status is `done` (output posted, or a gate or handover verdict posted) or `blocked` (your stop). Never `in_review`.
 - [ ] A `blocked` comment mentions the requester with the `[@name](mention://member/<id>)` markup.

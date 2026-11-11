@@ -85,3 +85,24 @@ describe("round counting stays with the lead (S7 run 1)", () => {
     expect(gate).toContain("Give a verdict only");
   });
 });
+
+// A gate ends its sub-issue done once its VERDICT comment is posted, CHẶN included (S7 D2). The last
+// command of the run is the status change: a run that stops after the comment leaves the stage open.
+describe("gates end done after posting their verdict (S7 D2, D4)", () => {
+  const GATE = composeKvAgentInstructions({ kind: "kv_gate" });
+
+  it("the gate text makes the done status change the last command of the run", () => {
+    expect(GATE).toContain("Your last command is the status change");
+    expect(GATE).toContain("multica issue status <your sub-issue> done");
+  });
+
+  it("the delivery core repeats the done step for a gate's verdict", () => {
+    expect(DELIVERY).toContain("multica issue status <sub-issue> done");
+    expect(DELIVERY).toContain("including a gate that says `VERDICT: CHẶN`");
+  });
+
+  it("a gate blocks its sub-issue only when it cannot run at all (S7 D4)", () => {
+    expect(GATE).toContain("Set blocked only when you cannot run at all");
+    expect(DELIVERY).toContain("blocked` only when the gate cannot run at all");
+  });
+});

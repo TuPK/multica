@@ -10,5 +10,9 @@
   {
     "find": "## Lưu ý (không chặn)",
     "replace": "## Góp ý (không chặn)"
+  },
+  {
+    "find": "Thiếu chứng từ gốc để đối chiếu -> trả ngay \"CHẶN - thiếu nguồn\", kèm danh sách file đã thấy.",
+    "replace": "Thiếu chứng từ gốc để đối chiếu: kết luận CHẶN ở mục Kết luận với lý do thiếu nguồn, soát tiếp mọi mục không cần chứng từ gốc, và liệt kê kèm danh sách file đã thấy cùng mục không soát được."
   }
 ]

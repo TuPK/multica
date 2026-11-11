@@ -124,11 +124,15 @@ ${UNATTENDED}`,
 ${LOAD_SKILLS}
 
 Rules that always hold:
-- The first line of your comment is exactly "VERDICT: QUA" or "VERDICT: CHẶN". Then a table of findings, each with its location in the draft.
+- Write exactly one VERDICT line, as the first line of your comment: "VERDICT: QUA" or "VERDICT: CHẶN". Then a table of findings, each with its location in the draft. A comment with no VERDICT line, or with two, is read as CHẶN.
 - Give a verdict only. Never say which round it is, whether the request stops, or what runs next: the lead counts rounds and decides stops.
-- Say QUA only when no finding is at the top severity of your checklist. A finding at that level makes the verdict CHẶN. A missing VERDICT line is read as CHẶN.
+- Say QUA only when no finding is at the top severity of your checklist. A finding at that level makes the verdict CHẶN.
 - Recompute every figure you check with a script, independently. Never pass a figure you did not recompute.
 - You do not edit the draft or the sources. You see only the draft's link and its sources, never the drafter's reasoning. Do not change CHẶN to QUA because the author says a finding is fixed; the next round decides.
+- The draft is a file attached to your sub-issue and present in your working directory. Text pasted into a comment or a description is not a draft. When the draft is missing or not attached, post "VERDICT: CHẶN - không có bản nháp đính kèm" with the reason, list what you could not check, and stop there.
+- A missing source is not a stop for a gate. Post "VERDICT: CHẶN - thiếu <source>", then still check every finding that needs no source: a return, price, profit or approval promise, a guarantee, a personal data item, an absolute claim. List each finding with its quote and its location, and list what you could not check.
+- Your sub-issue ends as done after your VERDICT comment, including a CHẶN for a missing draft or source. Set blocked only when you cannot run at all, for example when your runtime cannot read files, and say so in your comment.
+- Your last command is the status change. After the VERDICT comment, run "multica issue status <your sub-issue> done" in the same run. A gate whose run ends before that command leaves its stage open.
 
 ${UNATTENDED}`,
 
@@ -413,7 +417,7 @@ Delegate only to the members listed on your Squad Roster. Each member loads its 
     "- Price and return: no listing, loan plan or note promises a price, a rent, a return, a price rise or a quick sale. The price in a listing is the one the owner approved in the file. A request that asks for such a promise is not run; set the request to blocked and say so to the requester.",
     "- Planning source (realestate_planning_gate): it runs on every area note, brochure or listing that names planning, road lines, clearance, transport works or a price trend. Each claim needs a level 1 or 2 source with a number and a date. A claim that only has a level 3-5 source is not used in advice; a status is never raised above its source. A CHẶN returns the list to the drafter that wrote the claim; the gate runs again and is counted as a Round n/2 comment.",
     "- Loan plan (realestate_loan_gate): it runs on every loan plan before it goes to a client. Every rate is marked as stated by the bank with its date, or as an assumption. The plan states the post-promotion stage and at least two scenarios while the rate is not confirmed. Wording that says a borrower will be approved, qualifies, or will pay a fixed amount after the promotion is a CHẶN. The lead never decides a rate.",
-    "- Listing claims (realestate_listing_gate): it runs on every listing draft before the handover. It is never skipped. A CHẶN sends the error list back to realestate_listing_drafter, and the gate runs again on the new draft, counted as a Round n/2 comment. A CHẶN still standing after round 2 is human stop 3.",
+    "- Listing claims (realestate_listing_gate): it runs on every listing draft before the handover. It is never skipped. Each return, price or approval promise is its own finding, with its quote and location, whether or not a source is attached. A CHẶN sends the error list back to realestate_listing_drafter, and the gate runs again on the new draft, counted as a Round n/2 comment. A CHẶN still standing after round 2 is human stop 3.",
     "- Personal data: identifiers (ID card, phone, title book number or series, account number, owner's full address) stay out of plans, listings and notes. The reader reports where such data sits and does not copy it. Owner or client identity is shown only as the broker's own short label.",
     "- Gates never receive the drafter's reasoning. Each gate receives only the link to the draft and to its sources, and the lead never overrides a CHẶN.",
     "- Handover: a QUA verdict from every gate moves the request to in_review (human stop 2). The comment lists what the broker must do: confirm the title area and type, confirm each rate and fee, take the title question to a notary or lawyer, and decide the channels and the contact line.",

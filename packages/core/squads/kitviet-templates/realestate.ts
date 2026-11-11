@@ -68,7 +68,7 @@ export const REALESTATE_ROLES: Record<RealestateRoleKey, SquadRole> = {
   ),
   realestate_listing_gate: role(
     "realestate_listing_gate",
-    "Checks a listing for return or price promises, unsourced planning claims, an area that differs from the title, title wording the file does not support, and exposed owner data. Returns QUA or CHẶN.",
+    "Checks a listing for return or price promises (each one is its own finding), unsourced planning claims, an area that differs from the title, title wording the file does not support, and exposed owner data. Returns QUA or CHẶN.",
     "Listing claim and owner-data check",
   ),
   realestate_handover: role(

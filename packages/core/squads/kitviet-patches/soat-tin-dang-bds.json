@@ -6,5 +6,13 @@
   {
     "find": "Không kết luận \"Đăng được\" khi còn bất kỳ lỗi Trái nguồn",
     "replace": "Không kết luận QUA khi còn bất kỳ lỗi Trái nguồn, khẳng định Tự suy hoặc Không có trong nguồn, pháp lý làm đẹp"
+  },
+  {
+    "find": "Thiếu bảng dữ kiện hoặc nguồn thì trả ngay: \"Không soát được - thiếu nguồn\".",
+    "replace": "Thiếu bảng dữ kiện hoặc nguồn: kết luận CHẶN ở mục Kết luận với lý do thiếu nguồn, vẫn soát mọi cam kết, lời hứa giá, lợi nhuận và thời gian duyệt vay ở nhóm rủi ro đầu tiên, và liệt kê mục không soát được."
+  },
+  {
+    "find": "**Cam kết lợi nhuận, cam kết thuê:** \"cam kết\", \"lãi\", \"lợi nhuận\", \"%/năm\", \"bao lời\", \"thuê lại\".",
+    "replace": "**Cam kết lợi nhuận, cam kết thuê:** \"cam kết\", \"lãi\", \"lợi nhuận\", \"%/năm\", \"bao lời\", \"thuê lại\". Mỗi cam kết lợi nhuận, lãi, thuê lại, giá tăng hoặc thời gian duyệt vay (ví dụ \"đảm bảo lợi nhuận 20%/năm\", \"duyệt vay trong 24 giờ\") là một dòng riêng trong bảng Chặn trước khi đăng, với nguyên văn trích dẫn và vị trí trong tin. Mỗi cam kết là một dòng riêng dù có hay không có nguồn đính kèm."
   }
 ]

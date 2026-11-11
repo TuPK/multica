@@ -10,5 +10,9 @@
   {
     "find": "Không kết luận QUA khi còn lỗi Nặng.",
     "replace": "Không kết luận QUA khi còn lỗi Chặn."
+  },
+  {
+    "find": "Thiếu chứng từ gốc thì trả ngay \"Không soát được - thiếu nguồn\".",
+    "replace": "Thiếu chứng từ gốc: kết luận CHẶN ở mục Kết luận với lý do thiếu chứng từ gốc, soát tiếp mọi mục không cần chứng từ gốc, và liệt kê mục không soát được."
   }
 ]

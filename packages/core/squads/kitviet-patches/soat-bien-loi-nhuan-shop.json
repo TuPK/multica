@@ -2,5 +2,9 @@
   {
     "find": "Không kết luận \"Đạt\" khi còn dòng Lỗ ẩn hoặc còn khoản phí lớn chưa xác nhận.",
     "replace": "Không kết luận QUA khi còn dòng Lỗ ẩn hoặc còn khoản phí lớn chưa xác nhận."
+  },
+  {
+    "find": "Thiếu nguồn chi phí thì trả về \"Không soát được - thiếu hồ sơ chi phí\".",
+    "replace": "Thiếu nguồn chi phí: kết luận CHẶN ở mục Kết luận với lý do thiếu hồ sơ chi phí, soát tiếp mọi dòng không cần khoản chi phí đó, và liệt kê mục không soát được."
   }
 ]
