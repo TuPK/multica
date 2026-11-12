@@ -6,13 +6,14 @@
 //   node harness-metrics.mjs --from-dir <dir> [--order ...] [--output ...]
 //
 //   --issues    issues to measure (identifiers such as MUL-12, or ids)
-//   --parent    measure the children of this issue
+//   --parent    measure the children of this issue (only children; issues the Lead creates in a project have no parent)
 //   --order     workflow statuses from first to last; a move to an earlier one counts as a return
-//               (default: backlog,todo,in_progress,in_review,done)
+//               (default: backlog,todo,in_progress,in_review,qa,done, the SDLC Auto order)
 //   --from-dir  read <id>.issue.json, <id>.runs.json, <id>.usage.json, <id>.timeline.json and <id>.comments.json
 //               from a directory instead of calling the `multica` CLI
 //
 // The measures describe; with few issues they cannot show cause. The report always carries n.
+// Environment: MULTICA_BIN names the CLI binary (default `multica`).
 // Exit code: 0 ok, 2 usage error.
 
 import { execFileSync } from "node:child_process";
@@ -20,7 +21,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const DEFAULT_ORDER = ["backlog", "todo", "in_progress", "in_review", "done"];
+const DEFAULT_ORDER = ["backlog", "todo", "in_progress", "in_review", "qa", "done"];
 const NOT_STARTED = new Set(["", "backlog", "todo"]);
 const HARNESS_ID_RE = /\bH(?:1|3|4|6|7|10|14)\b|check-harness/;
 
@@ -64,7 +65,8 @@ function blockerClasses(comments) {
   const out = [];
   for (const c of asList(comments, "comments", "items")) {
     const text = String(c?.content ?? "");
-    const m = /^\s*Blocker-class:\s*([a-z-]+)/im.exec(text);
+    // Agents write the line with markdown around it: "**Blocker-class:** `delivery`".
+    const m = /^\s*[*_`]*Blocker-class[*_`]*:[*_`\s]*([a-z-]+)/im.exec(text);
     if (m) out.push({ cls: m[1].toLowerCase(), text });
   }
   return out;
@@ -116,6 +118,9 @@ export function computeMetrics(issues, { order = DEFAULT_ORDER } = {}) {
     }
   }
 
+  // A block is a move into "blocked". Comments can repeat one block (BLOCKED, routed, unblock), so the events are counted here.
+  const blockEvents = issues.reduce((n, issue) => n + statusMoves(issue.timeline).filter((m) => m.to === "blocked").length, 0);
+
   const firstPass = perIssue.filter((p) => !p.returned).length;
   return {
     issues: issues.length,
@@ -127,6 +132,8 @@ export function computeMetrics(issues, { order = DEFAULT_ORDER } = {}) {
     M4_cacheTokensPerDelivered: spread(perIssue.map((p) => p.cacheTokens)),
     M5_blocksByClass: blocksByClass,
     M5_blocksPerIssue: issues.length === 0 ? null : Math.round((Object.values(blocksByClass).reduce((a, b) => a + b, 0) / issues.length) * 100) / 100,
+    M5_blockEvents: blockEvents,
+    M5_blockEventsPerIssue: issues.length === 0 ? null : Math.round((blockEvents / issues.length) * 100) / 100,
     M6_cycleHours: spread(perIssue.map((p) => p.cycleHours).filter((h) => h !== null)),
     M7_harnessBlocks: harnessBlocks,
     approximate: [...approximate],
@@ -144,6 +151,7 @@ export function renderTable(m) {
     ["M4 tokens per delivered issue (median / p90)", f(m.M4_tokensPerDelivered)],
     ["M5 blocks per issue", m.M5_blocksPerIssue === null ? "n/a" : `${m.M5_blocksPerIssue} (${Object.entries(m.M5_blocksByClass).map(([k, v]) => `${k}: ${v}`).join(", ") || "none"})`],
     ["M6 cycle time, hours (median / p90)", f(m.M6_cycleHours)],
+    ["M5 block events (moves to blocked)", `${m.M5_blockEvents} (${m.M5_blockEventsPerIssue} per issue)`],
     ["M7 harness-attributable blocks", String(m.M7_harnessBlocks)],
   ];
   const lines = ["| Measure | Value |", "| --- | --- |", ...rows.map(([a, b]) => `| ${a} | ${b} |`)];
@@ -175,7 +183,7 @@ export function loadFromDir(dir) {
 }
 
 function multica(args) {
-  const out = execFileSync("multica", [...args, "--output", "json"], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  const out = execFileSync(process.env.MULTICA_BIN || "multica", [...args, "--output", "json"], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   return out.trim() === "" ? undefined : JSON.parse(out);
 }
 

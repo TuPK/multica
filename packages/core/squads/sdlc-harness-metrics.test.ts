@@ -106,6 +106,39 @@ describe("harness-metrics", () => {
     expect(JSON.parse(metrics(dir, "--order", "qa,build,done").out).M2_firstPassRate).toBe(1);
   });
 
+  it("reads a Blocker-class line written with markdown around it", () => {
+    const dir = dirOf([
+      { id: "M", status: "blocked", comments: ["**Blocker-class:** `delivery`\nSymptom: push refused"] },
+      { id: "N", status: "blocked", comments: ["BLOCKED\n**Blocker-class:** environment"] },
+    ]);
+    expect(JSON.parse(metrics(dir).out).M5_blocksByClass).toEqual({ delivery: 1, environment: 1 });
+  });
+
+  it("counts block events from the timeline, not from comments that repeat one block", () => {
+    const dir = dirOf([
+      {
+        id: "E",
+        status: "done",
+        moves: [
+          { from: "in_progress", to: "blocked", at: day(10) },
+          { from: "blocked", to: "in_progress", at: day(11) },
+          { from: "in_progress", to: "blocked", at: day(12) },
+        ],
+        comments: ["BLOCKED\nBlocker-class: tooling", "routed\nBlocker-class: tooling", "unblock\nBlocker-class: tooling"],
+      },
+      { id: "F", status: "done" },
+    ]);
+    const m = JSON.parse(metrics(dir).out);
+    expect(m.M5_blockEvents).toBe(2);
+    expect(m.M5_blockEventsPerIssue).toBe(1);
+    expect(m.M5_blocksByClass).toEqual({ tooling: 3 });
+  });
+
+  it("defaults M2 to the SDLC Auto order, so a return from qa counts", () => {
+    const dir = dirOf([{ id: "Q", status: "done", moves: [{ from: "in_review", to: "qa", at: day(10) }, { from: "qa", to: "in_progress", at: day(11) }, { from: "in_progress", to: "done", at: day(12) }] }]);
+    expect(JSON.parse(metrics(dir).out).M2_firstPassRate).toBe(0);
+  });
+
   it("returns nulls, not NaN, when nothing was delivered", () => {
     const m = JSON.parse(metrics(dirOf([{ id: "Z", status: "in_progress" }])).out);
     expect(m.delivered).toBe(0);
