@@ -324,3 +324,77 @@ Có gây hại không: không thấy. Push của QA trên DEV-18 là fast-forwar
 **Tổng kết lượt**: 61 (48 cũ, 10 vòng 3, 3 của Lead trên DEV-1 và DEV-17 sau khi operator comment). S9 không dùng lượt nào.
 
 **4. Web pilot.** Web `13720` đã không phản hồi lần thứ hai (khoảng 13:10), dù tiến trình `next-server` vẫn sống. `make up C=web` từ chối khởi động vì cổng bị giữ. Sau khi xác minh bằng `web.listener.pid` của registry rằng tiến trình thuộc môi trường s8-pilot (thư mục làm việc là snapshot pilot), dừng tiến trình đó và khởi động lại bằng `make up C=web ARGS="--name s8-pilot"`. Lần này HTTP 200 (0,2 giây).
+
+### 5.13 Kiểm chứng luồng đóng request (DEV-21)
+
+Ngày 2026-11-12, sau mục 5.12. Mục đích: xem sau khi chuỗi issue kết thúc, Lead có tự viết báo cáo cuối và chuyển request sang `plan_ready` không. Kết quả: **(a) FAIL, (b) FAIL, (c) không xảy ra.** Chuỗi bị kẹt ở `in_review`.
+
+**Việc 1: đưa skill mới vào pilot.** PASS.
+- HEAD `647d9e59e` được xuất bằng `git archive` vào `~/.cache/claude-delegate/multica-s8-647`. Không dùng `git worktree`, `checkout` hay `reset`.
+- Chép `.env.worktree` của pilot (PORT 18800, FRONTEND_PORT 13720, `POSTGRES_DB=multica_multica_s8_720`). Không có `.env`. Không chạy `make up` trong thư mục mới, để không tạo môi trường thứ hai.
+- `node_modules` là liên kết tới snapshot cũ, chỉ để dùng `esbuild`. `scripts/generate-sdlc-skills.mjs` sinh 77 skill.
+- `scripts/upgrade-sdlc-squad.mjs`: dry-run (squad `current`, workflow `current`), rồi `--apply` (skills `ready`).
+- Đọc qua API theo id: `sdlc-squad-lead` có `--until-children-done` và câu "children of the request so that the request's wait counts them". Câu này trong file nguồn bị xuống dòng giữa "the" và "request", nên tìm theo chuỗi nguyên văn sẽ không khớp.
+
+**Việc 2: tạo request và theo dõi.** Request `DEV-21` (id `01a1ce90-a99d-77be-b30c-ec0b7324953d`), tên "S8 round 4: add sumOpen and test the close flow", project Build `8e9dd76f`, giao cho squad `691a1da9`, tạo lúc 14:02:36. Yêu cầu: một epic, thêm `sumOpen(list)` và test.
+
+| Thời điểm | Sự kiện |
+| --- | --- |
+| 14:02:42 | Lead chạy lượt 1. Không tạo issue con, không tạo comment kế hoạch, không đăng ký wakeup. Giao việc cho Developer trên chính `DEV-21` |
+| 14:03:35 | Developer nhận, `todo` → `in_progress` (14:04:01) |
+| 14:04:23 | Developer chuyển `in_progress` → `in_review`, comment handoff |
+| 14:05:12 | Lead được đánh thức (lượt 3). Ghi `squad_leader_evaluated` với `outcome: no_action`: "review belongs to the Code Reviewer step and the lead does not move status on this issue" |
+| 14:05:34 đến 14:53 | Không có lượt nào mới trên `DEV-21`. Trạng thái giữ `in_review` |
+
+**Điều kiện (a): issue con của request có `parent` = request.** FAIL. Không có issue nào có `parent` = `DEV-21`. Lead không tạo QA, security, DevOps. Skill yêu cầu Bước 4 bất kể quy mô, nên đây là lệch chuẩn của Lead: nó bỏ qua Bước 2 (chọn kế hoạch) đến Bước 4 và giao thẳng.
+
+**Điều kiện (b): wakeup `--until-children-done` trên request.** FAIL. `multica issue wakeup list DEV-21` trả `[]`. Lead không đăng ký wakeup nào.
+
+**Điều kiện (c): Lead được đánh thức, viết báo cáo cuối và chuyển `plan_ready`.** Không xảy ra. Nguyên nhân trực tiếp: không có wakeup (b) và không có issue con (a). Điều kiện (c) còn bị chặn bởi một lỗi khác, xem bên dưới.
+
+**Lỗi thêm: chuỗi kẹt ở `in_review` mà không có lượt Reviewer.** Trạng thái `in_review` của workflow SDLC Auto có handler là SDLC Code Reviewer (`0ef038e0`). Sau khi Developer chuyển sang `in_review` lúc 14:04:23, không có lượt Reviewer nào được xếp hàng trong 50 phút. Đối chiếu với DEV-18 (làm trước, cũng đi qua `in_review` và `qa`): DEV-18 được giao cho từng agent, và khi chuyển trạng thái, assignee được đổi sang handler của bước (kết thúc là agent QA `5a111f69`). DEV-21 được giao cho squad, và assignee giữ nguyên là squad. Lead cũng không chuyển giao lại. Trong `applyIssueWorkflow` (`internal/handler/issue_workflow_entry.go`) có điều kiện bỏ qua handoff khi `assigneeTouched` hoặc `triage_state` có giá trị. Tôi không lần đến cùng để xác định cơ chế chính xác. Điều quan sát được là: issue giao cho squad không được đổi người giao khi chuyển bước, và không có lượt nào được đánh thức ở bước `in_review`.
+
+**Bằng chứng số lượt.** Tổng 64 lượt (đếm lại với timeout, 0 dòng lỗi parse). Chuỗi DEV-21 dùng 3 lượt. Trần 120 chưa bị chạm.
+
+**Không đặt `plan_ready` thủ công**, theo yêu cầu, để đo luồng thật. Không tạo issue thủ công.
+
+**Daemon pilot.** Chạy dưới `s8-daemon.service` với strace (PID 3730715, cha strace 3730712, cgroup `app.slice/s8-daemon.service`). Lúc kiểm tra cuối (14:53): uptime 2 giờ 20 phút, còn chạy. Log strace (`~/.cache/claude-delegate/20261112-130000-kiro/s8-daemon-strace.txt`) ghi trong khoảng 12:35 đến 14:53:
+- Không có signal nào kết thúc gửi tới daemon (không SIGTERM, SIGINT, SIGKILL). Phần lớn là SIGURG và SIGCHLD do chính Go runtime và các tiến trình con.
+- Có 2 SIGTERM, do tiến trình PID 3787491 (con của daemon, đã thoát) gửi tới hai tiến trình con khác của nó. Đây là dọn dẹp tiến trình con của task, không phải dừng daemon.
+- Khoảng thời gian này bao gồm ít nhất một ranh giới run kiro (run trước kết thúc khoảng 13:10). Đây là bằng chứng gián tiếp rằng unit `systemd --user` tránh được việc dừng khi run kết thúc. Chưa kiểm chứng ở nhiều ranh giới hơn.
+
+**Web pilot `13720`: không phản hồi, không khôi phục được trong phiên này.** Các lần khởi động lại:
+- 14:18:24, `systemctl --user restart s8-web`. Đến 90 giây sau vẫn không phản hồi (HTTP 000).
+- Khoảng 14:50, lần thứ hai, cũng không phản hồi sau 90 giây.
+- Trước đó, lúc 13:20, `make up C=web` đã khôi phục được (HTTP 200).
+- Bộ nhớ lúc kiểm tra: 17 đến 19 GB dùng trên 23 GB, swap 11 GB. Load trung bình 31 đến 106 trong các lần đo. Đây là khả năng nguyên nhân, nhưng chưa xác nhận.
+
+**Đã dùng hết hai lần thử cho web** theo giới hạn phiên. Dừng ở đây.
+
+**Điểm cần sửa (chỉ đề xuất, chưa áp dụng):**
+1. Skill Lead: không được giao thẳng request cho Developer. Bước 2 và Bước 4 phải chạy kể cả khi chỉ có một epic. Nêu rõ điều này trong skill, vì Lead đã tự suy ra đường tắt "một epic, giao thẳng".
+2. Workflow: giải thích lý do `in_review` không đánh thức handler khi issue giao cho squad. Có thể cần đổi người giao sang handler khi chuyển bước, giống DEV-18.
+3. Hạ tầng pilot: giảm tải hoặc tăng bộ nhớ, rồi kiểm tra web lại. Lỗi web và lỗi `task preparation timed out` ở 5.12 có thể cùng nguyên nhân.
+
+**Chưa xác nhận:** chuỗi đầy đủ (a), (b), (c) vì Lead không đi đến đó. Nguyên nhân chính xác của việc `in_review` không đánh thức Reviewer. Web chưa khôi phục.
+
+### 5.14 Round 5: luồng đóng request chạy đến plan_ready (DEV-22)
+
+Sau khi sửa skill Lead (cấm giao việc cho chính request, và mọi việc phải là issue con), tôi tạo DEV-22 cùng nội dung `sumOpen` như round 4, trong project Build, giao cho squad lúc 15:09. Lượt squad đã dùng trước round này: 64, trần 120. Round này dùng khoảng 15 lượt.
+
+**Kết quả ba điều kiện**
+
+- **(a) Issue con có `parent` = DEV-22: PASS.** DEV-24 (QA), DEV-25 (security), DEV-26 (DevOps) đều có `parent` = DEV-22 và xếp hàng sau epic DEV-23.
+- **(b) Wakeup `--until-children-done` trên DEV-22: PASS.** Lead (agent `8ba2f81e`) đăng ký lúc 15:10:47. Wakeup đã kích hoạt và tự tắt sau khi chuỗi xong.
+- **(c) Lead viết báo cáo cuối và tự chuyển `plan_ready`: PASS.** Báo cáo cuối được đăng lúc 16:14:07, request chuyển `plan_ready` lúc 16:15:01, cả hai do agent Lead thực hiện. Operator không đặt trạng thái thủ công. `sumOpen` đã vào `main` ở commit `a831612` (QA fast-forward sau GO, 18/18 test, Node v24.22.0).
+
+**Can thiệp thủ công (phải ghi rõ):** epic DEV-23 chuyển sang `in_review` lúc 15:32 và giao cho Code Reviewer, nhưng không có lượt Reviewer nào chạy đến 15:47. Lead không được đánh thức trong lúc chuỗi còn chạy, nên không có cơ chế nào tự phục hồi. Operator chạy lại DEV-23 một lần lúc 15:47, lượt Reviewer `01a1cef0` dispatch ngay sau đó. Đây là lỗi trùng với round 4 (DEV-21), chưa sửa ở workflow.
+
+**Điểm chưa khớp trong báo cáo cuối của Lead:**
+- Báo cáo ghi "every sub-issue has closed", nhưng DEV-25 và DEV-26 đang ở `stage_done`, chưa `done`. Lead vẫn chuyển request sang `plan_ready`.
+- DEV-21 (round 4) vẫn `in_review` và nhắm cùng `sumOpen`. Đây là nguy cơ trùng lặp, cần dọn.
+- Ba finding Low của security (S-1, S-2 và một finding khác) để mở, không chặn.
+
+**Kết luận:** skill Lead đã đủ để chuỗi đi đến `plan_ready` mà không cần Lead bị đánh thức thủ công. Gap còn lại nằm ở workflow: issue giao cho squad không được đánh thức Reviewer ở `in_review`. Cần sửa ở code workflow hoặc chuyển người giao sang handler của bước, giống DEV-18. Chưa áp dụng.
+
+**Dịch vụ sau round 5:** daemon `s8-daemon` (PID 3730715) và web `s8-web` đều chạy khi kiểm tra cuối.
