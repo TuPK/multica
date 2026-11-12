@@ -22,7 +22,8 @@ project is done. The Build project is the request's project: the one with the re
 
 - Leave the request where it is, assigned to you. Never change its status or its assignee, except to move it to
   Plan ready when everything is done.
-- Create every issue in the Build project, with no parent. An issue you create gets one owner, one start status, and
+- Create every issue in the Build project, with no parent, except the final verification issues in Step 4, which are children of the
+  request so that the request's wait counts them. An issue you create gets one owner, one start status, and
   the issues it waits for. After that you do not move it: the queue starts it, and its owner moves it on.
 
 ## You never build
@@ -159,6 +160,11 @@ Once the epics are queued, create the final verification as queued issues that w
 a QA Tester issue (full regression and a runtime check from a clean clone, `qa`), a Security Reviewer issue (the whole
 product, `security_review`), and a DevOps issue (how to run and deploy, packaging, release notes, no production deploy,
 `release_prep`). Queue the security issue and the DevOps issue to wait for the QA issue as well.
+
+Create the QA, security and DevOps issues with `--parent <request>`, so the wait below counts all three. Then register the wait
+on the request, and end your run:
+`multica issue wakeup create <request> --until-children-done --expires-in 336h --on-timeout wake --instruction "Every sub-issue is closed. Read the final verification's reports, then write the Step 8 final report and move the request to Plan ready."`
+Without this wait, nothing wakes you when the chain ends, and the request stays in To do.
 
 For Plans B, C and D the epics do not exist yet. Queue only the planning issues, and register a wakeup so you create the
 epic issues when the readiness review has passed:

@@ -273,3 +273,54 @@ Sinh lại bundle bằng `node scripts/generate-sdlc-skills.mjs` (77 skill). Áp
 - Đường từ chối khi fast-forward thất bại chưa được kích hoạt.
 - Chưa biết luật có chạy ổn khi có hai thay đổi cùng đưa lên `main`.
 - Lead không đóng request (DEV-1 và DEV-17 đều `todo`).
+
+### 5.12 Việc còn lại của pilot: daemon, Lead không đóng request, comment QA trên issue Developer
+
+Ngày 2026-11-12, sau mục 5.11. Tổng lượt squad: 61 (trần 120). Các thao tác của operator được ghi kèm thời điểm.
+
+**1. Daemon dừng khi run kết thúc: nguyên nhân chưa xác định hoàn toàn**
+
+Đã dừng ba lần: 11:10:55, 11:39:17, 12:00:40. Cả ba đều là `context canceled` ở vòng lặp poll, không có log tín hiệu hay log yêu cầu shutdown. Đã kiểm tra trong code:
+- Daemon thoát khi root context bị hủy. Context này hủy khi nhận SIGINT/SIGTERM (`notifyShutdownContext`), hoặc khi endpoint HTTP `POST /shutdown` trên health port được gọi (`shutdownHandler` trong `internal/daemon/health.go`). Cả hai đường đều không ghi log, nên không phân biệt được từ log.
+- Đã loại trừ: tự khởi động lại do binary đổi (`auto_reload`), vì binary `bin/multica` có mtime 11:34, trước lần khởi động 11:42, và không có log reload. Các lệnh `syscall.Kill(-pid, …)` trong `processtree` và `execenv` chỉ nhắm vào process group của tiến trình con, không giết daemon.
+- Giả thuyết còn lại: run kiro kết thúc dọn các tiến trình mang biến môi trường đánh dấu run (`KIRO_SESSION_ID`, `CLAUDE_CODE_SESSION_ID`, `AI_AGENT`), và daemon kế thừa các biến này vì được khởi động từ shell của tool. `setsid` không ngắt được điều này, vì nó chỉ đổi session, không đổi env.
+
+Thử cách mới: daemon chạy dưới `systemd-run --user --unit=s8-daemon`, bọc `strace -f -e trace=kill,tkill,tgkill,exit_group`. Unit này nằm ngoài `session-3000.scope` của shell và không có biến đánh dấu. `strace` ghi `si_pid` của người gửi mỗi khi daemon nhận signal. Trạng thái khi khởi động (12:35): daemon PID 3730715, cha là strace PID 3730712, cgroup `app.slice/s8-daemon.service`, không có env marker. Bản ghi nằm ở `~/.cache/claude-delegate/20261112-130000-kiro/daemon-check.txt`, và log signal ở `s8-daemon-strace.txt` cùng thư mục.
+
+Chưa kiểm chứng: daemon này đã sống qua khi run kết thúc hay chưa. Lần kiểm tra cuối (13:08) daemon vẫn chạy, uptime 44 phút. Chỉ khi run hiện tại kết thúc mới biết được. Nếu daemon dừng, `s8-daemon-strace.txt` sẽ có dòng `--- SIGTERM {si_pid=...}` (hoặc tương tự) với PID của người gửi.
+
+**2. Lead không đóng request (DEV-1, DEV-17): nguyên nhân là thiếu cơ chế đánh thức**
+
+Lead lập kế hoạch và tạo 12 issue (DEV-1) và 3 issue (DEV-17) với `--parent` trống, đúng với skill. Sau đó không có lượt nào của Lead trong suốt chuỗi. Nguyên nhân trong code: quy tắc hệ thống `child_done` (`internal/service/issue_wakeup_system.go`) chỉ được tạo cho issue có sub-issue (`EnsureChildDoneRule`). Quy tắc này đánh thức assignee của parent khi một stage của sub-issue đóng. Vì issue con không có parent, không có quy tắc nào đánh thức Lead. CLI cũng ghi điều này: "The parent assignee is woken only when every sub-issue in a stage finishes" (cờ `--stage`). Skill Lead Bước 8 yêu cầu báo cáo cuối và chuyển `Plan ready` sau khi kiểm tra cuối pass, nhưng không có trigger nào để chạy bước này.
+
+Thao tác của operator (12:47, 12:49 và 12:55):
+- Gán DEV-1 và DEV-17 vào project Build `8e9dd76f` (cả hai trước đó `project_id` null, nên workflow `Default` không có `plan_ready`). Lần đầu gọi `issue update --project` hết thời gian chờ (HTTP timeout). Lần thử lại thành công.
+- Đặt `plan_ready`. Không tạo issue, không đổi repo.
+- Comment "Operator note" trên cả hai request, ghi rõ không phải Lead viết, và nêu bằng chứng kiểm tra cuối.
+
+Hệ quả không dự định: comment của operator đã đánh thức Lead (attribution: comment, initiator dev@localhost). Lead chạy lại:
+- DEV-1: một lượt `failed` ("task preparation timed out after 5m0s"), một lượt chờ (`dispatched`) chạy thành công. Báo cáo cuối lúc 13:08.
+- DEV-17: một lượt chạy thành công. Báo cáo cuối lúc 13:07.
+
+Lượt `failed` do hạ tầng, không do logic: từ 12:52 đến 13:02 load trung bình của máy là 92 đến 106 trên 12 nhân. Trong khoảng đó API `18800` không trả lời heartbeat và gia hạn lease của daemon, và truy vấn tới Postgres `5432` timeout. Không xác định được tiến trình nào chiếm tài nguyên. Ở thời điểm kiểm tra (13:07), API healthy, và các tiến trình riêng lẻ đều dùng CPU thấp.
+
+Báo cáo của Lead cho thấy hai điều, mà operator đã bỏ sót:
+- Release notes (`docs/sdlc/release-notes.md`, `docs/sdlc/run.md`) nằm ở commit `6052d0c` trên nhánh cục bộ của DevOps, không có trên `origin/main`.
+- Bằng chứng kiểm tra cuối (QA 10/10, security PASS) là cho `0ca88a2`. `main` đã sang `aa37f8d` (countOpen) sau đó, nên `aa37f8d` chưa có kiểm tra cuối riêng. Operator đã đặt `plan_ready` mà không nêu rõ điều này. Đây là sai sót của operator.
+
+Đề xuất sửa skill (chưa áp dụng, cần người duyệt):
+- `sdlc-squad-lead/SKILL.md`, "The workflow brief" hoặc Bước 1: tạo các issue trong chuỗi với `--parent <request>` và `--stage <n>`, để quy tắc `child_done` đánh thức Lead khi mỗi stage đóng và khi chuỗi đóng. Phải sửa câu "Create every issue ... with no parent".
+- Hoặc, nếu giữ "no parent": thêm một issue kiểm tra cuối có parent là request, xếp sau cùng, để kích hoạt đánh thức.
+- Bước 8: nêu rõ kiểm tra cuối là gì và ai đánh thức Lead để chạy nó.
+
+**3. Comment "Landed on main" trên DEV-18 (issue Developer)**
+
+Đã đọc toàn bộ comment và timeline của DEV-18 và DEV-20. Tác giả của comment trên DEV-18 là các agent theo thứ tự: SDLC Developer (11:50:03, 11:50:22), SDLC Code Reviewer (11:50:47, PASS), SDLC QA Tester (11:51:45, GO và "Landed on main by fast-forward"). Lý do QA viết trên DEV-18: workflow SDLC Auto đẩy chính issue Developer qua trạng thái `in_review` rồi `qa`, nên Reviewer và QA được đánh thức trên đúng issue đó. Các issue DEV-19 và DEV-20 do Lead tạo thêm cho bước 2 và 3, nên kiểm tra bị lặp.
+
+Có gây hại không: không thấy. Push của QA trên DEV-18 là fast-forward của đúng commit `aa37f8d`, không force. Lần push lặp của DEV-20 trả "Everything up-to-date". Chi phí của việc lặp: 5 lượt (DEV-19: 4, DEV-20: 1).
+
+Đề xuất: Lead không tạo issue review và QA riêng cho một issue Developer đã đi qua các stage đó trong workflow. Hoặc workflow không đẩy issue Developer vào `in_review` và `qa` khi Lead đã tạo issue riêng cho các bước này.
+
+**Tổng kết lượt**: 61 (48 cũ, 10 vòng 3, 3 của Lead trên DEV-1 và DEV-17 sau khi operator comment). S9 không dùng lượt nào.
+
+**4. Web pilot.** Web `13720` đã không phản hồi lần thứ hai (khoảng 13:10), dù tiến trình `next-server` vẫn sống. `make up C=web` từ chối khởi động vì cổng bị giữ. Sau khi xác minh bằng `web.listener.pid` của registry rằng tiến trình thuộc môi trường s8-pilot (thư mục làm việc là snapshot pilot), dừng tiến trình đó và khởi động lại bằng `make up C=web ARGS="--name s8-pilot"`. Lần này HTTP 200 (0,2 giây).

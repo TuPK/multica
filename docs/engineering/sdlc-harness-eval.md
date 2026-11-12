@@ -89,3 +89,28 @@ Trước khi chạy, cần người quyết:
 ## 5. Quyết định theo DR2 và DR3
 
 Chưa quyết. Không có pass@1, pass^3 hay token theo biến thể, nên không áp DR2 và DR3. Khi có số liệu, áp quy tắc đã đặt trước ở spec mục 10.5, không đổi quy tắc sau khi xem kết quả.
+
+## 6. Kiểm tra grader (lần này, 2026-11-12): dừng vì chỉ có một tác vụ chấm được tất định
+
+Mục này làm theo bước "chọn 3 tác vụ chấm được tất định" của lần làm tiếp. Không ai chạy lượt squad nào cho S9 (0 lượt). Không ghi gì vào repo tupk. Không in mô tả, comment hay tiêu chí của issue tupk.
+
+**Nguồn repo.** Có 2 resource `local_directory` gắn với project tupk (đọc bằng SELECT). Cả hai là git repo trên máy. Repo 1 có 705 file tracked, có `node_modules`, test bằng `node --test tests/*.test.mjs` và `vitest`. Repo 2 có 11 file, chỉ là tài liệu, không có mã để chấm.
+
+**Phương pháp kiểm tra.** Với mỗi ứng viên có commit sửa rõ, xác định loại kiểm chứng commit đó cần (chỉ đọc danh sách file, không đọc nội dung issue). Tiêu chí "chấm tất định": chạy được bằng lệnh trong máy mà không cần dịch vụ ngoài, và có thể kiểm tra grader trước bằng cách test trên commit cha (phải FAIL) và trên commit sửa (phải PASS).
+
+| Issue (#) | Commit sửa | Loại kiểm chứng cần | Kết luận |
+| --- | --- | --- | --- |
+| 168 | `0f87a8f` | Test đơn vị TypeScript (`src/lib/api-crypto.test.ts`, `src/lib/secure-crypto.ts`), không cần dịch vụ | Chấm được. Cần cài dependency của repo; chưa dựng grader và chưa chạy |
+| 186 | `2ca9782` | Sửa component React (`BuyerRecoveryPanel.tsx`), không kèm test trong commit | Chưa xác định được. Cần viết test UI và có thể cần trình duyệt |
+| 156 | `289c7d6` | Edge function Supabase và SQL (`supabase/tests/*.sql`) | Không chấm được trên máy này: cần stack Supabase. Không dùng stack của mua_ngon_ecommerce |
+| 136 | `5f1e44e` | Runner red-team (`ai-runtime/red-team.mjs`), cần runtime agent | Không tất định: kết quả phụ thuộc runtime và LLM |
+| Còn lại | | Epic, review, retrospective, drill, hoặc kiểm tra trên trình duyệt | Không phải tác vụ sửa lỗi có lệnh chấm |
+
+Kết quả: **1 tác vụ chấm được rõ ràng (#168), 1 chưa xác định (#186), dưới ngưỡng 3.** Theo hướng dẫn, dừng bước này và không ép grader.
+
+**Ghi chú cho lần sau.**
+- Với #168, grader nên là test đơn vị trên `src/lib/api-crypto.test.ts`, chạy trên snapshot ở commit cha của `0f87a8f`. Phải xác minh test FAIL ở commit cha và PASS ở `0f87a8f` trước khi dùng. Bước này chưa làm.
+- Muốn đủ 3 tác vụ, cần một trong hai: viết grader UI cho #186 (có thể dựng bằng test component, phải kiểm tra repo đã có công cụ đó chưa), hoặc chọn tác vụ mới có test đơn vị. Cả hai việc này nằm ngoài phạm vi lần này.
+- Chưa dựng: snapshot repo tupk cho từng tác vụ, biến thể `AGENTS.md`, và lượt chạy. Vẫn không có số liệu pass@1, pass^3, token, hay bootstrap. DR2 và DR3 vẫn chưa quyết được.
+
+**Chi phí lần này**: 0 lượt squad cho S9. Tổng lượt squad của pilot S8 đến cuối phiên: 61.
