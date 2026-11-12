@@ -381,7 +381,7 @@ type ListProjectSquadWorkflowsRow struct {
 }
 
 // The squads a project is assigned to, each with the workflow it uses now.
-// A squad with no active workflow has a NULL name.
+// A squad with no active workflow has an empty active_workflow_name.
 func (q *Queries) ListProjectSquadWorkflows(ctx context.Context, arg ListProjectSquadWorkflowsParams) ([]ListProjectSquadWorkflowsRow, error) {
 	rows, err := q.db.Query(ctx, listProjectSquadWorkflows, arg.WorkspaceID, arg.SquadIds)
 	if err != nil {

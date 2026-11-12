@@ -381,6 +381,14 @@
       "sdlc_maintenance": {
         "name": "SDLC · Producto existente",
         "description": "Clasifica un error, una función, una optimización o una actualización, lo dirige a los agentes adecuados, lo verifica e informa."
+      },
+      "content_studio": {
+        "name": "Content Studio",
+        "description": "Producción y publicación de contenido multicanal con puertas de revisión."
+      },
+      "research_lab": {
+        "name": "Laboratorio de investigación",
+        "description": "Busca en la literatura académica en rondas acotadas, filtra artículos con criterios escritos y comprueba cada cita antes de exportar."
       }
     },
     "groups": {

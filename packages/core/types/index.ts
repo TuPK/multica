@@ -393,3 +393,5 @@ export type { IssueWakeup, IssueWakeupInput, SystemWakeup, WorkspaceSystemWakeup
 
 export type { WorkspaceWakeup, WorkspaceWakeupPage, WorkspaceWakeupFilters, WakeupScope } from "./issue-wakeup";
 export type * from "./hub";
+export type { PublishChannel, PublishChannelStatus, PublishChannelLimits, CreatePublishChannelInput, PublishSettings, SavePublishSettingsInput } from "./publish";
+export type { ResearchSettings, UpdateResearchSettingsInput } from "./research";

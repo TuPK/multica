@@ -381,6 +381,14 @@
       "sdlc_maintenance": {
         "name": "SDLC · Existing product",
         "description": "Triages a bug, feature, optimization, or upgrade, routes it to the right agents, verifies it, and reports."
+      },
+      "content_studio": {
+        "name": "Content Studio",
+        "description": "Multi-channel content production and publishing with review gates."
+      },
+      "research_lab": {
+        "name": "Research Lab",
+        "description": "Searches the scholarly literature in bounded rounds, screens papers against written criteria, and checks every citation before export."
       }
     },
     "groups": {

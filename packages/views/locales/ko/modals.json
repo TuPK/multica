@@ -379,6 +379,14 @@
       "sdlc_maintenance": {
         "name": "SDLC · 기존 제품",
         "description": "버그, 기능, 최적화, 업그레이드를 분류해 적합한 에이전트에게 배정하고, 검증한 뒤 보고합니다."
+      },
+      "content_studio": {
+        "name": "Content Studio",
+        "description": "검토 게이트를 통한 다중 채널 콘텐츠 제작 및 게시."
+      },
+      "research_lab": {
+        "name": "리서치 랩",
+        "description": "학술 문헌을 횟수를 정해 검색하고, 문서화된 기준으로 논문을 선별하며, 내보내기 전에 모든 인용을 확인합니다."
       }
     },
     "groups": {

@@ -5,12 +5,14 @@ import {
   AlarmClock,
   Bell,
   Blocks,
+  BookOpen,
   CreditCard,
   FolderGit2,
   Keyboard,
   KeyRound,
   ListPlus,
   Lock,
+  Megaphone,
   MessagesSquare,
   Plug,
   Search,
@@ -41,6 +43,8 @@ import { WorkspaceTab } from "./workspace-tab";
 import { MembersTab } from "./members-tab";
 import { CodeTab } from "./code-tab";
 import { ChannelsTab } from "./channels-tab";
+import { PublishChannelsTab } from "./publish-channels-tab";
+import { ResearchTab } from "./research-tab";
 import { ConnectedAppsTab, useComposioAvailable } from "./connected-apps-tab";
 import { NotificationsTab } from "./notifications-tab";
 import { LabelsTab } from "./labels-tab";
@@ -222,6 +226,20 @@ export function SettingsPage({ extraDeviceTabs = [] }: SettingsPageProps = {}) {
               t(($) => $.page.tabs.channels),
               MessagesSquare,
               <ChannelsTab />,
+            ),
+            entry(
+              "publishing",
+              t(($) => $.page.tabs.publishing),
+              Megaphone,
+              <PublishChannelsTab />,
+              { adminOnly: true },
+            ),
+            entry(
+              "research",
+              t(($) => $.page.tabs.research),
+              BookOpen,
+              <ResearchTab />,
+              { adminOnly: true },
             ),
             entry("mcp", t(($) => $.page.tabs.mcp), Server, <McpTab />, {
               adminOnly: true,

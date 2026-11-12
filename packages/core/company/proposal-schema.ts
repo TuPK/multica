@@ -29,6 +29,7 @@ export type ProposalKind =
   | "org_change"
   | "budget"
   | "standing_approval"
+  | "publish"
   | "unknown";
 
 const KNOWN_STATES = ["pending", "approved", "rejected", "revising", "expired"] as const;
@@ -39,6 +40,7 @@ const KNOWN_KINDS = [
   "org_change",
   "budget",
   "standing_approval",
+  "publish",
 ] as const;
 
 export interface ProposalHandoff {
@@ -408,5 +410,60 @@ const EMPTY_ORG_CHANGE_PAYLOAD: OrgChangePayload = {
 export function orgChangePayloadOf(proposal: Pick<Proposal, "payload">): OrgChangePayload {
   return parseWithFallback(proposal.payload, OrgChangePayloadSchema, EMPTY_ORG_CHANGE_PAYLOAD, {
     endpoint: "proposal.payload (org_change)",
+  });
+}
+
+/** One channel's content in a `publish` proposal. The platform and account are the channel's, as stored. */
+export interface PublishPayloadChannel {
+  channel_id: string;
+  platform: string;
+  account_name: string;
+  text: string;
+  media_url: string | null;
+  hashtags: string[];
+}
+
+/**
+ * A `publish` proposal (Content Studio): one content item approved to go out on
+ * one or more channels. Approval publishes each channel's version once.
+ */
+export interface PublishPayload {
+  item_id: string;
+  version: number;
+  market: "vn" | "intl";
+  scheduled_at: string | null;
+  channels: PublishPayloadChannel[];
+}
+
+const PublishPayloadChannelSchema = z
+  .object({
+    channel_id: z.string().min(1),
+    platform: z.string().default(""),
+    account_name: z.string().default(""),
+    text: z.string(),
+    media_url: z.string().nullable().default(null),
+    hashtags: z.array(z.string()).default([]),
+  })
+  .loose();
+
+const PublishPayloadSchema = z
+  .object({
+    item_id: z.string().min(1),
+    version: z.number().int().min(1),
+    market: z.enum(["vn", "intl"]),
+    scheduled_at: z.string().nullable().default(null),
+    channels: z.array(PublishPayloadChannelSchema).min(1),
+  })
+  .loose();
+
+/**
+ * The publish fields of a proposal. Null when the proposal is not a publish kind
+ * or its payload does not match the contract. A malformed payload is logged and
+ * reads as null, so the decision view can show it read-only instead of failing.
+ */
+export function publishPayload(proposal: Pick<Proposal, "kind" | "payload">): PublishPayload | null {
+  if (proposal.kind !== "publish") return null;
+  return parseWithFallback<PublishPayload | null>(proposal.payload, PublishPayloadSchema, null, {
+    endpoint: "proposal.payload (publish)",
   });
 }

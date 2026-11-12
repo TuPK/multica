@@ -46,6 +46,8 @@ export function resolveSettingsLocation(
       return { tab: "code", section, integration: null };
     case "repositories":
       return { tab: "code", section: section ?? "repositories", integration: null };
+    case "publishing-channels":
+      return { tab: "publishing", section: null, integration: null };
     case "integrations": {
       const composioCallback =
         params.has("connected") ||

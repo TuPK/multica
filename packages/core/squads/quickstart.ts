@@ -43,6 +43,8 @@ import type {
 } from "../company/types";
 import { kitvietPackOf, loadKitvietRoleInstructions, loadKitvietSkillPacks } from "./kitviet-packs";
 import { PLANNING_ROLE_AGENT_INSTRUCTIONS, type PlanningRoleKey } from "./planning-agent-instructions";
+import { CONTENT_STUDIO_ROLE_AGENT_INSTRUCTIONS, type CsRoleKey } from "./content-studio";
+import { RESEARCH_LAB_ROLE_AGENT_INSTRUCTIONS, type RlRoleKey } from "./research-lab";
 import { SDLC_ROLE_AGENT_INSTRUCTIONS, type SdlcRoleKey } from "./sdlc-agent-instructions";
 import { SDLC_BUILTIN_SKILLS, type BuiltinSkill } from "./sdlc-skills-data";
 import { SALES_ROLE_AGENT_INSTRUCTIONS, type SalesRoleKey } from "./sales-agent-instructions";
@@ -205,6 +207,12 @@ export async function instructionsFor(role: SquadRoleKey): Promise<string> {
   }
   if (role in PLANNING_ROLE_AGENT_INSTRUCTIONS) {
     return PLANNING_ROLE_AGENT_INSTRUCTIONS[role as PlanningRoleKey];
+  }
+  if (role in CONTENT_STUDIO_ROLE_AGENT_INSTRUCTIONS) {
+    return CONTENT_STUDIO_ROLE_AGENT_INSTRUCTIONS[role as CsRoleKey];
+  }
+  if (role in RESEARCH_LAB_ROLE_AGENT_INSTRUCTIONS) {
+    return RESEARCH_LAB_ROLE_AGENT_INSTRUCTIONS[role as RlRoleKey];
   }
   const kitviet = await loadKitvietRoleInstructions(role);
   if (kitviet !== undefined) return kitviet;

@@ -6,6 +6,8 @@ import type { WorkspaceWakeupPage, WorkspaceWakeupFilters } from "../types/issue
 import { WorkspaceWakeupPageSchema, IssueWakeupSchema, IssueWakeupSummaryRowSchema, PausedWakeupSchema, SystemWakeupSchema, WakeupRunSchema, WorkspaceSystemWakeupSchema, RunQueuePreviewSchema, RunQueueWaitSchema } from "./schemas";
 import type { ArchivedInboxFilters } from "../inbox/filter-store";
 import type { ListIssueWorkflowTemplatesResponse } from "../types/issue-workflow";
+import type { CreatePublishChannelInput, SavePublishSettingsInput } from "../types/publish";
+import type { UpdateResearchSettingsInput } from "../types/research";
 import type { ArchivedInboxPage, ArchivedInboxFacets } from "../types/inbox";
 import { parseQoderConnection, parseQoderCatalog, type QoderInput } from "../runtimes/qoder-schema";
 import { configStore } from "../config";
@@ -6067,6 +6069,77 @@ export class ApiClient {
   async deleteComposioConnection(connectionId: string): Promise<void> {
     await this.fetch(`/api/integrations/composio/connections/${connectionId}`, {
       method: "DELETE",
+    });
+  }
+
+  // Publishing channels (Content Studio). Responses are returned raw; the
+  // publish-channels hooks parse them with their zod schemas.
+
+  /** The workspace's publishing channels. */
+  async listPublishChannels(): Promise<unknown> {
+    return this.fetch(`/api/publish-channels`);
+  }
+
+  /** Adds a publishing channel that is not connected yet. */
+  async createPublishChannel(input: CreatePublishChannelInput): Promise<unknown> {
+    return this.fetch(`/api/publish-channels`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  /** Which Ayrshare keys the workspace has set. No key material is returned. */
+  async getPublishSettings(): Promise<unknown> {
+    return this.fetch(`/api/publish-channels/settings`);
+  }
+
+  /** Saves the workspace's Ayrshare keys. Write-only; a field left out is unchanged. */
+  async savePublishSettings(input: SavePublishSettingsInput): Promise<unknown> {
+    return this.fetch(`/api/publish-channels/settings`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    });
+  }
+
+  /** Removes a publishing channel from the workspace. */
+  async deletePublishChannel(id: string): Promise<void> {
+    await this.fetch(`/api/publish-channels/${id}`, { method: "DELETE" });
+  }
+
+  /** A link the user opens to connect the channel's account. */
+  async connectPublishChannel(id: string): Promise<unknown> {
+    return this.fetch(`/api/publish-channels/${id}/connect`, { method: "POST" });
+  }
+
+  /** Asks Ayrshare whether the channel's account is linked, and returns the channel. */
+  async checkPublishChannel(id: string): Promise<unknown> {
+    return this.fetch(`/api/publish-channels/${id}/check`, { method: "POST" });
+  }
+
+  /** The exact request body a post would send. Nothing is sent. */
+  async dryRunPublishChannel(
+    id: string,
+    input: { text: string; media_url?: string; hashtags?: string[] },
+  ): Promise<unknown> {
+    return this.fetch(`/api/publish-channels/${id}/dry-run`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  // Research Lab source settings. Responses are returned raw; the research hooks parse them
+  // with their zod schema. The API keys are write-only here: the server never returns one.
+
+  /** Which Research Lab sources have a key, and the contact address. */
+  async getResearchSettings(): Promise<unknown> {
+    return this.fetch(`/api/research/settings`);
+  }
+
+  /** Saves keys and the contact address. A field left out is unchanged; an empty string removes it. */
+  async updateResearchSettings(input: UpdateResearchSettingsInput): Promise<unknown> {
+    return this.fetch(`/api/research/settings`, {
+      method: "PUT",
+      body: JSON.stringify(input),
     });
   }
 

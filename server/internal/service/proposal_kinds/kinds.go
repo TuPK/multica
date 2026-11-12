@@ -112,6 +112,8 @@ func NewRegistry(initiatives Initiatives) *Registry {
 		stageGateKind{initiatives: initiatives},
 		// A budget raise: a squad asks the boss for more money (spec 4.2).
 		budgetKind{},
+		// A publish request: a content item approved to go out on channels.
+		publishKind{},
 		// The standing approval kind validates a policy's kind against this registry.
 		standingApprovalKind{registry: r},
 	}

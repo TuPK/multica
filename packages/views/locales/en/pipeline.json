@@ -141,6 +141,7 @@
       "org_change": "Org change",
       "budget": "Budget",
       "standing_approval": "Standing approval",
+      "publish": "Publish",
       "unknown": "Other"
     }
   },

@@ -379,6 +379,14 @@
       "sdlc_maintenance": {
         "name": "SDLC · 既存プロダクト",
         "description": "バグ、機能、最適化、アップグレードを仕分けて適切なエージェントに振り分け、検証して報告します。"
+      },
+      "content_studio": {
+        "name": "Content Studio",
+        "description": "レビューゲートを備えたマルチチャネルコンテンツ制作と公開。"
+      },
+      "research_lab": {
+        "name": "リサーチラボ",
+        "description": "学術文献を回数を区切って検索し、文書化した基準で論文を絞り込み、エクスポート前にすべての引用を確認します。"
       }
     },
     "groups": {

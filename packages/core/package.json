@@ -152,6 +152,8 @@
     "./lark": "./lark/index.ts",
     "./lark/queries": "./lark/queries.ts",
     "./composio": "./composio/index.ts",
+    "./publish-channels": "./publish-channels/index.ts",
+    "./research": "./research/index.ts",
     "./composio/queries": "./composio/queries.ts",
     "./slack": "./slack/index.ts",
     "./slack/queries": "./slack/queries.ts",

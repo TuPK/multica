@@ -75,7 +75,7 @@ func ForbiddenForStandingApproval(kind string, urgent bool, payload []byte) stri
 		return PolicyRefusalUrgent
 	}
 	switch kind {
-	case KeyOrgChange, KeyStandingApproval:
+	case KeyOrgChange, KeyStandingApproval, KeyPublish:
 		return PolicyRefusalForbidden
 	case KeyStageGate:
 		if payload == nil {

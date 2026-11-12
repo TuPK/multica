@@ -1264,6 +1264,84 @@ describe("runSquadQuickstart for the sales loop", () => {
   });
 });
 
+describe("runSquadQuickstart for the research lab", () => {
+  const lab = SQUAD_TEMPLATES.find((t) => t.id === "research_lab")!;
+
+  it("makes the five lab agents with the lab's own instructions, led by the lab lead", async () => {
+    const client = fakeClient();
+
+    const out = await runSquadQuickstart(client, lab, options);
+
+    expect(out.agents.map((a) => [a.name, a.status])).toEqual([
+      ["Research Lab Lead", "created"],
+      ["Literature Scout", "created"],
+      ["Relevance Screener", "created"],
+      ["Evidence Synthesizer", "created"],
+      ["Citation Auditor", "created"],
+    ]);
+    const created = client.createAgent.mock.calls.map((c) => c[0]);
+    expect(created.every((a) => a.runtime_id === "rt-1")).toBe(true);
+    expect(created[0]!.instructions).toContain("You are the Research Lab Lead");
+    expect(created[1]!.instructions).toContain("You are the Literature Scout");
+    expect(created.every((a) => a.instructions!.includes("research-lab-delivery-core"))).toBe(true);
+    expect(client.createSquad).toHaveBeenCalledWith(expect.objectContaining({ name: "Research Lab", leader_id: "agent-1" }));
+  });
+
+  it("seats the squad on the Research floor and adds the four other members", async () => {
+    const client = fakeClient();
+
+    await runSquadQuickstart(client, lab, options);
+
+    expect(client.createCompanyFloor).toHaveBeenCalledWith({ name: "Research" });
+    expect(client.addSquadMember).toHaveBeenCalledTimes(4);
+    expect(client.addSquadMember.mock.calls.map((c) => c[1].member_id)).toEqual(["agent-2", "agent-3", "agent-4", "agent-5"]);
+  });
+
+  it("imports the six research-lab skills, and only those, onto the squad", async () => {
+    const client = fakeClient();
+
+    const out = await runSquadQuickstart(client, lab, options);
+
+    const names = lab.builtinSkills;
+    expect(names).toHaveLength(6);
+    expect(client.createSkill.mock.calls.map((c) => c[0].name)).toEqual([...names]);
+    expect(client.setSquadSkills).toHaveBeenCalledWith("squad-1", names.map((n) => `skill-${n}`));
+    expect(out.skills).toEqual({ status: "ready" });
+  });
+
+  it("opens no routine and no workflow, and writes no knowledge document", async () => {
+    const client = fakeClient();
+
+    const out = await runSquadQuickstart(client, lab, options);
+
+    expect(out.routines).toEqual([]);
+    expect(out.workflow.status).toBe("skipped");
+    expect(client.createSquadRoutine).not.toHaveBeenCalled();
+    expect(client.createKnowledgeDocument).not.toHaveBeenCalled();
+  });
+
+  it("does not reuse or touch the Market Research agents of the workspace", async () => {
+    const client = fakeClient({
+      listAgents: vi.fn(async () => [asAgent("m-1", "Research Lead"), asAgent("m-2", "Market Scout"), asAgent("m-3", "Research Critic")]),
+    });
+
+    const out = await runSquadQuickstart(client, lab, options);
+
+    expect(out.agents.every((a) => a.status === "created")).toBe(true);
+    expect(client.createAgent).toHaveBeenCalledTimes(5);
+  });
+
+  it("reuses its own agents on a second run instead of making duplicates", async () => {
+    const client = fakeClient({
+      listAgents: vi.fn(async () => [asAgent("a-1", "Research Lab Lead"), asAgent("a-2", "Literature Scout")]),
+    });
+
+    const out = await runSquadQuickstart(client, lab, options);
+
+    expect(out.agents.map((a) => a.status)).toEqual(["reused", "reused", "created", "created", "created"]);
+  });
+});
+
 describe("Kit Viet P2 squads on their own floors", () => {
   const p2 = SQUAD_TEMPLATES.filter((template) => KITVIET_P2_FLOOR_NAME_LIST.includes(template.floorName ?? ""));
   const executive = asFloor("floor-exec", "Executive", 0);

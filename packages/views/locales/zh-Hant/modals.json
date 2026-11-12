@@ -379,6 +379,14 @@
       "sdlc_maintenance": {
         "name": "SDLC · 既有產品",
         "description": "對缺陷、功能、最佳化或升級進行分流，分派給合適的智慧體，驗證後回報。"
+      },
+      "content_studio": {
+        "name": "內容工作室",
+        "description": "具備審核門檻的多渠道內容製作與發布。"
+      },
+      "research_lab": {
+        "name": "研究實驗室",
+        "description": "分輪次檢索學術文獻，依書面標準篩選論文，並在匯出前核對每筆引用。"
       }
     },
     "groups": {

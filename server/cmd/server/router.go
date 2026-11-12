@@ -41,7 +41,9 @@ import (
 	"github.com/multica-ai/multica/server/internal/integrations/wecom"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/middleware"
+	"github.com/multica-ai/multica/server/internal/publish"
 	"github.com/multica-ai/multica/server/internal/realtime"
+	"github.com/multica-ai/multica/server/internal/research"
 	"github.com/multica-ai/multica/server/internal/seatcapacity"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/storage"
@@ -1430,6 +1432,41 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 		slog.Info("composio integration disabled (COMPOSIO_API_KEY not set)")
 	}
 
+	// Publishing channels (Content Studio). The service is always built, so a
+	// server without a publish secret key answers "not configured" rather than a
+	// missing route. Each workspace keeps its own Ayrshare keys, sealed with
+	// MULTICA_PUBLISH_SECRET_KEY (base64, 32 bytes). Without that key no keys can be
+	// stored, and every workspace reports not configured.
+	{
+		var publishBox *secretbox.Box
+		if pk, err := secretbox.LoadKey("MULTICA_PUBLISH_SECRET_KEY"); err == nil {
+			box, berr := secretbox.New(pk)
+			if berr != nil {
+				slog.Error("publishing: secretbox.New failed; publishing keys cannot be stored", "error", berr)
+			} else {
+				publishBox = box
+			}
+		} else {
+			slog.Info("publishing: MULTICA_PUBLISH_SECRET_KEY not set; publishing keys cannot be stored")
+		}
+		h.Publish = publish.NewService(queries, publishBox)
+	}
+
+	// Research Lab source settings. The service is always built. MULTICA_RESEARCH_SECRET_KEY seals the
+	// stored API keys; without it a key derived from JWT_SECRET is used.
+	{
+		researchBox, fromJWT, err := research.NewBox()
+		switch {
+		case err != nil:
+			slog.Error("research: could not build the sealing box; API keys cannot be stored", "error", err)
+		case researchBox == nil:
+			slog.Info("research: no MULTICA_RESEARCH_SECRET_KEY or JWT_SECRET; API keys cannot be stored")
+		case fromJWT:
+			slog.Warn("research: MULTICA_RESEARCH_SECRET_KEY is not set; sealing stored API keys with a key derived from JWT_SECRET. Rotating JWT_SECRET will make every stored research API key unreadable until it is entered again. Set MULTICA_RESEARCH_SECRET_KEY (openssl rand -base64 32) to decouple them.")
+		}
+		h.Research = &research.Service{Queries: queries, Box: researchBox}
+	}
+
 	// VCS at-rest encryption: the box encrypts per-workspace access tokens and
 	// webhook secrets for token-based providers (Forgejo / Gitea / GitLab).
 	// Without it, connect/webhook handlers return 503 (so a misconfigured
@@ -2523,6 +2560,28 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Post("/decision", h.DecideProposal)
 					r.Post("/revision", h.ReviseProposal)
 				})
+			})
+			// Publishing channels (Content Studio): the accounts an approved post goes out on.
+			r.Route("/api/publish-channels", func(r chi.Router) {
+				r.Get("/", h.ListPublishChannels)
+				r.Post("/", h.CreatePublishChannel)
+				// Workspace publishing keys. Static, so they win over the {id} routes below.
+				r.Get("/settings", h.GetPublishSettings)
+				r.Put("/settings", h.PutPublishSettings)
+				r.Route("/{id}", func(r chi.Router) {
+					r.Delete("/", h.DeletePublishChannel)
+					r.Post("/connect", h.ConnectPublishChannel)
+					r.Post("/check", h.CheckPublishChannel)
+					r.Post("/dry-run", h.DryRunPublishChannel)
+				})
+			})
+			// Research Lab source settings: the OpenAlex and Semantic Scholar keys. Members read what is
+			// configured (never a key); owners and admins change it; members and agents fetch the keys to run
+			// `multica research`.
+			r.Route("/api/research", func(r chi.Router) {
+				r.Get("/settings", h.GetResearchSettings)
+				r.Put("/settings", h.UpdateResearchSettings)
+				r.Get("/credentials", h.GetResearchCredentials)
 			})
 			// Standing approvals (spec 4.4). Reads for members; creating and revoking
 			// are for owners and admins, decided in the handler. Flat registrations,

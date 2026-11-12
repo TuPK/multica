@@ -1590,6 +1590,28 @@ func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 			run:  func() error { return qtx.DeleteWorkspaceApprovalPolicies(ctx, requester.WorkspaceID) },
 		},
 		{
+			// Content Studio publishing: the send log first, then the channels, the keys and
+			// the profile key. None of these tables has a foreign key.
+			name: "delete publishing channels",
+			run: func() error {
+				if err := qtx.DeleteWorkspacePublishAttempts(ctx, requester.WorkspaceID); err != nil {
+					return err
+				}
+				if err := qtx.DeleteWorkspacePublishChannels(ctx, requester.WorkspaceID); err != nil {
+					return err
+				}
+				if err := qtx.DeleteWorkspacePublishSettings(ctx, requester.WorkspaceID); err != nil {
+					return err
+				}
+				return qtx.DeleteWorkspacePublishProfile(ctx, requester.WorkspaceID)
+			},
+		},
+		{
+			// Research Lab source settings (sealed API keys) go with their workspace.
+			name: "delete research settings",
+			run:  func() error { return qtx.DeleteWorkspaceResearchSettings(ctx, requester.WorkspaceID) },
+		},
+		{
 			name: "delete hub data",
 			run:  func() error { return qtx.DeleteWorkspaceHubData(ctx, requester.WorkspaceID) },
 		},

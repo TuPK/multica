@@ -443,12 +443,12 @@ func addProposalCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().String("squad", "", "Proposing squad (id or name) — required")
 	addProposalBodyFlags(cmd)
 	cmd.Flags().String("handoff-squad", "", "Squad (id or name) that starts the work if the boss approves")
-	cmd.Flags().String("kind", "decision", "Proposal kind: decision (the default) or opportunity. Stage gates are filed by the system")
+	cmd.Flags().String("kind", "decision", "Proposal kind: decision (the default), opportunity, goal or publish. Stage gates are filed by the system")
 	cmd.Flags().String("thesis", "", "Opportunity: why this is worth doing — required with --kind opportunity")
 	cmd.Flags().String("market", "", "Opportunity: the market it is in")
 	cmd.Flags().StringArray("evidence-doc", nil, "Opportunity: a knowledge document id that supports it; repeat for more")
 	cmd.Flags().String("target-stage", "", "Opportunity: the pipeline stage it starts at (default validate)")
-	cmd.Flags().String("payload-file", "", "Goal: a JSON file with the goal and its key results — required with --kind goal")
+	cmd.Flags().String("payload-file", "", "A JSON object with the kind's fields — required with --kind goal or publish")
 	cmd.Flags().Bool("urgent", false, "Only for a decision that cannot wait a day; assigns the boss at once")
 	cmd.Flags().String("urgent-reason", "", "Why this cannot wait a day — required with --urgent")
 }
@@ -538,8 +538,8 @@ func runProposalDecide(cmd *cobra.Command, args []string) error {
 // A kind the CLI does not know is sent as given, and the server refuses it.
 func proposalKindFromFlags(cmd *cobra.Command) (string, map[string]any, error) {
 	kind, _ := cmd.Flags().GetString("kind")
-	if kind == "goal" {
-		return goalPayloadFromFile(cmd)
+	if kind == "goal" || kind == "publish" {
+		return payloadFromFile(cmd, kind)
 	}
 	thesis, _ := cmd.Flags().GetString("thesis")
 	market, _ := cmd.Flags().GetString("market")
@@ -570,12 +570,14 @@ func proposalKindFromFlags(cmd *cobra.Command) (string, map[string]any, error) {
 	return kind, payload, nil
 }
 
-// goalPayloadFromFile reads the payload of a goal proposal: one goal with its key
-// results, as a JSON object. The server checks its fields.
-func goalPayloadFromFile(cmd *cobra.Command) (string, map[string]any, error) {
+// payloadFromFile reads the payload of a proposal kind whose fields come from a
+// JSON file: a goal (one goal with its key results) or a publish item (its
+// channels and their text). The payload is a JSON object; the server checks its
+// fields.
+func payloadFromFile(cmd *cobra.Command, kind string) (string, map[string]any, error) {
 	file, _ := cmd.Flags().GetString("payload-file")
 	if file == "" {
-		return "", nil, fmt.Errorf("--payload-file is required with --kind goal: a JSON file with the goal and its key results")
+		return "", nil, fmt.Errorf("--payload-file is required with --kind %s: a JSON file with its fields", kind)
 	}
 	raw, err := os.ReadFile(file)
 	if err != nil {
@@ -585,5 +587,5 @@ func goalPayloadFromFile(cmd *cobra.Command) (string, map[string]any, error) {
 	if err := json.Unmarshal(raw, &payload); err != nil {
 		return "", nil, fmt.Errorf("--payload-file must be a JSON object: %w", err)
 	}
-	return "goal", payload, nil
+	return kind, payload, nil
 }

@@ -2044,6 +2044,52 @@ type ProposalRevision struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
+type PublishAttempt struct {
+	ID             pgtype.UUID        `json:"id"`
+	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
+	ProposalID     pgtype.UUID        `json:"proposal_id"`
+	ItemID         string             `json:"item_id"`
+	ChannelID      pgtype.UUID        `json:"channel_id"`
+	Version        int32              `json:"version"`
+	Status         string             `json:"status"`
+	ExternalPostID string             `json:"external_post_id"`
+	ExternalUrl    string             `json:"external_url"`
+	Error          string             `json:"error"`
+	ApprovedBy     string             `json:"approved_by"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
+type PublishChannel struct {
+	ID            pgtype.UUID        `json:"id"`
+	WorkspaceID   pgtype.UUID        `json:"workspace_id"`
+	Platform      string             `json:"platform"`
+	Market        string             `json:"market"`
+	AccountName   string             `json:"account_name"`
+	Status        string             `json:"status"`
+	StatusDetail  string             `json:"status_detail"`
+	LastCheckedAt pgtype.Timestamptz `json:"last_checked_at"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
+type PublishProfile struct {
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	ProfileKeySealed []byte             `json:"profile_key_sealed"`
+	RefID            string             `json:"ref_id"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
+type PublishSetting struct {
+	WorkspaceID       pgtype.UUID        `json:"workspace_id"`
+	AyrshareKeySealed []byte             `json:"ayrshare_key_sealed"`
+	XKeySealed        []byte             `json:"x_key_sealed"`
+	XSecretSealed     []byte             `json:"x_secret_sealed"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+}
+
 type QuickAction struct {
 	ID            pgtype.UUID        `json:"id"`
 	WorkspaceID   pgtype.UUID        `json:"workspace_id"`
@@ -2060,6 +2106,15 @@ type QuickAction struct {
 	CreatedByID   pgtype.UUID        `json:"created_by_id"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
+type ResearchSetting struct {
+	WorkspaceID       pgtype.UUID        `json:"workspace_id"`
+	OpenalexKeySealed []byte             `json:"openalex_key_sealed"`
+	S2KeySealed       []byte             `json:"s2_key_sealed"`
+	ContactEmail      string             `json:"contact_email"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
 }
 
 type RetroRequest struct {

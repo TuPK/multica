@@ -379,6 +379,14 @@
       "sdlc_maintenance": {
         "name": "SDLC · 现有产品",
         "description": "对缺陷、功能、优化或升级进行分诊，分派给合适的智能体，验证后汇报。"
+      },
+      "content_studio": {
+        "name": "内容工作室",
+        "description": "具备审核门禁的多渠道内容制作与发布。"
+      },
+      "research_lab": {
+        "name": "研究实验室",
+        "description": "分轮次检索学术文献，按书面标准筛选论文，并在导出前核查每条引用。"
       }
     },
     "groups": {

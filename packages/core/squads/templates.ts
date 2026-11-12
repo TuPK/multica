@@ -1,5 +1,7 @@
 import type { AgentInstructionTemplate } from "../agents/instruction-templates";
 import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
+import { CONTENT_STUDIO_TEMPLATE, CS_ROLES, type CsRoleKey } from "./content-studio";
+import { RESEARCH_LAB_TEMPLATE, RL_ROLES, type RlRoleKey } from "./research-lab";
 import { KV_ADMIN_ROLES, KV_ADMIN_TEMPLATE, type KvAdminRoleKey } from "./kitviet-templates/admin";
 import { KV_B2B_ROLES, KV_B2B_TEMPLATE, type KvB2bRoleKey } from "./kitviet-templates/b2b";
 import { KV_ACCOUNTING_ROLES, KV_ACCOUNTING_TEMPLATE, type AcctRoleKey } from "./kitviet-templates/accounting";
@@ -56,7 +58,9 @@ export type SquadTemplateId =
   | "kv_trade"
   | "kv_factory"
   | "kv_education"
-  | "kv_teaching";
+  | "kv_teaching"
+  | "content_studio"
+  | "research_lab";
 
 /** Role keys of the SDLC, research, planning and Sales Loop squads. */
 type BaseSquadRoleKey =
@@ -110,7 +114,9 @@ export type SquadRoleKey =
   | TradeRoleKey
   | FactoryRoleKey
   | EduRoleKey
-  | TeachingRoleKey;
+  | TeachingRoleKey
+  | CsRoleKey
+  | RlRoleKey;
 
 export interface SquadRole {
   key: SquadRoleKey;
@@ -332,6 +338,8 @@ export const SQUAD_ROLES: Record<SquadRoleKey, SquadRole> = {
   ...FACTORY_ROLES,
   ...EDU_ROLES,
   ...TEACHING_ROLES,
+  ...CS_ROLES,
+  ...RL_ROLES,
 };
 
 export interface SquadWorkflowStep {
@@ -699,11 +707,12 @@ export const SALES_SKILL_NAMES: readonly string[] = [
   "sales-review",
 ];
 
-/** Skills that ship in the bundle for other squads only: planning and sales. No SDLC squad imports them. */
+/** Skills that ship in the bundle for other squads only: planning, sales and the Research Lab. No SDLC squad imports them. */
 const NON_SDLC_SKILLS: readonly string[] = SDLC_BUILTIN_SKILLS.map((skill) => skill.name).filter(
   (name) =>
     name.startsWith("planning-") ||
     name.startsWith("sales-") ||
+    name.startsWith("research-lab-") ||
     name.startsWith("bmad-toolbox:") ||
     name === "frontend-design:frontend-design",
 );
@@ -1014,7 +1023,7 @@ function inCategory(category: SquadTemplateCategory, templates: readonly SquadTe
 
 /** The templates the Squads quickstart offers, in the order it lists them within each group. */
 export const SQUAD_TEMPLATES: readonly SquadTemplate[] = [
-  ...inCategory("core", BASE_SQUAD_TEMPLATES),
+  ...inCategory("core", [...BASE_SQUAD_TEMPLATES, CONTENT_STUDIO_TEMPLATE, RESEARCH_LAB_TEMPLATE]),
   ...inCategory("kitviet", [
     KV_ADMIN_TEMPLATE,
     KV_B2B_TEMPLATE,

@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS publish_channel_workspace_platform_idx;

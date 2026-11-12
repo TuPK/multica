@@ -1,0 +1,19 @@
+{
+  "topic": "EXAMPLE ONLY: the entries below are invented to show the format",
+  "relevant": [
+    {"doi": "10.0000/example.1"},
+    {"title": "An invented paper that stands for a relevant one"}
+  ],
+  "merge_pairs": [
+    {
+      "a": {"title": "Same paper", "authors": ["Ann Lee"], "metadata_source": "OpenAlex"},
+      "b": {"title": "same paper", "authors": ["ann lee"], "metadata_source": "Crossref"},
+      "same": true
+    },
+    {
+      "a": {"title": "Graph retrieval for law", "authors": ["Ann Lee"], "metadata_source": "OpenAlex"},
+      "b": {"title": "Graph retrieval for medicine", "authors": ["Bo Chan"], "metadata_source": "OpenAlex"},
+      "same": false
+    }
+  ]
+}

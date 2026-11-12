@@ -1,0 +1,1278 @@
+{
+ "source": "LitScout e860b12 (python), rapidfuzz 3.14.6",
+ "normalize_ascii": [
+  {
+   "in": "  Graph-RAG: A Survey! ",
+   "out": "graph rag a survey"
+  },
+  {
+   "in": "Hello,   World",
+   "out": "hello world"
+  },
+  {
+   "in": "R&D (2020) -- results",
+   "out": "r d 2020 results"
+  },
+  {
+   "in": "snake_case_name",
+   "out": "snake_case_name"
+  },
+  {
+   "in": "UPPER lower MiXeD",
+   "out": "upper lower mixed"
+  },
+  {
+   "in": "tabs\tand\nnewlines",
+   "out": "tabs and newlines"
+  },
+  {
+   "in": "numbers 123 and 4.5",
+   "out": "numbers 123 and 4 5"
+  },
+  {
+   "in": "",
+   "out": ""
+  },
+  {
+   "in": "   ",
+   "out": ""
+  },
+  {
+   "in": "a-b_c.d",
+   "out": "a b_c d"
+  }
+ ],
+ "normalize_accent": [
+  {
+   "in": "Phân tích Pháp luật Việt Nam",
+   "python": "pha n ti ch pha p lua t vie t nam"
+  },
+  {
+   "in": "Café—Déjà vu",
+   "python": "cafe de ja vu"
+  },
+  {
+   "in": "Straße",
+   "python": "strasse"
+  },
+  {
+   "in": "Ångström",
+   "python": "a ngstro m"
+  },
+  {
+   "in": "naïve résumé",
+   "python": "nai ve re sume"
+  },
+  {
+   "in": "Đại học Bách khoa",
+   "python": "đa i ho c ba ch khoa"
+  }
+ ],
+ "ratio": [
+  {
+   "a": "a survey of retrieval augmented generation methods for legal question answering",
+   "b": "a survey of retrieval augmented generation methods for legal question answering",
+   "ratio": 100.0
+  },
+  {
+   "a": "a survey of retrieval augmented generation methods for legal question answering",
+   "b": "a survey of retrieval augmdented generation methods for legal question answering",
+   "ratio": 99.37106918238993
+  },
+  {
+   "a": "a survey of retrieval augmented generation methods for legal question answering",
+   "b": "a survey of retrieval augmented generation methodds for legal question answerdng",
+   "ratio": 98.11320754716981
+  },
+  {
+   "a": "a survey of retrieval augmented generation methods for legal question answering",
+   "b": "a survey of retrieval ugmented generation methods for egal question adswering",
+   "ratio": 97.43589743589743
+  },
+  {
+   "a": "a survey of retrieval augmented generation methods for legal question answering",
+   "b": "a survey of retrieval augmentedb generaiion methods for iegal qustion answering",
+   "ratio": 96.20253164556962
+  },
+  {
+   "a": "a survey of retrieval augmented generation methods for legal question answering",
+   "b": "a jurvgy of retrieval augmented gengratiog imethds for legal question answering",
+   "ratio": 93.67088607594937
+  },
+  {
+   "a": "integrating knowledge graph with retrieval augmented generation for vietnamese legal question answering",
+   "b": "integrating knowledge graph with retrieval augmented generation for vietnamese legal question answering",
+   "ratio": 100.0
+  },
+  {
+   "a": "integrating knowledge graph with retrieval augmented generation for vietnamese legal question answering",
+   "b": "integrating knowledge graph with retrieval augmented generation for vietnamese legal question answering",
+   "ratio": 100.0
+  },
+  {
+   "a": "integrating knowledge graph with retrieval augmented generation for vietnamese legal question answering",
+   "b": "integrating knowledge graph with retrieval augmented generation for vietnamee legal question answerfng",
+   "ratio": 98.53658536585365
+  },
+  {
+   "a": "integrating knowledge graph with retrieval augmented generation for vietnamese legal question answering",
+   "b": "integrating knowledge graph cwith eetrieval augmented generation for vietnamese lbgal question answering",
+   "ratio": 97.58454106280193
+  },
+  {
+   "a": "integrating knowledge graph with retrieval augmented generation for vietnamese legal question answering",
+   "b": "integrating knowledge graph with retrieval augmented genertion for viedtnamee legalgquestion answering",
+   "ratio": 97.5609756097561
+  },
+  {
+   "a": "integrating knowledge graph with retrieval augmented generation for vietnamese legal question answering",
+   "b": "integratng knowlhge graph with retrieval augmented generation for vietnamese legai quecstion answerng",
+   "ratio": 96.07843137254902
+  },
+  {
+   "a": "a self reflection mechanism for reducing hallucination in vietnamese legal question answering systems",
+   "b": "a self reflection mechanism for reducing hallucination in vietnamese legal question answering systems",
+   "ratio": 100.0
+  },
+  {
+   "a": "a self reflection mechanism for reducing hallucination in vietnamese legal question answering systems",
+   "b": "a self reflection mechanism for reducing hallucination in vietnamese legal question answerini systems",
+   "ratio": 99.00990099009901
+  },
+  {
+   "a": "a self reflection mechanism for reducing hallucination in vietnamese legal question answering systems",
+   "b": "a self recflection bmechanism for reducing hallucination in vietnamese legal question answering systems",
+   "ratio": 99.01960784313727
+  },
+  {
+   "a": "a self reflection mechanism for reducing hallucination in vietnamese legal question answering systems",
+   "b": "a sflf reflection mechanism for reducing hallucination invietnamese legal question answering sytems",
+   "ratio": 98.0
+  },
+  {
+   "a": "a self reflection mechanism for reducing hallucination in vietnamese legal question answering systems",
+   "b": "a sef reflection echanism foi reducing hallucination in vietnamese legal question cnswering systems",
+   "ratio": 97.0
+  },
+  {
+   "a": "a self reflection mechanism for reducing hallucination in vietnamese legal question answering systems",
+   "b": "a self reflection mechanism for reducing hajllucinatio inbvieanamese lefalquestion answering systems",
+   "ratio": 95.52238805970148
+  },
+  {
+   "a": "enhancing legal research through knowledge infused information retrieval for vietnamese labor law",
+   "b": "enhancing legal research through knowledge infused information retrieval for vietnamese labor law",
+   "ratio": 100.0
+  },
+  {
+   "a": "enhancing legal research through knowledge infused information retrieval for vietnamese labor law",
+   "b": "enhancing legal research though knowledge infused information retrieval for vietnamese labor law",
+   "ratio": 99.48186528497409
+  },
+  {
+   "a": "enhancing legal research through knowledge infused information retrieval for vietnamese labor law",
+   "b": "enhancing legal research through knowledge infused information etrieval for vietnaese labor law",
+   "ratio": 98.95833333333334
+  },
+  {
+   "a": "enhancing legal research through knowledge infused information retrieval for vietnamese labor law",
+   "b": "enhancing legal rejearch through knowledge infused information retreval for vietnmese labor law",
+   "ratio": 97.91666666666666
+  },
+  {
+   "a": "enhancing legal research through knowledge infused information retrieval for vietnamese labor law",
+   "b": "enhancing legal research through knowledge infused informatio etriceval forbvietnamese labor law",
+   "ratio": 97.40932642487047
+  },
+  {
+   "a": "enhancing legal research through knowledge infused information retrieval for vietnamese labor law",
+   "b": "enhancing legal research hrough knowledge einfused infomatiogn rtrieval ffor vietnamese labor law",
+   "ratio": 96.90721649484536
+  },
+  {
+   "a": "graphrag unlocking llm discovery on narrative private data",
+   "b": "graphrag unlocking llm discovery on narrative private data",
+   "ratio": 100.0
+  },
+  {
+   "a": "graphrag unlocking llm discovery on narrative private data",
+   "b": "graphrag unlocking llm discovery on narrative privatfe data",
+   "ratio": 99.14529914529915
+  },
+  {
+   "a": "graphrag unlocking llm discovery on narrative private data",
+   "b": "grahrag unlockijg llm discovery on narrative private data",
+   "ratio": 97.3913043478261
+  },
+  {
+   "a": "graphrag unlocking llm discovery on narrative private data",
+   "b": "graphrgag unlockindg llm discovery on narratve private data",
+   "ratio": 97.43589743589743
+  },
+  {
+   "a": "graphrag unlocking llm discovery on narrative private data",
+   "b": "graphrag unlocking llm discodery on rrative privgte data",
+   "ratio": 94.73684210526316
+  },
+  {
+   "a": "graphrag unlocking llm discovery on narrative private data",
+   "b": "grahrag unocking llm discoverh on carratice private dat",
+   "ratio": 92.03539823008849
+  },
+  {
+   "a": "deep residual learning for image recognition",
+   "b": "deep residual learning for image recognition",
+   "ratio": 100.0
+  },
+  {
+   "a": "deep residual learning for image recognition",
+   "b": "heep residual learning for image recognition",
+   "ratio": 97.72727272727273
+  },
+  {
+   "a": "deep residual learning for image recognition",
+   "b": "deep residual learning for image irecognitioh",
+   "ratio": 96.62921348314607
+  },
+  {
+   "a": "deep residual learning for image recognition",
+   "b": "dfep residual learning for image rhcogniton",
+   "ratio": 94.25287356321839
+  },
+  {
+   "a": "deep residual learning for image recognition",
+   "b": "ddep reisfdual learning dfor image recognition",
+   "ratio": 93.33333333333333
+  },
+  {
+   "a": "deep residual learning for image recognition",
+   "b": "deep residuahl learning forimage recognieciofn",
+   "ratio": 93.33333333333333
+  },
+  {
+   "a": "attention is all you need",
+   "b": "attention is all you need",
+   "ratio": 100.0
+  },
+  {
+   "a": "attention is all you need",
+   "b": "attendtion is all you need",
+   "ratio": 98.0392156862745
+  },
+  {
+   "a": "attention is all you need",
+   "b": "attention is alfl youd need",
+   "ratio": 96.15384615384616
+  },
+  {
+   "a": "attention is all you need",
+   "b": "attention ise dall you nebd",
+   "ratio": 92.3076923076923
+  },
+  {
+   "a": "attention is all you need",
+   "b": "atention isall you aee",
+   "ratio": 89.36170212765957
+  },
+  {
+   "a": "attention is all you need",
+   "b": "ttention is llyoaufneed",
+   "ratio": 87.5
+  },
+  {
+   "a": "bert pre training of deep bidirectional transformers for language understanding",
+   "b": "bert pre training of deep bidirectional transformers for language understanding",
+   "ratio": 100.0
+  },
+  {
+   "a": "bert pre training of deep bidirectional transformers for language understanding",
+   "b": "bert pre traininb of deep bidirectional transformers for language understanding",
+   "ratio": 98.73417721518987
+  },
+  {
+   "a": "bert pre training of deep bidirectional transformers for language understanding",
+   "b": "bert hpre training of deep bidirectdional transformers for language understanding",
+   "ratio": 98.75
+  },
+  {
+   "a": "bert pre training of deep bidirectional transformers for language understanding",
+   "b": "bdrt pre training of deep bidirectional transformerf forg language understanding",
+   "ratio": 96.85534591194968
+  },
+  {
+   "a": "bert pre training of deep bidirectional transformers for language understanding",
+   "b": "cert pre training of eep hidirectional transformers for hlanguage understanding",
+   "ratio": 96.20253164556962
+  },
+  {
+   "a": "bert pre training of deep bidirectional transformers for language understanding",
+   "b": "bert pre training of deep bidirectional ransfoiberc for language understanding",
+   "ratio": 95.54140127388536
+  },
+  {
+   "a": "abc",
+   "b": "abd",
+   "ratio": 66.66666666666667
+  },
+  {
+   "a": "",
+   "b": "",
+   "ratio": 100.0
+  },
+  {
+   "a": "a",
+   "b": "",
+   "ratio": 0.0
+  },
+  {
+   "a": "same",
+   "b": "same",
+   "ratio": 100.0
+  },
+  {
+   "a": "kitten",
+   "b": "sitting",
+   "ratio": 61.53846153846154
+  },
+  {
+   "a": "flaw",
+   "b": "lawn",
+   "ratio": 75.0
+  }
+ ],
+ "same": [
+  {
+   "a": {
+    "title": "A Survey of Retrieval Augmented Generation Methods for Legal Question Answering",
+    "authors": [
+     "Ann Lee"
+    ],
+    "doi": "10.1/a",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   "b": {
+    "title": "Other title",
+    "authors": [
+     "Zed"
+    ],
+    "doi": "10.1/a",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   "same": true
+  },
+  {
+   "a": {
+    "title": "A Survey of Retrieval Augmented Generation Methods for Legal Question Answering",
+    "authors": [
+     "Ann Lee"
+    ],
+    "doi": "",
+    "openalex_id": "W1",
+    "abstract": ""
+   },
+   "b": {
+    "title": "Other",
+    "authors": [
+     "Zed"
+    ],
+    "doi": "",
+    "openalex_id": "W1",
+    "abstract": ""
+   },
+   "same": true
+  },
+  {
+   "a": {
+    "title": "A Survey of Retrieval Augmented Generation Methods for Legal Question Answering",
+    "authors": [
+     "Ann Lee"
+    ],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   "b": {
+    "title": "a survey of retrieval augmented generation methods for legal question answering",
+    "authors": [
+     "ann lee"
+    ],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   "same": true
+  },
+  {
+   "a": {
+    "title": "A Survey of Retrieval Augmented Generation Methods for Legal Question Answering",
+    "authors": [
+     "Ann Lee"
+    ],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   "b": {
+    "title": "A Survey of Retrieval Augmented Generation Methods for Legal Question Answering",
+    "authors": [
+     "Bo Chan"
+    ],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   "same": false
+  },
+  {
+   "a": {
+    "title": "A Survey of Retrieval Augmented Generation Methods for Legal Question Answering",
+    "authors": [],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   "b": {
+    "title": "A Survey of Retrieval Augmented Generation Methods for Legal Question Answering",
+    "authors": [],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   "same": false
+  },
+  {
+   "a": {
+    "title": "A Survey of Retrieval Augmented Generation Methods for Legal Question Answering",
+    "authors": [
+     "Ann Lee"
+    ],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   "b": {
+    "title": "A Survey of Retrieval Augmented Generation Methods for Legal Question Answerings",
+    "authors": [
+     "Ann Lee"
+    ],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   "same": true
+  },
+  {
+   "a": {
+    "title": "A Survey of Retrieval Augmented Generation Methods for Legal Question Answering",
+    "authors": [],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   "b": {
+    "title": "A Survey of Retrieval Augmented Generation Methods for Legal Question Answerings",
+    "authors": [],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   "same": false
+  },
+  {
+   "a": {
+    "title": "A Survey of Retrieval Augmented Generation Methods for Legal Question Answering",
+    "authors": [
+     "Ann Lee"
+    ],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   "b": {
+    "title": "A Survey of Retrieval Augmented Generation Methods for Legal Questi",
+    "authors": [
+     "Ann Lee"
+    ],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   "same": false
+  },
+  {
+   "a": {
+    "title": "",
+    "authors": [
+     "Ann"
+    ],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   "b": {
+    "title": "",
+    "authors": [
+     "Ann"
+    ],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   "same": true
+  },
+  {
+   "a": {
+    "title": "A Survey of Retrieval Augmented Generation Methods for Legal Question Answering",
+    "authors": [
+     "Ann Lee"
+    ],
+    "doi": "10.1/a",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   "b": {
+    "title": "A Survey of Retrieval Augmented Generation Methods for Legal Question Answering",
+    "authors": [
+     "Ann Lee"
+    ],
+    "doi": "10.1/b",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   "same": true
+  }
+ ],
+ "dedup": {
+  "input": [
+   {
+    "title": "Integrating Knowledge Graph with Retrieval-Augmented Generation for Vietnamese Legal Question Answering",
+    "authors": [
+     "Vuong Pham",
+     "Minh Phan"
+    ],
+    "doi": "10.59232/dst-v5i1p101",
+    "openalex_id": "W1",
+    "abstract": "abstract one"
+   },
+   {
+    "title": "Integrating Knowledge Graph with Retrieval-Augmented Generation for Vietnamese Legal Question Answering",
+    "authors": [
+     "Vuong Pham"
+    ],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   {
+    "title": "A Self-Reflection Mechanism for Reducing Hallucination in Vietnamese Legal Question Answering Systems",
+    "authors": [
+     "Thi Vuong Pham"
+    ],
+    "doi": "10.64539/sjcs",
+    "openalex_id": "W2",
+    "abstract": ""
+   },
+   {
+    "title": "A SELF-REFLECTION MECHANISM FOR REDUCING HALLUCINATION IN VIETNAMESE LEGAL QUESTION ANSWERING SYSTEMS",
+    "authors": [
+     "thi vuong pham"
+    ],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": "late abstract"
+   },
+   {
+    "title": "Enhancing legal research through knowledge-infused information retrieval for Vietnamese labor law",
+    "authors": [
+     "Vuong T. Pham"
+    ],
+    "doi": "",
+    "openalex_id": "W3",
+    "abstract": ""
+   },
+   {
+    "title": "Enhancing legal research through knowledge-infused information retrieval for Vietnamese labor law",
+    "authors": [
+     "Someone Else"
+    ],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   {
+    "title": "GraphRAG: Unlocking LLM discovery on narrative private data",
+    "authors": [],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   {
+    "title": "GraphRAG: Unlocking LLM discovery on narrative private data",
+    "authors": [],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   {
+    "title": "A Survey of Retrieval Augmented Generation Methods for Legal Question Answering",
+    "authors": [
+     "Ann Lee"
+    ],
+    "doi": "10.1/x",
+    "openalex_id": "W9",
+    "abstract": ""
+   },
+   {
+    "title": "A Survey of Retrieval Augmented Generation Methods for Legal Question Answerings",
+    "authors": [
+     "Ann Lee"
+    ],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   {
+    "title": "Deep Residual Learning for Image Recognition",
+    "authors": [
+     "Kaiming He"
+    ],
+    "doi": "",
+    "openalex_id": "W5",
+    "abstract": ""
+   },
+   {
+    "title": "Deep Residual Learning for Image Recognition",
+    "authors": [
+     "Kaiming He"
+    ],
+    "doi": "10.1109/cvpr",
+    "openalex_id": "W5",
+    "abstract": ""
+   }
+  ],
+  "unique": [
+   {
+    "title": "Integrating Knowledge Graph with Retrieval-Augmented Generation for Vietnamese Legal Question Answering",
+    "authors": [
+     "Vuong Pham",
+     "Minh Phan"
+    ],
+    "doi": "10.59232/dst-v5i1p101",
+    "openalex_id": "W1",
+    "abstract": "abstract one"
+   },
+   {
+    "title": "A Self-Reflection Mechanism for Reducing Hallucination in Vietnamese Legal Question Answering Systems",
+    "authors": [
+     "Thi Vuong Pham"
+    ],
+    "doi": "10.64539/sjcs",
+    "openalex_id": "W2",
+    "abstract": "late abstract"
+   },
+   {
+    "title": "Enhancing legal research through knowledge-infused information retrieval for Vietnamese labor law",
+    "authors": [
+     "Vuong T. Pham"
+    ],
+    "doi": "",
+    "openalex_id": "W3",
+    "abstract": ""
+   },
+   {
+    "title": "Enhancing legal research through knowledge-infused information retrieval for Vietnamese labor law",
+    "authors": [
+     "Someone Else"
+    ],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   {
+    "title": "GraphRAG: Unlocking LLM discovery on narrative private data",
+    "authors": [],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   {
+    "title": "GraphRAG: Unlocking LLM discovery on narrative private data",
+    "authors": [],
+    "doi": "",
+    "openalex_id": "",
+    "abstract": ""
+   },
+   {
+    "title": "A Survey of Retrieval Augmented Generation Methods for Legal Question Answering",
+    "authors": [
+     "Ann Lee"
+    ],
+    "doi": "10.1/x",
+    "openalex_id": "W9",
+    "abstract": ""
+   },
+   {
+    "title": "Deep Residual Learning for Image Recognition",
+    "authors": [
+     "Kaiming He"
+    ],
+    "doi": "10.1109/cvpr",
+    "openalex_id": "W5",
+    "abstract": ""
+   }
+  ]
+ },
+ "prefilter": [
+  {
+   "query": "Vietnamese legal GraphRAG",
+   "limit": 0,
+   "titles": [
+    "Vietnamese legal GraphRAG",
+    "Legal systems",
+    "Cooking",
+    "Graph methods",
+    "Legal graph",
+    "Other",
+    "Vietnamese cooking",
+    "Nothing"
+   ]
+  },
+  {
+   "query": "Vietnamese legal GraphRAG",
+   "limit": 2,
+   "titles": [
+    "Vietnamese legal GraphRAG",
+    "Legal systems"
+   ]
+  },
+  {
+   "query": "Vietnamese legal GraphRAG",
+   "limit": 3,
+   "titles": [
+    "Vietnamese legal GraphRAG",
+    "Legal systems",
+    "Vietnamese cooking"
+   ]
+  },
+  {
+   "query": "Vietnamese legal GraphRAG",
+   "limit": 5,
+   "titles": [
+    "Vietnamese legal GraphRAG",
+    "Legal systems",
+    "Vietnamese cooking",
+    "Legal graph",
+    "Other"
+   ]
+  },
+  {
+   "query": "Vietnamese legal GraphRAG",
+   "limit": 8,
+   "titles": [
+    "Vietnamese legal GraphRAG",
+    "Legal systems",
+    "Cooking",
+    "Graph methods",
+    "Legal graph",
+    "Other",
+    "Vietnamese cooking",
+    "Nothing"
+   ]
+  },
+  {
+   "query": "Vietnamese legal GraphRAG",
+   "limit": 10,
+   "titles": [
+    "Vietnamese legal GraphRAG",
+    "Legal systems",
+    "Cooking",
+    "Graph methods",
+    "Legal graph",
+    "Other",
+    "Vietnamese cooking",
+    "Nothing"
+   ]
+  },
+  {
+   "query": "legal graph",
+   "limit": 0,
+   "titles": [
+    "Vietnamese legal GraphRAG",
+    "Legal systems",
+    "Cooking",
+    "Graph methods",
+    "Legal graph",
+    "Other",
+    "Vietnamese cooking",
+    "Nothing"
+   ]
+  },
+  {
+   "query": "legal graph",
+   "limit": 2,
+   "titles": [
+    "Vietnamese legal GraphRAG",
+    "Legal graph"
+   ]
+  },
+  {
+   "query": "legal graph",
+   "limit": 3,
+   "titles": [
+    "Vietnamese legal GraphRAG",
+    "Legal graph",
+    "Legal systems"
+   ]
+  },
+  {
+   "query": "legal graph",
+   "limit": 5,
+   "titles": [
+    "Vietnamese legal GraphRAG",
+    "Legal graph",
+    "Legal systems",
+    "Graph methods",
+    "Other"
+   ]
+  },
+  {
+   "query": "legal graph",
+   "limit": 8,
+   "titles": [
+    "Vietnamese legal GraphRAG",
+    "Legal systems",
+    "Cooking",
+    "Graph methods",
+    "Legal graph",
+    "Other",
+    "Vietnamese cooking",
+    "Nothing"
+   ]
+  },
+  {
+   "query": "legal graph",
+   "limit": 10,
+   "titles": [
+    "Vietnamese legal GraphRAG",
+    "Legal systems",
+    "Cooking",
+    "Graph methods",
+    "Legal graph",
+    "Other",
+    "Vietnamese cooking",
+    "Nothing"
+   ]
+  },
+  {
+   "query": "zzz",
+   "limit": 0,
+   "titles": [
+    "Vietnamese legal GraphRAG",
+    "Legal systems",
+    "Cooking",
+    "Graph methods",
+    "Legal graph",
+    "Other",
+    "Vietnamese cooking",
+    "Nothing"
+   ]
+  },
+  {
+   "query": "zzz",
+   "limit": 2,
+   "titles": [
+    "Vietnamese legal GraphRAG",
+    "Legal systems"
+   ]
+  },
+  {
+   "query": "zzz",
+   "limit": 3,
+   "titles": [
+    "Vietnamese legal GraphRAG",
+    "Legal systems",
+    "Cooking"
+   ]
+  },
+  {
+   "query": "zzz",
+   "limit": 5,
+   "titles": [
+    "Vietnamese legal GraphRAG",
+    "Legal systems",
+    "Cooking",
+    "Other",
+    "Vietnamese cooking"
+   ]
+  },
+  {
+   "query": "zzz",
+   "limit": 8,
+   "titles": [
+    "Vietnamese legal GraphRAG",
+    "Legal systems",
+    "Cooking",
+    "Graph methods",
+    "Legal graph",
+    "Other",
+    "Vietnamese cooking",
+    "Nothing"
+   ]
+  },
+  {
+   "query": "zzz",
+   "limit": 10,
+   "titles": [
+    "Vietnamese legal GraphRAG",
+    "Legal systems",
+    "Cooking",
+    "Graph methods",
+    "Legal graph",
+    "Other",
+    "Vietnamese cooking",
+    "Nothing"
+   ]
+  }
+ ],
+ "prefilter_papers": [
+  {
+   "title": "Vietnamese legal GraphRAG",
+   "authors": [],
+   "doi": "",
+   "openalex_id": "",
+   "abstract": "x"
+  },
+  {
+   "title": "Legal systems",
+   "authors": [],
+   "doi": "",
+   "openalex_id": "",
+   "abstract": "vietnamese law"
+  },
+  {
+   "title": "Cooking",
+   "authors": [],
+   "doi": "",
+   "openalex_id": "",
+   "abstract": "recipes"
+  },
+  {
+   "title": "Graph methods",
+   "authors": [],
+   "doi": "",
+   "openalex_id": "",
+   "abstract": ""
+  },
+  {
+   "title": "Legal graph",
+   "authors": [],
+   "doi": "",
+   "openalex_id": "",
+   "abstract": ""
+  },
+  {
+   "title": "Other",
+   "authors": [],
+   "doi": "",
+   "openalex_id": "",
+   "abstract": "legal"
+  },
+  {
+   "title": "Vietnamese cooking",
+   "authors": [],
+   "doi": "",
+   "openalex_id": "",
+   "abstract": "graph"
+  },
+  {
+   "title": "Nothing",
+   "authors": [],
+   "doi": "",
+   "openalex_id": "",
+   "abstract": ""
+  }
+ ],
+ "heuristic": [
+  {
+   "query": "Vietnamese legal GraphRAG",
+   "title": "Vietnamese legal GraphRAG",
+   "abstract": "x",
+   "score": 10.0
+  },
+  {
+   "query": "Vietnamese legal GraphRAG",
+   "title": "Legal systems",
+   "abstract": "vietnamese law",
+   "score": 6.67
+  },
+  {
+   "query": "Vietnamese legal GraphRAG",
+   "title": "Cooking",
+   "abstract": "recipes",
+   "score": 0.0
+  },
+  {
+   "query": "Vietnamese legal GraphRAG",
+   "title": "Graph methods",
+   "abstract": "",
+   "score": 0.0
+  },
+  {
+   "query": "Vietnamese legal GraphRAG",
+   "title": "Legal graph",
+   "abstract": "",
+   "score": 3.33
+  },
+  {
+   "query": "Vietnamese legal GraphRAG",
+   "title": "Other",
+   "abstract": "legal",
+   "score": 3.33
+  },
+  {
+   "query": "Vietnamese legal GraphRAG",
+   "title": "Vietnamese cooking",
+   "abstract": "graph",
+   "score": 3.33
+  },
+  {
+   "query": "Vietnamese legal GraphRAG",
+   "title": "Nothing",
+   "abstract": "",
+   "score": 0.0
+  },
+  {
+   "query": "legal graph",
+   "title": "Vietnamese legal GraphRAG",
+   "abstract": "x",
+   "score": 10.0
+  },
+  {
+   "query": "legal graph",
+   "title": "Legal systems",
+   "abstract": "vietnamese law",
+   "score": 5.0
+  },
+  {
+   "query": "legal graph",
+   "title": "Cooking",
+   "abstract": "recipes",
+   "score": 0.0
+  },
+  {
+   "query": "legal graph",
+   "title": "Graph methods",
+   "abstract": "",
+   "score": 5.0
+  },
+  {
+   "query": "legal graph",
+   "title": "Legal graph",
+   "abstract": "",
+   "score": 10.0
+  },
+  {
+   "query": "legal graph",
+   "title": "Other",
+   "abstract": "legal",
+   "score": 5.0
+  },
+  {
+   "query": "legal graph",
+   "title": "Vietnamese cooking",
+   "abstract": "graph",
+   "score": 5.0
+  },
+  {
+   "query": "legal graph",
+   "title": "Nothing",
+   "abstract": "",
+   "score": 0.0
+  },
+  {
+   "query": "zzz",
+   "title": "Vietnamese legal GraphRAG",
+   "abstract": "x",
+   "score": 0.0
+  },
+  {
+   "query": "zzz",
+   "title": "Legal systems",
+   "abstract": "vietnamese law",
+   "score": 0.0
+  },
+  {
+   "query": "zzz",
+   "title": "Cooking",
+   "abstract": "recipes",
+   "score": 0.0
+  },
+  {
+   "query": "zzz",
+   "title": "Graph methods",
+   "abstract": "",
+   "score": 0.0
+  },
+  {
+   "query": "zzz",
+   "title": "Legal graph",
+   "abstract": "",
+   "score": 0.0
+  },
+  {
+   "query": "zzz",
+   "title": "Other",
+   "abstract": "legal",
+   "score": 0.0
+  },
+  {
+   "query": "zzz",
+   "title": "Vietnamese cooking",
+   "abstract": "graph",
+   "score": 0.0
+  },
+  {
+   "query": "zzz",
+   "title": "Nothing",
+   "abstract": "",
+   "score": 0.0
+  },
+  {
+   "query": "",
+   "title": "Vietnamese legal GraphRAG",
+   "abstract": "x",
+   "score": 0.0
+  },
+  {
+   "query": "",
+   "title": "Legal systems",
+   "abstract": "vietnamese law",
+   "score": 0.0
+  },
+  {
+   "query": "",
+   "title": "Cooking",
+   "abstract": "recipes",
+   "score": 0.0
+  },
+  {
+   "query": "",
+   "title": "Graph methods",
+   "abstract": "",
+   "score": 0.0
+  },
+  {
+   "query": "",
+   "title": "Legal graph",
+   "abstract": "",
+   "score": 0.0
+  },
+  {
+   "query": "",
+   "title": "Other",
+   "abstract": "legal",
+   "score": 0.0
+  },
+  {
+   "query": "",
+   "title": "Vietnamese cooking",
+   "abstract": "graph",
+   "score": 0.0
+  },
+  {
+   "query": "",
+   "title": "Nothing",
+   "abstract": "",
+   "score": 0.0
+  }
+ ],
+ "abstracts": [
+  {
+   "index": {
+    "b": [
+     1
+    ],
+    "a": [
+     1
+    ],
+    "z": [
+     0
+    ],
+    "y": [
+     2
+    ]
+   },
+   "text": "z a b y"
+  },
+  {
+   "index": {
+    "Graph": [
+     0
+    ],
+    "RAG": [
+     1
+    ],
+    "for": [
+     2
+    ],
+    "law": [
+     3
+    ]
+   },
+   "text": "Graph RAG for law"
+  },
+  {
+   "index": {
+    "x": []
+   },
+   "text": ""
+  },
+  {
+   "index": {},
+   "text": ""
+  },
+  {
+   "index": {
+    "the": [
+     0,
+     3
+    ],
+    "cat": [
+     1
+    ],
+    "sat": [
+     2
+    ]
+   },
+   "text": "the cat sat the"
+  }
+ ],
+ "dois": [
+  {
+   "in": "https://doi.org/10.59232/DST-V5I1P101",
+   "out": "10.59232/dst-v5i1p101"
+  },
+  {
+   "in": "http://doi.org/10.1/ABC",
+   "out": "10.1/abc"
+  },
+  {
+   "in": "doi:10.1/X",
+   "out": "10.1/x"
+  },
+  {
+   "in": "  10.1/Plain  ",
+   "out": "10.1/plain"
+  },
+  {
+   "in": "",
+   "out": ""
+  },
+  {
+   "in": "HTTPS://DOI.ORG/10.1/UP",
+   "out": "10.1/up"
+  }
+ ]
+}

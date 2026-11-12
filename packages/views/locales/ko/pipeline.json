@@ -140,6 +140,7 @@
       "org_change": "조직 변경",
       "budget": "예산",
       "standing_approval": "상시 승인",
+      "publish": "게시",
       "unknown": "기타"
     }
   },

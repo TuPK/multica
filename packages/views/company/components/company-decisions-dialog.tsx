@@ -12,6 +12,7 @@ import { ReadonlyContent } from "../../editor/readonly-content";
 import { useT } from "../../i18n";
 import { useDecisionQueue } from "../lib/decision-queue";
 import { CompanyProposalDecision } from "./company-proposal-decision";
+import { PublishProposalSummary } from "./publish-proposal-view";
 import {
   CompanyProposalHistory,
   CompanyProposalKindLabel,
@@ -152,7 +153,11 @@ function ProposalDetail({
         </div>
         <h3 className="text-heading">{proposal.title}</h3>
         <CompanyProposalStatus proposal={proposal} squadName={from?.name ?? null} />
-        <CompanyProposalKindSummary proposal={proposal} />
+        {proposal.kind === "publish" ? (
+          <PublishProposalSummary proposal={proposal} />
+        ) : (
+          <CompanyProposalKindSummary proposal={proposal} />
+        )}
         {issue?.description ? <ReadonlyContent content={issue.description} /> : null}
         <CompanyProposalRelated related={proposal.related} />
         <CompanyProposalHistory proposal={proposal} />
