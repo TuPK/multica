@@ -156,3 +156,120 @@ Kết luận: trong pilot này không quan sát được báo nhầm của `gate
 - Không có chi phí tiền. Token có thể thiếu một phần.
 - Smoke không có bước âm tính, nên chưa biết kiểm tra có bắt được lỗi cố ý hay không.
 - AC14 chỉ đạt 1 trên 3 tiêu chí.
+
+### 5.10 Pilot lần hai: có mở quyền push thì QA và bước giao hàng có qua được không
+
+Ngày 2026-11-12, sau commit `4581de249` (cho phép squad push). Không có lượt squad mới nào trong bước này. Kết luận dựa trên dữ liệu lượt đầu (5.2) và lần nâng cấp skill.
+
+**Đính chính mục 5.7.** Mục 5.7 ghi "Developer và Architect không push lên `origin`". Câu này sai. Remote pilot nhận push từ khoảng 09:40. Sau đó Architect push `agent/sdlc-architect/dfcd6a4cee88` (09:40), Developer push `agent/sdlc-developer/6734d7cfcbd6` (09:48, `removeItem`) và `agent/sdlc-developer/98a54326babd` (09:53, `searchOpen`). Mục 5.7 giữ nguyên như bản ghi lúc viết. Phần đúng là dưới đây.
+
+**Môi trường lúc kiểm tra**
+- API `localhost:18800` healthy (pid 2979739).
+- Daemon profile `dev-multica_s8-720` đã dừng lúc 11:10:55 với `context canceled`. Log không có lỗi panic và không có lý do khác. Không rõ ai hoặc cái gì gửi tín hiệu dừng. Tôi khởi động lại bằng `make up C=daemon ARGS="--name s8-pilot"` (pid 3549561).
+- Web `localhost:13720` vẫn không phản hồi (HTTP 000). Chưa khởi động lại vì pipeline không dùng web.
+- Remote smart HTTP `127.0.0.1:8765` (pid 3092556) vẫn chạy.
+- Server người dùng `8080` và `30000` trả HTTP 200. Không gửi lệnh nào tới chúng.
+
+**Nâng cấp skill của squad pilot.** Snapshot được đưa lên cây của `4581de249` (`git archive`). Chạy `scripts/upgrade-sdlc-squad.mjs --template sdlc_greenfield`, dry-run trước, rồi `--apply`. Biến `MULTICA_SERVER_URL`, `MULTICA_WORKSPACE_ID`, `MULTICA_TOKEN` trỏ vào workspace cô lập. Kết quả: squad `current`, skill `ready`, workflow `current` không thêm hay sửa bước nào. Đọc skill `sdlc-delivery-core` qua API: không còn luật "Never push", và `updated_at` không đổi. Nội dung đã giống bản mới.
+
+**Phát hiện: squad pilot không bao giờ bị cấm push.** Luật "Never push to any remote" chỉ có trong commit `6f91c2fd5` (11:26). Commit `4581de249` (11:28) gỡ luật đó. Skill `sdlc-delivery-core` ở `aa3b2a239` (nguồn của squad pilot lúc tạo) giống hệt bản `4581de249`. Chỉ có reviewer bị cấm push, và cấm này nằm trong chỉ dẫn của reviewer ("You do not edit, commit, or push code"). Vì vậy việc "mở quyền push" không thay đổi hành vi của squad pilot. Quyền này đã có sẵn, và Developer đã dùng nó.
+
+**Block trong lượt đầu và nguyên nhân thật**
+
+| Issue | Vị trí | Lớp | Nguyên nhân thật | Gỡ bằng |
+| --- | --- | --- | --- | --- |
+| DEV-4 | Harness smoke, lượt 1 | tooling | `AGENTS.md` chỉ nằm trên nhánh chưa push (lúc đó remote chưa nhận push) | DEV-14: Architect tạo lại harness từ `main` và push |
+| DEV-7 | QA Epic 1 | environment | `origin/main` ở `2c0e7a5`. Commit `e1e0bb4` đã push nhưng nằm trên nhánh `agent/sdlc-developer/…`, không nằm trên `main` | DEV-15: DevOps fast-forward `main` tới `e1e0bb4` |
+| DEV-10 | QA Epic 2 | environment, delivery | `origin/main` thiếu `searchOpen`. Commit `0ca88a2` đã push nhưng không vào `main`. Comment ghi việc đưa lên `main` là "a lead decision" | DEV-16: delivery land `0ca88a2` lên `main` bằng ff-only |
+
+Cả ba block đều xảy ra sau khi commit đã được push. Push không sửa được chúng, vì QA và bước giao hàng đọc `main`. Không có bước nào trong skill nói ai đưa nhánh của Developer lên `main`. Lead phải quyết định, và các issue DEV-15, DEV-16 đã làm việc đó bằng tay.
+
+**Số liệu đo lại** (`harness-metrics.mjs` đã commit, không dùng bản vá tạm; dữ liệu 15 issue DEV-2 đến DEV-16, n = 10 đã done)
+
+| Chỉ số | Giá trị |
+| --- | --- |
+| M2 first-pass | 80% (8/10). Hai issue QA lùi `qa → in_progress`. Hai issue Developer: 100%, n = 2 |
+| M3 lượt mỗi issue giao xong | trung vị 4, p90 7 |
+| M4 token mỗi issue giao xong | trung vị 22.929, p90 40.980 |
+| M5 block | 3 sự kiện chuyển sang `blocked` (0,20 mỗi issue). Đếm theo comment `Blocker-class` cho 0,27 vì một block có nhiều comment |
+| M6 cycle time | trung vị 0 giờ, p90 0,3 giờ |
+| M7 block do harness | 1 (DEV-4) |
+| M8 footprint | 18 dòng, không cần refresh |
+
+**So sánh với lần đầu.** Không có lượt mới, nên không đo được tác động của việc mở push. Số liệu lần đầu không đổi (48 lượt, 3 sự kiện block, M2 80%). Điều đã thấy được: push có xảy ra ngay trong lượt đầu, và QA cùng bước giao hàng vẫn bị block sau đó.
+
+**Kiểm tra `main` lần cuối** (clone mới của bare repo pilot, `main` ở `0ca88a2`)
+- `node --test`: exit 0, 10 tests, 10 pass, 0 fail.
+- `check-harness --cert --run` (không ghi cert): exit 0, `ok: true`, `certified: true`, `blocking: []`, không có kiểm tra cert fail. E1 và E2 thoát 0 trên cây sạch. Warning: H5, H9, H11.
+- `--refresh`: `needsRefresh: false`, cert sha `0e64df3`, không có manifest đổi.
+
+**Trạng thái lượt và issue**
+- Tổng 48 lượt, không đổi kể từ lần đầu (ngân sách 30 đến 120).
+- Không có issue nào `blocked`. Có 10 issue `done`, 5 issue `stage_done`, DEV-1 `todo` (Lead chưa chuyển sang `Plan ready`).
+
+**Việc cần quyết định (chưa làm)**
+- Muốn biết luật đưa lên `main` có gỡ được block không, cần một lượt mới. Lượt đó cần tạo issue mới. Quy tắc phiên không cho tạo issue khi chưa có việc thiếu hẳn, nên chưa tạo. Ước tính: 15 đến 25 lượt, tổng sau đó khoảng 65 đến 75, còn trong trần 120.
+- Nếu muốn thử luật, cần chọn một trong hai hướng: (a) skill yêu cầu delivery fast-forward `main` sau khi QA PASS, hoặc (b) skill yêu cầu Developer tự đưa commit lên `main` khi được giao. Tôi chưa sửa skill nào.
+
+**Chưa kiểm chứng**
+- Không biết Developer có tự push khi skill không nhắc tới push hay không. Chỉ biết là có push trong lượt đầu, khi không có luật cấm.
+- Không biết luật đưa lên `main` có gỡ block hay không.
+- Nguyên nhân daemon dừng lúc 11:10 chưa rõ.
+- Web chưa khôi phục.
+
+### 5.11 Pilot vòng 3: luật đưa commit lên `main`
+
+Ngày 2026-11-12, sau mục 5.10. Chỉ dùng workspace pilot. Repo multica không bị sửa.
+
+**Dịch vụ sau khôi phục**
+- API `localhost:18800`: healthy (pid 2979739).
+- Daemon `dev-multica_s8-720`: đã dừng hai lần trước đó (11:10:55 và 11:39:17, cả hai `context canceled`). Lần này khởi động bằng `setsid nohup ... daemon start --foreground` (sid 3582160). Sau khi các lệnh của phiên kết thúc, daemon vẫn chạy (kiểm tra lần cuối sau 17 phút).
+- Web `localhost:13720`: không phản hồi do tiến trình `next-server` đã chết. Khởi động bằng `make up C=web ARGS="--name s8-pilot"`, HTTP 200.
+- Remote pilot `127.0.0.1:8765` (pid 3092556): chạy.
+- Server của người dùng: `8080` và `30000` trả HTTP 200 khi kiểm tra cuối. Một lần kiểm tra trước đó, `30000` trả HTTP 000 rồi lên lại. Không liên quan đến thao tác của phiên này.
+
+**Trạng thái trước khi thử.** Remote `main` ở `0ca88a2`, có `removeItem` và `searchOpen`. DEV-7 và DEV-10 đều `done`, không còn block.
+
+**Luật đã chọn.** QA kiểm tra đúng commit Developer đã push lên nhánh của nó, không đợi `main`. Sau GO, QA fast-forward `main` tới commit đó (`git push origin <sha>:main`), không force. Lý do chọn: luật "land sau QA PASS" đứng riêng sẽ deadlock. Ở DEV-7 và DEV-10, QA không cho GO vì `main` chưa có thay đổi. Nếu QA kiểm tra trên `main` và `main` chỉ được cập nhật sau GO, không bao giờ có GO.
+
+**Áp dụng.** Sửa hai file skill trong snapshot pilot (repo multica không đổi):
+- `sdlc-delivery-core/SKILL.md`: Developer push nhánh của mình (`git push origin HEAD:<nhánh>`) và nêu commit id, nhánh trong handoff. Không push `main`.
+- `sdlc-qa-verification/SKILL.md`: thêm bước 8 của Mode 2 (kiểm tra đúng commit trên nhánh) và mục `## Landing (after GO)`.
+
+Sinh lại bundle bằng `node scripts/generate-sdlc-skills.mjs` (77 skill). Áp vào pilot bằng `scripts/upgrade-sdlc-squad.mjs --template sdlc_greenfield --apply`, với biến môi trường trỏ tới workspace pilot. Xác nhận qua API đọc theo id: `sdlc-qa-verification` có mục Landing, `sdlc-delivery-core` có luật push lên nhánh, và không còn "Never push to any remote".
+
+**Request.** DEV-17, giao cho squad: thêm `countOpen(list)` và test. Chuỗi issue: DEV-18 (Developer, bước 1), DEV-19 (Reviewer, bước 2), DEV-20 (QA, bước 3).
+
+| Issue | Vai trò | Trạng thái | Lượt | Điều đã xảy ra |
+| --- | --- | --- | --- | --- |
+| DEV-18 | Developer, và cũng là chỗ QA của chuỗi | `done` | 4 | Commit `aa37f8d` lên nhánh `agent/sdlc-developer/afa87ccf4358` (11:50:03). Reviewer PASS (11:50:47). QA GO và land lên `main` (11:51:45) |
+| DEV-19 | Reviewer trên commit đã push | `done` | 4 | GO trên `aa37f8d`, 14 test pass |
+| DEV-20 | QA trên commit đã push | `done` | 1 | GO trên `aa37f8d`. Push `aa37f8d:main` trả "Everything up-to-date", vì `main` đã có commit đó |
+| DEV-17 | Request | `todo` | 1 | Lead chưa chuyển sang `Plan ready` (giống DEV-1) |
+
+**Kết quả đưa lên `main`.** Có đúng một lần fast-forward: `0ca88a2` → `aa37f8d`. `git merge-base --is-ancestor 0ca88a2 aa37f8d` xác nhận đây là fast-forward. Không có push bị từ chối và không có force.
+
+**Block trong vòng 3: không có.** Trước đó, cùng loại thay đổi (`removeItem`, lần 1) mất 16 lượt, gồm cả 3 lượt của DEV-15 mở khóa QA. Vòng 3 mất 10 lượt cho `countOpen`. Đây là hai mẫu, mỗi bên n = 1, và nội dung khác nhau. Không nên coi đây là chứng cứ về hiệu quả.
+
+**Phát hiện phụ**
+- Chuỗi có hai lần QA: DEV-18 (QA ở bước `qa` của chính issue Developer) và DEV-20 (issue QA riêng). Cả hai kiểm tra cùng một commit. Lần thứ hai không làm gì thêm vì `main` đã có commit. Đây là việc làm lặp, cần Lead xử lý.
+- Lead không đóng request (DEV-1, DEV-17 đều `todo`). Đây là lỗi lặp lại, không do luật push.
+
+**Kiểm tra `main` lần cuối** (clone mới của remote, HEAD `aa37f8d`)
+- `node --test`: exit 0, 14 test, 14 pass, 0 fail.
+- `check-harness --cert --run` (không `--write-cert`): exit 0, `ok: true`, `certified: true`, `blocking: []`, không có kiểm tra `cert` fail. E1 và E2 thoát 0, cây sạch. Warning: H5, H9, H11.
+- `--refresh`: `needsRefresh: false`, cert sha `0e64df3`, không có manifest đổi.
+
+**Tổng lượt squad.** 58 lượt (48 lượt cũ + 10 lượt vòng 3), trần 120.
+
+**Đề xuất nội dung skill để đưa vào repo (chưa sửa).**
+1. `sdlc-delivery-core`: Developer push nhánh của mình sau mỗi commit. Không push `main`.
+2. `sdlc-qa-verification`: QA kiểm tra đúng commit trên nhánh được nêu trong handoff. Sau GO, QA land commit đó lên `main` bằng fast-forward. Nếu bị từ chối, báo cáo và dừng, không force.
+3. Lead: không đưa cùng một commit qua hai issue QA. Cần quyết định issue QA nào là chính.
+
+**Chưa kiểm chứng**
+- Mỗi nhánh chỉ có một lần chạy. Không có đối chứng ngẫu nhiên.
+- Trong vòng 3, Developer push vì skill đã yêu cầu rõ. Vì vậy không thể nói gì về việc Developer có tự push khi không được yêu cầu.
+- Đường từ chối khi fast-forward thất bại chưa được kích hoạt.
+- Chưa biết luật có chạy ổn khi có hai thay đổi cùng đưa lên `main`.
+- Lead không đóng request (DEV-1 và DEV-17 đều `todo`).

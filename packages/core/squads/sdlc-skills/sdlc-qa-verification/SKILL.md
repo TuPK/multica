@@ -39,6 +39,16 @@ afterwards. You report; you do not change product code. Load sdlc-delivery-core 
 6. For UI, run accessibility-scan and accessibility-inspect on the changed pages when the app and Chrome are available. Otherwise record
    the gap as not verified.
 7. Run verification-before-completion before you state the recommendation.
+8. **Which commit you verify.** Verify the exact commit the developer named in the handoff, on its pushed branch. Do not wait for
+   `main` to contain it: `main` receives the change only after your GO (Landing rule below).
+
+## Landing (after GO)
+
+After GO or CONDITIONAL GO on a commit, you land that exact commit on `main`:
+
+1. `git fetch origin`, then `git push origin <commit id>:main`. This is a fast-forward push. Use no `--force`.
+2. If the push is rejected because `main` moved, fetch and report the rejection in your comment. Do not rebase, merge, or force.
+3. Report the push result with the commit id and the `main` id before and after. The issue then stays where its brief says.
 
 ## Recommendation
 

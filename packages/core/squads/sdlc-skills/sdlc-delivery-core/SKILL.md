@@ -36,6 +36,9 @@ the branch, including bmad-build and bmad-build-auto's version control sanity ch
 
 - Work on top of what is there. Read the changes in a file you must edit and keep them.
 - Commit only your own work, naming each path (`git add <path> ...`). Never `git add -A` or `git add .`.
+- Push your commit to your own branch after you commit (`git push origin HEAD:<your branch>`), and name the commit id and
+  the branch in your handoff. Never push to `main`. Only the QA tester lands a change on `main`, under the Landing rule in
+  sdlc-qa-verification.
 - Never stash, reset, checkout over, clean, or delete changes you did not make. Leave them uncommitted.
 - A file that you must edit already holds another run's uncommitted change and the two cannot be separated: commit the
   file with yours and say so in Remaining.
