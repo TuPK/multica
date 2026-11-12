@@ -44,10 +44,10 @@ stop or alter a stack you did not start.
 7. **Prove it.** Run the health check, save its output, stop the stack, and bring it up again with the one command to show it
    rebuilds. Run verification-before-completion.
 8. **Write `docs/sdlc/environment.md`:** the probe result; services and ports; the commands to start, ensure, stop and reset;
-   the QA stack; known limits. Include the line ``- Ensure command: `<the one command>` `` exactly, because `check-harness` (H10)
-   reads it. When the repo serves functions or workers the app calls (for example Supabase Edge Functions), the ensure
-   command serves them too. Give the Architect the command and the run instructions for the "Running and verifying" section
-   of `AGENTS.md` in your report; the Harness stage writes that file (sdlc-harness).
+   the QA stack; known limits. Include the line ``- Ensure command: `<the one command>` `` exactly, because `check-harness` (H10, E1)
+   reads and runs it. It must be idempotent and must not touch another worktree's database or ports. When the repo serves functions or workers the app calls (for example Supabase Edge Functions), the ensure
+   command serves them too. Give the Architect the command and any trap you met (a slow step, a port, a missing variable) with the command and exit code, for the
+   Verify and Known pitfalls sections of `AGENTS.md`, in your report; the Harness stage writes that file (sdlc-harness).
 9. **Report** with a Ruling comment (sdlc-delivery-core) on your own issue only; never move the blocked issue yourself, the lead resumes it. Say: the state achieved, the basis, the artifacts, the resume instruction
    (the blocked issue's status and the `env-ensure` command as its Resume-check), and what is not verified.
 

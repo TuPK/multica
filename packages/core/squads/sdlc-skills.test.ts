@@ -262,15 +262,27 @@ describe("built-in SDLC skills", () => {
       "references/profile-mobile.md",
       "references/profile-web.md",
       "scripts/check-harness.mjs",
+      "scripts/harness-metrics.mjs",
     ]);
     expect(harness.content).toContain("## Headless");
     expect(harness.content).toContain("check-harness --quick");
-    for (const id of ["H1", "H2", "H3", "H4", "H6", "H7", "H8", "H10"]) {
-      expect(harness.content, id).toMatch(new RegExp(`\\| ${id} \\|.*\\| blocks \\|$`, "m"));
+    // Three levels: the gate stops a Developer, cert is what the stage must satisfy, warnings never block.
+    for (const id of ["H1", "H3", "H4"]) {
+      expect(harness.content, id).toMatch(new RegExp(`\\| ${id} \\|.*\\| gate \\|$`, "m"));
     }
-    for (const id of ["H5", "H9", "H11", "H12", "H13"]) {
+    for (const id of ["H6", "H7", "H10", "H14", "E1", "E2"]) {
+      expect(harness.content, id).toMatch(new RegExp(`\\| ${id} \\|.*\\| cert \\|$`, "m"));
+    }
+    for (const id of ["H2", "H5", "H8", "H9", "H11", "H12", "H13", "H15", "H16"]) {
       expect(harness.content, id).toMatch(new RegExp(`\\| ${id} \\|.*\\| warns \\|$`, "m"));
     }
+    // The content rules and the smoke negative step are what keep the file small and the Done command honest.
+    expect(harness.content).toContain("No overview");
+    expect(harness.content).toContain("Enforced by:");
+    expect(harness.content).toContain("**Negative step:**");
+    expect(harness.content).toContain("--cert --run --write-cert");
+    expect(harness.content.split("\n").length).toBeLessThan(500);
+    expect(harness.content).not.toContain("| blocks |");
   });
 
   it("gates the Developer on the harness and adds no blocker class for it", () => {
@@ -278,6 +290,9 @@ describe("built-in SDLC skills", () => {
     const lead = get("sdlc-squad-lead");
     expect(lead.content).toContain("**Harness gate.**");
     expect(lead.content).toContain("create no `todo` issue for the Developer or the Bug Fixer");
+    expect(lead.content).toContain("While `check-harness` fails a `gate` check");
+    expect(lead.content).toContain("stops nobody");
+    expect(lead.content).toContain("harness-metrics.mjs --parent <epic>");
     expect(lead.content).toMatch(/\| Architect \| harness: .* \| `harness` \|/);
     expect(lead.content).toContain("`check-harness --refresh`");
     expect(lead.files.find((f) => f.path === "reference.md")!.content).toContain("Route 0. Audit the harness");
@@ -285,9 +300,14 @@ describe("built-in SDLC skills", () => {
     expect(get("sdlc-delivery-core").content).toContain("`check-harness --quick`");
     expect(get("sdlc-development").content).toContain("Run `check-harness --quick`");
     expect(get("sdlc-development").content).toContain("block with class `tooling`");
+    expect(get("sdlc-development").content).toContain("A `cert` or `warning`\n   failure does not stop you.");
+    expect(get("sdlc-delivery-core").content).toContain("A `cert` or `warning` failure does not stop the work.");
     expect(get("sdlc-devops-release").content).toContain("Ensure command:");
     expect(get("sdlc-architecture").content).toContain("sdlc-harness");
-    expect(get("planning-architecture").content).toContain("`check-harness` passes every blocking check");
+    expect(get("planning-architecture").content).toContain("Do not write `AGENTS.md`");
+    expect(get("planning-architecture").content).toContain("Non-default conventions");
+    expect(get("planning-architecture").content).toContain("Verification strategy");
+    expect(get("sdlc-architecture").content).toContain("`check-harness --cert --run`");
     // The harness failure uses an existing class: the list stays the one the core defines.
     const line = get("sdlc-delivery-core").content.match(/^Blocker-class: (.+)$/m)!;
     expect(line[1]!.split(" | ")).not.toContain("harness");

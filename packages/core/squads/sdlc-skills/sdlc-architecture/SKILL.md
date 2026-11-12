@@ -48,7 +48,8 @@ When the route is D (working code, no usable plan), your stage 1 is the assessme
    issue comment with the decisions that need a person, the risks, and what you assumed.
 
 Skills: bmad-architecture when the project follows BMAD; sdlc-harness for `AGENTS.md`, `CLAUDE.md` and the Done command (you
-own their content, and it must pass `check-harness`; headless, so you take defaults and record assumptions); supabase-postgres-best-practices
+own their content, and it must pass `check-harness --cert --run`; read the architecture document's "Non-default conventions" and "Verification strategy"
+sections; headless, so you take defaults and record assumptions); supabase-postgres-best-practices
 for Postgres or Supabase data models.
 
 ## Ruling mode (unblock issues)

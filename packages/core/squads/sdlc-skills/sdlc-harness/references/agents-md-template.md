@@ -1,47 +1,38 @@
 # AGENTS.md shape checked by check-harness
 
-Fill every section from the repository. Delete a section with nothing in it, except those `check-harness` needs (marked).
-At most 150 lines. Rules and pointers only: no progress, no copied command bodies, no copied rulings.
+Fill every section from the repository. Delete a section with nothing in it, except Verify. Target 80 lines.
+Rules and pointers only: no overview, no progress, no copied command bodies, no copied rulings.
 
 ````markdown
-<!-- harness:v1 -->
-<!-- Verified YYYY-MM-DD against <sha of HEAD>. Refresh: sdlc-harness skill, Mode 3. -->
+# <project name>
 
-## <project name>
-
-<Three or four sentences: what it is, the stack, where the deeper docs live.>
-
-## Policy
-
-- <A rule the organisation requires, with the alternative: "Never X; do Y".>
-
-## Where things are
-
-<!-- needed by H8: a table with an "Enforced by" column and at least one row -->
-| Path | Responsibility | Forbidden | Enforced by |
-| --- | --- | --- | --- |
-| `<dir>/` | <what lives here> | <what must not happen here> | lint rule / test / prose |
-
-- Environment and squad rulings: `docs/sdlc/environment.md`, `docs/sdlc/rulings.md`. Read when: you run the app or hit an environment error.
-
-## Running and verifying
-
-<!-- needed by H10: names docs/sdlc/environment.md (above) and the Ensure command that file holds -->
-- Environment: `<ensure command>` before you open a browser or run an integration test.
-- Quick check while editing: `<command>`
+## Verify
+<!-- needed by H10: names docs/sdlc/environment.md and the Ensure command that file holds -->
+- Ensure: `<ensure command>`. Read `docs/sdlc/environment.md` when the app or a service will not start.
+- Quick check: `<fast command>`
 <!-- needed by H6: exactly one Done line, with the evidence level (sdlc-delivery-core, "Evidence ladder") -->
 - Done = `<verify command>` exits 0 (evidence level L<1-3>)
-- Run it at: <URL and the context that matters, for example HTTP versus HTTPS>
-- Versions: read from `.nvmrc` / `engines`.
 
-## Conventions that differ from defaults
-
-- <Convention> (`<path that shows it>`)
+## Rules
+- Never <X>; do <Y>. Enforced by: <lint rule | test | CI job | hook | prose>
 
 ## Known pitfalls
+- <What goes wrong, and what to do instead> (<ruling id, issue id, or command and exit code>)
 
-- <What goes wrong and what to do instead> (<ruling or issue id>)
+## Read when
+- Changing <area>: read `<path>`
 ````
+
+Write nothing about the project itself. The agent reads the stack from the manifests and the structure from the code.
+
+## What belongs in each section
+
+| Section | Holds | Does not hold |
+| --- | --- | --- |
+| Verify | The three commands. Where it runs (URL, context) only if behaviour changes with it | Flags, script bodies, setup prose |
+| Rules | A prohibition with its alternative, and what enforces it | Style a formatter or linter already enforces |
+| Known pitfalls | A fact the agent cannot read from the code, that cost a run, with its evidence | Guesses, history, status |
+| Read when | A condition and the document to read | A bare path, or a document the agent finds by itself |
 
 ## `docs/sdlc/environment.md` must hold one line, written by DevOps in the Environment stage
 
@@ -51,11 +42,16 @@ At most 150 lines. Rules and pointers only: no progress, no copied command bodie
 
 ## Wording that fails H7
 
-`implemented`, `not yet implemented`, `scaffold`, `TODO`, `WIP`, `coming soon`, checkmarks, and status table cells such as
-`| done |`. Say what to do, not how far the project has come. Progress belongs in the issue tracker and `docs/`.
-A section titled Greenfield is exempt, for a repository that really is empty.
+`is implemented`, `not yet implemented`, `scaffold`, `TODO`, `WIP`, `coming soon`, checkmarks, and status table cells such as `| done |`.
+"Must be implemented in Go" is a requirement and passes. Say what to do, not how far the project has come. Progress belongs in the issue
+tracker and `docs/`. A section titled Greenfield is exempt, for a repository that really is empty.
+
+## Empty repository
+
+With no README and no architecture document, up to three lines of orientation are allowed, in a section titled Greenfield, pointing to the
+document that will exist. Nothing else describes the project.
 
 ## Splitting
 
-Add a nested `AGENTS.md` only when its rules are exclusive to that directory, large enough to matter, and the tool in use
-loads it (check this once). Otherwise keep one file.
+Add a nested `AGENTS.md` only when its rules are exclusive to that directory, large enough to matter, and the tool in use loads it
+(check this once). Otherwise keep one file. Pointers that say when to read work in every tool; conditional loading by configuration does not.

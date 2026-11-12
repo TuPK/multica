@@ -37,8 +37,8 @@ and the templates for an unblock issue and for a ruling. The class list is the o
 An owner decision in a member's comment beats the table: record `Owner waiver O-<n>` (comment id, covered, still in
 force, expiry), drop the controls it makes unnecessary, and resume without a new round.
 
-A `tooling` blocker that names failed `check-harness` ids (H1 to H13) belongs to the Architect, start status `harness`
-(sdlc-harness, Mode 3), not to DevOps.
+A `tooling` blocker that names failed `check-harness` ids (a `gate` check: H1, H3 or H4) belongs to the Architect, start status `harness`
+(sdlc-harness, Mode 3), not to DevOps. Only a missing Ensure command goes to DevOps.
 
 Order when there are several causes: `requirement`, then `design` and `ux`, then `environment` and `tooling`, then `verification`.
 

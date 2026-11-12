@@ -72,9 +72,10 @@ public contract, a security control, or a production release. Then create the is
 - **D. Optimization:** Architect (measure the baseline and set a target), Developer, then QA compares against the baseline.
 - **E. Upgrade or upkeep:** Architect (risks and rollback plan), Developer or DevOps, then QA runs the regression.
 
-- **Route 0. Audit the harness (before any route above):** run `check-harness` from sdlc-harness and read the JSON. If a
-  blocking check fails, create one Harness issue for the Architect (`harness`) and queue the route's first Developer or
-  Bug Fixer issue behind it. If none fails, create nothing and write "Harness: pass" in the triage comment.
+- **Route 0. Audit the harness (before any route above):** run `check-harness` from sdlc-harness (static, no `--run`) and read the JSON. If a
+  `gate` check fails, create one Harness issue for the Architect (`harness`) and queue the route's first Developer or
+  Bug Fixer issue behind it. If only `cert` or `warning` checks fail, create one Harness issue (Mode 3) queued after the route's work
+  and block nobody. If nothing fails, create nothing. Write the result in the triage comment ("Harness: pass", or the failed ids and levels).
 
 Rules for every route:
 - Issues that touch different files may run together; give them no dependency on each other.

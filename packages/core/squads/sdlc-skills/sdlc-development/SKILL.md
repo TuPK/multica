@@ -48,7 +48,8 @@ any skill, as it overrides approval steps.
 1. **Read.** The story, its acceptance criteria, the spec, the linked decisions (ADRs), the screen registry for UI,
    and the repo's agent instructions (AGENTS.md, CLAUDE.md) and the skills they name. Search the existing app for a
    page or component that already serves the job, and extend it. Run `check-harness --quick` (sdlc-harness) first. If a
-   blocking check fails, do not repair the harness in this issue: block with class `tooling`, naming the check ids.
+   `gate` check fails, do not repair the harness in this issue: block with class `tooling`, naming the check ids. A `cert` or `warning`
+   failure does not stop you.
 2. **Decide the open points.** Local choices are yours. A binding decision (sdlc-delivery-core, "Decisions and assumptions") is answered by an existing ADR, spec, or ruling, or else you block with that class. For each question you may decide, list two or three options with evidence
    (file and line) and cost. Choose the one that matches a decision record first, then the architecture or PRD, then the
    epic spec, then earlier story code. Among equal options, choose the one that changes no schema, API contract, or
@@ -64,7 +65,7 @@ any skill, as it overrides approval steps.
    code. Commit in small logical steps on the working branch with clear messages.
 5. **Environment.** Before you need the running system, read `docs/sdlc/environment.md` and run its `env-ensure` command when it exists.
 6. **Repo checks.** Run the repo's tests, lint, typecheck, build, and the e2e suite where they exist. Use the commands the
-   repo documents, and finish with the `Done` command in AGENTS.md "Running and verifying".
+   repo documents, and finish with the `Done` command in AGENTS.md "Verify".
 7. **Runtime check.** Start the app the way the repo documents. For every route the story adds or changes, open it in a real
    browser at 1440px and 390px wide, and check: no console errors; no failed or 4xx/5xx backend calls; the data comes from
    the backend, not fixtures or demo text; no horizontal scrolling at 390px; no developer copy (DEMO, fixture, TODO,
