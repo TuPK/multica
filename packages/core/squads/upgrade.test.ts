@@ -8,7 +8,10 @@ import {
 } from "./sdlc-previous-texts";
 import { instructionsFor, workflowSteps } from "./quickstart";
 import { mergeWorkflowSteps, upgradeKitvietSquad, upgradeSdlcSquad, type KitvietUpgradeClient, type SdlcUpgradeClient } from "./upgrade";
-import { SQUAD_ROLES, SQUAD_TEMPLATES, type SquadRoleKey } from "./templates";
+import { KITVIET_PREVIOUS_AGENT_INSTRUCTIONS, KITVIET_PREVIOUS_SQUAD_INSTRUCTIONS } from "./kitviet-previous-texts";
+import { findKitvietRole } from "./kitviet-squad-roles";
+import { kitvietPackOf } from "./kitviet-packs";
+import { SQUAD_ROLES, SQUAD_TEMPLATES, type SquadRoleKey, type SquadTemplate } from "./templates";
 
 const template = SQUAD_TEMPLATES.find((t) => t.id === "sdlc_greenfield")!;
 const agentIds = Object.fromEntries(template.roles.map((r) => [r, `id-${r}`])) as Record<SquadRoleKey, string>;
@@ -224,11 +227,12 @@ describe("upgradeKitvietSquad", () => {
 
   /** A workspace where the Kit Viet squad exists, led by the template's leader, with the given texts. */
   async function kvWorkspace(
-    opts: { agentText?: Partial<Record<SquadRoleKey, string>>; squadText?: string; leaderId?: string; members?: string[] } = {},
+    opts: { template?: SquadTemplate; agentText?: Partial<Record<SquadRoleKey, string>>; squadText?: string; leaderId?: string; members?: string[] } = {},
   ) {
+    const tpl = opts.template ?? kvTemplate;
     const agents = await Promise.all(
-      kvTemplate.roles.map(async (role) => ({
-        id: kvIds[role],
+      tpl.roles.map(async (role) => ({
+        id: `kv-${role}`,
         name: SQUAD_ROLES[role].name,
         archived_at: null,
         instructions: opts.agentText?.[role] ?? (await instructionsFor(role)),
@@ -239,10 +243,10 @@ describe("upgradeKitvietSquad", () => {
       listSquads: vi.fn(async () => [
         {
           id: "kv-squad",
-          name: kvTemplate.name,
+          name: tpl.name,
           archived_at: null,
-          leader_id: opts.leaderId ?? kvIds[kvTemplate.leader],
-          instructions: opts.squadText ?? kvTemplate.instructions,
+          leader_id: opts.leaderId ?? `kv-${tpl.leader}`,
+          instructions: opts.squadText ?? tpl.instructions,
         },
       ] as unknown as Squad[]),
       listSquadMembers: vi.fn(async () =>
@@ -342,6 +346,58 @@ describe("upgradeKitvietSquad", () => {
     expect(result.agents.every((a) => a.status === "current" || a.status === "missing")).toBe(true);
     expect(second.updateAgent).not.toHaveBeenCalled();
     expect(second.updateSquad).not.toHaveBeenCalled();
+  });
+
+  describe("with the texts recorded in kitviet-previous-texts.ts", () => {
+    // kv_marketing's agents have earlier texts on record; kv_admin's agents have none.
+    const recordedTemplate = SQUAD_TEMPLATES.find((t) => t.id === "kv_marketing")!;
+    const recordedRole = recordedTemplate.roles.find((r) => (KITVIET_PREVIOUS_AGENT_INSTRUCTIONS[r] ?? []).length > 0);
+
+    it("upgrades an agent and a squad that still hold a text the releases recorded", async () => {
+      expect(recordedRole, "a Kit Viet marketing role has an earlier text on record").toBeDefined();
+      const role = recordedRole!;
+      const earlierAgent = KITVIET_PREVIOUS_AGENT_INSTRUCTIONS[role]![0]!;
+      const client = await kvWorkspace({
+        template: recordedTemplate,
+        agentText: { [role]: earlierAgent },
+        squadText: KITVIET_PREVIOUS_SQUAD_INSTRUCTIONS[0],
+      });
+
+      const result = await upgradeKitvietSquad(client, recordedTemplate);
+
+      expect(client.updateAgent).toHaveBeenCalledWith(`kv-${role}`, { instructions: await instructionsFor(role) });
+      expect(result.agents.find((a) => a.role === role)!.status).toBe("upgraded");
+      expect(client.updateSquad).toHaveBeenCalledWith("kv-squad", { instructions: recordedTemplate.instructions });
+      expect(result.squad.status).toBe("upgraded");
+    });
+
+    it("keeps an agent and a squad whose recorded text the boss edited by hand", async () => {
+      expect(recordedRole, "a Kit Viet marketing role has an earlier text on record").toBeDefined();
+      const role = recordedRole!;
+      const client = await kvWorkspace({
+        template: recordedTemplate,
+        agentText: { [role]: `${KITVIET_PREVIOUS_AGENT_INSTRUCTIONS[role]![0]!}\n\nMy own rule.` },
+        squadText: `${KITVIET_PREVIOUS_SQUAD_INSTRUCTIONS[0]!}\n\nMy own rule.`,
+      });
+
+      const result = await upgradeKitvietSquad(client, recordedTemplate);
+
+      expect(client.updateAgent).not.toHaveBeenCalled();
+      expect(client.updateSquad).not.toHaveBeenCalled();
+      expect(result.agents.find((a) => a.role === role)!.status).toBe("kept");
+      expect(result.squad.status).toBe("kept");
+    });
+
+    it("records only Kit Viet roles, and never the text a squad or agent currently gets", async () => {
+      for (const [role, texts] of Object.entries(KITVIET_PREVIOUS_AGENT_INSTRUCTIONS)) {
+        expect(findKitvietRole(role), `${role} is a Kit Viet role`).toBeDefined();
+        expect(texts, `${role} has at least one text`).not.toHaveLength(0);
+        expect(texts).not.toContain(await instructionsFor(role as SquadRoleKey));
+      }
+      for (const template of SQUAD_TEMPLATES.filter((t) => kitvietPackOf(t.id) !== undefined)) {
+        expect(KITVIET_PREVIOUS_SQUAD_INSTRUCTIONS).not.toContain(template.instructions);
+      }
+    });
   });
 });
 

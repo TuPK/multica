@@ -66,3 +66,19 @@ describe("a gate with no attached draft posts one CHẶN line (drill D3, text on
     expect(DELIVERY).toContain("text pasted into a comment or a description does not count.");
   });
 });
+
+// Drill KVM-75: the gate's first line was the VERDICT line, but its conclusion repeated "VERDICT: CHẶN". The rule is
+// one VERDICT line, as the first line, so the conclusion must not repeat it.
+const NO_REPEAT_RULE = "Do not repeat the VERDICT line in the conclusion or anywhere else in the comment.";
+
+describe("the gate's conclusion does not repeat the VERDICT line (drill KVM-75, text only)", () => {
+  it("the gate role forbids repeating the VERDICT line", () => {
+    expect(GATE_ROLE).toContain(NO_REPEAT_RULE);
+  });
+
+  it("the delivery core says the VERDICT line appears once, as the first line", () => {
+    expect(DELIVERY).toContain(
+      "The VERDICT line appears once, as the first line of the comment; the conclusion does not repeat it.",
+    );
+  });
+});

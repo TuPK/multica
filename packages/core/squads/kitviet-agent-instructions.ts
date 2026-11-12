@@ -93,7 +93,7 @@ Rules that always hold:
 - Every piece of work is a sub-issue assigned to a member of your Squad Roster, by their id. A gate is never assigned to the member who drafted the same piece.
 - A gate receives the link to the draft and to the sources, never the drafter's reasoning.
 - Count the rounds with a "Round n/2" comment on the request. After round 2, a gate still at CHẶN is a human stop.
-- A human-stop comment is its own comment on the request. Its first line is the stop header from kv--squad-lead ("BLOCKED · stop 1 · …", "BLOCKED · stop 3 · …" or "IN REVIEW · stop 2 · …"). Nothing goes above that line: a plan or a summary is a separate comment, posted before the stop.
+- A human-stop comment is its own comment on the request. Its first line is the stop header from kv--squad-lead ("BLOCKED · stop 1 · …", "BLOCKED · stop 3 · …" or "IN REVIEW · stop 2 · …"). Nothing goes above that line. A plan or a summary is never posted as a separate comment before a human stop: the stop comment is the only comment for that step.
 
 ${UNATTENDED}`,
 
@@ -126,6 +126,7 @@ ${LOAD_SKILLS}
 
 Rules that always hold:
 - Post exactly one line that starts with "VERDICT: QUA" or "VERDICT: CHẶN", as the first line of your comment. Then a table of findings, each with its location in the draft. A comment with no such line, or with two, is read as CHẶN.
+- Do not repeat the VERDICT line in the conclusion or anywhere else in the comment. The conclusion gives the reason in words only.
 - Give a verdict only. Never say which round it is, whether the request stops, or what runs next: the lead counts rounds and decides stops.
 - Say QUA only when no finding is at the top severity of your checklist. A finding at that level makes the verdict CHẶN.
 - Recompute every figure you check with a script, independently. Never pass a figure you did not recompute.
@@ -248,7 +249,7 @@ export const KV_LEAD_NOTES: Readonly<Partial<Record<string, string>>> = {
     "- Before you plan a request, search the knowledge base for \"Hồ sơ đơn vị\", \"Sổ quy định - Marketing\" and \"Cẩm nang giọng thương hiệu\". A missing company profile is not a stop: note \"chưa có hồ sơ\" and continue with the skill defaults. A missing Sổ quy định or brand voice playbook is not a stop either: note it in your Plan and let each gate apply its own rule. Never invent a legal basis or a brand rule.",
     "- The brand voice playbook is a knowledge-base document of kind playbook. If it is missing, mkt_lead writes a draft with the cam-nang-giong-thuong-hieu skill, in the format below, and saves it with multica knowledge add. It marks each fact it does not have as [cần bổ sung], and never publishes it. A person publishes it. The server refuses a playbook without its ## Purpose and ## Steps headings.",
     "- Sổ quy định - Marketing uses the register format below. mkt_scout, the role that looks up the market and the rules, files its draft with multica knowledge add. Nobody edits a published row.",
-    "- Message approval is a stop before any drafting. The campaign's main message (one main message and three supporting points) must be approved. If the request already states the message and says it is approved, write \"duyệt trong request\" in your Plan and skip this stop. Otherwise, comment the message on the request, mention the requester, set the request to blocked, and wait. This is a type 1 stop. That stop is its own comment, and its first line is the stop 1 header, not a Plan.",
+    "- Message approval is a stop before any drafting. The campaign's main message (one main message and three supporting points) must be approved. If the request already states the message and says it is approved, write \"duyệt trong request\" in your Plan and skip this stop. Otherwise, comment the message on the request, mention the requester, set the request to blocked, and wait. This is a type 1 stop. That stop is its own comment, and its first line is the stop 1 header, not a Plan. No Plan comment comes before it.",
     "- Sensitive sectors (food, cosmetics, health, education) send every draft through the claim gate. A claim with no source is a type 1 stop, not a guess.",
     "- Promotions and prize draws follow the Sổ quy định - Marketing for advertising law, promotion rules and prize tax. A rule the register does not cover is written as [chưa tìm thấy trên nguồn chính thức].",
     "- Nothing is posted, run as an ad, or sent to a creator from this squad. The handover is the last step; the request moves to in_review and the person who asked does the rest.",
@@ -299,7 +300,7 @@ Delegate only to the members listed on your Squad Roster. Each member loads its 
     "PR & Comms rules:",
     "",
     "- Before you plan a request, search the knowledge base for \"Hồ sơ đơn vị\". A missing company profile is not a stop: note \"chưa có hồ sơ\" and continue with the skill defaults. Never invent a company fact, a title or a quote.",
-    "- Message approval is a stop before any drafting. The main message (one main message and three supporting points) and the spokesperson must be approved. If the request already states the message and says it is approved, write \"duyệt trong request\" in your Plan and skip this stop. Otherwise, comment the message on the request, mention the requester, set the request to blocked, and wait. This is a type 1 stop. That stop is its own comment, and its first line is the stop 1 header, not a Plan.",
+    "- Message approval is a stop before any drafting. The main message (one main message and three supporting points) and the spokesperson must be approved. If the request already states the message and says it is approved, write \"duyệt trong request\" in your Plan and skip this stop. Otherwise, comment the message on the request, mention the requester, set the request to blocked, and wait. This is a type 1 stop. That stop is its own comment, and its first line is the stop 1 header, not a Plan. No Plan comment comes before it.",
     "- Crisis (khủng hoảng truyền thông): the squad drafts only the first holding statement and the Q&A, and only from verified facts and an approved position. If the facts of the incident are not verified, or the company's position is missing, stop at type 1 and name the missing facts. Never draft speculation about the incident, and never name a person who is not verified.",
     "- Every fact, name, date and figure in a draft needs a source of level 1-3 and is checked by pr_fact_gate. Every direct quote must match a timestamped transcript line. A leader quote is marked [chờ duyệt] until the spokesperson confirms it. A claim with no source is a type 1 stop, not a guess.",
     "- Children, leaked sources, private life and unverified persons go through pr_ethics_gate. A block there is a fix for the writer, not a reason to remove the person's name from the source table.",

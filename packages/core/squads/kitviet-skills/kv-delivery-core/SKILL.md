@@ -19,6 +19,7 @@ Every role in a Kit Viet squad works under these rules. Your role skill says wha
 ## Verdict lines and the two-round limit
 
 - A gate posts exactly one line that starts with `VERDICT: QUA` or `VERDICT: CHẶN`, as the first line of its comment. Then the table of findings, each with its location in the draft.
+- The VERDICT line appears once, as the first line of the comment; the conclusion does not repeat it.
 - A gate says QUA only when no finding is at the top severity of its checklist. Any finding at that level makes it CHẶN. A gate never changes a CHẶN to QUA, and never edits the draft.
 - A gate with no `VERDICT:` line did not pass. The lead counts it as CHẶN.
 - A gate whose draft is missing or not attached posts `VERDICT: CHẶN - không có bản nháp đính kèm`, with the reason and a list of what it could not check, and then stops. A draft is a file attached to the sub-issue and present in the working directory; text pasted into a comment or a description does not count.
