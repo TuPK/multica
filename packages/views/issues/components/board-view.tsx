@@ -40,8 +40,8 @@ import {
   workflowAllowsStatus,
   workflowStep,
 } from "@multica/core/issue-workflows";
-import { WorkflowHandoffConfirmDialog } from "../../workflows/handoff-confirm-dialog";
-import { stepHandlerActor, useStepHandlerLabel } from "../../workflows/step-handler";
+import { WorkflowHandoffConfirmDialog } from "../../workflow/handoff-confirm-dialog";
+import { stepHandlerActor, useStepHandlerLabel } from "../../workflow/step-handler";
 import { projectListOptions } from "@multica/core/projects/queries";
 import { BoardCardContent } from "./board-card";
 import { InfiniteScrollSentinel } from "./infinite-scroll-sentinel";

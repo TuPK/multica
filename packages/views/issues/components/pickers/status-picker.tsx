@@ -13,8 +13,8 @@ import { PropertyPicker, PickerItem } from "./property-picker";
 import { useT } from "../../../i18n";
 import { useStatusLabel } from "../../utils/status-label";
 import { useIssueStatusOptions } from "../../utils/status-options";
-import { stepHandlerActor, useStepHandlerLabel } from "../../../workflows/step-handler";
-import { WorkflowHandoffConfirmDialog } from "../../../workflows/handoff-confirm-dialog";
+import { stepHandlerActor, useStepHandlerLabel } from "../../../workflow/step-handler";
+import { WorkflowHandoffConfirmDialog } from "../../../workflow/handoff-confirm-dialog";
 import { ActorAvatar } from "../../../common/actor-avatar";
 
 /** Above this many options the flat list stops being scannable. */

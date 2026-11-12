@@ -42,6 +42,7 @@
     "saving": "저장 중...",
     "saved": "저장됨",
     "save_failed": "워크플로를 저장할 수 없습니다.",
+    "status_create_forbidden": "워크스페이스 관리자만 상태를 만들 수 있어 이 워크플로를 저장할 수 없습니다.",
     "load_failed": "이 워크플로를 불러올 수 없습니다.",
     "name_placeholder": "워크플로 이름",
     "description_placeholder": "설명 추가...",
@@ -62,7 +63,11 @@
       "connect_to": "연결할 대상...",
       "move_left": "왼쪽으로 이동",
       "move_right": "오른쪽으로 이동",
+      "move_up": "위로 이동",
+      "move_down": "아래로 이동",
       "remove_step": "단계 제거",
+      "role_hint": "추천 역할: {{role}}",
+      "will_be_created": "저장 시 생성됨",
       "handler_agent": "에이전트",
       "handler_member": "멤버",
       "handler_project_lead": "프로젝트 리드"
@@ -153,6 +158,71 @@
     "default_name": "새 워크플로",
     "untitled_name": "제목 없는 워크플로",
     "default_branch_start": "시작",
-    "default_branch_done": "완료"
+    "default_branch_done": "완료",
+    "start_points": {
+      "label": "시작 방식",
+      "blank": "빈 워크플로",
+      "clone": "기존 워크플로 복제",
+      "template": "템플릿에서 시작"
+    },
+    "clone_dialog": {
+      "title": "기존 워크플로 복제",
+      "search_placeholder": "워크플로 검색...",
+      "empty_title": "워크플로를 찾을 수 없습니다",
+      "loading": "워크플로 불러오는 중...",
+      "load_failed": "워크플로를 불러오지 못했습니다."
+    },
+    "template_dialog": {
+      "title": "템플릿에서 시작",
+      "empty_title": "템플릿을 찾을 수 없습니다",
+      "loading": "템플릿 불러오는 중...",
+      "load_failed": "템플릿을 불러오지 못했습니다.",
+      "will_be_created": "저장 시 생성됨"
+    },
+    "inspector": {
+      "title": "단계 인스펙터",
+      "select_step_hint": "캔버스에서 단계를 선택하여 담당자와 전환을 설정하세요.",
+      "board_order": "보드 순서",
+      "add_step": "단계 추가",
+      "step_count": "{{total}}단계 중 {{current}}단계",
+      "close": "검사기 닫기",
+      "no_transitions": "전환 없음"
+    },
+    "discard_dialog": {
+      "title": "저장되지 않은 변경 사항을 취소하시겠습니까?",
+      "warning": "저장되지 않은 변경 사항이 손실됩니다.",
+      "confirm": "취소하고 교체",
+      "cancel": "취소"
+    }
+  },
+  "templates": {
+    "delivery": {
+      "name": "개발 딜리버리",
+      "description": "개발·리뷰 후 QA를 거쳐 완료"
+    },
+    "content": {
+      "name": "콘텐츠 제작",
+      "description": "작성·편집·예약 발행"
+    },
+    "community": {
+      "name": "커뮤니티 운영",
+      "description": "분류·답변·회신 대기"
+    },
+    "sdlc_auto": {
+      "name": "SDLC Auto",
+      "description": "에이전트 계획 및 빌드, 독립 리뷰와 QA"
+    },
+    "bmad_planning_auto": {
+      "name": "BMAD Planning Auto",
+      "description": "리서치부터 준비 완료 리뷰까지 다단계 에이전트 계획"
+    },
+    "sales_loop": {
+      "name": "세일즈 루프",
+      "description": "리드 탐색, 작성, 검토 및 보고"
+    },
+    "quick_fix": {
+      "name": "SDLC 퀵 픽스",
+      "description": "개발자에서 완료로 직행하는 버그 수정 루프"
+    }
   }
 }

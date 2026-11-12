@@ -16,7 +16,7 @@ import {
   useStartWhenVisible,
 } from "./demo-kit";
 
-// The Content template's middle columns (packages/views/workflows/templates.ts)
+// The Content template's middle columns (server/internal/issueworkflow/templates.go)
 // between the fixed todo / done / cancelled columns every workflow lists.
 type Status = "todo" | "drafting" | "editing" | "scheduled" | "done" | "cancelled";
 type Handler = "you" | "agent" | "member";

@@ -42,6 +42,7 @@
     "saving": "保存中...",
     "saved": "已保存",
     "save_failed": "无法保存工作流。",
+    "status_create_forbidden": "只有工作区管理员可以创建状态，因此无法保存此工作流。",
     "load_failed": "无法加载此工作流。",
     "name_placeholder": "工作流名称",
     "description_placeholder": "添加描述...",
@@ -62,7 +63,11 @@
       "connect_to": "连接至...",
       "move_left": "左移",
       "move_right": "右移",
+      "move_up": "上移",
+      "move_down": "下移",
       "remove_step": "移除步骤",
+      "role_hint": "建议角色：{{role}}",
+      "will_be_created": "保存时创建",
       "handler_agent": "智能体",
       "handler_member": "成员",
       "handler_project_lead": "项目负责人"
@@ -153,6 +158,71 @@
     "default_name": "新建工作流",
     "untitled_name": "未命名工作流",
     "default_branch_start": "开始",
-    "default_branch_done": "完成"
+    "default_branch_done": "完成",
+    "start_points": {
+      "label": "起点",
+      "blank": "空白",
+      "clone": "克隆已有工作流",
+      "template": "从模板开始"
+    },
+    "clone_dialog": {
+      "title": "克隆已有工作流",
+      "search_placeholder": "搜索工作流...",
+      "empty_title": "未找到工作流",
+      "loading": "正在加载工作流...",
+      "load_failed": "无法加载工作流。"
+    },
+    "template_dialog": {
+      "title": "从模板开始",
+      "empty_title": "未找到模板",
+      "loading": "正在加载模板...",
+      "load_failed": "无法加载模板。",
+      "will_be_created": "保存时创建"
+    },
+    "inspector": {
+      "title": "步骤检查器",
+      "select_step_hint": "在画布中选择一个步骤以配置交接与流转。",
+      "board_order": "看板顺序",
+      "add_step": "添加步骤",
+      "step_count": "第 {{current}} 步，共 {{total}} 步",
+      "close": "关闭检查器",
+      "no_transitions": "无流转"
+    },
+    "discard_dialog": {
+      "title": "放弃未保存的修改？",
+      "warning": "未保存的修改将会丢失。",
+      "confirm": "放弃并替换",
+      "cancel": "取消"
+    }
+  },
+  "templates": {
+    "delivery": {
+      "name": "研发交付",
+      "description": "开发、评审，再经过 QA 完成"
+    },
+    "content": {
+      "name": "内容生产",
+      "description": "撰写、编辑、排期发布"
+    },
+    "community": {
+      "name": "社区维护",
+      "description": "分诊、回复、等待反馈"
+    },
+    "sdlc_auto": {
+      "name": "SDLC 自动化",
+      "description": "智能体规划与构建，包含独立评审与 QA"
+    },
+    "bmad_planning_auto": {
+      "name": "BMAD 规划自动化",
+      "description": "从调研到就绪度评审的多阶段智能体规划"
+    },
+    "sales_loop": {
+      "name": "销售循环",
+      "description": "线索挖掘、起草、核对与汇报"
+    },
+    "quick_fix": {
+      "name": "SDLC 快速修复",
+      "description": "由开发人员直接修复到完成"
+    }
   }
 }

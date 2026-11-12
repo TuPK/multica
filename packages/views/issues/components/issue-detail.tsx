@@ -6,7 +6,7 @@ import {
   issueBehavesAsAny,
   issueStatusCategory,
 } from "@multica/core/issues";
-import { IssueFlowCard } from "../../workflows/issue-flow-card";
+import { IssueFlowCard } from "../../workflow/issue-flow-card";
 import { useStatusLabel } from "../utils/status-label";
 import { priorityLabel } from "../utils/priority-label";
 import { useIssueStatuses } from "@multica/core/issue-statuses/hooks";
@@ -75,7 +75,7 @@ import { ActorAvatar } from "../../common/actor-avatar";
 import { ActionShortcutKeycaps } from "../../common/shortcut-keycaps";
 import { PropRow } from "../../common/prop-row";
 import { RunQueueControl, RunQueueWaitingLabel } from "./run-queue-control";
-import { TimelineHandoff } from "../../workflows/timeline-handoff";
+import { TimelineHandoff } from "../../workflow/timeline-handoff";
 import { PropertyIcon } from "../../common/property-icon";
 import type { Attachment, Issue, IssueProperty, IssueStatus, IssueStatusCategory, IssuePriority, TimelineEntry, UpdateIssueRequest } from "@multica/core/types";
 import { contentReferencesAttachment } from "@multica/core/types";

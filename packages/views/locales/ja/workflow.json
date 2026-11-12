@@ -42,6 +42,7 @@
     "saving": "保存中...",
     "saved": "保存済み",
     "save_failed": "ワークフローを保存できませんでした。",
+    "status_create_forbidden": "ワークスペースの管理者だけがステータスを作成できるため、このワークフローは保存できません。",
     "load_failed": "このワークフローを読み込めませんでした。",
     "name_placeholder": "ワークフロー名",
     "description_placeholder": "説明を追加...",
@@ -62,7 +63,11 @@
       "connect_to": "接続先...",
       "move_left": "左へ移動",
       "move_right": "右へ移動",
+      "move_up": "上へ移動",
+      "move_down": "下へ移動",
       "remove_step": "ステップを削除",
+      "role_hint": "推奨ロール: {{role}}",
+      "will_be_created": "保存時に作成",
       "handler_agent": "エージェント",
       "handler_member": "メンバー",
       "handler_project_lead": "プロジェクトリード"
@@ -153,6 +158,71 @@
     "default_name": "新しいワークフロー",
     "untitled_name": "無題のワークフロー",
     "default_branch_start": "開始",
-    "default_branch_done": "完了"
+    "default_branch_done": "完了",
+    "start_points": {
+      "label": "開始方法",
+      "blank": "空白",
+      "clone": "既存のワークフローを複製",
+      "template": "テンプレートから開始"
+    },
+    "clone_dialog": {
+      "title": "既存のワークフローを複製",
+      "search_placeholder": "ワークフローを検索...",
+      "empty_title": "ワークフローが見つかりません",
+      "loading": "ワークフローを読み込み中...",
+      "load_failed": "ワークフローを読み込めませんでした。"
+    },
+    "template_dialog": {
+      "title": "テンプレートから開始",
+      "empty_title": "テンプレートが見つかりません",
+      "loading": "テンプレートを読み込み中...",
+      "load_failed": "テンプレートを読み込めませんでした。",
+      "will_be_created": "保存時に作成"
+    },
+    "inspector": {
+      "title": "ステップインスペクター",
+      "select_step_hint": "キャンバス上のステップを選択して担当者と遷移を設定します。",
+      "board_order": "カンバン順序",
+      "add_step": "ステップを追加",
+      "step_count": "ステップ {{current}} / {{total}}",
+      "close": "インスペクターを閉じる",
+      "no_transitions": "遷移なし"
+    },
+    "discard_dialog": {
+      "title": "未保存の変更を破棄しますか？",
+      "warning": "未保存の変更は失われます。",
+      "confirm": "破棄して置換",
+      "cancel": "キャンセル"
+    }
+  },
+  "templates": {
+    "delivery": {
+      "name": "開発デリバリー",
+      "description": "開発・レビューのあと QA を経て完了"
+    },
+    "content": {
+      "name": "コンテンツ制作",
+      "description": "執筆・編集・公開予約"
+    },
+    "community": {
+      "name": "コミュニティ運営",
+      "description": "振り分け・返信・返答待ち"
+    },
+    "sdlc_auto": {
+      "name": "SDLC Auto",
+      "description": "エージェントによる計画と実装、独立レビューおよび QA"
+    },
+    "bmad_planning_auto": {
+      "name": "BMAD Planning Auto",
+      "description": "調査からレビュー完了までの複数段階エージェント計画"
+    },
+    "sales_loop": {
+      "name": "セールスループ",
+      "description": "リード発掘、作成、確認、レポート"
+    },
+    "quick_fix": {
+      "name": "SDLC クイック修正",
+      "description": "開発者から完了までの直接バグ修正ループ"
+    }
   }
 }

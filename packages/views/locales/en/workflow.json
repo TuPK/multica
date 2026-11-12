@@ -43,6 +43,7 @@
     "saving": "Saving...",
     "saved": "Saved",
     "save_failed": "Could not save the workflow.",
+    "status_create_forbidden": "Only workspace admins can create statuses, so this workflow cannot be saved.",
     "load_failed": "This workflow could not be loaded.",
     "name_placeholder": "Workflow name",
     "description_placeholder": "Add a description...",
@@ -63,7 +64,11 @@
       "connect_to": "Connect to...",
       "move_left": "Move left",
       "move_right": "Move right",
+      "move_up": "Move up",
+      "move_down": "Move down",
       "remove_step": "Remove step",
+      "role_hint": "Role: {{role}}",
+      "will_be_created": "Will be created",
       "handler_agent": "Agent",
       "handler_member": "Member",
       "handler_project_lead": "Project lead"
@@ -155,6 +160,71 @@
     "default_name": "New Workflow",
     "untitled_name": "Untitled Workflow",
     "default_branch_start": "Start",
-    "default_branch_done": "Done"
+    "default_branch_done": "Done",
+    "start_points": {
+      "label": "Starting point",
+      "blank": "Blank",
+      "clone": "Clone an existing workflow",
+      "template": "Start from a template"
+    },
+    "clone_dialog": {
+      "title": "Clone an existing workflow",
+      "search_placeholder": "Search workflows...",
+      "empty_title": "No workflows found",
+      "loading": "Loading workflows...",
+      "load_failed": "Could not load workflows."
+    },
+    "template_dialog": {
+      "title": "Start from a template",
+      "empty_title": "No templates found",
+      "loading": "Loading templates...",
+      "load_failed": "Could not load templates.",
+      "will_be_created": "Will be created on save"
+    },
+    "inspector": {
+      "title": "Step inspector",
+      "select_step_hint": "Select a step to inspect its handler and transitions.",
+      "board_order": "Board order",
+      "add_step": "Add step",
+      "step_count": "Step {{current}} of {{total}}",
+      "close": "Close inspector",
+      "no_transitions": "No transitions"
+    },
+    "discard_dialog": {
+      "title": "Discard unsaved changes?",
+      "warning": "Your unsaved changes will be lost.",
+      "confirm": "Discard and replace",
+      "cancel": "Cancel"
+    }
+  },
+  "templates": {
+    "delivery": {
+      "name": "Delivery",
+      "description": "Build, review, then QA before done"
+    },
+    "content": {
+      "name": "Content",
+      "description": "Draft, edit and schedule"
+    },
+    "community": {
+      "name": "Community",
+      "description": "Triage, reply, wait on the reporter"
+    },
+    "sdlc_auto": {
+      "name": "SDLC Auto",
+      "description": "Planning and build by agents with independent review and QA"
+    },
+    "bmad_planning_auto": {
+      "name": "BMAD Planning Auto",
+      "description": "Multi-stage agent planning from research to readiness review"
+    },
+    "sales_loop": {
+      "name": "Sales Loop",
+      "description": "Lead scouting, drafting, checking, and reporting"
+    },
+    "quick_fix": {
+      "name": "SDLC Quick Fix",
+      "description": "Direct bugfix loop through developer to done"
+    }
   }
 }

@@ -412,8 +412,7 @@
       "billing": "결제 및 요금제",
       "code": "코드",
       "channels": "메신저",
-      "apps": "연결된 앱",
-      "workflows": "워크플로"
+      "apps": "연결된 앱"
     },
     "groups": {
       "personal": "개인",

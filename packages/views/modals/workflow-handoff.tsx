@@ -3,7 +3,7 @@
 import { toast } from "sonner";
 import { useUpdateIssue } from "@multica/core/issues/mutations";
 import { useT } from "../i18n";
-import { WorkflowHandoffConfirmDialog } from "../workflows/handoff-confirm-dialog";
+import { WorkflowHandoffConfirmDialog } from "../workflow/handoff-confirm-dialog";
 
 /**
  * The workflow handoff confirmation for entry points that cannot host the

@@ -6,7 +6,7 @@ import { useWorkspaceId } from "@multica/core/hooks";
 import { projectMoveMayHandOff, resolveProjectWorkflow, useIssueWorkflows } from "@multica/core/issue-workflows";
 import { projectListOptions } from "@multica/core/projects/queries";
 import type { Project, UpdateIssueRequest } from "@multica/core/types";
-import { WorkflowHandoffConfirmDialog } from "../../workflows/handoff-confirm-dialog";
+import { WorkflowHandoffConfirmDialog } from "../../workflow/handoff-confirm-dialog";
 import { ProjectPicker } from "./project-picker";
 
 /**

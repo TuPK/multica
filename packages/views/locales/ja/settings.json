@@ -412,8 +412,7 @@
       "billing": "請求とプラン",
       "code": "コード",
       "channels": "メッセージング",
-      "apps": "接続済みアプリ",
-      "workflows": "ワークフロー"
+      "apps": "接続済みアプリ"
     },
     "groups": {
       "personal": "個人",

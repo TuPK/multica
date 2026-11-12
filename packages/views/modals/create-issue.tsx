@@ -68,7 +68,7 @@ import { useProjectWithWorkflow, useProjectWorkflow, workflowAllowsStatus, workf
 import { projectListOptions } from "@multica/core/projects/queries";
 import { agentListOptions } from "@multica/core/workspace/queries";
 import { assigneeSquadId, findSquadProject } from "@multica/core/company";
-import { stepHandlerActor, useStepHandlerLabel } from "../workflows/step-handler";
+import { stepHandlerActor, useStepHandlerLabel } from "../workflow/step-handler";
 import { useIssueDraftStore, type IssueCreateDraft } from "@multica/core/issues/stores/draft-store";
 import { useCreateModeStore } from "@multica/core/issues/stores/create-mode-store";
 import { useQuickCreateStore } from "@multica/core/issues/stores/quick-create-store";

@@ -412,8 +412,7 @@
       "billing": "帳單與套餐",
       "code": "程式碼",
       "channels": "訊息渠道",
-      "apps": "已連線應用",
-      "workflows": "工作流"
+      "apps": "已連線應用"
     },
     "groups": {
       "personal": "個人",

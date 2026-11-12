@@ -62,7 +62,7 @@ import {
 import { ProjectStartDatePicker } from "../projects/components/project-start-date-picker";
 import { ProjectDueDatePicker } from "../projects/components/project-due-date-picker";
 import { PillButton } from "../common/pill-button";
-import { WorkflowPill } from "../workflows/workflow-pill";
+import { WorkflowPill } from "../workflow/workflow-pill";
 import { githubShortLabel } from "../common/github-url";
 import {
   GithubRefField,

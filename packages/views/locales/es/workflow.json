@@ -43,6 +43,7 @@
     "saving": "Guardando...",
     "saved": "Guardado",
     "save_failed": "No se pudo guardar el flujo de trabajo.",
+    "status_create_forbidden": "Solo los administradores del espacio de trabajo pueden crear estados, así que este flujo de trabajo no se puede guardar.",
     "load_failed": "No se pudo cargar este flujo de trabajo.",
     "name_placeholder": "Nombre del flujo",
     "description_placeholder": "Añadir una descripción...",
@@ -63,7 +64,11 @@
       "connect_to": "Conectar con...",
       "move_left": "Mover a la izquierda",
       "move_right": "Mover a la derecha",
+      "move_up": "Subir",
+      "move_down": "Bajar",
       "remove_step": "Quitar paso",
+      "role_hint": "Rol sugerido: {{role}}",
+      "will_be_created": "Se creará al guardar",
       "handler_agent": "Agente",
       "handler_member": "Miembro",
       "handler_project_lead": "Responsable del proyecto"
@@ -155,6 +160,71 @@
     "default_name": "Nuevo flujo de trabajo",
     "untitled_name": "Flujo de trabajo sin título",
     "default_branch_start": "Iniciar",
-    "default_branch_done": "Hecho"
+    "default_branch_done": "Hecho",
+    "start_points": {
+      "label": "Punto de partida",
+      "blank": "En blanco",
+      "clone": "Clonar flujo de trabajo existente",
+      "template": "Empezar desde una plantilla"
+    },
+    "clone_dialog": {
+      "title": "Clonar flujo de trabajo existente",
+      "search_placeholder": "Buscar flujos de trabajo...",
+      "empty_title": "No se encontraron flujos de trabajo",
+      "loading": "Cargando flujos de trabajo...",
+      "load_failed": "No se pudieron cargar los flujos de trabajo."
+    },
+    "template_dialog": {
+      "title": "Empezar desde una plantilla",
+      "empty_title": "No se encontraron plantillas",
+      "loading": "Cargando plantillas...",
+      "load_failed": "No se pudieron cargar las plantillas.",
+      "will_be_created": "Se creará al guardar"
+    },
+    "inspector": {
+      "title": "Inspector de pasos",
+      "select_step_hint": "Selecciona un paso en el lienzo para configurar su responsable y transiciones.",
+      "board_order": "Orden del tablero",
+      "add_step": "Añadir paso",
+      "step_count": "Paso {{current}} de {{total}}",
+      "close": "Cerrar inspector",
+      "no_transitions": "Sin transiciones"
+    },
+    "discard_dialog": {
+      "title": "¿Descartar los cambios no guardados?",
+      "warning": "Se perderán los cambios no guardados.",
+      "confirm": "Descartar y reemplazar",
+      "cancel": "Cancelar"
+    }
+  },
+  "templates": {
+    "delivery": {
+      "name": "Entrega",
+      "description": "Construir, revisar y pasar QA antes de terminar"
+    },
+    "content": {
+      "name": "Contenido",
+      "description": "Redactar, editar y programar"
+    },
+    "community": {
+      "name": "Comunidad",
+      "description": "Clasificar, responder y esperar al informador"
+    },
+    "sdlc_auto": {
+      "name": "SDLC Auto",
+      "description": "Planificación y desarrollo con agentes, revisión independiente y QA"
+    },
+    "bmad_planning_auto": {
+      "name": "BMAD Planning Auto",
+      "description": "Planificación con agentes en varias etapas, de la investigación a la revisión"
+    },
+    "sales_loop": {
+      "name": "Ciclo de ventas",
+      "description": "Prospección, redacción, revisión e informes"
+    },
+    "quick_fix": {
+      "name": "SDLC Quick Fix",
+      "description": "Corrección directa de errores de desarrollador a completado"
+    }
   }
 }

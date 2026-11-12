@@ -34,7 +34,7 @@ import { DeferredPopup } from "../../common/deferred-popup";
 import { DeferredTooltip } from "../../common/deferred-tooltip";
 import { VirtuosoSeed } from "../../common/virtuoso-seed";
 import { useBoardWorkflow } from "./board-workflow-context";
-import { ColumnHandoff } from "../../workflows/column-handoff";
+import { ColumnHandoff } from "../../workflow/column-handoff";
 import type { IssueCreateDefaults } from "../surface/types";
 
 // Insertion-position prediction intentionally omitted. The server's

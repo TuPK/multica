@@ -1,18 +1,31 @@
+import type {
+  IssueWorkflowStep as CoreIssueWorkflowStep,
+  NewWorkflowStatus,
+  WorkflowCondition,
+} from "@multica/core/types";
+import type workflowEn from "../locales/en/workflow.json";
+
 // Workflow contract types come from @multica/core. The names below are the
 // designer's short forms of the core types.
 export type {
   IssueWorkflow,
   IssueWorkflowHandler,
-  IssueWorkflowStep,
   IssueWorkflowTransition,
   IssueWorkflowUsage,
+  NewWorkflowStatus,
   WorkflowCondition as Condition,
   WorkflowConditionField as ConditionField,
   WorkflowConditionOperator as ConditionOperator,
 } from "@multica/core/types";
 
-import type { WorkflowCondition } from "@multica/core/types";
-import type workflowEn from "../locales/en/workflow.json";
+/**
+ * Designer-extended step: carries optional new_status (will be created on save)
+ * and optional role_hint (squad role suggestion from templates).
+ */
+export type IssueWorkflowStep = CoreIssueWorkflowStep & {
+  new_status?: NewWorkflowStatus;
+  role_hint?: string;
+};
 
 /** A condition that tests one field. */
 export type ConditionRule = Extract<WorkflowCondition, { field: string }>;

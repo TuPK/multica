@@ -42,6 +42,7 @@
     "saving": "儲存中...",
     "saved": "已儲存",
     "save_failed": "無法儲存工作流程。",
+    "status_create_forbidden": "只有工作區管理員可以建立狀態，因此無法儲存此工作流程。",
     "load_failed": "無法載入此工作流程。",
     "name_placeholder": "工作流程名稱",
     "description_placeholder": "新增描述...",
@@ -62,7 +63,11 @@
       "connect_to": "連接至...",
       "move_left": "左移",
       "move_right": "右移",
+      "move_up": "上移",
+      "move_down": "下移",
       "remove_step": "移除步驟",
+      "role_hint": "建議角色：{{role}}",
+      "will_be_created": "儲存時建立",
       "handler_agent": "AI 代理",
       "handler_member": "成員",
       "handler_project_lead": "專案負責人"
@@ -153,6 +158,71 @@
     "default_name": "新工作流",
     "untitled_name": "未命名工作流程",
     "default_branch_start": "開始",
-    "default_branch_done": "完成"
+    "default_branch_done": "完成",
+    "start_points": {
+      "label": "起點",
+      "blank": "空白",
+      "clone": "克隆現有工作流",
+      "template": "從範本開始"
+    },
+    "clone_dialog": {
+      "title": "克隆現有工作流",
+      "search_placeholder": "搜尋工作流...",
+      "empty_title": "未找到工作流",
+      "loading": "正在載入工作流...",
+      "load_failed": "無法載入工作流。"
+    },
+    "template_dialog": {
+      "title": "從範本開始",
+      "empty_title": "未找到範本",
+      "loading": "正在載入範本...",
+      "load_failed": "無法載入範本。",
+      "will_be_created": "儲存時建立"
+    },
+    "inspector": {
+      "title": "步驟檢查器",
+      "select_step_hint": "在畫布中選取一個步驟以設定交接與流轉。",
+      "board_order": "看板順序",
+      "add_step": "新增步驟",
+      "step_count": "第 {{current}} 步，共 {{total}} 步",
+      "close": "關閉檢查器",
+      "no_transitions": "無流轉"
+    },
+    "discard_dialog": {
+      "title": "放棄未儲存的變更？",
+      "warning": "未儲存的變更將會遺失。",
+      "confirm": "放棄並替換",
+      "cancel": "取消"
+    }
+  },
+  "templates": {
+    "delivery": {
+      "name": "研發交付",
+      "description": "開發、評審，再經過 QA 完成"
+    },
+    "content": {
+      "name": "內容生產",
+      "description": "撰寫、編輯、排期釋出"
+    },
+    "community": {
+      "name": "社羣維護",
+      "description": "分診、回覆、等待反饋"
+    },
+    "sdlc_auto": {
+      "name": "SDLC 自動化",
+      "description": "智能體規劃與構建，包含獨立評審與 QA"
+    },
+    "bmad_planning_auto": {
+      "name": "BMAD 規劃自動化",
+      "description": "從調研到就緒度評審的多階段智能體規劃"
+    },
+    "sales_loop": {
+      "name": "銷售循環",
+      "description": "線索挖掘、起草、核對與彙報"
+    },
+    "quick_fix": {
+      "name": "SDLC 快速修復",
+      "description": "由開發人員直接修復到完成"
+    }
   }
 }

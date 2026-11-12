@@ -43,6 +43,7 @@
     "saving": "Enregistrement...",
     "saved": "Enregistré",
     "save_failed": "Impossible d'enregistrer le flux de travail.",
+    "status_create_forbidden": "Seuls les administrateurs de l'espace de travail peuvent créer des statuts, ce flux de travail ne peut donc pas être enregistré.",
     "load_failed": "Impossible de charger ce flux de travail.",
     "name_placeholder": "Nom du flux",
     "description_placeholder": "Ajouter une description...",
@@ -63,7 +64,11 @@
       "connect_to": "Connecter à...",
       "move_left": "Déplacer à gauche",
       "move_right": "Déplacer à droite",
+      "move_up": "Monter",
+      "move_down": "Descendre",
       "remove_step": "Retirer l'étape",
+      "role_hint": "Rôle suggéré : {{role}}",
+      "will_be_created": "Sera créé à l'enregistrement",
       "handler_agent": "Agent",
       "handler_member": "Membre",
       "handler_project_lead": "Responsable du projet"
@@ -155,6 +160,71 @@
     "default_name": "Nouveau workflow",
     "untitled_name": "Workflow sans titre",
     "default_branch_start": "Démarrer",
-    "default_branch_done": "Terminé"
+    "default_branch_done": "Terminé",
+    "start_points": {
+      "label": "Point de départ",
+      "blank": "Vierge",
+      "clone": "Cloner un flux existant",
+      "template": "Partir d'un modèle"
+    },
+    "clone_dialog": {
+      "title": "Cloner un flux existant",
+      "search_placeholder": "Rechercher des flux...",
+      "empty_title": "Aucun flux trouvé",
+      "loading": "Chargement des flux...",
+      "load_failed": "Impossible de charger les flux."
+    },
+    "template_dialog": {
+      "title": "Partir d'un modèle",
+      "empty_title": "Aucun modèle trouvé",
+      "loading": "Chargement des modèles...",
+      "load_failed": "Impossible de charger les modèles.",
+      "will_be_created": "Sera créé à l'enregistrement"
+    },
+    "inspector": {
+      "title": "Inspecteur d'étape",
+      "select_step_hint": "Sélectionnez une étape sur le canevas pour configurer son responsable et ses transitions.",
+      "board_order": "Ordre du tableau",
+      "add_step": "Ajouter une étape",
+      "step_count": "Étape {{current}} sur {{total}}",
+      "close": "Fermer l'inspecteur",
+      "no_transitions": "Aucune transition"
+    },
+    "discard_dialog": {
+      "title": "Abandonner les modifications non enregistrées ?",
+      "warning": "Vos modifications non enregistrées seront perdues.",
+      "confirm": "Abandonner et remplacer",
+      "cancel": "Annuler"
+    }
+  },
+  "templates": {
+    "delivery": {
+      "name": "Livraison",
+      "description": "Développer, relire, puis QA avant la fin"
+    },
+    "content": {
+      "name": "Contenu",
+      "description": "Rédiger, relire et planifier"
+    },
+    "community": {
+      "name": "Communauté",
+      "description": "Trier, répondre, attendre le retour"
+    },
+    "sdlc_auto": {
+      "name": "SDLC Auto",
+      "description": "Planification et build par agents avec revue indépendante et QA"
+    },
+    "bmad_planning_auto": {
+      "name": "BMAD Planning Auto",
+      "description": "Planification multi-étape par agents, de la recherche à la revue finale"
+    },
+    "sales_loop": {
+      "name": "Boucle de vente",
+      "description": "Prospection, rédaction, contrôle et rapport"
+    },
+    "quick_fix": {
+      "name": "SDLC Quick Fix",
+      "description": "Boucle directe de correction de bug du développeur à terminé"
+    }
   }
 }

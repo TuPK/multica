@@ -31,7 +31,11 @@ export function WorkflowPill({
   const named = workflows.filter((w) => !w.is_default);
   const defaultName = workflows.find((w) => w.is_default)?.name ?? t(($) => $.workflows.default_name);
   const current = named.find((w) => w.id === value);
-  const options = [{ id: null as string | null, name: defaultName, columns: workflows.find((w) => w.is_default)?.steps.length }, ...named.map((w) => ({ id: w.id as string | null, name: w.name, columns: w.steps.length }))];
+  const defaultWf = workflows.find((w) => w.is_default);
+  const options = [
+    { id: null as string | null, name: defaultName, columns: defaultWf?.steps?.length },
+    ...named.map((w) => ({ id: w.id as string | null, name: w.name, columns: w.steps?.length ?? 0 })),
+  ];
 
   return (
     <DropdownMenu>

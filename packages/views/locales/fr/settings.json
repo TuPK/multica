@@ -414,8 +414,7 @@
       "billing": "Facturation",
       "code": "Code",
       "channels": "Messagerie",
-      "apps": "Applications connectées",
-      "workflows": "Workflows"
+      "apps": "Applications connectées"
     },
     "groups": {
       "personal": "Personnel",

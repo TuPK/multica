@@ -21,7 +21,6 @@ import {
   User,
   Users,
   X,
-  Workflow,
   Zap,
 } from "@multica/ui/icons";
 import { useCurrentWorkspace } from "@multica/core/paths";
@@ -45,7 +44,6 @@ import { ChannelsTab } from "./channels-tab";
 import { ConnectedAppsTab, useComposioAvailable } from "./connected-apps-tab";
 import { NotificationsTab } from "./notifications-tab";
 import { LabelsTab } from "./labels-tab";
-import { WorkflowsTab } from "../../workflows/workflows-tab";
 import { PropertiesTab } from "./properties-tab";
 import { QuickActionsTab } from "./quick-actions-tab";
 import { KeyboardShortcutsTab } from "./keyboard-shortcuts-tab";
@@ -189,9 +187,6 @@ export function SettingsPage({ extraDeviceTabs = [] }: SettingsPageProps = {}) {
           key: "issues",
           label: t(($) => $.page.groups.issues),
           entries: [
-            entry("workflows", t(($) => $.page.tabs.workflows), Workflow, <WorkflowsTab />, {
-              wide: true,
-            }),
             entry("wakeups", t(($) => $.page.tabs.wakeups), AlarmClock, <WakeupsTab />, {
               wide: true,
               adminOnly: true,
