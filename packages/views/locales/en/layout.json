@@ -15,6 +15,7 @@
     "skills": "Skills",
     "knowledge": "Knowledge",
     "pipeline": "Pipeline",
+    "workflow": "Workflow",
     "governance": "Governance",
     "settings": "Settings",
     "views": "Views"
@@ -31,7 +32,9 @@
     "runtime": "Runtime",
     "attachment": "Attachment",
     "create_agent": "Create Agent",
+    "create_workflow": "Create Workflow",
     "my_agents": "My agents' work",
+    "workflow": "Workflow",
     "unknown": "Unknown page"
   },
   "help": {
@@ -94,6 +97,7 @@
     "company": "Company",
     "hub": "Hub",
     "work": "Work",
+    "workflow": "Workflow",
     "team": "Team",
     "chat": "Chat",
     "autopilots": "Auto",

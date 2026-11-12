@@ -29,10 +29,78 @@ export interface IssueWorkflowStep {
   status_key: string;
   handler: IssueWorkflowHandler;
   instructions: string;
-  /** Suggested status once the step is done; named in the handler's brief. */
+  /**
+   * Where the issue goes when the column is left, in evaluation order: the
+   * first branch whose condition holds wins, and a branch with no condition
+   * is the default. Canonical routing (workflow-tab §3).
+   */
+  transitions?: IssueWorkflowTransition[];
+  /** Target of the default branch; derived from `transitions` by the server. */
   next_status_key?: string;
-  /** Status to send the issue back to when it needs changes. */
+  /** Status to send the issue back to when it needs changes; derived from `transitions`. */
   back_status_key?: string;
+}
+
+/** What a handler reports when it moves an issue out of a column. */
+export type IssueOutcome = "approved" | "rejected" | "blocked" | "done";
+
+export type WorkflowConditionField =
+  | "outcome"
+  | "priority"
+  | "labels"
+  | "project_id"
+  | "rework_count"
+  | "creator_type"
+  | "assignee_type";
+
+export type WorkflowConditionOperator = "eq" | "neq" | "in" | "gt" | "gte" | "lt" | "lte" | "exists";
+
+/**
+ * A routing condition: a group (`all` is AND, `any` is OR), a negation, or a
+ * field check. Exactly one form is set. Field and op accept a string beyond the
+ * known values, so a newer server's condition still reaches the designer.
+ */
+export type WorkflowCondition =
+  | { all: WorkflowCondition[] }
+  | { any: WorkflowCondition[] }
+  | { not: WorkflowCondition }
+  | {
+      field: WorkflowConditionField | (string & {});
+      op: WorkflowConditionOperator | (string & {});
+      value?: unknown;
+    };
+
+/** One routing branch of a column. `when` null is the default branch. */
+export interface IssueWorkflowTransition {
+  id: string;
+  label: string;
+  when: WorkflowCondition | null;
+  to_status_key: string;
+  /** Replaces the target column's handler for this branch only. */
+  handler?: IssueWorkflowHandler;
+}
+
+/** Where one workflow is assigned (GET /api/issue-workflows/usage). */
+export interface IssueWorkflowUsage {
+  workflow_id: string;
+  project_ids: string[];
+  /** Squads whose active workflow this is. */
+  squad_ids: string[];
+  /** Agents the workflow's columns and branches hand work to. */
+  agent_ids: string[];
+}
+
+export interface ListIssueWorkflowUsageResponse {
+  usage: IssueWorkflowUsage[];
+  total: number;
+}
+
+/** One reason a workflow cannot be deleted, from the delete conflict body. */
+export interface IssueWorkflowBlocker {
+  code: string;
+  count: number;
+  ids: string[];
+  message: string;
 }
 
 export interface IssueWorkflow {
@@ -65,7 +133,10 @@ export interface NewWorkflowStatus {
 
 /** A column of a workflow write: an existing status or a new one, with its handoff. */
 export type IssueWorkflowStepInput = ({ status_key: string } | { new_status: NewWorkflowStatus }) &
-  Partial<SetWorkflowHandoffRequest>;
+  Partial<SetWorkflowHandoffRequest> & {
+    /** Canonical routing. The server reads it over next_status_key and back_status_key when sent. */
+    transitions?: IssueWorkflowTransition[];
+  };
 
 export interface IssueWorkflowWriteRequest {
   name?: string;

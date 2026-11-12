@@ -166,6 +166,7 @@ import type {
   IssueWorkflowWriteRequest,
   IssueWorkflowDryRunResponse,
   ListIssueWorkflowsResponse,
+  ListIssueWorkflowUsageResponse,
   SetProjectWorkflowRequest,
   SetWorkflowHandoffRequest,
   WorkflowHandoffPreview,
@@ -820,6 +821,8 @@ import {
   ListIssueStatusesResponseSchema,
   IssueStatusEntrySchema,
   ListIssueWorkflowsResponseSchema,
+  ListIssueWorkflowUsageResponseSchema,
+  EMPTY_LIST_ISSUE_WORKFLOW_USAGE_RESPONSE,
   IssueWorkflowSchema,
   IssueWorkflowDryRunResponseSchema,
   EMPTY_LIST_ISSUE_WORKFLOWS_RESPONSE,
@@ -4814,6 +4817,21 @@ export class ApiClient {
     const raw = await this.fetch<unknown>(`/api/issue-workflows`);
     return parseWithFallback(raw, ListIssueWorkflowsResponseSchema, EMPTY_LIST_ISSUE_WORKFLOWS_RESPONSE, {
       endpoint: "GET /api/issue-workflows",
+    });
+  }
+
+  /** Where each workflow is assigned: its projects, squads and agents (read-only). */
+  async listIssueWorkflowUsage(): Promise<ListIssueWorkflowUsageResponse> {
+    const raw = await this.fetch<unknown>(`/api/issue-workflows/usage`);
+    return parseWithFallback(raw, ListIssueWorkflowUsageResponseSchema, EMPTY_LIST_ISSUE_WORKFLOW_USAGE_RESPONSE, {
+      endpoint: "GET /api/issue-workflows/usage",
+    });
+  }
+
+  async getIssueWorkflow(id: string): Promise<IssueWorkflow> {
+    const raw = await this.fetch<unknown>(`/api/issue-workflows/${id}`);
+    return parseWithFallback(raw, IssueWorkflowSchema, EMPTY_ISSUE_WORKFLOW, {
+      endpoint: "GET /api/issue-workflows/{id}",
     });
   }
 

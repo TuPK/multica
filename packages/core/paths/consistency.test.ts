@@ -32,6 +32,8 @@ describe("paths.workspace() shape", () => {
       ["skills", "skills"],
       ["knowledge", "knowledge"],
       ["pipeline", "pipeline"],
+      ["workflow", "workflow"],
+      ["newWorkflow", "workflow/new"],
       ["squads", "squads"],
       ["settings", "settings"],
     ];

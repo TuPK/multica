@@ -233,6 +233,40 @@ describe("useUpdateIssue — optimistic move keeps every bucketed board in sync"
     }
   });
 
+  it("sends a status outcome to the server but keeps it out of the cached issue", async () => {
+    let resolve!: (issue: Issue) => void;
+    updateIssue.mockReturnValue(
+      new Promise<Issue>((r) => {
+        resolve = r;
+      }),
+    );
+
+    const { result } = renderHook(() => useUpdateIssue(), {
+      wrapper: createWrapper(qc),
+    });
+
+    act(() => {
+      result.current.mutate({ id: "issue-1", status: "in_progress", outcome: "approved" });
+    });
+
+    await waitFor(() =>
+      expect(updateIssue).toHaveBeenCalledWith(
+        "issue-1",
+        expect.objectContaining({ status: "in_progress", outcome: "approved" }),
+      ),
+    );
+    // The optimistic patch is checked while the write is still pending.
+    const cards = Object.values(qc.getQueryData<ListIssuesCache>(wsKey)?.byStatus ?? {}).flatMap(
+      (bucket) => bucket.issues,
+    );
+    expect(cards.length).toBeGreaterThan(0);
+    expect(cards.every((card) => !("outcome" in card))).toBe(true);
+
+    await act(async () => {
+      resolve(makeIssue(1, { status: "in_progress", position: 5 }));
+    });
+  });
+
   it("does not couple a field update to the cached aggregate revision", async () => {
     qc.setQueryData(
       issueKeys.detail(WS_ID, "issue-1"),

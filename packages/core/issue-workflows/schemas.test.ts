@@ -4,9 +4,12 @@ import { parseWithFallback } from "../api/schema";
 import {
   EMPTY_ISSUE_WORKFLOW_DRY_RUN,
   EMPTY_LIST_ISSUE_WORKFLOWS_RESPONSE,
+  EMPTY_LIST_ISSUE_WORKFLOW_USAGE_RESPONSE,
   IssueWorkflowDryRunResponseSchema,
   IssueWorkflowSchema,
   ListIssueWorkflowsResponseSchema,
+  ListIssueWorkflowUsageResponseSchema,
+  parseIssueWorkflowBlockers,
   WorkflowHandoffPreviewSchema,
   EMPTY_WORKFLOW_HANDOFF_PREVIEW,
 } from "../api/schemas";
@@ -69,7 +72,7 @@ describe("workflow schemas (MUL-7420)", () => {
   it("reads a workflow row's status-only steps as manual columns", () => {
     const parsed = IssueWorkflowSchema.parse({ ...baseWorkflow, is_default: true, steps: [{ status_key: "todo" }] });
     expect(parsed.is_default).toBe(true);
-    expect(parsed.steps[0]).toEqual({ status_key: "todo", handler: { type: "none" }, instructions: "" });
+    expect(parsed.steps[0]).toEqual({ status_key: "todo", handler: { type: "none" }, instructions: "", transitions: [] });
   });
 
   it("falls back to an empty plan on a malformed dry run", () => {
@@ -108,5 +111,144 @@ describe("workflow schemas (MUL-7420)", () => {
       { endpoint: "GET /api/issues/{id}/workflow-handoff" },
     );
     expect(parsed).toEqual(EMPTY_WORKFLOW_HANDOFF_PREVIEW);
+  });
+});
+
+describe("workflow transitions (workflow-tab §3)", () => {
+  const routedStep = {
+    status_key: "in_review",
+    handler: { type: "agent", id: "agent-1" },
+    instructions: "Review the change.",
+    transitions: [
+      { id: "urgent", label: "Urgent", when: { field: "priority", op: "gte", value: "urgent" }, to_status_key: "blocked" },
+      { id: "rejected", label: "Rejected", when: { field: "outcome", op: "eq", value: "rejected" }, to_status_key: "in_progress" },
+      { id: "default", label: "Default", when: null, to_status_key: "done" },
+    ],
+  };
+
+  it("keeps branches in order and reads the default as a null condition", () => {
+    const parsed = IssueWorkflowSchema.parse({ ...baseWorkflow, steps: [routedStep] });
+    const step = parsed.steps[0];
+    expect(step?.transitions?.map((t) => t.id)).toEqual(["urgent", "rejected", "default"]);
+    expect(step?.transitions?.[2]?.when).toBeNull();
+  });
+
+  it("gives a step without routing an empty transition list", () => {
+    const parsed = IssueWorkflowSchema.parse({ ...baseWorkflow, steps: [{ status_key: "todo" }] });
+    expect(parsed.steps[0]?.transitions).toEqual([]);
+  });
+
+  it("drops a malformed branch on its own and keeps the rest", () => {
+    const parsed = IssueWorkflowSchema.parse({
+      ...baseWorkflow,
+      steps: [
+        {
+          ...routedStep,
+          transitions: [
+            { id: "no-target", label: "Broken", when: null },
+            { id: "empty-group", label: "Empty", when: { all: [] }, to_status_key: "done" },
+            { id: "kept", label: "Kept", when: null, to_status_key: "done" },
+          ],
+        },
+      ],
+    });
+    expect(parsed.steps[0]?.transitions?.map((t) => t.id)).toEqual(["kept"]);
+  });
+
+  it("reads non-list transitions as none instead of failing the workflow", () => {
+    const parsed = IssueWorkflowSchema.parse({
+      ...baseWorkflow,
+      steps: [{ status_key: "in_review", transitions: "yes" }],
+    });
+    expect(parsed.steps[0]?.transitions).toEqual([]);
+  });
+
+  it("keeps a condition field or operator this build does not know", () => {
+    const parsed = IssueWorkflowSchema.parse({
+      ...baseWorkflow,
+      steps: [
+        {
+          status_key: "in_review",
+          transitions: [{ id: "later", label: "Later", when: { field: "sprint", op: "contains", value: "7" }, to_status_key: "done" }],
+        },
+      ],
+    });
+    expect(parsed.steps[0]?.transitions?.[0]?.when).toEqual({ field: "sprint", op: "contains", value: "7" });
+  });
+
+  it("keeps the legacy next and back keys for installed clients", () => {
+    const parsed = IssueWorkflowSchema.parse({
+      ...baseWorkflow,
+      steps: [{ status_key: "in_review", next_status_key: "done", back_status_key: "in_progress" }],
+    });
+    expect(parsed.steps[0]?.next_status_key).toBe("done");
+    expect(parsed.steps[0]?.back_status_key).toBe("in_progress");
+  });
+});
+
+describe("workflow usage and delete blockers (workflow-tab §4)", () => {
+  it("parses where each workflow is used", () => {
+    const parsed = ListIssueWorkflowUsageResponseSchema.parse({
+      usage: [{ workflow_id: "wf-1", project_ids: ["p-1"], squad_ids: [], agent_ids: ["a-1"] }],
+      total: 1,
+    });
+    expect(parsed.usage).toEqual([{ workflow_id: "wf-1", project_ids: ["p-1"], squad_ids: [], agent_ids: ["a-1"] }]);
+  });
+
+  it("defaults missing usage lists to empty", () => {
+    const parsed = ListIssueWorkflowUsageResponseSchema.parse({ usage: [{ workflow_id: "wf-2" }] });
+    expect(parsed.usage[0]).toEqual({ workflow_id: "wf-2", project_ids: [], squad_ids: [], agent_ids: [] });
+  });
+
+  it("drops a usage row without a workflow id and keeps the others", () => {
+    const parsed = ListIssueWorkflowUsageResponseSchema.parse({
+      usage: [{ project_ids: ["p-1"] }, { workflow_id: "wf-3", project_ids: [] }],
+    });
+    expect(parsed.usage.map((u) => u.workflow_id)).toEqual(["wf-3"]);
+  });
+
+  it("falls back to empty usage for a malformed body", () => {
+    const parsed = parseWithFallback(
+      { usage: "everywhere", total: "many" },
+      ListIssueWorkflowUsageResponseSchema,
+      EMPTY_LIST_ISSUE_WORKFLOW_USAGE_RESPONSE,
+      { endpoint: "GET /api/issue-workflows/usage" },
+    );
+    expect(parsed.usage).toEqual([]);
+    expect(parsed.total).toBe(0);
+  });
+
+  it("reads each blocking reason from a delete conflict", () => {
+    const blockers = parseIssueWorkflowBlockers({
+      error: "1 project(s) still use this workflow",
+      code: "workflow_in_use",
+      reasons: [
+        { code: "workflow_in_use", count: 1, ids: ["p-1"], message: "1 project(s) still use this workflow" },
+        { code: "workflow_is_squad_active", count: 2, ids: ["s-1", "s-2"], message: "2 squad(s) use this workflow" },
+      ],
+    });
+    expect(blockers.map((b) => [b.code, b.count, b.ids])).toEqual([
+      ["workflow_in_use", 1, ["p-1"]],
+      ["workflow_is_squad_active", 2, ["s-1", "s-2"]],
+    ]);
+  });
+
+  it("reads a conflict without reasons, or with malformed ones, as the fallback", () => {
+    expect(parseIssueWorkflowBlockers({ error: "in use", code: "workflow_in_use" })).toEqual([]);
+    expect(parseIssueWorkflowBlockers(null)).toEqual([]);
+    expect(parseIssueWorkflowBlockers({ reasons: "projects" })).toEqual([]);
+    expect(parseIssueWorkflowBlockers({ reasons: [{ count: "two" }, { code: "workflow_in_use", count: 1 }] })).toEqual([
+      { code: "workflow_in_use", count: 1, ids: [], message: "" },
+    ]);
+  });
+
+  it("falls back to an empty workflow list for a malformed workflows field", () => {
+    const parsed = parseWithFallback(
+      { workflows: "all of them" },
+      ListIssueWorkflowsResponseSchema,
+      EMPTY_LIST_ISSUE_WORKFLOWS_RESPONSE,
+      { endpoint: "GET /api/issue-workflows" },
+    );
+    expect(parsed).toEqual(EMPTY_LIST_ISSUE_WORKFLOWS_RESPONSE);
   });
 });

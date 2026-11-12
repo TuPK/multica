@@ -38,6 +38,7 @@ const WORKSPACE_ROUTE_SEGMENTS = new Set([
   "governance",
   "runtimes",
   "skills",
+  "workflow",
   "settings",
 ]);
 

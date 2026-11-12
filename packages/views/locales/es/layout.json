@@ -15,6 +15,7 @@
     "skills": "Skills",
     "knowledge": "Conocimiento",
     "pipeline": "Pipeline",
+    "workflow": "Flujo de trabajo",
     "governance": "Gobernanza",
     "settings": "Ajustes",
     "views": "Vistas"
@@ -31,7 +32,9 @@
     "runtime": "Runtime",
     "attachment": "Adjunto",
     "create_agent": "Crear agente",
+    "create_workflow": "Crear flujo de trabajo",
     "my_agents": "Trabajo de mis agentes",
+    "workflow": "Flujo de trabajo",
     "unknown": "Página desconocida"
   },
   "help": {
@@ -94,6 +97,7 @@
     "company": "Empresa",
     "hub": "Hub",
     "work": "Trabajo",
+    "workflow": "Flujo",
     "team": "Equipo",
     "chat": "Chat",
     "autopilots": "Auto",

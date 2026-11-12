@@ -21,6 +21,11 @@ import type {
   IssueWorkflow,
   IssueWorkflowDryRunResponse,
   IssueWorkflowHandlerType,
+  IssueWorkflowTransition,
+  WorkflowCondition,
+  IssueWorkflowUsage,
+  ListIssueWorkflowUsageResponse,
+  IssueWorkflowBlocker,
   ListIssueWorkflowsResponse,
   AgentBuilderRuntimeSwitch,
   AgentBuilderSession,
@@ -607,10 +612,44 @@ const ISSUE_WORKFLOW_HANDLER_TYPES = new Set<string>([
   "none", "agent", "squad", "member", "project_lead", "creator",
 ]);
 
+// Routing transitions (workflow-tab §3). A branch the schema cannot read is
+// dropped on its own, so one bad branch never blanks the workflow list around
+// it. Field and op stay strings: a condition this build does not know still
+// reaches the designer, where it matches nothing.
+const WorkflowConditionSchema: z.ZodType<WorkflowCondition> = z.lazy(() =>
+  z.union([
+    z.object({ all: z.array(WorkflowConditionSchema).min(1) }).loose(),
+    z.object({ any: z.array(WorkflowConditionSchema).min(1) }).loose(),
+    z.object({ not: WorkflowConditionSchema }).loose(),
+    z.object({
+      field: z.string(),
+      op: z.string(),
+      value: z.unknown().optional(),
+    }).loose(),
+  ]),
+);
+
+const IssueWorkflowTransitionSchema = z.object({
+  id: z.string().default(""),
+  label: z.string().default(""),
+  when: WorkflowConditionSchema.nullable().default(null),
+  to_status_key: z.string(),
+  handler: IssueWorkflowHandlerSchema.optional(),
+}).loose();
+
+const IssueWorkflowTransitionsSchema = z.unknown().transform((value): IssueWorkflowTransition[] => {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    const parsed = IssueWorkflowTransitionSchema.safeParse(item);
+    return parsed.success ? [parsed.data] : [];
+  });
+});
+
 const IssueWorkflowStepSchema = z.object({
   status_key: z.string(),
   handler: IssueWorkflowHandlerSchema.default({ type: "none" }),
   instructions: z.string().default(""),
+  transitions: IssueWorkflowTransitionsSchema,
   next_status_key: z.string().optional(),
   back_status_key: z.string().optional(),
 }).loose();
@@ -650,6 +689,52 @@ export const EMPTY_ISSUE_WORKFLOW: IssueWorkflow = {
   created_at: "",
   updated_at: "",
 };
+
+// Where each workflow is assigned, for the manage view. A usage row that does
+// not parse is dropped alone, as a transition is.
+const IssueWorkflowUsageItemSchema = z.object({
+  workflow_id: z.string(),
+  project_ids: z.array(z.string()).default([]),
+  squad_ids: z.array(z.string()).default([]),
+  agent_ids: z.array(z.string()).default([]),
+}).loose();
+
+export const ListIssueWorkflowUsageResponseSchema = z.object({
+  usage: z.unknown().transform((value): IssueWorkflowUsage[] => {
+    if (!Array.isArray(value)) return [];
+    return value.flatMap((item) => {
+      const parsed = IssueWorkflowUsageItemSchema.safeParse(item);
+      return parsed.success ? [parsed.data] : [];
+    });
+  }),
+  total: z.number().default(0),
+}).loose();
+
+export const EMPTY_LIST_ISSUE_WORKFLOW_USAGE_RESPONSE: ListIssueWorkflowUsageResponse = {
+  usage: [],
+  total: 0,
+};
+
+const IssueWorkflowBlockerSchema = z.object({
+  code: z.string().default(""),
+  count: z.number().default(0),
+  ids: z.array(z.string()).default([]),
+  message: z.string().default(""),
+}).loose();
+
+/**
+ * The blocking reasons in a failed workflow delete's body (`reasons`). A body
+ * without a readable list reads as no reasons, and the caller falls back to the
+ * message.
+ */
+export function parseIssueWorkflowBlockers(body: unknown): IssueWorkflowBlocker[] {
+  const parsed = z.object({ reasons: z.unknown() }).loose().safeParse(body);
+  if (!parsed.success || !Array.isArray(parsed.data.reasons)) return [];
+  return parsed.data.reasons.flatMap((reason) => {
+    const item = IssueWorkflowBlockerSchema.safeParse(reason);
+    return item.success ? [item.data] : [];
+  });
+}
 
 export const IssueWorkflowMappingPlanSchema = z.object({
   required: z.array(z.object({

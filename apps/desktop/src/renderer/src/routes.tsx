@@ -5,6 +5,7 @@ import { IssueDetailPage } from "./pages/issue-detail-page";
 import { ProjectDetailPage } from "./pages/project-detail-page";
 import { AutopilotDetailPage } from "./pages/autopilot-detail-page";
 import { SkillDetailPage } from "./pages/skill-detail-page";
+import { DesktopWorkflowDetailPage } from "./pages/workflow-designer-page";
 import { AgentDetailPage } from "./pages/agent-detail-page";
 import { AiBuilderSessionPage } from "./pages/ai-builder-session-page";
 import { MemberDetailPage } from "./pages/member-detail-page";
@@ -23,6 +24,7 @@ import { KnowledgePage } from "@multica/views/knowledge";
 import { PipelinePage } from "@multica/views/pipeline";
 import { GovernancePage } from "@multica/views/governance";
 import { SkillsPage } from "@multica/views/skills";
+import { WorkflowManagePage, WorkflowDesignerPage } from "@multica/views/workflow";
 import { HubItemPage, HubPage } from "@multica/views/hub";
 import { DesktopRuntimesPage } from "./components/desktop-runtimes-page";
 import { DesktopAgentsPage } from "./components/desktop-agents-page";
@@ -231,6 +233,17 @@ export const appRoutes: RouteObject[] = [
             path: "skills/:id",
             element: <SkillDetailPage />,
             handle: { title: "Skill" },
+          },
+          { path: "workflow", element: <WorkflowManagePage />, handle: { title: "Workflow" } },
+          {
+            path: "workflow/new",
+            element: <WorkflowDesignerPage isNew />,
+            handle: { title: "Create Workflow" },
+          },
+          {
+            path: "workflow/:id",
+            element: <DesktopWorkflowDetailPage />,
+            handle: { title: "Workflow" },
           },
           { path: "agents", element: <DesktopAgentsPage />, handle: { title: "Agents" } },
           {

@@ -15,6 +15,7 @@
     "skills": "Skills",
     "knowledge": "知识库",
     "pipeline": "管线",
+    "workflow": "工作流",
     "governance": "治理",
     "settings": "设置",
     "views": "视图"
@@ -31,7 +32,9 @@
     "runtime": "运行时",
     "attachment": "附件",
     "create_agent": "创建智能体",
+    "create_workflow": "创建工作流",
     "my_agents": "我的智能体在做",
+    "workflow": "工作流",
     "unknown": "未知页面"
   },
   "help": {
@@ -94,6 +97,7 @@
     "company": "公司",
     "hub": "扩展中心",
     "work": "工作",
+    "workflow": "工作流",
     "team": "团队",
     "chat": "聊天",
     "autopilots": "自动化",

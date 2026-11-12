@@ -11,6 +11,7 @@ export type AppSpaceId =
   | "company"
   | "hub"
   | "work"
+  | "workflow"
   | "team"
   | "chat"
   | "autopilots"
@@ -25,6 +26,7 @@ export const RAIL_SPACES: readonly RailSpaceId[] = [
   "company",
   "hub",
   "work",
+  "workflow",
   "team",
   "chat",
   "autopilots",
@@ -36,6 +38,7 @@ const SPACE_BY_SEGMENT: Record<string, AppSpaceId> = {
   issues: "work",
   company: "company",
   hub: "hub",
+  workflow: "workflow",
   pipeline: "work",
   governance: "work",
   projects: "work",

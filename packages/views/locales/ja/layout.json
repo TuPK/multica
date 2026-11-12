@@ -15,6 +15,7 @@
     "skills": "スキル",
     "knowledge": "ナレッジ",
     "pipeline": "パイプライン",
+    "workflow": "ワークフロー",
     "governance": "ガバナンス",
     "settings": "設定",
     "views": "ビュー"
@@ -31,7 +32,9 @@
     "runtime": "ランタイム",
     "attachment": "添付ファイル",
     "create_agent": "エージェントを作成",
+    "create_workflow": "ワークフローを作成",
     "my_agents": "マイエージェントの作業",
+    "workflow": "ワークフロー",
     "unknown": "不明なページ"
   },
   "help": {
@@ -94,6 +97,7 @@
     "company": "会社",
     "hub": "ハブ",
     "work": "作業",
+    "workflow": "ワークフロー",
     "team": "チーム",
     "chat": "チャット",
     "autopilots": "自動化",

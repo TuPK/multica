@@ -26,6 +26,7 @@
     "./modals/create-issue": "./modals/create-issue.tsx",
     "./my-issues": "./my-issues/index.ts",
     "./company": "./company/index.ts",
+    "./workflow": "./workflow/index.ts",
     "./pipeline": "./pipeline/index.ts",
     "./governance": "./governance/index.ts",
     "./hub": "./hub/index.ts",

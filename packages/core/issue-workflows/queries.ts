@@ -14,6 +14,8 @@ import type { IssueWorkflow, IssueWorkflowStep, Project } from "../types";
 export const issueWorkflowKeys = {
   all: (wsId: string) => ["issue-workflows", wsId] as const,
   list: (wsId: string) => [...issueWorkflowKeys.all(wsId), "list"] as const,
+  detail: (wsId: string, id: string) => [...issueWorkflowKeys.all(wsId), "detail", id] as const,
+  usage: (wsId: string) => [...issueWorkflowKeys.all(wsId), "usage"] as const,
   handoffPreview: (wsId: string, issueId: string, status: string, projectId = "") =>
     [...issueWorkflowKeys.all(wsId), "handoff-preview", issueId, status, projectId] as const,
 };
@@ -40,6 +42,31 @@ export function issueWorkflowListOptions(wsId: string) {
     // Workflows change only when an admin edits one; the
     // `issue_workflow:changed` event refreshes every client when that happens.
     staleTime: 5 * 60_000,
+  });
+}
+
+/**
+ * One workflow, read from the server. The designer opens on this so it edits
+ * the stored copy rather than a list snapshot.
+ */
+export function issueWorkflowDetailOptions(wsId: string, id: string) {
+  return queryOptions({
+    queryKey: issueWorkflowKeys.detail(wsId, id),
+    queryFn: () => api.getIssueWorkflow(id),
+    staleTime: 5 * 60_000,
+  });
+}
+
+/**
+ * Where each workflow is assigned: the projects, squads and agents that use it.
+ * Refreshed with the workflow list through the same `issue-workflows` prefix.
+ */
+export function issueWorkflowUsageOptions(wsId: string) {
+  return queryOptions({
+    queryKey: issueWorkflowKeys.usage(wsId),
+    queryFn: () => api.listIssueWorkflowUsage(),
+    select: (data) => data.usage,
+    staleTime: 60_000,
   });
 }
 

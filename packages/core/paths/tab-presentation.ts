@@ -51,7 +51,9 @@ export type TabLabelKey =
   | "runtime"
   | "attachment"
   | "create_agent"
+  | "create_workflow"
   | "my_agents"
+  | "workflow"
   | "unknown";
 
 /** How a tab's title should be produced. */
@@ -85,6 +87,7 @@ export interface TabEntityData {
   /** Resolved display name for an actor subject. */
   actorName?: string;
   skill?: { name: string };
+  workflow?: { name: string };
   /** A Hub item's name; the pending title is the Hub page name. */
   hubItem?: { name: string };
   machine?: { name: string };
@@ -194,6 +197,11 @@ export function resolveTabPresentation(
         visual: { kind: "icon", icon: "BookOpenText" },
         title: textOr(data.skill?.name, "skill"),
       };
+    case "workflow":
+      return {
+        visual: { kind: "icon", icon: "Workflow" },
+        title: textOr(data.workflow?.name, "workflow"),
+      };
     case "hub": {
       const name = data.hubItem?.name?.trim();
       return {
@@ -243,6 +251,12 @@ export function resolveTabPresentation(
       return { visual: { kind: "icon", icon: "MessageSquare" }, title };
     }
     case "flow":
+      if (subject.flow === "create-workflow") {
+        return {
+          visual: { kind: "icon", icon: "Workflow" },
+          title: { kind: "tab", tabKey: "create_workflow" },
+        };
+      }
       return {
         visual: { kind: "icon", icon: "Bot" },
         title: { kind: "tab", tabKey: "create_agent" },

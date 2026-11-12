@@ -33,6 +33,8 @@ export type TabSubject =
   | { kind: "actor"; actorType: TabActorType; id: string }
   /** A single skill detail. */
   | { kind: "skill"; id: string }
+  /** A single workflow detail or designer. */
+  | { kind: "workflow"; id: string }
   /** A Hub item detail: a skill or a published plugin, by its Hub kind. */
   | { kind: "hub"; itemKind: "skill" | "plugin"; id: string }
   /** A runtime machine detail. */
@@ -49,7 +51,7 @@ export type TabSubject =
   /** The Chat container; `sessionId` is the `?session=` selection or null. */
   | { kind: "chat"; sessionId: string | null }
   /** A creation flow that has not produced a resource yet. */
-  | { kind: "flow"; flow: "create-agent" }
+  | { kind: "flow"; flow: "create-agent" | "create-workflow" }
   /** An unrecognized URL. Never impersonate a real page. */
   | { kind: "unknown" };
 
@@ -139,6 +141,9 @@ export function parseTabSubject(url: string): TabSubject {
       return { kind: "machine", machineId: id };
     case "skills":
       return id ? { kind: "skill", id } : { kind: "page", page: "skills" };
+    case "workflow":
+      if (id === "new") return { kind: "flow", flow: "create-workflow" };
+      return id ? { kind: "workflow", id } : { kind: "page", page: "workflow" };
     case "settings":
       return { kind: "page", page: "settings" };
     case "attachments":
@@ -177,6 +182,8 @@ export function tabSubjectKey(subject: TabSubject): string {
       return `actor:${subject.actorType}:${subject.id}`;
     case "skill":
       return `skill:${subject.id}`;
+    case "workflow":
+      return `workflow:${subject.id}`;
     case "hub":
       return `hub:${subject.itemKind}:${subject.id}`;
     case "machine":

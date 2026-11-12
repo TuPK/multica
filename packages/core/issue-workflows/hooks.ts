@@ -1,8 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { projectListOptions } from "../projects/queries";
-import type { IssueWorkflow, Project } from "../types";
-import { defaultWorkflow, issueWorkflowListOptions, resolveProjectWorkflow } from "./queries";
+import type { IssueWorkflow, IssueWorkflowUsage, Project } from "../types";
+import {
+  defaultWorkflow,
+  issueWorkflowDetailOptions,
+  issueWorkflowListOptions,
+  issueWorkflowUsageOptions,
+  resolveProjectWorkflow,
+} from "./queries";
 
 const EMPTY: IssueWorkflow[] = [];
 
@@ -10,6 +16,38 @@ const EMPTY: IssueWorkflow[] = [];
 export function useIssueWorkflows(wsId: string): { workflows: IssueWorkflow[]; isLoaded: boolean } {
   const { data } = useQuery({ ...issueWorkflowListOptions(wsId), enabled: Boolean(wsId) });
   return useMemo(() => ({ workflows: data ?? EMPTY, isLoaded: data !== undefined }), [data]);
+}
+
+/**
+ * One workflow as the server stores it. `workflow` is null while loading, when
+ * the id is missing, and when the server has no such workflow.
+ */
+export function useIssueWorkflowDetail(
+  wsId: string,
+  workflowId: string | null | undefined,
+): { workflow: IssueWorkflow | null; isLoading: boolean; isError: boolean } {
+  const query = useQuery({
+    ...issueWorkflowDetailOptions(wsId, workflowId ?? ""),
+    enabled: Boolean(wsId) && Boolean(workflowId),
+  });
+  return {
+    workflow: query.data && query.data.id ? query.data : null,
+    isLoading: Boolean(workflowId) && query.isPending,
+    isError: query.isError || (query.data !== undefined && !query.data.id),
+  };
+}
+
+/** Each workflow's assignments by workflow id. Empty until loaded. */
+export function useIssueWorkflowUsage(wsId: string): {
+  usageById: Record<string, IssueWorkflowUsage>;
+  isLoaded: boolean;
+} {
+  const { data } = useQuery({ ...issueWorkflowUsageOptions(wsId), enabled: Boolean(wsId) });
+  return useMemo(() => {
+    const usageById: Record<string, IssueWorkflowUsage> = {};
+    for (const usage of data ?? []) usageById[usage.workflow_id] = usage;
+    return { usageById, isLoaded: data !== undefined };
+  }, [data]);
 }
 
 /**

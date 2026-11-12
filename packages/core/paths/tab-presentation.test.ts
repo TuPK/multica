@@ -23,6 +23,10 @@ describe("resolveTabPresentation — pages", () => {
       visual: { kind: "icon", icon: "FolderKanban" },
       title: { kind: "nav", navKey: "projects" },
     });
+    expect(present("/acme/workflow")).toEqual({
+      visual: { kind: "icon", icon: "Workflow" },
+      title: { kind: "nav", navKey: "workflow" },
+    });
   });
 
   it("titles My agents' work as its own page rather than My issues", () => {
@@ -98,6 +102,14 @@ describe("resolveTabPresentation — direct resources", () => {
     expect(present("/acme/skills/s1", { skill: { name: "Deploy" } })).toEqual({
       visual: { kind: "icon", icon: "BookOpenText" },
       title: { kind: "text", text: "Deploy" },
+    });
+    expect(present("/acme/workflow/wf1")).toEqual({
+      visual: { kind: "icon", icon: "Workflow" },
+      title: { kind: "tab", tabKey: "workflow" },
+    });
+    expect(present("/acme/workflow/wf1", { workflow: { name: "Engineering" } })).toEqual({
+      visual: { kind: "icon", icon: "Workflow" },
+      title: { kind: "text", text: "Engineering" },
     });
     expect(present("/acme/runtimes/m1", { machine: { name: "Mac Studio" } })).toEqual({
       visual: { kind: "icon", icon: "Monitor" },
@@ -212,6 +224,13 @@ describe("resolveTabPresentation — flow and unknown", () => {
     expect(present("/acme/agents/new")).toEqual({
       visual: { kind: "icon", icon: "Bot" },
       title: { kind: "tab", tabKey: "create_agent" },
+    });
+  });
+
+  it("create-workflow flow uses the workflow icon and a flow label", () => {
+    expect(present("/acme/workflow/new")).toEqual({
+      visual: { kind: "icon", icon: "Workflow" },
+      title: { kind: "tab", tabKey: "create_workflow" },
     });
   });
 

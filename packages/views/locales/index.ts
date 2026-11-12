@@ -39,6 +39,7 @@ import jaCompany from "./ja/company.json";
 import frGovernance from "./fr/governance.json";
 import frCompany from "./fr/company.json";
 import enBilling from "./en/billing.json";
+import enWorkflow from "./en/workflow.json";
 import zhHansCommon from "./zh-Hans/common.json";
 import zhHansAuth from "./zh-Hans/auth.json";
 import zhHansSettings from "./zh-Hans/settings.json";
@@ -67,6 +68,7 @@ import zhHansUi from "./zh-Hans/ui.json";
 import zhHansSquads from "./zh-Hans/squads.json";
 import zhHansPipeline from "./zh-Hans/pipeline.json";
 import zhHansBilling from "./zh-Hans/billing.json";
+import zhHansWorkflow from "./zh-Hans/workflow.json";
 import zhHantCommon from "./zh-Hant/common.json";
 import zhHantAuth from "./zh-Hant/auth.json";
 import zhHantSettings from "./zh-Hant/settings.json";
@@ -95,6 +97,7 @@ import zhHantUi from "./zh-Hant/ui.json";
 import zhHantSquads from "./zh-Hant/squads.json";
 import zhHantPipeline from "./zh-Hant/pipeline.json";
 import zhHantBilling from "./zh-Hant/billing.json";
+import zhHantWorkflow from "./zh-Hant/workflow.json";
 import koCommon from "./ko/common.json";
 import koAuth from "./ko/auth.json";
 import koSettings from "./ko/settings.json";
@@ -123,6 +126,7 @@ import koUi from "./ko/ui.json";
 import koSquads from "./ko/squads.json";
 import koPipeline from "./ko/pipeline.json";
 import koBilling from "./ko/billing.json";
+import koWorkflow from "./ko/workflow.json";
 import jaCommon from "./ja/common.json";
 import jaAuth from "./ja/auth.json";
 import jaSettings from "./ja/settings.json";
@@ -151,6 +155,7 @@ import jaUi from "./ja/ui.json";
 import jaSquads from "./ja/squads.json";
 import jaPipeline from "./ja/pipeline.json";
 import jaBilling from "./ja/billing.json";
+import jaWorkflow from "./ja/workflow.json";
 import frCommon from "./fr/common.json";
 import frAuth from "./fr/auth.json";
 import frSettings from "./fr/settings.json";
@@ -179,6 +184,7 @@ import frUi from "./fr/ui.json";
 import frSquads from "./fr/squads.json";
 import frPipeline from "./fr/pipeline.json";
 import frBilling from "./fr/billing.json";
+import frWorkflow from "./fr/workflow.json";
 import esCommon from "./es/common.json";
 import esAuth from "./es/auth.json";
 import esSettings from "./es/settings.json";
@@ -205,6 +211,7 @@ import esUsage from "./es/usage.json";
 import esUi from "./es/ui.json";
 import esSquads from "./es/squads.json";
 import esBilling from "./es/billing.json";
+import esWorkflow from "./es/workflow.json";
 import esKnowledge from "./es/knowledge.json";
 import esPipeline from "./es/pipeline.json";
 import esGovernance from "./es/governance.json";
@@ -245,6 +252,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     governance: enGovernance,
     company: enCompany,
     billing: enBilling,
+    workflow: enWorkflow,
   },
   "zh-Hans": {
     common: zhHansCommon,
@@ -277,6 +285,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     governance: zhHansGovernance,
     company: zhHansCompany,
     billing: zhHansBilling,
+    workflow: zhHansWorkflow,
   },
   "zh-Hant": {
     common: zhHantCommon,
@@ -309,6 +318,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     governance: zhHantGovernance,
     company: zhHantCompany,
     billing: zhHantBilling,
+    workflow: zhHantWorkflow,
   },
   ko: {
     common: koCommon,
@@ -341,6 +351,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     governance: koGovernance,
     company: koCompany,
     billing: koBilling,
+    workflow: koWorkflow,
   },
   ja: {
     common: jaCommon,
@@ -373,6 +384,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     governance: jaGovernance,
     company: jaCompany,
     billing: jaBilling,
+    workflow: jaWorkflow,
   },
   fr: {
     common: frCommon,
@@ -405,6 +417,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     governance: frGovernance,
     company: frCompany,
     billing: frBilling,
+    workflow: frWorkflow,
   },
   es: {
     common: esCommon,
@@ -437,5 +450,6 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     pipeline: esPipeline,
     governance: esGovernance,
     company: esCompany,
+    workflow: esWorkflow,
   },
 };

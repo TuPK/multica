@@ -15,6 +15,7 @@
     "skills": "Skills",
     "knowledge": "知識庫",
     "pipeline": "管線",
+    "workflow": "工作流程",
     "governance": "治理",
     "settings": "設定",
     "views": "檢視"
@@ -31,7 +32,9 @@
     "runtime": "執行時",
     "attachment": "附件",
     "create_agent": "建立 AI 代理",
+    "create_workflow": "建立工作流程",
     "my_agents": "我的 AI 代理在做",
+    "workflow": "工作流程",
     "unknown": "未知頁面"
   },
   "help": {
@@ -94,6 +97,7 @@
     "company": "公司",
     "hub": "擴充中心",
     "work": "工作",
+    "workflow": "工作流程",
     "team": "團隊",
     "chat": "聊天",
     "autopilots": "自動化",

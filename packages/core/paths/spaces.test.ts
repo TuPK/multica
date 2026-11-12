@@ -29,6 +29,8 @@ describe("spaceForPath", () => {
     [ws.runtimeDetail("r-1"), "team"],
     [ws.skills(), "team"],
     [ws.knowledge(), "team"],
+    [ws.workflow(), "workflow"],
+    [ws.workflowDetail("wf-1"), "workflow"],
     [ws.pipeline(), "work"],
     [ws.pipelineForSquad("s-1"), "work"],
     [ws.usage(), "team"],

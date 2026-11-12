@@ -22,9 +22,11 @@ describe("parseTabSubject", () => {
     ["/acme/knowledge", { kind: "page", page: "knowledge" }],
     ["/acme/pipeline", { kind: "page", page: "pipeline" }],
     ["/acme/pipeline?squad=s-1", { kind: "page", page: "pipeline" }],
+    ["/acme/workflow", { kind: "page", page: "workflow" }],
     ["/acme/settings", { kind: "page", page: "settings" }],
     // Resource details
     ["/acme/issues/bug-1", { kind: "issue", id: "bug-1" }],
+    ["/acme/workflow/wf1", { kind: "workflow", id: "wf1" }],
     ["/acme/projects/p1", { kind: "project", id: "p1" }],
     ["/acme/autopilots/a1", { kind: "autopilot", id: "a1" }],
     ["/acme/skills/s1", { kind: "skill", id: "s1" }],
@@ -48,6 +50,7 @@ describe("parseTabSubject", () => {
     ["/acme/squads/sq1", { kind: "actor", actorType: "squad", id: "sq1" }],
     // Flow — /new must win over the actor detail pattern
     ["/acme/agents/new", { kind: "flow", flow: "create-agent" }],
+    ["/acme/workflow/new", { kind: "flow", flow: "create-workflow" }],
     // Runtime machine vs nested runtime
     ["/acme/runtimes/machine-1", { kind: "machine", machineId: "machine-1" }],
     [

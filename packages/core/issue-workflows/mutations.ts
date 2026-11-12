@@ -4,6 +4,7 @@ import { useWorkspaceId } from "../hooks";
 import { issueKeys } from "../issues/queries";
 import { projectKeys } from "../projects/queries";
 import type {
+  IssueWorkflow,
   IssueWorkflowWriteRequest,
   ListIssueWorkflowsResponse,
   SetProjectWorkflowRequest,
@@ -14,43 +15,78 @@ import { issueWorkflowKeys } from "./queries";
 /**
  * Workflow mutations (MUL-7420).
  *
- * Like the status catalog, the list refreshes through the
- * `issue_workflow:changed` realtime event; the writer only invalidates on
- * failure, when its own copy is the likely stale one. A project switch or a
- * step removal can move issues between statuses, and those moves arrive as
- * ordinary issue events.
+ * A writer patches its own cache entries on success. Other clients refresh
+ * through the `issue_workflow:changed` realtime event. A failed write
+ * invalidates, because the local copy is the likely stale one.
  */
+
+function replaceWorkflowInList(
+  qc: ReturnType<typeof useQueryClient>,
+  wsId: string,
+  saved: IssueWorkflow,
+) {
+  // A malformed response parses to the empty fallback; caching it would hide the workflow.
+  if (!saved.id) return;
+  qc.setQueryData<ListIssueWorkflowsResponse>(issueWorkflowKeys.list(wsId), (old) =>
+    old && {
+      ...old,
+      workflows: old.workflows.some((w) => w.id === saved.id)
+        ? old.workflows.map((w) => (w.id === saved.id ? saved : w))
+        : [...old.workflows, saved],
+    },
+  );
+  qc.setQueryData<IssueWorkflow>(issueWorkflowKeys.detail(wsId, saved.id), saved);
+}
 
 export function useCreateIssueWorkflow() {
   const qc = useQueryClient();
   const wsId = useWorkspaceId();
   return useMutation({
     mutationFn: (data: IssueWorkflowWriteRequest) => api.createIssueWorkflow(data),
+    onSuccess: (saved) => {
+      replaceWorkflowInList(qc, wsId, saved);
+    },
     onError: () => {
       qc.invalidateQueries({ queryKey: issueWorkflowKeys.all(wsId) });
     },
   });
 }
 
+/**
+ * Saves a workflow. A 409 `workflow_status_mapping_required` error means issues
+ * sit on statuses the edit removes: retry with `status_mapping` once the user
+ * picks where they go (see `issueWorkflowMappingPlanFrom`).
+ */
 export function useUpdateIssueWorkflow() {
   const qc = useQueryClient();
   const wsId = useWorkspaceId();
   return useMutation({
     mutationFn: ({ id, ...data }: { id: string } & IssueWorkflowWriteRequest) =>
       api.updateIssueWorkflow(id, data),
+    onSuccess: (saved) => {
+      replaceWorkflowInList(qc, wsId, saved);
+    },
     onError: () => {
       qc.invalidateQueries({ queryKey: issueWorkflowKeys.all(wsId) });
     },
   });
 }
 
+/**
+ * Deletes a workflow. A refused delete (409 with `reasons`, or 400
+ * `workflow_is_default`) rejects with the ApiError; read the reasons with
+ * `parseIssueWorkflowBlockers(err.body)`.
+ */
 export function useDeleteIssueWorkflow() {
   const qc = useQueryClient();
   const wsId = useWorkspaceId();
   return useMutation({
     mutationFn: (id: string) => api.deleteIssueWorkflow(id),
-    onError: () => {
-      qc.invalidateQueries({ queryKey: issueWorkflowKeys.all(wsId) });
+    onSuccess: (_data, id) => {
+      qc.setQueryData<ListIssueWorkflowsResponse>(issueWorkflowKeys.list(wsId), (old) =>
+        old && { ...old, workflows: old.workflows.filter((w) => w.id !== id) },
+      );
+      qc.removeQueries({ queryKey: issueWorkflowKeys.detail(wsId, id) });
     },
   });
 }

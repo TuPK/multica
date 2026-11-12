@@ -1,6 +1,8 @@
 export {
   issueWorkflowKeys,
+  issueWorkflowDetailOptions,
   issueWorkflowListOptions,
+  issueWorkflowUsageOptions,
   resolveProjectWorkflow,
   issueStatusWorkflow,
   sharedWorkflowStatusKeys,
@@ -20,7 +22,13 @@ export {
   workflowHandoffPreviewOptions,
   handoffStepCount,
 } from "./queries";
-export { useIssueWorkflows, useProjectWorkflow, useProjectWithWorkflow } from "./hooks";
+export {
+  useIssueWorkflows,
+  useIssueWorkflowDetail,
+  useIssueWorkflowUsage,
+  useProjectWorkflow,
+  useProjectWithWorkflow,
+} from "./hooks";
 export {
   useCreateIssueWorkflow,
   useUpdateIssueWorkflow,
@@ -28,3 +36,5 @@ export {
   useSetProjectWorkflow,
   useSetWorkflowHandoff,
 } from "./mutations";
+export { issueWorkflowMappingPlanFrom } from "./mapping";
+export { parseIssueWorkflowBlockers } from "../api/schemas";

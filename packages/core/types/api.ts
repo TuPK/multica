@@ -2,8 +2,7 @@ import type { Issue, IssueMetadata, IssueStatus, IssueStatusCategory, IssuePrior
 import type { IssuePropertyValues, PropertyFilterValue } from "./property";
 import type { MemberRole } from "./workspace";
 import type { Project, ProjectStatus } from "./project";
-
-// Issue API
+import type { IssueOutcome } from "./issue-workflow";
 export interface CreateIssueRequest {
   title: string;
   description?: string;
@@ -94,6 +93,10 @@ export interface UpdateIssueRequest {
    *  cancelled removes the mark. Write-only — read it back through
    *  `listIssueDuplicates`. Control field: strip from optimistic patches. */
   duplicate_of_issue_id?: string;
+  /** The outcome the handler reports with a status change out of a workflow
+   *  column (workflow-tab §3). When that column routes the outcome, the status
+   *  must be the routed status. Control field: never stored on the issue. */
+  outcome?: IssueOutcome;
 }
 
 /** Both sides of an issue's duplicate relation (MUL-7349). */

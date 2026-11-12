@@ -203,6 +203,12 @@ export function AppRail({
       label: t(($) => $.rail.work),
       fullLabel: t(($) => $.spaces.work),
     },
+    workflow: {
+      href: p.workflow(),
+      icon: routeIconForPath(p.workflow()),
+      label: t(($) => $.rail.workflow),
+      fullLabel: t(($) => $.nav.workflow),
+    },
     team: {
       href: p.agents(),
       icon: Users,

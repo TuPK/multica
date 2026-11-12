@@ -25,6 +25,7 @@ import {
 import { runtimeListOptions } from "@multica/core/runtimes/queries";
 import { runtimeDisplayName } from "@multica/core/runtimes";
 import { chatSessionsOptions } from "@multica/core/chat/queries";
+import { issueWorkflowListOptions } from "@multica/core/issue-workflows";
 import {
   inboxListOptions,
   archivedInboxPagesOptions,
@@ -144,6 +145,7 @@ function useTabEntityData(subject: TabSubject, wsId: string, fetch: boolean): Ta
   const squads = useQuery({ ...squadListOptions(wsId), enabled: false }).data;
   const runtimes = useQuery({ ...runtimeListOptions(wsId), enabled: false }).data;
   const sessions = useQuery({ ...chatSessionsOptions(wsId), enabled: false }).data;
+  const workflows = useQuery({ ...issueWorkflowListOptions(wsId), enabled: false }).data;
 
   const data: TabEntityData = {};
   switch (subject.kind) {
@@ -166,6 +168,11 @@ function useTabEntityData(subject: TabSubject, wsId: string, fetch: boolean): Ta
     case "skill":
       if (skill) data.skill = { name: skill.name };
       break;
+    case "workflow": {
+      const wf = workflows?.find((x) => x.id === subject.id);
+      if (wf) data.workflow = { name: wf.name };
+      break;
+    }
     case "actor": {
       const name =
         subject.actorType === "agent"
