@@ -57,7 +57,7 @@ func (h *Handler) validateStartStatus(ctx context.Context, w http.ResponseWriter
 		return "", false
 	}
 	for _, issue := range issues {
-		def, _, err := issueworkflow.ForProject(ctx, h.Queries, workspaceID, issue.ProjectID)
+		def, _, err := issueworkflow.ForIssue(ctx, h.Queries, workspaceID, issue.ProjectID, issue.AssigneeType, issue.AssigneeID)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to check start_status")
 			return "", false
@@ -253,7 +253,7 @@ func (h *Handler) promoteQueuedIssue(ctx context.Context, prev db.Issue) bool {
 		Status:           pgtype.Text{String: target, Valid: true},
 		ExpectedRevision: pgtype.Int8{Int64: prev.Revision, Valid: true},
 	}
-	handoff, err := h.applyIssueWorkflow(ctx, prev, &params, true, false, false, nil)
+	handoff, err := h.applyIssueWorkflow(ctx, prev, &params, true, false, false, nil, "")
 	if err != nil {
 		slog.Warn("queue promote: workflow refused", "error", err, "issue_id", uuidToString(prev.ID))
 		return false

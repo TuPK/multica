@@ -42,7 +42,7 @@ func devDefinition() Definition {
 	def := Definition{Name: "Delivery", Steps: stepsFor(ArrangeKeys([]string{"backlog", "implement", "code_review", "blocked"}))}
 	return withHandoffs(def, []Step{
 		{StatusKey: "implement", Handler: Handler{Type: HandlerAgent, ID: testAgentID}, Instructions: "Implement it."},
-		{StatusKey: "code_review", Handler: Handler{Type: HandlerProjectLead}, NextStatusKey: "done", BackStatusKey: "implement"},
+		{StatusKey: "code_review", Handler: Handler{Type: HandlerProjectLead}, Transitions: LegacyTransitions("done", "implement")},
 	})
 }
 
@@ -114,8 +114,8 @@ func TestValidateHandoff(t *testing.T) {
 		"unknown handler":   {step: Step{StatusKey: "implement", Handler: Handler{Type: "robot"}}, want: "unknown handler"},
 		"backlog parks":     {step: Step{StatusKey: "backlog", Handler: Handler{Type: HandlerProjectLead}}, want: "cannot be handed off"},
 		"done finishes":     {step: Step{StatusKey: "done", Handler: Handler{Type: HandlerProjectLead}}, want: "cannot be handed off"},
-		"next outside flow": {step: Step{StatusKey: "implement", Handler: Handler{Type: HandlerProjectLead}, NextStatusKey: "in_review"}, want: "not another status"},
-		"next is itself":    {step: Step{StatusKey: "implement", Handler: Handler{Type: HandlerProjectLead}, NextStatusKey: "implement"}, want: "not another status"},
+		"next outside flow": {step: Step{StatusKey: "implement", Handler: Handler{Type: HandlerProjectLead}, Transitions: LegacyTransitions("in_review", "")}, want: "not another status"},
+		"next is itself":    {step: Step{StatusKey: "implement", Handler: Handler{Type: HandlerProjectLead}, Transitions: LegacyTransitions("implement", "")}, want: "not another status"},
 	}
 	for label, tc := range cases {
 		t.Run(label, func(t *testing.T) {
@@ -449,7 +449,7 @@ func TestBriefPrintsBuiltInKeysOnce(t *testing.T) {
 
 func TestBriefWithoutBlockedPointsAtTheBackStatus(t *testing.T) {
 	def := withHandoffs(Definition{Name: "Lean", Steps: stepsFor(ArrangeKeys([]string{"implement", "code_review"}))},
-		[]Step{{StatusKey: "code_review", Handler: Handler{Type: HandlerProjectLead}, BackStatusKey: "implement"}})
+		[]Step{{StatusKey: "code_review", Handler: Handler{Type: HandlerProjectLead}, Transitions: LegacyTransitions("", "implement")}})
 	brief := Brief(BriefInput{Workflow: def, StatusKey: "code_review", IssueIdentifier: "MUL-2"})
 	if strings.Contains(brief, "MUL-2 blocked") || !strings.Contains(brief, "Can't proceed  → comment why, then run Needs changes\n") || !strings.Contains(brief, "Needs changes  → multica issue status MUL-2 implement\n") {
 		t.Fatalf("a workflow without blocked should not suggest it:\n%s", brief)

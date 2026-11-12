@@ -3421,7 +3421,7 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 			workflowProjectID = parent.ProjectID
 		}
 	}
-	createWorkflow, createWorkflowProject, err := issueworkflow.ForProject(r.Context(), h.Queries, wsUUID, workflowProjectID)
+	createWorkflow, createWorkflowProject, err := issueworkflow.ForIssue(r.Context(), h.Queries, wsUUID, workflowProjectID, assigneeType, assigneeID)
 	if err != nil {
 		slog.Error("create issue: resolve project workflow", append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "failed to resolve project workflow")
@@ -3778,6 +3778,12 @@ type UpdateIssueRequest struct {
 	// project move without it is administrative. Batch updates ignore it.
 	// (MUL-7420)
 	EnterWorkflowStep bool `json:"enter_workflow_step,omitempty"`
+	// Outcome is what the handler reported when it moved the issue out of its
+	// step: approved, rejected, blocked or done. It is read only with a status
+	// change. When the step routes that outcome to a target, the status must be
+	// that target. Absent keeps today's behavior: the status is taken as sent.
+	// (workflow-tab §3)
+	Outcome *string `json:"outcome,omitempty"`
 	// DuplicateOfIssueID marks this issue as a duplicate of another issue in
 	// the same workspace (MUL-7349). A duplicate is an ordinary cancelled issue
 	// that remembers its original, so this also sets status to cancelled.
@@ -4208,7 +4214,15 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	// An agent's run may only move the issue from the step it works on.
 	callerType, _ := h.resolveActor(r, userID, workspaceID)
 	callerRun := h.agentRunOnIssue(r, callerType, prevIssue)
-	handoff, err := h.applyIssueWorkflow(r.Context(), prevIssue, &params, req.Status != nil, touchedType || touchedID, req.EnterWorkflowStep, callerRun)
+	outcome := ""
+	if req.Outcome != nil {
+		if !issueworkflow.IsOutcome(*req.Outcome) {
+			writeErrorCode(w, http.StatusBadRequest, "invalid_outcome", "outcome must be approved, rejected, blocked or done")
+			return
+		}
+		outcome = *req.Outcome
+	}
+	handoff, err := h.applyIssueWorkflow(r.Context(), prevIssue, &params, req.Status != nil, touchedType || touchedID, req.EnterWorkflowStep, callerRun, outcome)
 	if err != nil {
 		if writeIssueWorkflowError(w, err) {
 			return
@@ -5123,7 +5137,7 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 		// entering a handoff step reassigns this issue to the step's handler.
 		callerType, _ := h.resolveActor(r, userID, workspaceID)
 		callerRun := h.agentRunOnIssue(r, callerType, prevIssue)
-		handoff, err := h.applyIssueWorkflow(r.Context(), prevIssue, &params, req.Updates.Status != nil, batchTouchedType || batchTouchedID, false, callerRun)
+		handoff, err := h.applyIssueWorkflow(r.Context(), prevIssue, &params, req.Updates.Status != nil, batchTouchedType || batchTouchedID, false, callerRun, "")
 		if err != nil {
 			continue
 		}

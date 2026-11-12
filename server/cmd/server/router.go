@@ -2382,6 +2382,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			r.Route("/api/issue-workflows", func(r chi.Router) {
 				r.Get("/", h.ListIssueWorkflows)
 				r.Post("/", h.CreateIssueWorkflow)
+				r.Get("/usage", h.ListIssueWorkflowUsage)
 				r.Route("/{id}", func(r chi.Router) {
 					r.Get("/", h.GetIssueWorkflow)
 					r.Patch("/", h.UpdateIssueWorkflow)
@@ -2424,8 +2425,12 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					// Source Studio intake (spec 7.5): a Sales Loop squad only.
 					r.Post("/sources", h.CreateSquadSource)
 					r.Post("/shares", h.CreateSquadShare)
-					r.Post("/project", h.AssignSquadProject)
+				r.Post("/project", h.AssignSquadProject)
 					r.Delete("/project", h.UnassignSquadProject)
+					// The library and the active workflow (MUL-7420).
+					r.Get("/workflows", h.ListSquadWorkflows)
+					r.Post("/workflows", h.CreateSquadWorkflow)
+					r.Post("/workflow", h.SetSquadActiveWorkflow)
 					r.Get("/members/status", h.ListSquadMemberStatus)
 					r.Post("/members", h.AddSquadMember)
 					r.Delete("/members", h.RemoveSquadMember)

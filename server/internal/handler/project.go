@@ -55,6 +55,19 @@ type ProjectResponse struct {
 	// SquadID is the first of SquadIDs, kept for clients that read one squad.
 	// Null when no squad has the project.
 	SquadID *string `json:"squad_id"`
+	// Squads is set on the project detail response. It lists each squad the
+	// project is assigned to with the workflow that squad uses now, so the
+	// project page can show it. (MUL-7420)
+	Squads []ProjectSquadResponse `json:"squads,omitempty"`
+}
+
+// ProjectSquadResponse is a squad assigned to a project. ActiveWorkflowID and
+// ActiveWorkflowName are null when the squad has no active workflow yet.
+type ProjectSquadResponse struct {
+	SquadID            string  `json:"squad_id"`
+	Name               string  `json:"name"`
+	ActiveWorkflowID   *string `json:"active_workflow_id"`
+	ActiveWorkflowName *string `json:"active_workflow_name"`
 }
 
 func projectToResponse(p db.Project) ProjectResponse {
@@ -252,7 +265,38 @@ func (h *Handler) GetProject(w http.ResponseWriter, r *http.Request) {
 	resp := projectToResponse(project)
 	resp.IssueCount, resp.DoneCount = h.loadProjectIssueStats(r.Context(), wsUUID, project.ID)
 	resp.ResourceCount = h.loadProjectResourceCount(r.Context(), project.ID)
+	squads, err := h.loadProjectSquads(r.Context(), wsUUID, project)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load project")
+		return
+	}
+	resp.Squads = squads
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// loadProjectSquads lists the squads a project is assigned to, each with the
+// workflow it uses now. It is read live, so a squad's workflow switch shows
+// without a stored copy per project.
+func (h *Handler) loadProjectSquads(ctx context.Context, wsUUID pgtype.UUID, project db.Project) ([]ProjectSquadResponse, error) {
+	if len(project.SquadIds) == 0 {
+		return nil, nil
+	}
+	rows, err := h.Queries.ListProjectSquadWorkflows(ctx, db.ListProjectSquadWorkflowsParams{WorkspaceID: wsUUID, SquadIds: project.SquadIds})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ProjectSquadResponse, 0, len(rows))
+	for _, row := range rows {
+		item := ProjectSquadResponse{SquadID: uuidToString(row.ID), Name: row.Name}
+		if row.ActiveWorkflowID.Valid {
+			workflowID := uuidToString(row.ActiveWorkflowID)
+			name := row.ActiveWorkflowName
+			item.ActiveWorkflowID = &workflowID
+			item.ActiveWorkflowName = &name
+		}
+		out = append(out, item)
+	}
+	return out, nil
 }
 
 // validProjectStatuses / validProjectPriorities mirror the CHECK constraints on

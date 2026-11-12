@@ -39,7 +39,7 @@ func (h *Handler) reconcileUnmovedWorkflowRun(ctx context.Context, task *db.Agen
 	if task.WorkflowStep.Valid && task.WorkflowStep.String != "" && task.WorkflowStep.String != issue.Status {
 		return
 	}
-	def, _, err := issueworkflow.ForProject(ctx, h.Queries, issue.WorkspaceID, issue.ProjectID)
+	def, _, err := issueworkflow.ForIssue(ctx, h.Queries, issue.WorkspaceID, issue.ProjectID, issue.AssigneeType, issue.AssigneeID)
 	if err != nil {
 		slog.Warn("unmoved run: load workflow failed", "issue_id", util.UUIDToString(issue.ID), "error", err)
 		return

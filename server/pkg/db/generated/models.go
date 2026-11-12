@@ -1441,6 +1441,7 @@ type IssueWorkflow struct {
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 	IsDefault        bool               `json:"is_default"`
 	OwnerID          pgtype.UUID        `json:"owner_id"`
+	SquadID          pgtype.UUID        `json:"squad_id"`
 }
 
 type JobStatus struct {
@@ -2216,22 +2217,23 @@ type SkillVersion struct {
 }
 
 type Squad struct {
-	ID            pgtype.UUID        `json:"id"`
-	WorkspaceID   pgtype.UUID        `json:"workspace_id"`
-	Name          string             `json:"name"`
-	Description   string             `json:"description"`
-	LeaderID      pgtype.UUID        `json:"leader_id"`
-	CreatorID     pgtype.UUID        `json:"creator_id"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
-	ArchivedAt    pgtype.Timestamptz `json:"archived_at"`
-	ArchivedBy    pgtype.UUID        `json:"archived_by"`
-	AvatarUrl     pgtype.Text        `json:"avatar_url"`
-	Instructions  string             `json:"instructions"`
-	FloorID       pgtype.UUID        `json:"floor_id"`
-	CompanySlot   pgtype.Int2        `json:"company_slot"`
-	AutonomyLevel int32              `json:"autonomy_level"`
-	TemplateKey   pgtype.Text        `json:"template_key"`
+	ID               pgtype.UUID        `json:"id"`
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	Name             string             `json:"name"`
+	Description      string             `json:"description"`
+	LeaderID         pgtype.UUID        `json:"leader_id"`
+	CreatorID        pgtype.UUID        `json:"creator_id"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	ArchivedAt       pgtype.Timestamptz `json:"archived_at"`
+	ArchivedBy       pgtype.UUID        `json:"archived_by"`
+	AvatarUrl        pgtype.Text        `json:"avatar_url"`
+	Instructions     string             `json:"instructions"`
+	FloorID          pgtype.UUID        `json:"floor_id"`
+	CompanySlot      pgtype.Int2        `json:"company_slot"`
+	AutonomyLevel    int32              `json:"autonomy_level"`
+	TemplateKey      pgtype.Text        `json:"template_key"`
+	ActiveWorkflowID pgtype.UUID        `json:"active_workflow_id"`
 }
 
 type SquadAttention struct {

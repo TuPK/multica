@@ -374,6 +374,58 @@ func (q *Queries) ListProjects(ctx context.Context, arg ListProjectsParams) ([]P
 	return items, nil
 }
 
+const listProjectsForSquad = `-- name: ListProjectsForSquad :many
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
+WHERE workspace_id = $1::uuid
+  AND $2::uuid = ANY(squad_ids)
+ORDER BY created_at, id
+`
+
+type ListProjectsForSquadParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	SquadID     pgtype.UUID `json:"squad_id"`
+}
+
+// The projects a squad is assigned to. A squad's active workflow changes what
+// its room shows for each of them, so their pages are announced.
+func (q *Queries) ListProjectsForSquad(ctx context.Context, arg ListProjectsForSquadParams) ([]Project, error) {
+	rows, err := q.db.Query(ctx, listProjectsForSquad, arg.WorkspaceID, arg.SquadID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Project{}
+	for rows.Next() {
+		var i Project
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Title,
+			&i.Description,
+			&i.Icon,
+			&i.Status,
+			&i.LeadType,
+			&i.LeadID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Priority,
+			&i.StartDate,
+			&i.DueDate,
+			&i.WorkflowID,
+			&i.CreatorType,
+			&i.CreatorID,
+			&i.SquadIds,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockProjectForChatSessionCreate = `-- name: LockProjectForChatSessionCreate :one
 SELECT id FROM project
 WHERE id = $1 AND workspace_id = $2

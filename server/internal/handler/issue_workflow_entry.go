@@ -48,10 +48,11 @@ type workflowHandoff struct {
 // into the project, and the assignee when the write enters a handoff step.
 // enterOnMove makes a project move enter the step the issue lands on.
 // run is the calling agent's run on this issue (nil for members): it may only
-// move the issue from the step it works on. It returns the handoff that write
-// triggers, or nil.
-func (h *Handler) applyIssueWorkflow(ctx context.Context, prev db.Issue, params *db.UpdateIssueParams, statusExplicit, assigneeTouched, enterOnMove bool, run *db.AgentTaskQueue) (*workflowHandoff, error) {
-	def, project, err := issueworkflow.ForProject(ctx, h.Queries, prev.WorkspaceID, params.ProjectID)
+// move the issue from the step it works on. outcome is the outcome the handler
+// reported for a status change, empty when it reported none. It returns the
+// handoff that write triggers, or nil.
+func (h *Handler) applyIssueWorkflow(ctx context.Context, prev db.Issue, params *db.UpdateIssueParams, statusExplicit, assigneeTouched, enterOnMove bool, run *db.AgentTaskQueue, outcome string) (*workflowHandoff, error) {
+	def, project, err := issueworkflow.ForIssue(ctx, h.Queries, prev.WorkspaceID, params.ProjectID, params.AssigneeType, params.AssigneeID)
 	if err != nil {
 		return nil, err
 	}
@@ -79,6 +80,11 @@ func (h *Handler) applyIssueWorkflow(ctx context.Context, prev db.Issue, params 
 	// mapped; a named workflow must list the status the issue lands on.
 	if params.Status.Valid && (statusChanging || (projectMoving && !def.IsDefault)) {
 		if err := issueworkflow.CheckStatus(def, params.Status.String); err != nil {
+			return nil, err
+		}
+	}
+	if statusExplicit && statusChanging && outcome != "" {
+		if err := h.checkOutcomeRoute(ctx, *def, prev, outcome, params.Status.String); err != nil {
 			return nil, err
 		}
 	}
@@ -170,7 +176,7 @@ func (h *Handler) reworkLoopFor(ctx context.Context, def *issueworkflow.Definiti
 		return nil, nil
 	}
 	from, ok := def.Step(prev.Status)
-	if !ok || from.BackStatusKey != entering || from.Handler.Type != issueworkflow.HandlerAgent ||
+	if !ok || from.BackStatusKey() != entering || from.Handler.Type != issueworkflow.HandlerAgent ||
 		from.Handler.ID != util.UUIDToString(run.AgentID) {
 		return nil, nil
 	}
@@ -250,6 +256,54 @@ func workflowHandoffPayload(issue db.Issue, hand *workflowHandoff, note string, 
 	return out
 }
 
+// checkOutcomeRoute refuses a status change that contradicts the outcome a
+// handler reported. When the step has transitions that route the outcome, the
+// status written must be the route's target. An outcome no transition matches
+// leaves the status to the write, as it always was.
+func (h *Handler) checkOutcomeRoute(ctx context.Context, def issueworkflow.Definition, prev db.Issue, outcome, requested string) error {
+	step, ok := def.Step(prev.Status)
+	if !ok || len(step.Transitions) == 0 {
+		return nil
+	}
+	facts, err := h.issueRouteFacts(ctx, prev, outcome)
+	if err != nil {
+		return err
+	}
+	routed, ok := step.Route(facts)
+	if !ok || routed.ToStatusKey == requested {
+		return nil
+	}
+	return &issueworkflow.OutcomeRouteError{Outcome: outcome, StatusKey: prev.Status, Expected: routed.ToStatusKey, Requested: requested}
+}
+
+// issueRouteFacts describes an issue as it leaves its step, for routing.
+func (h *Handler) issueRouteFacts(ctx context.Context, issue db.Issue, outcome string) (issueworkflow.Facts, error) {
+	labels, err := h.Queries.ListLabelsByIssue(ctx, db.ListLabelsByIssueParams{IssueID: issue.ID, WorkspaceID: issue.WorkspaceID})
+	if err != nil {
+		return issueworkflow.Facts{}, err
+	}
+	returns, err := h.Queries.CountWorkflowReturns(ctx, db.CountWorkflowReturnsParams{
+		IssueID:      issue.ID,
+		FromStatuses: []string{issuestatus.InReview, "qa"},
+		ToStatus:     issuestatus.InProgress,
+	})
+	if err != nil {
+		return issueworkflow.Facts{}, err
+	}
+	facts := issueworkflow.Facts{
+		Outcome:      outcome,
+		Priority:     issue.Priority,
+		ProjectID:    uuidToString(issue.ProjectID),
+		ReworkCount:  int(returns),
+		CreatorType:  issue.CreatorType,
+		AssigneeType: issue.AssigneeType.String,
+	}
+	for _, label := range labels {
+		facts.Labels = append(facts.Labels, label.Name)
+	}
+	return facts, nil
+}
+
 // writeIssueWorkflowError answers a workflow rejection. It reports false when
 // err is not one, so the caller can fall through to its generic 500.
 func writeIssueWorkflowError(w http.ResponseWriter, err error) bool {
@@ -260,6 +314,16 @@ func writeIssueWorkflowError(w http.ResponseWriter, err error) bool {
 			"code":             "status_not_in_workflow",
 			"workflow_name":    notIn.WorkflowName,
 			"allowed_statuses": notIn.Allowed,
+		})
+		return true
+	}
+	var routed *issueworkflow.OutcomeRouteError
+	if errors.As(err, &routed) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{
+			"error":           routed.Error(),
+			"code":            "workflow_outcome_mismatch",
+			"step":            routed.StatusKey,
+			"expected_status": routed.Expected,
 		})
 		return true
 	}
@@ -496,7 +560,7 @@ func (h *Handler) assigneeActiveRuns(ctx context.Context, issue db.Issue) []db.A
 // legacyRuntimeRules is true for a daemon that does not advertise
 // protocol.DaemonCapabilityWorkflowStatusRulesV1; see BriefInput.
 func (h *Handler) claimProjectWorkflow(ctx context.Context, issue db.Issue, task *db.AgentTaskQueue, legacyRuntimeRules bool) *TaskProjectWorkflowData {
-	def, project, err := issueworkflow.ForProject(ctx, h.Queries, issue.WorkspaceID, issue.ProjectID)
+	def, project, err := issueworkflow.ForIssue(ctx, h.Queries, issue.WorkspaceID, issue.ProjectID, issue.AssigneeType, issue.AssigneeID)
 	if err != nil {
 		slog.Warn("task claim: failed to load project workflow for brief injection",
 			"issue_id", uuidToString(issue.ID), "error", err)
@@ -547,7 +611,7 @@ func (h *Handler) handoffRunStale(ctx context.Context, issue db.Issue, task *db.
 		task.TriggerCommentID.Valid || len(task.CoalescedCommentIds) > 0 {
 		return false
 	}
-	def, _, err := issueworkflow.ForProject(ctx, h.Queries, issue.WorkspaceID, issue.ProjectID)
+	def, _, err := issueworkflow.ForIssue(ctx, h.Queries, issue.WorkspaceID, issue.ProjectID, issue.AssigneeType, issue.AssigneeID)
 	if err != nil || def == nil || (def.IsDefault && !def.HandsOffAnywhere()) {
 		return false
 	}

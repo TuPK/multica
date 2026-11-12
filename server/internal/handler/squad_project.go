@@ -16,12 +16,9 @@ import (
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
-// AssignSquadProjectRequest names the project a squad takes. StatusMapping
-// answers a 409 workflow_status_mapping_required: where each status the SDLC
-// workflow lacks moves its issues.
+// AssignSquadProjectRequest names the project a squad takes.
 type AssignSquadProjectRequest struct {
-	ProjectID     string            `json:"project_id"`
-	StatusMapping map[string]string `json:"status_mapping,omitempty"`
+	ProjectID string `json:"project_id"`
 }
 
 // squadsWithSquad returns the project's squads with squadID added once. The
@@ -33,14 +30,14 @@ func squadsWithSquad(current []pgtype.UUID, squadID pgtype.UUID) []pgtype.UUID {
 	return append(slices.Clone(current), squadID)
 }
 
-// AssignSquadProject adds a project to a squad, which shows it in its room. Other
-// squads may work the same project. The project takes the squad's workflow: SDLC Auto, built on the squad's SDLC agents,
-// or BMAD Planning Auto for a planning squad, which the quickstart creates. A
-// squad works one open project at a time, so one already assigned must be
-// unassigned first. The workflow switch uses the same status mapping as a
-// project's workflow change, in one transaction. A project already on a
-// different workflow is refused: its workflow is changed from the project's
-// settings.
+// AssignSquadProject adds a project to a squad, which shows it in its room.
+// Other squads may work the same project, and assigning never refuses because
+// of workflows: the project keeps its own workflow, and each squad works its
+// issues through its active workflow. A squad that has no active workflow yet
+// takes the SDLC Auto or planning workflow the squad's agents hand to. Its
+// issues move to the statuses that workflow suggests, in the same transaction.
+// A squad works one open project at a time, so one already assigned must be
+// unassigned first.
 func (h *Handler) AssignSquadProject(w http.ResponseWriter, r *http.Request) {
 	workspaceID := workspaceIDFromURL(r, "workspaceId")
 	member, ok := h.requireWorkspaceMember(w, r, workspaceID, "workspace not found")
@@ -100,60 +97,52 @@ func (h *Handler) AssignSquadProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sdlc, err := h.initiativeService().EnsureSquadProjectWorkflow(ctx, qtx, wsUUID, squad.ID)
-	if err != nil {
-		if errors.Is(err, service.ErrBuildNeedsSDLCSquad) {
-			writeErrorCode(w, http.StatusUnprocessableEntity, "build_squad_not_sdlc", err.Error())
-			return
-		}
-		if errors.Is(err, service.ErrPlanningWorkflowMissing) {
-			writeErrorCode(w, http.StatusUnprocessableEntity, "planning_workflow_missing", err.Error())
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "failed to set up the squad's workflow")
-		return
-	}
-
 	var changed []db.Issue
 	var cancelled []db.AgentTaskQueue
-	workflowChanges := !project.WorkflowID.Valid || uuidToString(project.WorkflowID) != uuidToString(sdlc.ID)
-	if project.WorkflowID.Valid && workflowChanges {
-		writeErrorCode(w, http.StatusConflict, "project_workflow_set",
-			"this project already uses another workflow; change it in the project's settings first")
+	var plan workflowMappingPlan
+	activeSquad, err := qtx.LockSquadForWorkflowChange(ctx, db.LockSquadForWorkflowChangeParams{ID: squad.ID, WorkspaceID: wsUUID})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to assign project")
 		return
 	}
-	var plan workflowMappingPlan
-	if workflowChanges {
-		target, err := issueworkflow.Decode(sdlc)
+	if !activeSquad.ActiveWorkflowID.Valid {
+		wf, err := h.initiativeService().EnsureSquadProjectWorkflow(ctx, qtx, wsUUID, squad.ID)
+		if err != nil {
+			if errors.Is(err, service.ErrBuildNeedsSDLCSquad) {
+				writeErrorCode(w, http.StatusUnprocessableEntity, "build_squad_not_sdlc", err.Error())
+				return
+			}
+			if errors.Is(err, service.ErrPlanningWorkflowMissing) {
+				writeErrorCode(w, http.StatusUnprocessableEntity, "planning_workflow_missing", err.Error())
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "failed to set up the squad's workflow")
+			return
+		}
+		target, err := issueworkflow.Decode(wf)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to read workflow")
 			return
 		}
-		catalog, err := h.workflowStatusCatalog(ctx, qtx, wsUUID)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to load issue statuses")
-			return
-		}
-		counts, err := qtx.CountProjectIssuesByStatus(ctx, db.CountProjectIssuesByStatusParams{WorkspaceID: wsUUID, ProjectIds: []pgtype.UUID{project.ID}})
+		plan, err = h.squadWorkflowPlan(ctx, qtx, wsUUID, squad.ID, target)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to assign project")
 			return
 		}
-		categoryOf := func(key string) string { return catalog[key].Category }
-		plan = mappingPlan(counts, target.Has, func(key string) string {
-			return issueworkflow.MoveTarget(target, key, categoryOf)
-		})
-		if msg := checkMapping(plan, req.StatusMapping, target.Has); msg != "" {
-			writeMappingRequired(w, plan, msg)
-			return
-		}
-		if _, err := qtx.SetProjectWorkflow(ctx, db.SetProjectWorkflowParams{ID: project.ID, WorkspaceID: wsUUID, WorkflowID: sdlc.ID}); err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to assign project")
-			return
-		}
-		changed, cancelled, err = remapIssues(ctx, qtx, wsUUID, []pgtype.UUID{project.ID}, plan, req.StatusMapping)
+		// No one picks destinations on the first activation, so every status the
+		// workflow lacks moves to the status the plan suggests.
+		changed, cancelled, err = remapSquadIssues(ctx, qtx, wsUUID, squad.ID, plan, suggestedMapping(plan))
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to move issues to the new statuses")
+			return
+		}
+		adopted, err := adoptSquadWorkflow(ctx, qtx, wsUUID, squad.ID, wf)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to assign project")
+			return
+		}
+		if !adopted {
+			writeErrorCode(w, http.StatusConflict, "workflow_belongs_to_other_squad", "the squad's workflow belongs to another squad")
 			return
 		}
 	}

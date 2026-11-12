@@ -725,6 +725,7 @@ func init() {
 
 	// issue status
 	issueStatusCmd.Flags().Bool("no-start", false, "Change status without starting an agent run (a move into a workflow step that hands off still starts that step's run)")
+	issueStatusCmd.Flags().String("outcome", "", "Outcome of the step you are leaving: approved, rejected, blocked or done. If the workflow routes that outcome, the status must be the routed status")
 	issueStatusCmd.Flags().String("duplicate-of", "", "Mark the issue as a duplicate of this original issue (key like MUL-123, or full UUID); the status must be cancelled")
 	issueStatusCmd.Flags().String("output", "table", "Output format: table or json")
 
@@ -2190,6 +2191,10 @@ func runIssueStatus(cmd *cobra.Command, args []string) error {
 	id := args[0]
 	status := args[1]
 	noStart, _ := cmd.Flags().GetBool("no-start")
+	outcome, _ := cmd.Flags().GetString("outcome")
+	if outcome != "" && outcome != "approved" && outcome != "rejected" && outcome != "blocked" && outcome != "done" {
+		return fmt.Errorf("--outcome must be approved, rejected, blocked or done")
+	}
 
 	if err := validateIssueStatus(status); err != nil {
 		return err
@@ -2222,6 +2227,9 @@ func runIssueStatus(cmd *cobra.Command, args []string) error {
 	}
 	if noStart {
 		body["suppress_run"] = true
+	}
+	if outcome != "" {
+		body["outcome"] = outcome
 	}
 	var result map[string]any
 	if err := client.PutJSON(ctx, "/api/issues/"+issueRef.ID, body, &result); err != nil {

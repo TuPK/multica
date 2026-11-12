@@ -404,12 +404,14 @@ func stepsForStages(stages []PipelineStage, owners map[string]pgtype.UUID) []iss
 			Handler:      issueworkflow.Handler{Type: issueworkflow.HandlerNone},
 			Instructions: st.Instructions,
 		}
+		var next, back string
 		if i+1 < len(stages) {
-			step.NextStatusKey = StatusKeyForStage(stages[i+1].Key)
+			next = StatusKeyForStage(stages[i+1].Key)
 		}
 		if i > 0 {
-			step.BackStatusKey = StatusKeyForStage(stages[i-1].Key)
+			back = StatusKeyForStage(stages[i-1].Key)
 		}
+		step.Transitions = issueworkflow.LegacyTransitions(next, back)
 		if id, ok := owners[st.Key]; ok {
 			step.Handler = issueworkflow.Handler{Type: issueworkflow.HandlerSquad, ID: util.UUIDToString(id)}
 		}

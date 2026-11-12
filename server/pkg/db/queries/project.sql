@@ -90,3 +90,11 @@ RETURNING *;
 UPDATE project SET squad_ids = array_remove(squad_ids, sqlc.arg('squad_id')::uuid), updated_at = now()
 WHERE workspace_id = sqlc.arg('workspace_id') AND sqlc.arg('squad_id')::uuid = ANY(squad_ids)
 RETURNING *;
+
+-- name: ListProjectsForSquad :many
+-- The projects a squad is assigned to. A squad's active workflow changes what
+-- its room shows for each of them, so their pages are announced.
+SELECT * FROM project
+WHERE workspace_id = sqlc.arg('workspace_id')::uuid
+  AND sqlc.arg('squad_id')::uuid = ANY(squad_ids)
+ORDER BY created_at, id;

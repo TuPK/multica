@@ -58,15 +58,32 @@ WHERE id = sqlc.arg('id')::uuid
   AND workspace_id = sqlc.arg('workspace_id')::uuid;
 
 -- name: CreateIssueWorkflow :one
-INSERT INTO issue_workflow (workspace_id, name, description, initial_status_key, steps, owner_id)
+INSERT INTO issue_workflow (workspace_id, name, description, initial_status_key, steps, owner_id, squad_id)
 VALUES (
     sqlc.arg('workspace_id')::uuid,
     sqlc.arg('name')::text,
     sqlc.arg('description')::text,
     sqlc.arg('initial_status_key')::text,
     sqlc.arg('steps')::jsonb,
-    sqlc.arg('owner_id')::uuid
+    sqlc.arg('owner_id')::uuid,
+    sqlc.narg('squad_id')::uuid
 )
+RETURNING *;
+
+-- name: ListSquadIssueWorkflows :many
+-- A squad's library: the workflows it owns, in the order its picker lists them.
+SELECT * FROM issue_workflow
+WHERE workspace_id = sqlc.arg('workspace_id')::uuid
+  AND squad_id = sqlc.arg('squad_id')::uuid
+ORDER BY lower(name), created_at, id;
+
+-- name: SetIssueWorkflowSquad :one
+-- Adopts a workspace-level workflow into a squad's library.
+UPDATE issue_workflow SET
+    squad_id = sqlc.arg('squad_id')::uuid,
+    updated_at = now()
+WHERE id = sqlc.arg('id')::uuid
+  AND workspace_id = sqlc.arg('workspace_id')::uuid
 RETURNING *;
 
 -- name: UpdateIssueWorkflow :one
@@ -106,22 +123,35 @@ WHERE workspace_id = sqlc.arg('workspace_id')::uuid
 ORDER BY created_at, id;
 
 -- name: CountProjectIssuesByStatus :many
--- Status census for a workflow switch or step removal, including terminal
--- issues: every issue of the project must end on a status its workflow lists.
-SELECT status, COUNT(*)::bigint AS issue_count
-FROM issue
-WHERE workspace_id = sqlc.arg('workspace_id')::uuid
-  AND project_id = ANY(sqlc.arg('project_ids')::uuid[])
-GROUP BY status
-ORDER BY status;
+-- Status census for a project workflow switch or step removal, including
+-- terminal issues: every issue of the project that the project's workflow
+-- governs must end on a status it lists. Issues a squad routes through its own
+-- active workflow are left out (see the NOT EXISTS below).
+SELECT i.status, COUNT(*)::bigint AS issue_count
+FROM issue i
+WHERE i.workspace_id = sqlc.arg('workspace_id')::uuid
+  AND i.project_id = ANY(sqlc.arg('project_ids')::uuid[])
+  AND NOT EXISTS (
+      SELECT 1 FROM squad s
+      WHERE s.workspace_id = i.workspace_id
+        AND s.active_workflow_id IS NOT NULL
+        AND s.id = CASE
+            WHEN i.assignee_type = 'squad' THEN i.assignee_id
+            WHEN i.assignee_type = 'agent' THEN (SELECT a.home_squad_id FROM agent a WHERE a.id = i.assignee_id)
+        END
+  )
+GROUP BY i.status
+ORDER BY i.status;
 
 -- name: RemapProjectIssueStatus :many
--- Moves every issue of the given projects from one status to another as part
--- of an administrative workflow change. Mirrors UpdateIssueStatus: the issue
--- is re-ranked to the top of its new column, the revision advances, and a
--- duplicate mark only survives cancelled -> cancelled (never the case here,
--- because from and to differ). It deliberately touches nothing else, so it
--- never hands an issue off or starts a run.
+-- Moves every issue of the given projects that the project's workflow governs
+-- from one status to another as part of an administrative workflow change.
+-- Mirrors UpdateIssueStatus: the issue is re-ranked to the top of its new
+-- column, the revision advances, and a duplicate mark only survives
+-- cancelled -> cancelled (never the case here, because from and to differ). It
+-- deliberately touches nothing else, so it never hands an issue off or starts a
+-- run. The squad-routed issues CountProjectIssuesByStatus leaves out are left
+-- out here too.
 UPDATE issue AS i SET
     status = sqlc.arg('to_status')::text,
     duplicate_of_issue_id = NULL,
@@ -136,6 +166,63 @@ UPDATE issue AS i SET
     updated_at = now()
 WHERE i.workspace_id = sqlc.arg('workspace_id')::uuid
   AND i.project_id = ANY(sqlc.arg('project_ids')::uuid[])
+  AND i.status = sqlc.arg('from_status')::text
+  AND i.status <> sqlc.arg('to_status')::text
+  AND NOT EXISTS (
+      SELECT 1 FROM squad s
+      WHERE s.workspace_id = i.workspace_id
+        AND s.active_workflow_id IS NOT NULL
+        AND s.id = CASE
+            WHEN i.assignee_type = 'squad' THEN i.assignee_id
+            WHEN i.assignee_type = 'agent' THEN (SELECT a.home_squad_id FROM agent a WHERE a.id = i.assignee_id)
+        END
+  )
+RETURNING i.*;
+
+-- name: CountSquadIssuesByStatus :many
+-- Status census for a squad's active-workflow switch or an edit of that workflow:
+-- the project issues routed to the squad, either assigned to it or to an agent
+-- whose home squad it is. Issues outside any project take no workflow.
+SELECT i.status, COUNT(*)::bigint AS issue_count
+FROM issue i
+WHERE i.workspace_id = sqlc.arg('workspace_id')::uuid
+  AND i.project_id IS NOT NULL
+  AND (
+      (i.assignee_type = 'squad' AND i.assignee_id = sqlc.arg('squad_id')::uuid)
+      OR (i.assignee_type = 'agent' AND i.assignee_id IN (
+          SELECT a.id FROM agent a
+          WHERE a.workspace_id = sqlc.arg('workspace_id')::uuid
+            AND a.home_squad_id = sqlc.arg('squad_id')::uuid
+      ))
+  )
+GROUP BY i.status
+ORDER BY i.status;
+
+-- name: RemapSquadIssueStatus :many
+-- Moves a squad's routed project issues (the same set CountSquadIssuesByStatus
+-- counts) from one status to another, with RemapProjectIssueStatus's effects.
+UPDATE issue AS i SET
+    status = sqlc.arg('to_status')::text,
+    duplicate_of_issue_id = NULL,
+    position = (
+        SELECT COALESCE(MIN(target.position), 0) - 1
+        FROM issue AS target
+        WHERE target.workspace_id = i.workspace_id
+          AND target.status = sqlc.arg('to_status')::text
+    ),
+    revision = i.revision + 1,
+    last_activity_at = GREATEST(COALESCE(i.last_activity_at, i.updated_at), now()),
+    updated_at = now()
+WHERE i.workspace_id = sqlc.arg('workspace_id')::uuid
+  AND i.project_id IS NOT NULL
+  AND (
+      (i.assignee_type = 'squad' AND i.assignee_id = sqlc.arg('squad_id')::uuid)
+      OR (i.assignee_type = 'agent' AND i.assignee_id IN (
+          SELECT a.id FROM agent a
+          WHERE a.workspace_id = sqlc.arg('workspace_id')::uuid
+            AND a.home_squad_id = sqlc.arg('squad_id')::uuid
+      ))
+  )
   AND i.status = sqlc.arg('from_status')::text
   AND i.status <> sqlc.arg('to_status')::text
 RETURNING i.*;

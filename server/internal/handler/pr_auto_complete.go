@@ -209,7 +209,7 @@ func (h *Handler) decidePRAutoComplete(ctx context.Context, ws db.Workspace, iss
 	// rule a manual status change follows (applyIssueWorkflow). Default and
 	// issues outside any project accept every status. The issue page shows
 	// nothing for this state: the issue just stays where it is.
-	def, _, err := issueworkflow.ForProject(ctx, h.Queries, issue.WorkspaceID, issue.ProjectID)
+	def, _, err := issueworkflow.ForIssue(ctx, h.Queries, issue.WorkspaceID, issue.ProjectID, issue.AssigneeType, issue.AssigneeID)
 	if err != nil {
 		return prAutoCompleteDecision{}, err
 	}

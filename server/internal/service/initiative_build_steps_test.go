@@ -31,8 +31,8 @@ func TestSDLCStepsHandBlockedIssueToLeadAndBackToInProgress(t *testing.T) {
 	if blocked.Handler.Type != issueworkflow.HandlerAgent || blocked.Handler.ID != util.UUIDToString(agents["lead"]) {
 		t.Fatalf("blocked handler = %+v, want agent lead", blocked.Handler)
 	}
-	if blocked.BackStatusKey != sdlcInProgressStatusKey {
-		t.Fatalf("blocked back status = %q, want %q", blocked.BackStatusKey, sdlcInProgressStatusKey)
+	if blocked.BackStatusKey() != sdlcInProgressStatusKey {
+		t.Fatalf("blocked back status = %q, want %q", blocked.BackStatusKey(), sdlcInProgressStatusKey)
 	}
 	if blocked.Instructions == "" {
 		t.Fatal("blocked step has no instructions for the lead")
@@ -73,8 +73,8 @@ func TestSDLCStepsHandSpecialistStagesToTheirOwners(t *testing.T) {
 		if step.Handler.ID != util.UUIDToString(agents[role]) {
 			t.Fatalf("%s handler = %s, want %s", key, step.Handler.ID, role)
 		}
-		if step.NextStatusKey != "stage_done" || step.BackStatusKey != issuestatus.Blocked {
-			t.Fatalf("%s next/back = %q/%q, want stage_done/blocked", key, step.NextStatusKey, step.BackStatusKey)
+		if step.NextStatusKey() != "stage_done" || step.BackStatusKey() != issuestatus.Blocked {
+			t.Fatalf("%s next/back = %q/%q, want stage_done/blocked", key, step.NextStatusKey(), step.BackStatusKey())
 		}
 	}
 	for _, key := range []string{"stage_done", "plan_ready"} {

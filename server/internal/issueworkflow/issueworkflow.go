@@ -162,13 +162,13 @@ type Handler struct {
 	ID   string `json:"id,omitempty"`
 }
 
-// Step is one status of a workflow with its handoff.
+// Step is one status of a workflow with its handoff. Transitions route the
+// issue when the step is left; see transitions.go.
 type Step struct {
-	StatusKey     string  `json:"status_key"`
-	Handler       Handler `json:"handler"`
-	Instructions  string  `json:"instructions"`
-	NextStatusKey string  `json:"next_status_key,omitempty"`
-	BackStatusKey string  `json:"back_status_key,omitempty"`
+	StatusKey    string       `json:"status_key"`
+	Handler      Handler      `json:"handler"`
+	Instructions string       `json:"instructions"`
+	Transitions  []Transition `json:"transitions,omitempty"`
 }
 
 // Definition is a decoded workflow.
@@ -189,13 +189,15 @@ func (s Step) HandsOff() bool {
 }
 
 // storedStep is a step as the workflow row stores it; a step without a
-// handoff is just its status key.
+// handoff is just its status key. NextStatusKey and BackStatusKey are read
+// only, for rows the 977 migration has not converted to transitions yet.
 type storedStep struct {
-	StatusKey     string   `json:"status_key"`
-	Handler       *Handler `json:"handler,omitempty"`
-	Instructions  string   `json:"instructions,omitempty"`
-	NextStatusKey string   `json:"next_status_key,omitempty"`
-	BackStatusKey string   `json:"back_status_key,omitempty"`
+	StatusKey     string       `json:"status_key"`
+	Handler       *Handler     `json:"handler,omitempty"`
+	Instructions  string       `json:"instructions,omitempty"`
+	Transitions   []Transition `json:"transitions,omitempty"`
+	NextStatusKey string       `json:"next_status_key,omitempty"`
+	BackStatusKey string       `json:"back_status_key,omitempty"`
 }
 
 // Decode parses a stored workflow row.
@@ -208,7 +210,7 @@ func Decode(row db.IssueWorkflow) (Definition, error) {
 }
 
 // DecodeSteps parses a stored steps array, normalizing a missing handler to
-// "none".
+// "none" and legacy next/back routing to transitions.
 func DecodeSteps(raw []byte) ([]Step, error) {
 	if len(raw) == 0 {
 		return []Step{}, nil
@@ -220,11 +222,13 @@ func DecodeSteps(raw []byte) ([]Step, error) {
 	steps := make([]Step, len(stored))
 	for i, s := range stored {
 		steps[i] = Step{
-			StatusKey:     s.StatusKey,
-			Handler:       Handler{Type: HandlerNone},
-			Instructions:  s.Instructions,
-			NextStatusKey: s.NextStatusKey,
-			BackStatusKey: s.BackStatusKey,
+			StatusKey:    s.StatusKey,
+			Handler:      Handler{Type: HandlerNone},
+			Instructions: s.Instructions,
+			Transitions:  s.Transitions,
+		}
+		if len(s.Transitions) == 0 {
+			steps[i].Transitions = LegacyTransitions(s.NextStatusKey, s.BackStatusKey)
 		}
 		if s.Handler != nil && s.Handler.Type != "" {
 			steps[i].Handler = *s.Handler
@@ -242,11 +246,12 @@ func DecodeKeys(raw []byte) ([]string, error) {
 	return keysOf(steps), nil
 }
 
-// EncodeSteps serializes a workflow's steps for storage.
+// EncodeSteps serializes a workflow's steps for storage. Routing is stored
+// as transitions only.
 func EncodeSteps(steps []Step) ([]byte, error) {
 	stored := make([]storedStep, len(steps))
 	for i, s := range steps {
-		stored[i] = storedStep{StatusKey: s.StatusKey, NextStatusKey: s.NextStatusKey, BackStatusKey: s.BackStatusKey}
+		stored[i] = storedStep{StatusKey: s.StatusKey, Transitions: s.Transitions}
 		if s.HandsOff() {
 			h := s.Handler
 			stored[i].Handler = &h
@@ -315,8 +320,8 @@ func (d Definition) NextStatus(key string) string {
 	if !ok {
 		return ""
 	}
-	if step.NextStatusKey != "" {
-		return step.NextStatusKey
+	if next := step.NextStatusKey(); next != "" {
+		return next
 	}
 	for i, s := range d.Steps {
 		if s.StatusKey != key {
@@ -479,25 +484,30 @@ func Validate(name, description string, steps []Step, isDefault bool, catalog ma
 // not use.
 func NormalizeHandoff(s Step) Step {
 	s.StatusKey = strings.TrimSpace(s.StatusKey)
-	s.Handler.Type = strings.TrimSpace(s.Handler.Type)
-	s.Handler.ID = strings.TrimSpace(s.Handler.ID)
-	if s.Handler.Type == "" {
-		s.Handler.Type = HandlerNone
-	}
-	switch s.Handler.Type {
-	case HandlerAgent, HandlerSquad, HandlerMember:
-	default:
-		// Only the concrete handler types carry an id; a stale one left
-		// by a type switch in the form would otherwise be stored.
-		s.Handler.ID = ""
-	}
+	s.Handler = NormalizeHandler(s.Handler)
 	s.Instructions = strings.TrimSpace(s.Instructions)
 	if s.Handler.Type == HandlerNone {
 		s.Instructions = ""
 	}
-	s.NextStatusKey = strings.TrimSpace(s.NextStatusKey)
-	s.BackStatusKey = strings.TrimSpace(s.BackStatusKey)
+	s.Transitions = NormalizeTransitions(s.Transitions)
 	return s
+}
+
+// NormalizeHandler trims a handler and drops an id its type does not use.
+func NormalizeHandler(h Handler) Handler {
+	h.Type = strings.TrimSpace(h.Type)
+	h.ID = strings.TrimSpace(h.ID)
+	if h.Type == "" {
+		h.Type = HandlerNone
+	}
+	switch h.Type {
+	case HandlerAgent, HandlerSquad, HandlerMember:
+	default:
+		// Only the concrete handler types carry an id; a stale one left
+		// by a type switch in the form would otherwise be stored.
+		h.ID = ""
+	}
+	return h
 }
 
 // ValidateHandoff checks one normalized handoff against its workflow.
@@ -506,18 +516,8 @@ func ValidateHandoff(s Step, def Definition) error {
 	if !def.Has(s.StatusKey) {
 		return invalid("status %q is not part of this workflow", s.StatusKey)
 	}
-	switch s.Handler.Type {
-	case HandlerNone, HandlerProjectLead:
-	case HandlerAgent, HandlerMember:
-		if s.Handler.ID == "" {
-			return invalid("choose a %s to hand off to", s.Handler.Type)
-		}
-	case HandlerSquad, HandlerCreator:
-		// A squad routes work itself, so a handoff to one would compete with
-		// its own assignment. (MUL-7420)
-		return invalid("hand off to an agent, a member or the project lead")
-	default:
-		return invalid("unknown handler type %q", s.Handler.Type)
+	if err := validateHandler(s.Handler); err != nil {
+		return err
 	}
 	if s.HandsOff() && !AcceptsHandoff(s.StatusKey) {
 		return invalid("issues entering %q cannot be handed off", s.StatusKey)
@@ -525,10 +525,24 @@ func ValidateHandoff(s Step, def Definition) error {
 	if utf8.RuneCountInString(s.Instructions) > MaxInstructionsRunes {
 		return invalid("instructions must be at most %d characters", MaxInstructionsRunes)
 	}
-	for _, ref := range []string{s.NextStatusKey, s.BackStatusKey} {
-		if ref != "" && (ref == s.StatusKey || !def.Has(ref)) {
-			return invalid("%q is not another status of this workflow", ref)
+	return validateTransitions(s, def)
+}
+
+// validateHandler checks that a handler names a kind of assignee a step or a
+// transition may hand to.
+func validateHandler(h Handler) error {
+	switch h.Type {
+	case HandlerNone, HandlerProjectLead:
+	case HandlerAgent, HandlerMember:
+		if h.ID == "" {
+			return invalid("choose a %s to hand off to", h.Type)
 		}
+	case HandlerSquad, HandlerCreator:
+		// A squad routes work itself, so a handoff to one would compete with
+		// its own assignment. (MUL-7420)
+		return invalid("hand off to an agent, a member or the project lead")
+	default:
+		return invalid("unknown handler type %q", h.Type)
 	}
 	return nil
 }
@@ -538,6 +552,8 @@ type Querier interface {
 	GetIssueWorkflow(ctx context.Context, arg db.GetIssueWorkflowParams) (db.IssueWorkflow, error)
 	GetDefaultIssueWorkflow(ctx context.Context, workspaceID pgtype.UUID) (db.IssueWorkflow, error)
 	GetProjectInWorkspace(ctx context.Context, arg db.GetProjectInWorkspaceParams) (db.Project, error)
+	GetSquadInWorkspace(ctx context.Context, arg db.GetSquadInWorkspaceParams) (db.Squad, error)
+	GetAgentInWorkspace(ctx context.Context, arg db.GetAgentInWorkspaceParams) (db.Agent, error)
 }
 
 // DefaultFor loads the workspace Default workflow, or the built-in one when
@@ -553,9 +569,14 @@ func DefaultFor(ctx context.Context, q Querier, workspaceID pgtype.UUID) (Defini
 	return Decode(row)
 }
 
-// ForProject loads the workflow a project uses. def is nil only for an issue
-// outside any project.
-func ForProject(ctx context.Context, q Querier, workspaceID, projectID pgtype.UUID) (*Definition, db.Project, error) {
+// ForIssue loads the workflow an issue in a project uses. def is nil only for an
+// issue outside any project.
+//
+// A squad routes its issues through its active workflow: an issue assigned to a
+// squad uses that squad's, and an issue assigned to an agent uses its home
+// squad's. When that squad has no active workflow, or the issue has no such
+// squad, the project's own workflow applies, as it always did.
+func ForIssue(ctx context.Context, q Querier, workspaceID, projectID pgtype.UUID, assigneeType pgtype.Text, assigneeID pgtype.UUID) (*Definition, db.Project, error) {
 	if !projectID.Valid {
 		return nil, db.Project{}, nil
 	}
@@ -566,8 +587,67 @@ func ForProject(ctx context.Context, q Querier, workspaceID, projectID pgtype.UU
 		}
 		return nil, db.Project{}, err
 	}
+	routing, err := routingSquad(ctx, q, workspaceID, assigneeType, assigneeID)
+	if err != nil {
+		return nil, db.Project{}, err
+	}
+	if routing.Valid {
+		def, ok, err := activeWorkflowOf(ctx, q, workspaceID, routing)
+		if err != nil {
+			return nil, db.Project{}, err
+		}
+		if ok {
+			return &def, project, nil
+		}
+	}
 	def, err := ForProjectRow(ctx, q, project)
 	return def, project, err
+}
+
+// routingSquad returns the squad whose active workflow an issue with this
+// assignee takes, or an invalid id when none routes it.
+func routingSquad(ctx context.Context, q Querier, workspaceID pgtype.UUID, assigneeType pgtype.Text, assigneeID pgtype.UUID) (pgtype.UUID, error) {
+	if !assigneeID.Valid {
+		return pgtype.UUID{}, nil
+	}
+	switch assigneeType.String {
+	case "squad":
+		return assigneeID, nil
+	case "agent":
+		agent, err := q.GetAgentInWorkspace(ctx, db.GetAgentInWorkspaceParams{ID: assigneeID, WorkspaceID: workspaceID})
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return pgtype.UUID{}, nil
+			}
+			return pgtype.UUID{}, err
+		}
+		return agent.HomeSquadID, nil
+	}
+	return pgtype.UUID{}, nil
+}
+
+// activeWorkflowOf loads a squad's active workflow. ok is false when the squad
+// has none, or the reference dangles, so the caller falls back to the project.
+func activeWorkflowOf(ctx context.Context, q Querier, workspaceID, squadID pgtype.UUID) (Definition, bool, error) {
+	squad, err := q.GetSquadInWorkspace(ctx, db.GetSquadInWorkspaceParams{ID: squadID, WorkspaceID: workspaceID})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Definition{}, false, nil
+		}
+		return Definition{}, false, err
+	}
+	if !squad.ActiveWorkflowID.Valid {
+		return Definition{}, false, nil
+	}
+	row, err := q.GetIssueWorkflow(ctx, db.GetIssueWorkflowParams{ID: squad.ActiveWorkflowID, WorkspaceID: workspaceID})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Definition{}, false, nil
+		}
+		return Definition{}, false, err
+	}
+	def, err := Decode(row)
+	return def, err == nil, err
 }
 
 // OutsideProject loads the workflow that limits the statuses of an issue
@@ -907,13 +987,13 @@ func Brief(in BriefInput) string {
 			fmt.Fprintf(&b, "Step done      → multica issue status %s %s%s\n", in.IssueIdentifier, next, handsOffTo(next))
 		}
 	}
-	if step.BackStatusKey != "" {
-		fmt.Fprintf(&b, "Needs changes  → multica issue status %s %s%s\n", in.IssueIdentifier, step.BackStatusKey, handsOffTo(step.BackStatusKey))
+	if step.BackStatusKey() != "" {
+		fmt.Fprintf(&b, "Needs changes  → multica issue status %s %s%s\n", in.IssueIdentifier, step.BackStatusKey(), handsOffTo(step.BackStatusKey()))
 	}
 	switch {
 	case in.Workflow.Has(issuestatus.Blocked):
 		fmt.Fprintf(&b, "Can't proceed  → multica issue status %s blocked, then comment why\n", in.IssueIdentifier)
-	case step.BackStatusKey != "":
+	case step.BackStatusKey() != "":
 		b.WriteString("Can't proceed  → comment why, then run Needs changes\n")
 	default:
 		b.WriteString("Can't proceed  → comment why and leave the status as it is\n")

@@ -272,6 +272,11 @@ func (s *InitiativeService) sdlcWorkflowFor(ctx context.Context, q *db.Queries, 
 			continue
 		}
 		taken = taken || wf.Name == sdlcWorkflowName
+		// A workflow in another squad's library is not this squad's to reuse,
+		// even when its developer step names one of this squad's agents.
+		if wf.SquadID.Valid && wf.SquadID != squad {
+			continue
+		}
 		def, err := issueworkflow.Decode(wf)
 		if err != nil {
 			return db.IssueWorkflow{}, err
@@ -304,6 +309,7 @@ func (s *InitiativeService) sdlcWorkflowFor(ctx context.Context, q *db.Queries, 
 		InitialStatusKey: issuestatus.Todo,
 		Steps:            encoded,
 		OwnerID:          pgtype.UUID{},
+		SquadID:          squad,
 	})
 	if err != nil {
 		return db.IssueWorkflow{}, fmt.Errorf("create SDLC workflow: %w", err)
@@ -329,23 +335,23 @@ func sdlcSteps(agents map[string]pgtype.UUID) []issueworkflow.Step {
 		},
 		{
 			StatusKey: sdlcInProgressStatusKey, Handler: agent("developer"),
-			BackStatusKey: issuestatus.Todo,
-			Instructions:  "Build everything this issue asks for, story by story, following the story flow in your instructions. Hand it to review only when every story is implemented and verified on the running app. Record what you verified in the spec. If this issue came back from Blocked, read the lead's comment first and re-run the check it names before you hand it to review.",
+			Transitions:  issueworkflow.LegacyTransitions("", issuestatus.Todo),
+			Instructions: "Build everything this issue asks for, story by story, following the story flow in your instructions. Hand it to review only when every story is implemented and verified on the running app. Record what you verified in the spec. If this issue came back from Blocked, read the lead's comment first and re-run the check it names before you hand it to review.",
 		},
 		{
 			StatusKey: "in_review", Handler: agent("reviewer"),
-			BackStatusKey: sdlcInProgressStatusKey,
-			Instructions:  "Review the whole change for this issue against its acceptance criteria. Send it back to In Progress with the blocking findings, or pass it on to QA with your verdict. If you cannot finish the review, or a blocking finding is not the developer's to fix, set the issue to blocked with the blocker report from sdlc-delivery-core and give each blocking finding an Owner-role.",
+			Transitions:  issueworkflow.LegacyTransitions("", sdlcInProgressStatusKey),
+			Instructions: "Review the whole change for this issue against its acceptance criteria. Send it back to In Progress with the blocking findings, or pass it on to QA with your verdict. If you cannot finish the review, or a blocking finding is not the developer's to fix, set the issue to blocked with the blocker report from sdlc-delivery-core and give each blocking finding an Owner-role.",
 		},
 		{
 			StatusKey: sdlcQAStatusKey, Handler: agent("qa"),
-			BackStatusKey: sdlcInProgressStatusKey,
-			Instructions:  "Verify the change on the running system against the acceptance criteria. NO GO sends it back to In Progress with the defects. GO or CONDITIONAL GO finishes the issue. Run the environment's env-ensure command first when docs/sdlc/environment.md has one. If you cannot run the verification (a service is down, a required check cannot run) or a defect is not the developer's to fix, set the issue to blocked with the blocker report from sdlc-delivery-core and give each defect an Owner-role.",
+			Transitions:  issueworkflow.LegacyTransitions("", sdlcInProgressStatusKey),
+			Instructions: "Verify the change on the running system against the acceptance criteria. NO GO sends it back to In Progress with the defects. GO or CONDITIONAL GO finishes the issue. Run the environment's env-ensure command first when docs/sdlc/environment.md has one. If you cannot run the verification (a service is down, a required check cannot run) or a defect is not the developer's to fix, set the issue to blocked with the blocker report from sdlc-delivery-core and give each defect an Owner-role.",
 		},
 		{
 			StatusKey: issuestatus.Blocked, Handler: agent("lead"),
-			BackStatusKey: sdlcInProgressStatusKey,
-			Instructions:  sdlcBlockedInstructions,
+			Transitions:  issueworkflow.LegacyTransitions("", sdlcInProgressStatusKey),
+			Instructions: sdlcBlockedInstructions,
 		},
 	}...)
 }
@@ -378,11 +384,10 @@ func sdlcStageSteps(agents map[string]pgtype.UUID) []issueworkflow.Step {
 			continue
 		}
 		steps = append(steps, issueworkflow.Step{
-			StatusKey:     st.key,
-			Handler:       issueworkflow.Handler{Type: issueworkflow.HandlerAgent, ID: util.UUIDToString(id)},
-			NextStatusKey: sdlcStageDoneStatus.key,
-			BackStatusKey: issuestatus.Blocked,
-			Instructions:  sdlcPlanningBrief(skill[st.key], done[st.key]),
+			StatusKey:    st.key,
+			Handler:      issueworkflow.Handler{Type: issueworkflow.HandlerAgent, ID: util.UUIDToString(id)},
+			Transitions:  issueworkflow.LegacyTransitions(sdlcStageDoneStatus.key, issuestatus.Blocked),
+			Instructions: sdlcPlanningBrief(skill[st.key], done[st.key]),
 		})
 	}
 	none := issueworkflow.Handler{Type: issueworkflow.HandlerNone}

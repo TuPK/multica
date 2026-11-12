@@ -29,6 +29,39 @@ FOR UPDATE;
 -- name: ListSquads :many
 SELECT * FROM squad WHERE workspace_id = $1 AND archived_at IS NULL ORDER BY created_at ASC;
 
+-- name: LockSquadForWorkflowChange :one
+-- Serializes concurrent active-workflow switches of one squad.
+SELECT * FROM squad
+WHERE id = sqlc.arg('id')::uuid
+  AND workspace_id = sqlc.arg('workspace_id')::uuid
+FOR UPDATE;
+
+-- name: SetSquadActiveWorkflow :one
+UPDATE squad SET
+    active_workflow_id = sqlc.narg('workflow_id')::uuid,
+    updated_at = now()
+WHERE id = sqlc.arg('id')::uuid
+  AND workspace_id = sqlc.arg('workspace_id')::uuid
+RETURNING *;
+
+-- name: ListSquadsUsingIssueWorkflow :many
+-- The squads whose active workflow is the given one. A workflow a squad uses
+-- cannot be deleted, and an edit to it also remaps those squads' issues.
+SELECT * FROM squad
+WHERE workspace_id = sqlc.arg('workspace_id')::uuid
+  AND active_workflow_id = sqlc.arg('workflow_id')::uuid
+ORDER BY created_at, id;
+
+-- name: ListProjectSquadWorkflows :many
+-- The squads a project is assigned to, each with the workflow it uses now.
+-- A squad with no active workflow has an empty active_workflow_name.
+SELECT s.id, s.name, s.active_workflow_id, COALESCE(w.name, '')::text AS active_workflow_name
+FROM squad s
+LEFT JOIN issue_workflow w ON w.id = s.active_workflow_id AND w.workspace_id = s.workspace_id
+WHERE s.workspace_id = sqlc.arg('workspace_id')::uuid
+  AND s.id = ANY(sqlc.arg('squad_ids')::uuid[])
+ORDER BY s.created_at, s.id;
+
 -- name: ListSquadMemberPreviewRows :many
 -- Static squad membership summary for list/hover previews. This deliberately
 -- excludes derived runtime/task status; the squad detail members-status

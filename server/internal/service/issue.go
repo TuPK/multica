@@ -879,7 +879,7 @@ func (s *IssueService) createWorkflow(ctx context.Context, qtx *db.Queries, p Is
 	if !projectID.Valid {
 		return issueworkflow.OutsideProject(ctx, qtx, p.WorkspaceID)
 	}
-	def, _, err := issueworkflow.ForProject(ctx, qtx, p.WorkspaceID, projectID)
+	def, _, err := issueworkflow.ForIssue(ctx, qtx, p.WorkspaceID, projectID, p.AssigneeType, p.AssigneeID)
 	return def, err
 }
 

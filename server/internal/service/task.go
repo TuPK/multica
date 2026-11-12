@@ -6394,7 +6394,7 @@ func (s *TaskService) terminateTasksInTx(ctx context.Context, fail func(*db.Quer
 // blocked keeps the status, and the failure comment says what happened. Nothing
 // is queued for the landed status, so no run starts on its own.
 func FailedRunLandingStatus(ctx context.Context, q *db.Queries, issue db.Issue) string {
-	def, _, err := issueworkflow.ForProject(ctx, q, issue.WorkspaceID, issue.ProjectID)
+	def, _, err := issueworkflow.ForIssue(ctx, q, issue.WorkspaceID, issue.ProjectID, issue.AssigneeType, issue.AssigneeID)
 	if err != nil {
 		return ""
 	}

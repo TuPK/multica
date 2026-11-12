@@ -1,0 +1,1 @@
+-- Data backfill only. Migration 973 drops the column it fills.
