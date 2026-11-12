@@ -6,7 +6,7 @@ Vận hành bộ Kit Việt (spec [kitviet-squads.md](kitviet-squads.md), kế h
 
 | Tệp | Vai trò | Sửa tay? |
 | --- | --- | --- |
-| `packages/core/squads/kitviet-upstream/` | Bản vendor đã ghim commit, kèm `LICENSE`, `NOTICE.md`, `UPSTREAM.json` | Không. Chỉ thay bằng bản vendor mới |
+| `packages/core/squads/kitviet-upstream/` | Bản vendor đã ghim commit, kèm `LICENSE`, `NOTICE.md`, `UPSTREAM.json` | Không. Thay bằng `pnpm kitviet:update` (mục 2) |
 | `packages/core/squads/kitviet-rewrites.json` | Bảng viết lại: khối Pro, mục nền tảng, tên tệp, `VERDICT:` | Có, rồi sinh lại |
 | `packages/core/squads/kitviet-patches/*.json` | Bản vá khớp đúng một câu gốc (`find` → `replace`) | Có, rồi sinh lại |
 | `packages/core/squads/kitviet-squads/` | Cấu hình squad: mỗi nghề một JSON (`<nghề>.json`) gồm vai và loại vai, tầng lõi, skill lead, skill theo vai; `base.json` chung | Có, rồi sinh lại |
@@ -26,19 +26,49 @@ Quy tắc phân giải tham chiếu (F17) áp cho từng squad: `kv:x` nằm tro
 
 ## 2. Nâng commit upstream
 
-Làm trên một nhánh riêng. Không sửa tay tệp trong `kitviet-upstream/`.
+Một lệnh làm các bước máy làm được. Chạy từ gốc repo:
 
-1. Đọc changelog của upstream giữa commit cũ và commit mới. Ghi lại các skill và agent được thêm, bỏ, đổi tên.
-2. Cập nhật `UPSTREAM.json` (`ref`, `fetchedAt`). Chép lại đúng năm nghề và phần nền (`common/`) từ commit mới: chỉ `claude-code/kv/skills`, `claude-code/kv/agents` và bốn script xuất file. Không chép `codex/`, `claude-web/`, `brand/`, file nén.
-3. Cập nhật `NOTICE.md` (commit, ngày lấy, danh sách thay đổi ở mức tệp).
-4. Chạy `pnpm generate:kitviet`. Generator dừng với danh sách lỗi nếu:
-   - một `find` của bản vá không còn khớp đúng một chỗ: đọc lại câu mới, sửa `find` trong `kitviet-patches/`;
-   - một quy tắc viết lại không khớp nữa: hoặc upstream đã bỏ thứ đó (xóa quy tắc khỏi `kitviet-rewrites.json`), hoặc mẫu cần đổi;
-   - một agent đổi loại (ví dụ thêm `Write`): sửa `kind` trong `kitviet-squads/<nghề>.json`;
-   - một tham chiếu không biết (`unknown reference`): thêm skill vào squad hoặc viết lại.
-5. Đọc diff của `kitviet-skills-data/*.ts` theo từng squad, không chỉ số dòng. Kiểm bằng mắt: khối mới có chứa quảng cáo, đường dẫn cũ, mốc pháp luật mới không? Mốc pháp luật phải đi qua Sổ quy định, không nhúng vào skill (F8, F23).
-6. Chạy test: `node --test scripts/generate-kitviet-pack.test.mjs` và vitest của `squads`. Chạy `--check` hai lần.
-7. Mỗi squad có mốc luật trong charter hoặc sổ quy định: đối chiếu với nguồn chính thức trước khi đăng lại sổ.
+```
+pnpm kitviet:update                  # bản phát hành mới nhất (tag vX.Y.Z), hoặc HEAD của main nếu chưa có tag
+pnpm kitviet:update -- v1.5.1        # một tag, nhánh hoặc commit cụ thể
+pnpm kitviet:update -- --dry-run     # chạy toàn bộ trong bản sao tạm, không ghi gì vào repo
+```
+
+Để chạy với một bản clone cục bộ thay vì GitHub: `KITVIET_REMOTE=/đường/dẫn/tới/clone pnpm kitviet:update`.
+
+Lệnh làm theo thứ tự (`scripts/kitviet-update.mjs`):
+
+1. Hỏi remote bằng `git ls-remote` (chỉ đọc). Nếu commit đích trùng `UPSTREAM.json`, lệnh in "nothing to update" và thoát 0.
+2. Dừng nếu các đường dẫn sẽ bị thay (`kitviet-upstream/`, `kitviet-skills-data/`, `kitviet-previous-texts.ts`) hoặc đầu vào của text Kit Việt (cấu hình squad, bản vá, skill viết tay, template, `kitviet-agent-instructions.ts`, `instruction-blocks.ts`, generator) có thay đổi chưa commit. Lý do: text "cũ" được dựng từ working tree, nên một thay đổi chưa commit sẽ bị ghi vào registry như thể đã phát hành. Commit hoặc cất chúng trước; danh sách đầy đủ là `GUARDED_PATHS` trong `scripts/kitviet-update.mjs`.
+3. Tải đúng commit đó vào thư mục tạm bằng `git fetch --depth 1`. Không chạy script của upstream. Chỉ chấp nhận giấy phép MIT.
+4. Dựng bản sao tạm của `scripts/` và `packages/core/` (các `node_modules` được nối vào, không cài lại). Trong bản sao: vendor các nghề theo `UPSTREAM.json`; ghi text cũ vào registry nếu bản mới làm nó đổi; sinh lại dữ liệu; chạy `--check`, test node của generator và của script, `vitest run packages/core/squads packages/core/agents`, và `tsc`.
+5. Chỉ khi mọi bước đạt mới thay ba đường dẫn trong repo. Bản cũ được sao lưu trước; nếu một lần thay lỗi, các đường dẫn đã thay được khôi phục.
+6. In tóm tắt: ref cũ và mới, skill và agent thêm, đổi, bỏ; số bản vá đổi; số text đưa vào registry.
+
+Lệnh không commit, không push, không ghi lên mạng. Sau khi chạy:
+
+- Đọc `git status` và `git diff --stat`. Với bản đã kiểm (v1.5.0), diff của `kitviet-skills-data/*.ts` chỉ đổi trường `ref`. Nếu diff có nội dung khác, đọc theo từng nghề.
+- Kiểm bằng mắt: khối mới có quảng cáo, đường dẫn cũ, mốc pháp luật mới không? Mốc pháp luật đi qua Sổ quy định, không nhúng vào skill (F8, F23).
+- Chạy lại `node scripts/generate-kitviet-pack.mjs --check`, rồi commit bằng tay.
+
+Khi một bước trong stage lỗi, lệnh dừng, repo không đổi và thư mục stage được giữ lại (đường dẫn in ra). Các lỗi gặp thường gặp:
+
+- Bản vá không khớp (`patch matched nothing`): đọc câu mới, sửa `find` trong `kitviet-patches/<tên>.json`. Nếu upstream đã làm xong việc đó, xóa bản vá và ghi lý do vào mục 9.
+- Quy tắc viết lại không khớp (`stale rule`): upstream đã bỏ thứ đó. Xóa quy tắc khỏi `kitviet-rewrites.json`.
+- Skill mới không thuộc danh sách nào (`attached to nothing and not deferred`): thêm vào `deferredSkills` của squad (đóng gói, không gắn), hoặc vào `builtinSkills`/`roleSkills` nếu cần gắn, hoặc vào `droppedSkills` nếu giữ ngoài bản này. Ghi lý do ở mục 9.
+- Agent đổi loại (`is a drafter by its tools`): sửa `kind` trong `kitviet-squads/<nghề>.json`.
+- Tham chiếu lạ (`unknown reference`), hoặc tham chiếu tới skill đã bỏ: thêm skill vào squad, hoặc bỏ luôn skill phụ thuộc và ghi lý do.
+- Trích dẫn luật có số hiệu hoặc ngày (test "legal citations"): không thêm vào danh sách ổn định, vì danh sách đó cố ý rỗng. Patch câu đó để trỏ tới dòng của Sổ quy định, hoặc giữ skill ngoài pack đến khi có sổ.
+- Nghề mới của upstream: lệnh chỉ in tên nghề và bỏ qua. Để vendor, thêm nghề vào `UPSTREAM.json.trades` và tạo config squad.
+
+Registry: khi một text agent hoặc squad bị thay, lệnh ghi text cũ vào `kitviet-previous-texts.ts` (theo role key, hoặc vào danh sách squad). Entry cũ không bị sửa. Text không đổi thì không ghi, vì test registry cấm một text cũ trùng text hiện hành. Nhờ vậy workspace tạo từ bản cũ vẫn nâng được.
+
+Kiểm sau khi áp (chạy trong repo):
+
+- `node scripts/generate-kitviet-pack.mjs --check`
+- `node --test scripts/generate-kitviet-pack.test.mjs scripts/kitviet-update.test.mjs`
+- `pnpm exec vitest run packages/core/squads packages/core/agents`
+- `pnpm -C packages/core exec tsc --noEmit`
 
 Không nâng commit khi đang có diễn tập chạy trên bản cũ. Ghi số commit trong PR.
 
@@ -676,6 +706,13 @@ Gác nào trả CHẶN sau hai vòng thì squad dừng loại 3. Gác nào QUA m
 - **Mục nền tảng và dòng nhắc nền tảng trong bản vá.** Các câu như "(Claude Code: …)" và "lên Claude web" được viết lại qua `kitviet-rewrites.json` (`claude-code-colon-note`, `paste-into-chat-web`), không cần bản vá riêng.
 
 ## 9. Việc còn mở
+
+### Nâng cấp lên v1.5.0 (2026-11-12)
+
+- **Không đổi nội dung.** Từ v1.4.0 đến v1.5.0, mọi thay đổi trong upstream là dòng quảng cáo Pro, nằm trong khối bị gỡ. Không có bản vá nào đổi hay bị bỏ. Không có text agent hay squad nào đổi. Diff của dữ liệu sinh ra chỉ là trường `ref` của 348 cấu hình skill.
+- **Tám skill BIM của nghề xây dựng giữ ngoài pack.** Upstream 1.5.0 thêm `xay-dung/skills/`: `bao-cao-va-cham-bim`, `boc-khoi-luong-tu-ban-ve-cad`, `checklist-nop-ho-so-bim-tham-dinh`, `doi-chieu-khoi-luong-mo-hinh-du-toan`, `lap-bep-ke-hoach-thuc-hien-bim`, `lap-eir-yeu-cau-thong-tin-bim`, `quy-tac-dat-ten-cde-bim`, `tong-hop-vat-tu-theo-hang-muc`. Ba skill (`boc-khoi-luong-tu-ban-ve-cad`, `checklist-nop-ho-so-bim-tham-dinh`, `lap-eir-yeu-cau-thong-tin-bim`) trích Nghị định 206/2026/NĐ-CP, 217/2026/NĐ-CP, 10/2021 và 175/2024. Test "legal citations" chặn chúng, và nghề Xây dựng chưa có Sổ quy định để trỏ tới. Ba skill khác (`doi-chieu-khoi-luong-mo-hinh-du-toan`, `quy-tac-dat-ten-cde-bim`, `tong-hop-vat-tu-theo-hang-muc`) tham chiếu tới ba skill trên, `lap-bep-ke-hoach-thuc-hien-bim` tham chiếu tới `quy-tac-dat-ten-cde-bim`, và `bao-cao-va-cham-bim` giữ cùng nhóm vì cùng chủ đề BIM. Cả tám nằm trong `droppedSkills` của `kitviet-rewrites.json`; mã nguồn vẫn được vendor. **Cần chốt:** (a) đối chiếu nguồn chính thức cho các mốc trên; (b) nếu đưa vào, tạo Sổ quy định Xây dựng rồi patch câu trích dẫn; (c) gắn vào vai `construction_quantity` hay chỉ đóng gói (`deferredSkills`).
+- **Registry không ghi thêm text ở bản 1.5.0.** Vì đầu ra agent và squad không đổi, không có text cũ nào bị thay, nên lệnh không ghi gì. Các workspace tạo từ v1.4.0 đang trùng text hiện hành, nên vẫn nâng được. Ghi thêm bản v1.4.0 dù trùng text hiện hành sẽ vi phạm test "previous text ≠ current text". **Cần chốt:** có muốn ghi bản đối chứng này (và đổi test) không. Mặc định: không.
+- **Một bước vẫn cần tay.** `pnpm kitviet:update` là lệnh terminal, chưa có nút trong ứng dụng. Lệnh không commit. Mốc pháp luật mới trong upstream vẫn phải đối chiếu bằng tay. Nghề mới của upstream chỉ được in tên, chưa được vendor cho đến khi có config.
 
 - Registry nâng cấp (`kitviet-previous-texts.ts`) đã bổ sung 138 text, từ 142 lên 280 text agent và từ 70 lên 92 role key. Phần thêm: text gate của `f27661e8a` (48 role, bị thay bởi quy tắc không lặp dòng VERDICT), text gate của `1c604d8ad` (48 role, bị thay ở `2375d7ba1`), và text của `e787f2217` (42 role: 14 gate, 5 lead, 23 collector, drafter và handover, bị thay ở `1c604d8ad`). Nguồn là hàm `loadKitvietRoleInstructions` dựng lại từ `git archive` tại từng commit, so khớp theo role; không sửa entry cũ. Bằng chứng text đã được dùng: 53 agent trong DB diễn tập (`multica_multica_kitviet_332`, chỉ đọc) có text trùng phần thêm.
   - Không có tag release nào chứa commit Kit Việt, nên "đã phát hành" trong registry nghĩa là "đã có trên main". Commit Kit Việt đầu tiên trên lịch sử của HEAD là `aa996c9bb` (2026-11-10). `1e2ba5a19` không nằm trong lịch sử của HEAD.

@@ -16,7 +16,15 @@
   "droppedSkills": [
     "dieu-phoi-day-chuyen",
     "ho-so-ca-nhan",
-    "dong-goi-skill-moi"
+    "dong-goi-skill-moi",
+    "boc-khoi-luong-tu-ban-ve-cad",
+    "checklist-nop-ho-so-bim-tham-dinh",
+    "lap-eir-yeu-cau-thong-tin-bim",
+    "doi-chieu-khoi-luong-mo-hinh-du-toan",
+    "quy-tac-dat-ten-cde-bim",
+    "tong-hop-vat-tu-theo-hang-muc",
+    "bao-cao-va-cham-bim",
+    "lap-bep-ke-hoach-thuc-hien-bim"
   ],
   "renamedSkills": {
     "phap-ly": {

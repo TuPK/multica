@@ -5,8 +5,8 @@ Spec (nghiên cứu, thiết kế và triển khai trên nhánh `kitviet-pack`, 
 
 Ngôn ngữ: tiếng Việt để người dùng đọc; tên lệnh, status, file, kind, skill, role key và đoạn văn bản dành cho agent giữ tiếng Anh.
 
-Nguồn: [mochistudio-vn/kitviet](https://github.com/mochistudio-vn/kitviet), giấy phép MIT, bản đã đọc là commit
-`faee4f14cd21672325a7f442b19c7239a5d7f152` (2026-11-08, v1.4.0). Mọi con số dưới đây đo trên commit này.
+Nguồn: [mochistudio-vn/kitviet](https://github.com/mochistudio-vn/kitviet), giấy phép MIT, bản đang ghim là commit
+`505a472685c85ecefd4eb127ff016b988226ad05` (v1.5.0, commit ngày 2026-11-11), cập nhật ngày 2026-11-12 bằng `pnpm kitviet:update` (xem [runbook mục 2](kitviet-runbook.md#2-nâng-commit-upstream)). Bản trước là commit `faee4f14cd21672325a7f442b19c7239a5d7f152` (2026-11-08, v1.4.0). Các con số dưới đây đo trên v1.4.0 nếu không ghi khác. So với v1.5.0, bản mới chỉ đổi dòng quảng cáo trong khối Pro (đã bị gỡ) và thêm tám skill BIM của nghề xây dựng, các skill này đang giữ ngoài pack (runbook mục 9).
 
 ## 1. Tóm tắt
 

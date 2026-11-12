@@ -1,6 +1,6 @@
 # Kit Việt sample workspace (21 squads)
 
-Status: seeded. The 21 Kit Việt squads exist in the workspace below, instantiated through the quickstart code path. **No agent was run: no task was assigned and no issue exists in the workspace (0 issues).** The squads are inert until a request is assigned to one. Follow-up applied: the Operating review autopilots of Legal and Accounting are now paused, and the Office Admin squad and its seven agents carry the instructions of commit `1cae0e31e` (see Follow-up).
+Status: seeded on the v1.4.0 pack. The environment was destroyed on 2026-11-12. The pack is now upstream v1.5.0 (`505a472685c85ecefd4eb127ff016b988226ad05`), and the sample was not seeded again on it. The 21 Kit Việt squads existed in the workspace below, instantiated through the quickstart code path. **No agent was run: no task was assigned and no issue exists in the workspace (0 issues).** The squads are inert until a request is assigned to one. Follow-up applied: the Operating review autopilots of Legal and Accounting are now paused, and the Office Admin squad and its seven agents carry the instructions of commit `1cae0e31e` (see Follow-up).
 
 ## Environment
 
@@ -134,4 +134,5 @@ The API still reports commit `1e2ba5a19`: commit `1cae0e31e` changes only `packa
 2. The env's `make status` reports `api mismatch`: `api.pid` holds `3828461`, but the listener is `3829708`, and the health response matches the checkout's commit. The API is answering correctly; the pid file is stale.
 3. Web is stopped, so the UI was not opened. Nothing in the UI was checked.
 4. Not verified: the content of the instructions and skill bodies; the squads' charters beyond their presence; the squads' behavior (agents were not run); the re-run path (a second quickstart run was not tried).
+5. The environment was destroyed on 2026-11-12, so no live squad exists. The pack moved to upstream v1.5.0 after this seed; the seed was not repeated. Seed again in a new environment before any run, and check the squads' instructions against the v1.5.0 pack (the update kept every role's text, so the instructions should not change).
 

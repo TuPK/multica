@@ -12,7 +12,7 @@ export const KITVIET_BUILTIN_SKILLS: readonly KitvietSkill[] = [
     "config": {
       "source": "kitviet",
       "upstream": "mochistudio-vn/kitviet",
-      "ref": "faee4f14cd21672325a7f442b19c7239a5d7f152",
+      "ref": "505a472685c85ecefd4eb127ff016b988226ad05",
       "license": "MIT"
     }
   },
@@ -24,7 +24,7 @@ export const KITVIET_BUILTIN_SKILLS: readonly KitvietSkill[] = [
     "config": {
       "source": "kitviet",
       "upstream": "mochistudio-vn/kitviet",
-      "ref": "faee4f14cd21672325a7f442b19c7239a5d7f152",
+      "ref": "505a472685c85ecefd4eb127ff016b988226ad05",
       "license": "MIT"
     }
   },
@@ -36,7 +36,7 @@ export const KITVIET_BUILTIN_SKILLS: readonly KitvietSkill[] = [
     "config": {
       "source": "kitviet",
       "upstream": "mochistudio-vn/kitviet",
-      "ref": "faee4f14cd21672325a7f442b19c7239a5d7f152",
+      "ref": "505a472685c85ecefd4eb127ff016b988226ad05",
       "license": "MIT"
     }
   },
@@ -48,7 +48,7 @@ export const KITVIET_BUILTIN_SKILLS: readonly KitvietSkill[] = [
     "config": {
       "source": "kitviet",
       "upstream": "mochistudio-vn/kitviet",
-      "ref": "faee4f14cd21672325a7f442b19c7239a5d7f152",
+      "ref": "505a472685c85ecefd4eb127ff016b988226ad05",
       "license": "MIT"
     }
   },
@@ -60,7 +60,7 @@ export const KITVIET_BUILTIN_SKILLS: readonly KitvietSkill[] = [
     "config": {
       "source": "kitviet",
       "upstream": "mochistudio-vn/kitviet",
-      "ref": "faee4f14cd21672325a7f442b19c7239a5d7f152",
+      "ref": "505a472685c85ecefd4eb127ff016b988226ad05",
       "license": "MIT"
     }
   },
@@ -72,7 +72,7 @@ export const KITVIET_BUILTIN_SKILLS: readonly KitvietSkill[] = [
     "config": {
       "source": "kitviet",
       "upstream": "mochistudio-vn/kitviet",
-      "ref": "faee4f14cd21672325a7f442b19c7239a5d7f152",
+      "ref": "505a472685c85ecefd4eb127ff016b988226ad05",
       "license": "MIT"
     }
   },
@@ -89,7 +89,7 @@ export const KITVIET_BUILTIN_SKILLS: readonly KitvietSkill[] = [
     "config": {
       "source": "kitviet",
       "upstream": "mochistudio-vn/kitviet",
-      "ref": "faee4f14cd21672325a7f442b19c7239a5d7f152",
+      "ref": "505a472685c85ecefd4eb127ff016b988226ad05",
       "license": "MIT"
     }
   },
@@ -101,7 +101,7 @@ export const KITVIET_BUILTIN_SKILLS: readonly KitvietSkill[] = [
     "config": {
       "source": "kitviet",
       "upstream": "mochistudio-vn/kitviet",
-      "ref": "faee4f14cd21672325a7f442b19c7239a5d7f152",
+      "ref": "505a472685c85ecefd4eb127ff016b988226ad05",
       "license": "MIT"
     }
   },
@@ -113,7 +113,7 @@ export const KITVIET_BUILTIN_SKILLS: readonly KitvietSkill[] = [
     "config": {
       "source": "kitviet",
       "upstream": "mochistudio-vn/kitviet",
-      "ref": "faee4f14cd21672325a7f442b19c7239a5d7f152",
+      "ref": "505a472685c85ecefd4eb127ff016b988226ad05",
       "license": "MIT"
     }
   },
@@ -125,7 +125,7 @@ export const KITVIET_BUILTIN_SKILLS: readonly KitvietSkill[] = [
     "config": {
       "source": "kitviet",
       "upstream": "mochistudio-vn/kitviet",
-      "ref": "faee4f14cd21672325a7f442b19c7239a5d7f152",
+      "ref": "505a472685c85ecefd4eb127ff016b988226ad05",
       "license": "MIT"
     }
   },
@@ -137,7 +137,7 @@ export const KITVIET_BUILTIN_SKILLS: readonly KitvietSkill[] = [
     "config": {
       "source": "kitviet",
       "upstream": "mochistudio-vn/kitviet",
-      "ref": "faee4f14cd21672325a7f442b19c7239a5d7f152",
+      "ref": "505a472685c85ecefd4eb127ff016b988226ad05",
       "license": "MIT"
     }
   }

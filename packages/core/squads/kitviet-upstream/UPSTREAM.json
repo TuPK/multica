@@ -1,8 +1,9 @@
 {
   "repo": "mochistudio-vn/kitviet",
-  "ref": "faee4f14cd21672325a7f442b19c7239a5d7f152",
+  "ref": "505a472685c85ecefd4eb127ff016b988226ad05",
+  "version": "v1.5.0",
   "license": "MIT",
-  "fetchedAt": "2026-11-10",
+  "fetchedAt": "2026-11-12",
   "trades": [
     "phap-ly",
     "ke-toan",
