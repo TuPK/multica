@@ -273,5 +273,29 @@
       "not_configured": "설정 안 됨",
       "unknown": "알 수 없음"
     }
+  },
+  "kitviet_update": {
+    "button": "Kit Việt 업데이트",
+    "title": "Kit Việt 스쿼드 업데이트 완료",
+    "running": "Kit Việt 스쿼드 업데이트 중…",
+    "none": "이 워크스페이스에 Kit Việt 스쿼드가 없습니다.",
+    "agents": "에이전트: 업데이트 {{upgraded}}, 최신 {{current}}, 유지 {{kept}}, 실패 {{failed}}",
+    "squad": "스쿼드 지침: {{status}}",
+    "skills": "스킬: {{status}}",
+    "kept_note": "유지된 텍스트는 직접 수정한 내용입니다. 덮어쓰지 않습니다.",
+    "close": "닫기",
+    "toast_done": "Kit Việt 스쿼드가 최신 상태입니다",
+    "toast_problems": "일부 Kit Việt 스쿼드를 확인해야 합니다",
+    "toast_failed": "Kit Việt 업데이트에 실패했습니다",
+    "statuses": {
+      "upgraded": "업데이트됨",
+      "current": "최신",
+      "kept": "유지됨(직접 수정)",
+      "missing": "워크스페이스에 없음",
+      "failed": "실패",
+      "ready": "준비됨",
+      "partial": "일부 완료",
+      "skipped": "변경 없음"
+    }
   }
 }

@@ -275,5 +275,29 @@
       "not_configured": "Sin configurar",
       "unknown": "Desconocido"
     }
+  },
+  "kitviet_update": {
+    "button": "Actualizar Kit Việt",
+    "title": "Squads de Kit Việt actualizados",
+    "running": "Actualizando squads de Kit Việt…",
+    "none": "No hay ningún squad de Kit Việt en este espacio de trabajo.",
+    "agents": "Agentes: {{upgraded}} actualizados, {{current}} al día, {{kept}} conservados, {{failed}} con error",
+    "squad": "Instrucciones del squad: {{status}}",
+    "skills": "Habilidades: {{status}}",
+    "kept_note": "Los textos conservados son los que editó usted mismo. No se sobrescriben.",
+    "close": "Cerrar",
+    "toast_done": "Los squads de Kit Việt están al día",
+    "toast_problems": "Algunos squads de Kit Việt necesitan revisión",
+    "toast_failed": "No se pudo actualizar Kit Việt",
+    "statuses": {
+      "upgraded": "actualizado",
+      "current": "al día",
+      "kept": "conservado, lo editó usted",
+      "missing": "no está en este espacio de trabajo",
+      "failed": "con error",
+      "ready": "listo",
+      "partial": "parcial",
+      "skipped": "nada que hacer"
+    }
   }
 }

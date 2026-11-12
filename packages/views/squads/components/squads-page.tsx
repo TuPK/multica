@@ -33,6 +33,8 @@ import {
 import type { Agent, MemberWithUser, Squad } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
 import { SquadsIntro } from "./squads-intro";
+import { KitvietUpdateButton } from "./kitviet-update-button";
+import { hasKitvietSquad } from "@multica/core/squads/kitviet-update";
 import {
   Dialog,
   DialogContent,
@@ -602,6 +604,7 @@ export function SquadsPage() {
               onToggleColumn={(key) => toggleColumn(key as SquadColumnKey)}
               sort={sort}
             />
+            <KitvietUpdateButton wsId={wsId} visible={isWorkspaceAdmin && hasKitvietSquad(squads)} />
             <IconButton
               tooltipSide="bottom"
               label={t(($) => $.page.quickstart_button)}

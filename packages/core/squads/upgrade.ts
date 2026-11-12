@@ -27,7 +27,7 @@ import {
   SDLC_PREVIOUS_SQUAD_INSTRUCTIONS,
   SDLC_PREVIOUS_STEP_INSTRUCTIONS,
 } from "./sdlc-previous-texts";
-import { SQUAD_ROLES, type SquadRoleKey, type SquadTemplate } from "./templates";
+import { SQUAD_ROLES, SQUAD_TEMPLATES, squadTemplateCategory, type SquadRoleKey, type SquadTemplate } from "./templates";
 
 /**
  * Brings a squad the quickstart made earlier up to the current SDLC template: the built-in
@@ -316,4 +316,35 @@ export async function upgradeKitvietSquad(
     }
   }
   return result;
+}
+
+export interface KitvietWorkspaceUpgradeEntry {
+  templateId: string;
+  name: string;
+  result: KitvietUpgradeResult;
+}
+
+/**
+ * Runs upgradeKitvietSquad for each Kit Viet template and returns the squads the workspace has.
+ * A template whose squad is not in the workspace is skipped, so a workspace that never ran the
+ * quickstart for a pack gets nothing from it. Options are the same as upgradeKitvietSquad's.
+ */
+export async function upgradeKitvietWorkspace(
+  client: KitvietUpgradeClient,
+  templates: readonly SquadTemplate[],
+  options: Parameters<typeof upgradeKitvietSquad>[2] = {},
+): Promise<KitvietWorkspaceUpgradeEntry[]> {
+  const entries: KitvietWorkspaceUpgradeEntry[] = [];
+  for (const template of templates) {
+    const result = await upgradeKitvietSquad(client, template, options);
+    if (result.squad.status === "missing") continue;
+    entries.push({ templateId: template.id, name: template.name, result });
+  }
+  return entries;
+}
+
+/** Whether a squad with this name is one of the Kit Viet quickstart squads. */
+export function hasKitvietSquad(squads: readonly { name: string; archived_at?: string | null }[]): boolean {
+  const names = new Set(SQUAD_TEMPLATES.filter((tpl) => squadTemplateCategory(tpl) === "kitviet").map((tpl) => tpl.name));
+  return squads.some((s) => !s.archived_at && names.has(s.name));
 }

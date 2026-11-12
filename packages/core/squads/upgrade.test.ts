@@ -7,7 +7,7 @@ import {
   SDLC_PREVIOUS_STEP_INSTRUCTIONS,
 } from "./sdlc-previous-texts";
 import { instructionsFor, workflowSteps } from "./quickstart";
-import { mergeWorkflowSteps, upgradeKitvietSquad, upgradeSdlcSquad, type KitvietUpgradeClient, type SdlcUpgradeClient } from "./upgrade";
+import { hasKitvietSquad, mergeWorkflowSteps, upgradeKitvietSquad, upgradeKitvietWorkspace, upgradeSdlcSquad, type KitvietUpgradeClient, type SdlcUpgradeClient } from "./upgrade";
 import { KITVIET_PREVIOUS_AGENT_INSTRUCTIONS, KITVIET_PREVIOUS_SQUAD_INSTRUCTIONS } from "./kitviet-previous-texts";
 import { findKitvietRole } from "./kitviet-squad-roles";
 import { kitvietPackOf } from "./kitviet-packs";
@@ -401,3 +401,103 @@ describe("upgradeKitvietSquad", () => {
   });
 });
 
+
+describe("upgradeKitvietSquad skills and the whole workspace", () => {
+  const kvTemplate = SQUAD_TEMPLATES.find((t) => t.id === "kv_admin")!;
+  const previous = { agents: {}, squad: [] as string[] };
+
+  async function workspace(present: readonly SquadTemplate[]) {
+    const agents: Agent[] = [];
+    for (const tpl of present) {
+      for (const role of tpl.roles) {
+        agents.push({
+          id: `${tpl.id}-${role}`,
+          name: SQUAD_ROLES[role].name,
+          archived_at: null,
+          instructions: await instructionsFor(role),
+        } as unknown as Agent);
+      }
+    }
+    const squads = present.map((tpl) => ({
+      id: `${tpl.id}-squad`,
+      name: tpl.name,
+      archived_at: null,
+      leader_id: `${tpl.id}-${tpl.leader}`,
+      instructions: tpl.instructions,
+    }));
+    const client = {
+      listAgents: vi.fn(async () => agents as unknown as Agent[]),
+      listSquads: vi.fn(async () => squads as unknown as Squad[]),
+      listSquadMembers: vi.fn(async () => []),
+      updateAgent: vi.fn(async () => ({}) as Agent),
+      updateSquad: vi.fn(async () => ({}) as Squad),
+      listSkills: vi.fn(async () => []),
+      getSkill: vi.fn(),
+      createSkill: vi.fn(async (data: { name: string }) => ({ id: `s-${data.name}` })),
+      updateSkill: vi.fn(),
+      listSquadSkills: vi.fn(async () => []),
+      setSquadSkills: vi.fn(async () => []),
+      addAgentSkills: vi.fn(async () => undefined),
+    };
+    return client as unknown as KitvietUpgradeClient & typeof client;
+  }
+
+  it("refreshes a Kit Viet skill the workspace holds with an older text", async () => {
+    const client = await workspace([kvTemplate]);
+    const skill = kvTemplate.builtinSkills[0]!;
+    client.listSkills.mockResolvedValue([{ id: "sk-old", name: skill } as never]);
+    client.getSkill.mockResolvedValue({
+      id: "sk-old",
+      name: skill,
+      config: { source: "kitviet" },
+      description: "an older description",
+      content: "an older body",
+      files: [],
+    } as never);
+
+    await upgradeKitvietSquad(client, kvTemplate, { previous });
+
+    expect(client.updateSkill).toHaveBeenCalledTimes(1);
+    const [id, data] = client.updateSkill.mock.calls[0] as unknown as [string, { content: string }];
+    expect(id).toBe("sk-old");
+    expect(data.content).not.toBe("an older body");
+    expect(data.content.length).toBeGreaterThan(0);
+  });
+
+  it("upgrades the Kit Viet squads that exist and skips the templates the workspace does not have", async () => {
+    const other = SQUAD_TEMPLATES.find((t) => t.id === "kv_legal")!;
+    const client = await workspace([kvTemplate]);
+
+    const results = await upgradeKitvietWorkspace(client, [kvTemplate, other], { previous });
+
+    expect(results.map((r) => r.templateId)).toEqual([kvTemplate.id]);
+    expect(results[0]!.result.squad.status).toBe("current");
+  });
+
+  it("writes nothing on a dry run for the whole workspace", async () => {
+    const drafter = kvTemplate.roles.find((r) => r !== kvTemplate.leader)!;
+    const client = await workspace([kvTemplate]);
+    client.listAgents.mockResolvedValue([
+      { id: `${kvTemplate.id}-${drafter}`, name: SQUAD_ROLES[drafter].name, archived_at: null, instructions: "old text" } as never,
+    ]);
+
+    const results = await upgradeKitvietWorkspace(client, [kvTemplate], {
+      dryRun: true,
+      previous: { agents: { [drafter]: ["old text"] }, squad: [] },
+    });
+
+    expect(results[0]!.result.agents.find((a) => a.role === drafter)!.status).toBe("upgraded");
+    expect(client.updateAgent).not.toHaveBeenCalled();
+  });
+});
+
+describe("hasKitvietSquad", () => {
+  const kv = SQUAD_TEMPLATES.find((t) => t.id === "kv_admin")!;
+  it("finds a live Kit Viet squad by its template name", () => {
+    expect(hasKitvietSquad([{ name: kv.name, archived_at: null }])).toBe(true);
+  });
+  it("ignores archived squads and squads that are not Kit Viet", () => {
+    expect(hasKitvietSquad([{ name: kv.name, archived_at: "2026-11-01T00:00:00Z" }])).toBe(false);
+    expect(hasKitvietSquad([{ name: "My own squad", archived_at: null }])).toBe(false);
+  });
+});

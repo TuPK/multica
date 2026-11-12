@@ -275,5 +275,29 @@
       "not_configured": "Not configured",
       "unknown": "Unknown"
     }
+  },
+  "kitviet_update": {
+    "button": "Update Kit Việt",
+    "title": "Kit Việt squads updated",
+    "running": "Updating Kit Việt squads…",
+    "none": "No Kit Việt squad is in this workspace.",
+    "agents": "Agents: {{upgraded}} updated, {{current}} current, {{kept}} kept, {{failed}} failed",
+    "squad": "Squad instructions: {{status}}",
+    "skills": "Skills: {{status}}",
+    "kept_note": "Kept texts are ones you edited yourself. They are not overwritten.",
+    "close": "Close",
+    "toast_done": "Kit Việt squads are up to date",
+    "toast_problems": "Some Kit Việt squads need a look",
+    "toast_failed": "Kit Việt update failed",
+    "statuses": {
+      "upgraded": "updated",
+      "current": "already current",
+      "kept": "kept, you edited it",
+      "missing": "not in this workspace",
+      "failed": "failed",
+      "ready": "ready",
+      "partial": "partly done",
+      "skipped": "nothing to do"
+    }
   }
 }

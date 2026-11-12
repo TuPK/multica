@@ -9,7 +9,11 @@ import {
   type QuickstartOptions,
   type QuickstartOutcome,
 } from "./quickstart";
-import type { SquadTemplate } from "./templates";
+import { SQUAD_TEMPLATES, squadTemplateCategory, type SquadTemplate } from "./templates";
+import { upgradeKitvietWorkspace, type KitvietWorkspaceUpgradeEntry } from "./upgrade";
+
+export type { KitvietWorkspaceUpgradeEntry };
+export { hasKitvietSquad } from "./upgrade";
 
 /**
  * Runs a squad template's quickstart. The outcome says what was created, what
@@ -32,6 +36,27 @@ export function useSquadQuickstart(wsId: string) {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: workspaceKeys.agents(wsId) });
       qc.invalidateQueries({ queryKey: workspaceKeys.squads(wsId) });
+      qc.invalidateQueries({ queryKey: issueWorkflowKeys.all(wsId) });
+    },
+  });
+}
+
+/**
+ * Brings every Kit Viet squad in the workspace up to the current pack: its agents' and squad's
+ * instructions and its skills. Texts the boss edited are kept and reported in the result.
+ */
+export function useUpgradeKitvietSquads(wsId: string) {
+  const qc = useQueryClient();
+  return useMutation<KitvietWorkspaceUpgradeEntry[], Error, void>({
+    mutationFn: () =>
+      upgradeKitvietWorkspace(
+        api,
+        SQUAD_TEMPLATES.filter((tpl) => squadTemplateCategory(tpl) === "kitviet"),
+      ),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: workspaceKeys.agents(wsId) });
+      qc.invalidateQueries({ queryKey: workspaceKeys.squads(wsId) });
+      qc.invalidateQueries({ queryKey: workspaceKeys.skills(wsId) });
       qc.invalidateQueries({ queryKey: issueWorkflowKeys.all(wsId) });
     },
   });

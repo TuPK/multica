@@ -39,6 +39,7 @@ vi.mock("@multica/core/workspace/queries", () => ({
   memberListOptions: () => ({ queryKey: ["members"] }),
   squadListOptions: () => ({ queryKey: ["squads"] }),
   workspaceKeys: { squads: () => ["squads"] },
+  workspaceListOptions: () => ({ queryKey: ["workspaces"] }),
 }));
 vi.mock("@multica/core/paths", () => ({
   useCurrentWorkspace: () => ({ id: "ws-1", slug: "acme" }),

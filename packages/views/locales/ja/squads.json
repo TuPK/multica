@@ -273,5 +273,29 @@
       "not_configured": "未設定",
       "unknown": "不明"
     }
+  },
+  "kitviet_update": {
+    "button": "Kit Việt を更新",
+    "title": "Kit Việt のスクワッドを更新しました",
+    "running": "Kit Việt のスクワッドを更新中…",
+    "none": "このワークスペースに Kit Việt のスクワッドはありません。",
+    "agents": "エージェント: 更新 {{upgraded}}、最新 {{current}}、保持 {{kept}}、失敗 {{failed}}",
+    "squad": "スクワッドの指示: {{status}}",
+    "skills": "スキル: {{status}}",
+    "kept_note": "保持されたテキストはご自身で編集したものです。上書きされません。",
+    "close": "閉じる",
+    "toast_done": "Kit Việt のスクワッドは最新です",
+    "toast_problems": "一部の Kit Việt スクワッドに確認が必要です",
+    "toast_failed": "Kit Việt の更新に失敗しました",
+    "statuses": {
+      "upgraded": "更新済み",
+      "current": "最新",
+      "kept": "保持（ご自身で編集）",
+      "missing": "このワークスペースにありません",
+      "failed": "失敗",
+      "ready": "準備完了",
+      "partial": "一部完了",
+      "skipped": "対象なし"
+    }
   }
 }

@@ -94,6 +94,7 @@
     "./agent-packs": "./agent-packs/index.ts",
     "./squads": "./squads/index.ts",
     "./squads/stores": "./squads/stores/index.ts",
+    "./squads/kitviet-update": "./squads/kitviet-update.ts",
     "./knowledge": "./knowledge/index.ts",
     "./company": "./company/index.ts",
     "./pipeline": "./pipeline/index.ts",

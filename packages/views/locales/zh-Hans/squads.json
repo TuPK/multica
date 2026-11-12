@@ -273,5 +273,29 @@
       "not_configured": "未配置",
       "unknown": "未知"
     }
+  },
+  "kitviet_update": {
+    "button": "更新 Kit Việt",
+    "title": "Kit Việt 小队已更新",
+    "running": "正在更新 Kit Việt 小队…",
+    "none": "此工作区中没有 Kit Việt 小队。",
+    "agents": "智能体：已更新 {{upgraded}}，已是最新 {{current}}，已保留 {{kept}}，失败 {{failed}}",
+    "squad": "小队指令：{{status}}",
+    "skills": "技能：{{status}}",
+    "kept_note": "保留的文本是您自己编辑过的，不会被覆盖。",
+    "close": "关闭",
+    "toast_done": "Kit Việt 小队已是最新",
+    "toast_problems": "部分 Kit Việt 小队需要检查",
+    "toast_failed": "Kit Việt 更新失败",
+    "statuses": {
+      "upgraded": "已更新",
+      "current": "已是最新",
+      "kept": "已保留（您已编辑）",
+      "missing": "工作区中不存在",
+      "failed": "失败",
+      "ready": "已就绪",
+      "partial": "部分完成",
+      "skipped": "无需处理"
+    }
   }
 }
