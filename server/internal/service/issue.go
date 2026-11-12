@@ -215,6 +215,11 @@ type IssueCreateResult struct {
 	DuplicateIssue *db.Issue
 }
 
+// issueEnqueueTimeout bounds the run and squad-leader enqueue that follows an
+// issue create, and the follow-up writes after a quick-create insert. Those
+// run on a context detached from the request, so they need their own deadline.
+const issueEnqueueTimeout = 30 * time.Second
+
 // Create runs the full issue-creation pipeline atomically end-to-end:
 //
 //  1. Begin transaction.
@@ -539,6 +544,12 @@ func (s *IssueService) Create(ctx context.Context, p IssueCreateParams, opts Iss
 		actorID = util.UUIDToString(issue.CreatorID)
 	}
 
+	// The issue is committed and kept even if the request is gone, so the run it
+	// starts must not depend on the request's context. A client that gave up after
+	// the commit used to leave the issue with no run and no error.
+	enqueueCtx, cancelEnqueue := context.WithTimeout(context.WithoutCancel(ctx), issueEnqueueTimeout)
+	defer cancelEnqueue()
+
 	var assignedTaskID pgtype.UUID
 	if !opts.AssignedAgentRunFireAt.IsZero() {
 		assignedTaskID = assignedTask.ID
@@ -546,7 +557,7 @@ func (s *IssueService) Create(ctx context.Context, p IssueCreateParams, opts Iss
 			// The deferred task became durable with the issue at commit. Refresh the
 			// daemon's schedule only now so a wakeup can never race uncommitted data.
 			s.TaskService.notifyRuntimeMayHaveWork(assignedTask.RuntimeID, "")
-			if err := s.TaskService.hydrateDeferredChannelIssueTaskOverlay(ctx, assignedTask); err != nil {
+			if err := s.TaskService.hydrateDeferredChannelIssueTaskOverlay(enqueueCtx, assignedTask); err != nil {
 				// Runtime overlays are best-effort on every enqueue path. The task is
 				// already durable and safely deferred, so an optional integration
 				// failure must not turn a committed issue into a retry duplicate.
@@ -555,18 +566,18 @@ func (s *IssueService) Create(ctx context.Context, p IssueCreateParams, opts Iss
 					"task_id", util.UUIDToString(assignedTask.ID),
 					"error", err)
 			}
-		} else if s.shouldEnqueueSquadLeaderOnAssign(ctx, issue) {
+		} else if s.shouldEnqueueSquadLeaderOnAssign(enqueueCtx, issue) {
 			// AssignedAgentRunFireAt currently belongs to channel /issue, which
 			// always resolves an agent assignee. Preserve the ordinary squad path
 			// for any future caller that supplies the option with a squad.
-			s.enqueueSquadLeaderTask(ctx, issue, pgtype.UUID{}, p.CreatorType, actorID)
+			s.enqueueSquadLeaderTask(enqueueCtx, issue, pgtype.UUID{}, p.CreatorType, actorID)
 		}
 	}
 
 	s.publishIssueCreated(issue, attachments, labels, p.CreatorType, actorID, opts)
 	s.captureCreatedAnalytics(issue, p.CreatorType, actorID, opts)
 	if opts.AssignedAgentRunFireAt.IsZero() {
-		assignedTaskID = s.maybeEnqueueOnAssign(ctx, issue, p.CreatorType, actorID, opts.AssignedAgentRunFireAt)
+		assignedTaskID = s.maybeEnqueueOnAssign(enqueueCtx, issue, p.CreatorType, actorID, opts.AssignedAgentRunFireAt)
 	}
 	// Creating an issue already assigned to an agent is the member delegating
 	// work. The run itself is attributed through the creator fallback, which

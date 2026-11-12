@@ -1745,6 +1745,11 @@ func (s *TaskService) enqueueQuickCreateTask(ctx context.Context, workspaceID, r
 		return db.AgentTaskQueue{}, fmt.Errorf("create quick-create task with source context: %w", err)
 	}
 
+	// The task is durable now, so its follow-up writes must not depend on the
+	// request's context. Same detached deadline as IssueService.Create.
+	enqueueCtx, cancelEnqueue := context.WithTimeout(context.WithoutCancel(ctx), issueEnqueueTimeout)
+	defer cancelEnqueue()
+
 	slog.Info("quick-create task enqueued",
 		"task_id", util.UUIDToString(task.ID),
 		"agent_id", util.UUIDToString(agentID),
@@ -1759,8 +1764,8 @@ func (s *TaskService) enqueueQuickCreateTask(ctx context.Context, workspaceID, r
 	// cycle. Without this the user perceives "quick create never
 	// triggered" because the modal closes immediately and the task
 	// sits in 'queued' until the next sleepWithContextOrWakeup tick.
-	s.RecordHumanDelegation(ctx, attr)
-	s.NotifyTaskEnqueued(ctx, task)
+	s.RecordHumanDelegation(enqueueCtx, attr)
+	s.NotifyTaskEnqueued(enqueueCtx, task)
 	return task, nil
 }
 
