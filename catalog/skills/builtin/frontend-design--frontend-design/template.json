@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill",
+  "id": "frontend-design:frontend-design",
+  "version": "1.0.0",
+  "sets": [
+    "planning"
+  ],
+  "source": {
+    "type": "vendored",
+    "repo": "anthropics/skills",
+    "ref": "content-sha256:063a0e6448123cd359ad0044cc46b0e490cc7964d45ef4bb9fd842bd2ffbca67",
+    "license": "Apache-2.0"
+  }
+}

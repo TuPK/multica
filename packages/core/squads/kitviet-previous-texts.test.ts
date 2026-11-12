@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { loadKitvietRoleInstructions } from "./kitviet-packs";
 import { KITVIET_PREVIOUS_AGENT_INSTRUCTIONS } from "./kitviet-previous-texts";
-import { KITVIET_SQUADS } from "./kitviet-skills-data/squads";
+import { KITVIET_SQUADS } from "../catalog/generated/kitviet/squads";
 import { findKitvietRole } from "./kitviet-squad-roles";
 
 const NO_REPEAT_RULE = "Do not repeat the VERDICT line in the conclusion or anywhere else in the comment.";

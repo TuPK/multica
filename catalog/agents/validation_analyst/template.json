@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "kind": "agent",
+  "id": "validation_analyst",
+  "version": "1.0.0",
+  "order": 220
+}

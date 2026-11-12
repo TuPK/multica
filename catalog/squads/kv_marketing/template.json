@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "kind": "squad",
+  "id": "kv_marketing",
+  "version": "1.0.0",
+  "collection": "kitviet",
+  "order": 30,
+  "squad": {
+    "name": "Marketing Studio (Marketing)",
+    "description": "Drafts campaign content and ad copy from Growth & GTM briefs, and checks every claim against the Marketing regulation register before a person publishes. Posts and runs nothing.",
+    "floorName": "Launch",
+    "leader": "mkt_lead",
+    "operatingReview": false,
+    "workflow": null,
+    "roles": [
+      {
+        "key": "mkt_lead",
+        "description": "Leads Marketing Studio: plans each campaign, holds its main message for approval, checks each handover, and reports.",
+        "role": "Squad leader"
+      },
+      {
+        "key": "mkt_scout",
+        "description": "Reads competitors' public content and market sources, with the link and the date for each finding.",
+        "role": "Competitor and market scan on the web"
+      },
+      {
+        "key": "mkt_insight",
+        "description": "Reads the comments, reviews and surveys in the files it is given, counts the themes, and quotes customers without their names.",
+        "role": "Customer voice from comments and reviews"
+      },
+      {
+        "key": "mkt_content",
+        "description": "Drafts the campaign calendar, posts, short video scripts and emails from the approved message, keeping internal notes apart from the sendable text.",
+        "role": "Multi-channel content drafts"
+      },
+      {
+        "key": "mkt_ads",
+        "description": "Drafts ad copy variants for Meta, TikTok and Google, counted against each channel's limits, with the landing page copy.",
+        "role": "Ad copy and landing page drafts"
+      },
+      {
+        "key": "mkt_claim_gate",
+        "description": "Checks every draft for claims that need a source or a legal basis, against the Marketing regulation register. Writes no drafts of its own.",
+        "role": "Claim check against the advertising rules"
+      },
+      {
+        "key": "mkt_voice_gate",
+        "description": "Checks every draft against the brand voice playbook: forms of address, banned words, emoji, length and call to action. Writes no drafts of its own.",
+        "role": "Brand voice check"
+      },
+      {
+        "key": "mkt_numbers_gate",
+        "description": "Recomputes every market figure in a draft with a script and checks its source, year and scope. Writes no drafts of its own.",
+        "role": "Market figure check"
+      },
+      {
+        "key": "mkt_handover",
+        "description": "Compares the finished campaign with the lead's plan and the gate verdicts, and lists what a person must decide before anything goes out.",
+        "role": "Final handover check"
+      }
+    ],
+    "routines": [],
+    "charter": {
+      "mission": "Produce campaign content and ad copy and check every claim before it is published.",
+      "responsibilities": [
+        {
+          "key": "plan",
+          "text": "Outline each campaign and hold its main message for approval before any content is drafted."
+        },
+        {
+          "key": "content",
+          "text": "Draft multi-channel content and the campaign calendar from the approved message and the research."
+        },
+        {
+          "key": "ads",
+          "text": "Draft ad copy variants and landing page copy within each channel's character limits."
+        },
+        {
+          "key": "gates",
+          "text": "Before handover, check each draft's claims against the Marketing regulation register, its tone against the brand voice playbook, and its market figures against their sources."
+        }
+      ],
+      "outputs": [
+        {
+          "key": "content_pack",
+          "kind": "issue",
+          "cadenceHint": "per campaign"
+        },
+        {
+          "key": "claim_report",
+          "kind": "report",
+          "cadenceHint": "per campaign"
+        }
+      ],
+      "boundaries": "Does not post, run ads or brief creators; sensitive sectors always pass the claim gate. Nothing leaves the workspace: no sending, filing, signing, posting or publishing; the person who asked does that.",
+      "escalation": "Message not approved: stop at the message gate; claim blocked after two rounds: hand to the requester with the blocked lines.",
+      "intake": "Requests arrive as issues assigned to this squad. Wording people use: chiến dịch, bài fanpage, ad copy, landing, kịch bản, soát claim quảng cáo, minigame."
+    }
+  },
+  "adapter": {
+    "type": "kitviet"
+  }
+}

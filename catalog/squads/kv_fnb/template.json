@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "kind": "squad",
+  "id": "kv_fnb",
+  "version": "1.0.0",
+  "collection": "vertical",
+  "order": 30,
+  "expertReview": true,
+  "squad": {
+    "name": "F&B Ops (Nhà hàng, quán ăn)",
+    "description": "Costs new dishes and menu changes from the shop's recipes and purchase invoices, and checks every allergen line and food cost figure with two independent gates before anything is printed or posted. Prints, posts and orders nothing.",
+    "floorName": "F&B",
+    "leader": "fnb_lead",
+    "operatingReview": false,
+    "workflow": null,
+    "roles": [
+      {
+        "key": "fnb_lead",
+        "description": "Leads F&B Ops: plans each dish launch or menu change, holds each stop for the owner, checks each handover, and reports.",
+        "role": "Squad leader"
+      },
+      {
+        "key": "fnb_reader",
+        "description": "Reads the shop's recipes, purchase invoices, product labels and POS or stock files, and returns each figure with its file and location.",
+        "role": "Recipes, purchase prices and label text from the shop's files"
+      },
+      {
+        "key": "fnb_regulation",
+        "description": "Looks up the current food safety, business licence and fire rules for a restaurant or cafe, on official sources, with each source's level and access date.",
+        "role": "Official rules for licences and food safety, with sources"
+      },
+      {
+        "key": "fnb_drafter",
+        "description": "Drafts food cost tables, 2-3 price options, menu descriptions with allergen lines, SOPs, checklists, rosters and reports from the collected facts only.",
+        "role": "Food cost tables, menu descriptions and operating drafts"
+      },
+      {
+        "key": "fnb_allergen_gate",
+        "description": "Checks every ingredient and label line of a dish against its allergen lines, vegan labels and health claims. Writes no drafts and changes nothing.",
+        "role": "Allergen, food safety and claim check (gate)"
+      },
+      {
+        "key": "fnb_margin_gate",
+        "description": "Recomputes every food cost line, unit conversion, yield, VAT and packaging figure, and flags any fee or rate the owner has not confirmed. Writes no drafts.",
+        "role": "Food cost, margin and figure check (gate)"
+      },
+      {
+        "key": "fnb_handover",
+        "description": "Compares the finished draft with the approved plan and both gate verdicts, and lists what the owner and the chef must confirm before anything is printed or posted.",
+        "role": "Final handover check"
+      }
+    ],
+    "routines": [],
+    "charter": {
+      "mission": "Cost each new dish and check its allergen lines and food cost against the shop's own recipes and purchase invoices, before the owner prints a menu or posts a dish.",
+      "responsibilities": [
+        {
+          "key": "plan",
+          "text": "Outline each dish launch or menu change, and list the recipes, invoices and labels it needs, before any costing is done."
+        },
+        {
+          "key": "sources",
+          "text": "Collect each recipe quantity, purchase price, date and label line with its file and location; a missing item stays [cần bổ sung]."
+        },
+        {
+          "key": "drafts",
+          "text": "Draft the food cost table, 2-3 price options, menu descriptions and operating documents from the collected facts only, with every figure computed by script."
+        },
+        {
+          "key": "gates",
+          "text": "Before handover, an independent allergen and food safety gate checks each dish line and claim, and an independent margin gate recomputes each cost figure; a Chặn or Cần giấy tờ finding blocks the dish."
+        },
+        {
+          "key": "regulation",
+          "text": "Look up the current licence, food safety and fire rules on official sources, with each source's level and access date, and mark any rule that depends on the district or the shop type."
+        }
+      ],
+      "outputs": [
+        {
+          "key": "dish_pack",
+          "kind": "issue",
+          "cadenceHint": "per dish launch or menu change"
+        },
+        {
+          "key": "gate_report",
+          "kind": "report",
+          "cadenceHint": "per draft"
+        }
+      ],
+      "boundaries": "Does not certify food safety, does not give a legal opinion, and does not state that a dish is free of an allergen, vegan, organic or healthy without a source the owner confirms. Does not set the selling price, change a supplier price, or assign a VAT rate or a delivery-app fee. Nothing leaves the workspace: no printing, posting, ordering, paying, sending to a supplier, a customer or an authority; the owner or the chef does that.",
+      "escalation": "Recipe, purchase price or label ingredient missing: stop 1 and name the missing item; a dish with a Chặn finding after two rounds: stop 3 with the open findings; an allergen line the chef cannot confirm: the dish stays out of the menu until it is confirmed.",
+      "intake": "Wording people use: ra món mới, menu, thực đơn, food cost, giá vốn, công thức, dị ứng, nhiễm chéo, SOP vệ sinh ATTP, lịch ca, báo cáo doanh thu, tồn kho bếp, giấy phép quán ăn."
+    }
+  },
+  "adapter": {
+    "type": "kitviet"
+  }
+}

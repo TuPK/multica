@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "kind": "squad",
+  "id": "kv_b2b",
+  "version": "1.0.0",
+  "collection": "kitviet",
+  "order": 20,
+  "squad": {
+    "name": "B2B Proposal Desk (Chào giá B2B)",
+    "description": "Turns a qualified B2B deal into a quote and proposal inside the approved pricing. Four checks run before a person sends anything.",
+    "floorName": "Launch",
+    "leader": "b2b_lead",
+    "operatingReview": false,
+    "workflow": null,
+    "roles": [
+      {
+        "key": "b2b_lead",
+        "description": "Leads the B2B Proposal Desk: plans the quote, delegates each check, counts the review rounds, and reports to the requester.",
+        "role": "Squad leader"
+      },
+      {
+        "key": "b2b_history",
+        "description": "Reads the customer's files and past deals, and reports each fact with its location. Writes nothing.",
+        "role": "Customer and deal history"
+      },
+      {
+        "key": "b2b_company_lookup",
+        "description": "Looks up the customer's public company record and news, with a source and a date for each fact.",
+        "role": "Public company lookup"
+      },
+      {
+        "key": "b2b_quote_drafter",
+        "description": "Drafts the quote and proposal from the collectors' reports, with internal notes kept out of the customer copy.",
+        "role": "Quote and proposal draft"
+      },
+      {
+        "key": "b2b_commit_gate",
+        "description": "Checks prices, discounts and commercial terms against the approved frame. Writes no draft of its own.",
+        "role": "Commercial commitments check"
+      },
+      {
+        "key": "b2b_data_gate",
+        "description": "Checks the draft for competitor, other-customer or personal data, and for internal notes that reached the customer copy.",
+        "role": "Customer data and internal-notes check"
+      },
+      {
+        "key": "b2b_tone_gate",
+        "description": "Checks the tone and channel of each customer-facing message: forms of address, blame, pressure, and calls to action.",
+        "role": "Customer tone and channel check"
+      },
+      {
+        "key": "b2b_numbers_gate",
+        "description": "Checks every figure, date, name and claim in the draft against its source documents.",
+        "role": "Figures and claims check"
+      },
+      {
+        "key": "b2b_handover",
+        "description": "Compares the finished quote pack with the lead's plan and the gate verdicts, and lists what a person must decide before it leaves.",
+        "role": "Independent handover check"
+      }
+    ],
+    "routines": [],
+    "charter": {
+      "mission": "Turn a qualified deal into a quote and proposal that stay inside approved pricing.",
+      "responsibilities": [
+        {
+          "key": "history",
+          "text": "Read the customer's files and past deals, with a location for each fact."
+        },
+        {
+          "key": "quote",
+          "text": "Quote with commercial terms inside the approved pricing, and keep internal notes apart from the customer copy."
+        },
+        {
+          "key": "gates",
+          "text": "Have independent gates check every commitment, data-use right, tone and figure before a person sends."
+        }
+      ],
+      "outputs": [
+        {
+          "key": "quote_pack",
+          "kind": "issue",
+          "cadenceHint": "per deal"
+        },
+        {
+          "key": "internal_notes",
+          "kind": "report",
+          "cadenceHint": "per deal"
+        }
+      ],
+      "boundaries": "Nothing leaves the workspace: no sending, filing, signing, posting or publishing; the person who asked does that. Never discounts or extends terms beyond the approved range; never puts cost or margin in the customer copy.",
+      "escalation": "Request beyond the approved range: a proposal to the person with authority; tell the customer nothing. Missing price list or approved discount frame: block the request and mention the requester.",
+      "intake": "báo giá, proposal, chào giá, đàm phán, khách doanh nghiệp"
+    }
+  },
+  "adapter": {
+    "type": "kitviet"
+  }
+}

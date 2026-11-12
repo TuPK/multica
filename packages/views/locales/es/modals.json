@@ -277,125 +277,6 @@
   "squad_quickstart": {
     "title": "Inicio rápido de squad",
     "template_label": "Plantilla",
-    "templates": {
-      "sdlc_greenfield": {
-        "name": "SDLC · Producto nuevo",
-        "description": "Lleva una solicitud de la idea a un producto verificado: resumen, PRD, UX, arquitectura, una compilación en cola y un informe final."
-      },
-      "market_research": {
-        "name": "Estudio de mercado",
-        "description": "Analiza mercados y competidores cada semana, hace que el crítico cuestione la evidencia y presenta al jefe solo las propuestas que la respaldan."
-      },
-      "bmad_planning": {
-        "name": "Planificación · BMAD",
-        "description": "Convierte una solicitud en documentos de planificación revisados: investigación, brief, PRD, UX, arquitectura y epics. Amplía los que un producto ya tiene."
-      },
-      "kv_admin": {
-        "name": "Office Admin (Hành chính)",
-        "description": "Redacta documentos oficiales con el formato correcto y lleva el registro de documentos. No asigna números de documento ni firma nada."
-      },
-      "kv_b2b": {
-        "name": "B2B Proposal Desk (Chào giá B2B)",
-        "description": "Convierte un negocio calificado en cotización y propuesta dentro de los precios aprobados. Se ejecutan cuatro controles antes de que alguien envíe algo."
-      },
-      "kv_marketing": {
-        "name": "Marketing Studio (Marketing)",
-        "description": "Redacta el contenido de las campañas y los textos publicitarios a partir de los briefs de Growth & GTM, y verifica cada afirmación antes de que una persona publique. No publica ni ejecuta nada."
-      },
-      "kv_legal": {
-        "name": "Legal & Contracts (Pháp lý)",
-        "description": "Redacta para que un abogado o una persona autorizada lo apruebe. No da opinión legal; cada cita se verifica con una fuente oficial."
-      },
-      "kv_accounting": {
-        "name": "Accounting & Tax (Kế toán, thuế)",
-        "description": "Cubre tờ khai, hóa đơn, công nợ y khóa sổ, con cifras calculadas por script. No presenta nada; necesita Bash y Python en el runtime."
-      },
-      "kv_talent": {
-        "name": "Talent Acquisition (Tuyển dụng)",
-        "description": "Revisa CV según criterios aprobados, redacta anuncios de empleo, preguntas de entrevista y cartas, y revisa cada paquete en busca de sesgos y datos personales. No contacta, no agenda ni decide sobre candidatos."
-      },
-      "kv_pr": {
-        "name": "PR & Comms (Truyền thông báo chí)",
-        "description": "Redacta comunicados de prensa (thông cáo báo chí), preguntas y respuestas y declaraciones de crisis (khủng hoảng truyền thông) a partir de hechos verificados, y revisa cada dato, cita y punto legal antes de que una persona envíe algo a la prensa. No envía ni publica nada."
-      },
-      "kv_ecom": {
-        "name": "E-commerce Shop Ops (Bán hàng online)",
-        "description": "Lleva un producto nuevo desde los datos del proveedor hasta la ficha y el precio en el marketplace, revisados por palabras prohibidas y margen antes de que el dueño de la tienda lo publique."
-      },
-      "kv_officeops": {
-        "name": "Office Ops (Vận hành văn phòng)",
-        "description": "Planifica la logística de salas y viajes, eventos, papelería, el registro de activos, el archivo, los contratos de servicio y el informe administrativo mensual. No reserva, compra, paga ni envía nada."
-      },
-      "kv_academic": {
-        "name": "Academic Evidence Desk (Học thuật, nghiên cứu)",
-        "description": "Convierte una carpeta de PDF y una lista de referencias en una matriz de fuentes y un borrador de estudio que el autor reescribe. Cada cita se abre antes de darla por real; los vacíos quedan marcados."
-      },
-      "kv_health": {
-        "name": "Healthcare (Y tế)",
-        "description": "Redacta SOP, folletos para pacientes, formación del personal, turnos de guardia e informes de caducidad de medicamentos a partir de las fuentes propias de la unidad. Solo redacta material administrativo y educativo: ni diagnóstico, ni receta, ni consejo de tratamiento. Dos filtros revisan cada borrador por afirmaciones clínicas fuera de alcance y por datos de pacientes, y un clínico lo aprueba antes de usarlo. No envía ni publica nada."
-      },
-      "kv_construction": {
-        "name": "Construction (Xây dựng)",
-        "description": "Redacta informes de obra, diarios, actas, listas de pendientes y tablas de cantidades (bảng khối lượng, dự toán sơ bộ) a partir de los registros de obra, y revisa cada cantidad y cada línea de seguridad antes de que una persona las use. No firma, no acepta ni emite nada."
-      },
-      "kv_fnb": {
-        "name": "F&B Ops (Nhà hàng, quán ăn)",
-        "description": "Calcula el coste de platos nuevos y cambios de carta a partir de las recetas y facturas de compra del local, y revisa cada línea de alérgenos y cada cifra de coste de alimentos con dos filtros independientes antes de imprimir o publicar nada. No imprime, no publica y no hace pedidos."
-      },
-      "kv_insurance": {
-        "name": "Insurance Advisory (Bảo hiểm)",
-        "description": "Redacta materiales de asesoramiento en seguros (đề xuất bảo hiểm): análisis de necesidades, comparación de coberturas, explicación de exclusiones, listas de documentos para reclamaciones (hồ sơ bồi thường) y cartas de orientación, para que un agente con licencia los revise. No contrata ninguna cobertura, no promete el resultado de una reclamación ni una rentabilidad, y no envía nada."
-      },
-      "kv_banking": {
-        "name": "Banking Credit Desk (Tài chính, ngân hàng)",
-        "description": "Redacta el informe de crédito (tờ trình tín dụng) y el análisis de préstamo de un prestatario a partir del expediente, con cada cifra vinculada a su fuente. Los controles de crédito y de filtro se ejecutan antes de que lo lea un oficial de crédito. No aprueba créditos, no da asesoramiento de inversión y no envía nada."
-      },
-      "kv_realestate": {
-        "name": "Real Estate Desk (Bất động sản)",
-        "description": "Convierte el expediente de un inmueble o de un prestatario en un borrador de anuncio, un plan de préstamo hipotecario o una nota de zona, con cada cifra vinculada a su fuente. Los filtros de planeamiento, préstamo y anuncio revisan cada borrador antes de que lo lea un agente inmobiliario. No promete precios, no aprueba préstamos, no opina sobre títulos de propiedad y no publica ni envía nada."
-      },
-      "kv_hospitality": {
-        "name": "Hospitality Ops (Du lịch, khách sạn)",
-        "description": "Redacta itinerarios y presupuestos de viajes de grupo, y textos para huéspedes de hotel (confirmaciones, anuncios OTA, respuestas a reseñas, guiones de recepción) a partir de los datos del proveedor y del hotel. Dos filtros revisan cada precio, promesa y dato del huésped antes de que un gerente envíe nada. No reserva, no cobra y no envía nada."
-      },
-      "kv_trade": {
-        "name": "Import & Export Desk (Xuất nhập khẩu)",
-        "description": "Reúne el expediente de un envío de importación o exportación a partir de sus documentos, y revisa las cifras cruzadas entre documentos y el borrador de la declaración aduanera con dos filtros independientes. No declara, no presenta y no envía nada."
-      },
-      "kv_factory": {
-        "name": "Factory Ops (Sản xuất nhà máy)",
-        "description": "Redacta el informe mensual de KPI de producción y calidad, los informes de turno y de mantenimiento, y los borradores de NCR, CAPA e incidentes a partir de los registros de la planta, y revisa cada cifra y cada línea de seguridad antes de que una persona emita nada. No pone en marcha ninguna máquina ni emite registros oficiales."
-      },
-      "kv_education": {
-        "name": "Education Desk (Giáo dục)",
-        "description": "Redacta pruebas periódicas (đề kiểm tra định kỳ) con su matriz, especificación, clave de respuestas y guía de calificación a partir de los resultados del currículo. Los filtros revisan cada respuesta y cada línea que vaya a ver un estudiante o un padre; el docente imprime y comparte, y el equipo no envía nada."
-      },
-      "kv_teaching": {
-        "name": "Teaching Materials (Tư liệu giảng dạy)",
-        "description": "Encuentra fuentes didácticas con sus niveles, convierte los registros de clase en resúmenes codificados y redacta documentos de clase para un docente. Los filtros revisan cada fuente, cada cifra y cada línea que vaya a ver un estudiante o un padre; el docente lee, envía y publica. El equipo no envía nada."
-      },
-      "sales_loop": {
-        "name": "Ciclo de ventas",
-        "description": "Busca oportunidades para tus líneas de negocio cada semana, prepara mensajes para que los apruebes y aprende de los resultados. Las fuentes ya vienen listas."
-      },
-      "sdlc_maintenance": {
-        "name": "SDLC · Producto existente",
-        "description": "Clasifica un error, una función, una optimización o una actualización, lo dirige a los agentes adecuados, lo verifica e informa."
-      },
-      "content_studio": {
-        "name": "Content Studio",
-        "description": "Producción y publicación de contenido multicanal con puertas de revisión."
-      },
-      "research_lab": {
-        "name": "Laboratorio de investigación",
-        "description": "Busca en la literatura académica en rondas acotadas, filtra artículos con criterios escritos y comprueba cada cita antes de exportar."
-      }
-    },
-    "groups": {
-      "core": "Básicos",
-      "kitviet": "Kit Viet",
-      "vertical": "Verticales"
-    },
     "expert_review_badge": "Revisión experta",
     "expert_review_notice": "Una persona cualificada debe revisar el resultado de este squad antes de usarlo.",
     "expert_review_ack": "Me encargaré de esa revisión.",
@@ -430,12 +311,6 @@
   },
   "agent_pack_install": {
     "title": "Instalar paquete de agentes",
-    "packs": {
-      "market-strategist": {
-        "name": "Estratega de mercado",
-        "description": "Analiza un mercado, segmenta clientes y encuentra canales para un producto. Pregunta antes de gastar dinero o contactar a alguien."
-      }
-    },
     "skills_count": "{{count}} skills",
     "runtime_label": "Runtime",
     "install": "Instalar",

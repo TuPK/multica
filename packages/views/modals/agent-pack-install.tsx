@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "@multica/ui/icons";
 import { useAuthStore } from "@multica/core/auth";
+import { catalogText } from "@multica/core/catalog";
 import {
   AGENT_PACK_IDS,
   loadAgentPack,
@@ -26,7 +27,7 @@ import { Label } from "@multica/ui/components/ui/label";
 import { toast } from "sonner";
 
 import { RuntimePicker } from "../agents/components/runtime-picker";
-import { useT } from "../i18n";
+import { useLocale, useT } from "../i18n";
 import { useNavigation } from "../navigation";
 
 const PACK_ID = AGENT_PACK_IDS[0];
@@ -41,6 +42,7 @@ function hasProblems(outcome: AgentPackOutcome): boolean {
 
 export function AgentPackInstallModal({ onClose }: { onClose: () => void }) {
   const { t } = useT("modals");
+  const locale = useLocale();
   const router = useNavigation();
   const wsPaths = useWorkspacePaths();
   const wsId = useWorkspaceId();
@@ -104,10 +106,10 @@ export function AgentPackInstallModal({ onClose }: { onClose: () => void }) {
             <>
               <div className="space-y-1 rounded-lg border px-3 py-2">
                 <p className="text-body font-medium">
-                  {t(($) => $.agent_pack_install.packs[PACK_ID].name)}
+                  {catalogText("pack", PACK_ID, locale).title}
                 </p>
                 <p className="text-caption text-muted-foreground">
-                  {t(($) => $.agent_pack_install.packs[PACK_ID].description)}
+                  {catalogText("pack", PACK_ID, locale).description}
                 </p>
                 <p className="text-caption text-muted-foreground">
                   {t(($) => $.agent_pack_install.skills_count, { count: pack.skills.length })}

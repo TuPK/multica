@@ -3,12 +3,12 @@ import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
+import { SDLC_BUILTIN_SKILLS } from "../catalog/generated/skills-builtin";
 import { SDLC_AUTO_WORKFLOW, SQUAD_TEMPLATES } from "./templates";
 
-// The bundle the quickstart imports is generated from the SKILL.md folders.
-// This test fails when the generated file is stale: run `pnpm generate:sdlc-skills`.
-const skillsDir = fileURLToPath(new URL("./sdlc-skills", import.meta.url));
+// The bundle the quickstart imports is generated at build time (pnpm catalog:build) from the SKILL.md
+// folders under catalog/skills/builtin. These tests check the generated bundle against the folders.
+const skillsDir = fileURLToPath(new URL("../../../catalog/skills/builtin", import.meta.url));
 
 const ROLE_SKILLS = [
   "sdlc-delivery-core",
@@ -36,26 +36,21 @@ const PLANNING_ROLE_SKILLS = [
   "planning-readiness",
 ];
 
-// Every other skill in the bundle: the tools and plugin skills the boss attached to the
-// SDLC squad. They ship beside the role skills, copied from the workspace, so every SDLC
-// squad has them. A folder name stores a colon as `--`.
-const TOOL_SKILLS = readdirSync(skillsDir, { withFileTypes: true })
-  .filter((entry) => entry.isDirectory() && !ROLE_SKILLS.includes(entry.name) && !PLANNING_ROLE_SKILLS.includes(entry.name))
-  .map((entry) => entry.name.replaceAll("--", ":"))
-  .sort();
-
 // Every file under a skill folder except SKILL.md, at any depth, as the generator reads it.
 function skillFiles(dir: string, prefix = ""): string[] {
   return readdirSync(resolve(dir, prefix), { withFileTypes: true }).flatMap((entry) => {
     const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.isDirectory()) return skillFiles(dir, rel);
-    return rel === "SKILL.md" ? [] : [rel];
+    // The catalog's own manifest and translations are not part of an installed skill.
+    return rel === "SKILL.md" || rel === "template.json" || rel.startsWith("i18n/") ? [] : [rel];
   });
 }
 
 describe("built-in SDLC skills", () => {
-  it("ships one skill per SDLC role plus the shared core, and the attached tool skills", () => {
-    expect(SDLC_BUILTIN_SKILLS.map((s) => s.name)).toEqual([...ROLE_SKILLS, ...PLANNING_ROLE_SKILLS, ...TOOL_SKILLS].sort());
+  it("ships one skill per SDLC role plus the shared core, and the planning role skills", () => {
+    const names = SDLC_BUILTIN_SKILLS.map((s) => s.name);
+    expect(names).toEqual(expect.arrayContaining([...ROLE_SKILLS, ...PLANNING_ROLE_SKILLS]));
+    expect(new Set(names).size).toBe(names.length);
   });
 
   it("carries every skill folder, unchanged, as the generated bundle", () => {

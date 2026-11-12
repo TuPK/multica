@@ -275,125 +275,6 @@
   "squad_quickstart": {
     "title": "스쿼드 빠른 시작",
     "template_label": "템플릿",
-    "templates": {
-      "sdlc_greenfield": {
-        "name": "SDLC · 신규 제품",
-        "description": "요청을 아이디어에서 검증된 제품까지 진행합니다. 브리프, PRD, UX, 아키텍처, 큐 기반 빌드, 최종 보고서를 다룹니다."
-      },
-      "market_research": {
-        "name": "시장 조사",
-        "description": "매주 시장과 경쟁사를 조사하고, 비평가가 근거를 검증하게 한 뒤, 근거가 뒷받침하는 제안만 보스에게 올립니다."
-      },
-      "bmad_planning": {
-        "name": "기획 · BMAD",
-        "description": "요청을 검토를 거친 기획 문서로 만듭니다: 조사, 브리프, PRD, UX, 아키텍처, 에픽. 제품에 이미 있는 문서를 보완하기도 합니다."
-      },
-      "kv_admin": {
-        "name": "Office Admin (Hành chính)",
-        "description": "공문서를 정해진 형식으로 작성하고 문서 대장을 관리합니다. 문서 번호를 부여하거나 서명하지 않습니다."
-      },
-      "kv_b2b": {
-        "name": "B2B Proposal Desk (Chào giá B2B)",
-        "description": "승인된 가격 안에서 적격 거래를 견적과 제안서로 정리합니다. 누군가 보내기 전에 네 가지 검토를 거칩니다."
-      },
-      "kv_marketing": {
-        "name": "Marketing Studio (Marketing)",
-        "description": "Growth & GTM의 브리프를 바탕으로 캠페인 콘텐츠와 광고 문구를 작성하고, 사람이 게시하기 전에 모든 주장을 검증합니다. 게시하거나 광고를 집행하지 않습니다."
-      },
-      "kv_legal": {
-        "name": "Legal & Contracts (Pháp lý)",
-        "description": "변호사나 권한 있는 담당자가 승인할 문서를 작성합니다. 법률 의견은 제시하지 않으며, 모든 인용은 공식 출처로 확인합니다."
-      },
-      "kv_accounting": {
-        "name": "Accounting & Tax (Kế toán, thuế)",
-        "description": "tờ khai, hóa đơn, công nợ, khóa sổ 등을 다루며, 수치는 스크립트로 계산합니다. 신고나 제출은 하지 않으며, 런타임에 Bash와 Python이 필요합니다."
-      },
-      "kv_talent": {
-        "name": "Talent Acquisition (Tuyển dụng)",
-        "description": "승인된 기준으로 이력서를 선별하고, 채용 공고, 면접 질문, 안내 서신을 작성하며, 각 묶음에 편향이나 개인정보가 없는지 검토합니다. 후보자에게 연락하거나 일정을 잡거나 채용을 결정하지 않습니다."
-      },
-      "kv_pr": {
-        "name": "PR & Comms (Truyền thông báo chí)",
-        "description": "검증된 사실로 보도자료(thông cáo báo chí), 문답집, 위기 대응 입장문(khủng hoảng truyền thông)을 작성하고, 사람이 언론에 무엇이든 보내기 전에 모든 사실, 인용, 법률 문구를 검토합니다. 발송하거나 게시하지 않습니다."
-      },
-      "kv_ecom": {
-        "name": "E-commerce Shop Ops (Bán hàng online)",
-        "description": "공급처 자료로 새 상품의 마켓플레이스 등록문과 가격을 만들고, 금지 표현과 마진을 점검한 뒤 쇼핑몰 운영자가 게시하도록 합니다."
-      },
-      "kv_officeops": {
-        "name": "Office Ops (Vận hành văn phòng)",
-        "description": "회의실과 출장 일정, 행사, 사무용품, 자산 대장, 문서 보관, 서비스 계약, 월간 총무 보고를 계획합니다. 예약, 구매, 결제, 발송은 하지 않습니다."
-      },
-      "kv_academic": {
-        "name": "Academic Evidence Desk (Học thuật, nghiên cứu)",
-        "description": "PDF 폴더와 참고문헌 목록을 출처 매트릭스와 저자가 다시 쓸 연구 초안으로 정리합니다. 모든 인용은 실재한다고 보고하기 전에 열어 확인하며, 빈 곳은 표시된 채로 둡니다."
-      },
-      "kv_health": {
-        "name": "Healthcare (Y tế)",
-        "description": "시설 자료를 바탕으로 SOP, 환자용 안내문, 직원 교육 자료, 당직표, 의약품 유효기간 보고서를 작성합니다. 행정 및 교육 문서만 작성하며, 진단, 처방, 치료 조언은 하지 않습니다. 두 개의 게이트가 각 초안의 범위를 벗어난 임상 표현과 환자 정보를 검토하고, 사용 전에 임상의가 승인합니다. 아무것도 발송하거나 게시하지 않습니다."
-      },
-      "kv_construction": {
-        "name": "Construction (Xây dựng)",
-        "description": "현장 기록을 바탕으로 공사 보고서, 일지, 회의록, 하자 목록, 수량표(bảng khối lượng, dự toán sơ bộ)를 작성하고, 사람이 사용하기 전에 각 수량과 각 안전 항목을 검토합니다. 서명, 승인, 발행은 하지 않습니다."
-      },
-      "kv_fnb": {
-        "name": "F&B Ops (Nhà hàng, quán ăn)",
-        "description": "매장의 레시피와 매입 송장으로 신메뉴와 메뉴 변경의 원가를 계산하고, 두 개의 독립된 게이트로 각 알레르기 표시와 원가율을 검토한 뒤에야 인쇄하거나 게시할 수 있게 합니다. 인쇄, 게시, 발주는 하지 않습니다."
-      },
-      "kv_insurance": {
-        "name": "Insurance Advisory (Bảo hiểm)",
-        "description": "보험 자문 자료(đề xuất bảo hiểm)를 작성합니다. 필요 분석, 보장 비교, 면책 사항 설명, 보험금 청구 서류 체크리스트(hồ sơ bồi thường), 안내 서신을 포함하며, 자격을 갖춘 설계사가 검토합니다. 보험 계약을 체결하지 않고, 보험금 지급 결과나 수익을 약속하지 않으며, 발송도 하지 않습니다."
-      },
-      "kv_banking": {
-        "name": "Banking Credit Desk (Tài chính, ngân hàng)",
-        "description": "한 명의 차입자에 대해 자료를 바탕으로 여신 품의서(tờ trình tín dụng)와 대출 분석을 작성하며, 모든 수치를 출처와 연결합니다. 여신 담당자가 읽기 전에 여신 및 게이트 검토가 실행됩니다. 여신을 승인하지 않고, 투자 조언을 하지 않으며, 발송도 하지 않습니다."
-      },
-      "kv_realestate": {
-        "name": "Real Estate Desk (Bất động sản)",
-        "description": "한 건의 부동산 또는 차입자 자료를 매물 광고 초안, 주택담보대출 계획 또는 지역 메모로 바꾸며, 모든 수치를 출처와 연결합니다. 계획, 대출, 광고 게이트가 중개인이 읽기 전에 각 초안을 검토합니다. 가격을 약속하지 않고, 대출을 승인하지 않으며, 권리 관계에 대한 의견을 내지 않고, 게시나 발송도 하지 않습니다."
-      },
-      "kv_hospitality": {
-        "name": "Hospitality Ops (Du lịch, khách sạn)",
-        "description": "공급업체와 호텔 정보를 바탕으로 단체 여행 일정과 견적, 그리고 호텔 투숙객용 문구(예약 확인, OTA 매물 설명, 리뷰 답변, 프런트 응대 문구)를 작성합니다. 두 개의 게이트가 관리자가 무엇이든 보내기 전에 모든 가격, 약속, 투숙객 정보를 검토합니다. 예약, 결제, 발송은 하지 않습니다."
-      },
-      "kv_trade": {
-        "name": "Import & Export Desk (Xuất nhập khẩu)",
-        "description": "수출입 화물 서류 묶음을 각 서류로부터 구성하고, 두 개의 독립된 게이트로 서류 간 수치 대조와 통관 신고서 초안을 검토합니다. 신고, 제출, 발송은 하지 않습니다."
-      },
-      "kv_factory": {
-        "name": "Factory Ops (Sản xuất nhà máy)",
-        "description": "공장 기록을 바탕으로 월간 생산·품질 KPI 보고서, 교대 및 보전 보고서, NCR, CAPA, 사고 보고서 초안을 작성하고, 사람이 발행하기 전에 모든 수치와 안전 항목을 검토합니다. 기계를 가동하지 않고 공식 기록을 발행하지도 않습니다."
-      },
-      "kv_education": {
-        "name": "Education Desk (Giáo dục)",
-        "description": "교육과정 성취기준을 바탕으로 정기고사(đề kiểm tra định kỳ)를 출제표, 문항 명세, 정답지, 채점 기준과 함께 작성합니다. 게이트가 모든 정답과 학생 또는 학부모가 볼 모든 줄을 검토합니다. 교사가 인쇄하여 공유하며, 이 팀은 아무것도 발송하지 않습니다."
-      },
-      "kv_teaching": {
-        "name": "Teaching Materials (Tư liệu giảng dạy)",
-        "description": "출처 등급과 함께 수업 자료의 출처를 찾고, 학급 기록을 부호화된 요약으로 바꾸며, 교사를 위한 학급 문서 초안을 작성합니다. 게이트가 모든 출처, 모든 수치, 학생이나 학부모가 볼 모든 줄을 검토합니다. 읽고, 발송하고, 게시하는 것은 교사이며, 이 팀은 아무것도 발송하지 않습니다."
-      },
-      "sales_loop": {
-        "name": "영업 루프",
-        "description": "매주 사업 라인의 기회를 찾고, 승인할 아웃리치 초안을 만들며, 결과에서 배웁니다. 출처는 바로 사용할 수 있습니다."
-      },
-      "sdlc_maintenance": {
-        "name": "SDLC · 기존 제품",
-        "description": "버그, 기능, 최적화, 업그레이드를 분류해 적합한 에이전트에게 배정하고, 검증한 뒤 보고합니다."
-      },
-      "content_studio": {
-        "name": "Content Studio",
-        "description": "검토 게이트를 통한 다중 채널 콘텐츠 제작 및 게시."
-      },
-      "research_lab": {
-        "name": "리서치 랩",
-        "description": "학술 문헌을 횟수를 정해 검색하고, 문서화된 기준으로 논문을 선별하며, 내보내기 전에 모든 인용을 확인합니다."
-      }
-    },
-    "groups": {
-      "core": "기본",
-      "kitviet": "Kit Viet",
-      "vertical": "업종별"
-    },
     "expert_review_badge": "전문가 검토",
     "expert_review_notice": "이 스쿼드의 결과물은 사용하기 전에 자격을 갖춘 사람이 검토해야 합니다.",
     "expert_review_ack": "해당 검토를 준비하겠습니다.",
@@ -428,12 +309,6 @@
   },
   "agent_pack_install": {
     "title": "에이전트 팩 설치",
-    "packs": {
-      "market-strategist": {
-        "name": "Market Strategist",
-        "description": "시장을 분석하고, 고객을 세분화하고, 제품의 판매처를 찾습니다. 돈을 쓰거나 누군가에게 연락하기 전에 먼저 확인합니다."
-      }
-    },
     "skills_count": "스킬 {{count}}개",
     "runtime_label": "런타임",
     "install": "설치",

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill",
+  "id": "superpowers:writing-skills",
+  "version": "1.0.0",
+  "sets": [
+    "sdlc"
+  ],
+  "source": {
+    "type": "vendored",
+    "repo": "obra/superpowers",
+    "ref": "unpinned",
+    "license": "MIT"
+  }
+}

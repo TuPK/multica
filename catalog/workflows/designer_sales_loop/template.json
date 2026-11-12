@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "kind": "workflow",
+  "id": "designer_sales_loop",
+  "version": "1.0.0",
+  "order": 60,
+  "ui": false,
+  "designer": {
+    "templateId": "sales_loop",
+    "steps": [
+      {
+        "statusKey": "todo",
+        "transitions": [
+          {
+            "to": "scouting"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Scouting",
+          "category": "started"
+        },
+        "roleHint": "sales_scout",
+        "instructions": "Run the lane's active sources, score the organisations, and write their accounts with a source and date for each claim.",
+        "transitions": [
+          {
+            "to": "drafting"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Drafting",
+          "category": "started"
+        },
+        "roleHint": "sales_writer",
+        "instructions": "Draft outreach for qualified accounts in the channel the lane allows. Nothing is sent.",
+        "transitions": [
+          {
+            "to": "checking"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Checking",
+          "category": "started"
+        },
+        "roleHint": "sales_checker",
+        "instructions": "Check each draft against the channel and compliance rules. Send a failing draft back to Drafting with the reason.",
+        "transitions": [
+          {
+            "on": "rejected",
+            "to": "drafting"
+          },
+          {
+            "to": "reporting"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Reporting",
+          "category": "started"
+        },
+        "roleHint": "sales_analyst",
+        "instructions": "Write the sales report for the scan, and list each lane that was skipped.",
+        "transitions": [
+          {
+            "to": "done"
+          }
+        ]
+      },
+      {
+        "statusKey": "done"
+      },
+      {
+        "statusKey": "cancelled"
+      }
+    ]
+  }
+}

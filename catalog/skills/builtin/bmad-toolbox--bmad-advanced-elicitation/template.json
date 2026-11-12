@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill",
+  "id": "bmad-toolbox:bmad-advanced-elicitation",
+  "version": "1.0.0",
+  "sets": [
+    "planning"
+  ],
+  "source": {
+    "type": "vendored",
+    "repo": "bmad-code-org/bmad-plugins",
+    "ref": "6.13.0-next",
+    "license": "none-detected"
+  }
+}

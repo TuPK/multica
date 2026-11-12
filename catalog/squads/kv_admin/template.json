@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "kind": "squad",
+  "id": "kv_admin",
+  "version": "1.0.0",
+  "collection": "kitviet",
+  "order": 10,
+  "squad": {
+    "name": "Office Admin (Hành chính)",
+    "description": "Drafts official documents, decisions and proposals in the right form, and keeps the document register. Does not number, sign or issue anything.",
+    "floorName": "Executive",
+    "leader": "admin_lead",
+    "operatingReview": false,
+    "workflow": null,
+    "roles": [
+      {
+        "key": "admin_lead",
+        "description": "Leads the Office Admin squad: plans each request, checks each handover, counts review rounds, and reports to the requester.",
+        "role": "Squad leader"
+      },
+      {
+        "key": "admin_files",
+        "description": "Reads the office files and pulls the basis, figures, names and dates for a document, each with its location in the source.",
+        "role": "Office file reading and the facts a document rests on"
+      },
+      {
+        "key": "admin_format_lookup",
+        "description": "Looks up the current official rules on document form, records and holidays, with the source and its access date.",
+        "role": "Official rules on document form, records and holidays"
+      },
+      {
+        "key": "admin_drafter",
+        "description": "Drafts official documents, decisions, proposals, notices and regulations in the right form, from the collected facts.",
+        "role": "Official document drafts from the collected facts"
+      },
+      {
+        "key": "admin_format_gate",
+        "description": "Checks a draft's form, issuing authority, citations and recipients before it goes for signature. Returns QUA or CHẶN.",
+        "role": "Form, issuing authority and citation check before signature"
+      },
+      {
+        "key": "admin_numbers_gate",
+        "description": "Checks every figure, date, name and claim in a draft against its sources. Returns QUA or CHẶN.",
+        "role": "Figure, date, name and claim check against sources"
+      },
+      {
+        "key": "admin_handover",
+        "description": "Checks the finished product against the approved plan and every gate verdict, and lists what a person must do before it leaves.",
+        "role": "Handover check against the plan and the gate verdicts"
+      }
+    ],
+    "routines": [],
+    "charter": {
+      "mission": "Draft administrative documents in the right form and keep the document registers current.",
+      "responsibilities": [
+        {
+          "key": "drafting",
+          "text": "Draft circulars, decisions, proposals, notices and regulations from the collected facts, in the form the issuing authority requires."
+        },
+        {
+          "key": "format",
+          "text": "Check each draft's form, issuing authority and citations independently before it goes for signature."
+        },
+        {
+          "key": "registers",
+          "text": "Keep the incoming and outgoing document register current, one line per document."
+        }
+      ],
+      "outputs": [
+        {
+          "key": "drafts",
+          "kind": "issue",
+          "cadenceHint": "per request"
+        },
+        {
+          "key": "register",
+          "kind": "issue",
+          "cadenceHint": "per signed document"
+        }
+      ],
+      "boundaries": "Does not assign document numbers to unsigned documents, sign, stamp or issue. Nothing leaves the workspace: no sending, filing, signing, posting or publishing; the person who asked does that.",
+      "escalation": "Signer or purpose missing: block the issue and mention the requester.",
+      "intake": "công văn, quyết định, tờ trình, thông báo, quy chế, sổ công văn"
+    }
+  },
+  "adapter": {
+    "type": "kitviet"
+  }
+}

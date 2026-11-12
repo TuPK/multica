@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "kind": "squad",
+  "id": "sdlc_maintenance",
+  "version": "1.0.0",
+  "contracts": [
+    "squad.sdlc"
+  ],
+  "collection": "core",
+  "order": 20,
+  "squad": {
+    "name": "SDLC Maintenance",
+    "description": "Changes an existing product: triages a bug, feature, optimization, or upgrade, routes it, verifies it, and reports.",
+    "floorName": null,
+    "leader": "lead",
+    "workflow": null,
+    "roles": [
+      {
+        "key": "lead",
+        "agentTemplate": "tech_lead",
+        "name": "SDLC Lead",
+        "description": "Leads SDLC squads: delegates, verifies evidence, and reports.",
+        "role": "Squad leader"
+      },
+      {
+        "key": "analyst",
+        "agentTemplate": "product_analyst",
+        "name": "SDLC Product Analyst",
+        "description": "Turns requests and sources into briefs, PRDs, epics, and stories.",
+        "role": "Briefs, PRD, epics and stories, requirement changes, build queue"
+      },
+      {
+        "key": "ux",
+        "agentTemplate": "ux_designer",
+        "name": "SDLC UX Designer",
+        "description": "Designs screens, states, and the design system for the requirements.",
+        "role": "UX design, screen specs, mockups"
+      },
+      {
+        "key": "architect",
+        "agentTemplate": "architect",
+        "name": "SDLC Architect",
+        "description": "Designs the simplest system that fits, records decisions, and analyses impact.",
+        "role": "Architecture, impact analysis, project context"
+      },
+      {
+        "key": "developer",
+        "agentTemplate": "fullstack_developer",
+        "name": "SDLC Developer",
+        "description": "Builds stories end to end and verifies them on the running app.",
+        "role": "Implementation of epics, stories, and features"
+      },
+      {
+        "key": "fixer",
+        "agentTemplate": "bug_fixer",
+        "name": "SDLC Bug Fixer",
+        "description": "Reproduces a defect and fixes it with the smallest change.",
+        "role": "Defects and small changes in one component"
+      },
+      {
+        "key": "reviewer",
+        "agentTemplate": "code_reviewer",
+        "name": "SDLC Code Reviewer",
+        "description": "Independent review of changes and plans, with a verdict first.",
+        "role": "Independent review, planning readiness check"
+      },
+      {
+        "key": "qa",
+        "agentTemplate": "qa_tester",
+        "name": "SDLC QA Tester",
+        "description": "Designs tests from acceptance criteria and runs them on the real system.",
+        "role": "Test design, regression, final verification"
+      },
+      {
+        "key": "security",
+        "agentTemplate": "security_reviewer",
+        "name": "SDLC Security Reviewer",
+        "description": "Gates a change or release on verified security controls.",
+        "role": "Security review of changes and of the whole product"
+      },
+      {
+        "key": "devops",
+        "agentTemplate": "devops_engineer",
+        "name": "SDLC DevOps",
+        "description": "Packages and releases one verified digest; production needs approval.",
+        "role": "Packaging, run instructions, release notes"
+      }
+    ],
+    "routines": [],
+    "charter": {
+      "mission": "Keep an existing product correct, safe and current: fix bugs, ship changes, and keep it up to date.",
+      "responsibilities": [
+        {
+          "key": "triage",
+          "text": "Triage each bug or change: type, risk tier, and the route it takes."
+        },
+        {
+          "key": "delivery",
+          "text": "Deliver the change through review and QA, with evidence for each claim."
+        },
+        {
+          "key": "upkeep",
+          "text": "Keep dependencies, the build and the documentation current."
+        }
+      ],
+      "outputs": [
+        {
+          "key": "change_report",
+          "kind": "report",
+          "cadenceHint": "per change"
+        }
+      ],
+      "boundaries": "No production deploys and no deletions without the boss. Spending money needs the boss.",
+      "escalation": "A blocked request or an open decision goes to the requester, named on the request.",
+      "intake": "Bugs and changes arrive as issues assigned to this squad."
+    },
+    "skills": {
+      "sets": [
+        "sdlc"
+      ]
+    }
+  }
+}

@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
-const script = fileURLToPath(new URL("./sdlc-skills/sdlc-harness/scripts/check-harness.mjs", import.meta.url));
+const script = fileURLToPath(new URL("../../../catalog/skills/builtin/sdlc-harness/scripts/check-harness.mjs", import.meta.url));
 
 interface Check {
   id: string;

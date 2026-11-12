@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "kind": "workflow",
+  "id": "designer_quick_fix",
+  "version": "1.0.0",
+  "order": 70,
+  "ui": false,
+  "designer": {
+    "templateId": "quick_fix",
+    "steps": [
+      {
+        "statusKey": "todo",
+        "roleHint": "lead",
+        "instructions": "Take the bug or small fix and start it.",
+        "transitions": [
+          {
+            "to": "in_progress"
+          }
+        ]
+      },
+      {
+        "statusKey": "in_progress",
+        "roleHint": "developer",
+        "instructions": "Reproduce the defect, make the smallest fix, and verify it on the running app before finishing.",
+        "transitions": [
+          {
+            "to": "done"
+          }
+        ]
+      },
+      {
+        "statusKey": "done"
+      },
+      {
+        "statusKey": "cancelled"
+      }
+    ]
+  }
+}

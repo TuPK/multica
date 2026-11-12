@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "@multica/ui/icons";
 import { useAuthStore } from "@multica/core/auth";
+import { catalogText } from "@multica/core/catalog";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { isRuntimeUsableForUser, runtimeListOptions } from "@multica/core/runtimes";
@@ -29,7 +30,7 @@ import { Label } from "@multica/ui/components/ui/label";
 import { toast } from "sonner";
 
 import { RuntimePicker } from "../agents/components/runtime-picker";
-import { useT } from "../i18n";
+import { useLocale, useT } from "../i18n";
 import { useNavigation } from "../navigation";
 
 function hasProblems(outcome: QuickstartOutcome): boolean {
@@ -51,6 +52,7 @@ const TEMPLATE_GROUPS = SQUAD_TEMPLATE_CATEGORIES.map((category) => ({
 
 export function SquadQuickstartModal({ onClose }: { onClose: () => void }) {
   const { t } = useT("modals");
+  const locale = useLocale();
   const router = useNavigation();
   const wsPaths = useWorkspacePaths();
   const wsId = useWorkspaceId();
@@ -141,7 +143,7 @@ export function SquadQuickstartModal({ onClose }: { onClose: () => void }) {
                         id={headingId}
                         className="text-caption font-medium text-muted-foreground"
                       >
-                        {t(($) => $.squad_quickstart.groups[group.category])}
+                        {catalogText("collection", group.category, locale).title}
                       </h3>
                       <div role="radiogroup" aria-labelledby={headingId} className="grid gap-2">
                         {group.templates.map((tpl) => {
@@ -159,7 +161,7 @@ export function SquadQuickstartModal({ onClose }: { onClose: () => void }) {
                             >
                               <span className="flex w-full min-w-0 items-center justify-between gap-2">
                                 <span className="min-w-0 break-words text-body font-medium">
-                                  {t(($) => $.squad_quickstart.templates[tpl.id].name)}
+                                  {catalogText("squad", tpl.id, locale).title}
                                 </span>
                                 {tpl.expertReview && (
                                   <span className="shrink-0 text-caption text-warning">
@@ -168,7 +170,7 @@ export function SquadQuickstartModal({ onClose }: { onClose: () => void }) {
                                 )}
                               </span>
                               <span className="min-w-0 break-words text-caption text-muted-foreground">
-                                {t(($) => $.squad_quickstart.templates[tpl.id].description)}
+                                {catalogText("squad", tpl.id, locale).description}
                               </span>
                             </button>
                           );

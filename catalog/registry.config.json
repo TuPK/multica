@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "locales": [
+    "en",
+    "zh-Hans",
+    "zh-Hant",
+    "ko",
+    "ja",
+    "fr",
+    "es"
+  ],
+  "removed": []
+}

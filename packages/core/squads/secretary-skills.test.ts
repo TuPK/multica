@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 // The Secretary's procedures are built-in skills, not instruction text. These
 // tests pin the contract each skill must keep: the router reaches every other
 // skill, and each procedure carries the step the platform depends on.
-const skillsDir = fileURLToPath(new URL("./skills", import.meta.url));
+const skillsDir = fileURLToPath(new URL("../../../catalog/skills/starter", import.meta.url));
 const read = (name: string) => readFileSync(resolve(skillsDir, name, "SKILL.md"), "utf8");
 
 const SECRETARY_SKILLS = [

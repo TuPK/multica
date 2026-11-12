@@ -44,6 +44,13 @@ COPY --from=deps /app ./
 COPY package.json turbo.json pnpm-workspace.yaml ./
 COPY apps/web/ apps/web/
 COPY packages/ packages/
+# The catalog's generated code is not committed. `pnpm --filter @multica/web build` runs next
+# directly (not through turbo), so generate it here, before the build.
+COPY catalog/ catalog/
+COPY scripts/catalog/ scripts/catalog/
+COPY scripts/lib/ scripts/lib/
+COPY scripts/generate-kitviet-pack.mjs scripts/generate-kitviet-pack.mjs
+RUN node scripts/catalog/cli.mjs build --target ts
 
 # Re-link after source overlay (fixes any symlinks overwritten by COPY)
 RUN pnpm install --frozen-lockfile --offline

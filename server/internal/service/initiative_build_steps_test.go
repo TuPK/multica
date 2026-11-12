@@ -1,8 +1,6 @@
 package service
 
 import (
-	"os"
-	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -20,7 +18,7 @@ func TestSDLCStepsHandBlockedIssueToLeadAndBackToInProgress(t *testing.T) {
 	}
 	var blocked issueworkflow.Step
 	found := false
-	for _, s := range sdlcSteps(agents) {
+	for _, s := range mustSDLCSteps(t, agents) {
 		if s.StatusKey == issuestatus.Blocked {
 			blocked, found = s, true
 		}
@@ -37,6 +35,16 @@ func TestSDLCStepsHandBlockedIssueToLeadAndBackToInProgress(t *testing.T) {
 	if blocked.Instructions == "" {
 		t.Fatal("blocked step has no instructions for the lead")
 	}
+}
+
+// mustSDLCSteps builds the SDLC steps from the generated catalog data (pnpm catalog:build).
+func mustSDLCSteps(t *testing.T, agents map[string]pgtype.UUID) []issueworkflow.Step {
+	t.Helper()
+	steps, err := sdlcSteps(agents)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return steps
 }
 
 func sdlcTestAgents(roles ...string) map[string]pgtype.UUID {
@@ -60,7 +68,7 @@ func sdlcStepByKey(steps []issueworkflow.Step, key string) (issueworkflow.Step, 
 // unblock issue to the member who owns the blocker.
 func TestSDLCStepsHandSpecialistStagesToTheirOwners(t *testing.T) {
 	agents := sdlcTestAgents("lead", "developer", "reviewer", "qa", "analyst", "ux", "architect", "security", "devops")
-	steps := sdlcSteps(agents)
+	steps := mustSDLCSteps(t, agents)
 	want := map[string]string{
 		"analysis": "analyst", "design": "ux", "architecture": "architect", "plan_review": "reviewer",
 		"security_review": "security", "release_prep": "devops", sdlcEnvironmentStatusKey: "devops", "harness": "architect",
@@ -90,7 +98,7 @@ func TestSDLCStepsHandSpecialistStagesToTheirOwners(t *testing.T) {
 
 // A squad without a specialist has no step for it; the lead's playbook names the substitute.
 func TestSDLCStepsOmitStagesWithoutAnAgent(t *testing.T) {
-	steps := sdlcSteps(sdlcTestAgents("lead", "developer", "reviewer", "qa"))
+	steps := mustSDLCSteps(t, sdlcTestAgents("lead", "developer", "reviewer", "qa"))
 	for _, key := range []string{"analysis", "design", "architecture", "security_review", "release_prep", sdlcEnvironmentStatusKey, "harness"} {
 		if _, ok := sdlcStepByKey(steps, key); ok {
 			t.Fatalf("unexpected %s step with no agent for it", key)
@@ -108,7 +116,7 @@ func TestSDLCStatusesCoverEveryStageStep(t *testing.T) {
 	for _, st := range sdlcStatusesFor(agents) {
 		have[st.key] = true
 	}
-	for _, s := range sdlcSteps(agents) {
+	for _, s := range mustSDLCSteps(t, agents) {
 		if issueworkflow.IsFixed(s.StatusKey) || s.StatusKey == issuestatus.Todo || s.StatusKey == issuestatus.InProgress ||
 			s.StatusKey == issuestatus.InReview {
 			continue
@@ -116,17 +124,5 @@ func TestSDLCStatusesCoverEveryStageStep(t *testing.T) {
 		if !have[s.StatusKey] {
 			t.Fatalf("step %s has no status in sdlcStatusesFor", s.StatusKey)
 		}
-	}
-}
-
-// The blocked brief is repeated in templates.ts; the two must not drift.
-func TestSDLCBlockedBriefMatchesTheTemplate(t *testing.T) {
-	src, err := os.ReadFile("../../../packages/core/squads/templates.ts")
-	if err != nil {
-		t.Skipf("templates.ts not found: %v", err)
-	}
-	head := sdlcBlockedInstructions[:200]
-	if !strings.Contains(string(src), head) {
-		t.Fatalf("templates.ts does not start its blocked brief with %q", head)
 	}
 }

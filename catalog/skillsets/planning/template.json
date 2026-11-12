@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "kind": "skillset",
+  "id": "planning",
+  "version": "1.0.0",
+  "target": "quickstart"
+}

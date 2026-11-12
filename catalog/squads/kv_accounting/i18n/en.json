@@ -1,0 +1,4 @@
+{
+  "title": "Accounting & Tax (Kế toán, thuế)",
+  "description": "Covers tờ khai, hóa đơn, công nợ and khóa sổ, with figures computed by script. Files nothing; needs Bash and Python on the runtime."
+}

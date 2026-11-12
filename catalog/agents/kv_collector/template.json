@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "kind": "agent",
+  "id": "kv_collector",
+  "version": "1.0.0",
+  "order": 360
+}

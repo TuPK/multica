@@ -1,4 +1,4 @@
-.PHONY: help makehelp dev dev-full server daemon cli agent-pack agent-pack-bundles multica build test migrate-up migrate-down sqlc seed clean setup start stop check worktree-env setup-main start-main stop-main check-main setup-worktree start-worktree stop-worktree check-worktree remove-worktree db-up db-down db-drop db-reset selfhost selfhost-build selfhost-stop up down status list destroy gc env-exec api-dev web-dev desktop-dev
+.PHONY: help makehelp dev dev-full server daemon cli agent-pack catalog-build multica build test migrate-up migrate-down sqlc seed clean setup start stop check worktree-env setup-main start-main stop-main check-main setup-worktree start-worktree stop-worktree check-worktree remove-worktree db-up db-down db-drop db-reset selfhost selfhost-build selfhost-stop up down status list destroy gc env-exec api-dev web-dev desktop-dev
 
 MAIN_ENV_FILE ?= .env
 WORKTREE_ENV_FILE ?= .env.worktree
@@ -180,7 +180,7 @@ env-exec: ## Run a command with this environment's variables (ARGS="-- pnpm dev:
 # check here would make each component slower to restart on its own.
 # The commit ldflag is what makes /health's identity useful: without it every
 # environment reports "unknown" and cannot prove which revision it is serving.
-api-dev: ## Run only the Go backend for the current env file
+api-dev: catalog-build ## Run only the Go backend for the current env file
 	cd server && go run -ldflags "-X main.commit=$(COMMIT)" ./cmd/server
 
 web-dev: ## Run only the Next.js dev server for the current env file
@@ -203,7 +203,7 @@ setup: ## Prepare the current checkout from its env file: install deps, ensure D
 	@echo ""
 	@echo "✓ Setup complete! Run 'make start' to launch the app."
 
-start: ## Start backend and frontend for the current checkout and run migrations first
+start: catalog-build ## Start backend and frontend for the current checkout and run migrations first
 	$(REQUIRE_ENV)
 	@echo "Using env file: $(ENV_FILE)"
 	@echo "Backend: http://localhost:$(PORT)"
@@ -310,14 +310,14 @@ dev: ## Bootstrap this checkout end-to-end: create env if needed, ensure DB, mig
 dev-full: ## Fresh machine: start the WeKnora knowledge services and the Hub object store, fill their secrets, then make dev
 	@bash scripts/dev-full.sh
 
-server: ## Run only the Go server for the current checkout
+server: catalog-build ## Run only the Go server for the current checkout
 	$(REQUIRE_ENV)
 	@bash scripts/ensure-postgres.sh "$(ENV_FILE)"
 	cd server && go run ./cmd/server
 
 # Built, never `go run`: the daemon re-execs its own binary as the
 # execution-environment helper, and go run deletes that binary on exit.
-daemon: ## Restart the local agent daemon using the CLI's stored auth/session
+daemon: catalog-build ## Restart the local agent daemon using the CLI's stored auth/session
 	cd server && go build -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildCommit=$(BUILD_COMMIT) -X main.date=$(DATE)" -o bin/multica ./cmd/multica
 	server/bin/multica daemon restart --profile local
 
@@ -325,13 +325,13 @@ cli: ## Run the multica CLI with ARGS or MULTICA_ARGS from source
 	@$(MAKE) multica MULTICA_ARGS="$(MULTICA_ARGS)"
 
 agent-pack: ## Install an agent pack into the current workspace (PACK=market-strategist ARGS=--dry-run)
-	@test -n "$(PACK)" || { echo "Usage: make agent-pack PACK=<name> [ARGS=--dry-run]"; ls examples/agent-packs; exit 2; }
-	@bash scripts/install-agent-pack.sh examples/agent-packs/$(PACK) $(ARGS)
+	@test -n "$(PACK)" || { echo "Usage: make agent-pack PACK=<name> [ARGS=--dry-run]"; ls catalog/packs; exit 2; }
+	@bash scripts/install-agent-pack.sh catalog/packs/$(PACK) $(ARGS)
 
-agent-pack-bundles: ## Regenerate the web/desktop install bundles from examples/agent-packs
-	@node scripts/build-agent-pack-bundles.mjs
+catalog-build: ## Generate the code built from catalog/ (not committed); the Go and web builds need it
+	@node scripts/catalog/cli.mjs build
 
-multica: ## Run the multica CLI entrypoint directly from the Go source tree
+multica: catalog-build ## Run the multica CLI entrypoint directly from the Go source tree
 	cd server && go run -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildCommit=$(BUILD_COMMIT) -X main.date=$(DATE)" ./cmd/multica $(MULTICA_ARGS)
 
 VERSION ?= $(shell git describe --tags --match 'v[0-9]*' --always --dirty 2>/dev/null || echo dev)
@@ -350,12 +350,12 @@ DATE    ?= $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 # recursive one — which prints `go: Command not found` on frontend-only
 # checkouts with no Go toolchain installed.
 build: EXE = $(if $(filter windows,$(or $(GOOS),$(shell go env GOOS))),.exe,)
-build: ## Build the server, CLI, and migrate binaries into server/bin
+build: catalog-build ## Build the server, CLI, and migrate binaries into server/bin
 	cd server && go build -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT)" -o bin/server$(EXE) ./cmd/server
 	cd server && go build -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildCommit=$(BUILD_COMMIT) -X main.date=$(DATE)" -o bin/multica$(EXE) ./cmd/multica
 	cd server && go build -o bin/migrate$(EXE) ./cmd/migrate
 
-test: ## Run Go tests after ensuring the target DB exists and migrations are applied
+test: catalog-build ## Run Go tests after ensuring the target DB exists and migrations are applied
 	$(REQUIRE_ENV)
 	@bash scripts/ensure-postgres.sh "$(ENV_FILE)"
 	cd server && go run ./cmd/migrate up

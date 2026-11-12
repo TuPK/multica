@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill",
+  "id": "squad-reporting",
+  "version": "1.0.0",
+  "sets": [
+    "starter_company"
+  ],
+  "source": {
+    "type": "authored"
+  }
+}

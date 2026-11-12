@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "kind": "squad",
+  "id": "kv_trade",
+  "version": "1.0.0",
+  "collection": "vertical",
+  "order": 80,
+  "squad": {
+    "name": "Import & Export Desk (Xuất nhập khẩu)",
+    "description": "Assembles an import or export shipment file from its documents and checks the cross-document figures and the customs declaration draft with two independent gates. Declares, submits and sends nothing.",
+    "floorName": "Import & Export",
+    "leader": "trade_lead",
+    "operatingReview": false,
+    "workflow": null,
+    "roles": [
+      {
+        "key": "trade_lead",
+        "description": "Leads Import & Export Desk: plans each shipment file, holds each stop for the declarant, checks each handover, and reports.",
+        "role": "Squad leader"
+      },
+      {
+        "key": "trade_docs_reader",
+        "description": "Inventories the shipment's documents (invoice, packing list, transport document, contract, L/C, certificates) and returns each field with its file and location.",
+        "role": "Shipment documents and field extraction"
+      },
+      {
+        "key": "trade_customs_research",
+        "description": "Researches HS code candidates, duty and permit rules, and FTA origin rules for a product on official sources, with each source's level and access date.",
+        "role": "HS code and customs policy research, with sources"
+      },
+      {
+        "key": "trade_crosscheck_drafter",
+        "description": "Drafts the cross-document check table, the header and line items of the declaration, the landed cost and the customer update from the collected facts only.",
+        "role": "Cross-check table, declaration figures and landed cost drafts"
+      },
+      {
+        "key": "trade_docs_gate",
+        "description": "Checks the draft against the original documents field by field, recomputes the totals, and checks the C/O and the L/C terms. Writes no drafts and changes nothing.",
+        "role": "Document cross-check (gate)"
+      },
+      {
+        "key": "trade_customs_gate",
+        "description": "Checks the declaration draft for HS codes without a basis, value and tax formulas, unconfirmed rates, goods that may need a permit, and overstated claims. Writes no drafts.",
+        "role": "Customs declaration and duty check (gate)"
+      },
+      {
+        "key": "trade_handover",
+        "description": "Compares the finished draft with the approved plan and both gate verdicts, and lists what the declarant must decide before anything is declared or sent.",
+        "role": "Final handover check"
+      }
+    ],
+    "routines": [],
+    "charter": {
+      "mission": "Assemble each import or export shipment file from its own documents, cross-check the figures, and check the customs declaration draft against its sources before a person declares anything.",
+      "responsibilities": [
+        {
+          "key": "plan",
+          "text": "Outline each shipment file and list the documents it needs, before any cross-check or draft is written."
+        },
+        {
+          "key": "sources",
+          "text": "Collect each field of each document with its file and location; a missing document or field stays [cần bổ sung]."
+        },
+        {
+          "key": "research",
+          "text": "Look up HS code candidates, duty and permit rules, and FTA origin rules on official sources, with each source's level and access date; a rate is never stated as fact."
+        },
+        {
+          "key": "drafts",
+          "text": "Draft the cross-check table, the declaration figures and the landed cost from the collected facts only, with every total computed by script."
+        },
+        {
+          "key": "gates",
+          "text": "Before handover, the docs gate checks each field against the original documents and the customs gate checks each HS code, value, formula and rate basis; a Chặn finding blocks the file."
+        }
+      ],
+      "outputs": [
+        {
+          "key": "shipment_file",
+          "kind": "issue",
+          "cadenceHint": "per shipment"
+        },
+        {
+          "key": "gate_report",
+          "kind": "report",
+          "cadenceHint": "per shipment draft"
+        }
+      ],
+      "boundaries": "Does not choose the final HS code, does not state a duty rate, exchange rate or FTA eligibility as fact, and does not advise how to describe goods to lower a duty. Does not declare, transmit, sign, or submit anything to customs, a bank, a forwarder or a buyer. Nothing leaves the workspace: the declarant or the company's representative does that after the handover.",
+      "escalation": "Document or field missing: stop 1 and name it; a HS code or rate with no source after the research: stop with [cần tra biểu thuế] on that line; a file with a Chặn finding after two rounds: stop 3 with the open findings.",
+      "intake": "Wording people use: lô hàng, tờ khai, nhập khẩu, xuất khẩu, invoice, packing list, B/L, AWB, vận đơn, C/O, L/C, mã HS, thuế nhập khẩu, landed cost, Incoterms, hải quan, claim hàng hư hỏng, booking."
+    }
+  },
+  "adapter": {
+    "type": "kitviet"
+  }
+}

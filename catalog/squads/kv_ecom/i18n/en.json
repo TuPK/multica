@@ -1,0 +1,4 @@
+{
+  "title": "E-commerce Shop Ops (Bán hàng online)",
+  "description": "Takes a new product from supplier data to a marketplace listing and price, checked for banned claims and margin before the shop owner posts it."
+}

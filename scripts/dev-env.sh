@@ -739,6 +739,7 @@ start_daemon() {
   # `go run` the toolchain deletes that binary when the launcher exits, so the
   # daemon registers, heartbeats, and then fails every task with
   # "fork/exec .../go-build.../exe/multica: no such file or directory".
+  node "$REPO_ROOT/scripts/catalog/cli.mjs" build --target go >/dev/null || die "Failed to generate the catalog data the multica CLI embeds."
   info "Building $MULTICA_BIN (a go run daemon would fail every task later)."
   build_commit="$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || printf 'unknown')"
   (cd "$REPO_ROOT/server" && go build -ldflags "-X main.buildCommit=$build_commit" -o bin/multica ./cmd/multica) || die "Failed to build the multica CLI."

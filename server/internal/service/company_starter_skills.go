@@ -15,8 +15,8 @@ import (
 )
 
 // The starter company's skills (spec 13.6.6) and the Secretary desk (spec 13.3.2).
-// The skills are the packages/core/squads/skills folders, shipped in
-// company_template_data.json. Setup and the starter apply install them as
+// The skills are the catalog/skills/starter folders, shipped in
+// the generated company data (catalog build). Setup and the starter apply install them as
 // workspace skills and attach them to the agents that need them. A rerun never
 // touches a skill the boss has, and it reuses one the starter company made.
 

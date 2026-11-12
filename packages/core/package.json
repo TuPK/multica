@@ -92,6 +92,7 @@
     "./agents/visibility-label": "./agents/visibility-label.ts",
     "./agents/stores": "./agents/stores/index.ts",
     "./agent-packs": "./agent-packs/index.ts",
+    "./catalog": "./catalog/index.ts",
     "./squads": "./squads/index.ts",
     "./squads/stores": "./squads/stores/index.ts",
     "./squads/kitviet-update": "./squads/kitviet-update.ts",

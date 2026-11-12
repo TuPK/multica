@@ -9,10 +9,6 @@ import type {
 } from "../types";
 import { kitvietPackOf } from "./kitviet-packs";
 import {
-  KITVIET_PREVIOUS_AGENT_INSTRUCTIONS,
-  KITVIET_PREVIOUS_SQUAD_INSTRUCTIONS,
-} from "./kitviet-previous-texts";
-import {
   attachAgentSkills,
   attachBuiltinSkills,
   errorMessage,
@@ -248,10 +244,13 @@ export async function upgradeKitvietSquad(
   } = {},
 ): Promise<KitvietUpgradeResult> {
   const dry = options.dryRun === true;
-  const previous = options.previous ?? {
-    agents: KITVIET_PREVIOUS_AGENT_INSTRUCTIONS,
-    squad: KITVIET_PREVIOUS_SQUAD_INSTRUCTIONS,
-  };
+  // The registry is about 2.6 MB of earlier texts, so it loads when an upgrade runs, not with the page.
+  const previous: { agents: Record<string, readonly string[]>; squad: readonly string[] } =
+    options.previous ??
+    (await import("./kitviet-previous-texts").then((m) => ({
+      agents: m.KITVIET_PREVIOUS_AGENT_INSTRUCTIONS,
+      squad: m.KITVIET_PREVIOUS_SQUAD_INSTRUCTIONS,
+    })));
   const result: KitvietUpgradeResult = { squad: { status: "missing" }, skills: { status: "skipped" }, agents: [] };
 
   const agents = (await client.listAgents({ include_archived: false })).filter((a) => !a.archived_at);

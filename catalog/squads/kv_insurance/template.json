@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "kind": "squad",
+  "id": "kv_insurance",
+  "version": "1.0.0",
+  "collection": "vertical",
+  "order": 40,
+  "expertReview": true,
+  "squad": {
+    "name": "Insurance Advisory (Bảo hiểm)",
+    "description": "Drafts insurance advice materials (đề xuất bảo hiểm): needs analysis, benefit comparison, exclusion explanations, claim checklists (hồ sơ bồi thường) and guidance letters, for a licensed agent to review. Binds no coverage, promises no claim outcome or return, and sends nothing.",
+    "floorName": "Insurance",
+    "leader": "insurance_lead",
+    "operatingReview": false,
+    "workflow": null,
+    "roles": [
+      {
+        "key": "insurance_lead",
+        "description": "Leads Insurance Advisory: plans each client file, holds the scope for the licensed agent's approval, checks each handover, and reports.",
+        "role": "Squad leader"
+      },
+      {
+        "key": "insurance_gather",
+        "description": "Reads the client file and the product documents, and pulls out client facts, benefits, exclusions, waiting periods and fees, each with its document and page.",
+        "role": "Client facts and product terms"
+      },
+      {
+        "key": "insurance_claim_reader",
+        "description": "Checks a claim folder against the claim procedure in the policy terms: documents held, missing or needing correction, and the filing deadline.",
+        "role": "Claim file inventory"
+      },
+      {
+        "key": "insurance_proposal",
+        "description": "Drafts the needs analysis, benefit comparison, exclusion explanations and advice script from the gathered facts, with gaps marked. Chooses no product for the client.",
+        "role": "Advice drafts for the licensed agent"
+      },
+      {
+        "key": "insurance_claim_drafter",
+        "description": "Drafts the claim checklist and the guidance letter to the client from the inventory. Promises no outcome and sends nothing.",
+        "role": "Claim checklist and guidance letter drafts"
+      },
+      {
+        "key": "insurance_advice_gate",
+        "description": "Checks every draft for profit or return promises, benefit figures not in the documents, unfair comparisons, hidden exclusions, pressure and false claims. Writes no drafts of its own.",
+        "role": "Advice commitment check"
+      },
+      {
+        "key": "insurance_handover",
+        "description": "Compares the finished draft with the lead's plan and the gate verdict, and lists what the licensed agent must decide before anything reaches the client.",
+        "role": "Final handover check"
+      }
+    ],
+    "routines": [],
+    "charter": {
+      "mission": "Draft insurance advice materials (needs analysis, benefit comparison, exclusion explanations, claim checklists and guidance letters) for a licensed insurance agent to review, and check every promise and figure against the product documents before the agent uses them.",
+      "responsibilities": [
+        {
+          "key": "plan",
+          "text": "Outline each client file and its scope before drafting; the licensed agent approves the scope."
+        },
+        {
+          "key": "facts",
+          "text": "Collect the client facts and each product benefit, exclusion, waiting period and fee, with its document and page."
+        },
+        {
+          "key": "drafts",
+          "text": "Draft the needs analysis, comparison, exclusion explanation, advice script, claim checklist and guidance letter only from the collected facts and the product documents."
+        },
+        {
+          "key": "gates",
+          "text": "Before handover, check each benefit figure against its document and each sentence against the advice commitment rules; a CHẶN verdict blocks handover."
+        }
+      ],
+      "outputs": [
+        {
+          "key": "advice_pack",
+          "kind": "proposal",
+          "cadenceHint": "per client"
+        },
+        {
+          "key": "claim_checklist",
+          "kind": "issue",
+          "cadenceHint": "per claim"
+        },
+        {
+          "key": "gate_report",
+          "kind": "report",
+          "cadenceHint": "per client"
+        }
+      ],
+      "boundaries": "Drafts only, for a licensed insurance agent to review, adapt and present to the client. The squad never binds coverage, never issues a policy, never accepts an application or a claim, and never promises a claim outcome, a payout amount, a return, a guaranteed rate or a benefit the documents do not state. Illustrations are labelled as illustrations, and a benefit with no document page stays out of the draft. Nothing leaves the workspace: no sending to clients, no filing with an insurer, no signing, no payment, no posting; the licensed agent does that.",
+      "escalation": "Client facts or product documents missing or contradicting each other: stop at type 1 and name them; a choice of product or benefit that belongs to the client: stop and name the decision for the agent; a gate still at CHẶN after two rounds: hand to the agent with the open findings; a question about current insurance sales-conduct rules or an insurer's terms: flag it for the agent's check, never decide it.",
+      "intake": "Requests arrive as issues assigned to this squad. Wording people use: đề xuất bảo hiểm, tư vấn bảo hiểm, so sánh quyền lợi, loại trừ, thời gian chờ, hồ sơ bồi thường, thư hướng dẫn claim, kịch bản tư vấn."
+    }
+  },
+  "adapter": {
+    "type": "kitviet"
+  }
+}

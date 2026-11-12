@@ -275,125 +275,6 @@
   "squad_quickstart": {
     "title": "小队快速开始",
     "template_label": "模板",
-    "templates": {
-      "sdlc_greenfield": {
-        "name": "SDLC · 新产品",
-        "description": "把一个需求从想法推进到经过验证的产品：简报、PRD、UX、架构、排队构建和最终报告。"
-      },
-      "market_research": {
-        "name": "市场调研",
-        "description": "每周扫描市场与竞品，由评审员质疑证据，只把有依据的提案交给老板。"
-      },
-      "bmad_planning": {
-        "name": "规划 · BMAD",
-        "description": "把需求变成经过评审的规划文档：调研、简报、PRD、UX、架构和史诗；也能补充产品已有的文档。"
-      },
-      "kv_admin": {
-        "name": "Office Admin (Hành chính)",
-        "description": "按规范格式起草公文，并维护公文登记簿。不编文号，也不签署。"
-      },
-      "kv_b2b": {
-        "name": "B2B Proposal Desk (Chào giá B2B)",
-        "description": "在已批准的价格范围内，把合格商机整理成报价和方案。发送前先经过四项检查。"
-      },
-      "kv_marketing": {
-        "name": "Marketing Studio (Marketing)",
-        "description": "根据 Growth & GTM 的简报起草活动内容和广告文案，并在人员发布前核查每一项宣称。不发布，也不投放广告。"
-      },
-      "kv_legal": {
-        "name": "Legal & Contracts (Pháp lý)",
-        "description": "起草供律师或授权人员审批的文书。不给出法律意见，每条引用都对照官方来源核实。"
-      },
-      "kv_accounting": {
-        "name": "Accounting & Tax (Kế toán, thuế)",
-        "description": "涵盖 tờ khai、hóa đơn、công nợ、khóa sổ，数字由脚本计算。不申报，也不提交任何文件；运行时需要 Bash 和 Python。"
-      },
-      "kv_talent": {
-        "name": "Talent Acquisition (Tuyển dụng)",
-        "description": "依据已批准的标准筛选简历，起草招聘启事、面试问题和信函，并检查每份材料是否存在偏见或个人信息。不联系候选人、不安排面试，也不决定录用。"
-      },
-      "kv_pr": {
-        "name": "PR & Comms (Truyền thông báo chí)",
-        "description": "基于已核实的事实起草新闻稿（thông cáo báo chí）、问答稿和危机应对声明（khủng hoảng truyền thông），并在人员向媒体发出任何内容之前，核对每项事实、引语和法律表述。不发送，也不发布。"
-      },
-      "kv_ecom": {
-        "name": "E-commerce Shop Ops (Bán hàng online)",
-        "description": "把新商品从供应商资料整理成电商平台的商品文案和定价，在店主发布前检查违禁用语、宣称和利润率。"
-      },
-      "kv_officeops": {
-        "name": "Office Ops (Vận hành văn phòng)",
-        "description": "规划会议室与差旅安排、活动、办公用品、资产台账、档案归档、服务合同和月度行政报告。不预订、不采购、不付款，也不发送。"
-      },
-      "kv_academic": {
-        "name": "Academic Evidence Desk (Học thuật, nghiên cứu)",
-        "description": "把一个 PDF 文件夹和参考文献列表整理成来源矩阵，以及由作者重写的研究草稿。每条引文都会先打开核实，才会报告为真实；缺漏处保持标注。"
-      },
-      "kv_health": {
-        "name": "Healthcare (Y tế)",
-        "description": "根据单位自有资料起草 SOP、患者宣教单张、员工培训材料、值班表和药品效期报告。只起草行政和教育文档：不做诊断、不开处方、不提供治疗建议。两道关口逐份检查草稿中超出范围的临床表述和患者信息，临床人员使用前须审批。不发送也不发布任何内容。"
-      },
-      "kv_construction": {
-        "name": "Construction (Xây dựng)",
-        "description": "根据现场记录起草施工日报、日志、会议纪要、整改清单和工程量表（bảng khối lượng、dự toán sơ bộ），并在人员使用前核对每项工程量和每条安全内容。不签字、不验收、不出具文件。"
-      },
-      "kv_fnb": {
-        "name": "F&B Ops (Nhà hàng, quán ăn)",
-        "description": "根据门店配方和采购发票核算新菜品及菜单调整的成本，并由两道独立关口核对每一条过敏原标注和食材成本率，之后才能打印或发布。不打印、不发布、不下单。"
-      },
-      "kv_insurance": {
-        "name": "Insurance Advisory (Bảo hiểm)",
-        "description": "起草保险建议材料（đề xuất bảo hiểm）：需求分析、保障比较、免责条款说明、理赔材料清单（hồ sơ bồi thường）和指引函，供持牌代理人审阅。不承保、不承诺理赔结果或收益，也不发送任何内容。"
-      },
-      "kv_banking": {
-        "name": "Banking Credit Desk (Tài chính, ngân hàng)",
-        "description": "根据档案为一名借款人起草信贷呈报材料（tờ trình tín dụng）和贷款分析，每个数字都注明出处。信贷与关口检查在信贷人员阅读前完成。不批准授信、不提供投资建议，也不发送任何内容。"
-      },
-      "kv_realestate": {
-        "name": "Real Estate Desk (Bất động sản)",
-        "description": "将一套房产或一名借款人的档案转化为挂牌草稿、住房贷款方案或区域说明，每个数字都注明出处。规划、贷款和挂牌三道关口在经纪人阅读前检查每份草稿。不承诺价格、不批准贷款、不出具产权意见，也不发布或发送任何内容。"
-      },
-      "kv_hospitality": {
-        "name": "Hospitality Ops (Du lịch, khách sạn)",
-        "description": "根据供应商和酒店信息起草团体旅游行程与报价，以及酒店住客文本（确认函、OTA 房源描述、评论回复、前台话术）。两道关口在经理发送前检查每个价格、承诺和住客信息。不预订、不收款、不发送任何内容。"
-      },
-      "kv_trade": {
-        "name": "Import & Export Desk (Xuất nhập khẩu)",
-        "description": "根据单据组装进出口货运档案，并由两道独立关口核对各单据之间的数字及报关单草稿。不申报、不提交、不发送任何内容。"
-      },
-      "kv_factory": {
-        "name": "Factory Ops (Sản xuất nhà máy)",
-        "description": "根据工厂记录起草月度生产与质量 KPI 报告、班次和维护报告，以及 NCR、CAPA 和事件草稿，并在人员签发前检查每个数字和每条安全内容。不开动任何设备，也不出具正式记录。"
-      },
-      "kv_education": {
-        "name": "Education Desk (Giáo dục)",
-        "description": "根据课程学习目标起草定期考试（đề kiểm tra định kỳ），包括命题双向细目表、试题规格、参考答案和评分标准。关口检查每个答案以及学生或家长会看到的每一行；由教师打印并分发，团队不发送任何内容。"
-      },
-      "kv_teaching": {
-        "name": "Teaching Materials (Tư liệu giảng dạy)",
-        "description": "查找教学资料来源及其等级，把班级记录整理成编码摘要，并为教师起草班级文件。关口检查每个来源、每个数据，以及学生或家长会看到的每一行；由教师阅读、发送和发布，团队不发送任何内容。"
-      },
-      "sales_loop": {
-        "name": "销售循环",
-        "description": "每周为你的业务线寻找商机，起草外联消息供你审批，并从结果中学习。信息源开箱即用。"
-      },
-      "sdlc_maintenance": {
-        "name": "SDLC · 现有产品",
-        "description": "对缺陷、功能、优化或升级进行分诊，分派给合适的智能体，验证后汇报。"
-      },
-      "content_studio": {
-        "name": "内容工作室",
-        "description": "具备审核门禁的多渠道内容制作与发布。"
-      },
-      "research_lab": {
-        "name": "研究实验室",
-        "description": "分轮次检索学术文献，按书面标准筛选论文，并在导出前核查每条引用。"
-      }
-    },
-    "groups": {
-      "core": "核心",
-      "kitviet": "Kit Viet",
-      "vertical": "行业专用"
-    },
     "expert_review_badge": "需专业审核",
     "expert_review_notice": "使用此小队的产出前，必须由具备资质的人员审核。",
     "expert_review_ack": "我会安排该审核。",
@@ -428,12 +309,6 @@
   },
   "agent_pack_install": {
     "title": "安装 Agent 包",
-    "packs": {
-      "market-strategist": {
-        "name": "Market Strategist",
-        "description": "分析市场、细分客户，并为产品寻找销售渠道。在花钱或联系任何人之前会先询问你。"
-      }
-    },
     "skills_count": "{{count}} 个技能",
     "runtime_label": "运行时",
     "install": "安装",

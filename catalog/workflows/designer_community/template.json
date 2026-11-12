@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "kind": "workflow",
+  "id": "designer_community",
+  "version": "1.0.0",
+  "order": 30,
+  "ui": false,
+  "designer": {
+    "templateId": "community",
+    "steps": [
+      {
+        "statusKey": "todo",
+        "transitions": [
+          {
+            "to": "triage"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Triage",
+          "category": "unstarted"
+        },
+        "transitions": [
+          {
+            "to": "replying"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Replying",
+          "category": "started"
+        },
+        "transitions": [
+          {
+            "to": "waiting"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Waiting",
+          "category": "started"
+        },
+        "transitions": [
+          {
+            "to": "done"
+          }
+        ]
+      },
+      {
+        "statusKey": "done"
+      },
+      {
+        "statusKey": "cancelled"
+      }
+    ]
+  }
+}

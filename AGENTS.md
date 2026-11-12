@@ -20,6 +20,7 @@ Multica is a task management platform where people and agents collaborate on iss
 | `apps/desktop/` | Electron and desktop-only UI/state. Application navigation goes through `apps/desktop/src/renderer/src/platform/`. |
 | `apps/mobile/` | Independent Expo/React Native client: owns UI, state, hooks, providers, i18n, build, and release. Shares core types and pure utilities, including platform-independent schemas. |
 | `apps/docs/` | Fumadocs documentation site |
+| `catalog/` | Template content that changes often: skills, squads, agent instruction templates, workflows, starter company, agent packs, with their translations. Source only; code is generated from it. See [catalog/README.md](catalog/README.md) |
 
 - Dependency direction is `views -> core + ui`; core and ui remain independent. Shared packages export raw TypeScript compiled by consuming apps.
 - Extract logic used by both web and desktop into the appropriate shared package. Keep framework/Electron APIs in the app layer; inject platform-specific UI through props/slots.
@@ -33,6 +34,7 @@ Use `Makefile`, workspace `package.json` files, and `pnpm-workspace.yaml` for cu
 - Use the checkout's managed environment: `make up`, `make status`, `make down`. `make down` preserves data; `make destroy` removes the environment and its data.
 - Worktrees share PostgreSQL but have isolated databases/ports. Use the environment scripts and `.env.worktree`; do not copy the main checkout's `.env` or manually create a database through an assumed PostgreSQL instance.
 - Regenerate sqlc with `make sqlc` after SQL changes.
+- Code generated from `catalog/` (`packages/core/catalog/generated/`, `server/internal/catalog/generated/`) is not committed. `pnpm catalog:build` writes it; turbo tasks, `make build|test|server`, and the Docker builds run it first. Run it yourself before `vitest`, `tsc` or `go test` outside those. `pnpm catalog:check` validates the catalog.
 - Run the narrowest useful checks while iterating, then broaden when risk warrants it. Report what actually ran and any skipped checks.
 
 Run these from the repository root:

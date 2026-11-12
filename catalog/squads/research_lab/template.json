@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "kind": "squad",
+  "id": "research_lab",
+  "version": "1.0.0",
+  "collection": "core",
+  "order": 70,
+  "squad": {
+    "name": "Research Lab",
+    "description": "Answers a research question from the scholarly literature: searches in bounded rounds, screens against written criteria, summarises from abstracts, and checks every citation before export.",
+    "floorName": "Research",
+    "leader": "lab_lead",
+    "operatingReview": false,
+    "workflow": null,
+    "roles": [
+      {
+        "key": "lab_lead",
+        "agentTemplate": "planning_lead",
+        "name": "Research Lab Lead",
+        "description": "Writes the protocol, hands out the rounds, follows the quality gate, and reports with every claim sourced.",
+        "role": "Squad leader"
+      },
+      {
+        "key": "lab_scout",
+        "agentTemplate": "opportunity_analyst",
+        "name": "Literature Scout",
+        "description": "Plans the search queries, runs them over the scholarly sources, and picks the papers to screen.",
+        "role": "Search, dedup, candidates"
+      },
+      {
+        "key": "lab_screener",
+        "agentTemplate": "validation_analyst",
+        "name": "Relevance Screener",
+        "description": "Scores each candidate against the protocol's criteria from its title and abstract, with a reason.",
+        "role": "Relevance scoring"
+      },
+      {
+        "key": "lab_synthesizer",
+        "agentTemplate": "product_analyst",
+        "name": "Evidence Synthesizer",
+        "description": "Summarises each selected paper from its abstract and writes the cross-paper claims, each with its source.",
+        "role": "Summaries and claims"
+      },
+      {
+        "key": "lab_auditor",
+        "agentTemplate": "feasibility_analyst",
+        "name": "Citation Auditor",
+        "description": "Checks DOIs, provenance and a sample of claims against the abstracts before anything is exported.",
+        "role": "Citation and provenance check"
+      }
+    ],
+    "routines": [],
+    "charter": {
+      "mission": "Answer each research question from the scholarly literature, with every paper traceable to its source and every claim tied to a paper.",
+      "responsibilities": [
+        {
+          "key": "search",
+          "text": "Search the scholarly sources in a few bounded rounds, then merge the duplicates and pick the papers to screen."
+        },
+        {
+          "key": "screening",
+          "text": "Score each candidate against the written criteria, by someone other than the person who searched."
+        },
+        {
+          "key": "synthesis",
+          "text": "Summarise from abstracts only and write claims that each name their papers."
+        },
+        {
+          "key": "audit",
+          "text": "Check DOIs, provenance and a sample of claims before the digest is exported."
+        }
+      ],
+      "outputs": [
+        {
+          "key": "papers_table",
+          "kind": "report",
+          "cadenceHint": "per question"
+        },
+        {
+          "key": "research_digest",
+          "kind": "report",
+          "cadenceHint": "per question"
+        }
+      ],
+      "boundaries": "Uses titles, authors, identifiers, dates and abstracts from the scholarly sources only. Never invents a citation, summarises a paper that has no abstract, bypasses a paywall, or contacts anyone outside the workspace. Spending money needs the boss.",
+      "escalation": "A run that finds too few papers, or an audit that still fails after two rounds, goes to the requester with the open problem.",
+      "intake": "Research questions arrive as issues assigned to this squad."
+    },
+    "skills": {
+      "sets": [
+        "research_lab"
+      ]
+    }
+  }
+}

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { Agent } from "../types";
 import { instructionsFor, runSquadQuickstart, KITVIET_SKILL_SOURCE, SDLC_SKILL_SOURCE, type SquadQuickstartClient } from "./quickstart";
 import { SQUAD_ROLES, SQUAD_TEMPLATES, type SquadTemplate } from "./templates";
-import { KITVIET_AGENTS as KITVIET_AGENTS_ADMIN } from "./kitviet-skills-data/admin";
+import { KITVIET_AGENTS as KITVIET_AGENTS_ADMIN } from "../catalog/generated/kitviet/admin";
 
 // The Kit Viet skill packs are faked at the loader: the tests need a few skills, not the real packs.
 // The loader records the pack each call asks for, so a test can tell which pack a squad loads.

@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "kind": "squad",
+  "id": "kv_accounting",
+  "version": "1.0.0",
+  "collection": "kitviet",
+  "order": 50,
+  "squad": {
+    "name": "Accounting & Tax (Kế toán, thuế)",
+    "description": "Covers tờ khai, hóa đơn, công nợ and khóa sổ, with figures computed by script. Files nothing; needs Bash and Python on the runtime.",
+    "floorName": "Governance",
+    "leader": "acct_lead",
+    "operatingReview": false,
+    "workflow": null,
+    "roles": [
+      {
+        "key": "acct_lead",
+        "description": "Leads Accounting & Tax squads: plans the month-end run, delegates the stages, checks each handover, and reports.",
+        "role": "Squad leader"
+      },
+      {
+        "key": "acct_collector",
+        "description": "Lists the month's vouchers and files, and flags what is missing or unusual. Reads only.",
+        "role": "Voucher and file collection"
+      },
+      {
+        "key": "acct_tax_research",
+        "description": "Looks up current tax, accounting and social insurance rules on official sources, with the effective date and a link for each.",
+        "role": "Tax rule lookup on official sources"
+      },
+      {
+        "key": "acct_reconciler",
+        "description": "Builds receivable, payable, bank and input-invoice reconciliations and VAT figures from the collected vouchers, computed by script.",
+        "role": "Reconciliations and VAT figures"
+      },
+      {
+        "key": "acct_tax_drafter",
+        "description": "Drafts tax explanation letters, return figures and memos for the chief accountant from reconciled numbers. Drafts only.",
+        "role": "Tax letters, return figures and memos"
+      },
+      {
+        "key": "acct_voucher_gate",
+        "description": "Checks reconciliations and invoice lists against the source vouchers: duplicates, wrong tax codes, wrong dates, unmatched offsets. Writes no fixes.",
+        "role": "Voucher and invoice check (gate)"
+      },
+      {
+        "key": "acct_numbers_gate",
+        "description": "Recomputes every figure, date and name in a draft against its source and returns the verdict. Writes no fixes.",
+        "role": "Figures check (gate)"
+      },
+      {
+        "key": "acct_tax_gate",
+        "description": "Checks tax drafts for unverified legal basis, guessed ratios, overstated claims and missing signers before anything leaves. Writes no fixes.",
+        "role": "Tax compliance check (gate)"
+      },
+      {
+        "key": "acct_handover",
+        "description": "Compares the finished pack with the lead's plan and each gate verdict, and lists what the chief accountant must decide and do.",
+        "role": "Handover check"
+      }
+    ],
+    "routines": [
+      {
+        "title": "Lịch hạn nộp thuế",
+        "issueTitleTemplate": "Lịch hạn nộp thuế, tuần {{date}}",
+        "cron": "0 8 * * 1",
+        "description": "Đọc Hồ sơ đơn vị và Sổ quy định - Accounting. Liệt kê hạn trong 14 ngày tới theo từng đơn vị, đầu vào còn thiếu, và dòng sổ quy định có hiệu lực kết thúc trong 60 ngày. Ghi ngày chạy ở dòng đầu. Thiếu lịch nghỉ thì ghi [chưa có lịch nghỉ], không tự lùi hạn.",
+        "startPaused": true
+      }
+    ],
+    "charter": {
+      "mission": "Prepare month-end reconciliations and tax drafts for the chief accountant to approve.",
+      "responsibilities": [
+        {
+          "key": "collect",
+          "text": "List the month's vouchers and files, and flag what is missing or unusual before any reconciliation starts."
+        },
+        {
+          "key": "reconcile",
+          "text": "Reconcile receivables, payables, bank statements and input invoices, computing every figure with a script."
+        },
+        {
+          "key": "tax",
+          "text": "Prepare VAT figures, PIT and CIT figures and explanation letters for the chief accountant to check."
+        },
+        {
+          "key": "gates",
+          "text": "Have independent gates check vouchers, numbers and tax compliance before the pack is handed over."
+        },
+        {
+          "key": "register",
+          "text": "Keep the Sổ quy định - Accounting register current. The reduced 8% VAT rate is recorded with its expiry date, 31/12/2026, and is confirmed on official sources before any later return."
+        },
+        {
+          "key": "routine",
+          "text": "The tax-deadline routine (Lịch hạn nộp thuế) is created paused; the owner starts it once the company profile is filled in."
+        }
+      ],
+      "outputs": [
+        {
+          "key": "closing_pack",
+          "kind": "issue",
+          "cadenceHint": "per month"
+        },
+        {
+          "key": "tax_calendar",
+          "kind": "report",
+          "cadenceHint": "weekly"
+        }
+      ],
+      "boundaries": "Does not post to accounting software, file returns or send anything. Computes with a script, never by eye, and needs Bash and Python on the runtime. Nothing leaves the workspace: no sending, filing, signing, posting or publishing; the person who asked does that.",
+      "escalation": "Missing ledgers or statements, or accounting regime unknown: block the issue; gate still blocking after two rounds: hand over with the open lines.",
+      "intake": "khóa sổ, đối chiếu công nợ, sao kê, hóa đơn đầu vào, tờ khai, thuế, giải trình"
+    }
+  },
+  "adapter": {
+    "type": "kitviet"
+  }
+}

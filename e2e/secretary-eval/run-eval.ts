@@ -33,7 +33,7 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "../..");
-const skillsDir = join(repoRoot, "packages/core/squads/skills");
+const skillsDir = join(repoRoot, "catalog/skills/starter");
 const resultsRoot = join(here, "results");
 
 // ---- Scenario file shape -------------------------------------------------------

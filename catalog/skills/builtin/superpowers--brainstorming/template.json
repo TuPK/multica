@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill",
+  "id": "superpowers:brainstorming",
+  "version": "1.0.0",
+  "sets": [
+    "sdlc",
+    "planning"
+  ],
+  "source": {
+    "type": "vendored",
+    "repo": "obra/superpowers",
+    "ref": "unpinned",
+    "license": "MIT"
+  }
+}

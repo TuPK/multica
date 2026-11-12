@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "kind": "agent",
+  "id": "qa_tester",
+  "version": "1.0.0",
+  "order": 30
+}

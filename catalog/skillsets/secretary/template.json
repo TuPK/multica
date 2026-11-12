@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "kind": "skillset",
+  "id": "secretary",
+  "version": "1.0.0",
+  "target": "starter"
+}

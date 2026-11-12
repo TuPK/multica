@@ -1,5 +1,5 @@
 // Helpers shared by the generators that turn a folder of SKILL.md files into a TypeScript
-// skill bundle (scripts/generate-sdlc-skills.mjs and scripts/generate-kitviet-pack.mjs).
+// skill bundle (scripts/catalog and scripts/generate-kitviet-pack.mjs).
 
 import { readdirSync } from "node:fs";
 import { resolve } from "node:path";

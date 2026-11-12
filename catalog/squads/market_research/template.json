@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "kind": "squad",
+  "id": "market_research",
+  "version": "1.0.0",
+  "collection": "core",
+  "order": 30,
+  "squad": {
+    "name": "Market Research",
+    "description": "Scans markets and competitors each week, has a critic challenge the evidence, and files only the proposals it supports.",
+    "floorName": "Research",
+    "leader": "research_lead",
+    "workflow": null,
+    "roles": [
+      {
+        "key": "research_lead",
+        "agentTemplate": "research_lead",
+        "name": "Research Lead",
+        "description": "Leads market research: sets the scan, delegates, and files only evidenced proposals.",
+        "role": "Squad leader"
+      },
+      {
+        "key": "scout",
+        "agentTemplate": "market_scout",
+        "name": "Market Scout",
+        "description": "Finds and reads market, customer, and trend sources, with a date and link for each claim.",
+        "role": "Market scan"
+      },
+      {
+        "key": "competitor",
+        "agentTemplate": "competitor_analyst",
+        "name": "Competitor Analyst",
+        "description": "Compares competitors' products, pricing, and moves from primary sources.",
+        "role": "Competitor analysis"
+      },
+      {
+        "key": "critic",
+        "agentTemplate": "critic",
+        "name": "Research Critic",
+        "description": "Challenges the evidence before anything is filed, and writes no findings of its own.",
+        "role": "Challenges the evidence"
+      }
+    ],
+    "routines": [
+      {
+        "title": "Market scan",
+        "issueTitleTemplate": "Market scan, week of {{date}}",
+        "cron": "0 8 * * 1",
+        "description": "Weekly market scan. Scope: the markets, customer segments, and named competitors in the research notes; if none are named, start from the company knowledge base (multica knowledge search) and say which markets you chose. Look for changes in the last seven days: pricing, product launches, customer wins and complaints, regulation, and funding. Bar for a proposal: a change that touches a decision the company can make this quarter, backed by at least two dated sources, with its cost and risk stated. File zero to three proposals; no proposal this week is a valid result. Write the report in English."
+      }
+    ],
+    "charter": {
+      "mission": "Scan markets, customers and competitors each week, and file only the proposals the evidence supports.",
+      "responsibilities": [
+        {
+          "key": "market_scan",
+          "text": "Watch markets and customers for changes in the last seven days, with a dated source for each claim."
+        },
+        {
+          "key": "competitors",
+          "text": "Track named competitors' products, pricing and moves from primary sources."
+        },
+        {
+          "key": "challenge",
+          "text": "Have the critic challenge the evidence before anything is filed."
+        }
+      ],
+      "outputs": [
+        {
+          "key": "weekly_report",
+          "kind": "report",
+          "cadenceHint": "weekly"
+        },
+        {
+          "key": "market_proposals",
+          "kind": "proposal",
+          "cadenceHint": "0 to 3 a week"
+        }
+      ],
+      "boundaries": "Does not write product code, make product decisions, or contact anyone outside the workspace.",
+      "escalation": "Questions for the boss go in a proposal, not in a chat.",
+      "intake": "The weekly market scan routine opens each week's issue."
+    },
+    "skills": {
+      "sets": []
+    }
+  }
+}

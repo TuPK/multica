@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "kind": "squad",
+  "id": "kv_construction",
+  "version": "1.0.0",
+  "collection": "vertical",
+  "order": 20,
+  "expertReview": true,
+  "squad": {
+    "name": "Construction (Xây dựng)",
+    "description": "Drafts site reports, diaries, minutes, punch lists and quantity tables (bảng khối lượng, dự toán sơ bộ) from site records, and checks each quantity and each safety line before a person uses them. Signs, accepts and issues nothing.",
+    "floorName": "Construction",
+    "leader": "construction_lead",
+    "operatingReview": false,
+    "workflow": null,
+    "roles": [
+      {
+        "key": "construction_lead",
+        "description": "Leads Construction: plans each site report, quantity table or safety document, holds the approval points, checks each handover, and reports.",
+        "role": "Squad leader"
+      },
+      {
+        "key": "construction_reader",
+        "description": "Reads site notes, diaries, chat messages, photo notes and quantity files, and returns each fact with its file and line, plus gaps and conflicts.",
+        "role": "Site records and facts"
+      },
+      {
+        "key": "construction_standards",
+        "description": "Checks whether each cited TCVN, QCVN, decree or circular is still in force, with its number, status, official link and access date. Searches only; writes no drafts.",
+        "role": "Standards and code status"
+      },
+      {
+        "key": "construction_quantity",
+        "description": "Builds quantity tables and rough estimates from the given dimensions and unit prices, with the formula on each line. A missing dimension or price is a gap, never a guess.",
+        "role": "Quantity tables and estimates"
+      },
+      {
+        "key": "construction_site_drafter",
+        "description": "Drafts site diaries, weekly reports, incident reports, handover minutes, punch lists and photo reports from the facts table. Drafts only; nothing is signed.",
+        "role": "Site document drafts"
+      },
+      {
+        "key": "construction_quantity_gate",
+        "description": "Checks each unit, multiplication, total, duplicate line and figure against its source before a quantity table becomes a payment basis. Writes no drafts of its own.",
+        "role": "Quantity check against the sources"
+      },
+      {
+        "key": "construction_safety_gate",
+        "description": "Checks drafts for missed site hazards, blame without evidence, acceptance or structural conclusions the squad may not make, and code clauses cited without a status check. Writes no drafts of its own.",
+        "role": "Site safety and authority check"
+      },
+      {
+        "key": "construction_handover",
+        "description": "Compares the finished draft with the lead's plan and both gate verdicts, and lists what a person must check and sign before anything leaves the workspace.",
+        "role": "Final handover check"
+      }
+    ],
+    "routines": [],
+    "charter": {
+      "mission": "Turn site records into site reports, quantity tables and cost estimates that a person in the project checks, with a quantity gate and a site-safety gate before handover.",
+      "responsibilities": [
+        {
+          "key": "plan",
+          "text": "Outline each report, quantity table or safety document with its sources and pass criteria, and hold it for approval before drafting."
+        },
+        {
+          "key": "sources",
+          "text": "Record each fact with its file and line, and each cited standard with its status and access date."
+        },
+        {
+          "key": "drafts",
+          "text": "Draft diaries, weekly reports, minutes, punch lists, quantity tables and estimates only from the collected facts; mark every missing figure as a gap."
+        },
+        {
+          "key": "gates",
+          "text": "Before handover, check each quantity against its unit, arithmetic and source, and check each text for missed site hazards, blame, and conclusions only an engineer or signatory can make."
+        }
+      ],
+      "outputs": [
+        {
+          "key": "site_pack",
+          "kind": "issue",
+          "cadenceHint": "per report"
+        },
+        {
+          "key": "gate_report",
+          "kind": "report",
+          "cadenceHint": "per report"
+        }
+      ],
+      "boundaries": "Does not sign, stamp, accept work, approve a quantity for payment, certify a structure or material, or decide that a site is safe. Acceptance, handover and completion minutes stay drafts for the people who sign them. The quantity gate and the safety gate are checks, not a QS, a safety officer or a certified engineer. Nothing leaves the workspace: no sending to the owner, the supervisor, a contractor or an authority; the person who asked does that.",
+      "escalation": "Missing dimensions, unit prices or drawings that a quantity depends on: stop, block the request and name the missing items. A structural figure needed in the text: mark it for the engineer and do not calculate it. A gate still blocking after two rounds: hand to the requester with the open lines; a hazard in the records is never removed from a draft to pass a gate.",
+      "intake": "Requests arrive as issues assigned to this squad. Wording people use: báo cáo tuần, nhật ký thi công, biên bản nghiệm thu, biên bản giao ban, bảng khối lượng, dự toán sơ bộ, báo cáo sự cố, punch list, RFI, phát sinh, biện pháp thi công, hồ sơ hoàn công."
+    }
+  },
+  "adapter": {
+    "type": "kitviet"
+  }
+}

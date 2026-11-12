@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "kind": "workflow",
+  "id": "planning_auto",
+  "version": "1.0.0",
+  "contracts": [
+    "workflow.planning_auto"
+  ],
+  "ui": false,
+  "workflow": {
+    "name": "BMAD Planning Auto",
+    "description": "Planning by agents: research, brief, PRD, design, architecture, epics, then an independent readiness review. A stage hands the issue to the member who owns that document.",
+    "steps": [
+      {
+        "status": {
+          "key": "backlog"
+        },
+        "statusKey": "backlog",
+        "role": null,
+        "instructions": "",
+        "next": "todo"
+      },
+      {
+        "status": {
+          "key": "todo"
+        },
+        "statusKey": "todo",
+        "role": null,
+        "instructions": ""
+      },
+      {
+        "status": {
+          "name": "Research"
+        },
+        "statusKey": "research",
+        "role": "plan_researcher",
+        "instructions": "This issue is either a planning stage of a request or an unblock answer; its description says which. Load the planning-delivery-core and planning-research skills. For a planning stage, do the work the issue names, edit only the documents you own and only the parts its impact map part names, and record what you did. When the report is written, sourced and committed, move the issue to Stage done. For an unblock answer, answer the one question with evidence and end with the answer comment. If you cannot proceed, set the issue to blocked with the blocker report from planning-delivery-core.",
+        "next": "stage_done",
+        "back": "blocked"
+      },
+      {
+        "status": {
+          "name": "Brief"
+        },
+        "statusKey": "brief",
+        "role": "plan_analyst",
+        "instructions": "This issue is either a planning stage of a request or an unblock answer; its description says which. Load the planning-delivery-core and planning-product skills. For a planning stage, do the work the issue names, edit only the documents you own and only the parts its impact map part names, and record what you did. Work the Brief stage. When the brief is written and committed, move the issue to Stage done. For an unblock answer, answer the one question with evidence and end with the answer comment. If you cannot proceed, set the issue to blocked with the blocker report from planning-delivery-core.",
+        "next": "stage_done",
+        "back": "blocked"
+      },
+      {
+        "status": {
+          "name": "PRD"
+        },
+        "statusKey": "prd",
+        "role": "plan_pm",
+        "instructions": "This issue is either a planning stage of a request or an unblock answer; its description says which. Load the planning-delivery-core and planning-product skills. For a planning stage, do the work the issue names, edit only the documents you own and only the parts its impact map part names, and record what you did. Work the PRD stage. When the PRD is written or extended, its ids are stable, and its Change log is updated, move the issue to Stage done. For an unblock answer, answer the one question with evidence and end with the answer comment. If you cannot proceed, set the issue to blocked with the blocker report from planning-delivery-core.",
+        "next": "stage_done",
+        "back": "blocked"
+      },
+      {
+        "status": {
+          "name": "Design"
+        },
+        "statusKey": "design",
+        "role": "plan_ux",
+        "instructions": "This issue is either a planning stage of a request or an unblock answer; its description says which. Load the planning-delivery-core and planning-ux skills. For a planning stage, do the work the issue names, edit only the documents you own and only the parts its impact map part names, and record what you did. When every screen in the issue has its states and is registered, move the issue to Stage done. For an unblock answer, answer the one question with evidence and end with the answer comment. If you cannot proceed, set the issue to blocked with the blocker report from planning-delivery-core.",
+        "next": "stage_done",
+        "back": "blocked"
+      },
+      {
+        "status": {
+          "name": "Architecture"
+        },
+        "statusKey": "architecture",
+        "role": "plan_architect",
+        "instructions": "This issue is either a planning stage of a request or an unblock answer; its description says which. Load the planning-delivery-core and planning-architecture skills. For a planning stage, do the work the issue names, edit only the documents you own and only the parts its impact map part names, and record what you did. When the design, ADRs, and component list are committed and posted, move the issue to Stage done. For an unblock answer, answer the one question with evidence and end with the answer comment. If you cannot proceed, set the issue to blocked with the blocker report from planning-delivery-core.",
+        "next": "stage_done",
+        "back": "blocked"
+      },
+      {
+        "status": {
+          "name": "Epics"
+        },
+        "statusKey": "epics",
+        "role": "plan_pm",
+        "instructions": "This issue is either a planning stage of a request or an unblock answer; its description says which. Load the planning-delivery-core and planning-product skills. For a planning stage, do the work the issue names, edit only the documents you own and only the parts its impact map part names, and record what you did. Work the Epics stage. When the epics, stories, traceability table, and readiness check are written, move the issue to Stage done. For an unblock answer, answer the one question with evidence and end with the answer comment. If you cannot proceed, set the issue to blocked with the blocker report from planning-delivery-core.",
+        "next": "stage_done",
+        "back": "blocked"
+      },
+      {
+        "status": {
+          "name": "Plan review"
+        },
+        "statusKey": "plan_review",
+        "role": "plan_reviewer",
+        "instructions": "This issue is either a planning stage of a request or an unblock answer; its description says which. Load the planning-delivery-core and planning-readiness skills. For a planning stage, do the work the issue names, edit only the documents you own and only the parts its impact map part names, and record what you did. Give one verdict. PASS: move the issue to Stage done. CONCERNS or FAIL: set the issue to blocked and list each gap with its id, so the squad lead can create the gap issues. Do not move it to Stage done on CONCERNS. For an unblock answer, answer the one question with evidence and end with the answer comment. If you cannot proceed, set the issue to blocked with the blocker report from planning-delivery-core.",
+        "next": "stage_done",
+        "back": "blocked"
+      },
+      {
+        "status": {
+          "name": "Stage done",
+          "category": "done"
+        },
+        "statusKey": "stage_done",
+        "role": null,
+        "instructions": ""
+      },
+      {
+        "status": {
+          "name": "Plan ready"
+        },
+        "statusKey": "plan_ready",
+        "role": null,
+        "instructions": ""
+      },
+      {
+        "status": {
+          "key": "blocked"
+        },
+        "statusKey": "blocked",
+        "role": "plan_lead",
+        "instructions": "This issue is blocked. Load the planning-delivery-core and planning-squad-lead skills and follow the lead's Blocked work (Step 6). Read the blocker report, route its class to the member who owns it with an unblock issue, verify the answer, and resume the issue at its Blocked-from status. Do not write the member's document yourself, do not leave the issue here, and do not wait for a person. Only scope-reversal, irreversible, or a capability the host must change goes to a person, once, with your recommended default. Never change an acceptance criterion or an accepted decision to get past a blocker."
+      }
+    ]
+  }
+}

@@ -52,6 +52,9 @@ fi
 # ---------- Database ----------
 bash scripts/ensure-postgres.sh "$ENV_FILE"
 
+echo "==> Generating the catalog data the Go server embeds..."
+node scripts/catalog/cli.mjs build --target go
+
 echo "==> Running migrations..."
 (cd server && go run ./cmd/migrate up)
 

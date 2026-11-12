@@ -1,8 +1,8 @@
-import type { BuiltinSkill } from "./sdlc-skills-data";
-import type { KitvietAgent } from "./kitviet-skills-data/types";
-import { KITVIET_EXTENSIONS } from "./kitviet-skills-data/extensions";
-import { KITVIET_PACK_LOADERS as GENERATED_PACK_LOADERS } from "./kitviet-skills-data/packs";
-import { KITVIET_SQUADS } from "./kitviet-skills-data/squads";
+import type { BuiltinSkill } from "../catalog/generated/skills-builtin";
+import type { KitvietAgent } from "../catalog/generated/kitviet/types";
+import { KITVIET_EXTENSIONS } from "../catalog/generated/kitviet/extensions";
+import { KITVIET_PACK_LOADERS as GENERATED_PACK_LOADERS } from "../catalog/generated/kitviet/packs";
+import { KITVIET_SQUADS } from "../catalog/generated/kitviet/squads";
 import { findKitvietRole, kvLeadInstructions, kvRoleInstructionsWithBody, kvRolePack } from "./kitviet-squad-roles";
 
 /** One generated Kit Viet pack: its skills and the agent bodies of its squad, under the shared bundle types. */
@@ -14,7 +14,7 @@ export interface KitvietPackModule {
 /**
  * One chunk per pack, so a squad that uses none of them never downloads them. The quickstart is the
  * only caller, and only when it attaches a Kit Viet skill or creates a Kit Viet agent. The loaders are
- * generated (kitviet-skills-data/packs.ts) from the configs: a pack id is a squad id, an extension id,
+ * generated (catalog/generated/kitviet/packs.ts) from the configs: a pack id is a squad id, an extension id,
  * or `common`, which holds the skills every squad shares.
  */
 const KITVIET_PACK_LOADERS: Readonly<Record<string, () => Promise<KitvietPackModule>>> = GENERATED_PACK_LOADERS;

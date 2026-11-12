@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 // whose frontmatter names the skill and describes when to use it, and reference
 // files beside it. The apply service installs whatever this folder holds.
 // business-metrics is optional: it is meant for squads with goals.
-const skillsDir = fileURLToPath(new URL("./skills", import.meta.url));
+const skillsDir = fileURLToPath(new URL("../../../catalog/skills/starter", import.meta.url));
 
 const frontmatterOf = (content: string): Record<string, string> | null => {
   const block = /^---\n([\s\S]*?)\n---\n/.exec(content)?.[1];

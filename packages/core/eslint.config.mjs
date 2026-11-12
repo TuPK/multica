@@ -1,7 +1,5 @@
 import reactConfig from "@multica/eslint-config/react";
 
-// Vendored skill bundles ship their own Node scripts and are not linted as product code.
-export default [
-  { ignores: ["squads/sdlc-skills/**/*.js", "squads/sdlc-skills/**/scripts/**", "squads/kitviet-upstream/**"] },
-  ...reactConfig,
-];
+// Template content (vendored skills with their own Node scripts, the Kit Viet upstream) lives in
+// catalog/ at the repo root, outside this package, so it is never linted as product code.
+export default [...reactConfig];

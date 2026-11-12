@@ -1,4 +1,4 @@
-import { KITVIET_EXTENSIONS } from "./kitviet-skills-data/extensions";
+import { KITVIET_EXTENSIONS } from "../catalog/generated/kitviet/extensions";
 
 /**
  * The Kit Viet skills attached to existing company squads (spec section 7): the extra builtin skills of
@@ -11,8 +11,8 @@ import { KITVIET_EXTENSIONS } from "./kitviet-skills-data/extensions";
  * (useApplyCompanyTemplate in company/company-template-mutations.ts). A Kit Viet template squad does not
  * read this map. The generator checks that a target is in one extension only.
  *
- * The names come from kitviet-skills-data/extensions.ts, which the generator writes from
- * kitviet-extensions/*.json. This file itself is hand-written.
+ * The names come from catalog/generated/kitviet/extensions.ts, which the generator writes from
+ * catalog/_sources/kitviet/extensions/*.json. This file itself is hand-written.
  */
 export const KITVIET_EXTENSION_BUILTIN_SKILLS: Readonly<Record<string, readonly string[]>> = Object.fromEntries(
   KITVIET_EXTENSIONS.flatMap((extension) => extension.targets.map((target) => [target, extension.builtinSkills] as const)),

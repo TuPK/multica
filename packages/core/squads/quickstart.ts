@@ -46,7 +46,7 @@ import { PLANNING_ROLE_AGENT_INSTRUCTIONS, type PlanningRoleKey } from "./planni
 import { CONTENT_STUDIO_ROLE_AGENT_INSTRUCTIONS, type CsRoleKey } from "./content-studio";
 import { RESEARCH_LAB_ROLE_AGENT_INSTRUCTIONS, type RlRoleKey } from "./research-lab";
 import { SDLC_ROLE_AGENT_INSTRUCTIONS, type SdlcRoleKey } from "./sdlc-agent-instructions";
-import { SDLC_BUILTIN_SKILLS, type BuiltinSkill } from "./sdlc-skills-data";
+import type { BuiltinSkill } from "../catalog/generated/skills-builtin";
 import { SALES_ROLE_AGENT_INSTRUCTIONS, type SalesRoleKey } from "./sales-agent-instructions";
 import { SALES_STARTER_SOURCES, starterSourceDocument } from "./sales-starter-sources";
 import {
@@ -530,6 +530,8 @@ function loadKitvietSkills(pack: string | undefined): Promise<ReadonlyMap<string
 /** The built-in skill with this name: a Kit Viet skill from the squad's pack, or an SDLC one. */
 async function builtinSkillNamed(name: string, pack: string | undefined): Promise<BuiltinSkill | undefined> {
   if (isKitvietSkillName(name)) return (await loadKitvietSkills(pack)).get(name);
+  // The bundle is about 2 MB of skill text, so it loads when a quickstart installs skills, not with the page.
+  const { SDLC_BUILTIN_SKILLS } = await import("../catalog/generated/skills-builtin");
   return SDLC_BUILTIN_SKILLS.find((b) => b.name === name);
 }
 

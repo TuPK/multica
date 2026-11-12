@@ -1,0 +1,240 @@
+{
+  "schemaVersion": 1,
+  "kind": "workflow",
+  "id": "designer_sdlc_auto",
+  "version": "1.0.0",
+  "order": 40,
+  "ui": false,
+  "designer": {
+    "templateId": "sdlc_auto",
+    "steps": [
+      {
+        "statusKey": "backlog",
+        "transitions": [
+          {
+            "to": "todo"
+          }
+        ]
+      },
+      {
+        "statusKey": "todo",
+        "roleHint": "developer",
+        "instructions": "Read the issue's spec, stories and acceptance criteria, then start the build.",
+        "transitions": [
+          {
+            "to": "in_progress"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Analysis",
+          "category": "started"
+        },
+        "roleHint": "analyst",
+        "instructions": "Write the requirements, epics and stories for the request, and post them on the issue.",
+        "transitions": [
+          {
+            "on": "blocked",
+            "to": "blocked"
+          },
+          {
+            "to": "stage_done"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Design",
+          "category": "started"
+        },
+        "roleHint": "ux",
+        "instructions": "Design every screen the requirements need, with its states, and register each screen.",
+        "transitions": [
+          {
+            "on": "blocked",
+            "to": "blocked"
+          },
+          {
+            "to": "stage_done"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Architecture",
+          "category": "started"
+        },
+        "roleHint": "architect",
+        "instructions": "Write the design, decisions and component list for the change, and commit them.",
+        "transitions": [
+          {
+            "on": "blocked",
+            "to": "blocked"
+          },
+          {
+            "to": "stage_done"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Plan review",
+          "category": "started"
+        },
+        "roleHint": "reviewer",
+        "instructions": "Give one verdict on the planning documents. Report blocked with each gap listed when they are not ready.",
+        "transitions": [
+          {
+            "on": "blocked",
+            "to": "blocked"
+          },
+          {
+            "to": "stage_done"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Security review",
+          "category": "started"
+        },
+        "roleHint": "security",
+        "instructions": "Review the planned change for security risks. Report blocked with each finding listed when it fails.",
+        "transitions": [
+          {
+            "on": "blocked",
+            "to": "blocked"
+          },
+          {
+            "to": "stage_done"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Release prep",
+          "category": "started"
+        },
+        "roleHint": "devops",
+        "instructions": "Prepare the version, digests and rollback steps. Production needs a named approval, so report blocked and state the decision needed.",
+        "transitions": [
+          {
+            "on": "blocked",
+            "to": "blocked"
+          },
+          {
+            "to": "stage_done"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Environment",
+          "category": "started"
+        },
+        "roleHint": "devops",
+        "instructions": "Keep the environment running and its rebuild command working, and post the health check.",
+        "transitions": [
+          {
+            "on": "blocked",
+            "to": "blocked"
+          },
+          {
+            "to": "stage_done"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Harness",
+          "category": "started"
+        },
+        "roleHint": "architect",
+        "instructions": "Check that the repository is ready for agents to build in, and post the result of every blocking check.",
+        "transitions": [
+          {
+            "on": "blocked",
+            "to": "blocked"
+          },
+          {
+            "to": "stage_done"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Stage done",
+          "category": "done"
+        }
+      },
+      {
+        "new": {
+          "name": "Plan ready",
+          "category": "started"
+        }
+      },
+      {
+        "statusKey": "in_progress",
+        "roleHint": "developer",
+        "instructions": "Build every story the issue asks for and verify it on the running app before handing it to review.",
+        "transitions": [
+          {
+            "on": "rejected",
+            "to": "todo"
+          },
+          {
+            "to": "in_review"
+          }
+        ]
+      },
+      {
+        "statusKey": "in_review",
+        "roleHint": "reviewer",
+        "instructions": "Review the whole change against its acceptance criteria. Send it back with the blocking findings, or pass it on to QA.",
+        "transitions": [
+          {
+            "on": "rejected",
+            "to": "in_progress"
+          },
+          {
+            "to": "qa"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "QA",
+          "category": "started"
+        },
+        "roleHint": "qa",
+        "instructions": "Verify the change on the running system against the acceptance criteria. Send defects back to In Progress, or finish the issue.",
+        "transitions": [
+          {
+            "on": "rejected",
+            "to": "in_progress"
+          },
+          {
+            "to": "done"
+          }
+        ]
+      },
+      {
+        "statusKey": "blocked",
+        "roleHint": "lead",
+        "instructions": "Route each blocker to the owner who can unblock it, verify the ruling, and resume the issue at the step it left.",
+        "transitions": [
+          {
+            "to": "in_progress"
+          }
+        ]
+      },
+      {
+        "statusKey": "done"
+      },
+      {
+        "statusKey": "cancelled"
+      }
+    ]
+  }
+}

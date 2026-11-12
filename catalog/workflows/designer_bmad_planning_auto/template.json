@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "kind": "workflow",
+  "id": "designer_bmad_planning_auto",
+  "version": "1.0.0",
+  "order": 50,
+  "ui": false,
+  "designer": {
+    "templateId": "bmad_planning_auto",
+    "steps": [
+      {
+        "statusKey": "backlog",
+        "transitions": [
+          {
+            "to": "todo"
+          }
+        ]
+      },
+      {
+        "statusKey": "todo"
+      },
+      {
+        "new": {
+          "name": "Research",
+          "category": "started"
+        },
+        "roleHint": "plan_researcher",
+        "instructions": "Research the market, domain, competitors and users, with a dated source for each claim.",
+        "transitions": [
+          {
+            "on": "blocked",
+            "to": "blocked"
+          },
+          {
+            "to": "stage_done"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Brief",
+          "category": "started"
+        },
+        "roleHint": "plan_analyst",
+        "instructions": "Turn the request and its research into a product brief, and test the weak ideas.",
+        "transitions": [
+          {
+            "on": "blocked",
+            "to": "blocked"
+          },
+          {
+            "to": "stage_done"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "PRD",
+          "category": "started"
+        },
+        "roleHint": "plan_pm",
+        "instructions": "Write or extend the PRD, keep existing ids stable, and update its change log.",
+        "transitions": [
+          {
+            "on": "blocked",
+            "to": "blocked"
+          },
+          {
+            "to": "stage_done"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Design",
+          "category": "started"
+        },
+        "roleHint": "plan_ux",
+        "instructions": "Design or extend the screens, flows and states the requirements need.",
+        "transitions": [
+          {
+            "on": "blocked",
+            "to": "blocked"
+          },
+          {
+            "to": "stage_done"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Architecture",
+          "category": "started"
+        },
+        "roleHint": "plan_architect",
+        "instructions": "Record the architecture, decisions and impact of the change.",
+        "transitions": [
+          {
+            "on": "blocked",
+            "to": "blocked"
+          },
+          {
+            "to": "stage_done"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Epics",
+          "category": "started"
+        },
+        "roleHint": "plan_pm",
+        "instructions": "Write the epics, stories and traceability table, and check they are ready to build.",
+        "transitions": [
+          {
+            "on": "blocked",
+            "to": "blocked"
+          },
+          {
+            "to": "stage_done"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Plan review",
+          "category": "started"
+        },
+        "roleHint": "plan_reviewer",
+        "instructions": "Check the planning documents agree and can be built. Report blocked with each gap listed when they do not.",
+        "transitions": [
+          {
+            "on": "blocked",
+            "to": "blocked"
+          },
+          {
+            "to": "stage_done"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Stage done",
+          "category": "done"
+        }
+      },
+      {
+        "new": {
+          "name": "Plan ready",
+          "category": "started"
+        }
+      },
+      {
+        "statusKey": "blocked",
+        "roleHint": "plan_lead",
+        "instructions": "Route each blocker to the member who owns the document, verify the answer, and resume the issue."
+      },
+      {
+        "statusKey": "done"
+      },
+      {
+        "statusKey": "cancelled"
+      }
+    ]
+  }
+}

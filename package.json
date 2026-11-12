@@ -30,11 +30,13 @@
     "ui:add": "cd packages/ui && npx shadcn@latest add",
     "generate:brand": "node scripts/brand/generate.mjs",
     "generate:attachment-text-preview": "node scripts/generate-attachment-text-preview.mjs",
-    "generate:company-template": "node scripts/generate-company-template.mjs",
     "generate:reserved-slugs": "node scripts/generate-reserved-slugs.mjs",
     "generate:kitviet": "node scripts/generate-kitviet-pack.mjs",
     "kitviet:update": "node scripts/kitviet-update.mjs",
-    "generate:sdlc-skills": "node scripts/generate-sdlc-skills.mjs"
+    "catalog:build": "node scripts/catalog/cli.mjs build",
+    "catalog:check": "node scripts/catalog/cli.mjs check",
+    "catalog:new": "node scripts/catalog/cli.mjs new",
+    "catalog:list": "node scripts/catalog/cli.mjs list"
   },
   "engines": {
     "node": ">=22"

@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "kind": "agent",
+  "id": "fullstack_developer",
+  "version": "1.0.0",
+  "order": 10
+}

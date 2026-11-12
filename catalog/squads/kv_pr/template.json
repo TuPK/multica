@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "kind": "squad",
+  "id": "kv_pr",
+  "version": "1.0.0",
+  "collection": "kitviet",
+  "order": 70,
+  "squad": {
+    "name": "PR & Comms (Truyền thông báo chí)",
+    "description": "Drafts press releases (thông cáo báo chí), Q&A and crisis holding statements (khủng hoảng truyền thông) from verified facts, and checks every fact, quote and legal line before a person sends anything to the press. Sends and publishes nothing.",
+    "floorName": "Launch",
+    "leader": "pr_lead",
+    "operatingReview": false,
+    "workflow": null,
+    "roles": [
+      {
+        "key": "pr_lead",
+        "description": "Leads PR & Comms: plans each release or crisis response, holds the main message for approval, checks each handover, and reports.",
+        "role": "Squad leader"
+      },
+      {
+        "key": "pr_source",
+        "description": "Finds the sources for a story on the web and in the files: official documents, past coverage and figures, each with its level, link and access date.",
+        "role": "Source research and media monitoring"
+      },
+      {
+        "key": "pr_transcript",
+        "description": "Reads interview transcripts, notes and documents from people, and pulls out direct quotes with their timestamps and speakers.",
+        "role": "Quotes and facts from interviews"
+      },
+      {
+        "key": "pr_writer",
+        "description": "Drafts news stories and interview articles from the collected facts, in inverted pyramid order, with the source table and gaps marked as [cần bổ sung].",
+        "role": "News article drafts"
+      },
+      {
+        "key": "pr_release",
+        "description": "Drafts press releases, Q&A sets and crisis holding statements from the approved message, with each leader quote marked for approval.",
+        "role": "Press release, Q&A and statement drafts"
+      },
+      {
+        "key": "pr_fact_gate",
+        "description": "Checks every fact, name, date, claim and quote in a draft against the collected sources and transcripts. Writes no drafts of its own.",
+        "role": "Fact check against the sources"
+      },
+      {
+        "key": "pr_ethics_gate",
+        "description": "Checks every draft for defamation, prejudging, leaked sources, private life, children, unverified persons and plagiarism. Writes no drafts of its own.",
+        "role": "Legal and ethics check"
+      },
+      {
+        "key": "pr_numbers_gate",
+        "description": "Recomputes every figure in a draft with a script and checks its source, year and scope. Writes no drafts of its own.",
+        "role": "Figure check"
+      },
+      {
+        "key": "pr_handover",
+        "description": "Compares the finished draft with the lead's plan and the gate verdicts, and lists what a person must decide before anything goes to the press.",
+        "role": "Final handover check"
+      }
+    ],
+    "routines": [],
+    "charter": {
+      "mission": "Produce press releases and media content from verified facts, and check every fact, quote and legal line before it reaches the press.",
+      "responsibilities": [
+        {
+          "key": "plan",
+          "text": "Outline each release or response and hold its main message for approval before any draft is written."
+        },
+        {
+          "key": "sources",
+          "text": "Collect the source for each claim, figure and quote, with its level, link and date."
+        },
+        {
+          "key": "drafts",
+          "text": "Draft the press release, news story, Q&A or crisis statement only from the collected facts and the approved message."
+        },
+        {
+          "key": "gates",
+          "text": "Before handover, check each fact against its source, each quote against its transcript, each figure by script, and each line against the legal and ethics rules."
+        }
+      ],
+      "outputs": [
+        {
+          "key": "release_pack",
+          "kind": "issue",
+          "cadenceHint": "per release"
+        },
+        {
+          "key": "fact_report",
+          "kind": "report",
+          "cadenceHint": "per release"
+        }
+      ],
+      "boundaries": "Does not send anything to journalists, post on pages, or publish; a claim without a source and a quote without a transcript stay out of the draft. Nothing leaves the workspace: no sending, filing, signing, posting or publishing; the person who asked does that.",
+      "escalation": "Message not approved: stop at the message gate; facts missing for a crisis statement: stop and name the facts; a fact or claim blocked after two rounds: hand to the requester with the blocked lines.",
+      "intake": "Requests arrive as issues assigned to this squad. Wording people use: thông cáo, họp báo, Q&A, bài báo, phỏng vấn, tuyên bố, khủng hoảng truyền thông, kiểm chứng tin."
+    }
+  },
+  "adapter": {
+    "type": "kitviet"
+  }
+}

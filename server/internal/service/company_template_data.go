@@ -1,22 +1,21 @@
 package service
 
 import (
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
 	"sync"
+
+	"github.com/multica-ai/multica/server/internal/catalog"
 )
 
 // The starter company's data (spec 3.4): the floors, the squad cards, the
-// stage owners and the agent instruction templates. The TypeScript definitions
-// in packages/core are the source; company_template_data.json is generated
-// from them by `pnpm generate:company-template`, and a core test keeps the two
-// equal. Edit the TypeScript, then regenerate.
+// stage owners and the agent instruction templates. The source is the catalog
+// folder (catalog/companies/starter, catalog/agents, catalog/skills/starter);
+// `pnpm catalog:build` writes the JSON the server embeds. Edit the catalog, then build.
 
-//go:embed company_template_data.json
-var companyTemplateJSON []byte
+var companyTemplateJSON = catalog.CompanyJSON()
 
 // Start options, as the wizard sends them (spec 3.4).
 const (
@@ -121,6 +120,9 @@ type companyStarterFile struct {
 
 var loadCompanyData = sync.OnceValues(func() (companyData, error) {
 	var data companyData
+	if len(companyTemplateJSON) == 0 {
+		return companyData{}, fmt.Errorf("company template data: %s", catalog.BuildHint)
+	}
 	if err := json.Unmarshal(companyTemplateJSON, &data); err != nil {
 		return companyData{}, fmt.Errorf("parse company template data: %w", err)
 	}

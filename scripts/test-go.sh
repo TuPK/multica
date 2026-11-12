@@ -5,6 +5,9 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 GUARD_SCRIPT="$SCRIPT_DIR/go-test-with-agent-cli-guard.sh"
 
+# The server embeds data generated from catalog/ (not committed); the tests read it.
+node "$REPO_ROOT/scripts/catalog/cli.mjs" build --target go >/dev/null || exit 1
+
 usage() {
   echo "usage: $0 [--race] [--only regular|agent]" >&2
 }

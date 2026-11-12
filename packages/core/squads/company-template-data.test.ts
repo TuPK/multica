@@ -12,13 +12,10 @@ import {
   COMPANY_START_OPTIONS,
 } from "./company-template";
 
-// The Go apply service embeds this file. It is generated from the constants
-// above by `pnpm generate:company-template`; this test fails when the two differ.
+// The Go apply service embeds this file. `pnpm catalog:build` writes it from the same catalog data the
+// constants above come from; this test fails when it is missing or stale (build not rerun).
 const generated = JSON.parse(
-  readFileSync(
-    new URL("../../../server/internal/service/company_template_data.json", import.meta.url),
-    "utf8",
-  ),
+  readFileSync(new URL("../../../server/internal/catalog/generated/company.json", import.meta.url), "utf8"),
 ) as Record<string, unknown>;
 
 describe("company template data for the server", () => {
@@ -34,7 +31,7 @@ describe("company template data for the server", () => {
   });
 
   it("carries the starter skills, unchanged from their folders", () => {
-    const skillsDir = fileURLToPath(new URL("./skills", import.meta.url));
+    const skillsDir = fileURLToPath(new URL("../../../catalog/skills/starter", import.meta.url));
     const folders = readdirSync(skillsDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)

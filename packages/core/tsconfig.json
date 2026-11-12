@@ -10,7 +10,6 @@
   ],
   "exclude": [
     "node_modules",
-    "dist",
-    "squads/sdlc-skills"
+    "dist"
   ]
 }

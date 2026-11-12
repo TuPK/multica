@@ -1,12 +1,15 @@
 package issueworkflow
 
 import (
+	"encoding/json"
 	"fmt"
 
+	"github.com/multica-ai/multica/server/internal/catalog"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
 )
 
-// System workflow templates. A template is a starting point the designer copies
+// System workflow templates. Their data lives in catalog/workflows/designer_*; this file reads it.
+// A template is a starting point the designer copies
 // into an unsaved draft. Saving the draft goes through the same create path as
 // any workflow, so every template must pass Validate.
 //
@@ -49,115 +52,70 @@ type Template struct {
 	Steps []TemplateStep
 }
 
-// Templates returns the system templates. Each call builds new values, so a
-// caller may change the result without affecting later calls.
+// Templates returns the system templates, in the order the picker lists them. They are read from the
+// catalog (catalog/workflows/designer_*, built into the JSON the server embeds by `pnpm catalog:build`).
+// Each call builds new values, so a caller may change the result without affecting later calls.
+//
+// It panics when the catalog has not been built or a template does not parse: the server cannot serve
+// the designer without its templates, and a build step that skipped the catalog should fail loudly.
 func Templates() []Template {
-	return []Template{
-		{ID: TemplateDelivery, Steps: []TemplateStep{
-			keyed(issuestatus.Todo, defaultTo(issuestatus.InProgress)),
-			keyed(issuestatus.InProgress, defaultTo(issuestatus.InReview)),
-			// A rejected review goes back to In Progress; any other outcome moves on to QA.
-			keyed(issuestatus.InReview, rejectedTo(issuestatus.InProgress), defaultTo("qa")),
-			created("QA", issuestatus.CategoryStarted, defaultTo(issuestatus.Done)),
-			keyed(issuestatus.Done),
-			keyed(issuestatus.Cancelled),
-		}},
-		{ID: TemplateContent, Steps: []TemplateStep{
-			keyed(issuestatus.Todo, defaultTo("drafting")),
-			created("Drafting", issuestatus.CategoryStarted, defaultTo("editing")),
-			created("Editing", issuestatus.CategoryStarted, defaultTo("scheduled")),
-			created("Scheduled", issuestatus.CategoryStarted, defaultTo(issuestatus.Done)),
-			keyed(issuestatus.Done),
-			keyed(issuestatus.Cancelled),
-		}},
-		{ID: TemplateCommunity, Steps: []TemplateStep{
-			keyed(issuestatus.Todo, defaultTo("triage")),
-			created("Triage", issuestatus.CategoryUnstarted, defaultTo("replying")),
-			created("Replying", issuestatus.CategoryStarted, defaultTo("waiting")),
-			created("Waiting", issuestatus.CategoryStarted, defaultTo(issuestatus.Done)),
-			keyed(issuestatus.Done),
-			keyed(issuestatus.Cancelled),
-		}},
-		sdlcAutoTemplate(),
-		bmadPlanningAutoTemplate(),
-		salesLoopTemplate(),
-		quickFixTemplate(),
+	raw := catalog.DesignerWorkflowsJSON()
+	if len(raw) == 0 {
+		panic("issueworkflow templates: " + catalog.BuildHint)
 	}
+	var data []catalogTemplate
+	if err := json.Unmarshal(raw, &data); err != nil {
+		panic(fmt.Sprintf("issueworkflow templates: parse catalog data: %v", err))
+	}
+	out := make([]Template, len(data))
+	for i, t := range data {
+		steps := make([]TemplateStep, len(t.Steps))
+		for j, s := range t.Steps {
+			steps[j] = s.toStep()
+		}
+		out[i] = Template{ID: t.ID, Steps: steps}
+	}
+	return out
 }
 
-func sdlcAutoTemplate() Template {
-	return Template{ID: TemplateSDLCAuto, Steps: []TemplateStep{
-		keyed(issuestatus.Backlog, defaultTo(issuestatus.Todo)),
-		keyed(issuestatus.Todo, defaultTo(issuestatus.InProgress)).
-			withRole("developer", "Read the issue's spec, stories and acceptance criteria, then start the build."),
-		planningStage("Analysis", "analyst", "Write the requirements, epics and stories for the request, and post them on the issue.", "stage_done"),
-		planningStage("Design", "ux", "Design every screen the requirements need, with its states, and register each screen.", "stage_done"),
-		planningStage("Architecture", "architect", "Write the design, decisions and component list for the change, and commit them.", "stage_done"),
-		planningStage("Plan review", "reviewer", "Give one verdict on the planning documents. Report blocked with each gap listed when they are not ready.", "stage_done"),
-		planningStage("Security review", "security", "Review the planned change for security risks. Report blocked with each finding listed when it fails.", "stage_done"),
-		planningStage("Release prep", "devops", "Prepare the version, digests and rollback steps. Production needs a named approval, so report blocked and state the decision needed.", "stage_done"),
-		planningStage("Environment", "devops", "Keep the environment running and its rebuild command working, and post the health check.", "stage_done"),
-		planningStage("Harness", "architect", "Check that the repository is ready for agents to build in, and post the result of every blocking check.", "stage_done"),
-		created("Stage done", issuestatus.CategoryDone),
-		created("Plan ready", issuestatus.CategoryStarted),
-		keyed(issuestatus.InProgress, rejectedTo(issuestatus.Todo), defaultTo(issuestatus.InReview)).
-			withRole("developer", "Build every story the issue asks for and verify it on the running app before handing it to review."),
-		keyed(issuestatus.InReview, rejectedTo(issuestatus.InProgress), defaultTo("qa")).
-			withRole("reviewer", "Review the whole change against its acceptance criteria. Send it back with the blocking findings, or pass it on to QA."),
-		created("QA", issuestatus.CategoryStarted, rejectedTo(issuestatus.InProgress), defaultTo(issuestatus.Done)).
-			withRole("qa", "Verify the change on the running system against the acceptance criteria. Send defects back to In Progress, or finish the issue."),
-		keyed(issuestatus.Blocked, defaultTo(issuestatus.InProgress)).
-			withRole("lead", "Route each blocker to the owner who can unblock it, verify the ruling, and resume the issue at the step it left."),
-		keyed(issuestatus.Done),
-		keyed(issuestatus.Cancelled),
-	}}
+// catalogTemplate is a designer template as the catalog writes it.
+type catalogTemplate struct {
+	ID    string                `json:"id"`
+	Steps []catalogTemplateStep `json:"steps"`
 }
 
-func bmadPlanningAutoTemplate() Template {
-	return Template{ID: TemplateBMADPlanningAuto, Steps: []TemplateStep{
-		keyed(issuestatus.Backlog, defaultTo(issuestatus.Todo)),
-		keyed(issuestatus.Todo),
-		planningStage("Research", "plan_researcher", "Research the market, domain, competitors and users, with a dated source for each claim.", "stage_done"),
-		planningStage("Brief", "plan_analyst", "Turn the request and its research into a product brief, and test the weak ideas.", "stage_done"),
-		planningStage("PRD", "plan_pm", "Write or extend the PRD, keep existing ids stable, and update its change log.", "stage_done"),
-		planningStage("Design", "plan_ux", "Design or extend the screens, flows and states the requirements need.", "stage_done"),
-		planningStage("Architecture", "plan_architect", "Record the architecture, decisions and impact of the change.", "stage_done"),
-		planningStage("Epics", "plan_pm", "Write the epics, stories and traceability table, and check they are ready to build.", "stage_done"),
-		planningStage("Plan review", "plan_reviewer", "Check the planning documents agree and can be built. Report blocked with each gap listed when they do not.", "stage_done"),
-		created("Stage done", issuestatus.CategoryDone),
-		created("Plan ready", issuestatus.CategoryStarted),
-		keyed(issuestatus.Blocked).
-			withRole("plan_lead", "Route each blocker to the member who owns the document, verify the answer, and resume the issue."),
-		keyed(issuestatus.Done),
-		keyed(issuestatus.Cancelled),
-	}}
+type catalogTemplateStep struct {
+	StatusKey string `json:"statusKey"`
+	New       *struct {
+		Name     string `json:"name"`
+		Category string `json:"category"`
+	} `json:"new"`
+	RoleHint     string `json:"roleHint"`
+	Instructions string `json:"instructions"`
+	Transitions  []struct {
+		On string `json:"on"`
+		To string `json:"to"`
+	} `json:"transitions"`
 }
 
-func salesLoopTemplate() Template {
-	return Template{ID: TemplateSalesLoop, Steps: []TemplateStep{
-		keyed(issuestatus.Todo, defaultTo("scouting")),
-		created("Scouting", issuestatus.CategoryStarted, defaultTo("drafting")).
-			withRole("sales_scout", "Run the lane's active sources, score the organisations, and write their accounts with a source and date for each claim."),
-		created("Drafting", issuestatus.CategoryStarted, defaultTo("checking")).
-			withRole("sales_writer", "Draft outreach for qualified accounts in the channel the lane allows. Nothing is sent."),
-		created("Checking", issuestatus.CategoryStarted, rejectedTo("drafting"), defaultTo("reporting")).
-			withRole("sales_checker", "Check each draft against the channel and compliance rules. Send a failing draft back to Drafting with the reason."),
-		created("Reporting", issuestatus.CategoryStarted, defaultTo(issuestatus.Done)).
-			withRole("sales_analyst", "Write the sales report for the scan, and list each lane that was skipped."),
-		keyed(issuestatus.Done),
-		keyed(issuestatus.Cancelled),
-	}}
-}
-
-func quickFixTemplate() Template {
-	return Template{ID: TemplateQuickFix, Steps: []TemplateStep{
-		keyed(issuestatus.Todo, defaultTo(issuestatus.InProgress)).
-			withRole("lead", "Take the bug or small fix and start it."),
-		keyed(issuestatus.InProgress, defaultTo(issuestatus.Done)).
-			withRole("developer", "Reproduce the defect, make the smallest fix, and verify it on the running app before finishing."),
-		keyed(issuestatus.Done),
-		keyed(issuestatus.Cancelled),
-	}}
+func (s catalogTemplateStep) toStep() TemplateStep {
+	step := TemplateStep{StatusKey: s.StatusKey, RoleHint: s.RoleHint, Instructions: s.Instructions}
+	if s.New != nil {
+		step.New = &TemplateStatus{Name: s.New.Name, Category: s.New.Category}
+	}
+	for _, t := range s.Transitions {
+		switch t.On {
+		case "":
+			step.Transitions = append(step.Transitions, defaultTo(t.To))
+		case OutcomeRejected:
+			step.Transitions = append(step.Transitions, rejectedTo(t.To))
+		case OutcomeBlocked:
+			step.Transitions = append(step.Transitions, blockedTo(t.To))
+		default:
+			panic(fmt.Sprintf("issueworkflow templates: transition on %q is not a known outcome", t.On))
+		}
+	}
+	return step
 }
 
 // Resolve returns the steps a save of the template writes. A created status is
@@ -182,31 +140,6 @@ func (t Template) Resolve() ([]Step, error) {
 		}
 	}
 	return steps, nil
-}
-
-// keyed is a column for a status the workspace has by key.
-func keyed(key string, branches ...Transition) TemplateStep {
-	return TemplateStep{StatusKey: key, Transitions: branches}
-}
-
-// created is a column for a status the save creates.
-func created(name, category string, branches ...Transition) TemplateStep {
-	return TemplateStep{New: &TemplateStatus{Name: name, Category: category}, Transitions: branches}
-}
-
-// planningStage is a column an owner works and then moves on from. The owner
-// reports blocked when it cannot pass the step; any other outcome moves the
-// issue to next.
-func planningStage(name, role, instructions, next string) TemplateStep {
-	return created(name, issuestatus.CategoryStarted, blockedTo(issuestatus.Blocked), defaultTo(next)).
-		withRole(role, instructions)
-}
-
-// withRole sets the squad role the column suggests and a short summary of its work.
-func (s TemplateStep) withRole(role, instructions string) TemplateStep {
-	s.RoleHint = role
-	s.Instructions = instructions
-	return s
 }
 
 // defaultTo is the branch taken when no other condition matches.

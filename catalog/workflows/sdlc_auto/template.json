@@ -1,0 +1,182 @@
+{
+  "schemaVersion": 1,
+  "kind": "workflow",
+  "id": "sdlc_auto",
+  "version": "1.0.0",
+  "contracts": [
+    "workflow.sdlc_auto"
+  ],
+  "ui": false,
+  "workflow": {
+    "name": "SDLC Auto",
+    "description": "Planning and build by agents: a planning step hands the sub-issue to its owner, and a build issue goes through developer, independent review, then QA. A rejected step goes back to the developer.",
+    "steps": [
+      {
+        "status": {
+          "key": "backlog"
+        },
+        "statusKey": "backlog",
+        "role": null,
+        "instructions": "",
+        "next": "todo",
+        "implicitNext": true
+      },
+      {
+        "status": {
+          "name": "Analysis"
+        },
+        "statusKey": "analysis",
+        "role": "analyst",
+        "optionalRole": true,
+        "instructions": "This issue is either a planning stage of a request or an unblock ruling; its description says which. Load the sdlc-delivery-core and sdlc-product-analysis skills. For a planning stage, do the work the issue names. When the requirements, epics, or ledger in the issue are written and posted, move the issue to Stage done. For an unblock ruling, follow your skill's Ruling mode and end with the Ruling comment. If you cannot proceed, set the issue to blocked with the blocker report from sdlc-delivery-core.",
+        "next": "stage_done",
+        "back": "blocked"
+      },
+      {
+        "status": {
+          "name": "Design"
+        },
+        "statusKey": "design",
+        "role": "ux",
+        "optionalRole": true,
+        "instructions": "This issue is either a planning stage of a request or an unblock ruling; its description says which. Load the sdlc-delivery-core and sdlc-ux-design skills. For a planning stage, do the work the issue names. When every screen in the issue has its states and is registered, move the issue to Stage done. For an unblock ruling, follow your skill's Ruling mode and end with the Ruling comment. If you cannot proceed, set the issue to blocked with the blocker report from sdlc-delivery-core.",
+        "next": "stage_done",
+        "back": "blocked"
+      },
+      {
+        "status": {
+          "name": "Architecture"
+        },
+        "statusKey": "architecture",
+        "role": "architect",
+        "optionalRole": true,
+        "instructions": "This issue is either a planning stage of a request or an unblock ruling; its description says which. Load the sdlc-delivery-core and sdlc-architecture skills. For a planning stage, do the work the issue names. When the design, ADRs, and component list are committed and posted, move the issue to Stage done. For an unblock ruling, follow your skill's Ruling mode and end with the Ruling comment. If you cannot proceed, set the issue to blocked with the blocker report from sdlc-delivery-core.",
+        "next": "stage_done",
+        "back": "blocked"
+      },
+      {
+        "status": {
+          "name": "Plan review"
+        },
+        "statusKey": "plan_review",
+        "role": "reviewer",
+        "instructions": "This issue is either a planning stage of a request or an unblock ruling; its description says which. Load the sdlc-delivery-core and sdlc-code-review skills. For a planning stage, do the work the issue names. Give one verdict. PASS: move the issue to Stage done. CONCERNS or FAIL: set the issue to blocked and list each gap with its id, so the squad lead can create the gap issues. Do not move it to Stage done on CONCERNS. For an unblock ruling, follow your skill's Ruling mode and end with the Ruling comment. If you cannot proceed, set the issue to blocked with the blocker report from sdlc-delivery-core.",
+        "next": "stage_done",
+        "back": "blocked"
+      },
+      {
+        "status": {
+          "name": "Security review"
+        },
+        "statusKey": "security_review",
+        "role": "security",
+        "optionalRole": true,
+        "instructions": "This issue is either a planning stage of a request or an unblock ruling; its description says which. Load the sdlc-delivery-core and sdlc-security-review skills. For a planning stage, do the work the issue names. PASS: move the issue to Stage done. FAIL or NO_GO: set the issue to blocked and list each finding with its id. For an unblock ruling, follow your skill's Ruling mode and end with the Ruling comment. If you cannot proceed, set the issue to blocked with the blocker report from sdlc-delivery-core.",
+        "next": "stage_done",
+        "back": "blocked"
+      },
+      {
+        "status": {
+          "name": "Release prep"
+        },
+        "statusKey": "release_prep",
+        "role": "devops",
+        "optionalRole": true,
+        "instructions": "This issue is either a planning stage of a request or an unblock ruling; its description says which. Load the sdlc-delivery-core and sdlc-devops-release skills. For a planning stage, do the work the issue names. Move the issue to Stage done only when the report lists the version, digests, and rollback steps. Production waits for the named approval: set the issue to blocked and say what the approver must decide. For an unblock ruling, follow your skill's Ruling mode and end with the Ruling comment. If you cannot proceed, set the issue to blocked with the blocker report from sdlc-delivery-core.",
+        "next": "stage_done",
+        "back": "blocked"
+      },
+      {
+        "status": {
+          "name": "Environment"
+        },
+        "statusKey": "environment",
+        "role": "devops",
+        "optionalRole": true,
+        "instructions": "This issue is either a planning stage of a request or an unblock ruling; its description says which. Load the sdlc-delivery-core and sdlc-devops-release skills. For a planning stage, do the work the issue names. Work in Environment mode. When the environment runs, `docs/sdlc/environment.md` and the one command that rebuilds it are written, and the health output is posted, move the issue to Stage done. For an unblock ruling, follow your skill's Ruling mode and end with the Ruling comment. If you cannot proceed, set the issue to blocked with the blocker report from sdlc-delivery-core.",
+        "next": "stage_done",
+        "back": "blocked"
+      },
+      {
+        "status": {
+          "name": "Harness"
+        },
+        "statusKey": "harness",
+        "role": "architect",
+        "optionalRole": true,
+        "instructions": "This issue is either a planning stage of a request or an unblock ruling; its description says which. Load the sdlc-delivery-core and sdlc-harness skills. For a planning stage, do the work the issue names. Work in the mode the issue names (Mode 1 by default, Mode 3 for a refresh). When `check-harness` passes every blocking check and the result is posted, move the issue to Stage done. For an unblock ruling, follow your skill's Ruling mode and end with the Ruling comment. If you cannot proceed, set the issue to blocked with the blocker report from sdlc-delivery-core.",
+        "next": "stage_done",
+        "back": "blocked"
+      },
+      {
+        "status": {
+          "name": "Stage done",
+          "category": "done"
+        },
+        "statusKey": "stage_done",
+        "role": null,
+        "instructions": ""
+      },
+      {
+        "status": {
+          "name": "Plan ready"
+        },
+        "statusKey": "plan_ready",
+        "role": null,
+        "instructions": ""
+      },
+      {
+        "status": {
+          "key": "todo"
+        },
+        "statusKey": "todo",
+        "role": "developer",
+        "instructions": "Pick up this issue from To Do. Read its spec, stories, and acceptance criteria, then move it to In Progress to start the build.",
+        "next": "in_progress",
+        "implicitNext": true
+      },
+      {
+        "status": {
+          "key": "in_progress"
+        },
+        "statusKey": "in_progress",
+        "role": "developer",
+        "instructions": "Build everything this issue asks for, story by story, following the story flow in your instructions. Hand it to review only when every story is implemented and verified on the running app. Record what you verified in the spec. If this issue came back from Blocked, read the lead's comment first and re-run the check it names before you hand it to review.",
+        "next": "in_review",
+        "back": "todo",
+        "implicitNext": true
+      },
+      {
+        "status": {
+          "key": "in_review"
+        },
+        "statusKey": "in_review",
+        "role": "reviewer",
+        "instructions": "Review the whole change for this issue against its acceptance criteria. Send it back to In Progress with the blocking findings, or pass it on to QA with your verdict. If you cannot finish the review, or a blocking finding is not the developer's to fix, set the issue to blocked with the blocker report from sdlc-delivery-core and give each blocking finding an Owner-role.",
+        "next": "qa",
+        "back": "in_progress",
+        "implicitNext": true
+      },
+      {
+        "status": {
+          "name": "QA"
+        },
+        "statusKey": "qa",
+        "role": "qa",
+        "instructions": "Verify the change on the running system against the acceptance criteria. NO GO sends it back to In Progress with the defects. GO or CONDITIONAL GO finishes the issue. Run the environment's env-ensure command first when docs/sdlc/environment.md has one. If you cannot run the verification (a service is down, a required check cannot run) or a defect is not the developer's to fix, set the issue to blocked with the blocker report from sdlc-delivery-core and give each defect an Owner-role.",
+        "next": "done",
+        "back": "in_progress",
+        "implicitNext": true
+      },
+      {
+        "status": {
+          "key": "blocked"
+        },
+        "statusKey": "blocked",
+        "role": "lead",
+        "instructions": "This issue is blocked. Load the sdlc-delivery-core and sdlc-squad-lead skills and follow the lead's Blocked work (Step 7). Read the blocker report, route its class to the specialist who owns it with an unblock issue, verify the ruling, and resume the issue at its Blocked-from status. Do not do the specialist's work yourself, do not leave the issue here, and do not wait for a person. Only an irreversible action, a person's credential, a capability the host must change, or a reached limit goes to a person, with a proposal that carries your recommendation. Never set a build issue or its Epic done while a check it needs has not run; name that check as unverified in the report instead. Never change acceptance criteria to get past a blocker.",
+        "back": "in_progress"
+      }
+    ]
+  }
+}

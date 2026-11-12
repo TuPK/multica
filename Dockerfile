@@ -1,3 +1,17 @@
+# --- Catalog stage ---
+# The server embeds template data generated from catalog/ (docs/specs/template-registry/spec.md). The
+# generated files are not committed, and the generator needs only Node, so it runs in its own stage.
+# Keep the Node version in step with Dockerfile.web.
+FROM node:22.23.4-alpine AS catalog
+
+WORKDIR /src
+COPY catalog/ catalog/
+COPY scripts/catalog/ scripts/catalog/
+COPY scripts/lib/ scripts/lib/
+# The generator checks the catalog's locales against the product's supported locales.
+COPY packages/core/i18n/types.ts packages/core/i18n/types.ts
+RUN node scripts/catalog/cli.mjs build --target go
+
 # --- Build stage ---
 FROM golang:1.27.3-alpine AS builder
 
@@ -9,8 +23,9 @@ WORKDIR /src
 COPY server/go.mod server/go.sum ./server/
 RUN cd server && go mod download
 
-# Copy server source
+# Copy server source, then the generated catalog data it embeds
 COPY server/ ./server/
+COPY --from=catalog /src/server/internal/catalog/generated/ ./server/internal/catalog/generated/
 
 # Build binaries
 ARG VERSION=dev

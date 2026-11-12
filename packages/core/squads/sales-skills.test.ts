@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
+import { SDLC_BUILTIN_SKILLS } from "../catalog/generated/skills-builtin";
 import { SALES_ROLE_AGENT_INSTRUCTIONS, type SalesRoleKey } from "./sales-agent-instructions";
 import { SALES_SKILL_NAMES, SDLC_SKILL_NAMES, SQUAD_TEMPLATES } from "./templates";
 
@@ -14,7 +14,8 @@ const bodyOf = (name: string) => [skill(name).content, ...skill(name).files.map(
 
 describe("sales skills", () => {
   it("ships the seven skills the sales squad names, each with a description and a procedure", () => {
-    expect(SALES_SKILL_NAMES).toEqual([
+    // The list comes from the catalog skillset; its order is the folder-name order, not a contract.
+    expect([...SALES_SKILL_NAMES].sort()).toEqual([
       "sales-delivery-core",
       "sales-squad-lead",
       "sales-scouting",
@@ -22,7 +23,7 @@ describe("sales skills", () => {
       "sales-writing",
       "sales-deal-analysis",
       "sales-review",
-    ]);
+    ].sort());
     for (const name of SALES_SKILL_NAMES) {
       expect(skill(name).description.length, name).toBeGreaterThan(40);
       expect(skill(name).content.length, name).toBeGreaterThan(2000);

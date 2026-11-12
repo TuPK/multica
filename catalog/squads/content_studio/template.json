@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "kind": "squad",
+  "id": "content_studio",
+  "version": "1.0.0",
+  "collection": "core",
+  "order": 60,
+  "squad": {
+    "name": "Content Studio",
+    "description": "Drafts content for Vietnam and international markets, checks claims, market rules and voice, and files each item for the boss to approve before Ayrshare publishes it.",
+    "floorName": null,
+    "leader": "cs_lead",
+    "operatingReview": false,
+    "workflow": null,
+    "roles": [
+      {
+        "key": "cs_lead",
+        "agentTemplate": "growth_lead",
+        "name": "Content Lead",
+        "description": "Plans each brief by market and channel, hands out the work, and sends finished items to the boss.",
+        "role": "Plans and hands out content work"
+      },
+      {
+        "key": "cs_scout",
+        "agentTemplate": "market_scout",
+        "name": "Content Scout",
+        "description": "Finds topics for the brief and what competitors published on them, with links.",
+        "role": "Topics and competitor watch"
+      },
+      {
+        "key": "cs_researcher",
+        "agentTemplate": "research_lead",
+        "name": "Content Researcher",
+        "description": "Collects the facts and sources each item needs, each with where it came from.",
+        "role": "Sources and facts"
+      },
+      {
+        "key": "cs_drafter",
+        "agentTemplate": "prd_writer",
+        "name": "Content Drafter",
+        "description": "Writes the draft for one market from the researched facts only.",
+        "role": "Drafts one market's version"
+      },
+      {
+        "key": "cs_localizer",
+        "agentTemplate": "prd_writer",
+        "name": "Content Localizer",
+        "description": "Writes the approved draft for the second market in that market's own words.",
+        "role": "Second-market version"
+      },
+      {
+        "key": "cs_claim_gate",
+        "agentTemplate": "validation_analyst",
+        "name": "Content Claim Gate",
+        "description": "Checks every figure, feature and comparison against the source it cites.",
+        "role": "Claim check gate"
+      },
+      {
+        "key": "cs_market_gate",
+        "agentTemplate": "critic",
+        "name": "Content Market Gate",
+        "description": "Checks the market's advertising and AI-label rules and the channel's limits.",
+        "role": "Market and channel rules gate"
+      },
+      {
+        "key": "cs_voice_gate",
+        "agentTemplate": "critic",
+        "name": "Content Voice Gate",
+        "description": "Checks the brand voice and removes working notes that would reach the post.",
+        "role": "Brand voice gate"
+      },
+      {
+        "key": "cs_handover",
+        "agentTemplate": "release_lead",
+        "name": "Content Handover",
+        "description": "Packages a checked item with its channels and time, and files it for the boss to approve.",
+        "role": "Packages and files publish proposals"
+      },
+      {
+        "key": "cs_publisher",
+        "agentTemplate": "devops_engineer",
+        "name": "Content Publisher",
+        "description": "Reports what was posted after approval and what failed, with the links.",
+        "role": "Reports publish results"
+      }
+    ],
+    "routines": [],
+    "charter": {
+      "mission": "Turn each brief into checked content for the vn and intl markets, and publish only what the boss approves.",
+      "responsibilities": [
+        {
+          "key": "planning",
+          "text": "Plan each item by market and channel, and split the work across the members."
+        },
+        {
+          "key": "production",
+          "text": "Source, draft, localize and gate each item, with a source for every fact."
+        },
+        {
+          "key": "handover",
+          "text": "File each checked item as a publish proposal, and report what the server posted."
+        }
+      ],
+      "outputs": [
+        {
+          "key": "publish_proposal",
+          "kind": "proposal",
+          "cadenceHint": "per item and market version"
+        },
+        {
+          "key": "publish_report",
+          "kind": "report",
+          "cadenceHint": "after each approval"
+        }
+      ],
+      "boundaries": "Nothing is published without the boss's approval. No post goes to a network directly. Spending money and paid promotion need the boss.",
+      "escalation": "A blocked item or an open question goes to the boss, with the item and the gate that stopped it.",
+      "intake": "Briefs and release notes arrive as issues assigned to this squad."
+    },
+    "skills": {
+      "sets": []
+    }
+  }
+}

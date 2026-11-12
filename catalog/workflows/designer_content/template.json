@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "kind": "workflow",
+  "id": "designer_content",
+  "version": "1.0.0",
+  "order": 20,
+  "ui": false,
+  "designer": {
+    "templateId": "content",
+    "steps": [
+      {
+        "statusKey": "todo",
+        "transitions": [
+          {
+            "to": "drafting"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Drafting",
+          "category": "started"
+        },
+        "transitions": [
+          {
+            "to": "editing"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Editing",
+          "category": "started"
+        },
+        "transitions": [
+          {
+            "to": "scheduled"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "Scheduled",
+          "category": "started"
+        },
+        "transitions": [
+          {
+            "to": "done"
+          }
+        ]
+      },
+      {
+        "statusKey": "done"
+      },
+      {
+        "statusKey": "cancelled"
+      }
+    ]
+  }
+}

@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { KITVIET_EXTENSIONS } from "./kitviet-skills-data/extensions";
-import { KITVIET_PACK_LOADERS } from "./kitviet-skills-data/packs";
-import { KITVIET_SQUADS } from "./kitviet-skills-data/squads";
+import { KITVIET_EXTENSIONS } from "../catalog/generated/kitviet/extensions";
+import { KITVIET_PACK_LOADERS } from "../catalog/generated/kitviet/packs";
+import { KITVIET_SQUADS } from "../catalog/generated/kitviet/squads";
 
 // Each pack chunk is stubbed, and the stub records its import. A test gets a fresh module registry
 // with fresh stubs, so each call below shows exactly which chunks it pulled in.
@@ -19,7 +19,7 @@ beforeEach(async () => {
   vi.resetModules();
   loaded.chunks.length = 0;
   for (const chunk of CHUNKS) {
-    vi.doMock(`./kitviet-skills-data/${chunk}`, () => {
+    vi.doMock(`../catalog/generated/kitviet/${chunk}`, () => {
       loaded.chunks.push(chunk);
       return {
         KITVIET_BUILTIN_SKILLS: [],

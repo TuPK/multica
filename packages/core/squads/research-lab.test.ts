@@ -7,13 +7,16 @@ import { COMPANY_SQUAD_KEYS } from "./company-template";
 import {
   RESEARCH_LAB_ROLE_AGENT_INSTRUCTIONS,
   RESEARCH_LAB_SKILL_NAMES,
-  RESEARCH_LAB_TEMPLATE,
   RL_ROLE_KEYS,
-  RL_ROLES,
+  type RlRoleKey,
 } from "./research-lab";
 import { instructionsFor, planQuickstartAgents } from "./quickstart";
-import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
+import { SDLC_BUILTIN_SKILLS } from "../catalog/generated/skills-builtin";
 import { SDLC_SKILL_NAMES, SQUAD_ROLES, SQUAD_TEMPLATES } from "./templates";
+
+// The squad and its roles are catalog data (catalog/squads/research_lab), assembled into these.
+const RESEARCH_LAB_TEMPLATE = SQUAD_TEMPLATES.find((t) => t.id === "research_lab")!;
+const RL_ROLES = SQUAD_ROLES as Record<RlRoleKey, (typeof SQUAD_ROLES)[RlRoleKey]>;
 
 const skill = (name: string) => {
   const found = SDLC_BUILTIN_SKILLS.find((s) => s.name === name);
@@ -132,14 +135,15 @@ describe("research lab template", () => {
 
 describe("research lab skills", () => {
   it("ships the six skills the template names, each with a description and a procedure", () => {
-    expect(RESEARCH_LAB_SKILL_NAMES).toEqual([
+    // The list comes from the catalog skillset; its order is the folder-name order, not a contract.
+    expect([...RESEARCH_LAB_SKILL_NAMES].sort()).toEqual([
       "research-lab-delivery-core",
       "research-lab-squad-lead",
       "research-lab-search",
       "research-lab-screening",
       "research-lab-synthesis",
       "research-lab-audit",
-    ]);
+    ].sort());
     for (const name of RESEARCH_LAB_SKILL_NAMES) {
       expect(skill(name).description.length, name).toBeGreaterThan(40);
       expect(skill(name).content.length, name).toBeGreaterThan(2000);

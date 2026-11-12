@@ -1,8 +1,12 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { AGENT_INSTRUCTION_TEMPLATES } from "../agents/instruction-templates";
-import { CONTENT_STUDIO_ROLE_AGENT_INSTRUCTIONS, CONTENT_STUDIO_TEMPLATE, CS_ROLE_KEYS, CS_ROLES } from "./content-studio";
+import { CONTENT_STUDIO_ROLE_AGENT_INSTRUCTIONS, CS_ROLE_KEYS, type CsRoleKey } from "./content-studio";
 import { SQUAD_ROLES, SQUAD_TEMPLATES } from "./templates";
+
+// The squad and its roles are catalog data (catalog/squads/content_studio), assembled into these.
+const CONTENT_STUDIO_TEMPLATE = SQUAD_TEMPLATES.find((t) => t.id === "content_studio")!;
+const CS_ROLES = SQUAD_ROLES as Record<CsRoleKey, (typeof SQUAD_ROLES)[CsRoleKey]>;
 
 describe("content studio template", () => {
   it("is registered with the squad templates", () => {

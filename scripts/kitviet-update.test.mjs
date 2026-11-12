@@ -93,11 +93,11 @@ describe("remote refs", () => {
 describe("dirty guard", () => {
   it("guards every input that the registry capture reads, not only the written paths", () => {
     for (const path of [
-      "packages/core/squads/kitviet-rewrites.json",
-      "packages/core/squads/kitviet-squads",
+      "catalog/_sources/kitviet/rewrites.json",
+      "catalog/_sources/kitviet/squads",
       "packages/core/squads/kitviet-agent-instructions.ts",
       "packages/core/squads/kitviet-squad-roles.ts",
-      "packages/core/squads/kitviet-templates",
+      "catalog/squads",
       "packages/core/squads/templates.ts",
       "packages/core/agents/instruction-blocks.ts",
       "scripts/generate-kitviet-pack.mjs",
@@ -109,23 +109,23 @@ describe("dirty guard", () => {
   it("lists only the changed paths inside the paths the update writes", () => {
     const porcelain = [
       " M packages/core/squads/kitviet-previous-texts.ts",
-      "?? packages/core/squads/kitviet-upstream/new.md",
+      "?? catalog/_sources/kitviet/upstream/new.md",
       " M docs/engineering/kitviet-squads.md",
-      " M packages/core/squads/kitviet-squads/construction.json",
+      " M catalog/_sources/kitviet/squads/construction.json",
     ].join("\n");
     const writes = [
-      "packages/core/squads/kitviet-upstream",
+      "catalog/_sources/kitviet/upstream",
       "packages/core/squads/kitviet-skills-data",
       "packages/core/squads/kitviet-previous-texts.ts",
     ];
     assert.deepEqual(dirtyPaths(porcelain, writes), [
       " M packages/core/squads/kitviet-previous-texts.ts",
-      "?? packages/core/squads/kitviet-upstream/new.md",
+      "?? catalog/_sources/kitviet/upstream/new.md",
     ]);
   });
 
   it("does not match a path that only shares a prefix with a write path", () => {
-    assert.deepEqual(dirtyPaths(" M packages/core/squads/kitviet-upstream-old.md", ["packages/core/squads/kitviet-upstream"]), []);
+    assert.deepEqual(dirtyPaths(" M catalog/_sources/kitviet/upstream-old.md", ["catalog/_sources/kitviet/upstream"]), []);
   });
 });
 

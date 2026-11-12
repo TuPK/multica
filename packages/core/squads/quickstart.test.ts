@@ -10,7 +10,7 @@ import {
 import { AGENT_INSTRUCTION_TEMPLATES } from "../agents/instruction-templates";
 import { PLANNING_ROLE_AGENT_INSTRUCTIONS } from "./planning-agent-instructions";
 import { SDLC_ROLE_AGENT_INSTRUCTIONS } from "./sdlc-agent-instructions";
-import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
+import { SDLC_BUILTIN_SKILLS } from "../catalog/generated/skills-builtin";
 import { SDLC_SKILL_SOURCE } from "./quickstart";
 import { SQUAD_ROLES, SQUAD_TEMPLATES } from "./templates";
 import { SALES_STARTER_SOURCES } from "./sales-starter-sources";

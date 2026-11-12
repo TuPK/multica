@@ -2,7 +2,7 @@
 // removal, the verdict template, and the agent role classes. Run with `node --test`.
 
 import assert from "node:assert/strict";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { describe, it } from "node:test";
@@ -24,10 +24,10 @@ import {
 } from "./generate-kitviet-pack.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const squadsDir = resolve(here, "../packages/core/squads");
-const upstreamDir = join(squadsDir, "kitviet-upstream");
-const patchesDir = join(squadsDir, "kitviet-patches");
-const rewrites = JSON.parse(readFileSync(join(squadsDir, "kitviet-rewrites.json"), "utf8"));
+const squadsDir = resolve(here, "../catalog/_sources/kitviet");
+const upstreamDir = join(squadsDir, "upstream");
+const patchesDir = join(squadsDir, "patches");
+const rewrites = JSON.parse(readFileSync(join(squadsDir, "rewrites.json"), "utf8"));
 
 // Every text file of the vendored upstream (prose and the export scripts), so a patch can be checked
 // against its source.
@@ -66,7 +66,7 @@ describe("applyPatches", () => {
   });
 });
 
-describe("every patch in kitviet-patches matches the vendored upstream", () => {
+describe("every patch in patches matches the vendored upstream", () => {
   const skillFiles = upstreamTextFiles();
   const patchFiles = readdirSync(patchesDir).filter((name) => name.endsWith(".json"));
 
@@ -180,14 +180,13 @@ describe("reference resolution (F17)", () => {
 
 describe("generated output", () => {
   const outputs = generateOutputs();
-  const dataDir = join(squadsDir, "kitviet-skills-data");
 
   it("builds one pack per config file, and the shared files", () => {
     const ids = (dir) =>
       readdirSync(join(squadsDir, dir))
         .filter((file) => file.endsWith(".json") && file !== "base.json")
         .map((file) => file.replace(/\.json$/, ""));
-    const packs = ["common", ...ids("kitviet-squads"), ...ids("kitviet-extensions")].map((id) => `${id}.ts`);
+    const packs = ["common", ...ids("squads"), ...ids("extensions")].map((id) => `${id}.ts`);
     assert.deepEqual([...outputs.keys()].sort(), [...packs, "extensions.ts", "packs.ts", "squads.ts", "types.ts"].sort());
   });
 
@@ -200,14 +199,6 @@ describe("generated output", () => {
   it("is deterministic: a second build yields the same text", () => {
     const again = generateOutputs();
     for (const [file, content] of outputs) assert.equal(again.get(file), content, file);
-  });
-
-  it("matches the committed files, so pnpm generate:kitviet has been run", () => {
-    for (const [file, content] of outputs) {
-      const path = join(dataDir, file);
-      assert.ok(existsSync(path), `${file} is missing`);
-      assert.equal(readFileSync(path, "utf8"), content, `${file} is stale; run pnpm generate:kitviet`);
-    }
   });
 
   // The generator guard throws on these too; this test names them so a failure reads as F9 or F22.
@@ -261,14 +252,14 @@ describe("config guards", () => {
   // under test written over it. A test then fails only on the guard it names.
   function fixture(files) {
     const root = mkdtempSync(join(tmpdir(), "kv-config-"));
-    for (const folder of ["kitviet-squads", "kitviet-extensions"]) {
+    for (const folder of ["squads", "extensions"]) {
       mkdirSync(join(root, folder), { recursive: true });
       for (const file of readdirSync(join(squadsDir, folder))) copyFileSync(join(squadsDir, folder, file), join(root, folder, file));
     }
     for (const [path, value] of Object.entries(files)) writeFileSync(join(root, path), JSON.stringify(value, null, 2));
     return root;
   }
-  const admin = readConfig("kitviet-squads/admin.json");
+  const admin = readConfig("squads/admin.json");
   const lead = { "lap-ke-hoach-dieu-phoi": { role: "office_lead", kind: "kv_lead" } };
   const bareSquad = (id, extra) => ({
     templateId: `kv_${id}`,
@@ -284,26 +275,26 @@ describe("config guards", () => {
 
   it("rejects a skill listed by a squad and by an extension", () => {
     const root = fixture({
-      "kitviet-squads/admin.json": admin,
-      "kitviet-extensions/dup.json": { trade: "hanh-chinh-van-phong", targets: ["some_target"], skills: ["soan-don-tu"] },
+      "squads/admin.json": admin,
+      "extensions/dup.json": { trade: "hanh-chinh-van-phong", targets: ["some_target"], skills: ["soan-don-tu"] },
     });
     assert.throws(() => generateOutputs({ configRoot: root }), /soan-don-tu \(hanh-chinh-van-phong\) is listed by squad admin and by extension dup/);
   });
 
   it("rejects a pipeline squad with no upstream role besides its lead", () => {
-    const root = fixture({ "kitviet-squads/lonely.json": bareSquad("lonely", {}) });
+    const root = fixture({ "squads/lonely.json": bareSquad("lonely", {}) });
     assert.throws(() => generateOutputs({ configRoot: root }), /a pipeline squad needs an upstream role besides the lead/);
   });
 
   it("rejects an authored squad that attaches an upstream pipeline skill", () => {
     const root = fixture({
-      "kitviet-squads/office.json": bareSquad("office", { flow: "authored", builtinSkills: ["day-chuyen-van-ban-hanh-chinh"] }),
+      "squads/office.json": bareSquad("office", { flow: "authored", builtinSkills: ["day-chuyen-van-ban-hanh-chinh"] }),
     });
     assert.throws(() => generateOutputs({ configRoot: root }), /an authored flow cannot attach the upstream pipeline day-chuyen-van-ban-hanh-chinh/);
   });
 
   it("accepts an authored squad with only its lead, and gives it an empty pack", () => {
-    const root = fixture({ "kitviet-squads/office.json": bareSquad("office", { flow: "authored" }) });
+    const root = fixture({ "squads/office.json": bareSquad("office", { flow: "authored" }) });
     const packs = generateOutputs({ configRoot: root });
     assert.match(packs.get("packs.ts"), /"office": \(\) => import/);
     assert.match(packs.get("squads.ts"), /"templateId": "kv_office"/);

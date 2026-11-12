@@ -1,0 +1,4 @@
+{
+  "title": "Accounting & Tax (Kế toán, thuế)",
+  "description": "tờ khai、hóa đơn、công nợ、khóa sổ を対象に、数値はスクリプトで計算します。申告や提出は行わず、ランタイムに Bash と Python が必要です。"
+}

@@ -486,7 +486,7 @@ func TestPhase2Acceptance_Bullet5_FeedbackIsRecordedAndTheSecretaryReadsIt(t *te
 
 	// The procedure lives in the built-in secretary-brief skill; the instructions
 	// only point every run to the router.
-	src, err := os.ReadFile(filepath.Join("..", "..", "..", "packages", "core", "squads", "skills", "secretary-brief", "SKILL.md"))
+	src, err := os.ReadFile(filepath.Join("..", "..", "..", "catalog", "skills", "starter", "secretary-brief", "SKILL.md"))
 	if err != nil {
 		t.Fatalf("read the secretary-brief skill: %v", err)
 	}

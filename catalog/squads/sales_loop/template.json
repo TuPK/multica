@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "kind": "squad",
+  "id": "sales_loop",
+  "version": "1.0.0",
+  "collection": "core",
+  "order": 40,
+  "squad": {
+    "name": "Sales Loop",
+    "description": "Finds business opportunities for your lanes each week, drafts outreach for a person to approve, and learns from the results. Works from the knowledge base; sources come ready to use.",
+    "floorName": null,
+    "leader": "sales_lead",
+    "workflow": null,
+    "roles": [
+      {
+        "key": "sales_lead",
+        "agentTemplate": "research_lead",
+        "name": "Sales Lead",
+        "description": "Leads Sales Loop squads: calibrates lanes, routes requests, verifies reports, and writes the weekly snapshot.",
+        "role": "Squad leader"
+      },
+      {
+        "key": "sales_scout",
+        "agentTemplate": "market_scout",
+        "name": "Sales Scout",
+        "description": "Runs the lane's sources, scores organisations, and onboards new sources with a sample before they go live.",
+        "role": "Source collection and scoring"
+      },
+      {
+        "key": "sales_writer",
+        "agentTemplate": "growth_lead",
+        "name": "Sales Writer",
+        "description": "Drafts messages, follow-ups and public replies for approval. Sends nothing.",
+        "role": "Outreach drafts"
+      },
+      {
+        "key": "sales_analyst",
+        "agentTemplate": "opportunity_analyst",
+        "name": "Sales Deal Analyst",
+        "description": "Turns meeting notes into opportunities and quotes from the offer, and writes lessons from outcomes.",
+        "role": "Opportunities, quotes and lessons"
+      },
+      {
+        "key": "sales_checker",
+        "agentTemplate": "critic",
+        "name": "Sales Checker",
+        "description": "Checks every draft and quote against the channel and compliance rules. Writes no drafts of its own.",
+        "role": "Independent review"
+      }
+    ],
+    "routines": [
+      {
+        "title": "Weekly scan",
+        "issueTitleTemplate": "Weekly scan, week of {{date}}",
+        "cron": "0 8 * * 1",
+        "description": "Weekly scan of every active lane in the sales base. For each lane: run its active sources (multica sales collect), score the organisations, write their accounts, draft outreach only for qualified accounts, have the checker review each draft, then write the sales report. Scope and caps come from each sales_lane document. A lane still in draft is skipped and listed. No new qualified account this week is a valid result."
+      },
+      {
+        "title": "Weekly review",
+        "issueTitleTemplate": "Weekly review, week of {{date}}",
+        "cron": "0 20 * * 0",
+        "description": "Weekly review of the sales base: accounts won, lost and stale; the sources that are degraded or blocked; the drafts a person changed before approval. Write lessons at low confidence with their evidence counts. Only a confirmed lesson may change a weight, filter or template. Close with the sales report."
+      },
+      {
+        "title": "Source health",
+        "issueTitleTemplate": "Source health, {{date}}",
+        "cron": "0 7 * * *",
+        "description": "Daily source health. Run multica sales collect with --dry-run for each active source that is not a paid provider or a connector, record last_run, last_http, hits_7d and status on each source document, and repair at most two sources a week. Report every source that failed twice in a row."
+      }
+    ],
+    "charter": {
+      "mission": "Find, reach, track and learn from business opportunities for each lane, from sources that are ready to use, with every draft approved by a person before it is sent.",
+      "responsibilities": [
+        {
+          "key": "calibration",
+          "text": "Calibrate each lane's offer, ICP and sources with the boss, once, before any outreach is drafted."
+        },
+        {
+          "key": "discovery",
+          "text": "Scan the lane's sources, score the organisations, and keep the sales base current with a source and a date for each claim."
+        },
+        {
+          "key": "outreach",
+          "text": "Draft outreach for qualified accounts in the channel the lane allows, check each draft, and never send it."
+        },
+        {
+          "key": "learning",
+          "text": "Review outcomes weekly and write lessons whose confidence matches their evidence."
+        }
+      ],
+      "outputs": [
+        {
+          "key": "sales_report",
+          "kind": "report",
+          "cadenceHint": "weekly"
+        },
+        {
+          "key": "sales_documents",
+          "kind": "kb_document",
+          "cadenceHint": "per request"
+        },
+        {
+          "key": "calibration_proposal",
+          "kind": "proposal",
+          "cadenceHint": "once per lane"
+        }
+      ],
+      "boundaries": "Never sends, posts, quotes or contacts anyone. Quotes come only from the lane's offer. Spending money, a paid provider beyond its cap, and any connection need the boss.",
+      "escalation": "A decision the boss must make goes to a proposal; a blocked request goes to the requester, named on the request.",
+      "intake": "Requests arrive as issues assigned to this squad, and the weekly routines open the scan and review issues."
+    },
+    "skills": {
+      "sets": [
+        "sales"
+      ]
+    }
+  }
+}

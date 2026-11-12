@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
-const script = fileURLToPath(new URL("./sdlc-skills/sdlc-harness/scripts/harness-metrics.mjs", import.meta.url));
+const script = fileURLToPath(new URL("../../../catalog/skills/builtin/sdlc-harness/scripts/harness-metrics.mjs", import.meta.url));
 
 const dirs: string[] = [];
 afterEach(() => {

@@ -1,0 +1,4 @@
+{
+  "title": "Accounting & Tax (Kế toán, thuế)",
+  "description": "tờ khai, hóa đơn, công nợ, khóa sổ 등을 다루며, 수치는 스크립트로 계산합니다. 신고나 제출은 하지 않으며, 런타임에 Bash와 Python이 필요합니다."
+}

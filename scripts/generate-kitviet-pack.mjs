@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-// Generates packages/core/squads/kitviet-skills-data/*.ts, the Kit Viet skill, agent and squad data
-// the squad quickstart imports, from the vendored upstream in packages/core/squads/kitviet-upstream.
+// Generates packages/core/catalog/generated/kitviet/*.ts (not committed), the Kit Viet skill, agent and squad data
+// the squad quickstart imports, from the vendored upstream in catalog/_sources/kitviet/upstream.
 // Inputs:
-//   kitviet-rewrites.json        the rewrite table (Pro blocks, platform sections, file names, verdicts)
-//   kitviet-patches/<name>.json  exact-match patches per skill or agent (upstream text)
-//   kitviet-squads/base.json     the shared skills and phrases every squad loads
-//   kitviet-squads/<id>.json     one squad: trade folder, agent -> role key and kind, core skills,
+//   rewrites.json                the rewrite table (Pro blocks, platform sections, file names, verdicts)
+//   patches/<name>.json          exact-match patches per skill or agent (upstream text)
+//   squads/base.json             the shared skills and phrases every squad loads
+//   squads/<id>.json             one squad: trade folder, agent -> role key and kind, core skills,
 //                                role skills, deferred skills, leader skills (spec 5.10, 6, F17)
-//   kitviet-extensions/<id>.json one extension pack: skills attached to existing squads (spec 7)
-//   kitviet-skills/<kv-*>/       authored skills (spec 5.5), shared by every squad
+//   extensions/<id>.json         one extension pack: skills attached to existing squads (spec 7)
+//   skills/<kv-*>/               authored skills (spec 5.5), shared by every squad
 // A new squad or extension is one config file; nothing in this script names a trade or a squad.
 // Run `pnpm generate:kitviet`; `--check` regenerates in memory and fails when the committed output is
 // stale. The upstream is never read from the network.
@@ -32,19 +32,24 @@
 // Guards throw (or list every violation) on leftovers, unknown references and stale data.
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { frontmatterDescription, skillFiles } from "./lib/skill-bundle.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const squadsDir = resolve(here, "../packages/core/squads");
-const upstreamDir = join(squadsDir, "kitviet-upstream");
-const patchesDir = join(squadsDir, "kitviet-patches");
-const authoredDir = join(squadsDir, "kitviet-skills");
-const outDir = join(squadsDir, "kitviet-skills-data");
+// The sources live in catalog/_sources/kitviet (squadsDir below is that folder); the output goes to core.
+const squadsDir = resolve(here, "../catalog/_sources/kitviet");
+const upstreamDir = join(squadsDir, "upstream");
+const patchesDir = join(squadsDir, "patches");
+const authoredDir = join(squadsDir, "skills");
+// Generated output is not committed (spec Q2): the catalog build writes it, and tsc/vitest/next read it.
+const outDirFlag = process.argv.includes("--out") ? process.argv[process.argv.indexOf("--out") + 1] : undefined;
+const outDir = outDirFlag ? resolve(outDirFlag) : resolve(here, "../packages/core/catalog/generated/kitviet");
+const coreSquadsDir = resolve(here, "../packages/core/squads");
+const builtinSkillsModule = resolve(here, "../packages/core/catalog/generated/skills-builtin");
 
 const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
-const rewrites = readJson(join(squadsDir, "kitviet-rewrites.json"));
+const rewrites = readJson(join(squadsDir, "rewrites.json"));
 const upstream = readJson(join(upstreamDir, "UPSTREAM.json"));
 
 // The configs of one run: the shared base, one entry per squad (sorted by `order`, then id) and one per
@@ -60,11 +65,11 @@ function readConfigFolder(dir) {
 const byId = (a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
 export function loadConfig(root) {
-  const base = readJson(join(root, "kitviet-squads", "base.json"));
-  const squads = readConfigFolder(join(root, "kitviet-squads"))
+  const base = readJson(join(root, "squads", "base.json"));
+  const squads = readConfigFolder(join(root, "squads"))
     .filter((squad) => squad.id !== "base")
     .sort((a, b) => (a.order ?? 1000) - (b.order ?? 1000) || byId(a, b));
-  const extensions = readConfigFolder(join(root, "kitviet-extensions")).sort(byId);
+  const extensions = readConfigFolder(join(root, "extensions")).sort(byId);
   return { shared: base.sharedBuiltinSkills, sharedAgentPhrases: base.sharedAgentPhrases ?? {}, squads, extensions };
 }
 
@@ -439,7 +444,7 @@ function loadUpstream() {
   const tradeAgents = new Map();
   for (const trade of configTrades()) {
     const dir = join(upstreamDir, trade);
-    if (!existsSync(dir)) throw new Error(`kitviet-upstream/${trade} is missing; vendor it and list it in NOTICE.md`);
+    if (!existsSync(dir)) throw new Error(`upstream/${trade} is missing; vendor it and list it in NOTICE.md`);
     const skills = new Map();
     for (const folder of listFolders(join(dir, "skills"))) {
       if (dropped.has(folder)) continue;
@@ -565,7 +570,7 @@ function buildPacks() {
   violations = [];
   ruleHits = new Map();
   for (const file of ["LICENSE", "NOTICE.md", "UPSTREAM.json"]) {
-    if (!existsSync(join(upstreamDir, file))) throw new Error(`kitviet-upstream/${file} is missing`);
+    if (!existsSync(join(upstreamDir, file))) throw new Error(`upstream/${file} is missing`);
   }
   const sourceConfig = { source: "kitviet", upstream: upstream.repo, ref: upstream.ref, license: upstream.license };
   const authoredConfig = { source: "kitviet", upstream: "authored in this repository", ref: "authored", license: "repository" };
@@ -609,7 +614,7 @@ function buildPacks() {
     if (!sharedKeys().includes(key) && !leaderKeys.has(key)) violations.push(`authored skill ${key} is used by no squad`);
   }
   for (const key of sharedKeys()) {
-    if (!sharedBundles.has(key)) violations.push(`kitviet-squads/base.json names shared skill ${key}, which does not exist`);
+    if (!sharedBundles.has(key)) violations.push(`squads/base.json names shared skill ${key}, which does not exist`);
   }
   const sharedCtx = buildContext({
     mode: "neutral",
@@ -870,7 +875,7 @@ function buildPacks() {
   for (const name of readdirSync(patchesDir)) {
     if (!name.endsWith(".json")) continue;
     if (!usedPatchFiles.has(name.replace(/\.json$/, ""))) {
-      violations.push(`kitviet-patches/${name} matches no skill or agent`);
+      violations.push(`patches/${name} matches no skill or agent`);
     }
   }
   for (const rule of rewrites.rules) {
@@ -915,7 +920,7 @@ export function renderSquads(packs) {
   return `${HEADER}
 import type { KitvietSquad } from "./types";
 
-/** The Kit Viet squads of the pack, in the order of kitviet-squads/ (by order, then id). */
+/** The Kit Viet squads of the pack, in the order of the squads config folder (by order, then id). */
 export const KITVIET_SQUADS: readonly KitvietSquad[] = ${JSON.stringify(squads, null, 2)};
 `;
 }
@@ -927,7 +932,7 @@ export function renderExtensions(packs) {
   return `${HEADER}
 import type { KitvietExtension } from "./types";
 
-/** The Kit Viet extension packs (spec 7), in the order of kitviet-extensions/. */
+/** The Kit Viet extension packs (spec 7), in the order of the extensions config folder. */
 export const KITVIET_EXTENSIONS: readonly KitvietExtension[] = ${JSON.stringify(extensions, null, 2)};
 `;
 }
@@ -945,14 +950,20 @@ ${lines.join("\n")}
 `;
 }
 
-const HEADER = `// Generated by scripts/generate-kitviet-pack.mjs from packages/core/squads/kitviet-upstream,
-// kitviet-squads/, kitviet-extensions/ and kitviet-skills. Do not edit by hand; run \`pnpm generate:kitviet\`.`;
+const HEADER = `// Generated by scripts/generate-kitviet-pack.mjs from catalog/_sources/kitviet (upstream, squads,
+// extensions and skills). Do not edit by hand; run \`pnpm generate:kitviet\`.`;
 
-const TYPES = `${HEADER}
+// Import specifiers are relative to the folder the files are written to, so the output can move.
+const importPath = (from, to) => {
+  const rel = relative(from, to).split("\\").join("/");
+  return rel.startsWith(".") ? rel : `./${rel}`;
+};
 
-export type { BuiltinSkill, BuiltinSkillFile } from "../sdlc-skills-data";
-import type { BuiltinSkill } from "../sdlc-skills-data";
-import type { KvRoleKind } from "../kitviet-agent-instructions";
+const renderTypes = (from) => `${HEADER}
+
+export type { BuiltinSkill, BuiltinSkillFile } from "${importPath(from, builtinSkillsModule)}";
+import type { BuiltinSkill } from "${importPath(from, builtinSkillsModule)}";
+import type { KvRoleKind } from "${importPath(from, join(coreSquadsDir, "kitviet-agent-instructions"))}";
 
 /** Where a Kit Viet skill came from; a separate source from SDLC_SKILL_SOURCE. */
 export interface KitvietSkillSource {
@@ -1024,13 +1035,13 @@ export interface KitvietSquad {
 }
 `;
 
-// Every generated file as { path, content }, keyed by its file name in kitviet-skills-data. configRoot is
-// a folder holding kitviet-squads/ and kitviet-extensions/ (the tests point it at a copy); it defaults to
+// Every generated file as { path, content }, keyed by its file name in the output folder. configRoot is
+// a folder holding squads/ and extensions/ (the tests point it at a copy); it defaults to
 // the repository's configs.
 export function generateOutputs({ configRoot = squadsDir } = {}) {
   kvConfig = loadConfig(configRoot);
   const packs = buildPacks();
-  const outputs = new Map([["types.ts", TYPES]]);
+  const outputs = new Map([["types.ts", renderTypes(outDir)]]);
   for (const pack of packList()) outputs.set(`${pack.file}.ts`, renderPack(pack, packs.get(pack.id)));
   outputs.set("squads.ts", renderSquads(packs));
   outputs.set("extensions.ts", renderExtensions(packs));

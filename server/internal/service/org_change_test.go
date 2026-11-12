@@ -48,6 +48,16 @@ func newOrgEnv(t *testing.T) *orgEnv {
 	squadID := fx.Squad(t, "People & Performance", leaderID)
 	fx.SquadMember(t, squadID, "agent", reviewerID, testutil.Cols{"role": "reviewer"})
 
+	// org_change_application has no foreign key, so the workspace teardown leaves its rows behind.
+	// The probation job reads due windows oldest first in batches of probationBatch; rows left by
+	// earlier runs would crowd this test's window out of the batch. Registered after the fixtures,
+	// so it runs before their teardown.
+	t.Cleanup(func() {
+		if _, err := pool.Exec(context.Background(), `DELETE FROM org_change_application WHERE workspace_id = $1`, wsID); err != nil {
+			t.Errorf("remove the org change applications: %v", err)
+		}
+	})
+
 	q := db.New(pool)
 	issues := NewIssueService(q, pool, nil, nil, nil)
 	_, props := NewInitiativeSet(issues, nil)

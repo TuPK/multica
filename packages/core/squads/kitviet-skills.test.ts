@@ -12,18 +12,20 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { COMPANY_SQUAD_KEYS } from "./company-template";
-import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
+import { SDLC_BUILTIN_SKILLS } from "../catalog/generated/skills-builtin";
 import { KV_ROLE_KINDS, composeKvAgentInstructions } from "./kitviet-agent-instructions";
-import { KITVIET_EXTENSIONS } from "./kitviet-skills-data/extensions";
-import { KITVIET_PACK_LOADERS } from "./kitviet-skills-data/packs";
-import { KITVIET_SQUADS } from "./kitviet-skills-data/squads";
-import type { KitvietAgent, KitvietSkill, KitvietSquad } from "./kitviet-skills-data/types";
+import { KITVIET_EXTENSIONS } from "../catalog/generated/kitviet/extensions";
+import { KITVIET_PACK_LOADERS } from "../catalog/generated/kitviet/packs";
+import { KITVIET_SQUADS } from "../catalog/generated/kitviet/squads";
+import type { KitvietAgent, KitvietSkill, KitvietSquad } from "../catalog/generated/kitviet/types";
 import { SQUAD_TEMPLATES } from "./templates";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const upstreamDir = join(here, "kitviet-upstream");
-const patchesDir = join(here, "kitviet-patches");
-const authoredDir = join(here, "kitviet-skills");
+// The Kit Viet sources live in catalog/_sources/kitviet at the repo root.
+const sourcesDir = join(here, "../../../catalog/_sources/kitviet");
+const upstreamDir = join(sourcesDir, "upstream");
+const patchesDir = join(sourcesDir, "patches");
+const authoredDir = join(sourcesDir, "skills");
 
 // The config files: one per squad (base.json is the shared part) and one per extension.
 interface SquadConfigFile {
@@ -41,14 +43,14 @@ interface ExtensionConfigFile {
   skills: string[];
 }
 const readConfigFolder = <T extends { id: string }>(folder: string): T[] =>
-  readdirSync(join(here, folder))
+  readdirSync(join(sourcesDir, folder))
     .filter((file) => file.endsWith(".json") && file !== "base.json")
     .sort()
-    .map((file) => ({ id: file.replace(/\.json$/, ""), ...(JSON.parse(readFileSync(join(here, folder, file), "utf8")) as Omit<T, "id">) }) as T);
-const squadsConfig = readConfigFolder<SquadConfigFile>("kitviet-squads");
-const extensionsConfig = readConfigFolder<ExtensionConfigFile>("kitviet-extensions");
+    .map((file) => ({ id: file.replace(/\.json$/, ""), ...(JSON.parse(readFileSync(join(sourcesDir, folder, file), "utf8")) as Omit<T, "id">) }) as T);
+const squadsConfig = readConfigFolder<SquadConfigFile>("squads");
+const extensionsConfig = readConfigFolder<ExtensionConfigFile>("extensions");
 const configOf = new Map(squadsConfig.map((config) => [config.id, config]));
-const rewrites = JSON.parse(readFileSync(join(here, "kitviet-rewrites.json"), "utf8")) as {
+const rewrites = JSON.parse(readFileSync(join(sourcesDir, "rewrites.json"), "utf8")) as {
   droppedSkills: string[];
   renamedSkills: Record<string, Record<string, string>>;
 };
@@ -174,7 +176,7 @@ describe("references resolve inside each squad (F17)", () => {
 
 describe("no orphan skills (spec 5.10, K8)", () => {
   // A squad pack ships only what its config lists: attached to the squad or its roles, or deferred by name
-  // (kitviet-squads/<id>.json). A skill in neither is a leftover. Every skill of a squad trade is shipped by
+  // (squads/<id>.json under catalog/_sources/kitviet). A skill in neither is a leftover. Every skill of a squad trade is shipped by
   // some pack, so none is lost between configs (a shared trade may have one pack per skill, see below).
   for (const pack of SQUAD_PACKS) {
     it(`${pack.id}: every skill it ships is attached, or deferred by name`, () => {
@@ -570,8 +572,9 @@ describe("export scripts name the missing library and never install (F9)", () =>
   }
 });
 
+// The pack is generated at build time and not committed. This catches a stale local build: sources edited, build not rerun.
 describe("generated data is fresh", () => {
-  it("matches what scripts/generate-kitviet-pack.mjs produces now", () => {
+  it("matches what scripts/generate-kitviet-pack.mjs produces now (run pnpm catalog:build if this fails)", () => {
     const script = resolve(here, "../../../scripts/generate-kitviet-pack.mjs");
     const output = execFileSync(process.execPath, [script, "--check"], { encoding: "utf8" });
     expect(output).toContain("up to date");

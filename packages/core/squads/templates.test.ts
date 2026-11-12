@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { AGENT_INSTRUCTION_TEMPLATES } from "../agents/instruction-templates";
-import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
+import { SDLC_BUILTIN_SKILLS } from "../catalog/generated/skills-builtin";
 import {
   PLANNING_AUTO_WORKFLOW,
   PLANNING_SKILL_NAMES,

@@ -80,7 +80,7 @@ func TestStarterSkillsEmbeddedInCompanyData(t *testing.T) {
 	for _, name := range append([]string{StarterSkillSquadReporting, StarterSkillDirectiveExecution}, SecretarySkills...) {
 		sk, ok := byName[name]
 		if !ok {
-			t.Fatalf("starter skill %q is missing from company_template_data.json", name)
+			t.Fatalf("starter skill %q is missing from the generated company data (pnpm catalog:build)", name)
 		}
 		if sk.Description == "" {
 			t.Errorf("%s: empty description", name)

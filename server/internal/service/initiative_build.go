@@ -298,7 +298,11 @@ func (s *InitiativeService) sdlcWorkflowFor(ctx context.Context, q *db.Queries, 
 			name = string(runes[:issueworkflow.MaxNameRunes])
 		}
 	}
-	encoded, err := issueworkflow.EncodeSteps(issueworkflow.Arrange(sdlcSteps(agents)))
+	steps, err := sdlcSteps(agents)
+	if err != nil {
+		return db.IssueWorkflow{}, err
+	}
+	encoded, err := issueworkflow.EncodeSteps(issueworkflow.Arrange(steps))
 	if err != nil {
 		return db.IssueWorkflow{}, fmt.Errorf("encode SDLC workflow: %w", err)
 	}
@@ -317,98 +321,15 @@ func (s *InitiativeService) sdlcWorkflowFor(ctx context.Context, q *db.Queries, 
 	return wf, nil
 }
 
-// sdlcSteps is SDLC_AUTO_WORKFLOW, the same shape as the Delivery workflow: the
-// developer takes the issue and builds it in progress, the reviewer checks, and
-// QA verifies. Rejected work goes back to In Progress. A blocked issue is handed
-// to the squad's lead, which unblocks it and sends it back to In Progress. QA's
-// step is the last before done.
-func sdlcSteps(agents map[string]pgtype.UUID) []issueworkflow.Step {
-	agent := func(role string) issueworkflow.Handler {
-		return issueworkflow.Handler{Type: issueworkflow.HandlerAgent, ID: util.UUIDToString(agents[role])}
-	}
-	none := issueworkflow.Handler{Type: issueworkflow.HandlerNone}
-	return append(sdlcStageSteps(agents), []issueworkflow.Step{
-		{StatusKey: issuestatus.Backlog, Handler: none},
-		{
-			StatusKey: issuestatus.Todo, Handler: agent("developer"),
-			Instructions: "Pick up this issue from To Do. Read its spec, stories, and acceptance criteria, then move it to In Progress to start the build.",
-		},
-		{
-			StatusKey: sdlcInProgressStatusKey, Handler: agent("developer"),
-			Transitions:  issueworkflow.LegacyTransitions("", issuestatus.Todo),
-			Instructions: "Build everything this issue asks for, story by story, following the story flow in your instructions. Hand it to review only when every story is implemented and verified on the running app. Record what you verified in the spec. If this issue came back from Blocked, read the lead's comment first and re-run the check it names before you hand it to review.",
-		},
-		{
-			StatusKey: "in_review", Handler: agent("reviewer"),
-			Transitions:  issueworkflow.LegacyTransitions("", sdlcInProgressStatusKey),
-			Instructions: "Review the whole change for this issue against its acceptance criteria. Send it back to In Progress with the blocking findings, or pass it on to QA with your verdict. If you cannot finish the review, or a blocking finding is not the developer's to fix, set the issue to blocked with the blocker report from sdlc-delivery-core and give each blocking finding an Owner-role.",
-		},
-		{
-			StatusKey: sdlcQAStatusKey, Handler: agent("qa"),
-			Transitions:  issueworkflow.LegacyTransitions("", sdlcInProgressStatusKey),
-			Instructions: "Verify the change on the running system against the acceptance criteria. NO GO sends it back to In Progress with the defects. GO or CONDITIONAL GO finishes the issue. Run the environment's env-ensure command first when docs/sdlc/environment.md has one. If you cannot run the verification (a service is down, a required check cannot run) or a defect is not the developer's to fix, set the issue to blocked with the blocker report from sdlc-delivery-core and give each defect an Owner-role.",
-		},
-		{
-			StatusKey: issuestatus.Blocked, Handler: agent("lead"),
-			Transitions:  issueworkflow.LegacyTransitions("", sdlcInProgressStatusKey),
-			Instructions: sdlcBlockedInstructions,
-		},
-	}...)
+// sdlcSteps is the SDLC Auto workflow of the catalog (catalog/workflows/sdlc_auto), the same one the
+// squad quickstart creates: the developer takes the issue and builds it in progress, the reviewer
+// checks, and QA verifies. Rejected work goes back to In Progress. A blocked issue is handed to the
+// squad's lead, which unblocks it and sends it back to In Progress. The planning and environment steps
+// exist only for the specialists the squad has, so the lead can hand an unblock issue to the member who
+// owns the blocker; every one of them ends at Stage done, which counts as finished for the run queue.
+func sdlcSteps(agents map[string]pgtype.UUID) ([]issueworkflow.Step, error) {
+	return catalogWorkflowSteps("sdlc_auto", agents)
 }
-
-// sdlcStageSteps are the planning and environment steps, the ones a specialist
-// handles. They exist so the lead can hand an unblock issue to the member who
-// owns the blocker; a squad without that member has no such step. Every one
-// ends at Stage done, which counts as finished for the run queue.
-func sdlcStageSteps(agents map[string]pgtype.UUID) []issueworkflow.Step {
-	done := map[string]string{
-		"analysis":               "When the requirements, epics, or ledger in the issue are written and posted, move the issue to Stage done.",
-		"design":                 "When every screen in the issue has its states and is registered, move the issue to Stage done.",
-		"architecture":           "When the design, ADRs, and component list are committed and posted, move the issue to Stage done.",
-		"plan_review":            "Give one verdict. PASS: move the issue to Stage done. CONCERNS or FAIL: set the issue to blocked and list each gap with its id, so the squad lead can create the gap issues. Do not move it to Stage done on CONCERNS.",
-		"security_review":        "PASS: move the issue to Stage done. FAIL or NO_GO: set the issue to blocked and list each finding with its id.",
-		"release_prep":           "Move the issue to Stage done only when the report lists the version, digests, and rollback steps. Production waits for the named approval: set the issue to blocked and say what the approver must decide.",
-		sdlcEnvironmentStatusKey: "Work in Environment mode. When the environment runs, `docs/sdlc/environment.md` and the one command that rebuilds it are written, and the health output is posted, move the issue to Stage done.",
-		"harness":                "Work in the mode the issue names (Mode 1 by default, Mode 3 for a refresh). When `check-harness` passes every blocking check and the result is posted, move the issue to Stage done.",
-	}
-	skill := map[string]string{
-		"analysis": "sdlc-product-analysis", "design": "sdlc-ux-design", "architecture": "sdlc-architecture",
-		"plan_review": "sdlc-code-review", "security_review": "sdlc-security-review",
-		"release_prep": "sdlc-devops-release", sdlcEnvironmentStatusKey: "sdlc-devops-release",
-		"harness": "sdlc-harness",
-	}
-	var steps []issueworkflow.Step
-	for _, st := range sdlcStageStatuses {
-		id, ok := agents[st.role]
-		if !ok {
-			continue
-		}
-		steps = append(steps, issueworkflow.Step{
-			StatusKey:    st.key,
-			Handler:      issueworkflow.Handler{Type: issueworkflow.HandlerAgent, ID: util.UUIDToString(id)},
-			Transitions:  issueworkflow.LegacyTransitions(sdlcStageDoneStatus.key, issuestatus.Blocked),
-			Instructions: sdlcPlanningBrief(skill[st.key], done[st.key]),
-		})
-	}
-	none := issueworkflow.Handler{Type: issueworkflow.HandlerNone}
-	return append(steps,
-		issueworkflow.Step{StatusKey: sdlcStageDoneStatus.key, Handler: none},
-		issueworkflow.Step{StatusKey: sdlcPlanReadyStatus.key, Handler: none},
-	)
-}
-
-// sdlcPlanningBrief is the brief a stage step gives its owner. Keep it the same
-// as planningBrief in packages/core/squads/templates.ts.
-func sdlcPlanningBrief(skill, done string) string {
-	return "This issue is either a planning stage of a request or an unblock ruling; its description says which. Load the sdlc-delivery-core and " + skill +
-		" skills. For a planning stage, do the work the issue names. " + done +
-		" For an unblock ruling, follow your skill's Ruling mode and end with the Ruling comment. If you cannot proceed, set the issue to blocked with the blocker report from sdlc-delivery-core."
-}
-
-// sdlcBlockedInstructions is the lead's brief for a blocked build. Without a
-// handler here, a blocked issue waits with nobody assigned to it.
-const sdlcBlockedInstructions = "This issue is blocked. Load the sdlc-delivery-core and sdlc-squad-lead skills and follow the lead's Blocked work (Step 7). Read the blocker report, route its class to the specialist who owns it with an unblock issue, verify the ruling, and resume the issue at its Blocked-from status. Do not do the specialist's work yourself, do not leave the issue here, and do not wait for a person. Only an irreversible action, a person's credential, a capability the host must change, or a reached limit goes to a person, with a proposal that carries your recommendation. " +
-	"Never set a build issue or its Epic done while a check it needs has not run; name that check as unverified in the report instead. Never change acceptance criteria to get past a blocker."
 
 // wakeAgent posts a note on the issue that mentions the agent, so the mention path
 // wakes it, as wakeOwner does for a squad's leader.

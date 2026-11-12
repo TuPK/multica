@@ -1,0 +1,4 @@
+{
+  "title": "Accounting & Tax (Kế toán, thuế)",
+  "description": "涵盖 tờ khai、hóa đơn、công nợ、khóa sổ，数字由脚本计算。不申报，也不提交任何文件；运行时需要 Bash 和 Python。"
+}

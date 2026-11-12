@@ -16,7 +16,7 @@ import {
 } from "./kitviet-agent-instructions";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const skillText = (folder: string) => readFileSync(join(here, "kitviet-skills", folder, "SKILL.md"), "utf8");
+const skillText = (folder: string) => readFileSync(join(here, "../../../catalog/_sources/kitviet/skills", folder, "SKILL.md"), "utf8");
 
 // The "## " headings of a draft, in order, as the server reads them.
 const headingsOf = (text: string) => text.split("\n").filter((line) => line.startsWith("## ")).map((line) => line.slice(3).trim());

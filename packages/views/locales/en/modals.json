@@ -277,125 +277,6 @@
   "squad_quickstart": {
     "title": "Squad quickstart",
     "template_label": "Template",
-    "templates": {
-      "sdlc_greenfield": {
-        "name": "SDLC · New product",
-        "description": "Takes a request from idea to a verified product: brief, PRD, UX, architecture, a queued build, and a final report."
-      },
-      "market_research": {
-        "name": "Market research",
-        "description": "Scans markets and competitors each week, has the critic challenge the evidence, and brings the boss only the proposals it supports."
-      },
-      "bmad_planning": {
-        "name": "Planning · BMAD",
-        "description": "Turns a request into reviewed planning documents: research, brief, PRD, UX, architecture, and epics. Extends the ones a product already has."
-      },
-      "kv_admin": {
-        "name": "Office Admin (Hành chính)",
-        "description": "Drafts official documents in the right form and keeps the document register. Assigns no document numbers and signs nothing."
-      },
-      "kv_b2b": {
-        "name": "B2B Proposal Desk (Chào giá B2B)",
-        "description": "Turns a qualified deal into a quote and proposal within approved pricing. Four checks run before anyone sends."
-      },
-      "kv_marketing": {
-        "name": "Marketing Studio (Marketing)",
-        "description": "Drafts campaign content and ad copy from Growth & GTM briefs, and checks every claim before a person publishes. Posts and runs nothing."
-      },
-      "kv_legal": {
-        "name": "Legal & Contracts (Pháp lý)",
-        "description": "Drafts for a lawyer or authorised person to approve. Gives no legal opinion; every citation is checked against an official source."
-      },
-      "kv_accounting": {
-        "name": "Accounting & Tax (Kế toán, thuế)",
-        "description": "Covers tờ khai, hóa đơn, công nợ and khóa sổ, with figures computed by script. Files nothing; needs Bash and Python on the runtime."
-      },
-      "kv_talent": {
-        "name": "Talent Acquisition (Tuyển dụng)",
-        "description": "Screens CVs against approved criteria, drafts job posts, interview questions and letters, and checks each pack for bias and personal data. Does not contact, schedule or decide on candidates."
-      },
-      "kv_pr": {
-        "name": "PR & Comms (Truyền thông báo chí)",
-        "description": "Drafts press releases (thông cáo báo chí), Q&A and crisis holding statements (khủng hoảng truyền thông) from verified facts, and checks every fact, quote and legal line before a person sends anything to the press. Sends and publishes nothing."
-      },
-      "kv_ecom": {
-        "name": "E-commerce Shop Ops (Bán hàng online)",
-        "description": "Takes a new product from supplier data to a marketplace listing and price, checked for banned claims and margin before the shop owner posts it."
-      },
-      "kv_officeops": {
-        "name": "Office Ops (Vận hành văn phòng)",
-        "description": "Plans room and travel logistics, events, stationery, the asset register, archiving, service contracts and the monthly admin report. Does not book, buy, pay or send."
-      },
-      "kv_academic": {
-        "name": "Academic Evidence Desk (Học thuật, nghiên cứu)",
-        "description": "Turns a folder of PDFs and a reference list into a source matrix and a study draft that the author rewrites. Every citation is opened before it is reported as real; gaps stay marked."
-      },
-      "kv_health": {
-        "name": "Healthcare (Y tế)",
-        "description": "Drafts SOPs, patient leaflets, staff training, duty rosters and medicine-expiry reports from the unit's own sources. Writes administrative and educational drafts only: no diagnosis, prescription or treatment advice. Two gates check each draft for out-of-scope clinical claims and patient data, and a clinician approves before use. Sends and publishes nothing."
-      },
-      "kv_construction": {
-        "name": "Construction (Xây dựng)",
-        "description": "Drafts site reports, diaries, minutes, punch lists and quantity tables (bảng khối lượng, dự toán sơ bộ) from site records, and checks each quantity and each safety line before a person uses them. Signs, accepts and issues nothing."
-      },
-      "kv_fnb": {
-        "name": "F&B Ops (Nhà hàng, quán ăn)",
-        "description": "Costs new dishes and menu changes from the shop's recipes and purchase invoices, and checks every allergen line and food cost figure with two independent gates before anything is printed or posted. Prints, posts and orders nothing."
-      },
-      "kv_insurance": {
-        "name": "Insurance Advisory (Bảo hiểm)",
-        "description": "Drafts insurance advice materials (đề xuất bảo hiểm): needs analysis, benefit comparison, exclusion explanations, claim checklists (hồ sơ bồi thường) and guidance letters, for a licensed agent to review. Binds no coverage, promises no claim outcome or return, and sends nothing."
-      },
-      "kv_banking": {
-        "name": "Banking Credit Desk (Tài chính, ngân hàng)",
-        "description": "Drafts the credit memo (tờ trình tín dụng) and the loan analysis for one borrower from the file, with every figure traced to its source. Credit and gate checks run before a credit officer reads it. Approves no credit, gives no investment advice, and sends nothing."
-      },
-      "kv_realestate": {
-        "name": "Real Estate Desk (Bất động sản)",
-        "description": "Turns one property or borrower file into a listing draft, a home-loan plan or an area note, with each figure traced to its source. Planning, loan and listing gates check each draft before a broker reads it. Promises no price, approves no loan, gives no title opinion, and posts or sends nothing."
-      },
-      "kv_hospitality": {
-        "name": "Hospitality Ops (Du lịch, khách sạn)",
-        "description": "Drafts group tour itineraries and quotes, and hotel guest text (confirmations, OTA listings, review replies, front-desk scripts) from the supplier and hotel facts. Two gates check every price, promise and guest detail before a manager sends anything. Books, charges and sends nothing."
-      },
-      "kv_trade": {
-        "name": "Import & Export Desk (Xuất nhập khẩu)",
-        "description": "Assembles an import or export shipment file from its documents and checks the cross-document figures and the customs declaration draft with two independent gates. Declares, submits and sends nothing."
-      },
-      "kv_factory": {
-        "name": "Factory Ops (Sản xuất nhà máy)",
-        "description": "Drafts the monthly production and quality KPI report, shift and maintenance reports, and NCR, CAPA and incident drafts from the plant's records, and checks every figure and safety line before a person issues anything. Runs no machine and issues no official record."
-      },
-      "kv_education": {
-        "name": "Education Desk (Giáo dục)",
-        "description": "Drafts periodic tests (đề kiểm tra định kỳ) with their matrix, specification, answer key and grading guide from the curriculum outcomes. Gates check every answer and every line a student or parent will see; a teacher prints and shares, and the squad sends nothing."
-      },
-      "kv_teaching": {
-        "name": "Teaching Materials (Tư liệu giảng dạy)",
-        "description": "Finds teaching sources with their levels, turns class records into coded summaries and drafts class documents for a teacher. Gates check every source, every figure and every line a student or parent will see; the teacher reads, sends and posts. The squad sends nothing."
-      },
-      "sales_loop": {
-        "name": "Sales loop",
-        "description": "Finds opportunities for your lanes each week, drafts outreach for you to approve, and learns from the results. Sources come ready to use."
-      },
-      "sdlc_maintenance": {
-        "name": "SDLC · Existing product",
-        "description": "Triages a bug, feature, optimization, or upgrade, routes it to the right agents, verifies it, and reports."
-      },
-      "content_studio": {
-        "name": "Content Studio",
-        "description": "Multi-channel content production and publishing with review gates."
-      },
-      "research_lab": {
-        "name": "Research Lab",
-        "description": "Searches the scholarly literature in bounded rounds, screens papers against written criteria, and checks every citation before export."
-      }
-    },
-    "groups": {
-      "core": "Core",
-      "kitviet": "Kit Viet",
-      "vertical": "Verticals"
-    },
     "expert_review_badge": "Expert review",
     "expert_review_notice": "A qualified person must review this squad's output before it is used.",
     "expert_review_ack": "I will arrange that review.",
@@ -430,12 +311,6 @@
   },
   "agent_pack_install": {
     "title": "Install agent pack",
-    "packs": {
-      "market-strategist": {
-        "name": "Market Strategist",
-        "description": "Analyzes a market, segments customers, and finds outlets for a product. Asks before it spends money or contacts anyone."
-      }
-    },
     "skills_count": "{{count}} skills",
     "runtime_label": "Runtime",
     "install": "Install",

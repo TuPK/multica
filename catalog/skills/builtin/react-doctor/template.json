@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill",
+  "id": "react-doctor",
+  "version": "1.0.0",
+  "sets": [
+    "sdlc"
+  ],
+  "source": {
+    "type": "vendored",
+    "repo": "millionco/react-doctor",
+    "ref": "1.2.0",
+    "license": "LicenseRef-Modified-MIT-Million",
+    "note": "Modified MIT: prior written permission is needed to use the software as AI training or evaluation data, or to sell it as a hosted service."
+  }
+}

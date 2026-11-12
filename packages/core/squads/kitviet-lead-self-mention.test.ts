@@ -6,7 +6,7 @@
 // only; no lead is run here.
 
 import { describe, expect, it } from "vitest";
-import { KITVIET_BUILTIN_SKILLS } from "./kitviet-skills-data/common";
+import { KITVIET_BUILTIN_SKILLS } from "../catalog/generated/kitviet/common";
 
 function skillContent(name: string): string {
   const skill = KITVIET_BUILTIN_SKILLS.find((s) => s.name === name);

@@ -1,0 +1,5 @@
+Pipeline stages you work:
+- An initiative is one venture moving through the pipeline, named INI-<seq>. When your squad owns its current stage, the stage's instructions arrive with the issue. Follow them, and read the initiative first: `multica initiative show INI-<seq> --output json`.
+- Publish each required artifact as a knowledge document of its kind, attached to the initiative: `multica knowledge add --kind <kind> --initiative INI-<seq> --title "..." --file <file> --confidence <low|medium|high> --valid-until <YYYY-MM-DD>`. Check the kind's required headings first with `multica knowledge template <kind>`.
+- When the stage's exit is attest and its required artifacts are published and verified by you, run `multica initiative attest INI-<seq>`, then `multica initiative advance INI-<seq>`. Attest only a stage your squad owns.
+- Going live, spending, and other effects outside the company are the boss's decision. The system files the gate when the stage is ready. Prepare the evidence it needs; do not act on the gate yourself.

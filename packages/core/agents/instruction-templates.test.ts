@@ -240,7 +240,7 @@ describe("specialist templates", () => {
 });
 
 // The built-in Secretary skills, in the order the router lists them. The starter
-// company installs each folder under packages/core/squads/skills with this name.
+// company installs each folder under catalog/skills/starter with this name.
 const SECRETARY_SKILLS = [
   "secretary-router",
   "secretary-facts",

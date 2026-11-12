@@ -10,7 +10,7 @@
 // Steps: resolve the ref (git ls-remote, read only) -> stop when it equals UPSTREAM.json -> fetch the commit
 // (git fetch, read only) into a temporary folder -> stage a copy of the repo's squad pack and scripts -> in the
 // stage: capture the replaced upgrade texts, vendor the trades, regenerate, run --check, the generator and
-// squad tests, and tsc -> replace the real kitviet-upstream, kitviet-skills-data and (when texts were captured)
+// squad tests, and tsc -> replace the real catalog/_sources/kitviet/upstream and (when texts were captured)
 // kitviet-previous-texts.ts, with a backup that restores them if a copy fails. Nothing is committed or pushed.
 //
 // The upstream is data: its scripts are never run. Only the files under <trade>/claude-code/kv are copied.
@@ -35,10 +35,12 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "..");
 const squadsRel = "packages/core/squads";
+const kvRel = "catalog/_sources/kitviet";
 const DEFAULT_REMOTE = "https://github.com/mochistudio-vn/kitviet";
 
 // The paths the update replaces. A change to any of them that is not committed stops the update.
-const WRITE_PATHS = [`${squadsRel}/kitviet-upstream`, `${squadsRel}/kitviet-skills-data`, `${squadsRel}/kitviet-previous-texts.ts`];
+// The generated pack (packages/core/catalog/generated/kitviet) is built by `pnpm catalog:build` and not committed, so it is not written here.
+const WRITE_PATHS = [`${kvRel}/upstream`, `${squadsRel}/kitviet-previous-texts.ts`];
 
 // Every input the registry capture reads: the composition of the Kit Viet texts (the role bodies, the squad templates,
 // the shared blocks) and the pack configs and sources the generator reads. The capture takes the "before" texts from
@@ -46,11 +48,12 @@ const WRITE_PATHS = [`${squadsRel}/kitviet-upstream`, `${squadsRel}/kitviet-skil
 // listed: they do not feed a Kit Viet text.
 export const GUARDED_PATHS = [
   ...WRITE_PATHS,
-  `${squadsRel}/kitviet-rewrites.json`,
-  `${squadsRel}/kitviet-squads`,
-  `${squadsRel}/kitviet-patches`,
-  `${squadsRel}/kitviet-skills`,
-  `${squadsRel}/kitviet-templates`,
+  `${kvRel}/rewrites.json`,
+  `${kvRel}/squads`,
+  `${kvRel}/patches`,
+  `${kvRel}/skills`,
+  "catalog/squads",
+  "packages/core/catalog",
   `${squadsRel}/kitviet-agent-instructions.ts`,
   `${squadsRel}/kitviet-squad-roles.ts`,
   `${squadsRel}/templates.ts`,
@@ -317,8 +320,8 @@ sit under their trade folder (${vendor.files} files in total). Nothing else is c
 \`brand/\`, zip archives or plugin metadata). Text files are stored with LF line endings.
 
 Changes: none to the vendored files. Every change Multica applies lives in the generator
-(\`scripts/generate-kitviet-pack.mjs\`), in \`packages/core/squads/kitviet-rewrites.json\`, in
-\`packages/core/squads/kitviet-patches/\` and in the squad configs.
+(\`scripts/generate-kitviet-pack.mjs\`), in \`catalog/_sources/kitviet/rewrites.json\`, in
+\`catalog/_sources/kitviet/patches/\` and in the squad configs.
 
 Verification: every vendored file equals its file at the pinned commit after LF normalisation (byte comparison of the
 written file against the upstream file). Mismatches: ${vendor.mismatches.length}.
@@ -351,8 +354,8 @@ async function snapshotPack(squadsDir, workDir) {
   const { build } = await import("esbuild");
   const path = (rel) => JSON.stringify(join(squadsDir, rel));
   const entry = `
-import { KITVIET_PACK_LOADERS } from ${path("kitviet-skills-data/packs.ts")};
-import { KITVIET_SQUADS } from ${path("kitviet-skills-data/squads.ts")};
+import { KITVIET_PACK_LOADERS } from ${path("../catalog/generated/kitviet/packs.ts")};
+import { KITVIET_SQUADS } from ${path("../catalog/generated/kitviet/squads.ts")};
 import { loadKitvietRoleInstructions } from ${path("kitviet-packs.ts")};
 import { SQUAD_TEMPLATES } from ${path("templates.ts")};
 import { KITVIET_PREVIOUS_AGENT_INSTRUCTIONS, KITVIET_PREVIOUS_SQUAD_INSTRUCTIONS } from ${path("kitviet-previous-texts.ts")};
@@ -403,9 +406,10 @@ function stageRepo(stage) {
   cpSync(join(repoRoot, "package.json"), join(stage, "package.json"));
   cpSync(join(repoRoot, "scripts"), join(stage, "scripts"), { recursive: true, filter: skip });
   cpSync(join(repoRoot, "packages/core"), join(stage, "packages/core"), { recursive: true, filter: skip });
-  // Two squad tests read these server files by a path relative to packages/core (the company template data and
-  // the starter recipes). Nothing the update writes lives there, so the copy only needs them.
-  for (const rel of ["server/internal/service/company_template_data.json", "server/internal/salescollect/testdata"]) {
+  cpSync(join(repoRoot, "catalog"), join(stage, "catalog"), { recursive: true, filter: skip });
+  // A squad test reads these server files by a path relative to packages/core (the starter recipes). Nothing
+  // the update writes lives there, so the copy only needs them. (The company data is generated in the stage.)
+  for (const rel of ["server/internal/salescollect/testdata"]) {
     mkdirSync(dirname(join(stage, rel)), { recursive: true });
     cpSync(join(repoRoot, rel), join(stage, rel), { recursive: true });
   }
@@ -420,8 +424,8 @@ function fileTextDiffers(a, b) {
 }
 
 function patchesChanged(stage) {
-  const dirA = join(repoRoot, squadsRel, "kitviet-patches");
-  const dirB = join(stage, squadsRel, "kitviet-patches");
+  const dirA = join(repoRoot, kvRel, "patches");
+  const dirB = join(stage, kvRel, "patches");
   const names = new Set([...readdirSync(dirA), ...readdirSync(dirB)]);
   return [...names].filter((name) => fileTextDiffers(join(dirA, name), join(dirB, name)));
 }
@@ -432,7 +436,7 @@ export async function main(argv = process.argv.slice(2)) {
   const remote = process.env.KITVIET_REMOTE || DEFAULT_REMOTE;
   const remoteUrl = existsSync(remote) ? pathToFileURL(resolve(remote)).href : remote;
   const squadsDir = join(repoRoot, squadsRel);
-  const current = JSON.parse(readFileSync(join(squadsDir, "kitviet-upstream/UPSTREAM.json"), "utf8"));
+  const current = JSON.parse(readFileSync(join(repoRoot, kvRel, "upstream/UPSTREAM.json"), "utf8"));
 
   const target = pickTarget({ requested, refs: parseRemoteRefs(git(["ls-remote", remoteUrl])) });
   const label = (sha, version) => `${sha.slice(0, 8)}${version ? ` (${version})` : ""}`;
@@ -459,10 +463,12 @@ export async function main(argv = process.argv.slice(2)) {
 
     stageRepo(stage);
     const stageSquads = join(stage, squadsRel);
-    const stageUpstream = join(stageSquads, "kitviet-upstream");
-    const stageData = join(stageSquads, "kitviet-skills-data");
+    const stageUpstream = join(stage, kvRel, "upstream");
     const stageRegistry = join(stageSquads, "kitviet-previous-texts.ts");
 
+    // The generated pack is not committed: build it in the stage from the current sources first.
+    const catalogBuild = (label) => run(process.execPath, [join(stage, "scripts/catalog/cli.mjs"), "build"], stage, label);
+    catalogBuild("catalog build (before)");
     // The texts shipped now, before the generator changes them.
     const before = await snapshotPack(stageSquads, stage);
     const foldersBefore = upstreamSkillFolders(stageUpstream, current.trades);
@@ -482,15 +488,16 @@ export async function main(argv = process.argv.slice(2)) {
       .filter((entry) => entry.isDirectory() && existsSync(join(tree, entry.name, "claude-code", "kv")) && !current.trades.includes(entry.name))
       .map((entry) => entry.name);
 
-    run(process.execPath, [join(stage, "scripts/generate-kitviet-pack.mjs")], stage, "generator");
+    catalogBuild("catalog build (after)");
     const after = await snapshotPack(stageSquads, stage);
     const additions = registryAdditions(before.previous, before, after);
     const capturedCount = Object.keys(additions.agents).length + additions.squads.length;
     if (capturedCount > 0) {
       writeFileSync(stageRegistry, appendRegistryEntries(readFileSync(stageRegistry, "utf8"), additions));
     }
-    // The registry is rewritten above, so the generator output is final only after this point; check it once more.
-    run(process.execPath, [join(stage, "scripts/generate-kitviet-pack.mjs"), "--check"], stage, "generator --check");
+    // The registry is rewritten above; build once more so the stage checks below see the final state.
+    catalogBuild("catalog build (final)");
+    run(process.execPath, [join(stage, "scripts/catalog/cli.mjs"), "check"], stage, "catalog check");
     const nodeTests = run(
       process.execPath,
       ["--test", "scripts/generate-kitviet-pack.test.mjs", "scripts/kitviet-update.test.mjs"],
@@ -521,7 +528,7 @@ export async function main(argv = process.argv.slice(2)) {
       `Upstream skill folders: ${newFolders.length} new (${short(newFolders)}), ${goneFolders.length} removed (${short(goneFolders)}).` +
         (newFolders.length > 0 ? " A new folder is vendored, but the pack holds it only when a squad config lists it and droppedSkills does not." : ""),
     );
-    console.log(`Stage checks: generator --check ok; node tests ${nodeCounts}; vitest ${vitestCounts}; tsc ${tsc.trim() === "" ? "no errors" : tsc.trim()}.`);
+    console.log(`Stage checks: catalog build and check ok; node tests ${nodeCounts}; vitest ${vitestCounts}; tsc ${tsc.trim() === "" ? "no errors" : tsc.trim()}.`);
 
     ok = true;
     if (dryRun) {
@@ -530,8 +537,7 @@ export async function main(argv = process.argv.slice(2)) {
     }
 
     const plan = [
-      { from: stageUpstream, to: join(repoRoot, squadsRel, "kitviet-upstream"), kind: "dir" },
-      { from: stageData, to: join(repoRoot, squadsRel, "kitviet-skills-data"), kind: "dir" },
+      { from: stageUpstream, to: join(repoRoot, kvRel, "upstream"), kind: "dir" },
     ];
     if (capturedCount > 0) plan.push({ from: stageRegistry, to: join(repoRoot, squadsRel, "kitviet-previous-texts.ts"), kind: "file" });
     replaceTrees(plan, join(stage, "backup"));

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill",
+  "id": "planning-readiness",
+  "version": "1.0.0",
+  "sets": [
+    "planning"
+  ],
+  "source": {
+    "type": "authored"
+  }
+}

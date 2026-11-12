@@ -100,6 +100,8 @@ pnpm test || { EXIT_CODE=1; exit 1; }
 # --------------------------------------------------------------------------
 echo ""
 echo "==> [3/5] Go tests..."
+echo "==> Generating the catalog data the Go server embeds..."
+node scripts/catalog/cli.mjs build --target go || { EXIT_CODE=1; exit 1; }
 echo "==> Verifying Go test wrapper..."
 bash scripts/test-go.test.sh || { EXIT_CODE=1; exit 1; }
 echo "==> Running database migrations..."

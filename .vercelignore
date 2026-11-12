@@ -41,7 +41,13 @@ _features
 /apps/mobile/*
 !/apps/mobile/patches
 !/apps/mobile/patches/**
-/scripts/
+/scripts/*
+# The web build runs the catalog generator (pnpm catalog:build) before `next build`.
+!/scripts/catalog
+!/scripts/catalog/**
+!/scripts/lib
+!/scripts/lib/**
+!/scripts/generate-kitviet-pack.mjs
 
 *.log
 *.pid

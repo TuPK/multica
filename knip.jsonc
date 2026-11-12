@@ -19,8 +19,8 @@
 
   "workspaces": {
     ".": {
-      "entry": ["scripts/*.mjs", "scripts/brand/*.mjs"],
-      "project": ["scripts/*.mjs", "scripts/brand/*.mjs"]
+      "entry": ["scripts/*.mjs", "scripts/brand/*.mjs", "scripts/catalog/*.mjs"],
+      "project": ["scripts/*.mjs", "scripts/brand/*.mjs", "scripts/catalog/**/*.mjs"]
     },
 
     "apps/web": {

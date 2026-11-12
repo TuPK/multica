@@ -1,0 +1,4 @@
+{
+  "title": "F&B Ops (Nhà hàng, quán ăn)",
+  "description": "Calcula el coste de platos nuevos y cambios de carta a partir de las recetas y facturas de compra del local, y revisa cada línea de alérgenos y cada cifra de coste de alimentos con dos filtros independientes antes de imprimir o publicar nada. No imprime, no publica y no hace pedidos."
+}

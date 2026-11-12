@@ -11,7 +11,7 @@ import { SHARED_BLOCKS, WORKING_RULES } from "../agents/instruction-blocks";
  * file holds the hand-written parts every agent of that kind shares.
  *
  * The skill names here are the bundle names the quickstart imports (`kv--delivery-core`), not the
- * folder names under kitviet-skills/.
+ * folder names under catalog/_sources/kitviet/skills/.
  */
 
 /** The five role kinds of a Kit Viet squad. The ids match the instruction template ids. */

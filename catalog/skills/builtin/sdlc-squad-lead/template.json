@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill",
+  "id": "sdlc-squad-lead",
+  "version": "1.0.0",
+  "sets": [
+    "sdlc"
+  ],
+  "source": {
+    "type": "authored"
+  }
+}

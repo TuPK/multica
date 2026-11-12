@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { PLANNING_ROLE_AGENT_INSTRUCTIONS } from "./planning-agent-instructions";
-import { SDLC_BUILTIN_SKILLS } from "./sdlc-skills-data";
+import { SDLC_BUILTIN_SKILLS } from "../catalog/generated/skills-builtin";
 import { PLANNING_SKILL_NAMES, SQUAD_TEMPLATES } from "./templates";
 
 const get = (name: string) => SDLC_BUILTIN_SKILLS.find((s) => s.name === name)!;

@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "kind": "squad",
+  "id": "bmad_planning",
+  "version": "1.0.0",
+  "contracts": [
+    "squad.planning"
+  ],
+  "collection": "core",
+  "order": 50,
+  "squad": {
+    "name": "BMAD Planning",
+    "description": "Turns a request into reviewed planning documents: research, brief, PRD, UX design, architecture, epics and stories. Extends the documents a product already has.",
+    "floorName": null,
+    "leader": "plan_lead",
+    "workflow": "planning_auto",
+    "roles": [
+      {
+        "key": "plan_lead",
+        "agentTemplate": "tech_lead",
+        "name": "Blueprint Lead",
+        "description": "Leads planning squads: reads the request, maps its impact, delegates the documents, and verifies them.",
+        "role": "Squad leader"
+      },
+      {
+        "key": "plan_researcher",
+        "agentTemplate": "market_scout",
+        "name": "Blueprint Researcher",
+        "description": "Researches markets, domains, competitors, technology, and users, with a dated source for each claim.",
+        "role": "Market, domain, competitor, technical and user research"
+      },
+      {
+        "key": "plan_analyst",
+        "agentTemplate": "product_analyst",
+        "name": "Blueprint Analyst",
+        "description": "Turns a request and its research into a product brief or PRFAQ, and tests weak ideas.",
+        "role": "Product brief, PRFAQ, requirement clarification"
+      },
+      {
+        "key": "plan_pm",
+        "agentTemplate": "product_analyst",
+        "name": "Blueprint PM",
+        "description": "Writes or extends the PRD, epics and stories, and corrects course when scope changes.",
+        "role": "PRD, epics and stories, readiness check, course correction"
+      },
+      {
+        "key": "plan_ux",
+        "agentTemplate": "ux_designer",
+        "name": "Blueprint UX Designer",
+        "description": "Designs or extends the screens, flows, states, and design system the requirements need.",
+        "role": "UX design, screens and flows"
+      },
+      {
+        "key": "plan_architect",
+        "agentTemplate": "architect",
+        "name": "Blueprint Architect",
+        "description": "Designs the simplest system that fits, analyses the impact of a change, and records decisions.",
+        "role": "Architecture, ADRs, impact analysis, project context"
+      },
+      {
+        "key": "plan_reviewer",
+        "agentTemplate": "code_reviewer",
+        "name": "Blueprint Reviewer",
+        "description": "Independent review of the planning documents for consistency and readiness to build.",
+        "role": "Independent review, readiness verdict"
+      }
+    ],
+    "routines": [],
+    "charter": {
+      "mission": "Turn a request into planning documents the build squad can follow, and keep the documents of an existing product current.",
+      "responsibilities": [
+        {
+          "key": "research",
+          "text": "Research the market, domain, competitors and users, with a dated source for each claim."
+        },
+        {
+          "key": "documents",
+          "text": "Write or extend the brief, PRD, UX design, architecture, epics and stories, keeping existing ids stable."
+        },
+        {
+          "key": "readiness",
+          "text": "Have an independent reviewer check the documents agree and can be built before anyone calls the plan ready."
+        }
+      ],
+      "outputs": [
+        {
+          "key": "planning_handoff",
+          "kind": "report",
+          "cadenceHint": "per request"
+        },
+        {
+          "key": "planning_documents",
+          "kind": "kb_document",
+          "cadenceHint": "per request"
+        }
+      ],
+      "boundaries": "Writes planning documents only, no product code. Does not reverse an accepted decision or change a criterion of work already built without the requester. Spending money needs the boss.",
+      "escalation": "A change that reverses an accepted decision or a built criterion goes to the requester, named on the request.",
+      "intake": "Requests arrive as issues assigned to this squad."
+    },
+    "skills": {
+      "sets": [
+        "planning"
+      ]
+    }
+  }
+}

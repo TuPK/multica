@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "kind": "workflow",
+  "id": "designer_delivery",
+  "version": "1.0.0",
+  "order": 10,
+  "ui": false,
+  "designer": {
+    "templateId": "delivery",
+    "steps": [
+      {
+        "statusKey": "todo",
+        "transitions": [
+          {
+            "to": "in_progress"
+          }
+        ]
+      },
+      {
+        "statusKey": "in_progress",
+        "transitions": [
+          {
+            "to": "in_review"
+          }
+        ]
+      },
+      {
+        "statusKey": "in_review",
+        "transitions": [
+          {
+            "on": "rejected",
+            "to": "in_progress"
+          },
+          {
+            "to": "qa"
+          }
+        ]
+      },
+      {
+        "new": {
+          "name": "QA",
+          "category": "started"
+        },
+        "transitions": [
+          {
+            "to": "done"
+          }
+        ]
+      },
+      {
+        "statusKey": "done"
+      },
+      {
+        "statusKey": "cancelled"
+      }
+    ]
+  }
+}

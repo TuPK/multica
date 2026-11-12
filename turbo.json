@@ -22,6 +22,20 @@
     "DESKTOP_APP_SUFFIX"
   ],
   "tasks": {
+    // The catalog's generated code (packages/core/catalog/generated, server/internal/catalog/generated) is
+    // not committed. Every task that compiles, tests or runs code that imports it waits for this one.
+    // Its inputs are the catalog and the scripts that read it, so editing a template invalidates the
+    // cache of everything after it.
+    "//#catalog:build": {
+      "inputs": [
+        "catalog/**",
+        "scripts/catalog/**",
+        "scripts/lib/**",
+        "scripts/generate-kitviet-pack.mjs",
+        "packages/core/i18n/types.ts"
+      ],
+      "outputs": ["packages/core/catalog/generated/**", "server/internal/catalog/generated/*.json"]
+    },
     // `fumadocs-mdx` regenerates `.source/` by removing the directory and
     // writing it again, so two of them in the same package at once is a race:
     // one process rm -rf's the tree the other has already mkdir'd, and the
@@ -35,7 +49,7 @@
       "outputs": [".source/**"]
     },
     "build": {
-      "dependsOn": ["^build", "mdx"],
+      "dependsOn": ["^build", "mdx", "//#catalog:build"],
       // No explicit `inputs`: turbo's default (every git-tracked file in the
       // package) is the only safe hash source now that the cache is actually
       // restored in CI. The previous narrow glob list matched neither
@@ -46,15 +60,17 @@
       "outputs": [".next/**", "!.next/cache/**", "dist/**", "out/**"]
     },
     "dev": {
+      "dependsOn": ["//#catalog:build"],
       "cache": false,
       "persistent": true
     },
     "dev:staging": {
+      "dependsOn": ["//#catalog:build"],
       "cache": false,
       "persistent": true
     },
     "typecheck": {
-      "dependsOn": ["^typecheck", "mdx"]
+      "dependsOn": ["^typecheck", "mdx", "//#catalog:build"]
     },
     // Hash-only transit task. No package implements a `cache-inputs` script,
     // so every node resolves to <NONEXISTENT> and nothing is ever executed --
@@ -73,12 +89,14 @@
     // three real `tsc --noEmit` runs (~223 CPU-seconds) into the test job, and
     // `^test` would serialise the suites behind each other.
     "test": {
-      "dependsOn": ["^cache-inputs"]
+      "dependsOn": ["^cache-inputs", "//#catalog:build"]
     },
     // `lint` keeps no dependency edge: eslint here is not type-aware (no
     // `projectService` / `parserOptions.project` anywhere in
     // packages/eslint-config), so it only ever reads its own package's files
     // and a dependency's source cannot change its result.
-    "lint": {}
+    "lint": {
+      "dependsOn": ["//#catalog:build"]
+    }
   }
 }

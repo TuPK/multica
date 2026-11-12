@@ -1,11 +1,11 @@
 import { composeKvAgentInstructions, KV_LEAD_NOTES, KV_ROLE_NOTES } from "./kitviet-agent-instructions";
-import { KITVIET_SQUADS } from "./kitviet-skills-data/squads";
-import type { KitvietSquad, KitvietSquadRole } from "./kitviet-skills-data/types";
+import { KITVIET_SQUADS } from "../catalog/generated/kitviet/squads";
+import type { KitvietSquad, KitvietSquadRole } from "../catalog/generated/kitviet/types";
 import type { SquadRole, SquadRoleKey } from "./templates";
 
 /**
  * The static side of the Kit Viet squads: the names, roles and roster lines the generator wrote
- * to kitviet-skills-data/squads.ts. It imports no pack file, so the template registry can use it
+ * to catalog/generated/kitviet/squads.ts. It imports no pack file, so the template registry can use it
  * without pulling the skill and agent text into the main bundle. The agent bodies are loaded by
  * kitviet-packs.ts when the quickstart creates the agents.
  */

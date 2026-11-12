@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "kind": "squad",
+  "id": "sdlc_greenfield",
+  "version": "1.0.0",
+  "contracts": [
+    "squad.sdlc"
+  ],
+  "collection": "core",
+  "order": 10,
+  "squad": {
+    "name": "SDLC Greenfield",
+    "description": "Builds a new product from a request: brief, PRD, UX, architecture, epics, a queued build, final verification, and a report.",
+    "floorName": null,
+    "leader": "lead",
+    "workflow": "sdlc_auto",
+    "roles": [
+      {
+        "key": "lead",
+        "agentTemplate": "tech_lead",
+        "name": "SDLC Lead",
+        "description": "Leads SDLC squads: delegates, verifies evidence, and reports.",
+        "role": "Squad leader"
+      },
+      {
+        "key": "analyst",
+        "agentTemplate": "product_analyst",
+        "name": "SDLC Product Analyst",
+        "description": "Turns requests and sources into briefs, PRDs, epics, and stories.",
+        "role": "Briefs, PRD, epics and stories, requirement changes, build queue"
+      },
+      {
+        "key": "ux",
+        "agentTemplate": "ux_designer",
+        "name": "SDLC UX Designer",
+        "description": "Designs screens, states, and the design system for the requirements.",
+        "role": "UX design, screen specs, mockups"
+      },
+      {
+        "key": "architect",
+        "agentTemplate": "architect",
+        "name": "SDLC Architect",
+        "description": "Designs the simplest system that fits, records decisions, and analyses impact.",
+        "role": "Architecture, impact analysis, project context"
+      },
+      {
+        "key": "developer",
+        "agentTemplate": "fullstack_developer",
+        "name": "SDLC Developer",
+        "description": "Builds stories end to end and verifies them on the running app.",
+        "role": "Implementation of epics, stories, and features"
+      },
+      {
+        "key": "reviewer",
+        "agentTemplate": "code_reviewer",
+        "name": "SDLC Code Reviewer",
+        "description": "Independent review of changes and plans, with a verdict first.",
+        "role": "Independent review, planning readiness check"
+      },
+      {
+        "key": "qa",
+        "agentTemplate": "qa_tester",
+        "name": "SDLC QA Tester",
+        "description": "Designs tests from acceptance criteria and runs them on the real system.",
+        "role": "Test design, regression, final verification"
+      },
+      {
+        "key": "security",
+        "agentTemplate": "security_reviewer",
+        "name": "SDLC Security Reviewer",
+        "description": "Gates a change or release on verified security controls.",
+        "role": "Security review of changes and of the whole product"
+      },
+      {
+        "key": "devops",
+        "agentTemplate": "devops_engineer",
+        "name": "SDLC DevOps",
+        "description": "Packages and releases one verified digest; production needs approval.",
+        "role": "Packaging, run instructions, release notes"
+      }
+    ],
+    "routines": [],
+    "charter": {
+      "mission": "Take a product request from brief to a verified build, with a report the boss can act on.",
+      "responsibilities": [
+        {
+          "key": "analysis",
+          "text": "Turn each request into a brief, PRD, epics and stories the build can follow."
+        },
+        {
+          "key": "build",
+          "text": "Build the queued epics and verify them on the running app."
+        },
+        {
+          "key": "verification",
+          "text": "Run the final regression, security and packaging checks before anyone calls it done."
+        }
+      ],
+      "outputs": [
+        {
+          "key": "final_report",
+          "kind": "report",
+          "cadenceHint": "per request"
+        }
+      ],
+      "boundaries": "No production deploys and no deletions without the boss. Spending money needs the boss.",
+      "escalation": "A blocked request or an open decision goes to the requester, named on the request.",
+      "intake": "Requests arrive as issues assigned to this squad."
+    },
+    "skills": {
+      "sets": [
+        "sdlc"
+      ]
+    }
+  }
+}
