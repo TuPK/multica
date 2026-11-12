@@ -1,511 +1,395 @@
-# Template Registry: đưa nội dung template ra thư mục riêng và thêm template không cần sửa code
+# Catalog: đưa nội dung template ra thư mục `catalog/` và thêm template không cần sửa code
 
-Trạng thái: bản nháp để duyệt (chưa triển khai). Kế hoạch đi kèm: [plan.md](plan.md).
-Ngày khảo sát: 2026-11-12, trên cây làm việc có nhiều thay đổi chưa commit của người dùng (xem mục 4.6).
+Trạng thái: đã triển khai phần lớn (mục 11 ghi rõ cái nào xong, cái nào chưa). Quyết định Q1, Q2, Q3 do người dùng chốt; Q4 do kỹ sư triển khai chọn, xem mục 5.4. Kế hoạch: [plan.md](plan.md).
+Ngày rà soát lại: 2026-11-12, trên HEAD `b324e4241` (cây làm việc sạch lúc bắt đầu).
 
 Ngôn ngữ: tiếng Việt. Định danh, đường dẫn và lệnh giữ nguyên tiếng Anh.
-Quy ước đánh dấu: đường dẫn kèm chữ "(mới)" là đường dẫn đề xuất, chưa tồn tại. Mọi đường dẫn còn lại đã được kiểm tra tồn tại bằng `git ls-files` hoặc `ls`.
+Quy ước: đường dẫn kèm chữ "(mới)" là đường dẫn đề xuất, chưa tồn tại. Mọi đường dẫn còn lại đã được kiểm tra tồn tại bằng `git ls-files` hoặc `ls`. Tên "catalog" chỉ thư mục `catalog/` ở gốc repo; `deploy/helm/multica/templates/` và `.github/ISSUE_TEMPLATE/` là thứ khác.
+
+## 0. Quyết định đã chốt
+
+| # | Quyết định | Ghi chú |
+| --- | --- | --- |
+| Q1 | Thư mục gốc tên `catalog/` | Thay cho `templates/` trong bản nháp đầu |
+| Q2 | Mã sinh ra không commit; sinh lúc build | Hệ quả ở mục 6.7: `.gitignore`, turbo, Makefile, CI, `Dockerfile`, `Dockerfile.web`, `.vercelignore` |
+| Q3 | Bản dịch đầy đủ cho mọi ngôn ngữ hỗ trợ, không fallback | `catalog check` và build thất bại khi thiếu bản dịch |
+| Q4 | Hợp nhất dữ liệu SDLC Auto thành một manifest; giữ nguyên phép chiếu của từng nơi dùng; workflow của trình thiết kế là manifest riêng có test khớp | Lý do và số liệu ở mục 5.4 |
+| Q5 | Nội dung đổi mà `version` không đổi: cảnh báo | Có thể nâng thành lỗi sau |
+| Q6 | Chưa làm "băm thay lịch sử văn bản" | Giữ `*-previous-texts.ts` trong code; ghi là phần chưa làm |
+| Q8 | `kitviet-upstream` ở lại repo, dưới `catalog/_sources/kitviet/` | |
+| Q10 | `examples/plugins/` giữ nguyên chỗ | Là fixture của 3 test Go |
+
+Q7 (template bên thứ ba qua Hub) và Q9 (nguồn gốc skill vendor) vẫn mở, xem mục 10.
 
 ## 1. Tóm tắt
 
-Nội dung "template" của Multica (skill, squad, agent, workflow, công ty mẫu, agent pack) hiện nằm rải rác ở `packages/core/squads/`, `packages/core/agents/`, `packages/views/locales/`, `server/internal/` và `examples/`. Thêm một squad hoặc một skill phải sửa tay từ 4 đến 8 chỗ trong code, trong đó có hai kiểu union TypeScript, một mảng đăng ký, và 7 file dịch.
+Nội dung "template" của Multica (skill, squad, agent, workflow, công ty mẫu, agent pack) nằm rải rác ở `packages/core/squads/`, `packages/core/agents/`, `packages/views/locales/`, `server/internal/` và `examples/`. Thêm một squad hoặc skill phải sửa tay 4 đến 8 chỗ trong code, gồm hai kiểu union TypeScript, một mảng đăng ký và 7 file dịch.
 
-Đề xuất (phương án B trong mục 5): đặt toàn bộ nội dung nguồn dưới một thư mục gốc `templates/` (mới). Mỗi template là một thư mục có `template.json` (manifest) cộng file nội dung. Một CLI trong `scripts/templates/` (mới) kiểm tra manifest, rồi sinh ra các file TypeScript và JSON đã commit sẵn cho `packages/core`, `packages/views` và `server/`. Thêm template = tạo thư mục, chạy `pnpm templates:build`, commit. Không sửa file code nào.
-
-Giữ lại những gì repo đã làm tốt: nguồn là file, đầu ra sinh ra được commit và có test chặn lệch, tải lazy theo gói như `KITVIET_PACK_LOADERS`. Thay những gì đang gây đau: danh sách đăng ký viết tay, nội dung lặp ở ba nơi (TypeScript, Go), ba cơ chế kiểm tra độ tươi khác nhau, và bundle 2,1 MB nạp sớm.
+Giải pháp (phương án B, mục 5): toàn bộ nội dung nguồn nằm dưới `catalog/`. Mỗi template là một thư mục có `template.json` và file nội dung. Một CLI không phụ thuộc thư viện ngoài, `scripts/catalog/cli.mjs` (mới), kiểm tra manifest rồi sinh TypeScript và JSON trong lúc build. Các file sinh ra bị `.gitignore`, không commit. Thêm template = tạo thư mục rồi build; không sửa file code.
 
 ## 2. Vấn đề
 
-1. Nội dung hay đổi (SKILL.md, hướng dẫn của agent, charter, workflow) nằm lẫn với logic lõi trong `packages/core/squads/`: tám thư mục con chứa nội dung template có tổng 1.087 file được git theo dõi, cạnh các file `.ts` của engine. Người không phải lập trình viên khó tìm đúng chỗ sửa.
-2. Thêm một template phải chạm nhiều file code (mục 4.5). Quên một chỗ thì typecheck hoặc test báo lỗi, đó là tín hiệu tốt, nhưng người thêm vẫn phải biết toàn bộ danh sách chỗ.
-3. Cùng một nội dung được giữ ở nhiều nơi, chỉ ràng buộc bằng comment hoặc test: workflow "SDLC Auto" có ở TypeScript và hai nơi trong Go (mục 4.4, C5).
-4. Dữ liệu được tác giả viết bằng TypeScript rồi sinh JSON cho Go (`scripts/generate-company-template.mjs` bundle bằng esbuild). Go phụ thuộc chuỗi công cụ Node, và người viết dữ liệu phải sửa code TypeScript.
-5. Có ba cơ chế kiểm tra "file sinh ra còn mới không" (mục 4.4, C9), và `ci-paths.json`, Dockerfile, turbo đều giả định nội dung nằm trong `packages/` hoặc `server/`.
+1. Nội dung hay đổi (SKILL.md, hướng dẫn agent, charter, workflow) nằm lẫn với logic lõi trong `packages/core/squads/`: tám thư mục con chứa nội dung có tổng 1.101 file được git theo dõi, cạnh các file `.ts` của engine.
+2. Thêm một template phải chạm nhiều file code (mục 4.5).
+3. Cùng một nội dung nằm ở nhiều nơi, ràng buộc bằng comment hoặc test: workflow "SDLC Auto" ở TypeScript và hai nơi trong Go; id workflow template ở 5 nơi.
+4. Dữ liệu viết bằng TypeScript rồi sinh JSON cho Go bằng esbuild (`scripts/generate-company-template.mjs`).
+5. Có nhiều cơ chế kiểm tra độ tươi của file sinh ra, và 5 MB mã sinh ra được commit vào repo (`sdlc-skills-data.ts` 2,1 MB, `kitviet-skills-data/` 2,9 MB, `company_template_data.json` 0,3 MB, bundle agent pack 0,5 MB).
+6. Hạ tầng giả định nội dung nằm trong `packages/` hoặc `server/` (mục 4.4, C12).
 
 ## 3. Mục tiêu và không phải mục tiêu
 
 Mục tiêu:
 
-- G1. Một thư mục gốc `templates/` chứa toàn bộ nội dung template nguồn. Phân loại rõ "lõi" và "template" bằng tiêu chí kiểm tra được (mục 4.1).
-- G2. Thêm skill, skillset, squad, workflow, collection, agent pack mới không cần sửa file code. Có lệnh scaffold và lệnh kiểm tra.
-- G3. Một nguồn sự thật cho nội dung dùng ở cả Go và TypeScript, sinh ra bằng một lệnh.
-- G4. Không đổi hành vi người dùng thấy. Mỗi bước di chuyển chứng minh được bằng băm nội dung trước và sau (mục 7, lớp L6).
-- G5. Manifest có phiên bản, id bất biến, phụ thuộc khai báo được, dịch tách khỏi nội dung, kiểm tra bằng schema.
+- G1. Một thư mục gốc `catalog/` chứa nội dung nguồn; ranh giới lõi/template kiểm tra được (mục 4.1).
+- G2. Thêm skill, skillset, collection, squad, agent pack mới không cần sửa file code.
+- G3. Một nguồn cho Go và TypeScript với các nội dung dùng chung (công ty mẫu, workflow, bundle quickstart).
+- G4. Không đổi hành vi người dùng thấy. Mỗi bước chứng minh bằng băm nội dung trước và sau (lớp L6, mục 7).
+- G5. Manifest có phiên bản, id bất biến, phụ thuộc khai báo được, bản dịch đủ mọi ngôn ngữ, kiểm tra bằng schema.
+- G6. Không còn mã sinh ra trong git; build tự sinh.
 
-Không phải mục tiêu (xem thêm "Ngoài phạm vi" trong plan):
+Không phải mục tiêu: kho template lúc runtime (Hub, DB), template riêng theo workspace, giao diện soạn template, đổi nội dung prompt, đổi schema DB (không có migration), skill nền tảng của server (`server/internal/service/builtin_skills/`), agent Mika, `examples/plugins/`, mobile, dịch nội dung dành cho agent.
 
-- Kho template chạy lúc runtime, chợ, template riêng theo workspace, giao diện soạn template. Thiết kế chừa đường nối nhưng không làm (mục 5, phương án C).
-- Đổi nội dung prompt, đổi hành vi quickstart, đổi schema DB. Không có migration.
-- Skill nền tảng của máy chủ (`server/internal/service/builtin_skills/`) và agent hệ thống Mika: đây là hợp đồng với daemon, giữ nguyên là lõi.
-- `examples/plugins/`: là fixture của 3 test Go, giữ nguyên chỗ.
-- Dịch nội dung dành cho agent (SKILL.md, instructions). Chỉ dịch phần hiển thị cho người dùng (tên, mô tả thẻ).
-
-## 4. Hiện trạng (kết quả rà soát)
+## 4. Hiện trạng (kết quả rà soát lại trên HEAD `b324e4241`)
 
 ### 4.1 Ranh giới "lõi" và "template"
 
-Một mục là template khi trả lời "không" câu 1 và "có" câu 3 và 4:
+Một mục là template khi trả lời "không" câu 1 và "có" câu 3, 4:
 
 | # | Câu hỏi | Nếu trả lời |
 | --- | --- | --- |
-| 1 | Thêm một thể hiện mới có cần thêm nhánh code (`switch`, `if` theo id, kiểu union) không? | Có: lõi hoặc template bị ghim (mục 6.3, trường `contracts`) |
-| 2 | Code Go hoặc TS có tham chiếu thể hiện này theo tên hoặc id không (hợp đồng)? | Có: template bị ghim, phải khai báo `contracts` |
-| 3 | Vòng đời thay đổi có độc lập với bản phát hành của engine không (đổi hàng tuần, tăng dần)? | Có: template |
+| 1 | Thêm thể hiện mới có cần thêm nhánh code (`switch`, `if` theo id, kiểu union) không? | Có: lõi, hoặc template bị ghim |
+| 2 | Code Go hoặc TS có tham chiếu thể hiện này theo tên hoặc id không (hợp đồng)? | Có: template bị ghim, khai báo `contracts` |
+| 3 | Vòng đời thay đổi có độc lập với bản phát hành engine không? | Có: template |
 | 4 | Người không viết code có sửa được bằng văn bản hoặc JSON không? | Có: template |
 
-Hệ quả:
+Lõi: engine quickstart (`packages/core/squads/quickstart.ts`, `upgrade.ts`, `handoff.ts`), engine workflow (`server/internal/issueworkflow/`), skill nền tảng của server, agent Mika, schema zod, các generator, nội dung giao diện (nhãn, nút). Template bị ghim: squad SDLC (Go dựng workflow theo tên agent `SDLC Developer`...), workflow `BMAD Planning Auto` với lead `Blueprint Lead`, thẻ `executive_office`, các khóa chủ stage trong `server/internal/service/pipeline_install.go`.
 
-- Lõi: engine quickstart (`packages/core/squads/quickstart.ts`, `upgrade.ts`, `handoff.ts`), engine workflow (`server/internal/issueworkflow/`), skill nền tảng của server, agent Mika, schema zod, generator, nội dung giao diện (nhãn, nút).
-- Template: SKILL.md và `references/`, hướng dẫn agent, charter, routine, workflow mẫu, công ty mẫu, agent pack, danh mục nguồn sales.
-- Template bị ghim: những template mà Go tham chiếu theo tên, ví dụ squad SDLC (`SDLC Developer`...), workflow `BMAD Planning Auto` với lead `Blueprint Lead`, squad `executive_office`. Nội dung vẫn là template, nhưng hợp đồng phải khai báo và có test.
+### 4.2 Bảng kiểm kê (số liệu đo lại)
 
-### 4.2 Bảng kiểm kê
-
-Kích thước là tổng byte của file được theo dõi bởi git (`git ls-files` + `du -cb`), trừ khi ghi khác. "Cách nạp" mô tả đường từ nguồn đến chỗ dùng.
+Kích thước là tổng byte của file được git theo dõi.
 
 | ID | Đường dẫn | Loại | Quy mô | Cách nạp | Code đọc |
 | --- | --- | --- | --- | --- | --- |
-| T1 | `packages/core/squads/sdlc-skills/` | skill | 77 thư mục, 390 file, 2,0 MB (bmad 25, superpowers 15, sdlc 12, sales 7, planning 7, accessibility 5, supabase 2, còn lại 4) | Sinh bởi `scripts/generate-sdlc-skills.mjs` thành `packages/core/squads/sdlc-skills-data.ts` (2,1 MB, commit), import tĩnh | `packages/core/squads/templates.ts`, `quickstart.ts` (`importBuiltinSkills`), type trong `kitviet-packs.ts` |
-| T2 | `packages/core/squads/skills/` | skill (công ty mẫu) | 10 skill, 20 file, 57 KB | `scripts/generate-company-template.mjs` nhúng vào `server/internal/service/company_template_data.json` (337 KB) | Go: `server/internal/service/company_starter_skills.go`, `company_template_data.go` |
-| T3 | `packages/core/squads/kitviet-upstream/` | nguồn vendor (MIT) | 515 file, 2,8 MB: 361 SKILL.md, 138 agent, 20 nghề | Đầu vào của `scripts/generate-kitviet-pack.mjs`, không bao giờ nạp lúc chạy | Generator |
-| T4 | `packages/core/squads/kitviet-patches/`, `kitviet-rewrites.json` | quy tắc biến đổi | 91 file 63 KB; 6 KB | Đầu vào generator | Generator, `scripts/generate-kitviet-pack.test.mjs` |
-| T5 | `packages/core/squads/kitviet-squads/`, `kitviet-extensions/`, `kitviet-skills/` | cấu hình squad, mở rộng, skill viết tay | 22 JSON (21 squad + `base.json`) 37 KB; 3 JSON 1,5 KB; 3 skill 27 KB | Đầu vào generator | Generator |
-| T6 | `packages/core/squads/kitviet-skills-data/` | đầu ra sinh | 29 file .ts, 2,85 MB | Tải lazy theo pack qua `KITVIET_PACK_LOADERS` (`kitviet-skills-data/packs.ts`, `kitviet-packs.ts`) | `quickstart.ts` |
-| T7 | `packages/core/squads/kitviet-templates/` | squad (viết tay) | 21 file `.ts` + 21 test, 330 KB: charter, routine, mô tả, role key | Import tĩnh trong `templates.ts` (21 dòng import) | `templates.ts` |
-| T8 | `packages/core/squads/templates.ts` | squad + workflow + danh sách skill | 53 KB, 1.043 dòng: 5 squad nền (`sdlc_greenfield`, `sdlc_maintenance`, `market_research`, `bmad_planning`, `sales_loop`), `SDLC_AUTO_WORKFLOW`, `PLANNING_AUTO_WORKFLOW`, `PLANNING_SKILL_NAMES`, `SALES_SKILL_NAMES` | Import tĩnh | `packages/views/modals/squad-quickstart.tsx`, `packages/views/company/components/company-setup-card.tsx`, `company-starter-wizard.tsx` |
-| T9 | `packages/core/squads/sdlc-agent-instructions.ts`, `planning-agent-instructions.ts`, `sales-agent-instructions.ts`, `kitviet-agent-instructions.ts`, `kitviet-squad-roles.ts`, `kitviet-floors.ts` | prompt agent theo vai | 6,7 KB, 5,7 KB, 3,8 KB, 66,6 KB (bộ ghép + khối văn bản), 3,9 KB, 1 KB | Import tĩnh | `quickstart.ts` (`instructionsFor`) |
-| T10 | `packages/core/squads/kitviet-previous-texts.ts`, `sdlc-previous-texts.ts` | lịch sử văn bản (chỉ thêm) | 2,6 MB; 35 KB | Import tĩnh | `packages/core/squads/upgrade.ts`, `scripts/upgrade-sdlc-squad.mjs` |
-| T11 | `packages/core/squads/company-template.ts`, `packages/core/agents/instruction-templates.ts`, `instruction-blocks.ts` | công ty mẫu (14 thẻ squad, 7 tầng, chủ stage) + 39 mẫu hướng dẫn agent | 45 KB; 76 KB | TS là nguồn; `generate-company-template.mjs` sinh `server/internal/service/company_template_data.json`; Go nhúng bằng `go:embed` | Go: `server/internal/service/company_template.go` (1.174 dòng), `company_setup.go`; TS: wizard, `agents/components/instruction-template-picker.tsx` |
-| T12 | `packages/core/squads/sales-starter-sources.ts`, `sales-recipe.ts`, `sales-intake.ts` | danh mục nguồn sales | 30 KB, 4 KB | Import tĩnh | `quickstart.ts` (`ensureStarterSources`); Go `server/internal/salescollect/` kiểm cùng hình dạng recipe |
-| T13 | Workflow: `SDLC_AUTO_WORKFLOW` (`templates.ts:378`), `PLANNING_AUTO_WORKFLOW` (`:495`); Go `sdlcSteps` (`server/internal/service/initiative_build.go:325`); Go `server/internal/issueworkflow/templates.go` (226 dòng, 7 template, chưa theo dõi bởi git); phía trình thiết kế (chưa theo dõi bởi git): union `IssueWorkflowTemplateId` ở `packages/core/types/issue-workflow.ts:227`, tập `ISSUE_WORKFLOW_TEMPLATE_IDS` ở `packages/core/api/schemas.ts`, danh sách 7 id viết tay trong `packages/views/workflow/designer/template-picker-dialog.tsx`, bản mô phỏng `template-mock.ts`; khóa dịch `packages/views/locales/*/workflow.json` (`templates`) | workflow | SDLC Auto có ở 3 nơi; id workflow template có ở 5 nơi | TS và Go riêng biệt | Quickstart (`workflowSteps`), `InitiativeService`, trình thiết kế workflow |
-| T14 | `examples/agent-packs/market-strategist/` | agent pack | 543 KB: `pack.json`, `instructions.md`, 19 skill, giấy phép | `scripts/build-agent-pack-bundles.mjs` sinh `packages/core/agent-packs/bundles/market-strategist.json` (553 KB); `AGENT_PACK_IDS` viết tay trong `packages/core/agent-packs/load.ts:3` | `packages/views/modals/agent-pack-install.tsx:32` (`AGENT_PACK_IDS[0]`), `scripts/install-agent-pack.sh`, `Makefile` (`agent-pack`, `agent-pack-bundles`) |
-| T15 | `examples/plugins/` (5 plugin mẫu) | plugin mẫu / fixture | 80 KB | Không nạp lúc chạy. 3 test Go đọc bằng đường tương đối `../../../examples/plugins` | `server/internal/handler/plugin_example_test.go`, `server/cmd/server/plugin_schedule_pulse_example_test.go`, `server/pkg/plugincontract/examples_test.go` |
-| T16 | `server/internal/service/builtin_skills/` (2 skill, 11 file, 145 KB), `builtin_skills_legacy/` (1 file), `builtin_agents/mika/INSTRUCTIONS.md`, `server/internal/quickstart/bundle.json` (907 B) | skill nền tảng, agent hệ thống, danh sách cài Claude Code | | `go:embed` | `server/internal/service/builtin_skills.go`, `builtin_agents.go`, `server/internal/quickstart/bundle.go` |
-| T17 | `packages/views/locales/{en,es,fr,ja,ko,zh-Hans,zh-Hant}/modals.json` (`squad_quickstart.templates`: 26 mục mỗi ngôn ngữ; `groups`; mục `market-strategist`), `agents.json` (`creation_studio.instruction_templates`), `workflow.json` (`templates`) | chuỗi hiển thị theo id template | | i18next, khóa gõ kiểu: `$.squad_quickstart.templates[tpl.id].name` (`squad-quickstart.tsx:162`) | `packages/views/locales/parity.test.ts` bắt buộc đủ khóa ở 7 ngôn ngữ |
-| T18 | `docs/engineering/kitviet-*.md`, `sdlc-*.md`, `skill-plugin-hub.md`... | tài liệu | 43 file trong `docs/engineering/` | | Trích đường dẫn của T1 đến T14 |
+| T1 | `packages/core/squads/sdlc-skills/` | skill | 83 thư mục, 397 file, 2,04 MB (thêm 6 skill `research-lab-*` so với lần khảo sát đầu) | `scripts/generate-sdlc-skills.mjs` sinh `packages/core/squads/sdlc-skills-data.ts` (2,1 MB, đang commit), import tĩnh | `templates.ts`, `quickstart.ts`, type trong `kitviet-packs.ts` |
+| T2 | `packages/core/squads/skills/` | skill (công ty mẫu) | 10 skill, 20 file, 57 KB | `scripts/generate-company-template.mjs` nhúng vào `server/internal/service/company_template_data.json` (337 KB, đang commit) | Go: `company_starter_skills.go`, `company_template_data.go` |
+| T3 | `packages/core/squads/kitviet-upstream/` | nguồn vendor (MIT) | 523 file, 2,9 MB (nâng lên v1.5.0 ở commit `05f54b3e0`) | Đầu vào `scripts/generate-kitviet-pack.mjs`; cũng được ghi bởi `scripts/kitviet-update.mjs` (mới từ commit đó) | Generator, `kitviet-update.mjs` |
+| T4 | `packages/core/squads/kitviet-patches/`, `kitviet-rewrites.json` | quy tắc biến đổi | 91 file 63 KB; 6 KB | Đầu vào generator | Generator, `kitviet-update.mjs` |
+| T5 | `packages/core/squads/kitviet-squads/`, `kitviet-extensions/`, `kitviet-skills/` | cấu hình squad, mở rộng, skill viết tay | 22 JSON (21 squad + `base.json`) 37 KB; 3 JSON; 3 skill 27 KB | Đầu vào generator | Generator |
+| T6 | `packages/core/squads/kitviet-skills-data/` | đầu ra sinh (đang commit) | 29 file, 2,85 MB | Lazy theo pack qua `KITVIET_PACK_LOADERS` | `quickstart.ts`, `kitviet-packs.ts`, `kitviet-squad-roles.ts` |
+| T7 | `packages/core/squads/kitviet-templates/` | squad (viết tay) | 21 `.ts` + 21 test, 330 KB | Import tĩnh trong `templates.ts` | `templates.ts` |
+| T8 | `packages/core/squads/templates.ts` (53,5 KB), `content-studio.ts`, `research-lab.ts` (hai squad mới) | squad + workflow + danh sách skill | 7 squad lõi: `sdlc_greenfield`, `sdlc_maintenance`, `market_research`, `bmad_planning`, `sales_loop`, `content_studio`, `research_lab`; `SDLC_AUTO_WORKFLOW`, `PLANNING_AUTO_WORKFLOW`, `PLANNING_SKILL_NAMES`, `SALES_SKILL_NAMES` | Import tĩnh | `packages/views/modals/squad-quickstart.tsx`, `company/components/company-setup-card.tsx`, `company-starter-wizard.tsx` |
+| T9 | `sdlc-agent-instructions.ts`, `planning-agent-instructions.ts`, `sales-agent-instructions.ts`, `kitviet-agent-instructions.ts`, `kitviet-squad-roles.ts`, `kitviet-floors.ts` | prompt agent theo vai (và bộ ghép) | 6,7 KB, 5,7 KB, 3,8 KB, 66,6 KB, 3,9 KB, 1 KB | Import tĩnh | `quickstart.ts` (`instructionsFor`) |
+| T10 | `kitviet-previous-texts.ts`, `sdlc-previous-texts.ts` | lịch sử văn bản (chỉ thêm) | 2,6 MB; 35 KB | Import tĩnh | `upgrade.ts` |
+| T11 | `company-template.ts` (45 KB), `packages/core/agents/instruction-templates.ts` (76 KB), `instruction-blocks.ts` | công ty mẫu (14 thẻ squad) và 39 mẫu hướng dẫn agent | | TS là nguồn, sinh `company_template_data.json` cho Go | Go: `company_template.go`, `company_setup.go`; TS: wizard, `instruction-template-picker.tsx` |
+| T12 | `sales-starter-sources.ts`, `sales-recipe.ts`, `sales-intake.ts` | danh mục nguồn sales | 30 KB | Import tĩnh | `quickstart.ts` |
+| T13 | Workflow SDLC Auto: `templates.ts` (`SDLC_AUTO_WORKFLOW`), `server/internal/service/initiative_build.go` (`sdlcSteps`), `server/internal/issueworkflow/templates.go` (7 template của trình thiết kế, nay đã commit); id lặp ở `packages/core/types/issue-workflow.ts`, `packages/core/api/schemas.ts`, `packages/views/workflow/designer/template-picker-dialog.tsx`, `workflow.json` ×7 | workflow | 3 nơi chứa SDLC Auto; 5 nơi chứa id | TS và Go riêng | Quickstart, `InitiativeService`, trình thiết kế |
+| T14 | `examples/agent-packs/market-strategist/` | agent pack | 543 KB | `scripts/build-agent-pack-bundles.mjs` sinh `packages/core/agent-packs/bundles/market-strategist.json` (553 KB, đang commit); `AGENT_PACK_IDS` viết tay ở `packages/core/agent-packs/load.ts` | `packages/views/modals/agent-pack-install.tsx`, `Makefile` (`agent-pack`, `agent-pack-bundles`) |
+| T15 | `examples/plugins/` | plugin mẫu / fixture | 5 plugin, 80 KB | Không nạp lúc chạy | 3 test Go (`../../../examples/plugins`) |
+| T16 | `server/internal/service/builtin_skills/` (+ `_legacy`), `builtin_agents/mika/`, `server/internal/quickstart/bundle.json` | skill nền tảng, agent hệ thống, danh sách cài Claude Code | | `go:embed` | `builtin_skills.go`, `builtin_agents.go`, `quickstart/bundle.go` |
+| T17 | `packages/views/locales/*/modals.json` (`squad_quickstart.templates`: 28 mục, `groups`: 3, mục agent pack), `agents.json` (34 mục `instruction_templates.items`), `workflow.json` | chuỗi hiển thị theo id | 7 ngôn ngữ | i18next, khóa gõ kiểu | `packages/views/locales/parity.test.ts` |
 
-Ngoài kiểm kê (không phải template): `.agents/skills/` và `skills-lock.json` (skill cho người đóng góp repo), `server/internal/handler/testdata/quick_action_bodies.json` (fixture test), `server/internal/handler/qoder_catalog.go` (client API của runtime), `pixtuoid/` (dự án Rust riêng).
+Ngoài kiểm kê: `.agents/skills/`, `skills-lock.json`, fixture test, `qoder_catalog.go`, `pixtuoid/`.
 
-### 4.3 Phân loại tóm tắt
+### 4.3 Phân loại
 
-| Nhóm | Mục | Quyết định |
-| --- | --- | --- |
-| Template, chuyển ra `templates/` | T1, T2, T3, T4, T5, T7, T8 (phần dữ liệu), T9 (phần văn bản), T11, T12, T13, T14, T16 `bundle.json`, T17 (khóa theo id) | Di chuyển theo plan |
-| Template bị ghim | squad SDLC, `BMAD Planning Auto`, `executive_office`, các khóa chủ stage trong `server/internal/service/pipeline_install.go:97-121` | Chuyển, kèm `contracts` và test Go |
-| Lõi | T6 và đầu ra sinh khác (là kết quả, không phải nguồn), T10 (giữ ở bước đầu, xem mục 6.9 về băm), T15, T16 (skill nền tảng, Mika), engine, schema | Giữ trong code |
+Template (chuyển vào `catalog/`): T1 đến T5, T7, T8 (phần dữ liệu), T11 (dữ liệu), T12 (để nguyên ở lần này, xem plan), T13, T14, T16 `bundle.json`, T17 (khóa theo id). Lõi (giữ trong code): T6 và các đầu ra sinh khác (là kết quả, không phải nguồn), T9 (bộ ghép, logic), T10, T15, T16 (skill nền tảng, Mika), engine, schema.
 
-### 4.4 Các điểm ghép nối cứng
+### 4.4 Các điểm ghép nối cứng (đã kiểm tra lại)
 
-Mỗi điểm dưới đây là chỗ phải sửa tay hoặc có thể lệch khi thêm template.
+- C1. `SquadTemplateId` là union 28 phần tử (`templates.ts:33`), `SquadRoleKey` là union ghép 23 kiểu role (thêm `CsRoleKey`, `RlRoleKey`), 23 dòng import tĩnh (21 Kit Việt + `content-studio` + `research-lab`), danh sách đăng ký viết tay (`SQUAD_TEMPLATES`, `inCategory`).
+- C2. 28 khóa × 7 ngôn ngữ trong `modals.json`; khóa gõ kiểu buộc đủ, nên thêm id mà thiếu bản dịch thì typecheck đỏ (đúng), nhưng phải sửa 7 file giao diện.
+- C3. Nhóm skill theo tiền tố tên (`NON_SDLC_SKILLS` lọc `planning-`, `sales-`, `research-lab-`, `bmad-toolbox:`, `frontend-design:frontend-design`) và hai danh sách viết tay (`PLANNING_SKILL_NAMES`, `SALES_SKILL_NAMES`); `RESEARCH_LAB_SKILL_NAMES` nằm trong `research-lab.ts`. Mỗi nhóm skill mới lại thêm một tiền tố vào bộ lọc.
+- C4. Gói 2,1 MB nạp sớm: `templates.ts` import tĩnh `SDLC_BUILTIN_SKILLS`, và barrel `packages/core/squads/index.ts` xuất lại nó. Chưa đo ảnh hưởng đến bundle trình duyệt (xem plan T0.5).
+- C5. Lặp nội dung giữa TS và Go: đã đo ở mục 5.4.
+- C6. Hướng sinh ngược: TS là nguồn, JSON cho Go được sinh bằng esbuild; Go còn hằng số tên skill và khóa squad viết tay (`company_starter_skills.go`, `company_template.go`).
+- C7. `AGENT_PACK_IDS` và bảng `bundles` viết tay (`packages/core/agent-packs/load.ts`), giao diện lấy phần tử đầu (`agent-pack-install.tsx`).
+- C8. Lịch sử văn bản chỉ tăng (2,6 MB).
+- C9. Nhiều cơ chế kiểm tra độ tươi: `--check` của Kit Việt chạy trong vitest, test vitest riêng cho SDLC và công ty mẫu, `git diff --exit-code` trong CI cho reserved-slugs. Với Q2 (không commit mã sinh ra) khái niệm "lệch" biến mất: build luôn sinh lại.
+- C10. Test đếm cứng (`company-template.test.ts` 14 squad, `templates.test.ts` 8 skill planning, `kitviet-packs.test.ts` 2 pack) và 21 test squad gần giống nhau (`kitviet-templates/*.test.ts`).
+- C11. Test gắn đường dẫn tương đối tới thư mục skill (`sdlc-skills.test.ts`, `sdlc-harness-check.test.ts`, `sdlc-harness-metrics.test.ts`), `scripts/kitviet-update.mjs` và test của nó, `scripts/generate-kitviet-pack.test.mjs`, 3 test Go đọc `examples/plugins`.
+- C12. Hạ tầng giả định nội dung nằm trong `packages/` hoặc `server/`: `.github/ci-paths.json`, `Dockerfile` (`COPY server/ ./server/`), `Dockerfile.web` (`COPY packages/ packages/`, build bằng `pnpm --filter @multica/web build` nên turbo không chạy), `turbo.json` (băm theo từng package), và `.vercelignore` loại `/scripts/` và `/server/` khỏi bản deploy web.
+- C13. Skill vendor không có file nguồn gốc/giấy phép riêng (chỉ `frontend-design--frontend-design/LICENSE.txt`).
+- C14. Id workflow template lặp ở 5 nơi (Go, union TS, tập lọc id trong schema, `template-picker-dialog.tsx`, `workflow.json` ×7); id lạ bị lọc bỏ nên template mới ở máy chủ không hiện trên client cũ.
+- C15. Với mã sinh ra không commit (Q2): mọi lệnh cần dữ liệu sinh ra (`go build`, `go test`, `tsc`, `vitest`, `next build`) phải chạy bước sinh trước. Đây là chi phí mới của Q2, xử lý ở mục 6.7.
 
-- C1. `SquadTemplateId` là union 26 phần tử (`packages/core/squads/templates.ts:33`). `SquadRoleKey` là union ghép từ 21 kiểu role của từng squad (`templates.ts:91`). 21 dòng import tĩnh (`templates.ts:3-23`). Danh sách đăng ký và phân nhóm viết tay (`templates.ts:1016`, hàm `inCategory` ở `:1011`).
-- C2. Mỗi template cần 26 khóa × 7 ngôn ngữ trong `modals.json`. Khóa gõ kiểu bắt buộc phải đủ, nên thêm id mà quên bản dịch thì typecheck đỏ. Hành vi này đúng, nhưng buộc sửa 7 file giao diện cho một nội dung thuộc về template.
-- C3. Nhóm skill theo tiền tố tên: `NON_SDLC_SKILLS` lọc theo `planning-`, `sales-`, `bmad-toolbox:`, `frontend-design:frontend-design` (`templates.ts`, dòng 703-713). `PLANNING_SKILL_NAMES` (`:656`) và `SALES_SKILL_NAMES` (`:692`) là danh sách viết tay. `packages/core/squads/sdlc-skills.test.ts` liệt kê tay `ROLE_SKILLS` và `PLANNING_ROLE_SKILLS`, chỉ phần `TOOL_SKILLS` tự suy ra từ thư mục.
-- C4. Gói 2,1 MB nạp sớm. `templates.ts` import tĩnh `SDLC_BUILTIN_SKILLS` và tính `SDLC_SKILL_NAMES` lúc nạp module, nên bundler khó loại bỏ. Barrel `packages/core/squads/index.ts` xuất lại `templates`, và ít nhất `packages/views/issues/components/handoff-section.tsx` import từ barrel. Chưa đo xem 2,1 MB có thật sự vào bundle trình duyệt không (xem T0.5 trong plan).
-- C5. Lặp nội dung giữa TS và Go. SDLC Auto có ở `templates.ts:378`, `server/internal/service/initiative_build.go:325` (`sdlcSteps`), và `server/internal/issueworkflow/templates.go` (`sdlcAutoTemplate`). Tên vai ("SDLC Lead", "SDLC Developer"...) có ở `company-template.ts:705`, `BASE_SQUAD_ROLES` trong `templates.ts`, và `sdlcRoleAgents` (`initiative_build.go:42`). Tên workflow `BMAD Planning Auto` và lead `Blueprint Lead` có ở `server/internal/service/squad_planning_workflow.go:22-23`, trích từ `templates.ts`. Ràng buộc chỉ bằng comment và test. Chưa kiểm chứng ba bản này đang khớp nhau; bước T4.3a trong plan đo điều đó.
-- C6. Hướng sinh ngược: TS là nguồn, JSON cho Go được sinh bằng esbuild từ `company-template.ts` và `instruction-templates.ts`. Go còn hằng số tên skill viết tay (`server/internal/service/company_starter_skills.go:24`, `SecretarySkills` ở `:47`) và khóa squad (`company_template.go:314`, `:813`).
-- C7. Hai nơi đăng ký pack. `KITVIET_PACK_LOADERS` được sinh tự động (tốt). `AGENT_PACK_IDS` và bảng `bundles` trong `packages/core/agent-packs/load.ts:3-9` viết tay, và giao diện luôn lấy phần tử đầu (`agent-pack-install.tsx:32`).
-- C8. Lịch sử văn bản chỉ tăng: `kitviet-previous-texts.ts` 2,6 MB, `upgrade.ts` so sánh toàn văn.
-- C9. Ba cơ chế kiểm tra độ tươi khác nhau: Kit Việt có `--check` chạy trong vitest (`packages/core/squads/kitviet-skills.test.ts:573`); SDLC chỉ có test vitest (`sdlc-skills.test.ts`); công ty mẫu chỉ có test vitest (`company-template-data.test.ts`); reserved-slugs và text-preview có bước `git diff --exit-code` trong CI (`.github/workflows/ci.yml`). CI chạy riêng `scripts/generate-kitviet-pack.test.mjs` (`ci.yml:44`).
-- C10. Test đếm cứng: `company-template.test.ts:34` (14 squad), `templates.test.ts:91` (8 skill planning), `templates.test.ts:265` (7 stage), `kitviet-packs.test.ts:37` (2 pack). Mỗi squad Kit Việt còn có một test ~130 dòng gần giống nhau (`packages/core/squads/kitviet-templates/admin.test.ts`).
-- C11. Test gắn đường dẫn tương đối: `sdlc-skills.test.ts` (`new URL("./sdlc-skills", ...)`), `sdlc-harness-check.test.ts:9` và `sdlc-harness-metrics.test.ts:9` chạy script nằm trong thư mục skill; `scripts/generate-kitviet-pack.test.mjs`; ba test Go đọc `../../../examples/plugins`.
-- C12. Hạ tầng giả định nội dung nằm trong `packages/` hoặc `server/`: `.github/ci-paths.json` (bộ lọc `frontend` là `packages/**`, `backend` là `server/**`), `Dockerfile:13` chỉ `COPY server/ ./server/`, `Dockerfile.web:46` chỉ `COPY packages/ packages/`, và `turbo.json` băm đầu vào theo từng package (một thay đổi ở thư mục gốc không làm mất cache của `@multica/core#test` nếu không khai báo `inputs`).
-- C13. Skill vendor (bmad, superpowers, supabase, accessibility...) không có file nguồn gốc hoặc giấy phép riêng. Tìm theo tên trong `packages/core/squads/sdlc-skills/` chỉ thấy `frontend-design--frontend-design/LICENSE.txt`. Kit Việt thì có `kitviet-upstream/LICENSE`, `NOTICE.md`, `UPSTREAM.json`.
-- C14. Id workflow template lặp ở 5 nơi: hằng Go (`server/internal/issueworkflow/templates.go`), union TS (`packages/core/types/issue-workflow.ts:227`), tập lọc id (`packages/core/api/schemas.ts`, id lạ bị bỏ qua), danh sách và hàm dịch trong `template-picker-dialog.tsx`, khóa `templates` ở 7 `workflow.json`. Comment trong `templates.go` nêu rõ "a new id needs a matching frontend entry". Hệ quả: một workflow template mới ở máy chủ không hiện trên client chưa cập nhật, vì id lạ bị lọc bỏ. Các file phía trình thiết kế đang là công việc chưa commit của người dùng và có thể đổi.
+### 4.5 Quy trình thêm một squad hiện nay
 
-### 4.5 Quy trình thêm một squad Kit Việt hiện nay
+1. `packages/core/squads/kitviet-squads/<id>.json` (nếu là Kit Việt). 2. `kitviet-templates/<id>.ts` và test. 3. `templates.ts`: import, `SquadTemplateId`, `SquadRoleKey`, `inCategory`. 4. Khóa dịch ở 7 `modals.json`. 5. `pnpm generate:kitviet`. 6. `kitviet-floors.ts` nếu có tầng riêng. 7. Khi đổi văn bản: thêm bản cũ vào `*-previous-texts.ts`. Squad lõi mới (như `research_lab`) cũng phải sửa `templates.ts` (import, hai union, mảng) và 7 `modals.json`.
 
-Theo `docs/engineering/kitviet-runbook.md` (mục 1, 8e) và mã nguồn:
-
-1. Tạo `packages/core/squads/kitviet-squads/<id>.json`.
-2. Tạo `packages/core/squads/kitviet-templates/<id>.ts` (role key, charter, routine, mô tả) và test đi kèm.
-3. Sửa `packages/core/squads/templates.ts` ở 4 chỗ: import, `SquadTemplateId`, `SquadRoleKey`, danh sách trong `inCategory`.
-4. Thêm khóa dịch vào 7 file `modals.json`.
-5. Chạy `pnpm generate:kitviet`.
-6. Nếu squad nằm trên tầng riêng: sửa `kitviet-floors.ts`.
-7. Khi đổi văn bản sau đó: thêm bản cũ vào `kitviet-previous-texts.ts`.
-
-### 4.6 Điều kiện tiên quyết về cây làm việc
-
-Tại thời điểm khảo sát, `git status` có khoảng 100 mục chưa commit. Các thay đổi chạm trực tiếp vùng này: `packages/core/squads/sdlc-skills/**` (SKILL.md, `check-harness.mjs`, `harness-metrics.mjs`), `sdlc-skills-data.ts`, `sdlc-harness-*.test.ts`, `packages/core/issue-workflows/**`, `packages/views/workflow/**`, `packages/views/locales/*/workflow.json`, `server/internal/issueworkflow/**` (có `templates.go` chưa theo dõi). Bản kiểm tra chỉ đọc `node scripts/generate-kitviet-pack.mjs --check` báo "up to date (29 files)" trên cây hiện tại. Kế hoạch bắt đầu di chuyển phải chờ các thay đổi này được commit (T0.2).
-
-## 5. Các phương án
+## 5. Các phương án và quyết định
 
 ### 5.1 Mô tả
 
-- A. Quy ước thuần hệ thống file. Template là thư mục, tự phát hiện bằng glob lúc build hoặc lúc chạy, không có file chỉ mục sinh ra.
-- B. Thư mục + manifest + sinh mã. Phát hiện bằng script Node, sinh chỉ mục TypeScript (kiểu, danh sách, bộ nạp lazy), JSON cho Go và khóa dịch, tất cả được commit và có kiểm tra lệch trong CI.
-- C. Kho lúc chạy. Template nằm trong DB hoặc kho từ xa (Hub hiện có: `hub_source`, `hub_item`, migration 927-970; xem `docs/engineering/skill-plugin-hub.md`), có lệnh seed hoặc import.
+A. Quy ước thuần hệ thống file, phát hiện bằng glob, không có chỉ mục sinh ra. B. Thư mục + manifest + sinh mã. C. Kho lúc chạy (DB hoặc Hub: `hub_source`, `hub_item`, migration 927-970; `docs/engineering/skill-plugin-hub.md`).
 
 ### 5.2 So sánh
 
-| Tiêu chí | A. Glob thuần | B. Manifest + sinh mã (đề xuất) | C. Kho lúc chạy |
+| Tiêu chí | A. Glob thuần | B. Manifest + sinh mã | C. Kho lúc chạy |
 | --- | --- | --- | --- |
-| Công thêm template mới | Thấp nếu bundler hỗ trợ glob; nhưng id và kiểu TypeScript không tự có | Thấp: tạo thư mục, một lệnh build. Có scaffold | Thấp cho người dùng cuối, cao cho bản dựng sẵn: cần API, giao diện admin, lệnh seed |
-| Rủi ro làm hỏng hành vi hiện có | Trung bình: mất kiểu id, mất lỗi biên dịch khi thiếu bản dịch | Thấp: có thể chứng minh bằng băm nội dung từng bước | Cao: đổi nơi lưu 5 MB+, đổi luồng quickstart sang bất đồng bộ, thêm schema DB |
-| Phiên bản | Không có chỗ khai báo | `version` theo template + `registry.lock.json` | Tốt: phiên bản theo bản ghi, nhưng cần quy tắc nâng cấp theo workspace |
-| Khả năng kiểm thử | Test phải tự duyệt thư mục | Kiểm tra tĩnh toàn bộ trước khi chạy (mục 7), test tạo theo registry | Phải có DB; test chậm hơn |
-| Cách Go và TS cùng dùng | `import.meta.glob` chỉ có ở Vite; Next (webpack/turbopack) và Metro không có. `go:embed` không vượt ra ngoài thư mục `server/` | Một nguồn, hai đầu ra sinh ra: TS vào `packages/`, JSON vào `server/` | Go là nguồn, TS gọi API; client cũ gặp backend mới nên cần zod + fallback theo AGENTS.md |
-| Offline, desktop, mobile | Như hiện nay | Như hiện nay: dữ liệu đóng gói sẵn trong bundle; mobile không dùng | Desktop cần mạng tới server cho danh sách; thêm trạng thái tải và lỗi |
-| Chi phí bảo trì | Thấp lúc đầu, tăng khi cần thêm trường | Trung bình: có CLI + schema để giữ; giảm các test lặp (21 file test squad) | Cao: bảo mật chuỗi cung ứng prompt, nhập từ xa, di trú, giao diện |
-| Phù hợp Docker/turbo/CI hiện tại | Không (nguồn ngoài `packages/`, không có chỉ mục) | Có, vì đầu ra sinh được commit trong `packages/` và `server/` | Có, nhưng nội dung đi qua DB |
+| Công thêm template | Thấp nếu bundler có glob; id và kiểu TS không tự có | Thấp: tạo thư mục, build; có scaffold | Thấp cho người dùng, cao cho bản dựng sẵn: API, giao diện admin, lệnh seed |
+| Rủi ro hỏng hành vi | Trung bình: mất kiểu id | Thấp: chứng minh bằng băm từng bước | Cao: đổi nơi lưu 5 MB+, quickstart thành bất đồng bộ, schema DB |
+| Phiên bản | Không có chỗ khai báo | `version` theo template | Tốt nhưng cần quy tắc nâng cấp theo workspace |
+| Kiểm thử | Test tự duyệt thư mục | Kiểm tra tĩnh toàn bộ (mục 7) | Cần DB, chậm |
+| Go + TS cùng dùng | `import.meta.glob` chỉ có ở Vite; Next và Metro không; `go:embed` không vượt ngoài `server/` | Một nguồn, đầu ra TS vào `packages/`, JSON vào `server/` | Go là nguồn, TS gọi API; client cũ gặp backend mới cần zod + fallback |
+| Offline, desktop, mobile | Như nay | Như nay (đóng gói sẵn); mobile không dùng | Desktop cần mạng; thêm trạng thái tải |
+| Bảo trì | Thấp lúc đầu | Trung bình: có CLI và schema | Cao: bảo mật chuỗi cung ứng prompt, nhập từ xa |
 
-### 5.3 Quyết định
+### 5.3 Quyết định: B, với mã sinh ra không commit
 
-Chọn B. Lý do:
+- B cho phép chứng minh "không đổi hành vi" từng bước bằng băm đầu ra.
+- Q2 (không commit mã sinh ra) thay đổi cách chọn hạ tầng so với bản nháp đầu: thay vì commit đầu ra để Docker khỏi phải sinh, bản này chạy bộ sinh ngay trong build. Bộ sinh không phụ thuộc thư viện ngoài (chỉ Node ≥ 22), nên stage Docker chỉ cần image Node, không cần `pnpm install`.
+- Bị loại: A (Next, Metro không có glob; Go không nhúng ngoài `server/`); C làm phương án duy nhất (rủi ro lớn, lợi ích chính chưa được yêu cầu); manifest YAML (thêm phụ thuộc, repo dùng JSON); workspace `@multica/templates` riêng (thêm workspace phải khai báo ở pnpm, knip, `ci-paths.json`); repo template tách riêng (mất tính nguyên tử giữa engine và nội dung).
+- Đường nối sang C: giữ định dạng thư mục skill nguyên bản, để sau này xuất zip nhập được vào Hub.
 
-- Docker chỉ sao chép `server/` (cho Go) và `packages/` (cho web). Nguồn ở thư mục gốc không có mặt lúc build image, nên đầu ra sinh ra phải được commit trong `packages/` và `server/`. Đây cũng là quy ước hiện có (`company_template_data.json`, `reserved-slugs.ts`, `sdlc-skills-data.ts`). B mở rộng quy ước đó thay vì thêm bước build mới.
-- B cho phép chứng minh "không đổi hành vi" từng bước bằng băm đầu ra, điều A và C không làm được rẻ.
-- B giữ kiểu id cho code TypeScript có đặt tên template (test, ánh xạ), vì union được sinh ra.
+### 5.4 Q4: hợp nhất ba bản SDLC Auto
 
-Bị loại:
+Đã đo trên HEAD, bằng cách dựng cả ba bản với cùng 9 agent giả rồi so từng bước (script tạm; kết quả tái tạo được bằng plan T4.3a):
 
-- A: Next.js và Metro không có glob như Vite, và Go không nhúng được ngoài `server/`. Cuối cùng vẫn cần bước sinh, nên A thu hẹp thành B.
-- C làm phương án duy nhất: đổi cả nơi lưu, luồng và mô hình bảo mật cho nội dung mà bản phát hành phải cập nhật cùng engine. Rủi ro lớn, lợi ích chính (template của bên thứ ba) chưa được yêu cầu.
-- Sinh lúc build thay vì commit: cần thêm `COPY templates/` và cài Node vào image Go, và ba điểm build khác nhau (Go, Next, Electron).
-- Manifest YAML: thêm phụ thuộc mới; repo đã dùng JSON cho cấu hình (`kitviet-squads/*.json`, có tiền lệ `$comment` ở `kitviet-extensions/it.json`).
-- Workspace `@multica/templates` riêng: thêm workspace phải khai báo trong pnpm, knip, `ci-paths.json` và bản đồ exports mà không đem lại lợi ích. Xem lại nếu mobile cần dùng trực tiếp.
-- Repo template tách riêng hoặc submodule: mất tính nguyên tử giữa engine và nội dung. Chỉ có thể cân nhắc cho `kitviet-upstream` (2,8 MB vendor) sau này.
+- Bản (a) `SDLC_AUTO_WORKFLOW` (TS, `templates.ts`) và bản (b) `sdlcSteps` + `sdlcStageSteps` (Go, `server/internal/service/initiative_build.go`) là cùng một workflow thực thi viết hai lần. Cả 16 trạng thái trùng tên; vai (handler), văn bản hướng dẫn của cả 16 bước và đích `back` đều giống hệt. 11 bước giống hoàn toàn; 5 bước còn lại chỉ khác ở đích `next` (xem bên dưới).
+- Khác biệt thật duy nhất giữa (a) và (b) là cách biểu diễn đích "tiếp theo" của năm bước `backlog`, `todo`, `in_progress`, `in_review`, `qa`: (a) ghi `next` tường minh (`todo`→`in_progress`, `in_progress`→`in_review`, `in_review`→`qa`, `qa`→`done`); (b) không ghi chuyển tiếp mặc định nên engine tự lấy "trạng thái kế tiếp trên bảng, bỏ qua blocked" (`Definition.NextStatus` trong `server/internal/issueworkflow/issueworkflow.go`). Với `in_progress`, `in_review`, `qa` hai cách cho cùng đích. Với `todo`, thứ tự bảng của (b) là `backlog, todo, analysis, ...` nên đích ngầm là bước chuyên gia đầu tiên (thường là `analysis`) chứ không phải `in_progress` như câu hướng dẫn của chính bước đó. Đích "tiếp theo" được dùng khi giao việc (`issue_workflow_entry.go:103`), nên đây là khác biệt hành vi có thể gặp, chưa biết có chủ ý hay không.
+- Bản (c) `sdlcAutoTemplate` (`server/internal/issueworkflow/templates.go`) là điểm xuất phát cho trình thiết kế: handler luôn `none`, hướng dẫn rút gọn, thêm cột `done` và `cancelled`, chuyển tiếp biểu diễn bằng điều kiện. Khác (a)/(b) có chủ đích, không phải lệch.
 
-Đường nối sang C (không làm bây giờ): giữ định dạng thư mục skill nguyên bản (`SKILL.md` + file kèm), để một bản xuất `pnpm templates:export <kind> <id>` thành zip nhập được vào Hub bằng luồng zip hiện có. Khi cần, đăng ký `templates/` như một nguồn Hub kiểu `builtin`.
+Quyết định (an toàn nhất):
+
+1. Một manifest `catalog/workflows/sdlc_auto/` (mới) làm nguồn cho (a) và (b). TypeScript đọc dữ liệu sinh ra; Go đọc JSON sinh ra. Mỗi bước có `role`, `optionalRole`, `instructions`, `next`, `back`.
+2. Giữ nguyên phép chiếu của từng bên để đầu ra không đổi (băm Go và băm TS không đổi): bước nào hiện không có chuyển tiếp mặc định ở Go mang cờ `implicitNext: true` trong manifest (`backlog`, `todo`, `in_progress`, `in_review`, `qa`). Cờ này làm sự khác biệt hiển thị và xóa được bằng một thay đổi dữ liệu nhỏ sau khi người sở hữu quyết định `todo` phải đi đâu. Tôi không tự đổi hành vi Go trong lần này.
+3. Workflow của trình thiết kế (c) là manifest riêng (`catalog/workflows/designer_*`), không hợp nhất vào (1). Test khớp (mục 7, L2): các trạng thái và vai của (c) phải là tập con đã khai báo của (1) cộng `done`, `cancelled`; lệch thì check đỏ.
+Kiểm chứng sau khi triển khai: băm bước Go dựng từ manifest (sau `Arrange`, với đủ 9 agent và với chỉ 4 agent bắt buộc) bằng đúng băm của mã Go cũ; test Go `TestDesignerSDLCAutoMatchesTheCatalogWorkflow` (`server/internal/service/catalog_workflows_test.go`) xác nhận bản của trình thiết kế có cùng tập trạng thái và cùng vai gợi ý với workflow build, cộng `done` và `cancelled`, nên (c) không lệch ngoài chủ ý. Phát hiện thêm: mô tả (`description`) của SDLC Auto khác nhau giữa TS ("Planning and build by agents: ...") và Go (`sdlcWorkflowDescription`: "Build, independent review, then QA, all by agents. ..."); lần này chỉ `steps` dùng chung, `description` của Go giữ nguyên.
+
+4. Lý do không hợp nhất cả ba thành một: (c) khác về thiết kế nên hợp nhất sẽ phải thêm cờ cho mọi khác biệt, và sửa hành vi của trình thiết kế đang được người dùng phát triển.
 
 ## 6. Thiết kế đã chọn
 
 ### 6.1 Bố cục thư mục
 
 ```
-templates/                                (mới)
-├── README.md                             hướng dẫn 1 trang: thêm / sửa / xóa / đổi tên
-├── registry.config.json                  danh sách locale, loại template, mục tiêu xuất (ts, go)
-├── registry.lock.json                    SINH RA: id → version + sha256; danh sách id đã gỡ (tombstone)
-├── schema/                               SINH RA từ zod: *.schema.json cho trình soạn thảo
-├── collections/<id>/                     nhóm hiển thị trong bộ chọn (thay cho SquadTemplateCategory)
+catalog/
+├── README.md                             hướng dẫn: thêm / sửa / xóa / đổi tên
+├── registry.config.json                  locale, id đã gỡ (removed)
+├── collections/<id>/                     nhóm hiển thị trong bộ chọn squad (core, kitviet, vertical)
 │   ├── template.json
-│   └── i18n/en.json …
-├── skillsets/<id>/                       tập skill đặt tên (sdlc, planning, sales, ...)
-├── skills/<nhóm>/<skill-id>/             nhóm chỉ để sắp xếp (builtin, starter, ...)
-│   ├── SKILL.md                          nội dung gốc, không sửa vì manifest
-│   ├── template.json                     tập thuộc về, nguồn gốc, phiên bản
-│   └── references/ scripts/ ...          file kèm, giữ nguyên
-├── agents/<id>/                          mẫu hướng dẫn agent: template.json, instructions.md, i18n/
-├── squads/<id>/                          template.json, instructions.md, roles/*.md (nếu có), i18n/
-├── workflows/<id>/                       template.json, i18n/
-├── companies/<id>/                       công ty mẫu: template.json (+ i18n/)
-├── packs/<id>/                           agent pack: template.json, instructions.md, skills/<tên>/
-├── bundles/quickstart/template.json      danh sách cài Claude Code (marketplace, plugin, skill)
-└── _sources/                             đầu vào của bộ biến đổi, không phải template
-    └── kitviet/{upstream,patches,squads,extensions,skills,rewrites.json}
+│   └── i18n/<locale>.json                chỉ có "title"
+├── skillsets/<id>/template.json          tập skill đặt tên (sdlc, planning, sales, research_lab, starter_company, secretary)
+├── skills/<nhóm>/<skill-id>/             nhóm (builtin, starter, custom) chỉ để sắp xếp
+│   ├── SKILL.md                          nội dung gốc, không đổi vì manifest
+│   ├── template.json                     tập thuộc về (sets), nguồn gốc (source), phiên bản
+│   └── references/ scripts/ ...
+├── squads/<id>/                          template.json, instructions.md (squad không phải Kit Việt), i18n/ (7 file)
+├── workflows/<id>/template.json          workflow thực thi (sdlc_auto, planning_auto), dùng chung cho TS và Go
+├── agents/<id>/                          template.json + instructions.md; agents/_blocks/*.md là khối chữ dùng chung ({{block:tên}})
+├── companies/starter/template.json       công ty mẫu
+├── packs/<id>/                           template.json, pack.json, instructions.md, skills/<tên>/, i18n/ (7 file)
+├── bundles/quickstart/template.json      danh sách cài Claude Code
+└── _sources/kitviet/                     đầu vào của bộ biến đổi Kit Việt (không phải template)
+    └── upstream/ patches/ squads/ extensions/ skills/ rewrites.json
 ```
 
-Quy tắc khám phá:
-
-- Thư mục template = thư mục có `template.json`. Với `skills/`, một thư mục có `SKILL.md` là skill; quét dừng ở `SKILL.md` đầu tiên (một `references/` chứa `SKILL.md` mẫu không bị coi là skill).
-- Tên thư mục = `id`, riêng skill đổi `:` thành `--` (giữ quy ước hiện tại vì dấu `:` không hợp lệ trong đường dẫn Windows). Ví dụ `superpowers--brainstorming` có id `superpowers:brainstorming`.
-- `template.json` và `i18n/` không bao giờ nằm trong danh sách file cài đặt của skill. Hiện `skillFiles()` trong `scripts/lib/skill-bundle.mjs` lấy mọi file trừ `SKILL.md`; builder mới phải loại hai thứ này, nếu không nội dung gói đổi và băm lệch.
-- Nhóm thư mục `skills/<nhóm>/` do người bảo trì tự đặt. Nhóm không có ý nghĩa ngữ nghĩa; tập skill do manifest quyết định.
-
-Tên `templates/`: trùng chữ với `deploy/helm/multica/templates/` và `.github/ISSUE_TEMPLATE/`. README ở gốc `templates/` nói rõ. Phương án thay thế: `catalog/`. Xem câu hỏi mở Q1.
+- Thư mục template = thư mục có `template.json`. Trong `skills/`, quét dừng ở `SKILL.md` đầu tiên.
+- Tên thư mục = `id`; skill đổi `:` thành `--` (giữ quy ước có sẵn, vì `:` không hợp lệ trong đường dẫn Windows).
+- `template.json` và `i18n/` không bao giờ nằm trong danh sách file cài đặt của skill (`skillFiles()` của `scripts/lib/skill-bundle.mjs` lấy mọi file trừ `SKILL.md`, nên bộ dựng mới phải loại hai thứ này).
 
 ### 6.2 Luồng dữ liệu
 
 ```
-templates/ (nguồn, người viết sửa)
-   │   pnpm templates:check   → lớp L1–L5 (mục 7)
-   │   pnpm templates:build
+catalog/ (nguồn, người viết sửa; committed)
+   │   node scripts/catalog/cli.mjs check    → L1..L5, L7
+   │   node scripts/catalog/cli.mjs build    (turbo task //#catalog:build, make catalog-build, bước Docker)
    ▼
-┌───────────────────────────────┬─────────────────────────────────────────┬─────────────────────────────────┐
-│ packages/core/templates/      │ packages/views/locales/<lang>/          │ server/internal/templatereg/    │
-│   generated/ (mới)            │   templates.json (mới, sinh)            │   data/*.json (mới, sinh)       │
-│  - index.ts: kiểu id, meta    │  - tên, mô tả thẻ theo locale           │  - company, workflows,          │
-│  - chunks/: nội dung lazy     │                                         │    starter-skills, quickstart   │
-└───────────────┬───────────────┴─────────────────────┬───────────────────┴───────────────┬─────────────────┘
-                ▼                                     ▼                                   ▼
-   @multica/core (quickstart, upgrade)     @multica/views (useT("templates"))     Go: go:embed + loader có kiểu
+packages/core/catalog/generated/    (ignored)  skills, kitviet packs, squads, collections, i18n, agent-packs
+server/internal/catalog/generated/*.json (ignored)  công ty mẫu, workflow, skill khởi đầu, bundle quickstart
+   │                                  │
+   ▼                                  ▼
+@multica/core, @multica/views        Go: go:embed + loader có kiểu
 ```
-
-Mọi đầu ra sinh ra đều được commit. `.gitattributes` đánh dấu `linguist-generated=true` để GitHub gập diff.
 
 ### 6.3 Manifest: phong bì chung
 
-Mọi `template.json` có cùng phong bì; `spec` hoặc khối riêng theo loại nằm ở mục 6.4.
-
 | Trường | Kiểu | Bắt buộc | Quy tắc |
 | --- | --- | --- | --- |
-| `$schema` | chuỗi | không | Trỏ tới `templates/schema/<kind>.schema.json` để trình soạn thảo gợi ý |
-| `schemaVersion` | số nguyên | có | Phiên bản định dạng của loại này. Hiện là `1`. Máy chủ và CLI từ chối giá trị lạ |
-| `kind` | chuỗi | có | `skill`, `skillset`, `collection`, `agent`, `squad`, `workflow`, `company`, `pack`, `bundle` |
-| `id` | chuỗi | có | Bất biến sau khi phát hành. Quy tắc bên dưới |
-| `version` | semver | có | Phiên bản nội dung. Patch: sửa văn bản. Minor: thêm vai, skill, bước. Major: bỏ hoặc đổi tên vai, làm squad đã tạo không ánh xạ được |
-| `status` | `stable` \| `beta` \| `deprecated` \| `hidden` | không, mặc định `stable` | `deprecated` và `hidden` không hiện trong bộ chọn nhưng vẫn nạp được (squad đã tạo còn tham chiếu `template_key`) |
+| `schemaVersion` | số nguyên | có | `1`. CLI và loader Go từ chối giá trị lạ |
+| `kind` | chuỗi | có | `skill`, `skillset`, `collection`, `squad`, `workflow`, `company`, `pack`, `bundle` |
+| `id` | chuỗi | có | Bất biến sau khi phát hành; quy tắc ở 6.3.1 |
+| `version` | semver | có | Patch: sửa văn bản. Minor: thêm vai, skill, bước. Major: bỏ/đổi tên vai |
+| `status` | `stable` \| `beta` \| `deprecated` \| `hidden` | không (`stable`) | `deprecated`, `hidden` không hiện trong bộ chọn nhưng vẫn nạp được |
 | `order` | số | không | Thứ tự trong nhóm; mặc định theo `id` |
-| `tags` | mảng chuỗi | không | Lọc và tìm kiếm |
-| `requires` | mảng `{kind, id}` | không | Phụ thuộc (mục 6.3.3) |
-| `contracts` | mảng chuỗi | không | Hợp đồng mà code phụ thuộc (mục 6.3.4) |
-| `aliases` | mảng chuỗi | không | Id cũ của template này |
-| `source` | `{type, repo?, ref?, license?, notice?}` | có với `vendored` | `type` là `authored` hoặc `vendored` |
-| `i18n` | không phải trường; thư mục `i18n/<locale>.json` cạnh manifest | xem 6.3.5 | |
+| `tags` | mảng chuỗi | không | |
+| `requires` | mảng `{kind, id}` | không | Phụ thuộc (6.3.3) |
+| `contracts` | mảng chuỗi | không | Hợp đồng code phụ thuộc (6.3.4) |
+| `aliases` | mảng chuỗi | không | Id cũ |
+| `source` | `{type, repo?, ref?, license?}` | có với `vendored` | `type`: `authored` hoặc `vendored` |
 
 #### 6.3.1 Quy tắc id
 
-- skill: `^[a-z0-9][a-z0-9._-]*(:[a-z0-9][a-z0-9._-]*)?$`, tối đa 64 ký tự. Cùng quy tắc với `SKILL_NAME` trong `packages/core/agent-packs/schema.ts`, thêm tiền tố plugin tùy chọn (`bmad-method:bmad-prd`).
-- pack: `^[a-z][a-z0-9-]{1,47}$` (kebab, theo `market-strategist`).
-- các loại còn lại: `^[a-z][a-z0-9_]{1,47}$` (snake, theo `sdlc_greenfield`, `kv_admin`, `executive_office`).
-- Tiền tố `_` dành cho thư mục nội bộ (`_sources`).
-- `id` duy nhất trong cùng loại, và phải bằng tên thư mục (có quy tắc `--`).
-- Id được lưu vào dữ liệu người dùng (`squad.template_key`, tên skill trong workspace, tên agent), nên không được đổi. Đổi tên = tạo id mới, id cũ vào `aliases` của template mới và thẻ cũ thành `deprecated`.
-- Gỡ hẳn một id: thêm vào mảng `removed` trong `registry.config.json`. Id đã gỡ không được tái sử dụng. Lệnh `check` so với bản trên nhánh chính và báo lỗi nếu một id trong `registry.lock.json` biến mất mà không nằm trong `removed`.
+- skill: `^[a-z0-9][a-z0-9._-]*(:[a-z0-9][a-z0-9._-]*)?$`, tối đa 64 ký tự (cùng quy tắc `SKILL_NAME` trong `packages/core/agent-packs/schema.ts`, thêm tiền tố plugin tùy chọn).
+- pack: `^[a-z][a-z0-9-]{1,47}$`. Các loại còn lại: `^[a-z][a-z0-9_]{1,47}$`.
+- Id duy nhất trong loại và bằng tên thư mục. Id được lưu trong dữ liệu người dùng (`squad.template_key`, tên skill/agent/workflow trong workspace), nên không đổi. Đổi tên = id mới + `aliases`, thẻ cũ `deprecated`. Gỡ hẳn: thêm vào `removed` trong `registry.config.json`; không tái sử dụng id đã gỡ.
+- `check --base <ref>` (L7) so tập id với nhánh gốc bằng `git ls-tree` (chỉ đọc) và báo lỗi khi một id biến mất mà không nằm trong `removed`.
 
 #### 6.3.2 Phiên bản
 
-- `version` là của từng template, độc lập với phiên bản sản phẩm.
-- `registry.lock.json` (sinh ra) ghi `{ "squad:kv_admin": { "version": "1.0.0", "sha256": "…" } }`. `sha256` băm manifest chuẩn hóa + mọi file nội dung (trừ `i18n/`).
-- Quy tắc: nội dung đổi (sha256 khác bản trên nhánh chính) mà `version` không đổi thì `check` cảnh báo ở giai đoạn đầu (không chặn), và có thể nâng thành lỗi sau (câu hỏi mở Q5).
-- `schemaVersion` đổi khi định dạng manifest đổi không tương thích. CLI và loader Go từ chối `schemaVersion` mà chúng không biết, thay vì đọc sai.
+`version` của từng template độc lập với phiên bản sản phẩm. Nội dung đổi so với `--base` mà `version` không đổi: cảnh báo (Q5). Không có file khóa được commit (mã sinh ra không commit, Q2).
 
 #### 6.3.3 Phụ thuộc
 
-- `requires: [{ "kind": "skillset", "id": "sdlc" }, { "kind": "workflow", "id": "sdlc_auto" }]`.
-- Chỉ id, chưa có khoảng phiên bản: toàn bộ registry được dựng từ một snapshot git, nên phiên bản luôn khớp. Khoảng phiên bản chỉ cần khi có nguồn ngoài (phương án C), nên chưa làm.
-- Builder tính bao đóng bắc cầu, báo lỗi khi thiếu hoặc có vòng, và cảnh báo khi một template `stable` cần một template `beta` hoặc `deprecated`.
-- Quan hệ tự suy ra (không cần khai báo lại): squad cần skill nó liệt kê, và workflow nó tham chiếu.
+`requires: [{ "kind": "skillset", "id": "sdlc" }]`. Chỉ id, chưa có khoảng phiên bản (cả registry dựng từ một snapshot git). Bộ dựng tính bao đóng, lỗi khi thiếu hoặc có vòng, cảnh báo khi `stable` cần `beta` hoặc `deprecated`. Quan hệ tự suy ra (skill squad liệt kê, workflow squad tham chiếu) không cần khai báo lại.
 
 #### 6.3.4 Hợp đồng
 
-- `contracts: ["squad.sdlc"]` khai báo rằng template này đáp ứng một hợp đồng mà code phụ thuộc, ví dụ `initiative_build.go` cần squad có vai `developer`, `reviewer`, `qa`.
-- Danh sách hợp đồng code cần được ghi ở một nơi: `server/internal/templatereg/contracts.go` (mới) và `packages/core/templates/contracts.ts` (mới). Test kiểm tra mỗi hợp đồng có đúng một template `stable` đáp ứng. Mục đích: loại bỏ trường hợp xóa nhầm một template mà Go đang dựa vào.
+`contracts: ["squad.sdlc"]` khai báo template đáp ứng một hợp đồng mà code phụ thuộc. Id hợp đồng có dạng `<loại>.<tên>` (`squad.sdlc`, `workflow.planning_auto`, `company.executive_office`) và chỉ template cùng loại mới được khai báo; bộ kiểm tra bắt lỗi dạng và loại. Go liệt kê hợp đồng nó cần trong `server/internal/catalog/contracts.go` (`RequiredContracts`), TypeScript trong `packages/core/catalog/contracts.ts` (`REQUIRED_CONTRACTS`). Mỗi hợp đồng cần ít nhất một template `stable` đáp ứng, không phải đúng một: hai squad SDLC (`sdlc_greenfield`, `sdlc_maintenance`) cùng đáp ứng `squad.sdlc`. Test `TestRequiredContractsProvided` (Go) và `contracts.test.ts` (TS) kiểm tra điều này, và các test trong `server/internal/service/catalog_contracts_test.go` kiểm tra tên mà mã Go tìm theo (tên agent SDLC, `Blueprint Lead`, `BMAD Planning Auto`, `SDLC Auto`, thẻ `executive_office` với vai `librarian`) vẫn khớp catalog, để không đổi tên hay xóa nhầm một template mà Go đang dựa vào.
 
-#### 6.3.5 Dịch
+#### 6.3.5 Dịch (Q3: đủ mọi ngôn ngữ, không fallback)
 
-- Chỉ chuỗi hiển thị cho người dùng (tên và mô tả của thẻ) được dịch. Nội dung dành cho agent (SKILL.md, instructions, charter, hướng dẫn bước workflow) giữ một ngôn ngữ như đang có (tiếng Anh; Kit Việt viết tiếng Việt theo thiết kế).
-- `i18n/<locale>.json` là đối tượng phẳng, ví dụ `{ "title": "Office Admin (Hành chính)", "description": "…" }`. `en` bắt buộc. Locale hợp lệ lấy từ `registry.config.json`; test kiểm tra danh sách này bằng đúng các thư mục dưới `packages/views/locales/`.
-- Locale còn thiếu: builder điền bằng `en`, ghi vào báo cáo, và `check` cảnh báo. Chính sách chặn hay không do câu hỏi mở Q3 quyết định.
-- Builder viết `packages/views/locales/<lang>/templates.json` (namespace mới `templates`). Namespace phải được đăng ký một lần trong `packages/views/locales/index.ts`; `parity.test.ts` tự bao phủ nhờ nó duyệt thư mục.
-- Tên entity được tạo trong workspace (tên squad, tên agent) không dịch, vì quickstart chạy lại tìm theo tên (`templates.ts`: "A non-archived agent with this name is reused"). Tên đó nằm trong `spec`, không nằm trong `i18n`.
+- Chỉ chuỗi hiển thị cho người dùng (tên, mô tả thẻ, tiêu đề collection) được dịch. Loại có hiển thị: `collection`, `squad`, `pack`, `workflow` (loại xuất hiện trên giao diện). Nội dung dành cho agent giữ một ngôn ngữ như hiện nay.
+- `i18n/<locale>.json` đối tượng phẳng `{ "title", "description" }`; riêng `collection` chỉ có `{ "title" }` (tiêu đề nhóm, không có mô tả). Danh sách locale lấy từ `registry.config.json` và phải bằng `SUPPORTED_LOCALES` trong `packages/core/i18n/types.ts` (hiện `en`, `zh-Hans`, `zh-Hant`, `ko`, `ja`, `fr`, `es`); check đọc file này và so sánh.
+- Thiếu một locale, `title`/`description` rỗng, hoặc có khóa thừa: lỗi, check và build đều thất bại. Không điền thay bằng `en`.
+- Bản dịch hiện có (28 squad, 3 collection, 1 pack, 7 workflow ở `modals.json`, `workflow.json`) được chuyển nguyên văn bằng codemod; build không đọc `modals.json` để dịch nữa.
+- Dữ liệu dịch sinh ra là TypeScript thuần (`packages/core/catalog/generated/i18n.ts`) cộng hàm `catalogText(kind, id, locale)` ở `packages/core/catalog/` (mới). Giao diện lấy locale hiện tại từ hook `useLocale` đã có ở `packages/views/i18n`. Cách này không cần đăng ký namespace i18next mới hay file locale bị ignore.
+- Tên entity tạo trong workspace (tên squad, tên agent) không dịch, vì chạy lại quickstart tìm theo tên.
 
 ### 6.4 Khối riêng theo loại
-
-Các trường dưới đây chuyển dữ liệu hiện có sang JSON, đúng tên với kiểu hiện tại để so sánh được (`SquadTemplate` ở `templates.ts:599`).
 
 skill (`template.json` cạnh `SKILL.md`):
 
 ```json
-{
-  "schemaVersion": 1, "kind": "skill", "id": "sdlc-harness", "version": "2.0.0",
-  "sets": ["sdlc"],
-  "source": { "type": "authored" }
-}
+{ "schemaVersion": 1, "kind": "skill", "id": "sdlc-harness", "version": "1.0.0",
+  "sets": ["sdlc"], "source": { "type": "authored" } }
 ```
 
-- `name` và `description` lấy từ phần đầu `SKILL.md` (dùng lại `frontmatterDescription` của `scripts/lib/skill-bundle.mjs`); manifest không lặp lại. Quy tắc L3: `name` trong frontmatter phải bằng `id` hoặc bằng phần sau dấu `:` của `id` (ví dụ `superpowers--brainstorming/SKILL.md` có `name: brainstorming`). Đã kiểm tra trên 87 skill của T1 và T2: tất cả khớp. Ba skill viết tay `kv-*` trong `kitviet-skills/` có `name: kv--<tên>` (tên trong gói), nên chúng nằm ở `_sources/kitviet/skills/` do bộ biến đổi Kit Việt xử lý và được miễn quy tắc này.
-- `sets`: các skillset skill này thuộc về. Một skill có thể thuộc nhiều tập (hiện `bmad-method:bmad-prd` thuộc cả SDLC lẫn planning). Khai báo ở phía skill để thêm skill mới chỉ cần một thư mục.
-- Skill vendor: `source.type = "vendored"` bắt buộc có `repo`, `ref`, `license`.
+`name`, `description` lấy từ frontmatter `SKILL.md`. Quy tắc L3: `name` bằng `id` hoặc phần sau dấu `:`. Skill vendor: `source.type = "vendored"` cần `repo`, `ref`, `license`. Đã đo: 90 skill hiện có đều khớp quy tắc tên (ba skill `kv-*` nằm trong `_sources/` nên miễn).
 
-skillset:
+skillset: `{ "kind": "skillset", "id": "planning" }`, thành viên suy ra từ `sets` của skill (thêm skill vào tập không sửa file nào khác). Một skill thuộc nhiều tập (hiện `bmad-method:bmad-prd` thuộc cả SDLC và planning).
 
-```json
-{ "schemaVersion": 1, "kind": "skillset", "id": "planning", "version": "1.0.0", "order": 20 }
-```
+collection: `{ "kind": "collection", "id": "kitviet", "for": "squad", "order": 20 }` + `i18n/`. Thay `SquadTemplateCategory`. Một "bộ template" mới = một collection + các squad của nó.
 
-Không liệt kê skill; thành viên suy ra từ `sets` của skill. Lý do: thêm skill vào tập chỉ sửa thư mục skill. Báo cáo cảnh báo skill mồ côi (không thuộc tập nào) và tập rỗng.
+squad: các trường của `SquadTemplate` (`templates.ts`): `collection`, `expertReview`, `squad.{name, floorName, leader, operatingReview, instructionsFile, workflow, roles[], routines[], charter, skills{sets, extra, leader, byRole}}`. Squad Kit Việt có thêm khối `adapter` (`type: "kitviet"`, `pack`): tên vai, loại vai, `builtinSkills`, `leaderSkills`, `roleSkills` và hướng dẫn của lead được dẫn ra từ đầu ra của bộ biến đổi Kit Việt thay vì ghi tay trong manifest, đúng như `kitviet-squad-roles.ts` làm hôm nay. `role.key` duy nhất toàn registry vì `SquadRoleKey` là union phẳng.
 
-collection:
+workflow: `workflow.{name, description, steps[{status, role, optionalRole, instructions, next, back, implicitNext}]}`; xem 5.4. Workflow của trình thiết kế là manifest `kind: workflow` có khối `designer` thay cho khối `workflow` (id `designer_<templateId>`, `ui: false`, `order` là thứ tự trong bộ chọn): `designer.{templateId, steps[{statusKey | new{name, category}, roleHint, instructions, transitions[{on?, to}]}]}`; `on` là `rejected` hoặc `blocked`, bỏ `on` là nhánh mặc định. Chúng không chạy được từ squad (bộ kiểm tra từ chối `squad.workflow` trỏ tới chúng).
 
-```json
-{ "schemaVersion": 1, "kind": "collection", "id": "kitviet", "version": "1.0.0", "order": 20, "for": "squad" }
-```
-
-Thay `SquadTemplateCategory` (`templates.ts:589`). Squad khai báo `collection`. Tiêu đề nhóm lấy từ `i18n/`. Một "bộ template" mới = một thư mục collection + các squad của nó.
-
-squad:
-
-```json
-{
-  "schemaVersion": 1, "kind": "squad", "id": "kv_admin", "version": "1.0.0",
-  "collection": "kitviet", "order": 10, "expertReview": false,
-  "requires": [{ "kind": "skillset", "id": "kv-common" }],
-  "squad": {
-    "name": "Office Admin (Hành chính)",
-    "floorName": "Executive",
-    "leader": "admin_lead",
-    "operatingReview": true,
-    "instructionsFile": "instructions.md",
-    "workflow": null,
-    "roles": [
-      { "key": "admin_lead", "agent": "kv_lead", "name": "Admin Lead",
-        "description": "…", "roster": "Squad leader" }
-    ],
-    "routines": [],
-    "charter": { "mission": "…", "responsibilities": [], "outputs": [],
-                 "boundaries": "…", "escalation": "…", "intake": "…" },
-    "skills": { "sets": ["kv-common"], "extra": [], "leader": [], "byRole": {} }
-  },
-  "adapter": { "type": "kitviet", "trade": "hanh-chinh-van-phong",
-               "agents": { "lap-ke-hoach-dieu-phoi": { "role": "admin_lead", "kind": "kv_lead" } } }
-}
-```
-
-- `squad.workflow` là `null` hoặc `{ "ref": "<workflow id>" }`.
-- `adapter` chỉ có ở squad dựng từ nguồn vendor. Bộ biến đổi Kit Việt giữ nguyên (1.061 dòng) và đọc cấu hình từ khối này thay vì `kitviet-squads/<id>.json`. Xem plan giai đoạn 3.
-- Tên `role.key` là duy nhất toàn registry, vì hiện `SquadRoleKey` là một union phẳng (`templates.ts:91`). Builder kiểm tra.
-
-workflow:
-
-```json
-{
-  "schemaVersion": 1, "kind": "workflow", "id": "sdlc_auto", "version": "1.0.0",
-  "workflow": {
-    "name": "SDLC Auto", "description": "…",
-    "steps": [
-      { "status": { "key": "todo" }, "role": "developer", "optionalRole": false,
-        "instructions": "…",
-        "transitions": [{ "id": "default", "to": "in_progress" }] }
-    ]
-  }
-}
-```
-
-- `role` là vai của squad, không phải agent. TS ánh xạ vai sang agent id (`workflowSteps` ở `quickstart.ts:229`), Go ánh xạ trong `sdlcSteps`, trình thiết kế dùng làm gợi ý (`RoleHint` trong `server/internal/issueworkflow/templates.go`). `optionalRole: true` mô tả các bước chuyên gia chỉ có khi squad có vai đó (`sdlcStageSteps`).
-- Hình dạng này là tập hợp của ba bản hiện có. Bước hợp nhất (plan T4.3) bắt đầu bằng test so sánh ba bản để biết chúng có đang lệch không.
-
-company:
-
-```json
-{ "schemaVersion": 1, "kind": "company", "id": "starter", "version": "1.0.0",
-  "company": { "floors": [], "squads": [], "stageOwners": [], "startOptions": ["all","per_floor","leave_paused"] } }
-```
-
-Dữ liệu y hệt `COMPANY_FLOOR_KEYS`, `COMPANY_SQUAD_CARDS`, `COMPANY_STAGE_OWNERS`, `COMPANY_START_OPTIONS` hiện có trong `company-template.ts`. Mẫu hướng dẫn agent (`AGENT_INSTRUCTION_TEMPLATES`, 39 mục) thành loại `agent`.
-
-pack: giữ `pack.json` hiện tại (`agent`, `skills`) đổi tên thành `template.json` kèm phong bì; `skills/<tên>/` nằm trong thư mục pack và không tham gia tập skill toàn cục (tên có thể trùng skill toàn cục).
-
-bundle: nội dung của `server/internal/quickstart/bundle.json` (marketplace, plugin, skill), một thể hiện duy nhất `quickstart`.
+company: `COMPANY_FLOOR_KEYS`, `COMPANY_FLOOR_NAMES`, `COMPANY_SQUAD_CARDS`, `COMPANY_STAGE_OWNERS`, `COMPANY_START_OPTIONS` như hiện có. pack: `pack.json` hiện tại thêm phong bì. bundle: nội dung `server/internal/quickstart/bundle.json`.
 
 ### 6.5 Ví dụ "thêm một bộ template mới"
 
-Thêm bộ "Customer Success" gồm một collection, một skillset, hai skill, một squad:
-
 ```
-templates/collections/customer_success/{template.json, i18n/en.json}
-templates/skillsets/cs_core/{template.json, i18n/en.json}
-templates/skills/customer-success/cs-triage/{SKILL.md, template.json}
-templates/skills/customer-success/cs-escalation/{SKILL.md, template.json}
-templates/squads/cs_desk/{template.json, instructions.md, i18n/en.json}
+catalog/collections/customer_success/{template.json, i18n/<7 locale>.json}
+catalog/skillsets/cs_core/template.json
+catalog/skills/customer-success/cs-triage/{SKILL.md, template.json}
+catalog/squads/cs_desk/{template.json, instructions.md, i18n/<7 locale>.json}
 ```
 
-Lệnh: `pnpm templates:new squad cs_desk --collection customer_success` (tạo khung), sửa nội dung, `pnpm templates:build`, commit cả thư mục lẫn đầu ra sinh ra. Không sửa file nào trong `packages/`, `server/` bằng tay. Tiêu chí nghiệm thu của mục tiêu G2 là đúng quy trình này chạy xanh trên một template thử rồi hoàn tác (plan T3.7).
+`node scripts/catalog/cli.mjs new squad cs_desk --collection customer_success` tạo khung (kể cả 7 file dịch để điền), sau đó `pnpm catalog:build`. Không sửa file nào trong `packages/` hay `server/`. Tiêu chí nghiệm thu G2: chạy đúng quy trình này với một squad thử rồi xóa (plan T3.7).
 
-### 6.6 Đầu ra sinh ra
+### 6.6 Đầu ra sinh ra (không commit)
 
 | Đầu ra | Nội dung | Ai dùng |
 | --- | --- | --- |
-| `packages/core/templates/generated/index.ts` (mới) | Kiểu `SquadTemplateId`, `SquadRoleKey`...; mảng meta nhỏ đồng bộ (id, collection, order, status, expertReview, số vai, cờ); bảng bộ nạp lazy theo id | `@multica/core`, `@multica/views` |
-| `packages/core/templates/generated/chunks/*.ts` (mới) | Nội dung nặng (hướng dẫn, charter, SKILL.md và file kèm). Ban đầu giữ độ chi tiết hiện có: một gói SDLC và một pack Kit Việt mỗi nghề; tinh chỉnh ở plan T5.3 sau khi đo | Nạp qua `import()` |
-| `packages/views/locales/<lang>/templates.json` (mới) | Tên, mô tả, tiêu đề collection theo locale | `useT("templates")` |
-| `server/internal/templatereg/data/*.json` (mới) | Chỉ các loại có `targets: ["go"]` trong `registry.config.json`: `company`, `workflow`, skill của công ty mẫu, `bundle` | Go qua `go:embed` |
-| `templates/registry.lock.json` (mới) | Id, phiên bản, băm, id đã gỡ | CLI, CI |
+| `packages/core/catalog/generated/skills-builtin.ts` | `SDLC_BUILTIN_SKILLS` (skill của các skillset có `target: "quickstart"`, khoảng 2 MB) | `quickstart.ts`, nạp lazy khi cài skill |
+| `packages/core/catalog/generated/skillsets.ts` | `SKILLSET_MEMBERS`, nhỏ, tách riêng để mã chỉ cần tên skill không kéo gói trên | `catalog/skillsets.ts` |
+| `packages/core/catalog/generated/role-instructions.ts` | Hướng dẫn theo vai (`catalog/squads/<id>/roles/<vai>.md`) | `catalog/role-instructions.ts`, bọc bởi `*-agent-instructions.ts`, `content-studio.ts`, `research-lab.ts` |
+| `packages/core/catalog/generated/contracts.ts` | Template đáp ứng từng hợp đồng | `catalog/contracts.ts` |
+| `packages/core/catalog/generated/kitviet/*` | Pack Kit Việt do bộ biến đổi `scripts/generate-kitviet-pack.mjs` sinh | `kitviet-packs.ts`, `kitviet-squad-roles.ts` |
+| `packages/core/catalog/generated/squads.ts`, `collections.ts` | Dữ liệu squad; kiểu `SquadTemplateId`, `SquadRoleKey`, `SquadTemplateCategory` | `catalog/squads.ts` (lắp ráp `SquadTemplate`) |
+| `packages/core/catalog/generated/i18n.ts` | Bản dịch squad, collection, pack theo locale | `catalogText()` |
+| `packages/core/catalog/generated/agents.ts`, `company.ts`, `workflows.ts` | Mẫu hướng dẫn agent (đã mở khối chung), công ty mẫu, workflow | `agents/instruction-templates.ts`, `squads/company-template.ts`, `squads/templates.ts` |
+| `packages/core/catalog/generated/agent-packs/` | Bundle JSON của từng pack và `index.ts` (id + bộ nạp) | `agent-packs/load.ts` |
+| `server/internal/catalog/generated/{company,workflows,quickstart-bundle}.json` | Dữ liệu cho Go (`go:embed all:data`) | `server/internal/catalog` |
 
-### 6.7 Quy tắc tiêu thụ
+Không có `registry.lock.json`: khi không commit mã sinh ra thì không còn gì để khóa. Kiểm tra id không biến mất dùng `catalog check --base <ref>` (đọc `git ls-tree`, chỉ đọc).
 
-TypeScript (`packages/core/templates/`, mới):
+### 6.7 Hệ quả của việc không commit mã sinh ra (Q2)
 
-- API đồng bộ chỉ trả meta nhỏ: `listTemplates(kind, filter?)`, `getTemplateMeta(kind, id)`. API bất đồng bộ trả nội dung: `loadTemplate(kind, id)`. Giao diện danh sách (`squad-quickstart.tsx`) chỉ cần meta; `runSquadQuickstart` nhận nội dung đã nạp.
-- Không dùng `import.meta.glob`, `require.context` hay `fs` trong mã chạy trên trình duyệt. Chỉ `generated/index.ts` được import bởi mã bên ngoài thư mục `packages/core/templates/`. Thêm quy tắc ESLint `no-restricted-imports` cho `templates/generated/chunks/*` (plan T3.4).
-- `packages/core` không thêm thư viện UI; mọi thứ là dữ liệu thuần, đúng ràng buộc trong `AGENTS.md`. Mobile có thể dùng meta về sau, hiện không dùng.
-- Dữ liệu từ API đi qua zod + `parseWithFallback` như `AGENTS.md` yêu cầu. Trường mới ở API (ví dụ tên theo locale của workflow template) là tùy chọn có mặc định, id lạ có fallback.
-
-Go (`server/internal/templatereg/`, mới):
-
-- `//go:embed data/*.json`, kiểu Go cho từng loại, tải một lần, trả lỗi (không panic lúc khởi động). Kiểm tra `schemaVersion`.
-- Không đọc `templates/` ở thư mục gốc: `Dockerfile:13` chỉ có `server/`. Không ghi DB lúc khởi động (không có seed).
-- Logic áp dụng giữ nguyên ở `server/internal/service/company_template.go` và `initiative_build.go`; chỉ nguồn dữ liệu đổi.
-- Thay `company_template_data.json` và các hằng số tên skill bằng dữ liệu đọc từ registry, có test hợp đồng (6.3.4).
-
-### 6.8 Phân phối và hạ tầng
-
-- Web, desktop: dữ liệu được đóng gói trong bundle như hiện nay; không thêm gọi mạng. Mobile không dùng.
-- Docker: không đổi `Dockerfile` hay `Dockerfile.web`, vì đầu ra đã commit nằm trong `server/` và `packages/`.
-- `.github/ci-paths.json`: thêm `templates/**` và `scripts/templates/**` vào các bộ lọc `frontend`, `backend`, `quality` (và `scripts` nếu cần). Nếu không, PR chỉ sửa `templates/` có thể không chạy job nào.
-- turbo: nếu test trong `packages/core` còn đọc `templates/` trực tiếp (hiện có 2 test chạy script trong thư mục skill), thêm `packages/core/turbo.json` với `inputs` gồm `$TURBO_ROOT$/templates/**`, nếu không cache có thể phát lại kết quả cũ. Cách tránh triệt để: test của core chỉ đọc đầu ra sinh ra; việc kiểm tra nguồn thuộc `pnpm templates:check` chạy ngoài turbo. Plan T1.1 kiểm chứng bằng `turbo --dry=json`.
-- knip (`knip.jsonc`): thêm `scripts/templates/*.mjs` vào `entry` của workspace gốc; đầu ra sinh ra có thể cần `ignore`.
-- `packages/core/package.json`: thêm mục `exports` cho `./templates`.
-- `AGENTS.md`: thêm một hàng cho `templates/` trong bảng ranh giới và một câu về lệnh sinh (plan giai đoạn 7).
-
-### 6.9 Vận hành
-
-| Việc | Cách làm | Sửa code? |
-| --- | --- | --- |
-| Sửa văn bản skill hay hướng dẫn | Sửa file, nâng `version`, `pnpm templates:build`, commit | Không |
-| Thêm skill | `pnpm templates:new skill <id> --set sdlc`, sửa `SKILL.md`, build | Không |
-| Thêm squad, workflow, collection, pack | Như mục 6.5 | Không |
-| Ẩn khỏi bộ chọn | Đặt `status: "deprecated"` hoặc `hidden` | Không |
-| Đổi tên | Id mới + `aliases`, thẻ cũ `deprecated` | Không |
-| Gỡ hẳn | Thêm id vào `removed` trong `registry.config.json` sau ít nhất một bản phát hành `deprecated` | Không |
-| Nâng upstream Kit Việt | Giữ quy trình ở `docs/engineering/kitviet-runbook.md` mục 2, đường dẫn đổi sang `templates/_sources/kitviet/` | Không |
-| Thêm loại template mới | Thêm schema zod, builder, mục trong `registry.config.json` | Có (hiếm, có chủ đích) |
-| Thêm collection mới | Thư mục `collections/<id>/` | Không |
-| Thêm locale mới | Thêm vào `registry.config.json` và `packages/views/locales/` | Có (hiếm) |
-
-Văn bản cũ để nâng cấp không phá chỉnh sửa của người dùng (T10): giai đoạn đầu giữ nguyên cơ chế "bản cũ toàn văn" nhưng chuyển vào thư mục template. Giai đoạn 6 (tùy chọn) thay bằng danh sách băm sha256, giảm 2,6 MB xuống kích thước nhỏ. Rủi ro đã biết: `crypto.subtle` không có trên trang HTTP không an toàn (self-host qua IP LAN), nên cần cài sha256 thuần JS; xem Q6.
+- `.gitignore`: thêm `packages/core/catalog/generated/` và `server/internal/catalog/generated/*.json`. Các file sinh ra đang commit (`sdlc-skills-data.ts`, `kitviet-skills-data/`, `company_template_data.json`, `agent-packs/bundles/`) bị xóa khỏi cây làm việc; người dùng ghi nhận việc xóa trong commit của mình.
+- Bộ sinh chạy ở mọi điểm vào build. Một nguồn duy nhất: `node scripts/catalog/cli.mjs build [--target ts|go|all]`, thêm vào `package.json` gốc thành `catalog:build`.
+  - turbo: task gốc `//#catalog:build` (`inputs`: `catalog/**`, `scripts/catalog/**`, `scripts/lib/**`; `outputs`: các đường dẫn sinh ra); `build`, `typecheck`, `test`, `lint`, `dev`, `dev:staging` phụ thuộc vào nó. Nhờ `inputs` của task gốc, một thay đổi trong `catalog/` làm mất cache của mọi task sau nó (không còn rủi ro cache cũ như bản nháp đầu).
+  - `Dockerfile.web`: build bằng `pnpm --filter @multica/web build` (không qua turbo) nên thêm `COPY catalog/`, `COPY scripts/catalog`, `COPY scripts/lib` và `RUN node scripts/catalog/cli.mjs build --target ts` trước bước build.
+  - `Dockerfile` (Go): thêm stage `FROM node:22.23.4-alpine AS catalog` chạy `build --target go`, rồi `COPY --from=catalog` vào `server/internal/catalog/generated/` của stage builder trước `go build`.
+  - `.vercelignore`: hiện loại `/scripts/`; thêm ngoại lệ `!/scripts/catalog`, `!/scripts/lib` (và nội dung) để bản deploy web có bộ sinh. `catalog/` không bị loại.
+  - Makefile: target `catalog-build`; các target gọi `go build` hoặc `go run` (`build`, `server`, `daemon`, `dev`...) và `test` phụ thuộc vào nó. Script `scripts/dev.sh`, `scripts/dev-env.sh`, `scripts/check.sh`, `scripts/test-go.sh` gọi trước.
+  - CI: job Go cần setup-node và bước `node scripts/catalog/cli.mjs build --target go` trước `go build/test/vet`; job frontend đã qua turbo nên chạy cùng task gốc; thêm bước `node scripts/catalog/cli.mjs check`. `.goreleaser.yml`: `before.hooks`.
+  - `go:embed all:data` với một file giữ chỗ `.gitkeep` được commit: nếu chưa sinh dữ liệu thì package vẫn biên dịch được, loader trả lỗi rõ ràng ("chạy catalog:build"), nên các job Windows chỉ chạy vài test cụ thể không bị vỡ khi biên dịch.
+  - Sau khi clone: chạy `pnpm catalog:build` một lần (các lệnh `pnpm typecheck/test/lint/build/dev` đã tự gọi qua turbo; lệnh gọi trực tiếp `vitest` thì chưa).
+- Mobile không nhập mã sinh ra (đã kiểm: chỉ `apps/mobile/data/queries/squads.ts` nhắc "squads", qua API).
 
 ## 7. Kiểm tra (validation)
 
-Một CLI: `node scripts/templates/cli.mjs <lệnh>`, có alias `pnpm templates:check|build|new|list`. Test của CLI chạy bằng `node --test scripts/templates/*.test.mjs`, thêm cạnh dòng `ci.yml:44`.
+CLI: `node scripts/catalog/cli.mjs <check|build|new|list>`; alias `pnpm catalog:check|build|new|list`. Test CLI: `node --test scripts/catalog/*.test.mjs`.
 
-| Lớp | Nội dung | Lỗi hay cảnh báo |
+| Lớp | Nội dung | Mức |
 | --- | --- | --- |
-| L1 Schema | Mỗi `template.json` qua zod theo `kind`; id đúng regex và bằng tên thư mục; `version` hợp lệ; `schemaVersion` biết; id duy nhất trong loại | Lỗi |
-| L2 Tham chiếu | `requires`, `sets`, `collection`, `workflow.ref`, kỹ năng trong `skills`, `leader` thuộc `roles`, `role` của bước workflow thuộc squad dùng nó, `role.key` duy nhất toàn registry; không vòng | Lỗi |
-| L3 Nội dung | `SKILL.md` có frontmatter `name` khớp và `description` không rỗng; file chỉ là văn bản (không nhị phân, theo `build-agent-pack-bundles.mjs`); trần kích thước theo loại (mang từ `kitviet-skills.test.ts`); không có chuỗi bí mật (mẫu `sk-`, `AKIA`, khóa riêng); skill vendor có `source.license`; quy tắc "chuỗi cấm" hiện có của Kit Việt | Lỗi (kích thước và chuỗi cấm), cảnh báo (mồ côi) |
-| L4 Dịch | `en` có; các locale có cùng tập khóa; danh sách locale khớp thư mục `packages/views/locales/` | Lỗi (`en`), cảnh báo (locale khác; Q3) |
-| L5 Độ tươi | Chạy lại builder trong bộ nhớ và so với file đã commit; thay cho ba cơ chế ở C9. CI chạy `pnpm templates:check`, thất bại nếu có chênh | Lỗi |
-| L6 Tương đương | Trong giai đoạn di chuyển: băm từng mục đầu ra (squad, skill, workflow, công ty mẫu, pack, bundle) trước và sau, so với `templates/golden-hashes.json` (mới, tạm; xóa ở giai đoạn 7) | Lỗi |
-| L7 Bất biến id và hợp đồng | `registry.lock.json` so với nhánh chính: id không biến mất nếu không có trong `removed`; mỗi hợp đồng ở Go và TS có đúng một template `stable` đáp ứng; nội dung đổi mà `version` không đổi | Lỗi (id, hợp đồng), cảnh báo (version) |
+| L1 Schema | Phong bì và khối riêng theo loại; id đúng regex và bằng tên thư mục; semver; `schemaVersion`; id duy nhất | Lỗi |
+| L2 Tham chiếu | `requires`, `sets`, `collection`, `workflow.ref`, skill squad liệt kê, `leader` thuộc `roles`, `role` của bước workflow thuộc squad dùng nó, `role.key` duy nhất toàn registry, không vòng; workflow trình thiết kế khớp SDLC Auto (5.4) | Lỗi |
+| L3 Nội dung | `SKILL.md` có frontmatter `name` khớp và `description` không rỗng; chỉ văn bản; trần kích thước; không có mẫu bí mật (`sk-`, `AKIA`, khóa riêng); skill vendor có `source.license`; "chuỗi cấm" của Kit Việt giữ ở test hiện có | Lỗi (mồ côi, `license: "TODO"`: cảnh báo) |
+| L4 Dịch | Mọi loại có hiển thị: đủ mọi locale, khóa bằng nhau, không rỗng; danh sách locale bằng `SUPPORTED_LOCALES` | Lỗi (Q3) |
+| L5 Sinh | Build chạy trọn vẹn và đầu ra qua `tsc` (typecheck) và `go build`; thay cho kiểm tra "độ tươi" | Lỗi |
+| L6 Tương đương | Trong lúc di chuyển: băm từng mục đầu ra (205 mục) so với `scripts/catalog/golden-hashes.json` bằng `scripts/catalog/golden.mjs`; công cụ tạm này đã chạy xanh (205/205) ở lần kiểm cuối rồi bị xóa cùng các codemod một lần; không còn trong repo | Lỗi |
+| L7 Bất biến | `check --base <ref>`: id không biến mất nếu không nằm trong `removed`; nội dung đổi mà `version` không đổi | Lỗi (id), cảnh báo (version) |
 
-Test vitest sinh theo registry thay cho test liệt kê tên: một `squad-invariants.test.ts` (mới) duyệt mọi squad và áp các khẳng định hiện nằm lặp ở `kitviet-templates/*.test.ts` (đúng một lead là leader, tối đa 8 thành viên ngoài lead, mô tả một dòng, tầng hợp lệ, cron 5 trường, vai có tên duy nhất). Khẳng định riêng của từng squad (ví dụ tên chính xác) được thay bằng so sánh băm L6 trong lúc di chuyển, và sau đó bằng `registry.lock.json`.
-
-Go: `server/internal/templatereg` có test `TestEmbeddedRegistryParses`, `TestRequiredContractsProvided`, và test hiện có của `company_template_test.go`, `issueworkflow/templates_test.go` chạy trên dữ liệu mới.
+Test vitest sinh theo registry thay test liệt kê tên: `packages/core/catalog/squad-invariants.test.ts` (mới) duyệt mọi squad với các khẳng định đang lặp ở `kitviet-templates/*.test.ts`. Go: `server/internal/catalog` có test phân tích dữ liệu nhúng và test hợp đồng.
 
 ## 8. Bảo mật và giấy phép
 
-- Hướng dẫn agent là chuỗi cung ứng prompt: mọi thay đổi `templates/**` được xem như thay đổi code khi duyệt PR. Đề xuất thêm `CODEOWNERS` cho `templates/` (hiện `.github/` không có).
-- Skill vendor bắt buộc có `source.license`; khối `kitviet-upstream/` giữ `LICENSE`, `NOTICE.md`, `UPSTREAM.json`. Việc bổ sung nguồn gốc cho skill vendor hiện chưa có (C13) và là điều kiện của L3.
-- Không có bí mật trong `templates/`; L3 có quét mẫu cơ bản. Agent pack không chứa nhị phân (đã là quy tắc của `build-agent-pack-bundles.mjs`).
-- Go không đọc đường dẫn lấy từ manifest; mọi đường dẫn là tên file cố định lúc build.
+Hướng dẫn agent là chuỗi cung ứng prompt: coi thay đổi `catalog/**` như thay đổi code khi duyệt (đề xuất `CODEOWNERS`; `.github/` hiện chưa có). Skill vendor bắt buộc có `source.license`; trong lần này các skill vendor được đánh dấu `TODO` (Q9) và check cảnh báo. Không có bí mật trong `catalog/`; L3 quét mẫu cơ bản. Go không đọc đường dẫn lấy từ manifest.
 
 ## 9. Tương thích và rủi ro
 
-- Không có migration DB. Id template, tên skill, tên agent, tên workflow không đổi, nên squad và agent đã tạo tiếp tục khớp khi chạy lại quickstart hoặc nâng cấp.
-- API: khi thêm trường vào phản hồi (ví dụ danh sách workflow template), cập nhật zod schema, giá trị mặc định và test phản hồi sai định dạng, theo `AGENTS.md`. Desktop cũ gặp backend mới vẫn hiển thị nhờ fallback id lạ.
-- Không thêm lớp tương thích nội bộ: mỗi giai đoạn chuyển hẳn và xóa đường cũ trong cùng PR (đúng quy tắc "no compatibility shims").
-
-Rủi ro chính:
+- Không có migration DB. Id template, tên skill, tên agent, tên workflow giữ nguyên.
+- API: trường mới là tùy chọn có mặc định; cập nhật zod schema và test phản hồi sai định dạng nếu đổi.
+- Không thêm lớp tương thích nội bộ: mỗi giai đoạn chuyển hẳn và xóa đường cũ.
 
 | # | Rủi ro | Giảm thiểu |
 | --- | --- | --- |
-| R1 | Lệch hành vi vì chữ đổi nhẹ (id, tên agent, văn bản dùng để nhận biết "chưa bị sửa") | L6: băm từng mục trước và sau mỗi giai đoạn; di chuyển bằng `git mv` và codemod, không gõ lại |
-| R2 | Đụng thay đổi chưa commit của người dùng (SDLC harness, issue-workflows, designer) | T0.2: chờ commit; mỗi giai đoạn là PR riêng; giai đoạn 4 bắt đầu sau khi vùng workflow ổn định |
-| R3 | Hạ tầng bỏ sót `templates/` (CI không chạy, cache turbo phát lại kết quả cũ, Docker thiếu dữ liệu) | Thêm `ci-paths.json`, `inputs` của turbo, đầu ra commit trong `packages/` và `server/`; T1.1 kiểm chứng từng thứ |
-| R4 | Diff lớn và nhiễu (đầu ra sinh vài MB) | `linguist-generated`, chia PR, `registry.lock.json` để review theo băm |
-| R5 | Mất kiểm tra kiểu khóa dịch | Union id và `templates.json` được sinh, nên `$.templates.items[id]` vẫn gõ kiểu |
-| R6 | Làm quá tay: CLI và registry thành gánh nặng | Giao hàng theo mốc (mục 2 của plan); dừng được sau giai đoạn 1 hoặc 3 mà vẫn có giá trị |
+| R1 | Lệch hành vi vì chữ đổi nhẹ | L6 băm từng mục; codemod, không gõ lại |
+| R2 | Đụng thay đổi chưa commit của người dùng | Chỉ làm khi `git status` sạch trong vùng; hiện sạch; mọi bước dùng `mv`, không đụng index |
+| R3 | Mã sinh ra không commit làm vỡ một điểm vào build không qua turbo | Liệt kê ở 6.7; kiểm tra từng điểm vào |
+| R4 | `go build` thất bại khi chưa sinh dữ liệu Go | `go:embed all:data` + `.gitkeep`, loader báo lỗi rõ |
+| R5 | Mất kiểm tra kiểu khóa dịch | Union id sinh ra; hàm `catalogText` nhận id kiểu union |
+| R6 | CLI trở thành gánh nặng | Tối thiểu 4 lệnh, không thư viện ngoài, test riêng |
 
-## 10. Câu hỏi mở (cần người dùng quyết trước khi triển khai)
+## 10. Câu hỏi còn mở
 
-- Q1. Tên thư mục gốc: `templates/` (đề xuất, trùng chữ với Helm) hay `catalog/`?
-- Q2. Đầu ra sinh ra được commit (đề xuất, lý do ở mục 5.3) hay sinh lúc build (cần sửa hai Dockerfile)?
-- Q3. Dịch ngoài `en`: bắt buộc đủ 7 ngôn ngữ cho mọi template (nghiêm, giống `parity.test.ts`) hay chỉ `en` bắt buộc và còn lại rơi về `en` kèm cảnh báo (đề xuất)?
-- Q4. Phạm vi giai đoạn 4: hợp nhất SDLC Auto ở TS và hai nơi trong Go ngay, hay chỉ thêm test so sánh trước? Bản nào là chuẩn nếu hiện đang lệch?
-- Q5. Khi nội dung đổi mà `version` không đổi: cảnh báo (đề xuất ban đầu) hay lỗi?
-- Q6. Có làm giai đoạn 6 (thay `*-previous-texts.ts` bằng danh sách băm)? Cần chấp nhận cài sha256 thuần JS vì `crypto.subtle` thiếu trên HTTP không an toàn.
-- Q7. Có cần bước tiếp theo cho template của bên thứ ba qua Hub không? Nếu có, nên chốt định dạng xuất zip (`templates:export`) từ giờ.
-- Q8. `kitviet-upstream/` (2,8 MB vendor) ở lại trong repo dưới `templates/_sources/kitviet/` (đề xuất) hay tách repo/submodule?
-- Q9. Ai điền nguồn gốc và giấy phép cho skill vendor (bmad, superpowers, supabase, accessibility...) vì C13?
-- Q10. `examples/plugins/` giữ nguyên (đề xuất, vì là fixture test Go) hay cũng đưa vào `templates/` làm loại `plugin`?
+- Q7. Có cần bước tiếp theo cho template của bên thứ ba qua Hub không? Nếu có, nên chốt định dạng xuất zip.
+- Q9. Quyết định về `react-doctor` và hai repo không có giấy phép (xem mục 11).
+- Q4b. Đích "tiếp theo" của bước `todo` trong workflow do Go dựng nên là `in_progress` (như bản TS và câu hướng dẫn) hay bước chuyên gia đầu tiên (hành vi hiện tại)? Hiện giữ nguyên hành vi (cờ `implicitNext`).
+- Q11. Có nên bỏ cờ `implicitNext` và để Go dùng chuyển tiếp tường minh như TS, sau khi trả lời Q4b?
 
-## 11. Chưa kiểm chứng trong lần khảo sát này
+## 11. Hiện trạng triển khai (as-built)
 
-- Kích thước thật của 2,1 MB `sdlc-skills-data.ts` trong bundle trình duyệt (cần đo, T0.5).
-- Ba bản SDLC Auto (TS, `sdlcSteps`, `sdlcAutoTemplate`) có đang khớp nhau không.
-- Cú pháp và hành vi của `inputs: ["$TURBO_ROOT$/templates/**"]` với phiên bản turbo của repo (T1.1).
-- Kết quả bộ test đầy đủ (`pnpm test`, `make test`) trên cây làm việc hiện tại: chỉ chạy `node scripts/generate-kitviet-pack.mjs --check` (xanh).
-- Số lượng mục trong các `*-previous-texts.ts` (ảnh hưởng đến kích thước thực của giai đoạn 6).
+Đã làm (kèm cách kiểm chứng, chi tiết lệnh ở báo cáo cuối phiên):
+
+- Thư mục `catalog/` với 174 template: 93 skill, 6 skillset, 28 squad, 3 collection, 2 workflow thực thi, 39 mẫu hướng dẫn agent (+ 5 khối dùng chung), công ty mẫu `starter`, agent pack `market-strategist`, bundle `quickstart`. Nguồn Kit Việt ở `catalog/_sources/kitviet/`.
+- CLI `scripts/catalog/cli.mjs` (`check`, `build`, `new`, `list`), không phụ thuộc thư viện ngoài; 25 test Node (`catalog.test.mjs`); `catalog check --base <ref>` kiểm id không biến mất.
+- Mã sinh ra không commit: `.gitignore`, task turbo gốc `//#catalog:build`, `Makefile`, `scripts/{test-go,check,dev,dev-env}.sh`, `Dockerfile` (stage `catalog`), `Dockerfile.web`, `.dockerignore`, `.vercelignore`, `.goreleaser.yml`, `.github/workflows/ci.yml`, `.github/actions/frontend-quality`, `.github/ci-paths.json`, `knip.jsonc`.
+- Bản dịch đủ 7 ngôn ngữ cho squad, collection và pack; chuyển nguyên văn từ `modals.json` rồi xóa khóa cũ ở đó. Giao diện đọc qua `catalogText()`.
+- Thêm một squad không sửa file code: kiểm chứng bằng `catalog new squad zz_probe` (typecheck, test bất biến và test `templates` xanh, `git status` chỉ có file dưới `catalog/` và thư mục sinh ra), rồi xóa.
+- Q4: `sdlc_auto` và `planning_auto` là manifest duy nhất cho TS và Go; băm đầu ra giữ nguyên.
+
+Khác với bản thiết kế ban đầu:
+
+- Skillset đặt id snake_case (`research_lab`, `starter_company`) theo quy tắc id, không phải kebab.
+- Collection chỉ cần `title` ở `i18n/`; loại `agent` chưa có bản dịch (tên và mô tả mẫu trong bộ chọn agent vẫn ở `agents.json`).
+- 21 test riêng của squad Kit Việt không bị thay bằng test chung: chúng được giữ nguyên nội dung, chỉ đổi cách lấy dữ liệu, ở `packages/core/catalog/kitviet/`; test chung `packages/core/catalog/squad-invariants.test.ts` bổ sung cho mọi squad.
+- Thứ tự tên skill trong `PLANNING_SKILL_NAMES`, `SALES_SKILL_NAMES`, `RESEARCH_LAB_SKILL_NAMES` (và `builtinSkills` của squad tương ứng) nay theo tên thư mục thay cho thứ tự viết tay; cùng tập, đã đối chiếu với `git show HEAD`.
+- Năm khối chữ dùng chung của mẫu hướng dẫn agent nay là `catalog/agents/_blocks/*.md` (trước là hằng số trong `instruction-templates.ts`, `instruction-blocks.ts`); năm mẫu `kv_*` được ghi sẵn ở `catalog/agents/kv_*` để Go đọc, và test `packages/core/catalog/agents.test.ts` bảo đảm chúng bằng kết quả của bộ ghép Kit Việt.
+
+Làm thêm ở đợt hoàn thiện:
+
+- Hợp đồng (6.3.4): trường `contracts` trên 5 template và công ty mẫu, bộ kiểm tra dạng/loại, `server/internal/catalog/contracts.go` và test Go/TS (xem 6.3.4).
+- Hướng dẫn theo vai: 37 file `catalog/squads/<squad>/roles/<vai>.md` thay các bảng chữ trong `{sdlc,planning,sales}-agent-instructions.ts`, `content-studio.ts`, `research-lab.ts`; các file này nay chỉ bọc dữ liệu sinh ra (giữ tên export và kiểu). Đối chiếu với bản cũ: bằng nhau từng khóa.
+- 7 workflow của trình thiết kế: `catalog/workflows/designer_*`; `issueworkflow.Templates()` đọc `designer-workflows.json`. JSON của `Templates()` bằng bản ở HEAD.
+- Tải lazy (C4): `SDLC_BUILTIN_SKILLS` (2,1 MB) và `KITVIET_PREVIOUS_*` (2,6 MB) nạp bằng `import()`; `SKILLSET_MEMBERS` tách file riêng. Đo bằng esbuild có `splitting`: phần nạp tĩnh của `squads/upgrade.ts` từ khoảng 4,0 MB xuống khoảng 1,2 MB; `squads/quickstart.ts` còn khoảng 1,2 MB (không còn gói skill).
+- Nguồn và giấy phép của 51 skill vendor (Q9): đã điền; `catalog check` lỗi nếu còn `TODO` và cảnh báo khi ref `unpinned`, repo không có giấy phép, hoặc giấy phép có giới hạn (xem cảnh báo bên dưới).
+
+Chưa làm:
+
+- API trả tên workflow của trình thiết kế theo locale (T4.4): `packages/core/api/schemas.ts`, `types/issue-workflow.ts`, `template-picker-dialog.tsx` và `workflow.json` ×7 là mã trình thiết kế do người dùng đang phát triển; bản dịch của 7 template vẫn nằm ở `workflow.json`. Id workflow vẫn lặp ở 5 nơi (C14); manifest chỉ gom dữ liệu bước.
+- Thay `*-previous-texts.ts` bằng băm (Q6): không làm. `upgrade.test.ts` và `kitviet-previous-texts.test.ts` cần văn bản gốc (dựng agent "tạo bằng bản cũ", kiểm tra bản cũ còn câu luật VERDICT cũ); băm làm mất các kiểm tra này, và `scripts/kitviet-update.mjs` ghi thêm văn bản vào file đó. Đã giải quyết phần kích thước bằng tải lazy.
+- Hợp nhất mô tả (`description`) của SDLC Auto giữa TS và Go; bỏ cờ `implicitNext` (Q4b, Q11).
+- Cảnh báo "nội dung đổi mà `version` không đổi" (Q5), `CODEOWNERS`, quét bí mật ngoài bốn mẫu cơ bản.
+- `sales-starter-sources.ts` vẫn là mã.
+
+Rủi ro giấy phép của skill vendor cần người sở hữu quyết định: `react-doctor` (`LicenseRef-Modified-MIT-Million`) cấm dùng làm dữ liệu huấn luyện/đánh giá AI và bán lại như dịch vụ lưu trữ; `AccessLint/skills` và `bmad-code-org/bmad-plugins` không có tệp giấy phép; 20 skill không có commit hoặc phiên bản để ghim.
+
+## 12. Chưa kiểm chứng
+
+- `make check` và `pnpm exec playwright test` không chạy: một frontend của người dùng đang chạy ở cổng 30000, nên E2E sẽ dùng dịch vụ và dữ liệu đó.
+- Không build trọn `Dockerfile.web` (chỉ chạy bước sinh trong container Node); không chạy workflow CI/release thật.
+- `make test` trên cơ sở dữ liệu sạch (tạo bằng `scripts/ensure-postgres.sh`, xóa sau khi chạy) chỉ còn đỏ ở `TestMigrationNumericPrefixesAreUnique`, cũng đỏ ở HEAD (16 cặp migration trùng số, từ `600` trở lên). Các test khác đỏ lúc máy quá tải đều xanh khi chạy lại riêng. Trên cơ sở dữ liệu dùng chung có sẵn rác từ các lần test bị ngắt thì thêm vài test đỏ vì rác.
