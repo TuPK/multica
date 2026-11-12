@@ -35,6 +35,10 @@ export type {
   NewWorkflowStatus,
   IssueWorkflowStepInput,
   SetWorkflowHandoffRequest,
+  IssueWorkflowTemplate,
+  IssueWorkflowTemplateId,
+  IssueWorkflowTemplateStep,
+  ListIssueWorkflowTemplatesResponse,
 } from "./issue-workflow";
 export type {
   Agent,

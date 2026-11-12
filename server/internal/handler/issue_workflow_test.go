@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/server/internal/issuestatus"
 	"github.com/multica-ai/multica/server/internal/issueworkflow"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/testutil"
@@ -1583,4 +1584,170 @@ func TestAgentCannotSkipWorkflowStepToDone(t *testing.T) {
 
 	agentUpdateIssue(t, issueID, agentID, taskID, map[string]any{"status": "qa_review"}).Want(http.StatusOK)
 	agentUpdateIssue(t, issueID, agentID, taskID, map[string]any{"status": "done"}).Want(http.StatusOK)
+}
+
+// TestIssueWorkflowTemplatesListAndPassCreateValidation reads the system
+// templates over HTTP and runs each one through the create path's checks:
+// the payload-to-step conversion, Normalize, and Validate against the
+// workspace catalog that CreateIssueWorkflow loads.
+// templateSaveBody is the body a save sends for a listed template: each column
+// is an existing status by key or a status to create, with no handler.
+func templateSaveBody(name string, steps []IssueWorkflowTemplateStepPayload) map[string]any {
+	out := make([]map[string]any, len(steps))
+	for i, s := range steps {
+		step := map[string]any{
+			"handler":      map[string]any{"type": issueworkflow.HandlerNone},
+			"instructions": s.Instructions,
+			"transitions":  s.Transitions,
+		}
+		if s.NewStatus != nil {
+			step["new_status"] = map[string]any{"name": s.NewStatus.Name, "category": s.NewStatus.Category}
+		} else {
+			step["status_key"] = s.StatusKey
+		}
+		out[i] = step
+	}
+	return map[string]any{"name": name, "steps": out}
+}
+
+// workspaceStatusNames lists the names of the test workspace's statuses, so a
+// test can remove only the statuses its save created.
+func workspaceStatusNames(t *testing.T) map[string]bool {
+	t.Helper()
+	rows, err := testPool.Query(context.Background(), `SELECT name FROM issue_status WHERE workspace_id = $1`, testWorkspaceID)
+	if err != nil {
+		t.Fatalf("list statuses: %v", err)
+	}
+	defer rows.Close()
+	names := map[string]bool{}
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			t.Fatalf("scan status: %v", err)
+		}
+		names[name] = true
+	}
+	return names
+}
+
+func TestIssueWorkflowTemplatesListInOrder(t *testing.T) {
+	seedTestCatalog(t)
+	var list ListIssueWorkflowTemplatesResponse
+	testutil.Call(t, testHandler.ListIssueWorkflowTemplates, workflowRequest("GET", "/api/issue-workflows/templates", nil)).
+		Want(http.StatusOK).JSON(&list)
+
+	var ids []string
+	for _, tpl := range list.Templates {
+		ids = append(ids, tpl.ID)
+	}
+	if got, want := strings.Join(ids, ","), "delivery,content,community,sdlc_auto,bmad_planning_auto,sales_loop,quick_fix"; got != want {
+		t.Fatalf("template ids = %s, want %s", got, want)
+	}
+	for _, tpl := range list.Templates {
+		for _, s := range tpl.Steps {
+			if (s.NewStatus == nil) == (s.StatusKey == "") {
+				t.Errorf("%s: a column must name exactly one of status_key and new_status: %+v", tpl.ID, s)
+			}
+			if s.Handler.Type != issueworkflow.HandlerNone {
+				t.Errorf("%s: %s hands off to %q, want none", tpl.ID, s.StatusKey, s.Handler.Type)
+			}
+		}
+	}
+}
+
+// TestIssueWorkflowTemplateSavesThroughCreate saves every listed template with
+// the create endpoint, which runs the same checks as any workflow save. Each
+// status the save creates must come back under the key the server derives
+// from its name.
+func TestIssueWorkflowTemplateSavesThroughCreate(t *testing.T) {
+	seedTestCatalog(t)
+	var list ListIssueWorkflowTemplatesResponse
+	testutil.Call(t, testHandler.ListIssueWorkflowTemplates, workflowRequest("GET", "/api/issue-workflows/templates", nil)).
+		Want(http.StatusOK).JSON(&list)
+
+	for _, tpl := range list.Templates {
+		t.Run(tpl.ID, func(t *testing.T) {
+			before := workspaceStatusNames(t)
+			var created IssueWorkflowResponse
+			testutil.Call(t, testHandler.CreateIssueWorkflow, workflowRequest("POST", "/api/issue-workflows",
+				templateSaveBody("Template "+tpl.ID+" "+workflowTestSuffix(), tpl.Steps))).
+				Want(http.StatusCreated).JSON(&created)
+			t.Cleanup(func() {
+				testPool.Exec(context.Background(), `DELETE FROM issue_workflow WHERE id = $1`, created.ID)
+				for _, s := range tpl.Steps {
+					if s.NewStatus != nil && !before[s.NewStatus.Name] {
+						testPool.Exec(context.Background(), `DELETE FROM issue_status WHERE workspace_id = $1 AND name = $2`,
+							testWorkspaceID, s.NewStatus.Name)
+					}
+				}
+			})
+
+			if len(created.Steps) != len(tpl.Steps) {
+				t.Fatalf("saved %d steps, want %d", len(created.Steps), len(tpl.Steps))
+			}
+			for i, s := range tpl.Steps {
+				want := s.StatusKey
+				if s.NewStatus != nil {
+					derived, err := issuestatus.DeriveKey(s.NewStatus.Name, s.NewStatus.Category, nil)
+					if err != nil {
+						t.Fatalf("DeriveKey(%q): %v", s.NewStatus.Name, err)
+					}
+					want = derived
+				}
+				if got := created.Steps[i].StatusKey; got != want {
+					t.Errorf("column %d saved as %q, want %q", i, got, want)
+				}
+			}
+		})
+	}
+}
+
+// TestIssueWorkflowStepLayoutRoundTrips stores a step's canvas position, reads
+// it back, and checks that a handoff edit keeps it.
+func TestIssueWorkflowStepLayoutRoundTrips(t *testing.T) {
+	seedTestCatalog(t)
+	created := createTestWorkflowSteps(t, "Layout "+workflowTestSuffix(), []map[string]any{
+		{"status_key": "todo", "layout": map[string]any{"x": 10.5, "y": -20}},
+		{"status_key": "in_progress"},
+		{"status_key": "done"},
+	})
+	layoutOf := func(w IssueWorkflowResponse, key string) *issueworkflow.Layout {
+		for _, s := range w.Steps {
+			if s.StatusKey == key {
+				return s.Layout
+			}
+		}
+		t.Fatalf("no step %q in %+v", key, w.Steps)
+		return nil
+	}
+	if got := layoutOf(created, "todo"); got == nil || *got != (issueworkflow.Layout{X: 10.5, Y: -20}) {
+		t.Fatalf("created layout = %+v, want {10.5 -20}", got)
+	}
+	if got := layoutOf(created, "in_progress"); got != nil {
+		t.Fatalf("step without a layout returned %+v", got)
+	}
+
+	setWorkflowHandoff(t, created.ID, "todo", map[string]any{"handler": map[string]any{"type": "project_lead"}}).Want(http.StatusOK)
+	var got IssueWorkflowResponse
+	get := withURLParam(workflowRequest("GET", "/api/issue-workflows/"+created.ID, nil), "id", created.ID)
+	testutil.Call(t, testHandler.GetIssueWorkflow, get).Want(http.StatusOK).JSON(&got)
+	if layout := layoutOf(got, "todo"); layout == nil || *layout != (issueworkflow.Layout{X: 10.5, Y: -20}) {
+		t.Fatalf("layout after a handoff edit = %+v, want {10.5 -20}", layout)
+	}
+}
+
+func TestIssueWorkflowRejectsOutOfRangeLayout(t *testing.T) {
+	seedTestCatalog(t)
+	testutil.Call(t, testHandler.CreateIssueWorkflow, workflowRequest("POST", "/api/issue-workflows", map[string]any{
+		"name":  "Layout bounds " + workflowTestSuffix(),
+		"steps": []map[string]any{{"status_key": "todo", "layout": map[string]any{"x": 100001, "y": 0}}},
+	})).Want(http.StatusBadRequest)
+}
+
+func TestIssueWorkflowTemplatesHideFromOutsiders(t *testing.T) {
+	seedTestCatalog(t)
+	outsiderID := dbfx.User(t, "Template outsider", "template-outsider-"+workflowTestSuffix()+"@example.com")
+	req := workflowRequest("GET", "/api/issue-workflows/templates", nil)
+	req.Header.Set("X-User-ID", outsiderID)
+	testutil.Call(t, testHandler.ListIssueWorkflowTemplates, req).Want(http.StatusNotFound)
 }

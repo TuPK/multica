@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { ApiError } from "../api";
-import { issueWorkflowMappingPlanFrom } from "./mapping";
+import { issueWorkflowMappingPlanFrom, issueWorkflowStatusCreateForbidden } from "./mapping";
 
 const plan = {
   required: [{ status_key: "in_review", issue_count: 2, suggested_status_key: "in_progress" }],
@@ -53,5 +53,22 @@ describe("issueWorkflowMappingPlanFrom", () => {
         code: "workflow_status_mapping_required",
       })),
     ).toBeNull();
+  });
+});
+
+describe("issueWorkflowStatusCreateForbidden", () => {
+  it("recognizes the refusal to create a status", () => {
+    const err = new ApiError("only workspace admins can create statuses", 403, "Forbidden", {
+      error: "only workspace admins can create statuses",
+      code: "status_create_forbidden",
+    });
+    expect(issueWorkflowStatusCreateForbidden(err)).toBe(true);
+  });
+
+  it("does not match another 403, a 409, or a malformed body", () => {
+    expect(issueWorkflowStatusCreateForbidden(new ApiError("no", 403, "Forbidden", { code: "other" }))).toBe(false);
+    expect(issueWorkflowStatusCreateForbidden(new ApiError("conflict", 409, "Conflict", { code: "status_create_forbidden" }))).toBe(false);
+    expect(issueWorkflowStatusCreateForbidden(new ApiError("no", 403, "Forbidden", "not json"))).toBe(false);
+    expect(issueWorkflowStatusCreateForbidden(new Error("network"))).toBe(false);
   });
 });

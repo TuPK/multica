@@ -39,6 +39,8 @@ export interface IssueWorkflowStep {
   next_status_key?: string;
   /** Status to send the issue back to when it needs changes; derived from `transitions`. */
   back_status_key?: string;
+  /** Canvas position in the designer, in finite numbers within ±100000. Absent: the designer auto-places the step. */
+  layout?: { x: number; y: number };
 }
 
 /** What a handler reports when it moves an issue out of a column. */
@@ -136,6 +138,8 @@ export type IssueWorkflowStepInput = ({ status_key: string } | { new_status: New
   Partial<SetWorkflowHandoffRequest> & {
     /** Canonical routing. The server reads it over next_status_key and back_status_key when sent. */
     transitions?: IssueWorkflowTransition[];
+    /** Canvas position in the designer. Omitted: the designer places the step. */
+    layout?: { x: number; y: number };
   };
 
 export interface IssueWorkflowWriteRequest {
@@ -218,3 +222,44 @@ export interface SetWorkflowHandoffRequest {
   next_status_key?: string;
   back_status_key?: string;
 }
+
+/** A system template's id. Server-owned: add ids only through the server. */
+export type IssueWorkflowTemplateId =
+  | "delivery"
+  | "content"
+  | "community"
+  | "sdlc_auto"
+  | "bmad_planning_auto"
+  | "sales_loop"
+  | "quick_fix";
+
+/**
+ * One column of a template. A column names an existing status by `status_key`,
+ * or a status the save creates by `new_status`; the created status takes the key
+ * the server derives from its name, and the template's transitions name that key.
+ * The handler is always none: a template never names an agent. `role_hint` is a
+ * squad role id shown as a suggestion, never stored.
+ */
+export type IssueWorkflowTemplateStep = ({ status_key: string } | { new_status: NewWorkflowStatus }) & {
+  handler: IssueWorkflowHandler;
+  role_hint?: string;
+  instructions: string;
+  transitions?: IssueWorkflowTransition[];
+  /** Suggested canvas position. Templates omit it, so the designer auto-places their columns. */
+  layout?: { x: number; y: number };
+};
+
+/**
+ * A system starting point for a new workflow (GET /api/issue-workflows/templates).
+ * The client translates the name and description by `id`. Always lists todo, done
+ * and cancelled, directly or through a created status.
+ */
+export interface IssueWorkflowTemplate {
+  id: IssueWorkflowTemplateId;
+  steps: IssueWorkflowTemplateStep[];
+}
+
+export interface ListIssueWorkflowTemplatesResponse {
+  templates: IssueWorkflowTemplate[];
+}
+

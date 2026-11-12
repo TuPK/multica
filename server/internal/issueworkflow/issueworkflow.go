@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"unicode/utf8"
 
@@ -163,13 +164,24 @@ type Handler struct {
 }
 
 // Step is one status of a workflow with its handoff. Transitions route the
-// issue when the step is left; see transitions.go.
+// issue when the step is left; see transitions.go. Layout is the step's
+// position on the designer canvas; nil means the designer places it.
 type Step struct {
 	StatusKey    string       `json:"status_key"`
 	Handler      Handler      `json:"handler"`
 	Instructions string       `json:"instructions"`
 	Transitions  []Transition `json:"transitions,omitempty"`
+	Layout       *Layout      `json:"layout,omitempty"`
 }
+
+// Layout is a step's canvas position. Routing and briefs ignore it.
+type Layout struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+}
+
+// MaxLayoutCoordinate bounds a canvas coordinate in either direction.
+const MaxLayoutCoordinate = 100000
 
 // Definition is a decoded workflow.
 type Definition struct {
@@ -198,6 +210,7 @@ type storedStep struct {
 	Transitions   []Transition `json:"transitions,omitempty"`
 	NextStatusKey string       `json:"next_status_key,omitempty"`
 	BackStatusKey string       `json:"back_status_key,omitempty"`
+	Layout        *Layout      `json:"layout,omitempty"`
 }
 
 // Decode parses a stored workflow row.
@@ -226,6 +239,7 @@ func DecodeSteps(raw []byte) ([]Step, error) {
 			Handler:      Handler{Type: HandlerNone},
 			Instructions: s.Instructions,
 			Transitions:  s.Transitions,
+			Layout:       s.Layout,
 		}
 		if len(s.Transitions) == 0 {
 			steps[i].Transitions = LegacyTransitions(s.NextStatusKey, s.BackStatusKey)
@@ -251,7 +265,7 @@ func DecodeKeys(raw []byte) ([]string, error) {
 func EncodeSteps(steps []Step) ([]byte, error) {
 	stored := make([]storedStep, len(steps))
 	for i, s := range steps {
-		stored[i] = storedStep{StatusKey: s.StatusKey, Transitions: s.Transitions}
+		stored[i] = storedStep{StatusKey: s.StatusKey, Transitions: s.Transitions, Layout: s.Layout}
 		if s.HandsOff() {
 			h := s.Handler
 			stored[i].Handler = &h
@@ -525,7 +539,24 @@ func ValidateHandoff(s Step, def Definition) error {
 	if utf8.RuneCountInString(s.Instructions) > MaxInstructionsRunes {
 		return invalid("instructions must be at most %d characters", MaxInstructionsRunes)
 	}
+	if err := validateLayout(s.Layout); err != nil {
+		return err
+	}
 	return validateTransitions(s, def)
+}
+
+// validateLayout checks a canvas position: both coordinates finite and within
+// MaxLayoutCoordinate. A nil layout is the designer's auto-placement.
+func validateLayout(l *Layout) error {
+	if l == nil {
+		return nil
+	}
+	for _, v := range []float64{l.X, l.Y} {
+		if math.IsNaN(v) || math.IsInf(v, 0) || math.Abs(v) > MaxLayoutCoordinate {
+			return invalid("layout coordinates must be finite numbers within ±%d", MaxLayoutCoordinate)
+		}
+	}
+	return nil
 }
 
 // validateHandler checks that a handler names a kind of assignee a step or a

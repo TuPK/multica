@@ -3,6 +3,7 @@ export {
   issueWorkflowDetailOptions,
   issueWorkflowListOptions,
   issueWorkflowUsageOptions,
+  issueWorkflowTemplatesOptions,
   resolveProjectWorkflow,
   issueStatusWorkflow,
   sharedWorkflowStatusKeys,
@@ -26,6 +27,7 @@ export {
   useIssueWorkflows,
   useIssueWorkflowDetail,
   useIssueWorkflowUsage,
+  useIssueWorkflowTemplates,
   useProjectWorkflow,
   useProjectWithWorkflow,
 } from "./hooks";
@@ -36,5 +38,5 @@ export {
   useSetProjectWorkflow,
   useSetWorkflowHandoff,
 } from "./mutations";
-export { issueWorkflowMappingPlanFrom } from "./mapping";
+export { issueWorkflowMappingPlanFrom, issueWorkflowStatusCreateForbidden } from "./mapping";
 export { parseIssueWorkflowBlockers } from "../api/schemas";

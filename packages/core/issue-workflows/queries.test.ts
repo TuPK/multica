@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { IssueWorkflow, IssueWorkflowStep } from "../types";
 import {
   issueStatusWorkflow,
+  issueWorkflowKeys,
+  issueWorkflowTemplatesOptions,
   projectMoveMayHandOff,
   resolveProjectWorkflow,
   sharedWorkflowStatusKeys,
@@ -143,5 +145,18 @@ describe("projectMoveMayHandOff", () => {
     const reviewing = { ...defaultWorkflow, steps: defaultWorkflow.steps.map((s) => (s.status_key === "in_review" ? lead : s)) };
     expect(projectMoveMayHandOff(reviewing, "drafting")).toBe(false);
     expect(projectMoveMayHandOff(reviewing, "in_review")).toBe(true);
+  });
+});
+
+describe("workflow template options (workflow-tab round 2)", () => {
+  it("scopes the template cache to the workspace", () => {
+    const options = issueWorkflowTemplatesOptions("ws-1");
+    expect(options.queryKey).toEqual(issueWorkflowKeys.templates("ws-1"));
+    expect(options.queryKey).not.toEqual(issueWorkflowKeys.templates("ws-2"));
+  });
+
+  it("selects the template list from the response", () => {
+    const options = issueWorkflowTemplatesOptions("ws-1");
+    expect(options.select?.({ templates: [] })).toEqual([]);
   });
 });

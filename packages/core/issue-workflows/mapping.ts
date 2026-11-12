@@ -16,3 +16,14 @@ export function issueWorkflowMappingPlanFrom(err: unknown): IssueWorkflowMapping
   const parsed = IssueWorkflowMappingPlanSchema.safeParse(plan);
   return parsed.success ? parsed.data : null;
 }
+
+/**
+ * True when a workflow save failed because the caller may not create a status
+ * the save names (403 `status_create_forbidden`, MUL-8120). Only workspace
+ * owners and admins create statuses; reusing an existing status stays open.
+ */
+export function issueWorkflowStatusCreateForbidden(err: unknown): boolean {
+  if (!(err instanceof ApiError) || err.status !== 403) return false;
+  const body = err.body;
+  return Boolean(body && typeof body === "object" && (body as { code?: unknown }).code === "status_create_forbidden");
+}

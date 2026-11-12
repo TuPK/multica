@@ -1,16 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { ISSUE_WORKFLOW_TEMPLATE_IDS } from "../api/schemas";
 import { projectListOptions } from "../projects/queries";
-import type { IssueWorkflow, IssueWorkflowUsage, Project } from "../types";
+import type { IssueWorkflow, IssueWorkflowTemplate, IssueWorkflowUsage, Project } from "../types";
 import {
   defaultWorkflow,
   issueWorkflowDetailOptions,
   issueWorkflowListOptions,
+  issueWorkflowTemplatesOptions,
   issueWorkflowUsageOptions,
   resolveProjectWorkflow,
 } from "./queries";
 
 const EMPTY: IssueWorkflow[] = [];
+const EMPTY_TEMPLATES: IssueWorkflowTemplate[] = [];
 
 /** The workspace's workflows, in name order. Empty until loaded. */
 export function useIssueWorkflows(wsId: string): { workflows: IssueWorkflow[]; isLoaded: boolean } {
@@ -84,4 +87,27 @@ export function useProjectWorkflow(
   projectId: string | null | undefined,
 ): IssueWorkflow | null {
   return useProjectWithWorkflow(wsId, projectId).workflow;
+}
+
+/**
+ * The system templates a new workflow can start from. A template id this build
+ * does not know is skipped. Empty until loaded.
+ */
+export function useIssueWorkflowTemplates(wsId: string): {
+  templates: IssueWorkflowTemplate[];
+  isLoading: boolean;
+  isError: boolean;
+  refetch: () => void;
+} {
+  const query = useQuery({ ...issueWorkflowTemplatesOptions(wsId), enabled: Boolean(wsId) });
+  const refetch = query.refetch;
+  return useMemo(
+    () => ({
+      templates: query.data ? query.data.filter((t) => ISSUE_WORKFLOW_TEMPLATE_IDS.has(t.id)) : EMPTY_TEMPLATES,
+      isLoading: query.isPending && Boolean(wsId),
+      isError: query.isError,
+      refetch: () => void refetch(),
+    }),
+    [query.data, query.isPending, query.isError, refetch, wsId],
+  );
 }

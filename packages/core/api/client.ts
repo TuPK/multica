@@ -5,6 +5,7 @@ import type { IssueWakeup, IssueWakeupInput, IssueWakeupSummaryRow, PausedWakeup
 import type { WorkspaceWakeupPage, WorkspaceWakeupFilters } from "../types/issue-wakeup";
 import { WorkspaceWakeupPageSchema, IssueWakeupSchema, IssueWakeupSummaryRowSchema, PausedWakeupSchema, SystemWakeupSchema, WakeupRunSchema, WorkspaceSystemWakeupSchema, RunQueuePreviewSchema, RunQueueWaitSchema } from "./schemas";
 import type { ArchivedInboxFilters } from "../inbox/filter-store";
+import type { ListIssueWorkflowTemplatesResponse } from "../types/issue-workflow";
 import type { ArchivedInboxPage, ArchivedInboxFacets } from "../types/inbox";
 import { parseQoderConnection, parseQoderCatalog, type QoderInput } from "../runtimes/qoder-schema";
 import { configStore } from "../config";
@@ -822,6 +823,8 @@ import {
   IssueStatusEntrySchema,
   ListIssueWorkflowsResponseSchema,
   ListIssueWorkflowUsageResponseSchema,
+  ListIssueWorkflowTemplatesResponseSchema,
+  EMPTY_LIST_ISSUE_WORKFLOW_TEMPLATES_RESPONSE,
   EMPTY_LIST_ISSUE_WORKFLOW_USAGE_RESPONSE,
   IssueWorkflowSchema,
   IssueWorkflowDryRunResponseSchema,
@@ -4825,6 +4828,14 @@ export class ApiClient {
     const raw = await this.fetch<unknown>(`/api/issue-workflows/usage`);
     return parseWithFallback(raw, ListIssueWorkflowUsageResponseSchema, EMPTY_LIST_ISSUE_WORKFLOW_USAGE_RESPONSE, {
       endpoint: "GET /api/issue-workflows/usage",
+    });
+  }
+
+  /** System templates a new workflow can start from. Unknown template ids are dropped. */
+  async listIssueWorkflowTemplates(): Promise<ListIssueWorkflowTemplatesResponse> {
+    const raw = await this.fetch<unknown>(`/api/issue-workflows/templates`);
+    return parseWithFallback(raw, ListIssueWorkflowTemplatesResponseSchema, EMPTY_LIST_ISSUE_WORKFLOW_TEMPLATES_RESPONSE, {
+      endpoint: "GET /api/issue-workflows/templates",
     });
   }
 

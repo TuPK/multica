@@ -72,6 +72,8 @@ type IssueWorkflowStepPayload struct {
 	Transitions   []issueworkflow.Transition  `json:"transitions"`
 	NextStatusKey string                      `json:"next_status_key,omitempty"`
 	BackStatusKey string                      `json:"back_status_key,omitempty"`
+	// Layout is the step's designer position; omitted when none is stored.
+	Layout *issueworkflow.Layout `json:"layout,omitempty"`
 }
 
 type IssueWorkflowResponse struct {
@@ -125,18 +127,24 @@ func stepToPayload(s issueworkflow.Step) IssueWorkflowStepPayload {
 		Transitions:   transitions,
 		NextStatusKey: s.NextStatusKey(),
 		BackStatusKey: s.BackStatusKey(),
+		Layout:        s.Layout,
 	}
 }
 
 // payloadToStep reads a step a client wrote. prev is the stored step of the
-// same status, or nil for a new one; see stepRouting.
+// same status, or nil for a new one; see stepRouting. The layout is not a
+// client input here: a handoff edit keeps the position the designer stored.
 func payloadToStep(statusKey string, in IssueWorkflowStepPayload, prev *issueworkflow.Step) issueworkflow.Step {
-	return issueworkflow.Step{
+	step := issueworkflow.Step{
 		StatusKey:    statusKey,
 		Handler:      issueworkflow.Handler{Type: in.Handler.Type, ID: in.Handler.ID},
 		Instructions: in.Instructions,
 		Transitions:  stepRouting(in.Transitions, in.NextStatusKey, in.BackStatusKey, prev),
 	}
+	if prev != nil {
+		step.Layout = prev.Layout
+	}
+	return step
 }
 
 // stepRouting resolves the transitions of a step a client wrote. A client that
@@ -270,6 +278,77 @@ func (h *Handler) ListIssueWorkflows(w http.ResponseWriter, r *http.Request) {
 		resp = append(resp, issueWorkflowToResponse(row, def, byWorkflow[uuidToString(row.ID)]))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"workflows": resp, "total": len(resp)})
+}
+
+// IssueWorkflowTemplateNewStatus is a status a template's save creates. Its key
+// is the one the server derives from the name, which the template's transitions
+// already name.
+type IssueWorkflowTemplateNewStatus struct {
+	Name     string `json:"name"`
+	Category string `json:"category"`
+}
+
+// IssueWorkflowTemplateStepPayload is one column of a template. A column is
+// either an existing status by key or a status the save creates. Handlers are
+// always none, and role_hint is a suggestion the client may show, never stored.
+type IssueWorkflowTemplateStepPayload struct {
+	StatusKey    string                          `json:"status_key,omitempty"`
+	NewStatus    *IssueWorkflowTemplateNewStatus `json:"new_status,omitempty"`
+	Handler      IssueWorkflowHandlerPayload     `json:"handler"`
+	RoleHint     string                          `json:"role_hint,omitempty"`
+	Instructions string                          `json:"instructions"`
+	Transitions  []issueworkflow.Transition      `json:"transitions"`
+}
+
+// IssueWorkflowTemplateResponse is a system template for a new draft. The
+// client translates its name and description by id.
+type IssueWorkflowTemplateResponse struct {
+	ID    string                             `json:"id"`
+	Steps []IssueWorkflowTemplateStepPayload `json:"steps"`
+}
+
+type ListIssueWorkflowTemplatesResponse struct {
+	Templates []IssueWorkflowTemplateResponse `json:"templates"`
+}
+
+// ListIssueWorkflowTemplates lists the system templates a new workflow can
+// start from. Any member may read them, as with the workflow list.
+func (h *Handler) ListIssueWorkflowTemplates(w http.ResponseWriter, r *http.Request) {
+	workspaceID := h.resolveWorkspaceID(r)
+	if _, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace id"); !ok {
+		return
+	}
+	if _, ok := h.requireWorkspaceMember(w, r, workspaceID, "workspace not found"); !ok {
+		return
+	}
+	templates := issueworkflow.Templates()
+	resp := make([]IssueWorkflowTemplateResponse, 0, len(templates))
+	for _, t := range templates {
+		steps := make([]IssueWorkflowTemplateStepPayload, len(t.Steps))
+		for i, s := range t.Steps {
+			steps[i] = templateStepToPayload(s)
+		}
+		resp = append(resp, IssueWorkflowTemplateResponse{ID: t.ID, Steps: steps})
+	}
+	writeJSON(w, http.StatusOK, ListIssueWorkflowTemplatesResponse{Templates: resp})
+}
+
+func templateStepToPayload(s issueworkflow.TemplateStep) IssueWorkflowTemplateStepPayload {
+	transitions := s.Transitions
+	if transitions == nil {
+		transitions = []issueworkflow.Transition{}
+	}
+	out := IssueWorkflowTemplateStepPayload{
+		StatusKey:    s.StatusKey,
+		Handler:      IssueWorkflowHandlerPayload{Type: issueworkflow.HandlerNone},
+		RoleHint:     s.RoleHint,
+		Instructions: s.Instructions,
+		Transitions:  transitions,
+	}
+	if s.New != nil {
+		out.NewStatus = &IssueWorkflowTemplateNewStatus{Name: s.New.Name, Category: s.New.Category}
+	}
+	return out
 }
 
 func (h *Handler) GetIssueWorkflow(w http.ResponseWriter, r *http.Request) {
@@ -439,6 +518,8 @@ type IssueWorkflowStepInput struct {
 	Transitions   *[]issueworkflow.Transition  `json:"transitions,omitempty"`
 	NextStatusKey string                       `json:"next_status_key,omitempty"`
 	BackStatusKey string                       `json:"back_status_key,omitempty"`
+	// Layout is the step's designer position. Omitted: the designer places it.
+	Layout *issueworkflow.Layout `json:"layout,omitempty"`
 }
 
 type IssueWorkflowWriteRequest struct {
@@ -481,6 +562,7 @@ func resolveStepInputs(ctx context.Context, qtx *db.Queries, wsUUID pgtype.UUID,
 		step := issueworkflow.Step{
 			StatusKey:    in.StatusKey,
 			Instructions: in.Instructions,
+			Layout:       in.Layout,
 		}
 		if in.Handler != nil {
 			step.Handler = issueworkflow.Handler{Type: in.Handler.Type, ID: in.Handler.ID}

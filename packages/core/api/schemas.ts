@@ -17,6 +17,13 @@ import type {
 } from "../types/hub";
 import { normalizeIssueStatusCategory } from "../issues/config/status";
 import type {
+  IssueWorkflowTemplate,
+  IssueWorkflowTemplateId,
+  IssueWorkflowTemplateStep,
+  ListIssueWorkflowTemplatesResponse,
+  NewWorkflowStatus,
+} from "../types/issue-workflow";
+import type {
   WorkflowHandoffPreview,
   IssueWorkflow,
   IssueWorkflowDryRunResponse,
@@ -645,6 +652,13 @@ const IssueWorkflowTransitionsSchema = z.unknown().transform((value): IssueWorkf
   });
 });
 
+// A canvas position. A layout this build cannot read is dropped on its own, so
+// the step still shows and the designer places it.
+const IssueWorkflowLayoutSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+}).loose().optional().catch(undefined);
+
 const IssueWorkflowStepSchema = z.object({
   status_key: z.string(),
   handler: IssueWorkflowHandlerSchema.default({ type: "none" }),
@@ -652,6 +666,7 @@ const IssueWorkflowStepSchema = z.object({
   transitions: IssueWorkflowTransitionsSchema,
   next_status_key: z.string().optional(),
   back_status_key: z.string().optional(),
+  layout: IssueWorkflowLayoutSchema,
 }).loose();
 
 export const IssueWorkflowSchema = z.object({
@@ -675,6 +690,64 @@ export const ListIssueWorkflowsResponseSchema = z.object({
 export const EMPTY_LIST_ISSUE_WORKFLOWS_RESPONSE: ListIssueWorkflowsResponse = {
   workflows: [],
   total: 0,
+};
+
+// System templates for a new workflow. A template id this build does not know
+// is skipped, not shown: the frontend has no name or description to show for it.
+// A template with a malformed step is dropped whole, since a template with a
+// column missing would route issues to statuses that do not exist.
+export const ISSUE_WORKFLOW_TEMPLATE_IDS: ReadonlySet<string> = new Set<string>([
+  "delivery", "content", "community", "sdlc_auto", "bmad_planning_auto", "sales_loop", "quick_fix",
+]);
+
+const IssueWorkflowTemplateStepSchema = z.object({
+  status_key: z.string().optional(),
+  new_status: z.object({
+    name: z.string(),
+    category: z.string().optional(),
+    color: z.string().optional(),
+  }).loose().optional(),
+  handler: IssueWorkflowHandlerSchema.default({ type: "none" }),
+  role_hint: z.string().optional(),
+  instructions: z.string().default(""),
+  transitions: IssueWorkflowTransitionsSchema,
+  layout: IssueWorkflowLayoutSchema,
+}).loose().transform((step, ctx): IssueWorkflowTemplateStep => {
+  const shared = {
+    handler: step.handler,
+    instructions: step.instructions,
+    transitions: step.transitions,
+    ...(step.role_hint !== undefined ? { role_hint: step.role_hint } : {}),
+    ...(step.layout !== undefined ? { layout: step.layout } : {}),
+  };
+  if (step.status_key !== undefined && step.new_status === undefined) {
+    return { ...shared, status_key: step.status_key };
+  }
+  if (step.new_status !== undefined && step.status_key === undefined) {
+    return { ...shared, new_status: step.new_status as NewWorkflowStatus };
+  }
+  ctx.addIssue({ code: "custom", message: "a template column names exactly one of status_key and new_status" });
+  return z.NEVER;
+});
+
+const IssueWorkflowTemplateItemSchema = z.object({
+  id: z.string(),
+  steps: z.array(IssueWorkflowTemplateStepSchema).default([]),
+}).loose();
+
+export const ListIssueWorkflowTemplatesResponseSchema = z.object({
+  templates: z.unknown().transform((value): IssueWorkflowTemplate[] => {
+    if (!Array.isArray(value)) return [];
+    return value.flatMap((item) => {
+      const parsed = IssueWorkflowTemplateItemSchema.safeParse(item);
+      if (!parsed.success || !ISSUE_WORKFLOW_TEMPLATE_IDS.has(parsed.data.id)) return [];
+      return [{ id: parsed.data.id as IssueWorkflowTemplateId, steps: parsed.data.steps }];
+    });
+  }),
+}).loose();
+
+export const EMPTY_LIST_ISSUE_WORKFLOW_TEMPLATES_RESPONSE: ListIssueWorkflowTemplatesResponse = {
+  templates: [],
 };
 
 export const EMPTY_ISSUE_WORKFLOW: IssueWorkflow = {

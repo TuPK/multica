@@ -4,6 +4,8 @@ import { parseWithFallback } from "../api/schema";
 import {
   EMPTY_ISSUE_WORKFLOW_DRY_RUN,
   EMPTY_LIST_ISSUE_WORKFLOWS_RESPONSE,
+  EMPTY_LIST_ISSUE_WORKFLOW_TEMPLATES_RESPONSE,
+  ListIssueWorkflowTemplatesResponseSchema,
   EMPTY_LIST_ISSUE_WORKFLOW_USAGE_RESPONSE,
   IssueWorkflowDryRunResponseSchema,
   IssueWorkflowSchema,
@@ -250,5 +252,149 @@ describe("workflow usage and delete blockers (workflow-tab §4)", () => {
       { endpoint: "GET /api/issue-workflows" },
     );
     expect(parsed).toEqual(EMPTY_LIST_ISSUE_WORKFLOWS_RESPONSE);
+  });
+});
+
+describe("workflow templates (MUL-7420)", () => {
+  const endpoint = "GET /api/issue-workflows/templates";
+  const delivery = {
+    id: "delivery",
+    steps: [
+      { status_key: "todo", handler: { type: "none" }, instructions: "", transitions: [] },
+      {
+        status_key: "in_review",
+        handler: { type: "none" },
+        instructions: "",
+        transitions: [
+          { id: "rejected", label: "Rejected", when: { field: "outcome", op: "eq", value: "rejected" }, to_status_key: "in_progress" },
+          { id: "default", label: "Default", when: null, to_status_key: "done" },
+        ],
+      },
+    ],
+  };
+
+  it("parses a template with its rework branch", () => {
+    const parsed = ListIssueWorkflowTemplatesResponseSchema.parse({ templates: [delivery] });
+    expect(parsed.templates).toHaveLength(1);
+    expect(parsed.templates[0]?.id).toBe("delivery");
+    expect(parsed.templates[0]?.steps[1]?.transitions?.map((t) => t.to_status_key)).toEqual(["in_progress", "done"]);
+  });
+
+  it("skips a template id this build does not know and keeps the rest", () => {
+    const parsed = ListIssueWorkflowTemplatesResponseSchema.parse({
+      templates: [{ id: "marketing", steps: [] }, { id: "community", steps: [] }],
+    });
+    expect(parsed.templates.map((t) => t.id)).toEqual(["community"]);
+  });
+
+  it("drops a template with malformed steps alone", () => {
+    const parsed = ListIssueWorkflowTemplatesResponseSchema.parse({
+      templates: [{ id: "content", steps: "nope" }, { id: "delivery", steps: [] }],
+    });
+    expect(parsed.templates.map((t) => t.id)).toEqual(["delivery"]);
+  });
+
+  it("falls back to no templates for a malformed body", () => {
+    expect(
+      parseWithFallback({ templates: "all" }, ListIssueWorkflowTemplatesResponseSchema, EMPTY_LIST_ISSUE_WORKFLOW_TEMPLATES_RESPONSE, { endpoint }),
+    ).toEqual(EMPTY_LIST_ISSUE_WORKFLOW_TEMPLATES_RESPONSE);
+    expect(
+      parseWithFallback(null, ListIssueWorkflowTemplatesResponseSchema, EMPTY_LIST_ISSUE_WORKFLOW_TEMPLATES_RESPONSE, { endpoint }),
+    ).toEqual(EMPTY_LIST_ISSUE_WORKFLOW_TEMPLATES_RESPONSE);
+  });
+});
+
+describe("workflow template columns and layout (workflow-tab round 2)", () => {
+  const endpoint = "GET /api/issue-workflows/templates";
+  const column = (overrides: Record<string, unknown>) => ({
+    handler: { type: "none" },
+    instructions: "",
+    transitions: [],
+    ...overrides,
+  });
+
+  it("parses every template id the server ships", () => {
+    const ids = ["delivery", "content", "community", "sdlc_auto", "bmad_planning_auto", "sales_loop", "quick_fix"];
+    const parsed = ListIssueWorkflowTemplatesResponseSchema.parse({
+      templates: ids.map((id) => ({ id, steps: [column({ status_key: "todo" })] })),
+    });
+    expect(parsed.templates.map((t) => t.id)).toEqual(ids);
+  });
+
+  it("keeps a column that creates its status, with the name and category", () => {
+    const parsed = ListIssueWorkflowTemplatesResponseSchema.parse({
+      templates: [{
+        id: "quick_fix",
+        steps: [column({ new_status: { name: "QA", category: "started" }, role_hint: "qa" })],
+      }],
+    });
+    const step = parsed.templates[0]?.steps[0];
+    expect(step && "status_key" in step).toBe(false);
+    expect(step && "new_status" in step ? step.new_status : null).toEqual({ name: "QA", category: "started" });
+    expect(step?.role_hint).toBe("qa");
+  });
+
+  it("drops a template whose column names both an existing and a created status, and keeps the rest", () => {
+    const parsed = ListIssueWorkflowTemplatesResponseSchema.parse({
+      templates: [
+        { id: "content", steps: [column({ status_key: "todo", new_status: { name: "Drafting" } })] },
+        { id: "delivery", steps: [column({ status_key: "todo" })] },
+      ],
+    });
+    expect(parsed.templates.map((t) => t.id)).toEqual(["delivery"]);
+  });
+
+  it("drops a template whose column names neither an existing nor a created status", () => {
+    const parsed = ListIssueWorkflowTemplatesResponseSchema.parse({
+      templates: [{ id: "community", steps: [column({})] }, { id: "delivery", steps: [column({ status_key: "todo" })] }],
+    });
+    expect(parsed.templates.map((t) => t.id)).toEqual(["delivery"]);
+  });
+
+  it("degrades an unknown handler type in a template column to none", () => {
+    const parsed = ListIssueWorkflowTemplatesResponseSchema.parse({
+      templates: [{ id: "delivery", steps: [column({ status_key: "todo", handler: { type: "robot" } })] }],
+    });
+    expect(parsed.templates[0]?.steps[0]?.handler.type).toBe("none");
+  });
+
+  it("drops a malformed template layout alone and keeps the column", () => {
+    const parsed = ListIssueWorkflowTemplatesResponseSchema.parse({
+      templates: [{ id: "delivery", steps: [column({ status_key: "todo", layout: { x: "10", y: 0 } })] }],
+    });
+    expect(parsed.templates.map((t) => t.id)).toEqual(["delivery"]);
+    expect(parsed.templates[0]?.steps[0]?.layout).toBeUndefined();
+  });
+
+  it("falls back to no templates for a malformed template item among valid ones", () => {
+    const parsed = ListIssueWorkflowTemplatesResponseSchema.parse({
+      templates: [null, 42, "sales_loop", { id: "sales_loop", steps: "nope" }, { id: "quick_fix", steps: [column({ status_key: "todo" })] }],
+    });
+    expect(parsed.templates.map((t) => t.id)).toEqual(["quick_fix"]);
+  });
+
+  it("falls back to no templates for a body that is not an object", () => {
+    for (const body of [null, "templates", [], 7]) {
+      expect(
+        parseWithFallback(body, ListIssueWorkflowTemplatesResponseSchema, EMPTY_LIST_ISSUE_WORKFLOW_TEMPLATES_RESPONSE, { endpoint }),
+      ).toEqual(EMPTY_LIST_ISSUE_WORKFLOW_TEMPLATES_RESPONSE);
+    }
+  });
+
+  it("reads a step's layout on a saved workflow", () => {
+    const workflow = IssueWorkflowSchema.parse({
+      ...baseWorkflow,
+      steps: [{ status_key: "todo", layout: { x: 120, y: -40 } }, { status_key: "done" }],
+    });
+    expect(workflow.steps[0]?.layout).toEqual({ x: 120, y: -40 });
+    expect(workflow.steps[1]?.layout).toBeUndefined();
+  });
+
+  it("treats a layout with a non-finite coordinate as no layout, and keeps the step", () => {
+    for (const layout of [{ x: Number.NaN, y: 0 }, { x: 0, y: Number.POSITIVE_INFINITY }, { x: 1 }]) {
+      const workflow = IssueWorkflowSchema.parse({ ...baseWorkflow, steps: [{ status_key: "todo", layout }] });
+      expect(workflow.steps).toHaveLength(1);
+      expect(workflow.steps[0]?.layout).toBeUndefined();
+    }
   });
 });

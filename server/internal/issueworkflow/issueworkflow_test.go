@@ -3,6 +3,7 @@ package issueworkflow
 import (
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"strings"
 	"testing"
@@ -599,4 +600,48 @@ func TestBriefKeepsStepWordingForLegacyDaemonsAndObservers(t *testing.T) {
 func blockedOnlyDefault() Definition {
 	return withHandoffs(Definition{Name: DefaultName, IsDefault: true, Steps: stepsFor(BuiltInDefaultKeys())},
 		[]Step{{StatusKey: "blocked", Handler: Handler{Type: HandlerProjectLead}}})
+}
+
+func TestValidateHandoffChecksLayout(t *testing.T) {
+	def := devDefinition()
+	at := func(l *Layout) Step {
+		return Step{StatusKey: "implement", Handler: Handler{Type: HandlerNone}, Layout: l}
+	}
+	for _, l := range []*Layout{nil, {X: 0, Y: 0}, {X: -MaxLayoutCoordinate, Y: MaxLayoutCoordinate}} {
+		if err := ValidateHandoff(NormalizeHandoff(at(l)), def); err != nil {
+			t.Fatalf("layout %+v: ValidateHandoff = %v, want nil", l, err)
+		}
+	}
+	for _, l := range []*Layout{
+		{X: MaxLayoutCoordinate + 1},
+		{Y: -MaxLayoutCoordinate - 1},
+		{X: math.NaN()},
+		{Y: math.Inf(1)},
+	} {
+		err := ValidateHandoff(NormalizeHandoff(at(l)), def)
+		if err == nil || !strings.Contains(err.Error(), "layout coordinates") {
+			t.Fatalf("layout %+v: ValidateHandoff = %v, want a layout error", *l, err)
+		}
+	}
+}
+
+func TestEncodeStepsRoundTripsLayout(t *testing.T) {
+	steps := []Step{
+		{StatusKey: "implement", Handler: Handler{Type: HandlerNone}, Layout: &Layout{X: 120, Y: -40.5}},
+		{StatusKey: "code_review", Handler: Handler{Type: HandlerNone}},
+	}
+	raw, err := EncodeSteps(steps)
+	if err != nil {
+		t.Fatalf("EncodeSteps: %v", err)
+	}
+	decoded, err := DecodeSteps(raw)
+	if err != nil {
+		t.Fatalf("DecodeSteps: %v", err)
+	}
+	if decoded[0].Layout == nil || *decoded[0].Layout != (Layout{X: 120, Y: -40.5}) {
+		t.Fatalf("layout after round trip = %+v, want {120 -40.5}", decoded[0].Layout)
+	}
+	if decoded[1].Layout != nil {
+		t.Fatalf("step without a layout decoded with %+v, want nil", decoded[1].Layout)
+	}
 }

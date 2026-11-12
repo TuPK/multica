@@ -16,6 +16,7 @@ export const issueWorkflowKeys = {
   list: (wsId: string) => [...issueWorkflowKeys.all(wsId), "list"] as const,
   detail: (wsId: string, id: string) => [...issueWorkflowKeys.all(wsId), "detail", id] as const,
   usage: (wsId: string) => [...issueWorkflowKeys.all(wsId), "usage"] as const,
+  templates: (wsId: string) => [...issueWorkflowKeys.all(wsId), "templates"] as const,
   handoffPreview: (wsId: string, issueId: string, status: string, projectId = "") =>
     [...issueWorkflowKeys.all(wsId), "handoff-preview", issueId, status, projectId] as const,
 };
@@ -67,6 +68,19 @@ export function issueWorkflowUsageOptions(wsId: string) {
     queryFn: () => api.listIssueWorkflowUsage(),
     select: (data) => data.usage,
     staleTime: 60_000,
+  });
+}
+
+/**
+ * The system templates a new workflow can start from. They change only with a
+ * server release, so a long stale time is safe.
+ */
+export function issueWorkflowTemplatesOptions(wsId: string) {
+  return queryOptions({
+    queryKey: issueWorkflowKeys.templates(wsId),
+    queryFn: () => api.listIssueWorkflowTemplates(),
+    select: (data) => data.templates,
+    staleTime: 5 * 60_000,
   });
 }
 
