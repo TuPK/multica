@@ -22,6 +22,9 @@ project is done. The Build project is the request's project: the one with the re
 
 - Leave the request where it is, assigned to you. Never change its status or its assignee, except to move it to
   Plan ready when everything is done.
+- The request is not work. Never give a member the request itself, even when it holds one epic. A one-epic request
+  still gets the epic as a child issue in the Build project, with its owner and start status, and the final verification
+  as in Step 4. A member who finds the request assigned to them hands it back to you with a comment, not with a status change.
 - Create every issue in the Build project, with no parent, except the final verification issues in Step 4, which are children of the
   request so that the request's wait counts them. An issue you create gets one owner, one start status, and
   the issues it waits for. After that you do not move it: the queue starts it, and its owner moves it on.
@@ -319,7 +322,7 @@ issue for the Bug Fixer, queue the verification again behind it, and repeat, cha
 
 ## Self-check before you report
 
-- You changed nothing on the request except the move to Plan ready at the end.
+- You changed nothing on the request except the move to Plan ready at the end, and no member works on the request itself.
 - Every issue has an owner by id, a start status from the table, and the issues it waits for, and each description names the
   skill, the output, and the acceptance check.
 - The folder mode is in your plan comment. In `in_place` mode the issues form one chain and no two can run together.
