@@ -61,7 +61,7 @@ Source Studio đúng nghĩa là P1 (mục 12).
 | --- | --- | --- |
 | Template squad: roles, charter, instructions, `builtinSkills`; quickstart idempotent | `packages/core/squads/templates.ts`, `quickstart.ts` | Khai báo `sales_loop` |
 | Mẫu squad chạy theo lịch, không workflow, lead giao bằng sub-issue, critic kiểm, đầu ra là proposal | template `market_research` trong `templates.ts` | Khuôn gần nhất với squad này (gần hơn SDLC) |
-| Skill của một squad template: thư mục trong `sdlc-skills/`, sinh bằng `pnpm generate:sdlc-skills`, gắn qua `builtinSkills` (`attachBuiltinSkills` chỉ tìm trong `SDLC_BUILTIN_SKILLS`); skill được mang cả `scripts/` (ví dụ `bmad-toolbox--bmad-deep-recon`); `SDLC_SKILL_NAMES` đã lọc skill chỉ dành cho planning | `packages/core/squads/sdlc-skills/`, `scripts/generate-sdlc-skills.mjs`, `templates.ts` | Chỗ đặt skill `sales-*` và `SALES_SKILL_NAMES`, cùng đường BMAD Planning đã đi. Thư mục `packages/core/squads/skills/` là cơ chế khác (skill của starter company do server cài), không gắn vào squad qua quickstart |
+| Skill của một squad template: thư mục trong `sdlc-skills/`, sinh bằng `pnpm generate:sdlc-skills`, gắn qua `builtinSkills` (`attachBuiltinSkills` chỉ tìm trong `SDLC_BUILTIN_SKILLS`); skill được mang cả `scripts/` (ví dụ `bmad-toolbox--bmad-deep-recon`); `SDLC_SKILL_NAMES` đã lọc skill chỉ dành cho planning | `catalog/skills/builtin/`, `scripts/generate-sdlc-skills.mjs`, `templates.ts` | Chỗ đặt skill `sales-*` và `SALES_SKILL_NAMES`, cùng đường BMAD Planning đã đi. Thư mục `catalog/skills/starter/` là cơ chế khác (skill của starter company do server cài), không gắn vào squad qua quickstart |
 | KB: kind có mục bắt buộc và template, chính sách đăng `manual/auto_after_review/auto`, `--idempotency-key`, `--supersedes`, `--confidence`, `--valid-until`, `--tag`, draft/publish | `server/internal/service/knowledge_kind.go`, `knowledge_write.go`, `cmd_knowledge.go` | Lưu hồ sơ, bài học, tài liệu nền |
 | 27 kind mặc định do server seed cho mỗi workspace | `defaultKnowledgeKinds` | Thêm kind `sales_*` cùng cơ chế |
 | Tìm kiếm ngữ nghĩa (`multica knowledge search`), Wiki, cây thư mục | `packages/views/knowledge/` | Dossier tìm được, liên kết chéo |
@@ -651,7 +651,7 @@ tên với agent của starter company (như đã làm ở spec BMAD). Tách age
 Tên và vai trò trùng ý hình ảnh đầu vào ở chỗ nào là trùng, không phải mục tiêu. Số agent giảm từ chín (một node một lời nhắc) xuống năm vì ở Multica
 một skill mang được chuyên môn; Scout và Writer vẫn tách để người tìm khách không phải người nhắn khách.
 
-### 8.2 Skill (thư mục `packages/core/squads/sdlc-skills/sales-*`, sinh bằng `pnpm generate:sdlc-skills`)
+### 8.2 Skill (thư mục `catalog/skills/builtin/sales-*`, sinh bằng `pnpm generate:sdlc-skills`)
 
 | Skill | Nội dung |
 | --- | --- |
@@ -771,7 +771,7 @@ là vòng học hiệu quả); tỷ lệ account qualify được bạn giữ l�
 | --- | --- | --- |
 | `packages/core/squads/templates.ts` | Thêm `sales_loop` vào `SquadTemplateId`, 5 role vào `SquadRoleKey`/`SQUAD_ROLES`, charter, instructions, `routines[]` thay `routine` | P0 |
 | `packages/core/squads/quickstart.ts` | Tạo nhiều routine; `QuickstartOutcome.routine` thành danh sách; `instructionsFor` cho role sales | P0 |
-| `packages/core/squads/sdlc-skills/sales-*`, `scripts/generate-sdlc-skills.mjs`, `templates.ts` | 7 skill; sinh lại `sdlc-skills-data.ts`; `SALES_SKILL_NAMES` tường minh; mở rộng bộ lọc của `SDLC_SKILL_NAMES` để SDLC squad không nhận skill sales; test dạng `planning-skills.test.ts` | P0 |
+| `catalog/skills/builtin/sales-*`, `scripts/generate-sdlc-skills.mjs`, `templates.ts` | 7 skill; sinh lại `sdlc-skills-data.ts`; `SALES_SKILL_NAMES` tường minh; mở rộng bộ lọc của `SDLC_SKILL_NAMES` để SDLC squad không nhận skill sales; test dạng `planning-skills.test.ts` | P0 |
 | `packages/core/squads/upgrade.ts`, `scripts/upgrade-sdlc-squad.mjs` | Cho phép nâng cấp squad sales (skill, instruction) | P0 |
 | `server/internal/service/knowledge_kind.go` | Thêm kind `sales_*`, chính sách đăng, base `sales` vào seed (kiểm cách seed cho workspace đã có) | P0 |
 | `packages/views/modals/squad-quickstart.tsx`, `locales/*/modals.json` | Thẻ chọn template, bảy ngôn ngữ | P0 |
@@ -781,7 +781,7 @@ là vòng học hiệu quả); tỷ lệ account qualify được bạn giữ l�
 | `server/cmd/multica/cmd_knowledge.go` | `--field`, `update`, `list --field` | P1 |
 | `packages/core/knowledge/` | Schema zod, query/mutation có `wsId`, kiểu `fields` | P1 |
 | `packages/views/knowledge/` | Tab Collections (bảng, kanban, chi tiết), view lưu sẵn, phòng Sales ở Company | P1 |
-| `packages/core/squads/sdlc-skills/sales-source-builder`, bộ chạy recipe | Skill onboarding; `multica sales probe` và `multica sales collect` (Go, `server/cmd/multica/`), recipe có schema và test với phản hồi ghi sẵn | P0 |
+| `catalog/skills/builtin/sales-source-builder`, bộ chạy recipe | Skill onboarding; `multica sales probe` và `multica sales collect` (Go, `server/cmd/multica/`), recipe có schema và test với phản hồi ghi sẵn | P0 |
 | Web engine Crawl4AI | Phát hiện engine trong `multica sales probe/collect`, `fetch.engine`, schema CSS/XPath, trần tài nguyên, chặn IP nội bộ, hardening 4.13; tài liệu chạy container (phiên bản ghim, token); MCP của Crawl4AI vào `mcp_config` của Sales Scout | P0 |
 | Mẫu nguồn starter (mọi nguồn có adapter ở 4.5 và 16 dòng mẫu mạng xã hội ở 4.10) | Dữ liệu seed: tài liệu `sales_source` do quickstart tạo, có recipe khung | P0 |
 | `server/migrations/`, `packages/core/types/squad.ts` | `squad.template_key`; quickstart đặt giá trị | P1 |

@@ -91,13 +91,13 @@ Mỗi cổng ra một đoạn kết luận ngắn ghi vào spec mục 10.2 (đá
 
 Files: `scripts/lib/skill-bundle.mjs` (mới, `skillFiles`, `frontmatterDescription`), `scripts/generate-sdlc-skills.mjs` (gọi lại lib).
 
-- Bước: chuyển hai hàm sang lib, đổi script cũ import; chạy `pnpm generate:sdlc-skills` rồi `git diff --stat packages/core/squads/sdlc-skills-data.ts` phải rỗng.
+- Bước: chuyển hai hàm sang lib, đổi script cũ import; chạy `pnpm catalog:build` rồi `git diff --stat packages/core/squads/sdlc-skills-data.ts` phải rỗng.
 - Kiểm: test stale của `sdlc-skills.test.ts` vẫn xanh.
 - Commit: `refactor(scripts): share the skill bundle helpers between generators`.
 
 ### K2 Vendor upstream
 
-Files: `packages/core/squads/kitviet-upstream/{LICENSE,NOTICE.md,UPSTREAM.json}` và `claude-code/kv/{skills,agents}` của năm nghề P0 (`phap-ly`, `ke-toan`, `kinh-doanh`, `marketing`, `hanh-chinh-van-phong`) cộng phần nền, đúng commit `faee4f14cd21672325a7f442b19c7239a5d7f152`.
+Files: `catalog/_sources/kitviet/upstream/{LICENSE,NOTICE.md,UPSTREAM.json}` và `claude-code/kv/{skills,agents}` của năm nghề P0 (`phap-ly`, `ke-toan`, `kinh-doanh`, `marketing`, `hanh-chinh-van-phong`) cộng phần nền, đúng commit `faee4f14cd21672325a7f442b19c7239a5d7f152`.
 
 - Chỉ chép `claude-code/kv/skills`, `claude-code/kv/agents` và bốn script xuất file (một bản, vì giống nhau giữa các nghề); không chép `codex/`, `claude-web/`, `brand/`, `*.zip`.
 - `NOTICE.md`: nguồn, commit, ngày lấy (2026-11-10), danh sách thay đổi (chỉ là "không sửa tay; mọi thay đổi nằm ở generator và `kitviet-patches/`"). `UPSTREAM.json`: `{ repo, ref, license: "MIT", fetchedAt }`.
@@ -106,7 +106,7 @@ Files: `packages/core/squads/kitviet-upstream/{LICENSE,NOTICE.md,UPSTREAM.json}`
 
 ### K3 Dữ liệu viết lại và bản vá
 
-Files: `packages/core/squads/kitviet-rewrites.json` (bảng ở spec 5.5), `packages/core/squads/kitviet-patches/{lich-han-nop-thue,kiem-tra-hoa-don-dau-vao,goi-y-dinh-khoan,soat-luat-quang-cao,the-le-minigame-khuyen-mai,soan-cong-van-hanh-chinh}.json` cùng các bản vá cho trích dẫn luật nằm ngoài sáu skill đó (xem bảng ở spec 5.5). Không có `_all.json`: quy tắc áp mọi skill nằm trong `kitviet-rewrites.json`.
+Files: `catalog/_sources/kitviet/rewrites.json` (bảng ở spec 5.5), `catalog/_sources/kitviet/patches/{lich-han-nop-thue,kiem-tra-hoa-don-dau-vao,goi-y-dinh-khoan,soat-luat-quang-cao,the-le-minigame-khuyen-mai,soan-cong-van-hanh-chinh}.json` cùng các bản vá cho trích dẫn luật nằm ngoài sáu skill đó (xem bảng ở spec 5.5). Không có `_all.json`: quy tắc áp mọi skill nằm trong `kitviet-rewrites.json`.
 
 - Mỗi bản vá là `[{ "find": "...", "replace": "..." }]`, `find` là câu nguyên văn lấy từ upstream đã vendor (copy bằng máy, không gõ).
 - `replace` luôn trỏ vào sổ quy định ("tra dòng <id> của Sổ quy định - <squad>"), không viết lại mốc. Nếu sổ chưa tồn tại: câu thay ghi "chưa có sổ quy định: tự tra nguồn chính thức và ghi `[chưa tìm thấy trên nguồn chính thức]` nếu không có" (Q1: sổ không phải điều kiện).
@@ -127,7 +127,7 @@ Thứ tự bước (spec 5.5): (1) đọc agent và skill của nghề và phầ
 
 ### K5 Skill và instructions viết mới
 
-Files: `packages/core/squads/kitviet-skills/{kv-delivery-core,kv-squad-lead,kv-company-profile}/SKILL.md` (viết tay, tiếng Anh, mẫu đầu ra tiếng Việt), `packages/core/squads/kitviet-agent-instructions.ts`, `packages/core/agents/instruction-templates.ts` (năm id `kv_lead`, `kv_collector`, `kv_drafter`, `kv_gate`, `kv_handover`).
+Files: `catalog/_sources/kitviet/skills/{kv-delivery-core,kv-squad-lead,kv-company-profile}/SKILL.md` (viết tay, tiếng Anh, mẫu đầu ra tiếng Việt), `packages/core/squads/kitviet-agent-instructions.ts`, `packages/core/agents/instruction-templates.ts` (năm id `kv_lead`, `kv_collector`, `kv_drafter`, `kv_gate`, `kv_handover`).
 
 - `kv-delivery-core` gồm: giao thức issue (spec 5.2), `VERDICT:` và vòng sửa tối đa 2, ba loại cổng người và cơ chế thông báo (5.3, 10.2 dòng c), `[cần bổ sung]`, không đoán số, **tính bằng script không tính nhẩm** (F19), xử lý `.xlsx` (F19), chạy script theo thư mục chứa SKILL.md (F26), "hỏi" nghĩa là cổng loại 1 chỉ khi thiếu thứ không mặc định được (F27), ngày chạy ở dòng đầu của issue routine (F21), vai tra web không có công cụ web thì dừng loại 1 (F25), thiếu thư viện thì dừng loại 1 và không tự cài (F9).
 - `kv-squad-lead`: triage, kế hoạch (thay `lap-ke-hoach-dieu-phoi`), giao sub-issue, kiểm hợp đồng bàn giao, đếm vòng sửa, `blocked`/`in_review` trên request gốc, tổng hợp.
@@ -155,7 +155,7 @@ Files: `packages/core/squads/quickstart.ts` (`attachBuiltinSkills`, `isBuiltinSk
 
 ### K8 Test của pack và kiểm bundle
 
-Files: `packages/core/squads/kitviet-skills.test.ts`.
+Files: `catalog/_sources/kitviet/skills.test.ts`.
 
 - Gồm: không còn `kv:pro`, `mochistudio`, `Bản Pro`, `.kv-run`, `CLAUDE.md`, `AGENTS.md`, `ket-qua/`, "phiên chính", `Claude Desktop`, `Codex`, `\d\d-[a-z-]+\.md` trong thân skill và agent sinh ra; mọi `kv:x` phân giải được **theo từng squad** (F17); mọi gate có đúng một dòng `VERDICT:` (F18); mỗi bản vá áp đúng một lần; `name` bằng thư mục; không trùng tên với skill khác; `LICENSE` và `NOTICE.md` có mặt; dung lượng mỗi pack dưới ngưỡng (tầng lõi dưới 140 KiB, Accounting dưới 160 KiB theo ngưỡng riêng ở spec 5.5, dưới 30 skill); `description` dưới 400 ký tự; dữ liệu sinh khớp nguồn (`--check`).
 - Kiểm kích thước bundle: dựng web trước và sau (`pnpm --filter @multica/web build` hoặc lệnh đang dùng), so chunk của trang không dùng kitviet; PR ghi hai số.

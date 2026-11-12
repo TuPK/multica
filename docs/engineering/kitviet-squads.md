@@ -201,11 +201,11 @@ squad cần (ví dụ chế độ kế toán đang áp dụng) nằm trong cùng
 
 ### 5.5 Đóng gói và sinh dữ liệu
 
-**Thư mục và tên.** `packages/core/squads/kitviet-skills/<tên>/SKILL.md` (+ `scripts/`), tên có dấu hai chấm lưu bằng `--` như quy ước hiện có (`kv--viet-email`).
+**Thư mục và tên.** `catalog/_sources/kitviet/skills/<tên>/SKILL.md` (+ `scripts/`), tên có dấu hai chấm lưu bằng `--` như quy ước hiện có (`kv--viet-email`).
 Dữ liệu sinh ra ở `kitviet-skills-data.ts` và **tách theo pack** (một file mỗi squad cộng một file `common`), nạp bằng `import()` khi quickstart chạy.
 Không thêm vào `SDLC_BUILTIN_SKILLS`: mọi squad SDLC nạp cả mảng đó, mà file hiện có đã là 2 MB.
 
-**Nguồn.** Một thư mục `packages/core/squads/kitviet-upstream/` giữ `LICENSE`, `NOTICE.md` (nguồn, commit đã chốt, ngày lấy, danh sách thay đổi) và các tệp thô của
+**Nguồn.** Một thư mục `catalog/_sources/kitviet/upstream/` giữ `LICENSE`, `NOTICE.md` (nguồn, commit đã chốt, ngày lấy, danh sách thay đổi) và các tệp thô của
 5 nghề P0 + phần nền, đúng như commit đã pin. Generator đọc từ đó, không đọc từ mạng, nên build không đổi khi upstream đổi.
 
 **Generator** `scripts/generate-kitviet-pack.mjs`:
@@ -238,7 +238,7 @@ Không thêm vào `SDLC_BUILTIN_SKILLS`: mọi squad SDLC nạp cả mảng đó
 
 Test sinh dữ liệu fail nếu thân đã sinh còn khớp một trong các chuỗi cấm sau (danh sách đầy đủ trong `FORBIDDEN` của generator, test `kitviet-skills.test.ts` giữ bản sao): `kv:pro`, `mochistudio`, `Bản Pro`, `.kv-run`, `CLAUDE.md`, `AGENTS.md`, `ket-qua/`, `phiên chính`, `Claude Code`, `Claude web`, `Claude Desktop`, `Claude.ai` (không phân biệt hoa thường), `Codex`, `Cursor`, `\d\d-[a-z-]+\.md`, `-v\d\.md`, lệnh cài (`pip install`, `apt install`, "hoặc cài LibreOffice", "Cài bằng lệnh"), `kv:<chữ>` chưa phân giải, và tên thư mục tác giả (`kv-delivery-core` ...). Từ "Claude" đứng một mình được giữ, vì một ví dụ nhật ký dùng AI trong một skill nêu tên công cụ. Tên cơ quan có hai quy tắc viết lại: `Cục Hải quan` thành `cơ quan hải quan`; lịch sử của `Tổng cục Thống kê` thành `cơ quan thống kê nhà nước` (runbook mục 8e).
 
-**Lớp vá (F23).** Thư mục `packages/core/squads/kitviet-patches/<skill>.json`, mỗi tệp là danh sách `{ "find": "<câu gốc>", "replace": "<câu mới>" }`. Generator áp sau
+**Lớp vá (F23).** Thư mục `catalog/_sources/kitviet/patches/<skill>.json`, mỗi tệp là danh sách `{ "find": "<câu gốc>", "replace": "<câu mới>" }`. Generator áp sau
 khi xóa Pro và viết lại tên tệp; **thất bại** nếu một `find` không khớp đúng một chỗ, để upstream đổi thì build đỏ chứ không lặng lẽ mất bản vá. Test đếm số bản vá và số
 `find` đã áp. Câu thay luôn trỏ vào sổ quy định ("tra dòng <id> của Sổ quy định"), không viết lại mốc. Bản vá P0:
 
@@ -508,7 +508,7 @@ Mỗi PR là một commit nguyên tử theo quy ước của repo (`feat(squads)
 
 | PR | Nội dung | Tệp chính |
 | --- | --- | --- |
-| 1 · Khung (P0-A) | Rút hàm dùng chung; generator; nguồn upstream; ba skill viết mới; loại vai và instructions; nạp pack theo yêu cầu; không squad nào bật | `scripts/lib/skill-bundle.mjs`, `scripts/generate-sdlc-skills.mjs` (gọi lại lib), `scripts/generate-kitviet-pack.mjs`, `package.json` (`generate:kitviet`), `packages/core/squads/kitviet-upstream/**`, `kitviet-rewrites.json`, `kitviet-patches/*.json`, `kitviet-skills/{kv-delivery-core,kv-squad-lead,kv-company-profile}/SKILL.md`, `kitviet-skills-data/{common,…}.ts`, `kitviet-agent-instructions.ts` (`KV_ROLE_AGENT_INSTRUCTIONS`), `packages/core/agents/instruction-templates.ts` (năm id `kv_*`), `kitviet-skills.test.ts` |
+| 1 · Khung (P0-A) | Rút hàm dùng chung; generator; nguồn upstream; ba skill viết mới; loại vai và instructions; nạp pack theo yêu cầu; không squad nào bật | `scripts/lib/skill-bundle.mjs`, `scripts/generate-sdlc-skills.mjs` (gọi lại lib), `scripts/generate-kitviet-pack.mjs`, `package.json` (`generate:kitviet`), `catalog/_sources/kitviet/upstream/**`, `kitviet-rewrites.json`, `kitviet-patches/*.json`, `kitviet-skills/{kv-delivery-core,kv-squad-lead,kv-company-profile}/SKILL.md`, `kitviet-skills-data/{common,…}.ts`, `kitviet-agent-instructions.ts` (`KV_ROLE_AGENT_INSTRUCTIONS`), `packages/core/agents/instruction-templates.ts` (năm id `kv_*`), `kitviet-skills.test.ts` |
 | 1 · (tiếp) | `attachBuiltinSkills` tra gói theo tên: `kv--*` nạp bằng `import()` từ `kitviet-skills-data`, tên khác tra `SDLC_BUILTIN_SKILLS` như cũ; `config.source = "kitviet"`. `SquadTemplate` thêm `leaderSkills?` và `roleSkills?` (gắn bằng `addAgentSkills` sau khi tạo agent, mục 10.2 dòng a). `SquadRoutineTemplate` thêm `startPaused?: boolean`: `ensureRoutine` gọi `updateAutopilot(id, { status: "paused" })` ngay sau khi **tạo mới** (kiểm tra mã nguồn 2026-11-10: routine hiện luôn tạo ở trạng thái hoạt động; không bao giờ tự bỏ tạm dừng routine đã có) | `packages/core/squads/quickstart.ts` (`attachBuiltinSkills`, `isBuiltinSkill`, `ensureRoutine`), `templates.ts` (kiểu `SquadRoutineTemplate`), `quickstart.test.ts` |
 | 2 · Office Admin | Template `kv_admin`, vai `admin_*`, charter, bản vá và sổ quy định Admin, locale | `packages/core/squads/kitviet-templates.ts`, `templates.ts` (`SquadTemplateId`, `SQUAD_TEMPLATES`), `packages/views/locales/{en,es,fr,ja,ko,zh-Hans,zh-Hant}/modals.json` (khóa `…templates.kv_admin`), `docs/engineering/kitviet-runbook.md` |
 | 3 · B2B | như PR 2 cho `kv_b2b` | như trên |

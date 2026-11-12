@@ -131,7 +131,7 @@ Xem mục 0. Các thành phần nghiên cứu hiện có:
 | Role nghiên cứu ở squad khác | `plan_researcher` (Planning), `cs_researcher` (Content Studio, `content-studio.ts`), `sales_scout` | Cùng dùng agent template `market_scout` làm nền. |
 | Test liên quan | `packages/core/squads/templates.test.ts` (khối "market research template"), `company-template.test.ts`, `quickstart.test.ts`, `packages/core/agents/instruction-templates.test.ts` | Khóa cứng: danh sách role, cron, chuỗi như "after the critic has reviewed them". |
 | i18n | `packages/views/locales/{en,es,fr,ja,ko,zh-Hans,zh-Hant}/modals.json` (khóa `templates.market_research`), `issues.json` (`company_cards.market_research`) | Thẻ quickstart dịch theo `id`. |
-| Cơ chế skill | `packages/core/squads/sdlc-skills/<tên>/SKILL.md` → sinh `sdlc-skills-data.ts` bằng `pnpm generate:sdlc-skills`; danh sách tên skill theo squad ở `templates.ts` (`PLANNING_SKILL_NAMES`, `SALES_SKILL_NAMES`) | Bộ lọc `NON_SDLC_SKILLS` loại skill theo **tiền tố** (`planning-`, `sales-`...) khỏi squad SDLC. Skill có tiền tố mới không được liệt kê sẽ bị squad SDLC import nhầm. |
+| Cơ chế skill | `catalog/skills/builtin/<tên>/SKILL.md` → sinh `sdlc-skills-data.ts` bằng `pnpm generate:sdlc-skills`; danh sách tên skill theo squad ở `templates.ts` (`PLANNING_SKILL_NAMES`, `SALES_SKILL_NAMES`) | Bộ lọc `NON_SDLC_SKILLS` loại skill theo **tiền tố** (`planning-`, `sales-`...) khỏi squad SDLC. Skill có tiền tố mới không được liệt kê sẽ bị squad SDLC import nhầm. |
 | Mẫu squad nhiều role có KB và công cụ Go | `sales_loop` (`sales-agent-instructions.ts`, 7 skill `sales-*`), `server/internal/salescollect/` (3.295 dòng), `server/cmd/multica/cmd_sales.go` (`multica sales probe|collect`), `server/internal/service/knowledge_sales_kinds.go` (kind KB), `docs/engineering/sales-loop-squad.md` | Là tiền lệ trực tiếp cho thiết kế công cụ Go ở mục 4: collector chạy **không dùng model**, in JSON, agent ghi kết quả vào KB. |
 | Mẫu squad tách role + gate | `content_studio` (`content-studio.ts`, `docs/engineering/content-studio-squad.md`) | Role có hướng dẫn riêng ghi đè agent template nền qua `instructionsFor` (`quickstart.ts` khoảng dòng 200–223). Mẫu tốt nhất để thêm role mà không thêm id vào union `AgentInstructionTemplate`. |
 
@@ -230,7 +230,7 @@ Quy tắc dữ liệu không tin cậy: tiêu đề, abstract, tên tác giả l
 
 ### 4.5 Skill cần có [S]
 
-Thư mục mới dưới `packages/core/squads/sdlc-skills/` (nguồn duy nhất; chạy `pnpm generate:sdlc-skills`), tiền tố `research-lab-`. Bắt buộc thêm tiền tố này vào bộ lọc `NON_SDLC_SKILLS` trong `templates.ts`, nếu không mọi squad SDLC sẽ import chúng (kiểm bằng test như `sales-skills.test.ts`).
+Thư mục mới dưới `catalog/skills/builtin/` (nguồn duy nhất; chạy `pnpm generate:sdlc-skills`), tiền tố `research-lab-`. Bắt buộc thêm tiền tố này vào bộ lọc `NON_SDLC_SKILLS` trong `templates.ts`, nếu không mọi squad SDLC sẽ import chúng (kiểm bằng test như `sales-skills.test.ts`).
 
 | Skill | Dùng bởi | Nội dung |
 | --- | --- | --- |

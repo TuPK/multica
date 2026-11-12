@@ -253,7 +253,7 @@ cho handoff tự động chạy.
 | --- | --- |
 | `packages/core/squads/templates.ts` | Thêm `bmad_planning` vào `SquadTemplateId`, 7 role vào `SquadRoleKey` và `SQUAD_ROLES`, `BMAD_PLANNING_WORKFLOW`, charter, instructions, `PLANNING_SKILL_NAMES`; **đổi `SDLC_SKILL_NAMES` thành danh sách tường minh** (điều chặn 3) |
 | `packages/core/squads/sdlc-agent-instructions.ts` hoặc file mới `planning-agent-instructions.ts` | Instruction ngắn cho 7 agent |
-| `packages/core/squads/sdlc-skills/` | Thêm skill nhóm 2 và nhóm 3; chạy `pnpm generate:sdlc-skills` |
+| `catalog/skills/builtin/` | Thêm skill nhóm 2 và nhóm 3; chạy `pnpm generate:sdlc-skills` |
 | `packages/core/squads/quickstart.ts` | `instructionsFor` đọc instruction planning; thêm role vào `QuickstartAgentOutcome` (kiểu đã dùng `SquadRoleKey` nên đủ); `attachBuiltinSkills` giữ nguyên |
 | `packages/core/squads/upgrade.ts`, `scripts/upgrade-sdlc-squad.mjs` | Cho phép nâng cấp squad planning đã tạo (skill, instruction) giống SDLC |
 | `packages/views/modals/squad-quickstart.tsx` và `packages/views/locales/*/modals.json` | Thẻ chọn template: tên và mô tả, đủ 7 ngôn ngữ (en, zh-Hans, zh-Hant, fr, es, ko, ja); theo "UI Copy" trong `AGENTS.md`, mô tả ngắn, không lặp tiêu đề |

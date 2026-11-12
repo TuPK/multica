@@ -54,10 +54,10 @@ môi trường dừng cứng.
 
 | # | Nguyên nhân | Nơi nó nằm |
 | --- | --- | --- |
-| R1 | Lead chỉ có một nước đi cho build bị chặn: về `in_progress` cho Developer với cách khác. "Đổi thành viên" chỉ là một gạch đầu dòng, không có quy trình | [sdlc-squad-lead/SKILL.md](../../packages/core/squads/sdlc-skills/sdlc-squad-lead/SKILL.md) Step 7, `SDLC_BLOCKED_INSTRUCTIONS` trong [templates.ts](../../packages/core/squads/templates.ts) |
+| R1 | Lead chỉ có một nước đi cho build bị chặn: về `in_progress` cho Developer với cách khác. "Đổi thành viên" chỉ là một gạch đầu dòng, không có quy trình | [sdlc-squad-lead/SKILL.md](../../catalog/skills/builtin/sdlc-squad-lead/SKILL.md) Step 7, `SDLC_BLOCKED_INSTRUCTIONS` trong [templates.ts](../../packages/core/squads/templates.ts) |
 | R2 | Không có phân loại blocker. Mọi role báo bằng văn bản tự do, Lead phải đoán, và đoán là "cần quyết định của boss" | các skill role, `sdlc-delivery-core` |
 | R3 | Luật `in_place` xếp mọi issue Lead thêm sau vào cuối chuỗi: "issue thêm sau chờ issue cuối cùng còn xếp hàng hoặc đang chạy". Một issue gỡ block xếp theo luật này chạy sau tất cả các epic và không bao giờ gỡ được block hiện tại | Lead skill Step 3 và `reference.md` |
-| R4 | DevOps chỉ có chế độ release. Điều kiện tiên quyết ("đã qua review, test, security") và luật "khác thiết kế là drift, dừng" không thể áp cho việc dựng môi trường. Status `release_prep` đòi version/digest/rollback mới được xong | [sdlc-devops-release/SKILL.md](../../packages/core/squads/sdlc-skills/sdlc-devops-release/SKILL.md) |
+| R4 | DevOps chỉ có chế độ release. Điều kiện tiên quyết ("đã qua review, test, security") và luật "khác thiết kế là drift, dừng" không thể áp cho việc dựng môi trường. Status `release_prep` đòi version/digest/rollback mới được xong | [sdlc-devops-release/SKILL.md](../../catalog/skills/builtin/sdlc-devops-release/SKILL.md) |
 | R5 | Triết lý "unattended: lấy mặc định" đã giao mọi quyết định còn bỏ ngỏ cho Developer, kể cả quyết định ràng buộc (schema, hợp đồng API, ý nghĩa của AC). Architect cũng được dặn "lấy mặc định, squad không chờ". Không còn đường chính thức để hỏi một chuyên gia | `sdlc-delivery-core` "Decisions and assumptions", `sdlc-architecture` bước 2 |
 | R6 | Review/QA trả lại luôn đi thẳng về Developer theo `back_status_key`. Lead không được gọi, nên không ai nhận ra một finding thuộc thiết kế hay yêu cầu, hay một vòng lặp đang lặp lại | workflow `in_review`, `qa` có `back: in_progress` |
 | R7 | Lead không có tri thức cố định về đội: ai sở hữu gì, ai quyết gì, ai trả lời loại câu hỏi nào. Kiến thức nằm rải rác trong từng skill | không có tài liệu tổng hợp |
@@ -361,7 +361,7 @@ Mỗi skill thêm một mục "Ruling mode (unblock issues)" ngắn, cùng cấu
 
 | Thành phần | Thay đổi |
 | --- | --- |
-| Skills (`packages/core/squads/sdlc-skills/*`) | Mọi mục ở 6.2 đến 6.11. File mới: `sdlc-squad-lead/team-playbook.md`. Viết lại Step 7 của Lead, thêm bước khởi động và kiểm tra trước epic, sửa ngoại lệ `in_place` trong Step 3 và `reference.md` |
+| Skills (`catalog/skills/builtin/*`) | Mọi mục ở 6.2 đến 6.11. File mới: `sdlc-squad-lead/team-playbook.md`. Viết lại Step 7 của Lead, thêm bước khởi động và kiểm tra trước epic, sửa ngoại lệ `in_place` trong Step 3 và `reference.md` |
 | `sdlc-skills-data.ts` | Sinh lại bằng `pnpm generate:sdlc-skills`, không sửa tay |
 | `templates.ts` (`SDLC_AUTO_WORKFLOW`) | Thêm step `Environment` (handler `devops`, `next: stage_done`, `back: blocked`). Viết lại `planningBrief` để mô tả "planning stage hoặc unblock ruling, mô tả issue nói loại nào". `SDLC_BLOCKED_INSTRUCTIONS` rút xuống vài dòng trỏ tới skill Lead. Brief của `in_review` và `qa` thêm yêu cầu Blocker report và `Owner-role` |
 | `sdlc-agent-instructions.ts` | Instruction của Lead bỏ phần nhắc lại quy trình trùng skill, trỏ tới Blocked work; Developer, DevOps (giới hạn "digest, approval" thuộc chế độ Release) cập nhật |

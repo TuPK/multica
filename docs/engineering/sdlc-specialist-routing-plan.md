@@ -10,7 +10,7 @@ Quy ước thực hiện (theo AGENTS.md):
 - PR chỉ mở vào `--repo TuPK/multica`, không bao giờ vào `multica-ai/multica`.
 - Sau mỗi task chạy kiểm tra hẹp nhất có ích; cuối mỗi giai đoạn chạy bộ kiểm tra rộng hơn.
   Báo cáo đúng những gì đã chạy.
-- Skill sửa trong `packages/core/squads/sdlc-skills/`, rồi `pnpm generate:sdlc-skills`. Không sửa tay `sdlc-skills-data.ts`.
+- Skill sửa trong `catalog/skills/builtin/`, rồi `pnpm generate:sdlc-skills`. Không sửa tay `sdlc-skills-data.ts`.
 - Test mặc định không được chạy agent CLI thật.
 
 ## Tổng quan giai đoạn
@@ -34,7 +34,7 @@ nâng cấp squad đang chạy thật trước khi xong Giai đoạn 2**.
 
 ### T1.1 `sdlc-delivery-core`: báo blocker, quyền quyết định, phán quyết
 
-File: `packages/core/squads/sdlc-skills/sdlc-delivery-core/SKILL.md`.
+File: `catalog/skills/builtin/sdlc-delivery-core/SKILL.md`.
 
 - Thêm mục "When you cannot proceed" với khối Blocker report (spec 6.3), danh sách class cố định.
 - Thay đoạn "Decisions and assumptions" bằng bảng quyền quyết định (spec 6.2), giữ luật "chọn

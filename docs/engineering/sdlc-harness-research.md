@@ -415,7 +415,7 @@ Phương án bị loại:
 
 ### 8.1 Bằng chứng nội bộ: kiểm tra của ta không chấp nhận harness của multica
 
-Tôi chạy `node packages/core/squads/sdlc-skills/sdlc-harness/scripts/check-harness.mjs --root .` (chỉ đọc) trên repo multica ngày
+Tôi chạy `node catalog/skills/builtin/sdlc-harness/scripts/check-harness.mjs --root .` (chỉ đọc) trên repo multica ngày
 2026-11-12, đúng repo mà mục tiêu nói là "đạt mức như". Kết quả: **5 trong 8 kiểm tra chặn fail**.
 
 | Kiểm tra | Kết quả trên multica | Vì sao |

@@ -6,22 +6,22 @@ floor are built on `kitviet-pack`, not committed yet. Section 6 lists what is re
 
 ## 1. What is in place
 
-- **Vendored trades.** `packages/core/squads/kitviet-upstream/` now holds the five P1 trades (`nhan-su`,
+- **Vendored trades.** `catalog/_sources/kitviet/upstream/` now holds the five P1 trades (`nhan-su`,
   `bao-chi-truyen-thong`, `ban-hang-online`, `hoc-thuat-nghien-cuu`, `cong-nghe-thong-tin`) at the pinned commit
   `faee4f14cd21672325a7f442b19c7239a5d7f152`. The 30 paths identical in all ten trades stay in `common/`. Every vendored file
   equals the pinned file after LF normalisation (563 checks, see `NOTICE.md`). P2 trades are vendored too (`kitviet-p2-notes.md`, section 1).
-- **One config file per squad.** `packages/core/squads/kitviet-squads/base.json` (shared skills and phrases) and one
+- **One config file per squad.** `catalog/_sources/kitviet/squads/base.json` (shared skills and phrases) and one
   `kitviet-squads/<id>.json` per squad. The generator reads the folder; nothing in it names a trade or a squad.
-- **Extension configs (spec 7).** `packages/core/squads/kitviet-extensions/<id>.json`: `support`, `people`, `it`.
+- **Extension configs (spec 7).** `catalog/_sources/kitviet/extensions/<id>.json`: `support`, `people`, `it`.
 - **Generator** `scripts/generate-kitviet-pack.mjs` writes one pack per config (`<id>.ts`), `packs.ts` (loader per pack id),
   `extensions.ts` (names only) and `squads.ts` (names only). `packages/core/squads/kitviet-packs.ts` imports only `packs.ts`.
-- **Hand-written map** `packages/core/squads/kitviet-extensions.ts`: `KITVIET_EXTENSION_BUILTIN_SKILLS`, target -> bundle names.
+- **Hand-written map** `catalog/_sources/kitviet/extensions.ts`: `KITVIET_EXTENSION_BUILTIN_SKILLS`, target -> bundle names.
 
 ## 2. Recipe: add a squad (P1 or any other trade)
 
 You own exactly these files. Nothing else in the pack needs editing.
 
-1. **`packages/core/squads/kitviet-squads/<id>.json`** (`<id>` is the kebab-case pack id, e.g. `talent`, `pr`, `ecommerce`, `office-ops`, `academic`).
+1. **`catalog/_sources/kitviet/squads/<id>.json`** (`<id>` is the kebab-case pack id, e.g. `talent`, `pr`, `ecommerce`, `office-ops`, `academic`).
    Fields (same shape as `admin.json`):
    - `order`: optional number; squads sort by `order`, then by id.
    - `templateId`: `kv_<x>`, the `SquadTemplate` id. `name`: the squad name. `trade`: a folder under `kitviet-upstream/`.

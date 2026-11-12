@@ -6,19 +6,19 @@ Vận hành bộ Kit Việt (spec [kitviet-squads.md](kitviet-squads.md), kế h
 
 | Tệp | Vai trò | Sửa tay? |
 | --- | --- | --- |
-| `packages/core/squads/kitviet-upstream/` | Bản vendor đã ghim commit, kèm `LICENSE`, `NOTICE.md`, `UPSTREAM.json` | Không. Thay bằng `pnpm kitviet:update` (mục 2) |
-| `packages/core/squads/kitviet-rewrites.json` | Bảng viết lại: khối Pro, mục nền tảng, tên tệp, `VERDICT:` | Có, rồi sinh lại |
-| `packages/core/squads/kitviet-patches/*.json` | Bản vá khớp đúng một câu gốc (`find` → `replace`) | Có, rồi sinh lại |
-| `packages/core/squads/kitviet-squads/` | Cấu hình squad: mỗi nghề một JSON (`<nghề>.json`) gồm vai và loại vai, tầng lõi, skill lead, skill theo vai; `base.json` chung | Có, rồi sinh lại |
-| `packages/core/squads/kitviet-templates/` | Mỗi squad một `.ts` và một test: charter, routine, floor, tên và mô tả | Có |
-| `packages/core/squads/kitviet-skills/kv-*/` | Skill viết tay (`kv-delivery-core`, `kv-squad-lead`, `kv-company-profile`) | Có (đây là nguồn) |
-| `packages/core/squads/kitviet-skills-data/*.ts` | Dữ liệu sinh ra: một tệp mỗi pack (`common.ts` và từng nghề) và tệp dùng chung | Không. Chạy `pnpm generate:kitviet` |
+| `catalog/_sources/kitviet/upstream/` | Bản vendor đã ghim commit, kèm `LICENSE`, `NOTICE.md`, `UPSTREAM.json` | Không. Thay bằng `pnpm kitviet:update` (mục 2) |
+| `catalog/_sources/kitviet/rewrites.json` | Bảng viết lại: khối Pro, mục nền tảng, tên tệp, `VERDICT:` | Có, rồi sinh lại |
+| `catalog/_sources/kitviet/patches/*.json` | Bản vá khớp đúng một câu gốc (`find` → `replace`) | Có, rồi sinh lại |
+| `catalog/_sources/kitviet/squads/` | Cấu hình squad: mỗi nghề một JSON (`<nghề>.json`) gồm vai và loại vai, tầng lõi, skill lead, skill theo vai; `base.json` chung | Có, rồi sinh lại |
+| `catalog/squads/kv_<nghề>/` | Mỗi squad một thư mục: `template.json` (charter, routine, floor, mô tả vai, dòng roster, khối `adapter: kitviet`) và `i18n/` (đủ 7 ngôn ngữ). Tên vai, loại vai, skill và hướng dẫn của lead lấy từ pack | Có |
+| `catalog/_sources/kitviet/skills/kv-*/` | Skill viết tay (`kv-delivery-core`, `kv-squad-lead`, `kv-company-profile`) | Có (đây là nguồn) |
+| `packages/core/catalog/generated/kitviet/*.ts` | Dữ liệu sinh ra, không commit: một tệp mỗi pack (`common.ts` và từng nghề) và tệp dùng chung | Không. `pnpm catalog:build` sinh (turbo, `make`, Docker tự gọi) |
 | `scripts/generate-kitviet-pack.mjs` | Generator | Có |
 
 Lệnh:
 
-- `pnpm generate:kitviet`: sinh lại dữ liệu. Lần chạy lặp cho cùng kết quả.
-- `node scripts/generate-kitviet-pack.mjs --check`: fail khi tệp sinh ra cũ so với nguồn. Chạy trước khi commit.
+- `pnpm catalog:build` (hoặc `pnpm generate:kitviet` chỉ cho gói Kit Việt): sinh lại dữ liệu. Lần chạy lặp cho cùng kết quả. Dữ liệu sinh ra không nằm trong git.
+- `node scripts/generate-kitviet-pack.mjs --check`: fail khi bản đã sinh trên máy cũ so với nguồn (quên chạy lại `pnpm catalog:build`).
 - `node --test scripts/generate-kitviet-pack.test.mjs`: test của generator (bản vá khớp upstream, tách khối, phân giải tham chiếu).
 - `cd packages/core && npx vitest run squads/kitviet-skills.test.ts`: test bộ dữ liệu (rò rỉ, tham chiếu theo squad, `VERDICT:`, bản vá, tên, kích thước, độ tươi).
 
@@ -695,7 +695,7 @@ Sáu squad trên là các squad có cờ `expertReview` (mục 8e): bộ chọn 
 
 Ngoài sáu squad trên, Education có `edu_student_gate` (dữ liệu học sinh), Real Estate có `realestate_loan_gate` và `realestate_listing_gate` (tiền và lời hứa), Hospitality có `hospitality_quote_gate` và `hospitality_promise_gate` (giá và cam kết với khách). Các gác này cũng chặn cho đến khi có xác nhận, nhưng không yêu cầu người trong ngành đọc trước.
 
-Gác nào trả CHẶN sau hai vòng thì squad dừng loại 3. Gác nào QUA mà người đọc thấy sai thì sửa gác (bản vá trong `packages/core/squads/kitviet-patches/`) trước khi chạy tiếp, không sửa đầu ra bằng tay.
+Gác nào trả CHẶN sau hai vòng thì squad dừng loại 3. Gác nào QUA mà người đọc thấy sai thì sửa gác (bản vá trong `catalog/_sources/kitviet/patches/`) trước khi chạy tiếp, không sửa đầu ra bằng tay.
 
 ## 8e. Bộ chọn squad, cờ xem xét chuyên môn và chuỗi cấm
 

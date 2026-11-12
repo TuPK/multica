@@ -8,7 +8,7 @@ The recipe is `kitviet-p1-notes.md` section 2; this file adds only what differs 
 
 ## 1. What is in place
 
-- **Vendored.** `packages/core/squads/kitviet-upstream/<trade>/{agents,skills}` for `y-te`, `xay-dung`, `nha-hang-fnb`,
+- **Vendored.** `catalog/_sources/kitviet/upstream/<trade>/{agents,skills}` for `y-te`, `xay-dung`, `nha-hang-fnb`,
   `bao-hiem`, `tai-chinh-ngan-hang`, `bat-dong-san`, `du-lich-khach-san`, `xuat-nhap-khau`, `san-xuat-nha-may`, `giao-duc`, at the
   pinned commit `faee4f14cd21672325a7f442b19c7239a5d7f152`. Nothing else from upstream (no `codex/`, `claude-web/`, `brand/`).
   219 trade files copied and checked (sha256 after LF normalisation, 0 mismatches). The 30 `common/` paths are identical in all
@@ -503,10 +503,10 @@ and "Claude web/desktop tự tra …" (patch); "Nghiêm trọng" in `soat-dap-an
 Same as `kitviet-p1-notes.md` section 2, with these P2 specifics. Pack id = config file name: `health`, `construction`, `fnb`,
 `insurance`, `banking`, `realestate`, `hospitality`, `trade`, `factory`, `edu`.
 
-1. `packages/core/squads/kitviet-squads/<pack>.json`: `order`, `templateId` (`kv_<x>`), `trade`, `name` (English (Vietnamese)), `agents` (the
+1. `catalog/_sources/kitviet/squads/<pack>.json`: `order`, `templateId` (`kv_<x>`), `trade`, `name` (English (Vietnamese)), `agents` (the
    table of the squad), `builtinSkills`, `leaderSkills: ["kv-squad-lead", "kv-company-profile"]`, `roleSkills`, `promoted: []`, `deferredSkills`.
    `flow` stays `pipeline`.
-2. `packages/core/squads/kitviet-patches/<skill or agent>.json` for the leftovers of its skills (exact `find`, must occur once). Start
+2. `catalog/_sources/kitviet/patches/<skill or agent>.json` for the leftovers of its skills (exact `find`, must occur once). Start
    from section 7; the rewrite rules cover the file names, `.kv-run`, `CLAUDE.md`, `pip install`, and the pipeline platform bullets.
    The banking verdict patch (section 7.5) goes with the banking squad.
 3. Run `pnpm generate:kitviet` until it passes, then `pnpm generate:kitviet --check`.

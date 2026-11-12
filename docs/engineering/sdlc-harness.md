@@ -101,14 +101,14 @@ không phải phép đo thống kê.
 
 | File | Thay đổi |
 | --- | --- |
-| `packages/core/squads/sdlc-skills/sdlc-harness/SKILL.md` | Viết lại: bốn loại nội dung, luật nội dung, ba mức, Mode 1 (execution-first), 2, 3, smoke v2 |
+| `catalog/skills/builtin/sdlc-harness/SKILL.md` | Viết lại: bốn loại nội dung, luật nội dung, ba mức, Mode 1 (execution-first), 2, 3, smoke v2 |
 | `.../sdlc-harness/scripts/check-harness.mjs` | Ba mức, H14 đến H16, `--cert`, `--run`, `--write-cert`, `--accept`, `--refresh` đọc chứng nhận |
 | `.../sdlc-harness/scripts/harness-metrics.mjs` | Mới: M2 đến M7 từ runs, usage, timeline, comment |
 | `.../sdlc-harness/references/` | `agents-md-template.md` v2; `profile-*.md` thành danh sách thứ cần thăm dò |
 | `.../sdlc-squad-lead/SKILL.md`, `reference.md`, `team-playbook.md` | Harness gate theo `gate`, Route 0, làm mới theo `needsRefresh`, đo cuối epic |
 | `.../sdlc-development`, `sdlc-delivery-core` | `check-harness --quick`: chỉ `gate` chặn |
 | `.../planning-architecture`, `sdlc-architecture`, `sdlc-devops-release` | Bước 7 không viết `AGENTS.md`; hai mục đầu vào cho Architect; Ensure idempotent |
-| `packages/core/squads/sdlc-skills-data.ts` | Sinh bằng `pnpm generate:sdlc-skills` |
+| `packages/core/squads/sdlc-skills-data.ts` | Sinh bằng `pnpm catalog:build` |
 | Test | `sdlc-harness-check.test.ts`, `sdlc-harness-metrics.test.ts` (mới), `sdlc-skills.test.ts` |
 
 Không đổi: `templates.ts`, `server/internal/service/initiative_build.go`, `upgrade.ts`, `upgrade.test.ts`, brief của stage, status workflow, `server/`.

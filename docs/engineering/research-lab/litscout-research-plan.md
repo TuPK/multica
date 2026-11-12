@@ -53,13 +53,13 @@ Song song được: (G1, G3) với (T1, T2) ngay sau P0; G7 với E1/E2; T5 vớ
 ### T2. Bộ skill `research-lab-*` (L, song song được giữa các skill)
 
 - Mục tiêu: 6 skill: `research-lab-delivery-core`, `-squad-lead`, `-search`, `-screening`, `-synthesis`, `-audit` (nội dung theo spec mục 4.5).
-- Tạo: `packages/core/squads/sdlc-skills/research-lab-*/SKILL.md` (+ `reference.md` nếu cần, theo mẫu `sales-scouting/{SKILL.md,reference.md}`). Mô tả frontmatter không rỗng (script sinh báo lỗi nếu rỗng).
+- Tạo: `catalog/skills/builtin/research-lab-*/SKILL.md` (+ `reference.md` nếu cần, theo mẫu `sales-scouting/{SKILL.md,reference.md}`). Mô tả frontmatter không rỗng (script sinh báo lỗi nếu rỗng).
 - Sửa: `packages/core/squads/templates.ts`, khối `NON_SDLC_SKILLS`: thêm điều kiện tiền tố `research-lab-` (không thêm thì squad SDLC import nhầm; xem R8). Thêm hằng `RESEARCH_LAB_SKILL_NAMES` cạnh `SALES_SKILL_NAMES`. **Chạm vào `templates.ts` đang có thay đổi chưa commit**; xem cảnh báo mục 0.
-- Sinh: `pnpm generate:sdlc-skills` → cập nhật `packages/core/squads/sdlc-skills-data.ts` (đã có thay đổi chưa commit; chỉ cộng thêm, không viết lại tay).
+- Sinh: `pnpm catalog:build` → cập nhật `packages/core/squads/sdlc-skills-data.ts` (đã có thay đổi chưa commit; chỉ cộng thêm, không viết lại tay).
 - Nội dung bắt buộc: `delivery-core` chứa lược đồ `protocol.md` và `state.json`, bảng mã cảnh báo (`MISSING_ABSTRACT`, `SCORED_FROM_TITLE_ONLY`, `SCORING_CANDIDATES_CAPPED`, `INSUFFICIENT_RESULTS_AFTER_MAX_ROUNDS`, `NO_NEW_REFINED_QUERIES`, `DOI_UNRESOLVED`, `LANGUAGE_MISMATCH`), lệnh `multica research ...` kèm ví dụ in JSON; `screening` có thang 0–10 với mốc mô tả, không chấm "9–10" nếu thiếu abstract.
 - Phụ thuộc: P0; lệnh trong skill phải khớp bề mặt CLI ở G2 (viết skill song song được, rà lại sau G2).
 - Hoàn thành khi: test mới `research-lab-skills.test.ts` (theo `sales-skills.test.ts`) khẳng định: đúng 6 tên theo thứ tự, mô tả > 40 ký tự, nội dung > ngưỡng hợp lý, **SDLC squad không import skill nào có tiền tố `research-lab-`**, template `research_lab` import đúng bộ tên.
-- Kiểm thử: `pnpm generate:sdlc-skills` rồi test lõi có sẵn kiểm "sinh ra còn mới"; `pnpm --filter @multica/core exec vitest run squads/sdlc-skills.test.ts squads/research-lab-skills.test.ts`.
+- Kiểm thử: `pnpm catalog:build` rồi test lõi có sẵn kiểm "sinh ra còn mới"; `pnpm --filter @multica/core exec vitest run squads/sdlc-skills.test.ts squads/research-lab-skills.test.ts`.
 
 ### T3. Đăng ký template và nối quickstart (M)
 

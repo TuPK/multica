@@ -17,7 +17,7 @@ Quy ước thực hiện (theo AGENTS.md):
 
 ## Nền đã có và ranh giới (đã kiểm trong mã, 2026-11-11)
 
-- Thẻ công ty: `packages/core/squads/company-template.ts` (14 squad) → `pnpm generate:company-template` → `server/internal/service/company_template_data.json` (nhúng vào Go). `starterSkillsForRole` (`server/internal/service/company_starter_skills.go`) chỉ cho leader `squad-reporting` và `directive-execution`; thành viên không có skill. Skill starter đọc từ `packages/core/squads/skills/`.
+- Thẻ công ty: `packages/core/squads/company-template.ts` (14 squad) → `pnpm generate:company-template` → `server/internal/service/company_template_data.json` (nhúng vào Go). `starterSkillsForRole` (`server/internal/service/company_starter_skills.go`) chỉ cho leader `squad-reporting` và `directive-execution`; thành viên không có skill. Skill starter đọc từ `catalog/skills/starter/`.
 - Template quickstart: `SQUAD_TEMPLATES` trong `packages/core/squads/templates.ts`; `attachBuiltinSkills` (`quickstart.ts`, dòng ~396) gắn cấp squad bằng `setSquadSkills`. Chưa có `roleSkills` và chưa có `addAgentSkills` trong `SquadQuickstartClient`.
 - Khung Kit Việt (`scripts/generate-kitviet-pack.mjs`, `scripts/lib/skill-bundle.mjs`, `roleSkills`) **chưa có trong repo** tại thời điểm viết. Cổng G1 kiểm lại.
 - Mẫu agent instruction: `packages/core/agents/instruction-templates.ts` (`SHARED_BLOCKS`, `WORKING_RULES`, `SQUAD_LEADER_RULES`); tên và mô tả dịch ở `packages/views/locales/*/agents.json` theo `id`; tên và mô tả template ở `locales/*/modals.json`, khóa `templates.<id>`.
@@ -46,7 +46,7 @@ Mỗi cổng ra một đoạn kết luận ngắn ghi vào spec mục 10 (đánh
 
 | Cổng | Câu hỏi | Cách trả lời | Nếu kết quả khác |
 | --- | --- | --- | --- |
-| G1 | Khung Kit Việt (`scripts/lib/skill-bundle.mjs`, `generate-kitviet-pack.mjs`, `SquadTemplate.roleSkills`, `addAgentSkills` trong client) đã vào repo chưa? | `ls scripts scripts/lib`; `git log --oneline -- packages/core/squads/kitviet-upstream`; đọc `quickstart.ts` | Nếu **đã có**: Task 1.1 và 5.1 dùng lại, không viết lại. Nếu **chưa**: làm theo thiết kế ở spec Kit Việt 5.10, 8.1 (PR 1 "tiếp"); khi khung Kit Việt vào sau thì hợp nhất, không để hai bản |
+| G1 | Khung Kit Việt (`scripts/lib/skill-bundle.mjs`, `generate-kitviet-pack.mjs`, `SquadTemplate.roleSkills`, `addAgentSkills` trong client) đã vào repo chưa? | `ls scripts scripts/lib`; `git log --oneline -- catalog/_sources/kitviet/upstream`; đọc `quickstart.ts` | Nếu **đã có**: Task 1.1 và 5.1 dùng lại, không viết lại. Nếu **chưa**: làm theo thiết kế ở spec Kit Việt 5.10, 8.1 (PR 1 "tiếp"); khi khung Kit Việt vào sau thì hợp nhất, không để hai bản |
 | G2 | Giới hạn số hoặc kích thước skill gắn cho một agent hoặc một workspace? | Đọc `server/internal/handler/skill.go`, `agent_skill`, `AddAgentSkill`, các hằng giới hạn | Nếu có giới hạn thấp hơn 6 skill/agent hay thấp hơn kích thước `build-dashboard` (25 KB): chỉnh bảng gắn trước khi làm |
 | G3 | Máy chủ Go nhúng `company_template_data.json` hiện nặng bao nhiêu và có giới hạn nào (test kích thước, giới hạn payload)? | `wc -c server/internal/service/company_template_data.json`; grep test liên quan | Nếu gần ngưỡng: đổi sang tải skill KWP lúc apply (ngoài phạm vi), báo người đặt |
 | G4 | Apply rerun trên workspace đã có squad: thêm vai mới vào thẻ có tạo agent mới và gắn vào squad có sẵn không? | Đọc `company_template.go`, `company_setup.go`, `phase4_company_db_test.go` | Nếu apply bỏ qua squad đã tồn tại: thêm bước "ensure member" vào Task 3.3, có test |
@@ -59,7 +59,7 @@ Mỗi cổng ra một đoạn kết luận ngắn ghi vào spec mục 10 (đánh
 
 Files: `scripts/lib/skill-bundle.mjs` (mới: `skillFiles`, `frontmatterDescription`), `scripts/generate-sdlc-skills.mjs` (import lại).
 
-- Bước: chuyển hai hàm từ `generate-sdlc-skills.mjs` sang lib; script cũ import; chạy `pnpm generate:sdlc-skills`; `git diff --stat packages/core/squads/sdlc-skills-data.ts` phải rỗng.
+- Bước: chuyển hai hàm từ `generate-sdlc-skills.mjs` sang lib; script cũ import; chạy `pnpm catalog:build`; `git diff --stat packages/core/squads/sdlc-skills-data.ts` phải rỗng.
 - Kiểm: test stale của `sdlc-skills.test.ts` xanh.
 - Commit: `refactor(scripts): share the skill bundle helpers between generators`.
 

@@ -175,7 +175,7 @@ Tham chiếu độ dài: mẫu ở trên điền đầy đủ khoảng 25 đến
 
 ## 7. Cơ chế kiểm tra tất định
 
-Công cụ: `packages/core/squads/sdlc-skills/sdlc-harness/scripts/check-harness.mjs`. Node thuần, không phụ thuộc, in một báo cáo JSON.
+Công cụ: `catalog/skills/builtin/sdlc-harness/scripts/check-harness.mjs`. Node thuần, không phụ thuộc, in một báo cáo JSON.
 Giữ ID cũ H1 đến H13 khi nghĩa không đổi để tái dùng test; thêm H14 đến H16, E1, E2.
 
 ### 7.1 Chế độ chạy và mã thoát

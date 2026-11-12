@@ -90,7 +90,7 @@ The core of the phase. Draft, run on the evaluation set (13.8.1), revise.
 
 | # | Step | Files | Tests |
 |---|---|---|---|
-| 13.6.1 | Skill `secretary-analysis`: understanding the ask, choosing addressees, writing an ask a leader can act on, economy, critical reading and challenge, cross-squad analysis, report craft, uncertainty language, numbering and confirming decisions, writing a directive, triaging a leader's question. With worked good/weak examples. | `packages/core/squads/skills/secretary-analysis/*` | Frontmatter and file-shape test; evaluation set |
+| 13.6.1 | Skill `secretary-analysis`: understanding the ask, choosing addressees, writing an ask a leader can act on, economy, critical reading and challenge, cross-squad analysis, report craft, uncertainty language, numbering and confirming decisions, writing a directive, triaging a leader's question. With worked good/weak examples. | `catalog/skills/starter/secretary-analysis/*` | Frontmatter and file-shape test; evaluation set |
 | 13.6.2 | Skill `squad-reporting` (leaders and chiefs): the menu of dimensions with examples, cheap gathering, calibrated confidence, chief roll-up. | `.../squad-reporting/*` | Same |
 | 13.6.3 | Skill `directive-execution`: acknowledge, plan, decompose, align with the project workflow, milestones, escalation, closing. | `.../directive-execution/*` | Same |
 | 13.6.4 | Optional skill `business-metrics`, attached to squads with goals. | `.../business-metrics/*` | Same |

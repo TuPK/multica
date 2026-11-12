@@ -32,7 +32,7 @@ ghi ở báo cáo cuối của lần thực hiện.
   ước lượng, không phải cam kết. Riêng S8 và S9 còn có "lượt chạy của squad" (nền tảng chạy agent thật) được ghi tách.
 - Mọi lệnh chạy từ gốc repo `multica/`. Test chạy **hẹp** theo file, không chạy cả bộ `pnpm test`.
 - Mỗi bước là một commit nguyên tử, theo conventional commits (ví dụ `feat(squads): ...`, `docs(squads): ...`), theo `AGENTS.md` của repo.
-- Mỗi bước chạm thư mục `packages/core/squads/sdlc-skills/` phải chạy `pnpm generate:sdlc-skills` và commit
+- Mỗi bước chạm thư mục `catalog/skills/builtin/` phải chạy `pnpm catalog:build` và commit
   `packages/core/squads/sdlc-skills-data.ts` cùng bước đó. Bài test trong `sdlc-skills.test.ts` ("This test fails when the generated file is
   stale") sẽ đỏ nếu quên. Kiểm tra bằng `git diff --stat -- packages/core/squads/sdlc-skills-data.ts`.
 - **Đơn vị phát hành là S1 đến S5** (script, test và văn bản skill phải khớp nhau). Có thể commit riêng từng bước nhưng chỉ nâng cấp squad
@@ -53,7 +53,7 @@ theo thời gian** vì việc Workflow tab vẫn chạy song song (lúc bắt đ
  M packages/core/squads/kitviet-agent-instructions.ts
  M packages/core/squads/kitviet-previous-texts.ts
  M packages/core/squads/kitviet-skills-data/common.ts
- M packages/core/squads/kitviet-skills/kv-squad-lead/SKILL.md
+ M catalog/_sources/kitviet/skills/kv-squad-lead/SKILL.md
  M packages/core/squads/kitviet-stop-header.test.ts
  M packages/core/squads/upgrade.test.ts
  M packages/core/types/issue-workflow.ts
@@ -77,7 +77,7 @@ theo thời gian** vì việc Workflow tab vẫn chạy song song (lúc bắt đ
 | File chưa commit | Quan hệ với plan | Cách xử lý |
 | --- | --- | --- |
 | `packages/core/squads/upgrade.test.ts` | Có các khẳng định về harness (các dòng khoảng 73 đến 165: step `Harness` được thêm, skill `sdlc-harness` và `scripts/check-harness.mjs` được nạp). Plan **không sửa** file này. Thay đổi skill của plan giữ các khẳng định đó đúng (vẫn có `scripts/check-harness.mjs`, brief không đổi) | **Không sửa.** Chạy nó ở S0 để ghi baseline và chạy lại sau S5, S6 để so. Nếu cần sửa nó (ví dụ sau này đổi thông báo status của upgrade), bước đó **bị chặn** tới khi việc Workflow tab commit xong |
-| `packages/core/squads/kitviet-*`, `kitviet-skills-data/common.ts`, `kitviet-skills/kv-squad-lead/SKILL.md` | Squad khác. `pnpm generate:sdlc-skills` chỉ đọc `sdlc-skills/`, không đụng chúng | Bỏ qua. Sau khi generate, `git diff --stat` không được thấy file `kitviet-*` đổi do plan |
+| `packages/core/squads/kitviet-*`, `kitviet-skills-data/common.ts`, `kitviet-skills/kv-squad-lead/SKILL.md` | Squad khác. `pnpm catalog:build` chỉ đọc `sdlc-skills/`, không đụng chúng | Bỏ qua. Sau khi generate, `git diff --stat` không được thấy file `kitviet-*` đổi do plan |
 | `packages/core/api/*`, `packages/core/issue-workflows/*`, `packages/core/types/issue-workflow.ts`, `packages/views/**`, `server/**` ở danh sách trên | Workflow tab | Bỏ qua. Nếu `pnpm --filter @multica/core typecheck` đỏ do các file này, ghi vào baseline S0 là lỗi nền, không sửa |
 
 Các file plan **sẽ** sửa đều sạch ở thời điểm viết: `check-harness.mjs`, `sdlc-harness-check.test.ts`, `sdlc-skills.test.ts`,
@@ -134,7 +134,7 @@ nâng cấp lên skill v2 nhận lại skill cũ khi chạy `upgrade-sdlc-squad.
   4. Kiểm nội dung các file `.env.*` được commit mà H11 báo (ví dụ `apps/mobile/.env.production`): cấu hình công khai hay bí mật.
 - **Kiểm tra bước xong:**
   ```
-  for r in . <repo2> <repo3>; do node packages/core/squads/sdlc-skills/sdlc-harness/scripts/check-harness.mjs --root "$r" > "/tmp/cal-$(basename "$(cd "$r" && pwd)").json"; echo "$r exit=$?"; done
+  for r in . <repo2> <repo3>; do node catalog/skills/builtin/sdlc-harness/scripts/check-harness.mjs --root "$r" > "/tmp/cal-$(basename "$(cd "$r" && pwd)").json"; echo "$r exit=$?"; done
   pnpm --filter @multica/core exec vitest run squads/sdlc-skills.test.ts squads/sdlc-harness-check.test.ts squads/upgrade.test.ts
   pnpm --filter @multica/core typecheck
   test -s docs/engineering/sdlc-harness-calibration.md && echo ok
@@ -148,7 +148,7 @@ nâng cấp lên skill v2 nhận lại skill cũ khi chạy `upgrade-sdlc-squad.
 
 - **Mục đích:** `gate`/`cert`/`warning`, `--quick` chỉ gate, `--cert`, báo cáo mới; Developer không còn bị chặn bởi chất lượng thấp.
 - **File đổi:**
-  - `packages/core/squads/sdlc-skills/sdlc-harness/scripts/check-harness.mjs`
+  - `catalog/skills/builtin/sdlc-harness/scripts/check-harness.mjs`
   - `packages/core/squads/sdlc-harness-check.test.ts`
   - `packages/core/squads/sdlc-skills-data.ts` (sinh ra)
 - **Thay đổi cụ thể:**
@@ -162,9 +162,9 @@ nâng cấp lên skill v2 nhận lại skill cũ khi chạy `upgrade-sdlc-squad.
 - **Kiểm tra bước xong:**
   ```
   pnpm --filter @multica/core exec vitest run squads/sdlc-harness-check.test.ts
-  node packages/core/squads/sdlc-skills/sdlc-harness/scripts/check-harness.mjs --root . --quick; echo "exit=$?"   # kỳ vọng 0
-  node packages/core/squads/sdlc-skills/sdlc-harness/scripts/check-harness.mjs --root . --cert;  echo "exit=$?"   # kỳ vọng 1: H6, H10
-  node packages/core/squads/sdlc-skills/sdlc-harness/scripts/check-harness.mjs --root . --quick | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).checks.filter(c=>c.status!=="skipped").map(c=>c.id).join(",")))'   # H1,H3,H4
+  node catalog/skills/builtin/sdlc-harness/scripts/check-harness.mjs --root . --quick; echo "exit=$?"   # kỳ vọng 0
+  node catalog/skills/builtin/sdlc-harness/scripts/check-harness.mjs --root . --cert;  echo "exit=$?"   # kỳ vọng 1: H6, H10
+  node catalog/skills/builtin/sdlc-harness/scripts/check-harness.mjs --root . --quick | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).checks.filter(c=>c.status!=="skipped").map(c=>c.id).join(",")))'   # H1,H3,H4
   pnpm generate:sdlc-skills && git diff --stat -- packages/core/squads/sdlc-skills-data.ts
   ```
 - **Phụ thuộc:** S0 (dùng tỉ lệ báo nhầm để xác nhận danh sách `gate`).
@@ -188,7 +188,7 @@ nâng cấp lên skill v2 nhận lại skill cũ khi chạy `upgrade-sdlc-squad.
 - **Kiểm tra bước xong:**
   ```
   pnpm --filter @multica/core exec vitest run squads/sdlc-harness-check.test.ts
-  node packages/core/squads/sdlc-skills/sdlc-harness/scripts/check-harness.mjs --root . | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=JSON.parse(s);console.log(JSON.stringify(r.footprint),r.warnings.join(","))})'
+  node catalog/skills/builtin/sdlc-harness/scripts/check-harness.mjs --root . | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=JSON.parse(s);console.log(JSON.stringify(r.footprint),r.warnings.join(","))})'
   pnpm generate:sdlc-skills && git diff --stat -- packages/core/squads/sdlc-skills-data.ts
   ```
   Ghi kết quả H15, H16, H8 trên multica vào `sdlc-harness-calibration.md` (không đặt kỳ vọng pass; cần biết tỉ lệ báo nhầm).
@@ -210,7 +210,7 @@ nâng cấp lên skill v2 nhận lại skill cũ khi chạy `upgrade-sdlc-squad.
 - **Kiểm tra bước xong:**
   ```
   pnpm --filter @multica/core exec vitest run squads/sdlc-harness-check.test.ts
-  node packages/core/squads/sdlc-skills/sdlc-harness/scripts/check-harness.mjs --root . --quick --run; echo "exit=$?"   # kỳ vọng 2
+  node catalog/skills/builtin/sdlc-harness/scripts/check-harness.mjs --root . --quick --run; echo "exit=$?"   # kỳ vọng 2
   pnpm generate:sdlc-skills && git diff --stat -- packages/core/squads/sdlc-skills-data.ts
   ```
   Không chạy `--run` trên multica hay repo thật trong bước này (chỉ fixture trong thư mục tạm).
@@ -240,7 +240,7 @@ nâng cấp lên skill v2 nhận lại skill cũ khi chạy `upgrade-sdlc-squad.
 ### S5. Skill, mẫu, profile và văn bản gating
 
 - **Mục đích:** mọi vai và mọi tài liệu của skill khớp spec; đây là bước làm hành vi agent thay đổi thật.
-- **File đổi (đều thuộc `packages/core/squads/sdlc-skills/` trừ test):**
+- **File đổi (đều thuộc `catalog/skills/builtin/` trừ test):**
   - `sdlc-harness/SKILL.md` (Mode 1 theo spec 8.2; bảng kiểm tra `gate`/`cert`/`warning`; Mode 3 theo mục 9; smoke v2; luật nội dung R1 đến R13; còn dưới 500 dòng)
   - `sdlc-harness/references/agents-md-template.md` (mẫu v2, bỏ định hướng, bảng "Where things are" và dòng provenance; thêm ví dụ phân loại)
   - `sdlc-harness/references/profile-web.md`, `profile-backend.md`, `profile-baas.md`, `profile-mobile.md` (đổi thành danh sách thứ cần thăm dò)
@@ -249,7 +249,7 @@ nâng cấp lên skill v2 nhận lại skill cũ khi chạy `upgrade-sdlc-squad.
   - `planning-architecture/SKILL.md` (bước 7 không viết `AGENTS.md`; thêm mục "Non-default conventions" và "Verification strategy" trong `architecture.md`)
   - `sdlc-architecture/SKILL.md` (Architect sở hữu `AGENTS.md`, cùng hai mục trên làm đầu vào)
   - `sdlc-devops-release/SKILL.md` (nhắc dòng `Ensure command:` phải idempotent và cô lập theo worktree; không đổi cấu trúc mode)
-  - `packages/core/squads/sdlc-skills.test.ts` (cập nhật các khẳng định khoảng dòng 256 đến 291; xem dưới)
+  - `catalog/skills/builtin.test.ts` (cập nhật các khẳng định khoảng dòng 256 đến 291; xem dưới)
   - `packages/core/squads/sdlc-skills-data.ts` (sinh ra)
   - `packages/core/squads/sdlc-harness-check.test.ts` (thêm test mẫu v2: điền placeholder rồi chạy `--cert`)
 - **Thay đổi cụ thể:**
@@ -263,13 +263,13 @@ nâng cấp lên skill v2 nhận lại skill cũ khi chạy `upgrade-sdlc-squad.
   pnpm generate:sdlc-skills
   pnpm --filter @multica/core exec vitest run squads/sdlc-skills.test.ts squads/sdlc-harness-check.test.ts squads/sdlc-agent-instructions.test.ts squads/planning-skills.test.ts squads/templates.test.ts
   pnpm --filter @multica/core typecheck
-  wc -l packages/core/squads/sdlc-skills/sdlc-harness/SKILL.md          # dưới 500
+  wc -l catalog/skills/builtin/sdlc-harness/SKILL.md          # dưới 500
   git diff --stat -- packages/core/squads/templates.ts server packages/core/squads/upgrade.ts packages/core/squads/upgrade.test.ts   # rỗng
   pnpm --filter @multica/core exec vitest run squads/upgrade.test.ts      # so với baseline S0, không thêm lỗi mới
   ```
 - **Phụ thuộc:** S1 đến S4 (tên kiểm tra, cờ, mức).
 - **Rủi ro riêng:** (a) `planning-architecture` còn được squad `bmad_planning` dùng nên chạy `planning-skills.test.ts`; (b) lệch chữ nghĩa giữa các skill gây mâu thuẫn (R12): đọc lại toàn bộ chỗ nhắc `check-harness`
-  bằng `grep -rn "check-harness\|blocking check" packages/core/squads/sdlc-skills --include=*.md`; (c) giới hạn độ dài chỉ dẫn agent của Lead (2.300 ký tự) nằm ở `sdlc-agent-instructions.ts`, không đổi file đó;
+  bằng `grep -rn "check-harness\|blocking check" catalog/skills/builtin --include=*.md`; (c) giới hạn độ dài chỉ dẫn agent của Lead (2.300 ký tự) nằm ở `sdlc-agent-instructions.ts`, không đổi file đó;
   (d) văn bản skill ảnh hưởng hành vi nhiều agent: thêm một lượt đọc lại độc lập (Reviewer) trước khi merge.
 - **Lượt chạy agent:** 3 đến 4.
 
@@ -277,10 +277,10 @@ nâng cấp lên skill v2 nhận lại skill cũ khi chạy `upgrade-sdlc-squad.
 
 - **Mục đích:** Lead lấy M2 đến M7 từ dữ liệu nền tảng sẵn có, không đổi server.
 - **File đổi:**
-  - tạo `packages/core/squads/sdlc-skills/sdlc-harness/scripts/harness-metrics.mjs`
+  - tạo `catalog/skills/builtin/sdlc-harness/scripts/harness-metrics.mjs`
   - tạo `packages/core/squads/sdlc-harness-metrics.test.ts`
-  - `packages/core/squads/sdlc-skills.test.ts` (thêm `scripts/harness-metrics.mjs` vào danh sách file của skill; **sau S5 để khỏi xung đột**)
-  - `packages/core/squads/sdlc-skills/sdlc-harness/SKILL.md` (một dòng nói cách chạy; sau S5)
+  - `catalog/skills/builtin.test.ts` (thêm `scripts/harness-metrics.mjs` vào danh sách file của skill; **sau S5 để khỏi xung đột**)
+  - `catalog/skills/builtin/sdlc-harness/SKILL.md` (một dòng nói cách chạy; sau S5)
   - `packages/core/squads/sdlc-skills-data.ts` (sinh ra)
 - **Thay đổi cụ thể:**
   1. Hàm thuần nhận JSON đã tải (runs, usage, timeline, comments) cho từng issue và trả M2 đến M7 (trung vị, p90, `n`). Thứ tự workflow lấy từ tham số `--order` (mặc định danh sách status của SDLC) để nhận ra "đi lùi".
@@ -291,7 +291,7 @@ nâng cấp lên skill v2 nhận lại skill cũ khi chạy `upgrade-sdlc-squad.
   ```
   pnpm --filter @multica/core exec vitest run squads/sdlc-harness-metrics.test.ts squads/sdlc-skills.test.ts
   pnpm generate:sdlc-skills && git diff --stat -- packages/core/squads/sdlc-skills-data.ts
-  node packages/core/squads/sdlc-skills/sdlc-harness/scripts/harness-metrics.mjs --help; echo "exit=$?"
+  node catalog/skills/builtin/sdlc-harness/scripts/harness-metrics.mjs --help; echo "exit=$?"
   ```
   **Không** chạy script lên DB hoặc server dùng chung trong CI hay trong bước này. Lần chạy đầu trên dữ liệu thật thuộc S8, trên môi trường cô lập.
 - **Phụ thuộc:** S0 (tên trường), S5 (cho phần sửa `sdlc-skills.test.ts`, `SKILL.md`).
@@ -320,7 +320,7 @@ nâng cấp lên skill v2 nhận lại skill cũ khi chạy `upgrade-sdlc-squad.
 ### S8. Thí điểm và hiệu chỉnh ngưỡng (cần người dùng đồng ý)
 
 - **Mục đích:** biết v2 hoạt động ra sao trên dự án thật và đặt lại ngưỡng bằng số.
-- **File đổi:** cập nhật `docs/engineering/sdlc-harness-calibration.md`; có thể một commit nhỏ chỉnh hằng số H14 và ngưỡng smoke trong `check-harness.mjs`/`SKILL.md` theo DR5 (kéo theo `pnpm generate:sdlc-skills`).
+- **File đổi:** cập nhật `docs/engineering/sdlc-harness-calibration.md`; có thể một commit nhỏ chỉnh hằng số H14 và ngưỡng smoke trong `check-harness.mjs`/`SKILL.md` theo DR5 (kéo theo `pnpm catalog:build`).
 - **Thay đổi cụ thể:**
   1. Chọn một dự án greenfield nhỏ không phải mua_ngon_ecommerce (hoặc hai bản sao cùng đặc tả để đối chiếu v1 và v2). Dựng trên **môi trường cô lập** theo worktree của repo (`make up`, dữ liệu riêng), không dùng DB dùng chung.
   2. Chạy qua squad SDLC: Environment, Harness, Harness smoke, hai epic nhỏ. Thu M1 đến M9 bằng `harness-metrics.mjs` và `check-harness --refresh`.
@@ -328,8 +328,8 @@ nâng cấp lên skill v2 nhận lại skill cũ khi chạy `upgrade-sdlc-squad.
   4. Nếu kiểm tra `gate` hay `cert` báo nhầm, sửa kiểm tra (không nới ngưỡng); mỗi sửa là một commit có test.
 - **Kiểm tra bước xong:**
   ```
-  node packages/core/squads/sdlc-skills/sdlc-harness/scripts/check-harness.mjs --root <repo thí điểm> --cert --run   # trong repo của dự án thí điểm
-  node packages/core/squads/sdlc-skills/sdlc-harness/scripts/harness-metrics.mjs --parent <epic> --output json
+  node catalog/skills/builtin/sdlc-harness/scripts/check-harness.mjs --root <repo thí điểm> --cert --run   # trong repo của dự án thí điểm
+  node catalog/skills/builtin/sdlc-harness/scripts/harness-metrics.mjs --parent <epic> --output json
   ```
   Tiêu chí AC14 của spec: smoke đạt trong ≤2 run, M7 = 0, `AGENTS.md` ≤ 80 dòng; bảng số liệu có trong tài liệu hiệu chỉnh.
 - **Phụ thuộc:** S5 đến S7; người dùng đồng ý chi phí và môi trường (spec mục 13.3).
@@ -366,7 +366,7 @@ nâng cấp lên skill v2 nhận lại skill cũ khi chạy `upgrade-sdlc-squad.
 | # | Rủi ro | Giảm thiểu |
 | --- | --- | --- |
 | 1 | Tree có thay đổi chưa commit của việc khác; commit nhầm file | `git add` theo đường dẫn; chạy `git status --short` trước và sau mỗi bước; so với mục 2 |
-| 2 | Quên sinh lại `sdlc-skills-data.ts` | Mỗi bước chạm `sdlc-skills/` có lệnh `pnpm generate:sdlc-skills` và `git diff --stat` trong phần kiểm tra |
+| 2 | Quên sinh lại `sdlc-skills-data.ts` | Mỗi bước chạm `sdlc-skills/` có lệnh `pnpm catalog:build` và `git diff --stat` trong phần kiểm tra |
 | 3 | Test của `upgrade.test.ts` đỏ vì lý do không liên quan | Baseline ở S0; chỉ so sánh chênh lệch |
 | 4 | Văn bản skill mâu thuẫn nhau sau S5 | Đọc lại toàn bộ chỗ nhắc `check-harness`; Reviewer đọc độc lập |
 | 5 | Kế hoạch dùng số ngưỡng tạm thời như thật | Gọi rõ "tạm thời" trong spec và tài liệu; S8 hiệu chỉnh |

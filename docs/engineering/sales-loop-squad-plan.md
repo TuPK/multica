@@ -45,7 +45,7 @@ Quy ước thực hiện (theo AGENTS.md):
 - Commit nhỏ, mỗi task một commit, kiểu conventional (`feat(squads): ...`). Kết thúc commit bằng dòng `Co-Authored-By` theo hướng dẫn của phiên làm việc.
 - PR chỉ mở vào `--repo TuPK/multica`, không bao giờ vào `multica-ai/multica`.
 - Sau mỗi task chạy kiểm tra hẹp nhất có ích; cuối mỗi giai đoạn chạy bộ rộng hơn (`pnpm typecheck`, `pnpm lint`, `pnpm test`, `make test` cho phần Go). Báo cáo đúng những gì đã chạy, kể cả cái bỏ qua.
-- Skill sửa trong `packages/core/squads/sdlc-skills/`, rồi `pnpm generate:sdlc-skills`. Không sửa tay `sdlc-skills-data.ts`.
+- Skill sửa trong `catalog/skills/builtin/`, rồi `pnpm generate:sdlc-skills`. Không sửa tay `sdlc-skills-data.ts`.
 - Migration: không khóa ngoại, không cascade; mỗi chỉ mục một file migration `CREATE INDEX CONCURRENTLY`; sau khi sửa SQL chạy `make sqlc`.
 - Phản hồi API mới đi qua zod và `parseWithFallback`, có test phản hồi lỗi; khóa query có `wsId`; chuỗi UI qua i18n đủ bảy ngôn ngữ (en, zh-Hans, zh-Hant, fr, es, ko, ja).
 - Test mặc định **không** gọi mạng, không gọi nhà cung cấp trả phí, không chạy agent CLI thật. Phần cần chạy thật nằm ở các bước "diễn tập" và chỉ chạy khi người dùng cho phép.

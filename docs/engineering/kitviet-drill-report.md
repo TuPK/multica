@@ -99,7 +99,7 @@ What the drill database shows for the five D1 cases (KVM-7, 9, 17, 27, 31):
 Changes in this step:
 
 - `server/internal/handler/squad.go`, `comment.go`, `squad_leader_stop_comment_test.go`: the unmatched-task helper, its wiring and its test were removed. These three files now match `89ca0c07e`.
-- `packages/core/squads/kitviet-skills/kv-delivery-core/SKILL.md`: the resume rule no longer gives the lead's mention as text to copy. A stop comment never mentions its own agent. Inline text in a comment or a description is not a draft (D3).
+- `catalog/_sources/kitviet/skills/kv-delivery-core/SKILL.md`: the resume rule no longer gives the lead's mention as text to copy. A stop comment never mentions its own agent. Inline text in a comment or a description is not a draft (D3).
 - `packages/core/squads/kitviet-skills-data/common.ts`: regenerated with `node scripts/generate-kitviet-pack.mjs`.
 - `packages/core/squads/kitviet-lead-self-mention.test.ts` (new) and `kitviet-verdict-line.test.ts` (D3 guards). The self-mention test was run before the wording change and failed on all three assertions.
 - `docs/engineering/kitviet-runbook.md`, section 9: each open item is fixed or decided, with the reason.
