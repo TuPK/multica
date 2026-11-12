@@ -36,7 +36,6 @@ the branch, including bmad-build and bmad-build-auto's version control sanity ch
 
 - Work on top of what is there. Read the changes in a file you must edit and keep them.
 - Commit only your own work, naming each path (`git add <path> ...`). Never `git add -A` or `git add .`.
-- Never push to any remote. A commit is your handoff; report its id and branch. Commit, do not push.
 - Never stash, reset, checkout over, clean, or delete changes you did not make. Leave them uncommitted.
 - A file that you must edit already holds another run's uncommitted change and the two cannot be separated: commit the
   file with yours and say so in Remaining.

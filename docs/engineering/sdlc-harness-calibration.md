@@ -140,7 +140,7 @@ Kết luận: trong pilot này không quan sát được báo nhầm của `gate
 
 - **Commit không lên `origin`.** Ba lần block (DEV-4, DEV-7, DEV-10) và ba issue mở khóa (DEV-14, DEV-15, DEV-16) đều bắt nguồn từ việc commit nằm trên nhánh cục bộ. Developer và Architect không push lên `origin`. Cả ba block trong pilot đều truy về lỗi này, nên đây là nguồn block lớn nhất của luồng. Cần quyết định chính sách push của squad SDLC. Quyết định này nằm ngoài harness.
 
-**Đã chốt (người dùng):** squad SDLC không được push lên `origin`, chỉ commit. Skill `sdlc-delivery-core` đã thêm quy tắc này. Hệ quả chưa được giải quyết: commit trên nhánh cục bộ của daemon không tự vào `main`, nên QA và bước giao hàng có thể vẫn bị block. Cần thiết kế cách commit đến nhánh đích mà không push (ví dụ merge cục bộ vào một nhánh tích hợp). Chưa làm.
+**Đã đổi (người dùng):** squad được phép push lên `origin` để không bị block. Lần đầu, quy tắc "chỉ commit" đã được thêm vào skill `sdlc-delivery-core` và sau đó gỡ bỏ. Commit của Developer và Architect phải được push để QA và bước giao hàng thấy được. Chưa kiểm chứng sau khi đổi, vì chưa chạy lại pilot.
 - **Lead không đóng request.** Sau khi các epic xong, DEV-1 vẫn `todo`. Skill yêu cầu chuyển sang `Plan ready`. Chưa rõ nguyên nhân.
 - **Lượt đánh thức lặp.** Sau khi smoke được mở khóa, DEV-4 chạy sáu lượt liên tiếp trong vài phút. Chưa xác định trigger.
 

@@ -82,7 +82,7 @@ Trước khi chạy, cần người quyết:
 1. **Bộ tác vụ.** Dùng 22 tác vụ tupk (đa số không chấm được tất định), hay thay bằng bộ tác vụ khác có grader rõ, ví dụ lỗi có chủ đích trên repo greenfield của S8.
 2. **Người viết grader và snapshot.** Nếu dùng tupk, cần snapshot repo cho từng tác vụ.
 3. **Thử trước một ô nhỏ.** Chạy một biến thể, ba tác vụ, một lượt để kiểm tra grader, rồi mới chạy đủ 225 lượt.
-4. **Chính sách push.** Đã chốt: squad chỉ commit, không push lên `origin` (xem calibration 5.7). Hệ quả với eval: commit không vào `main`, nên bước kiểm tra phải chấm trên nhánh làm việc. Cách chấm chưa thiết kế.
+4. **Chính sách push.** Đã chốt: squad được push lên `origin` (xem calibration 5.7). Eval chấm trên commit đã push, nên kết quả không phụ thuộc vào nhánh cục bộ của daemon.
 
 **Quyết định của phiên này (người dùng cho phép chọn):** giữ 22 tác vụ tupk làm nguồn, nhưng chưa chạy lượt nào. Lý do: chưa có grader và chưa có snapshot repo, nên 225 lượt sẽ không cho kết quả đáng tin. Bước tiếp theo là thiết kế grader cho ít nhất một tác vụ có kiểm tra tất định, rồi chạy thử một ô (3 tác vụ, 1 biến thể, 1 lượt) trước khi tính đến chi phí đủ.
 
