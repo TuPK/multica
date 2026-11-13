@@ -1,0 +1,184 @@
+{
+  "version": 2,
+  "start": "plan",
+  "roles": [
+    {
+      "key": "worker",
+      "kind": "agent"
+    }
+  ],
+  "stops": [
+    {
+      "code": "loop_exhausted",
+      "class": "loop_exhausted",
+      "message": "stop3",
+      "legacy_no": 3
+    }
+  ],
+  "terminals": [
+    {
+      "key": "done",
+      "status": "done"
+    },
+    {
+      "key": "cancelled",
+      "status": "cancelled"
+    }
+  ],
+  "steps": [
+    {
+      "key": "plan",
+      "kind": "lead",
+      "status": {
+        "key": "todo"
+      },
+      "title": "Plan",
+      "lead": {
+        "sets": [
+          "route"
+        ]
+      },
+      "edges": [
+        {
+          "id": "to_a",
+          "label": "Route a",
+          "to": "branch_a",
+          "when": {
+            "field": "var.route",
+            "op": "eq",
+            "value": "a"
+          }
+        },
+        {
+          "id": "to_b",
+          "label": "Route b",
+          "to": "branch_b",
+          "when": {
+            "field": "var.route",
+            "op": "eq",
+            "value": "b"
+          }
+        },
+        {
+          "id": "to_c",
+          "label": "Any other route",
+          "to": "branch_c"
+        }
+      ]
+    },
+    {
+      "key": "branch_a",
+      "kind": "tasks",
+      "status": {
+        "key": "in_progress"
+      },
+      "tasks": [
+        {
+          "key": "work_a",
+          "title": "Branch a",
+          "kind": "work",
+          "role": "worker"
+        }
+      ],
+      "title": "Branch a",
+      "edges": [
+        {
+          "id": "a_next",
+          "label": "Merge",
+          "to": "merge"
+        }
+      ]
+    },
+    {
+      "key": "branch_b",
+      "kind": "tasks",
+      "status": {
+        "key": "in_progress"
+      },
+      "tasks": [
+        {
+          "key": "work_b",
+          "title": "Branch b",
+          "kind": "work",
+          "role": "worker"
+        }
+      ],
+      "title": "Branch b",
+      "edges": [
+        {
+          "id": "b_next",
+          "label": "Merge",
+          "to": "merge"
+        }
+      ]
+    },
+    {
+      "key": "branch_c",
+      "kind": "tasks",
+      "status": {
+        "key": "in_progress"
+      },
+      "tasks": [
+        {
+          "key": "work_c",
+          "title": "Branch c",
+          "kind": "work",
+          "role": "worker"
+        }
+      ],
+      "title": "Branch c",
+      "edges": [
+        {
+          "id": "c_next",
+          "label": "Merge",
+          "to": "merge"
+        }
+      ]
+    },
+    {
+      "key": "merge",
+      "kind": "tasks",
+      "status": {
+        "key": "in_progress"
+      },
+      "tasks": [
+        {
+          "key": "wrap",
+          "title": "Wrap up",
+          "kind": "work",
+          "role": "worker"
+        }
+      ],
+      "title": "Merge",
+      "edges": [
+        {
+          "id": "merge_next",
+          "label": "Done",
+          "to": "done"
+        }
+      ]
+    }
+  ],
+  "messages": {
+    "stop3": "BLOCKED · stop 3\n{requester} {request} stopped at {step}.\n{tasks}"
+  },
+  "policy": {},
+  "vars": [
+    {
+      "key": "route",
+      "type": "enum",
+      "values": [
+        "a",
+        "b",
+        "c"
+      ],
+      "default": "c",
+      "set_by": [
+        "lead"
+      ],
+      "set_at": [
+        "plan"
+      ]
+    }
+  ]
+}

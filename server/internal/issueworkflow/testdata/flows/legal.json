@@ -1,0 +1,287 @@
+{
+  "version": 2,
+  "start": "plan",
+  "roles": [
+    {
+      "key": "drafter",
+      "kind": "agent"
+    },
+    {
+      "key": "reviewers",
+      "kind": "member",
+      "pool": 5
+    },
+    {
+      "key": "counsel",
+      "kind": "member"
+    }
+  ],
+  "vars": [
+    {
+      "key": "severity",
+      "type": "enum",
+      "values": [
+        "minor",
+        "major",
+        "critical"
+      ],
+      "default": "major",
+      "set_by": [
+        "lead"
+      ],
+      "set_at": [
+        "plan"
+      ]
+    }
+  ],
+  "verdicts": [
+    {
+      "key": "review",
+      "verdicts": [
+        {
+          "key": "approve",
+          "class": "pass"
+        },
+        {
+          "key": "reject",
+          "class": "fail"
+        },
+        {
+          "key": "abstain",
+          "class": "neutral"
+        }
+      ]
+    }
+  ],
+  "loops": [
+    {
+      "key": "cutback",
+      "header": "intake",
+      "max": 1
+    },
+    {
+      "key": "clauses",
+      "header": "redraft_clauses",
+      "max": 3
+    }
+  ],
+  "stops": [
+    {
+      "code": "grounds_missing",
+      "class": "missing_grounds",
+      "message": "stop1",
+      "legacy_no": 1
+    },
+    {
+      "code": "loop_exhausted",
+      "class": "loop_exhausted",
+      "message": "stop3",
+      "legacy_no": 3
+    }
+  ],
+  "terminals": [
+    {
+      "key": "done",
+      "status": "done",
+      "leaves_workspace": true
+    },
+    {
+      "key": "cancelled",
+      "status": "cancelled"
+    }
+  ],
+  "steps": [
+    {
+      "key": "plan",
+      "kind": "lead",
+      "status": {
+        "key": "todo"
+      },
+      "title": "Plan",
+      "lead": {
+        "sets": [
+          "severity"
+        ]
+      },
+      "edges": [
+        {
+          "id": "plan_blocked",
+          "label": "Missing grounds",
+          "when": {
+            "field": "lead.verdict",
+            "op": "eq",
+            "value": "blocked"
+          },
+          "stop": "grounds_missing"
+        },
+        {
+          "id": "plan_ok",
+          "label": "Planned",
+          "to": "intake"
+        }
+      ]
+    },
+    {
+      "key": "intake",
+      "kind": "tasks",
+      "status": {
+        "name": "Intake",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "intake_draft",
+          "title": "Take in the document",
+          "kind": "work",
+          "role": "drafter"
+        }
+      ],
+      "title": "Intake",
+      "edges": [
+        {
+          "id": "intake_next",
+          "label": "Taken in",
+          "to": "redraft_clauses"
+        }
+      ]
+    },
+    {
+      "key": "redraft_clauses",
+      "kind": "tasks",
+      "status": {
+        "name": "Clauses",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "clauses",
+          "title": "Redraft the clauses",
+          "kind": "work",
+          "role": "drafter"
+        }
+      ],
+      "title": "Clauses",
+      "edges": [
+        {
+          "id": "clauses_next",
+          "label": "Redrafted",
+          "to": "review"
+        }
+      ]
+    },
+    {
+      "key": "review",
+      "kind": "tasks",
+      "status": {
+        "name": "Review",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "reviewer",
+          "title": "Review the draft",
+          "kind": "gate",
+          "role": "reviewers",
+          "instances": {
+            "count": 5,
+            "distinct": true
+          },
+          "verdicts": "review"
+        }
+      ],
+      "title": "Review",
+      "join": {
+        "over": "gates",
+        "mode": "quorum",
+        "k": 3,
+        "block": "immediate"
+      },
+      "edges": [
+        {
+          "id": "review_ok",
+          "label": "Approved",
+          "to": "counsel_signoff",
+          "when": {
+            "field": "join.result",
+            "op": "eq",
+            "value": "pass"
+          }
+        },
+        {
+          "id": "review_cut",
+          "label": "Critical: back to intake",
+          "to": "intake",
+          "when": {
+            "all": [
+              {
+                "field": "join.result",
+                "op": "eq",
+                "value": "fail"
+              },
+              {
+                "field": "var.severity",
+                "op": "eq",
+                "value": "critical"
+              },
+              {
+                "field": "loop.cutback.count",
+                "op": "lt",
+                "value": 1
+              }
+            ]
+          },
+          "loop": "cutback"
+        },
+        {
+          "id": "review_fix",
+          "label": "Back to the clauses",
+          "to": "redraft_clauses",
+          "when": {
+            "all": [
+              {
+                "field": "join.result",
+                "op": "eq",
+                "value": "fail"
+              },
+              {
+                "field": "loop.clauses.count",
+                "op": "lt",
+                "value": 3
+              }
+            ]
+          },
+          "loop": "clauses"
+        },
+        {
+          "id": "review_stop",
+          "label": "Review limit reached",
+          "stop": "loop_exhausted"
+        }
+      ]
+    },
+    {
+      "key": "counsel_signoff",
+      "kind": "manual",
+      "status": {
+        "key": "in_review"
+      },
+      "title": "Counsel sign-off",
+      "notice": "stop2",
+      "exit_role": "counsel",
+      "edges": [
+        {
+          "id": "signoff_go",
+          "label": "Sign off",
+          "to": "done",
+          "trigger": "manual"
+        }
+      ]
+    }
+  ],
+  "messages": {
+    "stop1": "BLOCKED · stop 1\n{requester} {request} stopped at {step}: grounds are missing.\n{tasks}",
+    "stop3": "BLOCKED · stop 3\n{requester} {request} used its {rework} rework rounds.\n{tasks}",
+    "stop2": "IN REVIEW · stop 2\n{requester} {request} is ready for your review.\n{tasks}"
+  },
+  "policy": {}
+}

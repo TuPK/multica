@@ -1,0 +1,166 @@
+{
+  "version": 2,
+  "start": "plan",
+  "roles": [
+    {
+      "key": "ana",
+      "kind": "agent"
+    },
+    {
+      "key": "ben",
+      "kind": "agent"
+    }
+  ],
+  "loops": [
+    {
+      "key": "redo",
+      "header": "build",
+      "max": 2
+    }
+  ],
+  "stops": [
+    {
+      "code": "grounds_missing",
+      "class": "missing_grounds",
+      "message": "stop1",
+      "legacy_no": 1
+    },
+    {
+      "code": "loop_exhausted",
+      "class": "loop_exhausted",
+      "message": "stop3",
+      "legacy_no": 3
+    }
+  ],
+  "terminals": [
+    {
+      "key": "done",
+      "status": "done"
+    }
+  ],
+  "steps": [
+    {
+      "key": "plan",
+      "kind": "lead",
+      "status": {
+        "key": "todo"
+      },
+      "title": "Plan",
+      "edges": [
+        {
+          "id": "plan_ok",
+          "label": "Planned",
+          "to": "build"
+        }
+      ]
+    },
+    {
+      "key": "build",
+      "kind": "tasks",
+      "status": {
+        "name": "Build",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "write_a",
+          "title": "Ana writes her part",
+          "kind": "work",
+          "role": "ana"
+        },
+        {
+          "key": "write_b",
+          "title": "Ben writes his part",
+          "kind": "work",
+          "role": "ben"
+        }
+      ],
+      "title": "Build",
+      "edges": [
+        {
+          "id": "build_next",
+          "label": "Built",
+          "to": "review"
+        }
+      ]
+    },
+    {
+      "key": "review",
+      "kind": "tasks",
+      "status": {
+        "name": "Review",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "ana_checks_ben",
+          "title": "Ana checks Ben's part",
+          "kind": "gate",
+          "role": "ana",
+          "inputs": [
+            {
+              "from": "build.write_b",
+              "required": true
+            }
+          ]
+        },
+        {
+          "key": "ben_checks_ana",
+          "title": "Ben checks Ana's part",
+          "kind": "gate",
+          "role": "ben",
+          "inputs": [
+            {
+              "from": "build.write_a",
+              "required": true
+            }
+          ]
+        }
+      ],
+      "title": "Review",
+      "edges": [
+        {
+          "id": "review_ok",
+          "label": "Both approved",
+          "to": "done",
+          "when": {
+            "field": "join.result",
+            "op": "eq",
+            "value": "pass"
+          }
+        },
+        {
+          "id": "review_redo",
+          "label": "Redo the build",
+          "to": "build",
+          "when": {
+            "all": [
+              {
+                "field": "join.result",
+                "op": "eq",
+                "value": "fail"
+              },
+              {
+                "field": "loop.redo.count",
+                "op": "lt",
+                "value": 2
+              }
+            ]
+          },
+          "loop": "redo"
+        },
+        {
+          "id": "review_stop",
+          "label": "Rework limit reached",
+          "stop": "loop_exhausted"
+        }
+      ]
+    }
+  ],
+  "messages": {
+    "stop1": "BLOCKED · stop 1\n{requester} {request} stopped at {step}: grounds are missing.\n{tasks}",
+    "stop3": "BLOCKED · stop 3\n{requester} {request} used its {rework} rework rounds.\n{tasks}",
+    "stop2": "IN REVIEW · stop 2\n{requester} {request} is ready for your review.\n{tasks}"
+  },
+  "policy": {}
+}

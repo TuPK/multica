@@ -1,0 +1,384 @@
+{
+  "version": 2,
+  "start": "plan",
+  "roles": [
+    {
+      "key": "docs_reader",
+      "kind": "agent"
+    },
+    {
+      "key": "customs_research",
+      "kind": "agent"
+    },
+    {
+      "key": "drafter",
+      "kind": "agent"
+    },
+    {
+      "key": "docs_gate",
+      "kind": "agent"
+    },
+    {
+      "key": "customs_gate",
+      "kind": "agent"
+    },
+    {
+      "key": "handover_gate",
+      "kind": "agent"
+    }
+  ],
+  "vars": [
+    {
+      "key": "route",
+      "type": "enum",
+      "values": [
+        "shipment_dossier"
+      ],
+      "default": "shipment_dossier",
+      "set_by": [
+        "lead"
+      ],
+      "set_at": [
+        "plan"
+      ]
+    },
+    {
+      "key": "customs_lookup",
+      "type": "bool",
+      "default": false,
+      "set_by": [
+        "lead"
+      ],
+      "set_at": [
+        "plan"
+      ]
+    },
+    {
+      "key": "export",
+      "type": "bool",
+      "default": false,
+      "set_by": [
+        "lead"
+      ],
+      "set_at": [
+        "plan"
+      ]
+    }
+  ],
+  "loops": [
+    {
+      "key": "fix",
+      "header": "draft",
+      "max": 2
+    }
+  ],
+  "stops": [
+    {
+      "code": "grounds_missing",
+      "class": "missing_grounds",
+      "message": "stop1",
+      "legacy_no": 1
+    },
+    {
+      "code": "loop_exhausted",
+      "class": "loop_exhausted",
+      "message": "stop3",
+      "legacy_no": 3
+    }
+  ],
+  "terminals": [
+    {
+      "key": "done",
+      "status": "done",
+      "leaves_workspace": true
+    },
+    {
+      "key": "cancelled",
+      "status": "cancelled"
+    }
+  ],
+  "steps": [
+    {
+      "key": "plan",
+      "kind": "lead",
+      "status": {
+        "key": "todo"
+      },
+      "title": "Plan",
+      "lead": {
+        "sets": [
+          "route",
+          "customs_lookup",
+          "export"
+        ]
+      },
+      "edges": [
+        {
+          "id": "plan_blocked",
+          "label": "Missing grounds",
+          "when": {
+            "field": "lead.verdict",
+            "op": "eq",
+            "value": "blocked"
+          },
+          "stop": "grounds_missing"
+        },
+        {
+          "id": "plan_ok",
+          "label": "Planned",
+          "to": "collect"
+        }
+      ]
+    },
+    {
+      "key": "collect",
+      "kind": "tasks",
+      "status": {
+        "name": "Collect",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "docs",
+          "title": "Read the documents",
+          "kind": "work",
+          "role": "docs_reader",
+          "instructions": "Read every document."
+        },
+        {
+          "key": "customs",
+          "title": "Customs lookup",
+          "kind": "work",
+          "role": "customs_research",
+          "when": {
+            "field": "var.customs_lookup",
+            "op": "eq",
+            "value": true
+          },
+          "instructions": "Look up customs."
+        }
+      ],
+      "title": "Collect",
+      "edges": [
+        {
+          "id": "collect_blocked",
+          "label": "Missing grounds",
+          "when": {
+            "field": "join.result",
+            "op": "eq",
+            "value": "block"
+          },
+          "stop": "grounds_missing"
+        },
+        {
+          "id": "collect_ok",
+          "label": "Collected",
+          "to": "draft"
+        }
+      ]
+    },
+    {
+      "key": "draft",
+      "kind": "tasks",
+      "status": {
+        "name": "Draft",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "crosscheck",
+          "title": "Draft the cross-check",
+          "kind": "work",
+          "role": "drafter",
+          "requires": {
+            "files": [
+              {
+                "slot": "draft",
+                "min": 1
+              }
+            ]
+          },
+          "instructions": "Draft it."
+        }
+      ],
+      "title": "Draft",
+      "edges": [
+        {
+          "id": "draft_blocked",
+          "label": "Missing grounds",
+          "when": {
+            "field": "join.result",
+            "op": "eq",
+            "value": "block"
+          },
+          "stop": "grounds_missing"
+        },
+        {
+          "id": "draft_ok",
+          "label": "Drafted",
+          "to": "gate"
+        }
+      ]
+    },
+    {
+      "key": "gate",
+      "kind": "tasks",
+      "status": {
+        "name": "Gate",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "docs_gate",
+          "title": "Documents gate",
+          "kind": "gate",
+          "role": "docs_gate",
+          "instructions": "Check the documents."
+        },
+        {
+          "key": "customs_gate",
+          "title": "Customs gate",
+          "kind": "gate",
+          "role": "customs_gate",
+          "instructions": "Check customs."
+        }
+      ],
+      "title": "Gate",
+      "join": {
+        "over": "gates",
+        "mode": "all",
+        "block": "immediate"
+      },
+      "edges": [
+        {
+          "id": "gate_blocked",
+          "label": "Missing grounds",
+          "when": {
+            "field": "join.result",
+            "op": "eq",
+            "value": "block"
+          },
+          "stop": "grounds_missing"
+        },
+        {
+          "id": "gate_ok",
+          "label": "Approved",
+          "to": "handover",
+          "when": {
+            "field": "join.result",
+            "op": "eq",
+            "value": "pass"
+          }
+        },
+        {
+          "id": "gate_fix",
+          "label": "Fix and re-run all gates",
+          "to": "draft",
+          "when": {
+            "all": [
+              {
+                "field": "join.result",
+                "op": "eq",
+                "value": "fail"
+              },
+              {
+                "field": "loop.fix.count",
+                "op": "lt",
+                "value": 2
+              }
+            ]
+          },
+          "loop": "fix"
+        },
+        {
+          "id": "gate_default",
+          "label": "Rework limit reached",
+          "stop": "loop_exhausted"
+        }
+      ]
+    },
+    {
+      "key": "handover",
+      "kind": "tasks",
+      "status": {
+        "name": "Handover",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "handover",
+          "title": "Handover",
+          "kind": "gate",
+          "role": "handover_gate",
+          "instructions": "Hand over."
+        }
+      ],
+      "title": "Handover",
+      "edges": [
+        {
+          "id": "handover_ok",
+          "label": "Approved",
+          "to": "release",
+          "when": {
+            "field": "join.result",
+            "op": "eq",
+            "value": "pass"
+          }
+        },
+        {
+          "id": "handover_stop1",
+          "label": "Missing grounds",
+          "when": {
+            "field": "join.result",
+            "op": "eq",
+            "value": "block"
+          },
+          "stop": "grounds_missing"
+        },
+        {
+          "id": "handover_stop",
+          "label": "Rejected",
+          "stop": "loop_exhausted"
+        }
+      ]
+    },
+    {
+      "key": "release",
+      "kind": "manual",
+      "status": {
+        "key": "in_review"
+      },
+      "tasks": [
+        {
+          "key": "export",
+          "title": "Export",
+          "kind": "work",
+          "role": "drafter",
+          "when": {
+            "field": "var.export",
+            "op": "eq",
+            "value": true
+          },
+          "instructions": "Export."
+        }
+      ],
+      "title": "Release",
+      "notice": "stop2",
+      "exit_role": "managers",
+      "edges": [
+        {
+          "id": "release_done",
+          "label": "Release",
+          "to": "done",
+          "trigger": "manual"
+        }
+      ]
+    }
+  ],
+  "messages": {
+    "stop1": "BLOCKED · stop 1\n{requester} {request} stopped at {step}: grounds are missing.\n{tasks}",
+    "stop3": "BLOCKED · stop 3\n{requester} {request} used its {rework} rework rounds.\n{tasks}",
+    "stop2": "IN REVIEW · stop 2\n{requester} {request} is ready for your review.\n{tasks}"
+  },
+  "policy": {}
+}

@@ -1,0 +1,918 @@
+=== round 0 / collect / collector / TaskDescription ===
+Thu thập chứng từ và số liệu. Chỉ đọc và trích dữ kiện từ các tệp đính kèm của request và từ nguồn mà vai của bạn được phép dùng; mỗi dữ kiện ghi kèm tệp và vị trí (hoặc nguồn và ngày mở nguồn). Không tính toán, không kết luận đúng sai. Đính kèm kết quả thành tệp `01-collector.md`. Tệp là đầu ra của task: server không cho đóng task khi chưa có tệp đính kèm. Nếu vai của bạn không có công cụ ghi, vẫn tạo tệp bằng shell rồi đính kèm.
+
+Thiếu đầu vào mà không thể mặc định thì đây là điểm dừng 1: nêu từng mục thiếu trong comment rồi báo task bị chặn.
+
+This issue is the task `collector` of the request KV-1. Read the request first; do only this task.
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / collect / collector / FlowTaskBrief ===
+This issue is the task "collector" (Thu thập chứng từ và số liệu) of the request KV-1, run by the workflow flow_kv_accounting at the step Collect. A server drives the workflow: do this task and nothing else.
+
+Your moves:
+Attach your output  → multica issue comment add KV-2 --attachment <file> --content "..."
+Done                → multica issue status KV-2 done
+Can't go on         → comment what is missing, then multica issue status KV-2 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / collect / tax_research / TaskDescription ===
+Tra cứu quy định thuế. Chỉ đọc và trích dữ kiện từ các tệp đính kèm của request và từ nguồn mà vai của bạn được phép dùng; mỗi dữ kiện ghi kèm tệp và vị trí (hoặc nguồn và ngày mở nguồn). Không tính toán, không kết luận đúng sai. Đính kèm kết quả thành tệp `02-tax_research.md`. Tệp là đầu ra của task: server không cho đóng task khi chưa có tệp đính kèm. Nếu vai của bạn không có công cụ ghi, vẫn tạo tệp bằng shell rồi đính kèm.
+
+Thiếu đầu vào mà không thể mặc định thì đây là điểm dừng 1: nêu từng mục thiếu trong comment rồi báo task bị chặn.
+
+This issue is the task `tax_research` of the request KV-1. Read the request first; do only this task.
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / collect / tax_research / FlowTaskBrief ===
+This issue is the task "tax_research" (Tra cứu quy định thuế) of the request KV-1, run by the workflow flow_kv_accounting at the step Collect. A server drives the workflow: do this task and nothing else.
+
+Your moves:
+Attach your output  → multica issue comment add KV-3 --attachment <file> --content "..."
+Done                → multica issue status KV-3 done
+Can't go on         → comment what is missing, then multica issue status KV-3 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / draft / reconciler / TaskDescription ===
+Lập bảng đối chiếu, chỉ từ dữ kiện đã thu thập ở các bước trước (tệp đính kèm của các task đó). Dữ kiện chưa có thì ghi [cần bổ sung], không bịa; mọi con số, mã và trích dẫn ghi là đề xuất cho người duyệt. Đính kèm bản nháp thành tệp `03-reconciler.md`. Không tự kết luận là đã soát.
+
+This issue is the task `reconciler` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-2 · collector: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-3 · tax_research: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / draft / reconciler / FlowTaskBrief ===
+This issue is the task "reconciler" (Lập bảng đối chiếu) of the request KV-1, run by the workflow flow_kv_accounting at the step Draft. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-2 · collector
+- KV-3 · tax_research
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+Your moves:
+Attach your output  → multica issue comment add KV-4 --attachment <file> --content "..."
+Done                → multica issue status KV-4 done
+Can't go on         → comment what is missing, then multica issue status KV-4 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / draft / tax_drafter / TaskDescription ===
+Soạn công văn thuế, chỉ từ dữ kiện đã thu thập ở các bước trước (tệp đính kèm của các task đó). Dữ kiện chưa có thì ghi [cần bổ sung], không bịa; mọi con số, mã và trích dẫn ghi là đề xuất cho người duyệt. Đính kèm bản nháp thành tệp `04-tax_drafter.md`. Không tự kết luận là đã soát.
+
+This issue is the task `tax_drafter` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-2 · collector: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-3 · tax_research: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / draft / tax_drafter / FlowTaskBrief ===
+This issue is the task "tax_drafter" (Soạn công văn thuế) of the request KV-1, run by the workflow flow_kv_accounting at the step Draft. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-2 · collector
+- KV-3 · tax_research
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+Your moves:
+Attach your output  → multica issue comment add KV-5 --attachment <file> --content "..."
+Done                → multica issue status KV-5 done
+Can't go on         → comment what is missing, then multica issue status KV-5 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / gate / voucher_gate / TaskDescription ===
+Soát chứng từ. Chỉ đọc, không sửa gì: bạn chỉ có tệp bản nháp và nguồn được liên kết, không có lập luận của người soạn.
+
+Dòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).
+
+Nếu mọi lỗi chặn nằm ở nguồn gốc (tệp đầu vào của bước thu thập thiếu, mâu thuẫn nhau hoặc chưa được xác nhận) và bản nháp đã nêu đúng từng lỗi đó, bản nháp không sửa được: nêu từng mục cần người xác nhận trong comment rồi đóng task bằng `multica issue status <id> blocked --outcome blocked` (dừng 1, người dùng xác nhận rồi cho request chạy tiếp) thay vì rejected. Chỉ dùng rejected khi lỗi nằm ở bản nháp và người soạn sửa được.
+
+This issue is the task `voucher_gate` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-4 · reconciler: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-5 · tax_drafter: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / gate / voucher_gate / FlowTaskBrief ===
+This issue is the task "voucher_gate" (Soát chứng từ) of the request KV-1, run by the workflow flow_kv_accounting at the step Gate. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-4 · reconciler
+- KV-5 · tax_drafter
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+Your moves:
+Pass                → multica issue status KV-6 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-6 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-6 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / gate / tax_gate / TaskDescription ===
+Soát nội dung thuế. Chỉ đọc, không sửa gì: bạn chỉ có tệp bản nháp và nguồn được liên kết, không có lập luận của người soạn.
+
+Dòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).
+
+Nếu mọi lỗi chặn nằm ở nguồn gốc (tệp đầu vào của bước thu thập thiếu, mâu thuẫn nhau hoặc chưa được xác nhận) và bản nháp đã nêu đúng từng lỗi đó, bản nháp không sửa được: nêu từng mục cần người xác nhận trong comment rồi đóng task bằng `multica issue status <id> blocked --outcome blocked` (dừng 1, người dùng xác nhận rồi cho request chạy tiếp) thay vì rejected. Chỉ dùng rejected khi lỗi nằm ở bản nháp và người soạn sửa được.
+
+This issue is the task `tax_gate` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-4 · reconciler: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-5 · tax_drafter: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / gate / tax_gate / FlowTaskBrief ===
+This issue is the task "tax_gate" (Soát nội dung thuế) of the request KV-1, run by the workflow flow_kv_accounting at the step Gate. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-4 · reconciler
+- KV-5 · tax_drafter
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+Your moves:
+Pass                → multica issue status KV-7 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-7 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-7 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / gate / numbers_gate / TaskDescription ===
+Soát số liệu kế toán. Chỉ đọc, không sửa gì: bạn chỉ có tệp bản nháp và nguồn được liên kết, không có lập luận của người soạn.
+
+Dòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).
+
+Nếu mọi lỗi chặn nằm ở nguồn gốc (tệp đầu vào của bước thu thập thiếu, mâu thuẫn nhau hoặc chưa được xác nhận) và bản nháp đã nêu đúng từng lỗi đó, bản nháp không sửa được: nêu từng mục cần người xác nhận trong comment rồi đóng task bằng `multica issue status <id> blocked --outcome blocked` (dừng 1, người dùng xác nhận rồi cho request chạy tiếp) thay vì rejected. Chỉ dùng rejected khi lỗi nằm ở bản nháp và người soạn sửa được.
+
+This issue is the task `numbers_gate` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-4 · reconciler: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-5 · tax_drafter: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / gate / numbers_gate / FlowTaskBrief ===
+This issue is the task "numbers_gate" (Soát số liệu kế toán) of the request KV-1, run by the workflow flow_kv_accounting at the step Gate. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-4 · reconciler
+- KV-5 · tax_drafter
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+Your moves:
+Pass                → multica issue status KV-8 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-8 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-8 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / handover / handover / TaskDescription ===
+Đối chiếu sản phẩm cuối với kế hoạch của lead trên request và với kết luận của mọi cổng. Ghi comment bàn giao liệt kê việc người nhận phải tự quyết trước khi gửi, nộp, ký hoặc công bố bất cứ thứ gì, kèm chỗ chưa xác minh và cảnh báo.
+
+Dòng đầu của comment là `VERDICT: QUA` hoặc `VERDICT: CHẶN`. QUA chỉ khi mọi cổng QUA trên bản cuối và sản phẩm khớp kế hoạch. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).
+
+Nếu mọi lỗi chặn nằm ở nguồn gốc (tệp đầu vào của bước thu thập thiếu, mâu thuẫn nhau hoặc chưa được xác nhận) và bản nháp đã nêu đúng từng lỗi đó, bản nháp không sửa được: nêu từng mục cần người xác nhận trong comment rồi đóng task bằng `multica issue status <id> blocked --outcome blocked` (dừng 1, người dùng xác nhận rồi cho request chạy tiếp) thay vì rejected. Chỉ dùng rejected khi lỗi nằm ở bản nháp và người soạn sửa được.
+
+This issue is the task `handover` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-6 · voucher_gate: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-7 · tax_gate: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-8 · numbers_gate: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / handover / handover / FlowTaskBrief ===
+This issue is the task "handover" (Kiểm định bàn giao) of the request KV-1, run by the workflow flow_kv_accounting at the step Handover. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-6 · voucher_gate
+- KV-7 · tax_gate
+- KV-8 · numbers_gate
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+Your moves:
+Pass                → multica issue status KV-9 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-9 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-9 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 0 / in_review / export / TaskDescription ===
+Chỉ chạy sau khi comment dừng 2 đã đăng. Xuất sản phẩm ra tệp người yêu cầu cần (Word, Excel, PDF hoặc PowerPoint) bằng kỹ năng xuất tệp tương ứng của bộ, giữ nguyên nội dung đã duyệt, rồi đính kèm tệp vào comment cuối.
+
+Thiếu thư viện xuất thì báo task bị chặn và nêu tên thư viện; request vẫn ở in_review với bản Markdown.
+
+This issue is the task `export` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-9 · handover: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 0 / in_review / export / FlowTaskBrief ===
+This issue is the task "export" (Xuất tệp cho người yêu cầu) of the request KV-1, run by the workflow flow_kv_accounting at the step in_review. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-9 · handover
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+Your moves:
+Done                → multica issue status KV-10 done
+Can't go on         → comment what is missing, then multica issue status KV-10 blocked --outcome blocked
+
+The server refuses:
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / collect / collector / TaskDescription ===
+Thu thập chứng từ và số liệu. Chỉ đọc và trích dữ kiện từ các tệp đính kèm của request và từ nguồn mà vai của bạn được phép dùng; mỗi dữ kiện ghi kèm tệp và vị trí (hoặc nguồn và ngày mở nguồn). Không tính toán, không kết luận đúng sai. Đính kèm kết quả thành tệp `01-collector.md`. Tệp là đầu ra của task: server không cho đóng task khi chưa có tệp đính kèm. Nếu vai của bạn không có công cụ ghi, vẫn tạo tệp bằng shell rồi đính kèm.
+
+Thiếu đầu vào mà không thể mặc định thì đây là điểm dừng 1: nêu từng mục thiếu trong comment rồi báo task bị chặn.
+
+This issue is the task `collector` of the request KV-1. Read the request first; do only this task.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-6 · voucher_gate
+- KV-7 · tax_gate
+- KV-8 · numbers_gate
+- KV-9 · handover
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / collect / collector / FlowTaskBrief ===
+This issue is the task "collector" (Thu thập chứng từ và số liệu) of the request KV-1, run by the workflow flow_kv_accounting at the step Collect. A server drives the workflow: do this task and nothing else.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-6 · voucher_gate
+- KV-7 · tax_gate
+- KV-8 · numbers_gate
+- KV-9 · handover
+
+Your moves:
+Attach your output  → multica issue comment add KV-11 --attachment <file> --content "..."
+Done                → multica issue status KV-11 done
+Can't go on         → comment what is missing, then multica issue status KV-11 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / collect / tax_research / TaskDescription ===
+Tra cứu quy định thuế. Chỉ đọc và trích dữ kiện từ các tệp đính kèm của request và từ nguồn mà vai của bạn được phép dùng; mỗi dữ kiện ghi kèm tệp và vị trí (hoặc nguồn và ngày mở nguồn). Không tính toán, không kết luận đúng sai. Đính kèm kết quả thành tệp `02-tax_research.md`. Tệp là đầu ra của task: server không cho đóng task khi chưa có tệp đính kèm. Nếu vai của bạn không có công cụ ghi, vẫn tạo tệp bằng shell rồi đính kèm.
+
+Thiếu đầu vào mà không thể mặc định thì đây là điểm dừng 1: nêu từng mục thiếu trong comment rồi báo task bị chặn.
+
+This issue is the task `tax_research` of the request KV-1. Read the request first; do only this task.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-6 · voucher_gate
+- KV-7 · tax_gate
+- KV-8 · numbers_gate
+- KV-9 · handover
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / collect / tax_research / FlowTaskBrief ===
+This issue is the task "tax_research" (Tra cứu quy định thuế) of the request KV-1, run by the workflow flow_kv_accounting at the step Collect. A server drives the workflow: do this task and nothing else.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-6 · voucher_gate
+- KV-7 · tax_gate
+- KV-8 · numbers_gate
+- KV-9 · handover
+
+Your moves:
+Attach your output  → multica issue comment add KV-12 --attachment <file> --content "..."
+Done                → multica issue status KV-12 done
+Can't go on         → comment what is missing, then multica issue status KV-12 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / draft / reconciler / TaskDescription ===
+Lập bảng đối chiếu, chỉ từ dữ kiện đã thu thập ở các bước trước (tệp đính kèm của các task đó). Dữ kiện chưa có thì ghi [cần bổ sung], không bịa; mọi con số, mã và trích dẫn ghi là đề xuất cho người duyệt. Đính kèm bản nháp thành tệp `03-reconciler.md`. Không tự kết luận là đã soát.
+
+This issue is the task `reconciler` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-11 · collector: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-12 · tax_research: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-6 · voucher_gate
+- KV-7 · tax_gate
+- KV-8 · numbers_gate
+- KV-9 · handover
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / draft / reconciler / FlowTaskBrief ===
+This issue is the task "reconciler" (Lập bảng đối chiếu) of the request KV-1, run by the workflow flow_kv_accounting at the step Draft. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-11 · collector
+- KV-12 · tax_research
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-6 · voucher_gate
+- KV-7 · tax_gate
+- KV-8 · numbers_gate
+- KV-9 · handover
+
+Your moves:
+Attach your output  → multica issue comment add KV-13 --attachment <file> --content "..."
+Done                → multica issue status KV-13 done
+Can't go on         → comment what is missing, then multica issue status KV-13 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / draft / tax_drafter / TaskDescription ===
+Soạn công văn thuế, chỉ từ dữ kiện đã thu thập ở các bước trước (tệp đính kèm của các task đó). Dữ kiện chưa có thì ghi [cần bổ sung], không bịa; mọi con số, mã và trích dẫn ghi là đề xuất cho người duyệt. Đính kèm bản nháp thành tệp `04-tax_drafter.md`. Không tự kết luận là đã soát.
+
+This issue is the task `tax_drafter` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-11 · collector: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-12 · tax_research: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-6 · voucher_gate
+- KV-7 · tax_gate
+- KV-8 · numbers_gate
+- KV-9 · handover
+
+## How to finish
+`<id>` is the identifier of this issue.
+1. Attach your output as a file: `multica issue comment add <id> --attachment <file> --content "..."`.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue before you attached a file to it.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / draft / tax_drafter / FlowTaskBrief ===
+This issue is the task "tax_drafter" (Soạn công văn thuế) of the request KV-1, run by the workflow flow_kv_accounting at the step Draft. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-11 · collector
+- KV-12 · tax_research
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-6 · voucher_gate
+- KV-7 · tax_gate
+- KV-8 · numbers_gate
+- KV-9 · handover
+
+Your moves:
+Attach your output  → multica issue comment add KV-14 --attachment <file> --content "..."
+Done                → multica issue status KV-14 done
+Can't go on         → comment what is missing, then multica issue status KV-14 blocked --outcome blocked
+
+The server refuses:
+- closing this issue before you attached a file to it;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / gate / voucher_gate / TaskDescription ===
+Soát chứng từ. Chỉ đọc, không sửa gì: bạn chỉ có tệp bản nháp và nguồn được liên kết, không có lập luận của người soạn.
+
+Dòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).
+
+Nếu mọi lỗi chặn nằm ở nguồn gốc (tệp đầu vào của bước thu thập thiếu, mâu thuẫn nhau hoặc chưa được xác nhận) và bản nháp đã nêu đúng từng lỗi đó, bản nháp không sửa được: nêu từng mục cần người xác nhận trong comment rồi đóng task bằng `multica issue status <id> blocked --outcome blocked` (dừng 1, người dùng xác nhận rồi cho request chạy tiếp) thay vì rejected. Chỉ dùng rejected khi lỗi nằm ở bản nháp và người soạn sửa được.
+
+This issue is the task `voucher_gate` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-13 · reconciler: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-14 · tax_drafter: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-6 · voucher_gate
+- KV-7 · tax_gate
+- KV-8 · numbers_gate
+- KV-9 · handover
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / gate / voucher_gate / FlowTaskBrief ===
+This issue is the task "voucher_gate" (Soát chứng từ) of the request KV-1, run by the workflow flow_kv_accounting at the step Gate. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-13 · reconciler
+- KV-14 · tax_drafter
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-6 · voucher_gate
+- KV-7 · tax_gate
+- KV-8 · numbers_gate
+- KV-9 · handover
+
+Your moves:
+Pass                → multica issue status KV-15 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-15 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-15 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / gate / tax_gate / TaskDescription ===
+Soát nội dung thuế. Chỉ đọc, không sửa gì: bạn chỉ có tệp bản nháp và nguồn được liên kết, không có lập luận của người soạn.
+
+Dòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).
+
+Nếu mọi lỗi chặn nằm ở nguồn gốc (tệp đầu vào của bước thu thập thiếu, mâu thuẫn nhau hoặc chưa được xác nhận) và bản nháp đã nêu đúng từng lỗi đó, bản nháp không sửa được: nêu từng mục cần người xác nhận trong comment rồi đóng task bằng `multica issue status <id> blocked --outcome blocked` (dừng 1, người dùng xác nhận rồi cho request chạy tiếp) thay vì rejected. Chỉ dùng rejected khi lỗi nằm ở bản nháp và người soạn sửa được.
+
+This issue is the task `tax_gate` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-13 · reconciler: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-14 · tax_drafter: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-6 · voucher_gate
+- KV-7 · tax_gate
+- KV-8 · numbers_gate
+- KV-9 · handover
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / gate / tax_gate / FlowTaskBrief ===
+This issue is the task "tax_gate" (Soát nội dung thuế) of the request KV-1, run by the workflow flow_kv_accounting at the step Gate. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-13 · reconciler
+- KV-14 · tax_drafter
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-6 · voucher_gate
+- KV-7 · tax_gate
+- KV-8 · numbers_gate
+- KV-9 · handover
+
+Your moves:
+Pass                → multica issue status KV-16 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-16 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-16 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / gate / numbers_gate / TaskDescription ===
+Soát số liệu kế toán. Chỉ đọc, không sửa gì: bạn chỉ có tệp bản nháp và nguồn được liên kết, không có lập luận của người soạn.
+
+Dòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).
+
+Nếu mọi lỗi chặn nằm ở nguồn gốc (tệp đầu vào của bước thu thập thiếu, mâu thuẫn nhau hoặc chưa được xác nhận) và bản nháp đã nêu đúng từng lỗi đó, bản nháp không sửa được: nêu từng mục cần người xác nhận trong comment rồi đóng task bằng `multica issue status <id> blocked --outcome blocked` (dừng 1, người dùng xác nhận rồi cho request chạy tiếp) thay vì rejected. Chỉ dùng rejected khi lỗi nằm ở bản nháp và người soạn sửa được.
+
+This issue is the task `numbers_gate` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-13 · reconciler: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-14 · tax_drafter: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-6 · voucher_gate
+- KV-7 · tax_gate
+- KV-8 · numbers_gate
+- KV-9 · handover
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / gate / numbers_gate / FlowTaskBrief ===
+This issue is the task "numbers_gate" (Soát số liệu kế toán) of the request KV-1, run by the workflow flow_kv_accounting at the step Gate. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-13 · reconciler
+- KV-14 · tax_drafter
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-6 · voucher_gate
+- KV-7 · tax_gate
+- KV-8 · numbers_gate
+- KV-9 · handover
+
+Your moves:
+Pass                → multica issue status KV-17 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-17 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-17 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / handover / handover / TaskDescription ===
+Đối chiếu sản phẩm cuối với kế hoạch của lead trên request và với kết luận của mọi cổng. Ghi comment bàn giao liệt kê việc người nhận phải tự quyết trước khi gửi, nộp, ký hoặc công bố bất cứ thứ gì, kèm chỗ chưa xác minh và cảnh báo.
+
+Dòng đầu của comment là `VERDICT: QUA` hoặc `VERDICT: CHẶN`. QUA chỉ khi mọi cổng QUA trên bản cuối và sản phẩm khớp kế hoạch. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).
+
+Nếu mọi lỗi chặn nằm ở nguồn gốc (tệp đầu vào của bước thu thập thiếu, mâu thuẫn nhau hoặc chưa được xác nhận) và bản nháp đã nêu đúng từng lỗi đó, bản nháp không sửa được: nêu từng mục cần người xác nhận trong comment rồi đóng task bằng `multica issue status <id> blocked --outcome blocked` (dừng 1, người dùng xác nhận rồi cho request chạy tiếp) thay vì rejected. Chỉ dùng rejected khi lỗi nằm ở bản nháp và người soạn sửa được.
+
+This issue is the task `handover` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-15 · voucher_gate: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-16 · tax_gate: the files attached to it (download one with `multica attachment download <attachment-id>`).
+- KV-17 · numbers_gate: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-6 · voucher_gate
+- KV-7 · tax_gate
+- KV-8 · numbers_gate
+- KV-9 · handover
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Pass: `multica issue status <id> done --outcome approved`.
+- Fail: `multica issue status <id> done --outcome rejected`, after a comment that lists each finding.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- Closing this issue without `--outcome approved` or `--outcome rejected`.
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / handover / handover / FlowTaskBrief ===
+This issue is the task "handover" (Kiểm định bàn giao) of the request KV-1, run by the workflow flow_kv_accounting at the step Handover. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-15 · voucher_gate
+- KV-16 · tax_gate
+- KV-17 · numbers_gate
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-6 · voucher_gate
+- KV-7 · tax_gate
+- KV-8 · numbers_gate
+- KV-9 · handover
+
+Your moves:
+Pass                → multica issue status KV-18 done --outcome approved
+Fail                → comment each finding, then multica issue status KV-18 done --outcome rejected
+Can't go on         → comment what is missing, then multica issue status KV-18 blocked --outcome blocked
+
+The server refuses:
+- closing this issue without --outcome approved or --outcome rejected;
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== round 1 / in_review / export / TaskDescription ===
+Chỉ chạy sau khi comment dừng 2 đã đăng. Xuất sản phẩm ra tệp người yêu cầu cần (Word, Excel, PDF hoặc PowerPoint) bằng kỹ năng xuất tệp tương ứng của bộ, giữ nguyên nội dung đã duyệt, rồi đính kèm tệp vào comment cuối.
+
+Thiếu thư viện xuất thì báo task bị chặn và nêu tên thư viện; request vẫn ở in_review với bản Markdown.
+
+This issue is the task `export` of the request KV-1. Read the request first; do only this task.
+
+## Inputs
+- KV-18 · handover: the files attached to it (download one with `multica attachment download <attachment-id>`).
+Judge the attached files only. Do not rely on the comments of whoever wrote them.
+
+## Rework (round 2)
+The previous round was rejected. Read what these tasks found and fix it:
+- KV-6 · voucher_gate
+- KV-7 · tax_gate
+- KV-8 · numbers_gate
+- KV-9 · handover
+
+## How to finish
+`<id>` is the identifier of this issue.
+- Done: `multica issue status <id> done`.
+- You cannot go on (missing input or grounds): `multica issue status <id> blocked --outcome blocked`, after a comment that says what is missing.
+
+## What the server refuses
+- `--outcome blocked` with a done status, and any outcome other than `blocked` with a blocked status.
+- Moving the request itself or opening sub-issues under it: the request is run by the workflow.
+=== round 1 / in_review / export / FlowTaskBrief ===
+This issue is the task "export" (Xuất tệp cho người yêu cầu) of the request KV-1, run by the workflow flow_kv_accounting at the step in_review. A server drives the workflow: do this task and nothing else.
+
+Your input is the files attached to these tasks (download one with `multica attachment download <attachment-id>`):
+- KV-18 · handover
+Work from the attached files. Do not rely on the comments of whoever wrote them.
+
+This is round 2: the previous round was rejected by these gates. Read what they found:
+- KV-6 · voucher_gate
+- KV-7 · tax_gate
+- KV-8 · numbers_gate
+- KV-9 · handover
+
+Your moves:
+Done                → multica issue status KV-19 done
+Can't go on         → comment what is missing, then multica issue status KV-19 blocked --outcome blocked
+
+The server refuses:
+- --outcome blocked with a done status, and any other outcome with a blocked status;
+- any change of the status of the request, and sub-issues created under it.
+Do not run `multica issue flow`: the lead of the squad does.
+=== lead / plan step / FlowLeadBrief ===
+KV-1 is run by the workflow flow_kv_accounting and is at the step todo. A server moves it: you do not split the work and you do not hand it out.
+
+Plan it:
+1. Read the request and its attachments: `multica issue get KV-1`.
+2. Run `multica issue flow show KV-1` to see the state.
+3. Choose the switches and run `multica issue flow plan KV-1`, for example `--switch customs_lookup=true`.
+   The switches of this workflow:
+   - route: one of month_close, tax_letter, tax_calendar (now month_close)
+   - tax_lookup: true or false (now false)
+   - export: true or false (now false)
+4. If the request lacks what the work needs, report it instead: `multica issue flow plan KV-1 --blocked --missing "<what>" --reason "<why>"`.
+
+Do not create sub-issues under this request and do not set the status of the request: the server refuses both.
+The server sets the status of the request when it stops. It posts the stop comment (the headers "BLOCKED · stop 1", "BLOCKED · stop 3" and "IN REVIEW · stop 2") unless you already posted one for that stop. You may post the stop comment yourself, as your squad rules say; the request then gets exactly one.
+=== lead / after the plan / FlowLeadBrief ===
+KV-1 is run by the workflow flow_kv_accounting and is at the step Collect. A server moves it: you do not split the work and you do not hand it out.
+
+When you are woken, run `multica issue flow advance KV-1`. It opens the tasks of the step, or moves the request on when they are all closed, and tells you what it waits for. It is safe to run again.
+
+Do not create sub-issues under this request and do not set the status of the request: the server refuses both.
+The server sets the status of the request when it stops. It posts the stop comment (the headers "BLOCKED · stop 1", "BLOCKED · stop 3" and "IN REVIEW · stop 2") unless you already posted one for that stop. You may post the stop comment yourself, as your squad rules say; the request then gets exactly one.
+=== lead / stop 1 / FlowLeadBrief ===
+KV-1 is run by the workflow flow_kv_accounting and is at the step Collect. A server moves it: you do not split the work and you do not hand it out.
+
+The request has stopped and waits for a person (a member who manages the squad resumes it). There is nothing for you to run now.
+
+Do not create sub-issues under this request and do not set the status of the request: the server refuses both.
+The server sets the status of the request when it stops. It posts the stop comment (the headers "BLOCKED · stop 1", "BLOCKED · stop 3" and "IN REVIEW · stop 2") unless you already posted one for that stop. You may post the stop comment yourself, as your squad rules say; the request then gets exactly one.
+=== lead / stop 3 / FlowLeadBrief ===
+KV-1 is run by the workflow flow_kv_accounting and is at the step Collect. A server moves it: you do not split the work and you do not hand it out.
+
+The request has stopped and waits for a person (a member who manages the squad resumes it). There is nothing for you to run now.
+
+Do not create sub-issues under this request and do not set the status of the request: the server refuses both.
+The server sets the status of the request when it stops. It posts the stop comment (the headers "BLOCKED · stop 1", "BLOCKED · stop 3" and "IN REVIEW · stop 2") unless you already posted one for that stop. You may post the stop comment yourself, as your squad rules say; the request then gets exactly one.
+=== lead / stalled / FlowLeadBrief ===
+KV-1 is run by the workflow flow_kv_accounting and is at the step Collect. A server moves it: you do not split the work and you do not hand it out.
+
+The request has stopped and waits for a person (a member who manages the squad resumes it). There is nothing for you to run now.
+
+Do not create sub-issues under this request and do not set the status of the request: the server refuses both.
+The server sets the status of the request when it stops. It posts the stop comment (the headers "BLOCKED · stop 1", "BLOCKED · stop 3" and "IN REVIEW · stop 2") unless you already posted one for that stop. You may post the stop comment yourself, as your squad rules say; the request then gets exactly one.
+=== round 0 / message stop1 ===
+BLOCKED · stop 1 · thiếu căn cứ
+Thiếu:
+- the signed contract
+Lý do: The task did not report in time.
+Các task đã chạy:
+- KV-2 · collector · done · -
+- KV-3 · tax_research · done · -
+Cần từ bạn: gửi bổ sung đúng các mục trên rồi cho request chạy tiếp.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 0 / message stop2 ===
+IN REVIEW · stop 2 · trước khi ra khỏi workspace
+Các cổng soát và bàn giao đã QUA. Sản phẩm là bản nháp: chưa có gì được gửi, nộp, ký hay công bố.
+Các task:
+- KV-2 · collector · done · -
+- KV-3 · tax_research · done · -
+Việc bạn phải làm: đọc sản phẩm và các điểm cần quyết trong comment bàn giao, rồi tự thực hiện bên ngoài workspace. Xong thì chuyển request sang done.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 0 / message stop3 ===
+BLOCKED · stop 3 · hết 2 vòng sửa
+Vòng sửa đã dùng: 0/2
+Các task của bước cuối:
+- KV-2 · collector · done · -
+- KV-3 · tax_research · done · -
+Cần từ bạn: quyết định làm đổi bản nháp (dữ kiện, nguồn hoặc phê duyệt), rồi cho request chạy tiếp.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 0 / message stalled ===
+BLOCKED · stalled · request không tiến thêm được
+KV-1 dừng ở bước Collect.
+The task did not report in time.
+Các task:
+- KV-2 · collector · done · -
+- KV-3 · tax_research · done · -
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 0 / message human ===
+WAITING · Collect
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa) KV-1 waits for a person at Collect.
+- KV-2 · collector · done · -
+- KV-3 · tax_research · done · -
+=== round 1 / message stop1 ===
+BLOCKED · stop 1 · thiếu căn cứ
+Thiếu:
+- the signed contract
+Lý do: The task did not report in time.
+Các task đã chạy:
+- KV-11 · collector · done · -
+- KV-12 · tax_research · done · -
+Cần từ bạn: gửi bổ sung đúng các mục trên rồi cho request chạy tiếp.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 1 / message stop2 ===
+IN REVIEW · stop 2 · trước khi ra khỏi workspace
+Các cổng soát và bàn giao đã QUA. Sản phẩm là bản nháp: chưa có gì được gửi, nộp, ký hay công bố.
+Các task:
+- KV-11 · collector · done · -
+- KV-12 · tax_research · done · -
+Việc bạn phải làm: đọc sản phẩm và các điểm cần quyết trong comment bàn giao, rồi tự thực hiện bên ngoài workspace. Xong thì chuyển request sang done.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 1 / message stop3 ===
+BLOCKED · stop 3 · hết 2 vòng sửa
+Vòng sửa đã dùng: 1/2
+Các task của bước cuối:
+- KV-11 · collector · done · -
+- KV-12 · tax_research · done · -
+Cần từ bạn: quyết định làm đổi bản nháp (dữ kiện, nguồn hoặc phê duyệt), rồi cho request chạy tiếp.
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 1 / message stalled ===
+BLOCKED · stalled · request không tiến thêm được
+KV-1 dừng ở bước Collect.
+The task did not report in time.
+Các task:
+- KV-11 · collector · done · -
+- KV-12 · tax_research · done · -
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa)
+=== round 1 / message human ===
+WAITING · Collect
+[@Requester](mention://member/00000000-0000-4000-8000-0000000000aa) KV-1 waits for a person at Collect.
+- KV-11 · collector · done · -
+- KV-12 · tax_research · done · -

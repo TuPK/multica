@@ -1,0 +1,86 @@
+{
+  "version": 2,
+  "start": "plan",
+  "roles": [
+    {
+      "key": "worker",
+      "kind": "agent"
+    },
+    {
+      "key": "boss",
+      "kind": "member"
+    }
+  ],
+  "stops": [
+    {
+      "code": "loop_exhausted",
+      "class": "loop_exhausted",
+      "message": "stop3",
+      "legacy_no": 3
+    }
+  ],
+  "terminals": [
+    {
+      "key": "done",
+      "status": "done"
+    },
+    {
+      "key": "cancelled",
+      "status": "cancelled"
+    }
+  ],
+  "steps": [
+    {
+      "key": "plan",
+      "kind": "lead",
+      "status": {
+        "key": "todo"
+      },
+      "title": "Plan",
+      "edges": [
+        {
+          "id": "plan_ok",
+          "label": "Planned",
+          "to": "hold"
+        }
+      ]
+    },
+    {
+      "key": "hold",
+      "kind": "manual",
+      "status": {
+        "key": "in_review"
+      },
+      "tasks": [
+        {
+          "key": "export",
+          "title": "Export",
+          "kind": "work",
+          "role": "worker"
+        }
+      ],
+      "title": "Hold",
+      "notice": "note",
+      "exit_role": "boss",
+      "edges": [
+        {
+          "id": "hold_go",
+          "label": "Go on",
+          "to": "done",
+          "trigger": "manual"
+        },
+        {
+          "id": "hold_cancel",
+          "label": "Cancel the request",
+          "to": "cancelled",
+          "trigger": "manual"
+        }
+      ]
+    }
+  ],
+  "messages": {
+    "stop3": "x",
+    "note": "IN REVIEW\n{request} waits for a person."
+  },
+  "policy": {}
+}

@@ -1,0 +1,7 @@
+{
+  "stop1": "BLOCKED · stop 1\n{requester} {request} stopped at {step}: grounds are missing.\n{missing}\n{tasks}",
+  "stop2": "IN REVIEW · stop 2\n{requester} {request} is ready for your review.\n{tasks}",
+  "stop3": "BLOCKED · stop 3\n{requester} {request} used its {rework} rework rounds and was still rejected.\n{tasks}",
+  "human": "WAITING · {step}\n{requester} {request} waits for a person at {step}.\n{tasks}",
+  "stalled": "BLOCKED · stalled\n{requester} {request} stopped moving at {step}.\n{reason}\n{tasks}"
+}

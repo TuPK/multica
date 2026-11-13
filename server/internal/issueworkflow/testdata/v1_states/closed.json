@@ -1,0 +1,9 @@
+{
+  "workflow_id": "0190c4a0-0000-7000-8000-00000000f001",
+  "step": "done",
+  "rework": 1,
+  "switches": {"route": "shipment_dossier", "customs_lookup": true, "export": true},
+  "entered_at": "2026-11-16T09:00:00Z",
+  "plan_done": true,
+  "closed_at": "2026-11-16T09:00:00Z"
+}

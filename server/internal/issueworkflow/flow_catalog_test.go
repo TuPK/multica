@@ -3,6 +3,8 @@ package issueworkflow
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"testing"
@@ -120,6 +122,86 @@ func TestCatalogFlowsPassValidateFlow(t *testing.T) {
 			if f.ID != "flow_"+f.Squad {
 				t.Fatalf("%s: id must be flow_%s", id, f.Squad)
 			}
+			// The roles of the squad the manifest names: the same rules as the
+			// catalog tool, with the roster of that squad.
+			roster := squadRoster(t, f)
+			if issues := ValidateSchema1ForSquad(def, roster); HasErrors(issues) {
+				t.Fatalf("%s: ValidateSchema1ForSquad:%s", id, describeIssues(issues))
+			}
 		})
 	}
+}
+
+// squadManifest is the part of catalog/squads/<id>/template.json that the roster needs.
+type squadManifest struct {
+	Squad struct {
+		Leader string `json:"leader"`
+		Roles  []struct {
+			Key string `json:"key"`
+		} `json:"roles"`
+	} `json:"squad"`
+}
+
+// squadRoster builds the roster of the squad a catalog flow names (flow.squad in
+// its manifest). Every role of the squad other than the leader is an agent. The
+// agents that the flow uses have the ids definition() gave them; the others get
+// ids of their own, so that a role no task uses is found.
+func squadRoster(t *testing.T, f catalogFlow) Roster {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "catalog", "squads", f.Squad, "template.json"))
+	if err != nil {
+		t.Fatalf("%s: squad manifest: %v", f.ID, err)
+	}
+	var m squadManifest
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatalf("%s: squad manifest: %v", f.ID, err)
+	}
+	roleIDs, _ := manifestRoleKeys(f)
+	idOfRole := map[string]string{}
+	for id, role := range roleIDs {
+		idOfRole[role] = id
+	}
+	roster := Roster{Lead: "00000000-0000-4000-8000-00000000ffff", RoleKeys: map[string]string{}}
+	spare := 0
+	for _, r := range m.Squad.Roles {
+		if r.Key == m.Squad.Leader {
+			roster.RoleKeys[roster.Lead] = r.Key
+			continue
+		}
+		id, used := idOfRole[r.Key]
+		if !used {
+			spare++
+			id = fmt.Sprintf("00000000-0000-4000-8000-0000000fe%03d", spare)
+		}
+		roster.Agents = append(roster.Agents, id)
+		roster.RoleKeys[id] = r.Key
+	}
+	return roster
+}
+
+// forkInputs gives what the validator needs to check the fork of a catalog flow:
+// the definition as a stored workflow row holds it (the fixed statuses blocked,
+// done and cancelled are steps; the catalog manifest leaves them out), the
+// validation context with the roster of the flow's squad, and the status catalog
+// that has the steps of the flow.
+func forkInputs(t *testing.T, f catalogFlow) (Definition, ValidateContext) {
+	t.Helper()
+	def, _, err := f.definition()
+	if err != nil {
+		t.Fatal(err)
+	}
+	have := map[string]bool{}
+	statuses := DefaultStatusCatalog()
+	for _, s := range def.Steps {
+		have[s.StatusKey] = true
+		if _, ok := statuses[s.StatusKey]; !ok {
+			statuses[s.StatusKey] = StatusInfo{Category: "started"}
+		}
+	}
+	for _, key := range []string{"blocked", "done", "cancelled"} {
+		if !have[key] {
+			def.Steps = append(def.Steps, Step{StatusKey: key, Handler: Handler{Type: HandlerNone}})
+		}
+	}
+	return def, ValidateContext{Roster: squadRoster(t, f), Statuses: statuses}
 }

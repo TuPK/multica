@@ -1,0 +1,124 @@
+{
+  "version": 2,
+  "start": "plan",
+  "roles": [
+    {
+      "key": "worker",
+      "kind": "agent"
+    }
+  ],
+  "stops": [
+    {
+      "code": "loop_exhausted",
+      "class": "loop_exhausted",
+      "message": "stop3",
+      "legacy_no": 3
+    }
+  ],
+  "terminals": [
+    {
+      "key": "done",
+      "status": "done"
+    },
+    {
+      "key": "cancelled",
+      "status": "cancelled"
+    }
+  ],
+  "steps": [
+    {
+      "key": "plan",
+      "kind": "lead",
+      "status": {
+        "key": "todo"
+      },
+      "title": "Plan",
+      "lead": {
+        "sets": [
+          "want_a",
+          "want_b"
+        ]
+      },
+      "edges": [
+        {
+          "id": "plan_ok",
+          "label": "Planned",
+          "to": "work"
+        }
+      ]
+    },
+    {
+      "key": "work",
+      "kind": "tasks",
+      "status": {
+        "key": "in_progress"
+      },
+      "tasks": [
+        {
+          "key": "task_a",
+          "title": "Only if a",
+          "kind": "work",
+          "role": "worker",
+          "when": {
+            "field": "var.want_a",
+            "op": "eq",
+            "value": true
+          }
+        },
+        {
+          "key": "task_b",
+          "title": "Only if b",
+          "kind": "work",
+          "role": "worker",
+          "when": {
+            "field": "var.want_b",
+            "op": "eq",
+            "value": true
+          }
+        },
+        {
+          "key": "task_c",
+          "title": "Always",
+          "kind": "work",
+          "role": "worker"
+        }
+      ],
+      "title": "Work",
+      "edges": [
+        {
+          "id": "work_next",
+          "label": "Done",
+          "to": "done"
+        }
+      ]
+    }
+  ],
+  "messages": {
+    "stop3": "BLOCKED · stop 3\n{requester} {request} stopped at {step}.\n{tasks}"
+  },
+  "policy": {},
+  "vars": [
+    {
+      "key": "want_a",
+      "type": "bool",
+      "default": false,
+      "set_by": [
+        "lead"
+      ],
+      "set_at": [
+        "plan"
+      ]
+    },
+    {
+      "key": "want_b",
+      "type": "bool",
+      "default": false,
+      "set_by": [
+        "lead"
+      ],
+      "set_at": [
+        "plan"
+      ]
+    }
+  ]
+}

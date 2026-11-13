@@ -1,0 +1,326 @@
+{
+  "version": 2,
+  "start": "plan",
+  "roles": [
+    {
+      "key": "collector",
+      "kind": "agent",
+      "pool": 8
+    },
+    {
+      "key": "verifier",
+      "kind": "agent",
+      "pool": 8
+    },
+    {
+      "key": "critic",
+      "kind": "agent"
+    },
+    {
+      "key": "synthesizer",
+      "kind": "agent"
+    },
+    {
+      "key": "editor",
+      "kind": "member"
+    }
+  ],
+  "vars": [
+    {
+      "key": "sources",
+      "type": "list_string",
+      "max_items": 8,
+      "default": [],
+      "set_by": [
+        "lead"
+      ],
+      "set_at": [
+        "plan"
+      ]
+    },
+    {
+      "key": "depth",
+      "type": "enum",
+      "values": [
+        "quick",
+        "full"
+      ],
+      "default": "quick",
+      "set_by": [
+        "lead"
+      ],
+      "set_at": [
+        "plan"
+      ]
+    }
+  ],
+  "verdicts": [
+    {
+      "key": "source",
+      "verdicts": [
+        {
+          "key": "verified",
+          "class": "pass"
+        },
+        {
+          "key": "unverified",
+          "class": "fail"
+        }
+      ]
+    }
+  ],
+  "loops": [
+    {
+      "key": "recheck",
+      "header": "collect",
+      "max": 2
+    }
+  ],
+  "stops": [
+    {
+      "code": "grounds_missing",
+      "class": "missing_grounds",
+      "message": "stop1",
+      "legacy_no": 1
+    },
+    {
+      "code": "loop_exhausted",
+      "class": "loop_exhausted",
+      "message": "stop3",
+      "legacy_no": 3
+    }
+  ],
+  "terminals": [
+    {
+      "key": "done",
+      "status": "done",
+      "leaves_workspace": true
+    },
+    {
+      "key": "cancelled",
+      "status": "cancelled"
+    }
+  ],
+  "steps": [
+    {
+      "key": "plan",
+      "kind": "lead",
+      "status": {
+        "key": "todo"
+      },
+      "title": "Plan",
+      "lead": {
+        "sets": [
+          "sources",
+          "depth"
+        ]
+      },
+      "edges": [
+        {
+          "id": "plan_blocked",
+          "label": "Missing grounds",
+          "when": {
+            "field": "lead.verdict",
+            "op": "eq",
+            "value": "blocked"
+          },
+          "stop": "grounds_missing"
+        },
+        {
+          "id": "plan_ok",
+          "label": "Planned",
+          "to": "collect"
+        }
+      ]
+    },
+    {
+      "key": "collect",
+      "kind": "tasks",
+      "status": {
+        "name": "Collect",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "collect_source",
+          "title": "Collect one source",
+          "kind": "work",
+          "role": "collector",
+          "instances": {
+            "from_var": "sources",
+            "max": 8,
+            "distinct": true
+          },
+          "requires": {
+            "files": [
+              {
+                "slot": "report",
+                "min": 1,
+                "ext": [
+                  ".md"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "title": "Collect",
+      "edges": [
+        {
+          "id": "collect_next",
+          "label": "Collected",
+          "to": "verify"
+        }
+      ]
+    },
+    {
+      "key": "verify",
+      "kind": "tasks",
+      "status": {
+        "name": "Verify",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "source_check",
+          "title": "Verify one source",
+          "kind": "gate",
+          "role": "verifier",
+          "instances": {
+            "from_var": "sources",
+            "max": 8
+          },
+          "verdicts": "source"
+        }
+      ],
+      "title": "Verify",
+      "edges": [
+        {
+          "id": "verify_ok",
+          "label": "Verified",
+          "to": "synthesize",
+          "when": {
+            "field": "join.result",
+            "op": "eq",
+            "value": "pass"
+          }
+        },
+        {
+          "id": "verify_again",
+          "label": "Recheck the sources",
+          "to": "collect",
+          "when": {
+            "all": [
+              {
+                "field": "join.result",
+                "op": "eq",
+                "value": "fail"
+              },
+              {
+                "field": "loop.recheck.count",
+                "op": "lt",
+                "value": 2
+              }
+            ]
+          },
+          "loop": "recheck"
+        },
+        {
+          "id": "verify_stop",
+          "label": "Sources not verified",
+          "stop": "loop_exhausted"
+        }
+      ]
+    },
+    {
+      "key": "synthesize",
+      "kind": "tasks",
+      "status": {
+        "name": "Synthesize",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "synthesis",
+          "title": "Write the report",
+          "kind": "work",
+          "role": "synthesizer",
+          "requires": {
+            "files": [
+              {
+                "slot": "report",
+                "min": 1
+              }
+            ]
+          }
+        }
+      ],
+      "title": "Synthesize",
+      "edges": [
+        {
+          "id": "synthesize_next",
+          "label": "Written",
+          "to": "critique"
+        }
+      ]
+    },
+    {
+      "key": "critique",
+      "kind": "tasks",
+      "status": {
+        "name": "Critique",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "critic",
+          "title": "Critique the report",
+          "kind": "gate",
+          "role": "critic"
+        }
+      ],
+      "title": "Critique",
+      "edges": [
+        {
+          "id": "critique_ok",
+          "label": "Approved",
+          "to": "edit",
+          "when": {
+            "field": "join.result",
+            "op": "eq",
+            "value": "pass"
+          }
+        },
+        {
+          "id": "critique_stop",
+          "label": "Rejected",
+          "stop": "loop_exhausted"
+        }
+      ]
+    },
+    {
+      "key": "edit",
+      "kind": "manual",
+      "status": {
+        "key": "in_review"
+      },
+      "title": "Edit",
+      "notice": "stop2",
+      "exit_role": "editor",
+      "edges": [
+        {
+          "id": "edit_go",
+          "label": "Publish",
+          "to": "done",
+          "trigger": "manual"
+        }
+      ]
+    }
+  ],
+  "messages": {
+    "stop1": "BLOCKED · stop 1\n{requester} {request} stopped at {step}: grounds are missing.\n{tasks}",
+    "stop3": "BLOCKED · stop 3\n{requester} {request} used its {rework} rework rounds.\n{tasks}",
+    "stop2": "IN REVIEW · stop 2\n{requester} {request} is ready for your review.\n{tasks}"
+  },
+  "policy": {}
+}

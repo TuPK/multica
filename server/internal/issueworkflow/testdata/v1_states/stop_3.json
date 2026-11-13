@@ -1,0 +1,10 @@
+{
+  "workflow_id": "0190c4a0-0000-7000-8000-00000000f001",
+  "step": "blocked",
+  "rework": 2,
+  "switches": {"route": "shipment_dossier", "customs_lookup": false, "export": false},
+  "entered_at": "2026-11-13T15:20:00Z",
+  "stop": 3,
+  "blocked_from": "gate",
+  "plan_done": true
+}

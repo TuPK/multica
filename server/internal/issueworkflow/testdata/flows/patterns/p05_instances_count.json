@@ -1,0 +1,77 @@
+{
+  "version": 2,
+  "start": "plan",
+  "roles": [
+    {
+      "key": "worker",
+      "kind": "agent",
+      "pool": 3
+    }
+  ],
+  "stops": [
+    {
+      "code": "loop_exhausted",
+      "class": "loop_exhausted",
+      "message": "stop3",
+      "legacy_no": 3
+    }
+  ],
+  "terminals": [
+    {
+      "key": "done",
+      "status": "done"
+    },
+    {
+      "key": "cancelled",
+      "status": "cancelled"
+    }
+  ],
+  "steps": [
+    {
+      "key": "plan",
+      "kind": "lead",
+      "status": {
+        "key": "todo"
+      },
+      "title": "Plan",
+      "edges": [
+        {
+          "id": "plan_ok",
+          "label": "Planned",
+          "to": "work"
+        }
+      ]
+    },
+    {
+      "key": "work",
+      "kind": "tasks",
+      "status": {
+        "key": "in_progress"
+      },
+      "tasks": [
+        {
+          "key": "item",
+          "title": "One of three",
+          "kind": "work",
+          "role": "worker",
+          "instances": {
+            "count": 3,
+            "distinct": true
+          }
+        }
+      ],
+      "title": "Work",
+      "edges": [
+        {
+          "id": "work_next",
+          "label": "Done",
+          "to": "done"
+        }
+      ]
+    }
+  ],
+  "messages": {
+    "stop3": "BLOCKED · stop 3\n{requester} {request} stopped at {step}.\n{tasks}"
+  },
+  "policy": {}
+}

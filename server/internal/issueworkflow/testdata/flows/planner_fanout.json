@@ -1,0 +1,172 @@
+{
+  "version": 2,
+  "start": "plan",
+  "roles": [
+    {
+      "key": "planner",
+      "kind": "agent"
+    },
+    {
+      "key": "worker",
+      "kind": "agent",
+      "pool": 6
+    },
+    {
+      "key": "checker",
+      "kind": "agent"
+    }
+  ],
+  "vars": [
+    {
+      "key": "topics",
+      "type": "list_string",
+      "max_items": 6,
+      "default": [],
+      "set_by": [
+        "planner"
+      ],
+      "set_at": [
+        "planning"
+      ]
+    }
+  ],
+  "stops": [
+    {
+      "code": "grounds_missing",
+      "class": "missing_grounds",
+      "message": "stop1",
+      "legacy_no": 1
+    },
+    {
+      "code": "loop_exhausted",
+      "class": "loop_exhausted",
+      "message": "stop3",
+      "legacy_no": 3
+    }
+  ],
+  "terminals": [
+    {
+      "key": "done",
+      "status": "done"
+    }
+  ],
+  "steps": [
+    {
+      "key": "plan",
+      "kind": "lead",
+      "status": {
+        "key": "todo"
+      },
+      "title": "Plan",
+      "edges": [
+        {
+          "id": "plan_ok",
+          "label": "Planned",
+          "to": "planning"
+        }
+      ]
+    },
+    {
+      "key": "planning",
+      "kind": "tasks",
+      "status": {
+        "name": "Planning",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "make_plan",
+          "title": "List the topics",
+          "kind": "work",
+          "role": "planner",
+          "sets": [
+            "topics"
+          ],
+          "requires": {
+            "vars": [
+              "topics"
+            ]
+          }
+        }
+      ],
+      "title": "Planning",
+      "edges": [
+        {
+          "id": "planning_next",
+          "label": "Planned",
+          "to": "fanout"
+        }
+      ]
+    },
+    {
+      "key": "fanout",
+      "kind": "tasks",
+      "status": {
+        "name": "Fan out",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "research_topic",
+          "title": "Research one topic",
+          "kind": "work",
+          "role": "worker",
+          "instances": {
+            "from_var": "topics",
+            "min": 1,
+            "max": 6,
+            "distinct": true
+          }
+        }
+      ],
+      "title": "Fan out",
+      "edges": [
+        {
+          "id": "fanout_next",
+          "label": "Researched",
+          "to": "check"
+        }
+      ]
+    },
+    {
+      "key": "check",
+      "kind": "tasks",
+      "status": {
+        "name": "Check",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "check_all",
+          "title": "Check the research",
+          "kind": "gate",
+          "role": "checker"
+        }
+      ],
+      "title": "Check",
+      "edges": [
+        {
+          "id": "check_ok",
+          "label": "Checked",
+          "to": "done",
+          "when": {
+            "field": "join.result",
+            "op": "eq",
+            "value": "pass"
+          }
+        },
+        {
+          "id": "check_stop",
+          "label": "Not accepted",
+          "stop": "loop_exhausted"
+        }
+      ]
+    }
+  ],
+  "messages": {
+    "stop1": "BLOCKED · stop 1\n{requester} {request} stopped at {step}: grounds are missing.\n{tasks}",
+    "stop3": "BLOCKED · stop 3\n{requester} {request} used its {rework} rework rounds.\n{tasks}",
+    "stop2": "IN REVIEW · stop 2\n{requester} {request} is ready for your review.\n{tasks}"
+  },
+  "policy": {}
+}

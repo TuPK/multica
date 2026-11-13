@@ -1,0 +1,419 @@
+{
+  "version": 2,
+  "start": "plan",
+  "roles": [
+    {
+      "key": "scout",
+      "kind": "agent"
+    },
+    {
+      "key": "screener",
+      "kind": "agent"
+    },
+    {
+      "key": "decider",
+      "kind": "agent"
+    },
+    {
+      "key": "synthesizer",
+      "kind": "agent"
+    },
+    {
+      "key": "auditor",
+      "kind": "agent"
+    },
+    {
+      "key": "reviewer_a",
+      "kind": "agent"
+    },
+    {
+      "key": "reviewer_b",
+      "kind": "agent"
+    }
+  ],
+  "vars": [
+    {
+      "key": "max_rounds",
+      "type": "int",
+      "min": 1,
+      "max": 5,
+      "default": 3,
+      "set_by": [
+        "lead"
+      ],
+      "set_at": [
+        "plan"
+      ]
+    }
+  ],
+  "verdicts": [
+    {
+      "key": "decision",
+      "verdicts": [
+        {
+          "key": "refine_query",
+          "class": "fail"
+        },
+        {
+          "key": "summarize",
+          "class": "pass"
+        },
+        {
+          "key": "summarize_available",
+          "class": "pass"
+        },
+        {
+          "key": "stop_no_new_queries",
+          "class": "pass"
+        }
+      ]
+    },
+    {
+      "key": "audit",
+      "verdicts": [
+        {
+          "key": "pass",
+          "class": "pass"
+        },
+        {
+          "key": "pass_with_conditions",
+          "class": "pass"
+        },
+        {
+          "key": "request_changes",
+          "class": "fail"
+        }
+      ]
+    }
+  ],
+  "loops": [
+    {
+      "key": "rounds",
+      "header": "search",
+      "max": {
+        "var": "max_rounds",
+        "cap": 5
+      }
+    },
+    {
+      "key": "fixes",
+      "header": "synthesize",
+      "max": 2
+    }
+  ],
+  "stops": [
+    {
+      "code": "grounds_missing",
+      "class": "missing_grounds",
+      "message": "stop1",
+      "legacy_no": 1
+    },
+    {
+      "code": "loop_exhausted",
+      "class": "loop_exhausted",
+      "message": "stop3",
+      "legacy_no": 3
+    }
+  ],
+  "terminals": [
+    {
+      "key": "done",
+      "status": "done",
+      "leaves_workspace": true
+    },
+    {
+      "key": "cancelled",
+      "status": "cancelled"
+    }
+  ],
+  "steps": [
+    {
+      "key": "plan",
+      "kind": "lead",
+      "status": {
+        "key": "todo"
+      },
+      "title": "Plan",
+      "lead": {
+        "sets": [
+          "max_rounds"
+        ]
+      },
+      "edges": [
+        {
+          "id": "plan_blocked",
+          "label": "Missing grounds",
+          "when": {
+            "field": "lead.verdict",
+            "op": "eq",
+            "value": "blocked"
+          },
+          "stop": "grounds_missing"
+        },
+        {
+          "id": "plan_ok",
+          "label": "Planned",
+          "to": "search"
+        }
+      ]
+    },
+    {
+      "key": "search",
+      "kind": "tasks",
+      "status": {
+        "name": "Search",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "scout",
+          "title": "Scout the sources",
+          "kind": "work",
+          "role": "scout",
+          "requires": {
+            "files": [
+              {
+                "slot": "hits",
+                "min": 1
+              }
+            ]
+          }
+        }
+      ],
+      "title": "Search",
+      "edges": [
+        {
+          "id": "search_next",
+          "label": "Searched",
+          "to": "screen"
+        }
+      ]
+    },
+    {
+      "key": "screen",
+      "kind": "tasks",
+      "status": {
+        "name": "Screen",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "screener",
+          "title": "Screen the hits",
+          "kind": "work",
+          "role": "screener"
+        }
+      ],
+      "title": "Screen",
+      "edges": [
+        {
+          "id": "screen_next",
+          "label": "Screened",
+          "to": "decide"
+        }
+      ]
+    },
+    {
+      "key": "decide",
+      "kind": "tasks",
+      "status": {
+        "name": "Decide",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "decide",
+          "title": "Decide the next move",
+          "kind": "gate",
+          "role": "decider",
+          "verdicts": "decision",
+          "requires": {
+            "files": [
+              {
+                "slot": "state",
+                "min": 1
+              }
+            ],
+            "verdict": true
+          }
+        }
+      ],
+      "title": "Decide",
+      "join": {
+        "over": [
+          "decide"
+        ],
+        "mode": "all"
+      },
+      "edges": [
+        {
+          "id": "decide_again",
+          "label": "Another round",
+          "to": "search",
+          "when": {
+            "field": "task.decide.verdict",
+            "op": "eq",
+            "value": "refine_query"
+          },
+          "loop": "rounds"
+        },
+        {
+          "id": "decide_go",
+          "label": "Summarize",
+          "to": "synthesize"
+        }
+      ]
+    },
+    {
+      "key": "synthesize",
+      "kind": "tasks",
+      "status": {
+        "name": "Synthesize",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "synthesizer",
+          "title": "Write the synthesis",
+          "kind": "work",
+          "role": "synthesizer",
+          "requires": {
+            "files": [
+              {
+                "slot": "synthesis",
+                "min": 1
+              }
+            ]
+          }
+        }
+      ],
+      "title": "Synthesize",
+      "edges": [
+        {
+          "id": "synthesize_next",
+          "label": "Written",
+          "to": "audit"
+        }
+      ]
+    },
+    {
+      "key": "audit",
+      "kind": "tasks",
+      "status": {
+        "name": "Audit",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "auditor",
+          "title": "Audit the synthesis",
+          "kind": "gate",
+          "role": "auditor",
+          "verdicts": "audit"
+        }
+      ],
+      "title": "Audit",
+      "edges": [
+        {
+          "id": "audit_ok",
+          "label": "Audited",
+          "to": "review",
+          "when": {
+            "field": "join.result",
+            "op": "eq",
+            "value": "pass"
+          }
+        },
+        {
+          "id": "audit_fix",
+          "label": "Request changes",
+          "to": "synthesize",
+          "when": {
+            "all": [
+              {
+                "field": "join.result",
+                "op": "eq",
+                "value": "fail"
+              },
+              {
+                "field": "loop.fixes.count",
+                "op": "lt",
+                "value": 2
+              }
+            ]
+          },
+          "loop": "fixes"
+        },
+        {
+          "id": "audit_stop",
+          "label": "Changes not made",
+          "stop": "loop_exhausted"
+        }
+      ]
+    },
+    {
+      "key": "review",
+      "kind": "tasks",
+      "status": {
+        "name": "Review",
+        "category": "started"
+      },
+      "tasks": [
+        {
+          "key": "review_b",
+          "title": "Reviewer B checks A",
+          "kind": "gate",
+          "role": "reviewer_b"
+        },
+        {
+          "key": "review_a",
+          "title": "Reviewer A checks B",
+          "kind": "gate",
+          "role": "reviewer_a"
+        }
+      ],
+      "title": "Review",
+      "edges": [
+        {
+          "id": "review_ok",
+          "label": "Approved",
+          "to": "approve",
+          "when": {
+            "field": "join.result",
+            "op": "eq",
+            "value": "pass"
+          }
+        },
+        {
+          "id": "review_stop",
+          "label": "Not approved",
+          "stop": "loop_exhausted"
+        }
+      ]
+    },
+    {
+      "key": "approve",
+      "kind": "manual",
+      "status": {
+        "key": "in_review"
+      },
+      "title": "Approve",
+      "notice": "stop2",
+      "exit_role": "requester",
+      "edges": [
+        {
+          "id": "approve_go",
+          "label": "Approve",
+          "to": "done",
+          "trigger": "manual"
+        }
+      ]
+    }
+  ],
+  "messages": {
+    "stop1": "BLOCKED · stop 1\n{requester} {request} stopped at {step}: grounds are missing.\n{tasks}",
+    "stop3": "BLOCKED · stop 3\n{requester} {request} used its {rework} rework rounds.\n{tasks}",
+    "stop2": "IN REVIEW · stop 2\n{requester} {request} is ready for your review.\n{tasks}"
+  },
+  "policy": {}
+}
