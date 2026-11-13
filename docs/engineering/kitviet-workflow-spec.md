@@ -165,14 +165,14 @@ Trạng thái dùng chung (tạo một lần mỗi workspace, tái dùng theo t�
 
 ```text
 step todo      (plan, lead)     transitions: [outcome=blocked -> blocked] [default -> collect]
-step collect   tasks: docs (work, agent trade_docs_reader)
-                      customs (work, trade_customs_research, when switch.customs_lookup = true)
+step collect   tasks: docs (work, agent trade_docs_reader, requires [attachment])
+                      customs (work, trade_customs_research, when switch.customs_lookup = true, requires [attachment])
                transitions: [tasks_outcome=any_blocked -> blocked] [default -> draft]
 step draft     tasks: crosscheck (work, trade_crosscheck_drafter, requires [attachment])
                transitions: [tasks_outcome=any_blocked -> blocked] [default -> gate]
 step gate      tasks: docs_gate (gate, trade_docs_gate, requires [outcome])
                       customs_gate (gate, trade_customs_gate, requires [outcome])
-               transitions: [any_blocked -> blocked]
+               transitions: [any_blocked -> blocked]          # gate nói lỗi nằm ở chứng từ gốc: outcome blocked, dừng 1
                             [all_approved -> handover]
                             [any_rejected AND rework_count < 2 -> draft, rework]
                             [default -> blocked]            # stop 3
@@ -182,6 +182,11 @@ step in_review human_only   tasks: export (work, trade_crosscheck_drafter, when 
                leaving: a member moves the request to done
 step blocked   (stop 1 / stop 3 / stalled)   leaving: member `resume`
 ```
+
+Hai quyết định rút ra từ diễn tập thật (docs/engineering/kitviet-flow-web-drill.md, mục 8 và 9):
+
+- **Đầu ra của Collect là tệp (`requires: ["attachment"]`).** Engine giao cho bước sau tệp đính kèm của bước trước (mục 3.4 và `Inputs` trong mô tả task), nên một task Collect đóng mà không có tệp để drafter và gate không có gì để đọc, và vòng sửa không làm lại Collect nên không cứu được. Vai collector của pack ghi "không có công cụ ghi" (đúng cho chế độ cũ, nơi kết quả nằm ở comment); hướng dẫn của task nói rõ rằng ở task này vẫn tạo tệp bằng shell. Server từ chối đóng task thiếu tệp (R2). Chỉ áp cho manifest Trade; 20 manifest còn lại chưa đổi.
+- **Gate phân biệt `rejected` và `blocked`.** `rejected` gửi bản nháp về cho drafter sửa (dùng một vòng, tối đa 2). Nếu mọi lỗi chặn nằm ở chính chứng từ gốc (số liệu mâu thuẫn giữa các chứng từ, chứng từ thiếu hoặc chưa được xác nhận) và bản nháp đã nêu đúng, drafter không sửa được; gate đóng task bằng `blocked --outcome blocked` và request dừng 1 để người xác nhận rồi `resume`, không tốn vòng sửa. Không có thay đổi engine: chuyển tiếp `any_blocked -> blocked` đã có.
 
 Vai (agent) khớp `catalog/squads/kv_trade/template.json` (`squad.roles`, 7 vai gồm lead; hồ sơ pipeline ở `catalog/_sources/kitviet/upstream/xuat-nhap-khau/skills/day-chuyen-ho-so-lo-hang/SKILL.md:25-33`): `trade_docs_reader`, `trade_customs_research`, `trade_crosscheck_drafter`, `trade_docs_gate`, `trade_customs_gate`, `trade_handover` (HEAD). Điểm dừng 1 của Trade là thiếu invoice, packing list, B/L hoặc loại hình tờ khai (`KV_LEAD_NOTES.kv_trade`, `kitviet-agent-instructions.ts:445`): `docs` báo outcome `blocked`.
 
@@ -257,7 +262,7 @@ Task: `todo` → `in_progress` → `done` (kèm `outcome`) hoặc `blocked` (kh�
 
 ### 4.4 Khởi tạo request flow
 
-Một móc trong `IssueService.Create` không phủ được mọi đường tạo (mục 2 dòng 31: 8 đường qua `Create`, 5 đường dùng truy vấn trực tiếp). Engine dùng `EnsureFlowStarted(issue)`, idempotent, đặt `issue.flow` cho request đủ điều kiện: không có `parent_issue_id`, `assignee_type = 'squad'`, workflow đang dùng của squad đó có `flow_config`, và chưa có `flow`. Ghi `flow.workflow_id` lúc khởi tạo. Hàm được gọi ở: (1) `GET /api/issues/{id}/flow` và `POST .../flow/plan` (văn bản lead hai chế độ bắt đầu bằng `flow show`); (2) ngay sau `CreateIssue` HTTP (`issue.go:3627`) và `squad_handoff.go:473`; (3) job quét tầng 2 cho request đủ điều kiện mà chưa có `flow`. Hệ quả: một request bị agent chạm trước lần gọi đầu của lead thì chưa được bảo vệ; sau lần gọi đầu, mọi chốt R1 đến R11 áp dụng.
+Một móc trong `IssueService.Create` không phủ được mọi đường tạo (mục 2 dòng 31: 8 đường qua `Create`, 5 đường dùng truy vấn trực tiếp). Engine dùng `EnsureFlowStarted(issue)`, idempotent, đặt `issue.flow` cho request đủ điều kiện: không có `parent_issue_id`, `assignee_type = 'squad'`, workflow đang dùng của squad đó có `flow_config`, và chưa có `flow`. Ghi `flow.workflow_id` lúc khởi tạo. Hàm được gọi ở: (1) `GET /api/issues/{id}/flow` và `POST .../flow/plan` (văn bản lead hai chế độ bắt đầu bằng `flow show`); (2) ngay sau `CreateIssue` HTTP (`issue.go:3627`) và `squad_handoff.go:473`; (3) job quét tầng 2 cho request đủ điều kiện mà chưa có `flow`, chỉ khi request do **thành viên** tạo (`creator_type = 'member'`: agent giao việc cho squad qua đường tự khởi tạo, ví dụ bàn giao giữa squad, còn job lập kế hoạch công ty tạo issue dưới tên lead nên không phải request) và chưa bị `detach` (mục `flow_detached` trong `activity_log`, ghi cùng giao dịch với `detach`; thiếu nó thì quét đưa request vừa gỡ trở lại flow trong 30 giây). Hệ quả: một request bị agent chạm trước lần gọi đầu của lead thì chưa được bảo vệ; sau lần gọi đầu, mọi chốt R1 đến R11 áp dụng.
 
 Định nghĩa luôn lấy theo `flow.workflow_id`, **không** qua `ForIssue` (trả `nil` khi issue không có dự án, `issueworkflow.go:611-613`), nên request flow không cần dự án.
 
@@ -295,8 +300,9 @@ Ba pha, không phụ thuộc bộ nhớ tiến trình:
 - **Rào chắn:** bước xong khi mọi task có trạng thái thuộc nhóm đóng (`done`/`cancelled`, hoặc trạng thái tùy biến loại `done`/`closed`, cùng định nghĩa "đã xong" của `issue.sql:806-840`) **và** không còn lượt chạy `queued/dispatched/running/waiting_local_directory` của task đó (tránh đóng trạng thái trước khi lượt chạy kết thúc). Task `blocked` giữ rào chắn.
 - **Gom verdict:** đọc `issue.outcome` của từng task, tính `tasks_outcome` (mục 3.5). Gate đóng không outcome không thể xảy ra (R1); nếu dữ liệu cũ/đường ghi hệ thống để lọt, tính `rejected`.
 - **Đếm vòng:** `flow.rework` tăng đúng khi đi theo chuyển tiếp `rework`; không đếm lại từ nhật ký.
+- **Chủ của comment dừng là server.** Luật riêng của squad và skill `kv--squad-lead` (chế độ cũ) bảo lead tự đăng comment dừng và đặt trạng thái; trong chế độ flow cả hai do server làm, nên lead đăng thêm là trùng. Lời nhắc của lượt chạy trên request (`FlowLeadBrief`, gắn mỗi lượt) nói rõ lead không đăng ba tiêu đề `BLOCKED · stop 1`, `BLOCKED · stop 3`, `IN REVIEW · stop 2` và không đặt trạng thái, và rằng lời nhắc này thắng luật squad khi workflow đang chạy request. Nguồn duy nhất là lời nhắc do server sinh, không phụ thuộc văn bản skill hay agent đã được tạo từ bản cũ.
 - **Điểm dừng người:** dừng 1 (`stop: 1`), dừng 3 (`stop: 3`), treo (`stop: "stalled"`) đặt request sang `blocked` kèm comment hệ thống có tiêu đề cố định; dừng 2 là vào bước `in_review` (`human_only`) kèm comment dừng 2 (sản phẩm đính kèm của task cuối, liên kết kết luận bàn giao, số vòng đã dùng, danh sách task và outcome). Mọi comment kèm nhắc người yêu cầu.
-- **Task `blocked` và dừng 1:** ngay khi có task `blocked`, request sang `blocked` (`stop: 1`) nhưng engine **không hủy** task còn lại đang chạy. **`resume` của thành viên:** quay lại `blocked_from`. Dừng 1: giữ `rework`; chỉ đưa các task `blocked` của vòng hiện tại về `todo` (task đã đóng giữ nguyên). Dừng 3: đặt `rework = 0`, mở lại **toàn bộ** task của bước với `flow_round` mới. Dừng `stalled`: đưa task treo về `todo` và đặt lại bộ đếm thử.
+- **Task `blocked` và dừng 1:** ngay khi có task `blocked`, request sang `blocked` (`stop: 1`) nhưng engine **không hủy** task còn lại đang chạy. Comment dừng 1 điền `{missing}` bằng dòng đầu của comment mới nhất mà agent viết trên mỗi task `blocked` của vòng hiện tại (dòng `VERDICT: CHẶN - ...` của gate, mục thiếu của collector; cắt 300 ký tự) và `{reason}` bằng một câu cố định nêu task nào không làm tiếp được; dừng 1 do lead (`plan --blocked`) vẫn dùng `--missing` và `--reason` của lead. **`resume` của thành viên:** quay lại `blocked_from`. Dừng 1: giữ `rework`; chỉ đưa các task `blocked` của vòng hiện tại về `todo` (task đã đóng giữ nguyên). Với task `blocked` là gate, gate chạy lại trên chính bản nháp cũ, đọc được tệp mới của request nhưng không thấy bản nháp đổi; nếu nguồn mới phải vào bản nháp thì `resume` với `to_step` là bước soạn (API `{"to_step": "draft"}`, CLI `--to-step draft`; nút Resume trên UI chưa có ô chọn bước, xem mục 9 của docs/engineering/kitviet-flow-web-drill.md). Dừng 3: đặt `rework = 0`, mở lại **toàn bộ** task của bước với `flow_round` mới. Dừng `stalled`: đưa task treo về `todo` và đặt lại bộ đếm thử.
 
 ### 5.5 Mô tả task do engine sinh
 
@@ -311,7 +317,7 @@ Cấu hình trong `flow_config` (mặc định ở mục 3.4; các số là mặ
 | Task mở, không còn lượt chạy `queued/dispatched/running`, quá `task_timeout_minutes` | quét | Xếp lượt chạy mới (`attempt + 1`) với lời nhắc đổi cách làm |
 | Task có lượt chạy chạy quá `task_hard_cap_minutes` | quét | Hủy lượt chạy, tính một lần thử |
 | Hết `task_max_attempts` (đếm số hàng `agent_task_queue` của task) | quét | Task sang `blocked`, request sang `blocked` với `stop: "stalled"`, comment hệ thống |
-| Request ở bước plan, lead không gọi `plan` quá `2 × task_timeout_minutes` | quét | Đánh thức lead lại (tối đa `task_max_attempts`), rồi `stalled` |
+| Request ở bước plan, lead không gọi `plan` quá `2 × task_timeout_minutes` | quét | Đánh thức lead lại (tối đa `task_max_attempts`) với lời nhắc đòi kế hoạch (`flowRetryLeadNote`, khác lời nhắc "đóng task" của task), rồi `stalled`. Lượt chạy đang hoạt động được đếm bất kể tạo trước hay sau `entered_at` (comment của người dùng đánh thức lead trước khi `resume` đặt mốc mới) |
 | Request ở bước có task nhưng không có task nào mở và không ở điểm dừng | quét (hai lượt liên tiếp) | `Advance` lại; nếu vẫn không đổi thì `stalled` |
 | Lượt chạy hỏng vĩnh viễn, `FailedRunLandingStatus` đặt task `blocked` (`service/task.go:6489`) | sự kiện `issue_child_event` | Request sang `blocked` (dừng 1 hoặc `stalled` tùy outcome) |
 
@@ -356,7 +362,7 @@ Tất cả cần `X-Workspace-ID`; quyền: đọc = thành viên workspace; ghi
 | `POST /api/issues/{id}/flow/advance` | như `plan`, hoặc hệ thống | `{}` | 200 `{"state": IssueFlowState, "actions": [{"kind": "opened_tasks"\|"routed"\|"stopped"\|"noop", "step": "...", "tasks": ["..."]}], "pending": [{"task": "...", "issue_id": "...", "status": "..."}]}` |
 | `PUT /api/issues/{id}/flow/switches/{key}` | như `plan` | `{"value": true\|"..."}` | 200 `IssueFlowState`; 409 `flow_switch_locked`; 422 `flow_switch_invalid` |
 | `POST /api/issues/{id}/flow/resume` | chỉ thành viên `canManageSquad` | `{"to_step": "draft"?, "reset_rework": true?}` | 200 `IssueFlowState` |
-| `POST /api/issues/{id}/flow/detach` | chỉ thành viên `canManageSquad` | `{"cancel_tasks": false}` | 200 `{"detached": true}`; xóa `issue.flow` và cột `flow_*` của task (task thành sub-issue thường) |
+| `POST /api/issues/{id}/flow/detach` | chỉ thành viên `canManageSquad` | `{"cancel_tasks": false}` | 200 `{"detached": true}`; xóa `issue.flow` và cột `flow_*` của task (task thành sub-issue thường), ghi `flow_detached` để quét không đưa request trở lại. Với `cancel_tasks: true` mọi task mở và lượt chạy của chúng bị hủy và lead không bị đánh thức vì việc hủy đó; với `false` các task chạy tiếp như sub-issue thường và khi chúng đóng, lead nhận `child_done` của chế độ cũ |
 | `POST /api/issues/{id}/flow/start` | như `plan` | `{}` | 200 `IssueFlowState`; 409 nếu issue có cha, đã có con, hoặc squad không có workflow flow đang dùng |
 | `PUT /api/issue-workflows/{id}/flow-auto` | admin/owner workspace | `{"auto": true}` | 200 `IssueWorkflowResponse` |
 | `POST /api/issue-workflows` (mở rộng) | admin nếu có `flow_config` | thêm `flow_config`, `template_ref`, `steps[].tasks`, `steps[].human_only` | 201; 403 `flow_workflow_forbidden` |
