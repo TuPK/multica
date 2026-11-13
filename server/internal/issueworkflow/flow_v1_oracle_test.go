@@ -1,17 +1,15 @@
 package issueworkflow
 
 import (
-	"reflect"
-	"testing"
-
 	"github.com/multica-ai/multica/server/internal/issuestatus"
 )
 
 // The schema 1 decision functions as they were when the flow engine was
 // generalised (flow.go: Decide, route, tasksOutcomeOf, RoutePlan, currentTasks,
 // stalledRoute), copied verbatim under an oracle prefix. They are the reference
-// the lifted schema 2 engine is compared with. Do not edit them to make a test
-// pass: when production and oracle differ, one of them changed behavior.
+// the lifted schema 2 engine is compared with, and the only copy left: the engine
+// decides by the graph. Do not edit them to make a test pass: when the graph and
+// the oracle differ, one of them changed behavior.
 
 // oracleCase is one input of the oracle comparison.
 type oracleCase struct {
@@ -89,38 +87,6 @@ func oracleDecideCases() map[string]oracleCase {
 		cases[name] = c
 	}
 	return cases
-}
-
-// A19: the oracle is a faithful copy. It agrees with the production functions
-// on the TestDecide and TestRoutePlan inputs.
-func TestOracleMatchesProductionDecide(t *testing.T) {
-	for name, c := range oracleDecideCases() {
-		t.Run("Decide/"+name, func(t *testing.T) {
-			want := oracleDecide(c.def, c.state, c.tasks)
-			got := Decide(c.def, c.state, c.tasks)
-			if !reflect.DeepEqual(got, want) {
-				t.Fatalf("Decide = %+v\noracle = %+v", got, want)
-			}
-		})
-	}
-
-	def := tradeFlow()
-	planStates := map[string]FlowState{
-		"plan step":   {Step: "todo", Switches: def.Flow.DefaultSwitches()},
-		"unknown":     {Step: "nowhere"},
-		"later round": {Step: "todo", Rework: 1, RoundBase: 2, Switches: def.Flow.DefaultSwitches()},
-	}
-	for name, state := range planStates {
-		for _, blocked := range []bool{false, true} {
-			t.Run("RoutePlan/"+name, func(t *testing.T) {
-				want := oracleRoutePlan(def, state, blocked)
-				got := RoutePlan(def, state, blocked)
-				if !reflect.DeepEqual(got, want) {
-					t.Fatalf("RoutePlan(blocked=%v) = %+v\noracle = %+v", blocked, got, want)
-				}
-			})
-		}
-	}
 }
 
 // oracleDecide says what to do next for a request at state.Step. tasks may hold

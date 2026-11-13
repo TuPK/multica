@@ -40,7 +40,7 @@ func StartFlowIfEligible(ctx context.Context, q *db.Queries, issue db.Issue) (db
 		return issue, nil
 	}
 	def, err := issueworkflow.Decode(row)
-	if err != nil || def.Flow == nil {
+	if err != nil || !def.HasFlow() {
 		return issue, nil
 	}
 	return startFlow(ctx, q, issue, row, def)
@@ -54,19 +54,17 @@ func StartFlow(ctx context.Context, q *db.Queries, issue db.Issue, row db.IssueW
 	if err != nil {
 		return issue, err
 	}
-	if def.Flow == nil {
+	if !def.HasFlow() {
 		return issue, fmt.Errorf("workflow %s is not a flow", util.UUIDToString(row.ID))
 	}
 	return startFlow(ctx, q, issue, row, def)
 }
 
 func startFlow(ctx context.Context, q *db.Queries, issue db.Issue, row db.IssueWorkflow, def issueworkflow.Definition) (db.Issue, error) {
-	raw, err := json.Marshal(issueworkflow.FlowState{
-		WorkflowID: util.UUIDToString(row.ID),
-		Step:       issueworkflow.StartStatus,
-		Switches:   def.Flow.DefaultSwitches(),
-		EnteredAt:  time.Now().UTC().Format(time.RFC3339),
-	})
+	// A request on a schema 1 workflow keeps the schema 1 form of the state (spec 2.4).
+	initial := issueworkflow.Unadapt(issueworkflow.InitialState(def.Graph, nil, time.Now().UTC().Format(time.RFC3339)))
+	initial.WorkflowID = util.UUIDToString(row.ID)
+	raw, err := json.Marshal(initial)
 	if err != nil {
 		return issue, err
 	}

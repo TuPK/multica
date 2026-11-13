@@ -30,9 +30,9 @@ func TestDecideDeadline(t *testing.T) {
 	}
 }
 
-func TestLimitsOfUsesTheConfigAndTheDefaults(t *testing.T) {
-	got := LimitsOf(&FlowConfig{Version: 1, TaskTimeoutMinutes: 10, TaskMaxAttempts: 3})
-	if got.Idle != 10*time.Minute || got.MaxAttempts != 3 || got.HardCap != 240*time.Minute {
+func TestLimitsOfUsesThePolicyAndTheDefaults(t *testing.T) {
+	got := LimitsOf(Policy{TaskIdleMinutes: 10, TaskMaxAttempts: 3})
+	if got.Idle != 10*time.Minute || got.MaxAttempts != 3 || got.HardCap != time.Duration(DefaultTaskHardCapMinutes)*time.Minute {
 		t.Fatalf("limits = %+v", got)
 	}
 }

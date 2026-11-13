@@ -194,8 +194,12 @@ type Definition struct {
 	Name      string
 	IsDefault bool
 	Steps     []Step
-	// Flow is the workflow's flow_config; nil for an ordinary workflow.
+	// Flow is the workflow's flow_config; nil for an ordinary workflow. For a
+	// schema 2 flow it holds only the version: the document is in Graph.
 	Flow *FlowConfig
+	// Graph is what the engine runs: the schema 1 flow lifted with LiftOpts.Runtime
+	// (compat v1), or the schema 2 document. Zero for an ordinary workflow.
+	Graph Graph
 }
 
 // HasFlow reports whether the workflow runs requests on a flow.
@@ -231,11 +235,39 @@ func Decode(row db.IssueWorkflow) (Definition, error) {
 	if err != nil {
 		return Definition{}, err
 	}
+	def := Definition{ID: row.ID, Name: row.Name, IsDefault: row.IsDefault, Steps: steps}
+	if flowConfigVersion(row.FlowConfig) == FlowDocVersion {
+		doc, issues := ParseFlowDoc(row.FlowConfig)
+		if len(issues) > 0 {
+			return Definition{}, fmt.Errorf("decode flow_config: %s", issues[0].Error())
+		}
+		def.Flow = &FlowConfig{Version: FlowDocVersion}
+		def.Graph = NewGraph(doc)
+		return def, nil
+	}
 	flow, err := ParseFlowConfig(row.FlowConfig)
 	if err != nil {
 		return Definition{}, err
 	}
-	return Definition{ID: row.ID, Name: row.Name, IsDefault: row.IsDefault, Steps: steps, Flow: flow}, nil
+	def.Flow = flow
+	if flow != nil {
+		if def.Graph, err = Lift(def, LiftOpts{Runtime: true}); err != nil {
+			return Definition{}, err
+		}
+	}
+	return def, nil
+}
+
+// flowConfigVersion reads the version of a stored flow_config; 0 when there is
+// none or it cannot be read.
+func flowConfigVersion(raw []byte) int {
+	var head struct {
+		Version int `json:"version"`
+	}
+	if len(raw) == 0 || json.Unmarshal(raw, &head) != nil {
+		return 0
+	}
+	return head.Version
 }
 
 // DecodeSteps parses a stored steps array, normalizing a missing handler to
@@ -328,6 +360,22 @@ func (d Definition) Step(key string) (Step, bool) {
 		}
 	}
 	return Step{}, false
+}
+
+// V1Task returns the schema 1 task a step defines. The graph lifted from it
+// keeps the texts of a schema 1 flow as the workflow wrote them (spec 9.2 item 9),
+// so the text renderers read the task from here.
+func (d Definition) V1Task(step, key string) (Task, bool) {
+	s, ok := d.Step(step)
+	if !ok {
+		return Task{}, false
+	}
+	for _, t := range s.Tasks {
+		if t.Key == key {
+			return t, true
+		}
+	}
+	return Task{}, false
 }
 
 // StatusKeys lists the workflow's statuses in board order.

@@ -141,7 +141,7 @@ func (h *Handler) sweepStuck(ctx context.Context, run *flowRun) bool {
 	} else {
 		since = run.issue.CreatedAt.Time
 	}
-	limits := issueworkflow.LimitsOf(run.def.Flow)
+	limits := issueworkflow.LimitsOf(run.def.Graph.Doc.Policy)
 	log := slog.With("request_id", uuidToString(run.issue.ID), "step", run.state.Step)
 
 	if run.state.Step == issueworkflow.StartStatus {
@@ -213,7 +213,7 @@ func (h *Handler) applyDeadline(ctx context.Context, run *flowRun, issue db.Issu
 		}
 		log.Info("flow sweep: cancelled a run past the hard cap")
 		if d.Stall {
-			if out, err := h.stallFlow(ctx, run, reason, taskKey); err != nil {
+			if out, err := h.stallFlow(ctx, run, issueworkflow.ReasonTaskStuck, reason, taskKey); err != nil {
 				log.Warn("flow sweep: stall", "error", err)
 			} else {
 				return out.action.Kind == "stopped" || len(active) > 0
@@ -221,7 +221,7 @@ func (h *Handler) applyDeadline(ctx context.Context, run *flowRun, issue db.Issu
 		}
 		return len(active) > 0
 	case issueworkflow.DeadlineStall:
-		out, err := h.stallFlow(ctx, run, reason, taskKey)
+		out, err := h.stallFlow(ctx, run, issueworkflow.ReasonTaskStuck, reason, taskKey)
 		if err != nil {
 			log.Warn("flow sweep: stall", "error", err)
 			return false

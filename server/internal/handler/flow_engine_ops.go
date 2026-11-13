@@ -19,6 +19,18 @@ import (
 // The operations around Advance: the lead's plan, the switches, a person's
 // resume and detach, and following a status a person set by hand.
 
+// flowKnowsStatus reports whether a board status is one the flow knows: a step, a
+// terminal, or the status requests park in at a stop.
+func flowKnowsStatus(g issueworkflow.Graph, key string) bool {
+	if _, ok := g.Step(key); ok {
+		return true
+	}
+	if _, ok := g.Terminal(key); ok {
+		return true
+	}
+	return key == issuestatus.Blocked
+}
+
 // lockFlowRun starts a transaction, locks the request and loads its flow.
 func (h *Handler) lockFlowRun(ctx context.Context, request db.Issue) (pgx.Tx, *db.Queries, *flowRun, error) {
 	tx, err := h.TxStarter.Begin(ctx)
@@ -126,7 +138,13 @@ func (h *Handler) PlanFlow(ctx context.Context, request db.Issue, in FlowPlanInp
 		note = flowRouteNote{Missing: in.Blocked.Missing, Reason: in.Blocked.Reason}
 	}
 	var effects flowEffects
-	decision := issueworkflow.RoutePlan(run.def, run.state, in.Blocked != nil)
+	// The lead's plan is its verdict: planned, or blocked when the grounds are missing.
+	verdict := "planned"
+	if in.Blocked != nil {
+		verdict = issueworkflow.OutcomeBlocked
+	}
+	st := issueworkflow.Adapt(run.state)
+	decision := issueworkflow.RouteLead(run.def.Graph, st, verdict, issueworkflow.BuildGraphFacts(run.def.Graph, st, nil, flowRequestFacts(run.issue)))
 	if decision.Kind == issueworkflow.DecisionRoute {
 		routed, err := h.routeFlowRequest(ctx, qtx, run, decision, rows, note, &effects)
 		if err != nil {
@@ -245,7 +263,7 @@ func (h *Handler) ResumeFlow(ctx context.Context, request db.Issue, in FlowResum
 	case issuestatus.Blocked, issuestatus.Done, issuestatus.Cancelled:
 		return IssueFlowStateResponse{}, &flowRejection{Status: 400, Code: "flow_resume_invalid", Message: fmt.Sprintf("a request cannot resume at %q", target)}
 	}
-	if !run.def.Has(target) {
+	if !flowKnowsStatus(run.def.Graph, target) {
 		return IssueFlowStateResponse{}, &flowRejection{Status: 400, Code: "flow_resume_invalid", Message: fmt.Sprintf("the workflow has no step %q", target)}
 	}
 	rows, err := h.loadFlowTasks(ctx, qtx, run)
@@ -257,6 +275,8 @@ func (h *Handler) ResumeFlow(ctx context.Context, request db.Issue, in FlowResum
 	next.Stop = issueworkflow.StopNone
 	next.BlockedFrom = ""
 	next.EnteredAt = flowNow()
+	// A manager who resumes the request has looked at it: a human checkpoint (spec 4.8).
+	next.Unreviewed = false
 	if in.ResetRework || run.state.Stop == issueworkflow.Stop3 {
 		next.Rework = 0
 	}
@@ -419,12 +439,13 @@ func (h *Handler) followManualMove(ctx context.Context, qtx *db.Queries, run *fl
 			return false, FlowAction{}, err
 		}
 	default:
-		if !run.def.Has(to) {
+		if !flowKnowsStatus(run.def.Graph, to) {
 			return false, FlowAction{}, nil
 		}
 		next.Step = to
 		next.Stop = issueworkflow.StopNone
 		next.BlockedFrom = ""
+		next.Unreviewed = false
 		if to == issuestatus.Blocked {
 			next.BlockedFrom = old.Step
 			next.Stop = issueworkflow.Stop1

@@ -501,18 +501,18 @@ func TestAdvance_ConcurrentCallsCreateOneSet(t *testing.T) {
 }
 
 // Two decisions made from the same state cannot both win: the write is
-// conditional on the step and rework count the decision started from.
+// conditional on the step and seq the decision started from.
 func TestAdvance_ConcurrentWritersLoseOnFlowCondition(t *testing.T) {
 	f := newTradeFlowFixture(t)
 	request := f.newRequest(t)
 	ctx := context.Background()
 	write := func(step string) error {
 		_, err := testHandler.Queries.SetIssueFlow(ctx, db.SetIssueFlowParams{
-			Flow:           []byte(fmt.Sprintf(`{"workflow_id":"%s","step":"%s","rework":0}`, f.Workflow.ID, step)),
-			ID:             request.ID,
-			WorkspaceID:    request.WorkspaceID,
-			ExpectedStep:   "todo",
-			ExpectedRework: 0,
+			Flow:         []byte(fmt.Sprintf(`{"workflow_id":"%s","step":"%s","rework":0}`, f.Workflow.ID, step)),
+			ID:           request.ID,
+			WorkspaceID:  request.WorkspaceID,
+			ExpectedStep: "todo",
+			ExpectedSeq:  0,
 		})
 		return err
 	}

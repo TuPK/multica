@@ -125,3 +125,26 @@ func TestAdapt_StopCodes(t *testing.T) {
 		}
 	})
 }
+
+// seq, trail and unreviewed are the same fields in both forms of the state, so a
+// schema 1 request keeps them (spec 2.4, 9.2 rule 13).
+func TestAdapt_CarriesSeqTrailAndUnreviewed(t *testing.T) {
+	v1 := FlowState{
+		Step: "gate", Rework: 1, Seq: 7, Unreviewed: true,
+		Trail: []TrailEntry{{Step: "todo", Edge: "plan_ok", At: "2026-11-13T00:00:00Z"}, {Step: "collect", Edge: "collect_next"}},
+	}
+	got := Adapt(v1)
+	if got.Seq != 7 || !got.Unreviewed || len(got.Trail) != 2 {
+		t.Fatalf("Adapt lost a field: %+v", got)
+	}
+	got.Trail[0].Step = "changed"
+	if v1.Trail[0].Step != "todo" {
+		t.Fatal("Adapt shares the trail with the state it read")
+	}
+	if back := Unadapt(Adapt(v1)); !reflect.DeepEqual(back, v1) {
+		t.Fatalf("Unadapt(Adapt(state)) = %+v, want %+v", back, v1)
+	}
+	if back := Unadapt(Adapt(FlowState{Step: "gate"})); back.Trail != nil {
+		t.Fatalf("a state without a trail came back with %v", back.Trail)
+	}
+}

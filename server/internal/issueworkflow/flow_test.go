@@ -501,7 +501,7 @@ func TestDecide(t *testing.T) {
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			got := Decide(def, tt.state, tt.tasks)
+			got := graphDecide(t, def, tt.state, tt.tasks)
 			if got.Kind != tt.kind {
 				t.Fatalf("Kind = %q, want %q (decision %+v)", got.Kind, tt.kind, got)
 			}
@@ -537,7 +537,7 @@ func TestDecide_ReworkCountsByRoundAcrossTheWholeLoop(t *testing.T) {
 			closedTask("gate", "docs_gate", KindGate, state.Rework, "rejected"),
 			closedTask("gate", "customs_gate", KindGate, state.Rework, "rejected"),
 		}
-		d := Decide(def, state, tasks)
+		d := graphDecide(t, def, state, tasks)
 		if d.Kind != DecisionRoute {
 			t.Fatalf("round %d: %+v", rounds, d)
 		}
@@ -561,10 +561,10 @@ func TestDecide_ReworkCountsByRoundAcrossTheWholeLoop(t *testing.T) {
 func TestRoutePlan(t *testing.T) {
 	def := tradeFlow()
 	state := FlowState{Step: "todo", Switches: def.Flow.DefaultSwitches()}
-	if got := RoutePlan(def, state, false); got.Kind != DecisionRoute || got.To != "collect" || got.Stop != StopNone {
+	if got := graphRoutePlan(t, def, state, false); got.Kind != DecisionRoute || got.To != "collect" || got.Stop != StopNone {
 		t.Fatalf("plan ok: %+v, want a route to collect", got)
 	}
-	if got := RoutePlan(def, state, true); got.Kind != DecisionRoute || got.To != "blocked" || got.Stop != Stop1 {
+	if got := graphRoutePlan(t, def, state, true); got.Kind != DecisionRoute || got.To != "blocked" || got.Stop != Stop1 {
 		t.Fatalf("plan blocked: %+v, want a route to blocked with stop 1", got)
 	}
 }
@@ -640,14 +640,14 @@ func TestFlowStateRound(t *testing.T) {
 		closedTask("gate", "docs_gate", KindGate, 0, "rejected"),
 		closedTask("gate", "customs_gate", KindGate, 0, "rejected"),
 	}
-	if got := Decide(def, state, tasks); got.Kind != DecisionOpen || len(got.Missing) != 2 {
+	if got := graphDecide(t, def, state, tasks); got.Kind != DecisionOpen || len(got.Missing) != 2 {
 		t.Fatalf("tasks of the old round must not count in the new one: %+v", got)
 	}
 	tasks = []TaskState{
 		closedTask("gate", "docs_gate", KindGate, 3, "approved"),
 		closedTask("gate", "customs_gate", KindGate, 3, "approved"),
 	}
-	if got := Decide(def, state, tasks); got.Kind != DecisionRoute || got.To != "handover" {
+	if got := graphDecide(t, def, state, tasks); got.Kind != DecisionRoute || got.To != "handover" {
 		t.Fatalf("tasks of the new round must count: %+v", got)
 	}
 }
@@ -837,7 +837,7 @@ func TestRoutePlan_BlockedByASwitchIsStop1(t *testing.T) {
 	def.Steps[0] = plan
 	state := FlowState{Step: "todo", Switches: map[string]any{"export": true}}
 
-	d := RoutePlan(def, state, false)
+	d := graphRoutePlan(t, def, state, false)
 
 	if d.To != "blocked" || d.Stop != Stop1 {
 		t.Fatalf("decision = %+v, want blocked at stop 1", d)

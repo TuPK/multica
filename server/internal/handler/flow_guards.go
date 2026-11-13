@@ -74,42 +74,51 @@ func (h *Handler) flowDefinition(ctx context.Context, workspaceID pgtype.UUID, s
 		return issueworkflow.Definition{}, false
 	}
 	def, err := issueworkflow.Decode(row)
-	if err != nil || def.Flow == nil {
+	if err != nil || !def.HasFlow() || def.Graph.Compat != issueworkflow.CompatV1 {
 		return issueworkflow.Definition{}, false
 	}
 	return def, true
+}
+
+// flowGraphTask finds the task a step of the graph defines.
+func flowGraphTask(g issueworkflow.Graph, step, key string) (issueworkflow.DocTask, bool) {
+	s, ok := g.Step(step)
+	if !ok {
+		return issueworkflow.DocTask{}, false
+	}
+	for _, t := range s.Tasks {
+		if t.Key == key {
+			return t, true
+		}
+	}
+	return issueworkflow.DocTask{}, false
 }
 
 // flowTaskRun finds the request a task the engine opened belongs to, the
 // workflow it is pinned to, and the definition of the task. ok is false when a
 // link is missing, for instance after the request was detached; the issue is
 // then an ordinary one.
-func (h *Handler) flowTaskRun(ctx context.Context, task db.Issue) (*flowRun, issueworkflow.Task, bool) {
+func (h *Handler) flowTaskRun(ctx context.Context, task db.Issue) (*flowRun, issueworkflow.DocTask, bool) {
 	if !task.FlowTask.Valid || !task.ParentIssueID.Valid {
-		return nil, issueworkflow.Task{}, false
+		return nil, issueworkflow.DocTask{}, false
 	}
 	parent, err := h.Queries.GetIssueInWorkspace(ctx, db.GetIssueInWorkspaceParams{ID: task.ParentIssueID, WorkspaceID: task.WorkspaceID})
 	if err != nil {
-		return nil, issueworkflow.Task{}, false
+		return nil, issueworkflow.DocTask{}, false
 	}
 	run, err := h.loadFlowRun(ctx, h.Queries, parent)
 	if err != nil {
-		return nil, issueworkflow.Task{}, false
+		return nil, issueworkflow.DocTask{}, false
 	}
-	step, ok := run.def.Step(task.FlowStep.String)
+	spec, ok := flowGraphTask(run.def.Graph, task.FlowStep.String, task.FlowTask.String)
 	if !ok {
-		return nil, issueworkflow.Task{}, false
+		return nil, issueworkflow.DocTask{}, false
 	}
-	for _, t := range step.Tasks {
-		if t.Key == task.FlowTask.String {
-			return run, t, true
-		}
-	}
-	return nil, issueworkflow.Task{}, false
+	return run, spec, true
 }
 
 // flowTaskSpec finds the definition of a task the engine opened.
-func (h *Handler) flowTaskSpec(ctx context.Context, task db.Issue) (issueworkflow.Task, bool) {
+func (h *Handler) flowTaskSpec(ctx context.Context, task db.Issue) (issueworkflow.DocTask, bool) {
 	_, spec, ok := h.flowTaskRun(ctx, task)
 	return spec, ok
 }
@@ -318,7 +327,7 @@ func (h *Handler) checkFlowTaskWrite(ctx context.Context, prev db.Issue, params 
 // checkFlowTaskStatus enforces R1 and R2: a task closes (moves to a done status)
 // only with the verdict and the file its definition requires, and a task that
 // cannot go on says so with the outcome blocked.
-func (h *Handler) checkFlowTaskStatus(ctx context.Context, task db.Issue, spec issueworkflow.Task, to, outcome string, actor flowActor) error {
+func (h *Handler) checkFlowTaskStatus(ctx context.Context, task db.Issue, spec issueworkflow.DocTask, to, outcome string, actor flowActor) error {
 	taskFields := func(extra map[string]any) map[string]any {
 		fields := map[string]any{"task": spec.Key}
 		for k, v := range extra {
@@ -347,7 +356,7 @@ func (h *Handler) checkFlowTaskStatus(ctx context.Context, task db.Issue, spec i
 			Fields:  taskFields(map[string]any{"allowed_outcomes": allowedClosingOutcomes}),
 		}
 	}
-	if spec.Kind == issueworkflow.KindGate || spec.Needs(issueworkflow.RequireOutcome) {
+	if spec.NeedsVerdict() {
 		switch outcome {
 		case "":
 			return &flowRejection{
@@ -364,7 +373,7 @@ func (h *Handler) checkFlowTaskStatus(ctx context.Context, task db.Issue, spec i
 			}
 		}
 	}
-	if spec.Needs(issueworkflow.RequireAttachment) {
+	if spec.NeedsFiles() {
 		attached, err := h.flowTaskAttachmentCount(ctx, task, actor)
 		if err != nil {
 			return err
@@ -561,7 +570,8 @@ func (h *Handler) claimFlowBrief(ctx context.Context, issue db.Issue) *TaskProje
 		if err != nil || run.state.ClosedAt != "" {
 			return nil
 		}
-		spec, ok := h.flowTaskSpec(ctx, issue)
+		// The brief of a flow lifted from schema 1 keeps the text of the task as the workflow wrote it.
+		spec, ok := run.def.V1Task(issue.FlowStep.String, issue.FlowTask.String)
 		if !ok {
 			return nil
 		}

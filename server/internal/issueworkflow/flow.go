@@ -8,8 +8,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgtype"
-
-	"github.com/multica-ai/multica/server/internal/issuestatus"
 )
 
 // The enforced squad workflow engine (docs/engineering/kitviet-workflow-spec.md).
@@ -294,6 +292,13 @@ type FlowState struct {
 	// ClosedAt is left out until the request closes: the open-requests index
 	// tests for the key.
 	ClosedAt string `json:"closed_at,omitempty"`
+	// Seq grows on every write; a write names the Seq it read. A state stored
+	// before Seq existed reads as 0.
+	Seq int `json:"seq,omitempty"`
+	// Unreviewed and Trail are the fields of the schema 2 state (spec 2.4) that a
+	// schema 1 request carries too.
+	Unreviewed bool         `json:"unreviewed,omitempty"`
+	Trail      []TrailEntry `json:"trail,omitempty"`
 }
 
 // Round is the round the tasks of the current step open in (and carry in
@@ -327,7 +332,9 @@ const (
 	DecisionRoute DecisionKind = "route"
 )
 
-// Decision is the result of Decide.
+// Decision is what the engine does next with a request. DecideGraph returns it
+// inside a GraphDecision; the fields keep their schema 1 meaning for a graph lifted
+// from a schema 1 workflow.
 type Decision struct {
 	Kind DecisionKind
 	// Missing are the tasks to open (DecisionOpen).
@@ -344,147 +351,6 @@ type Decision struct {
 	Stop Stop
 	// HumanStop: To is a human-only step (stop 2).
 	HumanStop bool
-}
-
-// Decide says what to do next for a request at state.Step. tasks may hold
-// the tasks of every step and round; only those of the current step and round
-// count. It is a pure function of its arguments.
-func Decide(def Definition, state FlowState, tasks []TaskState) Decision {
-	step, ok := def.Step(state.Step)
-	if !ok {
-		return stalledRoute()
-	}
-	// The plan step waits for the lead's plan; a step with nothing to open and
-	// nowhere to go (blocked, done) waits for a person.
-	if state.Step == StartStatus || (len(step.Tasks) == 0 && !step.HumanOnly && len(step.Transitions) == 0) {
-		return Decision{Kind: DecisionWait}
-	}
-	expected := ExpectedTasks(step, state.Switches)
-	current := currentTasks(state, tasks)
-	var missing []Task
-	for _, task := range expected {
-		if _, has := current[task.Key]; !has {
-			missing = append(missing, task)
-		}
-	}
-	if step.HumanOnly {
-		if len(missing) > 0 {
-			return Decision{Kind: DecisionOpen, Missing: missing}
-		}
-		return Decision{Kind: DecisionWait}
-	}
-	outcome := tasksOutcomeOf(step, current)
-	if outcome != TasksAnyBlocked {
-		if len(missing) > 0 {
-			return Decision{Kind: DecisionOpen, Missing: missing}
-		}
-		for _, ts := range current {
-			if !ts.Closed {
-				return Decision{Kind: DecisionWait}
-			}
-		}
-	}
-	return route(def, step, state, Facts{
-		ReworkCount:  state.Rework,
-		TasksOutcome: outcome,
-		Switches:     state.Switches,
-	})
-}
-
-// RoutePlan routes the plan step once the lead has planned. blocked is the
-// lead's report that the grounds are missing.
-func RoutePlan(def Definition, state FlowState, blocked bool) Decision {
-	step, ok := def.Step(state.Step)
-	if !ok {
-		return stalledRoute()
-	}
-	facts := Facts{ReworkCount: state.Rework, TasksOutcome: TasksNone, Switches: state.Switches}
-	if blocked {
-		facts.Outcome = OutcomeBlocked
-	}
-	return route(def, step, state, facts)
-}
-
-func stalledRoute() Decision {
-	return Decision{Kind: DecisionRoute, To: issuestatus.Blocked, Stop: StopStalled}
-}
-
-func route(def Definition, step Step, state FlowState, facts Facts) Decision {
-	picked, ok := step.Route(facts)
-	if !ok {
-		return stalledRoute()
-	}
-	out := Decision{
-		Kind:         DecisionRoute,
-		To:           picked.ToStatusKey,
-		Rework:       picked.Rework,
-		TransitionID: picked.ID,
-		TasksOutcome: facts.TasksOutcome,
-	}
-	if out.To == issuestatus.Blocked {
-		// A request goes to blocked for lack of grounds when a task or the lead
-		// reported it; otherwise the rework rounds ran out.
-		// The plan step can block a request on what the lead chose (a squad that refuses records that
-		// are not anonymised): that is a lack of grounds too.
-		if facts.TasksOutcome == TasksAnyBlocked || facts.Outcome == OutcomeBlocked || step.StatusKey == StartStatus {
-			out.Stop = Stop1
-		} else {
-			out.Stop = Stop3
-		}
-	}
-	if target, ok := def.Step(out.To); ok && target.HumanOnly {
-		out.HumanStop = true
-	}
-	return out
-}
-
-// currentTasks indexes the tasks of the request's current step and round.
-func currentTasks(state FlowState, tasks []TaskState) map[string]TaskState {
-	out := map[string]TaskState{}
-	for _, ts := range tasks {
-		if ts.Step == state.Step && ts.Round == state.Round() {
-			out[ts.Key] = ts
-		}
-	}
-	return out
-}
-
-// tasksOutcomeOf gathers the verdicts of a step's tasks. A blocked report from
-// any task wins; a gate that did not approve (rejected, cancelled, closed with
-// no outcome) counts as rejected; a step without gates has no verdict.
-func tasksOutcomeOf(step Step, current map[string]TaskState) string {
-	gates, rejected := 0, false
-	for _, ts := range current {
-		if ts.Outcome == OutcomeBlocked {
-			return TasksAnyBlocked
-		}
-	}
-	for _, ts := range current {
-		if !ts.Closed {
-			// A gate still open has not judged yet.
-			continue
-		}
-		kind := ts.Kind
-		for _, task := range step.Tasks {
-			if task.Key == ts.Key {
-				kind = task.Kind
-			}
-		}
-		if kind != KindGate {
-			continue
-		}
-		gates++
-		if ts.Cancelled || ts.Outcome != OutcomeApproved {
-			rejected = true
-		}
-	}
-	switch {
-	case rejected:
-		return TasksAnyRejected
-	case gates > 0:
-		return TasksAllApproved
-	}
-	return TasksNone
 }
 
 // ValidateFlow checks the flow-specific rules of a workflow (spec section 3.7).

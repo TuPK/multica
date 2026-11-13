@@ -18,14 +18,15 @@ WHERE id = sqlc.arg('id')::uuid
 RETURNING *;
 
 -- name: SetIssueFlow :one
--- Moves the request's flow state. The condition on the step and the rework count
--- the caller decided from makes two concurrent decisions lose to one. Returns no
--- row when the state moved under the caller.
+-- Moves the request's flow state. The condition on the step and the seq the
+-- caller read makes two concurrent decisions lose to one; the caller writes seq+1
+-- in the new state. A state stored before seq existed counts as 0. Returns no row
+-- when the state moved under the caller.
 UPDATE issue SET flow = sqlc.arg('flow')::jsonb
 WHERE id = sqlc.arg('id')::uuid
   AND workspace_id = sqlc.arg('workspace_id')::uuid
   AND flow->>'step' = sqlc.arg('expected_step')::text
-  AND COALESCE((flow->>'rework')::int, 0) = sqlc.arg('expected_rework')::int
+  AND COALESCE((flow->>'seq')::int, 0) = sqlc.arg('expected_seq')::int
 RETURNING *;
 
 -- name: ClearIssueFlow :exec

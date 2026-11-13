@@ -332,6 +332,18 @@ type DocTask struct {
 	Instructions string        `json:"instructions,omitempty"`
 }
 
+// NeedsVerdict reports whether the task closes only with a verdict: a gate
+// unless requires.verdict says false, work only when it says true.
+func (t DocTask) NeedsVerdict() bool {
+	if t.Requires != nil && t.Requires.Verdict != nil {
+		return *t.Requires.Verdict
+	}
+	return t.Kind == KindGate
+}
+
+// NeedsFiles reports whether the task closes only with a file attached.
+func (t DocTask) NeedsFiles() bool { return t.Requires != nil && len(t.Requires.Files) > 0 }
+
 // Instances opens a task several times: a fixed count, or one per element of a
 // list variable between Min and Max.
 type Instances struct {

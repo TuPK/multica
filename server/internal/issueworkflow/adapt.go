@@ -8,8 +8,9 @@ package issueworkflow
 // definition the request is pinned to.
 const stateVersionV1 = 1
 
-// Adapt reads a schema 1 state as a State. The maps are copied. A field schema 1
-// has no equivalent for (seq, trail, activations) is left empty.
+// Adapt reads a schema 1 state as a State. The maps and the trail are copied. A
+// field schema 1 has no equivalent for (activations) is left empty; seq, trail and
+// unreviewed are the same fields in both forms.
 func Adapt(v1 FlowState) State {
 	s := State{
 		WorkflowID:  v1.WorkflowID,
@@ -21,6 +22,12 @@ func Adapt(v1 FlowState) State {
 		PlanDone:    v1.PlanDone,
 		RoundBase:   v1.RoundBase,
 		ClosedAt:    v1.ClosedAt,
+		Seq:         v1.Seq,
+		Unreviewed:  v1.Unreviewed,
+		Trail:       append([]TrailEntry(nil), v1.Trail...),
+	}
+	if len(s.Trail) == 0 {
+		s.Trail = nil
 	}
 	if v1.Switches != nil {
 		s.Vars = make(map[string]any, len(v1.Switches))
@@ -46,6 +53,12 @@ func Unadapt(s State) FlowState {
 		BlockedFrom: s.BlockedFrom,
 		PlanDone:    s.PlanDone,
 		ClosedAt:    s.ClosedAt,
+		Seq:         s.Seq,
+		Unreviewed:  s.Unreviewed,
+		Trail:       append([]TrailEntry(nil), s.Trail...),
+	}
+	if len(v1.Trail) == 0 {
+		v1.Trail = nil
 	}
 	if s.Vars != nil {
 		v1.Switches = make(map[string]any, len(s.Vars))

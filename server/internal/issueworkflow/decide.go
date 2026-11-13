@@ -27,6 +27,10 @@ const (
 	ReasonStopUnknown              = "stop_unknown"
 	// ReasonEdgeUnavailable: a person chose an exit that cannot be taken now.
 	ReasonEdgeUnavailable = "edge_unavailable"
+	// ReasonAgentUnavailable: the agent of a task cannot take it (archived, left the squad).
+	ReasonAgentUnavailable = "agent_unavailable"
+	// ReasonTaskStuck: a task or the lead used all its attempts without closing.
+	ReasonTaskStuck = "task_stuck"
 )
 
 // The values of join.result.
@@ -83,6 +87,10 @@ type GraphDecision struct {
 	Checkpoint bool
 	// Notice is the message key of the target step.
 	Notice string
+	// Facts are the values of the facts the edges tried read, the chosen edge
+	// and the ones before it: why the request went this way (spec 4.13). A fact
+	// that has no value is left out.
+	Facts map[string]any
 }
 
 // RowRef names a task row of a request: the step and the row key.
@@ -96,6 +104,10 @@ func entryRound(g Graph, st State) int {
 	}
 	return currentRound(st)
 }
+
+// StalledDecision is the decision to park a request in the implicit stalled
+// stop, for a reason the engine found (a task that cannot open, a deadline).
+func StalledDecision(reason string) GraphDecision { return stalledGraph(reason) }
 
 func stalledGraph(reason string) GraphDecision {
 	return GraphDecision{
@@ -590,6 +602,7 @@ func RouteManual(g Graph, st State, tasks []TaskState, edgeID string, fs FactSet
 // made for an exit that was asked for.
 func (g Graph) route(st State, tasks []TaskState, step DocStep, fs FactSet, manualID, result string) (GraphDecision, bool) {
 	var chosen *GraphEdge
+	var read []string
 	for _, e := range g.EdgesFrom(step.Key) {
 		if manualID != "" {
 			if e.Edge.ID != manualID {
@@ -599,6 +612,7 @@ func (g Graph) route(st State, tasks []TaskState, step DocStep, fs FactSet, manu
 			continue
 		}
 		if e.Edge.When != nil {
+			walkCondition(*e.Edge.When, func(c Condition) { read = append(read, c.Field) })
 			ok, err := EvaluateWith(*e.Edge.When, fs)
 			if err != nil {
 				return stalledGraph(ReasonConditionInvalid), true
@@ -618,9 +632,40 @@ func (g Graph) route(st State, tasks []TaskState, step DocStep, fs FactSet, manu
 		if manualID != "" {
 			return GraphDecision{}, false
 		}
-		return stalledGraph(ReasonNoEdge), true
+		d := stalledGraph(ReasonNoEdge)
+		d.Facts = factValues(fs, read)
+		return d, true
 	}
-	return g.decisionFor(st, tasks, step, *chosen, result), true
+	d := g.decisionFor(st, tasks, step, *chosen, result)
+	d.Facts = factValues(fs, read)
+	return d, true
+}
+
+// factValues reads the values of the named facts, each once. A fact without a
+// value is left out.
+func factValues(fs FactSet, keys []string) map[string]any {
+	out := map[string]any{}
+	for _, key := range keys {
+		spec, ok := fs.Spec(key)
+		if !ok {
+			continue
+		}
+		v, present := fs.Value(key)
+		if !present {
+			continue
+		}
+		switch spec.Type {
+		case VarTypeBool:
+			out[key] = v.Bool
+		case VarTypeInt:
+			out[key] = v.Int
+		case VarTypeListString:
+			out[key] = v.List
+		default:
+			out[key] = v.Str
+		}
+	}
+	return out
 }
 
 // loopHasRoom reports whether the loop may be followed once more.
@@ -834,6 +879,10 @@ func enterStep(g Graph, st State, to, backLoop string, meta ApplyMeta) State {
 	st.Activations[to]++
 	if backLoop != "" {
 		st.Loops[backLoop]++
+		return st
+	}
+	if g.Compat == CompatV1 {
+		// The rework count of a schema 1 request is never reset by entering a step.
 		return st
 	}
 	for _, l := range g.Doc.Loops {

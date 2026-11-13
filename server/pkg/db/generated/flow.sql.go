@@ -727,28 +727,29 @@ UPDATE issue SET flow = $1::jsonb
 WHERE id = $2::uuid
   AND workspace_id = $3::uuid
   AND flow->>'step' = $4::text
-  AND COALESCE((flow->>'rework')::int, 0) = $5::int
+  AND COALESCE((flow->>'seq')::int, 0) = $5::int
 RETURNING id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, properties, revision, last_activity_at, triage_state, duplicate_of_issue_id, done_at, reopen_count, last_reopened_at, run_queued, run_after_issue_ids, run_start_status, outcome, flow, flow_step, flow_task, flow_round
 `
 
 type SetIssueFlowParams struct {
-	Flow           []byte      `json:"flow"`
-	ID             pgtype.UUID `json:"id"`
-	WorkspaceID    pgtype.UUID `json:"workspace_id"`
-	ExpectedStep   string      `json:"expected_step"`
-	ExpectedRework int32       `json:"expected_rework"`
+	Flow         []byte      `json:"flow"`
+	ID           pgtype.UUID `json:"id"`
+	WorkspaceID  pgtype.UUID `json:"workspace_id"`
+	ExpectedStep string      `json:"expected_step"`
+	ExpectedSeq  int32       `json:"expected_seq"`
 }
 
-// Moves the request's flow state. The condition on the step and the rework count
-// the caller decided from makes two concurrent decisions lose to one. Returns no
-// row when the state moved under the caller.
+// Moves the request's flow state. The condition on the step and the seq the
+// caller read makes two concurrent decisions lose to one; the caller writes seq+1
+// in the new state. A state stored before seq existed counts as 0. Returns no row
+// when the state moved under the caller.
 func (q *Queries) SetIssueFlow(ctx context.Context, arg SetIssueFlowParams) (Issue, error) {
 	row := q.db.QueryRow(ctx, setIssueFlow,
 		arg.Flow,
 		arg.ID,
 		arg.WorkspaceID,
 		arg.ExpectedStep,
-		arg.ExpectedRework,
+		arg.ExpectedSeq,
 	)
 	var i Issue
 	err := row.Scan(

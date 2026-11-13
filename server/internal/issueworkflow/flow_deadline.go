@@ -17,7 +17,7 @@ type RunStats struct {
 	IdleFor time.Duration
 }
 
-// DeadlineLimits are the limits of a flow, from its flow_config.
+// DeadlineLimits are the limits of a flow, from its policy.
 type DeadlineLimits struct {
 	// Idle is how long an open task may sit without a run before it gets another.
 	Idle time.Duration
@@ -26,12 +26,13 @@ type DeadlineLimits struct {
 	MaxAttempts int
 }
 
-// LimitsOf reads the limits of a flow config, with the defaults for what it leaves out.
-func LimitsOf(c *FlowConfig) DeadlineLimits {
+// LimitsOf reads the limits of a flow's policy, with the defaults for what it leaves out.
+func LimitsOf(p Policy) DeadlineLimits {
+	p = p.Effective()
 	return DeadlineLimits{
-		Idle:        time.Duration(c.TaskTimeout()) * time.Minute,
-		HardCap:     time.Duration(c.TaskHardCap()) * time.Minute,
-		MaxAttempts: c.TaskAttempts(),
+		Idle:        time.Duration(p.TaskIdleMinutes) * time.Minute,
+		HardCap:     time.Duration(p.TaskHardCapMinutes) * time.Minute,
+		MaxAttempts: p.TaskMaxAttempts,
 	}
 }
 

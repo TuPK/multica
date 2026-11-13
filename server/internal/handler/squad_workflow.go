@@ -312,7 +312,7 @@ func adoptSquadWorkflow(ctx context.Context, q *db.Queries, wsUUID, squadID pgty
 func (h *Handler) squadWorkflowPlan(ctx context.Context, q *db.Queries, wsUUID, squadID pgtype.UUID, target issueworkflow.Definition) (workflowMappingPlan, error) {
 	// A flow runs the squad's requests and their tasks, not its other issues:
 	// those keep the project's workflow, so no issue changes status.
-	if target.Flow != nil {
+	if target.HasFlow() {
 		return workflowMappingPlan{Required: []StatusMappingRequirement{}, Unchanged: []StatusIssueCount{}}, nil
 	}
 	catalog, err := h.workflowStatusCatalog(ctx, q, wsUUID)
