@@ -1,0 +1,43 @@
+---
+const steps = [
+  { icon: "i-doc", title: "Thu thập", text: "Chỉ dùng tài liệu có nguồn rõ: file, chứng từ, trang chính thức.", gate: false },
+  { icon: "i-spark", title: "Soạn nháp", text: "Số liệu được tính bằng công thức. Thiếu dữ liệu thì đánh dấu, không tự điền.", gate: false },
+  { icon: "i-shield", title: "Kiểm tra", text: "Hai đến ba cổng độc lập soát từng dòng. Có lỗi thì chặn lại.", gate: true },
+  { icon: "i-flag", title: "Bàn giao", text: "Danh sách việc người phụ trách cần xác nhận trước khi dùng.", gate: false },
+  { icon: "i-user", title: "Bạn quyết định", text: "Chỉ người có thẩm quyền mới đưa bản nháp ra bên ngoài.", gate: false },
+];
+---
+
+<section id="cach-lam">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="tag">Cách làm</div>
+      <h2 style="margin-top:18px">AI soạn bản nháp. Người phụ trách quyết định.</h2>
+      <p>Các việc liên quan đến tiền, pháp lý hay sức khoẻ không thể để AI tự quyết. Mỗi bản nháp đi qua năm bước, và người phụ trách là người xác nhận cuối cùng.</p>
+    </div>
+    <div class="flow rv">
+      {steps.map((s) => (
+        <div class={s.gate ? "fs gate" : "fs"}>
+          <div class="n"><svg class="ic"><use href={`#${s.icon}`}></use></svg></div>
+          <h3>{s.title}</h3>
+          <p>{s.text}</p>
+        </div>
+      ))}
+    </div>
+
+    <div class="example rv">
+      <div class="ex">
+        <div class="lab">Khi cổng kiểm tra chặn bản nháp</div>
+        <div class="big">Số trên tờ khai không khớp với hoá đơn.</div>
+        <div class="fig">Hoá đơn: <b>12.400.000</b><br />Bản nháp: <b>12.040.000</b><br />Chênh lệch: <b>360.000</b></div>
+        <p>Cổng số liệu chặn bản nháp. Đội soạn lại từ hoá đơn gốc, và bạn không nhận được bản có lỗi.</p>
+      </div>
+      <div class="ex">
+        <div class="lab">Khi nguồn tài liệu mâu thuẫn</div>
+        <div class="big">Hai văn bản quy định có nội dung khác nhau.</div>
+        <div class="fig">Văn bản A: <b>còn hiệu lực</b><br />Văn bản B: <b>đã được thay thế</b><br />Ghi chú: <b>cần xác nhận</b></div>
+        <p>Đội không tự chọn một bản. Phần này được đánh dấu để người phụ trách quyết định.</p>
+      </div>
+    </div>
+  </div>
+</section>

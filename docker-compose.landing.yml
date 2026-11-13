@@ -1,0 +1,17 @@
+# Runs only the marketing landing page (apps/landing), without the rest of the stack.
+# Usage: make landing (start) and make landing-stop (stop).
+#
+# Unlike docker-compose.selfhost.yml, which binds to 127.0.0.1, this file publishes the
+# port on all interfaces (0.0.0.0) so other machines on the network can open the page.
+# Put a firewall or reverse proxy in front of it before exposing it publicly.
+
+name: multica-landing
+
+services:
+  landing:
+    build:
+      context: .
+      dockerfile: Dockerfile.landing
+    ports:
+      - "0.0.0.0:${LANDING_PORT:-30002}:80"
+    restart: unless-stopped

@@ -52,9 +52,11 @@ compose_host_port() {
 
 backend_port=$(compose_host_port backend 8080 "${BACKEND_PORT:-${API_PORT:-${SERVER_PORT:-${PORT:-8080}}}}")
 frontend_port=$(compose_host_port frontend 3000 "${FRONTEND_PORT:-3000}")
+landing_port=$(compose_host_port landing 80 "${LANDING_PORT:-30002}")
 
 backend_url="http://localhost:${backend_port}"
 frontend_url="http://localhost:${frontend_port}"
+landing_url="http://localhost:${landing_port}"
 
 health_ok() {
   curl -sf "${backend_url}/health" >/dev/null 2>&1
@@ -78,6 +80,7 @@ fi
 echo ""
 echo "✓ Multica is running!"
 echo "  Frontend: ${frontend_url}"
+echo "  Landing:  ${landing_url}"
 echo "  Backend:  ${backend_url}"
 echo ""
 if [ "$mode" = "build" ]; then

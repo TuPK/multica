@@ -1,0 +1,88 @@
+<section id="he-sinh-thai">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="tag">Hệ sinh thái</div>
+      <h2 style="margin-top:18px">Các phòng làm việc với nhau, không đứng riêng lẻ.</h2>
+      <p>Bán hàng cần giá từ kế toán. Tuyển dụng cần pháp lý soát hợp đồng lao động. Marketing cần số liệu từ bán hàng. Trợ lý điều hành đọc việc của tất cả các phòng để bạn thấy bức tranh chung.</p>
+    </div>
+
+    <div class="eco-grid">
+      <div class="eco rv">
+        <svg viewBox="0 0 800 500" role="img" aria-label="Sơ đồ tám phòng ban xoay quanh Trợ lý điều hành. Các chấm sáng biểu thị việc được bàn giao giữa các phòng.">
+          <!-- ring links -->
+          <g stroke="#243247" stroke-width="1.5" fill="none">
+            <line x1="150" y1="120" x2="400" y2="70"/>
+            <line x1="400" y1="70" x2="650" y2="120"/>
+            <line x1="650" y1="120" x2="720" y2="250"/>
+            <line x1="720" y1="250" x2="650" y2="380"/>
+            <line x1="650" y1="380" x2="400" y2="430"/>
+            <line x1="400" y1="430" x2="150" y2="380"/>
+            <line x1="150" y1="380" x2="80" y2="250"/>
+            <line x1="80" y1="250" x2="150" y2="120"/>
+          </g>
+          <!-- spokes to the assistant -->
+          <g stroke="#1b2636" stroke-width="1.2" fill="none" stroke-dasharray="3 5">
+            <line x1="150" y1="120" x2="400" y2="250"/>
+            <line x1="400" y1="70" x2="400" y2="250"/>
+            <line x1="650" y1="120" x2="400" y2="250"/>
+            <line x1="720" y1="250" x2="400" y2="250"/>
+            <line x1="650" y1="380" x2="400" y2="250"/>
+            <line x1="400" y1="430" x2="400" y2="250"/>
+            <line x1="150" y1="380" x2="400" y2="250"/>
+            <line x1="80" y1="250" x2="400" y2="250"/>
+          </g>
+          <!-- moving handoff dots on the ring -->
+          <g style="fill:var(--accent)">
+            <circle cx="150" cy="120" r="4"><animateMotion dur="5s" repeatCount="indefinite" path="M0 0 L250 -50"/></circle>
+            <circle cx="400" cy="70" r="4"><animateMotion dur="5s" begin="-1.2s" repeatCount="indefinite" path="M0 0 L250 50"/></circle>
+            <circle cx="650" cy="120" r="4"><animateMotion dur="5s" begin="-2.4s" repeatCount="indefinite" path="M0 0 L70 130"/></circle>
+            <circle cx="720" cy="250" r="4"><animateMotion dur="5s" begin="-3.6s" repeatCount="indefinite" path="M0 0 L-70 130"/></circle>
+            <circle cx="650" cy="380" r="4"><animateMotion dur="5s" begin="-4.4s" repeatCount="indefinite" path="M0 0 L-250 50"/></circle>
+          </g>
+          <g style="fill:#ffb547">
+            <circle cx="400" cy="430" r="4"><animateMotion dur="4s" repeatCount="indefinite" path="M0 0 L-250 -50"/></circle>
+            <circle cx="150" cy="380" r="4"><animateMotion dur="4s" begin="-1s" repeatCount="indefinite" path="M0 0 L-70 -130"/></circle>
+            <circle cx="150" cy="120" r="3"><animateMotion dur="3.4s" begin="-.5s" repeatCount="indefinite" path="M0 0 L250 130"/></circle>
+            <circle cx="650" cy="120" r="3"><animateMotion dur="3.4s" begin="-2.2s" repeatCount="indefinite" path="M0 0 L-250 130"/></circle>
+            <circle cx="720" cy="250" r="3"><animateMotion dur="3.4s" begin="-1.6s" repeatCount="indefinite" path="M0 0 L-320 0"/></circle>
+          </g>
+          <!-- department nodes -->
+          <g fill="#0d1521" stroke="#243247" stroke-width="1.5">
+            <circle cx="150" cy="120" r="34"/><circle cx="400" cy="70" r="34"/><circle cx="650" cy="120" r="34"/><circle cx="720" cy="250" r="34"/><circle cx="650" cy="380" r="34"/><circle cx="400" cy="430" r="34"/><circle cx="150" cy="380" r="34"/><circle cx="80" cy="250" r="34"/>
+          </g>
+          <g style="color:var(--accent)">
+            <use href="#i-acc" x="137" y="107" width="26" height="26"/>
+            <use href="#i-law" x="387" y="57" width="26" height="26"/>
+            <use href="#i-hire" x="637" y="107" width="26" height="26"/>
+            <use href="#i-ecom" x="707" y="237" width="26" height="26"/>
+            <use href="#i-mkt" x="637" y="367" width="26" height="26"/>
+            <use href="#i-fnb" x="387" y="417" width="26" height="26"/>
+            <use href="#i-build" x="137" y="367" width="26" height="26"/>
+            <use href="#i-bank" x="67" y="237" width="26" height="26"/>
+          </g>
+          <!-- assistant hub -->
+          <circle cx="400" cy="250" r="50" fill="#0e1826" stroke="var(--accent)" stroke-width="2"/>
+          <use href="#i-spark" x="382" y="232" width="36" height="36" style="color:var(--accent)"/>
+          <g fill="#b9c3d1" font-size="14" text-anchor="middle" font-family="inherit">
+            <text x="400" y="322" font-weight="700" fill="#eef2f7">Trợ lý điều hành</text>
+            <text x="150" y="176">Kế toán</text>
+            <text x="400" y="126">Pháp lý</text>
+            <text x="650" y="176">Tuyển dụng</text>
+            <text x="720" y="306">Bán hàng</text>
+            <text x="650" y="436">Marketing</text>
+            <text x="400" y="486">Vận hành F&amp;B</text>
+            <text x="150" y="436">Xây dựng</text>
+            <text x="80" y="306">Tài chính</text>
+          </g>
+        </svg>
+        <p class="eco-cap">Sơ đồ minh hoạ. Chấm xanh là việc đang chuyển giữa các phòng, chấm vàng là việc đang chuyển về trợ lý điều hành để bạn xem.</p>
+      </div>
+
+      <div class="eco-points rv">
+        <div><b>Phòng này hỏi, phòng kia trả lời</b><span>Mọi câu hỏi giữa các phòng đều được ghi lại. Không còn chuyện thông tin nằm trong một cuộc trò chuyện riêng rồi biến mất.</span></div>
+        <div><b>Chuyển việc, không chuyển gánh</b><span>Việc đi kèm tài liệu, số liệu và danh sách việc còn mở. Đội nhận làm tiếp ngay, không hỏi lại từ đầu.</span></div>
+        <div><b>Một bản tin cho cả công ty</b><span>Mỗi sáng, trợ lý điều hành gửi bạn việc của mọi phòng và những việc đang chờ bạn quyết định.</span></div>
+      </div>
+    </div>
+  </div>
+</section>

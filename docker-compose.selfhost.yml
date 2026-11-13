@@ -14,6 +14,7 @@
 #   docker compose -f docker-compose.selfhost.yml up -d
 #
 # Frontend: http://localhost:${FRONTEND_PORT:-3000}
+# Landing:  http://localhost:${LANDING_PORT:-30002}
 # Backend:  http://localhost:${BACKEND_PORT:-${API_PORT:-${SERVER_PORT:-${PORT:-8080}}}}
 #
 # The published values above are HOST ports; the containers always listen on
@@ -316,6 +317,17 @@ services:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
       NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-}
       GOOGLE_ANALYTICS_ID: ${GOOGLE_ANALYTICS_ID:-}
+    restart: unless-stopped
+
+  # Marketing landing page (apps/landing), a static Astro build served by nginx.
+  # There is no published image yet, so it is built from this checkout by
+  # Dockerfile.landing; `pull` skips it and `up` builds it when it is missing.
+  landing:
+    build:
+      context: .
+      dockerfile: Dockerfile.landing
+    ports:
+      - "127.0.0.1:${LANDING_PORT:-30002}:80"
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------

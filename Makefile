@@ -1,4 +1,4 @@
-.PHONY: help makehelp dev dev-full server daemon cli agent-pack catalog-build multica build test migrate-up migrate-down sqlc seed clean setup start stop check worktree-env setup-main start-main stop-main check-main setup-worktree start-worktree stop-worktree check-worktree remove-worktree db-up db-down db-drop db-reset selfhost selfhost-build selfhost-stop up down status list destroy gc env-exec api-dev web-dev desktop-dev
+.PHONY: help makehelp landing landing-stop dev dev-full server daemon cli agent-pack catalog-build multica build test migrate-up migrate-down sqlc seed clean setup start stop check worktree-env setup-main start-main stop-main check-main setup-worktree start-worktree stop-worktree check-worktree remove-worktree db-up db-down db-drop db-reset selfhost selfhost-build selfhost-stop up down status list destroy gc env-exec api-dev web-dev desktop-dev
 
 MAIN_ENV_FILE ?= .env
 WORKTREE_ENV_FILE ?= .env.worktree
@@ -75,6 +75,19 @@ help: ## Show available make targets and common local workflows
 		/^[a-zA-Z0-9_.-]+:.*## / {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 makehelp: help ## Alias for `make help`
+
+# ---------- Landing page only (Docker Compose) ----------
+##@ Landing page
+
+# Runs apps/landing alone, published on all interfaces (0.0.0.0) on LANDING_PORT (default 30002).
+landing: ## Build and start only the landing page, reachable from other machines
+	$(COMPOSE) -f docker-compose.landing.yml up -d --build
+	@echo "==> Landing page on port $(or $(LANDING_PORT),30002), all interfaces:"
+	@echo "    http://localhost:$(or $(LANDING_PORT),30002)"
+	@echo "    http://$$(hostname -I 2>/dev/null | awk '{print $$1}'):$(or $(LANDING_PORT),30002)"
+
+landing-stop: ## Stop the landing page container (keeps the image)
+	$(COMPOSE) -f docker-compose.landing.yml down
 
 # ---------- Self-hosting (Docker Compose) ----------
 ##@ Self-hosting

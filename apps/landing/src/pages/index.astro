@@ -1,0 +1,40 @@
+---
+import Base from "../layouts/Base.astro";
+import IconSprite from "../components/IconSprite.astro";
+import Header from "../components/Header.astro";
+import Hero from "../components/Hero.astro";
+import Ecosystem from "../components/Ecosystem.astro";
+import Scenario from "../components/Scenario.astro";
+import Mechanics from "../components/Mechanics.astro";
+import Industries from "../components/Industries.astro";
+import TeamSlider from "../components/TeamSlider.astro";
+import Process from "../components/Process.astro";
+import Audience from "../components/Audience.astro";
+import Pricing from "../components/Pricing.astro";
+import Faq from "../components/Faq.astro";
+import FinalCta from "../components/FinalCta.astro";
+import Footer from "../components/Footer.astro";
+
+const title = "AI Agent Company: công ty số với nhân viên là AI agent";
+const description =
+  "Đội AI agent theo ngành và theo phòng ban, làm việc cùng nhau. Kế toán, bán hàng, pháp lý, tuyển dụng, marketing chuyển việc cho nhau có nguồn và lịch sử. AI soạn bản nháp, người phụ trách quyết định.";
+---
+
+<Base title={title} description={description}>
+  <IconSprite />
+  <Header />
+  <main>
+    <Hero />
+    <Ecosystem />
+    <Scenario />
+    <Mechanics />
+    <Industries />
+    <TeamSlider />
+    <Process />
+    <Audience />
+    <Pricing />
+    <Faq />
+    <FinalCta />
+  </main>
+  <Footer />
+</Base>
