@@ -440,7 +440,11 @@ func (s *IssueWakeupService) dispatchSystem(ctx context.Context, prev db.IssueWa
 		if !fenced {
 			return pgx.ErrNoRows
 		}
-	} else if _, err = q.LockWorkspaceForChatSessionCreate(ctx, prev.WorkspaceID); err != nil {
+	} else if _, err = q.LockWorkspaceForChatSessionCreate(ctx, prev.WorkspaceID); errors.Is(err, pgx.ErrNoRows) {
+		// A deleted workspace leaves no rule that could ever fire. Retire it
+		// as a missing issue is retired below.
+		return qCleanupMissingWakeup(ctx, tx, prev.ID)
+	} else if err != nil {
 		return err
 	}
 	issue, err := q.LockWakeupIssue(ctx, prev.IssueID)
