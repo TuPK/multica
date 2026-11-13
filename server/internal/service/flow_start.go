@@ -61,10 +61,16 @@ func StartFlow(ctx context.Context, q *db.Queries, issue db.Issue, row db.IssueW
 }
 
 func startFlow(ctx context.Context, q *db.Queries, issue db.Issue, row db.IssueWorkflow, def issueworkflow.Definition) (db.Issue, error) {
-	// A request on a schema 1 workflow keeps the schema 1 form of the state (spec 2.4).
-	initial := issueworkflow.Unadapt(issueworkflow.InitialState(def.Graph, nil, time.Now().UTC().Format(time.RFC3339)))
+	initial := issueworkflow.InitialState(def.Graph, nil, time.Now().UTC().Format(time.RFC3339))
 	initial.WorkflowID = util.UUIDToString(row.ID)
-	raw, err := json.Marshal(initial)
+	var raw []byte
+	var err error
+	if def.Graph.Compat == issueworkflow.CompatV1 {
+		// A request on a schema 1 workflow keeps the schema 1 form of the state (spec 2.4).
+		raw, err = json.Marshal(issueworkflow.Unadapt(initial))
+	} else {
+		raw, err = json.Marshal(initial)
+	}
 	if err != nil {
 		return issue, err
 	}

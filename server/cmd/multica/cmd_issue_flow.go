@@ -110,11 +110,57 @@ var issueFlowStartCmd = &cobra.Command{
 	RunE:    runIssueFlowStart,
 }
 
+var issueFlowCompleteCmd = &cobra.Command{
+	Use:   "complete <id> <step>",
+	Short: "Complete a lead step of a request",
+	Long: "Report the verdict of a lead step and set its variables in one call: the request goes on\n" +
+		"or, with --blocked, stops for missing grounds. `plan` is this command on the plan step.\n" +
+		"Only the lead of the squad and the members who manage it can complete a step.",
+	Example: "  multica issue flow complete MUL-12 plan --verdict planned --set depth=full\n" +
+		"  multica issue flow complete MUL-12 plan --blocked --missing \"invoice\" --reason \"...\"",
+	Args: exactArgs(2),
+	RunE: runIssueFlowComplete,
+}
+
+var issueFlowVarsCmd = &cobra.Command{
+	Use:   "vars <id> [<key> <value>]",
+	Short: "Show or set the variables of a request",
+	Long: "Without a key, print the variables of the request. With a key and a value, set one: the\n" +
+		"role the variable names sets it at the steps it names, and a member who manages the\n" +
+		"squad may set it at any step. A list takes comma separated items.",
+	Example: "  multica issue flow vars MUL-12\n  multica issue flow vars MUL-12 depth full",
+	Args:    cobra.RangeArgs(1, 3),
+	RunE:    runIssueFlowVars,
+}
+
+var issueFlowSetCmd = &cobra.Command{
+	Use:   "set <task-id> <key> <value>",
+	Short: "Set a variable from the task you work on",
+	Long: "Set a variable that your task lists (its description names them) while the task is open.\n" +
+		"A task that requires a variable does not close before it is set. A list takes comma\n" +
+		"separated items. The value is data of the declared type, never taken from text.",
+	Example: "  multica issue flow set MUL-13 topics \"pricing,regulation,competitors\"",
+	Args:    exactArgs(3),
+	RunE:    runIssueFlowSet,
+}
+
+var issueFlowExitsCmd = &cobra.Command{
+	Use:   "exits <id> [<edge>]",
+	Short: "List the ways out of a manual step, or take one",
+	Long: "A request at a manual step waits for a person. Without an edge, print the ways out of the\n" +
+		"step; with one, take it. The member of the role of the step, and the members who manage\n" +
+		"the squad, may choose; the choice is the human checkpoint of the request.",
+	Example: "  multica issue flow exits MUL-12\n  multica issue flow exits MUL-12 release_done",
+	Args:    cobra.RangeArgs(1, 2),
+	RunE:    runIssueFlowExits,
+}
+
 func init() {
 	issueCmd.AddCommand(issueFlowCmd)
 	for _, c := range []*cobra.Command{
 		issueFlowShowCmd, issueFlowPlanCmd, issueFlowAdvanceCmd, issueFlowSwitchCmd,
 		issueFlowResumeCmd, issueFlowDetachCmd, issueFlowStartCmd,
+		issueFlowCompleteCmd, issueFlowVarsCmd, issueFlowSetCmd, issueFlowExitsCmd,
 	} {
 		issueFlowCmd.AddCommand(c)
 		c.Flags().String("output", "json", "Output format: json")
@@ -124,7 +170,14 @@ func init() {
 	issueFlowPlanCmd.Flags().StringArray("missing", nil, "With --blocked: something the request lacks; repeat for several")
 	issueFlowPlanCmd.Flags().String("reason", "", "With --blocked: why the request is blocked")
 	issueFlowResumeCmd.Flags().String("to-step", "", "Continue at this step instead of the one the request stopped at")
+	issueFlowCompleteCmd.Flags().String("verdict", "", "The verdict of the step (default: the first verdict that passes)")
+	issueFlowCompleteCmd.Flags().StringArray("set", nil, "A variable to set, as key=value; repeat for several")
+	issueFlowCompleteCmd.Flags().Bool("blocked", false, "Report that the request lacks grounds (stop 1) instead of completing the step")
+	issueFlowCompleteCmd.Flags().StringArray("missing", nil, "With --blocked: something the request lacks; repeat for several")
+	issueFlowCompleteCmd.Flags().String("reason", "", "With --blocked: why the request is blocked")
 	issueFlowResumeCmd.Flags().Bool("reset-rework", false, "Start the rework count over")
+	issueFlowResumeCmd.Flags().StringArray("reset-loops", nil, "A loop whose count starts over, or \"all\"; repeat for several")
+	issueFlowResumeCmd.Flags().Bool("skip-cancelled", false, "Let the step go on without the work tasks a person cancelled")
 	issueFlowDetachCmd.Flags().Bool("cancel-tasks", false, "Cancel the open tasks instead of keeping them as sub-issues")
 }
 
@@ -254,9 +307,17 @@ func runIssueFlowResume(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer cancel()
+	skipCancelled, _ := cmd.Flags().GetBool("skip-cancelled")
+	resetLoops, _ := cmd.Flags().GetStringArray("reset-loops")
 	body := map[string]any{"reset_rework": reset}
 	if toStep != "" {
 		body["to_step"] = toStep
+	}
+	if skipCancelled {
+		body["skip_cancelled"] = true
+	}
+	if len(resetLoops) > 0 {
+		body["reset_loops"] = resetLoops
 	}
 	var result map[string]any
 	if err := client.PostJSON(ctx, path+"/resume", body, &result); err != nil {
@@ -288,6 +349,128 @@ func runIssueFlowStart(cmd *cobra.Command, args []string) error {
 	var result map[string]any
 	if err := client.PostJSON(ctx, path+"/start", map[string]any{}, &result); err != nil {
 		return fmt.Errorf("start flow: %w", err)
+	}
+	return printFlowResult(cmd, result)
+}
+
+// parseFlowVarValue reads a value from the command line: true and false are bool,
+// a whole number is a number, a text with commas is a list, anything else is text.
+// The server checks the value against the type the variable declares, so a text the
+// type does not take is refused there.
+func parseFlowVarValue(value string) any {
+	switch value {
+	case "true":
+		return true
+	case "false":
+		return false
+	}
+	var n int
+	if _, err := fmt.Sscanf(value, "%d", &n); err == nil && fmt.Sprint(n) == value {
+		return n
+	}
+	if strings.Contains(value, ",") {
+		items := strings.Split(value, ",")
+		for i := range items {
+			items[i] = strings.TrimSpace(items[i])
+		}
+		return items
+	}
+	return value
+}
+
+func runIssueFlowComplete(cmd *cobra.Command, args []string) error {
+	pairs, _ := cmd.Flags().GetStringArray("set")
+	vars := map[string]any{}
+	for _, pair := range pairs {
+		key, value, ok := strings.Cut(pair, "=")
+		if !ok || key == "" {
+			return fmt.Errorf("--set %q must be key=value", pair)
+		}
+		vars[key] = parseFlowVarValue(value)
+	}
+	verdict, _ := cmd.Flags().GetString("verdict")
+	blocked, _ := cmd.Flags().GetBool("blocked")
+	missing, _ := cmd.Flags().GetStringArray("missing")
+	reason, _ := cmd.Flags().GetString("reason")
+	if !blocked && (len(missing) > 0 || reason != "") {
+		return fmt.Errorf("--missing and --reason are for --blocked")
+	}
+	body := map[string]any{"verdict": verdict, "vars": vars}
+	if blocked {
+		if missing == nil {
+			missing = []string{}
+		}
+		body["blocked"] = map[string]any{"missing": missing, "reason": reason}
+	}
+	client, ctx, cancel, path, err := flowIssuePath(cmd, args[0])
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	var result map[string]any
+	if err := client.PostJSON(ctx, path+"/steps/"+url.PathEscape(args[1])+"/complete", body, &result); err != nil {
+		return fmt.Errorf("complete step: %w", err)
+	}
+	return printFlowResult(cmd, result)
+}
+
+func runIssueFlowVars(cmd *cobra.Command, args []string) error {
+	if len(args) == 2 {
+		return fmt.Errorf("give a key and a value, or neither")
+	}
+	client, ctx, cancel, path, err := flowIssuePath(cmd, args[0])
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	var result map[string]any
+	if len(args) == 1 {
+		if err := client.GetJSON(ctx, path, &result); err != nil {
+			return fmt.Errorf("show variables: %w", err)
+		}
+		return printFlowResult(cmd, map[string]any{"vars": result["vars"]})
+	}
+	if err := client.PutJSON(ctx, path+"/vars/"+url.PathEscape(args[1]), map[string]any{"value": parseFlowVarValue(args[2])}, &result); err != nil {
+		return fmt.Errorf("set variable: %w", err)
+	}
+	return printFlowResult(cmd, result)
+}
+
+func runIssueFlowSet(cmd *cobra.Command, args []string) error {
+	client, ctx, cancel, path, err := flowIssuePath(cmd, args[0])
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	var result map[string]any
+	if err := client.PutJSON(ctx, path+"/vars/"+url.PathEscape(args[1]), map[string]any{"value": parseFlowVarValue(args[2])}, &result); err != nil {
+		return fmt.Errorf("set variable: %w", err)
+	}
+	return printFlowResult(cmd, result)
+}
+
+func runIssueFlowExits(cmd *cobra.Command, args []string) error {
+	client, ctx, cancel, path, err := flowIssuePath(cmd, args[0])
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	var result map[string]any
+	if len(args) == 1 {
+		if err := client.GetJSON(ctx, path, &result); err != nil {
+			return fmt.Errorf("show exits: %w", err)
+		}
+		exits := []any{}
+		next, _ := result["next"].([]any)
+		for _, e := range next {
+			if edge, ok := e.(map[string]any); ok && edge["trigger"] == "manual" {
+				exits = append(exits, edge)
+			}
+		}
+		return printFlowResult(cmd, map[string]any{"step": result["step"], "exits": exits})
+	}
+	if err := client.PostJSON(ctx, path+"/exits/"+url.PathEscape(args[1]), map[string]any{}, &result); err != nil {
+		return fmt.Errorf("take exit: %w", err)
 	}
 	return printFlowResult(cmd, result)
 }

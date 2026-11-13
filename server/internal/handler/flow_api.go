@@ -190,32 +190,16 @@ func (h *Handler) AdvanceIssueFlow(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// SetIssueFlowSwitch sets one switch of a request.
-func (h *Handler) SetIssueFlowSwitch(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Value any `json:"value"`
-	}
-	if !decodeFlowBody(w, r, &req) {
-		return
-	}
-	request, _, actor, ok := h.loadOperatedRun(w, r, true)
-	if !ok {
-		return
-	}
-	state, err := h.SetFlowSwitch(r.Context(), request, chi.URLParam(r, "key"), req.Value, actor.Type == "member")
-	if err != nil {
-		writeFlowError(w, r, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, state)
-}
+// SetIssueFlowSwitch sets one switch of a request: the old name of SetIssueFlowVar.
+func (h *Handler) SetIssueFlowSwitch(w http.ResponseWriter, r *http.Request) { h.SetIssueFlowVar(w, r) }
 
 // ResumeIssueFlow continues a stopped request.
 func (h *Handler) ResumeIssueFlow(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		ToStep        string `json:"to_step"`
-		ResetRework   bool   `json:"reset_rework"`
-		SkipCancelled bool   `json:"skip_cancelled"`
+		ToStep        string   `json:"to_step"`
+		ResetRework   bool     `json:"reset_rework"`
+		ResetLoops    []string `json:"reset_loops"`
+		SkipCancelled bool     `json:"skip_cancelled"`
 	}
 	if !decodeFlowBody(w, r, &req) {
 		return
@@ -224,7 +208,7 @@ func (h *Handler) ResumeIssueFlow(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	state, err := h.ResumeFlow(r.Context(), request, FlowResumeInput{ToStep: req.ToStep, ResetRework: req.ResetRework, SkipCancelled: req.SkipCancelled})
+	state, err := h.ResumeFlow(r.Context(), request, FlowResumeInput{ToStep: req.ToStep, ResetRework: req.ResetRework, ResetLoops: req.ResetLoops, SkipCancelled: req.SkipCancelled})
 	if err != nil {
 		writeFlowError(w, r, err)
 		return

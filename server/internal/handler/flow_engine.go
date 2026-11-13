@@ -53,13 +53,28 @@ type flowRun struct {
 	issue db.Issue
 	row   db.IssueWorkflow
 	def   issueworkflow.Definition
-	state issueworkflow.FlowState
+	state issueworkflow.State
+}
+
+// compat reports whether the request runs a workflow of schema 1 through its lifted
+// graph: its stored state keeps the schema 1 form and its texts the schema 1 templates.
+func (r *flowRun) compat() bool { return r.def.Graph.Compat == issueworkflow.CompatV1 }
+
+// round is the flow_round of the tasks of the current entry into the step.
+func (r *flowRun) round() int { return issueworkflow.EntryRound(r.def.Graph, r.state) }
+
+// stepStatus is the board status the request has while it is at its step.
+func (r *flowRun) stepStatus() string {
+	if step, ok := r.def.Graph.Step(r.state.Step); ok {
+		return step.Status.Key
+	}
+	return r.state.Step
 }
 
 // loadFlowRun reads a request's flow state and its workflow. errFlowNotManaged
 // when the issue has no flow, or the workflow is gone or is no longer a flow.
 func (h *Handler) loadFlowRun(ctx context.Context, q *db.Queries, issue db.Issue) (*flowRun, error) {
-	state, ok := flowRequestState(issue)
+	state, ok := readFlowState(issue)
 	if !ok {
 		return nil, errFlowNotManaged
 	}
@@ -75,8 +90,7 @@ func (h *Handler) loadFlowRun(ctx context.Context, q *db.Queries, issue db.Issue
 		return nil, err
 	}
 	def, err := issueworkflow.Decode(row)
-	// The running paths take schema 1 workflows only, through their lifted graph.
-	if err != nil || !def.HasFlow() || def.Graph.Compat != issueworkflow.CompatV1 {
+	if err != nil || !def.HasFlow() {
 		return nil, errFlowNotManaged
 	}
 	return &flowRun{issue: issue, row: row, def: def, state: state}, nil
@@ -128,7 +142,7 @@ func (h *Handler) loadFlowTasks(ctx context.Context, q *db.Queries, run *flowRun
 		case issuestatus.CategoryClosed:
 			ts.Closed, ts.Cancelled = true, true
 		}
-		if ts.Closed && ts.Step == run.state.Step && ts.Round == run.state.Round() {
+		if ts.Closed && ts.Step == run.state.Step && ts.Round == run.round() {
 			active, err := q.ListActiveTasksByIssue(ctx, t.ID)
 			if err != nil {
 				return nil, err
@@ -224,9 +238,9 @@ func (h *Handler) publishFlowUpdated(request db.Issue) {
 // saveFlowState writes the next state under the condition that the request is
 // still at the step and seq the caller decided from; the stored seq is one more.
 // It reports false when the state moved, and the caller drops its decision.
-func (h *Handler) saveFlowState(ctx context.Context, qtx *db.Queries, run *flowRun, next issueworkflow.FlowState) (bool, error) {
+func (h *Handler) saveFlowState(ctx context.Context, qtx *db.Queries, run *flowRun, next issueworkflow.State) (bool, error) {
 	next.Seq = run.state.Seq + 1
-	raw, err := json.Marshal(next)
+	raw, err := encodeFlowState(run.def.Graph, next)
 	if err != nil {
 		return false, err
 	}
@@ -300,25 +314,30 @@ type flowRouteNote struct {
 
 // routeFlowRequest follows a decision: it writes the next state with the step
 // left added to the trail, logs the transition, moves the request, posts the
-// stop comment and closes the request when it ends. It returns false, writing
-// nothing, when another writer moved the request first.
-func (h *Handler) routeFlowRequest(ctx context.Context, qtx *db.Queries, run *flowRun, d issueworkflow.GraphDecision, rows []flowTaskRow, note flowRouteNote, e *flowEffects) (bool, error) {
+// stop comment and closes the request when it ends. by is the user who chose the
+// exit of a manual step, for the checkpoint. It returns false, writing nothing,
+// when another writer moved the request first.
+func (h *Handler) routeFlowRequest(ctx context.Context, qtx *db.Queries, run *flowRun, d issueworkflow.GraphDecision, rows []flowTaskRow, note flowRouteNote, e *flowEffects, by string) (bool, error) {
 	old := run.state
+	oldRound := issueworkflow.EntryRound(run.def.Graph, old)
 	now := flowNow()
-	applied := issueworkflow.ApplyDecision(run.def.Graph, issueworkflow.Adapt(old), d, issueworkflow.ApplyMeta{Now: now})
-	next := issueworkflow.Unadapt(applied)
-	to := flowTarget(d)
-	next.Step = to
-	next.EnteredAt = now
-	next.BlockedFrom = ""
-	if d.StopCode != "" {
-		next.BlockedFrom = old.Step
+	next := issueworkflow.ApplyDecision(run.def.Graph, old, d, issueworkflow.ApplyMeta{Now: now, By: by})
+	applied := next
+	to := d.Status
+	if d.StopCode != "" && run.compat() {
+		// A schema 1 request parks on the blocked step.
+		next.Step = to
 	}
-	closing := false
+	next.EnteredAt = now
+	if d.StopCode == "" {
+		next.BlockedFrom = ""
+	}
+	_, terminal := run.def.Graph.Terminal(d.To)
+	closing := terminal
 	switch issuestatus.Category(ctx, qtx, run.issue.WorkspaceID, to) {
 	case issuestatus.CategoryDone, issuestatus.CategoryClosed:
 		closing = true
-		next.ClosedAt = next.EnteredAt
+		next.ClosedAt = now
 	}
 	saved, err := h.saveFlowState(ctx, qtx, run, next)
 	if err != nil || !saved {
@@ -331,7 +350,12 @@ func (h *Handler) routeFlowRequest(ctx context.Context, qtx *db.Queries, run *fl
 		return false, err
 	}
 	if kind := stopKindOf(run.def.Graph, d); kind != "" {
-		if err := h.postStopComment(ctx, qtx, run, old, kind, rows, note, e); err != nil {
+		if err := h.postStopComment(ctx, qtx, run, old, oldRound, d, kind, rows, note, e); err != nil {
+			return false, err
+		}
+	}
+	if !run.compat() {
+		if err := supersedeFlowTasks(ctx, qtx, rows, d.Cancel, e); err != nil {
 			return false, err
 		}
 	}
@@ -339,17 +363,49 @@ func (h *Handler) routeFlowRequest(ctx context.Context, qtx *db.Queries, run *fl
 		if err := closeFlowRequestSideEffects(ctx, qtx, run, e); err != nil {
 			return false, err
 		}
-		if err := cancelFlowTasks(ctx, qtx, rows, nil, e); err != nil {
-			return false, err
+		if run.compat() {
+			if err := cancelFlowTasks(ctx, qtx, rows, nil, e); err != nil {
+				return false, err
+			}
 		}
 	}
 	return true, nil
 }
 
+// supersedeFlowTasks cancels the open task rows a decision names ("step/key") and
+// marks them superseded: only the engine writes that outcome (spec 2.5, E23). A
+// join ignores such a row.
+func supersedeFlowTasks(ctx context.Context, qtx *db.Queries, rows []flowTaskRow, refs []string, e *flowEffects) error {
+	for _, ref := range refs {
+		for i, r := range rows {
+			if r.state.Closed || issueworkflow.RowRef(r.state.Step, r.state.Key) != ref {
+				continue
+			}
+			prev := r.issue.Status
+			moved, err := qtx.UpdateIssueStatus(ctx, db.UpdateIssueStatusParams{ID: r.issue.ID, Status: issuestatus.Cancelled, WorkspaceID: r.issue.WorkspaceID})
+			if err != nil {
+				return fmt.Errorf("cancel task %s: %w", r.state.Key, err)
+			}
+			if err := qtx.SetIssueOutcome(ctx, db.SetIssueOutcomeParams{
+				ID: r.issue.ID, WorkspaceID: r.issue.WorkspaceID,
+				Outcome: pgtype.Text{String: issueworkflow.OutcomeSuperseded, Valid: true},
+			}); err != nil {
+				return err
+			}
+			moved.Outcome = pgtype.Text{String: issueworkflow.OutcomeSuperseded, Valid: true}
+			rows[i].issue = moved
+			rows[i].state.Closed, rows[i].state.Cancelled = true, true
+			e.moves = append(e.moves, statusMove{prev: prev, issue: moved})
+			e.cancelTasksOf = append(e.cancelTasksOf, r.issue.ID)
+		}
+	}
+	return nil
+}
+
 // logFlowTransition records why a request left a step: the entry of the trail
 // (written with the state) and the activity row that carries the facts the edges
 // read (spec 4.13). It runs in the transaction of the state write.
-func logFlowTransition(ctx context.Context, qtx *db.Queries, run *flowRun, old issueworkflow.FlowState, applied issueworkflow.State, d issueworkflow.GraphDecision) error {
+func logFlowTransition(ctx context.Context, qtx *db.Queries, run *flowRun, old issueworkflow.State, applied issueworkflow.State, d issueworkflow.GraphDecision) error {
 	details := map[string]any{
 		"from":  old.Step,
 		"edge":  d.TransitionID,
@@ -362,6 +418,9 @@ func logFlowTransition(ctx context.Context, qtx *db.Queries, run *flowRun, old i
 	}
 	if d.StopCode != "" {
 		details["stop"] = d.StopCode
+		if d.Reason != "" {
+			details["reason"] = d.Reason
+		}
 	} else {
 		details["to"] = d.To
 	}
@@ -411,10 +470,24 @@ var defaultStopMessages = map[string]string{
 	stopKindStalled: "BLOCKED · stalled\n{requester} {request} stopped moving at {step}.\n{reason}\n{tasks}",
 }
 
+// stallReasonText says in words why the engine stalled a request.
+var stallReasonText = map[string]string{
+	issueworkflow.ReasonStepMissing:              "The step the request is at is no longer in the workflow.",
+	issueworkflow.ReasonNoEdge:                   "No way out of the step fits the state of the request.",
+	issueworkflow.ReasonConditionInvalid:         "A condition of the step cannot be evaluated.",
+	issueworkflow.ReasonInstancesTooFew:          "The list the step fans out over has fewer items than the step needs.",
+	issueworkflow.ReasonFlowCapReached:           "The request reached the limit of steps or task issues of the workflow.",
+	issueworkflow.ReasonReleaseWithoutCheckpoint: "Work of an agent has not been seen by a person, so the request cannot leave the workspace.",
+	issueworkflow.ReasonInputMissing:             "A task needs the output of a step the request has not run.",
+	issueworkflow.ReasonLeadVerdictInvalid:       "The lead reported a verdict the step does not have.",
+	issueworkflow.ReasonStopUnknown:              "A way out of the step names a stop the workflow does not declare.",
+	issueworkflow.ReasonPoolTooSmall:             "No one in the pool of the role can take the task.",
+}
+
 // postStopComment writes the system comment that tells people why a request
-// stopped, from the flow's own message for that stop.
-func (h *Handler) postStopComment(ctx context.Context, qtx *db.Queries, run *flowRun, old issueworkflow.FlowState, kind string, rows []flowTaskRow, note flowRouteNote, e *flowEffects) error {
-	if header := stopCommentHeader(kind); header != "" {
+// stopped, or entered a step with a notice, from the flow's own message.
+func (h *Handler) postStopComment(ctx context.Context, qtx *db.Queries, run *flowRun, old issueworkflow.State, oldRound int, d issueworkflow.GraphDecision, kind string, rows []flowTaskRow, note flowRouteNote, e *flowEffects) error {
+	if header := stopCommentHeader(kind); header != "" && run.compat() {
 		posted, err := stopCommentByLead(ctx, qtx, run.issue, old, header)
 		if err != nil {
 			return err
@@ -427,10 +500,16 @@ func (h *Handler) postStopComment(ctx context.Context, qtx *db.Queries, run *flo
 	if strings.TrimSpace(template) == "" {
 		template = defaultStopMessages[kind]
 	}
+	if strings.TrimSpace(template) == "" {
+		return nil
+	}
 	prefix := h.getIssuePrefix(ctx, run.issue.WorkspaceID)
 	resolver := issuestatus.NewResolver(run.issue.WorkspaceID)
 	if kind == stopKind1 && len(note.Missing) == 0 {
-		note = h.blockedTaskNote(ctx, qtx, prefix, old, rows, note)
+		note = h.blockedTaskNote(ctx, qtx, prefix, old.Step, oldRound, rows, note)
+	}
+	if note.Reason == "" && !run.compat() {
+		note.Reason = stallReasonText[d.Reason]
 	}
 	missing := ""
 	if len(note.Missing) > 0 {
@@ -439,11 +518,13 @@ func (h *Handler) postStopComment(ctx context.Context, qtx *db.Queries, run *flo
 	text := issueworkflow.RenderMessage(template, map[string]string{
 		"requester": h.requesterMention(ctx, run.issue),
 		"request":   prefix + "-" + fmt.Sprint(run.issue.Number),
-		"step":      resolver.Name(ctx, qtx, old.Step),
-		"rework":    fmt.Sprint(old.Rework),
-		"tasks":     taskLines(prefix, old, rows),
+		"step":      resolver.Name(ctx, qtx, h.flowStepStatusKey(run, old.Step)),
+		"rework":    fmt.Sprint(old.Loops[issueworkflow.LoopRework]),
+		"tasks":     taskLines(prefix, old.Step, oldRound, rows),
 		"missing":   missing,
 		"reason":    note.Reason,
+		"loop":      d.Loop,
+		"stop":      d.StopCode,
 	})
 	title, body := issueworkflow.SplitMessage(text)
 	content := title
@@ -460,6 +541,14 @@ func (h *Handler) postStopComment(ctx context.Context, qtx *db.Queries, run *flo
 	}
 	e.comments = append(e.comments, created)
 	return nil
+}
+
+// flowStepStatusKey is the board status of a step, which names it for people.
+func (h *Handler) flowStepStatusKey(run *flowRun, step string) string {
+	if s, ok := run.def.Graph.Step(step); ok && s.Status.Key != "" {
+		return s.Status.Key
+	}
+	return step
 }
 
 // stopCommentHeader is the first line of the stop comment for a stop kind, as the
@@ -480,7 +569,7 @@ func stopCommentHeader(kind string) string {
 // stop the request is at now. The lead may write it before it reports the stop, so the
 // server must not post a second copy. Only comments made after the request entered the
 // step it stopped from count: a comment from an earlier stop is not this stop's comment.
-func stopCommentByLead(ctx context.Context, qtx *db.Queries, request db.Issue, old issueworkflow.FlowState, header string) (bool, error) {
+func stopCommentByLead(ctx context.Context, qtx *db.Queries, request db.Issue, old issueworkflow.State, header string) (bool, error) {
 	entered, err := time.Parse(time.RFC3339, old.EnteredAt)
 	if err != nil {
 		return false, nil
@@ -503,10 +592,10 @@ func stopCommentByLead(ctx context.Context, qtx *db.Queries, request db.Issue, o
 // blockedTaskNote fills a stop 1 that came from tasks which reported they cannot go on. The lead's
 // plan carries its own missing list; a task has only its comment, so the first line of the newest
 // comment its agent wrote (a gate's verdict line, a collector's missing item) says what is missing.
-func (h *Handler) blockedTaskNote(ctx context.Context, qtx *db.Queries, prefix string, state issueworkflow.FlowState, rows []flowTaskRow, note flowRouteNote) flowRouteNote {
+func (h *Handler) blockedTaskNote(ctx context.Context, qtx *db.Queries, prefix string, step string, round int, rows []flowTaskRow, note flowRouteNote) flowRouteNote {
 	var keys []string
 	for _, r := range rows {
-		if r.state.Step != state.Step || r.state.Round != state.Round() || r.state.Outcome != issueworkflow.OutcomeBlocked {
+		if r.state.Step != step || r.state.Round != round || r.state.Outcome != issueworkflow.OutcomeBlocked {
 			continue
 		}
 		keys = append(keys, r.state.Key)
@@ -543,10 +632,10 @@ func (h *Handler) requesterMention(ctx context.Context, request db.Issue) string
 
 // taskLines lists the tasks of the step the request stopped at, in the round it
 // stopped in, with the verdict each reported.
-func taskLines(prefix string, state issueworkflow.FlowState, rows []flowTaskRow) string {
+func taskLines(prefix string, step string, round int, rows []flowTaskRow) string {
 	var lines []string
 	for _, r := range rows {
-		if r.state.Step != state.Step || r.state.Round != state.Round() {
+		if r.state.Step != step || r.state.Round != round {
 			continue
 		}
 		outcome := r.issue.Outcome.String
@@ -606,7 +695,7 @@ func (h *Handler) flowAdvanceResponse(ctx context.Context, request db.Issue, act
 			return FlowAdvanceResponse{}, err
 		}
 		for _, r := range rows {
-			if r.state.Step == run.state.Step && r.state.Round == run.state.Round() && !r.state.Closed {
+			if r.state.Step == run.state.Step && r.state.Round == run.round() && !r.state.Closed {
 				pending = append(pending, FlowPending{Task: r.state.Key, IssueID: uuidToString(r.issue.ID), Status: r.issue.Status})
 			}
 		}
@@ -634,7 +723,7 @@ func (h *Handler) advanceOnce(ctx context.Context, request db.Issue) (advanceOut
 		return advanceOutcome{}, err
 	}
 	noop := advanceOutcome{action: FlowAction{Kind: "noop", Step: run.state.Step, Tasks: []string{}}}
-	if run.state.ClosedAt != "" || run.state.Stop != issueworkflow.StopNone {
+	if run.state.ClosedAt != "" || run.state.Stop != nil {
 		return noop, nil
 	}
 	rows, err := h.loadFlowTasks(ctx, qtx, run)
@@ -642,7 +731,7 @@ func (h *Handler) advanceOnce(ctx context.Context, request db.Issue) (advanceOut
 		return advanceOutcome{}, err
 	}
 	var effects flowEffects
-	if run.issue.Status != run.state.Step {
+	if run.issue.Status != run.stepStatus() {
 		followed, action, err := h.followManualMove(ctx, qtx, run, rows, &effects)
 		if err != nil {
 			return advanceOutcome{}, err
@@ -667,7 +756,7 @@ func (h *Handler) advanceOnce(ctx context.Context, request db.Issue) (advanceOut
 	decision := decideFlow(run, taskStates(rows))
 	switch decision.Kind {
 	case issueworkflow.DecisionRoute:
-		routed, err := h.routeFlowRequest(ctx, qtx, run, decision, rows, flowRouteNote{}, &effects)
+		routed, err := h.routeFlowRequest(ctx, qtx, run, decision, rows, flowRouteNote{}, &effects, "")
 		if err != nil {
 			return advanceOutcome{}, err
 		}
@@ -680,17 +769,17 @@ func (h *Handler) advanceOnce(ctx context.Context, request db.Issue) (advanceOut
 		}
 		h.publishFlowEffects(ctx, run.issue, &effects)
 		kind := "routed"
-		if decision.Stop != issueworkflow.StopNone {
+		if decision.StopCode != "" {
 			kind = "stopped"
 		}
 		return advanceOutcome{
 			action:     FlowAction{Kind: kind, Step: flowTarget(decision), Tasks: []string{}},
-			progressed: decision.Stop == issueworkflow.StopNone,
+			progressed: decision.StopCode == "",
 		}, nil
 	case issueworkflow.DecisionOpen:
 		// The request is unreviewed from the moment a task of an agent produces work, until
 		// the next human checkpoint (spec 4.8).
-		if opened := issueworkflow.ApplyOpened(run.def.Graph, issueworkflow.Adapt(run.state), decision.Open); opened.Unreviewed && !run.state.Unreviewed {
+		if opened := issueworkflow.ApplyOpened(run.def.Graph, run.state, decision.Open); opened.Unreviewed && !run.state.Unreviewed {
 			next := run.state
 			next.Unreviewed = true
 			saved, err := h.saveFlowState(ctx, qtx, run, next)
@@ -704,7 +793,7 @@ func (h *Handler) advanceOnce(ctx context.Context, request db.Issue) (advanceOut
 		if err := tx.Commit(ctx); err != nil {
 			return advanceOutcome{}, fmt.Errorf("commit flow advance: %w", err)
 		}
-		return h.openFlowTasks(ctx, run, rows, flowTasksToOpen(run, decision))
+		return h.openFlowTasks(ctx, run, rows, decision.Open)
 	}
 	return noop, nil
 }
@@ -714,7 +803,7 @@ func (h *Handler) advanceOnce(ctx context.Context, request db.Issue) (advanceOut
 // decision with the frozen schema 1 oracle on the real states the database
 // produces (spec 9.3 item 7). The engine has no second path: the observer only
 // reads.
-var flowDecideObserver func(def issueworkflow.Definition, state issueworkflow.FlowState, tasks []issueworkflow.TaskState, d issueworkflow.GraphDecision)
+var flowDecideObserver func(def issueworkflow.Definition, state issueworkflow.State, tasks []issueworkflow.TaskState, d issueworkflow.GraphDecision)
 
 // flowRequestFacts are the columns of the request that conditions can read.
 func flowRequestFacts(issue db.Issue) issueworkflow.RequestFacts {
@@ -729,7 +818,7 @@ func flowRequestFacts(issue db.Issue) issueworkflow.RequestFacts {
 // workflow.
 func decideFlow(run *flowRun, tasks []issueworkflow.TaskState) issueworkflow.GraphDecision {
 	g := run.def.Graph
-	st := issueworkflow.Adapt(run.state)
+	st := run.state
 	d := issueworkflow.DecideGraph(g, st, tasks, issueworkflow.BuildGraphFacts(g, st, tasks, flowRequestFacts(run.issue)))
 	if flowDecideObserver != nil {
 		flowDecideObserver(run.def, run.state, tasks, d)
@@ -744,18 +833,6 @@ func flowTarget(d issueworkflow.GraphDecision) string {
 		return d.Status
 	}
 	return d.To
-}
-
-// flowTasksToOpen are the tasks a decision opens, as the workflow defines them:
-// a flow lifted from schema 1 keeps the text of its tasks.
-func flowTasksToOpen(run *flowRun, d issueworkflow.GraphDecision) []issueworkflow.Task {
-	var tasks []issueworkflow.Task
-	for _, o := range d.Open {
-		if task, ok := run.def.V1Task(run.state.Step, o.Key); ok {
-			tasks = append(tasks, task)
-		}
-	}
-	return tasks
 }
 
 // cancelledForItsFiles reports whether a task row is work that a person cancelled
@@ -777,7 +854,7 @@ func cancelledForItsFiles(run *flowRun, r flowTaskRow) bool {
 func (h *Handler) reopenCancelledWork(ctx context.Context, qtx *db.Queries, run *flowRun, rows []flowTaskRow, e *flowEffects) ([]string, error) {
 	var keys []string
 	for i, r := range rows {
-		if r.state.Step != run.state.Step || r.state.Round != run.state.Round() || !cancelledForItsFiles(run, r) {
+		if r.state.Step != run.state.Step || r.state.Round != run.round() || !cancelledForItsFiles(run, r) {
 			continue
 		}
 		prev := r.issue.Status
@@ -801,24 +878,90 @@ func (h *Handler) reopenCancelledWork(ctx context.Context, qtx *db.Queries, run 
 	return keys, nil
 }
 
-// openFlowTasks creates the missing tasks of the request's current step. The
-// agents are checked first: a task whose agent cannot take work stops the
-// request instead of waiting forever.
-func (h *Handler) openFlowTasks(ctx context.Context, run *flowRun, rows []flowTaskRow, missing []issueworkflow.Task) (advanceOutcome, error) {
+// openFlowTasks creates the task rows a decision opens. The agents are checked
+// first: a task whose agent cannot take work stops the request instead of waiting
+// forever.
+func (h *Handler) openFlowTasks(ctx context.Context, run *flowRun, rows []flowTaskRow, open []issueworkflow.OpenTask) (advanceOutcome, error) {
+	if run.compat() {
+		// A flow lifted from schema 1 keeps the task definitions, texts and the agent of each task.
+		var missing []issueworkflow.Task
+		for _, o := range open {
+			if task, ok := run.def.V1Task(run.state.Step, o.Key); ok {
+				missing = append(missing, task)
+			}
+		}
+		return h.openCompatTasks(ctx, run, rows, missing)
+	}
+	return h.openGraphTasks(ctx, run, rows, open)
+}
+
+// flowTaskCreate is a task issue the engine opens.
+type flowTaskCreate struct {
+	Title       string
+	Description string
+	Stage       int32
+	Step        string
+	Key         string
+	Round       int
+	AssigneeTyp string
+	AssigneeID  pgtype.UUID
+}
+
+// createFlowTask opens one task issue. It reports false when another run of the
+// engine opened the same task first.
+func (h *Handler) createFlowTask(ctx context.Context, run *flowRun, prefix string, c flowTaskCreate) (bool, error) {
+	params := service.IssueCreateParams{
+		WorkspaceID:    run.issue.WorkspaceID,
+		Title:          c.Title,
+		Description:    pgtype.Text{String: c.Description, Valid: true},
+		Status:         issuestatus.Todo,
+		Priority:       run.issue.Priority,
+		CreatorType:    run.issue.CreatorType,
+		CreatorID:      run.issue.CreatorID,
+		ParentIssueID:  run.issue.ID,
+		ProjectID:      run.issue.ProjectID,
+		Stage:          pgtype.Int4{Int32: c.Stage, Valid: true},
+		AllowDuplicate: true,
+		FlowStep:       pgtype.Text{String: c.Step, Valid: true},
+		FlowTask:       pgtype.Text{String: c.Key, Valid: true},
+		FlowRound:      pgtype.Int4{Int32: int32(c.Round), Valid: true},
+	}
+	if c.AssigneeTyp != "" {
+		params.AssigneeType = pgtype.Text{String: c.AssigneeTyp, Valid: true}
+		params.AssigneeID = c.AssigneeID
+	}
+	_, err := h.IssueService.Create(ctx, params, service.IssueCreateOpts{
+		BroadcastPayload: func(issue db.Issue, atts []db.Attachment, labels []db.IssueLabel) map[string]any {
+			resp := issueToResponse(issue, prefix)
+			h.fillStatusCategory(ctx, issue.WorkspaceID, &resp)
+			return map[string]any{"issue": resp}
+		},
+	})
+	if err != nil {
+		if isFlowTaskOnce(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("open task %s: %w", c.Key, err)
+	}
+	return true, nil
+}
+
+// openCompatTasks opens the tasks of a step of a flow lifted from schema 1.
+func (h *Handler) openCompatTasks(ctx context.Context, run *flowRun, rows []flowTaskRow, missing []issueworkflow.Task) (advanceOutcome, error) {
 	step := run.state.Step
 	for _, task := range missing {
-		why, err := h.flowAgentUnavailable(ctx, run, task)
+		why, err := h.flowAgentUnavailable(ctx, run, task.Handler.ID)
 		if err != nil {
 			return advanceOutcome{}, err
 		}
 		if why != "" {
-			return h.stopForUnavailableAgent(ctx, run, task, why)
+			return h.stopForUnavailableAgent(ctx, run, task.Key, task.Title, task.Handler.ID, why)
 		}
 	}
 	// A gate is never given to an agent that did work in the same round.
 	workers := map[pgtype.UUID]string{}
 	for _, r := range rows {
-		if r.state.Round == run.state.Round() && r.state.Kind == issueworkflow.KindWork && r.issue.AssigneeID.Valid {
+		if r.state.Round == run.round() && r.state.Kind == issueworkflow.KindWork && r.issue.AssigneeID.Valid {
 			workers[r.issue.AssigneeID] = r.state.Key
 		}
 	}
@@ -844,38 +987,18 @@ func (h *Handler) openFlowTasks(ctx context.Context, run *flowRun, rows []flowTa
 	var opened []string
 	for _, task := range missing {
 		agentID, _ := util.ParseUUID(task.Handler.ID)
-		title := fmt.Sprintf("%s · %s · v%d", resolver.Name(ctx, h.Queries, step), task.Title, run.state.Round()+1)
-		_, err := h.IssueService.Create(ctx, service.IssueCreateParams{
-			WorkspaceID:    run.issue.WorkspaceID,
-			Title:          title,
-			Description:    pgtype.Text{String: h.flowTaskDescription(run, rows, task, requestRef, prefix), Valid: true},
-			Status:         issuestatus.Todo,
-			Priority:       run.issue.Priority,
-			AssigneeType:   pgtype.Text{String: "agent", Valid: true},
-			AssigneeID:     agentID,
-			CreatorType:    run.issue.CreatorType,
-			CreatorID:      run.issue.CreatorID,
-			ParentIssueID:  run.issue.ID,
-			ProjectID:      run.issue.ProjectID,
-			Stage:          pgtype.Int4{Int32: stage, Valid: true},
-			AllowDuplicate: true,
-			FlowStep:       pgtype.Text{String: step, Valid: true},
-			FlowTask:       pgtype.Text{String: task.Key, Valid: true},
-			FlowRound:      pgtype.Int4{Int32: int32(run.state.Round()), Valid: true},
-		}, service.IssueCreateOpts{
-			BroadcastPayload: func(issue db.Issue, atts []db.Attachment, labels []db.IssueLabel) map[string]any {
-				resp := issueToResponse(issue, prefix)
-				h.fillStatusCategory(ctx, issue.WorkspaceID, &resp)
-				return map[string]any{"issue": resp}
-			},
+		created, err := h.createFlowTask(ctx, run, prefix, flowTaskCreate{
+			Title:       fmt.Sprintf("%s · %s · v%d", resolver.Name(ctx, h.Queries, step), task.Title, run.round()+1),
+			Description: h.flowTaskDescription(run, rows, task, requestRef, prefix),
+			Stage:       stage, Step: step, Key: task.Key, Round: run.round(),
+			AssigneeTyp: "agent", AssigneeID: agentID,
 		})
 		if err != nil {
-			if isFlowTaskOnce(err) {
-				continue
-			}
-			return advanceOutcome{}, fmt.Errorf("open task %s: %w", task.Key, err)
+			return advanceOutcome{}, err
 		}
-		opened = append(opened, task.Key)
+		if created {
+			opened = append(opened, task.Key)
+		}
 	}
 	if len(opened) == 0 {
 		return advanceOutcome{action: FlowAction{Kind: "noop", Step: step, Tasks: []string{}}}, nil
@@ -894,9 +1017,9 @@ func isFlowTaskOnce(err error) bool {
 // instructions, the files of the step before, and on a rework round the gates
 // that rejected the last one.
 func (h *Handler) flowTaskDescription(run *flowRun, rows []flowTaskRow, task issueworkflow.Task, requestRef, prefix string) string {
-	inputs, rejected := flowTaskLinks(run.def, rows, prefix, run.state.Step, run.state.Round())
+	inputs, rejected := flowTaskLinks(run.def, rows, prefix, run.state.Step, run.round())
 	return issueworkflow.TaskDescription(issueworkflow.TaskDescriptionInput{
-		Task: task, RequestIdentifier: requestRef, Round: run.state.Round(), Inputs: inputs, Rejected: rejected,
+		Task: task, RequestIdentifier: requestRef, Round: run.round(), Inputs: inputs, Rejected: rejected,
 	})
 }
 
@@ -934,8 +1057,8 @@ func flowTaskLinks(def issueworkflow.Definition, rows []flowTaskRow, prefix, ste
 // it can: the agent is archived or gone, it left the squad that owns the workflow,
 // or it became the lead of that squad, who plans and does not take tasks (E14). A
 // workflow no squad owns has no roster to check.
-func (h *Handler) flowAgentUnavailable(ctx context.Context, run *flowRun, task issueworkflow.Task) (string, error) {
-	agentID, err := util.ParseUUID(task.Handler.ID)
+func (h *Handler) flowAgentUnavailable(ctx context.Context, run *flowRun, agentRef string) (string, error) {
+	agentID, err := util.ParseUUID(agentRef)
 	agent, lookupErr := h.Queries.GetAgentInWorkspace(ctx, db.GetAgentInWorkspaceParams{ID: agentID, WorkspaceID: run.issue.WorkspaceID})
 	if err != nil || lookupErr != nil || agent.ArchivedAt.Valid {
 		return "is archived or no longer in this workspace", nil
@@ -965,14 +1088,14 @@ func (h *Handler) flowAgentUnavailable(ctx context.Context, run *flowRun, task i
 
 // stopForUnavailableAgent blocks a request whose next task cannot be given to
 // its agent (why says what is wrong with it). The advance reports it instead of failing.
-func (h *Handler) stopForUnavailableAgent(ctx context.Context, current *flowRun, task issueworkflow.Task, why string) (advanceOutcome, error) {
-	out, err := h.stallFlow(ctx, current, issueworkflow.ReasonAgentUnavailable, fmt.Sprintf("The agent for the task %q (%s) %s, so the task cannot open.", task.Key, task.Title, why), "")
+func (h *Handler) stopForUnavailableAgent(ctx context.Context, current *flowRun, key, title, agent, why string) (advanceOutcome, error) {
+	out, err := h.stallFlow(ctx, current, issueworkflow.ReasonAgentUnavailable, fmt.Sprintf("The agent for the task %q (%s) %s, so the task cannot open.", key, title, why), "")
 	if err != nil {
 		return advanceOutcome{}, err
 	}
-	out.action.Tasks = []string{task.Key}
+	out.action.Tasks = []string{key}
 	out.action.Code = "flow_agent_unavailable"
-	out.action.AgentID = task.Handler.ID
+	out.action.AgentID = agent
 	return out, nil
 }
 
@@ -995,7 +1118,7 @@ func (h *Handler) stallFlow(ctx context.Context, current *flowRun, code, reason,
 	if err != nil {
 		return advanceOutcome{}, err
 	}
-	if run.state.Step != current.state.Step || run.state.Stop != issueworkflow.StopNone || run.state.ClosedAt != "" {
+	if run.state.Step != current.state.Step || run.state.Stop != nil || run.state.ClosedAt != "" {
 		return advanceOutcome{action: FlowAction{Kind: "noop", Step: run.state.Step, Tasks: []string{}}}, nil
 	}
 	rows, err := h.loadFlowTasks(ctx, qtx, run)
@@ -1005,7 +1128,7 @@ func (h *Handler) stallFlow(ctx context.Context, current *flowRun, code, reason,
 	var effects flowEffects
 	if blockTask != "" {
 		for i, r := range rows {
-			if r.state.Key != blockTask || r.state.Step != run.state.Step || r.state.Round != run.state.Round() || r.state.Closed {
+			if r.state.Key != blockTask || r.state.Step != run.state.Step || r.state.Round != run.round() || r.state.Closed {
 				continue
 			}
 			prev := r.issue.Status
@@ -1021,7 +1144,7 @@ func (h *Handler) stallFlow(ctx context.Context, current *flowRun, code, reason,
 			effects.moves = append(effects.moves, statusMove{prev: prev, issue: blocked})
 		}
 	}
-	routed, err := h.routeFlowRequest(ctx, qtx, run, issueworkflow.StalledDecision(code), rows, flowRouteNote{Reason: reason}, &effects)
+	routed, err := h.routeFlowRequest(ctx, qtx, run, issueworkflow.StalledDecision(code), rows, flowRouteNote{Reason: reason}, &effects, "")
 	if err != nil {
 		return advanceOutcome{}, err
 	}

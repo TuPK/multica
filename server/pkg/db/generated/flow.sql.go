@@ -77,6 +77,26 @@ func (q *Queries) CountAttachmentsOnIssueByUploader(ctx context.Context, arg Cou
 	return column_1, err
 }
 
+const countFlowActivity = `-- name: CountFlowActivity :one
+SELECT COUNT(*)::bigint FROM activity_log
+WHERE issue_id = $1::uuid
+  AND action = $2::text
+`
+
+type CountFlowActivityParams struct {
+	IssueID pgtype.UUID `json:"issue_id"`
+	Action  string      `json:"action"`
+}
+
+// How many times an action was logged on an issue: the sweep reminds the person who
+// holds a task once.
+func (q *Queries) CountFlowActivity(ctx context.Context, arg CountFlowActivityParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countFlowActivity, arg.IssueID, arg.Action)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countOpenFlowRequestsByWorkflow = `-- name: CountOpenFlowRequestsByWorkflow :many
 SELECT COALESCE(flow->>'workflow_id', '')::text AS workflow_id, COUNT(*)::bigint AS open_count
 FROM issue
@@ -248,6 +268,54 @@ func (q *Queries) LastAgentCommentOnIssue(ctx context.Context, issueID pgtype.UU
 	var content string
 	err := row.Scan(&content)
 	return content, err
+}
+
+const listAttachmentsOnIssueByUploader = `-- name: ListAttachmentsOnIssueByUploader :many
+SELECT filename, content_type FROM attachment
+WHERE issue_id = $1::uuid
+  AND workspace_id = $2::uuid
+  AND uploader_type = $3::text
+  AND uploader_id = $4::uuid
+ORDER BY created_at, id
+`
+
+type ListAttachmentsOnIssueByUploaderParams struct {
+	IssueID      pgtype.UUID `json:"issue_id"`
+	WorkspaceID  pgtype.UUID `json:"workspace_id"`
+	UploaderType string      `json:"uploader_type"`
+	UploaderID   pgtype.UUID `json:"uploader_id"`
+}
+
+type ListAttachmentsOnIssueByUploaderRow struct {
+	Filename    string `json:"filename"`
+	ContentType string `json:"content_type"`
+}
+
+// The names and content types of the files one uploader attached to an issue (the
+// same files CountAttachmentsOnIssueByUploader counts), for the per-slot checks.
+func (q *Queries) ListAttachmentsOnIssueByUploader(ctx context.Context, arg ListAttachmentsOnIssueByUploaderParams) ([]ListAttachmentsOnIssueByUploaderRow, error) {
+	rows, err := q.db.Query(ctx, listAttachmentsOnIssueByUploader,
+		arg.IssueID,
+		arg.WorkspaceID,
+		arg.UploaderType,
+		arg.UploaderID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAttachmentsOnIssueByUploaderRow{}
+	for rows.Next() {
+		var i ListAttachmentsOnIssueByUploaderRow
+		if err := rows.Scan(&i.Filename, &i.ContentType); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listAutoFlowRequests = `-- name: ListAutoFlowRequests :many

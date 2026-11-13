@@ -6,7 +6,9 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
@@ -47,24 +49,80 @@ func writeFlowRejection(w http.ResponseWriter, err error) bool {
 	return true
 }
 
-// allowedClosingOutcomes are the verdicts a gate closes with.
-var allowedClosingOutcomes = []string{issueworkflow.OutcomeApproved, issueworkflow.OutcomeRejected}
+// flowOutcomeKey is the shape of an outcome: the key of a verdict.
+var flowOutcomeKey = regexp.MustCompile(`^[a-z][a-z0-9_]{0,31}$`)
 
-// flowRequestState reads the flow state of a request, or ok false when the
-// issue does not run on a flow.
-func flowRequestState(issue db.Issue) (issueworkflow.FlowState, bool) {
-	if len(issue.Flow) == 0 {
-		return issueworkflow.FlowState{}, false
+// outcomeKeyAllowed says whether an outcome may be written to the issue at all: the
+// four outcomes of every workflow, or the verdict key of a task of a schema 2 flow
+// (whose set the flow rules then check). A flow of schema 1 keeps the four.
+func (h *Handler) outcomeKeyAllowed(ctx context.Context, issue db.Issue, outcome string) bool {
+	if !flowOutcomeKey.MatchString(outcome) {
+		return false
 	}
-	var state issueworkflow.FlowState
-	if err := json.Unmarshal(issue.Flow, &state); err != nil || state.Step == "" {
-		return issueworkflow.FlowState{}, false
+	if issueworkflow.IsOutcome(outcome) {
+		return true
+	}
+	if !issue.FlowTask.Valid || !h.flowEngineEnabled(ctx) {
+		return false
+	}
+	run, _, ok := h.flowTaskRun(ctx, issue)
+	return ok && !run.compat()
+}
+
+// flowRequestState reads the step, stop and closing of a request in the schema 1
+// shape, or ok false when the issue does not run on a flow. Callers that need the
+// whole state of a schema 2 request use readFlowState.
+func flowRequestState(issue db.Issue) (issueworkflow.FlowState, bool) {
+	state, ok := readFlowState(issue)
+	return issueworkflow.Unadapt(state), ok
+}
+
+// readFlowState reads the flow state of a request, or ok false when the issue
+// does not run on a flow. A state stored in the schema 1 form is read as a State
+// (Adapt); a request has exactly one stored form (spec 2.4).
+func readFlowState(issue db.Issue) (issueworkflow.State, bool) {
+	if len(issue.Flow) == 0 {
+		return issueworkflow.State{}, false
+	}
+	state, err := decodeFlowState(issue.Flow)
+	if err != nil || state.Step == "" {
+		return issueworkflow.State{}, false
 	}
 	return state, true
 }
 
+// decodeFlowState reads issue.flow in either form: the schema 2 state carries
+// its version, the schema 1 state does not.
+func decodeFlowState(raw []byte) (issueworkflow.State, error) {
+	var head struct {
+		Version int `json:"version"`
+	}
+	if err := json.Unmarshal(raw, &head); err != nil {
+		return issueworkflow.State{}, err
+	}
+	if head.Version == issueworkflow.FlowDocVersion {
+		var state issueworkflow.State
+		err := json.Unmarshal(raw, &state)
+		return state, err
+	}
+	var v1 issueworkflow.FlowState
+	if err := json.Unmarshal(raw, &v1); err != nil {
+		return issueworkflow.State{}, err
+	}
+	return issueworkflow.Adapt(v1), nil
+}
+
+// encodeFlowState writes a state in the form of the workflow it is pinned to.
+func encodeFlowState(g issueworkflow.Graph, state issueworkflow.State) ([]byte, error) {
+	if g.Compat == issueworkflow.CompatV1 {
+		return json.Marshal(issueworkflow.Unadapt(state))
+	}
+	state.Version = issueworkflow.FlowDocVersion
+	return json.Marshal(state)
+}
+
 // flowDefinition loads the workflow a request is pinned to.
-func (h *Handler) flowDefinition(ctx context.Context, workspaceID pgtype.UUID, state issueworkflow.FlowState) (issueworkflow.Definition, bool) {
+func (h *Handler) flowDefinition(ctx context.Context, workspaceID pgtype.UUID, state issueworkflow.State) (issueworkflow.Definition, bool) {
 	id, err := util.ParseUUID(state.WorkflowID)
 	if err != nil {
 		return issueworkflow.Definition{}, false
@@ -74,7 +132,7 @@ func (h *Handler) flowDefinition(ctx context.Context, workspaceID pgtype.UUID, s
 		return issueworkflow.Definition{}, false
 	}
 	def, err := issueworkflow.Decode(row)
-	if err != nil || !def.HasFlow() || def.Graph.Compat != issueworkflow.CompatV1 {
+	if err != nil || !def.HasFlow() {
 		return issueworkflow.Definition{}, false
 	}
 	return def, true
@@ -86,8 +144,9 @@ func flowGraphTask(g issueworkflow.Graph, step, key string) (issueworkflow.DocTa
 	if !ok {
 		return issueworkflow.DocTask{}, false
 	}
+	base := issueworkflow.TaskBaseKey(key)
 	for _, t := range s.Tasks {
-		if t.Key == key {
+		if t.Key == base {
 			return t, true
 		}
 	}
@@ -280,6 +339,13 @@ func (h *Handler) checkFlowTaskWrite(ctx context.Context, prev db.Issue, params 
 		return nil
 	}
 	taskFields := map[string]any{"task": spec.Key}
+	if outcome == issueworkflow.OutcomeSuperseded {
+		return &flowRejection{
+			Status: http.StatusUnprocessableEntity, Code: "flow_outcome_invalid",
+			Message: "the outcome superseded is written by the workflow only",
+			Fields:  taskFields,
+		}
+	}
 	statusChange := params.Status.Valid && params.Status.String != prev.Status
 	reassigned := params.AssigneeType != prev.AssigneeType || params.AssigneeID != prev.AssigneeID
 	closedBefore := h.flowTaskClosed(ctx, prev, prev.Status)
@@ -321,13 +387,13 @@ func (h *Handler) checkFlowTaskWrite(ctx context.Context, prev db.Issue, params 
 			Fields:  taskFields,
 		}
 	}
-	return h.checkFlowTaskStatus(ctx, prev, spec, to, outcome, actor)
+	return h.checkFlowTaskStatus(ctx, run, prev, spec, to, outcome, actor)
 }
 
-// checkFlowTaskStatus enforces R1 and R2: a task closes (moves to a done status)
-// only with the verdict and the file its definition requires, and a task that
-// cannot go on says so with the outcome blocked.
-func (h *Handler) checkFlowTaskStatus(ctx context.Context, task db.Issue, spec issueworkflow.DocTask, to, outcome string, actor flowActor) error {
+// checkFlowTaskStatus enforces R1, R2, E5, E6 and E22: a task closes (moves to a
+// done status) only with a verdict of its set, the files its slots require and the
+// variables it must set, and a task that cannot go on says so with the outcome blocked.
+func (h *Handler) checkFlowTaskStatus(ctx context.Context, run *flowRun, task db.Issue, spec issueworkflow.DocTask, to, outcome string, actor flowActor) error {
 	taskFields := func(extra map[string]any) map[string]any {
 		fields := map[string]any{"task": spec.Key}
 		for k, v := range extra {
@@ -335,6 +401,7 @@ func (h *Handler) checkFlowTaskStatus(ctx context.Context, task db.Issue, spec i
 		}
 		return fields
 	}
+	verdicts := flowVerdictKeys(run, spec)
 	if to == issuestatus.Blocked {
 		if outcome != "" && outcome != issueworkflow.OutcomeBlocked {
 			return &flowRejection{
@@ -353,72 +420,122 @@ func (h *Handler) checkFlowTaskStatus(ctx context.Context, task db.Issue, spec i
 		return &flowRejection{
 			Status: http.StatusUnprocessableEntity, Code: "flow_outcome_invalid",
 			Message: "a task with the outcome blocked cannot be done: run `multica issue status <id> blocked --outcome blocked`",
-			Fields:  taskFields(map[string]any{"allowed_outcomes": allowedClosingOutcomes}),
+			Fields:  taskFields(map[string]any{"allowed_outcomes": verdicts}),
 		}
 	}
-	if spec.NeedsVerdict() {
-		switch outcome {
-		case "":
-			return &flowRejection{
-				Status: http.StatusUnprocessableEntity, Code: "flow_outcome_required",
-				Message: "this task closes only with a verdict: run `multica issue status <id> done --outcome approved` or `--outcome rejected`",
-				Fields:  taskFields(map[string]any{"allowed_outcomes": allowedClosingOutcomes}),
-			}
-		case issueworkflow.OutcomeApproved, issueworkflow.OutcomeRejected:
-		default:
-			return &flowRejection{
-				Status: http.StatusUnprocessableEntity, Code: "flow_outcome_invalid",
-				Message: "this task closes with the outcome approved or rejected, not " + outcome,
-				Fields:  taskFields(map[string]any{"allowed_outcomes": allowedClosingOutcomes}),
-			}
+	inSet := false
+	for _, v := range verdicts {
+		if v == outcome {
+			inSet = true
 		}
 	}
-	if spec.NeedsFiles() {
-		attached, err := h.flowTaskAttachmentCount(ctx, task, actor)
+	required := "this task closes only with a verdict: run `multica issue status <id> done --outcome " + describeVerdictKeys(verdicts, "` or `--outcome ") + "`"
+	invalid := "this task closes with the outcome " + describeVerdictKeys(verdicts, " or ") + ", not " + outcome
+	switch {
+	case spec.NeedsVerdict() && outcome == "":
+		return &flowRejection{
+			Status: http.StatusUnprocessableEntity, Code: "flow_outcome_required",
+			Message: required,
+			Fields:  taskFields(map[string]any{"allowed_outcomes": verdicts}),
+		}
+	case outcome != "" && !inSet && (spec.NeedsVerdict() || !run.compat()):
+		return &flowRejection{
+			Status: http.StatusUnprocessableEntity, Code: "flow_outcome_invalid",
+			Message: invalid,
+			Fields:  taskFields(map[string]any{"allowed_outcomes": verdicts}),
+		}
+	}
+	if files := requiredFiles(spec); len(files) > 0 {
+		have, err := h.flowTaskFiles(ctx, task, actor)
 		if err != nil {
 			return err
 		}
-		if attached == 0 {
+		if slot, count, ok := issueworkflow.SlotShortfall(files, have); !ok {
 			return &flowRejection{
 				Status: http.StatusUnprocessableEntity, Code: "flow_attachment_required",
 				Message: "this task closes only with a file you attached to it: run `multica issue comment add <id> --attachment <file>` first",
-				Fields:  taskFields(nil),
+				Fields:  taskFields(map[string]any{"slot": slot.Slot, "have": count, "min": slot.Min, "max": slot.Max}),
 			}
+		}
+	}
+	if missing := h.flowVarsNotSet(run, task, spec); len(missing) > 0 {
+		return &flowRejection{
+			Status: http.StatusUnprocessableEntity, Code: "flow_vars_required",
+			Message: "this task closes only after it set " + strings.Join(missing, ", ") + ": run `multica issue flow set <id> <key> <value>`",
+			Fields:  taskFields(map[string]any{"vars": missing}),
 		}
 	}
 	return nil
 }
 
-// flowTaskAttachmentCount counts the files that satisfy the file requirement of
-// a task: the ones its assignee attached to it, a file linked to a comment
-// included, and the ones the member who closes it for the assignee attached.
-func (h *Handler) flowTaskAttachmentCount(ctx context.Context, task db.Issue, actor flowActor) (int64, error) {
-	count := func(uploaderType string, uploaderID pgtype.UUID) (int64, error) {
-		return h.Queries.CountAttachmentsOnIssueByUploader(ctx, db.CountAttachmentsOnIssueByUploaderParams{
+// flowVerdictKeys are the verdicts a task may close with: the keys of its set.
+func flowVerdictKeys(run *flowRun, spec issueworkflow.DocTask) []string {
+	var keys []string
+	for _, v := range issueworkflow.TaskVerdicts(run.def.Graph.Doc, spec) {
+		keys = append(keys, v.Key)
+	}
+	return keys
+}
+
+func describeVerdictKeys(keys []string, sep string) string { return strings.Join(keys, sep) }
+
+// flowVarsNotSet lists the variables a task must set before it closes that it has
+// not set in this entry into its step.
+func (h *Handler) flowVarsNotSet(run *flowRun, task db.Issue, spec issueworkflow.DocTask) []string {
+	if spec.Requires == nil {
+		return nil
+	}
+	var missing []string
+	for _, key := range spec.Requires.Vars {
+		if run.state.VarSets[flowVarSetKey(task.FlowStep.String, task.FlowTask.String, key)] != int(task.FlowRound.Int32)+1 {
+			missing = append(missing, key)
+		}
+	}
+	return missing
+}
+
+// flowVarSetKey names, in state.var_sets, the variable a task row set: the value is
+// the activation of the step it was set in.
+func flowVarSetKey(step, rowKey, variable string) string { return step + "." + rowKey + "." + variable }
+
+// flowTaskFiles lists the files that satisfy the file requirement of a task: the
+// ones its assignee attached to it, a file linked to a comment included, and the
+// ones the member who closes it for the assignee attached.
+func (h *Handler) flowTaskFiles(ctx context.Context, task db.Issue, actor flowActor) ([]issueworkflow.AttachedFile, error) {
+	list := func(uploaderType string, uploaderID pgtype.UUID) ([]issueworkflow.AttachedFile, error) {
+		rows, err := h.Queries.ListAttachmentsOnIssueByUploader(ctx, db.ListAttachmentsOnIssueByUploaderParams{
 			IssueID:      task.ID,
 			WorkspaceID:  task.WorkspaceID,
 			UploaderType: uploaderType,
 			UploaderID:   uploaderID,
 		})
-	}
-	var total int64
-	if task.AssigneeID.Valid {
-		n, err := count(task.AssigneeType.String, task.AssigneeID)
 		if err != nil {
-			return 0, err
+			return nil, err
 		}
-		total += n
+		out := make([]issueworkflow.AttachedFile, len(rows))
+		for i, r := range rows {
+			out[i] = issueworkflow.AttachedFile{Name: r.Filename, ContentType: r.ContentType}
+		}
+		return out, nil
+	}
+	var total []issueworkflow.AttachedFile
+	if task.AssigneeID.Valid {
+		files, err := list(task.AssigneeType.String, task.AssigneeID)
+		if err != nil {
+			return nil, err
+		}
+		total = append(total, files...)
 	}
 	if actor.Type == "member" && !flowTaskAssignedTo(task, actor) {
 		id, err := util.ParseUUID(actor.ID)
 		if err != nil {
 			return total, nil
 		}
-		n, err := count("member", id)
+		files, err := list("member", id)
 		if err != nil {
-			return 0, err
+			return nil, err
 		}
-		total += n
+		total = append(total, files...)
 	}
 	return total, nil
 }
@@ -447,12 +564,15 @@ func (h *Handler) logFlowManualAction(ctx context.Context, prev, issue db.Issue,
 		details["from"] = prev.Status
 	case !wasClosed && issuestatus.Category(ctx, h.Queries, issue.WorkspaceID, issue.Status) == issuestatus.CategoryDone:
 		action = "flow_manual_close"
-		files, err := h.flowTaskAttachmentCount(ctx, prev, actor)
+		files, err := h.flowTaskFiles(ctx, prev, actor)
 		if err != nil {
 			slog.Warn("flow: count the files of a close on behalf failed", "issue_id", uuidToString(issue.ID), "error", err)
 		}
 		details["verdict"] = outcome
-		details["files"] = files
+		details["files"] = len(files)
+		if note, ok := ctx.Value(flowCloseNoteKey{}).(string); ok && note != "" {
+			details["note"] = note
+		}
 	default:
 		return
 	}
@@ -570,13 +690,16 @@ func (h *Handler) claimFlowBrief(ctx context.Context, issue db.Issue) *TaskProje
 		if err != nil || run.state.ClosedAt != "" {
 			return nil
 		}
+		rows, err := h.loadFlowTasks(ctx, h.Queries, run)
+		if err != nil {
+			return nil
+		}
+		if !run.compat() {
+			return h.graphTaskBrief(ctx, run, rows, parent, issue, prefix)
+		}
 		// The brief of a flow lifted from schema 1 keeps the text of the task as the workflow wrote it.
 		spec, ok := run.def.V1Task(issue.FlowStep.String, issue.FlowTask.String)
 		if !ok {
-			return nil
-		}
-		rows, err := h.loadFlowTasks(ctx, h.Queries, run)
-		if err != nil {
 			return nil
 		}
 		round := int(issue.FlowRound.Int32)
@@ -596,14 +719,30 @@ func (h *Handler) claimFlowBrief(ctx context.Context, issue db.Issue) *TaskProje
 	if err != nil || run.state.ClosedAt != "" {
 		return nil
 	}
+	if !run.compat() {
+		step, _ := run.def.Graph.Step(run.state.Step)
+		return &TaskProjectWorkflowData{Brief: issueworkflow.GraphLeadBrief(run.def.Graph, issueworkflow.GraphLeadBriefInput{
+			WorkflowName:      run.def.Name,
+			RequestIdentifier: identifier(issue),
+			Step:              step,
+			StepName:          resolver.Name(ctx, h.Queries, run.stepStatus()),
+			Stopped:           run.state.Stop != nil,
+			Values:            run.state.Vars,
+		})}
+	}
+	v1 := issueworkflow.Unadapt(run.state)
 	return &TaskProjectWorkflowData{Brief: issueworkflow.FlowLeadBrief(issueworkflow.FlowLeadBriefInput{
 		WorkflowName:      run.def.Name,
 		RequestIdentifier: identifier(issue),
 		Step:              run.state.Step,
 		StepName:          resolver.Name(ctx, h.Queries, run.state.Step),
 		PlanStep:          run.state.Step == issueworkflow.StartStatus,
-		Stop:              run.state.Stop,
+		Stop:              v1.Stop,
 		Switches:          run.def.Flow.Switches,
-		Values:            run.state.Switches,
+		Values:            v1.Switches,
 	})}
 }
+
+// flowCloseNoteKey carries the note a manager gave when closing a task for its
+// assignee, to the log of the close.
+type flowCloseNoteKey struct{}

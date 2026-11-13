@@ -306,8 +306,9 @@ var issueStatusCmd = &cobra.Command{
 		"than cancelled later removes the mark.\n\n" +
 		"A request that a workflow runs is moved by the server, not with this command: use\n" +
 		"`multica issue flow` (run `multica issue flow show <id>` first). A task the workflow\n" +
-		"opened for you closes with `done --outcome approved|rejected` (a gate) or `done`,\n" +
-		"and reports that it cannot go on with `blocked --outcome blocked`.",
+		"opened for you closes with `done --outcome <verdict>` (its description lists the\n" +
+		"verdicts; a gate: `approved` or `rejected`) or `done`, and reports that it cannot\n" +
+		"go on with `blocked --outcome blocked`.",
 	Args: exactArgs(2),
 	RunE: runIssueStatus,
 }
@@ -729,7 +730,7 @@ func init() {
 
 	// issue status
 	issueStatusCmd.Flags().Bool("no-start", false, "Change status without starting an agent run (a move into a workflow step that hands off still starts that step's run)")
-	issueStatusCmd.Flags().String("outcome", "", "Outcome of the step you are leaving: approved, rejected, blocked or done. If the workflow routes that outcome, the status must be the routed status. The server rejects closing a workflow task without the outcome its definition requires")
+	issueStatusCmd.Flags().String("outcome", "", "Outcome of the step you are leaving: approved, rejected, blocked or done, or a verdict key of your task (its description lists them). If the workflow routes that outcome, the status must be the routed status. The server rejects closing a workflow task without the outcome its definition requires, and any outcome that is not in its set")
 	issueStatusCmd.Flags().String("duplicate-of", "", "Mark the issue as a duplicate of this original issue (key like MUL-123, or full UUID); the status must be cancelled")
 	issueStatusCmd.Flags().String("output", "table", "Output format: table or json")
 
@@ -2195,10 +2196,8 @@ func runIssueStatus(cmd *cobra.Command, args []string) error {
 	id := args[0]
 	status := args[1]
 	noStart, _ := cmd.Flags().GetBool("no-start")
+	// The server checks the outcome: a task of a workflow closes with a verdict of its own set.
 	outcome, _ := cmd.Flags().GetString("outcome")
-	if outcome != "" && outcome != "approved" && outcome != "rejected" && outcome != "blocked" && outcome != "done" {
-		return fmt.Errorf("--outcome must be approved, rejected, blocked or done")
-	}
 
 	if err := validateIssueStatus(status); err != nil {
 		return err

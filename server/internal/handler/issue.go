@@ -4243,7 +4243,9 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	callerRun := h.agentRunOnIssue(r, callerType, prevIssue)
 	outcome := ""
 	if req.Outcome != nil {
-		if !issueworkflow.IsOutcome(*req.Outcome) {
+		// A task of a flow closes with a verdict of its own set, which the flow rules check; any
+		// other issue keeps the four outcomes.
+		if !h.outcomeKeyAllowed(r.Context(), prevIssue, *req.Outcome) {
 			writeErrorCode(w, http.StatusBadRequest, "invalid_outcome", "outcome must be approved, rejected, blocked or done")
 			return
 		}
@@ -5031,7 +5033,7 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 	// The outcome of the update is the outcome of every item that changes status.
 	batchOutcome := ""
 	if req.Updates.Outcome != nil {
-		if !issueworkflow.IsOutcome(*req.Updates.Outcome) {
+		if !flowOutcomeKey.MatchString(*req.Updates.Outcome) {
 			writeErrorCode(w, http.StatusBadRequest, "invalid_outcome", "outcome must be approved, rejected, blocked or done")
 			return
 		}
@@ -5054,6 +5056,10 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 			prevIssue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: issueUUID, WorkspaceID: wsUUID})
 			if err != nil {
 				continue
+			}
+			if batchOutcome != "" && !h.outcomeKeyAllowed(r.Context(), prevIssue, batchOutcome) {
+				writeErrorCode(w, http.StatusBadRequest, "invalid_outcome", "outcome must be approved, rejected, blocked or done")
+				return
 			}
 			check := db.UpdateIssueParams{AssigneeType: prevIssue.AssigneeType, AssigneeID: prevIssue.AssigneeID}
 			if batchStatusKey != "" {

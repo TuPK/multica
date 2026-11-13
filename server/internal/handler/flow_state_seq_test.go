@@ -36,13 +36,13 @@ func TestSetIssueFlow_ConcurrentWritersLoseOnSeq(t *testing.T) {
 	}
 
 	// Both writers keep the step and the rework count; only the seq tells them apart.
-	nextFirst := first.state
+	nextFirst := first.state.Clone()
 	nextFirst.PlanDone = true
 	if saved, err := testHandler.saveFlowState(ctx, testHandler.Queries, first, nextFirst); err != nil || !saved {
 		t.Fatalf("the first writer: saved %v, err %v; want saved", saved, err)
 	}
-	nextSecond := second.state
-	nextSecond.Switches = map[string]any{"customs_lookup": true}
+	nextSecond := second.state.Clone()
+	nextSecond.Vars = map[string]any{"customs_lookup": true}
 	if saved, err := testHandler.saveFlowState(ctx, testHandler.Queries, second, nextSecond); err != nil || saved {
 		t.Fatalf("the second writer, from the same state: saved %v, err %v; want a lost write", saved, err)
 	}
@@ -56,7 +56,7 @@ func TestSetIssueFlow_ConcurrentWritersLoseOnSeq(t *testing.T) {
 	if first.state.Seq != 1 {
 		t.Fatalf("the writer's state has seq %d after its write, want 1", first.state.Seq)
 	}
-	next := first.state
+	next := first.state.Clone()
 	next.EnteredAt = "2026-11-13T00:00:00Z"
 	if saved, err := testHandler.saveFlowState(ctx, testHandler.Queries, first, next); err != nil || !saved {
 		t.Fatalf("a second write from the winner's own state: saved %v, err %v", saved, err)
@@ -85,7 +85,7 @@ func TestSetIssueFlow_StateWithoutSeqCountsAsZero(t *testing.T) {
 	}
 	stale := *run
 
-	next := run.state
+	next := run.state.Clone()
 	next.PlanDone = true
 	if saved, err := testHandler.saveFlowState(ctx, testHandler.Queries, run, next); err != nil || !saved {
 		t.Fatalf("the first write of a state without seq: saved %v, err %v", saved, err)
@@ -93,8 +93,8 @@ func TestSetIssueFlow_StateWithoutSeqCountsAsZero(t *testing.T) {
 	if seq, present := flowSeqOf(t, id); !present || seq != 1 {
 		t.Fatalf("stored seq = %d (present %v), want 1", seq, present)
 	}
-	lost := stale.state
-	lost.Stop = issueworkflow.StopStalled
+	lost := stale.state.Clone()
+	lost.Stop = &issueworkflow.StopRecord{Code: issueworkflow.DocStopStalled}
 	if saved, err := testHandler.saveFlowState(ctx, testHandler.Queries, &stale, lost); err != nil || saved {
 		t.Fatalf("a writer that read the state without seq, after the first write: saved %v, err %v; want a lost write", saved, err)
 	}

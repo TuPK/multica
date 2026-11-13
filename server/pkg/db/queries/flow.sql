@@ -103,6 +103,23 @@ WHERE issue_id = sqlc.arg('issue_id')::uuid
   AND uploader_type = sqlc.arg('uploader_type')::text
   AND uploader_id = sqlc.arg('uploader_id')::uuid;
 
+-- name: ListAttachmentsOnIssueByUploader :many
+-- The names and content types of the files one uploader attached to an issue (the
+-- same files CountAttachmentsOnIssueByUploader counts), for the per-slot checks.
+SELECT filename, content_type FROM attachment
+WHERE issue_id = sqlc.arg('issue_id')::uuid
+  AND workspace_id = sqlc.arg('workspace_id')::uuid
+  AND uploader_type = sqlc.arg('uploader_type')::text
+  AND uploader_id = sqlc.arg('uploader_id')::uuid
+ORDER BY created_at, id;
+
+-- name: CountFlowActivity :one
+-- How many times an action was logged on an issue: the sweep reminds the person who
+-- holds a task once.
+SELECT COUNT(*)::bigint FROM activity_log
+WHERE issue_id = sqlc.arg('issue_id')::uuid
+  AND action = sqlc.arg('action')::text;
+
 -- name: ListFlowManualActions :many
 -- The latest close or reopen a member made for the assignee of each task, to say
 -- who closed a task that is closed now.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 
 	"github.com/multica-ai/multica/server/internal/issueworkflow"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/multica-ai/multica/server/pkg/dbid"
 )
 
 // The sweep is the runner's safety net (spec 5.2 point 2 and 5.6): every pass it starts the requests
@@ -105,7 +107,7 @@ func (h *Handler) sweepFlowRequest(ctx context.Context, request db.Issue) bool {
 		return changed
 	}
 	run, err := h.loadFlowRun(ctx, h.Queries, current)
-	if err != nil || run.state.ClosedAt != "" || run.state.Stop != issueworkflow.StopNone {
+	if err != nil || run.state.ClosedAt != "" || run.state.Stop != nil {
 		return changed
 	}
 	if h.sweepStuck(ctx, run) {
@@ -144,7 +146,7 @@ func (h *Handler) sweepStuck(ctx context.Context, run *flowRun) bool {
 	limits := issueworkflow.LimitsOf(run.def.Graph.Doc.Policy)
 	log := slog.With("request_id", uuidToString(run.issue.ID), "step", run.state.Step)
 
-	if run.state.Step == issueworkflow.StartStatus {
+	if step, ok := run.def.Graph.Step(run.state.Step); ok && step.Kind == issueworkflow.StepKindLead {
 		// The lead has twice the time of a task, then it is woken again, then the request stalls.
 		leadLimits := limits
 		leadLimits.Idle *= 2
@@ -163,7 +165,14 @@ func (h *Handler) sweepStuck(ctx context.Context, run *flowRun) bool {
 	}
 	changed := false
 	for _, r := range rows {
-		if r.state.Step != run.state.Step || r.state.Round != run.state.Round() {
+		if r.state.Step != run.state.Step || r.state.Round != run.round() {
+			continue
+		}
+		if r.issue.AssigneeType.String != "agent" {
+			// A person holds the task (or any manager may close it): no run to retry.
+			if h.sweepHumanTask(ctx, run, r, now) {
+				changed = true
+			}
 			continue
 		}
 		stats, err := h.flowRunStats(ctx, r.issue.ID, since, now)
@@ -244,4 +253,70 @@ func (h *Handler) enqueueFlowRun(ctx context.Context, issue db.Issue) error {
 	}
 	_, err := h.TaskService.EnqueueTaskForIssueWithHandoff(ctx, issue, flowRetryNote, pgtype.UUID{})
 	return err
+}
+
+// sweepHumanTask acts on a task that a person holds (spec 4.9): once it has waited
+// human_remind_minutes the person gets one reminder; once it has waited
+// human_stall_minutes the request stalls. It reports whether it changed anything.
+func (h *Handler) sweepHumanTask(ctx context.Context, run *flowRun, r flowTaskRow, now time.Time) bool {
+	if r.state.Closed {
+		return false
+	}
+	policy := run.def.Graph.Doc.Policy.Effective()
+	remind, stall := policy.HumanRemindMinutes, policy.HumanStallMinutes
+	if doc, ok := flowGraphTask(run.def.Graph, r.state.Step, r.state.Key); ok && doc.Deadline != nil {
+		if doc.Deadline.RemindAfterMinutes > 0 {
+			remind = doc.Deadline.RemindAfterMinutes
+		}
+		if doc.Deadline.StallAfterMinutes > 0 {
+			stall = doc.Deadline.StallAfterMinutes
+		}
+	}
+	waited := now.Sub(r.issue.CreatedAt.Time)
+	log := slog.With("request_id", uuidToString(run.issue.ID), "task", r.state.Key)
+	switch {
+	case waited >= time.Duration(stall)*time.Minute:
+		reason := fmt.Sprintf("The task %q (%s) waited %d minutes for a person and nobody closed it.", r.state.Key, r.issue.Title, stall)
+		out, err := h.stallFlow(ctx, run, issueworkflow.ReasonTaskStuck, reason, r.state.Key)
+		if err != nil {
+			log.Warn("flow sweep: stall a task nobody closed", "error", err)
+			return false
+		}
+		return out.action.Kind == "stopped"
+	case waited >= time.Duration(remind)*time.Minute:
+		sent, err := h.Queries.CountFlowActivity(ctx, db.CountFlowActivityParams{IssueID: r.issue.ID, Action: "flow_human_reminded"})
+		if err != nil || sent > 0 {
+			return false
+		}
+		return h.remindHumanTask(ctx, run, r, log)
+	}
+	return false
+}
+
+// remindHumanTask posts the reminder on the task, mentioning the member it is given
+// to, or else the member who made the request, and logs it so it is sent once.
+func (h *Handler) remindHumanTask(ctx context.Context, run *flowRun, r flowTaskRow, log *slog.Logger) bool {
+	mention := h.requesterMention(ctx, run.issue)
+	if r.issue.AssigneeType.String == "member" && r.issue.AssigneeID.Valid {
+		if user, err := h.Queries.GetUser(ctx, r.issue.AssigneeID); err == nil {
+			mention = fmt.Sprintf("[@%s](mention://member/%s)", user.Name, uuidToString(r.issue.AssigneeID))
+		}
+	}
+	created, err := h.Queries.CreateComment(ctx, db.CreateCommentParams{
+		ID: dbid.NewV7(), IssueID: r.issue.ID, WorkspaceID: r.issue.WorkspaceID,
+		AuthorType: "system", AuthorID: pgtype.UUID{Valid: true},
+		Content: strings.TrimSpace(mention + " This task of the workflow waits for you: close it, or the request stalls."), Type: "system",
+	})
+	if err != nil {
+		log.Warn("flow sweep: remind a person", "error", err)
+		return false
+	}
+	if _, err := h.Queries.CreateActivity(ctx, db.CreateActivityParams{
+		ID: dbid.NewV7(), WorkspaceID: r.issue.WorkspaceID, IssueID: r.issue.ID,
+		ActorType: pgtype.Text{String: "system", Valid: true}, Action: "flow_human_reminded", Details: []byte("{}"),
+	}); err != nil {
+		log.Warn("flow sweep: log a reminder", "error", err)
+	}
+	h.publishFlowEffects(ctx, run.issue, &flowEffects{comments: []db.CreateCommentRow{created}})
+	return true
 }

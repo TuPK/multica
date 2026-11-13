@@ -764,6 +764,8 @@ type TaskInput struct {
 	Identifier string
 	Key        string
 	Title      string
+	// Round is the flow_round of the row; a row key repeats across entries.
+	Round int
 }
 
 // TaskDescriptionInput is what the description of a task issue says. The

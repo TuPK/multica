@@ -29,7 +29,7 @@ func TaskLinks(g Graph, st State, tasks []TaskState, task DocTask) (inputs, feed
 }
 
 func linkRef(ts TaskState, slot string) TaskInput {
-	return TaskInput{Identifier: RowRef(ts.Step, ts.Key), Key: ts.Key, Title: slot}
+	return TaskInput{Identifier: RowRef(ts.Step, ts.Key), Key: ts.Key, Title: slot, Round: ts.Round}
 }
 
 func instanceIndex(key string) int {

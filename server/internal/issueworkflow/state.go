@@ -96,3 +96,25 @@ func AppendTrail(s State, e TrailEntry, max int) State {
 // graph: the schema 1 round base plus the rework count. A schema 2 request
 // uses the activation of the step.
 func (s State) Round() int { return s.RoundBase + s.Loops[LoopRework] }
+
+// Clone returns a copy of the state that shares no map or slice with it, so a
+// writer can change the copy and keep the state it read.
+func (s State) Clone() State {
+	out := s
+	out.Activations = copyCounts(s.Activations)
+	out.Loops = copyCounts(s.Loops)
+	out.VarSets = copyCounts(s.VarSets)
+	if s.Vars != nil {
+		out.Vars = make(map[string]any, len(s.Vars))
+		for k, v := range s.Vars {
+			out.Vars[k] = v
+		}
+	}
+	if s.Stop != nil {
+		stop := *s.Stop
+		out.Stop = &stop
+	}
+	out.Checkpoints = append([]Checkpoint(nil), s.Checkpoints...)
+	out.Trail = append([]TrailEntry(nil), s.Trail...)
+	return out
+}

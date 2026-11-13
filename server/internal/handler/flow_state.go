@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -28,6 +29,43 @@ type IssueFlowTaskResponse struct {
 	ClosedAt *string `json:"closed_at"`
 	// ClosedBy is who closed the task, null while it is open or when nobody is known.
 	ClosedBy *IssueFlowClosedByResponse `json:"closed_by"`
+	// Instance is the 1-based instance of a task that fans out, 0 for a plain task.
+	Instance int `json:"instance"`
+	// Class is how the closed task counts in its join: pass, fail, block or neutral; empty while open.
+	Class string `json:"class"`
+	// SlotStatus says, for each file the task requires, how many it has.
+	SlotStatus []IssueFlowSlotStatusResponse `json:"slot_status"`
+	// Inputs and Feedback are the rows a task of the current entry reads and must answer.
+	Inputs   []IssueFlowLinkResponse `json:"inputs"`
+	Feedback []IssueFlowLinkResponse `json:"feedback"`
+	// Sets are the variables the task may set while it is open.
+	Sets []string `json:"sets"`
+}
+
+// IssueFlowSlotStatusResponse is how many files a task has for one slot it requires.
+type IssueFlowSlotStatusResponse struct {
+	Slot  string `json:"slot"`
+	Min   int    `json:"min"`
+	Max   int    `json:"max"`
+	Count int    `json:"count"`
+}
+
+// IssueFlowLinkResponse names a task row a task reads.
+type IssueFlowLinkResponse struct {
+	IssueID    string `json:"issue_id"`
+	Identifier string `json:"identifier"`
+	Task       string `json:"task"`
+	Slot       string `json:"slot"`
+}
+
+// IssueFlowStopResponse is the stop a request is parked in.
+type IssueFlowStopResponse struct {
+	Code string `json:"code"`
+	// LegacyNo is the stop number schema 1 gave it (1 or 3), 0 for none.
+	LegacyNo int    `json:"legacy_no"`
+	From     string `json:"from"`
+	Edge     string `json:"edge"`
+	At       string `json:"at"`
 }
 
 // IssueFlowClosedByResponse says who closed a task. OnBehalf is true when a member
@@ -50,10 +88,11 @@ type IssueFlowViewerResponse struct {
 
 // IssueFlowNextResponse is a way out of the current step.
 type IssueFlowNextResponse struct {
-	ID     string `json:"id"`
-	Label  string `json:"label"`
-	To     string `json:"to"`
-	Rework bool   `json:"rework"`
+	ID      string `json:"id"`
+	Label   string `json:"label"`
+	To      string `json:"to"`
+	Rework  bool   `json:"rework"`
+	Trigger string `json:"trigger"`
 }
 
 // IssueFlowStateResponse is the state of a request on a flow
@@ -79,6 +118,17 @@ type IssueFlowStateResponse struct {
 	// the drafting step, where a person sends the request to fix the draft. It is empty unless
 	// the request is stopped and that step has a rework transition.
 	ReworkStep string `json:"rework_step"`
+	// Schema is the schema of the workflow the request is pinned to.
+	Schema      int                        `json:"schema"`
+	Loops       map[string]int             `json:"loops"`
+	Activations map[string]int             `json:"activations"`
+	Vars        map[string]any             `json:"vars"`
+	Facts       map[string]any             `json:"facts"`
+	StopInfo    *IssueFlowStopResponse     `json:"stop_info"`
+	Checkpoints []issueworkflow.Checkpoint `json:"checkpoints"`
+	Unreviewed  bool                       `json:"unreviewed"`
+	Trail       []issueworkflow.TrailEntry `json:"trail"`
+	Trial       bool                       `json:"trial"`
 }
 
 // FlowAction is one thing an advance did.
@@ -121,29 +171,69 @@ func (h *Handler) flowStateResponse(ctx context.Context, request db.Issue, role 
 	}
 	prefix := h.getIssuePrefix(ctx, request.WorkspaceID)
 	resolver := issuestatus.NewResolver(request.WorkspaceID)
+	v1 := issueworkflow.Unadapt(run.state)
+	g := run.def.Graph
 	out := IssueFlowStateResponse{
 		Managed:      true,
 		Role:         role,
 		WorkflowID:   run.state.WorkflowID,
 		WorkflowName: run.def.Name,
 		Step:         run.state.Step,
-		Rework:       run.state.Rework,
-		Stop:         run.state.Stop,
-		Switches:     run.state.Switches,
+		Rework:       run.state.Loops[issueworkflow.LoopRework],
+		Stop:         v1.Stop,
+		Switches:     run.state.Vars,
 		Auto:         run.row.FlowAuto,
 		EnteredAt:    run.state.EnteredAt,
 		Tasks:        make([]IssueFlowTaskResponse, 0, len(tasks)),
 		Next:         []IssueFlowNextResponse{},
 		Viewer:       IssueFlowViewerResponse{ClosableTaskIDs: []string{}},
+		Schema:       1,
+		Loops:        copyLoops(run.state.Loops),
+		Activations:  copyLoops(run.state.Activations),
+		Vars:         run.state.Vars,
+		Checkpoints:  run.state.Checkpoints,
+		Unreviewed:   run.state.Unreviewed,
+		Trail:        run.state.Trail,
+		Trial:        run.state.Trial,
+	}
+	if !run.compat() {
+		out.Schema = g.Doc.Version
 	}
 	if out.Switches == nil {
 		out.Switches = map[string]any{}
 	}
+	if out.Vars == nil {
+		out.Vars = map[string]any{}
+	}
+	if out.Checkpoints == nil {
+		out.Checkpoints = []issueworkflow.Checkpoint{}
+	}
+	if out.Trail == nil {
+		out.Trail = []issueworkflow.TrailEntry{}
+	}
+	if stop := run.state.Stop; stop != nil {
+		info := &IssueFlowStopResponse{Code: stop.Code, From: stop.From, Edge: stop.Edge, At: stop.At}
+		if declared, ok := g.Stop(stop.Code); ok {
+			info.LegacyNo = declared.LegacyNo
+		}
+		out.StopInfo = info
+	}
+	rows, err := h.loadFlowTasks(ctx, h.Queries, run)
+	if err != nil {
+		return IssueFlowStateResponse{}, err
+	}
+	tasks = tasks[:0]
+	for _, r := range rows {
+		tasks = append(tasks, r.issue)
+	}
+	states := taskStates(rows)
+	facts := issueworkflow.BuildGraphFacts(g, run.state, states, flowRequestFacts(run.issue))
+	out.Facts = issueworkflow.FactValues(facts, facts.Keys())
 	closedByAction, err := h.flowManualActions(ctx, tasks)
 	if err != nil {
 		return IssueFlowStateResponse{}, err
 	}
-	for _, t := range tasks {
+	for i, t := range tasks {
 		item := IssueFlowTaskResponse{
 			IssueID:    uuidToString(t.ID),
 			Identifier: prefix + "-" + strconv.Itoa(int(t.Number)),
@@ -154,23 +244,92 @@ func (h *Handler) flowStateResponse(ctx context.Context, request db.Issue, role 
 			Status:     t.Status,
 			Outcome:    textToPtr(t.Outcome),
 			AssigneeID: uuidToPtr(t.AssigneeID),
+			SlotStatus: []IssueFlowSlotStatusResponse{},
+			Inputs:     []IssueFlowLinkResponse{},
+			Feedback:   []IssueFlowLinkResponse{},
+			Sets:       []string{},
+		}
+		if doc, ok := flowGraphTask(g, t.FlowStep.String, t.FlowTask.String); ok {
+			item.Kind = doc.Kind
+			item.Sets = append(item.Sets, doc.Sets...)
+			if i < len(rows) {
+				item.Class = issueworkflow.RowClass(g, rows[i].state)
+			}
+			if _, suffix, found := strings.Cut(t.FlowTask.String, "~"); found {
+				item.Instance, _ = strconv.Atoi(suffix)
+			}
 		}
 		switch resolver.Category(ctx, h.Queries, t.Status) {
 		case issuestatus.CategoryDone, issuestatus.CategoryClosed:
 			item.ClosedAt = timestampToPtr(t.UpdatedAt)
 			item.ClosedBy = flowClosedBy(t, closedByAction[t.ID])
 		}
+		if i < len(rows) && !rows[i].state.Closed && rows[i].state.Step == run.state.Step && rows[i].state.Round == run.round() {
+			h.fillTaskLinks(ctx, run, rows, i, prefix, &item)
+		}
 		out.Tasks = append(out.Tasks, item)
 	}
-	if step, ok := run.def.Step(run.state.Step); ok {
-		for _, tr := range step.Transitions {
-			out.Next = append(out.Next, IssueFlowNextResponse{ID: tr.ID, Label: tr.Label, To: tr.ToStatusKey, Rework: tr.Rework})
+	if run.compat() {
+		if step, ok := run.def.Step(run.state.Step); ok {
+			for _, tr := range step.Transitions {
+				out.Next = append(out.Next, IssueFlowNextResponse{ID: tr.ID, Label: tr.Label, To: tr.ToStatusKey, Rework: tr.Rework, Trigger: issueworkflow.EdgeTriggerAuto})
+			}
+		}
+	} else {
+		for _, e := range g.EdgesFrom(run.state.Step) {
+			trigger := e.Edge.Trigger
+			if trigger == "" {
+				trigger = issueworkflow.EdgeTriggerAuto
+			}
+			out.Next = append(out.Next, IssueFlowNextResponse{ID: e.Edge.ID, Label: e.Edge.Label, To: e.Edge.To, Rework: e.Back, Trigger: trigger})
 		}
 	}
-	if run.state.Stop != issueworkflow.StopNone {
+	if run.state.Stop != nil && run.compat() {
 		out.ReworkStep = reworkStepOf(run.def, run.state.BlockedFrom)
 	}
 	return out, nil
+}
+
+// fillTaskLinks adds to an open task of the current entry what it reads, what it
+// must answer, and how many files it has for each slot it requires.
+func (h *Handler) fillTaskLinks(ctx context.Context, run *flowRun, rows []flowTaskRow, i int, prefix string, item *IssueFlowTaskResponse) {
+	doc, ok := flowGraphTask(run.def.Graph, item.Step, item.Task)
+	if !ok {
+		return
+	}
+	links := func(in []issueworkflow.TaskInput) []IssueFlowLinkResponse {
+		out := make([]IssueFlowLinkResponse, 0, len(in))
+		for _, l := range flowRowIdentifiers(prefix, rows, in) {
+			link := IssueFlowLinkResponse{Identifier: l.Identifier, Task: l.Key, Slot: l.Title}
+			for _, r := range rows {
+				if r.state.Step+"/"+r.state.Key == l.Identifier || r.state.Round == l.Round && issueworkflow.RowRef(r.state.Step, r.state.Key) == l.Identifier {
+					link.IssueID = uuidToString(r.issue.ID)
+				}
+			}
+			out = append(out, link)
+		}
+		return out
+	}
+	if !run.compat() {
+		inputs, feedback := issueworkflow.TaskLinks(run.def.Graph, run.state, taskStates(rows), doc)
+		item.Inputs, item.Feedback = links(inputs), links(feedback)
+	}
+	if files := requiredFiles(doc); len(files) > 0 {
+		have, err := h.flowTaskFiles(ctx, rows[i].issue, flowActor{})
+		if err != nil {
+			return
+		}
+		for _, f := range files {
+			item.SlotStatus = append(item.SlotStatus, IssueFlowSlotStatusResponse{Slot: f.Slot, Min: f.Min, Max: f.Max, Count: issueworkflow.CountSlotFiles(f, have)})
+		}
+	}
+}
+
+func requiredFiles(task issueworkflow.DocTask) []issueworkflow.FileReq {
+	if task.Requires == nil {
+		return nil
+	}
+	return task.Requires.Files
 }
 
 // reworkStepOf returns the step the first rework transition of from leads to, or "" when from has none.

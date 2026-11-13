@@ -919,3 +919,89 @@ func ApplyOpened(g Graph, st State, opened []OpenTask) State {
 	}
 	return st
 }
+
+// EntryRound is the flow_round of the task rows of the current entry into the
+// step the request is at: the activation, or the schema 1 round on a graph
+// lifted from schema 1.
+func EntryRound(g Graph, st State) int { return entryRound(g, st) }
+
+// TaskBaseKey is the key of the task a row key belongs to: the row key itself, or
+// the part before the tilde of an instance (key~i).
+func TaskBaseKey(rowKey string) string { return instanceBaseKey(rowKey) }
+
+// FactValues reads the values of the named facts of a set, each once; a fact
+// without a value is left out.
+func FactValues(fs FactSet, keys []string) map[string]any { return factValues(fs, keys) }
+
+// RowClass is how a closed task row counts in its join: pass, fail, block or
+// neutral. It is empty while the row is open or when the join ignores it.
+func RowClass(g Graph, ts TaskState) string {
+	step, ok := g.Step(ts.Step)
+	if !ok {
+		return ""
+	}
+	class, closed, counted := docTaskClass(g.Doc, step, ts)
+	if !closed || !counted {
+		return ""
+	}
+	return class
+}
+
+// AttachedFile is a file attached to a task: its name and content type.
+type AttachedFile struct {
+	Name        string
+	ContentType string
+}
+
+// CountSlotFiles counts the files that fit what a slot requires: the extension
+// and content type it lists (a slot that lists none takes every file).
+func CountSlotFiles(f FileReq, files []AttachedFile) int {
+	n := 0
+	for _, file := range files {
+		if fileFitsSlot(f, file) {
+			n++
+		}
+	}
+	return n
+}
+
+func fileFitsSlot(f FileReq, file AttachedFile) bool {
+	if len(f.Ext) > 0 {
+		name := strings.ToLower(file.Name)
+		fits := false
+		for _, ext := range f.Ext {
+			if strings.HasSuffix(name, strings.ToLower(ext)) {
+				fits = true
+			}
+		}
+		if !fits {
+			return false
+		}
+	}
+	if len(f.ContentTypes) > 0 {
+		kind := strings.ToLower(strings.TrimSpace(strings.SplitN(file.ContentType, ";", 2)[0]))
+		fits := false
+		for _, ct := range f.ContentTypes {
+			ct = strings.ToLower(ct)
+			if kind == ct || strings.HasSuffix(ct, "/*") && strings.HasPrefix(kind, strings.TrimSuffix(ct, "*")) {
+				fits = true
+			}
+		}
+		if !fits {
+			return false
+		}
+	}
+	return true
+}
+
+// SlotShortfall returns the first slot the files do not satisfy: fewer than min
+// or more than max fit it. ok is true when every slot is satisfied.
+func SlotShortfall(reqs []FileReq, files []AttachedFile) (slot FileReq, count int, ok bool) {
+	for _, f := range reqs {
+		n := CountSlotFiles(f, files)
+		if n < f.Min || (f.Max > 0 && n > f.Max) {
+			return f, n, false
+		}
+	}
+	return FileReq{}, 0, true
+}

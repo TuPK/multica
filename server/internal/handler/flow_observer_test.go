@@ -37,10 +37,16 @@ func observedFlowCalls() int {
 	return flowObserver.calls
 }
 
-func observeFlowDecision(def issueworkflow.Definition, state issueworkflow.FlowState, tasks []issueworkflow.TaskState, d issueworkflow.GraphDecision) {
+func observeFlowDecision(def issueworkflow.Definition, current issueworkflow.State, tasks []issueworkflow.TaskState, d issueworkflow.GraphDecision) {
 	diff := ""
-	oracle := oracleDecide(def, state, tasks)
-	if diff = compareWithOracle(def, state, oracle, d); diff != "" {
+	state := issueworkflow.Unadapt(current)
+	var oracle issueworkflow.Decision
+	// The oracle knows schema 1 only; a schema 2 graph is checked by its own tests.
+	if def.Graph.Compat == issueworkflow.CompatV1 {
+		oracle = oracleDecide(def, state, tasks)
+		diff = compareWithOracle(def, state, oracle, d)
+	}
+	if diff != "" {
 		diff = fmt.Sprintf("flow %q, step %s, rework %d, round_base %d, switches %v, tasks %+v\n  oracle: %+v\n  graph:  %+v\n  diff: %s",
 			def.Name, state.Step, state.Rework, state.RoundBase, state.Switches, tasks, oracle, d, diff)
 	}
@@ -158,7 +164,7 @@ func TestEngine_ObserverSeesEveryAdvance(t *testing.T) {
 	var calls []seen
 	var mu sync.Mutex
 	inner := flowDecideObserver
-	flowDecideObserver = func(def issueworkflow.Definition, state issueworkflow.FlowState, tasks []issueworkflow.TaskState, d issueworkflow.GraphDecision) {
+	flowDecideObserver = func(def issueworkflow.Definition, state issueworkflow.State, tasks []issueworkflow.TaskState, d issueworkflow.GraphDecision) {
 		mu.Lock()
 		calls = append(calls, seen{state.Step, d.Kind})
 		mu.Unlock()
