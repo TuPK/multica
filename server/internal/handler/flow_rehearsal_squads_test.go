@@ -279,6 +279,32 @@ func rehearseSquad(t *testing.T, squadKey string) {
 			}
 			rig.wantNoDuplicates(t, request)
 		})
+		// A gate that finds the defect in the sources (blocked, not rejected) stops the request at stop 1.
+		// The drafter could not fix it, so no rework round opens.
+		t.Run(name+"/gate blocked on the sources stops at one", func(t *testing.T) {
+			blockedOne := false
+			// Every switch is on, so the optional gates open too (Office Ops has only an optional gate).
+			request, seen := rig.reachReview(t, route, true, func(step, task string, round int, kind string) string {
+				if step == "gate" && kind == "gate" && !blockedOne {
+					blockedOne = true
+					return "blocked"
+				}
+				return approveAll(step, task, round, kind)
+			})
+			if !seen.sawGate {
+				t.Skip("this route has no gate")
+			}
+			state := rig.finalState(t, request)
+			if state.Step != "blocked" || state.Stop != issueworkflow.Stop1 || state.Rework != 0 {
+				t.Fatalf("step %q, stop %v, rework %d; want blocked at stop 1 with no rework used", state.Step, state.Stop, state.Rework)
+			}
+			if n := dbfx.Count(t, `SELECT count(*) FROM issue WHERE parent_issue_id = $1 AND flow_task IS NOT NULL AND flow_round >= 1`, request.ID); n != 0 {
+				t.Fatalf("%d tasks opened in a rework round for a defect the draft cannot fix", n)
+			}
+			if !containsAll(lastComment(t, request), "BLOCKED · stop 1") {
+				t.Fatalf("stop 1 comment = %q", lastComment(t, request))
+			}
+		})
 		t.Run(name+"/stop 1 when grounds are missing", func(t *testing.T) {
 			blockedOne := false
 			request, seen := rig.reachReview(t, route, true, func(step, task string, round int, kind string) string {

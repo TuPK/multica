@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "workflow",
   "id": "flow_kv_realestate",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "ui": false,
   "requires": [
     {
@@ -82,14 +82,20 @@
             "title": "Đọc hồ sơ bất động sản",
             "kind": "work",
             "role": "realestate_reader",
-            "instructions": "Đọc hồ sơ bất động sản. Chỉ đọc và trích dữ kiện từ các tệp đính kèm của request và từ nguồn mà vai của bạn được phép dùng; mỗi dữ kiện ghi kèm tệp và vị trí (hoặc nguồn và ngày mở nguồn). Không tính toán, không kết luận đúng sai. Đính kèm kết quả thành tệp `01-reader.md`.\n\nThiếu đầu vào mà không thể mặc định thì đây là điểm dừng 1: nêu từng mục thiếu trong comment rồi báo task bị chặn."
+            "requires": [
+              "attachment"
+            ],
+            "instructions": "Đọc hồ sơ bất động sản. Chỉ đọc và trích dữ kiện từ các tệp đính kèm của request và từ nguồn mà vai của bạn được phép dùng; mỗi dữ kiện ghi kèm tệp và vị trí (hoặc nguồn và ngày mở nguồn). Không tính toán, không kết luận đúng sai. Đính kèm kết quả thành tệp `01-reader.md`. Tệp là đầu ra của task: server không cho đóng task khi chưa có tệp đính kèm. Nếu vai của bạn không có công cụ ghi, vẫn tạo tệp bằng shell rồi đính kèm.\n\nThiếu đầu vào mà không thể mặc định thì đây là điểm dừng 1: nêu từng mục thiếu trong comment rồi báo task bị chặn."
           },
           {
             "key": "area_research",
             "title": "Tra cứu khu vực",
             "kind": "work",
             "role": "realestate_area_research",
-            "instructions": "Tra cứu khu vực. Chỉ đọc và trích dữ kiện từ các tệp đính kèm của request và từ nguồn mà vai của bạn được phép dùng; mỗi dữ kiện ghi kèm tệp và vị trí (hoặc nguồn và ngày mở nguồn). Không tính toán, không kết luận đúng sai. Đính kèm kết quả thành tệp `02-area_research.md`.\n\nThiếu đầu vào mà không thể mặc định thì đây là điểm dừng 1: nêu từng mục thiếu trong comment rồi báo task bị chặn.",
+            "requires": [
+              "attachment"
+            ],
+            "instructions": "Tra cứu khu vực. Chỉ đọc và trích dữ kiện từ các tệp đính kèm của request và từ nguồn mà vai của bạn được phép dùng; mỗi dữ kiện ghi kèm tệp và vị trí (hoặc nguồn và ngày mở nguồn). Không tính toán, không kết luận đúng sai. Đính kèm kết quả thành tệp `02-area_research.md`. Tệp là đầu ra của task: server không cho đóng task khi chưa có tệp đính kèm. Nếu vai của bạn không có công cụ ghi, vẫn tạo tệp bằng shell rồi đính kèm.\n\nThiếu đầu vào mà không thể mặc định thì đây là điểm dừng 1: nêu từng mục thiếu trong comment rồi báo task bị chặn.",
             "when": {
               "all": [
                 {
@@ -194,7 +200,7 @@
             "title": "Soát bộ đăng tin",
             "kind": "gate",
             "role": "realestate_listing_gate",
-            "instructions": "Soát bộ đăng tin. Chỉ đọc, không sửa gì: bạn chỉ có tệp bản nháp và nguồn được liên kết, không có lập luận của người soạn.\n\nDòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).",
+            "instructions": "Soát bộ đăng tin. Chỉ đọc, không sửa gì: bạn chỉ có tệp bản nháp và nguồn được liên kết, không có lập luận của người soạn.\n\nDòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).\n\nNếu mọi lỗi chặn nằm ở nguồn gốc (tệp đầu vào của bước thu thập thiếu, mâu thuẫn nhau hoặc chưa được xác nhận) và bản nháp đã nêu đúng từng lỗi đó, bản nháp không sửa được: nêu từng mục cần người xác nhận trong comment rồi đóng task bằng `multica issue status <id> blocked --outcome blocked` (dừng 1, người dùng xác nhận rồi cho request chạy tiếp) thay vì rejected. Chỉ dùng rejected khi lỗi nằm ở bản nháp và người soạn sửa được.",
             "when": {
               "field": "switch.route",
               "op": "eq",
@@ -209,7 +215,7 @@
             "title": "Soát thông tin quy hoạch",
             "kind": "gate",
             "role": "realestate_planning_gate",
-            "instructions": "Soát thông tin quy hoạch. Chỉ đọc, không sửa gì: bạn chỉ có tệp bản nháp và nguồn được liên kết, không có lập luận của người soạn.\n\nDòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).",
+            "instructions": "Soát thông tin quy hoạch. Chỉ đọc, không sửa gì: bạn chỉ có tệp bản nháp và nguồn được liên kết, không có lập luận của người soạn.\n\nDòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).\n\nNếu mọi lỗi chặn nằm ở nguồn gốc (tệp đầu vào của bước thu thập thiếu, mâu thuẫn nhau hoặc chưa được xác nhận) và bản nháp đã nêu đúng từng lỗi đó, bản nháp không sửa được: nêu từng mục cần người xác nhận trong comment rồi đóng task bằng `multica issue status <id> blocked --outcome blocked` (dừng 1, người dùng xác nhận rồi cho request chạy tiếp) thay vì rejected. Chỉ dùng rejected khi lỗi nằm ở bản nháp và người soạn sửa được.",
             "when": {
               "all": [
                 {
@@ -233,7 +239,7 @@
             "title": "Soát phương án vay",
             "kind": "gate",
             "role": "realestate_loan_gate",
-            "instructions": "Soát phương án vay. Chỉ đọc, không sửa gì: bạn chỉ có tệp bản nháp và nguồn được liên kết, không có lập luận của người soạn.\n\nDòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).",
+            "instructions": "Soát phương án vay. Chỉ đọc, không sửa gì: bạn chỉ có tệp bản nháp và nguồn được liên kết, không có lập luận của người soạn.\n\nDòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).\n\nNếu mọi lỗi chặn nằm ở nguồn gốc (tệp đầu vào của bước thu thập thiếu, mâu thuẫn nhau hoặc chưa được xác nhận) và bản nháp đã nêu đúng từng lỗi đó, bản nháp không sửa được: nêu từng mục cần người xác nhận trong comment rồi đóng task bằng `multica issue status <id> blocked --outcome blocked` (dừng 1, người dùng xác nhận rồi cho request chạy tiếp) thay vì rejected. Chỉ dùng rejected khi lỗi nằm ở bản nháp và người soạn sửa được.",
             "when": {
               "field": "switch.route",
               "op": "eq",
@@ -305,7 +311,7 @@
             "title": "Kiểm định bàn giao",
             "kind": "gate",
             "role": "realestate_handover",
-            "instructions": "Đối chiếu sản phẩm cuối với kế hoạch của lead trên request và với kết luận của mọi cổng. Ghi comment bàn giao liệt kê việc người nhận phải tự quyết trước khi gửi, nộp, ký hoặc công bố bất cứ thứ gì, kèm chỗ chưa xác minh và cảnh báo.\n\nDòng đầu của comment là `VERDICT: QUA` hoặc `VERDICT: CHẶN`. QUA chỉ khi mọi cổng QUA trên bản cuối và sản phẩm khớp kế hoạch. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).",
+            "instructions": "Đối chiếu sản phẩm cuối với kế hoạch của lead trên request và với kết luận của mọi cổng. Ghi comment bàn giao liệt kê việc người nhận phải tự quyết trước khi gửi, nộp, ký hoặc công bố bất cứ thứ gì, kèm chỗ chưa xác minh và cảnh báo.\n\nDòng đầu của comment là `VERDICT: QUA` hoặc `VERDICT: CHẶN`. QUA chỉ khi mọi cổng QUA trên bản cuối và sản phẩm khớp kế hoạch. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).\n\nNếu mọi lỗi chặn nằm ở nguồn gốc (tệp đầu vào của bước thu thập thiếu, mâu thuẫn nhau hoặc chưa được xác nhận) và bản nháp đã nêu đúng từng lỗi đó, bản nháp không sửa được: nêu từng mục cần người xác nhận trong comment rồi đóng task bằng `multica issue status <id> blocked --outcome blocked` (dừng 1, người dùng xác nhận rồi cho request chạy tiếp) thay vì rejected. Chỉ dùng rejected khi lỗi nằm ở bản nháp và người soạn sửa được.",
             "requires": [
               "outcome"
             ]
