@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -34,9 +35,11 @@ func newKnowledgeEnv(t *testing.T) *knowledgeEnv {
 	t.Helper()
 	pool := sharedTestPool(t)
 	fx := testutil.New(pool, "", "")
-	userID := fx.User(t, "Knowledge Owner", "knowledge-owner-"+t.Name()+"@example.test")
+	// The test DB is shared and rows from earlier runs are not removed, so the
+	// email must be unique per run.
+	userID := fx.User(t, "Knowledge Owner", "knowledge-owner-"+uuid.NewString()+"@example.test")
 	fx = testutil.New(pool, "", userID)
-	wsID := fx.Workspace(t, "Knowledge WS", "knowledge-"+strings.ToLower(strings.ReplaceAll(t.Name(), "/", "-")))
+	wsID := fx.Workspace(t, "Knowledge WS", "knowledge-"+strings.ToLower(strings.ReplaceAll(t.Name(), "/", "-"))+"-"+uuid.NewString()[:8])
 	fx = testutil.New(pool, wsID, userID)
 	fx.Member(t, wsID, userID, "owner")
 	live := fx.Agent(t, "live", "")
