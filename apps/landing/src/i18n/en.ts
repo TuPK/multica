@@ -4,12 +4,12 @@ import type { Dict } from "./vi";
 export const en: Dict = {
   htmlLang: "en",
   meta: {
-    title: "AI Agent Company: a digital company staffed by AI agents",
+    title: "Delegora: a digital company staffed by AI agents",
     description:
       "Turn the AI accounts you already pay for into a team of industry specialists: they pick up work, hand it to each other, and stop only where your signature is needed. For individuals and businesses.",
   },
   nav: {
-    brandAria: "AI Agent Company, back to top",
+    brandAria: "Delegora, back to top",
     mainAria: "Main navigation",
     items: [
       { href: "#nganh", label: "Teams" },
@@ -29,7 +29,7 @@ export const en: Dict = {
     kickRest: " Yet it still waits for you to give every single order.",
     h1: "Hire a whole AI team. The last signature is yours.",
     bridge:
-      "AI Agent Company turns the AI accounts you already have into a team of industry specialists: they pick up work, hand it to each other, and stop only where your signature is needed.",
+      "Delegora turns the AI accounts you already have into a team of industry specialists: they pick up work, hand it to each other, and stop only where your signature is needed.",
     lead: "Accounting needs the cost of goods from sales? The task moves across on its own, with documents and history attached. Individual or business, you get more done without chasing anyone.",
     cta1: "Choose your teams",
     cta2: "See how to start",
@@ -85,7 +85,7 @@ export const en: Dict = {
       "Check every number and every sentence yourself",
       "Remember what's unfinished, then nudge the AI to continue",
     ],
-    goodLabel: "With AI Agent Company",
+    goodLabel: "With Delegora",
     goodBig: "AI runs the work. You make the call.",
     good: [
       "Assign once, and the right industry team picks it up",
@@ -349,7 +349,7 @@ export const en: Dict = {
   getStarted: {
     tag: "Get started",
     h2: "Three steps to put your AI accounts to work.",
-    p: "You don't have to drop the tools you use. AI Agent Company orchestrates them into a company.",
+    p: "You don't have to drop the tools you use. Delegora orchestrates them into a company.",
     steps: [
       { no: "STEP 1", icon: "i-spark", title: "Connect the AI accounts you have", text: "Teams run on the AI agent tools you've already installed and signed in to, on your machine or server.", to: "No need to switch tools" },
       { no: "STEP 2", icon: "i-office", title: "Choose your teams", text: "Start with the starter company or one industry team. Add more as work grows.", to: "Minutes to set up" },
@@ -390,7 +390,7 @@ export const en: Dict = {
     tag: "FAQ",
     h2: "Frequently asked questions",
     items: [
-      { q: "Do I need to already have an AI account?", a: "Yes. Teams run on the AI agent tools you've installed and signed in to, on your machine or server. AI Agent Company doesn't replace them. It assigns work, passes work between teams and gathers results in one place." },
+      { q: "Do I need to already have an AI account?", a: "Yes. Teams run on the AI agent tools you've installed and signed in to, on your machine or server. Delegora doesn't replace them. It assigns work, passes work between teams and gathers results in one place." },
       { q: "Can the teams work across each other?", a: "Yes. A team can hand work to another team or ask it for information. Every handover has a source, a recipient and a history, and the owner can review it at any time." },
       { q: "Can I start with just one team?", a: "Yes. Set up one team, try it, then add more when needed. New teams automatically access the company's shared knowledge base." },
       { q: "Does AI replace professionals?", a: "No. Teams draft and check. A qualified person reviews, signs and takes responsibility. Teams don't sign, file, examine patients, approve loans or give legal advice." },
@@ -414,6 +414,6 @@ export const en: Dict = {
       { href: "#gia", label: "Pricing" },
       { href: "#dang-ky", label: "Contact" },
     ],
-    copyright: "© 2026 AI Agent Company",
+    copyright: "© 2026 Delegora",
   },
 };

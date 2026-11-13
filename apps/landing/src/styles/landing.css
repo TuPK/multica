@@ -1,7 +1,7 @@
 /* Landing page styles. Everything sits under .mc, which the layout puts on <body>. */
 
 /* Theme tokens. Dark is the default; [data-theme="light"] on <html> switches to the light palette. */
-:root{color-scheme:dark;--bg:#06080c;--panel:#0b1018;--line:#1a2330;--line2:#243247;--line3:var(--line3);--ink:#eef2f7;--muted:#8b97a8;--soft:#b9c3d1;--green:#3ddc97;--amber:#ffb547;--accent:#4f9cff;--on-accent:#05070a;--deep:var(--deep);--surf:var(--surf);--hot:var(--hot);--hot2:var(--hot2);--glow:var(--glow);--warn-bg:var(--warn-bg);--ok-bg:var(--ok-bg);--dot:var(--dot);--bar:var(--bar);--chip:var(--chip);--amber-ink:var(--amber-ink);--green-ink:var(--green-ink);--shadow:var(--shadow);--grid:var(--grid);--grid2:var(--grid2)}
+:root{color-scheme:dark;--bg:#06080c;--panel:#0b1018;--line:#1a2330;--line2:#243247;--line3:#2a364a;--ink:#eef2f7;--muted:#8b97a8;--soft:#b9c3d1;--green:#3ddc97;--amber:#ffb547;--accent:#4f9cff;--on-accent:#05070a;--deep:#080c12;--surf:#0d1521;--hot:#0e1826;--hot2:#10203a;--glow:#101c2e;--warn-bg:#15130c;--ok-bg:#0a1612;--dot:#2a3648;--bar:rgba(6,8,12,.78);--chip:rgba(11,16,24,.94);--amber-ink:#ffe0ac;--green-ink:#c9f7e3;--shadow:rgba(0,0,0,.95);--grid:rgba(255,255,255,.035);--grid2:rgba(255,255,255,.025)}
 :root[data-theme="light"]{color-scheme:light;--bg:#f5f7fb;--panel:#ffffff;--line:#e2e8f0;--line2:#d0d9e6;--line3:#bfcadb;--ink:#0c1421;--muted:#566377;--soft:#35425a;--green:#1fbf80;--amber:#d98200;--accent:#1f6feb;--on-accent:#ffffff;--deep:#eef2f8;--surf:#f4f7fb;--hot:#e7f0ff;--hot2:#e2edff;--glow:#e4eeff;--warn-bg:#fff6e4;--ok-bg:#e9f9f1;--dot:#c3cddb;--bar:rgba(245,247,251,.84);--chip:rgba(255,255,255,.96);--amber-ink:#8a5200;--green-ink:#0b6b46;--shadow:rgba(30,50,90,.28);--grid:rgba(12,20,33,.05);--grid2:rgba(12,20,33,.04)}
 body{margin:0;background:var(--bg)}
 .mc{font-family:'Be Vietnam Pro',system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6;font-size:17px;width:100%;overflow-x:clip;-webkit-font-smoothing:antialiased;position:relative;min-height:100vh}
@@ -54,7 +54,9 @@ body{margin:0;background:var(--bg)}
 .mc .topbar{position:sticky;top:0;z-index:8;background:var(--bar);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
 .mc .topbar .wrap{display:flex;align-items:center;justify-content:space-between;height:74px;gap:24px}
 .mc .brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:18px;letter-spacing:-0.01em;white-space:nowrap}
-.mc .mark{width:34px;height:34px;border-radius:10px;display:inline-grid;place-items:center;color:var(--on-accent);font-size:13px;font-weight:800;background:var(--accent)}
+.mc .logo{display:inline-flex;align-items:center;gap:.277em;font-size:34px;line-height:1}
+.mc .logo svg{height:1em;width:auto;display:block}
+.mc footer .logo{font-size:26px}
 .mc .nav-links{display:flex;gap:28px;font-size:15px;color:var(--soft);font-weight:500}
 .mc .nav-links a:hover{color:var(--ink)}
 .mc .nav-cta{height:44px;padding:0 22px;font-size:15px;border-radius:12px}
@@ -311,7 +313,7 @@ body{margin:0;background:var(--bg)}
   .mc .topbar .wrap{gap:12px}
   .mc .nav-right{gap:10px}
   .mc .lang a{padding:6px 10px}
-  .mc .brand-name{display:none}
+  .mc .logo .logo-word{display:none}
   .mc .ind{grid-template-columns:1fr 1fr;gap:10px}
   .mc .tile{padding:16px}
   .mc .tile h3{font-size:15px}

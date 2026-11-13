@@ -2,12 +2,12 @@
 export const vi = {
   htmlLang: "vi",
   meta: {
-    title: "AI Agent Company: công ty số với nhân viên là AI agent",
+    title: "Delegora: công ty số với nhân viên là AI agent",
     description:
       "Biến tài khoản AI bạn đang có thành đội nhân viên chuyên theo ngành: tự nhận việc, chuyển việc cho nhau, chỉ dừng ở bước cần bạn duyệt. Cho cá nhân và doanh nghiệp.",
   },
   nav: {
-    brandAria: "AI Agent Company, về đầu trang",
+    brandAria: "Delegora, về đầu trang",
     mainAria: "Điều hướng chính",
     items: [
       { href: "#nganh", label: "Phòng ban" },
@@ -27,7 +27,7 @@ export const vi = {
     kickRest: " Nhưng nó vẫn chờ bạn ra lệnh từng việc một.",
     h1: "Tuyển cả một đội AI. Người ký tên cuối cùng là bạn.",
     bridge:
-      "AI Agent Company biến tài khoản AI bạn đang có thành đội nhân viên chuyên theo ngành: tự nhận việc, chuyển việc cho nhau, và chỉ dừng lại ở bước cần chữ ký của bạn.",
+      "Delegora biến tài khoản AI bạn đang có thành đội nhân viên chuyên theo ngành: tự nhận việc, chuyển việc cho nhau, và chỉ dừng lại ở bước cần chữ ký của bạn.",
     lead: "Kế toán cần giá vốn từ bán hàng? Việc tự chuyển sang, kèm chứng từ và lịch sử. Cá nhân hay doanh nghiệp, bạn làm được nhiều hơn mà không phải ngồi nhắc việc.",
     cta1: "Chọn phòng ban",
     cta2: "Xem cách bắt đầu",
@@ -83,7 +83,7 @@ export const vi = {
       "Tự kiểm tra từng con số, từng câu chữ",
       "Nhớ việc nào đang dở, rồi nhắc AI làm tiếp",
     ],
-    goodLabel: "Với AI Agent Company",
+    goodLabel: "Với Delegora",
     goodBig: "AI chạy việc. Bạn là người quyết định.",
     good: [
       "Giao việc một lần, đội đúng ngành nhận ngay",
@@ -347,7 +347,7 @@ export const vi = {
   getStarted: {
     tag: "Bắt đầu",
     h2: "Ba bước để tài khoản AI của bạn đi làm.",
-    p: "Bạn không phải bỏ công cụ đang dùng. AI Agent Company điều phối chúng thành một công ty.",
+    p: "Bạn không phải bỏ công cụ đang dùng. Delegora điều phối chúng thành một công ty.",
     steps: [
       { no: "BƯỚC 1", icon: "i-spark", title: "Nối tài khoản AI bạn có", text: "Đội chạy bằng các công cụ AI agent bạn đã cài và đăng nhập, trên máy hoặc máy chủ của bạn.", to: "Không cần đổi công cụ" },
       { no: "BƯỚC 2", icon: "i-office", title: "Chọn phòng ban", text: "Bắt đầu với bộ công ty khởi động hoặc một đội theo ngành. Thêm phòng khi công việc lớn lên.", to: "Vài phút để dựng" },
@@ -388,7 +388,7 @@ export const vi = {
     tag: "Hỏi đáp",
     h2: "Câu hỏi thường gặp",
     items: [
-      { q: "Tôi cần có sẵn tài khoản AI không?", a: "Có. Đội chạy bằng các công cụ AI agent bạn đã cài và đăng nhập, trên máy hoặc máy chủ của bạn. AI Agent Company không thay chúng. Nó giao việc, chuyển việc giữa các đội và gom kết quả về một chỗ." },
+      { q: "Tôi cần có sẵn tài khoản AI không?", a: "Có. Đội chạy bằng các công cụ AI agent bạn đã cài và đăng nhập, trên máy hoặc máy chủ của bạn. Delegora không thay chúng. Nó giao việc, chuyển việc giữa các đội và gom kết quả về một chỗ." },
       { q: "Các phòng có làm việc chéo với nhau được không?", a: "Có. Một đội có thể chuyển việc hoặc hỏi thông tin từ đội khác. Mỗi lần chuyển đều có nguồn, người nhận và lịch sử, và người phụ trách có thể xem lại bất cứ lúc nào." },
       { q: "Tôi có thể bắt đầu với một phòng không?", a: "Được. Dựng một đội trước, dùng thử, rồi thêm đội khác khi cần. Đội mới tự truy cập kho tri thức chung của công ty." },
       { q: "AI có thay thế người làm chuyên môn không?", a: "Không. Đội soạn bản nháp và kiểm tra. Người có chuyên môn xem, ký và chịu trách nhiệm. Đội không ký, không nộp, không khám bệnh, không duyệt vay và không tư vấn pháp lý." },
@@ -412,7 +412,7 @@ export const vi = {
       { href: "#gia", label: "Giá" },
       { href: "#dang-ky", label: "Liên hệ" },
     ],
-    copyright: "© 2026 AI Agent Company",
+    copyright: "© 2026 Delegora",
   },
 };
 

@@ -1,5 +1,6 @@
 ---
 import { getDict, type Lang } from "../i18n";
+import Logo from "./Logo.astro";
 
 interface Props {
   lang: Lang;
@@ -11,7 +12,7 @@ const t = getDict(lang).footer;
 
 <footer>
   <div class="wrap row2">
-    <div class="brand" style="font-size:16px"><span class="mark" style="width:28px;height:28px;font-size:11px">AI</span>AI Agent Company</div>
+    <div class="brand"><Logo /></div>
     <nav aria-label={t.navAria}>
       {t.items.map((i) => <a href={i.href}>{i.label}</a>)}
     </nav>

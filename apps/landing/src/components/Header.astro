@@ -1,5 +1,6 @@
 ---
 import { getDict, pathFor, type Lang } from "../i18n";
+import Logo from "./Logo.astro";
 
 interface Props {
   lang: Lang;
@@ -16,7 +17,7 @@ const langs: { code: Lang; label: string }[] = [
 <header class="topbar">
   <div class="wrap">
     <a class="brand" href="#top" aria-label={nav.brandAria}>
-      <span class="mark">AI</span><span class="brand-name">AI Agent Company</span>
+      <Logo />
     </a>
     <nav class="nav-links" aria-label={nav.mainAria}>
       {nav.items.map((i) => <a href={i.href}>{i.label}</a>)}
