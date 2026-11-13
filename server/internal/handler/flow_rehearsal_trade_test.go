@@ -261,7 +261,7 @@ func TestRehearsal_Trade_Stop1MissingInvoice(t *testing.T) {
 
 	blockTask(t, tasksAt(t, request, "collect", 0)["docs"])
 	st := advance(t, request).State
-	if st.Step != "blocked" || st.Stop != issueworkflow.Stop1 || requestStatus(t, request) != "blocked" {
+	if st.Step != "blocked" || stopOf(st) != issueworkflow.Stop1 || requestStatus(t, request) != "blocked" {
 		t.Fatalf("step %q, stop %v, status %q; want blocked at stop 1", st.Step, st.Stop, requestStatus(t, request))
 	}
 	if !containsAll(lastComment(t, request), "BLOCKED · stop 1 · thiếu căn cứ", "mention://member/"+testUserID) {
@@ -340,7 +340,7 @@ func TestRehearsal_Trade_ThirdRejectionStop3ThenResume(t *testing.T) {
 		}
 	}
 	st := advance(t, request).State
-	if st.Step != "blocked" || st.Stop != issueworkflow.Stop3 {
+	if st.Step != "blocked" || stopOf(st) != issueworkflow.Stop3 {
 		t.Fatalf("step %q, stop %v; want blocked at stop 3", st.Step, st.Stop)
 	}
 	if !containsAll(lastComment(t, request), "BLOCKED · stop 3 · hết 2 vòng sửa") {

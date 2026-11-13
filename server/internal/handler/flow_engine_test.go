@@ -382,8 +382,8 @@ func TestAdvance_ReworkTwiceThenStop3(t *testing.T) {
 			gates = f.finishDraft(t, request, round+1)
 			continue
 		}
-		if resp.State.Step != "blocked" || resp.State.Stop != issueworkflow.Stop3 || resp.State.Rework != 2 {
-			t.Fatalf("after the third rejection: step %q, stop %v, rework %d; want blocked, stop 3, rework 2", resp.State.Step, resp.State.Stop, resp.State.Rework)
+		if resp.State.Step != "blocked" || stopOf(resp.State) != issueworkflow.Stop3 || resp.State.Rework != 2 {
+			t.Fatalf("after the third rejection: step %q, stop %v, rework %d; want blocked, stop 3, rework 2", resp.State.Step, stopOf(resp.State), resp.State.Rework)
 		}
 	}
 	// Every round opened every gate again: 2 gates over 3 rounds.
@@ -417,8 +417,8 @@ func TestAdvance_BlockedOutcomeStop1(t *testing.T) {
 	// The docs reader reports that an invoice is missing while customs still runs.
 	blockTask(t, collect["docs"])
 	resp := advance(t, request)
-	if resp.State.Step != "blocked" || resp.State.Stop != issueworkflow.Stop1 {
-		t.Fatalf("step %q, stop %v; want blocked, stop 1", resp.State.Step, resp.State.Stop)
+	if resp.State.Step != "blocked" || stopOf(resp.State) != issueworkflow.Stop1 {
+		t.Fatalf("step %q, stop %v; want blocked, stop 1", resp.State.Step, stopOf(resp.State))
 	}
 	if requestStatus(t, request) != "blocked" {
 		t.Fatalf("request status = %q, want blocked", requestStatus(t, request))
@@ -532,8 +532,8 @@ func TestAdvance_AgentUnavailableBlocks(t *testing.T) {
 	t.Cleanup(func() { dbfx.Exec(t, `UPDATE agent SET archived_at = NULL WHERE id = $1`, f.Agents.Docs) })
 
 	state := f.plan(t, request, nil)
-	if state.Step != "blocked" || state.Stop != issueworkflow.StopStalled {
-		t.Fatalf("step %q, stop %v; want blocked, stalled", state.Step, state.Stop)
+	if state.Step != "blocked" || stopOf(state) != issueworkflow.StopStalled {
+		t.Fatalf("step %q, stop %v; want blocked, stalled", state.Step, stopOf(state))
 	}
 	if got := countTasks(t, request); got != 0 {
 		t.Fatalf("tasks opened for an unavailable agent: %d", got)
@@ -668,7 +668,7 @@ func TestResume_Stop3ResetsRework(t *testing.T) {
 			gates = f.finishDraft(t, request, round+1)
 		}
 	}
-	if st := advance(t, request).State; st.Stop != issueworkflow.Stop3 {
+	if st := advance(t, request).State; stopOf(st) != issueworkflow.Stop3 {
 		t.Fatalf("the request is not at stop 3: %+v", st)
 	}
 
@@ -676,8 +676,8 @@ func TestResume_Stop3ResetsRework(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResumeFlow: %v", err)
 	}
-	if state.Step != "gate" || state.Rework != 0 || state.Stop != issueworkflow.StopNone {
-		t.Fatalf("after resume: step %q, rework %d, stop %v; want gate, 0, none", state.Step, state.Rework, state.Stop)
+	if state.Step != "gate" || state.Rework != 0 || stopOf(state) != issueworkflow.StopNone {
+		t.Fatalf("after resume: step %q, rework %d, stop %v; want gate, 0, none", state.Step, state.Rework, stopOf(state))
 	}
 	// Every gate of the step opened again, in a round the old ones do not use.
 	var round int32
@@ -704,7 +704,7 @@ func TestResume_Stop1ReopensOnlyBlockedTasks(t *testing.T) {
 	collect := tasksAt(t, request, "collect", 0)
 	finishTask(t, collect["customs"], f.Agents.Customs, "")
 	blockTask(t, collect["docs"])
-	if st := advance(t, request).State; st.Stop != issueworkflow.Stop1 {
+	if st := advance(t, request).State; stopOf(st) != issueworkflow.Stop1 {
 		t.Fatalf("the request is not at stop 1: %+v", st)
 	}
 
@@ -712,8 +712,8 @@ func TestResume_Stop1ReopensOnlyBlockedTasks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResumeFlow: %v", err)
 	}
-	if state.Step != "collect" || state.Stop != issueworkflow.StopNone {
-		t.Fatalf("after resume: step %q, stop %v; want collect, none", state.Step, state.Stop)
+	if state.Step != "collect" || stopOf(state) != issueworkflow.StopNone {
+		t.Fatalf("after resume: step %q, stop %v; want collect, none", state.Step, stopOf(state))
 	}
 	if status, _, _ := issueStatusAndAssignee(t, collect["docs"]); status != "todo" {
 		t.Fatalf("the blocked task has status %q after resume, want todo", status)

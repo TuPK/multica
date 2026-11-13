@@ -33,7 +33,7 @@ func TestRehearsal_Trade_GateBlockedOnTheSourcesStopsAtOne(t *testing.T) {
 	finishTask(t, gates["customs_gate"], f.Agents.CustomsGate, "rejected")
 	st := advance(t, request).State
 
-	if st.Step != "blocked" || st.Stop != issueworkflow.Stop1 || st.Rework != 0 {
+	if st.Step != "blocked" || stopOf(st) != issueworkflow.Stop1 || st.Rework != 0 {
 		t.Fatalf("step %q, stop %v, rework %d; want blocked at stop 1 with no rework used", st.Step, st.Stop, st.Rework)
 	}
 	if n := len(tasksAt(t, request, "draft", 1)); n != 0 {

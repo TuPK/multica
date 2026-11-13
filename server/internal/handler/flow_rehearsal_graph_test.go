@@ -662,8 +662,8 @@ func TestRehearsalGraph_CapReachedStalls(t *testing.T) {
 	rig.finishAll(request, "draft", 0, always(""))
 	st := rig.advance(request)
 	// Three task issues are open or closed; the two gates would be the fourth and the fifth.
-	if st.StopInfo == nil || st.StopInfo.Code != issueworkflow.DocStopStalled || requestStatus(t, request) != "blocked" {
-		t.Fatalf("stop %+v, status %q; want stalled at blocked", st.StopInfo, requestStatus(t, request))
+	if st.Stop == nil || st.Stop.Code != issueworkflow.DocStopStalled || requestStatus(t, request) != "blocked" {
+		t.Fatalf("stop %+v, status %q; want stalled at blocked", st.Stop, requestStatus(t, request))
 	}
 	if n := len(rig.rows(request, "gate", 0)); n != 0 {
 		t.Fatalf("%d gates opened past the cap", n)
@@ -683,8 +683,8 @@ func TestRehearsalGraph_PoolTooSmallStalls(t *testing.T) {
 	request := rig.newRequest()
 	rig.complete(request, map[string]any{"sources": []string{"a", "b", "c"}})
 	st := rig.state(request)
-	if st.StopInfo == nil || st.StopInfo.Code != issueworkflow.DocStopStalled {
-		t.Fatalf("stop %+v, want stalled", st.StopInfo)
+	if st.Stop == nil || st.Stop.Code != issueworkflow.DocStopStalled {
+		t.Fatalf("stop %+v, want stalled", st.Stop)
 	}
 	if n := rig.subIssues(request); n != 0 {
 		t.Fatalf("%d tasks opened for a pool too small, want none", n)
@@ -722,8 +722,8 @@ func TestRehearsalGraph_ReleaseWithoutCheckpointStalls(t *testing.T) {
 	rig.advance(request)
 	rig.finishAll(request, "handover", 0, always("approved"))
 	st := rig.advance(request)
-	if st.StopInfo == nil || st.StopInfo.Code != issueworkflow.DocStopStalled || requestStatus(t, request) != "blocked" {
-		t.Fatalf("stop %+v, status %q; want stalled at blocked", st.StopInfo, requestStatus(t, request))
+	if st.Stop == nil || st.Stop.Code != issueworkflow.DocStopStalled || requestStatus(t, request) != "blocked" {
+		t.Fatalf("stop %+v, status %q; want stalled at blocked", st.Stop, requestStatus(t, request))
 	}
 	logged := flowTransitions(t, request)
 	if last := logged[len(logged)-1]; last["reason"] != issueworkflow.ReasonReleaseWithoutCheckpoint {
@@ -810,14 +810,14 @@ func TestRehearsalGraph_SweepRemindsHumanTaskThenStalls(t *testing.T) {
 	if n := dbfx.Count(t, `SELECT count(*) FROM comment WHERE type = 'system' AND content LIKE '%mention://member/%' AND issue_id = $1`, rows["reviewer~1"]); n != 1 {
 		t.Fatalf("%d reminders mention the reviewer, want 1", n)
 	}
-	if st := rig.state(request); st.StopInfo != nil {
-		t.Fatalf("the request stalled after the reminder: %+v", st.StopInfo)
+	if st := rig.state(request); st.Stop != nil {
+		t.Fatalf("the request stalled after the reminder: %+v", st.Stop)
 	}
 	age(25)
 	sweep(t)
 	st := rig.state(request)
-	if st.StopInfo == nil || st.StopInfo.Code != issueworkflow.DocStopStalled || requestStatus(t, request) != "blocked" {
-		t.Fatalf("stop %+v, status %q; want stalled at blocked after the wait", st.StopInfo, requestStatus(t, request))
+	if st.Stop == nil || st.Stop.Code != issueworkflow.DocStopStalled || requestStatus(t, request) != "blocked" {
+		t.Fatalf("stop %+v, status %q; want stalled at blocked after the wait", st.Stop, requestStatus(t, request))
 	}
 }
 
@@ -854,8 +854,8 @@ func TestRehearsalGraph_CrossReviewTwoAgents(t *testing.T) {
 	own.complete(selfRequest, nil)
 	own.finishAll(selfRequest, "build", 0, always(""))
 	own.advance(selfRequest)
-	if st := own.state(selfRequest); st.StopInfo == nil || st.StopInfo.Code != issueworkflow.DocStopStalled {
-		t.Fatalf("stop %+v, want stalled for an agent that judges its own work", st.StopInfo)
+	if st := own.state(selfRequest); st.Stop == nil || st.Stop.Code != issueworkflow.DocStopStalled {
+		t.Fatalf("stop %+v, want stalled for an agent that judges its own work", st.Stop)
 	}
 	if n := len(own.rows(selfRequest, "review", 0)); n != 0 {
 		t.Fatalf("%d gates opened, want none", n)
@@ -891,7 +891,7 @@ func TestRehearsalGraph_PlannerTaskSetsListThenFanOut(t *testing.T) {
 
 	rows := rig.rows(request, "fanout", 0)
 	if len(rows) == 0 {
-		t.Logf("state after planning: step %s stop %+v vars %v comment %q", st0.Step, st0.StopInfo, st0.Vars, lastComment(t, request))
+		t.Logf("state after planning: step %s stop %+v vars %v comment %q", st0.Step, st0.Stop, st0.Vars, lastComment(t, request))
 	}
 	if len(rows) != 6 || rows["research_topic~6"] == "" || rows["research_topic~7"] != "" {
 		t.Fatalf("fan-out rows = %v, want research_topic~1..6", rows)
@@ -1041,8 +1041,8 @@ func TestRehearsalGraph_InputsFollowThePathTaken(t *testing.T) {
 	needs.finishAll(missing, "work_a", 0, always(""))
 	needs.advance(missing)
 	st := needs.state(missing)
-	if st.StopInfo == nil || st.StopInfo.Code != issueworkflow.DocStopStalled {
-		t.Fatalf("stop %+v, want stalled for a required input that never ran", st.StopInfo)
+	if st.Stop == nil || st.Stop.Code != issueworkflow.DocStopStalled {
+		t.Fatalf("stop %+v, want stalled for a required input that never ran", st.Stop)
 	}
 	if logged := flowTransitions(t, missing); logged[len(logged)-1]["reason"] != issueworkflow.ReasonInputMissing {
 		t.Fatalf("the stop was logged with %v, want input_missing", logged[len(logged)-1])

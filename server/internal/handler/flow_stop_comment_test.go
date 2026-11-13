@@ -49,7 +49,7 @@ func TestStopComment_LeadStop1IsNotPostedTwice(t *testing.T) {
 	if got := systemStopCommentCount(t, request, "BLOCKED · stop 1"); got != 0 {
 		t.Fatalf("the server posted %d stop 1 comments on top of the lead's", got)
 	}
-	if st := advance(t, request).State; st.Step != "blocked" || st.Stop != issueworkflow.Stop1 || requestStatus(t, request) != "blocked" {
+	if st := advance(t, request).State; st.Step != "blocked" || stopOf(st) != issueworkflow.Stop1 || requestStatus(t, request) != "blocked" {
 		t.Fatalf("step %q, stop %v, status %q; want blocked at stop 1 with the status set by the server", st.Step, st.Stop, requestStatus(t, request))
 	}
 }
@@ -141,7 +141,7 @@ func TestStopComment_LeadStop3IsNotPostedTwice(t *testing.T) {
 			gates = f.finishDraft(t, request, round+1)
 		}
 	}
-	if st := advance(t, request).State; st.Step != "blocked" || st.Stop != issueworkflow.Stop3 {
+	if st := advance(t, request).State; st.Step != "blocked" || stopOf(st) != issueworkflow.Stop3 {
 		t.Fatalf("step %q, stop %v; want blocked at stop 3", st.Step, st.Stop)
 	}
 	if got := stopCommentCount(t, request, "BLOCKED · stop 3"); got != 1 {

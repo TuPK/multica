@@ -104,7 +104,7 @@ func TestFlowAPI_StateShape(t *testing.T) {
 	if !state.Managed || state.Role != issueworkflow.RoleRequest || state.WorkflowID != f.Workflow.ID || state.WorkflowName != f.Workflow.Name {
 		t.Fatalf("state = %+v", state)
 	}
-	if state.Step != "collect" || state.Rework != 0 || state.Stop != issueworkflow.StopNone || state.EnteredAt == "" || state.Auto {
+	if state.Step != "collect" || state.Rework != 0 || stopOf(state) != issueworkflow.StopNone || state.EnteredAt == "" || state.Auto {
 		t.Fatalf("state = %+v", state)
 	}
 	if state.Switches["customs_lookup"] != true || state.Switches["route"] != "shipment_dossier" || state.Switches["export"] != false {
@@ -222,7 +222,7 @@ func TestFlowAPI_PlanBlockedStopsAtOne(t *testing.T) {
 	c.call("lead", testHandler.PlanIssueFlow, "POST", "/plan", map[string]any{
 		"blocked": map[string]any{"missing": []string{"invoice", "packing list"}, "reason": "no invoice"},
 	}).Want(http.StatusOK).JSON(&state)
-	if state.Step != "blocked" || state.Stop != issueworkflow.Stop1 {
+	if state.Step != "blocked" || stopOf(state) != issueworkflow.Stop1 {
 		t.Fatalf("state = %+v, want blocked at stop 1", state)
 	}
 	var comment string
@@ -294,4 +294,18 @@ func TestFlowAPI_FlowAutoAdminOnly(t *testing.T) {
 	plain := createTestWorkflow(t, "Plain auto "+workflowTestSuffix(), "in_progress")
 	req := withURLParam(newRequest("PUT", "/api/issue-workflows/"+plain.ID+"/flow-auto", map[string]any{"auto": true}), "id", plain.ID)
 	testutil.Call(t, testHandler.SetIssueWorkflowFlowAuto, req).Want(http.StatusConflict)
+}
+
+// stopOf reads the stop of a state the way schema 1 numbered it: none, 1, 3 or stalled.
+// The answer carries the stop as an object (spec 7.1); the tests of schema 1 flows speak the old numbers.
+func stopOf(state IssueFlowStateResponse) issueworkflow.Stop {
+	switch {
+	case state.Stop == nil:
+		return issueworkflow.StopNone
+	case state.Stop.LegacyNo == 1:
+		return issueworkflow.Stop1
+	case state.Stop.LegacyNo == 3:
+		return issueworkflow.Stop3
+	}
+	return issueworkflow.StopStalled
 }

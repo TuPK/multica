@@ -2445,6 +2445,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 
 			// What this server's flow engine can express: limits, kinds, facts, features.
 			r.Get("/api/flow/capabilities", h.GetFlowCapabilities)
+			// The one route of the authoring family an agent may call: it checks a manifest and writes nothing.
+			r.Post("/api/flow/validate", h.ValidateFlowManifest)
 
 			// Projects
 			r.Route("/api/projects", func(r chi.Router) {

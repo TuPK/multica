@@ -164,8 +164,8 @@ func TestEngine_V1RowIsNeverRewritten(t *testing.T) {
 	stopped := f.newRequest(t)
 	f.plan(t, stopped, nil)
 	blockTask(t, tasksAt(t, stopped, "collect", 0)["docs"])
-	if st := advance(t, stopped).State; st.Stop != issueworkflow.Stop1 {
-		t.Fatalf("stop %v, want stop 1", st.Stop)
+	if st := advance(t, stopped).State; stopOf(st) != issueworkflow.Stop1 {
+		t.Fatalf("stop %v, want stop 1", stopOf(st))
 	}
 	if _, err := testHandler.ResumeFlow(context.Background(), loadIssueRow(t, uuidToString(stopped.ID)), FlowResumeInput{}); err != nil {
 		t.Fatal(err)

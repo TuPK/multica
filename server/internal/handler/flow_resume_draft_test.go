@@ -17,7 +17,7 @@ func stopAtDocsGate(t *testing.T, f tradeFlowFixture, request db.Issue) {
 	gates := f.driveToGate(t, request)
 	blockTask(t, gates["docs_gate"])
 	finishTask(t, gates["customs_gate"], f.Agents.CustomsGate, "rejected")
-	if st := advance(t, request).State; st.Step != "blocked" || st.Stop != issueworkflow.Stop1 {
+	if st := advance(t, request).State; st.Step != "blocked" || stopOf(st) != issueworkflow.Stop1 {
 		t.Fatalf("step %q, stop %v; want blocked at stop 1", st.Step, st.Stop)
 	}
 }
@@ -44,8 +44,8 @@ func TestFlowAPI_RunningGateHasNoReworkStepField(t *testing.T) {
 
 	var state IssueFlowStateResponse
 	c.call("manager", testHandler.GetIssueFlow, "GET", "", nil).Want(http.StatusOK).JSON(&state)
-	if state.Step != "gate" || state.Stop != issueworkflow.StopNone {
-		t.Fatalf("step %q, stop %v; want a running gate", state.Step, state.Stop)
+	if state.Step != "gate" || stopOf(state) != issueworkflow.StopNone {
+		t.Fatalf("step %q, stop %v; want a running gate", state.Step, stopOf(state))
 	}
 	if state.ReworkStep != "" {
 		t.Fatalf("rework_step = %q on a running request, want none", state.ReworkStep)
@@ -61,8 +61,8 @@ func TestFlowAPI_StopAtPlanNamesNoDraftingStep(t *testing.T) {
 
 	var state IssueFlowStateResponse
 	c.call("manager", testHandler.GetIssueFlow, "GET", "", nil).Want(http.StatusOK).JSON(&state)
-	if state.Stop != issueworkflow.Stop1 || state.ReworkStep != "" {
-		t.Fatalf("stop %v, rework_step %q; want stop 1 and no drafting step", state.Stop, state.ReworkStep)
+	if stopOf(state) != issueworkflow.Stop1 || state.ReworkStep != "" {
+		t.Fatalf("stop %v, rework_step %q; want stop 1 and no drafting step", stopOf(state), state.ReworkStep)
 	}
 }
 
@@ -76,8 +76,8 @@ func TestFlowAPI_ResumeToDraftOpensTheDraftInANewRound(t *testing.T) {
 
 	var state IssueFlowStateResponse
 	c.call("manager", testHandler.ResumeIssueFlow, "POST", "/resume", map[string]any{"to_step": "draft"}).Want(http.StatusOK).JSON(&state)
-	if state.Step != "draft" || state.Stop != issueworkflow.StopNone || state.Rework != 0 {
-		t.Fatalf("after resume to draft: step %q, stop %v, rework %d; want draft, none, 0", state.Step, state.Stop, state.Rework)
+	if state.Step != "draft" || stopOf(state) != issueworkflow.StopNone || state.Rework != 0 {
+		t.Fatalf("after resume to draft: step %q, stop %v, rework %d; want draft, none, 0", state.Step, stopOf(state), state.Rework)
 	}
 	if n := len(tasksAt(t, request, "draft", 1)); n == 0 {
 		t.Fatal("no draft task opened in the new round 1")

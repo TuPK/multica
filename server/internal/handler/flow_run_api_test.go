@@ -166,8 +166,8 @@ func TestVerdict_BlockedAlwaysAllowed(t *testing.T) {
 	put(map[string]any{"status": "blocked", "outcome": "blocked"}).Want(200)
 	endRuns(t, gate)
 	st := rig.advance(request)
-	if st.StopInfo == nil || st.StopInfo.Code != "grounds_missing" || st.StopInfo.LegacyNo != 1 {
-		t.Fatalf("stop %+v, want grounds_missing (legacy 1)", st.StopInfo)
+	if st.Stop == nil || st.Stop.Code != "grounds_missing" || st.Stop.LegacyNo != 1 {
+		t.Fatalf("stop %+v, want grounds_missing (legacy 1)", st.Stop)
 	}
 }
 
@@ -191,8 +191,8 @@ func TestVerdict_ClassDrivesJoinNotTheName(t *testing.T) {
 			switch {
 			case tc.closed:
 				rig.wantClosedAt(request, "done")
-			case st.StopInfo == nil || st.StopInfo.Code != tc.stop:
-				t.Fatalf("%s: stop %+v, want %s", tc.verdict, st.StopInfo, tc.stop)
+			case st.Stop == nil || st.Stop.Code != tc.stop:
+				t.Fatalf("%s: stop %+v, want %s", tc.verdict, st.Stop, tc.stop)
 			}
 		})
 	}
@@ -302,7 +302,7 @@ func TestMemberTask_AssignedToMemberAndClosedByThem(t *testing.T) {
 		t.Fatalf("a member closing their own task is logged as a close on behalf (%d)", n)
 	}
 	if st := rig.advance(request); st.Step != "check" {
-		t.Fatalf("step %q stop %+v, want check: %q", st.Step, st.StopInfo, lastComment(t, request))
+		t.Fatalf("step %q stop %+v, want check: %q", st.Step, st.Stop, lastComment(t, request))
 	}
 }
 
@@ -687,10 +687,13 @@ func TestStatePayload_AddsFieldsOnly(t *testing.T) {
 			t.Errorf("the answer lost %q", key)
 		}
 	}
-	if _, isNull := raw["stop"].(float64); raw["stop"] != nil && !isNull {
-		t.Errorf("stop = %v, want null, a number or a text", raw["stop"])
+	// Spec 7.1: stop is null or an object {code, legacy_no}. An older client reads any other value as "stalled".
+	if obj, isObject := raw["stop"].(map[string]any); raw["stop"] != nil && !isObject {
+		t.Errorf("stop = %v, want null or an object", raw["stop"])
+	} else if isObject {
+		t.Errorf("a request that is not parked has stop %v", obj)
 	}
-	for _, key := range []string{"schema", "loops", "activations", "vars", "facts", "stop_info", "checkpoints", "unreviewed", "trail", "trial"} {
+	for _, key := range []string{"schema", "loops", "activations", "vars", "facts", "checkpoints", "unreviewed", "trail", "trial"} {
 		if _, ok := raw[key]; !ok {
 			t.Errorf("the answer has no %q", key)
 		}
@@ -705,7 +708,7 @@ func TestStatePayload_AddsFieldsOnly(t *testing.T) {
 		}
 	}
 
-	// A request of schema 2 parked at a stop: the old field keeps its meaning and the new one carries the code.
+	// A request of schema 2 parked at a stop: the object carries the code and the number schema 1 gave it.
 	rig := newGraphRigDoc(t, "triage", triageDoc(), graphRigOpts{})
 	second := rig.newRequest()
 	rig.complete(second, nil)
@@ -714,9 +717,12 @@ func TestStatePayload_AddsFieldsOnly(t *testing.T) {
 	var v2 map[string]any
 	sid := uuidToString(second.ID)
 	testutil.Call(t, testHandler.GetIssueFlow, withURLParam(newRequest("GET", "/api/issues/"+sid+"/flow", nil), "id", sid)).Want(200).JSON(&v2)
-	info, _ := v2["stop_info"].(map[string]any)
-	if v2["stop"] != float64(3) || info["code"] != "loop_exhausted" || info["legacy_no"] != float64(3) || v2["schema"] != float64(2) {
-		t.Fatalf("stop %v info %v schema %v; want stop 3 with the code loop_exhausted on schema 2", v2["stop"], info, v2["schema"])
+	stop, _ := v2["stop"].(map[string]any)
+	if stop["code"] != "loop_exhausted" || stop["legacy_no"] != float64(3) || v2["schema"] != float64(2) {
+		t.Fatalf("stop %v schema %v; want the stop loop_exhausted (legacy 3) on schema 2", v2["stop"], v2["schema"])
+	}
+	if _, old := v2["stop_info"]; old {
+		t.Fatalf("the answer still carries stop_info: %v", v2["stop_info"])
 	}
 }
 
@@ -807,16 +813,16 @@ func TestRelease_UnreviewedStallsThenManualExitReleases(t *testing.T) {
 	rig.advance(request)
 	rig.finishAll(request, "handover", 0, always("approved"))
 	st := rig.advance(request)
-	if st.StopInfo == nil || !st.Unreviewed || st.Step != "handover" {
-		t.Fatalf("stop %+v unreviewed %v step %q; want a stall at the handover with work nobody saw", st.StopInfo, st.Unreviewed, st.Step)
+	if st.Stop == nil || !st.Unreviewed || st.Step != "handover" {
+		t.Fatalf("stop %+v unreviewed %v step %q; want a stall at the handover with work nobody saw", st.Stop, st.Unreviewed, st.Step)
 	}
 	// A manager looks at it and resumes at the release step; the person at that step chooses the exit.
 	resumed, err := testHandler.ResumeFlow(context.Background(), loadIssueRow(t, uuidToString(request.ID)), FlowResumeInput{ToStep: "release"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resumed.Step != "release" || resumed.Unreviewed || resumed.StopInfo != nil {
-		t.Fatalf("after the resume: step %q unreviewed %v stop %+v", resumed.Step, resumed.Unreviewed, resumed.StopInfo)
+	if resumed.Step != "release" || resumed.Unreviewed || resumed.Stop != nil {
+		t.Fatalf("after the resume: step %q unreviewed %v stop %+v", resumed.Step, resumed.Unreviewed, resumed.Stop)
 	}
 	rig.mustExit(request, "release_done", memberActor(t, testUserID))
 	rig.wantClosedAt(request, "done")
@@ -832,8 +838,8 @@ func TestOpen_GateSkipsWorkerInPool(t *testing.T) {
 	rig.complete(request, nil)
 	writer := func() string { _, who := rig.assigneeOf(firstRow(t, rig, request, "write", "draft")); return who }()
 	rig.finishAll(request, "write", 0, always(""))
-	if st := rig.advance(request); st.StopInfo != nil {
-		t.Fatalf("stopped: %+v %q", st.StopInfo, lastComment(t, request))
+	if st := rig.advance(request); st.Stop != nil {
+		t.Fatalf("stopped: %+v %q", st.Stop, lastComment(t, request))
 	}
 	if _, judge := rig.assigneeOf(firstRow(t, rig, request, "check", "judge")); judge == writer || judge == "" {
 		t.Fatalf("the gate went to %q, who wrote the draft (%q); want the other one in the pool", judge, writer)
@@ -846,8 +852,8 @@ func TestOpen_RequiredInputMissingStalls(t *testing.T) {
 	rig.complete(request, map[string]any{"branch": "a"})
 	rig.finishAll(request, "work_a", 0, always(""))
 	st := rig.advance(request)
-	if st.StopInfo == nil || st.StopInfo.Code != issueworkflow.DocStopStalled {
-		t.Fatalf("stop %+v, want stalled", st.StopInfo)
+	if st.Stop == nil || st.Stop.Code != issueworkflow.DocStopStalled {
+		t.Fatalf("stop %+v, want stalled", st.Stop)
 	}
 	if n := len(rig.rows(request, "check", 0)); n != 0 {
 		t.Fatalf("%d tasks opened without their required input", n)

@@ -5,12 +5,15 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 
+	"github.com/multica-ai/multica/server/internal/events"
 	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/issueworkflow"
 	"github.com/multica-ai/multica/server/internal/testutil"
 	"github.com/multica-ai/multica/server/pkg/featureflag"
+	"github.com/multica-ai/multica/server/pkg/protocol"
 )
 
 // Drafts of a flow workflow, the capabilities route, and the routes that check,
@@ -416,5 +419,51 @@ func TestFlowDraft_WorkspaceTeardownSweepsDrafts(t *testing.T) {
 	}
 	if count(ws) != 0 || count(testWorkspaceID) != 1 {
 		t.Fatalf("drafts left: workspace %d, other workspace %d", count(ws), count(testWorkspaceID))
+	}
+}
+
+// Every write of a draft tells the other tabs (spec 11): flow_draft:updated with the squad and the draft.
+func TestFlowDraft_EmitsUpdatedEventOnEveryWrite(t *testing.T) {
+	rig := newDraftRig(t, 1)
+	var mu sync.Mutex
+	var seen []map[string]any
+	testHandler.Bus.Subscribe(protocol.EventFlowDraftUpdated, func(e events.Event) {
+		payload, ok := e.Payload.(map[string]any)
+		if !ok || payload["squad_id"] != rig.squadID || e.WorkspaceID != testWorkspaceID {
+			return
+		}
+		mu.Lock()
+		seen = append(seen, payload)
+		mu.Unlock()
+	})
+	count := func() int {
+		mu.Lock()
+		defer mu.Unlock()
+		return len(seen)
+	}
+
+	d := rig.newDraft("Evented")
+	if count() != 1 {
+		t.Fatalf("a create published %d events, want 1", count())
+	}
+	rig.patchDraft(d.ID, map[string]any{"revision": 1, "name": "Evented 2"}).Want(http.StatusOK)
+	if count() != 2 {
+		t.Fatalf("a save published %d events in all, want 2", count())
+	}
+	// A save that is refused tells no one.
+	rig.patchDraft(d.ID, map[string]any{"revision": 1, "name": "Late"}).Want(http.StatusConflict)
+	if count() != 2 {
+		t.Fatalf("a refused save published an event: %d in all", count())
+	}
+	rig.call(testHandler.DeleteFlowDraft, nil, "DELETE", "/flow-drafts/"+d.ID, nil, "draftId", d.ID).Want(http.StatusNoContent)
+	mu.Lock()
+	defer mu.Unlock()
+	if len(seen) != 3 {
+		t.Fatalf("%d events after the delete, want 3", len(seen))
+	}
+	for _, payload := range seen {
+		if payload["draft_id"] != d.ID {
+			t.Fatalf("payload = %v, want draft_id %s", payload, d.ID)
+		}
 	}
 }

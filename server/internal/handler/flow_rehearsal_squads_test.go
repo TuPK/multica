@@ -383,8 +383,8 @@ func TestRehearsal_Teaching_RecordsNotAnonymisedStopAtPlan(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PlanFlow: %v", err)
 	}
-	if state.Step != "blocked" || state.Stop != issueworkflow.Stop1 {
-		t.Fatalf("step %q, stop %v; want blocked at stop 1 before any task opens", state.Step, state.Stop)
+	if state.Step != "blocked" || stopOf(state) != issueworkflow.Stop1 {
+		t.Fatalf("step %q, stop %v; want blocked at stop 1 before any task opens", state.Step, stopOf(state))
 	}
 	if n := countTasks(t, request); n != 0 {
 		t.Fatalf("%d tasks opened for records that are not anonymised", n)

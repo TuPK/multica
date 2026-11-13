@@ -475,39 +475,57 @@ func parseFlowUUID(s string) (pgtype.UUID, error) {
 // know, a document that parses, and no more bytes than a document may have. The
 // roles of the result are unbound.
 func parseFlowManifest(raw json.RawMessage) (doc []byte, name string, issues []issueworkflow.Issue) {
-	bad := func(code, format string, args ...any) ([]byte, string, []issueworkflow.Issue) {
-		return nil, "", []issueworkflow.Issue{{Code: code, Severity: issueworkflow.SeverityError, Message: fmt.Sprintf(format, args...)}}
-	}
-	if len(raw) == 0 {
-		return bad("flow_manifest_invalid", "a manifest is needed")
-	}
-	if len(raw) > issueworkflow.DocMaxBytes+4<<10 {
-		return bad("flow_manifest_invalid", "a manifest is at most %d bytes", issueworkflow.DocMaxBytes)
-	}
-	var manifest struct {
-		Format string          `json:"format"`
-		Name   string          `json:"name"`
-		Doc    json.RawMessage `json:"doc"`
-	}
-	dec := json.NewDecoder(bytes.NewReader(raw))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&manifest); err != nil {
-		return bad("flow_manifest_invalid", "the manifest is not valid: %v", err)
-	}
-	if manifest.Format != flowManifestFormat {
-		return bad("flow_manifest_invalid", "the format %q is not %s", manifest.Format, flowManifestFormat)
-	}
-	if len(manifest.Doc) > issueworkflow.DocMaxBytes {
-		return bad("flow_manifest_invalid", "a document is at most %d bytes", issueworkflow.DocMaxBytes)
+	manifest, issue := readFlowManifestEnvelope(raw)
+	if issue != nil {
+		return nil, "", []issueworkflow.Issue{*issue}
 	}
 	if _, found := issueworkflow.ParseFlowDoc(manifest.Doc); len(found) > 0 {
 		return nil, "", found
 	}
 	unbound, err := stripBind(manifest.Doc)
 	if err != nil {
-		return bad("flow_manifest_invalid", "the document is not valid: %v", err)
+		return nil, "", []issueworkflow.Issue{flowManifestIssue("the document is not valid: %v", err)}
 	}
 	return unbound, strings.TrimSpace(manifest.Name), nil
+}
+
+type flowManifestEnvelope struct {
+	Format string          `json:"format"`
+	Name   string          `json:"name"`
+	Doc    json.RawMessage `json:"doc"`
+}
+
+func flowManifestIssue(format string, args ...any) issueworkflow.Issue {
+	return issueworkflow.Issue{Code: "flow_manifest_invalid", Severity: issueworkflow.SeverityError, Message: fmt.Sprintf(format, args...)}
+}
+
+// readFlowManifestEnvelope reads the wrapper of a manifest strictly: a known format, no
+// key it does not know, and no more bytes than a document may have. The document itself
+// is left for the caller to check.
+func readFlowManifestEnvelope(raw json.RawMessage) (flowManifestEnvelope, *issueworkflow.Issue) {
+	var manifest flowManifestEnvelope
+	bad := func(format string, args ...any) (flowManifestEnvelope, *issueworkflow.Issue) {
+		issue := flowManifestIssue(format, args...)
+		return manifest, &issue
+	}
+	if len(raw) == 0 {
+		return bad("a manifest is needed")
+	}
+	if len(raw) > issueworkflow.DocMaxBytes+4<<10 {
+		return bad("a manifest is at most %d bytes", issueworkflow.DocMaxBytes)
+	}
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&manifest); err != nil {
+		return bad("the manifest is not valid: %v", err)
+	}
+	if manifest.Format != flowManifestFormat {
+		return bad("the format %q is not %s", manifest.Format, flowManifestFormat)
+	}
+	if len(manifest.Doc) > issueworkflow.DocMaxBytes {
+		return bad("a document is at most %d bytes", issueworkflow.DocMaxBytes)
+	}
+	return manifest, nil
 }
 
 type updateFlowDraftRequest struct {
@@ -618,6 +636,12 @@ func (h *Handler) flowValidateContext(ctx context.Context, q *db.Queries, a flow
 	if err != nil {
 		return issueworkflow.ValidateContext{}, err
 	}
+	return h.flowValidateContextWith(ctx, q, a, roster, publish)
+}
+
+// flowValidateContextWith is flowValidateContext for a roster the caller has read, or
+// an empty one when the document is checked for no squad.
+func (h *Handler) flowValidateContextWith(ctx context.Context, q *db.Queries, a flowAuthoring, roster issueworkflow.Roster, publish bool) (issueworkflow.ValidateContext, error) {
 	catalog, err := h.workflowStatusCatalog(ctx, q, a.wsUUID)
 	if err != nil {
 		return issueworkflow.ValidateContext{}, err

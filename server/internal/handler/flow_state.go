@@ -101,17 +101,18 @@ type IssueFlowStateResponse struct {
 	Managed bool `json:"managed"`
 	// Role is "task" when the issue asked about is a task: the state is its
 	// request's.
-	Role         string                  `json:"role"`
-	WorkflowID   string                  `json:"workflow_id"`
-	WorkflowName string                  `json:"workflow_name"`
-	Step         string                  `json:"step"`
-	Rework       int                     `json:"rework"`
-	Stop         issueworkflow.Stop      `json:"stop"`
-	Switches     map[string]any          `json:"switches"`
-	Auto         bool                    `json:"auto"`
-	EnteredAt    string                  `json:"entered_at"`
-	Tasks        []IssueFlowTaskResponse `json:"tasks"`
-	Next         []IssueFlowNextResponse `json:"next"`
+	Role         string `json:"role"`
+	WorkflowID   string `json:"workflow_id"`
+	WorkflowName string `json:"workflow_name"`
+	Step         string `json:"step"`
+	Rework       int    `json:"rework"`
+	// Stop is the stop the request is parked in (spec 7.1), null when it is not parked.
+	Stop      *IssueFlowStopResponse  `json:"stop"`
+	Switches  map[string]any          `json:"switches"`
+	Auto      bool                    `json:"auto"`
+	EnteredAt string                  `json:"entered_at"`
+	Tasks     []IssueFlowTaskResponse `json:"tasks"`
+	Next      []IssueFlowNextResponse `json:"next"`
 	// Viewer is filled for the reader of GET /api/issues/{id}/flow; the other answers carry the empty value.
 	Viewer IssueFlowViewerResponse `json:"viewer"`
 	// ReworkStep is the step a rework sends the request back to from the step it stopped at:
@@ -124,7 +125,6 @@ type IssueFlowStateResponse struct {
 	Activations map[string]int             `json:"activations"`
 	Vars        map[string]any             `json:"vars"`
 	Facts       map[string]any             `json:"facts"`
-	StopInfo    *IssueFlowStopResponse     `json:"stop_info"`
 	Checkpoints []issueworkflow.Checkpoint `json:"checkpoints"`
 	Unreviewed  bool                       `json:"unreviewed"`
 	Trail       []issueworkflow.TrailEntry `json:"trail"`
@@ -171,7 +171,6 @@ func (h *Handler) flowStateResponse(ctx context.Context, request db.Issue, role 
 	}
 	prefix := h.getIssuePrefix(ctx, request.WorkspaceID)
 	resolver := issuestatus.NewResolver(request.WorkspaceID)
-	v1 := issueworkflow.Unadapt(run.state)
 	g := run.def.Graph
 	out := IssueFlowStateResponse{
 		Managed:      true,
@@ -180,7 +179,6 @@ func (h *Handler) flowStateResponse(ctx context.Context, request db.Issue, role 
 		WorkflowName: run.def.Name,
 		Step:         run.state.Step,
 		Rework:       run.state.Loops[issueworkflow.LoopRework],
-		Stop:         v1.Stop,
 		Switches:     run.state.Vars,
 		Auto:         run.row.FlowAuto,
 		EnteredAt:    run.state.EnteredAt,
@@ -216,7 +214,7 @@ func (h *Handler) flowStateResponse(ctx context.Context, request db.Issue, role 
 		if declared, ok := g.Stop(stop.Code); ok {
 			info.LegacyNo = declared.LegacyNo
 		}
-		out.StopInfo = info
+		out.Stop = info
 	}
 	rows, err := h.loadFlowTasks(ctx, h.Queries, run)
 	if err != nil {
