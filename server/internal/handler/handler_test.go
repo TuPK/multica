@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -41,11 +42,30 @@ const (
 	handlerTestWorkspaceSlug = "handler-tests"
 )
 
+// requireTestDatabaseURL refuses any database whose name does not end in _test.
+// The handler tests write fixtures, so they must never run against the shared
+// development database (the same rule scripts/require-test-database.sh enforces).
+func requireTestDatabaseURL(raw string) error {
+	if raw == "" {
+		return fmt.Errorf("DATABASE_URL is empty; set it to a database whose name ends in _test")
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("DATABASE_URL is not a valid URL: %w", err)
+	}
+	name := strings.TrimPrefix(u.Path, "/")
+	if name == "multica" || !strings.HasSuffix(name, "_test") {
+		return fmt.Errorf("database %q is not a test database; use one whose name ends in _test", name)
+	}
+	return nil
+}
+
 func TestMain(m *testing.M) {
 	ctx := context.Background()
 	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		dbURL = "postgres://multica:multica@localhost:5432/multica?sslmode=disable"
+	if err := requireTestDatabaseURL(dbURL); err != nil {
+		fmt.Fprintln(os.Stderr, "handler tests:", err)
+		os.Exit(1)
 	}
 
 	pool, err := pgxpool.New(ctx, dbURL)
