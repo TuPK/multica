@@ -2428,11 +2428,6 @@
     "detach_confirm_button": "Confirmer le détachement",
     "cancel": "Annuler",
     "error": "Impossible de mettre à jour le flux",
-    "table_issue": "Ticket",
-    "table_task": "Tâche",
-    "table_round": "Tour",
-    "table_status": "Statut",
-    "table_outcome": "Résultat",
     "errors": {
       "flow_outcome_required": "Choisissez un verdict, approuvé ou rejeté, pour clore ce contrôle",
       "flow_outcome_invalid": "Ce verdict ne s'applique pas à cette tâche",

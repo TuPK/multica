@@ -167,67 +167,48 @@ export function IssueFlowStatePanel({
       {/* Stop banner if stopped */}
       {renderStopBanner()}
 
-      {/* Tasks Table */}
+      {/* One block per task: the sidebar is too narrow for a table with a verdict column. */}
       {flow.tasks.length > 0 ? (
-        <div className="space-y-2">
-          <div className="overflow-x-auto rounded-lg border border-border/60">
-            <table className="w-full text-left text-caption">
-              <thead className="bg-muted/40 text-muted-foreground border-b border-border/60">
-                <tr>
-                  <th className="py-2 px-2 font-medium whitespace-nowrap">{t(($) => $.flow.table_issue)}</th>
-                  <th className="py-2 px-2 font-medium">{t(($) => $.flow.table_task)}</th>
-                  <th className="py-2 px-2 font-medium whitespace-nowrap">{t(($) => $.flow.table_round)}</th>
-                  <th className="py-2 px-2 font-medium whitespace-nowrap">{t(($) => $.flow.table_status)}</th>
-                  <th className="py-2 px-2 font-medium whitespace-nowrap">{t(($) => $.flow.table_outcome)}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/40">
-                {flow.tasks.map((task) => (
-                  <tr key={task.issue_id} className="hover:bg-muted/20">
-                    <td className="py-2 px-2 font-medium text-foreground whitespace-nowrap">
-                      {task.identifier}
-                    </td>
-                    <td className="py-2 px-2 text-foreground">
-                      {task.task}
-                    </td>
-                    <td className="py-2 px-2 text-muted-foreground tabular-nums whitespace-nowrap">
-                      {task.round}
-                    </td>
-                    <td className="py-2 px-2 text-muted-foreground whitespace-nowrap">
-                      {task.status}
-                    </td>
-                    <td className="py-2 px-2 whitespace-nowrap">
-                      {task.kind === "gate" && task.closed_at === null ? (
-                        <div className="flex items-center gap-1">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="xs"
-                            disabled={updateIssue.isPending}
-                            onClick={() => void handleVerdict(task, "approved")}
-                          >
-                            {t(($) => $.flow.verdict.approve)}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="xs"
-                            disabled={updateIssue.isPending}
-                            onClick={() => void handleVerdict(task, "rejected")}
-                          >
-                            {t(($) => $.flow.verdict.reject)}
-                          </Button>
-                        </div>
-                      ) : (
-                        renderOutcomeBadge(task.outcome)
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <ul className="divide-y divide-border/40 rounded-lg border border-border/60 text-caption">
+          {flow.tasks.map((task) => (
+            <li key={task.issue_id} className="space-y-1.5 px-2 py-2">
+              <div className="flex items-baseline gap-2">
+                <span className="font-medium text-foreground whitespace-nowrap">{task.identifier}</span>
+                <span className="min-w-0 flex-1 truncate text-foreground">{task.task}</span>
+                <span className="text-muted-foreground tabular-nums whitespace-nowrap">
+                  {t(($) => $.flow.round, { round: task.round })}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="text-muted-foreground">{task.status}</span>
+                {task.kind === "gate" && task.closed_at === null ? (
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      disabled={updateIssue.isPending}
+                      onClick={() => void handleVerdict(task, "approved")}
+                    >
+                      {t(($) => $.flow.verdict.approve)}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      disabled={updateIssue.isPending}
+                      onClick={() => void handleVerdict(task, "rejected")}
+                    >
+                      {t(($) => $.flow.verdict.reject)}
+                    </Button>
+                  </div>
+                ) : (
+                  renderOutcomeBadge(task.outcome ?? (task.closed_at !== null ? "done" : null))
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
       ) : null}
 
       {/* Admin Actions */}

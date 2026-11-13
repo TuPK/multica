@@ -179,6 +179,25 @@ func TestFlowSweep_StartsUnstartedEligibleRequest(t *testing.T) {
 	}
 }
 
+// Detach is a person's decision to take a request off its flow. The sweep starts requests that
+// missed the engine, and a detached request looks like one: it must not be put back.
+func TestFlowSweep_DoesNotRestartADetachedRequest(t *testing.T) {
+	withFeatureFlag(t, testHandler, "flow_runner", true)
+	f := newRehearsalFixture(t)
+	setFlowAuto(t, f.Workflow.ID, true)
+	request := f.newRequest(t)
+	id := uuidToString(request.ID)
+	if err := testHandler.DetachFlow(context.Background(), loadIssueRow(t, id), true); err != nil {
+		t.Fatalf("DetachFlow: %v", err)
+	}
+
+	sweep(t)
+
+	if state, ok := flowRequestState(loadIssueRow(t, id)); ok {
+		t.Fatalf("the sweep put the detached request back on its flow: %+v", state)
+	}
+}
+
 func TestFlowSweep_IdleTaskRetriesThenStalls(t *testing.T) {
 	_, request := autoFixture(t)
 	docs := tasksAt(t, request, "collect", 0)["docs"]
@@ -267,6 +286,33 @@ func TestFlowSweep_LeadNoPlanWakesThenStalls(t *testing.T) {
 	state, _ := flowRequestState(loadIssueRow(t, id))
 	if state.Stop != issueworkflow.StopStalled || requestStatus(t, request) != "blocked" {
 		t.Fatalf("stop %v, status %q; want the request stalled after the lead's attempts", state.Stop, requestStatus(t, request))
+	}
+}
+
+// A person answers a stop and presses Resume. The answer woke the lead, and Resume then moved the
+// step's entered_at past that run's creation. The run is still going, so the sweep must not give the
+// lead a second one.
+func TestFlowSweep_LeadRunStartedBeforeResumeIsNotDoubled(t *testing.T) {
+	withFeatureFlag(t, testHandler, "flow_runner", true)
+	f := newRehearsalFixture(t)
+	setFlowAuto(t, f.Workflow.ID, true)
+	request := f.newRequest(t)
+	id := uuidToString(request.ID)
+	dbfx.Exec(t, `DELETE FROM agent_task_queue WHERE issue_id = $1`, id)
+	backdateStep(t, request, 6*time.Hour)
+
+	sweep(t)
+	if n := queuedRuns(t, id); n != 1 {
+		t.Fatalf("lead runs = %d, want the lead woken once", n)
+	}
+	dbfx.Exec(t, `UPDATE agent_task_queue SET status = 'running', started_at = now() - interval '25 seconds',
+		created_at = now() - interval '30 seconds' WHERE issue_id = $1`, id)
+	backdateStep(t, request, 0)
+
+	sweep(t)
+
+	if n := dbfx.Count(t, `SELECT count(*) FROM agent_task_queue WHERE issue_id = $1`, id); n != 1 {
+		t.Fatalf("runs = %d, want 1: a lead run that began before Resume is still the lead's run", n)
 	}
 }
 

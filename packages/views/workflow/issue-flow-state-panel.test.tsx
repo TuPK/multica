@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderWithI18n } from "../test/i18n";
 import { IssueFlowStatePanel } from "./issue-flow-state-panel";
@@ -84,7 +84,7 @@ describe("IssueFlowStatePanel", () => {
     next: [{ id: "n1", label: "Draft", to: "draft", rework: true }],
   };
 
-  it("renders current step, round, and table of tasks with identifier and outcome", () => {
+  it("renders current step, round, and the list of tasks with identifier and outcome", () => {
     renderPanel(
       <IssueFlowStatePanel
         wsId="ws-1"
@@ -96,7 +96,7 @@ describe("IssueFlowStatePanel", () => {
 
     // Step & Round
     expect(screen.getByText("gate")).toBeInTheDocument();
-    expect(screen.getByText(/vòng 1|round 1/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/vòng 1|round 1/i).length).toBeGreaterThan(0);
 
     // Tasks table
     expect(screen.getByText("MUL-12")).toBeInTheDocument();
@@ -165,23 +165,50 @@ describe("IssueFlowStatePanel", () => {
     expect(screen.queryByRole("button", { name: "Reject" })).toBeNull();
   });
 
-  it("keeps the identifier, status and outcome on one line so the table fits a narrow sidebar", () => {
-    // jsdom cannot measure layout; these classes are the contract the browser check relies on.
+  it("stacks each task in its own block so status and verdict stay visible in a 225px sidebar", () => {
+    // jsdom cannot measure layout. A table needs about 365px and hid the status, the outcome and the
+    // verdict buttons behind a horizontal scroll; a block per task wraps instead.
     renderPanel(
-      <IssueFlowStatePanel
-        wsId="ws-1"
-        issueId="req-1"
-        flow={sampleFlow}
-        canManage={false}
-      />
+      <IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={sampleFlow} canManage={false} />,
     );
 
-    const identifier = screen.getByText("MUL-12").closest("td");
-    expect(identifier).toHaveClass("whitespace-nowrap");
-    expect(screen.getByRole("columnheader", { name: /outcome|kết quả|結果/i })).toHaveClass(
-      "whitespace-nowrap",
+    expect(screen.queryByRole("table")).toBeNull();
+    const items = screen.getAllByRole("listitem");
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent("MUL-12");
+    expect(items[0]).toHaveTextContent("docs_gate");
+    expect(items[0]).toHaveTextContent("done");
+    expect(items[0]).toHaveTextContent(/rejected/i);
+    expect(items[1]).toHaveTextContent("MUL-13");
+    expect(items[1]).toHaveTextContent("in_progress");
+    expect(within(items[1]!).getByRole("button", { name: "Approve" })).toBeInTheDocument();
+  });
+
+  it("marks a closed work task without an outcome as done, not pending", () => {
+    const closedWork: IssueFlowState = {
+      ...sampleFlow,
+      tasks: [
+        {
+          issue_id: "task-5",
+          identifier: "MUL-16",
+          step: "collect",
+          task: "docs",
+          round: 0,
+          kind: "work",
+          status: "done",
+          outcome: null,
+          assignee_id: "agent-4",
+          closed_at: "2026-11-13T00:05:00Z",
+        },
+      ],
+    };
+    renderPanel(
+      <IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={closedWork} canManage={false} />,
     );
-    expect(screen.getByText("MUL-12").closest("table")?.parentElement).toHaveClass("overflow-x-auto");
+
+    const item = screen.getByRole("listitem");
+    expect(item).toHaveTextContent(/done/i);
+    expect(item).not.toHaveTextContent(/pending/i);
   });
 
   it("shows stop status when stop is present", () => {

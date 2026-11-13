@@ -2352,11 +2352,6 @@
     "detach_confirm_button": "確認分離",
     "cancel": "取消",
     "error": "無法更新流程",
-    "table_issue": "事項",
-    "table_task": "任務",
-    "table_round": "輪次",
-    "table_status": "狀態",
-    "table_outcome": "結果",
     "errors": {
       "flow_outcome_required": "請選擇結論（通過或駁回）後再關閉這個檢查點",
       "flow_outcome_invalid": "這個結論不適用於此任務",

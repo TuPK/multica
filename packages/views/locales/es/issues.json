@@ -2428,11 +2428,6 @@
     "detach_confirm_button": "Confirmar separación",
     "cancel": "Cancelar",
     "error": "No se pudo actualizar el flujo",
-    "table_issue": "Tarea",
-    "table_task": "Subtarea",
-    "table_round": "Ronda",
-    "table_status": "Estado",
-    "table_outcome": "Resultado",
     "errors": {
       "flow_outcome_required": "Elige un veredicto, aprobado o rechazado, para cerrar esta puerta",
       "flow_outcome_invalid": "Este veredicto no aplica a esta tarea",

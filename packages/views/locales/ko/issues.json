@@ -2352,11 +2352,6 @@
     "detach_confirm_button": "분리 확인",
     "cancel": "취소",
     "error": "워크플로를 업데이트할 수 없습니다",
-    "table_issue": "이슈",
-    "table_task": "태스크",
-    "table_round": "라운드",
-    "table_status": "상태",
-    "table_outcome": "결과",
     "errors": {
       "flow_outcome_required": "이 게이트를 닫으려면 승인 또는 반려 결론을 선택하세요",
       "flow_outcome_invalid": "이 결론은 이 작업에 적용되지 않습니다",

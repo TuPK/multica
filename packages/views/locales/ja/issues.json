@@ -2352,11 +2352,6 @@
     "detach_confirm_button": "デタッチを確認",
     "cancel": "キャンセル",
     "error": "フローを更新できませんでした",
-    "table_issue": "課題",
-    "table_task": "タスク",
-    "table_round": "ラウンド",
-    "table_status": "ステータス",
-    "table_outcome": "結果",
     "errors": {
       "flow_outcome_required": "このゲートを閉じるには、承認か却下の判定を選んでください",
       "flow_outcome_invalid": "この判定はこのタスクには使えません",

@@ -2352,11 +2352,6 @@
     "detach_confirm_button": "确认分离",
     "cancel": "取消",
     "error": "无法更新流程",
-    "table_issue": "事项",
-    "table_task": "任务",
-    "table_round": "轮次",
-    "table_status": "状态",
-    "table_outcome": "结果",
     "errors": {
       "flow_outcome_required": "请选择结论（通过或驳回）后再关闭这个检查点",
       "flow_outcome_invalid": "这个结论不适用于此任务",

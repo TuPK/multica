@@ -128,7 +128,8 @@ LIMIT sqlc.arg('page_limit')::int;
 
 -- name: ListUnstartedFlowRequests :many
 -- Requests given to a squad whose active workflow is an auto flow but that have
--- no flow state yet: the write that created them did not reach the engine.
+-- no flow state yet: the write that created them did not reach the engine. A request
+-- a person detached (the flow_detached entry) stays off its flow.
 SELECT i.* FROM issue i
 JOIN squad s ON s.id = i.assignee_id AND s.workspace_id = i.workspace_id
 JOIN issue_workflow w ON w.id = s.active_workflow_id AND w.workspace_id = s.workspace_id
@@ -140,18 +141,19 @@ WHERE i.assignee_type = 'squad'
   AND s.archived_at IS NULL
   AND w.flow_config IS NOT NULL
   AND w.flow_auto
+  AND NOT EXISTS (SELECT 1 FROM activity_log a WHERE a.issue_id = i.id AND a.action = 'flow_detached')
 ORDER BY i.created_at
 LIMIT sqlc.arg('page_limit')::int;
 
 -- name: FlowRunStats :one
--- The runs of an issue since a moment: how many were made, how many are active,
--- since when one has been running, and when the issue last had activity. The
--- sweep uses it to retry a task nobody works on and to cap a run that never ends.
+-- The runs of an issue since a moment: how many were made and when the issue last had activity. The
+-- active runs and the one running longest are counted whenever they began: a run that started before
+-- the step's entered_at (a person's answer woke the lead, then Resume moved the step) is still the
+-- issue's run. The sweep uses it to retry a task nobody works on and to cap a run that never ends.
 SELECT
-  COUNT(*)::int AS attempts,
+  (COUNT(*) FILTER (WHERE created_at >= sqlc.arg('since')::timestamptz))::int AS attempts,
   (COUNT(*) FILTER (WHERE status IN ('queued', 'dispatched', 'running', 'waiting_local_directory')))::int AS active,
   (MIN(started_at) FILTER (WHERE status = 'running'))::timestamptz AS running_since,
-  MAX(COALESCE(completed_at, started_at, created_at))::timestamptz AS last_activity
+  (MAX(COALESCE(completed_at, started_at, created_at)) FILTER (WHERE created_at >= sqlc.arg('since')::timestamptz))::timestamptz AS last_activity
 FROM agent_task_queue
-WHERE issue_id = sqlc.arg('issue_id')::uuid
-  AND created_at >= sqlc.arg('since')::timestamptz;
+WHERE issue_id = sqlc.arg('issue_id')::uuid;

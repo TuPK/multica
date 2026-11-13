@@ -107,18 +107,17 @@ func (q *Queries) CountOpenFlowRequestsByWorkflow(ctx context.Context, workspace
 
 const flowRunStats = `-- name: FlowRunStats :one
 SELECT
-  COUNT(*)::int AS attempts,
+  (COUNT(*) FILTER (WHERE created_at >= $1::timestamptz))::int AS attempts,
   (COUNT(*) FILTER (WHERE status IN ('queued', 'dispatched', 'running', 'waiting_local_directory')))::int AS active,
   (MIN(started_at) FILTER (WHERE status = 'running'))::timestamptz AS running_since,
-  MAX(COALESCE(completed_at, started_at, created_at))::timestamptz AS last_activity
+  (MAX(COALESCE(completed_at, started_at, created_at)) FILTER (WHERE created_at >= $1::timestamptz))::timestamptz AS last_activity
 FROM agent_task_queue
-WHERE issue_id = $1::uuid
-  AND created_at >= $2::timestamptz
+WHERE issue_id = $2::uuid
 `
 
 type FlowRunStatsParams struct {
-	IssueID pgtype.UUID        `json:"issue_id"`
 	Since   pgtype.Timestamptz `json:"since"`
+	IssueID pgtype.UUID        `json:"issue_id"`
 }
 
 type FlowRunStatsRow struct {
@@ -128,11 +127,12 @@ type FlowRunStatsRow struct {
 	LastActivity pgtype.Timestamptz `json:"last_activity"`
 }
 
-// The runs of an issue since a moment: how many were made, how many are active,
-// since when one has been running, and when the issue last had activity. The
-// sweep uses it to retry a task nobody works on and to cap a run that never ends.
+// The runs of an issue since a moment: how many were made and when the issue last had activity. The
+// active runs and the one running longest are counted whenever they began: a run that started before
+// the step's entered_at (a person's answer woke the lead, then Resume moved the step) is still the
+// issue's run. The sweep uses it to retry a task nobody works on and to cap a run that never ends.
 func (q *Queries) FlowRunStats(ctx context.Context, arg FlowRunStatsParams) (FlowRunStatsRow, error) {
-	row := q.db.QueryRow(ctx, flowRunStats, arg.IssueID, arg.Since)
+	row := q.db.QueryRow(ctx, flowRunStats, arg.Since, arg.IssueID)
 	var i FlowRunStatsRow
 	err := row.Scan(
 		&i.Attempts,
@@ -513,12 +513,14 @@ WHERE i.assignee_type = 'squad'
   AND s.archived_at IS NULL
   AND w.flow_config IS NOT NULL
   AND w.flow_auto
+  AND NOT EXISTS (SELECT 1 FROM activity_log a WHERE a.issue_id = i.id AND a.action = 'flow_detached')
 ORDER BY i.created_at
 LIMIT $1::int
 `
 
 // Requests given to a squad whose active workflow is an auto flow but that have
-// no flow state yet: the write that created them did not reach the engine.
+// no flow state yet: the write that created them did not reach the engine. A request
+// a person detached (the flow_detached entry) stays off its flow.
 func (q *Queries) ListUnstartedFlowRequests(ctx context.Context, pageLimit int32) ([]Issue, error) {
 	rows, err := q.db.Query(ctx, listUnstartedFlowRequests, pageLimit)
 	if err != nil {

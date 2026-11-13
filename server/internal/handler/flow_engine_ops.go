@@ -353,6 +353,14 @@ func (h *Handler) DetachFlow(ctx context.Context, request db.Issue, cancelTasks 
 	if err := qtx.ClearIssueFlow(ctx, db.ClearIssueFlowParams{ID: locked.ID, WorkspaceID: locked.WorkspaceID}); err != nil {
 		return err
 	}
+	// The sweep starts every request of a flow squad that has no flow. This entry tells it a person
+	// took this one off.
+	if _, err := qtx.CreateActivity(ctx, db.CreateActivityParams{
+		ID: dbid.NewV7(), WorkspaceID: locked.WorkspaceID, IssueID: locked.ID,
+		ActorType: pgtype.Text{String: "system", Valid: true}, Action: "flow_detached", Details: []byte("{}"),
+	}); err != nil {
+		return err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit flow detach: %w", err)
 	}

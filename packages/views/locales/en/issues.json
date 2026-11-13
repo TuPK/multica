@@ -2428,11 +2428,6 @@
     "detach_confirm_button": "Confirm detach",
     "cancel": "Cancel",
     "error": "Could not update flow",
-    "table_issue": "Issue",
-    "table_task": "Task",
-    "table_round": "Round",
-    "table_status": "Status",
-    "table_outcome": "Outcome",
     "errors": {
       "flow_outcome_required": "Choose a verdict, approved or rejected, to close this gate",
       "flow_outcome_invalid": "This verdict does not apply to this task",
