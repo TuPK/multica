@@ -6,6 +6,12 @@ import { toast } from "sonner";
 import { Badge } from "@multica/ui/components/ui/badge";
 import { Button } from "@multica/ui/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@multica/ui/components/ui/dropdown-menu";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -17,6 +23,7 @@ import {
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
   Play,
   Unlink,
   Workflow,
@@ -26,8 +33,9 @@ import { clientErrorMessage } from "@multica/core/api";
 import { useT } from "../i18n";
 import { issueFlowKeys, useDetachFlow, useResumeFlow } from "@multica/core/issue-workflows";
 import { useUpdateIssue } from "@multica/core/issues/mutations";
-import type { IssueFlowState, IssueFlowTask } from "@multica/core/types";
+import type { IssueFlowState, IssueFlowTask, ResumeFlowRequest } from "@multica/core/types";
 import { issueUpdateErrorMessage } from "../issues/utils/issue-update-error";
+import { cn } from "@multica/ui/lib/utils";
 
 export interface IssueFlowStatePanelProps {
   wsId: string;
@@ -62,9 +70,9 @@ export function IssueFlowStatePanel({
     }
   };
 
-  const handleResume = async () => {
+  const handleResume = async (data: ResumeFlowRequest = {}) => {
     try {
-      await resumeMut.mutateAsync({});
+      await resumeMut.mutateAsync(data);
       toast.success(t(($) => $.flow.resume));
     } catch (err) {
       toast.error(clientErrorMessage(err) ?? t(($) => $.flow.error));
@@ -80,6 +88,8 @@ export function IssueFlowStatePanel({
       toast.error(clientErrorMessage(err) ?? t(($) => $.flow.error));
     }
   };
+
+  const draftStep = flow.rework_step;
 
   const renderOutcomeBadge = (outcome: string | null) => {
     switch (outcome) {
@@ -213,17 +223,41 @@ export function IssueFlowStatePanel({
 
       {/* Admin Actions */}
       {canManage && (
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/40">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={resumeMut.isPending}
-            onClick={() => void handleResume()}
-            className="gap-1.5 text-caption h-8"
-          >
-            <Play className="size-3.5" aria-hidden />
-            <span>{t(($) => $.flow.resume)}</span>
-          </Button>
+        <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-border/40">
+          <div className="inline-flex">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={resumeMut.isPending}
+              onClick={() => void handleResume()}
+              className={cn("gap-1.5 text-caption h-8", draftStep && "rounded-r-none")}
+            >
+              <Play className="size-3.5" aria-hidden />
+              <span>{t(($) => $.flow.resume)}</span>
+            </Button>
+            {draftStep ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={resumeMut.isPending}
+                      aria-label={t(($) => $.flow.choose_step)}
+                      className="h-8 -ml-px rounded-l-none px-2"
+                    />
+                  }
+                >
+                  <ChevronDown className="size-3.5" aria-hidden />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-auto min-w-52">
+                  <DropdownMenuItem onClick={() => void handleResume({ to_step: draftStep })}>
+                    {t(($) => $.flow.resume_to_draft)}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
+          </div>
 
           <Button
             variant="destructive"

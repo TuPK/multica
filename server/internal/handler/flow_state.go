@@ -51,6 +51,10 @@ type IssueFlowStateResponse struct {
 	EnteredAt    string                  `json:"entered_at"`
 	Tasks        []IssueFlowTaskResponse `json:"tasks"`
 	Next         []IssueFlowNextResponse `json:"next"`
+	// ReworkStep is the step a rework sends the request back to from the step it stopped at:
+	// the drafting step, where a person sends the request to fix the draft. It is empty unless
+	// the request is stopped and that step has a rework transition.
+	ReworkStep string `json:"rework_step"`
 }
 
 // FlowAction is one thing an advance did.
@@ -133,7 +137,24 @@ func (h *Handler) flowStateResponse(ctx context.Context, request db.Issue, role 
 			out.Next = append(out.Next, IssueFlowNextResponse{ID: tr.ID, Label: tr.Label, To: tr.ToStatusKey, Rework: tr.Rework})
 		}
 	}
+	if run.state.Stop != issueworkflow.StopNone {
+		out.ReworkStep = reworkStepOf(run.def, run.state.BlockedFrom)
+	}
 	return out, nil
+}
+
+// reworkStepOf returns the step the first rework transition of from leads to, or "" when from has none.
+func reworkStepOf(def issueworkflow.Definition, from string) string {
+	step, ok := def.Step(from)
+	if !ok {
+		return ""
+	}
+	for _, tr := range step.Transitions {
+		if tr.Rework {
+			return tr.ToStatusKey
+		}
+	}
+	return ""
 }
 
 // flowTaskKind returns the kind ("gate" or "work") of the task a step defines,

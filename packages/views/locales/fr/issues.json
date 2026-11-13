@@ -2422,6 +2422,8 @@
       "reject": "Rejeter"
     },
     "resume": "Reprendre",
+    "choose_step": "Choisir l'étape",
+    "resume_to_draft": "Revenir à la rédaction",
     "detach": "Détacher",
     "detach_confirm": "Détacher du flux",
     "detach_confirm_desc": "Cette demande sera détachée du moteur de workflow. Les tâches ouvertes deviendront des sous-tickets normaux.",

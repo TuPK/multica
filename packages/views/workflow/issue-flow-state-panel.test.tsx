@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderWithI18n } from "../test/i18n";
 import { IssueFlowStatePanel } from "./issue-flow-state-panel";
@@ -294,5 +295,43 @@ describe("IssueFlowStatePanel", () => {
     await waitFor(() => {
       expect(mocks.resumeMut).toHaveBeenCalled();
     });
+  });
+
+  // A stopped request whose stop has a drafting step offers it on the Resume button, so a draft that
+  // is at fault can be sent back to drafting in a new round. The default Resume still sends no step.
+  const stoppedAtGate: IssueFlowState = { ...sampleFlow, step: "blocked", stop: 1, rework_step: "draft" };
+
+  it("sends the request back to drafting from the Resume choices", async () => {
+    const user = userEvent.setup();
+    renderPanel(
+      <IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={stoppedAtGate} canManage={true} />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Choose the step" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Back to drafting" }));
+
+    await waitFor(() => {
+      expect(mocks.resumeMut).toHaveBeenLastCalledWith({ to_step: "draft" });
+    });
+  });
+
+  it("keeps the default Resume without a step", async () => {
+    renderPanel(
+      <IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={stoppedAtGate} canManage={true} />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+
+    await waitFor(() => {
+      expect(mocks.resumeMut).toHaveBeenLastCalledWith({});
+    });
+  });
+
+  it("offers no drafting step when the state names none", () => {
+    renderPanel(
+      <IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={{ ...stoppedAtGate, rework_step: "" }} canManage={true} />
+    );
+
+    expect(screen.queryByRole("button", { name: "Choose the step" })).not.toBeInTheDocument();
   });
 });

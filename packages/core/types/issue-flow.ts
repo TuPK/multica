@@ -72,6 +72,11 @@ export interface IssueFlowState {
   entered_at: string;
   tasks: IssueFlowTask[];
   next: IssueFlowNext[];
+  /**
+   * The drafting step a stopped request can return to (resume with to_step). Empty when the
+   * request is not stopped or its stop has no such step. Absent from an older server.
+   */
+  rework_step?: string;
 }
 
 export type IssueFlowActionKind = "opened_tasks" | "routed" | "stopped" | "noop";

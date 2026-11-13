@@ -2422,6 +2422,8 @@
       "reject": "Rechazar"
     },
     "resume": "Reanudar",
+    "choose_step": "Elegir el paso",
+    "resume_to_draft": "Volver a la redacción",
     "detach": "Separar",
     "detach_confirm": "Separar del flujo",
     "detach_confirm_desc": "Esta solicitud se separará del motor de flujo de trabajo. Las tareas abiertas se convertirán en subtareas normales.",

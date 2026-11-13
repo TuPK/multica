@@ -2346,6 +2346,8 @@
       "reject": "반려"
     },
     "resume": "재개",
+    "choose_step": "단계 선택",
+    "resume_to_draft": "작성 단계로 돌아가기",
     "detach": "분리",
     "detach_confirm": "플로우에서 분리",
     "detach_confirm_desc": "이 요청은 워크플로 엔진에서 분리됩니다. 열려 있는 작업은 일반 하위 이슈로 전환됩니다.",

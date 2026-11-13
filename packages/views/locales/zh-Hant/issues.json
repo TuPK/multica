@@ -2346,6 +2346,8 @@
       "reject": "駁回"
     },
     "resume": "恢復",
+    "choose_step": "選擇步驟",
+    "resume_to_draft": "返回起草",
     "detach": "分離",
     "detach_confirm": "從流程分離",
     "detach_confirm_desc": "此請求將與工作流程引擎分離。進行中的任務將轉為普通子議題。",

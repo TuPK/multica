@@ -4,6 +4,7 @@ import { parseWithFallback } from "../api/schema";
 import {
   EMPTY_SQUAD,
   EMPTY_SQUAD_WORKFLOWS_RESPONSE,
+  IssueFlowStateSchema,
   IssueSchema,
   IssueWorkflowSchema,
   SquadListSchema,
@@ -290,5 +291,40 @@ describe("SquadWorkflowsResponseSchema", () => {
       endpoint: "GET /api/squads/:id/workflows",
     });
     expect(parsed).toEqual(EMPTY_SQUAD_WORKFLOWS_RESPONSE);
+  });
+});
+
+// The drafting step a stopped request can return to (rework_step). A server without the field, or
+// one that sends a value this build cannot read, leaves it empty and does not blank the state.
+describe("IssueFlowStateSchema rework_step", () => {
+  const stoppedState = {
+    managed: true,
+    role: "request",
+    workflow_id: "wf-1",
+    workflow_name: "Trade",
+    step: "blocked",
+    rework: 0,
+    stop: 1,
+    switches: {},
+    auto: false,
+    entered_at: "2026-11-13T00:00:00Z",
+    tasks: [],
+    next: [],
+  };
+
+  it("reads the drafting step", () => {
+    expect(IssueFlowStateSchema.parse({ ...stoppedState, rework_step: "draft" }).rework_step).toBe("draft");
+  });
+
+  it("defaults to empty from an older server", () => {
+    const parsed = IssueFlowStateSchema.parse(stoppedState);
+    expect(parsed.rework_step).toBe("");
+    expect(parsed.stop).toBe(1);
+  });
+
+  it("falls back to empty for a value that is not a string, and keeps the rest of the state", () => {
+    const parsed = IssueFlowStateSchema.parse({ ...stoppedState, rework_step: 3 });
+    expect(parsed.rework_step).toBe("");
+    expect(parsed.step).toBe("blocked");
   });
 });

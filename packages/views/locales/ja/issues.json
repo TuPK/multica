@@ -2346,6 +2346,8 @@
       "reject": "却下"
     },
     "resume": "再開",
+    "choose_step": "ステップを選択",
+    "resume_to_draft": "作成ステップに戻る",
     "detach": "デタッチ",
     "detach_confirm": "フローからデタッチ",
     "detach_confirm_desc": "このリクエストはワークフローエンジンからデタッチされます。未完了のタスクは通常のサブイシューになります。",

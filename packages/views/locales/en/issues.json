@@ -2422,6 +2422,8 @@
       "reject": "Reject"
     },
     "resume": "Resume",
+    "choose_step": "Choose the step",
+    "resume_to_draft": "Back to drafting",
     "detach": "Detach",
     "detach_confirm": "Detach from flow",
     "detach_confirm_desc": "This request will be detached from the workflow engine. Open tasks will become normal sub-issues.",

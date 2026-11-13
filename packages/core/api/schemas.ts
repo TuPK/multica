@@ -1725,6 +1725,7 @@ export const IssueFlowStateSchema = z.object({
   entered_at: z.string().default(""),
   tasks: tolerantList(IssueFlowTaskSchema as unknown as z.ZodType<IssueFlowTask>),
   next: tolerantList(IssueFlowNextSchema as unknown as z.ZodType<IssueFlowNext>),
+  rework_step: z.string().default("").catch(""),
 }).loose();
 
 export const EMPTY_ISSUE_FLOW_STATE: IssueFlowState = {
@@ -1740,6 +1741,7 @@ export const EMPTY_ISSUE_FLOW_STATE: IssueFlowState = {
   entered_at: "",
   tasks: [],
   next: [],
+  rework_step: "",
 };
 
 const IssueFlowActionSchema = z.object({
