@@ -146,6 +146,8 @@ var concurrentIndexCleanups = map[string]string{
 	"979_publish_channel_platform_idx":                          "publish_channel_workspace_platform_idx",
 	"980_publish_attempt_idempotency_idx":                       "publish_attempt_idempotency_idx",
 	"981_publish_attempt_queue_idx":                             "publish_attempt_queued_idx",
+	"986_issue_flow_task_once_idx":                              "idx_issue_flow_task_once",
+	"987_issue_flow_open_idx":                                   "idx_issue_flow_open",
 	"905_issue_directive_origin_index":                          "idx_issue_directive_origin",
 	"907_squad_skill_unique_index":                              "idx_squad_skill_squad_skill",
 	"908_squad_plugin_unique_index":                             "idx_squad_plugin_squad_name",

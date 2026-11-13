@@ -1,0 +1,8 @@
+ALTER TABLE issue_workflow DROP COLUMN IF EXISTS flow_auto;
+ALTER TABLE issue_workflow DROP COLUMN IF EXISTS template_ref;
+ALTER TABLE issue_workflow DROP COLUMN IF EXISTS flow_config;
+ALTER TABLE issue DROP COLUMN IF EXISTS flow_round;
+ALTER TABLE issue DROP COLUMN IF EXISTS flow_task;
+ALTER TABLE issue DROP COLUMN IF EXISTS flow_step;
+ALTER TABLE issue DROP COLUMN IF EXISTS flow;
+ALTER TABLE issue DROP COLUMN IF EXISTS outcome;
