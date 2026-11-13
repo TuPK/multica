@@ -385,6 +385,15 @@ var defaultStopMessages = map[string]string{
 // postStopComment writes the system comment that tells people why a request
 // stopped, from the flow's own message for that stop.
 func (h *Handler) postStopComment(ctx context.Context, qtx *db.Queries, run *flowRun, old issueworkflow.FlowState, kind string, rows []flowTaskRow, note flowRouteNote, e *flowEffects) error {
+	if header := stopCommentHeader(kind); header != "" {
+		posted, err := stopCommentByLead(ctx, qtx, run.issue, old, header)
+		if err != nil {
+			return err
+		}
+		if posted {
+			return nil
+		}
+	}
 	template := ""
 	switch kind {
 	case stopKind1:
@@ -434,6 +443,44 @@ func (h *Handler) postStopComment(ctx context.Context, qtx *db.Queries, run *flo
 	}
 	e.comments = append(e.comments, created)
 	return nil
+}
+
+// stopCommentHeader is the first line of the stop comment for a stop kind, as the
+// lead writes it. Stops without one (stalled, human) are always posted by the server.
+func stopCommentHeader(kind string) string {
+	switch kind {
+	case stopKind1:
+		return "BLOCKED · stop 1"
+	case stopKind2:
+		return "IN REVIEW · stop 2"
+	case stopKind3:
+		return "BLOCKED · stop 3"
+	}
+	return ""
+}
+
+// stopCommentByLead reports whether an agent already wrote the stop comment for the
+// stop the request is at now. The lead may write it before it reports the stop, so the
+// server must not post a second copy. Only comments made after the request entered the
+// step it stopped from count: a comment from an earlier stop is not this stop's comment.
+func stopCommentByLead(ctx context.Context, qtx *db.Queries, request db.Issue, old issueworkflow.FlowState, header string) (bool, error) {
+	entered, err := time.Parse(time.RFC3339, old.EnteredAt)
+	if err != nil {
+		return false, nil
+	}
+	comments, err := qtx.ListCommentsSinceForIssue(ctx, db.ListCommentsSinceForIssueParams{
+		IssueID: request.ID, WorkspaceID: request.WorkspaceID,
+		CreatedAt: pgtype.Timestamptz{Time: entered, Valid: true}, Limit: 500,
+	})
+	if err != nil {
+		return false, fmt.Errorf("list comments for the stop: %w", err)
+	}
+	for _, c := range comments {
+		if c.AuthorType == "agent" && !c.DeletedAt.Valid && strings.HasPrefix(strings.TrimSpace(c.Content), header) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // blockedTaskNote fills a stop 1 that came from tasks which reported they cannot go on. The lead's

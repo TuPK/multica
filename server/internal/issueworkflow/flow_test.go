@@ -792,10 +792,11 @@ func TestFlowBrief_LeadAfterThePlan(t *testing.T) {
 	}
 }
 
-// The squad rules and the lead's skill tell a lead to post the stop comment and set the status of the
-// request itself. While a workflow runs the request the server does both, so a lead that does them too
-// posts the stop twice. The brief is read on every run on the request: it settles the conflict.
-func TestFlowBrief_LeadLeavesTheStopToTheServer(t *testing.T) {
+// The squad rules and the lead's skill tell a lead to post the stop comment. The server also posts
+// one when the request stops. The server skips its copy when the lead already wrote the comment for
+// that stop, so the brief says both: the server sets the status and posts the comment only when the
+// lead has not, and the lead may post it.
+func TestFlowBrief_StopCommentIsPostedOnce(t *testing.T) {
 	def := tradeFlow()
 	briefs := map[string]string{
 		"plan": FlowLeadBrief(FlowLeadBriefInput{
@@ -806,10 +807,18 @@ func TestFlowBrief_LeadLeavesTheStopToTheServer(t *testing.T) {
 		"stopped":        FlowLeadBrief(FlowLeadBriefInput{WorkflowName: "Trade", RequestIdentifier: "MUL-7", Step: "blocked", StepName: "Blocked", Stop: Stop1}),
 	}
 	for name, got := range briefs {
-		for _, want := range []string{"The server posts the stop comment and sets the status", "BLOCKED", "this brief wins"} {
+		for _, want := range []string{
+			"The server sets the status of the request when it stops",
+			"unless you already posted one for that stop",
+			"You may post the stop comment yourself",
+			"BLOCKED",
+		} {
 			if !strings.Contains(got, want) {
 				t.Errorf("%s brief is missing %q:\n%s", name, want, got)
 			}
+		}
+		if strings.Contains(got, "Post none of them yourself") {
+			t.Errorf("%s brief forbids the lead to post the stop comment; the server only skips its own copy:\n%s", name, got)
 		}
 	}
 }
