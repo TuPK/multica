@@ -643,7 +643,13 @@
     "wakeup_checkin_coalesced_one": "{{count}} silent check · latest: {{note}}",
     "wakeup_checkin_coalesced_other": "{{count}} silent checks · latest: {{note}}",
     "wakeup_chip_created_by": "{{name}}'s wakeup",
-    "wakeup_chip_system": "System rule"
+    "wakeup_chip_system": "System rule",
+    "flow_transition": "advanced to step {{step}}",
+    "flow_var_set": "set variable {{key}} to {{value}}",
+    "flow_human_reminded": "reminded assignee for approval",
+    "flow_task_reopened": "reopened task {{task}}",
+    "flow_task_skipped": "skipped task {{task}}",
+    "flow_manual_close": "closed task {{task}} on behalf of the assignee"
   },
   "comment": {
     "add_reaction": "Add reaction",
@@ -2447,6 +2453,7 @@
       "workflow_managed_by_template": "This workflow is managed by Kit Việt and cannot be edited",
       "workflow_has_flow_requests": "Cannot delete workflow with active flow requests",
       "flow_workflow_forbidden": "Admin permission required to configure flow workflows"
-    }
+    },
+    "resume_skip_cancelled": "Resume without the cancelled tasks"
   }
 }

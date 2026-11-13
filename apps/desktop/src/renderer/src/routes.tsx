@@ -6,6 +6,7 @@ import { ProjectDetailPage } from "./pages/project-detail-page";
 import { AutopilotDetailPage } from "./pages/autopilot-detail-page";
 import { SkillDetailPage } from "./pages/skill-detail-page";
 import { DesktopWorkflowDetailPage } from "./pages/workflow-designer-page";
+import { DesktopFlowDraftEditorPage } from "./pages/flow-draft-editor-page";
 import { AgentDetailPage } from "./pages/agent-detail-page";
 import { AiBuilderSessionPage } from "./pages/ai-builder-session-page";
 import { MemberDetailPage } from "./pages/member-detail-page";
@@ -287,6 +288,11 @@ export const appRoutes: RouteObject[] = [
             path: "squads/:id",
             element: <SquadDetailPageView />,
             handle: { title: "Squad" },
+          },
+          {
+            path: "squads/:id/workflows/:draftId",
+            element: <DesktopFlowDraftEditorPage />,
+            handle: { title: "Edit workflow" },
           },
           { path: "inbox", element: <InboxPage />, handle: { title: "Inbox" } },
           { path: "chat", element: <ChatPage />, handle: { title: "Chat" } },

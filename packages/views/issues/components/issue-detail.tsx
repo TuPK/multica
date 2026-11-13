@@ -453,6 +453,18 @@ function formatActivity(
           return t(($) => $.activity.squad_leader_evaluated);
       }
     }
+    case "flow_transition":
+      return t(($) => $.activity.flow_transition, { step: details.to_step || details.step || "" });
+    case "flow_var_set":
+      return t(($) => $.activity.flow_var_set, { key: details.key || "", value: details.value || "" });
+    case "flow_human_reminded":
+      return t(($) => $.activity.flow_human_reminded);
+    case "flow_task_reopened":
+      return t(($) => $.activity.flow_task_reopened, { task: details.task || "" });
+    case "flow_task_skipped":
+      return t(($) => $.activity.flow_task_skipped, { task: details.task || "" });
+    case "flow_manual_close":
+      return t(($) => $.activity.flow_manual_close, { task: details.task || "" });
     default:
       return entry.action ?? "";
   }

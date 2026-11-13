@@ -324,5 +324,205 @@
       "kind_work": "工作",
       "rework_limit": "最多返回 {{count}} 次"
     }
+  },
+  "flow_designer": {
+    "title": "編輯工作流程",
+    "new": "建立工作流程",
+    "start": {
+      "blank": "空白",
+      "kitviet": "複製 Kit Việt 工作流程",
+      "import": "匯入檔案",
+      "proposal": "委託 AI 代理起草",
+      "name": "名稱",
+      "creating": "建立中…",
+      "failed": "無法建立草稿"
+    },
+    "export": "匯出",
+    "save": {
+      "saved": "已儲存",
+      "unsaved": "有未儲存的變更",
+      "saving": "儲存中…",
+      "failed": "無法儲存"
+    },
+    "conflict": {
+      "title": "其他人已先儲存此草稿",
+      "reload": "重新載入",
+      "keep_copy": "將我的修改儲存為副本"
+    },
+    "roles": {
+      "title": "角色",
+      "leader": "隊長只負責規劃，不接任務",
+      "pick_agent": "選擇 AI 代理",
+      "unused": "沒有任務使用",
+      "kind": {
+        "agent": "AI 代理",
+        "member": "成員",
+        "managers": "小隊管理者"
+      }
+    },
+    "step": {
+      "work": "工作步驟",
+      "gate": "關卡步驟",
+      "human": "僅限人工",
+      "add": "新增步驟",
+      "kind": {
+        "tasks": "任務",
+        "lead": "隊長步驟",
+        "manual": "手動放行"
+      }
+    },
+    "task": {
+      "add": "新增任務",
+      "attachment": "需要附件",
+      "verdict": "需要裁決",
+      "only_when": "僅當",
+      "after": "在其後開始",
+      "inputs": "輸入項",
+      "skills": "技能",
+      "sets": "設定變數",
+      "requires_vars": "關閉前必須設定"
+    },
+    "switches": {
+      "title": "開關"
+    },
+    "rework": {
+      "label": "被駁回時最多返回 {{count}} 次"
+    },
+    "stop": {
+      "stop1": "停止 1 · 缺少依據",
+      "stop2": "停止 2 · 離開工作區前需人工審核",
+      "stop3": "停止 3 · 已達返工上限",
+      "stalled": "已停滯",
+      "waiting": "等待核准"
+    },
+    "actions": {
+      "check": "檢查",
+      "simulate": "模擬",
+      "publish": "發布",
+      "cancel": "取消"
+    },
+    "publish": {
+      "note": "發布會產生一個鎖定的版本。執行中的請求保留原版本。",
+      "make_active": "設為目前使用的工作流程",
+      "checking": "檢查中…",
+      "blocked": "請先修正錯誤再發布",
+      "stale": "已發布較新的版本",
+      "edit_latest": "編輯最新版本",
+      "admin_only": "僅限管理員",
+      "done": "已發布",
+      "active_failed": "已發布，但無法設為使用中",
+      "failed": "無法發布工作流程"
+    },
+    "simulate": {
+      "note": "模擬只檢查流轉，不檢查 AI 代理的實際工作。",
+      "vars": "變數",
+      "results": "任務結果",
+      "default": "預設",
+      "run": "執行",
+      "close": "關閉",
+      "end": "結束於",
+      "path": "路徑",
+      "visit": "第 {{n}} 次進入",
+      "loops": "迴圈",
+      "truncated": "已在模擬可追蹤的最大步數處停止",
+      "failed": "模擬失敗"
+    },
+    "ack": {
+      "no_human_exit": "我了解此工作流程無需人工審核即可完成",
+      "no_gate": "我了解沒有任務經過關卡檢查",
+      "lead_may_work": "我了解負責人可以執行任務"
+    },
+    "problems": {
+      "none": "未發現問題"
+    },
+    "empty": {
+      "title": "尚無工作流程"
+    },
+    "load_failed": "無法載入工作流程",
+    "retry": "重試",
+    "version": "版本 {{n}}",
+    "locked": "已發布的版本已鎖定",
+    "edit_as_draft": "以草稿編輯",
+    "join": {
+      "title": "等待條件",
+      "all": "全部任務",
+      "any": "任一任務",
+      "quorum": "至少 {{count}} 個通過"
+    },
+    "loop": {
+      "title": "循環",
+      "max": "最多 {{count}} 次",
+      "back_to": "返回到 {{step}}"
+    },
+    "verdicts": {
+      "title": "裁決選項"
+    },
+    "verdict": {
+      "pass": "視為通過",
+      "fail": "視為未通過",
+      "neutral": "中立"
+    },
+    "instances": {
+      "count": "並行執行 {{count}} 個",
+      "per_item": "按 {{var}} 的每一項各一個"
+    },
+    "files": {
+      "title": "必要檔案",
+      "min": "至少 {{count}} 個"
+    },
+    "vars": {
+      "title": "變數"
+    },
+    "stops": {
+      "declared": "停止原因"
+    },
+    "terminal": {
+      "leaves": "離開工作區"
+    },
+    "release": {
+      "warning": "此工作流程可在無人審核的情況下離開工作區"
+    },
+    "close_on_behalf": "代為關閉",
+    "on_behalf_badge": "{{name}} 代 AI 代理關閉",
+    "graph": {
+      "collapse": "摺疊",
+      "find": "尋找步驟",
+      "worst_case": "最壞情況下最多 {{count}} 個任務"
+    },
+    "request": {
+      "path": "路徑",
+      "feedback": "回饋",
+      "exit": "退出",
+      "exit_failed": "無法選擇此出口"
+    },
+    "trial": {
+      "run": "試運行",
+      "badge": "試運行"
+    },
+    "unsupported": "此應用程式版本不支援",
+    "editor": {
+      "tab_editor": "編輯器",
+      "tab_graph": "圖表",
+      "tab_terminals": "終點",
+      "tab_problems": "問題",
+      "name_placeholder": "工作流程名稱",
+      "select_step": "選擇一個步驟",
+      "disabled": "工作流程編輯已關閉",
+      "back": "返回小隊",
+      "step_title": "步驟 {{n}}",
+      "check_failed": "無法檢查工作流程",
+      "export_failed": "無法匯出工作流程",
+      "not_saved": "無法儲存草稿"
+    },
+    "import": {
+      "select_file": "選擇檔案",
+      "paste": "或貼上清單",
+      "invalid_json": "這不是有效的 JSON",
+      "not_manifest": "這不是工作流程清單",
+      "too_large": "檔案超過 512 KiB",
+      "submit": "匯入",
+      "failed": "無法匯入檔案"
+    },
+    "drafts": "草稿"
   }
 }

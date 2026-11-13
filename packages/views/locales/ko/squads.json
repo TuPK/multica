@@ -324,5 +324,205 @@
       "kind_work": "작업",
       "rework_limit": "최대 {{count}}회 재반려"
     }
+  },
+  "flow_designer": {
+    "title": "워크플로 편집",
+    "new": "새 워크플로",
+    "start": {
+      "blank": "빈 워크플로",
+      "kitviet": "Kit Việt 워크플로 복사",
+      "import": "파일 가져오기",
+      "proposal": "에이전트에게 초안 작성 요청",
+      "name": "이름",
+      "creating": "만드는 중…",
+      "failed": "초안을 만들지 못했습니다"
+    },
+    "export": "내보내기",
+    "save": {
+      "saved": "저장됨",
+      "unsaved": "저장되지 않은 변경 사항",
+      "saving": "저장 중…",
+      "failed": "저장하지 못했습니다"
+    },
+    "conflict": {
+      "title": "다른 사람이 이 초안을 먼저 저장했습니다",
+      "reload": "새로 고침",
+      "keep_copy": "내 변경 사항을 사본으로 보관"
+    },
+    "roles": {
+      "title": "역할",
+      "leader": "리더는 계획만 하고 작업은 맡지 않습니다",
+      "pick_agent": "에이전트 선택",
+      "unused": "어떤 작업에서도 쓰이지 않음",
+      "kind": {
+        "agent": "에이전트",
+        "member": "멤버",
+        "managers": "스쿼드 관리자"
+      }
+    },
+    "step": {
+      "work": "작업 단계",
+      "gate": "게이트 단계",
+      "human": "사람 전용",
+      "add": "단계 추가",
+      "kind": {
+        "tasks": "작업",
+        "lead": "리더 단계",
+        "manual": "수동 종료"
+      }
+    },
+    "task": {
+      "add": "작업 추가",
+      "attachment": "첨부 파일 필요",
+      "verdict": "판정 필요",
+      "only_when": "다음일 때만",
+      "after": "다음 이후 시작",
+      "inputs": "입력",
+      "skills": "스킬",
+      "sets": "변수 설정",
+      "requires_vars": "종료 전 필수 설정"
+    },
+    "switches": {
+      "title": "스위치"
+    },
+    "rework": {
+      "label": "반려되면 최대 {{count}}회 되돌아감"
+    },
+    "stop": {
+      "stop1": "중단 1 · 근거 부족",
+      "stop2": "중단 2 · 워크스페이스를 벗어나기 전 사람 검토",
+      "stop3": "중단 3 · 재작업 한도 도달",
+      "stalled": "진행 정체",
+      "waiting": "승인 대기 중"
+    },
+    "actions": {
+      "check": "검사",
+      "simulate": "시뮬레이션",
+      "publish": "게시",
+      "cancel": "취소"
+    },
+    "publish": {
+      "note": "게시하면 잠긴 버전이 만들어집니다. 진행 중인 요청은 기존 버전을 유지합니다.",
+      "make_active": "활성 워크플로로 지정",
+      "checking": "검사 중…",
+      "blocked": "게시하기 전에 오류를 수정하세요",
+      "stale": "더 최신 버전이 게시되었습니다",
+      "edit_latest": "최신 버전 편집",
+      "admin_only": "관리자만",
+      "done": "게시했습니다",
+      "active_failed": "게시했지만 활성화하지 못했습니다",
+      "failed": "워크플로를 게시하지 못했습니다"
+    },
+    "simulate": {
+      "note": "시뮬레이션은 경로만 확인하며 에이전트의 작업은 확인하지 않습니다.",
+      "vars": "변수",
+      "results": "작업 결과",
+      "default": "기본값",
+      "run": "실행",
+      "close": "닫기",
+      "end": "종료 위치",
+      "path": "경로",
+      "visit": "{{n}}번째 방문",
+      "loops": "루프",
+      "truncated": "시뮬레이션이 따라갈 수 있는 최대 단계에서 멈췄습니다",
+      "failed": "시뮬레이션에 실패했습니다"
+    },
+    "ack": {
+      "no_human_exit": "이 워크플로가 사람 검토 없이 완료될 수 있음을 이해합니다",
+      "no_gate": "어떤 작업도 게이트로 검증되지 않음을 이해합니다",
+      "lead_may_work": "리더가 작업을 수행할 수 있음을 이해합니다"
+    },
+    "problems": {
+      "none": "문제가 없습니다"
+    },
+    "empty": {
+      "title": "아직 워크플로가 없습니다"
+    },
+    "load_failed": "워크플로를 불러오지 못했습니다",
+    "retry": "다시 시도",
+    "version": "버전 {{n}}",
+    "locked": "게시된 버전은 잠겨 있습니다",
+    "edit_as_draft": "초안으로 편집",
+    "join": {
+      "title": "대기 조건",
+      "all": "모든 작업",
+      "any": "작업 하나",
+      "quorum": "최소 {{count}}명 승인"
+    },
+    "loop": {
+      "title": "반복",
+      "max": "최대 {{count}}회",
+      "back_to": "{{step}}(으)로 돌아가기"
+    },
+    "verdicts": {
+      "title": "판정 옵션"
+    },
+    "verdict": {
+      "pass": "통과로 간주",
+      "fail": "실패로 간주",
+      "neutral": "중립"
+    },
+    "instances": {
+      "count": "{{count}}개 병렬 실행",
+      "per_item": "{{var}}의 항목마다 하나씩"
+    },
+    "files": {
+      "title": "필수 파일",
+      "min": "최소 {{count}}개"
+    },
+    "vars": {
+      "title": "변수"
+    },
+    "stops": {
+      "declared": "중단 사유"
+    },
+    "terminal": {
+      "leaves": "워크스페이스를 벗어남"
+    },
+    "release": {
+      "warning": "이 워크플로는 사람 검토 없이 워크스페이스를 벗어날 수 있습니다"
+    },
+    "close_on_behalf": "대신 닫기",
+    "on_behalf_badge": "{{name}}님이 에이전트 대신 닫음",
+    "graph": {
+      "collapse": "접기",
+      "find": "단계 찾기",
+      "worst_case": "최악의 경우 최대 {{count}}개 작업"
+    },
+    "request": {
+      "path": "경로",
+      "feedback": "피드백",
+      "exit": "나가기",
+      "exit_failed": "이 출구를 선택하지 못했습니다"
+    },
+    "trial": {
+      "run": "시험 실행",
+      "badge": "시험"
+    },
+    "unsupported": "이 앱 버전에서 지원되지 않음",
+    "editor": {
+      "tab_editor": "편집기",
+      "tab_graph": "그래프",
+      "tab_terminals": "종료 지점",
+      "tab_problems": "문제",
+      "name_placeholder": "워크플로 이름",
+      "select_step": "단계를 선택하세요",
+      "disabled": "워크플로 작성이 꺼져 있습니다",
+      "back": "스쿼드로 돌아가기",
+      "step_title": "단계 {{n}}",
+      "check_failed": "워크플로를 검사하지 못했습니다",
+      "export_failed": "워크플로를 내보내지 못했습니다",
+      "not_saved": "초안을 저장하지 못했습니다"
+    },
+    "import": {
+      "select_file": "파일 선택",
+      "paste": "또는 매니페스트 붙여넣기",
+      "invalid_json": "올바른 JSON이 아닙니다",
+      "not_manifest": "워크플로 매니페스트가 아닙니다",
+      "too_large": "파일이 512 KiB보다 큽니다",
+      "submit": "가져오기",
+      "failed": "파일을 가져오지 못했습니다"
+    },
+    "drafts": "초안"
   }
 }

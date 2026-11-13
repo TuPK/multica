@@ -329,5 +329,205 @@
       "kind_work": "Trabajo",
       "rework_limit": "Retorno máx. {{count}} veces"
     }
+  },
+  "flow_designer": {
+    "title": "Editar flujo de trabajo",
+    "new": "Nuevo flujo de trabajo",
+    "start": {
+      "blank": "En blanco",
+      "kitviet": "Copiar un flujo de Kit Việt",
+      "import": "Importar un archivo",
+      "proposal": "Pedir borrador a un agente",
+      "name": "Nombre",
+      "creating": "Creando…",
+      "failed": "No se pudo crear el borrador"
+    },
+    "export": "Exportar",
+    "save": {
+      "saved": "Guardado",
+      "unsaved": "Cambios sin guardar",
+      "saving": "Guardando…",
+      "failed": "No se pudo guardar"
+    },
+    "conflict": {
+      "title": "Alguien guardó este borrador antes",
+      "reload": "Recargar",
+      "keep_copy": "Guardar la mía como copia"
+    },
+    "roles": {
+      "title": "Roles",
+      "leader": "El líder planifica y no toma tareas",
+      "pick_agent": "Elegir un agente",
+      "unused": "Ninguna tarea lo usa",
+      "kind": {
+        "agent": "Agente",
+        "member": "Miembro",
+        "managers": "Gestores del squad"
+      }
+    },
+    "step": {
+      "work": "Paso de trabajo",
+      "gate": "Paso de puerta",
+      "human": "Solo humano",
+      "add": "Añadir paso",
+      "kind": {
+        "tasks": "Tareas",
+        "lead": "Paso del líder",
+        "manual": "Salida manual"
+      }
+    },
+    "task": {
+      "add": "Añadir tarea",
+      "attachment": "Requiere archivo adjunto",
+      "verdict": "Requiere veredicto",
+      "only_when": "Solo cuando",
+      "after": "Empieza después de",
+      "inputs": "Entradas",
+      "skills": "Habilidades",
+      "sets": "Establece variables",
+      "requires_vars": "Debe establecerse antes de cerrar"
+    },
+    "switches": {
+      "title": "Interruptores"
+    },
+    "rework": {
+      "label": "Si se rechaza, volver como máximo {{count}} veces"
+    },
+    "stop": {
+      "stop1": "Parada 1 · faltan datos",
+      "stop2": "Parada 2 · revisión humana antes de salir del espacio de trabajo",
+      "stop3": "Parada 3 · límite de repeticiones alcanzado",
+      "stalled": "Estancado",
+      "waiting": "Esperando aprobación"
+    },
+    "actions": {
+      "check": "Comprobar",
+      "simulate": "Simular",
+      "publish": "Publicar",
+      "cancel": "Cancelar"
+    },
+    "publish": {
+      "note": "Publicar crea una versión bloqueada. Las solicitudes en curso conservan la suya.",
+      "make_active": "Usar como flujo de trabajo activo",
+      "checking": "Comprobando…",
+      "blocked": "Corrige los errores antes de publicar",
+      "stale": "Se publicó una versión más reciente",
+      "edit_latest": "Editar la última versión",
+      "admin_only": "Solo administradores",
+      "done": "Publicado",
+      "active_failed": "Publicado, pero no se pudo activar",
+      "failed": "No se pudo publicar el flujo de trabajo"
+    },
+    "simulate": {
+      "note": "La simulación comprueba el enrutamiento, no el trabajo de los agentes.",
+      "vars": "Variables",
+      "results": "Resultados de las tareas",
+      "default": "Predeterminado",
+      "run": "Ejecutar",
+      "close": "Cerrar",
+      "end": "Termina en",
+      "path": "Recorrido",
+      "visit": "Visita {{n}}",
+      "loops": "Bucles",
+      "truncated": "Se detuvo en el máximo de pasos que sigue una simulación",
+      "failed": "La simulación falló"
+    },
+    "ack": {
+      "no_human_exit": "Entiendo que este flujo puede terminar sin revisión humana",
+      "no_gate": "Entiendo que ninguna tarea pasa por una puerta",
+      "lead_may_work": "Entiendo que el líder puede realizar tareas"
+    },
+    "problems": {
+      "none": "Sin problemas"
+    },
+    "empty": {
+      "title": "Aún no hay flujos de trabajo"
+    },
+    "load_failed": "No se pudo cargar el flujo de trabajo",
+    "retry": "Reintentar",
+    "version": "Versión {{n}}",
+    "locked": "Las versiones publicadas están bloqueadas",
+    "edit_as_draft": "Editar como borrador",
+    "join": {
+      "title": "Esperar",
+      "all": "Todas las tareas",
+      "any": "Cualquier tarea",
+      "quorum": "Al menos {{count}} aprueban"
+    },
+    "loop": {
+      "title": "Bucles",
+      "max": "Hasta {{count}} veces",
+      "back_to": "Volver a {{step}}"
+    },
+    "verdicts": {
+      "title": "Veredictos"
+    },
+    "verdict": {
+      "pass": "Cuenta como aprobado",
+      "fail": "Cuenta como rechazo",
+      "neutral": "Neutral"
+    },
+    "instances": {
+      "count": "Ejecutar {{count}} en paralelo",
+      "per_item": "Una por elemento de {{var}}"
+    },
+    "files": {
+      "title": "Archivos requeridos",
+      "min": "Al menos {{count}}"
+    },
+    "vars": {
+      "title": "Variables"
+    },
+    "stops": {
+      "declared": "Motivos de parada"
+    },
+    "terminal": {
+      "leaves": "Sale del espacio de trabajo"
+    },
+    "release": {
+      "warning": "Este flujo puede salir del espacio de trabajo sin revisión humana"
+    },
+    "close_on_behalf": "Cerrar en su nombre",
+    "on_behalf_badge": "Cerrado por {{name}} en nombre del agente",
+    "graph": {
+      "collapse": "Contraer",
+      "find": "Buscar un paso",
+      "worst_case": "Hasta {{count}} tareas en el peor caso"
+    },
+    "request": {
+      "path": "Ruta",
+      "feedback": "Comentarios",
+      "exit": "Salir",
+      "exit_failed": "No se pudo tomar esta salida"
+    },
+    "trial": {
+      "run": "Ejecución de prueba",
+      "badge": "Prueba"
+    },
+    "unsupported": "No compatible con esta versión",
+    "editor": {
+      "tab_editor": "Editor",
+      "tab_graph": "Gráfico",
+      "tab_terminals": "Finales",
+      "tab_problems": "Problemas",
+      "name_placeholder": "Nombre del flujo de trabajo",
+      "select_step": "Selecciona un paso",
+      "disabled": "La edición de flujos de trabajo está desactivada",
+      "back": "Volver al squad",
+      "step_title": "Paso {{n}}",
+      "check_failed": "No se pudo comprobar el flujo de trabajo",
+      "export_failed": "No se pudo exportar el flujo de trabajo",
+      "not_saved": "No se pudo guardar el borrador"
+    },
+    "import": {
+      "select_file": "Elige un archivo",
+      "paste": "O pega el manifiesto",
+      "invalid_json": "Esto no es un JSON válido",
+      "not_manifest": "Esto no es un manifiesto de flujo de trabajo",
+      "too_large": "El archivo supera los 512 KiB",
+      "submit": "Importar",
+      "failed": "No se pudo importar el archivo"
+    },
+    "drafts": "Borradores"
   }
 }

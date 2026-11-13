@@ -1,5 +1,6 @@
 "use client";
 
+import type { FlowFactInfo } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
 import {
@@ -12,10 +13,10 @@ import {
 import { Plus, Trash2 } from "@multica/ui/icons";
 import { useT } from "../../i18n";
 import {
-  CONDITION_FIELDS,
-  FIELD_ENUM_VALUES,
-  FIELD_OPERATORS,
+  enumValuesForField,
+  fieldsForFacts,
   listValueText,
+  operatorsForField,
   ruleWithField,
   ruleWithListValue,
   ruleWithOperator,
@@ -24,7 +25,6 @@ import {
 } from "../condition-spec";
 import type {
   Condition,
-  ConditionField,
   ConditionOperator,
   ConditionRule,
 } from "../types";
@@ -34,6 +34,7 @@ export interface ConditionBuilderProps {
   onChange: (condition: Condition) => void;
   depth?: number;
   onRemove?: () => void;
+  facts?: FlowFactInfo[];
 }
 
 /**
@@ -46,6 +47,7 @@ export function ConditionBuilder({
   onChange,
   depth = 1,
   onRemove,
+  facts,
 }: ConditionBuilderProps) {
   const { t } = useT("workflow");
 
@@ -62,9 +64,13 @@ export function ConditionBuilder({
           ? condition.any
           : [condition.not];
 
+    const defaultRule: ConditionRule = facts && facts[0]
+      ? { field: facts[0].key, op: (facts[0].ops[0] ?? "eq") as ConditionOperator, value: "" }
+      : { field: "outcome", op: "eq", value: "approved" };
+
     const handleTypeChange = (newType: "all" | "any" | "not") => {
       if (newType === "not") {
-        onChange({ not: items[0] ?? { field: "outcome", op: "eq", value: "approved" } });
+        onChange({ not: items[0] ?? defaultRule });
       } else if (newType === "all") {
         onChange({ all: items });
       } else {
@@ -94,11 +100,7 @@ export function ConditionBuilder({
     };
 
     const handleAddRule = () => {
-      const newRule: ConditionRule = {
-        field: "outcome",
-        op: "eq",
-        value: "approved",
-      };
+      const newRule: ConditionRule = { ...defaultRule };
       if (groupType === "not" && "not" in condition) {
         onChange({ all: [condition.not, newRule] });
       } else {
@@ -113,7 +115,7 @@ export function ConditionBuilder({
     const handleAddGroup = () => {
       if (depth >= 4) return;
       const newGroup: Condition = {
-        all: [{ field: "outcome", op: "eq", value: "approved" }],
+        all: [{ ...defaultRule }],
       };
       onChange(
         groupType === "all"
@@ -176,6 +178,7 @@ export function ConditionBuilder({
               onChange={(updated) => handleItemChange(idx, updated)}
               depth={depth + 1}
               onRemove={() => handleItemRemove(idx)}
+              facts={facts}
             />
           ))}
         </div>
@@ -212,9 +215,9 @@ export function ConditionBuilder({
 
   // Single rule
   const rule = condition as ConditionRule;
-  const field = rule.field as ConditionField;
-  const kind = valueKindOf(field);
-  const enumValues = FIELD_ENUM_VALUES[field];
+  const field = rule.field;
+  const kind = valueKindOf(field, facts);
+  const enumValues = enumValuesForField(field, facts);
 
   const fieldLabels: Record<string, string> = {
     outcome: t(($) => $.designer.conditions.fields.outcome),
@@ -226,14 +229,14 @@ export function ConditionBuilder({
     assignee_type: t(($) => $.designer.conditions.fields.assignee_type),
   };
 
-  const fieldItems = CONDITION_FIELDS.map((f) => ({
+  const fieldItems = fieldsForFacts(facts).map((f) => ({
     value: f,
     label: fieldLabels[f] ?? f,
   }));
 
-  const opItems = (FIELD_OPERATORS[field] ?? []).map((op) => ({
+  const opItems = operatorsForField(field, facts).map((op) => ({
     value: op,
-    label: t(($) => $.designer.conditions.operators[op]),
+    label: t(($) => $.designer.conditions.operators[op as ConditionOperator] ?? op),
   }));
 
   const enumItems = (enumValues ?? []).map((opt) => ({
@@ -247,11 +250,13 @@ export function ConditionBuilder({
       <Select
         items={fieldItems}
         value={rule.field}
-        onValueChange={(f) => onChange(ruleWithField(rule, f as ConditionField))}
+        onValueChange={(f) => {
+          if (f) onChange(ruleWithField(rule, f, facts));
+        }}
       >
-        <SelectTrigger className="h-7 w-32 text-caption">
+        <SelectTrigger className="h-7 w-40 text-caption font-mono">
           <SelectValue>
-            {fieldItems.find((f) => f.value === rule.field)?.label}
+            {fieldItems.find((f) => f.value === rule.field)?.label ?? rule.field}
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
@@ -267,11 +272,13 @@ export function ConditionBuilder({
       <Select
         items={opItems}
         value={rule.op}
-        onValueChange={(op) => onChange(ruleWithOperator(rule, op as ConditionOperator))}
+        onValueChange={(op) => {
+          if (op) onChange(ruleWithOperator(rule, op as ConditionOperator, facts));
+        }}
       >
         <SelectTrigger className="h-7 w-28 text-caption font-mono">
           <SelectValue>
-            {opItems.find((o) => o.value === rule.op)?.label}
+            {opItems.find((o) => o.value === rule.op)?.label ?? rule.op}
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
@@ -289,7 +296,7 @@ export function ConditionBuilder({
           {rule.op === "in" ? (
             <Input
               value={listValueText(rule.value)}
-              onChange={(e) => onChange(ruleWithListValue(rule, e.target.value))}
+              onChange={(e) => onChange(ruleWithListValue(rule, e.target.value, facts))}
               placeholder={t(($) => $.designer.conditions.value)}
               className="h-7 text-caption"
             />
@@ -298,7 +305,7 @@ export function ConditionBuilder({
               items={enumItems}
               value={String(rule.value ?? enumValues[0] ?? "")}
               onValueChange={(v) => {
-                if (v) onChange(ruleWithScalarValue(rule, v));
+                if (v) onChange(ruleWithScalarValue(rule, v, facts));
               }}
             >
               <SelectTrigger className="h-7 w-full text-caption">
@@ -318,13 +325,13 @@ export function ConditionBuilder({
               min={0}
               step={1}
               value={typeof rule.value === "number" ? rule.value : 0}
-              onChange={(e) => onChange(ruleWithScalarValue(rule, e.target.value))}
+              onChange={(e) => onChange(ruleWithScalarValue(rule, e.target.value, facts))}
               className="h-7 w-24 text-caption"
             />
           ) : (
             <Input
               value={String(rule.value ?? "")}
-              onChange={(e) => onChange(ruleWithScalarValue(rule, e.target.value))}
+              onChange={(e) => onChange(ruleWithScalarValue(rule, e.target.value, facts))}
               placeholder={t(($) => $.designer.conditions.value)}
               className="h-7 text-caption"
             />

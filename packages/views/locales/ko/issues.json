@@ -628,7 +628,13 @@
     "wakeup_checkin": "조용한 확인: {{note}}",
     "wakeup_checkin_coalesced_other": "조용한 확인 {{count}}회 · 최근: {{note}}",
     "wakeup_chip_created_by": "{{name}} 생성",
-    "wakeup_chip_system": "시스템 규칙"
+    "wakeup_chip_system": "시스템 규칙",
+    "flow_transition": "{{step}} 단계로 진행됨",
+    "flow_var_set": "변수 {{key}}을(를) {{value}}(으)로 설정함",
+    "flow_human_reminded": "승인 담당자에게 알림을 보냄",
+    "flow_task_reopened": "작업 {{task}}을(를) 다시 엶",
+    "flow_task_skipped": "작업 {{task}}을(를) 건너뜀",
+    "flow_manual_close": "담당자를 대신하여 작업 {{task}}을(를) 닫음"
   },
   "comment": {
     "add_reaction": "반응 추가",
@@ -2371,6 +2377,7 @@
       "workflow_managed_by_template": "이 워크플로는 Kit Việt에서 관리하며 편집할 수 없습니다",
       "workflow_has_flow_requests": "진행 중인 플로우 요청이 있는 워크플로는 삭제할 수 없습니다",
       "flow_workflow_forbidden": "플로우 워크플로를 구성하려면 관리자 권한이 필요합니다"
-    }
+    },
+    "resume_skip_cancelled": "취소된 작업 없이 재개"
   }
 }

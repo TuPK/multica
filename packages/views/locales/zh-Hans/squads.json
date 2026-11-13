@@ -324,5 +324,205 @@
       "kind_work": "工作",
       "rework_limit": "最多返回 {{count}} 次"
     }
+  },
+  "flow_designer": {
+    "title": "编辑工作流",
+    "new": "新建工作流",
+    "start": {
+      "blank": "空白",
+      "kitviet": "复制 Kit Việt 工作流",
+      "import": "导入文件",
+      "proposal": "委托智能体起草",
+      "name": "名称",
+      "creating": "创建中…",
+      "failed": "无法创建草稿"
+    },
+    "export": "导出",
+    "save": {
+      "saved": "已保存",
+      "unsaved": "有未保存的更改",
+      "saving": "保存中…",
+      "failed": "无法保存"
+    },
+    "conflict": {
+      "title": "其他人已先保存了此草稿",
+      "reload": "重新加载",
+      "keep_copy": "将我的修改保存为副本"
+    },
+    "roles": {
+      "title": "角色",
+      "leader": "队长只负责规划，不接任务",
+      "pick_agent": "选择智能体",
+      "unused": "没有任务使用",
+      "kind": {
+        "agent": "智能体",
+        "member": "成员",
+        "managers": "小队管理者"
+      }
+    },
+    "step": {
+      "work": "工作步骤",
+      "gate": "门禁步骤",
+      "human": "仅限人工",
+      "add": "添加步骤",
+      "kind": {
+        "tasks": "任务",
+        "lead": "队长步骤",
+        "manual": "手动放行"
+      }
+    },
+    "task": {
+      "add": "添加任务",
+      "attachment": "需要附件",
+      "verdict": "需要裁决",
+      "only_when": "仅当",
+      "after": "在其后开始",
+      "inputs": "输入项",
+      "skills": "技能",
+      "sets": "设置变量",
+      "requires_vars": "关闭前必须设置"
+    },
+    "switches": {
+      "title": "开关"
+    },
+    "rework": {
+      "label": "被驳回时最多返回 {{count}} 次"
+    },
+    "stop": {
+      "stop1": "停止 1 · 缺少依据",
+      "stop2": "停止 2 · 离开工作区前需人工审核",
+      "stop3": "停止 3 · 已达返工上限",
+      "stalled": "已停滞",
+      "waiting": "等待批准"
+    },
+    "actions": {
+      "check": "检查",
+      "simulate": "模拟",
+      "publish": "发布",
+      "cancel": "取消"
+    },
+    "publish": {
+      "note": "发布会生成一个锁定的版本。运行中的请求保留原版本。",
+      "make_active": "设为当前使用的工作流",
+      "checking": "检查中…",
+      "blocked": "请先修复错误再发布",
+      "stale": "已发布更新的版本",
+      "edit_latest": "编辑最新版本",
+      "admin_only": "仅管理员",
+      "done": "已发布",
+      "active_failed": "已发布，但无法设为当前使用",
+      "failed": "无法发布工作流"
+    },
+    "simulate": {
+      "note": "模拟只检查流转，不检查智能体的实际工作。",
+      "vars": "变量",
+      "results": "任务结果",
+      "default": "默认",
+      "run": "运行",
+      "close": "关闭",
+      "end": "结束于",
+      "path": "路径",
+      "visit": "第 {{n}} 次进入",
+      "loops": "循环",
+      "truncated": "已在模拟可跟踪的最大步数处停止",
+      "failed": "模拟失败"
+    },
+    "ack": {
+      "no_human_exit": "我了解此工作流无需人工审核即可完成",
+      "no_gate": "我了解没有任务经过门禁检查",
+      "lead_may_work": "我了解负责人可以执行任务"
+    },
+    "problems": {
+      "none": "未发现问题"
+    },
+    "empty": {
+      "title": "还没有工作流"
+    },
+    "load_failed": "无法加载工作流",
+    "retry": "重试",
+    "version": "版本 {{n}}",
+    "locked": "已发布的版本已锁定",
+    "edit_as_draft": "作为草稿编辑",
+    "join": {
+      "title": "等待条件",
+      "all": "全部任务",
+      "any": "任一任务",
+      "quorum": "至少 {{count}} 个通过"
+    },
+    "loop": {
+      "title": "循环",
+      "max": "最多 {{count}} 次",
+      "back_to": "返回到 {{step}}"
+    },
+    "verdicts": {
+      "title": "裁决选项"
+    },
+    "verdict": {
+      "pass": "视为通过",
+      "fail": "视为未通过",
+      "neutral": "中立"
+    },
+    "instances": {
+      "count": "并行运行 {{count}} 个",
+      "per_item": "按 {{var}} 的每一项各一个"
+    },
+    "files": {
+      "title": "必需文件",
+      "min": "至少 {{count}} 个"
+    },
+    "vars": {
+      "title": "变量"
+    },
+    "stops": {
+      "declared": "停止原因"
+    },
+    "terminal": {
+      "leaves": "离开工作区"
+    },
+    "release": {
+      "warning": "此工作流可在无人审核的情况下离开工作区"
+    },
+    "close_on_behalf": "代为关闭",
+    "on_behalf_badge": "{{name}} 代智能体关闭",
+    "graph": {
+      "collapse": "折叠",
+      "find": "查找步骤",
+      "worst_case": "最坏情况下最多 {{count}} 个任务"
+    },
+    "request": {
+      "path": "路径",
+      "feedback": "反馈",
+      "exit": "退出",
+      "exit_failed": "无法选择此出口"
+    },
+    "trial": {
+      "run": "试运行",
+      "badge": "试运行"
+    },
+    "unsupported": "此应用版本不支持",
+    "editor": {
+      "tab_editor": "编辑器",
+      "tab_graph": "图表",
+      "tab_terminals": "终点",
+      "tab_problems": "问题",
+      "name_placeholder": "工作流名称",
+      "select_step": "选择一个步骤",
+      "disabled": "工作流编辑已关闭",
+      "back": "返回小队",
+      "step_title": "步骤 {{n}}",
+      "check_failed": "无法检查工作流",
+      "export_failed": "无法导出工作流",
+      "not_saved": "无法保存草稿"
+    },
+    "import": {
+      "select_file": "选择文件",
+      "paste": "或粘贴清单",
+      "invalid_json": "这不是有效的 JSON",
+      "not_manifest": "这不是工作流清单",
+      "too_large": "文件超过 512 KiB",
+      "submit": "导入",
+      "failed": "无法导入文件"
+    },
+    "drafts": "草稿"
   }
 }

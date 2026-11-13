@@ -117,4 +117,26 @@ describe("conditionProblems", () => {
       { key: "condition_unknown_field", values: { field: "sprint" } },
     ]);
   });
+
+  it("evaluates conditions with facts catalog", () => {
+    const facts = [
+      { key: "join.result", type: "enum", source: "engine", ops: ["eq", "neq", "in"], values: ["pass", "fail", "block"] },
+      { key: "join.pass", type: "int", source: "engine", ops: ["eq", "neq", "gt", "gte", "lt", "lte"] },
+      { key: "var.approved", type: "bool", source: "var", ops: ["eq", "neq"] },
+      { key: "var.notes", type: "string", source: "var", ops: ["eq", "neq", "exists"] },
+    ];
+
+    expect(conditionProblems({ field: "join.result", op: "eq", value: "pass" }, facts)).toEqual([]);
+    expect(conditionProblems({ field: "join.result", op: "eq", value: "unknown_val" }, facts)).toEqual([
+      { key: "condition_value_not_allowed", values: { value: "unknown_val", field: "join.result" } },
+    ]);
+    expect(conditionProblems({ field: "join.pass", op: "gte", value: 2 }, facts)).toEqual([]);
+    expect(conditionProblems({ field: "join.pass", op: "gte", value: -1 }, facts)).toEqual([
+      { key: "condition_whole_number", values: { field: "join.pass" } },
+    ]);
+    expect(conditionProblems({ field: "var.approved", op: "eq", value: "true" }, facts)).toEqual([]);
+    expect(conditionProblems({ field: "unknown.fact", op: "eq", value: "x" }, facts)).toEqual([
+      { key: "condition_unknown_field", values: { field: "unknown.fact" } },
+    ]);
+  });
 });

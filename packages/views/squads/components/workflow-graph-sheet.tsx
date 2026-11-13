@@ -65,6 +65,17 @@ export function WorkflowGraphSheet({
             <SheetTitle className="text-title font-semibold text-foreground">
               {workflow.name}
             </SheetTitle>
+            {workflow.version !== undefined && workflow.version !== null && (
+              <Badge variant="secondary" className="text-micro">
+                {t(($) => $.flow_designer.version, { n: workflow.version })}
+              </Badge>
+            )}
+            {(workflow.published_at || workflow.template_ref) && (
+              <Badge variant="outline" className="text-micro gap-1">
+                <Lock className="size-2.5" aria-hidden />
+                <span>{t(($) => $.flow_designer.locked)}</span>
+              </Badge>
+            )}
             {workflow.template_ref && (
               <Badge variant="outline" className="text-micro">
                 {workflow.template_ref}

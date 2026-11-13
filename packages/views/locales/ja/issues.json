@@ -628,7 +628,13 @@
     "wakeup_checkin": "サイレントチェック：{{note}}",
     "wakeup_checkin_coalesced_other": "サイレントチェック {{count}} 回 · 最新：{{note}}",
     "wakeup_chip_created_by": "{{name}} が作成",
-    "wakeup_chip_system": "システムルール"
+    "wakeup_chip_system": "システムルール",
+    "flow_transition": "ステップ {{step}} に進みました",
+    "flow_var_set": "変数 {{key}} を {{value}} に設定しました",
+    "flow_human_reminded": "承認担当者にリマインドしました",
+    "flow_task_reopened": "タスク {{task}} を再オープンしました",
+    "flow_task_skipped": "タスク {{task}} をスキップしました",
+    "flow_manual_close": "担当者の代わりにタスク {{task}} をクローズしました"
   },
   "comment": {
     "add_reaction": "リアクションを追加",
@@ -2371,6 +2377,7 @@
       "workflow_managed_by_template": "このワークフローは Kit Việt により管理されており、編集できません",
       "workflow_has_flow_requests": "アクティブなフローリクエストがあるワークフローは削除できません",
       "flow_workflow_forbidden": "フローワークフローの設定には管理者権限が必要です"
-    }
+    },
+    "resume_skip_cancelled": "キャンセルされたタスクを除いて再開"
   }
 }

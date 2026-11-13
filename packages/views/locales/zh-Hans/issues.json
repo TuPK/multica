@@ -628,7 +628,13 @@
     "wakeup_checkin": "静默检查：{{note}}",
     "wakeup_checkin_coalesced_other": "静默检查 {{count}} 次 · 最近一次：{{note}}",
     "wakeup_chip_created_by": "{{name}} 创建",
-    "wakeup_chip_system": "系统规则"
+    "wakeup_chip_system": "系统规则",
+    "flow_transition": "推进至步骤 {{step}}",
+    "flow_var_set": "将变量 {{key}} 设为 {{value}}",
+    "flow_human_reminded": "已提醒经办人审核",
+    "flow_task_reopened": "重新打开了任务 {{task}}",
+    "flow_task_skipped": "跳过了任务 {{task}}",
+    "flow_manual_close": "代经办人关闭了任务 {{task}}"
   },
   "comment": {
     "add_reaction": "添加表情回应",
@@ -2371,6 +2377,7 @@
       "workflow_managed_by_template": "此工作流由 Kit Việt 管理，无法编辑",
       "workflow_has_flow_requests": "无法删除仍有未结流程请求的工作流",
       "flow_workflow_forbidden": "配置执行工作流需要管理员权限"
-    }
+    },
+    "resume_skip_cancelled": "跳过已取消的任务并继续"
   }
 }

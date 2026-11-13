@@ -9,6 +9,7 @@ import type { IssueFlowState } from "@multica/core/types";
 const mocks = vi.hoisted(() => ({
   resumeMut: vi.fn().mockResolvedValue({}),
   detachMut: vi.fn().mockResolvedValue({ detached: true }),
+  exitMut: vi.fn().mockResolvedValue({}),
   updateIssueMut: vi.fn().mockResolvedValue({}),
 }));
 
@@ -29,6 +30,10 @@ vi.mock("@multica/core/issue-workflows", async (importOriginal) => {
     }),
     useDetachFlow: () => ({
       mutateAsync: mocks.detachMut,
+      isPending: false,
+    }),
+    useExitIssueFlow: () => ({
+      mutateAsync: mocks.exitMut,
       isPending: false,
     }),
   };
@@ -215,7 +220,7 @@ describe("IssueFlowStatePanel", () => {
   it("shows stop status when stop is present", () => {
     const stoppedFlow: IssueFlowState = {
       ...sampleFlow,
-      stop: 1,
+      stop: { code: "grounds_missing", legacy_no: 1, from: "gate", edge: "gate_blocked", at: "" },
     };
 
     renderPanel(
@@ -299,7 +304,7 @@ describe("IssueFlowStatePanel", () => {
 
   // A stopped request whose stop has a drafting step offers it on the Resume button, so a draft that
   // is at fault can be sent back to drafting in a new round. The default Resume still sends no step.
-  const stoppedAtGate: IssueFlowState = { ...sampleFlow, step: "blocked", stop: 1, rework_step: "draft" };
+  const stoppedAtGate: IssueFlowState = { ...sampleFlow, step: "blocked", stop: { code: "grounds_missing", legacy_no: 1, from: "gate", edge: "gate_blocked", at: "" }, rework_step: "draft" };
 
   it("sends the request back to drafting from the Resume choices", async () => {
     const user = userEvent.setup();
@@ -332,6 +337,44 @@ describe("IssueFlowStatePanel", () => {
       <IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={{ ...stoppedAtGate, rework_step: "" }} canManage={true} />
     );
 
+    expect(screen.queryByRole("button", { name: "Choose the step" })).not.toBeInTheDocument();
+  });
+
+  // A step of kind manual waits for a person to take one of its exits (spec 4.7, 11.6).
+  it("takes a manual exit through the exit route, by the id of the edge", async () => {
+    const manual: IssueFlowState = {
+      ...sampleFlow,
+      next: [
+        { id: "ship", label: "Ship it", to: "done", rework: false, trigger: "manual" },
+        { id: "auto_edge", label: "Auto", to: "x", rework: false, trigger: "auto" },
+      ],
+    };
+    renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={manual} canManage={true} />);
+
+    expect(screen.queryByRole("button", { name: "Auto" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Ship it" }));
+
+    await waitFor(() => expect(mocks.exitMut).toHaveBeenCalledWith("ship"));
+  });
+
+  // Work a person cancelled is reopened by a resume unless the resume says to go on without it (H3).
+  it("resumes without the cancelled work when a work task was cancelled", async () => {
+    const user = userEvent.setup();
+    const cancelled: IssueFlowState = {
+      ...stoppedAtGate,
+      rework_step: "",
+      tasks: [{ ...stoppedAtGate.tasks[0]!, kind: "work", status: "cancelled", task: "collect", closed_at: null }],
+    };
+    renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={cancelled} canManage={true} />);
+
+    await user.click(screen.getByRole("button", { name: "Choose the step" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Resume without the cancelled tasks" }));
+
+    await waitFor(() => expect(mocks.resumeMut).toHaveBeenLastCalledWith({ skip_cancelled: true }));
+  });
+
+  it("does not offer to skip cancelled tasks when none were cancelled", () => {
+    renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={{ ...stoppedAtGate, rework_step: "" }} canManage={true} />);
     expect(screen.queryByRole("button", { name: "Choose the step" })).not.toBeInTheDocument();
   });
 });

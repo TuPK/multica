@@ -324,5 +324,205 @@
       "kind_work": "作業",
       "rework_limit": "最大 {{count}} 回差し戻し"
     }
+  },
+  "flow_designer": {
+    "title": "ワークフローを編集",
+    "new": "新規ワークフロー",
+    "start": {
+      "blank": "空白",
+      "kitviet": "Kit Việt のワークフローをコピー",
+      "import": "ファイルをインポート",
+      "proposal": "エージェントに下書きを依頼",
+      "name": "名前",
+      "creating": "作成中…",
+      "failed": "下書きを作成できませんでした"
+    },
+    "export": "エクスポート",
+    "save": {
+      "saved": "保存済み",
+      "unsaved": "未保存の変更があります",
+      "saving": "保存中…",
+      "failed": "保存できませんでした"
+    },
+    "conflict": {
+      "title": "他のユーザーが先にこの下書きを保存しました",
+      "reload": "再読み込み",
+      "keep_copy": "自分の変更をコピーとして保存"
+    },
+    "roles": {
+      "title": "ロール",
+      "leader": "リーダーは計画のみで、タスクは担当しません",
+      "pick_agent": "エージェントを選択",
+      "unused": "どのタスクでも使われていません",
+      "kind": {
+        "agent": "エージェント",
+        "member": "メンバー",
+        "managers": "スクワッド管理者"
+      }
+    },
+    "step": {
+      "work": "作業ステップ",
+      "gate": "ゲートステップ",
+      "human": "人間のみ",
+      "add": "ステップを追加",
+      "kind": {
+        "tasks": "タスク",
+        "lead": "リーダーのステップ",
+        "manual": "手動で進める"
+      }
+    },
+    "task": {
+      "add": "タスクを追加",
+      "attachment": "添付ファイルが必要",
+      "verdict": "判定が必要",
+      "only_when": "次の場合のみ",
+      "after": "次の後に開始",
+      "inputs": "入力",
+      "skills": "スキル",
+      "sets": "変数の設定",
+      "requires_vars": "クローズ前に設定が必須"
+    },
+    "switches": {
+      "title": "スイッチ"
+    },
+    "rework": {
+      "label": "却下された場合は最大 {{count}} 回差し戻し"
+    },
+    "stop": {
+      "stop1": "停止 1 · 根拠不足",
+      "stop2": "停止 2 · ワークスペースを出る前の人間によるレビュー",
+      "stop3": "停止 3 · 差し戻しの上限に到達",
+      "stalled": "停滞",
+      "waiting": "承認待ち"
+    },
+    "actions": {
+      "check": "チェック",
+      "simulate": "シミュレーション",
+      "publish": "公開",
+      "cancel": "キャンセル"
+    },
+    "publish": {
+      "note": "公開するとロックされたバージョンが作成されます。実行中のリクエストは現在のバージョンのままです。",
+      "make_active": "アクティブなワークフローにする",
+      "checking": "チェック中…",
+      "blocked": "公開する前にエラーを修正してください",
+      "stale": "新しいバージョンが公開されています",
+      "edit_latest": "最新バージョンを編集",
+      "admin_only": "管理者のみ",
+      "done": "公開しました",
+      "active_failed": "公開しましたが、有効にできませんでした",
+      "failed": "ワークフローを公開できませんでした"
+    },
+    "simulate": {
+      "note": "シミュレーションはルーティングのみを確認し、エージェントの作業は確認しません。",
+      "vars": "変数",
+      "results": "タスクの結果",
+      "default": "既定",
+      "run": "実行",
+      "close": "閉じる",
+      "end": "終了位置",
+      "path": "経路",
+      "visit": "{{n}} 回目",
+      "loops": "ループ",
+      "truncated": "シミュレーションが追跡できる最大ステップ数で停止しました",
+      "failed": "シミュレーションに失敗しました"
+    },
+    "ack": {
+      "no_human_exit": "このワークフローは人間のレビューなしで完了し得ることを理解しました",
+      "no_gate": "どのタスクもゲートで検査されないことを理解しました",
+      "lead_may_work": "リードがタスクを実行できることを理解しています"
+    },
+    "problems": {
+      "none": "問題は見つかりませんでした"
+    },
+    "empty": {
+      "title": "ワークフローはまだありません"
+    },
+    "load_failed": "ワークフローを読み込めませんでした",
+    "retry": "再試行",
+    "version": "バージョン {{n}}",
+    "locked": "公開済みのバージョンはロックされています",
+    "edit_as_draft": "下書きとして編集",
+    "join": {
+      "title": "待機条件",
+      "all": "すべてのタスク",
+      "any": "いずれかのタスク",
+      "quorum": "{{count}} 件以上が承認"
+    },
+    "loop": {
+      "title": "ループ",
+      "max": "最大 {{count}} 回",
+      "back_to": "{{step}} に戻る"
+    },
+    "verdicts": {
+      "title": "判定の選択肢"
+    },
+    "verdict": {
+      "pass": "合格として扱う",
+      "fail": "不合格として扱う",
+      "neutral": "中立"
+    },
+    "instances": {
+      "count": "{{count}} 件を並列実行",
+      "per_item": "{{var}} の項目ごとに 1 件"
+    },
+    "files": {
+      "title": "必須ファイル",
+      "min": "{{count}} 件以上"
+    },
+    "vars": {
+      "title": "変数"
+    },
+    "stops": {
+      "declared": "停止の理由"
+    },
+    "terminal": {
+      "leaves": "ワークスペースを出る"
+    },
+    "release": {
+      "warning": "このワークフローは人間のレビューなしでワークスペースを出る可能性があります"
+    },
+    "close_on_behalf": "代理でクローズ",
+    "on_behalf_badge": "{{name}} がエージェントの代わりにクローズ",
+    "graph": {
+      "collapse": "折りたたむ",
+      "find": "ステップを検索",
+      "worst_case": "最悪の場合は最大 {{count}} 件のタスク"
+    },
+    "request": {
+      "path": "パス",
+      "feedback": "フィードバック",
+      "exit": "終了",
+      "exit_failed": "この出口を選択できませんでした"
+    },
+    "trial": {
+      "run": "試行実行",
+      "badge": "試行"
+    },
+    "unsupported": "このアプリのバージョンでは未対応",
+    "editor": {
+      "tab_editor": "エディター",
+      "tab_graph": "グラフ",
+      "tab_terminals": "終了点",
+      "tab_problems": "問題",
+      "name_placeholder": "ワークフロー名",
+      "select_step": "ステップを選択",
+      "disabled": "ワークフローの作成は無効です",
+      "back": "スクワッドに戻る",
+      "step_title": "ステップ {{n}}",
+      "check_failed": "ワークフローをチェックできませんでした",
+      "export_failed": "ワークフローをエクスポートできませんでした",
+      "not_saved": "下書きを保存できませんでした"
+    },
+    "import": {
+      "select_file": "ファイルを選択",
+      "paste": "またはマニフェストを貼り付け",
+      "invalid_json": "有効な JSON ではありません",
+      "not_manifest": "ワークフローのマニフェストではありません",
+      "too_large": "ファイルが 512 KiB を超えています",
+      "submit": "インポート",
+      "failed": "ファイルをインポートできませんでした"
+    },
+    "drafts": "下書き"
   }
 }

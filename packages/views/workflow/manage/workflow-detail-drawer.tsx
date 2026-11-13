@@ -10,7 +10,8 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@multica/ui/components/ui/sheet";
-import { ArrowRight, Bot, FolderKanban, Users, Workflow } from "@multica/ui/icons";
+import { ArrowRight, Bot, FolderKanban, Pencil, Users, Workflow } from "@multica/ui/icons";
+import { useCreateFlowDraft } from "@multica/core/flow-drafts";
 import { useIssueStatuses } from "@multica/core/issue-statuses/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { projectListOptions } from "@multica/core/projects/queries";
@@ -18,7 +19,7 @@ import { useActorName } from "@multica/core/workspace/hooks";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { StatusIcon } from "../../issues/components/status-icon";
 import { useStatusLabel } from "../../issues/utils/status-label";
-import { AppLink } from "../../navigation";
+import { AppLink, useNavigation } from "../../navigation";
 import { useT } from "../../i18n";
 import type { IssueWorkflow, IssueWorkflowUsage } from "../types";
 
@@ -38,13 +39,33 @@ export function WorkflowDetailDrawer({
   wsId,
 }: WorkflowDetailDrawerProps) {
   const { t } = useT("workflow");
+  const { t: tSquad } = useT("squads");
   const p = useWorkspacePaths();
+  const nav = useNavigation();
   const { statuses } = useIssueStatuses(wsId);
   const getStatusLabel = useStatusLabel(wsId);
   const { getActorName } = useActorName();
   const { data: projects = [] } = useQuery(projectListOptions(wsId));
+  const createDraftMut = useCreateFlowDraft();
 
   if (!workflow) return null;
+
+  const handleEditAsDraft = async () => {
+    if (!workflow.squad_id) return;
+    try {
+      const draft = await createDraftMut.mutateAsync({
+        squadId: workflow.squad_id,
+        data: {
+          name: `${workflow.name} (Draft)`,
+          from: { kind: "workflow", workflow_id: workflow.id },
+        },
+      });
+      onOpenChange(false);
+      nav.push(`${p.squadDetail(workflow.squad_id)}/workflows/${draft.id}`);
+    } catch {
+      // toast or handled by mutation
+    }
+  };
 
   const assignedProjects = projects.filter((proj) =>
     usage?.project_ids.includes(proj.id),
@@ -81,16 +102,28 @@ export function WorkflowDetailDrawer({
               {workflow.description}
             </SheetDescription>
           ) : null}
-          {!workflow.template_ref && (
-            <div className="pt-2">
+          <div className="flex items-center gap-2 pt-2">
+            {!workflow.template_ref && (
               <AppLink href={p.workflowDetail(workflow.id)}>
                 <Button size="sm" className="gap-1.5">
                   <Workflow className="size-4" />
                   {t(($) => $.manage.open_designer)}
                 </Button>
               </AppLink>
-            </div>
-          )}
+            )}
+            {workflow.published_at && workflow.squad_id && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={createDraftMut.isPending}
+                onClick={handleEditAsDraft}
+                className="gap-1.5"
+              >
+                <Pencil className="size-4" />
+                {tSquad(($) => $.flow_designer.edit_as_draft)}
+              </Button>
+            )}
+          </div>
         </SheetHeader>
 
         {/* Assigned entities */}

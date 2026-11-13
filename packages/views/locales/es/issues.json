@@ -643,7 +643,13 @@
     "wakeup_checkin_coalesced_one": "{{count}} comprobación silenciosa · última: {{note}}",
     "wakeup_checkin_coalesced_other": "{{count}} comprobaciones silenciosas · última: {{note}}",
     "wakeup_chip_created_by": "activación de {{name}}",
-    "wakeup_chip_system": "Regla del sistema"
+    "wakeup_chip_system": "Regla del sistema",
+    "flow_transition": "avanzó al paso {{step}}",
+    "flow_var_set": "estableció la variable {{key}} en {{value}}",
+    "flow_human_reminded": "recordó al responsable de la aprobación",
+    "flow_task_reopened": "reabrió la tarea {{task}}",
+    "flow_task_skipped": "omitió la tarea {{task}}",
+    "flow_manual_close": "cerró la tarea {{task}} en nombre del asignado"
   },
   "comment": {
     "add_reaction": "Añadir reacción",
@@ -2447,6 +2453,7 @@
       "workflow_managed_by_template": "Este flujo está gestionado por Kit Việt y no se puede editar",
       "workflow_has_flow_requests": "No se puede eliminar un flujo con solicitudes activas",
       "flow_workflow_forbidden": "Se requiere permiso de administrador para configurar flujos"
-    }
+    },
+    "resume_skip_cancelled": "Reanudar sin las tareas canceladas"
   }
 }

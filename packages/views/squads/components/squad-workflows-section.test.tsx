@@ -1,202 +1,230 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, screen } from "@testing-library/react";
+import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { setApiInstance } from "@multica/core/api";
+import type { ApiClient } from "@multica/core/api/client";
+import { EMPTY_FLOW_CAPABILITIES_RESPONSE } from "@multica/core/api/schemas";
 import type { IssueWorkflow, Squad, SquadWorkflowsResponse } from "@multica/core/types";
 import { renderWithI18n } from "../../test/i18n";
 import { SquadWorkflowsSection } from "./squad-workflows-section";
 
-const mocks = vi.hoisted(() => ({
-  data: undefined as SquadWorkflowsResponse | undefined,
-  isPending: false,
-  isError: false,
-  refetch: vi.fn(),
-  setActiveWorkflow: vi.fn(),
-  setFlowAuto: vi.fn(),
-}));
+// The section runs on the real hooks over a fake API client: what the tests check is the calls it makes.
 
-vi.mock("@multica/core/issue-workflows", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@multica/core/issue-workflows")>();
-  return {
-    ...actual,
-    squadWorkflowsOptions: () => ({ queryKey: ["squad-workflows", "ws-1", "sq-1"] }),
-    useSetSquadActiveWorkflow: () => ({
-      mutateAsync: mocks.setActiveWorkflow,
-      isPending: false,
-    }),
-    useSetFlowAuto: () => ({
-      mutateAsync: mocks.setFlowAuto,
-      isPending: false,
-    }),
-  };
-});
+const mocks = vi.hoisted(() => ({ navPush: vi.fn(), download: vi.fn(), toastError: vi.fn() }));
 
-vi.mock("@tanstack/react-query", () => ({
-  queryOptions: (opts: unknown) => opts,
-  useQuery: () => ({
-    data: mocks.data,
-    isPending: mocks.isPending,
-    isError: mocks.isError,
-    refetch: mocks.refetch,
-  }),
-  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
-  useMutation: ({ mutationFn }: { mutationFn: (...args: any[]) => any }) => ({
-    mutateAsync: mutationFn,
-    isPending: false,
-  }),
+vi.mock("@multica/core/hooks", () => ({ useWorkspaceId: () => "ws-1" }));
+vi.mock("../../navigation", () => ({
+  useNavigation: () => ({ push: mocks.navPush, replace: vi.fn(), pathname: "/acme/squads/sq-1" }),
+  AppLink: ({ children, href, ...props }: React.ComponentProps<"a">) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
 }));
+vi.mock("@multica/core/paths", () => ({
+  useWorkspacePaths: () => ({ squads: () => "/acme/squads", squadDetail: (id: string) => `/acme/squads/${id}` }),
+}));
+vi.mock("../flow-designer/download-json", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../flow-designer/download-json")>()),
+  downloadJson: mocks.download,
+}));
+vi.mock("sonner", () => ({ toast: { error: mocks.toastError, success: vi.fn() } }));
+
+const fakeApi = {
+  listSquadWorkflows: vi.fn(),
+  getFlowCapabilities: vi.fn(),
+  listFlowDrafts: vi.fn(),
+  createFlowDraft: vi.fn(),
+  getIssueWorkflowFlowManifest: vi.fn(),
+  setSquadActiveWorkflow: vi.fn(),
+  setIssueWorkflowFlowAuto: vi.fn(),
+};
+
+const baseSquad = {
+  id: "sq-1",
+  name: "Trade Squad",
+  template_key: "kv_trade",
+  active_workflow_id: "wf-1",
+} as unknown as Squad;
+
+const flowRow = (over: Partial<IssueWorkflow>): IssueWorkflow =>
+  ({ steps: [], flow_config: { version: 1, switches: [] }, flow_auto: false, ...over }) as unknown as IssueWorkflow;
+
+function serve(workflows: IssueWorkflow[], activeId: string | null = null) {
+  fakeApi.listSquadWorkflows.mockResolvedValue({ active_workflow_id: activeId, workflows, total: workflows.length } satisfies SquadWorkflowsResponse);
+}
+
+function capabilities(authoring: boolean) {
+  fakeApi.getFlowCapabilities.mockResolvedValue({
+    ...EMPTY_FLOW_CAPABILITIES_RESPONSE,
+    features: { ...EMPTY_FLOW_CAPABILITIES_RESPONSE.features, authoring },
+  });
+}
+
+function renderSection(canManage: boolean, squad: Squad = baseSquad) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  const ui = (manage: boolean) => (
+    <QueryClientProvider client={client}>
+      <SquadWorkflowsSection wsId="ws-1" squad={squad} canManage={manage} />
+    </QueryClientProvider>
+  );
+  const view = renderWithI18n(ui(canManage));
+  return { ...view, rerenderAs: (manage: boolean) => view.rerender(ui(manage)) };
+}
 
 describe("SquadWorkflowsSection", () => {
+  beforeEach(() => {
+    setApiInstance(fakeApi as unknown as ApiClient);
+    capabilities(true);
+    serve([]);
+    fakeApi.listFlowDrafts.mockResolvedValue({ drafts: [], total: 0 });
+    fakeApi.createFlowDraft.mockResolvedValue({ id: "draft-new-1" });
+  });
   afterEach(() => {
     cleanup();
+    vi.clearAllMocks();
   });
 
-  const baseSquad = {
-    id: "sq-1",
-    name: "Trade Squad",
-    workflow_count: 1,
-    active_workflow_id: "wf-1",
-    active_workflow_name: "Import & Export Desk · a1b2c3",
-    flow_enforced: true,
-  } as unknown as Squad;
+  it("renders the section title and an empty state without actions for someone who cannot manage", async () => {
+    renderSection(false);
 
-  it("renders section title 'Workflows'", () => {
-    mocks.data = { active_workflow_id: null, workflows: [], total: 0 };
-    mocks.isPending = false;
-    mocks.isError = false;
-
-    renderWithI18n(<SquadWorkflowsSection wsId="ws-1" squad={baseSquad} canManage={false} />);
+    expect(await screen.findByText(/no workflows yet/i)).toBeInTheDocument();
     expect(screen.getByText("Workflows")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^blank$/i })).toBeNull();
+    // The drafts of a squad are its managers': nobody else asks for them.
+    expect(fakeApi.listFlowDrafts).not.toHaveBeenCalled();
   });
 
-  it("renders empty state when there are no workflows", () => {
-    mocks.data = { active_workflow_id: null, workflows: [], total: 0 };
-    mocks.isPending = false;
-    mocks.isError = false;
+  it("offers a blank draft and an import in the empty state, and no copy of a workflow that is not there", async () => {
+    renderSection(true);
 
-    renderWithI18n(<SquadWorkflowsSection wsId="ws-1" squad={baseSquad} canManage={false} />);
-    expect(screen.getByText(/chưa có workflow|no workflows yet/i)).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /^blank$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /import a file/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /copy a kit việt workflow/i })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /^blank$/i }));
+    await waitFor(() => expect(fakeApi.createFlowDraft).toHaveBeenCalledWith("sq-1", { name: "Trade Squad", from: { kind: "blank" } }));
+    await waitFor(() => expect(mocks.navPush).toHaveBeenCalledWith("/acme/squads/sq-1/workflows/draft-new-1"));
   });
 
-  it("renders error state with retry button when query fails", () => {
-    mocks.data = undefined;
-    mocks.isPending = false;
-    mocks.isError = true;
+  it("hides 'New workflow' when the person cannot manage the squad or authoring is off", async () => {
+    const view = renderSection(false);
+    await screen.findByText(/no workflows yet/i);
+    expect(screen.queryByRole("button", { name: /new workflow/i })).toBeNull();
 
-    renderWithI18n(<SquadWorkflowsSection wsId="ws-1" squad={baseSquad} canManage={false} />);
-    const retryBtn = screen.getByRole("button", { name: /try again|thử lại|retry/i });
-    expect(retryBtn).toBeInTheDocument();
-    fireEvent.click(retryBtn);
-    expect(mocks.refetch).toHaveBeenCalled();
+    view.rerenderAs(true);
+    expect(await screen.findByRole("button", { name: /new workflow/i })).toBeInTheDocument();
+
+    cleanup();
+    capabilities(false);
+    renderSection(true);
+    await screen.findByText(/no workflows yet/i);
+    await waitFor(() => expect(fakeApi.getFlowCapabilities).toHaveBeenCalled());
+    await waitFor(() => expect(screen.queryByRole("button", { name: /new workflow/i })).toBeNull());
   });
 
-  it("renders list of workflows with active badge, template ref, steps & tasks count, and open flow requests", () => {
-    const wf1: IssueWorkflow = {
-      id: "wf-1",
-      name: "Import & Export Desk · a1b2c3",
-      template_ref: "kv_trade@a1b2c3",
-      flow_auto: true,
-      open_flow_requests: 4,
-      steps: [
-        {
-          status_key: "collect",
-          tasks: [
-            { key: "docs_reader", title: "trade_docs_reader", kind: "work", handler: { type: "agent", id: "agent-trade_docs_reader" }, instructions: "", requires: [] },
-            { key: "customs_research", title: "trade_customs_research", kind: "work", handler: { type: "agent", id: "agent-trade_customs_research" }, instructions: "", requires: [] },
-          ],
-        },
-        {
-          status_key: "draft",
-          tasks: [
-            { key: "crosscheck_drafter", title: "trade_crosscheck_drafter", kind: "work", handler: { type: "agent", id: "agent-trade_crosscheck_drafter" }, instructions: "", requires: [] },
-          ],
-        },
-        {
-          status_key: "gate",
-          tasks: [
-            { key: "docs_gate", title: "trade_docs_gate", kind: "gate", handler: { type: "agent", id: "agent-trade_docs_gate" }, instructions: "", requires: [] },
-            { key: "customs_gate", title: "trade_customs_gate", kind: "gate", handler: { type: "agent", id: "agent-trade_customs_gate" }, instructions: "", requires: [] },
-          ],
-        },
-        {
-          status_key: "handover",
-          tasks: [
-            { key: "handover", title: "trade_handover", kind: "work", handler: { type: "agent", id: "agent-trade_handover" }, instructions: "", requires: [] },
-          ],
-        },
+  it("shows the drafts of the squad to its managers, each linking to its editor", async () => {
+    fakeApi.listFlowDrafts.mockResolvedValue({ drafts: [{ id: "draft-7", name: "Intake v2", squad_id: "sq-1" }], total: 1 });
+    renderSection(true);
+
+    const link = await screen.findByRole("link", { name: /intake v2/i });
+    expect(link).toHaveAttribute("href", "/acme/squads/sq-1/workflows/draft-7");
+    expect(fakeApi.listFlowDrafts).toHaveBeenCalledWith("sq-1");
+  });
+
+  it("renders the error state with a retry that reads the workflows again", async () => {
+    fakeApi.listSquadWorkflows.mockRejectedValueOnce(new Error("boom"));
+    renderSection(false);
+
+    fireEvent.click(await screen.findByRole("button", { name: /try again/i }));
+
+    await waitFor(() => expect(fakeApi.listSquadWorkflows).toHaveBeenCalledTimes(2));
+  });
+
+  it("groups versions of one lineage together with their version pills", async () => {
+    serve(
+      [
+        flowRow({ id: "wf-lineage-1", name: "Desk v1", lineage_id: "lineage-trade-desk", version: 1, published_at: "2026-11-01T00:00:00Z" }),
+        flowRow({ id: "wf-lineage-2", name: "Desk v2", lineage_id: "lineage-trade-desk", version: 2, published_at: "2026-11-02T00:00:00Z" }),
       ],
-    } as unknown as IssueWorkflow;
-
-    const wf2: IssueWorkflow = {
-      id: "wf-2",
-      name: "Old Trade Desk · 9f8e7d",
-      template_ref: "kv_trade@9f8e7d",
-      flow_auto: false,
-      open_flow_requests: 0,
-      steps: [
-        {
-          status_key: "collect",
-          tasks: [{ key: "docs", title: "trade_docs_reader", kind: "work", handler: { type: "agent", id: "agent-trade_docs_reader" }, instructions: "", requires: [] }],
-        },
-      ],
-    } as unknown as IssueWorkflow;
-
-    mocks.data = {
-      active_workflow_id: "wf-1",
-      workflows: [wf1, wf2],
-      total: 2,
-    };
-    mocks.isPending = false;
-    mocks.isError = false;
-
-    renderWithI18n(<SquadWorkflowsSection wsId="ws-1" squad={baseSquad} canManage={true} />);
-
-    expect(screen.getByText("Import & Export Desk · a1b2c3")).toBeInTheDocument();
-    expect(screen.getByText("Old Trade Desk · 9f8e7d")).toBeInTheDocument();
-    expect(screen.getByText(/^active$|^đang dùng$/i)).toBeInTheDocument();
-    expect(screen.getByText("kv_trade@a1b2c3")).toBeInTheDocument();
-  });
-
-  it("offers the auto toggle only on a workflow that runs a flow, never on an ordinary one", () => {
-    const flowWf = {
-      id: "wf-flow",
-      name: "Flow row",
-      flow_config: { version: 1, switches: [] },
-      flow_auto: false,
-      steps: [],
-    } as unknown as IssueWorkflow;
-    const plainWf = { id: "wf-plain", name: "Plain row", flow_config: null, steps: [] } as unknown as IssueWorkflow;
-    mocks.data = { active_workflow_id: "wf-flow", workflows: [flowWf, plainWf], total: 2 };
-    mocks.isPending = false;
-    mocks.isError = false;
-
-    renderWithI18n(<SquadWorkflowsSection wsId="ws-1" squad={baseSquad} canManage={true} />);
-
-    expect(screen.getAllByRole("button", { name: /auto/i })).toHaveLength(1);
-  });
-
-  it("admin controls (set active, toggle auto) appear only when canManage is true", () => {
-    const wf: IssueWorkflow = {
-      id: "wf-2",
-      name: "Alternative Flow",
-      template_ref: "kv_trade@alt",
-      flow_auto: false,
-      open_flow_requests: 0,
-      steps: [{ status_key: "todo", tasks: [] }],
-    } as unknown as IssueWorkflow;
-
-    mocks.data = {
-      active_workflow_id: "wf-1",
-      workflows: [wf],
-      total: 1,
-    };
-    mocks.isPending = false;
-    mocks.isError = false;
-
-    const { rerender } = renderWithI18n(
-      <SquadWorkflowsSection wsId="ws-1" squad={baseSquad} canManage={false} />
+      "wf-lineage-2",
     );
-    expect(screen.queryByRole("button", { name: /đặt làm đang dùng|set active/i })).not.toBeInTheDocument();
+    renderSection(true);
 
-    rerender(<SquadWorkflowsSection wsId="ws-1" squad={baseSquad} canManage={true} />);
-    expect(screen.getByRole("button", { name: /đặt làm đang dùng|set active/i })).toBeInTheDocument();
+    expect(await screen.findByText("Desk v2")).toBeInTheDocument();
+    expect(screen.getByText("Desk v1")).toBeInTheDocument();
+    expect(screen.getByText("v1")).toBeInTheDocument();
+    expect(screen.getByText("v2")).toBeInTheDocument();
+    expect(screen.getByTestId("lineage-group-lineage-trade-desk")).toBeInTheDocument();
+  });
+
+  it("copies a published version as a draft: the server names it, and the lineage rides on the workflow id", async () => {
+    serve([flowRow({ id: "wf-pub", name: "Published Workflow · v1", version: 1, published_at: "2026-11-01T00:00:00Z" })], "wf-pub");
+    renderSection(true);
+
+    fireEvent.click(await screen.findByRole("button", { name: /edit as draft/i }));
+
+    await waitFor(() => expect(fakeApi.createFlowDraft).toHaveBeenCalledWith("sq-1", { from: { kind: "workflow", workflow_id: "wf-pub" } }));
+    await waitFor(() => expect(mocks.navPush).toHaveBeenCalledWith("/acme/squads/sq-1/workflows/draft-new-1"));
+  });
+
+  it("copies a workflow of schema 1 the same way, a Kit Việt one included", async () => {
+    serve([flowRow({ id: "wf-kv", name: "Trade · abc", template_ref: "flow_kv_trade@abc" })], "wf-kv");
+    renderSection(true);
+
+    fireEvent.click(await screen.findByRole("button", { name: /edit as draft/i }));
+
+    await waitFor(() => expect(fakeApi.createFlowDraft).toHaveBeenCalledWith("sq-1", { from: { kind: "workflow", workflow_id: "wf-kv" } }));
+  });
+
+  it("exports the manifest of a flow workflow the server gives, and downloads it", async () => {
+    const manifest = { format: "multica.flow-manifest/v1", name: "Desk", doc: { version: 2 } };
+    fakeApi.getIssueWorkflowFlowManifest.mockResolvedValue(manifest);
+    serve([flowRow({ id: "wf-pub", name: "Desk · v1", version: 1 })], "wf-pub");
+    renderSection(true);
+
+    fireEvent.click(await screen.findByRole("button", { name: /^export$/i }));
+
+    await waitFor(() => expect(mocks.download).toHaveBeenCalledWith("Desk_v1.manifest.json", manifest));
+    expect(fakeApi.getIssueWorkflowFlowManifest).toHaveBeenCalledWith("wf-pub");
+  });
+
+  it("hides edit and export from someone who cannot manage the squad", async () => {
+    serve([flowRow({ id: "wf-pub", name: "Desk · v1", version: 1 })], "wf-pub");
+    renderSection(false);
+
+    await screen.findByText("Desk · v1");
+    expect(screen.queryByRole("button", { name: /edit as draft/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^export$/i })).toBeNull();
+  });
+
+  it("offers the auto toggle only on a workflow that runs a flow, never on an ordinary one", async () => {
+    serve([flowRow({ id: "wf-flow", name: "Flow row" }), { id: "wf-plain", name: "Plain row", flow_config: null, steps: [] } as unknown as IssueWorkflow], "wf-flow");
+    renderSection(true);
+
+    await screen.findByText("Flow row");
+    expect(screen.getAllByRole("button", { name: /^auto/i })).toHaveLength(1);
+  });
+
+  it("sets a version active through the squad's own route", async () => {
+    fakeApi.setSquadActiveWorkflow.mockResolvedValue({});
+    serve([flowRow({ id: "wf-2", name: "Alternative Flow", template_ref: "kv_trade@alt" })], "wf-1");
+    renderSection(true);
+
+    fireEvent.click(await screen.findByRole("button", { name: /set active/i }));
+
+    await waitFor(() => expect(fakeApi.setSquadActiveWorkflow).toHaveBeenCalledWith("sq-1", { workflow_id: "wf-2" }));
+  });
+
+  it("shows the admin controls only to someone who can manage the squad", async () => {
+    serve([flowRow({ id: "wf-2", name: "Alternative Flow", template_ref: "kv_trade@alt" })], "wf-1");
+    const view = renderSection(false);
+
+    await screen.findByText("Alternative Flow");
+    expect(screen.queryByRole("button", { name: /set active/i })).toBeNull();
+
+    view.rerenderAs(true);
+    expect(await screen.findByRole("button", { name: /set active/i })).toBeInTheDocument();
   });
 });

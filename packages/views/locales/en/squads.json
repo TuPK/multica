@@ -329,5 +329,205 @@
       "kind_work": "Work",
       "rework_limit": "Return up to {{count}} times"
     }
+  },
+  "flow_designer": {
+    "title": "Edit workflow",
+    "new": "New workflow",
+    "start": {
+      "blank": "Blank",
+      "kitviet": "Copy a Kit Việt workflow",
+      "import": "Import a file",
+      "proposal": "Ask an agent to draft",
+      "name": "Name",
+      "creating": "Creating…",
+      "failed": "Could not create the draft"
+    },
+    "export": "Export",
+    "save": {
+      "saved": "Saved",
+      "unsaved": "Unsaved changes",
+      "saving": "Saving…",
+      "failed": "Could not save"
+    },
+    "conflict": {
+      "title": "Someone saved this draft first",
+      "reload": "Reload",
+      "keep_copy": "Keep mine as a copy"
+    },
+    "roles": {
+      "title": "Roles",
+      "leader": "The leader plans and takes no tasks",
+      "pick_agent": "Choose an agent",
+      "unused": "Not used by any task",
+      "kind": {
+        "agent": "Agent",
+        "member": "Member",
+        "managers": "Squad managers"
+      }
+    },
+    "step": {
+      "work": "Work step",
+      "gate": "Gate step",
+      "human": "Human only",
+      "add": "Add step",
+      "kind": {
+        "tasks": "Tasks",
+        "lead": "Lead step",
+        "manual": "Manual exit"
+      }
+    },
+    "task": {
+      "add": "Add task",
+      "attachment": "Needs an attachment",
+      "verdict": "Needs a verdict",
+      "only_when": "Only when",
+      "after": "Starts after",
+      "inputs": "Inputs",
+      "skills": "Skills",
+      "sets": "Sets variables",
+      "requires_vars": "Must set before closing"
+    },
+    "switches": {
+      "title": "Switches"
+    },
+    "rework": {
+      "label": "If rejected, go back up to {{count}} times"
+    },
+    "stop": {
+      "stop1": "Stop 1 · missing grounds",
+      "stop2": "Stop 2 · human review before leaving the workspace",
+      "stop3": "Stop 3 · rework limit reached",
+      "stalled": "Stalled",
+      "waiting": "Waiting for approval"
+    },
+    "actions": {
+      "check": "Check",
+      "simulate": "Simulate",
+      "publish": "Publish",
+      "cancel": "Cancel"
+    },
+    "publish": {
+      "note": "Publishing creates a locked version. Running requests keep theirs.",
+      "make_active": "Make this the active workflow",
+      "checking": "Checking…",
+      "blocked": "Fix the errors before publishing",
+      "stale": "A newer version was published",
+      "edit_latest": "Edit the latest version",
+      "admin_only": "Admin only",
+      "done": "Published",
+      "active_failed": "Published, but it could not be made active",
+      "failed": "Could not publish the workflow"
+    },
+    "simulate": {
+      "note": "Simulation checks the routing. It does not check what agents do.",
+      "vars": "Variables",
+      "results": "Task results",
+      "default": "Default",
+      "run": "Run",
+      "close": "Close",
+      "end": "Ends at",
+      "path": "Path",
+      "visit": "Visit {{n}}",
+      "loops": "Loops",
+      "truncated": "Stopped at the most steps a simulation follows",
+      "failed": "The simulation failed"
+    },
+    "ack": {
+      "no_human_exit": "I understand this workflow can finish without a person's review",
+      "no_gate": "I understand no task is checked by a gate",
+      "lead_may_work": "I understand the lead may do task work"
+    },
+    "problems": {
+      "none": "No problems found"
+    },
+    "empty": {
+      "title": "No workflow yet"
+    },
+    "load_failed": "Could not load the workflow",
+    "retry": "Retry",
+    "version": "Version {{n}}",
+    "locked": "Published versions are locked",
+    "edit_as_draft": "Edit as draft",
+    "join": {
+      "title": "Wait for",
+      "all": "All tasks",
+      "any": "Any task",
+      "quorum": "At least {{count}} approve"
+    },
+    "loop": {
+      "title": "Loops",
+      "max": "Up to {{count}} times",
+      "back_to": "Go back to {{step}}"
+    },
+    "verdicts": {
+      "title": "Verdicts"
+    },
+    "verdict": {
+      "pass": "Counts as pass",
+      "fail": "Counts as fail",
+      "neutral": "Neutral"
+    },
+    "instances": {
+      "count": "Run {{count}} in parallel",
+      "per_item": "One per item of {{var}}"
+    },
+    "files": {
+      "title": "Required files",
+      "min": "At least {{count}}"
+    },
+    "vars": {
+      "title": "Variables"
+    },
+    "stops": {
+      "declared": "Stop reasons"
+    },
+    "terminal": {
+      "leaves": "Leaves the workspace"
+    },
+    "release": {
+      "warning": "This workflow can leave the workspace without a person's review"
+    },
+    "close_on_behalf": "Close on behalf",
+    "on_behalf_badge": "Closed by {{name}} on behalf of the agent",
+    "graph": {
+      "collapse": "Collapse",
+      "find": "Find a step",
+      "worst_case": "Up to {{count}} task issues in the worst case"
+    },
+    "request": {
+      "path": "Path",
+      "feedback": "Feedback",
+      "exit": "Exit",
+      "exit_failed": "Could not take this exit"
+    },
+    "trial": {
+      "run": "Trial run",
+      "badge": "Trial"
+    },
+    "unsupported": "Not supported by this app version",
+    "editor": {
+      "tab_editor": "Editor",
+      "tab_graph": "Graph",
+      "tab_terminals": "Terminals",
+      "tab_problems": "Problems",
+      "name_placeholder": "Workflow name",
+      "select_step": "Select a step",
+      "disabled": "Workflow authoring is off",
+      "back": "Back to squad",
+      "step_title": "Step {{n}}",
+      "check_failed": "Could not check the workflow",
+      "export_failed": "Could not export the workflow",
+      "not_saved": "The draft could not be saved"
+    },
+    "import": {
+      "select_file": "Choose a file",
+      "paste": "Or paste the manifest",
+      "invalid_json": "This is not valid JSON",
+      "not_manifest": "This is not a workflow manifest",
+      "too_large": "The file is larger than 512 KiB",
+      "submit": "Import",
+      "failed": "Could not import the file"
+    },
+    "drafts": "Drafts"
   }
 }

@@ -329,5 +329,205 @@
       "kind_work": "Travail",
       "rework_limit": "Retour max {{count}} fois"
     }
+  },
+  "flow_designer": {
+    "title": "Modifier le workflow",
+    "new": "Nouveau workflow",
+    "start": {
+      "blank": "Vide",
+      "kitviet": "Copier un workflow Kit Việt",
+      "import": "Importer un fichier",
+      "proposal": "Demander une proposition à un agent",
+      "name": "Nom",
+      "creating": "Création…",
+      "failed": "Impossible de créer le brouillon"
+    },
+    "export": "Exporter",
+    "save": {
+      "saved": "Enregistré",
+      "unsaved": "Modifications non enregistrées",
+      "saving": "Enregistrement…",
+      "failed": "Échec de l'enregistrement"
+    },
+    "conflict": {
+      "title": "Quelqu'un a déjà enregistré ce brouillon",
+      "reload": "Recharger",
+      "keep_copy": "Garder ma version en copie"
+    },
+    "roles": {
+      "title": "Rôles",
+      "leader": "Le chef planifie et ne prend aucune tâche",
+      "pick_agent": "Choisir un agent",
+      "unused": "Aucune tâche ne l'utilise",
+      "kind": {
+        "agent": "Agent",
+        "member": "Membre",
+        "managers": "Gestionnaires du squad"
+      }
+    },
+    "step": {
+      "work": "Étape de travail",
+      "gate": "Étape porte",
+      "human": "Humain uniquement",
+      "add": "Ajouter une étape",
+      "kind": {
+        "tasks": "Tâches",
+        "lead": "Étape du chef",
+        "manual": "Sortie manuelle"
+      }
+    },
+    "task": {
+      "add": "Ajouter une tâche",
+      "attachment": "Pièce jointe requise",
+      "verdict": "Verdict requis",
+      "only_when": "Seulement si",
+      "after": "Démarre après",
+      "inputs": "Entrées",
+      "skills": "Compétences",
+      "sets": "Définit les variables",
+      "requires_vars": "Doit être défini avant clôture"
+    },
+    "switches": {
+      "title": "Commutateurs"
+    },
+    "rework": {
+      "label": "En cas de rejet, retour max. {{count}} fois"
+    },
+    "stop": {
+      "stop1": "Arrêt 1 · éléments manquants",
+      "stop2": "Arrêt 2 · relecture humaine avant de quitter l'espace de travail",
+      "stop3": "Arrêt 3 · limite de reprises atteinte",
+      "stalled": "Sans progrès",
+      "waiting": "En attente d'approbation"
+    },
+    "actions": {
+      "check": "Vérifier",
+      "simulate": "Simuler",
+      "publish": "Publier",
+      "cancel": "Annuler"
+    },
+    "publish": {
+      "note": "La publication crée une version verrouillée. Les demandes en cours gardent la leur.",
+      "make_active": "Définir comme workflow actif",
+      "checking": "Vérification…",
+      "blocked": "Corrigez les erreurs avant de publier",
+      "stale": "Une version plus récente a été publiée",
+      "edit_latest": "Modifier la dernière version",
+      "admin_only": "Administrateurs uniquement",
+      "done": "Publié",
+      "active_failed": "Publié, mais impossible de l'activer",
+      "failed": "Impossible de publier le workflow"
+    },
+    "simulate": {
+      "note": "La simulation vérifie le routage, pas le travail des agents.",
+      "vars": "Variables",
+      "results": "Résultats des tâches",
+      "default": "Par défaut",
+      "run": "Lancer",
+      "close": "Fermer",
+      "end": "Se termine à",
+      "path": "Parcours",
+      "visit": "Passage {{n}}",
+      "loops": "Boucles",
+      "truncated": "Arrêté au nombre maximal d'étapes d'une simulation",
+      "failed": "La simulation a échoué"
+    },
+    "ack": {
+      "no_human_exit": "Je comprends que ce workflow peut se terminer sans relecture humaine",
+      "no_gate": "Je comprends qu'aucune tâche n'est contrôlée par une porte",
+      "lead_may_work": "Je comprends que le responsable peut effectuer des tâches"
+    },
+    "problems": {
+      "none": "Aucun problème"
+    },
+    "empty": {
+      "title": "Aucun workflow"
+    },
+    "load_failed": "Impossible de charger le workflow",
+    "retry": "Réessayer",
+    "version": "Version {{n}}",
+    "locked": "Les versions publiées sont verrouillées",
+    "edit_as_draft": "Modifier comme brouillon",
+    "join": {
+      "title": "Attendre",
+      "all": "Toutes les tâches",
+      "any": "Une tâche",
+      "quorum": "Au moins {{count}} approbations"
+    },
+    "loop": {
+      "title": "Boucles",
+      "max": "{{count}} fois maximum",
+      "back_to": "Retour à {{step}}"
+    },
+    "verdicts": {
+      "title": "Verdicts"
+    },
+    "verdict": {
+      "pass": "Compte comme réussite",
+      "fail": "Compte comme échec",
+      "neutral": "Neutre"
+    },
+    "instances": {
+      "count": "Lancer {{count}} en parallèle",
+      "per_item": "Une par élément de {{var}}"
+    },
+    "files": {
+      "title": "Fichiers requis",
+      "min": "Au moins {{count}}"
+    },
+    "vars": {
+      "title": "Variables"
+    },
+    "stops": {
+      "declared": "Motifs d'arrêt"
+    },
+    "terminal": {
+      "leaves": "Quitte l'espace de travail"
+    },
+    "release": {
+      "warning": "Ce workflow peut quitter l'espace de travail sans relecture humaine"
+    },
+    "close_on_behalf": "Clôturer à la place",
+    "on_behalf_badge": "Clôturé par {{name}} à la place de l'agent",
+    "graph": {
+      "collapse": "Réduire",
+      "find": "Trouver une étape",
+      "worst_case": "Jusqu'à {{count}} tâches dans le pire cas"
+    },
+    "request": {
+      "path": "Parcours",
+      "feedback": "Commentaires",
+      "exit": "Sortir",
+      "exit_failed": "Impossible d'emprunter cette sortie"
+    },
+    "trial": {
+      "run": "Exécution d'essai",
+      "badge": "Essai"
+    },
+    "unsupported": "Non pris en charge par cette version",
+    "editor": {
+      "tab_editor": "Éditeur",
+      "tab_graph": "Graphe",
+      "tab_terminals": "Fins",
+      "tab_problems": "Problèmes",
+      "name_placeholder": "Nom du workflow",
+      "select_step": "Sélectionnez une étape",
+      "disabled": "La création de workflows est désactivée",
+      "back": "Retour au squad",
+      "step_title": "Étape {{n}}",
+      "check_failed": "Impossible de vérifier le workflow",
+      "export_failed": "Impossible d'exporter le workflow",
+      "not_saved": "Impossible d'enregistrer le brouillon"
+    },
+    "import": {
+      "select_file": "Choisissez un fichier",
+      "paste": "Ou collez le manifeste",
+      "invalid_json": "Ce n'est pas un JSON valide",
+      "not_manifest": "Ce n'est pas un manifeste de workflow",
+      "too_large": "Le fichier dépasse 512 Kio",
+      "submit": "Importer",
+      "failed": "Impossible d'importer le fichier"
+    },
+    "drafts": "Brouillons"
   }
 }

@@ -31,7 +31,7 @@ import {
 } from "@multica/ui/icons";
 import { clientErrorMessage } from "@multica/core/api";
 import { useT } from "../i18n";
-import { issueFlowKeys, useDetachFlow, useResumeFlow } from "@multica/core/issue-workflows";
+import { issueFlowKeys, useDetachFlow, useExitIssueFlow, useResumeFlow } from "@multica/core/issue-workflows";
 import { useUpdateIssue } from "@multica/core/issues/mutations";
 import type { IssueFlowState, IssueFlowTask, ResumeFlowRequest } from "@multica/core/types";
 import { issueUpdateErrorMessage } from "../issues/utils/issue-update-error";
@@ -51,10 +51,12 @@ export function IssueFlowStatePanel({
   canManage,
 }: IssueFlowStatePanelProps) {
   const { t } = useT("issues");
+  const { t: tSquads } = useT("squads");
   const [confirmDetachOpen, setConfirmDetachOpen] = useState(false);
 
   const resumeMut = useResumeFlow(wsId, issueId);
   const detachMut = useDetachFlow(wsId, issueId);
+  const exitMut = useExitIssueFlow(wsId, issueId);
   const updateIssue = useUpdateIssue();
   const queryClient = useQueryClient();
 
@@ -79,6 +81,14 @@ export function IssueFlowStatePanel({
     }
   };
 
+  const handleExit = async (edgeId: string) => {
+    try {
+      await exitMut.mutateAsync(edgeId);
+    } catch (err) {
+      toast.error(clientErrorMessage(err) ?? tSquads(($) => $.flow_designer.request.exit_failed));
+    }
+  };
+
   const handleConfirmDetach = async () => {
     try {
       await detachMut.mutateAsync({ cancel_tasks: false });
@@ -90,6 +100,9 @@ export function IssueFlowStatePanel({
   };
 
   const draftStep = flow.rework_step;
+  // A work task a person cancelled is reopened by a resume, because its files are part of the step,
+  // unless the resume says to go on without it.
+  const hasCancelledWork = flow.tasks.some((task) => task.kind === "work" && task.status === "cancelled");
 
   const renderOutcomeBadge = (outcome: string | null) => {
     switch (outcome) {
@@ -133,9 +146,9 @@ export function IssueFlowStatePanel({
   const renderStopBanner = () => {
     if (flow.stop === null || flow.stop === undefined) return null;
     let label = "";
-    if (flow.stop === 1) {
+    if (flow.stop.legacy_no === 1) {
       label = t(($) => $.flow.stop["1"]);
-    } else if (flow.stop === 3) {
+    } else if (flow.stop.legacy_no === 3) {
       label = t(($) => $.flow.stop["3"]);
     } else {
       label = t(($) => $.flow.stop.stalled);
@@ -165,6 +178,13 @@ export function IssueFlowStatePanel({
         </div>
 
         <div className="flex items-center gap-2">
+          {flow.loops && Object.keys(flow.loops).length > 0 && (
+            <Badge variant="outline" className="text-caption text-blue-600 border-blue-500/30">
+              {Object.entries(flow.loops)
+                .map(([_, count]) => `↺ ${count}`)
+                .join(", ")}
+            </Badge>
+          )}
           <Badge variant="secondary" className="text-caption font-medium">
             {flow.step}
           </Badge>
@@ -192,34 +212,92 @@ export function IssueFlowStatePanel({
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="text-muted-foreground">{task.status}</span>
                 {task.kind === "gate" && task.closed_at === null ? (
-                  <div className="flex items-center gap-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="xs"
-                      disabled={updateIssue.isPending}
-                      onClick={() => void handleVerdict(task, "approved")}
-                    >
-                      {t(($) => $.flow.verdict.approve)}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="xs"
-                      disabled={updateIssue.isPending}
-                      onClick={() => void handleVerdict(task, "rejected")}
-                    >
-                      {t(($) => $.flow.verdict.reject)}
-                    </Button>
-                  </div>
+                  (!flow.viewer || flow.viewer.closable_task_ids?.includes(task.issue_id) || canManage) ? (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        disabled={updateIssue.isPending}
+                        onClick={() => void handleVerdict(task, "approved")}
+                      >
+                        {t(($) => $.flow.verdict.approve)}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        disabled={updateIssue.isPending}
+                        onClick={() => void handleVerdict(task, "rejected")}
+                      >
+                        {t(($) => $.flow.verdict.reject)}
+                      </Button>
+                      {canManage && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="xs"
+                          disabled={updateIssue.isPending}
+                          onClick={() => void handleVerdict(task, "approved")}
+                          className="text-micro text-muted-foreground hover:text-foreground"
+                        >
+                          {tSquads(($) => $.flow_designer.close_on_behalf)}
+                        </Button>
+                      )}
+                    </div>
+                  ) : null
                 ) : (
                   renderOutcomeBadge(task.outcome ?? (task.closed_at !== null ? "done" : null))
+                )}
+                {task.closed_by && task.closed_by.on_behalf && (
+                  <Badge variant="secondary" className="text-micro font-normal text-muted-foreground">
+                    {tSquads(($) => $.flow_designer.on_behalf_badge, { name: task.closed_by?.name || task.closed_by?.id || "" })}
+                  </Badge>
                 )}
               </div>
             </li>
           ))}
         </ul>
       ) : null}
+
+      {/* Manual Exits */}
+      {flow.next && flow.next.some((n) => n.trigger === "manual") && (
+        <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-border/40">
+          <span className="text-micro text-muted-foreground font-medium">{tSquads(($) => $.flow_designer.request.exit)}</span>
+          {flow.next
+            .filter((n) => n.trigger === "manual")
+            .map((edge) => (
+              <Button
+                key={edge.id}
+                type="button"
+                variant="outline"
+                size="xs"
+                className="h-7 text-caption"
+                disabled={exitMut.isPending}
+                onClick={() => void handleExit(edge.id)}
+              >
+                {edge.label || edge.id}
+              </Button>
+            ))}
+        </div>
+      )}
+
+      {/* Path trail */}
+      {flow.trail && flow.trail.length > 0 && (
+        <div className="space-y-1.5 pt-2 border-t border-border/40">
+          <span className="text-caption font-semibold text-foreground">
+            {tSquads(($) => $.flow_designer.request.path)}
+          </span>
+          <ul className="divide-y divide-border/40 rounded-lg border border-border/60 text-micro">
+            {flow.trail.map((entry, idx) => (
+              <li key={idx} className="p-1.5 flex items-center justify-between text-muted-foreground">
+                <span className="font-medium text-foreground">{entry.step}</span>
+                {entry.edge && <span className="font-mono">{entry.edge}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Admin Actions */}
       {canManage && (
@@ -230,12 +308,12 @@ export function IssueFlowStatePanel({
               size="sm"
               disabled={resumeMut.isPending}
               onClick={() => void handleResume()}
-              className={cn("gap-1.5 text-caption h-8", draftStep && "rounded-r-none")}
+              className={cn("gap-1.5 text-caption h-8", (draftStep || hasCancelledWork) && "rounded-r-none")}
             >
               <Play className="size-3.5" aria-hidden />
               <span>{t(($) => $.flow.resume)}</span>
             </Button>
-            {draftStep ? (
+            {draftStep || hasCancelledWork ? (
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
@@ -251,9 +329,16 @@ export function IssueFlowStatePanel({
                   <ChevronDown className="size-3.5" aria-hidden />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-auto min-w-52">
-                  <DropdownMenuItem onClick={() => void handleResume({ to_step: draftStep })}>
-                    {t(($) => $.flow.resume_to_draft)}
-                  </DropdownMenuItem>
+                  {draftStep ? (
+                    <DropdownMenuItem onClick={() => void handleResume({ to_step: draftStep })}>
+                      {t(($) => $.flow.resume_to_draft)}
+                    </DropdownMenuItem>
+                  ) : null}
+                  {hasCancelledWork ? (
+                    <DropdownMenuItem onClick={() => void handleResume({ skip_cancelled: true })}>
+                      {t(($) => $.flow.resume_skip_cancelled)}
+                    </DropdownMenuItem>
+                  ) : null}
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : null}

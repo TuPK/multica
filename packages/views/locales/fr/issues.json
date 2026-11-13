@@ -643,7 +643,13 @@
     "wakeup_checkin_coalesced_one": "{{count}} vérification silencieuse · dernière : {{note}}",
     "wakeup_checkin_coalesced_other": "{{count}} vérifications silencieuses · dernière : {{note}}",
     "wakeup_chip_created_by": "Réveil de {{name}}",
-    "wakeup_chip_system": "Règle système"
+    "wakeup_chip_system": "Règle système",
+    "flow_transition": "a progressé vers l'étape {{step}}",
+    "flow_var_set": "a défini la variable {{key}} à {{value}}",
+    "flow_human_reminded": "a rappelé l'approbateur assigné",
+    "flow_task_reopened": "a rouvert la tâche {{task}}",
+    "flow_task_skipped": "a ignoré la tâche {{task}}",
+    "flow_manual_close": "a fermé la tâche {{task}} à la place du responsable"
   },
   "comment": {
     "add_reaction": "Ajouter une réaction",
@@ -2447,6 +2453,7 @@
       "workflow_managed_by_template": "Ce workflow est géré par Kit Việt et ne peut pas être modifié",
       "workflow_has_flow_requests": "Impossible de supprimer un workflow ayant des demandes actives",
       "flow_workflow_forbidden": "Autorisation d'administrateur requise pour configurer les workflows"
-    }
+    },
+    "resume_skip_cancelled": "Reprendre sans les tâches annulées"
   }
 }
