@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { useSquadsViewStore } from "./view-store";
+import { SQUAD_DEFAULT_HIDDEN_COLUMNS, useSquadsViewStore } from "./view-store";
 import { setCurrentWorkspace } from "../../platform/workspace-storage";
 
 const flush = () => new Promise((resolve) => queueMicrotask(() => resolve(null)));
@@ -91,5 +91,18 @@ describe("useSquadsViewStore", () => {
     await flush();
     expect(useSquadsViewStore.getState().scope).toBe("mine");
     expect(localStorage.getItem("multica_squads_view:acme")).not.toBeNull();
+  });
+
+  it("shows the workflows column by default, and the user can hide it", async () => {
+    expect(SQUAD_DEFAULT_HIDDEN_COLUMNS).not.toContain("workflows");
+    setCurrentWorkspace("acme", "ws_a");
+    await flush();
+    useSquadsViewStore.setState({ hiddenColumns: [...SQUAD_DEFAULT_HIDDEN_COLUMNS] });
+
+    useSquadsViewStore.getState().toggleColumn("workflows");
+
+    expect(useSquadsViewStore.getState().hiddenColumns).toContain("workflows");
+    const parsed = JSON.parse(localStorage.getItem("multica_squads_view:acme") as string);
+    expect(parsed.state.hiddenColumns).toContain("workflows");
   });
 });

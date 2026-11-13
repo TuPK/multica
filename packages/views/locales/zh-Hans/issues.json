@@ -2324,5 +2324,52 @@
       "empty_title": "还没有保存的视图",
       "empty_description": "在任务列表里调好筛选和显示方式，然后另存为视图。"
     }
+  },
+  "flow": {
+    "panel_title": "流程",
+    "step": "步骤",
+    "round": "第 {{round}} 轮",
+    "stop": {
+      "1": "暂停 1：已受阻",
+      "3": "暂停 3：已达最大返工次数",
+      "stalled": "停滞"
+    },
+    "outcome": {
+      "approved": "已批准",
+      "rejected": "已拒绝",
+      "blocked": "受阻",
+      "done": "已完成",
+      "none": "待定"
+    },
+    "resume": "恢复",
+    "detach": "分离",
+    "detach_confirm": "从流程分离",
+    "detach_confirm_desc": "此请求将与工作流引擎分离。进行中的任务将转为普通子议题。",
+    "detach_confirm_button": "确认分离",
+    "cancel": "取消",
+    "error": "无法更新流程",
+    "table_issue": "事项",
+    "table_task": "任务",
+    "table_round": "轮次",
+    "table_status": "状态",
+    "table_outcome": "结果",
+    "errors": {
+      "flow_outcome_required": "关闭此门禁必须提供裁决",
+      "flow_outcome_invalid": "无效的状态和裁决组合",
+      "flow_attachment_required": "完成此任务必须附带附件",
+      "flow_human_only": "此步骤只能由人工完成",
+      "flow_managed_request": "状态由工作流引擎管理",
+      "flow_children_managed": "子议题由工作流引擎管理",
+      "flow_gate_same_agent": "门禁不能由起草该任务的同一智能体审查",
+      "flow_switch_invalid": "无效的工作流开关或取值",
+      "flow_switch_locked": "工作流开关只能在规划阶段修改",
+      "flow_wrong_step": "该操作仅在规划阶段被允许",
+      "flow_not_managed": "此请求不受工作流管理",
+      "flow_forbidden": "权限不足",
+      "flow_agent_unavailable": "该智能体不可用于此任务",
+      "workflow_managed_by_template": "此工作流由 Kit Việt 管理，无法编辑",
+      "workflow_has_flow_requests": "无法删除仍有未结流程请求的工作流",
+      "flow_workflow_forbidden": "配置执行工作流需要管理员权限"
+    }
   }
 }

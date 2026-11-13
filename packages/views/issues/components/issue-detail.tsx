@@ -141,6 +141,7 @@ import { useActorName } from "@multica/core/workspace/hooks";
 import { useWorkspaceId } from "@multica/core/hooks";
 import {
   useProjectWorkflow,
+  issueFlowOptions,
 } from "@multica/core/issue-workflows";
 import { useRecentContextStore } from "@multica/core/chat";
 import { useRegisterCommandBarContext } from "../../search/register-context";
@@ -3016,7 +3017,13 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
               issue={issue}
             />
           </PropRow>
-          <IssueWorkflowPropRow projectId={issue.project_id} status={issue.status} label={t(($) => $.workflows.project.label)} />
+          <IssueWorkflowPropRow
+            issueId={issue.id}
+            projectId={issue.project_id}
+            status={issue.status}
+            label={t(($) => $.workflows.project.label)}
+            canManage={canModerateComments}
+          />
 
           {/* Optional props — rendered only when set on the issue OR added
               via "+ Add property" in this session. Row order follows the
@@ -4197,20 +4204,46 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
 
 /** The workflow the issue follows through its project (MUL-7420). */
 function IssueWorkflowPropRow({
+  issueId,
   projectId,
   status,
   label,
+  canManage,
 }: {
+  issueId?: string;
   projectId: string | null;
   status: string;
   label: string;
+  canManage?: boolean;
 }) {
   const wsId = useWorkspaceId();
   const workflow = useProjectWorkflow(wsId, projectId);
-  if (!workflow) return null;
+  const flowQuery = useQuery({ ...issueFlowOptions(wsId, issueId ?? ""), enabled: Boolean(issueId) });
+  const isFlow = Boolean(flowQuery.data?.managed);
+
+  if (!workflow && !isFlow) return null;
+
+  if (isFlow) {
+    return (
+      <div className="py-2">
+        <IssueFlowCard
+          issueId={issueId}
+          projectId={projectId}
+          currentStatus={status}
+          canManage={canManage}
+        />
+      </div>
+    );
+  }
+
   return (
     <PropRow label={label}>
-      <IssueFlowCard projectId={projectId} currentStatus={status} />
+      <IssueFlowCard
+        issueId={issueId}
+        projectId={projectId}
+        currentStatus={status}
+        canManage={canManage}
+      />
     </PropRow>
   );
 }

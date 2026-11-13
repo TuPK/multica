@@ -101,6 +101,7 @@ import { toast } from "sonner";
 import { SquadRuntimeSelect } from "./squad-runtime-select";
 import { SquadCapabilitiesSection } from "./squad-capabilities-section";
 import { SquadSourcesSection } from "./squad-sources-section";
+import { SquadWorkflowsSection } from "./squad-workflows-section";
 import { WebEngineCard } from "./web-engine-card";
 import { sharedSquadRuntimeId } from "../lib/squad-runtime";
 import { SquadModelSelect } from "./squad-model-select";
@@ -709,6 +710,12 @@ export function SquadDetailView({
           squad={squad}
           canManage={canManage && !archived}
           onSave={async (next) => { await updateSquadMut.mutateAsync({ instructions: next }); toast.success(t(($) => $.toasts.instructions_saved)); }}
+        />
+
+        <SquadWorkflowsSection
+          wsId={wsId}
+          squad={squad}
+          canManage={canManage && !archived}
         />
 
         <SquadRecentWorkSection

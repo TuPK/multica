@@ -20,6 +20,7 @@ import type {
   ListAutopilotsResponse,
   ListIssueWorkflowsResponse,
   SetAgentSkillsRequest,
+  SetSquadActiveWorkflowRequest,
   Skill,
   SkillSummary,
   Squad,
@@ -41,6 +42,8 @@ import type {
   CompanySeatAssignment,
   CompanySeatsResponse,
 } from "../company/types";
+import { flowForSquad } from "../catalog/flows";
+import { ensureSquadFlow, errorCode } from "./flow-workflow";
 import { kitvietPackOf, loadKitvietRoleInstructions, loadKitvietSkillPacks } from "./kitviet-packs";
 import { PLANNING_ROLE_AGENT_INSTRUCTIONS, type PlanningRoleKey } from "./planning-agent-instructions";
 import { CONTENT_STUDIO_ROLE_AGENT_INSTRUCTIONS, type CsRoleKey } from "./content-studio";
@@ -88,6 +91,7 @@ export interface SquadQuickstartClient {
   listSquadMembers(squadId: string): Promise<SquadMember[]>;
   listIssueWorkflows(): Promise<ListIssueWorkflowsResponse>;
   createIssueWorkflow(data: IssueWorkflowWriteRequest): Promise<IssueWorkflow>;
+  setSquadActiveWorkflow(squadId: string, data: SetSquadActiveWorkflowRequest): Promise<unknown>;
   listAutopilots(params?: { status?: string }): Promise<ListAutopilotsResponse>;
   getAutopilot(id: string): Promise<GetAutopilotResponse>;
   createAutopilot(data: CreateAutopilotRequest): Promise<Autopilot>;
@@ -172,15 +176,6 @@ export interface QuickstartOptions {
 
 export function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : "unknown error";
-}
-
-function errorCode(err: unknown): string | undefined {
-  const body = (err as { body?: unknown } | null)?.body;
-  if (body && typeof body === "object" && "code" in body) {
-    const code = (body as { code?: unknown }).code;
-    return typeof code === "string" ? code : undefined;
-  }
-  return undefined;
 }
 
 /** The browser's IANA timezone, or undefined when the runtime cannot tell. */
@@ -762,12 +757,15 @@ export async function runSquadQuickstart(
     outcome.agents.flatMap((a) => (a.status === "created" && a.id ? [a.id] : [])),
   );
   const agentSkillFailures: string[] = [];
+  // The workflow the squad runs now: none for a squad this run makes.
+  let activeWorkflowId: string | null = null;
 
   try {
     const squads = await client.listSquads();
     const found = squads.find((s) => !s.archived_at && s.name === template.name);
     if (found) {
       outcome.squad = { id: found.id, status: "existing" };
+      activeWorkflowId = found.active_workflow_id ?? null;
       // A run that stopped after the squad was made (for example, at the
       // charter save) leaves it without a charter, so the finishing run sends
       // the revision-0 save here. A hand-made squad with the same name is
@@ -900,6 +898,25 @@ export async function runSquadQuickstart(
           throw err;
         }
       }
+    } catch (err) {
+      outcome.workflow = { status: "failed", error: errorMessage(err) };
+    }
+    report();
+  }
+
+  // A squad with an enforced flow gets the flow's workflow whatever `createWorkflow` says: the flow is
+  // what the squad is. The flow is a row of its own revision, found by template_ref, never by name.
+  const flow = flowForSquad(template.id);
+  if (flow && outcome.squad.id) {
+    try {
+      const { status } = await ensureSquadFlow(client, {
+        flow,
+        squadId: outcome.squad.id,
+        squadName: template.name,
+        activeWorkflowId,
+        agentIds,
+      });
+      outcome.workflow = { status };
     } catch (err) {
       outcome.workflow = { status: "failed", error: errorMessage(err) };
     }

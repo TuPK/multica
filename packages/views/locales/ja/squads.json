@@ -10,6 +10,7 @@
       "leader": "リーダー",
       "members": "メンバー",
       "creator": "作成者",
+      "workflows": "ワークフロー",
       "created": "作成日時"
     },
     "no_matches": "該当するスカッドはありません",
@@ -296,6 +297,32 @@
       "ready": "準備完了",
       "partial": "一部完了",
       "skipped": "対象なし"
+    }
+  },
+  "workflows": {
+    "section_title": "ワークフロー",
+    "empty": "ワークフローがありません",
+    "error": "ワークフローを読み込めませんでした",
+    "retry": "再試行",
+    "badge_active": "使用中",
+    "badge_enforced": "適用中",
+    "badge_template": "Kit Việt",
+    "badge_unreadable": "読み取り不可",
+    "steps_count_other": "{{count}} ステップ",
+    "tasks_count_other": "{{count}} タスク",
+    "open_requests_other": "{{count}} 件の未完了リクエスト",
+    "set_active": "アクティブに設定",
+    "auto_on": "自動オン",
+    "auto_off": "自動オフ",
+    "sheet": {
+      "title": "ワークフローグラフ",
+      "human_only": "人間のみ",
+      "optional_when": "{{condition}} の場合",
+      "requires_outcome": "判定が必要",
+      "requires_attachment": "添付ファイルが必要",
+      "kind_gate": "ゲート",
+      "kind_work": "作業",
+      "rework_limit": "最大 {{count}} 回差し戻し"
     }
   }
 }

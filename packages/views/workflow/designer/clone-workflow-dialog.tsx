@@ -40,7 +40,7 @@ export function CloneWorkflowDialog({
   });
 
   const filteredWorkflows = useMemo(() => {
-    const list = query.data ?? [];
+    const list = (query.data ?? []).filter((w) => !w.template_ref);
     const q = searchQuery.trim().toLowerCase();
     if (!q) return list;
     return list.filter((w) => w.name.toLowerCase().includes(q));

@@ -3,14 +3,18 @@ import { api } from "../api";
 import { useWorkspaceId } from "../hooks";
 import { issueKeys } from "../issues/queries";
 import { projectKeys } from "../projects/queries";
+import { workspaceKeys } from "../workspace/queries";
 import type {
+  DetachFlowRequest,
   IssueWorkflow,
   IssueWorkflowWriteRequest,
+  ResumeFlowRequest,
+  SetSquadActiveWorkflowRequest,
   ListIssueWorkflowsResponse,
   SetProjectWorkflowRequest,
   SetWorkflowHandoffRequest,
 } from "../types";
-import { issueWorkflowKeys } from "./queries";
+import { issueFlowKeys, issueWorkflowKeys } from "./queries";
 
 /**
  * Workflow mutations (MUL-7420).
@@ -138,6 +142,75 @@ export function useSetWorkflowHandoff() {
     },
     onError: () => {
       qc.invalidateQueries({ queryKey: issueWorkflowKeys.all(wsId) });
+    },
+  });
+}
+
+/**
+ * Flow mutations. Each waits for the server and then refreshes the request's
+ * flow state and its issue: the server decides every step, so nothing here is
+ * patched ahead of the answer.
+ */
+function useRefreshFlow(wsId: string, issueId: string) {
+  const qc = useQueryClient();
+  return () => {
+    qc.invalidateQueries({ queryKey: issueFlowKeys.detail(wsId, issueId) });
+    qc.invalidateQueries({ queryKey: issueKeys.detail(wsId, issueId) });
+    qc.invalidateQueries({ queryKey: issueKeys.children(wsId, issueId) });
+  };
+}
+
+/** Runs the engine on a request: opens its tasks, or routes it on when the step is done. */
+export function useAdvanceFlow(wsId: string, issueId: string) {
+  const refresh = useRefreshFlow(wsId, issueId);
+  return useMutation({
+    mutationFn: () => api.advanceIssueFlow(issueId),
+    onSettled: refresh,
+  });
+}
+
+/** Continues a stopped request (members who manage the squad). */
+export function useResumeFlow(wsId: string, issueId: string) {
+  const refresh = useRefreshFlow(wsId, issueId);
+  return useMutation({
+    mutationFn: (data: ResumeFlowRequest = {}) => api.resumeIssueFlow(issueId, data),
+    onSettled: refresh,
+  });
+}
+
+/** Takes a request off its flow (members who manage the squad). */
+export function useDetachFlow(wsId: string, issueId: string) {
+  const refresh = useRefreshFlow(wsId, issueId);
+  return useMutation({
+    mutationFn: (data: DetachFlowRequest = {}) => api.detachIssueFlow(issueId, data),
+    onSettled: refresh,
+  });
+}
+
+/** Turns the background runner on or off for a flow workflow (workspace admins). */
+export function useSetFlowAuto(wsId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ workflowId, auto }: { workflowId: string; auto: boolean }) =>
+      api.setIssueWorkflowFlowAuto(workflowId, auto),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: issueWorkflowKeys.all(wsId) });
+    },
+  });
+}
+
+/**
+ * Makes a workflow the squad's active one. A 409 `workflow_status_mapping_required`
+ * carries the plan; retry with `status_mapping` once the user picks where the
+ * issues go (see `issueWorkflowMappingPlanFrom`).
+ */
+export function useSetSquadActiveWorkflow(wsId: string, squadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: SetSquadActiveWorkflowRequest) => api.setSquadActiveWorkflow(squadId, data),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: issueWorkflowKeys.all(wsId) });
+      qc.invalidateQueries({ queryKey: workspaceKeys.squads(wsId) });
     },
   });
 }

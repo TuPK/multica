@@ -10,6 +10,7 @@
       "leader": "隊長",
       "members": "成員",
       "creator": "建立者",
+      "workflows": "工作流程",
       "created": "建立時間"
     },
     "no_matches": "沒有匹配的小隊",
@@ -296,6 +297,32 @@
       "ready": "已就緒",
       "partial": "部分完成",
       "skipped": "無需處理"
+    }
+  },
+  "workflows": {
+    "section_title": "工作流程",
+    "empty": "暫無工作流程",
+    "error": "無法載入工作流程",
+    "retry": "重試",
+    "badge_active": "使用中",
+    "badge_enforced": "已強制",
+    "badge_template": "Kit Việt",
+    "badge_unreadable": "無法讀取",
+    "steps_count_other": "{{count}} 個步驟",
+    "tasks_count_other": "{{count}} 個任務",
+    "open_requests_other": "{{count}} 個未結請求",
+    "set_active": "設為使用中",
+    "auto_on": "自動執行：開啟",
+    "auto_off": "自動執行：關閉",
+    "sheet": {
+      "title": "工作流程圖",
+      "human_only": "僅限人工",
+      "optional_when": "當 {{condition}}",
+      "requires_outcome": "需要裁決",
+      "requires_attachment": "需要附件",
+      "kind_gate": "關卡",
+      "kind_work": "工作",
+      "rework_limit": "最多返回 {{count}} 次"
     }
   }
 }

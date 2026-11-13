@@ -21,7 +21,7 @@ import { runtimeKeys } from "../runtimes/queries";
 import { labelKeys } from "../labels/queries";
 import { propertyKeys } from "../properties/queries";
 import { issueStatusKeys } from "../issue-statuses/queries";
-import { issueWorkflowKeys } from "../issue-workflows/queries";
+import { issueFlowKeys, issueWorkflowKeys } from "../issue-workflows/queries";
 import { issueViewKeys } from "../issue-views/queries";
 import { issueViewPrefKeys } from "../issue-views/preferences";
 import {
@@ -932,6 +932,12 @@ export function useRealtimeSync(
       issue_workflow: () => {
         const wsId = getCurrentWsId();
         if (wsId) qc.invalidateQueries({ queryKey: issueWorkflowKeys.all(wsId) });
+      },
+      // A request on a flow moved, stopped, or opened or closed a task. The payload
+      // names the issue, but a prefix refresh carries none; the flow states are few.
+      issue_flow: () => {
+        const wsId = getCurrentWsId();
+        if (wsId) qc.invalidateQueries({ queryKey: issueFlowKeys.all(wsId) });
       },
       pin: () => {
         const wsId = getCurrentWsId();

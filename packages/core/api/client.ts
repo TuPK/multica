@@ -250,6 +250,14 @@ import type {
   RegisterTelegramRequest,
   RedeemTelegramBindingTokenResponse,
   Squad,
+  SquadWorkflowsResponse,
+  IssueFlowAdvanceResponse,
+  IssueFlowState,
+  ResumeFlowRequest,
+  DetachFlowRequest,
+  DetachFlowResponse,
+  SetSquadActiveWorkflowRequest,
+  SetSquadActiveWorkflowResponse,
   SquadMember,
   SquadMemberStatusListResponse,
   SquadSkill,
@@ -747,6 +755,15 @@ import {
   SearchIndexChangesSchema,
   SquadSchema,
   SquadListSchema,
+  SquadWorkflowsResponseSchema,
+  IssueFlowStateSchema,
+  IssueFlowAdvanceResponseSchema,
+  DetachFlowResponseSchema,
+  EMPTY_ISSUE_FLOW_STATE,
+  EMPTY_ISSUE_FLOW_ADVANCE_RESPONSE,
+  EMPTY_SQUAD_WORKFLOWS_RESPONSE,
+  SetSquadActiveWorkflowResponseSchema,
+  EMPTY_SET_SQUAD_ACTIVE_WORKFLOW_RESPONSE,
   SquadMemberStatusListResponseSchema,
   SubscribersListSchema,
   TaskMessageListSchema,
@@ -5363,6 +5380,97 @@ export class ApiClient {
     return parseWithFallback(raw, SquadSchema, EMPTY_SQUAD, {
       endpoint: "GET /api/squads/:id",
     }) as Squad;
+  }
+
+  /**
+   * The flow state of a request (or of the request a task belongs to). A 404
+   * `flow_not_managed` is not an error here: the issue is not run by a flow, and
+   * the answer says `managed: false`.
+   */
+  async getIssueFlow(issueId: string): Promise<IssueFlowState> {
+    let raw: unknown;
+    try {
+      raw = await this.fetch<unknown>(`/api/issues/${issueId}/flow`);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404 && errorCode(err) === "flow_not_managed") {
+        return EMPTY_ISSUE_FLOW_STATE;
+      }
+      throw err;
+    }
+    return parseWithFallback(raw, IssueFlowStateSchema, EMPTY_ISSUE_FLOW_STATE, {
+      endpoint: "GET /api/issues/{id}/flow",
+    });
+  }
+
+  /** Runs the engine on a request: opens tasks, or routes it when the step is done. */
+  async advanceIssueFlow(issueId: string): Promise<IssueFlowAdvanceResponse> {
+    const raw = await this.fetch<unknown>(`/api/issues/${issueId}/flow/advance`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+    return parseWithFallback(raw, IssueFlowAdvanceResponseSchema, EMPTY_ISSUE_FLOW_ADVANCE_RESPONSE, {
+      endpoint: "POST /api/issues/{id}/flow/advance",
+    });
+  }
+
+  /** Continues a stopped request. Members who manage the squad only. */
+  async resumeIssueFlow(issueId: string, data: ResumeFlowRequest = {}): Promise<IssueFlowState> {
+    const raw = await this.fetch<unknown>(`/api/issues/${issueId}/flow/resume`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, IssueFlowStateSchema, EMPTY_ISSUE_FLOW_STATE, {
+      endpoint: "POST /api/issues/{id}/flow/resume",
+    });
+  }
+
+  /** Takes a request off its flow. Members who manage the squad only. */
+  async detachIssueFlow(issueId: string, data: DetachFlowRequest = {}): Promise<DetachFlowResponse> {
+    const raw = await this.fetch<unknown>(`/api/issues/${issueId}/flow/detach`, {
+      method: "POST",
+      body: JSON.stringify({ cancel_tasks: false, ...data }),
+    });
+    return parseWithFallback(raw, DetachFlowResponseSchema, { detached: false }, {
+      endpoint: "POST /api/issues/{id}/flow/detach",
+    });
+  }
+
+  /** Turns the background runner on or off for a flow workflow. Workspace admins only. */
+  async setIssueWorkflowFlowAuto(workflowId: string, auto: boolean): Promise<IssueWorkflow> {
+    const raw = await this.fetch<unknown>(`/api/issue-workflows/${workflowId}/flow-auto`, {
+      method: "PUT",
+      body: JSON.stringify({ auto }),
+    });
+    return parseWithFallback(raw, IssueWorkflowSchema, EMPTY_ISSUE_WORKFLOW, {
+      endpoint: "PUT /api/issue-workflows/{id}/flow-auto",
+    });
+  }
+
+  /** A squad's workflow library and which workflow is active. */
+  async listSquadWorkflows(squadId: string): Promise<SquadWorkflowsResponse> {
+    const raw = await this.fetch<unknown>(`/api/squads/${squadId}/workflows`);
+    return parseWithFallback(raw, SquadWorkflowsResponseSchema, EMPTY_SQUAD_WORKFLOWS_RESPONSE, {
+      endpoint: "GET /api/squads/:id/workflows",
+    });
+  }
+
+  /**
+   * Makes a workflow the squad's active one. Issues on statuses the new
+   * workflow does not list need `status_mapping` (a 409
+   * `workflow_status_mapping_required` carries the plan); `dry_run` returns the
+   * plan alone.
+   */
+  async setSquadActiveWorkflow(
+    squadId: string,
+    data: SetSquadActiveWorkflowRequest,
+  ): Promise<SetSquadActiveWorkflowResponse> {
+    const raw = await this.fetch<unknown>(`/api/squads/${squadId}/workflow`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, SetSquadActiveWorkflowResponseSchema, EMPTY_SET_SQUAD_ACTIVE_WORKFLOW_RESPONSE, {
+      endpoint: "POST /api/squads/:id/workflow",
+    });
   }
 
   async createSquad(data: {

@@ -2324,5 +2324,52 @@
       "empty_title": "還沒有儲存的檢視",
       "empty_description": "在任務列表裡調好篩選和顯示方式，然後另存為檢視。"
     }
+  },
+  "flow": {
+    "panel_title": "流程",
+    "step": "步驟",
+    "round": "第 {{round}} 輪",
+    "stop": {
+      "1": "暫停 1：已受阻",
+      "3": "暫停 3：已達最大返工次數",
+      "stalled": "停滯"
+    },
+    "outcome": {
+      "approved": "已核准",
+      "rejected": "已拒絕",
+      "blocked": "受阻",
+      "done": "已完成",
+      "none": "待定"
+    },
+    "resume": "恢復",
+    "detach": "分離",
+    "detach_confirm": "從流程分離",
+    "detach_confirm_desc": "此請求將與工作流程引擎分離。進行中的任務將轉為普通子議題。",
+    "detach_confirm_button": "確認分離",
+    "cancel": "取消",
+    "error": "無法更新流程",
+    "table_issue": "事項",
+    "table_task": "任務",
+    "table_round": "輪次",
+    "table_status": "狀態",
+    "table_outcome": "結果",
+    "errors": {
+      "flow_outcome_required": "關閉此關卡必須提供裁決",
+      "flow_outcome_invalid": "無效的狀態和裁決組合",
+      "flow_attachment_required": "完成此任務必須附帶附件",
+      "flow_human_only": "此步驟只能由人工完成",
+      "flow_managed_request": "狀態由工作流程引擎管理",
+      "flow_children_managed": "子議題由工作流程引擎管理",
+      "flow_gate_same_agent": "關卡不能由起草該任務的同一代理人審查",
+      "flow_switch_invalid": "無效的工作流程開關或取值",
+      "flow_switch_locked": "工作流程開關只能在規劃階段修改",
+      "flow_wrong_step": "該操作僅在規劃階段被允許",
+      "flow_not_managed": "此請求不受工作流程管理",
+      "flow_forbidden": "權限不足",
+      "flow_agent_unavailable": "該代理人不可用於此任務",
+      "workflow_managed_by_template": "此工作流程由 Kit Việt 管理，無法編輯",
+      "workflow_has_flow_requests": "無法刪除仍有未結流程請求的工作流程",
+      "flow_workflow_forbidden": "配置執行工作流程需要管理員權限"
+    }
   }
 }

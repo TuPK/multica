@@ -8,6 +8,7 @@
     "filter_squads": "스쿼드",
     "filter_agents": "에이전트",
     "default_badge": "기본",
+    "managed_by_template": "Kit Việt에서 관리",
     "steps_count_other": "{{count}}개 단계",
     "assigned_projects": "연결된 프로젝트",
     "assigned_squads": "연결된 스쿼드",

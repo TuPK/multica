@@ -2324,5 +2324,52 @@
       "empty_title": "保存したビューはまだありません",
       "empty_description": "タスク一覧でフィルターと表示方法を調整し、ビューとして保存します。"
     }
+  },
+  "flow": {
+    "panel_title": "フロー",
+    "step": "ステップ",
+    "round": "ラウンド {{round}}",
+    "stop": {
+      "1": "停止 1: ブロック中",
+      "3": "停止 3: 差し戻し上限到達",
+      "stalled": "停滞"
+    },
+    "outcome": {
+      "approved": "承認済み",
+      "rejected": "却下",
+      "blocked": "ブロック",
+      "done": "完了",
+      "none": "保留中"
+    },
+    "resume": "再開",
+    "detach": "デタッチ",
+    "detach_confirm": "フローからデタッチ",
+    "detach_confirm_desc": "このリクエストはワークフローエンジンからデタッチされます。未完了のタスクは通常のサブイシューになります。",
+    "detach_confirm_button": "デタッチを確認",
+    "cancel": "キャンセル",
+    "error": "フローを更新できませんでした",
+    "table_issue": "課題",
+    "table_task": "タスク",
+    "table_round": "ラウンド",
+    "table_status": "ステータス",
+    "table_outcome": "結果",
+    "errors": {
+      "flow_outcome_required": "このゲートを閉じるには判定が必要です",
+      "flow_outcome_invalid": "ステータスと判定の組み合わせが無効です",
+      "flow_attachment_required": "このタスクを完了するには添付ファイルが必要です",
+      "flow_human_only": "このステップは人間のみが完了できます",
+      "flow_managed_request": "ステータスはワークフローエンジンによって管理されています",
+      "flow_children_managed": "サブイシューはワークフローエンジンによって管理されています",
+      "flow_gate_same_agent": "ゲートは作成したエージェントと同じエージェントでレビューできません",
+      "flow_switch_invalid": "ワークフロースイッチまたは値が無効です",
+      "flow_switch_locked": "ワークフロースイッチは計画ステップ中のみ変更できます",
+      "flow_wrong_step": "この操作は計画ステップ中のみ許可されています",
+      "flow_not_managed": "このリクエストはワークフローで管理されていません",
+      "flow_forbidden": "アクセスが拒否されました",
+      "flow_agent_unavailable": "エージェントはこのタスクに使用できません",
+      "workflow_managed_by_template": "このワークフローは Kit Việt により管理されており、編集できません",
+      "workflow_has_flow_requests": "アクティブなフローリクエストがあるワークフローは削除できません",
+      "flow_workflow_forbidden": "フローワークフローの設定には管理者権限が必要です"
+    }
   }
 }

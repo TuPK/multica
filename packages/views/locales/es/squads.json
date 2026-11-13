@@ -10,6 +10,7 @@
       "leader": "Líder",
       "members": "Miembros",
       "creator": "Creado por",
+      "workflows": "Flujos de trabajo",
       "created": "Creado"
     },
     "no_matches": "Ningún squad coincide",
@@ -298,6 +299,35 @@
       "ready": "listo",
       "partial": "parcial",
       "skipped": "nada que hacer"
+    }
+  },
+  "workflows": {
+    "section_title": "Flujos de trabajo",
+    "empty": "No hay flujos de trabajo",
+    "error": "No se pudieron cargar los flujos de trabajo",
+    "retry": "Reintentar",
+    "badge_active": "Activo",
+    "badge_enforced": "Con ejecución",
+    "badge_template": "Kit Việt",
+    "badge_unreadable": "Ilegible",
+    "steps_count_one": "{{count}} paso",
+    "steps_count_other": "{{count}} pasos",
+    "tasks_count_one": "{{count}} tarea",
+    "tasks_count_other": "{{count}} tareas",
+    "open_requests_one": "{{count}} solicitud abierta",
+    "open_requests_other": "{{count}} solicitudes abiertas",
+    "set_active": "Establecer como activo",
+    "auto_on": "Auto activado",
+    "auto_off": "Auto desactivado",
+    "sheet": {
+      "title": "Gráfico del flujo de trabajo",
+      "human_only": "Solo humano",
+      "optional_when": "Cuando {{condition}}",
+      "requires_outcome": "Requiere veredicto",
+      "requires_attachment": "Requiere archivo adjunto",
+      "kind_gate": "Puerta",
+      "kind_work": "Trabajo",
+      "rework_limit": "Retorno máx. {{count}} veces"
     }
   }
 }

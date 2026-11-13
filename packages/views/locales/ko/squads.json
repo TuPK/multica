@@ -10,6 +10,7 @@
       "leader": "리더",
       "members": "멤버",
       "creator": "생성자",
+      "workflows": "워크플로",
       "created": "생성일"
     },
     "no_matches": "일치하는 스쿼드가 없습니다",
@@ -296,6 +297,32 @@
       "ready": "준비됨",
       "partial": "일부 완료",
       "skipped": "변경 없음"
+    }
+  },
+  "workflows": {
+    "section_title": "워크플로",
+    "empty": "아직 워크플로가 없습니다",
+    "error": "워크플로를 불러올 수 없습니다",
+    "retry": "다시 시도",
+    "badge_active": "활성",
+    "badge_enforced": "적용됨",
+    "badge_template": "Kit Việt",
+    "badge_unreadable": "읽을 수 없음",
+    "steps_count_other": "{{count}}개 단계",
+    "tasks_count_other": "{{count}}개 작업",
+    "open_requests_other": "{{count}}개 미해결 요청",
+    "set_active": "활성으로 설정",
+    "auto_on": "자동 켜짐",
+    "auto_off": "자동 꺼짐",
+    "sheet": {
+      "title": "워크플로 그래프",
+      "human_only": "사람 전용",
+      "optional_when": "{{condition}}일 때",
+      "requires_outcome": "판정 필요",
+      "requires_attachment": "첨부 파일 필요",
+      "kind_gate": "게이트",
+      "kind_work": "작업",
+      "rework_limit": "최대 {{count}}회 재반려"
     }
   }
 }

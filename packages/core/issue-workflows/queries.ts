@@ -19,7 +19,42 @@ export const issueWorkflowKeys = {
   templates: (wsId: string) => [...issueWorkflowKeys.all(wsId), "templates"] as const,
   handoffPreview: (wsId: string, issueId: string, status: string, projectId = "") =>
     [...issueWorkflowKeys.all(wsId), "handoff-preview", issueId, status, projectId] as const,
+  /** A squad's workflow library. Under the workflow keys, so a workflow change refreshes it. */
+  squad: (wsId: string, squadId: string) => [...issueWorkflowKeys.all(wsId), "squad", squadId] as const,
 };
+
+/**
+ * The flow state of a request. Under the workflow keys as well: a workflow
+ * change can change a request's steps, and the `issue_flow:updated` event
+ * refreshes one request's state.
+ */
+export const issueFlowKeys = {
+  all: (wsId: string) => [...issueWorkflowKeys.all(wsId), "flow"] as const,
+  detail: (wsId: string, issueId: string) => [...issueFlowKeys.all(wsId), issueId] as const,
+};
+
+/**
+ * The flow state of a request, or of the request a task belongs to. `managed`
+ * is false for an issue no flow runs. The server keeps it current and tells
+ * clients through `issue_flow:updated`, so a short stale time only covers the
+ * gap between a write and its event.
+ */
+export function issueFlowOptions(wsId: string, issueId: string) {
+  return queryOptions({
+    queryKey: issueFlowKeys.detail(wsId, issueId),
+    queryFn: () => api.getIssueFlow(issueId),
+    staleTime: 15_000,
+  });
+}
+
+/** A squad's workflow library and which workflow is active. */
+export function squadWorkflowsOptions(wsId: string, squadId: string) {
+  return queryOptions({
+    queryKey: issueWorkflowKeys.squad(wsId, squadId),
+    queryFn: () => api.listSquadWorkflows(squadId),
+    staleTime: 5 * 60_000,
+  });
+}
 
 /**
  * What moving an issue to `status` — or into project `projectId` — would do.

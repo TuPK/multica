@@ -74,7 +74,14 @@ describe("workflow schemas (MUL-7420)", () => {
   it("reads a workflow row's status-only steps as manual columns", () => {
     const parsed = IssueWorkflowSchema.parse({ ...baseWorkflow, is_default: true, steps: [{ status_key: "todo" }] });
     expect(parsed.is_default).toBe(true);
-    expect(parsed.steps[0]).toEqual({ status_key: "todo", handler: { type: "none" }, instructions: "", transitions: [] });
+    expect(parsed.steps[0]).toEqual({
+      status_key: "todo",
+      handler: { type: "none" },
+      instructions: "",
+      transitions: [],
+      tasks: [],
+      human_only: false,
+    });
   });
 
   it("falls back to an empty plan on a malformed dry run", () => {

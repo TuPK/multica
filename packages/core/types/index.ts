@@ -11,7 +11,28 @@ export type {
   UpdateIssueStatusRequest,
 } from "./issue-status";
 export type {
+  IssueFlowRef,
+  IssueFlowStop,
+  IssueFlowSwitchValue,
+  IssueFlowTask,
+  IssueFlowNext,
+  IssueFlowState,
+  IssueFlowActionKind,
+  IssueFlowAction,
+  IssueFlowPending,
+  IssueFlowAdvanceResponse,
+  ResumeFlowRequest,
+  DetachFlowRequest,
+  DetachFlowResponse,
+  SetFlowAutoRequest,
+} from "./issue-flow";
+export type {
   IssueWorkflow,
+  IssueWorkflowTask,
+  IssueWorkflowTaskKind,
+  IssueWorkflowTaskRequirement,
+  IssueWorkflowSwitch,
+  IssueWorkflowFlowConfig,
   IssueWorkflowHandler,
   IssueWorkflowHandlerType,
   IssueWorkflowStep,
@@ -331,6 +352,9 @@ export type {
 } from "./autopilot";
 export type {
   Squad,
+  SquadWorkflowsResponse,
+  SetSquadActiveWorkflowRequest,
+  SetSquadActiveWorkflowResponse,
   SquadMember,
   SquadMemberType,
   SquadMemberPreview,

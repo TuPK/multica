@@ -7,6 +7,9 @@ import type {
   SquadMember,
   UpdateAgentRequest,
 } from "../types";
+import { flowForSquad, flowTemplateRef } from "../catalog/flows";
+import type { CatalogFlow } from "../catalog/types";
+import { errorCode, findFlowWorkflow, flowWorkflowRequest } from "./flow-workflow";
 import { kitvietPackOf } from "./kitviet-packs";
 import {
   attachAgentSkills,
@@ -224,6 +227,49 @@ export interface KitvietUpgradeResult {
   squad: { status: UpgradeStatus; detail?: string };
   skills: QuickstartOutcome["skills"];
   agents: { role: SquadRoleKey; name: string; status: UpgradeStatus; detail?: string }[];
+  /** The squad's flow workflow. Absent for a squad whose template has no flow. */
+  workflow?: { status: UpgradeStatus; detail?: string };
+}
+
+/**
+ * Puts the current revision of the squad's flow on the squad. A revision is a workflow row of its own
+ * (never an edit of the old one: requests in flight stay pinned to the row they started on), so an
+ * upgrade creates the row when the workspace lacks it and makes it the squad's active workflow. A squad
+ * that runs a workflow this template did not make keeps it.
+ */
+async function upgradeSquadFlow(
+  client: KitvietUpgradeClient,
+  flow: CatalogFlow,
+  squad: Squad,
+  squadName: string,
+  agentIds: Partial<Record<SquadRoleKey, string>>,
+  dry: boolean,
+): Promise<NonNullable<KitvietUpgradeResult["workflow"]>> {
+  try {
+    const { workflows }: ListIssueWorkflowsResponse = await client.listIssueWorkflows();
+    const active = squad.active_workflow_id ? workflows.find((w) => w.id === squad.active_workflow_id) : undefined;
+    if (active?.template_ref === flowTemplateRef(flow)) return { status: "current" };
+    if (active && !active.template_ref?.startsWith(`${flow.id}@`)) {
+      return { status: "kept", detail: "the squad runs a workflow that is not made from this template; kept" };
+    }
+    let row = findFlowWorkflow(workflows, flow);
+    if (!row) {
+      const request = flowWorkflowRequest(flow, squadName, agentIds);
+      if (!request) return { status: "failed", detail: "a flow task has no agent to hand to" };
+      if (!dry) row = await client.createIssueWorkflow(request);
+    }
+    if (!dry && row) await client.setSquadActiveWorkflow(squad.id, { workflow_id: row.id });
+    return { status: "upgraded" };
+  } catch (err) {
+    const code = errorCode(err);
+    return {
+      status: "failed",
+      detail:
+        code === "status_create_forbidden" || code === "flow_workflow_forbidden"
+          ? "a workspace admin must create the flow's statuses"
+          : errorMessage(err),
+    };
+  }
 }
 
 /**
@@ -281,7 +327,10 @@ export async function upgradeKitvietSquad(
 
   const leaderId = agentIds[template.leader];
   const squads: Squad[] = await client.listSquads();
-  const squad = squads.find((s) => !s.archived_at && s.name === template.name);
+  // The template key survives a rename; a squad made before it was recorded is found by name.
+  const squad =
+    squads.find((s) => !s.archived_at && s.template_key === template.id) ??
+    squads.find((s) => !s.archived_at && s.name === template.name);
   if (!squad) return result;
   if (!leaderId || squad.leader_id !== leaderId) {
     result.squad = { status: "kept", detail: "led by another agent; not the quickstart's squad" };
@@ -314,6 +363,8 @@ export async function upgradeKitvietSquad(
       result.skills = { status: "failed", error: errorMessage(err) };
     }
   }
+  const flow = flowForSquad(template.id);
+  if (flow) result.workflow = await upgradeSquadFlow(client, flow, squad, template.name, agentIds, dry);
   return result;
 }
 

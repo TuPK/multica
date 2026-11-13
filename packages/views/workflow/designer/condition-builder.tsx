@@ -216,9 +216,19 @@ export function ConditionBuilder({
   const kind = valueKindOf(field);
   const enumValues = FIELD_ENUM_VALUES[field];
 
+  const fieldLabels: Record<string, string> = {
+    outcome: t(($) => $.designer.conditions.fields.outcome),
+    priority: t(($) => $.designer.conditions.fields.priority),
+    labels: t(($) => $.designer.conditions.fields.labels),
+    project_id: t(($) => $.designer.conditions.fields.project_id),
+    rework_count: t(($) => $.designer.conditions.fields.rework_count),
+    creator_type: t(($) => $.designer.conditions.fields.creator_type),
+    assignee_type: t(($) => $.designer.conditions.fields.assignee_type),
+  };
+
   const fieldItems = CONDITION_FIELDS.map((f) => ({
     value: f,
-    label: t(($) => $.designer.conditions.fields[f]),
+    label: fieldLabels[f] ?? f,
   }));
 
   const opItems = (FIELD_OPERATORS[field] ?? []).map((op) => ({

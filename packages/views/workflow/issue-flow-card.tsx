@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Settings, Workflow } from "@multica/ui/icons";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useIssueStatuses } from "@multica/core/issue-statuses/hooks";
-import { useProjectWithWorkflow } from "@multica/core/issue-workflows";
+import { issueFlowOptions, useProjectWithWorkflow } from "@multica/core/issue-workflows";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { Button } from "@multica/ui/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@multica/ui/components/ui/popover";
@@ -16,23 +17,54 @@ import { useT } from "../i18n";
 import { useNavigation } from "../navigation";
 import { useWorkflowPermissions } from "./permissions";
 import { stepHandlerActor, useStepHandlerLabel } from "./step-handler";
+import { IssueFlowStatePanel } from "./issue-flow-state-panel";
+
+export interface IssueFlowCardProps {
+  issueId?: string;
+  projectId: string | null;
+  currentStatus: string;
+  canManage?: boolean;
+}
 
 /**
- * The workflow an issue follows through its project (MUL-7420), opening a
- * read-only card of its columns and who each hands to. It changes on the
- * project, so nothing here edits it.
+ * The workflow an issue follows:
+ * - If it is an enforced flow request, renders the full IssueFlowStatePanel.
+ * - Otherwise follows the project workflow through its project (MUL-7420),
+ *   opening a read-only card of its columns and handoffs.
  */
-export function IssueFlowCard({ projectId, currentStatus }: { projectId: string | null; currentStatus: string }) {
+export function IssueFlowCard({
+  issueId,
+  projectId,
+  currentStatus,
+  canManage = false,
+}: IssueFlowCardProps) {
   const { t } = useT("issues");
   const wsId = useWorkspaceId();
   const navigation = useNavigation();
   const paths = useWorkspacePaths();
   const catalog = useIssueStatuses(wsId);
   const labelOf = useStatusLabel(wsId);
+
+  // Flow query for enforced squad flow
+  const flowQuery = useQuery({ ...issueFlowOptions(wsId, issueId ?? ""), enabled: Boolean(issueId) });
+
   const { project, workflow } = useProjectWithWorkflow(wsId, projectId);
   const { canCreateWorkflow } = useWorkflowPermissions(project);
   const handlerLabel = useStepHandlerLabel(project);
   const [open, setOpen] = useState(false);
+
+  // If this issue is managed by flow engine, render the flow panel
+  if (flowQuery.data && flowQuery.data.managed) {
+    return (
+      <IssueFlowStatePanel
+        wsId={wsId}
+        issueId={issueId!}
+        flow={flowQuery.data}
+        canManage={canManage}
+      />
+    );
+  }
+
   if (!workflow || !project) return null;
 
   return (

@@ -1,3 +1,5 @@
+import type { IssueWorkflow, IssueWorkflowMappingPlan } from "./issue-workflow";
+
 export type SquadMemberType = "agent" | "member";
 
 export type SquadActivityOutcome = "action" | "no_action" | "failed";
@@ -31,6 +33,37 @@ export interface Squad {
   company_slot?: number | null;
   /** The squad's autonomy level, 0 (Suggest) to 3 (Autonomous). Older backends omit it: the default is 1. */
   autonomy_level?: number;
+  /** The squad's active workflow. Always present on a parsed response; null when it has none. */
+  active_workflow_id?: string | null;
+  active_workflow_name?: string | null;
+  /** The size of the squad's workflow library. Always present on a parsed response; 0 when empty. */
+  workflow_count?: number;
+  /** The active workflow runs requests on a flow the server enforces. Always present on a parsed response. */
+  flow_enforced?: boolean;
+}
+
+/** GET /api/squads/{id}/workflows: the squad's library and which workflow is active. */
+export interface SquadWorkflowsResponse {
+  active_workflow_id: string | null;
+  workflows: IssueWorkflow[];
+  total: number;
+}
+
+/**
+ * POST /api/squads/{id}/workflow. A dry run answers `{ dry_run: true, plan }`; a
+ * real switch answers the ids and how many issues moved.
+ */
+export interface SetSquadActiveWorkflowRequest {
+  workflow_id: string;
+  status_mapping?: Record<string, string>;
+  dry_run?: boolean;
+}
+
+export interface SetSquadActiveWorkflowResponse {
+  squad_id: string;
+  active_workflow_id: string;
+  updated_issues: number;
+  plan: IssueWorkflowMappingPlan;
 }
 
 export interface SquadMember {

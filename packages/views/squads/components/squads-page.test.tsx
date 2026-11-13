@@ -127,6 +127,11 @@ describe("SquadsPage header", () => {
     expect(screen.queryByText("Design Crew")).not.toBeInTheDocument();
   });
 
+  it("renders the Workflows column header in the table", () => {
+    renderPage();
+    expect(screen.getByRole("columnheader", { name: "Workflows" })).toBeInTheDocument();
+  });
+
   it("has no search, and offers Reset only while a filter narrows the list", () => {
     renderPage();
 

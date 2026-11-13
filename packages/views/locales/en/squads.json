@@ -10,6 +10,7 @@
       "leader": "Leader",
       "members": "Members",
       "creator": "Created by",
+      "workflows": "Workflows",
       "created": "Created"
     },
     "no_matches": "No squads match",
@@ -298,6 +299,35 @@
       "ready": "ready",
       "partial": "partly done",
       "skipped": "nothing to do"
+    }
+  },
+  "workflows": {
+    "section_title": "Workflows",
+    "empty": "No workflows yet",
+    "error": "Could not load workflows",
+    "retry": "Try again",
+    "badge_active": "Active",
+    "badge_enforced": "Enforced",
+    "badge_template": "Kit Việt",
+    "badge_unreadable": "Unreadable",
+    "steps_count_one": "{{count}} step",
+    "steps_count_other": "{{count}} steps",
+    "tasks_count_one": "{{count}} task",
+    "tasks_count_other": "{{count}} tasks",
+    "open_requests_one": "{{count}} open request",
+    "open_requests_other": "{{count}} open requests",
+    "set_active": "Set active",
+    "auto_on": "Auto on",
+    "auto_off": "Auto off",
+    "sheet": {
+      "title": "Workflow Graph",
+      "human_only": "Human only",
+      "optional_when": "When {{condition}}",
+      "requires_outcome": "Requires verdict",
+      "requires_attachment": "Requires attachment",
+      "kind_gate": "Gate",
+      "kind_work": "Work",
+      "rework_limit": "Return up to {{count}} times"
     }
   }
 }

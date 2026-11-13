@@ -33,9 +33,10 @@ export const SQUAD_SORT_DEFAULT_DIRECTION: Record<
 
 // User-hideable columns. Name and leader (the squad's defining relationship)
 // are always visible.
-export type SquadColumnKey = "members" | "creator" | "created";
+export type SquadColumnKey = "members" | "creator" | "created" | "workflows";
 
-/** Created (date) is opt-in. Creator ("Created by") is shown by default —
+/** Workflows (the workflow the squad runs, with its badge) is shown by default.
+ *  Created (date) is opt-in. Creator ("Created by") is shown by default —
  *  the user wants to see who made each squad. Note it's "Created by", NOT
  *  "Owner": the squad creator holds no management rights (archiving is
  *  workspace-admin only), so labelling it Owner would mislead. */

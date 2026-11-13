@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-query", () => ({
+  queryOptions: (opts: unknown) => opts,
   useQuery: (options: { queryKey?: readonly unknown[] }) => ({
     isError: false,
     isPending: false,
@@ -463,6 +464,11 @@ describe("SquadDetailPage", () => {
     await user.click(within(capabilities).getByRole("button", { name: "Remove code-style" }));
 
     expect(mocks.api.setSquadSkills).toHaveBeenCalledWith("sq-1", []);
+  });
+
+  it("renders the Workflows section on squad detail page", () => {
+    renderPage();
+    expect(screen.getByRole("heading", { level: 2, name: "Workflows" })).toBeInTheDocument();
   });
 
   it("gives viewers who cannot manage the squad a read-only page", async () => {

@@ -1,3 +1,4 @@
+import type { IssueFlowRef } from "./issue-flow";
 import type { Label } from "./label";
 import type { IssuePropertyValues } from "./property";
 
@@ -228,6 +229,17 @@ export interface Issue {
   // in run_after_issue_ids has finished. See server/internal/handler/issue_queue.go.
   run_queued?: boolean;
   run_after_issue_ids?: string[];
+  /**
+   * The verdict a handler reported when it closed this issue (enforced squad
+   * workflow). Always present on a parsed response; null when none was
+   * reported. A value this build does not know is kept as is.
+   */
+  outcome?: string | null;
+  /**
+   * Set on a request that runs on a flow (`role: "request"`) and on a task the
+   * engine opened under it (`role: "task"`); null on an ordinary issue.
+   */
+  flow?: IssueFlowRef | null;
   // Calendar days as date-only "YYYY-MM-DD" (no time, no timezone). Use the
   // helpers in @multica/core/issues/date to format/compare — never `new Date()`
   // + local formatting, which shifts the day by the viewer's offset.

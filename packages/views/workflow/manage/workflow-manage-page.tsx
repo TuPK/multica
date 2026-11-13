@@ -235,6 +235,11 @@ export function WorkflowManagePage() {
                         {t(($) => $.manage.default_badge)}
                       </Badge>
                     )}
+                    {wf.template_ref && (
+                      <Badge variant="secondary" className="gap-1 border border-border/60 bg-muted/30">
+                        {t(($) => $.manage.managed_by_template)}
+                      </Badge>
+                    )}
                     <Badge variant="outline">
                       {t(($) => $.manage.steps_count, { count: wf.steps.length })}
                     </Badge>
@@ -300,49 +305,51 @@ export function WorkflowManagePage() {
                     {timeAgo(wf.updated_at)}
                   </span>
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={t(($) => $.manage.actions.menu)}
-                          onClick={(e) => e.stopPropagation()}
+                  {!wf.template_ref && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={t(($) => $.manage.actions.menu)}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreHorizontal className="size-4" />
+                          </Button>
+                        }
+                      />
+                      <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigation.push(p.workflowDetail(wf.id));
+                          }}
                         >
-                          <MoreHorizontal className="size-4" />
-                        </Button>
-                      }
-                    />
-                    <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigation.push(p.workflowDetail(wf.id));
-                        }}
-                      >
-                        <Pencil className="size-4 mr-2" />
-                        <span>{t(($) => $.manage.actions.edit)}</span>
-                      </DropdownMenuItem>
+                          <Pencil className="size-4 mr-2" />
+                          <span>{t(($) => $.manage.actions.edit)}</span>
+                        </DropdownMenuItem>
 
-                      <DropdownMenuItem
-                        disabled={createWorkflow.isPending}
-                        onClick={(e) => void handleDuplicate(e, wf)}
-                      >
-                        <Copy className="size-4 mr-2" />
-                        <span>{t(($) => $.manage.actions.duplicate)}</span>
-                      </DropdownMenuItem>
+                        <DropdownMenuItem
+                          disabled={createWorkflow.isPending}
+                          onClick={(e) => void handleDuplicate(e, wf)}
+                        >
+                          <Copy className="size-4 mr-2" />
+                          <span>{t(($) => $.manage.actions.duplicate)}</span>
+                        </DropdownMenuItem>
 
-                      <DropdownMenuSeparator />
+                        <DropdownMenuSeparator />
 
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onClick={(e) => handleDeletePrompt(e, wf)}
-                      >
-                        <Trash2 className="size-4 mr-2" />
-                        <span>{t(($) => $.manage.actions.delete)}</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onClick={(e) => handleDeletePrompt(e, wf)}
+                        >
+                          <Trash2 className="size-4 mr-2" />
+                          <span>{t(($) => $.manage.actions.delete)}</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               </div>
             );

@@ -2400,5 +2400,52 @@
       "empty_title": "Aún no hay vistas guardadas",
       "empty_description": "Configura los filtros y las opciones de visualización de una lista de tareas y guárdalos como vista."
     }
+  },
+  "flow": {
+    "panel_title": "Flujo",
+    "step": "Paso",
+    "round": "Ronda {{round}}",
+    "stop": {
+      "1": "Parada 1: Bloqueado",
+      "3": "Parada 3: Límite de devoluciones alcanzado",
+      "stalled": "Estancado"
+    },
+    "outcome": {
+      "approved": "Aprobado",
+      "rejected": "Rechazado",
+      "blocked": "Bloqueado",
+      "done": "Completado",
+      "none": "Pendiente"
+    },
+    "resume": "Reanudar",
+    "detach": "Separar",
+    "detach_confirm": "Separar del flujo",
+    "detach_confirm_desc": "Esta solicitud se separará del motor de flujo de trabajo. Las tareas abiertas se convertirán en subtareas normales.",
+    "detach_confirm_button": "Confirmar separación",
+    "cancel": "Cancelar",
+    "error": "No se pudo actualizar el flujo",
+    "table_issue": "Tarea",
+    "table_task": "Subtarea",
+    "table_round": "Ronda",
+    "table_status": "Estado",
+    "table_outcome": "Resultado",
+    "errors": {
+      "flow_outcome_required": "Se requiere veredicto para cerrar esta puerta",
+      "flow_outcome_invalid": "Combinación de estado y veredicto no válida",
+      "flow_attachment_required": "Se requiere un archivo adjunto para completar esta tarea",
+      "flow_human_only": "Este paso solo puede completarlo un humano",
+      "flow_managed_request": "El estado está administrado por el motor de flujo de trabajo",
+      "flow_children_managed": "Las subtareas están administradas por el motor de flujo de trabajo",
+      "flow_gate_same_agent": "Una puerta no puede ser revisada por el mismo agente que la redactó",
+      "flow_switch_invalid": "Interruptor o valor de flujo de trabajo no válido",
+      "flow_switch_locked": "Los interruptores de flujo solo se pueden cambiar durante el paso de planificación",
+      "flow_wrong_step": "La acción solo está permitida durante el paso de planificación",
+      "flow_not_managed": "Esta solicitud no está administrada por un flujo de trabajo",
+      "flow_forbidden": "Permiso denegado",
+      "flow_agent_unavailable": "El agente no está disponible para esta tarea",
+      "workflow_managed_by_template": "Este flujo está gestionado por Kit Việt y no se puede editar",
+      "workflow_has_flow_requests": "No se puede eliminar un flujo con solicitudes activas",
+      "flow_workflow_forbidden": "Se requiere permiso de administrador para configurar flujos"
+    }
   }
 }

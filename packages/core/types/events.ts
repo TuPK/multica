@@ -89,6 +89,7 @@ export type WSEventType =
   | "property:updated"
   | "issue_status:changed"
   | "issue_workflow:changed"
+  | "issue_flow:updated"
   | "issue_view:changed"
   | "issue_view_preference:changed"
   | "pin:created"
@@ -180,6 +181,11 @@ export interface PropertyChangedPayload {
  */
 export interface IssueStatusChangedPayload {
   action?: "created" | "updated" | "archived" | "reordered";
+}
+
+/** A request on a flow changed; re-read GET /api/issues/{id}/flow. */
+export interface IssueFlowUpdatedPayload {
+  issue_id: string;
 }
 
 export interface IssueWorkflowChangedPayload {
@@ -638,6 +644,7 @@ export interface WSEventPayloadMap {
   "property:updated": PropertyChangedPayload;
   "issue_status:changed": IssueStatusChangedPayload;
   "issue_workflow:changed": IssueWorkflowChangedPayload;
+  "issue_flow:updated": IssueFlowUpdatedPayload;
   "issue_view:changed": IssueViewChangedPayload;
   "issue_view_preference:changed": IssueViewPreferenceChangedPayload;
   "issue_reaction:added": IssueReactionAddedPayload;

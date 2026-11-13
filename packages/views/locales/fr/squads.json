@@ -10,6 +10,7 @@
       "leader": "Chef",
       "members": "Membres",
       "creator": "Créé par",
+      "workflows": "Workflows",
       "created": "Création"
     },
     "no_matches": "Aucun squad correspondant",
@@ -298,6 +299,35 @@
       "ready": "prêt",
       "partial": "partiel",
       "skipped": "rien à faire"
+    }
+  },
+  "workflows": {
+    "section_title": "Workflows",
+    "empty": "Aucun workflow",
+    "error": "Impossible de charger les workflows",
+    "retry": "Réessayer",
+    "badge_active": "Actif",
+    "badge_enforced": "Avec exécution",
+    "badge_template": "Kit Việt",
+    "badge_unreadable": "Illisible",
+    "steps_count_one": "{{count}} étape",
+    "steps_count_other": "{{count}} étapes",
+    "tasks_count_one": "{{count}} tâche",
+    "tasks_count_other": "{{count}} tâches",
+    "open_requests_one": "{{count}} demande ouverte",
+    "open_requests_other": "{{count}} demandes ouvertes",
+    "set_active": "Définir comme actif",
+    "auto_on": "Auto activé",
+    "auto_off": "Auto désactivé",
+    "sheet": {
+      "title": "Graphe du workflow",
+      "human_only": "Humain uniquement",
+      "optional_when": "Quand {{condition}}",
+      "requires_outcome": "Verdict requis",
+      "requires_attachment": "Pièce jointe requise",
+      "kind_gate": "Porte",
+      "kind_work": "Travail",
+      "rework_limit": "Retour max {{count}} fois"
     }
   }
 }

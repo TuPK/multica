@@ -8,6 +8,7 @@
     "filter_squads": "スクワッド",
     "filter_agents": "エージェント",
     "default_badge": "デフォルト",
+    "managed_by_template": "Kit Việt により管理",
     "steps_count_other": "{{count}} ステップ",
     "assigned_projects": "関連プロジェクト",
     "assigned_squads": "関連スクワッド",

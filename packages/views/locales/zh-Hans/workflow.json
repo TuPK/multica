@@ -8,6 +8,7 @@
     "filter_squads": "小队",
     "filter_agents": "智能体",
     "default_badge": "默认",
+    "managed_by_template": "由 Kit Việt 管理",
     "steps_count_other": "{{count}} 个步骤",
     "assigned_projects": "关联项目",
     "assigned_squads": "关联小队",

@@ -1,5 +1,8 @@
 export {
   issueWorkflowKeys,
+  issueFlowKeys,
+  issueFlowOptions,
+  squadWorkflowsOptions,
   issueWorkflowDetailOptions,
   issueWorkflowListOptions,
   issueWorkflowUsageOptions,
@@ -37,6 +40,11 @@ export {
   useDeleteIssueWorkflow,
   useSetProjectWorkflow,
   useSetWorkflowHandoff,
+  useAdvanceFlow,
+  useResumeFlow,
+  useDetachFlow,
+  useSetFlowAuto,
+  useSetSquadActiveWorkflow,
 } from "./mutations";
 export { issueWorkflowMappingPlanFrom, issueWorkflowStatusCreateForbidden } from "./mapping";
 export { parseIssueWorkflowBlockers } from "../api/schemas";

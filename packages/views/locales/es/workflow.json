@@ -8,6 +8,7 @@
     "filter_squads": "Squads",
     "filter_agents": "Agentes",
     "default_badge": "Predeterminado",
+    "managed_by_template": "Gestionado por Kit Việt",
     "steps_count_one": "{{count}} paso",
     "steps_count_other": "{{count}} pasos",
     "assigned_projects": "Proyectos asociados",

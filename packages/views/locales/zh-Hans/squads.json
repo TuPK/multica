@@ -10,6 +10,7 @@
       "leader": "队长",
       "members": "成员",
       "creator": "创建者",
+      "workflows": "工作流",
       "created": "创建时间"
     },
     "no_matches": "没有匹配的小队",
@@ -296,6 +297,32 @@
       "ready": "已就绪",
       "partial": "部分完成",
       "skipped": "无需处理"
+    }
+  },
+  "workflows": {
+    "section_title": "工作流",
+    "empty": "暂无工作流",
+    "error": "无法加载工作流",
+    "retry": "重试",
+    "badge_active": "使用中",
+    "badge_enforced": "已强制",
+    "badge_template": "Kit Việt",
+    "badge_unreadable": "无法读取",
+    "steps_count_other": "{{count}} 个步骤",
+    "tasks_count_other": "{{count}} 个任务",
+    "open_requests_other": "{{count}} 个未结请求",
+    "set_active": "设为活跃",
+    "auto_on": "自动执行：开启",
+    "auto_off": "自动执行：关闭",
+    "sheet": {
+      "title": "工作流图",
+      "human_only": "仅限人工",
+      "optional_when": "当 {{condition}}",
+      "requires_outcome": "需要裁决",
+      "requires_attachment": "需要附件",
+      "kind_gate": "门禁",
+      "kind_work": "工作",
+      "rework_limit": "最多返回 {{count}} 次"
     }
   }
 }

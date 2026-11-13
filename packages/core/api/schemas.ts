@@ -17,6 +17,19 @@ import type {
 } from "../types/hub";
 import { normalizeIssueStatusCategory } from "../issues/config/status";
 import type {
+  IssueFlowAction,
+  IssueFlowAdvanceResponse,
+  IssueFlowNext,
+  IssueFlowPending,
+  IssueFlowState,
+  IssueFlowStop,
+  IssueFlowSwitchValue,
+  IssueFlowTask,
+} from "../types/issue-flow";
+import type { SetSquadActiveWorkflowResponse, SquadWorkflowsResponse } from "../types/squad";
+import type {
+  IssueWorkflowSwitch,
+  IssueWorkflowTask,
   IssueWorkflowTemplate,
   IssueWorkflowTemplateId,
   IssueWorkflowTemplateStep,
@@ -642,6 +655,7 @@ const IssueWorkflowTransitionSchema = z.object({
   when: WorkflowConditionSchema.nullable().default(null),
   to_status_key: z.string(),
   handler: IssueWorkflowHandlerSchema.optional(),
+  rework: z.boolean().optional().catch(undefined),
 }).loose();
 
 const IssueWorkflowTransitionsSchema = z.unknown().transform((value): IssueWorkflowTransition[] => {
@@ -659,6 +673,54 @@ const IssueWorkflowLayoutSchema = z.object({
   y: z.number(),
 }).loose().optional().catch(undefined);
 
+// Flow tasks (enforced squad workflow engine). A task kind this build does not
+// know reads as "work"; a task it cannot read at all is dropped on its own.
+const IssueWorkflowTaskSchema = z.object({
+  key: z.string().min(1),
+  title: z.string().default(""),
+  kind: z.unknown().transform((value): IssueWorkflowTask["kind"] => (value === "gate" ? "gate" : "work")),
+  handler: IssueWorkflowHandlerSchema.default({ type: "none" }),
+  instructions: z.string().default(""),
+  when: WorkflowConditionSchema.nullable().optional().catch(undefined),
+  requires: z.array(z.string()).default([]).catch([]),
+}).loose();
+
+const IssueWorkflowTasksSchema = z.unknown().transform((value): IssueWorkflowTask[] => {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    const parsed = IssueWorkflowTaskSchema.safeParse(item);
+    return parsed.success ? [parsed.data] : [];
+  });
+});
+
+const IssueWorkflowSwitchSchema = z.object({
+  key: z.string().min(1),
+  type: z.string().default("bool"),
+  values: z.array(z.string()).optional().catch(undefined),
+  default: z.union([z.boolean(), z.string()]).nullable().default(null).catch(null),
+}).loose();
+
+const IssueWorkflowFlowConfigSchema = z.object({
+  version: z.number().default(1).catch(1),
+  task_timeout_minutes: z.number().optional().catch(undefined),
+  task_hard_cap_minutes: z.number().optional().catch(undefined),
+  task_max_attempts: z.number().optional().catch(undefined),
+  switches: z.unknown().transform((value): IssueWorkflowSwitch[] => {
+    if (!Array.isArray(value)) return [];
+    return value.flatMap((item) => {
+      const parsed = IssueWorkflowSwitchSchema.safeParse(item);
+      return parsed.success ? [parsed.data] : [];
+    });
+  }),
+  messages: z.object({
+    stop1: z.string().optional().catch(undefined),
+    human: z.string().optional().catch(undefined),
+    stop2: z.string().optional().catch(undefined),
+    stop3: z.string().optional().catch(undefined),
+    stalled: z.string().optional().catch(undefined),
+  }).loose().optional().catch(undefined),
+}).loose();
+
 const IssueWorkflowStepSchema = z.object({
   status_key: z.string(),
   handler: IssueWorkflowHandlerSchema.default({ type: "none" }),
@@ -667,6 +729,8 @@ const IssueWorkflowStepSchema = z.object({
   next_status_key: z.string().optional(),
   back_status_key: z.string().optional(),
   layout: IssueWorkflowLayoutSchema,
+  tasks: IssueWorkflowTasksSchema,
+  human_only: z.boolean().default(false).catch(false),
 }).loose();
 
 export const IssueWorkflowSchema = z.object({
@@ -680,6 +744,13 @@ export const IssueWorkflowSchema = z.object({
   project_ids: z.array(z.string()).default([]),
   created_at: z.string(),
   updated_at: z.string(),
+  // The enforced workflow engine's fields. Older servers omit them, and one the
+  // reader cannot parse falls back to "no flow" rather than hide the workflow.
+  flow_config: IssueWorkflowFlowConfigSchema.nullable().default(null).catch(null),
+  template_ref: z.string().nullable().default(null).catch(null),
+  flow_auto: z.boolean().default(false).catch(false),
+  squad_id: z.string().nullable().default(null).catch(null),
+  open_flow_requests: z.number().default(0).catch(0),
 }).loose();
 
 export const ListIssueWorkflowsResponseSchema = z.object({
@@ -688,6 +759,26 @@ export const ListIssueWorkflowsResponseSchema = z.object({
 }).loose();
 
 export const EMPTY_LIST_ISSUE_WORKFLOWS_RESPONSE: ListIssueWorkflowsResponse = {
+  workflows: [],
+  total: 0,
+};
+
+// A squad's workflow library. A workflow that does not parse is dropped on its
+// own, so one bad row never blanks the squad's list.
+export const SquadWorkflowsResponseSchema = z.object({
+  active_workflow_id: z.string().nullable().default(null).catch(null),
+  workflows: z.unknown().transform((value): IssueWorkflow[] => {
+    if (!Array.isArray(value)) return [];
+    return value.flatMap((item) => {
+      const parsed = IssueWorkflowSchema.safeParse(item);
+      return parsed.success ? [parsed.data] : [];
+    });
+  }),
+  total: z.number().default(0).catch(0),
+}).loose();
+
+export const EMPTY_SQUAD_WORKFLOWS_RESPONSE: SquadWorkflowsResponse = {
+  active_workflow_id: null,
   workflows: [],
   total: 0,
 };
@@ -830,6 +921,22 @@ export const IssueWorkflowDryRunResponseSchema = z.object({
 
 export const EMPTY_ISSUE_WORKFLOW_DRY_RUN: IssueWorkflowDryRunResponse = {
   dry_run: true,
+  plan: { required: [], unchanged: [], total_issues: 0, affected_issues: 0 },
+};
+
+// The answer to a squad's active-workflow switch; a dry run answers
+// IssueWorkflowDryRunResponseSchema's shape and this schema reads it too.
+export const SetSquadActiveWorkflowResponseSchema = z.object({
+  squad_id: z.string().default(""),
+  active_workflow_id: z.string().default(""),
+  updated_issues: z.number().default(0),
+  plan: IssueWorkflowMappingPlanSchema.default({ required: [], unchanged: [], total_issues: 0, affected_issues: 0 }),
+}).loose();
+
+export const EMPTY_SET_SQUAD_ACTIVE_WORKFLOW_RESPONSE: SetSquadActiveWorkflowResponse = {
+  squad_id: "",
+  active_workflow_id: "",
+  updated_issues: 0,
   plan: { required: [], unchanged: [], total_issues: 0, affected_issues: 0 },
 };
 
@@ -1553,6 +1660,117 @@ export const IssueTriggerPreviewSchema = z.object({
 // Metadata is primitive-only by API/DB contract. Stay lenient on shape:
 // unknown keys land as `unknown` to a caller, but the field itself defaults
 // to {} so consumers never need to nil-guard `issue.metadata`.
+// A stop this build does not know reads as "stalled": the request waits for a
+// person either way.
+export const IssueFlowStopSchema = z.unknown().transform((value): IssueFlowStop | null => {
+  if (value === null || value === undefined) return null;
+  if (value === 1 || value === 3) return value;
+  return "stalled";
+});
+
+// The flow reference on an issue. One that does not parse is dropped alone, so
+// the issue still shows; the request just looks like an ordinary issue.
+const IssueFlowRefSchema = z.object({
+  role: z.enum(["request", "task"]),
+  step: z.string(),
+  task: z.string().optional().catch(undefined),
+  round: z.number().optional().catch(undefined),
+  stop: IssueFlowStopSchema.optional(),
+  workflow_id: z.string().optional().catch(undefined),
+  rework: z.number().optional().catch(undefined),
+}).loose();
+
+// GET /api/issues/{id}/flow and the advance answer. Every list is read item by
+// item, so one task or action this build cannot read never hides the rest.
+const IssueFlowTaskSchema = z.object({
+  issue_id: z.string().default(""),
+  identifier: z.string().default(""),
+  step: z.string().default(""),
+  task: z.string().min(1),
+  round: z.number().default(0).catch(0),
+  status: z.string().default(""),
+  outcome: z.string().nullable().default(null).catch(null),
+  assignee_id: z.string().nullable().default(null).catch(null),
+  closed_at: z.string().nullable().default(null).catch(null),
+}).loose();
+
+const IssueFlowNextSchema = z.object({
+  id: z.string().default(""),
+  label: z.string().default(""),
+  to: z.string().default(""),
+  rework: z.boolean().default(false).catch(false),
+}).loose();
+
+function tolerantList<T>(schema: z.ZodType<T>) {
+  return z.unknown().transform((value): T[] => {
+    if (!Array.isArray(value)) return [];
+    return value.flatMap((item) => {
+      const parsed = schema.safeParse(item);
+      return parsed.success ? [parsed.data] : [];
+    });
+  });
+}
+
+export const IssueFlowStateSchema = z.object({
+  managed: z.boolean().default(true).catch(true),
+  role: z.unknown().transform((value): IssueFlowState["role"] => (value === "task" ? "task" : "request")),
+  workflow_id: z.string().default(""),
+  workflow_name: z.string().default(""),
+  step: z.string().default(""),
+  rework: z.number().default(0).catch(0),
+  stop: IssueFlowStopSchema,
+  switches: z.record(z.string(), z.union([z.boolean(), z.string()])).default({}).catch({}),
+  auto: z.boolean().default(false).catch(false),
+  entered_at: z.string().default(""),
+  tasks: tolerantList(IssueFlowTaskSchema as unknown as z.ZodType<IssueFlowTask>),
+  next: tolerantList(IssueFlowNextSchema as unknown as z.ZodType<IssueFlowNext>),
+}).loose();
+
+export const EMPTY_ISSUE_FLOW_STATE: IssueFlowState = {
+  managed: false,
+  role: "request",
+  workflow_id: "",
+  workflow_name: "",
+  step: "",
+  rework: 0,
+  stop: null,
+  switches: {} as Record<string, IssueFlowSwitchValue>,
+  auto: false,
+  entered_at: "",
+  tasks: [],
+  next: [],
+};
+
+const IssueFlowActionSchema = z.object({
+  kind: z.string().min(1),
+  step: z.string().default(""),
+  tasks: z.array(z.string()).default([]).catch([]),
+  code: z.string().optional().catch(undefined),
+  agent_id: z.string().optional().catch(undefined),
+}).loose();
+
+const IssueFlowPendingSchema = z.object({
+  task: z.string().min(1),
+  issue_id: z.string().default(""),
+  status: z.string().default(""),
+}).loose();
+
+export const IssueFlowAdvanceResponseSchema = z.object({
+  state: IssueFlowStateSchema,
+  actions: tolerantList(IssueFlowActionSchema as unknown as z.ZodType<IssueFlowAction>),
+  pending: tolerantList(IssueFlowPendingSchema as unknown as z.ZodType<IssueFlowPending>),
+}).loose();
+
+export const EMPTY_ISSUE_FLOW_ADVANCE_RESPONSE: IssueFlowAdvanceResponse = {
+  state: EMPTY_ISSUE_FLOW_STATE,
+  actions: [],
+  pending: [],
+};
+
+export const DetachFlowResponseSchema = z.object({
+  detached: z.boolean().default(false).catch(false),
+}).loose();
+
 const IssueMetadataSchema = z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).default({});
 
 const SourceContextAttachmentSchema = z.object({
@@ -1711,6 +1929,10 @@ export const IssueSchema = z.object({
   // Older backends predate the run queue; a missing flag means not queued.
   run_queued: z.boolean().default(false),
   run_after_issue_ids: z.array(z.string()).default([]),
+  // Enforced squad workflow engine. Both are additive: a server that predates
+  // them sends neither, and a value that does not parse reads as none.
+  outcome: z.string().nullable().default(null).catch(null),
+  flow: IssueFlowRefSchema.nullable().default(null).catch(null),
   start_date: z.string().nullable(),
   due_date: z.string().nullable(),
   metadata: IssueMetadataSchema,
@@ -2674,6 +2896,12 @@ export const SquadSchema = z.object({
   company_slot: z.number().nullable().optional().transform((v) => v ?? null),
   // Autonomy (spec 4.3). Older backends omit it: a squad is at L1 until changed.
   autonomy_level: z.number().int().nullish().transform((v) => v ?? 1),
+  // The squad's active workflow and library (enforced workflow engine). Older
+  // backends omit them; a value of the wrong type falls back to "no workflow".
+  active_workflow_id: z.string().nullable().default(null).catch(null),
+  active_workflow_name: z.string().nullable().default(null).catch(null),
+  workflow_count: z.number().default(0).catch(0),
+  flow_enforced: z.boolean().default(false).catch(false),
 }).loose();
 
 export const SquadListSchema = z.array(SquadSchema);
@@ -2729,6 +2957,10 @@ export const EMPTY_SQUAD: Squad = {
   member_preview: [],
   floor_id: null,
   company_slot: null,
+  active_workflow_id: null,
+  active_workflow_name: null,
+  workflow_count: 0,
+  flow_enforced: false,
 };
 
 // Squad member status — backs the Squad detail page's Members tab. status

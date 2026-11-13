@@ -33,6 +33,7 @@ import {
 import type { Agent, MemberWithUser, Squad } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
 import { SquadsIntro } from "./squads-intro";
+import { SquadWorkflowsCell } from "./squad-workflows-cell";
 import { KitvietUpdateButton } from "./kitviet-update-button";
 import { hasKitvietSquad } from "@multica/core/squads/kitviet-update";
 import {
@@ -530,6 +531,13 @@ export function SquadsPage() {
         sortKey: "members",
         hideable: true,
         cell: (squad) => <MembersCell squad={squad} />,
+      },
+      {
+        key: "workflows",
+        header: t(($) => $.page.table.workflows),
+        width: 180,
+        hideable: true,
+        cell: (squad) => <SquadWorkflowsCell squad={squad} />,
       },
       {
         key: "creator",

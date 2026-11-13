@@ -8,6 +8,7 @@
     "filter_squads": "小隊",
     "filter_agents": "AI 代理",
     "default_badge": "預設",
+    "managed_by_template": "由 Kit Việt 管理",
     "steps_count_other": "{{count}} 個步驟",
     "assigned_projects": "關聯專案",
     "assigned_squads": "關聯小隊",

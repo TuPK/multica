@@ -41,6 +41,53 @@ export interface IssueWorkflowStep {
   back_status_key?: string;
   /** Canvas position in the designer, in finite numbers within ±100000. Absent: the designer auto-places the step. */
   layout?: { x: number; y: number };
+  /**
+   * The sub-issues a request on a flow opens when it enters the step. Always
+   * present on a parsed response (empty for an ordinary workflow); optional here
+   * so a step built by hand needs none.
+   */
+  tasks?: IssueWorkflowTask[];
+  /** Only a member may move the request out of this step. Always present on a parsed response. */
+  human_only?: boolean;
+}
+
+export type IssueWorkflowTaskKind = "work" | "gate";
+
+/** What a task must have before it closes. A gate must report an outcome. */
+export type IssueWorkflowTaskRequirement = "outcome" | "attachment";
+
+/**
+ * One unit of work the engine opens as a sub-issue (spec section 3.3). The agent
+ * is `handler.id`. `when` absent: always opened; else opened when the condition
+ * holds, usually a `switch.<key>` check.
+ */
+export interface IssueWorkflowTask {
+  key: string;
+  title: string;
+  kind: IssueWorkflowTaskKind;
+  handler: IssueWorkflowHandler;
+  instructions: string;
+  when?: WorkflowCondition | null;
+  requires: (IssueWorkflowTaskRequirement | (string & {}))[];
+}
+
+/** A choice the lead makes at the plan step. */
+export interface IssueWorkflowSwitch {
+  key: string;
+  type: "bool" | "enum" | (string & {});
+  values?: string[];
+  default: boolean | string | null;
+}
+
+/** The workflow-level configuration of a flow (spec section 3.4). */
+export interface IssueWorkflowFlowConfig {
+  version: number;
+  task_timeout_minutes?: number;
+  task_hard_cap_minutes?: number;
+  task_max_attempts?: number;
+  switches: IssueWorkflowSwitch[];
+  /** Templates of the stop comments; the first line is the title. */
+  messages?: { stop1?: string; stop2?: string; stop3?: string; stalled?: string; human?: string };
 }
 
 /** What a handler reports when it moves an issue out of a column. */
@@ -53,7 +100,9 @@ export type WorkflowConditionField =
   | "project_id"
   | "rework_count"
   | "creator_type"
-  | "assignee_type";
+  | "assignee_type"
+  | "tasks_outcome"
+  | `switch.${string}`;
 
 export type WorkflowConditionOperator = "eq" | "neq" | "in" | "gt" | "gte" | "lt" | "lte" | "exists";
 
@@ -80,6 +129,8 @@ export interface IssueWorkflowTransition {
   to_status_key: string;
   /** Replaces the target column's handler for this branch only. */
   handler?: IssueWorkflowHandler;
+  /** A flow branch that sends the request back for another round (adds one to its rework count). */
+  rework?: boolean;
 }
 
 /** Where one workflow is assigned (GET /api/issue-workflows/usage). */
@@ -119,6 +170,16 @@ export interface IssueWorkflow {
   project_ids: string[];
   created_at: string;
   updated_at: string;
+  /** Set on a workflow that runs requests on a flow; always present on a parsed response, null for an ordinary workflow. */
+  flow_config?: IssueWorkflowFlowConfig | null;
+  /** `flow_<squad>@<rev>` for a workflow made from a catalog flow: it is read-only. Null otherwise. */
+  template_ref?: string | null;
+  /** The background runner may advance requests on this workflow. */
+  flow_auto?: boolean;
+  /** The squad whose library holds the workflow; null for a workspace-level workflow. */
+  squad_id?: string | null;
+  /** Requests pinned to this workflow that are not closed. */
+  open_flow_requests?: number;
 }
 
 export interface ListIssueWorkflowsResponse {
@@ -140,11 +201,19 @@ export type IssueWorkflowStepInput = ({ status_key: string } | { new_status: New
     transitions?: IssueWorkflowTransition[];
     /** Canvas position in the designer. Omitted: the designer places the step. */
     layout?: { x: number; y: number };
+    /** Omitted: the step keeps its stored tasks; an empty list clears them. */
+    tasks?: IssueWorkflowTask[];
+    /** Omitted: the step keeps its stored flag. */
+    human_only?: boolean;
   };
 
 export interface IssueWorkflowWriteRequest {
   name?: string;
   description?: string;
+  /** Creates a flow workflow. Workspace admins only; an update never changes it. */
+  flow_config?: IssueWorkflowFlowConfig;
+  /** Marks the workflow as made from a catalog flow (needs `flow_config`). */
+  template_ref?: string;
   /**
    * Every column with its handoff. The server adds todo, done and cancelled
    * when missing and places the fixed columns; backlog and blocked are listed

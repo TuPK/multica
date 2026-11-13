@@ -27,8 +27,10 @@ export const CONDITION_FIELDS: readonly ConditionField[] = [
   "assignee_type",
 ];
 
-export const FIELD_OPERATORS: Record<ConditionField, readonly ConditionOperator[]> = {
+export const FIELD_OPERATORS: Partial<Record<ConditionField, readonly ConditionOperator[]>> &
+  Record<string, readonly ConditionOperator[]> = {
   outcome: ["eq", "neq", "in", "exists"],
+  tasks_outcome: ["eq", "neq", "in", "exists"],
   priority: ["eq", "neq", "in", "gt", "gte", "lt", "lte"],
   labels: ["eq", "neq", "in", "exists"],
   project_id: ["eq", "neq", "in", "exists"],
@@ -74,7 +76,7 @@ function operatorOf(rule: ConditionRule): ConditionOperator {
  * it, and the value resets to the new field's default.
  */
 export function ruleWithField(rule: ConditionRule, field: ConditionField): ConditionRule {
-  const ops = FIELD_OPERATORS[field];
+  const ops = FIELD_OPERATORS[field] ?? ["eq", "neq"];
   const current = operatorOf(rule);
   const op = ops.includes(current) ? current : (ops[0] ?? "eq");
   return { field, op, value: valueForOperator(op, defaultValueFor(field)) };

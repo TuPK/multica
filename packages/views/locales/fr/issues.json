@@ -2400,5 +2400,52 @@
       "empty_title": "Aucune vue enregistrée pour l'instant",
       "empty_description": "Réglez les filtres et l'affichage d'une liste de tâches, puis enregistrez-les comme vue."
     }
+  },
+  "flow": {
+    "panel_title": "Flux",
+    "step": "Étape",
+    "round": "Cycle {{round}}",
+    "stop": {
+      "1": "Arrêt 1 : Bloqué",
+      "3": "Arrêt 3 : Limite de retours atteinte",
+      "stalled": "Au point mort"
+    },
+    "outcome": {
+      "approved": "Approuvé",
+      "rejected": "Rejeté",
+      "blocked": "Bloqué",
+      "done": "Terminé",
+      "none": "En attente"
+    },
+    "resume": "Reprendre",
+    "detach": "Détacher",
+    "detach_confirm": "Détacher du flux",
+    "detach_confirm_desc": "Cette demande sera détachée du moteur de workflow. Les tâches ouvertes deviendront des sous-tickets normaux.",
+    "detach_confirm_button": "Confirmer le détachement",
+    "cancel": "Annuler",
+    "error": "Impossible de mettre à jour le flux",
+    "table_issue": "Ticket",
+    "table_task": "Tâche",
+    "table_round": "Tour",
+    "table_status": "Statut",
+    "table_outcome": "Résultat",
+    "errors": {
+      "flow_outcome_required": "Un verdict est requis pour fermer cette porte",
+      "flow_outcome_invalid": "Combinaison état et verdict invalide",
+      "flow_attachment_required": "Une pièce jointe est requise pour terminer cette tâche",
+      "flow_human_only": "Cette étape ne peut être effectuée que par un humain",
+      "flow_managed_request": "Le statut est géré par le moteur de workflow",
+      "flow_children_managed": "Les sous-tickets sont gérés par le moteur de workflow",
+      "flow_gate_same_agent": "Une porte ne peut pas être examinée par le même agent qui l'a rédigée",
+      "flow_switch_invalid": "Commutateur de workflow ou valeur invalide",
+      "flow_switch_locked": "Les commutateurs de workflow ne peuvent être modifiés que pendant l'étape de planification",
+      "flow_wrong_step": "L'action n'est autorisée que pendant l'étape de planification",
+      "flow_not_managed": "Cette demande n'est pas gérée par un workflow",
+      "flow_forbidden": "Autorisation refusée",
+      "flow_agent_unavailable": "L'agent n'est pas disponible pour cette tâche",
+      "workflow_managed_by_template": "Ce workflow est géré par Kit Việt et ne peut pas être modifié",
+      "workflow_has_flow_requests": "Impossible de supprimer un workflow ayant des demandes actives",
+      "flow_workflow_forbidden": "Autorisation d'administrateur requise pour configurer les workflows"
+    }
   }
 }

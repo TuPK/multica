@@ -2400,5 +2400,52 @@
       "empty_title": "No saved views yet",
       "empty_description": "Set up filters and display options in an issue list, then save them as a view."
     }
+  },
+  "flow": {
+    "panel_title": "Flow",
+    "step": "Step",
+    "round": "Round {{round}}",
+    "stop": {
+      "1": "Stop 1: Blocked",
+      "3": "Stop 3: Max returns reached",
+      "stalled": "Stalled"
+    },
+    "outcome": {
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "blocked": "Blocked",
+      "done": "Done",
+      "none": "Pending"
+    },
+    "resume": "Resume",
+    "detach": "Detach",
+    "detach_confirm": "Detach from flow",
+    "detach_confirm_desc": "This request will be detached from the workflow engine. Open tasks will become normal sub-issues.",
+    "detach_confirm_button": "Confirm detach",
+    "cancel": "Cancel",
+    "error": "Could not update flow",
+    "table_issue": "Issue",
+    "table_task": "Task",
+    "table_round": "Round",
+    "table_status": "Status",
+    "table_outcome": "Outcome",
+    "errors": {
+      "flow_outcome_required": "Verdict is required to close this gate",
+      "flow_outcome_invalid": "Invalid status and verdict combination",
+      "flow_attachment_required": "An attachment is required to complete this task",
+      "flow_human_only": "This step can only be completed by a human",
+      "flow_managed_request": "Status is managed by the workflow engine",
+      "flow_children_managed": "Sub-issues are managed by the workflow engine",
+      "flow_gate_same_agent": "A gate cannot be reviewed by the same agent who drafted it",
+      "flow_switch_invalid": "Invalid workflow switch or value",
+      "flow_switch_locked": "Workflow switches can only be changed during the plan step",
+      "flow_wrong_step": "Action is only allowed during the plan step",
+      "flow_not_managed": "This request is not managed by a workflow",
+      "flow_forbidden": "Permission denied",
+      "flow_agent_unavailable": "Agent is unavailable for this task",
+      "workflow_managed_by_template": "This workflow is managed by Kit Việt and cannot be edited",
+      "workflow_has_flow_requests": "Cannot delete workflow with active flow requests",
+      "flow_workflow_forbidden": "Admin permission required to configure flow workflows"
+    }
   }
 }

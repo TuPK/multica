@@ -70,20 +70,27 @@ export function WorkflowDetailDrawer({
                 {t(($) => $.manage.default_badge)}
               </Badge>
             )}
+            {workflow.template_ref && (
+              <Badge variant="secondary" className="gap-1 border border-border/60 bg-muted/30">
+                {t(($) => $.manage.managed_by_template)}
+              </Badge>
+            )}
           </div>
           {workflow.description ? (
             <SheetDescription className="text-body-sm text-muted-foreground">
               {workflow.description}
             </SheetDescription>
           ) : null}
-          <div className="pt-2">
-            <AppLink href={p.workflowDetail(workflow.id)}>
-              <Button size="sm" className="gap-1.5">
-                <Workflow className="size-4" />
-                {t(($) => $.manage.open_designer)}
-              </Button>
-            </AppLink>
-          </div>
+          {!workflow.template_ref && (
+            <div className="pt-2">
+              <AppLink href={p.workflowDetail(workflow.id)}>
+                <Button size="sm" className="gap-1.5">
+                  <Workflow className="size-4" />
+                  {t(($) => $.manage.open_designer)}
+                </Button>
+              </AppLink>
+            </div>
+          )}
         </SheetHeader>
 
         {/* Assigned entities */}

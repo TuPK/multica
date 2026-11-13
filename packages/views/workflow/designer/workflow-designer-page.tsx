@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { Badge } from "@multica/ui/components/ui/badge";
 import { Button } from "@multica/ui/components/ui/button";
 import {
   Sheet,
@@ -125,6 +126,7 @@ export function WorkflowDesignerPage({
   const detail = useIssueWorkflowDetail(wsId, isNew ? undefined : workflowId);
   const existingWorkflow = detail.workflow;
   const isDefault = existingWorkflow?.is_default ?? false;
+  const isTemplateManaged = Boolean(existingWorkflow?.template_ref);
   const createWorkflow = useCreateIssueWorkflow();
   const updateWorkflow = useUpdateIssueWorkflow();
 
@@ -484,17 +486,24 @@ export function WorkflowDesignerPage({
           </AppLink>
 
           <div className="flex flex-col min-w-0">
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setHasUserEdits(true);
-              }}
-              disabled={isDefault}
-              placeholder={t(($) => $.designer.name_placeholder)}
-              className="text-title font-semibold text-foreground bg-transparent border-none outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -ml-1 placeholder:text-muted-foreground truncate disabled:opacity-70"
-            />
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setHasUserEdits(true);
+                }}
+                disabled={isDefault || isTemplateManaged}
+                placeholder={t(($) => $.designer.name_placeholder)}
+                className="text-title font-semibold text-foreground bg-transparent border-none outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -ml-1 placeholder:text-muted-foreground truncate disabled:opacity-70"
+              />
+              {isTemplateManaged && (
+                <Badge variant="secondary" className="gap-1 border border-border/60 bg-muted/30 shrink-0">
+                  {t(($) => $.manage.managed_by_template)}
+                </Badge>
+              )}
+            </div>
             <input
               type="text"
               value={description}
@@ -502,8 +511,9 @@ export function WorkflowDesignerPage({
                 setDescription(e.target.value);
                 setHasUserEdits(true);
               }}
+              disabled={isTemplateManaged}
               placeholder={t(($) => $.designer.description_placeholder)}
-              className="text-caption text-muted-foreground bg-transparent border-none outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -ml-1 placeholder:text-muted-foreground truncate"
+              className="text-caption text-muted-foreground bg-transparent border-none outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -ml-1 placeholder:text-muted-foreground truncate disabled:opacity-70"
             />
           </div>
         </div>
@@ -530,22 +540,24 @@ export function WorkflowDesignerPage({
             onSelectStep={setSelectedStepKey}
           />
 
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => void save()}
-            disabled={isSaving || !isInitialized}
-            className="gap-1.5 h-8"
-          >
-            {isSaving ? (
-              <span>{t(($) => $.designer.saving)}</span>
-            ) : (
-              <>
-                <Save className="size-4" />
-                <span>{t(($) => $.designer.save)}</span>
-              </>
-            )}
-          </Button>
+          {!isTemplateManaged && (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void save()}
+              disabled={isSaving || !isInitialized}
+              className="gap-1.5 h-8"
+            >
+              {isSaving ? (
+                <span>{t(($) => $.designer.saving)}</span>
+              ) : (
+                <>
+                  <Save className="size-4" />
+                  <span>{t(($) => $.designer.save)}</span>
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </header>
 

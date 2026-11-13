@@ -226,6 +226,38 @@ describe("WorkflowManagePage", () => {
     );
   });
 
+  it("shows managed by Kit Việt chip and hides edit, duplicate, and delete for workflow with template_ref", async () => {
+    const templateWf: IssueWorkflow = {
+      id: "wf-template",
+      workspace_id: "ws-1",
+      name: "Trade · a1b2c3",
+      template_ref: "kv_trade@a1b2c3",
+      steps: [
+        { status_key: "todo", handler: { type: "none" }, instructions: "", transitions: [] },
+        { status_key: "done", handler: { type: "none" }, instructions: "", transitions: [] },
+      ],
+      created_at: "2026-10-03T00:00:00Z",
+      updated_at: "2026-10-17T00:00:00Z",
+    } as unknown as IssueWorkflow;
+
+    apiMock.listIssueWorkflows.mockResolvedValue({ workflows: [...testWorkflows, templateWf] });
+    renderComponent();
+    await screen.findByText("Trade · a1b2c3");
+
+    // Shows chip
+    expect(screen.getByText(/do kit việt quản lý|managed by kit việt/i)).toBeInTheDocument();
+
+    // Row actions menu button should either not exist or have no Edit, Duplicate, Delete
+    const card = cardFor("Trade · a1b2c3");
+    const menuBtn = within(card).queryByLabelText("Actions");
+    if (menuBtn) {
+      fireEvent.click(menuBtn);
+      expect(screen.queryByText("Edit")).toBeNull();
+      expect(screen.queryByText("Duplicate")).toBeNull();
+      expect(screen.queryByText("Delete")).toBeNull();
+    }
+  });
+
   it("deletes only after the user confirms", async () => {
     apiMock.deleteIssueWorkflow.mockResolvedValue(undefined);
     renderComponent();
