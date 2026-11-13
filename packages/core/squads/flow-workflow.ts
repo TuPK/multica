@@ -51,6 +51,7 @@ export function flowWorkflowRequest(
   flow: CatalogFlow,
   squadName: string,
   agentIds: Partial<Record<SquadRoleKey, string>>,
+  squadId: string,
 ): IssueWorkflowWriteRequest | null {
   const steps: IssueWorkflowStepInput[] = [];
   for (const step of flow.steps) {
@@ -93,6 +94,9 @@ export function flowWorkflowRequest(
     description: "",
     flow_config: { ...flow.config, switches: flow.config.switches ?? [] },
     template_ref: flowTemplateRef(flow),
+    // The server checks the flow against the squad's roster: every task goes to an agent of the
+    // squad, none to its lead, and every agent of the squad has a task.
+    squad_id: squadId,
     steps,
   };
 }
@@ -128,7 +132,7 @@ export async function ensureSquadFlow(
   let row = findFlowWorkflow(workflows, flow);
   let status: "created" | "existing" = "existing";
   if (!row) {
-    const request = flowWorkflowRequest(flow, squadName, agentIds);
+    const request = flowWorkflowRequest(flow, squadName, agentIds, squadId);
     if (!request) throw new Error("a flow task has no agent to hand to");
     try {
       row = await client.createIssueWorkflow(request);

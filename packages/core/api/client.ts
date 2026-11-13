@@ -253,6 +253,7 @@ import type {
   SquadWorkflowsResponse,
   IssueFlowAdvanceResponse,
   IssueFlowState,
+  IssueFlowTask,
   ResumeFlowRequest,
   DetachFlowRequest,
   DetachFlowResponse,
@@ -299,6 +300,19 @@ import type {
   CreateCloudRuntimeNodeRequest,
   ListCloudRuntimeNodesParams,
 } from "../runtimes/cloud-runtime";
+import type {
+  FlowDraft,
+  ListFlowDraftsResponse,
+  FlowValidationResponse,
+  FlowTraceResponse,
+  FlowManifestResponse,
+  FlowCapabilitiesResponse,
+  CreateFlowDraftRequest,
+  UpdateFlowDraftRequest,
+  SimulateFlowDraftRequest,
+  PublishFlowDraftRequest,
+  CompleteIssueFlowStepRequest,
+} from "../types/flow-draft";
 import { type Logger, noopLogger } from "../logger";
 import { createRequestId, createSafeId } from "../utils";
 import { getCurrentSlug } from "../platform/workspace-storage";
@@ -764,6 +778,20 @@ import {
   EMPTY_SQUAD_WORKFLOWS_RESPONSE,
   SetSquadActiveWorkflowResponseSchema,
   EMPTY_SET_SQUAD_ACTIVE_WORKFLOW_RESPONSE,
+  FlowDraftSchema,
+  EMPTY_FLOW_DRAFT,
+  ListFlowDraftsResponseSchema,
+  EMPTY_LIST_FLOW_DRAFTS_RESPONSE,
+  FlowValidationResponseSchema,
+  EMPTY_FLOW_VALIDATION_RESPONSE,
+  FlowTraceResponseSchema,
+  EMPTY_FLOW_TRACE_RESPONSE,
+  FlowManifestResponseSchema,
+  EMPTY_FLOW_MANIFEST_RESPONSE,
+  FlowCapabilitiesResponseSchema,
+  EMPTY_FLOW_CAPABILITIES_RESPONSE,
+  CloseIssueFlowTaskResponseSchema,
+  EMPTY_CLOSE_ISSUE_FLOW_TASK_RESPONSE,
   SquadMemberStatusListResponseSchema,
   SubscribersListSchema,
   TaskMessageListSchema,
@@ -5470,6 +5498,162 @@ export class ApiClient {
     });
     return parseWithFallback(raw, SetSquadActiveWorkflowResponseSchema, EMPTY_SET_SQUAD_ACTIVE_WORKFLOW_RESPONSE, {
       endpoint: "POST /api/squads/:id/workflow",
+    });
+  }
+
+  /** Flow engine capabilities and schema limits. */
+  async getFlowCapabilities(): Promise<FlowCapabilitiesResponse> {
+    const raw = await this.fetch<unknown>("/api/flow/capabilities");
+    return parseWithFallback(raw, FlowCapabilitiesResponseSchema, EMPTY_FLOW_CAPABILITIES_RESPONSE, {
+      endpoint: "GET /api/flow/capabilities",
+    });
+  }
+
+  /** Lists the flow drafts of a squad. */
+  async listFlowDrafts(squadId: string): Promise<ListFlowDraftsResponse> {
+    const raw = await this.fetch<unknown>(`/api/squads/${squadId}/flow-drafts`);
+    return parseWithFallback(raw, ListFlowDraftsResponseSchema, EMPTY_LIST_FLOW_DRAFTS_RESPONSE, {
+      endpoint: "GET /api/squads/{id}/flow-drafts",
+    });
+  }
+
+  /** Creates a flow draft for a squad. */
+  async createFlowDraft(squadId: string, data: CreateFlowDraftRequest): Promise<FlowDraft> {
+    const raw = await this.fetch<unknown>(`/api/squads/${squadId}/flow-drafts`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, FlowDraftSchema, EMPTY_FLOW_DRAFT, {
+      endpoint: "POST /api/squads/{id}/flow-drafts",
+    });
+  }
+
+  /** Gets one flow draft with its document. */
+  async getFlowDraft(squadId: string, draftId: string): Promise<FlowDraft> {
+    const raw = await this.fetch<unknown>(`/api/squads/${squadId}/flow-drafts/${draftId}`);
+    return parseWithFallback(raw, FlowDraftSchema, EMPTY_FLOW_DRAFT, {
+      endpoint: "GET /api/squads/{id}/flow-drafts/{draftId}",
+    });
+  }
+
+  /** Saves a draft at the revision read by the caller. */
+  async updateFlowDraft(squadId: string, draftId: string, data: UpdateFlowDraftRequest): Promise<FlowDraft> {
+    const raw = await this.fetch<unknown>(`/api/squads/${squadId}/flow-drafts/${draftId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, FlowDraftSchema, EMPTY_FLOW_DRAFT, {
+      endpoint: "PATCH /api/squads/{id}/flow-drafts/{draftId}",
+    });
+  }
+
+  /** Deletes a flow draft. */
+  async deleteFlowDraft(squadId: string, draftId: string): Promise<void> {
+    await this.fetch<void>(`/api/squads/${squadId}/flow-drafts/${draftId}`, {
+      method: "DELETE",
+    });
+  }
+
+  /** Checks a draft or document against squad rules and schema constraints. */
+  async validateFlowDraft(squadId: string, draftId: string, data: { doc?: unknown } = {}): Promise<FlowValidationResponse> {
+    const raw = await this.fetch<unknown>(`/api/squads/${squadId}/flow-drafts/${draftId}/validate`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, FlowValidationResponseSchema, EMPTY_FLOW_VALIDATION_RESPONSE, {
+      endpoint: "POST /api/squads/{id}/flow-drafts/{draftId}/validate",
+    });
+  }
+
+  /** Simulates a flow draft routing on simulated inputs without touching DB. */
+  async simulateFlowDraft(squadId: string, draftId: string, data: SimulateFlowDraftRequest): Promise<FlowTraceResponse> {
+    const raw = await this.fetch<unknown>(`/api/squads/${squadId}/flow-drafts/${draftId}/simulate`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, FlowTraceResponseSchema, EMPTY_FLOW_TRACE_RESPONSE, {
+      endpoint: "POST /api/squads/{id}/flow-drafts/{draftId}/simulate",
+    });
+  }
+
+  /** Publishes a flow draft as a locked version of its lineage. */
+  async publishFlowDraft(squadId: string, draftId: string, data: PublishFlowDraftRequest): Promise<IssueWorkflow> {
+    const raw = await this.fetch<unknown>(`/api/squads/${squadId}/flow-drafts/${draftId}/publish`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, IssueWorkflowSchema, EMPTY_ISSUE_WORKFLOW, {
+      endpoint: "POST /api/squads/{id}/flow-drafts/{draftId}/publish",
+    });
+  }
+
+  /** Exports a flow draft as an unbound manifest. */
+  async exportFlowDraft(squadId: string, draftId: string): Promise<FlowManifestResponse> {
+    const raw = await this.fetch<unknown>(`/api/squads/${squadId}/flow-drafts/${draftId}/export`);
+    return parseWithFallback(raw, FlowManifestResponseSchema, EMPTY_FLOW_MANIFEST_RESPONSE, {
+      endpoint: "GET /api/squads/{id}/flow-drafts/{draftId}/export",
+    });
+  }
+
+  /** Exports a published flow workflow as a manifest. */
+  async getIssueWorkflowFlowManifest(workflowId: string): Promise<FlowManifestResponse> {
+    const raw = await this.fetch<unknown>(`/api/issue-workflows/${workflowId}/flow-manifest`);
+    return parseWithFallback(raw, FlowManifestResponseSchema, EMPTY_FLOW_MANIFEST_RESPONSE, {
+      endpoint: "GET /api/issue-workflows/{id}/flow-manifest",
+    });
+  }
+
+  /** Completes a lead step in a flow. */
+  async completeIssueFlowStep(issueId: string, step: string, data: CompleteIssueFlowStepRequest): Promise<IssueFlowState> {
+    const raw = await this.fetch<unknown>(`/api/issues/${issueId}/flow/steps/${step}/complete`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, IssueFlowStateSchema, EMPTY_ISSUE_FLOW_STATE, {
+      endpoint: "POST /api/issues/{id}/flow/steps/{step}/complete",
+    });
+  }
+
+  /** Sets a flow variable on a request or on an open task. */
+  async setIssueFlowVar(issueIdOrTaskId: string, key: string, value: unknown): Promise<IssueFlowState> {
+    const raw = await this.fetch<unknown>(`/api/issues/${issueIdOrTaskId}/flow/vars/${key}`, {
+      method: "PUT",
+      body: JSON.stringify({ value }),
+    });
+    return parseWithFallback(raw, IssueFlowStateSchema, EMPTY_ISSUE_FLOW_STATE, {
+      endpoint: "PUT /api/issues/{id}/flow/vars/{key}",
+    });
+  }
+
+  /** Chooses an exit edge of a manual flow step. */
+  async exitIssueFlow(issueId: string, edgeId: string): Promise<IssueFlowState> {
+    const raw = await this.fetch<unknown>(`/api/issues/${issueId}/flow/exits/${edgeId}`, {
+      method: "POST",
+    });
+    return parseWithFallback(raw, IssueFlowStateSchema, EMPTY_ISSUE_FLOW_STATE, {
+      endpoint: "POST /api/issues/{id}/flow/exits/{edgeId}",
+    });
+  }
+
+  /** Closes an open task on behalf of its assignee. Squad managers only. */
+  async closeIssueFlowTask(taskId: string, data: { verdict?: string; note?: string }): Promise<{ task: IssueFlowTask; state: IssueFlowState }> {
+    const raw = await this.fetch<unknown>(`/api/issues/${taskId}/flow/close`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, CloseIssueFlowTaskResponseSchema, EMPTY_CLOSE_ISSUE_FLOW_TASK_RESPONSE, {
+      endpoint: "POST /api/issues/{taskId}/flow/close",
+    });
+  }
+
+  /** Stateless manifest validation (members and agents). */
+  async validateFlowStateless(data: { manifest: unknown; squad_id?: string }): Promise<FlowValidationResponse> {
+    const raw = await this.fetch<unknown>("/api/flow/validate", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, FlowValidationResponseSchema, EMPTY_FLOW_VALIDATION_RESPONSE, {
+      endpoint: "POST /api/flow/validate",
     });
   }
 

@@ -31,6 +31,45 @@ export interface IssueFlowRef {
 /** A switch value: a bool switch is on or off, an enum switch holds one of its values. */
 export type IssueFlowSwitchValue = boolean | string;
 
+export interface IssueFlowSlotStatus {
+  slot: string;
+  min: number;
+  max: number;
+  count: number;
+}
+
+export interface IssueFlowLink {
+  issue_id: string;
+  identifier: string;
+  task: string;
+  slot: string;
+}
+
+/** The stop a request is parked in, as `GET /api/issues/{id}/flow` reports it. */
+export interface IssueFlowStopInfo {
+  /** The declared stop code, or "stalled" for a task that stopped moving. */
+  code: string;
+  /** The stop number schema 1 gave it (1 or 3); 0 for none. */
+  legacy_no: number;
+  from: string;
+  edge: string;
+  at: string;
+}
+
+export interface IssueFlowCheckpoint {
+  step: string;
+  activation: number;
+  by?: string;
+  at?: string;
+}
+
+export interface IssueFlowTrailEntry {
+  step: string;
+  activation: number;
+  edge?: string;
+  at?: string;
+}
+
 /** One task the engine opened for the request. */
 export interface IssueFlowTask {
   issue_id: string;
@@ -47,12 +86,25 @@ export interface IssueFlowTask {
   closed_at: string | null;
   /** Who closed the task; null while it is open. Absent from an older server. */
   closed_by?: IssueFlowClosedBy | null;
+  /** The 1-based instance of a task that fans out, 0 for a plain task. */
+  instance?: number;
+  /** How the closed task counts in its join: pass, fail, block or neutral; empty while open. */
+  class?: string;
+  /** For each file the task requires, how many it has. */
+  slot_status?: IssueFlowSlotStatus[];
+  /** Rows a task reads from previous steps. */
+  inputs?: IssueFlowLink[];
+  /** Rows a task must address after a rejection. */
+  feedback?: IssueFlowLink[];
+  /** Variables the task may set while it is open. */
+  sets?: string[];
 }
 
 /** Who closed a task. `on_behalf` is true when a member who manages the squad closed it for its assignee. */
 export interface IssueFlowClosedBy {
   type: string;
   id: string;
+  name?: string;
   on_behalf: boolean;
 }
 
@@ -70,6 +122,7 @@ export interface IssueFlowNext {
   label: string;
   to: string;
   rework: boolean;
+  trigger?: string;
 }
 
 /** GET /api/issues/{id}/flow */
@@ -82,7 +135,11 @@ export interface IssueFlowState {
   step: string;
   /** Rework rounds used so far. */
   rework: number;
-  stop: IssueFlowStop | null;
+  /**
+   * The stop the request is parked in (spec 7.1): its declared code and the number schema 1 gave
+   * it (`legacy_no` 1 or 3, 0 for none). Null while the request is not parked.
+   */
+  stop: IssueFlowStopInfo | null;
   switches: Record<string, IssueFlowSwitchValue>;
   /** The background runner advances this request. */
   auto: boolean;
@@ -96,6 +153,24 @@ export interface IssueFlowState {
   rework_step?: string;
   /** Filled for the reader of GET /api/issues/{id}/flow; absent from an older server. */
   viewer?: IssueFlowViewer;
+  /** Schema version of the flow (1 or 2). */
+  schema?: number;
+  /** Loop counters for the request. */
+  loops?: Record<string, number>;
+  /** Number of times each step has been entered. */
+  activations?: Record<string, number>;
+  /** Flow variables. */
+  vars?: Record<string, unknown>;
+  /** Evaluated facts for decision routing. */
+  facts?: Record<string, unknown>;
+  /** Human checkpoints recorded along the flow. */
+  checkpoints?: IssueFlowCheckpoint[];
+  /** True when agent work has not yet been reviewed by a human. */
+  unreviewed?: boolean;
+  /** Trace of steps and edges taken by this request. */
+  trail?: IssueFlowTrailEntry[];
+  /** True for trial runs of a workflow. */
+  trial?: boolean;
 }
 
 export type IssueFlowActionKind = "opened_tasks" | "routed" | "stopped" | "noop";
@@ -125,6 +200,10 @@ export interface ResumeFlowRequest {
   /** Where to resume; omitted: the step the request was blocked from. */
   to_step?: string;
   reset_rework?: boolean;
+  /** Loops whose count starts over on a request of schema 2; "all" names every loop. */
+  reset_loops?: string[];
+  /** Let the step go on without the work tasks a person cancelled, which are otherwise reopened. */
+  skip_cancelled?: boolean;
 }
 
 /** POST /api/issues/{id}/flow/detach (squad admin only). */

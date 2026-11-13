@@ -66,9 +66,11 @@ const stateWire = {
 };
 
 function wrapperFor(qc: QueryClient) {
-  return ({ children }: { children: ReactNode }) => (
+  const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={qc}>{children}</QueryClientProvider>
   );
+  Wrapper.displayName = "QueryClientTestWrapper";
+  return Wrapper;
 }
 
 let qc: QueryClient;
@@ -83,12 +85,17 @@ describe("IssueFlowStateSchema", () => {
     expect(parsed).toMatchObject({ managed: true, role: "request", step: "gate", rework: 1, stop: null, auto: false });
     expect(parsed.switches).toEqual({ route: "shipment_dossier", customs_lookup: true });
     expect(parsed.tasks[0]).toMatchObject({ task: "docs_gate", outcome: "rejected", closed_at: "2026-11-13T01:00:00Z" });
-    expect(parsed.next[0]).toEqual({ id: "pass", label: "Pass", to: "handover", rework: false });
+    // A server that sends no trigger means an edge the engine takes by itself.
+    expect(parsed.next[0]).toEqual({ id: "pass", label: "Pass", to: "handover", rework: false, trigger: "auto" });
   });
 
-  it("reads every stop and treats an unknown one as stalled", () => {
-    for (const [wire, want] of [[1, 1], [3, 3], ["stalled", "stalled"], ["later", "stalled"], [7, "stalled"], [null, null]] as const) {
-      expect(IssueFlowStateSchema.parse({ ...stateWire, stop: wire }).stop).toBe(want);
+  it("reads the stop as an object, and treats a value it cannot read as stalled", () => {
+    const parked = { code: "loop_exhausted", legacy_no: 3, from: "gate", edge: "gate_fix", at: "2026-11-13T02:00:00Z" };
+    expect(IssueFlowStateSchema.parse({ ...stateWire, stop: parked }).stop).toEqual(parked);
+    expect(IssueFlowStateSchema.parse({ ...stateWire, stop: { code: "stalled" } }).stop).toMatchObject({ code: "stalled", legacy_no: 0 });
+    expect(IssueFlowStateSchema.parse({ ...stateWire, stop: null }).stop).toBeNull();
+    for (const wire of [1, 3, "stalled", "later", 7]) {
+      expect(IssueFlowStateSchema.parse({ ...stateWire, stop: wire }).stop).toMatchObject({ code: "stalled", legacy_no: 0 });
     }
   });
 

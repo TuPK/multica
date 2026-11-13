@@ -419,3 +419,4 @@ export type { WorkspaceWakeup, WorkspaceWakeupPage, WorkspaceWakeupFilters, Wake
 export type * from "./hub";
 export type { PublishChannel, PublishChannelStatus, PublishChannelLimits, CreatePublishChannelInput, PublishSettings, SavePublishSettingsInput } from "./publish";
 export type { ResearchSettings, UpdateResearchSettingsInput } from "./research";
+export type * from "./flow-draft";

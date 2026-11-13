@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   AgentTaskSchema,
   IssueFlowStateSchema,
+  FlowDraftSchema,
+  FlowValidationResponseSchema,
+  FlowCapabilitiesResponseSchema,
+  IssueWorkflowSchema,
+  IssueFlowStopSchema,
   AppConfigSchema,
   WecomInstallationSchema,
   ListWecomInstallationsResponseSchema,
@@ -2637,5 +2642,98 @@ describe("IssueFlowStateSchema viewer and closed_by drift", () => {
     const state = IssueFlowStateSchema.parse({ ...base, tasks: [{ ...base.tasks[0], closed_by: "someone" }] });
     expect(state.tasks).toHaveLength(1);
     expect(state.tasks[0]?.closed_by).toBeNull();
+  });
+});
+
+describe("Flow Engine Schema 2 and C13 malformed response cases", () => {
+  it("falls back to default doc when doc is missing or null", () => {
+    const parsed = FlowDraftSchema.parse({
+      id: "draft-1",
+      squad_id: "sq-1",
+      name: "Draft without doc",
+      revision: 1,
+    });
+    expect(parsed.doc).toBeDefined();
+    expect(parsed.doc.version).toBe(2);
+    expect(parsed.doc.start).toBe("plan");
+  });
+
+  it("keeps unknown step kind as text instead of crashing", () => {
+    const parsed = FlowDraftSchema.parse({
+      id: "draft-2",
+      squad_id: "sq-1",
+      name: "Draft with custom step",
+      revision: 1,
+      doc: {
+        version: 2,
+        start: "custom_step",
+        terminals: [{ key: "done", status: "done" }],
+        steps: [
+          {
+            key: "custom_step",
+            kind: "ai_experiment_kind",
+            status: { key: "todo" },
+            edges: [],
+          },
+        ],
+      },
+    });
+    expect(parsed.doc.steps[0]?.kind).toBe("ai_experiment_kind");
+  });
+
+  it("recovers gracefully when issues is null in FlowValidationResponse", () => {
+    const parsed = FlowValidationResponseSchema.parse({
+      ok: true,
+      revision: 3,
+      issues: null,
+    });
+    expect(parsed.issues).toEqual([]);
+    expect(parsed.ok).toBe(true);
+  });
+
+  it("maps unknown severity to warning", () => {
+    const parsed = FlowValidationResponseSchema.parse({
+      ok: false,
+      revision: 1,
+      issues: [
+        { code: "E01", severity: "fatal_disaster", message: "Boom" },
+        { code: "E02", severity: "error", message: "Real error" },
+        { code: "E03", severity: "info", message: "Just info" },
+      ],
+    });
+    expect(parsed.issues[0]?.severity).toBe("warning");
+    expect(parsed.issues[1]?.severity).toBe("error");
+    expect(parsed.issues[2]?.severity).toBe("info");
+  });
+
+  it("handles stop as number or object without throwing", () => {
+    expect(IssueFlowStopSchema.parse(1)).toBe(1);
+    expect(IssueFlowStopSchema.parse(3)).toBe(3);
+    expect(IssueFlowStopSchema.parse(42)).toBe("stalled");
+    expect(IssueFlowStopSchema.parse("stalled")).toBe("stalled");
+    expect(IssueFlowStopSchema.parse({ legacy_no: 1, code: "grounds_missing" })).toBe(1);
+    expect(IssueFlowStopSchema.parse({ legacy_no: 3, code: "loop_exhausted" })).toBe(3);
+    expect(IssueFlowStopSchema.parse({ code: "custom_stop", from: "step1" })).toBe("stalled");
+    expect(IssueFlowStopSchema.parse(null)).toBeNull();
+  });
+
+  it("handles lineage_id of the wrong type by falling back to null", () => {
+    const parsed = IssueWorkflowSchema.parse({
+      id: "wf-1",
+      workspace_id: "ws-1",
+      name: "Workflow 1",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+      lineage_id: 12345, // wrong type: number instead of string
+    });
+    expect(parsed.lineage_id).toBeNull();
+  });
+
+  it("fills defaults when capabilities response is missing keys", () => {
+    const parsed = FlowCapabilitiesResponseSchema.parse({});
+    expect(parsed.schemas).toEqual([1, 2]);
+    expect(parsed.limits.steps).toBe(40);
+    expect(parsed.step_kinds).toContain("tasks");
+    expect(parsed.features.authoring).toBe(false);
   });
 });

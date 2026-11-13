@@ -304,7 +304,7 @@ describe("IssueFlowStateSchema rework_step", () => {
     workflow_name: "Trade",
     step: "blocked",
     rework: 0,
-    stop: 1,
+    stop: { code: "grounds_missing", legacy_no: 1, from: "gate", edge: "gate_blocked", at: "" },
     switches: {},
     auto: false,
     entered_at: "2026-11-13T00:00:00Z",
@@ -319,7 +319,7 @@ describe("IssueFlowStateSchema rework_step", () => {
   it("defaults to empty from an older server", () => {
     const parsed = IssueFlowStateSchema.parse(stoppedState);
     expect(parsed.rework_step).toBe("");
-    expect(parsed.stop).toBe(1);
+    expect(parsed.stop).toMatchObject({ code: "grounds_missing", legacy_no: 1 });
   });
 
   it("falls back to empty for a value that is not a string, and keeps the rest of the state", () => {

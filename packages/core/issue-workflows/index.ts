@@ -43,6 +43,7 @@ export {
   useAdvanceFlow,
   useResumeFlow,
   useDetachFlow,
+  useExitIssueFlow,
   useSetFlowAuto,
   useSetSquadActiveWorkflow,
 } from "./mutations";

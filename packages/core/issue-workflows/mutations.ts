@@ -178,6 +178,15 @@ export function useResumeFlow(wsId: string, issueId: string) {
   });
 }
 
+/** Takes a manual exit of the step a request is at (the exit role, or members who manage the squad). */
+export function useExitIssueFlow(wsId: string, issueId: string) {
+  const refresh = useRefreshFlow(wsId, issueId);
+  return useMutation({
+    mutationFn: (edgeId: string) => api.exitIssueFlow(issueId, edgeId),
+    onSettled: refresh,
+  });
+}
+
 /** Takes a request off its flow (members who manage the squad). */
 export function useDetachFlow(wsId: string, issueId: string) {
   const refresh = useRefreshFlow(wsId, issueId);

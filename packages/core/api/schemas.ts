@@ -23,10 +23,23 @@ import type {
   IssueFlowPending,
   IssueFlowState,
   IssueFlowStop,
+  IssueFlowStopInfo,
   IssueFlowSwitchValue,
   IssueFlowTask,
   IssueFlowViewer,
 } from "../types/issue-flow";
+import type {
+  FlowDraft,
+  ListFlowDraftsResponse,
+  FlowDoc,
+  FlowValidationResponse,
+  FlowIssue,
+  FlowTraceResponse,
+  FlowManifestResponse,
+  FlowCapabilitiesResponse,
+  FlowLimits,
+  FlowCapabilityFeatures,
+} from "../types/flow-draft";
 import type { SetSquadActiveWorkflowResponse, SquadWorkflowsResponse } from "../types/squad";
 import type {
   IssueWorkflowSwitch,
@@ -752,6 +765,11 @@ export const IssueWorkflowSchema = z.object({
   flow_auto: z.boolean().default(false).catch(false),
   squad_id: z.string().nullable().default(null).catch(null),
   open_flow_requests: z.number().default(0).catch(0),
+  lineage_id: z.string().nullable().default(null).catch(null),
+  version: z.number().nullable().default(null).catch(null),
+  published_at: z.string().nullable().default(null).catch(null),
+  published_by: z.string().nullable().default(null).catch(null),
+  flow_doc: z.record(z.string(), z.unknown()).nullable().default(null).catch(null),
 }).loose();
 
 export const ListIssueWorkflowsResponseSchema = z.object({
@@ -1666,6 +1684,12 @@ export const IssueTriggerPreviewSchema = z.object({
 export const IssueFlowStopSchema = z.unknown().transform((value): IssueFlowStop | null => {
   if (value === null || value === undefined) return null;
   if (value === 1 || value === 3) return value;
+  if (typeof value === "object" && value !== null) {
+    const obj = value as Record<string, unknown>;
+    if (obj.legacy_no === 1 || obj.code === "grounds_missing") return 1;
+    if (obj.legacy_no === 3 || obj.code === "loop_exhausted") return 3;
+    return "stalled";
+  }
   return "stalled";
 });
 
@@ -1689,6 +1713,52 @@ const IssueFlowClosedBySchema = z.object({
   on_behalf: z.boolean().default(false).catch(false),
 }).loose();
 
+const IssueFlowSlotStatusSchema = z.object({
+  slot: z.string().default(""),
+  min: z.number().default(0).catch(0),
+  max: z.number().default(0).catch(0),
+  count: z.number().default(0).catch(0),
+}).loose();
+
+const IssueFlowLinkSchema = z.object({
+  issue_id: z.string().default(""),
+  identifier: z.string().default(""),
+  task: z.string().default(""),
+  slot: z.string().default(""),
+}).loose();
+
+const IssueFlowStopInfoSchema = z.object({
+  code: z.string().default(""),
+  legacy_no: z.number().default(0).catch(0),
+  from: z.string().default(""),
+  edge: z.string().default(""),
+  at: z.string().default(""),
+}).loose();
+
+// The stop of a state is an object {code, legacy_no, from, edge, at}, null while the request is not
+// parked (spec 7.1). A value that is not an object is a stop this build cannot read: it still parks
+// the request, so it reads as "stalled" and a person looks at it.
+const IssueFlowStateStopSchema = z.unknown().transform((value): IssueFlowStopInfo | null => {
+  if (value === null || value === undefined) return null;
+  const parsed = IssueFlowStopInfoSchema.safeParse(value);
+  if (parsed.success) return parsed.data as IssueFlowStopInfo;
+  return { code: "stalled", legacy_no: 0, from: "", edge: "", at: "" };
+});
+
+const IssueFlowCheckpointSchema = z.object({
+  step: z.string().default(""),
+  activation: z.number().default(0).catch(0),
+  by: z.string().optional().catch(undefined),
+  at: z.string().optional().catch(undefined),
+}).loose();
+
+const IssueFlowTrailEntrySchema = z.object({
+  step: z.string().default(""),
+  activation: z.number().default(0).catch(0),
+  edge: z.string().optional().catch(undefined),
+  at: z.string().optional().catch(undefined),
+}).loose();
+
 const IssueFlowTaskSchema = z.object({
   issue_id: z.string().default(""),
   identifier: z.string().default(""),
@@ -1701,6 +1771,12 @@ const IssueFlowTaskSchema = z.object({
   assignee_id: z.string().nullable().default(null).catch(null),
   closed_at: z.string().nullable().default(null).catch(null),
   closed_by: IssueFlowClosedBySchema.nullable().default(null).catch(null),
+  instance: z.number().default(0).catch(0),
+  class: z.string().default("").catch(""),
+  slot_status: tolerantList(IssueFlowSlotStatusSchema),
+  inputs: tolerantList(IssueFlowLinkSchema),
+  feedback: tolerantList(IssueFlowLinkSchema),
+  sets: z.array(z.string()).default([]).catch([]),
 }).loose();
 
 const IssueFlowNextSchema = z.object({
@@ -1708,6 +1784,7 @@ const IssueFlowNextSchema = z.object({
   label: z.string().default(""),
   to: z.string().default(""),
   rework: z.boolean().default(false).catch(false),
+  trigger: z.string().default("auto").catch("auto"),
 }).loose();
 
 function tolerantList<T>(schema: z.ZodType<T>) {
@@ -1735,7 +1812,7 @@ export const IssueFlowStateSchema = z.object({
   workflow_name: z.string().default(""),
   step: z.string().default(""),
   rework: z.number().default(0).catch(0),
-  stop: IssueFlowStopSchema,
+  stop: IssueFlowStateStopSchema,
   switches: z.record(z.string(), z.union([z.boolean(), z.string()])).default({}).catch({}),
   auto: z.boolean().default(false).catch(false),
   entered_at: z.string().default(""),
@@ -1746,6 +1823,15 @@ export const IssueFlowStateSchema = z.object({
     const parsed = IssueFlowViewerSchema.safeParse(value ?? {});
     return parsed.success ? parsed.data : { ...EMPTY_ISSUE_FLOW_VIEWER, closable_task_ids: [] };
   }),
+  schema: z.number().default(1).catch(1),
+  loops: z.record(z.string(), z.number()).default({}).catch({}),
+  activations: z.record(z.string(), z.number()).default({}).catch({}),
+  vars: z.record(z.string(), z.unknown()).default({}).catch({}),
+  facts: z.record(z.string(), z.unknown()).default({}).catch({}),
+  checkpoints: tolerantList(IssueFlowCheckpointSchema),
+  unreviewed: z.boolean().default(false).catch(false),
+  trail: tolerantList(IssueFlowTrailEntrySchema),
+  trial: z.boolean().default(false).catch(false),
 }).loose();
 
 export const EMPTY_ISSUE_FLOW_STATE: IssueFlowState = {
@@ -4934,3 +5020,530 @@ export const EMPTY_HUB_APPLY_UPDATE_RESULT: HubApplyUpdateResult = {
 export const EMPTY_HUB_FORK_RESULT: HubForkResult = { kind: "skill", id: "", tracking: "forked" };
 
 export const EMPTY_HUB_UPDATE_DIFF: HubUpdateDiff = { path: "", old: null, new: null, binary: false };
+
+// ---------------------------------------------------------------------------
+// Flow Drafts and General Flow Engine (Schema 2)
+// ---------------------------------------------------------------------------
+
+export const EMPTY_FLOW_DRAFT: FlowDraft = {
+  id: "",
+  squad_id: "",
+  name: "",
+  lineage_id: null,
+  base_workflow_id: null,
+  revision: 1,
+  doc: {
+    version: 2,
+    start: "plan",
+    roles: [],
+    terminals: [{ key: "done", status: "done" }],
+    steps: [
+      {
+        key: "plan",
+        title: "Plan",
+        kind: "lead",
+        status: { key: "todo" },
+        edges: [{ id: "plan_done", label: "Done", to: "done" }],
+      },
+    ],
+  },
+  origin: "manual",
+  source_ref: null,
+  created_by: "",
+  updated_by: "",
+  created_at: "",
+  updated_at: "",
+};
+
+export const EMPTY_LIST_FLOW_DRAFTS_RESPONSE: ListFlowDraftsResponse = {
+  drafts: [],
+  total: 0,
+};
+
+export const FlowDraftSummarySchema = z.object({
+  id: z.string().default("").catch(""),
+  squad_id: z.string().default("").catch(""),
+  name: z.string().default("").catch(""),
+  lineage_id: z.string().nullable().default(null).catch(null),
+  base_workflow_id: z.string().nullable().default(null).catch(null),
+  revision: z.number().default(1).catch(1),
+  origin: z.string().default("manual").catch("manual"),
+  created_by: z.string().default("").catch(""),
+  updated_by: z.string().default("").catch(""),
+  created_at: z.string().default("").catch(""),
+  updated_at: z.string().default("").catch(""),
+  summary: z.object({
+    steps: z.number().default(0).catch(0),
+    tasks: z.number().default(0).catch(0),
+    gates: z.number().default(0).catch(0),
+  }).default({ steps: 0, tasks: 0, gates: 0 }).catch({ steps: 0, tasks: 0, gates: 0 }),
+}).loose();
+
+export const ListFlowDraftsResponseSchema = z.object({
+  drafts: tolerantList(FlowDraftSummarySchema),
+  total: z.number().default(0).catch(0),
+}).loose();
+
+export const FlowDocRoleSchema = z.object({
+  key: z.string().default(""),
+  label: z.string().optional().catch(undefined),
+  kind: z.string().default("agent").catch("agent"),
+  pool: z.number().optional().catch(undefined),
+  bind: z.object({
+    agent_ids: z.array(z.string()).optional().catch(undefined),
+    member_ids: z.array(z.string()).optional().catch(undefined),
+  }).optional().catch(undefined),
+  source: z.object({
+    bundle: z.string().optional().catch(undefined),
+    agent_key: z.string().optional().catch(undefined),
+  }).optional().catch(undefined),
+}).loose();
+
+export const FlowDocVarSchema = z.object({
+  key: z.string().default(""),
+  type: z.string().default("string").catch("string"),
+  values: z.array(z.string()).optional().catch(undefined),
+  min: z.number().optional().catch(undefined),
+  max: z.number().optional().catch(undefined),
+  max_len: z.number().optional().catch(undefined),
+  max_items: z.number().optional().catch(undefined),
+  default: z.unknown(),
+  set_by: z.array(z.string()).optional().catch(undefined),
+  set_at: z.array(z.string()).optional().catch(undefined),
+}).loose();
+
+export const FlowDocVerdictSchema = z.object({
+  key: z.string().default(""),
+  class: z.string().default("pass").catch("pass"),
+  label: z.string().optional().catch(undefined),
+}).loose();
+
+export const FlowDocVerdictSetSchema = z.object({
+  key: z.string().default(""),
+  verdicts: tolerantList(FlowDocVerdictSchema),
+}).loose();
+
+export const FlowDocLoopSchema = z.object({
+  key: z.string().default(""),
+  header: z.string().default(""),
+  max: z.union([
+    z.number(),
+    z.object({ var: z.string(), cap: z.number() }).loose(),
+  ]).default(1).catch(1),
+  reset: z.string().optional().catch(undefined),
+}).loose();
+
+export const FlowDocStopKindSchema = z.object({
+  code: z.string().default(""),
+  class: z.string().default("custom").catch("custom"),
+  label: z.string().optional().catch(undefined),
+  message: z.string().optional().catch(undefined),
+  status: z.string().optional().catch(undefined),
+  resume_by: z.string().optional().catch(undefined),
+  legacy_no: z.number().optional().catch(undefined),
+}).loose();
+
+export const FlowDocTerminalSchema = z.object({
+  key: z.string().default(""),
+  status: z.string().default(""),
+  leaves_workspace: z.boolean().optional().catch(undefined),
+}).loose();
+
+export const FlowDocTaskSchema = z.object({
+  key: z.string().default(""),
+  title: z.string().default(""),
+  kind: z.string().default("work").catch("work"),
+  role: z.string().default(""),
+  instances: z.object({
+    count: z.number().optional().catch(undefined),
+    from_var: z.string().optional().catch(undefined),
+    min: z.number().optional().catch(undefined),
+    max: z.number().optional().catch(undefined),
+    distinct: z.boolean().optional().catch(undefined),
+  }).optional().catch(undefined),
+  after: z.array(z.string()).optional().catch(undefined),
+  when: z.unknown().optional().catch(undefined),
+  verdicts: z.string().optional().catch(undefined),
+  requires: z.object({
+    files: z.array(z.object({
+      slot: z.string().default(""),
+      min: z.number().default(1),
+      max: z.number().optional().catch(undefined),
+      ext: z.array(z.string()).optional().catch(undefined),
+      content_types: z.array(z.string()).optional().catch(undefined),
+    }).loose()).optional().catch(undefined),
+    verdict: z.boolean().nullable().optional().catch(undefined),
+    vars: z.array(z.string()).optional().catch(undefined),
+  }).optional().catch(undefined),
+  inputs: z.array(z.object({
+    from: z.string().default(""),
+    slot: z.string().optional().catch(undefined),
+    required: z.boolean().optional().catch(undefined),
+  }).loose()).optional().catch(undefined),
+  sets: z.array(z.string()).optional().catch(undefined),
+  skills: z.array(z.string()).optional().catch(undefined),
+  deadline: z.object({
+    idle_minutes: z.number().optional().catch(undefined),
+    hard_cap_minutes: z.number().optional().catch(undefined),
+    max_attempts: z.number().optional().catch(undefined),
+    remind_after_minutes: z.number().optional().catch(undefined),
+    stall_after_minutes: z.number().optional().catch(undefined),
+  }).optional().catch(undefined),
+  instructions: z.string().optional().catch(undefined),
+}).loose();
+
+export const FlowDocEdgeSchema = z.object({
+  id: z.string().default(""),
+  label: z.string().optional().catch(undefined),
+  to: z.string().optional().catch(undefined),
+  when: z.unknown().optional().catch(undefined),
+  loop: z.string().optional().catch(undefined),
+  stop: z.string().optional().catch(undefined),
+  trigger: z.string().optional().catch(undefined),
+}).loose();
+
+export const FlowDocStepSchema = z.object({
+  key: z.string().default(""),
+  title: z.string().optional().catch(undefined),
+  status: z.object({
+    key: z.string().optional().catch(undefined),
+    name: z.string().optional().catch(undefined),
+    category: z.string().optional().catch(undefined),
+  }).default({}).catch({}),
+  kind: z.string().default("tasks").catch("tasks"),
+  tasks: tolerantList(FlowDocTaskSchema).optional().catch(undefined),
+  join: z.object({
+    over: z.union([z.string(), z.array(z.string())]).default("gates").catch("gates"),
+    mode: z.string().optional().catch(undefined),
+    k: z.number().optional().catch(undefined),
+    block: z.string().optional().catch(undefined),
+  }).optional().catch(undefined),
+  lead: z.object({
+    sets: z.array(z.string()).optional().catch(undefined),
+    verdicts: z.string().optional().catch(undefined),
+    requires: z.unknown().optional().catch(undefined),
+  }).optional().catch(undefined),
+  exit_role: z.string().optional().catch(undefined),
+  notice: z.string().optional().catch(undefined),
+  edges: tolerantList(FlowDocEdgeSchema),
+  layout: z.object({
+    x: z.number().default(0),
+    y: z.number().default(0),
+  }).optional().catch(undefined),
+}).loose();
+
+export const FlowDocSchema = z.object({
+  version: z.number().default(2).catch(2),
+  start: z.string().default("plan"),
+  roles: tolerantList(FlowDocRoleSchema).optional().catch([]),
+  vars: tolerantList(FlowDocVarSchema).optional().catch([]),
+  verdicts: tolerantList(FlowDocVerdictSetSchema).optional().catch([]),
+  loops: tolerantList(FlowDocLoopSchema).optional().catch([]),
+  stops: tolerantList(FlowDocStopKindSchema).optional().catch([]),
+  terminals: tolerantList(FlowDocTerminalSchema),
+  steps: tolerantList(FlowDocStepSchema),
+  messages: z.record(z.string(), z.string()).optional().catch({}),
+  policy: z.object({
+    task_idle_minutes: z.number().optional().catch(undefined),
+    task_hard_cap_minutes: z.number().optional().catch(undefined),
+    task_max_attempts: z.number().optional().catch(undefined),
+    human_remind_minutes: z.number().optional().catch(undefined),
+    human_stall_minutes: z.number().optional().catch(undefined),
+    max_activations: z.number().optional().catch(undefined),
+    max_task_issues: z.number().optional().catch(undefined),
+    lead_may_work: z.boolean().optional().catch(undefined),
+    allow_unattended_release: z.boolean().optional().catch(undefined),
+    acks: z.array(z.object({
+      kind: z.string().default(""),
+      by: z.string().optional().catch(undefined),
+      at: z.string().optional().catch(undefined),
+    }).loose()).optional().catch(undefined),
+  }).optional().catch(undefined),
+}).loose();
+
+export const FlowDraftSchema = z.object({
+  id: z.string().default("").catch(""),
+  squad_id: z.string().default("").catch(""),
+  name: z.string().default("").catch(""),
+  lineage_id: z.string().nullable().default(null).catch(null),
+  base_workflow_id: z.string().nullable().default(null).catch(null),
+  revision: z.number().default(1).catch(1),
+  doc: z.unknown().transform((val): FlowDoc => {
+    if (!val || typeof val !== "object") return EMPTY_FLOW_DRAFT.doc;
+    const res = FlowDocSchema.safeParse(val);
+    return res.success ? (res.data as FlowDoc) : EMPTY_FLOW_DRAFT.doc;
+  }),
+  origin: z.string().default("manual").catch("manual"),
+  source_ref: z.unknown().nullable().default(null).catch(null),
+  created_by: z.string().default("").catch(""),
+  updated_by: z.string().default("").catch(""),
+  created_at: z.string().default("").catch(""),
+  updated_at: z.string().default("").catch(""),
+}).loose();
+
+export const FlowIssueSchema = z.object({
+  code: z.string().default(""),
+  severity: z.unknown().transform((v): "error" | "warning" | "info" => {
+    if (v === "error" || v === "info") return v;
+    return "warning";
+  }),
+  path: z.string().optional().catch(undefined),
+  message: z.string().default(""),
+  params: z.record(z.string(), z.unknown()).optional().catch(undefined),
+  ack: z.string().optional().catch(undefined),
+}).loose();
+
+export const EMPTY_FLOW_VALIDATION_RESPONSE: FlowValidationResponse = {
+  ok: false,
+  revision: 0,
+  issues: [],
+  analysis: null,
+  fact_catalog: {},
+};
+
+export const FlowValidationResponseSchema = z.object({
+  ok: z.boolean().default(false).catch(false),
+  revision: z.number().default(0).catch(0),
+  issues: z.unknown().transform((v): FlowIssue[] => {
+    if (!Array.isArray(v)) return [];
+    return v.flatMap((item) => {
+      const parsed = FlowIssueSchema.safeParse(item);
+      return parsed.success ? [parsed.data as FlowIssue] : [];
+    });
+  }),
+  analysis: z.object({
+    worst_case_task_issues: z.number().default(0).catch(0),
+    worst_case_activations: z.number().default(0).catch(0),
+    steps: tolerantList(z.object({
+      step: z.string().default(""),
+      max_entries: z.number().default(0).catch(0),
+      max_tasks: z.number().default(0).catch(0),
+    }).loose()),
+    loops: tolerantList(z.object({
+      key: z.string().default(""),
+      header: z.string().default(""),
+      max: z.number().default(0).catch(0),
+      body: z.array(z.string()).default([]).catch([]),
+    }).loose()),
+    stops: tolerantList(z.object({
+      code: z.string().default(""),
+      class: z.string().optional().catch(undefined),
+      status: z.string().default(""),
+      edges: z.array(z.string()).default([]).catch([]),
+    }).loose()),
+    release_paths_without_human: tolerantList(z.object({
+      from: z.string().default(""),
+      terminal: z.string().default(""),
+      path: z.array(z.string()).default([]).catch([]),
+    }).loose()),
+  }).loose().nullable().default(null).catch(null),
+  fact_catalog: z.record(z.string(), tolerantList(z.object({
+    key: z.string().default(""),
+    type: z.string().default(""),
+    source: z.string().default(""),
+    ops: z.array(z.string()).default([]).catch([]),
+    values: z.array(z.string()).optional().catch(undefined),
+  }).loose())).default({}).catch({}),
+}).loose();
+
+export const FlowTraceHopSchema = z.object({
+  n: z.number().default(0).catch(0),
+  step: z.string().default(""),
+  activation: z.number().default(1).catch(1),
+  opened: z.array(z.string()).optional().catch(undefined),
+  closed: z.record(z.string(), z.string()).optional().catch(undefined),
+  join: z.string().optional().catch(undefined),
+  edge: z.string().optional().catch(undefined),
+  to: z.string().optional().catch(undefined),
+  loops: z.record(z.string(), z.number()).optional().catch(undefined),
+}).loose();
+
+export const FlowTraceEndSchema = z.object({
+  kind: z.string().default("stalled").catch("stalled"),
+  code: z.string().optional().catch(undefined),
+  from: z.string().optional().catch(undefined),
+}).loose();
+
+export const EMPTY_FLOW_TRACE_RESPONSE: FlowTraceResponse = {
+  hops: [],
+  end: { kind: "stalled" },
+  truncated: false,
+};
+
+export const FlowTraceResponseSchema = z.object({
+  hops: tolerantList(FlowTraceHopSchema),
+  end: FlowTraceEndSchema.default({ kind: "stalled" }).catch({ kind: "stalled" }),
+  truncated: z.boolean().default(false).catch(false),
+}).loose();
+
+export const EMPTY_FLOW_MANIFEST_RESPONSE: FlowManifestResponse = {
+  format: "multica.flow-manifest/v1",
+  name: "",
+  doc: EMPTY_FLOW_DRAFT.doc,
+};
+
+export const FlowManifestResponseSchema = z.object({
+  format: z.string().default("multica.flow-manifest/v1").catch("multica.flow-manifest/v1"),
+  name: z.string().default("").catch(""),
+  doc: z.unknown().transform((val): FlowDoc => {
+    if (!val || typeof val !== "object") return EMPTY_FLOW_DRAFT.doc;
+    const res = FlowDocSchema.safeParse(val);
+    return res.success ? (res.data as FlowDoc) : EMPTY_FLOW_DRAFT.doc;
+  }),
+}).loose();
+
+export const EMPTY_ISSUE_FLOW_TASK: IssueFlowTask = {
+  issue_id: "",
+  identifier: "",
+  step: "",
+  task: "",
+  round: 0,
+  kind: "",
+  status: "",
+  outcome: null,
+  assignee_id: null,
+  closed_at: null,
+  closed_by: null,
+};
+
+export const CloseIssueFlowTaskResponseSchema = z.object({
+  task: IssueFlowTaskSchema,
+  state: IssueFlowStateSchema,
+}).loose();
+
+export const EMPTY_CLOSE_ISSUE_FLOW_TASK_RESPONSE: { task: IssueFlowTask; state: IssueFlowState } = {
+  task: EMPTY_ISSUE_FLOW_TASK,
+  state: EMPTY_ISSUE_FLOW_STATE,
+};
+
+export const EMPTY_FLOW_CAPABILITIES_RESPONSE: FlowCapabilitiesResponse = {
+  schemas: [1, 2],
+  limits: {
+    doc_bytes: 524288,
+    steps: 40,
+    status_names: 12,
+    tasks_per_step: 12,
+    edges_per_step: 10,
+    roles: 16,
+    vars: 16,
+    verdict_sets: 8,
+    loops: 8,
+    loop_max: 20,
+    instances: 20,
+    expr_depth: 4,
+    after_depth: 6,
+    message_runes: 4000,
+    instructions_runes: 8000,
+    inputs_per_task: 12,
+    sets_per_task: 8,
+    skills_per_task: 8,
+    default_max_task_issues: 300,
+    max_task_issues: 500,
+    default_max_activations: 100,
+    schema1_steps: 12,
+    schema1_tasks_per_step: 8,
+    schema1_rework_max: 5,
+    drafts_per_squad: 20,
+    versions_per_lineage: 50,
+    draft_name_runes: 56,
+    workflow_name_runes: 64,
+    task_title_runes: 80,
+    default_task_idle_minutes: 120,
+  },
+  step_kinds: ["tasks", "lead", "manual"],
+  task_kinds: ["work", "gate"],
+  join_modes: ["all", "any", "quorum"],
+  join_over: ["gates", "all", "tasks"],
+  join_block: ["immediate", "at_close"],
+  role_kinds: ["agent", "member", "lead", "requester", "managers"],
+  verdict_classes: ["pass", "fail", "neutral"],
+  var_types: ["bool", "enum", "int", "string", "list_string"],
+  stop_classes: ["missing_grounds", "loop_exhausted", "custom"],
+  edge_triggers: ["auto", "manual"],
+  loop_resets: ["on_entry", "never"],
+  ops_by_type: {},
+  builtin_facts: [],
+  features: {
+    packs: false,
+    proposals: false,
+    system_performer: false,
+    subflow: false,
+    fork_join: false,
+    authoring: false,
+    graph_v2: false,
+  },
+};
+
+export const FlowLimitsSchema = z.object({
+  doc_bytes: z.number().default(524288).catch(524288),
+  steps: z.number().default(40).catch(40),
+  status_names: z.number().default(12).catch(12),
+  tasks_per_step: z.number().default(12).catch(12),
+  edges_per_step: z.number().default(10).catch(10),
+  roles: z.number().default(16).catch(16),
+  vars: z.number().default(16).catch(16),
+  verdict_sets: z.number().default(8).catch(8),
+  loops: z.number().default(8).catch(8),
+  loop_max: z.number().default(20).catch(20),
+  instances: z.number().default(20).catch(20),
+  expr_depth: z.number().default(4).catch(4),
+  after_depth: z.number().default(6).catch(6),
+  message_runes: z.number().default(4000).catch(4000),
+  instructions_runes: z.number().default(8000).catch(8000),
+  inputs_per_task: z.number().default(12).catch(12),
+  sets_per_task: z.number().default(8).catch(8),
+  skills_per_task: z.number().default(8).catch(8),
+  default_max_task_issues: z.number().default(300).catch(300),
+  max_task_issues: z.number().default(500).catch(500),
+  default_max_activations: z.number().default(100).catch(100),
+  schema1_steps: z.number().default(12).catch(12),
+  schema1_tasks_per_step: z.number().default(8).catch(8),
+  schema1_rework_max: z.number().default(5).catch(5),
+  drafts_per_squad: z.number().default(20).catch(20),
+  versions_per_lineage: z.number().default(50).catch(50),
+  draft_name_runes: z.number().default(56).catch(56),
+  workflow_name_runes: z.number().default(64).catch(64),
+  task_title_runes: z.number().default(80).catch(80),
+  default_task_idle_minutes: z.number().default(120).catch(120),
+}).loose();
+
+export const FlowCapabilityFeaturesSchema = z.object({
+  packs: z.boolean().default(false).catch(false),
+  proposals: z.boolean().default(false).catch(false),
+  system_performer: z.boolean().default(false).catch(false),
+  subflow: z.boolean().default(false).catch(false),
+  fork_join: z.boolean().default(false).catch(false),
+  authoring: z.boolean().default(false).catch(false),
+  graph_v2: z.boolean().default(false).catch(false),
+}).loose();
+
+export const FlowCapabilitiesResponseSchema = z.object({
+  schemas: z.array(z.number()).default([1, 2]).catch([1, 2]),
+  limits: z.unknown().transform((v): FlowLimits => {
+    const res = FlowLimitsSchema.safeParse(v ?? {});
+    return res.success ? (res.data as FlowLimits) : EMPTY_FLOW_CAPABILITIES_RESPONSE.limits;
+  }),
+  step_kinds: z.array(z.string()).default(["tasks", "lead", "manual"]).catch(["tasks", "lead", "manual"]),
+  task_kinds: z.array(z.string()).default(["work", "gate"]).catch(["work", "gate"]),
+  join_modes: z.array(z.string()).default(["all", "any", "quorum"]).catch(["all", "any", "quorum"]),
+  join_over: z.array(z.string()).default(["gates", "all", "tasks"]).catch(["gates", "all", "tasks"]),
+  join_block: z.array(z.string()).default(["immediate", "at_close"]).catch(["immediate", "at_close"]),
+  role_kinds: z.array(z.string()).default(["agent", "member", "lead", "requester", "managers"]).catch(["agent", "member", "lead", "requester", "managers"]),
+  verdict_classes: z.array(z.string()).default(["pass", "fail", "neutral"]).catch(["pass", "fail", "neutral"]),
+  var_types: z.array(z.string()).default(["bool", "enum", "int", "string", "list_string"]).catch(["bool", "enum", "int", "string", "list_string"]),
+  stop_classes: z.array(z.string()).default(["missing_grounds", "loop_exhausted", "custom"]).catch(["missing_grounds", "loop_exhausted", "custom"]),
+  edge_triggers: z.array(z.string()).default(["auto", "manual"]).catch(["auto", "manual"]),
+  loop_resets: z.array(z.string()).default(["on_entry", "never"]).catch(["on_entry", "never"]),
+  ops_by_type: z.record(z.string(), z.array(z.string())).default({}).catch({}),
+  builtin_facts: tolerantList(z.object({
+    key: z.string().default(""),
+    type: z.string().default(""),
+    source: z.string().default(""),
+    ops: z.array(z.string()).default([]).catch([]),
+    values: z.array(z.string()).optional().catch(undefined),
+  }).loose()),
+  features: z.unknown().transform((v): FlowCapabilityFeatures => {
+    const res = FlowCapabilityFeaturesSchema.safeParse(v ?? {});
+    return res.success ? (res.data as FlowCapabilityFeatures) : EMPTY_FLOW_CAPABILITIES_RESPONSE.features;
+  }),
+}).loose();

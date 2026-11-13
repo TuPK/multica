@@ -21,6 +21,7 @@ import { runtimeKeys } from "../runtimes/queries";
 import { labelKeys } from "../labels/queries";
 import { propertyKeys } from "../properties/queries";
 import { issueStatusKeys } from "../issue-statuses/queries";
+import { flowDraftKeys } from "../flow-drafts/queries";
 import { issueFlowKeys, issueWorkflowKeys } from "../issue-workflows/queries";
 import { issueViewKeys } from "../issue-views/queries";
 import { issueViewPrefKeys } from "../issue-views/preferences";
@@ -938,6 +939,17 @@ export function useRealtimeSync(
       issue_flow: () => {
         const wsId = getCurrentWsId();
         if (wsId) qc.invalidateQueries({ queryKey: issueFlowKeys.all(wsId) });
+      },
+      // A flow draft was created, saved, deleted or published, here or in another tab. The editor
+      // keeps its own buffer, so a refreshed detail never overwrites unsaved edits; a stale save
+      // still meets the revision check. Capabilities do not change with a draft.
+      flow_draft: () => {
+        const wsId = getCurrentWsId();
+        if (!wsId) return;
+        qc.invalidateQueries({
+          queryKey: flowDraftKeys.all(wsId),
+          predicate: (query) => query.queryKey[2] === "list" || query.queryKey[2] === "detail",
+        });
       },
       pin: () => {
         const wsId = getCurrentWsId();

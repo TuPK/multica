@@ -83,9 +83,9 @@ describe("issue flow API boundary", () => {
   });
 
   it("reads the state from GET /api/issues/{id}/flow", async () => {
-    const fetchMock = stubStatus(200, { managed: true, role: "task", step: "gate", stop: 3 });
+    const fetchMock = stubStatus(200, { managed: true, role: "task", step: "gate", stop: { code: "loop_exhausted", legacy_no: 3 } });
     const state = await client().getIssueFlow("iss-1");
-    expect(state).toMatchObject({ managed: true, role: "task", step: "gate", stop: 3 });
+    expect(state).toMatchObject({ managed: true, role: "task", step: "gate", stop: { code: "loop_exhausted", legacy_no: 3 } });
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe("https://api.example.test/api/issues/iss-1/flow");
   });
 

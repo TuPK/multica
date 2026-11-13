@@ -254,7 +254,7 @@ async function upgradeSquadFlow(
     }
     let row = findFlowWorkflow(workflows, flow);
     if (!row) {
-      const request = flowWorkflowRequest(flow, squadName, agentIds);
+      const request = flowWorkflowRequest(flow, squadName, agentIds, squad.id);
       if (!request) return { status: "failed", detail: "a flow task has no agent to hand to" };
       if (!dry) row = await client.createIssueWorkflow(request);
     }

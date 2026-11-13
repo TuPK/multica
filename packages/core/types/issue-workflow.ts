@@ -180,6 +180,16 @@ export interface IssueWorkflow {
   squad_id?: string | null;
   /** Requests pinned to this workflow that are not closed. */
   open_flow_requests?: number;
+  /** Lineage of the published versions. Null for legacy or catalog workflows. */
+  lineage_id?: string | null;
+  /** Sequential version number within the lineage. */
+  version?: number | null;
+  /** When this version was published; non-null means locked against edits. */
+  published_at?: string | null;
+  /** Who published this version. */
+  published_by?: string | null;
+  /** The compiled schema 2 flow document when version is 2. */
+  flow_doc?: Record<string, unknown> | null;
 }
 
 export interface ListIssueWorkflowsResponse {
@@ -214,6 +224,12 @@ export interface IssueWorkflowWriteRequest {
   flow_config?: IssueWorkflowFlowConfig;
   /** Marks the workflow as made from a catalog flow (needs `flow_config`). */
   template_ref?: string;
+  /**
+   * The squad the new workflow is written for. With a `flow_config`, the server checks the flow
+   * against the squad's roster (who the squad has, the lead takes no task) and keeps the row as
+   * the squad's. Without it the roster is not checked.
+   */
+  squad_id?: string;
   /**
    * Every column with its handoff. The server adds todo, done and cancelled
    * when missing and places the fixed columns; backlog and blocked are listed

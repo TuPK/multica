@@ -140,7 +140,7 @@ describe("upgradeKitvietSquad: the flow", () => {
 
     expect(result.workflow).toEqual({ status: "upgraded" });
     expect(client.createIssueWorkflow).toHaveBeenCalledTimes(1);
-    expect(client.createIssueWorkflow.mock.calls[0]![0]).toMatchObject({ template_ref: "flow_kv_demo@bbbb2222", name: "Demo Desk · bbbb2222" });
+    expect(client.createIssueWorkflow.mock.calls[0]![0]).toMatchObject({ template_ref: "flow_kv_demo@bbbb2222", name: "Demo Desk · bbbb2222", squad_id: "kv-squad" });
     expect(client.setSquadActiveWorkflow).toHaveBeenCalledTimes(1);
     expect(client.setSquadActiveWorkflow).toHaveBeenCalledWith("kv-squad", { workflow_id: "wf-new-2" });
     expect(client.updateIssueWorkflow).not.toHaveBeenCalled();

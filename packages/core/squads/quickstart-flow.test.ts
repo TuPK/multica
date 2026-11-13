@@ -105,6 +105,8 @@ describe("runSquadQuickstart: the flow of a squad", () => {
     const body = client.createIssueWorkflow.mock.calls[0]![0] as Record<string, any>;
     const idOf = (role: string) => out.agents.find((a) => a.role === role)!.id;
     expect(body.template_ref).toBe("flow_kv_demo@abcd1234");
+    // The server checks the flow against the roster of the squad it is written for.
+    expect(body.squad_id).toBe("squad-1");
     expect(body.name).toBe("Demo Desk · abcd1234");
     expect(body.flow_config).toEqual({ version: 1, switches: [{ key: "lookup", type: "bool", default: false }], messages: { stop1: "BLOCKED · stop 1\nbody" } });
     const steps = body.steps as Record<string, any>[];

@@ -90,6 +90,7 @@ export type WSEventType =
   | "issue_status:changed"
   | "issue_workflow:changed"
   | "issue_flow:updated"
+  | "flow_draft:updated"
   | "issue_view:changed"
   | "issue_view_preference:changed"
   | "pin:created"
@@ -189,7 +190,13 @@ export interface IssueFlowUpdatedPayload {
 }
 
 export interface IssueWorkflowChangedPayload {
-  action?: "created" | "updated" | "deleted";
+  action?: "created" | "updated" | "deleted" | "published";
+}
+
+/** A flow draft was created, updated, or published; re-read drafts. */
+export interface FlowDraftUpdatedPayload {
+  squad_id: string;
+  draft_id: string;
 }
 
 /**
@@ -645,6 +652,7 @@ export interface WSEventPayloadMap {
   "issue_status:changed": IssueStatusChangedPayload;
   "issue_workflow:changed": IssueWorkflowChangedPayload;
   "issue_flow:updated": IssueFlowUpdatedPayload;
+  "flow_draft:updated": FlowDraftUpdatedPayload;
   "issue_view:changed": IssueViewChangedPayload;
   "issue_view_preference:changed": IssueViewPreferenceChangedPayload;
   "issue_reaction:added": IssueReactionAddedPayload;
