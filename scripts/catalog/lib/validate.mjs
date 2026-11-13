@@ -264,7 +264,7 @@ export function validateCatalog({ entries, discoverErrors = [], config, root = c
     if (removed.has(keyOf(entry.kind, entry.manifest?.id))) problems.errors.push(`${entry.path}: id was removed (registry.config.json) and cannot be reused`);
   }
 
-  const context = { ids, entries, config, locales, unpinned: new Set(), noLicense: new Set(), restricted: new Set(), roleDefinitions: new Map(), roleInstructionFiles: new Map(), blocks: blocksOf(root) };
+  const context = { ids, entries, config, locales, unpinned: new Set(), noLicense: new Set(), restricted: new Set(), roleDefinitions: new Map(), roleInstructionFiles: new Map(), flowSquads: new Map(), blocks: blocksOf(root) };
   for (const entry of entries) {
     for (const required of entry.manifest?.requires ?? []) {
       if (!ids.has(keyOf(required.kind, required.id))) problems.errors.push(`${entry.path}: requires unknown ${required.kind} "${required.id}"`);

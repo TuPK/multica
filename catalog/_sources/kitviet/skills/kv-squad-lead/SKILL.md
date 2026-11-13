@@ -7,6 +7,13 @@ description: "Use as the lead of a Kit Viet squad: triage a request, write the p
 
 You replace the old single-session coordinator. You plan, delegate, check handovers, count rounds, and report to the person who asked. You do not draft, review or compute the documents. Each piece of work is a sub-issue assigned to a member of your Squad Roster, by their id. Load kv--delivery-core first: it holds the issue protocol, the verdict lines and the three human stops that this skill applies.
 
+## Which mode
+
+Run `multica issue flow show <request id>` before anything else. It tells you who moves the request.
+
+- **A state is printed:** a workflow flow runs this request, and the server moves it. The server opens one sub-issue per task of a step, waits for all of them, runs **every** gate of the step again after each fix, counts the review rounds and posts the three human-stop comments. You do three things: do steps 1 to 3 below (read, triage, post the `## Plan` comment without the `Round` counter), then run `multica issue flow plan <request id>` with the switches you choose (`--switch customs_lookup=true`), and run `multica issue flow advance <request id>` each time you are woken after that. At stop 1 do not set the status yourself: run `multica issue flow plan <request id> --blocked --missing "<each missing input>" --reason "<why>"`. Create no sub-issues, set no status on the request, count no rounds, and skip steps 4 to 8. Step 9 (the summary) still applies once the request is at a stop or finished.
+- **`{"managed": false}` is printed:** no flow runs this request. Follow the steps below as written.
+
 ## Never
 
 - Never change the status or the assignee of the request, except as step 6 and the human stops below allow.

@@ -179,6 +179,24 @@
       "replace": "(nếu có quyền đọc tệp, "
     },
     {
+      "name": "plan-by-lead-instead-of-copy",
+      "pattern": "(?:[Gg]ọi|[Gg]iao)(?: agent)? `kv:lap-ke-hoach-dieu-phoi` lập kế hoạch thay vì tự viết",
+      "flags": "g",
+      "replace": "lead lập comment Kế hoạch của lead trên issue gốc"
+    },
+    {
+      "name": "plan-by-lead-with-tail",
+      "pattern": "(?:[Gg]ọi|[Gg]iao)(?: agent)? `kv:lap-ke-hoach-dieu-phoi`(?= lập)",
+      "flags": "g",
+      "replace": "lead tự"
+    },
+    {
+      "name": "plan-by-lead",
+      "pattern": "(?:[Gg]ọi|[Gg]iao)(?: agent)? `kv:lap-ke-hoach-dieu-phoi`",
+      "flags": "g",
+      "replace": "lead lập comment Kế hoạch của lead trên issue gốc"
+    },
+    {
       "name": "call-agent",
       "pattern": "(?:gọi|giao|Gọi|Giao) agent(?=[ :])",
       "flags": "g",

@@ -136,3 +136,6 @@ The API still reports commit `1e2ba5a19`: commit `1cae0e31e` changes only `packa
 4. Not verified: the content of the instructions and skill bodies; the squads' charters beyond their presence; the squads' behavior (agents were not run); the re-run path (a second quickstart run was not tried).
 5. The environment was destroyed on 2026-11-12, so no live squad exists. The pack moved to upstream v1.5.0 after this seed; the seed was not repeated. Seed again in a new environment before any run, and check the squads' instructions against the v1.5.0 pack (the update kept every role's text, so the instructions should not change).
 
+## Flow (workflow bắt buộc)
+
+Bộ mẫu được dựng trước khi có workflow flow, nên 21 squad ở đây **chưa có** workflow đang dùng. Chạy nút cập nhật Kit Việt (`useUpgradeKitvietSquads`) trong workspace thử để cài workflow flow cho từng squad (cần quản trị workspace để tạo trạng thái dùng chung `Collect`, `Draft`, `Gate`, `Handover`). Cách dùng và hoàn tác: `kitviet-runbook.md` mục 8f.

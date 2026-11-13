@@ -59,3 +59,63 @@ export interface CatalogWorkflow {
   description: string;
   steps: CatalogWorkflowStep[];
 }
+
+/** A condition on a flow transition or task, in the shape issueworkflow reads (field, op, value or all/any/not). */
+export interface CatalogFlowCondition {
+  all?: CatalogFlowCondition[];
+  any?: CatalogFlowCondition[];
+  not?: CatalogFlowCondition;
+  field?: string;
+  op?: string;
+  value?: unknown;
+}
+
+export interface CatalogFlowTask {
+  key: string;
+  title: string;
+  kind: "work" | "gate";
+  /** A role key of the squad; the quickstart swaps it for the agent that has the role. */
+  role: string;
+  instructions: string;
+  when?: CatalogFlowCondition;
+  requires?: Array<"outcome" | "attachment">;
+}
+
+export interface CatalogFlowTransition {
+  id: string;
+  label: string;
+  /** null is the default branch. */
+  when: CatalogFlowCondition | null;
+  /** The status key the request moves to. */
+  to: string;
+  rework?: boolean;
+}
+
+export interface CatalogFlowStep {
+  status: { key: string } | { name: string; category?: "started" | "done" };
+  statusKey: string;
+  humanOnly?: boolean;
+  tasks?: CatalogFlowTask[];
+  transitions?: CatalogFlowTransition[];
+}
+
+export interface CatalogFlowConfig {
+  version: number;
+  task_timeout_minutes?: number;
+  task_hard_cap_minutes?: number;
+  task_max_attempts?: number;
+  switches?: Array<{ key: string; type: "bool" | "enum"; values?: string[]; default: boolean | string }>;
+  messages?: { stop1?: string; stop2?: string; stop3?: string; stalled?: string; human?: string };
+}
+
+/** An enforced flow (catalog/workflows/flow_<squad id>); `rev` names the version a workspace runs. */
+export interface CatalogFlow {
+  id: string;
+  version: string;
+  /** First 8 hex digits of the sha256 of the canonical flow block; the template_ref of its workflow row is `<id>@<rev>`. */
+  rev: string;
+  /** The id of the squad template the flow belongs to. */
+  squad: string;
+  config: CatalogFlowConfig;
+  steps: CatalogFlowStep[];
+}

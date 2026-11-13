@@ -1,0 +1,298 @@
+{
+  "schemaVersion": 1,
+  "kind": "workflow",
+  "id": "flow_kv_trade",
+  "version": "1.0.0",
+  "ui": false,
+  "requires": [
+    {
+      "kind": "squad",
+      "id": "kv_trade"
+    }
+  ],
+  "flow": {
+    "squad": "kv_trade",
+    "config": {
+      "version": 1,
+      "task_timeout_minutes": 120,
+      "task_hard_cap_minutes": 240,
+      "task_max_attempts": 2,
+      "switches": [
+        {
+          "key": "route",
+          "type": "enum",
+          "values": [
+            "shipment_dossier"
+          ],
+          "default": "shipment_dossier"
+        },
+        {
+          "key": "customs_lookup",
+          "type": "bool",
+          "default": false
+        },
+        {
+          "key": "export",
+          "type": "bool",
+          "default": false
+        }
+      ],
+      "messages": {
+        "stop1": "BLOCKED · stop 1 · thiếu căn cứ\nThiếu:\n{missing}\nLý do: {reason}\nCác task đã chạy:\n{tasks}\nCần từ bạn: gửi bổ sung đúng các mục trên (invoice, packing list, vận đơn hoặc loại hình tờ khai), rồi cho request chạy tiếp.\n{requester}",
+        "stop2": "IN REVIEW · stop 2 · trước khi ra khỏi workspace\nHai cổng soát và bàn giao đã QUA. Sản phẩm là bộ số liệu nháp: chưa có gì được khai báo hay gửi đi.\nCác task:\n{tasks}\nViệc bạn phải làm: kiểm mã HS, thuế suất và tỷ giá đề xuất, rồi tự khai báo hoặc gửi chứng từ. Xong thì chuyển request sang done.\n{requester}",
+        "stop3": "BLOCKED · stop 3 · hết 2 vòng sửa\nVòng sửa đã dùng: {rework}/2\nCác task của bước cuối:\n{tasks}\nCần từ bạn: quyết định làm đổi bản nháp (dữ kiện, nguồn hoặc phê duyệt), rồi cho request chạy tiếp.\n{requester}",
+        "stalled": "BLOCKED · stalled · request không tiến thêm được\n{request} dừng ở bước {step}.\n{reason}\nCác task:\n{tasks}\n{requester}"
+      }
+    },
+    "steps": [
+      {
+        "status": {
+          "key": "todo"
+        },
+        "statusKey": "todo",
+        "transitions": [
+          {
+            "id": "plan_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "outcome",
+              "op": "eq",
+              "value": "blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "plan_ok",
+            "label": "Đã lập kế hoạch",
+            "when": null,
+            "to": "collect"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Collect",
+          "category": "started"
+        },
+        "statusKey": "collect",
+        "tasks": [
+          {
+            "key": "docs",
+            "title": "Kiểm kê chứng từ của lô hàng",
+            "kind": "work",
+            "role": "trade_docs_reader",
+            "instructions": "Kiểm kê các chứng từ của lô hàng trong tệp đính kèm của request: danh mục chứng từ, từng trường dữ liệu kèm tệp và vị trí trong tệp, và chứng từ còn thiếu. Chỉ đọc, không tính toán, không kết luận đúng sai. Đính kèm kết quả thành tệp `01-thu-thap.md`.\n\nThiếu invoice, packing list, vận đơn (B/L hoặc AWB) hoặc không xác định được loại hình tờ khai thì đây là điểm dừng 1: nêu từng mục thiếu trong comment rồi báo task bị chặn."
+          },
+          {
+            "key": "customs",
+            "title": "Tra mã HS và chính sách mặt hàng",
+            "kind": "work",
+            "role": "trade_customs_research",
+            "when": {
+              "field": "switch.customs_lookup",
+              "op": "eq",
+              "value": true
+            },
+            "instructions": "Tra mã HS khả dĩ, thuế suất, giấy phép, kiểm tra chuyên ngành và quy tắc xuất xứ FTA cho các dòng hàng chưa có mã HS trong kho mã nội bộ. Chỉ dùng nguồn chính thống; mỗi kết quả ghi bậc nguồn và ngày mở nguồn. Đính kèm kết quả thành tệp `01b-tra-cuu-hai-quan.md`. Không ghi đè dữ liệu của task kiểm kê."
+          }
+        ],
+        "transitions": [
+          {
+            "id": "collect_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "collect_done",
+            "label": "Đã thu thập",
+            "when": null,
+            "to": "draft"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Draft",
+          "category": "started"
+        },
+        "statusKey": "draft",
+        "tasks": [
+          {
+            "key": "crosscheck",
+            "title": "Lập bảng đối chiếu và số liệu tờ khai",
+            "kind": "work",
+            "role": "trade_crosscheck_drafter",
+            "requires": [
+              "attachment"
+            ],
+            "instructions": "Lập bảng đối chiếu chéo giữa các chứng từ, thông tin chung và các dòng hàng của tờ khai (trị giá tính thuế, mã HS đề xuất, thuế dự tính nếu đã có thuế suất), chỉ từ dữ kiện đã thu thập ở bước Collect. Đính kèm `02-ban-nhap.md` và `02-dong-hang.csv`. Mọi mã HS và thuế suất ghi là đề xuất; dữ kiện chưa có thì ghi [cần bổ sung]. Không tự kết luận là đã soát."
+          }
+        ],
+        "transitions": [
+          {
+            "id": "draft_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "draft_done",
+            "label": "Đã soạn",
+            "when": null,
+            "to": "gate"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Gate",
+          "category": "started"
+        },
+        "statusKey": "gate",
+        "tasks": [
+          {
+            "key": "docs_gate",
+            "title": "Soát chứng từ với bản nháp",
+            "kind": "gate",
+            "role": "trade_docs_gate",
+            "requires": [
+              "outcome"
+            ],
+            "instructions": "Soát bản nháp với chứng từ gốc đính kèm, từng trường một: tính lại tổng trị giá, số kiện và trọng lượng, rồi kiểm C/O và điều khoản L/C. Chỉ đọc, không sửa gì.\n\nDòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected)."
+          },
+          {
+            "key": "customs_gate",
+            "title": "Soát khai báo hải quan",
+            "kind": "gate",
+            "role": "trade_customs_gate",
+            "requires": [
+              "outcome"
+            ],
+            "instructions": "Soát bản khai nháp: mã HS không có căn cứ, công thức trị giá và thuế, thuế suất chưa xác nhận, hàng có thể cần giấy phép và khẳng định quá mức. Chỉ đọc, không sửa gì.\n\nDòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected)."
+          }
+        ],
+        "transitions": [
+          {
+            "id": "gate_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "gate_approved",
+            "label": "Hai cổng QUA",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "all_approved"
+            },
+            "to": "handover"
+          },
+          {
+            "id": "gate_rework",
+            "label": "Sửa lại (tối đa 2 vòng)",
+            "when": {
+              "all": [
+                {
+                  "field": "tasks_outcome",
+                  "op": "eq",
+                  "value": "any_rejected"
+                },
+                {
+                  "field": "rework_count",
+                  "op": "lt",
+                  "value": 2
+                }
+              ]
+            },
+            "to": "draft",
+            "rework": true
+          },
+          {
+            "id": "gate_exhausted",
+            "label": "Hết 2 vòng sửa (dừng 3)",
+            "when": null,
+            "to": "blocked"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Handover",
+          "category": "started"
+        },
+        "statusKey": "handover",
+        "tasks": [
+          {
+            "key": "handover",
+            "title": "Kiểm định bàn giao",
+            "kind": "gate",
+            "role": "trade_handover",
+            "requires": [
+              "outcome"
+            ],
+            "instructions": "Đối chiếu sản phẩm cuối với kế hoạch của lead trên request và với kết luận của cả hai cổng. Ghi comment bàn giao liệt kê việc người khai hải quan phải tự quyết trước khi khai báo hoặc gửi bất cứ thứ gì: mã HS tin cậy thấp, tỷ giá, chứng từ còn thiếu, cảnh báo.\n\nDòng đầu của comment là `VERDICT: QUA` hoặc `VERDICT: CHẶN`. QUA chỉ khi cả hai cổng QUA trên bản cuối và sản phẩm khớp kế hoạch. Sau đó đóng task với outcome tương ứng (approved hoặc rejected)."
+          }
+        ],
+        "transitions": [
+          {
+            "id": "handover_approved",
+            "label": "Bàn giao QUA (dừng 2)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "all_approved"
+            },
+            "to": "in_review"
+          },
+          {
+            "id": "handover_stop",
+            "label": "Bàn giao không QUA (dừng 3)",
+            "when": null,
+            "to": "blocked"
+          }
+        ]
+      },
+      {
+        "status": {
+          "key": "in_review"
+        },
+        "statusKey": "in_review",
+        "humanOnly": true,
+        "tasks": [
+          {
+            "key": "export",
+            "title": "Xuất tệp Excel",
+            "kind": "work",
+            "role": "trade_crosscheck_drafter",
+            "when": {
+              "field": "switch.export",
+              "op": "eq",
+              "value": true
+            },
+            "instructions": "Chỉ chạy sau khi comment dừng 2 đã đăng. Xuất bảng đối chiếu và bảng dòng hàng ra Excel bằng kỹ năng `kv--xuat-excel`: mỗi bảng một sheet, giữ công thức trị giá và thuế. Đặt tên `ho-so-<ma-lo>-<yyyy-mm-dd>.xlsx` và đính kèm tệp vào comment cuối.\n\nThiếu thư viện xuất thì báo task bị chặn và nêu tên thư viện; request vẫn ở in_review với bản Markdown và CSV."
+          }
+        ]
+      },
+      {
+        "status": {
+          "key": "blocked"
+        },
+        "statusKey": "blocked"
+      }
+    ]
+  }
+}

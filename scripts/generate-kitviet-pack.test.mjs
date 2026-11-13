@@ -136,6 +136,32 @@ describe("verdict template and classes", () => {
   });
 });
 
+describe("the lead plans itself (D20)", () => {
+  const outputs = generateOutputs();
+
+  // The upstream says "call the planner agent" for a big request. In Multica the lead plans, so no
+  // generated text may send the lead to a sub-issue for its own role.
+  it("leaves no text that has the lead hand a sub-issue to its own role", () => {
+    for (const [file, content] of outputs) {
+      assert.doesNotMatch(content, /giao sub-issue cho vai `[a-z0-9]+_lead`/, `${file} still hands the plan to the lead`);
+    }
+  });
+
+  it("rewrites the planner call into a plan the lead writes, in the squads that had it", () => {
+    const changed = [...outputs].filter(([, content]) => /lead (?:tự lập|lập comment Kế hoạch)/.test(content)).map(([file]) => file.replace(/\.ts$/, ""));
+    assert.deepEqual(changed.sort(), [
+      "accounting", "b2b", "banking", "construction", "ecom", "edu", "factory", "health", "hospitality", "insurance", "legal", "marketing", "realestate", "talent", "trade",
+    ]);
+  });
+
+  it("puts the planner rules before call-agent, which would otherwise rewrite them first", () => {
+    const names = rewrites.rules.map((rule) => rule.name);
+    for (const name of ["plan-by-lead-instead-of-copy", "plan-by-lead-with-tail", "plan-by-lead"]) {
+      assert.ok(names.indexOf(name) >= 0 && names.indexOf(name) < names.indexOf("call-agent"), `${name} must come before call-agent`);
+    }
+  });
+});
+
 describe("reference resolution (F17)", () => {
   // A squad whose core has viet-email and whose role skills add soan-don-tu, with one mapped agent and
   // one agent outside the squad. Skills outside the set are known, so they read as out of squad.

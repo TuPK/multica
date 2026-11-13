@@ -164,7 +164,7 @@ Một request là một issue giao cho squad. Hồ sơ lần chạy là chuỗi 
 | `01-thu-thap.md` | Sub-issue `stage 1` cho từng collector. Kết quả là comment cuối của sub-issue (bảng dữ kiện + vị trí nguồn); dài thì đính kèm `.md` |
 | `02-ban-nhap.*` | Sub-issue `stage 2` cho drafter, đầu vào là link tới comment của khâu 1. Bản nháp là tệp đính kèm hoặc comment; phần "NỘI BỘ - KHÔNG GỬI" luôn tách riêng |
 | `03-soat-*.md` | Mỗi gác cổng là một sub-issue `stage 3`, tạo cùng lúc. Kết luận là comment có dòng đầu `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí |
-| Vòng sửa | CHẶN → lead tạo sub-issue sửa cho đúng drafter kèm danh sách lỗi, rồi tạo lại **chỉ** gác cổng đã CHẶN. Mỗi request đếm vòng ở comment `Round n/2`. Hết vòng 2 vẫn CHẶN → cổng người loại 3 (mục 5.3) |
+| Vòng sửa | CHẶN → lead tạo sub-issue sửa cho đúng drafter kèm danh sách lỗi, rồi tạo lại **mọi** gác cổng của kế hoạch, kể cả cổng đã QUA, vì bản sửa có thể làm hỏng điều cổng đó đã kiểm. Với request chạy trên flow của workflow (`multica issue flow show` in ra trạng thái), máy chủ làm các việc này: mở sub-issue, mở lại mọi gate sau mỗi bản sửa, đếm vòng và đăng comment dừng. Mỗi request đếm vòng ở comment `Round n/2`. Hết vòng 2 vẫn CHẶN → cổng người loại 3 (mục 5.3) |
 | `04-ban-giao.md` | Sub-issue `stage 4` cho handover; comment `VERDICT:` cùng danh sách việc người dùng phải tự quyết |
 | Xuất file | Chỉ sau khi handover QUA và cổng người loại 2 mở. Một sub-issue xuất file chạy `kv:xuat-*` và đính kèm kết quả |
 
@@ -648,3 +648,7 @@ Theo `SquadCharterTemplate` (mission, responsibilities, outputs, boundaries, esc
 | `kv_accounting` | `Lịch hạn nộp thuế` / `Lịch hạn nộp thuế, tuần {{date}}` / `0 8 * * 1` / `true` | "Đọc Hồ sơ đơn vị và Sổ quy định - Accounting. Liệt kê hạn trong 14 ngày tới theo từng đơn vị, đầu vào còn thiếu, và dòng sổ quy định có hiệu lực kết thúc trong 60 ngày (F20). Ghi ngày chạy ở dòng đầu. Thiếu lịch nghỉ thì ghi `[chưa có lịch nghỉ]`, không tự lùi hạn." |
 
 `kv_b2b`, `kv_marketing`, `kv_admin`: `routine: null`.
+
+## Workflow flow của squad
+
+Squad Kit Việt chạy trên workflow flow: máy chủ mở task, đếm vòng sửa và đăng comment dừng. Đặc tả: [`kitviet-workflow-spec.md`](kitviet-workflow-spec.md); kế hoạch: [`kitviet-workflow-plan.md`](kitviet-workflow-plan.md); vận hành: [`kitviet-runbook.md`](kitviet-runbook.md) mục 8f.

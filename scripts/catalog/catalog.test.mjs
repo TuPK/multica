@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { after, describe, it } from "node:test";
 import { discover, readRegistryConfig } from "./lib/discover.mjs";
 import { renderSkillsBuiltin, skillsetMembers } from "./lib/build-skills.mjs";
+import { flowRev, flowsById, renderFlows } from "./lib/build-workflows.mjs";
 import { supportedLocales, validateCatalog } from "./lib/validate.mjs";
 
 const roots = [];
@@ -244,6 +245,158 @@ describe("designer workflow validation", () => {
     const root = squadFixture(squadManifest({ workflow: "designer_demo" }));
     write(root, "workflows/designer_demo/template.json", designer([{ statusKey: "todo" }])["workflows/designer_demo/template.json"]);
     assert.match(check(root).errors.join("\n"), /is not an executable workflow/);
+  });
+});
+
+describe("flow workflow validation", () => {
+  const roles = [
+    { key: "demo_lead", agentTemplate: "tech_lead", name: "Demo Lead", description: "Leads.", role: "Squad leader" },
+    { key: "demo_reader", agentTemplate: "tech_lead", name: "Demo Reader", description: "Reads.", role: "Reads the input" },
+    { key: "demo_gate", agentTemplate: "tech_lead", name: "Demo Gate", description: "Checks.", role: "Checks the draft" },
+  ];
+  const t = (id, label, when, to, extra = {}) => ({ id, label, when, to, ...extra });
+  const tasksOutcome = (value) => ({ field: "tasks_outcome", op: "eq", value });
+  const validFlow = () => ({
+    squad: "demo_squad",
+    config: {
+      version: 1,
+      switches: [{ key: "lookup", type: "bool", default: false }],
+      messages: { stop1: "BLOCKED · stop 1\nMissing input.", stop3: "BLOCKED · stop 3\nNo more rounds." },
+    },
+    steps: [
+      { status: { key: "todo" }, statusKey: "todo", transitions: [t("plan_blocked", "Blocked", { field: "outcome", op: "eq", value: "blocked" }, "blocked"), t("plan_ok", "Plan done", null, "collect")] },
+      {
+        status: { name: "Collect", category: "started" }, statusKey: "collect",
+        tasks: [
+          { key: "read", title: "Read the input", kind: "work", role: "demo_reader", instructions: "Read it." },
+          { key: "extra", title: "Look it up", kind: "work", role: "demo_reader", instructions: "Look.", when: { field: "switch.lookup", op: "eq", value: true } },
+        ],
+        transitions: [t("collect_blocked", "Blocked", tasksOutcome("any_blocked"), "blocked"), t("collect_next", "Collected", null, "gate")],
+      },
+      {
+        status: { name: "Gate", category: "started" }, statusKey: "gate",
+        tasks: [{ key: "check", title: "Check the draft", kind: "gate", role: "demo_gate", instructions: "Check it.", requires: ["outcome"] }],
+        transitions: [
+          t("gate_blocked", "Blocked", tasksOutcome("any_blocked"), "blocked"),
+          t("gate_ok", "Approved", tasksOutcome("all_approved"), "in_review"),
+          t("gate_rework", "Back for a fix", { all: [tasksOutcome("any_rejected"), { field: "rework_count", op: "lt", value: 2 }] }, "collect", { rework: true }),
+          t("gate_stop", "Out of rounds", null, "blocked"),
+        ],
+      },
+      { status: { key: "in_review" }, statusKey: "in_review", humanOnly: true },
+      { status: { key: "blocked" }, statusKey: "blocked" },
+    ],
+  });
+  const manifest = (flow, overrides = {}) => ({ schemaVersion: 1, kind: "workflow", id: "flow_demo_squad", version: "1.0.0", ui: false, flow, ...overrides });
+  const withFlow = (flow, overrides) => {
+    const root = squadFixture(squadManifest({ roles }));
+    write(root, "workflows/flow_demo_squad/template.json", manifest(flow, overrides));
+    return root;
+  };
+  const errorsOf = (flow, overrides) => check(withFlow(flow, overrides)).errors.join("\n");
+
+  it("accepts a complete flow", () => {
+    assert.deepEqual(check(withFlow(validFlow())).errors, []);
+  });
+
+  it("names the squad it belongs to, and the id says so", () => {
+    assert.match(errorsOf({ ...validFlow(), squad: "nowhere" }), /flow\.squad "nowhere" is not a squad/);
+    assert.match(errorsOf(validFlow(), { id: "flow_other" }), /id must be "flow_demo_squad"/);
+    assert.match(errorsOf(validFlow(), { ui: undefined }), /flow workflows set ui to false/);
+  });
+
+  it("takes task roles from the squad, never the leader, and uses every other role", () => {
+    const stranger = validFlow();
+    stranger.steps[1].tasks[0].role = "ghost";
+    assert.match(errorsOf(stranger), /task read: role "ghost" is not a role of squad demo_squad/);
+    const lead = validFlow();
+    lead.steps[1].tasks.forEach((task) => { task.role = "demo_lead"; });
+    const leadErrors = errorsOf(lead);
+    assert.match(leadErrors, /task read: role "demo_lead" is the squad leader/);
+    assert.match(leadErrors, /role demo_reader is never used by a task/);
+  });
+
+  it("allows one flow per squad", () => {
+    const root = withFlow(validFlow());
+    write(root, "workflows/flow_other/template.json", manifest(validFlow(), { id: "flow_other" }));
+    assert.match(check(root).errors.join("\n"), /squad demo_squad already has a flow/);
+  });
+
+  it("is a flow, a workflow or a designer template, not two of them", () => {
+    const both = errorsOf(validFlow(), { workflow: { name: "x", description: "y", steps: [{ status: { key: "todo" }, statusKey: "todo", role: null, instructions: "" }] } });
+    assert.match(both, /either a workflow, a designer or a flow block/);
+    const designer = errorsOf(validFlow(), { designer: { templateId: "demo", steps: [{ statusKey: "todo" }] } });
+    assert.match(designer, /either a workflow, a designer or a flow block/);
+  });
+
+  it("rejects a cycle that has no limited rework transition", () => {
+    const loop = validFlow();
+    loop.steps[2].transitions[2] = t("gate_rework", "Back for a fix", tasksOutcome("any_rejected"), "collect");
+    assert.match(errorsOf(loop), /form a cycle without a rework transition/);
+    const unlimited = validFlow();
+    unlimited.steps[2].transitions[2] = t("gate_rework", "Back for a fix", tasksOutcome("any_rejected"), "collect", { rework: true });
+    assert.match(errorsOf(unlimited), /rework transition gate_rework needs a condition rework_count lt N/);
+    const forward = validFlow();
+    forward.steps[1].transitions[0] = t("collect_blocked", "Blocked", { field: "rework_count", op: "lt", value: 2 }, "gate", { rework: true });
+    assert.match(errorsOf(forward), /rework transition collect_blocked must go back to an earlier step/);
+  });
+
+  it("requires a gate to ask for an outcome and to be routed", () => {
+    const noOutcome = validFlow();
+    noOutcome.steps[2].tasks[0].requires = [];
+    assert.match(errorsOf(noOutcome), /gate task check must require an outcome/);
+    const unrouted = validFlow();
+    unrouted.steps[2].transitions = [t("gate_stop", "Out", null, "blocked")];
+    assert.match(errorsOf(unrouted), /step gate has gates and needs a transition for tasks_outcome all_approved/);
+  });
+
+  it("requires every switch a condition reads to be declared", () => {
+    const flow = validFlow();
+    flow.steps[1].tasks[1].when = { field: "switch.unknown", op: "eq", value: true };
+    assert.match(errorsOf(flow), /switch "unknown" is not declared in flow\.config/);
+    const wrongType = validFlow();
+    wrongType.steps[1].tasks[1].when = { field: "switch.lookup", op: "eq", value: "yes" };
+    assert.match(errorsOf(wrongType), /switch "lookup" is a bool/);
+  });
+
+  it("checks steps, tasks and transitions the way the server does", () => {
+    const flow = validFlow();
+    flow.steps[0].tasks = [{ key: "x", title: "x", kind: "work", role: "demo_reader", instructions: "" }];
+    flow.steps[1].transitions[1].to = "nowhere";
+    flow.steps[1].tasks[1].key = "read";
+    flow.steps[4].statusKey = "stuck";
+    const text = errorsOf(flow);
+    assert.match(text, /the plan step todo cannot have tasks/);
+    assert.match(text, /to "nowhere" is not a status of the flow/);
+    assert.match(text, /task read is listed twice/);
+    assert.match(text, /statusKey "stuck" must be "blocked"/);
+  });
+
+  it("is not a workflow a squad can run", () => {
+    const root = squadFixture(squadManifest({ roles, workflow: "flow_demo_squad" }));
+    write(root, "workflows/flow_demo_squad/template.json", manifest(validFlow()));
+    assert.match(check(root).errors.join("\n"), /is not an executable workflow/);
+  });
+
+  it("gives a revision that ignores key order and follows the content (A18)", () => {
+    const flow = validFlow();
+    const reordered = JSON.parse(JSON.stringify(flow, (_, v) => (v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).reverse()) : v)));
+    const changed = validFlow();
+    changed.steps[1].tasks[0].instructions = "Read it twice.";
+    assert.match(flowRev(flow), /^[0-9a-f]{8}$/);
+    assert.equal(flowRev(reordered), flowRev(flow));
+    assert.notEqual(flowRev(changed), flowRev(flow));
+  });
+
+  it("builds the flow keyed by its manifest id, with its revision", () => {
+    const { entries } = check(withFlow(validFlow()));
+    const flows = flowsById(entries);
+    assert.deepEqual(Object.keys(flows), ["flow_demo_squad"]);
+    assert.equal(flows.flow_demo_squad.squad, "demo_squad");
+    assert.equal(flows.flow_demo_squad.rev, flowRev(validFlow()));
+    assert.equal(flows.flow_demo_squad.steps.length, 5);
+    assert.match(renderFlows(entries), /export const CATALOG_FLOWS: Readonly<Record<string, CatalogFlow>> = /);
+    assert.deepEqual(flowsById(check(fixture()).entries), {});
   });
 });
 

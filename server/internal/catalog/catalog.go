@@ -38,3 +38,7 @@ func WorkflowsJSON() []byte { return read("workflows.json") }
 // DesignerWorkflowsJSON holds the system templates of the workflow designer (catalog/workflows/designer_*),
 // in picker order. Empty when the catalog has not been built.
 func DesignerWorkflowsJSON() []byte { return read("designer-workflows.json") }
+
+// FlowsJSON holds the enforced flows (catalog/workflows/flow_*) by manifest id, each with its revision.
+// Empty when the catalog has not been built.
+func FlowsJSON() []byte { return read("flows.json") }
