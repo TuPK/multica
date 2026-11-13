@@ -1,27 +1,24 @@
 ---
-const columns = [
-  { name: "Đang viết", cards: [{ t: "API đặt bàn", hot: false }, { t: "Bảng doanh thu theo ngày", hot: false }] },
-  { name: "Review", cards: [{ t: "Trang thanh toán", hot: true }] },
-  { name: "QA", cards: [{ t: "Email xác nhận đơn", hot: false }, { t: "Đồng bộ tồn kho", hot: false }] },
-];
+import { getDict, type Lang } from "../i18n";
 
-const uses = [
-  { title: "Sản phẩm mới", text: "Bạn mô tả ý tưởng. Đội lập kế hoạch và build đến khi sản phẩm chạy, từ web app đến ứng dụng đặt món." },
-  { title: "Nâng cấp thứ đang chạy", text: "Một lỗi, một tính năng hay một lần tối ưu. Đội phân loại, chia đúng người và kiểm lại trước khi báo cáo." },
-  { title: "Công cụ cho từng phòng", text: "Kế toán cần bảng đối chiếu, bán hàng cần trang đặt hàng, tuyển dụng cần form ứng viên. Đội phần mềm làm để các phòng dùng ngay." },
-];
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = getDict(lang).software;
 ---
 
 <section id="phan-mem">
   <div class="wrap">
     <div class="sec-head rv">
-      <div class="tag">Phát triển phần mềm</div>
-      <h2 style="margin-top:18px">Đội phần mềm làm ra sản phẩm, và làm ra công cụ cho cả công ty.</h2>
-      <p>Phòng nào cũng có lúc cần một công cụ mà thị trường không bán sẵn. Đội phần mềm nhận yêu cầu, lập bản mô tả, tách thành các epic rồi build từng epic qua lập trình, review và QA. Mỗi việc có kế hoạch, kiểm thử và báo cáo, không phải đoạn code rời để bạn tự ghép.</p>
+      <div class="tag">{t.tag}</div>
+      <h2 style="margin-top:18px">{t.h2}</h2>
+      <p>{t.p}</p>
     </div>
 
-    <div class="board rv" role="img" aria-label="Bảng việc của đội phần mềm. Các thẻ là epic đã tách, đi qua ba cột từ trái sang phải: đang viết, review, QA.">
-      {columns.map((c) => (
+    <div class="board rv" role="img" aria-label={t.boardAria}>
+      {t.columns.map((c) => (
         <div class="col">
           <h4>{c.name}</h4>
           {c.cards.map((card) => (
@@ -30,10 +27,10 @@ const uses = [
         </div>
       ))}
     </div>
-    <p class="board-cap rv">Sơ đồ minh hoạ. Mỗi thẻ là một epic, đi qua lập trình, review và QA trước khi đội báo cáo.</p>
+    <p class="board-cap rv">{t.caption}</p>
 
     <div class="mech3">
-      {uses.map((u) => (
+      {t.uses.map((u) => (
         <div class="card rv">
           <h3>{u.title}</h3>
           <p>{u.text}</p>

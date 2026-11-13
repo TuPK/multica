@@ -1,35 +1,20 @@
 ---
-const tiles = [
-  { icon: "i-fnb", name: "Nhà hàng &amp; quán ăn", text: "Tính giá vốn món ăn, kiểm tra dị ứng, soạn thực đơn." },
-  { icon: "i-ecom", name: "Bán hàng online", text: "Soạn mô tả sản phẩm, tính lợi nhuận, kiểm tra từ ngữ quảng cáo." },
-  { icon: "i-acc", name: "Kế toán &amp; thuế", text: "Đối chiếu chứng từ, soạn số liệu và tờ trình thuế." },
-  { icon: "i-bank", name: "Tín dụng ngân hàng", text: "Soạn tờ trình tín dụng, ghi nguồn cho từng con số." },
-  { icon: "i-home", name: "Bất động sản", text: "Soạn tin rao và kế hoạch vay, kiểm tra thông tin quy hoạch." },
-  { icon: "i-build", name: "Xây dựng", text: "Nhật ký công trường, biên bản và bảng khối lượng." },
-  { icon: "i-factory", name: "Sản xuất nhà máy", text: "Báo cáo KPI, báo cáo ca và hồ sơ xử lý sự cố chất lượng." },
-  { icon: "i-health", name: "Y tế", text: "Quy trình, tờ hướng dẫn cho bệnh nhân và lịch trực. Không chẩn đoán, không kê đơn." },
-  { icon: "i-edu", name: "Giáo dục", text: "Đề kiểm tra định kỳ kèm ma trận và đáp án." },
-  { icon: "i-teach", name: "Giảng dạy", text: "Tìm tư liệu theo trình độ, tóm tắt lớp học, soạn giáo án." },
-  { icon: "i-hotel", name: "Du lịch &amp; khách sạn", text: "Lịch trình tour, báo giá và tin nhắn cho khách." },
-  { icon: "i-ins", name: "Bảo hiểm", text: "Tài liệu tư vấn, so sánh quyền lợi, danh mục hồ sơ bồi thường." },
-  { icon: "i-law", name: "Pháp lý &amp; hợp đồng", text: "Báo cáo rà soát hợp đồng, biên bản ghi nhớ và thư từ." },
-  { icon: "i-mkt", name: "Marketing", text: "Nội dung chiến dịch và quảng cáo, kiểm tra từng khẳng định." },
-  { icon: "i-pr", name: "Truyền thông báo chí", text: "Thông cáo báo chí, hỏi đáp và thông điệp khi có sự cố." },
-  { icon: "i-hire", name: "Tuyển dụng", text: "Sàng lọc hồ sơ theo tiêu chí, soạn tin tuyển, kiểm tra thiên kiến." },
-  { icon: "i-trade", name: "Xuất nhập khẩu", text: "Hồ sơ lô hàng, đối chiếu chứng từ, tra mã HS." },
-  { icon: "i-office", name: "Hành chính văn phòng", text: "Công văn, sổ đăng ký, tài sản và báo cáo tháng." },
-  { icon: "i-quote", name: "Chào giá B2B", text: "Báo giá và đề xuất theo bảng giá đã duyệt." },
-  { icon: "i-acad", name: "Nghiên cứu học thuật", text: "Bảng nguồn, bản nháp nghiên cứu, kiểm tra trích dẫn." },
-];
-const core = ["Sản phẩm", "Nghiên cứu", "Nội dung", "Bán hàng", "Hỗ trợ", "Tài chính"];
+import { getDict, type Lang } from "../i18n";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = getDict(lang).industries;
 ---
 
 <section id="nganh">
   <div class="wrap">
     <div class="sec-head rv">
-      <div class="tag">Phòng ban</div>
-      <h2 style="margin-top:18px">Mỗi nghề có một đội biết nghề.</h2>
-      <p>Đội kế toán biết đối chiếu chứng từ. Đội bất động sản biết kiểm tra quy hoạch. Bạn không phải dạy AI từ đầu cho từng ngành. Chọn đội, giao việc.</p>
+      <div class="tag">{t.tag}</div>
+      <h2 style="margin-top:18px">{t.h2}</h2>
+      <p>{t.p}</p>
     </div>
 
     <div class="ind">
@@ -37,26 +22,26 @@ const core = ["Sản phẩm", "Nghiên cứu", "Nội dung", "Bán hàng", "Hỗ
         <div class="tf-main">
           <svg class="ic"><use href="#i-code"></use></svg>
           <div>
-            <h3>Phát triển phần mềm</h3>
-            <p>Đội mạnh nhất của công ty. Làm ra sản phẩm, và làm ra công cụ cho mọi phòng ban còn lại.</p>
+            <h3>{t.feature.title}</h3>
+            <p>{t.feature.text}</p>
           </div>
         </div>
-        <span class="go">Xem đội phần mềm →</span>
+        <span class="go">{t.feature.go}</span>
       </a>
-      {tiles.map((t) => (
+      {t.tiles.map((tile) => (
         <div class="tile rv">
-          <svg class="ic"><use href={`#${t.icon}`}></use></svg>
-          <h3 set:html={t.name} />
-          <p>{t.text}</p>
+          <svg class="ic"><use href={`#${tile.icon}`}></use></svg>
+          <h3>{tile.name}</h3>
+          <p>{tile.text}</p>
         </div>
       ))}
       <div class="tile tile-wide rv">
         <div>
-          <h3>Đội lõi của công ty</h3>
-          <p>Phần mềm, nghiên cứu thị trường, nội dung, bán hàng, hỗ trợ khách hàng, tài chính và rủi ro. Đội lõi thường nhận việc từ các phòng khác và chuyển kết quả đi tiếp.</p>
+          <h3>{t.core.title}</h3>
+          <p>{t.core.text}</p>
         </div>
         <div class="chips">
-          {core.map((c) => <span>{c}</span>)}
+          {t.core.chips.map((c) => <span>{c}</span>)}
         </div>
       </div>
     </div>

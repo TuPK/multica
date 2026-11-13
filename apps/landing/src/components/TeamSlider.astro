@@ -1,135 +1,57 @@
 ---
-interface Team {
-  name: string;
-  caption: string;
-  icon: string;
-  lead: string;
-  steps: string[];
-  gates: string[];
-  done: string;
-  guard: string;
-  headline: string;
-  body: string;
+import { getDict, type Lang } from "../i18n";
+
+interface Props {
+  lang: Lang;
 }
 
-const teams: Team[] = [
-  {
-    name: "Nhà hàng &amp; quán ăn",
-    caption: "Tính giá món, kiểm tra dị ứng, soạn thực đơn",
-    icon: "i-fnb",
-    lead: "Trưởng đội F&amp;B",
-    steps: ["Đọc công thức và hoá đơn mua hàng", "Tính giá vốn, đưa 2–3 phương án giá", "Soạn mô tả món và thực đơn"],
-    gates: ["Cổng kiểm tra dị ứng", "Cổng kiểm tra biên lợi nhuận"],
-    done: "Bàn giao cho chủ quán",
-    guard: "Không in, không đăng, không đặt hàng",
-    headline: "Từ công thức đến thực đơn có giá",
-    body: "Chi phí được tính từ công thức và hoá đơn gốc. Mỗi con số đều dẫn về chứng từ.",
-  },
-  {
-    name: "Kế toán &amp; thuế",
-    caption: "Đối chiếu chứng từ, soạn số liệu và tờ trình",
-    icon: "i-acc",
-    lead: "Trưởng đội kế toán",
-    steps: ["Thu chứng từ và hoá đơn", "Đối chiếu công nợ và VAT", "Tra quy định thuế trên nguồn chính thức"],
-    gates: ["Cổng chứng từ", "Cổng số liệu", "Cổng tuân thủ thuế"],
-    done: "Bàn giao cho kế toán trưởng",
-    guard: "Không tự nộp tờ khai, không ký",
-    headline: "Số liệu khớp với chứng từ",
-    body: "Ba cổng kiểm tra độc lập đối chiếu từng dòng. Nếu lệch, bản nháp bị chặn lại.",
-  },
-  {
-    name: "Bất động sản",
-    caption: "Tin rao, kế hoạch vay, ghi chú khu vực",
-    icon: "i-home",
-    lead: "Trưởng đội bất động sản",
-    steps: ["Đọc hồ sơ tài sản", "Tìm hiểu tiện ích và quy hoạch", "Soạn tin rao và kế hoạch vay"],
-    gates: ["Cổng kiểm tra quy hoạch", "Cổng kiểm tra công thức vay", "Cổng kiểm tra nội dung tin rao"],
-    done: "Môi giới đọc và quyết định đăng",
-    guard: "Không hứa giá, không duyệt vay, không tự đăng tin",
-    headline: "Tin rao không có lời hứa thừa",
-    body: "Mọi khẳng định về giá, quy hoạch và tiện ích đều phải qua cổng kiểm tra.",
-  },
-  {
-    name: "Xây dựng",
-    caption: "Nhật ký công trường, biên bản, bảng khối lượng",
-    icon: "i-build",
-    lead: "Trưởng đội xây dựng",
-    steps: ["Đọc hồ sơ và nhật ký công trường", "Tra tiêu chuẩn và quy chuẩn", "Lập bảng khối lượng và dự toán sơ bộ"],
-    gates: ["Cổng kiểm tra khối lượng", "Cổng kiểm tra an toàn lao động"],
-    done: "Kỹ sư phụ trách xem và duyệt",
-    guard: "Không ký, không nghiệm thu, không phát hành",
-    headline: "Biên bản khớp số liệu công trường",
-    body: "Mỗi dòng khối lượng được đối chiếu lại với hồ sơ gốc trước khi kỹ sư xem.",
-  },
-  {
-    name: "Y tế",
-    caption: "Quy trình, tờ hướng dẫn, đào tạo nhân viên",
-    icon: "i-health",
-    lead: "Trưởng đội y tế",
-    steps: ["Đọc tài liệu của đơn vị", "Tra quy định và tài liệu chuyên môn", "Soạn quy trình và tờ hướng dẫn"],
-    gates: ["Cổng kiểm tra phạm vi chuyên môn", "Cổng kiểm tra dữ liệu bệnh nhân"],
-    done: "Nhân viên có chuyên môn duyệt",
-    guard: "Không chẩn đoán, không kê đơn, không tư vấn điều trị",
-    headline: "Tài liệu cho nhân viên, không thay bác sĩ",
-    body: "Đội chỉ soạn tài liệu hành chính và đào tạo, dựa trên tài liệu của chính đơn vị.",
-  },
-  {
-    name: "Xuất nhập khẩu",
-    caption: "Hồ sơ lô hàng, đối chiếu chứng từ, mã HS",
-    icon: "i-trade",
-    lead: "Trưởng đội xuất nhập khẩu",
-    steps: ["Đọc bộ chứng từ của lô hàng", "Tra mã HS và chính sách hải quan", "Lập bảng đối chiếu và giá nhập"],
-    gates: ["Cổng đối chiếu chứng từ", "Cổng kiểm tra khai báo hải quan"],
-    done: "Người khai báo xem và duyệt",
-    guard: "Không khai báo, không nộp, không gửi đi",
-    headline: "Bộ hồ sơ khớp nhau trước khi khai báo",
-    body: "Số liệu giữa các chứng từ được đối chiếu chéo trước khi có bản nháp tờ khai.",
-  },
-];
+const { lang } = Astro.props;
+const t = getDict(lang).slider;
+const teams = t.teams;
 ---
 
 <section id="xem-ben-trong">
   <div class="wrap">
     <div class="sec-head rv">
-      <div class="tag">Bên trong một đội</div>
-      <h2 style="margin-top:18px">Nhìn kỹ vào một đội.</h2>
-      <p>Trưởng nhóm chia việc, người soạn làm bản nháp, các cổng kiểm tra soát lại. Chỉ khi qua hết, việc mới đến tay bạn. Đây là sáu đội mẫu.</p>
+      <div class="tag">{t.tag}</div>
+      <h2 style="margin-top:18px">{t.h2}</h2>
+      <p>{t.p}</p>
     </div>
 
     <div class="rv" data-slider>
       <div class="viewport">
         <div class="track" data-track>
-          {teams.map((t, idx) => (
-            <article class="slide" aria-label={`${idx + 1} / ${teams.length} · ${t.name}`}>
+          {teams.map((team, idx) => (
+            <article class="slide" aria-label={`${idx + 1} / ${teams.length} · ${team.name}`}>
               <div class="stage">
-                <div class="slide-head"><svg class="ic"><use href={`#${t.icon}`}></use></svg><div><h3 set:html={t.name} /><small>{t.caption}</small></div></div>
+                <div class="slide-head"><svg class="ic"><use href={`#${team.icon}`}></use></svg><div><h3>{team.name}</h3><small>{team.caption}</small></div></div>
                 <div class="org">
-                  <div class="node lead" set:html={t.lead} />
+                  <div class="node lead">{team.lead}</div>
                   <div class="link"></div>
                   <div class="row">
-                    {t.steps.map((s) => <div class="node">{s}</div>)}
+                    {team.steps.map((s) => <div class="node">{s}</div>)}
                   </div>
                   <div class="link"></div>
                   <div class="row">
-                    {t.gates.map((g) => <div class="node gate">{g}</div>)}
+                    {team.gates.map((g) => <div class="node gate">{g}</div>)}
                   </div>
                   <div class="link"></div>
-                  <div class="node done">{t.done}</div>
+                  <div class="node done">{team.done}</div>
                 </div>
-                <div class="guard">{t.guard}</div>
+                <div class="guard">{team.guard}</div>
               </div>
-              <div class="cap"><div><h3>{t.headline}</h3><p>{t.body}</p></div></div>
+              <div class="cap"><div><h3>{team.headline}</h3><p>{team.body}</p></div></div>
             </article>
           ))}
         </div>
       </div>
 
       <div class="controls">
-        <button class="arrow" type="button" data-prev aria-label="Đội trước"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg></button>
-        <button class="arrow" type="button" data-next aria-label="Đội sau"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg></button>
+        <button class="arrow" type="button" data-prev aria-label={t.prev}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <button class="arrow" type="button" data-next aria-label={t.next}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg></button>
         <div class="dots">
-          {teams.map((t, idx) => (
-            <button class="dot" type="button" data-dot aria-label={`Đội ${idx + 1}: ${t.name}`}></button>
+          {teams.map((team, idx) => (
+            <button class="dot" type="button" data-dot aria-label={`${t.dot} ${idx + 1}: ${team.name}`}></button>
           ))}
         </div>
         <span class="count" data-count>01 / 0{teams.length}</span>

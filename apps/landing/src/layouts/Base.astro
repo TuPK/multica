@@ -1,23 +1,28 @@
 ---
 import "../styles/landing.css";
+import { getDict, pathFor, type Lang } from "../i18n";
 
 interface Props {
-  title: string;
-  description: string;
+  lang: Lang;
 }
 
-const { title, description } = Astro.props;
+const { lang } = Astro.props;
+const { meta, htmlLang } = getDict(lang);
 ---
 
 <!doctype html>
-<html lang="vi">
+<html lang={htmlLang}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content={description} />
-    <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
+    <meta name="description" content={meta.description} />
+    <meta property="og:title" content={meta.title} />
+    <meta property="og:description" content={meta.description} />
     <meta property="og:type" content="website" />
+    <meta property="og:locale" content={lang === "vi" ? "vi_VN" : "en_US"} />
+    <link rel="alternate" hreflang="vi" href={pathFor("vi")} />
+    <link rel="alternate" hreflang="en" href={pathFor("en")} />
+    <link rel="alternate" hreflang="x-default" href={pathFor("vi")} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -25,7 +30,13 @@ const { title, description } = Astro.props;
       href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <title>{title}</title>
+    <script is:inline>
+      // Apply the saved theme before first paint to avoid a flash. Default is dark.
+      try {
+        if (localStorage.getItem("theme") === "light") document.documentElement.dataset.theme = "light";
+      } catch (e) {}
+    </script>
+    <title>{meta.title}</title>
   </head>
   <body class="mc">
     <slot />

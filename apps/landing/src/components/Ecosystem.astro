@@ -1,16 +1,38 @@
+---
+import { getDict, type Lang } from "../i18n";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = getDict(lang).ecosystem;
+// Label positions, in the same order as the nodes list in the dictionary.
+const labelPos = [
+  [150, 176],
+  [400, 126],
+  [650, 176],
+  [720, 306],
+  [650, 436],
+  [400, 486],
+  [150, 436],
+  [80, 306],
+];
+---
+
 <section id="he-sinh-thai">
   <div class="wrap">
     <div class="sec-head rv">
-      <div class="tag">Hệ sinh thái</div>
-      <h2 style="margin-top:18px">Một đội giỏi chưa đủ. Cả công ty phải ăn khớp.</h2>
-      <p>Bán hàng cần giá từ kế toán. Tuyển dụng cần pháp lý soát hợp đồng. Marketing cần số liệu từ bán hàng. Ở đây các đội làm việc với nhau, còn trợ lý điều hành đọc việc của tất cả để bạn thấy bức tranh chung.</p>
+      <div class="tag">{t.tag}</div>
+      <h2 style="margin-top:18px">{t.h2}</h2>
+      <p>{t.p}</p>
     </div>
 
     <div class="eco-grid">
       <div class="eco rv">
-        <svg viewBox="0 0 800 500" role="img" aria-label="Sơ đồ tám phòng ban xoay quanh Trợ lý điều hành. Các chấm sáng biểu thị việc được bàn giao giữa các phòng.">
+        <svg viewBox="0 0 800 500" role="img" aria-label={t.svgAria}>
           <!-- ring links -->
-          <g stroke="#243247" stroke-width="1.5" fill="none">
+          <g style="stroke:var(--line2)" stroke-width="1.5" fill="none">
             <line x1="150" y1="120" x2="400" y2="70"/>
             <line x1="400" y1="70" x2="650" y2="120"/>
             <line x1="650" y1="120" x2="720" y2="250"/>
@@ -21,7 +43,7 @@
             <line x1="80" y1="250" x2="150" y2="120"/>
           </g>
           <!-- spokes to the assistant -->
-          <g stroke="#1b2636" stroke-width="1.2" fill="none" stroke-dasharray="3 5">
+          <g style="stroke:var(--line)" stroke-width="1.2" fill="none" stroke-dasharray="3 5">
             <line x1="150" y1="120" x2="400" y2="250"/>
             <line x1="400" y1="70" x2="400" y2="250"/>
             <line x1="650" y1="120" x2="400" y2="250"/>
@@ -39,7 +61,7 @@
             <circle cx="720" cy="250" r="4"><animateMotion dur="5s" begin="-3.6s" repeatCount="indefinite" path="M0 0 L-70 130"/></circle>
             <circle cx="650" cy="380" r="4"><animateMotion dur="5s" begin="-4.4s" repeatCount="indefinite" path="M0 0 L-250 50"/></circle>
           </g>
-          <g style="fill:#ffb547">
+          <g style="fill:var(--amber)">
             <circle cx="400" cy="430" r="4"><animateMotion dur="4s" repeatCount="indefinite" path="M0 0 L-250 -50"/></circle>
             <circle cx="150" cy="380" r="4"><animateMotion dur="4s" begin="-1s" repeatCount="indefinite" path="M0 0 L-70 -130"/></circle>
             <circle cx="150" cy="120" r="3"><animateMotion dur="3.4s" begin="-.5s" repeatCount="indefinite" path="M0 0 L250 130"/></circle>
@@ -47,7 +69,7 @@
             <circle cx="720" cy="250" r="3"><animateMotion dur="3.4s" begin="-1.6s" repeatCount="indefinite" path="M0 0 L-320 0"/></circle>
           </g>
           <!-- department nodes -->
-          <g fill="#0d1521" stroke="#243247" stroke-width="1.5">
+          <g style="fill:var(--surf);stroke:var(--line2)" stroke-width="1.5">
             <circle cx="150" cy="120" r="34"/><circle cx="400" cy="70" r="34"/><circle cx="650" cy="120" r="34"/><circle cx="720" cy="250" r="34"/><circle cx="650" cy="380" r="34"/><circle cx="400" cy="430" r="34"/><circle cx="150" cy="380" r="34"/><circle cx="80" cy="250" r="34"/>
           </g>
           <g style="color:var(--accent)">
@@ -61,27 +83,18 @@
             <use href="#i-bank" x="67" y="237" width="26" height="26"/>
           </g>
           <!-- assistant hub -->
-          <circle cx="400" cy="250" r="50" fill="#0e1826" stroke="var(--accent)" stroke-width="2"/>
+          <circle cx="400" cy="250" r="50" style="fill:var(--hot);stroke:var(--accent)" stroke-width="2"/>
           <use href="#i-spark" x="382" y="232" width="36" height="36" style="color:var(--accent)"/>
-          <g fill="#b9c3d1" font-size="19" text-anchor="middle" font-family="inherit">
-            <text x="400" y="322" font-weight="700" fill="#eef2f7">Trợ lý điều hành</text>
-            <text x="150" y="176">Kế toán</text>
-            <text x="400" y="126">Pháp lý</text>
-            <text x="650" y="176">Tuyển dụng</text>
-            <text x="720" y="306">Bán hàng</text>
-            <text x="650" y="436">Marketing</text>
-            <text x="400" y="486">Vận hành F&amp;B</text>
-            <text x="150" y="436">Xây dựng</text>
-            <text x="80" y="306">Tài chính</text>
+          <g style="fill:var(--soft)" font-size="19" text-anchor="middle" font-family="inherit">
+            <text x="400" y="322" font-weight="700" style="fill:var(--ink)">{t.hub}</text>
+            {t.nodes.map((label, i) => <text x={labelPos[i][0]} y={labelPos[i][1]}>{label}</text>)}
           </g>
         </svg>
-        <p class="eco-cap">Sơ đồ minh hoạ. Chấm xanh là việc đang chuyển giữa các phòng, chấm vàng là việc đang chuyển về trợ lý điều hành để bạn xem.</p>
+        <p class="eco-cap">{t.caption}</p>
       </div>
 
       <div class="eco-points rv">
-        <div><b>Phòng này hỏi, phòng kia trả lời</b><span>Mọi câu hỏi giữa các phòng đều được ghi lại. Không còn chuyện thông tin nằm trong một cuộc trò chuyện riêng rồi biến mất.</span></div>
-        <div><b>Chuyển việc, không chuyển gánh</b><span>Việc đi kèm tài liệu, số liệu và danh sách việc còn mở. Đội nhận làm tiếp ngay, không hỏi lại từ đầu.</span></div>
-        <div><b>Một bản tin cho cả công ty</b><span>Mỗi sáng, trợ lý điều hành gửi bạn việc của mọi phòng và những việc đang chờ bạn quyết định.</span></div>
+        {t.points.map((p) => <div><b>{p.title}</b><span>{p.text}</span></div>)}
       </div>
     </div>
   </div>

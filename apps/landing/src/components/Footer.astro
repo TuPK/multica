@@ -1,13 +1,20 @@
+---
+import { getDict, type Lang } from "../i18n";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = getDict(lang).footer;
+---
+
 <footer>
   <div class="wrap row2">
     <div class="brand" style="font-size:16px"><span class="mark" style="width:28px;height:28px;font-size:11px">AI</span>AI Agent Company</div>
-    <nav aria-label="Liên kết chân trang">
-      <a href="#he-sinh-thai">Hệ sinh thái</a>
-      <a href="#nganh">Phòng ban</a>
-      <a href="#cach-lam">Cách làm</a>
-      <a href="#gia">Giá</a>
-      <a href="#dang-ky">Liên hệ</a>
+    <nav aria-label={t.navAria}>
+      {t.items.map((i) => <a href={i.href}>{i.label}</a>)}
     </nav>
-    <div>© 2026 AI Agent Company</div>
+    <div>{t.copyright}</div>
   </div>
 </footer>

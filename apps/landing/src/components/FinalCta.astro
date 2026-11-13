@@ -1,13 +1,24 @@
+---
+import { getDict, type Lang } from "../i18n";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = getDict(lang).finalCta;
+---
+
 <section id="dang-ky" class="final" style="border-top:1px solid var(--line)">
   <div class="ring" aria-hidden="true"></div>
   <div class="ring r2" aria-hidden="true"></div>
   <div class="ring r3" aria-hidden="true"></div>
   <div class="wrap" style="position:relative">
-    <h2 class="rv">Đừng chỉ có AI. Hãy có một đội.</h2>
-    <p class="rv">Chọn phòng đầu tiên, nối tài khoản AI bạn đang có, và để đội làm phần việc lặp lại. Bạn chỉ việc ký.</p>
+    <h2 class="rv">{t.h2}</h2>
+    <p class="rv">{t.p}</p>
     <div class="btns rv">
-      <a class="btn btn-primary" href="#nganh">Chọn phòng ban</a>
-      <a class="btn btn-ghost" href="#cho-ai">Đặt lịch tư vấn</a>
+      <a class="btn btn-primary" href="#nganh">{t.btn1}</a>
+      <a class="btn btn-ghost" href="#cho-ai">{t.btn2}</a>
     </div>
   </div>
 </section>

@@ -1,20 +1,23 @@
 ---
-const steps = [
-  { no: "BƯỚC 1", icon: "i-spark", title: "Nối tài khoản AI bạn có", text: "Đội chạy bằng các công cụ AI agent bạn đã cài và đăng nhập, trên máy hoặc máy chủ của bạn.", to: "Không cần đổi công cụ" },
-  { no: "BƯỚC 2", icon: "i-office", title: "Chọn phòng ban", text: "Bắt đầu với bộ công ty khởi động hoặc một đội theo ngành. Thêm phòng khi công việc lớn lên.", to: "Vài phút để dựng" },
-  { no: "BƯỚC 3", icon: "i-check", title: "Giao việc, duyệt kết quả", text: "Đội tự nhận việc và chuyển nhau làm tiếp. Mỗi sáng bạn nhận bản tin và duyệt những gì cần bạn.", to: "Bạn là người ký cuối" },
-];
+import { getDict, type Lang } from "../i18n";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = getDict(lang).getStarted;
 ---
 
 <section id="bat-dau">
   <div class="wrap">
     <div class="sec-head rv">
-      <div class="tag">Bắt đầu</div>
-      <h2 style="margin-top:18px">Ba bước để tài khoản AI của bạn đi làm.</h2>
-      <p>Bạn không phải bỏ công cụ đang dùng. AI Agent Company điều phối chúng thành một công ty.</p>
+      <div class="tag">{t.tag}</div>
+      <h2 style="margin-top:18px">{t.h2}</h2>
+      <p>{t.p}</p>
     </div>
     <div class="steps3 rv">
-      {steps.map((s) => (
+      {t.steps.map((s) => (
         <div class="sstep">
           <div class="no">{s.no}</div>
           <div class="dept"><svg class="ic"><use href={`#${s.icon}`}></use></svg>{s.title}</div>

@@ -1,44 +1,33 @@
+---
+import { getDict, type Lang } from "../i18n";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = getDict(lang).scenario;
+---
+
 <section id="kich-ban">
   <div class="wrap">
     <div class="sec-head rv">
-      <div class="tag">Một ví dụ trọn vẹn</div>
-      <h2 style="margin-top:18px">Mở chi nhánh thứ hai: một việc, năm phòng, một bộ hồ sơ.</h2>
-      <p>Bạn giao một việc. Năm phòng lần lượt làm phần của mình, mỗi lần chuyển đi đều kèm nguồn.</p>
+      <div class="tag">{t.tag}</div>
+      <h2 style="margin-top:18px">{t.h2}</h2>
+      <p>{t.p}</p>
     </div>
 
     <div class="steps5 rv">
-      <div class="sstep">
-        <div class="no">BƯỚC 1</div>
-        <div class="dept"><svg class="ic"><use href="#i-fnb"></use></svg>Vận hành F&amp;B</div>
-        <p>Lập danh sách thiết bị và thực đơn cho chi nhánh. Tính giá vốn từng món từ công thức đã có.</p>
-        <div class="to">Chuyển cho Pháp lý</div>
-      </div>
-      <div class="sstep">
-        <div class="no">BƯỚC 2</div>
-        <div class="dept"><svg class="ic"><use href="#i-law"></use></svg>Pháp lý</div>
-        <p>Rà soát giấy phép kinh doanh và yêu cầu an toàn thực phẩm cho địa điểm mới.</p>
-        <div class="to">Chuyển cho Tuyển dụng</div>
-      </div>
-      <div class="sstep">
-        <div class="no">BƯỚC 3</div>
-        <div class="dept"><svg class="ic"><use href="#i-hire"></use></svg>Tuyển dụng</div>
-        <p>Đăng tin và sàng lọc hồ sơ cho 12 vị trí, chấm điểm theo tiêu chí đã được duyệt.</p>
-        <div class="to">Chuyển cho Kế toán</div>
-      </div>
-      <div class="sstep">
-        <div class="no">BƯỚC 4</div>
-        <div class="dept"><svg class="ic"><use href="#i-acc"></use></svg>Kế toán</div>
-        <p>Lập ngân sách khai trương và dòng tiền ba tháng đầu. Tính thuế theo quy định hiện hành.</p>
-        <div class="to">Chuyển cho Marketing</div>
-      </div>
-      <div class="sstep">
-        <div class="no">BƯỚC 5</div>
-        <div class="dept"><svg class="ic"><use href="#i-mkt"></use></svg>Marketing</div>
-        <p>Soạn nội dung khai trương và kiểm tra từng khẳng định về món và giá. Soạn thông cáo gửi báo chí.</p>
-        <div class="to">Gửi bạn duyệt</div>
-      </div>
+      {t.steps.map((s, i) => (
+        <div class="sstep">
+          <div class="no">{t.stepLabel} {i + 1}</div>
+          <div class="dept"><svg class="ic"><use href={`#${s.icon}`}></use></svg>{s.dept}</div>
+          <p>{s.text}</p>
+          <div class="to">{s.to}</div>
+        </div>
+      ))}
     </div>
 
-    <p class="scenario-note rv"><em>Bạn nhận một bộ hồ sơ hoàn chỉnh.</em> Mỗi phần có người phụ trách và nguồn đi kèm. Bạn quyết định từng bước được đưa ra bên ngoài. Đây là ví dụ minh hoạ, các con số là giả định.</p>
+    <p class="scenario-note rv"><em>{t.noteStrong}</em>{t.noteRest}</p>
   </div>
 </section>

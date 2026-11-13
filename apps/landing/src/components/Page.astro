@@ -1,0 +1,51 @@
+---
+// The whole landing page for one language. src/pages/index.astro (Vietnamese) and
+// src/pages/en/index.astro (English) both render this.
+import Base from "../layouts/Base.astro";
+import type { Lang } from "../i18n";
+import IconSprite from "./IconSprite.astro";
+import Header from "./Header.astro";
+import Hero from "./Hero.astro";
+import Problem from "./Problem.astro";
+import Industries from "./Industries.astro";
+import Ecosystem from "./Ecosystem.astro";
+import Scenario from "./Scenario.astro";
+import Software from "./Software.astro";
+import Mechanics from "./Mechanics.astro";
+import TeamSlider from "./TeamSlider.astro";
+import Process from "./Process.astro";
+import Audience from "./Audience.astro";
+import GetStarted from "./GetStarted.astro";
+import Pricing from "./Pricing.astro";
+import Faq from "./Faq.astro";
+import FinalCta from "./FinalCta.astro";
+import Footer from "./Footer.astro";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+---
+
+<Base lang={lang}>
+  <IconSprite />
+  <Header lang={lang} />
+  <main>
+    <Hero lang={lang} />
+    <Problem lang={lang} />
+    <Industries lang={lang} />
+    <Ecosystem lang={lang} />
+    <Scenario lang={lang} />
+    <Software lang={lang} />
+    <Mechanics lang={lang} />
+    <TeamSlider lang={lang} />
+    <Process lang={lang} />
+    <Audience lang={lang} />
+    <GetStarted lang={lang} />
+    <Pricing lang={lang} />
+    <Faq lang={lang} />
+    <FinalCta lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Base>

@@ -1,20 +1,22 @@
 ---
-const cards = [
-  { icon: "i-doc", title: "Bàn giao có nguồn", text: "Mỗi lần chuyển việc đi kèm tài liệu, số liệu và danh sách việc còn mở. Đội nhận làm tiếp được ngay." },
-  { icon: "i-spark", title: "Một kho tri thức chung", text: "Chính sách, số liệu và quyết định của công ty nằm ở một chỗ. Đội nào cũng tra cứu trước khi làm và ghi nguồn khi dùng." },
-  { icon: "i-flag", title: "Mục tiêu đi từ trên xuống", text: "Mục tiêu của công ty chia xuống tầng và đội. Mỗi mục tiêu có chỉ số và tiến độ tự tính, không cần ai viết báo cáo." },
-  { icon: "i-shield", title: "Ngân sách theo tầng và đội", text: "Đặt trần cho công ty, cho tầng hoặc cho đội. Khi một phòng sắp chạm ngưỡng, bạn được cảnh báo trước." },
-];
+import { getDict, type Lang } from "../i18n";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = getDict(lang).mechanics;
 ---
 
 <section id="co-che">
   <div class="wrap">
     <div class="sec-head rv">
-      <div class="tag">Cơ chế</div>
-      <h2 style="margin-top:18px">Bốn thứ giữ cả công ty chạy cùng một hướng.</h2>
+      <div class="tag">{t.tag}</div>
+      <h2 style="margin-top:18px">{t.h2}</h2>
     </div>
     <div class="mech">
-      {cards.map((c) => (
+      {t.cards.map((c) => (
         <div class="card rv">
           <svg class="ic" viewBox="0 0 24 24" style="width:30px;height:30px;color:var(--accent)"><use href={`#${c.icon}`}></use></svg>
           <h3>{c.title}</h3>

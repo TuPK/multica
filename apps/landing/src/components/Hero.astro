@@ -1,56 +1,63 @@
+---
+import { getDict, type Lang } from "../i18n";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = getDict(lang).hero;
+// The marquee repeats its group twice so the loop is seamless; the copy is hidden from assistive tech.
+const groups = [false, true];
+---
+
 <section class="hero" id="top">
   <div class="hero-bg" aria-hidden="true"></div>
   <div class="scanline" aria-hidden="true"></div>
   <div class="wrap hero-grid">
     <div>
-      <div class="eyebrow up" style="--d:.1s"><span class="live"></span>Công ty số · nhân viên là AI agent</div>
-      <p class="kick up" style="--d:.18s"><b>Bạn đã trả tiền cho AI.</b> Nhưng nó vẫn chờ bạn ra lệnh từng việc một.</p>
-      <h1 class="up" style="--d:.25s;margin-top:26px">Tuyển cả một đội AI. Người ký tên cuối cùng là bạn.</h1>
-      <p class="bridge up" style="--d:.4s">AI Agent Company biến tài khoản AI bạn đang có thành đội nhân viên chuyên theo ngành: tự nhận việc, chuyển việc cho nhau, và chỉ dừng lại ở bước cần chữ ký của bạn.</p>
-      <p class="lead up" style="--d:.55s">Kế toán cần giá vốn từ bán hàng? Việc tự chuyển sang, kèm chứng từ và lịch sử. Cá nhân hay doanh nghiệp, bạn làm được nhiều hơn mà không phải ngồi nhắc việc.</p>
+      <div class="eyebrow up" style="--d:.1s"><span class="live"></span>{t.eyebrow}</div>
+      <p class="kick up" style="--d:.18s"><b>{t.kickBold}</b>{t.kickRest}</p>
+      <h1 class="up" style="--d:.25s;margin-top:26px">{t.h1}</h1>
+      <p class="bridge up" style="--d:.4s">{t.bridge}</p>
+      <p class="lead up" style="--d:.55s">{t.lead}</p>
       <div class="btns up" style="--d:.7s">
-        <a class="btn btn-primary" href="#nganh">Chọn phòng ban</a>
-        <a class="btn btn-ghost" href="#bat-dau">Xem cách bắt đầu</a>
+        <a class="btn btn-primary" href="#nganh">{t.cta1}</a>
+        <a class="btn btn-ghost" href="#bat-dau">{t.cta2}</a>
       </div>
     </div>
 
     <div class="up" style="--d:.4s;position:relative">
-      <div class="wall" role="img" aria-label="Chín phòng ban AI của một công ty, trong đó kế toán nhận bàn giao từ bán hàng và bất động sản đang chờ bạn duyệt">
-        <div class="wall-bar"><span>Công ty của bạn · 9 phòng ban</span><span>● Đang chạy</span></div>
+      <div class="wall" role="img" aria-label={t.wallAria}>
+        <div class="wall-bar"><span>{t.wallTitle}</span><span>{t.wallStatus}</span></div>
         <div class="wall-grid">
-          <div class="wt"><svg class="ic"><use href="#i-fnb"></use></svg><b>Nhà hàng</b><small><span class="d"></span>Tính giá món mới</small></div>
-          <div class="wt"><svg class="ic"><use href="#i-acc"></use></svg><b>Kế toán &amp; thuế</b><small><span class="d"></span>Nhận bàn giao từ bán hàng</small></div>
-          <div class="wt hot"><svg class="ic"><use href="#i-home"></use></svg><b>Bất động sản</b><small><span class="d"></span>Chờ bạn duyệt tin rao</small></div>
-          <div class="wt"><svg class="ic"><use href="#i-build"></use></svg><b>Xây dựng</b><small><span class="d"></span>Lập bảng khối lượng</small></div>
-          <div class="wt"><svg class="ic"><use href="#i-mkt"></use></svg><b>Marketing</b><small><span class="d"></span>Soạn nội dung khai trương</small></div>
-          <div class="wt"><svg class="ic"><use href="#i-trade"></use></svg><b>Xuất nhập khẩu</b><small><span class="d"></span>Đối chiếu lô hàng</small></div>
-          <div class="wt"><svg class="ic"><use href="#i-edu"></use></svg><b>Giáo dục</b><small><span class="d"></span>Soạn đề kiểm tra</small></div>
-          <div class="wt"><svg class="ic"><use href="#i-hire"></use></svg><b>Tuyển dụng</b><small><span class="d"></span>Sàng lọc hồ sơ</small></div>
-          <div class="wt"><svg class="ic"><use href="#i-law"></use></svg><b>Pháp lý</b><small><span class="d"></span>Rà soát giấy phép</small></div>
+          {t.tiles.map((tile) => (
+            <div class={tile.hot ? "wt hot" : "wt"}>
+              <svg class="ic"><use href={`#${tile.icon}`}></use></svg>
+              <b>{tile.name}</b>
+              <small><span class="d"></span>{tile.status}</small>
+            </div>
+          ))}
         </div>
       </div>
-      <div class="wchip float" style="left:-22px;top:16%"><span class="av c"><svg class="ic" style="width:16px;height:16px;color:#05070a"><use href="#i-check"></use></svg></span><div>Đã chuyển bàn giao<small>Bán hàng → Kế toán</small></div></div>
-      <div class="wchip float" style="right:-16px;bottom:12%;animation-delay:-2.5s"><span class="av b">!</span><div>Cần bạn duyệt<small>1 tờ trình tín dụng</small></div></div>
+      <div class="wchip float" style="left:-22px;top:16%"><span class="av c"><svg class="ic" style="width:16px;height:16px;color:#05070a"><use href="#i-check"></use></svg></span><div>{t.chip1.title}<small>{t.chip1.sub}</small></div></div>
+      <div class="wchip float" style="right:-16px;bottom:12%;animation-delay:-2.5s"><span class="av b">!</span><div>{t.chip2.title}<small>{t.chip2.sub}</small></div></div>
     </div>
   </div>
 
   <div class="wrap">
     <div class="stats">
-      <div class="stat rv"><b>21</b><span>lĩnh vực đã có đội dựng sẵn</span></div>
-      <div class="stat rv"><b>3</b><span>cấp tổ chức: công ty, tầng, đội</span></div>
-      <div class="stat rv"><b>14</b><span>đội trong bộ công ty khởi động</span></div>
-      <div class="stat rv"><b>08:00</b><span>bản tin mỗi sáng: việc nào xong, việc nào chờ bạn</span></div>
+      {t.stats.map((s) => <div class="stat rv"><b>{s.n}</b><span>{s.label}</span></div>)}
     </div>
   </div>
 
-  <div class="marq" aria-label="Các lĩnh vực có đội AI">
+  <div class="marq" aria-label={t.marqAria}>
     <div class="marq-track">
-      <div class="marq-group">
-        <span class="pill"><svg class="ic"><use href="#i-code"></use></svg>Phát triển phần mềm</span><span class="pill"><svg class="ic"><use href="#i-fnb"></use></svg>Nhà hàng</span><span class="pill"><svg class="ic"><use href="#i-ecom"></use></svg>Bán hàng online</span><span class="pill"><svg class="ic"><use href="#i-acc"></use></svg>Kế toán &amp; thuế</span><span class="pill"><svg class="ic"><use href="#i-bank"></use></svg>Tín dụng ngân hàng</span><span class="pill"><svg class="ic"><use href="#i-home"></use></svg>Bất động sản</span><span class="pill"><svg class="ic"><use href="#i-build"></use></svg>Xây dựng</span><span class="pill"><svg class="ic"><use href="#i-factory"></use></svg>Nhà máy</span><span class="pill"><svg class="ic"><use href="#i-health"></use></svg>Y tế</span><span class="pill"><svg class="ic"><use href="#i-hotel"></use></svg>Khách sạn</span><span class="pill"><svg class="ic"><use href="#i-ins"></use></svg>Bảo hiểm</span><span class="pill"><svg class="ic"><use href="#i-law"></use></svg>Pháp lý</span><span class="pill"><svg class="ic"><use href="#i-trade"></use></svg>Xuất nhập khẩu</span>
-      </div>
-      <div class="marq-group" aria-hidden="true">
-        <span class="pill"><svg class="ic"><use href="#i-code"></use></svg>Phát triển phần mềm</span><span class="pill"><svg class="ic"><use href="#i-fnb"></use></svg>Nhà hàng</span><span class="pill"><svg class="ic"><use href="#i-ecom"></use></svg>Bán hàng online</span><span class="pill"><svg class="ic"><use href="#i-acc"></use></svg>Kế toán &amp; thuế</span><span class="pill"><svg class="ic"><use href="#i-bank"></use></svg>Tín dụng ngân hàng</span><span class="pill"><svg class="ic"><use href="#i-home"></use></svg>Bất động sản</span><span class="pill"><svg class="ic"><use href="#i-build"></use></svg>Xây dựng</span><span class="pill"><svg class="ic"><use href="#i-factory"></use></svg>Nhà máy</span><span class="pill"><svg class="ic"><use href="#i-health"></use></svg>Y tế</span><span class="pill"><svg class="ic"><use href="#i-hotel"></use></svg>Khách sạn</span><span class="pill"><svg class="ic"><use href="#i-ins"></use></svg>Bảo hiểm</span><span class="pill"><svg class="ic"><use href="#i-law"></use></svg>Pháp lý</span><span class="pill"><svg class="ic"><use href="#i-trade"></use></svg>Xuất nhập khẩu</span>
-      </div>
+      {groups.map((hidden) => (
+        <div class="marq-group" aria-hidden={hidden ? "true" : undefined}>
+          {t.pills.map((p) => <span class="pill"><svg class="ic"><use href={`#${p.icon}`}></use></svg>{p.label}</span>)}
+        </div>
+      ))}
     </div>
   </div>
 </section>

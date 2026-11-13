@@ -1,36 +1,43 @@
+---
+import { getDict, type Lang } from "../i18n";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = getDict(lang).pricing;
+const p = t.personal;
+const b = t.business;
+---
+
 <section id="gia">
   <div class="wrap">
     <div class="sec-head rv">
-      <div class="tag">Giá</div>
-      <h2 style="margin-top:18px">Trả tiền cho một đội làm việc, không phải một khung chat.</h2>
-      <p>Gói cá nhân tính theo tháng, quý hoặc năm, trả dài hạn thì rẻ hơn mỗi tháng. Doanh nghiệp nhận báo giá theo số người và mức triển khai.</p>
+      <div class="tag">{t.tag}</div>
+      <h2 style="margin-top:18px">{t.h2}</h2>
+      <p>{t.p}</p>
     </div>
     <div class="prices">
       <div class="price rv">
-        <div class="plan">Cá nhân</div>
-        <div class="amt">598.000đ<small> / tháng</small></div>
+        <div class="plan">{p.plan}</div>
+        <div class="amt">{p.amount}<small>{p.per}</small></div>
         <div class="bill">
-          <div><span>Theo quý</span><b>1.598.000đ</b><em>Tiết kiệm 11%</em></div>
-          <div><span>Theo năm</span><b>5.780.000đ</b><em>Tiết kiệm 19%</em></div>
+          <div><span>{p.quarter.label}</span><b>{p.quarter.price}</b><em>{p.quarter.save}</em></div>
+          <div><span>{p.year.label}</span><b>{p.year.price}</b><em>{p.year.save}</em></div>
         </div>
         <ul>
-          <li>Chạy bằng chính tài khoản AI bạn đang có</li>
-          <li>Một đội theo ngành, thêm đội khi cần</li>
-          <li>Bộ công ty khởi động và trợ lý điều hành</li>
-          <li>Ứng dụng desktop và bản web</li>
+          {p.items.map((x) => <li>{x}</li>)}
         </ul>
-        <a class="btn btn-ghost" href="#dang-ky">Bắt đầu</a>
+        <a class="btn btn-ghost" href="#dang-ky">{p.btn}</a>
       </div>
       <div class="price hi rv">
-        <div class="plan">Doanh nghiệp</div>
-        <div class="amt">Liên hệ</div>
+        <div class="plan">{b.plan}</div>
+        <div class="amt">{b.amount}</div>
         <ul>
-          <li>Nhiều đội theo phòng ban và chi nhánh</li>
-          <li>Phân quyền, nhật ký thay đổi, ngân sách theo tầng</li>
-          <li>Tự triển khai trên máy chủ của bạn bằng Docker hoặc Helm</li>
-          <li>Hỗ trợ triển khai theo nhu cầu</li>
+          {b.items.map((x) => <li>{x}</li>)}
         </ul>
-        <a class="btn btn-primary" href="#dang-ky">Đặt lịch tư vấn</a>
+        <a class="btn btn-primary" href="#dang-ky">{b.btn}</a>
       </div>
     </div>
   </div>
