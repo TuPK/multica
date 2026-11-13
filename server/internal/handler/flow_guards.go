@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
 	"github.com/multica-ai/multica/server/internal/issueworkflow"
+	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -354,6 +355,35 @@ func (h *Handler) storeOutcomeAfterMove(ctx context.Context, issue db.Issue, out
 		return issue
 	}
 	return stored
+}
+
+// cancelQueuedRunsOfClosedFlowTask cancels the queued runs of a flow task that
+// has just closed. The engine counts a task open while any of its runs is still
+// queued, so a closed task would otherwise hold its request until a runtime
+// claims a run nobody needs. A run that has started is left to finish, since its
+// agent may still be writing the verdict. Best effort, like storeOutcomeAfterMove:
+// a failure is logged and the close stands.
+func (h *Handler) cancelQueuedRunsOfClosedFlowTask(ctx context.Context, issue db.Issue, actor service.TaskCancellationActor) {
+	if !issue.FlowTask.Valid {
+		return
+	}
+	category := issuestatus.NewResolver(issue.WorkspaceID).Category(ctx, h.Queries, issue.Status)
+	if category != issuestatus.CategoryDone && category != issuestatus.CategoryClosed {
+		return
+	}
+	runs, err := h.Queries.ListActiveTasksByIssue(ctx, issue.ID)
+	if err != nil {
+		slog.Warn("list runs of closed flow task failed", "issue_id", uuidToString(issue.ID), "error", err)
+		return
+	}
+	for _, run := range runs {
+		if run.Status != "queued" {
+			continue
+		}
+		if _, err := h.TaskService.CancelTaskByUser(ctx, run.ID, actor); err != nil {
+			slog.Warn("cancel queued run of closed flow task failed", "task_id", uuidToString(run.ID), "error", err)
+		}
+	}
 }
 
 // applyFlowStatusRules keeps the project workflow out of a flow's way. A task

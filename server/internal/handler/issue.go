@@ -4343,6 +4343,7 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	h.advanceRunStep(r.Context(), callerRun, prevIssue, issue)
 	if prevIssue.Status != issue.Status {
 		issue = h.storeOutcomeAfterMove(r.Context(), issue, outcome)
+		h.cancelQueuedRunsOfClosedFlowTask(r.Context(), issue, h.taskCancellationActor(r.Context(), actorType, actorID))
 		if _, managed := flowRequestState(issue); managed {
 			// A member moved a request a workflow runs: the flow follows.
 			defer h.syncFlowAfterMove(context.WithoutCancel(r.Context()), issue)
@@ -5268,6 +5269,8 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 		if prevIssue.Status != issue.Status {
 			issue = h.storeOutcomeAfterMove(r.Context(), issue, batchOutcome)
 			h.syncFlowAfterMove(r.Context(), issue)
+			closeActorType, closeActorID := h.resolveActor(r, userID, workspaceID)
+			h.cancelQueuedRunsOfClosedFlowTask(r.Context(), issue, h.taskCancellationActor(r.Context(), closeActorType, closeActorID))
 		}
 		prefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
 		resp := issueToResponse(issue, prefix)

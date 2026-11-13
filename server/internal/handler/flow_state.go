@@ -11,11 +11,14 @@ import (
 
 // IssueFlowTaskResponse is one task the engine opened for a request.
 type IssueFlowTaskResponse struct {
-	IssueID    string  `json:"issue_id"`
-	Identifier string  `json:"identifier"`
-	Step       string  `json:"step"`
-	Task       string  `json:"task"`
-	Round      int     `json:"round"`
+	IssueID    string `json:"issue_id"`
+	Identifier string `json:"identifier"`
+	Step       string `json:"step"`
+	Task       string `json:"task"`
+	Round      int    `json:"round"`
+	// Kind is "gate" or "work" as the workflow defines the task; "" when the
+	// definition has no such task.
+	Kind       string  `json:"kind"`
 	Status     string  `json:"status"`
 	Outcome    *string `json:"outcome"`
 	AssigneeID *string `json:"assignee_id"`
@@ -114,6 +117,7 @@ func (h *Handler) flowStateResponse(ctx context.Context, request db.Issue, role 
 			Step:       t.FlowStep.String,
 			Task:       t.FlowTask.String,
 			Round:      int(t.FlowRound.Int32),
+			Kind:       flowTaskKind(run.def, t.FlowStep.String, t.FlowTask.String),
 			Status:     t.Status,
 			Outcome:    textToPtr(t.Outcome),
 			AssigneeID: uuidToPtr(t.AssigneeID),
@@ -130,4 +134,19 @@ func (h *Handler) flowStateResponse(ctx context.Context, request db.Issue, role 
 		}
 	}
 	return out, nil
+}
+
+// flowTaskKind returns the kind ("gate" or "work") of the task a step defines,
+// or "" when the definition has no such task.
+func flowTaskKind(def issueworkflow.Definition, step, key string) string {
+	st, ok := def.Step(step)
+	if !ok {
+		return ""
+	}
+	for _, task := range st.Tasks {
+		if task.Key == key {
+			return task.Kind
+		}
+	}
+	return ""
 }
