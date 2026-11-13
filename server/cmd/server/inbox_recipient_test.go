@@ -17,9 +17,9 @@ import (
 func TestCreateInboxItem_RecipientWorkspace(t *testing.T) {
 	fx := workspaceFixture(t)
 	otherWorkspace := fx.Workspace(t, "Other workspace", "inbox-recipient-other")
-	member := fx.User(t, "Member", "inbox-query-member@example.test")
+	member := fx.User(t, "Member", testutil.UniqueEmail("inbox-query-member"))
 	fx.Member(t, testWorkspaceID, member, "member")
-	otherMember := fx.User(t, "Other member", "inbox-query-other@example.test")
+	otherMember := fx.User(t, "Other member", testutil.UniqueEmail("inbox-query-other"))
 	fx.Member(t, otherWorkspace, otherMember, "member")
 	agent := fx.Agent(t, "Current agent", "")
 	otherAgent := fx.Agent(t, "Other agent", "", testutil.Cols{"workspace_id": otherWorkspace})

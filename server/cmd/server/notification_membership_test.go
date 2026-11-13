@@ -60,7 +60,7 @@ func TestNotification_CurrentMembership(t *testing.T) {
 			removed := state != "current"
 			t.Run(source+"/"+state, func(t *testing.T) {
 				fx := workspaceFixture(t)
-				recipient := fx.User(t, "Recipient", "membership-recipient@example.test")
+				recipient := fx.User(t, "Recipient", testutil.UniqueEmail("membership-recipient"))
 				memberID := fx.Member(t, testWorkspaceID, recipient, "member")
 				issueID := fx.Issue(t, "Membership regression", testutil.Cols{"creator_id": recipient})
 				commentID := fx.Comment(t, issueID, "Original comment", testutil.Cols{"author_id": recipient})
@@ -195,7 +195,7 @@ func TestNotification_ServiceMembership(t *testing.T) {
 			t.Run(source+"/"+state, func(t *testing.T) {
 				ctx := context.Background()
 				fx := workspaceFixture(t)
-				recipient := fx.User(t, "Requester", "membership-service@example.test")
+				recipient := fx.User(t, "Requester", testutil.UniqueEmail("membership-service"))
 				member := fx.Member(t, testWorkspaceID, recipient, "member")
 				bus := events.New()
 				queries := db.New(testPool)

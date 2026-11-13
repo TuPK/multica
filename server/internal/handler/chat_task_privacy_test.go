@@ -23,7 +23,7 @@ type chatTaskPrivacyFixture struct {
 // admin role cannot be what decides access.
 func seedChatTaskPrivacy(t *testing.T) chatTaskPrivacyFixture {
 	t.Helper()
-	ownerID := dbfx.User(t, "Chat task owner", "chat-task-privacy-owner@example.test")
+	ownerID := dbfx.User(t, "Chat task owner", testutil.UniqueEmail("chat-task-privacy-owner"))
 	dbfx.Member(t, testWorkspaceID, ownerID, "member")
 	runtimeID := handlerTestRuntimeID(t)
 	agentID := dbfx.Agent(t, "chat task privacy agent", runtimeID, testutil.Cols{"owner_id": ownerID})

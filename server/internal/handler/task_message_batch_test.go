@@ -244,7 +244,7 @@ func TestReportTaskMessagesStampsChatSessionOwner(t *testing.T) {
 	if testHandler == nil {
 		t.Skip("database not available")
 	}
-	creatorID := dbfx.User(t, "Chat owner", "task-message-chat-owner@example.test")
+	creatorID := dbfx.User(t, "Chat owner", testutil.UniqueEmail("task-message-chat-owner"))
 	dbfx.Member(t, testWorkspaceID, creatorID, "member")
 	agentID := dbfx.Agent(t, "chat transcript agent", handlerTestRuntimeID(t), testutil.Cols{
 		"instructions": "",

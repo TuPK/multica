@@ -82,7 +82,7 @@ func chatPrivacyRequest(t *testing.T, server *httptest.Server, token, method, pa
 func TestChatRealtimeIsPrivateToSessionOwner(t *testing.T) {
 	ctx := context.Background()
 	fx := workspaceFixture(t)
-	bystanderID := fx.User(t, "Chat bystander", "chat-privacy-bystander@example.test")
+	bystanderID := fx.User(t, "Chat bystander", testutil.UniqueEmail("chat-privacy-bystander"))
 	fx.Member(t, testWorkspaceID, bystanderID, "member")
 	var agentID string
 	if err := testPool.QueryRow(ctx,
@@ -192,7 +192,7 @@ func TestChatRealtimeIsPrivateToSessionOwner(t *testing.T) {
 func TestChatRealtimeStopsAtWorkspaceRemoval(t *testing.T) {
 	ctx := context.Background()
 	fx := workspaceFixture(t)
-	creatorID := fx.User(t, "Removed chat creator", "chat-removed-creator@example.test")
+	creatorID := fx.User(t, "Removed chat creator", testutil.UniqueEmail("chat-removed-creator"))
 	memberID := fx.Member(t, testWorkspaceID, creatorID, "member")
 	otherWS := fx.Workspace(t, "Still accessible workspace", "chat-removal-other-workspace")
 	fx.Member(t, otherWS, creatorID, "owner")
