@@ -403,6 +403,9 @@ func (h *Handler) postStopComment(ctx context.Context, qtx *db.Queries, run *flo
 	}
 	prefix := h.getIssuePrefix(ctx, run.issue.WorkspaceID)
 	resolver := issuestatus.NewResolver(run.issue.WorkspaceID)
+	if kind == stopKind1 && len(note.Missing) == 0 {
+		note = h.blockedTaskNote(ctx, qtx, prefix, old, rows, note)
+	}
 	missing := ""
 	if len(note.Missing) > 0 {
 		missing = "- " + strings.Join(note.Missing, "\n- ")
@@ -431,6 +434,34 @@ func (h *Handler) postStopComment(ctx context.Context, qtx *db.Queries, run *flo
 	}
 	e.comments = append(e.comments, created)
 	return nil
+}
+
+// blockedTaskNote fills a stop 1 that came from tasks which reported they cannot go on. The lead's
+// plan carries its own missing list; a task has only its comment, so the first line of the newest
+// comment its agent wrote (a gate's verdict line, a collector's missing item) says what is missing.
+func (h *Handler) blockedTaskNote(ctx context.Context, qtx *db.Queries, prefix string, state issueworkflow.FlowState, rows []flowTaskRow, note flowRouteNote) flowRouteNote {
+	var keys []string
+	for _, r := range rows {
+		if r.state.Step != state.Step || r.state.Round != state.Round() || r.state.Outcome != issueworkflow.OutcomeBlocked {
+			continue
+		}
+		keys = append(keys, r.state.Key)
+		content, err := qtx.LastAgentCommentOnIssue(ctx, r.issue.ID)
+		if err != nil {
+			continue
+		}
+		line, _, _ := strings.Cut(strings.TrimSpace(content), "\n")
+		if runes := []rune(line); len(runes) > 300 {
+			line = string(runes[:300]) + "…"
+		}
+		if line != "" {
+			note.Missing = append(note.Missing, fmt.Sprintf("%s-%d · %s: %s", prefix, r.issue.Number, r.state.Key, line))
+		}
+	}
+	if note.Reason == "" && len(keys) > 0 {
+		note.Reason = fmt.Sprintf("The task %s reported it cannot go on; its comment has the details.", strings.Join(keys, ", "))
+	}
+	return note
 }
 
 // requesterMention mentions the member who made the request, or is empty when

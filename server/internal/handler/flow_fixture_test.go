@@ -68,15 +68,17 @@ type flowFixture struct {
 }
 
 // cleanupFlowRows removes what a flow test leaves in the shared workspace: the requests and tasks
-// the engine made (also the ones a detach turned into plain issues), and the runs queued since the
-// test began. A run left queued on the seeded runtime is claimed by the next test that claims a task
+// the engine made (also the ones a detach turned into plain issues), and the runs of its agents queued
+// since the test began. A run left queued on the seeded runtime is claimed by the next test that claims a task
 // there, for example the squad briefing test.
 func cleanupFlowRows(t *testing.T) {
 	t.Helper()
 	started := time.Now().Add(-time.Second)
 	remove := func() {
 		ctx := context.Background()
-		testPool.Exec(ctx, `DELETE FROM agent_task_queue WHERE created_at >= $1`, started)
+		// Only the runs of this workspace's agents: the database is shared with real runs.
+		testPool.Exec(ctx, `DELETE FROM agent_task_queue WHERE created_at >= $1 AND
+			agent_id IN (SELECT id FROM agent WHERE workspace_id = $2)`, started, testWorkspaceID)
 		testPool.Exec(ctx, `DELETE FROM issue WHERE workspace_id = $1 AND created_at >= $2 AND
 			(flow IS NOT NULL OR flow_task IS NOT NULL OR parent_issue_id IN
 				(SELECT id FROM issue WHERE workspace_id = $1 AND created_at >= $2 AND title LIKE 'Trade request %'))`, testWorkspaceID, started)

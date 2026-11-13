@@ -21,8 +21,12 @@ import (
 // flowSweepPage is the number of requests one pass reads.
 const flowSweepPage = 200
 
-// flowRetryNote is the brief of a retried run.
-const flowRetryNote = "An earlier run on this task ended without closing it. Read the task again, take a different approach, and close it with the commands in its description."
+// The brief of a retried run. A task is closed with the commands in its description; the lead of a
+// request has no task to close: it plans, or reports the missing grounds.
+const (
+	flowRetryNote     = "An earlier run on this task ended without closing it. Read the task again, take a different approach, and close it with the commands in its description."
+	flowRetryLeadNote = "An earlier run on this request ended without a plan. Read the request again, post your plan, then run `multica issue flow plan <id>`. If the grounds are missing, run it with `--blocked`, `--missing` and `--reason` instead."
+)
 
 var flowSweepCursor struct {
 	sync.Mutex
@@ -235,7 +239,7 @@ func (h *Handler) enqueueFlowRun(ctx context.Context, issue db.Issue) error {
 		if err != nil {
 			return fmt.Errorf("load squad: %w", err)
 		}
-		_, err = h.TaskService.EnqueueTaskForSquadLeaderWithHandoff(ctx, issue, squad.LeaderID, squad.ID, flowRetryNote, pgtype.UUID{})
+		_, err = h.TaskService.EnqueueTaskForSquadLeaderWithHandoff(ctx, issue, squad.LeaderID, squad.ID, flowRetryLeadNote, pgtype.UUID{})
 		return err
 	}
 	_, err := h.TaskService.EnqueueTaskForIssueWithHandoff(ctx, issue, flowRetryNote, pgtype.UUID{})

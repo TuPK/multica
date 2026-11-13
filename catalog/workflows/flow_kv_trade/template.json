@@ -81,7 +81,10 @@
             "title": "Kiểm kê chứng từ của lô hàng",
             "kind": "work",
             "role": "trade_docs_reader",
-            "instructions": "Kiểm kê các chứng từ của lô hàng trong tệp đính kèm của request: danh mục chứng từ, từng trường dữ liệu kèm tệp và vị trí trong tệp, và chứng từ còn thiếu. Chỉ đọc, không tính toán, không kết luận đúng sai. Đính kèm kết quả thành tệp `01-thu-thap.md`.\n\nThiếu invoice, packing list, vận đơn (B/L hoặc AWB) hoặc không xác định được loại hình tờ khai thì đây là điểm dừng 1: nêu từng mục thiếu trong comment rồi báo task bị chặn."
+            "requires": [
+              "attachment"
+            ],
+            "instructions": "Kiểm kê các chứng từ của lô hàng trong tệp đính kèm của request: danh mục chứng từ, từng trường dữ liệu kèm tệp và vị trí trong tệp, và chứng từ còn thiếu. Chỉ đọc, không tính toán, không kết luận đúng sai. Đính kèm kết quả thành tệp `01-thu-thap.md`. Tệp là đầu ra của task: server không cho đóng task khi chưa có tệp đính kèm. Mô tả vai ghi là không có công cụ ghi, nhưng ở task này bạn vẫn tạo tệp bằng shell rồi đính kèm.\n\nThiếu invoice, packing list, vận đơn (B/L hoặc AWB) hoặc không xác định được loại hình tờ khai thì đây là điểm dừng 1: nêu từng mục thiếu trong comment rồi báo task bị chặn."
           },
           {
             "key": "customs",
@@ -93,7 +96,10 @@
               "op": "eq",
               "value": true
             },
-            "instructions": "Tra mã HS khả dĩ, thuế suất, giấy phép, kiểm tra chuyên ngành và quy tắc xuất xứ FTA cho các dòng hàng chưa có mã HS trong kho mã nội bộ. Chỉ dùng nguồn chính thống; mỗi kết quả ghi bậc nguồn và ngày mở nguồn. Đính kèm kết quả thành tệp `01b-tra-cuu-hai-quan.md`. Không ghi đè dữ liệu của task kiểm kê."
+            "requires": [
+              "attachment"
+            ],
+            "instructions": "Tra mã HS khả dĩ, thuế suất, giấy phép, kiểm tra chuyên ngành và quy tắc xuất xứ FTA cho các dòng hàng chưa có mã HS trong kho mã nội bộ. Chỉ dùng nguồn chính thống; mỗi kết quả ghi bậc nguồn và ngày mở nguồn. Đính kèm kết quả thành tệp `01b-tra-cuu-hai-quan.md`. Tệp là đầu ra của task: server không cho đóng task khi chưa có tệp đính kèm. Mô tả vai ghi là không có công cụ ghi, nhưng ở task này bạn vẫn tạo tệp bằng shell rồi đính kèm. Không ghi đè dữ liệu của task kiểm kê."
           }
         ],
         "transitions": [
@@ -167,7 +173,7 @@
             "requires": [
               "outcome"
             ],
-            "instructions": "Soát bản nháp với chứng từ gốc đính kèm, từng trường một: tính lại tổng trị giá, số kiện và trọng lượng, rồi kiểm C/O và điều khoản L/C. Chỉ đọc, không sửa gì.\n\nDòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected)."
+            "instructions": "Soát bản nháp với chứng từ gốc đính kèm, từng trường một: tính lại tổng trị giá, số kiện và trọng lượng, rồi kiểm C/O và điều khoản L/C. Chỉ đọc, không sửa gì.\n\nDòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).\n\nNếu mọi lỗi chặn nằm ở chính chứng từ gốc và bản nháp đã nêu đúng chúng (số liệu mâu thuẫn giữa các chứng từ, chứng từ thiếu hoặc chưa được xác nhận), bản nháp không sửa được: nêu từng mục cần người xác nhận trong comment rồi đóng task bằng `multica issue status <id> blocked --outcome blocked` (dừng 1, người dùng xác nhận rồi cho request chạy tiếp) thay vì rejected. Chỉ dùng rejected khi lỗi nằm ở bản nháp và drafter sửa được."
           },
           {
             "key": "customs_gate",
@@ -177,7 +183,7 @@
             "requires": [
               "outcome"
             ],
-            "instructions": "Soát bản khai nháp: mã HS không có căn cứ, công thức trị giá và thuế, thuế suất chưa xác nhận, hàng có thể cần giấy phép và khẳng định quá mức. Chỉ đọc, không sửa gì.\n\nDòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected)."
+            "instructions": "Soát bản khai nháp: mã HS không có căn cứ, công thức trị giá và thuế, thuế suất chưa xác nhận, hàng có thể cần giấy phép và khẳng định quá mức. Chỉ đọc, không sửa gì.\n\nDòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).\n\nNếu mọi lỗi chặn nằm ở chính chứng từ gốc và bản nháp đã nêu đúng chúng (số liệu mâu thuẫn giữa các chứng từ, chứng từ thiếu hoặc chưa được xác nhận), bản nháp không sửa được: nêu từng mục cần người xác nhận trong comment rồi đóng task bằng `multica issue status <id> blocked --outcome blocked` (dừng 1, người dùng xác nhận rồi cho request chạy tiếp) thay vì rejected. Chỉ dùng rejected khi lỗi nằm ở bản nháp và drafter sửa được."
           }
         ],
         "transitions": [

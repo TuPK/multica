@@ -792,6 +792,28 @@ func TestFlowBrief_LeadAfterThePlan(t *testing.T) {
 	}
 }
 
+// The squad rules and the lead's skill tell a lead to post the stop comment and set the status of the
+// request itself. While a workflow runs the request the server does both, so a lead that does them too
+// posts the stop twice. The brief is read on every run on the request: it settles the conflict.
+func TestFlowBrief_LeadLeavesTheStopToTheServer(t *testing.T) {
+	def := tradeFlow()
+	briefs := map[string]string{
+		"plan": FlowLeadBrief(FlowLeadBriefInput{
+			WorkflowName: "Trade", RequestIdentifier: "MUL-7", Step: "todo", StepName: "To Do",
+			PlanStep: true, Switches: def.Flow.Switches, Values: def.Flow.DefaultSwitches(),
+		}),
+		"after the plan": FlowLeadBrief(FlowLeadBriefInput{WorkflowName: "Trade", RequestIdentifier: "MUL-7", Step: "gate", StepName: "Gate"}),
+		"stopped":        FlowLeadBrief(FlowLeadBriefInput{WorkflowName: "Trade", RequestIdentifier: "MUL-7", Step: "blocked", StepName: "Blocked", Stop: Stop1}),
+	}
+	for name, got := range briefs {
+		for _, want := range []string{"The server posts the stop comment and sets the status", "BLOCKED", "this brief wins"} {
+			if !strings.Contains(got, want) {
+				t.Errorf("%s brief is missing %q:\n%s", name, want, got)
+			}
+		}
+	}
+}
+
 // A plan step that routes to blocked on what the lead chose is a stop for missing grounds, not for
 // used-up rework rounds.
 func TestRoutePlan_BlockedByASwitchIsStop1(t *testing.T) {

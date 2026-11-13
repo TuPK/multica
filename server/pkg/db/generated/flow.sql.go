@@ -228,6 +228,21 @@ func (q *Queries) IsFlowRequestAuto(ctx context.Context, id pgtype.UUID) (bool, 
 	return auto, err
 }
 
+const lastAgentCommentOnIssue = `-- name: LastAgentCommentOnIssue :one
+SELECT content FROM comment
+WHERE issue_id = $1 AND author_type = 'agent'
+ORDER BY created_at DESC, id DESC
+LIMIT 1
+`
+
+// The newest comment an agent wrote on an issue: a blocked task says there what it could not do.
+func (q *Queries) LastAgentCommentOnIssue(ctx context.Context, issueID pgtype.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, lastAgentCommentOnIssue, issueID)
+	var content string
+	err := row.Scan(&content)
+	return content, err
+}
+
 const listAutoFlowRequests = `-- name: ListAutoFlowRequests :many
 SELECT i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.origin_type, i.origin_id, i.first_executed_at, i.start_date, i.metadata, i.stage, i.properties, i.revision, i.last_activity_at, i.triage_state, i.duplicate_of_issue_id, i.done_at, i.reopen_count, i.last_reopened_at, i.run_queued, i.run_after_issue_ids, i.run_start_status, i.outcome, i.flow, i.flow_step, i.flow_task, i.flow_round FROM issue i
 JOIN issue_workflow w ON w.id = NULLIF(i.flow->>'workflow_id', '')::uuid AND w.workspace_id = i.workspace_id
@@ -509,6 +524,7 @@ WHERE i.assignee_type = 'squad'
   AND i.flow IS NULL
   AND i.flow_task IS NULL
   AND i.parent_issue_id IS NULL
+  AND i.creator_type = 'member'
   AND i.status NOT IN ('done', 'cancelled')
   AND s.archived_at IS NULL
   AND w.flow_config IS NOT NULL
@@ -520,7 +536,9 @@ LIMIT $1::int
 
 // Requests given to a squad whose active workflow is an auto flow but that have
 // no flow state yet: the write that created them did not reach the engine. A request
-// a person detached (the flow_detached entry) stays off its flow.
+// a person detached (the flow_detached entry) stays off its flow. Only a request a member
+// filed qualifies: an agent files work for a squad through the paths that start the flow
+// themselves (a handoff), and the company planning job files its issues in the leader's name.
 func (q *Queries) ListUnstartedFlowRequests(ctx context.Context, pageLimit int32) ([]Issue, error) {
 	rows, err := q.db.Query(ctx, listUnstartedFlowRequests, pageLimit)
 	if err != nil {

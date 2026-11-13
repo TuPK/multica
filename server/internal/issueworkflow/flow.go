@@ -1073,5 +1073,6 @@ func FlowLeadBrief(in FlowLeadBriefInput) string {
 		fmt.Fprintf(&b, "\nWhen you are woken, run `multica issue flow advance %s`. It opens the tasks of the step, or moves the request on when they are all closed, and tells you what it waits for. It is safe to run again.\n", id)
 	}
 	b.WriteString("\nDo not create sub-issues under this request and do not set the status of the request: the server refuses both.\n")
+	b.WriteString("The server posts the stop comment and sets the status when the request stops (the headers \"BLOCKED · stop 1\", \"BLOCKED · stop 3\" and \"IN REVIEW · stop 2\"). Post none of them yourself. Where your squad rules or skills say to comment or set the status at a stop, this brief wins while the workflow runs the request.\n")
 	return b.String()
 }

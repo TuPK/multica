@@ -129,7 +129,9 @@ LIMIT sqlc.arg('page_limit')::int;
 -- name: ListUnstartedFlowRequests :many
 -- Requests given to a squad whose active workflow is an auto flow but that have
 -- no flow state yet: the write that created them did not reach the engine. A request
--- a person detached (the flow_detached entry) stays off its flow.
+-- a person detached (the flow_detached entry) stays off its flow. Only a request a member
+-- filed qualifies: an agent files work for a squad through the paths that start the flow
+-- themselves (a handoff), and the company planning job files its issues in the leader's name.
 SELECT i.* FROM issue i
 JOIN squad s ON s.id = i.assignee_id AND s.workspace_id = i.workspace_id
 JOIN issue_workflow w ON w.id = s.active_workflow_id AND w.workspace_id = s.workspace_id
@@ -137,6 +139,7 @@ WHERE i.assignee_type = 'squad'
   AND i.flow IS NULL
   AND i.flow_task IS NULL
   AND i.parent_issue_id IS NULL
+  AND i.creator_type = 'member'
   AND i.status NOT IN ('done', 'cancelled')
   AND s.archived_at IS NULL
   AND w.flow_config IS NOT NULL
@@ -157,3 +160,10 @@ SELECT
   (MAX(COALESCE(completed_at, started_at, created_at)) FILTER (WHERE created_at >= sqlc.arg('since')::timestamptz))::timestamptz AS last_activity
 FROM agent_task_queue
 WHERE issue_id = sqlc.arg('issue_id')::uuid;
+
+-- name: LastAgentCommentOnIssue :one
+-- The newest comment an agent wrote on an issue: a blocked task says there what it could not do.
+SELECT content FROM comment
+WHERE issue_id = $1 AND author_type = 'agent'
+ORDER BY created_at DESC, id DESC
+LIMIT 1;

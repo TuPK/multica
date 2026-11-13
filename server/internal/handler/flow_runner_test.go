@@ -96,6 +96,38 @@ func TestChildDone_StillFiresForManualFlow(t *testing.T) {
 	}
 }
 
+// Detach with cancel_tasks takes the request off its flow and cancels its open tasks. The lead must
+// not be woken for those cancelled sub-issues: nothing runs for a detached request.
+func TestDetachCancelTasks_DoesNotWakeTheLead(t *testing.T) {
+	f, request := autoFixture(t)
+	setFlowAuto(t, f.Workflow.ID, false)
+	id := uuidToString(request.ID)
+	closeTaskForEvent(t, tasksAt(t, request, "collect", 0)["docs"], f.Agents.Docs, "")
+	advance(t, request)
+	if got := requestStatus(t, request); got != "draft" {
+		t.Fatalf("request status = %q, want draft", got)
+	}
+	dbfx.Exec(t, `DELETE FROM agent_task_queue WHERE issue_id = $1`, id)
+	before := dbfx.Count(t, `SELECT count(*) FROM agent_task_queue WHERE context->>'wakeup_system' = 'child_done' AND issue_id = $1`, id)
+	crosscheck := tasksAt(t, request, "draft", 0)["crosscheck"]
+	if queuedRuns(t, crosscheck) == 0 {
+		t.Fatal("the open task has no run to cancel; the test would prove nothing")
+	}
+
+	if err := testHandler.DetachFlow(context.Background(), loadIssueRow(t, id), true); err != nil {
+		t.Fatalf("DetachFlow: %v", err)
+	}
+	runWakeupTick(t)
+	runWakeupTick(t)
+
+	if runs := childDoneRuns(t, id); len(runs) != before {
+		t.Fatalf("the lead was woken %d times after the detach: %+v", len(runs)-before, runs)
+	}
+	if n := queuedRuns(t, crosscheck); n != 0 {
+		t.Fatalf("the cancelled task still has %d active runs", n)
+	}
+}
+
 func TestChildDone_ResumesWhenFlagOff(t *testing.T) {
 	f, request := autoFixture(t)
 	withFeatureFlag(t, testHandler, "flow_runner", false)
@@ -198,6 +230,25 @@ func TestFlowSweep_DoesNotRestartADetachedRequest(t *testing.T) {
 	}
 }
 
+// The company planning job files its issues in the name of the squad's leader and gives them to
+// the squad. They are not shipment requests: the sweep must not put them on the squad's flow, which
+// would wake the lead on work the flow cannot plan.
+func TestFlowSweep_LeavesAgentFiledIssuesOffTheFlow(t *testing.T) {
+	withFeatureFlag(t, testHandler, "flow_runner", true)
+	f := newRehearsalFixture(t)
+	setFlowAuto(t, f.Workflow.ID, true)
+	id := dbfx.Issue(t, "Trade request planning "+workflowTestSuffix(), testutil.Cols{
+		"status": "todo", "assignee_type": "squad", "assignee_id": f.SquadID,
+		"creator_type": "agent", "creator_id": f.Agents.Docs,
+	})
+
+	sweep(t)
+
+	if state, ok := flowRequestState(loadIssueRow(t, id)); ok {
+		t.Fatalf("the sweep put an agent-filed issue on the flow: %+v", state)
+	}
+}
+
 func TestFlowSweep_IdleTaskRetriesThenStalls(t *testing.T) {
 	_, request := autoFixture(t)
 	docs := tasksAt(t, request, "collect", 0)["docs"]
@@ -229,6 +280,41 @@ func TestFlowSweep_IdleTaskRetriesThenStalls(t *testing.T) {
 	if !containsAll(lastComment(t, request), "BLOCKED · stalled") {
 		t.Fatalf("stalled comment = %q", lastComment(t, request))
 	}
+}
+
+// The brief of a retried run says what that run must do. A task is closed with the commands in its
+// description; the lead of a request has no task to close, it plans.
+func TestFlowSweep_RetryBriefNamesTheJobOfTheRun(t *testing.T) {
+	withFeatureFlag(t, testHandler, "flow_runner", true)
+	f := newRehearsalFixture(t)
+	setFlowAuto(t, f.Workflow.ID, true)
+	request := f.newRequest(t)
+	id := uuidToString(request.ID)
+	dbfx.Exec(t, `DELETE FROM agent_task_queue WHERE issue_id = $1`, id)
+	backdateStep(t, request, 6*time.Hour)
+	sweep(t)
+	leadNote := queuedRunNote(t, id)
+	if !containsAll(leadNote, "flow plan") || containsAll(leadNote, "close it") {
+		t.Fatalf("the lead's retry brief = %q, want it to ask for the plan and not to close a task", leadNote)
+	}
+
+	f.plan(t, request, nil)
+	docs := tasksAt(t, request, "collect", 0)["docs"]
+	endRuns(t, docs)
+	backdateStep(t, request, 5*time.Hour)
+	backdateRuns(t, docs, 3*time.Hour)
+	sweep(t)
+	if taskNote := queuedRunNote(t, docs); !containsAll(taskNote, "close it") {
+		t.Fatalf("the task's retry brief = %q, want it to ask to close the task", taskNote)
+	}
+}
+
+func queuedRunNote(t *testing.T, issueID string) string {
+	t.Helper()
+	var note string
+	dbfx.QueryRow(t, `SELECT COALESCE(handoff_note, '') FROM agent_task_queue
+		WHERE issue_id = $1 AND status = 'queued' ORDER BY created_at DESC LIMIT 1`, issueID).Scan(&note)
+	return note
 }
 
 func TestFlowSweep_BlockedAgentTaskGetsRunWhenReady(t *testing.T) {
