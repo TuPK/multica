@@ -1450,6 +1450,27 @@ type IssueWorkflow struct {
 	FlowConfig       []byte             `json:"flow_config"`
 	TemplateRef      pgtype.Text        `json:"template_ref"`
 	FlowAuto         bool               `json:"flow_auto"`
+	LineageID        pgtype.UUID        `json:"lineage_id"`
+	Version          pgtype.Int4        `json:"version"`
+	PublishedAt      pgtype.Timestamptz `json:"published_at"`
+	PublishedBy      pgtype.UUID        `json:"published_by"`
+}
+
+type IssueWorkflowDraft struct {
+	ID             pgtype.UUID        `json:"id"`
+	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
+	SquadID        pgtype.UUID        `json:"squad_id"`
+	LineageID      pgtype.UUID        `json:"lineage_id"`
+	BaseWorkflowID pgtype.UUID        `json:"base_workflow_id"`
+	Name           string             `json:"name"`
+	Doc            []byte             `json:"doc"`
+	Revision       int32              `json:"revision"`
+	Origin         string             `json:"origin"`
+	SourceRef      []byte             `json:"source_ref"`
+	CreatedBy      pgtype.UUID        `json:"created_by"`
+	UpdatedBy      pgtype.UUID        `json:"updated_by"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 }
 
 type JobStatus struct {

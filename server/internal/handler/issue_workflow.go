@@ -103,6 +103,14 @@ type IssueWorkflowResponse struct {
 	TemplateRef      *string                   `json:"template_ref"`
 	FlowAuto         bool                      `json:"flow_auto"`
 	OpenFlowRequests int                       `json:"open_flow_requests"`
+	// LineageID, Version, PublishedAt and PublishedBy are set on a version a person published
+	// (spec 8.2): the row is locked against edits from then on. A schema 2 row also carries its
+	// document, which flow_config (the schema 1 shape) cannot.
+	LineageID   *string         `json:"lineage_id"`
+	Version     *int32          `json:"version"`
+	PublishedAt *string         `json:"published_at"`
+	PublishedBy *string         `json:"published_by"`
+	FlowDoc     json.RawMessage `json:"flow_doc,omitempty"`
 }
 
 // StatusMappingRequirement names a status some issues are on that the target
@@ -188,9 +196,21 @@ func issueWorkflowToResponse(row db.IssueWorkflow, def issueworkflow.Definition,
 	if projectIDs == nil {
 		projectIDs = []string{}
 	}
-	steps := make([]IssueWorkflowStepPayload, len(def.Steps))
-	for i, s := range def.Steps {
+	listed := def.Steps
+	var doc json.RawMessage
+	if def.HasFlow() && def.Graph.Compat != issueworkflow.CompatV1 {
+		// A workflow of schema 2 lists its statuses; the old shape of steps carries the tasks of
+		// the steps on each, so an older client draws something (spec 7.5).
+		listed = issueworkflow.ProjectLegacySteps(def)
+		doc = row.FlowConfig
+	}
+	steps := make([]IssueWorkflowStepPayload, len(listed))
+	for i, s := range listed {
 		steps[i] = stepToPayload(s)
+	}
+	var version *int32
+	if row.Version.Valid {
+		version = &row.Version.Int32
 	}
 	return IssueWorkflowResponse{
 		ID:          uuidToString(row.ID),
@@ -207,6 +227,11 @@ func issueWorkflowToResponse(row db.IssueWorkflow, def issueworkflow.Definition,
 		FlowConfig:  def.Flow,
 		TemplateRef: textToPtr(row.TemplateRef),
 		FlowAuto:    row.FlowAuto,
+		LineageID:   uuidToPtr(row.LineageID),
+		Version:     version,
+		PublishedAt: timestampToPtr(row.PublishedAt),
+		PublishedBy: uuidToPtr(row.PublishedBy),
+		FlowDoc:     doc,
 	}
 }
 
@@ -579,6 +604,10 @@ type IssueWorkflowWriteRequest struct {
 	// changes them.
 	FlowConfig  *issueworkflow.FlowConfig `json:"flow_config,omitempty"`
 	TemplateRef *string                   `json:"template_ref,omitempty"`
+	// SquadID, on a create, names the squad the new flow is written for: the flow
+	// is then checked against who is in the squad and the row is kept as the
+	// squad's. Without it the roster is not checked.
+	SquadID *string `json:"squad_id,omitempty"`
 	// Steps replace the workflow's steps and handoffs. Todo, done and
 	// cancelled are added when missing; backlog and blocked are listed only
 	// when included. Fixed statuses take their fixed places.
@@ -779,6 +808,20 @@ func writeManagedByTemplate(w http.ResponseWriter) {
 	writeErrorCode(w, http.StatusConflict, "workflow_managed_by_template", "this workflow is managed by its template and cannot be edited")
 }
 
+// workflowLocked reports whether a workflow refuses edits: a catalog row (its
+// template owns it) or a version a person published (spec 8.1, I2).
+func workflowLocked(row db.IssueWorkflow) bool { return row.TemplateRef.Valid || row.PublishedAt.Valid }
+
+// writeWorkflowLocked answers a write to a locked workflow with the reason: the
+// template of a catalog row, or the publication of a version.
+func writeWorkflowLocked(w http.ResponseWriter, row db.IssueWorkflow) {
+	if row.TemplateRef.Valid {
+		writeManagedByTemplate(w)
+		return
+	}
+	writeErrorCode(w, http.StatusConflict, "workflow_locked", "this version is published and cannot be edited: make a draft from it")
+}
+
 func (h *Handler) CreateIssueWorkflow(w http.ResponseWriter, r *http.Request) {
 	workspaceID := h.resolveWorkspaceID(r)
 	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace id")
@@ -816,6 +859,23 @@ func (h *Handler) CreateIssueWorkflow(w http.ResponseWriter, r *http.Request) {
 	if templateRef != "" && req.FlowConfig == nil {
 		writeErrorCode(w, http.StatusBadRequest, "invalid_workflow", "template_ref needs a flow_config")
 		return
+	}
+	if req.FlowConfig != nil && req.FlowConfig.Version >= issueworkflow.FlowDocVersion {
+		writeErrorCode(w, http.StatusBadRequest, "flow_schema_unsupported", "a flow of schema 2 is written as a draft and published")
+		return
+	}
+	var squad *db.Squad
+	if req.SquadID != nil && *req.SquadID != "" {
+		squadID, ok := parseUUIDOrBadRequest(w, *req.SquadID, "squad id")
+		if !ok {
+			return
+		}
+		found, err := h.Queries.GetSquadInWorkspace(r.Context(), db.GetSquadInWorkspaceParams{ID: squadID, WorkspaceID: wsUUID})
+		if err != nil {
+			writeError(w, http.StatusNotFound, "squad not found")
+			return
+		}
+		squad = &found
 	}
 	flowConfig, err := encodeFlowConfig(req.FlowConfig)
 	if err != nil {
@@ -869,6 +929,24 @@ func (h *Handler) CreateIssueWorkflow(w http.ResponseWriter, r *http.Request) {
 		writeErrorCode(w, status, "invalid_handoff", msg)
 		return
 	}
+	var squadID pgtype.UUID
+	if squad != nil && req.FlowConfig != nil {
+		roster, err := h.squadRoster(ctx, qtx, *squad, false)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to save workflow")
+			return
+		}
+		issues := issueworkflow.ValidateSchema1ForSquad(issueworkflow.Definition{Name: name, Steps: steps, Flow: req.FlowConfig}, roster)
+		if issueworkflow.HasErrors(issues) {
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
+				"error": "the flow does not fit the squad", "code": "flow_workflow_invalid", "issues": issues,
+			})
+			return
+		}
+	}
+	if squad != nil {
+		squadID = squad.ID
+	}
 	raw, err := issueworkflow.EncodeSteps(steps)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to save workflow")
@@ -881,6 +959,7 @@ func (h *Handler) CreateIssueWorkflow(w http.ResponseWriter, r *http.Request) {
 		InitialStatusKey: issueworkflow.StartStatus,
 		Steps:            raw,
 		OwnerID:          member.UserID,
+		SquadID:          squadID,
 		FlowConfig:       flowConfig,
 		TemplateRef:      pgtype.Text{String: templateRef, Valid: templateRef != ""},
 	})
@@ -1033,8 +1112,8 @@ func (h *Handler) UpdateIssueWorkflow(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "only the workflow owner and workspace admins can change this workflow")
 		return
 	}
-	if current.TemplateRef.Valid {
-		writeManagedByTemplate(w)
+	if workflowLocked(current) {
+		writeWorkflowLocked(w, current)
 		return
 	}
 	currentFlow, err := issueworkflow.ParseFlowConfig(current.FlowConfig)
@@ -1584,8 +1663,8 @@ func (h *Handler) SetIssueWorkflowHandoff(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusForbidden, "only the workflow owner and workspace admins can change this workflow")
 		return
 	}
-	if current.TemplateRef.Valid {
-		writeManagedByTemplate(w)
+	if workflowLocked(current) {
+		writeWorkflowLocked(w, current)
 		return
 	}
 	def, err := issueworkflow.Decode(current)

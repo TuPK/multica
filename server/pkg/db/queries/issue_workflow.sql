@@ -73,6 +73,29 @@ VALUES (
 )
 RETURNING *;
 
+-- name: CreateFlowWorkflowVersion :one
+-- A published version of a flow workflow (spec 8.1): locked from the moment it exists
+-- (published_at), one of a lineage (lineage_id, version), never auto (flow_auto false)
+-- and never a catalog row (no template_ref).
+INSERT INTO issue_workflow (
+    workspace_id, name, description, initial_status_key, steps, owner_id, squad_id, flow_config,
+    lineage_id, version, published_at, published_by
+) VALUES (
+    sqlc.arg('workspace_id')::uuid,
+    sqlc.arg('name')::text,
+    sqlc.arg('description')::text,
+    sqlc.arg('initial_status_key')::text,
+    sqlc.arg('steps')::jsonb,
+    sqlc.arg('owner_id')::uuid,
+    sqlc.arg('squad_id')::uuid,
+    sqlc.arg('flow_config')::jsonb,
+    sqlc.arg('lineage_id')::uuid,
+    sqlc.arg('version')::int,
+    now(),
+    sqlc.arg('published_by')::uuid
+)
+RETURNING *;
+
 -- name: ListSquadIssueWorkflows :many
 -- A squad's library: the workflows it owns, in the order its picker lists them.
 SELECT * FROM issue_workflow

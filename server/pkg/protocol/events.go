@@ -152,6 +152,10 @@ const (
 	// re-read GET /api/issues/{id}/flow.
 	EventIssueFlowUpdated = "issue_flow:updated"
 
+	// A draft of a flow workflow changed: it was made, saved, published or deleted. The payload
+	// is {"squad_id", "draft_id"}; clients invalidate the query of the draft and of the list.
+	EventFlowDraftUpdated = "flow_draft:updated"
+
 	// Saved issue views. One event for create, edit and delete: every client
 	// answers by re-reading the views it can see. A view that is private on
 	// both sides of the write reaches its owner only.

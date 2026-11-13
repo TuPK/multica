@@ -45,6 +45,15 @@ const (
 	// FlowRunner gates the background runner of the flow engine (tier 2): it advances a
 	// request on a flow workflow whose flow_auto is on. Default off.
 	FlowRunner = "flow_runner"
+
+	// FlowAuthoring gates the routes that draft, check, simulate and publish a flow workflow
+	// (FF_FLOW_AUTHORING). Default off: the routes answer 404 flow_authoring_disabled, and
+	// the versions already published and the requests running on them are not touched.
+	FlowAuthoring = "flow_authoring"
+	// FlowGraphV2 gates writing a flow document of schema 2: import, publish, and creating
+	// one through the API (FF_FLOW_GRAPH_V2). Default off. It does not steer the engine,
+	// which reads schema 1 and schema 2 alike; it only stops new documents from being made.
+	FlowGraphV2 = "flow_graph_v2"
 	// agentBuilderCompat is no longer a release flag. Keep publishing the key
 	// as enabled so installed desktop clients that still gate the AI creation
 	// entry on this config decision receive the permanently enabled behavior.
@@ -97,6 +106,14 @@ func FlowRunnerEnabled(ctx context.Context, flags *featureflag.Service) bool {
 
 func FlowEngineEnabled(ctx context.Context, flags *featureflag.Service) bool {
 	return flags.IsEnabled(ctx, FlowEngine, true)
+}
+
+func FlowAuthoringEnabled(ctx context.Context, flags *featureflag.Service) bool {
+	return flags.IsEnabled(ctx, FlowAuthoring, false)
+}
+
+func FlowGraphV2Enabled(ctx context.Context, flags *featureflag.Service) bool {
+	return flags.IsEnabled(ctx, FlowGraphV2, false)
 }
 
 func EvaluateFrontendPublicFlags(ctx context.Context, flags *featureflag.Service) map[string]bool {

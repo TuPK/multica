@@ -132,7 +132,7 @@ VALUES (
     true
 )
 ON CONFLICT (workspace_id) WHERE is_default DO NOTHING
-RETURNING id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto
+RETURNING id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto, lineage_id, version, published_at, published_by
 `
 
 type CreateDefaultIssueWorkflowParams struct {
@@ -165,6 +165,10 @@ func (q *Queries) CreateDefaultIssueWorkflow(ctx context.Context, arg CreateDefa
 			&i.FlowConfig,
 			&i.TemplateRef,
 			&i.FlowAuto,
+			&i.LineageID,
+			&i.Version,
+			&i.PublishedAt,
+			&i.PublishedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -174,6 +178,82 @@ func (q *Queries) CreateDefaultIssueWorkflow(ctx context.Context, arg CreateDefa
 		return nil, err
 	}
 	return items, nil
+}
+
+const createFlowWorkflowVersion = `-- name: CreateFlowWorkflowVersion :one
+INSERT INTO issue_workflow (
+    workspace_id, name, description, initial_status_key, steps, owner_id, squad_id, flow_config,
+    lineage_id, version, published_at, published_by
+) VALUES (
+    $1::uuid,
+    $2::text,
+    $3::text,
+    $4::text,
+    $5::jsonb,
+    $6::uuid,
+    $7::uuid,
+    $8::jsonb,
+    $9::uuid,
+    $10::int,
+    now(),
+    $11::uuid
+)
+RETURNING id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto, lineage_id, version, published_at, published_by
+`
+
+type CreateFlowWorkflowVersionParams struct {
+	WorkspaceID      pgtype.UUID `json:"workspace_id"`
+	Name             string      `json:"name"`
+	Description      string      `json:"description"`
+	InitialStatusKey string      `json:"initial_status_key"`
+	Steps            []byte      `json:"steps"`
+	OwnerID          pgtype.UUID `json:"owner_id"`
+	SquadID          pgtype.UUID `json:"squad_id"`
+	FlowConfig       []byte      `json:"flow_config"`
+	LineageID        pgtype.UUID `json:"lineage_id"`
+	Version          int32       `json:"version"`
+	PublishedBy      pgtype.UUID `json:"published_by"`
+}
+
+// A published version of a flow workflow (spec 8.1): locked from the moment it exists
+// (published_at), one of a lineage (lineage_id, version), never auto (flow_auto false)
+// and never a catalog row (no template_ref).
+func (q *Queries) CreateFlowWorkflowVersion(ctx context.Context, arg CreateFlowWorkflowVersionParams) (IssueWorkflow, error) {
+	row := q.db.QueryRow(ctx, createFlowWorkflowVersion,
+		arg.WorkspaceID,
+		arg.Name,
+		arg.Description,
+		arg.InitialStatusKey,
+		arg.Steps,
+		arg.OwnerID,
+		arg.SquadID,
+		arg.FlowConfig,
+		arg.LineageID,
+		arg.Version,
+		arg.PublishedBy,
+	)
+	var i IssueWorkflow
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.Description,
+		&i.InitialStatusKey,
+		&i.Steps,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.IsDefault,
+		&i.OwnerID,
+		&i.SquadID,
+		&i.FlowConfig,
+		&i.TemplateRef,
+		&i.FlowAuto,
+		&i.LineageID,
+		&i.Version,
+		&i.PublishedAt,
+		&i.PublishedBy,
+	)
+	return i, err
 }
 
 const createIssueWorkflow = `-- name: CreateIssueWorkflow :one
@@ -189,7 +269,7 @@ VALUES (
     $8::jsonb,
     $9::text
 )
-RETURNING id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto
+RETURNING id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto, lineage_id, version, published_at, published_by
 `
 
 type CreateIssueWorkflowParams struct {
@@ -233,6 +313,10 @@ func (q *Queries) CreateIssueWorkflow(ctx context.Context, arg CreateIssueWorkfl
 		&i.FlowConfig,
 		&i.TemplateRef,
 		&i.FlowAuto,
+		&i.LineageID,
+		&i.Version,
+		&i.PublishedAt,
+		&i.PublishedBy,
 	)
 	return i, err
 }
@@ -268,7 +352,7 @@ func (q *Queries) DeleteIssueWorkflowsForWorkspace(ctx context.Context, workspac
 }
 
 const getDefaultIssueWorkflow = `-- name: GetDefaultIssueWorkflow :one
-SELECT id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto FROM issue_workflow
+SELECT id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto, lineage_id, version, published_at, published_by FROM issue_workflow
 WHERE workspace_id = $1::uuid
   AND is_default
 `
@@ -291,12 +375,16 @@ func (q *Queries) GetDefaultIssueWorkflow(ctx context.Context, workspaceID pgtyp
 		&i.FlowConfig,
 		&i.TemplateRef,
 		&i.FlowAuto,
+		&i.LineageID,
+		&i.Version,
+		&i.PublishedAt,
+		&i.PublishedBy,
 	)
 	return i, err
 }
 
 const getIssueWorkflow = `-- name: GetIssueWorkflow :one
-SELECT id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto FROM issue_workflow
+SELECT id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto, lineage_id, version, published_at, published_by FROM issue_workflow
 WHERE id = $1::uuid
   AND workspace_id = $2::uuid
 `
@@ -324,6 +412,10 @@ func (q *Queries) GetIssueWorkflow(ctx context.Context, arg GetIssueWorkflowPara
 		&i.FlowConfig,
 		&i.TemplateRef,
 		&i.FlowAuto,
+		&i.LineageID,
+		&i.Version,
+		&i.PublishedAt,
+		&i.PublishedBy,
 	)
 	return i, err
 }
@@ -365,7 +457,7 @@ func (q *Queries) ListIssueWorkflowNamesUsingStatusKey(ctx context.Context, arg 
 
 const listIssueWorkflows = `-- name: ListIssueWorkflows :many
 
-SELECT id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto FROM issue_workflow
+SELECT id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto, lineage_id, version, published_at, published_by FROM issue_workflow
 WHERE workspace_id = $1::uuid
 ORDER BY is_default DESC, lower(name), created_at, id
 `
@@ -398,6 +490,10 @@ func (q *Queries) ListIssueWorkflows(ctx context.Context, workspaceID pgtype.UUI
 			&i.FlowConfig,
 			&i.TemplateRef,
 			&i.FlowAuto,
+			&i.LineageID,
+			&i.Version,
+			&i.PublishedAt,
+			&i.PublishedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -532,7 +628,7 @@ func (q *Queries) ListProjectsUsingIssueWorkflow(ctx context.Context, arg ListPr
 }
 
 const listSquadIssueWorkflows = `-- name: ListSquadIssueWorkflows :many
-SELECT id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto FROM issue_workflow
+SELECT id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto, lineage_id, version, published_at, published_by FROM issue_workflow
 WHERE workspace_id = $1::uuid
   AND squad_id = $2::uuid
 ORDER BY lower(name), created_at, id
@@ -568,6 +664,10 @@ func (q *Queries) ListSquadIssueWorkflows(ctx context.Context, arg ListSquadIssu
 			&i.FlowConfig,
 			&i.TemplateRef,
 			&i.FlowAuto,
+			&i.LineageID,
+			&i.Version,
+			&i.PublishedAt,
+			&i.PublishedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -870,7 +970,7 @@ UPDATE issue_workflow SET
     updated_at = now()
 WHERE id = $2::uuid
   AND workspace_id = $3::uuid
-RETURNING id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto
+RETURNING id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto, lineage_id, version, published_at, published_by
 `
 
 type SetIssueWorkflowSquadParams struct {
@@ -898,6 +998,10 @@ func (q *Queries) SetIssueWorkflowSquad(ctx context.Context, arg SetIssueWorkflo
 		&i.FlowConfig,
 		&i.TemplateRef,
 		&i.FlowAuto,
+		&i.LineageID,
+		&i.Version,
+		&i.PublishedAt,
+		&i.PublishedBy,
 	)
 	return i, err
 }
@@ -951,7 +1055,7 @@ UPDATE issue_workflow SET
     updated_at = now()
 WHERE id = $5::uuid
   AND workspace_id = $6::uuid
-RETURNING id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto
+RETURNING id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto, lineage_id, version, published_at, published_by
 `
 
 type UpdateIssueWorkflowParams struct {
@@ -988,6 +1092,10 @@ func (q *Queries) UpdateIssueWorkflow(ctx context.Context, arg UpdateIssueWorkfl
 		&i.FlowConfig,
 		&i.TemplateRef,
 		&i.FlowAuto,
+		&i.LineageID,
+		&i.Version,
+		&i.PublishedAt,
+		&i.PublishedBy,
 	)
 	return i, err
 }

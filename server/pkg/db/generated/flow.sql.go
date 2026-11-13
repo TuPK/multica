@@ -888,7 +888,7 @@ const setIssueWorkflowFlowAuto = `-- name: SetIssueWorkflowFlowAuto :one
 UPDATE issue_workflow SET flow_auto = $1::boolean, updated_at = now()
 WHERE id = $2::uuid
   AND workspace_id = $3::uuid
-RETURNING id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto
+RETURNING id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto, lineage_id, version, published_at, published_by
 `
 
 type SetIssueWorkflowFlowAutoParams struct {
@@ -916,6 +916,10 @@ func (q *Queries) SetIssueWorkflowFlowAuto(ctx context.Context, arg SetIssueWork
 		&i.FlowConfig,
 		&i.TemplateRef,
 		&i.FlowAuto,
+		&i.LineageID,
+		&i.Version,
+		&i.PublishedAt,
+		&i.PublishedBy,
 	)
 	return i, err
 }

@@ -2439,8 +2439,12 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Put("/handoffs/{status}", h.SetIssueWorkflowHandoff)
 					r.Put("/flow-auto", h.SetIssueWorkflowFlowAuto)
 					r.Post("/brief", h.PreviewIssueWorkflowBrief)
+					r.Get("/flow-manifest", h.GetIssueWorkflowFlowManifest)
 				})
 			})
+
+			// What this server's flow engine can express: limits, kinds, facts, features.
+			r.Get("/api/flow/capabilities", h.GetFlowCapabilities)
 
 			// Projects
 			r.Route("/api/projects", func(r chi.Router) {
@@ -2481,6 +2485,20 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Get("/workflows", h.ListSquadWorkflows)
 					r.Post("/workflows", h.CreateSquadWorkflow)
 					r.Post("/workflow", h.SetSquadActiveWorkflow)
+					// Flow drafts (spec 8): authored here, published as locked versions.
+					r.Route("/flow-drafts", func(r chi.Router) {
+						r.Get("/", h.ListFlowDrafts)
+						r.Post("/", h.CreateFlowDraft)
+						r.Route("/{draftId}", func(r chi.Router) {
+							r.Get("/", h.GetFlowDraft)
+							r.Patch("/", h.UpdateFlowDraft)
+							r.Delete("/", h.DeleteFlowDraft)
+							r.Post("/validate", h.ValidateFlowDraft)
+							r.Post("/simulate", h.SimulateFlowDraft)
+							r.Post("/publish", h.PublishFlowDraft)
+							r.Get("/export", h.ExportFlowDraft)
+						})
+					})
 					r.Get("/members/status", h.ListSquadMemberStatus)
 					r.Post("/members", h.AddSquadMember)
 					r.Delete("/members", h.RemoveSquadMember)
