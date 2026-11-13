@@ -25,6 +25,7 @@ import type {
   IssueFlowStop,
   IssueFlowSwitchValue,
   IssueFlowTask,
+  IssueFlowViewer,
 } from "../types/issue-flow";
 import type { SetSquadActiveWorkflowResponse, SquadWorkflowsResponse } from "../types/squad";
 import type {
@@ -1682,6 +1683,12 @@ const IssueFlowRefSchema = z.object({
 
 // GET /api/issues/{id}/flow and the advance answer. Every list is read item by
 // item, so one task or action this build cannot read never hides the rest.
+const IssueFlowClosedBySchema = z.object({
+  type: z.string().default(""),
+  id: z.string().default(""),
+  on_behalf: z.boolean().default(false).catch(false),
+}).loose();
+
 const IssueFlowTaskSchema = z.object({
   issue_id: z.string().default(""),
   identifier: z.string().default(""),
@@ -1693,6 +1700,7 @@ const IssueFlowTaskSchema = z.object({
   outcome: z.string().nullable().default(null).catch(null),
   assignee_id: z.string().nullable().default(null).catch(null),
   closed_at: z.string().nullable().default(null).catch(null),
+  closed_by: IssueFlowClosedBySchema.nullable().default(null).catch(null),
 }).loose();
 
 const IssueFlowNextSchema = z.object({
@@ -1712,6 +1720,14 @@ function tolerantList<T>(schema: z.ZodType<T>) {
   });
 }
 
+// What the reader may do. An older server sends none: the reader may do nothing.
+export const EMPTY_ISSUE_FLOW_VIEWER: IssueFlowViewer = { can_manage: false, closable_task_ids: [] };
+
+const IssueFlowViewerSchema = z.object({
+  can_manage: z.boolean().default(false).catch(false),
+  closable_task_ids: z.array(z.string()).default([]).catch([]),
+}).loose();
+
 export const IssueFlowStateSchema = z.object({
   managed: z.boolean().default(true).catch(true),
   role: z.unknown().transform((value): IssueFlowState["role"] => (value === "task" ? "task" : "request")),
@@ -1726,6 +1742,10 @@ export const IssueFlowStateSchema = z.object({
   tasks: tolerantList(IssueFlowTaskSchema as unknown as z.ZodType<IssueFlowTask>),
   next: tolerantList(IssueFlowNextSchema as unknown as z.ZodType<IssueFlowNext>),
   rework_step: z.string().default("").catch(""),
+  viewer: z.unknown().transform((value): IssueFlowViewer => {
+    const parsed = IssueFlowViewerSchema.safeParse(value ?? {});
+    return parsed.success ? parsed.data : { ...EMPTY_ISSUE_FLOW_VIEWER, closable_task_ids: [] };
+  }),
 }).loose();
 
 export const EMPTY_ISSUE_FLOW_STATE: IssueFlowState = {
@@ -1742,6 +1762,7 @@ export const EMPTY_ISSUE_FLOW_STATE: IssueFlowState = {
   tasks: [],
   next: [],
   rework_step: "",
+  viewer: EMPTY_ISSUE_FLOW_VIEWER,
 };
 
 const IssueFlowActionSchema = z.object({

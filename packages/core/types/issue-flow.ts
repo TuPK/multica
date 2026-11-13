@@ -45,6 +45,23 @@ export interface IssueFlowTask {
   outcome: string | null;
   assignee_id: string | null;
   closed_at: string | null;
+  /** Who closed the task; null while it is open. Absent from an older server. */
+  closed_by?: IssueFlowClosedBy | null;
+}
+
+/** Who closed a task. `on_behalf` is true when a member who manages the squad closed it for its assignee. */
+export interface IssueFlowClosedBy {
+  type: string;
+  id: string;
+  on_behalf: boolean;
+}
+
+/** What the reader of the state may do. Absent from an older server, which reads as nothing. */
+export interface IssueFlowViewer {
+  /** The reader manages the squad that runs the request. */
+  can_manage: boolean;
+  /** The open tasks the reader may close: their own, or any when they manage the squad. */
+  closable_task_ids: string[];
 }
 
 /** A way out of the current step, for the admin's view of where the request can go. */
@@ -77,6 +94,8 @@ export interface IssueFlowState {
    * request is not stopped or its stop has no such step. Absent from an older server.
    */
   rework_step?: string;
+  /** Filled for the reader of GET /api/issues/{id}/flow; absent from an older server. */
+  viewer?: IssueFlowViewer;
 }
 
 export type IssueFlowActionKind = "opened_tasks" | "routed" | "stopped" | "noop";

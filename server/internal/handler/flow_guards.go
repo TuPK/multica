@@ -14,6 +14,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/multica-ai/multica/server/pkg/dbid"
 )
 
 // The checks the server makes on writes to an issue that belongs to a flow
@@ -79,49 +80,53 @@ func (h *Handler) flowDefinition(ctx context.Context, workspaceID pgtype.UUID, s
 	return def, true
 }
 
-// flowTaskSpec finds the definition of a task the engine opened: its request
-// pins the workflow and the workflow names the task. ok is false when a link is
-// missing, for instance after the request was detached; the issue is then an
-// ordinary one.
-func (h *Handler) flowTaskSpec(ctx context.Context, task db.Issue) (issueworkflow.Task, bool) {
+// flowTaskRun finds the request a task the engine opened belongs to, the
+// workflow it is pinned to, and the definition of the task. ok is false when a
+// link is missing, for instance after the request was detached; the issue is
+// then an ordinary one.
+func (h *Handler) flowTaskRun(ctx context.Context, task db.Issue) (*flowRun, issueworkflow.Task, bool) {
 	if !task.FlowTask.Valid || !task.ParentIssueID.Valid {
-		return issueworkflow.Task{}, false
+		return nil, issueworkflow.Task{}, false
 	}
 	parent, err := h.Queries.GetIssueInWorkspace(ctx, db.GetIssueInWorkspaceParams{ID: task.ParentIssueID, WorkspaceID: task.WorkspaceID})
 	if err != nil {
-		return issueworkflow.Task{}, false
+		return nil, issueworkflow.Task{}, false
 	}
-	state, ok := flowRequestState(parent)
-	if !ok {
-		return issueworkflow.Task{}, false
+	run, err := h.loadFlowRun(ctx, h.Queries, parent)
+	if err != nil {
+		return nil, issueworkflow.Task{}, false
 	}
-	def, ok := h.flowDefinition(ctx, task.WorkspaceID, state)
+	step, ok := run.def.Step(task.FlowStep.String)
 	if !ok {
-		return issueworkflow.Task{}, false
-	}
-	step, ok := def.Step(task.FlowStep.String)
-	if !ok {
-		return issueworkflow.Task{}, false
+		return nil, issueworkflow.Task{}, false
 	}
 	for _, t := range step.Tasks {
 		if t.Key == task.FlowTask.String {
-			return t, true
+			return run, t, true
 		}
 	}
-	return issueworkflow.Task{}, false
+	return nil, issueworkflow.Task{}, false
+}
+
+// flowTaskSpec finds the definition of a task the engine opened.
+func (h *Handler) flowTaskSpec(ctx context.Context, task db.Issue) (issueworkflow.Task, bool) {
+	_, spec, ok := h.flowTaskRun(ctx, task)
+	return spec, ok
 }
 
 // flowActor is who makes a write: an agent, or a member (with the workspace
 // membership that decides whether they manage the squad).
 type flowActor struct {
-	Type   string
+	Type string
+	// ID is the id of the agent, or of the user for a member.
+	ID     string
 	Member *db.Member
 }
 
 // flowActorFor resolves the actor of a request.
 func (h *Handler) flowActorFor(r *http.Request, userID, workspaceID string) flowActor {
-	actorType, _ := h.resolveActor(r, userID, workspaceID)
-	actor := flowActor{Type: actorType}
+	actorType, actorID := h.resolveActor(r, userID, workspaceID)
+	actor := flowActor{Type: actorType, ID: actorID}
 	if actorType == "member" {
 		if member, err := h.getWorkspaceMember(r.Context(), userID, workspaceID); err == nil {
 			actor.Member = &member
@@ -131,17 +136,18 @@ func (h *Handler) flowActorFor(r *http.Request, userID, workspaceID string) flow
 }
 
 // checkFlowWrite applies the flow rules to one prospective update of prev.
-// params carries the status the write sets; outcome is what the caller reported
-// with it, empty when none. Writes that do not change the status pass.
+// params carries the status and the assignee the write sets; outcome is what the
+// caller reported with it, empty when none. A write to a request that does not
+// change its status passes; a write to a task is checked for who makes it.
 func (h *Handler) checkFlowWrite(ctx context.Context, prev db.Issue, params db.UpdateIssueParams, outcome string, actor flowActor) error {
-	if !params.Status.Valid || params.Status.String == prev.Status {
-		return nil
-	}
 	if prev.FlowTask.Valid {
 		if !h.flowEngineEnabled(ctx) {
 			return nil
 		}
-		return h.checkFlowTaskStatus(ctx, prev, params.Status.String, outcome)
+		return h.checkFlowTaskWrite(ctx, prev, params, outcome, actor)
+	}
+	if !params.Status.Valid || params.Status.String == prev.Status {
+		return nil
 	}
 	if _, ok := flowRequestState(prev); ok {
 		if !h.flowEngineEnabled(ctx) {
@@ -242,17 +248,77 @@ func (h *Handler) syncFlowAfterMove(ctx context.Context, request db.Issue) {
 	}
 }
 
-// checkFlowTaskStatus enforces R1 and R2: a task closes (moves to a done status)
-// only with the verdict and the file its definition requires, and a task that
-// cannot go on says so with the outcome blocked.
-func (h *Handler) checkFlowTaskStatus(ctx context.Context, task db.Issue, to, outcome string) error {
-	if !task.FlowTask.Valid {
-		return nil
+func flowTaskAssignedTo(task db.Issue, actor flowActor) bool {
+	return task.AssigneeID.Valid && task.AssigneeType.String == actor.Type && uuidToString(task.AssigneeID) == actor.ID
+}
+
+func (h *Handler) flowTaskClosed(ctx context.Context, task db.Issue, status string) bool {
+	switch issuestatus.Category(ctx, h.Queries, task.WorkspaceID, status) {
+	case issuestatus.CategoryDone, issuestatus.CategoryClosed:
+		return true
 	}
-	spec, ok := h.flowTaskSpec(ctx, task)
+	return false
+}
+
+// checkFlowTaskWrite enforces who may write to a task (E1 to E4): the agent it is
+// given to, or a member who manages the squad on its behalf. An agent does not
+// hand a task to someone else, does not cancel it, and does not change a task
+// that is closed; a member who manages the squad reopens it. What the task needs
+// to close is checkFlowTaskStatus.
+func (h *Handler) checkFlowTaskWrite(ctx context.Context, prev db.Issue, params db.UpdateIssueParams, outcome string, actor flowActor) error {
+	run, spec, ok := h.flowTaskRun(ctx, prev)
 	if !ok {
 		return nil
 	}
+	taskFields := map[string]any{"task": spec.Key}
+	statusChange := params.Status.Valid && params.Status.String != prev.Status
+	reassigned := params.AssigneeType != prev.AssigneeType || params.AssigneeID != prev.AssigneeID
+	closedBefore := h.flowTaskClosed(ctx, prev, prev.Status)
+	changesVerdict := closedBefore && outcome != "" && outcome != prev.Outcome.String
+
+	if reassigned && actor.Type == "agent" {
+		return &flowRejection{
+			Status: http.StatusConflict, Code: "flow_task_assignee_locked",
+			Message: "the workflow gave this task to its agent: only a member who manages the squad can give it to someone else",
+			Fields:  taskFields,
+		}
+	}
+	if !statusChange && !changesVerdict {
+		return nil
+	}
+	manages := actor.Member != nil && h.canManageFlowRequest(ctx, *actor.Member, run)
+	if !flowTaskAssignedTo(prev, actor) && !manages {
+		return &flowRejection{
+			Status: http.StatusForbidden, Code: "flow_task_not_assignee",
+			Message: "only the agent this task is given to, or a member who manages the squad, can change it",
+			Fields:  taskFields,
+		}
+	}
+	if closedBefore && !manages {
+		return &flowRejection{
+			Status: http.StatusConflict, Code: "flow_task_closed",
+			Message: "this task is closed and its verdict stands: a member who manages the squad can reopen it",
+			Fields:  taskFields,
+		}
+	}
+	if !statusChange {
+		return nil
+	}
+	to := params.Status.String
+	if actor.Type == "agent" && issuestatus.Category(ctx, h.Queries, prev.WorkspaceID, to) == issuestatus.CategoryClosed {
+		return &flowRejection{
+			Status: http.StatusConflict, Code: "flow_task_cancel_forbidden",
+			Message: "an agent does not cancel a task of the workflow: if it cannot go on, run `multica issue status <id> blocked --outcome blocked`",
+			Fields:  taskFields,
+		}
+	}
+	return h.checkFlowTaskStatus(ctx, prev, spec, to, outcome, actor)
+}
+
+// checkFlowTaskStatus enforces R1 and R2: a task closes (moves to a done status)
+// only with the verdict and the file its definition requires, and a task that
+// cannot go on says so with the outcome blocked.
+func (h *Handler) checkFlowTaskStatus(ctx context.Context, task db.Issue, spec issueworkflow.Task, to, outcome string, actor flowActor) error {
 	taskFields := func(extra map[string]any) map[string]any {
 		fields := map[string]any{"task": spec.Key}
 		for k, v := range extra {
@@ -299,7 +365,7 @@ func (h *Handler) checkFlowTaskStatus(ctx context.Context, task db.Issue, to, ou
 		}
 	}
 	if spec.Needs(issueworkflow.RequireAttachment) {
-		attached, err := h.agentAttachmentCount(ctx, task)
+		attached, err := h.flowTaskAttachmentCount(ctx, task, actor)
 		if err != nil {
 			return err
 		}
@@ -314,17 +380,82 @@ func (h *Handler) checkFlowTaskStatus(ctx context.Context, task db.Issue, to, ou
 	return nil
 }
 
-// agentAttachmentCount counts the files the task's assignee attached to it. A
-// file linked to a comment keeps the issue's id, so it counts too.
-func (h *Handler) agentAttachmentCount(ctx context.Context, task db.Issue) (int64, error) {
-	if task.AssigneeType.String != "agent" || !task.AssigneeID.Valid {
-		return 0, nil
+// flowTaskAttachmentCount counts the files that satisfy the file requirement of
+// a task: the ones its assignee attached to it, a file linked to a comment
+// included, and the ones the member who closes it for the assignee attached.
+func (h *Handler) flowTaskAttachmentCount(ctx context.Context, task db.Issue, actor flowActor) (int64, error) {
+	count := func(uploaderType string, uploaderID pgtype.UUID) (int64, error) {
+		return h.Queries.CountAttachmentsOnIssueByUploader(ctx, db.CountAttachmentsOnIssueByUploaderParams{
+			IssueID:      task.ID,
+			WorkspaceID:  task.WorkspaceID,
+			UploaderType: uploaderType,
+			UploaderID:   uploaderID,
+		})
 	}
-	return h.Queries.CountAgentAttachmentsOnIssue(ctx, db.CountAgentAttachmentsOnIssueParams{
-		IssueID:     task.ID,
-		WorkspaceID: task.WorkspaceID,
-		UploaderID:  task.AssigneeID,
-	})
+	var total int64
+	if task.AssigneeID.Valid {
+		n, err := count(task.AssigneeType.String, task.AssigneeID)
+		if err != nil {
+			return 0, err
+		}
+		total += n
+	}
+	if actor.Type == "member" && !flowTaskAssignedTo(task, actor) {
+		id, err := util.ParseUUID(actor.ID)
+		if err != nil {
+			return total, nil
+		}
+		n, err := count("member", id)
+		if err != nil {
+			return 0, err
+		}
+		total += n
+	}
+	return total, nil
+}
+
+// logFlowManualAction records, after a write, that a member who manages the squad
+// closed a task for its assignee or reopened a closed one (flow_manual_close,
+// flow_manual_reopen). Best effort, like storeOutcomeAfterMove: the write is done.
+func (h *Handler) logFlowManualAction(ctx context.Context, prev, issue db.Issue, outcome string, actor flowActor) {
+	if !prev.FlowTask.Valid || actor.Type != "member" || prev.Status == issue.Status || flowTaskAssignedTo(prev, actor) || !h.flowEngineEnabled(ctx) {
+		return
+	}
+	_, spec, ok := h.flowTaskRun(ctx, prev)
+	if !ok {
+		return
+	}
+	var action string
+	details := map[string]any{"task": spec.Key, "activation": int(prev.FlowRound.Int32), "on_behalf_of": nil}
+	if prev.AssigneeID.Valid {
+		details["on_behalf_of"] = uuidToString(prev.AssigneeID)
+	}
+	wasClosed := h.flowTaskClosed(ctx, prev, prev.Status)
+	nowClosed := h.flowTaskClosed(ctx, issue, issue.Status)
+	switch {
+	case wasClosed && !nowClosed:
+		action = "flow_manual_reopen"
+		details["from"] = prev.Status
+	case !wasClosed && issuestatus.Category(ctx, h.Queries, issue.WorkspaceID, issue.Status) == issuestatus.CategoryDone:
+		action = "flow_manual_close"
+		files, err := h.flowTaskAttachmentCount(ctx, prev, actor)
+		if err != nil {
+			slog.Warn("flow: count the files of a close on behalf failed", "issue_id", uuidToString(issue.ID), "error", err)
+		}
+		details["verdict"] = outcome
+		details["files"] = files
+	default:
+		return
+	}
+	raw, _ := json.Marshal(details)
+	actorID, _ := util.ParseUUID(actor.ID)
+	if _, err := h.Queries.CreateActivity(ctx, db.CreateActivityParams{
+		ID: dbid.NewV7(), WorkspaceID: issue.WorkspaceID, IssueID: issue.ID,
+		ActorType: pgtype.Text{String: "member", Valid: true}, ActorID: actorID,
+		Action: action, Details: raw,
+	}); err != nil {
+		slog.Warn("flow: log a manual action failed", "issue_id", uuidToString(issue.ID), "action", action, "error", err)
+	}
 }
 
 // recordIssueOutcome stores the outcome a status change reported, or clears the

@@ -4251,7 +4251,8 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	}
 	// The flow rules come first: a write the workflow refuses is refused for that
 	// reason, not for a project workflow that does not know the flow's steps.
-	if err := h.checkFlowWrite(r.Context(), prevIssue, params, outcome, h.flowActorFor(r, userID, workspaceID)); err != nil {
+	flowWho := h.flowActorFor(r, userID, workspaceID)
+	if err := h.checkFlowWrite(r.Context(), prevIssue, params, outcome, flowWho); err != nil {
 		if writeFlowRejection(w, err) {
 			return
 		}
@@ -4344,6 +4345,7 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	if prevIssue.Status != issue.Status {
 		issue = h.storeOutcomeAfterMove(r.Context(), issue, outcome)
 		h.cancelQueuedRunsOfClosedFlowTask(r.Context(), issue, h.taskCancellationActor(r.Context(), actorType, actorID))
+		h.logFlowManualAction(r.Context(), prevIssue, issue, outcome, flowWho)
 		if _, managed := flowRequestState(issue); managed {
 			// A member moved a request a workflow runs: the flow follows.
 			defer h.syncFlowAfterMove(context.WithoutCancel(r.Context()), issue)
@@ -5036,9 +5038,14 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 		batchOutcome = *req.Updates.Outcome
 	}
 	// The flow rules refuse the whole batch before anything is written, so a
-	// batch cannot close a gate without its verdict or leave half of itself done.
-	if batchStatusKey != "" {
-		batchActor := h.flowActorFor(r, userID, workspaceID)
+	// batch cannot close a gate without its verdict, hand a task to someone else
+	// or leave half of itself done.
+	batchActor := h.flowActorFor(r, userID, workspaceID)
+	_, batchTouchesAssignee := rawUpdates["assignee_type"]
+	if _, ok := rawUpdates["assignee_id"]; ok {
+		batchTouchesAssignee = true
+	}
+	if batchStatusKey != "" || batchTouchesAssignee {
 		for _, issueID := range req.IssueIDs {
 			issueUUID, err := util.ParseUUID(issueID)
 			if err != nil {
@@ -5048,7 +5055,24 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				continue
 			}
-			check := db.UpdateIssueParams{Status: pgtype.Text{String: batchStatusKey, Valid: true}}
+			check := db.UpdateIssueParams{AssigneeType: prevIssue.AssigneeType, AssigneeID: prevIssue.AssigneeID}
+			if batchStatusKey != "" {
+				check.Status = pgtype.Text{String: batchStatusKey, Valid: true}
+			}
+			if _, ok := rawUpdates["assignee_type"]; ok {
+				check.AssigneeType = pgtype.Text{}
+				if req.Updates.AssigneeType != nil {
+					check.AssigneeType = pgtype.Text{String: *req.Updates.AssigneeType, Valid: true}
+				}
+			}
+			if _, ok := rawUpdates["assignee_id"]; ok {
+				check.AssigneeID = pgtype.UUID{}
+				if req.Updates.AssigneeID != nil {
+					if assigneeUUID, err := util.ParseUUID(*req.Updates.AssigneeID); err == nil {
+						check.AssigneeID = assigneeUUID
+					}
+				}
+			}
 			if err := h.checkFlowWrite(r.Context(), prevIssue, check, batchOutcome, batchActor); err != nil {
 				if writeFlowRejection(w, err) {
 					return
@@ -5271,6 +5295,7 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 			h.syncFlowAfterMove(r.Context(), issue)
 			closeActorType, closeActorID := h.resolveActor(r, userID, workspaceID)
 			h.cancelQueuedRunsOfClosedFlowTask(r.Context(), issue, h.taskCancellationActor(r.Context(), closeActorType, closeActorID))
+			h.logFlowManualAction(r.Context(), prevIssue, issue, batchOutcome, batchActor)
 		}
 		prefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
 		resp := issueToResponse(issue, prefix)

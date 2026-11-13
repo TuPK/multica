@@ -638,6 +638,15 @@ func (h *Handler) advanceOnce(ctx context.Context, request db.Issue) (advanceOut
 			return advanceOutcome{action: action, progressed: action.Kind != "stopped"}, nil
 		}
 	}
+	if reopened, err := h.reopenCancelledWork(ctx, qtx, run, rows, &effects); err != nil {
+		return advanceOutcome{}, err
+	} else if len(reopened) > 0 {
+		if err := tx.Commit(ctx); err != nil {
+			return advanceOutcome{}, fmt.Errorf("commit flow advance: %w", err)
+		}
+		h.publishFlowEffects(ctx, run.issue, &effects)
+		return advanceOutcome{action: FlowAction{Kind: "reopened_tasks", Step: run.state.Step, Tasks: reopened}}, nil
+	}
 	decision := issueworkflow.Decide(run.def, run.state, taskStates(rows))
 	switch decision.Kind {
 	case issueworkflow.DecisionRoute:
@@ -670,16 +679,69 @@ func (h *Handler) advanceOnce(ctx context.Context, request db.Issue) (advanceOut
 	return noop, nil
 }
 
+// cancelledForItsFiles reports whether a task row is work that a person cancelled
+// although its definition makes a file part of the work. A cancelled gate is a
+// rejection and other work needs nothing, so neither is reopened. An outcome on a
+// cancelled task means a person let the step go on without it (skip_cancelled).
+func cancelledForItsFiles(run *flowRun, r flowTaskRow) bool {
+	if !r.state.Closed || !r.state.Cancelled || r.state.Kind != issueworkflow.KindWork || r.issue.Outcome.Valid {
+		return false
+	}
+	step, ok := run.def.Step(r.state.Step)
+	if !ok {
+		return false
+	}
+	for _, task := range step.Tasks {
+		if task.Key == r.state.Key {
+			return task.Needs(issueworkflow.RequireAttachment)
+		}
+	}
+	return false
+}
+
+// reopenCancelledWork sets back to todo the work tasks of the current step and
+// round that a person cancelled while the step still requires their file (E7), so
+// the step cannot pass without it. Each gets a new run and a flow_task_reopened
+// entry. It returns the keys it reopened.
+func (h *Handler) reopenCancelledWork(ctx context.Context, qtx *db.Queries, run *flowRun, rows []flowTaskRow, e *flowEffects) ([]string, error) {
+	var keys []string
+	for i, r := range rows {
+		if r.state.Step != run.state.Step || r.state.Round != run.state.Round() || !cancelledForItsFiles(run, r) {
+			continue
+		}
+		prev := r.issue.Status
+		reopened, err := qtx.UpdateIssueStatus(ctx, db.UpdateIssueStatusParams{ID: r.issue.ID, Status: issuestatus.Todo, WorkspaceID: r.issue.WorkspaceID})
+		if err != nil {
+			return nil, fmt.Errorf("reopen task %s: %w", r.state.Key, err)
+		}
+		details, _ := json.Marshal(map[string]any{"task": r.state.Key, "step": r.state.Step, "round": r.state.Round, "reason": "cancelled_work_requires_files"})
+		if _, err := qtx.CreateActivity(ctx, db.CreateActivityParams{
+			ID: dbid.NewV7(), WorkspaceID: run.issue.WorkspaceID, IssueID: r.issue.ID,
+			ActorType: pgtype.Text{String: "system", Valid: true}, Action: "flow_task_reopened", Details: details,
+		}); err != nil {
+			return nil, err
+		}
+		rows[i].issue = reopened
+		rows[i].state.Closed, rows[i].state.Cancelled = false, false
+		e.moves = append(e.moves, statusMove{prev: prev, issue: reopened})
+		e.reopened = append(e.reopened, reopened)
+		keys = append(keys, r.state.Key)
+	}
+	return keys, nil
+}
+
 // openFlowTasks creates the missing tasks of the request's current step. The
 // agents are checked first: a task whose agent cannot take work stops the
 // request instead of waiting forever.
 func (h *Handler) openFlowTasks(ctx context.Context, run *flowRun, rows []flowTaskRow, missing []issueworkflow.Task) (advanceOutcome, error) {
 	step := run.state.Step
 	for _, task := range missing {
-		agentID, err := util.ParseUUID(task.Handler.ID)
-		agent, lookupErr := h.Queries.GetAgentInWorkspace(ctx, db.GetAgentInWorkspaceParams{ID: agentID, WorkspaceID: run.issue.WorkspaceID})
-		if err != nil || lookupErr != nil || agent.ArchivedAt.Valid {
-			return h.stopForUnavailableAgent(ctx, run, task)
+		why, err := h.flowAgentUnavailable(ctx, run, task)
+		if err != nil {
+			return advanceOutcome{}, err
+		}
+		if why != "" {
+			return h.stopForUnavailableAgent(ctx, run, task, why)
 		}
 	}
 	// A gate is never given to an agent that did work in the same round.
@@ -797,10 +859,43 @@ func flowTaskLinks(def issueworkflow.Definition, rows []flowTaskRow, prefix, ste
 	return inputs, rejected
 }
 
+// flowAgentUnavailable says why the agent of a task cannot take it now, or "" when
+// it can: the agent is archived or gone, it left the squad that owns the workflow,
+// or it became the lead of that squad, who plans and does not take tasks (E14). A
+// workflow no squad owns has no roster to check.
+func (h *Handler) flowAgentUnavailable(ctx context.Context, run *flowRun, task issueworkflow.Task) (string, error) {
+	agentID, err := util.ParseUUID(task.Handler.ID)
+	agent, lookupErr := h.Queries.GetAgentInWorkspace(ctx, db.GetAgentInWorkspaceParams{ID: agentID, WorkspaceID: run.issue.WorkspaceID})
+	if err != nil || lookupErr != nil || agent.ArchivedAt.Valid {
+		return "is archived or no longer in this workspace", nil
+	}
+	if !run.row.SquadID.Valid {
+		return "", nil
+	}
+	squad, err := h.Queries.GetSquadInWorkspace(ctx, db.GetSquadInWorkspaceParams{ID: run.row.SquadID, WorkspaceID: run.issue.WorkspaceID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	if squad.LeaderID == agentID {
+		return "is the lead of the squad, who plans and does not take tasks", nil
+	}
+	member, err := h.Queries.IsSquadMember(ctx, db.IsSquadMemberParams{SquadID: squad.ID, MemberType: "agent", MemberID: agentID})
+	if err != nil {
+		return "", err
+	}
+	if !member {
+		return "is no longer a member of the squad", nil
+	}
+	return "", nil
+}
+
 // stopForUnavailableAgent blocks a request whose next task cannot be given to
-// its agent (archived or gone). The advance reports it instead of failing.
-func (h *Handler) stopForUnavailableAgent(ctx context.Context, current *flowRun, task issueworkflow.Task) (advanceOutcome, error) {
-	out, err := h.stallFlow(ctx, current, fmt.Sprintf("The agent for the task %q (%s) is archived or no longer in this workspace, so the task cannot open.", task.Key, task.Title), "")
+// its agent (why says what is wrong with it). The advance reports it instead of failing.
+func (h *Handler) stopForUnavailableAgent(ctx context.Context, current *flowRun, task issueworkflow.Task, why string) (advanceOutcome, error) {
+	out, err := h.stallFlow(ctx, current, fmt.Sprintf("The agent for the task %q (%s) %s, so the task cannot open.", task.Key, task.Title, why), "")
 	if err != nil {
 		return advanceOutcome{}, err
 	}

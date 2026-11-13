@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   AgentTaskSchema,
+  IssueFlowStateSchema,
   AppConfigSchema,
   WecomInstallationSchema,
   ListWecomInstallationsResponseSchema,
@@ -2587,5 +2588,54 @@ describe("task usage credits", () => {
     });
     expect(parsed.usage).toHaveLength(1);
     expect(parsed.usage?.[0]?.credits_micros).toBeUndefined();
+  });
+});
+
+describe("IssueFlowStateSchema viewer and closed_by drift", () => {
+  const base = {
+    managed: true,
+    role: "request",
+    workflow_id: "wf",
+    workflow_name: "Trade",
+    step: "gate",
+    rework: 0,
+    stop: null,
+    switches: {},
+    auto: false,
+    entered_at: "2026-11-13T00:00:00Z",
+    tasks: [
+      { issue_id: "t1", identifier: "KV-2", step: "gate", task: "docs_gate", round: 0, kind: "gate", status: "done",
+        outcome: "approved", assignee_id: "a1", closed_at: "2026-11-13T01:00:00Z" },
+    ],
+    next: [],
+  };
+
+  it("reads a response from a server that sends neither field", () => {
+    const state = IssueFlowStateSchema.parse(base);
+    expect(state.viewer).toEqual({ can_manage: false, closable_task_ids: [] });
+    expect(state.tasks[0]?.closed_by).toBeNull();
+  });
+
+  it("keeps the viewer and the closer the server sends", () => {
+    const state = IssueFlowStateSchema.parse({
+      ...base,
+      viewer: { can_manage: true, closable_task_ids: ["t2"] },
+      tasks: [{ ...base.tasks[0], closed_by: { type: "member", id: "u1", on_behalf: true } }],
+    });
+    expect(state.viewer).toEqual({ can_manage: true, closable_task_ids: ["t2"] });
+    expect(state.tasks[0]?.closed_by).toEqual({ type: "member", id: "u1", on_behalf: true });
+  });
+
+  it("falls back to nothing to do for a viewer it cannot read", () => {
+    for (const viewer of [null, "yes", 7, { can_manage: "maybe", closable_task_ids: "all" }]) {
+      const state = IssueFlowStateSchema.parse({ ...base, viewer });
+      expect(state.viewer).toEqual({ can_manage: false, closable_task_ids: [] });
+    }
+  });
+
+  it("does not let one unreadable closer hide the task", () => {
+    const state = IssueFlowStateSchema.parse({ ...base, tasks: [{ ...base.tasks[0], closed_by: "someone" }] });
+    expect(state.tasks).toHaveLength(1);
+    expect(state.tasks[0]?.closed_by).toBeNull();
   });
 });

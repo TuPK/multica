@@ -36,7 +36,8 @@ func (c flowCaller) call(who string, h http.HandlerFunc, method, suffix string, 
 	case "plain":
 		req = c.plain(req)
 	case "lead", "other":
-		agentID := c.f.Agents.Docs // the squad's leader
+		var agentID string
+		dbfx.QueryRow(c.t, `SELECT leader_id::text FROM squad WHERE id = $1`, c.f.SquadID).Scan(&agentID)
 		if who == "other" {
 			agentID = c.otherID
 		}

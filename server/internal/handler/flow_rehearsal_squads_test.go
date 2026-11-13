@@ -65,6 +65,9 @@ func newSquadRig(t *testing.T, squadKey string) squadRig {
 	}
 	rig.wf = createFlowWorkflowForTest(t, flow.body(t, "Rehearsal "+squadKey+" "+workflowTestSuffix(), func(role string) string { return rig.agents[role] }))
 	rig.squadID = dbfx.Squad(t, "Rehearsal squad "+squadKey+" "+workflowTestSuffix(), first)
+	for _, id := range rig.agents {
+		dbfx.SquadMember(t, rig.squadID, "agent", id)
+	}
 	dbfx.Exec(t, `UPDATE issue_workflow SET squad_id = $2 WHERE id = $1`, rig.wf.ID, rig.squadID)
 	dbfx.Exec(t, `UPDATE squad SET active_workflow_id = $2 WHERE id = $1`, rig.squadID, rig.wf.ID)
 	return rig

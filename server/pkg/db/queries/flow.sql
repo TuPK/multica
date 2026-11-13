@@ -91,15 +91,26 @@ WHERE id = sqlc.arg('id')::uuid
   AND workspace_id = sqlc.arg('workspace_id')::uuid
 RETURNING *;
 
--- name: CountAgentAttachmentsOnIssue :one
--- The files an agent attached to an issue, in its description or in a comment
--- (a file linked to a comment keeps the issue's id). A flow task that requires
--- an attachment counts the ones its own assignee uploaded.
+-- name: CountAttachmentsOnIssueByUploader :one
+-- The files one uploader (an agent or a member) attached to an issue, in its
+-- description or in a comment (a file linked to a comment keeps the issue's id).
+-- A flow task that requires an attachment counts the ones its own assignee
+-- uploaded, and the ones the member who closes it for the assignee uploaded.
 SELECT COUNT(*)::bigint FROM attachment
 WHERE issue_id = sqlc.arg('issue_id')::uuid
   AND workspace_id = sqlc.arg('workspace_id')::uuid
-  AND uploader_type = 'agent'
+  AND uploader_type = sqlc.arg('uploader_type')::text
   AND uploader_id = sqlc.arg('uploader_id')::uuid;
+
+-- name: ListFlowManualActions :many
+-- The latest close or reopen a member made for the assignee of each task, to say
+-- who closed a task that is closed now.
+SELECT DISTINCT ON (issue_id) issue_id, action, actor_type, actor_id
+FROM activity_log
+WHERE workspace_id = sqlc.arg('workspace_id')::uuid
+  AND issue_id = ANY(sqlc.arg('issue_ids')::uuid[])
+  AND action IN ('flow_manual_close', 'flow_manual_reopen')
+ORDER BY issue_id, created_at DESC, id DESC;
 
 -- name: IsFlowRequestAuto :one
 -- Whether the request runs on a flow whose workflow lets the background runner

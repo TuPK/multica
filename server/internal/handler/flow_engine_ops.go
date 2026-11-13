@@ -215,12 +215,16 @@ type FlowResumeInput struct {
 	// stopped from.
 	ToStep      string
 	ResetRework bool
+	// SkipCancelled lets the step go on without the work tasks a person cancelled,
+	// which the engine otherwise reopens because their files are part of the step.
+	SkipCancelled bool
 }
 
 // ResumeFlow continues a request that stopped. After stop 1 or a stall the
 // tasks that blocked open again and the others stand. After stop 3 the rework
 // count starts over and the step's tasks open in a new round. With ToStep the
-// request goes there and its tasks open in a new round.
+// request goes there and its tasks open in a new round. With SkipCancelled the
+// work tasks a person cancelled in the round that goes on stand cancelled.
 func (h *Handler) ResumeFlow(ctx context.Context, request db.Issue, in FlowResumeInput) (IssueFlowStateResponse, error) {
 	tx, qtx, run, err := h.lockFlowRun(ctx, request)
 	if err != nil {
@@ -296,6 +300,27 @@ func (h *Handler) ResumeFlow(ctx context.Context, request db.Issue, in FlowResum
 			reopened.Outcome = pgtype.Text{}
 			effects.moves = append(effects.moves, statusMove{prev: prev, issue: reopened})
 			effects.reopened = append(effects.reopened, reopened)
+		}
+	}
+	if in.SkipCancelled && !freshRound {
+		for _, r := range rows {
+			if r.state.Step != target || r.state.Round != run.state.Round() || !cancelledForItsFiles(run, r) {
+				continue
+			}
+			// An outcome on a cancelled task is the mark that the step goes on without it.
+			if err := qtx.SetIssueOutcome(ctx, db.SetIssueOutcomeParams{
+				ID: r.issue.ID, WorkspaceID: r.issue.WorkspaceID,
+				Outcome: pgtype.Text{String: issueworkflow.OutcomeDone, Valid: true},
+			}); err != nil {
+				return IssueFlowStateResponse{}, err
+			}
+			details, _ := json.Marshal(map[string]any{"task": r.state.Key, "step": r.state.Step, "round": r.state.Round})
+			if _, err := qtx.CreateActivity(ctx, db.CreateActivityParams{
+				ID: dbid.NewV7(), WorkspaceID: run.issue.WorkspaceID, IssueID: r.issue.ID,
+				ActorType: pgtype.Text{String: "system", Valid: true}, Action: "flow_task_skipped", Details: details,
+			}); err != nil {
+				return IssueFlowStateResponse{}, err
+			}
 		}
 	}
 	if err := tx.Commit(ctx); err != nil {

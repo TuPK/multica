@@ -168,7 +168,7 @@ func TestGuard_GateSameAgent422(t *testing.T) {
 		},
 	}
 	wf := createFlowWorkflowForTest(t, body)
-	squadID := dbfx.Squad(t, "Same agent squad "+workflowTestSuffix(), worker)
+	squadID := flowSquad(t, "Same agent squad", worker, drafter)
 	dbfx.Exec(t, `UPDATE issue_workflow SET squad_id = $2 WHERE id = $1`, wf.ID, squadID)
 	dbfx.Exec(t, `UPDATE squad SET active_workflow_id = $2 WHERE id = $1`, squadID, wf.ID)
 	fx := tradeFlowFixture{Workflow: wf, SquadID: squadID}

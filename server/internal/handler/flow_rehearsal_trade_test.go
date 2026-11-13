@@ -161,7 +161,7 @@ func newRehearsalFixture(t *testing.T) tradeFlowFixture {
 	seedTestCatalog(t)
 	agents := newTradeAgents(t)
 	wf := createFlowWorkflowForTest(t, catalogTradeFlowBody(t, "Trade rehearsal "+workflowTestSuffix(), agents))
-	squadID := dbfx.Squad(t, "Trade rehearsal squad "+workflowTestSuffix(), agents.Docs)
+	squadID := flowSquad(t, "Trade rehearsal squad", agents.all()...)
 	dbfx.Exec(t, `UPDATE issue_workflow SET squad_id = $2 WHERE id = $1`, wf.ID, squadID)
 	dbfx.Exec(t, `UPDATE squad SET active_workflow_id = $2 WHERE id = $1`, squadID, wf.ID)
 	return tradeFlowFixture{Agents: agents, Workflow: wf, SquadID: squadID}

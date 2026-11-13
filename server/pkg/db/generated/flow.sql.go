@@ -46,25 +46,32 @@ func (q *Queries) ClearIssueFlowTasks(ctx context.Context, arg ClearIssueFlowTas
 	return err
 }
 
-const countAgentAttachmentsOnIssue = `-- name: CountAgentAttachmentsOnIssue :one
+const countAttachmentsOnIssueByUploader = `-- name: CountAttachmentsOnIssueByUploader :one
 SELECT COUNT(*)::bigint FROM attachment
 WHERE issue_id = $1::uuid
   AND workspace_id = $2::uuid
-  AND uploader_type = 'agent'
-  AND uploader_id = $3::uuid
+  AND uploader_type = $3::text
+  AND uploader_id = $4::uuid
 `
 
-type CountAgentAttachmentsOnIssueParams struct {
-	IssueID     pgtype.UUID `json:"issue_id"`
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-	UploaderID  pgtype.UUID `json:"uploader_id"`
+type CountAttachmentsOnIssueByUploaderParams struct {
+	IssueID      pgtype.UUID `json:"issue_id"`
+	WorkspaceID  pgtype.UUID `json:"workspace_id"`
+	UploaderType string      `json:"uploader_type"`
+	UploaderID   pgtype.UUID `json:"uploader_id"`
 }
 
-// The files an agent attached to an issue, in its description or in a comment
-// (a file linked to a comment keeps the issue's id). A flow task that requires
-// an attachment counts the ones its own assignee uploaded.
-func (q *Queries) CountAgentAttachmentsOnIssue(ctx context.Context, arg CountAgentAttachmentsOnIssueParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countAgentAttachmentsOnIssue, arg.IssueID, arg.WorkspaceID, arg.UploaderID)
+// The files one uploader (an agent or a member) attached to an issue, in its
+// description or in a comment (a file linked to a comment keeps the issue's id).
+// A flow task that requires an attachment counts the ones its own assignee
+// uploaded, and the ones the member who closes it for the assignee uploaded.
+func (q *Queries) CountAttachmentsOnIssueByUploader(ctx context.Context, arg CountAttachmentsOnIssueByUploaderParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countAttachmentsOnIssueByUploader,
+		arg.IssueID,
+		arg.WorkspaceID,
+		arg.UploaderType,
+		arg.UploaderID,
+	)
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
@@ -313,6 +320,54 @@ func (q *Queries) ListAutoFlowRequests(ctx context.Context, arg ListAutoFlowRequ
 			&i.FlowStep,
 			&i.FlowTask,
 			&i.FlowRound,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFlowManualActions = `-- name: ListFlowManualActions :many
+SELECT DISTINCT ON (issue_id) issue_id, action, actor_type, actor_id
+FROM activity_log
+WHERE workspace_id = $1::uuid
+  AND issue_id = ANY($2::uuid[])
+  AND action IN ('flow_manual_close', 'flow_manual_reopen')
+ORDER BY issue_id, created_at DESC, id DESC
+`
+
+type ListFlowManualActionsParams struct {
+	WorkspaceID pgtype.UUID   `json:"workspace_id"`
+	IssueIds    []pgtype.UUID `json:"issue_ids"`
+}
+
+type ListFlowManualActionsRow struct {
+	IssueID   pgtype.UUID `json:"issue_id"`
+	Action    string      `json:"action"`
+	ActorType pgtype.Text `json:"actor_type"`
+	ActorID   pgtype.UUID `json:"actor_id"`
+}
+
+// The latest close or reopen a member made for the assignee of each task, to say
+// who closed a task that is closed now.
+func (q *Queries) ListFlowManualActions(ctx context.Context, arg ListFlowManualActionsParams) ([]ListFlowManualActionsRow, error) {
+	rows, err := q.db.Query(ctx, listFlowManualActions, arg.WorkspaceID, arg.IssueIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListFlowManualActionsRow{}
+	for rows.Next() {
+		var i ListFlowManualActionsRow
+		if err := rows.Scan(
+			&i.IssueID,
+			&i.Action,
+			&i.ActorType,
+			&i.ActorID,
 		); err != nil {
 			return nil, err
 		}

@@ -142,6 +142,7 @@ func (h *Handler) GetIssueFlow(w http.ResponseWriter, r *http.Request) {
 		writeFlowError(w, r, err)
 		return
 	}
+	h.fillFlowViewer(r.Context(), started, &state, h.flowActorFor(r, requestUserID(r), uuidToString(started.WorkspaceID)))
 	writeJSON(w, http.StatusOK, state)
 }
 
@@ -212,8 +213,9 @@ func (h *Handler) SetIssueFlowSwitch(w http.ResponseWriter, r *http.Request) {
 // ResumeIssueFlow continues a stopped request.
 func (h *Handler) ResumeIssueFlow(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		ToStep      string `json:"to_step"`
-		ResetRework bool   `json:"reset_rework"`
+		ToStep        string `json:"to_step"`
+		ResetRework   bool   `json:"reset_rework"`
+		SkipCancelled bool   `json:"skip_cancelled"`
 	}
 	if !decodeFlowBody(w, r, &req) {
 		return
@@ -222,7 +224,7 @@ func (h *Handler) ResumeIssueFlow(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	state, err := h.ResumeFlow(r.Context(), request, FlowResumeInput{ToStep: req.ToStep, ResetRework: req.ResetRework})
+	state, err := h.ResumeFlow(r.Context(), request, FlowResumeInput{ToStep: req.ToStep, ResetRework: req.ResetRework, SkipCancelled: req.SkipCancelled})
 	if err != nil {
 		writeFlowError(w, r, err)
 		return

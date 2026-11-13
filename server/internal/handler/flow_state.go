@@ -4,6 +4,8 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/multica-ai/multica/server/internal/issuestatus"
 	"github.com/multica-ai/multica/server/internal/issueworkflow"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -24,6 +26,26 @@ type IssueFlowTaskResponse struct {
 	AssigneeID *string `json:"assignee_id"`
 	// ClosedAt is when the task issue reached a finished status; null while open.
 	ClosedAt *string `json:"closed_at"`
+	// ClosedBy is who closed the task, null while it is open or when nobody is known.
+	ClosedBy *IssueFlowClosedByResponse `json:"closed_by"`
+}
+
+// IssueFlowClosedByResponse says who closed a task. OnBehalf is true when a member
+// who manages the squad closed it for its assignee.
+type IssueFlowClosedByResponse struct {
+	Type     string `json:"type"`
+	ID       string `json:"id"`
+	OnBehalf bool   `json:"on_behalf"`
+}
+
+// IssueFlowViewerResponse is what the reader of the state may do. It is empty for
+// a reader who manages nothing and has no task of their own.
+type IssueFlowViewerResponse struct {
+	// CanManage: the reader manages the squad that runs the request.
+	CanManage bool `json:"can_manage"`
+	// ClosableTaskIDs are the open tasks the reader may close: their own, or any
+	// when they manage the squad.
+	ClosableTaskIDs []string `json:"closable_task_ids"`
 }
 
 // IssueFlowNextResponse is a way out of the current step.
@@ -51,6 +73,8 @@ type IssueFlowStateResponse struct {
 	EnteredAt    string                  `json:"entered_at"`
 	Tasks        []IssueFlowTaskResponse `json:"tasks"`
 	Next         []IssueFlowNextResponse `json:"next"`
+	// Viewer is filled for the reader of GET /api/issues/{id}/flow; the other answers carry the empty value.
+	Viewer IssueFlowViewerResponse `json:"viewer"`
 	// ReworkStep is the step a rework sends the request back to from the step it stopped at:
 	// the drafting step, where a person sends the request to fix the draft. It is empty unless
 	// the request is stopped and that step has a rework transition.
@@ -110,9 +134,14 @@ func (h *Handler) flowStateResponse(ctx context.Context, request db.Issue, role 
 		EnteredAt:    run.state.EnteredAt,
 		Tasks:        make([]IssueFlowTaskResponse, 0, len(tasks)),
 		Next:         []IssueFlowNextResponse{},
+		Viewer:       IssueFlowViewerResponse{ClosableTaskIDs: []string{}},
 	}
 	if out.Switches == nil {
 		out.Switches = map[string]any{}
+	}
+	closedByAction, err := h.flowManualActions(ctx, tasks)
+	if err != nil {
+		return IssueFlowStateResponse{}, err
 	}
 	for _, t := range tasks {
 		item := IssueFlowTaskResponse{
@@ -129,6 +158,7 @@ func (h *Handler) flowStateResponse(ctx context.Context, request db.Issue, role 
 		switch resolver.Category(ctx, h.Queries, t.Status) {
 		case issuestatus.CategoryDone, issuestatus.CategoryClosed:
 			item.ClosedAt = timestampToPtr(t.UpdatedAt)
+			item.ClosedBy = flowClosedBy(t, closedByAction[t.ID])
 		}
 		out.Tasks = append(out.Tasks, item)
 	}
@@ -170,4 +200,55 @@ func flowTaskKind(def issueworkflow.Definition, step, key string) string {
 		}
 	}
 	return ""
+}
+
+// flowManualActions reads the latest close or reopen a member made on each task.
+func (h *Handler) flowManualActions(ctx context.Context, tasks []db.Issue) (map[pgtype.UUID]db.ListFlowManualActionsRow, error) {
+	out := map[pgtype.UUID]db.ListFlowManualActionsRow{}
+	if len(tasks) == 0 {
+		return out, nil
+	}
+	ids := make([]pgtype.UUID, len(tasks))
+	for i, t := range tasks {
+		ids[i] = t.ID
+	}
+	rows, err := h.Queries.ListFlowManualActions(ctx, db.ListFlowManualActionsParams{WorkspaceID: tasks[0].WorkspaceID, IssueIds: ids})
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		out[row.IssueID] = row
+	}
+	return out, nil
+}
+
+// flowClosedBy says who closed a closed task: the member whose close for the
+// assignee is the latest entry of the log, else the assignee.
+func flowClosedBy(task db.Issue, last db.ListFlowManualActionsRow) *IssueFlowClosedByResponse {
+	if last.Action == "flow_manual_close" && last.ActorID.Valid {
+		return &IssueFlowClosedByResponse{Type: last.ActorType.String, ID: uuidToString(last.ActorID), OnBehalf: true}
+	}
+	if task.AssigneeID.Valid {
+		return &IssueFlowClosedByResponse{Type: task.AssigneeType.String, ID: uuidToString(task.AssigneeID)}
+	}
+	return nil
+}
+
+// fillFlowViewer says what the reader of the state may do: whether they manage the
+// squad that runs the request, and which open tasks they may close.
+func (h *Handler) fillFlowViewer(ctx context.Context, request db.Issue, state *IssueFlowStateResponse, actor flowActor) {
+	run, err := h.loadFlowRun(ctx, h.Queries, request)
+	if err != nil {
+		return
+	}
+	manages := actor.Member != nil && h.canManageFlowRequest(ctx, *actor.Member, run)
+	state.Viewer.CanManage = manages
+	for _, t := range state.Tasks {
+		if t.ClosedAt != nil {
+			continue
+		}
+		if manages || (t.AssigneeID != nil && *t.AssigneeID == actor.ID) {
+			state.Viewer.ClosableTaskIDs = append(state.Viewer.ClosableTaskIDs, t.IssueID)
+		}
+	}
 }

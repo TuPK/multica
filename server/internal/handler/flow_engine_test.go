@@ -112,6 +112,23 @@ type tradeFlowFixture struct {
 	SquadID  string
 }
 
+// flowSquad is a squad whose lead is an agent of its own, with the agents of the
+// flow as members: the roster the engine checks when it opens a task (E14).
+func flowSquad(t *testing.T, name string, agentIDs ...string) string {
+	t.Helper()
+	lead := goldenLeadAgent(t, agentIDs[0])
+	squadID := dbfx.Squad(t, name+" "+workflowTestSuffix(), lead)
+	dbfx.SquadMember(t, squadID, "agent", lead, testutil.Cols{"role": "leader"})
+	for _, id := range agentIDs {
+		dbfx.SquadMember(t, squadID, "agent", id)
+	}
+	return squadID
+}
+
+func (a tradeAgents) all() []string {
+	return []string{a.Docs, a.Customs, a.Drafter, a.DocsGate, a.CustomsGate, a.Handover}
+}
+
 func newTradeFlowFixture(t *testing.T) tradeFlowFixture {
 	t.Helper()
 	cleanupFlowRows(t)
@@ -121,7 +138,7 @@ func newTradeFlowFixture(t *testing.T) tradeFlowFixture {
 	}
 	agents := newTradeAgents(t)
 	wf := createFlowWorkflowForTest(t, tradeFlowBody("Trade flow "+workflowTestSuffix(), agents))
-	squadID := dbfx.Squad(t, "Trade squad "+workflowTestSuffix(), agents.Docs)
+	squadID := flowSquad(t, "Trade squad", agents.all()...)
 	dbfx.Exec(t, `UPDATE issue_workflow SET squad_id = $2 WHERE id = $1`, wf.ID, squadID)
 	dbfx.Exec(t, `UPDATE squad SET active_workflow_id = $2 WHERE id = $1`, squadID, wf.ID)
 	return tradeFlowFixture{Agents: agents, Workflow: wf, SquadID: squadID}

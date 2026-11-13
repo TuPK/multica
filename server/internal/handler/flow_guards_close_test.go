@@ -84,15 +84,17 @@ func TestFlowTaskClose_AttachmentRequired422(t *testing.T) {
 }
 
 // A file linked to a comment keeps the issue's id, so it counts; a file another
-// agent or a member uploaded does not.
+// agent or another member uploaded does not (one the closing member uploaded does:
+// see TestFlowGuard_ManagerOnBehalfStillNeedsTheFiles).
 func TestFlowTaskClose_AttachmentOnCommentCounts(t *testing.T) {
 	fx := newFlowFixture(t)
 
 	other := goldenLeadAgent(t, fx.WorkAgent)
 	attachAs(t, fx.Work, other)
+	otherMember, _ := addWorkflowTestMember(t, "flow-other-uploader")
 	dbfx.Insert(t, "attachment", testutil.Cols{
 		"workspace_id": testWorkspaceID, "issue_id": fx.Work,
-		"uploader_type": "member", "uploader_id": testUserID,
+		"uploader_type": "member", "uploader_id": otherMember,
 		"filename": "mine.md", "url": "https://files.example.test/mine.md",
 		"content_type": "text/markdown", "size_bytes": 4,
 	})
