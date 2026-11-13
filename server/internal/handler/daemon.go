@@ -5058,6 +5058,8 @@ func (h *Handler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 	// A run that finished without moving its workflow issue is re-run with a
 	// brief to try a different approach, so the issue never waits on a person.
 	h.reconcileUnmovedWorkflowRun(r.Context(), task)
+	// A flow task whose run ended: the runner moves its request on without waiting for the sweep.
+	h.advanceFlowAfterRun(r.Context(), task)
 	// The terminal transaction and completion reconciliation are committed.
 	// Wake the owning runtime now so queued work that was blocked by this
 	// task's agent capacity or serialization key is re-claimed immediately.

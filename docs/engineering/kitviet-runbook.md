@@ -705,6 +705,64 @@ Gác nào trả CHẶN sau hai vòng thì squad dừng loại 3. Gác nào QUA m
 - **Tên cơ quan (quy tắc viết lại).** Tên cơ quan không gắn cứng vào một mốc đổi tên: `Cục Hải quan` thành `cơ quan hải quan` (`customs-agency-name`); `Tổng cục Thống kê (nay là Cục Thống kê, Bộ Tài chính)` thành `cơ quan thống kê nhà nước (tên cơ quan hiện hành: xem nguồn chính thức)` (`statistics-agency-history`). Tên hiện hành phải đến từ nguồn chính thức, không từ skill.
 - **Mục nền tảng và dòng nhắc nền tảng trong bản vá.** Các câu như "(Claude Code: …)" và "lên Claude web" được viết lại qua `kitviet-rewrites.json` (`claude-code-colon-note`, `paste-into-chat-web`), không cần bản vá riêng.
 
+## 8f. Flow: workflow bắt buộc của squad (spec `kitviet-workflow-spec.md`)
+
+Mỗi squad Kit Việt có một workflow flow (manifest `catalog/workflows/flow_<id squad>/template.json`, khối `flow`). Máy chủ mở sub-issue cho từng task của bước, chờ mọi task đóng, mở lại **mọi** gate sau mỗi bản sửa, đếm vòng (tối đa 2) và đăng comment ba điểm dừng. Lead chỉ lập kế hoạch (`multica issue flow plan`) và gọi `multica issue flow advance`. Đọc kế hoạch chi tiết ở `kitviet-workflow-plan.md`.
+
+| Squad | Template (`template_ref`) | Route | Công tắc khác |
+| --- | --- | --- | --- |
+| `kv_academic` | `flow_kv_academic@17c8b737` | `chapter_draft`, `chapter_review` | `web` |
+| `kv_accounting` | `flow_kv_accounting@ebf3a4d9` | `month_close`, `tax_letter`, `tax_calendar` | `tax_lookup`, `export` |
+| `kv_admin` | `flow_kv_admin@5d2f1037` | (một route) | `format_lookup`, `has_figures`, `export` |
+| `kv_b2b` | `flow_kv_b2b@613bcc0e` | (một route) | `company_lookup`, `export` |
+| `kv_banking` | `flow_kv_banking@19291576` | (một route) | `customer_facing`, `export` |
+| `kv_construction` | `flow_kv_construction@80caefb4` | (một route) | `has_money_table`, `export` |
+| `kv_ecom` | `flow_kv_ecom@4718f565` | `listing`, `aftersale`, `order_report` | `has_figures` |
+| `kv_education` | `flow_kv_education@2166f2c3` | (một route) | `export` |
+| `kv_factory` | `flow_kv_factory@4f00994d` | `kpi_report`, `quality_record` | `export` |
+| `kv_fnb` | `flow_kv_fnb@16965907` | (một route) | `regulation_check`, `export` |
+| `kv_health` | `flow_kv_health@f70324d5` | (một route) | `web_regulation`, `web_research`, `needs_table` |
+| `kv_hospitality` | `flow_kv_hospitality@3895701d` | `tour_quote`, `guest_text` | `web` |
+| `kv_insurance` | `flow_kv_insurance@82b656ff` | `proposal`, `claim_guidance` | - |
+| `kv_legal` | `flow_kv_legal@6b0343ec` | `contract_review`, `validity_review` | `legal_sources`, `has_citations`, `export` |
+| `kv_marketing` | `flow_kv_marketing@c75ebcd1` | (một route) | `message_approved`, `export` |
+| `kv_officeops` | `flow_kv_officeops@10d72de3` | (một route) | `has_source_files`, `has_costs`, `export` |
+| `kv_pr` | `flow_kv_pr@c1cedbca` | `article_check`, `release_qa` | `message_approved`, `has_figures`, `export` |
+| `kv_realestate` | `flow_kv_realestate@5cfbaee7` | `listing_pack`, `loan_plan` | `area_research`, `mentions_planning` |
+| `kv_talent` | `flow_kv_talent@c52a70d6` | (một route) | `export` |
+| `kv_teaching` | `flow_kv_teaching@9d083bd5` | `teaching_material`, `class_records` | `student_facing`, `records_anonymised` |
+| `kv_trade` | `flow_kv_trade@b10d7319` | `shipment_dossier` | `customs_lookup`, `export` |
+
+### Công tắc và lệnh
+
+| Việc | Cách |
+| --- | --- |
+| Xem trạng thái request | `multica issue flow show <id>`. Request không do flow chạy: in `{"managed": false}` và lead theo quy trình cũ |
+| Lập kế hoạch | lead: `multica issue flow plan <id> --switch route=<route> --switch customs_lookup=true`; thiếu căn cứ: `--blocked --missing "<mục>" --reason "<vì sao>"` (dừng 1) |
+| Tiếp tục request đã dừng | thành viên quản lý squad: `multica issue flow resume <id>` (dừng 3 đặt lại vòng sửa; dừng 1 mở lại task bị chặn; `stalled` đưa task treo về `todo`) |
+| Gỡ request khỏi flow | `multica issue flow detach <id> [--cancel-tasks]`; task thành sub-issue thường |
+| Bật runner nền (tầng 2) | `FF_FLOW_RUNNER=on` cho máy chủ, rồi `PUT /api/issue-workflows/<id>/flow-auto {"auto": true}` (quản trị workspace). Mặc định tắt. Tắt một trong hai thì `child_done` bắn lại ngay và lead tự gọi `advance` |
+| Tắt cả engine | `FF_FLOW_ENGINE=off`: guard và API flow nhường chỗ; trạng thái lưu giữ nguyên |
+| Cập nhật bản flow mới | nút cập nhật Kit Việt tạo hàng workflow mới theo `rev` và đặt làm workflow đang dùng; request đang chạy ở lại bản cũ. Squad đang chạy workflow không do template tạo thì giữ nguyên |
+
+### Điểm dừng
+
+| Dừng | Tiêu đề comment | Ai làm gì |
+| --- | --- | --- |
+| 1 | `BLOCKED · stop 1 · thiếu căn cứ` | Người yêu cầu bổ sung đầu vào; thành viên quản lý `resume` |
+| 2 | `IN REVIEW · stop 2 · trước khi ra khỏi workspace` | Người nhận đọc sản phẩm, tự gửi/nộp/ký/công bố ngoài workspace, chuyển request sang `done` (agent không làm được) |
+| 3 | `BLOCKED · stop 3 · hết 2 vòng sửa` | Người yêu cầu quyết định đổi bản nháp; thành viên quản lý `resume` |
+| treo | `BLOCKED · stalled · request không tiến thêm được` | Runner thấy task hết số lần thử, lead không lập kế hoạch, hoặc agent bị lưu trữ; `resume` sau khi xử lý |
+| chờ duyệt | `WAITING · chờ duyệt thông điệp` | Marketing và PR: người duyệt thông điệp rồi chuyển request sang `Draft` |
+
+### Dựng chỉ mục và kiểm thử trên DB riêng
+
+Migration `985` thêm cột, `986` và `987` tạo chỉ mục bằng `CREATE INDEX CONCURRENTLY` (xem `server/cmd/migrate/README.md`); trên bảng `issue` lớn, chạy chúng ngoài giờ cao điểm. Test DB theo D19: dùng một database có tên kết thúc `_test`, đi qua `scripts/require-test-database.sh`, đặt `DATABASE_URL` tường minh trong chính lệnh. Không dùng `make test`, `make check`, `make migrate-up`.
+
+### Hoàn tác
+
+Thứ tự: tắt runner → tắt engine → `detach` từng request → chạy down `987`, `986`, `985` (do người dùng tự chạy với DSN của họ). `985` down xóa tám cột và mất `flow`, `outcome`. Bảng đầy đủ ở `kitviet-workflow-plan.md` mục 4.1; test: `flow_rollback_test.go`.
+
 ## 9. Việc còn mở
 
 ### Nâng cấp lên v1.5.0 (2026-11-12)

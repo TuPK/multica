@@ -13,4 +13,6 @@ import (
 // is retried by the scheduler sweep.
 func (h *Handler) processChildEvents(ctx context.Context, parentIDs ...pgtype.UUID) {
 	_ = (&service.IssueWakeupService{Tasks: h.TaskService}).ProcessChildEvents(ctx, parentIDs...)
+	// A request the flow runner moves advances here; the rule above skips such a parent.
+	h.advanceFlowRequests(ctx, parentIDs...)
 }

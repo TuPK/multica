@@ -1,0 +1,343 @@
+{
+  "schemaVersion": 1,
+  "kind": "workflow",
+  "id": "flow_kv_teaching",
+  "version": "1.0.0",
+  "ui": false,
+  "requires": [
+    {
+      "kind": "squad",
+      "id": "kv_teaching"
+    }
+  ],
+  "flow": {
+    "squad": "kv_teaching",
+    "config": {
+      "version": 1,
+      "task_timeout_minutes": 120,
+      "task_hard_cap_minutes": 240,
+      "task_max_attempts": 2,
+      "switches": [
+        {
+          "key": "route",
+          "type": "enum",
+          "values": [
+            "teaching_material",
+            "class_records"
+          ],
+          "default": "teaching_material"
+        },
+        {
+          "key": "student_facing",
+          "type": "bool",
+          "default": false
+        },
+        {
+          "key": "records_anonymised",
+          "type": "bool",
+          "default": false
+        }
+      ],
+      "messages": {
+        "stop1": "BLOCKED · stop 1 · thiếu căn cứ\nThiếu:\n{missing}\nLý do: {reason}\nCác task đã chạy:\n{tasks}\nCần từ bạn: gửi bổ sung đúng các mục trên rồi cho request chạy tiếp.\n{requester}",
+        "stop2": "IN REVIEW · stop 2 · trước khi ra khỏi workspace\nCác cổng soát và bàn giao đã QUA. Sản phẩm là bản nháp: chưa có gì được gửi, nộp, ký hay công bố.\nCác task:\n{tasks}\nViệc bạn phải làm: đọc sản phẩm và các điểm cần quyết trong comment bàn giao, rồi tự thực hiện bên ngoài workspace. Xong thì chuyển request sang done.\n{requester}",
+        "stop3": "BLOCKED · stop 3 · hết 2 vòng sửa\nVòng sửa đã dùng: {rework}/2\nCác task của bước cuối:\n{tasks}\nCần từ bạn: quyết định làm đổi bản nháp (dữ kiện, nguồn hoặc phê duyệt), rồi cho request chạy tiếp.\n{requester}",
+        "stalled": "BLOCKED · stalled · request không tiến thêm được\n{request} dừng ở bước {step}.\n{reason}\nCác task:\n{tasks}\n{requester}"
+      }
+    },
+    "steps": [
+      {
+        "status": {
+          "key": "todo"
+        },
+        "statusKey": "todo",
+        "transitions": [
+          {
+            "id": "plan_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "outcome",
+              "op": "eq",
+              "value": "blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "plan_records",
+            "label": "Dữ liệu lớp chưa ẩn danh hoặc chưa được duyệt (dừng 1)",
+            "when": {
+              "all": [
+                {
+                  "field": "switch.route",
+                  "op": "eq",
+                  "value": "class_records"
+                },
+                {
+                  "field": "switch.records_anonymised",
+                  "op": "eq",
+                  "value": false
+                }
+              ]
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "plan_ok",
+            "label": "Đã lập kế hoạch",
+            "when": null,
+            "to": "collect"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Collect",
+          "category": "started"
+        },
+        "statusKey": "collect",
+        "tasks": [
+          {
+            "key": "sources",
+            "title": "Thu thập và ghi nguồn tài liệu",
+            "kind": "work",
+            "role": "tm_sources",
+            "instructions": "Thu thập và ghi nguồn tài liệu. Chỉ đọc và trích dữ kiện từ các tệp đính kèm của request và từ nguồn mà vai của bạn được phép dùng; mỗi dữ kiện ghi kèm tệp và vị trí (hoặc nguồn và ngày mở nguồn). Không tính toán, không kết luận đúng sai. Đính kèm kết quả thành tệp `01-sources.md`.\n\nThiếu đầu vào mà không thể mặc định thì đây là điểm dừng 1: nêu từng mục thiếu trong comment rồi báo task bị chặn.",
+            "when": {
+              "field": "switch.route",
+              "op": "eq",
+              "value": "teaching_material"
+            }
+          },
+          {
+            "key": "records",
+            "title": "Tổng hợp dữ liệu lớp đã ẩn danh",
+            "kind": "work",
+            "role": "tm_records",
+            "instructions": "Tổng hợp dữ liệu lớp đã ẩn danh. Chỉ đọc và trích dữ kiện từ các tệp đính kèm của request và từ nguồn mà vai của bạn được phép dùng; mỗi dữ kiện ghi kèm tệp và vị trí (hoặc nguồn và ngày mở nguồn). Không tính toán, không kết luận đúng sai. Đính kèm kết quả thành tệp `02-records.md`.\n\nThiếu đầu vào mà không thể mặc định thì đây là điểm dừng 1: nêu từng mục thiếu trong comment rồi báo task bị chặn.",
+            "when": {
+              "field": "switch.route",
+              "op": "eq",
+              "value": "class_records"
+            }
+          }
+        ],
+        "transitions": [
+          {
+            "id": "collect_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "collect_done",
+            "label": "Đã thu thập",
+            "when": null,
+            "to": "draft"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Draft",
+          "category": "started"
+        },
+        "statusKey": "draft",
+        "tasks": [
+          {
+            "key": "drafter",
+            "title": "Soạn tài liệu giảng dạy",
+            "kind": "work",
+            "role": "tm_drafter",
+            "instructions": "Soạn tài liệu giảng dạy, chỉ từ dữ kiện đã thu thập ở các bước trước (tệp đính kèm của các task đó). Dữ kiện chưa có thì ghi [cần bổ sung], không bịa; mọi con số, mã và trích dẫn ghi là đề xuất cho người duyệt. Đính kèm bản nháp thành tệp `03-drafter.md`. Không tự kết luận là đã soát.",
+            "requires": [
+              "attachment"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "id": "draft_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "draft_done",
+            "label": "Đã soạn",
+            "when": null,
+            "to": "gate"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Gate",
+          "category": "started"
+        },
+        "statusKey": "gate",
+        "tasks": [
+          {
+            "key": "source_gate",
+            "title": "Soát nguồn",
+            "kind": "gate",
+            "role": "tm_source_gate",
+            "instructions": "Soát nguồn. Chỉ đọc, không sửa gì: bạn chỉ có tệp bản nháp và nguồn được liên kết, không có lập luận của người soạn.\n\nDòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).",
+            "when": {
+              "field": "switch.route",
+              "op": "eq",
+              "value": "teaching_material"
+            },
+            "requires": [
+              "outcome"
+            ]
+          },
+          {
+            "key": "student_gate",
+            "title": "Soát nội dung dành cho học sinh",
+            "kind": "gate",
+            "role": "tm_student_gate",
+            "instructions": "Soát nội dung dành cho học sinh. Chỉ đọc, không sửa gì: bạn chỉ có tệp bản nháp và nguồn được liên kết, không có lập luận của người soạn.\n\nDòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).",
+            "when": {
+              "any": [
+                {
+                  "field": "switch.route",
+                  "op": "eq",
+                  "value": "class_records"
+                },
+                {
+                  "field": "switch.student_facing",
+                  "op": "eq",
+                  "value": true
+                }
+              ]
+            },
+            "requires": [
+              "outcome"
+            ]
+          },
+          {
+            "key": "numbers_gate",
+            "title": "Soát số liệu từ dữ liệu lớp",
+            "kind": "gate",
+            "role": "tm_numbers_gate",
+            "instructions": "Soát số liệu từ dữ liệu lớp. Chỉ đọc, không sửa gì: bạn chỉ có tệp bản nháp và nguồn được liên kết, không có lập luận của người soạn.\n\nDòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).",
+            "when": {
+              "field": "switch.route",
+              "op": "eq",
+              "value": "class_records"
+            },
+            "requires": [
+              "outcome"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "id": "gate_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "gate_approved",
+            "label": "Mọi cổng QUA",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "all_approved"
+            },
+            "to": "handover"
+          },
+          {
+            "id": "gate_rework",
+            "label": "Sửa lại (tối đa 2 vòng)",
+            "when": {
+              "all": [
+                {
+                  "field": "tasks_outcome",
+                  "op": "eq",
+                  "value": "any_rejected"
+                },
+                {
+                  "field": "rework_count",
+                  "op": "lt",
+                  "value": 2
+                }
+              ]
+            },
+            "to": "draft",
+            "rework": true
+          },
+          {
+            "id": "gate_exhausted",
+            "label": "Hết 2 vòng sửa (dừng 3)",
+            "when": null,
+            "to": "blocked"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Handover",
+          "category": "started"
+        },
+        "statusKey": "handover",
+        "tasks": [
+          {
+            "key": "handover",
+            "title": "Kiểm định bàn giao",
+            "kind": "gate",
+            "role": "tm_handover",
+            "instructions": "Đối chiếu sản phẩm cuối với kế hoạch của lead trên request và với kết luận của mọi cổng. Ghi comment bàn giao liệt kê việc người nhận phải tự quyết trước khi gửi, nộp, ký hoặc công bố bất cứ thứ gì, kèm chỗ chưa xác minh và cảnh báo.\n\nDòng đầu của comment là `VERDICT: QUA` hoặc `VERDICT: CHẶN`. QUA chỉ khi mọi cổng QUA trên bản cuối và sản phẩm khớp kế hoạch. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).",
+            "requires": [
+              "outcome"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "id": "handover_approved",
+            "label": "Bàn giao QUA (dừng 2)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "all_approved"
+            },
+            "to": "in_review"
+          },
+          {
+            "id": "handover_stop",
+            "label": "Bàn giao không QUA (dừng 3)",
+            "when": null,
+            "to": "blocked"
+          }
+        ]
+      },
+      {
+        "status": {
+          "key": "in_review"
+        },
+        "statusKey": "in_review",
+        "humanOnly": true
+      },
+      {
+        "status": {
+          "key": "blocked"
+        },
+        "statusKey": "blocked"
+      }
+    ]
+  }
+}

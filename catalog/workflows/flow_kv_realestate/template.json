@@ -1,0 +1,348 @@
+{
+  "schemaVersion": 1,
+  "kind": "workflow",
+  "id": "flow_kv_realestate",
+  "version": "1.0.0",
+  "ui": false,
+  "requires": [
+    {
+      "kind": "squad",
+      "id": "kv_realestate"
+    }
+  ],
+  "flow": {
+    "squad": "kv_realestate",
+    "config": {
+      "version": 1,
+      "task_timeout_minutes": 120,
+      "task_hard_cap_minutes": 240,
+      "task_max_attempts": 2,
+      "switches": [
+        {
+          "key": "route",
+          "type": "enum",
+          "values": [
+            "listing_pack",
+            "loan_plan"
+          ],
+          "default": "listing_pack"
+        },
+        {
+          "key": "area_research",
+          "type": "bool",
+          "default": false
+        },
+        {
+          "key": "mentions_planning",
+          "type": "bool",
+          "default": false
+        }
+      ],
+      "messages": {
+        "stop1": "BLOCKED · stop 1 · thiếu căn cứ\nThiếu:\n{missing}\nLý do: {reason}\nCác task đã chạy:\n{tasks}\nCần từ bạn: gửi bổ sung đúng các mục trên rồi cho request chạy tiếp.\n{requester}",
+        "stop2": "IN REVIEW · stop 2 · trước khi ra khỏi workspace\nCác cổng soát và bàn giao đã QUA. Sản phẩm là bản nháp: chưa có gì được gửi, nộp, ký hay công bố.\nCác task:\n{tasks}\nViệc bạn phải làm: đọc sản phẩm và các điểm cần quyết trong comment bàn giao, rồi tự thực hiện bên ngoài workspace. Xong thì chuyển request sang done.\n{requester}",
+        "stop3": "BLOCKED · stop 3 · hết 2 vòng sửa\nVòng sửa đã dùng: {rework}/2\nCác task của bước cuối:\n{tasks}\nCần từ bạn: quyết định làm đổi bản nháp (dữ kiện, nguồn hoặc phê duyệt), rồi cho request chạy tiếp.\n{requester}",
+        "stalled": "BLOCKED · stalled · request không tiến thêm được\n{request} dừng ở bước {step}.\n{reason}\nCác task:\n{tasks}\n{requester}"
+      }
+    },
+    "steps": [
+      {
+        "status": {
+          "key": "todo"
+        },
+        "statusKey": "todo",
+        "transitions": [
+          {
+            "id": "plan_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "outcome",
+              "op": "eq",
+              "value": "blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "plan_ok",
+            "label": "Đã lập kế hoạch",
+            "when": null,
+            "to": "collect"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Collect",
+          "category": "started"
+        },
+        "statusKey": "collect",
+        "tasks": [
+          {
+            "key": "reader",
+            "title": "Đọc hồ sơ bất động sản",
+            "kind": "work",
+            "role": "realestate_reader",
+            "instructions": "Đọc hồ sơ bất động sản. Chỉ đọc và trích dữ kiện từ các tệp đính kèm của request và từ nguồn mà vai của bạn được phép dùng; mỗi dữ kiện ghi kèm tệp và vị trí (hoặc nguồn và ngày mở nguồn). Không tính toán, không kết luận đúng sai. Đính kèm kết quả thành tệp `01-reader.md`.\n\nThiếu đầu vào mà không thể mặc định thì đây là điểm dừng 1: nêu từng mục thiếu trong comment rồi báo task bị chặn."
+          },
+          {
+            "key": "area_research",
+            "title": "Tra cứu khu vực",
+            "kind": "work",
+            "role": "realestate_area_research",
+            "instructions": "Tra cứu khu vực. Chỉ đọc và trích dữ kiện từ các tệp đính kèm của request và từ nguồn mà vai của bạn được phép dùng; mỗi dữ kiện ghi kèm tệp và vị trí (hoặc nguồn và ngày mở nguồn). Không tính toán, không kết luận đúng sai. Đính kèm kết quả thành tệp `02-area_research.md`.\n\nThiếu đầu vào mà không thể mặc định thì đây là điểm dừng 1: nêu từng mục thiếu trong comment rồi báo task bị chặn.",
+            "when": {
+              "all": [
+                {
+                  "field": "switch.route",
+                  "op": "eq",
+                  "value": "listing_pack"
+                },
+                {
+                  "field": "switch.area_research",
+                  "op": "eq",
+                  "value": true
+                }
+              ]
+            }
+          }
+        ],
+        "transitions": [
+          {
+            "id": "collect_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "collect_done",
+            "label": "Đã thu thập",
+            "when": null,
+            "to": "draft"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Draft",
+          "category": "started"
+        },
+        "statusKey": "draft",
+        "tasks": [
+          {
+            "key": "listing_drafter",
+            "title": "Soạn bộ đăng sản phẩm",
+            "kind": "work",
+            "role": "realestate_listing_drafter",
+            "instructions": "Soạn bộ đăng sản phẩm, chỉ từ dữ kiện đã thu thập ở các bước trước (tệp đính kèm của các task đó). Dữ kiện chưa có thì ghi [cần bổ sung], không bịa; mọi con số, mã và trích dẫn ghi là đề xuất cho người duyệt. Đính kèm bản nháp thành tệp `03-listing_drafter.md`. Không tự kết luận là đã soát.",
+            "when": {
+              "field": "switch.route",
+              "op": "eq",
+              "value": "listing_pack"
+            },
+            "requires": [
+              "attachment"
+            ]
+          },
+          {
+            "key": "loan_drafter",
+            "title": "Soạn phương án vay",
+            "kind": "work",
+            "role": "realestate_loan_drafter",
+            "instructions": "Soạn phương án vay, chỉ từ dữ kiện đã thu thập ở các bước trước (tệp đính kèm của các task đó). Dữ kiện chưa có thì ghi [cần bổ sung], không bịa; mọi con số, mã và trích dẫn ghi là đề xuất cho người duyệt. Đính kèm bản nháp thành tệp `04-loan_drafter.md`. Không tự kết luận là đã soát.",
+            "when": {
+              "field": "switch.route",
+              "op": "eq",
+              "value": "loan_plan"
+            },
+            "requires": [
+              "attachment"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "id": "draft_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "draft_done",
+            "label": "Đã soạn",
+            "when": null,
+            "to": "gate"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Gate",
+          "category": "started"
+        },
+        "statusKey": "gate",
+        "tasks": [
+          {
+            "key": "listing_gate",
+            "title": "Soát bộ đăng tin",
+            "kind": "gate",
+            "role": "realestate_listing_gate",
+            "instructions": "Soát bộ đăng tin. Chỉ đọc, không sửa gì: bạn chỉ có tệp bản nháp và nguồn được liên kết, không có lập luận của người soạn.\n\nDòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).",
+            "when": {
+              "field": "switch.route",
+              "op": "eq",
+              "value": "listing_pack"
+            },
+            "requires": [
+              "outcome"
+            ]
+          },
+          {
+            "key": "planning_gate",
+            "title": "Soát thông tin quy hoạch",
+            "kind": "gate",
+            "role": "realestate_planning_gate",
+            "instructions": "Soát thông tin quy hoạch. Chỉ đọc, không sửa gì: bạn chỉ có tệp bản nháp và nguồn được liên kết, không có lập luận của người soạn.\n\nDòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).",
+            "when": {
+              "all": [
+                {
+                  "field": "switch.route",
+                  "op": "eq",
+                  "value": "listing_pack"
+                },
+                {
+                  "field": "switch.mentions_planning",
+                  "op": "eq",
+                  "value": true
+                }
+              ]
+            },
+            "requires": [
+              "outcome"
+            ]
+          },
+          {
+            "key": "loan_gate",
+            "title": "Soát phương án vay",
+            "kind": "gate",
+            "role": "realestate_loan_gate",
+            "instructions": "Soát phương án vay. Chỉ đọc, không sửa gì: bạn chỉ có tệp bản nháp và nguồn được liên kết, không có lập luận của người soạn.\n\nDòng đầu của comment kết luận là `VERDICT: QUA` hoặc `VERDICT: CHẶN`, theo sau là bảng lỗi có vị trí. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).",
+            "when": {
+              "field": "switch.route",
+              "op": "eq",
+              "value": "loan_plan"
+            },
+            "requires": [
+              "outcome"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "id": "gate_blocked",
+            "label": "Thiếu căn cứ (dừng 1)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "any_blocked"
+            },
+            "to": "blocked"
+          },
+          {
+            "id": "gate_approved",
+            "label": "Mọi cổng QUA",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "all_approved"
+            },
+            "to": "handover"
+          },
+          {
+            "id": "gate_rework",
+            "label": "Sửa lại (tối đa 2 vòng)",
+            "when": {
+              "all": [
+                {
+                  "field": "tasks_outcome",
+                  "op": "eq",
+                  "value": "any_rejected"
+                },
+                {
+                  "field": "rework_count",
+                  "op": "lt",
+                  "value": 2
+                }
+              ]
+            },
+            "to": "draft",
+            "rework": true
+          },
+          {
+            "id": "gate_exhausted",
+            "label": "Hết 2 vòng sửa (dừng 3)",
+            "when": null,
+            "to": "blocked"
+          }
+        ]
+      },
+      {
+        "status": {
+          "name": "Handover",
+          "category": "started"
+        },
+        "statusKey": "handover",
+        "tasks": [
+          {
+            "key": "handover",
+            "title": "Kiểm định bàn giao",
+            "kind": "gate",
+            "role": "realestate_handover",
+            "instructions": "Đối chiếu sản phẩm cuối với kế hoạch của lead trên request và với kết luận của mọi cổng. Ghi comment bàn giao liệt kê việc người nhận phải tự quyết trước khi gửi, nộp, ký hoặc công bố bất cứ thứ gì, kèm chỗ chưa xác minh và cảnh báo.\n\nDòng đầu của comment là `VERDICT: QUA` hoặc `VERDICT: CHẶN`. QUA chỉ khi mọi cổng QUA trên bản cuối và sản phẩm khớp kế hoạch. Sau đó đóng task với outcome tương ứng (approved hoặc rejected).",
+            "requires": [
+              "outcome"
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "id": "handover_approved",
+            "label": "Bàn giao QUA (dừng 2)",
+            "when": {
+              "field": "tasks_outcome",
+              "op": "eq",
+              "value": "all_approved"
+            },
+            "to": "in_review"
+          },
+          {
+            "id": "handover_stop",
+            "label": "Bàn giao không QUA (dừng 3)",
+            "when": null,
+            "to": "blocked"
+          }
+        ]
+      },
+      {
+        "status": {
+          "key": "in_review"
+        },
+        "statusKey": "in_review",
+        "humanOnly": true
+      },
+      {
+        "status": {
+          "key": "blocked"
+        },
+        "statusKey": "blocked"
+      }
+    ]
+  }
+}

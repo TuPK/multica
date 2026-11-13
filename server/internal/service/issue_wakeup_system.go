@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/multica-ai/multica/server/internal/featureflags"
 	"log/slog"
 	"strings"
 	"time"
@@ -485,6 +486,15 @@ func (s *IssueWakeupService) dispatchSystem(ctx context.Context, prev db.IssueWa
 		}
 		return tx.Commit(ctx)
 	}
+	// A request the flow runner moves needs no wake-up between steps: the runner advances it when a
+	// task closes, and the lead is woken only at the plan step. The receipts are dropped so they do
+	// not pile up; turning the runner or flow_auto off makes the rule fire again at once.
+	if s.autoFlowRequest(ctx, q, issue.ID) {
+		if err = q.DiscardWakeupReceipts(ctx, w.ID); err != nil {
+			return err
+		}
+		return tx.Commit(ctx)
+	}
 	// A parked parent holds: nothing fires and nothing is marked as seen, so
 	// a stage that closed meanwhile wakes the assignee once it leaves backlog.
 	if issuestatus.Effective(ctx, q, issue.WorkspaceID, issue.Status) == "backlog" {
@@ -843,4 +853,15 @@ func (s *IssueWakeupService) SetChildDoneDefault(ctx context.Context, workspaceI
 		}
 	}
 	return int64(len(changed)), tx.Commit(ctx)
+}
+
+// autoFlowRequest reports whether the issue is an open flow request that the background runner
+// moves: the runner flag is on and the flow workflow has flow_auto set. It is computed where it is
+// read, so the answer follows the flag and the workflow at once.
+func (s *IssueWakeupService) autoFlowRequest(ctx context.Context, q *db.Queries, issueID pgtype.UUID) bool {
+	if !featureflags.FlowRunnerEnabled(ctx, s.Tasks.FeatureFlags) {
+		return false
+	}
+	auto, err := q.IsFlowRequestAuto(ctx, issueID)
+	return err == nil && auto
 }
