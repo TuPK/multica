@@ -28,11 +28,21 @@ const core = ["Sản phẩm", "Nghiên cứu", "Nội dung", "Bán hàng", "Hỗ
   <div class="wrap">
     <div class="sec-head rv">
       <div class="tag">Phòng ban</div>
-      <h2 style="margin-top:18px">Chọn các phòng công ty bạn cần.</h2>
-      <p>Bắt đầu với một phòng, thêm phòng khác khi cần. Các phòng đã được thiết kế để làm việc với nhau, không cần tự nối thủ công.</p>
+      <h2 style="margin-top:18px">Mỗi nghề có một đội biết nghề.</h2>
+      <p>Đội kế toán biết đối chiếu chứng từ. Đội bất động sản biết kiểm tra quy hoạch. Bạn không phải dạy AI từ đầu cho từng ngành. Chọn đội, giao việc.</p>
     </div>
 
     <div class="ind">
+      <a class="tile tile-feature rv" href="#phan-mem">
+        <div class="tf-main">
+          <svg class="ic"><use href="#i-code"></use></svg>
+          <div>
+            <h3>Phát triển phần mềm</h3>
+            <p>Đội mạnh nhất của công ty. Làm ra sản phẩm, và làm ra công cụ cho mọi phòng ban còn lại.</p>
+          </div>
+        </div>
+        <span class="go">Xem đội phần mềm →</span>
+      </a>
       {tiles.map((t) => (
         <div class="tile rv">
           <svg class="ic"><use href={`#${t.icon}`}></use></svg>

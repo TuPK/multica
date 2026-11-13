@@ -6,7 +6,7 @@ body{margin:0;background:#06080c}
 .mc a{color:inherit;text-decoration:none}
 .mc p{margin:0}
 .mc h1,.mc h2,.mc h3,.mc h4{margin:0;color:var(--ink);letter-spacing:-0.025em;line-height:1.08}
-.mc h1{font-size:82px;font-weight:800}
+.mc h1{font-size:68px;font-weight:800}
 .mc h2{font-size:50px;font-weight:700}
 .mc h3{font-size:21px;font-weight:700;letter-spacing:-0.01em;line-height:1.25}
 .mc h4{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
@@ -58,7 +58,7 @@ body{margin:0;background:#06080c}
 
 /* ----- hero ----- */
 /* overflow: clip, not hidden: hidden makes this element a scroll container, which breaks the view() timelines of .rv children. */
-.mc .hero{padding:88px 0 0;border-top:none;overflow:clip}
+.mc .hero{padding:56px 0 0;border-top:none;overflow:clip}
 .mc .hero-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:56px;align-items:center;position:relative}
 .mc .eyebrow{display:inline-flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:var(--soft);border:1px solid var(--line2);border-radius:999px;padding:7px 16px}
 .mc .lead{font-size:20px;color:var(--soft);max-width:580px;margin-top:28px}
@@ -102,9 +102,26 @@ body{margin:0;background:#06080c}
 .mc .sstep .dept{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px}
 .mc .sstep p{font-size:14px;color:var(--muted);line-height:1.55}
 .mc .sstep .to{margin-top:auto;font-size:13px;color:var(--soft);border-top:1px solid var(--line);padding-top:12px}
+.mc .sstep p{font-size:15px}
 .mc .sstep:not(:last-child)::after{content:"";position:absolute;right:-11px;top:50%;width:10px;height:10px;border-top:2px solid var(--accent);border-right:2px solid var(--accent);transform:translateY(-50%) rotate(45deg);background:transparent}
 .mc .scenario-note{margin-top:28px;font-size:16px;color:var(--soft);max-width:760px}
 .mc .scenario-note em{font-style:normal;color:var(--ink);font-weight:600}
+
+/* ----- hero pre-headline and bridge ----- */
+.mc .kick{margin-top:22px;font-size:16px;color:var(--muted);border-left:3px solid var(--amber);padding-left:14px;max-width:560px;line-height:1.5}
+.mc .kick b{color:var(--soft);font-weight:600}
+.mc .bridge{margin-top:24px;font-size:21px;color:var(--ink);max-width:600px;font-weight:600;line-height:1.45;letter-spacing:-0.01em}
+
+/* ----- software: board and use cases ----- */
+.mc .board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;border:1px solid var(--line2);border-radius:26px;background:#080c12;padding:22px;box-shadow:0 40px 100px -60px #000}
+.mc .col{background:#0b1018;border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.mc .col h4{padding:4px 4px 8px;border-bottom:1px solid var(--line)}
+.mc .kcard{border:1px solid var(--line2);border-radius:12px;padding:12px 14px;background:#0d1521;font-size:14px;color:var(--soft);animation:mc-in .7s cubic-bezier(.2,.7,.2,1) both}
+.mc .kcard.hot{border-color:var(--amber);color:#ffe0ac;box-shadow:0 0 0 3px rgba(255,181,71,.08)}
+.mc .board-cap{margin-top:18px;font-size:14px;color:var(--muted)}
+.mc .mech3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;margin-top:56px}
+
+.mc .steps3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 
 /* ----- mechanics ----- */
 .mc .mech{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
@@ -116,7 +133,13 @@ body{margin:0;background:#06080c}
 .mc .tile h3{font-size:17px}
 .mc .tile p{font-size:14px;color:var(--muted);line-height:1.5;margin-top:-6px}
 .mc .tile .ic{width:34px;height:34px}
-.mc .tile-wide{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;background:linear-gradient(90deg,#0e1826,#0b1018);border-color:rgba(79,156,255,.35)}
+.mc .tile-feature{grid-column:1/-1;flex-direction:row;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;border-color:var(--accent);background:linear-gradient(90deg,#10203a,#0b1018);padding:30px 34px}
+.mc .tile-feature .tf-main{display:flex;gap:20px;align-items:center}
+.mc .tile-feature .ic{width:44px;height:44px}
+.mc .tile-feature h3{font-size:24px}
+.mc .tile-feature p{margin-top:6px;font-size:16px;color:var(--soft);max-width:640px}
+.mc .tile-feature .go{font-weight:700;color:var(--accent);white-space:nowrap}
+.mc .tile-wide{grid-column:1/-1;flex-direction:row;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;background:linear-gradient(90deg,#0e1826,#0b1018);border-color:rgba(79,156,255,.35)}
 .mc .tile-wide p{margin-top:0;font-size:16px;color:var(--soft);max-width:640px}
 .mc .tile-wide .chips{display:flex;gap:8px;flex-wrap:wrap}
 .mc .tile-wide .chips span{font-size:13px;border:1px solid var(--line2);border-radius:999px;padding:6px 14px;color:var(--soft)}
@@ -165,8 +188,17 @@ body{margin:0;background:#06080c}
 .mc .ex.bad .lab{color:var(--amber)}
 .mc .ex .big{font-size:22px;font-weight:700;margin-top:14px;color:var(--ink);line-height:1.35}
 .mc .ex p{margin-top:12px;color:var(--soft);font-size:15px}
-.mc .ex .fig{font-family:ui-monospace,Menlo,monospace;font-size:14px;color:var(--soft);margin-top:14px;line-height:1.8}
+.mc .ex .fig{font-variant-numeric:tabular-nums;font-size:15px;color:var(--soft);margin-top:14px;line-height:1.8}
 .mc .ex .fig b{color:var(--ink)}
+
+.mc .ex ul{list-style:none;padding:0;margin:20px 0 0;display:grid;gap:12px}
+.mc .ex li{position:relative;padding-left:26px;color:var(--soft);font-size:16px}
+.mc .ex li::before{content:"×";position:absolute;left:0;top:-1px;color:var(--amber);font-weight:800}
+.mc .ex.good{border-color:rgba(61,220,151,.45);background:#0a1612}
+.mc .ex.good .lab{color:var(--green)}
+.mc .ex.good li::before{content:"✓";color:var(--green)}
+.mc .punch{margin-top:56px;font-size:34px;font-weight:700;letter-spacing:-0.02em;line-height:1.2;color:var(--soft)}
+.mc .punch em{font-style:normal;color:var(--ink)}
 
 /* ----- audience ----- */
 .mc .aud{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
@@ -189,7 +221,7 @@ body{margin:0;background:#06080c}
 .mc .price .plan{font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
 .mc .price .amt{font-size:56px;font-weight:800;letter-spacing:-0.03em;margin-top:16px;line-height:1}
 .mc .price .amt small{font-size:16px;color:var(--muted);font-weight:500;letter-spacing:0}
-.mc .price ul{list-style:none;padding:0;margin:30px 0 0;display:grid;gap:12px;flex:1}
+.mc .price ul{list-style:none;padding:0;margin:30px 0 0;display:grid;gap:12px;flex:1;align-content:start}
 .mc .price li{position:relative;padding-left:28px;color:var(--soft);font-size:16px}
 .mc .price li::before{content:"";position:absolute;left:4px;top:9px;width:9px;height:5px;border-left:2px solid var(--accent);border-bottom:2px solid var(--accent);transform:rotate(-45deg)}
 .mc .price .btn{margin-top:36px}
@@ -226,7 +258,7 @@ body{margin:0;background:#06080c}
 
 /* ----- responsive ----- */
 @media (max-width:1100px){
-  .mc h1{font-size:66px}
+  .mc h1{font-size:58px}
   .mc h2{font-size:42px}
   .mc .hero-grid{grid-template-columns:1fr;gap:52px}
   .mc .nav-links{display:none}
@@ -240,13 +272,18 @@ body{margin:0;background:#06080c}
 @media (max-width:860px){
   .mc section{padding:96px 0}
   .mc h2{font-size:36px}
-  .mc .aud,.mc .prices,.mc .example,.mc .mech{grid-template-columns:1fr}
+  .mc .aud,.mc .prices,.mc .example,.mc .mech,.mc .mech3,.mc .steps3{grid-template-columns:1fr}
+  .mc .steps3 .sstep:not(:last-child)::after{display:none}
+  .mc .board{grid-template-columns:1fr}
   .mc .final h2{font-size:52px}
   .mc .stage{height:auto;min-height:560px}
 }
 @media (max-width:600px){
   .mc .wrap{padding:0 16px}
-  .mc h1{font-size:44px}
+  .mc h1{font-size:40px}
+  .mc .bridge{font-size:18px}
+  .mc .tile-feature{padding:22px}
+  .mc .tile-feature .tf-main{flex-direction:column;align-items:flex-start}
   .mc h2{font-size:31px}
   .mc .lead{font-size:18px}
   .mc .final h2{font-size:38px}
@@ -270,6 +307,7 @@ body{margin:0;background:#06080c}
   .mc .final .ring{width:520px;height:520px}
   .mc .slide-head h3{font-size:21px}
   .mc .ex .big{font-size:19px}
+  .mc .punch{font-size:26px}
   .mc .steps5{grid-template-columns:1fr}
   .mc .eco{padding:12px}
   .mc .eco-points div{padding-left:16px}

@@ -1,0 +1,43 @@
+---
+const before = [
+  "Mở khung chat, dán lại bối cảnh từ đầu",
+  "Chép kết quả sang file, sang công cụ khác",
+  "Tự kiểm tra từng con số, từng câu chữ",
+  "Nhớ việc nào đang dở, rồi nhắc AI làm tiếp",
+];
+const after = [
+  "Giao việc một lần, đội đúng ngành nhận ngay",
+  "Các đội chuyển việc cho nhau, kèm tài liệu và lịch sử",
+  "Cổng kiểm tra soát lỗi trước khi đến tay bạn",
+  "Mỗi sáng nhận bản tin, và chỉ duyệt những gì cần bạn",
+];
+---
+
+<section id="van-de">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="tag">Vấn đề</div>
+      <h2 style="margin-top:18px">Bạn đang làm thư ký cho chính AI của mình.</h2>
+      <p>AI rất giỏi, nhưng nó chỉ làm khi bạn mở khung chat. Mỗi việc là một lần dán lại bối cảnh, một lần chép kết quả đi nơi khác, một lần nhắc nó làm tiếp.</p>
+    </div>
+
+    <div class="example rv">
+      <div class="ex bad">
+        <div class="lab">Hôm nay</div>
+        <div class="big">Bạn là người chạy việc giữa các cuộc trò chuyện.</div>
+        <ul>
+          {before.map((t) => <li>{t}</li>)}
+        </ul>
+      </div>
+      <div class="ex good">
+        <div class="lab">Với AI Agent Company</div>
+        <div class="big">AI chạy việc. Bạn là người quyết định.</div>
+        <ul>
+          {after.map((t) => <li>{t}</li>)}
+        </ul>
+      </div>
+    </div>
+
+    <p class="punch rv">AI không cần thông minh hơn. <em>Nó cần được tổ chức.</em></p>
+  </div>
+</section>

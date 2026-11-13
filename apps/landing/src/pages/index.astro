@@ -4,6 +4,9 @@ import IconSprite from "../components/IconSprite.astro";
 import Header from "../components/Header.astro";
 import Hero from "../components/Hero.astro";
 import Ecosystem from "../components/Ecosystem.astro";
+import Software from "../components/Software.astro";
+import GetStarted from "../components/GetStarted.astro";
+import Problem from "../components/Problem.astro";
 import Scenario from "../components/Scenario.astro";
 import Mechanics from "../components/Mechanics.astro";
 import Industries from "../components/Industries.astro";
@@ -17,7 +20,7 @@ import Footer from "../components/Footer.astro";
 
 const title = "AI Agent Company: công ty số với nhân viên là AI agent";
 const description =
-  "Đội AI agent theo ngành và theo phòng ban, làm việc cùng nhau. Kế toán, bán hàng, pháp lý, tuyển dụng, marketing chuyển việc cho nhau có nguồn và lịch sử. AI soạn bản nháp, người phụ trách quyết định.";
+  "Biến tài khoản AI bạn đang có thành đội nhân viên chuyên theo ngành: tự nhận việc, chuyển việc cho nhau, chỉ dừng ở bước cần bạn duyệt. Cho cá nhân và doanh nghiệp.";
 ---
 
 <Base title={title} description={description}>
@@ -25,13 +28,16 @@ const description =
   <Header />
   <main>
     <Hero />
+    <Problem />
+    <Industries />
     <Ecosystem />
     <Scenario />
+    <Software />
     <Mechanics />
-    <Industries />
     <TeamSlider />
     <Process />
     <Audience />
+    <GetStarted />
     <Pricing />
     <Faq />
     <FinalCta />
