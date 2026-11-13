@@ -74,6 +74,10 @@ type IssueWorkflowStepPayload struct {
 	BackStatusKey string                      `json:"back_status_key,omitempty"`
 	// Layout is the step's designer position; omitted when none is stored.
 	Layout *issueworkflow.Layout `json:"layout,omitempty"`
+	// Tasks and HumanOnly belong to a workflow that runs on a flow. They are
+	// always present on a response; no write reads them from a handoff payload.
+	Tasks     []issueworkflow.Task `json:"tasks"`
+	HumanOnly bool                 `json:"human_only"`
 }
 
 type IssueWorkflowResponse struct {
@@ -91,6 +95,14 @@ type IssueWorkflowResponse struct {
 	ProjectIDs []string                   `json:"project_ids"`
 	CreatedAt  string                     `json:"created_at"`
 	UpdatedAt  string                     `json:"updated_at"`
+	// FlowConfig is set on a workflow that runs requests on a flow, and
+	// TemplateRef on one made from a catalog flow (read-only). FlowAuto lets the
+	// background runner advance its requests. OpenFlowRequests counts the
+	// requests pinned to it that are not closed.
+	FlowConfig       *issueworkflow.FlowConfig `json:"flow_config"`
+	TemplateRef      *string                   `json:"template_ref"`
+	FlowAuto         bool                      `json:"flow_auto"`
+	OpenFlowRequests int                       `json:"open_flow_requests"`
 }
 
 // StatusMappingRequirement names a status some issues are on that the target
@@ -120,6 +132,10 @@ func stepToPayload(s issueworkflow.Step) IssueWorkflowStepPayload {
 	if transitions == nil {
 		transitions = []issueworkflow.Transition{}
 	}
+	tasks := s.Tasks
+	if tasks == nil {
+		tasks = []issueworkflow.Task{}
+	}
 	return IssueWorkflowStepPayload{
 		StatusKey:     s.StatusKey,
 		Handler:       IssueWorkflowHandlerPayload{Type: s.Handler.Type, ID: s.Handler.ID},
@@ -128,6 +144,8 @@ func stepToPayload(s issueworkflow.Step) IssueWorkflowStepPayload {
 		NextStatusKey: s.NextStatusKey(),
 		BackStatusKey: s.BackStatusKey(),
 		Layout:        s.Layout,
+		Tasks:         tasks,
+		HumanOnly:     s.HumanOnly,
 	}
 }
 
@@ -143,6 +161,9 @@ func payloadToStep(statusKey string, in IssueWorkflowStepPayload, prev *issuewor
 	}
 	if prev != nil {
 		step.Layout = prev.Layout
+		// A handoff edit never changes the flow fields of the step.
+		step.Tasks = prev.Tasks
+		step.HumanOnly = prev.HumanOnly
 	}
 	return step
 }
@@ -183,7 +204,25 @@ func issueWorkflowToResponse(row db.IssueWorkflow, def issueworkflow.Definition,
 		ProjectIDs:  projectIDs,
 		CreatedAt:   timestampToString(row.CreatedAt),
 		UpdatedAt:   timestampToString(row.UpdatedAt),
+		FlowConfig:  def.Flow,
+		TemplateRef: textToPtr(row.TemplateRef),
+		FlowAuto:    row.FlowAuto,
 	}
+}
+
+// openFlowRequestCounts counts the open flow requests pinned to each workflow
+// of the workspace, keyed by workflow id.
+func (h *Handler) openFlowRequestCounts(ctx context.Context, wsUUID pgtype.UUID) map[string]int {
+	rows, err := h.Queries.CountOpenFlowRequestsByWorkflow(ctx, wsUUID)
+	if err != nil {
+		slog.Warn("count open flow requests failed", "workspace_id", uuidToString(wsUUID), "error", err)
+		return map[string]int{}
+	}
+	out := make(map[string]int, len(rows))
+	for _, row := range rows {
+		out[row.WorkflowID] = int(row.OpenCount)
+	}
+	return out
 }
 
 // projectIDsByWorkflow groups the workspace's projects by the workflow row
@@ -268,6 +307,7 @@ func (h *Handler) ListIssueWorkflows(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to list workflows")
 		return
 	}
+	openRequests := h.openFlowRequestCounts(r.Context(), wsUUID)
 	resp := make([]IssueWorkflowResponse, 0, len(rows))
 	for _, row := range rows {
 		def, err := issueworkflow.Decode(row)
@@ -275,7 +315,9 @@ func (h *Handler) ListIssueWorkflows(w http.ResponseWriter, r *http.Request) {
 			slog.Warn("ListIssueWorkflows decode failed", append(logger.RequestAttrs(r), "workflow_id", uuidToString(row.ID), "error", err)...)
 			continue
 		}
-		resp = append(resp, issueWorkflowToResponse(row, def, byWorkflow[uuidToString(row.ID)]))
+		item := issueWorkflowToResponse(row, def, byWorkflow[uuidToString(row.ID)])
+		item.OpenFlowRequests = openRequests[item.ID]
+		resp = append(resp, item)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"workflows": resp, "total": len(resp)})
 }
@@ -496,7 +538,9 @@ func (h *Handler) issueWorkflowResponse(ctx context.Context, row db.IssueWorkflo
 	if err != nil {
 		byWorkflow = map[string][]string{}
 	}
-	return issueWorkflowToResponse(row, def, byWorkflow[uuidToString(row.ID)])
+	resp := issueWorkflowToResponse(row, def, byWorkflow[uuidToString(row.ID)])
+	resp.OpenFlowRequests = h.openFlowRequestCounts(ctx, row.WorkspaceID)[resp.ID]
+	return resp
 }
 
 // NewWorkflowStatus creates a catalog status as part of a workflow write, so
@@ -520,11 +564,21 @@ type IssueWorkflowStepInput struct {
 	BackStatusKey string                       `json:"back_status_key,omitempty"`
 	// Layout is the step's designer position. Omitted: the designer places it.
 	Layout *issueworkflow.Layout `json:"layout,omitempty"`
+	// Tasks and HumanOnly belong to a flow. Omitted, the step keeps what is
+	// stored, so a client that predates them does not erase them; an empty list
+	// or false sets them.
+	Tasks     *[]issueworkflow.Task `json:"tasks,omitempty"`
+	HumanOnly *bool                 `json:"human_only,omitempty"`
 }
 
 type IssueWorkflowWriteRequest struct {
 	Name        *string `json:"name"`
 	Description *string `json:"description"`
+	// FlowConfig and TemplateRef make a new workflow a flow made from a
+	// catalog flow. Only a workspace admin may create one, and an update never
+	// changes them.
+	FlowConfig  *issueworkflow.FlowConfig `json:"flow_config,omitempty"`
+	TemplateRef *string                   `json:"template_ref,omitempty"`
 	// Steps replace the workflow's steps and handoffs. Todo, done and
 	// cancelled are added when missing; backlog and blocked are listed only
 	// when included. Fixed statuses take their fixed places.
@@ -586,6 +640,18 @@ func resolveStepInputs(ctx context.Context, qtx *db.Queries, wsUUID pgtype.UUID,
 			prev = &s
 		}
 		step.Transitions = stepRouting(sent, in.NextStatusKey, in.BackStatusKey, prev)
+		switch {
+		case in.Tasks != nil:
+			step.Tasks = *in.Tasks
+		case prev != nil:
+			step.Tasks = prev.Tasks
+		}
+		switch {
+		case in.HumanOnly != nil:
+			step.HumanOnly = *in.HumanOnly
+		case prev != nil:
+			step.HumanOnly = prev.HumanOnly
+		}
 		steps = append(steps, step)
 	}
 	return steps, created, "", nil
@@ -642,13 +708,23 @@ func (h *Handler) validateHandoffHandlers(ctx context.Context, r *http.Request, 
 	before := map[issueworkflow.Handler]bool{}
 	for _, s := range previous {
 		before[s.Handler] = true
+		for _, task := range s.Tasks {
+			before[task.Handler] = true
+		}
 	}
 	for _, s := range steps {
-		if before[s.Handler] {
-			continue
+		if !before[s.Handler] {
+			if status, msg := h.validateHandoffHandler(ctx, r, workspaceID, s); status != 0 {
+				return status, msg
+			}
 		}
-		if status, msg := h.validateHandoffHandler(ctx, r, workspaceID, s); status != 0 {
-			return status, msg
+		for _, task := range s.Tasks {
+			if before[task.Handler] {
+				continue
+			}
+			if status, msg := h.validateHandoffHandler(ctx, r, workspaceID, issueworkflow.Step{Handler: task.Handler}); status != 0 {
+				return status, msg
+			}
 		}
 	}
 	return 0, ""
@@ -676,6 +752,33 @@ func parseUUIDString(s string) (pgtype.UUID, error) {
 	return id, nil
 }
 
+// stepInputsCarryFlowFields reports whether a write sets tasks or human-only
+// on any step.
+func stepInputsCarryFlowFields(inputs []IssueWorkflowStepInput) bool {
+	for _, in := range inputs {
+		if in.Tasks != nil && len(*in.Tasks) > 0 {
+			return true
+		}
+		if in.HumanOnly != nil && *in.HumanOnly {
+			return true
+		}
+	}
+	return false
+}
+
+// encodeFlowConfig serializes a flow_config for storage; nil stays NULL.
+func encodeFlowConfig(cfg *issueworkflow.FlowConfig) ([]byte, error) {
+	if cfg == nil {
+		return nil, nil
+	}
+	return json.Marshal(cfg)
+}
+
+// writeManagedByTemplate answers a write to a workflow a catalog flow made.
+func writeManagedByTemplate(w http.ResponseWriter) {
+	writeErrorCode(w, http.StatusConflict, "workflow_managed_by_template", "this workflow is managed by its template and cannot be edited")
+}
+
 func (h *Handler) CreateIssueWorkflow(w http.ResponseWriter, r *http.Request) {
 	workspaceID := h.resolveWorkspaceID(r)
 	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace id")
@@ -701,6 +804,23 @@ func (h *Handler) CreateIssueWorkflow(w http.ResponseWriter, r *http.Request) {
 	var inputs []IssueWorkflowStepInput
 	if req.Steps != nil {
 		inputs = *req.Steps
+	}
+	templateRef := ""
+	if req.TemplateRef != nil {
+		templateRef = strings.TrimSpace(*req.TemplateRef)
+	}
+	if (req.FlowConfig != nil || templateRef != "" || stepInputsCarryFlowFields(inputs)) && !isWorkspaceAdmin(member) {
+		writeErrorCode(w, http.StatusForbidden, "flow_workflow_forbidden", "only workspace admins can create a workflow that runs on a flow")
+		return
+	}
+	if templateRef != "" && req.FlowConfig == nil {
+		writeErrorCode(w, http.StatusBadRequest, "invalid_workflow", "template_ref needs a flow_config")
+		return
+	}
+	flowConfig, err := encodeFlowConfig(req.FlowConfig)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to save workflow")
+		return
 	}
 
 	ctx := r.Context()
@@ -741,7 +861,7 @@ func (h *Handler) CreateIssueWorkflow(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to load issue statuses")
 		return
 	}
-	if err := issueworkflow.Validate(name, description, steps, false, catalog); err != nil {
+	if err := issueworkflow.ValidateWithFlow(name, description, steps, false, catalog, req.FlowConfig); err != nil {
 		writeErrorCode(w, http.StatusBadRequest, "invalid_workflow", err.Error())
 		return
 	}
@@ -761,6 +881,8 @@ func (h *Handler) CreateIssueWorkflow(w http.ResponseWriter, r *http.Request) {
 		InitialStatusKey: issueworkflow.StartStatus,
 		Steps:            raw,
 		OwnerID:          member.UserID,
+		FlowConfig:       flowConfig,
+		TemplateRef:      pgtype.Text{String: templateRef, Valid: templateRef != ""},
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -911,6 +1033,15 @@ func (h *Handler) UpdateIssueWorkflow(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "only the workflow owner and workspace admins can change this workflow")
 		return
 	}
+	if current.TemplateRef.Valid {
+		writeManagedByTemplate(w)
+		return
+	}
+	currentFlow, err := issueworkflow.ParseFlowConfig(current.FlowConfig)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to read workflow")
+		return
+	}
 	var projects []db.Project
 	if current.IsDefault {
 		projects, err = qtx.ListProjectsUsingDefaultIssueWorkflow(ctx, wsUUID)
@@ -957,7 +1088,7 @@ func (h *Handler) UpdateIssueWorkflow(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to load issue statuses")
 		return
 	}
-	if err := issueworkflow.Validate(name, description, steps, current.IsDefault, catalog); err != nil {
+	if err := issueworkflow.ValidateWithFlow(name, description, steps, current.IsDefault, catalog, currentFlow); err != nil {
 		writeErrorCode(w, http.StatusBadRequest, "invalid_workflow", err.Error())
 		return
 	}
@@ -983,7 +1114,7 @@ func (h *Handler) UpdateIssueWorkflow(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if !current.IsDefault && (len(projectIDs) > 0 || len(squads) > 0) {
+	if !current.IsDefault && currentFlow == nil && (len(projectIDs) > 0 || len(squads) > 0) {
 		next := issueworkflow.Definition{ID: current.ID, Name: name, Steps: steps}
 		var counts []db.CountProjectIssuesByStatusRow
 		if len(projectIDs) > 0 {
@@ -1068,6 +1199,9 @@ func (h *Handler) UpdateIssueWorkflow(w http.ResponseWriter, r *http.Request) {
 	h.writeIssueWorkflow(w, r, http.StatusOK, row)
 }
 
+// openFlowRequestIDsLimit bounds the request ids a delete conflict lists.
+const openFlowRequestIDsLimit = 20
+
 // workflowBlocker is one reason a workflow cannot be deleted. The delete
 // response lists every reason so the UI can explain all of them.
 type workflowBlocker struct {
@@ -1080,7 +1214,7 @@ type workflowBlocker struct {
 // deleteBlockers lists why a workflow cannot be deleted yet: projects that use
 // it and squads whose active workflow it is. Either remaps first, so the
 // workflow is never deleted under live work.
-func deleteBlockers(projects []db.Project, squads []db.Squad) []workflowBlocker {
+func deleteBlockers(projects []db.Project, squads []db.Squad, flowRequests []string) []workflowBlocker {
 	var out []workflowBlocker
 	if len(projects) > 0 {
 		ids := make([]string, len(projects))
@@ -1104,6 +1238,14 @@ func deleteBlockers(projects []db.Project, squads []db.Squad) []workflowBlocker 
 			Count:   len(squads),
 			IDs:     ids,
 			Message: fmt.Sprintf("%d squad(s) use this workflow as their active workflow; make another workflow active first", len(squads)),
+		})
+	}
+	if len(flowRequests) > 0 {
+		out = append(out, workflowBlocker{
+			Code:    "workflow_has_flow_requests",
+			Count:   len(flowRequests),
+			IDs:     flowRequests,
+			Message: fmt.Sprintf("%d request(s) still run on this workflow; close or detach them first", len(flowRequests)),
 		})
 	}
 	return out
@@ -1158,7 +1300,20 @@ func (h *Handler) DeleteIssueWorkflow(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to delete workflow")
 		return
 	}
-	if blockers := deleteBlockers(projects, squads); len(blockers) > 0 {
+	flowRequestIDs, err := qtx.ListOpenFlowRequestIDsByWorkflow(ctx, db.ListOpenFlowRequestIDsByWorkflowParams{
+		WorkspaceID: wsUUID,
+		WorkflowID:  uuidToString(idUUID),
+		PageLimit:   openFlowRequestIDsLimit,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to delete workflow")
+		return
+	}
+	flowRequests := make([]string, len(flowRequestIDs))
+	for i, id := range flowRequestIDs {
+		flowRequests[i] = uuidToString(id)
+	}
+	if blockers := deleteBlockers(projects, squads, flowRequests); len(blockers) > 0 {
 		writeJSON(w, http.StatusConflict, map[string]any{
 			"error":         blockers[0].Message,
 			"code":          blockers[0].Code,
@@ -1429,6 +1584,10 @@ func (h *Handler) SetIssueWorkflowHandoff(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusForbidden, "only the workflow owner and workspace admins can change this workflow")
 		return
 	}
+	if current.TemplateRef.Valid {
+		writeManagedByTemplate(w)
+		return
+	}
 	def, err := issueworkflow.Decode(current)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to read workflow")
@@ -1522,6 +1681,7 @@ func (h *Handler) saveHandoffOnProjectCopy(w http.ResponseWriter, r *http.Reques
 		InitialStatusKey: issueworkflow.StartStatus,
 		Steps:            steps,
 		OwnerID:          member.UserID,
+		FlowConfig:       source.FlowConfig,
 	})
 	if err != nil {
 		slog.Warn("SetIssueWorkflowHandoff copy failed", append(logger.RequestAttrs(r), "error", err)...)

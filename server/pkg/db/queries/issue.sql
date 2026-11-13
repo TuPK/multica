@@ -182,10 +182,12 @@ INSERT INTO issue (
     workspace_id, title, description, status, priority,
     assignee_type, assignee_id, creator_type, creator_id,
     parent_issue_id, position, start_date, due_date, number, project_id,
-    stage, properties, last_activity_at, id
+    stage, properties, last_activity_at, id,
+    flow_step, flow_task, flow_round, flow
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-    sqlc.narg('stage'), COALESCE(sqlc.narg('properties')::jsonb, '{}'::jsonb), now(), COALESCE(sqlc.narg('id')::uuid, gen_random_uuid())
+    sqlc.narg('stage'), COALESCE(sqlc.narg('properties')::jsonb, '{}'::jsonb), now(), COALESCE(sqlc.narg('id')::uuid, gen_random_uuid()),
+    sqlc.narg('flow_step'), sqlc.narg('flow_task'), sqlc.narg('flow_round'), sqlc.narg('flow')::jsonb
 ) RETURNING *;
 
 -- name: GetIssueByNumber :one
@@ -419,10 +421,12 @@ INSERT INTO issue (
     workspace_id, title, description, status, priority,
     assignee_type, assignee_id, creator_type, creator_id,
     parent_issue_id, position, start_date, due_date, number, project_id,
-    origin_type, origin_id, stage, properties, metadata, last_activity_at, id
+    origin_type, origin_id, stage, properties, metadata, last_activity_at, id,
+    flow_step, flow_task, flow_round, flow
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-    sqlc.narg('origin_type'), sqlc.narg('origin_id'), sqlc.narg('stage'), COALESCE(sqlc.narg('properties')::jsonb, '{}'::jsonb), COALESCE(sqlc.narg('metadata')::jsonb, '{}'::jsonb), now(), COALESCE(sqlc.narg('id')::uuid, gen_random_uuid())
+    sqlc.narg('origin_type'), sqlc.narg('origin_id'), sqlc.narg('stage'), COALESCE(sqlc.narg('properties')::jsonb, '{}'::jsonb), COALESCE(sqlc.narg('metadata')::jsonb, '{}'::jsonb), now(), COALESCE(sqlc.narg('id')::uuid, gen_random_uuid()),
+    sqlc.narg('flow_step'), sqlc.narg('flow_task'), sqlc.narg('flow_round'), sqlc.narg('flow')::jsonb
 ) RETURNING *;
 
 -- name: LockIssueDuplicateKey :exec

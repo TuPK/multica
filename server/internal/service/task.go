@@ -8160,6 +8160,18 @@ func resolveDuplicateOf(ctx context.Context, q IssueMapQuerier, issue db.Issue, 
 }
 
 func IssueToMap(issue db.Issue, issuePrefix string) map[string]any {
+	m := issueToBaseMap(issue, issuePrefix)
+	// Mirrors handler.IssueResponse.Outcome and .Flow: left out when unset.
+	if issue.Outcome.Valid {
+		m["outcome"] = issue.Outcome.String
+	}
+	if ref := issueworkflow.IssueFlowRef(issue.Flow, issue.FlowStep, issue.FlowTask, issue.FlowRound); ref != nil {
+		m["flow"] = ref
+	}
+	return m
+}
+
+func issueToBaseMap(issue db.Issue, issuePrefix string) map[string]any {
 	return map[string]any{
 		"id":           util.UUIDToString(issue.ID),
 		"workspace_id": util.UUIDToString(issue.WorkspaceID),

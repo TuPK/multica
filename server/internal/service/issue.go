@@ -102,6 +102,12 @@ type IssueCreateParams struct {
 	// Its immutable snapshot and cloned attachment rows commit in the same
 	// transaction as the new issue.
 	SourceContext *SourceContextCapture
+	// FlowStep, FlowTask and FlowRound make the new issue a task of a request on
+	// a flow. Only the flow engine sets them; the unique index on
+	// (parent, step, task, round) keeps one issue per task and round.
+	FlowStep  pgtype.Text
+	FlowTask  pgtype.Text
+	FlowRound pgtype.Int4
 }
 
 // IssueCreateOpts groups optional knobs for IssueService.Create. Most
@@ -409,6 +415,9 @@ func (s *IssueService) Create(ctx context.Context, p IssueCreateParams, opts Iss
 			Stage:         p.Stage,
 			Properties:    properties,
 			Metadata:      p.Metadata,
+			FlowStep:      p.FlowStep,
+			FlowTask:      p.FlowTask,
+			FlowRound:     p.FlowRound,
 		})
 	} else {
 		issue, err = qtx.CreateIssue(ctx, db.CreateIssueParams{
@@ -430,6 +439,9 @@ func (s *IssueService) Create(ctx context.Context, p IssueCreateParams, opts Iss
 			ProjectID:     projectID,
 			Stage:         p.Stage,
 			Properties:    properties,
+			FlowStep:      p.FlowStep,
+			FlowTask:      p.FlowTask,
+			FlowRound:     p.FlowRound,
 		})
 	}
 	if err != nil {

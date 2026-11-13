@@ -276,6 +276,46 @@ func (q *Queries) GetSquadInWorkspace(ctx context.Context, arg GetSquadInWorkspa
 	return i, err
 }
 
+const getSquadWorkflowSummary = `-- name: GetSquadWorkflowSummary :one
+SELECT
+    s.id AS squad_id,
+    w.id AS active_workflow_id,
+    w.name AS active_workflow_name,
+    (w.flow_config IS NOT NULL)::boolean AS flow_enforced,
+    (SELECT COUNT(*) FROM issue_workflow l
+     WHERE l.workspace_id = s.workspace_id AND l.squad_id = s.id)::int AS workflow_count
+FROM squad s
+LEFT JOIN issue_workflow w ON w.id = s.active_workflow_id AND w.workspace_id = s.workspace_id
+WHERE s.id = $1::uuid
+  AND s.workspace_id = $2::uuid
+`
+
+type GetSquadWorkflowSummaryParams struct {
+	ID          pgtype.UUID `json:"id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
+
+type GetSquadWorkflowSummaryRow struct {
+	SquadID            pgtype.UUID `json:"squad_id"`
+	ActiveWorkflowID   pgtype.UUID `json:"active_workflow_id"`
+	ActiveWorkflowName pgtype.Text `json:"active_workflow_name"`
+	FlowEnforced       bool        `json:"flow_enforced"`
+	WorkflowCount      int32       `json:"workflow_count"`
+}
+
+func (q *Queries) GetSquadWorkflowSummary(ctx context.Context, arg GetSquadWorkflowSummaryParams) (GetSquadWorkflowSummaryRow, error) {
+	row := q.db.QueryRow(ctx, getSquadWorkflowSummary, arg.ID, arg.WorkspaceID)
+	var i GetSquadWorkflowSummaryRow
+	err := row.Scan(
+		&i.SquadID,
+		&i.ActiveWorkflowID,
+		&i.ActiveWorkflowName,
+		&i.FlowEnforced,
+		&i.WorkflowCount,
+	)
+	return i, err
+}
+
 const isSquadLeaderInWorkspace = `-- name: IsSquadLeaderInWorkspace :one
 SELECT EXISTS (
     SELECT 1 FROM squad
@@ -610,6 +650,56 @@ func (q *Queries) ListSquadMembers(ctx context.Context, squadID pgtype.UUID) ([]
 			&i.MemberID,
 			&i.Role,
 			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSquadWorkflowSummaries = `-- name: ListSquadWorkflowSummaries :many
+SELECT
+    s.id AS squad_id,
+    w.id AS active_workflow_id,
+    w.name AS active_workflow_name,
+    (w.flow_config IS NOT NULL)::boolean AS flow_enforced,
+    (SELECT COUNT(*) FROM issue_workflow l
+     WHERE l.workspace_id = s.workspace_id AND l.squad_id = s.id)::int AS workflow_count
+FROM squad s
+LEFT JOIN issue_workflow w ON w.id = s.active_workflow_id AND w.workspace_id = s.workspace_id
+WHERE s.workspace_id = $1::uuid
+  AND s.archived_at IS NULL
+`
+
+type ListSquadWorkflowSummariesRow struct {
+	SquadID            pgtype.UUID `json:"squad_id"`
+	ActiveWorkflowID   pgtype.UUID `json:"active_workflow_id"`
+	ActiveWorkflowName pgtype.Text `json:"active_workflow_name"`
+	FlowEnforced       bool        `json:"flow_enforced"`
+	WorkflowCount      int32       `json:"workflow_count"`
+}
+
+// What the squad list shows about each squad's workflows: the active workflow,
+// whether it is a flow (enforced), and the size of the squad's library.
+func (q *Queries) ListSquadWorkflowSummaries(ctx context.Context, workspaceID pgtype.UUID) ([]ListSquadWorkflowSummariesRow, error) {
+	rows, err := q.db.Query(ctx, listSquadWorkflowSummaries, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSquadWorkflowSummariesRow{}
+	for rows.Next() {
+		var i ListSquadWorkflowSummariesRow
+		if err := rows.Scan(
+			&i.SquadID,
+			&i.ActiveWorkflowID,
+			&i.ActiveWorkflowName,
+			&i.FlowEnforced,
+			&i.WorkflowCount,
 		); err != nil {
 			return nil, err
 		}

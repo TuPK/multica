@@ -16,10 +16,15 @@ SELECT i.status, COUNT(*)::bigint AS issue_count
 FROM issue i
 WHERE i.workspace_id = $1::uuid
   AND i.project_id = ANY($2::uuid[])
+  -- A request a flow runs and its tasks follow the flow's steps, not this workflow's.
+  AND i.flow IS NULL
+  AND i.flow_task IS NULL
   AND NOT EXISTS (
       SELECT 1 FROM squad s
       WHERE s.workspace_id = i.workspace_id
         AND s.active_workflow_id IS NOT NULL
+        -- A squad on a flow routes only its flow requests; its other issues keep the project's workflow.
+        AND NOT EXISTS (SELECT 1 FROM issue_workflow fw WHERE fw.id = s.active_workflow_id AND fw.flow_config IS NOT NULL)
         AND s.id = CASE
             WHEN i.assignee_type = 'squad' THEN i.assignee_id
             WHEN i.assignee_type = 'agent' THEN (SELECT a.home_squad_id FROM agent a WHERE a.id = i.assignee_id)
@@ -68,6 +73,9 @@ SELECT i.status, COUNT(*)::bigint AS issue_count
 FROM issue i
 WHERE i.workspace_id = $1::uuid
   AND i.project_id IS NOT NULL
+  -- A request a flow runs and its tasks follow the flow's steps, not this workflow's.
+  AND i.flow IS NULL
+  AND i.flow_task IS NULL
   AND (
       (i.assignee_type = 'squad' AND i.assignee_id = $2::uuid)
       OR (i.assignee_type = 'agent' AND i.assignee_id IN (
@@ -124,7 +132,7 @@ VALUES (
     true
 )
 ON CONFLICT (workspace_id) WHERE is_default DO NOTHING
-RETURNING id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id
+RETURNING id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto
 `
 
 type CreateDefaultIssueWorkflowParams struct {
@@ -154,6 +162,9 @@ func (q *Queries) CreateDefaultIssueWorkflow(ctx context.Context, arg CreateDefa
 			&i.IsDefault,
 			&i.OwnerID,
 			&i.SquadID,
+			&i.FlowConfig,
+			&i.TemplateRef,
+			&i.FlowAuto,
 		); err != nil {
 			return nil, err
 		}
@@ -166,7 +177,7 @@ func (q *Queries) CreateDefaultIssueWorkflow(ctx context.Context, arg CreateDefa
 }
 
 const createIssueWorkflow = `-- name: CreateIssueWorkflow :one
-INSERT INTO issue_workflow (workspace_id, name, description, initial_status_key, steps, owner_id, squad_id)
+INSERT INTO issue_workflow (workspace_id, name, description, initial_status_key, steps, owner_id, squad_id, flow_config, template_ref)
 VALUES (
     $1::uuid,
     $2::text,
@@ -174,9 +185,11 @@ VALUES (
     $4::text,
     $5::jsonb,
     $6::uuid,
-    $7::uuid
+    $7::uuid,
+    $8::jsonb,
+    $9::text
 )
-RETURNING id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id
+RETURNING id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto
 `
 
 type CreateIssueWorkflowParams struct {
@@ -187,8 +200,11 @@ type CreateIssueWorkflowParams struct {
 	Steps            []byte      `json:"steps"`
 	OwnerID          pgtype.UUID `json:"owner_id"`
 	SquadID          pgtype.UUID `json:"squad_id"`
+	FlowConfig       []byte      `json:"flow_config"`
+	TemplateRef      pgtype.Text `json:"template_ref"`
 }
 
+// flow_config and template_ref are set only for a workflow created from a catalog flow.
 func (q *Queries) CreateIssueWorkflow(ctx context.Context, arg CreateIssueWorkflowParams) (IssueWorkflow, error) {
 	row := q.db.QueryRow(ctx, createIssueWorkflow,
 		arg.WorkspaceID,
@@ -198,6 +214,8 @@ func (q *Queries) CreateIssueWorkflow(ctx context.Context, arg CreateIssueWorkfl
 		arg.Steps,
 		arg.OwnerID,
 		arg.SquadID,
+		arg.FlowConfig,
+		arg.TemplateRef,
 	)
 	var i IssueWorkflow
 	err := row.Scan(
@@ -212,6 +230,9 @@ func (q *Queries) CreateIssueWorkflow(ctx context.Context, arg CreateIssueWorkfl
 		&i.IsDefault,
 		&i.OwnerID,
 		&i.SquadID,
+		&i.FlowConfig,
+		&i.TemplateRef,
+		&i.FlowAuto,
 	)
 	return i, err
 }
@@ -247,7 +268,7 @@ func (q *Queries) DeleteIssueWorkflowsForWorkspace(ctx context.Context, workspac
 }
 
 const getDefaultIssueWorkflow = `-- name: GetDefaultIssueWorkflow :one
-SELECT id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id FROM issue_workflow
+SELECT id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto FROM issue_workflow
 WHERE workspace_id = $1::uuid
   AND is_default
 `
@@ -267,12 +288,15 @@ func (q *Queries) GetDefaultIssueWorkflow(ctx context.Context, workspaceID pgtyp
 		&i.IsDefault,
 		&i.OwnerID,
 		&i.SquadID,
+		&i.FlowConfig,
+		&i.TemplateRef,
+		&i.FlowAuto,
 	)
 	return i, err
 }
 
 const getIssueWorkflow = `-- name: GetIssueWorkflow :one
-SELECT id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id FROM issue_workflow
+SELECT id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto FROM issue_workflow
 WHERE id = $1::uuid
   AND workspace_id = $2::uuid
 `
@@ -297,6 +321,9 @@ func (q *Queries) GetIssueWorkflow(ctx context.Context, arg GetIssueWorkflowPara
 		&i.IsDefault,
 		&i.OwnerID,
 		&i.SquadID,
+		&i.FlowConfig,
+		&i.TemplateRef,
+		&i.FlowAuto,
 	)
 	return i, err
 }
@@ -338,7 +365,7 @@ func (q *Queries) ListIssueWorkflowNamesUsingStatusKey(ctx context.Context, arg 
 
 const listIssueWorkflows = `-- name: ListIssueWorkflows :many
 
-SELECT id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id FROM issue_workflow
+SELECT id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto FROM issue_workflow
 WHERE workspace_id = $1::uuid
 ORDER BY is_default DESC, lower(name), created_at, id
 `
@@ -368,6 +395,9 @@ func (q *Queries) ListIssueWorkflows(ctx context.Context, workspaceID pgtype.UUI
 			&i.IsDefault,
 			&i.OwnerID,
 			&i.SquadID,
+			&i.FlowConfig,
+			&i.TemplateRef,
+			&i.FlowAuto,
 		); err != nil {
 			return nil, err
 		}
@@ -502,7 +532,7 @@ func (q *Queries) ListProjectsUsingIssueWorkflow(ctx context.Context, arg ListPr
 }
 
 const listSquadIssueWorkflows = `-- name: ListSquadIssueWorkflows :many
-SELECT id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id FROM issue_workflow
+SELECT id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto FROM issue_workflow
 WHERE workspace_id = $1::uuid
   AND squad_id = $2::uuid
 ORDER BY lower(name), created_at, id
@@ -535,6 +565,9 @@ func (q *Queries) ListSquadIssueWorkflows(ctx context.Context, arg ListSquadIssu
 			&i.IsDefault,
 			&i.OwnerID,
 			&i.SquadID,
+			&i.FlowConfig,
+			&i.TemplateRef,
+			&i.FlowAuto,
 		); err != nil {
 			return nil, err
 		}
@@ -601,16 +634,21 @@ WHERE i.workspace_id = $2::uuid
   AND i.project_id = ANY($3::uuid[])
   AND i.status = $4::text
   AND i.status <> $1::text
+  -- A request a flow runs and its tasks follow the flow's steps, not this workflow's.
+  AND i.flow IS NULL
+  AND i.flow_task IS NULL
   AND NOT EXISTS (
       SELECT 1 FROM squad s
       WHERE s.workspace_id = i.workspace_id
         AND s.active_workflow_id IS NOT NULL
+        -- A squad on a flow routes only its flow requests; its other issues keep the project's workflow.
+        AND NOT EXISTS (SELECT 1 FROM issue_workflow fw WHERE fw.id = s.active_workflow_id AND fw.flow_config IS NOT NULL)
         AND s.id = CASE
             WHEN i.assignee_type = 'squad' THEN i.assignee_id
             WHEN i.assignee_type = 'agent' THEN (SELECT a.home_squad_id FROM agent a WHERE a.id = i.assignee_id)
         END
   )
-RETURNING i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.origin_type, i.origin_id, i.first_executed_at, i.start_date, i.metadata, i.stage, i.properties, i.revision, i.last_activity_at, i.triage_state, i.duplicate_of_issue_id, i.done_at, i.reopen_count, i.last_reopened_at, i.run_queued, i.run_after_issue_ids, i.run_start_status
+RETURNING i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.origin_type, i.origin_id, i.first_executed_at, i.start_date, i.metadata, i.stage, i.properties, i.revision, i.last_activity_at, i.triage_state, i.duplicate_of_issue_id, i.done_at, i.reopen_count, i.last_reopened_at, i.run_queued, i.run_after_issue_ids, i.run_start_status, i.outcome, i.flow, i.flow_step, i.flow_task, i.flow_round
 `
 
 type RemapProjectIssueStatusParams struct {
@@ -679,6 +717,11 @@ func (q *Queries) RemapProjectIssueStatus(ctx context.Context, arg RemapProjectI
 			&i.RunQueued,
 			&i.RunAfterIssueIds,
 			&i.RunStartStatus,
+			&i.Outcome,
+			&i.Flow,
+			&i.FlowStep,
+			&i.FlowTask,
+			&i.FlowRound,
 		); err != nil {
 			return nil, err
 		}
@@ -705,6 +748,9 @@ UPDATE issue AS i SET
     updated_at = now()
 WHERE i.workspace_id = $2::uuid
   AND i.project_id IS NOT NULL
+  -- A request a flow runs and its tasks follow the flow's steps, not this workflow's.
+  AND i.flow IS NULL
+  AND i.flow_task IS NULL
   AND (
       (i.assignee_type = 'squad' AND i.assignee_id = $3::uuid)
       OR (i.assignee_type = 'agent' AND i.assignee_id IN (
@@ -715,7 +761,7 @@ WHERE i.workspace_id = $2::uuid
   )
   AND i.status = $4::text
   AND i.status <> $1::text
-RETURNING i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.origin_type, i.origin_id, i.first_executed_at, i.start_date, i.metadata, i.stage, i.properties, i.revision, i.last_activity_at, i.triage_state, i.duplicate_of_issue_id, i.done_at, i.reopen_count, i.last_reopened_at, i.run_queued, i.run_after_issue_ids, i.run_start_status
+RETURNING i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.origin_type, i.origin_id, i.first_executed_at, i.start_date, i.metadata, i.stage, i.properties, i.revision, i.last_activity_at, i.triage_state, i.duplicate_of_issue_id, i.done_at, i.reopen_count, i.last_reopened_at, i.run_queued, i.run_after_issue_ids, i.run_start_status, i.outcome, i.flow, i.flow_step, i.flow_task, i.flow_round
 `
 
 type RemapSquadIssueStatusParams struct {
@@ -778,6 +824,11 @@ func (q *Queries) RemapSquadIssueStatus(ctx context.Context, arg RemapSquadIssue
 			&i.RunQueued,
 			&i.RunAfterIssueIds,
 			&i.RunStartStatus,
+			&i.Outcome,
+			&i.Flow,
+			&i.FlowStep,
+			&i.FlowTask,
+			&i.FlowRound,
 		); err != nil {
 			return nil, err
 		}
@@ -819,7 +870,7 @@ UPDATE issue_workflow SET
     updated_at = now()
 WHERE id = $2::uuid
   AND workspace_id = $3::uuid
-RETURNING id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id
+RETURNING id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto
 `
 
 type SetIssueWorkflowSquadParams struct {
@@ -844,6 +895,9 @@ func (q *Queries) SetIssueWorkflowSquad(ctx context.Context, arg SetIssueWorkflo
 		&i.IsDefault,
 		&i.OwnerID,
 		&i.SquadID,
+		&i.FlowConfig,
+		&i.TemplateRef,
+		&i.FlowAuto,
 	)
 	return i, err
 }
@@ -897,7 +951,7 @@ UPDATE issue_workflow SET
     updated_at = now()
 WHERE id = $5::uuid
   AND workspace_id = $6::uuid
-RETURNING id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id
+RETURNING id, workspace_id, name, description, initial_status_key, steps, created_at, updated_at, is_default, owner_id, squad_id, flow_config, template_ref, flow_auto
 `
 
 type UpdateIssueWorkflowParams struct {
@@ -931,6 +985,9 @@ func (q *Queries) UpdateIssueWorkflow(ctx context.Context, arg UpdateIssueWorkfl
 		&i.IsDefault,
 		&i.OwnerID,
 		&i.SquadID,
+		&i.FlowConfig,
+		&i.TemplateRef,
+		&i.FlowAuto,
 	)
 	return i, err
 }

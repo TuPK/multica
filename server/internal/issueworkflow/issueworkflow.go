@@ -172,6 +172,11 @@ type Step struct {
 	Instructions string       `json:"instructions"`
 	Transitions  []Transition `json:"transitions,omitempty"`
 	Layout       *Layout      `json:"layout,omitempty"`
+	// Tasks are the sub-issues a request on a flow opens when it enters the
+	// step; HumanOnly keeps a person in charge of moving the request out of it.
+	// Both are used only by a workflow with a flow_config (flow.go).
+	Tasks     []Task `json:"tasks,omitempty"`
+	HumanOnly bool   `json:"human_only,omitempty"`
 }
 
 // Layout is a step's canvas position. Routing and briefs ignore it.
@@ -189,7 +194,12 @@ type Definition struct {
 	Name      string
 	IsDefault bool
 	Steps     []Step
+	// Flow is the workflow's flow_config; nil for an ordinary workflow.
+	Flow *FlowConfig
 }
+
+// HasFlow reports whether the workflow runs requests on a flow.
+func (d Definition) HasFlow() bool { return d.Flow != nil }
 
 // HandsOff reports whether entering the step reassigns the issue.
 func (s Step) HandsOff() bool {
@@ -211,6 +221,8 @@ type storedStep struct {
 	NextStatusKey string       `json:"next_status_key,omitempty"`
 	BackStatusKey string       `json:"back_status_key,omitempty"`
 	Layout        *Layout      `json:"layout,omitempty"`
+	Tasks         []Task       `json:"tasks,omitempty"`
+	HumanOnly     bool         `json:"human_only,omitempty"`
 }
 
 // Decode parses a stored workflow row.
@@ -219,7 +231,11 @@ func Decode(row db.IssueWorkflow) (Definition, error) {
 	if err != nil {
 		return Definition{}, err
 	}
-	return Definition{ID: row.ID, Name: row.Name, IsDefault: row.IsDefault, Steps: steps}, nil
+	flow, err := ParseFlowConfig(row.FlowConfig)
+	if err != nil {
+		return Definition{}, err
+	}
+	return Definition{ID: row.ID, Name: row.Name, IsDefault: row.IsDefault, Steps: steps, Flow: flow}, nil
 }
 
 // DecodeSteps parses a stored steps array, normalizing a missing handler to
@@ -240,6 +256,8 @@ func DecodeSteps(raw []byte) ([]Step, error) {
 			Instructions: s.Instructions,
 			Transitions:  s.Transitions,
 			Layout:       s.Layout,
+			Tasks:        s.Tasks,
+			HumanOnly:    s.HumanOnly,
 		}
 		if len(s.Transitions) == 0 {
 			steps[i].Transitions = LegacyTransitions(s.NextStatusKey, s.BackStatusKey)
@@ -265,7 +283,7 @@ func DecodeKeys(raw []byte) ([]string, error) {
 func EncodeSteps(steps []Step) ([]byte, error) {
 	stored := make([]storedStep, len(steps))
 	for i, s := range steps {
-		stored[i] = storedStep{StatusKey: s.StatusKey, Transitions: s.Transitions, Layout: s.Layout}
+		stored[i] = storedStep{StatusKey: s.StatusKey, Transitions: s.Transitions, Layout: s.Layout, Tasks: s.Tasks, HumanOnly: s.HumanOnly}
 		if s.HandsOff() {
 			h := s.Handler
 			stored[i].Handler = &h
@@ -457,6 +475,13 @@ func invalid(format string, args ...any) error {
 // catalog. The Default workflow keeps its reserved name. Handler ids are
 // checked by the caller, which owns the workspace lookups.
 func Validate(name, description string, steps []Step, isDefault bool, catalog map[string]CatalogEntry) error {
+	return ValidateWithFlow(name, description, steps, isDefault, catalog, nil)
+}
+
+// ValidateWithFlow is Validate for a workflow that may carry a flow_config. A
+// workflow without one may not use tasks, human-only steps or rework
+// transitions; one with it must satisfy ValidateFlow.
+func ValidateWithFlow(name, description string, steps []Step, isDefault bool, catalog map[string]CatalogEntry, flow *FlowConfig) error {
 	if !isDefault {
 		if name == "" || utf8.RuneCountInString(name) > MaxNameRunes {
 			return invalid("name must be 1-%d characters", MaxNameRunes)
@@ -485,13 +510,13 @@ func Validate(name, description string, steps []Step, isDefault bool, catalog ma
 		}
 		seen[key] = true
 	}
-	def := Definition{Steps: steps}
+	def := Definition{Steps: steps, Flow: flow}
 	for _, s := range steps {
 		if err := ValidateHandoff(s, def); err != nil {
 			return err
 		}
 	}
-	return nil
+	return ValidateFlow(def)
 }
 
 // NormalizeHandoff trims a handoff and drops fields its handler type does
@@ -504,6 +529,7 @@ func NormalizeHandoff(s Step) Step {
 		s.Instructions = ""
 	}
 	s.Transitions = NormalizeTransitions(s.Transitions)
+	s.Tasks = normalizeTasks(s.Tasks)
 	return s
 }
 
@@ -678,7 +704,15 @@ func activeWorkflowOf(ctx context.Context, q Querier, workspaceID, squadID pgtyp
 		return Definition{}, false, err
 	}
 	def, err := Decode(row)
-	return def, err == nil, err
+	if err != nil {
+		return Definition{}, false, err
+	}
+	// A flow runs the squad's requests and their tasks, not its other issues:
+	// those keep the project's workflow.
+	if def.Flow != nil {
+		return Definition{}, false, nil
+	}
+	return def, true, nil
 }
 
 // OutsideProject loads the workflow that limits the statuses of an issue

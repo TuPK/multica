@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 )
@@ -30,6 +31,23 @@ const (
 	FieldReworkCount  = "rework_count"
 	FieldCreatorType  = "creator_type"
 	FieldAssigneeType = "assignee_type"
+	// FieldTasksOutcome and the switch.<key> fields exist only in a workflow
+	// that runs on a flow (see flow.go).
+	FieldTasksOutcome = "tasks_outcome"
+)
+
+// FieldSwitchPrefix starts a flow switch field: switch.<key>.
+const FieldSwitchPrefix = "switch."
+
+// SwitchField is the condition field that reads the flow switch key.
+func SwitchField(key string) string { return FieldSwitchPrefix + key }
+
+// The values of tasks_outcome: the verdict of the tasks of the step just closed.
+const (
+	TasksAllApproved = "all_approved"
+	TasksAnyRejected = "any_rejected"
+	TasksAnyBlocked  = "any_blocked"
+	TasksNone        = "none"
 )
 
 // Operators a condition can apply.
@@ -69,6 +87,9 @@ type Transition struct {
 	ToStatusKey string     `json:"to_status_key"`
 	// Handler, when set, replaces the target step's handler for this branch.
 	Handler *Handler `json:"handler,omitempty"`
+	// Rework marks a flow transition that sends the request back for another
+	// round: following it adds one to the request's rework count.
+	Rework bool `json:"rework,omitempty"`
 }
 
 // Facts is what a condition can see about an issue at the moment it leaves a
@@ -81,6 +102,10 @@ type Facts struct {
 	ReworkCount  int
 	CreatorType  string
 	AssigneeType string
+	// TasksOutcome and Switches describe a request on a flow: the verdict of
+	// the tasks of the step it leaves, and its switch values.
+	TasksOutcome string
+	Switches     map[string]any
 }
 
 // IsOutcome reports whether s is an outcome a handler may report.
@@ -208,8 +233,13 @@ func Evaluate(c Condition, f Facts) bool {
 var priorityRank = map[string]int{"none": 0, "low": 1, "medium": 2, "high": 3, "urgent": 4}
 
 func evaluateField(c Condition, f Facts) bool {
+	if key, ok := strings.CutPrefix(c.Field, FieldSwitchPrefix); ok {
+		return evaluateSwitch(key, c, f)
+	}
 	if _, ok := fieldSpecs[c.Field]; !ok {
-		return false
+		if _, flowField := flowFieldSpecs[c.Field]; !flowField {
+			return false
+		}
 	}
 	if c.Op == OpExists {
 		return fieldPresent(c.Field, f)
@@ -232,6 +262,36 @@ func evaluateField(c Condition, f Facts) bool {
 	return compareString(c.Op, c.Value, current)
 }
 
+// evaluateSwitch compares a flow switch with the condition's value. A switch the
+// request does not have matches no operator; a bool never equals a string.
+func evaluateSwitch(key string, c Condition, f Facts) bool {
+	current, ok := f.Switches[key]
+	if !ok {
+		return false
+	}
+	switch c.Op {
+	case OpEq:
+		return switchValuesEqual(current, c.Value)
+	case OpNeq:
+		return !switchValuesEqual(current, c.Value)
+	case OpIn:
+		return inList(c.Value, func(item any) bool { return switchValuesEqual(current, item) })
+	}
+	return false
+}
+
+func switchValuesEqual(a, b any) bool {
+	switch av := a.(type) {
+	case bool:
+		bv, ok := b.(bool)
+		return ok && av == bv
+	case string:
+		bv, ok := b.(string)
+		return ok && av == bv
+	}
+	return false
+}
+
 func fieldPresent(field string, f Facts) bool {
 	switch field {
 	case FieldLabels:
@@ -252,6 +312,8 @@ func stringField(field string, f Facts) string {
 		return f.CreatorType
 	case FieldAssigneeType:
 		return f.AssigneeType
+	case FieldTasksOutcome:
+		return f.TasksOutcome
 	case FieldPriority:
 		if f.Priority == "" {
 			return "none"
@@ -440,12 +502,34 @@ var fieldSpecs = map[string]fieldSpec{
 		ops: set(OpEq, OpNeq, OpIn, OpExists)},
 }
 
-// ValidateCondition checks a condition's shape, depth, field, operator and value.
-func ValidateCondition(c Condition) error {
-	return validateCondition(c, 1)
+// flowFieldSpecs are the fields only a workflow that runs on a flow may test.
+var flowFieldSpecs = map[string]fieldSpec{
+	FieldTasksOutcome: {kind: kindEnum,
+		values: set(TasksAllApproved, TasksAnyRejected, TasksAnyBlocked, TasksNone),
+		ops:    set(OpEq, OpIn)},
 }
 
-func validateCondition(c Condition, depth int) error {
+// MaxSwitchKeyRunes bounds a flow switch key.
+const MaxSwitchKeyRunes = 32
+
+var switchKeyPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,31}$`)
+
+// IsSwitchKey reports whether key is a valid flow switch key.
+func IsSwitchKey(key string) bool { return switchKeyPattern.MatchString(key) }
+
+// ValidateCondition checks a condition's shape, depth, field, operator and value.
+func ValidateCondition(c Condition) error {
+	return validateCondition(c, 1, false)
+}
+
+// ValidateFlowCondition is ValidateCondition for a workflow that runs on a
+// flow: it also accepts tasks_outcome and switch.<key>. Whether a switch is
+// declared is checked by ValidateFlow.
+func ValidateFlowCondition(c Condition) error {
+	return validateCondition(c, 1, true)
+}
+
+func validateCondition(c Condition, depth int, flow bool) error {
 	if depth > MaxConditionDepth {
 		return invalid("conditions can nest at most %d levels", MaxConditionDepth)
 	}
@@ -467,29 +551,35 @@ func validateCondition(c Condition, depth int) error {
 	}
 	switch {
 	case c.All != nil:
-		return validateChildren("all", c.All, depth)
+		return validateChildren("all", c.All, depth, flow)
 	case c.Any != nil:
-		return validateChildren("any", c.Any, depth)
+		return validateChildren("any", c.Any, depth, flow)
 	case c.Not != nil:
-		return validateCondition(*c.Not, depth+1)
+		return validateCondition(*c.Not, depth+1, flow)
 	}
-	return validateField(c)
+	return validateField(c, flow)
 }
 
-func validateChildren(group string, children []Condition, depth int) error {
+func validateChildren(group string, children []Condition, depth int, flow bool) error {
 	if len(children) == 0 {
 		return invalid("a %q group needs at least one condition", group)
 	}
 	for _, child := range children {
-		if err := validateCondition(child, depth+1); err != nil {
+		if err := validateCondition(child, depth+1, flow); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func validateField(c Condition) error {
+func validateField(c Condition, flow bool) error {
+	if key, ok := strings.CutPrefix(c.Field, FieldSwitchPrefix); ok && flow {
+		return validateSwitchField(key, c)
+	}
 	spec, ok := fieldSpecs[c.Field]
+	if !ok && flow {
+		spec, ok = flowFieldSpecs[c.Field]
+	}
 	if !ok {
 		return invalid("unknown condition field %q", c.Field)
 	}
@@ -518,6 +608,43 @@ func validateField(c Condition) error {
 		return invalid("field %q: %s", c.Field, err.Error())
 	}
 	return nil
+}
+
+// validateSwitchField checks a switch.<key> condition: a valid key, the
+// operators that compare a value, and bool or string values.
+func validateSwitchField(key string, c Condition) error {
+	if !IsSwitchKey(key) {
+		return invalid("switch key %q must match %s", key, switchKeyPattern.String())
+	}
+	switch c.Op {
+	case OpEq, OpNeq:
+		if !isSwitchValue(c.Value) {
+			return invalid("field %q: value must be a bool or a non-empty string", c.Field)
+		}
+	case OpIn:
+		items := asList(c.Value)
+		if len(items) == 0 {
+			return invalid("operator %q needs a non-empty list", c.Op)
+		}
+		for _, item := range items {
+			if !isSwitchValue(item) {
+				return invalid("field %q: values must be a bool or a non-empty string", c.Field)
+			}
+		}
+	default:
+		return invalid("operator %q does not apply to field %q", c.Op, c.Field)
+	}
+	return nil
+}
+
+func isSwitchValue(v any) bool {
+	switch x := v.(type) {
+	case bool:
+		return true
+	case string:
+		return x != ""
+	}
+	return false
 }
 
 // checkScalar validates one value against a field. Ordering operators only
@@ -582,7 +709,7 @@ func validateTransitions(s Step, def Definition) error {
 			if i != len(s.Transitions)-1 {
 				return invalid("the default transition of %q must come last", s.StatusKey)
 			}
-		} else if err := ValidateCondition(*t.When); err != nil {
+		} else if err := validateCondition(*t.When, 1, def.Flow != nil); err != nil {
 			return err
 		}
 		if t.ToStatusKey == s.StatusKey || !def.Has(t.ToStatusKey) {
@@ -592,6 +719,9 @@ func validateTransitions(s Step, def Definition) error {
 			if err := validateHandler(*t.Handler); err != nil {
 				return err
 			}
+		}
+		if t.Rework && def.Flow == nil {
+			return invalid("transition %q of %q is a rework transition: that needs a flow_config", t.ID, s.StatusKey)
 		}
 	}
 	if defaults > 1 {

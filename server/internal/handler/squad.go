@@ -46,6 +46,12 @@ type SquadResponse struct {
 	CompanySlot *int16  `json:"company_slot"`
 	// AutonomyLevel is the squad's autonomy level, 0 (Suggest) to 3 (Autonomous).
 	AutonomyLevel int32 `json:"autonomy_level"`
+	// The squad's active workflow and the size of its library. FlowEnforced is
+	// true when the active workflow runs requests on a flow.
+	ActiveWorkflowID   *string `json:"active_workflow_id"`
+	ActiveWorkflowName *string `json:"active_workflow_name"`
+	WorkflowCount      int     `json:"workflow_count"`
+	FlowEnforced       bool    `json:"flow_enforced"`
 }
 
 type SquadMemberPreviewResponse struct {
@@ -94,7 +100,17 @@ func (h *Handler) squadToResponse(s db.Squad) SquadResponse {
 		FloorID:       uuidToPtr(s.FloorID),
 		CompanySlot:   companySlot,
 		TemplateKey:   textToPtr(s.TemplateKey),
+		// The name, the count and the flag need a query; see applySquadWorkflowSummary.
+		ActiveWorkflowID: uuidToPtr(s.ActiveWorkflowID),
 	}
+}
+
+// applySquadWorkflowSummary fills the workflow fields a squad row cannot give.
+func applySquadWorkflowSummary(resp *SquadResponse, activeID pgtype.UUID, activeName pgtype.Text, enforced bool, count int32) {
+	resp.ActiveWorkflowID = uuidToPtr(activeID)
+	resp.ActiveWorkflowName = textToPtr(activeName)
+	resp.FlowEnforced = enforced
+	resp.WorkflowCount = int(count)
 }
 
 func squadMemberToResponse(m db.SquadMember) SquadMemberResponse {
@@ -202,6 +218,9 @@ func (h *Handler) squadToResponseWithPreview(ctx context.Context, squad db.Squad
 		return resp, err
 	}
 	applySquadMemberSummary(&resp, summary)
+	if row, err := h.Queries.GetSquadWorkflowSummary(ctx, db.GetSquadWorkflowSummaryParams{ID: squad.ID, WorkspaceID: squad.WorkspaceID}); err == nil {
+		applySquadWorkflowSummary(&resp, row.ActiveWorkflowID, row.ActiveWorkflowName, row.FlowEnforced, row.WorkflowCount)
+	}
 	return resp, nil
 }
 
@@ -235,10 +254,23 @@ func (h *Handler) ListSquads(w http.ResponseWriter, r *http.Request) {
 		addSquadMemberPreview(summary, row.MemberType, row.MemberID, row.Role)
 	}
 
+	workflowRows, err := h.Queries.ListSquadWorkflowSummaries(r.Context(), wsUUID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list squad workflows")
+		return
+	}
+	workflows := make(map[string]db.ListSquadWorkflowSummariesRow, len(workflowRows))
+	for _, row := range workflowRows {
+		workflows[uuidToString(row.SquadID)] = row
+	}
+
 	resp := make([]SquadResponse, len(squads))
 	for i, s := range squads {
 		resp[i] = h.squadToResponse(s)
 		applySquadMemberSummary(&resp[i], summaries[uuidToString(s.ID)])
+		if row, ok := workflows[uuidToString(s.ID)]; ok {
+			applySquadWorkflowSummary(&resp[i], row.ActiveWorkflowID, row.ActiveWorkflowName, row.FlowEnforced, row.WorkflowCount)
+		}
 	}
 	writeJSON(w, http.StatusOK, resp)
 }

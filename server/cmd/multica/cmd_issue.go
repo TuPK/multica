@@ -303,7 +303,11 @@ var issueStatusCmd = &cobra.Command{
 		"To cancel an issue because it duplicates another, mark it instead of only cancelling:\n" +
 		"  multica issue status <id> cancelled --duplicate-of <original>\n" +
 		"The original then lists it as a duplicate. Moving the issue to any status other\n" +
-		"than cancelled later removes the mark.",
+		"than cancelled later removes the mark.\n\n" +
+		"A request that a workflow runs is moved by the server, not with this command: use\n" +
+		"`multica issue flow` (run `multica issue flow show <id>` first). A task the workflow\n" +
+		"opened for you closes with `done --outcome approved|rejected` (a gate) or `done`,\n" +
+		"and reports that it cannot go on with `blocked --outcome blocked`.",
 	Args: exactArgs(2),
 	RunE: runIssueStatus,
 }
@@ -725,7 +729,7 @@ func init() {
 
 	// issue status
 	issueStatusCmd.Flags().Bool("no-start", false, "Change status without starting an agent run (a move into a workflow step that hands off still starts that step's run)")
-	issueStatusCmd.Flags().String("outcome", "", "Outcome of the step you are leaving: approved, rejected, blocked or done. If the workflow routes that outcome, the status must be the routed status")
+	issueStatusCmd.Flags().String("outcome", "", "Outcome of the step you are leaving: approved, rejected, blocked or done. If the workflow routes that outcome, the status must be the routed status. The server rejects closing a workflow task without the outcome its definition requires")
 	issueStatusCmd.Flags().String("duplicate-of", "", "Mark the issue as a duplicate of this original issue (key like MUL-123, or full UUID); the status must be cancelled")
 	issueStatusCmd.Flags().String("output", "table", "Output format: table or json")
 

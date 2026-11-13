@@ -488,7 +488,12 @@ func (s *SquadHandoffService) targetRequest(ctx context.Context, ws pgtype.UUID,
 	if err != nil {
 		return db.Issue{}, fmt.Errorf("create the target squad's request: %w", err)
 	}
-	return created.Issue, nil
+	// The receiving squad may run requests on a flow.
+	started, err := StartFlowIfEligible(ctx, s.Queries, created.Issue)
+	if err != nil {
+		return db.Issue{}, fmt.Errorf("start the target squad's flow: %w", err)
+	}
+	return started, nil
 }
 
 // CloseLoop leaves a note on the source request when the request a handoff made reaches

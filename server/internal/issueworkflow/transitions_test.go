@@ -2,6 +2,7 @@ package issueworkflow
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -354,5 +355,167 @@ func TestConditionJSONRoundTrip(t *testing.T) {
 	}
 	if Evaluate(c, Facts{ReworkCount: 3, Labels: []string{"x"}}) {
 		t.Fatal("a labelled issue should not match the negated label check")
+	}
+}
+
+// Flow conditions (docs/engineering/kitviet-workflow-spec.md section 3.5).
+
+func TestEvaluate_TasksOutcome(t *testing.T) {
+	tests := map[string]struct {
+		c    Condition
+		f    Facts
+		want bool
+	}{
+		"eq matches":                   {c: *cond(FieldTasksOutcome, OpEq, TasksAllApproved), f: Facts{TasksOutcome: TasksAllApproved}, want: true},
+		"eq other value":               {c: *cond(FieldTasksOutcome, OpEq, TasksAllApproved), f: Facts{TasksOutcome: TasksAnyRejected}, want: false},
+		"in list":                      {c: *cond(FieldTasksOutcome, OpIn, []any{TasksAnyRejected, TasksAnyBlocked}), f: Facts{TasksOutcome: TasksAnyBlocked}, want: true},
+		"none is a value":              {c: *cond(FieldTasksOutcome, OpEq, TasksNone), f: Facts{TasksOutcome: TasksNone}, want: true},
+		"unset matches no eq":          {c: *cond(FieldTasksOutcome, OpEq, TasksAllApproved), f: Facts{}, want: false},
+		"combines with rework count":   {c: Condition{All: []Condition{*cond(FieldTasksOutcome, OpEq, TasksAnyRejected), *cond(FieldReworkCount, OpLt, 2)}}, f: Facts{TasksOutcome: TasksAnyRejected, ReworkCount: 1}, want: true},
+		"rework count at the limit":    {c: Condition{All: []Condition{*cond(FieldTasksOutcome, OpEq, TasksAnyRejected), *cond(FieldReworkCount, OpLt, 2)}}, f: Facts{TasksOutcome: TasksAnyRejected, ReworkCount: 2}, want: false},
+		"outcome is the lead's report": {c: *cond(FieldOutcome, OpEq, OutcomeBlocked), f: Facts{Outcome: OutcomeBlocked, TasksOutcome: TasksNone}, want: true},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			if got := Evaluate(tt.c, tt.f); got != tt.want {
+				t.Fatalf("Evaluate = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestEvaluate_SwitchBoolEnum(t *testing.T) {
+	f := Facts{Switches: map[string]any{"customs_lookup": true, "export": false, "route": "listing"}}
+	tests := map[string]struct {
+		c    Condition
+		want bool
+	}{
+		"bool eq true":              {c: *cond(SwitchField("customs_lookup"), OpEq, true), want: true},
+		"bool eq false on true":     {c: *cond(SwitchField("customs_lookup"), OpEq, false), want: false},
+		"bool eq false on false":    {c: *cond(SwitchField("export"), OpEq, false), want: true},
+		"bool neq":                  {c: *cond(SwitchField("export"), OpNeq, true), want: true},
+		"enum eq":                   {c: *cond(SwitchField("route"), OpEq, "listing"), want: true},
+		"enum eq other":             {c: *cond(SwitchField("route"), OpEq, "aftersale"), want: false},
+		"enum neq":                  {c: *cond(SwitchField("route"), OpNeq, "aftersale"), want: true},
+		"enum in":                   {c: *cond(SwitchField("route"), OpIn, []any{"aftersale", "listing"}), want: true},
+		"enum in without the value": {c: *cond(SwitchField("route"), OpIn, []string{"aftersale"}), want: false},
+		"bool never equals string":  {c: *cond(SwitchField("customs_lookup"), OpEq, "true"), want: false},
+		"unknown switch eq":         {c: *cond(SwitchField("missing"), OpEq, true), want: false},
+		"unknown switch neq":        {c: *cond(SwitchField("missing"), OpNeq, true), want: false},
+		"negated unknown switch":    {c: Condition{Not: cond(SwitchField("missing"), OpEq, true)}, want: true},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			if got := Evaluate(tt.c, f); got != tt.want {
+				t.Fatalf("Evaluate = %v, want %v", got, tt.want)
+			}
+		})
+	}
+	if Evaluate(*cond(SwitchField("export"), OpEq, false), Facts{}) {
+		t.Fatal("a request with no switches matched a switch condition")
+	}
+}
+
+func TestValidateCondition_SwitchKey(t *testing.T) {
+	tests := map[string]struct {
+		c       Condition
+		flow    bool
+		wantErr string
+	}{
+		"bool eq in a flow":              {c: *cond(SwitchField("customs_lookup"), OpEq, true), flow: true},
+		"enum in in a flow":              {c: *cond(SwitchField("route"), OpIn, []any{"a", "b"}), flow: true},
+		"tasks outcome in a flow":        {c: *cond(FieldTasksOutcome, OpEq, TasksAnyBlocked), flow: true},
+		"switch outside a flow":          {c: *cond(SwitchField("route"), OpEq, "a"), wantErr: "unknown condition field"},
+		"tasks outcome outside a flow":   {c: *cond(FieldTasksOutcome, OpEq, TasksNone), wantErr: "unknown condition field"},
+		"key with upper case":            {c: *cond(SwitchField("Route"), OpEq, "a"), flow: true, wantErr: "switch key"},
+		"key starting with a digit":      {c: *cond(SwitchField("1route"), OpEq, "a"), flow: true, wantErr: "switch key"},
+		"empty key":                      {c: *cond(SwitchField(""), OpEq, "a"), flow: true, wantErr: "switch key"},
+		"key longer than 32":             {c: *cond(SwitchField("a"+strings.Repeat("b", 32)), OpEq, true), flow: true, wantErr: "switch key"},
+		"key with a dot":                 {c: *cond(SwitchField("a.b"), OpEq, true), flow: true, wantErr: "switch key"},
+		"ordering operator refused":      {c: *cond(SwitchField("route"), OpGt, "a"), flow: true, wantErr: "does not apply"},
+		"exists refused":                 {c: *cond(SwitchField("route"), OpExists, nil), flow: true, wantErr: "does not apply"},
+		"number value refused":           {c: *cond(SwitchField("route"), OpEq, 3), flow: true, wantErr: "bool or a non-empty string"},
+		"empty string value refused":     {c: *cond(SwitchField("route"), OpEq, ""), flow: true, wantErr: "bool or a non-empty string"},
+		"in needs a list":                {c: *cond(SwitchField("route"), OpIn, "a"), flow: true, wantErr: "non-empty list"},
+		"tasks outcome unknown value":    {c: *cond(FieldTasksOutcome, OpEq, "maybe"), flow: true, wantErr: "not one of"},
+		"tasks outcome ordering refused": {c: *cond(FieldTasksOutcome, OpGt, TasksNone), flow: true, wantErr: "does not apply"},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			var err error
+			if tt.flow {
+				err = ValidateFlowCondition(tt.c)
+			} else {
+				err = ValidateCondition(tt.c)
+			}
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Fatalf("validate: %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("validate = %v, want error containing %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// Rows and conditions that predate flows keep their meaning: no flow field is
+// accepted, and the legacy conversion produces the same branches as before.
+func TestLegacyTransitionsUnchanged(t *testing.T) {
+	got := LegacyTransitions("qa", "in_progress")
+	want := []Transition{
+		{ID: "approved", Label: "Approved", When: cond(FieldOutcome, OpEq, OutcomeApproved), ToStatusKey: "qa"},
+		{ID: "rejected", Label: "Rejected", When: cond(FieldOutcome, OpEq, OutcomeRejected), ToStatusKey: "in_progress"},
+		{ID: "default", Label: "Default", ToStatusKey: "qa"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("LegacyTransitions = %+v, want %+v", got, want)
+	}
+	for _, tr := range got {
+		if tr.Rework {
+			t.Fatalf("legacy transition %q carries the rework flag", tr.ID)
+		}
+	}
+	raw, err := json.Marshal(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "rework") {
+		t.Fatalf("legacy transitions serialize a rework key: %s", raw)
+	}
+	step := Step{StatusKey: "in_review", Transitions: got}
+	if routed, ok := step.Route(Facts{Outcome: OutcomeRejected, ReworkCount: 7}); !ok || routed.ToStatusKey != "in_progress" {
+		t.Fatalf("legacy route = %+v (ok %v), want the rejected branch", routed, ok)
+	}
+}
+
+func TestRouteFirstMatchWins(t *testing.T) {
+	step := Step{StatusKey: "gate", Transitions: []Transition{
+		{ID: "blocked", Label: "Blocked", When: cond(FieldTasksOutcome, OpEq, TasksAnyBlocked), ToStatusKey: "blocked"},
+		{ID: "pass", Label: "Pass", When: cond(FieldTasksOutcome, OpEq, TasksAllApproved), ToStatusKey: "handover"},
+		{ID: "redo", Label: "Redo", When: &Condition{All: []Condition{
+			*cond(FieldTasksOutcome, OpEq, TasksAnyRejected), *cond(FieldReworkCount, OpLt, 2)}}, ToStatusKey: "draft", Rework: true},
+		{ID: "default", Label: "Default", ToStatusKey: "blocked"},
+	}}
+	tests := map[string]struct {
+		f      Facts
+		target string
+		rework bool
+	}{
+		"blocked first":                 {f: Facts{TasksOutcome: TasksAnyBlocked, ReworkCount: 0}, target: "blocked"},
+		"approved passes":               {f: Facts{TasksOutcome: TasksAllApproved, ReworkCount: 2}, target: "handover"},
+		"first rejection reworks":       {f: Facts{TasksOutcome: TasksAnyRejected, ReworkCount: 0}, target: "draft", rework: true},
+		"second rejection reworks":      {f: Facts{TasksOutcome: TasksAnyRejected, ReworkCount: 1}, target: "draft", rework: true},
+		"third rejection falls through": {f: Facts{TasksOutcome: TasksAnyRejected, ReworkCount: 2}, target: "blocked"},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			got, ok := step.Route(tt.f)
+			if !ok || got.ToStatusKey != tt.target || got.Rework != tt.rework {
+				t.Fatalf("Route = %q rework %v (ok %v), want %q rework %v", got.ToStatusKey, got.Rework, ok, tt.target, tt.rework)
+			}
+		})
 	}
 }

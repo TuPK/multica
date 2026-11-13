@@ -54,6 +54,7 @@ func (h *Handler) ListSquadWorkflows(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to list workflows")
 		return
 	}
+	openRequests := h.openFlowRequestCounts(r.Context(), squad.WorkspaceID)
 	resp := make([]IssueWorkflowResponse, 0, len(rows))
 	for _, row := range rows {
 		def, err := issueworkflow.Decode(row)
@@ -61,7 +62,9 @@ func (h *Handler) ListSquadWorkflows(w http.ResponseWriter, r *http.Request) {
 			slog.Warn("ListSquadWorkflows decode failed", append(logger.RequestAttrs(r), "workflow_id", uuidToString(row.ID), "error", err)...)
 			continue
 		}
-		resp = append(resp, issueWorkflowToResponse(row, def, nil))
+		item := issueWorkflowToResponse(row, def, nil)
+		item.OpenFlowRequests = openRequests[item.ID]
+		resp = append(resp, item)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"active_workflow_id": uuidToPtr(squad.ActiveWorkflowID),
@@ -115,6 +118,11 @@ func (h *Handler) CreateSquadWorkflow(w http.ResponseWriter, r *http.Request) {
 	source, err := qtx.GetIssueWorkflow(ctx, db.GetIssueWorkflowParams{ID: sourceID, WorkspaceID: wsUUID})
 	if err != nil {
 		writeError(w, http.StatusNotFound, "source workflow not found")
+		return
+	}
+	// A copy would keep the steps without the flow_config that gives them meaning.
+	if len(source.FlowConfig) > 0 {
+		writeManagedByTemplate(w)
 		return
 	}
 	sourceSteps, err := issueworkflow.DecodeSteps(source.Steps)
@@ -302,6 +310,11 @@ func adoptSquadWorkflow(ctx context.Context, q *db.Queries, wsUUID, squadID pgty
 // squadWorkflowPlan censors a squad's routed issues against a target workflow,
 // as a project's workflow switch censors the project's issues.
 func (h *Handler) squadWorkflowPlan(ctx context.Context, q *db.Queries, wsUUID, squadID pgtype.UUID, target issueworkflow.Definition) (workflowMappingPlan, error) {
+	// A flow runs the squad's requests and their tasks, not its other issues:
+	// those keep the project's workflow, so no issue changes status.
+	if target.Flow != nil {
+		return workflowMappingPlan{Required: []StatusMappingRequirement{}, Unchanged: []StatusIssueCount{}}, nil
+	}
 	catalog, err := h.workflowStatusCatalog(ctx, q, wsUUID)
 	if err != nil {
 		return workflowMappingPlan{}, err

@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -145,6 +146,13 @@ func (f *Fixture) User(t TB, name, email string, over ...Cols) string {
 	}, over))
 }
 
+// UniqueEmail returns an address that is unique to this call. The test DB is
+// shared and rows from earlier runs are kept, so a fixed address collides on
+// the user email constraint.
+func UniqueEmail(local string) string {
+	return local + "-" + uuid.NewString()[:8] + "@example.test"
+}
+
 // Workspace inserts a workspace row.
 func (f *Fixture) Workspace(t TB, name, slug string, over ...Cols) string {
 	t.Helper()
@@ -188,7 +196,13 @@ func (f *Fixture) Issue(t TB, title string, over ...Cols) string {
 			"(SELECT COALESCE(MAX(number), 0) + 1 FROM issue WHERE workspace_id = %s)",
 			quoteLiteral(workspaceID)))
 	}
-	return f.Insert(t, "issue", cols)
+	id := f.Insert(t, "issue", cols)
+	// Keep the workspace counter at or above the numbers the fixtures hand out, so an issue the code
+	// under test creates next (IncrementIssueCounter) does not collide with a fixture's number. A
+	// long-lived test database hides this because its counter is already far ahead.
+	f.Exec(t, `UPDATE workspace w SET issue_counter = GREATEST(w.issue_counter, i.number)
+		FROM issue i WHERE i.id = $1 AND w.id = i.workspace_id`, id)
+	return id
 }
 
 // Comment inserts a comment on issueID.

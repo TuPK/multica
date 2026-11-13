@@ -58,7 +58,8 @@ WHERE id = sqlc.arg('id')::uuid
   AND workspace_id = sqlc.arg('workspace_id')::uuid;
 
 -- name: CreateIssueWorkflow :one
-INSERT INTO issue_workflow (workspace_id, name, description, initial_status_key, steps, owner_id, squad_id)
+-- flow_config and template_ref are set only for a workflow created from a catalog flow.
+INSERT INTO issue_workflow (workspace_id, name, description, initial_status_key, steps, owner_id, squad_id, flow_config, template_ref)
 VALUES (
     sqlc.arg('workspace_id')::uuid,
     sqlc.arg('name')::text,
@@ -66,7 +67,9 @@ VALUES (
     sqlc.arg('initial_status_key')::text,
     sqlc.arg('steps')::jsonb,
     sqlc.arg('owner_id')::uuid,
-    sqlc.narg('squad_id')::uuid
+    sqlc.narg('squad_id')::uuid,
+    sqlc.narg('flow_config')::jsonb,
+    sqlc.narg('template_ref')::text
 )
 RETURNING *;
 
@@ -131,10 +134,15 @@ SELECT i.status, COUNT(*)::bigint AS issue_count
 FROM issue i
 WHERE i.workspace_id = sqlc.arg('workspace_id')::uuid
   AND i.project_id = ANY(sqlc.arg('project_ids')::uuid[])
+  -- A request a flow runs and its tasks follow the flow's steps, not this workflow's.
+  AND i.flow IS NULL
+  AND i.flow_task IS NULL
   AND NOT EXISTS (
       SELECT 1 FROM squad s
       WHERE s.workspace_id = i.workspace_id
         AND s.active_workflow_id IS NOT NULL
+        -- A squad on a flow routes only its flow requests; its other issues keep the project's workflow.
+        AND NOT EXISTS (SELECT 1 FROM issue_workflow fw WHERE fw.id = s.active_workflow_id AND fw.flow_config IS NOT NULL)
         AND s.id = CASE
             WHEN i.assignee_type = 'squad' THEN i.assignee_id
             WHEN i.assignee_type = 'agent' THEN (SELECT a.home_squad_id FROM agent a WHERE a.id = i.assignee_id)
@@ -168,10 +176,15 @@ WHERE i.workspace_id = sqlc.arg('workspace_id')::uuid
   AND i.project_id = ANY(sqlc.arg('project_ids')::uuid[])
   AND i.status = sqlc.arg('from_status')::text
   AND i.status <> sqlc.arg('to_status')::text
+  -- A request a flow runs and its tasks follow the flow's steps, not this workflow's.
+  AND i.flow IS NULL
+  AND i.flow_task IS NULL
   AND NOT EXISTS (
       SELECT 1 FROM squad s
       WHERE s.workspace_id = i.workspace_id
         AND s.active_workflow_id IS NOT NULL
+        -- A squad on a flow routes only its flow requests; its other issues keep the project's workflow.
+        AND NOT EXISTS (SELECT 1 FROM issue_workflow fw WHERE fw.id = s.active_workflow_id AND fw.flow_config IS NOT NULL)
         AND s.id = CASE
             WHEN i.assignee_type = 'squad' THEN i.assignee_id
             WHEN i.assignee_type = 'agent' THEN (SELECT a.home_squad_id FROM agent a WHERE a.id = i.assignee_id)
@@ -187,6 +200,9 @@ SELECT i.status, COUNT(*)::bigint AS issue_count
 FROM issue i
 WHERE i.workspace_id = sqlc.arg('workspace_id')::uuid
   AND i.project_id IS NOT NULL
+  -- A request a flow runs and its tasks follow the flow's steps, not this workflow's.
+  AND i.flow IS NULL
+  AND i.flow_task IS NULL
   AND (
       (i.assignee_type = 'squad' AND i.assignee_id = sqlc.arg('squad_id')::uuid)
       OR (i.assignee_type = 'agent' AND i.assignee_id IN (
@@ -215,6 +231,9 @@ UPDATE issue AS i SET
     updated_at = now()
 WHERE i.workspace_id = sqlc.arg('workspace_id')::uuid
   AND i.project_id IS NOT NULL
+  -- A request a flow runs and its tasks follow the flow's steps, not this workflow's.
+  AND i.flow IS NULL
+  AND i.flow_task IS NULL
   AND (
       (i.assignee_type = 'squad' AND i.assignee_id = sqlc.arg('squad_id')::uuid)
       OR (i.assignee_type = 'agent' AND i.assignee_id IN (

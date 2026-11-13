@@ -35,6 +35,16 @@ const (
 	// makes those endpoints answer 404, so clients stop syncing and search
 	// through the server again without a client release.
 	LocalSearchIndex = "local_search_index"
+	// FlowEngine gates the enforced squad workflow engine (tier 1): the guards on
+	// writes to a request or a task on a flow, and the flow API. On by default,
+	// and it only has an effect on a workflow that has a flow_config. Turning it
+	// off (FF_FLOW_ENGINE=off) makes the guards and the API step aside, so a flow
+	// workflow behaves like an ordinary one.
+	FlowEngine = "flow_engine"
+
+	// FlowRunner gates the background runner of the flow engine (tier 2): it advances a
+	// request on a flow workflow whose flow_auto is on. Default off.
+	FlowRunner = "flow_runner"
 	// agentBuilderCompat is no longer a release flag. Keep publishing the key
 	// as enabled so installed desktop clients that still gate the AI creation
 	// entry on this config decision receive the permanently enabled behavior.
@@ -79,6 +89,14 @@ func TriageV1Enabled(ctx context.Context, flags *featureflag.Service) bool {
 
 func LocalSearchIndexEnabled(ctx context.Context, flags *featureflag.Service) bool {
 	return flags.IsEnabled(ctx, LocalSearchIndex, true)
+}
+
+func FlowRunnerEnabled(ctx context.Context, flags *featureflag.Service) bool {
+	return flags.IsEnabled(ctx, FlowRunner, false)
+}
+
+func FlowEngineEnabled(ctx context.Context, flags *featureflag.Service) bool {
+	return flags.IsEnabled(ctx, FlowEngine, true)
 }
 
 func EvaluateFrontendPublicFlags(ctx context.Context, flags *featureflag.Service) map[string]bool {

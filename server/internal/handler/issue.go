@@ -84,6 +84,13 @@ type IssueResponse struct {
 	// issue then starts once every issue in RunAfterIssueIds has finished.
 	RunQueued        bool     `json:"run_queued"`
 	RunAfterIssueIds []string `json:"run_after_issue_ids"`
+	// Outcome is the verdict a handler reported when it moved the issue
+	// (approved, rejected, blocked or done). Flow is set on a request that runs
+	// on a flow and on a task the engine opened under it. Both are left out
+	// when unset, and the list endpoints, which do not select the columns, never
+	// carry them; the detail read and the update responses do.
+	Outcome *string                `json:"outcome,omitempty"`
+	Flow    *issueworkflow.FlowRef `json:"flow,omitempty"`
 	// RunStartStatus is the status the issue starts in when it leaves the queue.
 	// Only the responses built from a whole issue row carry it.
 	RunStartStatus string  `json:"run_start_status,omitempty"`
@@ -505,6 +512,8 @@ func issueToResponse(i db.Issue, issuePrefix string) IssueResponse {
 		RunQueued:          i.RunQueued,
 		RunStartStatus:     i.RunStartStatus,
 		RunAfterIssueIds:   uuidStringsOrEmpty(i.RunAfterIssueIds),
+		Outcome:            textToPtr(i.Outcome),
+		Flow:               issueworkflow.IssueFlowRef(i.Flow, i.FlowStep, i.FlowTask, i.FlowRound),
 		StartDate:          dateToPtr(i.StartDate),
 		DueDate:            dateToPtr(i.DueDate),
 		CreatedAt:          timestampToString(i.CreatedAt),
@@ -3501,6 +3510,17 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 	// Determine creator identity: agent (via X-Agent-ID header) or member.
 	creatorType, actualCreatorID := h.resolveActor(r, creatorID, workspaceID)
 
+	// A workflow opens the sub-issues of a request it runs; an agent does not.
+	if parentIssueID.Valid && creatorType == "agent" {
+		if err := h.checkFlowChildCreate(r.Context(), wsUUID, parentIssueID); err != nil {
+			if writeFlowRejection(w, err) {
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "failed to check flow rules")
+			return
+		}
+	}
+
 	// Request caps (spec 13.7.1): the Secretary's requests and addressees, and the
 	// hop limit below a request for any creator.
 	isSecretary := creatorType == "agent" && h.isWorkspaceSecretary(r, workspaceID, actualCreatorID)
@@ -3711,6 +3731,13 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	issue := res.Issue
+	// A request given to a squad that runs on a flow starts on it now. The
+	// flow is also started by the paths that create requests another way.
+	if started, err := h.EnsureFlowStarted(r.Context(), issue); err != nil {
+		slog.Warn("create issue: start flow failed", append(logger.RequestAttrs(r), "issue_id", uuidToString(issue.ID), "error", err)...)
+	} else {
+		issue = started
+	}
 	slog.Info("issue created", append(logger.RequestAttrs(r), "issue_id", uuidToString(issue.ID), "title", issue.Title, "status", issue.Status, "workspace_id", workspaceID)...)
 
 	resp := issueToResponse(issue, prefix)
@@ -4222,6 +4249,16 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		}
 		outcome = *req.Outcome
 	}
+	// The flow rules come first: a write the workflow refuses is refused for that
+	// reason, not for a project workflow that does not know the flow's steps.
+	if err := h.checkFlowWrite(r.Context(), prevIssue, params, outcome, h.flowActorFor(r, userID, workspaceID)); err != nil {
+		if writeFlowRejection(w, err) {
+			return
+		}
+		slog.Error("update issue: check flow rules", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to check flow rules")
+		return
+	}
 	handoff, err := h.applyIssueWorkflow(r.Context(), prevIssue, &params, req.Status != nil, touchedType || touchedID, req.EnterWorkflowStep, callerRun, outcome)
 	if err != nil {
 		if writeIssueWorkflowError(w, err) {
@@ -4304,6 +4341,13 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	// Determine actor identity: agent (via X-Agent-ID header) or member.
 	actorType, actorID := h.resolveActor(r, userID, workspaceID)
 	h.advanceRunStep(r.Context(), callerRun, prevIssue, issue)
+	if prevIssue.Status != issue.Status {
+		issue = h.storeOutcomeAfterMove(r.Context(), issue, outcome)
+		if _, managed := flowRequestState(issue); managed {
+			// A member moved a request a workflow runs: the flow follows.
+			defer h.syncFlowAfterMove(context.WithoutCancel(r.Context()), issue)
+		}
+	}
 
 	prefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
 	resp := issueToResponse(issue, prefix)
@@ -4981,6 +5025,39 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	// The outcome of the update is the outcome of every item that changes status.
+	batchOutcome := ""
+	if req.Updates.Outcome != nil {
+		if !issueworkflow.IsOutcome(*req.Updates.Outcome) {
+			writeErrorCode(w, http.StatusBadRequest, "invalid_outcome", "outcome must be approved, rejected, blocked or done")
+			return
+		}
+		batchOutcome = *req.Updates.Outcome
+	}
+	// The flow rules refuse the whole batch before anything is written, so a
+	// batch cannot close a gate without its verdict or leave half of itself done.
+	if batchStatusKey != "" {
+		batchActor := h.flowActorFor(r, userID, workspaceID)
+		for _, issueID := range req.IssueIDs {
+			issueUUID, err := util.ParseUUID(issueID)
+			if err != nil {
+				continue
+			}
+			prevIssue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: issueUUID, WorkspaceID: wsUUID})
+			if err != nil {
+				continue
+			}
+			check := db.UpdateIssueParams{Status: pgtype.Text{String: batchStatusKey, Valid: true}}
+			if err := h.checkFlowWrite(r.Context(), prevIssue, check, batchOutcome, batchActor); err != nil {
+				if writeFlowRejection(w, err) {
+					return
+				}
+				slog.Error("batch update issues: check flow rules", append(logger.RequestAttrs(r), "error", err)...)
+				writeError(w, http.StatusInternalServerError, "failed to check flow rules")
+				return
+			}
+		}
+	}
 	fillBatch := h.newStatusCategoryFiller(r.Context(), wsUUID)
 	// Parents whose sub-issues changed this batch. Their rules are evaluated
 	// once after the loop against the final state (MUL-4155), not per child
@@ -5137,7 +5214,7 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 		// entering a handoff step reassigns this issue to the step's handler.
 		callerType, _ := h.resolveActor(r, userID, workspaceID)
 		callerRun := h.agentRunOnIssue(r, callerType, prevIssue)
-		handoff, err := h.applyIssueWorkflow(r.Context(), prevIssue, &params, req.Updates.Status != nil, batchTouchedType || batchTouchedID, false, callerRun, "")
+		handoff, err := h.applyIssueWorkflow(r.Context(), prevIssue, &params, req.Updates.Status != nil, batchTouchedType || batchTouchedID, false, callerRun, batchOutcome)
 		if err != nil {
 			continue
 		}
@@ -5188,6 +5265,10 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		if prevIssue.Status != issue.Status {
+			issue = h.storeOutcomeAfterMove(r.Context(), issue, batchOutcome)
+			h.syncFlowAfterMove(r.Context(), issue)
+		}
 		prefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
 		resp := issueToResponse(issue, prefix)
 		actorType, actorID := h.resolveActor(r, userID, workspaceID)

@@ -226,3 +226,31 @@ SELECT EXISTS (
     SELECT 1 FROM squad
     WHERE workspace_id = $1 AND leader_id = $2 AND archived_at IS NULL
 ) AS is_leader;
+
+-- name: ListSquadWorkflowSummaries :many
+-- What the squad list shows about each squad's workflows: the active workflow,
+-- whether it is a flow (enforced), and the size of the squad's library.
+SELECT
+    s.id AS squad_id,
+    w.id AS active_workflow_id,
+    w.name AS active_workflow_name,
+    (w.flow_config IS NOT NULL)::boolean AS flow_enforced,
+    (SELECT COUNT(*) FROM issue_workflow l
+     WHERE l.workspace_id = s.workspace_id AND l.squad_id = s.id)::int AS workflow_count
+FROM squad s
+LEFT JOIN issue_workflow w ON w.id = s.active_workflow_id AND w.workspace_id = s.workspace_id
+WHERE s.workspace_id = sqlc.arg('workspace_id')::uuid
+  AND s.archived_at IS NULL;
+
+-- name: GetSquadWorkflowSummary :one
+SELECT
+    s.id AS squad_id,
+    w.id AS active_workflow_id,
+    w.name AS active_workflow_name,
+    (w.flow_config IS NOT NULL)::boolean AS flow_enforced,
+    (SELECT COUNT(*) FROM issue_workflow l
+     WHERE l.workspace_id = s.workspace_id AND l.squad_id = s.id)::int AS workflow_count
+FROM squad s
+LEFT JOIN issue_workflow w ON w.id = s.active_workflow_id AND w.workspace_id = s.workspace_id
+WHERE s.id = sqlc.arg('id')::uuid
+  AND s.workspace_id = sqlc.arg('workspace_id')::uuid;

@@ -1188,6 +1188,11 @@ type Issue struct {
 	RunQueued          bool               `json:"run_queued"`
 	RunAfterIssueIds   []pgtype.UUID      `json:"run_after_issue_ids"`
 	RunStartStatus     string             `json:"run_start_status"`
+	Outcome            pgtype.Text        `json:"outcome"`
+	Flow               []byte             `json:"flow"`
+	FlowStep           pgtype.Text        `json:"flow_step"`
+	FlowTask           pgtype.Text        `json:"flow_task"`
+	FlowRound          pgtype.Int4        `json:"flow_round"`
 }
 
 type IssueChildEvent struct {
@@ -1442,6 +1447,9 @@ type IssueWorkflow struct {
 	IsDefault        bool               `json:"is_default"`
 	OwnerID          pgtype.UUID        `json:"owner_id"`
 	SquadID          pgtype.UUID        `json:"squad_id"`
+	FlowConfig       []byte             `json:"flow_config"`
+	TemplateRef      pgtype.Text        `json:"template_ref"`
+	FlowAuto         bool               `json:"flow_auto"`
 }
 
 type JobStatus struct {

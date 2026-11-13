@@ -147,6 +147,11 @@ const (
 	// project:updated instead.
 	EventIssueWorkflowChanged = "issue_workflow:changed"
 
+	// A request on a flow changed: it moved, stopped, opened or closed a task,
+	// or a person resumed or detached it. The payload is {"issue_id"}; clients
+	// re-read GET /api/issues/{id}/flow.
+	EventIssueFlowUpdated = "issue_flow:updated"
+
 	// Saved issue views. One event for create, edit and delete: every client
 	// answers by re-reading the views it can see. A view that is private on
 	// both sides of the write reaches its owner only.

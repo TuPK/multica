@@ -52,6 +52,9 @@ type workflowHandoff struct {
 // reported for a status change, empty when it reported none. It returns the
 // handoff that write triggers, or nil.
 func (h *Handler) applyIssueWorkflow(ctx context.Context, prev db.Issue, params *db.UpdateIssueParams, statusExplicit, assigneeTouched, enterOnMove bool, run *db.AgentTaskQueue, outcome string) (*workflowHandoff, error) {
+	if handled, err := h.applyFlowStatusRules(ctx, prev, params); handled {
+		return nil, err
+	}
 	def, project, err := issueworkflow.ForIssue(ctx, h.Queries, prev.WorkspaceID, params.ProjectID, params.AssigneeType, params.AssigneeID)
 	if err != nil {
 		return nil, err
@@ -560,6 +563,11 @@ func (h *Handler) assigneeActiveRuns(ctx context.Context, issue db.Issue) []db.A
 // legacyRuntimeRules is true for a daemon that does not advertise
 // protocol.DaemonCapabilityWorkflowStatusRulesV1; see BriefInput.
 func (h *Handler) claimProjectWorkflow(ctx context.Context, issue db.Issue, task *db.AgentTaskQueue, legacyRuntimeRules bool) *TaskProjectWorkflowData {
+	// A task of a flow, and the request a flow runs, read the flow's brief
+	// whether or not the issue has a project.
+	if brief := h.claimFlowBrief(ctx, issue); brief != nil {
+		return brief
+	}
 	def, project, err := issueworkflow.ForIssue(ctx, h.Queries, issue.WorkspaceID, issue.ProjectID, issue.AssigneeType, issue.AssigneeID)
 	if err != nil {
 		slog.Warn("task claim: failed to load project workflow for brief injection",
