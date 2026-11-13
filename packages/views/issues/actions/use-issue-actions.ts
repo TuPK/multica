@@ -9,10 +9,10 @@ import { useAuthStore } from "@multica/core/auth";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { useModalStore } from "@multica/core/modals";
+import { issueUpdateErrorMessage } from "../utils/issue-update-error";
 import { useUpdateIssue } from "@multica/core/issues/mutations";
 import { knowledgeBasesOptions } from "@multica/core/knowledge";
 import { useIssueStatuses } from "@multica/core/issue-statuses/hooks";
-import { errorCode } from "@multica/core/api";
 import { pinListOptions, useCreatePin, useDeletePin } from "@multica/core/pins";
 import { copyText } from "@multica/ui/lib/clipboard";
 import { useNavigation } from "../../navigation";
@@ -118,11 +118,7 @@ export function useIssueActions(issue: Issue | null): UseIssueActionsResult {
             onSuccess: options?.onSuccess,
             onError: (err) => {
               toast.error(
-                errorCode(err) === "revision_conflict"
-                  ? t(($) => $.revision.conflict)
-                  : err instanceof Error && err.message
-                  ? err.message
-                  : t(($) => $.detail.update_failed),
+                issueUpdateErrorMessage(err, t, t(($) => $.detail.update_failed)),
               );
               options?.onError?.(err);
             },

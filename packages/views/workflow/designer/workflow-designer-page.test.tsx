@@ -195,6 +195,26 @@ describe("WorkflowDesignerPage", () => {
     expect(nameInput.disabled).toBe(true);
   });
 
+  it("locks every step and transition control on a template-managed workflow", async () => {
+    const managed = { ...testWorkflow, template_ref: "kv_trade" } as IssueWorkflow;
+    apiMock.getIssueWorkflow.mockResolvedValue(managed);
+    apiMock.listIssueWorkflows.mockResolvedValue({ workflows: [managed] });
+    renderComponent({ workflowId: "wf-1" });
+
+    await screen.findByDisplayValue("Core Pipeline");
+    fireEvent.click(screen.getByTestId("status-node-todo"));
+
+    expect(screen.getByRole("button", { name: "Add step" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByRole("button", { name: "Add transition" }).hasAttribute("disabled")).toBe(true);
+    for (const button of screen.getAllByRole("button", { name: "Move up" })) {
+      expect(button.hasAttribute("disabled")).toBe(true);
+    }
+    for (const button of screen.getAllByRole("button", { name: "Move down" })) {
+      expect(button.hasAttribute("disabled")).toBe(true);
+    }
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+  });
+
   it("shows the live validation state", async () => {
     renderComponent({ workflowId: "wf-1" });
 

@@ -28,6 +28,8 @@ export interface DesignerCanvasProps {
   onAddTransition: (sourceKey: string, targetKey?: string) => void;
   selectedStepKey?: string;
   onSelectStep: (stepKey: string) => void;
+  /** Read-only canvas: nodes stay put and no edge or node can be created or removed. */
+  readOnly?: boolean;
 }
 
 const nodeTypes: NodeTypes = {
@@ -42,6 +44,7 @@ export function DesignerCanvas({
   onAddTransition,
   selectedStepKey,
   onSelectStep,
+  readOnly = false,
 }: DesignerCanvasProps) {
   const { statuses } = useIssueStatuses(wsId);
 
@@ -183,9 +186,12 @@ export function DesignerCanvas({
         edges={edges}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
-        onNodeDragStop={handleNodeDragStop}
-        onConnect={handleConnect}
-        onEdgeClick={handleEdgeClick}
+        nodesDraggable={!readOnly}
+        nodesConnectable={!readOnly}
+        deleteKeyCode={readOnly ? null : "Backspace"}
+        onNodeDragStop={readOnly ? undefined : handleNodeDragStop}
+        onConnect={readOnly ? undefined : handleConnect}
+        onEdgeClick={readOnly ? undefined : handleEdgeClick}
         onPaneClick={() => onSelectStep("")}
         fitView
         fitViewOptions={{ padding: 0.2 }}

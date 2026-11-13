@@ -44,6 +44,8 @@ export interface StepInspectorProps {
   onEditTransition: (sourceKey: string, transition: IssueWorkflowTransition) => void;
   onDeleteTransition: (sourceKey: string, transitionId: string) => void;
   onClose: () => void;
+  /** A template-managed workflow is read-only: its steps and transitions cannot change here. */
+  readOnly?: boolean;
 }
 
 export function StepInspector({
@@ -60,6 +62,7 @@ export function StepInspector({
   onEditTransition,
   onDeleteTransition,
   onClose,
+  readOnly = false,
 }: StepInspectorProps) {
   const { t } = useT("workflow");
   useIssueStatuses(wsId);
@@ -170,7 +173,7 @@ export function StepInspector({
                   type="button"
                   variant="ghost"
                   size="icon-xs"
-                  disabled={!canMoveUp}
+                  disabled={readOnly || !canMoveUp}
                   onClick={() => onMoveStepUp(step.status_key)}
                   aria-label={t(($) => $.designer.node.move_up)}
                 >
@@ -180,13 +183,13 @@ export function StepInspector({
                   type="button"
                   variant="ghost"
                   size="icon-xs"
-                  disabled={!canMoveDown}
+                  disabled={readOnly || !canMoveDown}
                   onClick={() => onMoveStepDown(step.status_key)}
                   aria-label={t(($) => $.designer.node.move_down)}
                 >
                   <ChevronDown className="size-3.5" />
                 </Button>
-                {canRemove && (
+                {canRemove && !readOnly && (
                   <Button
                     type="button"
                     variant="ghost"
@@ -209,6 +212,7 @@ export function StepInspector({
             </Label>
             <div className="flex flex-col gap-2">
               <Select
+              disabled={readOnly}
                 items={handlerItems}
                 value={step.handler.type}
                 onValueChange={(val) => handleHandlerTypeChange(val as IssueWorkflowHandlerType)}
@@ -230,6 +234,7 @@ export function StepInspector({
               {/* Agent selector */}
               {step.handler.type === "agent" && agents.length > 0 && (
                 <Select
+                disabled={readOnly}
                   items={agentItems}
                   value={step.handler.id || agents[0]?.id || ""}
                   onValueChange={handleHandlerIdChange}
@@ -255,6 +260,7 @@ export function StepInspector({
               {/* Member selector */}
               {step.handler.type === "member" && members.length > 0 && (
                 <Select
+                disabled={readOnly}
                   items={memberItems}
                   value={step.handler.id || members[0]?.id || ""}
                   onValueChange={handleHandlerIdChange}
@@ -299,6 +305,7 @@ export function StepInspector({
               </span>
             </div>
             <Textarea
+            disabled={readOnly}
               value={step.instructions || ""}
               onChange={(e) => handleInstructionsChange(e.target.value)}
               placeholder={t(($) => $.designer.node.instructions_placeholder)}
@@ -318,6 +325,7 @@ export function StepInspector({
                 variant="ghost"
                 size="xs"
                 onClick={() => onAddTransition(step.status_key)}
+                disabled={readOnly}
                 className="h-6 text-micro gap-1 text-primary hover:text-primary"
               >
                 <Plus className="size-3" />
@@ -352,6 +360,7 @@ export function StepInspector({
                         variant="ghost"
                         size="icon-xs"
                         onClick={() => onEditTransition(step.status_key, trans)}
+                        disabled={readOnly}
                         aria-label={t(($) => $.designer.edge.edit_transition)}
                       >
                         <Pencil className="size-3" />
@@ -361,6 +370,7 @@ export function StepInspector({
                         variant="ghost"
                         size="icon-xs"
                         onClick={() => onDeleteTransition(step.status_key, trans.id)}
+                        disabled={readOnly}
                         className="text-muted-foreground hover:text-destructive"
                         aria-label={t(($) => $.designer.edge.delete_transition)}
                       >
@@ -395,6 +405,7 @@ export function StepInspector({
             variant="outline"
             size="xs"
             onClick={onAddStep}
+            disabled={readOnly}
             className="h-6 text-micro gap-1"
           >
             <Plus className="size-3" />
@@ -440,7 +451,7 @@ export function StepInspector({
                     type="button"
                     variant="ghost"
                     size="icon-xs"
-                    disabled={idx === 0}
+                    disabled={readOnly || idx === 0}
                     onClick={() => onMoveStepUp(s.status_key)}
                     aria-label={t(($) => $.designer.node.move_up)}
                   >
@@ -450,7 +461,7 @@ export function StepInspector({
                     type="button"
                     variant="ghost"
                     size="icon-xs"
-                    disabled={idx === steps.length - 1}
+                    disabled={readOnly || idx === steps.length - 1}
                     onClick={() => onMoveStepDown(s.status_key)}
                     aria-label={t(($) => $.designer.node.move_down)}
                   >

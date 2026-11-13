@@ -2341,6 +2341,10 @@
       "done": "已完成",
       "none": "待定"
     },
+    "verdict": {
+      "approve": "通過",
+      "reject": "駁回"
+    },
     "resume": "恢復",
     "detach": "分離",
     "detach_confirm": "從流程分離",
@@ -2354,9 +2358,9 @@
     "table_status": "狀態",
     "table_outcome": "結果",
     "errors": {
-      "flow_outcome_required": "關閉此關卡必須提供裁決",
-      "flow_outcome_invalid": "無效的狀態和裁決組合",
-      "flow_attachment_required": "完成此任務必須附帶附件",
+      "flow_outcome_required": "請選擇結論（通過或駁回）後再關閉這個檢查點",
+      "flow_outcome_invalid": "這個結論不適用於此任務",
+      "flow_attachment_required": "任務的 agent 上傳所需檔案後，才能完成這項任務",
       "flow_human_only": "此步驟只能由人工完成",
       "flow_managed_request": "狀態由工作流程引擎管理",
       "flow_children_managed": "子議題由工作流程引擎管理",

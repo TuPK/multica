@@ -2417,6 +2417,10 @@
       "done": "Terminé",
       "none": "En attente"
     },
+    "verdict": {
+      "approve": "Approuver",
+      "reject": "Rejeter"
+    },
     "resume": "Reprendre",
     "detach": "Détacher",
     "detach_confirm": "Détacher du flux",
@@ -2430,9 +2434,9 @@
     "table_status": "Statut",
     "table_outcome": "Résultat",
     "errors": {
-      "flow_outcome_required": "Un verdict est requis pour fermer cette porte",
-      "flow_outcome_invalid": "Combinaison état et verdict invalide",
-      "flow_attachment_required": "Une pièce jointe est requise pour terminer cette tâche",
+      "flow_outcome_required": "Choisissez un verdict, approuvé ou rejeté, pour clore ce contrôle",
+      "flow_outcome_invalid": "Ce verdict ne s'applique pas à cette tâche",
+      "flow_attachment_required": "Cette tâche se clôt après que son agent a joint le fichier requis",
       "flow_human_only": "Cette étape ne peut être effectuée que par un humain",
       "flow_managed_request": "Le statut est géré par le moteur de workflow",
       "flow_children_managed": "Les sous-tickets sont gérés par le moteur de workflow",

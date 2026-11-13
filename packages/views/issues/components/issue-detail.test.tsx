@@ -317,6 +317,7 @@ vi.mock("../../projects/components/project-picker", () => ({
 // Mock api
 const mockApiObj = vi.hoisted(() => ({
   getIssue: vi.fn(),
+  getIssueFlow: vi.fn().mockRejectedValue(new Error("no flow")),
   listTimeline: vi.fn().mockResolvedValue([]),
   listComments: vi.fn().mockResolvedValue([]),
   createComment: vi.fn(),
@@ -1145,6 +1146,31 @@ describe("IssueDetail (shared)", () => {
     // The "+ Add property" affordance is always offered while any
     // optional field is still hidden.
     expect(screen.getByRole("button", { name: "Add property" })).toBeInTheDocument();
+  });
+
+  it("spans a flow request panel across both property columns so the values keep their width", async () => {
+    mockApiObj.getIssueFlow.mockResolvedValue({
+      managed: true,
+      role: "request",
+      workflow_id: "wf-flow-1",
+      workflow_name: "Drill flow workflow",
+      step: "todo",
+      rework: 0,
+      stop: null,
+      switches: {},
+      auto: false,
+      entered_at: "2026-11-13T01:00:00Z",
+      tasks: [],
+      next: [],
+    });
+    renderIssueDetail();
+
+    const workflowName = await screen.findByText("Drill flow workflow");
+    // The flow branch wraps the panel in one grid cell. Without col-span-2 that
+    // cell takes the label column and squeezes the Status, Assignee and Project values.
+    const wrapper = workflowName.closest("[data-testid='issue-flow-prop']");
+    expect(wrapper).toHaveClass("col-span-2");
+    mockApiObj.getIssueFlow.mockRejectedValue(new Error("no flow"));
   });
 
   it("hides every optional property row when none are set", async () => {

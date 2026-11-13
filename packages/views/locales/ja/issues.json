@@ -2341,6 +2341,10 @@
       "done": "完了",
       "none": "保留中"
     },
+    "verdict": {
+      "approve": "承認",
+      "reject": "却下"
+    },
     "resume": "再開",
     "detach": "デタッチ",
     "detach_confirm": "フローからデタッチ",
@@ -2354,9 +2358,9 @@
     "table_status": "ステータス",
     "table_outcome": "結果",
     "errors": {
-      "flow_outcome_required": "このゲートを閉じるには判定が必要です",
-      "flow_outcome_invalid": "ステータスと判定の組み合わせが無効です",
-      "flow_attachment_required": "このタスクを完了するには添付ファイルが必要です",
+      "flow_outcome_required": "このゲートを閉じるには、承認か却下の判定を選んでください",
+      "flow_outcome_invalid": "この判定はこのタスクには使えません",
+      "flow_attachment_required": "担当エージェントが必要なファイルを添付すると、このタスクは完了できます",
       "flow_human_only": "このステップは人間のみが完了できます",
       "flow_managed_request": "ステータスはワークフローエンジンによって管理されています",
       "flow_children_managed": "サブイシューはワークフローエンジンによって管理されています",

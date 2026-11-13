@@ -1688,6 +1688,7 @@ const IssueFlowTaskSchema = z.object({
   step: z.string().default(""),
   task: z.string().min(1),
   round: z.number().default(0).catch(0),
+  kind: z.string().default("").catch(""),
   status: z.string().default(""),
   outcome: z.string().nullable().default(null).catch(null),
   assignee_id: z.string().nullable().default(null).catch(null),

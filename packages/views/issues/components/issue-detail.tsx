@@ -7,6 +7,7 @@ import {
   issueStatusCategory,
 } from "@multica/core/issues";
 import { IssueFlowCard } from "../../workflow/issue-flow-card";
+import { issueUpdateErrorMessage } from "../utils/issue-update-error";
 import { useStatusLabel } from "../utils/status-label";
 import { priorityLabel } from "../utils/priority-label";
 import { useIssueStatuses } from "@multica/core/issue-statuses/hooks";
@@ -893,11 +894,7 @@ function SubIssueRow({
         },
         {
           onError: (err) =>
-            toast.error(
-              err instanceof Error && err.message
-                ? err.message
-                : t(($) => $.detail.update_failed),
-            ),
+            toast.error(issueUpdateErrorMessage(err, t, t(($) => $.detail.update_failed))),
         },
       );
     },
@@ -4225,7 +4222,7 @@ function IssueWorkflowPropRow({
 
   if (isFlow) {
     return (
-      <div className="py-2">
+      <div className="col-span-2 py-2" data-testid="issue-flow-prop">
         <IssueFlowCard
           issueId={issueId}
           projectId={projectId}

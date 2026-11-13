@@ -2341,6 +2341,10 @@
       "done": "已完成",
       "none": "待定"
     },
+    "verdict": {
+      "approve": "通过",
+      "reject": "驳回"
+    },
     "resume": "恢复",
     "detach": "分离",
     "detach_confirm": "从流程分离",
@@ -2354,9 +2358,9 @@
     "table_status": "状态",
     "table_outcome": "结果",
     "errors": {
-      "flow_outcome_required": "关闭此门禁必须提供裁决",
-      "flow_outcome_invalid": "无效的状态和裁决组合",
-      "flow_attachment_required": "完成此任务必须附带附件",
+      "flow_outcome_required": "请选择结论（通过或驳回）后再关闭这个检查点",
+      "flow_outcome_invalid": "这个结论不适用于此任务",
+      "flow_attachment_required": "任务的 agent 上传所需文件后，才能完成这项任务",
       "flow_human_only": "此步骤只能由人工完成",
       "flow_managed_request": "状态由工作流引擎管理",
       "flow_children_managed": "子议题由工作流引擎管理",

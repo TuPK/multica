@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderWithI18n } from "../test/i18n";
 import { IssueFlowStatePanel } from "./issue-flow-state-panel";
 import type { IssueFlowState } from "@multica/core/types";
@@ -7,6 +8,14 @@ import type { IssueFlowState } from "@multica/core/types";
 const mocks = vi.hoisted(() => ({
   resumeMut: vi.fn().mockResolvedValue({}),
   detachMut: vi.fn().mockResolvedValue({ detached: true }),
+  updateIssueMut: vi.fn().mockResolvedValue({}),
+}));
+
+vi.mock("@multica/core/issues/mutations", () => ({
+  useUpdateIssue: () => ({
+    mutateAsync: mocks.updateIssueMut,
+    isPending: false,
+  }),
 }));
 
 vi.mock("@multica/core/issue-workflows", async (importOriginal) => {
@@ -23,6 +32,16 @@ vi.mock("@multica/core/issue-workflows", async (importOriginal) => {
     }),
   };
 });
+
+// The panel refreshes the flow through the query client, so every render gets one.
+function renderPanel(ui: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const wrap = (node: React.ReactElement) => (
+    <QueryClientProvider client={client}>{node}</QueryClientProvider>
+  );
+  const result = renderWithI18n(wrap(ui));
+  return { ...result, rerender: (next: React.ReactElement) => result.rerender(wrap(next)) };
+}
 
 describe("IssueFlowStatePanel", () => {
   const sampleFlow: IssueFlowState = {
@@ -43,6 +62,7 @@ describe("IssueFlowStatePanel", () => {
         step: "gate",
         task: "docs_gate",
         round: 1,
+        kind: "gate",
         status: "done",
         outcome: "rejected",
         assignee_id: "agent-1",
@@ -54,6 +74,7 @@ describe("IssueFlowStatePanel", () => {
         step: "gate",
         task: "customs_gate",
         round: 1,
+        kind: "gate",
         status: "in_progress",
         outcome: null,
         assignee_id: "agent-2",
@@ -64,7 +85,7 @@ describe("IssueFlowStatePanel", () => {
   };
 
   it("renders current step, round, and table of tasks with identifier and outcome", () => {
-    renderWithI18n(
+    renderPanel(
       <IssueFlowStatePanel
         wsId="ws-1"
         issueId="req-1"
@@ -86,13 +107,90 @@ describe("IssueFlowStatePanel", () => {
     expect(screen.getByText("customs_gate")).toBeInTheDocument();
   });
 
+  it("records a verdict on an open gate task as done with the outcome", async () => {
+    const openGate: IssueFlowState = {
+      ...sampleFlow,
+      tasks: [
+        {
+          issue_id: "task-3",
+          identifier: "MUL-14",
+          step: "gate",
+          task: "handover",
+          round: 1,
+          kind: "gate",
+          status: "todo",
+          outcome: null,
+          assignee_id: "agent-3",
+          closed_at: null,
+        },
+      ],
+    };
+    renderPanel(
+      <IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={openGate} canManage={false} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+    await waitFor(() =>
+      expect(mocks.updateIssueMut).toHaveBeenCalledWith({
+        id: "task-3",
+        status: "done",
+        outcome: "approved",
+      }),
+    );
+  });
+
+  it("offers no verdict on a work task or a closed gate", () => {
+    const openWork: IssueFlowState = {
+      ...sampleFlow,
+      tasks: [
+        {
+          issue_id: "task-4",
+          identifier: "MUL-15",
+          step: "collect",
+          task: "docs",
+          round: 0,
+          kind: "work",
+          status: "todo",
+          outcome: null,
+          assignee_id: "agent-4",
+          closed_at: null,
+        },
+      ],
+    };
+    renderPanel(
+      <IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={openWork} canManage={false} />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reject" })).toBeNull();
+  });
+
+  it("keeps the identifier, status and outcome on one line so the table fits a narrow sidebar", () => {
+    // jsdom cannot measure layout; these classes are the contract the browser check relies on.
+    renderPanel(
+      <IssueFlowStatePanel
+        wsId="ws-1"
+        issueId="req-1"
+        flow={sampleFlow}
+        canManage={false}
+      />
+    );
+
+    const identifier = screen.getByText("MUL-12").closest("td");
+    expect(identifier).toHaveClass("whitespace-nowrap");
+    expect(screen.getByRole("columnheader", { name: /outcome|kết quả|結果/i })).toHaveClass(
+      "whitespace-nowrap",
+    );
+    expect(screen.getByText("MUL-12").closest("table")?.parentElement).toHaveClass("overflow-x-auto");
+  });
+
   it("shows stop status when stop is present", () => {
     const stoppedFlow: IssueFlowState = {
       ...sampleFlow,
       stop: 1,
     };
 
-    renderWithI18n(
+    renderPanel(
       <IssueFlowStatePanel
         wsId="ws-1"
         issueId="req-1"
@@ -105,7 +203,7 @@ describe("IssueFlowStatePanel", () => {
   });
 
   it("shows Resume and Detach buttons only when canManage is true", () => {
-    const { rerender } = renderWithI18n(
+    const { rerender } = renderPanel(
       <IssueFlowStatePanel
         wsId="ws-1"
         issueId="req-1"
@@ -131,7 +229,7 @@ describe("IssueFlowStatePanel", () => {
   });
 
   it("clicking Detach opens confirmation dialog and calls detach", async () => {
-    renderWithI18n(
+    renderPanel(
       <IssueFlowStatePanel
         wsId="ws-1"
         issueId="req-1"
@@ -154,7 +252,7 @@ describe("IssueFlowStatePanel", () => {
   });
 
   it("clicking Resume calls useResumeFlow", async () => {
-    renderWithI18n(
+    renderPanel(
       <IssueFlowStatePanel
         wsId="ws-1"
         issueId="req-1"

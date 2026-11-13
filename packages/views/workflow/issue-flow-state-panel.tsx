@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Badge } from "@multica/ui/components/ui/badge";
 import { Button } from "@multica/ui/components/ui/button";
@@ -23,8 +24,10 @@ import {
 } from "@multica/ui/icons";
 import { clientErrorMessage } from "@multica/core/api";
 import { useT } from "../i18n";
-import { useDetachFlow, useResumeFlow } from "@multica/core/issue-workflows";
-import type { IssueFlowState } from "@multica/core/types";
+import { issueFlowKeys, useDetachFlow, useResumeFlow } from "@multica/core/issue-workflows";
+import { useUpdateIssue } from "@multica/core/issues/mutations";
+import type { IssueFlowState, IssueFlowTask } from "@multica/core/types";
+import { issueUpdateErrorMessage } from "../issues/utils/issue-update-error";
 
 export interface IssueFlowStatePanelProps {
   wsId: string;
@@ -44,6 +47,20 @@ export function IssueFlowStatePanel({
 
   const resumeMut = useResumeFlow(wsId, issueId);
   const detachMut = useDetachFlow(wsId, issueId);
+  const updateIssue = useUpdateIssue();
+  const queryClient = useQueryClient();
+
+  // A verdict is the same status change a person makes on the task: done, with
+  // the outcome. The server's gate guard decides whether it is accepted.
+  const handleVerdict = async (task: IssueFlowTask, outcome: "approved" | "rejected") => {
+    try {
+      await updateIssue.mutateAsync({ id: task.issue_id, status: "done", outcome });
+    } catch (err) {
+      toast.error(issueUpdateErrorMessage(err, t, t(($) => $.flow.error)));
+    } finally {
+      queryClient.invalidateQueries({ queryKey: issueFlowKeys.detail(wsId, issueId) });
+    }
+  };
 
   const handleResume = async () => {
     try {
@@ -157,30 +174,53 @@ export function IssueFlowStatePanel({
             <table className="w-full text-left text-caption">
               <thead className="bg-muted/40 text-muted-foreground border-b border-border/60">
                 <tr>
-                  <th className="py-2 px-3 font-medium">{t(($) => $.flow.table_issue)}</th>
-                  <th className="py-2 px-3 font-medium">{t(($) => $.flow.table_task)}</th>
-                  <th className="py-2 px-3 font-medium">{t(($) => $.flow.table_round)}</th>
-                  <th className="py-2 px-3 font-medium">{t(($) => $.flow.table_status)}</th>
-                  <th className="py-2 px-3 font-medium">{t(($) => $.flow.table_outcome)}</th>
+                  <th className="py-2 px-2 font-medium whitespace-nowrap">{t(($) => $.flow.table_issue)}</th>
+                  <th className="py-2 px-2 font-medium">{t(($) => $.flow.table_task)}</th>
+                  <th className="py-2 px-2 font-medium whitespace-nowrap">{t(($) => $.flow.table_round)}</th>
+                  <th className="py-2 px-2 font-medium whitespace-nowrap">{t(($) => $.flow.table_status)}</th>
+                  <th className="py-2 px-2 font-medium whitespace-nowrap">{t(($) => $.flow.table_outcome)}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
                 {flow.tasks.map((task) => (
                   <tr key={task.issue_id} className="hover:bg-muted/20">
-                    <td className="py-2 px-3 font-medium text-foreground">
+                    <td className="py-2 px-2 font-medium text-foreground whitespace-nowrap">
                       {task.identifier}
                     </td>
-                    <td className="py-2 px-3 text-foreground">
+                    <td className="py-2 px-2 text-foreground">
                       {task.task}
                     </td>
-                    <td className="py-2 px-3 text-muted-foreground tabular-nums">
+                    <td className="py-2 px-2 text-muted-foreground tabular-nums whitespace-nowrap">
                       {task.round}
                     </td>
-                    <td className="py-2 px-3 text-muted-foreground">
+                    <td className="py-2 px-2 text-muted-foreground whitespace-nowrap">
                       {task.status}
                     </td>
-                    <td className="py-2 px-3">
-                      {renderOutcomeBadge(task.outcome)}
+                    <td className="py-2 px-2 whitespace-nowrap">
+                      {task.kind === "gate" && task.closed_at === null ? (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="xs"
+                            disabled={updateIssue.isPending}
+                            onClick={() => void handleVerdict(task, "approved")}
+                          >
+                            {t(($) => $.flow.verdict.approve)}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="xs"
+                            disabled={updateIssue.isPending}
+                            onClick={() => void handleVerdict(task, "rejected")}
+                          >
+                            {t(($) => $.flow.verdict.reject)}
+                          </Button>
+                        </div>
+                      ) : (
+                        renderOutcomeBadge(task.outcome)
+                      )}
                     </td>
                   </tr>
                 ))}

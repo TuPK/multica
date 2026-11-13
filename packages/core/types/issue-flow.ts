@@ -38,6 +38,8 @@ export interface IssueFlowTask {
   step: string;
   task: string;
   round: number;
+  /** "gate" or "work" as the workflow defines the task; "" when this build does not know it. */
+  kind: string;
   status: string;
   /** approved, rejected, blocked or done; null until reported. A value this build does not know is kept. */
   outcome: string | null;

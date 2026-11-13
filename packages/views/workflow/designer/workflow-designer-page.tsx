@@ -127,6 +127,9 @@ export function WorkflowDesignerPage({
   const existingWorkflow = detail.workflow;
   const isDefault = existingWorkflow?.is_default ?? false;
   const isTemplateManaged = Boolean(existingWorkflow?.template_ref);
+  // A workflow Kit Việt manages (template) or a flow workflow is read-only here: its
+  // server rules, not the editor, decide what changes, and the list hides edit too.
+  const isReadOnly = isTemplateManaged || Boolean(existingWorkflow?.flow_config);
   const createWorkflow = useCreateIssueWorkflow();
   const updateWorkflow = useUpdateIssueWorkflow();
 
@@ -494,7 +497,7 @@ export function WorkflowDesignerPage({
                   setName(e.target.value);
                   setHasUserEdits(true);
                 }}
-                disabled={isDefault || isTemplateManaged}
+                disabled={isDefault || isReadOnly}
                 placeholder={t(($) => $.designer.name_placeholder)}
                 className="text-title font-semibold text-foreground bg-transparent border-none outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -ml-1 placeholder:text-muted-foreground truncate disabled:opacity-70"
               />
@@ -511,7 +514,7 @@ export function WorkflowDesignerPage({
                 setDescription(e.target.value);
                 setHasUserEdits(true);
               }}
-              disabled={isTemplateManaged}
+              disabled={isReadOnly}
               placeholder={t(($) => $.designer.description_placeholder)}
               className="text-caption text-muted-foreground bg-transparent border-none outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -ml-1 placeholder:text-muted-foreground truncate disabled:opacity-70"
             />
@@ -540,7 +543,7 @@ export function WorkflowDesignerPage({
             onSelectStep={setSelectedStepKey}
           />
 
-          {!isTemplateManaged && (
+          {!isReadOnly && (
             <Button
               type="button"
               size="sm"
@@ -585,6 +588,7 @@ export function WorkflowDesignerPage({
             onEditTransition={handleOpenEditTransition}
             selectedStepKey={selectedStepKey}
             onSelectStep={setSelectedStepKey}
+            readOnly={isReadOnly}
           />
         </div>
 
@@ -603,6 +607,7 @@ export function WorkflowDesignerPage({
           onEditTransition={handleOpenEditTransition}
           onDeleteTransition={(sourceKey, id) => handleDeleteTransition(sourceKey, id)}
           onClose={() => setSelectedStepKey(undefined)}
+          readOnly={isReadOnly}
         />
 
         {/* Status Palette Drawer/Sheet */}
