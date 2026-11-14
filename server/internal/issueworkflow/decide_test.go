@@ -255,6 +255,10 @@ func TestDecide_BlockedWorkTaskNeverTakesAnUnconditionalEdge(t *testing.T) {
 	if d.TransitionID != "" || d.Stop != StopStalled || d.JoinResult != JoinBlock {
 		t.Fatalf("a blocked task took %q (stop %q, join %q); want the step stalled on block", d.TransitionID, d.Stop, d.JoinResult)
 	}
+	// The reason names the block, not a missing edge: the step had a way out, and the block closed it.
+	if d.Reason != ReasonJoinBlocked {
+		t.Fatalf("reason = %q, want %q", d.Reason, ReasonJoinBlocked)
+	}
 }
 
 func TestDecide_BlockAtCloseWaits(t *testing.T) {
@@ -834,5 +838,34 @@ func TestDecide_CheckpointClearsUnreviewed(t *testing.T) {
 	}
 	if d := decideAt(g, done, nil); d.Kind != DecisionWait {
 		t.Fatalf("a closed request waits: %+v", d)
+	}
+}
+
+// A lead that reports blocked never moves the request on by an unconditional edge
+// (the same rule as a blocked join, spec A17): it stalls unless an edge names the block.
+func TestRouteLead_BlockedNeverTakesAnUnconditionalEdge(t *testing.T) {
+	doc := loadFlowDoc(t, "patterns/p02_parallel_join_all.json")
+	g := NewGraph(doc)
+	st := at(g, "plan", 1, nil)
+	d := RouteLead(g, st, OutcomeBlocked, BuildGraphFacts(g, st, nil, RequestFacts{}))
+	if d.TransitionID != "" || d.Stop != StopStalled || d.Reason != ReasonLeadBlocked {
+		t.Fatalf("a blocked lead took %q (stop %q, reason %q); want the step stalled with %q", d.TransitionID, d.Stop, d.Reason, ReasonLeadBlocked)
+	}
+}
+
+// An edge that names lead.verdict = blocked takes the block.
+func TestRouteLead_BlockedFollowsAnEdgeThatNamesIt(t *testing.T) {
+	doc := modify(loadFlowDoc(t, "patterns/p02_parallel_join_all.json"), func(d *FlowDoc) {
+		stepIdx(d, "plan").Edges = []DocEdge{
+			{ID: "plan_ok", To: "work"},
+			{ID: "plan_blocked", Stop: "grounds", When: cond("lead.verdict", OpEq, OutcomeBlocked)},
+		}
+		d.Stops = append(d.Stops, StopKind{Code: "grounds", Class: "missing_grounds"})
+	})
+	g := NewGraph(doc)
+	st := at(g, "plan", 1, nil)
+	d := RouteLead(g, st, OutcomeBlocked, BuildGraphFacts(g, st, nil, RequestFacts{}))
+	if d.TransitionID != "plan_blocked" || d.StopCode != "grounds" {
+		t.Fatalf("a blocked lead took %q (stop code %q); want plan_blocked to stop with grounds", d.TransitionID, d.StopCode)
 	}
 }

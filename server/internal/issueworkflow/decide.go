@@ -31,6 +31,10 @@ const (
 	ReasonAgentUnavailable = "agent_unavailable"
 	// ReasonTaskStuck: a task or the lead used all its attempts without closing.
 	ReasonTaskStuck = "task_stuck"
+	// ReasonJoinBlocked: a task of the step ended blocked and no way out of the step takes a block.
+	ReasonJoinBlocked = "join_blocked"
+	// ReasonLeadBlocked: the lead reported blocked and no way out of the step takes the block.
+	ReasonLeadBlocked = "lead_blocked"
 )
 
 // The values of join.result.
@@ -195,7 +199,7 @@ func DecideGraph(g Graph, st State, tasks []TaskState, fs FactSet) GraphDecision
 
 	fs2 := fs.Clone()
 	stats.setFacts(&fs2, result)
-	d, ok := g.route(st, tasks, step, fs2, "", result)
+	d, ok := g.route(st, tasks, step, fs2, "", result, false)
 	if cancelOpen && ok {
 		for _, ref := range openRefs(step.Key, rows, order) {
 			if !inStrings(d.Cancel, ref) {
@@ -574,7 +578,7 @@ func RouteLead(g Graph, st State, verdict string, fs FactSet) GraphDecision {
 	}
 	fs2 := fs.Clone()
 	_ = fs2.Set("lead.verdict", StringValue(verdict))
-	d, _ := g.route(st, nil, step, fs2, "", "")
+	d, _ := g.route(st, nil, step, fs2, "", "", verdict == OutcomeBlocked)
 	return d
 }
 
@@ -590,7 +594,7 @@ func RouteManual(g Graph, st State, tasks []TaskState, edgeID string, fs FactSet
 	if !ok || edge.Edge.Trigger != EdgeTriggerManual {
 		return waitGraph(ReasonEdgeUnavailable)
 	}
-	d, ok := g.route(st, tasks, step, fs, edgeID, "")
+	d, ok := g.route(st, tasks, step, fs, edgeID, "", false)
 	if !ok {
 		return waitGraph(ReasonEdgeUnavailable)
 	}
@@ -598,9 +602,11 @@ func RouteManual(g Graph, st State, tasks []TaskState, edgeID string, fs FactSet
 }
 
 // route picks the edge and builds the decision. manualID names the exit a person
-// chose; empty for automatic routing. The bool is false when no decision was
-// made for an exit that was asked for.
-func (g Graph) route(st State, tasks []TaskState, step DocStep, fs FactSet, manualID, result string) (GraphDecision, bool) {
+// chose; empty for automatic routing. result is the join result of a task step;
+// lead is true when the lead reported blocked. The bool is false when no decision
+// was made for an exit that was asked for.
+func (g Graph) route(st State, tasks []TaskState, step DocStep, fs FactSet, manualID, result string, lead bool) (GraphDecision, bool) {
+	blocked := result == JoinBlock || lead
 	var chosen *GraphEdge
 	var read []string
 	for _, e := range g.EdgesFrom(step.Key) {
@@ -611,9 +617,9 @@ func (g Graph) route(st State, tasks []TaskState, step DocStep, fs FactSet, manu
 		} else if e.Edge.Trigger == EdgeTriggerManual {
 			continue
 		}
-		// A block ends the join (spec A17): it may take a stop edge, or an edge
-		// that names join.result. It never moves the request on by an unconditional edge.
-		if result == JoinBlock && manualID == "" && e.Edge.Stop == "" && !namesJoinResult(e.Edge) {
+		// A block ends the join (spec A17), and a lead that reports blocked ends its step the same way:
+		// the block takes a stop edge, or an edge that names it. It never moves the request on by an unconditional edge.
+		if blocked && manualID == "" && e.Edge.Stop == "" && !namesBlock(e.Edge) {
 			continue
 		}
 		if e.Edge.When != nil {
@@ -637,7 +643,15 @@ func (g Graph) route(st State, tasks []TaskState, step DocStep, fs FactSet, manu
 		if manualID != "" {
 			return GraphDecision{}, false
 		}
-		d := stalledGraph(ReasonNoEdge)
+		reason := ReasonNoEdge
+		switch {
+		case manualID != "":
+		case result == JoinBlock:
+			reason = ReasonJoinBlocked
+		case lead:
+			reason = ReasonLeadBlocked
+		}
+		d := stalledGraph(reason)
 		d.JoinResult = result
 		d.Facts = factValues(fs, read)
 		return d, true
@@ -647,14 +661,15 @@ func (g Graph) route(st State, tasks []TaskState, step DocStep, fs FactSet, manu
 	return d, true
 }
 
-// namesJoinResult reports whether the edge's condition reads join.result.
-func namesJoinResult(e DocEdge) bool {
+// namesBlock reports whether the edge's condition reads the block: join.result of a
+// task step, or lead.verdict of a lead step.
+func namesBlock(e DocEdge) bool {
 	if e.When == nil {
 		return false
 	}
 	found := false
 	walkCondition(*e.When, func(c Condition) {
-		if c.Field == "join.result" {
+		if c.Field == "join.result" || c.Field == "lead.verdict" {
 			found = true
 		}
 	})
