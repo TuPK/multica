@@ -264,7 +264,9 @@
       "error_daemon_version": "La CLI del daemon de este agente ({{current}}) es inferior a la requerida ({{min}}). Actualiza el daemon para usar Crear con agente.",
       "error_unknown": "No se ha podido enviar. Inténtalo de nuevo.",
       "sub_issue_of": "Subtarea de {{identifier}}"
-    }
+    },
+    "flow_workflow": "Flujo de trabajo",
+    "flow_workflow_active": "{{name}} (activo)"
   },
   "mark_duplicate": {
     "title": "Marcar como duplicada",

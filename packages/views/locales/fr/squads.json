@@ -362,8 +362,24 @@
       "kind": {
         "agent": "Agent",
         "member": "Membre",
-        "managers": "Gestionnaires du squad"
-      }
+        "managers": "Gestionnaires du squad",
+        "lead": "Responsable",
+        "requester": "Demandeur"
+      },
+      "add_agent_notice": "Ajoutez un agent au squad",
+      "add_agent": "Ajouter un agent",
+      "col_pool": "Groupe",
+      "col_usage": "Utilisation",
+      "fixed_leader": "Responsable fixe",
+      "in_use": "Utilisé",
+      "delete": "Supprimer {{key}}",
+      "label_placeholder": "Libellé",
+      "add": "Ajouter un rôle",
+      "limit_reached": "Limite de {{count}} rôles atteinte",
+      "col_assigned": "Affectés",
+      "assigned_count": "{{count}} sur {{pool}}",
+      "no_choices": "Personne à choisir",
+      "pool_label": "Groupe de {{key}}"
     },
     "step": {
       "work": "Étape de travail",
@@ -438,7 +454,13 @@
       "lead_may_work": "Je comprends que le responsable peut effectuer des tâches"
     },
     "problems": {
-      "none": "Aucun problème"
+      "none": "Aucun problème",
+      "title": "Problèmes de validation",
+      "errors_one": "{{count}} erreur",
+      "errors_other": "{{count}} erreurs",
+      "warnings_one": "{{count}} avertissement",
+      "warnings_other": "{{count}} avertissements",
+      "requires_ack": "Nécessite une confirmation"
     },
     "empty": {
       "title": "Aucun workflow"
@@ -460,7 +482,20 @@
       "back_to": "Retour à {{step}}"
     },
     "verdicts": {
-      "title": "Verdicts"
+      "title": "Verdicts",
+      "built_in": "Jeux intégrés (lecture seule)",
+      "custom": "Jeux personnalisés",
+      "col_verdicts": "Verdicts",
+      "delete": "Supprimer {{key}}",
+      "empty": "Aucun jeu de verdicts personnalisé",
+      "add": "Ajouter un jeu de verdicts",
+      "item": "{{key}} ({{class}})",
+      "class": {
+        "pass": "réussi",
+        "fail": "échec"
+      },
+      "pass_label": "Réussi",
+      "fail_label": "Échec"
     },
     "verdict": {
       "pass": "Compte comme réussite",
@@ -476,10 +511,37 @@
       "min": "Au moins {{count}}"
     },
     "vars": {
-      "title": "Variables"
+      "title": "Variables",
+      "col_type": "Type",
+      "col_default": "Par défaut",
+      "col_set_by": "Défini par",
+      "col_set_at": "Défini à",
+      "delete": "Supprimer {{key}}",
+      "empty": "Aucune variable déclarée",
+      "default_placeholder": "Valeur par défaut",
+      "add": "Ajouter une variable",
+      "limit_reached": "Limite de {{count}} variables atteinte",
+      "type": {
+        "string": "Texte",
+        "int": "Nombre",
+        "bool": "Oui ou non",
+        "enum": "Choix",
+        "list_string": "Liste de textes"
+      }
     },
     "stops": {
-      "declared": "Motifs d'arrêt"
+      "declared": "Motifs d'arrêt",
+      "built_in": "Intégré",
+      "empty": "Aucun arrêt déclaré",
+      "delete": "Supprimer {{code}}",
+      "add": "Ajouter un arrêt",
+      "class": {
+        "custom": "Personnalisé",
+        "missing_grounds": "Éléments manquants",
+        "loop_exhausted": "Boucle épuisée"
+      },
+      "message": "Message",
+      "default_message": "BLOQUÉ · {{label}}\n{request} s'est arrêtée à {step}.\n{tasks}"
     },
     "terminal": {
       "leaves": "Quitte l'espace de travail"
@@ -492,7 +554,12 @@
     "graph": {
       "collapse": "Réduire",
       "find": "Trouver une étape",
-      "worst_case": "Jusqu'à {{count}} tâches dans le pire cas"
+      "worst_case": "Jusqu'à {{count}} tâches dans le pire cas",
+      "show_loops": "Afficher les boucles seulement",
+      "fit": "Ajuster",
+      "vertical_title": "Étapes dans l'ordre",
+      "exits_one": "{{count}} sortie",
+      "exits_other": "{{count}} sorties"
     },
     "request": {
       "path": "Parcours",
@@ -502,7 +569,12 @@
     },
     "trial": {
       "run": "Exécution d'essai",
-      "badge": "Essai"
+      "badge": "Essai",
+      "dialog_title": "Lancer une exécution d'essai",
+      "description": "Les vrais agents traitent une nouvelle demande d'essai. Le travail ne quitte pas l'espace de travail avant qu'une personne l'ait vu.",
+      "title_label": "Titre de la demande d'essai",
+      "start": "Lancer",
+      "failed": "Impossible de lancer l'exécution d'essai"
     },
     "unsupported": "Non pris en charge par cette version",
     "editor": {
@@ -528,6 +600,105 @@
       "submit": "Importer",
       "failed": "Impossible d'importer le fichier"
     },
-    "drafts": "Brouillons"
+    "drafts": "Brouillons",
+    "edges": {
+      "title": "Liens de routage",
+      "add": "Ajouter un lien",
+      "label_placeholder": "Libellé du lien",
+      "default_label": "Suivant",
+      "manual": "Manuel",
+      "move_up": "Monter le lien {{n}}",
+      "move_down": "Descendre le lien {{n}}",
+      "delete": "Supprimer le lien {{n}}",
+      "destination": "Destination",
+      "group_steps": "Étapes et fins",
+      "group_stops": "Arrêts",
+      "step_option": "Étape : {{name}}",
+      "terminal_option": "Fin : {{key}}",
+      "stop_option": "Arrêt : {{name}}",
+      "stop_stalled": "Arrêt : bloqué",
+      "loop": "Lien de retour de boucle",
+      "no_loop": "Pas de boucle (lien avant)",
+      "loop_option": "{{key}} (en-tête : {{header}})",
+      "empty": "Aucun lien configuré pour cette étape"
+    },
+    "common": {
+      "key": "Clé",
+      "label": "Libellé",
+      "kind": "Type",
+      "code": "Code",
+      "class": "Classe",
+      "message_key": "Clé du message"
+    },
+    "loops": {
+      "col_header": "Étape d'en-tête",
+      "col_max": "Limite maximale",
+      "col_reset": "Réinitialisation",
+      "delete": "Supprimer {{key}}",
+      "empty": "Aucune boucle déclarée",
+      "header_placeholder": "Étape d'en-tête…",
+      "mode_fixed": "Nombre fixe",
+      "mode_var": "Depuis une variable",
+      "max_var": "Depuis {{var}}, jusqu'à {{cap}}",
+      "var_label": "Variable entière éligible",
+      "var_placeholder": "Choisir une variable…",
+      "var_option": "{{key}} (max : {{max}})",
+      "cap_placeholder": "Plafond",
+      "add": "Ajouter une boucle"
+    },
+    "outline": {
+      "title": "Étapes",
+      "search": "Rechercher des étapes…",
+      "empty": "Aucune étape trouvée"
+    },
+    "inspector": {
+      "step_title_placeholder": "Titre de l'étape",
+      "quorum": "Quorum",
+      "exit_role": "Rôle de sortie",
+      "notice": "Clé du message d'avis",
+      "tasks": "Tâches ({{count}} / {{limit}})",
+      "no_tasks": "Aucune tâche dans cette étape",
+      "default_task_title": "Tâche {{n}}"
+    },
+    "task_card": {
+      "title_placeholder": "Titre de la tâche",
+      "key": "Clé : {{key}}",
+      "kind_work": "Travail",
+      "kind_gate": "Contrôle",
+      "delete": "Supprimer la tâche {{key}}",
+      "role": "Rôle",
+      "no_inputs": "Aucune tâche dans les étapes précédentes",
+      "no_skills": "Le squad n'a aucune compétence",
+      "missing_skills": "R09 : il manque des compétences au rôle : {{skills}}",
+      "must_set": "Doit définir",
+      "instructions": "Instructions",
+      "instructions_placeholder": "Ce que fait l'agent ou le membre…"
+    },
+    "terminals": {
+      "col_status": "Statut",
+      "col_scope": "Portée",
+      "internal": "Interne",
+      "delete": "Supprimer {{key}}",
+      "status_placeholder": "Statut (par exemple done)",
+      "add": "Ajouter une fin"
+    },
+    "templates": {
+      "blank": "Étape vide",
+      "work": "Travail",
+      "gate": "Porte",
+      "quorum": "Revue à quorum",
+      "human": "Approbation humaine",
+      "lead": "Décision du chef",
+      "task_work": "Faire le travail",
+      "task_gate": "Vérifier le travail",
+      "task_reviewer": "Relecteur {{n}}",
+      "edge_next": "Suivant",
+      "edge_blocked": "Bloqué",
+      "edge_passed": "Validé",
+      "edge_rework": "Renvoyer pour correction",
+      "edge_stopped": "Arrêté",
+      "edge_release": "Approuver et continuer",
+      "notice_human_approval": "{requester} {request} attend l'approbation d'une personne."
+    }
   }
 }

@@ -93,6 +93,7 @@ import {
 import { FileUploadButton } from "@multica/ui/components/common/file-upload-button";
 import { BorderBeam } from "@multica/ui/components/common/border-beam";
 import { ClearablePillButton, PillButton } from "../common/pill-button";
+import { FlowWorkflowPicker } from "./flow-workflow-picker";
 import { ActorAvatar } from "../common/actor-avatar";
 import { PropertyIcon } from "../common/property-icon";
 import {
@@ -298,6 +299,8 @@ export function ManualCreatePanel({
     }
     return draft.manual.assigneeId;
   });
+  // The workflow a request given to a squad runs on; undefined is the squad's active one (spec 16.5).
+  const [flowWorkflowId, setFlowWorkflowId] = useState<string | undefined>(undefined);
   const [assigneeCleared, setAssigneeCleared] = useState(data?.manual_assignee_cleared === true);
   const [startDate, setStartDate] = useState<string | null>(draft.manual.startDate);
   const [dueDate, setDueDate] = useState<string | null>(
@@ -419,6 +422,8 @@ export function ManualCreatePanel({
   const updateStatus = (v: IssueStatus) => { setStatus(v); setManual({ status: v }); };
   const updatePriority = (v: IssuePriority) => { setPriority(v); setShared({ priority: v }); };
   const updateAssignee = (type?: IssueAssigneeType, id?: string) => {
+    // A workflow chosen for one squad means nothing for another assignee.
+    if (id !== assigneeId) setFlowWorkflowId(undefined);
     setAssigneeType(type); setAssigneeId(id);
     setAssigneeCleared(!id);
     setManual({ assigneeType: type, assigneeId: id });
@@ -600,6 +605,7 @@ export function ManualCreatePanel({
           // Stage is only meaningful for a sub-issue (relative to its siblings).
           stage: parentIssueId && stage != null ? stage : undefined,
           project_id: projectId,
+          flow_workflow_id: assigneeType === "squad" ? flowWorkflowId : undefined,
         });
       }
 
@@ -1130,6 +1136,16 @@ export function ManualCreatePanel({
                   align="start"
                   open={fieldPickerOpen === "assignee" ? true : undefined}
                   onOpenChange={(open) => setFieldPickerOpen(open ? "assignee" : null)}
+                />
+              )}
+
+              {/* Workflow: only for a squad that has more than one flow to choose from */}
+              {assigneeType === "squad" && assigneeId && (
+                <FlowWorkflowPicker
+                  wsId={wsId}
+                  squadId={assigneeId}
+                  value={flowWorkflowId}
+                  onChange={setFlowWorkflowId}
                 />
               )}
 

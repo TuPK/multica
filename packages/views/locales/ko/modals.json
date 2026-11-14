@@ -262,7 +262,9 @@
       "error_daemon_version": "이 에이전트의 데몬 CLI({{current}})가 필요한 버전 {{min}}보다 낮습니다. 에이전트로 만들기를 사용하려면 데몬을 업그레이드하세요.",
       "error_unknown": "제출하지 못했습니다. 다시 시도하세요.",
       "sub_issue_of": "{{identifier}}의 하위 태스크"
-    }
+    },
+    "flow_workflow": "워크플로",
+    "flow_workflow_active": "{{name}} (활성)"
   },
   "mark_duplicate": {
     "title": "중복으로 표시",

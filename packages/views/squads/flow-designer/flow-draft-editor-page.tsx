@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { clientErrorMessage } from "@multica/core/api";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { useCurrentMember } from "@multica/core/permissions";
+import { companySquadMembersOptions } from "@multica/core/company";
+import { agentListOptions, memberListOptions } from "@multica/core/workspace/queries";
 import {
   useExportFlowDraft,
   useFlowCapabilities,
@@ -16,6 +19,8 @@ import type { FlowCapabilitiesResponse, FlowDocStep, FlowDraft, FlowIssue } from
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
 import { Badge } from "@multica/ui/components/ui/badge";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@multica/ui/components/ui/sheet";
+import { useIsMobile } from "@multica/ui/hooks/use-mobile";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +43,7 @@ import { AppLink, useNavigation } from "../../navigation";
 import { useDraftBuffer } from "./use-draft-buffer";
 import { DraftStatus } from "./draft-status";
 import { Outline } from "./outline";
+import { addStepFromTemplate, type StepTemplateCopy } from "./step-templates";
 import { StepInspector } from "./step-inspector";
 import { RolesPanel } from "./roles-panel";
 import { VarsPanel } from "./vars-panel";
@@ -175,7 +181,25 @@ function FlowDraftEditor({ squadId, draftId, draft, capabilities, onReload }: Fl
   const [selectedStepKey, setSelectedStepKey] = useState<string | null>(null);
   const [simulateOpen, setSimulateOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
+  // On a phone the outline has the whole width and the inspector of a step opens over it as a sheet (spec 11.4).
+  const isMobile = useIsMobile();
+  const [inspectorOpen, setInspectorOpen] = useState(false);
   const [issues, setIssues] = useState<FlowIssue[]>([]);
+
+  // Who a role can be given to: the agents of the squad besides its lead, and the people of the workspace.
+  const squadMembersQuery = useQuery(companySquadMembersOptions(wsId, squadId));
+  const agentsQuery = useQuery(agentListOptions(wsId));
+  const membersQuery = useQuery(memberListOptions(wsId));
+  const agentChoices = useMemo(() => {
+    const names = new Map((agentsQuery.data ?? []).map((a) => [a.id, a.name]));
+    return (squadMembersQuery.data ?? [])
+      .filter((m) => m.member_type === "agent" && m.role !== "leader")
+      .map((m) => ({ id: m.member_id, name: names.get(m.member_id) ?? m.member_id }));
+  }, [squadMembersQuery.data, agentsQuery.data]);
+  const memberChoices = useMemo(
+    () => (membersQuery.data ?? []).map((m) => ({ id: m.user_id, name: m.name || m.email })),
+    [membersQuery.data],
+  );
 
   const validateMut = useValidateFlowDraft();
   const exportMut = useExportFlowDraft();
@@ -216,6 +240,27 @@ function FlowDraftEditor({ squadId, draftId, draft, capabilities, onReload }: Fl
     if (latest) buffer.reload(latest);
   };
 
+  // The words a step template writes into the document, in the language of the person who adds it.
+  const templateCopy: StepTemplateCopy = {
+    stepTitle: {
+      work: t(($) => $.flow_designer.templates.work),
+      gate: t(($) => $.flow_designer.templates.gate),
+      quorum: t(($) => $.flow_designer.templates.quorum),
+      human: t(($) => $.flow_designer.templates.human),
+      lead: t(($) => $.flow_designer.templates.lead),
+    },
+    taskWork: t(($) => $.flow_designer.templates.task_work),
+    taskGate: t(($) => $.flow_designer.templates.task_gate),
+    taskReviewer: (n) => t(($) => $.flow_designer.templates.task_reviewer, { n }),
+    edgeNext: t(($) => $.flow_designer.templates.edge_next),
+    edgeBlocked: t(($) => $.flow_designer.templates.edge_blocked),
+    edgePassed: t(($) => $.flow_designer.templates.edge_passed),
+    edgeRework: t(($) => $.flow_designer.templates.edge_rework),
+    edgeStopped: t(($) => $.flow_designer.templates.edge_stopped),
+    edgeRelease: t(($) => $.flow_designer.templates.edge_release),
+    noticeHumanApproval: t(($) => $.flow_designer.templates.notice_human_approval),
+  };
+
   const tabs: { id: EditorTab; label: string }[] = [
     { id: "editor", label: t(($) => $.flow_designer.editor.tab_editor) },
     { id: "graph", label: t(($) => $.flow_designer.editor.tab_graph) },
@@ -227,6 +272,20 @@ function FlowDraftEditor({ squadId, draftId, draft, capabilities, onReload }: Fl
     { id: "terminals", label: t(($) => $.flow_designer.editor.tab_terminals) },
     { id: "problems", label: t(($) => $.flow_designer.editor.tab_problems) },
   ];
+
+  const inspector = currentStep ? (
+    <StepInspector
+      step={currentStep}
+      onChangeStep={(updated) => {
+        buffer.setDoc((prev) => ({
+          ...prev,
+          steps: (prev.steps ?? []).map((s) => (s.key === updated.key ? updated : s)),
+        }));
+      }}
+      doc={buffer.doc}
+      taskLimit={capabilities?.limits.tasks_per_step ?? 12}
+    />
+  ) : null;
 
   return (
     <div className="flex h-[calc(100vh-4rem)] w-full flex-col overflow-hidden bg-background">
@@ -339,42 +398,44 @@ function FlowDraftEditor({ squadId, draftId, draft, capabilities, onReload }: Fl
         {activeTab === "editor" && (
           <>
             <Outline
+              fullWidth={isMobile}
               doc={buffer.doc}
               selectedStepKey={currentStep?.key ?? null}
-              onSelectStep={(key) => setSelectedStepKey(key)}
-              onAddStep={(kind) => {
-                const count = (buffer.doc.steps?.length ?? 0) + 1;
-                const newStep: FlowDocStep = {
-                  key: `step_${count}`,
-                  title: t(($) => $.flow_designer.editor.step_title, { n: count }),
-                  kind,
-                  tasks: [],
-                  edges: [],
-                };
-                buffer.setDoc((prev) => ({ ...prev, steps: [...(prev.steps ?? []), newStep] }));
-                setSelectedStepKey(newStep.key);
+              onSelectStep={(key) => {
+                setSelectedStepKey(key);
+                if (isMobile) setInspectorOpen(true);
+              }}
+              onAddStep={(template) => {
+                if (template === "blank") {
+                  const count = (buffer.doc.steps?.length ?? 0) + 1;
+                  const newStep: FlowDocStep = {
+                    key: `step_${count}`,
+                    title: t(($) => $.flow_designer.editor.step_title, { n: count }),
+                    kind: "tasks",
+                    tasks: [],
+                    edges: [],
+                  };
+                  buffer.setDoc((prev) => ({ ...prev, steps: [...(prev.steps ?? []), newStep] }));
+                  setSelectedStepKey(newStep.key);
+                } else {
+                  const added = addStepFromTemplate(buffer.doc, template, templateCopy);
+                  buffer.setDoc(() => added.doc);
+                  setSelectedStepKey(added.stepKey);
+                }
+                if (isMobile) setInspectorOpen(true);
               }}
               issues={issues}
               stepLimit={capabilities?.limits.steps ?? 40}
             />
 
-            {currentStep ? (
-              <StepInspector
-                step={currentStep}
-                onChangeStep={(updated) => {
-                  buffer.setDoc((prev) => ({
-                    ...prev,
-                    steps: (prev.steps ?? []).map((s) => (s.key === updated.key ? updated : s)),
-                  }));
-                }}
-                doc={buffer.doc}
-                taskLimit={capabilities?.limits.tasks_per_step ?? 12}
-              />
-            ) : (
-              <div className="flex flex-1 items-center justify-center text-caption text-muted-foreground">
-                {t(($) => $.flow_designer.editor.select_step)}
-              </div>
-            )}
+            {!isMobile &&
+              (currentStep ? (
+                inspector
+              ) : (
+                <div className="flex flex-1 items-center justify-center text-caption text-muted-foreground">
+                  {t(($) => $.flow_designer.editor.select_step)}
+                </div>
+              ))}
           </>
         )}
 
@@ -396,6 +457,8 @@ function FlowDraftEditor({ squadId, draftId, draft, capabilities, onReload }: Fl
               doc={buffer.doc}
               onChangeRoles={(roles) => buffer.setDoc((prev) => ({ ...prev, roles }))}
               squadId={squadId}
+              agentChoices={agentChoices}
+              memberChoices={memberChoices}
               roleLimit={capabilities?.limits.roles ?? 16}
             />
           </div>
@@ -433,7 +496,11 @@ function FlowDraftEditor({ squadId, draftId, draft, capabilities, onReload }: Fl
 
         {activeTab === "stops" && (
           <div className="flex-1 overflow-y-auto">
-            <StopsPanel doc={buffer.doc} onChangeStops={(stops) => buffer.setDoc((prev) => ({ ...prev, stops }))} />
+            <StopsPanel
+              doc={buffer.doc}
+              onChangeStops={(stops) => buffer.setDoc((prev) => ({ ...prev, stops }))}
+              onChangeMessages={(messages) => buffer.setDoc((prev) => ({ ...prev, messages }))}
+            />
           </div>
         )}
 
@@ -454,6 +521,17 @@ function FlowDraftEditor({ squadId, draftId, draft, capabilities, onReload }: Fl
           </div>
         )}
       </div>
+
+      {isMobile && (
+        <Sheet open={inspectorOpen && currentStep !== null} onOpenChange={setInspectorOpen}>
+          <SheetContent side="right" className="w-full overflow-y-auto p-0">
+            <SheetHeader className="border-b border-border p-4">
+              <SheetTitle className="truncate text-title font-semibold">{currentStep?.title || currentStep?.key}</SheetTitle>
+            </SheetHeader>
+            {inspector}
+          </SheetContent>
+        </Sheet>
+      )}
 
       <Dialog open={buffer.isConflict}>
         <DialogContent className="max-w-md space-y-4 p-6">

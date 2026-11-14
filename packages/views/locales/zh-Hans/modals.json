@@ -262,7 +262,9 @@
       "error_daemon_version": "该智能体的守护进程 CLI（{{current}}）低于要求的 {{min}}。请升级守护进程后再使用通过智能体创建。",
       "error_unknown": "提交失败，请重试。",
       "sub_issue_of": "作为 {{identifier}} 的子任务"
-    }
+    },
+    "flow_workflow": "工作流",
+    "flow_workflow_active": "{{name}}（使用中）"
   },
   "mark_duplicate": {
     "title": "标记为重复",

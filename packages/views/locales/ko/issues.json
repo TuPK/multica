@@ -2378,6 +2378,8 @@
       "workflow_has_flow_requests": "진행 중인 플로우 요청이 있는 워크플로는 삭제할 수 없습니다",
       "flow_workflow_forbidden": "플로우 워크플로를 구성하려면 관리자 권한이 필요합니다"
     },
-    "resume_skip_cancelled": "취소된 작업 없이 재개"
+    "resume_skip_cancelled": "취소된 작업 없이 재개",
+    "skip_checkpoint_title": "이 작업을 확인한 사람이 없습니다",
+    "skip_checkpoint_ack": "에이전트의 작업을 본 사람이 없음을 이해하며 그래도 요청을 재개합니다"
   }
 }

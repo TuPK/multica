@@ -51,6 +51,9 @@ const fakeApi = {
   publishFlowDraft: vi.fn(),
   exportFlowDraft: vi.fn(),
   setSquadActiveWorkflow: vi.fn(),
+  listSquadMembers: vi.fn(),
+  listAgents: vi.fn(),
+  listMembers: vi.fn(),
 };
 
 function capabilities(over: Partial<FlowCapabilitiesResponse> = {}, features: Partial<FlowCapabilitiesResponse["features"]> = {}): FlowCapabilitiesResponse {
@@ -149,6 +152,15 @@ describe("FlowDraftEditorPage", () => {
     fakeApi.getFlowCapabilities.mockResolvedValue(capabilities());
     fakeApi.getFlowDraft.mockResolvedValue(sampleDraft);
     fakeApi.validateFlowDraft.mockResolvedValue({ ok: true, revision: 1, issues: [], analysis: null, fact_catalog: {} });
+    fakeApi.listSquadMembers.mockResolvedValue([
+      { id: "m1", squad_id: "squad-1", member_type: "agent", member_id: "agent-lead", role: "leader", created_at: "" },
+      { id: "m2", squad_id: "squad-1", member_type: "agent", member_id: "agent-1", role: "", created_at: "" },
+    ]);
+    fakeApi.listAgents.mockResolvedValue([
+      { id: "agent-lead", name: "Lead agent" },
+      { id: "agent-1", name: "Writer agent" },
+    ]);
+    fakeApi.listMembers.mockResolvedValue([{ id: "mem-1", user_id: "user-1", name: "Ana", email: "ana@example.test", role: "member" }]);
   });
 
   afterEach(() => {
@@ -519,6 +531,73 @@ describe("FlowDraftEditorPage", () => {
     const inputs = screen.getAllByPlaceholderText("Edge label");
     expect(inputs[0]).toHaveValue("Done");
     expect(inputs[1]).toHaveValue("Back");
+  });
+
+  // A role is given to the agents of the squad besides its lead, and to people of the workspace (spec 11.2).
+  it("gives an agent role to an agent of the squad, never to its lead, and saves the binding", async () => {
+    await loaded();
+    fireEvent.click(screen.getByRole("button", { name: "Roles" }));
+    // Both roles of the draft list the agents of the squad; the first row is the worker.
+    const writer = (await screen.findAllByRole("checkbox", { name: "Writer agent" }))[0]!;
+    expect(screen.queryByRole("checkbox", { name: "Lead agent" })).toBeNull();
+    vi.useFakeTimers();
+    fakeApi.updateFlowDraft.mockResolvedValue({ ...sampleDraft, revision: 2 });
+
+    fireEvent.click(writer);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
+    });
+
+    const saved = fakeApi.updateFlowDraft.mock.calls[0]![2].doc;
+    expect(saved.roles.find((r: { key: string }) => r.key === "worker").bind).toEqual({ agent_ids: ["agent-1"] });
+  });
+
+  describe("adding a step", () => {
+    it("offers a blank step and the five templates", async () => {
+      await loaded();
+      fireEvent.click(screen.getByRole("button", { name: "Add step" }));
+      const names = (await screen.findAllByRole("menuitem")).map((i) => i.textContent);
+      expect(names).toEqual(["Blank step", "Work", "Gate", "Quorum review", "Human approval", "Lead decision"]);
+    });
+
+    it("a Gate template adds a gate with its standard edges, selects it, and the save carries it", async () => {
+      await loaded();
+      fireEvent.click(screen.getByRole("button", { name: "Add step" }));
+      const gateItem = await screen.findByRole("menuitem", { name: "Gate" });
+      vi.useFakeTimers();
+      fakeApi.updateFlowDraft.mockResolvedValue({ ...sampleDraft, revision: 2 });
+      fireEvent.click(gateItem);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1500);
+      });
+
+      const saved = fakeApi.updateFlowDraft.mock.calls[0]![2].doc;
+      expect(saved.steps).toHaveLength(3);
+      const gate = saved.steps[2];
+      expect(gate).toMatchObject({ key: "gate_1", title: "Gate", kind: "tasks" });
+      // The draft already has a loop, so a rejected gate can go back along it.
+      expect(gate.edges.map((e: { label: string }) => e.label)).toEqual(["Blocked", "Passed", "Send back for rework", "Stopped"]);
+      expect(gate.tasks[0]).toMatchObject({ kind: "gate", role: "reviewer" });
+      // The step shown in the inspector is the new one.
+      expect(screen.getByDisplayValue("Gate")).toBeInTheDocument();
+      // The steps that were there are untouched.
+      expect(saved.steps.slice(0, 2)).toEqual(sampleDraft.doc.steps);
+    });
+
+    it("a blank step is still empty", async () => {
+      await loaded();
+      fireEvent.click(screen.getByRole("button", { name: "Add step" }));
+      const blankItem = await screen.findByRole("menuitem", { name: "Blank step" });
+      vi.useFakeTimers();
+      fakeApi.updateFlowDraft.mockResolvedValue({ ...sampleDraft, revision: 2 });
+      fireEvent.click(blankItem);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1500);
+      });
+
+      const saved = fakeApi.updateFlowDraft.mock.calls[0]![2].doc;
+      expect(saved.steps[2]).toMatchObject({ key: "step_3", kind: "tasks", tasks: [], edges: [] });
+    });
   });
 
   it("the release warning shows and only an admin can tick the acknowledgement", async () => {

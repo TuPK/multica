@@ -264,7 +264,9 @@
       "error_daemon_version": "This agent's daemon CLI ({{current}}) is below the required {{min}}. Upgrade the daemon to use Create with agent.",
       "error_unknown": "Failed to submit. Try again.",
       "sub_issue_of": "Sub-issue of {{identifier}}"
-    }
+    },
+    "flow_workflow": "Workflow",
+    "flow_workflow_active": "{{name}} (active)"
   },
   "mark_duplicate": {
     "title": "Mark as duplicate",

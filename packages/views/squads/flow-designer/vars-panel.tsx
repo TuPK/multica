@@ -1,4 +1,5 @@
-/* eslint-disable i18next/no-literal-string, no-restricted-syntax */
+"use client";
+
 import { useState } from "react";
 import type { FlowDoc, FlowDocVar } from "@multica/core/types";
 import { Badge } from "@multica/ui/components/ui/badge";
@@ -48,6 +49,24 @@ export function VarsPanel({
     setNewDefault("");
   };
 
+  // The types the server lists; one this build does not know is shown as it is sent.
+  const typeLabel = (type: string) => {
+    switch (type) {
+      case "string":
+        return t(($) => $.flow_designer.vars.type.string);
+      case "int":
+        return t(($) => $.flow_designer.vars.type.int);
+      case "bool":
+        return t(($) => $.flow_designer.vars.type.bool);
+      case "enum":
+        return t(($) => $.flow_designer.vars.type.enum);
+      case "list_string":
+        return t(($) => $.flow_designer.vars.type.list_string);
+      default:
+        return type;
+    }
+  };
+
   const handleDeleteVar = (key: string) => {
     onChangeVars((doc.vars ?? []).filter((v) => v.key !== key));
   };
@@ -65,11 +84,11 @@ export function VarsPanel({
         <table className="w-full text-caption border-collapse">
           <thead>
             <tr className="border-b border-border bg-muted/50 text-left text-muted-foreground">
-              <th className="p-2 font-medium">Key</th>
-              <th className="p-2 font-medium">Type</th>
-              <th className="p-2 font-medium">Default</th>
-              <th className="p-2 font-medium">Set By</th>
-              <th className="p-2 font-medium">Set At</th>
+              <th className="p-2 font-medium">{t(($) => $.flow_designer.common.key)}</th>
+              <th className="p-2 font-medium">{t(($) => $.flow_designer.vars.col_type)}</th>
+              <th className="p-2 font-medium">{t(($) => $.flow_designer.vars.col_default)}</th>
+              <th className="p-2 font-medium">{t(($) => $.flow_designer.vars.col_set_by)}</th>
+              <th className="p-2 font-medium">{t(($) => $.flow_designer.vars.col_set_at)}</th>
               <th className="p-2 font-medium w-10"></th>
             </tr>
           </thead>
@@ -79,7 +98,7 @@ export function VarsPanel({
                 <td className="p-2 font-mono text-micro text-foreground">{v.key}</td>
                 <td className="p-2">
                   <Badge variant="secondary" className="text-micro font-normal">
-                    {v.type}
+                    {typeLabel(v.type)}
                   </Badge>
                 </td>
                 <td className="p-2 font-mono text-micro text-muted-foreground">
@@ -96,7 +115,7 @@ export function VarsPanel({
                     type="button"
                     variant="ghost"
                     size="xs"
-                    aria-label={`Delete ${v.key}`}
+                    aria-label={t(($) => $.flow_designer.vars.delete, { key: v.key })}
                     onClick={() => handleDeleteVar(v.key)}
                     className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                   >
@@ -108,7 +127,7 @@ export function VarsPanel({
             {(doc.vars ?? []).length === 0 && (
               <tr>
                 <td colSpan={6} className="p-4 text-center text-muted-foreground">
-                  No variables declared
+                  {t(($) => $.flow_designer.vars.empty)}
                 </td>
               </tr>
             )}
@@ -118,6 +137,8 @@ export function VarsPanel({
 
       <div className="flex items-center gap-2 pt-2 flex-wrap">
         <Input
+          // A key is a code token: the same in every language.
+          // eslint-disable-next-line no-restricted-syntax
           placeholder="var_key"
           value={newKey}
           onChange={(e) => setNewKey(e.target.value)}
@@ -130,14 +151,14 @@ export function VarsPanel({
           className="h-8 rounded-md border border-input bg-background px-2 text-caption"
           disabled={atLimit}
         >
-          <option value="string">string</option>
-          <option value="int">int</option>
-          <option value="bool">bool</option>
-          <option value="enum">enum</option>
-          <option value="list_string">list_string</option>
+          <option value="string">{typeLabel("string")}</option>
+          <option value="int">{typeLabel("int")}</option>
+          <option value="bool">{typeLabel("bool")}</option>
+          <option value="enum">{typeLabel("enum")}</option>
+          <option value="list_string">{typeLabel("list_string")}</option>
         </select>
         <Input
-          placeholder="Default value"
+          placeholder={t(($) => $.flow_designer.vars.default_placeholder)}
           value={newDefault}
           onChange={(e) => setNewDefault(e.target.value)}
           className="h-8 text-caption w-36"
@@ -152,11 +173,11 @@ export function VarsPanel({
           className="h-8 gap-1 text-caption"
         >
           <Plus className="size-3.5" aria-hidden />
-          <span>Add variable</span>
+          <span>{t(($) => $.flow_designer.vars.add)}</span>
         </Button>
         {atLimit && (
           <span className="text-micro text-muted-foreground">
-            Variable limit of {varLimit} reached
+            {t(($) => $.flow_designer.vars.limit_reached, { count: varLimit })}
           </span>
         )}
       </div>

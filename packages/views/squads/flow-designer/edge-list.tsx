@@ -1,4 +1,5 @@
-/* eslint-disable i18next/no-literal-string, no-restricted-syntax */
+"use client";
+
 import { useMemo } from "react";
 import type { FlowDoc, FlowDocEdge, FlowDocLoop } from "@multica/core/types";
 import { Badge } from "@multica/ui/components/ui/badge";
@@ -20,18 +21,18 @@ export function EdgeList({
   doc,
   currentStepKey: _currentStepKey,
 }: EdgeListProps) {
-  const { t: _t } = useT("squads");
+  const { t } = useT("squads");
 
   // Step keys and terminal keys for "to" picker
   const targetOptions = useMemo(() => {
-    const steps = doc.steps.map((s) => ({ value: s.key, label: `Step: ${s.title || s.key}`, kind: "step" as const }));
+    const steps = doc.steps.map((s) => ({ value: s.key, label: t(($) => $.flow_designer.edges.step_option, { name: s.title || s.key }), kind: "step" as const }));
     const terminals = (doc.terminals ?? []).map((term) => ({
       value: term.key,
-      label: `Terminal: ${term.key}`,
+      label: t(($) => $.flow_designer.edges.terminal_option, { key: term.key }),
       kind: "terminal" as const,
     }));
     return [...steps, ...terminals];
-  }, [doc.steps, doc.terminals]);
+  }, [doc.steps, doc.terminals, t]);
 
   const handleMove = (index: number, direction: "up" | "down") => {
     const targetIndex = direction === "up" ? index - 1 : index + 1;
@@ -51,7 +52,7 @@ export function EdgeList({
     const id = `edge_${Date.now()}`;
     const newEdge: FlowDocEdge = {
       id,
-      label: "Next",
+      label: t(($) => $.flow_designer.edges.default_label),
       to: doc.steps[0]?.key,
       trigger: "auto",
     };
@@ -82,7 +83,7 @@ export function EdgeList({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-caption font-semibold">Routing Edges</span>
+        <span className="text-caption font-semibold">{t(($) => $.flow_designer.edges.title)}</span>
         <Button
           type="button"
           variant="outline"
@@ -91,7 +92,7 @@ export function EdgeList({
           className="h-7 gap-1 text-caption"
         >
           <Plus className="size-3" aria-hidden />
-          <span>Add edge</span>
+          <span>{t(($) => $.flow_designer.edges.add)}</span>
         </Button>
       </div>
 
@@ -114,11 +115,11 @@ export function EdgeList({
                   <Input
                     value={edge.label}
                     onChange={(e) => handleUpdateEdge(index, { label: e.target.value })}
-                    placeholder="Edge label"
+                    placeholder={t(($) => $.flow_designer.edges.label_placeholder)}
                     className="h-7 text-caption font-medium max-w-44"
                   />
                   {edge.trigger === "manual" && (
-                    <Badge variant="outline" className="text-micro font-normal">Manual</Badge>
+                    <Badge variant="outline" className="text-micro font-normal">{t(($) => $.flow_designer.edges.manual)}</Badge>
                   )}
                   {isLoop && (
                     <Badge variant="outline" className="text-micro text-blue-600 border-blue-500/30 gap-1 font-normal">
@@ -134,7 +135,7 @@ export function EdgeList({
                     variant="ghost"
                     size="xs"
                     disabled={index === 0}
-                    aria-label={`Move edge ${index + 1} up`}
+                    aria-label={t(($) => $.flow_designer.edges.move_up, { n: index + 1 })}
                     onClick={() => handleMove(index, "up")}
                     className="h-6 w-6 p-0"
                   >
@@ -145,7 +146,7 @@ export function EdgeList({
                     variant="ghost"
                     size="xs"
                     disabled={index === edges.length - 1}
-                    aria-label={`Move edge ${index + 1} down`}
+                    aria-label={t(($) => $.flow_designer.edges.move_down, { n: index + 1 })}
                     onClick={() => handleMove(index, "down")}
                     className="h-6 w-6 p-0"
                   >
@@ -155,7 +156,7 @@ export function EdgeList({
                     type="button"
                     variant="ghost"
                     size="xs"
-                    aria-label={`Delete edge ${index + 1}`}
+                    aria-label={t(($) => $.flow_designer.edges.delete, { n: index + 1 })}
                     onClick={() => handleDelete(index)}
                     className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
                   >
@@ -167,7 +168,7 @@ export function EdgeList({
               {/* Destination picker: Step/Terminal vs Stop */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                 <div>
-                  <label className="text-micro text-muted-foreground block mb-0.5">Destination</label>
+                  <label className="text-micro text-muted-foreground block mb-0.5">{t(($) => $.flow_designer.edges.destination)}</label>
                   <select
                     value={isStop ? `stop:${edge.stop}` : `to:${edge.to}`}
                     onChange={(e) => {
@@ -180,18 +181,18 @@ export function EdgeList({
                     }}
                     className="w-full h-7 rounded border border-input bg-background px-2 text-micro"
                   >
-                    <optgroup label="Steps & Terminals">
+                    <optgroup label={t(($) => $.flow_designer.edges.group_steps)}>
                       {targetOptions.map((opt) => (
                         <option key={`to:${opt.value}`} value={`to:${opt.value}`}>
                           {opt.label}
                         </option>
                       ))}
                     </optgroup>
-                    <optgroup label="Stops">
-                      <option value="stop:stalled">Stop: stalled</option>
+                    <optgroup label={t(($) => $.flow_designer.edges.group_stops)}>
+                      <option value="stop:stalled">{t(($) => $.flow_designer.edges.stop_stalled)}</option>
                       {(doc.stops ?? []).map((s) => (
                         <option key={`stop:${s.code}`} value={`stop:${s.code}`}>
-                          Stop: {s.label || s.code}
+                          {t(($) => $.flow_designer.edges.stop_option, { name: s.label || s.code })}
                         </option>
                       ))}
                     </optgroup>
@@ -200,16 +201,16 @@ export function EdgeList({
 
                 {!isStop && (
                   <div>
-                    <label className="text-micro text-muted-foreground block mb-0.5">Loop Back-edge</label>
+                    <label className="text-micro text-muted-foreground block mb-0.5">{t(($) => $.flow_designer.edges.loop)}</label>
                     <select
                       value={edge.loop || ""}
                       onChange={(e) => handleUpdateEdge(index, { loop: e.target.value || undefined })}
                       className="w-full h-7 rounded border border-input bg-background px-2 text-micro"
                     >
-                      <option value="">No loop (forward edge)</option>
+                      <option value="">{t(($) => $.flow_designer.edges.no_loop)}</option>
                       {loops.map((l) => (
                         <option key={l.key} value={l.key}>
-                          {l.key} (header: {l.header})
+                          {t(($) => $.flow_designer.edges.loop_option, { key: l.key, header: l.header })}
                         </option>
                       ))}
                     </select>
@@ -222,7 +223,7 @@ export function EdgeList({
 
         {edges.length === 0 && (
           <div className="p-3 text-center text-muted-foreground text-caption rounded-lg border border-dashed border-border">
-            No edges configured for this step
+            {t(($) => $.flow_designer.edges.empty)}
           </div>
         )}
       </div>

@@ -2378,6 +2378,8 @@
       "workflow_has_flow_requests": "无法删除仍有未结流程请求的工作流",
       "flow_workflow_forbidden": "配置执行工作流需要管理员权限"
     },
-    "resume_skip_cancelled": "跳过已取消的任务并继续"
+    "resume_skip_cancelled": "跳过已取消的任务并继续",
+    "skip_checkpoint_title": "还没有人看过这项工作",
+    "skip_checkpoint_ack": "我了解还没有人看过智能体的工作，仍然继续此请求"
   }
 }

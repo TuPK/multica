@@ -362,8 +362,24 @@
       "kind": {
         "agent": "Agente",
         "member": "Miembro",
-        "managers": "Gestores del squad"
-      }
+        "managers": "Gestores del squad",
+        "lead": "Líder",
+        "requester": "Solicitante"
+      },
+      "add_agent_notice": "Añade un agente al squad",
+      "add_agent": "Añadir agente",
+      "col_pool": "Grupo",
+      "col_usage": "Uso",
+      "fixed_leader": "Líder fijo",
+      "in_use": "En uso",
+      "delete": "Eliminar {{key}}",
+      "label_placeholder": "Etiqueta",
+      "add": "Añadir rol",
+      "limit_reached": "Se alcanzó el límite de {{count}} roles",
+      "col_assigned": "Asignados",
+      "assigned_count": "{{count}} de {{pool}}",
+      "no_choices": "No hay a quién elegir",
+      "pool_label": "Grupo de {{key}}"
     },
     "step": {
       "work": "Paso de trabajo",
@@ -438,7 +454,13 @@
       "lead_may_work": "Entiendo que el líder puede realizar tareas"
     },
     "problems": {
-      "none": "Sin problemas"
+      "none": "Sin problemas",
+      "title": "Problemas de validación",
+      "errors_one": "{{count}} error",
+      "errors_other": "{{count}} errores",
+      "warnings_one": "{{count}} advertencia",
+      "warnings_other": "{{count}} advertencias",
+      "requires_ack": "Requiere confirmación"
     },
     "empty": {
       "title": "Aún no hay flujos de trabajo"
@@ -460,7 +482,20 @@
       "back_to": "Volver a {{step}}"
     },
     "verdicts": {
-      "title": "Veredictos"
+      "title": "Veredictos",
+      "built_in": "Conjuntos integrados (solo lectura)",
+      "custom": "Conjuntos personalizados",
+      "col_verdicts": "Veredictos",
+      "delete": "Eliminar {{key}}",
+      "empty": "No hay conjuntos de veredictos personalizados",
+      "add": "Añadir conjunto de veredictos",
+      "item": "{{key}} ({{class}})",
+      "class": {
+        "pass": "aprueba",
+        "fail": "suspende"
+      },
+      "pass_label": "Aprobado",
+      "fail_label": "Suspendido"
     },
     "verdict": {
       "pass": "Cuenta como aprobado",
@@ -476,10 +511,37 @@
       "min": "Al menos {{count}}"
     },
     "vars": {
-      "title": "Variables"
+      "title": "Variables",
+      "col_type": "Tipo",
+      "col_default": "Predeterminado",
+      "col_set_by": "Lo establece",
+      "col_set_at": "Se establece en",
+      "delete": "Eliminar {{key}}",
+      "empty": "No hay variables declaradas",
+      "default_placeholder": "Valor predeterminado",
+      "add": "Añadir variable",
+      "limit_reached": "Se alcanzó el límite de {{count}} variables",
+      "type": {
+        "string": "Texto",
+        "int": "Número",
+        "bool": "Sí o no",
+        "enum": "Opción",
+        "list_string": "Lista de textos"
+      }
     },
     "stops": {
-      "declared": "Motivos de parada"
+      "declared": "Motivos de parada",
+      "built_in": "Integrado",
+      "empty": "No hay paradas declaradas",
+      "delete": "Eliminar {{code}}",
+      "add": "Añadir parada",
+      "class": {
+        "custom": "Personalizada",
+        "missing_grounds": "Faltan fundamentos",
+        "loop_exhausted": "Bucle agotado"
+      },
+      "message": "Mensaje",
+      "default_message": "BLOQUEADO · {{label}}\n{request} se detuvo en {step}.\n{tasks}"
     },
     "terminal": {
       "leaves": "Sale del espacio de trabajo"
@@ -492,7 +554,12 @@
     "graph": {
       "collapse": "Contraer",
       "find": "Buscar un paso",
-      "worst_case": "Hasta {{count}} tareas en el peor caso"
+      "worst_case": "Hasta {{count}} tareas en el peor caso",
+      "show_loops": "Mostrar solo los bucles",
+      "fit": "Ajustar",
+      "vertical_title": "Pasos en orden",
+      "exits_one": "{{count}} salida",
+      "exits_other": "{{count}} salidas"
     },
     "request": {
       "path": "Ruta",
@@ -502,7 +569,12 @@
     },
     "trial": {
       "run": "Ejecución de prueba",
-      "badge": "Prueba"
+      "badge": "Prueba",
+      "dialog_title": "Iniciar una ejecución de prueba",
+      "description": "Los agentes reales procesan una nueva solicitud de prueba. El trabajo no sale del espacio de trabajo hasta que una persona lo revise.",
+      "title_label": "Título de la solicitud de prueba",
+      "start": "Iniciar",
+      "failed": "No se pudo iniciar la ejecución de prueba"
     },
     "unsupported": "No compatible con esta versión",
     "editor": {
@@ -528,6 +600,105 @@
       "submit": "Importar",
       "failed": "No se pudo importar el archivo"
     },
-    "drafts": "Borradores"
+    "drafts": "Borradores",
+    "edges": {
+      "title": "Aristas de enrutamiento",
+      "add": "Añadir arista",
+      "label_placeholder": "Etiqueta de la arista",
+      "default_label": "Siguiente",
+      "manual": "Manual",
+      "move_up": "Subir la arista {{n}}",
+      "move_down": "Bajar la arista {{n}}",
+      "delete": "Eliminar la arista {{n}}",
+      "destination": "Destino",
+      "group_steps": "Pasos y finales",
+      "group_stops": "Paradas",
+      "step_option": "Paso: {{name}}",
+      "terminal_option": "Final: {{key}}",
+      "stop_option": "Parada: {{name}}",
+      "stop_stalled": "Parada: bloqueado",
+      "loop": "Arista de vuelta del bucle",
+      "no_loop": "Sin bucle (arista hacia delante)",
+      "loop_option": "{{key}} (cabecera: {{header}})",
+      "empty": "Este paso no tiene aristas configuradas"
+    },
+    "common": {
+      "key": "Clave",
+      "label": "Etiqueta",
+      "kind": "Tipo",
+      "code": "Código",
+      "class": "Clase",
+      "message_key": "Clave del mensaje"
+    },
+    "loops": {
+      "col_header": "Paso de cabecera",
+      "col_max": "Límite máximo",
+      "col_reset": "Reinicio",
+      "delete": "Eliminar {{key}}",
+      "empty": "No hay bucles declarados",
+      "header_placeholder": "Paso de cabecera…",
+      "mode_fixed": "Cantidad fija",
+      "mode_var": "Desde una variable",
+      "max_var": "Desde {{var}}, hasta {{cap}}",
+      "var_label": "Variable entera elegible",
+      "var_placeholder": "Elige una variable…",
+      "var_option": "{{key}} (máx.: {{max}})",
+      "cap_placeholder": "Tope",
+      "add": "Añadir bucle"
+    },
+    "outline": {
+      "title": "Pasos",
+      "search": "Buscar pasos…",
+      "empty": "No se encontraron pasos"
+    },
+    "inspector": {
+      "step_title_placeholder": "Título del paso",
+      "quorum": "Quórum",
+      "exit_role": "Rol de salida",
+      "notice": "Clave del mensaje de aviso",
+      "tasks": "Tareas ({{count}} / {{limit}})",
+      "no_tasks": "Este paso no tiene tareas",
+      "default_task_title": "Tarea {{n}}"
+    },
+    "task_card": {
+      "title_placeholder": "Título de la tarea",
+      "key": "Clave: {{key}}",
+      "kind_work": "Trabajo",
+      "kind_gate": "Control",
+      "delete": "Eliminar la tarea {{key}}",
+      "role": "Rol",
+      "no_inputs": "No hay tareas en pasos anteriores",
+      "no_skills": "El squad no tiene skills",
+      "missing_skills": "R09: al rol le faltan skills: {{skills}}",
+      "must_set": "Debe establecer",
+      "instructions": "Instrucciones",
+      "instructions_placeholder": "Qué hace el agente o el miembro…"
+    },
+    "terminals": {
+      "col_status": "Estado",
+      "col_scope": "Alcance",
+      "internal": "Interno",
+      "delete": "Eliminar {{key}}",
+      "status_placeholder": "Estado (por ejemplo done)",
+      "add": "Añadir final"
+    },
+    "templates": {
+      "blank": "Paso en blanco",
+      "work": "Trabajo",
+      "gate": "Puerta",
+      "quorum": "Revisión por quórum",
+      "human": "Aprobación humana",
+      "lead": "Decisión del líder",
+      "task_work": "Hacer el trabajo",
+      "task_gate": "Revisar el trabajo",
+      "task_reviewer": "Revisor {{n}}",
+      "edge_next": "Siguiente",
+      "edge_blocked": "Bloqueado",
+      "edge_passed": "Aprobado",
+      "edge_rework": "Devolver para corregir",
+      "edge_stopped": "Detenido",
+      "edge_release": "Aprobar y continuar",
+      "notice_human_approval": "{requester} {request} está esperando la aprobación de una persona."
+    }
   }
 }

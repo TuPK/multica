@@ -357,8 +357,24 @@
       "kind": {
         "agent": "智能体",
         "member": "成员",
-        "managers": "小队管理者"
-      }
+        "managers": "小队管理者",
+        "lead": "负责人",
+        "requester": "请求者"
+      },
+      "add_agent_notice": "请先向小队添加智能体",
+      "add_agent": "添加智能体",
+      "col_pool": "人数",
+      "col_usage": "使用情况",
+      "fixed_leader": "固定负责人",
+      "in_use": "使用中",
+      "delete": "删除 {{key}}",
+      "label_placeholder": "标签",
+      "add": "添加角色",
+      "limit_reached": "已达到 {{count}} 个角色的上限",
+      "col_assigned": "已分配",
+      "assigned_count": "{{count}} / {{pool}}",
+      "no_choices": "没有可选的对象",
+      "pool_label": "{{key}} 的人数"
     },
     "step": {
       "work": "工作步骤",
@@ -433,7 +449,11 @@
       "lead_may_work": "我了解负责人可以执行任务"
     },
     "problems": {
-      "none": "未发现问题"
+      "none": "未发现问题",
+      "title": "验证问题",
+      "errors_other": "{{count}} 个错误",
+      "warnings_other": "{{count}} 个警告",
+      "requires_ack": "需要确认"
     },
     "empty": {
       "title": "还没有工作流"
@@ -455,7 +475,20 @@
       "back_to": "返回到 {{step}}"
     },
     "verdicts": {
-      "title": "裁决选项"
+      "title": "裁决选项",
+      "built_in": "内置集合（只读）",
+      "custom": "自定义集合",
+      "col_verdicts": "判定",
+      "delete": "删除 {{key}}",
+      "empty": "没有自定义判定集合",
+      "add": "添加判定集合",
+      "item": "{{key}}（{{class}}）",
+      "class": {
+        "pass": "通过",
+        "fail": "未通过"
+      },
+      "pass_label": "通过",
+      "fail_label": "未通过"
     },
     "verdict": {
       "pass": "视为通过",
@@ -471,10 +504,37 @@
       "min": "至少 {{count}} 个"
     },
     "vars": {
-      "title": "变量"
+      "title": "变量",
+      "col_type": "类型",
+      "col_default": "默认值",
+      "col_set_by": "设置者",
+      "col_set_at": "设置位置",
+      "delete": "删除 {{key}}",
+      "empty": "未声明变量",
+      "default_placeholder": "默认值",
+      "add": "添加变量",
+      "limit_reached": "已达到 {{count}} 个变量的上限",
+      "type": {
+        "string": "文本",
+        "int": "数字",
+        "bool": "是或否",
+        "enum": "选项",
+        "list_string": "文本列表"
+      }
     },
     "stops": {
-      "declared": "停止原因"
+      "declared": "停止原因",
+      "built_in": "内置",
+      "empty": "未声明停止",
+      "delete": "删除 {{code}}",
+      "add": "添加停止",
+      "class": {
+        "custom": "自定义",
+        "missing_grounds": "缺少依据",
+        "loop_exhausted": "循环用尽"
+      },
+      "message": "消息",
+      "default_message": "已阻塞 · {{label}}\n{request} 停在 {step}。\n{tasks}"
     },
     "terminal": {
       "leaves": "离开工作区"
@@ -487,7 +547,11 @@
     "graph": {
       "collapse": "折叠",
       "find": "查找步骤",
-      "worst_case": "最坏情况下最多 {{count}} 个任务"
+      "worst_case": "最坏情况下最多 {{count}} 个任务",
+      "show_loops": "仅显示循环",
+      "fit": "适应",
+      "vertical_title": "按顺序的步骤",
+      "exits_other": "{{count}} 个出口"
     },
     "request": {
       "path": "路径",
@@ -497,7 +561,12 @@
     },
     "trial": {
       "run": "试运行",
-      "badge": "试运行"
+      "badge": "试运行",
+      "dialog_title": "开始试运行",
+      "description": "真实的智能体会处理一个新的示例请求。在有人查看之前，工作成果不会离开工作区。",
+      "title_label": "示例请求的标题",
+      "start": "开始",
+      "failed": "无法开始试运行"
     },
     "unsupported": "此应用版本不支持",
     "editor": {
@@ -523,6 +592,105 @@
       "submit": "导入",
       "failed": "无法导入文件"
     },
-    "drafts": "草稿"
+    "drafts": "草稿",
+    "edges": {
+      "title": "路由边",
+      "add": "添加边",
+      "label_placeholder": "边标签",
+      "default_label": "下一步",
+      "manual": "手动",
+      "move_up": "上移第 {{n}} 条边",
+      "move_down": "下移第 {{n}} 条边",
+      "delete": "删除第 {{n}} 条边",
+      "destination": "目标",
+      "group_steps": "步骤和终点",
+      "group_stops": "停止",
+      "step_option": "步骤：{{name}}",
+      "terminal_option": "终点：{{key}}",
+      "stop_option": "停止：{{name}}",
+      "stop_stalled": "停止：停滞",
+      "loop": "循环回边",
+      "no_loop": "无循环（前向边）",
+      "loop_option": "{{key}}（头部：{{header}}）",
+      "empty": "此步骤未配置边"
+    },
+    "common": {
+      "key": "键",
+      "label": "标签",
+      "kind": "类型",
+      "code": "代码",
+      "class": "类别",
+      "message_key": "消息键"
+    },
+    "loops": {
+      "col_header": "头部步骤",
+      "col_max": "上限",
+      "col_reset": "重置",
+      "delete": "删除 {{key}}",
+      "empty": "未声明循环",
+      "header_placeholder": "头部步骤…",
+      "mode_fixed": "固定次数",
+      "mode_var": "来自变量",
+      "max_var": "来自 {{var}}，最多 {{cap}}",
+      "var_label": "可用的整数变量",
+      "var_placeholder": "选择变量…",
+      "var_option": "{{key}}（最大：{{max}}）",
+      "cap_placeholder": "上限",
+      "add": "添加循环"
+    },
+    "outline": {
+      "title": "步骤",
+      "search": "搜索步骤…",
+      "empty": "未找到步骤"
+    },
+    "inspector": {
+      "step_title_placeholder": "步骤标题",
+      "quorum": "法定人数",
+      "exit_role": "退出角色",
+      "notice": "通知消息键",
+      "tasks": "任务（{{count}} / {{limit}}）",
+      "no_tasks": "此步骤没有任务",
+      "default_task_title": "任务 {{n}}"
+    },
+    "task_card": {
+      "title_placeholder": "任务标题",
+      "key": "键：{{key}}",
+      "kind_work": "工作",
+      "kind_gate": "关卡",
+      "delete": "删除任务 {{key}}",
+      "role": "角色",
+      "no_inputs": "前面的步骤没有任务",
+      "no_skills": "小队没有技能",
+      "missing_skills": "R09：角色缺少技能：{{skills}}",
+      "must_set": "必须设置",
+      "instructions": "说明",
+      "instructions_placeholder": "智能体或成员要做的事…"
+    },
+    "terminals": {
+      "col_status": "状态",
+      "col_scope": "范围",
+      "internal": "内部",
+      "delete": "删除 {{key}}",
+      "status_placeholder": "状态（例如 done）",
+      "add": "添加终点"
+    },
+    "templates": {
+      "blank": "空白步骤",
+      "work": "工作",
+      "gate": "门禁",
+      "quorum": "多人评审",
+      "human": "人工批准",
+      "lead": "队长决策",
+      "task_work": "完成工作",
+      "task_gate": "检查工作成果",
+      "task_reviewer": "评审人 {{n}}",
+      "edge_next": "下一步",
+      "edge_blocked": "受阻",
+      "edge_passed": "通过",
+      "edge_rework": "退回返工",
+      "edge_stopped": "已停止",
+      "edge_release": "批准并继续",
+      "notice_human_approval": "{requester} {request} 正在等待人工批准。"
+    }
   }
 }

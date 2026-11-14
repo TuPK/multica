@@ -264,7 +264,9 @@
       "error_daemon_version": "Le CLI du daemon de cet agent ({{current}}) est inférieur au minimum requis {{min}}. Mettez le daemon à jour pour utiliser la création avec un agent.",
       "error_unknown": "Échec de l'envoi. Réessayez.",
       "sub_issue_of": "Sous-tâche de {{identifier}}"
-    }
+    },
+    "flow_workflow": "Workflow",
+    "flow_workflow_active": "{{name}} (actif)"
   },
   "mark_duplicate": {
     "title": "Marquer comme doublon",

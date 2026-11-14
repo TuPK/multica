@@ -1,4 +1,5 @@
-/* eslint-disable i18next/no-literal-string, no-restricted-syntax */
+"use client";
+
 import { useState } from "react";
 import type { FlowDoc, FlowDocPolicy, FlowDocTerminal } from "@multica/core/types";
 import { Badge } from "@multica/ui/components/ui/badge";
@@ -68,10 +69,7 @@ export function TerminalsPanel({
     <div className="space-y-4 p-4 text-foreground">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-body font-semibold">Terminals</h3>
-          <p className="text-caption text-muted-foreground">
-            End destinations for completed flow runs.
-          </p>
+          <h3 className="text-body font-semibold">{t(($) => $.flow_designer.editor.tab_terminals)}</h3>
         </div>
       </div>
 
@@ -96,7 +94,7 @@ export function TerminalsPanel({
               className={isAdmin ? "cursor-pointer select-none" : "cursor-not-allowed select-none opacity-70"}
             >
               {t(($) => $.flow_designer.ack.no_human_exit)}
-              {!isAdmin && <span className="ml-1 text-micro text-muted-foreground">(Admin only)</span>}
+              {!isAdmin && <span className="ml-1 text-micro text-muted-foreground">({t(($) => $.flow_designer.publish.admin_only)})</span>}
             </label>
           </div>
         </div>
@@ -107,9 +105,9 @@ export function TerminalsPanel({
         <table className="w-full text-caption border-collapse">
           <thead>
             <tr className="border-b border-border bg-muted/50 text-left text-muted-foreground">
-              <th className="p-2 font-medium">Key</th>
-              <th className="p-2 font-medium">Status</th>
-              <th className="p-2 font-medium">Scope</th>
+              <th className="p-2 font-medium">{t(($) => $.flow_designer.common.key)}</th>
+              <th className="p-2 font-medium">{t(($) => $.flow_designer.terminals.col_status)}</th>
+              <th className="p-2 font-medium">{t(($) => $.flow_designer.terminals.col_scope)}</th>
               <th className="p-2 font-medium w-10"></th>
             </tr>
           </thead>
@@ -128,7 +126,7 @@ export function TerminalsPanel({
                       {t(($) => $.flow_designer.terminal.leaves)}
                     </Badge>
                   ) : (
-                    <span className="text-micro text-muted-foreground">Internal</span>
+                    <span className="text-micro text-muted-foreground">{t(($) => $.flow_designer.terminals.internal)}</span>
                   )}
                 </td>
                 <td className="p-2 text-right">
@@ -137,7 +135,7 @@ export function TerminalsPanel({
                       type="button"
                       variant="ghost"
                       size="xs"
-                      aria-label={`Delete ${term.key}`}
+                      aria-label={t(($) => $.flow_designer.terminals.delete, { key: term.key })}
                       onClick={() => handleDeleteTerminal(term.key)}
                       className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                     >
@@ -154,13 +152,15 @@ export function TerminalsPanel({
       {/* Add Terminal */}
       <div className="flex items-center gap-2 pt-2 flex-wrap">
         <Input
+          // A key is a code token: the same in every language.
+          // eslint-disable-next-line no-restricted-syntax
           placeholder="terminal_key"
           value={newKey}
           onChange={(e) => setNewKey(e.target.value)}
           className="h-8 text-caption w-32"
         />
         <Input
-          placeholder="Status (e.g. done)"
+          placeholder={t(($) => $.flow_designer.terminals.status_placeholder)}
           value={newStatus}
           onChange={(e) => setNewStatus(e.target.value)}
           className="h-8 text-caption w-32"
@@ -183,7 +183,7 @@ export function TerminalsPanel({
           className="h-8 gap-1 text-caption"
         >
           <Plus className="size-3.5" aria-hidden />
-          <span>Add terminal</span>
+          <span>{t(($) => $.flow_designer.terminals.add)}</span>
         </Button>
       </div>
     </div>

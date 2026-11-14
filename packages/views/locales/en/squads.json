@@ -362,8 +362,24 @@
       "kind": {
         "agent": "Agent",
         "member": "Member",
-        "managers": "Squad managers"
-      }
+        "managers": "Squad managers",
+        "lead": "Leader",
+        "requester": "Requester"
+      },
+      "add_agent_notice": "Add an agent to the squad",
+      "add_agent": "Add agent",
+      "col_pool": "Pool",
+      "col_usage": "Usage",
+      "fixed_leader": "Fixed leader",
+      "in_use": "In use",
+      "delete": "Delete {{key}}",
+      "label_placeholder": "Label",
+      "add": "Add role",
+      "limit_reached": "Role limit of {{count}} reached",
+      "col_assigned": "Assigned",
+      "assigned_count": "{{count}} of {{pool}}",
+      "no_choices": "Nobody to choose from",
+      "pool_label": "Pool of {{key}}"
     },
     "step": {
       "work": "Work step",
@@ -438,7 +454,13 @@
       "lead_may_work": "I understand the lead may do task work"
     },
     "problems": {
-      "none": "No problems found"
+      "none": "No problems found",
+      "title": "Validation issues",
+      "errors_one": "{{count}} error",
+      "errors_other": "{{count}} errors",
+      "warnings_one": "{{count}} warning",
+      "warnings_other": "{{count}} warnings",
+      "requires_ack": "Needs acknowledgement"
     },
     "empty": {
       "title": "No workflow yet"
@@ -460,7 +482,20 @@
       "back_to": "Go back to {{step}}"
     },
     "verdicts": {
-      "title": "Verdicts"
+      "title": "Verdicts",
+      "built_in": "Built-in sets (read-only)",
+      "custom": "Custom sets",
+      "col_verdicts": "Verdicts",
+      "delete": "Delete {{key}}",
+      "empty": "No custom verdict sets",
+      "add": "Add verdict set",
+      "item": "{{key}} ({{class}})",
+      "class": {
+        "pass": "pass",
+        "fail": "fail"
+      },
+      "pass_label": "Pass",
+      "fail_label": "Fail"
     },
     "verdict": {
       "pass": "Counts as pass",
@@ -476,10 +511,37 @@
       "min": "At least {{count}}"
     },
     "vars": {
-      "title": "Variables"
+      "title": "Variables",
+      "col_type": "Type",
+      "col_default": "Default",
+      "col_set_by": "Set by",
+      "col_set_at": "Set at",
+      "delete": "Delete {{key}}",
+      "empty": "No variables declared",
+      "default_placeholder": "Default value",
+      "add": "Add variable",
+      "limit_reached": "Variable limit of {{count}} reached",
+      "type": {
+        "string": "Text",
+        "int": "Number",
+        "bool": "Yes or no",
+        "enum": "Choice",
+        "list_string": "List of text"
+      }
     },
     "stops": {
-      "declared": "Stop reasons"
+      "declared": "Stop reasons",
+      "built_in": "Built-in",
+      "empty": "No declared stops",
+      "delete": "Delete {{code}}",
+      "add": "Add stop",
+      "class": {
+        "custom": "Custom",
+        "missing_grounds": "Missing grounds",
+        "loop_exhausted": "Loop used up"
+      },
+      "message": "Message",
+      "default_message": "BLOCKED · {{label}}\n{request} stopped at {step}.\n{tasks}"
     },
     "terminal": {
       "leaves": "Leaves the workspace"
@@ -492,7 +554,12 @@
     "graph": {
       "collapse": "Collapse",
       "find": "Find a step",
-      "worst_case": "Up to {{count}} task issues in the worst case"
+      "worst_case": "Up to {{count}} task issues in the worst case",
+      "show_loops": "Show loops only",
+      "fit": "Fit",
+      "vertical_title": "Steps in order",
+      "exits_one": "{{count}} exit",
+      "exits_other": "{{count}} exits"
     },
     "request": {
       "path": "Path",
@@ -502,7 +569,12 @@
     },
     "trial": {
       "run": "Trial run",
-      "badge": "Trial"
+      "badge": "Trial",
+      "dialog_title": "Start a trial run",
+      "description": "The real agents work on a new sample request. Work cannot leave the workspace until a person has looked at it.",
+      "title_label": "Title of the sample request",
+      "start": "Start",
+      "failed": "Could not start the trial run"
     },
     "unsupported": "Not supported by this app version",
     "editor": {
@@ -528,6 +600,105 @@
       "submit": "Import",
       "failed": "Could not import the file"
     },
-    "drafts": "Drafts"
+    "drafts": "Drafts",
+    "edges": {
+      "title": "Routing edges",
+      "add": "Add edge",
+      "label_placeholder": "Edge label",
+      "default_label": "Next",
+      "manual": "Manual",
+      "move_up": "Move edge {{n}} up",
+      "move_down": "Move edge {{n}} down",
+      "delete": "Delete edge {{n}}",
+      "destination": "Destination",
+      "group_steps": "Steps and terminals",
+      "group_stops": "Stops",
+      "step_option": "Step: {{name}}",
+      "terminal_option": "Terminal: {{key}}",
+      "stop_option": "Stop: {{name}}",
+      "stop_stalled": "Stop: stalled",
+      "loop": "Loop back-edge",
+      "no_loop": "No loop (forward edge)",
+      "loop_option": "{{key}} (header: {{header}})",
+      "empty": "No edges configured for this step"
+    },
+    "common": {
+      "key": "Key",
+      "label": "Label",
+      "kind": "Kind",
+      "code": "Code",
+      "class": "Class",
+      "message_key": "Message key"
+    },
+    "loops": {
+      "col_header": "Header step",
+      "col_max": "Max limit",
+      "col_reset": "Reset",
+      "delete": "Delete {{key}}",
+      "empty": "No loops declared",
+      "header_placeholder": "Header step…",
+      "mode_fixed": "Fixed count",
+      "mode_var": "From variable",
+      "max_var": "From {{var}}, up to {{cap}}",
+      "var_label": "Eligible integer variable",
+      "var_placeholder": "Select variable…",
+      "var_option": "{{key}} (max: {{max}})",
+      "cap_placeholder": "Cap",
+      "add": "Add loop"
+    },
+    "outline": {
+      "title": "Steps",
+      "search": "Search steps…",
+      "empty": "No steps found"
+    },
+    "inspector": {
+      "step_title_placeholder": "Step title",
+      "quorum": "Quorum",
+      "exit_role": "Exit role",
+      "notice": "Notice message key",
+      "tasks": "Tasks ({{count}} / {{limit}})",
+      "no_tasks": "No tasks in this step",
+      "default_task_title": "Task {{n}}"
+    },
+    "task_card": {
+      "title_placeholder": "Task title",
+      "key": "Key: {{key}}",
+      "kind_work": "Work",
+      "kind_gate": "Gate",
+      "delete": "Delete task {{key}}",
+      "role": "Role",
+      "no_inputs": "No tasks in earlier steps",
+      "no_skills": "The squad has no skills",
+      "missing_skills": "R09: the role lacks skills: {{skills}}",
+      "must_set": "Must set",
+      "instructions": "Instructions",
+      "instructions_placeholder": "What the agent or member does…"
+    },
+    "terminals": {
+      "col_status": "Status",
+      "col_scope": "Scope",
+      "internal": "Internal",
+      "delete": "Delete {{key}}",
+      "status_placeholder": "Status (for example done)",
+      "add": "Add terminal"
+    },
+    "templates": {
+      "blank": "Blank step",
+      "work": "Work",
+      "gate": "Gate",
+      "quorum": "Quorum review",
+      "human": "Human approval",
+      "lead": "Lead decision",
+      "task_work": "Do the work",
+      "task_gate": "Check the work",
+      "task_reviewer": "Reviewer {{n}}",
+      "edge_next": "Next",
+      "edge_blocked": "Blocked",
+      "edge_passed": "Passed",
+      "edge_rework": "Send back for rework",
+      "edge_stopped": "Stopped",
+      "edge_release": "Approve and continue",
+      "notice_human_approval": "{requester} {request} is waiting for a person to approve it."
+    }
   }
 }

@@ -1,4 +1,5 @@
-/* eslint-disable i18next/no-literal-string, no-restricted-syntax */
+"use client";
+
 import { useMemo } from "react";
 import type { FlowDoc, FlowDocJoin, FlowDocStep, FlowDocTask, Skill, SquadMember } from "@multica/core/types";
 import { Badge } from "@multica/ui/components/ui/badge";
@@ -52,7 +53,7 @@ export function StepInspector({
     const taskKey = `${step.key}_t${(step.tasks?.length ?? 0) + 1}`;
     const newTask: FlowDocTask = {
       key: taskKey,
-      title: `Task ${(step.tasks?.length ?? 0) + 1}`,
+      title: t(($) => $.flow_designer.inspector.default_task_title, { n: (step.tasks?.length ?? 0) + 1 }),
       kind: "work",
       role: doc.roles?.[0]?.key || "worker",
     };
@@ -81,7 +82,7 @@ export function StepInspector({
           <Input
             value={step.title}
             onChange={(e) => onChangeStep({ ...step, title: e.target.value })}
-            placeholder="Step title"
+            placeholder={t(($) => $.flow_designer.inspector.step_title_placeholder)}
             className="text-body font-semibold h-9 max-w-sm"
           />
           <Badge variant="outline" className="font-mono text-micro">
@@ -91,7 +92,7 @@ export function StepInspector({
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label className="text-micro text-muted-foreground block mb-0.5">Kind</label>
+            <label className="text-micro text-muted-foreground block mb-0.5">{t(($) => $.flow_designer.common.kind)}</label>
             <select
               value={step.kind}
               onChange={(e) =>
@@ -131,21 +132,21 @@ export function StepInspector({
               >
                 <option value="all">{t(($) => $.flow_designer.join.all)}</option>
                 <option value="any">{t(($) => $.flow_designer.join.any)}</option>
-                <option value="quorum">Quorum</option>
+                <option value="quorum">{t(($) => $.flow_designer.inspector.quorum)}</option>
               </select>
             </div>
           )}
 
           {step.kind === "manual" && (
             <div>
-              <label className="text-micro text-muted-foreground block mb-0.5">Exit Role</label>
+              <label className="text-micro text-muted-foreground block mb-0.5">{t(($) => $.flow_designer.inspector.exit_role)}</label>
               <select
                 value={step.exit_role || "managers"}
                 onChange={(e) => onChangeStep({ ...step, exit_role: e.target.value })}
                 className="w-full h-8 rounded-md border border-input bg-background px-2 text-caption"
               >
                 <option value="managers">{t(($) => $.flow_designer.roles.kind.managers)}</option>
-                <option value="requester">Requester</option>
+                <option value="requester">{t(($) => $.flow_designer.roles.kind.requester)}</option>
                 {(doc.roles ?? [])
                   .filter((r) => r.kind === "member")
                   .map((r) => (
@@ -158,10 +159,12 @@ export function StepInspector({
           )}
 
           <div>
-            <label className="text-micro text-muted-foreground block mb-0.5">Notice message key</label>
+            <label className="text-micro text-muted-foreground block mb-0.5">{t(($) => $.flow_designer.inspector.notice)}</label>
             <Input
               value={step.notice || ""}
               onChange={(e) => onChangeStep({ ...step, notice: e.target.value || undefined })}
+              // An example of a key, a code token.
+              // eslint-disable-next-line no-restricted-syntax
               placeholder="e.g. step_notice"
               className="h-8 text-caption"
             />
@@ -174,7 +177,7 @@ export function StepInspector({
         <div className="space-y-3 pb-4 border-b border-border">
           <div className="flex items-center justify-between">
             <span className="text-caption font-semibold">
-              Tasks ({step.tasks?.length ?? 0} / {taskLimit})
+              {t(($) => $.flow_designer.inspector.tasks, { count: step.tasks?.length ?? 0, limit: taskLimit })}
             </span>
             <Button
               type="button"
@@ -205,7 +208,7 @@ export function StepInspector({
             ))}
             {(step.tasks ?? []).length === 0 && (
               <div className="p-4 text-center text-caption text-muted-foreground rounded-lg border border-dashed border-border">
-                No tasks in this step. Click &ldquo;Add task&rdquo; to create one.
+                {t(($) => $.flow_designer.inspector.no_tasks)}
               </div>
             )}
           </div>

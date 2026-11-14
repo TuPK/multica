@@ -1,5 +1,6 @@
+"use client";
+
 import { useMemo } from "react";
-/* eslint-disable i18next/no-literal-string */
 import type { FlowIssue } from "@multica/core/types";
 import { Badge } from "@multica/ui/components/ui/badge";
 import { AlertCircle, AlertTriangle, CheckCircle2 } from "@multica/ui/icons";
@@ -28,18 +29,18 @@ export function ProblemsPanel({ issues, onSelectPath }: ProblemsPanelProps) {
   return (
     <div className="space-y-3 p-3 rounded-lg border border-border bg-card text-caption">
       <div className="flex items-center justify-between">
-        <span className="font-semibold text-foreground">Validation Issues</span>
+        <span className="font-semibold text-foreground">{t(($) => $.flow_designer.problems.title)}</span>
         <div className="flex gap-1.5">
           {errors.length > 0 && (
             <Badge variant="destructive" className="text-micro gap-1">
               <AlertCircle className="size-3" aria-hidden />
-              <span>{errors.length} errors</span>
+              <span>{t(($) => $.flow_designer.problems.errors, { count: errors.length })}</span>
             </Badge>
           )}
           {warnings.length > 0 && (
             <Badge variant="outline" className="text-micro text-amber-600 border-amber-500/40 gap-1">
               <AlertTriangle className="size-3" aria-hidden />
-              <span>{warnings.length} warnings</span>
+              <span>{t(($) => $.flow_designer.problems.warnings, { count: warnings.length })}</span>
             </Badge>
           )}
         </div>
@@ -71,7 +72,7 @@ export function ProblemsPanel({ issues, onSelectPath }: ProblemsPanelProps) {
                   )}
                   {issue.ack && (
                     <Badge variant="outline" className="text-micro text-amber-600 font-normal">
-                      Requires ack
+                      {t(($) => $.flow_designer.problems.requires_ack)}
                     </Badge>
                   )}
                 </div>

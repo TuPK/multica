@@ -1,4 +1,5 @@
-/* eslint-disable i18next/no-literal-string */
+"use client";
+
 import { useMemo, useState } from "react";
 import type { FlowDoc, FlowIssue } from "@multica/core/types";
 import { layoutFlowGraph } from "@multica/core/squads/flow-layout";
@@ -88,7 +89,7 @@ export function FlowGraph({
             className="h-7 text-caption gap-1"
           >
             <RotateCcw className="size-3" aria-hidden />
-            <span>Show loops only</span>
+            <span>{t(($) => $.flow_designer.graph.show_loops)}</span>
           </Button>
         </div>
 
@@ -101,7 +102,7 @@ export function FlowGraph({
             className="h-7 text-caption gap-1"
           >
             <Maximize2 className="size-3" aria-hidden />
-            <span>Fit</span>
+            <span>{t(($) => $.flow_designer.graph.fit)}</span>
           </Button>
         </div>
       </div>
@@ -109,7 +110,7 @@ export function FlowGraph({
       {/* Mobile Vertical List (< 640px) */}
       <div className="block sm:hidden flex-1 overflow-y-auto p-4 space-y-2">
         <div className="text-caption font-semibold text-muted-foreground mb-2">
-          Workflow Steps (Vertical Flow)
+          {t(($) => $.flow_designer.graph.vertical_title)}
         </div>
         {displaySteps.map((step, idx) => {
           const isSelected = step.key === selectedStepKey;
@@ -136,9 +137,9 @@ export function FlowGraph({
               </div>
 
               <div className="flex items-center gap-2 text-micro text-muted-foreground">
-                <span>{step.tasks?.length ?? 0} tasks</span>
+                <span>{t(($) => $.workflows.tasks_count, { count: step.tasks?.length ?? 0 })}</span>
                 <span>·</span>
-                <span>{step.edges?.length ?? 0} exits</span>
+                <span>{t(($) => $.flow_designer.graph.exits, { count: step.edges?.length ?? 0 })}</span>
                 {loopInfo && (
                   <Badge variant="outline" className="text-micro text-blue-600 border-blue-500/30">
                     {loopInfo}
@@ -190,7 +191,7 @@ export function FlowGraph({
                 </div>
 
                 <div className="flex items-center justify-between text-micro text-muted-foreground">
-                  <span>{step.tasks?.length ?? 0} tasks</span>
+                  <span>{t(($) => $.workflows.tasks_count, { count: step.tasks?.length ?? 0 })}</span>
                   {loopInfo && (
                     <Badge variant="outline" className="text-micro text-blue-600 border-blue-500/30">
                       {loopInfo}

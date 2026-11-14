@@ -1,23 +1,36 @@
-/* eslint-disable i18next/no-literal-string, no-restricted-syntax */
+"use client";
+
 import { useMemo, useState } from "react";
 import type { FlowDoc, FlowDocStep, FlowIssue } from "@multica/core/types";
 import { Badge } from "@multica/ui/components/ui/badge";
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@multica/ui/components/ui/dropdown-menu";
 import { AlertCircle, AlertTriangle, Plus, RotateCcw, Search } from "@multica/ui/icons";
 import { useT } from "../../i18n";
 import { cn } from "@multica/ui/lib/utils";
+import { STEP_TEMPLATE_IDS, type StepTemplateId } from "./step-templates";
 
 export interface OutlineProps {
   doc: FlowDoc;
   selectedStepKey: string | null;
   onSelectStep: (stepKey: string) => void;
-  onAddStep?: (kind: "tasks" | "lead" | "manual") => void;
+  /** "blank" adds an empty step of tasks; a template id adds a step with its standard tasks and edges. */
+  onAddStep?: (template: StepTemplateId | "blank") => void;
   issues?: FlowIssue[];
   stepLimit?: number;
+  /** Fills the width it is given, as on a phone, instead of the side column of a laptop. */
+  fullWidth?: boolean;
 }
 
 export function Outline({
+  fullWidth = false,
   doc,
   selectedStepKey,
   onSelectStep,
@@ -84,11 +97,11 @@ export function Outline({
   };
 
   return (
-    <div className="flex flex-col h-full bg-card border-r border-border w-64 md:w-72 shrink-0">
+    <div className={cn("flex flex-col h-full bg-card shrink-0", fullWidth ? "w-full" : "border-r border-border w-64 md:w-72")}>
       {/* Header & Search */}
       <div className="p-3 border-b border-border space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-caption font-semibold text-foreground">Steps</span>
+          <span className="text-caption font-semibold text-foreground">{t(($) => $.flow_designer.outline.title)}</span>
           <span className="text-micro text-muted-foreground tabular-nums">
             {doc.steps.length} / {stepLimit}
           </span>
@@ -98,7 +111,7 @@ export function Outline({
           <Input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="Search steps..."
+            placeholder={t(($) => $.flow_designer.outline.search)}
             className="h-8 pl-8 text-caption"
           />
         </div>
@@ -148,7 +161,7 @@ export function Outline({
                 </Badge>
                 {step.kind === "tasks" && (
                   <span>
-                    {step.tasks?.length ?? 0} {step.tasks?.length === 1 ? "task" : "tasks"}
+                    {t(($) => $.workflows.tasks_count, { count: step.tasks?.length ?? 0 })}
                   </span>
                 )}
                 {loopInfo && (
@@ -164,25 +177,41 @@ export function Outline({
 
         {filteredSteps.length === 0 && (
           <div className="p-4 text-center text-caption text-muted-foreground">
-            No steps found
+            {t(($) => $.flow_designer.outline.empty)}
           </div>
         )}
       </div>
 
-      {/* Add Step Button */}
+      {/* Add step: a blank step, or one of the templates */}
       {onAddStep && (
         <div className="p-2 border-t border-border">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={atLimit}
-            onClick={() => onAddStep("tasks")}
-            className="w-full justify-center gap-1.5 text-caption h-8"
-          >
-            <Plus className="size-3.5" aria-hidden />
-            <span>{t(($) => $.flow_designer.step.add)}</span>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={atLimit}
+                  className="w-full justify-center gap-1.5 text-caption h-8"
+                >
+                  <Plus className="size-3.5" aria-hidden />
+                  <span>{t(($) => $.flow_designer.step.add)}</span>
+                </Button>
+              }
+            />
+            <DropdownMenuContent align="start" className="min-w-48">
+              <DropdownMenuItem onClick={() => onAddStep("blank")}>
+                {t(($) => $.flow_designer.templates.blank)}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {STEP_TEMPLATE_IDS.map((id) => (
+                <DropdownMenuItem key={id} onClick={() => onAddStep(id)}>
+                  {t(($) => $.flow_designer.templates[id])}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )}
     </div>

@@ -1,4 +1,5 @@
-/* eslint-disable i18next/no-literal-string, no-restricted-syntax */
+"use client";
+
 import { useState } from "react";
 import type { FlowDoc, FlowDocVerdictSet } from "@multica/core/types";
 import { Badge } from "@multica/ui/components/ui/badge";
@@ -31,14 +32,21 @@ export function VerdictsPanel({
     const newSet: FlowDocVerdictSet = {
       key,
       verdicts: [
-        { key: "pass", class: "pass", label: "Pass" },
-        { key: "fail", class: "fail", label: "Fail" },
+        { key: "pass", class: "pass", label: t(($) => $.flow_designer.verdicts.pass_label) },
+        { key: "fail", class: "fail", label: t(($) => $.flow_designer.verdicts.fail_label) },
       ],
     };
 
     onChangeVerdicts([...(doc.verdicts ?? []), newSet]);
     setNewKey("");
   };
+
+  // A built-in verdict and how it counts, as the engine names them.
+  const verdictItem = (key: string, cls: "pass" | "fail") =>
+    t(($) => $.flow_designer.verdicts.item, {
+      key,
+      class: cls === "pass" ? t(($) => $.flow_designer.verdicts.class.pass) : t(($) => $.flow_designer.verdicts.class.fail),
+    });
 
   const handleDeleteVerdictSet = (key: string) => {
     onChangeVerdicts((doc.verdicts ?? []).filter((v) => v.key !== key));
@@ -84,25 +92,29 @@ export function VerdictsPanel({
 
       {/* Built-in sets */}
       <div className="space-y-2">
-        <span className="text-caption font-medium text-muted-foreground">Built-in sets (read-only)</span>
+        <span className="text-caption font-medium text-muted-foreground">{t(($) => $.flow_designer.verdicts.built_in)}</span>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <div className="p-2.5 rounded-lg border border-border bg-muted/20 space-y-1 text-caption">
+            {/* The names of the built-in sets are code tokens: the same in every language. */}
+            {/* eslint-disable-next-line i18next/no-literal-string */}
             <span className="font-mono text-micro font-medium">work</span>
             <div className="flex gap-1 flex-wrap">
-              <Badge variant="secondary" className="text-micro">done (pass)</Badge>
+              <Badge variant="secondary" className="text-micro">{verdictItem("done", "pass")}</Badge>
             </div>
           </div>
           <div className="p-2.5 rounded-lg border border-border bg-muted/20 space-y-1 text-caption">
+            {/* eslint-disable-next-line i18next/no-literal-string */}
             <span className="font-mono text-micro font-medium">gate</span>
             <div className="flex gap-1 flex-wrap">
-              <Badge variant="secondary" className="text-micro">approved (pass)</Badge>
-              <Badge variant="destructive" className="text-micro">rejected (fail)</Badge>
+              <Badge variant="secondary" className="text-micro">{verdictItem("approved", "pass")}</Badge>
+              <Badge variant="destructive" className="text-micro">{verdictItem("rejected", "fail")}</Badge>
             </div>
           </div>
           <div className="p-2.5 rounded-lg border border-border bg-muted/20 space-y-1 text-caption">
+            {/* eslint-disable-next-line i18next/no-literal-string */}
             <span className="font-mono text-micro font-medium">plan</span>
             <div className="flex gap-1 flex-wrap">
-              <Badge variant="secondary" className="text-micro">planned (pass)</Badge>
+              <Badge variant="secondary" className="text-micro">{verdictItem("planned", "pass")}</Badge>
             </div>
           </div>
         </div>
@@ -110,13 +122,13 @@ export function VerdictsPanel({
 
       {/* Custom sets */}
       <div className="space-y-2">
-        <span className="text-caption font-medium text-muted-foreground">Custom sets</span>
+        <span className="text-caption font-medium text-muted-foreground">{t(($) => $.flow_designer.verdicts.custom)}</span>
         <div className="rounded-lg border border-border overflow-hidden">
           <table className="w-full text-caption border-collapse">
             <thead>
               <tr className="border-b border-border bg-muted/50 text-left text-muted-foreground">
-                <th className="p-2 font-medium">Key</th>
-                <th className="p-2 font-medium">Verdicts</th>
+                <th className="p-2 font-medium">{t(($) => $.flow_designer.common.key)}</th>
+                <th className="p-2 font-medium">{t(($) => $.flow_designer.verdicts.col_verdicts)}</th>
                 <th className="p-2 font-medium w-10"></th>
               </tr>
             </thead>
@@ -139,7 +151,7 @@ export function VerdictsPanel({
                       type="button"
                       variant="ghost"
                       size="xs"
-                      aria-label={`Delete ${set.key}`}
+                      aria-label={t(($) => $.flow_designer.verdicts.delete, { key: set.key })}
                       onClick={() => handleDeleteVerdictSet(set.key)}
                       className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                     >
@@ -151,7 +163,7 @@ export function VerdictsPanel({
               {(doc.verdicts ?? []).length === 0 && (
                 <tr>
                   <td colSpan={3} className="p-4 text-center text-muted-foreground">
-                    No custom verdict sets
+                    {t(($) => $.flow_designer.verdicts.empty)}
                   </td>
                 </tr>
               )}
@@ -163,6 +175,8 @@ export function VerdictsPanel({
       {/* Add verdict set */}
       <div className="flex items-center gap-2 pt-2">
         <Input
+          // A key is a code token: the same in every language.
+          // eslint-disable-next-line no-restricted-syntax
           placeholder="set_key"
           value={newKey}
           onChange={(e) => setNewKey(e.target.value)}
@@ -178,7 +192,7 @@ export function VerdictsPanel({
           className="h-8 gap-1 text-caption"
         >
           <Plus className="size-3.5" aria-hidden />
-          <span>Add verdict set</span>
+          <span>{t(($) => $.flow_designer.verdicts.add)}</span>
         </Button>
       </div>
     </div>

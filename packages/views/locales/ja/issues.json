@@ -2378,6 +2378,8 @@
       "workflow_has_flow_requests": "アクティブなフローリクエストがあるワークフローは削除できません",
       "flow_workflow_forbidden": "フローワークフローの設定には管理者権限が必要です"
     },
-    "resume_skip_cancelled": "キャンセルされたタスクを除いて再開"
+    "resume_skip_cancelled": "キャンセルされたタスクを除いて再開",
+    "skip_checkpoint_title": "このワークを確認した人はいません",
+    "skip_checkpoint_ack": "エージェントの作業を誰も確認していないことを理解したうえで、リクエストを再開します"
   }
 }

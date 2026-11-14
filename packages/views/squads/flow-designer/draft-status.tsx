@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@multica/ui/components/ui/button";
 import { Check, Loader2, RotateCcw } from "@multica/ui/icons";
 import { useT } from "../../i18n";
@@ -47,7 +49,7 @@ export function DraftStatus({
 
   if (isDirty) {
     return (
-      <div className="text-caption text-amber-600 dark:text-amber-400 font-medium">
+      <div className="whitespace-nowrap text-caption text-amber-600 dark:text-amber-400 font-medium">
         <span>{t(($) => $.flow_designer.save.unsaved)}</span>
       </div>
     );

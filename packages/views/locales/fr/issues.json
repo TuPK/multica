@@ -2454,6 +2454,8 @@
       "workflow_has_flow_requests": "Impossible de supprimer un workflow ayant des demandes actives",
       "flow_workflow_forbidden": "Autorisation d'administrateur requise pour configurer les workflows"
     },
-    "resume_skip_cancelled": "Reprendre sans les tâches annulées"
+    "resume_skip_cancelled": "Reprendre sans les tâches annulées",
+    "skip_checkpoint_title": "Personne n'a vu ce travail",
+    "skip_checkpoint_ack": "Je comprends que personne n'a vu le travail de l'agent et je reprends la demande malgré tout"
   }
 }

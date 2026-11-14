@@ -262,7 +262,9 @@
       "error_daemon_version": "このエージェントのデーモン CLI（{{current}}）が必要なバージョン {{min}} を下回っています。エージェントで作成を使用するには、デーモンをアップグレードしてください。",
       "error_unknown": "送信できませんでした。再試行してください。",
       "sub_issue_of": "{{identifier}} のサブタスク"
-    }
+    },
+    "flow_workflow": "ワークフロー",
+    "flow_workflow_active": "{{name}}（使用中）"
   },
   "mark_duplicate": {
     "title": "重複としてマーク",

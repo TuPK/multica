@@ -1,7 +1,7 @@
 import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { setApiInstance } from "@multica/core/api";
 import type { ApiClient } from "@multica/core/api/client";
 import { EMPTY_FLOW_CAPABILITIES_RESPONSE } from "@multica/core/api/schemas";
@@ -23,7 +23,11 @@ vi.mock("../../navigation", () => ({
   ),
 }));
 vi.mock("@multica/core/paths", () => ({
-  useWorkspacePaths: () => ({ squads: () => "/acme/squads", squadDetail: (id: string) => `/acme/squads/${id}` }),
+  useWorkspacePaths: () => ({
+    squads: () => "/acme/squads",
+    squadDetail: (id: string) => `/acme/squads/${id}`,
+    issueDetail: (id: string) => `/acme/issues/${id}`,
+  }),
 }));
 vi.mock("../flow-designer/download-json", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../flow-designer/download-json")>()),
@@ -39,6 +43,7 @@ const fakeApi = {
   getIssueWorkflowFlowManifest: vi.fn(),
   setSquadActiveWorkflow: vi.fn(),
   setIssueWorkflowFlowAuto: vi.fn(),
+  createIssue: vi.fn(),
 };
 
 const baseSquad = {
@@ -226,5 +231,82 @@ describe("SquadWorkflowsSection", () => {
 
     view.rerenderAs(true);
     expect(await screen.findByRole("button", { name: /set active/i })).toBeInTheDocument();
+  });
+
+  describe("trial run", () => {
+    const published = (over: Partial<IssueWorkflow> = {}) =>
+      flowRow({ id: "wf-v2", name: "Desk · v2", version: 2, published_at: "2026-11-01T00:00:00Z", flow_config: { version: 2, switches: [] }, ...over });
+
+    it("is offered to a manager on a published version of schema 2, whether or not it is the active one", async () => {
+      serve([published(), published({ id: "wf-v1", name: "Desk · v1", version: 1 })], "wf-v1");
+      renderSection(true);
+
+      await screen.findByText("Desk · v2");
+      expect(screen.getAllByRole("button", { name: /trial run/i })).toHaveLength(2);
+    });
+
+    it("is not offered for a workflow of schema 1, a version not published, someone who cannot manage, or with authoring off", async () => {
+      serve([
+        flowRow({ id: "wf-kv", name: "Catalog flow", template_ref: "flow_kv@x" }),
+        published({ id: "wf-unpublished", name: "Unpublished", published_at: null }),
+      ], "wf-kv");
+      renderSection(true);
+      await screen.findByText("Catalog flow");
+      expect(screen.queryByRole("button", { name: /trial run/i })).toBeNull();
+      cleanup();
+
+      serve([published()], "wf-v2");
+      renderSection(false);
+      await screen.findByText("Desk · v2");
+      expect(screen.queryByRole("button", { name: /trial run/i })).toBeNull();
+      cleanup();
+
+      capabilities(false);
+      renderSection(true);
+      await screen.findByText("Desk · v2");
+      await waitFor(() => expect(fakeApi.getFlowCapabilities).toHaveBeenCalled());
+      await waitFor(() => expect(screen.queryByRole("button", { name: /trial run/i })).toBeNull());
+    });
+
+    it("starts a rehearsal of that version on a sample request the user titles, and opens the request", async () => {
+      fakeApi.createIssue.mockResolvedValue({ id: "iss-trial-1" });
+      serve([published(), published({ id: "wf-v1", name: "Desk · v1", version: 1 })], "wf-v1");
+      renderSection(true);
+      await screen.findByText("Desk · v2");
+
+      // The first row is the newest version, not the one the squad runs.
+      fireEvent.click(screen.getAllByRole("button", { name: /trial run/i })[0]!);
+      const dialog = await screen.findByRole("dialog");
+      const start = within(dialog).getByRole("button", { name: /^start$/i });
+      expect(start).toBeDisabled();
+
+      fireEvent.change(within(dialog).getByLabelText(/title of the sample request/i), { target: { value: "  Check a sample brief  " } });
+      fireEvent.click(start);
+
+      await waitFor(() =>
+        expect(fakeApi.createIssue).toHaveBeenCalledWith({
+          title: "Check a sample brief",
+          assignee_type: "squad",
+          assignee_id: "sq-1",
+          flow_workflow_id: "wf-v2",
+          flow_trial: true,
+        }),
+      );
+      await waitFor(() => expect(mocks.navPush).toHaveBeenCalledWith("/acme/issues/iss-trial-1"));
+    });
+
+    it("keeps the dialog open and says so when the server refuses", async () => {
+      fakeApi.createIssue.mockRejectedValue(new Error("the workflow does not belong to the squad of this request"));
+      serve([published()], "wf-v2");
+      renderSection(true);
+      fireEvent.click(await screen.findByRole("button", { name: /trial run/i }));
+      const dialog = await screen.findByRole("dialog");
+      fireEvent.change(within(dialog).getByLabelText(/title of the sample request/i), { target: { value: "Sample" } });
+      fireEvent.click(within(dialog).getByRole("button", { name: /^start$/i }));
+
+      await waitFor(() => expect(mocks.toastError).toHaveBeenCalled());
+      expect(mocks.navPush).not.toHaveBeenCalled();
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
   });
 });

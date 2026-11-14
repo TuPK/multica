@@ -563,6 +563,14 @@ vi.mock("@multica/ui/components/ui/dropdown-menu", () => ({
   DropdownMenuSubContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+// The workflow chooser has its own tests; here it only has to be wired: it shows for a squad assignee and
+// what it picks goes out with the create.
+vi.mock("./flow-workflow-picker", () => ({
+  FlowWorkflowPicker: ({ squadId, onChange }: { squadId: string; onChange: (id: string | undefined) => void }) => (
+    <button type="button" onClick={() => onChange("wf-chosen")}>{`choose workflow of ${squadId}`}</button>
+  ),
+}));
+
 vi.mock("./issue-picker-modal", () => ({
   IssuePickerModal: () => null,
 }));
@@ -1504,6 +1512,43 @@ describe("CreateIssueModal", () => {
       expect(mockSetShared).toHaveBeenCalledWith({
         attachments: [expect.objectContaining({ clientUploadId: "c-flight" })],
       });
+    });
+  });
+
+  describe("the workflow of a request given to a squad", () => {
+    function renderManual() {
+      return renderModal(
+        <ManualCreatePanel onClose={vi.fn()} onSwitchMode={vi.fn()} isExpanded={false} setIsExpanded={vi.fn()} />,
+      );
+    }
+
+    it("sends the chosen workflow with the create", async () => {
+      mockDraftStore.draft.manual.assigneeType = "squad";
+      mockDraftStore.draft.manual.assigneeId = "squad-1";
+      const user = userEvent.setup();
+      renderManual();
+      await user.type(screen.getByPlaceholderText("Issue title"), "Write the brief");
+      await user.click(screen.getByRole("button", { name: "choose workflow of squad-1" }));
+      fireEvent.keyDown(screen.getByPlaceholderText("Issue title"), { key: "Enter", metaKey: true });
+
+      await waitFor(() => expect(mockCreateIssue).toHaveBeenCalledTimes(1));
+      expect(mockCreateIssue).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Write the brief", assignee_type: "squad", assignee_id: "squad-1", flow_workflow_id: "wf-chosen" }),
+      );
+    });
+
+    it("sends none when nothing was chosen, and does not offer the choice for another assignee", async () => {
+      mockDraftStore.draft.manual.assigneeType = "agent";
+      mockDraftStore.draft.manual.assigneeId = "agent-1";
+      const user = userEvent.setup();
+      renderManual();
+      expect(screen.queryByRole("button", { name: /choose workflow of/ })).toBeNull();
+      await user.type(screen.getByPlaceholderText("Issue title"), "Plain issue");
+      fireEvent.keyDown(screen.getByPlaceholderText("Issue title"), { key: "Enter", metaKey: true });
+
+      await waitFor(() => expect(mockCreateIssue).toHaveBeenCalledTimes(1));
+      expect(mockCreateIssue.mock.calls[0]?.[0]).toMatchObject({ title: "Plain issue" });
+      expect(mockCreateIssue.mock.calls[0]?.[0].flow_workflow_id).toBeUndefined();
     });
   });
 

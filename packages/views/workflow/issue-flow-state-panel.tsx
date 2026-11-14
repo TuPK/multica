@@ -31,7 +31,9 @@ import {
 } from "@multica/ui/icons";
 import { clientErrorMessage } from "@multica/core/api";
 import { useT } from "../i18n";
-import { issueFlowKeys, useDetachFlow, useExitIssueFlow, useResumeFlow } from "@multica/core/issue-workflows";
+import { issueFlowKeys, useCloseIssueFlowTask, useDetachFlow, useExitIssueFlow, useResumeFlow } from "@multica/core/issue-workflows";
+import { useAuthStore } from "@multica/core/auth";
+import { flowErrorCode } from "@multica/core/flow-drafts";
 import { useUpdateIssue } from "@multica/core/issues/mutations";
 import type { IssueFlowState, IssueFlowTask, ResumeFlowRequest } from "@multica/core/types";
 import { issueUpdateErrorMessage } from "../issues/utils/issue-update-error";
@@ -53,16 +55,21 @@ export function IssueFlowStatePanel({
   const { t } = useT("issues");
   const { t: tSquads } = useT("squads");
   const [confirmDetachOpen, setConfirmDetachOpen] = useState(false);
+  // A resume waiting for the manager to say they know no person has seen the agent's work.
+  const [pendingResume, setPendingResume] = useState<ResumeFlowRequest | null>(null);
+  const [skipAcknowledged, setSkipAcknowledged] = useState(false);
 
   const resumeMut = useResumeFlow(wsId, issueId);
   const detachMut = useDetachFlow(wsId, issueId);
   const exitMut = useExitIssueFlow(wsId, issueId);
+  const closeMut = useCloseIssueFlowTask(wsId, issueId);
+  const userId = useAuthStore((state) => state.user?.id ?? null);
   const updateIssue = useUpdateIssue();
   const queryClient = useQueryClient();
 
   // A verdict is the same status change a person makes on the task: done, with
   // the outcome. The server's gate guard decides whether it is accepted.
-  const handleVerdict = async (task: IssueFlowTask, outcome: "approved" | "rejected") => {
+  const handleVerdict = async (task: IssueFlowTask, outcome: string) => {
     try {
       await updateIssue.mutateAsync({ id: task.issue_id, status: "done", outcome });
     } catch (err) {
@@ -72,12 +79,38 @@ export function IssueFlowStatePanel({
     }
   };
 
+  // A request the engine stalled while agent work is unseen goes on only with the manager's word that
+  // they know it (spec 4.7): the box is asked for before the resume is sent, and again if the server
+  // asks for it when the state did not say so.
+  const needsCheckpointAck = flow.unreviewed === true && flow.stop?.code === "stalled";
+
   const handleResume = async (data: ResumeFlowRequest = {}) => {
+    if (needsCheckpointAck && !data.acknowledge_skip_checkpoint) {
+      setSkipAcknowledged(false);
+      setPendingResume(data);
+      return;
+    }
     try {
       await resumeMut.mutateAsync(data);
       toast.success(t(($) => $.flow.resume));
+      setPendingResume(null);
     } catch (err) {
+      if (flowErrorCode(err) === "flow_checkpoint_ack_required" && !data.acknowledge_skip_checkpoint) {
+        setSkipAcknowledged(false);
+        setPendingResume(data);
+        return;
+      }
       toast.error(clientErrorMessage(err) ?? t(($) => $.flow.error));
+    }
+  };
+
+  // A manager who closes a task for someone else goes through the close route, which logs it as a close
+  // on behalf of the assignee.
+  const handleCloseOnBehalf = async (task: IssueFlowTask, verdict: string) => {
+    try {
+      await closeMut.mutateAsync({ taskId: task.issue_id, verdict });
+    } catch (err) {
+      toast.error(issueUpdateErrorMessage(err, t, t(($) => $.flow.error)));
     }
   };
 
@@ -143,6 +176,62 @@ export function IssueFlowStatePanel({
     }
   };
 
+  // The verdicts a task closes with: the keys of its own set. A server that sends none is an older one,
+  // whose gates are approved or rejected.
+  const verdictKeys = (task: IssueFlowTask): string[] => {
+    const keys = (task.verdicts ?? []).map((v) => v.key);
+    return keys.length > 0 ? keys : ["approved", "rejected"];
+  };
+  const verdictLabel = (key: string): string => {
+    if (key === "approved") return t(($) => $.flow.verdict.approve);
+    if (key === "rejected") return t(($) => $.flow.verdict.reject);
+    return key;
+  };
+
+  const renderVerdicts = (task: IssueFlowTask) => {
+    const closable = !flow.viewer || flow.viewer.closable_task_ids?.includes(task.issue_id) || canManage;
+    if (!closable) return null;
+    const mine = task.assignee_id !== null && task.assignee_id === userId;
+    // The assignee closes their own task; a manager who is not the assignee closes it on behalf.
+    if (canManage && !mine) {
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button type="button" variant="outline" size="xs" disabled={closeMut.isPending} className="gap-1">
+                {tSquads(($) => $.flow_designer.close_on_behalf)}
+                <ChevronDown className="size-3" aria-hidden />
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="start" className="w-auto min-w-32">
+            {verdictKeys(task).map((key) => (
+              <DropdownMenuItem key={key} onClick={() => void handleCloseOnBehalf(task, key)}>
+                {verdictLabel(key)}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    }
+    return (
+      <div className="flex items-center gap-1 flex-wrap">
+        {verdictKeys(task).map((key) => (
+          <Button
+            key={key}
+            type="button"
+            variant="outline"
+            size="xs"
+            disabled={updateIssue.isPending}
+            onClick={() => void handleVerdict(task, key)}
+          >
+            {verdictLabel(key)}
+          </Button>
+        ))}
+      </div>
+    );
+  };
+
   const renderStopBanner = () => {
     if (flow.stop === null || flow.stop === undefined) return null;
     let label = "";
@@ -175,6 +264,11 @@ export function IssueFlowStatePanel({
           <span className="text-caption font-medium text-foreground">
             {flow.workflow_name}
           </span>
+          {flow.trial === true && (
+            <Badge variant="outline" className="text-caption text-amber-600 dark:text-amber-400 border-amber-500/30">
+              {tSquads(($) => $.flow_designer.trial.badge)}
+            </Badge>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -212,40 +306,7 @@ export function IssueFlowStatePanel({
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="text-muted-foreground">{task.status}</span>
                 {task.kind === "gate" && task.closed_at === null ? (
-                  (!flow.viewer || flow.viewer.closable_task_ids?.includes(task.issue_id) || canManage) ? (
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="xs"
-                        disabled={updateIssue.isPending}
-                        onClick={() => void handleVerdict(task, "approved")}
-                      >
-                        {t(($) => $.flow.verdict.approve)}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="xs"
-                        disabled={updateIssue.isPending}
-                        onClick={() => void handleVerdict(task, "rejected")}
-                      >
-                        {t(($) => $.flow.verdict.reject)}
-                      </Button>
-                      {canManage && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="xs"
-                          disabled={updateIssue.isPending}
-                          onClick={() => void handleVerdict(task, "approved")}
-                          className="text-micro text-muted-foreground hover:text-foreground"
-                        >
-                          {tSquads(($) => $.flow_designer.close_on_behalf)}
-                        </Button>
-                      )}
-                    </div>
-                  ) : null
+                  renderVerdicts(task)
                 ) : (
                   renderOutcomeBadge(task.outcome ?? (task.closed_at !== null ? "done" : null))
                 )}
@@ -355,6 +416,36 @@ export function IssueFlowStatePanel({
           </Button>
         </div>
       )}
+
+      {/* Resume without a checkpoint */}
+      <Dialog open={pendingResume !== null} onOpenChange={(open) => !open && setPendingResume(null)}>
+        <DialogContent className="max-w-md p-6">
+          <DialogHeader className="space-y-2">
+            <DialogTitle>{t(($) => $.flow.skip_checkpoint_title)}</DialogTitle>
+          </DialogHeader>
+          <label className="flex cursor-pointer items-start gap-2 text-caption">
+            <input
+              type="checkbox"
+              checked={skipAcknowledged}
+              onChange={(e) => setSkipAcknowledged(e.target.checked)}
+              className="mt-0.5 size-4 rounded border-input"
+            />
+            <span>{t(($) => $.flow.skip_checkpoint_ack)}</span>
+          </label>
+          <DialogFooter className="gap-2 pt-4">
+            <Button variant="outline" size="sm" disabled={resumeMut.isPending} onClick={() => setPendingResume(null)}>
+              {t(($) => $.flow.cancel)}
+            </Button>
+            <Button
+              size="sm"
+              disabled={!skipAcknowledged || resumeMut.isPending}
+              onClick={() => void handleResume({ ...pendingResume, acknowledge_skip_checkpoint: true })}
+            >
+              {t(($) => $.flow.resume)}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Detach Confirmation Dialog */}
       <Dialog open={confirmDetachOpen} onOpenChange={setConfirmDetachOpen}>

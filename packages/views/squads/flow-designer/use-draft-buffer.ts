@@ -1,3 +1,5 @@
+"use client";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FlowDoc, FlowDraft } from "@multica/core/types";
 import { useCreateFlowDraft, useUpdateFlowDraft } from "@multica/core/flow-drafts";

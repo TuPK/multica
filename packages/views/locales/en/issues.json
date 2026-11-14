@@ -2454,6 +2454,8 @@
       "workflow_has_flow_requests": "Cannot delete workflow with active flow requests",
       "flow_workflow_forbidden": "Admin permission required to configure flow workflows"
     },
-    "resume_skip_cancelled": "Resume without the cancelled tasks"
+    "resume_skip_cancelled": "Resume without the cancelled tasks",
+    "skip_checkpoint_title": "No one has seen this work",
+    "skip_checkpoint_ack": "I understand no person has seen the agent's work, and I resume the request anyway"
   }
 }

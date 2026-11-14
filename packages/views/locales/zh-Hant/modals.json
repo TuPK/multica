@@ -262,7 +262,9 @@
       "error_daemon_version": "該 AI 代理的守護程序 CLI（{{current}}）低於要求的 {{min}}。請升級守護程序後再使用透過 AI 代理建立。",
       "error_unknown": "提交失敗，請重試。",
       "sub_issue_of": "作為 {{identifier}} 的子任務"
-    }
+    },
+    "flow_workflow": "工作流程",
+    "flow_workflow_active": "{{name}}（使用中）"
   },
   "mark_duplicate": {
     "title": "標記為重複",

@@ -12,6 +12,7 @@ import {
   Download,
   Loader2,
   Pencil,
+  Play,
   Plus,
   RefreshCw,
   Workflow,
@@ -34,6 +35,7 @@ import {
   useSetSquadActiveWorkflow,
 } from "@multica/core/issue-workflows";
 import { WorkflowGraphSheet } from "./workflow-graph-sheet";
+import { canTrialRun, TrialRunDialog } from "./trial-run-dialog";
 import { cutDraftName } from "../flow-designer/draft-name";
 import { downloadJson, manifestFileName } from "../flow-designer/download-json";
 import { StartDialog } from "../flow-designer/start-dialog";
@@ -57,6 +59,7 @@ export function SquadWorkflowsSection({
   const [sheetOpen, setSheetOpen] = useState(false);
   const [startDialogOpen, setStartDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [trialWorkflow, setTrialWorkflow] = useState<IssueWorkflow | null>(null);
 
   const query = useQuery(squadWorkflowsOptions(wsId, squad.id));
   const capabilitiesQuery = useFlowCapabilities(wsId);
@@ -347,6 +350,22 @@ export function SquadWorkflowsSection({
                           </>
                         )}
 
+                        {/* Trial run: a rehearsal of this version on a sample request */}
+                        {canManage && authoringEnabled && canTrialRun(wf) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTrialWorkflow(wf);
+                            }}
+                            className="gap-1 text-caption h-8"
+                          >
+                            <Play className="size-3.5" aria-hidden />
+                            <span>{t(($) => $.flow_designer.trial.run)}</span>
+                          </Button>
+                        )}
+
                         {/* Export */}
                         {canManage && authoringEnabled && wf.flow_config != null && (
                           <Button
@@ -395,6 +414,17 @@ export function SquadWorkflowsSection({
             ))}
           </ul>
         </div>
+      )}
+
+      {trialWorkflow && (
+        <TrialRunDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setTrialWorkflow(null);
+          }}
+          squad={squad}
+          workflow={trialWorkflow}
+        />
       )}
 
       {/* Start Dialog */}

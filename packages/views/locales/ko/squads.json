@@ -357,8 +357,24 @@
       "kind": {
         "agent": "에이전트",
         "member": "멤버",
-        "managers": "스쿼드 관리자"
-      }
+        "managers": "스쿼드 관리자",
+        "lead": "리더",
+        "requester": "요청자"
+      },
+      "add_agent_notice": "스쿼드에 에이전트를 추가하세요",
+      "add_agent": "에이전트 추가",
+      "col_pool": "풀",
+      "col_usage": "사용 현황",
+      "fixed_leader": "고정 리더",
+      "in_use": "사용 중",
+      "delete": "{{key}} 삭제",
+      "label_placeholder": "레이블",
+      "add": "역할 추가",
+      "limit_reached": "역할 한도 {{count}}개에 도달했습니다",
+      "col_assigned": "할당",
+      "assigned_count": "{{count}}/{{pool}}",
+      "no_choices": "선택할 대상이 없습니다",
+      "pool_label": "{{key}} 풀"
     },
     "step": {
       "work": "작업 단계",
@@ -433,7 +449,11 @@
       "lead_may_work": "리더가 작업을 수행할 수 있음을 이해합니다"
     },
     "problems": {
-      "none": "문제가 없습니다"
+      "none": "문제가 없습니다",
+      "title": "검증 문제",
+      "errors_other": "오류 {{count}}개",
+      "warnings_other": "경고 {{count}}개",
+      "requires_ack": "확인 필요"
     },
     "empty": {
       "title": "아직 워크플로가 없습니다"
@@ -455,7 +475,20 @@
       "back_to": "{{step}}(으)로 돌아가기"
     },
     "verdicts": {
-      "title": "판정 옵션"
+      "title": "판정 옵션",
+      "built_in": "기본 제공 세트(읽기 전용)",
+      "custom": "사용자 정의 세트",
+      "col_verdicts": "판정",
+      "delete": "{{key}} 삭제",
+      "empty": "사용자 정의 판정 세트가 없습니다",
+      "add": "판정 세트 추가",
+      "item": "{{key}} ({{class}})",
+      "class": {
+        "pass": "통과",
+        "fail": "실패"
+      },
+      "pass_label": "통과",
+      "fail_label": "실패"
     },
     "verdict": {
       "pass": "통과로 간주",
@@ -471,10 +504,37 @@
       "min": "최소 {{count}}개"
     },
     "vars": {
-      "title": "변수"
+      "title": "변수",
+      "col_type": "유형",
+      "col_default": "기본값",
+      "col_set_by": "설정자",
+      "col_set_at": "설정 위치",
+      "delete": "{{key}} 삭제",
+      "empty": "선언된 변수가 없습니다",
+      "default_placeholder": "기본값",
+      "add": "변수 추가",
+      "limit_reached": "변수 한도 {{count}}개에 도달했습니다",
+      "type": {
+        "string": "텍스트",
+        "int": "숫자",
+        "bool": "예/아니요",
+        "enum": "선택",
+        "list_string": "텍스트 목록"
+      }
     },
     "stops": {
-      "declared": "중단 사유"
+      "declared": "중단 사유",
+      "built_in": "기본 제공",
+      "empty": "선언된 중단이 없습니다",
+      "delete": "{{code}} 삭제",
+      "add": "중단 추가",
+      "class": {
+        "custom": "사용자 정의",
+        "missing_grounds": "근거 부족",
+        "loop_exhausted": "루프 소진"
+      },
+      "message": "메시지",
+      "default_message": "차단됨 · {{label}}\n{request}이(가) {step}에서 멈췄습니다.\n{tasks}"
     },
     "terminal": {
       "leaves": "워크스페이스를 벗어남"
@@ -487,7 +547,11 @@
     "graph": {
       "collapse": "접기",
       "find": "단계 찾기",
-      "worst_case": "최악의 경우 최대 {{count}}개 작업"
+      "worst_case": "최악의 경우 최대 {{count}}개 작업",
+      "show_loops": "루프만 표시",
+      "fit": "맞춤",
+      "vertical_title": "단계 순서",
+      "exits_other": "출구 {{count}}개"
     },
     "request": {
       "path": "경로",
@@ -497,7 +561,12 @@
     },
     "trial": {
       "run": "시험 실행",
-      "badge": "시험"
+      "badge": "시험",
+      "dialog_title": "시험 실행 시작",
+      "description": "실제 에이전트가 새 샘플 요청을 처리합니다. 사람이 확인하기 전에는 결과물이 워크스페이스 밖으로 나가지 않습니다.",
+      "title_label": "샘플 요청 제목",
+      "start": "시작",
+      "failed": "시험 실행을 시작하지 못했습니다"
     },
     "unsupported": "이 앱 버전에서 지원되지 않음",
     "editor": {
@@ -523,6 +592,105 @@
       "submit": "가져오기",
       "failed": "파일을 가져오지 못했습니다"
     },
-    "drafts": "초안"
+    "drafts": "초안",
+    "edges": {
+      "title": "라우팅 엣지",
+      "add": "엣지 추가",
+      "label_placeholder": "엣지 레이블",
+      "default_label": "다음",
+      "manual": "수동",
+      "move_up": "엣지 {{n}} 위로 이동",
+      "move_down": "엣지 {{n}} 아래로 이동",
+      "delete": "엣지 {{n}} 삭제",
+      "destination": "대상",
+      "group_steps": "단계 및 종료 지점",
+      "group_stops": "중단",
+      "step_option": "단계: {{name}}",
+      "terminal_option": "종료 지점: {{key}}",
+      "stop_option": "중단: {{name}}",
+      "stop_stalled": "중단: 정체",
+      "loop": "루프 복귀 엣지",
+      "no_loop": "루프 없음(정방향 엣지)",
+      "loop_option": "{{key}} (헤더: {{header}})",
+      "empty": "이 단계에 설정된 엣지가 없습니다"
+    },
+    "common": {
+      "key": "키",
+      "label": "레이블",
+      "kind": "종류",
+      "code": "코드",
+      "class": "분류",
+      "message_key": "메시지 키"
+    },
+    "loops": {
+      "col_header": "헤더 단계",
+      "col_max": "최대 한도",
+      "col_reset": "초기화",
+      "delete": "{{key}} 삭제",
+      "empty": "선언된 루프가 없습니다",
+      "header_placeholder": "헤더 단계…",
+      "mode_fixed": "고정 횟수",
+      "mode_var": "변수에서",
+      "max_var": "{{var}}에서, 최대 {{cap}}",
+      "var_label": "사용 가능한 정수 변수",
+      "var_placeholder": "변수 선택…",
+      "var_option": "{{key}} (최대: {{max}})",
+      "cap_placeholder": "상한",
+      "add": "루프 추가"
+    },
+    "outline": {
+      "title": "단계",
+      "search": "단계 검색…",
+      "empty": "단계를 찾을 수 없습니다"
+    },
+    "inspector": {
+      "step_title_placeholder": "단계 제목",
+      "quorum": "정족수",
+      "exit_role": "종료 역할",
+      "notice": "알림 메시지 키",
+      "tasks": "작업 ({{count}} / {{limit}})",
+      "no_tasks": "이 단계에 작업이 없습니다",
+      "default_task_title": "작업 {{n}}"
+    },
+    "task_card": {
+      "title_placeholder": "작업 제목",
+      "key": "키: {{key}}",
+      "kind_work": "작업",
+      "kind_gate": "게이트",
+      "delete": "작업 {{key}} 삭제",
+      "role": "역할",
+      "no_inputs": "이전 단계에 작업이 없습니다",
+      "no_skills": "스쿼드에 스킬이 없습니다",
+      "missing_skills": "R09: 역할에 없는 스킬: {{skills}}",
+      "must_set": "설정 필수",
+      "instructions": "지침",
+      "instructions_placeholder": "에이전트나 멤버가 하는 일…"
+    },
+    "terminals": {
+      "col_status": "상태",
+      "col_scope": "범위",
+      "internal": "내부",
+      "delete": "{{key}} 삭제",
+      "status_placeholder": "상태(예: done)",
+      "add": "종료 지점 추가"
+    },
+    "templates": {
+      "blank": "빈 단계",
+      "work": "작업",
+      "gate": "게이트",
+      "quorum": "다중 검토",
+      "human": "사람 승인",
+      "lead": "리더 결정",
+      "task_work": "작업 수행",
+      "task_gate": "작업 결과 확인",
+      "task_reviewer": "검토자 {{n}}",
+      "edge_next": "다음",
+      "edge_blocked": "차단됨",
+      "edge_passed": "통과",
+      "edge_rework": "재작업으로 되돌림",
+      "edge_stopped": "중지됨",
+      "edge_release": "승인하고 계속",
+      "notice_human_approval": "{requester} {request} 사람의 승인을 기다리고 있습니다."
+    }
   }
 }

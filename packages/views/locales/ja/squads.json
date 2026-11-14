@@ -357,8 +357,24 @@
       "kind": {
         "agent": "エージェント",
         "member": "メンバー",
-        "managers": "スクワッド管理者"
-      }
+        "managers": "スクワッド管理者",
+        "lead": "リード",
+        "requester": "依頼者"
+      },
+      "add_agent_notice": "スクワッドにエージェントを追加してください",
+      "add_agent": "エージェントを追加",
+      "col_pool": "プール",
+      "col_usage": "使用状況",
+      "fixed_leader": "固定リード",
+      "in_use": "使用中",
+      "delete": "{{key}} を削除",
+      "label_placeholder": "ラベル",
+      "add": "ロールを追加",
+      "limit_reached": "ロールの上限 {{count}} に達しました",
+      "col_assigned": "割り当て",
+      "assigned_count": "{{count}} / {{pool}}",
+      "no_choices": "選択できる対象がありません",
+      "pool_label": "{{key}} のプール"
     },
     "step": {
       "work": "作業ステップ",
@@ -433,7 +449,11 @@
       "lead_may_work": "リードがタスクを実行できることを理解しています"
     },
     "problems": {
-      "none": "問題は見つかりませんでした"
+      "none": "問題は見つかりませんでした",
+      "title": "検証の問題",
+      "errors_other": "エラー {{count}} 件",
+      "warnings_other": "警告 {{count}} 件",
+      "requires_ack": "確認が必要"
     },
     "empty": {
       "title": "ワークフローはまだありません"
@@ -455,7 +475,20 @@
       "back_to": "{{step}} に戻る"
     },
     "verdicts": {
-      "title": "判定の選択肢"
+      "title": "判定の選択肢",
+      "built_in": "組み込みセット（読み取り専用）",
+      "custom": "カスタムセット",
+      "col_verdicts": "判定",
+      "delete": "{{key}} を削除",
+      "empty": "カスタムの判定セットはありません",
+      "add": "判定セットを追加",
+      "item": "{{key}}（{{class}}）",
+      "class": {
+        "pass": "合格",
+        "fail": "不合格"
+      },
+      "pass_label": "合格",
+      "fail_label": "不合格"
     },
     "verdict": {
       "pass": "合格として扱う",
@@ -471,10 +504,37 @@
       "min": "{{count}} 件以上"
     },
     "vars": {
-      "title": "変数"
+      "title": "変数",
+      "col_type": "型",
+      "col_default": "既定値",
+      "col_set_by": "設定者",
+      "col_set_at": "設定箇所",
+      "delete": "{{key}} を削除",
+      "empty": "宣言された変数はありません",
+      "default_placeholder": "既定値",
+      "add": "変数を追加",
+      "limit_reached": "変数の上限 {{count}} に達しました",
+      "type": {
+        "string": "テキスト",
+        "int": "数値",
+        "bool": "はい／いいえ",
+        "enum": "選択肢",
+        "list_string": "テキストのリスト"
+      }
     },
     "stops": {
-      "declared": "停止の理由"
+      "declared": "停止の理由",
+      "built_in": "組み込み",
+      "empty": "宣言された停止はありません",
+      "delete": "{{code}} を削除",
+      "add": "停止を追加",
+      "class": {
+        "custom": "カスタム",
+        "missing_grounds": "根拠不足",
+        "loop_exhausted": "ループ上限到達"
+      },
+      "message": "メッセージ",
+      "default_message": "停止 · {{label}}\n{request} は {step} で停止しました。\n{tasks}"
     },
     "terminal": {
       "leaves": "ワークスペースを出る"
@@ -487,7 +547,11 @@
     "graph": {
       "collapse": "折りたたむ",
       "find": "ステップを検索",
-      "worst_case": "最悪の場合は最大 {{count}} 件のタスク"
+      "worst_case": "最悪の場合は最大 {{count}} 件のタスク",
+      "show_loops": "ループのみ表示",
+      "fit": "全体表示",
+      "vertical_title": "ステップの順序",
+      "exits_other": "出口 {{count}} 件"
     },
     "request": {
       "path": "パス",
@@ -497,7 +561,12 @@
     },
     "trial": {
       "run": "試行実行",
-      "badge": "試行"
+      "badge": "試行",
+      "dialog_title": "試行実行を開始",
+      "description": "実際のエージェントが新しいサンプルリクエストを処理します。人が確認するまで、成果物はワークスペースの外に出ません。",
+      "title_label": "サンプルリクエストのタイトル",
+      "start": "開始",
+      "failed": "試行実行を開始できませんでした"
     },
     "unsupported": "このアプリのバージョンでは未対応",
     "editor": {
@@ -523,6 +592,105 @@
       "submit": "インポート",
       "failed": "ファイルをインポートできませんでした"
     },
-    "drafts": "下書き"
+    "drafts": "下書き",
+    "edges": {
+      "title": "ルーティングのエッジ",
+      "add": "エッジを追加",
+      "label_placeholder": "エッジのラベル",
+      "default_label": "次へ",
+      "manual": "手動",
+      "move_up": "エッジ {{n}} を上へ",
+      "move_down": "エッジ {{n}} を下へ",
+      "delete": "エッジ {{n}} を削除",
+      "destination": "宛先",
+      "group_steps": "ステップと終了点",
+      "group_stops": "停止",
+      "step_option": "ステップ: {{name}}",
+      "terminal_option": "終了点: {{key}}",
+      "stop_option": "停止: {{name}}",
+      "stop_stalled": "停止: 停滞",
+      "loop": "ループの戻りエッジ",
+      "no_loop": "ループなし（前進エッジ）",
+      "loop_option": "{{key}}（ヘッダー: {{header}}）",
+      "empty": "このステップにはエッジが設定されていません"
+    },
+    "common": {
+      "key": "キー",
+      "label": "ラベル",
+      "kind": "種類",
+      "code": "コード",
+      "class": "クラス",
+      "message_key": "メッセージキー"
+    },
+    "loops": {
+      "col_header": "ヘッダーステップ",
+      "col_max": "上限",
+      "col_reset": "リセット",
+      "delete": "{{key}} を削除",
+      "empty": "宣言されたループはありません",
+      "header_placeholder": "ヘッダーステップ…",
+      "mode_fixed": "固定回数",
+      "mode_var": "変数から",
+      "max_var": "{{var}} から、最大 {{cap}}",
+      "var_label": "対象の整数変数",
+      "var_placeholder": "変数を選択…",
+      "var_option": "{{key}}（最大: {{max}}）",
+      "cap_placeholder": "上限",
+      "add": "ループを追加"
+    },
+    "outline": {
+      "title": "ステップ",
+      "search": "ステップを検索…",
+      "empty": "ステップが見つかりません"
+    },
+    "inspector": {
+      "step_title_placeholder": "ステップのタイトル",
+      "quorum": "定足数",
+      "exit_role": "終了ロール",
+      "notice": "通知メッセージキー",
+      "tasks": "タスク ({{count}} / {{limit}})",
+      "no_tasks": "このステップにタスクはありません",
+      "default_task_title": "タスク {{n}}"
+    },
+    "task_card": {
+      "title_placeholder": "タスクのタイトル",
+      "key": "キー: {{key}}",
+      "kind_work": "作業",
+      "kind_gate": "ゲート",
+      "delete": "タスク {{key}} を削除",
+      "role": "ロール",
+      "no_inputs": "前のステップにタスクはありません",
+      "no_skills": "スクワッドにスキルがありません",
+      "missing_skills": "R09: ロールに不足しているスキル: {{skills}}",
+      "must_set": "設定必須",
+      "instructions": "指示",
+      "instructions_placeholder": "エージェントまたはメンバーが行うこと…"
+    },
+    "terminals": {
+      "col_status": "ステータス",
+      "col_scope": "範囲",
+      "internal": "内部",
+      "delete": "{{key}} を削除",
+      "status_placeholder": "ステータス（例: done）",
+      "add": "終了点を追加"
+    },
+    "templates": {
+      "blank": "空のステップ",
+      "work": "作業",
+      "gate": "ゲート",
+      "quorum": "複数人レビュー",
+      "human": "人による承認",
+      "lead": "リーダーの判断",
+      "task_work": "作業を行う",
+      "task_gate": "作業内容を確認する",
+      "task_reviewer": "レビュー担当 {{n}}",
+      "edge_next": "次へ",
+      "edge_blocked": "ブロック",
+      "edge_passed": "合格",
+      "edge_rework": "差し戻して修正",
+      "edge_stopped": "停止",
+      "edge_release": "承認して続行",
+      "notice_human_approval": "{requester} {request} は人による承認を待っています。"
+    }
   }
 }

@@ -1,4 +1,5 @@
-/* eslint-disable i18next/no-literal-string, no-restricted-syntax */
+"use client";
+
 import { useMemo } from "react";
 import type { FlowDoc, FlowDocTask, Skill, SquadMember } from "@multica/core/types";
 import { Badge } from "@multica/ui/components/ui/badge";
@@ -99,23 +100,27 @@ export function TaskCard({
           <Input
             value={task.title}
             onChange={(e) => onChangeTask({ ...task, title: e.target.value })}
-            placeholder="Task title"
+            placeholder={t(($) => $.flow_designer.task_card.title_placeholder)}
             className="h-7 text-caption font-medium max-w-sm"
           />
           <span className="font-mono text-micro text-muted-foreground block">
-            key: {task.key}
+            {t(($) => $.flow_designer.task_card.key, { key: task.key })}
           </span>
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
           <Badge variant={task.kind === "gate" ? "outline" : "secondary"} className="text-micro font-normal">
-            {task.kind}
+            {task.kind === "gate"
+              ? t(($) => $.flow_designer.task_card.kind_gate)
+              : task.kind === "work"
+                ? t(($) => $.flow_designer.task_card.kind_work)
+                : task.kind}
           </Badge>
           <Button
             type="button"
             variant="ghost"
             size="xs"
-            aria-label={`Delete task ${task.key}`}
+            aria-label={t(($) => $.flow_designer.task_card.delete, { key: task.key })}
             onClick={onDeleteTask}
             className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
           >
@@ -127,7 +132,7 @@ export function TaskCard({
       {/* Role & Verdict set */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
-          <label className="text-micro text-muted-foreground block mb-0.5">Role</label>
+          <label className="text-micro text-muted-foreground block mb-0.5">{t(($) => $.flow_designer.task_card.role)}</label>
           <select
             value={task.role}
             onChange={(e) => onChangeTask({ ...task, role: e.target.value })}
@@ -162,7 +167,7 @@ export function TaskCard({
       {/* Inputs (Spec 11.9): Only tasks in other steps with a path to this step */}
       <div className="space-y-1">
         <label className="text-micro font-medium text-muted-foreground block">
-          Inputs (from predecessor steps)
+          {t(($) => $.flow_designer.task.inputs)}
         </label>
         {predecessorTasks.length > 0 ? (
           <div className="space-y-1 max-h-28 overflow-y-auto rounded border border-border p-1.5">
@@ -192,7 +197,7 @@ export function TaskCard({
           </div>
         ) : (
           <p className="text-micro text-muted-foreground italic">
-            No predecessor step tasks available
+            {t(($) => $.flow_designer.task_card.no_inputs)}
           </p>
         )}
       </div>
@@ -201,12 +206,12 @@ export function TaskCard({
       <div className="space-y-1">
         <div className="flex items-center justify-between">
           <label className="text-micro font-medium text-muted-foreground">
-            Skills (required for task)
+            {t(($) => $.flow_designer.task.skills)}
           </label>
           {missingSkills.length > 0 && (
             <span className="flex items-center gap-1 text-micro text-destructive font-medium">
               <AlertCircle className="size-3" aria-hidden />
-              <span>R09: Role missing skills: {missingSkills.join(", ")}</span>
+              <span>{t(($) => $.flow_designer.task_card.missing_skills, { skills: missingSkills.join(", ") })}</span>
             </span>
           )}
         </div>
@@ -231,7 +236,7 @@ export function TaskCard({
             );
           })}
           {roleAgentSkills.length === 0 && (
-            <span className="text-micro text-muted-foreground italic">No squad skills</span>
+            <span className="text-micro text-muted-foreground italic">{t(($) => $.flow_designer.task_card.no_skills)}</span>
           )}
         </div>
       </div>
@@ -240,7 +245,7 @@ export function TaskCard({
       {declaredVars.length > 0 && (
         <div className="space-y-1.5 pt-1 border-t border-border/50">
           <label className="text-micro font-medium text-muted-foreground block">
-            Sets variables
+            {t(($) => $.flow_designer.task.sets)}
           </label>
           <div className="flex gap-2 flex-wrap">
             {declaredVars.map((vKey) => {
@@ -266,7 +271,7 @@ export function TaskCard({
                         onChange={() => handleToggleRequiredVar(vKey)}
                         className="size-2.5 rounded border-input"
                       />
-                      <span className="text-micro">Must set</span>
+                      <span className="text-micro">{t(($) => $.flow_designer.task_card.must_set)}</span>
                     </label>
                   )}
                 </div>
@@ -278,11 +283,11 @@ export function TaskCard({
 
       {/* Instructions */}
       <div>
-        <label className="text-micro text-muted-foreground block mb-0.5">Instructions</label>
+        <label className="text-micro text-muted-foreground block mb-0.5">{t(($) => $.flow_designer.task_card.instructions)}</label>
         <Textarea
           value={task.instructions || ""}
           onChange={(e) => onChangeTask({ ...task, instructions: e.target.value })}
-          placeholder="Task instructions for agent or member..."
+          placeholder={t(($) => $.flow_designer.task_card.instructions_placeholder)}
           className="text-caption min-h-16 resize-y"
         />
       </div>

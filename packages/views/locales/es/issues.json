@@ -2454,6 +2454,8 @@
       "workflow_has_flow_requests": "No se puede eliminar un flujo con solicitudes activas",
       "flow_workflow_forbidden": "Se requiere permiso de administrador para configurar flujos"
     },
-    "resume_skip_cancelled": "Reanudar sin las tareas canceladas"
+    "resume_skip_cancelled": "Reanudar sin las tareas canceladas",
+    "skip_checkpoint_title": "Nadie ha visto este trabajo",
+    "skip_checkpoint_ack": "Entiendo que nadie ha visto el trabajo del agente y reanudo la solicitud de todos modos"
   }
 }

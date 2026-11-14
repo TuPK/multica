@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -10,7 +10,14 @@ const mocks = vi.hoisted(() => ({
   resumeMut: vi.fn().mockResolvedValue({}),
   detachMut: vi.fn().mockResolvedValue({ detached: true }),
   exitMut: vi.fn().mockResolvedValue({}),
+  closeMut: vi.fn().mockResolvedValue({}),
+  userId: "user-1" as string | null,
   updateIssueMut: vi.fn().mockResolvedValue({}),
+}));
+
+vi.mock("@multica/core/auth", () => ({
+  useAuthStore: (select: (state: { user: { id: string } | null }) => unknown) =>
+    select({ user: mocks.userId ? { id: mocks.userId } : null }),
 }));
 
 vi.mock("@multica/core/issues/mutations", () => ({
@@ -34,6 +41,10 @@ vi.mock("@multica/core/issue-workflows", async (importOriginal) => {
     }),
     useExitIssueFlow: () => ({
       mutateAsync: mocks.exitMut,
+      isPending: false,
+    }),
+    useCloseIssueFlowTask: () => ({
+      mutateAsync: mocks.closeMut,
       isPending: false,
     }),
   };
@@ -376,5 +387,140 @@ describe("IssueFlowStatePanel", () => {
   it("does not offer to skip cancelled tasks when none were cancelled", () => {
     renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={{ ...stoppedAtGate, rework_step: "" }} canManage={true} />);
     expect(screen.queryByRole("button", { name: "Choose the step" })).not.toBeInTheDocument();
+  });
+
+  // The buttons of a task are the verdicts of its own set (spec 2.3, 11.6), not two fixed ones.
+  describe("a trial run", () => {
+    it("shows the Trial badge next to the workflow name, and none for an ordinary request", () => {
+      const { rerender } = renderPanel(
+        <IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={{ ...sampleFlow, trial: true }} canManage={false} />,
+      );
+      expect(screen.getByText("Trial")).toBeInTheDocument();
+      expect(screen.getByText(sampleFlow.workflow_name).parentElement).toContainElement(screen.getByText("Trial"));
+
+      rerender(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={{ ...sampleFlow, trial: false }} canManage={false} />);
+      expect(screen.queryByText("Trial")).toBeNull();
+      // A server that does not send the field is an ordinary request.
+      rerender(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={sampleFlow} canManage={false} />);
+      expect(screen.queryByText("Trial")).toBeNull();
+    });
+  });
+
+  describe("verdicts of the task's own set", () => {
+    beforeEach(() => {
+      mocks.updateIssueMut.mockClear();
+      mocks.closeMut.mockClear();
+    });
+
+    const triage = (over: Partial<IssueFlowState["tasks"][number]> = {}): IssueFlowState => ({
+      ...sampleFlow,
+      tasks: [
+        {
+          issue_id: "task-9",
+          identifier: "MUL-20",
+          step: "review",
+          task: "triage",
+          round: 0,
+          kind: "gate",
+          status: "todo",
+          outcome: null,
+          assignee_id: "user-1",
+          closed_at: null,
+          verdicts: [
+            { key: "ship", class: "pass" },
+            { key: "fix", class: "fail" },
+            { key: "defer", class: "neutral" },
+          ],
+          ...over,
+        },
+      ],
+    });
+
+    it("shows the custom verdict keys to the assignee, and closes with the key chosen", async () => {
+      mocks.userId = "user-1";
+      renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={triage()} canManage={false} />);
+
+      expect(screen.getByRole("button", { name: "ship" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "fix" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "defer" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+
+      fireEvent.click(screen.getByRole("button", { name: "fix" }));
+      await waitFor(() => expect(mocks.updateIssueMut).toHaveBeenCalledWith({ id: "task-9", status: "done", outcome: "fix" }));
+      expect(mocks.closeMut).not.toHaveBeenCalled();
+    });
+
+    it("lets a manager who is not the assignee close it on behalf through the close route, with a verdict of the set", async () => {
+      const user = userEvent.setup();
+      mocks.userId = "manager-1";
+      renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={triage()} canManage={true} />);
+
+      expect(screen.queryByRole("button", { name: "ship" })).toBeNull();
+      await user.click(screen.getByRole("button", { name: /close on behalf/i }));
+      await user.click(await screen.findByRole("menuitem", { name: "ship" }));
+
+      await waitFor(() => expect(mocks.closeMut).toHaveBeenCalledWith({ taskId: "task-9", verdict: "ship" }));
+      expect(mocks.updateIssueMut).not.toHaveBeenCalled();
+    });
+
+    it("gives the buttons of the built-in set when an older server sends none", () => {
+      mocks.userId = "user-1";
+      renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={triage({ verdicts: [] })} canManage={false} />);
+
+      expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Reject" })).toBeInTheDocument();
+    });
+
+    it("shows nothing to someone who may not close the task", () => {
+      mocks.userId = "other";
+      const flow = { ...triage(), viewer: { can_manage: false, closable_task_ids: [] } };
+      renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={flow} canManage={false} />);
+
+      expect(screen.queryByRole("button", { name: "ship" })).toBeNull();
+    });
+  });
+
+  // Spec 4.7: a stall caused by agent work nobody has seen is resumed only on the manager's word.
+  describe("resuming a request stalled on unseen work", () => {
+    const unseen: IssueFlowState = {
+      ...sampleFlow,
+      unreviewed: true,
+      stop: { code: "stalled", legacy_no: 0, from: "handover", edge: "", at: "" },
+    };
+
+    beforeEach(() => mocks.resumeMut.mockClear());
+
+    it("asks for the acknowledgement first and sends it only once it is ticked", async () => {
+      renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={unseen} canManage={true} />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+      const dialog = await screen.findByRole("dialog");
+      expect(mocks.resumeMut).not.toHaveBeenCalled();
+      const confirm = within(dialog).getByRole("button", { name: "Resume" });
+      expect(confirm).toBeDisabled();
+
+      fireEvent.click(within(dialog).getByRole("checkbox"));
+      fireEvent.click(confirm);
+
+      await waitFor(() => expect(mocks.resumeMut).toHaveBeenCalledWith({ acknowledge_skip_checkpoint: true }));
+    });
+
+    it("does not ask when nothing is unseen, and never sends the acknowledgement then", async () => {
+      renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={{ ...unseen, unreviewed: false }} canManage={true} />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+
+      await waitFor(() => expect(mocks.resumeMut).toHaveBeenCalledWith({}));
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("asks when the server asks, though the state did not say so", async () => {
+      mocks.resumeMut.mockRejectedValueOnce(Object.assign(new Error("ack"), { body: { code: "flow_checkpoint_ack_required" } }));
+      renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={{ ...unseen, unreviewed: false }} canManage={true} />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    });
   });
 });

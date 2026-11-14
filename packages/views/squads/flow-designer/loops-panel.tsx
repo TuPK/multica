@@ -1,4 +1,5 @@
-/* eslint-disable i18next/no-literal-string, no-restricted-syntax */
+"use client";
+
 import { useMemo, useState } from "react";
 import type { FlowDoc, FlowDocLoop, FlowDocVar } from "@multica/core/types";
 import { Badge } from "@multica/ui/components/ui/badge";
@@ -75,10 +76,10 @@ export function LoopsPanel({
         <table className="w-full text-caption border-collapse">
           <thead>
             <tr className="border-b border-border bg-muted/50 text-left text-muted-foreground">
-              <th className="p-2 font-medium">Key</th>
-              <th className="p-2 font-medium">Header Step</th>
-              <th className="p-2 font-medium">Max Limit</th>
-              <th className="p-2 font-medium">Reset</th>
+              <th className="p-2 font-medium">{t(($) => $.flow_designer.common.key)}</th>
+              <th className="p-2 font-medium">{t(($) => $.flow_designer.loops.col_header)}</th>
+              <th className="p-2 font-medium">{t(($) => $.flow_designer.loops.col_max)}</th>
+              <th className="p-2 font-medium">{t(($) => $.flow_designer.loops.col_reset)}</th>
               <th className="p-2 font-medium w-10"></th>
             </tr>
           </thead>
@@ -87,7 +88,7 @@ export function LoopsPanel({
               const maxDesc =
                 typeof loop.max === "number"
                   ? t(($) => $.flow_designer.loop.max, { count: loop.max })
-                  : `var(${loop.max.var}, cap ${loop.max.cap})`;
+                  : t(($) => $.flow_designer.loops.max_var, { var: loop.max.var, cap: loop.max.cap });
 
               return (
                 <tr key={loop.key} className="hover:bg-muted/30">
@@ -107,7 +108,7 @@ export function LoopsPanel({
                       type="button"
                       variant="ghost"
                       size="xs"
-                      aria-label={`Delete ${loop.key}`}
+                      aria-label={t(($) => $.flow_designer.loops.delete, { key: loop.key })}
                       onClick={() => handleDeleteLoop(loop.key)}
                       className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                     >
@@ -120,7 +121,7 @@ export function LoopsPanel({
             {(doc.loops ?? []).length === 0 && (
               <tr>
                 <td colSpan={5} className="p-4 text-center text-muted-foreground">
-                  No loops declared
+                  {t(($) => $.flow_designer.loops.empty)}
                 </td>
               </tr>
             )}
@@ -131,6 +132,8 @@ export function LoopsPanel({
       {/* Add Loop */}
       <div className="flex items-center gap-2 pt-2 flex-wrap">
         <Input
+          // A key is a code token: the same in every language.
+          // eslint-disable-next-line no-restricted-syntax
           placeholder="loop_key"
           value={newKey}
           onChange={(e) => setNewKey(e.target.value)}
@@ -143,7 +146,7 @@ export function LoopsPanel({
           className="h-8 rounded-md border border-input bg-background px-2 text-caption"
           disabled={atLimit}
         >
-          <option value="">Header step...</option>
+          <option value="">{t(($) => $.flow_designer.loops.header_placeholder)}</option>
           {doc.steps.map((s) => (
             <option key={s.key} value={s.key}>
               {s.title || s.key}
@@ -156,8 +159,8 @@ export function LoopsPanel({
           className="h-8 rounded-md border border-input bg-background px-2 text-caption"
           disabled={atLimit}
         >
-          <option value="fixed">Fixed count</option>
-          <option value="var">From variable</option>
+          <option value="fixed">{t(($) => $.flow_designer.loops.mode_fixed)}</option>
+          <option value="var">{t(($) => $.flow_designer.loops.mode_var)}</option>
         </select>
 
         {maxMode === "fixed" ? (
@@ -177,12 +180,12 @@ export function LoopsPanel({
               onChange={(e) => setVarKey(e.target.value)}
               className="h-8 rounded-md border border-input bg-background px-2 text-caption"
               disabled={atLimit}
-              aria-label="Eligible integer variable"
+              aria-label={t(($) => $.flow_designer.loops.var_label)}
             >
-              <option value="">Select variable...</option>
+              <option value="">{t(($) => $.flow_designer.loops.var_placeholder)}</option>
               {eligibleIntVars.map((v) => (
                 <option key={v.key} value={v.key}>
-                  {v.key} (max: {v.max})
+                  {t(($) => $.flow_designer.loops.var_option, { key: v.key, max: v.max })}
                 </option>
               ))}
             </select>
@@ -190,7 +193,7 @@ export function LoopsPanel({
               type="number"
               min={1}
               max={20}
-              placeholder="Cap"
+              placeholder={t(($) => $.flow_designer.loops.cap_placeholder)}
               value={varCap}
               onChange={(e) => setVarCap(Number(e.target.value))}
               className="h-8 text-caption w-16"
@@ -208,7 +211,7 @@ export function LoopsPanel({
           className="h-8 gap-1 text-caption"
         >
           <Plus className="size-3.5" aria-hidden />
-          <span>Add loop</span>
+          <span>{t(($) => $.flow_designer.loops.add)}</span>
         </Button>
       </div>
     </div>
