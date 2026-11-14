@@ -38,6 +38,7 @@ vi.mock("sonner", () => ({ toast: { error: mocks.toastError, success: vi.fn() } 
 const fakeApi = {
   listSquadWorkflows: vi.fn(),
   getFlowCapabilities: vi.fn(),
+  getFlowInsights: vi.fn(),
   listFlowDrafts: vi.fn(),
   createFlowDraft: vi.fn(),
   getIssueWorkflowFlowManifest: vi.fn(),
@@ -64,6 +65,13 @@ function capabilities(authoring: boolean) {
   fakeApi.getFlowCapabilities.mockResolvedValue({
     ...EMPTY_FLOW_CAPABILITIES_RESPONSE,
     features: { ...EMPTY_FLOW_CAPABILITIES_RESPONSE.features, authoring },
+  });
+}
+
+function capabilitiesWithInsights(insights: boolean) {
+  fakeApi.getFlowCapabilities.mockResolvedValue({
+    ...EMPTY_FLOW_CAPABILITIES_RESPONSE,
+    features: { ...EMPTY_FLOW_CAPABILITIES_RESPONSE.features, authoring: true, insights },
   });
 }
 
@@ -193,6 +201,76 @@ describe("SquadWorkflowsSection", () => {
 
     await waitFor(() => expect(mocks.download).toHaveBeenCalledWith("Desk_v1.manifest.json", manifest));
     expect(fakeApi.getIssueWorkflowFlowManifest).toHaveBeenCalledWith("wf-pub");
+  });
+
+  describe("insights on the sheet of a published version", () => {
+    const published = () =>
+      flowRow({
+        id: "wf-pub",
+        name: "Desk · v1",
+        version: 1,
+        published_at: "2026-11-01T00:00:00Z",
+        steps: [{ status_key: "collect", tasks: [], transitions: [] }],
+        flow_doc: { version: 2, steps: [{ key: "gather", status: { key: "collect" } }] },
+      } as unknown as Partial<IssueWorkflow>);
+    const report = {
+      requests: { total: 7, open: 0, by_end: {} },
+      steps: [{ key: "gather", entered: 7, median_minutes: 4, p90_minutes: 8 }],
+      edges: [],
+      loops: [],
+      stalls: [],
+      manual_closes: 0,
+      truncated: false,
+    };
+
+    beforeEach(() => capabilitiesWithInsights(true));
+
+    it("reads the numbers of the version that is opened, without trial runs, and shows them", async () => {
+      fakeApi.getFlowInsights.mockResolvedValue(report);
+      serve([published()], "wf-pub");
+      renderSection(true);
+
+      fireEvent.click(await screen.findByText("Desk · v1"));
+
+      expect(await screen.findByText("Entered 7 times")).toBeInTheDocument();
+      expect(screen.getByText("Numbers from 7 requests")).toBeInTheDocument();
+      expect(fakeApi.getFlowInsights).toHaveBeenCalledWith("wf-pub", { includeTrial: false });
+    });
+
+    it("does not ask when the server says it offers no insights", async () => {
+      capabilitiesWithInsights(false);
+      serve([published()], "wf-pub");
+      renderSection(true);
+
+      fireEvent.click(await screen.findByText("Desk · v1"));
+      await screen.findByText("collect");
+      await waitFor(() => expect(fakeApi.getFlowCapabilities).toHaveBeenCalled());
+
+      expect(fakeApi.getFlowInsights).not.toHaveBeenCalled();
+      expect(screen.queryByText(/^Entered/)).toBeNull();
+    });
+
+    it("does not ask for someone who cannot manage the squad: the route is the managers'", async () => {
+      serve([published()], "wf-pub");
+      renderSection(false);
+
+      fireEvent.click(await screen.findByText("Desk · v1"));
+      await screen.findByText("collect");
+
+      expect(fakeApi.getFlowInsights).not.toHaveBeenCalled();
+    });
+
+    it("shows the sheet as before when the numbers cannot be read", async () => {
+      fakeApi.getFlowInsights.mockRejectedValue(new Error("403"));
+      serve([published()], "wf-pub");
+      renderSection(true);
+
+      fireEvent.click(await screen.findByText("Desk · v1"));
+
+      expect(await screen.findByText("collect")).toBeInTheDocument();
+      await waitFor(() => expect(fakeApi.getFlowInsights).toHaveBeenCalled());
+      expect(screen.queryByText(/^Entered/)).toBeNull();
+    });
   });
 
   it("hides edit and export from someone who cannot manage the squad", async () => {

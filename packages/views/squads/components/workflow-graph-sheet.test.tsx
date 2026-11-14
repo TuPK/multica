@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithI18n } from "../../test/i18n";
 import { WorkflowGraphSheet } from "./workflow-graph-sheet";
-import type { IssueWorkflow } from "@multica/core/types";
+import type { FlowInsights, IssueWorkflow } from "@multica/core/types";
 
 describe("WorkflowGraphSheet", () => {
   const sampleWorkflow: IssueWorkflow = {
@@ -132,5 +132,73 @@ describe("WorkflowGraphSheet", () => {
 
     // Rework limit
     expect(screen.getByText(/return up to 2 times|tối đa 2 lần/i)).toBeInTheDocument();
+  });
+
+  describe("insights of the version", () => {
+    const flowDoc = {
+      version: 2,
+      steps: [
+        { key: "gather", status: { key: "collect" } },
+        { key: "recheck", status: { key: "collect" } },
+        { key: "review", status: { key: "draft" } },
+      ],
+    };
+    const withDoc = { ...sampleWorkflow, flow_doc: flowDoc } as unknown as IssueWorkflow;
+    const insights = (over: Partial<FlowInsights> = {}): FlowInsights => ({
+      requests: { total: 12, open: 1, by_end: {} },
+      steps: [
+        { key: "gather", entered: 12, median_minutes: 5, p90_minutes: 9 },
+        { key: "recheck", entered: 3, median_minutes: null, p90_minutes: null },
+        { key: "review", entered: 1, median_minutes: 2, p90_minutes: 2 },
+      ],
+      edges: [],
+      loops: [],
+      stalls: [],
+      manual_closes: 0,
+      truncated: false,
+      ...over,
+    });
+    const renderSheet = (workflow: IssueWorkflow, data: FlowInsights | null | undefined) =>
+      renderWithI18n(<WorkflowGraphSheet workflow={workflow} insights={data} open onOpenChange={() => {}} />);
+
+    it("shows how often each step was entered, on the status that holds the step, with what the numbers are made of", () => {
+      renderSheet(withDoc, insights());
+
+      expect(screen.getByText("Numbers from 12 requests")).toBeInTheDocument();
+      expect(screen.getByText("Entered 12 times")).toBeInTheDocument();
+      expect(screen.getByText("median 5 min, p90 9 min")).toBeInTheDocument();
+      expect(screen.getByText("Entered 3 times")).toBeInTheDocument();
+      expect(screen.getByText("Entered 1 time")).toBeInTheDocument();
+      // Two steps share the status "collect": each is named, a lone step is not.
+      expect(screen.getByText("gather")).toBeInTheDocument();
+      expect(screen.getByText("recheck")).toBeInTheDocument();
+      expect(screen.queryByText("review")).toBeNull();
+    });
+
+    it("says that only the latest requests are counted when the report was cut", () => {
+      renderSheet(withDoc, insights({ truncated: true }));
+      expect(screen.getByText("Only the latest 500 requests are counted")).toBeInTheDocument();
+    });
+
+    it("shows nothing for a version nobody has run, and nothing when there is no report", () => {
+      const view = renderSheet(withDoc, insights({ requests: { total: 0, open: 0, by_end: {} }, steps: [] }));
+      expect(screen.queryByText(/^Numbers from/)).toBeNull();
+      expect(screen.queryByText(/^Entered/)).toBeNull();
+      view.unmount();
+
+      renderSheet(withDoc, null);
+      expect(screen.queryByText(/^Numbers from/)).toBeNull();
+      expect(screen.queryByText(/^Entered/)).toBeNull();
+    });
+
+    it("shows nothing for a workflow that has no flow document to match the steps against", () => {
+      renderSheet(sampleWorkflow, insights());
+      expect(screen.queryByText(/^Entered/)).toBeNull();
+    });
+
+    it("has no switch for trial runs: the sheet only reads", () => {
+      renderSheet(withDoc, insights());
+      expect(screen.queryByRole("checkbox")).toBeNull();
+    });
   });
 });

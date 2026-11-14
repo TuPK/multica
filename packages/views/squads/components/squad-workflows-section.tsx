@@ -26,6 +26,7 @@ import {
   useExportIssueWorkflowManifest,
   useFlowCapabilities,
 } from "@multica/core/flow-drafts";
+import { useFlowInsights } from "@multica/core/packs";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { AppLink, useNavigation } from "../../navigation";
 import { useT } from "../../i18n";
@@ -64,6 +65,14 @@ export function SquadWorkflowsSection({
   const query = useQuery(squadWorkflowsOptions(wsId, squad.id));
   const capabilitiesQuery = useFlowCapabilities(wsId);
   const authoringEnabled = capabilitiesQuery.data?.features?.authoring ?? true;
+  // The numbers of the version on the sheet are the managers' (the route answers 403 to anyone else), and a server
+  // that has not said is taken to offer them. A version no request ran on answers with nothing to show.
+  const insightsEnabled = canManage && (capabilitiesQuery.data?.features?.insights ?? true);
+  const insightsQuery = useFlowInsights(selectedWorkflow?.id, {
+    includeTrial: false,
+    enabled: insightsEnabled && sheetOpen && selectedWorkflow?.flow_doc != null,
+    wsId,
+  });
 
   // Drafts are the manager's: the route answers 403 to anyone else.
   const draftsQuery = useQuery({ ...flowDraftsOptions(wsId, squad.id), enabled: canManage && authoringEnabled });
@@ -393,6 +402,7 @@ export function SquadWorkflowsSection({
       {/* Graph Sheet */}
       <WorkflowGraphSheet
         workflow={selectedWorkflow}
+        insights={insightsEnabled ? (insightsQuery.data ?? null) : null}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
       />

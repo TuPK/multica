@@ -11,10 +11,13 @@ import {
 import { ArrowRight, Lock, Paperclip, ShieldCheck, Workflow } from "@multica/ui/icons";
 import { cn } from "@multica/ui/lib/utils";
 import { useT } from "../../i18n";
-import type { IssueWorkflow, IssueWorkflowTask, WorkflowCondition } from "@multica/core/types";
+import { insightsHaveData, StepInsightBadge } from "../flow-designer/insights-badges";
+import type { FlowInsights, IssueWorkflow, IssueWorkflowTask, WorkflowCondition } from "@multica/core/types";
 
 export interface WorkflowGraphSheetProps {
   workflow: IssueWorkflow | null;
+  /** The numbers of this version, read-only. Absent, or with no requests, nothing is shown. */
+  insights?: FlowInsights | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -44,14 +47,34 @@ function extractReworkLimit(when: WorkflowCondition | null | undefined): number 
   return null;
 }
 
+/**
+ * The keys of the steps of a flow document, by the status that holds them. The sheet draws one card per status,
+ * and several steps may share one; the insights are counted per step.
+ */
+function stepKeysByStatus(flowDoc: IssueWorkflow["flow_doc"]): Map<string, string[]> {
+  const byStatus = new Map<string, string[]>();
+  const steps = flowDoc?.steps;
+  if (!Array.isArray(steps)) return byStatus;
+  for (const step of steps as Array<{ key?: unknown; status?: { key?: unknown } | null }>) {
+    const status = step?.status?.key;
+    if (typeof step?.key !== "string" || typeof status !== "string") continue;
+    byStatus.set(status, [...(byStatus.get(status) ?? []), step.key]);
+  }
+  return byStatus;
+}
+
 export function WorkflowGraphSheet({
   workflow,
+  insights = null,
   open,
   onOpenChange,
 }: WorkflowGraphSheetProps) {
   const { t } = useT("squads");
 
   if (!workflow) return null;
+
+  const showInsights = insightsHaveData(insights);
+  const stepKeys = showInsights ? stepKeysByStatus(workflow.flow_doc) : null;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -90,8 +113,16 @@ export function WorkflowGraphSheet({
         </SheetHeader>
 
         <div className="py-6 space-y-6">
+          {showInsights && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-micro text-muted-foreground">
+              <span>{t(($) => $.flow_designer.insights.requests, { count: insights.requests.total })}</span>
+              {insights.truncated && <span>{t(($) => $.flow_designer.insights.truncated)}</span>}
+            </div>
+          )}
           {workflow.steps.map((step, idx) => {
             const tasks: IssueWorkflowTask[] = step.tasks ?? [];
+            // Only the steps the report has numbers for: a step nobody entered has no line.
+            const counted = (stepKeys?.get(step.status_key) ?? []).filter((key) => insights?.steps.some((s) => s.key === key));
             return (
               <div
                 key={step.status_key || idx}
@@ -114,6 +145,19 @@ export function WorkflowGraphSheet({
                     </Badge>
                   )}
                 </div>
+
+                {counted.length > 0 && (
+                  <div className="space-y-0.5">
+                    {counted.map((key) => (
+                      <div key={key} className="flex flex-wrap items-center gap-x-2">
+                        {(stepKeys?.get(step.status_key)?.length ?? 0) > 1 && (
+                          <span className="font-mono text-micro text-foreground">{key}</span>
+                        )}
+                        <StepInsightBadge insights={insights} stepKey={key} />
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Instructions if any */}
                 {step.instructions ? (
