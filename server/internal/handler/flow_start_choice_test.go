@@ -387,3 +387,38 @@ func TestCreateIssue_FlowFieldsAre404WhenAuthoringOff(t *testing.T) {
 		t.Fatalf("the request is on %q, want the active %s", got, active.ID)
 	}
 }
+
+// A request that already has a flow keeps it: a start that names another version, or asks for a
+// trial the request is not running, is refused rather than answered with the state it has.
+func TestStart_StartedRequestRefusesAnotherChoice(t *testing.T) {
+	rig := newDraftRig(t, 1)
+	active, other := rig.twoVersions()
+	issue := squadIssue(t, rig.squadID)
+	var first IssueFlowStateResponse
+	startAs(t, issue, map[string]any{}, nil).Want(http.StatusOK).JSON(&first)
+	if first.WorkflowID != active.ID {
+		t.Fatalf("first start on workflow %s, want the active %s", first.WorkflowID, active.ID)
+	}
+	wantCode(t, startAs(t, issue, map[string]any{"workflow_id": other.ID}, nil), http.StatusConflict, "flow_cannot_start")
+	wantCode(t, startAs(t, issue, map[string]any{"trial": true}, nil), http.StatusConflict, "flow_cannot_start")
+	var again IssueFlowStateResponse
+	startAs(t, issue, map[string]any{"workflow_id": active.ID}, nil).Want(http.StatusOK).JSON(&again)
+	if again.WorkflowID != active.ID || again.Trial {
+		t.Fatalf("the same version again: workflow %s trial %t, want the request as it was", again.WorkflowID, again.Trial)
+	}
+}
+
+// A person took the request off its flow: reading the flow does not put it back on the squad's flow.
+func TestGetFlow_DetachedRequestStaysOff(t *testing.T) {
+	rig := newDraftRig(t, 1)
+	rig.twoVersions()
+	issue := squadIssue(t, rig.squadID)
+	startAs(t, issue, map[string]any{}, nil).Want(http.StatusOK)
+	detach := withURLParam(newRequest("POST", "/api/issues/"+issue+"/flow/detach", map[string]any{"cancel_tasks": false}), "id", issue)
+	testutil.Call(t, testHandler.DetachIssueFlow, detach).Want(http.StatusOK)
+	read := withURLParam(newRequest("GET", "/api/issues/"+issue+"/flow", nil), "id", issue)
+	testutil.Call(t, testHandler.GetIssueFlow, read)
+	if flow := issueFlowRaw(t, issue); flow != "" {
+		t.Fatalf("a read of the flow put the detached request back on its flow: %s", flow)
+	}
+}

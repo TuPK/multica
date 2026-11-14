@@ -75,6 +75,9 @@ type IssueFlowStopResponse struct {
 	From     string `json:"from"`
 	Edge     string `json:"edge"`
 	At       string `json:"at"`
+	// Reason is why the engine stalled the request (the StopRecord reason: a task that could not open,
+	// a deadline, a release without a checkpoint); empty for any other stop.
+	Reason string `json:"reason"`
 }
 
 // IssueFlowClosedByResponse says who closed a task. OnBehalf is true when a member
@@ -116,7 +119,10 @@ type IssueFlowStateResponse struct {
 	Step         string `json:"step"`
 	Rework       int    `json:"rework"`
 	// Stop is the stop the request is parked in (spec 7.1), null when it is not parked.
-	Stop      *IssueFlowStopResponse  `json:"stop"`
+	Stop *IssueFlowStopResponse `json:"stop"`
+	// Closed is true once the flow is finished: a terminal step was reached, or the request was done or
+	// cancelled by hand (the engine's ClosedAt). A closed request runs nothing more.
+	Closed    bool                    `json:"closed"`
 	Switches  map[string]any          `json:"switches"`
 	Auto      bool                    `json:"auto"`
 	EnteredAt string                  `json:"entered_at"`
@@ -218,8 +224,9 @@ func (h *Handler) flowStateResponse(ctx context.Context, request db.Issue, role 
 	if out.Trail == nil {
 		out.Trail = []issueworkflow.TrailEntry{}
 	}
+	out.Closed = run.state.ClosedAt != ""
 	if stop := run.state.Stop; stop != nil {
-		info := &IssueFlowStopResponse{Code: stop.Code, From: stop.From, Edge: stop.Edge, At: stop.At}
+		info := &IssueFlowStopResponse{Code: stop.Code, From: stop.From, Edge: stop.Edge, At: stop.At, Reason: stop.Reason}
 		if declared, ok := g.Stop(stop.Code); ok {
 			info.LegacyNo = declared.LegacyNo
 		}

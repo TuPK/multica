@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -273,6 +274,11 @@ func (h *Handler) StartIssueFlow(w http.ResponseWriter, r *http.Request) {
 		state, err := h.flowStateResponse(r.Context(), issue, issueworkflow.RoleRequest)
 		if err != nil {
 			writeFlowError(w, r, err)
+			return
+		}
+		// A request keeps the version and the trial flag it started with: a start that asks for another is refused.
+		if req.WorkflowID != nil && !strings.EqualFold(*req.WorkflowID, state.WorkflowID) || req.Trial && !state.Trial {
+			reject("the request is already on the workflow " + state.WorkflowName + " and keeps it: a request does not change its version or its trial flag")
 			return
 		}
 		writeJSON(w, http.StatusOK, state)

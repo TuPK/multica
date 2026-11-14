@@ -102,6 +102,15 @@ func (h *Handler) EnsureFlowStarted(ctx context.Context, issue db.Issue) (db.Iss
 	if !h.flowEngineEnabled(ctx) {
 		return issue, nil
 	}
+	// A person took this request off its flow (the flow_detached entry): reads and the sweep leave it off.
+	// Starting it again is a choice the start route makes.
+	detached, err := h.Queries.CountFlowActivity(ctx, db.CountFlowActivityParams{IssueID: issue.ID, Action: "flow_detached"})
+	if err != nil {
+		return issue, err
+	}
+	if detached > 0 {
+		return issue, nil
+	}
 	return service.StartFlowIfEligible(ctx, h.Queries, issue)
 }
 
@@ -483,6 +492,8 @@ var defaultStopMessages = map[string]string{
 var stallReasonText = map[string]string{
 	issueworkflow.ReasonStepMissing:              "The step the request is at is no longer in the workflow.",
 	issueworkflow.ReasonNoEdge:                   "No way out of the step fits the state of the request.",
+	issueworkflow.ReasonJoinBlocked:              "A task of the step ended blocked, and the step has no way out for a block.",
+	issueworkflow.ReasonLeadBlocked:              "The lead reported that the request lacks grounds, and the step has no way out for it.",
 	issueworkflow.ReasonConditionInvalid:         "A condition of the step cannot be evaluated.",
 	issueworkflow.ReasonInstancesTooFew:          "The list the step fans out over has fewer items than the step needs.",
 	issueworkflow.ReasonFlowCapReached:           "The request reached the limit of steps or task issues of the workflow.",
@@ -527,7 +538,7 @@ func (h *Handler) postStopComment(ctx context.Context, qtx *db.Queries, run *flo
 	text := issueworkflow.RenderMessage(template, map[string]string{
 		"requester": h.requesterMention(ctx, run.issue),
 		"request":   prefix + "-" + fmt.Sprint(run.issue.Number),
-		"step":      resolver.Name(ctx, qtx, h.flowStepStatusKey(run, old.Step)),
+		"step":      stepLabel(resolver.Name(ctx, qtx, h.flowStepStatusKey(run, old.Step)), old.Step),
 		"rework":    fmt.Sprint(old.Loops[issueworkflow.LoopRework]),
 		"tasks":     taskLines(prefix, old.Step, oldRound, rows),
 		"missing":   missing,
@@ -550,6 +561,15 @@ func (h *Handler) postStopComment(ctx context.Context, qtx *db.Queries, run *flo
 	}
 	e.comments = append(e.comments, created)
 	return nil
+}
+
+// stepLabel names a step in a comment: its status name when the status has one. A built-in status
+// (in_progress, in_review, ...) has no name of its own, so the step's key is used instead.
+func stepLabel(statusName, step string) string {
+	if statusName != "" {
+		return statusName
+	}
+	return step
 }
 
 // flowStepStatusKey is the board status of a step, which names it for people.
