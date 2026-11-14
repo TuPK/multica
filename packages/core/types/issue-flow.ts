@@ -54,6 +54,8 @@ export interface IssueFlowStopInfo {
   from: string;
   edge: string;
   at: string;
+  /** Why the engine stalled the request (for example release_without_checkpoint); empty for other stops. */
+  reason?: string;
 }
 
 export interface IssueFlowCheckpoint {
@@ -165,6 +167,11 @@ export interface IssueFlowState {
   rework_step?: string;
   /** Filled for the reader of GET /api/issues/{id}/flow; absent from an older server. */
   viewer?: IssueFlowViewer;
+  /**
+   * True once the flow is finished: a terminal step was reached, or the request was done or cancelled
+   * by hand. A closed request runs nothing more. Absent from an older server, which reads as open.
+   */
+  closed?: boolean;
   /** Schema version of the flow (1 or 2). */
   schema?: number;
   /** Loop counters for the request. */

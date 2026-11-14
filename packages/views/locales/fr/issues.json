@@ -2456,6 +2456,7 @@
     },
     "resume_skip_cancelled": "Reprendre sans les tâches annulées",
     "skip_checkpoint_title": "Personne n'a vu ce travail",
-    "skip_checkpoint_ack": "Je comprends que personne n'a vu le travail de l'agent et je reprends la demande malgré tout"
+    "skip_checkpoint_ack": "Je comprends que personne n'a vu le travail de l'agent et je reprends la demande malgré tout",
+    "closed": "Clos"
   }
 }

@@ -2456,6 +2456,7 @@
     },
     "resume_skip_cancelled": "Reanudar sin las tareas canceladas",
     "skip_checkpoint_title": "Nadie ha visto este trabajo",
-    "skip_checkpoint_ack": "Entiendo que nadie ha visto el trabajo del agente y reanudo la solicitud de todos modos"
+    "skip_checkpoint_ack": "Entiendo que nadie ha visto el trabajo del agente y reanudo la solicitud de todos modos",
+    "closed": "Cerrado"
   }
 }

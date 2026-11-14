@@ -132,6 +132,9 @@ export function IssueFlowStatePanel({
     }
   };
 
+  // A closed request runs nothing more: no exits and no resume are offered. Detach stays, since it takes
+  // the request off the flow rather than moving it.
+  const closed = flow.closed === true;
   const draftStep = flow.rework_step;
   // A work task a person cancelled is reopened by a resume, because its files are part of the step,
   // unless the resume says to go on without it.
@@ -279,6 +282,11 @@ export function IssueFlowStatePanel({
                 .join(", ")}
             </Badge>
           )}
+          {closed && (
+            <Badge variant="outline" className="text-caption font-medium">
+              {t(($) => $.flow.closed)}
+            </Badge>
+          )}
           <Badge variant="secondary" className="text-caption font-medium">
             {flow.step}
           </Badge>
@@ -322,7 +330,7 @@ export function IssueFlowStatePanel({
       ) : null}
 
       {/* Manual Exits */}
-      {flow.next && flow.next.some((n) => n.trigger === "manual") && (
+      {!closed && flow.next && flow.next.some((n) => n.trigger === "manual") && (
         <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-border/40">
           <span className="text-micro text-muted-foreground font-medium">{tSquads(($) => $.flow_designer.request.exit)}</span>
           {flow.next
@@ -363,6 +371,7 @@ export function IssueFlowStatePanel({
       {/* Admin Actions */}
       {canManage && (
         <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-border/40">
+          {!closed && (
           <div className="inline-flex">
             <Button
               variant="outline"
@@ -404,6 +413,7 @@ export function IssueFlowStatePanel({
               </DropdownMenu>
             ) : null}
           </div>
+          )}
 
           <Button
             variant="destructive"

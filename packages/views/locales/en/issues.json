@@ -2456,6 +2456,7 @@
     },
     "resume_skip_cancelled": "Resume without the cancelled tasks",
     "skip_checkpoint_title": "No one has seen this work",
-    "skip_checkpoint_ack": "I understand no person has seen the agent's work, and I resume the request anyway"
+    "skip_checkpoint_ack": "I understand no person has seen the agent's work, and I resume the request anyway",
+    "closed": "Closed"
   }
 }

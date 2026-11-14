@@ -328,3 +328,49 @@ describe("IssueFlowStateSchema rework_step", () => {
     expect(parsed.step).toBe("blocked");
   });
 });
+
+describe("IssueFlowStateSchema closed and stop reason", () => {
+  const openState = {
+    managed: true,
+    role: "request",
+    workflow_id: "wf-1",
+    workflow_name: "Trade",
+    step: "collect",
+    rework: 0,
+    stop: null,
+    switches: {},
+    auto: false,
+    entered_at: "2026-11-13T00:00:00Z",
+    tasks: [],
+    next: [],
+  };
+
+  it("reads a closed request", () => {
+    expect(IssueFlowStateSchema.parse({ ...openState, closed: true }).closed).toBe(true);
+  });
+
+  it("defaults closed to false from an older server", () => {
+    expect(IssueFlowStateSchema.parse(openState).closed).toBe(false);
+  });
+
+  it("falls back to false for a value that is not a boolean, and keeps the rest of the state", () => {
+    const parsed = IssueFlowStateSchema.parse({ ...openState, closed: "yes" });
+    expect(parsed.closed).toBe(false);
+    expect(parsed.step).toBe("collect");
+  });
+
+  it("reads the reason of a stall", () => {
+    const stall = { code: "stalled", legacy_no: 0, from: "handover", edge: "", at: "", reason: "release_without_checkpoint" };
+    expect(IssueFlowStateSchema.parse({ ...openState, stop: stall }).stop).toMatchObject({ reason: "release_without_checkpoint" });
+  });
+
+  it("falls back to empty for a reason that is not a string, and keeps the stop", () => {
+    const stop = { code: "stalled", legacy_no: 0, from: "handover", edge: "", at: "", reason: 7 };
+    expect(IssueFlowStateSchema.parse({ ...openState, stop }).stop).toMatchObject({ code: "stalled", reason: "" });
+  });
+
+  it("defaults the reason to empty for a stop that carries none", () => {
+    const stop = { code: "grounds_missing", legacy_no: 1, from: "gate", edge: "gate_blocked", at: "" };
+    expect(IssueFlowStateSchema.parse({ ...openState, stop }).stop).toMatchObject({ reason: "" });
+  });
+});

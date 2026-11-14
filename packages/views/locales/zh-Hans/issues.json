@@ -2380,6 +2380,7 @@
     },
     "resume_skip_cancelled": "跳过已取消的任务并继续",
     "skip_checkpoint_title": "还没有人看过这项工作",
-    "skip_checkpoint_ack": "我了解还没有人看过智能体的工作，仍然继续此请求"
+    "skip_checkpoint_ack": "我了解还没有人看过智能体的工作，仍然继续此请求",
+    "closed": "已关闭"
   }
 }

@@ -2380,6 +2380,7 @@
     },
     "resume_skip_cancelled": "略過已取消的任務並繼續",
     "skip_checkpoint_title": "還沒有人看過這項工作",
-    "skip_checkpoint_ack": "我了解還沒有人看過智慧代理的工作，仍然繼續此請求"
+    "skip_checkpoint_ack": "我了解還沒有人看過智慧代理的工作，仍然繼續此請求",
+    "closed": "已關閉"
   }
 }

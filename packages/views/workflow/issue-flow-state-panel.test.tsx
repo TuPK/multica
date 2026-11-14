@@ -368,6 +368,21 @@ describe("IssueFlowStatePanel", () => {
     await waitFor(() => expect(mocks.exitMut).toHaveBeenCalledWith("ship"));
   });
 
+  // A closed request runs nothing more: it says so, and offers no manual exit and no resume. Detach stays.
+  it("shows a closed request as closed, offering no exit and no resume", () => {
+    const closed: IssueFlowState = {
+      ...sampleFlow,
+      closed: true,
+      next: [{ id: "ship", label: "Ship it", to: "done", rework: false, trigger: "manual" }],
+    };
+    renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={closed} canManage={true} />);
+
+    expect(screen.getByText("Closed")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ship it" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^resume$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /detach/i })).toBeInTheDocument();
+  });
+
   // Work a person cancelled is reopened by a resume unless the resume says to go on without it (H3).
   it("resumes without the cancelled work when a work task was cancelled", async () => {
     const user = userEvent.setup();

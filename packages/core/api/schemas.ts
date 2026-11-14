@@ -1740,6 +1740,7 @@ const IssueFlowStopInfoSchema = z.object({
   from: z.string().default(""),
   edge: z.string().default(""),
   at: z.string().default(""),
+  reason: z.string().default("").catch(""),
 }).loose();
 
 // The stop of a state is an object {code, legacy_no, from, edge, at}, null while the request is not
@@ -1826,6 +1827,7 @@ export const IssueFlowStateSchema = z.object({
   step: z.string().default(""),
   rework: z.number().default(0).catch(0),
   stop: IssueFlowStateStopSchema,
+  closed: z.boolean().default(false).catch(false),
   switches: z.record(z.string(), z.union([z.boolean(), z.string()])).default({}).catch({}),
   auto: z.boolean().default(false).catch(false),
   entered_at: z.string().default(""),
