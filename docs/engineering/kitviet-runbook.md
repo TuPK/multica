@@ -707,6 +707,8 @@ Gác nào trả CHẶN sau hai vòng thì squad dừng loại 3. Gác nào QUA m
 
 ## 8f. Flow: workflow bắt buộc của squad (spec `kitviet-workflow-spec.md`)
 
+> Flow do người dùng **soạn, kiểm, mô phỏng và xuất bản** (bản nháp, phiên bản khóa, nhân bản hàng Kit Việt, cờ `FF_FLOW_AUTHORING` và `FF_FLOW_GRAPH_V2`, quyền, ack, quay lui, đọc `issues[]`, mã lỗi) nằm ở `flow-authoring-runbook.md`; mục này chỉ nói về flow do catalog tạo. Hàng Kit Việt vẫn khóa (`workflow_managed_by_template`); muốn sửa thì nhân bản thành bản nháp, bản sao không còn `template_ref` nên nâng cấp Kit Việt không động tới nó.
+
 Mỗi squad Kit Việt có một workflow flow (manifest `catalog/workflows/flow_<id squad>/template.json`, khối `flow`). Máy chủ mở sub-issue cho từng task của bước, chờ mọi task đóng, mở lại **mọi** gate sau mỗi bản sửa, đếm vòng (tối đa 2) và đăng comment ba điểm dừng. Lead chỉ lập kế hoạch (`multica issue flow plan`) và gọi `multica issue flow advance`. Đọc kế hoạch chi tiết ở `kitviet-workflow-plan.md`.
 
 | Squad | Template (`template_ref`) | Route | Công tắc khác |
