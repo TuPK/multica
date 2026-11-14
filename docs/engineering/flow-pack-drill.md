@@ -35,7 +35,7 @@ Spec `e2e/pack-rehearsal-drill.spec.ts`, bộ gốc `ban-hang-online` đọc t�
 | `40-upstream-result-390` | Kết quả cài: **Installed** và liên kết **Design the workflow** |
 | `41-squad-no-workflow-1280` | Trang squad chưa có workflow |
 | `42-draft-editor-1280` | Bản nháp nhập từ manifest, 5 bước |
-| `43-draft-graph-1280` | Đồ thị của bản nháp (canvas rộng hơn khung 1280px: ba bước đầu hiện, dùng **Fit** để xem hết; không đổi trong đợt này) |
+| `43-draft-graph-1280` | Đồ thị của bản nháp (canvas rộng hơn khung 1280px: ba bước đầu hiện, dùng **Fit** để xem hết; không đổi trong đợt này; đã sửa sau đó: đồ thị tự vừa khung lần đầu hiện, mục 7) |
 | `44-roles-bound-1280` | Năm vai gắn cho năm agent của bộ |
 | `45-check-1280` | **Check** không còn lỗi |
 | `46-simulate-1280` | Hộp thoại mô phỏng: kết thúc ở `terminal: done`, đường đi 5 bước; các ô chọn kết quả nằm gọn trong hộp thoại (xem lỗi 1) |
@@ -113,3 +113,15 @@ Sau khi chạy: máy chủ dừng, `/tmp` dọn sạch, `apps/web/AGENTS.md` tr�
 | N10 | `TestFlowInsights_OnlyThisVersion_TrialExcludedByDefault` (handler), `TestInsights_EndsEdgesLoopsDurations` (issueworkflow), `TestRehearsalPack_TwoWorkflowsOneSquad` và `TestRehearsalPack_NativeBundleWithFlow` (số request và vòng của từng phiên bản) |
 
 Tất cả nằm trong các lần chạy ở mục 4 và đạt.
+
+## 7. Decisions
+
+Những chỗ spec không nói, hoặc nói khác với cái đã làm. Bản ngắn của năm mục đầu nằm ở spec 16.7.
+
+- **`new_install` ở `commit`.** Trường `new_install: true` của `POST /api/squads/packs/commit` bỏ qua kiểm bản cài trước và tạo squad mới. Spec 16.3 chỉ nói người nhập "chọn tạo squad mới" sau `409 pack_conflict`. Thiếu trường này thì lựa chọn đó không gửi được: cùng `digest` trả lại kết quả cũ (200), cùng `id` khác `digest` lại bị `pack_conflict`. Giao diện gửi nó từ nút "Install as a new squad". (Đây là cờ của yêu cầu, không phải một giá trị của danh sách kiểu cài.)
+- **`409 pack_name_conflict`.** Tên skill hoặc agent của bộ trùng tên đã có trong workspace, mà người nhập chưa chọn `keep_existing` / `import_as_new` (skill) hay `use_existing` / tên khác (agent): `409` kèm `agents` và `skills` là các tên trùng, không ghi gì. Spec ("Không ghi đè") bắt người nhập chọn nhưng không nói máy chủ trả gì khi chưa chọn. Mã riêng, tách khỏi `pack_conflict` (cùng bộ, khác cách xử lý), để giao diện nêu đúng các tên và giữ nguyên lựa chọn đã làm. Cũng trả khi một skill cùng tên được tạo giữa lúc cài; giao dịch lùi.
+- **`reason` của `StopRecord`.** `issue.flow.stop.reason`, chỉ có khi `code` là `stalled`: vì sao engine treo request (`no_edge`, `input_missing`, `flow_agent_unavailable`...). Spec 16.6 đòi `stalls[]` theo lý do, mà `stop` chỉ giữ `code`; không ghi lại thì số liệu chỉ đếm được "treo". Trường `omitempty`, nên request cũ và mọi dừng khác không có; `Insights` đếm chúng vào `unknown`. Thêm trường là tương thích xuôi.
+- **Tài liệu tham khảo của `preview`.** Hạn mức 20 chỉ áp cho loại `doc` (`README.md`, `docs/`, `workflows/`). Hướng dẫn của agent và `SKILL.md` không bao giờ bị cắt: một bộ 7 agent và 18 skill trước đây mất 5 mục, và một skill mang quy trình có thể nằm trong số đó. Số `doc` bị bỏ nằm ở `references_omitted` (số nguyên, mặc định 0, thêm vào cuối). Tệp quá 200 KiB vẫn bị loại và không tính vào số này. Vấn đề thông tin `pack_references_capped` bỏ đi: nó nói "chỉ liệt kê một phần", điều không còn đúng với agent và skill, và `references_omitted` thay nó.
+- **Zip chỉ có thư mục `agents/`.** `hub.ExtractZip` bóc thư mục duy nhất ở gốc zip vì coi nó là vỏ bọc (`repo-main/`). Với zip chỉ có `agents/` nó bóc nhầm: `agents/writer.md` thành `writer.md`, mất bộ. Nay không bao giờ bóc thư mục tên `agents`, `skills`, `docs`, `workflows` hoặc `references` (khớp chính xác, chữ thường); thư mục duy nhất tên khác vẫn bị bóc. Bộ thử của handler từng thêm một `README.md` ở gốc để tránh lỗi này; mẹo đó đã bỏ. Hệ quả: repo GitHub tên đúng `skills` không có vỏ bọc `skills-<nhánh>` thì không bị bóc, và vỏ bọc thật luôn mang hậu tố nhánh.
+- **Một nút đóng cho hộp thoại.** Nút "Close" trùng nút X nằm ở chân hộp thoại **Simulate** (`simulate-dialog.tsx`), không phải hộp thoại nhập bộ (`pack-import-dialog.tsx` không có chân hộp thoại; bước kết quả có nút "Done" làm việc khác). Giữ nút X của `DialogContent`, bỏ nút ở chân và khóa `flow_designer.simulate.close`. `packages/ui` không đổi.
+- **Đồ thị vừa khung.** Canvas của bản nháp không dùng React Flow (`@xyflow/react` chỉ ở designer của workflow cũ) mà là canvas riêng; nút **Fit** trước đây chỉ đặt lại zoom về 1 nên không làm gì ở lần đầu. Nay canvas tự vừa khung một lần, khi nó có kích thước đầu tiên, và **Fit** vừa khung lại theo kích thước hiện tại. Không thu nhỏ quá 50% (như `minZoom` mặc định của React Flow) và không phóng to quá 100%.

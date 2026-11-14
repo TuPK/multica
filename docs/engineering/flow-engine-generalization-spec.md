@@ -2,7 +2,7 @@
 
 # Engine workflow tổng quát (schema 2) và trình soạn điều khiển bằng dữ liệu: đặc tả
 
-Trạng thái: **đặc tả thiết kế đã qua rà soát kiến trúc lần 2, chưa có mã.** Các quyết định D1 đến D10 do người dùng chốt (mục 1). Người dùng đã giao toàn quyền chọn giải pháp cho đợt rà soát lần 2 (2026-11-13), nên D11 đến D13 **đã chốt** và D14 đến D24 là quyết định mới của đợt rà soát; lý do và những gì đã đổi so với bản trước nằm ở mục 15. Phần "từ bộ skill/agent tới workflow" (trước là pha F để sau) nay thuộc phạm vi: mục 16. Đối chiếu với engine mã nguồn mở: Phụ lục F. Kế hoạch từng bước: [flow-engine-generalization-plan.md](flow-engine-generalization-plan.md). Hai tài liệu này là nguồn duy nhất cho việc triển khai.
+Trạng thái: **đặc tả thiết kế đã qua rà soát kiến trúc lần 2; đã triển khai đủ P0–P28 và gate G-F đã được duyệt.** Các quyết định D1 đến D10 do người dùng chốt (mục 1). Người dùng đã giao toàn quyền chọn giải pháp cho đợt rà soát lần 2 (2026-11-13), nên D11 đến D13 **đã chốt** và D14 đến D24 là quyết định mới của đợt rà soát; lý do và những gì đã đổi so với bản trước nằm ở mục 15. Phần "từ bộ skill/agent tới workflow" (trước là pha F để sau) nay thuộc phạm vi: mục 16. Đối chiếu với engine mã nguồn mở: Phụ lục F. Kế hoạch từng bước: [flow-engine-generalization-plan.md](flow-engine-generalization-plan.md). Hai tài liệu này là nguồn duy nhất cho việc triển khai.
 
 Ngày rà soát: 2026-11-13. Đọc mã ở **HEAD `d9da8d9fc`** (nhánh hiện tại của máy rà soát). Mọi trích dẫn dạng `tệp:dòng` trong hai tài liệu đã được đối chiếu với HEAD bằng script (tệp có thật, dòng nằm trong tệp) và được đọc lại bằng mắt; chỗ lệch đã sửa. Điều không kiểm chứng được ghi ở mục 14; số liệu là lựa chọn hay ước lượng cũng ghi ở đó. Lúc rà soát cây làm việc có thay đổi của người khác chưa commit hoặc chưa theo dõi (`apps/web/AGENTS.md`, `docs/engineering/kitviet-flow-web-drill.md`, `packages/views/locales/*/issues.json`, `packages/views/workflow/issue-flow-state-panel.tsx` và `.test.tsx`, `server/internal/handler/flow_runner_test.go`, `server/pkg/db/queries/flow.sql` và `server/pkg/db/generated/flow.sql.go`); không đụng tới. Số dòng của các tệp mà công việc khác đang sửa (xem mục 0.3 của kế hoạch) có thể lệch sau khi họ commit.
 
@@ -1175,7 +1175,7 @@ Máy chủ nhận tệp zip hoặc nguồn mà Hub đã biết lấy (GitHub rep
 
 Quy tắc đọc: khóa frontmatter lạ bị bỏ qua (chuẩn Agent Skills quy định như vậy cho tương thích xuôi); `SKILL.md` thiếu `name` hoặc `description` là lỗi; tên skill theo `^[a-z0-9][a-z0-9._-]*$`; tên agent chuyển thành khóa `^[a-z][a-z0-9_]{1,31}$` (chữ thường, ký tự khác thành `_`), trùng khóa là lỗi. `tools`, `model`, `allowed-tools`, biến môi trường và cấu hình MCP trong bộ **không** được áp: `preview` liệt kê chúng dưới mục "bị bỏ qua" để người nhập tự cấu hình agent. Máy chủ không đọc thân `SKILL.md` hay hướng dẫn agent để đoán vai, bước, lead hay thứ tự.
 
-**Tài liệu tham khảo.** `preview` liệt kê các tệp markdown có thể chứa quy trình: hướng dẫn của từng agent, `SKILL.md` của từng skill, và tệp `.md` khác trong bộ (`README.md`, `workflows/**`, `docs/**`; tối đa 20 tệp, mỗi tệp 200 KiB). Đây chỉ là danh sách để người nhập chọn đưa cho agent đề xuất (16.4) và mở trong ô tham khảo của trình soạn (11.9); máy chủ không phân tích chúng.
+**Tài liệu tham khảo.** `preview` liệt kê các tệp markdown có thể chứa quy trình: hướng dẫn của từng agent, `SKILL.md` của từng skill, và tệp `.md` khác trong bộ (`README.md`, `workflows/**`, `docs/**`; tối đa 20 tệp loại tài liệu, mỗi tệp 200 KiB. Hướng dẫn agent và `SKILL.md` không bao giờ bị cắt; số tài liệu bị bỏ nằm ở `references_omitted`). Đây chỉ là danh sách để người nhập chọn đưa cho agent đề xuất (16.4) và mở trong ô tham khảo của trình soạn (11.9); máy chủ không phân tích chúng.
 
 ### 16.2 `preview`
 
@@ -1189,6 +1189,7 @@ Quy tắc đọc: khóa frontmatter lạ bị bỏ qua (chuẩn Agent Skills quy
   "leader": "researcher|null",                       // chỉ bó gốc khai; các định dạng khác là null
   "flow": { "present": true, "validation": { …FlowValidation… } } ,
   "references": [ { "path": "README.md", "bytes": 5120, "kind": "doc" } ],
+  "references_omitted": 0,
   "ignored": [ { "agent": "researcher", "key": "model" } ],
   "scan": [ { "path": "skills/x/scripts/run.sh", "severity": "warn|block", "rule": "…" } ],
   "issues": [ { "code": "pack_skill_missing", "path": "agents[researcher].skills[foo]" } ] }
@@ -1254,6 +1255,16 @@ Bộ **không có** quy trình viết sẵn đi cùng đường này: người q
 ```
 
 Nguồn: `issue.flow.trail`, `issue.flow.stop`, `activity_log` (`flow_manual_close`). Hàm thuần `Insights(states []State) Report` ở `internal/issueworkflow`, truy vấn chỉ đọc. Trình soạn hiện các số này cạnh từng bước và cạnh khi mở một phiên bản ("14 trong 51 lần qua cổng này bị trả về"), là dữ liệu để quyết định sửa hướng dẫn task, đổi giới hạn vòng, hay thêm cổng. Không có khuyến nghị tự động.
+
+### 16.7 Quyết định ngoài đặc tả
+
+Chi tiết ở [flow-pack-drill.md](flow-pack-drill.md) mục 7.
+
+- `commit` nhận `new_install: true`: bỏ qua kiểm bản cài trước, tạo squad mới. Đây là cách gửi lựa chọn "tạo squad mới" sau `409 pack_conflict` (16.3); cùng `digest` thì không có đường nào khác để cài lần hai.
+- `409 pack_name_conflict` kèm `agents` và `skills` là các tên trùng, khi người nhập chưa chọn cách xử lý tên trùng (16.3, "Không ghi đè"). Tách khỏi `pack_conflict` để giao diện nêu đúng tên.
+- `issue.flow.stop.reason` (`omitempty`, chỉ khi `code` là `stalled`) ghi vì sao engine treo request; `stalls[]` của 16.6 đọc từ đây.
+- Hạn mức 20 tài liệu tham khảo chỉ áp cho loại `doc`; `preview` trả thêm `references_omitted` (16.1, 16.2).
+- `hub.ExtractZip` không bóc thư mục duy nhất tên `agents`, `skills`, `docs`, `workflows` hay `references`: đó là nội dung của bộ, không phải vỏ bọc.
 
 ## Phụ lục A. Danh mục giả định cứng của engine hiện tại
 

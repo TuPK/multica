@@ -126,7 +126,7 @@ Spec không bị sửa để cho qua; mỗi lỗi được sửa trong code rồ
 
 ### Quan sát, chưa sửa
 
-- Nút "Close" ở chân hộp thoại trùng với nút X.
+- Nút "Close" ở chân hộp thoại trùng với nút X. Đã sửa sau đó: hộp thoại Simulate bỏ nút "Close" ở chân; hộp thoại nhập bộ không có nút này (xem flow-pack-drill.md mục 7).
 - Với flow nghiên cứu, validate chỉ có cảnh báo dùng chung trạng thái và không cần ack nào, nên đường xin ack khi xuất bản được phủ bởi test đơn vị chứ không phải bởi lần diễn tập này.
 - Lần đầu chạy sau khi sửa code, trang có thể trắng trong lúc `next dev` biên dịch nguội. Chạy lại thì qua.
 
