@@ -1,0 +1,4 @@
+{"format":"multica.squad-bundle/v1","id":"x","version":"1","name":"X","leader":"alpha",
+ "agents":[{"key":"alpha","name":"Alpha","description":"d","instructions":"agents/alpha/instructions.md"},
+           {"key":"beta","name":"Beta","description":"d","instructions":"../outside.md"}],
+ "flow":"../flow.json"}

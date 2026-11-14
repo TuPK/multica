@@ -1,0 +1,28 @@
+{
+  "format": "multica.squad-bundle/v1",
+  "id": "newsletter-desk",
+  "version": "1.0.0",
+  "name": "Newsletter Desk",
+  "leader": "planner",
+  "agents": [
+    {
+      "key": "planner",
+      "name": "Planner",
+      "role_label": "Plans each issue",
+      "description": "Plans the issue and follows the workflow",
+      "instructions": "agents/planner/instructions.md",
+      "skills": ["outline"],
+      "max_concurrent_tasks": 2
+    },
+    {
+      "key": "writer",
+      "name": "Writer",
+      "role_label": "Writes the issue",
+      "description": "Writes the issue from the outline",
+      "instructions": "agents/writer/instructions.md",
+      "skills": ["outline", "tone-check"],
+      "max_concurrent_tasks": 1
+    }
+  ],
+  "flow": "flow.json"
+}

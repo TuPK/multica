@@ -1,0 +1,10 @@
+{
+  "agent": {
+    "name": "Field Researcher",
+    "description": "Collects sources and ranks them by how much they can be trusted",
+    "instructions_file": "instructions.md",
+    "runtime_provider": "claude",
+    "max_concurrent_tasks": 2
+  },
+  "skills": ["evidence-notes", "source-ranking"]
+}

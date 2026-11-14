@@ -1,0 +1,17 @@
+{
+  "format": "multica.flow-manifest/v1",
+  "name": "Newsletter flow",
+  "doc": {
+    "version": 2,
+    "start": "plan",
+    "roles": [{ "key": "writer", "kind": "agent" }],
+    "terminals": [{ "key": "done", "status": "done" }],
+    "policy": {},
+    "steps": [
+      { "key": "plan", "title": "Plan", "kind": "lead", "status": { "key": "todo" }, "lead": { "sets": [] }, "edges": [{ "id": "plan_ok", "label": "Planned", "to": "write" }] },
+      { "key": "write", "title": "Write", "kind": "tasks", "status": { "key": "in_progress" },
+        "tasks": [{ "key": "write_it", "title": "Write the issue", "kind": "work", "role": "writer" }],
+        "edges": [{ "id": "write_next", "label": "Next", "to": "done" }] }
+    ]
+  }
+}

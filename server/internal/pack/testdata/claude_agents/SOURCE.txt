@@ -1,0 +1,4 @@
+agents/ and skills/ are copied byte for byte from catalog/_sources/kitviet/upstream/ban-hang-online/
+(Kit Viet v1.5.0, commit 505a472685c85ecefd4eb127ff016b988226ad05, MIT).
+LICENSE and NOTICE.md are copied byte for byte from catalog/_sources/kitviet/upstream/.
+Do not edit these files: tests that need a changed agent or skill change a copy in memory.
