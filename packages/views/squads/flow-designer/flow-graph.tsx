@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { FlowDoc, FlowInsights, FlowIssue } from "@multica/core/types";
 import { layoutFlowGraph } from "@multica/core/squads/flow-layout";
 import { Badge } from "@multica/ui/components/ui/badge";
@@ -15,6 +15,13 @@ import {
 import { cn } from "@multica/ui/lib/utils";
 import { useT } from "../../i18n";
 import { EdgeInsightBadge, StepInsightBadge } from "./insights-badges";
+
+// What the canvas draws: a step card is w-64 wide and about this tall, and the canvas has p-8 around it.
+const CARD_WIDTH = 256;
+const CARD_HEIGHT = 160;
+const CANVAS_PADDING = 32;
+// The same floor as React Flow's fitView: below it the text of a card cannot be read, and the canvas scrolls.
+const MIN_FIT_ZOOM = 0.5;
 
 export interface FlowGraphProps {
   doc: FlowDoc;
@@ -36,6 +43,8 @@ export function FlowGraph({
   const [showLoopsOnly, setShowLoopsOnly] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [zoom, setZoom] = useState(1);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const fitted = useRef(false);
 
   // Layout calculation
   const layout = useMemo(() => {
@@ -45,6 +54,37 @@ export function FlowGraph({
       terminals: doc.terminals,
     });
   }, [doc.start, doc.steps, doc.terminals]);
+
+  // The zoom that shows every step in the canvas as it is now, never past full size. False when the canvas has no
+  // size to measure: it is hidden, as it is below 640px, where the list stands in for it.
+  const fit = useCallback(() => {
+    const box = canvasRef.current;
+    if (!box || box.clientWidth === 0 || box.clientHeight === 0) return false;
+    const width = Math.max(...layout.nodes.map((n) => n.position.x), 0) + CARD_WIDTH;
+    const height = Math.max(...layout.nodes.map((n) => n.position.y), 0) + CARD_HEIGHT;
+    const wanted = Math.min(
+      1,
+      (box.clientWidth - 2 * CANVAS_PADDING) / width,
+      (box.clientHeight - 2 * CANVAS_PADDING) / height,
+    );
+    setZoom(Math.max(MIN_FIT_ZOOM, wanted));
+    return true;
+  }, [layout]);
+
+  // Fit once, when the canvas first has a size: a person who is working on the graph is not moved by later edits.
+  useLayoutEffect(() => {
+    if (fitted.current) return;
+    const box = canvasRef.current;
+    if (!box) return;
+    const tryFit = () => {
+      if (!fitted.current && fit()) fitted.current = true;
+      if (fitted.current) observer?.disconnect();
+    };
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(tryFit);
+    observer?.observe(box);
+    tryFit();
+    return () => observer?.disconnect();
+  }, [fit]);
 
   // Map loop info by header
   const loopMap = useMemo(() => {
@@ -102,7 +142,7 @@ export function FlowGraph({
             type="button"
             variant="ghost"
             size="xs"
-            onClick={() => setZoom(1)}
+            onClick={() => void fit()}
             className="h-7 text-caption gap-1"
           >
             <Maximize2 className="size-3" aria-hidden />
@@ -157,8 +197,9 @@ export function FlowGraph({
       </div>
 
       {/* Desktop / Tablet Canvas (>= 640px) */}
-      <div className="hidden sm:block flex-1 overflow-auto p-8 relative">
+      <div ref={canvasRef} className="hidden sm:block flex-1 overflow-auto p-8 relative">
         <div
+          data-testid="flow-graph-canvas"
           className="relative min-w-[800px] min-h-[600px] transition-transform"
           style={{ transform: `scale(${zoom})`, transformOrigin: "top left" }}
         >

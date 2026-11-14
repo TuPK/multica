@@ -232,9 +232,6 @@ export function SimulateDialog({ open, onOpenChange, squadId, draftId, doc }: Si
         </div>
 
         <DialogFooter className="gap-2 border-t border-border pt-4">
-          <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            {t(($) => $.flow_designer.simulate.close)}
-          </Button>
           <Button type="button" size="sm" disabled={simulateMut.isPending} onClick={() => void handleRun()} className="gap-1.5">
             {simulateMut.isPending ? (
               <Loader2 className="size-3.5 animate-spin" aria-hidden />
