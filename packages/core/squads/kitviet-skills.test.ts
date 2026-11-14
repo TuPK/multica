@@ -578,7 +578,7 @@ describe("generated data is fresh", () => {
     const script = resolve(here, "../../../scripts/generate-kitviet-pack.mjs");
     const output = execFileSync(process.execPath, [script, "--check"], { encoding: "utf8" });
     expect(output).toContain("up to date");
-  });
+  }, 30_000); // runs the generator as a child process; near the 5s default when the monorepo tests in parallel
 });
 
 // A gate never goes silent: a missing draft or a missing source ends in a VERDICT line, not in an early

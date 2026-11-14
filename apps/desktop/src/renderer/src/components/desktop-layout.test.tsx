@@ -173,7 +173,7 @@ describe("DesktopShell sidebar trigger", () => {
     );
     expect(mainTopBar).toHaveStyle({ paddingLeft: "136px" });
     expect(queryByRole("status", { name: /loading workspace/i })).toBeNull();
-  });
+  }, 30_000); // renders the whole shell; it ran past the 5s default (8.7s) when lint ran beside it
 
   it("keeps full clearance for compact layouts in either sidebar state", () => {
     Object.defineProperty(window, "innerWidth", {
