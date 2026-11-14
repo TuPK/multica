@@ -24,7 +24,7 @@ describe("the upgrade registry lists earlier texts of Kit Viet roles", () => {
       const current = await loadKitvietRoleInstructions(key);
       expect(previous, key).not.toContain(current);
     }
-  });
+  }, 30_000); // loads every role in turn; it runs near the 5s default when the whole monorepo tests in parallel
 });
 
 describe("gate texts from before the no-repeat VERDICT rule stay listed (drill KVM-75)", () => {

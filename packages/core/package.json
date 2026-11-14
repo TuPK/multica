@@ -94,6 +94,7 @@
     "./agent-packs": "./agent-packs/index.ts",
     "./catalog": "./catalog/index.ts",
     "./flow-drafts": "./flow-drafts/index.ts",
+    "./packs": "./packs/index.ts",
     "./squads": "./squads/index.ts",
     "./squads/stores": "./squads/stores/index.ts",
     "./squads/kitviet-update": "./squads/kitviet-update.ts",

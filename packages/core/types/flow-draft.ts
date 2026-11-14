@@ -392,6 +392,7 @@ export interface FlowCapabilityFeatures {
   [x: string]: unknown;
   packs: boolean;
   proposals: boolean;
+  insights: boolean;
   system_performer: boolean;
   subflow: boolean;
   fork_join: boolean;
@@ -427,8 +428,9 @@ export interface CreateFlowDraftRequest {
     workflow_id?: string;
     keep_bind?: boolean;
     manifest?: unknown;
+    /** A proposal: the agent that drafts, ids of files the caller uploaded and has not attached, and a note. */
     agent_id?: string;
-    references?: unknown[];
+    references?: string[];
     note?: string;
   };
 }

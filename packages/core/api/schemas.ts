@@ -40,6 +40,13 @@ import type {
   FlowLimits,
   FlowCapabilityFeatures,
 } from "../types/flow-draft";
+import type {
+  FlowInsights,
+  PackCommitResponse,
+  PackIssue,
+  PackPreview,
+  PackScanSeverity,
+} from "../types/pack";
 import type { SetSquadActiveWorkflowResponse, SquadWorkflowsResponse } from "../types/squad";
 import type {
   IssueWorkflowSwitch,
@@ -5473,6 +5480,7 @@ export const EMPTY_FLOW_CAPABILITIES_RESPONSE: FlowCapabilitiesResponse = {
   features: {
     packs: false,
     proposals: false,
+    insights: false,
     system_performer: false,
     subflow: false,
     fork_join: false,
@@ -5517,6 +5525,7 @@ export const FlowLimitsSchema = z.object({
 export const FlowCapabilityFeaturesSchema = z.object({
   packs: z.boolean().default(false).catch(false),
   proposals: z.boolean().default(false).catch(false),
+  insights: z.boolean().default(false).catch(false),
   system_performer: z.boolean().default(false).catch(false),
   subflow: z.boolean().default(false).catch(false),
   fork_join: z.boolean().default(false).catch(false),
@@ -5554,3 +5563,167 @@ export const FlowCapabilitiesResponseSchema = z.object({
     return res.success ? (res.data as FlowCapabilityFeatures) : EMPTY_FLOW_CAPABILITIES_RESPONSE.features;
   }),
 }).loose();
+
+// ---------------------------------------------------------------------------------------------------------
+// Packs, proposals and insights (spec 16.1 to 16.4, 16.6)
+// ---------------------------------------------------------------------------------------------------------
+
+const text = () => z.string().default("").catch("");
+const count = () => z.number().default(0).catch(0);
+const optionalId = () => z.string().nullable().default(null).catch(null);
+
+const PackIssueSchema = z.object({
+  code: text(),
+  // The server knows error and info; a severity this build does not know is a warning, so that the person looks.
+  severity: z.unknown().transform((v): PackIssue["severity"] => (v === "error" || v === "info" ? v : "warning")),
+  path: z.string().optional().catch(undefined),
+  message: text(),
+  params: z.record(z.string(), z.unknown()).optional().catch(undefined),
+}).loose();
+
+const PackPreviewAgentSchema = z.object({
+  key: text(),
+  name: text(),
+  description: text(),
+  instructions_bytes: count(),
+  skills: z.array(z.string()).default([]).catch([]),
+  skills_declared: z.boolean().default(false).catch(false),
+  existing_agent_id: optionalId(),
+}).loose();
+
+const PackPreviewSkillSchema = z.object({
+  name: text(),
+  files: count(),
+  existing_skill_id: optionalId(),
+  same_content: z.boolean().default(false).catch(false),
+}).loose();
+
+const PackPreviewReferenceSchema = z.object({ path: text(), bytes: count(), kind: text() }).loose();
+
+const PackPreviewFindingSchema = z.object({
+  path: text(),
+  // A severity this build does not know is a warning: it asks for a tick instead of passing unseen.
+  severity: z.unknown().transform((v): PackScanSeverity => (v === "info" || v === "block" ? v : "warn")),
+  rule: text(),
+}).loose();
+
+const PackIgnoredSchema = z.object({
+  agent: z.string().optional().catch(undefined),
+  skill: z.string().optional().catch(undefined),
+  key: text(),
+}).loose();
+
+export const EMPTY_PACK_PREVIEW: PackPreview = {
+  digest: "",
+  format: "",
+  id: "",
+  name: "",
+  version: "",
+  agents: [],
+  skills: [],
+  leader: null,
+  flow: { present: false, validation: null, issues: [] },
+  references: [],
+  ignored: [],
+  scan: [],
+  issues: [],
+};
+
+export const PackPreviewSchema = z.object({
+  digest: text(),
+  format: text(),
+  id: text(),
+  name: text(),
+  version: text(),
+  agents: tolerantList(PackPreviewAgentSchema),
+  skills: tolerantList(PackPreviewSkillSchema),
+  leader: optionalId(),
+  flow: z.unknown().transform((v): PackPreview["flow"] => {
+    const obj = v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+    const validation = FlowValidationResponseSchema.safeParse(obj.validation);
+    return {
+      present: obj.present === true,
+      validation: validation.success ? (validation.data as FlowValidationResponse) : null,
+      issues: z.array(z.unknown()).safeParse(obj.issues).success
+        ? (obj.issues as unknown[]).flatMap((item) => {
+            const parsed = PackIssueSchema.safeParse(item);
+            return parsed.success ? [parsed.data as PackIssue] : [];
+          })
+        : [],
+    };
+  }),
+  references: tolerantList(PackPreviewReferenceSchema),
+  ignored: tolerantList(PackIgnoredSchema),
+  scan: tolerantList(PackPreviewFindingSchema),
+  issues: tolerantList(PackIssueSchema),
+}).loose() as unknown as z.ZodType<PackPreview>;
+
+export const EMPTY_PACK_COMMIT_RESPONSE: PackCommitResponse = {
+  install_id: "",
+  already_installed: false,
+  squad_id: null,
+  agents: [],
+  skills: [],
+  draft_id: null,
+  flow_issues: [],
+};
+
+export const PackCommitResponseSchema = z.object({
+  install_id: text(),
+  already_installed: z.boolean().default(false).catch(false),
+  squad_id: optionalId(),
+  agents: tolerantList(z.object({
+    key: text(),
+    agent_id: text(),
+    created: z.boolean().default(false).catch(false),
+  }).loose()),
+  skills: tolerantList(z.object({
+    name: text(),
+    skill_id: text(),
+    created: z.boolean().default(false).catch(false),
+  }).loose()),
+  draft_id: optionalId(),
+  flow_issues: tolerantList(FlowIssueSchema),
+}).loose() as unknown as z.ZodType<PackCommitResponse>;
+
+export const EMPTY_FLOW_INSIGHTS: FlowInsights = {
+  requests: { total: 0, open: 0, by_end: {} },
+  steps: [],
+  edges: [],
+  loops: [],
+  stalls: [],
+  manual_closes: 0,
+  truncated: false,
+};
+
+const nullableCount = () => z.number().nullable().default(null).catch(null);
+
+export const FlowInsightsSchema = z.object({
+  requests: z.unknown().transform((v): FlowInsights["requests"] => {
+    const obj = v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+    const byEnd: Record<string, number> = {};
+    if (obj.by_end && typeof obj.by_end === "object" && !Array.isArray(obj.by_end)) {
+      for (const [key, n] of Object.entries(obj.by_end)) if (typeof n === "number") byEnd[key] = n;
+    }
+    return {
+      total: typeof obj.total === "number" ? obj.total : 0,
+      open: typeof obj.open === "number" ? obj.open : 0,
+      by_end: byEnd,
+    };
+  }),
+  steps: tolerantList(z.object({
+    key: text(),
+    entered: count(),
+    median_minutes: nullableCount(),
+    p90_minutes: nullableCount(),
+  }).loose()),
+  edges: tolerantList(z.object({ step: text(), edge: text(), taken: count() }).loose()),
+  loops: tolerantList(z.object({
+    key: text(),
+    max: count(),
+    histogram: z.unknown().transform((v): number[] => (Array.isArray(v) ? v.map((n) => (typeof n === "number" ? n : 0)) : [])),
+  }).loose()),
+  stalls: tolerantList(z.object({ reason: text(), count: count() }).loose()),
+  manual_closes: count(),
+  truncated: z.boolean().default(false).catch(false),
+}).loose() as unknown as z.ZodType<FlowInsights>;

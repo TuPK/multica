@@ -314,6 +314,13 @@ import type {
   PublishFlowDraftRequest,
   CompleteIssueFlowStepRequest,
 } from "../types/flow-draft";
+import type {
+  FlowInsights,
+  PackCommitRequest,
+  PackCommitResponse,
+  PackPreview,
+  PackSourceRequest,
+} from "../types/pack";
 import { type Logger, noopLogger } from "../logger";
 import { createRequestId, createSafeId } from "../utils";
 import { getCurrentSlug } from "../platform/workspace-storage";
@@ -791,6 +798,12 @@ import {
   EMPTY_FLOW_MANIFEST_RESPONSE,
   FlowCapabilitiesResponseSchema,
   EMPTY_FLOW_CAPABILITIES_RESPONSE,
+  FlowInsightsSchema,
+  EMPTY_FLOW_INSIGHTS,
+  PackCommitResponseSchema,
+  EMPTY_PACK_COMMIT_RESPONSE,
+  PackPreviewSchema,
+  EMPTY_PACK_PREVIEW,
   CloseIssueFlowTaskResponseSchema,
   EMPTY_CLOSE_ISSUE_FLOW_TASK_RESPONSE,
   SquadMemberStatusListResponseSchema,
@@ -1018,6 +1031,13 @@ function parseSearchIndexResponse<T>(raw: unknown, schema: ZodType, endpoint: st
   const parsed = parseWithFallback<T | null>(raw, schema, null, { endpoint });
   if (parsed === null) throw new Error(`Malformed response from ${endpoint}`);
   return parsed;
+}
+
+function packPreviewFromResponse(raw: unknown): PackPreview {
+  const preview = parseWithFallback(raw, PackPreviewSchema, EMPTY_PACK_PREVIEW, { endpoint: "POST /api/squads/packs/preview" });
+  // A preview with no digest cannot be committed: the server's answer was not one.
+  if (!preview.digest) throw new Error("The pack preview could not be read");
+  return preview;
 }
 
 export class ApiError extends Error {
@@ -5609,6 +5629,60 @@ export class ApiClient {
     return parseWithFallback(raw, FlowManifestResponseSchema, EMPTY_FLOW_MANIFEST_RESPONSE, {
       endpoint: "GET /api/squads/{id}/flow-drafts/{draftId}/export",
     });
+  }
+
+  /** Asks the draft of a proposal to read the newest flow.json that its agent attached (spec 16.4). */
+  async importFlowProposal(squadId: string, draftId: string, data: { revision: number }): Promise<FlowDraft> {
+    const raw = await this.fetch<unknown>(`/api/squads/${squadId}/flow-drafts/${draftId}/import-proposal`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, FlowDraftSchema, EMPTY_FLOW_DRAFT, {
+      endpoint: "POST /api/squads/{id}/flow-drafts/{draftId}/import-proposal",
+    });
+  }
+
+  /**
+   * The operating numbers of one version of a flow (spec 16.6). A trial run is left out unless the
+   * caller asks for it.
+   */
+  async getFlowInsights(workflowId: string, opts?: { includeTrial?: boolean }): Promise<FlowInsights> {
+    const includeTrial = opts?.includeTrial === true;
+    const raw = await this.fetch<unknown>(`/api/issue-workflows/${workflowId}/flow-insights?include_trial=${includeTrial}`);
+    return parseWithFallback(raw, FlowInsightsSchema, EMPTY_FLOW_INSIGHTS, {
+      endpoint: "GET /api/issue-workflows/{id}/flow-insights",
+    });
+  }
+
+  /** Reads a pack from a source and stages it. Nothing is written until commitPack (spec 16.2). */
+  async previewPack(source: PackSourceRequest): Promise<PackPreview> {
+    const raw = await this.fetch<unknown>("/api/squads/packs/preview", {
+      method: "POST",
+      body: JSON.stringify({ source }),
+    });
+    return packPreviewFromResponse(raw);
+  }
+
+  /** Reads a zip the person uploads. The JSON Content-Type is left off so the browser sets the boundary. */
+  async previewPackUpload(file: File): Promise<PackPreview> {
+    const formData = new FormData();
+    formData.append("file", file, file.name || "upload.zip");
+    const res = await this.fetchRaw("/api/squads/packs/preview", { method: "POST", body: formData });
+    return packPreviewFromResponse(await res.json());
+  }
+
+  /** Installs a previewed pack as the person decided (spec 16.3). 409 and 422 answers keep their code in the error body. */
+  async commitPack(data: PackCommitRequest): Promise<PackCommitResponse> {
+    const raw = await this.fetch<unknown>("/api/squads/packs/commit", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    const done = parseWithFallback(raw, PackCommitResponseSchema, EMPTY_PACK_COMMIT_RESPONSE, {
+      endpoint: "POST /api/squads/packs/commit",
+    });
+    // An install with no record is an answer this build cannot read: the person must not be told it worked.
+    if (!done.install_id) throw new Error("The install finished without a result");
+    return done;
   }
 
   /** Exports a published flow workflow as a manifest. */
