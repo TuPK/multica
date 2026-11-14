@@ -27,6 +27,7 @@ const base: PackPreview = {
   leader: null,
   flow: { present: false, validation: null, issues: [] },
   references: [],
+  references_omitted: 0,
   ignored: [],
   scan: [],
   issues: [],

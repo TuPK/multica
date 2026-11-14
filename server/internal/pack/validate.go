@@ -25,7 +25,6 @@ func Validate(b *hub.Bundle, p *Pack) []Issue {
 	if p.Format == FormatNativeBundle {
 		v.native()
 	}
-	v.references()
 	return v.issues
 }
 
@@ -177,13 +176,5 @@ func (v *validator) native() {
 		v.err("pack_path_unsafe", "flow", "the flow path leaves the bundle", map[string]any{"path": flow})
 	case !hasFile(v.b, flow):
 		v.err("pack_flow_missing", "flow", "the flow file is not in the bundle", map[string]any{"path": flow})
-	}
-}
-
-// references says when more files may hold a procedure than preview lists.
-func (v *validator) references() {
-	if n := len(listReferences(v.b, v.p)); n > maxReferences {
-		v.add(SeverityInfo, "pack_references_capped", "references", "only the first files that may hold a procedure are listed",
-			map[string]any{"files": n, "limit": maxReferences})
 	}
 }

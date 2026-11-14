@@ -40,7 +40,9 @@ type Pack struct {
 	// Flow is the bundle path of flow.json, empty when the bundle has none.
 	Flow       string
 	References []Reference
-	Ignored    []Ignored
+	// ReferencesOmitted is how many doc references the cap left out of References (spec 16.1).
+	ReferencesOmitted int
+	Ignored           []Ignored
 }
 
 // Agent is one agent of a bundle.

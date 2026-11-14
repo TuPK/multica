@@ -42,6 +42,7 @@ const preview = (over: Partial<PackPreview> = {}): PackPreview => ({
   leader: null,
   flow: { present: false, validation: null, issues: [] },
   references: [],
+  references_omitted: 0,
   ignored: [{ agent: "writer", key: "model" }, { skill: "style", key: "allowed-tools" }],
   scan: [],
   issues: [],
@@ -224,6 +225,39 @@ describe("PackImportDialog", () => {
     await waitFor(() => expect(fakeApi.commitPack).toHaveBeenCalledTimes(2));
     expect(fakeApi.commitPack.mock.calls[1]![0]).toMatchObject({ digest, new_install: true });
     expect(await screen.findByRole("link", { name: "Design the workflow" })).toBeInTheDocument();
+  });
+
+  it("says how many documentation files the list left out, and nothing when none", async () => {
+    fakeApi.previewPack.mockResolvedValueOnce(preview({ references_omitted: 3 }));
+    renderDialog();
+    await readPack();
+    expect(screen.getByText("3 more documentation files are not listed")).toBeInTheDocument();
+    cleanup();
+
+    fakeApi.previewPack.mockResolvedValueOnce(preview({ references_omitted: 1 }));
+    renderDialog();
+    await readPack();
+    expect(screen.getByText("1 more documentation file is not listed")).toBeInTheDocument();
+    cleanup();
+
+    renderDialog();
+    await readPack();
+    expect(screen.queryByText(/documentation file/)).toBeNull();
+  });
+
+  it("has one control named Close, the X, on every step", async () => {
+    fakeApi.commitPack.mockResolvedValueOnce(done());
+    renderDialog();
+    expect(screen.getAllByRole("button", { name: "Close" })).toHaveLength(1);
+
+    await readPack();
+    expect(screen.getAllByRole("button", { name: "Close" })).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("radio", { name: "Writer" }));
+    await waitFor(() => expect(install()).toBeEnabled());
+    fireEvent.click(install());
+    await screen.findByRole("link", { name: "Open the squad" });
+    expect(screen.getAllByRole("button", { name: "Close" })).toHaveLength(1);
   });
 
   it("closes without installing when the person keeps the pack that is there", async () => {

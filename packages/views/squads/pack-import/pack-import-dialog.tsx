@@ -243,6 +243,10 @@ export function PackImportDialog({ open, onOpenChange }: PackImportDialogProps) 
               </section>
             )}
 
+            {preview.references_omitted > 0 && (
+              <p className="text-micro text-muted-foreground">{t(($) => $.packs.references_omitted, { count: preview.references_omitted })}</p>
+            )}
+
             {conflict && (
               <div className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-caption">
                 <div className="font-medium text-amber-700 dark:text-amber-400">{t(($) => $.packs.conflict.title)}</div>

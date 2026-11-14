@@ -103,9 +103,12 @@ type PackPreviewResponse struct {
 	Leader     *string                `json:"leader"`
 	Flow       PackPreviewFlow        `json:"flow"`
 	References []PackPreviewReference `json:"references"`
-	Ignored    []pack.Ignored         `json:"ignored"`
-	Scan       []PackPreviewFinding   `json:"scan"`
-	Issues     []pack.Issue           `json:"issues"`
+	// ReferencesOmitted is how many doc files (README, docs/, workflows/) the list of references left out. The
+	// instructions of an agent and a SKILL.md are never left out.
+	ReferencesOmitted int                  `json:"references_omitted"`
+	Ignored           []pack.Ignored       `json:"ignored"`
+	Scan              []PackPreviewFinding `json:"scan"`
+	Issues            []pack.Issue         `json:"issues"`
 }
 
 // PackAgentChoice is what the person decided for one agent of the bundle: create, use_existing or skip.
@@ -484,6 +487,7 @@ func (h *Handler) packPreviewResponse(ctx context.Context, ws pgtype.UUID, membe
 	for _, ref := range p.References {
 		resp.References = append(resp.References, PackPreviewReference{Path: ref.Path, Bytes: ref.Bytes, Kind: ref.Kind})
 	}
+	resp.ReferencesOmitted = p.ReferencesOmitted
 	for _, f := range read.scan.Findings {
 		resp.Scan = append(resp.Scan, PackPreviewFinding{Path: f.Path, Severity: string(f.Severity), Rule: f.Rule})
 	}

@@ -14,7 +14,8 @@ import (
 const (
 	// nativeFormat is the value of "format" in squad-bundle.json.
 	nativeFormat = "multica.squad-bundle/v1"
-	// maxReferences and maxReferenceBytes bound the markdown files that preview lists (spec 16.1).
+	// maxReferences bounds the doc files that preview lists, and maxReferenceBytes the size of each file listed
+	// (spec 16.1). The instructions of an agent and a SKILL.md are never cut: they may hold the procedure.
 	maxReferences     = 20
 	maxReferenceBytes = 200 << 10
 )
@@ -56,10 +57,7 @@ func Normalize(b *hub.Bundle) (*Pack, error) {
 		}
 		return p.Skills[i].Dir < p.Skills[j].Dir
 	})
-	p.References = listReferences(b, p)
-	if len(p.References) > maxReferences {
-		p.References = p.References[:maxReferences]
-	}
+	p.References, p.ReferencesOmitted = capDocReferences(listReferences(b, p))
 	return p, nil
 }
 
@@ -316,10 +314,26 @@ func safePath(p string) bool {
 	return true
 }
 
+// capDocReferences keeps every agent and skill reference and the first maxReferences doc references, and says
+// how many doc references it left out. The list is in the order of listReferences, so the docs come last.
+func capDocReferences(refs []Reference) ([]Reference, int) {
+	out := make([]Reference, 0, len(refs))
+	docs := 0
+	for _, r := range refs {
+		if r.Kind == "doc" {
+			if docs++; docs > maxReferences {
+				continue
+			}
+		}
+		out = append(out, r)
+	}
+	return out, max(docs-maxReferences, 0)
+}
+
 // listReferences lists, in the order agent, skill, doc and then by path, the markdown files that may hold a
 // procedure (spec 16.1): the instructions of each agent, each SKILL.md, README.md, and the .md files of
-// docs/ and workflows/. It gives path and size only. Files over 200 KiB are left out; the list is not cut
-// at 20 here, so that a caller can tell that it was.
+// docs/ and workflows/. It gives path and size only. Files over 200 KiB are left out. The docs are not cut at
+// 20 here; capDocReferences does that.
 func listReferences(b *hub.Bundle, p *Pack) []Reference {
 	var agents, skills, docs []Reference
 	add := func(into *[]Reference, f hub.FileEntry, kind string) {

@@ -81,6 +81,8 @@ export interface PackPreview {
   leader: string | null;
   flow: PackPreviewFlow;
   references: PackPreviewReference[];
+  /** How many doc files (README, docs/, workflows/) the list of references left out. 0 from a server that does not say. */
+  references_omitted: number;
   ignored: PackIgnored[];
   scan: PackPreviewFinding[];
   issues: PackIssue[];

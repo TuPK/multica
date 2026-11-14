@@ -122,13 +122,6 @@ func packFixture(t *testing.T, dir string) map[string]string {
 	return files
 }
 
-// withRootFile adds a file at the root of a bundle that has only agents/: hub.ExtractZip takes a folder that holds
-// everything for the wrapper of the archive and strips it.
-func withRootFile(files map[string]string) map[string]string {
-	files["README.md"] = "# A pack\n"
-	return files
-}
-
 func packZip(t *testing.T, files map[string]string) []byte {
 	t.Helper()
 	return hubImportZip(t, files)
@@ -328,20 +321,41 @@ func TestPackPreview_FourFormats(t *testing.T) {
 		if len(p.Ignored) != 14 {
 			t.Errorf("ignored %d, want tools and model of 7 agents", len(p.Ignored))
 		}
-		if len(p.References) != 20 {
-			t.Errorf("references %d, want the first 20", len(p.References))
+		// Every instructions file and SKILL.md is listed, though there are more than 20 of them.
+		if len(p.References) != 25 || p.ReferencesOmitted != 0 {
+			t.Errorf("references %d, omitted %d, want the 7 agents and 18 skills, none omitted", len(p.References), p.ReferencesOmitted)
 		}
-		var capped bool
 		for _, i := range p.Issues {
-			capped = capped || i.Code == "pack_references_capped"
-		}
-		if !capped {
-			t.Errorf("issues %+v", p.Issues)
+			if i.Code == "pack_references_capped" {
+				t.Errorf("issue %+v: the count of omitted docs says it now", i)
+			}
 		}
 		for _, a := range p.Agents {
 			if a.SkillsDeclared {
 				t.Errorf("agent %s declares skills it does not", a.Key)
 			}
+		}
+	})
+
+	t.Run("the preview says how many doc files it left out, as references_omitted", func(t *testing.T) {
+		files := packFixture(t, "claude_agents")
+		for i := 0; i < 23; i++ {
+			files[fmt.Sprintf("docs/d%02d.md", i)] = "# Doc\n"
+		}
+		var raw map[string]any
+		w.preview(t, w.AdminID, packZip(t, files)).Want(http.StatusOK).JSON(&raw)
+		if got, ok := raw["references_omitted"].(float64); !ok || got != 3 {
+			t.Errorf("references_omitted = %v, want 3", raw["references_omitted"])
+		}
+		if refs, _ := raw["references"].([]any); len(refs) != 45 {
+			t.Errorf("%d references, want the 7 agents, 18 skills and 20 docs", len(refs))
+		}
+
+		// With nothing omitted the field is still there, as 0.
+		var plain map[string]any
+		w.preview(t, w.AdminID, packZip(t, packFixture(t, "claude_agents"))).Want(http.StatusOK).JSON(&plain)
+		if got, ok := plain["references_omitted"].(float64); !ok || got != 0 {
+			t.Errorf("references_omitted = %v, want 0", plain["references_omitted"])
 		}
 	})
 
@@ -499,10 +513,10 @@ func TestPackCommit_BrokenPacksRejected(t *testing.T) {
 	}{
 		{"a skill without a description", packFixture(t, "broken/skill_no_description"), "pack_field_missing", "skills[only].description"},
 		{"a skill without a name", packFixture(t, "broken/skill_no_name"), "pack_field_missing", "skills[.].name"},
-		{"an agent without a description", withRootFile(packFixture(t, "broken/agent_no_description")), "pack_field_missing", "agents[bad_agent].description"},
+		{"an agent without a description", packFixture(t, "broken/agent_no_description"), "pack_field_missing", "agents[bad_agent].description"},
 		{"an agent that names a skill the bundle lacks", packFixture(t, "broken/agent_skill_missing"), "pack_skill_missing", "agents[reader].skills[ghost]"},
 		{"a pack that names a skill it lacks", packFixture(t, "broken/missing_skill"), "pack_skill_missing", "agents[reader].skills[ghost]"},
-		{"two agents with one key", withRootFile(packFixture(t, "broken/duplicate_agent_key")), "pack_agent_key_duplicate", "agents[a_b]"},
+		{"two agents with one key", packFixture(t, "broken/duplicate_agent_key"), "pack_agent_key_duplicate", "agents[a_b]"},
 		{"a leader that is no agent", packFixture(t, "broken/leader_missing"), "pack_leader_invalid", "leader"},
 		{"instructions that leave the bundle", packFixture(t, "broken/path_escape"), "pack_path_unsafe", "agents[beta].instructions"},
 	} {

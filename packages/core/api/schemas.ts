@@ -5624,6 +5624,7 @@ export const EMPTY_PACK_PREVIEW: PackPreview = {
   leader: null,
   flow: { present: false, validation: null, issues: [] },
   references: [],
+  references_omitted: 0,
   ignored: [],
   scan: [],
   issues: [],
@@ -5653,6 +5654,7 @@ export const PackPreviewSchema = z.object({
     };
   }),
   references: tolerantList(PackPreviewReferenceSchema),
+  references_omitted: count(),
   ignored: tolerantList(PackIgnoredSchema),
   scan: tolerantList(PackPreviewFindingSchema),
   issues: tolerantList(PackIssueSchema),

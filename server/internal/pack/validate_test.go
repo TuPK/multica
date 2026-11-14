@@ -134,19 +134,6 @@ func TestValidate_BrokenPacks(t *testing.T) {
 			}
 		}
 	})
-
-	t.Run("more references than are listed is said, not an error", func(t *testing.T) {
-		b := loadDir(t, "claude_agents")
-		var capped *Issue
-		for _, i := range Validate(b, mustNormalize(t, b)) {
-			if i.Code == "pack_references_capped" {
-				capped = &i
-			}
-		}
-		if capped == nil || capped.Severity != SeverityInfo {
-			t.Errorf("issue %+v", capped)
-		}
-	})
 }
 
 func fileOf(t *testing.T, dir, p string) string {

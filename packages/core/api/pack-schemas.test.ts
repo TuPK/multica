@@ -53,6 +53,19 @@ describe("PackPreview", () => {
     expect(preview).toMatchObject({ agents: [], skills: [], leader: null, references: [], ignored: [], scan: [], issues: [], flow: { present: false } });
   });
 
+  it("reads how many doc references were left out, and 0 from an older server that does not say", () => {
+    expect(PackPreviewSchema.parse({ ...good, references_omitted: 5 }).references_omitted).toBe(5);
+    expect(PackPreviewSchema.parse(good).references_omitted).toBe(0);
+    expect(PackPreviewSchema.parse({ digest: "sha256:x" }).references_omitted).toBe(0);
+    expect(EMPTY_PACK_PREVIEW.references_omitted).toBe(0);
+  });
+
+  it("reads a references_omitted that is not a number as 0", () => {
+    for (const bad of ["5", null, {}, [], true, Number.NaN]) {
+      expect(PackPreviewSchema.parse({ ...good, references_omitted: bad }).references_omitted).toBe(0);
+    }
+  });
+
   it("reads a list that is null or of the wrong type as an empty list and drops the items it cannot read", () => {
     const preview = PackPreviewSchema.parse({ ...good, agents: null, skills: "x", ignored: {}, scan: [1, null, { path: "a", severity: "block", rule: "r" }], references: [7] });
     expect(preview.agents).toEqual([]);

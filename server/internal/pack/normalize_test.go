@@ -348,23 +348,60 @@ func TestReferences_ListedNotParsed(t *testing.T) {
 		t.Errorf("a SKILL.md is not listed: %v", got)
 	}
 
-	t.Run("at most twenty files of at most 200 KiB", func(t *testing.T) {
+	t.Run("at most twenty doc files, each of at most 200 KiB, and the omitted ones counted", func(t *testing.T) {
 		set := map[string]string{"docs/a-huge.md": strings.Repeat("x", 200<<10+1)}
 		for i := 0; i < 25; i++ {
 			set["docs/d"+string(rune('a'+i))+".md"] = "# Doc\n"
 		}
 		p := mustNormalize(t, edit(loadDir(t, "skills_only"), set))
-		if len(p.References) != 20 {
-			t.Fatalf("%d references, want 20", len(p.References))
-		}
+		kinds := map[string]int{}
 		for _, r := range p.References {
+			kinds[r.Kind]++
 			if r.Path == "docs/a-huge.md" {
 				t.Error("a file over 200 KiB is listed")
 			}
 		}
+		if kinds["doc"] != 20 || kinds["skill"] != 3 || len(p.References) != 23 {
+			t.Fatalf("references by kind %v, want 3 skills and 20 docs", kinds)
+		}
+		if p.ReferencesOmitted != 5 {
+			t.Errorf("ReferencesOmitted %d, want the 5 docs the cap left out", p.ReferencesOmitted)
+		}
 		// The three SKILL.md files come before the docs, as the kinds are ordered: agent, skill, doc.
 		if p.References[0].Kind != "skill" || p.References[2].Kind != "skill" || p.References[3].Kind != "doc" {
 			t.Errorf("order %+v", p.References[:4])
+		}
+	})
+
+	t.Run("never drops the instructions of an agent or a SKILL.md, however many there are", func(t *testing.T) {
+		set := map[string]string{}
+		for i := 0; i < 25; i++ {
+			set["docs/d"+string(rune('a'+i))+".md"] = "# Doc\n"
+		}
+		b := edit(loadDir(t, "claude_agents"), set)
+		p := mustNormalize(t, b)
+		kinds := map[string]int{}
+		for _, r := range p.References {
+			kinds[r.Kind]++
+		}
+		if kinds["agent"] != len(p.Agents) || kinds["skill"] != len(p.Skills) || kinds["doc"] != 20 {
+			t.Fatalf("references by kind %v, want %d agents, %d skills and 20 docs", kinds, len(p.Agents), len(p.Skills))
+		}
+		if len(p.Agents) != 7 || len(p.Skills) != 18 {
+			t.Fatalf("the fixture has %d agents and %d skills, want 7 and 18: more than the cap of 20 in all", len(p.Agents), len(p.Skills))
+		}
+		if p.ReferencesOmitted != 5 {
+			t.Errorf("ReferencesOmitted %d, want 5", p.ReferencesOmitted)
+		}
+	})
+
+	t.Run("a bundle with no more than twenty docs omits none", func(t *testing.T) {
+		p := mustNormalize(t, loadDir(t, "claude_agents"))
+		if p.ReferencesOmitted != 0 {
+			t.Errorf("ReferencesOmitted %d, want 0", p.ReferencesOmitted)
+		}
+		if len(p.References) != 25 {
+			t.Errorf("%d references, want the 7 agents and 18 skills of the bundle", len(p.References))
 		}
 	})
 }
