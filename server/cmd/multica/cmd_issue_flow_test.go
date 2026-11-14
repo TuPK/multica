@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -18,7 +19,7 @@ func TestIssueFlowHelp(t *testing.T) {
 		"switch":   {"multica issue flow switch <id> <key> <value>"},
 		"resume":   {"--to-step", "--reset-rework", "--reset-loops", "--skip-cancelled", "--acknowledge-skip-checkpoint", "squad"},
 		"detach":   {"--cancel-tasks", "ordinary sub-issues"},
-		"start":    {"multica issue flow start <id>"},
+		"start":    {"multica issue flow start <id>", "--workflow", "--trial", "multica issue flow start MUL-12 --workflow", "rehearsal"},
 		"complete": {"multica issue flow complete <id> <step>", "--verdict", "--set", "--blocked", "plan"},
 		"vars":     {"multica issue flow vars <id>", "comma separated", "role the variable names"},
 		"set":      {"multica issue flow set <task-id> <key> <value>", "while the task is open", "requires a variable"},
@@ -228,6 +229,60 @@ func TestIssueFlowCommandsCallTheEndpoints(t *testing.T) {
 		}
 		if c := flowCall(); c.method != "POST" || c.path != "/api/issues/"+issueID+"/flow/start" {
 			t.Fatalf("call = %+v", c)
+		}
+		if c := flowCall(); len(c.body) != 0 {
+			t.Fatalf("a start with neither flag sends no field, sent %v", c.body)
+		}
+	})
+
+	// startWith runs the real `start` command with the flags it declares, set as on a command line.
+	startWith := func(t *testing.T, set map[string]string) call {
+		t.Helper()
+		calls = nil
+		cmd := newCmd(func(c *cobra.Command) { c.Flags().AddFlagSet(issueFlowStartCmd.Flags()) })
+		// The flags are those of the real command, so a value set here is put back when the test ends.
+		reset := func() {
+			_ = cmd.Flags().Lookup("workflow").Value.Set("")
+			_ = cmd.Flags().Lookup("trial").Value.Set("false")
+		}
+		reset()
+		t.Cleanup(reset)
+		for name, value := range set {
+			if err := cmd.Flags().Set(name, value); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if _, err := captureStdout(t, func() error { return runIssueFlowStart(cmd, []string{issueID}) }); err != nil {
+			t.Fatal(err)
+		}
+		c := flowCall()
+		if c.method != "POST" || c.path != "/api/issues/"+issueID+"/flow/start" {
+			t.Fatalf("call = %+v", c)
+		}
+		return c
+	}
+	const workflowID = "0e9bbf5a-3bd4-4c34-8d1c-6f6b1f1a9d10"
+	t.Run("start with --workflow names the version", func(t *testing.T) {
+		c := startWith(t, map[string]string{"workflow": workflowID})
+		if !reflect.DeepEqual(c.body, map[string]any{"workflow_id": workflowID}) {
+			t.Fatalf("body = %v, want only workflow_id", c.body)
+		}
+	})
+	t.Run("start with --trial marks a rehearsal and names no version", func(t *testing.T) {
+		c := startWith(t, map[string]string{"trial": "true"})
+		if !reflect.DeepEqual(c.body, map[string]any{"trial": true}) {
+			t.Fatalf("body = %v, want only trial", c.body)
+		}
+	})
+	t.Run("start with both sends both", func(t *testing.T) {
+		c := startWith(t, map[string]string{"workflow": workflowID, "trial": "true"})
+		if !reflect.DeepEqual(c.body, map[string]any{"workflow_id": workflowID, "trial": true}) {
+			t.Fatalf("body = %v", c.body)
+		}
+	})
+	t.Run("start with the flags at their defaults sends nothing", func(t *testing.T) {
+		if c := startWith(t, nil); len(c.body) != 0 {
+			t.Fatalf("body = %v, want an empty body", c.body)
 		}
 	})
 }

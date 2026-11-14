@@ -104,10 +104,15 @@ var issueFlowStartCmd = &cobra.Command{
 	Use:   "start <id>",
 	Short: "Put a request on its squad's flow",
 	Long: "Start the flow for an issue given to a squad whose workflow runs on a flow, when it did\n" +
-		"not start by itself. An issue with a parent or with sub-issues cannot start one.",
-	Example: "  multica issue flow start MUL-12",
-	Args:    exactArgs(1),
-	RunE:    runIssueFlowStart,
+		"not start by itself. An issue with a parent or with sub-issues cannot start one.\n" +
+		"It runs on the active workflow of the squad. With --workflow it runs on another version of\n" +
+		"the squad's workflows; with --trial the run is a rehearsal, counted apart in the insights.\n" +
+		"Without --workflow, a trial rehearses the active workflow. Both are for the members who\n" +
+		"manage the squad.",
+	Example: "  multica issue flow start MUL-12\n" +
+		"  multica issue flow start MUL-12 --workflow 0e9bbf5a-3bd4-4c34-8d1c-6f6b1f1a9d10 --trial",
+	Args: exactArgs(1),
+	RunE: runIssueFlowStart,
 }
 
 var issueFlowCompleteCmd = &cobra.Command{
@@ -179,6 +184,8 @@ func init() {
 	issueFlowResumeCmd.Flags().StringArray("reset-loops", nil, "A loop whose count starts over, or \"all\"; repeat for several")
 	issueFlowResumeCmd.Flags().Bool("skip-cancelled", false, "Let the step go on without the work tasks a person cancelled")
 	issueFlowResumeCmd.Flags().Bool("acknowledge-skip-checkpoint", false, "Resume a request stalled because no person has seen the work of an agent, taking the place of that check")
+	issueFlowStartCmd.Flags().String("workflow", "", "The id of the version of the squad's workflows to run on, instead of the active one")
+	issueFlowStartCmd.Flags().Bool("trial", false, "Make the run a rehearsal (a trial run), counted apart from real requests")
 	issueFlowDetachCmd.Flags().Bool("cancel-tasks", false, "Cancel the open tasks instead of keeping them as sub-issues")
 }
 
@@ -351,8 +358,16 @@ func runIssueFlowStart(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer cancel()
+	// The body names a version or a trial only when asked to: a plain start is the same request as before.
+	body := map[string]any{}
+	if workflow, _ := cmd.Flags().GetString("workflow"); strings.TrimSpace(workflow) != "" {
+		body["workflow_id"] = strings.TrimSpace(workflow)
+	}
+	if trial, _ := cmd.Flags().GetBool("trial"); trial {
+		body["trial"] = true
+	}
 	var result map[string]any
-	if err := client.PostJSON(ctx, path+"/start", map[string]any{}, &result); err != nil {
+	if err := client.PostJSON(ctx, path+"/start", body, &result); err != nil {
 		return fmt.Errorf("start flow: %w", err)
 	}
 	return printFlowResult(cmd, result)
