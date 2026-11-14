@@ -178,6 +178,7 @@ func init() {
 	issueFlowResumeCmd.Flags().Bool("reset-rework", false, "Start the rework count over")
 	issueFlowResumeCmd.Flags().StringArray("reset-loops", nil, "A loop whose count starts over, or \"all\"; repeat for several")
 	issueFlowResumeCmd.Flags().Bool("skip-cancelled", false, "Let the step go on without the work tasks a person cancelled")
+	issueFlowResumeCmd.Flags().Bool("acknowledge-skip-checkpoint", false, "Resume a request stalled because no person has seen the work of an agent, taking the place of that check")
 	issueFlowDetachCmd.Flags().Bool("cancel-tasks", false, "Cancel the open tasks instead of keeping them as sub-issues")
 }
 
@@ -308,6 +309,7 @@ func runIssueFlowResume(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 	skipCancelled, _ := cmd.Flags().GetBool("skip-cancelled")
+	acknowledgeSkip, _ := cmd.Flags().GetBool("acknowledge-skip-checkpoint")
 	resetLoops, _ := cmd.Flags().GetStringArray("reset-loops")
 	body := map[string]any{"reset_rework": reset}
 	if toStep != "" {
@@ -315,6 +317,9 @@ func runIssueFlowResume(cmd *cobra.Command, args []string) error {
 	}
 	if skipCancelled {
 		body["skip_cancelled"] = true
+	}
+	if acknowledgeSkip {
+		body["acknowledge_skip_checkpoint"] = true
 	}
 	if len(resetLoops) > 0 {
 		body["reset_loops"] = resetLoops

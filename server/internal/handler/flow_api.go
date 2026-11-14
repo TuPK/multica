@@ -2,12 +2,15 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/issueworkflow"
 	"github.com/multica-ai/multica/server/internal/logger"
 	"github.com/multica-ai/multica/server/internal/service"
@@ -200,15 +203,20 @@ func (h *Handler) ResumeIssueFlow(w http.ResponseWriter, r *http.Request) {
 		ResetRework   bool     `json:"reset_rework"`
 		ResetLoops    []string `json:"reset_loops"`
 		SkipCancelled bool     `json:"skip_cancelled"`
+		// AcknowledgeSkipCheckpoint: see FlowResumeInput.
+		AcknowledgeSkipCheckpoint bool `json:"acknowledge_skip_checkpoint"`
 	}
 	if !decodeFlowBody(w, r, &req) {
 		return
 	}
-	request, _, _, ok := h.loadOperatedRun(w, r, false)
+	request, _, actor, ok := h.loadOperatedRun(w, r, false)
 	if !ok {
 		return
 	}
-	state, err := h.ResumeFlow(r.Context(), request, FlowResumeInput{ToStep: req.ToStep, ResetRework: req.ResetRework, ResetLoops: req.ResetLoops, SkipCancelled: req.SkipCancelled})
+	state, err := h.ResumeFlow(r.Context(), request, FlowResumeInput{
+		ToStep: req.ToStep, ResetRework: req.ResetRework, ResetLoops: req.ResetLoops, SkipCancelled: req.SkipCancelled,
+		AcknowledgeSkipCheckpoint: req.AcknowledgeSkipCheckpoint, By: actor.ID,
+	})
 	if err != nil {
 		writeFlowError(w, r, err)
 		return
@@ -235,12 +243,27 @@ func (h *Handler) DetachIssueFlow(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"detached": true})
 }
 
-// StartIssueFlow puts a request on its squad's flow when it has not started.
-// It refuses an issue that has a parent or children, and a squad that has no
-// workflow that runs on a flow.
+// StartIssueFlow puts a request on the flow of its squad when it has not
+// started. It refuses an issue that has a parent or children, and a squad that
+// has no workflow that runs on a flow. The body is optional: workflow_id names
+// another version of the squad's workflows (spec 16.5) and trial marks the run
+// as a rehearsal of it, which only a person who manages the squad may ask for.
+// Without a body the request starts on the squad's active workflow.
 func (h *Handler) StartIssueFlow(w http.ResponseWriter, r *http.Request) {
 	issue, role, ok := h.flowRequestFor(w, r, false)
 	if !ok || role != issueworkflow.RoleRequest {
+		return
+	}
+	var req struct {
+		WorkflowID *string `json:"workflow_id"`
+		Trial      bool    `json:"trial"`
+	}
+	if !decodeFlowBody(w, r, &req) {
+		return
+	}
+	// Choosing a version and rehearsing one are flow authoring; a start that asks for neither is not.
+	if (req.WorkflowID != nil || req.Trial) && !featureflags.FlowAuthoringEnabled(r.Context(), h.FeatureFlags) {
+		writeErrorCode(w, http.StatusNotFound, "flow_authoring_disabled", "flow authoring is not enabled")
 		return
 	}
 	reject := func(message string) {
@@ -273,20 +296,54 @@ func (h *Handler) StartIssueFlow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	squad, err := h.Queries.GetSquadInWorkspace(r.Context(), db.GetSquadInWorkspaceParams{ID: issue.AssigneeID, WorkspaceID: issue.WorkspaceID})
-	if err != nil || !squad.ActiveWorkflowID.Valid {
+	if err != nil {
 		reject("the squad has no workflow that runs on a flow")
 		return
 	}
-	row, err := h.Queries.GetIssueWorkflow(r.Context(), db.GetIssueWorkflowParams{ID: squad.ActiveWorkflowID, WorkspaceID: issue.WorkspaceID})
-	if err != nil || len(row.FlowConfig) == 0 {
-		reject("the squad has no workflow that runs on a flow")
-		return
+	var row db.IssueWorkflow
+	if req.WorkflowID != nil || req.Trial {
+		var chosen pgtype.UUID
+		if req.WorkflowID != nil {
+			if chosen, ok = parseUUIDOrBadRequest(w, *req.WorkflowID, "workflow_id"); !ok {
+				return
+			}
+		} else {
+			chosen = squad.ActiveWorkflowID
+		}
+		row, err = service.ResolveFlowChoice(r.Context(), h.Queries, issue.WorkspaceID, issue.AssigneeType, issue.AssigneeID, chosen, req.Trial)
+		var choice *service.FlowChoiceError
+		if errors.As(err, &choice) {
+			writeErrorCode(w, http.StatusUnprocessableEntity, "flow_workflow_invalid", choice.Message)
+			return
+		}
+		if err != nil {
+			writeFlowError(w, r, err)
+			return
+		}
+	} else {
+		if !squad.ActiveWorkflowID.Valid {
+			reject("the squad has no workflow that runs on a flow")
+			return
+		}
+		row, err = h.Queries.GetIssueWorkflow(r.Context(), db.GetIssueWorkflowParams{ID: squad.ActiveWorkflowID, WorkspaceID: issue.WorkspaceID})
+		if err != nil || len(row.FlowConfig) == 0 {
+			reject("the squad has no workflow that runs on a flow")
+			return
+		}
 	}
 	probe := &flowRun{issue: issue, row: row}
-	if _, ok := h.authorizeFlowOperator(w, r, probe, true); !ok {
+	actor, ok := h.authorizeFlowOperator(w, r, probe, true)
+	if !ok {
 		return
 	}
-	started, err := service.StartFlow(r.Context(), h.Queries, issue, row)
+	if req.Trial && actor.Type == "agent" {
+		writeFlowRejection(w, &flowRejection{
+			Status: http.StatusForbidden, Code: "flow_forbidden",
+			Message: "only the members who manage the squad can rehearse a workflow",
+		})
+		return
+	}
+	started, err := service.StartFlowAs(r.Context(), h.Queries, issue, row, req.Trial)
 	if err != nil {
 		writeFlowError(w, r, err)
 		return

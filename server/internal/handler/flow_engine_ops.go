@@ -416,6 +416,12 @@ type FlowResumeInput struct {
 	// SkipCancelled lets the step go on without the work tasks a person cancelled,
 	// which the engine otherwise reopens because their files are part of the step.
 	SkipCancelled bool
+	// AcknowledgeSkipCheckpoint says the manager knows no person has seen the agent work of a
+	// request the engine stalled because of it (spec 4.7, 4.8), and resumes it anyway. The
+	// resume then counts as the human checkpoint.
+	AcknowledgeSkipCheckpoint bool
+	// By is the user who resumes: the one a checkpoint made by the resume names.
+	By string
 }
 
 // ResumeFlow continues a request that stopped. After stop 1 or a stall the
@@ -479,7 +485,22 @@ func (h *Handler) ResumeFlow(ctx context.Context, request db.Issue, in FlowResum
 			}
 		}
 	} else {
-		next = issueworkflow.ApplyResume(g, run.state, target, issueworkflow.ApplyMeta{Now: flowNow()})
+		// A request the engine stalled while agent work was unseen cannot go on because a
+		// manager pressed resume: only one who says so takes the place of the checkpoint.
+		skipsCheckpoint := run.state.Unreviewed && run.state.Stop.Code == issueworkflow.DocStopStalled
+		if skipsCheckpoint && !in.AcknowledgeSkipCheckpoint {
+			return IssueFlowStateResponse{}, &flowRejection{
+				Status: 422, Code: "flow_checkpoint_ack_required",
+				Message: "no person has seen the work of an agent on this request: resume with acknowledge_skip_checkpoint to take the place of that check",
+				Fields:  map[string]any{"step": target},
+			}
+		}
+		meta := issueworkflow.ApplyMeta{Now: flowNow(), By: in.By}
+		next = issueworkflow.ApplyResume(g, run.state, target, meta)
+		if skipsCheckpoint {
+			next.Checkpoints = append(append([]issueworkflow.Checkpoint(nil), next.Checkpoints...),
+				issueworkflow.Checkpoint{Step: target, Activation: next.Activations[target], By: in.By, At: meta.Now})
+		}
 		next.Unreviewed = false
 		next.Loops = copyLoops(next.Loops)
 		for _, loop := range g.Doc.Loops {

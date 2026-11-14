@@ -543,6 +543,12 @@ func verdictsOf(doc FlowDoc, kind, key string) []Verdict {
 	return builtinVerdicts[key]
 }
 
+// VerdictsOf is the verdict set a task reports in: the one it names, or the built-in set
+// of its kind (spec 2.3).
+func VerdictsOf(doc FlowDoc, task DocTask) []Verdict {
+	return verdictsOf(doc, task.Kind, task.Verdicts)
+}
+
 // varFactValue turns the stored value of a variable into a fact value. A value
 // of the wrong type for the variable has no fact.
 func varFactValue(v Var, raw any) (FactValue, bool) {

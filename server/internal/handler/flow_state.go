@@ -40,6 +40,15 @@ type IssueFlowTaskResponse struct {
 	Feedback []IssueFlowLinkResponse `json:"feedback"`
 	// Sets are the variables the task may set while it is open.
 	Sets []string `json:"sets"`
+	// Verdicts are the verdicts the task closes with: its own set, or the built-in one of its
+	// kind (spec 2.3). Blocked is always allowed and is in no set.
+	Verdicts []IssueFlowVerdictResponse `json:"verdicts"`
+}
+
+// IssueFlowVerdictResponse is one verdict of a task and how it counts in its join.
+type IssueFlowVerdictResponse struct {
+	Key   string `json:"key"`
+	Class string `json:"class"`
 }
 
 // IssueFlowSlotStatusResponse is how many files a task has for one slot it requires.
@@ -246,10 +255,14 @@ func (h *Handler) flowStateResponse(ctx context.Context, request db.Issue, role 
 			Inputs:     []IssueFlowLinkResponse{},
 			Feedback:   []IssueFlowLinkResponse{},
 			Sets:       []string{},
+			Verdicts:   []IssueFlowVerdictResponse{},
 		}
 		if doc, ok := flowGraphTask(g, t.FlowStep.String, t.FlowTask.String); ok {
 			item.Kind = doc.Kind
 			item.Sets = append(item.Sets, doc.Sets...)
+			for _, v := range issueworkflow.VerdictsOf(g.Doc, doc) {
+				item.Verdicts = append(item.Verdicts, IssueFlowVerdictResponse{Key: v.Key, Class: v.Class})
+			}
 			if i < len(rows) {
 				item.Class = issueworkflow.RowClass(g, rows[i].state)
 			}

@@ -733,7 +733,9 @@ func (g Graph) decisionFor(st State, tasks []TaskState, step DocStep, ge GraphEd
 	checkpoint := step.Kind == StepKindManual || g.isCheckpointEdge(step, result)
 	if target, ok := g.Terminal(e.To); ok {
 		unreviewed := st.Unreviewed && !checkpoint
-		if target.LeavesWorkspace && unreviewed && !g.Doc.Policy.AllowUnattendedRelease {
+		// A rehearsal never takes the policy that lets work leave unseen (spec 16.5, N8):
+		// a person has to look at the work first, as at a checkpoint.
+		if target.LeavesWorkspace && unreviewed && (st.Trial || !g.Doc.Policy.AllowUnattendedRelease) {
 			bad := stalledGraph(ReasonReleaseWithoutCheckpoint)
 			bad.TransitionID = e.ID
 			return bad

@@ -16,7 +16,7 @@ func TestIssueFlowHelp(t *testing.T) {
 		"plan":     {"--switch", "key=value", "--blocked", "--missing", "plan step"},
 		"advance":  {"idempotent", "do not set the status of the request"},
 		"switch":   {"multica issue flow switch <id> <key> <value>"},
-		"resume":   {"--to-step", "--reset-rework", "--reset-loops", "--skip-cancelled", "squad"},
+		"resume":   {"--to-step", "--reset-rework", "--reset-loops", "--skip-cancelled", "--acknowledge-skip-checkpoint", "squad"},
 		"detach":   {"--cancel-tasks", "ordinary sub-issues"},
 		"start":    {"multica issue flow start <id>"},
 		"complete": {"multica issue flow complete <id> <step>", "--verdict", "--set", "--blocked", "plan"},
@@ -376,6 +376,25 @@ func TestIssueFlowVarsExitsCompleteCommandsCallEndpoints(t *testing.T) {
 		loops, _ := last().body["reset_loops"].([]any)
 		if c := last(); c.path != base+"/resume" || c.body["skip_cancelled"] != true || len(loops) != 1 || loops[0] != "fixes" {
 			t.Fatalf("call = %+v", c)
+		}
+	})
+	t.Run("resume sends acknowledge_skip_checkpoint only when asked", func(t *testing.T) {
+		for _, ask := range []bool{false, true} {
+			calls = nil
+			cmd := newCmd(func(c *cobra.Command) {
+				c.Flags().String("to-step", "", "")
+				c.Flags().Bool("reset-rework", false, "")
+				c.Flags().Bool("skip-cancelled", false, "")
+				c.Flags().Bool("acknowledge-skip-checkpoint", ask, "")
+				c.Flags().StringArray("reset-loops", nil, "")
+			})
+			if _, err := captureStdout(t, func() error { return runIssueFlowResume(cmd, []string{issueID}) }); err != nil {
+				t.Fatal(err)
+			}
+			got, sent := last().body["acknowledge_skip_checkpoint"]
+			if sent != ask || (ask && got != true) {
+				t.Fatalf("ask %v: body = %+v", ask, last().body)
+			}
 		}
 	})
 }

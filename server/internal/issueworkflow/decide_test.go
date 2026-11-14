@@ -726,6 +726,14 @@ func TestDecide_TerminalWithoutCheckpointStalls(t *testing.T) {
 		g := NewGraph(releaseDoc(true, "checker"))
 		wantRoute(t, decideAt(g, st, rows), "check_ok", "done", JoinPass)
 	})
+	t.Run("a rehearsal ignores the exception", func(t *testing.T) {
+		g := NewGraph(releaseDoc(true, "checker"))
+		trial := st
+		trial.Trial = true
+		wantStalled(t, decideAt(g, trial, rows), ReasonReleaseWithoutCheckpoint)
+		trial.Unreviewed = false
+		wantRoute(t, decideAt(g, trial, rows), "check_ok", "done", JoinPass)
+	})
 	t.Run("a request nobody worked on is not unreviewed", func(t *testing.T) {
 		clean := st
 		clean.Unreviewed = false

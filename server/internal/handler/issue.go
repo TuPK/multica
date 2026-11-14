@@ -22,6 +22,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/channelmedia"
 	"github.com/multica-ai/multica/server/internal/dispatch"
+	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/issueguard"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
 	"github.com/multica-ai/multica/server/internal/issueworkflow"
@@ -3127,6 +3128,14 @@ type CreateIssueRequest struct {
 
 	AllowDuplicate         bool `json:"allow_duplicate,omitempty"`
 	PRAutoCompleteDisabled bool `json:"pr_auto_complete_disabled,omitempty"`
+
+	// FlowWorkflowID names the version of the squad's workflows the new request
+	// runs on, when it is given to a squad (spec 16.5). Only a person chooses:
+	// the field is ignored when an agent creates the issue.
+	FlowWorkflowID *string `json:"flow_workflow_id,omitempty"`
+	// FlowTrial starts the request as a rehearsal of that version (spec 16.5). Only
+	// a member who manages the squad may ask for it; it is ignored for an agent.
+	FlowTrial bool `json:"flow_trial,omitempty"`
 }
 
 // CreateIssueResponse echoes the atomic PR setting without expanding issue reads.
@@ -3510,6 +3519,57 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 	// Determine creator identity: agent (via X-Agent-ID header) or member.
 	creatorType, actualCreatorID := h.resolveActor(r, creatorID, workspaceID)
 
+	// A person may choose which version of the squad's workflows the request runs on.
+	// It is checked before anything is written, so a bad choice creates nothing.
+	var chosenFlow *db.IssueWorkflow
+	flowTrial := false
+	chosenID := ""
+	if req.FlowWorkflowID != nil {
+		chosenID = *req.FlowWorkflowID
+	}
+	if (chosenID != "" || req.FlowTrial) && creatorType != "agent" {
+		if !featureflags.FlowAuthoringEnabled(r.Context(), h.FeatureFlags) {
+			writeErrorCode(w, http.StatusNotFound, "flow_authoring_disabled", "flow authoring is not enabled")
+			return
+		}
+		var id pgtype.UUID
+		if chosenID != "" {
+			var ok bool
+			if id, ok = parseUUIDOrBadRequest(w, chosenID, "flow_workflow_id"); !ok {
+				return
+			}
+		}
+		if parentIssueID.Valid {
+			writeErrorCode(w, http.StatusUnprocessableEntity, "flow_workflow_invalid", "a sub-issue does not run on a flow of its own")
+			return
+		}
+		if req.FlowTrial {
+			if !h.canRehearseSquad(r.Context(), creatorID, workspaceID, assigneeType, assigneeID) {
+				writeErrorCode(w, http.StatusForbidden, "flow_forbidden", "only the members who manage the squad can rehearse a workflow")
+				return
+			}
+			flowTrial = true
+		}
+		if !id.Valid && assigneeType.String == "squad" && assigneeID.Valid {
+			// A rehearsal without a named version runs on the squad's active one.
+			if squad, err := h.Queries.GetSquadInWorkspace(r.Context(), db.GetSquadInWorkspaceParams{ID: assigneeID, WorkspaceID: wsUUID}); err == nil {
+				id = squad.ActiveWorkflowID
+			}
+		}
+		row, err := service.ResolveFlowChoice(r.Context(), h.Queries, wsUUID, assigneeType, assigneeID, id, flowTrial)
+		var choice *service.FlowChoiceError
+		if errors.As(err, &choice) {
+			writeErrorCode(w, http.StatusUnprocessableEntity, "flow_workflow_invalid", choice.Message)
+			return
+		}
+		if err != nil {
+			slog.Warn("create issue: resolve flow workflow", append(logger.RequestAttrs(r), "error", err)...)
+			writeError(w, http.StatusInternalServerError, "failed to resolve the workflow")
+			return
+		}
+		chosenFlow = &row
+	}
+
 	// A workflow opens the sub-issues of a request it runs; an agent does not.
 	if parentIssueID.Valid && creatorType == "agent" {
 		if err := h.checkFlowChildCreate(r.Context(), wsUUID, parentIssueID); err != nil {
@@ -3733,7 +3793,7 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 	issue := res.Issue
 	// A request given to a squad that runs on a flow starts on it now. The
 	// flow is also started by the paths that create requests another way.
-	if started, err := h.EnsureFlowStarted(r.Context(), issue); err != nil {
+	if started, err := h.ensureFlowStartedOn(r.Context(), issue, chosenFlow, flowTrial); err != nil {
 		slog.Warn("create issue: start flow failed", append(logger.RequestAttrs(r), "issue_id", uuidToString(issue.ID), "error", err)...)
 	} else {
 		issue = started

@@ -816,13 +816,24 @@ func TestRelease_UnreviewedStallsThenManualExitReleases(t *testing.T) {
 	if st.Stop == nil || !st.Unreviewed || st.Step != "handover" {
 		t.Fatalf("stop %+v unreviewed %v step %q; want a stall at the handover with work nobody saw", st.Stop, st.Unreviewed, st.Step)
 	}
-	// A manager looks at it and resumes at the release step; the person at that step chooses the exit.
-	resumed, err := testHandler.ResumeFlow(context.Background(), loadIssueRow(t, uuidToString(request.ID)), FlowResumeInput{ToStep: "release"})
-	if err != nil {
-		t.Fatal(err)
+	// A resume that does not say so cannot stand in for the check nobody made (spec 4.7, 4.8).
+	id := uuidToString(request.ID)
+	refused := testutil.Call(t, testHandler.ResumeIssueFlow, withURLParam(newRequest("POST", "/api/issues/"+id+"/flow/resume", map[string]any{"to_step": "release"}), "id", id))
+	body := wantFlowRejection(t, refused, 422, "flow_checkpoint_ack_required")
+	if body["step"] != "release" {
+		t.Fatalf("body = %v, want the step the resume was for", body)
 	}
+	if st := rig.state(request); st.Stop == nil || !st.Unreviewed || st.Step != "handover" || len(st.Checkpoints) != 0 {
+		t.Fatalf("a refused resume changed the request: step %q stop %+v unreviewed %v checkpoints %v", st.Step, st.Stop, st.Unreviewed, st.Checkpoints)
+	}
+	// A manager who says they know takes the place of the checkpoint: it is recorded, and the request moves on.
+	var resumed IssueFlowStateResponse
+	testutil.Call(t, testHandler.ResumeIssueFlow, withURLParam(newRequest("POST", "/api/issues/"+id+"/flow/resume", map[string]any{"to_step": "release", "acknowledge_skip_checkpoint": true}), "id", id)).Want(200).JSON(&resumed)
 	if resumed.Step != "release" || resumed.Unreviewed || resumed.Stop != nil {
 		t.Fatalf("after the resume: step %q unreviewed %v stop %+v", resumed.Step, resumed.Unreviewed, resumed.Stop)
+	}
+	if n := len(resumed.Checkpoints); n != 1 || resumed.Checkpoints[0].Step != "release" || resumed.Checkpoints[0].By != testUserID {
+		t.Fatalf("checkpoints = %+v, want one at release by the manager %s", resumed.Checkpoints, testUserID)
 	}
 	rig.mustExit(request, "release_done", memberActor(t, testUserID))
 	rig.wantClosedAt(request, "done")
@@ -864,3 +875,89 @@ func TestOpen_RequiredInputMissingStalls(t *testing.T) {
 }
 
 var _ = json.Marshal
+
+// Only a stall caused by unseen agent work needs the acknowledgement: any other resume goes on as before.
+func TestResume_AckIsNotAskedWhenNothingIsUnseen(t *testing.T) {
+	rig := newGraphRigDoc(t, "triage", triageDoc(), graphRigOpts{})
+	request := rig.newRequest()
+	rig.complete(request, nil)
+	rig.finishAll(request, "review", 0, always("fix"))
+	st := rig.advance(request)
+	if st.Stop == nil || st.Stop.Code != "loop_exhausted" {
+		t.Fatalf("stop %+v, want loop_exhausted", st.Stop)
+	}
+	id := uuidToString(request.ID)
+	testutil.Call(t, testHandler.ResumeIssueFlow, withURLParam(newRequest("POST", "/api/issues/"+id+"/flow/resume", map[string]any{}), "id", id)).Want(200)
+}
+
+// Decision of the integration round: the state tells each task which verdicts it closes with, so a
+// screen offers the buttons of the task's own set and not two fixed ones.
+func TestStatePayload_TaskCarriesItsVerdictSet(t *testing.T) {
+	rig := newGraphRigDoc(t, "triage", triageDoc(), graphRigOpts{})
+	request := rig.newRequest()
+	rig.complete(request, nil)
+	state := rig.state(request)
+	var gate *IssueFlowTaskResponse
+	for i := range state.Tasks {
+		if state.Tasks[i].Task == "triage" {
+			gate = &state.Tasks[i]
+		}
+	}
+	if gate == nil {
+		t.Fatalf("no triage task in %+v", state.Tasks)
+	}
+	want := []IssueFlowVerdictResponse{{Key: "ship", Class: "pass"}, {Key: "fix", Class: "fail"}, {Key: "defer", Class: "neutral"}}
+	if len(gate.Verdicts) != len(want) {
+		t.Fatalf("verdicts = %+v, want %+v", gate.Verdicts, want)
+	}
+	for i := range want {
+		if gate.Verdicts[i] != want[i] {
+			t.Fatalf("verdicts = %+v, want %+v", gate.Verdicts, want)
+		}
+	}
+
+	// A task that names no set has the built-in one of its kind: done for work, approved or rejected for a gate.
+	plain := newGraphRigDoc(t, "members", memberDoc(), graphRigOpts{})
+	req2 := plain.newRequest()
+	plain.complete(req2, nil)
+	work := plain.state(req2).Tasks[0]
+	if len(work.Verdicts) != 1 || work.Verdicts[0] != (IssueFlowVerdictResponse{Key: "done", Class: "pass"}) {
+		t.Fatalf("work verdicts = %+v, want done", work.Verdicts)
+	}
+	builtin := newGraphRigDoc(t, "builtin-gate", baseDoc([]any{docRole("checker", "agent")}, docLead("review"),
+		docStep("review", []any{docTask("check", "gate", "checker", nil)}, docEdge("r_ok", "done", joinIs("pass")), docStopEdge("r_no", "loop_exhausted", nil))), graphRigOpts{})
+	req3 := builtin.newRequest()
+	builtin.complete(req3, nil)
+	got := builtin.state(req3).Tasks[0].Verdicts
+	if len(got) != 2 || got[0].Key != "approved" || got[1].Key != "rejected" || got[1].Class != "fail" {
+		t.Fatalf("gate verdicts = %+v, want approved and rejected", got)
+	}
+}
+
+// A manager closes a gate for its agent through the close route with a verdict of the task's set; it is logged.
+func TestCloseRoute_ManagerClosesOnBehalfWithACustomVerdictAndIsLogged(t *testing.T) {
+	rig := newGraphRigDoc(t, "triage", triageDoc(), graphRigOpts{})
+	request := rig.newRequest()
+	rig.complete(request, nil)
+	gate := firstRow(t, rig, request, "review", "triage")
+
+	// A verdict the task's set does not have is refused, with the keys it has.
+	wrong := testutil.Call(t, testHandler.CloseIssueFlowTask, withURLParam(newRequest("POST", "/api/issues/"+gate+"/flow/close", map[string]any{"verdict": "approved"}), "id", gate))
+	wantFlowRejection(t, wrong, 422, "flow_outcome_invalid")
+
+	var out struct {
+		Task  IssueFlowTaskResponse  `json:"task"`
+		State IssueFlowStateResponse `json:"state"`
+	}
+	testutil.Call(t, testHandler.CloseIssueFlowTask, withURLParam(newRequest("POST", "/api/issues/"+gate+"/flow/close", map[string]any{"verdict": "ship", "note": "agent offline"}), "id", gate)).Want(200).JSON(&out)
+	if got := issueOutcome(t, gate); got != "ship" {
+		t.Fatalf("outcome = %q, want ship", got)
+	}
+	details := activityDetails(t, gate, "flow_manual_close")
+	if details["verdict"] != "ship" || details["task"] != "triage" {
+		t.Fatalf("details = %v, want the verdict ship on task triage", details)
+	}
+	if out.Task.ClosedBy == nil || !out.Task.ClosedBy.OnBehalf {
+		t.Fatalf("closed_by = %+v, want a close on behalf", out.Task.ClosedBy)
+	}
+}

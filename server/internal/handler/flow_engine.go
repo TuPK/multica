@@ -105,6 +105,15 @@ func (h *Handler) EnsureFlowStarted(ctx context.Context, issue db.Issue) (db.Iss
 	return service.StartFlowIfEligible(ctx, h.Queries, issue)
 }
 
+// ensureFlowStartedOn is EnsureFlowStarted for a request whose creator chose the
+// workflow it runs on. A nil choice means the squad's active workflow.
+func (h *Handler) ensureFlowStartedOn(ctx context.Context, issue db.Issue, chosen *db.IssueWorkflow, trial bool) (db.Issue, error) {
+	if !h.flowEngineEnabled(ctx) {
+		return issue, nil
+	}
+	return service.StartFlowIfEligibleOn(ctx, h.Queries, issue, chosen, trial)
+}
+
 // flowTaskRow is a task issue with what the engine derives from it.
 type flowTaskRow struct {
 	issue db.Issue
@@ -1156,4 +1165,18 @@ func (h *Handler) stallFlow(ctx context.Context, current *flowRun, code, reason,
 	}
 	h.publishFlowEffects(ctx, run.issue, &effects)
 	return advanceOutcome{action: FlowAction{Kind: "stopped", Step: issuestatus.Blocked, Tasks: []string{}}}, nil
+}
+
+// canRehearseSquad reports whether the user is a member who manages the squad the
+// issue is given to, the people who may start a rehearsal of one of its versions.
+func (h *Handler) canRehearseSquad(ctx context.Context, userID, workspaceID string, assigneeType pgtype.Text, assigneeID pgtype.UUID) bool {
+	if assigneeType.String != "squad" || !assigneeID.Valid {
+		return false
+	}
+	member, err := h.getWorkspaceMember(ctx, userID, workspaceID)
+	if err != nil {
+		return false
+	}
+	squad, err := h.Queries.GetSquadInWorkspace(ctx, db.GetSquadInWorkspaceParams{ID: assigneeID, WorkspaceID: member.WorkspaceID})
+	return err == nil && canManageSquad(member, squad)
 }
