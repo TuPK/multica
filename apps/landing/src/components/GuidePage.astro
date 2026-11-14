@@ -1,0 +1,153 @@
+---
+// The user guide for one language. Chapters are Markdown files in src/content/guide/<lang>/.
+// src/pages/huong-dan/index.astro (Vietnamese) and src/pages/en/guide/index.astro (English)
+// both render this. Only these two languages are offered.
+import { getCollection, render } from "astro:content";
+import Base from "../layouts/Base.astro";
+import Header from "./Header.astro";
+import Footer from "./Footer.astro";
+import type { Lang } from "../i18n";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const isVi = lang === "vi";
+const homeHref = isVi ? "/" : "/en/";
+
+const t = isVi
+  ? {
+      title: "Hướng dẫn sử dụng Delegora",
+      description:
+        "Hướng dẫn đầy đủ các tính năng của Delegora: agent, issue, đội, công ty, workflow, autopilot, kiến thức và xử lý sự cố.",
+      heading: "Hướng dẫn sử dụng Delegora",
+      lede: "Tài liệu này mô tả từng phần của Delegora: cách bắt đầu, các khái niệm, cách vận hành đội agent và cách kiểm soát những gì agent được phép làm.",
+      toc: "Nội dung",
+      back: "Về trang chủ",
+      progress: "Đang xem",
+      of: "/",
+      prev: "Chương trước",
+      next: "Chương tiếp theo",
+      top: "Lên đầu trang",
+    }
+  : {
+      title: "Delegora user guide",
+      description:
+        "A complete guide to Delegora's features: agents, issues, squads, company, workflows, autopilot, knowledge and troubleshooting.",
+      heading: "Delegora user guide",
+      lede: "This guide covers each part of Delegora: how to start, the core concepts, how to run a team of agents, and how to control what they are allowed to do.",
+      toc: "Contents",
+      back: "Back to home",
+      progress: "Reading",
+      of: "/",
+      prev: "Previous chapter",
+      next: "Next chapter",
+      top: "Back to top",
+    };
+
+const entries = (await getCollection("guide", (e) => e.id.startsWith(`${lang}/`))).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+
+// "vi/04-agent" -> anchor "agent", so links such as #agent work in both languages.
+const chapters = await Promise.all(
+  entries.map(async (e) => {
+    const { Content } = await render(e);
+    return {
+      id: e.id.split("/")[1].replace(/^\d+-/, ""),
+      title: e.data.title,
+      Content,
+    };
+  }),
+);
+---
+
+<Base lang={lang} title={t.title} description={t.description}>
+  <Header lang={lang} homeHref={homeHref} />
+  <div class="guide wrap">
+    <header class="guide-head">
+      <h1>{t.heading}</h1>
+      <p>{t.lede}</p>
+      <a class="guide-back" href={homeHref}>{t.back}</a>
+    </header>
+
+    <div class="guide-layout">
+      <aside class="guide-side" aria-label={t.toc}>
+        <div class="guide-side-in">
+          <div class="guide-side-head">
+            <span class="tag">{t.toc}</span>
+            <span class="guide-progress" id="guide-progress" aria-live="polite"></span>
+          </div>
+          <nav class="guide-nav">
+            <ol>
+              {chapters.map((c, i) => (
+                <li>
+                  <a href={`#${c.id}`}><span class="guide-idx">{String(i + 1).padStart(2, "0")}</span>{c.title}</a>
+                </li>
+              ))}
+            </ol>
+          </nav>
+        </div>
+      </aside>
+
+      <main class="guide-main" id="guide-main">
+        {chapters.map((c, i) => {
+          const prev = chapters[i - 1];
+          const next = chapters[i + 1];
+          return (
+            <section class="guide-sec" id={c.id} data-index={i + 1}>
+              <h2><span class="guide-num">{String(i + 1).padStart(2, "0")}</span>{c.title}</h2>
+              <div class="body">
+                <c.Content />
+              </div>
+              <nav class="guide-pager" aria-label={t.toc}>
+                {prev ? <a class="prev" href={`#${prev.id}`}><small>{t.prev}</small>{prev.title}</a> : <span></span>}
+                {next ? <a class="next" href={`#${next.id}`}><small>{t.next}</small>{next.title}</a> : <span></span>}
+              </nav>
+            </section>
+          );
+        })}
+        <p class="guide-end"><a href="#guide-main">{t.top}</a></p>
+      </main>
+    </div>
+  </div>
+  <Footer lang={lang} />
+</Base>
+
+<script is:inline define:vars={{ total: chapters.length, ofWord: t.of, reading: t.progress }}>
+  (function () {
+    var secs = Array.prototype.slice.call(document.querySelectorAll("section.guide-sec"));
+    var links = Array.prototype.slice.call(document.querySelectorAll(".guide-nav a"));
+    var label = document.getElementById("guide-progress");
+    if (!secs.length) return;
+    var current = -1;
+    function setActive(i) {
+      if (i === current) return;
+      current = i;
+      links.forEach(function (a, k) {
+        var on = k === i;
+        a.classList.toggle("on", on);
+        if (on) a.setAttribute("aria-current", "location");
+        else a.removeAttribute("aria-current");
+      });
+      if (label) label.textContent = reading + " " + (i + 1) + " " + ofWord + " " + total;
+      if (links[i] && links[i].scrollIntoView) {
+        var nav = links[i].closest(".guide-nav");
+        var box = links[i].getBoundingClientRect(), wrap = nav.getBoundingClientRect();
+        if (box.top < wrap.top || box.bottom > wrap.bottom) links[i].scrollIntoView({ block: "nearest" });
+      }
+    }
+    function update() {
+      var line = window.innerHeight * 0.35;
+      var cur = 0;
+      for (var i = 0; i < secs.length; i++) {
+        if (secs[i].getBoundingClientRect().top <= line) cur = i;
+      }
+      setActive(cur);
+    }
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    update();
+  })();
+</script>

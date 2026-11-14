@@ -4,10 +4,15 @@ import { getDict, pathFor, type Lang } from "../i18n";
 
 interface Props {
   lang: Lang;
+  // Optional overrides for pages other than the home page.
+  title?: string;
+  description?: string;
 }
 
-const { lang } = Astro.props;
+const { lang, title = undefined, description = undefined } = Astro.props;
 const { meta, htmlLang } = getDict(lang);
+const pageTitle = title ?? meta.title;
+const pageDescription = description ?? meta.description;
 ---
 
 <!doctype html>
@@ -15,9 +20,9 @@ const { meta, htmlLang } = getDict(lang);
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content={meta.description} />
-    <meta property="og:title" content={meta.title} />
-    <meta property="og:description" content={meta.description} />
+    <meta name="description" content={pageDescription} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={pageDescription} />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content={lang === "vi" ? "vi_VN" : "en_US"} />
     <link rel="alternate" hreflang="vi" href={pathFor("vi")} />
@@ -36,7 +41,7 @@ const { meta, htmlLang } = getDict(lang);
         if (localStorage.getItem("theme") === "light") document.documentElement.dataset.theme = "light";
       } catch (e) {}
     </script>
-    <title>{meta.title}</title>
+    <title>{pageTitle}</title>
   </head>
   <body class="mc">
     <slot />

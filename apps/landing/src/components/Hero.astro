@@ -7,6 +7,8 @@ interface Props {
 
 const { lang } = Astro.props;
 const t = getDict(lang).hero;
+// The secondary button opens the user guide page.
+const guideHref = lang === "vi" ? "/huong-dan/" : "/en/guide/";
 // The marquee repeats its group twice so the loop is seamless; the copy is hidden from assistive tech.
 const groups = [false, true];
 ---
@@ -23,7 +25,7 @@ const groups = [false, true];
       <p class="lead up" style="--d:.55s">{t.lead}</p>
       <div class="btns up" style="--d:.7s">
         <a class="btn btn-primary" href="#nganh">{t.cta1}</a>
-        <a class="btn btn-ghost" href="#bat-dau">{t.cta2}</a>
+        <a class="btn btn-ghost" href={guideHref}>{t.cta2}</a>
       </div>
     </div>
 
