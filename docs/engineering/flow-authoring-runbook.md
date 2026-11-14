@@ -144,10 +144,62 @@ Mọi lỗi có dạng `{error, code}`; một số có thêm trường (`require
 | `flow_draft_name_invalid` | 400 | Tên nháp không hợp lệ | Đổi tên. |
 | `flow_draft_revision_required` | 400 | Thiếu `revision` | Gửi `revision`. |
 | `flow_draft_from_invalid` | 422 | Phiên bản nguồn của `from` không dùng được | Chọn phiên bản flow hợp lệ. |
-| `flow_draft_from_unsupported` | 400 | Loại `from` chưa hỗ trợ (`proposal`) | Dùng `fork` hoặc `manifest`. |
+| `flow_draft_from_unsupported` | 400 | Loại `from` không có (`proposal` có từ mục 8, sau `FF_FLOW_PACKS`) | Dùng `blank`, `workflow`, `manifest` hoặc `proposal`. |
 | `flow_agent_forbidden` | 403 | Không được dùng agent đã gắn vào vai | Đổi agent hoặc nhờ người có quyền. |
 | `flow_limit_reached` | 409 | 20 nháp mỗi squad hoặc 50 phiên bản mỗi dòng | Xóa nháp cũ hoặc tạo dòng mới. |
 | `workflow_name_taken` | 409 | Tên workflow trùng | Đổi tên. |
 | `workflow_locked` | 409 | Sửa phiên bản đã khóa | Fork thành nháp. |
 | `workflow_managed_by_template` | 409 | Workflow do catalog quản lý | Sao chép rồi sửa bản sao. |
 | `status_create_forbidden` | 403 | Cần tạo trạng thái mới mà không phải admin | Nhờ admin hoặc dùng trạng thái có sẵn. |
+
+## 8. Đề xuất của agent (spec 16.4)
+
+Người quản lý squad nhờ một agent soạn bản nháp từ một quy trình viết tay. Agent chỉ nộp một tệp `flow.json`; bản nháp, phiên bản và công tắc vẫn do người làm.
+
+**Cờ.** `FF_FLOW_PACKS` (mặc định tắt) bật `from.kind = "proposal"`, `POST /api/squads/{id}/flow-drafts/{draftId}/import-proposal` và `features.proposals` trong `GET /api/flow/capabilities`. Tắt cờ: hai route trả `404 flow_authoring_disabled` (cùng mã với khi `FF_FLOW_AUTHORING` tắt); bản nháp thường, bản nháp proposal đã có và phiên bản đã xuất bản không đổi. Nhập tệp cần thêm `FF_FLOW_GRAPH_V2` như nhập manifest.
+
+**Luồng.**
+
+1. Người quản lý gọi `POST .../flow-drafts` với `{"name": "...", "from": {"kind": "proposal", "agent_id": "<uuid>", "references": ["<attachment id>"], "note": "..."}}`. `references` là id các tệp chính họ đã tải lên và chưa đính vào đâu (tối đa 10). Server tạo bản nháp rỗng `origin: "proposal"` và một issue thường giao cho agent, tên `Draft a workflow: <tên nháp>`, không chạy trên flow nào. `source_ref` của nháp là `{"issue_id", "agent_id"}`.
+2. Mô tả issue do server sinh: tên squad, khóa vai gợi ý, tên và skill của từng thành viên, ai là lead, tên các tệp tham khảo, ghi chú, và yêu cầu đầu ra. Mô tả không chứa UUID của agent nào, hướng dẫn hay biến môi trường của agent.
+3. Agent dùng skill `flow-authoring`, chạy `multica flow validate --file flow.json --squad <id>` đến khi không còn lỗi, rồi đính tệp (tên kết thúc `flow.json`) vào issue bằng bình luận. Agent chỉ gọi được `POST /api/flow/validate`; mọi route `/flow-drafts` vẫn trả `403 flow_authoring_member_only`.
+4. Người quản lý gọi `POST .../flow-drafts/{draftId}/import-proposal` với `{"revision": n}`. Server đọc tệp mới nhất tên kết thúc `flow.json` do **chính agent đó** tải lên **issue đó**, kiểm như nhập manifest, bỏ `bind`, thay `doc` (`revision + 1`). Tệp của người khác, của agent khác hay đính ở issue khác bị bỏ qua.
+5. Xuất bản nháp `origin: "proposal"` đòi ack `proposal_reviewed` (người quản lý squad tick được, không cần admin); ack ghi vào `policy.acks` của phiên bản. Đây là cơ chế ack ở mục 3, không có cơ chế riêng. Nháp giữ `origin: "proposal"` sau khi xuất bản, nên phiên bản kế tiếp của nó cũng đòi ack.
+
+| Mã | HTTP | Khi nào | Xử lý |
+| --- | --- | --- | --- |
+| `flow_proposal_agent_invalid` | 400 | `agent_id` thiếu, không phải agent của workspace, hoặc đã lưu trữ | Chọn agent khác. |
+| `flow_proposal_agent_forbidden` | 403 | Người gọi không được giao việc cho agent đó | Chọn agent được phép. |
+| `flow_proposal_reference_invalid` | 400 | Tham khảo không phải tệp chính mình tải lên và chưa đính, hoặc quá 10 | Tải lại tệp rồi chọn lại. |
+| `flow_proposal_note_invalid` | 400 | Ghi chú quá 4000 ký tự | Rút gọn. |
+| `flow_proposal_missing` | 404 | Agent chưa đính `flow.json`, issue đã xóa, hoặc không đọc được tệp | Chờ agent hoặc nhắc nó. |
+| `flow_draft_not_proposal` | 400 | Gọi `import-proposal` trên nháp không phải `proposal` | Dùng nháp proposal. |
+| `flow_manifest_invalid` | 400 | Tệp không qua kiểm manifest; `issues[]` nêu lý do; nháp không đổi | Nhờ agent sửa và đính tệp mới. |
+| `flow_ack_required` | 422 | Xuất bản nháp proposal thiếu `proposal_reviewed` | Đọc quy trình rồi tick. |
+
+Tạm dừng: tắt `FF_FLOW_PACKS`. Một issue đề xuất đã tạo là issue thường; đóng hoặc hủy nó như mọi issue.
+
+## 9. Từ một bộ skill/agent tới workflow đang chạy (spec 12.3, 16.6)
+
+Người quản lý squad có một thư mục skill, một thư mục agent kiểu Claude Code, một agent pack của Multica hoặc một bó gốc có `flow.json`, và muốn có một workflow chạy được. Đi theo thứ tự dưới đây. Mỗi bước có chỗ nhìn để biết đã xong và chỗ sửa khi chưa.
+
+**Cờ.** `FF_FLOW_PACKS`, `FF_FLOW_AUTHORING` và `FF_FLOW_GRAPH_V2` cùng bật. Thiếu một cờ thì nút hoặc route tương ứng trả `404` (xem mục 1 và mục 8). `GET /api/flow/capabilities` nói cờ nào đang bật (`features.packs`, `proposals`, `insights`).
+
+1. **Nhập bộ.** Trang Squads, nút **Import a pack**: chọn tệp zip hoặc dán liên kết, bấm **Read the pack**. `POST /api/squads/packs/preview` chưa ghi gì; màn hình nêu agent, skill, các cài đặt bị bỏ qua (`model`, `tools`...), và lỗi hay cảnh báo quét. Bộ hỏng bị từ chối trước khi cài (`pack_invalid`); tệp bị chặn là `pack_scan_blocked`, cảnh báo cần tick (`pack_scan_ack_required`). Một agent nhắc skill mà bộ không có là lỗi của bộ, không phải của bạn: sửa bộ.
+2. **Chọn lead.** Bộ không nêu lead (định dạng thư mục agent, agent pack không có `leader`) thì nút **Install** tắt cho đến khi bạn chọn một agent làm lead, hoặc **Use a general leader**. Bộ gốc đã nêu lead thì chỉ nhận lead đó. Tên agent hoặc skill trùng tên đã có: chọn dùng lại, đổi tên hay giữ bản cũ (`pack_name_conflict`). Bộ không khai skill cho agent (thư mục agent kiểu Claude Code không có `skills:`) thì **tick skill cho từng agent ngay ở bước này**; agent không có skill thì `Task.skills` ở bước 4 sẽ bị từ chối.
+3. **Cài.** **Install** gọi `POST /api/squads/packs/commit`, một giao dịch: lỗi giữa chừng không để lại agent hay skill nào. Cài lại đúng bộ cũ (cùng `digest`) là no-op và nói đã cài; cùng `id` khác `digest` trả `pack_conflict` kèm lựa chọn (giữ hay cài bản mới thành squad mới). Kết quả có liên kết **Design the workflow**.
+4. **Lấy bản nháp.** Trang squad, **New workflow**, rồi một trong các cách sau:
+   - bó gốc có `flow.json`: bản nháp đã tạo khi cài, mọi vai chưa gắn (liên kết ở kết quả cài);
+   - **Import a file**: dán manifest `multica.flow-manifest/v1` viết tay;
+   - **Ask an agent to draft**: agent `flow_designer` đề xuất, bạn nhập (mục 8; xuất bản đòi ack `proposal_reviewed`);
+   - hoặc bản nháp trắng, thêm bước bằng tay. Với bộ chỉ có skill, tạo agent trong giao diện thường, gắn skill, rồi chọn skill đó ở `Task.skills` của từng việc.
+
+   Tab **Roles**: gắn từng vai cho agent của squad **bằng lựa chọn của bạn**, không theo tên. Việc có `skills` mà agent của vai không có skill đó bị chặn lúc xuất bản (`flow_draft_invalid`, vấn đề `skill_not_attached`, R09); sửa bằng cách gắn skill cho agent hoặc bỏ skill khỏi việc.
+5. **Kiểm tra.** **Check** (`POST .../validate`): không còn vấn đề mức `error`. Đọc `issues[]` như mục 5.
+6. **Mô phỏng.** **Simulate**: chọn kết quả từng việc, thấy đường đi và nơi kết thúc. Mô phỏng chỉ kiểm định tuyến, không kiểm việc agent làm.
+7. **Chạy thử.** Xuất bản bản nháp (chưa cần đặt làm phiên bản đang dùng), rồi bấm **Trial run** ở phiên bản đó hoặc tạo issue giao cho squad, chọn phiên bản và tick chạy thử. Request chạy thử ghim đúng phiên bản đã chọn, mang `trial = true`, và không thể rời workspace nếu chưa có người chọn cạnh ra. Theo dõi trên issue; kết thúc ở một terminal thì flow chạy được từ đầu đến cuối.
+8. **Xuất bản.** **Publish**: tick các ack mà hộp thoại nêu (phiên bản không đổi sau khi xuất bản; sửa tiếp thì fork thành nháp). Nháp từ đề xuất của agent cần `proposal_reviewed`.
+9. **Đọc số liệu.** `GET /api/issue-workflows/{id}/flow-insights` (Graph của một nháp hiện số liệu của phiên bản mà nháp được fork từ đó): số request theo kết cục, số lần vào từng bước, số lần đi từng cạnh, vòng lặp quay lại, số lần đỗ theo mã, số lần người đóng thay. Request chạy thử bị loại, trừ khi gọi `?include_trial=true`. Phiên bản khác không lẫn vào. Phản hồi bị cắt thì `truncated = true`.
+10. **Sửa.** Cạnh `stop` hay `loop_exhausted` chiếm nhiều: nới giới hạn vòng hoặc sửa chỉ dẫn của việc bị trả lại. Bước đỗ lâu: xem bước đó có đang chờ người không. Sửa luôn là fork phiên bản đã xuất bản thành nháp (`from.kind = "workflow"`), sửa, kiểm tra, xuất bản phiên bản mới; request đang chạy ở phiên bản cũ không bị đổi.
+
+Bốn bộ đã diễn tập từ đầu đến cuối, kèm test và ảnh chụp: [flow-pack-drill.md](flow-pack-drill.md).
