@@ -2387,6 +2387,20 @@ type SquadMember struct {
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 }
 
+type SquadPackInstall struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	SquadID     pgtype.UUID        `json:"squad_id"`
+	PackID      string             `json:"pack_id"`
+	PackVersion string             `json:"pack_version"`
+	Format      string             `json:"format"`
+	Digest      string             `json:"digest"`
+	Source      []byte             `json:"source"`
+	Roster      []byte             `json:"roster"`
+	InstalledBy pgtype.UUID        `json:"installed_by"`
+	InstalledAt pgtype.Timestamptz `json:"installed_at"`
+}
+
 type SquadPlugin struct {
 	ID          pgtype.UUID        `json:"id"`
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`

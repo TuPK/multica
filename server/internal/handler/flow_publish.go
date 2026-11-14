@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 	"sort"
 	"time"
 	"unicode/utf8"
@@ -41,6 +42,7 @@ var ackKinds = map[string]struct {
 	issueworkflow.AckUnattendedRelease: {issueworkflow.AckUnattendedRelease, true},
 	"lead_may_work":                    {issueworkflow.AckLeadMayWork, true},
 	issueworkflow.AckNoGate:            {issueworkflow.AckNoGate, false},
+	issueworkflow.AckProposalReviewed:  {issueworkflow.AckProposalReviewed, false},
 }
 
 func flowRejectJSON(w http.ResponseWriter, status int, code, message string, extra map[string]any) {
@@ -195,6 +197,10 @@ func (h *Handler) PublishFlowDraft(w http.ResponseWriter, r *http.Request) {
 		case issue.Ack != "":
 			required[issue.Ack] = true
 		}
+	}
+	// A workflow an agent proposed is published only by a manager who says they have read it.
+	if draft.Origin == "proposal" && !slices.Contains(acks, issueworkflow.AckProposalReviewed) {
+		required[issueworkflow.AckProposalReviewed] = true
 	}
 	if issues == nil {
 		issues = []issueworkflow.Issue{}

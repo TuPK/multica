@@ -275,6 +275,77 @@ func (h *Handler) ListSquads(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// newSquad is what createSquadTx writes: a squad whose leader is an agent of the workspace the caller may wire.
+type newSquad struct {
+	WorkspaceID pgtype.UUID
+	CreatorID   pgtype.UUID
+	Name        string
+	Description string
+	LeaderID    pgtype.UUID
+	AvatarURL   pgtype.Text
+	TemplateKey string
+	// FloorName names the floor made when every floor is full.
+	FloorName string
+}
+
+// createSquadTx creates a squad, seats it, adds its leader as a member and gives the leader a home squad, all
+// through a Queries handle bound to an open transaction that the caller commits. The squad takes the lowest
+// free company seat (a new floor when every floor is full), and the leader's first squad becomes its home
+// squad. It returns the squad as stored, the seat it took (nil when none) and the agents whose home changed,
+// for the caller to publish after the commit. CreateSquad and the install of a pack both use it.
+func createSquadTx(ctx context.Context, qtx *db.Queries, in newSquad) (db.Squad, *companyAutoSeat, []db.Agent, error) {
+	if err := qtx.LockCompanyLayout(ctx, in.WorkspaceID); err != nil {
+		return db.Squad{}, nil, nil, err
+	}
+	squad, err := qtx.CreateSquad(ctx, db.CreateSquadParams{
+		WorkspaceID: in.WorkspaceID,
+		Name:        in.Name,
+		Description: in.Description,
+		LeaderID:    in.LeaderID,
+		CreatorID:   in.CreatorID,
+		AvatarUrl:   in.AvatarURL,
+		TemplateKey: pgtype.Text{String: in.TemplateKey, Valid: in.TemplateKey != ""},
+	})
+	if err != nil {
+		return db.Squad{}, nil, nil, err
+	}
+
+	// Auto-add leader as a member with role "leader".
+	if _, err := qtx.AddSquadMember(ctx, db.AddSquadMemberParams{
+		SquadID:    squad.ID,
+		MemberType: "agent",
+		MemberID:   in.LeaderID,
+		Role:       "leader",
+	}); err != nil {
+		return db.Squad{}, nil, nil, err
+	}
+	var changedAgents []db.Agent
+	homed, err := claimHomeSquad(ctx, qtx, in.WorkspaceID, in.LeaderID, squad.ID)
+	if err != nil {
+		return db.Squad{}, nil, nil, err
+	}
+	if homed != nil {
+		changedAgents = append(changedAgents, *homed)
+	}
+
+	seat, err := pickCompanyAutoSeat(ctx, qtx, in.WorkspaceID, in.FloorName)
+	if err != nil {
+		return db.Squad{}, nil, nil, err
+	}
+	if seat != nil {
+		squad, err = qtx.SetSquadSeat(ctx, db.SetSquadSeatParams{
+			ID:          squad.ID,
+			WorkspaceID: in.WorkspaceID,
+			FloorID:     seat.Floor.ID,
+			CompanySlot: pgtype.Int2{Int16: seat.Slot, Valid: true},
+		})
+		if err != nil {
+			return db.Squad{}, nil, nil, err
+		}
+	}
+	return squad, seat, changedAgents, nil
+}
+
 func (h *Handler) CreateSquad(w http.ResponseWriter, r *http.Request) {
 	workspaceID := workspaceIDFromURL(r, "workspaceId")
 	// Any workspace member can create a squad and becomes its creator
@@ -364,60 +435,13 @@ func (h *Handler) CreateSquad(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(r.Context())
 	qtx := h.Queries.WithTx(tx)
-	if err := qtx.LockCompanyLayout(r.Context(), wsUUID); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to create squad")
-		return
-	}
-	squad, err := qtx.CreateSquad(r.Context(), db.CreateSquadParams{
-		WorkspaceID: wsUUID,
-		Name:        req.Name,
-		Description: req.Description,
-		LeaderID:    leaderUUID,
-		CreatorID:   member.UserID,
-		AvatarUrl:   avatarURL,
-		TemplateKey: pgtype.Text{String: req.TemplateKey, Valid: req.TemplateKey != ""},
+	squad, seat, changedAgents, err := createSquadTx(r.Context(), qtx, newSquad{
+		WorkspaceID: wsUUID, CreatorID: member.UserID, Name: req.Name, Description: req.Description,
+		LeaderID: leaderUUID, AvatarURL: avatarURL, TemplateKey: req.TemplateKey, FloorName: floorName,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create squad")
 		return
-	}
-
-	// Auto-add leader as a member with role "leader".
-	if _, err := qtx.AddSquadMember(r.Context(), db.AddSquadMemberParams{
-		SquadID:    squad.ID,
-		MemberType: "agent",
-		MemberID:   leaderUUID,
-		Role:       "leader",
-	}); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to create squad")
-		return
-	}
-	var changedAgents []db.Agent
-	homed, err := claimHomeSquad(r.Context(), qtx, wsUUID, leaderUUID, squad.ID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to create squad")
-		return
-	}
-	if homed != nil {
-		changedAgents = append(changedAgents, *homed)
-	}
-
-	seat, err := pickCompanyAutoSeat(r.Context(), qtx, wsUUID, floorName)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to create squad")
-		return
-	}
-	if seat != nil {
-		squad, err = qtx.SetSquadSeat(r.Context(), db.SetSquadSeatParams{
-			ID:          squad.ID,
-			WorkspaceID: wsUUID,
-			FloorID:     seat.Floor.ID,
-			CompanySlot: pgtype.Int2{Int16: seat.Slot, Valid: true},
-		})
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to create squad")
-			return
-		}
 	}
 	if err := tx.Commit(r.Context()); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create squad")

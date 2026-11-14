@@ -151,6 +151,8 @@ var concurrentIndexCleanups = map[string]string{
 	"989_issue_workflow_lineage_version_idx":                    "idx_issue_workflow_lineage_version",
 	"991_issue_workflow_draft_pkey_idx":                         "issue_workflow_draft_pkey_uidx",
 	"993_issue_workflow_draft_squad_idx":                        "idx_issue_workflow_draft_squad",
+	"995_squad_pack_install_pkey_idx":                           "squad_pack_install_pkey_uidx",
+	"997_squad_pack_install_squad_idx":                          "idx_squad_pack_install_squad",
 	"905_issue_directive_origin_index":                          "idx_issue_directive_origin",
 	"907_squad_skill_unique_index":                              "idx_squad_skill_squad_skill",
 	"908_squad_plugin_unique_index":                             "idx_squad_plugin_squad_name",

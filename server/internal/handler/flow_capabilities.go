@@ -34,6 +34,7 @@ type FlowCapabilitiesResponse struct {
 type FlowCapabilityFeatures struct {
 	Packs           bool `json:"packs"`
 	Proposals       bool `json:"proposals"`
+	Insights        bool `json:"insights"`
 	SystemPerformer bool `json:"system_performer"`
 	Subflow         bool `json:"subflow"`
 	ForkJoin        bool `json:"fork_join"`
@@ -66,6 +67,9 @@ func (h *Handler) GetFlowCapabilities(w http.ResponseWriter, r *http.Request) {
 		Features: FlowCapabilityFeatures{
 			Authoring: featureflags.FlowAuthoringEnabled(r.Context(), h.FeatureFlags),
 			GraphV2:   featureflags.FlowGraphV2Enabled(r.Context(), h.FeatureFlags),
+			Packs:     featureflags.FlowPacksEnabled(r.Context(), h.FeatureFlags),
+			Proposals: featureflags.FlowPacksEnabled(r.Context(), h.FeatureFlags),
+			Insights:  featureflags.FlowAuthoringEnabled(r.Context(), h.FeatureFlags),
 		},
 	})
 }

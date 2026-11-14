@@ -196,3 +196,27 @@ SELECT content FROM comment
 WHERE issue_id = $1 AND author_type = 'agent'
 ORDER BY created_at DESC, id DESC
 LIMIT 1;
+
+-- name: ListFlowInsightRequests :many
+-- The requests pinned to one version of a flow, newest first, for its operating numbers. The
+-- caller asks for one more than it shows to know the list was cut. A trial request is left out
+-- unless asked for.
+SELECT id, flow FROM issue
+WHERE workspace_id = sqlc.arg('workspace_id')::uuid
+  AND flow IS NOT NULL
+  AND flow->>'workflow_id' = sqlc.arg('workflow_id')::text
+  AND (sqlc.arg('include_trial')::boolean OR COALESCE(flow->>'trial', 'false') <> 'true')
+ORDER BY created_at DESC, id DESC
+LIMIT sqlc.arg('page_limit')::int;
+
+-- name: ListFlowManualCloses :many
+-- The closes a member made for the assignee of a task of the given requests, with the step and
+-- the task they were for.
+SELECT COALESCE(t.flow_step, '')::text AS step, COALESCE(t.flow_task, '')::text AS task
+FROM activity_log a
+JOIN issue t ON t.id = a.issue_id
+WHERE a.workspace_id = sqlc.arg('workspace_id')::uuid
+  AND a.action = 'flow_manual_close'
+  AND t.workspace_id = sqlc.arg('workspace_id')::uuid
+  AND t.parent_issue_id = ANY(sqlc.arg('request_ids')::uuid[])
+ORDER BY a.created_at, a.id;

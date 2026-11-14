@@ -2440,6 +2440,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Put("/flow-auto", h.SetIssueWorkflowFlowAuto)
 					r.Post("/brief", h.PreviewIssueWorkflowBrief)
 					r.Get("/flow-manifest", h.GetIssueWorkflowFlowManifest)
+					r.Get("/flow-insights", h.GetFlowInsights)
 				})
 			})
 
@@ -2473,6 +2474,9 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Get("/directory", h.ListSquadDirectory)
 				// The plugin catalog (the quickstart bundle) is static too, for the same reason.
 				r.Get("/plugin-catalog", h.ListSquadPluginCatalog)
+				// Installing a pack of skills and agents (spec 16.2, 16.3): static paths, matched before /{id}.
+				r.Post("/packs/preview", h.PreviewSquadPack)
+				r.Post("/packs/commit", h.CommitSquadPack)
 				r.Route("/{id}", func(r chi.Router) {
 					r.Get("/", h.GetSquad)
 					r.Put("/", h.UpdateSquad)
@@ -2498,6 +2502,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 							r.Post("/validate", h.ValidateFlowDraft)
 							r.Post("/simulate", h.SimulateFlowDraft)
 							r.Post("/publish", h.PublishFlowDraft)
+							r.Post("/import-proposal", h.ImportFlowProposal)
 							r.Get("/export", h.ExportFlowDraft)
 						})
 					})

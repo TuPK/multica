@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"unicode/utf8"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/issueworkflow"
+	"github.com/multica-ai/multica/server/internal/logger"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
@@ -123,8 +125,7 @@ func (h *Handler) authorFlow(w http.ResponseWriter, r *http.Request) (flowAuthor
 	if !ok {
 		return flowAuthoring{}, false
 	}
-	if actorType, _ := h.resolveActor(r, uuidToString(member.UserID), workspaceID); actorType == "agent" {
-		writeErrorCode(w, http.StatusForbidden, "flow_authoring_member_only", "an agent does not draft or publish a workflow")
+	if h.refuseFlowAgent(w, r, member, workspaceID, "flow_authoring_member_only", "an agent does not draft or publish a workflow") {
 		return flowAuthoring{}, false
 	}
 	squad, _, ok := h.loadSquadInWorkspace(w, r)
@@ -132,6 +133,17 @@ func (h *Handler) authorFlow(w http.ResponseWriter, r *http.Request) (flowAuthor
 		return flowAuthoring{}, false
 	}
 	return flowAuthoring{member: member, squad: squad, workspaceID: workspaceID, wsUUID: squad.WorkspaceID}, true
+}
+
+// refuseFlowAgent answers 403 and reports true when the request is an agent's, whoever's
+// credentials it carries (spec 16.4: authoring, activation and the runner switch are for
+// people). It is the one place the rule is written.
+func (h *Handler) refuseFlowAgent(w http.ResponseWriter, r *http.Request, member db.Member, workspaceID, code, message string) bool {
+	if actorType, _ := h.resolveActor(r, uuidToString(member.UserID), workspaceID); actorType != "agent" {
+		return false
+	}
+	writeErrorCode(w, http.StatusForbidden, code, message)
+	return true
 }
 
 // authorFlowManager is authorFlow for a route that needs a member who manages the squad.
@@ -238,6 +250,11 @@ type flowDraftFrom struct {
 	WorkflowID string          `json:"workflow_id"`
 	KeepBind   bool            `json:"keep_bind"`
 	Manifest   json.RawMessage `json:"manifest"`
+	// AgentID, References and Note ask an agent to draft (kind proposal): the agent, ids of files
+	// the caller uploaded, and a few lines on the workflow wanted.
+	AgentID    string   `json:"agent_id"`
+	References []string `json:"references"`
+	Note       string   `json:"note"`
 }
 
 type createFlowDraftRequest struct {
@@ -282,7 +299,8 @@ func stripBind(raw []byte) ([]byte, error) {
 }
 
 // CreateFlowDraft makes a draft: empty, a copy of a workflow of the squad (a
-// fork), or an imported manifest.
+// fork), an imported manifest, or an empty one that an agent is asked to fill
+// (a proposal).
 func (h *Handler) CreateFlowDraft(w http.ResponseWriter, r *http.Request) {
 	a, ok := h.authorFlowManager(w, r, "flow_forbidden")
 	if !ok {
@@ -307,6 +325,7 @@ func (h *Handler) CreateFlowDraft(w http.ResponseWriter, r *http.Request) {
 		lineage   pgtype.UUID
 		base      pgtype.UUID
 		sourceRef []byte
+		proposal  *proposalRequest
 	)
 	switch req.From.Kind {
 	case "", "blank":
@@ -337,8 +356,18 @@ func (h *Handler) CreateFlowDraft(w http.ResponseWriter, r *http.Request) {
 		}
 		origin = "import"
 	case "proposal":
-		writeErrorCode(w, http.StatusBadRequest, "flow_draft_from_unsupported", "a draft from a proposal is not supported yet")
-		return
+		if !featureflags.FlowPacksEnabled(ctx, h.FeatureFlags) {
+			writeErrorCode(w, http.StatusNotFound, "flow_authoring_disabled", "flow authoring is not enabled")
+			return
+		}
+		asked, status, code, msg := h.readProposalRequest(ctx, r, a, req.From)
+		if status != 0 {
+			writeErrorCode(w, status, code, msg)
+			return
+		}
+		proposal = &asked
+		doc = blankFlowDoc()
+		origin = "proposal"
 	default:
 		writeErrorCode(w, http.StatusBadRequest, "flow_draft_from_unsupported", fmt.Sprintf("a draft cannot start from %q", req.From.Kind))
 		return
@@ -359,6 +388,22 @@ func (h *Handler) CreateFlowDraft(w http.ResponseWriter, r *http.Request) {
 	if count >= issueworkflow.MaxDraftsPerSquad {
 		writeJSON(w, http.StatusConflict, map[string]any{"error": "the squad has the most drafts it may have", "code": "flow_limit_reached", "limit": "drafts", "max": issueworkflow.MaxDraftsPerSquad})
 		return
+	}
+	if proposal != nil {
+		issueID, err := h.createProposalIssue(ctx, a, name, *proposal)
+		if writeIssueLimitReached(w, err) {
+			return
+		}
+		if err != nil {
+			slog.Warn("create proposal issue failed", append(logger.RequestAttrs(r), "error", err)...)
+			writeErrorCode(w, http.StatusInternalServerError, "flow_proposal_failed", "could not create the issue for the agent")
+			return
+		}
+		sourceRef, err = json.Marshal(proposalSourceRef{IssueID: uuidToString(issueID), AgentID: uuidToString(proposal.agent.ID)})
+		if err != nil {
+			writeFlowError(w, r, err)
+			return
+		}
 	}
 	draft, err := h.Queries.CreateFlowDraft(ctx, db.CreateFlowDraftParams{
 		WorkspaceID: a.wsUUID, SquadID: a.squad.ID, LineageID: lineage, BaseWorkflowID: base,
@@ -873,8 +918,7 @@ func (h *Handler) GetIssueWorkflowFlowManifest(w http.ResponseWriter, r *http.Re
 	if !ok {
 		return
 	}
-	if actorType, _ := h.resolveActor(r, uuidToString(member.UserID), workspaceID); actorType == "agent" {
-		writeErrorCode(w, http.StatusForbidden, "flow_authoring_member_only", "an agent does not export a workflow")
+	if h.refuseFlowAgent(w, r, member, workspaceID, "flow_authoring_member_only", "an agent does not export a workflow") {
 		return
 	}
 	id, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "id"), "workflow id")
@@ -886,13 +930,7 @@ func (h *Handler) GetIssueWorkflowFlowManifest(w http.ResponseWriter, r *http.Re
 		writeErrorCode(w, http.StatusNotFound, "workflow_not_found", "flow workflow not found")
 		return
 	}
-	manages := isWorkspaceAdmin(member)
-	var squad db.Squad
-	if row.SquadID.Valid {
-		squad, err = h.Queries.GetSquadInWorkspace(r.Context(), db.GetSquadInWorkspaceParams{ID: row.SquadID, WorkspaceID: wsUUID})
-		manages = err == nil && canManageSquad(member, squad)
-	}
-	if !manages {
+	if !h.workflowManagedBy(r.Context(), member, wsUUID, row) {
 		writeErrorCode(w, http.StatusForbidden, "flow_forbidden", "only a member who manages the squad of the workflow can export it")
 		return
 	}

@@ -309,3 +309,23 @@ func stopOf(state IssueFlowStateResponse) issueworkflow.Stop {
 	}
 	return issueworkflow.StopStalled
 }
+
+// Spec 16.4: an agent does not turn the runner of a workflow on or off, whoever it acts for.
+func TestFlowAuto_AgentActorRefused(t *testing.T) {
+	f := newTradeFlowFixture(t)
+	agent := f.Agents.Docs
+	taskID := createHandlerTestTaskForAgent(t, agent)
+	req := withURLParam(newRequest("PUT", "/api/issue-workflows/"+f.Workflow.ID+"/flow-auto", map[string]any{"auto": true}), "id", f.Workflow.ID)
+	req.Header.Set("X-Actor-Source", "task_token")
+	req.Header.Set("X-Agent-ID", agent)
+	req.Header.Set("X-Task-ID", taskID)
+	body := testutil.Call(t, testHandler.SetIssueWorkflowFlowAuto, req).Want(http.StatusForbidden).Map()
+	if body["code"] != "flow_forbidden" || body["error"] != "only workspace admins can turn the runner on, not an agent" {
+		t.Fatalf("answer = %v", body)
+	}
+	var auto bool
+	dbfx.QueryRow(t, `SELECT flow_auto FROM issue_workflow WHERE id = $1`, f.Workflow.ID).Scan(&auto)
+	if auto {
+		t.Fatal("an agent turned flow_auto on")
+	}
+}

@@ -855,6 +855,9 @@ func ApplyDecision(g Graph, st State, d GraphDecision, meta ApplyMeta) State {
 	switch {
 	case d.StopCode != "":
 		out.Stop = &StopRecord{Code: d.StopCode, From: st.Step, Edge: d.TransitionID, At: meta.Now}
+		if d.StopCode == DocStopStalled {
+			out.Stop.Reason = d.Reason
+		}
 		out.BlockedFrom = st.Step
 	case isTerminal(g, d.To):
 		out.CameFrom = st.Step

@@ -399,6 +399,56 @@ func (q *Queries) ListAutoFlowRequests(ctx context.Context, arg ListAutoFlowRequ
 	return items, nil
 }
 
+const listFlowInsightRequests = `-- name: ListFlowInsightRequests :many
+SELECT id, flow FROM issue
+WHERE workspace_id = $1::uuid
+  AND flow IS NOT NULL
+  AND flow->>'workflow_id' = $2::text
+  AND ($3::boolean OR COALESCE(flow->>'trial', 'false') <> 'true')
+ORDER BY created_at DESC, id DESC
+LIMIT $4::int
+`
+
+type ListFlowInsightRequestsParams struct {
+	WorkspaceID  pgtype.UUID `json:"workspace_id"`
+	WorkflowID   string      `json:"workflow_id"`
+	IncludeTrial bool        `json:"include_trial"`
+	PageLimit    int32       `json:"page_limit"`
+}
+
+type ListFlowInsightRequestsRow struct {
+	ID   pgtype.UUID `json:"id"`
+	Flow []byte      `json:"flow"`
+}
+
+// The requests pinned to one version of a flow, newest first, for its operating numbers. The
+// caller asks for one more than it shows to know the list was cut. A trial request is left out
+// unless asked for.
+func (q *Queries) ListFlowInsightRequests(ctx context.Context, arg ListFlowInsightRequestsParams) ([]ListFlowInsightRequestsRow, error) {
+	rows, err := q.db.Query(ctx, listFlowInsightRequests,
+		arg.WorkspaceID,
+		arg.WorkflowID,
+		arg.IncludeTrial,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListFlowInsightRequestsRow{}
+	for rows.Next() {
+		var i ListFlowInsightRequestsRow
+		if err := rows.Scan(&i.ID, &i.Flow); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listFlowManualActions = `-- name: ListFlowManualActions :many
 SELECT DISTINCT ON (issue_id) issue_id, action, actor_type, actor_id
 FROM activity_log
@@ -437,6 +487,49 @@ func (q *Queries) ListFlowManualActions(ctx context.Context, arg ListFlowManualA
 			&i.ActorType,
 			&i.ActorID,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFlowManualCloses = `-- name: ListFlowManualCloses :many
+SELECT COALESCE(t.flow_step, '')::text AS step, COALESCE(t.flow_task, '')::text AS task
+FROM activity_log a
+JOIN issue t ON t.id = a.issue_id
+WHERE a.workspace_id = $1::uuid
+  AND a.action = 'flow_manual_close'
+  AND t.workspace_id = $1::uuid
+  AND t.parent_issue_id = ANY($2::uuid[])
+ORDER BY a.created_at, a.id
+`
+
+type ListFlowManualClosesParams struct {
+	WorkspaceID pgtype.UUID   `json:"workspace_id"`
+	RequestIds  []pgtype.UUID `json:"request_ids"`
+}
+
+type ListFlowManualClosesRow struct {
+	Step string `json:"step"`
+	Task string `json:"task"`
+}
+
+// The closes a member made for the assignee of a task of the given requests, with the step and
+// the task they were for.
+func (q *Queries) ListFlowManualCloses(ctx context.Context, arg ListFlowManualClosesParams) ([]ListFlowManualClosesRow, error) {
+	rows, err := q.db.Query(ctx, listFlowManualCloses, arg.WorkspaceID, arg.RequestIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListFlowManualClosesRow{}
+	for rows.Next() {
+		var i ListFlowManualClosesRow
+		if err := rows.Scan(&i.Step, &i.Task); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -300,8 +300,10 @@ func TestFlowDraft_ImportManifestStrict(t *testing.T) {
 	if n != 1 {
 		t.Fatalf("%d drafts after the refused imports, want only the good one", n)
 	}
-	// A draft from a proposal is not supported yet.
-	wantCode(t, rig.createDraft(map[string]any{"name": "P", "from": map[string]any{"kind": "proposal"}}), http.StatusBadRequest, "flow_draft_from_unsupported")
+	// A draft from a proposal needs FF_FLOW_PACKS, which this rig leaves off (flow_proposal_test.go has it on).
+	wantCode(t, rig.createDraft(map[string]any{"name": "P", "from": map[string]any{"kind": "proposal"}}), http.StatusNotFound, "flow_authoring_disabled")
+	// A kind that does not exist is still refused.
+	wantCode(t, rig.createDraft(map[string]any{"name": "P", "from": map[string]any{"kind": "telepathy"}}), http.StatusBadRequest, "flow_draft_from_unsupported")
 
 	// The export of a draft carries no one's binding, and imports back.
 	bound := loadFlowFixture(t, "research")

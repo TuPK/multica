@@ -1,0 +1,251 @@
+{
+  "format": "multica.flow-manifest/v1",
+  "name": "Dây chuyền lên sản phẩm mới",
+  "doc": {
+    "version": 2,
+    "start": "plan",
+    "roles": [
+      {
+        "key": "collector",
+        "label": "Thu thập dữ liệu shop",
+        "kind": "agent"
+      },
+      {
+        "key": "competitor",
+        "label": "Tra cứu đối thủ",
+        "kind": "agent"
+      },
+      {
+        "key": "writer",
+        "label": "Soạn listing",
+        "kind": "agent"
+      },
+      {
+        "key": "words_gate",
+        "label": "Gác cổng từ cấm",
+        "kind": "agent"
+      },
+      {
+        "key": "margin_gate",
+        "label": "Gác cổng giá và lãi",
+        "kind": "agent"
+      }
+    ],
+    "loops": [
+      {
+        "key": "fix",
+        "header": "draft",
+        "max": 2
+      }
+    ],
+    "stops": [
+      {
+        "code": "grounds_missing",
+        "class": "missing_grounds",
+        "message": "stop1"
+      },
+      {
+        "code": "loop_exhausted",
+        "class": "loop_exhausted",
+        "message": "stop3"
+      },
+      {
+        "code": "undecided",
+        "class": "custom",
+        "message": "stop1"
+      }
+    ],
+    "terminals": [
+      {
+        "key": "done",
+        "status": "done"
+      }
+    ],
+    "messages": {
+      "stop1": "BLOCKED · stop\n{request}\n{missing}",
+      "stop3": "BLOCKED · used\n{request}",
+      "stop2": "IN REVIEW\n{request}",
+      "handover": "Hồ sơ đăng sản phẩm đã qua soát: {request}\nNgười dùng tự đăng lên sàn."
+    },
+    "policy": {},
+    "steps": [
+      {
+        "key": "plan",
+        "title": "Kế hoạch",
+        "kind": "lead",
+        "status": {
+          "key": "todo"
+        },
+        "lead": {
+          "sets": []
+        },
+        "edges": [
+          {
+            "id": "plan_ok",
+            "label": "Đã lập kế hoạch",
+            "to": "collect"
+          }
+        ]
+      },
+      {
+        "key": "collect",
+        "title": "Thu thập",
+        "kind": "tasks",
+        "status": {
+          "key": "in_progress"
+        },
+        "tasks": [
+          {
+            "key": "shop_data",
+            "title": "Gom thông số, giá vốn, phí",
+            "kind": "work",
+            "role": "collector",
+            "instructions": "Lập bảng dữ kiện có nguồn từ thư mục làm việc; chỉ chỗ thiếu và mâu thuẫn."
+          },
+          {
+            "key": "rivals",
+            "title": "Xem giá và phàn nàn của đối thủ",
+            "kind": "work",
+            "role": "competitor",
+            "instructions": "Ghi giá, ưu đãi, phàn nàn trong đánh giá, kèm link và thời điểm xem."
+          }
+        ],
+        "edges": [
+          {
+            "id": "collect_next",
+            "label": "Sang bước soạn",
+            "to": "draft"
+          }
+        ]
+      },
+      {
+        "key": "draft",
+        "title": "Soạn listing",
+        "kind": "tasks",
+        "status": {
+          "key": "backlog"
+        },
+        "tasks": [
+          {
+            "key": "listing",
+            "title": "Soạn tiêu đề, mô tả, phân loại, bảng giá",
+            "kind": "work",
+            "role": "writer",
+            "skills": [
+              "mo-ta-san-pham-shop",
+              "tieu-de-seo-san-tmdt",
+              "tinh-gia-ban-san"
+            ],
+            "instructions": "Chỉ dùng dữ kiện đã thu thập. Soạn 3 phương án tiêu đề, mô tả, tên phân loại và bảng tính giá."
+          }
+        ],
+        "edges": [
+          {
+            "id": "draft_next",
+            "label": "Sang gác cổng",
+            "to": "check"
+          }
+        ]
+      },
+      {
+        "key": "check",
+        "title": "Gác cổng",
+        "kind": "tasks",
+        "status": {
+          "key": "in_review"
+        },
+        "tasks": [
+          {
+            "key": "words",
+            "title": "Soát từ cấm, claim, giấy tờ",
+            "kind": "gate",
+            "role": "words_gate",
+            "instructions": "Kết luận QUA hoặc CHẶN kèm danh sách lỗi. Chỉ báo, không sửa."
+          },
+          {
+            "key": "margin",
+            "title": "Soát giá và biên lợi nhuận",
+            "kind": "gate",
+            "role": "margin_gate",
+            "instructions": "Kết luận QUA hoặc CHẶN kèm danh sách lỗi. Chỉ báo, không sửa."
+          }
+        ],
+        "edges": [
+          {
+            "id": "check_pass",
+            "label": "QUA",
+            "to": "handover",
+            "when": {
+              "field": "join.result",
+              "op": "eq",
+              "value": "pass"
+            }
+          },
+          {
+            "id": "check_fix",
+            "label": "Sửa lại",
+            "to": "draft",
+            "loop": "fix",
+            "when": {
+              "all": [
+                {
+                  "field": "join.result",
+                  "op": "eq",
+                  "value": "fail"
+                },
+                {
+                  "field": "loop.fix.count",
+                  "op": "lt",
+                  "value": 2
+                }
+              ]
+            }
+          },
+          {
+            "id": "check_exhausted",
+            "label": "Hết vòng sửa",
+            "stop": "loop_exhausted",
+            "when": {
+              "field": "join.result",
+              "op": "eq",
+              "value": "fail"
+            }
+          },
+          {
+            "id": "check_blocked",
+            "label": "Thiếu căn cứ",
+            "stop": "grounds_missing",
+            "when": {
+              "field": "join.result",
+              "op": "eq",
+              "value": "block"
+            }
+          },
+          {
+            "id": "check_undecided",
+            "label": "Chưa quyết",
+            "stop": "undecided"
+          }
+        ]
+      },
+      {
+        "key": "handover",
+        "title": "Bàn giao cho người dùng",
+        "kind": "manual",
+        "status": {
+          "key": "blocked"
+        },
+        "exit_role": "managers",
+        "notice": "handover",
+        "edges": [
+          {
+            "id": "handover_done",
+            "label": "Đã nhận hồ sơ",
+            "to": "done",
+            "trigger": "manual"
+          }
+        ]
+      }
+    ]
+  }
+}

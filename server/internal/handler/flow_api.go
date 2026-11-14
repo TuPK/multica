@@ -369,6 +369,9 @@ func (h *Handler) SetIssueWorkflowFlowAuto(w http.ResponseWriter, r *http.Reques
 	if !ok {
 		return
 	}
+	if h.refuseFlowAgent(w, r, member, workspaceID, "flow_forbidden", "only workspace admins can turn the runner on, not an agent") {
+		return
+	}
 	if !isWorkspaceAdmin(member) {
 		writeError(w, http.StatusForbidden, "only workspace admins can turn the runner on")
 		return

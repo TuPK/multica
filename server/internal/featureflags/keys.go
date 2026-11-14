@@ -54,6 +54,10 @@ const (
 	// one through the API (FF_FLOW_GRAPH_V2). Default off. It does not steer the engine,
 	// which reads schema 1 and schema 2 alike; it only stops new documents from being made.
 	FlowGraphV2 = "flow_graph_v2"
+	// FlowPacks gates the routes that preview and commit a pack of skills and agents
+	// (FF_FLOW_PACKS). Default off: the routes answer 404 flow_authoring_disabled, and the
+	// squads, agents and skills already imported are not touched.
+	FlowPacks = "flow_packs"
 	// agentBuilderCompat is no longer a release flag. Keep publishing the key
 	// as enabled so installed desktop clients that still gate the AI creation
 	// entry on this config decision receive the permanently enabled behavior.
@@ -110,6 +114,10 @@ func FlowEngineEnabled(ctx context.Context, flags *featureflag.Service) bool {
 
 func FlowAuthoringEnabled(ctx context.Context, flags *featureflag.Service) bool {
 	return flags.IsEnabled(ctx, FlowAuthoring, false)
+}
+
+func FlowPacksEnabled(ctx context.Context, flags *featureflag.Service) bool {
+	return flags.IsEnabled(ctx, FlowPacks, false)
 }
 
 func FlowGraphV2Enabled(ctx context.Context, flags *featureflag.Service) bool {

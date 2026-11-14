@@ -1494,6 +1494,235 @@ func normaliseAgentConversationStarters(starters []AgentConversationStarter) ([]
 	return normalised, nil
 }
 
+// checkAgentRuntimeSettings checks what a new agent asks of its runtime: the custom arguments, the
+// qoder settings, the thinking level and the service tier. It returns the status and the message of the
+// first refusal, or 0. CreateAgent and the install of a pack run the same rules.
+func (h *Handler) checkAgentRuntimeSettings(ctx context.Context, runtime db.AgentRuntime, req CreateAgentRequest) (int, string) {
+	if err := agent.ValidateCustomArgs(runtime.Provider, req.CustomArgs); err != nil {
+		return http.StatusBadRequest, err.Error()
+	}
+	if runtime.Provider == "qoder_cloud" {
+		raw, _ := json.Marshal(req.RuntimeConfig)
+		if err := validateQoderAgentConfig(raw); err != nil {
+			return http.StatusBadRequest, err.Error()
+		}
+		overrides := qoderOverrides{skills: len(req.SkillIDs), customEnv: len(req.CustomEnv), customArgs: len(req.CustomArgs), mcpConfig: req.McpConfig, model: req.Model, thinkingLevel: req.ThinkingLevel, serviceTier: req.ServiceTier}
+		if err := overrides.validate(); err != nil {
+			return http.StatusBadRequest, err.Error()
+		}
+	}
+	// thinking_level validation: fixed-enum providers reject unknown literals;
+	// dynamic-catalog providers (Codex/OpenCode) reject malformed tokens here.
+	// Pi has a fixed token universe and a daemon-discovered per-model subset.
+	// Per-model gaps are enforced by the daemon at execution time (MUL-2339):
+	// combination-invalid values are logged and omitted from the invocation.
+	if !agent.IsKnownThinkingValue(runtime.Provider, req.ThinkingLevel) {
+		return http.StatusBadRequest, thinkingLevelRejection(runtime.Provider, req.ThinkingLevel)
+	}
+	// For ACP-catalog providers the provider name is not the capability answer
+	// — this runtime's own discovered catalog is. Keeps a Hermes Agent user's
+	// clear 400 instead of accepting a level the daemon would later drop.
+	if req.ThinkingLevel != "" {
+		switch h.acpThinkingDecision(ctx, runtime.Provider, runtime.ID) {
+		case acpEffortAbsent:
+			return http.StatusBadRequest, thinkingCapabilityRejection(runtime.Provider)
+		case acpEffortUnknown:
+			return http.StatusBadRequest, thinkingCapabilityUnknownRejection(runtime.Provider)
+		}
+	}
+	// An effort with no pinned model is not storable for runtimes that resolve
+	// their own default model out of sight — it would save cleanly, show as set,
+	// and then run at a different level. Reject it here instead of letting the
+	// daemon drop it silently at launch (MUL-7412).
+	if agent.ThinkingLevelRejectedWithoutModel(runtime.Provider) &&
+		req.ThinkingLevel != "" && strings.TrimSpace(req.Model) == "" {
+		return http.StatusBadRequest, thinkingNeedsExplicitModelRejection(runtime.Provider)
+	}
+	if !agent.IsKnownServiceTier(runtime.Provider, req.ServiceTier) {
+		return http.StatusBadRequest, fmt.Sprintf("service_tier %q is not a recognised value for runtime %q", req.ServiceTier, runtime.Provider)
+	}
+	return 0, ""
+}
+
+// agentInsert is what insertAgentTx writes: a new agent with every field already checked and encoded.
+type agentInsert struct {
+	WorkspaceID  pgtype.UUID
+	OwnerID      string
+	Member       db.Member
+	RuntimeID    pgtype.UUID
+	Name         string
+	Description  string
+	Instructions string
+	AvatarURL    pgtype.Text
+	// RuntimeConfig, CustomEnv, CustomArgs, McpConfig and ConversationStarters are the JSON of the columns.
+	RuntimeConfig, CustomEnv, CustomArgs, McpConfig, ConversationStarters []byte
+	Permission                                                            resolvedPermission
+	MaxConcurrentTasks                                                    int32
+	Model, ThinkingLevel, ServiceTier                                     string
+	ComposioToolkitAllowlist                                              []string
+	SkillIDs                                                              []pgtype.UUID
+	// SecretsCopy is set when the agent takes over the secrets of another one; the copy is audited in the same transaction.
+	SecretsCopy *agentSecretsCopy
+}
+
+// agentSecretsCopy says which agent the secrets of a new agent came from, for the audit row.
+type agentSecretsCopy struct {
+	SourceID        pgtype.UUID
+	CopiedEnvKeys   []string
+	McpConfigCopied bool
+}
+
+func secretsCopyOf(source *db.Agent, copiedEnvKeys []string, mcpConfigCopied bool) *agentSecretsCopy {
+	if source == nil {
+		return nil
+	}
+	return &agentSecretsCopy{SourceID: source.ID, CopiedEnvKeys: copiedEnvKeys, McpConfigCopied: mcpConfigCopied}
+}
+
+// agentCreateFailure is a refusal to write an agent, with the status and message the API answers.
+type agentCreateFailure struct {
+	Status  int
+	Message string
+}
+
+// insertAgentTx writes a new agent, its instruction revision, its invocation targets and its skills through a
+// Queries handle bound to an open transaction. The caller has checked the request and commits. It takes the
+// workspace and runtime locks and checks the member's use of the runtime again under them, as CreateAgent
+// always did; CreateAgent and the install of a pack both write agents through it.
+func insertAgentTx(r *http.Request, qtx *db.Queries, in agentInsert) (db.Agent, db.AgentRuntime, *agentCreateFailure) {
+	ctx := r.Context()
+	fail := func(status int, message string) (db.Agent, db.AgentRuntime, *agentCreateFailure) {
+		return db.Agent{}, db.AgentRuntime{}, &agentCreateFailure{Status: status, Message: message}
+	}
+	// The preflight runtime can become private while validation is in flight.
+	// Serialize with revocation and keep the authorization lock through INSERT.
+	// Workspace teardown takes workspace -> runtime/agent locks in that order.
+	if _, err := qtx.LockWorkspaceForChatSessionCreate(ctx, in.WorkspaceID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fail(http.StatusNotFound, "workspace not found")
+		}
+		return fail(http.StatusInternalServerError, "failed to lock workspace")
+	}
+	runtime, err := qtx.LockAgentRuntimeForAccessChange(ctx, in.RuntimeID)
+	if err != nil || runtime.WorkspaceID != in.WorkspaceID {
+		return fail(http.StatusBadRequest, "invalid runtime_id")
+	}
+	if !canUseRuntimeForAgent(in.Member, runtime) {
+		return fail(http.StatusForbidden, "this runtime is private; ask its owner to grant you access before creating agents")
+	}
+
+	created, err := qtx.CreateAgent(ctx, db.CreateAgentParams{
+		WorkspaceID:              in.WorkspaceID,
+		Name:                     in.Name,
+		Description:              in.Description,
+		Instructions:             in.Instructions,
+		AvatarUrl:                in.AvatarURL,
+		RuntimeMode:              runtime.RuntimeMode,
+		RuntimeConfig:            in.RuntimeConfig,
+		RuntimeID:                runtime.ID,
+		Visibility:               in.Permission.legacyVisibility(),
+		PermissionMode:           in.Permission.mode,
+		MaxConcurrentTasks:       in.MaxConcurrentTasks,
+		OwnerID:                  parseUUID(in.OwnerID),
+		CustomEnv:                in.CustomEnv,
+		CustomArgs:               in.CustomArgs,
+		McpConfig:                in.McpConfig,
+		Model:                    pgtype.Text{String: in.Model, Valid: in.Model != ""},
+		ThinkingLevel:            pgtype.Text{String: in.ThinkingLevel, Valid: in.ThinkingLevel != ""},
+		ServiceTier:              pgtype.Text{String: in.ServiceTier, Valid: in.ServiceTier != ""},
+		ConversationStarters:     in.ConversationStarters,
+		ComposioToolkitAllowlist: in.ComposioToolkitAllowlist,
+	})
+	if err != nil {
+		// Unique constraint on (workspace_id, name) — return a clear conflict error
+		// so the UI can show the right message instead of a generic 500.
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "agent_workspace_name_unique" {
+			return fail(http.StatusConflict, fmt.Sprintf("an agent named %q already exists in this workspace", in.Name))
+		}
+		slog.Warn("create agent failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", uuidToString(in.WorkspaceID))...)
+		return fail(http.StatusInternalServerError, "failed to create agent")
+	}
+	if in.SecretsCopy != nil {
+		details, _ := json.Marshal(map[string]any{
+			"source_agent_id":   uuidToString(in.SecretsCopy.SourceID),
+			"agent_id":          uuidToString(created.ID),
+			"copied_env_keys":   in.SecretsCopy.CopiedEnvKeys,
+			"mcp_config_copied": in.SecretsCopy.McpConfigCopied,
+		})
+		// Fail closed like the env reveal: a copy of secrets without its audit
+		// row is not allowed to commit.
+		if _, err := qtx.CreateActivity(ctx, db.CreateActivityParams{
+			ID:          dbid.NewV7(),
+			WorkspaceID: in.WorkspaceID,
+			ActorType:   pgtype.Text{String: "member", Valid: true},
+			ActorID:     parseUUID(in.OwnerID),
+			Action:      agentSecretsActivityCopied,
+			Details:     details,
+		}); err != nil {
+			return fail(http.StatusInternalServerError, "audit log write failed; refusing to copy secrets without a recorded copy")
+		}
+	}
+	if in.Instructions != "" {
+		if _, err := service.WriteAgentInstructionRevision(ctx, qtx, in.WorkspaceID, created.ID, in.Instructions, service.InstructionChange{
+			Source: service.InstructionSourceHuman,
+			Actor:  service.GovernanceActor{Type: service.GovernanceActorMember, ID: parseUUID(in.OwnerID)},
+		}); err != nil {
+			return fail(http.StatusInternalServerError, "failed to record the instruction revision")
+		}
+	}
+	if err := replaceInvocationTargetsWithQueries(ctx, qtx, created.ID, parseUUID(in.OwnerID), in.Permission.targets); err != nil {
+		return fail(http.StatusInternalServerError, "failed to save agent access")
+	}
+	for _, skillID := range in.SkillIDs {
+		if err := qtx.AddAgentSkill(ctx, db.AddAgentSkillParams{
+			AgentID: created.ID,
+			SkillID: skillID,
+		}); err != nil {
+			return fail(http.StatusInternalServerError, "failed to attach agent skill")
+		}
+	}
+	// A workspace with company knowledge enabled gives every new agent the
+	// read-only company-read MCP server; a no-op otherwise.
+	if err := qtx.AssignKnowledgeMcpToAgent(ctx, db.AssignKnowledgeMcpToAgentParams{AgentID: created.ID, WorkspaceID: in.WorkspaceID}); err != nil {
+		return fail(http.StatusInternalServerError, "failed to attach company knowledge")
+	}
+	return created, runtime, nil
+}
+
+// announceCreatedAgent does what follows the commit of a new agent: it settles the agent's status on an online
+// runtime, builds the response, publishes the event and records the analytics. It returns the response, not
+// yet redacted for the caller, and the type of the actor. CreateAgent and the install of a pack both use it.
+func (h *Handler) announceCreatedAgent(r *http.Request, created db.Agent, runtime db.AgentRuntime, ownerID, workspaceID, template string, isFirstAgent bool) (AgentResponse, string) {
+	slog.Info("agent created", append(logger.RequestAttrs(r), "agent_id", uuidToString(created.ID), "name", created.Name, "workspace_id", workspaceID)...)
+
+	if runtime.Status == "online" {
+		h.TaskService.ReconcileAgentStatus(r.Context(), created.ID)
+		created, _ = h.Queries.GetAgent(r.Context(), created.ID)
+	}
+
+	resp := h.agentToResponse(created)
+	if err := h.attachAgentSkills(r.Context(), &resp, created.ID); err != nil {
+		slog.Warn("create agent: load skills for response failed", append(logger.RequestAttrs(r), "error", err, "agent_id", uuidToString(created.ID))...)
+	}
+	if err := h.enrichAgentResponseWithTargets(r.Context(), &resp, created.ID); err != nil {
+		slog.Warn("create agent: load invocation targets for response failed", append(logger.RequestAttrs(r), "error", err, "agent_id", uuidToString(created.ID))...)
+	}
+	actorType, actorID := h.resolveActor(r, ownerID, workspaceID)
+	h.publish(protocol.EventAgentCreated, workspaceID, actorType, actorID, map[string]any{"agent": broadcastAgentResponse(resp)})
+
+	obsmetrics.RecordEvent(h.Analytics, h.Metrics, analytics.AgentCreated(
+		ownerID,
+		workspaceID,
+		uuidToString(created.ID),
+		runtime.Provider,
+		runtime.RuntimeMode,
+		template,
+		isFirstAgent,
+	))
+	return resp, actorType
+}
+
 func (h *Handler) CreateAgent(w http.ResponseWriter, r *http.Request) {
 	workspaceID := h.resolveWorkspaceID(r)
 
@@ -1572,55 +1801,8 @@ func (h *Handler) CreateAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := agent.ValidateCustomArgs(runtime.Provider, req.CustomArgs); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	if runtime.Provider == "qoder_cloud" {
-		raw, _ := json.Marshal(req.RuntimeConfig)
-		if err := validateQoderAgentConfig(raw); err != nil {
-			writeError(w, 400, err.Error())
-			return
-		}
-		overrides := qoderOverrides{skills: len(req.SkillIDs), customEnv: len(req.CustomEnv), customArgs: len(req.CustomArgs), mcpConfig: req.McpConfig, model: req.Model, thinkingLevel: req.ThinkingLevel, serviceTier: req.ServiceTier}
-		if err := overrides.validate(); err != nil {
-			writeError(w, 400, err.Error())
-			return
-		}
-	}
-	// thinking_level validation: fixed-enum providers reject unknown literals;
-	// dynamic-catalog providers (Codex/OpenCode) reject malformed tokens here.
-	// Pi has a fixed token universe and a daemon-discovered per-model subset.
-	// Per-model gaps are enforced by the daemon at execution time (MUL-2339):
-	// combination-invalid values are logged and omitted from the invocation.
-	if !agent.IsKnownThinkingValue(runtime.Provider, req.ThinkingLevel) {
-		writeError(w, http.StatusBadRequest, thinkingLevelRejection(runtime.Provider, req.ThinkingLevel))
-		return
-	}
-	// For ACP-catalog providers the provider name is not the capability answer
-	// — this runtime's own discovered catalog is. Keeps a Hermes Agent user's
-	// clear 400 instead of accepting a level the daemon would later drop.
-	if req.ThinkingLevel != "" {
-		switch h.acpThinkingDecision(r.Context(), runtime.Provider, runtime.ID) {
-		case acpEffortAbsent:
-			writeError(w, http.StatusBadRequest, thinkingCapabilityRejection(runtime.Provider))
-			return
-		case acpEffortUnknown:
-			writeError(w, http.StatusBadRequest, thinkingCapabilityUnknownRejection(runtime.Provider))
-			return
-		}
-	}
-	// An effort with no pinned model is not storable for runtimes that resolve
-	// their own default model out of sight — it would save cleanly, show as set,
-	// and then run at a different level. Reject it here instead of letting the
-	// daemon drop it silently at launch (MUL-7412).
-	if agent.ThinkingLevelRejectedWithoutModel(runtime.Provider) &&
-		req.ThinkingLevel != "" && strings.TrimSpace(req.Model) == "" {
-		writeError(w, http.StatusBadRequest, thinkingNeedsExplicitModelRejection(runtime.Provider))
-		return
-	}
-	if !agent.IsKnownServiceTier(runtime.Provider, req.ServiceTier) {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("service_tier %q is not a recognised value for runtime %q", req.ServiceTier, runtime.Provider))
+	if status, msg := h.checkAgentRuntimeSettings(r.Context(), runtime, req); status != 0 {
+		writeError(w, status, msg)
 		return
 	}
 
@@ -1753,141 +1935,24 @@ func (h *Handler) CreateAgent(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback(r.Context())
 	qtx := h.Queries.WithTx(tx)
 
-	// The preflight runtime can become private while validation is in flight.
-	// Serialize with revocation and keep the authorization lock through INSERT.
-	// Workspace teardown takes workspace -> runtime/agent locks in that order.
-	if _, err := qtx.LockWorkspaceForChatSessionCreate(r.Context(), wsUUID); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			writeError(w, http.StatusNotFound, "workspace not found")
-		} else {
-			writeError(w, http.StatusInternalServerError, "failed to lock workspace")
-		}
-		return
-	}
-	runtime, err = qtx.LockAgentRuntimeForAccessChange(r.Context(), runtimeUUID)
-	if err != nil || runtime.WorkspaceID != wsUUID {
-		writeError(w, http.StatusBadRequest, "invalid runtime_id")
-		return
-	}
-	if !canUseRuntimeForAgent(member, runtime) {
-		writeError(w, http.StatusForbidden, "this runtime is private; ask its owner to grant you access before creating agents")
-		return
-	}
-
-	created, err := qtx.CreateAgent(r.Context(), db.CreateAgentParams{
-		WorkspaceID:              wsUUID,
-		Name:                     req.Name,
-		Description:              req.Description,
-		Instructions:             req.Instructions,
-		AvatarUrl:                avatarURL,
-		RuntimeMode:              runtime.RuntimeMode,
-		RuntimeConfig:            rc,
-		RuntimeID:                runtime.ID,
-		Visibility:               perm.legacyVisibility(),
-		PermissionMode:           perm.mode,
-		MaxConcurrentTasks:       req.MaxConcurrentTasks,
-		OwnerID:                  parseUUID(ownerID),
-		CustomEnv:                ce,
-		CustomArgs:               ca,
-		McpConfig:                mc,
-		Model:                    pgtype.Text{String: req.Model, Valid: req.Model != ""},
-		ThinkingLevel:            pgtype.Text{String: req.ThinkingLevel, Valid: req.ThinkingLevel != ""},
-		ServiceTier:              pgtype.Text{String: req.ServiceTier, Valid: req.ServiceTier != ""},
-		ConversationStarters:     sp,
-		ComposioToolkitAllowlist: allowlist,
+	created, runtime, failure := insertAgentTx(r, qtx, agentInsert{
+		WorkspaceID: wsUUID, OwnerID: ownerID, Member: member, RuntimeID: runtimeUUID,
+		Name: req.Name, Description: req.Description, Instructions: req.Instructions, AvatarURL: avatarURL,
+		RuntimeConfig: rc, CustomEnv: ce, CustomArgs: ca, McpConfig: mc, ConversationStarters: sp,
+		Permission: perm, MaxConcurrentTasks: req.MaxConcurrentTasks,
+		Model: req.Model, ThinkingLevel: req.ThinkingLevel, ServiceTier: req.ServiceTier,
+		ComposioToolkitAllowlist: allowlist, SkillIDs: skillUUIDs,
+		SecretsCopy: secretsCopyOf(secretsSource, copiedEnvKeys, len(mc) > 0 && !sendsMcpConfig),
 	})
-	if err != nil {
-		// Unique constraint on (workspace_id, name) — return a clear conflict error
-		// so the UI can show the right message instead of a generic 500.
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "agent_workspace_name_unique" {
-			writeError(w, http.StatusConflict, fmt.Sprintf("an agent named %q already exists in this workspace", req.Name))
-			return
-		}
-		slog.Warn("create agent failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
-		writeError(w, http.StatusInternalServerError, "failed to create agent")
-		return
-	}
-	if secretsSource != nil {
-		details, _ := json.Marshal(map[string]any{
-			"source_agent_id":   uuidToString(secretsSource.ID),
-			"agent_id":          uuidToString(created.ID),
-			"copied_env_keys":   copiedEnvKeys,
-			"mcp_config_copied": len(mc) > 0 && !sendsMcpConfig,
-		})
-		// Fail closed like the env reveal: a copy of secrets without its audit
-		// row is not allowed to commit.
-		if _, err := qtx.CreateActivity(r.Context(), db.CreateActivityParams{
-			ID:          dbid.NewV7(),
-			WorkspaceID: wsUUID,
-			ActorType:   pgtype.Text{String: "member", Valid: true},
-			ActorID:     parseUUID(ownerID),
-			Action:      agentSecretsActivityCopied,
-			Details:     details,
-		}); err != nil {
-			writeError(w, http.StatusInternalServerError, "audit log write failed; refusing to copy secrets without a recorded copy")
-			return
-		}
-	}
-	if req.Instructions != "" {
-		if _, err := service.WriteAgentInstructionRevision(r.Context(), qtx, wsUUID, created.ID, req.Instructions, service.InstructionChange{
-			Source: service.InstructionSourceHuman,
-			Actor:  service.GovernanceActor{Type: service.GovernanceActorMember, ID: parseUUID(ownerID)},
-		}); err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to record the instruction revision")
-			return
-		}
-	}
-	if err := replaceInvocationTargetsWithQueries(r.Context(), qtx, created.ID, parseUUID(ownerID), perm.targets); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to save agent access")
-		return
-	}
-	for _, skillID := range skillUUIDs {
-		if err := qtx.AddAgentSkill(r.Context(), db.AddAgentSkillParams{
-			AgentID: created.ID,
-			SkillID: skillID,
-		}); err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to attach agent skill")
-			return
-		}
-	}
-	// A workspace with company knowledge enabled gives every new agent the
-	// read-only company-read MCP server; a no-op otherwise.
-	if err := qtx.AssignKnowledgeMcpToAgent(r.Context(), db.AssignKnowledgeMcpToAgentParams{AgentID: created.ID, WorkspaceID: wsUUID}); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to attach company knowledge")
+	if failure != nil {
+		writeError(w, failure.Status, failure.Message)
 		return
 	}
 	if err := tx.Commit(r.Context()); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to commit agent create")
 		return
 	}
-	slog.Info("agent created", append(logger.RequestAttrs(r), "agent_id", uuidToString(created.ID), "name", created.Name, "workspace_id", workspaceID)...)
-
-	if runtime.Status == "online" {
-		h.TaskService.ReconcileAgentStatus(r.Context(), created.ID)
-		created, _ = h.Queries.GetAgent(r.Context(), created.ID)
-	}
-
-	resp := h.agentToResponse(created)
-	if err := h.attachAgentSkills(r.Context(), &resp, created.ID); err != nil {
-		slog.Warn("create agent: load skills for response failed", append(logger.RequestAttrs(r), "error", err, "agent_id", uuidToString(created.ID))...)
-	}
-	if err := h.enrichAgentResponseWithTargets(r.Context(), &resp, created.ID); err != nil {
-		slog.Warn("create agent: load invocation targets for response failed", append(logger.RequestAttrs(r), "error", err, "agent_id", uuidToString(created.ID))...)
-	}
-	actorType, actorID := h.resolveActor(r, ownerID, workspaceID)
-	h.publish(protocol.EventAgentCreated, workspaceID, actorType, actorID, map[string]any{"agent": broadcastAgentResponse(resp)})
-
-	obsmetrics.RecordEvent(h.Analytics, h.Metrics, analytics.AgentCreated(
-		ownerID,
-		workspaceID,
-		uuidToString(created.ID),
-		runtime.Provider,
-		runtime.RuntimeMode,
-		req.Template,
-		isFirstAgent,
-	))
-
+	resp, actorType := h.announceCreatedAgent(r, created, runtime, ownerID, workspaceID, req.Template, isFirstAgent)
 	redactAgentResponseForActor(&resp, actorType)
 	if !h.composioMCPAppsEnabled(r.Context()) {
 		suppressComposioToolkitAllowlist(&resp)

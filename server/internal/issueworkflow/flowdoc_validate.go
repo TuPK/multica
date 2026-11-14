@@ -86,6 +86,10 @@ const (
 	messagePlaceholderList = "requester, request, step, rework, tasks, missing, reason, loop, stop"
 )
 
+// AckProposalReviewed is the acknowledgement of a manager who has read a workflow an agent
+// proposed. Publishing a draft of origin proposal asks for it; the validator does not.
+const AckProposalReviewed = "proposal_reviewed"
+
 var messagePlaceholders = map[string]bool{
 	"requester": true, "request": true, "step": true, "rework": true, "tasks": true,
 	"missing": true, "reason": true, "loop": true, "stop": true,

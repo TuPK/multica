@@ -54,6 +54,9 @@ type StopRecord struct {
 	From string `json:"from"`
 	Edge string `json:"edge,omitempty"`
 	At   string `json:"at,omitempty"`
+	// Reason is why the engine stalled the request (a task that could not open, a
+	// deadline); empty for any other stop. The insights of a version count it.
+	Reason string `json:"reason,omitempty"`
 }
 
 // Checkpoint records that a person looked at the request: the step they were

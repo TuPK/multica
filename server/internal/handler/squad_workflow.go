@@ -183,6 +183,9 @@ func (h *Handler) SetSquadActiveWorkflow(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
+	if h.refuseFlowAgent(w, r, member, workspaceID, "flow_forbidden", "only the members who manage the squad can change the active workflow") {
+		return
+	}
 	squad, _, ok := h.loadSquadInWorkspace(w, r)
 	if !ok {
 		return

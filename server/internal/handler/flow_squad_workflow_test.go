@@ -144,3 +144,30 @@ func TestFlowSquadInProject_RequestUsesFlowOthersUseProject(t *testing.T) {
 		t.Fatalf("an ordinary issue of the squad: code = %v, want the project's workflow to apply", body["code"])
 	}
 }
+
+// Spec 16.4: an agent does not make a version the squad's active one, whoever it acts for.
+func TestActivate_AgentActorRefused(t *testing.T) {
+	rig := newDraftRig(t, 1)
+	wf := rig.publishOK(rig.draftWith("Agent cannot activate", rig.publishableDoc(rig.agents[0])), nil)
+	agent := rig.agents[0]
+	taskID := createHandlerTestTaskForAgent(t, agent)
+	asAgent := func(r *http.Request) *http.Request {
+		r.Header.Set("X-Actor-Source", "task_token")
+		r.Header.Set("X-Agent-ID", agent)
+		r.Header.Set("X-Task-ID", taskID)
+		return r
+	}
+	body := wantCode(t, rig.call(testHandler.SetSquadActiveWorkflow, asAgent, "POST", "/workflow", map[string]any{"workflow_id": wf.ID}),
+		http.StatusForbidden, "flow_forbidden")
+	if body["error"] != "only the members who manage the squad can change the active workflow" {
+		t.Fatalf("message = %v", body["error"])
+	}
+	if got := squadActiveWorkflowID(t, rig.squadID); got != "" {
+		t.Fatalf("an agent made %s active", got)
+	}
+	// The member who manages the squad still can.
+	rig.setActive(wf.ID)
+	if got := squadActiveWorkflowID(t, rig.squadID); got != wf.ID {
+		t.Fatalf("active = %q, want %s", got, wf.ID)
+	}
+}

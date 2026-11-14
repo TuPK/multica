@@ -1,0 +1,175 @@
+{
+  "format": "multica.flow-manifest/v1",
+  "name": "Newsletter flow with a check",
+  "doc": {
+    "version": 2,
+    "start": "plan",
+    "roles": [
+      {
+        "key": "writer",
+        "kind": "agent"
+      },
+      {
+        "key": "checker",
+        "kind": "agent"
+      }
+    ],
+    "loops": [
+      {
+        "key": "redo",
+        "header": "write",
+        "max": 2
+      }
+    ],
+    "stops": [
+      {
+        "code": "grounds_missing",
+        "class": "missing_grounds",
+        "message": "stop1"
+      },
+      {
+        "code": "loop_exhausted",
+        "class": "loop_exhausted",
+        "message": "stop3"
+      },
+      {
+        "code": "undecided",
+        "class": "custom",
+        "message": "stop1"
+      }
+    ],
+    "terminals": [
+      {
+        "key": "done",
+        "status": "done"
+      }
+    ],
+    "messages": {
+      "stop1": "BLOCKED · stop\n{request}\n{missing}",
+      "stop3": "BLOCKED · used\n{request}",
+      "stop2": "IN REVIEW\n{request}"
+    },
+    "policy": {},
+    "steps": [
+      {
+        "key": "plan",
+        "title": "Plan",
+        "kind": "lead",
+        "status": {
+          "key": "todo"
+        },
+        "lead": {
+          "sets": []
+        },
+        "edges": [
+          {
+            "id": "plan_ok",
+            "label": "Planned",
+            "to": "write"
+          }
+        ]
+      },
+      {
+        "key": "write",
+        "title": "Write",
+        "kind": "tasks",
+        "status": {
+          "key": "in_progress"
+        },
+        "tasks": [
+          {
+            "key": "write_it",
+            "title": "Write the issue",
+            "kind": "work",
+            "role": "writer",
+            "skills": [
+              "tone-check"
+            ],
+            "instructions": "Write the issue from the outline."
+          }
+        ],
+        "edges": [
+          {
+            "id": "write_next",
+            "label": "To the check",
+            "to": "check"
+          }
+        ]
+      },
+      {
+        "key": "check",
+        "title": "Check",
+        "kind": "tasks",
+        "status": {
+          "key": "in_review"
+        },
+        "tasks": [
+          {
+            "key": "check_it",
+            "title": "Check the issue",
+            "kind": "gate",
+            "role": "checker",
+            "instructions": "Approve it, or reject it with the lines to fix."
+          }
+        ],
+        "edges": [
+          {
+            "id": "check_pass",
+            "label": "QUA",
+            "to": "done",
+            "when": {
+              "field": "join.result",
+              "op": "eq",
+              "value": "pass"
+            }
+          },
+          {
+            "id": "check_fix",
+            "label": "Sửa lại",
+            "to": "write",
+            "loop": "redo",
+            "when": {
+              "all": [
+                {
+                  "field": "join.result",
+                  "op": "eq",
+                  "value": "fail"
+                },
+                {
+                  "field": "loop.redo.count",
+                  "op": "lt",
+                  "value": 2
+                }
+              ]
+            }
+          },
+          {
+            "id": "check_exhausted",
+            "label": "Hết vòng sửa",
+            "stop": "loop_exhausted",
+            "when": {
+              "field": "join.result",
+              "op": "eq",
+              "value": "fail"
+            }
+          },
+          {
+            "id": "check_blocked",
+            "label": "Thiếu căn cứ",
+            "stop": "grounds_missing",
+            "when": {
+              "field": "join.result",
+              "op": "eq",
+              "value": "block"
+            }
+          },
+          {
+            "id": "check_undecided",
+            "label": "Chưa quyết",
+            "stop": "undecided"
+          }
+        ]
+      }
+    ]
+  }
+}

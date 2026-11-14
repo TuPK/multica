@@ -1425,6 +1425,10 @@ func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 			run:  func() error { return qtx.DeleteFlowDraftsForWorkspace(ctx, requester.WorkspaceID) },
 		},
 		{
+			name: "delete squad pack installs",
+			run:  func() error { return qtx.DeleteSquadPackInstallsForWorkspace(ctx, requester.WorkspaceID) },
+		},
+		{
 			// issue_workflow references the status catalog and projects by
 			// value only, so it is swept alongside the catalog. (MUL-7420)
 			name: "delete issue workflows",
