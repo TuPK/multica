@@ -136,3 +136,53 @@ describe("flow run routes", () => {
     expect(call(fetchMock)).toMatchObject({ method: "POST", url: "https://api.example.test/api/issues/task-1/flow/close", body: { verdict: "approved", note: "by hand" } });
   });
 });
+
+// Choosing the workflow of a request and rehearsing a version (spec 7.1, 16.5).
+describe("starting a request on a chosen version", () => {
+  it("sends nothing but an empty body when no version is chosen", async () => {
+    const fetchMock = stubFetch({ managed: true, workflow_id: "wf-active", step: "todo" });
+    const state = await client().startIssueFlow("iss-1");
+    expect(call(fetchMock)).toMatchObject({ method: "POST", url: "https://api.example.test/api/issues/iss-1/flow/start", body: {} });
+    expect(state).toMatchObject({ managed: true, workflow_id: "wf-active", trial: false });
+  });
+
+  it("sends the chosen version and the trial flag", async () => {
+    const fetchMock = stubFetch({ managed: true, workflow_id: "wf-2", trial: true });
+    const state = await client().startIssueFlow("iss-1", { workflow_id: "wf-2", trial: true });
+    expect(call(fetchMock).body).toEqual({ workflow_id: "wf-2", trial: true });
+    expect(state.trial).toBe(true);
+    expect(state.workflow_id).toBe("wf-2");
+  });
+
+  it("reads a start answer that lacks or garbles the new fields as an ordinary request", async () => {
+    stubFetch({ managed: true, workflow_id: "wf-1", trial: "yes" });
+    expect((await client().startIssueFlow("iss-1")).trial).toBe(false);
+    stubFetch({ managed: true, workflow_id: "wf-1", trial: null });
+    expect((await client().startIssueFlow("iss-1")).trial).toBe(false);
+    stubFetch("not an object");
+    const empty = await client().startIssueFlow("iss-1");
+    expect(empty.trial).toBe(false);
+    expect(empty.managed).toBe(false);
+  });
+
+  it("surfaces a refused choice as an error with its code", async () => {
+    stubFetch({ error: "the workflow does not belong to the squad of this request", code: "flow_workflow_invalid" }, 422);
+    await expect(client().startIssueFlow("iss-1", { workflow_id: "other" })).rejects.toMatchObject({ status: 422, body: { code: "flow_workflow_invalid" } });
+  });
+
+  it("creates an issue with the chosen version and the trial flag", async () => {
+    const issue = {
+      id: "iss-9", workspace_id: "ws-1", number: 9, identifier: "MUL-9", title: "Sample", description: null, status: "todo", priority: "none",
+      assignee_type: "squad", assignee_id: "sq-1", creator_type: "member", creator_id: "user-1", parent_issue_id: null, project_id: null,
+      position: 0, stage: null, start_date: null, due_date: null, metadata: {}, properties: {},
+      created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z",
+    };
+    const fetchMock = stubFetch(issue, 201);
+    await client().createIssue({ title: "Sample", assignee_type: "squad", assignee_id: "sq-1", flow_workflow_id: "wf-2", flow_trial: true });
+    expect(call(fetchMock)).toMatchObject({
+      method: "POST",
+      url: "https://api.example.test/api/issues",
+      body: { title: "Sample", assignee_id: "sq-1", flow_workflow_id: "wf-2", flow_trial: true },
+    });
+  });
+});

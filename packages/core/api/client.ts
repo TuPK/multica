@@ -255,6 +255,7 @@ import type {
   IssueFlowState,
   IssueFlowTask,
   ResumeFlowRequest,
+  StartFlowRequest,
   DetachFlowRequest,
   DetachFlowResponse,
   SetSquadActiveWorkflowRequest,
@@ -5427,6 +5428,21 @@ export class ApiClient {
     }
     return parseWithFallback(raw, IssueFlowStateSchema, EMPTY_ISSUE_FLOW_STATE, {
       endpoint: "GET /api/issues/{id}/flow",
+    });
+  }
+
+  /**
+   * Puts a request on a flow when it has not started. `workflow_id` picks another version of the
+   * squad's workflows and `trial` starts it as a rehearsal (spec 16.5); with neither, the squad's
+   * active workflow runs.
+   */
+  async startIssueFlow(issueId: string, data: StartFlowRequest = {}): Promise<IssueFlowState> {
+    const raw = await this.fetch<unknown>(`/api/issues/${issueId}/flow/start`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, IssueFlowStateSchema, EMPTY_ISSUE_FLOW_STATE, {
+      endpoint: "POST /api/issues/{id}/flow/start",
     });
   }
 

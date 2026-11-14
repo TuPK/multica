@@ -23,6 +23,13 @@ export interface CreateIssueRequest {
   /** ID-keyed custom-property values validated and persisted atomically with
    * the issue. */
   properties?: IssuePropertyValues;
+  /**
+   * For an issue given to a squad: the version of the squad's workflows the request runs on.
+   * Omitted: the active one. The server ignores it when an agent creates the issue.
+   */
+  flow_workflow_id?: string;
+  /** Start the request as a rehearsal of that version (members who manage the squad). */
+  flow_trial?: boolean;
 }
 
 export interface CreateCommentSubIssueManualRequest {

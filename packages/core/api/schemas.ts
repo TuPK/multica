@@ -1759,6 +1759,11 @@ const IssueFlowTrailEntrySchema = z.object({
   at: z.string().optional().catch(undefined),
 }).loose();
 
+const IssueFlowVerdictSchema = z.object({
+  key: z.string().min(1),
+  class: z.string().default("neutral").catch("neutral"),
+}).loose();
+
 const IssueFlowTaskSchema = z.object({
   issue_id: z.string().default(""),
   identifier: z.string().default(""),
@@ -1777,6 +1782,7 @@ const IssueFlowTaskSchema = z.object({
   inputs: tolerantList(IssueFlowLinkSchema),
   feedback: tolerantList(IssueFlowLinkSchema),
   sets: z.array(z.string()).default([]).catch([]),
+  verdicts: tolerantList(IssueFlowVerdictSchema),
 }).loose();
 
 const IssueFlowNextSchema = z.object({
@@ -1849,6 +1855,7 @@ export const EMPTY_ISSUE_FLOW_STATE: IssueFlowState = {
   next: [],
   rework_step: "",
   viewer: EMPTY_ISSUE_FLOW_VIEWER,
+  trial: false,
 };
 
 const IssueFlowActionSchema = z.object({

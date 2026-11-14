@@ -91,7 +91,7 @@ export interface IssueWorkflowFlowConfig {
 }
 
 /** What a handler reports when it moves an issue out of a column. */
-export type IssueOutcome = "approved" | "rejected" | "blocked" | "done";
+export type IssueOutcome = "approved" | "rejected" | "blocked" | "done" | (string & {});
 
 export type WorkflowConditionField =
   | "outcome"

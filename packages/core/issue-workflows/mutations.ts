@@ -9,6 +9,7 @@ import type {
   IssueWorkflow,
   IssueWorkflowWriteRequest,
   ResumeFlowRequest,
+  StartFlowRequest,
   SetSquadActiveWorkflowRequest,
   ListIssueWorkflowsResponse,
   SetProjectWorkflowRequest,
@@ -160,6 +161,15 @@ function useRefreshFlow(wsId: string, issueId: string) {
   };
 }
 
+/** Starts a request on a flow: another version of its squad's workflows, or a rehearsal of one. */
+export function useStartIssueFlow(wsId: string, issueId: string) {
+  const refresh = useRefreshFlow(wsId, issueId);
+  return useMutation({
+    mutationFn: (data: StartFlowRequest = {}) => api.startIssueFlow(issueId, data),
+    onSettled: refresh,
+  });
+}
+
 /** Runs the engine on a request: opens its tasks, or routes it on when the step is done. */
 export function useAdvanceFlow(wsId: string, issueId: string) {
   const refresh = useRefreshFlow(wsId, issueId);
@@ -174,6 +184,19 @@ export function useResumeFlow(wsId: string, issueId: string) {
   const refresh = useRefreshFlow(wsId, issueId);
   return useMutation({
     mutationFn: (data: ResumeFlowRequest = {}) => api.resumeIssueFlow(issueId, data),
+    onSettled: refresh,
+  });
+}
+
+/**
+ * Closes an open task for its assignee: a member who manages the squad, with a verdict of the
+ * task's set and an optional note. The server logs it as a close on behalf.
+ */
+export function useCloseIssueFlowTask(wsId: string, issueId: string) {
+  const refresh = useRefreshFlow(wsId, issueId);
+  return useMutation({
+    mutationFn: ({ taskId, verdict, note }: { taskId: string; verdict: string; note?: string }) =>
+      api.closeIssueFlowTask(taskId, note ? { verdict, note } : { verdict }),
     onSettled: refresh,
   });
 }

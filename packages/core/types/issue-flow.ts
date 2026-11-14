@@ -98,6 +98,18 @@ export interface IssueFlowTask {
   feedback?: IssueFlowLink[];
   /** Variables the task may set while it is open. */
   sets?: string[];
+  /**
+   * The verdicts the task closes with: its own set, or the built-in one of its kind. Empty from an
+   * older server, and then a gate offers approved and rejected.
+   */
+  verdicts?: IssueFlowVerdict[];
+}
+
+/** One verdict of a task and how it counts in the join of its step. */
+export interface IssueFlowVerdict {
+  key: string;
+  /** pass, fail or neutral; a class this build does not know is kept as text. */
+  class: string;
 }
 
 /** Who closed a task. `on_behalf` is true when a member who manages the squad closed it for its assignee. */
@@ -195,6 +207,17 @@ export interface IssueFlowAdvanceResponse {
   pending: IssueFlowPending[];
 }
 
+/**
+ * POST /api/issues/{id}/flow/start. Without a body the request starts on the squad's active
+ * workflow.
+ */
+export interface StartFlowRequest {
+  /** Another version of the squad's workflows (any lineage); omitted: the active one. */
+  workflow_id?: string;
+  /** Start the request as a rehearsal of that version (members who manage the squad). */
+  trial?: boolean;
+}
+
 /** POST /api/issues/{id}/flow/resume (squad admin only). */
 export interface ResumeFlowRequest {
   /** Where to resume; omitted: the step the request was blocked from. */
@@ -204,6 +227,11 @@ export interface ResumeFlowRequest {
   reset_loops?: string[];
   /** Let the step go on without the work tasks a person cancelled, which are otherwise reopened. */
   skip_cancelled?: boolean;
+  /**
+   * Resume a request the engine stalled because no person has seen the work of an agent, taking the
+   * place of that check. Without it the server refuses with `flow_checkpoint_ack_required`.
+   */
+  acknowledge_skip_checkpoint?: boolean;
 }
 
 /** POST /api/issues/{id}/flow/detach (squad admin only). */

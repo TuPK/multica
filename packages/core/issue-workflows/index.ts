@@ -41,9 +41,11 @@ export {
   useSetProjectWorkflow,
   useSetWorkflowHandoff,
   useAdvanceFlow,
+  useStartIssueFlow,
   useResumeFlow,
   useDetachFlow,
   useExitIssueFlow,
+  useCloseIssueFlowTask,
   useSetFlowAuto,
   useSetSquadActiveWorkflow,
 } from "./mutations";

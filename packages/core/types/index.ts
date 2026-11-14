@@ -22,6 +22,7 @@ export type {
   IssueFlowPending,
   IssueFlowAdvanceResponse,
   ResumeFlowRequest,
+  StartFlowRequest,
   DetachFlowRequest,
   DetachFlowResponse,
   SetFlowAutoRequest,
