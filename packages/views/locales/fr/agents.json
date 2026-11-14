@@ -553,6 +553,14 @@
         "floor_chief": {
           "name": "Chef d'étage",
           "description": "Rédige chaque jour le rapport de l'étage pour le Secrétaire, à partir de son digest. Ne décide rien et ne modifie aucune équipe."
+        },
+        "flow_lead": {
+          "name": "Responsable de workflow",
+          "description": "Suit les rappels d'un workflow et ne fait que l'étape demandée au responsable. Ne découpe pas le travail et ne modifie pas le squad."
+        },
+        "flow_designer": {
+          "name": "Concepteur de workflow",
+          "description": "Transforme une procédure écrite en un fichier flow.json et le vérifie jusqu'à ce qu'il n'ait plus d'erreur. Propose seulement : une personne l'importe et le publie."
         }
       }
     },

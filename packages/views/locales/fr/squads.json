@@ -451,7 +451,8 @@
     "ack": {
       "no_human_exit": "Je comprends que ce workflow peut se terminer sans relecture humaine",
       "no_gate": "Je comprends qu'aucune tâche n'est contrôlée par une porte",
-      "lead_may_work": "Je comprends que le responsable peut effectuer des tâches"
+      "lead_may_work": "Je comprends que le responsable peut effectuer des tâches",
+      "proposal_reviewed": "J'ai lu ce workflow"
     },
     "problems": {
       "none": "Aucun problème",
@@ -699,6 +700,121 @@
       "edge_stopped": "Arrêté",
       "edge_release": "Approuver et continuer",
       "notice_human_approval": "{requester} {request} attend l'approbation d'une personne."
+    },
+    "proposal": {
+      "waiting": "En attente de la proposition de l'agent",
+      "open_issue": "Ouvrir la demande",
+      "import": "Importer la proposition",
+      "by": "Proposé par {{agent}}",
+      "import_failed": "Impossible d'importer la proposition",
+      "missing": "L'agent n'a pas encore joint de flow.json",
+      "ask": {
+        "agent": "Agent",
+        "note": "Ce que le workflow doit faire",
+        "files": "Fichiers de référence",
+        "attach": "Joindre un fichier",
+        "send": "Demander à l'agent",
+        "no_agent": "Aucun agent à solliciter",
+        "failed": "Impossible de solliciter l'agent"
+      }
+    },
+    "reference": {
+      "title": "Référence",
+      "agents": "Instructions des agents",
+      "skills": "Compétences du squad",
+      "empty": "Rien à lire pour l'instant",
+      "show": "Afficher la référence",
+      "hide": "Masquer la référence",
+      "no_text": "Aucun texte"
+    },
+    "insights": {
+      "include_trial": "Inclure les exécutions d'essai",
+      "requests_one": "Chiffres de {{count}} demande",
+      "requests_other": "Chiffres de {{count}} demandes",
+      "truncated": "Seules les 500 dernières demandes sont comptées",
+      "entered_one": "Entré {{count}} fois",
+      "entered_other": "Entré {{count}} fois",
+      "duration": "médiane {{median}} min, p90 {{p90}} min",
+      "taken_one": "Empruntée {{count}} fois",
+      "taken_other": "Empruntée {{count}} fois"
     }
+  },
+  "packs": {
+    "import": "Importer un pack",
+    "source": {
+      "upload": "Téléverser un zip",
+      "link": "Depuis un lien",
+      "link_placeholder": "https://github.com/owner/repo ou un lien vers un .zip",
+      "choose": "Choisir un fichier zip"
+    },
+    "preview": "Lire le pack",
+    "reading": "Lecture du pack…",
+    "read_failed": "Impossible de lire le pack",
+    "change_source": "Choisir un autre pack",
+    "squad_name": "Nom du squad",
+    "agents": "Agents",
+    "skills": "Compétences",
+    "leader": "Responsable",
+    "leader_generic": "Utiliser un responsable générique",
+    "one_agent_per_skill": "Un agent par compétence",
+    "ignored": "Réglages ignorés",
+    "design_workflow": "Concevoir le workflow",
+    "add_agent": "Ajouter un agent",
+    "no_agents": "Ce pack n'a aucun agent",
+    "action": {
+      "create": "Créer",
+      "use_existing": "Utiliser l'existant",
+      "skip": "Ignorer",
+      "label": "Action"
+    },
+    "runtime": "Runtime",
+    "runtime_none": "Aucun runtime utilisable",
+    "agent_name": "Nom",
+    "remove": "Retirer",
+    "skill": {
+      "keep": "Garder la compétence existante",
+      "new": "Importer comme nouvelle",
+      "same": "Même contenu",
+      "differs": "Contenu différent"
+    },
+    "scan": {
+      "title": "Analyse de sécurité",
+      "block": "Bloqué",
+      "warn": "Avertissement",
+      "info": "Remarque",
+      "ack": "J'ai lu les avertissements"
+    },
+    "problems": "Problèmes dans le pack",
+    "draft_from_flow": "Créer un brouillon à partir du flux du pack",
+    "install": "Installer",
+    "installing": "Installation…",
+    "install_failed": "Impossible d'installer le pack",
+    "disabled": {
+      "blocked": "L'analyse de sécurité a bloqué ce pack",
+      "errors": "Corrigez d'abord les problèmes du pack",
+      "leader": "Choisissez un responsable pour créer le squad",
+      "runtime": "Choisissez un runtime pour les agents à créer",
+      "ack": "Cochez que vous avez lu les avertissements",
+      "name": "Donnez un nom au squad",
+      "nothing": "Rien à installer dans le pack"
+    },
+    "conflict": {
+      "title": "Ce pack est déjà installé",
+      "body": "La version {{version}} est installée.",
+      "keep": "La garder",
+      "new_install": "Installer comme nouveau squad"
+    },
+    "name_taken": "Ces noms sont pris : {{names}}",
+    "result": {
+      "title": "Installé",
+      "already": "Ce pack était déjà installé. Rien n'a changé.",
+      "agents_one": "{{count}} agent",
+      "agents_other": "{{count}} agents",
+      "skills_one": "{{count}} compétence",
+      "skills_other": "{{count}} compétences",
+      "flow_issues": "Le flux du pack n'a pas pu devenir un brouillon"
+    },
+    "open_squad": "Ouvrir le squad",
+    "done": "Terminé"
   }
 }

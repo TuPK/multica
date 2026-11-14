@@ -37,6 +37,8 @@ export interface PublishDialogProps {
   isAdmin: boolean;
   /** Saves the draft and resolves to the revision the server has; null when it could not be saved. */
   saveDraft: () => Promise<number | null>;
+  /** How the draft began. A proposal of an agent is published only by a person who says they have read it. */
+  origin?: string;
 }
 
 // The acknowledgements a publish can need, by the kind the server names them. An admin gives the two that
@@ -45,6 +47,7 @@ const ACKS: Record<string, { adminOnly: boolean }> = {
   unattended_release: { adminOnly: true },
   lead_may_work: { adminOnly: true },
   no_gate: { adminOnly: false },
+  proposal_reviewed: { adminOnly: false },
 };
 
 /** The acknowledgements a check asks for: warnings that name one, and a policy flag set without it. */
@@ -57,7 +60,7 @@ function requiredAcks(issues: FlowIssue[]): string[] {
   return [...kinds];
 }
 
-export function PublishDialog({ open, onOpenChange, squadId, draftId, doc, isAdmin, saveDraft }: PublishDialogProps) {
+export function PublishDialog({ open, onOpenChange, squadId, draftId, doc, isAdmin, saveDraft, origin }: PublishDialogProps) {
   const { t } = useT("squads");
   const wsId = useWorkspaceId();
   const nav = useNavigation();
@@ -102,7 +105,9 @@ export function PublishDialog({ open, onOpenChange, squadId, draftId, doc, isAdm
   }, [open]);
 
   const blocking = issues.filter((i) => i.severity === "error" && i.code !== "ack_required");
+  // The check does not ask for the reading of a proposal: the server asks at publish, and says so for any draft.
   const needed = requiredAcks(issues);
+  if (origin === "proposal" && !needed.includes("proposal_reviewed")) needed.push("proposal_reviewed");
   const ackLabel = (kind: string) => {
     switch (kind) {
       case "unattended_release":
@@ -111,6 +116,8 @@ export function PublishDialog({ open, onOpenChange, squadId, draftId, doc, isAdm
         return t(($) => $.flow_designer.ack.no_gate);
       case "lead_may_work":
         return t(($) => $.flow_designer.ack.lead_may_work);
+      case "proposal_reviewed":
+        return t(($) => $.flow_designer.ack.proposal_reviewed);
       default:
         return kind;
     }

@@ -8,6 +8,7 @@ import { useWorkspaceId } from "@multica/core/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { useCurrentMember } from "@multica/core/permissions";
 import { companySquadMembersOptions } from "@multica/core/company";
+import { useFlowInsights } from "@multica/core/packs";
 import { agentListOptions, memberListOptions } from "@multica/core/workspace/queries";
 import {
   useExportFlowDraft,
@@ -55,6 +56,9 @@ import { ProblemsPanel } from "./problems-panel";
 import { SimulateDialog } from "./simulate-dialog";
 import { PublishDialog } from "./publish-dialog";
 import { FlowGraph } from "./flow-graph";
+import { InsightsBar } from "./insights-badges";
+import { ProposalBanner } from "./proposal-banner";
+import { ReferencePanel } from "./reference-panel";
 import { downloadJson, manifestFileName } from "./download-json";
 
 export interface FlowDraftEditorPageProps {
@@ -185,6 +189,12 @@ function FlowDraftEditor({ squadId, draftId, draft, capabilities, onReload }: Fl
   const isMobile = useIsMobile();
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [issues, setIssues] = useState<FlowIssue[]>([]);
+  // The numbers of the version this draft was made from (spec 16.6). A draft with no version behind it has none; a
+  // server that has not said is taken to offer them, and an answer with no requests shows nothing.
+  const [includeTrial, setIncludeTrial] = useState(false);
+  const insightsEnabled = capabilities?.features?.insights ?? true;
+  const insightsQuery = useFlowInsights(draft.base_workflow_id, { includeTrial, enabled: insightsEnabled, wsId });
+  const insights = insightsEnabled ? (insightsQuery.data ?? null) : null;
 
   // Who a role can be given to: the agents of the squad besides its lead, and the people of the workspace.
   const squadMembersQuery = useQuery(companySquadMembersOptions(wsId, squadId));
@@ -372,6 +382,8 @@ function FlowDraftEditor({ squadId, draftId, draft, capabilities, onReload }: Fl
         </div>
       </header>
 
+      <ProposalBanner squadId={squadId} draft={draft} saveNow={buffer.saveNow} onImported={(imported) => buffer.reload(imported)} />
+
       <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border bg-muted/30 px-4 py-1.5 text-caption">
         {tabs.map((tab) => (
           <button
@@ -436,19 +448,26 @@ function FlowDraftEditor({ squadId, draftId, draft, capabilities, onReload }: Fl
                   {t(($) => $.flow_designer.editor.select_step)}
                 </div>
               ))}
+            {!isMobile && <ReferencePanel squadId={squadId} />}
           </>
         )}
 
         {activeTab === "graph" && (
-          <FlowGraph
-            doc={buffer.doc}
-            selectedStepKey={currentStep?.key ?? null}
-            onSelectStep={(key) => {
-              setSelectedStepKey(key);
-              setActiveTab("editor");
-            }}
-            issues={issues}
-          />
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="shrink-0 border-b border-border px-4 py-1.5 empty:hidden">
+              <InsightsBar insights={insights} includeTrial={includeTrial} onIncludeTrial={setIncludeTrial} />
+            </div>
+            <FlowGraph
+              doc={buffer.doc}
+              selectedStepKey={currentStep?.key ?? null}
+              onSelectStep={(key) => {
+                setSelectedStepKey(key);
+                setActiveTab("editor");
+              }}
+              issues={issues}
+              insights={insights}
+            />
+          </div>
         )}
 
         {activeTab === "roles" && (
@@ -568,6 +587,7 @@ function FlowDraftEditor({ squadId, draftId, draft, capabilities, onReload }: Fl
         doc={buffer.doc}
         isAdmin={isAdmin}
         saveDraft={buffer.saveNow}
+        origin={draft.origin}
       />
     </div>
   );

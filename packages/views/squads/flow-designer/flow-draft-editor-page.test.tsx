@@ -1,7 +1,7 @@
 import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { setApiInstance } from "@multica/core/api";
 import { ApiError, type ApiClient } from "@multica/core/api/client";
 import { EMPTY_FLOW_CAPABILITIES_RESPONSE } from "@multica/core/api/schemas";
@@ -26,6 +26,7 @@ vi.mock("@multica/core/paths", () => ({
   useWorkspacePaths: () => ({
     squads: () => "/acme/squads",
     squadDetail: (id: string) => `/acme/squads/${id}`,
+    issueDetail: (id: string) => `/acme/issues/${id}`,
   }),
 }));
 vi.mock("@multica/core/permissions", () => ({
@@ -54,6 +55,11 @@ const fakeApi = {
   listSquadMembers: vi.fn(),
   listAgents: vi.fn(),
   listMembers: vi.fn(),
+  listAttachments: vi.fn(),
+  importFlowProposal: vi.fn(),
+  getFlowInsights: vi.fn(),
+  listSquadSkills: vi.fn(),
+  getSkill: vi.fn(),
 };
 
 function capabilities(over: Partial<FlowCapabilitiesResponse> = {}, features: Partial<FlowCapabilitiesResponse["features"]> = {}): FlowCapabilitiesResponse {
@@ -618,5 +624,128 @@ describe("FlowDraftEditorPage", () => {
     mocks.role = "admin";
     rerender(<FlowDraftEditorPage squadId="squad-1" draftId="draft-1" />);
     expect(screen.getByRole("checkbox", { name: /I understand this workflow can finish without a person's review/i })).not.toBeDisabled();
+  });
+});
+
+// The R3 surfaces of the editor: the proposal banner, the numbers of the version the draft comes from, and the reference.
+describe("FlowDraftEditorPage, proposals, insights and reference", () => {
+  const draft = (over: Partial<FlowDraft> = {}): FlowDraft => ({
+    id: "draft-1",
+    squad_id: "squad-1",
+    name: "Proposed flow",
+    lineage_id: null,
+    base_workflow_id: null,
+    revision: 1,
+    origin: "manual",
+    source_ref: null,
+    doc: {
+      version: 2,
+      start: "plan",
+      terminals: [{ key: "done", status: "done" }],
+      steps: [{ key: "plan", title: "Plan", kind: "lead", edges: [{ id: "plan_ok", label: "Planned", to: "done" }] }],
+    },
+    created_by: "u-1",
+    updated_by: "u-1",
+    created_at: "2026-11-13T00:00:00Z",
+    updated_at: "2026-11-13T00:00:00Z",
+    ...over,
+  });
+  const report = {
+    requests: { total: 7, open: 0, by_end: {} },
+    steps: [{ key: "plan", entered: 7, median_minutes: 3, p90_minutes: 9 }],
+    edges: [{ step: "plan", edge: "plan_ok", taken: 7 }],
+    loops: [],
+    stalls: [],
+    manual_closes: 0,
+    truncated: false,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.role = "owner";
+    setApiInstance(fakeApi as unknown as ApiClient);
+    fakeApi.getFlowCapabilities.mockResolvedValue(capabilities({}, { insights: true, proposals: true }));
+    fakeApi.getFlowDraft.mockResolvedValue(draft());
+    fakeApi.listSquadMembers.mockResolvedValue([]);
+    fakeApi.listAgents.mockResolvedValue([{ id: "ag-1", name: "Designer", archived_at: null }]);
+    fakeApi.listMembers.mockResolvedValue([]);
+    fakeApi.listAttachments.mockResolvedValue([]);
+    fakeApi.getFlowInsights.mockResolvedValue(report);
+  });
+
+  it("waits for the agent on a proposal, then offers Import proposal and shows the draft the server answers with", async () => {
+    fakeApi.getFlowDraft.mockResolvedValue(draft({ origin: "proposal", source_ref: { issue_id: "iss-1", agent_id: "ag-1" } }));
+    renderPage();
+    expect(await screen.findByText("Waiting for the agent's proposal")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Import proposal" })).toBeNull();
+  });
+
+  it("imports the file of the agent and shows the document it brings", async () => {
+    fakeApi.getFlowDraft.mockResolvedValue(draft({ origin: "proposal", source_ref: { issue_id: "iss-1", agent_id: "ag-1" } }));
+    fakeApi.listAttachments.mockResolvedValue([{ id: "a-1", filename: "flow.json", uploader_type: "agent", uploader_id: "ag-1", created_at: "2026-11-14T10:00:00Z" }]);
+    fakeApi.importFlowProposal.mockResolvedValue(draft({ origin: "proposal", name: "From the agent", revision: 2, updated_at: "2026-11-14T11:00:00Z", source_ref: { issue_id: "iss-1", agent_id: "ag-1" } }));
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Import proposal" }));
+
+    await waitFor(() => expect(fakeApi.importFlowProposal).toHaveBeenCalledWith("squad-1", "draft-1", { revision: 1 }));
+    expect(await screen.findByDisplayValue("From the agent")).toBeInTheDocument();
+    expect(await screen.findByText("Proposed by Designer")).toBeInTheDocument();
+  });
+
+  it("has no banner on a draft that nobody proposed", async () => {
+    renderPage();
+    await screen.findByDisplayValue("Proposed flow");
+    expect(screen.queryByText("Waiting for the agent's proposal")).toBeNull();
+    expect(fakeApi.listAttachments).not.toHaveBeenCalled();
+  });
+
+  it("shows the numbers of the version the draft comes from on its graph, and reads again with trial runs", async () => {
+    fakeApi.getFlowDraft.mockResolvedValue(draft({ base_workflow_id: "wf-1" }));
+    renderPage();
+    await screen.findByDisplayValue("Proposed flow");
+    fireEvent.click(screen.getByRole("button", { name: "Graph" }));
+
+    expect((await screen.findAllByText("Entered 7 times")).length).toBeGreaterThan(0);
+    expect(fakeApi.getFlowInsights).toHaveBeenCalledWith("wf-1", { includeTrial: false });
+    expect(screen.getByText("Numbers from 7 requests")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Include trial runs" }));
+    await waitFor(() => expect(fakeApi.getFlowInsights).toHaveBeenCalledWith("wf-1", { includeTrial: true }));
+  });
+
+  it("shows no numbers for a draft with no version behind it, or one nobody has run", async () => {
+    renderPage();
+    await screen.findByDisplayValue("Proposed flow");
+    fireEvent.click(screen.getByRole("button", { name: "Graph" }));
+    expect(fakeApi.getFlowInsights).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Entered/)).toBeNull();
+
+    cleanup();
+    fakeApi.getFlowDraft.mockResolvedValue(draft({ base_workflow_id: "wf-1" }));
+    fakeApi.getFlowInsights.mockResolvedValue({ ...report, requests: { total: 0, open: 0, by_end: {} }, steps: [], edges: [] });
+    renderPage();
+    await screen.findByDisplayValue("Proposed flow");
+    fireEvent.click(screen.getByRole("button", { name: "Graph" }));
+    await waitFor(() => expect(fakeApi.getFlowInsights).toHaveBeenCalled());
+    expect(screen.queryByText(/Entered|Numbers from/)).toBeNull();
+  });
+
+  it("asks for no numbers when the server says the feature is off", async () => {
+    fakeApi.getFlowCapabilities.mockResolvedValue(capabilities({}, { insights: false }));
+    fakeApi.getFlowDraft.mockResolvedValue(draft({ base_workflow_id: "wf-1" }));
+    renderPage();
+    await screen.findByDisplayValue("Proposed flow");
+    fireEvent.click(screen.getByRole("button", { name: "Graph" }));
+    await waitFor(() => expect(fakeApi.getFlowCapabilities).toHaveBeenCalled());
+    expect(fakeApi.getFlowInsights).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Entered/)).toBeNull();
+  });
+
+  it("offers the reference next to the editor, folded", async () => {
+    renderPage();
+    await screen.findByDisplayValue("Proposed flow");
+    expect(screen.getByRole("button", { name: "Show reference" })).toBeInTheDocument();
+    expect(fakeApi.listSquadSkills).not.toHaveBeenCalled();
   });
 });

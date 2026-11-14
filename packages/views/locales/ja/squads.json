@@ -446,7 +446,8 @@
     "ack": {
       "no_human_exit": "このワークフローは人間のレビューなしで完了し得ることを理解しました",
       "no_gate": "どのタスクもゲートで検査されないことを理解しました",
-      "lead_may_work": "リードがタスクを実行できることを理解しています"
+      "lead_may_work": "リードがタスクを実行できることを理解しています",
+      "proposal_reviewed": "このワークフローを読みました"
     },
     "problems": {
       "none": "問題は見つかりませんでした",
@@ -691,6 +692,116 @@
       "edge_stopped": "停止",
       "edge_release": "承認して続行",
       "notice_human_approval": "{requester} {request} は人による承認を待っています。"
+    },
+    "proposal": {
+      "waiting": "エージェントの提案を待っています",
+      "open_issue": "イシューを開く",
+      "import": "提案をインポート",
+      "by": "{{agent}} の提案",
+      "import_failed": "提案をインポートできませんでした",
+      "missing": "エージェントはまだ flow.json を添付していません",
+      "ask": {
+        "agent": "エージェント",
+        "note": "ワークフローにさせたいこと",
+        "files": "参考ファイル",
+        "attach": "ファイルを添付",
+        "send": "エージェントに依頼",
+        "no_agent": "依頼できるエージェントがありません",
+        "failed": "エージェントに依頼できませんでした"
+      }
+    },
+    "reference": {
+      "title": "参照",
+      "agents": "エージェントの指示",
+      "skills": "スクワッドのスキル",
+      "empty": "まだ読める内容がありません",
+      "show": "参照を表示",
+      "hide": "参照を隠す",
+      "no_text": "テキストなし"
+    },
+    "insights": {
+      "include_trial": "試行実行を含める",
+      "requests_other": "{{count}} 件のリクエストの数値",
+      "truncated": "直近 500 件のリクエストのみ集計しています",
+      "entered_other": "{{count}} 回到達",
+      "duration": "中央値 {{median}} 分、p90 {{p90}} 分",
+      "taken_other": "{{count}} 回通過"
     }
+  },
+  "packs": {
+    "import": "パックをインポート",
+    "source": {
+      "upload": "zip をアップロード",
+      "link": "リンクから",
+      "link_placeholder": "https://github.com/owner/repo または .zip へのリンク",
+      "choose": "zip ファイルを選択"
+    },
+    "preview": "パックを読み込む",
+    "reading": "パックを読み込み中…",
+    "read_failed": "パックを読み込めませんでした",
+    "change_source": "別のパックを選択",
+    "squad_name": "スクワッド名",
+    "agents": "エージェント",
+    "skills": "スキル",
+    "leader": "リーダー",
+    "leader_generic": "汎用リーダーを使う",
+    "one_agent_per_skill": "スキルごとにエージェントを1つ",
+    "ignored": "無視された設定",
+    "design_workflow": "ワークフローを設計",
+    "add_agent": "エージェントを追加",
+    "no_agents": "このパックにはエージェントがありません",
+    "action": {
+      "create": "作成",
+      "use_existing": "既存を使う",
+      "skip": "スキップ",
+      "label": "操作"
+    },
+    "runtime": "ランタイム",
+    "runtime_none": "使えるランタイムがありません",
+    "agent_name": "名前",
+    "remove": "削除",
+    "skill": {
+      "keep": "既存のスキルを残す",
+      "new": "新規としてインポート",
+      "same": "同じ内容",
+      "differs": "内容が異なる"
+    },
+    "scan": {
+      "title": "セキュリティスキャン",
+      "block": "ブロック",
+      "warn": "警告",
+      "info": "メモ",
+      "ack": "警告を読みました"
+    },
+    "problems": "パックの問題",
+    "draft_from_flow": "パック内のフローから下書きを作る",
+    "install": "インストール",
+    "installing": "インストール中…",
+    "install_failed": "パックをインストールできませんでした",
+    "disabled": {
+      "blocked": "セキュリティスキャンがこのパックをブロックしました",
+      "errors": "先にパックの問題を解決してください",
+      "leader": "スクワッドを作るリーダーを選んでください",
+      "runtime": "作成するエージェントのランタイムを選んでください",
+      "ack": "警告を読んだことにチェックを入れてください",
+      "name": "スクワッド名を入力してください",
+      "nothing": "パックにインストールするものがありません"
+    },
+    "conflict": {
+      "title": "このパックはすでにインストールされています",
+      "body": "バージョン {{version}} がインストール済みです。",
+      "keep": "そのままにする",
+      "new_install": "新しいスクワッドとしてインストール"
+    },
+    "name_taken": "次の名前は使用済みです: {{names}}",
+    "result": {
+      "title": "インストール完了",
+      "already": "このパックはインストール済みです。変更はありません。",
+      "agents_other": "エージェント {{count}} 件",
+      "skills_other": "スキル {{count}} 件",
+      "flow_issues": "パック内のフローを下書きにできませんでした"
+    },
+    "open_squad": "スクワッドを開く",
+    "done": "完了"
   }
 }

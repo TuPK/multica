@@ -451,7 +451,8 @@
     "ack": {
       "no_human_exit": "Entiendo que este flujo puede terminar sin revisión humana",
       "no_gate": "Entiendo que ninguna tarea pasa por una puerta",
-      "lead_may_work": "Entiendo que el líder puede realizar tareas"
+      "lead_may_work": "Entiendo que el líder puede realizar tareas",
+      "proposal_reviewed": "He leído este flujo de trabajo"
     },
     "problems": {
       "none": "Sin problemas",
@@ -699,6 +700,121 @@
       "edge_stopped": "Detenido",
       "edge_release": "Aprobar y continuar",
       "notice_human_approval": "{requester} {request} está esperando la aprobación de una persona."
+    },
+    "proposal": {
+      "waiting": "Esperando la propuesta del agente",
+      "open_issue": "Abrir la incidencia",
+      "import": "Importar la propuesta",
+      "by": "Propuesto por {{agent}}",
+      "import_failed": "No se pudo importar la propuesta",
+      "missing": "El agente aún no ha adjuntado un flow.json",
+      "ask": {
+        "agent": "Agente",
+        "note": "Qué debe hacer el flujo de trabajo",
+        "files": "Archivos de referencia",
+        "attach": "Adjuntar un archivo",
+        "send": "Pedírselo al agente",
+        "no_agent": "No hay agentes a quienes pedírselo",
+        "failed": "No se pudo pedir al agente"
+      }
+    },
+    "reference": {
+      "title": "Referencia",
+      "agents": "Instrucciones de los agentes",
+      "skills": "Habilidades del squad",
+      "empty": "Aún no hay nada que leer",
+      "show": "Mostrar referencia",
+      "hide": "Ocultar referencia",
+      "no_text": "Sin texto"
+    },
+    "insights": {
+      "include_trial": "Incluir ejecuciones de prueba",
+      "requests_one": "Datos de {{count}} solicitud",
+      "requests_other": "Datos de {{count}} solicitudes",
+      "truncated": "Solo se cuentan las últimas 500 solicitudes",
+      "entered_one": "Entró {{count}} vez",
+      "entered_other": "Entró {{count}} veces",
+      "duration": "mediana {{median}} min, p90 {{p90}} min",
+      "taken_one": "Tomada {{count}} vez",
+      "taken_other": "Tomada {{count}} veces"
     }
+  },
+  "packs": {
+    "import": "Importar un pack",
+    "source": {
+      "upload": "Subir un zip",
+      "link": "Desde un enlace",
+      "link_placeholder": "https://github.com/owner/repo o un enlace a un .zip",
+      "choose": "Elegir un archivo zip"
+    },
+    "preview": "Leer el pack",
+    "reading": "Leyendo el pack…",
+    "read_failed": "No se pudo leer el pack",
+    "change_source": "Elegir otro pack",
+    "squad_name": "Nombre del squad",
+    "agents": "Agentes",
+    "skills": "Habilidades",
+    "leader": "Líder",
+    "leader_generic": "Usar un líder general",
+    "one_agent_per_skill": "Un agente por habilidad",
+    "ignored": "Ajustes ignorados",
+    "design_workflow": "Diseñar el flujo de trabajo",
+    "add_agent": "Añadir agente",
+    "no_agents": "Este pack no tiene agentes",
+    "action": {
+      "create": "Crear",
+      "use_existing": "Usar existente",
+      "skip": "Omitir",
+      "label": "Acción"
+    },
+    "runtime": "Runtime",
+    "runtime_none": "Ningún runtime disponible",
+    "agent_name": "Nombre",
+    "remove": "Quitar",
+    "skill": {
+      "keep": "Mantener la habilidad existente",
+      "new": "Importar como nueva",
+      "same": "Mismo contenido",
+      "differs": "Contenido distinto"
+    },
+    "scan": {
+      "title": "Análisis de seguridad",
+      "block": "Bloqueado",
+      "warn": "Advertencia",
+      "info": "Nota",
+      "ack": "He leído las advertencias"
+    },
+    "problems": "Problemas en el pack",
+    "draft_from_flow": "Crear un borrador con el flujo del pack",
+    "install": "Instalar",
+    "installing": "Instalando…",
+    "install_failed": "No se pudo instalar el pack",
+    "disabled": {
+      "blocked": "El análisis de seguridad bloqueó este pack",
+      "errors": "Corrige primero los problemas del pack",
+      "leader": "Elige un líder para crear el squad",
+      "runtime": "Elige un runtime para los agentes que se crean",
+      "ack": "Marca que has leído las advertencias",
+      "name": "Pon un nombre al squad",
+      "nothing": "No hay nada que instalar en el pack"
+    },
+    "conflict": {
+      "title": "Este pack ya está instalado",
+      "body": "La versión {{version}} está instalada.",
+      "keep": "Mantenerlo",
+      "new_install": "Instalar como un squad nuevo"
+    },
+    "name_taken": "Estos nombres ya están en uso: {{names}}",
+    "result": {
+      "title": "Instalado",
+      "already": "Este pack ya estaba instalado. No cambió nada.",
+      "agents_one": "{{count}} agente",
+      "agents_other": "{{count}} agentes",
+      "skills_one": "{{count}} habilidad",
+      "skills_other": "{{count}} habilidades",
+      "flow_issues": "El flujo del pack no pudo convertirse en borrador"
+    },
+    "open_squad": "Abrir el squad",
+    "done": "Listo"
   }
 }

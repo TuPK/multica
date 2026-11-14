@@ -11,7 +11,7 @@ import { renderWithI18n } from "../../test/i18n";
 import { kitVietSource, StartDialog } from "./start-dialog";
 
 const mocks = vi.hoisted(() => ({ navPush: vi.fn(), toastError: vi.fn() }));
-const fakeApi = { createFlowDraft: vi.fn() };
+const fakeApi = { createFlowDraft: vi.fn(), getFlowCapabilities: vi.fn(), listAgents: vi.fn(), uploadFile: vi.fn() };
 
 vi.mock("@multica/core/hooks", () => ({ useWorkspaceId: () => "ws-1" }));
 vi.mock("../../navigation", () => ({ useNavigation: () => ({ push: mocks.navPush }) }));
@@ -37,19 +37,77 @@ describe("StartDialog", () => {
   beforeEach(() => {
     setApiInstance(fakeApi as unknown as ApiClient);
     fakeApi.createFlowDraft.mockResolvedValue({ id: "draft-start-1" });
+    fakeApi.getFlowCapabilities.mockResolvedValue({ features: { authoring: true, proposals: true } });
+    fakeApi.listAgents.mockResolvedValue([
+      { id: "ag-2", name: "Zed", archived_at: null },
+      { id: "ag-1", name: "Designer", archived_at: null },
+      { id: "ag-3", name: "Retired", archived_at: "2026-01-01T00:00:00Z" },
+    ]);
+    fakeApi.uploadFile.mockResolvedValue({ id: "att-1", filename: "procedure.md" });
   });
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
   });
 
-  it("offers a blank draft, a copy of the Kit Việt workflow and an import, and no way to ask an agent yet", () => {
+  it("offers a blank draft, a copy of the Kit Việt workflow, an import and an agent to draft", () => {
     renderDialog();
 
     expect(screen.getByRole("button", { name: /blank/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /copy a kit việt workflow/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /import a file/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /ask an agent to draft/i })).toBeNull();
+    expect(screen.getByRole("button", { name: /ask an agent to draft/i })).toBeInTheDocument();
+  });
+
+  it("hides the agent entry when the server says proposals are off, and keeps the others", async () => {
+    fakeApi.getFlowCapabilities.mockResolvedValue({ features: { authoring: true, proposals: false } });
+    renderDialog();
+
+    await waitFor(() => expect(screen.queryByRole("button", { name: /ask an agent to draft/i })).toBeNull());
+    expect(screen.getByRole("button", { name: /blank/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /import a file/i })).toBeInTheDocument();
+  });
+
+  it("asks an agent: uploads the files, creates a draft from a proposal and opens it", async () => {
+    renderDialog();
+    fireEvent.click(screen.getByRole("button", { name: /ask an agent to draft/i }));
+
+    const agent = await screen.findByRole("combobox", { name: "Agent" });
+    // The agents that can still work, by name.
+    expect(Array.from((agent as HTMLSelectElement).options).map((o) => o.text)).toEqual(["Designer", "Zed"]);
+    fireEvent.change(agent, { target: { value: "ag-1" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "What the workflow should do" }), { target: { value: "Two checks before release." } });
+    const file = new File(["# Procedure"], "procedure.md", { type: "text/markdown" });
+    fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [file] } });
+    expect(screen.getByText("procedure.md")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Ask the agent" }));
+
+    await waitFor(() => expect(fakeApi.uploadFile).toHaveBeenCalledWith(file));
+    await waitFor(() =>
+      expect(fakeApi.createFlowDraft).toHaveBeenCalledWith("sq-1", {
+        name: "Design Squad",
+        from: { kind: "proposal", agent_id: "ag-1", references: ["att-1"], note: "Two checks before release." },
+      }),
+    );
+    await waitFor(() => expect(mocks.navPush).toHaveBeenCalledWith("/acme/squads/sq-1/workflows/draft-start-1"));
+  });
+
+  it("does not ask without an agent, and says so when the server refuses", async () => {
+    fakeApi.listAgents.mockResolvedValue([]);
+    renderDialog();
+    fireEvent.click(screen.getByRole("button", { name: /ask an agent to draft/i }));
+    expect(await screen.findByText("No agent to ask")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ask the agent" })).toBeDisabled();
+
+    cleanup();
+    fakeApi.listAgents.mockResolvedValue([{ id: "ag-1", name: "Designer", archived_at: null }]);
+    fakeApi.createFlowDraft.mockRejectedValue(new ApiError("you cannot give work to this agent", 403, "", { code: "flow_proposal_agent_forbidden" }));
+    renderDialog();
+    fireEvent.click(screen.getByRole("button", { name: /ask an agent to draft/i }));
+    await screen.findByRole("combobox", { name: "Agent" });
+    fireEvent.click(screen.getByRole("button", { name: "Ask the agent" }));
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith("you cannot give work to this agent"));
+    expect(mocks.navPush).not.toHaveBeenCalled();
   });
 
   it("hides the copy when the squad has no workflow made from the catalog", () => {

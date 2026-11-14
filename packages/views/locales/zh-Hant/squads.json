@@ -446,7 +446,8 @@
     "ack": {
       "no_human_exit": "我了解此工作流程無需人工審核即可完成",
       "no_gate": "我了解沒有任務經過關卡檢查",
-      "lead_may_work": "我了解負責人可以執行任務"
+      "lead_may_work": "我了解負責人可以執行任務",
+      "proposal_reviewed": "我已閱讀此工作流程"
     },
     "problems": {
       "none": "未發現問題",
@@ -691,6 +692,116 @@
       "edge_stopped": "已停止",
       "edge_release": "核准並繼續",
       "notice_human_approval": "{requester} {request} 正在等待人工核准。"
+    },
+    "proposal": {
+      "waiting": "正在等待智能體的方案",
+      "open_issue": "開啟事項",
+      "import": "匯入方案",
+      "by": "由 {{agent}} 提出",
+      "import_failed": "無法匯入方案",
+      "missing": "智能體尚未附上 flow.json",
+      "ask": {
+        "agent": "智能體",
+        "note": "工作流程應該做什麼",
+        "files": "參考檔案",
+        "attach": "新增檔案",
+        "send": "請智能體起草",
+        "no_agent": "沒有可委託的智能體",
+        "failed": "無法委託智能體"
+      }
+    },
+    "reference": {
+      "title": "參考資料",
+      "agents": "智能體指令",
+      "skills": "小隊的技能",
+      "empty": "暫無可讀內容",
+      "show": "顯示參考資料",
+      "hide": "隱藏參考資料",
+      "no_text": "無文字"
+    },
+    "insights": {
+      "include_trial": "包含試運行",
+      "requests_other": "基於 {{count}} 個請求的資料",
+      "truncated": "僅統計最近 500 個請求",
+      "entered_other": "進入 {{count}} 次",
+      "duration": "中位數 {{median}} 分鐘，p90 {{p90}} 分鐘",
+      "taken_other": "經過 {{count}} 次"
     }
+  },
+  "packs": {
+    "import": "匯入技能包",
+    "source": {
+      "upload": "上傳 zip",
+      "link": "透過連結",
+      "link_placeholder": "https://github.com/owner/repo 或 .zip 連結",
+      "choose": "選擇 zip 檔案"
+    },
+    "preview": "讀取技能包",
+    "reading": "正在讀取技能包…",
+    "read_failed": "無法讀取技能包",
+    "change_source": "選擇其他技能包",
+    "squad_name": "小隊名稱",
+    "agents": "智能體",
+    "skills": "技能",
+    "leader": "負責人",
+    "leader_generic": "使用通用負責人",
+    "one_agent_per_skill": "每個技能一個智能體",
+    "ignored": "已忽略的設定",
+    "design_workflow": "設計工作流程",
+    "add_agent": "新增智能體",
+    "no_agents": "此技能包沒有智能體",
+    "action": {
+      "create": "建立",
+      "use_existing": "使用現有",
+      "skip": "略過",
+      "label": "操作"
+    },
+    "runtime": "執行時",
+    "runtime_none": "沒有可用的執行時",
+    "agent_name": "名稱",
+    "remove": "移除",
+    "skill": {
+      "keep": "保留現有技能",
+      "new": "作為新技能匯入",
+      "same": "內容相同",
+      "differs": "內容不同"
+    },
+    "scan": {
+      "title": "安全掃描",
+      "block": "已攔截",
+      "warn": "警告",
+      "info": "提示",
+      "ack": "我已閱讀這些警告"
+    },
+    "problems": "技能包中的問題",
+    "draft_from_flow": "用技能包中的流程產生草稿",
+    "install": "安裝",
+    "installing": "正在安裝…",
+    "install_failed": "無法安裝技能包",
+    "disabled": {
+      "blocked": "安全掃描攔截了此技能包",
+      "errors": "請先解決技能包中的問題",
+      "leader": "請選擇負責人以建立小隊",
+      "runtime": "請為要建立的智能體選擇執行時",
+      "ack": "請勾選確認已閱讀警告",
+      "name": "請為小隊命名",
+      "nothing": "技能包中沒有可安裝的內容"
+    },
+    "conflict": {
+      "title": "此技能包已安裝",
+      "body": "已安裝版本 {{version}}。",
+      "keep": "保留現有",
+      "new_install": "作為新小隊安裝"
+    },
+    "name_taken": "這些名稱已被佔用：{{names}}",
+    "result": {
+      "title": "已安裝",
+      "already": "此技能包先前已安裝，沒有任何變更。",
+      "agents_other": "{{count}} 個智能體",
+      "skills_other": "{{count}} 個技能",
+      "flow_issues": "技能包中的流程無法產生草稿"
+    },
+    "open_squad": "開啟小隊",
+    "done": "完成"
   }
 }

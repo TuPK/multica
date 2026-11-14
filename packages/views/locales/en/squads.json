@@ -451,7 +451,8 @@
     "ack": {
       "no_human_exit": "I understand this workflow can finish without a person's review",
       "no_gate": "I understand no task is checked by a gate",
-      "lead_may_work": "I understand the lead may do task work"
+      "lead_may_work": "I understand the lead may do task work",
+      "proposal_reviewed": "I have read this workflow"
     },
     "problems": {
       "none": "No problems found",
@@ -699,6 +700,121 @@
       "edge_stopped": "Stopped",
       "edge_release": "Approve and continue",
       "notice_human_approval": "{requester} {request} is waiting for a person to approve it."
+    },
+    "proposal": {
+      "waiting": "Waiting for the agent's proposal",
+      "open_issue": "Open the issue",
+      "import": "Import proposal",
+      "by": "Proposed by {{agent}}",
+      "import_failed": "Could not import the proposal",
+      "missing": "The agent has not attached a flow.json yet",
+      "ask": {
+        "agent": "Agent",
+        "note": "What the workflow should do",
+        "files": "Reference files",
+        "attach": "Attach a file",
+        "send": "Ask the agent",
+        "no_agent": "No agent to ask",
+        "failed": "Could not ask the agent"
+      }
+    },
+    "reference": {
+      "title": "Reference",
+      "agents": "Agent instructions",
+      "skills": "Skills of the squad",
+      "empty": "Nothing to read yet",
+      "show": "Show reference",
+      "hide": "Hide reference",
+      "no_text": "No text"
+    },
+    "insights": {
+      "include_trial": "Include trial runs",
+      "requests_one": "Numbers from {{count}} request",
+      "requests_other": "Numbers from {{count}} requests",
+      "truncated": "Only the latest 500 requests are counted",
+      "entered_one": "Entered {{count}} time",
+      "entered_other": "Entered {{count}} times",
+      "duration": "median {{median}} min, p90 {{p90}} min",
+      "taken_one": "Taken {{count}} time",
+      "taken_other": "Taken {{count}} times"
     }
+  },
+  "packs": {
+    "import": "Import a pack",
+    "source": {
+      "upload": "Upload a zip",
+      "link": "From a link",
+      "link_placeholder": "https://github.com/owner/repo or a link to a .zip",
+      "choose": "Choose a zip file"
+    },
+    "preview": "Read the pack",
+    "reading": "Reading the pack…",
+    "read_failed": "Could not read the pack",
+    "change_source": "Choose another pack",
+    "squad_name": "Squad name",
+    "agents": "Agents",
+    "skills": "Skills",
+    "leader": "Leader",
+    "leader_generic": "Use a general leader",
+    "one_agent_per_skill": "One agent per skill",
+    "ignored": "Ignored settings",
+    "design_workflow": "Design the workflow",
+    "add_agent": "Add agent",
+    "no_agents": "This pack has no agents",
+    "action": {
+      "create": "Create",
+      "use_existing": "Use existing",
+      "skip": "Skip",
+      "label": "Action"
+    },
+    "runtime": "Runtime",
+    "runtime_none": "No runtime you can use",
+    "agent_name": "Name",
+    "remove": "Remove",
+    "skill": {
+      "keep": "Keep the existing skill",
+      "new": "Import as new",
+      "same": "Same content",
+      "differs": "Different content"
+    },
+    "scan": {
+      "title": "Security scan",
+      "block": "Blocked",
+      "warn": "Warning",
+      "info": "Note",
+      "ack": "I have read the warnings"
+    },
+    "problems": "Problems in the pack",
+    "draft_from_flow": "Make a draft from the flow in the pack",
+    "install": "Install",
+    "installing": "Installing…",
+    "install_failed": "Could not install the pack",
+    "disabled": {
+      "blocked": "The security scan blocked this pack",
+      "errors": "Fix the problems in the pack first",
+      "leader": "Choose a leader to make the squad",
+      "runtime": "Choose a runtime for the agents to create",
+      "ack": "Tick that you have read the warnings",
+      "name": "Give the squad a name",
+      "nothing": "Nothing in the pack to install"
+    },
+    "conflict": {
+      "title": "This pack is installed already",
+      "body": "Version {{version}} is installed.",
+      "keep": "Keep it",
+      "new_install": "Install as a new squad"
+    },
+    "name_taken": "These names are taken: {{names}}",
+    "result": {
+      "title": "Installed",
+      "already": "This pack was installed before. Nothing changed.",
+      "agents_one": "{{count}} agent",
+      "agents_other": "{{count}} agents",
+      "skills_one": "{{count}} skill",
+      "skills_other": "{{count}} skills",
+      "flow_issues": "The flow in the pack could not become a draft"
+    },
+    "open_squad": "Open the squad",
+    "done": "Done"
   }
 }

@@ -553,6 +553,14 @@
         "floor_chief": {
           "name": "Floor Chief",
           "description": "Writes the floor's daily brief for the Secretary from the floor's digest. Decides nothing and changes no squad."
+        },
+        "flow_lead": {
+          "name": "Flow Lead",
+          "description": "Follows the reminders of a workflow and does only the step it asks of the lead. Does not split the work or change the squad."
+        },
+        "flow_designer": {
+          "name": "Flow Designer",
+          "description": "Turns a written procedure into one flow.json file and checks it until it has no errors. Proposes only: a person imports and publishes it."
         }
       }
     },

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import {
   ExternalLink,
   Loader2,
+  Package,
   Rocket,
   Trash2,
   Users,
@@ -32,6 +33,8 @@ import {
 } from "@multica/core/squads/stores";
 import type { Agent, MemberWithUser, Squad } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
+import { flowCapabilitiesOptions } from "@multica/core/flow-drafts";
+import { PackImportDialog } from "../pack-import/pack-import-dialog";
 import { SquadsIntro } from "./squads-intro";
 import { SquadWorkflowsCell } from "./squad-workflows-cell";
 import { KitvietUpdateButton } from "./kitviet-update-button";
@@ -367,6 +370,10 @@ export function SquadsPage() {
   });
   const { data: agents = [] } = useQuery(agentListOptions(wsId));
   const { data: members = [] } = useQuery(memberListOptions(wsId));
+  // A server that has not said (still loading, or an answer this build cannot read) is taken to allow packs.
+  const { data: capabilities } = useQuery(flowCapabilitiesOptions(wsId));
+  const packsEnabled = capabilities?.features?.packs ?? true;
+  const [packImportOpen, setPackImportOpen] = useState(false);
 
   const agentsById = useMemo(() => {
     const m = new Map<string, Agent>();
@@ -613,6 +620,16 @@ export function SquadsPage() {
               sort={sort}
             />
             <KitvietUpdateButton wsId={wsId} visible={isWorkspaceAdmin && hasKitvietSquad(squads)} />
+            {packsEnabled ? (
+              <IconButton
+                tooltipSide="bottom"
+                label={t(($) => $.packs.import)}
+                className="shrink-0 text-muted-foreground"
+                onClick={() => setPackImportOpen(true)}
+              >
+                <Package />
+              </IconButton>
+            ) : null}
             <IconButton
               tooltipSide="bottom"
               label={t(($) => $.page.quickstart_button)}
@@ -628,6 +645,8 @@ export function SquadsPage() {
           </>
         }
       />
+
+      {packImportOpen && <PackImportDialog open onOpenChange={setPackImportOpen} />}
 
       {!isLoading && squads.length === 0 ? (
         <SquadsIntro onCreate={openCreateSquad} onQuickstart={openSquadQuickstart} />

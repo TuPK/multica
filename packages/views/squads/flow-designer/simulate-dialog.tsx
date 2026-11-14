@@ -110,7 +110,7 @@ export function SimulateDialog({ open, onOpenChange, squadId, draftId, doc }: Si
 
         <div className="flex-1 space-y-4 overflow-y-auto py-2 text-caption">
           {(doc.vars?.length ?? 0) > 0 && (
-            <fieldset className="space-y-1.5">
+            <fieldset className="min-w-0 space-y-1.5">
               <legend className="text-micro font-medium text-muted-foreground">
                 {t(($) => $.flow_designer.simulate.vars)}
               </legend>
@@ -119,7 +119,7 @@ export function SimulateDialog({ open, onOpenChange, squadId, draftId, doc }: Si
                   <span className="font-mono">{v.key}</span>
                   {v.type === "bool" || v.type === "enum" ? (
                     <select
-                      className="h-8 rounded-md border border-input bg-background px-2"
+                      className="h-8 shrink-0 rounded-md border border-input bg-background px-2"
                       value={vars[v.key] ?? ""}
                       onChange={(e) => setVars((prev) => ({ ...prev, [v.key]: e.target.value }))}
                     >
@@ -143,7 +143,7 @@ export function SimulateDialog({ open, onOpenChange, squadId, draftId, doc }: Si
           )}
 
           {tasks.length > 0 && (
-            <fieldset className="space-y-1.5">
+            <fieldset className="min-w-0 space-y-1.5">
               <legend className="text-micro font-medium text-muted-foreground">
                 {t(($) => $.flow_designer.simulate.results)}
               </legend>
@@ -155,7 +155,7 @@ export function SimulateDialog({ open, onOpenChange, squadId, draftId, doc }: Si
                     <span>{task.title || task.key}</span>
                   </span>
                   <select
-                    className="h-8 rounded-md border border-input bg-background px-2"
+                    className="h-8 shrink-0 rounded-md border border-input bg-background px-2"
                     value={results[`${step}.${task.key}`] ?? ""}
                     onChange={(e) => setResults((prev) => ({ ...prev, [`${step}.${task.key}`]: e.target.value }))}
                   >

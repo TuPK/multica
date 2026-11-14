@@ -553,6 +553,14 @@
         "floor_chief": {
           "name": "Jefe de planta",
           "description": "Redacta el brief diario de la planta para la Secretaria a partir del digest de la planta. No decide nada ni cambia ningún squad."
+        },
+        "flow_lead": {
+          "name": "Líder de flujo de trabajo",
+          "description": "Sigue los avisos de un flujo de trabajo y hace solo el paso que se le pide al líder. No reparte el trabajo ni cambia el squad."
+        },
+        "flow_designer": {
+          "name": "Diseñador de flujos de trabajo",
+          "description": "Convierte un procedimiento escrito en un archivo flow.json y lo comprueba hasta que no tenga errores. Solo propone: una persona lo importa y lo publica."
         }
       }
     },

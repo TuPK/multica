@@ -446,7 +446,8 @@
     "ack": {
       "no_human_exit": "이 워크플로가 사람 검토 없이 완료될 수 있음을 이해합니다",
       "no_gate": "어떤 작업도 게이트로 검증되지 않음을 이해합니다",
-      "lead_may_work": "리더가 작업을 수행할 수 있음을 이해합니다"
+      "lead_may_work": "리더가 작업을 수행할 수 있음을 이해합니다",
+      "proposal_reviewed": "이 워크플로를 읽었습니다"
     },
     "problems": {
       "none": "문제가 없습니다",
@@ -691,6 +692,116 @@
       "edge_stopped": "중지됨",
       "edge_release": "승인하고 계속",
       "notice_human_approval": "{requester} {request} 사람의 승인을 기다리고 있습니다."
+    },
+    "proposal": {
+      "waiting": "에이전트의 제안을 기다리는 중",
+      "open_issue": "이슈 열기",
+      "import": "제안 가져오기",
+      "by": "{{agent}}의 제안",
+      "import_failed": "제안을 가져올 수 없습니다",
+      "missing": "에이전트가 아직 flow.json을 첨부하지 않았습니다",
+      "ask": {
+        "agent": "에이전트",
+        "note": "워크플로가 해야 할 일",
+        "files": "참고 파일",
+        "attach": "파일 첨부",
+        "send": "에이전트에게 요청",
+        "no_agent": "요청할 에이전트가 없습니다",
+        "failed": "에이전트에게 요청할 수 없습니다"
+      }
+    },
+    "reference": {
+      "title": "참고 자료",
+      "agents": "에이전트 지침",
+      "skills": "스쿼드의 스킬",
+      "empty": "아직 읽을 내용이 없습니다",
+      "show": "참고 자료 보기",
+      "hide": "참고 자료 숨기기",
+      "no_text": "텍스트 없음"
+    },
+    "insights": {
+      "include_trial": "시험 실행 포함",
+      "requests_other": "요청 {{count}}건 기준 수치",
+      "truncated": "최근 요청 500건만 집계합니다",
+      "entered_other": "{{count}}회 진입",
+      "duration": "중앙값 {{median}}분, p90 {{p90}}분",
+      "taken_other": "{{count}}회 통과"
     }
+  },
+  "packs": {
+    "import": "팩 가져오기",
+    "source": {
+      "upload": "zip 업로드",
+      "link": "링크로",
+      "link_placeholder": "https://github.com/owner/repo 또는 .zip 링크",
+      "choose": "zip 파일 선택"
+    },
+    "preview": "팩 읽기",
+    "reading": "팩을 읽는 중…",
+    "read_failed": "팩을 읽을 수 없습니다",
+    "change_source": "다른 팩 선택",
+    "squad_name": "스쿼드 이름",
+    "agents": "에이전트",
+    "skills": "스킬",
+    "leader": "리더",
+    "leader_generic": "범용 리더 사용",
+    "one_agent_per_skill": "스킬마다 에이전트 하나",
+    "ignored": "무시된 설정",
+    "design_workflow": "워크플로 설계",
+    "add_agent": "에이전트 추가",
+    "no_agents": "이 팩에는 에이전트가 없습니다",
+    "action": {
+      "create": "만들기",
+      "use_existing": "기존 항목 사용",
+      "skip": "건너뛰기",
+      "label": "동작"
+    },
+    "runtime": "런타임",
+    "runtime_none": "사용할 수 있는 런타임이 없습니다",
+    "agent_name": "이름",
+    "remove": "제거",
+    "skill": {
+      "keep": "기존 스킬 유지",
+      "new": "새 스킬로 가져오기",
+      "same": "내용 동일",
+      "differs": "내용이 다름"
+    },
+    "scan": {
+      "title": "보안 검사",
+      "block": "차단됨",
+      "warn": "경고",
+      "info": "참고",
+      "ack": "경고를 읽었습니다"
+    },
+    "problems": "팩의 문제",
+    "draft_from_flow": "팩의 플로로 초안 만들기",
+    "install": "설치",
+    "installing": "설치하는 중…",
+    "install_failed": "팩을 설치할 수 없습니다",
+    "disabled": {
+      "blocked": "보안 검사가 이 팩을 차단했습니다",
+      "errors": "먼저 팩의 문제를 해결하세요",
+      "leader": "스쿼드를 만들 리더를 선택하세요",
+      "runtime": "만들 에이전트의 런타임을 선택하세요",
+      "ack": "경고를 읽었는지 체크하세요",
+      "name": "스쿼드 이름을 입력하세요",
+      "nothing": "팩에 설치할 항목이 없습니다"
+    },
+    "conflict": {
+      "title": "이 팩은 이미 설치되어 있습니다",
+      "body": "버전 {{version}}이(가) 설치되어 있습니다.",
+      "keep": "유지",
+      "new_install": "새 스쿼드로 설치"
+    },
+    "name_taken": "다음 이름이 이미 사용 중입니다: {{names}}",
+    "result": {
+      "title": "설치 완료",
+      "already": "이 팩은 이미 설치되어 있어 변경 사항이 없습니다.",
+      "agents_other": "에이전트 {{count}}개",
+      "skills_other": "스킬 {{count}}개",
+      "flow_issues": "팩의 플로를 초안으로 만들 수 없었습니다"
+    },
+    "open_squad": "스쿼드 열기",
+    "done": "완료"
   }
 }

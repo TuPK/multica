@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { FlowDoc, FlowIssue } from "@multica/core/types";
+import type { FlowDoc, FlowInsights, FlowIssue } from "@multica/core/types";
 import { layoutFlowGraph } from "@multica/core/squads/flow-layout";
 import { Badge } from "@multica/ui/components/ui/badge";
 import { Button } from "@multica/ui/components/ui/button";
@@ -14,12 +14,15 @@ import {
 } from "@multica/ui/icons";
 import { cn } from "@multica/ui/lib/utils";
 import { useT } from "../../i18n";
+import { EdgeInsightBadge, StepInsightBadge } from "./insights-badges";
 
 export interface FlowGraphProps {
   doc: FlowDoc;
   selectedStepKey: string | null;
   onSelectStep: (stepKey: string) => void;
   issues?: FlowIssue[];
+  /** The operating numbers of the version this draft comes from; none, or none with requests, shows no badge. */
+  insights?: FlowInsights | null;
 }
 
 export function FlowGraph({
@@ -27,6 +30,7 @@ export function FlowGraph({
   selectedStepKey,
   onSelectStep,
   issues = [],
+  insights = null,
 }: FlowGraphProps) {
   const { t } = useT("squads");
   const [showLoopsOnly, setShowLoopsOnly] = useState(false);
@@ -146,6 +150,7 @@ export function FlowGraph({
                   </Badge>
                 )}
               </div>
+              <StepInsightBadge insights={insights} stepKey={step.key} />
             </div>
           );
         })}
@@ -202,14 +207,17 @@ export function FlowGraph({
                   )}
                 </div>
 
+                <StepInsightBadge insights={insights} stepKey={step.key} />
+
                 {/* Edges Summary */}
                 <div className="pt-1 border-t border-border/50 flex flex-wrap gap-1 text-micro">
                   {step.edges.slice(0, 3).map((edge, eIdx) => (
                     <span
                       key={eIdx}
-                      className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-muted/40 font-mono text-[10px]"
+                      className="inline-flex items-center gap-1 px-1 py-0.5 rounded bg-muted/40 font-mono text-[10px]"
                     >
                       {edge.label || edge.to || edge.stop}
+                      <EdgeInsightBadge insights={insights} stepKey={step.key} edgeId={edge.id} />
                     </span>
                   ))}
                   {step.edges.length > 3 && (

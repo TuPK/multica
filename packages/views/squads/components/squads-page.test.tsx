@@ -9,6 +9,8 @@ import { SquadsPage } from "./squads-page";
 
 const mocks = vi.hoisted(() => ({
   squads: [] as Squad[],
+  // What GET /api/flow/capabilities answered; undefined while it is loading or the server does not say.
+  features: undefined as Record<string, boolean> | undefined,
   openModal: vi.fn(),
   viewState: {
     scope: "all" as SquadsScope,
@@ -27,8 +29,14 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-query", () => ({
+  queryOptions: <T,>(options: T) => options,
   useQuery: (options: { queryKey?: readonly unknown[] }) => ({
-    data: options.queryKey?.[0] === "squads" ? mocks.squads : [],
+    data:
+      options.queryKey?.[0] === "squads"
+        ? mocks.squads
+        : options.queryKey?.[0] === "flow-drafts"
+          ? mocks.features && { features: mocks.features }
+          : [],
     isLoading: false,
   }),
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
@@ -60,6 +68,9 @@ vi.mock("@multica/core/squads/stores", async (importOriginal) => ({
   useSquadsViewStore: (select: (s: typeof mocks.viewState) => unknown) => select(mocks.viewState),
 }));
 vi.mock("../../common/actor-avatar", () => ({ ActorAvatar: () => null }));
+vi.mock("../pack-import/pack-import-dialog", () => ({
+  PackImportDialog: ({ open }: { open: boolean }) => (open ? <div role="dialog">pack import</div> : null),
+}));
 
 function squad(id: string, name: string, creatorId: string): Squad {
   return {
@@ -102,6 +113,7 @@ beforeEach(() => {
   mocks.viewState.setScope.mockReset();
   mocks.viewState.clearFilters.mockReset();
   mocks.openModal.mockReset();
+  mocks.features = undefined;
 });
 
 describe("SquadsPage header", () => {
@@ -172,5 +184,30 @@ describe("SquadsPage header", () => {
     );
     await user.click(within(intro).getByRole("button", { name: "New squad" }));
     expect(mocks.openModal).toHaveBeenCalledWith("create-squad");
+  });
+});
+
+describe("SquadsPage import a pack", () => {
+  it("offers Import a pack and opens the dialog", async () => {
+    const user = userEvent.setup();
+    mocks.features = { packs: true };
+    renderPage();
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Import a pack" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("pack import");
+  });
+
+  it("offers it while the server has not said, as the squad section does for authoring", () => {
+    mocks.features = undefined;
+    renderPage();
+    expect(screen.getByRole("button", { name: "Import a pack" })).toBeInTheDocument();
+  });
+
+  it("hides it when the server says packs are off", () => {
+    mocks.features = { packs: false };
+    renderPage();
+    expect(screen.queryByRole("button", { name: "Import a pack" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New squad" })).toBeInTheDocument();
   });
 });
