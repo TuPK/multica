@@ -1048,3 +1048,30 @@ func TestRehearsalGraph_InputsFollowThePathTaken(t *testing.T) {
 		t.Fatalf("the stop was logged with %v, want input_missing", logged[len(logged)-1])
 	}
 }
+
+// Spec 4.9: a task a person holds gets its reminder and its stall whatever the runner does with the
+// request. The runner-off request is not moved, but its human tasks are still looked after.
+func TestRehearsalGraph_SweepRemindsHumanTaskWhenRunnerIsOff(t *testing.T) {
+	rig := newGraphRig(t, "legal", graphRigOpts{Mutate: func(doc map[string]any) {
+		doc["policy"] = map[string]any{"human_remind_minutes": 10, "human_stall_minutes": 20}
+	}})
+	withFeatureFlag(t, testHandler, "flow_runner", true)
+	request := rig.newRequest()
+	rig.complete(request, nil)
+	rig.finishAll(request, "intake", 0, always(""))
+	rig.advance(request)
+	rig.finishAll(request, "redraft_clauses", 0, always(""))
+	rig.advance(request)
+	rows := rig.rows(request, "review", 0)
+	if len(rows) != 5 {
+		t.Fatalf("review rows = %v", rows)
+	}
+	t.Cleanup(func() {
+		testPool.Exec(context.Background(), `DELETE FROM issue WHERE parent_issue_id = $1`, request.ID)
+	})
+	dbfx.Exec(t, `UPDATE issue SET created_at = now() - make_interval(mins => 15) WHERE parent_issue_id = $1 AND flow_step = 'review'`, request.ID)
+	sweep(t)
+	if n := dbfx.Count(t, `SELECT count(*) FROM activity_log WHERE action = 'flow_human_reminded' AND issue_id IN (SELECT id FROM issue WHERE parent_issue_id = $1)`, request.ID); n != 5 {
+		t.Fatalf("%d reminders with the runner off, want one for each of the 5 human tasks", n)
+	}
+}

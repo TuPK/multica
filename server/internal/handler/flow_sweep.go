@@ -84,6 +84,69 @@ func (h *Handler) SweepFlowRequests(ctx context.Context) (int, error) {
 		flowSweepCursor.workspace, flowSweepCursor.id = pgtype.UUID{}, pgtype.UUID{}
 		flowSweepCursor.Unlock()
 	}
+	manual, err := h.sweepManualHumanTasks(ctx)
+	if err != nil {
+		return changed, err
+	}
+	return changed + manual, nil
+}
+
+// flowManualSweepCursor pages the open requests whose runner is off, for the reminders and stalls of
+// the human tasks in them (spec 4.9). The runner never moves these requests.
+var flowManualSweepCursor struct {
+	sync.Mutex
+	workspace, id pgtype.UUID
+}
+
+// sweepManualHumanTasks looks after the human tasks of the open requests the runner does not move: a
+// reminder once a person has waited human_remind_minutes, a stall once the wait is human_stall_minutes.
+// Agent tasks and the advance of the request are left to the runner.
+func (h *Handler) sweepManualHumanTasks(ctx context.Context) (int, error) {
+	flowManualSweepCursor.Lock()
+	after := db.ListOpenFlowRequestsParams{AfterWorkspaceID: flowManualSweepCursor.workspace, AfterID: flowManualSweepCursor.id, PageLimit: flowSweepPage}
+	flowManualSweepCursor.Unlock()
+	if !after.AfterWorkspaceID.Valid {
+		after.AfterWorkspaceID, after.AfterID = zeroUUID(), zeroUUID()
+	}
+	page, err := h.Queries.ListOpenFlowRequests(ctx, after)
+	if err != nil {
+		return 0, fmt.Errorf("list open flow requests: %w", err)
+	}
+	changed := 0
+	for _, request := range page {
+		if ctx.Err() != nil {
+			break
+		}
+		flowManualSweepCursor.Lock()
+		flowManualSweepCursor.workspace, flowManualSweepCursor.id = request.WorkspaceID, request.ID
+		flowManualSweepCursor.Unlock()
+		if h.isAutoFlowRequest(ctx, request.ID) {
+			continue
+		}
+		run, err := h.loadFlowRun(ctx, h.Queries, request)
+		if err != nil || run.state.ClosedAt != "" || run.state.Stop != nil {
+			continue
+		}
+		rows, err := h.loadFlowTasks(ctx, h.Queries, run)
+		if err != nil {
+			slog.Warn("flow sweep: load human tasks", "request_id", uuidToString(request.ID), "error", err)
+			continue
+		}
+		now := time.Now()
+		for _, r := range rows {
+			if r.state.Step != run.state.Step || r.state.Round != run.round() || r.issue.AssigneeType.String == "agent" {
+				continue
+			}
+			if h.sweepHumanTask(ctx, run, r, now) {
+				changed++
+			}
+		}
+	}
+	if ctx.Err() == nil && len(page) < flowSweepPage {
+		flowManualSweepCursor.Lock()
+		flowManualSweepCursor.workspace, flowManualSweepCursor.id = pgtype.UUID{}, pgtype.UUID{}
+		flowManualSweepCursor.Unlock()
+	}
 	return changed, nil
 }
 
