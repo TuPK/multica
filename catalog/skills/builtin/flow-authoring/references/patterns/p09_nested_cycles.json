@@ -1,0 +1,221 @@
+{
+  "version": 2,
+  "start": "plan",
+  "roles": [
+    {
+      "key": "w",
+      "kind": "agent"
+    },
+    {
+      "key": "g1",
+      "kind": "agent"
+    },
+    {
+      "key": "g2",
+      "kind": "agent"
+    }
+  ],
+  "stops": [
+    {
+      "code": "loop_exhausted",
+      "class": "loop_exhausted",
+      "message": "stop3",
+      "legacy_no": 3
+    }
+  ],
+  "terminals": [
+    {
+      "key": "done",
+      "status": "done"
+    },
+    {
+      "key": "cancelled",
+      "status": "cancelled"
+    }
+  ],
+  "steps": [
+    {
+      "key": "plan",
+      "kind": "lead",
+      "status": {
+        "key": "todo"
+      },
+      "title": "Plan",
+      "edges": [
+        {
+          "id": "plan_ok",
+          "label": "Planned",
+          "to": "a"
+        }
+      ]
+    },
+    {
+      "key": "a",
+      "kind": "tasks",
+      "status": {
+        "key": "in_progress"
+      },
+      "tasks": [
+        {
+          "key": "work_a",
+          "title": "A",
+          "kind": "work",
+          "role": "w"
+        }
+      ],
+      "title": "A",
+      "edges": [
+        {
+          "id": "a_next",
+          "label": "To b",
+          "to": "b"
+        }
+      ]
+    },
+    {
+      "key": "b",
+      "kind": "tasks",
+      "status": {
+        "key": "in_progress"
+      },
+      "tasks": [
+        {
+          "key": "work_b",
+          "title": "B",
+          "kind": "work",
+          "role": "w"
+        }
+      ],
+      "title": "B",
+      "edges": [
+        {
+          "id": "b_next",
+          "label": "To c",
+          "to": "c"
+        }
+      ]
+    },
+    {
+      "key": "c",
+      "kind": "tasks",
+      "status": {
+        "key": "in_progress"
+      },
+      "tasks": [
+        {
+          "key": "gate_c",
+          "title": "C",
+          "kind": "gate",
+          "role": "g1"
+        }
+      ],
+      "title": "C",
+      "edges": [
+        {
+          "id": "c_ok",
+          "label": "Passed",
+          "to": "d",
+          "when": {
+            "field": "join.result",
+            "op": "eq",
+            "value": "pass"
+          }
+        },
+        {
+          "id": "c_inner",
+          "label": "Back to b",
+          "to": "b",
+          "when": {
+            "all": [
+              {
+                "field": "join.result",
+                "op": "eq",
+                "value": "fail"
+              },
+              {
+                "field": "loop.inner.count",
+                "op": "lt",
+                "value": 2
+              }
+            ]
+          },
+          "loop": "inner"
+        },
+        {
+          "id": "c_next",
+          "label": "Go on anyway",
+          "to": "d"
+        }
+      ]
+    },
+    {
+      "key": "d",
+      "kind": "tasks",
+      "status": {
+        "key": "in_progress"
+      },
+      "tasks": [
+        {
+          "key": "gate_d",
+          "title": "D",
+          "kind": "gate",
+          "role": "g2"
+        }
+      ],
+      "title": "D",
+      "edges": [
+        {
+          "id": "d_ok",
+          "label": "Passed",
+          "to": "done",
+          "when": {
+            "field": "join.result",
+            "op": "eq",
+            "value": "pass"
+          }
+        },
+        {
+          "id": "d_outer",
+          "label": "Back to a",
+          "to": "a",
+          "when": {
+            "all": [
+              {
+                "field": "join.result",
+                "op": "eq",
+                "value": "fail"
+              },
+              {
+                "field": "loop.outer.count",
+                "op": "lt",
+                "value": 1
+              }
+            ]
+          },
+          "loop": "outer"
+        },
+        {
+          "id": "d_stop",
+          "label": "Limit reached",
+          "stop": "loop_exhausted"
+        }
+      ]
+    }
+  ],
+  "messages": {
+    "stop3": "BLOCKED · stop 3\n{requester} {request} stopped at {step}.\n{tasks}"
+  },
+  "policy": {},
+  "loops": [
+    {
+      "key": "outer",
+      "header": "a",
+      "max": 1
+    },
+    {
+      "key": "inner",
+      "header": "b",
+      "max": 2
+    }
+  ]
+}

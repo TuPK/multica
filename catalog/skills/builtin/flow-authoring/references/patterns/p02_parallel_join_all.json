@@ -1,0 +1,106 @@
+{
+  "version": 2,
+  "start": "plan",
+  "roles": [
+    {
+      "key": "a",
+      "kind": "agent"
+    },
+    {
+      "key": "b",
+      "kind": "agent"
+    },
+    {
+      "key": "c",
+      "kind": "agent"
+    }
+  ],
+  "stops": [
+    {
+      "code": "loop_exhausted",
+      "class": "loop_exhausted",
+      "message": "stop3",
+      "legacy_no": 3
+    }
+  ],
+  "terminals": [
+    {
+      "key": "done",
+      "status": "done"
+    },
+    {
+      "key": "cancelled",
+      "status": "cancelled"
+    }
+  ],
+  "steps": [
+    {
+      "key": "plan",
+      "kind": "lead",
+      "status": {
+        "key": "todo"
+      },
+      "title": "Plan",
+      "edges": [
+        {
+          "id": "plan_ok",
+          "label": "Planned",
+          "to": "work"
+        }
+      ]
+    },
+    {
+      "key": "work",
+      "kind": "tasks",
+      "status": {
+        "key": "in_progress"
+      },
+      "tasks": [
+        {
+          "key": "ta",
+          "title": "A",
+          "kind": "work",
+          "role": "a"
+        },
+        {
+          "key": "tb",
+          "title": "B",
+          "kind": "work",
+          "role": "b"
+        },
+        {
+          "key": "tc",
+          "title": "C",
+          "kind": "work",
+          "role": "c"
+        }
+      ],
+      "title": "Work",
+      "join": {
+        "over": "all",
+        "mode": "all"
+      },
+      "edges": [
+        {
+          "id": "work_ok",
+          "label": "All done",
+          "to": "done",
+          "when": {
+            "field": "join.result",
+            "op": "eq",
+            "value": "pass"
+          }
+        },
+        {
+          "id": "work_stop",
+          "label": "Not all done",
+          "stop": "loop_exhausted"
+        }
+      ]
+    }
+  ],
+  "messages": {
+    "stop3": "BLOCKED · stop 3\n{requester} {request} stopped at {step}.\n{tasks}"
+  },
+  "policy": {}
+}

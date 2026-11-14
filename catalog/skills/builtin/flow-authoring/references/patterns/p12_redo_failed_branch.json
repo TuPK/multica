@@ -1,0 +1,196 @@
+{
+  "version": 2,
+  "start": "plan",
+  "roles": [
+    {
+      "key": "fe_dev",
+      "kind": "agent"
+    },
+    {
+      "key": "be_dev",
+      "kind": "agent"
+    },
+    {
+      "key": "fe_checker",
+      "kind": "agent"
+    },
+    {
+      "key": "be_checker",
+      "kind": "agent"
+    }
+  ],
+  "stops": [
+    {
+      "code": "loop_exhausted",
+      "class": "loop_exhausted",
+      "message": "stop3",
+      "legacy_no": 3
+    }
+  ],
+  "terminals": [
+    {
+      "key": "done",
+      "status": "done"
+    },
+    {
+      "key": "cancelled",
+      "status": "cancelled"
+    }
+  ],
+  "steps": [
+    {
+      "key": "plan",
+      "kind": "lead",
+      "status": {
+        "key": "todo"
+      },
+      "title": "Plan",
+      "edges": [
+        {
+          "id": "plan_ok",
+          "label": "Planned",
+          "to": "build"
+        }
+      ]
+    },
+    {
+      "key": "build",
+      "kind": "tasks",
+      "status": {
+        "key": "in_progress"
+      },
+      "tasks": [
+        {
+          "key": "fe",
+          "title": "Front end",
+          "kind": "work",
+          "role": "fe_dev",
+          "when": {
+            "any": [
+              {
+                "not": {
+                  "field": "task.fe_review.verdict",
+                  "op": "exists"
+                }
+              },
+              {
+                "field": "task.fe_review.verdict",
+                "op": "neq",
+                "value": "approved"
+              }
+            ]
+          }
+        },
+        {
+          "key": "be",
+          "title": "Back end",
+          "kind": "work",
+          "role": "be_dev",
+          "when": {
+            "any": [
+              {
+                "not": {
+                  "field": "task.be_review.verdict",
+                  "op": "exists"
+                }
+              },
+              {
+                "field": "task.be_review.verdict",
+                "op": "neq",
+                "value": "approved"
+              }
+            ]
+          }
+        }
+      ],
+      "title": "Build",
+      "edges": [
+        {
+          "id": "build_next",
+          "label": "Built",
+          "to": "review"
+        }
+      ]
+    },
+    {
+      "key": "review",
+      "kind": "tasks",
+      "status": {
+        "key": "in_progress"
+      },
+      "tasks": [
+        {
+          "key": "fe_review",
+          "title": "Check the front end",
+          "kind": "gate",
+          "role": "fe_checker",
+          "when": {
+            "field": "task.fe.pass",
+            "op": "gte",
+            "value": 1
+          }
+        },
+        {
+          "key": "be_review",
+          "title": "Check the back end",
+          "kind": "gate",
+          "role": "be_checker",
+          "when": {
+            "field": "task.be.pass",
+            "op": "gte",
+            "value": 1
+          }
+        }
+      ],
+      "title": "Review",
+      "edges": [
+        {
+          "id": "review_ok",
+          "label": "Both approved",
+          "to": "done",
+          "when": {
+            "field": "join.result",
+            "op": "eq",
+            "value": "pass"
+          }
+        },
+        {
+          "id": "review_redo",
+          "label": "Redo the failed branch",
+          "to": "build",
+          "when": {
+            "all": [
+              {
+                "field": "join.result",
+                "op": "eq",
+                "value": "fail"
+              },
+              {
+                "field": "loop.redo.count",
+                "op": "lt",
+                "value": 2
+              }
+            ]
+          },
+          "loop": "redo"
+        },
+        {
+          "id": "review_stop",
+          "label": "Redo limit reached",
+          "stop": "loop_exhausted"
+        }
+      ]
+    }
+  ],
+  "messages": {
+    "stop3": "BLOCKED · stop 3\n{requester} {request} stopped at {step}.\n{tasks}"
+  },
+  "policy": {},
+  "loops": [
+    {
+      "key": "redo",
+      "header": "build",
+      "max": 2
+    }
+  ]
+}

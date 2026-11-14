@@ -1,0 +1,106 @@
+{
+  "version": 2,
+  "start": "plan",
+  "roles": [
+    {
+      "key": "w1",
+      "kind": "agent"
+    },
+    {
+      "key": "w2",
+      "kind": "agent"
+    },
+    {
+      "key": "w3",
+      "kind": "agent"
+    }
+  ],
+  "stops": [
+    {
+      "code": "loop_exhausted",
+      "class": "loop_exhausted",
+      "message": "stop3",
+      "legacy_no": 3
+    }
+  ],
+  "terminals": [
+    {
+      "key": "done",
+      "status": "done"
+    },
+    {
+      "key": "cancelled",
+      "status": "cancelled"
+    }
+  ],
+  "steps": [
+    {
+      "key": "plan",
+      "kind": "lead",
+      "status": {
+        "key": "todo"
+      },
+      "title": "Plan",
+      "edges": [
+        {
+          "id": "plan_ok",
+          "label": "Planned",
+          "to": "race"
+        }
+      ]
+    },
+    {
+      "key": "race",
+      "kind": "tasks",
+      "status": {
+        "key": "in_progress"
+      },
+      "tasks": [
+        {
+          "key": "g1",
+          "title": "Racer 1",
+          "kind": "gate",
+          "role": "w1"
+        },
+        {
+          "key": "g2",
+          "title": "Racer 2",
+          "kind": "gate",
+          "role": "w2"
+        },
+        {
+          "key": "g3",
+          "title": "Racer 3",
+          "kind": "gate",
+          "role": "w3"
+        }
+      ],
+      "title": "Race",
+      "join": {
+        "over": "gates",
+        "mode": "any"
+      },
+      "edges": [
+        {
+          "id": "race_ok",
+          "label": "First pass",
+          "to": "done",
+          "when": {
+            "field": "join.result",
+            "op": "eq",
+            "value": "pass"
+          }
+        },
+        {
+          "id": "race_stop",
+          "label": "Nobody passed",
+          "stop": "loop_exhausted"
+        }
+      ]
+    }
+  ],
+  "messages": {
+    "stop3": "BLOCKED · stop 3\n{requester} {request} stopped at {step}.\n{tasks}"
+  },
+  "policy": {}
+}

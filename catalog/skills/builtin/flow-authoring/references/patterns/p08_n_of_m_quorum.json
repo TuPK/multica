@@ -1,0 +1,107 @@
+{
+  "version": 2,
+  "start": "plan",
+  "roles": [
+    {
+      "key": "r1",
+      "kind": "agent"
+    },
+    {
+      "key": "r2",
+      "kind": "agent"
+    },
+    {
+      "key": "r3",
+      "kind": "agent"
+    }
+  ],
+  "stops": [
+    {
+      "code": "loop_exhausted",
+      "class": "loop_exhausted",
+      "message": "stop3",
+      "legacy_no": 3
+    }
+  ],
+  "terminals": [
+    {
+      "key": "done",
+      "status": "done"
+    },
+    {
+      "key": "cancelled",
+      "status": "cancelled"
+    }
+  ],
+  "steps": [
+    {
+      "key": "plan",
+      "kind": "lead",
+      "status": {
+        "key": "todo"
+      },
+      "title": "Plan",
+      "edges": [
+        {
+          "id": "plan_ok",
+          "label": "Planned",
+          "to": "vote"
+        }
+      ]
+    },
+    {
+      "key": "vote",
+      "kind": "tasks",
+      "status": {
+        "key": "in_progress"
+      },
+      "tasks": [
+        {
+          "key": "v1",
+          "title": "Voter 1",
+          "kind": "gate",
+          "role": "r1"
+        },
+        {
+          "key": "v2",
+          "title": "Voter 2",
+          "kind": "gate",
+          "role": "r2"
+        },
+        {
+          "key": "v3",
+          "title": "Voter 3",
+          "kind": "gate",
+          "role": "r3"
+        }
+      ],
+      "title": "Vote",
+      "join": {
+        "over": "gates",
+        "mode": "quorum",
+        "k": 2
+      },
+      "edges": [
+        {
+          "id": "vote_ok",
+          "label": "Two agree",
+          "to": "done",
+          "when": {
+            "field": "join.result",
+            "op": "eq",
+            "value": "pass"
+          }
+        },
+        {
+          "id": "vote_stop",
+          "label": "No majority",
+          "stop": "loop_exhausted"
+        }
+      ]
+    }
+  ],
+  "messages": {
+    "stop3": "BLOCKED · stop 3\n{requester} {request} stopped at {step}.\n{tasks}"
+  },
+  "policy": {}
+}
