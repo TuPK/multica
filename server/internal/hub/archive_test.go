@@ -159,6 +159,54 @@ func TestExtractZipStripsSingleTopDirAndDropsJunk(t *testing.T) {
 			want: map[string]string{"a/SKILL.md": "a", "b/SKILL.md": "b"},
 		},
 		{
+			name: "a zip whose only folder is agents/ keeps it: it is content, not a wrapper",
+			specs: []zipSpec{
+				{name: "agents/", body: nil},
+				{name: "agents/writer.md", body: []byte("w")},
+				{name: "agents/editor.md", body: []byte("e")},
+			},
+			want: map[string]string{"agents/writer.md": "w", "agents/editor.md": "e"},
+		},
+		{
+			name: "skills/ alone is kept too",
+			specs: []zipSpec{
+				{name: "skills/style/SKILL.md", body: []byte("s")},
+				{name: "skills/style/references/a.md", body: []byte("a")},
+			},
+			want: map[string]string{"skills/style/SKILL.md": "s", "skills/style/references/a.md": "a"},
+		},
+		{
+			name: "docs/ alone is kept",
+			specs: []zipSpec{
+				{name: "docs/a.md", body: []byte("a")},
+				{name: "docs/b/c.md", body: []byte("c")},
+			},
+			want: map[string]string{"docs/a.md": "a", "docs/b/c.md": "c"},
+		},
+		{
+			name:  "workflows/ alone is kept",
+			specs: []zipSpec{{name: "workflows/flow.md", body: []byte("f")}},
+			want:  map[string]string{"workflows/flow.md": "f"},
+		},
+		{
+			name:  "references/ alone is kept",
+			specs: []zipSpec{{name: "references/r.md", body: []byte("r")}},
+			want:  map[string]string{"references/r.md": "r"},
+		},
+		{
+			name: "a wrapper of any other name is stripped once, and the agents/ inside it stays",
+			specs: []zipSpec{
+				{name: "writing-pack-main/agents/writer.md", body: []byte("w")},
+				{name: "writing-pack-main/agents/editor.md", body: []byte("e")},
+			},
+			want: map[string]string{"agents/writer.md": "w", "agents/editor.md": "e"},
+		},
+		{
+			name:  "a wrapper that is named like a content folder but differs in case is a wrapper",
+			specs: []zipSpec{{name: "Agents/SKILL.md", body: []byte("s")}},
+			want:  map[string]string{"SKILL.md": "s"},
+		},
+		{
 			name: "macOS and finder junk is dropped before stripping",
 			specs: []zipSpec{
 				{name: "__MACOSX/repo/._SKILL.md", body: []byte("resource fork")},

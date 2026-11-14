@@ -221,8 +221,13 @@ func isJunk(p string) bool {
 	return base == ".DS_Store" || base == "Thumbs.db" || strings.HasPrefix(base, "._")
 }
 
+// contentDirs are the folders a bundle puts its content in. A zip whose only folder is one of them is not a
+// wrapper around a bundle: stripping it would turn agents/writer.md into writer.md.
+var contentDirs = map[string]bool{"agents": true, "skills": true, "docs": true, "workflows": true, "references": true}
+
 // commonTopDir returns the single directory every path lives under, or "" when
-// any path is at the root or the directories differ.
+// any path is at the root, the directories differ, or the directory is one a
+// bundle keeps its content in (contentDirs).
 func commonTopDir(paths []string) string {
 	top := ""
 	for _, p := range paths {
@@ -236,6 +241,9 @@ func commonTopDir(paths []string) string {
 		} else if dir != top {
 			return ""
 		}
+	}
+	if contentDirs[top] {
+		return ""
 	}
 	return top
 }
