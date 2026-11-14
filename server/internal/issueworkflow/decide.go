@@ -611,6 +611,11 @@ func (g Graph) route(st State, tasks []TaskState, step DocStep, fs FactSet, manu
 		} else if e.Edge.Trigger == EdgeTriggerManual {
 			continue
 		}
+		// A block ends the join (spec A17): it may take a stop edge, or an edge
+		// that names join.result. It never moves the request on by an unconditional edge.
+		if result == JoinBlock && manualID == "" && e.Edge.Stop == "" && !namesJoinResult(e.Edge) {
+			continue
+		}
 		if e.Edge.When != nil {
 			walkCondition(*e.Edge.When, func(c Condition) { read = append(read, c.Field) })
 			ok, err := EvaluateWith(*e.Edge.When, fs)
@@ -633,12 +638,27 @@ func (g Graph) route(st State, tasks []TaskState, step DocStep, fs FactSet, manu
 			return GraphDecision{}, false
 		}
 		d := stalledGraph(ReasonNoEdge)
+		d.JoinResult = result
 		d.Facts = factValues(fs, read)
 		return d, true
 	}
 	d := g.decisionFor(st, tasks, step, *chosen, result)
 	d.Facts = factValues(fs, read)
 	return d, true
+}
+
+// namesJoinResult reports whether the edge's condition reads join.result.
+func namesJoinResult(e DocEdge) bool {
+	if e.When == nil {
+		return false
+	}
+	found := false
+	walkCondition(*e.When, func(c Condition) {
+		if c.Field == "join.result" {
+			found = true
+		}
+	})
+	return found
 }
 
 // factValues reads the values of the named facts, each once. A fact without a

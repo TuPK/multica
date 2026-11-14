@@ -238,6 +238,25 @@ func TestDecide_BlockIsImmediate(t *testing.T) {
 	}
 }
 
+// A blocked task ends the join with block (spec A17). A block never takes an
+// unconditional edge: the step stalls unless an edge names join.result = block.
+func TestDecide_BlockedWorkTaskNeverTakesAnUnconditionalEdge(t *testing.T) {
+	doc := modify(loadFlowDoc(t, "patterns/p02_parallel_join_all.json"), func(d *FlowDoc) {
+		stepIdx(d, "work").Edges = []DocEdge{{ID: "work_next", To: "done"}}
+	})
+	g := NewGraph(doc)
+	st := at(g, "work", 1, nil)
+	rows := []TaskState{
+		closedTask("work", "ta", KindWork, 0, "done"),
+		{Step: "work", Key: "tb", Kind: KindWork, Round: 0, Outcome: OutcomeBlocked},
+		closedTask("work", "tc", KindWork, 0, "done"),
+	}
+	d := decideAt(g, st, rows)
+	if d.TransitionID != "" || d.Stop != StopStalled || d.JoinResult != JoinBlock {
+		t.Fatalf("a blocked task took %q (stop %q, join %q); want the step stalled on block", d.TransitionID, d.Stop, d.JoinResult)
+	}
+}
+
 func TestDecide_BlockAtCloseWaits(t *testing.T) {
 	doc := modify(loadFlowDoc(t, "patterns/p02_parallel_join_all.json"), func(d *FlowDoc) {
 		stepIdx(d, "work").Join.Block = JoinBlockAtClose
