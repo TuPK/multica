@@ -658,6 +658,10 @@ func (v *validator) checkInputs(sk string, s DocStep) {
 				}
 				v.add("T07", "input_maybe_missing", sev, ip, fmt.Sprintf("input %q may not exist when step %q is entered", in.From, s.Key), map[string]any{"from": in.From, "required": in.Required})
 			}
+			if src.Requires == nil || len(src.Requires.Files) == 0 {
+				// The task reads the files attached to its input; a source that requires none has none to read.
+				v.add("T07", "input_no_files", SeverityWarning, ip, fmt.Sprintf("input %q requires no file, so there is no attached file to read", in.From), map[string]any{"from": in.From})
+			}
 		}
 	}
 }

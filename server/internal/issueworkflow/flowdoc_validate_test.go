@@ -939,8 +939,11 @@ func TestValidate_T07InputsAndMaybeMissing(t *testing.T) {
 	run := func(d FlowDoc) []Issue { return issuesOfRule(ValidateFlowDoc(d, vctx()), "T07") }
 
 	t.Run("an input from a step before is valid", func(t *testing.T) {
-		if got := run(loadFlowDoc(t, "crossreview.json")); len(got) != 0 {
-			t.Fatalf("%s", describeIssues(got))
+		// The fixture's gates read work tasks that attach no file: the new warning says so, and nothing blocks.
+		for _, issue := range run(loadFlowDoc(t, "crossreview.json")) {
+			if issue.Severity != SeverityWarning || issue.Code != "input_no_files" {
+				t.Fatalf("%s", describeIssues(run(loadFlowDoc(t, "crossreview.json"))))
+			}
 		}
 	})
 	bad := map[string]string{
@@ -1000,6 +1003,18 @@ func TestValidate_T07InputsAndMaybeMissing(t *testing.T) {
 		})
 		if got := run(d); len(got) != 0 {
 			t.Fatalf("%s", describeIssues(got))
+		}
+	})
+	t.Run("a source that requires no file gives the task no file to read: a warning", func(t *testing.T) {
+		// do_b is a work task with no requires.files: its output is a comment, so a task that reads
+		// its attached files has nothing to judge (the live check task was blocked for this reason).
+		got := run(branchDoc("b.do_b", nil))
+		issue := findIssue(got, "T07", "input_no_files")
+		if issue == nil || issue.Severity != SeverityWarning || !strings.HasPrefix(issue.Path, "steps[merge].tasks[wrap].inputs[") {
+			t.Fatalf("%s", describeIssues(got))
+		}
+		if got := run(branchDoc("a.do_a", nil)); findIssue(got, "T07", "input_no_files") != nil {
+			t.Fatalf("a source that requires a file is not flagged: %s", describeIssues(got))
 		}
 	})
 	t.Run("a source with a condition may not open", func(t *testing.T) {
