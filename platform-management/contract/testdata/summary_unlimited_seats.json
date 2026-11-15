@@ -1,0 +1,32 @@
+{
+  "entitlement": {
+    "workspace_id": "55555555-5555-4555-8555-555555555555",
+    "plan": "enterprise",
+    "status": "active",
+    "seats": 0,
+    "limits": {
+      "autopilot_runs": {
+        "mode": "limited",
+        "limit": 10000
+      },
+      "issue_count": {
+        "mode": "unlimited"
+      }
+    },
+    "current_period_end": null,
+    "snapshot_expires_at": null,
+    "version": 2
+  },
+  "billing_interval": "year",
+  "human_members": 4,
+  "seat_capacity": null,
+  "cancel_at_period_end": false,
+  "grace_until": null,
+  "has_stripe_customer": false,
+  "available_actions": {
+    "checkout": true,
+    "portal": false,
+    "purchase_seats": false
+  },
+  "payment_provider": "manual"
+}

@@ -276,6 +276,67 @@ func (q *Queries) GetBillingOrderForUpdate(ctx context.Context, id pgtype.UUID) 
 	return i, err
 }
 
+const getPendingAddSeatsOrder = `-- name: GetPendingAddSeatsOrder :one
+SELECT id, workspace_id, kind, plan_key, interval, seats, amount, vat_amount, currency, status, provider, provider_ref, transfer_code, idempotency_key, buyer, period_start, period_end, einvoice_ref, created_by, confirmed_by, paid_at, expires_at, created_at FROM billing_order
+WHERE workspace_id = $1
+  AND kind = 'add_seats'
+  AND status = 'pending'
+  AND expires_at > $2
+ORDER BY created_at DESC, id DESC
+LIMIT 1
+`
+
+type GetPendingAddSeatsOrderParams struct {
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+}
+
+// The workspace's newest add_seats order that can still be paid. The billing
+// page reads it as the active seat purchase.
+func (q *Queries) GetPendingAddSeatsOrder(ctx context.Context, arg GetPendingAddSeatsOrderParams) (BillingOrder, error) {
+	row := q.db.QueryRow(ctx, getPendingAddSeatsOrder, arg.WorkspaceID, arg.ExpiresAt)
+	var i BillingOrder
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Kind,
+		&i.PlanKey,
+		&i.Interval,
+		&i.Seats,
+		&i.Amount,
+		&i.VatAmount,
+		&i.Currency,
+		&i.Status,
+		&i.Provider,
+		&i.ProviderRef,
+		&i.TransferCode,
+		&i.IdempotencyKey,
+		&i.Buyer,
+		&i.PeriodStart,
+		&i.PeriodEnd,
+		&i.EinvoiceRef,
+		&i.CreatedBy,
+		&i.ConfirmedBy,
+		&i.PaidAt,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getWorkspaceSlug = `-- name: GetWorkspaceSlug :one
+SELECT slug FROM workspace
+WHERE id = $1
+`
+
+// The address of an order page names the workspace by its slug.
+func (q *Queries) GetWorkspaceSlug(ctx context.Context, id pgtype.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getWorkspaceSlug, id)
+	var slug string
+	err := row.Scan(&slug)
+	return slug, err
+}
+
 const listPendingBillingOrders = `-- name: ListPendingBillingOrders :many
 SELECT id, workspace_id, kind, plan_key, interval, seats, amount, vat_amount, currency, status, provider, provider_ref, transfer_code, idempotency_key, buyer, period_start, period_end, einvoice_ref, created_by, confirmed_by, paid_at, expires_at, created_at FROM billing_order
 WHERE status = 'pending'

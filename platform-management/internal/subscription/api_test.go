@@ -78,10 +78,23 @@ func (f *fakePlans) Get(_ context.Context, key string) (plan.Plan, bool, error) 
 
 func (f *fakePlans) List(context.Context) ([]plan.Plan, error) { return f.plans, f.err }
 
+type fakePending struct {
+	order PendingPurchase
+	has   bool
+	err   error
+	calls int
+}
+
+func (f *fakePending) PendingSeats(context.Context, string, time.Time) (PendingPurchase, bool, error) {
+	f.calls++
+	return f.order, f.has && f.err == nil, f.err
+}
+
 type apiEnv struct {
 	members *fakeMembers
 	subs    *fakeSubs
 	plans   *fakePlans
+	pending *fakePending
 	h       http.Handler
 }
 
@@ -98,11 +111,13 @@ func newAPIEnv(t *testing.T) *apiEnv {
 			},
 			count: 2,
 		},
-		subs:  &fakeSubs{rows: map[string]Subscription{}},
-		plans: &fakePlans{plans: all},
+		subs:    &fakeSubs{rows: map[string]Subscription{}},
+		plans:   &fakePlans{plans: all},
+		pending: &fakePending{},
 	}
 	api := NewAPI(APIDeps{
-		Subscriptions: e.subs, Plans: e.plans, Members: e.members,
+		Subscriptions: e.subs, Plans: e.plans, Members: e.members, Pending: e.pending,
+		Now: func() time.Time { return t0 },
 		Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	})
 	e.h = api.Handler(trust.New(trust.DefaultCIDRs()).RequireUser)
@@ -332,14 +347,104 @@ func TestSummaryOfAFreeWorkspace(t *testing.T) {
 	}
 }
 
-// The billing actions are not served by this slice; the page must not offer them.
-func TestSummaryOffersNoActionThisSliceCannotServe(t *testing.T) {
+func actionsOf(t *testing.T, m map[string]any) map[string]any {
+	t.Helper()
+	return obj(t, m["available_actions"], "available_actions")
+}
+
+// A workspace on the free plan can order a plan, and cannot buy seats: the free
+// plan has no seat price.
+func TestSummaryOfAFreeWorkspaceOffersCheckoutOnly(t *testing.T) {
 	e := newAPIEnv(t)
-	actions := obj(t, decodeMap(t, e.summary(ownerID))["available_actions"], "available_actions")
-	for k, v := range actions {
-		if v != false {
-			t.Errorf("available_actions.%s = %v, want false until checkout and seat purchase exist", k, v)
+	got := actionsOf(t, decodeMap(t, e.summary(ownerID)))
+	want := map[string]any{"checkout": true, "portal": false, "purchase_seats": false}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("available_actions.%s = %v, want %v", k, got[k], v)
 		}
+	}
+}
+
+func paidRow(start, end time.Time) Subscription {
+	return Subscription{
+		WorkspaceID: wsID, PlanKey: "pro", Status: StatusActive, Seats: 5, Interval: IntervalMonth,
+		CurrentPeriodStart: &start, CurrentPeriodEnd: &end, Version: 4,
+	}
+}
+
+func TestSummaryOffersSeatPurchaseOnlyInsideAPaidPeriod(t *testing.T) {
+	day := 24 * time.Hour
+	cases := []struct {
+		name string
+		edit func(*Subscription)
+		want bool
+	}{
+		{"inside the period", func(*Subscription) {}, true},
+		{"period ended", func(s *Subscription) { e := t0.Add(-day); s.CurrentPeriodEnd = &e }, false},
+		{"period not started", func(s *Subscription) { st := t0.Add(day); s.CurrentPeriodStart = &st }, false},
+		{"no period", func(s *Subscription) { s.CurrentPeriodStart, s.CurrentPeriodEnd = nil, nil }, false},
+		{"past due", func(s *Subscription) { s.Status = "past_due" }, false},
+		{"plan with no seat price", func(s *Subscription) { s.PlanKey = "free" }, false},
+	}
+	for _, tc := range cases {
+		e := newAPIEnv(t)
+		row := paidRow(t0.Add(-10*day), t0.Add(20*day))
+		tc.edit(&row)
+		e.subs.rows[wsID] = row
+		m := decodeMap(t, e.summary(ownerID))
+		checkSummarySchema(t, m)
+		a := actionsOf(t, m)
+		if a["purchase_seats"] != tc.want || a["checkout"] != true || a["portal"] != false {
+			t.Errorf("%s: available_actions = %v, want purchase_seats %v", tc.name, a, tc.want)
+		}
+	}
+}
+
+// A pending add_seats order is the active purchase, and pending_quantity is the
+// seat count that order leads to.
+func TestSummaryReportsAPendingSeatPurchase(t *testing.T) {
+	e := newAPIEnv(t)
+	e.subs.rows[wsID] = paidRow(t0.Add(-24*time.Hour), t0.Add(24*time.Hour))
+	exp := t0.Add(6 * 24 * time.Hour)
+	e.pending.order, e.pending.has = PendingPurchase{OrderID: "dddddddd-0000-0000-0000-000000000001", Seats: 3, ExpiresAt: exp}, true
+	m := decodeMap(t, e.summary(ownerID))
+	checkSummarySchema(t, m)
+	sc := obj(t, m["seat_capacity"], "seat_capacity")
+	if sc["pending_quantity"] != float64(8) {
+		t.Errorf("pending_quantity = %v, want 5 purchased + 3 ordered", sc["pending_quantity"])
+	}
+	ap := obj(t, sc["active_purchase"], "active_purchase")
+	if ap["request_id"] != "dddddddd-0000-0000-0000-000000000001" || ap["target_seats"] != float64(8) || ap["status"] != "pending" || ap["expires_at"] != "2030-05-12T07:08:09.123456789Z" {
+		t.Errorf("active_purchase = %v", ap)
+	}
+}
+
+func TestSummaryWithoutAPendingPurchaseOmitsTheActivePurchase(t *testing.T) {
+	e := newAPIEnv(t)
+	e.subs.rows[wsID] = paidRow(t0.Add(-24*time.Hour), t0.Add(24*time.Hour))
+	sc := obj(t, decodeMap(t, e.summary(ownerID))["seat_capacity"], "seat_capacity")
+	if _, has := sc["active_purchase"]; has || sc["pending_quantity"] != nil {
+		t.Errorf("seat_capacity = %v, want no active_purchase and a null pending_quantity", sc)
+	}
+}
+
+// A workspace with no seat limit has no seat capacity, so the pending order is
+// not read.
+func TestSummaryDoesNotReadPendingPurchasesWithoutSeatCapacity(t *testing.T) {
+	e := newAPIEnv(t)
+	e.subs.rows[wsID] = Subscription{WorkspaceID: wsID, PlanKey: "enterprise", Status: "active", Interval: IntervalYear, Version: 2}
+	e.summary(ownerID)
+	if e.pending.calls != 0 {
+		t.Errorf("the pending purchase was read %d times", e.pending.calls)
+	}
+}
+
+func TestSummaryFailsWhenThePendingPurchaseCannotBeRead(t *testing.T) {
+	e := newAPIEnv(t)
+	e.subs.rows[wsID] = paidRow(t0.Add(-24*time.Hour), t0.Add(24*time.Hour))
+	e.pending.err = errors.New("db down")
+	if rec := e.summary(ownerID); rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", rec.Code)
 	}
 }
 
@@ -486,6 +591,85 @@ func TestPricesAre503WithoutAPublicPaidPlan(t *testing.T) {
 	}
 	if m := decodeMap(t, rec); m["code"] != "prices_unavailable" {
 		t.Errorf("body = %v", m)
+	}
+}
+
+func (e *apiEnv) pricesFor(query string) *httptest.ResponseRecorder {
+	return e.get("/api/v1/subscriptions/"+wsID+"/prices"+query, ownerID, "10.0.0.7:4000")
+}
+
+func unitAmounts(t *testing.T, rec *httptest.ResponseRecorder) (month, year float64) {
+	t.Helper()
+	if rec.Code != 200 {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body)
+	}
+	m := decodeMap(t, rec)
+	return obj(t, m["month"], "month")["unit_amount"].(float64), obj(t, m["year"], "year")["unit_amount"].(float64)
+}
+
+// The cheapest public paid plan is the entry plan, whatever the display order.
+func TestPricesOfAFreeWorkspaceAreTheCheapestPublicPaidPlans(t *testing.T) {
+	e := newAPIEnv(t)
+	for i := range e.plans.plans { // put business before pro in display order
+		switch e.plans.plans[i].Key {
+		case "pro":
+			e.plans.plans[i].Sort = 40
+		}
+	}
+	if month, year := unitAmounts(t, e.pricesFor("")); month != 149000 || year != 1490000 {
+		t.Errorf("prices = %v, %v; want pro's", month, year)
+	}
+}
+
+func TestPricesOfAPaidWorkspaceAreItsCurrentPlans(t *testing.T) {
+	e := newAPIEnv(t)
+	e.subs.rows[wsID] = Subscription{WorkspaceID: wsID, PlanKey: "business", Status: "active", Seats: 5, Interval: IntervalMonth, Version: 1}
+	if month, year := unitAmounts(t, e.pricesFor("")); month != 349000 || year != 3490000 {
+		t.Errorf("prices = %v, %v; want business's", month, year)
+	}
+}
+
+func TestPricesOfAWorkspaceOnTheFreePlanRowAreTheEntryPlans(t *testing.T) {
+	e := newAPIEnv(t)
+	e.subs.rows[wsID] = Subscription{WorkspaceID: wsID, PlanKey: "free", Status: "active", Interval: IntervalMonth, Version: 1}
+	if month, _ := unitAmounts(t, e.pricesFor("")); month != 149000 {
+		t.Errorf("month = %v, want pro's", month)
+	}
+}
+
+func TestPricesTakeThePlanQuery(t *testing.T) {
+	e := newAPIEnv(t)
+	e.subs.rows[wsID] = Subscription{WorkspaceID: wsID, PlanKey: "pro", Status: "active", Seats: 5, Interval: IntervalMonth, Version: 1}
+	if month, year := unitAmounts(t, e.pricesFor("?plan=business")); month != 349000 || year != 3490000 {
+		t.Errorf("?plan=business: %v, %v", month, year)
+	}
+}
+
+func TestPricesRefuseAPlanThatIsNotListedForTheWorkspace(t *testing.T) {
+	e := newAPIEnv(t)
+	for name, query := range map[string]string{
+		"unknown":          "?plan=nope",
+		"private":          "?plan=enterprise",
+		"not a plan key":   "?plan=%00",
+		"empty plan value": "?plan=",
+	} {
+		rec := e.pricesFor(query)
+		if rec.Code != 404 || decodeMap(t, rec)["code"] != "plan_not_found" {
+			t.Errorf("%s: status %d, body %s; want 404 plan_not_found", name, rec.Code, rec.Body)
+		}
+	}
+	// The workspace's own private plan can be priced.
+	e.subs.rows[wsID] = Subscription{WorkspaceID: wsID, PlanKey: "enterprise", Status: "active", Interval: IntervalYear, Version: 1}
+	if rec := e.pricesFor("?plan=enterprise"); rec.Code == 404 {
+		t.Errorf("a workspace on a private plan cannot read its prices: %s", rec.Body)
+	}
+}
+
+func TestPricesOfAPlanWithNoSeatPriceAre503(t *testing.T) {
+	e := newAPIEnv(t)
+	rec := e.pricesFor("?plan=free")
+	if rec.Code != 503 || decodeMap(t, rec)["code"] != "prices_unavailable" {
+		t.Fatalf("status %d, body %s", rec.Code, rec.Body)
 	}
 }
 

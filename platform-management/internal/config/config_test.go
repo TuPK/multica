@@ -20,6 +20,8 @@ func resendEnv() map[string]string {
 		"RESEND_API_KEY":          "re_test",
 		"RESEND_FROM_EMAIL":       "platform@example.com",
 
+		"PLATFORM_APP_URL": "https://app.example.com",
+
 		"BILLING_BANK_ACCOUNT_NAME":   "CONG TY TNHH MULTICA",
 		"BILLING_BANK_ACCOUNT_NUMBER": "0123456789",
 		"BILLING_BANK_NAME":           "Vietcombank",
@@ -571,6 +573,57 @@ func TestMissingBankDetailsStopTheStart(t *testing.T) {
 			if vs := variables(err); len(vs) != 1 || vs[0] != name {
 				t.Errorf("%s=%q: variables = %v", name, value, vs)
 			}
+		}
+	}
+}
+
+func TestLoadAppURL(t *testing.T) {
+	good := map[string]string{
+		"https://app.example.com":  "https://app.example.com",
+		"https://App.Example.com/": "https://app.example.com",
+		"http://localhost:3000":    "http://localhost:3000",
+		" http://127.0.0.1:3000/ ": "http://127.0.0.1:3000",
+	}
+	for raw, want := range good {
+		env := resendEnv()
+		env["PLATFORM_APP_URL"] = raw
+		cfg, err := load(env)
+		if err != nil {
+			t.Errorf("PLATFORM_APP_URL=%q: %v", raw, err)
+			continue
+		}
+		if cfg.AppURL != want {
+			t.Errorf("PLATFORM_APP_URL=%q: AppURL = %q, want %q", raw, cfg.AppURL, want)
+		}
+	}
+}
+
+func TestBadOrMissingAppURLStopsTheStart(t *testing.T) {
+	for _, raw := range []string{
+		"",
+		"   ",
+		"ftp://app.example.com",
+		"javascript:alert(1)",
+		"app.example.com",
+		"//app.example.com",
+		"https://",
+		"https://app.example.com/path",
+		"https://app.example.com?x=1",
+		"https://app.example.com#top",
+		"https://user:pw@app.example.com",
+	} {
+		env := resendEnv()
+		env["PLATFORM_APP_URL"] = raw
+		_, err := load(env)
+		if err == nil {
+			t.Errorf("PLATFORM_APP_URL=%q: no error", raw)
+			continue
+		}
+		if vars := variables(err); len(vars) != 1 || vars[0] != "PLATFORM_APP_URL" {
+			t.Errorf("PLATFORM_APP_URL=%q: variables = %v", raw, vars)
+		}
+		if strings.Contains(err.Error(), "pw@") {
+			t.Errorf("error repeats the credentials: %v", err)
 		}
 	}
 }

@@ -274,3 +274,27 @@ func (m *PgxMembers) Reserved(ctx context.Context, workspaceID string) (int64, e
 		WorkspaceID: ws, ExpiresAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 	})
 }
+
+// PgxPending is the PendingReader over billing_order.
+type PgxPending struct{ q *db.Queries }
+
+// NewPgxPending returns a PendingReader over pool.
+func NewPgxPending(pool db.DBTX) *PgxPending { return &PgxPending{q: db.New(pool)} }
+
+// PendingSeats implements PendingReader.
+func (p *PgxPending) PendingSeats(ctx context.Context, workspaceID string, now time.Time) (PendingPurchase, bool, error) {
+	ws, err := parseUUID(workspaceID)
+	if err != nil {
+		return PendingPurchase{}, false, err
+	}
+	row, err := p.q.GetPendingAddSeatsOrder(ctx, db.GetPendingAddSeatsOrderParams{
+		WorkspaceID: ws, ExpiresAt: pgtype.Timestamptz{Time: now, Valid: true},
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return PendingPurchase{}, false, nil
+	}
+	if err != nil {
+		return PendingPurchase{}, false, err
+	}
+	return PendingPurchase{OrderID: uuidText(row.ID), Seats: int64(row.Seats), ExpiresAt: row.ExpiresAt.Time.UTC()}, true, nil
+}

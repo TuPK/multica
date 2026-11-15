@@ -37,12 +37,32 @@ type MemberReader interface {
 	Reserved(ctx context.Context, workspaceID string) (int64, error)
 }
 
+// PendingPurchase is an add_seats order that can still be paid.
+type PendingPurchase struct {
+	// OrderID is the order's id, which the page knows as the request id.
+	OrderID string
+	// Seats is the number of seats the order adds.
+	Seats     int64
+	ExpiresAt time.Time
+}
+
+// PendingReader reads the seat purchase a workspace is waiting on.
+type PendingReader interface {
+	// PendingSeats returns found == false when the workspace has no add_seats
+	// order that is pending and unexpired at now. With several, it returns the
+	// newest.
+	PendingSeats(ctx context.Context, workspaceID string, now time.Time) (p PendingPurchase, found bool, err error)
+}
+
 // APIDeps are the API's dependencies.
 type APIDeps struct {
 	Subscriptions Reader
 	Plans         plan.Reader
 	Members       MemberReader
-	Log           *slog.Logger
+	Pending       PendingReader
+	// Now is the clock. Nil means time.Now.
+	Now func() time.Time
+	Log *slog.Logger
 }
 
 // API serves the billing page's two reads.
@@ -52,6 +72,9 @@ type API struct{ APIDeps }
 func NewAPI(d APIDeps) *API {
 	if d.Log == nil {
 		d.Log = slog.Default()
+	}
+	if d.Now == nil {
+		d.Now = time.Now
 	}
 	return &API{d}
 }
@@ -108,6 +131,15 @@ type seatCapacityJSON struct {
 	Overcommitted   bool   `json:"overcommitted"`
 	Version         int64  `json:"version"`
 	PendingQuantity *int64 `json:"pending_quantity"`
+	// ActivePurchase is the add_seats order the workspace is waiting on.
+	ActivePurchase *activePurchaseJSON `json:"active_purchase,omitempty"`
+}
+
+type activePurchaseJSON struct {
+	RequestID   string `json:"request_id"`
+	TargetSeats int64  `json:"target_seats"`
+	Status      string `json:"status"`
+	ExpiresAt   string `json:"expires_at"`
 }
 
 type actionsJSON struct {
@@ -148,8 +180,24 @@ func PurchasedSeats(p plan.Plan, sub *Subscription) (n int64, ok bool) {
 	return 0, false
 }
 
-// buildSummary assembles the response. sub is nil for a workspace with no row.
-func buildSummary(workspaceID string, sub *Subscription, p plan.Plan, members, reserved int64) summaryJSON {
+// CanPurchaseSeats reports whether a workspace on plan p with subscription s
+// can buy extra seats at now: the subscription is active, inside its current
+// period, and its plan sells seats for its interval. Seats bought mid-period are
+// prorated over that period.
+func CanPurchaseSeats(p plan.Plan, s Subscription, now time.Time) bool {
+	if s.Status != StatusActive || s.Seats < 1 || s.CurrentPeriodStart == nil || s.CurrentPeriodEnd == nil {
+		return false
+	}
+	price := p.SeatPriceMonth
+	if s.Interval == IntervalYear {
+		price = p.SeatPriceYear
+	}
+	return positive(price) && !now.Before(*s.CurrentPeriodStart) && now.Before(*s.CurrentPeriodEnd)
+}
+
+// buildSummary assembles the response. sub is nil for a workspace with no row,
+// and pending is nil when no seat purchase is waiting.
+func buildSummary(workspaceID string, sub *Subscription, p plan.Plan, members, reserved int64, pending *PendingPurchase, now time.Time) summaryJSON {
 	var overrides plan.Limits
 	status, version := StatusActive, int64(0)
 	if sub != nil {
@@ -196,9 +244,20 @@ func buildSummary(workspaceID string, sub *Subscription, p plan.Plan, members, r
 			// positive one.
 			Version: version + 1,
 		}
+		if pending != nil {
+			target := purchased + pending.Seats
+			out.SeatCapacity.PendingQuantity = &target
+			out.SeatCapacity.ActivePurchase = &activePurchaseJSON{
+				RequestID: pending.OrderID, TargetSeats: target, Status: "pending",
+				ExpiresAt: pending.ExpiresAt.UTC().Format(time.RFC3339Nano),
+			}
+		}
 	}
-	// Checkout, the portal and seat purchases are not served yet, so the page is
-	// not offered them.
+	// There is no payment portal: payment is a bank transfer.
+	out.AvailableActions = actionsJSON{Checkout: true}
+	if sub != nil {
+		out.AvailableActions.PurchaseSeats = CanPurchaseSeats(p, *sub, now)
+	}
 	return out
 }
 
@@ -251,13 +310,23 @@ func (a *API) summary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var reserved int64
+	var pending *PendingPurchase
+	now := a.Now()
 	if _, limited := PurchasedSeats(p, subPtr); limited {
 		if reserved, err = a.Members.Reserved(r.Context(), ws); err != nil {
 			a.internalError(w, r, "count reserved seats", err)
 			return
 		}
+		order, has, err := a.Pending.PendingSeats(r.Context(), ws, now)
+		if err != nil {
+			a.internalError(w, r, "read pending seat purchase", err)
+			return
+		}
+		if has {
+			pending = &order
+		}
 	}
-	writeJSON(w, http.StatusOK, buildSummary(ws, subPtr, p, members, reserved))
+	writeJSON(w, http.StatusOK, buildSummary(ws, subPtr, p, members, reserved, pending, now))
 }
 
 type missingPlanError struct{ key string }
@@ -292,35 +361,50 @@ type pricesJSON struct {
 
 func positive(v *int64) bool { return v != nil && *v > 0 }
 
-// buildPrices returns the response, and false when no public plan has a price.
-// The page shows one price per interval, so month and year come from the first
-// public plan, in display order, that sells seats in both; plans lists every
-// public plan.
-func buildPrices(plans []plan.Plan) (pricesJSON, bool) {
-	var out pricesJSON
+// SellsSeats reports whether p has a seat price for both intervals.
+func SellsSeats(p plan.Plan) bool { return positive(p.SeatPriceMonth) && positive(p.SeatPriceYear) }
+
+func listed(p plan.Plan) bool { return p.IsPublic && p.ArchivedAt == nil }
+
+// CheapestPublicPaidPlan returns the listed plan that sells seats at the lowest
+// monthly price. Of equal prices, the earlier in plans, which is display order,
+// wins.
+func CheapestPublicPaidPlan(plans []plan.Plan) (plan.Plan, bool) {
+	var best plan.Plan
 	found := false
 	for _, p := range plans {
-		if !p.IsPublic || p.ArchivedAt != nil {
-			continue
-		}
-		out.Plans = append(out.Plans, listedPlanJSON{
-			Key: p.Key, Name: p.Name, Currency: p.Currency, SeatPriceMonth: p.SeatPriceMonth,
-			SeatPriceYear: p.SeatPriceYear, SeatsFixed: p.SeatsFixed, MinSeats: p.MinSeats, TrialDays: p.TrialDays,
-		})
-		if !found && positive(p.SeatPriceMonth) && positive(p.SeatPriceYear) {
-			out.Month = priceJSON{Currency: p.Currency, UnitAmount: *p.SeatPriceMonth, Interval: IntervalMonth, IntervalCount: 1}
-			out.Year = priceJSON{Currency: p.Currency, UnitAmount: *p.SeatPriceYear, Interval: IntervalYear, IntervalCount: 1}
-			found = true
+		if listed(p) && SellsSeats(p) && (!found || *p.SeatPriceMonth < *best.SeatPriceMonth) {
+			best, found = p, true
 		}
 	}
-	if out.Plans == nil {
-		out.Plans = []listedPlanJSON{}
-	}
-	return out, found
+	return best, found
 }
 
+// buildPrices returns the response for plan p; plans lists every public plan.
+func buildPrices(p plan.Plan, plans []plan.Plan) pricesJSON {
+	out := pricesJSON{
+		Month: priceJSON{Currency: p.Currency, UnitAmount: *p.SeatPriceMonth, Interval: IntervalMonth, IntervalCount: 1},
+		Year:  priceJSON{Currency: p.Currency, UnitAmount: *p.SeatPriceYear, Interval: IntervalYear, IntervalCount: 1},
+		Plans: []listedPlanJSON{},
+	}
+	for _, l := range plans {
+		if listed(l) {
+			out.Plans = append(out.Plans, listedPlanJSON{
+				Key: l.Key, Name: l.Name, Currency: l.Currency, SeatPriceMonth: l.SeatPriceMonth,
+				SeatPriceYear: l.SeatPriceYear, SeatsFixed: l.SeatsFixed, MinSeats: l.MinSeats, TrialDays: l.TrialDays,
+			})
+		}
+	}
+	return out
+}
+
+// prices serves the seat prices of the plan in question: the one named by
+// ?plan= when the workspace may see it, else the workspace's own plan when it is
+// paid, else the cheapest public paid plan. A plan is visible when it is public
+// and not archived, or when it is the workspace's own.
 func (a *API) prices(w http.ResponseWriter, r *http.Request) {
-	if _, ok := trust.CanonicalUUID(r.PathValue("ws")); !ok {
+	ws, ok := trust.CanonicalUUID(r.PathValue("ws"))
+	if !ok {
 		writeError(w, http.StatusNotFound, "not_found", "not found")
 		return
 	}
@@ -329,10 +413,40 @@ func (a *API) prices(w http.ResponseWriter, r *http.Request) {
 		a.internalError(w, r, "list plans", err)
 		return
 	}
-	out, ok := buildPrices(plans)
-	if !ok {
-		writeError(w, http.StatusServiceUnavailable, "prices_unavailable", "no public plan has a price")
+	sub, hasSub, err := a.Subscriptions.Get(r.Context(), ws)
+	if err != nil {
+		a.internalError(w, r, "read subscription", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, out)
+
+	var chosen plan.Plan
+	found := false
+	if r.URL.Query().Has("plan") {
+		key := r.URL.Query().Get("plan")
+		for _, p := range plans {
+			if p.Key == key && (listed(p) || (hasSub && sub.PlanKey == key)) {
+				chosen, found = p, true
+			}
+		}
+		if !found {
+			writeError(w, http.StatusNotFound, "plan_not_found", "plan not found")
+			return
+		}
+	} else {
+		if hasSub {
+			for _, p := range plans {
+				if p.Key == sub.PlanKey && SellsSeats(p) {
+					chosen, found = p, true
+				}
+			}
+		}
+		if !found {
+			chosen, found = CheapestPublicPaidPlan(plans)
+		}
+	}
+	if !found || !SellsSeats(chosen) {
+		writeError(w, http.StatusServiceUnavailable, "prices_unavailable", "no plan with a price")
+		return
+	}
+	writeJSON(w, http.StatusOK, buildPrices(chosen, plans))
 }

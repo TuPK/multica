@@ -1,0 +1,46 @@
+{
+  "month": {
+    "currency": "vnd",
+    "unit_amount": 349000,
+    "interval": "month",
+    "interval_count": 1
+  },
+  "year": {
+    "currency": "vnd",
+    "unit_amount": 3490000,
+    "interval": "year",
+    "interval_count": 1
+  },
+  "plans": [
+    {
+      "key": "free",
+      "name": "Free",
+      "currency": "vnd",
+      "seat_price_month": 0,
+      "seat_price_year": 0,
+      "seats_fixed": 3,
+      "min_seats": null,
+      "trial_days": 0
+    },
+    {
+      "key": "pro",
+      "name": "Pro",
+      "currency": "vnd",
+      "seat_price_month": 149000,
+      "seat_price_year": 1490000,
+      "seats_fixed": null,
+      "min_seats": 1,
+      "trial_days": 14
+    },
+    {
+      "key": "business",
+      "name": "Business",
+      "currency": "vnd",
+      "seat_price_month": 349000,
+      "seat_price_year": 3490000,
+      "seats_fixed": null,
+      "min_seats": 5,
+      "trial_days": 14
+    }
+  ]
+}

@@ -19,6 +19,8 @@ import (
 
 	"github.com/multica-ai/multica/platform-management/accountguard"
 	"github.com/multica-ai/multica/platform-management/internal/accountcache"
+	"github.com/multica-ai/multica/platform-management/internal/billing"
+	"github.com/multica-ai/multica/platform-management/internal/billingapi"
 	"github.com/multica-ai/multica/platform-management/internal/config"
 	"github.com/multica-ai/multica/platform-management/internal/console"
 	"github.com/multica-ai/multica/platform-management/internal/db"
@@ -160,11 +162,38 @@ func run() error {
 		Subscriptions: subscription.NewPgxReader(pool),
 		Plans:         plan.NewPgxReader(pool),
 		Members:       subscription.NewPgxMembers(pool),
+		Pending:       subscription.NewPgxPending(pool),
 		Log:           slog.Default(),
 	}).Handler(peers.RequireUser)
 	routes := []server.Route{{Pattern: entitlement.PolicyPattern, Handler: policy.Handler()}}
 	for _, pattern := range subscription.APIPatterns {
 		routes = append(routes, server.Route{Pattern: pattern, Handler: billingReads})
+	}
+	// Orders are created here and confirmed by staff in the console; the manual
+	// provider is the only one in this release.
+	orders, err := billing.New(billing.Deps{
+		Runner: billing.NewPgxRunner(pool), Provider: billing.ProviderManual,
+		Workspaces: workspacestate.New(nil, accountCache), Entitlements: policy, Log: slog.Default(),
+	})
+	if err != nil {
+		return err
+	}
+	billingWrites, err := billingapi.New(billingapi.Deps{
+		Subscriptions: subscription.NewPgxReader(pool),
+		Plans:         plan.NewPgxReader(pool),
+		Members:       subscription.NewPgxMembers(pool),
+		Orders:        orders,
+		Workspaces:    billingapi.NewPgxWorkspaces(pool),
+		VATRate:       cfg.Billing.VATRate,
+		AppURL:        cfg.AppURL,
+		Log:           slog.Default(),
+	})
+	if err != nil {
+		return err
+	}
+	billingWritesHandler := billingWrites.Handler(peers.RequireUser)
+	for _, pattern := range billingapi.Patterns {
+		routes = append(routes, server.Route{Pattern: pattern, Handler: billingWritesHandler})
 	}
 	// The seat protocol of Multica's seat client. It takes no credential, like
 	// the entitlement policy route.

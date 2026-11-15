@@ -7,7 +7,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/multica-ai/multica/platform-management/internal/billingapi"
 	"github.com/multica-ai/multica/platform-management/internal/console"
+	"github.com/multica-ai/multica/platform-management/internal/entitlement"
+	"github.com/multica-ai/multica/platform-management/internal/seat"
 	"github.com/multica-ai/multica/platform-management/internal/subscription"
 	"github.com/multica-ai/multica/platform-management/internal/trust"
 )
@@ -155,5 +158,38 @@ func TestAPIHandlerRefusesXUserIDFromAnUntrustedPeerEverywhere(t *testing.T) {
 	// The policy route needs no header: the client sends none.
 	if rec := apiRequest(api, "GET", "/api/v1/internal/entitlement-policies/"+id, "203.0.113.9:1", ""); rec.Body.String() != "policy" {
 		t.Errorf("an untrusted peer without the header = %d %q, want the policy route", rec.Code, rec.Body)
+	}
+}
+
+// Every internal route the platform serves registers on one mux without a
+// conflict, and each pattern of the billing routes reaches its own handler: the
+// checkout path has no workspace segment, so it must not be taken for another
+// route's.
+func TestAPIHandlerMountsEveryBillingRoute(t *testing.T) {
+	var routes []Route
+	add := func(name string, patterns []string) {
+		for _, p := range patterns {
+			routes = append(routes, Route{Pattern: p, Handler: namedHandler(name + " " + p)})
+		}
+	}
+	add("policy", []string{entitlement.PolicyPattern})
+	add("reads", subscription.APIPatterns)
+	add("billing", billingapi.Patterns)
+	add("seat", seat.Patterns)
+	api := NewAPIHandler(trust.New(trust.DefaultCIDRs()), HealthHandler(), namedHandler("platform"), routes...)
+
+	const id = "11111111-2222-3333-4444-555555555555"
+	for _, tc := range []struct{ method, path, want string }{
+		{"POST", "/api/v1/subscriptions/checkout-sessions", "billing " + billingapi.CheckoutPattern},
+		{"POST", "/api/v1/subscriptions/" + id + "/seats/purchase-preview", "billing " + billingapi.PreviewPattern},
+		{"POST", "/api/v1/subscriptions/" + id + "/seats/purchases", "billing " + billingapi.PurchasePattern},
+		{"POST", "/api/v1/subscriptions/" + id + "/seats/reconcile", "billing " + billingapi.ReconcilePattern},
+		{"POST", "/api/v1/subscriptions/" + id + "/portal-sessions", "billing " + billingapi.PortalPattern},
+		{"GET", "/api/v1/subscriptions/" + id + "/summary", "reads " + subscription.SummaryPattern},
+		{"GET", "/api/v1/subscriptions/" + id + "/prices", "reads " + subscription.PricesPattern},
+	} {
+		if rec := apiRequest(api, tc.method, tc.path, "10.0.0.7:1", ""); rec.Body.String() != tc.want {
+			t.Errorf("%s %s reached %q, want %q", tc.method, tc.path, rec.Body.String(), tc.want)
+		}
 	}
 }

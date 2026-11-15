@@ -1,0 +1,10 @@
+{
+  "current_seats": 5,
+  "additional_seats": 3,
+  "resulting_seats": 8,
+  "purchase_version": 7,
+  "currency": "vnd",
+  "proration_amount": 245129,
+  "next_invoice_amount": 1192000,
+  "quoted_at": "2026-08-15T10:30:45Z"
+}

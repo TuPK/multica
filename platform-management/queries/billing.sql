@@ -66,3 +66,19 @@ SET plan_key = $2,
     updated_at = now()
 WHERE workspace_id = $1
 RETURNING *;
+
+-- name: GetPendingAddSeatsOrder :one
+-- The workspace's newest add_seats order that can still be paid. The billing
+-- page reads it as the active seat purchase.
+SELECT * FROM billing_order
+WHERE workspace_id = $1
+  AND kind = 'add_seats'
+  AND status = 'pending'
+  AND expires_at > $2
+ORDER BY created_at DESC, id DESC
+LIMIT 1;
+
+-- name: GetWorkspaceSlug :one
+-- The address of an order page names the workspace by its slug.
+SELECT slug FROM workspace
+WHERE id = $1;

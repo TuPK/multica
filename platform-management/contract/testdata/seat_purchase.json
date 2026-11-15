@@ -1,0 +1,10 @@
+{
+  "request_id": "66666666-6666-4666-8666-666666666666",
+  "current_seats": 5,
+  "additional_seats": 3,
+  "resulting_seats": 8,
+  "currency": "vnd",
+  "proration_amount": 245129,
+  "next_invoice_amount": 1192000,
+  "status": "pending"
+}

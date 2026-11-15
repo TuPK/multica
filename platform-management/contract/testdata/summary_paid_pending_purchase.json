@@ -1,0 +1,46 @@
+{
+  "entitlement": {
+    "workspace_id": "22222222-2222-4222-8222-222222222222",
+    "plan": "pro",
+    "status": "active",
+    "seats": 5,
+    "limits": {
+      "autopilot_runs": {
+        "mode": "limited",
+        "limit": 2000
+      },
+      "issue_count": {
+        "mode": "unlimited"
+      }
+    },
+    "current_period_end": "2026-09-01T00:00:00Z",
+    "snapshot_expires_at": null,
+    "version": 7
+  },
+  "billing_interval": "month",
+  "human_members": 4,
+  "seat_capacity": {
+    "purchased": 5,
+    "used": 4,
+    "reserved": 0,
+    "available": 1,
+    "overcommitted": false,
+    "version": 8,
+    "pending_quantity": 8,
+    "active_purchase": {
+      "request_id": "66666666-6666-4666-8666-666666666666",
+      "target_seats": 8,
+      "status": "pending",
+      "expires_at": "2026-08-22T10:30:45Z"
+    }
+  },
+  "cancel_at_period_end": false,
+  "grace_until": null,
+  "has_stripe_customer": false,
+  "available_actions": {
+    "checkout": true,
+    "portal": false,
+    "purchase_seats": true
+  },
+  "payment_provider": "manual"
+}

@@ -81,6 +81,10 @@ type Config struct {
 	ConsolePort    string
 	Email          Email
 	FrontendOrigin string
+	// AppURL is the origin of the Multica web app, as scheme://host[:port],
+	// lower case and without a trailing slash. The billing routes build the
+	// address of an order page from it.
+	AppURL string
 
 	// AdminCIDRs restricts the console to these networks. Empty means no
 	// restriction.
@@ -189,6 +193,14 @@ func Load(getenv func(string) string) (Config, error) {
 		cfg.SecureCookies = false
 	default:
 		fail("PLATFORM_SECURE_COOKIES", "must be true or false")
+	}
+
+	if raw := required("PLATFORM_APP_URL"); raw != "" {
+		if normalized, ok := normalizeOrigin(raw); ok {
+			cfg.AppURL = normalized
+		} else {
+			fail("PLATFORM_APP_URL", "must be an absolute http or https origin such as https://app.example.com")
+		}
 	}
 
 	cfg.Billing = loadBilling(get, fail)

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -43,6 +44,8 @@ func (f *dbFixture) cleanup() {
 	ctx := context.Background()
 	for _, ws := range f.wsIDs {
 		f.pool.Exec(ctx, `DELETE FROM audit_event WHERE workspace_id = $1`, ws)
+		f.pool.Exec(ctx, `DELETE FROM billing_order WHERE workspace_id = $1`, ws)
+		f.pool.Exec(ctx, `DELETE FROM platform_seat_operation WHERE workspace_id = $1`, ws)
 		f.pool.Exec(ctx, `DELETE FROM workspace_subscription WHERE workspace_id = $1`, ws)
 		f.pool.Exec(ctx, `DELETE FROM member WHERE workspace_id = $1`, ws)
 		f.pool.Exec(ctx, `DELETE FROM workspace WHERE id = $1`, ws)
@@ -283,7 +286,7 @@ func TestDBSummaryRoleChecksAgainstMemberRows(t *testing.T) {
 
 	api := NewAPI(APIDeps{
 		Subscriptions: NewPgxReader(f.pool), Plans: plan.NewPgxReader(f.pool), Members: NewPgxMembers(f.pool),
-		Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Pending: NewPgxPending(f.pool), Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}).Handler(trust.New(trust.DefaultCIDRs()).RequireUser)
 
 	get := func(user string) *httptest.ResponseRecorder {
@@ -310,5 +313,76 @@ func TestDBSummaryRoleChecksAgainstMemberRows(t *testing.T) {
 	}
 	if sc := obj(t, m["seat_capacity"], "seat_capacity"); sc["purchased"] != float64(3) || sc["used"] != float64(3) || sc["available"] != float64(0) {
 		t.Errorf("seat_capacity = %v", sc)
+	}
+}
+
+// insertOrder writes a billing_order row for the workspace, for the reads under test.
+func (f *dbFixture) insertOrder(ws, kind, status string, seats int, createdAt, expiresAt time.Time) string {
+	f.t.Helper()
+	var id string
+	if err := f.pool.QueryRow(context.Background(), `
+		INSERT INTO billing_order (id, workspace_id, kind, plan_key, interval, seats, amount, vat_amount, currency,
+			status, provider, transfer_code, expires_at, created_at)
+		VALUES (gen_random_uuid(), $1, $2, 'pro', 'month', $3, 100000, 10000, 'vnd', $4, 'manual', $5, $6, $7)
+		RETURNING id::text`, ws, kind, seats, status, "MUL"+hexSuffix(f.t), expiresAt, createdAt).Scan(&id); err != nil {
+		f.t.Fatalf("create order: %v", err)
+	}
+	return id
+}
+
+// The summary of a paid workspace counts its member rows, the seats held by live
+// seat operations, and the add_seats order waiting for its transfer.
+func TestDBSummaryReflectsTheSubscriptionTheHeldSeatsAndThePendingPurchase(t *testing.T) {
+	f := newDBFixture(t)
+	owner, other := f.user(), f.user()
+	ws := f.workspace(map[string]string{owner: "owner", other: "member"})
+	p := f.plan(func(p *plan.Plan) {
+		m, y := int64(100000), int64(1000000)
+		p.SeatPriceMonth, p.SeatPriceYear = &m, &y
+	})
+	ctx := context.Background()
+	now := time.Now().UTC()
+	start, end := now.Add(-24*time.Hour), now.Add(24*time.Hour)
+	if _, err := f.pool.Exec(ctx, `
+		INSERT INTO workspace_subscription (workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, version)
+		VALUES ($1, $2, 'active', 5, 'month', $3, $4, 6)`, ws, p.Key, start, end); err != nil {
+		t.Fatal(err)
+	}
+	// One invitation holds a seat; an expired one holds none.
+	for _, expires := range []time.Time{now.Add(time.Hour), now.Add(-time.Hour)} {
+		if _, err := f.pool.Exec(ctx, `
+			INSERT INTO platform_seat_operation (workspace_id, operation_token, kind, subject_id, state, expires_at)
+			VALUES ($1, gen_random_uuid(), 'invitation', gen_random_uuid(), 'reserved', $2)`, ws, expires); err != nil {
+			t.Fatal(err)
+		}
+	}
+	f.insertOrder(ws, "add_seats", "paid", 9, now.Add(-time.Hour), now.Add(time.Hour))
+	f.insertOrder(ws, "add_seats", "pending", 7, now.Add(-2*time.Hour), now.Add(-time.Minute)) // expired
+	f.insertOrder(ws, "subscribe", "pending", 6, now.Add(-time.Hour), now.Add(time.Hour))      // not seats
+	f.insertOrder(ws, "add_seats", "pending", 2, now.Add(-3*time.Hour), now.Add(time.Hour))
+	newest := f.insertOrder(ws, "add_seats", "pending", 3, now.Add(-time.Minute), now.Add(time.Hour))
+
+	api := NewAPI(APIDeps{
+		Subscriptions: NewPgxReader(f.pool), Plans: plan.NewPgxReader(f.pool), Members: NewPgxMembers(f.pool),
+		Pending: NewPgxPending(f.pool), Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}).Handler(trust.New(trust.DefaultCIDRs()).RequireUser)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/subscriptions/"+ws+"/summary", nil)
+	req.RemoteAddr = "127.0.0.1:5000"
+	req.Header.Set(trust.UserHeader, owner)
+	rec := httptest.NewRecorder()
+	api.ServeHTTP(rec, req)
+
+	m := decodeMap(t, rec)
+	checkSummarySchema(t, m)
+	sc := obj(t, m["seat_capacity"], "seat_capacity")
+	if sc["purchased"] != float64(5) || sc["used"] != float64(2) || sc["reserved"] != float64(1) || sc["available"] != float64(2) || sc["version"] != float64(7) {
+		t.Errorf("seat_capacity = %v, want 5 purchased, 2 used, 1 held, 2 available, version 6 + 1", sc)
+	}
+	ap := obj(t, sc["active_purchase"], "active_purchase")
+	if sc["pending_quantity"] != float64(8) || ap["request_id"] != newest || ap["target_seats"] != float64(8) {
+		t.Errorf("pending_quantity = %v, active_purchase = %v, want the newest pending add_seats order (%s)", sc["pending_quantity"], ap, newest)
+	}
+	if a := obj(t, m["available_actions"], "available_actions"); a["purchase_seats"] != true {
+		t.Errorf("available_actions = %v", a)
 	}
 }
