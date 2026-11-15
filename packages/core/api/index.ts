@@ -4,11 +4,16 @@ export {
   clientErrorMessage,
   dispatchReasonCode,
   errorCode,
+  isPlanLimitGate,
+  PLAN_LIMIT_GATES,
+  PlanLimitReachedError,
+  planLimitReached,
   PreviewTooLargeError,
   PreviewUnsupportedError,
 } from "./client";
 export type {
   ApiClientOptions,
+  PlanLimitGate,
   ClientRuntimeSnapshot,
   ClientUsageRequest,
 } from "./client";

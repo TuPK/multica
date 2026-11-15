@@ -844,6 +844,7 @@ import {
   CreateBillingPortalSessionResponseSchema,
   WorkspaceSubscriptionSummarySchema,
   IssueLimitUsageSchema,
+  PlanLimitReachedBodySchema,
   WorkspaceSubscriptionPricesSchema,
   CreateWorkspaceSubscriptionCheckoutResponseSchema,
   WorkspaceSubscriptionSeatReconcileResultSchema,
@@ -1077,6 +1078,62 @@ export class ApiError extends Error {
     this.statusText = statusText;
     this.body = body;
   }
+}
+
+// The quota gates whose refusal opens the upgrade dialog. A server may refuse
+// on other gates; those still parse, and `isPlanLimitGate` tells them apart.
+export const PLAN_LIMIT_GATES = ["agents", "runtimes", "storage_bytes"] as const;
+export type PlanLimitGate = (typeof PLAN_LIMIT_GATES)[number];
+
+export function isPlanLimitGate(gate: string): gate is PlanLimitGate {
+  return (PLAN_LIMIT_GATES as readonly string[]).includes(gate);
+}
+
+// A 402 `plan_limit_reached`: the workspace's plan has no room for the resource
+// the request would create. It is an ApiError, so code that handles ApiError
+// keeps working; `gate` is the server's string, `limit` and `used` are counts
+// of that gate's unit (bytes for storage_bytes).
+export class PlanLimitReachedError extends ApiError {
+  readonly gate: string;
+  readonly limit: number;
+  readonly used: number;
+
+  constructor(
+    message: string,
+    statusText: string,
+    body: unknown,
+    detail: { gate: string; limit: number; used: number },
+  ) {
+    super(message, 402, statusText, body);
+    this.name = "PlanLimitReachedError";
+    this.gate = detail.gate;
+    this.limit = detail.limit;
+    this.used = detail.used;
+  }
+}
+
+// Returns the parsed error, or undefined for anything else: another error, or a
+// body that is not a well-formed plan limit.
+export function planLimitReached(err: unknown): PlanLimitReachedError | undefined {
+  return err instanceof PlanLimitReachedError ? err : undefined;
+}
+
+function planLimitReachedFromResponse(
+  message: string,
+  status: number,
+  statusText: string,
+  body: unknown,
+): PlanLimitReachedError | undefined {
+  if (status !== 402 || !body || typeof body !== "object") return undefined;
+  // Other 402s (the issue limit) must not log a schema warning.
+  if ((body as { code?: unknown }).code !== "plan_limit_reached") return undefined;
+  const parsed = parseWithFallback<{ gate: string; limit: number; used: number } | null>(
+    body,
+    PlanLimitReachedBodySchema,
+    null,
+    { endpoint: "402 plan_limit_reached" },
+  );
+  return parsed ? new PlanLimitReachedError(message, statusText, body, parsed) : undefined;
 }
 
 function assertAgentConversationStartersWriteSupported(data: {
@@ -1499,7 +1556,8 @@ export class ApiClient {
       const { message, body } = await this.parseErrorBody(res, `API error: ${res.status} ${res.statusText}`);
       const logLevel = res.status === 404 ? "warn" : "error";
       this.logger[logLevel](`← ${res.status} ${path}`, { rid, duration: `${Date.now() - start}ms`, error: message });
-      throw new ApiError(message, res.status, res.statusText, body);
+      throw planLimitReachedFromResponse(message, res.status, res.statusText, body)
+        ?? new ApiError(message, res.status, res.statusText, body);
     }
 
     this.logger.info(`← ${res.status} ${path}`, { rid, duration: `${Date.now() - start}ms` });

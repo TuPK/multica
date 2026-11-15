@@ -11,10 +11,7 @@ import { resolveBillingRecovery } from "@multica/core/billing/recovery";
 import { useFeatureEnabled } from "@multica/core/config";
 import { BILLING_WORKSPACE_SUBSCRIPTIONS_FLAG } from "@multica/core/feature-flags";
 import { useWorkspaceId } from "@multica/core/hooks";
-import {
-  useModalStore,
-  type IssueLimitRecoveryReason,
-} from "@multica/core/modals";
+import { useModalStore } from "@multica/core/modals";
 import { useWorkspacePaths } from "@multica/core/paths";
 import type { WorkspaceSubscriptionSummary } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
@@ -29,6 +26,7 @@ import {
 import { useT } from "../i18n";
 import { useNavigation } from "../navigation";
 import { openExternal } from "../platform";
+import type { LimitRecoveryReason } from "./use-issue-limit-upgrade-prompt";
 
 type ModalsT = ReturnType<typeof useT<"modals">>["t"];
 type BillingActions = WorkspaceSubscriptionSummary["availableActions"];
@@ -53,7 +51,7 @@ export function IssueLimitUpgradeDialog() {
   const dismiss = useModalStore((state) => state.dismissIssueLimitRecovery);
   const recoveryReason = useModalStore(
     (state) => state.issueLimitRecoveryReason,
-  );
+  ) as LimitRecoveryReason;
   const { t } = useT("modals");
   const wsId = useWorkspaceId();
   const visible = recoveryWorkspaceId === wsId;
@@ -220,7 +218,7 @@ interface RecoveryCopy {
 
 function getRecoveryCopy(
   t: ModalsT,
-  reason: IssueLimitRecoveryReason,
+  reason: LimitRecoveryReason,
 ): RecoveryCopy {
   if (reason === "autopilot_quota") {
     return {
@@ -257,6 +255,93 @@ function getRecoveryCopy(
       billingAction: t(
         ($) => $.create_issue.autopilot_quota_limit.billing_action,
       ),
+    };
+  }
+  if (reason === "agents" || reason === "agent_limit") {
+    return {
+      title: t(($) => $.create_issue.agent_limit.title),
+      billingDisabledDescription: t(
+        ($) => $.create_issue.agent_limit.billing_disabled_description,
+      ),
+      upgradeDescription: t(
+        ($) => $.create_issue.agent_limit.upgrade_description,
+      ),
+      portalDescription: t(
+        ($) => $.create_issue.agent_limit.portal_description,
+      ),
+      contactDescription: t(
+        ($) => $.create_issue.agent_limit.contact_description,
+      ),
+      billingDescription: t(
+        ($) => $.create_issue.agent_limit.billing_description,
+      ),
+      billingUnavailableDescription: t(
+        ($) => $.create_issue.agent_limit.billing_unavailable_description,
+      ),
+      checkingDescription: t(
+        ($) => $.create_issue.agent_limit.checking_description,
+      ),
+      upgradeAction: t(($) => $.create_issue.agent_limit.upgrade_action),
+      portalAction: t(($) => $.create_issue.agent_limit.portal_action),
+      billingAction: t(($) => $.create_issue.agent_limit.billing_action),
+    };
+  }
+  if (reason === "runtimes" || reason === "runtime_limit") {
+    return {
+      title: t(($) => $.create_issue.runtime_limit.title),
+      billingDisabledDescription: t(
+        ($) => $.create_issue.runtime_limit.billing_disabled_description,
+      ),
+      upgradeDescription: t(
+        ($) => $.create_issue.runtime_limit.upgrade_description,
+      ),
+      portalDescription: t(
+        ($) => $.create_issue.runtime_limit.portal_description,
+      ),
+      contactDescription: t(
+        ($) => $.create_issue.runtime_limit.contact_description,
+      ),
+      billingDescription: t(
+        ($) => $.create_issue.runtime_limit.billing_description,
+      ),
+      billingUnavailableDescription: t(
+        ($) => $.create_issue.runtime_limit.billing_unavailable_description,
+      ),
+      checkingDescription: t(
+        ($) => $.create_issue.runtime_limit.checking_description,
+      ),
+      upgradeAction: t(($) => $.create_issue.runtime_limit.upgrade_action),
+      portalAction: t(($) => $.create_issue.runtime_limit.portal_action),
+      billingAction: t(($) => $.create_issue.runtime_limit.billing_action),
+    };
+  }
+  if (reason === "storage_bytes" || reason === "storage_limit") {
+    return {
+      title: t(($) => $.create_issue.storage_limit.title),
+      billingDisabledDescription: t(
+        ($) => $.create_issue.storage_limit.billing_disabled_description,
+      ),
+      upgradeDescription: t(
+        ($) => $.create_issue.storage_limit.upgrade_description,
+      ),
+      portalDescription: t(
+        ($) => $.create_issue.storage_limit.portal_description,
+      ),
+      contactDescription: t(
+        ($) => $.create_issue.storage_limit.contact_description,
+      ),
+      billingDescription: t(
+        ($) => $.create_issue.storage_limit.billing_description,
+      ),
+      billingUnavailableDescription: t(
+        ($) => $.create_issue.storage_limit.billing_unavailable_description,
+      ),
+      checkingDescription: t(
+        ($) => $.create_issue.storage_limit.checking_description,
+      ),
+      upgradeAction: t(($) => $.create_issue.storage_limit.upgrade_action),
+      portalAction: t(($) => $.create_issue.storage_limit.portal_action),
+      billingAction: t(($) => $.create_issue.storage_limit.billing_action),
     };
   }
   return {

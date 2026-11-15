@@ -3145,6 +3145,19 @@ export const DuplicateIssueErrorBodySchema = z.object({
   }).loose(),
 }).loose();
 
+// The 402 a creation gets when the workspace's plan has no room left (platform
+// spec 10). `gate` is a free string: a newer server may name a gate this
+// client does not know, and the caller decides what that means.
+export const PlanLimitReachedBodySchema = z.object({
+  code: z.literal("plan_limit_reached"),
+  error: z.string().optional(),
+  gate: z.string().min(1),
+  limit: z.number().int().nonnegative(),
+  used: z.number().int().nonnegative(),
+}).loose();
+
+export type PlanLimitReachedBody = z.infer<typeof PlanLimitReachedBodySchema>;
+
 // A destructive confirmation must fail closed on an incomplete plan. Do not
 // default missing arrays to empty or silently discard malformed entries.
 export const RuntimeAccessRevocationPlanSchema = z.object({

@@ -417,4 +417,314 @@ describe("IssueLimitUpgradeDialog", () => {
     ).not.toBeInTheDocument();
     expect(mockSummaryQuery).not.toHaveBeenCalled();
   });
+
+  it("opens upgrade dialog with agent-specific copy for agents gate", async () => {
+    summaryState.value = { availableActions: actions({ checkout: true }) };
+    renderPrompt();
+
+    act(() => {
+      useModalStore.getState().showIssueLimitRecovery("ws-test", "agents" as any);
+    });
+
+    expect(
+      await screen.findByRole("dialog", {
+        name: "This workspace has reached its agent limit",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("Upgrade to Pro to create more agents."),
+    ).toBeInTheDocument();
+  });
+
+  it("opens upgrade dialog with runtime-specific copy for runtimes gate", async () => {
+    summaryState.value = { availableActions: actions({ checkout: true }) };
+    renderPrompt();
+
+    act(() => {
+      useModalStore.getState().showIssueLimitRecovery("ws-test", "runtimes" as any);
+    });
+
+    expect(
+      await screen.findByRole("dialog", {
+        name: "This workspace has reached its runtime limit",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("Upgrade to Pro to add more runtimes."),
+    ).toBeInTheDocument();
+  });
+
+  it("opens upgrade dialog with storage-specific copy for storage_bytes gate", async () => {
+    summaryState.value = { availableActions: actions({ checkout: true }) };
+    renderPrompt();
+
+    act(() => {
+      useModalStore
+        .getState()
+        .showIssueLimitRecovery("ws-test", "storage_bytes" as any);
+    });
+
+    expect(
+      await screen.findByRole("dialog", {
+        name: "This workspace has reached its storage limit",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("Upgrade to Pro to get more storage."),
+    ).toBeInTheDocument();
+  });
+
+  it("opens dialog when prompt is invoked with plan_limit_reached error for supported gates, and not for unknown gates", async () => {
+    summaryState.value = { availableActions: actions({ checkout: true }) };
+
+    let promptFn!: (errorOrReason?: unknown) => boolean;
+    function CustomHarness() {
+      promptFn = useIssueLimitUpgradePrompt();
+      return <IssueLimitUpgradeDialog />;
+    }
+
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <I18nProvider locale="en" resources={TEST_RESOURCES}>
+        <QueryClientProvider client={client}>
+          <CustomHarness />
+        </QueryClientProvider>
+      </I18nProvider>,
+    );
+
+    // 1. Unknown gate does not open the dialog
+    act(() => {
+      const opened = promptFn({
+        code: "plan_limit_reached",
+        gate: "unknown_gate",
+        limit: 10,
+        used: 10,
+      });
+      expect(opened).toBe(false);
+    });
+    expect(
+      screen.queryByRole("dialog", {
+        name: /reached its.*limit/,
+      }),
+    ).not.toBeInTheDocument();
+
+    // 2. Agents gate opens dialog
+    act(() => {
+      const opened = promptFn({
+        code: "plan_limit_reached",
+        gate: "agents",
+        limit: 5,
+        used: 5,
+      });
+      expect(opened).toBe(true);
+    });
+    expect(
+      await screen.findByRole("dialog", {
+        name: "This workspace has reached its agent limit",
+      }),
+    ).toBeInTheDocument();
+
+    // Dismiss
+    act(() => useModalStore.getState().dismissIssueLimitRecovery());
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", {
+          name: "This workspace has reached its agent limit",
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    // 3. Runtimes gate in error.body opens dialog
+    act(() => {
+      const opened = promptFn({
+        body: {
+          code: "plan_limit_reached",
+          gate: "runtimes",
+          limit: 3,
+          used: 3,
+        },
+      });
+      expect(opened).toBe(true);
+    });
+    expect(
+      await screen.findByRole("dialog", {
+        name: "This workspace has reached its runtime limit",
+      }),
+    ).toBeInTheDocument();
+
+    // Dismiss
+    act(() => useModalStore.getState().dismissIssueLimitRecovery());
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", {
+          name: "This workspace has reached its runtime limit",
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    // 4. Storage bytes gate opens dialog
+    act(() => {
+      const opened = promptFn({
+        code: "plan_limit_reached",
+        gate: "storage_bytes",
+        limit: 1024,
+        used: 1024,
+      });
+      expect(opened).toBe(true);
+    });
+    expect(
+      await screen.findByRole("dialog", {
+        name: "This workspace has reached its storage limit",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("handles ApiError instances with plan_limit_reached body", async () => {
+    summaryState.value = { availableActions: actions({ checkout: true }) };
+
+    let promptFn!: (errorOrReason?: unknown) => boolean;
+    function ApiErrorHarness() {
+      promptFn = useIssueLimitUpgradePrompt();
+      return <IssueLimitUpgradeDialog />;
+    }
+
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <I18nProvider locale="en" resources={TEST_RESOURCES}>
+        <QueryClientProvider client={client}>
+          <ApiErrorHarness />
+        </QueryClientProvider>
+      </I18nProvider>,
+    );
+
+    act(() => {
+      const opened = promptFn({
+        name: "ApiError",
+        status: 402,
+        statusText: "Payment Required",
+        message: "plan limit reached",
+        body: {
+          code: "plan_limit_reached",
+          gate: "agents",
+          limit: 3,
+          used: 3,
+        },
+      });
+      expect(opened).toBe(true);
+    });
+
+    expect(
+      await screen.findByRole("dialog", {
+        name: "This workspace has reached its agent limit",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("handles parsed errors carrying gate, limit, and used directly on the error", async () => {
+    summaryState.value = { availableActions: actions({ checkout: true }) };
+
+    let promptFn!: (errorOrReason?: unknown) => boolean;
+    function ParsedErrorHarness() {
+      promptFn = useIssueLimitUpgradePrompt();
+      return <IssueLimitUpgradeDialog />;
+    }
+
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <I18nProvider locale="en" resources={TEST_RESOURCES}>
+        <QueryClientProvider client={client}>
+          <ParsedErrorHarness />
+        </QueryClientProvider>
+      </I18nProvider>,
+    );
+
+    // Kiro's parsed error with code, gate, limit, used fields
+    act(() => {
+      const parsedError = Object.assign(new Error("plan limit reached"), {
+        code: "plan_limit_reached",
+        gate: "runtimes",
+        limit: 2,
+        used: 2,
+      });
+      const opened = promptFn(parsedError);
+      expect(opened).toBe(true);
+    });
+
+    expect(
+      await screen.findByRole("dialog", {
+        name: "This workspace has reached its runtime limit",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("rejects unknown gates when configured as defaultReason", () => {
+    let promptFn!: (errorOrReason?: unknown) => boolean;
+    function UnknownHarness() {
+      promptFn = useIssueLimitUpgradePrompt("unknown_gate" as any);
+      return <IssueLimitUpgradeDialog />;
+    }
+
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <I18nProvider locale="en" resources={TEST_RESOURCES}>
+        <QueryClientProvider client={client}>
+          <UnknownHarness />
+        </QueryClientProvider>
+      </I18nProvider>,
+    );
+
+    act(() => {
+      const opened = promptFn();
+      expect(opened).toBe(false);
+    });
+
+    expect(
+      screen.queryByRole("dialog", {
+        name: /reached its.*limit/,
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("displays billing disabled descriptions for the new gates", async () => {
+    featureState.billingEnabled = false;
+    renderPrompt();
+
+    // 1. Agents gate with billing disabled
+    act(() => {
+      useModalStore.getState().showIssueLimitRecovery("ws-test", "agents" as any);
+    });
+    expect(
+      await screen.findByText(
+        "Archive an existing agent to free space, or contact your workspace administrator.",
+      ),
+    ).toBeInTheDocument();
+
+    // 2. Runtimes gate with billing disabled
+    act(() => {
+      useModalStore.getState().showIssueLimitRecovery("ws-test", "runtimes" as any);
+    });
+    expect(
+      await screen.findByText(
+        "Remove an existing runtime to free space, or contact your workspace administrator.",
+      ),
+    ).toBeInTheDocument();
+
+    // 3. Storage bytes gate with billing disabled
+    act(() => {
+      useModalStore.getState().showIssueLimitRecovery("ws-test", "storage_bytes" as any);
+    });
+    expect(
+      await screen.findByText(
+        "Delete existing files to free space, or contact your workspace administrator.",
+      ),
+    ).toBeInTheDocument();
+  });
 });
