@@ -1,0 +1,15 @@
+{{- define "subject" -}}
+[Multica] {{.Workspace}}: your plan ends in {{.DaysLeft}} {{if eq .DaysLeft 1}}day{{else}}days{{end}} / Gói sắp hết hạn sau {{.DaysLeft}} ngày
+{{- end -}}
+{{- define "body" -}}
+Xin chào,
+
+Gói {{.Plan}} của workspace "{{.Workspace}}" sẽ hết hạn vào ngày {{.PeriodEnd}}, còn {{.DaysLeft}} ngày.
+
+Hãy gia hạn trước ngày đó để workspace tiếp tục dùng đầy đủ tính năng. Nếu không gia hạn, workspace vẫn dùng đầy đủ tính năng thêm {{.GraceDays}} ngày ân hạn, sau đó chuyển sang chế độ chỉ đọc.
+
+Gia hạn tại: {{.URL}}
+
+Bạn nhận thư này vì bạn là chủ sở hữu hoặc quản trị viên của workspace.
+Multica
+{{- end -}}

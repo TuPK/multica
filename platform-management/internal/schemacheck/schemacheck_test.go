@@ -250,3 +250,14 @@ func TestRequiredCoversTheBillingOrderMigrations(t *testing.T) {
 		}
 	}
 }
+
+func TestRequiredCoversTheBillingNoticeMigrations(t *testing.T) {
+	for _, v := range []string{
+		"683_billing_notice",
+		"684_billing_notice_key_uidx",
+	} {
+		if !slices.Contains(Required, v) {
+			t.Errorf("Required lacks %s", v)
+		}
+	}
+}

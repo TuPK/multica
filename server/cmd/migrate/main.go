@@ -160,6 +160,7 @@ var concurrentIndexCleanups = map[string]string{
 	"680_billing_order_transfer_uidx":                           "billing_order_transfer_uidx",
 	"681_billing_order_status_idx":                              "billing_order_status_idx",
 	"682_billing_order_workspace_idx":                           "billing_order_workspace_idx",
+	"684_billing_notice_key_uidx":                               "billing_notice_key_uidx",
 	"686_workspace_subscription_status_idx":                     "workspace_subscription_status_idx",
 	"688_platform_note_id_uidx":                                 "platform_note_id_uidx",
 	"940_hub_source_auto_sync_idx":                              "hub_source_auto_sync_due_idx",

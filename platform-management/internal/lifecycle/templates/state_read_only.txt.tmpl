@@ -1,0 +1,15 @@
+{{- define "subject" -}}
+[Multica] {{.Workspace}} is now read-only / Workspace đã chuyển sang chế độ chỉ đọc
+{{- end -}}
+{{- define "body" -}}
+Xin chào,
+
+Thời gian ân hạn của gói {{.Plan}} đã kết thúc và workspace "{{.Workspace}}" hiện ở chế độ chỉ đọc: mọi người vẫn xem được dữ liệu nhưng không tạo hay sửa được nội dung.
+
+Gia hạn gói để workspace hoạt động bình thường trở lại ngay sau khi thanh toán được xác nhận. Nếu không gia hạn, đến ngày {{.FreeOn}} workspace chuyển về gói Free.
+
+Gia hạn tại: {{.URL}}
+
+Bạn nhận thư này vì bạn là chủ sở hữu hoặc quản trị viên của workspace.
+Multica
+{{- end -}}

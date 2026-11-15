@@ -1,0 +1,15 @@
+{{- define "subject" -}}
+[Multica] {{.Workspace}}: plan not renewed, grace period until {{.GraceUntil}} / Gói chưa được gia hạn, ân hạn đến {{.GraceUntil}}
+{{- end -}}
+{{- define "body" -}}
+Xin chào,
+
+Gói {{.Plan}} của workspace "{{.Workspace}}" đã hết hạn vào ngày {{.PeriodEnd}} và chưa được gia hạn.
+
+Workspace vẫn dùng đầy đủ tính năng đến hết ngày {{.GraceUntil}}. Sau ngày đó workspace chuyển sang chế độ chỉ đọc: mọi người vẫn xem được dữ liệu nhưng không tạo hay sửa được nội dung.
+
+Gia hạn tại: {{.URL}}
+
+Bạn nhận thư này vì bạn là chủ sở hữu hoặc quản trị viên của workspace.
+Multica
+{{- end -}}

@@ -47,6 +47,8 @@ var Required = []string{
 	"680_billing_order_transfer_uidx",       // billing_order: unique index on transfer_code
 	"681_billing_order_status_idx",          // billing_order: index on status, created_at
 	"682_billing_order_workspace_idx",       // billing_order: index on workspace_id, created_at
+	"683_billing_notice",                    // billing_notice: table
+	"684_billing_notice_key_uidx",           // billing_notice: unique index on workspace_id, notice_key
 	"686_workspace_subscription_status_idx", // workspace_subscription: index on status, current_period_end
 	"688_platform_note_id_uidx",             // platform_note: unique index on id
 }

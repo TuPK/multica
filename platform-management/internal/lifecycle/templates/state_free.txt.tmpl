@@ -1,0 +1,21 @@
+{{- define "subject" -}}
+[Multica] {{.Workspace}} is now on the Free plan / Workspace đã chuyển về gói Free
+{{- end -}}
+{{- define "body" -}}
+Xin chào,
+
+{{if eq .Cause "trial" -}}
+Thời gian dùng thử của workspace "{{.Workspace}}" đã kết thúc ngày {{.TrialEnd}} và chưa có gói trả phí nào được mua. Workspace chuyển về gói Free.
+{{- else if eq .Cause "canceled" -}}
+Gói {{.Plan}} của workspace "{{.Workspace}}" đã kết thúc ngày {{.PeriodEnd}} theo yêu cầu hủy. Workspace chuyển về gói Free.
+{{- else -}}
+Gói {{.Plan}} của workspace "{{.Workspace}}" chưa được gia hạn nên workspace chuyển về gói Free và hoạt động bình thường trở lại.
+{{- end}}
+
+Dữ liệu được giữ nguyên. Nếu dữ liệu vượt giới hạn của gói Free, bạn vẫn xem và sửa được những gì đã có, nhưng chưa tạo thêm được mục mới.
+
+Mua gói trả phí tại: {{.URL}}
+
+Bạn nhận thư này vì bạn là chủ sở hữu hoặc quản trị viên của workspace.
+Multica
+{{- end -}}

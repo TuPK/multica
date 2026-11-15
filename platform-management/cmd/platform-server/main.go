@@ -25,6 +25,8 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/console"
 	"github.com/multica-ai/multica/platform-management/internal/db"
 	"github.com/multica-ai/multica/platform-management/internal/entitlement"
+	"github.com/multica-ai/multica/platform-management/internal/jobs"
+	"github.com/multica-ai/multica/platform-management/internal/lifecycle"
 	"github.com/multica-ai/multica/platform-management/internal/mailer"
 	"github.com/multica-ai/multica/platform-management/internal/plan"
 	"github.com/multica-ai/multica/platform-management/internal/platformauth"
@@ -202,6 +204,25 @@ func run() error {
 		routes = append(routes, server.Route{Pattern: pattern, Handler: seatAPI})
 	}
 
+	// The background jobs. Each takes an advisory lock by name, so several
+	// platform instances share one schedule.
+	noticeMail, err := lifecycle.NewMailSender(cfg.Email, &http.Client{Timeout: mailHTTPTimeout}, smtpDialer, time.Now, slog.Default())
+	if err != nil {
+		return err
+	}
+	lifecycleJob, err := lifecycle.New(lifecycle.Deps{
+		Store: lifecycle.NewPgxStore(pool), Mail: noticeMail,
+		Workspaces: workspacestate.New(nil, accountCache), Entitlements: policy,
+		AppURL: cfg.AppURL, Log: slog.Default(),
+	})
+	if err != nil {
+		return err
+	}
+	runner := jobs.New(jobs.NewPoolLocker(pool))
+	if err := runner.Register(lifecycle.JobName, lifecycle.Interval, lifecycleJob.Job(time.Now)); err != nil {
+		return err
+	}
+
 	apiLn, err := net.Listen("tcp", ":"+cfg.APIPort)
 	if err != nil {
 		return fmt.Errorf("listen on PLATFORM_API_PORT: %w", err)
@@ -220,10 +241,18 @@ func run() error {
 	apiURL := &url.URL{Scheme: "http", Host: net.JoinHostPort("127.0.0.1", cfg.APIPort)}
 
 	slog.Info("platform-server starting", "api_port", cfg.APIPort, "console_port", cfg.ConsolePort)
+	jobsCtx, stopJobs := context.WithCancel(ctx)
+	jobsDone := make(chan struct{})
+	go func() {
+		defer close(jobsDone)
+		_ = runner.Run(jobsCtx)
+	}()
 	err = server.Serve(ctx, shutdownGrace,
 		server.Listener{Name: "api", Listener: apiLn, Handler: server.NewAPIHandler(peers, health, server.NewPlatformHandler(auth, consoleAPI, billingAPI), routes...)},
 		server.Listener{Name: "console", Listener: consoleLn, Handler: server.NewConsoleHandler(health, apiURL, consoleDistDir)},
 	)
+	stopJobs()
+	<-jobsDone
 	// Let a code that was just requested finish sending.
 	auth.Wait()
 	return err
