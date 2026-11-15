@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/logger"
 	"github.com/multica-ai/multica/server/internal/seatcapacity"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -157,6 +159,17 @@ func (h *Handler) CreateShareLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := h.recordAudit(r, tx, audit.Entry{
+		WorkspaceID: uuidToString(link.WorkspaceID),
+		Action:      audit.ActionShareLinkCreated,
+		TargetType:  "share_link",
+		TargetID:    uuidToString(link.ID),
+	}); err != nil {
+		slog.Warn("audit share link created failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to create share link")
+		return
+	}
+
 	if err := tx.Commit(r.Context()); err != nil {
 		slog.Warn("commit share link failed", append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "failed to create share link")
@@ -209,10 +222,43 @@ func (h *Handler) RevokeShareLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.Queries.RevokeShareLink(r.Context(), db.RevokeShareLinkParams{
+	tx, err := h.TxStarter.Begin(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to revoke share link")
+		return
+	}
+	defer tx.Rollback(r.Context())
+	qtx := h.Queries.WithTx(tx)
+
+	// RevokeShareLink reports no row count, so find the link among the
+	// workspace's active ones first. Revoking an unknown or already inactive
+	// link stays a silent no-op and writes no audit row.
+	active, err := qtx.ListShareLinksByWorkspace(r.Context(), workspaceUUID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to revoke share link")
+		return
+	}
+	wasActive := slices.ContainsFunc(active, func(l db.ListShareLinksByWorkspaceRow) bool { return l.ID == linkUUID })
+
+	if err := qtx.RevokeShareLink(r.Context(), db.RevokeShareLinkParams{
 		ID:          linkUUID,
 		WorkspaceID: workspaceUUID,
 	}); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to revoke share link")
+		return
+	}
+	if wasActive {
+		if err := h.recordAudit(r, tx, audit.Entry{
+			WorkspaceID: uuidToString(workspaceUUID),
+			Action:      audit.ActionShareLinkRevoked,
+			TargetType:  "share_link",
+			TargetID:    uuidToString(linkUUID),
+		}); err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to revoke share link")
+			return
+		}
+	}
+	if err := tx.Commit(r.Context()); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to revoke share link")
 		return
 	}
@@ -410,6 +456,16 @@ func (h *Handler) JoinByShareLink(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, "failed to join workspace")
 			return
 		}
+	}
+
+	if err := h.recordAudit(r, tx, audit.Entry{
+		WorkspaceID: uuidToString(link.WorkspaceID),
+		Action:      audit.ActionShareLinkJoined,
+		TargetType:  "share_link",
+		TargetID:    uuidToString(link.ID),
+	}); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to join workspace")
+		return
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {

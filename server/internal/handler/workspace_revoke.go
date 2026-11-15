@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/service"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -42,7 +43,10 @@ import (
 // archivedBy is the actor who triggered the revocation. For DeleteMember it's
 // the requester (the admin doing the kick); for LeaveWorkspace it's the leaver
 // themselves.
-func (h *Handler) revokeAndRemoveMember(ctx context.Context, workspaceID, userID, memberID, archivedBy pgtype.UUID) (revocationResult, error) {
+//
+// beforeCommit, when non-nil, runs inside the transaction after the member row is deleted; an
+// error from it rolls everything back. Callers use it to write the audit row.
+func (h *Handler) revokeAndRemoveMember(ctx context.Context, workspaceID, userID, memberID, archivedBy pgtype.UUID, beforeCommit func(tx pgx.Tx) error) (revocationResult, error) {
 	var empty revocationResult
 
 	tx, err := h.TxStarter.Begin(ctx)
@@ -259,6 +263,12 @@ func (h *Handler) revokeAndRemoveMember(ctx context.Context, workspaceID, userID
 
 	if err := qtx.DeleteMember(ctx, memberID); err != nil {
 		return empty, err
+	}
+
+	if beforeCommit != nil {
+		if err := beforeCommit(tx); err != nil {
+			return empty, err
+		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {

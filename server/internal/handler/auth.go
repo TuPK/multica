@@ -470,6 +470,9 @@ func (h *Handler) VerifyCode(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to generate token")
 		return
 	}
+	if !h.recordLogin(w, r, user, "email_code") {
+		return
+	}
 
 	// Set HttpOnly auth cookie (browser clients) + CSRF cookie.
 	if err := auth.SetAuthCookies(w, tokenString); err != nil {
@@ -734,6 +737,9 @@ func (h *Handler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to generate token")
 		return
 	}
+	if !h.recordLogin(w, r, user, "google") {
+		return
+	}
 
 	if err := auth.SetAuthCookies(w, tokenString); err != nil {
 		slog.Warn("failed to set auth cookies", "error", err)
@@ -783,6 +789,9 @@ func (h *Handler) IssueCliToken(w http.ResponseWriter, r *http.Request) {
 		}
 		slog.Warn("cli-token: failed to issue JWT", append(logger.RequestAttrs(r), "error", err, "user_id", userID)...)
 		writeError(w, http.StatusInternalServerError, "failed to generate token")
+		return
+	}
+	if !h.recordLogin(w, r, user, "other") {
 		return
 	}
 

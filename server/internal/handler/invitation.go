@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/analytics"
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
@@ -171,31 +172,37 @@ func (h *Handler) CreateInvitation(w http.ResponseWriter, r *http.Request) {
 		ExpiresAt: pgtype.Timestamptz{Time: expiresAt, Valid: true},
 	}
 	var inv db.WorkspaceInvitation
-	if h.seatCapacityEnabled() {
-		tx, txErr := h.TxStarter.Begin(r.Context())
-		if txErr != nil {
-			h.compensateCapacityIntent(r.Context(), invitationID)
-			writeError(w, http.StatusInternalServerError, "failed to create invitation")
-			return
-		}
-		defer tx.Rollback(r.Context())
-		qtx := h.Queries.WithTx(tx)
-		inv, err = qtx.CreateInvitation(r.Context(), createParams)
-		if err == nil {
-			err = qtx.DeleteSeatCapacityIntentForAction(r.Context(), db.DeleteSeatCapacityIntentForActionParams{
-				OperationToken: uuidToPG(invitationID), Action: seatcapacity.ActionReserveInvitation,
-			})
-		}
-		if err == nil {
-			err = tx.Commit(r.Context())
-		}
-		if err != nil {
-			// Release transaction locks before the out-of-transaction Cloud
-			// compensation below reads and transitions the durable intent.
-			_ = tx.Rollback(r.Context())
-		}
-	} else {
-		inv, err = h.Queries.CreateInvitation(r.Context(), createParams)
+	tx, txErr := h.TxStarter.Begin(r.Context())
+	if txErr != nil {
+		h.compensateCapacityIntent(r.Context(), invitationID)
+		writeError(w, http.StatusInternalServerError, "failed to create invitation")
+		return
+	}
+	defer tx.Rollback(r.Context())
+	qtx := h.Queries.WithTx(tx)
+	inv, err = qtx.CreateInvitation(r.Context(), createParams)
+	if err == nil && h.seatCapacityEnabled() {
+		err = qtx.DeleteSeatCapacityIntentForAction(r.Context(), db.DeleteSeatCapacityIntentForActionParams{
+			OperationToken: uuidToPG(invitationID), Action: seatcapacity.ActionReserveInvitation,
+		})
+	}
+	if err == nil {
+		err = h.recordAudit(r, tx, audit.Entry{
+			WorkspaceID: uuidToString(inv.WorkspaceID),
+			Action:      audit.ActionInvitationCreated,
+			TargetType:  "invitation",
+			TargetID:    uuidToString(inv.ID),
+			TargetLabel: inv.InviteeEmail,
+			Detail:      map[string]any{"role": inv.Role},
+		})
+	}
+	if err == nil {
+		err = tx.Commit(r.Context())
+	}
+	if err != nil {
+		// Release transaction locks before the out-of-transaction Cloud
+		// compensation below reads and transitions the durable intent.
+		_ = tx.Rollback(r.Context())
 	}
 	if err != nil {
 		h.compensateCapacityIntent(r.Context(), invitationID)
@@ -325,6 +332,16 @@ func (h *Handler) RevokeInvitation(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, "failed to revoke invitation")
 			return
 		}
+	}
+	if err := h.recordAudit(r, tx, audit.Entry{
+		WorkspaceID: uuidToString(inv.WorkspaceID),
+		Action:      audit.ActionInvitationRevoked,
+		TargetType:  "invitation",
+		TargetID:    uuidToString(inv.ID),
+		TargetLabel: inv.InviteeEmail,
+	}); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to revoke invitation")
+		return
 	}
 	if err := tx.Commit(r.Context()); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to revoke invitation")
@@ -564,6 +581,18 @@ func (h *Handler) AcceptInvitation(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if err := h.recordAudit(r, tx, audit.Entry{
+		WorkspaceID: uuidToString(accepted.WorkspaceID),
+		Action:      audit.ActionInvitationAccepted,
+		TargetType:  "invitation",
+		TargetID:    uuidToString(accepted.ID),
+		TargetLabel: accepted.InviteeEmail,
+		Detail:      map[string]any{"role": accepted.Role},
+	}); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to accept invitation")
+		return
+	}
+
 	if err := tx.Commit(r.Context()); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to accept invitation")
 		return
@@ -678,6 +707,16 @@ func (h *Handler) DeclineInvitation(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, "failed to decline invitation")
 			return
 		}
+	}
+	if err := h.recordAudit(r, tx, audit.Entry{
+		WorkspaceID: uuidToString(declined.WorkspaceID),
+		Action:      audit.ActionInvitationDeclined,
+		TargetType:  "invitation",
+		TargetID:    uuidToString(declined.ID),
+		TargetLabel: declined.InviteeEmail,
+	}); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to decline invitation")
+		return
 	}
 	if err := tx.Commit(r.Context()); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to decline invitation")

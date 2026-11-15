@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/auth"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -100,7 +101,14 @@ func (h *Handler) CreatePersonalAccessToken(w http.ResponseWriter, r *http.Reque
 		prefix = prefix[:12]
 	}
 
-	pat, err := h.Queries.CreatePersonalAccessToken(r.Context(), db.CreatePersonalAccessTokenParams{
+	tx, err := h.TxStarter.Begin(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to create token")
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	pat, err := h.Queries.WithTx(tx).CreatePersonalAccessToken(r.Context(), db.CreatePersonalAccessTokenParams{
 		UserID:      parseUUID(userID),
 		Name:        req.Name,
 		TokenHash:   auth.HashToken(rawToken),
@@ -108,6 +116,19 @@ func (h *Handler) CreatePersonalAccessToken(w http.ResponseWriter, r *http.Reque
 		ExpiresAt:   expiresAt,
 	})
 	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to create token")
+		return
+	}
+	if err := h.recordAudit(r, tx, audit.Entry{
+		Action:      audit.ActionPATCreated,
+		TargetType:  "personal_access_token",
+		TargetID:    uuidToString(pat.ID),
+		TargetLabel: pat.Name,
+	}); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to create token")
+		return
+	}
+	if err := tx.Commit(r.Context()); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create token")
 		return
 	}
@@ -271,10 +292,52 @@ func (h *Handler) RevokePersonalAccessToken(w http.ResponseWriter, r *http.Reque
 	if !ok {
 		return
 	}
-	hash, err := h.Queries.RevokePersonalAccessToken(r.Context(), db.RevokePersonalAccessTokenParams{
+	tx, err := h.TxStarter.Begin(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to revoke token")
+		return
+	}
+	defer tx.Rollback(r.Context())
+	qtx := h.Queries.WithTx(tx)
+
+	// The revoke query returns only the hash, so read the name from the
+	// caller's live tokens. A token that is unknown or already revoked is not
+	// audited: nothing changes.
+	live, err := qtx.ListPersonalAccessTokensByUser(r.Context(), parseUUID(userID))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to revoke token")
+		return
+	}
+	var revokedName string
+	wasLive := false
+	for _, t := range live {
+		if t.ID == idUUID {
+			revokedName, wasLive = t.Name, true
+			break
+		}
+	}
+
+	hash, err := qtx.RevokePersonalAccessToken(r.Context(), db.RevokePersonalAccessTokenParams{
 		ID:     idUUID,
 		UserID: parseUUID(userID),
 	})
+	if err == nil && wasLive {
+		if auditErr := h.recordAudit(r, tx, audit.Entry{
+			Action:      audit.ActionPATRevoked,
+			TargetType:  "personal_access_token",
+			TargetID:    uuidToString(idUUID),
+			TargetLabel: revokedName,
+		}); auditErr != nil {
+			writeError(w, http.StatusInternalServerError, "failed to revoke token")
+			return
+		}
+	}
+	if err == nil {
+		if commitErr := tx.Commit(r.Context()); commitErr != nil {
+			writeError(w, http.StatusInternalServerError, "failed to revoke token")
+			return
+		}
+	}
 	switch {
 	case err == nil:
 		// Drop the cache entry immediately so the revocation takes effect

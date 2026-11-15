@@ -16,11 +16,14 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/analytics"
+	"github.com/multica-ai/multica/server/internal/auditstore"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/service"
+	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
@@ -151,6 +154,56 @@ type MemberResponse struct {
 	UserID      string `json:"user_id"`
 	Role        string `json:"role"`
 	CreatedAt   string `json:"created_at"`
+}
+
+// recordAudit writes one audit event for the request. With a non-nil tx the
+// row commits or rolls back with the change it records; without one it is a
+// plain write. The actor defaults to the requesting user, labelled with their
+// email. Callers must fail the request when it returns an error.
+func (h *Handler) recordAudit(r *http.Request, tx pgx.Tx, e audit.Entry) error {
+	ctx := r.Context()
+	q := h.Queries
+	var writer audit.Writer = auditstore.New(h.Queries)
+	if tx != nil {
+		q = h.Queries.WithTx(tx)
+		writer = auditstore.NewTx(h.Queries, tx)
+	}
+	if e.ActorType == "" {
+		uid, err := util.ParseUUID(requestUserID(r))
+		if err != nil {
+			return err
+		}
+		user, err := q.GetUser(ctx, uid)
+		if err != nil {
+			return err
+		}
+		e.ActorType = audit.ActorMember
+		e.ActorID = uuidToString(user.ID)
+		e.ActorLabel = user.Email
+	}
+	e.IP, e.UserAgent, e.RequestID = auditstore.RequestFields(r, h.clientIPForRateLimit)
+	return audit.Record(ctx, writer, e)
+}
+
+// recordLogin writes the auth.login audit row for user. On failure it answers
+// 500 and returns false, so no session credential reaches the client.
+func (h *Handler) recordLogin(w http.ResponseWriter, r *http.Request, user db.User, method string) bool {
+	err := h.recordAudit(r, nil, audit.Entry{
+		ActorType:   audit.ActorMember,
+		ActorID:     uuidToString(user.ID),
+		ActorLabel:  user.Email,
+		Action:      audit.ActionAuthLogin,
+		TargetType:  "user",
+		TargetID:    uuidToString(user.ID),
+		TargetLabel: user.Email,
+		Detail:      map[string]any{"method": method},
+	})
+	if err != nil {
+		slog.Warn("audit login failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to record login")
+		return false
+	}
+	return true
 }
 
 func memberToResponse(m db.Member) MemberResponse {
@@ -368,6 +421,18 @@ func (h *Handler) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := h.recordAudit(r, tx, audit.Entry{
+		WorkspaceID: uuidToString(ws.ID),
+		Action:      audit.ActionWorkspaceCreated,
+		TargetType:  "workspace",
+		TargetID:    uuidToString(ws.ID),
+		TargetLabel: ws.Name,
+	}); err != nil {
+		slog.Warn("audit workspace created failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to create workspace")
+		return
+	}
+
 	// NOTE: CreateWorkspace deliberately does NOT mark the user as
 	// onboarded. The `onboarded_at` flag is owned by CompleteOnboarding
 	// (Step 3 of the flow) and by AcceptInvitation (invitee joining an
@@ -552,9 +617,58 @@ func (h *Handler) UpdateWorkspace(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	ws, err := h.Queries.UpdateWorkspace(r.Context(), params)
+	changedFields := []string{}
+	if params.Name.Valid {
+		changedFields = append(changedFields, "name")
+	}
+	if params.Description.Valid {
+		changedFields = append(changedFields, "description")
+	}
+	if params.Context.Valid {
+		changedFields = append(changedFields, "context")
+	}
+	if params.Settings != nil {
+		changedFields = append(changedFields, "settings")
+	}
+	if params.Repos != nil {
+		changedFields = append(changedFields, "repos")
+	}
+	if params.IssuePrefix.Valid {
+		changedFields = append(changedFields, "issue_prefix")
+	}
+	if params.AvatarUrl.Valid {
+		changedFields = append(changedFields, "avatar_url")
+	}
+	if params.SetSecretaryAgent {
+		changedFields = append(changedFields, "secretary_agent_id")
+	}
+
+	tx, err := h.TxStarter.Begin(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to update workspace")
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	ws, err := h.Queries.WithTx(tx).UpdateWorkspace(r.Context(), params)
 	if err != nil {
 		slog.Warn("update workspace failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", id)...)
+		writeError(w, http.StatusInternalServerError, "failed to update workspace")
+		return
+	}
+	if err := h.recordAudit(r, tx, audit.Entry{
+		WorkspaceID: uuidToString(ws.ID),
+		Action:      audit.ActionWorkspaceUpdated,
+		TargetType:  "workspace",
+		TargetID:    uuidToString(ws.ID),
+		TargetLabel: ws.Name,
+		Detail:      map[string]any{"changed_fields": changedFields},
+	}); err != nil {
+		slog.Warn("audit workspace updated failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", id)...)
+		writeError(w, http.StatusInternalServerError, "failed to update workspace")
+		return
+	}
+	if err := tx.Commit(r.Context()); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to update workspace")
 		return
 	}
@@ -728,7 +842,20 @@ func (h *Handler) UpdateMember(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	updatedMember, err := h.Queries.UpdateMemberRole(r.Context(), db.UpdateMemberRoleParams{
+	user, err := h.Queries.GetUser(r.Context(), target.UserID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load member")
+		return
+	}
+
+	tx, err := h.TxStarter.Begin(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to update member")
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	updatedMember, err := h.Queries.WithTx(tx).UpdateMemberRole(r.Context(), db.UpdateMemberRoleParams{
 		ID:   target.ID,
 		Role: role,
 	})
@@ -736,14 +863,24 @@ func (h *Handler) UpdateMember(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to update member")
 		return
 	}
-
-	h.MembershipCache.Invalidate(r.Context(), uuidToString(target.UserID), workspaceID)
-
-	user, err := h.Queries.GetUser(r.Context(), updatedMember.UserID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to load member")
+	if err := h.recordAudit(r, tx, audit.Entry{
+		WorkspaceID: uuidToString(target.WorkspaceID),
+		Action:      audit.ActionMemberRoleChanged,
+		TargetType:  "member",
+		TargetID:    uuidToString(target.UserID),
+		TargetLabel: user.Email,
+		Detail:      map[string]any{"from": target.Role, "to": role},
+	}); err != nil {
+		slog.Warn("audit member role changed failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
+		writeError(w, http.StatusInternalServerError, "failed to update member")
 		return
 	}
+	if err := tx.Commit(r.Context()); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to update member")
+		return
+	}
+
+	h.MembershipCache.Invalidate(r.Context(), uuidToString(target.UserID), workspaceID)
 
 	userID := requestUserID(r)
 	h.publish(protocol.EventMemberUpdated, uuidToString(requester.WorkspaceID), "member", userID, map[string]any{
@@ -788,8 +925,22 @@ func (h *Handler) DeleteMember(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	targetUser, err := h.Queries.GetUser(r.Context(), target.UserID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to delete member")
+		return
+	}
+
 	requesterUserID := requestUserID(r)
-	result, err := h.revokeAndRemoveMember(r.Context(), target.WorkspaceID, target.UserID, target.ID, parseUUID(requesterUserID))
+	result, err := h.revokeAndRemoveMember(r.Context(), target.WorkspaceID, target.UserID, target.ID, parseUUID(requesterUserID), func(tx pgx.Tx) error {
+		return h.recordAudit(r, tx, audit.Entry{
+			WorkspaceID: uuidToString(target.WorkspaceID),
+			Action:      audit.ActionMemberRemoved,
+			TargetType:  "member",
+			TargetID:    uuidToString(target.UserID),
+			TargetLabel: targetUser.Email,
+		})
+	})
 	if err != nil {
 		slog.Warn("delete member failed", append(logger.RequestAttrs(r), "error", err, "member_id", memberID, "workspace_id", workspaceID)...)
 		writeError(w, http.StatusInternalServerError, "failed to delete member")
@@ -834,7 +985,21 @@ func (h *Handler) LeaveWorkspace(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	result, err := h.revokeAndRemoveMember(r.Context(), member.WorkspaceID, member.UserID, member.ID, member.UserID)
+	leaver, err := h.Queries.GetUser(r.Context(), member.UserID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to leave workspace")
+		return
+	}
+
+	result, err := h.revokeAndRemoveMember(r.Context(), member.WorkspaceID, member.UserID, member.ID, member.UserID, func(tx pgx.Tx) error {
+		return h.recordAudit(r, tx, audit.Entry{
+			WorkspaceID: uuidToString(member.WorkspaceID),
+			Action:      audit.ActionMemberLeft,
+			TargetType:  "member",
+			TargetID:    uuidToString(member.UserID),
+			TargetLabel: leaver.Email,
+		})
+	})
 	if err != nil {
 		slog.Warn("leave workspace failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
 		writeError(w, http.StatusInternalServerError, "failed to leave workspace")
@@ -1232,6 +1397,11 @@ func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(r.Context())
 	qtx := h.Queries.WithTx(tx)
+	doomed, err := qtx.GetWorkspace(r.Context(), requester.WorkspaceID)
+	if err != nil {
+		failWorkspaceDelete(w, r, workspaceID, "load workspace for audit", err)
+		return
+	}
 	var sourceContextAttachmentURLs []string
 	var sourceContextIntentURLs []string
 
@@ -1656,6 +1826,17 @@ func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 			failWorkspaceDelete(w, r, workspaceID, step.name, err)
 			return
 		}
+	}
+
+	if err := h.recordAudit(r, tx, audit.Entry{
+		WorkspaceID: uuidToString(requester.WorkspaceID),
+		Action:      audit.ActionWorkspaceDeleted,
+		TargetType:  "workspace",
+		TargetID:    uuidToString(requester.WorkspaceID),
+		TargetLabel: doomed.Name,
+	}); err != nil {
+		failWorkspaceDelete(w, r, workspaceID, "audit", err)
+		return
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {

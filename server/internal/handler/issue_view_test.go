@@ -565,7 +565,7 @@ func TestRevokeMemberSweepsPrivateViewsAndPreferences(t *testing.T) {
 		t.Fatalf("load member id: %v", err)
 	}
 	if _, err := testHandler.revokeAndRemoveMember(
-		ctx, parseUUID(testWorkspaceID), parseUUID(otherID), parseUUID(memberID), parseUUID(testUserID),
+		ctx, parseUUID(testWorkspaceID), parseUUID(otherID), parseUUID(memberID), parseUUID(testUserID), nil,
 	); err != nil {
 		t.Fatalf("revoke: %v", err)
 	}

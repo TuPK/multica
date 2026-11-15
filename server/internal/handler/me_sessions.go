@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/platform-management/accountguard"
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/auth"
 	"github.com/multica-ai/multica/server/internal/logger"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -57,11 +58,31 @@ func (h *Handler) RevokeAllSessions(guard *accountguard.Guard) http.HandlerFunc 
 		}
 
 		revokedAt := time.Unix(time.Now().Unix(), 0)
-		if err := h.Queries.RevokeSessionsForUser(r.Context(), db.RevokeSessionsForUserParams{
+		tx, err := h.TxStarter.Begin(r.Context())
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to revoke sessions")
+			return
+		}
+		defer tx.Rollback(r.Context())
+		if err := h.Queries.WithTx(tx).RevokeSessionsForUser(r.Context(), db.RevokeSessionsForUserParams{
 			UserID:             uid,
 			SessionsValidAfter: pgtype.Timestamptz{Time: revokedAt, Valid: true},
 		}); err != nil {
 			slog.Warn("revoke all sessions: write failed", append(logger.RequestAttrs(r), "error", err, "user_id", userID)...)
+			writeError(w, http.StatusInternalServerError, "failed to revoke sessions")
+			return
+		}
+		if err := h.recordAudit(r, tx, audit.Entry{
+			Action:      audit.ActionAuthSessionsRevoked,
+			TargetType:  "user",
+			TargetID:    userID,
+			TargetLabel: user.Email,
+		}); err != nil {
+			slog.Warn("revoke all sessions: audit failed", append(logger.RequestAttrs(r), "error", err, "user_id", userID)...)
+			writeError(w, http.StatusInternalServerError, "failed to revoke sessions")
+			return
+		}
+		if err := tx.Commit(r.Context()); err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to revoke sessions")
 			return
 		}
