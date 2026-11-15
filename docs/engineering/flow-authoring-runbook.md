@@ -4,6 +4,22 @@ Tài liệu này dành cho người vận hành và người soạn flow. Đặc
 
 Phạm vi: soạn bản nháp, kiểm tra, mô phỏng, xuất bản, đặt phiên bản đang dùng, chạy thử một phiên bản, chọn workflow khi tạo request, quay lui. Số liệu theo phiên bản (spec 16.6) chưa được cài.
 
+## 0. Tự động hóa trước (áp dụng cho mọi workflow)
+
+Quy tắc chung nằm trong `AGENTS.md`, mục "Automation First". Khi viết một bước, gate hay bản mẫu:
+
+- Bước chỉ dừng (`blocked`, `in_review`, hoặc chờ người) khi thiếu đầu vào mà không tra cứu được và không có mặc định, hoặc khi hành động không thể hoàn tác, hoặc khi spec giao việc duyệt cuối cho người.
+- Gate không chặn request vì nguồn mâu thuẫn hay chưa được xác nhận. Gate ghi giả định, đưa vào danh sách cần người duyệt ở bàn giao, và đóng bằng `approved` nếu bản nháp khớp nguồn. Chỉ `rejected` khi drafter sửa được.
+- Trước khi kết luận "thiếu", agent tra cứu tệp đính kèm của request, comment, issue liên quan và tri thức dự án.
+- Giữ lại đúng các điểm dừng người có cơ sở trong spec: bàn giao cuối (`in_review`), hành động không hoàn tác, và kiểm soát quyền riêng tư (ví dụ dữ liệu lớp học chưa ẩn danh).
+
+Cách thực hiện, không cần sửa code:
+
+- **Kiểm tra trước khi publish.** Agent thiết kế (`flow_designer`) đọc `references/automation.md` của skill `flow-authoring` trước khi đính kèm `flow.json`: quét văn bản bước để tìm cụm "chờ người", "dừng 1", rồi viết lại thành giả định có nhãn. Lý do: không thể liệt kê mọi cách một bộ nguồn web viết điều này, nên phải để agent đọc hiểu nội dung. Người duyệt vẫn publish và gán người vào vai (đó là quyết định của người, theo spec).
+- **Skill chính sách cho squad.** Skill `automation-policy` gắn vào squad thì mọi thành viên, kể cả agent thêm sau, chạy với nó trong mọi task. Gắn bằng `PUT /api/squads/{id}/skills`, gửi toàn bộ bộ skill của squad (route này thay thế cả tập, nên đọc tập hiện tại trước).
+- **Skill không thay được chỉ dẫn của bước.** Vì vậy kiểm tra văn bản ở bước thiết kế là bắt buộc. Skill là lớp an toàn cho bước cũ hoặc bộ nguồn đã có.
+- **Thử sau khi publish.** Chạy một request thử với dữ liệu tối thiểu. Mọi điểm dừng phải được phân loại theo bảng ở `references/automation.md`, rồi sửa văn bản nếu không thuộc danh sách cho phép.
+
 ## 1. Cờ tính năng
 
 | Cờ | Mặc định | Tác dụng khi tắt |

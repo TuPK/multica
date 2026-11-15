@@ -122,6 +122,17 @@ Workspace-scoped queries filter by `workspace_id`; membership gates access and `
 - Default tests must not resolve or execute user-installed agent CLIs; pass test-created fake or missing executable paths. New default agent commands go in `scripts/agent-cli-command-names.txt`.
 - Only run real-agent smoke tests when explicitly authorized. Gate them behind `agentintegration` and check `MULTICA_RUN_REAL_AGENT_SMOKE=1` before executable lookup/account access. Run the specific test: `(cd server && MULTICA_RUN_REAL_AGENT_SMOKE=1 go test -tags=agentintegration ./pkg/agent -run '<test-name>' -count=1 -v)`.
 
+## Automation First
+
+The product runs unattended. Every feature, workflow, gate, agent and skill is built so that an agent finishes the work without waiting for a person, and a person is asked only where the spec requires it.
+
+- Before a step waits for anyone, the agent looks for the answer itself: the request's attachments and comments, linked issues, the project's knowledge, and any web tools its runtime has. Only then does it decide.
+- When a rule gives a default or a calculation, the agent applies it and records the choice as a labelled assumption in its comment and in the handover list. It continues.
+- A gate that finds disagreeing sources or an unconfirmed fact records it as an assumption. It does not block the request when the draft matches the sources; the disagreement goes to the handover list. A gate rejects only errors the drafter can fix, and blocks only when an input is missing and cannot be defaulted.
+- A person's decision is a stop only in these cases, and each stop names its reason in the spec: an action that cannot be undone (deleting data, releasing, changing production, spending money, sending outward), an input that no research or default can supply, or the final approval of a deliverable that the spec gives to a person.
+- A new feature that adds a human wait must say which clause of the spec requires it, in its design note. Without such a clause, it runs without the wait.
+- Do not reduce automation to pass a test. If a test needs a person's answer, write the assumption into the test data and label it as such.
+
 ## Change and Delivery Rules
 
 - Keep changes scoped; reuse existing patterns.
