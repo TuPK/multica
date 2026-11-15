@@ -44,10 +44,14 @@ building the harness? Then it is a Pitfall, with the evidence. Anything else sta
 3. Name a command once per purpose. No flag lists, no multi-line scripts, no copied bodies.
 4. A pointer says when to read: "Changing the API client: read `docs/...`". No bare paths. Every path exists.
 5. Delete test: if you removed this line, would an agent make a mistake? If not, delete it.
-6. A Pitfall cites its evidence: a ruling id, an issue id, or the command and its exit code. Say what goes wrong and what to do instead.
+6. A Pitfall is a top-level bullet with five fields under it, each a `- **field**: value` line: `cue` (the situation that shows it),
+   `lesson` (what to do instead), `evidence` (a ruling id, an issue id, or the command and its exit code), `confidence` (`high`, `medium` or
+   `low`), and `scope` (`repo`, `stack` or `workspace-fact`). `valid_until` (a date) is optional; past it, H12 warns. When you copy a harness to
+   another repository, mark every `stack` and `workspace-fact` pitfall `re-verify` in your report until you have run it there.
 7. Do not restate what a linter, formatter or CI job already enforces. At most one Rule line that names the tool.
 8. Every Rule ends with `Enforced by: <lint rule | test | CI job | hook | prose>`. A `prose` rule is counted; when it is broken twice, move it into code.
-9. Target 80 lines. Above 120 lines or 8 KiB is a warning; above 200 lines or 24 KiB the stage is not certified.
+9. Target 80 lines. Above 120 lines or 8 KiB is a warning; above 200 lines or 24 KiB the stage is not certified. Rules and Known pitfalls
+   together past 60% of the 8 KiB budget is a warning too: move a rule into a check (lint, test, CI job) instead of adding prose.
 10. No secrets, no absolute personal paths, no variable values. `.env.example` holds names only.
 11. Concrete and checkable: "Run `<command>` before committing", not "test your changes". English, one idea per line.
 12. Exception for an empty repository with no README and no architecture document: at most three lines of orientation that point to the document that will exist.
@@ -81,21 +85,27 @@ must satisfy before it is done. `warning` is reported, never blocks.
 | H6 | Exactly one `Done = ...` line that names a command and an evidence level L1 to L3 | cert |
 | H7 | No progress wording in the rules (a Greenfield section is exempt) | cert |
 | H10 | `docs/sdlc/environment.md` has an `Ensure command:` line, and `AGENTS.md` names that file and that command | cert |
-| H14 | `AGENTS.md` within 200 lines and 24 KiB (a warning above 120 lines or 8 KiB) | cert |
+| H14 | `AGENTS.md` within 200 lines and 24 KiB (a warning above 120 lines or 8 KiB, or when Rules and Known pitfalls pass 60% of 8 KiB) | cert |
 | E1 | `--run`: the Ensure command exits 0 | cert |
 | E2 | `--run`: the Done command exits 0 on a clean git tree | cert |
 | H2 | `docs/sdlc/harness-cert.json` is valid and its sha is a commit | warns |
+| H17 | No grader or QA verdict in `AGENTS.md`, `CLAUDE.md`, `docs/sdlc/*.md` or the sdlc skills' markdown (the marker list is in the checker and in `docs/sdlc/harness.json`). A hit names the file, line and marker. Exceptions need `reason` and `approver` in `docs/sdlc/harness.json` (`markerExceptions`). A warning in this cycle; it is the last line of defence, after not putting verdicts into the inputs | warns |
+| H18 | Every skill folder, and every markdown file in `docs/` whose path contains "runbook", is named by something, and a pointer to it in AGENTS.md sits under Read when or states a condition. A skill nothing names is never called | warns |
 | H5 | The toolchain version is pinned and CI uses the same major | warns |
 | H8 | Each Rule ends with `Enforced by:`, and a named path or command exists | warns |
 | H9 | CONTRIBUTING, a PR template, or a commit convention | warns |
 | H11 | `.env` and `.multica/` are ignored, `.env.example` exists, no secret pattern in tracked files | warns |
-| H12 | Each Known pitfall cites its evidence | warns |
+| H12 | Each Known pitfall has its evidence and five fields (cue, lesson, evidence, confidence, scope) with valid values; an expired `valid_until` warns | warns |
 | H13 | The must-read files total at most 32 KiB, or a `Read when:` index exists | warns |
 | H15 | Every pointer to a document says when to read it | warns |
 | H16 | No overview signs: directory tree, Overview or Project structure heading, narrative paragraph | warns |
 
 A false positive is fixed in the file, not by weakening a check: rewrite the line, or list a path that is generated later in
-`docs/sdlc/harness.json` as `{ "ignorePaths": ["generated/"] }`. The report also holds `footprint` (lines, bytes, list items, prose rules).
+`docs/sdlc/harness.json` as `{ "ignorePaths": ["generated/"] }`. The report also holds `footprint` (lines, bytes, list items, prose rules,
+and the size of each `##` section).
+
+Every failing check carries `findings`: one entry per detail, with `what` (the file, line and value), `why` (why the rule exists) and `fix`
+(what to change). Read the findings to repair a check. `details` is the same text without the other two fields.
 
 A `gate` failure cannot be lowered: fix the file. If a `cert` criterion cannot hold for a valid reason (the repository has no tests, so
 Done has nothing to prove), record an assumption in `docs/sdlc/assumptions.md` that names the check and the reason, run with
@@ -119,6 +129,8 @@ The issue is in the Harness status, after Environment. The environment runs and 
 4. **Make Done real.** If there is no single verification command, add one (a `verify` script or target) that gathers the typecheck, lint and tests the
    repository already has, plus a faster variant. It must exit non-zero when any of them fails. If no single idempotent command rebuilds the environment,
    that is DevOps work: block with class `tooling`.
+4a. **Shape of the product.** The request names the product's shape: its columns, fields, sections, order and names. The harness does not change it, and
+   the Harness stage does not change it either. If you think it must change, record it as an assumption and let QA check it. Enforced by: prose and QA.
 5. **Keep a list of every trip.** Each environment error, wrong order of commands, missing variable or slow command you met in steps 3 and 4 is a candidate
    Pitfall: record the command, the exit code and what fixed it. These are the facts an agent cannot read from the code.
 6. **Collect the Rules.** From the architecture document sections "Non-default conventions" and "Verification strategy" (if present), the policy the
@@ -144,11 +156,18 @@ ruling with the same cause, or when a Developer blocked on a `gate` failure.
 
 1. Run `check-harness --refresh`. Fix what `manifestsChanged` and `blocking` name.
 2. Growth rule: add a line only if an agent was corrected or blocked twice by the same thing, or you tripped on it now, and cite the evidence.
+   A pitfall you add carries its five fields.
    Budget rule: above 80 lines, adding a line means removing one or moving a rule into code.
 3. Pruning rule: apply the delete test to every line outside Verify. Remove a Pitfall whose cause was fixed in the code (cite the commit). The ledger rule
    governs every removal.
 4. A Rule marked `prose` that was broken twice becomes a lint rule, test, CI job or hook. The lead queues that as a Developer issue; it is not part of this stage.
+   A lint rule the Developer writes for it prints three things on failure: what is wrong (file and line), why the rule exists, and the fix. The
+   same three fields as `check-harness` findings.
 5. Run `check-harness --cert --run --write-cert`, commit the certificate, and report as in Mode 1 with lines before and after.
+
+**Push guard.** The squad's clone gets the pre-push guard once: `sh <this skill's folder>/scripts/install-guard.sh --repo <clone>`. It refuses a push
+to `main` unless `SDLC_ROLE=qa` is set, which only the QA landing step does. The rollback is `install-guard.sh --repo <clone> --remove`. The guard does
+not stop `git push --no-verify`, and nothing in this repository installs it on the remote: that check belongs to the remote's own configuration.
 
 ## Harness smoke
 
@@ -176,7 +195,10 @@ The smoke is a pass or fail test of the harness, not a statistic: one run cannot
 ## Measures
 
 `scripts/harness-metrics.mjs` turns the platform's own run, usage, timeline and comment data into first-pass rate, runs and tokens per delivered
-issue, blocks by class and harness-attributable blocks. The lead pastes the table into the epic report. Read it as a description with `n` shown, not as proof.
+issue, blocks by class and harness-attributable blocks. It also reports M1 (the harness stage's cost), M3 ungraded runs (platform, provider and timeout
+failures, not counted as failed), M8 with `--harness <repo>` (footprint and certificate age), and M9 (smoke issues, identified by a "Harness smoke" title).
+Every run is counted once by its id. Measures are grouped by the `Harness:` fingerprint on the Lead's first comment; a fingerprint mix is reported
+unless `--allow-mix` is given. The lead pastes the table into the epic report. Read it as a description with `n` shown, not as proof.
 
 ## Roles that read the harness
 
@@ -188,5 +210,5 @@ and name the check ids, so the Architect refreshes the harness. A `cert` or `war
 - `check-harness --cert --run --write-cert` certified, and you ran it after your last edit.
 - Every command in `AGENTS.md` ran, or the report says which did not and why.
 - `AGENTS.md` holds Verify, Rules, Known pitfalls and Read when: no overview, no status, no copied command body, no copied ruling.
-- Every Pitfall has evidence and every Rule says what enforces it.
+- Every Pitfall has evidence and its five fields, and every Rule says what enforces it.
 - Every default you took is an assumption with an id.

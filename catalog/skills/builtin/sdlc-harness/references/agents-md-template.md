@@ -18,6 +18,11 @@ Rules and pointers only: no overview, no progress, no copied command bodies, no 
 
 ## Known pitfalls
 - <What goes wrong, and what to do instead> (<ruling id, issue id, or command and exit code>)
+  - **cue**: <the situation that shows it>
+  - **lesson**: <what to do instead>
+  - **evidence**: <ruling id, issue id, or command and exit code>
+  - **confidence**: <high | medium | low>
+  - **scope**: <repo | stack | workspace-fact>
 
 ## Read when
 - Changing <area>: read `<path>`

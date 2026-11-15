@@ -1,0 +1,6 @@
+{
+  "id": "sum-open",
+  "title": "Add sumOpen to the todo list module",
+  "request": "Add an exported function sumOpen(list) to src/todos.mjs. It returns the sum of the amount field of every item whose status is \"open\". An empty list returns 0. Keep countOpen unchanged.",
+  "test": "node --test test/todos.test.mjs"
+}

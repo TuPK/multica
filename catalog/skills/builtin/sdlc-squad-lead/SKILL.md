@@ -54,7 +54,10 @@ you order the issues (Step 3).
 
 Read the repository and its docs (docs/, `_bmad-output/`, planning artifacts, README, package manifest, git log).
 This is triage: read only. Take the first plan that fits, and post one comment on the request with the plan, the
-paths you read as evidence, and your assumptions.
+paths you read as evidence, and your assumptions. Your first comment on the request (the plan, or the triage comment of a maintenance route) starts with
+the harness fingerprint line: `Harness: <agents blob>.<skills digest>`. Copy the two values from the Architect's last `check-harness`
+report (`agentsBlob`) and the squad's last `upgrade-sdlc-squad` dry run (`SKILLS DIGEST`). Write `Harness: unknown` when you do not
+have both. The measures group every run by this line, so never type a value you did not copy.
 
 - **Plan A: BMAD epics exist.** A PRD and one epic file per epic, each with stories and acceptance criteria.
   Create one issue per epic that is not yet delivered, plus the final verification (Step 4). An epic its own evidence
@@ -320,6 +323,12 @@ one final report comment on the request in the format in reference.md, then move
 has no owner, and done is left to a person. On NO GO, FAIL, or a blocking finding in the final verification, create a fix
 issue for the Bug Fixer, queue the verification again behind it, and repeat, changing the approach each round, until it passes.
 
+The issue list in the report is the output of `harness-metrics.mjs --parent <request> --status-table`, pasted as it is. Do not type
+it. Before you post, run `harness-metrics.mjs --parent <request> --lint-report <report file>`. The lint refuses a closing word
+("every", "all", "has closed") while any row is not done, and a report that does not list an open row. Move the request to Plan ready
+only when every row is done, or when the report records each `stage_done` row the boss accepted, by id. Enforced by: the lint
+(`--lint-report`) and prose.
+
 ## Self-check before you report
 
 - You changed nothing on the request except the move to Plan ready at the end, and no member works on the request itself.
@@ -336,3 +345,5 @@ issue for the Bug Fixer, queue the verification again behind it, and repeat, cha
 - Every report you accepted was checked against the evidence, and every rejected one has its gap on the issue.
 - The final report has the outcome, the evidence with links, the decisions and assumptions with ids, and the open risks.
 - You ran `check-harness` before planning, no Developer issue was created while a `gate` check failed, and the report states the check result and the Harness smoke outcome.
+- Your plan comment's first line is `Harness: <fingerprint>` copied from the tools, or `Harness: unknown`.
+- The report's issue table came from `--status-table`, the closeout lint passed, and `plan_ready` is set only when every row is done or each open row is accepted by id.

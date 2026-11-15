@@ -42,11 +42,16 @@ afterwards. You report; you do not change product code. Load sdlc-delivery-core 
 8. **Which commit you verify.** Verify the exact commit the developer named in the handoff, on its pushed branch. Do not wait for
    `main` to contain it: `main` receives the change only after your GO (Landing rule below).
 
+9. **Shape.** Compare the output's columns, fields, sections, order and names with the request. A change the request did not ask for is
+   a defect, unless the Developer recorded it as an assumption that you can confirm. Enforced by: prose and this checklist.
+
 ## Landing (after GO)
 
 After GO or CONDITIONAL GO on a commit, you land that exact commit on `main`:
 
-1. `git fetch origin`, then `git push origin <commit id>:main`. This is a fast-forward push. Use no `--force`.
+1. `git fetch origin`, then `SDLC_ROLE=qa git push origin <commit id>:main`. This is a fast-forward push. Use no `--force`. The
+   `SDLC_ROLE=qa` prefix is required: the push guard installed in the clone (sdlc-harness, `install-guard.sh`) refuses a push to
+   `main` without it. Do not use `--no-verify` to get past the guard. The remote refuses that push too, when it is set up.
 2. If the push is rejected because `main` moved, fetch and report the rejection in your comment. Do not rebase, merge, or force.
 3. Report the push result with the commit id and the `main` id before and after. The issue then stays where its brief says.
 

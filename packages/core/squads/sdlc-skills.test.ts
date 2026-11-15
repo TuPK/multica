@@ -257,7 +257,9 @@ describe("built-in SDLC skills", () => {
       "references/profile-mobile.md",
       "references/profile-web.md",
       "scripts/check-harness.mjs",
+      "scripts/guard-push.sh",
       "scripts/harness-metrics.mjs",
+      "scripts/install-guard.sh",
     ]);
     expect(harness.content).toContain("## Headless");
     expect(harness.content).toContain("check-harness --quick");
@@ -268,7 +270,7 @@ describe("built-in SDLC skills", () => {
     for (const id of ["H6", "H7", "H10", "H14", "E1", "E2"]) {
       expect(harness.content, id).toMatch(new RegExp(`\\| ${id} \\|.*\\| cert \\|$`, "m"));
     }
-    for (const id of ["H2", "H5", "H8", "H9", "H11", "H12", "H13", "H15", "H16"]) {
+    for (const id of ["H2", "H5", "H8", "H9", "H11", "H12", "H13", "H15", "H16", "H17", "H18"]) {
       expect(harness.content, id).toMatch(new RegExp(`\\| ${id} \\|.*\\| warns \\|$`, "m"));
     }
     // The content rules and the smoke negative step are what keep the file small and the Done command honest.

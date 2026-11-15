@@ -534,3 +534,75 @@ Tài liệu này được commit lên main. Chưa có code nào được viết.
 - **W10:** nhánh A trước, với fixture tự viết (Q3).
 - **W11:** thay phần thiết kế bằng bước tái hiện trên HEAD. Chỉ sửa khi tái hiện thất bại (Q5).
 - **Mục 3:** W11 trong M5 bắt đầu bằng tái hiện, không sửa.
+
+---
+
+## 8. Ghi chú thực hiện (2026-11-15)
+
+Phần này ghi kết quả khi làm theo mục 3 và mục 7. Chưa commit gì. Các thay đổi nằm trong cây làm việc để người dùng xem trước.
+
+### 8.1 Trạng thái theo workstream
+
+| WS | Trạng thái | Ghi chú |
+|---|---|---|
+| W0 | Xong | Ba tài liệu được sửa. Các tài liệu khác (`sdlc-harness.md`, `sdlc-harness-plan.md`, tài liệu sales, research-lab) vẫn có đường dẫn cũ. Chúng không nằm trong danh sách file của W0, nên không sửa. |
+| W1 | Xong (a, b, c). d là ghi chú | W1.a: `scripts/eval/make-snapshot.mjs`. W1.b: H17. W1.c: quy tắc trong `sdlc-delivery-core`. |
+| W2 | Xong trong code, dry-run chưa chạy | `upgrade-sdlc-squad.mjs` in bảng hash và digest khi dry-run. Không gọi máy chủ (xem 8.3). |
+| W3 | Xong | M1, M3 ungraded, M3 identity, M8 (`--harness`), M9. `metric_version` 2. |
+| W4 | Xong | `--status-table`, `--lint-report`, SKILL của Lead, `reference.md`. |
+| W5 | Một phần | W5.a xong (guard và installer). W5.c: không có hook chặn lệnh trong runtime (xem 8.4). W5.b và W5.d chưa làm. |
+| W6 | Xong | H12 kiểm trường bắt buộc và `valid_until`. Mẫu và SKILL đã cập nhật. Chỉ mục theo domain để sau, như kế hoạch. |
+| W7 | Xong | Ngân sách section trong H14. H18. |
+| W8 | Xong | Mỗi check lỗi có `findings` gồm `what`, `why`, `fix`. `details` giữ nguyên. |
+| W9 | Xong bằng prose | Ba file theo danh sách của W9, cộng mục trong `sdlc-harness/SKILL.md`. Architect được phủ bởi SKILL harness vì mục đó là Architect. |
+| W10 | Nhánh A xong | Ba tác vụ, `grade-task.mjs`. Nhánh B và các lượt chạy chưa làm. |
+| W11 | Dừng sau bước tái hiện, chưa tái hiện được | Xem 8.2. Không sửa `issue_workflow_entry.go` hay lõi workflow. |
+
+### 8.2 W11: kết quả tái hiện trên HEAD
+
+**Kết quả: chưa tái hiện được, vì không chạy được test có DB.** Đây không phải là kết quả "không lỗi".
+
+- Đã viết `server/internal/handler/issue_workflow_in_review_repro_test.go` với ba test: thành viên chuyển request giao squad sang `in_review`; run của leader chuyển request; thành viên chuyển issue con giao squad. Mỗi test kỳ vọng người duyệt của bước `in_review` được giao việc và có một run.
+- `go vet ./internal/handler/` pass (không có đầu ra), nên file biên dịch được.
+- `env -u DATABASE_URL bash scripts/require-test-database.sh` thoát 1: `DATABASE_URL is empty or unset`.
+- `env -u DATABASE_URL go test -run TestRepro ./internal/handler/` thoát 1: `DATABASE_URL is empty; set it to a database whose name ends in _test`.
+- Postgres lắng nghe ở `127.0.0.1:5432` và đòi mật khẩu. Mật khẩu chỉ có trong `.env` chính, và không được đọc cho việc test. Không có DB `_test` nào để dùng, và không tạo DB bằng tay. Cần người dùng cấp `DATABASE_URL` tới một DB `*_test` đã migrate.
+
+**Phân tích từ mã (chưa kiểm chứng bằng test).** Nhánh quyết định nằm ở `issue_workflow_entry.go`:
+- dòng 144: `if h.isSquadRequest(ctx, prev) && !h.isRunOfRequestLeader(ctx, prev, run) { return nil, nil }`. Một request cấp cao giao cho squad mà người khác chuyển trạng thái thì không có handoff, và không có run cho người duyệt.
+- Hành vi này có chủ ý. `TestWorkflowDoesNotHandOffASquadRequest` (`issue_queue_start_status_test.go:82`) khẳng định nó với `in_progress`, và chú thích ghi "a request a squad leader is working is not a step of the workflow when someone else moves it".
+- Vì vậy kỳ vọng của test thứ nhất (thành viên chuyển request giao squad sang `in_review`) mâu thuẫn với thiết kế đã có test. Nếu test này đỏ trên HEAD, đó là đúng hành vi thiết kế, không phải lỗi cần sửa ở lõi.
+- Run của leader (dòng 144, `isRunOfRequestLeader` đúng) đi tiếp tới handoff. Issue con có `parent_issue_id` không bị chặn ở dòng 144. Hai trường hợp này có vẻ đúng trên HEAD, nhưng cần test chạy để xác nhận.
+- Giả thuyết cho S7: request giao squad được chuyển sang `in_review` bởi run của một Developer (không phải leader). Dòng 144 chặn handoff. Giả thuyết này chưa kiểm chứng.
+
+**Việc cần làm trước khi sửa (Q5):** chạy ba test với một DB `*_test`. Nếu test thứ nhất đỏ, cần quyết định: đổi thiết kế (cho phép handoff khi run không phải leader chuyển request sang `in_review`), hay giữ thiết kế và sửa quy trình của Lead để nó chuyển request bằng run của leader. Quyết định này thuộc về người dùng, nên dừng ở đây.
+
+### 8.3 Những việc không chạy
+
+- Dry-run `upgrade-sdlc-squad.mjs` cần máy chủ. Máy chủ `8080` là của người dùng, và mục 7.3 cấm thao tác trên đó. Đã kiểm `node --check` cho script.
+- Kiểm `multica skill get` khớp `content_hash` với file nguồn: cần máy chủ.
+- W5.b (kiểm tra ở remote pilot): pilot không còn dùng được (H-3). Phần kiểm tra remote là một file ngoài repo (`git-smart-http.py`).
+- Ô thử W10 trên pilot, kiểm "≤25 lượt" của mục 3, và kiểm W11 trên pilot: cần pilot.
+
+### 8.4 Kiểm tra runtime (W5.c)
+
+Daemon ghi hook `PreToolUse` cho Claude qua giao thức SDK, chỉ để thêm ngữ cảnh (`claude_supplement.go`). Không có hook nào trong mã của repo chặn lệnh shell. Không có chỗ nào daemon cài `core.hooksPath` hay `.git/hooks`. Vì vậy W5.a dùng `install-guard.sh`, chạy một lần trên mỗi clone. Hook chặn lệnh của Claude qua `.claude/settings.json` không được thêm, vì chưa biết daemon khởi chạy Claude bằng cách nào.
+
+### 8.5 Thay đổi so với kế hoạch và lý do
+
+1. **H17 là warning, exit code 0.** Mục 3 W1.b ghi "fail, exit 1". Q6 đã chốt H17 là warning trong chu kỳ này. Kết quả: H17 hiện trong `warnings`, và `ok`/exit vẫn là 0.
+2. **Số check 16 → 18** (H17, H18). Tập cert không đổi. Test `sdlc-harness-check.test.ts` và `sdlc-skills.test.ts` được cập nhật danh sách, vì các check mới làm danh sách cũ sai (Q6).
+3. **Thông báo của checker bằng tiếng Anh.** Đoạn "Đây là rò rỉ, không phải báo động giả..." của W1.b được viết bằng tiếng Anh. Lý do: spec (mục ngôn ngữ) giữ văn bản dành cho agent bằng tiếng Anh, và toàn bộ thông báo của checker là tiếng Anh.
+4. **Fingerprint (W2)** là `<agents blob>.<skills digest>`. Blob là `git hash-object` của AGENTS.md (checker in `agentsBlob`). Digest là sha256 của các dòng `name sha` đã sắp xếp của file nguồn skill (`upgrade-sdlc-squad` in `SKILLS DIGEST`). Dòng `Harness:` đầu tiên của Lead được đọc là giá trị. Không có manifest trong git (Q4).
+5. **H12 đổi định dạng pitfall.** Mỗi pitfall có năm trường bắt buộc. Các fixture và mẫu AGENTS.md cũ được cập nhật theo.
+6. **`M3_failedRuns` đổi nghĩa** (không tính run lỗi hạ tầng). Đây là lý do của `metric_version` 2 (W3).
+7. **M1 và M9 dùng định nghĩa thực tế của workflow.** Không có status `harness_smoke` trong workflow SDLC Auto. M1 đếm issue đã vào status `harness`. M9 nhận diện issue smoke theo tiêu đề "Harness smoke".
+8. **W5.d không làm.** Không có cơ chế nào đưa danh sách path của issue vào hook commit. Thiếu cơ chế này thì hook không biết phạm vi.
+9. **W5.b không làm** (xem 8.3).
+10. **Trường "tests FAIL trên base" của W10** đã đạt. Nhưng tác vụ `sum-open` đầu tiên có seed thiếu `sumOpen`. Đã thêm một stub để base fail bằng assertion, không fail do lỗi link.
+11. **Test M8 và các test khác dùng repo tạm** (không dùng pilot), theo Q1 và H-3.
+
+### 8.6 Hai file test được sửa vì thay đổi có chủ ý
+
+- `packages/core/squads/sdlc-skills.test.ts`: danh sách file của `sdlc-harness` (thêm hai script guard) và danh sách check `warns` (thêm H17, H18).
+- `packages/core/squads/sdlc-harness-check.test.ts`: danh sách ID (16 → 18), fixture pitfall theo định dạng mới, và kỳ vọng `H12` của test "flags a pitfall without an evidence reference" (dùng `toContain` vì giờ có thêm lỗi trường bắt buộc).

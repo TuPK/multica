@@ -59,7 +59,7 @@ issue per gap, queue a new review behind them, at most twice.
 
 ## Maintenance routes
 
-Triage first, as one comment on the request: the type (bug, feature, optimization, upgrade, upkeep), the risk tier
+Triage first, as one comment on the request, whose first line is `Harness: <fingerprint>` (Step 2): the type (bug, feature, optimization, upgrade, upkeep), the risk tier
 (Lightweight, Standard, High-risk), the route, and the assumptions. High-risk means auth, money, data migration or deletion, a
 public contract, a security control, or a production release. Then create the issues of the route:
 
@@ -75,7 +75,7 @@ public contract, a security control, or a production release. Then create the is
 - **Route 0. Audit the harness (before any route above):** run `check-harness` from sdlc-harness (static, no `--run`) and read the JSON. If a
   `gate` check fails, create one Harness issue for the Architect (`harness`) and queue the route's first Developer or
   Bug Fixer issue behind it. If only `cert` or `warning` checks fail, create one Harness issue (Mode 3) queued after the route's work
-  and block nobody. If nothing fails, create nothing. Write the result in the triage comment ("Harness: pass", or the failed ids and levels).
+  and block nobody. If nothing fails, create nothing. Write the result in the triage comment ("Harness check: pass", or the failed ids and levels).
 
 Rules for every route:
 - Issues that touch different files may run together; give them no dependency on each other.
@@ -90,6 +90,7 @@ Rules for every route:
 Plan comment (Step 2):
 
 ```
+Harness: <agents blob>.<skills digest>, or unknown
 Plan: <A | B | C | D | Maintenance route and risk tier>
 Folder mode: <in_place | worktree>
 Evidence read: <paths and what each showed>
@@ -102,6 +103,8 @@ Final report on the request:
 
 ```
 Outcome: <one line>
+Issues (paste the output of `harness-metrics.mjs --parent <request> --status-table`; do not retype it):
+<table>
 Built or changed: <what, and where, with paths and commit ids>
 Evidence: <each verification with its result and link; anything not verified>
 Decisions and assumptions: <id, decision, why, reversal cost>

@@ -3,6 +3,8 @@
 Kết quả bước S0 của [sdlc-harness-plan.md](sdlc-harness-plan.md). Chạy ngày 2026-11-12, chỉ đọc, bằng `check-harness.mjs` **v1** (trước khi sửa gì).
 Cập nhật thêm sau S2 và S7 ở cuối tài liệu.
 
+> **Ghi chú đường đi (W0 của [harness-optimization-plan.md](harness-optimization-plan.md)).** Nguồn skill nay là `catalog/skills/builtin/<tên>/`. Đường dẫn `packages/core/squads/sdlc-skills/`, file `sdlc-skills-data.ts`, và lệnh `scripts/generate-sdlc-skills.mjs` trong tài liệu này là lịch sử, đã bỏ từ commit `9d3a9e081`. Commit `898f60350` (sửa Lead) và `88c33932f` (ghi chú vòng 4, 5) ghi vào đường cũ. Nội dung sửa của `898f60350` đã có trong `catalog/skills/builtin/sdlc-squad-lead/SKILL.md`. Quy trình hiện tại: sửa nguồn trong `catalog/`, chạy `pnpm catalog:check` và `pnpm catalog:build`, rồi `node scripts/upgrade-sdlc-squad.mjs` (dry-run trước, `--apply` sau khi đọc bảng thay đổi). Lệnh này cần `MULTICA_SERVER_URL`, `MULTICA_WORKSPACE_ID`, `MULTICA_TOKEN` trỏ đúng workspace.
+
 ## 1. Baseline test (trước khi sửa)
 
 Lệnh: `pnpm --filter @multica/core exec vitest run squads/sdlc-skills.test.ts squads/sdlc-harness-check.test.ts squads/upgrade.test.ts`
@@ -236,7 +238,7 @@ Ngày 2026-11-12, sau mục 5.10. Chỉ dùng workspace pilot. Repo multica khô
 - `sdlc-delivery-core/SKILL.md`: Developer push nhánh của mình (`git push origin HEAD:<nhánh>`) và nêu commit id, nhánh trong handoff. Không push `main`.
 - `sdlc-qa-verification/SKILL.md`: thêm bước 8 của Mode 2 (kiểm tra đúng commit trên nhánh) và mục `## Landing (after GO)`.
 
-Sinh lại bundle bằng `node scripts/generate-sdlc-skills.mjs` (77 skill). Áp vào pilot bằng `scripts/upgrade-sdlc-squad.mjs --template sdlc_greenfield --apply`, với biến môi trường trỏ tới workspace pilot. Xác nhận qua API đọc theo id: `sdlc-qa-verification` có mục Landing, `sdlc-delivery-core` có luật push lên nhánh, và không còn "Never push to any remote".
+Sinh lại bundle bằng `pnpm catalog:build` (lúc đó là `node scripts/generate-sdlc-skills.mjs`, 77 skill). Áp vào pilot bằng `scripts/upgrade-sdlc-squad.mjs --template sdlc_greenfield --apply`, với biến môi trường trỏ tới workspace pilot. Xác nhận qua API đọc theo id: `sdlc-qa-verification` có mục Landing, `sdlc-delivery-core` có luật push lên nhánh, và không còn "Never push to any remote".
 
 **Request.** DEV-17, giao cho squad: thêm `countOpen(list)` và test. Chuỗi issue: DEV-18 (Developer, bước 1), DEV-19 (Reviewer, bước 2), DEV-20 (QA, bước 3).
 
@@ -332,7 +334,7 @@ Ngày 2026-11-12, sau mục 5.12. Mục đích: xem sau khi chuỗi issue kết 
 **Việc 1: đưa skill mới vào pilot.** PASS.
 - HEAD `647d9e59e` được xuất bằng `git archive` vào `~/.cache/claude-delegate/multica-s8-647`. Không dùng `git worktree`, `checkout` hay `reset`.
 - Chép `.env.worktree` của pilot (PORT 18800, FRONTEND_PORT 13720, `POSTGRES_DB=multica_multica_s8_720`). Không có `.env`. Không chạy `make up` trong thư mục mới, để không tạo môi trường thứ hai.
-- `node_modules` là liên kết tới snapshot cũ, chỉ để dùng `esbuild`. `scripts/generate-sdlc-skills.mjs` sinh 77 skill.
+- `node_modules` là liên kết tới snapshot cũ, chỉ để dùng `esbuild`. Lúc đó `scripts/generate-sdlc-skills.mjs` sinh 77 skill (nay là `pnpm catalog:build`).
 - `scripts/upgrade-sdlc-squad.mjs`: dry-run (squad `current`, workflow `current`), rồi `--apply` (skills `ready`).
 - Đọc qua API theo id: `sdlc-squad-lead` có `--until-children-done` và câu "children of the request so that the request's wait counts them". Câu này trong file nguồn bị xuống dòng giữa "the" và "request", nên tìm theo chuỗi nguyên văn sẽ không khớp.
 

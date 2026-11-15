@@ -114,3 +114,31 @@ Kết quả: **1 tác vụ chấm được rõ ràng (#168), 1 chưa xác địn
 - Chưa dựng: snapshot repo tupk cho từng tác vụ, biến thể `AGENTS.md`, và lượt chạy. Vẫn không có số liệu pass@1, pass^3, token, hay bootstrap. DR2 và DR3 vẫn chưa quyết được.
 
 **Chi phí lần này**: 0 lượt squad cho S9. Tổng lượt squad của pilot S8 đến cuối phiên: 61.
+
+## 7. Grader nhánh A (W10 của [harness-optimization-plan.md](harness-optimization-plan.md))
+
+Phạm vi lần này: làm nhánh A (tác vụ tất định, Q3). Nhánh B (judge LLM) chưa làm vì chưa có 10 kết quả do người chấm. Chưa chạy lượt squad nào, kể cả ô thử một lượt, vì ô thử cần pilot.
+
+**Bộ tác vụ mới (Q1).** Ba tác vụ greenfield trong `scripts/eval/tasks/`, không dùng 22 tác vụ tupk. Mỗi tác vụ có `task.json` (yêu cầu, lệnh test), `seed/` (repo bắt đầu, có test) và `solution/` (file thay thế để test qua):
+
+| Tác vụ | Yêu cầu | Test |
+| --- | --- | --- |
+| `sum-open` | Thêm `sumOpen(list)` (tổng `amount` của mục `open`) | `test/todos.test.mjs` |
+| `parse-duration` | `parseDuration("1h30m")` ra số giây; sai thì ném `RangeError` | `test/duration.test.mjs` |
+| `slugify` | Chuyển tiêu đề thành slug `a-z0-9` nối bằng gạch ngang | `test/slug.test.mjs` |
+
+**Cách chấm.** `scripts/eval/make-snapshot.mjs` (W1.a) tạo snapshot tại commit gốc, không có commit đáp án. `scripts/eval/grade-task.mjs` chạy test trên snapshot (phải FAIL), rồi trên snapshot cộng `solution/` (phải PASS). Repo tạm được tạo trong thư mục tạm, không dùng pilot. Lệnh chấm một lượt của agent: `node scripts/eval/grade-task.mjs --task <dir> --candidate <thư mục làm việc>`.
+
+**Kết quả** (`node scripts/eval/grade-task.mjs --all`, 2026-11-15, exit 0):
+
+| Tác vụ | Gốc (snapshot) | Sau sửa | valid |
+| --- | --- | --- | --- |
+| `parse-duration` | FAIL (exit 1) | PASS (exit 0) | true |
+| `slugify` | FAIL (exit 1) | PASS (exit 0) | true |
+| `sum-open` | FAIL (exit 1) | PASS (exit 0) | true |
+
+**Chưa làm:**
+- Nhánh B (judge rubric) và bảng đồng thuận: chưa có mẫu do người chấm.
+- Ô thử một lượt trên pilot (3 tác vụ, 1 biến thể, 1 lượt): chưa chạy. Cần pilot, mà pilot không còn dùng được (H-3).
+- Ma trận 225 lượt: không chạy.
+- Biến thể `AGENTS.md` (V0', V1, V2): chưa dựng.

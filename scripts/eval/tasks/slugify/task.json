@@ -1,0 +1,6 @@
+{
+  "id": "slugify",
+  "title": "Make URL slugs from titles",
+  "request": "Implement slugify(text) in src/slug.mjs. Lowercase the text, replace every run of characters other than a-z and 0-9 with one hyphen, and remove hyphens at the start and the end. For example \"C++ is great\" becomes \"c-is-great\" and \"  Hello,   World! \" becomes \"hello-world\".",
+  "test": "node --test test/slug.test.mjs"
+}

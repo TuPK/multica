@@ -17,6 +17,7 @@
 // Exit code: 0 nothing blocks in this mode, 1 something blocks, 2 usage error.
 
 import { execFileSync, spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -40,6 +41,15 @@ const SECRET_PATTERNS = [
   /\bsk-[A-Za-z0-9]{32,}\b/,
   /\bxox[abprs]-[A-Za-z0-9-]{10,}\b/,
 ];
+// Words that only appear in a grader's or a QA's output. If they reach the files an agent reads, the agent can copy the answer (H17).
+const LEAK_MARKERS = ["QA GO", "Security Reviewer verdict", "n_passed", "pass_rate", "test_pass_rate", "grade-task.mjs"];
+const LEAK_NOTE = "This is a leak, not a false alarm. Find the read path that brought it into the instructions.";
+// Budget for the rules and pitfalls sections together. Past 60% of it, H14 warns and suggests moving a rule into a check.
+const FOOTPRINT_BUDGET_BYTES = 8 * 1024;
+const PITFALL_FIELDS_REQUIRED = ["cue", "lesson", "evidence", "confidence", "scope"];
+const PITFALL_CONFIDENCE = ["high", "medium", "low"];
+const PITFALL_SCOPE = ["repo", "stack", "workspace-fact"];
+const EVIDENCE_RE = /(\b[A-Z][A-Z0-9]+-\d+\b|\bR-\d+\b|\bRC-?\d+\b|#\d+|docs\/\S+|\bruling\b|https?:\/\/)/;
 
 // ---------------------------------------------------------------------------------------------
 // Small helpers
@@ -168,6 +178,13 @@ function loadConfig(root) {
   return {
     ignorePaths: Array.isArray(cfg.ignorePaths) ? cfg.ignorePaths.filter((p) => typeof p === "string") : [],
     timeoutSeconds: typeof cfg.timeoutSeconds === "number" && cfg.timeoutSeconds > 0 ? cfg.timeoutSeconds : 900,
+    markers: Array.isArray(cfg.markers) ? cfg.markers.filter((m) => typeof m === "string" && m.trim() !== "") : [],
+    // An exception needs a reason and an approver; without both it is ignored and the marker still counts.
+    markerExceptions: Array.isArray(cfg.markerExceptions)
+      ? cfg.markerExceptions.filter(
+          (e) => e && typeof e.path === "string" && typeof e.marker === "string" && typeof e.reason === "string" && e.reason.trim() !== "" && typeof e.approver === "string" && e.approver.trim() !== "",
+        )
+      : [],
   };
 }
 
@@ -298,6 +315,12 @@ function h14(ctx) {
   if (over.length > 0) return { status: "fail", level: "cert", details: over };
   if (lines > SOFT_LINES) over.push(`AGENTS.md has ${lines} lines; aim for at most 80, warning above ${SOFT_LINES}`);
   if (bytes > SOFT_BYTES) over.push(`AGENTS.md is ${bytes} bytes; warning above ${SOFT_BYTES}`);
+  const rulesBytes = sectionSizes(ctx).filter((s) => isRulesOrPitfalls(s.name)).reduce((n, s) => n + s.bytes, 0);
+  if (rulesBytes > 0.6 * FOOTPRINT_BUDGET_BYTES) {
+    over.push(
+      `Rules and Known pitfalls take ${rulesBytes} bytes, past 60% of the ${FOOTPRINT_BUDGET_BYTES}-byte budget: move a rule into a check (lint, test, CI) or into a skill with a trigger`,
+    );
+  }
   return over.length > 0 ? { status: "fail", level: "warning", details: over } : pass([`${lines} lines, ${bytes} bytes`]);
 }
 
@@ -580,15 +603,34 @@ function h11(ctx) {
 function h12(ctx) {
   const ranges = sectionRange(ctx.proseLines, /known pitfalls?|gotchas?/i);
   if (ranges.length === 0) return pass(["no Known pitfalls section"]);
-  const bare = [];
+  const details = [];
+  const today = new Date().toISOString().slice(0, 10);
   for (const [a, b] of ranges) {
+    // A pitfall is a top-level bullet. Its fields are the indented `- **field**: value` bullets under it.
+    const pitfalls = [];
     for (let i = a + 1; i < b; i++) {
       const line = ctx.proseLines[i];
-      if (!/^\s*[-*]\s+/.test(line)) continue;
-      if (!/(\b[A-Z][A-Z0-9]+-\d+\b|\bR-\d+\b|\bRC-?\d+\b|#\d+|docs\/\S+|\bruling\b|https?:\/\/)/.test(line)) bare.push(line.trim().slice(0, 100));
+      if (/^[-*]\s+/.test(line)) {
+        pitfalls.push({ text: line.trim(), fields: new Map() });
+        continue;
+      }
+      const field = /^\s+[-*]\s+\*\*([a-z_]+)\*\*\s*:\s*(.*)$/.exec(line);
+      if (field && pitfalls.length > 0) pitfalls[pitfalls.length - 1].fields.set(field[1], field[2].trim());
+    }
+    for (const p of pitfalls) {
+      const evidenceField = p.fields.get("evidence") ?? "";
+      if (!EVIDENCE_RE.test(p.text) && !EVIDENCE_RE.test(evidenceField)) details.push(`pitfall without an evidence reference: ${p.text.slice(0, 100)}`);
+      const missing = PITFALL_FIELDS_REQUIRED.filter((f) => !p.fields.get(f));
+      if (missing.length > 0) details.push(`pitfall missing field(s) ${missing.join(", ")}: ${p.text.slice(0, 100)}`);
+      const confidence = p.fields.get("confidence");
+      if (confidence && !PITFALL_CONFIDENCE.includes(confidence)) details.push(`pitfall confidence must be high, medium or low, not "${confidence}": ${p.text.slice(0, 100)}`);
+      const scope = p.fields.get("scope");
+      if (scope && !PITFALL_SCOPE.includes(scope)) details.push(`pitfall scope must be repo, stack or workspace-fact, not "${scope}": ${p.text.slice(0, 100)}`);
+      const until = p.fields.get("valid_until");
+      if (until && /^\d{4}-\d{2}-\d{2}$/.test(until) && until < today) details.push(`pitfall valid_until ${until} has passed (today ${today}): re-verify it or delete it: ${p.text.slice(0, 100)}`);
     }
   }
-  return bare.length > 0 ? fail(bare.map((l) => `pitfall without an evidence reference: ${l}`)) : pass();
+  return details.length > 0 ? fail(details) : pass();
 }
 
 function h13(ctx) {
@@ -608,6 +650,123 @@ function h13(ctx) {
   return total > MUST_READ_BUDGET ? fail([`the must-read files total ${total} bytes (budget ${MUST_READ_BUDGET}); add a task index`]) : pass([`${total} bytes`]);
 }
 
+/** Every file under a directory, relative to the root. Generated and vendored folders are skipped. */
+function walkFiles(root, rel, out = []) {
+  const abs = join(root, rel);
+  if (!existsSync(abs) || !statSync(abs).isDirectory()) return out;
+  for (const entry of readdirSync(abs, { withFileTypes: true })) {
+    const child = `${rel}/${entry.name}`;
+    if (entry.isDirectory()) {
+      if (!GENERATED_DIRS.has(entry.name)) walkFiles(root, child, out);
+    } else if (entry.isFile()) out.push(child);
+  }
+  return out;
+}
+
+/** Sizes of the `## ` sections of AGENTS.md, in order. */
+function sectionSizes(ctx) {
+  const out = [];
+  let current = null;
+  for (const line of ctx.body.split("\n")) {
+    const h = /^##\s+(.*)$/.exec(line);
+    if (h) {
+      current = { name: h[1].trim(), lines: 0, bytes: 0 };
+      out.push(current);
+    }
+    if (current) {
+      current.lines += 1;
+      current.bytes += Buffer.byteLength(`${line}\n`);
+    }
+  }
+  return out;
+}
+
+const isRulesOrPitfalls = (name) => RULES_HEADING_RE.test(name) || /known pitfalls?|gotchas?/i.test(name);
+
+/** Markdown files an agent reads as instructions. Code is not scanned, because the marker list itself lives in code. */
+function instructionFiles(root) {
+  const files = walkFiles(root, "docs/sdlc").filter((f) => f.endsWith(".md"));
+  for (const dir of SKILL_DIRS) files.push(...walkFiles(root, dir).filter((f) => f.endsWith(".md")));
+  const builtin = join(root, "catalog/skills/builtin");
+  if (existsSync(builtin)) {
+    for (const name of readdirSync(builtin).filter((n) => n.startsWith("sdlc-"))) {
+      files.push(...walkFiles(root, `catalog/skills/builtin/${name}`).filter((f) => f.endsWith(".md")));
+    }
+  }
+  return files;
+}
+
+/** H17: a grader's or QA's verdict in a file an agent reads is a leak: the agent can copy the answer. */
+function h17(ctx) {
+  const files = ["AGENTS.md", "CLAUDE.md"].filter((f) => existsSync(join(ctx.root, f)));
+  files.push(...instructionFiles(ctx.root));
+  const markers = [...LEAK_MARKERS, ...ctx.config.markers];
+  const details = [];
+  for (const rel of files) {
+    const text = read(ctx.root, rel);
+    if (text === null) continue;
+    text.split("\n").forEach((line, i) => {
+      for (const marker of markers) {
+        const at = line.indexOf(marker);
+        if (at < 0) continue;
+        if (ctx.config.markerExceptions.some((e) => e.path === rel && e.marker === marker)) continue;
+        const snippet = line.slice(Math.max(0, at - 60), at + marker.length + 60).trim();
+        details.push(`${rel}:${i + 1}: "${snippet}" contains the marker "${marker}". ${LEAK_NOTE}`);
+      }
+    });
+  }
+  return details.length > 0 ? fail(details) : pass([`${files.length} instruction files scanned`]);
+}
+
+const SKILL_DIRS = [".claude/skills", ".kiro/skills", ".agents/skills", "skills"];
+
+/** The lines of AGENTS.md that sit under Read when (or Read for): a heading, or a `Read when:` line and the list under it. */
+function readWhenLines(ctx) {
+  const set = new Set();
+  for (const [a, b] of sectionRange(ctx.proseLines, /read when|read for/i)) for (let i = a; i < b; i++) set.add(i);
+  ctx.proseLines.forEach((line, i) => {
+    if (!/read\s+(?:when|for)\s*:/i.test(line)) return;
+    for (let j = i; j < ctx.proseLines.length && ctx.proseLines[j].trim() !== ""; j++) set.add(j);
+  });
+  return set;
+}
+
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** H18: a skill or runbook that nothing names is never called. A pointer in AGENTS.md outside Read when has no condition. */
+function h18(ctx) {
+  const targets = [];
+  for (const dir of SKILL_DIRS) {
+    const abs = join(ctx.root, dir);
+    if (!existsSync(abs) || !statSync(abs).isDirectory()) continue;
+    for (const name of readdirSync(abs).sort()) {
+      const rel = `${dir}/${name}/SKILL.md`;
+      if (read(ctx.root, rel) !== null) targets.push({ rel, name: new RegExp(`(?<![\\w-])${escapeRe(name)}(?![\\w-])`) });
+    }
+  }
+  for (const rel of walkFiles(ctx.root, "docs").sort()) {
+    if (!/\.md$/.test(rel) || !/runbook/i.test(rel)) continue;
+    const base = rel.split("/").pop();
+    targets.push({ rel, name: new RegExp(`(?<![\\w-])${escapeRe(base)}(?![\\w-])`) });
+  }
+  if (targets.length === 0) return pass(["no skills or runbooks in the repository"]);
+  if (ctx.agents === null) return pass();
+  const sources = instructionFiles(ctx.root).map((rel) => ({ rel, text: read(ctx.root, rel) ?? "" }));
+  const readWhen = readWhenLines(ctx);
+  const details = [];
+  for (const t of targets) {
+    const hits = ctx.proseLines.map((line, i) => ({ line, i })).filter(({ line }) => t.name.test(line));
+    const others = sources.filter((s) => s.rel !== t.rel && t.name.test(s.text));
+    const outside = hits.filter(({ line, i }) => !readWhen.has(i) && !/\b(when|if|before|after|unless)\b/i.test(line));
+    if (hits.length === 0 && others.length === 0) {
+      details.push(`${t.rel} is named nowhere in AGENTS.md, CLAUDE.md, docs/sdlc or another skill, so it will never be called. Name it under Read when with its condition, or delete it.`);
+    } else if (hits.length > 0 && outside.length === hits.length) {
+      details.push(`${t.rel} is named at AGENTS.md line ${outside[0].i + 1} outside Read when, with no condition. Move the pointer under Read when and state when to read it.`);
+    }
+  }
+  return details.length > 0 ? fail(details) : pass([`${targets.length} skills or runbooks checked`]);
+}
+
 const CHECKS = [
   { id: "H1", title: "AGENTS.md exists; CLAUDE.md imports it", level: "gate", run: h1 },
   { id: "H2", title: "provenance with a sha that exists in git", level: "warning", run: h2 },
@@ -620,11 +779,13 @@ const CHECKS = [
   { id: "H9", title: "commit and PR conventions exist", level: "warning", run: h9 },
   { id: "H10", title: "docs/sdlc/environment.md has an ensure command that AGENTS.md names", level: "cert", run: h10 },
   { id: "H11", title: "scratch and secrets are ignored; no secret in tracked files", level: "warning", run: h11 },
-  { id: "H12", title: "every known pitfall cites its evidence", level: "warning", run: h12 },
+  { id: "H12", title: "every known pitfall cites its evidence and carries its fields", level: "warning", run: h12 },
   { id: "H13", title: "the must-read set fits the context budget", level: "warning", run: h13 },
-  { id: "H14", title: "AGENTS.md size", level: "cert", run: h14 },
+  { id: "H14", title: "AGENTS.md size and section budget", level: "cert", run: h14 },
   { id: "H15", title: "every pointer to a document says when to read it", level: "warning", run: h15 },
   { id: "H16", title: "no repository overview in AGENTS.md", level: "warning", run: h16 },
+  { id: "H17", title: "instruction files hold no grader or QA output (leak tripwire)", level: "warning", run: h17 },
+  { id: "H18", title: "every skill or runbook is named under Read when, with its condition", level: "warning", run: h18 },
 ];
 
 // ---------------------------------------------------------------------------------------------
@@ -660,14 +821,72 @@ function refreshReport(ctx, report) {
 }
 
 function footprint(ctx) {
-  if (ctx.agents === null) return { lines: 0, bytes: 0, instructions: 0, proseRules: 0 };
+  if (ctx.agents === null) return { lines: 0, bytes: 0, instructions: 0, proseRules: 0, sections: [] };
   const instructions = ctx.proseLines.filter((l) => LIST_ITEM_RE.test(l)).length;
   const proseRules = sectionItems(ctx, RULES_HEADING_RE).filter(({ text }) => {
     const m = ENFORCED_RE.exec(text);
     return !m || /^`?prose`?\.?$/i.test(m[1]);
   }).length;
-  return { lines: lineCount(ctx.agents), bytes: Buffer.byteLength(ctx.agents), instructions, proseRules };
+  return { lines: lineCount(ctx.agents), bytes: Buffer.byteLength(ctx.agents), instructions, proseRules, sections: sectionSizes(ctx) };
 }
+
+/** Why each check exists, in one line. A failing check shows it next to what is wrong (W8). */
+const WHY = {
+  H1: "Every tool must read the same rules, so CLAUDE.md imports AGENTS.md and holds nothing else.",
+  H2: "A certificate shows which commit was checked. Without a valid one, nobody knows which harness ran.",
+  H3: "An agent that follows a path that does not exist loses its first step.",
+  H4: "An agent that runs a command that does not exist fails at once and cannot tell why.",
+  H5: "An unpinned toolchain makes the same command pass on one machine and fail on another.",
+  H6: "The Done command is the only proof that the work is finished. Exactly one line makes it unambiguous.",
+  H7: "Progress wording goes stale and states a project status that the agent cannot check.",
+  H8: "A rule that nothing enforces is only a wish. Naming the enforcer shows when it should become code.",
+  H9: "Without a commit or PR convention, the history cannot be read and reviews have no shape.",
+  H10: "The Ensure command brings the environment up. Without it the agent starts from a broken machine.",
+  H11: "A secret or local scratch in git leaks values and clutters every commit.",
+  H12: "A pitfall without evidence cannot be checked, and one without fields cannot be pruned when its cause is gone.",
+  H13: "Every must-read file is read on every run. A large set spends the context before the work starts.",
+  H14: "Long instruction files are followed less reliably and cost tokens on every run.",
+  H15: "A pointer without a condition is read on every run or never. The condition makes it load when it matters.",
+  H16: "An overview repeats what the code and the README already say, and goes stale.",
+  H17: "A grader's or QA's verdict in an instruction file lets the agent copy the answer instead of solving the task.",
+  H18: "A skill that nothing names is never called. Its work is lost and its files only add weight.",
+  E1: "The Ensure command is the first thing an agent runs. If it fails, nothing after it can be trusted.",
+  E2: "The Done command is the proof. An exit code other than 0 means the work is not verified.",
+};
+
+/** What to change for a failing check, written for the agent that has to change it. */
+const FIX = {
+  H1: "Make CLAUDE.md hold the line @AGENTS.md, and at most one sentence after it.",
+  H2: "Run `check-harness --cert --run --write-cert` to write a certificate for a commit that exists.",
+  H3: "Create the named file, or delete the line in AGENTS.md that names it.",
+  H4: "Add the script or make target to package.json or the Makefile, or delete the command from AGENTS.md.",
+  H5: "Pin the toolchain (.nvmrc, .tool-versions or engines) and make CI use the same major version.",
+  H6: "Keep exactly one line: Done = <command> exits 0 (evidence level L1, L2 or L3). Make sure the command exists.",
+  H7: "Rewrite the line as an instruction, and delete the progress wording.",
+  H8: "Append `Enforced by: <lint rule | test | CI job | hook | prose>` to the rule, with a path or command that exists.",
+  H9: "Add CONTRIBUTING.md, a PR template, or a commit convention to AGENTS.md.",
+  H10: "Add a line 'Ensure command: <command>' to docs/sdlc/environment.md, and name that file and command in AGENTS.md.",
+  H11: "Add `.env` and `.multica/` to .gitignore, add .env.example with names only, and remove the secret from the tracked file.",
+  H12: "Under the pitfall, add the missing fields: cue, lesson, evidence, confidence (high, medium or low), scope (repo, stack or workspace-fact). Re-verify or delete an expired valid_until.",
+  H13: "Add a `Read when:` index, or make the must-read files smaller.",
+  H14: "Shorten AGENTS.md: move status and narrative to docs/, and keep Verify, Rules, Known pitfalls and Read when.",
+  H15: "Say when to read the document, for example: Changing the API client: read src/lib/api.ts.",
+  H16: "Delete the tree, the overview heading or the narrative paragraph. Keep rules and pointers.",
+  H17: "Remove the verdict or grade text from the file, or state the rule it implies. Do not paste results into instructions.",
+  H18: "Name the skill or runbook under Read when with its condition, or delete it.",
+  E1: "Fix the Ensure command so it exits 0 on a clean machine, then run `--run` again.",
+  E2: "Fix the Done command, or commit the open paths, then run `--run` again.",
+};
+
+/** W8: each failing check lists its findings as { what, why, fix }. `details` stays for readers of the older format. */
+function withFindings(check) {
+  if (check.status !== "fail") return check;
+  const findings = check.details.map((what) => ({ what, why: WHY[check.id], fix: FIX[check.id] }));
+  return { ...check, findings };
+}
+
+/** The git blob id of a text file, as `git hash-object` computes it. The Lead's Harness fingerprint uses it for AGENTS.md. */
+const blobId = (text) => createHash("sha1").update(`blob ${Buffer.byteLength(text)}\0`).update(text).digest("hex");
 
 function summarize(ctx, checks, { quick, cert, run, accept = [] }) {
   const failed = (level) => checks.filter((c) => c.level === level && c.status === "fail").map((c) => c.id);
@@ -679,6 +898,7 @@ function summarize(ctx, checks, { quick, cert, run, accept = [] }) {
   const executedOk = !run || ["E1", "E2"].every((id) => checks.find((c) => c.id === id)?.status === "pass" || accepted.has(id));
   return {
     root: ctx.root,
+    agentsBlob: ctx.agents === null ? null : blobId(ctx.agents).slice(0, 12),
     mode: quick ? "quick" : run ? "run" : cert ? "cert" : "full",
     ok: gate.length === 0,
     certified: !quick && gate.length === 0 && certFailures.length === 0 && executedOk,
@@ -696,7 +916,7 @@ export function checkHarness(root, { quick = false, cert = false, run = false, r
   const checks = CHECKS.map((c) => {
     if (quick && c.level !== "gate") return { id: c.id, title: c.title, level: c.level, status: "skipped", details: ["skipped by --quick"] };
     const r = c.run(ctx);
-    return { id: c.id, title: c.title, level: r.level ?? c.level, status: r.status, details: r.details };
+    return withFindings({ id: c.id, title: c.title, level: r.level ?? c.level, status: r.status, details: r.details });
   });
   const report = summarize(ctx, checks, { quick, cert, run, accept });
   if (refresh) report.refresh = refreshReport(ctx, report);
@@ -766,7 +986,7 @@ export async function runExecutedChecks(root, report, { timeout, accept = [] } =
   const seconds = timeout ?? ctx.config.timeoutSeconds;
   const status = (id) => report.checks.find((c) => c.id === id)?.status;
   const executed = {};
-  const add = (id, title, ok, details) => report.checks.push({ id, title, level: "cert", status: ok ? "pass" : "fail", details });
+  const add = (id, title, ok, details) => report.checks.push(withFindings({ id, title, level: "cert", status: ok ? "pass" : "fail", details }));
 
   const ensure = status("H10") === "pass" ? ensureCommand(root) : null;
   if (ensure === null) add("E1", "the Ensure command exits 0", false, ["not run: H10 fails, so there is no Ensure command to run"]);

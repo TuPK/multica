@@ -1,0 +1,6 @@
+{
+  "id": "parse-duration",
+  "title": "Parse duration strings into seconds",
+  "request": "Implement parseDuration(text) in src/duration.mjs. Accept one or more parts of the form <integer><unit>, where unit is d (days), h, m or s, for example \"1h30m\" or \"10m5s\". Return the total in seconds. Throw a RangeError for an empty string, for any other text, or for a unit that is not one of d, h, m, s.",
+  "test": "node --test test/duration.test.mjs"
+}

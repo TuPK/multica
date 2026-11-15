@@ -4,6 +4,8 @@ Spec thiết kế của phương án B trong [sdlc-harness-research.md](sdlc-har
 8, 9) của [sdlc-harness.md](sdlc-harness.md) khi triển khai xong; bổ sung cho [sdlc-autonomy.md](sdlc-autonomy.md) và
 [sdlc-specialist-routing.md](sdlc-specialist-routing.md). Kế hoạch triển khai ở [sdlc-harness-plan.md](sdlc-harness-plan.md).
 
+> **Quy trình sửa skill (W0 của [harness-optimization-plan.md](harness-optimization-plan.md)).** Nguồn skill là `catalog/skills/builtin/<tên>/`. Không sửa tay file sinh ra trong `packages/core/catalog/generated/`. Các bước: `pnpm catalog:check`, `pnpm catalog:build`, rồi `node scripts/upgrade-sdlc-squad.mjs` (dry-run, sau đó `--apply`). Đường dẫn `packages/core/squads/sdlc-skills/` và lệnh `pnpm generate:sdlc-skills` trong các mục dưới đây là lịch sử.
+
 Trạng thái: **đã triển khai S0 đến S7** (xem mục 0 của plan); S8, S9 chưa làm. Mọi con số ngưỡng ghi "tạm thời" là giả thuyết cần hiệu chỉnh (mục 10).
 
 Ngôn ngữ: viết bằng tiếng Việt để người dùng đọc; tên lệnh, status, file, tên kiểm tra, và đoạn văn bản dành cho agent giữ
@@ -377,15 +379,17 @@ Thông báo của kiểm tra mới nên nêu cách sửa (research D1, C7). Vi�
 
 | ID | Tên | Định nghĩa | Hướng tốt |
 | --- | --- | --- | --- |
-| M1 | Chi phí dựng harness | Tổng số run và token của issue ở status Harness và Harness smoke | thấp |
+| M1 | Chi phí dựng harness | Tổng số run và token của issue đã đi qua status `harness` (workflow SDLC Auto). Issue smoke không có status riêng nên không tính vào M1 | thấp |
 | M2 | Tỉ lệ qua ngay (first-pass) | Số issue Developer về `done` mà không đi lùi trong thứ tự workflow (từ Review/QA về trạng thái làm) chia số issue Developer về `done` | cao |
-| M3 | Run mỗi issue giao xong | Số run (kể cả thất bại) của issue về `done`: trung vị và p90 | thấp |
+| M3 | Run mỗi issue giao xong | Số run (kể cả thất bại) của issue về `done`: trung vị và p90. `M3_failedRuns` không tính run lỗi hạ tầng (provider, timeout, mất runtime, hàng đợi hết hạn), các run đó vào `M3_ungradedRuns`. Run trùng `id` được đếm một lần và báo trong `M3_duplicateRunIds` | thấp |
 | M4 | Token mỗi issue giao xong | Input, output, cache read/write của các run; trung vị và p90 | thấp |
 | M5 | Block mỗi issue theo lớp | Số lần vào `blocked` mỗi issue, tách theo `Blocker-class` đọc từ comment block | thấp |
 | M6 | Thời gian chu kỳ | Từ lần vào trạng thái làm đầu tiên đến `done`: trung vị và p90 | thấp |
 | M7 | Block do harness | Số block `tooling` nêu id `H*`, cộng block `environment` nhắc Ensure, trên toàn dự án | 0 |
-| M8 | Footprint và tuổi | `footprint` của `check-harness`; số ngày kể từ cert; số manifest đổi từ cert | ổn định |
-| M9 | Smoke | Đạt/trượt, số run, số lệnh tự khám phá, bước âm tính đạt/trượt | đạt, ít |
+| M8 | Footprint và tuổi | `footprint` của `check-harness`; số ngày kể từ cert; số manifest đổi từ cert. Lấy bằng `harness-metrics.mjs --harness <repo>` | ổn định |
+| M9 | Smoke | Đạt/trượt, số run, số lệnh tự khám phá, bước âm tính đạt/trượt. Issue smoke là issue có tiêu đề chứa "Harness smoke". Đạt khi issue `done` và comment ghi "Negative step: pass" | đạt, ít |
+
+Phiên bản chỉ số: `metric_version` trong đầu ra. Phiên bản 2 đổi nghĩa của `M3_failedRuns` (xem trên). Số liệu phiên bản 1 không so sánh trực tiếp với phiên bản 2.
 
 ### 10.3 Lấy dữ liệu từ nền tảng
 
@@ -468,7 +472,7 @@ Kiểm chứng bằng test và lệnh cụ thể ở [plan](sdlc-harness-plan.md
 | AC9 | Mẫu v2 điền cho mỗi profile (web, backend, baas, mobile) vượt `--cert` trên fixture, ≤80 dòng |
 | AC10 | Skill: Developer chỉ bị `gate` chặn; Lead không tạo `todo` khi `gate` fail; Route 0 chỉ chặn khi `gate` fail; `planning-architecture` bước 7 không bắt viết `AGENTS.md`; smoke có bước âm tính. Các câu này được test bằng `sdlc-skills.test.ts` |
 | AC11 | `harness-metrics.mjs` tái tạo M2 đến M7 từ dữ liệu mẫu đã biết (test); không chạy lên DB dùng chung trong CI |
-| AC12 | `git diff --stat` của triển khai chỉ chạm các file liệt kê trong plan; không đổi `templates.ts`, `initiative_build.go`, `server/`, `upgrade.ts`, `upgrade.test.ts`; `pnpm generate:sdlc-skills` không còn lệch |
+| AC12 | `git diff --stat` của triển khai chỉ chạm các file liệt kê trong plan; không đổi `templates.ts`, `initiative_build.go`, `server/`, `upgrade.ts`, `upgrade.test.ts`; `pnpm catalog:build` không còn lệch (trước đây là `pnpm generate:sdlc-skills`) |
 | AC13 | `docs/engineering/sdlc-harness.md` được cập nhật khớp v2 hoặc đánh dấu thay thế |
 | AC14 | Dự án thí điểm (S8): smoke đạt trong ≤2 run, M7 = 0, `footprint` ≤ 80 dòng; số liệu M1 đến M9 được ghi |
 

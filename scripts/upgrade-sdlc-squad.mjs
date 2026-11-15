@@ -12,6 +12,7 @@
 // It bundles packages/core/squads/upgrade.ts with the repo's esbuild.
 
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir, homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -37,6 +38,28 @@ if (!existsSync(esbuild)) {
   console.error("esbuild not found: run `pnpm install`.");
   process.exit(1);
 }
+/**
+ * Dry run only: for each skill the template attaches, the platform's content_hash (SKILL.md body) next to the sha256 of its
+ * source file. The two columns match once the upgrade has applied. The digest over "name sha" lines is the skill part of the
+ * `Harness:` fingerprint the Lead writes on the request (sdlc-squad-lead), so the boss can compare it before --apply.
+ */
+async function printSkillHashes(client, template) {
+  const listed = await client.listSkills();
+  const lines = [];
+  console.log("SKILL HASHES (platform content_hash against the sha256 of the source SKILL.md)");
+  for (const name of template.builtinSkills) {
+    const file = join(root, "catalog/skills/builtin", name, "SKILL.md");
+    const source = existsSync(file) ? createHash("sha256").update(readFileSync(file)).digest("hex") : null;
+    const found = listed.find((s) => s.name === name);
+    const platform = found ? ((await client.getSkillMetadata(found.id)).content_hash ?? null) : null;
+    const state = platform === null ? "not in the workspace yet" : platform === source ? "match" : "differs: --apply updates it";
+    console.log(`  ${name}  platform ${platform ?? "-"}  source ${source ?? "missing"}  ${state}`);
+    if (source) lines.push(`${name} ${source}`);
+  }
+  const digest = createHash("sha256").update(lines.sort().join("\n")).digest("hex").slice(0, 12);
+  console.log(`SKILLS DIGEST ${digest} (${lines.length} skills, from the source files)`);
+}
+
 const tmp = mkdtempSync(join(tmpdir(), "upgrade-sdlc-"));
 const entry = join(tmp, "entry.ts");
 const bundle = join(tmp, "bundle.cjs");
@@ -79,6 +102,7 @@ export { SQUAD_TEMPLATES, upgradeSdlcSquad };`,
     dryRunIssueWorkflowUpdate: (id, data) => call(`/api/issue-workflows/${id}`, "PATCH", { ...data, dry_run: true }),
     listSkills: () => call("/api/skills"),
     getSkill: (id) => call(`/api/skills/${id}`),
+    getSkillMetadata: (id) => call(`/api/skills/${id}?include=metadata`),
     createSkill: (data) => call("/api/skills", "POST", data),
     updateSkill: (id, data) => call(`/api/skills/${id}`, "PUT", data),
     listSquadSkills: (id) => call(`/api/squads/${id}/skills`),
@@ -100,6 +124,7 @@ export { SQUAD_TEMPLATES, upgradeSdlcSquad };`,
   const result = await upgradeSdlcSquad(client, template, { dryRun: !apply });
   console.log(apply ? "UPGRADE APPLIED" : "DRY RUN (nothing written; pass --apply to write)");
   console.log(JSON.stringify(result, null, 2));
+  if (!apply) await printSkillHashes(client, template);
   const failed = result.workflow.status === "failed" || result.squad.status === "failed" || result.agents.some((a) => a.status === "failed");
   process.exitCode = failed ? 1 : 0;
 } finally {

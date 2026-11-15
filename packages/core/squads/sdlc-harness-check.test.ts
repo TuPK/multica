@@ -13,6 +13,7 @@ interface Check {
   level: "gate" | "cert" | "warning";
   status: "pass" | "fail" | "skipped";
   details: string[];
+  findings?: { what: string; why: string; fix: string }[];
 }
 interface Report {
   ok: boolean;
@@ -21,7 +22,7 @@ interface Report {
   blocking: string[];
   cert: string[];
   accepted: string[];
-  footprint: { lines: number; bytes: number; instructions: number; proseRules: number };
+  footprint: { lines: number; bytes: number; instructions: number; proseRules: number; sections: { name: string; lines: number; bytes: number }[] };
   warnings: string[];
   checks: Check[];
   executed?: { ensure?: { exit: number | null }; verify?: { exit: number | null; treeClean?: boolean } };
@@ -63,7 +64,12 @@ const AGENTS = (sha: string) => `# Demo
 - Screens stay in \`src/pages/\`. Enforced by: prose
 
 ## Known pitfalls
-- A stale session returns 401 (TUPK-182).
+- A stale session returns 401 after an hour idle.
+  - **cue**: the API answers 401 on a request that worked before
+  - **lesson**: call the refresh endpoint, then retry once
+  - **evidence**: TUPK-182
+  - **confidence**: high
+  - **scope**: repo
 
 ## Read when
 - Changing the API client: read \`src/lib/api.ts\`.
@@ -129,7 +135,7 @@ describe("check-harness", () => {
   it("passes a complete harness, prints JSON, and exits 0", () => {
     const { dir } = fixture();
     const { code, report } = run(dir);
-    expect(report.checks.map((c) => c.id)).toEqual(["H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9", "H10", "H11", "H12", "H13", "H14", "H15", "H16"]);
+    expect(report.checks.map((c) => c.id)).toEqual(["H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9", "H10", "H11", "H12", "H13", "H14", "H15", "H16", "H17", "H18"]);
     expect(report.checks.filter((c) => c.status === "fail").map((c) => `${c.id}: ${c.details.join("; ")}`)).toEqual([]);
     expect(report.ok).toBe(true);
     expect(code).toBe(0);
@@ -420,12 +426,12 @@ describe("check-harness", () => {
       expect(check(run(priv.dir).report, "H11").details.join()).toContain("a real .env file is tracked");
     });
     it("H12 reads a Gotchas heading like Known pitfalls", () => {
-      const { dir } = fixture({ agents: (sha) => AGENTS(sha).replace("## Known pitfalls", "## Gotchas").replace(" (TUPK-182)", "") });
+      const { dir } = fixture({ agents: (sha) => AGENTS(sha).replace("## Known pitfalls", "## Gotchas").replace("**evidence**: TUPK-182", "**evidence**: none") });
       expect(check(run(dir).report, "H12").status).toBe("fail");
     });
     it("H12 flags a pitfall without an evidence reference", () => {
       const { dir } = fixture({ agents: (sha) => AGENTS(sha).replace("## Read when", "- The cache is flaky.\n\n## Read when") });
-      expect(check(run(dir).report, "H12").details).toEqual(["pitfall without an evidence reference: - The cache is flaky."]);
+      expect(check(run(dir).report, "H12").details).toContain("pitfall without an evidence reference: - The cache is flaky.");
     });
     it("H13 flags a must-read set above the budget unless a task index exists", () => {
       const big = "x".repeat(61 * 1024);
@@ -616,6 +622,11 @@ describe("check-harness", () => {
         .replace("L<1-3>", "L3")
         .replace("- Never <X>; do <Y>. Enforced by: <lint rule | test | CI job | hook | prose>", "- Never call fetch from a component; use `src/lib/api.ts`. Enforced by: prose")
         .replace("- <What goes wrong, and what to do instead> (<ruling id, issue id, or command and exit code>)", "- A stale session returns 401; clear it first (TUPK-182).")
+        .replace("<the situation that shows it>", "a request that worked before returns 401")
+        .replace("<what to do instead>", "call the refresh endpoint, then retry once")
+        .replace("<ruling id, issue id, or command and exit code>", "TUPK-182")
+        .replace("<high | medium | low>", "high")
+        .replace("<repo | stack | workspace-fact>", "repo")
         .replace("- Changing <area>: read `<path>`", "- Changing the API client: read `src/lib/api.ts`.");
       expect(filled).not.toMatch(/<[a-z]/i);
       expect(filled.split("\n").length).toBeLessThanOrEqual(80);
@@ -642,6 +653,144 @@ describe("check-harness", () => {
       expect(refresh!.manifestsChanged).toContain("package.json");
       expect(refresh!.manifestsChanged).not.toContain("src/other.ts");
       expect(refresh!.needsRefresh).toBe(true);
+    });
+  });
+
+  describe("H17 leak tripwire", () => {
+    it("names the file, line and marker when a verdict reaches AGENTS.md, and warns without blocking", () => {
+      const { dir } = fixture({ agents: (sha) => `${AGENTS(sha)}\nQA GO on DEV-22, land it.\n` });
+      const { code, report } = run(dir);
+      const c = check(report, "H17");
+      expect(c).toMatchObject({ status: "fail", level: "warning" });
+      expect(c.details.join("\n")).toContain("AGENTS.md:");
+      expect(c.details.join("\n")).toContain('"QA GO"');
+      expect(c.details.join("\n")).toContain("This is a leak");
+      expect(report.warnings).toContain("H17");
+      expect(code).toBe(0);
+    });
+
+    it("scans the sdlc skills' markdown and docs/sdlc, but not code or other documents", () => {
+      const { dir } = fixture({
+        extra: {
+          "docs/notes/qa.md": "QA GO\n",
+          "catalog/skills/builtin/sdlc-harness/scripts/tool.mjs": 'const m = "pass_rate";\n',
+          "catalog/skills/builtin/sdlc-qa-verification/SKILL.md": "Record the pass_rate of the run.\n",
+        },
+      });
+      const c = check(run(dir).report, "H17");
+      expect(c.details).toHaveLength(1);
+      expect(c.details[0]).toContain("catalog/skills/builtin/sdlc-qa-verification/SKILL.md:1");
+    });
+
+    it("honours a marker exception only with both a reason and an approver", () => {
+      const path = "catalog/skills/builtin/sdlc-qa-verification/SKILL.md";
+      const text = "Record the pass_rate of the run.\n";
+      const excepted = fixture({
+        extra: {
+          [path]: text,
+          "docs/sdlc/harness.json": JSON.stringify({ markerExceptions: [{ path, marker: "pass_rate", reason: "names the metric", approver: "TuPK" }] }),
+        },
+      });
+      expect(check(run(excepted.dir).report, "H17").status).toBe("pass");
+      const unapproved = fixture({
+        extra: {
+          [path]: text,
+          "docs/sdlc/harness.json": JSON.stringify({ markerExceptions: [{ path, marker: "pass_rate", reason: "names the metric" }] }),
+        },
+      });
+      expect(check(run(unapproved.dir).report, "H17").status).toBe("fail");
+    });
+  });
+
+  describe("H12 pitfall fields", () => {
+    const withPitfalls = (body: string) => (sha: string) => AGENTS(sha).replace(/## Known pitfalls\n[\s\S]*?\n(?=## )/, `## Known pitfalls\n${body}\n\n`);
+    const complete = "- A stale session returns 401 after an hour idle.\n  - **cue**: a 401 on a request that worked before\n  - **lesson**: refresh, then retry once\n  - **evidence**: TUPK-182\n  - **confidence**: high\n  - **scope**: repo";
+
+    it("passes a pitfall with every required field and valid values", () => {
+      expect(check(run(fixture({ agents: withPitfalls(complete) }).dir).report, "H12").status).toBe("pass");
+    });
+
+    it("names the missing fields of a pitfall, and a bare bullet with no evidence and no fields", () => {
+      const noConfidence = complete.replace("  - **confidence**: high\n", "");
+      const details = check(run(fixture({ agents: withPitfalls(noConfidence) }).dir).report, "H12").details.join("\n");
+      expect(details).toContain("missing field(s) confidence");
+      const bare = check(run(fixture({ agents: withPitfalls("- The cache is flaky.") }).dir).report, "H12").details.join("\n");
+      expect(bare).toContain("missing field(s) cue, lesson, evidence, confidence, scope");
+    });
+
+    it("rejects a confidence or scope outside its values", () => {
+      const bad = complete.replace("**confidence**: high", "**confidence**: sure").replace("**scope**: repo", "**scope**: everywhere");
+      const details = check(run(fixture({ agents: withPitfalls(bad) }).dir).report, "H12").details.join("\n");
+      expect(details).toContain('confidence must be high, medium or low, not "sure"');
+      expect(details).toContain('scope must be repo, stack or workspace-fact, not "everywhere"');
+    });
+
+    it("warns with the date once valid_until has passed, and not before", () => {
+      const expired = `${complete}\n  - **valid_until**: 2020-01-01`;
+      const details = check(run(fixture({ agents: withPitfalls(expired) }).dir).report, "H12").details.join("\n");
+      expect(details).toContain("valid_until 2020-01-01 has passed");
+      const future = `${complete}\n  - **valid_until**: 2999-01-01`;
+      expect(check(run(fixture({ agents: withPitfalls(future) }).dir).report, "H12").status).toBe("pass");
+    });
+  });
+
+  describe("H18 skills and runbooks, and the section budget", () => {
+    const skill = { ".claude/skills/deploy-check/SKILL.md": "---\nname: deploy-check\n---\nDeploy.\n" };
+
+    it("warns for a skill that nothing names, and passes once Read when names it with a condition", () => {
+      const silent = fixture({ extra: skill });
+      const c = check(run(silent.dir).report, "H18");
+      expect(c).toMatchObject({ status: "fail", level: "warning" });
+      expect(c.details.join()).toContain("never be called");
+      const named = fixture({
+        agents: (sha) => AGENTS(sha).replace("## Read when\n", "## Read when\n- Before a deploy: use the `deploy-check` skill.\n"),
+        extra: skill,
+      });
+      expect(check(run(named.dir).report, "H18").status).toBe("pass");
+    });
+
+    it("warns when AGENTS.md names a runbook outside Read when and without a condition", () => {
+      const { dir } = fixture({
+        agents: (sha) => AGENTS(sha).replace("## Read when", "See `docs/runbooks/rotate-keys-runbook.md` for the steps.\n\n## Read when"),
+        extra: { "docs/runbooks/rotate-keys-runbook.md": "# Rotate\n" },
+      });
+      expect(check(run(dir).report, "H18").details.join()).toContain("outside Read when");
+    });
+
+    it("warns in H14 when the rules and pitfalls take more than 60% of the 8 KiB budget, and names the fix", () => {
+      const rules = `\n## Rules\n${"- Keep the diff small and reviewable. Enforced by: prose\n".repeat(110)}`;
+      const { dir } = fixture({ agents: (sha) => `${AGENTS(sha)}${rules}` });
+      const c = check(run(dir).report, "H14");
+      expect(c).toMatchObject({ status: "fail", level: "warning" });
+      expect(c.details.join()).toContain("60%");
+      expect(c.details.join()).toContain("move a rule into a check");
+      const sections = run(dir).report.footprint.sections;
+      expect(sections.filter((s) => s.name === "Rules").reduce((n, s) => n + s.bytes, 0)).toBeGreaterThan(0.6 * 8 * 1024);
+    });
+  });
+
+  describe("findings (W8)", () => {
+    it("gives each failing check a what, a why and a fix, and keeps the details", () => {
+      const { dir } = fixture({ agents: (sha) => `${AGENTS(sha)}\nSee \`src/missing/thing.ts\`.\n` });
+      const c = check(run(dir).report, "H3");
+      expect(c.details).toEqual(["path does not exist: src/missing/thing.ts"]);
+      expect(c.findings).toEqual([{ what: "path does not exist: src/missing/thing.ts", why: expect.any(String), fix: expect.any(String) }]);
+      expect(c.findings![0]!.fix).toContain("Create the named file");
+    });
+
+    it("gives every failing check on an empty repository a complete finding for each detail", () => {
+      const dir = mkdtempSync(join(tmpdir(), "harness-"));
+      dirs.push(dir);
+      const failing = run(dir, "--cert").report.checks.filter((c) => c.status === "fail");
+      expect(failing.length).toBeGreaterThan(0);
+      for (const c of failing) {
+        expect(c.findings, c.id).toHaveLength(c.details.length);
+        for (const f of c.findings!) {
+          expect(f.what, c.id).toBeTruthy();
+          expect(f.why, c.id).toBeTruthy();
+          expect(f.fix, c.id).toBeTruthy();
+        }
+      }
     });
   });
 
