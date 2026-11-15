@@ -32,3 +32,21 @@ func TestR1CatalogActionsAreDefined(t *testing.T) {
 		}
 	}
 }
+
+// The console actions are written by the staff API. Their names are stored in
+// audit_event.action, so a rename is a data change.
+func TestConsoleCatalogActionsAreDefined(t *testing.T) {
+	cases := map[string]string{
+		"workspace.status_changed": ActionWorkspaceStatusChanged,
+		"account.status_changed":   ActionAccountStatusChanged,
+		"account.sessions_revoked": ActionAccountSessionsRevoked,
+		"staff.added":              ActionStaffAdded,
+		"staff.removed":            ActionStaffRemoved,
+		"note.added":               ActionNoteAdded,
+	}
+	for want, got := range cases {
+		if got != want {
+			t.Errorf("constant = %q, want %q", got, want)
+		}
+	}
+}

@@ -1,0 +1,266 @@
+// Package console is the staff console's API under /api/platform/: tenant and
+// user lookup, workspace and account state changes, forced sign-out, the audit
+// log, internal notes, staff management and the overview.
+//
+// The console never reads content tables (isolation rule I6). A scan test over
+// this package and its queries enforces it.
+package console
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"log/slog"
+	"net/http"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/multica-ai/multica/platform-management/audit"
+	"github.com/multica-ai/multica/platform-management/internal/platformauth"
+	"github.com/multica-ai/multica/platform-management/internal/staff"
+	"github.com/multica-ai/multica/platform-management/internal/workspacestatus"
+)
+
+const maxBodyBytes = 64 << 10
+
+// StatusSetter changes a workspace's state, with its audit row.
+// *workspacestatus.Service is one.
+type StatusSetter interface {
+	Set(ctx context.Context, c workspacestatus.Change) (changed bool, err error)
+}
+
+// AccountCache drops the cached account state. *accountguard.Guard is one.
+type AccountCache interface {
+	Invalidate(ctx context.Context, userID string) error
+}
+
+// AccountNotifier tells the Multica server that an account changed.
+// *accountcache.Publisher is one.
+type AccountNotifier interface {
+	Publish(ctx context.Context, userID, kind string) error
+}
+
+// EmailLookup returns a user's email. *staff.Store is one.
+type EmailLookup interface {
+	EmailByUserID(ctx context.Context, userID string) (string, error)
+}
+
+// Deps are the Handler's dependencies. Now defaults to time.Now and Log to
+// slog.Default.
+type Deps struct {
+	// RequireStaff is platformauth.Handler.RequirePlatformStaff.
+	RequireStaff func(roles ...staff.Role) func(http.Handler) http.Handler
+	// RequireOrigin is platformauth.Handler.RequireOrigin. It guards every
+	// method but GET.
+	RequireOrigin func(http.Handler) http.Handler
+
+	Reader     Reader
+	Runner     Runner
+	Workspaces StatusSetter
+	Cache      AccountCache
+	Notifier   AccountNotifier
+	Emails     EmailLookup
+
+	Log *slog.Logger
+	Now func() time.Time
+}
+
+// Handler serves the console routes.
+type Handler struct {
+	Deps
+	mux *http.ServeMux
+}
+
+type handlerFunc func(*Handler, http.ResponseWriter, *http.Request)
+
+// routeSpec is one path with the staff roles it admits (any role when empty)
+// and a handler for each method it answers. A method that is not listed is a
+// 404, the same answer as an unknown route.
+type routeSpec struct {
+	pattern string
+	roles   []staff.Role
+	methods map[string]handlerFunc
+}
+
+var (
+	supportAndAdmin = []staff.Role{staff.RoleSupport, staff.RoleAdmin}
+	adminOnly       = []staff.Role{staff.RoleAdmin}
+)
+
+// routeTable is the route table of the contract, section 4.
+func routeTable() []routeSpec {
+	const base = "/api/platform"
+	return []routeSpec{
+		{base + "/tenants", nil, map[string]handlerFunc{http.MethodGet: (*Handler).listTenants}},
+		{base + "/tenants/{id}", nil, map[string]handlerFunc{http.MethodGet: (*Handler).getTenant}},
+		{base + "/tenants/{id}/status", supportAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).setTenantStatus}},
+		{base + "/tenants/{id}/audit-events", nil, map[string]handlerFunc{http.MethodGet: (*Handler).listTenantAuditEvents}},
+		{base + "/tenants/{id}/notes", nil, map[string]handlerFunc{
+			http.MethodGet:  (*Handler).listNotes,
+			http.MethodPost: (*Handler).addNote,
+		}},
+		{base + "/users", nil, map[string]handlerFunc{http.MethodGet: (*Handler).listUsers}},
+		{base + "/users/{id}", nil, map[string]handlerFunc{http.MethodGet: (*Handler).getUser}},
+		{base + "/users/{id}/status", supportAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).setUserStatus}},
+		{base + "/users/{id}/revoke-sessions", supportAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).revokeSessions}},
+		{base + "/staff", adminOnly, map[string]handlerFunc{
+			http.MethodGet:  (*Handler).listStaff,
+			http.MethodPost: (*Handler).addStaff,
+		}},
+		{base + "/staff/{user_id}", adminOnly, map[string]handlerFunc{http.MethodDelete: (*Handler).removeStaff}},
+		{base + "/audit-events", nil, map[string]handlerFunc{http.MethodGet: (*Handler).listAuditEvents}},
+		{base + "/overview", nil, map[string]handlerFunc{http.MethodGet: (*Handler).overview}},
+	}
+}
+
+// Patterns returns the path patterns the Handler serves, for the API mux.
+func Patterns() []string {
+	var out []string
+	for _, r := range routeTable() {
+		out = append(out, r.pattern)
+	}
+	return out
+}
+
+// New builds the Handler. Every route is wrapped by the staff middleware
+// outside its method switch, so a refused request and a wrong method both get
+// the 404 of an unknown route.
+func New(d Deps) *Handler {
+	if d.Log == nil {
+		d.Log = slog.Default()
+	}
+	if d.Now == nil {
+		d.Now = time.Now
+	}
+	h := &Handler{Deps: d, mux: http.NewServeMux()}
+	for _, rt := range routeTable() {
+		h.mux.Handle(rt.pattern, d.RequireStaff(rt.roles...)(h.methodSwitch(rt)))
+	}
+	return h
+}
+
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) { h.mux.ServeHTTP(w, r) }
+
+func (h *Handler) methodSwitch(rt routeSpec) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fn, ok := rt.methods[r.Method]
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		call := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fn(h, w, r) })
+		if r.Method == http.MethodGet {
+			call.ServeHTTP(w, r)
+			return
+		}
+		h.RequireOrigin(call).ServeHTTP(w, r)
+	})
+}
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+func writeError(w http.ResponseWriter, e *apiError) {
+	writeJSON(w, e.Status, map[string]string{"error": e.Message, "code": e.Code})
+}
+
+func notFound() *apiError {
+	return &apiError{Status: http.StatusNotFound, Code: "not_found", Message: "not found"}
+}
+
+// fail answers with err when it is an *apiError and with a 500 otherwise. The
+// cause of a 500 goes to the log only.
+func (h *Handler) fail(w http.ResponseWriter, r *http.Request, op string, err error) {
+	var ae *apiError
+	if errors.As(err, &ae) {
+		writeError(w, ae)
+		return
+	}
+	h.Log.Error("console: "+op+" failed", "path", r.URL.Path, "error", err)
+	writeError(w, &apiError{Status: http.StatusInternalServerError, Code: "internal", Message: "internal error"})
+}
+
+// decodeBody reads one JSON object into v. Unknown fields and trailing data
+// are refused.
+func decodeBody(w http.ResponseWriter, r *http.Request, v any) *apiError {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(v); err != nil {
+		return badRequest("invalid_body", "the request body is not a valid JSON object for this route")
+	}
+	if dec.More() {
+		return badRequest("invalid_body", "the request body has more than one JSON value")
+	}
+	return nil
+}
+
+// canonicalUUID returns the lower-case text form of a UUID.
+func canonicalUUID(s string) (string, bool) {
+	var u pgtype.UUID
+	if err := u.Scan(s); err != nil || !u.Valid {
+		return "", false
+	}
+	b := u.Bytes
+	return fmtUUID(b), true
+}
+
+func fmtUUID(b [16]byte) string {
+	const hexDigits = "0123456789abcdef"
+	out := make([]byte, 0, 36)
+	for i, c := range b {
+		if i == 4 || i == 6 || i == 8 || i == 10 {
+			out = append(out, '-')
+		}
+		out = append(out, hexDigits[c>>4], hexDigits[c&0x0f])
+	}
+	return string(out)
+}
+
+// pathID returns the canonical UUID in the path wildcard name. A value that is
+// not a UUID names nothing, so it is a 404.
+func pathID(r *http.Request, name string) (string, *apiError) {
+	id, ok := canonicalUUID(r.PathValue(name))
+	if !ok {
+		return "", notFound()
+	}
+	return id, nil
+}
+
+func forbidden() *apiError {
+	return &apiError{Status: http.StatusForbidden, Code: "forbidden", Message: "your role cannot do this"}
+}
+
+// actor is the signed-in staff member as the audit log records them.
+type actor struct {
+	ID    string
+	Email string
+	Role  staff.Role
+}
+
+// currentActor returns the staff member of the request, with their email for
+// the audit label.
+func (h *Handler) currentActor(r *http.Request) (actor, error) {
+	id, ok := platformauth.IdentityFrom(r.Context())
+	if !ok {
+		return actor{}, errors.New("no staff identity in the request context")
+	}
+	email, err := h.Emails.EmailByUserID(r.Context(), id.UserID)
+	if err != nil {
+		return actor{}, err
+	}
+	return actor{ID: id.UserID, Email: email, Role: id.Role}, nil
+}
+
+// staffEntry fills the actor fields of an audit entry.
+func (a actor) staffEntry(e audit.Entry) audit.Entry {
+	e.ActorType = audit.ActorStaff
+	e.ActorID = a.ID
+	e.ActorLabel = a.Email
+	return e
+}

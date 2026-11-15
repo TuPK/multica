@@ -18,7 +18,7 @@ import (
 )
 
 // AuditAction is the audit action of a state change (spec 4.3 catalog).
-const AuditAction = "workspace.status_changed"
+const AuditAction = audit.ActionWorkspaceStatusChanged
 
 const auditTargetType = "workspace"
 
@@ -29,6 +29,9 @@ type Change struct {
 	Reason      string
 	// ChangedBy is the staff user who made the change. It is the audit actor.
 	ChangedBy string
+	// ActorLabel is the staff member's email. It is copied to the audit row's
+	// actor_label, which is how the row reads without a join to the user table.
+	ActorLabel string
 	// DeletionScheduledAt is when a pending deletion is carried out. It is only
 	// valid with the pending_deletion status; zero means none.
 	DeletionScheduledAt time.Time
@@ -161,6 +164,7 @@ func auditEntry(c Change, from workspacestate.Status) audit.Entry {
 		WorkspaceID: c.WorkspaceID,
 		ActorType:   audit.ActorStaff,
 		ActorID:     c.ChangedBy,
+		ActorLabel:  c.ActorLabel,
 		Action:      AuditAction,
 		TargetType:  auditTargetType,
 		TargetID:    c.WorkspaceID,

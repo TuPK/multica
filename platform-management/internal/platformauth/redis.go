@@ -86,29 +86,3 @@ func (l *RedisLimiter) Allow(ctx context.Context, key string, limit int, window 
 	}
 	return n <= int64(limit), nil
 }
-
-// RedisAccountCache is the accountguard cache on Redis. It uses the same keys
-// as the Multica server, so a write on either side invalidates both.
-type RedisAccountCache struct{ rdb redis.Cmdable }
-
-// NewRedisAccountCache returns an accountguard.Cache on rdb.
-func NewRedisAccountCache(rdb redis.Cmdable) *RedisAccountCache { return &RedisAccountCache{rdb: rdb} }
-
-func (c *RedisAccountCache) Get(ctx context.Context, key string) ([]byte, bool, error) {
-	b, err := c.rdb.Get(ctx, key).Bytes()
-	if errors.Is(err, redis.Nil) {
-		return nil, false, nil
-	}
-	if err != nil {
-		return nil, false, err
-	}
-	return b, true, nil
-}
-
-func (c *RedisAccountCache) Set(ctx context.Context, key string, value []byte, ttl time.Duration) error {
-	return c.rdb.Set(ctx, key, value, ttl).Err()
-}
-
-func (c *RedisAccountCache) Del(ctx context.Context, key string) error {
-	return c.rdb.Del(ctx, key).Err()
-}

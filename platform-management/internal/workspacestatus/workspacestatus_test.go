@@ -300,3 +300,15 @@ func TestSetCanonicalisesIDsSoTheRightKeyIsCleared(t *testing.T) {
 		t.Fatalf("audit ids not canonical: %+v", f.tx.audits[0])
 	}
 }
+
+func TestSetWritesTheActorLabelToTheAuditRow(t *testing.T) {
+	f := newFixture()
+	c := change(workspacestate.Suspended)
+	c.ActorLabel = "support@example.com"
+	if changed, err := f.svc.Set(context.Background(), c); err != nil || !changed {
+		t.Fatalf("Set = (%v, %v)", changed, err)
+	}
+	if len(f.tx.audits) != 1 || f.tx.audits[0].ActorLabel != "support@example.com" {
+		t.Fatalf("audit rows = %+v", f.tx.audits)
+	}
+}

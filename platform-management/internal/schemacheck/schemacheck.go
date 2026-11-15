@@ -32,6 +32,9 @@ var Required = []string{
 	"665_platform_workspace",                // platform_workspace: table
 	"666_platform_workspace_uidx",           // platform_workspace: unique index on workspace_id
 	"667_platform_workspace_status_idx",     // platform_workspace: partial index on status
+	"668_platform_note",                     // platform_note: table
+	"669_platform_note_workspace_idx",       // platform_note: index on workspace_id, created_at
+	"688_platform_note_id_uidx",             // platform_note: unique index on id
 }
 
 // Queryer is the part of a pgx pool, connection or transaction that Check uses.

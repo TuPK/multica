@@ -16,6 +16,8 @@ import (
 	"path"
 	"strings"
 	"time"
+
+	"github.com/multica-ai/multica/platform-management/internal/console"
 )
 
 const healthTimeout = 3 * time.Second
@@ -64,6 +66,19 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+// NewPlatformHandler returns the handler for /api/platform/: the console's
+// routes go to consoleAPI and every other path to auth, which serves sign-in
+// and answers an unknown path with a 404. Each console route applies the staff
+// middleware itself, outside its method switch.
+func NewPlatformHandler(auth, consoleAPI http.Handler) http.Handler {
+	mux := http.NewServeMux()
+	mux.Handle("/api/platform/", auth)
+	for _, pattern := range console.Patterns() {
+		mux.Handle(pattern, consoleAPI)
+	}
+	return mux
 }
 
 // NewAPIHandler returns the API listener's handler: /healthz, and every path

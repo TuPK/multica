@@ -1,0 +1,432 @@
+package console
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/multica-ai/multica/platform-management/accountguard"
+	"github.com/multica-ai/multica/platform-management/audit"
+	"github.com/multica-ai/multica/platform-management/internal/platformauth"
+	"github.com/multica-ai/multica/platform-management/internal/session"
+	"github.com/multica-ai/multica/platform-management/internal/staff"
+	"github.com/multica-ai/multica/platform-management/internal/workspacestatus"
+)
+
+const (
+	secret = "0123456789abcdef0123456789abcdef"
+	origin = "https://console.example.com"
+
+	adminID   = "aaaaaaaa-0000-0000-0000-000000000001"
+	adminMail = "admin@example.com"
+	suppID    = "aaaaaaaa-0000-0000-0000-000000000002"
+	suppMail  = "support@example.com"
+	billID    = "aaaaaaaa-0000-0000-0000-000000000003"
+	billMail  = "billing@example.com"
+
+	wsID     = "bbbbbbbb-0000-0000-0000-000000000001"
+	wsName   = "Acme"
+	custID   = "cccccccc-0000-0000-0000-000000000001"
+	custMail = "customer@example.com"
+	noOneID  = "dddddddd-0000-0000-0000-000000000009"
+)
+
+var t0 = time.Date(2030, 5, 6, 7, 8, 9, 123456789, time.UTC)
+
+// fakeDirectory is the staff table and the user table for the middleware and
+// for the audit label.
+type fakeDirectory struct {
+	roles  map[string]staff.Role
+	emails map[string]string
+}
+
+func (d *fakeDirectory) UserIDByEmail(_ context.Context, email string) (string, bool, error) {
+	for id, e := range d.emails {
+		if e == email {
+			return id, true, nil
+		}
+	}
+	return "", false, nil
+}
+
+func (d *fakeDirectory) ActiveStaff(_ context.Context, id string) (staff.Role, bool, error) {
+	r, ok := d.roles[id]
+	return r, ok, nil
+}
+
+func (d *fakeDirectory) EmailByUserID(_ context.Context, id string) (string, error) {
+	e, ok := d.emails[id]
+	if !ok {
+		return "", errors.New("no such user")
+	}
+	return e, nil
+}
+
+type activeGuard struct{}
+
+func (activeGuard) State(context.Context, string) (accountguard.Record, error) {
+	return accountguard.Record{Status: accountguard.Active}, nil
+}
+
+// fakeReader serves canned rows and records what it was asked.
+type fakeReader struct {
+	tenants  []TenantRow
+	details  map[string]TenantDetail
+	users    []UserRow
+	userDets map[string]UserDetail
+	notes    []Note
+	staff    []StaffRow
+	events   []AuditRow
+	overview Overview
+	err      error
+
+	lastTenants TenantSearch
+	lastUsers   UserSearch
+	lastNotes   NoteQuery
+	lastAudit   AuditQuery
+	lastSince   time.Time
+}
+
+func (r *fakeReader) SearchTenants(_ context.Context, q TenantSearch) ([]TenantRow, error) {
+	r.lastTenants = q
+	return r.tenants, r.err
+}
+
+func (r *fakeReader) GetTenant(_ context.Context, id string) (TenantDetail, bool, error) {
+	d, ok := r.details[id]
+	return d, ok, r.err
+}
+
+func (r *fakeReader) SearchUsers(_ context.Context, q UserSearch) ([]UserRow, error) {
+	r.lastUsers = q
+	return r.users, r.err
+}
+
+func (r *fakeReader) GetUser(_ context.Context, id string) (UserDetail, bool, error) {
+	d, ok := r.userDets[id]
+	return d, ok, r.err
+}
+
+func (r *fakeReader) ListNotes(_ context.Context, q NoteQuery) ([]Note, error) {
+	r.lastNotes = q
+	return r.notes, r.err
+}
+
+func (r *fakeReader) ListStaff(context.Context) ([]StaffRow, error) { return r.staff, r.err }
+
+func (r *fakeReader) ListAuditEvents(_ context.Context, q AuditQuery) ([]AuditRow, error) {
+	r.lastAudit = q
+	return r.events, r.err
+}
+
+func (r *fakeReader) Overview(_ context.Context, since time.Time) (Overview, error) {
+	r.lastSince = since
+	return r.overview, r.err
+}
+
+type fakeStaffRow struct {
+	user    string
+	role    string
+	revoked bool
+}
+
+// fakeStore is the writable tables in memory. InTx gives transaction
+// semantics: a failing fn leaves nothing behind.
+type fakeStore struct {
+	mu         sync.Mutex
+	workspaces map[string]string
+	users      map[string]string // id -> email
+	accounts   map[string]string // user id -> status
+	sessions   map[string]time.Time
+	staffRows  []fakeStaffRow
+	notes      []Note
+	audits     []audit.Entry
+	failAudit  error
+	txs        int
+}
+
+func newFakeStore() *fakeStore {
+	return &fakeStore{
+		workspaces: map[string]string{wsID: wsName},
+		users: map[string]string{
+			adminID: adminMail, suppID: suppMail, billID: billMail, custID: custMail,
+		},
+		accounts: map[string]string{},
+		sessions: map[string]time.Time{},
+		staffRows: []fakeStaffRow{
+			{user: adminID, role: "admin"},
+			{user: suppID, role: "support"},
+			{user: billID, role: "billing"},
+		},
+	}
+}
+
+type snapshot struct {
+	accounts  map[string]string
+	sessions  map[string]time.Time
+	staffRows []fakeStaffRow
+	notes     []Note
+	audits    []audit.Entry
+}
+
+func (s *fakeStore) snap() snapshot {
+	c := snapshot{accounts: map[string]string{}, sessions: map[string]time.Time{}}
+	for k, v := range s.accounts {
+		c.accounts[k] = v
+	}
+	for k, v := range s.sessions {
+		c.sessions[k] = v
+	}
+	c.staffRows = append(c.staffRows, s.staffRows...)
+	c.notes = append(c.notes, s.notes...)
+	c.audits = append(c.audits, s.audits...)
+	return c
+}
+
+func (s *fakeStore) restore(c snapshot) {
+	s.accounts, s.sessions, s.staffRows, s.notes, s.audits = c.accounts, c.sessions, c.staffRows, c.notes, c.audits
+}
+
+func (s *fakeStore) InTx(_ context.Context, fn func(Tx) error) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.txs++
+	before := s.snap()
+	if err := fn(&fakeTx{s: s}); err != nil {
+		s.restore(before)
+		return err
+	}
+	return nil
+}
+
+func (s *fakeStore) activeRole(user string) (string, bool) {
+	for _, r := range s.staffRows {
+		if r.user == user && !r.revoked {
+			return r.role, true
+		}
+	}
+	return "", false
+}
+
+type fakeTx struct{ s *fakeStore }
+
+func (t *fakeTx) WorkspaceName(_ context.Context, id string) (string, bool, error) {
+	n, ok := t.s.workspaces[id]
+	return n, ok, nil
+}
+
+func (t *fakeTx) InsertNote(_ context.Context, ws, author, body string) (string, time.Time, error) {
+	id := fmt.Sprintf("eeeeeeee-0000-0000-0000-%012d", len(t.s.notes)+1)
+	at := t0.Add(time.Duration(len(t.s.notes)) * time.Second)
+	t.s.notes = append(t.s.notes, Note{ID: id, WorkspaceID: ws, AuthorID: author, Body: body, CreatedAt: at})
+	return id, at, nil
+}
+
+func (t *fakeTx) UserIDByEmail(_ context.Context, email string) (string, bool, error) {
+	for id, e := range t.s.users {
+		if e == email {
+			return id, true, nil
+		}
+	}
+	return "", false, nil
+}
+
+func (t *fakeTx) UserEmail(_ context.Context, id string) (string, bool, error) {
+	e, ok := t.s.users[id]
+	return e, ok, nil
+}
+
+func (t *fakeTx) Account(_ context.Context, id string) (Account, bool, error) {
+	st, ok := t.s.accounts[id]
+	return Account{Status: st}, ok, nil
+}
+
+func (t *fakeTx) SetAccountStatus(_ context.Context, id, status, _, _ string) error {
+	t.s.accounts[id] = status
+	return nil
+}
+
+func (t *fakeTx) SetSessionsValidAfter(_ context.Context, id, _ string, at time.Time) error {
+	t.s.sessions[id] = at
+	if _, ok := t.s.accounts[id]; !ok {
+		t.s.accounts[id] = "active"
+	}
+	return nil
+}
+
+func (t *fakeTx) ActiveAdmins(context.Context) ([]string, error) {
+	var out []string
+	for _, r := range t.s.staffRows {
+		if r.role == "admin" && !r.revoked {
+			out = append(out, r.user)
+		}
+	}
+	return out, nil
+}
+
+func (t *fakeTx) ActiveStaffRole(_ context.Context, id string) (string, bool, error) {
+	r, ok := t.s.activeRole(id)
+	return r, ok, nil
+}
+
+func (t *fakeTx) ReactivateStaff(_ context.Context, id, role string) (bool, error) {
+	for i := len(t.s.staffRows) - 1; i >= 0; i-- {
+		if r := &t.s.staffRows[i]; r.user == id && r.revoked {
+			r.revoked, r.role = false, role
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (t *fakeTx) InsertStaff(_ context.Context, id, role, _ string) (bool, error) {
+	if _, ok := t.s.activeRole(id); ok {
+		return false, nil
+	}
+	t.s.staffRows = append(t.s.staffRows, fakeStaffRow{user: id, role: role})
+	return true, nil
+}
+
+func (t *fakeTx) RevokeStaff(_ context.Context, id string) (bool, error) {
+	for i := range t.s.staffRows {
+		if r := &t.s.staffRows[i]; r.user == id && !r.revoked {
+			r.revoked = true
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (t *fakeTx) InsertAuditEvent(_ context.Context, e audit.Entry) error {
+	if t.s.failAudit != nil {
+		return t.s.failAudit
+	}
+	t.s.audits = append(t.s.audits, e)
+	return nil
+}
+
+// fakeStatusSetter records the changes passed to workspacestatus.Set.
+type fakeStatusSetter struct {
+	calls   []workspacestatus.Change
+	changed bool
+	err     error
+}
+
+func (f *fakeStatusSetter) Set(_ context.Context, c workspacestatus.Change) (bool, error) {
+	f.calls = append(f.calls, c)
+	return f.changed, f.err
+}
+
+type fakeCache struct {
+	dropped []string
+	err     error
+}
+
+func (c *fakeCache) Invalidate(_ context.Context, id string) error {
+	c.dropped = append(c.dropped, id)
+	return c.err
+}
+
+type published struct{ user, kind string }
+
+type fakeNotifier struct {
+	sent []published
+	err  error
+}
+
+func (n *fakeNotifier) Publish(_ context.Context, user, kind string) error {
+	n.sent = append(n.sent, published{user, kind})
+	return n.err
+}
+
+// env is a console Handler behind the real staff middleware, on fakes.
+type env struct {
+	t      *testing.T
+	h      http.Handler
+	dir    *fakeDirectory
+	reader *fakeReader
+	store  *fakeStore
+	ws     *fakeStatusSetter
+	cache  *fakeCache
+	pub    *fakeNotifier
+	logs   *bytes.Buffer
+}
+
+func newEnv(t *testing.T) *env {
+	t.Helper()
+	e := &env{
+		t: t,
+		dir: &fakeDirectory{
+			roles:  map[string]staff.Role{adminID: staff.RoleAdmin, suppID: staff.RoleSupport, billID: staff.RoleBilling},
+			emails: map[string]string{adminID: adminMail, suppID: suppMail, billID: billMail, custID: custMail},
+		},
+		reader: &fakeReader{
+			details:  map[string]TenantDetail{wsID: {TenantRow: TenantRow{ID: wsID, Name: wsName, Slug: "acme", Status: "active", CreatedAt: t0, LastActivityAt: t0}}},
+			userDets: map[string]UserDetail{custID: {UserRow: UserRow{ID: custID, Email: custMail, Name: "Cu", Status: "active", CreatedAt: t0}}},
+		},
+		store: newFakeStore(),
+		ws:    &fakeStatusSetter{changed: true},
+		cache: &fakeCache{},
+		pub:   &fakeNotifier{},
+		logs:  &bytes.Buffer{},
+	}
+	log := slog.New(slog.NewTextHandler(e.logs, nil))
+	auth := platformauth.New(platformauth.Deps{
+		Config:    platformauth.Config{SessionSecret: secret, ConsoleOrigin: origin},
+		Directory: e.dir,
+		Guard:     activeGuard{},
+		Log:       slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Now:       func() time.Time { return t0 },
+	})
+	e.h = New(Deps{
+		RequireStaff:  auth.RequirePlatformStaff,
+		RequireOrigin: auth.RequireOrigin,
+		Reader:        e.reader,
+		Runner:        e.store,
+		Workspaces:    e.ws,
+		Cache:         e.cache,
+		Notifier:      e.pub,
+		Emails:        e.dir,
+		Log:           log,
+		Now:           func() time.Time { return t0 },
+	})
+	return e
+}
+
+// do sends a request as user ("" sends no cookie). Write methods carry the
+// console's Origin.
+func (e *env) do(user, method, path, body string) *httptest.ResponseRecorder {
+	e.t.Helper()
+	return e.doWith(user, method, path, body, origin)
+}
+
+func (e *env) doWith(user, method, path, body, originHeader string) *httptest.ResponseRecorder {
+	e.t.Helper()
+	var rd io.Reader
+	if body != "" {
+		rd = strings.NewReader(body)
+	}
+	req := httptest.NewRequest(method, path, rd)
+	if user != "" {
+		tok, err := session.Sign(secret, user, t0.Add(-time.Minute))
+		if err != nil {
+			e.t.Fatal(err)
+		}
+		req.AddCookie(&http.Cookie{Name: session.CookieName, Value: tok})
+	}
+	if method != http.MethodGet && originHeader != "" {
+		req.Header.Set("Origin", originHeader)
+	}
+	rec := httptest.NewRecorder()
+	e.h.ServeHTTP(rec, req)
+	return rec
+}

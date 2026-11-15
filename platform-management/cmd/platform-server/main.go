@@ -18,13 +18,17 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/multica-ai/multica/platform-management/accountguard"
+	"github.com/multica-ai/multica/platform-management/internal/accountcache"
 	"github.com/multica-ai/multica/platform-management/internal/config"
+	"github.com/multica-ai/multica/platform-management/internal/console"
 	"github.com/multica-ai/multica/platform-management/internal/db"
 	"github.com/multica-ai/multica/platform-management/internal/mailer"
 	"github.com/multica-ai/multica/platform-management/internal/platformauth"
 	"github.com/multica-ai/multica/platform-management/internal/schemacheck"
 	"github.com/multica-ai/multica/platform-management/internal/server"
 	"github.com/multica-ai/multica/platform-management/internal/staff"
+	"github.com/multica-ai/multica/platform-management/internal/workspacestatus"
+	"github.com/multica-ai/multica/platform-management/workspacestate"
 )
 
 const (
@@ -92,6 +96,8 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	accountCache := accountcache.NewCache(rdb)
+	guard := accountguard.New(store, accountCache)
 	auth := platformauth.New(platformauth.Deps{
 		Config: platformauth.Config{
 			SessionSecret: cfg.SessionSecret,
@@ -102,11 +108,24 @@ func run() error {
 		},
 		Directory: store,
 		Seeder:    seeder,
-		Guard:     accountguard.New(store, platformauth.NewRedisAccountCache(rdb)),
+		Guard:     guard,
 		Codes:     platformauth.NewRedisCodes(rdb),
 		Limiter:   platformauth.NewRedisLimiter(rdb),
 		Mailer:    mail,
 		Log:       slog.Default(),
+	})
+
+	consoleAPI := console.New(console.Deps{
+		RequireStaff:  auth.RequirePlatformStaff,
+		RequireOrigin: auth.RequireOrigin,
+		Reader:        console.NewPgxReader(pool),
+		Runner:        console.NewPgxRunner(pool),
+		Workspaces: workspacestatus.New(workspacestatus.NewPgxRunner(pool),
+			workspacestate.New(nil, accountCache), slog.Default()),
+		Cache:    guard,
+		Notifier: accountcache.NewPublisher(rdb),
+		Emails:   store,
+		Log:      slog.Default(),
 	})
 
 	apiLn, err := net.Listen("tcp", ":"+cfg.APIPort)
@@ -128,7 +147,7 @@ func run() error {
 
 	slog.Info("platform-server starting", "api_port", cfg.APIPort, "console_port", cfg.ConsolePort)
 	err = server.Serve(ctx, shutdownGrace,
-		server.Listener{Name: "api", Listener: apiLn, Handler: server.NewAPIHandler(health, auth)},
+		server.Listener{Name: "api", Listener: apiLn, Handler: server.NewAPIHandler(health, server.NewPlatformHandler(auth, consoleAPI))},
 		server.Listener{Name: "console", Listener: consoleLn, Handler: server.NewConsoleHandler(health, apiURL, consoleDistDir)},
 	)
 	// Let a code that was just requested finish sending.

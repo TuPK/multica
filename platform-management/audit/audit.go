@@ -38,6 +38,16 @@ const (
 	ActionConsentAccepted         = "consent.accepted"
 )
 
+// Console actions: written by the platform's staff API, with the staff actor.
+const (
+	ActionWorkspaceStatusChanged = "workspace.status_changed"
+	ActionAccountStatusChanged   = "account.status_changed"
+	ActionAccountSessionsRevoked = "account.sessions_revoked"
+	ActionStaffAdded             = "staff.added"
+	ActionStaffRemoved           = "staff.removed"
+	ActionNoteAdded              = "note.added"
+)
+
 // Actor types.
 const (
 	ActorMember = "member"

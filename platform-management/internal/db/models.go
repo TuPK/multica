@@ -1928,6 +1928,14 @@ type PlatformAccount struct {
 	DeletionScheduledAt pgtype.Timestamptz `json:"deletion_scheduled_at"`
 }
 
+type PlatformNote struct {
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	AuthorID    pgtype.UUID        `json:"author_id"`
+	Body        string             `json:"body"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ID          pgtype.UUID        `json:"id"`
+}
+
 type PlatformStaff struct {
 	UserID    pgtype.UUID        `json:"user_id"`
 	Role      string             `json:"role"`
