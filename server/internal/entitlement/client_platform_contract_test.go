@@ -95,8 +95,13 @@ func TestPlatformPolicyFixturesPassNormalizePolicy(t *testing.T) {
 		if fetched.snapshot.policyRevision <= 0 || fetched.snapshot.cloudValidUntil.IsZero() {
 			t.Errorf("%s: snapshot = %+v", name, fetched.snapshot)
 		}
-		if len(wire.Gates) != 2 {
-			t.Errorf("%s: %d gates, want the two the client reads", name, len(wire.Gates))
+		if want := len(requiredGates) + len(optionalGates); len(wire.Gates) != want {
+			t.Errorf("%s: %d gates, want the %d the client reads", name, len(wire.Gates), want)
+		}
+		for gate := range fetched.snapshot.gates {
+			if _, ok := wire.Gates[string(gate)]; !ok {
+				t.Errorf("%s: the platform does not serve the %s gate", name, gate)
+			}
 		}
 	}
 }
@@ -153,6 +158,47 @@ func TestPlatformPaidPolicyWithOverrides(t *testing.T) {
 	}
 	if runs.Gate.PeriodStart == nil || runs.Gate.PeriodEnd == nil || runs.Gate.ResetAt == nil {
 		t.Errorf("autopilot_runs has no period: %+v", runs.Gate)
+	}
+}
+
+// The gates of spec 5.7, as the platform serves them for a free workspace and
+// for a Pro workspace with an `agents` override.
+func TestPlatformPolicyFixturesCarryTheAddedGates(t *testing.T) {
+	type want struct {
+		action Action
+		limit  int // read only for enforce
+	}
+	cases := map[string]map[GateName]want{
+		"policy_free.json": {
+			GateAgents: {ActionEnforce, 3}, GateRuntimes: {ActionEnforce, 2}, GateStorageBytes: {ActionEnforce, 1 << 30},
+			GateAPIRatePerMinute: {ActionEnforce, 300}, GateAuditRetentionDays: {ActionEnforce, 30},
+			GateAuditExport: {ActionEnforce, 0}, GateSSO: {ActionEnforce, 0},
+			GateWorkspacePolicies: {ActionEnforce, 0}, GateViewerRole: {ActionEnforce, 0},
+		},
+		"policy_paid_overrides.json": {
+			GateAgents: {ActionEnforce, 5}, GateRuntimes: {ActionEnforce, 20}, GateStorageBytes: {ActionEnforce, 20 << 30},
+			GateAPIRatePerMinute: {ActionEnforce, 1200}, GateAuditRetentionDays: {ActionEnforce, 180},
+			GateAuditExport: {ActionOff, 0}, GateSSO: {ActionEnforce, 0},
+			GateWorkspacePolicies: {ActionEnforce, 0}, GateViewerRole: {ActionEnforce, 0},
+		},
+	}
+	for file, gates := range cases {
+		ws := uuid.New()
+		srv, _ := platformServer(t, ws, platformFixture(t, file))
+		client := platformClient(t, srv.URL)
+		for gate, w := range gates {
+			d := client.Gate(context.Background(), ws, gate)
+			if d.Gate.Action != w.action {
+				t.Errorf("%s %s = %+v, want %s", file, gate, d, w.action)
+				continue
+			}
+			if w.action == ActionEnforce && limitValue(t, d.Gate) != w.limit {
+				t.Errorf("%s %s limit = %d, want %d", file, gate, *d.Gate.Limit, w.limit)
+			}
+			if w.action == ActionOff && d.Gate.Limit != nil {
+				t.Errorf("%s %s = %+v, an off gate has no limit", file, gate, d.Gate)
+			}
+		}
 	}
 }
 

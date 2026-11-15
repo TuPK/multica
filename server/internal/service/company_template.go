@@ -11,6 +11,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/entitlement"
+	"github.com/multica-ai/multica/server/internal/planlimit"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -34,6 +36,8 @@ type CompanyTemplateService struct {
 	// Knowledge provisions the ventures base. Nil, or a deployment that does not
 	// offer knowledge, makes the knowledge step fail and the rest install.
 	Knowledge *KnowledgeService
+	// Entitlements supplies the `agents` quota gate. Nil is off.
+	Entitlements entitlement.Provider
 
 	// failStep, when set, fails the named step before it runs. Tests use it to
 	// stop an apply halfway and check that a rerun completes it.
@@ -85,6 +89,17 @@ type CompanyApplyResult struct {
 type companyStepError struct{ msg string }
 
 func (e companyStepError) Error() string { return e.msg }
+
+// planLimitStepError turns a refused creation into a step refusal the apply
+// records and continues from: the installer reports it and a rerun, after the
+// plan changes, completes the step. Any other error is returned as it is.
+func planLimitStepError(err error) error {
+	var reached *planlimit.ReachedError
+	if errors.As(err, &reached) {
+		return companyErr("the plan has no room for another %s (%d of %d used)", reached.Gate, reached.Used, reached.Limit)
+	}
+	return err
+}
 
 func companyErr(format string, args ...any) error {
 	return companyStepError{msg: fmt.Sprintf(format, args...)}
@@ -479,8 +494,13 @@ func (r *companyRun) ensureAgent(ctx context.Context, role companyRole) (string,
 	if !ok {
 		return "", "", companyErr("no instruction template %q", role.AgentTemplate)
 	}
+	// The policy is read before the transaction; the count runs inside it.
+	agentQuota := planlimit.Resolve(ctx, r.svc.Entitlements, r.in.WorkspaceID, entitlement.GateAgents)
 	var agent db.Agent
 	err = r.inTx(ctx, func(q *db.Queries) error {
+		if err := agentQuota.Admit(ctx, q, r.in.WorkspaceID, 1, planlimit.CountAgents(q, r.in.WorkspaceID)); err != nil {
+			return planLimitStepError(err)
+		}
 		a, err := q.CreateAgent(ctx, db.CreateAgentParams{
 			WorkspaceID:          r.in.WorkspaceID,
 			Name:                 role.Name,

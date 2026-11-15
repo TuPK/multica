@@ -89,6 +89,7 @@ func (h *Handler) ApplyCompanyTemplate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	svc := service.NewCompanyTemplateService(h.Queries, h.TxStarter, h.Knowledge)
+	svc.Entitlements = h.Entitlements
 	res, err := svc.Apply(r.Context(), service.CompanyApplyInput{
 		WorkspaceID: wsUUID,
 		ActorUserID: member.UserID,

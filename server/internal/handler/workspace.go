@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -22,6 +23,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/issuestatus"
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
+	"github.com/multica-ai/multica/server/internal/planlimit"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -305,6 +307,22 @@ type CreateWorkspaceRequest struct {
 	IssuePrefix *string `json:"issue_prefix"`
 }
 
+// freeOwnedWorkspaceLimitCode is the code of the refusal. It is not
+// plan_limit_reached: no plan gate is involved and the response has no gate.
+const freeOwnedWorkspaceLimitCode = "free_workspace_limit_reached"
+
+// freeOwnedWorkspaceLimit reads FREE_PLAN_OWNED_WORKSPACE_LIMIT. Unset or 0 is
+// no limit, and then CreateWorkspace takes no lock and runs no query.
+func freeOwnedWorkspaceLimit(r *http.Request) int {
+	limit, err := planlimit.ParseOwnerLimit(os.Getenv(planlimit.OwnerLimitEnv))
+	if err != nil {
+		// An operator typo must not lock everyone out of creating workspaces.
+		slog.Error("ignoring invalid owned-workspace limit", append(logger.RequestAttrs(r), "error", err)...)
+		return 0
+	}
+	return limit
+}
+
 func (h *Handler) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUserID(w, r)
 	if !ok {
@@ -339,6 +357,12 @@ func (h *Handler) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	// Account-level cap (platform spec 5.7): a user may own only so many
+	// workspaces while each is on the free plan. Not a plan gate, so it does
+	// not go through the entitlement policy. It is checked in the creating
+	// transaction below, under the user's advisory lock.
+	ownedLimit := freeOwnedWorkspaceLimit(r)
 
 	var req CreateWorkspaceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -384,6 +408,17 @@ func (h *Handler) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback(r.Context())
 
 	qtx := h.Queries.WithTx(tx)
+	if _, err := planlimit.CheckOwnerLimit(r.Context(), qtx, parseUUID(userID), ownedLimit); err != nil {
+		var limitErr *planlimit.OwnerLimitError
+		if errors.As(err, &limitErr) {
+			writeErrorCode(w, http.StatusForbidden, freeOwnedWorkspaceLimitCode,
+				"you own the maximum number of free workspaces; upgrade one of them to create another")
+			return
+		}
+		slog.Warn("owned workspace limit check failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to create workspace")
+		return
+	}
 	ws, err := qtx.CreateWorkspace(r.Context(), db.CreateWorkspaceParams{
 		Name:        req.Name,
 		Slug:        req.Slug,

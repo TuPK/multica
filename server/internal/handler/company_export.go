@@ -62,6 +62,8 @@ func (h *Handler) ImportCompany(w http.ResponseWriter, r *http.Request) {
 		ActorID: actor.ID,
 		Kinds:   h.proposalService().Kinds,
 		Issues:  h.IssueService,
+
+		Entitlements: h.Entitlements,
 	}
 	if req.RuntimeID != "" {
 		runtimeID, ok := parseUUIDOrBadRequest(w, req.RuntimeID, "runtime_id")
@@ -72,6 +74,9 @@ func (h *Handler) ImportCompany(w http.ResponseWriter, r *http.Request) {
 	}
 	report, err := service.ImportCompany(r.Context(), h.Queries, h.TxStarter, wsUUID, req.Document, opts)
 	if err != nil {
+		if writePlanLimitReached(w, err) {
+			return
+		}
 		slog.Warn("import company failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
 		writeError(w, http.StatusBadRequest, err.Error())
 		return

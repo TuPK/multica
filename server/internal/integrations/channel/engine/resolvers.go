@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/entitlement"
 	"github.com/multica-ai/multica/server/internal/integrations/channel"
 	"github.com/multica-ai/multica/server/internal/service"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -237,6 +238,20 @@ type BindMediaParams struct {
 type BindMediaResult struct {
 	InitialTitle string
 	TitleSource  string
+	// Refused lists the media the workspace's storage quota had no room for.
+	// They were not attached; the message and the rest of the media were.
+	Refused []RefusedMedia
+}
+
+// RefusedMedia is one attachment skipped because the plan's storage_bytes gate
+// is full.
+type RefusedMedia struct {
+	StorageKey string
+	Filename   string
+	SizeBytes  int64
+	Gate       entitlement.GateName
+	Limit      int64
+	Used       int64
 }
 
 // IssueCommand is the parsed /issue command.

@@ -15,8 +15,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/server/internal/entitlement"
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
+	"github.com/multica-ai/multica/server/internal/planlimit"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
 	agentpkg "github.com/multica-ai/multica/server/pkg/agent"
@@ -522,6 +524,25 @@ func (h *Handler) CreateCommentSubIssue(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// The attachments are copied in storage before the issue is made, and their
+	// sizes are known now, so a workspace without room for them is refused before
+	// anything is copied. The locked check in the persisting transaction stays
+	// the authority.
+	if len(build.Rows) > 0 {
+		var cloneBytes int64
+		for _, row := range build.Rows {
+			cloneBytes += row.SizeBytes
+		}
+		storageQuota := h.resolvePlanGate(r.Context(), wsUUID, entitlement.GateStorageBytes)
+		if err := storageQuota.Precheck(r.Context(), wsUUID, cloneBytes, planlimit.SumAttachmentBytes(h.Queries, wsUUID)); err != nil {
+			if !writePlanLimitReached(w, err) {
+				slog.Warn("source context storage precheck failed", append(logger.RequestAttrs(r), "error", err)...)
+				writeError(w, http.StatusInternalServerError, "failed to check storage capacity")
+			}
+			return
+		}
+	}
+
 	contextID := dbid.NewV7()
 	capture, objectKeys, err := h.cloneSourceContext(r.Context(), wsUUID, userUUID, contextID, build)
 	if err != nil {
@@ -870,7 +891,7 @@ func (h *Handler) createAgentCommentSubIssue(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *Handler) writeSourceContextError(w http.ResponseWriter, err error, limits service.SourceContextLimitUsage) {
-	if writeIssueLimitReached(w, err) {
+	if writeIssueLimitReached(w, err) || writePlanLimitReached(w, err) {
 		return
 	}
 	status := http.StatusInternalServerError

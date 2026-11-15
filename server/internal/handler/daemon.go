@@ -23,12 +23,14 @@ import (
 	"github.com/multica-ai/multica/server/internal/analytics"
 	"github.com/multica-ai/multica/server/internal/auth"
 	"github.com/multica-ai/multica/server/internal/daemonws"
+	"github.com/multica-ai/multica/server/internal/entitlement"
 	"github.com/multica-ai/multica/server/internal/events"
 	"github.com/multica-ai/multica/server/internal/integrations/slack"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/middleware"
+	"github.com/multica-ai/multica/server/internal/planlimit"
 	"github.com/multica-ai/multica/server/internal/runtimeapps"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
@@ -711,6 +713,7 @@ func (h *Handler) DaemonRegister(w http.ResponseWriter, r *http.Request) {
 	// either runtime would then reach the other's. A failure anywhere rolls
 	// the whole registration back. Legacy merges, analytics and the
 	// register event run only after commit.
+	runtimeQuota := h.resolvePlanGate(r.Context(), wsUUID, entitlement.GateRuntimes)
 	tx, err := h.beginDaemonRegistration(r.Context(), req.WorkspaceID, req.DaemonID)
 	if err != nil {
 		slog.Warn("register: begin registration failed", append(logger.RequestAttrs(r), "error", err)...)
@@ -920,6 +923,19 @@ func (h *Handler) DaemonRegister(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		// Only a runtime this registration created takes a quota slot; a
+		// reconnect updates a row that already counts. The upsert has run, so
+		// the count below includes the new row and the refusal rolls it back.
+		if inserted {
+			if err := runtimeQuota.Admit(r.Context(), qtx, wsUUID, 1, planlimit.CountRuntimesBeforeInsert(qtx, wsUUID)); err != nil {
+				if !writePlanLimitReached(w, err) {
+					slog.Warn("register: runtime quota check failed", append(logger.RequestAttrs(r), "error", err)...)
+					writeError(w, http.StatusInternalServerError, "failed to register runtime")
+				}
+				return
+			}
+		}
+
 		// A brand-new runtime on an already-named machine inherits the machine's
 		// shared custom name so the machine title stays stable as providers come
 		// and go (MUL-4217). Shared with the failed-profile path below.
@@ -1047,6 +1063,20 @@ func (h *Handler) DaemonRegister(w http.ResponseWriter, r *http.Request) {
 				"workspace_id", req.WorkspaceID, "daemon_id", req.DaemonID,
 				"profile_id", profileID, "error", err)
 			continue
+		}
+		// A failed profile leaves a runtime row the workspace shows and deletes,
+		// and the runtimes count includes it, so creating one takes a slot like
+		// any runtime. A refusal only skips this record: the registration of the
+		// runtimes that do work must not fail because a placeholder has no room.
+		if prow.Inserted {
+			spq := h.Queries.WithTx(sp)
+			if err := runtimeQuota.Admit(r.Context(), spq, wsUUID, 1, planlimit.CountRuntimesBeforeInsert(spq, wsUUID)); err != nil {
+				_ = sp.Rollback(r.Context())
+				slog.Warn("runtime quota refused the record of a failed profile",
+					"workspace_id", req.WorkspaceID, "daemon_id", req.DaemonID,
+					"profile_id", profileID, "error", err)
+				continue
+			}
 		}
 		if err := sp.Commit(r.Context()); err != nil {
 			slog.Warn("failed to record runtime profile registration failure",

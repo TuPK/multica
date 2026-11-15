@@ -8,5 +8,7 @@ import (
 // probation job apply through. Its autonomy hook is wired where the autonomy
 // service is built.
 func (h *Handler) orgChanges() *service.OrgChangeService {
-	return service.NewOrgChangeService()
+	svc := service.NewOrgChangeService()
+	svc.Entitlements = h.Entitlements
+	return svc
 }

@@ -14,11 +14,42 @@ type GateName string
 const (
 	GateIssueCount    GateName = "issue_count"
 	GateAutopilotRuns GateName = "autopilot_runs"
+
+	// Resource gates, counted by the enforcement point when it creates the
+	// resource.
+	GateAgents       GateName = "agents"
+	GateRuntimes     GateName = "runtimes"
+	GateStorageBytes GateName = "storage_bytes"
+
+	// Plan values. The API rate limit and the audit retention job read the
+	// limit; the feature flags below are `off` when the plan includes the
+	// feature and `enforce` with limit 0 when it does not.
+	GateAPIRatePerMinute   GateName = "api_rate_per_minute"
+	GateAuditRetentionDays GateName = "audit_retention_days"
+	GateSSO                GateName = "sso"
+	GateWorkspacePolicies  GateName = "workspace_policies"
+	GateViewerRole         GateName = "viewer_role"
+	GateAuditExport        GateName = "audit_export"
 )
+
+// requiredGates must be present in every policy. An absent one makes the
+// policy invalid.
+var requiredGates = []GateName{GateIssueCount, GateAutopilotRuns}
+
+// optionalGates may be absent: Cloud and older platform builds do not send
+// them, and an absent gate is `off`.
+var optionalGates = []GateName{
+	GateAgents, GateRuntimes, GateStorageBytes,
+	GateAPIRatePerMinute, GateAuditRetentionDays,
+	GateSSO, GateWorkspacePolicies, GateViewerRole, GateAuditExport,
+}
 
 func (n GateName) valid() bool {
 	switch n {
-	case GateIssueCount, GateAutopilotRuns:
+	case GateIssueCount, GateAutopilotRuns,
+		GateAgents, GateRuntimes, GateStorageBytes,
+		GateAPIRatePerMinute, GateAuditRetentionDays,
+		GateSSO, GateWorkspacePolicies, GateViewerRole, GateAuditExport:
 		return true
 	default:
 		return false

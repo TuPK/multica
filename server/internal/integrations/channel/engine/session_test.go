@@ -103,6 +103,9 @@ type fakeSessionQueries struct {
 	issueMediaBase        pgtype.Text
 	issueMediaDescription string
 	reconcilerOwnedKeys   map[string]bool
+	claimRequests         [][]string // storage keys each claim asked for
+	quotaEvents           []string   // plan-limit lock and count calls, in order
+	quotaUsed             int64      // bytes the workspace already holds
 	issueLookupErr        error
 	initializedMediaTitle string
 	initializedTitle      string
@@ -293,6 +296,7 @@ func (f *fakeSessionQueries) LinkAttachmentsToChatMessage(_ context.Context, arg
 }
 
 func (f *fakeSessionQueries) ClaimChannelMediaPendingObjectsForBind(_ context.Context, arg db.ClaimChannelMediaPendingObjectsForBindParams) ([]string, error) {
+	f.claimRequests = append(f.claimRequests, append([]string(nil), arg.StorageKeys...))
 	if f.reconcilerOwnedKeys == nil {
 		return append([]string(nil), arg.StorageKeys...), nil
 	}

@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/analytics"
+	"github.com/multica-ai/multica/server/internal/entitlement"
 	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/hub"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
@@ -27,6 +28,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/pack"
+	"github.com/multica-ai/multica/server/internal/planlimit"
 	"github.com/multica-ai/multica/server/internal/service"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
@@ -1100,6 +1102,18 @@ func (h *Handler) installPack(w http.ResponseWriter, r *http.Request, in install
 		isFirstAgent = len(existing) == 0
 	}
 
+	// The agents the plan creates take slots of the `agents` gate together: one
+	// check for all of them, so an install either fits or makes nothing. The
+	// policy is read before the transaction; the count runs inside it, under the
+	// advisory lock.
+	newAgents := int64(0)
+	for _, pa := range plan.agents {
+		if pa.existing == nil {
+			newAgents++
+		}
+	}
+	agentQuota := h.resolvePlanGate(ctx, in.ws, entitlement.GateAgents)
+
 	tx, err := h.TxStarter.Begin(ctx)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to start the install")
@@ -1107,6 +1121,15 @@ func (h *Handler) installPack(w http.ResponseWriter, r *http.Request, in install
 	}
 	defer tx.Rollback(ctx)
 	qtx := h.Queries.WithTx(tx)
+	if newAgents > 0 {
+		if err := agentQuota.Admit(ctx, qtx, in.ws, newAgents, planlimit.CountAgents(qtx, in.ws)); err != nil {
+			if !writePlanLimitReached(w, err) {
+				slog.Warn("pack install agent quota check failed", append(logger.RequestAttrs(r), "error", err)...)
+				writeError(w, http.StatusInternalServerError, "failed to install the pack")
+			}
+			return
+		}
+	}
 	fail := func(err error) {
 		slog.Warn("pack install failed", append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "failed to install the pack")

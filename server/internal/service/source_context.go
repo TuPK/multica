@@ -14,6 +14,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/server/internal/planlimit"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
@@ -599,6 +600,28 @@ func issueUUID(value string) pgtype.UUID {
 		panic(err)
 	}
 	return id
+}
+
+// SourceContextCloneBytes is the storage the capture's attachment clones add.
+func SourceContextCloneBytes(clones []SourceContextClone) int64 {
+	var total int64
+	for _, clone := range clones {
+		total += clone.SizeBytes
+	}
+	return total
+}
+
+// AdmitSourceContextStorage takes the capture's clones into the `storage_bytes`
+// quota, under the advisory lock, on the transaction that persists them. It is
+// called right before PersistSourceContext. The clones are already stored when
+// this runs, so a refusal here rolls the transaction back and the caller's
+// compensation removes the objects.
+func AdmitSourceContextStorage(ctx context.Context, q *db.Queries, quota planlimit.Policy, capture SourceContextCapture) error {
+	if len(capture.Clones) == 0 {
+		return nil
+	}
+	return quota.Admit(ctx, q, capture.WorkspaceID, SourceContextCloneBytes(capture.Clones),
+		planlimit.SumAttachmentBytes(q, capture.WorkspaceID))
 }
 
 func PersistSourceContext(ctx context.Context, q *db.Queries, capture SourceContextCapture, issueID, taskID pgtype.UUID) (db.IssueSourceContext, error) {

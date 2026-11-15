@@ -8,8 +8,10 @@ import (
 	"encoding/json"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/server/internal/entitlement"
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
+	"github.com/multica-ai/multica/server/internal/planlimit"
 	"github.com/multica-ai/multica/server/internal/service"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
@@ -144,6 +146,7 @@ func (h *Handler) resolveMikaAgent(w http.ResponseWriter, r *http.Request, works
 		return db.Agent{}, false, false
 	}
 
+	agentQuota := h.resolvePlanGate(r.Context(), wsUUID, entitlement.GateAgents)
 	tx, err := h.TxStarter.Begin(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to start agent create transaction")
@@ -194,6 +197,16 @@ func (h *Handler) resolveMikaAgent(w http.ResponseWriter, r *http.Request, works
 	}
 	if !canUseRuntimeForAgent(member, runtime) {
 		writeError(w, http.StatusForbidden, "you cannot bind an agent to this runtime")
+		return db.Agent{}, false, false
+	}
+
+	// Mika is a user agent and counts toward the `agents` gate, so creating it
+	// takes a slot like any other agent.
+	if err := agentQuota.Admit(r.Context(), qtx, wsUUID, 1, planlimit.CountAgents(qtx, wsUUID)); err != nil {
+		if !writePlanLimitReached(w, err) {
+			slog.Warn("mika agent quota check failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
+			writeError(w, http.StatusInternalServerError, "failed to create the workspace agent")
+		}
 		return db.Agent{}, false, false
 	}
 

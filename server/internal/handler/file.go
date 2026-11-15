@@ -18,7 +18,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/server/internal/entitlement"
 	"github.com/multica-ai/multica/server/internal/imagemetadata"
+	"github.com/multica-ai/multica/server/internal/planlimit"
 	"github.com/multica-ai/multica/server/internal/storage"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -562,6 +564,20 @@ func (h *Handler) UploadFile(w http.ResponseWriter, r *http.Request) {
 			params.Width = pgtype.Int4{Int32: dimensions.Width, Valid: true}
 			params.Height = pgtype.Int4{Int32: dimensions.Height, Valid: true}
 		}
+		// Read the quota before the upload: the policy fetch is a network call.
+		// The size is known here, so an upload that cannot fit is refused before
+		// it stores anything. The authoritative count, under the advisory lock,
+		// is in the creating transaction below, and takes back the object when a
+		// concurrent upload took the room in between.
+		storageQuota := h.resolvePlanGate(r.Context(), params.WorkspaceID, entitlement.GateStorageBytes)
+		if err := storageQuota.Precheck(r.Context(), params.WorkspaceID, params.SizeBytes,
+			planlimit.SumAttachmentBytes(h.Queries, params.WorkspaceID)); err != nil {
+			if !writePlanLimitReached(w, err) {
+				slog.Error("storage quota precheck failed", "error", err)
+				writeError(w, http.StatusInternalServerError, "upload failed")
+			}
+			return
+		}
 		link, err := h.Storage.Upload(r.Context(), key, data, contentType, header.Filename)
 		if err != nil {
 			slog.Error("file upload failed", "error", err)
@@ -570,25 +586,18 @@ func (h *Handler) UploadFile(w http.ResponseWriter, r *http.Request) {
 		}
 		params.Url = link
 
-		var att db.CreateAttachmentRow
-		if params.CommentID.Valid {
-			// A comment attachment is written under the comment's lock, so a
-			// delete that commits while the object uploaded cannot leave it on
-			// a tombstone. A refused upload takes its stored object with it.
-			err = h.withLiveCommentLock(r.Context(), params.CommentID, params.WorkspaceID, func(qtx *db.Queries) error {
-				var createErr error
-				att, createErr = qtx.CreateAttachment(r.Context(), params)
-				return createErr
-			})
-			if errors.Is(err, pgx.ErrNoRows) {
-				h.deleteS3Objects(r.Context(), []string{link})
-				writeError(w, http.StatusForbidden, "invalid comment_id")
-				return
-			}
-		} else {
-			att, err = wakeupWrite(h, r, func(q *db.Queries) (db.CreateAttachmentRow, error) {
-				return q.CreateAttachment(r.Context(), params)
-			})
+		att, err := h.createAttachmentWithinQuota(r, params, storageQuota)
+		if params.CommentID.Valid && errors.Is(err, pgx.ErrNoRows) {
+			// A refused upload takes its stored object with it.
+			h.deleteS3Objects(r.Context(), []string{link})
+			writeError(w, http.StatusForbidden, "invalid comment_id")
+			return
+		}
+		var quotaErr *planlimit.ReachedError
+		if errors.As(err, &quotaErr) {
+			h.deleteS3Objects(r.Context(), []string{link})
+			writeJSON(w, http.StatusPaymentRequired, quotaErr.Body())
+			return
 		}
 		if err != nil {
 			slog.Error("failed to create attachment record", "error", err)
@@ -638,6 +647,37 @@ func (h *Handler) UploadFile(w http.ResponseWriter, r *http.Request) {
 		"url":      link,
 		"filename": header.Filename,
 	})
+}
+
+// createAttachmentWithinQuota writes the attachment row in one transaction with
+// the storage quota check, so the byte count the check sees is the one this
+// row adds to. A comment attachment is also written under the comment's lock,
+// so a delete that commits while the object uploaded cannot leave it on a
+// tombstone; pgx.ErrNoRows then means the comment is gone.
+func (h *Handler) createAttachmentWithinQuota(r *http.Request, params db.CreateAttachmentParams, quota planlimit.Policy) (db.CreateAttachmentRow, error) {
+	ctx := r.Context()
+	tx, err := h.beginWakeupWrite(ctx)
+	if err != nil {
+		return db.CreateAttachmentRow{}, err
+	}
+	defer tx.Rollback(ctx)
+	qtx := h.Queries.WithTx(tx)
+	if err := quota.Admit(ctx, qtx, params.WorkspaceID, params.SizeBytes, planlimit.SumAttachmentBytes(qtx, params.WorkspaceID)); err != nil {
+		return db.CreateAttachmentRow{}, err
+	}
+	if params.CommentID.Valid {
+		if _, err := qtx.LockLiveComment(ctx, db.LockLiveCommentParams{ID: params.CommentID, WorkspaceID: params.WorkspaceID}); err != nil {
+			return db.CreateAttachmentRow{}, err
+		}
+	}
+	att, err := qtx.CreateAttachment(ctx, params)
+	if err != nil {
+		return db.CreateAttachmentRow{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return db.CreateAttachmentRow{}, err
+	}
+	return att, nil
 }
 
 // ListAttachments — GET /api/issues/{id}/attachments

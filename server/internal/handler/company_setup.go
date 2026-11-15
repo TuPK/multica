@@ -171,6 +171,7 @@ func (h *Handler) SetupCompany(w http.ResponseWriter, r *http.Request) {
 	}
 
 	svc := service.NewCompanySetupService(h.Queries, h.TxStarter)
+	svc.Entitlements = h.Entitlements
 	created, err := svc.Setup(r.Context(), service.CompanySetupInput{
 		WorkspaceID:                 wsUUID,
 		Actor:                       member,
@@ -194,6 +195,9 @@ func (h *Handler) SetupCompany(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeCompanySetupError(w http.ResponseWriter, r *http.Request, workspaceID string, err error) {
+	if writePlanLimitReached(w, err) {
+		return
+	}
 	switch {
 	case errors.Is(err, service.ErrSecretaryNameTaken):
 		writeErrorCode(w, http.StatusConflict, "secretary_name_taken", err.Error())

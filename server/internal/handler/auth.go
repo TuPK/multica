@@ -26,6 +26,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/auth"
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
+	"github.com/multica-ai/multica/server/internal/planlimit"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
@@ -276,6 +277,12 @@ func (h *Handler) checkSignupAllowed(ctx context.Context, email string, isNewUse
 	domain := ""
 	if at := strings.Index(email, "@"); at > 0 {
 		domain = email[at+1:]
+	}
+
+	// 0. A blocked domain is refused before any allowance, including an
+	// invitation: the list is an abuse control, not an access list.
+	if planlimit.EmailDomainBlocked(email, planlimit.ParseBlockedDomains(os.Getenv(planlimit.BlockedDomainsEnv))) {
+		return ErrEmailNotAllowed
 	}
 
 	// 1. explicit email allowlist always wins

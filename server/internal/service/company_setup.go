@@ -7,6 +7,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/server/internal/entitlement"
+	"github.com/multica-ai/multica/server/internal/planlimit"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -76,6 +78,8 @@ This schedule starts paused. The boss turns it on from the autopilot page.`
 type CompanySetupService struct {
 	q  *db.Queries
 	tx TxStarter
+	// Entitlements supplies the `agents` quota gate. Nil is off.
+	Entitlements entitlement.Provider
 }
 
 func NewCompanySetupService(q *db.Queries, tx TxStarter) *CompanySetupService {
@@ -134,6 +138,8 @@ type CompanySetupReadiness struct {
 // Setup creates whatever the workspace is missing and reuses the rest.
 func (s *CompanySetupService) Setup(ctx context.Context, in CompanySetupInput) (CompanySetupCreated, error) {
 	var out CompanySetupCreated
+	// The policy is read before the transaction; the count runs inside it.
+	agentQuota := planlimit.Resolve(ctx, s.Entitlements, in.WorkspaceID, entitlement.GateAgents)
 	tx, err := s.tx.Begin(ctx)
 	if err != nil {
 		return out, err
@@ -151,7 +157,7 @@ func (s *CompanySetupService) Setup(ctx context.Context, in CompanySetupInput) (
 		return out, err
 	}
 
-	secretary, createdSecretary, err := ensureSecretary(ctx, q, in, ws)
+	secretary, createdSecretary, err := ensureSecretary(ctx, q, in, ws, agentQuota)
 	if err != nil {
 		return out, err
 	}
@@ -226,7 +232,7 @@ func (s *CompanySetupService) Setup(ctx context.Context, in CompanySetupInput) (
 // ensureSecretary reuses the agent the workspace names as its Secretary, or
 // creates one on the runtime the handler chose. Setup never adopts an agent
 // that only has the name: the boss may have made it for something else.
-func ensureSecretary(ctx context.Context, q *db.Queries, in CompanySetupInput, ws db.Workspace) (db.Agent, *db.Agent, error) {
+func ensureSecretary(ctx context.Context, q *db.Queries, in CompanySetupInput, ws db.Workspace, agentQuota planlimit.Policy) (db.Agent, *db.Agent, error) {
 	if ws.SecretaryAgentID.Valid {
 		agent, err := q.GetAgentInWorkspace(ctx, db.GetAgentInWorkspaceParams{ID: ws.SecretaryAgentID, WorkspaceID: in.WorkspaceID})
 		if err == nil && !agent.ArchivedAt.Valid {
@@ -258,6 +264,9 @@ func ensureSecretary(ctx context.Context, q *db.Queries, in CompanySetupInput, w
 		}
 	}
 
+	if err := agentQuota.Admit(ctx, q, in.WorkspaceID, 1, planlimit.CountAgents(q, in.WorkspaceID)); err != nil {
+		return db.Agent{}, nil, err
+	}
 	agent, err := q.CreateAgent(ctx, db.CreateAgentParams{
 		WorkspaceID:          in.WorkspaceID,
 		Name:                 SecretaryAgentName,

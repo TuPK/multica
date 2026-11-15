@@ -11,6 +11,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/entitlement"
+	"github.com/multica-ai/multica/server/internal/planlimit"
 	proposalkinds "github.com/multica-ai/multica/server/internal/service/proposal_kinds"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -73,6 +75,11 @@ type ImportOptions struct {
 	// Issues backs the initiatives the import creates: each one gets its backing
 	// issue, as an initiative does. Nil refuses an export that carries initiatives.
 	Issues *IssueService
+	// Entitlements supplies the `agents` quota gate. Nil is off.
+	Entitlements entitlement.Provider
+
+	// agentQuota is the gate read before the transaction opens.
+	agentQuota planlimit.Policy
 }
 
 // importPlaceholderID stands in for an entity a dry run would create. It has the
@@ -110,6 +117,9 @@ func ImportCompany(ctx context.Context, q *db.Queries, txStarter interface {
 			return ImportReport{}, err
 		}
 		return report, nil
+	}
+	if len(doc.Agents) > 0 {
+		opts.agentQuota = planlimit.Resolve(ctx, opts.Entitlements, workspaceID, entitlement.GateAgents)
 	}
 	tx, err := txStarter.Begin(ctx)
 	if err != nil {
@@ -1167,6 +1177,11 @@ func createImportedAgent(ctx context.Context, q *db.Queries, workspaceID pgtype.
 	rt, err := q.GetAgentRuntime(ctx, opts.RuntimeID)
 	if err != nil {
 		return db.Agent{}, fmt.Errorf("import: load runtime: %w", err)
+	}
+	// Each agent takes a slot, counted under the advisory lock inside the
+	// import transaction, so a refused import writes nothing.
+	if err := opts.agentQuota.Admit(ctx, q, workspaceID, 1, planlimit.CountAgents(q, workspaceID)); err != nil {
+		return db.Agent{}, err
 	}
 	created, err := q.CreateAgent(ctx, db.CreateAgentParams{
 		WorkspaceID: workspaceID, Name: a.Name, Description: a.Description,

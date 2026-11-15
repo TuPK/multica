@@ -679,6 +679,9 @@ func (h *Handler) DecideProposal(w http.ResponseWriter, r *http.Request) {
 		Until:       until,
 		Outcome:     strings.TrimSpace(req.Outcome),
 	})
+	if writePlanLimitReached(w, err) {
+		return
+	}
 	switch {
 	case errors.Is(err, service.ErrProposalNotFound):
 		writeError(w, http.StatusNotFound, "proposal not found")

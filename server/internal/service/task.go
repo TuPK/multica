@@ -26,6 +26,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/issuestatus"
 	"github.com/multica-ai/multica/server/internal/issueworkflow"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
+	"github.com/multica-ai/multica/server/internal/planlimit"
 	"github.com/multica-ai/multica/server/internal/realtime"
 	"github.com/multica-ai/multica/server/internal/runtimeapps"
 	"github.com/multica-ai/multica/server/internal/util"
@@ -1707,6 +1708,7 @@ func (s *TaskService) enqueueQuickCreateTask(ctx context.Context, workspaceID, r
 	if capture == nil {
 		task, err = s.Queries.CreateQuickCreateTask(ctx, createParams)
 	} else {
+		storageQuota := planlimit.Resolve(ctx, s.Entitlements, workspaceID, entitlement.GateStorageBytes)
 		tx, beginErr := s.TxStarter.Begin(ctx)
 		if beginErr != nil {
 			return db.AgentTaskQueue{}, fmt.Errorf("begin quick-create source context tx: %w", beginErr)
@@ -1736,6 +1738,9 @@ func (s *TaskService) enqueueQuickCreateTask(ctx context.Context, workspaceID, r
 		}
 		if err == nil {
 			task, err = qtx.CreateQuickCreateTask(ctx, createParams)
+		}
+		if err == nil {
+			err = AdmitSourceContextStorage(ctx, qtx, storageQuota, *capture)
 		}
 		if err == nil {
 			_, err = PersistSourceContext(ctx, qtx, *capture, pgtype.UUID{}, task.ID)

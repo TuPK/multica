@@ -13,6 +13,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/server/internal/entitlement"
+	"github.com/multica-ai/multica/server/internal/planlimit"
 	proposalkinds "github.com/multica-ai/multica/server/internal/service/proposal_kinds"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -79,6 +81,8 @@ type OrgChangeService struct {
 	// Scorecards reads the before and after figures of a probation window.
 	Scorecards *ScorecardService
 	Now        func() time.Time
+	// Entitlements supplies the `agents` quota gate for a hire. Nil is off.
+	Entitlements entitlement.Provider
 }
 
 // NewOrgChangeService returns the service, wired to the autonomy service.
@@ -926,7 +930,7 @@ func (s *OrgChangeService) apply(ctx context.Context, q *db.Queries, ws pgtype.U
 		if err := json.Unmarshal(payload, &p); err != nil {
 			return orgSubject{}, orgBefore{}, err
 		}
-		agent, err := hireAgent(ctx, q, ws, actor, proposalID, p)
+		agent, err := hireAgent(ctx, q, ws, actor, proposalID, p, planlimit.Resolve(ctx, s.Entitlements, ws, entitlement.GateAgents))
 		return orgSubject{OrgSubjectAgent, agent.ID}, orgBefore{ProbationSquadID: p.SquadID}, err
 
 	case OrgChangeRetire:
@@ -1090,7 +1094,7 @@ func charterFieldsOf(c db.SquadCharter) (*CharterFields, error) {
 
 // hireAgent creates an agent from an instruction template, makes the squad its
 // home, and records its instructions as the first revision.
-func hireAgent(ctx context.Context, q *db.Queries, ws pgtype.UUID, actor GovernanceActor, proposalID pgtype.UUID, p hirePayload) (db.Agent, error) {
+func hireAgent(ctx context.Context, q *db.Queries, ws pgtype.UUID, actor GovernanceActor, proposalID pgtype.UUID, p hirePayload, agentQuota planlimit.Policy) (db.Agent, error) {
 	sq, err := orgSquad(ctx, q, ws, p.SquadID, "squad_id")
 	if err != nil {
 		return db.Agent{}, err
@@ -1110,6 +1114,9 @@ func hireAgent(ctx context.Context, q *db.Queries, ws pgtype.UUID, actor Governa
 	owner, err := q.GetOldestWorkspaceOwnerMember(ctx, ws)
 	if err != nil {
 		return db.Agent{}, fmt.Errorf("workspace has no owner to own the new agent: %w", err)
+	}
+	if err := agentQuota.Admit(ctx, q, ws, 1, planlimit.CountAgents(q, ws)); err != nil {
+		return db.Agent{}, err
 	}
 	agent, err := q.CreateAgent(ctx, db.CreateAgentParams{
 		WorkspaceID:          ws,

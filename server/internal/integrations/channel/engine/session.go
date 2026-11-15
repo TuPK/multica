@@ -14,7 +14,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/channelmedia"
+	"github.com/multica-ai/multica/server/internal/entitlement"
 	"github.com/multica-ai/multica/server/internal/integrations/channel"
+	"github.com/multica-ai/multica/server/internal/planlimit"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
 )
@@ -65,6 +67,8 @@ type SessionQueries interface {
 	UpdateChatMessageContentForChannelMedia(ctx context.Context, arg db.UpdateChatMessageContentForChannelMediaParams) (int64, error)
 	MaterializeIssueChannelMediaMarkdown(ctx context.Context, arg db.MaterializeIssueChannelMediaMarkdownParams) (db.Issue, error)
 	CreateAttachment(ctx context.Context, arg db.CreateAttachmentParams) (db.Attachment, error)
+	planlimit.Locker
+	planlimit.AttachmentCounter
 	LinkAttachmentsToChatMessage(ctx context.Context, arg db.LinkAttachmentsToChatMessageParams) ([]pgtype.UUID, error)
 	ClaimChannelMediaPendingObjectsForBind(ctx context.Context, arg db.ClaimChannelMediaPendingObjectsForBindParams) ([]string, error)
 	TouchChatSession(ctx context.Context, id pgtype.UUID) error
@@ -174,6 +178,12 @@ func (a dbSessionQueries) UpdateChatMessageContentForChannelMedia(ctx context.Co
 }
 func (a dbSessionQueries) MaterializeIssueChannelMediaMarkdown(ctx context.Context, arg db.MaterializeIssueChannelMediaMarkdownParams) (db.Issue, error) {
 	return a.q.MaterializeIssueChannelMediaMarkdown(ctx, arg)
+}
+func (a dbSessionQueries) LockPlanGate(ctx context.Context, arg db.LockPlanGateParams) error {
+	return a.q.LockPlanGate(ctx, arg)
+}
+func (a dbSessionQueries) SumPlanLimitAttachmentBytes(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
+	return a.q.SumPlanLimitAttachmentBytes(ctx, workspaceID)
 }
 func (a dbSessionQueries) CreateAttachment(ctx context.Context, arg db.CreateAttachmentParams) (db.Attachment, error) {
 	created, err := a.q.CreateAttachment(ctx, arg)
@@ -905,6 +915,8 @@ func (s *ChatSession) BindMediaRefs(ctx context.Context, in BindMediaInput) erro
 // to production adapters so the Router can publish and refine that title.
 func (s *ChatSession) BindMediaRefsWithResult(ctx context.Context, in BindMediaInput) (BindMediaResult, error) {
 	var result BindMediaResult
+	// The policy is read before the transaction; the count runs inside it.
+	storageQuota := planlimit.Resolve(ctx, currentEntitlements(), in.WorkspaceID, entitlement.GateStorageBytes)
 	tx, err := s.tx.Begin(ctx)
 	if err != nil {
 		return result, fmt.Errorf("begin media tx: %w", err)
@@ -912,7 +924,7 @@ func (s *ChatSession) BindMediaRefsWithResult(ctx context.Context, in BindMediaI
 	defer tx.Rollback(ctx)
 	qtx := s.q.WithTx(tx)
 	if len(in.MediaRefs) > 0 {
-		if err := s.bindMediaRefs(ctx, qtx, in, &result); err != nil {
+		if err := s.bindMediaRefs(ctx, qtx, in, storageQuota, &result); err != nil {
 			_ = tx.Rollback(ctx)
 			if clearErr := s.clearMediaPending(ctx, s.q, in); clearErr != nil {
 				return BindMediaResult{}, errors.Join(err, clearErr)
@@ -942,14 +954,13 @@ func (s *ChatSession) clearMediaPending(ctx context.Context, q SessionQueries, i
 	return nil
 }
 
-func (s *ChatSession) bindMediaRefs(ctx context.Context, qtx SessionQueries, in BindMediaInput, result *BindMediaResult) error {
+func (s *ChatSession) bindMediaRefs(ctx context.Context, qtx SessionQueries, in BindMediaInput, storageQuota planlimit.Policy, result *BindMediaResult) error {
 	if !in.WorkspaceID.Valid {
 		return errors.New("bind media refs: workspace_id is required")
 	}
 	if !in.MessageID.Valid {
 		return errors.New("bind media refs: message_id is required")
 	}
-	keys := make([]string, 0, len(in.MediaRefs))
 	for _, ref := range in.MediaRefs {
 		if ref.StorageURL == "" {
 			return errors.New("bind media refs: storage_url is required")
@@ -957,6 +968,38 @@ func (s *ChatSession) bindMediaRefs(ctx context.Context, qtx SessionQueries, in 
 		if ref.StorageKey == "" {
 			return errors.New("bind media refs: storage_key is required")
 		}
+	}
+	// The objects are stored already, so their sizes are only known now. The
+	// message exists and must not be lost to a full plan: a ref the storage
+	// quota has no room for is skipped and recorded. Its intent is not claimed
+	// below, so the reconciler deletes the object, and the placeholder stays.
+	sizes := make([]int64, len(in.MediaRefs))
+	for i, ref := range in.MediaRefs {
+		sizes[i] = ref.SizeBytes
+	}
+	refusals, err := storageQuota.AdmitEach(ctx, qtx, in.WorkspaceID, sizes, planlimit.SumAttachmentBytes(qtx, in.WorkspaceID))
+	if err != nil {
+		return fmt.Errorf("check media storage quota: %w", err)
+	}
+	admitted := make([]channel.MediaRef, 0, len(in.MediaRefs))
+	for i, ref := range in.MediaRefs {
+		if refusal := refusals[i]; refusal != nil {
+			slog.Warn("channel media: plan storage limit reached; skipping attach",
+				"storage_key", ref.StorageKey, "workspace_id", uuid.UUID(in.WorkspaceID.Bytes).String(),
+				"gate", string(refusal.Gate), "limit", refusal.Limit, "used", refusal.Used, "size_bytes", ref.SizeBytes)
+			result.Refused = append(result.Refused, RefusedMedia{
+				StorageKey: ref.StorageKey, Filename: ref.Filename, SizeBytes: ref.SizeBytes,
+				Gate: refusal.Gate, Limit: refusal.Limit, Used: refusal.Used,
+			})
+			continue
+		}
+		admitted = append(admitted, ref)
+	}
+	if len(admitted) == 0 {
+		return nil
+	}
+	keys := make([]string, 0, len(admitted))
+	for _, ref := range admitted {
 		keys = append(keys, ref.StorageKey)
 	}
 	if in.IssueID.Valid {
@@ -988,9 +1031,9 @@ func (s *ChatSession) bindMediaRefs(ctx context.Context, qtx SessionQueries, in 
 		ref      channel.MediaRef
 		filename string
 	}
-	created := make([]createdMedia, 0, len(in.MediaRefs))
-	ids := make([]pgtype.UUID, 0, len(in.MediaRefs))
-	for _, ref := range in.MediaRefs {
+	created := make([]createdMedia, 0, len(admitted))
+	ids := make([]pgtype.UUID, 0, len(admitted))
+	for _, ref := range admitted {
 		if !claimed[ref.StorageKey] {
 			slog.Warn("channel media: intent claimed by reconciler; skipping attach",
 				"storage_key", ref.StorageKey)

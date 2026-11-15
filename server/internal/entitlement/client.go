@@ -280,11 +280,25 @@ func normalizePolicy(wire wirePolicy) (fetchedPolicy, error) {
 		wire.ValidUntil.IsZero() || wire.ValidForSeconds <= 0 || wire.ValidForSeconds > int64(maxPolicyTTL/time.Second) {
 		return fetchedPolicy{}, ErrInvalidPolicy
 	}
-	gates := make(map[GateName]Gate, 2)
-	for _, name := range []GateName{GateIssueCount, GateAutopilotRuns} {
+	gates := make(map[GateName]Gate, len(requiredGates)+len(optionalGates))
+	for _, name := range requiredGates {
 		wireGate, ok := wire.Gates[string(name)]
 		if !ok {
 			return fetchedPolicy{}, ErrInvalidPolicy
+		}
+		gate, err := normalizeGate(name, wireGate)
+		if err != nil {
+			return fetchedPolicy{}, err
+		}
+		gates[name] = gate
+	}
+	// A gate name this client does not know is never read, so an older client
+	// parses a newer policy. A known optional gate that is absent is off.
+	for _, name := range optionalGates {
+		wireGate, ok := wire.Gates[string(name)]
+		if !ok {
+			gates[name] = Gate{Action: ActionOff}
+			continue
 		}
 		gate, err := normalizeGate(name, wireGate)
 		if err != nil {

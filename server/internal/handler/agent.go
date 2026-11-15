@@ -22,8 +22,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/analytics"
 	"github.com/multica-ai/multica/server/internal/attribution"
+	"github.com/multica-ai/multica/server/internal/entitlement"
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
+	"github.com/multica-ai/multica/server/internal/planlimit"
 	"github.com/multica-ai/multica/server/internal/runtimeapps"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
@@ -1927,6 +1929,11 @@ func (h *Handler) CreateAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The agent quota is read before the transaction (a policy fetch is a
+	// network call) and counted inside it, under an advisory lock, so two
+	// creations at the last slot cannot both pass.
+	agentQuota := h.resolvePlanGate(r.Context(), wsUUID, entitlement.GateAgents)
+
 	tx, err := h.TxStarter.Begin(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to start agent create transaction")
@@ -1934,6 +1941,14 @@ func (h *Handler) CreateAgent(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(r.Context())
 	qtx := h.Queries.WithTx(tx)
+
+	if err := agentQuota.Admit(r.Context(), qtx, wsUUID, 1, planlimit.CountAgents(qtx, wsUUID)); err != nil {
+		if !writePlanLimitReached(w, err) {
+			slog.Warn("agent quota check failed", append(logger.RequestAttrs(r), "error", err)...)
+			writeError(w, http.StatusInternalServerError, "failed to create agent")
+		}
+		return
+	}
 
 	created, runtime, failure := insertAgentTx(r, qtx, agentInsert{
 		WorkspaceID: wsUUID, OwnerID: ownerID, Member: member, RuntimeID: runtimeUUID,
@@ -3169,8 +3184,17 @@ func (h *Handler) RestoreAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	restored, err := h.Queries.RestoreAgent(r.Context(), agent.ID)
+	// A restored user agent takes a slot again, so it passes the same quota
+	// as a new one. A system agent is not counted and takes no slot.
+	var agentQuota planlimit.Policy
+	if agent.Kind == "user" {
+		agentQuota = h.resolvePlanGate(r.Context(), agent.WorkspaceID, entitlement.GateAgents)
+	}
+	restored, err := h.restoreAgentWithinQuota(r.Context(), agent, agentQuota)
 	if err != nil {
+		if writePlanLimitReached(w, err) {
+			return
+		}
 		slog.Warn("restore agent failed", append(logger.RequestAttrs(r), "error", err, "agent_id", id)...)
 		writeError(w, http.StatusInternalServerError, "failed to restore agent")
 		return
@@ -3189,6 +3213,32 @@ func (h *Handler) RestoreAgent(w http.ResponseWriter, r *http.Request) {
 	h.publish(protocol.EventAgentRestored, wsID, actorType, actorID, map[string]any{"agent": broadcastAgentResponse(resp)})
 	redactAgentResponseForActor(&resp, actorType)
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// restoreAgentWithinQuota restores the agent in one transaction with the quota
+// check, so the count the check sees is the one the restore changes. With the
+// gate off it is the single statement it always was.
+func (h *Handler) restoreAgentWithinQuota(ctx context.Context, agent db.Agent, quota planlimit.Policy) (db.Agent, error) {
+	if !quota.Enforced {
+		return h.Queries.RestoreAgent(ctx, agent.ID)
+	}
+	tx, err := h.TxStarter.Begin(ctx)
+	if err != nil {
+		return db.Agent{}, err
+	}
+	defer tx.Rollback(ctx)
+	qtx := h.Queries.WithTx(tx)
+	if err := quota.Admit(ctx, qtx, agent.WorkspaceID, 1, planlimit.CountAgents(qtx, agent.WorkspaceID)); err != nil {
+		return db.Agent{}, err
+	}
+	restored, err := qtx.RestoreAgent(ctx, agent.ID)
+	if err != nil {
+		return db.Agent{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return db.Agent{}, err
+	}
+	return restored, nil
 }
 
 // CancelAgentTasks bulk-cancels every active task (queued/dispatched/running)
