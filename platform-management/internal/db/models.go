@@ -1936,6 +1936,15 @@ type PlatformStaff struct {
 	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
 }
 
+type PlatformWorkspace struct {
+	WorkspaceID         pgtype.UUID        `json:"workspace_id"`
+	Status              string             `json:"status"`
+	Reason              string             `json:"reason"`
+	ChangedBy           pgtype.UUID        `json:"changed_by"`
+	ChangedAt           pgtype.Timestamptz `json:"changed_at"`
+	DeletionScheduledAt pgtype.Timestamptz `json:"deletion_scheduled_at"`
+}
+
 type PluginHookSchedule struct {
 	ID             pgtype.UUID        `json:"id"`
 	InstallationID pgtype.UUID        `json:"installation_id"`
