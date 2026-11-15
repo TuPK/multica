@@ -98,7 +98,8 @@
       "manage": "管理账单",
       "add_seats": "添加席位",
       "cancel": "取消",
-      "continue_to_stripe": "前往 Stripe"
+      "continue_to_stripe": "前往 Stripe",
+      "create_order": "创建订单"
     },
     "errors": {
       "action_title": "账单操作失败",
@@ -153,6 +154,8 @@
     "upgrade": {
       "title": "升级到 Pro",
       "description": "选择付款周期，然后在 Stripe Checkout 确认当前席位和最终金额。",
+      "plan_label": "方案",
+      "plans_loading": "正在加载方案...",
       "interval_label": "付款周期",
       "monthly": "月付",
       "yearly": "年付",
@@ -253,5 +256,42 @@
     "workspace_missing_description": "你已从 Stripe 返回，但该工作区对你已不可用——可能已被删除，或你的访问权限发生了变化。请到你预期的那个工作区的账单页确认当前状态。",
     "retry": "重试",
     "go_to_app": "前往 Multica"
+  },
+  "order": {
+    "title": "订单详情",
+    "status_label": "状态",
+    "status": {
+      "pending": "待支付",
+      "paid": "已支付",
+      "expired": "已过期",
+      "canceled": "已取消",
+      "refunded": "已退款",
+      "unknown": "未知"
+    },
+    "expires_at": "到期时间",
+    "bank_details_title": "银行转账说明",
+    "bank_name": "开户银行",
+    "account_name": "账户名称",
+    "account_number": "银行账号",
+    "transfer_code": "转账识别码",
+    "copy_code": "复制识别码",
+    "copied": "已复制",
+    "transfer_instructions": "请务必在转账附言或备注中填写转账识别码。",
+    "amount": "小计",
+    "vat": "增值税",
+    "total": "总金额",
+    "buyer_title": "买方信息",
+    "buyer_name": "公司或个人名称",
+    "buyer_tax_code": "统一社会信用代码 / 税号",
+    "buyer_address": "地址",
+    "buyer_email": "发票接收邮箱",
+    "buyer_save": "保存买方信息",
+    "buyer_saved": "买方信息已保存",
+    "buyer_save_failed": "保存买方信息失败",
+    "tax_code_invalid": "税号必须为 10 位或 13 位数字，或留空",
+    "order_not_pending": "仅待支付订单支持修改买方信息",
+    "loading": "正在加载订单...",
+    "not_found": "未找到订单",
+    "load_failed": "加载订单失败"
   }
 }

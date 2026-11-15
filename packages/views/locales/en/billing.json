@@ -98,7 +98,8 @@
       "manage": "Manage billing",
       "add_seats": "Add seats",
       "cancel": "Cancel",
-      "continue_to_stripe": "Continue to Stripe"
+      "continue_to_stripe": "Continue to Stripe",
+      "create_order": "Create order"
     },
     "errors": {
       "action_title": "Billing action failed",
@@ -154,6 +155,8 @@
     "upgrade": {
       "title": "Upgrade to Pro",
       "description": "Choose a billing interval, then confirm the current seats and final amount in Stripe Checkout.",
+      "plan_label": "Plan",
+      "plans_loading": "Loading plans...",
       "interval_label": "Billing interval",
       "monthly": "Monthly",
       "yearly": "Yearly",
@@ -260,5 +263,42 @@
     "workspace_missing_description": "You came back from Stripe, but this workspace is no longer available to you — it may have been removed, or your access changed. Open Billing in the workspace you expected to check the current state.",
     "retry": "Try again",
     "go_to_app": "Go to Multica"
+  },
+  "order": {
+    "title": "Order details",
+    "status_label": "Status",
+    "status": {
+      "pending": "Pending",
+      "paid": "Paid",
+      "expired": "Expired",
+      "canceled": "Canceled",
+      "refunded": "Refunded",
+      "unknown": "Unknown"
+    },
+    "expires_at": "Expires at",
+    "bank_details_title": "Bank transfer instructions",
+    "bank_name": "Bank",
+    "account_name": "Account name",
+    "account_number": "Account number",
+    "transfer_code": "Transfer code",
+    "copy_code": "Copy code",
+    "copied": "Copied",
+    "transfer_instructions": "Include the transfer code in the transfer note.",
+    "amount": "Subtotal",
+    "vat": "VAT",
+    "total": "Total amount",
+    "buyer_title": "Buyer information",
+    "buyer_name": "Name",
+    "buyer_tax_code": "Tax code",
+    "buyer_address": "Address",
+    "buyer_email": "Invoice email",
+    "buyer_save": "Save buyer details",
+    "buyer_saved": "Buyer details saved",
+    "buyer_save_failed": "Failed to save buyer details",
+    "tax_code_invalid": "Tax code must be 10 or 13 digits or empty",
+    "order_not_pending": "Only pending orders can be updated",
+    "loading": "Loading order...",
+    "not_found": "Order not found",
+    "load_failed": "Failed to load order"
   }
 }

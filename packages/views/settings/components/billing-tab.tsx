@@ -20,6 +20,7 @@ import {
   usePreviewWorkspaceSeatPurchase,
   usePurchaseWorkspaceSeats,
   issueLimitUsageOptions,
+  workspacePlansOptions,
   workspaceSubscriptionPricesOptions,
   workspaceSubscriptionSummaryOptions,
 } from "@multica/core/billing";
@@ -200,6 +201,7 @@ function BillingTabContent() {
   const returnObservedAt = returnStateMatchesWorkspace
     ? returnState.observedAt
     : null;
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [interval, setInterval] =
     useState<WorkspaceSubscriptionInterval>("month");
   const [checkoutConfirmOpen, setCheckoutConfirmOpen] = useState(false);
@@ -281,21 +283,6 @@ function BillingTabContent() {
     );
   }, [callbackKey, navigation, returnResultParam, wsId]);
 
-  useEffect(() => {
-    if (returnResult !== "success") {
-      setIsSyncingCheckout(false);
-      setSyncTimedOut(false);
-      return;
-    }
-    setIsSyncingCheckout(true);
-    setSyncTimedOut(false);
-    const timeout = window.setTimeout(() => {
-      setIsSyncingCheckout(false);
-      setSyncTimedOut(true);
-    }, CHECKOUT_SYNC_TIMEOUT_MS);
-    return () => window.clearTimeout(timeout);
-  }, [returnResult, wsId]);
-
   const summaryQuery = useQuery({
     ...workspaceSubscriptionSummaryOptions(wsId),
     // Checkout activation and seat additions both finish asynchronously in a
@@ -309,12 +296,33 @@ function BillingTabContent() {
         : false,
   });
   const entitlements = summaryQuery.data?.entitlement;
+  const isManualProvider =
+    summaryQuery.data?.paymentProvider === "manual" ||
+    (summaryQuery.data as any)?.payment_provider === "manual";
+  const effectiveReturnResult = isManualProvider ? null : returnResult;
+  const effectiveReturnObservedAt = isManualProvider ? null : returnObservedAt;
+
+  useEffect(() => {
+    if (effectiveReturnResult !== "success") {
+      setIsSyncingCheckout(false);
+      setSyncTimedOut(false);
+      return;
+    }
+    setIsSyncingCheckout(true);
+    setSyncTimedOut(false);
+    const timeout = window.setTimeout(() => {
+      setIsSyncingCheckout(false);
+      setSyncTimedOut(true);
+    }, CHECKOUT_SYNC_TIMEOUT_MS);
+    return () => window.clearTimeout(timeout);
+  }, [effectiveReturnResult, wsId]);
+
   const isCheckoutConfirmed =
-    returnResult === "success" &&
-    returnObservedAt !== null &&
+    effectiveReturnResult === "success" &&
+    effectiveReturnObservedAt !== null &&
     summaryQuery.data?.availableActions.checkout === false &&
     summaryQuery.isFetchedAfterMount &&
-    summaryQuery.dataUpdatedAt >= returnObservedAt;
+    summaryQuery.dataUpdatedAt >= effectiveReturnObservedAt;
   const activeSeatPurchaseRequestId =
     summaryQuery.data?.seatCapacity?.activePurchase?.requestId ?? null;
 
@@ -346,6 +354,15 @@ function BillingTabContent() {
     ...workspaceSubscriptionPricesOptions(wsId),
     enabled: wsId.length > 0 && canUpgrade,
   });
+  const plansQuery = useQuery({
+    ...workspacePlansOptions(wsId),
+    enabled: wsId.length > 0 && canUpgrade,
+  });
+  const availablePlans = plansQuery.data ?? [];
+  const activePlan =
+    availablePlans.find((p) => p.key === selectedPlan) ??
+    availablePlans[0] ??
+    null;
   const checkoutMutation = useCreateWorkspaceSubscriptionCheckout(wsId);
   const portalMutation = useCreateWorkspaceSubscriptionPortal(wsId);
   const previewSeatPurchaseMutation = usePreviewWorkspaceSeatPurchase();
@@ -577,7 +594,8 @@ function BillingTabContent() {
       const response = await checkoutMutation.mutateAsync({
         interval,
         idempotencyKey: intent.key,
-      });
+        ...(selectedPlan ? { plan_key: selectedPlan, seats: actualSeats } : {}),
+      } as any);
       if (!response?.url) {
         setCheckoutConfirmOpen(false);
         setActionError(t(($) => $.workspace.errors.checkout_response));
@@ -833,15 +851,27 @@ function BillingTabContent() {
     portalMutation.isPending ||
     purchaseSeatsMutation.isPending;
   const selectedPrice = pricesQuery.data?.[interval] ?? null;
-  const formattedUnitPrice = selectedPrice
-    ? formatStripeMinorAmount(
-        selectedPrice.unitAmount,
-        selectedPrice.currency,
-        locale,
-      )
-    : null;
+  const planUnitPrice =
+    activePlan
+      ? interval === "month"
+        ? activePlan.seatPriceMonth
+        : activePlan.seatPriceYear
+      : null;
+  const formattedUnitPrice =
+    planUnitPrice !== undefined && planUnitPrice !== null && activePlan
+      ? formatStripeMinorAmount(planUnitPrice, activePlan.currency, locale)
+      : selectedPrice
+        ? formatStripeMinorAmount(
+            selectedPrice.unitAmount,
+            selectedPrice.currency,
+            locale,
+          )
+        : null;
   const hasDisplayableUnitPrice =
-    selectedPrice?.intervalCount === 1 && formattedUnitPrice !== null;
+    formattedUnitPrice !== null &&
+    (planUnitPrice !== undefined && planUnitPrice !== null
+      ? true
+      : selectedPrice?.intervalCount === 1);
   const canRetryPrice = !pricesQuery.isLoading && selectedPrice === null;
   const formattedSeatProration = seatPreview
     ? formatStripeMinorAmount(
@@ -863,7 +893,7 @@ function BillingTabContent() {
       title={t(($) => $.workspace.title)}
       scope="workspace"
     >
-      {returnResult === "cancel" ? (
+      {effectiveReturnResult === "cancel" ? (
         <Alert>
           <AlertCircle />
           <AlertTitle>{t(($) => $.workspace.return.cancel_title)}</AlertTitle>
@@ -873,14 +903,14 @@ function BillingTabContent() {
         </Alert>
       ) : null}
 
-      {returnResult === "portal" ? (
+      {effectiveReturnResult === "portal" ? (
         <Alert>
           <CheckCircle2 />
           <AlertTitle>{t(($) => $.workspace.return.portal_title)}</AlertTitle>
         </Alert>
       ) : null}
 
-      {returnResult === "success" ? (
+      {effectiveReturnResult === "success" ? (
         <Alert>
           {isCheckoutConfirmed ? (
             <CheckCircle2 />
@@ -1067,6 +1097,36 @@ function BillingTabContent() {
         >
           <SettingsCard>
             <div className="space-y-5 p-4 sm:p-5">
+              {availablePlans.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-body font-medium">
+                    {t(($) => $.workspace.upgrade.plan_label)}
+                  </p>
+                  <div
+                    className="inline-flex w-full flex-wrap gap-2 rounded-lg border border-surface-border p-1 sm:w-auto"
+                    role="group"
+                    aria-label={t(($) => $.workspace.upgrade.plan_label)}
+                  >
+                    {availablePlans.map((p) => (
+                      <button
+                        key={p.key}
+                        type="button"
+                        aria-pressed={
+                          (selectedPlan ?? availablePlans[0]?.key) === p.key
+                        }
+                        className="min-h-11 flex-1 rounded-md px-4 text-body font-medium text-muted-foreground transition-[color,background-color,box-shadow] hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-pressed:bg-surface-selected aria-pressed:text-surface-selected-foreground aria-pressed:shadow-sm sm:min-w-28"
+                        onClick={() => {
+                          setSelectedPlan(p.key);
+                          checkoutIntentRef.current = null;
+                        }}
+                      >
+                        {p.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               <div
                 className="inline-flex w-full rounded-lg border border-surface-border p-1 sm:w-auto"
                 role="group"
@@ -1703,7 +1763,9 @@ function BillingTabContent() {
               ) : (
                 <ExternalLink />
               )}
-              {t(($) => $.workspace.actions.continue_to_stripe)}
+              {isManualProvider
+                ? t(($) => $.workspace.actions.create_order)
+                : t(($) => $.workspace.actions.continue_to_stripe)}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

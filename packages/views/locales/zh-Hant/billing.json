@@ -98,7 +98,8 @@
       "manage": "管理帳單",
       "add_seats": "新增席位",
       "cancel": "取消",
-      "continue_to_stripe": "前往 Stripe"
+      "continue_to_stripe": "前往 Stripe",
+      "create_order": "建立訂單"
     },
     "errors": {
       "action_title": "帳單操作失敗",
@@ -153,6 +154,8 @@
     "upgrade": {
       "title": "升級到 Pro",
       "description": "選擇付款週期，然後在 Stripe Checkout 確認當前席位和最終金額。",
+      "plan_label": "方案",
+      "plans_loading": "正在載入方案...",
       "interval_label": "付款週期",
       "monthly": "月付",
       "yearly": "年付",
@@ -253,5 +256,42 @@
     "workspace_missing_description": "你已從 Stripe 返回，但該工作區對你已不可用——可能已被刪除，或你的訪問權限發生了變化。請到你預期的那個工作區的帳單頁確認當前狀態。",
     "retry": "重試",
     "go_to_app": "前往 Multica"
+  },
+  "order": {
+    "title": "訂單詳情",
+    "status_label": "狀態",
+    "status": {
+      "pending": "待付款",
+      "paid": "已付款",
+      "expired": "已逾期",
+      "canceled": "已取消",
+      "refunded": "已退款",
+      "unknown": "未知"
+    },
+    "expires_at": "到期時間",
+    "bank_details_title": "銀行轉帳說明",
+    "bank_name": "銀行名稱",
+    "account_name": "帳戶名稱",
+    "account_number": "帳戶號碼",
+    "transfer_code": "轉帳識別碼",
+    "copy_code": "複製識別碼",
+    "copied": "已複製",
+    "transfer_instructions": "請務必在轉帳備註中填寫轉帳識別碼。",
+    "amount": "小計",
+    "vat": "營業稅",
+    "total": "總金額",
+    "buyer_title": "買方資訊",
+    "buyer_name": "公司或個人名稱",
+    "buyer_tax_code": "統一編號 / 稅號",
+    "buyer_address": "地址",
+    "buyer_email": "發票接收電子郵件",
+    "buyer_save": "儲存買方資訊",
+    "buyer_saved": "買方資訊已儲存",
+    "buyer_save_failed": "儲存買方資訊失敗",
+    "tax_code_invalid": "稅號必須為 10 位或 13 位數字，或留空",
+    "order_not_pending": "僅待付款訂單支援修改買方資訊",
+    "loading": "正在載入訂單...",
+    "not_found": "找不到訂單",
+    "load_failed": "載入訂單失敗"
   }
 }

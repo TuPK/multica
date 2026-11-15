@@ -98,7 +98,8 @@
       "manage": "Gestionar facturación",
       "add_seats": "Añadir puestos",
       "cancel": "Cancelar",
-      "continue_to_stripe": "Continuar a Stripe"
+      "continue_to_stripe": "Continuar a Stripe",
+      "create_order": "Crear pedido"
     },
     "errors": {
       "action_title": "La acción de facturación falló",
@@ -154,6 +155,8 @@
     "upgrade": {
       "title": "Actualizar a Pro",
       "description": "Elige un intervalo de facturación y luego confirma los puestos actuales y el importe final en Stripe Checkout.",
+      "plan_label": "Plan",
+      "plans_loading": "Cargando planes...",
       "interval_label": "Intervalo de facturación",
       "monthly": "Mensual",
       "yearly": "Anual",
@@ -260,5 +263,42 @@
     "workspace_missing_description": "Has vuelto de Stripe, pero este espacio de trabajo ya no está disponible para ti: puede que se haya eliminado o que tu acceso haya cambiado. Abre Facturación en el espacio de trabajo que esperabas para comprobar el estado actual.",
     "retry": "Reintentar",
     "go_to_app": "Ir a Multica"
+  },
+  "order": {
+    "title": "Detalles del pedido",
+    "status_label": "Estado",
+    "status": {
+      "pending": "Pendiente",
+      "paid": "Pagado",
+      "expired": "Caducado",
+      "canceled": "Cancelado",
+      "refunded": "Reembolsado",
+      "unknown": "Desconocido"
+    },
+    "expires_at": "Vence",
+    "bank_details_title": "Instrucciones de transferencia bancaria",
+    "bank_name": "Banco",
+    "account_name": "Nombre de la cuenta",
+    "account_number": "Número de cuenta",
+    "transfer_code": "Código de transferencia",
+    "copy_code": "Copiar código",
+    "copied": "Copiado",
+    "transfer_instructions": "Incluya el código de transferencia en el concepto de la transferencia.",
+    "amount": "Subtotal",
+    "vat": "IVA",
+    "total": "Importe total",
+    "buyer_title": "Información del comprador",
+    "buyer_name": "Nombre",
+    "buyer_tax_code": "NIF / CIF",
+    "buyer_address": "Dirección",
+    "buyer_email": "Correo de facturación",
+    "buyer_save": "Guardar datos del comprador",
+    "buyer_saved": "Datos del comprador guardados",
+    "buyer_save_failed": "Error al guardar los datos del comprador",
+    "tax_code_invalid": "El código fiscal debe tener 10 o 13 dígitos o estar vacío",
+    "order_not_pending": "Solo se pueden actualizar los pedidos pendientes",
+    "loading": "Cargando pedido...",
+    "not_found": "Pedido no encontrado",
+    "load_failed": "Error al cargar el pedido"
   }
 }

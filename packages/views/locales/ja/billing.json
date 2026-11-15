@@ -98,7 +98,8 @@
       "manage": "請求を管理",
       "add_seats": "席を追加",
       "cancel": "キャンセル",
-      "continue_to_stripe": "Stripe に進む"
+      "continue_to_stripe": "Stripe に進む",
+      "create_order": "注文を作成"
     },
     "errors": {
       "action_title": "請求操作に失敗しました",
@@ -153,6 +154,8 @@
     "upgrade": {
       "title": "Pro にアップグレード",
       "description": "請求期間を選び、Stripe Checkout で現在の席数と最終金額を確認します。",
+      "plan_label": "プラン",
+      "plans_loading": "プランを読み込み中...",
       "interval_label": "請求期間",
       "monthly": "月払い",
       "yearly": "年払い",
@@ -253,5 +256,42 @@
     "workspace_missing_description": "Stripe から戻りましたが、このワークスペースは利用できません。削除されたか、アクセス権が変更された可能性があります。対象のワークスペースの請求ページで現在の状態を確認してください。",
     "retry": "再試行",
     "go_to_app": "Multica を開く"
+  },
+  "order": {
+    "title": "注文の詳細",
+    "status_label": "ステータス",
+    "status": {
+      "pending": "保留中",
+      "paid": "支払い済み",
+      "expired": "期限切れ",
+      "canceled": "キャンセル済み",
+      "refunded": "返金済み",
+      "unknown": "不明"
+    },
+    "expires_at": "有効期限",
+    "bank_details_title": "銀行振込のご案内",
+    "bank_name": "銀行名",
+    "account_name": "口座名義",
+    "account_number": "口座番号",
+    "transfer_code": "振込コード",
+    "copy_code": "コードをコピー",
+    "copied": "コピー完了",
+    "transfer_instructions": "振込依頼人名または備考欄に振込コードを必ず記入してください。",
+    "amount": "小計",
+    "vat": "消費税",
+    "total": "合計金額",
+    "buyer_title": "請求先情報",
+    "buyer_name": "お名前 / 会社名",
+    "buyer_tax_code": "登録番号 / 法人番号",
+    "buyer_address": "住所",
+    "buyer_email": "請求送信用メールアドレス",
+    "buyer_save": "請求先情報を保存",
+    "buyer_saved": "請求先情報を保存しました",
+    "buyer_save_failed": "請求先情報の保存に失敗しました",
+    "tax_code_invalid": "番号は10桁または13桁の数字、もしくは空である必要があります",
+    "order_not_pending": "保留中の注文のみ更新できます",
+    "loading": "注文を読み込み中...",
+    "not_found": "注文が見つかりません",
+    "load_failed": "注文の読み込みに失敗しました"
   }
 }

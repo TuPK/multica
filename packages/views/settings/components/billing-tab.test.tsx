@@ -23,8 +23,11 @@ const mocks = vi.hoisted(() => ({
   refetchUsage: vi.fn(),
   refetchIssueLimitUsage: vi.fn(),
   refetchPrices: vi.fn(),
+  refetchPlans: vi.fn(),
   openExternal: vi.fn(),
   workspaceId: "workspace-1",
+  plans: [] as any[],
+  plansLoading: false,
   prices: null as {
     month: {
       currency: string;
@@ -115,6 +118,9 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 vi.mock("@multica/core/billing", () => ({
+  workspacePlansOptions: (wsId: string) => ({
+    queryKey: ["workspace-plans", wsId, "list"],
+  }),
   workspaceSubscriptionPricesOptions: (wsId: string) => ({
     queryKey: ["workspace-subscriptions", wsId, "prices"],
   }),
@@ -249,6 +255,8 @@ describe("BillingTab", () => {
     mocks.pricesLoading = false;
     mocks.pricesFetching = false;
     mocks.pricesError = false;
+    mocks.plans = [];
+    mocks.plansLoading = false;
     mocks.summaryPending = false;
     mocks.summaryFetching = false;
     mocks.summaryError = false;
@@ -303,6 +311,18 @@ describe("BillingTab", () => {
     });
     mocks.useQuery.mockImplementation((options: unknown) => {
       const queryKey = (options as { queryKey?: readonly unknown[] }).queryKey;
+      if (
+        queryKey?.[0] === "workspace-plans" ||
+        queryKey?.[queryKey.length - 1] === "plans"
+      ) {
+        return {
+          data: mocks.plans,
+          isLoading: mocks.plansLoading,
+          isFetching: false,
+          isError: false,
+          refetch: mocks.refetchPlans,
+        };
+      }
       if (queryKey?.[queryKey.length - 1] === "prices") {
         return {
           data: mocks.prices,
@@ -1518,5 +1538,112 @@ describe("BillingTab", () => {
     expect(
       screen.queryByRole("button", { name: "Upgrade to Pro" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("renders 'Create order' button label when payment_provider is manual, and 'Continue to Stripe' when absent", async () => {
+    const user = userEvent.setup();
+
+    // 1. With payment_provider = "manual"
+    (mocks.summary as any).paymentProvider = "manual";
+    const { unmount } = renderWithI18n(<BillingTab />);
+
+    await user.click(screen.getByRole("button", { name: "Upgrade to Pro" }));
+    expect(
+      screen.getByRole("button", { name: "Create order" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Continue to Stripe" }),
+    ).not.toBeInTheDocument();
+    unmount();
+
+    // 2. With payment_provider absent
+    delete (mocks.summary as any).paymentProvider;
+    delete (mocks.summary as any).payment_provider;
+    renderWithI18n(<BillingTab />);
+
+    await user.click(screen.getByRole("button", { name: "Upgrade to Pro" }));
+    expect(
+      screen.getByRole("button", { name: "Continue to Stripe" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Create order" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("skips the Stripe return step when payment_provider is manual, and shows it when absent", async () => {
+    navigationState.search = "tab=billing&result=success";
+
+    // 1. When payment_provider is manual: Stripe return banner is skipped
+    (mocks.summary as any).paymentProvider = "manual";
+    const { unmount } = renderWithI18n(<BillingTab />);
+
+    expect(
+      screen.queryByText("Activating your subscription"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Payment is complete. We're waiting for Stripe to confirm the plan change.",
+      ),
+    ).not.toBeInTheDocument();
+    unmount();
+
+    // 2. When payment_provider is absent: Stripe return banner is shown as normal
+    delete (mocks.summary as any).paymentProvider;
+    delete (mocks.summary as any).payment_provider;
+    renderWithI18n(<BillingTab />);
+
+    expect(
+      screen.getByText("Activating your subscription"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Payment is complete. We're waiting for Stripe to confirm the plan change.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the plan selector when public plans are available and passes selected plan to checkout", async () => {
+    const user = userEvent.setup();
+    mocks.plans = [
+      {
+        key: "pro",
+        name: "Pro",
+        currency: "vnd",
+        seatPriceMonth: 149000,
+        seatPriceYear: 1490000,
+      },
+      {
+        key: "business",
+        name: "Business",
+        currency: "vnd",
+        seatPriceMonth: 349000,
+        seatPriceYear: 3490000,
+      },
+    ];
+
+    renderWithI18n(<BillingTab />);
+
+    expect(screen.getByRole("button", { name: "Pro" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Business" }),
+    ).toBeInTheDocument();
+
+    // Select Business plan
+    await user.click(screen.getByRole("button", { name: "Business" }));
+    expect(screen.getByRole("button", { name: "Business" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    // Click upgrade and checkout
+    await user.click(screen.getByRole("button", { name: "Upgrade to Pro" }));
+    await user.click(screen.getByRole("button", { name: "Continue to Stripe" }));
+
+    await waitFor(() => {
+      expect(mocks.checkout).toHaveBeenCalledTimes(1);
+    });
+    const request = mocks.checkout.mock.calls[0]?.[0] as any;
+    expect(request.planKey ?? request.plan_key).toBe("business");
+    expect(request.seats).toBe(3);
   });
 });

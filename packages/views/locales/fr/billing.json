@@ -98,7 +98,8 @@
       "manage": "Gérer la facturation",
       "add_seats": "Ajouter des sièges",
       "cancel": "Annuler",
-      "continue_to_stripe": "Continuer vers Stripe"
+      "continue_to_stripe": "Continuer vers Stripe",
+      "create_order": "Créer une commande"
     },
     "errors": {
       "action_title": "Échec de l'action de facturation",
@@ -154,6 +155,8 @@
     "upgrade": {
       "title": "Passer à Pro",
       "description": "Choisissez un intervalle de facturation, puis confirmez le nombre de sièges et le montant final dans Stripe Checkout.",
+      "plan_label": "Forfait",
+      "plans_loading": "Chargement des forfaits...",
       "interval_label": "Intervalle de facturation",
       "monthly": "Mensuel",
       "yearly": "Annuel",
@@ -260,5 +263,42 @@
     "workspace_missing_description": "Vous revenez de Stripe, mais cet espace de travail ne vous est plus accessible — il a peut-être été supprimé, ou vos droits ont changé. Ouvrez Facturation dans l'espace de travail attendu pour vérifier l'état actuel.",
     "retry": "Réessayer",
     "go_to_app": "Aller sur Multica"
+  },
+  "order": {
+    "title": "Détails de la commande",
+    "status_label": "Statut",
+    "status": {
+      "pending": "En attente",
+      "paid": "Payée",
+      "expired": "Expirée",
+      "canceled": "Annulée",
+      "refunded": "Remboursée",
+      "unknown": "Inconnu"
+    },
+    "expires_at": "Expire le",
+    "bank_details_title": "Instructions de virement bancaire",
+    "bank_name": "Banque",
+    "account_name": "Nom du compte",
+    "account_number": "Numéro de compte",
+    "transfer_code": "Code de virement",
+    "copy_code": "Copier le code",
+    "copied": "Copié",
+    "transfer_instructions": "Indiquez le code de virement dans le libellé du virement.",
+    "amount": "Sous-total",
+    "vat": "TVA",
+    "total": "Montant total",
+    "buyer_title": "Informations sur l'acheteur",
+    "buyer_name": "Nom",
+    "buyer_tax_code": "Numéro fiscal",
+    "buyer_address": "Adresse",
+    "buyer_email": "E-mail de facturation",
+    "buyer_save": "Enregistrer les informations de l'acheteur",
+    "buyer_saved": "Informations de l'acheteur enregistrées",
+    "buyer_save_failed": "Échec de l'enregistrement des informations de l'acheteur",
+    "tax_code_invalid": "Le numéro fiscal doit comporter 10 ou 13 chiffres ou être vide",
+    "order_not_pending": "Seules les commandes en attente peuvent être modifiées",
+    "loading": "Chargement de la commande...",
+    "not_found": "Commande introuvable",
+    "load_failed": "Échec du chargement de la commande"
   }
 }
