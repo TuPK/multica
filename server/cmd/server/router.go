@@ -2012,6 +2012,19 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				// Owner-only access
 				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner")).Delete("/", h.DeleteWorkspace)
 
+				// Plans and orders of the platform's billing. The orders carry
+				// the buyer's invoice details, so only human owners and admins
+				// reach them. The buyer route is the one write the server makes
+				// to a platform table besides platform_workspace.
+				r.Group(func(r chi.Router) {
+					r.Use(handler.RequireHumanActor)
+					r.Use(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner", "admin"))
+					r.Get("/plans", h.ListWorkspacePlans)
+					r.Get("/orders", h.ListWorkspaceOrders)
+					r.Get("/orders/{orderId}", h.GetWorkspaceOrder)
+					r.Put("/orders/{orderId}/buyer", h.UpdateWorkspaceOrderBuyer)
+				})
+
 				// GitHub integration — connect / disconnect remain admin-only;
 				// the read-only list endpoint lives in the member-level group
 				// above so non-admins can see the workspace's connection state.

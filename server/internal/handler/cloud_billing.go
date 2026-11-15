@@ -53,7 +53,15 @@ const maxCloudSubscriptionSeatPurchaseIdempotencyKeyLength = 200
 type cloudSubscriptionCheckoutRequest struct {
 	Interval       string `json:"interval"`
 	IdempotencyKey string `json:"idempotency_key,omitempty"`
+	// PlanKey and Seats are optional. The platform's billing API reads them to
+	// order a plan other than the default one, or a number of seats.
+	PlanKey string `json:"plan_key,omitempty"`
+	Seats   *int   `json:"seats,omitempty"`
 }
+
+// maxCloudSubscriptionPlanKeyLength bounds plan_key; the platform validates the
+// key itself.
+const maxCloudSubscriptionPlanKeyLength = 64
 
 // This is an intentional allowlist: additive cloud fields are not forwarded
 // until the main repository explicitly reviews and adds them here.
@@ -62,6 +70,8 @@ type cloudSubscriptionCheckoutUpstreamRequest struct {
 	Interval       string `json:"interval"`
 	IdempotencyKey string `json:"idempotency_key,omitempty"`
 	CustomerEmail  string `json:"customer_email,omitempty"`
+	PlanKey        string `json:"plan_key,omitempty"`
+	Seats          *int   `json:"seats,omitempty"`
 }
 
 type cloudSubscriptionSeatPurchasePreviewRequest struct {
@@ -212,6 +222,15 @@ func (h *Handler) CreateCloudWorkspaceSubscriptionCheckout(w http.ResponseWriter
 		writeError(w, http.StatusBadRequest, "interval must be month or year")
 		return
 	}
+	planKey := strings.TrimSpace(in.PlanKey)
+	if len(planKey) > maxCloudSubscriptionPlanKeyLength {
+		writeError(w, http.StatusBadRequest, "plan_key is too long")
+		return
+	}
+	if in.Seats != nil && *in.Seats < 1 {
+		writeError(w, http.StatusBadRequest, "seats must be positive")
+		return
+	}
 	idempotencyKey, ok := requireCloudSubscriptionIdempotencyKey(w, r, in.IdempotencyKey)
 	if !ok {
 		return
@@ -235,6 +254,8 @@ func (h *Handler) CreateCloudWorkspaceSubscriptionCheckout(w http.ResponseWriter
 		Interval:       in.Interval,
 		IdempotencyKey: idempotencyKey,
 		CustomerEmail:  customerEmail,
+		PlanKey:        planKey,
+		Seats:          in.Seats,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to build subscription request")

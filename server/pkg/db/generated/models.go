@@ -376,6 +376,32 @@ type AutopilotTrigger struct {
 	CreatedByID pgtype.UUID `json:"created_by_id"`
 }
 
+type BillingOrder struct {
+	ID             pgtype.UUID        `json:"id"`
+	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
+	Kind           string             `json:"kind"`
+	PlanKey        string             `json:"plan_key"`
+	Interval       string             `json:"interval"`
+	Seats          int32              `json:"seats"`
+	Amount         int64              `json:"amount"`
+	VatAmount      int64              `json:"vat_amount"`
+	Currency       string             `json:"currency"`
+	Status         string             `json:"status"`
+	Provider       string             `json:"provider"`
+	ProviderRef    string             `json:"provider_ref"`
+	TransferCode   string             `json:"transfer_code"`
+	IdempotencyKey string             `json:"idempotency_key"`
+	Buyer          []byte             `json:"buyer"`
+	PeriodStart    pgtype.Timestamptz `json:"period_start"`
+	PeriodEnd      pgtype.Timestamptz `json:"period_end"`
+	EinvoiceRef    string             `json:"einvoice_ref"`
+	CreatedBy      pgtype.UUID        `json:"created_by"`
+	ConfirmedBy    pgtype.UUID        `json:"confirmed_by"`
+	PaidAt         pgtype.Timestamptz `json:"paid_at"`
+	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
 type Brief struct {
 	ID                pgtype.UUID        `json:"id"`
 	WorkspaceID       pgtype.UUID        `json:"workspace_id"`
