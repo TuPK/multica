@@ -37,7 +37,7 @@ Sau khi triển khai xong, nhà vận hành có đủ công cụ để chạy Mu
 | # | Bất biến | Hệ quả |
 | --- | --- | --- |
 | I1 | Máy chủ là nơi quyết định quyền. Client chỉ hiển thị | Mọi quy tắc mới có test ở máy chủ; `packages/core/permissions/rules.ts` chỉ phản chiếu |
-| I2 | Chỉ thêm, không phá. Hành vi khi tắt mọi cấu hình mới bằng hành vi hiện tại | Bảng mới, gói mới `server/internal/platform`, `server/internal/audit`; mã lõi chỉ nhận các điểm móc liệt kê ở mục 3.3 |
+| I2 | Chỉ thêm, không phá. Hành vi khi tắt mọi cấu hình mới bằng hành vi hiện tại | Bảng mới, gói mới `server/internal/platform`, `platform-management/audit`; mã lõi chỉ nhận các điểm móc liệt kê ở mục 3.3 |
 | I3 | Không khóa ngoại, không cascade. Mọi chỉ mục tạo bằng `CREATE [UNIQUE] INDEX CONCURRENTLY`, mỗi chỉ mục một tệp một câu lệnh | Bảng mới không khai báo `PRIMARY KEY` hay `UNIQUE` nội tuyến, theo tiền lệ `server/migrations/950_hub_activity.up.sql` (AGENTS.md "Database and Migration Rules") |
 | I4 | Có đúng một nguồn quyết định thương mại | `PLATFORM_MODE=local` và `MULTICA_CLOUD_URL` không được cùng bật; máy chủ từ chối khởi động nếu cả hai có giá trị |
 | I5 | Thông tin xác thực máy không chạm được vào bảo mật tài khoản, thanh toán hay console | Mọi route mới thuộc ba nhóm đó đứng sau `RequireHumanActor` (`server/internal/handler/actor_guards.go:15`) |
@@ -133,8 +133,10 @@ R1 luôn bật, không phụ thuộc cấu hình thương mại, nên bản tự
 ### 3.1 Thành phần
 
 ```
-server/internal/audit/        ghi và đọc nhật ký kiểm toán (R1)
-server/internal/platform/     guard, staff, gói, thuê bao, ghế, thanh toán, vòng đời (R1: guard; R2: phần còn lại)
+platform-management/audit/        ghi và đọc nhật ký kiểm toán (R1)
+platform-management/accountguard/  guard trạng thái tài khoản (R1)
+server/internal/auth/account_guard.go  bộ nối DB và Redis cho guard (R1)
+server/internal/platform/     staff, gói, thuê bao, ghế, thanh toán, vòng đời (R2)
 server/internal/platform/sso  OIDC, xác minh tên miền (R3)
 server/internal/platform/mfa  TOTP, mã khôi phục (R3)
 apps/web/app/platform/        console của nhà vận hành (R2)

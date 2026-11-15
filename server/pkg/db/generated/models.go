@@ -241,6 +241,23 @@ type Attachment struct {
 	Height          pgtype.Int4        `json:"height"`
 }
 
+type AuditEvent struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	ActorType   string             `json:"actor_type"`
+	ActorID     pgtype.Text        `json:"actor_id"`
+	ActorLabel  string             `json:"actor_label"`
+	Action      string             `json:"action"`
+	TargetType  string             `json:"target_type"`
+	TargetID    string             `json:"target_id"`
+	TargetLabel string             `json:"target_label"`
+	Detail      []byte             `json:"detail"`
+	Ip          string             `json:"ip"`
+	UserAgent   string             `json:"user_agent"`
+	RequestID   string             `json:"request_id"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
 type Autopilot struct {
 	ID                 pgtype.UUID        `json:"id"`
 	WorkspaceID        pgtype.UUID        `json:"workspace_id"`
@@ -1900,6 +1917,16 @@ type PlanningCycle struct {
 	SquadID     pgtype.UUID        `json:"squad_id"`
 	IssueID     pgtype.UUID        `json:"issue_id"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
+type PlatformAccount struct {
+	UserID              pgtype.UUID        `json:"user_id"`
+	Status              string             `json:"status"`
+	Reason              string             `json:"reason"`
+	ChangedBy           pgtype.UUID        `json:"changed_by"`
+	ChangedAt           pgtype.Timestamptz `json:"changed_at"`
+	SessionsValidAfter  pgtype.Timestamptz `json:"sessions_valid_after"`
+	DeletionScheduledAt pgtype.Timestamptz `json:"deletion_scheduled_at"`
 }
 
 type PluginHookSchedule struct {

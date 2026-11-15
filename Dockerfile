@@ -20,6 +20,8 @@ RUN apk add --no-cache git
 WORKDIR /src
 
 # Cache dependencies
+# server/go.mod replaces platform-management with ../platform-management.
+COPY platform-management/ ./platform-management/
 COPY server/go.mod server/go.sum ./server/
 RUN cd server && go mod download
 

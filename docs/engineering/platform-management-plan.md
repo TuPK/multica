@@ -29,7 +29,7 @@ Ngày viết 2026-11-14, đọc ở **HEAD `1c631cf2c`**. **Chưa có mã nào �
 | **[M]** | `DATABASE_URL='<dsn-test>' bash scripts/require-test-database.sh && ( cd server && DATABASE_URL='<dsn-test>' go run ./cmd/migrate up )` | Sau mỗi bước thêm migration |
 | **[W]** | `pnpm --filter @multica/core exec vitest run <mẫu>`; `pnpm --filter @multica/views exec vitest run <mẫu>` | Nhãn [N]; chạy [B] trước |
 | **[T]** | `pnpm typecheck`, `pnpm lint`, `pnpm test` | Gốc repo, không gồm mobile |
-| **[V]** | `( cd server && go build ./... && go vet ./internal/platform/... ./internal/audit/... ./internal/handler/... ./internal/middleware/... ./cmd/... )` | Sau mỗi bước Go |
+| **[V]** | `( cd server && go build ./... && go vet ./internal/platform/... ./internal/auditstore/... ./internal/handler/... ./internal/middleware/... ./cmd/... )` | Sau mỗi bước Go |
 | **[E]** | `pnpm exec playwright test` | **Không chạy** trừ khi người dùng cho phép |
 
 ### 0.2 Cổng G0 và những điều không được làm
@@ -79,7 +79,7 @@ Kiểm: [D] `./internal/handler -run 'Invitation'`, [W] `members-tab`, [V]. Ư�
 
 **P2. Bảng `platform_account` và `auth.AccountGuard`** [D]
 
-- Mới: migration 651 (bảng), 652 (chỉ mục duy nhất `user_id`), 653 (chỉ mục `status` có điều kiện); `server/pkg/db/queries/platform_account.sql`; `server/internal/auth/account_guard.go` và test.
+- Mới: migration 651 (bảng), 652 (chỉ mục duy nhất `user_id`), 653 (chỉ mục `status` có điều kiện); `server/pkg/db/queries/platform_account.sql`; `platform-management/accountguard/` (logic guard); `server/internal/auth/account_guard.go` (bộ nối) và test.
 - Test [N] với Redis giả và DB giả: trượt cache đọc DB rồi ghi cache; kết quả "không có dòng" cũng được cache; Redis lỗi thì đọc DB; DB lỗi thì trả lỗi; guard `nil` cho qua; ghi trạng thái xóa cache.
 
 Kiểm: [Q], [M], [GN] `./internal/auth -run 'AccountGuard'`, [V]. Ước lượng: 1,5 ngày.
@@ -102,11 +102,11 @@ Kiểm: [D] `./internal/handler ./internal/middleware ./internal/auth -run 'Sess
 
 **P5. Bảng `audit_event` và gói `audit`** [D] (spec 4.3)
 
-- Mới: migration 654 (bảng), 655 đến 657 (ba chỉ mục); `server/pkg/db/queries/audit_event.sql`; `server/internal/audit/` (`Record`, bộ lọc bí mật, kiểu `Entry`, hằng tên hành động).
+- Mới: migration 654 (bảng), 655 đến 657 (ba chỉ mục); `server/pkg/db/queries/audit_event.sql`; `platform-management/audit/` (`Record`, bộ lọc bí mật, kiểu `Entry`, hằng tên hành động).
 - Test [N]: bộ lọc thay giá trị của khóa nhạy cảm ở mọi độ sâu; test đọc tệp `.sql` và thất bại nếu có `UPDATE` ngoài câu ẩn danh hóa.
 - Test [D]: `Record` trong giao dịch bị hủy không để lại dòng.
 
-Kiểm: [Q], [M], [GN] và [D] `./internal/audit`, [V]. Ước lượng: 1,5 ngày.
+Kiểm: [Q], [M], [GN] và [D] `./internal/auditstore`, [V]. Ước lượng: 1,5 ngày.
 
 **P6. Ghi kiểm toán cho thành viên, lời mời, link chia sẻ, workspace** [D]
 
@@ -157,7 +157,7 @@ Kiểm: [D] `./internal/handler ./internal/platform -run 'AccountDeletion|UserCo
 
 **P12. Cổng G-R1**
 
-- Chạy [T] và, trên DB test, toàn bộ `./internal/handler ./internal/middleware ./internal/auth ./internal/audit ./internal/realtime`.
+- Chạy [T] và, trên DB test, toàn bộ `./internal/handler ./internal/middleware ./internal/auth ./internal/auditstore ./internal/realtime`.
 - Đối chiếu AC1 đến AC6.
 - Đo độ trễ p95 của một route đọc đơn giản trước và sau khi có guard (spec 15.3); ghi số đo vào PR.
 - Viết `docs/platform-operations.md`: khóa và mở tài khoản bằng SQL khi chưa có console, đọc nhật ký, xử lý yêu cầu xóa.

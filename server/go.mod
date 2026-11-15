@@ -20,6 +20,7 @@ require (
 	github.com/ledongthuc/pdf v0.0.0-20261020125853-5e46805f718e
 	github.com/lmittmann/tint v1.2.0
 	github.com/mattn/go-shellwords v1.0.14
+	github.com/multica-ai/multica/platform-management v0.0.0
 	github.com/oklog/ulid/v2 v2.1.2
 	github.com/openai/openai-go/v3 v3.61.0
 	github.com/pelletier/go-toml/v2 v2.4.3
@@ -80,3 +81,5 @@ require (
 )
 
 tool golang.org/x/vuln/cmd/govulncheck
+
+replace github.com/multica-ai/multica/platform-management => ../platform-management

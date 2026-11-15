@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS audit_event_workspace_created_idx;
