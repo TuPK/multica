@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -16,9 +17,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/multica-ai/multica/platform-management/accountguard"
 	"github.com/multica-ai/multica/platform-management/internal/config"
+	"github.com/multica-ai/multica/platform-management/internal/db"
+	"github.com/multica-ai/multica/platform-management/internal/mailer"
+	"github.com/multica-ai/multica/platform-management/internal/platformauth"
 	"github.com/multica-ai/multica/platform-management/internal/schemacheck"
 	"github.com/multica-ai/multica/platform-management/internal/server"
+	"github.com/multica-ai/multica/platform-management/internal/staff"
 )
 
 const (
@@ -26,8 +32,9 @@ const (
 	// WORKDIR holds console/dist next to the binary.
 	consoleDistDir = "console/dist"
 
-	startupTimeout = 15 * time.Second
-	shutdownGrace  = 10 * time.Second
+	startupTimeout  = 15 * time.Second
+	shutdownGrace   = 10 * time.Second
+	mailHTTPTimeout = 20 * time.Second
 )
 
 func main() {
@@ -68,6 +75,40 @@ func run() error {
 		return err
 	}
 
+	queries := db.New(pool)
+	store := staff.NewStore(queries)
+	seeder := staff.NewSeeder(queries, cfg.AdminEmails, slog.Default())
+	// An administrator without a Multica account is logged and skipped; only a
+	// database error stops the start.
+	if err := seeder.SeedAll(startCtx); err != nil {
+		return err
+	}
+
+	var smtpDialer mailer.SMTPDialer
+	if cfg.Email.Provider == config.ProviderSMTP {
+		smtpDialer = mailer.NewSMTPDialer(cfg.Email)
+	}
+	mail, err := mailer.New(cfg.Email, &http.Client{Timeout: mailHTTPTimeout}, smtpDialer, slog.Default())
+	if err != nil {
+		return err
+	}
+	auth := platformauth.New(platformauth.Deps{
+		Config: platformauth.Config{
+			SessionSecret: cfg.SessionSecret,
+			ConsoleOrigin: cfg.ConsoleOrigin,
+			SecureCookies: cfg.SecureCookies,
+			AdminCIDRs:    cfg.AdminCIDRs,
+			AdminEmails:   cfg.AdminEmails,
+		},
+		Directory: store,
+		Seeder:    seeder,
+		Guard:     accountguard.New(store, platformauth.NewRedisAccountCache(rdb)),
+		Codes:     platformauth.NewRedisCodes(rdb),
+		Limiter:   platformauth.NewRedisLimiter(rdb),
+		Mailer:    mail,
+		Log:       slog.Default(),
+	})
+
 	apiLn, err := net.Listen("tcp", ":"+cfg.APIPort)
 	if err != nil {
 		return fmt.Errorf("listen on PLATFORM_API_PORT: %w", err)
@@ -86,8 +127,11 @@ func run() error {
 	apiURL := &url.URL{Scheme: "http", Host: net.JoinHostPort("127.0.0.1", cfg.APIPort)}
 
 	slog.Info("platform-server starting", "api_port", cfg.APIPort, "console_port", cfg.ConsolePort)
-	return server.Serve(ctx, shutdownGrace,
-		server.Listener{Name: "api", Listener: apiLn, Handler: server.NewAPIHandler(health)},
+	err = server.Serve(ctx, shutdownGrace,
+		server.Listener{Name: "api", Listener: apiLn, Handler: server.NewAPIHandler(health, auth)},
 		server.Listener{Name: "console", Listener: consoleLn, Handler: server.NewConsoleHandler(health, apiURL, consoleDistDir)},
 	)
+	// Let a code that was just requested finish sending.
+	auth.Wait()
+	return err
 }

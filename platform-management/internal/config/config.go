@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"net/mail"
+	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
@@ -13,6 +14,8 @@ const (
 	defaultAPIPort     = "8095"
 	defaultConsolePort = "30001"
 	defaultSMTPPort    = "25"
+
+	defaultConsoleOrigin = "http://localhost:30001"
 
 	minSessionSecretBytes = 32
 
@@ -66,6 +69,15 @@ type Config struct {
 	ConsolePort    string
 	Email          Email
 	FrontendOrigin string
+
+	// AdminCIDRs restricts the console to these networks. Empty means no
+	// restriction.
+	AdminCIDRs []netip.Prefix
+	// ConsoleOrigin is the console's origin as scheme://host[:port], lower
+	// case and without a trailing slash.
+	ConsoleOrigin string
+	// SecureCookies sets the Secure attribute on the session cookie.
+	SecureCookies bool
 }
 
 // Load reads the configuration through getenv and reports every problem it
@@ -127,6 +139,33 @@ func Load(getenv func(string) string) (Config, error) {
 
 	cfg.Email = loadEmail(get, getenv, fail)
 	cfg.FrontendOrigin = get("FRONTEND_ORIGIN")
+
+	if raw := get("PLATFORM_ADMIN_CIDRS"); raw != "" {
+		cidrs, err := parseCIDRs(raw)
+		if err != nil {
+			fail("PLATFORM_ADMIN_CIDRS", err.Error())
+		}
+		cfg.AdminCIDRs = cidrs
+	}
+
+	origin := get("PLATFORM_CONSOLE_ORIGIN")
+	if origin == "" {
+		origin = defaultConsoleOrigin
+	}
+	if normalized, ok := normalizeOrigin(origin); ok {
+		cfg.ConsoleOrigin = normalized
+	} else {
+		fail("PLATFORM_CONSOLE_ORIGIN", "must be an absolute http or https origin such as https://console.example.com")
+	}
+
+	cfg.SecureCookies = true
+	switch strings.ToLower(get("PLATFORM_SECURE_COOKIES")) {
+	case "", "true":
+	case "false":
+		cfg.SecureCookies = false
+	default:
+		fail("PLATFORM_SECURE_COOKIES", "must be true or false")
+	}
 
 	if len(errs) > 0 {
 		return Config{}, errors.Join(errs...)
@@ -216,4 +255,36 @@ func portOrDefault(v, def string) string {
 func validPort(v string) bool {
 	n, err := strconv.Atoi(v)
 	return err == nil && n >= 1 && n <= 65535 && strconv.Itoa(n) == v
+}
+
+func parseCIDRs(raw string) ([]netip.Prefix, error) {
+	var out []netip.Prefix
+	for _, part := range strings.Split(raw, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		prefix, err := netip.ParsePrefix(part)
+		if err != nil {
+			return nil, errors.New("must be a comma-separated list of CIDRs such as 10.0.0.0/8")
+		}
+		out = append(out, prefix.Masked())
+	}
+	if len(out) == 0 {
+		return nil, errors.New("must list at least one CIDR when set")
+	}
+	return out, nil
+}
+
+// normalizeOrigin accepts scheme://host[:port] with an http or https scheme
+// and nothing after the host but an optional slash.
+func normalizeOrigin(raw string) (string, bool) {
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.Hostname() == "" {
+		return "", false
+	}
+	if u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || (u.Path != "" && u.Path != "/") {
+		return "", false
+	}
+	return u.Scheme + "://" + strings.ToLower(u.Host), true
 }

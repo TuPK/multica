@@ -31,7 +31,7 @@ func TestHealthzAgainstRealDependencies(t *testing.T) {
 
 	redisPing := func(ctx context.Context) error { return rdb.Ping(ctx).Err() }
 	serve := func(checks ...Check) (int, string) {
-		srv := httptest.NewServer(NewAPIHandler(HealthHandler(checks...)))
+		srv := httptest.NewServer(NewAPIHandler(HealthHandler(checks...), http.NotFoundHandler()))
 		defer srv.Close()
 		return get(t, srv.URL, "/healthz")
 	}

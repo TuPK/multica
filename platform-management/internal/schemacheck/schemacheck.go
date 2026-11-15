@@ -27,6 +27,8 @@ var Required = []string{
 	"658_user_consent",                      // user_consent: table
 	"659_user_consent_uidx",                 // user_consent: unique index on user_id, document, version
 	"660_audit_event_created_idx",           // audit_event: index on created_at
+	"663_platform_staff",                    // platform_staff: table
+	"664_platform_staff_user_idx",           // platform_staff: partial unique index on user_id
 }
 
 // Queryer is the part of a pgx pool, connection or transaction that Check uses.

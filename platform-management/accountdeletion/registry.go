@@ -75,6 +75,8 @@ var Columns = []Column{
 	{"personal_access_token", "user_id", ActionDelete, "job removes the rows, which revokes the tokens"},
 	{"pinned_item", "user_id", ActionDelete, "job removes the rows"},
 	{"platform_account", "user_id", ActionKeep, "the account state row stays and records status deleted"},
+	{"platform_staff", "created_by", ActionKeep, "the staff row records who added it; it stays as history"},
+	{"platform_staff", "user_id", ActionKeep, "the row stays as history; the account guard refuses a deleted account, so the row grants nothing"},
 	{"plugin_binding", "created_by", ActionKeep, refReason},
 	{"plugin_installation_config", "created_by", ActionKeep, refReason},
 	{"plugin_package", "created_by", ActionKeep, refReason},

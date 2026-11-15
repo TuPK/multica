@@ -78,7 +78,7 @@ func newListeners(t *testing.T, health http.Handler, dist string) (api, console 
 	if err != nil {
 		t.Fatal(err)
 	}
-	api = httptest.NewServer(NewAPIHandler(health))
+	api = httptest.NewServer(NewAPIHandler(health, http.NotFoundHandler()))
 	t.Cleanup(api.Close)
 	console = httptest.NewServer(NewConsoleHandler(health, target, dist))
 	t.Cleanup(console.Close)
@@ -212,11 +212,23 @@ func TestConsoleKeepsInternalAndOtherAPIPathsOffTheUpstream(t *testing.T) {
 	}
 }
 
-func TestAPIHasNoRoutesYet(t *testing.T) {
-	api, _, _ := newListeners(t, HealthHandler(), "")
-	for _, path := range []string{"/api/v1/internal/x", "/api/platform/x", "/api/other", "/"} {
-		if code, _ := get(t, api.URL, path); code != http.StatusNotFound {
-			t.Errorf("%s: status = %d, want 404", path, code)
+func TestAPIServesOnlyHealthzAndThePlatformPrefix(t *testing.T) {
+	platform := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTeapot)
+	})
+	api := httptest.NewServer(NewAPIHandler(HealthHandler(), platform))
+	t.Cleanup(api.Close)
+	for path, want := range map[string]int{
+		"/api/platform/x":    http.StatusTeapot,
+		"/api/platform/me":   http.StatusTeapot,
+		"/api/v1/internal/x": http.StatusNotFound,
+		"/api/platformx/y":   http.StatusNotFound,
+		"/api/other":         http.StatusNotFound,
+		"/":                  http.StatusNotFound,
+		"/healthz":           http.StatusOK,
+	} {
+		if code, _ := get(t, api.URL, path); code != want {
+			t.Errorf("%s: status = %d, want %d", path, code, want)
 		}
 	}
 }
@@ -295,7 +307,7 @@ func TestServeStopsBothListenersWhenTheContextEnds(t *testing.T) {
 	done := make(chan error, 1)
 	go func() {
 		done <- Serve(ctx, 5*time.Second,
-			Listener{Name: "api", Listener: a, Handler: NewAPIHandler(HealthHandler())},
+			Listener{Name: "api", Listener: a, Handler: NewAPIHandler(HealthHandler(), http.NotFoundHandler())},
 			Listener{Name: "console", Listener: c, Handler: http.NotFoundHandler()},
 		)
 	}()

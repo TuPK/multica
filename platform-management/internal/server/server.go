@@ -66,11 +66,12 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-// NewAPIHandler returns the API listener's handler. It has no routes besides
-// /healthz in this slice.
-func NewAPIHandler(health http.Handler) http.Handler {
+// NewAPIHandler returns the API listener's handler: /healthz, and every path
+// under /api/platform/, which belongs to platform. Any other path is a 404.
+func NewAPIHandler(health, platform http.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /healthz", health)
+	mux.Handle("/api/platform/", platform)
 	return mux
 }
 

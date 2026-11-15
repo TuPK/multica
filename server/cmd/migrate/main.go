@@ -147,6 +147,7 @@ var concurrentIndexCleanups = map[string]string{
 	"657_audit_event_actor_created_idx":                         "audit_event_actor_created_idx",
 	"659_user_consent_uidx":                                     "user_consent_uidx",
 	"660_audit_event_created_idx":                               "audit_event_created_idx",
+	"664_platform_staff_user_idx":                               "platform_staff_user_idx",
 	"940_hub_source_auto_sync_idx":                              "hub_source_auto_sync_due_idx",
 	"951_hub_activity_workspace_created_idx":                    "hub_activity_workspace_created_idx",
 	"952_hub_activity_ref_created_idx":                          "hub_activity_workspace_ref_created_idx",

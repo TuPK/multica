@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"net/netip"
 	"strings"
 	"testing"
 )
@@ -326,5 +327,120 @@ func TestLoadReportsEveryMissingVariable(t *testing.T) {
 		if !strings.Contains(got, name) {
 			t.Errorf("variables %q lack %s", got, name)
 		}
+	}
+}
+
+func TestLoadConsoleSettingsDefaults(t *testing.T) {
+	cfg, err := load(resendEnv())
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(cfg.AdminCIDRs) != 0 {
+		t.Errorf("AdminCIDRs = %v, want none", cfg.AdminCIDRs)
+	}
+	if cfg.ConsoleOrigin != "http://localhost:30001" {
+		t.Errorf("ConsoleOrigin = %q", cfg.ConsoleOrigin)
+	}
+	if !cfg.SecureCookies {
+		t.Error("SecureCookies must default to true")
+	}
+}
+
+func TestLoadAdminCIDRs(t *testing.T) {
+	env := resendEnv()
+	env["PLATFORM_ADMIN_CIDRS"] = " 10.0.0.0/8, 2001:db8::/32 ,,192.0.2.7/32"
+	cfg, err := load(env)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(cfg.AdminCIDRs) != 3 {
+		t.Fatalf("AdminCIDRs = %v", cfg.AdminCIDRs)
+	}
+	if !cfg.AdminCIDRs[0].Contains(netip.MustParseAddr("10.1.2.3")) {
+		t.Error("10.0.0.0/8 should contain 10.1.2.3")
+	}
+}
+
+func TestLoadInvalidAdminCIDRStopsTheStart(t *testing.T) {
+	for _, raw := range []string{"10.0.0.0/33", "not-a-cidr", "10.0.0.1", "10.0.0.0/8,bad"} {
+		env := resendEnv()
+		env["PLATFORM_ADMIN_CIDRS"] = raw
+		_, err := load(env)
+		if err == nil {
+			t.Errorf("PLATFORM_ADMIN_CIDRS=%q: no error", raw)
+			continue
+		}
+		if vars := variables(err); len(vars) != 1 || vars[0] != "PLATFORM_ADMIN_CIDRS" {
+			t.Errorf("PLATFORM_ADMIN_CIDRS=%q: variables = %v", raw, vars)
+		}
+	}
+}
+
+func TestLoadConsoleOrigin(t *testing.T) {
+	good := map[string]string{
+		"https://console.example.com":  "https://console.example.com",
+		"https://Console.Example.com/": "https://console.example.com",
+		"http://localhost:30001":       "http://localhost:30001",
+		" http://127.0.0.1:8080 ":      "http://127.0.0.1:8080",
+	}
+	for raw, want := range good {
+		env := resendEnv()
+		env["PLATFORM_CONSOLE_ORIGIN"] = raw
+		cfg, err := load(env)
+		if err != nil {
+			t.Errorf("origin %q: %v", raw, err)
+			continue
+		}
+		if cfg.ConsoleOrigin != want {
+			t.Errorf("origin %q: got %q, want %q", raw, cfg.ConsoleOrigin, want)
+		}
+	}
+}
+
+func TestLoadBadConsoleOriginStopsTheStart(t *testing.T) {
+	for _, raw := range []string{
+		"ftp://console.example.com",
+		"javascript:alert(1)",
+		"console.example.com",
+		"//console.example.com",
+		"https://",
+		"https://console.example.com/path",
+		"https://console.example.com?x=1",
+		"https://user:pw@console.example.com",
+	} {
+		env := resendEnv()
+		env["PLATFORM_CONSOLE_ORIGIN"] = raw
+		_, err := load(env)
+		if err == nil {
+			t.Errorf("PLATFORM_CONSOLE_ORIGIN=%q: no error", raw)
+			continue
+		}
+		if vars := variables(err); len(vars) != 1 || vars[0] != "PLATFORM_CONSOLE_ORIGIN" {
+			t.Errorf("PLATFORM_CONSOLE_ORIGIN=%q: variables = %v", raw, vars)
+		}
+		if strings.Contains(err.Error(), "pw@") {
+			t.Errorf("error repeats the credentials: %v", err)
+		}
+	}
+}
+
+func TestLoadSecureCookies(t *testing.T) {
+	for raw, want := range map[string]bool{"true": true, "false": false, " FALSE ": false} {
+		env := resendEnv()
+		env["PLATFORM_SECURE_COOKIES"] = raw
+		cfg, err := load(env)
+		if err != nil {
+			t.Errorf("PLATFORM_SECURE_COOKIES=%q: %v", raw, err)
+			continue
+		}
+		if cfg.SecureCookies != want {
+			t.Errorf("PLATFORM_SECURE_COOKIES=%q: got %v", raw, cfg.SecureCookies)
+		}
+	}
+	env := resendEnv()
+	env["PLATFORM_SECURE_COOKIES"] = "maybe"
+	_, err := load(env)
+	if vars := variables(err); len(vars) != 1 || vars[0] != "PLATFORM_SECURE_COOKIES" {
+		t.Errorf("variables = %v (err %v)", vars, err)
 	}
 }
