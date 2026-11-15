@@ -216,6 +216,7 @@ describe("request state of a flow (extended)", () => {
       from: "gate",
       edge: "e",
       at: "t",
+      reason: "",
     });
     // An older server's number, or a text: the request is parked, so it reads as stalled.
     for (const stop of [1, "stalled", true, ["x"]]) {

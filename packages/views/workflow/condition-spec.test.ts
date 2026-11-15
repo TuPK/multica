@@ -1,9 +1,15 @@
 // @vitest-environment node
 
 import { describe, expect, it } from "vitest";
+import type { FlowFactInfo } from "@multica/core/types";
 import {
   FIELD_OPERATORS,
   conditionProblems,
+  defaultValueFor,
+  enumValuesForField,
+  fieldsForFacts,
+  operatorsForField,
+  valueKindOf,
   listValueText,
   ruleWithField,
   ruleWithListValue,
@@ -11,6 +17,48 @@ import {
   ruleWithScalarValue,
 } from "./condition-spec";
 import type { Condition, ConditionRule } from "./types";
+
+// The fact catalog of a flow: what the server says a condition may read (plan P20).
+const facts: FlowFactInfo[] = [
+  { key: "join.pass", type: "int", source: "engine", ops: ["eq", "gt", "gte"], values: [] },
+  { key: "task.draft.verdict", type: "string", source: "engine", ops: ["eq", "in", "exists"], values: [] },
+  { key: "request.labels", type: "list_string", source: "request", ops: ["contains", "exists"], values: [] },
+  { key: "join.result", type: "enum", source: "engine", ops: ["eq", "in"], values: ["pass", "fail"] },
+  { key: "vars.export", type: "bool", source: "var", ops: ["eq"], values: [] },
+];
+
+describe("a condition read against the fact catalog of a flow", () => {
+  it("offers the facts the server lists and their operators, not the built-in fields", () => {
+    expect(fieldsForFacts(facts)).toEqual(["join.pass", "task.draft.verdict", "request.labels", "join.result", "vars.export"]);
+    expect(operatorsForField("request.labels", facts)).toEqual(["contains", "exists"]);
+    expect(operatorsForField("join.pass", facts)).toEqual(["eq", "gt", "gte"]);
+  });
+
+  it("takes a number for an int fact, text for a string or list fact, a choice for an enum or bool fact", () => {
+    expect(valueKindOf("join.pass", facts)).toBe("number");
+    expect(valueKindOf("task.draft.verdict", facts)).toBe("text");
+    expect(valueKindOf("request.labels", facts)).toBe("text");
+    expect(valueKindOf("join.result", facts)).toBe("enum");
+    expect(valueKindOf("vars.export", facts)).toBe("enum");
+    expect(enumValuesForField("join.result", facts)).toEqual(["pass", "fail"]);
+    expect(enumValuesForField("vars.export", facts)).toEqual(["true", "false"]);
+    expect(enumValuesForField("join.pass", facts)).toBeUndefined();
+  });
+
+  it("starts each kind of fact with a value the server accepts", () => {
+    expect(defaultValueFor("join.pass", facts)).toBe(0);
+    expect(defaultValueFor("task.draft.verdict", facts)).toBe("");
+    expect(defaultValueFor("join.result", facts)).toBe("pass");
+    expect(defaultValueFor("vars.export", facts)).toBe("true");
+  });
+
+  it("keeps the built-in fields when no catalog is given", () => {
+    expect(fieldsForFacts()).toContain("rework_count");
+    expect(fieldsForFacts([])).toContain("outcome");
+    expect(operatorsForField("outcome")).toEqual(["eq", "neq", "in", "exists"]);
+    expect(valueKindOf("rework_count")).toBe("number");
+  });
+});
 
 const outcomeEq: ConditionRule = { field: "outcome", op: "eq", value: "approved" };
 

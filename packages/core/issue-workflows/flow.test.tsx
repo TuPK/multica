@@ -91,7 +91,7 @@ describe("IssueFlowStateSchema", () => {
 
   it("reads the stop as an object, and treats a value it cannot read as stalled", () => {
     const parked = { code: "loop_exhausted", legacy_no: 3, from: "gate", edge: "gate_fix", at: "2026-11-13T02:00:00Z" };
-    expect(IssueFlowStateSchema.parse({ ...stateWire, stop: parked }).stop).toEqual(parked);
+    expect(IssueFlowStateSchema.parse({ ...stateWire, stop: parked }).stop).toEqual({ ...parked, reason: "" });
     expect(IssueFlowStateSchema.parse({ ...stateWire, stop: { code: "stalled" } }).stop).toMatchObject({ code: "stalled", legacy_no: 0 });
     expect(IssueFlowStateSchema.parse({ ...stateWire, stop: null }).stop).toBeNull();
     for (const wire of [1, 3, "stalled", "later", 7]) {
