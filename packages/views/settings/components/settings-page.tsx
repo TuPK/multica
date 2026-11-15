@@ -18,6 +18,7 @@ import {
   Search,
   Server,
   Settings,
+  ScrollText,
   SlidersHorizontal,
   Tags,
   User,
@@ -41,6 +42,7 @@ import { PreferencesTab } from "./preferences-tab";
 import { TokensTab } from "./tokens-tab";
 import { WorkspaceTab } from "./workspace-tab";
 import { MembersTab } from "./members-tab";
+import { AuditLogTab } from "./audit-log-tab";
 import { CodeTab } from "./code-tab";
 import { ChannelsTab } from "./channels-tab";
 import { PublishChannelsTab } from "./publish-channels-tab";
@@ -173,6 +175,9 @@ export function SettingsPage({ extraDeviceTabs = [] }: SettingsPageProps = {}) {
               adminOnly: true,
             }),
             entry("members", t(($) => $.page.tabs.members), Users, <MembersTab />, {
+              adminOnly: true,
+            }),
+            entry("audit", t(($) => $.page.tabs.audit), ScrollText, <AuditLogTab />, {
               adminOnly: true,
             }),
             ...(billingEnabled

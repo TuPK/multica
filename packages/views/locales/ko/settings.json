@@ -402,6 +402,7 @@
       "github": "GitHub",
       "labs": "실험실",
       "members": "멤버",
+      "audit": "감사 로그",
       "labels": "레이블",
       "issue_statuses": "태스크 상태",
       "wakeups": "깨우기",
@@ -657,7 +658,10 @@
     "revoke_all_sessions_confirm": "로그아웃",
     "revoke_all_sessions_submitting": "로그아웃 중...",
     "toast_revoke_all_sessions_success": "모든 기기에서 로그아웃되었습니다",
-    "toast_revoke_all_sessions_failed": "모든 기기에서 로그아웃하지 못했습니다"
+    "toast_revoke_all_sessions_failed": "모든 기기에서 로그아웃하지 못했습니다",
+    "section_security_events": "보안 이벤트",
+    "security_events_empty": "보안 이벤트가 없습니다",
+    "security_events_load_failed": "보안 이벤트를 불러오지 못했습니다"
   },
   "notifications": {
     "title": "인박스 알림",
@@ -1561,5 +1565,22 @@
     "toast_invalid": "해당 값이 허용되지 않았습니다",
     "toast_failed": "설정을 저장할 수 없습니다",
     "toast_secret_missing": "이 서버는 API 키를 저장할 수 없습니다. 운영자에게 MULTICA_RESEARCH_SECRET_KEY 설정을 요청하세요."
+  },
+  "audit": {
+    "title": "감사 로그",
+    "filter_action": "작업",
+    "filter_action_all": "모든 작업",
+    "filter_from": "시작일",
+    "filter_to": "종료일",
+    "column_time": "시간",
+    "column_actor": "수행자",
+    "column_action": "작업",
+    "column_target": "대상",
+    "column_ip": "IP",
+    "load_more": "더 불러오기",
+    "export_csv": "CSV 내보내기",
+    "export_failed": "감사 이벤트를 내보내지 못했습니다",
+    "empty": "감사 이벤트가 없습니다",
+    "load_failed": "감사 이벤트를 불러오지 못했습니다"
   }
 }

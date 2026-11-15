@@ -10,6 +10,59 @@ const revokeState = vi.hoisted(() => ({
   isPending: false,
 }));
 
+const mockSecurityEventsState = vi.hoisted(() => ({
+  events: [
+    {
+      id: "sec-1",
+      workspace_id: null,
+      actor_type: "member",
+      actor_id: "user-1",
+      actor_label: "Jane Doe",
+      action: "auth.login",
+      target_type: "",
+      target_id: "",
+      target_label: "",
+      detail: {},
+      ip: "127.0.0.1",
+      user_agent: "Mozilla",
+      request_id: "req-1",
+      created_at: "2026-11-15T10:00:00Z",
+    },
+    {
+      id: "sec-2",
+      workspace_id: null,
+      actor_type: "member",
+      actor_id: "user-1",
+      actor_label: "Jane Doe",
+      action: "pat.created",
+      target_type: "pat",
+      target_id: "pat-1",
+      target_label: "CLI token",
+      detail: {},
+      ip: "127.0.0.1",
+      user_agent: "Mozilla",
+      request_id: "req-2",
+      created_at: "2026-11-14T10:00:00Z",
+    },
+  ],
+  isError: false,
+}));
+
+vi.mock("@multica/core/audit", () => ({
+  securityEventsOptions: (userId: string, limit?: number) => ({
+    queryKey: ["security-events", userId, limit],
+    queryFn: () => {
+      if (mockSecurityEventsState.isError) {
+        return Promise.reject(new Error("Failed to load security events"));
+      }
+      return Promise.resolve({
+        events: mockSecurityEventsState.events,
+        next_cursor: null,
+      });
+    },
+  }),
+}));
+
 vi.mock("@multica/core/account", () => ({
   useRevokeAllSessions: () => ({
     mutateAsync: mockMutateAsync,
@@ -77,6 +130,41 @@ describe("AccountTab", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     revokeState.isPending = false;
+    mockSecurityEventsState.isError = false;
+    mockSecurityEventsState.events = [
+      {
+        id: "sec-1",
+        workspace_id: null,
+        actor_type: "member",
+        actor_id: "user-1",
+        actor_label: "Jane Doe",
+        action: "auth.login",
+        target_type: "",
+        target_id: "",
+        target_label: "",
+        detail: {},
+        ip: "127.0.0.1",
+        user_agent: "Mozilla",
+        request_id: "req-1",
+        created_at: "2026-11-15T10:00:00Z",
+      },
+      {
+        id: "sec-2",
+        workspace_id: null,
+        actor_type: "member",
+        actor_id: "user-1",
+        actor_label: "Jane Doe",
+        action: "pat.created",
+        target_type: "pat",
+        target_id: "pat-1",
+        target_label: "CLI token",
+        detail: {},
+        ip: "127.0.0.1",
+        user_agent: "Mozilla",
+        request_id: "req-2",
+        created_at: "2026-11-14T10:00:00Z",
+      },
+    ];
     mockMutateAsync.mockResolvedValue({
       revoked_at: "2026-11-15T00:00:00Z",
       token: "new-jwt-token",
@@ -195,5 +283,40 @@ describe("AccountTab", () => {
 
     const cancelButton = screen.getByRole("button", { name: "Cancel" });
     expect(cancelButton).toBeDisabled();
+  });
+
+  it("renders the security events section with title and events", async () => {
+    renderAccountTab();
+
+    expect(screen.getByText("Security events")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText("auth.login")).toBeInTheDocument();
+      expect(screen.getByText("pat.created")).toBeInTheDocument();
+    });
+  });
+
+  it("renders empty state when there are no security events", async () => {
+    mockSecurityEventsState.events = [];
+    renderAccountTab();
+
+    expect(screen.getByText("Security events")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText("No security events")).toBeInTheDocument();
+    });
+  });
+
+  it("renders error state when security events query fails", async () => {
+    mockSecurityEventsState.isError = true;
+    renderAccountTab();
+
+    expect(screen.getByText("Security events")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Failed to load security events"),
+      ).toBeInTheDocument();
+    });
   });
 });

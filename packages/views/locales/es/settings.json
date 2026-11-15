@@ -404,6 +404,7 @@
       "github": "GitHub",
       "labs": "Labs",
       "members": "Miembros",
+      "audit": "Registro de auditoría",
       "labels": "Etiquetas",
       "issue_statuses": "Estados de tarea",
       "wakeups": "Despertares",
@@ -662,7 +663,10 @@
     "revoke_all_sessions_confirm": "Cerrar sesión",
     "revoke_all_sessions_submitting": "Cerrando sesión...",
     "toast_revoke_all_sessions_success": "Sesión cerrada en todos los dispositivos",
-    "toast_revoke_all_sessions_failed": "Error al cerrar sesión en todos los dispositivos"
+    "toast_revoke_all_sessions_failed": "Error al cerrar sesión en todos los dispositivos",
+    "section_security_events": "Eventos de seguridad",
+    "security_events_empty": "No hay eventos de seguridad",
+    "security_events_load_failed": "Error al cargar los eventos de seguridad"
   },
   "notifications": {
     "title": "Notificaciones de la bandeja",
@@ -1572,5 +1576,22 @@
     "toast_invalid": "No se aceptó ese valor",
     "toast_failed": "No se pudieron guardar los ajustes",
     "toast_secret_missing": "Este servidor no puede guardar claves de API. Pide al operador que configure MULTICA_RESEARCH_SECRET_KEY."
+  },
+  "audit": {
+    "title": "Registro de auditoría",
+    "filter_action": "Acción",
+    "filter_action_all": "Todas las acciones",
+    "filter_from": "Desde",
+    "filter_to": "Hasta",
+    "column_time": "Hora",
+    "column_actor": "Actor",
+    "column_action": "Acción",
+    "column_target": "Destino",
+    "column_ip": "IP",
+    "load_more": "Cargar más",
+    "export_csv": "Exportar CSV",
+    "export_failed": "Error al exportar los eventos de auditoría",
+    "empty": "No hay eventos de auditoría",
+    "load_failed": "Error al cargar los eventos de auditoría"
   }
 }

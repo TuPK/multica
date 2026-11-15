@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@multica/ui/components/ui/button";
 import {
   Dialog,
@@ -19,8 +20,9 @@ import { toast } from "sonner";
 import { useAuthStore } from "@multica/core/auth";
 import { api } from "@multica/core/api";
 import { useRevokeAllSessions } from "@multica/core/account";
+import { securityEventsOptions } from "@multica/core/audit";
 import { AvatarUploadControl } from "../../common/avatar-upload-control";
-import { useT } from "../../i18n";
+import { useLocale, useT } from "../../i18n";
 import {
   SettingsCard,
   SettingsRow,
@@ -47,6 +49,7 @@ function profilesEqual(left: ProfileDraft, right: ProfileDraft) {
 
 export function AccountTab() {
   const { t } = useT("settings");
+  const locale = useLocale();
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
 
@@ -57,6 +60,23 @@ export function AccountTab() {
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
   const revokeAllSessions = useRevokeAllSessions();
   const isRevoking = Boolean(revokeAllSessions?.isPending);
+
+  const securityEventsQuery = useQuery({
+    ...securityEventsOptions(user?.id ?? "", 20),
+  });
+  const securityEvents = useMemo(
+    () => (securityEventsQuery.data?.events ?? []).slice(0, 20),
+    [securityEventsQuery.data?.events],
+  );
+
+  const formatSecurityEventTime = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return new Intl.DateTimeFormat(locale, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(date);
+  };
 
   const handleOpenChange = (open: boolean) => {
     if (!open && isRevoking) return;
@@ -275,6 +295,43 @@ export function AccountTab() {
               </DialogContent>
             </Dialog>
           </SettingsRow>
+        </SettingsCard>
+      </SettingsSection>
+
+      <SettingsSection
+        title={t(($) => $.account.section_security_events)}
+        anchor="security-events"
+      >
+        <SettingsCard>
+          {securityEventsQuery.isError ? (
+            <div className="px-4 py-3 text-caption text-destructive">
+              {t(($) => $.account.security_events_load_failed)}
+            </div>
+          ) : securityEventsQuery.isLoading ? (
+            <div className="flex justify-center py-6">
+              <Loader2 className="size-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : securityEvents.length === 0 ? (
+            <div className="px-4 py-6 text-center text-body text-muted-foreground">
+              {t(($) => $.account.security_events_empty)}
+            </div>
+          ) : (
+            <ul className="divide-y divide-surface-border">
+              {securityEvents.map((event) => (
+                <li
+                  key={event.id}
+                  className="flex items-center justify-between px-4 py-3 text-body"
+                >
+                  <code className="font-mono text-caption text-foreground">
+                    {event.action}
+                  </code>
+                  <span className="text-caption text-muted-foreground">
+                    {formatSecurityEventTime(event.created_at)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </SettingsCard>
       </SettingsSection>
     </SettingsTab>

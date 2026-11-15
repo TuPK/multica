@@ -402,6 +402,7 @@
       "github": "GitHub",
       "labs": "實驗室",
       "members": "成員",
+      "audit": "稽核記錄",
       "labels": "標籤",
       "issue_statuses": "任務狀態",
       "wakeups": "喚醒",
@@ -657,7 +658,10 @@
     "revoke_all_sessions_confirm": "退出登入",
     "revoke_all_sessions_submitting": "退出中...",
     "toast_revoke_all_sessions_success": "已退出所有設備",
-    "toast_revoke_all_sessions_failed": "退出所有設備失敗"
+    "toast_revoke_all_sessions_failed": "退出所有設備失敗",
+    "section_security_events": "安全事件",
+    "security_events_empty": "暫無安全事件",
+    "security_events_load_failed": "無法載入安全事件"
   },
   "notifications": {
     "title": "收件箱通知",
@@ -1561,5 +1565,22 @@
     "toast_invalid": "該值未被接受",
     "toast_failed": "無法儲存設定",
     "toast_secret_missing": "此伺服器無法儲存 API 金鑰。請請維運人員設定 MULTICA_RESEARCH_SECRET_KEY。"
+  },
+  "audit": {
+    "title": "稽核記錄",
+    "filter_action": "操作",
+    "filter_action_all": "所有操作",
+    "filter_from": "起始日期",
+    "filter_to": "截止日期",
+    "column_time": "時間",
+    "column_actor": "操作者",
+    "column_action": "操作",
+    "column_target": "目標",
+    "column_ip": "IP",
+    "load_more": "載入更多",
+    "export_csv": "匯出 CSV",
+    "export_failed": "無法匯出稽核事件",
+    "empty": "暫無稽核事件",
+    "load_failed": "無法載入稽核事件"
   }
 }

@@ -404,6 +404,7 @@
       "github": "GitHub",
       "labs": "Labo",
       "members": "Membres",
+      "audit": "Journal d'audit",
       "labels": "Étiquettes",
       "issue_statuses": "États des tâches",
       "wakeups": "Réveils",
@@ -662,7 +663,10 @@
     "revoke_all_sessions_confirm": "Se déconnecter",
     "revoke_all_sessions_submitting": "Déconnexion...",
     "toast_revoke_all_sessions_success": "Déconnecté de tous les appareils",
-    "toast_revoke_all_sessions_failed": "Échec de la déconnexion de tous les appareils"
+    "toast_revoke_all_sessions_failed": "Échec de la déconnexion de tous les appareils",
+    "section_security_events": "Événements de sécurité",
+    "security_events_empty": "Aucun événement de sécurité",
+    "security_events_load_failed": "Échec du chargement des événements de sécurité"
   },
   "notifications": {
     "title": "Notifications de la boîte de réception",
@@ -1572,5 +1576,22 @@
     "toast_invalid": "Cette valeur n'a pas été acceptée",
     "toast_failed": "Impossible d'enregistrer les paramètres",
     "toast_secret_missing": "Ce serveur ne peut pas stocker de clés d'API. Demandez à l'opérateur de définir MULTICA_RESEARCH_SECRET_KEY."
+  },
+  "audit": {
+    "title": "Journal d'audit",
+    "filter_action": "Action",
+    "filter_action_all": "Toutes les actions",
+    "filter_from": "Du",
+    "filter_to": "Au",
+    "column_time": "Heure",
+    "column_actor": "Acteur",
+    "column_action": "Action",
+    "column_target": "Cible",
+    "column_ip": "IP",
+    "load_more": "Charger plus",
+    "export_csv": "Exporter en CSV",
+    "export_failed": "Échec de l'exportation des événements d'audit",
+    "empty": "Aucun événement d'audit",
+    "load_failed": "Échec du chargement des événements d'audit"
   }
 }

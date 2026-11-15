@@ -402,6 +402,7 @@
       "github": "GitHub",
       "labs": "实验室",
       "members": "成员",
+      "audit": "审计日志",
       "labels": "标签",
       "issue_statuses": "任务状态",
       "wakeups": "唤醒",
@@ -657,7 +658,10 @@
     "revoke_all_sessions_confirm": "退出登录",
     "revoke_all_sessions_submitting": "退出中...",
     "toast_revoke_all_sessions_success": "已退出所有设备",
-    "toast_revoke_all_sessions_failed": "退出所有设备失败"
+    "toast_revoke_all_sessions_failed": "退出所有设备失败",
+    "section_security_events": "安全事件",
+    "security_events_empty": "暂无安全事件",
+    "security_events_load_failed": "无法加载安全事件"
   },
   "notifications": {
     "title": "收件箱通知",
@@ -1561,5 +1565,22 @@
     "toast_invalid": "该值未被接受",
     "toast_failed": "无法保存设置",
     "toast_secret_missing": "此服务器无法存储 API 密钥。请让运维人员设置 MULTICA_RESEARCH_SECRET_KEY。"
+  },
+  "audit": {
+    "title": "审计日志",
+    "filter_action": "操作",
+    "filter_action_all": "所有操作",
+    "filter_from": "起始日期",
+    "filter_to": "截止日期",
+    "column_time": "时间",
+    "column_actor": "操作者",
+    "column_action": "操作",
+    "column_target": "目标",
+    "column_ip": "IP",
+    "load_more": "加载更多",
+    "export_csv": "导出 CSV",
+    "export_failed": "无法导出审计事件",
+    "empty": "暂无审计事件",
+    "load_failed": "无法加载审计事件"
   }
 }

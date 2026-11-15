@@ -404,6 +404,7 @@
       "github": "GitHub",
       "labs": "Labs",
       "members": "Members",
+      "audit": "Audit log",
       "labels": "Labels",
       "issue_statuses": "Issue Statuses",
       "wakeups": "Wakeups",
@@ -662,7 +663,10 @@
     "revoke_all_sessions_confirm": "Sign out",
     "revoke_all_sessions_submitting": "Signing out...",
     "toast_revoke_all_sessions_success": "Signed out of all devices",
-    "toast_revoke_all_sessions_failed": "Failed to sign out of all devices"
+    "toast_revoke_all_sessions_failed": "Failed to sign out of all devices",
+    "section_security_events": "Security events",
+    "security_events_empty": "No security events",
+    "security_events_load_failed": "Failed to load security events"
   },
   "notifications": {
     "title": "Inbox Notifications",
@@ -1572,5 +1576,22 @@
     "toast_invalid": "That value was not accepted",
     "toast_failed": "Could not save the settings",
     "toast_secret_missing": "This server cannot store API keys. Ask the operator to set MULTICA_RESEARCH_SECRET_KEY."
+  },
+  "audit": {
+    "title": "Audit log",
+    "filter_action": "Action",
+    "filter_action_all": "All actions",
+    "filter_from": "From",
+    "filter_to": "To",
+    "column_time": "Time",
+    "column_actor": "Actor",
+    "column_action": "Action",
+    "column_target": "Target",
+    "column_ip": "IP",
+    "load_more": "Load more",
+    "export_csv": "Export CSV",
+    "export_failed": "Failed to export audit events",
+    "empty": "No audit events",
+    "load_failed": "Failed to load audit events"
   }
 }

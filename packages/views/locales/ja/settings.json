@@ -402,6 +402,7 @@
       "github": "GitHub",
       "labs": "ラボ",
       "members": "メンバー",
+      "audit": "監査ログ",
       "labels": "ラベル",
       "issue_statuses": "タスクステータス",
       "wakeups": "ウェイクアップ",
@@ -657,7 +658,10 @@
     "revoke_all_sessions_confirm": "サインアウト",
     "revoke_all_sessions_submitting": "サインアウト中...",
     "toast_revoke_all_sessions_success": "すべてのデバイスからサインアウトしました",
-    "toast_revoke_all_sessions_failed": "すべてのデバイスからのサインアウトに失敗しました"
+    "toast_revoke_all_sessions_failed": "すべてのデバイスからのサインアウトに失敗しました",
+    "section_security_events": "セキュリティイベント",
+    "security_events_empty": "セキュリティイベントはありません",
+    "security_events_load_failed": "セキュリティイベントの読み込みに失敗しました"
   },
   "notifications": {
     "title": "インボックス通知",
@@ -1561,5 +1565,22 @@
     "toast_invalid": "その値は受け付けられませんでした",
     "toast_failed": "設定を保存できませんでした",
     "toast_secret_missing": "このサーバーは API キーを保存できません。運用担当者に MULTICA_RESEARCH_SECRET_KEY の設定を依頼してください。"
+  },
+  "audit": {
+    "title": "監査ログ",
+    "filter_action": "アクション",
+    "filter_action_all": "すべてのアクション",
+    "filter_from": "開始日",
+    "filter_to": "終了日",
+    "column_time": "時刻",
+    "column_actor": "実行者",
+    "column_action": "アクション",
+    "column_target": "対象",
+    "column_ip": "IP",
+    "load_more": "さらに読み込む",
+    "export_csv": "CSV をエクスポート",
+    "export_failed": "監査イベントのエクスポートに失敗しました",
+    "empty": "監査イベントはありません",
+    "load_failed": "監査イベントの読み込みに失敗しました"
   }
 }
