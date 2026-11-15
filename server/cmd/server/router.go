@@ -1855,6 +1855,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 		// Human-only for the same reason as /api/cli-token: a machine
 		// credential must not sign its owner out of every device.
 		r.With(handler.RequireHumanActor).Post("/api/me/sessions/revoke-all", h.RevokeAllSessions(accountGuard))
+		r.With(handler.RequireHumanActor).Get("/api/me/security-events", h.ListMySecurityEvents)
 		// Credential minting is human-only (MUL-8154): an agent task token
 		// (mat_) or cloud-node PAT (mcn_) authenticates as its owner, so
 		// without this guard a prompt-injected agent could trade its scoped,
@@ -1940,6 +1941,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Group(func(r chi.Router) {
 					r.Use(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner", "admin"))
 					r.Put("/", h.UpdateWorkspace)
+					r.Get("/audit-events", h.ListWorkspaceAuditEvents)
 					r.Patch("/", h.UpdateWorkspace)
 					r.Post("/members", h.CreateInvitation)
 					r.Route("/members/{memberId}", func(r chi.Router) {

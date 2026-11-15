@@ -23,6 +23,7 @@
     "./api/ws-client": "./api/ws-client.ts",
     "./config": "./config/index.ts",
     "./account": "./account/index.ts",
+    "./audit": "./audit/index.ts",
     "./auth": "./auth/index.ts",
     "./workspace": "./workspace/index.ts",
     "./workspace/queries": "./workspace/queries.ts",

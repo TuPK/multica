@@ -339,6 +339,11 @@ func main() {
 		)
 		os.Exit(1)
 	}
+	auditRetentionDays, err := scheduler.ParseAuditRetentionDays(os.Getenv("AUDIT_RETENTION_DAYS"))
+	if err != nil {
+		slog.Error("refusing to start: " + err.Error())
+		os.Exit(1)
+	}
 	if os.Getenv("JWT_SECRET") == "" {
 		slog.Warn("JWT_SECRET is not set — using insecure dev default (allowed only because APP_ENV is not production).")
 	}
@@ -867,6 +872,11 @@ func main() {
 	// their leaders are woken once (plan 9.6).
 	if err := schedulerMgr.Register(scheduler.ProposalExpiryJob(h)); err != nil {
 		slog.Error("scheduler: register proposal expiry", "error", err)
+	}
+	// Daily: audit rows older than AUDIT_RETENTION_DAYS are deleted, one bounded
+	// batch per run (spec 4.3).
+	if err := schedulerMgr.Register(scheduler.AuditRetentionJob(queries, auditRetentionDays)); err != nil {
+		slog.Error("scheduler: register audit retention", "error", err)
 	}
 	// Governance (spec 4.6): nightly scorecards, the probation verdicts and the
 	// monthly review routine.

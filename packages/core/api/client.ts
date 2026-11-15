@@ -4,6 +4,8 @@ import {
   RevokeAllSessionsResponseSchema,
   type RevokeAllSessionsResponse,
 } from "../account/schema";
+import { AuditEventPageSchema, EMPTY_AUDIT_EVENT_PAGE, type AuditEventPage } from "../audit/schema";
+import { auditQueryString, type AuditFilters, type AuditPageParams } from "../audit/params";
 import { parseDigestMode, type DigestSetting, type DigestModeInfo } from "../governance/digest-mode";
 import { AgentRuntimeSchema, EMPTY_RUNTIME } from "../runtimes/schema";
 import type { IssueWakeup, IssueWakeupInput, IssueWakeupSummaryRow, PausedWakeup, SystemWakeup, WakeupRun, WorkspaceSystemWakeup } from "../types/issue-wakeup";
@@ -1566,6 +1568,44 @@ export class ApiClient {
       EMPTY_REVOKE_ALL_SESSIONS_RESPONSE,
       { endpoint: "POST /api/me/sessions/revoke-all" },
     );
+  }
+
+  /** Owner/admin only. Newest first; `cursor` comes from the previous page. */
+  async listWorkspaceAuditEvents(
+    wsId: string,
+    filters: AuditFilters = {},
+    page: AuditPageParams = {},
+  ): Promise<AuditEventPage> {
+    const raw = await this.fetch<unknown>(
+      `/api/workspaces/${wsId}/audit-events${auditQueryString(filters, page)}`,
+    );
+    return parseWithFallback<AuditEventPage>(raw, AuditEventPageSchema, EMPTY_AUDIT_EVENT_PAGE, {
+      endpoint: "GET /api/workspaces/{id}/audit-events",
+    });
+  }
+
+  /** The CSV export, as text. `truncated` is set when the server cut it at its row cap. */
+  async exportWorkspaceAuditCsv(
+    wsId: string,
+    filters: AuditFilters = {},
+  ): Promise<{ text: string; truncated: boolean }> {
+    const res = await this.fetchRaw(
+      `/api/workspaces/${wsId}/audit-events${auditQueryString(filters, {}, "csv")}`,
+    );
+    return {
+      text: await res.text(),
+      truncated: res.headers.get("X-Audit-Truncated") === "true",
+    };
+  }
+
+  /** The caller's own account-level events (sign-ins, token changes, ...). */
+  async listMySecurityEvents(page: AuditPageParams = {}): Promise<AuditEventPage> {
+    const raw = await this.fetch<unknown>(
+      `/api/me/security-events${auditQueryString({}, page)}`,
+    );
+    return parseWithFallback<AuditEventPage>(raw, AuditEventPageSchema, EMPTY_AUDIT_EVENT_PAGE, {
+      endpoint: "GET /api/me/security-events",
+    });
   }
 
   async getMe(): Promise<User> {

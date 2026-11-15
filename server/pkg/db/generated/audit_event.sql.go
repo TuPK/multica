@@ -11,6 +11,27 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteAuditEventsBefore = `-- name: DeleteAuditEventsBefore :execrows
+DELETE FROM audit_event
+WHERE id IN (
+    SELECT old.id FROM audit_event AS old WHERE old.created_at < $1 LIMIT $2
+)
+`
+
+type DeleteAuditEventsBeforeParams struct {
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	Limit     int32              `json:"limit"`
+}
+
+// Retention. Deletes at most row_limit rows older than the cutoff.
+func (q *Queries) DeleteAuditEventsBefore(ctx context.Context, arg DeleteAuditEventsBeforeParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteAuditEventsBefore, arg.CreatedAt, arg.Limit)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const insertAuditEvent = `-- name: InsertAuditEvent :exec
 INSERT INTO audit_event (
     workspace_id, actor_type, actor_id, actor_label, action,
@@ -51,4 +72,137 @@ func (q *Queries) InsertAuditEvent(ctx context.Context, arg InsertAuditEventPara
 		arg.RequestID,
 	)
 	return err
+}
+
+const listUserSecurityEvents = `-- name: ListUserSecurityEvents :many
+SELECT id, workspace_id, actor_type, actor_id, actor_label, action, target_type, target_id, target_label, detail, ip, user_agent, request_id, created_at FROM audit_event
+WHERE workspace_id IS NULL
+  AND actor_id = $1::text
+  AND (
+    $2::timestamptz IS NULL
+    OR (created_at, id) < ($2::timestamptz, $3::uuid)
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT $4
+`
+
+type ListUserSecurityEventsParams struct {
+	ActorID         string             `json:"actor_id"`
+	CursorCreatedAt pgtype.Timestamptz `json:"cursor_created_at"`
+	CursorID        pgtype.UUID        `json:"cursor_id"`
+	RowLimit        int32              `json:"row_limit"`
+}
+
+// Account-level events (no workspace) performed by one user.
+func (q *Queries) ListUserSecurityEvents(ctx context.Context, arg ListUserSecurityEventsParams) ([]AuditEvent, error) {
+	rows, err := q.db.Query(ctx, listUserSecurityEvents,
+		arg.ActorID,
+		arg.CursorCreatedAt,
+		arg.CursorID,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AuditEvent{}
+	for rows.Next() {
+		var i AuditEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.ActorType,
+			&i.ActorID,
+			&i.ActorLabel,
+			&i.Action,
+			&i.TargetType,
+			&i.TargetID,
+			&i.TargetLabel,
+			&i.Detail,
+			&i.Ip,
+			&i.UserAgent,
+			&i.RequestID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listWorkspaceAuditEvents = `-- name: ListWorkspaceAuditEvents :many
+SELECT id, workspace_id, actor_type, actor_id, actor_label, action, target_type, target_id, target_label, detail, ip, user_agent, request_id, created_at FROM audit_event
+WHERE workspace_id = $1
+  AND ($2::text IS NULL OR action = $2::text)
+  AND ($3::text IS NULL OR actor_id = $3::text)
+  AND ($4::timestamptz IS NULL OR created_at >= $4::timestamptz)
+  AND ($5::timestamptz IS NULL OR created_at < $5::timestamptz)
+  AND (
+    $6::timestamptz IS NULL
+    OR (created_at, id) < ($6::timestamptz, $7::uuid)
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT $8
+`
+
+type ListWorkspaceAuditEventsParams struct {
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	Action          pgtype.Text        `json:"action"`
+	ActorID         pgtype.Text        `json:"actor_id"`
+	CreatedFrom     pgtype.Timestamptz `json:"created_from"`
+	CreatedTo       pgtype.Timestamptz `json:"created_to"`
+	CursorCreatedAt pgtype.Timestamptz `json:"cursor_created_at"`
+	CursorID        pgtype.UUID        `json:"cursor_id"`
+	RowLimit        int32              `json:"row_limit"`
+}
+
+// Newest first, keyset-paged on (created_at, id). from is inclusive, to is
+// exclusive. Callers ask for one row more than they return to learn whether
+// another page exists.
+func (q *Queries) ListWorkspaceAuditEvents(ctx context.Context, arg ListWorkspaceAuditEventsParams) ([]AuditEvent, error) {
+	rows, err := q.db.Query(ctx, listWorkspaceAuditEvents,
+		arg.WorkspaceID,
+		arg.Action,
+		arg.ActorID,
+		arg.CreatedFrom,
+		arg.CreatedTo,
+		arg.CursorCreatedAt,
+		arg.CursorID,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AuditEvent{}
+	for rows.Next() {
+		var i AuditEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.ActorType,
+			&i.ActorID,
+			&i.ActorLabel,
+			&i.Action,
+			&i.TargetType,
+			&i.TargetID,
+			&i.TargetLabel,
+			&i.Detail,
+			&i.Ip,
+			&i.UserAgent,
+			&i.RequestID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
