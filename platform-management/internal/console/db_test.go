@@ -597,3 +597,38 @@ func TestDBReadsReturnWhatTheWritesChanged(t *testing.T) {
 		t.Fatalf("tenant audit-events = %d %s", rec.Code, rec.Body.String())
 	}
 }
+
+// by_plan counts a workspace with no subscription row under free, and one with a
+// row under its plan. The shared test database may hold other workspaces, so the
+// test reads the counts before and after.
+func TestDBOverviewCountsWorkspacesByPlan(t *testing.T) {
+	f := newDBFixture(t)
+	owner, _ := f.user("owner")
+	member, _ := f.user("member")
+	reader := NewPgxReader(f.pool)
+	ctx := context.Background()
+
+	before, err := reader.Overview(ctx, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.workspace(owner, member) // no subscription row: free
+	paid := f.workspace(owner, member)
+	key := "t" + randomHex(t)
+	if _, err := f.pool.Exec(ctx, `INSERT INTO workspace_subscription (workspace_id, plan_key, status, version) VALUES ($1, $2, 'active', 1)`, paid, key); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { f.pool.Exec(ctx, `DELETE FROM workspace_subscription WHERE workspace_id = $1`, paid) })
+
+	after, err := reader.Overview(ctx, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := after.ByPlan["free"] - before.ByPlan["free"]; got != 1 {
+		t.Errorf("free grew by %d, want 1 (the workspace with no row)", got)
+	}
+	if after.ByPlan[key] != 1 {
+		t.Errorf("by_plan[%s] = %d, want 1", key, after.ByPlan[key])
+	}
+}

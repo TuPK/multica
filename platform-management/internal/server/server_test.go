@@ -15,6 +15,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/multica-ai/multica/platform-management/internal/trust"
 )
 
 func okCheck(name string) Check {
@@ -78,7 +80,7 @@ func newListeners(t *testing.T, health http.Handler, dist string) (api, console 
 	if err != nil {
 		t.Fatal(err)
 	}
-	api = httptest.NewServer(NewAPIHandler(health, http.NotFoundHandler()))
+	api = httptest.NewServer(NewAPIHandler(trust.New(trust.DefaultCIDRs()), health, http.NotFoundHandler()))
 	t.Cleanup(api.Close)
 	console = httptest.NewServer(NewConsoleHandler(health, target, dist))
 	t.Cleanup(console.Close)
@@ -216,7 +218,7 @@ func TestAPIServesOnlyHealthzAndThePlatformPrefix(t *testing.T) {
 	platform := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTeapot)
 	})
-	api := httptest.NewServer(NewAPIHandler(HealthHandler(), platform))
+	api := httptest.NewServer(NewAPIHandler(trust.New(trust.DefaultCIDRs()), HealthHandler(), platform))
 	t.Cleanup(api.Close)
 	for path, want := range map[string]int{
 		"/api/platform/x":    http.StatusTeapot,
@@ -454,7 +456,7 @@ func TestServeStopsBothListenersWhenTheContextEnds(t *testing.T) {
 	done := make(chan error, 1)
 	go func() {
 		done <- Serve(ctx, 5*time.Second,
-			Listener{Name: "api", Listener: a, Handler: NewAPIHandler(HealthHandler(), http.NotFoundHandler())},
+			Listener{Name: "api", Listener: a, Handler: NewAPIHandler(trust.New(trust.DefaultCIDRs()), HealthHandler(), http.NotFoundHandler())},
 			Listener{Name: "console", Listener: c, Handler: http.NotFoundHandler()},
 		)
 	}()

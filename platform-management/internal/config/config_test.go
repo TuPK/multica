@@ -444,3 +444,58 @@ func TestLoadSecureCookies(t *testing.T) {
 		t.Errorf("variables = %v (err %v)", vars, err)
 	}
 }
+
+func TestLoadTrustedCIDRsDefaultToLoopbackAndPrivateRanges(t *testing.T) {
+	cfg, err := load(resendEnv())
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	for _, addr := range []string{"127.0.0.1", "::1", "10.2.3.4", "172.20.0.1", "192.168.5.5"} {
+		if !containsAddr(cfg.TrustedCIDRs, addr) {
+			t.Errorf("default TrustedCIDRs does not contain %s", addr)
+		}
+	}
+	for _, addr := range []string{"203.0.113.9", "172.32.0.1", "8.8.8.8"} {
+		if containsAddr(cfg.TrustedCIDRs, addr) {
+			t.Errorf("default TrustedCIDRs contains %s", addr)
+		}
+	}
+}
+
+func containsAddr(cidrs []netip.Prefix, addr string) bool {
+	a := netip.MustParseAddr(addr)
+	for _, c := range cidrs {
+		if c.Contains(a) {
+			return true
+		}
+	}
+	return false
+}
+
+// A configured list replaces the defaults: it does not add to them.
+func TestLoadTrustedCIDRsReplaceTheDefaults(t *testing.T) {
+	env := resendEnv()
+	env["PLATFORM_TRUSTED_CIDRS"] = " 10.9.0.0/16 ,,203.0.113.0/24"
+	cfg, err := load(env)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(cfg.TrustedCIDRs) != 2 || !containsAddr(cfg.TrustedCIDRs, "203.0.113.9") || containsAddr(cfg.TrustedCIDRs, "127.0.0.1") {
+		t.Fatalf("TrustedCIDRs = %v", cfg.TrustedCIDRs)
+	}
+}
+
+func TestLoadInvalidTrustedCIDRStopsTheStart(t *testing.T) {
+	for _, raw := range []string{"10.0.0.0/33", "not-a-cidr", "10.0.0.1", "10.0.0.0/8,bad", ",,"} {
+		env := resendEnv()
+		env["PLATFORM_TRUSTED_CIDRS"] = raw
+		_, err := load(env)
+		if err == nil {
+			t.Errorf("PLATFORM_TRUSTED_CIDRS=%q: no error", raw)
+			continue
+		}
+		if vars := variables(err); len(vars) != 1 || vars[0] != "PLATFORM_TRUSTED_CIDRS" {
+			t.Errorf("PLATFORM_TRUSTED_CIDRS=%q: variables = %v", raw, vars)
+		}
+	}
+}

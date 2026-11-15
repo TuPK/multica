@@ -43,6 +43,8 @@ func TestConsoleCatalogActionsAreDefined(t *testing.T) {
 		"staff.added":              ActionStaffAdded,
 		"staff.removed":            ActionStaffRemoved,
 		"note.added":               ActionNoteAdded,
+		"subscription.changed":     ActionSubscriptionChanged,
+		"plan.changed":             ActionPlanChanged,
 	}
 	for want, got := range cases {
 		if got != want {

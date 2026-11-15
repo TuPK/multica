@@ -11,6 +11,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/multica-ai/multica/platform-management/internal/testdb"
+	"github.com/multica-ai/multica/platform-management/internal/trust"
 )
 
 // Database test: skipped unless PLATFORM_TEST_DATABASE_URL names a *_test
@@ -31,7 +32,7 @@ func TestHealthzAgainstRealDependencies(t *testing.T) {
 
 	redisPing := func(ctx context.Context) error { return rdb.Ping(ctx).Err() }
 	serve := func(checks ...Check) (int, string) {
-		srv := httptest.NewServer(NewAPIHandler(HealthHandler(checks...), http.NotFoundHandler()))
+		srv := httptest.NewServer(NewAPIHandler(trust.New(trust.DefaultCIDRs()), HealthHandler(checks...), http.NotFoundHandler()))
 		defer srv.Close()
 		return get(t, srv.URL, "/healthz")
 	}

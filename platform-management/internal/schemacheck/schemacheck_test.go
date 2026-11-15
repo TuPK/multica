@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -204,5 +205,21 @@ func TestCheckAgainstDatabase(t *testing.T) {
 	}
 	if err := Check(ctx, tx, Required); err != nil {
 		t.Fatalf("Check with every version recorded: %v", err)
+	}
+}
+
+// The plan and subscription tables are read by the policy endpoint on every
+// request, so the service must refuse to start without them.
+func TestRequiredListsThePlanAndSubscriptionMigrations(t *testing.T) {
+	for _, want := range []string{
+		"670_plan",
+		"671_plan_key_uidx",
+		"672_workspace_subscription",
+		"673_workspace_subscription_uidx",
+		"686_workspace_subscription_status_idx",
+	} {
+		if !slices.Contains(Required, want) {
+			t.Errorf("Required does not list %s", want)
+		}
 	}
 }

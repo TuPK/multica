@@ -740,6 +740,7 @@ func TestOverviewComputesActiveAsTheRest(t *testing.T) {
 		WorkspacesTotal: 100,
 		NonActive:       map[string]int64{"read_only": 3, "suspended": 5, "pending_deletion": 2},
 		Signups:         17,
+		ByPlan:          map[string]int64{"free": 70, "pro": 25, "business": 5},
 	}
 	m := decode(t, e.do(billID, "GET", "/api/platform/overview", ""))
 	by, _ := m["workspaces_by_status"].(map[string]any)
@@ -749,8 +750,9 @@ func TestOverviewComputesActiveAsTheRest(t *testing.T) {
 	if want := t0.Add(-7 * 24 * time.Hour); !e.reader.lastSince.Equal(want) {
 		t.Fatalf("signups since %v, want %v", e.reader.lastSince, want)
 	}
-	if _, has := m["plan"]; has {
-		t.Fatal("the plan part belongs to a later slice")
+	byPlan, _ := m["by_plan"].(map[string]any)
+	if len(byPlan) != 3 || byPlan["free"] != float64(70) || byPlan["pro"] != float64(25) || byPlan["business"] != float64(5) {
+		t.Fatalf("by_plan = %v, want the counts per plan key", m["by_plan"])
 	}
 
 	// A state row for a workspace the count does not see never makes it negative.
@@ -758,6 +760,15 @@ func TestOverviewComputesActiveAsTheRest(t *testing.T) {
 	by, _ = decode(t, e.do(billID, "GET", "/api/platform/overview", ""))["workspaces_by_status"].(map[string]any)
 	if by["active"] != float64(0) {
 		t.Fatalf("active = %v", by["active"])
+	}
+}
+
+// With no count, by_plan is an empty object: a client reads it as a map.
+func TestOverviewByPlanIsAnObjectWhenEmpty(t *testing.T) {
+	e := newEnv(t)
+	m := decode(t, e.do(billID, "GET", "/api/platform/overview", ""))
+	if by, ok := m["by_plan"].(map[string]any); !ok || len(by) != 0 {
+		t.Fatalf("by_plan = %#v, want {}", m["by_plan"])
 	}
 }
 

@@ -100,6 +100,9 @@ type Overview struct {
 	// NonActive counts the workspaces in each state other than active.
 	NonActive map[string]int64
 	Signups   int64
+	// ByPlan counts the workspaces on each plan key. A workspace with no
+	// subscription row is counted under the free plan.
+	ByPlan map[string]int64
 }
 
 // TenantSearch asks for a page of workspaces. Pattern is an escaped ILIKE

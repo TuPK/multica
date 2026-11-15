@@ -1909,6 +1909,22 @@ type Pipeline struct {
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
+type Plan struct {
+	Key            string             `json:"key"`
+	Name           string             `json:"name"`
+	Limits         []byte             `json:"limits"`
+	Features       []byte             `json:"features"`
+	Currency       string             `json:"currency"`
+	SeatPriceMonth pgtype.Int8        `json:"seat_price_month"`
+	SeatPriceYear  pgtype.Int8        `json:"seat_price_year"`
+	SeatsFixed     pgtype.Int4        `json:"seats_fixed"`
+	MinSeats       pgtype.Int4        `json:"min_seats"`
+	TrialDays      int32              `json:"trial_days"`
+	IsPublic       bool               `json:"is_public"`
+	Sort           int32              `json:"sort"`
+	ArchivedAt     pgtype.Timestamptz `json:"archived_at"`
+}
+
 type PlanningCycle struct {
 	ID          pgtype.UUID        `json:"id"`
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
@@ -2833,4 +2849,20 @@ type WorkspaceShareLink struct {
 	UseCount    int32              `json:"use_count"`
 	IsActive    bool               `json:"is_active"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
+type WorkspaceSubscription struct {
+	WorkspaceID        pgtype.UUID        `json:"workspace_id"`
+	PlanKey            string             `json:"plan_key"`
+	Status             string             `json:"status"`
+	Seats              int32              `json:"seats"`
+	Interval           string             `json:"interval"`
+	CurrentPeriodStart pgtype.Timestamptz `json:"current_period_start"`
+	CurrentPeriodEnd   pgtype.Timestamptz `json:"current_period_end"`
+	TrialEnd           pgtype.Timestamptz `json:"trial_end"`
+	GraceUntil         pgtype.Timestamptz `json:"grace_until"`
+	CancelAtPeriodEnd  bool               `json:"cancel_at_period_end"`
+	LimitOverrides     []byte             `json:"limit_overrides"`
+	Version            int64              `json:"version"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
 }

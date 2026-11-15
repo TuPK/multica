@@ -1,0 +1,92 @@
+{
+  "plans": [
+    {
+      "key": "free",
+      "name": "Free",
+      "limits": {
+        "issue_count": 200,
+        "autopilot_runs": 50,
+        "agents": 3,
+        "runtimes": 2,
+        "storage_bytes": 1073741824,
+        "api_rate_per_minute": 300,
+        "audit_retention_days": 30
+      },
+      "features": { "audit_export": false, "sso": false, "workspace_policies": false, "viewer_role": false },
+      "currency": "vnd",
+      "seat_price_month": 0,
+      "seat_price_year": 0,
+      "seats_fixed": 3,
+      "min_seats": null,
+      "trial_days": 0,
+      "is_public": true,
+      "sort": 10
+    },
+    {
+      "key": "pro",
+      "name": "Pro",
+      "limits": {
+        "issue_count": null,
+        "autopilot_runs": 2000,
+        "agents": 30,
+        "runtimes": 20,
+        "storage_bytes": 21474836480,
+        "api_rate_per_minute": 1200,
+        "audit_retention_days": 180
+      },
+      "features": { "audit_export": true, "sso": false, "workspace_policies": false, "viewer_role": false },
+      "currency": "vnd",
+      "seat_price_month": 149000,
+      "seat_price_year": 1490000,
+      "seats_fixed": null,
+      "min_seats": 1,
+      "trial_days": 14,
+      "is_public": true,
+      "sort": 20
+    },
+    {
+      "key": "business",
+      "name": "Business",
+      "limits": {
+        "issue_count": null,
+        "autopilot_runs": 10000,
+        "agents": 200,
+        "runtimes": 100,
+        "storage_bytes": 214748364800,
+        "api_rate_per_minute": 3000,
+        "audit_retention_days": 365
+      },
+      "features": { "audit_export": true, "sso": true, "workspace_policies": true, "viewer_role": true },
+      "currency": "vnd",
+      "seat_price_month": 349000,
+      "seat_price_year": 3490000,
+      "seats_fixed": null,
+      "min_seats": 5,
+      "trial_days": 14,
+      "is_public": true,
+      "sort": 30
+    },
+    {
+      "key": "enterprise",
+      "name": "Enterprise",
+      "limits": {
+        "issue_count": null,
+        "autopilot_runs": 10000,
+        "agents": 200,
+        "runtimes": 100,
+        "storage_bytes": 214748364800,
+        "api_rate_per_minute": 3000,
+        "audit_retention_days": 365
+      },
+      "features": { "audit_export": true, "sso": true, "workspace_policies": true, "viewer_role": true },
+      "currency": "vnd",
+      "seat_price_month": null,
+      "seat_price_year": null,
+      "seats_fixed": null,
+      "min_seats": null,
+      "trial_days": 0,
+      "is_public": false,
+      "sort": 40
+    }
+  ]
+}

@@ -290,9 +290,19 @@ func (r *PgxReader) Overview(ctx context.Context, signupsSince time.Time) (Overv
 	if err != nil {
 		return Overview{}, err
 	}
-	o := Overview{WorkspacesTotal: total, NonActive: make(map[string]int64, len(rows)), Signups: signups}
+	plans, err := r.q.CountWorkspacesByPlan(ctx)
+	if err != nil {
+		return Overview{}, err
+	}
+	o := Overview{
+		WorkspacesTotal: total, NonActive: make(map[string]int64, len(rows)), Signups: signups,
+		ByPlan: make(map[string]int64, len(plans)),
+	}
 	for _, row := range rows {
 		o.NonActive[row.Status] = row.Workspaces
+	}
+	for _, row := range plans {
+		o.ByPlan[row.PlanKey] = row.Workspaces
 	}
 	return o, nil
 }

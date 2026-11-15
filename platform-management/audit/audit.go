@@ -46,6 +46,8 @@ const (
 	ActionStaffAdded             = "staff.added"
 	ActionStaffRemoved           = "staff.removed"
 	ActionNoteAdded              = "note.added"
+	ActionSubscriptionChanged    = "subscription.changed"
+	ActionPlanChanged            = "plan.changed"
 )
 
 // Actor types.

@@ -34,6 +34,11 @@ var Required = []string{
 	"667_platform_workspace_status_idx",     // platform_workspace: partial index on status
 	"668_platform_note",                     // platform_note: table
 	"669_platform_note_workspace_idx",       // platform_note: index on workspace_id, created_at
+	"670_plan",                              // plan: table
+	"671_plan_key_uidx",                     // plan: unique index on key
+	"672_workspace_subscription",            // workspace_subscription: table
+	"673_workspace_subscription_uidx",       // workspace_subscription: unique index on workspace_id
+	"686_workspace_subscription_status_idx", // workspace_subscription: index on status, current_period_end
 	"688_platform_note_id_uidx",             // platform_note: unique index on id
 }
 

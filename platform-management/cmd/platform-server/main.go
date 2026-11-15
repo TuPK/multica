@@ -22,11 +22,15 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/config"
 	"github.com/multica-ai/multica/platform-management/internal/console"
 	"github.com/multica-ai/multica/platform-management/internal/db"
+	"github.com/multica-ai/multica/platform-management/internal/entitlement"
 	"github.com/multica-ai/multica/platform-management/internal/mailer"
+	"github.com/multica-ai/multica/platform-management/internal/plan"
 	"github.com/multica-ai/multica/platform-management/internal/platformauth"
 	"github.com/multica-ai/multica/platform-management/internal/schemacheck"
 	"github.com/multica-ai/multica/platform-management/internal/server"
 	"github.com/multica-ai/multica/platform-management/internal/staff"
+	"github.com/multica-ai/multica/platform-management/internal/subscription"
+	"github.com/multica-ai/multica/platform-management/internal/trust"
 	"github.com/multica-ai/multica/platform-management/internal/workspacestatus"
 	"github.com/multica-ai/multica/platform-management/workspacestate"
 )
@@ -79,6 +83,13 @@ func run() error {
 		return err
 	}
 
+	// An empty plan table gets the embedded catalogue; a table with rows is
+	// staff's and is left alone.
+	planRunner := plan.NewPgxRunner(pool)
+	if _, err := plan.Seed(startCtx, planRunner, slog.Default()); err != nil {
+		return fmt.Errorf("load the plan catalogue: %w", err)
+	}
+
 	queries := db.New(pool)
 	store := staff.NewStore(queries)
 	seeder := staff.NewSeeder(queries, cfg.AdminEmails, slog.Default())
@@ -128,6 +139,33 @@ func run() error {
 		Log:      slog.Default(),
 	})
 
+	// The entitlement policy, and the staff writes that clear its cache.
+	policy := entitlement.NewService(entitlement.NewPgxLoader(pool), time.Now, slog.Default())
+	billingAPI := subscription.NewConsole(subscription.ConsoleDeps{
+		RequireStaff:  auth.RequirePlatformStaff,
+		RequireOrigin: auth.RequireOrigin,
+		Plans:         plan.NewPgxReader(pool),
+		PlanRunner:    planRunner,
+		Subscriptions: subscription.NewService(subscription.NewPgxRunner(pool), policy),
+		Emails:        store,
+		Cache:         policy,
+		Log:           slog.Default(),
+	})
+
+	// The routes Multica's clients call. The billing routes carry X-User-ID and
+	// no credential, so they run behind the trusted-peer rule.
+	peers := trust.New(cfg.TrustedCIDRs)
+	billingReads := subscription.NewAPI(subscription.APIDeps{
+		Subscriptions: subscription.NewPgxReader(pool),
+		Plans:         plan.NewPgxReader(pool),
+		Members:       subscription.NewPgxMembers(pool),
+		Log:           slog.Default(),
+	}).Handler(peers.RequireUser)
+	routes := []server.Route{{Pattern: entitlement.PolicyPattern, Handler: policy.Handler()}}
+	for _, pattern := range subscription.APIPatterns {
+		routes = append(routes, server.Route{Pattern: pattern, Handler: billingReads})
+	}
+
 	apiLn, err := net.Listen("tcp", ":"+cfg.APIPort)
 	if err != nil {
 		return fmt.Errorf("listen on PLATFORM_API_PORT: %w", err)
@@ -147,7 +185,7 @@ func run() error {
 
 	slog.Info("platform-server starting", "api_port", cfg.APIPort, "console_port", cfg.ConsolePort)
 	err = server.Serve(ctx, shutdownGrace,
-		server.Listener{Name: "api", Listener: apiLn, Handler: server.NewAPIHandler(health, server.NewPlatformHandler(auth, consoleAPI))},
+		server.Listener{Name: "api", Listener: apiLn, Handler: server.NewAPIHandler(peers, health, server.NewPlatformHandler(auth, consoleAPI, billingAPI), routes...)},
 		server.Listener{Name: "console", Listener: consoleLn, Handler: server.NewConsoleHandler(health, apiURL, consoleDistDir)},
 	)
 	// Let a code that was just requested finish sending.

@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/multica-ai/multica/platform-management/internal/trust"
 )
 
 const (
@@ -73,6 +75,9 @@ type Config struct {
 	// AdminCIDRs restricts the console to these networks. Empty means no
 	// restriction.
 	AdminCIDRs []netip.Prefix
+	// TrustedCIDRs are the networks from which the API believes X-User-ID. The
+	// default is the loopback and RFC 1918 private ranges.
+	TrustedCIDRs []netip.Prefix
 	// ConsoleOrigin is the console's origin as scheme://host[:port], lower
 	// case and without a trailing slash.
 	ConsoleOrigin string
@@ -146,6 +151,15 @@ func Load(getenv func(string) string) (Config, error) {
 			fail("PLATFORM_ADMIN_CIDRS", err.Error())
 		}
 		cfg.AdminCIDRs = cidrs
+	}
+
+	cfg.TrustedCIDRs = trust.DefaultCIDRs()
+	if raw := get("PLATFORM_TRUSTED_CIDRS"); raw != "" {
+		cidrs, err := parseCIDRs(raw)
+		if err != nil {
+			fail("PLATFORM_TRUSTED_CIDRS", err.Error())
+		}
+		cfg.TrustedCIDRs = cidrs
 	}
 
 	origin := get("PLATFORM_CONSOLE_ORIGIN")

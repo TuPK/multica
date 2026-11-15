@@ -1,0 +1,2 @@
+CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS plan_key_uidx
+    ON plan (key);

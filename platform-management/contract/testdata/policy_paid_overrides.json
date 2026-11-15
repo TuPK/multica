@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "policy_revision": 2,
+  "subscription_version": 7,
+  "valid_until": "2026-08-15T10:31:15Z",
+  "valid_for_seconds": 30,
+  "gates": {
+    "autopilot_runs": {
+      "action": "enforce",
+      "limit": 3000,
+      "period_start": "2026-08-01T00:00:00Z",
+      "period_end": "2026-09-01T00:00:00Z",
+      "reset_at": "2026-09-01T00:00:00Z",
+      "notifications": {
+        "on_rejection": "first_rejection_per_period"
+      }
+    },
+    "issue_count": {
+      "action": "off"
+    }
+  }
+}

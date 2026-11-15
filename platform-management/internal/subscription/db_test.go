@@ -1,0 +1,314 @@
+package subscription
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/multica-ai/multica/platform-management/audit"
+	"github.com/multica-ai/multica/platform-management/internal/plan"
+	"github.com/multica-ai/multica/platform-management/internal/testdb"
+	"github.com/multica-ai/multica/platform-management/internal/trust"
+)
+
+// Database tests: skipped unless PLATFORM_TEST_DATABASE_URL names a *_test
+// database and DATABASE_URL equals it. Each test makes its own users, workspace
+// and plan key and removes them, with the rows the code wrote about them.
+
+type dbFixture struct {
+	t    *testing.T
+	pool *pgxpool.Pool
+
+	userIDs []string
+	wsIDs   []string
+	planKey []string
+}
+
+func newDBFixture(t *testing.T) *dbFixture {
+	t.Helper()
+	f := &dbFixture{t: t, pool: testdb.Open(t)}
+	t.Cleanup(f.cleanup)
+	return f
+}
+
+func (f *dbFixture) cleanup() {
+	ctx := context.Background()
+	for _, ws := range f.wsIDs {
+		f.pool.Exec(ctx, `DELETE FROM audit_event WHERE workspace_id = $1`, ws)
+		f.pool.Exec(ctx, `DELETE FROM workspace_subscription WHERE workspace_id = $1`, ws)
+		f.pool.Exec(ctx, `DELETE FROM member WHERE workspace_id = $1`, ws)
+		f.pool.Exec(ctx, `DELETE FROM workspace WHERE id = $1`, ws)
+	}
+	for _, u := range f.userIDs {
+		f.pool.Exec(ctx, `DELETE FROM "user" WHERE id = $1`, u)
+	}
+	for _, k := range f.planKey {
+		f.pool.Exec(ctx, `DELETE FROM plan WHERE key = $1`, k)
+	}
+}
+
+func hexSuffix(t *testing.T) string {
+	t.Helper()
+	b := make([]byte, 6)
+	if _, err := rand.Read(b); err != nil {
+		t.Fatal(err)
+	}
+	return hex.EncodeToString(b)
+}
+
+func (f *dbFixture) user() string {
+	f.t.Helper()
+	var id string
+	if err := f.pool.QueryRow(context.Background(),
+		`INSERT INTO "user" (name, email) VALUES ('Billing Test', $1) RETURNING id::text`,
+		"billing-"+hexSuffix(f.t)+"@example.test").Scan(&id); err != nil {
+		f.t.Fatalf("create user: %v", err)
+	}
+	f.userIDs = append(f.userIDs, id)
+	return id
+}
+
+// workspace creates a workspace with the given members (user id -> role).
+func (f *dbFixture) workspace(members map[string]string) string {
+	f.t.Helper()
+	var id string
+	s := hexSuffix(f.t)
+	if err := f.pool.QueryRow(context.Background(),
+		`INSERT INTO workspace (name, slug) VALUES ($1, $2) RETURNING id::text`, "Billing Test "+s, "billing-test-"+s).Scan(&id); err != nil {
+		f.t.Fatalf("create workspace: %v", err)
+	}
+	f.wsIDs = append(f.wsIDs, id)
+	for user, role := range members {
+		if _, err := f.pool.Exec(context.Background(),
+			`INSERT INTO member (workspace_id, user_id, role) VALUES ($1, $2, $3)`, id, user, role); err != nil {
+			f.t.Fatalf("create member: %v", err)
+		}
+	}
+	return id
+}
+
+// plan inserts a plan with a key of its own, so parallel packages never meet.
+func (f *dbFixture) plan(mutate func(*plan.Plan)) plan.Plan {
+	f.t.Helper()
+	p := plan.Plan{
+		Key: "t" + hexSuffix(f.t), Name: "DB test plan", Currency: "vnd", IsPublic: false,
+		Limits: plan.Limits{"issue_count": i64(100), "autopilot_runs": i64(10)}, Features: map[string]bool{},
+	}
+	if mutate != nil {
+		mutate(&p)
+	}
+	f.planKey = append(f.planKey, p.Key)
+	err := plan.NewPgxRunner(f.pool).InTx(context.Background(), func(tx plan.Tx) error { return tx.Upsert(context.Background(), p) })
+	if err != nil {
+		f.t.Fatalf("create plan: %v", err)
+	}
+	return p
+}
+
+func (f *dbFixture) randomUUID() string {
+	f.t.Helper()
+	var id string
+	if err := f.pool.QueryRow(context.Background(), `SELECT gen_random_uuid()::text`).Scan(&id); err != nil {
+		f.t.Fatal(err)
+	}
+	return id
+}
+
+func (f *dbFixture) count(query string, args ...any) int {
+	f.t.Helper()
+	var n int
+	if err := f.pool.QueryRow(context.Background(), query, args...).Scan(&n); err != nil {
+		f.t.Fatal(err)
+	}
+	return n
+}
+
+func (f *dbFixture) service(cache Invalidator) *Service {
+	return NewService(NewPgxRunner(f.pool), cache)
+}
+
+func TestDBApplyWritesTheRowTheVersionAndTheAuditRow(t *testing.T) {
+	f := newDBFixture(t)
+	ws, staffUser := f.workspace(nil), f.randomUUID()
+	p := f.plan(func(p *plan.Plan) { n := 2; p.MinSeats = &n })
+	cache := &recordingCache{}
+	svc := f.service(cache)
+	ctx := context.Background()
+
+	c := Change{
+		WorkspaceID: ws, PlanKey: p.Key, Seats: 4, Interval: IntervalYear, Reason: "db test",
+		LimitOverrides: plan.Limits{"issue_count": nil, "agents": i64(7)}, ActorID: staffUser, ActorLabel: "billing@example.test",
+	}
+	first, err := svc.Apply(ctx, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Subscription.Version != 1 || !first.Changed {
+		t.Fatalf("first = %+v", first)
+	}
+	c.Seats = 6
+	second, err := svc.Apply(ctx, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Subscription.Version != 2 {
+		t.Fatalf("second version = %d, want 2", second.Subscription.Version)
+	}
+	if _, err := svc.Apply(ctx, c); err != nil { // unchanged
+		t.Fatal(err)
+	}
+
+	stored, found, err := NewPgxReader(f.pool).Get(ctx, ws)
+	if err != nil || !found {
+		t.Fatalf("Get = %v, %v", found, err)
+	}
+	if stored.Version != 2 || stored.Seats != 6 || stored.PlanKey != p.Key || stored.Interval != IntervalYear || stored.Status != StatusActive {
+		t.Fatalf("stored = %+v", stored)
+	}
+	if v, ok := stored.LimitOverrides["issue_count"]; !ok || v != nil || *stored.LimitOverrides["agents"] != 7 {
+		t.Fatalf("overrides = %v, want an explicit null and 7", stored.LimitOverrides)
+	}
+
+	if n := f.count(`SELECT count(*) FROM audit_event WHERE workspace_id = $1 AND action = $2 AND actor_type = 'staff' AND actor_id = $3`,
+		ws, audit.ActionSubscriptionChanged, staffUser); n != 2 {
+		t.Fatalf("audit rows = %d, want 2 (the unchanged call writes none)", n)
+	}
+	if len(cache.workspaces) != 2 {
+		t.Fatalf("cache cleared %d times, want 2", len(cache.workspaces))
+	}
+}
+
+// failingAudit makes the audit write of every transaction fail.
+type failingAudit struct {
+	inner Runner
+	err   error
+}
+
+func (r failingAudit) InTx(ctx context.Context, fn func(Tx) error) error {
+	return r.inner.InTx(ctx, func(tx Tx) error { return fn(auditFailsTx{Tx: tx, err: r.err}) })
+}
+
+type auditFailsTx struct {
+	Tx
+	err error
+}
+
+func (t auditFailsTx) InsertAuditEvent(context.Context, audit.Entry) error { return t.err }
+
+func TestDBFailedAuditWriteRollsTheChangeBack(t *testing.T) {
+	f := newDBFixture(t)
+	ws, staffUser := f.workspace(nil), f.randomUUID()
+	p := f.plan(nil)
+	ctx := context.Background()
+	c := Change{WorkspaceID: ws, PlanKey: p.Key, Seats: 3, Interval: IntervalMonth, Reason: "db test", ActorID: staffUser, ActorLabel: "x"}
+
+	good := f.service(&recordingCache{})
+	if _, err := good.Apply(ctx, c); err != nil {
+		t.Fatal(err)
+	}
+
+	cache := &recordingCache{}
+	bad := NewService(failingAudit{inner: NewPgxRunner(f.pool), err: errors.New("audit_event is full")}, cache)
+	c.Seats = 30
+	if _, err := bad.Apply(ctx, c); err == nil {
+		t.Fatal("no error when the audit write failed")
+	}
+	stored, _, err := NewPgxReader(f.pool).Get(ctx, ws)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.Seats != 3 || stored.Version != 1 {
+		t.Fatalf("stored = seats %d version %d, want 3 and 1: the change was kept", stored.Seats, stored.Version)
+	}
+	if len(cache.workspaces) != 0 {
+		t.Fatal("the cache was cleared for a rolled-back change")
+	}
+
+	// The first write rolls back too: no row appears.
+	ws2 := f.workspace(nil)
+	c.WorkspaceID = ws2
+	if _, err := bad.Apply(ctx, c); err == nil {
+		t.Fatal("no error on a failed first write")
+	}
+	if n := f.count(`SELECT count(*) FROM workspace_subscription WHERE workspace_id = $1`, ws2); n != 0 {
+		t.Fatalf("%d rows after a rolled-back first write", n)
+	}
+}
+
+func TestDBFirstInsertLosesToAnExistingRow(t *testing.T) {
+	f := newDBFixture(t)
+	ws, staffUser := f.workspace(nil), f.randomUUID()
+	p := f.plan(nil)
+	ctx := context.Background()
+	if _, err := f.service(&recordingCache{}).Apply(ctx, Change{
+		WorkspaceID: ws, PlanKey: p.Key, Interval: IntervalMonth, Seats: 1, Reason: "r", ActorID: staffUser, ActorLabel: "x",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	err := NewPgxRunner(f.pool).InTx(ctx, func(tx Tx) error {
+		_, ok, err := tx.Insert(ctx, Subscription{
+			WorkspaceID: ws, PlanKey: p.Key, Status: StatusActive, Interval: IntervalMonth, LimitOverrides: plan.Limits{},
+		})
+		if err != nil {
+			return err
+		}
+		if ok {
+			t.Error("a second first-insert reported success")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDBSummaryRoleChecksAgainstMemberRows(t *testing.T) {
+	f := newDBFixture(t)
+	owner, admin, member, stranger := f.user(), f.user(), f.user(), f.user()
+	ws := f.workspace(map[string]string{owner: "owner", admin: "admin", member: "member"})
+	p := f.plan(func(p *plan.Plan) { n := 3; p.SeatsFixed = &n })
+	if _, err := f.service(&recordingCache{}).Apply(context.Background(), Change{
+		WorkspaceID: ws, PlanKey: p.Key, Interval: IntervalMonth, Reason: "r", ActorID: f.randomUUID(), ActorLabel: "x",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	api := NewAPI(APIDeps{
+		Subscriptions: NewPgxReader(f.pool), Plans: plan.NewPgxReader(f.pool), Members: NewPgxMembers(f.pool),
+		Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}).Handler(trust.New(trust.DefaultCIDRs()).RequireUser)
+
+	get := func(user string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/subscriptions/"+ws+"/summary", nil)
+		req.RemoteAddr = "127.0.0.1:5000"
+		req.Header.Set(trust.UserHeader, user)
+		rec := httptest.NewRecorder()
+		api.ServeHTTP(rec, req)
+		return rec
+	}
+	for name, tc := range map[string]struct {
+		user string
+		want int
+	}{"owner": {owner, 200}, "admin": {admin, 200}, "member": {member, 403}, "non-member": {stranger, 404}} {
+		if rec := get(tc.user); rec.Code != tc.want {
+			t.Errorf("%s: status %d, want %d (%s)", name, rec.Code, tc.want, rec.Body)
+		}
+	}
+
+	m := decodeMap(t, get(owner))
+	checkSummarySchema(t, m)
+	if m["human_members"] != float64(3) {
+		t.Errorf("human_members = %v, want the 3 member rows", m["human_members"])
+	}
+	if sc := obj(t, m["seat_capacity"], "seat_capacity"); sc["purchased"] != float64(3) || sc["used"] != float64(3) || sc["available"] != float64(0) {
+		t.Errorf("seat_capacity = %v", sc)
+	}
+}

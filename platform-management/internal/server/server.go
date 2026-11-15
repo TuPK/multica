@@ -18,6 +18,8 @@ import (
 	"time"
 
 	"github.com/multica-ai/multica/platform-management/internal/console"
+	"github.com/multica-ai/multica/platform-management/internal/subscription"
+	"github.com/multica-ai/multica/platform-management/internal/trust"
 )
 
 const healthTimeout = 3 * time.Second
@@ -69,25 +71,42 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 }
 
 // NewPlatformHandler returns the handler for /api/platform/: the console's
-// routes go to consoleAPI and every other path to auth, which serves sign-in
-// and answers an unknown path with a 404. Each console route applies the staff
-// middleware itself, outside its method switch.
-func NewPlatformHandler(auth, consoleAPI http.Handler) http.Handler {
+// routes go to consoleAPI, the plan and subscription routes to billingAPI, and
+// every other path to auth, which serves sign-in and answers an unknown path
+// with a 404. Each staff route applies the staff middleware itself, outside its
+// method switch.
+func NewPlatformHandler(auth, consoleAPI, billingAPI http.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/api/platform/", auth)
 	for _, pattern := range console.Patterns() {
 		mux.Handle(pattern, consoleAPI)
 	}
+	for _, pattern := range subscription.ConsolePatterns() {
+		mux.Handle(pattern, billingAPI)
+	}
 	return mux
 }
 
-// NewAPIHandler returns the API listener's handler: /healthz, and every path
-// under /api/platform/, which belongs to platform. Any other path is a 404.
-func NewAPIHandler(health, platform http.Handler) http.Handler {
+// Route is one internal route on the API listener, with its ServeMux pattern.
+type Route struct {
+	Pattern string
+	Handler http.Handler
+}
+
+// NewAPIHandler returns the API listener's handler: /healthz, every path under
+// /api/platform/, which belongs to platform, and the internal routes Multica's
+// clients call. Any other path is a 404.
+//
+// The whole handler sits behind peers.Guard, so a request that carries
+// X-User-ID from outside the trusted networks is a 403 on every path.
+func NewAPIHandler(peers *trust.Peers, health, platform http.Handler, routes ...Route) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /healthz", health)
 	mux.Handle("/api/platform/", platform)
-	return mux
+	for _, r := range routes {
+		mux.Handle(r.Pattern, r.Handler)
+	}
+	return peers.Guard(mux)
 }
 
 // NewConsoleHandler returns the console listener's handler. Only

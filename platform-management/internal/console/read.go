@@ -355,7 +355,8 @@ func (h *Handler) listAuditEvents(w http.ResponseWriter, r *http.Request) {
 
 const signupWindow = 7 * 24 * time.Hour
 
-// overview returns the workspace counts by state and the last week's sign-ups.
+// overview returns the workspace counts by state and by plan and the last
+// week's sign-ups.
 // Active is the rest: the total less the workspaces in another state.
 func (h *Handler) overview(w http.ResponseWriter, r *http.Request) {
 	o, err := h.Reader.Overview(r.Context(), h.Now().Add(-signupWindow))
@@ -373,5 +374,9 @@ func (h *Handler) overview(w http.ResponseWriter, r *http.Request) {
 		active -= n
 	}
 	byStatus[string(workspacestate.Active)] = max(active, 0)
-	writeJSON(w, http.StatusOK, map[string]any{"workspaces_by_status": byStatus, "signups_7d": o.Signups})
+	byPlan := make(map[string]int64, len(o.ByPlan))
+	for key, n := range o.ByPlan {
+		byPlan[key] = n
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"workspaces_by_status": byStatus, "signups_7d": o.Signups, "by_plan": byPlan})
 }
