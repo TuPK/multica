@@ -1892,6 +1892,9 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			r.Get("/", h.ListWorkspaces)
 			r.Post("/", h.CreateWorkspace)
 			r.Route("/{id}", func(r chi.Router) {
+				// The pending-invitation list exposes invitee emails, so it is
+				// limited to owners and admins.
+				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner", "admin")).Get("/invitations", h.ListWorkspaceInvitations)
 				// Member-level access
 				r.Group(func(r chi.Router) {
 					r.Use(middleware.RequireWorkspaceMemberFromURL(queries, "id"))
@@ -1899,7 +1902,6 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Put("/pin", h.SetWorkspacePinned)
 					r.Get("/members", h.ListMembersWithUser)
 					r.Post("/leave", h.LeaveWorkspace)
-					r.Get("/invitations", h.ListWorkspaceInvitations)
 					// Listing GitHub installations is member-visible so the
 					// integrations tab no longer renders blank for non-admins;
 					// the handler strips the management handle and adds a

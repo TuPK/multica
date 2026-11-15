@@ -420,7 +420,14 @@ export function MembersTab() {
   const wsId = useWorkspaceId();
   const navigation = useOptionalNavigation();
   const { data: members = [] } = useQuery(memberListOptions(wsId));
-  const { data: invitations = [] } = useQuery(invitationListOptions(wsId));
+  const currentMember = members.find((m) => m.user_id === user?.id) ?? null;
+  const canManageWorkspace =
+    currentMember?.role === "owner" || currentMember?.role === "admin";
+  // Only owners/admins may list pending invitations (avoids exposing invitee
+  // emails to plain members; server returns 403 to members).
+  const { data: invitations = [] } = useQuery(
+    invitationListOptions(wsId, canManageWorkspace),
+  );
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [shareLinkOpen, setShareLinkOpen] = useState(false);
@@ -476,9 +483,6 @@ export function MembersTab() {
     refetchInterval:
       inviteSeatPurchase?.phase === "waiting" ? 2_000 : false,
   });
-
-  const currentMember = members.find((m) => m.user_id === user?.id) ?? null;
-  const canManageWorkspace = currentMember?.role === "owner" || currentMember?.role === "admin";
 
   // The Team panel's invite button links here with `?invite=1`; it waits for
   // the member list so only managers get the dialog.

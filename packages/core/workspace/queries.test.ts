@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Agent, Workspace } from "../types";
-import { agentListOptions, workspaceBySlugOptions } from "./queries";
+import {
+  agentListOptions,
+  invitationListOptions,
+  workspaceBySlugOptions,
+} from "./queries";
 
 function makeWorkspace(slug: string): Workspace {
   return {
@@ -63,5 +67,15 @@ describe("agentListOptions", () => {
       ]),
     ).toBe(false);
     expect(queryState([])).toBe(false);
+  });
+});
+
+describe("invitationListOptions", () => {
+  it("is enabled by default", () => {
+    expect(invitationListOptions("ws-1").enabled).toBe(true);
+  });
+
+  it("can be disabled for callers that may not read the list", () => {
+    expect(invitationListOptions("ws-1", false).enabled).toBe(false);
   });
 });

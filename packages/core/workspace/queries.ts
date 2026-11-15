@@ -215,10 +215,11 @@ export function selectSkillAssignments(
   return map;
 }
 
-export function invitationListOptions(wsId: string) {
+export function invitationListOptions(wsId: string, enabled = true) {
   return queryOptions({
     queryKey: workspaceKeys.invitations(wsId),
     queryFn: () => api.listWorkspaceInvitations(wsId),
+    enabled,
   });
 }
 

@@ -30,15 +30,20 @@ const data = vi.hoisted(() => ({
   summary: null as Record<string, unknown> | null,
 }));
 
-vi.mock("@tanstack/react-query", () => ({
-  queryOptions: <T,>(opts: T) => opts,
-  useQuery: (opts: { queryKey: unknown[] }) => {
+const mockUseQuery = vi.hoisted(() =>
+  vi.fn((opts: { queryKey: unknown[]; enabled?: boolean }) => {
     const key = JSON.stringify(opts.queryKey);
+    if (opts.enabled === false) return { data: undefined };
     if (key.includes("invitations")) return { data: data.invitations };
     if (key.includes("share-links")) return { data: data.shareLinks };
     if (key.includes("members")) return { data: data.members };
     return { data: data.summary };
-  },
+  }),
+);
+
+vi.mock("@tanstack/react-query", () => ({
+  queryOptions: <T,>(opts: T) => opts,
+  useQuery: (opts: { queryKey: unknown[]; enabled?: boolean }) => mockUseQuery(opts),
   useQueryClient: () => ({
     invalidateQueries: vi.fn(),
     fetchQuery: vi.fn(),
@@ -254,5 +259,33 @@ describe("MembersTab", () => {
     expect(screen.queryByRole("button", { name: "Invite member" })).toBeNull();
     expect(screen.queryByRole("tab", { name: /Share links/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Actions for/ })).toBeNull();
+  });
+
+  it("does not request the invitation list for a member role", () => {
+    data.members = [
+      member("user-1", "Ada Lovelace", "member"),
+      member("user-2", "Grace Hopper", "owner"),
+    ];
+    renderWithI18n(<MembersTab />);
+
+    const invitationQueryCall = mockUseQuery.mock.calls.find(([opts]) =>
+      JSON.stringify(opts.queryKey).includes("invitations"),
+    );
+    expect(invitationQueryCall).toBeDefined();
+    expect(invitationQueryCall?.[0]).toMatchObject({ enabled: false });
+  });
+
+  it("requests the invitation list for an owner or admin role", () => {
+    data.members = [
+      member("user-1", "Ada Lovelace", "owner"),
+      member("user-2", "Grace Hopper", "admin"),
+    ];
+    renderWithI18n(<MembersTab />);
+
+    const invitationQueryCall = mockUseQuery.mock.calls.find(([opts]) =>
+      JSON.stringify(opts.queryKey).includes("invitations"),
+    );
+    expect(invitationQueryCall).toBeDefined();
+    expect(invitationQueryCall?.[0]).toMatchObject({ enabled: true });
   });
 });
