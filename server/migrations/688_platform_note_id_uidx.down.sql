@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS platform_note_id_uidx;

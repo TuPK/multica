@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/multica-ai/multica/platform-management/audit"
+	"github.com/multica-ai/multica/server/internal/auditaction"
 	"github.com/multica-ai/multica/server/internal/util"
 )
 
@@ -24,38 +24,9 @@ const (
 
 // auditActionCatalog lists every action name the audit package defines. The
 // action filter accepts exactly these.
-var auditActionCatalog = []string{
-	audit.ActionMemberRoleChanged,
-	audit.ActionMemberRemoved,
-	audit.ActionMemberLeft,
-	audit.ActionInvitationCreated,
-	audit.ActionInvitationRevoked,
-	audit.ActionInvitationAccepted,
-	audit.ActionInvitationDeclined,
-	audit.ActionShareLinkCreated,
-	audit.ActionShareLinkRevoked,
-	audit.ActionShareLinkJoined,
-	audit.ActionWorkspaceCreated,
-	audit.ActionWorkspaceUpdated,
-	audit.ActionWorkspaceDeleted,
-	audit.ActionAuthLogin,
-	audit.ActionAuthSessionsRevoked,
-	audit.ActionPATCreated,
-	audit.ActionPATRevoked,
-	audit.ActionAccountExportRequested,
-	audit.ActionAccountDeletionRequest,
-	audit.ActionAccountDeletionCanceled,
-	audit.ActionConsentAccepted,
-}
+var auditActionCatalog = auditaction.Catalog
 
-func isAuditAction(s string) bool {
-	for _, a := range auditActionCatalog {
-		if a == s {
-			return true
-		}
-	}
-	return false
-}
+func isAuditAction(s string) bool { return auditaction.Is(s) }
 
 // auditParamError is a bad query parameter, reported as a 400 with Code.
 type auditParamError struct {

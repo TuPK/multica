@@ -158,3 +158,22 @@ func TestAuditCSVEscapesFormulaCells(t *testing.T) {
 		t.Fatalf("detail %q", recs[1][9])
 	}
 }
+
+// The filter takes the actions the platform console writes, and still refuses
+// an unknown one with invalid_filter. The catalog itself is tested in
+// internal/auditaction, which runs without a database.
+func TestParseAuditListParamsAcceptsStaffActionsAndRefusesUnknown(t *testing.T) {
+	for _, a := range []string{
+		"workspace.status_changed", "note.added", "account.status_changed",
+		"account.sessions_revoked", "staff.added", "staff.removed",
+	} {
+		p, perr := parseAuditListParams(url.Values{"action": {a}}, true)
+		if perr != nil || p.action == nil || *p.action != a {
+			t.Errorf("%s: %+v, %v", a, p, perr)
+		}
+	}
+	_, perr := parseAuditListParams(url.Values{"action": {"staff.exploded"}}, true)
+	if perr == nil || perr.code != "invalid_filter" {
+		t.Fatalf("unknown action: %v", perr)
+	}
+}

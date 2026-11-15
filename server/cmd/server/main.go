@@ -459,6 +459,9 @@ func main() {
 	relayCtx, relayCancel := context.WithCancel(context.Background())
 	var broadcaster realtime.Broadcaster = hub
 	var storeRedis redis.UniversalClient
+	// Holds the platform's account-change subscription, which keeps its
+	// connection for the life of the process.
+	var accountChangesRedis redis.UniversalClient
 	var storeRedisPoolSize int
 	var channelLeaseRedis redis.UniversalClient
 	var relayWriteRedis redis.UniversalClient
@@ -498,6 +501,7 @@ func main() {
 		closeRedisClient("wecom-claim", wecomClaimRedis)
 		closeRedisClient("realtime-write", relayWriteRedis)
 		closeRedisClient("channel-lease", channelLeaseRedis)
+		closeRedisClient("account-changes", accountChangesRedis)
 		closeRedisClient("store", storeRedis)
 	}()
 	sharedRedisURL := strings.TrimSpace(os.Getenv("REDIS_URL"))
@@ -515,6 +519,7 @@ func main() {
 		} else {
 			storeRedis = newNamedRedisClient(opts, "store")
 			storeRedisPoolSize = opts.PoolSize
+			accountChangesRedis = newNamedRedisClient(opts, "account-changes")
 		}
 	}
 	if sharedRedisURL != "" {
@@ -780,6 +785,17 @@ func main() {
 	go runAutopilotFailureMonitor(autopilotCtx, queries, bus, envFailureMonitorConfig())
 	if autopilotSvc.QuotaEnabled() {
 		go runAutopilotQuotaReconciler(autopilotCtx, autopilotSvc)
+	}
+	// The platform service publishes a user's account or session change here;
+	// the listener closes that user's open sockets. It ends with sweepCtx, and
+	// with the Redis client at exit.
+	if accountChangesRedis != nil {
+		accountChanges := &realtime.AccountChangeListener{
+			Source:       realtime.NewRedisAccountChangeSource(accountChangesRedis),
+			Disconnector: hub,
+			Log:          slog.Default(),
+		}
+		go accountChanges.Run(sweepCtx)
 	}
 	go runDBStatsLogger(sweepCtx, "primary", pool)
 	if replicaPool != nil {
