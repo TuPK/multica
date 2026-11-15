@@ -1,0 +1,15 @@
+# Queries arrive with the first platform feature that needs them (P14); until
+# then there is no generated output. Run from this directory:
+#   go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries: "internal/db/queries/"
+    schema: "../server/migrations/"
+    gen:
+      go:
+        package: "db"
+        out: "internal/db"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_empty_slices: true
