@@ -41,3 +41,14 @@ DELETE FROM audit_event
 WHERE id IN (
     SELECT old.id FROM audit_event AS old WHERE old.created_at < $1 LIMIT $2
 );
+
+-- name: AnonymizeAuditActor :exec
+-- The first of the two UPDATEs audit_event allows: account deletion renames the
+-- actor label on rows written by the deleted user. Nothing else changes.
+UPDATE audit_event SET actor_label = 'deleted user'
+WHERE actor_id = $1 AND actor_type = 'member';
+
+-- name: AnonymizeAuditTarget :exec
+-- The second: the same rename for rows that name the user as their target.
+UPDATE audit_event SET target_label = 'deleted user'
+WHERE target_type = 'user' AND target_id = $1;

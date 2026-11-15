@@ -20,6 +20,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/platform-management/accountdeletion"
 	"github.com/multica-ai/multica/platform-management/consent"
 	"github.com/multica-ai/multica/server/internal/analytics"
 	"github.com/multica-ai/multica/server/internal/auth"
@@ -82,6 +83,9 @@ type UserResponse struct {
 	UpdatedAt           string  `json:"updated_at"`
 	// ConsentRequired is set by GET /api/me only, and omitted when empty.
 	ConsentRequired []consent.Required `json:"consent_required,omitempty"`
+	// DeletionScheduledAt is set by GET /api/me only, and only while the
+	// account is waiting to be deleted (RFC 3339, UTC).
+	DeletionScheduledAt *string `json:"deletion_scheduled_at,omitempty"`
 }
 
 // MaxProfileDescriptionLen caps the user-supplied profile_description body.
@@ -521,6 +525,15 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp.ConsentRequired = pending
+	schedule, err := h.Queries.GetAccountDeletionSchedule(r.Context(), user.ID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		writeError(w, http.StatusInternalServerError, "failed to load account state")
+		return
+	}
+	if err == nil && schedule.Status == accountdeletion.StatusPending && schedule.DeletionScheduledAt.Valid {
+		when := formatDeletionTime(schedule.DeletionScheduledAt)
+		resp.DeletionScheduledAt = &when
+	}
 	writeJSON(w, http.StatusOK, resp)
 }
 

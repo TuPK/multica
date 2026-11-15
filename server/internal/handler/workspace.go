@@ -1396,11 +1396,78 @@ func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer tx.Rollback(r.Context())
-	qtx := h.Queries.WithTx(tx)
-	doomed, err := qtx.GetWorkspace(r.Context(), requester.WorkspaceID)
+	teardown, err := h.deleteWorkspaceData(r.Context(), tx, requester.WorkspaceID)
 	if err != nil {
-		failWorkspaceDelete(w, r, workspaceID, "load workspace for audit", err)
+		var stepErr *workspaceDeleteStepError
+		if errors.As(err, &stepErr) {
+			failWorkspaceDelete(w, r, workspaceID, stepErr.step, stepErr.err)
+		} else {
+			failWorkspaceDelete(w, r, workspaceID, "delete workspace data", err)
+		}
 		return
+	}
+
+	if err := h.recordAudit(r, tx, audit.Entry{
+		WorkspaceID: uuidToString(requester.WorkspaceID),
+		Action:      audit.ActionWorkspaceDeleted,
+		TargetType:  "workspace",
+		TargetID:    uuidToString(requester.WorkspaceID),
+		TargetLabel: teardown.Name,
+	}); err != nil {
+		failWorkspaceDelete(w, r, workspaceID, "audit", err)
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		slog.Warn("commit workspace delete failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
+		writeError(w, http.StatusInternalServerError, "failed to delete workspace")
+		return
+	}
+	for _, runtimeID := range teardown.RuntimeIDs {
+		h.NotifyRuntimeGone(uuidToString(runtimeID))
+	}
+	h.deleteS3Objects(r.Context(), teardown.ObjectURLs)
+	h.deleteHubObjects(r.Context(), workspaceID)
+
+	slog.Info("workspace deleted", append(logger.RequestAttrs(r), "workspace_id", workspaceID)...)
+	h.publish(protocol.EventWorkspaceDeleted, workspaceID, "member", requestUserID(r), map[string]any{
+		"workspace_id": workspaceID,
+	})
+	h.notifyDaemonWorkspacesChanged(affectedUserIDs...)
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// workspaceTeardown is what a workspace deletion leaves for its caller to
+// finish once the transaction has committed.
+type workspaceTeardown struct {
+	// Name is the workspace name, for the audit row.
+	Name string
+	// RuntimeIDs are the runtimes whose daemons must be told they are gone.
+	RuntimeIDs []pgtype.UUID
+	// ObjectURLs are stored objects to delete.
+	ObjectURLs []string
+}
+
+// workspaceDeleteStepError names the teardown step that failed, so callers log
+// the same step names whether a handler or the account deletion job ran it.
+type workspaceDeleteStepError struct {
+	step string
+	err  error
+}
+
+func (e *workspaceDeleteStepError) Error() string { return e.step + ": " + e.err.Error() }
+func (e *workspaceDeleteStepError) Unwrap() error { return e.err }
+
+// deleteWorkspaceData runs the whole workspace teardown inside tx, which the
+// caller begins, commits and rolls back. It does not write the audit row or
+// notify anyone: both belong to the caller, who knows the actor.
+func (h *Handler) deleteWorkspaceData(ctx context.Context, tx pgx.Tx, wsID pgtype.UUID) (workspaceTeardown, error) {
+	var teardown workspaceTeardown
+	qtx := h.Queries.WithTx(tx)
+	doomed, err := qtx.GetWorkspace(ctx, wsID)
+	if err != nil {
+		return teardown, &workspaceDeleteStepError{step: "load workspace for audit", err: err}
 	}
 	var sourceContextAttachmentURLs []string
 	var sourceContextIntentURLs []string
@@ -1410,42 +1477,35 @@ func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 	// It caps waiting for a lock, not the teardown work itself — deleting a
 	// large workspace is allowed to take as long as it takes.
 	lockTimeoutMs := int(effectiveWorkspaceDeleteLockTimeout() / time.Millisecond)
-	if _, err := tx.Exec(r.Context(), fmt.Sprintf("SET LOCAL lock_timeout = %d", lockTimeoutMs)); err != nil {
-		failWorkspaceDelete(w, r, workspaceID, "set lock timeout", err)
-		return
+	if _, err := tx.Exec(ctx, fmt.Sprintf("SET LOCAL lock_timeout = %d", lockTimeoutMs)); err != nil {
+		return teardown, &workspaceDeleteStepError{step: "set lock timeout", err: err}
 	}
 
-	if _, err := qtx.LockWorkspaceForDelete(r.Context(), requester.WorkspaceID); err != nil {
-		failWorkspaceDelete(w, r, workspaceID, "lock workspace", err)
-		return
+	if _, err := qtx.LockWorkspaceForDelete(ctx, wsID); err != nil {
+		return teardown, &workspaceDeleteStepError{step: "lock workspace", err: err}
 	}
 	// Take a best-effort snapshot for post-commit daemon invalidation. Runtime
 	// registration does not participate in the workspace delete lock protocol,
 	// so PR1 retains the heartbeat lookup as the correctness fallback for a
 	// registration that races this snapshot.
-	runtimeIDs, err := qtx.ListAgentRuntimeIDsByWorkspace(r.Context(), requester.WorkspaceID)
+	runtimeIDs, err := qtx.ListAgentRuntimeIDsByWorkspace(ctx, wsID)
 	if err != nil {
-		failWorkspaceDelete(w, r, workspaceID, "list runtimes", err)
-		return
+		return teardown, &workspaceDeleteStepError{step: "list runtimes", err: err}
 	}
 
-	if _, err := qtx.LockChatSessionsByWorkspace(r.Context(), requester.WorkspaceID); err != nil {
-		failWorkspaceDelete(w, r, workspaceID, "lock chat sessions", err)
-		return
+	if _, err := qtx.LockChatSessionsByWorkspace(ctx, wsID); err != nil {
+		return teardown, &workspaceDeleteStepError{step: "lock chat sessions", err: err}
 	}
-	if sourceContextAttachmentURLs, err = qtx.ListSourceContextAttachmentURLsByWorkspace(r.Context(), requester.WorkspaceID); err != nil {
-		failWorkspaceDelete(w, r, workspaceID, "list source context attachment objects", err)
-		return
+	if sourceContextAttachmentURLs, err = qtx.ListSourceContextAttachmentURLsByWorkspace(ctx, wsID); err != nil {
+		return teardown, &workspaceDeleteStepError{step: "list source context attachment objects", err: err}
 	}
-	if sourceContextIntentURLs, err = qtx.ListSourceContextObjectIntentURLsByWorkspace(r.Context(), requester.WorkspaceID); err != nil {
-		failWorkspaceDelete(w, r, workspaceID, "list source context pending objects", err)
-		return
+	if sourceContextIntentURLs, err = qtx.ListSourceContextObjectIntentURLsByWorkspace(ctx, wsID); err != nil {
+		return teardown, &workspaceDeleteStepError{step: "list source context pending objects", err: err}
 	}
 
 	// Keep the relationship graph in the application layer. Each step is a
 	// set-based delete scoped by workspace_id; the legacy cascades remain only
 	// as an expand-phase safety net until a later schema contract.
-	ctx := r.Context()
 	deleteSteps := []struct {
 		name string
 		run  func() error
@@ -1459,11 +1519,11 @@ func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 			// transaction. Must run before anything sweeps tasks — see
 			// lockWorkspaceTaskOwners.
 			name: "lock task owners",
-			run:  func() error { return lockWorkspaceTaskOwners(ctx, qtx, requester.WorkspaceID) },
+			run:  func() error { return lockWorkspaceTaskOwners(ctx, qtx, wsID) },
 		},
 		{
 			name: "prepare relationship graph",
-			run:  func() error { return qtx.PrepareWorkspaceDeletionLinks(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.PrepareWorkspaceDeletionLinks(ctx, wsID) },
 		},
 		{
 			// These FK-free intents deliberately survive the transaction so the
@@ -1474,21 +1534,21 @@ func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 				if !h.seatCapacityEnabled() {
 					return nil
 				}
-				if err := qtx.DeleteSeatCapacityConfirmIntentsForWorkspaceDeletion(ctx, requester.WorkspaceID); err != nil {
+				if err := qtx.DeleteSeatCapacityConfirmIntentsForWorkspaceDeletion(ctx, wsID); err != nil {
 					return err
 				}
-				if err := qtx.PrepareSeatCapacityOperationReleasesForWorkspaceDeletion(ctx, requester.WorkspaceID); err != nil {
+				if err := qtx.PrepareSeatCapacityOperationReleasesForWorkspaceDeletion(ctx, wsID); err != nil {
 					return err
 				}
-				if err := qtx.PrepareSeatCapacityInvitationReleasesForWorkspaceDeletion(ctx, requester.WorkspaceID); err != nil {
+				if err := qtx.PrepareSeatCapacityInvitationReleasesForWorkspaceDeletion(ctx, wsID); err != nil {
 					return err
 				}
-				return qtx.PrepareSeatCapacityMemberReleasesForWorkspaceDeletion(ctx, requester.WorkspaceID)
+				return qtx.PrepareSeatCapacityMemberReleasesForWorkspaceDeletion(ctx, wsID)
 			},
 		},
 		{
 			name: "delete chat pins",
-			run:  func() error { return qtx.DeleteChatPinnedAgentsByWorkspace(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteChatPinnedAgentsByWorkspace(ctx, wsID) },
 		},
 		{
 			// This is the first stage that touches usage rollups. Keep the
@@ -1504,15 +1564,15 @@ func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 			// task_usage. Replaces both the task-keyed arms of the old leaf
 			// data statement and the separate whole-workspace task delete.
 			name: "delete tasks",
-			run:  func() error { return deleteWorkspaceTasks(ctx, qtx, requester.WorkspaceID) },
+			run:  func() error { return deleteWorkspaceTasks(ctx, qtx, wsID) },
 		},
 		{
 			name: "delete Qoder Cloud Agents connection",
 			run: func() error {
-				if _, err := tx.Exec(ctx, `DELETE FROM daemon_token WHERE id IN (SELECT token_id FROM cloud_agent_connection WHERE provider='qoder_cloud' AND workspace_id=$1)`, requester.WorkspaceID); err != nil {
+				if _, err := tx.Exec(ctx, `DELETE FROM daemon_token WHERE id IN (SELECT token_id FROM cloud_agent_connection WHERE provider='qoder_cloud' AND workspace_id=$1)`, wsID); err != nil {
 					return err
 				}
-				_, err := tx.Exec(ctx, `DELETE FROM cloud_agent_connection WHERE provider='qoder_cloud' AND workspace_id=$1`, requester.WorkspaceID)
+				_, err := tx.Exec(ctx, `DELETE FROM cloud_agent_connection WHERE provider='qoder_cloud' AND workspace_id=$1`, wsID)
 				return err
 			},
 		},
@@ -1522,42 +1582,42 @@ func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 			// deletes the knowledge registry the queue reads.
 			name: "queue knowledge teardown",
 			run: func() error {
-				return service.QueueKnowledgeTeardown(ctx, qtx, requester.WorkspaceID, time.Now())
+				return service.QueueKnowledgeTeardown(ctx, qtx, wsID, time.Now())
 			},
 		},
 		{
 			name: "delete leaf data",
-			run:  func() error { return qtx.DeleteWorkspaceLeafData(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceLeafData(ctx, wsID) },
 		},
 		{
 			name: "delete autopilot runs",
-			run:  func() error { return qtx.DeleteWorkspaceAutopilotRuns(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceAutopilotRuns(ctx, wsID) },
 		},
 		{
 			name: "delete autopilot quota reservations",
-			run:  func() error { return qtx.DeleteWorkspaceAutopilotQuotaReservations(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceAutopilotQuotaReservations(ctx, wsID) },
 		},
 		{
 			name: "delete autopilot quota periods",
-			run:  func() error { return qtx.DeleteWorkspaceAutopilotQuotaPeriods(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceAutopilotQuotaPeriods(ctx, wsID) },
 		},
 		{
 			name: "delete chat messages",
-			run:  func() error { return qtx.DeleteWorkspaceChatMessages(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceChatMessages(ctx, wsID) },
 		},
 		{
 			name: "delete communication roots",
-			run:  func() error { return qtx.DeleteWorkspaceCommunicationRoots(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceCommunicationRoots(ctx, wsID) },
 		},
 		{
 			name: "delete comments",
-			run:  func() error { return qtx.DeleteWorkspaceComments(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceComments(ctx, wsID) },
 		},
 		{
 			// Teardown mode keeps the triggers from logging the deletes above
 			// and below; this clears what normal writes logged before.
 			name: "delete search index changes",
-			run:  func() error { return qtx.DeleteWorkspaceSearchIndexChanges(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceSearchIndexChanges(ctx, wsID) },
 		},
 		// Keep source-context object intents after the workspace row is gone.
 		// They are the durable retry ledger for an upload that began before the
@@ -1567,18 +1627,18 @@ func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 		// crash window permanently leak the late object.
 		{
 			name: "delete source context attachments",
-			run:  func() error { return qtx.DeleteSourceContextAttachmentsByWorkspace(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteSourceContextAttachmentsByWorkspace(ctx, wsID) },
 		},
 		{
 			name: "delete source contexts",
 			run: func() error {
-				_, err := qtx.DeleteIssueSourceContextsForWorkspace(ctx, requester.WorkspaceID)
+				_, err := qtx.DeleteIssueSourceContextsForWorkspace(ctx, wsID)
 				return err
 			},
 		},
 		{
 			name: "delete issue roots",
-			run:  func() error { return qtx.DeleteWorkspaceIssueRoots(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceIssueRoots(ctx, wsID) },
 		},
 		{
 			// issue_status carries no foreign key by project rule, so its rows
@@ -1587,105 +1647,105 @@ func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 			// (MUL-6243)
 			name: "delete issue statuses",
 			run: func() error {
-				return qtx.DeleteIssueStatusEntriesForWorkspace(ctx, requester.WorkspaceID)
+				return qtx.DeleteIssueStatusEntriesForWorkspace(ctx, wsID)
 			},
 		},
 		{
 			name: "delete flow drafts",
-			run:  func() error { return qtx.DeleteFlowDraftsForWorkspace(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteFlowDraftsForWorkspace(ctx, wsID) },
 		},
 		{
 			name: "delete squad pack installs",
-			run:  func() error { return qtx.DeleteSquadPackInstallsForWorkspace(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteSquadPackInstallsForWorkspace(ctx, wsID) },
 		},
 		{
 			// issue_workflow references the status catalog and projects by
 			// value only, so it is swept alongside the catalog. (MUL-7420)
 			name: "delete issue workflows",
 			run: func() error {
-				return qtx.DeleteIssueWorkflowsForWorkspace(ctx, requester.WorkspaceID)
+				return qtx.DeleteIssueWorkflowsForWorkspace(ctx, wsID)
 			},
 		},
 		{
 			name: "delete squad routines",
-			run:  func() error { return qtx.DeleteWorkspaceSquadRoutines(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceSquadRoutines(ctx, wsID) },
 		},
 		{
 			name: "delete autopilot children",
-			run:  func() error { return qtx.DeleteWorkspaceAutopilotChildren(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceAutopilotChildren(ctx, wsID) },
 		},
 		{
 			name: "delete autopilots",
-			run:  func() error { return qtx.DeleteWorkspaceAutopilots(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceAutopilots(ctx, wsID) },
 		},
 		{
 			name: "delete pull requests",
-			run:  func() error { return qtx.DeleteWorkspacePullRequests(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspacePullRequests(ctx, wsID) },
 		},
 		{
 			name: "delete integrations",
-			run:  func() error { return qtx.DeleteWorkspaceConnections(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceConnections(ctx, wsID) },
 		},
 		{
 			name: "delete squad charters",
-			run:  func() error { return qtx.DeleteWorkspaceSquadCharters(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceSquadCharters(ctx, wsID) },
 		},
 		{
 			name: "delete squad attention",
-			run:  func() error { return qtx.DeleteWorkspaceSquadAttention(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceSquadAttention(ctx, wsID) },
 		},
 		{
 			name: "delete squads and skills",
-			run:  func() error { return qtx.DeleteWorkspaceSquadsAndSkills(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceSquadsAndSkills(ctx, wsID) },
 		},
 		{
 			// Brief pushes and the member preferences behind them carry no
 			// foreign keys, so they are swept explicitly (plan 9.10).
 			name: "delete brief deliveries",
-			run:  func() error { return qtx.DeleteWorkspaceBriefDeliveries(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceBriefDeliveries(ctx, wsID) },
 		},
 		{
 			name: "delete brief push preferences",
-			run:  func() error { return qtx.DeleteWorkspaceBriefPushPreferences(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceBriefPushPreferences(ctx, wsID) },
 		},
 		{
 			// Ratings of briefs have no foreign keys either, and rate the briefs
 			// swept next, so they go first (plan 9.12).
 			name: "delete brief feedback",
-			run:  func() error { return qtx.DeleteWorkspaceBriefFeedback(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceBriefFeedback(ctx, wsID) },
 		},
 		{
 			name: "delete briefs",
-			run:  func() error { return qtx.DeleteWorkspaceBriefs(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceBriefs(ctx, wsID) },
 		},
 		{
 			name: "delete brief inquiries",
-			run:  func() error { return qtx.DeleteWorkspaceBriefInquiries(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceBriefInquiries(ctx, wsID) },
 		},
 		{
 			// Revisions of proposals; the proposals themselves go next.
 			name: "delete proposal revisions",
-			run:  func() error { return qtx.DeleteWorkspaceProposalRevisions(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceProposalRevisions(ctx, wsID) },
 		},
 		{
 			name: "delete proposals",
-			run:  func() error { return qtx.DeleteWorkspaceProposals(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceProposals(ctx, wsID) },
 		},
 		{
 			// Initiatives hold references to their backing issues and pipelines;
 			// the timeline and checklists go first, then the rows they belong to.
 			name: "delete initiatives",
 			run: func() error {
-				if err := qtx.DeleteWorkspaceInitiativeArtifacts(ctx, requester.WorkspaceID); err != nil {
+				if err := qtx.DeleteWorkspaceInitiativeArtifacts(ctx, wsID); err != nil {
 					return err
 				}
-				if err := qtx.DeleteWorkspaceInitiativeStageEvents(ctx, requester.WorkspaceID); err != nil {
+				if err := qtx.DeleteWorkspaceInitiativeStageEvents(ctx, wsID); err != nil {
 					return err
 				}
-				if err := qtx.DeleteWorkspaceInitiatives(ctx, requester.WorkspaceID); err != nil {
+				if err := qtx.DeleteWorkspaceInitiatives(ctx, wsID); err != nil {
 					return err
 				}
-				return qtx.DeleteWorkspacePipelines(ctx, requester.WorkspaceID)
+				return qtx.DeleteWorkspacePipelines(ctx, wsID)
 			},
 		},
 		{
@@ -1693,36 +1753,36 @@ func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 			// periods and the budgets.
 			name: "delete budgets",
 			run: func() error {
-				if err := qtx.DeleteWorkspaceBudgetHolds(ctx, requester.WorkspaceID); err != nil {
+				if err := qtx.DeleteWorkspaceBudgetHolds(ctx, wsID); err != nil {
 					return err
 				}
-				if err := qtx.DeleteWorkspaceBudgetPeriods(ctx, requester.WorkspaceID); err != nil {
+				if err := qtx.DeleteWorkspaceBudgetPeriods(ctx, wsID); err != nil {
 					return err
 				}
-				return qtx.DeleteWorkspaceBudgets(ctx, requester.WorkspaceID)
+				return qtx.DeleteWorkspaceBudgets(ctx, wsID)
 			},
 		},
 		{
 			// The governance log goes with its workspace; it is the one DELETE
 			// on governance_event (see governance_event.sql).
 			name: "delete governance log",
-			run:  func() error { return qtx.DeleteWorkspaceGovernanceEvents(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceGovernanceEvents(ctx, wsID) },
 		},
 		{
 			// Org change applications, reviews, scorecards and instruction
 			// revisions. None has a foreign key, so their order does not matter.
 			name: "delete org records",
 			run: func() error {
-				if err := qtx.DeleteWorkspaceOrgChangeApplications(ctx, requester.WorkspaceID); err != nil {
+				if err := qtx.DeleteWorkspaceOrgChangeApplications(ctx, wsID); err != nil {
 					return err
 				}
-				if err := qtx.DeleteWorkspaceReviews(ctx, requester.WorkspaceID); err != nil {
+				if err := qtx.DeleteWorkspaceReviews(ctx, wsID); err != nil {
 					return err
 				}
-				if err := qtx.DeleteWorkspaceScorecards(ctx, requester.WorkspaceID); err != nil {
+				if err := qtx.DeleteWorkspaceScorecards(ctx, wsID); err != nil {
 					return err
 				}
-				return qtx.DeleteWorkspaceAgentInstructionRevisions(ctx, requester.WorkspaceID)
+				return qtx.DeleteWorkspaceAgentInstructionRevisions(ctx, wsID)
 			},
 		},
 		{
@@ -1730,131 +1790,103 @@ func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 			// metrics with their readings. None of them has a foreign key.
 			name: "delete goals and metrics",
 			run: func() error {
-				if err := qtx.DeleteWorkspacePlanningCycles(ctx, requester.WorkspaceID); err != nil {
+				if err := qtx.DeleteWorkspacePlanningCycles(ctx, wsID); err != nil {
 					return err
 				}
-				if err := qtx.DeleteWorkspaceKeyResults(ctx, requester.WorkspaceID); err != nil {
+				if err := qtx.DeleteWorkspaceKeyResults(ctx, wsID); err != nil {
 					return err
 				}
-				if err := qtx.DeleteWorkspaceGoals(ctx, requester.WorkspaceID); err != nil {
+				if err := qtx.DeleteWorkspaceGoals(ctx, wsID); err != nil {
 					return err
 				}
-				if err := qtx.DeleteWorkspaceMetricReadings(ctx, requester.WorkspaceID); err != nil {
+				if err := qtx.DeleteWorkspaceMetricReadings(ctx, wsID); err != nil {
 					return err
 				}
-				if err := qtx.DeleteWorkspaceMetricTokens(ctx, requester.WorkspaceID); err != nil {
+				if err := qtx.DeleteWorkspaceMetricTokens(ctx, wsID); err != nil {
 					return err
 				}
-				if err := qtx.DeleteWorkspaceRetroRequests(ctx, requester.WorkspaceID); err != nil {
+				if err := qtx.DeleteWorkspaceRetroRequests(ctx, wsID); err != nil {
 					return err
 				}
-				return qtx.DeleteWorkspaceMetrics(ctx, requester.WorkspaceID)
+				return qtx.DeleteWorkspaceMetrics(ctx, wsID)
 			},
 		},
 		{
 			// Retrospective triggers and floor chiefs have no foreign keys.
 			name: "delete retro triggers and floor chiefs",
 			run: func() error {
-				if err := qtx.DeleteWorkspaceRetroTriggers(ctx, requester.WorkspaceID); err != nil {
+				if err := qtx.DeleteWorkspaceRetroTriggers(ctx, wsID); err != nil {
 					return err
 				}
-				return qtx.DeleteWorkspaceFloorChiefs(ctx, requester.WorkspaceID)
+				return qtx.DeleteWorkspaceFloorChiefs(ctx, wsID)
 			},
 		},
 		{
 			// Standing approvals go with their workspace. Proposals refer to them by
 			// id only, so the order against the proposal rows does not matter.
 			name: "delete approval policies",
-			run:  func() error { return qtx.DeleteWorkspaceApprovalPolicies(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceApprovalPolicies(ctx, wsID) },
 		},
 		{
 			// Content Studio publishing: the send log first, then the channels, the keys and
 			// the profile key. None of these tables has a foreign key.
 			name: "delete publishing channels",
 			run: func() error {
-				if err := qtx.DeleteWorkspacePublishAttempts(ctx, requester.WorkspaceID); err != nil {
+				if err := qtx.DeleteWorkspacePublishAttempts(ctx, wsID); err != nil {
 					return err
 				}
-				if err := qtx.DeleteWorkspacePublishChannels(ctx, requester.WorkspaceID); err != nil {
+				if err := qtx.DeleteWorkspacePublishChannels(ctx, wsID); err != nil {
 					return err
 				}
-				if err := qtx.DeleteWorkspacePublishSettings(ctx, requester.WorkspaceID); err != nil {
+				if err := qtx.DeleteWorkspacePublishSettings(ctx, wsID); err != nil {
 					return err
 				}
-				return qtx.DeleteWorkspacePublishProfile(ctx, requester.WorkspaceID)
+				return qtx.DeleteWorkspacePublishProfile(ctx, wsID)
 			},
 		},
 		{
 			// Research Lab source settings (sealed API keys) go with their workspace.
 			name: "delete research settings",
-			run:  func() error { return qtx.DeleteWorkspaceResearchSettings(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceResearchSettings(ctx, wsID) },
 		},
 		{
 			name: "delete hub data",
-			run:  func() error { return qtx.DeleteWorkspaceHubData(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceHubData(ctx, wsID) },
 		},
 		{
 			name: "delete knowledge property history",
-			run:  func() error { return qtx.DeleteWorkspaceKnowledgePropertyHistory(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceKnowledgePropertyHistory(ctx, wsID) },
 		},
 		{
 			name: "delete plugin data",
-			run:  func() error { return qtx.DeleteWorkspacePluginData(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspacePluginData(ctx, wsID) },
 		},
 		{
 			name: "delete agents",
-			run:  func() error { return qtx.DeleteWorkspaceAgents(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceAgents(ctx, wsID) },
 		},
 		{
 			name: "delete runtimes and projects",
-			run:  func() error { return qtx.DeleteWorkspaceRuntimesAndProjects(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceRuntimesAndProjects(ctx, wsID) },
 		},
 		{
 			name: "delete administration data",
-			run:  func() error { return qtx.DeleteWorkspaceAdministration(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspaceAdministration(ctx, wsID) },
 		},
 		{
-			// At this point workspaceMember has resolved → workspaceID is a
-			// valid UUID, so reuse the resolved value. The existing final
+			// The caller has resolved the workspace to a valid UUID. The existing final
 			// statement also sweeps any expand-phase compatibility leftovers.
 			name: "delete workspace",
-			run:  func() error { return qtx.DeleteWorkspace(ctx, requester.WorkspaceID) },
+			run:  func() error { return qtx.DeleteWorkspace(ctx, wsID) },
 		},
 	}
 	for _, step := range deleteSteps {
 		if err := step.run(); err != nil {
-			failWorkspaceDelete(w, r, workspaceID, step.name, err)
-			return
+			return teardown, &workspaceDeleteStepError{step: step.name, err: err}
 		}
 	}
-
-	if err := h.recordAudit(r, tx, audit.Entry{
-		WorkspaceID: uuidToString(requester.WorkspaceID),
-		Action:      audit.ActionWorkspaceDeleted,
-		TargetType:  "workspace",
-		TargetID:    uuidToString(requester.WorkspaceID),
-		TargetLabel: doomed.Name,
-	}); err != nil {
-		failWorkspaceDelete(w, r, workspaceID, "audit", err)
-		return
-	}
-
-	if err := tx.Commit(r.Context()); err != nil {
-		slog.Warn("commit workspace delete failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
-		writeError(w, http.StatusInternalServerError, "failed to delete workspace")
-		return
-	}
-	for _, runtimeID := range runtimeIDs {
-		h.NotifyRuntimeGone(uuidToString(runtimeID))
-	}
-	h.deleteS3Objects(r.Context(), append(sourceContextAttachmentURLs, sourceContextIntentURLs...))
-	h.deleteHubObjects(r.Context(), workspaceID)
-
-	slog.Info("workspace deleted", append(logger.RequestAttrs(r), "workspace_id", workspaceID)...)
-	h.publish(protocol.EventWorkspaceDeleted, workspaceID, "member", requestUserID(r), map[string]any{
-		"workspace_id": workspaceID,
-	})
-	h.notifyDaemonWorkspacesChanged(affectedUserIDs...)
-
-	w.WriteHeader(http.StatusNoContent)
+	teardown.Name = doomed.Name
+	teardown.RuntimeIDs = runtimeIDs
+	teardown.ObjectURLs = append(sourceContextAttachmentURLs, sourceContextIntentURLs...)
+	return teardown, nil
 }

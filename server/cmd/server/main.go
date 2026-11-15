@@ -878,6 +878,11 @@ func main() {
 	if err := schedulerMgr.Register(scheduler.AuditRetentionJob(queries, auditRetentionDays)); err != nil {
 		slog.Error("scheduler: register audit retention", "error", err)
 	}
+	// Daily: accounts whose 14-day deletion wait has ended are anonymised and
+	// their sole-member workspaces deleted (spec 4.6).
+	if err := schedulerMgr.Register(scheduler.AccountDeletionJob(h)); err != nil {
+		slog.Error("scheduler: register account deletion", "error", err)
+	}
 	// Governance (spec 4.6): nightly scorecards, the probation verdicts and the
 	// monthly review routine.
 	if err := schedulerMgr.Register(scheduler.ScorecardJob(h)); err != nil {

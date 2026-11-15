@@ -8,6 +8,17 @@ import {
   type AcceptConsentsResponse,
   type RevokeAllSessionsResponse,
 } from "../account/schema";
+import {
+  AccountDeletionCanceledSchema,
+  AccountDeletionPreviewSchema,
+  AccountDeletionScheduledSchema,
+  EMPTY_ACCOUNT_DELETION_CANCELED,
+  EMPTY_ACCOUNT_DELETION_PREVIEW,
+  EMPTY_ACCOUNT_DELETION_SCHEDULED,
+  type AccountDeletionCanceled,
+  type AccountDeletionPreview,
+  type AccountDeletionScheduled,
+} from "../account/deletion-schema";
 import { AuditEventPageSchema, EMPTY_AUDIT_EVENT_PAGE, type AuditEventPage } from "../audit/schema";
 import { auditQueryString, type AuditFilters, type AuditPageParams } from "../audit/params";
 import { parseDigestMode, type DigestSetting, type DigestModeInfo } from "../governance/digest-mode";
@@ -1585,6 +1596,46 @@ export class ApiClient {
       AcceptConsentsResponseSchema,
       EMPTY_ACCEPT_CONSENTS_RESPONSE,
       { endpoint: "POST /api/me/consents" },
+    );
+  }
+
+  /**
+   * What requesting deletion would do, without doing it. Needs a login from the
+   * last 10 minutes (403 `recent_login_required`) and is refused with 409
+   * `sole_owner` while the user owns a workspace that has other members.
+   */
+  async previewAccountDeletion(): Promise<AccountDeletionPreview> {
+    const raw = await this.fetch<unknown>("/api/me/deletion?preview=1", { method: "POST" });
+    return parseWithFallback<AccountDeletionPreview>(
+      raw,
+      AccountDeletionPreviewSchema,
+      EMPTY_ACCOUNT_DELETION_PREVIEW,
+      { endpoint: "POST /api/me/deletion?preview=1" },
+    );
+  }
+
+  /**
+   * Schedules the account for deletion in 14 days. The server ends every
+   * session of the user, this one included, so the caller signs out after it.
+   */
+  async requestAccountDeletion(): Promise<AccountDeletionScheduled> {
+    const raw = await this.fetch<unknown>("/api/me/deletion", { method: "POST" });
+    return parseWithFallback<AccountDeletionScheduled>(
+      raw,
+      AccountDeletionScheduledSchema,
+      EMPTY_ACCOUNT_DELETION_SCHEDULED,
+      { endpoint: "POST /api/me/deletion" },
+    );
+  }
+
+  /** Cancels a pending deletion. 409 `not_pending_deletion` when none is pending. */
+  async cancelAccountDeletion(): Promise<AccountDeletionCanceled> {
+    const raw = await this.fetch<unknown>("/api/me/deletion", { method: "DELETE" });
+    return parseWithFallback<AccountDeletionCanceled>(
+      raw,
+      AccountDeletionCanceledSchema,
+      EMPTY_ACCOUNT_DELETION_CANCELED,
+      { endpoint: "DELETE /api/me/deletion" },
     );
   }
 

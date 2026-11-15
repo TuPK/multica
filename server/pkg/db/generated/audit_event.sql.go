@@ -11,6 +11,29 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const anonymizeAuditActor = `-- name: AnonymizeAuditActor :exec
+UPDATE audit_event SET actor_label = 'deleted user'
+WHERE actor_id = $1 AND actor_type = 'member'
+`
+
+// The first of the two UPDATEs audit_event allows: account deletion renames the
+// actor label on rows written by the deleted user. Nothing else changes.
+func (q *Queries) AnonymizeAuditActor(ctx context.Context, actorID pgtype.Text) error {
+	_, err := q.db.Exec(ctx, anonymizeAuditActor, actorID)
+	return err
+}
+
+const anonymizeAuditTarget = `-- name: AnonymizeAuditTarget :exec
+UPDATE audit_event SET target_label = 'deleted user'
+WHERE target_type = 'user' AND target_id = $1
+`
+
+// The second: the same rename for rows that name the user as their target.
+func (q *Queries) AnonymizeAuditTarget(ctx context.Context, targetID string) error {
+	_, err := q.db.Exec(ctx, anonymizeAuditTarget, targetID)
+	return err
+}
+
 const deleteAuditEventsBefore = `-- name: DeleteAuditEventsBefore :execrows
 DELETE FROM audit_event
 WHERE id IN (

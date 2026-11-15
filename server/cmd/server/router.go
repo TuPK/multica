@@ -1862,6 +1862,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 		r.With(handler.RequireHumanActor).Get("/api/me/security-events", h.ListMySecurityEvents)
 		r.With(handler.RequireHumanActor).Post("/api/me/consents", h.AcceptConsents)
 		r.With(handler.RequireHumanActor).Get("/api/me/export", h.ExportMyAccount(accountExportLimiter))
+		r.With(handler.RequireHumanActor).Post("/api/me/deletion", h.RequestAccountDeletion(accountGuard))
+		r.With(handler.RequireHumanActor).Delete("/api/me/deletion", h.CancelAccountDeletion(accountGuard))
 		// Credential minting is human-only (MUL-8154): an agent task token
 		// (mat_) or cloud-node PAT (mcn_) authenticates as its owner, so
 		// without this guard a prompt-injected agent could trade its scoped,

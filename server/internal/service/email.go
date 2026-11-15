@@ -410,6 +410,45 @@ func buildInvitationParams(from, to, inviterName, workspaceName, inviteURL strin
 	}
 }
 
+// SendAccountDeletionScheduledEmail tells the user that their account will be
+// deleted at scheduledAt (RFC 3339, UTC) and how to cancel. It carries no token
+// or link that signs in.
+func (s *EmailService) SendAccountDeletionScheduledEmail(to, scheduledAt string) error {
+	appURL := strings.TrimSpace(os.Getenv("FRONTEND_ORIGIN"))
+	if appURL == "" {
+		appURL = "https://multica.ai"
+	}
+	if s.smtpHost != "" {
+		params := buildAccountDeletionScheduledParams(s.fromEmail, to, scheduledAt, appURL)
+		return s.sendSMTP(to, params.Subject, params.Html)
+	}
+	if s.client == nil {
+		fmt.Printf("[DEV] Account deletion email to %s: deletion scheduled for %s\n", to, scheduledAt)
+		return nil
+	}
+	params := buildAccountDeletionScheduledParams(s.fromEmail, to, scheduledAt, appURL)
+	_, err := s.client.Emails.Send(params)
+	return err
+}
+
+// buildAccountDeletionScheduledParams assembles the deletion confirmation. It
+// is separate from the send so the text can be tested without a mail server.
+func buildAccountDeletionScheduledParams(from, to, scheduledAt, appURL string) *resend.SendEmailRequest {
+	when := html.EscapeString(scheduledAt)
+	return &resend.SendEmailRequest{
+		From:    from,
+		To:      []string{to},
+		Subject: "Your Multica account is scheduled for deletion",
+		Html: fmt.Sprintf(
+			`<div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+				<h2>Your account will be deleted</h2>
+				<p>We received a request to delete your Multica account. It will be deleted on <strong>%s</strong>, together with the workspaces where you are the only member.</p>
+				<p>To cancel, sign in at %s before then and choose <strong>Cancel deletion</strong>.</p>
+				<p style="color: #666; font-size: 14px;">If you did not request this, sign in and cancel the deletion, then review your account security.</p>
+			</div>`, when, html.EscapeString(appURL)),
+	}
+}
+
 // sanitizeSubjectField prepares user-controlled text for the email Subject line.
 // Subject is not HTML-rendered, so HTML-escaping would leak literal entities
 // (e.g. &lt;script&gt;) into the recipient's inbox. Instead strip control

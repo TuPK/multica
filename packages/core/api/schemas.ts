@@ -3376,6 +3376,9 @@ export const UserSchema = z.object({
   // value degrades to that state instead of discarding the whole user.
   whats_new_seen_version: z.string().nullable().optional().catch(undefined),
   consent_required: ConsentRequiredSchema,
+  // Present only while the account waits to be deleted. A malformed value
+  // degrades to absent rather than discarding the whole user.
+  deletion_scheduled_at: z.string().nullable().optional().catch(undefined),
   created_at: z.string().default(""),
   updated_at: z.string().default(""),
 }).loose();

@@ -91,6 +91,8 @@ export interface User {
   whats_new_seen_version?: string | null;
   /** Legal documents the user has not accepted at their current version. */
   consent_required?: ConsentRequirement[];
+  /** RFC 3339 UTC. Set only while the account waits to be deleted. */
+  deletion_scheduled_at?: string | null;
   created_at: string;
   updated_at: string;
 }
