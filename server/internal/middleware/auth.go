@@ -2,14 +2,17 @@ package middleware
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/platform-management/accountguard"
 	"github.com/multica-ai/multica/server/internal/auth"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -29,6 +32,76 @@ func rejectTemporarilyDisabledUser(w http.ResponseWriter, r *http.Request, userI
 	)
 	writeError(w, http.StatusForbidden, auth.TemporarilyDisabledUserError)
 	return true
+}
+
+// Stable error codes for the account guard. Clients branch on these, so they
+// are part of the API.
+const (
+	codeAccountSuspended        = "account_suspended"
+	codeAccountPendingDeletion  = "account_pending_deletion"
+	codeAccountStateUnavailable = "account_state_unavailable"
+	codeSessionRevoked          = "session_revoked"
+)
+
+func writeCodedError(w http.ResponseWriter, status int, code, msg string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg, "code": code})
+}
+
+// pendingDeletionExempt reports whether a pending_deletion account may still
+// use this route: read its own profile, cancel the deletion, or sign out.
+// Matching is on the chi route template, which is only complete once the
+// router has matched the request, so these routes must sit in a chi.Group or
+// directly on the mux that mounts the middleware.
+func pendingDeletionExempt(r *http.Request) bool {
+	rctx := chi.RouteContext(r.Context())
+	if rctx == nil {
+		return false
+	}
+	switch r.Method + " " + rctx.RoutePattern() {
+	case "GET /api/me", "DELETE /api/me/deletion", "POST /auth/logout":
+		return true
+	}
+	return false
+}
+
+// guardAccount applies the account-state decision table to an identified user
+// and reports whether the request may proceed; when it may not, the response
+// has been written. A nil guard or an empty userID skips the check: the
+// latter is a daemon token bound to no user, which has no account to guard.
+func guardAccount(w http.ResponseWriter, r *http.Request, guard *accountguard.Guard, userID, authPath string) (accountguard.Record, bool) {
+	if guard == nil || userID == "" {
+		return accountguard.Record{Status: accountguard.Active}, true
+	}
+	rec, err := guard.State(r.Context(), userID)
+	if err != nil {
+		slog.Warn("auth: account state unavailable",
+			"path", r.URL.Path, "user_id", userID, "auth_path", authPath, "error", err)
+		writeCodedError(w, http.StatusServiceUnavailable, codeAccountStateUnavailable, "account state unavailable")
+		return rec, false
+	}
+	switch rec.Status {
+	case accountguard.Active:
+		return rec, true
+	case accountguard.PendingDeletion:
+		if pendingDeletionExempt(r) {
+			return rec, true
+		}
+		writeCodedError(w, http.StatusForbidden, codeAccountPendingDeletion, "account pending deletion")
+	default:
+		// Suspended, deleted, and any status this build does not know: refuse.
+		writeCodedError(w, http.StatusForbidden, codeAccountSuspended, "account suspended")
+	}
+	slog.Warn("auth: account refused",
+		"path", r.URL.Path, "user_id", userID, "auth_path", authPath, "status", string(rec.Status))
+	return rec, false
+}
+
+func rejectRevokedSession(w http.ResponseWriter, r *http.Request, userID string) {
+	slog.Warn("auth: revoked session rejected", "path", r.URL.Path, "user_id", userID)
+	auth.ClearAuthCookies(w)
+	writeCodedError(w, http.StatusUnauthorized, codeSessionRevoked, "session revoked")
 }
 
 // Auth middleware validates JWT tokens or Personal Access Tokens.
@@ -56,7 +129,13 @@ func rejectTemporarilyDisabledUser(w http.ResponseWriter, r *http.Request, userI
 // local DB. When nil (Fleet URL unset) mcn_ tokens are rejected at the
 // prefix branch — we don't fall through to the mul_ / JWT paths, since
 // an mcn_ string is by construction not a valid mul_ PAT or JWT.
-func Auth(queries *db.Queries, patCache *auth.PATCache, cloudPAT *auth.CloudPATVerifier, cfSigner *auth.CloudFrontSigner) func(http.Handler) http.Handler {
+//
+// guard is optional; when non-nil, every token kind is checked against the
+// account state of the user it identifies after the token itself verifies, and
+// a suspended, deleted, or pending-deletion account is refused (see
+// guardAccount). The same record carries sessions_valid_after, which revokes
+// JWT sessions only.
+func Auth(queries *db.Queries, patCache *auth.PATCache, cloudPAT *auth.CloudPATVerifier, cfSigner *auth.CloudFrontSigner, guard *accountguard.Guard) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// X-Actor-Source is server-set only — any value supplied by
@@ -121,6 +200,9 @@ func Auth(queries *db.Queries, patCache *auth.PATCache, cloudPAT *auth.CloudPATV
 				}
 				userID := uuidToString(tt.UserID)
 				if rejectTemporarilyDisabledUser(w, r, userID, "", "task_token") {
+					return
+				}
+				if _, ok := guardAccount(w, r, guard, userID, "task_token"); !ok {
 					return
 				}
 				boundWorkspaceID := uuidToString(tt.WorkspaceID)
@@ -189,6 +271,9 @@ func Auth(queries *db.Queries, patCache *auth.PATCache, cloudPAT *auth.CloudPATV
 				if rejectTemporarilyDisabledUser(w, r, identity.OwnerID, "", "cloud_pat") {
 					return
 				}
+				if _, ok := guardAccount(w, r, guard, identity.OwnerID, "cloud_pat"); !ok {
+					return
+				}
 				r.Header.Set("X-User-ID", identity.OwnerID)
 				// Tag the auth path so account-level guards (e.g.
 				// handler.RequireHumanActor on /api/cloud-billing/*)
@@ -218,6 +303,9 @@ func Auth(queries *db.Queries, patCache *auth.PATCache, cloudPAT *auth.CloudPATV
 					if rejectTemporarilyDisabledUser(w, r, userID, "", "pat_cache") {
 						return
 					}
+					if _, ok := guardAccount(w, r, guard, userID, "pat_cache"); !ok {
+						return
+					}
 					r.Header.Set("X-User-ID", userID)
 					next.ServeHTTP(w, r)
 					return
@@ -236,6 +324,9 @@ func Auth(queries *db.Queries, patCache *auth.PATCache, cloudPAT *auth.CloudPATV
 
 				userID := uuidToString(pat.UserID)
 				if rejectTemporarilyDisabledUser(w, r, userID, "", "pat") {
+					return
+				}
+				if _, ok := guardAccount(w, r, guard, userID, "pat"); !ok {
 					return
 				}
 				r.Header.Set("X-User-ID", userID)
@@ -286,6 +377,14 @@ func Auth(queries *db.Queries, patCache *auth.PATCache, cloudPAT *auth.CloudPATV
 			}
 			email, _ := claims["email"].(string)
 			if rejectTemporarilyDisabledUser(w, r, sub, email, "jwt") {
+				return
+			}
+			rec, ok := guardAccount(w, r, guard, sub, "jwt")
+			if !ok {
+				return
+			}
+			if auth.SessionRevoked(rec.SessionsValidAfter, claims) {
+				rejectRevokedSession(w, r, sub)
 				return
 			}
 			r.Header.Set("X-User-ID", sub)

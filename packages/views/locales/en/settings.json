@@ -652,7 +652,17 @@
     "save": "Update Profile",
     "saving": "Updating...",
     "toast_avatar_failed": "Failed to upload avatar",
-    "toast_profile_failed": "Failed to update profile"
+    "toast_profile_failed": "Failed to update profile",
+    "section_sessions": "Sessions",
+    "revoke_all_sessions_title": "Sign out of all devices",
+    "revoke_all_sessions_description": "Personal access tokens are not revoked.",
+    "revoke_all_sessions_button": "Sign out of all devices",
+    "revoke_all_sessions_dialog_description": "You will be signed out on all other devices.",
+    "revoke_all_sessions_cancel": "Cancel",
+    "revoke_all_sessions_confirm": "Sign out",
+    "revoke_all_sessions_submitting": "Signing out...",
+    "toast_revoke_all_sessions_success": "Signed out of all devices",
+    "toast_revoke_all_sessions_failed": "Failed to sign out of all devices"
   },
   "notifications": {
     "title": "Inbox Notifications",

@@ -45,6 +45,13 @@ export interface AuthState {
   loginWithToken: (token: string) => Promise<User>;
   logout: () => void;
   sessionExpired: () => void;
+  /**
+   * Replaces the stored session token with one the server just issued for the
+   * same login (sign-out of all devices). Token mode only: a cookie-mode
+   * browser already holds it as an HttpOnly cookie and must not keep a
+   * readable copy. An empty token changes nothing.
+   */
+  adoptSessionToken: (token: string) => void;
   setUser: (user: User) => void;
   refreshMe: () => Promise<void>;
 }
@@ -174,6 +181,14 @@ export function createAuthStore(options: AuthStoreOptions) {
         status: "unauthenticated",
         expired: hadCredential,
       });
+    },
+
+    adoptSessionToken: (token: string) => {
+      if (cookieAuth || !token) return;
+      // Persist before the in-memory client, as session renewal does, so a
+      // crash between the two leaves the newer credential on disk.
+      storage.setItem("multica_token", token);
+      api.setToken(token);
     },
 
     setUser: (user: User) => {

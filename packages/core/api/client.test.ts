@@ -3,7 +3,7 @@ import { createAuthStore } from "../auth";
 import { setCurrentWorkspace } from "../platform/workspace-storage";
 import { configStore } from "../config";
 import type { StorageAdapter, User } from "../types";
-import { ApiClient, ApiError, CHAT_DRAFT_RESTORE_CAPABILITY, clientErrorMessage } from "./client";
+import { ApiClient, ApiError, CHAT_DRAFT_RESTORE_CAPABILITY, clientErrorMessage, errorCode } from "./client";
 import { EMPTY_PLUGIN_PACKAGE_LIST, EMPTY_PLUGIN_PREVIEW, EMPTY_PLUGIN_SURFACE_LAUNCH } from "./schemas";
 
 afterEach(() => {
@@ -3267,6 +3267,70 @@ describe("ApiClient shared credential across windows", () => {
     await expect(client.markOnboardingComplete()).rejects.toBeInstanceOf(ApiError);
 
     expect(onUnauthorized).toHaveBeenCalledTimes(1);
+  });
+
+  // Sign-out of all devices answers a revoked JWT with 401 + session_revoked.
+  // It rides the same path as an expired session: there is no second handler.
+  it("ends the session on a 401 session_revoked", async () => {
+    const storage = sharedStorage("token-v1");
+    const onUnauthorized = vi.fn();
+    const client = new ApiClient("https://api.example.test", {
+      getToken: storage.read,
+      onUnauthorized,
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () =>
+        jsonResponse({ error: "session revoked", code: "session_revoked" }, 401),
+      ),
+    );
+
+    const err = await client.markOnboardingComplete().catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(ApiError);
+    expect(errorCode(err)).toBe("session_revoked");
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+  });
+
+  it("ends a cookie-mode session on a 401 session_revoked", async () => {
+    const onUnauthorized = vi.fn();
+    const client = new ApiClient("https://api.example.test", { onUnauthorized });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () =>
+        jsonResponse({ error: "session revoked", code: "session_revoked" }, 401),
+      ),
+    );
+
+    await expect(client.markOnboardingComplete()).rejects.toBeInstanceOf(ApiError);
+
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+  });
+
+  // The caller of revoke-all stores its replacement token while requests sent
+  // with the old one are still in flight. Their session_revoked must not log
+  // the caller out of the session it just renewed.
+  it("ignores a 401 session_revoked for a credential replaced by the revoke-all response", async () => {
+    const storage = sharedStorage("token-v1");
+    const onUnauthorized = vi.fn();
+    const client = new ApiClient("https://api.example.test", {
+      getToken: storage.read,
+      onUnauthorized,
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () => {
+        storage.write("token-after-revoke-all");
+        return jsonResponse({ error: "session revoked", code: "session_revoked" }, 401);
+      }),
+    );
+
+    await expect(client.markOnboardingComplete()).rejects.toBeInstanceOf(ApiError);
+
+    expect(onUnauthorized).not.toHaveBeenCalled();
   });
 
   // Cookie mode has no bearer token to compare, so the guard must not swallow

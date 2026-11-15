@@ -16,6 +16,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
+	"github.com/multica-ai/multica/platform-management/accountguard"
 	"github.com/multica-ai/multica/server/internal/auth"
 )
 
@@ -70,7 +71,7 @@ func (s staticPATResolver) ResolveToken(_ context.Context, token string) (string
 func TestAuthenticateTokenRejectsTemporarilyDisabledJWTUser(t *testing.T) {
 	token := makeTestTokenForUser(t, "514492f7-b30f-4147-bd33-c0e8ce5d6d4f", "")
 
-	uid, errMsg := authenticateToken(token, nil, context.Background())
+	uid, _, errMsg := authenticateToken(token, nil, context.Background())
 	if uid != "" {
 		t.Fatalf("expected no user ID, got %q", uid)
 	}
@@ -80,7 +81,7 @@ func TestAuthenticateTokenRejectsTemporarilyDisabledJWTUser(t *testing.T) {
 }
 
 func TestAuthenticateTokenRejectsTemporarilyDisabledPATUser(t *testing.T) {
-	uid, errMsg := authenticateToken("mul_disabled", staticPATResolver{
+	uid, _, errMsg := authenticateToken("mul_disabled", staticPATResolver{
 		"mul_disabled": "1d542296-17c6-484a-9914-dcee589be116",
 	}, context.Background())
 	if uid != "" {
@@ -100,7 +101,7 @@ func newTestHub(t *testing.T) (*Hub, *httptest.Server) {
 	hub.SetMembershipChecker(mc)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		HandleWebSocket(hub, mc, nil, nil, w, r)
+		HandleWebSocket(hub, mc, nil, nil, nil, w, r)
 	})
 	server := httptest.NewServer(mux)
 	return hub, server
@@ -655,5 +656,327 @@ func TestReadPump_AcceptsFrameUnderReadLimit(t *testing.T) {
 	}
 	if !strings.Contains(string(raw), "pong") {
 		t.Fatalf("got %s, want a pong frame", raw)
+	}
+}
+
+func TestDisconnectUserClosesEveryWorkspaceConnectionOfThatUser(t *testing.T) {
+	hub := NewHub()
+	newClient := func(userID, workspaceID string) *Client {
+		c := &Client{hub: hub, send: make(chan []byte, 4), userID: userID, workspaceID: workspaceID}
+		hub.registerClient(c)
+		return c
+	}
+	first := newClient("target", "ws-x")
+	second := newClient("target", "ws-y")
+	other := newClient("other", "ws-x")
+
+	hub.DisconnectUser("target")
+
+	for name, c := range map[string]*Client{"first": first, "second": second} {
+		if !c.stopped.Load() {
+			t.Errorf("%s connection of the target user was not stopped", name)
+		}
+		hub.mu.RLock()
+		registered := hub.clients[c]
+		hub.mu.RUnlock()
+		if registered {
+			t.Errorf("%s connection of the target user is still registered", name)
+		}
+	}
+	if other.stopped.Load() {
+		t.Error("a connection of another user was stopped")
+	}
+	hub.mu.RLock()
+	registered := hub.clients[other]
+	hub.mu.RUnlock()
+	if !registered {
+		t.Error("a connection of another user was removed")
+	}
+}
+
+func TestDisconnectUserClosesTheSocket(t *testing.T) {
+	hub, server := newTestHub(t)
+	defer server.Close()
+	conn := connectWS(t, server)
+	defer conn.Close()
+	waitFor(t, "client registration", func() bool {
+		hub.mu.RLock()
+		defer hub.mu.RUnlock()
+		return len(hub.clients) == 1
+	})
+
+	hub.DisconnectUser(testUserID)
+
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if _, _, err := conn.ReadMessage(); err == nil {
+		t.Fatal("read succeeded after DisconnectUser; want the socket closed")
+	}
+}
+
+func TestDisconnectUserIgnoresEmptyUserAndNilHub(t *testing.T) {
+	hub := NewHub()
+	anonymous := &Client{hub: hub, send: make(chan []byte, 1), workspaceID: "ws-x"}
+	hub.registerClient(anonymous)
+
+	hub.DisconnectUser("")
+	(*Hub)(nil).DisconnectUser("target")
+
+	if anonymous.stopped.Load() {
+		t.Fatal("an empty user ID matched a connection with no user")
+	}
+}
+
+type fakeAccountStore struct {
+	status accountguard.State
+	after  time.Time
+	found  bool
+	err    error
+	mu     sync.Mutex
+	calls  int
+}
+
+func (s *fakeAccountStore) AccountState(context.Context, string) (accountguard.Record, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.calls++
+	return accountguard.Record{Status: s.status, SessionsValidAfter: s.after}, s.found, s.err
+}
+
+func (s *fakeAccountStore) lookups() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.calls
+}
+
+type noAccountCache struct{}
+
+func (noAccountCache) Get(context.Context, string) ([]byte, bool, error)        { return nil, false, nil }
+func (noAccountCache) Set(context.Context, string, []byte, time.Duration) error { return nil }
+func (noAccountCache) Del(context.Context, string) error                        { return nil }
+
+func newGuardedTestServer(t *testing.T, store *fakeAccountStore) *httptest.Server {
+	t.Helper()
+	hub := NewHub()
+	go hub.Run()
+	mc := &mockMembershipChecker{}
+	hub.SetMembershipChecker(mc)
+	guard := accountguard.New(store, noAccountCache{})
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		HandleWebSocket(hub, mc, nil, nil, guard, w, r)
+	})
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+	return server
+}
+
+func guardedWSURL(server *httptest.Server) string {
+	return "ws" + strings.TrimPrefix(server.URL, "http") + "/ws?workspace_id=" + testWorkspaceID
+}
+
+func TestHandleWebSocketRefusesNonActiveAccountOnCookieUpgrade(t *testing.T) {
+	cases := []struct {
+		name       string
+		store      *fakeAccountStore
+		wantStatus int
+		wantCode   string
+	}{
+		{"suspended", &fakeAccountStore{found: true, status: accountguard.Suspended}, http.StatusForbidden, "account_suspended"},
+		{"deleted", &fakeAccountStore{found: true, status: accountguard.Deleted}, http.StatusForbidden, "account_suspended"},
+		{"pending deletion", &fakeAccountStore{found: true, status: accountguard.PendingDeletion}, http.StatusForbidden, "account_pending_deletion"},
+		{"guard error", &fakeAccountStore{err: errors.New("database unavailable")}, http.StatusServiceUnavailable, "account_state_unavailable"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			server := newGuardedTestServer(t, tc.store)
+			header := http.Header{"Cookie": []string{auth.AuthCookieName + "=" + makeTestToken(t)}}
+
+			conn, resp, err := websocket.DefaultDialer.Dial(guardedWSURL(server), header)
+			if err == nil {
+				conn.Close()
+				t.Fatal("upgrade succeeded for a non-active account")
+			}
+			if resp == nil || resp.StatusCode != tc.wantStatus {
+				t.Fatalf("response = %v, want status %d", resp, tc.wantStatus)
+			}
+			var body struct {
+				Code string `json:"code"`
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&body); err != nil || body.Code != tc.wantCode {
+				t.Fatalf("body code = %q (err %v), want %q", body.Code, err, tc.wantCode)
+			}
+		})
+	}
+}
+
+func TestHandleWebSocketAllowsActiveAccountOnCookieUpgrade(t *testing.T) {
+	for _, store := range []*fakeAccountStore{
+		{found: true, status: accountguard.Active},
+		{}, // no platform_account row
+	} {
+		server := newGuardedTestServer(t, store)
+		header := http.Header{"Cookie": []string{auth.AuthCookieName + "=" + makeTestToken(t)}}
+		conn, _, err := websocket.DefaultDialer.Dial(guardedWSURL(server), header)
+		if err != nil {
+			t.Fatalf("upgrade refused for an active account: %v", err)
+		}
+		conn.Close()
+	}
+}
+
+// A token sent as the first frame is authenticated after the upgrade, so the
+// refusal arrives as an auth_error frame instead of an HTTP status.
+func TestHandleWebSocketRefusesNonActiveAccountOnFirstMessageAuth(t *testing.T) {
+	store := &fakeAccountStore{found: true, status: accountguard.Suspended}
+	server := newGuardedTestServer(t, store)
+	conn, _, err := websocket.DefaultDialer.Dial(guardedWSURL(server), nil)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer conn.Close()
+	authMsg, _ := json.Marshal(map[string]any{"type": "auth", "payload": map[string]string{"token": makeTestToken(t)}})
+	if err := conn.WriteMessage(websocket.TextMessage, authMsg); err != nil {
+		t.Fatalf("send auth: %v", err)
+	}
+
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	_, frame, err := conn.ReadMessage()
+	if err != nil {
+		t.Fatalf("read auth response: %v", err)
+	}
+	var body struct {
+		Code string `json:"code"`
+	}
+	if json.Unmarshal(frame, &body) != nil || body.Code != "account_suspended" {
+		t.Fatalf("frame = %s, want an account_suspended error", frame)
+	}
+	if strings.Contains(string(frame), "auth_ack") {
+		t.Fatal("a suspended account was acknowledged")
+	}
+	if _, _, err := conn.ReadMessage(); err == nil {
+		t.Fatal("connection stayed open after the refusal")
+	}
+}
+
+// An anonymous connection has no user to look up. The guard must not be asked
+// about one, whatever the first frame turns out to be.
+func TestHandleWebSocketDoesNotConsultGuardForAnonymousConnection(t *testing.T) {
+	store := &fakeAccountStore{found: true, status: accountguard.Suspended}
+	server := newGuardedTestServer(t, store)
+	conn, _, err := websocket.DefaultDialer.Dial(guardedWSURL(server), nil)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer conn.Close()
+	if err := conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"auth","payload":{"token":"not-a-token"}}`)); err != nil {
+		t.Fatalf("send auth: %v", err)
+	}
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	_, frame, err := conn.ReadMessage()
+	if err != nil || !strings.Contains(string(frame), "invalid token") {
+		t.Fatalf("frame = %s (err %v), want the invalid token error", frame, err)
+	}
+	if got := store.lookups(); got != 0 {
+		t.Fatalf("guard consulted %d times for an unauthenticated connection", got)
+	}
+}
+
+func tokenWithAuthTime(t *testing.T, authTime int64) string {
+	t.Helper()
+	claims := jwt.MapClaims{"sub": testUserID, "iat": authTime + 1000, "auth_time": authTime}
+	signed, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(auth.JWTSecret())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return signed
+}
+
+func TestHandleWebSocketRefusesRevokedSessionOnCookieUpgrade(t *testing.T) {
+	mark := time.Unix(1_800_000_000, 0)
+	store := &fakeAccountStore{found: true, status: accountguard.Active, after: mark}
+	server := newGuardedTestServer(t, store)
+	header := http.Header{"Cookie": []string{auth.AuthCookieName + "=" + tokenWithAuthTime(t, mark.Unix()-1)}}
+
+	conn, resp, err := websocket.DefaultDialer.Dial(guardedWSURL(server), header)
+	if err == nil {
+		conn.Close()
+		t.Fatal("upgrade succeeded for a revoked session")
+	}
+	if resp == nil || resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("response = %v, want 401", resp)
+	}
+	var body struct {
+		Code string `json:"code"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil || body.Code != "session_revoked" {
+		t.Fatalf("body code = %q (err %v), want session_revoked", body.Code, err)
+	}
+	var cleared bool
+	for _, c := range resp.Cookies() {
+		if c.Name == auth.AuthCookieName && c.Value == "" && c.MaxAge < 0 {
+			cleared = true
+		}
+	}
+	if !cleared {
+		t.Error("the revoked session's auth cookie was not cleared")
+	}
+}
+
+func TestHandleWebSocketAllowsSessionAtOrAfterTheMark(t *testing.T) {
+	mark := time.Unix(1_800_000_000, 0)
+	server := newGuardedTestServer(t, &fakeAccountStore{found: true, status: accountguard.Active, after: mark})
+	header := http.Header{"Cookie": []string{auth.AuthCookieName + "=" + tokenWithAuthTime(t, mark.Unix())}}
+	conn, _, err := websocket.DefaultDialer.Dial(guardedWSURL(server), header)
+	if err != nil {
+		t.Fatalf("a session issued at the mark was refused: %v", err)
+	}
+	conn.Close()
+}
+
+func TestHandleWebSocketRefusesRevokedSessionOnFirstMessageAuth(t *testing.T) {
+	mark := time.Unix(1_800_000_000, 0)
+	server := newGuardedTestServer(t, &fakeAccountStore{found: true, status: accountguard.Active, after: mark})
+	conn, _, err := websocket.DefaultDialer.Dial(guardedWSURL(server), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	authMsg, _ := json.Marshal(map[string]any{"type": "auth", "payload": map[string]string{"token": tokenWithAuthTime(t, mark.Unix()-1)}})
+	if err := conn.WriteMessage(websocket.TextMessage, authMsg); err != nil {
+		t.Fatal(err)
+	}
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	_, frame, err := conn.ReadMessage()
+	if err != nil || !strings.Contains(string(frame), `"code":"session_revoked"`) {
+		t.Fatalf("frame = %s (err %v), want a session_revoked error", frame, err)
+	}
+	if _, _, err := conn.ReadMessage(); err == nil {
+		t.Fatal("connection stayed open after the refusal")
+	}
+}
+
+// A PAT is not a session; the mark does not apply to it.
+func TestHandleWebSocketSessionRevokedDoesNotApplyToPAT(t *testing.T) {
+	store := &fakeAccountStore{found: true, status: accountguard.Active, after: time.Now().Add(time.Hour)}
+	hub := NewHub()
+	go hub.Run()
+	mc := &mockMembershipChecker{}
+	hub.SetMembershipChecker(mc)
+	guard := accountguard.New(store, noAccountCache{})
+	pr := staticPATResolver{"mul_ok": testUserID}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		HandleWebSocket(hub, mc, pr, nil, guard, w, r)
+	}))
+	defer server.Close()
+	conn, _, err := websocket.DefaultDialer.Dial(guardedWSURL(server), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	authMsg, _ := json.Marshal(map[string]any{"type": "auth", "payload": map[string]string{"token": "mul_ok"}})
+	_ = conn.WriteMessage(websocket.TextMessage, authMsg)
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if _, ack, err := conn.ReadMessage(); err != nil || !strings.Contains(string(ack), "auth_ack") {
+		t.Fatalf("PAT connection refused: %s (err %v)", ack, err)
 	}
 }

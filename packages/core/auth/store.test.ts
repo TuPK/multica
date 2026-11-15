@@ -188,4 +188,38 @@ describe("authStore", () => {
     expect(store.getState().status).toBe("authenticated");
     expect(store.getState().expired).toBe(false);
   });
+  describe("adoptSessionToken", () => {
+    it("stores the new token and points the client at it in token mode", () => {
+      const storage = makeStorage({ multica_token: "old" });
+      const api = makeApi();
+      const store = createAuthStore({ api, storage });
+
+      store.getState().adoptSessionToken("new");
+
+      expect(storage.snapshot().multica_token).toBe("new");
+      expect(api.setToken).toHaveBeenCalledWith("new");
+    });
+
+    it("keeps no readable copy in cookie mode", () => {
+      const storage = makeStorage();
+      const api = makeApi();
+      const store = createAuthStore({ api, storage, cookieAuth: true });
+
+      store.getState().adoptSessionToken("new");
+
+      expect(storage.snapshot()).toEqual({});
+      expect(api.setToken).not.toHaveBeenCalled();
+    });
+
+    it("ignores an empty token, which is what an unreadable response yields", () => {
+      const storage = makeStorage({ multica_token: "old" });
+      const api = makeApi();
+      const store = createAuthStore({ api, storage });
+
+      store.getState().adoptSessionToken("");
+
+      expect(storage.snapshot().multica_token).toBe("old");
+      expect(api.setToken).not.toHaveBeenCalled();
+    });
+  });
 });

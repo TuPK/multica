@@ -176,13 +176,17 @@ func (h *Handler) issueJWT(user db.User) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// `auth_time` is the login time that renewal preserves; "sign out of all
+	// devices" compares it with sessions_valid_after.
+	now := time.Now()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":   uuidToString(user.ID),
-		"email": user.Email,
-		"name":  user.Name,
-		"sid":   sid,
-		"exp":   time.Now().Add(auth.AuthTokenTTL()).Unix(),
-		"iat":   time.Now().Unix(),
+		"sub":              uuidToString(user.ID),
+		"email":            user.Email,
+		"name":             user.Name,
+		"sid":              sid,
+		"exp":              now.Add(auth.AuthTokenTTL()).Unix(),
+		"iat":              now.Unix(),
+		auth.AuthTimeClaim: now.Unix(),
 	})
 	return token.SignedString(auth.JWTSecret())
 }

@@ -32,7 +32,7 @@ func TestMembershipRevocationWithoutRelay(t *testing.T) {
 	mc := &changingMembership{}
 	hub.SetMembershipChecker(mc)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		HandleWebSocket(hub, mc, nil, nil, w, r)
+		HandleWebSocket(hub, mc, nil, nil, nil, w, r)
 	}))
 	defer server.Close()
 	conn := connectWS(t, server)
@@ -66,7 +66,7 @@ func membershipServer(t *testing.T, hub *Hub, mc MembershipChecker) *httptest.Se
 	hub.SetMembershipChecker(mc)
 	go hub.Run()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		HandleWebSocket(hub, mc, nil, nil, w, r)
+		HandleWebSocket(hub, mc, nil, nil, nil, w, r)
 	}))
 	t.Cleanup(server.Close)
 	return server

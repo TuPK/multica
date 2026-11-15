@@ -236,7 +236,7 @@ Mọi việc nền là một `scheduler.JobSpec` đăng ký ở `server/cmd/serv
 | `pending_deletion` | 403, mã `account_pending_deletion`, trừ `GET /api/me`, `DELETE /api/me/deletion`, `POST /auth/logout` |
 | JWT có thời điểm đăng nhập trước `sessions_valid_after` | 401, mã `session_revoked`; xóa cookie |
 
-Áp cho cả năm loại token. Với `mat_`, người dùng bị kiểm là người mà token gắn vào. Với `mdt_`, là chủ runtime mà token gắn vào (`DaemonTokenOwnerIDFromContext`); token không có chủ (daemon do Qoder quản lý) không qua guard tài khoản. Kết nối WebSocket kiểm lúc mở. Khi một tài khoản bị khóa, máy chủ ngắt mọi kết nối đang mở của người đó bằng `Hub.DisconnectMember` cho từng workspace họ là thành viên.
+Áp cho cả năm loại token. Với `mat_`, người dùng bị kiểm là người mà token gắn vào. Với `mdt_`, là chủ runtime mà token gắn vào (`DaemonTokenOwnerIDFromContext`); token không có chủ (daemon do Qoder quản lý) không qua guard tài khoản. Kết nối WebSocket kiểm lúc mở. Khi một tài khoản bị khóa, máy chủ ngắt mọi kết nối đang mở của người đó bằng `Hub.DisconnectUser`, một lần gọi cho mọi workspace.
 
 **Độ trễ thu hồi.** Thông thường là tức thì nhờ xóa cache. Trường hợp xấu nhất, khi lệnh xóa cache thất bại, là 60 giây.
 

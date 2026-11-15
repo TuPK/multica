@@ -1550,6 +1550,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	// as "no cache, always hit DB".
 	patCache := auth.NewPATCache(rdb)
 	daemonTokenCache := auth.NewDaemonTokenCache(rdb)
+	accountGuard := auth.NewAccountGuard(queries, rdb)
 	h.PATCache = patCache
 	h.DaemonTokenCache = daemonTokenCache
 	h.MembershipCache = auth.NewMembershipCache(rdb)
@@ -1641,7 +1642,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 		return util.UUIDToString(ws.ID), nil
 	})
 	r.Get("/ws", func(w http.ResponseWriter, r *http.Request) {
-		realtime.HandleWebSocket(hub, mc, pr, slugResolver, w, r)
+		realtime.HandleWebSocket(hub, mc, pr, slugResolver, accountGuard, w, r)
 	})
 
 	// Local file serving (when using local storage). Served through the
@@ -1740,7 +1741,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 
 	// Daemon API routes (require daemon token or valid user token)
 	r.Route("/api/daemon", func(r chi.Router) {
-		r.Use(middleware.DaemonAuth(queries, patCache, daemonTokenCache, cloudPATVerifier))
+		r.Use(middleware.DaemonAuth(queries, patCache, daemonTokenCache, cloudPATVerifier, accountGuard))
 
 		r.Post("/register", h.DaemonRegister)
 		r.Post("/deregister", h.DaemonDeregister)
@@ -1823,7 +1824,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	// signed-in user's session and the installation header. Keeping it outside
 	// /v1 prevents the Public API from accepting session cookies.
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.Auth(queries, patCache, cloudPATVerifier, cfSigner))
+		r.Use(middleware.Auth(queries, patCache, cloudPATVerifier, cfSigner, accountGuard))
 		r.Route(pluginBridgePrefix, func(r chi.Router) {
 			registerPluginActionRoutes(r, h)
 			// ui / manual only. `event` is dispatched by the host off the event
@@ -1833,7 +1834,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	})
 
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.Auth(queries, patCache, cloudPATVerifier, cfSigner))
+		r.Use(middleware.Auth(queries, patCache, cloudPATVerifier, cfSigner, accountGuard))
 		r.Use(middleware.RefreshCloudFrontCookies(cfSigner))
 
 		// Plugin Action API. Called by the HOST PAGE on the signed-in user's
@@ -1851,6 +1852,9 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 		r.Post("/api/me/onboarding/complete", h.CompleteOnboarding)
 		r.Post("/api/me/onboarding/cloud-waitlist", h.JoinCloudWaitlist)
 		r.Post("/api/me/whats-new/seen", h.MarkWhatsNewSeen)
+		// Human-only for the same reason as /api/cli-token: a machine
+		// credential must not sign its owner out of every device.
+		r.With(handler.RequireHumanActor).Post("/api/me/sessions/revoke-all", h.RevokeAllSessions(accountGuard))
 		// Credential minting is human-only (MUL-8154): an agent task token
 		// (mat_) or cloud-node PAT (mcn_) authenticates as its owner, so
 		// without this guard a prompt-injected agent could trade its scoped,

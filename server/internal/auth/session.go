@@ -3,6 +3,7 @@ package auth
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -40,6 +41,11 @@ const (
 	// what the CSRF token is bound to, so re-signing the auth cookie does
 	// not invalidate CSRF tokens other tabs are already holding.
 	sessionIDClaim = "sid"
+
+	// AuthTimeClaim carries the Unix second of the original login. Unlike
+	// `iat` it survives renewal, which is what "sign out of all devices"
+	// compares against platform_account.sessions_valid_after.
+	AuthTimeClaim = "auth_time"
 
 	// sessionRenewCheckDivisor derives the client-side re-check cadence
 	// from the configured TTL: a client that checks every TTL/10 gets
@@ -197,11 +203,53 @@ func SessionIDFromToken(tokenString string) string {
 	return sid
 }
 
+// SessionAuthTime returns the login time of a session token in Unix seconds:
+// the `auth_time` claim, or `iat` for a token minted before that claim
+// existed. ok is false when the token proves neither. A malformed `auth_time`
+// does not fall back to `iat`.
+func SessionAuthTime(claims jwt.MapClaims) (int64, bool) {
+	if raw, present := claims[AuthTimeClaim]; present {
+		return claimUnixSeconds(raw)
+	}
+	if raw, present := claims["iat"]; present {
+		return claimUnixSeconds(raw)
+	}
+	return 0, false
+}
+
+// SessionRevoked reports whether a session token predates validAfter, the
+// user's "sign out of all devices" mark. A zero mark revokes nothing. A token
+// that proves no login time cannot show it is newer than the mark, so it is
+// treated as revoked. Whole seconds, strict `<`: a token issued at the mark
+// survives it.
+func SessionRevoked(validAfter time.Time, claims jwt.MapClaims) bool {
+	if validAfter.IsZero() {
+		return false
+	}
+	authTime, ok := SessionAuthTime(claims)
+	return !ok || authTime < validAfter.Unix()
+}
+
+func claimUnixSeconds(raw any) (int64, bool) {
+	switch v := raw.(type) {
+	case float64:
+		return int64(v), true
+	case int64:
+		return v, true
+	case int:
+		return int64(v), true
+	case json.Number:
+		f, err := v.Float64()
+		return int64(f), err == nil
+	}
+	return 0, false
+}
+
 // RenewSessionToken re-signs the identity carried by claims with a fresh
 // lifetime, returning the new token and its expiry.
 //
-// Only `exp` and `iat` move. `sub`, `email`, `name` and `sid` are copied
-// forward verbatim, which is what makes renewal free of any database read:
+// Only `exp` and `iat` move. `sub`, `email`, `name`, `sid` and `auth_time` are
+// copied forward verbatim (a token without `auth_time` gets its old `iat`), which is what makes renewal free of any database read:
 // the claims were signed by this server, so they are already authoritative
 // for exactly the fields the auth middleware reads back out.
 //
@@ -232,6 +280,12 @@ func RenewSessionToken(claims jwt.MapClaims) (string, time.Time, error) {
 		}
 	}
 
+	// A token that proves no login time must not get one stamped "now".
+	authTime, ok := SessionAuthTime(claims)
+	if !ok {
+		return "", time.Time{}, ErrNotSessionToken
+	}
+
 	now := time.Now()
 	expiresAt := now.Add(AuthTokenTTL())
 	next := jwt.MapClaims{
@@ -239,6 +293,7 @@ func RenewSessionToken(claims jwt.MapClaims) (string, time.Time, error) {
 		"exp":          expiresAt.Unix(),
 		"iat":          now.Unix(),
 		sessionIDClaim: sid,
+		AuthTimeClaim:  authTime,
 	}
 	if email != "" {
 		next["email"] = email

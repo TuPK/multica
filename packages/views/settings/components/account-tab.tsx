@@ -1,11 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Button } from "@multica/ui/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@multica/ui/components/ui/dialog";
 import { Input } from "@multica/ui/components/ui/input";
 import { Textarea } from "@multica/ui/components/ui/textarea";
+import { Loader2 } from "@multica/ui/icons";
 import { toast } from "sonner";
 import { useAuthStore } from "@multica/core/auth";
 import { api } from "@multica/core/api";
+import { useRevokeAllSessions } from "@multica/core/account";
 import { AvatarUploadControl } from "../../common/avatar-upload-control";
 import { useT } from "../../i18n";
 import {
@@ -41,6 +54,28 @@ export function AccountTab() {
   const [profileDescription, setProfileDescription] = useState(
     user?.profile_description ?? "",
   );
+  const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
+  const revokeAllSessions = useRevokeAllSessions();
+  const isRevoking = Boolean(revokeAllSessions?.isPending);
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open && isRevoking) return;
+    setRevokeDialogOpen(open);
+  };
+
+  const handleRevokeAllSessions = async () => {
+    try {
+      await revokeAllSessions.mutateAsync();
+      setRevokeDialogOpen(false);
+      toast.success(t(($) => $.account.toast_revoke_all_sessions_success));
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t(($) => $.account.toast_revoke_all_sessions_failed),
+      );
+    }
+  };
 
   useEffect(() => {
     setProfileName(user?.name ?? "");
@@ -183,6 +218,62 @@ export function AccountTab() {
                 </p>
               ) : null}
             </div>
+          </SettingsRow>
+        </SettingsCard>
+      </SettingsSection>
+
+      <SettingsSection
+        title={t(($) => $.account.section_sessions)}
+        anchor="sessions"
+      >
+        <SettingsCard>
+          <SettingsRow
+            anchor="revoke-all-sessions"
+            label={t(($) => $.account.revoke_all_sessions_title)}
+            description={t(($) => $.account.revoke_all_sessions_description)}
+          >
+            <Dialog open={revokeDialogOpen} onOpenChange={handleOpenChange}>
+              <DialogTrigger render={<Button variant="outline" size="sm" />}>
+                {t(($) => $.account.revoke_all_sessions_button)}
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>
+                    {t(($) => $.account.revoke_all_sessions_title)}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {t(($) => $.account.revoke_all_sessions_dialog_description)}
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <DialogClose
+                    render={
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isRevoking}
+                      />
+                    }
+                  >
+                    {t(($) => $.account.revoke_all_sessions_cancel)}
+                  </DialogClose>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={handleRevokeAllSessions}
+                    disabled={isRevoking}
+                    aria-busy={isRevoking || undefined}
+                  >
+                    {isRevoking ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : null}
+                    {isRevoking
+                      ? t(($) => $.account.revoke_all_sessions_submitting)
+                      : t(($) => $.account.revoke_all_sessions_confirm)}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </SettingsRow>
         </SettingsCard>
       </SettingsSection>

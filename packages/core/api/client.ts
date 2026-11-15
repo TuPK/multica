@@ -1,4 +1,9 @@
 import type { ZodType } from "zod";
+import {
+  EMPTY_REVOKE_ALL_SESSIONS_RESPONSE,
+  RevokeAllSessionsResponseSchema,
+  type RevokeAllSessionsResponse,
+} from "../account/schema";
 import { parseDigestMode, type DigestSetting, type DigestModeInfo } from "../governance/digest-mode";
 import { AgentRuntimeSchema, EMPTY_RUNTIME } from "../runtimes/schema";
 import type { IssueWakeup, IssueWakeupInput, IssueWakeupSummaryRow, PausedWakeup, SystemWakeup, WakeupRun, WorkspaceSystemWakeup } from "../types/issue-wakeup";
@@ -1544,6 +1549,22 @@ export class ApiClient {
       RefreshSessionResponseSchema,
       EMPTY_REFRESH_SESSION_RESPONSE,
       { endpoint: "POST /api/auth/refresh" },
+    );
+  }
+
+  /**
+   * Sign the user out of every device. The response carries the caller's
+   * replacement session, because the one this request used is revoked by it.
+   */
+  async revokeAllSessions(): Promise<RevokeAllSessionsResponse> {
+    const raw = await this.fetch<unknown>("/api/me/sessions/revoke-all", {
+      method: "POST",
+    });
+    return parseWithFallback<RevokeAllSessionsResponse>(
+      raw,
+      RevokeAllSessionsResponseSchema,
+      EMPTY_REVOKE_ALL_SESSIONS_RESPONSE,
+      { endpoint: "POST /api/me/sessions/revoke-all" },
     );
   }
 

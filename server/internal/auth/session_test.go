@@ -270,6 +270,86 @@ func TestRenewSessionToken_RejectsClaimsWithoutSubject(t *testing.T) {
 	}
 }
 
+// auth_time is the original login time. Renewal moves exp and iat but must
+// never move auth_time, or "sign out of all devices" could be outrun by a
+// session that keeps renewing itself.
+func TestRenewSessionToken_KeepsAuthTime(t *testing.T) {
+	loggedIn := time.Now().Add(-48 * time.Hour).Unix()
+	old := sessionClaims(t, time.Now().Add(24*time.Hour), "session-abc")
+	old["auth_time"] = float64(loggedIn)
+
+	token, _, err := RenewSessionToken(old)
+	if err != nil {
+		t.Fatalf("RenewSessionToken: %v", err)
+	}
+	next, err := ParseSessionToken(token)
+	if err != nil {
+		t.Fatalf("renewed token does not parse: %v", err)
+	}
+	got, ok := SessionAuthTime(next)
+	if !ok || got != loggedIn {
+		t.Fatalf("auth_time = %d (ok=%v), want %d", got, ok, loggedIn)
+	}
+	if _, present := next["auth_time"]; !present {
+		t.Error("renewed token has no auth_time claim")
+	}
+}
+
+func TestRenewSessionToken_AuthTimeDefaultsToOldIssuedAt(t *testing.T) {
+	old := sessionClaims(t, time.Now().Add(24*time.Hour), "session-abc")
+	issuedAt := int64(old["iat"].(float64))
+
+	token, _, err := RenewSessionToken(old)
+	if err != nil {
+		t.Fatalf("RenewSessionToken: %v", err)
+	}
+	next, err := ParseSessionToken(token)
+	if err != nil {
+		t.Fatalf("renewed token does not parse: %v", err)
+	}
+	got, _ := next["auth_time"].(float64)
+	if int64(got) != issuedAt {
+		t.Fatalf("auth_time = %v, want the old iat %d", got, issuedAt)
+	}
+	if int64(next["iat"].(float64)) == issuedAt {
+		t.Fatal("iat did not move; the test cannot tell auth_time from iat")
+	}
+}
+
+// A token with neither claim cannot prove when its login happened. Renewing
+// it would stamp "now" as the login time and launder a revoked session.
+func TestRenewSessionToken_RejectsTokenWithoutLoginTime(t *testing.T) {
+	old := sessionClaims(t, time.Now().Add(24*time.Hour), "session-abc")
+	delete(old, "iat")
+
+	if _, _, err := RenewSessionToken(old); err != ErrNotSessionToken {
+		t.Fatalf("err = %v, want ErrNotSessionToken", err)
+	}
+}
+
+func TestSessionAuthTime(t *testing.T) {
+	cases := []struct {
+		name   string
+		claims jwt.MapClaims
+		want   int64
+		wantOK bool
+	}{
+		{"auth_time wins over iat", jwt.MapClaims{"auth_time": float64(100), "iat": float64(900)}, 100, true},
+		{"iat when auth_time is absent", jwt.MapClaims{"iat": float64(900)}, 900, true},
+		{"integer claim types", jwt.MapClaims{"auth_time": int64(100)}, 100, true},
+		{"neither claim", jwt.MapClaims{"sub": "user-1"}, 0, false},
+		{"malformed auth_time does not fall back", jwt.MapClaims{"auth_time": "yesterday", "iat": float64(900)}, 0, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := SessionAuthTime(tc.claims)
+			if got != tc.want || ok != tc.wantOK {
+				t.Fatalf("SessionAuthTime = (%d, %v), want (%d, %v)", got, ok, tc.want, tc.wantOK)
+			}
+		})
+	}
+}
+
 // Every non-JWT credential the auth middleware accepts must be unable to
 // become an interactive session. These all authenticate fine; none of them is
 // a session.

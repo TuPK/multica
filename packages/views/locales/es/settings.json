@@ -652,7 +652,17 @@
     "save": "Actualizar perfil",
     "saving": "Actualizando...",
     "toast_avatar_failed": "Error al subir el avatar",
-    "toast_profile_failed": "Error al actualizar el perfil"
+    "toast_profile_failed": "Error al actualizar el perfil",
+    "section_sessions": "Sesiones",
+    "revoke_all_sessions_title": "Cerrar sesión en todos los dispositivos",
+    "revoke_all_sessions_description": "Los tokens de acceso personal no se revocan.",
+    "revoke_all_sessions_button": "Cerrar sesión en todos los dispositivos",
+    "revoke_all_sessions_dialog_description": "Se cerrará la sesión en todos los demás dispositivos.",
+    "revoke_all_sessions_cancel": "Cancelar",
+    "revoke_all_sessions_confirm": "Cerrar sesión",
+    "revoke_all_sessions_submitting": "Cerrando sesión...",
+    "toast_revoke_all_sessions_success": "Sesión cerrada en todos los dispositivos",
+    "toast_revoke_all_sessions_failed": "Error al cerrar sesión en todos los dispositivos"
   },
   "notifications": {
     "title": "Notificaciones de la bandeja",

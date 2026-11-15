@@ -647,7 +647,17 @@
     "save": "프로필 업데이트",
     "saving": "업데이트 중...",
     "toast_avatar_failed": "아바타를 업로드하지 못했습니다",
-    "toast_profile_failed": "프로필을 업데이트하지 못했습니다"
+    "toast_profile_failed": "프로필을 업데이트하지 못했습니다",
+    "section_sessions": "세션",
+    "revoke_all_sessions_title": "모든 기기에서 로그아웃",
+    "revoke_all_sessions_description": "개인 액세스 토큰은 취소되지 않습니다.",
+    "revoke_all_sessions_button": "모든 기기에서 로그아웃",
+    "revoke_all_sessions_dialog_description": "다른 모든 기기에서 로그아웃됩니다.",
+    "revoke_all_sessions_cancel": "취소",
+    "revoke_all_sessions_confirm": "로그아웃",
+    "revoke_all_sessions_submitting": "로그아웃 중...",
+    "toast_revoke_all_sessions_success": "모든 기기에서 로그아웃되었습니다",
+    "toast_revoke_all_sessions_failed": "모든 기기에서 로그아웃하지 못했습니다"
   },
   "notifications": {
     "title": "인박스 알림",

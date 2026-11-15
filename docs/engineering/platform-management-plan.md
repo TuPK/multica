@@ -87,7 +87,7 @@ Kiểm: [Q], [M], [GN] `./internal/auth -run 'AccountGuard'`, [V]. Ước lượ
 **P3. Nối guard vào `Auth`, `DaemonAuth` và WebSocket** [D] (spec 4.1)
 
 - Test đỏ trước: ma trận năm loại token × bốn trạng thái tài khoản (spec mục 13, bộ 1). Với `mdt_`, kiểm theo chủ runtime; token không có chủ được miễn. `pending_deletion` chỉ cho ba route trong danh sách.
-- Đổi `server/internal/middleware/auth.go`, `daemon_auth.go`, `server/internal/realtime/hub.go`, `server/cmd/server/router.go` (truyền guard). Khi trạng thái chuyển sang khóa, ngắt WebSocket qua `Hub.DisconnectMember` cho từng workspace.
+- Đổi `server/internal/middleware/auth.go`, `daemon_auth.go`, `server/internal/realtime/hub.go`, `server/cmd/server/router.go` (truyền guard). Khi trạng thái chuyển sang khóa, ngắt WebSocket qua `Hub.DisconnectUser` (một lần gọi, mọi workspace; thêm mới ở P3, vì `Hub.DisconnectMember` chỉ ngắt theo một workspace và kiểm lại tư cách thành viên).
 - Giữ nguyên `temporary_disabled_users.go`.
 
 Kiểm: [D] `./internal/middleware ./internal/realtime -run 'AccountGuard|Suspended'`; toàn bộ test hiện có của hai gói xanh; [V]. Ước lượng: 2 ngày.

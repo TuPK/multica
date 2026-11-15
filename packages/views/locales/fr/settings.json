@@ -652,7 +652,17 @@
     "save": "Mettre à jour le profil",
     "saving": "Mise à jour...",
     "toast_avatar_failed": "Échec de l'envoi de l'avatar",
-    "toast_profile_failed": "Échec de la mise à jour du profil"
+    "toast_profile_failed": "Échec de la mise à jour du profil",
+    "section_sessions": "Sessions",
+    "revoke_all_sessions_title": "Se déconnecter de tous les appareils",
+    "revoke_all_sessions_description": "Les jetons d'accès personnels ne sont pas révoqués.",
+    "revoke_all_sessions_button": "Se déconnecter de tous les appareils",
+    "revoke_all_sessions_dialog_description": "Vous serez déconnecté de tous les autres appareils.",
+    "revoke_all_sessions_cancel": "Annuler",
+    "revoke_all_sessions_confirm": "Se déconnecter",
+    "revoke_all_sessions_submitting": "Déconnexion...",
+    "toast_revoke_all_sessions_success": "Déconnecté de tous les appareils",
+    "toast_revoke_all_sessions_failed": "Échec de la déconnexion de tous les appareils"
   },
   "notifications": {
     "title": "Notifications de la boîte de réception",

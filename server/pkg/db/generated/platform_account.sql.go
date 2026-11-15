@@ -29,6 +29,24 @@ func (q *Queries) AccountState(ctx context.Context, userID pgtype.UUID) (Account
 	return i, err
 }
 
+const revokeSessionsForUser = `-- name: RevokeSessionsForUser :exec
+INSERT INTO platform_account (user_id, status, changed_at, sessions_valid_after)
+VALUES ($1, 'active', now(), $2)
+ON CONFLICT (user_id) DO UPDATE SET
+    sessions_valid_after = EXCLUDED.sessions_valid_after
+`
+
+type RevokeSessionsForUserParams struct {
+	UserID             pgtype.UUID        `json:"user_id"`
+	SessionsValidAfter pgtype.Timestamptz `json:"sessions_valid_after"`
+}
+
+// Touches only sessions_valid_after; a new row starts active.
+func (q *Queries) RevokeSessionsForUser(ctx context.Context, arg RevokeSessionsForUserParams) error {
+	_, err := q.db.Exec(ctx, revokeSessionsForUser, arg.UserID, arg.SessionsValidAfter)
+	return err
+}
+
 const setAccountState = `-- name: SetAccountState :one
 INSERT INTO platform_account (user_id, status, reason, changed_by, changed_at, sessions_valid_after, deletion_scheduled_at)
 VALUES ($1, $2, $3, $4, now(), $5, $6)

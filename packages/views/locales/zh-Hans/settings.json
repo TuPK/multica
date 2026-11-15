@@ -647,7 +647,17 @@
     "save": "更新资料",
     "saving": "更新中...",
     "toast_avatar_failed": "上传头像失败",
-    "toast_profile_failed": "更新资料失败"
+    "toast_profile_failed": "更新资料失败",
+    "section_sessions": "会话",
+    "revoke_all_sessions_title": "退出所有设备",
+    "revoke_all_sessions_description": "不会撤销个人访问 token。",
+    "revoke_all_sessions_button": "退出所有设备",
+    "revoke_all_sessions_dialog_description": "你将在所有其他设备上退出登录。",
+    "revoke_all_sessions_cancel": "取消",
+    "revoke_all_sessions_confirm": "退出登录",
+    "revoke_all_sessions_submitting": "退出中...",
+    "toast_revoke_all_sessions_success": "已退出所有设备",
+    "toast_revoke_all_sessions_failed": "退出所有设备失败"
   },
   "notifications": {
     "title": "收件箱通知",

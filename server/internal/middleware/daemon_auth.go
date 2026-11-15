@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/multica-ai/multica/platform-management/accountguard"
 	"github.com/multica-ai/multica/server/internal/auth"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -115,7 +116,11 @@ func WithDaemonContext(ctx context.Context, workspaceID, daemonID string) contex
 // branch — same fail-closed contract as the regular Auth middleware.
 //
 // Cache misses fall back to the original DB-backed behavior.
-func DaemonAuth(queries *db.Queries, patCache *auth.PATCache, daemonCache *auth.DaemonTokenCache, cloudPAT *auth.CloudPATVerifier) func(http.Handler) http.Handler {
+//
+// guard is optional; when non-nil, the user each token identifies is checked
+// against the account guard (see Auth). An mdt_ token bound to no owner has no
+// user to check and skips it.
+func DaemonAuth(queries *db.Queries, patCache *auth.PATCache, daemonCache *auth.DaemonTokenCache, cloudPAT *auth.CloudPATVerifier, guard *accountguard.Guard) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// X-Actor-Source is server-set only — strip any
@@ -155,6 +160,9 @@ func DaemonAuth(queries *db.Queries, patCache *auth.PATCache, daemonCache *auth.
 				hash := auth.HashToken(tokenString)
 
 				if id, ok := daemonCache.Get(r.Context(), hash); ok {
+					if _, ok := guardAccount(w, r, guard, id.OwnerID, DaemonAuthPathDaemonToken); !ok {
+						return
+					}
 					ctx := context.WithValue(r.Context(), ctxKeyDaemonWorkspaceID, id.WorkspaceID)
 					ctx = context.WithValue(ctx, ctxKeyDaemonID, id.DaemonID)
 					ctx = context.WithValue(ctx, ctxKeyDaemonAuthPath, DaemonAuthPathDaemonToken)
@@ -195,6 +203,9 @@ func DaemonAuth(queries *db.Queries, patCache *auth.PATCache, daemonCache *auth.
 						cacheable = false
 					}
 					identity.OwnerID = owner
+				}
+				if _, ok := guardAccount(w, r, guard, identity.OwnerID, DaemonAuthPathDaemonToken); !ok {
+					return
 				}
 				// daemon_token.expires_at is NOT NULL; pgtype Valid is true
 				// in normal operation, but defend against zero just in case.
@@ -243,6 +254,9 @@ func DaemonAuth(queries *db.Queries, patCache *auth.PATCache, daemonCache *auth.
 				if rejectTemporarilyDisabledUser(w, r, identity.OwnerID, "", DaemonAuthPathCloudPAT) {
 					return
 				}
+				if _, ok := guardAccount(w, r, guard, identity.OwnerID, DaemonAuthPathCloudPAT); !ok {
+					return
+				}
 				r.Header.Set("X-User-ID", identity.OwnerID)
 				// Mirror the regular Auth middleware: tag the auth
 				// path so any downstream guard (handler.
@@ -267,6 +281,9 @@ func DaemonAuth(queries *db.Queries, patCache *auth.PATCache, daemonCache *auth.
 					if rejectTemporarilyDisabledUser(w, r, userID, "", DaemonAuthPathPAT) {
 						return
 					}
+					if _, ok := guardAccount(w, r, guard, userID, DaemonAuthPathPAT); !ok {
+						return
+					}
 					r.Header.Set("X-User-ID", userID)
 					ctx := context.WithValue(r.Context(), ctxKeyDaemonAuthPath, DaemonAuthPathPAT)
 					next.ServeHTTP(w, r.WithContext(ctx))
@@ -286,6 +303,9 @@ func DaemonAuth(queries *db.Queries, patCache *auth.PATCache, daemonCache *auth.
 
 				userID := uuidToString(pat.UserID)
 				if rejectTemporarilyDisabledUser(w, r, userID, "", DaemonAuthPathPAT) {
+					return
+				}
+				if _, ok := guardAccount(w, r, guard, userID, DaemonAuthPathPAT); !ok {
 					return
 				}
 				r.Header.Set("X-User-ID", userID)
@@ -330,6 +350,14 @@ func DaemonAuth(queries *db.Queries, patCache *auth.PATCache, daemonCache *auth.
 			}
 			email, _ := claims["email"].(string)
 			if rejectTemporarilyDisabledUser(w, r, sub, email, DaemonAuthPathJWT) {
+				return
+			}
+			rec, ok := guardAccount(w, r, guard, sub, DaemonAuthPathJWT)
+			if !ok {
+				return
+			}
+			if auth.SessionRevoked(rec.SessionsValidAfter, claims) {
+				rejectRevokedSession(w, r, sub)
 				return
 			}
 			r.Header.Set("X-User-ID", sub)

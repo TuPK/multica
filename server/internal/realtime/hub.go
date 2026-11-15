@@ -17,6 +17,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
+	"github.com/multica-ai/multica/platform-management/accountguard"
 	"github.com/multica-ai/multica/server/internal/auth"
 )
 
@@ -599,6 +600,26 @@ func (h *Hub) SendToUser(userID string, message []byte, excludeWorkspace ...stri
 	h.fanoutUser(userID, message, exclude, "")
 }
 
+// DisconnectUser closes every connection that belongs to userID, in every
+// workspace. Unlike DisconnectMember it does not revalidate anything: the
+// caller has already decided the user's sessions are no longer valid.
+func (h *Hub) DisconnectUser(userID string) {
+	if h == nil || userID == "" {
+		return
+	}
+	h.mu.RLock()
+	var targets []*Client
+	for client := range h.clients {
+		if client.userID == userID {
+			targets = append(targets, client)
+		}
+	}
+	h.mu.RUnlock()
+	for _, client := range targets {
+		h.stopClient(client, nil, time.Time{})
+	}
+}
+
 // Broadcast sends a message to every connected client (daemon events).
 func (h *Hub) Broadcast(message []byte) {
 	h.broadcast <- message
@@ -698,20 +719,21 @@ func (h *Hub) Snapshot() map[string]any {
 	}
 }
 
-// authenticateToken validates a JWT or PAT string and returns the user ID.
-func authenticateToken(tokenStr string, pr PATResolver, ctx context.Context) (string, string) {
+// authenticateToken validates a JWT or PAT string and returns the user ID and,
+// for a JWT, its claims (nil for a PAT).
+func authenticateToken(tokenStr string, pr PATResolver, ctx context.Context) (string, jwt.MapClaims, string) {
 	if strings.HasPrefix(tokenStr, "mul_") {
 		if pr == nil {
-			return "", `{"error":"invalid token"}`
+			return "", nil, `{"error":"invalid token"}`
 		}
 		uid, ok := pr.ResolveToken(ctx, tokenStr)
 		if !ok {
-			return "", `{"error":"invalid token"}`
+			return "", nil, `{"error":"invalid token"}`
 		}
 		if auth.IsTemporarilyDisabledUserID(uid) {
-			return "", `{"error":"account disabled"}`
+			return "", nil, `{"error":"account disabled"}`
 		}
-		return uid, ""
+		return uid, nil, ""
 	}
 
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (any, error) {
@@ -721,23 +743,23 @@ func authenticateToken(tokenStr string, pr PATResolver, ctx context.Context) (st
 		return auth.JWTSecret(), nil
 	})
 	if err != nil || !token.Valid {
-		return "", `{"error":"invalid token"}`
+		return "", nil, `{"error":"invalid token"}`
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return "", `{"error":"invalid claims"}`
+		return "", nil, `{"error":"invalid claims"}`
 	}
 
 	uid, ok := claims["sub"].(string)
 	if !ok || strings.TrimSpace(uid) == "" {
-		return "", `{"error":"invalid claims"}`
+		return "", nil, `{"error":"invalid claims"}`
 	}
 	email, _ := claims["email"].(string)
 	if auth.IsTemporarilyDisabledUser(uid, email) {
-		return "", `{"error":"account disabled"}`
+		return "", nil, `{"error":"account disabled"}`
 	}
-	return uid, ""
+	return uid, claims, ""
 }
 
 // firstMessageAuth reads the first WebSocket message expecting an auth payload.
@@ -793,9 +815,41 @@ func writeWSAuthErrorAndClose(conn *websocket.Conn, payload []byte, attrs ...any
 	conn.Close()
 }
 
+// accountRefusal asks guard whether userID may hold a connection. A zero
+// status means yes. Otherwise status and body are the refusal, in the same
+// shape and with the same codes as the HTTP middleware's. A nil guard allows
+// everyone.
+//
+// claims are the session JWT's claims, nil for a PAT. A JWT issued before the
+// user's sessions_valid_after mark is refused with 401 session_revoked; a PAT
+// is not a session and is not affected.
+func accountRefusal(ctx context.Context, guard *accountguard.Guard, userID string, claims jwt.MapClaims) (status int, body string) {
+	if guard == nil {
+		return 0, ""
+	}
+	rec, err := guard.State(ctx, userID)
+	if err != nil {
+		slog.Warn("ws: account state unavailable", "user_id", userID, "error", err)
+		return http.StatusServiceUnavailable, `{"error":"account state unavailable","code":"account_state_unavailable"}`
+	}
+	switch rec.Status {
+	case accountguard.Active:
+		if claims != nil && auth.SessionRevoked(rec.SessionsValidAfter, claims) {
+			return http.StatusUnauthorized, `{"error":"session revoked","code":"session_revoked"}`
+		}
+		return 0, ""
+	case accountguard.PendingDeletion:
+		return http.StatusForbidden, `{"error":"account pending deletion","code":"account_pending_deletion"}`
+	default:
+		// Suspended, deleted, and any status this build does not know.
+		return http.StatusForbidden, `{"error":"account suspended","code":"account_suspended"}`
+	}
+}
+
 // HandleWebSocket upgrades an HTTP connection to WebSocket with cookie or
-// first-message auth.
-func HandleWebSocket(hub *Hub, mc MembershipChecker, pr PATResolver, resolveSlug SlugResolver, w http.ResponseWriter, r *http.Request) {
+// first-message auth. guard is optional; when non-nil, an account that is not
+// active is refused once the session has identified it.
+func HandleWebSocket(hub *Hub, mc MembershipChecker, pr PATResolver, resolveSlug SlugResolver, guard *accountguard.Guard, w http.ResponseWriter, r *http.Request) {
 	workspaceID := r.URL.Query().Get("workspace_id")
 	if workspaceID == "" {
 		if slug := r.URL.Query().Get("workspace_slug"); slug != "" && resolveSlug != nil {
@@ -814,13 +868,22 @@ func HandleWebSocket(hub *Hub, mc MembershipChecker, pr PATResolver, resolveSlug
 
 	var userID string
 	if cookie, err := r.Cookie(auth.AuthCookieName); err == nil && cookie.Value != "" {
-		uid, errMsg := authenticateToken(cookie.Value, pr, r.Context())
+		uid, claims, errMsg := authenticateToken(cookie.Value, pr, r.Context())
 		if errMsg != "" {
 			status := http.StatusUnauthorized
 			if errMsg == `{"error":"account disabled"}` {
 				status = http.StatusForbidden
 			}
 			http.Error(w, errMsg, status)
+			return
+		}
+		if status, body := accountRefusal(r.Context(), guard, uid, claims); status != 0 {
+			if status == http.StatusUnauthorized {
+				auth.ClearAuthCookies(w)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(status)
+			_, _ = w.Write([]byte(body))
 			return
 		}
 		member, lookupErr := checkMembership(mc, uid, workspaceID)
@@ -855,9 +918,13 @@ func HandleWebSocket(hub *Hub, mc MembershipChecker, pr PATResolver, resolveSlug
 			writeWSAuthErrorAndClose(conn, []byte(errMsg), "workspace_id", workspaceID)
 			return
 		}
-		uid, errMsg := authenticateToken(tokenStr, pr, r.Context())
+		uid, claims, errMsg := authenticateToken(tokenStr, pr, r.Context())
 		if errMsg != "" {
 			writeWSAuthErrorAndClose(conn, []byte(errMsg), "workspace_id", workspaceID)
+			return
+		}
+		if status, body := accountRefusal(r.Context(), guard, uid, claims); status != 0 {
+			writeWSAuthErrorAndClose(conn, []byte(body), "workspace_id", workspaceID, "user_id", uid)
 			return
 		}
 		member, lookupErr := checkMembership(mc, uid, workspaceID)

@@ -647,7 +647,17 @@
     "save": "プロフィールを更新",
     "saving": "更新中...",
     "toast_avatar_failed": "アバターをアップロードできませんでした",
-    "toast_profile_failed": "プロフィールを更新できませんでした"
+    "toast_profile_failed": "プロフィールを更新できませんでした",
+    "section_sessions": "セッション",
+    "revoke_all_sessions_title": "すべてのデバイスからサインアウト",
+    "revoke_all_sessions_description": "個人アクセストークンは取り消されません。",
+    "revoke_all_sessions_button": "すべてのデバイスからサインアウト",
+    "revoke_all_sessions_dialog_description": "他のすべてのデバイスからサインアウトされます。",
+    "revoke_all_sessions_cancel": "キャンセル",
+    "revoke_all_sessions_confirm": "サインアウト",
+    "revoke_all_sessions_submitting": "サインアウト中...",
+    "toast_revoke_all_sessions_success": "すべてのデバイスからサインアウトしました",
+    "toast_revoke_all_sessions_failed": "すべてのデバイスからのサインアウトに失敗しました"
   },
   "notifications": {
     "title": "インボックス通知",
