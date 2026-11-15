@@ -130,15 +130,38 @@ func rejectDotSegments(next http.Handler) http.Handler {
 	})
 }
 
-// staticHandler serves regular files under dir and a directory's index.html.
-// It never lists a directory and never serves a dot file such as .gitkeep.
+const (
+	// assetsPrefix is where the build writes content-hashed files. A file there
+	// never changes under its name.
+	assetsPrefix        = "/assets"
+	assetsCacheControl  = "public, max-age=31536000, immutable"
+	indexCacheControl   = "no-cache"
+	indexFileName       = "index.html"
+	staticAllowedMethod = "GET, HEAD"
+)
+
+func isAssetPath(clean string) bool {
+	return clean == assetsPrefix || strings.HasPrefix(clean, assetsPrefix+"/")
+}
+
+// staticHandler serves the console build in dir, a single-page app. A path
+// that names a file serves it. Any other path serves index.html, so a reload
+// on a client-side route works, except under /assets/, where a missing file
+// is a 404: answering a script request with HTML would hide a stale deploy.
+// index.html is never cached without revalidation and files under /assets/ are
+// cached for good. It never lists a directory and never serves a dot file such
+// as .gitkeep.
 func staticHandler(dir string) http.Handler {
 	if dir == "" {
 		return http.NotFoundHandler()
 	}
 	root := http.Dir(dir)
-	files := http.FileServer(root)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			w.Header().Set("Allow", staticAllowedMethod)
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
 		clean := path.Clean("/" + r.URL.Path)
 		for _, part := range strings.Split(clean, "/") {
 			if strings.HasPrefix(part, ".") {
@@ -146,28 +169,37 @@ func staticHandler(dir string) http.Handler {
 				return
 			}
 		}
-		target := clean
-		f, err := root.Open(target)
-		if err != nil {
-			http.NotFound(w, r)
+		asset := isAssetPath(clean)
+		fileCache := ""
+		if asset {
+			fileCache = assetsCacheControl
+		}
+		if clean != "/"+indexFileName && serveFile(w, r, root, clean, fileCache) {
 			return
 		}
-		info, err := f.Stat()
-		f.Close()
-		if err != nil {
+		if asset || !serveFile(w, r, root, "/"+indexFileName, indexCacheControl) {
 			http.NotFound(w, r)
-			return
 		}
-		if info.IsDir() {
-			index, err := root.Open(path.Join(target, "index.html"))
-			if err != nil {
-				http.NotFound(w, r)
-				return
-			}
-			index.Close()
-		}
-		files.ServeHTTP(w, r)
 	})
+}
+
+// serveFile serves the regular file at name, with cacheControl when it is not
+// empty, and reports whether there was such a file.
+func serveFile(w http.ResponseWriter, r *http.Request, root http.FileSystem, name, cacheControl string) bool {
+	f, err := root.Open(name)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil || info.IsDir() {
+		return false
+	}
+	if cacheControl != "" {
+		w.Header().Set("Cache-Control", cacheControl)
+	}
+	http.ServeContent(w, r, info.Name(), info.ModTime(), f)
+	return true
 }
 
 // Listener is one bound socket with the handler that serves it.

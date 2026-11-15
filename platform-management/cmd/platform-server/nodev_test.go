@@ -12,7 +12,8 @@ import (
 var forbidden = strings.ToLower("dev" + "_verification")
 
 // filesWithForbidden returns the files under root whose content, lowercased,
-// contains the forbidden string.
+// contains the forbidden string. It skips .git and node_modules: the latter
+// holds the console's installed packages, which are not this module's source.
 func filesWithForbidden(t *testing.T, root string) []string {
 	t.Helper()
 	var hits []string
@@ -21,7 +22,7 @@ func filesWithForbidden(t *testing.T, root string) []string {
 			return err
 		}
 		if d.IsDir() {
-			if d.Name() == ".git" {
+			if d.Name() == ".git" || d.Name() == "node_modules" {
 				return filepath.SkipDir
 			}
 			return nil
@@ -50,6 +51,24 @@ func TestScannerFindsTheForbiddenString(t *testing.T) {
 		t.Fatal(err)
 	}
 	if hits := filesWithForbidden(t, dir); len(hits) != 1 || filepath.Base(hits[0]) != "a.go" {
+		t.Fatalf("hits = %v", hits)
+	}
+}
+
+func TestScannerSkipsInstalledPackages(t *testing.T) {
+	dir := t.TempDir()
+	pkg := filepath.Join(dir, "console", "node_modules", "dep")
+	if err := os.MkdirAll(pkg, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pkg, "index.js"), []byte(forbidden), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A package manager links workspace packages as directory symlinks.
+	if err := os.Symlink(pkg, filepath.Join(dir, "console", "node_modules", "link")); err != nil {
+		t.Fatal(err)
+	}
+	if hits := filesWithForbidden(t, dir); len(hits) != 0 {
 		t.Fatalf("hits = %v", hits)
 	}
 }

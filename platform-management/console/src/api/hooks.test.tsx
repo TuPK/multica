@@ -1,0 +1,483 @@
+import type { ReactNode } from "react";
+import { QueryClient, QueryClientProvider, type QueryKey } from "@tanstack/react-query";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { PlatformApiError } from "./client";
+import {
+  platformKeys,
+  useAddStaff,
+  useAddTenantNote,
+  useAuditEvents,
+  useChangeTenantStatus,
+  useChangeUserStatus,
+  useLogout,
+  useMe,
+  useOverview,
+  useRemoveStaff,
+  useRevokeUserSessions,
+  useSendCode,
+  useStaff,
+  useTenant,
+  useTenantAudit,
+  useTenantNotes,
+  useTenants,
+  useUser,
+  useUsers,
+  useVerifyCode,
+} from "./hooks";
+
+type Handler = Response | ((url: URL, init: RequestInit | undefined) => Response);
+
+interface Call {
+  method: string;
+  path: string;
+  search: string;
+  body: unknown;
+}
+
+/** Stubs fetch with a route table keyed by "METHOD /path" and records each call. */
+function stubFetch(routes: Record<string, Handler>) {
+  const calls: Call[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(String(input), "http://console.test");
+      const method = init?.method ?? "GET";
+      calls.push({
+        method,
+        path: url.pathname,
+        search: url.search,
+        body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined,
+      });
+      const handler = routes[`${method} ${url.pathname}`];
+      if (!handler) return new Response(`no route for ${method} ${url.pathname}`, { status: 599 });
+      return typeof handler === "function" ? handler(url, init) : handler.clone();
+    }),
+  );
+  return calls;
+}
+
+const json = (status: number, body: unknown) =>
+  new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+const noContent = () => new Response(null, { status: 204 });
+
+function setup() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+  return { queryClient, wrapper };
+}
+
+const tenant = { id: "t1", name: "Acme", slug: "acme", status: "active", member_count: 2, created_at: "", last_activity_at: "" };
+const user = { id: "u1", email: "a@example.com", name: "A", status: "active", memberships_count: 1, created_at: "" };
+const event = (id: string) => ({ id, workspace_id: "t1", actor_type: "staff", action: "note.added", created_at: "" });
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("useMe", () => {
+  it("returns the staff member under the me key", async () => {
+    stubFetch({ "GET /api/platform/me": json(200, { user_id: "u1", email: "a@example.com", role: "support" }) });
+    const { queryClient, wrapper } = setup();
+    const { result } = renderHook(() => useMe(), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual({ user_id: "u1", email: "a@example.com", role: "support" });
+    expect(queryClient.getQueryData(platformKeys.me())).toEqual(result.current.data);
+  });
+
+  it("returns null when the server answers 404", async () => {
+    stubFetch({ "GET /api/platform/me": new Response("404 page not found", { status: 404 }) });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useMe(), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toBeNull();
+  });
+
+  it("is an error for any other failure", async () => {
+    stubFetch({ "GET /api/platform/me": json(500, { error: "internal error", code: "internal" }) });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useMe(), { wrapper });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect((result.current.error as PlatformApiError).status).toBe(500);
+  });
+
+  it("is an error, not a signed-out state, for a body it cannot read", async () => {
+    stubFetch({ "GET /api/platform/me": json(200, { nope: true }) });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useMe(), { wrapper });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect((result.current.error as PlatformApiError).code).toBe("malformed_response");
+  });
+});
+
+describe("query keys", () => {
+  it("drop empty filter values", () => {
+    expect(platformKeys.tenantList({ q: "" })).toEqual(platformKeys.tenantList({}));
+    expect(platformKeys.tenantList({ q: "  acme " })).toEqual(platformKeys.tenantList({ q: "acme" }));
+    expect(platformKeys.audit({ action: "", from: "2026-01-01T00:00:00Z" })).toEqual(
+      platformKeys.audit({ from: "2026-01-01T00:00:00Z" }),
+    );
+  });
+
+  it("include the filters", () => {
+    expect(platformKeys.tenantList({ q: "a" })).not.toEqual(platformKeys.tenantList({ q: "b" }));
+    expect(platformKeys.audit({ action: "note.added" })).not.toEqual(platformKeys.audit({ action: "staff.added" }));
+    expect(platformKeys.tenantAudit("t1", { actor_id: "u1" })).not.toEqual(platformKeys.tenantAudit("t1", {}));
+  });
+
+
+  it("keep one workspace's audit under its own prefix", () => {
+    const key = platformKeys.tenantAudit("t1", { action: "note.added" });
+    expect(key.slice(0, platformKeys.tenantAudits("t1").length)).toEqual(platformKeys.tenantAudits("t1"));
+    expect(key.slice(0, platformKeys.tenantAudits("t2").length)).not.toEqual(platformKeys.tenantAudits("t2"));
+  });
+});
+
+describe("reads", () => {
+  it("useTenants requests with the search filter and caches under the filtered key", async () => {
+    const calls = stubFetch({ "GET /api/platform/tenants": json(200, { tenants: [tenant], next_cursor: null }) });
+    const { queryClient, wrapper } = setup();
+    const { result } = renderHook(() => useTenants({ q: "acme" }), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual([tenant]);
+    expect(calls[0]?.search).toBe("?q=acme");
+    expect(queryClient.getQueryState(platformKeys.tenantList({ q: "acme" }))?.status).toBe("success");
+    expect(queryClient.getQueryState(platformKeys.tenantList({}))).toBeUndefined();
+  });
+
+  it("useTenants pages with the cursor and flattens the pages", async () => {
+    const calls = stubFetch({
+      "GET /api/platform/tenants": (url) =>
+        url.searchParams.get("cursor") === "c1"
+          ? json(200, { tenants: [{ ...tenant, id: "t2" }], next_cursor: null })
+          : json(200, { tenants: [tenant], next_cursor: "c1" }),
+    });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useTenants(), { wrapper });
+    await waitFor(() => expect(result.current.hasNextPage).toBe(true));
+    await act(async () => {
+      await result.current.fetchNextPage();
+    });
+    await waitFor(() => expect(result.current.data?.map((t) => t.id)).toEqual(["t1", "t2"]));
+    expect(result.current.hasNextPage).toBe(false);
+    expect(calls.map((c) => c.search)).toEqual(["", "?cursor=c1"]);
+  });
+
+  it("useTenants shows a malformed list as empty", async () => {
+    stubFetch({ "GET /api/platform/tenants": json(200, { tenants: "nope" }) });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useTenants(), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual([]);
+  });
+
+  it("useTenant uses the detail key and is an error for a malformed body", async () => {
+    stubFetch({ "GET /api/platform/tenants/t1": json(200, tenant), "GET /api/platform/tenants/t2": json(200, [1]) });
+    const { queryClient, wrapper } = setup();
+    const ok = renderHook(() => useTenant("t1"), { wrapper });
+    const bad = renderHook(() => useTenant("t2"), { wrapper });
+    await waitFor(() => expect(ok.result.current.isSuccess).toBe(true));
+    await waitFor(() => expect(bad.result.current.isError).toBe(true));
+    expect(queryClient.getQueryState(platformKeys.tenant("t1"))?.status).toBe("success");
+    expect((bad.result.current.error as PlatformApiError).code).toBe("malformed_response");
+  });
+
+  it("useTenant does not fetch without an id", () => {
+    const calls = stubFetch({});
+    const { wrapper } = setup();
+    renderHook(() => useTenant(undefined), { wrapper });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("useTenantAudit sends the filters and keys by workspace and filters", async () => {
+    const calls = stubFetch({
+      "GET /api/platform/tenants/t1/audit-events": json(200, { events: [event("e1")], next_cursor: null }),
+    });
+    const { queryClient, wrapper } = setup();
+    const filters = { action: "note.added", from: "2026-01-01T00:00:00Z" };
+    const { result } = renderHook(() => useTenantAudit("t1", filters), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.map((e) => e.id)).toEqual(["e1"]);
+    expect(new URLSearchParams(calls[0]?.search).get("action")).toBe("note.added");
+    expect(new URLSearchParams(calls[0]?.search).get("from")).toBe("2026-01-01T00:00:00Z");
+    expect(queryClient.getQueryState(platformKeys.tenantAudit("t1", filters))?.status).toBe("success");
+  });
+
+  it("useTenantNotes uses the notes key", async () => {
+    stubFetch({
+      "GET /api/platform/tenants/t1/notes": json(200, { notes: [{ id: "n1", body: "hi" }], next_cursor: null }),
+    });
+    const { queryClient, wrapper } = setup();
+    const { result } = renderHook(() => useTenantNotes("t1"), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.[0]?.body).toBe("hi");
+    expect(queryClient.getQueryState(platformKeys.tenantNotes("t1"))?.status).toBe("success");
+  });
+
+  it("useUsers and useUser use the user keys", async () => {
+    const calls = stubFetch({
+      "GET /api/platform/users": json(200, { users: [user], next_cursor: null }),
+      "GET /api/platform/users/u1": json(200, { ...user, memberships: [], account: { status: "active" } }),
+    });
+    const { queryClient, wrapper } = setup();
+    const list = renderHook(() => useUsers({ q: "a@" }), { wrapper });
+    const one = renderHook(() => useUser("u1"), { wrapper });
+    await waitFor(() => expect(list.result.current.isSuccess).toBe(true));
+    await waitFor(() => expect(one.result.current.isSuccess).toBe(true));
+    expect(list.result.current.data).toEqual([user]);
+    expect(calls.find((c) => c.path === "/api/platform/users")?.search).toBe("?q=a%40");
+    expect(queryClient.getQueryState(platformKeys.userList({ q: "a@" }))?.status).toBe("success");
+    expect(queryClient.getQueryState(platformKeys.user("u1"))?.status).toBe("success");
+  });
+
+  it("useStaff returns the staff array under the staff key", async () => {
+    stubFetch({
+      "GET /api/platform/staff": json(200, { staff: [{ user_id: "u1", email: "a@example.com", role: "admin" }] }),
+    });
+    const { queryClient, wrapper } = setup();
+    const { result } = renderHook(() => useStaff(), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.[0]?.role).toBe("admin");
+    expect(queryClient.getQueryState(platformKeys.staff())?.status).toBe("success");
+  });
+
+  it("useAuditEvents sends the filters and keys by them", async () => {
+    const calls = stubFetch({
+      "GET /api/platform/audit-events": json(200, { events: [event("e1")], next_cursor: "c" }),
+    });
+    const { queryClient, wrapper } = setup();
+    const filters = { actor_id: "u1", to: "2026-03-01T00:00:00Z" };
+    const { result } = renderHook(() => useAuditEvents(filters), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.hasNextPage).toBe(true);
+    const params = new URLSearchParams(calls[0]?.search);
+    expect(params.get("actor_id")).toBe("u1");
+    expect(params.get("to")).toBe("2026-03-01T00:00:00Z");
+    expect(params.has("action")).toBe(false);
+    expect(queryClient.getQueryState(platformKeys.audit(filters))?.status).toBe("success");
+  });
+
+  it("useOverview uses the overview key and is an error for a malformed body", async () => {
+    stubFetch({ "GET /api/platform/overview": json(200, { workspaces_by_status: { active: 3 }, signups_7d: 1 }) });
+    const first = setup();
+    const ok = renderHook(() => useOverview(), { wrapper: first.wrapper });
+    await waitFor(() => expect(ok.result.current.isSuccess).toBe(true));
+    expect(ok.result.current.data?.workspaces_by_status.active).toBe(3);
+    expect(first.queryClient.getQueryState(platformKeys.overview())?.status).toBe("success");
+
+    stubFetch({ "GET /api/platform/overview": json(200, "x") });
+    const second = setup();
+    const bad = renderHook(() => useOverview(), { wrapper: second.wrapper });
+    await waitFor(() => expect(bad.result.current.isError).toBe(true));
+  });
+});
+
+describe("session mutations", () => {
+  it("useSendCode posts the email and invalidates nothing", async () => {
+    const calls = stubFetch({ "POST /api/platform/auth/send-code": noContent() });
+    const { queryClient, wrapper } = setup();
+    queryClient.setQueryData(platformKeys.me(), null);
+    const { result } = renderHook(() => useSendCode(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ email: "a@example.com" });
+    });
+    expect(calls[0]).toMatchObject({ method: "POST", path: "/api/platform/auth/send-code", body: { email: "a@example.com" } });
+    expect(queryClient.getQueryState(platformKeys.me())?.isInvalidated).toBe(false);
+  });
+
+  it("useVerifyCode posts email and code, then refetches who is signed in", async () => {
+    let signedIn = false;
+    const calls = stubFetch({
+      "POST /api/platform/auth/verify-code": () => {
+        signedIn = true;
+        return json(200, { user_id: "u1", role: "support" });
+      },
+      "GET /api/platform/me": () =>
+        signedIn ? json(200, { user_id: "u1", email: "a@example.com", role: "support" }) : new Response("", { status: 404 }),
+    });
+    const { wrapper } = setup();
+    const me = renderHook(() => useMe(), { wrapper });
+    const verify = renderHook(() => useVerifyCode(), { wrapper });
+    await waitFor(() => expect(me.result.current.data).toBeNull());
+    await act(async () => {
+      await verify.result.current.mutateAsync({ email: "a@example.com", code: "123456" });
+    });
+    await waitFor(() => expect(me.result.current.data?.user_id).toBe("u1"));
+    expect(calls.find((c) => c.path.endsWith("/verify-code"))?.body).toEqual({ email: "a@example.com", code: "123456" });
+  });
+
+  it("useVerifyCode rejects with the server's code for a wrong code", async () => {
+    stubFetch({ "POST /api/platform/auth/verify-code": json(400, { error: "invalid code", code: "invalid_code" }) });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useVerifyCode(), { wrapper });
+    await act(async () => {
+      await expect(result.current.mutateAsync({ email: "a@example.com", code: "000000" })).rejects.toMatchObject({
+        status: 400,
+        code: "invalid_code",
+      });
+    });
+  });
+
+  it("useLogout posts, marks nobody signed in, and drops every other cached query", async () => {
+    const calls = stubFetch({ "POST /api/platform/auth/logout": noContent() });
+    const { queryClient, wrapper } = setup();
+    queryClient.setQueryData(platformKeys.me(), { user_id: "u1", email: "a@example.com", role: "admin" });
+    queryClient.setQueryData(platformKeys.tenant("t1"), tenant);
+    queryClient.setQueryData(platformKeys.staff(), []);
+    queryClient.setQueryData(["unrelated"], 1);
+    const { result } = renderHook(() => useLogout(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync();
+    });
+    expect(calls[0]).toMatchObject({ method: "POST", path: "/api/platform/auth/logout" });
+    expect(queryClient.getQueryData(platformKeys.me())).toBeNull();
+    expect(queryClient.getQueryData(platformKeys.tenant("t1"))).toBeUndefined();
+    expect(queryClient.getQueryData(platformKeys.staff())).toBeUndefined();
+    expect(queryClient.getQueryData(["unrelated"])).toBe(1);
+  });
+});
+
+/**
+ * Every query a mutation could touch is seeded; the ones it must invalidate are
+ * listed in `invalidates` and the rest must stay fresh.
+ */
+const seeded: Record<string, QueryKey> = {
+  me: platformKeys.me(),
+  tenantList: platformKeys.tenantList({ q: "acme" }),
+  tenantListAll: platformKeys.tenantList({}),
+  tenant: platformKeys.tenant("t1"),
+  otherTenant: platformKeys.tenant("t2"),
+  tenantAudit: platformKeys.tenantAudit("t1", {}),
+  tenantAuditFiltered: platformKeys.tenantAudit("t1", { action: "note.added" }),
+  otherTenantAudit: platformKeys.tenantAudit("t2", {}),
+  tenantNotes: platformKeys.tenantNotes("t1"),
+  otherTenantNotes: platformKeys.tenantNotes("t2"),
+  userList: platformKeys.userList({}),
+  user: platformKeys.user("u1"),
+  otherUser: platformKeys.user("u2"),
+  staff: platformKeys.staff(),
+  audit: platformKeys.audit({}),
+  auditFiltered: platformKeys.audit({ action: "staff.added" }),
+  overview: platformKeys.overview(),
+};
+
+interface MutationCase {
+  name: string;
+  route: string;
+  response: Response;
+  run: (hooks: ReturnType<typeof useAllMutations>) => Promise<unknown>;
+  request: { method: string; path: string; body?: unknown };
+  invalidates: string[];
+}
+
+function useAllMutations() {
+  return {
+    changeTenantStatus: useChangeTenantStatus(),
+    addTenantNote: useAddTenantNote(),
+    changeUserStatus: useChangeUserStatus(),
+    revokeUserSessions: useRevokeUserSessions(),
+    addStaff: useAddStaff(),
+    removeStaff: useRemoveStaff(),
+  };
+}
+
+const mutationCases: MutationCase[] = [
+  {
+    name: "useChangeTenantStatus",
+    route: "POST /api/platform/tenants/t1/status",
+    response: json(200, { changed: true, state: {} }),
+    run: (h) => h.changeTenantStatus.mutateAsync({ tenantId: "t1", status: "suspended", reason: "abuse" }),
+    request: { method: "POST", path: "/api/platform/tenants/t1/status", body: { status: "suspended", reason: "abuse" } },
+    invalidates: ["tenant", "tenantList", "tenantListAll", "tenantAudit", "tenantAuditFiltered", "audit", "auditFiltered", "overview"],
+  },
+  {
+    name: "useAddTenantNote",
+    route: "POST /api/platform/tenants/t1/notes",
+    response: json(201, { id: "n1" }),
+    run: (h) => h.addTenantNote.mutateAsync({ tenantId: "t1", body: "called" }),
+    request: { method: "POST", path: "/api/platform/tenants/t1/notes", body: { body: "called" } },
+    invalidates: ["tenantNotes", "tenant", "tenantAudit", "tenantAuditFiltered", "audit", "auditFiltered"],
+  },
+  {
+    name: "useChangeUserStatus",
+    route: "POST /api/platform/users/u1/status",
+    response: json(200, { changed: true, status: "suspended" }),
+    run: (h) => h.changeUserStatus.mutateAsync({ userId: "u1", status: "suspended", reason: "fraud" }),
+    request: { method: "POST", path: "/api/platform/users/u1/status", body: { status: "suspended", reason: "fraud" } },
+    invalidates: ["user", "userList", "audit", "auditFiltered"],
+  },
+  {
+    name: "useRevokeUserSessions",
+    route: "POST /api/platform/users/u1/revoke-sessions",
+    response: json(200, { sessions_valid_after: "2026-01-01T00:00:00Z" }),
+    run: (h) => h.revokeUserSessions.mutateAsync({ userId: "u1", reason: "lost laptop" }),
+    request: { method: "POST", path: "/api/platform/users/u1/revoke-sessions", body: { reason: "lost laptop" } },
+    invalidates: ["user", "audit", "auditFiltered"],
+  },
+  {
+    name: "useAddStaff",
+    route: "POST /api/platform/staff",
+    response: json(201, { user_id: "u3", email: "b@example.com", role: "billing" }),
+    run: (h) => h.addStaff.mutateAsync({ email: "b@example.com", role: "billing" }),
+    request: { method: "POST", path: "/api/platform/staff", body: { email: "b@example.com", role: "billing" } },
+    invalidates: ["staff", "audit", "auditFiltered"],
+  },
+  {
+    name: "useRemoveStaff",
+    route: "DELETE /api/platform/staff/u3",
+    response: json(200, { user_id: "u3", role: "billing" }),
+    run: (h) => h.removeStaff.mutateAsync({ userId: "u3" }),
+    request: { method: "DELETE", path: "/api/platform/staff/u3" },
+    invalidates: ["staff", "audit", "auditFiltered", "me"],
+  },
+];
+
+describe("mutations", () => {
+  it.each(mutationCases)("$name sends its request and invalidates exactly the queries it affects", async (c) => {
+    const calls = stubFetch({ [c.route]: c.response });
+    const { queryClient, wrapper } = setup();
+    for (const key of Object.values(seeded)) queryClient.setQueryData(key, null);
+    const { result } = renderHook(() => useAllMutations(), { wrapper });
+
+    await act(async () => {
+      await c.run(result.current);
+    });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject(c.request);
+    for (const [name, key] of Object.entries(seeded)) {
+      const invalidated = queryClient.getQueryState(key)?.isInvalidated;
+      expect([name, invalidated]).toEqual([name, c.invalidates.includes(name)]);
+    }
+  });
+
+  it("does not invalidate anything when the server refuses", async () => {
+    stubFetch({
+      "DELETE /api/platform/staff/u1": json(400, { error: "the last active administrator cannot be removed", code: "last_admin" }),
+    });
+    const { queryClient, wrapper } = setup();
+    for (const key of Object.values(seeded)) queryClient.setQueryData(key, null);
+    const { result } = renderHook(() => useAllMutations(), { wrapper });
+
+    await act(async () => {
+      await expect(result.current.removeStaff.mutateAsync({ userId: "u1" })).rejects.toMatchObject({
+        status: 400,
+        code: "last_admin",
+        message: "the last active administrator cannot be removed",
+      });
+    });
+    for (const key of Object.values(seeded)) expect(queryClient.getQueryState(key)?.isInvalidated).toBe(false);
+  });
+
+  it("encodes an id that is not path-safe", async () => {
+    const calls = stubFetch({ "POST /api/platform/tenants/a%2Fb/status": json(200, {}) });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useChangeTenantStatus(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ tenantId: "a/b", status: "active", reason: "ok" });
+    });
+    expect(calls[0]?.path).toBe("/api/platform/tenants/a%2Fb/status");
+  });
+});

@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - packages/*
+  - platform-management/console
 
 catalog:
   '@formatjs/intl-localematcher': ^0.8.4

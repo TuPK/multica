@@ -1,0 +1,17 @@
+# Context filter for platform-management/Dockerfile, which is built from the
+# repository root. Everything is excluded except what the console and Go builds
+# read, so a local .env or node_modules never enters the build.
+*
+!/package.json
+!/pnpm-lock.yaml
+!/pnpm-workspace.yaml
+!/.npmrc
+!/apps/mobile/patches
+!/packages/core
+!/packages/ui
+!/packages/tsconfig
+!/packages/vitest-setup
+!/platform-management
+**/node_modules
+**/dist
+/platform-management/platform-server

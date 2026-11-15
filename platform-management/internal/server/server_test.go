@@ -233,10 +233,12 @@ func TestAPIServesOnlyHealthzAndThePlatformPrefix(t *testing.T) {
 	}
 }
 
-func TestConsoleServesTheBuildFromDist(t *testing.T) {
+// writeDist builds a console build with the given files and returns its
+// directory.
+func writeDist(t *testing.T, files map[string]string) string {
+	t.Helper()
 	dist := t.TempDir()
-	write := func(name, body string) {
-		t.Helper()
+	for name, body := range files {
 		p := filepath.Join(dist, name)
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 			t.Fatal(err)
@@ -245,27 +247,172 @@ func TestConsoleServesTheBuildFromDist(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	write("index.html", "<h1>console</h1>")
-	write("assets/app.js", "console.log(1)")
-	write(".gitkeep", "")
-	write("empty/.keep", "")
+	return dist
+}
 
-	_, console, _ := newListeners(t, HealthHandler(), dist)
+// distFiles is a small build: the entry page, one hashed asset, one other file,
+// a dot file and a directory with no index.
+var distFiles = map[string]string{
+	"index.html":       "<h1>console</h1>",
+	"assets/app.js":    "console.log(1)",
+	"favicon.svg":      "<svg/>",
+	".gitkeep":         "",
+	"empty/.keep":      "",
+	"assets/sub/a.css": "a{}",
+}
+
+func getResp(t *testing.T, method, url string) (*http.Response, string) {
+	t.Helper()
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	return resp, string(body)
+}
+
+func TestConsoleServesTheBuildFromDist(t *testing.T) {
+	_, console, _ := newListeners(t, HealthHandler(), writeDist(t, distFiles))
 	if code, body := get(t, console.URL, "/"); code != http.StatusOK || body != "<h1>console</h1>" {
 		t.Fatalf("/: status = %d, body = %q", code, body)
+	}
+	if code, body := get(t, console.URL, "/index.html"); code != http.StatusOK || body != "<h1>console</h1>" {
+		t.Fatalf("/index.html: status = %d, body = %q", code, body)
 	}
 	if code, body := get(t, console.URL, "/assets/app.js"); code != http.StatusOK || body != "console.log(1)" {
 		t.Fatalf("/assets/app.js: status = %d, body = %q", code, body)
 	}
-	for _, path := range []string{"/missing", "/.gitkeep", "/empty/", "/assets/"} {
+	if code, body := get(t, console.URL, "/assets/sub/a.css"); code != http.StatusOK || body != "a{}" {
+		t.Fatalf("/assets/sub/a.css: status = %d, body = %q", code, body)
+	}
+	if code, body := get(t, console.URL, "/favicon.svg"); code != http.StatusOK || body != "<svg/>" {
+		t.Fatalf("/favicon.svg: status = %d, body = %q", code, body)
+	}
+	// A dot file is never served, and never answered with the page either.
+	for _, path := range []string{"/.gitkeep", "/empty/.keep", "/.env", "/assets/.hidden"} {
 		if code, body := get(t, console.URL, path); code != http.StatusNotFound {
 			t.Errorf("%s: status = %d, body = %q, want 404", path, code, body)
 		}
 	}
-	for _, path := range []string{"/../etc/passwd", "/%2e%2e/etc/passwd"} {
-		code, body := get(t, console.URL, path)
-		if code != http.StatusNotFound && (code < 300 || code > 399) {
-			t.Errorf("%s: status = %d, body = %q, want 404 or a redirect", path, code, body)
+}
+
+func TestConsoleNeverServesAFileOutsideTheBuild(t *testing.T) {
+	base := t.TempDir()
+	dist := filepath.Join(base, "dist")
+	if err := os.MkdirAll(dist, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dist, "index.html"), []byte("<h1>console</h1>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(base, "secret.txt"), []byte("outside the build"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, console, _ := newListeners(t, HealthHandler(), dist)
+	for _, path := range []string{"/../secret.txt", "/%2e%2e/secret.txt", "/assets/../../secret.txt", "/..%2fsecret.txt"} {
+		_, body := get(t, console.URL, path)
+		if strings.Contains(body, "outside the build") {
+			t.Errorf("%s served a file outside the build: %q", path, body)
+		}
+	}
+}
+
+func TestConsoleAnswersPathsThatAreNotFilesWithTheIndex(t *testing.T) {
+	_, console, _ := newListeners(t, HealthHandler(), writeDist(t, distFiles))
+	for _, path := range []string{"/tenants", "/tenants/0b0f6f3e", "/users/u1/", "/missing", "/empty/", "/missing.js", "/assetsx"} {
+		resp, body := getResp(t, http.MethodGet, console.URL+path)
+		if resp.StatusCode != http.StatusOK || body != "<h1>console</h1>" {
+			t.Errorf("%s: status = %d, body = %q, want the index", path, resp.StatusCode, body)
+		}
+		if got := resp.Header.Get("Cache-Control"); got != "no-cache" {
+			t.Errorf("%s: Cache-Control = %q, want no-cache", path, got)
+		}
+		if got := resp.Header.Get("Content-Type"); !strings.HasPrefix(got, "text/html") {
+			t.Errorf("%s: Content-Type = %q, want text/html", path, got)
+		}
+	}
+}
+
+func TestConsoleIndexRevalidatesOnEveryLoad(t *testing.T) {
+	_, console, _ := newListeners(t, HealthHandler(), writeDist(t, distFiles))
+	for _, path := range []string{"/", "/index.html"} {
+		resp, _ := getResp(t, http.MethodGet, console.URL+path)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("%s: status = %d, want 200", path, resp.StatusCode)
+		}
+		if got := resp.Header.Get("Cache-Control"); got != "no-cache" {
+			t.Errorf("%s: Cache-Control = %q, want no-cache", path, got)
+		}
+	}
+}
+
+func TestConsoleCachesAssetsForGood(t *testing.T) {
+	_, console, _ := newListeners(t, HealthHandler(), writeDist(t, distFiles))
+	const want = "public, max-age=31536000, immutable"
+	for _, path := range []string{"/assets/app.js", "/assets/sub/a.css"} {
+		resp, _ := getResp(t, http.MethodGet, console.URL+path)
+		if got := resp.Header.Get("Cache-Control"); got != want {
+			t.Errorf("%s: Cache-Control = %q, want %q", path, got, want)
+		}
+	}
+	if got := resp(t, console.URL+"/favicon.svg").Header.Get("Cache-Control"); got == want {
+		t.Errorf("a file outside /assets/ must not be cached as immutable, got %q", got)
+	}
+}
+
+func resp(t *testing.T, url string) *http.Response {
+	t.Helper()
+	r, _ := getResp(t, http.MethodGet, url)
+	return r
+}
+
+func TestConsoleMissingAssetIsA404NotTheIndex(t *testing.T) {
+	_, console, _ := newListeners(t, HealthHandler(), writeDist(t, distFiles))
+	for _, path := range []string{"/assets/missing.js", "/assets/", "/assets", "/assets/sub/"} {
+		resp, body := getResp(t, http.MethodGet, console.URL+path)
+		if resp.StatusCode != http.StatusNotFound {
+			t.Errorf("%s: status = %d, body = %q, want 404", path, resp.StatusCode, body)
+		}
+		if strings.Contains(resp.Header.Get("Cache-Control"), "immutable") {
+			t.Errorf("%s: a 404 must not be cached as immutable, got %q", path, resp.Header.Get("Cache-Control"))
+		}
+	}
+}
+
+func TestConsoleKeepsTheAPINotFoundRuleWithABuild(t *testing.T) {
+	_, console, hits := newListeners(t, HealthHandler(), writeDist(t, distFiles))
+	for _, path := range []string{"/api/", "/api/v1/internal/x", "/api/unknown"} {
+		resp, body := getResp(t, http.MethodGet, console.URL+path)
+		if resp.StatusCode != http.StatusNotFound || strings.Contains(body, "console") {
+			t.Errorf("%s: status = %d, body = %q, want the 404 of an unknown API path", path, resp.StatusCode, body)
+		}
+	}
+	if n := hits.Load(); n != 0 {
+		t.Errorf("upstream was reached %d times by paths outside /api/platform/", n)
+	}
+	// /api/platform/ still goes to the API, not to the page.
+	resp, body := getResp(t, http.MethodGet, console.URL+"/api/platform/me")
+	if resp.StatusCode != http.StatusTeapot || body != "from upstream" {
+		t.Errorf("/api/platform/me: status = %d, body = %q, want the upstream's answer", resp.StatusCode, body)
+	}
+}
+
+func TestConsoleServesPagesOnGetAndHeadOnly(t *testing.T) {
+	_, console, _ := newListeners(t, HealthHandler(), writeDist(t, distFiles))
+	resp, body := getResp(t, http.MethodHead, console.URL+"/tenants")
+	if resp.StatusCode != http.StatusOK || body != "" || resp.Header.Get("Cache-Control") != "no-cache" {
+		t.Errorf("HEAD /tenants: status = %d, body = %q, Cache-Control = %q", resp.StatusCode, body, resp.Header.Get("Cache-Control"))
+	}
+	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodDelete} {
+		resp, _ := getResp(t, method, console.URL+"/tenants")
+		if resp.StatusCode != http.StatusMethodNotAllowed || resp.Header.Get("Allow") != "GET, HEAD" {
+			t.Errorf("%s /tenants: status = %d, Allow = %q, want 405 with Allow: GET, HEAD", method, resp.StatusCode, resp.Header.Get("Allow"))
 		}
 	}
 }
