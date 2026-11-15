@@ -44,6 +44,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/storage"
 	"github.com/multica-ai/multica/server/internal/util"
 	"github.com/multica-ai/multica/server/internal/util/secretbox"
+	"github.com/multica-ai/multica/server/internal/workspaceguard"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/featureflag"
 	"github.com/multica-ai/multica/server/pkg/llm"
@@ -1062,7 +1063,52 @@ func (h *Handler) requireWorkspaceMember(w http.ResponseWriter, r *http.Request,
 		return db.Member{}, false
 	}
 
+	if !h.admitByWorkspaceState(w, r, member) {
+		return db.Member{}, false
+	}
 	return member, true
+}
+
+// admitByWorkspaceState applies the workspace-state decision table to a member
+// the handler has just authorized, as the workspace middleware does for the
+// routes behind it, and reports whether the request may proceed. When it may
+// not, the response has been written. A request that came through the daemon
+// routes is always admitted and does not read the state, so a running task can
+// report its result in any state. No guard in the context admits, for tests.
+func (h *Handler) admitByWorkspaceState(w http.ResponseWriter, r *http.Request, member db.Member) bool {
+	if middleware.DaemonAuthPathFromContext(r.Context()) != "" {
+		return true
+	}
+	guard := middleware.WorkspaceStateFromContext(r.Context())
+	if guard == nil {
+		return true
+	}
+	workspaceID := uuidToString(member.WorkspaceID)
+	rec, err := guard.State(r.Context(), workspaceID)
+	if err != nil {
+		slog.Warn("workspace: state unavailable",
+			"path", r.URL.Path, "workspace_id", workspaceID, "error", err)
+		writeErrorCode(w, http.StatusServiceUnavailable, workspaceguard.CodeStateUnavailable,
+			workspaceguard.Message(workspaceguard.CodeStateUnavailable))
+		return false
+	}
+	// An active workspace passes without resolving the route.
+	if string(rec.Status) == "active" {
+		return true
+	}
+	// Routing is complete inside a handler, so the route context holds the leaf pattern.
+	pattern := ""
+	if rctx := chi.RouteContext(r.Context()); rctx != nil {
+		pattern = rctx.RoutePattern()
+	}
+	d := workspaceguard.DecideForMember(string(rec.Status), r.Method, pattern, member.Role, false)
+	if d.Allowed {
+		return true
+	}
+	slog.Warn("workspace: request refused by state",
+		"path", r.URL.Path, "method", r.Method, "workspace_id", workspaceID, "status", string(rec.Status), "code", d.Code)
+	writeErrorCode(w, http.StatusForbidden, d.Code, workspaceguard.Message(d.Code))
+	return false
 }
 
 func (h *Handler) requireWorkspaceRole(w http.ResponseWriter, r *http.Request, workspaceID, notFoundMsg string, roles ...string) (db.Member, bool) {

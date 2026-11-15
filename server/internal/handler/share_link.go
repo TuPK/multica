@@ -336,6 +336,12 @@ func (h *Handler) JoinByShareLink(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "share link not found or expired")
 		return
 	}
+	// Joining is a write: a workspace that is not active takes no new member.
+	// This runs before the seat reservation below, so a refused join reserves
+	// no seat. The joiner is not a member yet, so there is no role to pass.
+	if !h.admitByWorkspaceState(w, r, db.Member{WorkspaceID: linkPreview.WorkspaceID}) {
+		return
+	}
 	if _, memberErr := h.Queries.GetMemberByUserAndWorkspace(r.Context(), db.GetMemberByUserAndWorkspaceParams{
 		UserID: user.ID, WorkspaceID: linkPreview.WorkspaceID,
 	}); memberErr == nil {

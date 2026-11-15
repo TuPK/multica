@@ -71,6 +71,9 @@ type TaskService struct {
 	// Budget is the budget gate of the claim (spec 4.2). NewTaskService wires
 	// it; a nil gate is replaced by a fresh one per claim.
 	Budget *BudgetGate
+	// WorkspaceGate refuses a claim in a workspace that is not active, for every
+	// run kind. Nil admits, for tests; the router always sets it.
+	WorkspaceGate WorkspaceGate
 	// ReclaimCheck schedules the next time a runtime can plausibly contain a
 	// stale dispatched task. It removes the unconditional reclaim UPDATE from
 	// idle claim polls while missing/error states preserve the DB fallback.

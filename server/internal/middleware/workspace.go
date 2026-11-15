@@ -3,10 +3,14 @@ package middleware
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/platform-management/workspacestate"
 	"github.com/multica-ai/multica/server/internal/util"
+	"github.com/multica-ai/multica/server/internal/workspaceguard"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
@@ -16,6 +20,7 @@ type contextKey int
 const (
 	ctxKeyWorkspaceID contextKey = iota
 	ctxKeyMember
+	ctxKeyWorkspaceState
 )
 
 // MemberFromContext returns the workspace member injected by the workspace middleware.
@@ -260,8 +265,101 @@ func buildMiddleware(queries *db.Queries, resolve workspaceResolver, roles []str
 				}
 			}
 
+			if !guardWorkspaceState(w, r, member, wsUUID) {
+				return
+			}
+
 			ctx := SetMemberContext(r.Context(), workspaceID, member)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// WithWorkspaceState makes guard the source of workspace state for every
+// workspace middleware below it. The router mounts it once, ahead of all
+// routes. A nil guard, or a router that does not mount it, skips the check;
+// that is for tests only.
+func WithWorkspaceState(guard *workspacestate.Guard) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		if guard == nil {
+			return next
+		}
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := context.WithValue(r.Context(), ctxKeyWorkspaceState, guard)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// WorkspaceStateFromContext returns the guard that WithWorkspaceState mounted,
+// or nil when none was. Handlers that authorize a member themselves read the
+// state through it, so they and the workspace middleware share one source.
+func WorkspaceStateFromContext(ctx context.Context) *workspacestate.Guard {
+	guard, _ := ctx.Value(ctxKeyWorkspaceState).(*workspacestate.Guard)
+	return guard
+}
+
+// guardWorkspaceState applies the workspace-state decision table to a member's
+// request and reports whether it may proceed; when it may not, the response has
+// been written. An active workspace passes without resolving the route.
+func guardWorkspaceState(w http.ResponseWriter, r *http.Request, member db.Member, workspace pgtype.UUID) bool {
+	guard := WorkspaceStateFromContext(r.Context())
+	if guard == nil {
+		return true
+	}
+	workspaceID := util.UUIDToString(workspace)
+	rec, err := guard.State(r.Context(), workspaceID)
+	if err != nil {
+		slog.Warn("workspace: state unavailable",
+			"path", r.URL.Path, "workspace_id", workspaceID, "error", err)
+		writeCodedError(w, http.StatusServiceUnavailable, workspaceguard.CodeStateUnavailable, workspaceguard.Message(workspaceguard.CodeStateUnavailable))
+		return false
+	}
+	if rec.Status == workspacestate.Active {
+		return true
+	}
+	status := string(rec.Status)
+	d := workspaceguard.Decide(status, r.Method, leafRoutePattern(r))
+	if d.Allowed && roleListed(member.Role, d.Roles) {
+		return true
+	}
+	code := d.Code
+	if d.Allowed {
+		code = workspaceguard.CodeFor(status)
+	}
+	slog.Warn("workspace: request refused by state",
+		"path", r.URL.Path, "method", r.Method, "workspace_id", workspaceID, "status", status, "code", code)
+	writeCodedError(w, http.StatusForbidden, code, workspaceguard.Message(code))
+	return false
+}
+
+// roleListed reports whether role passes an allow-list entry's role limit. An
+// empty limit admits every member.
+func roleListed(role string, roles []string) bool {
+	if len(roles) == 0 {
+		return true
+	}
+	for _, r := range roles {
+		if r == role {
+			return true
+		}
+	}
+	return false
+}
+
+// leafRoutePattern returns the chi route template of the route that serves r.
+// A workspace middleware that wraps a sub-router mount runs before the
+// sub-router has matched, so rctx.RoutePattern() would be only the mount prefix
+// (for example /api/issues/*). Find walks the whole tree for the same method
+// and path. It returns "" when nothing matches, which no allow-list admits.
+func leafRoutePattern(r *http.Request) string {
+	rctx := chi.RouteContext(r.Context())
+	if rctx == nil || rctx.Routes == nil {
+		return ""
+	}
+	path := r.URL.RawPath
+	if path == "" {
+		path = r.URL.Path
+	}
+	return rctx.Routes.Find(chi.NewRouteContext(), r.Method, path)
 }

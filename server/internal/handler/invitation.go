@@ -485,6 +485,13 @@ func (h *Handler) AcceptInvitation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Joining is a write: a workspace that is not active takes no new member.
+	// This runs before the seat reservation below, so a refused join reserves
+	// no seat. The joiner is not a member yet, so there is no role to pass.
+	if !h.admitByWorkspaceState(w, r, db.Member{WorkspaceID: inv.WorkspaceID}) {
+		return
+	}
+
 	if inv.Status != "pending" {
 		// Installed clients can hold a stale pending-invitation row for an
 		// invitation that was already concluded from another surface (the

@@ -310,10 +310,21 @@ func (s *TaskService) admitClaimedTask(ctx context.Context, q *db.Queries, ws pg
 
 // claimRefusalFor is the claim gate's verdict on a queued task at this moment,
 // or nil when the gate admits it. It only reads state, so the runs list asks
-// the same question the claim asks. Human and exempt runs are always admitted
-// without reading anything. A routine or delegated run is refused by the company
-// controls (paused, or quiet hours) or by a hold-mode budget at its limit.
+// the same question the claim asks. A workspace that is not active refuses
+// every run, and that check comes first. Otherwise human and exempt runs are
+// always admitted without reading anything. A routine or delegated run is
+// refused by the company controls (paused, or quiet hours) or by a hold-mode
+// budget at its limit.
 func (s *TaskService) claimRefusalFor(ctx context.Context, q *db.Queries, ws pgtype.UUID, task db.AgentTaskQueue) (*claimRefusal, error) {
+	if s.WorkspaceGate != nil {
+		code, err := s.WorkspaceGate.Refusal(ctx, ws)
+		if err != nil {
+			return nil, fmt.Errorf("read workspace state for claim: %w", err)
+		}
+		if code != "" {
+			return &claimRefusal{WorkspaceID: ws, Task: task, Reason: code}, nil
+		}
+	}
 	class, err := RunClassOfTask(ctx, q, task)
 	if err != nil {
 		return nil, err

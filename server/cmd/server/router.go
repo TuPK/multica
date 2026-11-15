@@ -49,6 +49,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/storage"
 	"github.com/multica-ai/multica/server/internal/util"
 	"github.com/multica-ai/multica/server/internal/util/secretbox"
+	"github.com/multica-ai/multica/server/internal/workspaceguard"
 	composiosdk "github.com/multica-ai/multica/server/pkg/composio"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/featureflag"
@@ -1551,6 +1552,11 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	patCache := auth.NewPATCache(rdb)
 	daemonTokenCache := auth.NewDaemonTokenCache(rdb)
 	accountGuard := auth.NewAccountGuard(queries, rdb)
+	// The workspace state decides which requests pass the workspace middleware
+	// (mounted below) and whether an agent may claim a new task. A workspace
+	// with no platform_workspace row is active.
+	workspaceState := workspaceguard.New(queries, rdb)
+	h.TaskService.WorkspaceGate = workspaceguard.NewClaimGate(workspaceState)
 	accountExportLimiter := handler.NewMemoryAccountExportLimiter()
 	if rdb != nil {
 		accountExportLimiter = handler.NewRedisAccountExportLimiter(rdb)
@@ -1600,6 +1606,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	r.Use(chimw.Recoverer)
 	r.Use(h.PluginSurfaceHostBoundary)
 	r.Use(middleware.ContentSecurityPolicy)
+	r.Use(middleware.WithWorkspaceState(workspaceState))
 
 	// Share allowed origins with WebSocket origin checker.
 	realtime.SetAllowedOrigins(origins)
