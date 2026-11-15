@@ -38,6 +38,9 @@ var Required = []string{
 	"671_plan_key_uidx",                     // plan: unique index on key
 	"672_workspace_subscription",            // workspace_subscription: table
 	"673_workspace_subscription_uidx",       // workspace_subscription: unique index on workspace_id
+	"674_platform_seat_operation",           // platform_seat_operation: table
+	"675_platform_seat_operation_uidx",      // platform_seat_operation: unique index on workspace_id, operation_token
+	"676_platform_seat_operation_state_idx", // platform_seat_operation: index on workspace_id, state
 	"686_workspace_subscription_status_idx", // workspace_subscription: index on status, current_period_end
 	"688_platform_note_id_uidx",             // platform_note: unique index on id
 }

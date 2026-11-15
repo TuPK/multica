@@ -1,0 +1,882 @@
+{
+ "_comment": "Hand-written. The seat protocol scenarios of spec Appendix B. The platform's test (internal/seat) runs them on its HTTP handler and checks every expect; Multica's test (server/internal/seatcapacity) runs the same calls with its client on the recorded responses in seat_transcript.json and checks the same expect. 'world' resets the workspace, 'members' sets its member count, 'clock' sets the platform's time. Absent expect fields are not checked.",
+ "workspace": "11111111-aaaa-4aaa-8aaa-111111111111",
+ "member_id": "00000000-0000-4000-8000-000000000901",
+ "scenarios": [
+  {
+   "name": "reserve_is_idempotent_and_counts",
+   "rules": [
+    1,
+    4,
+    7
+   ],
+   "steps": [
+    {
+     "world": {
+      "subscription": true,
+      "purchased": 3,
+      "members": 1,
+      "version": 4
+     }
+    },
+    {
+     "clock": "2026-08-15T10:00:00Z"
+    },
+    {
+     "call": "reserve",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "expires_at": "2026-08-15T10:10:00Z",
+     "name": "first reserve",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "state": "reserved",
+      "purchased": 3,
+      "used": 1,
+      "reserved": 1,
+      "version": 4
+     }
+    },
+    {
+     "call": "reserve",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "expires_at": "2026-08-15T10:10:00Z",
+     "name": "same token again",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "state": "reserved",
+      "reserved": 1
+     }
+    },
+    {
+     "call": "reserve",
+     "token": "00000000-0000-4000-8000-000000000002",
+     "expires_at": "2026-08-15T10:10:00Z",
+     "name": "second token",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "state": "reserved",
+      "reserved": 2
+     }
+    },
+    {
+     "call": "reserve",
+     "token": "00000000-0000-4000-8000-000000000003",
+     "expires_at": "2026-08-15T10:10:00Z",
+     "name": "no seat left",
+     "expect": {
+      "managed": true,
+      "allowed": false,
+      "reason": "capacity_full",
+      "purchased": 3,
+      "used": 1,
+      "reserved": 2
+     }
+    },
+    {
+     "call": "reserve",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "expires_at": "2026-08-15T10:10:00Z",
+     "name": "first token when full",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "state": "reserved",
+      "reserved": 2
+     }
+    },
+    {
+     "call": "reserve",
+     "token": "00000000-0000-4000-8000-000000000003",
+     "expires_at": "2026-08-15T10:10:00Z",
+     "name": "full again",
+     "expect": {
+      "managed": true,
+      "allowed": false,
+      "reason": "capacity_full",
+      "reserved": 2
+     }
+    }
+   ]
+  },
+  {
+   "name": "members_before_the_platform_are_counted",
+   "rules": [
+    4
+   ],
+   "steps": [
+    {
+     "world": {
+      "subscription": true,
+      "purchased": 2,
+      "members": 2,
+      "version": 1
+     }
+    },
+    {
+     "clock": "2026-08-15T10:00:00Z"
+    },
+    {
+     "call": "reserve",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "expires_at": "2026-08-15T10:10:00Z",
+     "name": "members fill the seats",
+     "expect": {
+      "managed": true,
+      "allowed": false,
+      "reason": "capacity_full",
+      "purchased": 2,
+      "used": 2,
+      "reserved": 0
+     }
+    }
+   ]
+  },
+  {
+   "name": "release_is_idempotent",
+   "rules": [
+    1,
+    2
+   ],
+   "steps": [
+    {
+     "world": {
+      "subscription": true,
+      "purchased": 3,
+      "members": 1,
+      "version": 4
+     }
+    },
+    {
+     "clock": "2026-08-15T10:00:00Z"
+    },
+    {
+     "call": "reserve",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "expires_at": "2026-08-15T10:10:00Z",
+     "name": "reserve",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "reserved": 1
+     }
+    },
+    {
+     "call": "release",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "release",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "state": "released",
+      "reserved": 0
+     }
+    },
+    {
+     "call": "release",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "release again",
+     "expect": {
+      "managed": true,
+      "allowed": false,
+      "reason": "released",
+      "state": "released",
+      "reserved": 0
+     }
+    },
+    {
+     "call": "release",
+     "token": "00000000-0000-4000-8000-000000000009",
+     "name": "release a token never seen",
+     "expect": {
+      "managed": true,
+      "allowed": false,
+      "reason": "released",
+      "reserved": 0
+     }
+    },
+    {
+     "call": "release-member",
+     "member_id": "00000000-0000-4000-8000-000000000901",
+     "name": "release a member",
+     "expect": {
+      "managed": true,
+      "allowed": false,
+      "reason": "released"
+     }
+    },
+    {
+     "call": "release-member",
+     "member_id": "00000000-0000-4000-8000-000000000901",
+     "name": "release a member again",
+     "expect": {
+      "managed": true,
+      "allowed": false,
+      "reason": "released"
+     }
+    },
+    {
+     "call": "reserve",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "expires_at": "2026-08-15T10:10:00Z",
+     "name": "a released token is not reserved again",
+     "expect": {
+      "managed": true,
+      "allowed": false,
+      "reason": "released",
+      "state": "released",
+      "reserved": 0
+     }
+    },
+    {
+     "call": "reserve",
+     "token": "00000000-0000-4000-8000-000000000002",
+     "expires_at": "2026-08-15T10:10:00Z",
+     "name": "the seat is free",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "reserved": 1
+     }
+    }
+   ]
+  },
+  {
+   "name": "consume_and_confirm",
+   "rules": [
+    1,
+    4
+   ],
+   "steps": [
+    {
+     "world": {
+      "subscription": true,
+      "purchased": 3,
+      "members": 1,
+      "version": 4
+     }
+    },
+    {
+     "clock": "2026-08-15T10:00:00Z"
+    },
+    {
+     "call": "reserve",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "expires_at": "2026-08-15T10:10:00Z",
+     "name": "reserve",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "state": "reserved",
+      "reserved": 1
+     }
+    },
+    {
+     "call": "consume",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "consume",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "state": "consuming",
+      "reserved": 1
+     }
+    },
+    {
+     "call": "consume",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "consume again",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "state": "consuming",
+      "reserved": 1
+     }
+    },
+    {
+     "members": 2
+    },
+    {
+     "call": "confirm",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "member_id": "00000000-0000-4000-8000-000000000901",
+     "name": "confirm",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "state": "used",
+      "used": 2,
+      "reserved": 0
+     }
+    },
+    {
+     "call": "confirm",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "member_id": "00000000-0000-4000-8000-000000000901",
+     "name": "confirm again",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "state": "used",
+      "used": 2,
+      "reserved": 0
+     }
+    },
+    {
+     "call": "consume",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "consume after confirm",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "state": "used",
+      "reserved": 0
+     }
+    },
+    {
+     "call": "operation",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "read",
+     "expect": {
+      "state": "used",
+      "managed": true
+     }
+    },
+    {
+     "call": "consume",
+     "token": "00000000-0000-4000-8000-000000000009",
+     "name": "consume a token never seen",
+     "expect": {
+      "managed": true,
+      "allowed": false,
+      "reason": "released",
+      "reserved": 0
+     }
+    },
+    {
+     "call": "confirm",
+     "token": "00000000-0000-4000-8000-000000000009",
+     "member_id": "00000000-0000-4000-8000-000000000901",
+     "name": "confirm a token never seen",
+     "expect": {
+      "managed": true,
+      "allowed": true
+     }
+    }
+   ]
+  },
+  {
+   "name": "share_join_claims_a_seat",
+   "rules": [
+    1,
+    4
+   ],
+   "steps": [
+    {
+     "world": {
+      "subscription": true,
+      "purchased": 3,
+      "members": 1,
+      "version": 4
+     }
+    },
+    {
+     "clock": "2026-08-15T10:00:00Z"
+    },
+    {
+     "call": "claim",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "claim",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "state": "consuming",
+      "reserved": 1
+     }
+    },
+    {
+     "call": "claim",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "claim again",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "state": "consuming",
+      "reserved": 1
+     }
+    },
+    {
+     "call": "claim",
+     "token": "00000000-0000-4000-8000-000000000002",
+     "name": "second claim",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "state": "consuming",
+      "reserved": 2
+     }
+    },
+    {
+     "call": "claim",
+     "token": "00000000-0000-4000-8000-000000000003",
+     "name": "no seat left",
+     "expect": {
+      "managed": true,
+      "allowed": false,
+      "reason": "capacity_full",
+      "reserved": 2
+     }
+    },
+    {
+     "call": "release",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "release a claim",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "state": "released",
+      "reserved": 1
+     }
+    },
+    {
+     "call": "claim",
+     "token": "00000000-0000-4000-8000-000000000003",
+     "name": "the seat is free",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "state": "consuming",
+      "reserved": 2
+     }
+    }
+   ]
+  },
+  {
+   "name": "expired_holds_are_not_counted",
+   "rules": [
+    5
+   ],
+   "steps": [
+    {
+     "world": {
+      "subscription": true,
+      "purchased": 3,
+      "members": 1,
+      "version": 4
+     }
+    },
+    {
+     "clock": "2026-08-15T10:00:00Z"
+    },
+    {
+     "call": "reserve",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "expires_at": "2026-08-15T10:10:00Z",
+     "name": "reserve one",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "reserved": 1
+     }
+    },
+    {
+     "call": "reserve",
+     "token": "00000000-0000-4000-8000-000000000002",
+     "expires_at": "2026-08-15T10:10:00Z",
+     "name": "reserve two",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "reserved": 2
+     }
+    },
+    {
+     "call": "reserve",
+     "token": "00000000-0000-4000-8000-000000000003",
+     "expires_at": "2026-08-15T10:30:00Z",
+     "name": "full",
+     "expect": {
+      "managed": true,
+      "allowed": false,
+      "reason": "capacity_full",
+      "reserved": 2
+     }
+    },
+    {
+     "clock": "2026-08-15T10:11:00Z"
+    },
+    {
+     "call": "reserve",
+     "token": "00000000-0000-4000-8000-000000000003",
+     "expires_at": "2026-08-15T10:30:00Z",
+     "name": "the holds expired",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "state": "reserved",
+      "reserved": 1
+     }
+    },
+    {
+     "call": "operation",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "read an expired hold",
+     "expect": {
+      "state": "released",
+      "managed": true
+     }
+    },
+    {
+     "call": "consume",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "consume an expired hold",
+     "expect": {
+      "managed": true,
+      "allowed": false,
+      "reason": "released",
+      "state": "released"
+     }
+    },
+    {
+     "call": "release",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "release an expired hold",
+     "expect": {
+      "managed": true,
+      "allowed": false,
+      "reason": "released",
+      "state": "released"
+     }
+    },
+    {
+     "call": "consume",
+     "token": "00000000-0000-4000-8000-000000000003",
+     "name": "consume a live hold",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "state": "consuming",
+      "reserved": 1
+     }
+    },
+    {
+     "clock": "2026-08-15T10:45:00Z"
+    },
+    {
+     "call": "operation",
+     "token": "00000000-0000-4000-8000-000000000003",
+     "name": "a consuming hold has no expiry",
+     "expect": {
+      "state": "consuming",
+      "managed": true
+     }
+    }
+   ]
+  },
+  {
+   "name": "overcommit_is_409",
+   "rules": [
+    3
+   ],
+   "steps": [
+    {
+     "world": {
+      "subscription": true,
+      "purchased": 2,
+      "members": 3,
+      "version": 5
+     }
+    },
+    {
+     "clock": "2026-08-15T10:00:00Z"
+    },
+    {
+     "call": "reserve",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "expires_at": "2026-08-15T10:10:00Z",
+     "name": "reserve",
+     "expect": {
+      "status": 409,
+      "code": "capacity_overcommitted"
+     }
+    },
+    {
+     "call": "claim",
+     "token": "00000000-0000-4000-8000-000000000002",
+     "name": "claim",
+     "expect": {
+      "status": 409,
+      "code": "capacity_overcommitted"
+     }
+    },
+    {
+     "call": "release",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "release still works",
+     "expect": {
+      "managed": true,
+      "allowed": false,
+      "reason": "released"
+     }
+    },
+    {
+     "world": {
+      "subscription": true,
+      "purchased": 3,
+      "members": 3,
+      "version": 5
+     }
+    },
+    {
+     "call": "reserve",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "expires_at": "2026-08-15T10:10:00Z",
+     "name": "full is not overcommitted",
+     "expect": {
+      "managed": true,
+      "allowed": false,
+      "reason": "capacity_full",
+      "purchased": 3,
+      "used": 3,
+      "reserved": 0,
+      "version": 5
+     }
+    }
+   ]
+  },
+  {
+   "name": "unmanaged_workspaces",
+   "rules": [],
+   "steps": [
+    {
+     "world": {
+      "subscription": false,
+      "purchased": 0,
+      "members": 0,
+      "version": 0
+     }
+    },
+    {
+     "clock": "2026-08-15T10:00:00Z"
+    },
+    {
+     "call": "reserve",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "expires_at": "2026-08-15T10:10:00Z",
+     "name": "no subscription: reserve",
+     "expect": {
+      "managed": false,
+      "allowed": false
+     }
+    },
+    {
+     "call": "claim",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "no subscription: claim",
+     "expect": {
+      "managed": false,
+      "allowed": false
+     }
+    },
+    {
+     "call": "consume",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "no subscription: consume",
+     "expect": {
+      "managed": false,
+      "allowed": false
+     }
+    },
+    {
+     "call": "release",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "no subscription: release",
+     "expect": {
+      "managed": false,
+      "allowed": false
+     }
+    },
+    {
+     "call": "release-member",
+     "member_id": "00000000-0000-4000-8000-000000000901",
+     "name": "no subscription: release member",
+     "expect": {
+      "managed": false,
+      "allowed": false
+     }
+    },
+    {
+     "call": "operation",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "no subscription: read",
+     "expect": {
+      "managed": false
+     }
+    },
+    {
+     "world": {
+      "subscription": true,
+      "purchased": 0,
+      "members": 5,
+      "version": 2
+     }
+    },
+    {
+     "call": "reserve",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "expires_at": "2026-08-15T10:10:00Z",
+     "name": "no seat limit: reserve",
+     "expect": {
+      "managed": false,
+      "allowed": false
+     }
+    },
+    {
+     "call": "claim",
+     "token": "00000000-0000-4000-8000-000000000002",
+     "name": "no seat limit: claim",
+     "expect": {
+      "managed": false,
+      "allowed": false
+     }
+    }
+   ]
+  },
+  {
+   "name": "operation_read",
+   "rules": [],
+   "steps": [
+    {
+     "world": {
+      "subscription": true,
+      "purchased": 3,
+      "members": 1,
+      "version": 6
+     }
+    },
+    {
+     "clock": "2026-08-15T10:00:00Z"
+    },
+    {
+     "call": "reserve",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "expires_at": "2026-08-15T10:10:00Z",
+     "name": "reserve",
+     "expect": {
+      "managed": true,
+      "allowed": true,
+      "reserved": 1,
+      "version": 6
+     }
+    },
+    {
+     "call": "operation",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "read",
+     "expect": {
+      "managed": true,
+      "state": "reserved",
+      "reserved": 1,
+      "version": 6
+     }
+    },
+    {
+     "call": "operation",
+     "token": "00000000-0000-4000-8000-000000000009",
+     "name": "unknown token",
+     "expect": {
+      "status": 404,
+      "code": "operation_not_found"
+     }
+    }
+   ]
+  },
+  {
+   "name": "failures_are_500",
+   "rules": [
+    3
+   ],
+   "steps": [
+    {
+     "world": {
+      "subscription": true,
+      "purchased": 3,
+      "members": 1,
+      "version": 4,
+      "fail": true
+     }
+    },
+    {
+     "clock": "2026-08-15T10:00:00Z"
+    },
+    {
+     "call": "reserve",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "expires_at": "2026-08-15T10:10:00Z",
+     "name": "reserve",
+     "expect": {
+      "status": 500,
+      "code": "internal"
+     }
+    },
+    {
+     "call": "claim",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "claim",
+     "expect": {
+      "status": 500,
+      "code": "internal"
+     }
+    },
+    {
+     "call": "consume",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "consume",
+     "expect": {
+      "status": 500,
+      "code": "internal"
+     }
+    },
+    {
+     "call": "confirm",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "member_id": "00000000-0000-4000-8000-000000000901",
+     "name": "confirm",
+     "expect": {
+      "status": 500,
+      "code": "internal"
+     }
+    },
+    {
+     "call": "release",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "release",
+     "expect": {
+      "status": 500,
+      "code": "internal"
+     }
+    },
+    {
+     "call": "release-member",
+     "member_id": "00000000-0000-4000-8000-000000000901",
+     "name": "release member",
+     "expect": {
+      "status": 500,
+      "code": "internal"
+     }
+    },
+    {
+     "call": "operation",
+     "token": "00000000-0000-4000-8000-000000000001",
+     "name": "read",
+     "expect": {
+      "status": 500,
+      "code": "internal"
+     }
+    }
+   ]
+  }
+ ]
+}

@@ -1953,6 +1953,18 @@ type PlatformNote struct {
 	ID          pgtype.UUID        `json:"id"`
 }
 
+type PlatformSeatOperation struct {
+	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
+	OperationToken pgtype.UUID        `json:"operation_token"`
+	Kind           string             `json:"kind"`
+	SubjectID      pgtype.UUID        `json:"subject_id"`
+	State          string             `json:"state"`
+	Reason         string             `json:"reason"`
+	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
 type PlatformStaff struct {
 	UserID    pgtype.UUID        `json:"user_id"`
 	Role      string             `json:"role"`

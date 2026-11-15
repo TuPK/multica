@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS platform_seat_operation_state_idx;

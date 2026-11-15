@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -856,5 +857,163 @@ func TestDeclineInvitation_AlreadyAcceptedIsNoOp(t *testing.T) {
 	}
 	if members := dbfx.Count(t, `SELECT count(*) FROM member WHERE workspace_id = $1 AND user_id = $2`, parseUUID(testWorkspaceID), parseUUID(userID)); members != 1 {
 		t.Fatalf("member count = %d, want 1", members)
+	}
+}
+
+// The tests below run the invitation and share-link handlers with the real
+// seat client against the platform's recorded responses
+// (platform-management/contract/testdata/seat_transcript.json), instead of the
+// scripted stub. The client's own contract suite is
+// server/internal/seatcapacity/contract_test.go.
+
+const platformTranscript = "../../../platform-management/contract/testdata/seat_transcript.json"
+
+// usePlatformSample installs the seat client against a server that answers
+// every request with the platform's recorded response of one transcript step.
+func usePlatformSample(t *testing.T, scenario, step string) {
+	t.Helper()
+	raw, err := os.ReadFile(platformTranscript)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var entries []struct {
+		Scenario string          `json:"scenario"`
+		Step     string          `json:"step"`
+		Status   int             `json:"status"`
+		Response json.RawMessage `json:"response"`
+	}
+	if err := json.Unmarshal(raw, &entries); err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if e.Scenario != scenario || e.Step != step {
+			continue
+		}
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(e.Status)
+			_, _ = w.Write(e.Response)
+		}))
+		t.Cleanup(server.Close)
+		client, err := seatcapacity.New(seatcapacity.Config{BaseURL: server.URL})
+		if err != nil {
+			t.Fatal(err)
+		}
+		useSeatCapacity(t, client)
+		return
+	}
+	t.Fatalf("transcript has no step %q of %q", step, scenario)
+}
+
+// useUnreachablePlatform installs the seat client against an address nothing
+// listens on.
+func useUnreachablePlatform(t *testing.T) {
+	t.Helper()
+	server := httptest.NewServer(http.NotFoundHandler())
+	url := server.URL
+	server.Close()
+	client, err := seatcapacity.New(seatcapacity.Config{BaseURL: url})
+	if err != nil {
+		t.Fatal(err)
+	}
+	useSeatCapacity(t, client)
+}
+
+func createInvitationWithSeatClient(t *testing.T, email string) *httptest.ResponseRecorder {
+	t.Helper()
+	clearInvitationsForTestWorkspace(t)
+	req := newRequest(http.MethodPost, "/api/workspaces/"+testWorkspaceID+"/members", CreateMemberRequest{Email: email, Role: "member"})
+	req = withURLParam(req, "id", testWorkspaceID)
+	rec := httptest.NewRecorder()
+	testHandler.CreateInvitation(rec, req)
+	return rec
+}
+
+func wantSeatErrorCode(t *testing.T, rec *httptest.ResponseRecorder, status int, code string) {
+	t.Helper()
+	var body struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("body %q: %v", rec.Body.String(), err)
+	}
+	if rec.Code != status || body.Code != code {
+		t.Fatalf("status = %d code = %q, want %d %q: %s", rec.Code, body.Code, status, code, rec.Body.String())
+	}
+}
+
+func TestCreateInvitation_PlatformSampleCapacityFull(t *testing.T) {
+	usePlatformSample(t, "reserve_is_idempotent_and_counts", "no seat left")
+	rec := createInvitationWithSeatClient(t, "platform-sample-full@multica.ai")
+	wantSeatErrorCode(t, rec, http.StatusConflict, "seat_capacity_full")
+}
+
+func TestCreateInvitation_PlatformSampleOvercommitted(t *testing.T) {
+	usePlatformSample(t, "overcommit_is_409", "reserve")
+	rec := createInvitationWithSeatClient(t, "platform-sample-overcommitted@multica.ai")
+	wantSeatErrorCode(t, rec, http.StatusConflict, "seat_capacity_overcommitted")
+}
+
+func TestCreateInvitation_PlatformSampleServerErrorIsUnavailable(t *testing.T) {
+	usePlatformSample(t, "failures_are_500", "reserve")
+	rec := createInvitationWithSeatClient(t, "platform-sample-500@multica.ai")
+	wantSeatErrorCode(t, rec, http.StatusServiceUnavailable, "seat_capacity_unavailable")
+}
+
+// Spec 5.6, AC20: with the platform unreachable, creating an invitation is 503.
+func TestCreateInvitation_PlatformUnreachableIsUnavailable(t *testing.T) {
+	useUnreachablePlatform(t)
+	rec := createInvitationWithSeatClient(t, "platform-unreachable@multica.ai")
+	wantSeatErrorCode(t, rec, http.StatusServiceUnavailable, "seat_capacity_unavailable")
+}
+
+func joinShareLinkWithSeatClient(t *testing.T) *httptest.ResponseRecorder {
+	t.Helper()
+	clearShareLinksForTestWorkspace(t)
+	link := createTestShareLink(t, testWorkspaceID, "member", 5, 0)
+	userID := createTestUserAndMember(t, "")
+	t.Cleanup(func() {
+		_, _ = testPool.Exec(context.Background(), `
+			DELETE FROM seat_capacity_outbox
+			WHERE workspace_id = $1 AND share_link_id = $2 AND user_id = $3
+		`, link.WorkspaceID, link.ID, parseUUID(userID))
+	})
+	req := newRequest(http.MethodPost, "/api/share-links/join", JoinByShareLinkRequest{Code: link.Code})
+	req.Header.Set("X-User-ID", userID)
+	rec := httptest.NewRecorder()
+	testHandler.JoinByShareLink(rec, req)
+	return rec
+}
+
+func TestJoinShareLink_PlatformSampleCapacityFull(t *testing.T) {
+	usePlatformSample(t, "share_join_claims_a_seat", "no seat left")
+	wantSeatErrorCode(t, joinShareLinkWithSeatClient(t), http.StatusConflict, "seat_capacity_full")
+}
+
+func TestJoinShareLink_PlatformSampleOvercommitted(t *testing.T) {
+	usePlatformSample(t, "overcommit_is_409", "claim")
+	wantSeatErrorCode(t, joinShareLinkWithSeatClient(t), http.StatusConflict, "seat_capacity_overcommitted")
+}
+
+// Spec 5.6, AC20: with the platform unreachable, joining by share link is 503.
+func TestJoinShareLink_PlatformUnreachableIsUnavailable(t *testing.T) {
+	useUnreachablePlatform(t)
+	wantSeatErrorCode(t, joinShareLinkWithSeatClient(t), http.StatusServiceUnavailable, "seat_capacity_unavailable")
+}
+
+// Any error that is not a capacity refusal or a rate limit takes the default
+// branch of writeSeatCapacityError.
+func TestWriteSeatCapacityError_DefaultBranchIsUnavailable(t *testing.T) {
+	for name, err := range map[string]error{
+		"unreachable": fmt.Errorf("%w: %v", errSeatCapacityUnavailable, errors.New("seat capacity request failed: connection refused")),
+		"server error": fmt.Errorf("%w: %v", errSeatCapacityUnavailable, &seatcapacity.HTTPError{
+			StatusCode: http.StatusInternalServerError, Code: "internal",
+		}),
+	} {
+		rec := httptest.NewRecorder()
+		writeSeatCapacityError(rec, err)
+		if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), "seat_capacity_unavailable") {
+			t.Errorf("%s: %d %s, want 503 seat_capacity_unavailable", name, rec.Code, rec.Body.String())
+		}
 	}
 }

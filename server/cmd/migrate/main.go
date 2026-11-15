@@ -153,6 +153,8 @@ var concurrentIndexCleanups = map[string]string{
 	"669_platform_note_workspace_idx":                           "platform_note_workspace_idx",
 	"671_plan_key_uidx":                                         "plan_key_uidx",
 	"673_workspace_subscription_uidx":                           "workspace_subscription_uidx",
+	"675_platform_seat_operation_uidx":                          "platform_seat_operation_uidx",
+	"676_platform_seat_operation_state_idx":                     "platform_seat_operation_state_idx",
 	"686_workspace_subscription_status_idx":                     "workspace_subscription_status_idx",
 	"688_platform_note_id_uidx":                                 "platform_note_id_uidx",
 	"940_hub_source_auto_sync_idx":                              "hub_source_auto_sync_due_idx",

@@ -27,6 +27,7 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/plan"
 	"github.com/multica-ai/multica/platform-management/internal/platformauth"
 	"github.com/multica-ai/multica/platform-management/internal/schemacheck"
+	"github.com/multica-ai/multica/platform-management/internal/seat"
 	"github.com/multica-ai/multica/platform-management/internal/server"
 	"github.com/multica-ai/multica/platform-management/internal/staff"
 	"github.com/multica-ai/multica/platform-management/internal/subscription"
@@ -164,6 +165,12 @@ func run() error {
 	routes := []server.Route{{Pattern: entitlement.PolicyPattern, Handler: policy.Handler()}}
 	for _, pattern := range subscription.APIPatterns {
 		routes = append(routes, server.Route{Pattern: pattern, Handler: billingReads})
+	}
+	// The seat protocol of Multica's seat client. It takes no credential, like
+	// the entitlement policy route.
+	seatAPI := seat.NewHandler(seat.NewService(seat.NewPgxRunner(pool), time.Now), slog.Default()).Mux()
+	for _, pattern := range seat.Patterns {
+		routes = append(routes, server.Route{Pattern: pattern, Handler: seatAPI})
 	}
 
 	apiLn, err := net.Listen("tcp", ":"+cfg.APIPort)

@@ -262,3 +262,15 @@ func (m *PgxMembers) Count(ctx context.Context, workspaceID string) (int64, erro
 	}
 	return m.q.CountWorkspaceMembers(ctx, ws)
 }
+
+// Reserved implements MemberReader: the operations that hold a seat and have
+// not expired.
+func (m *PgxMembers) Reserved(ctx context.Context, workspaceID string) (int64, error) {
+	ws, err := parseUUID(workspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return m.q.CountHeldSeatOperations(ctx, db.CountHeldSeatOperationsParams{
+		WorkspaceID: ws, ExpiresAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+	})
+}

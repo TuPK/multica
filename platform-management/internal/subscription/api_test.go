@@ -26,7 +26,10 @@ const (
 type fakeMembers struct {
 	roles map[string]string // user id -> role in wsID
 	count int64
-	err   error
+	// reserved is the number of seats held by live seat operations.
+	reserved    int64
+	reservedErr error
+	err         error
 
 	roleCalls int
 }
@@ -41,6 +44,13 @@ func (f *fakeMembers) Role(_ context.Context, ws, user string) (string, bool, er
 }
 
 func (f *fakeMembers) Count(context.Context, string) (int64, error) { return f.count, f.err }
+
+func (f *fakeMembers) Reserved(context.Context, string) (int64, error) {
+	if f.reservedErr != nil {
+		return 0, f.reservedErr
+	}
+	return f.reserved, f.err
+}
 
 type fakeSubs struct {
 	rows map[string]Subscription
@@ -505,5 +515,40 @@ func TestOtherRoutesAndMethodsAreNotServed(t *testing.T) {
 		if rec.Code != 404 && rec.Code != 405 {
 			t.Errorf("%s %s: status %d", tc.method, tc.path, rec.Code)
 		}
+	}
+}
+
+// The seats held by live seat operations are reported as reserved and are not
+// available (Appendix B rule 4).
+func TestSummaryCountsReservedSeats(t *testing.T) {
+	e := newAPIEnv(t)
+	e.subs.rows[wsID] = Subscription{WorkspaceID: wsID, PlanKey: "pro", Status: "active", Seats: 5, Interval: IntervalMonth, Version: 3}
+	e.members.count = 2
+	e.members.reserved = 2
+	m := decodeMap(t, e.summary(ownerID))
+	checkSummarySchema(t, m)
+	sc := obj(t, m["seat_capacity"], "seat_capacity")
+	if sc["reserved"] != float64(2) || sc["used"] != float64(2) || sc["available"] != float64(1) || sc["overcommitted"] != false {
+		t.Errorf("seat_capacity = %v, want 2 reserved, 2 used, 1 available", sc)
+	}
+}
+
+func TestSummaryReservedSeatsCannotMakeAvailabilityNegative(t *testing.T) {
+	e := newAPIEnv(t)
+	e.subs.rows[wsID] = Subscription{WorkspaceID: wsID, PlanKey: "pro", Status: "active", Seats: 3, Interval: IntervalMonth, Version: 1}
+	e.members.count = 3
+	e.members.reserved = 1
+	sc := obj(t, decodeMap(t, e.summary(ownerID))["seat_capacity"], "seat_capacity")
+	if sc["available"] != float64(0) || sc["overcommitted"] != false {
+		t.Errorf("seat_capacity = %v, want 0 available and not overcommitted: held seats are not members", sc)
+	}
+}
+
+func TestSummaryFailsWhenReservedSeatsCannotBeRead(t *testing.T) {
+	e := newAPIEnv(t)
+	e.subs.rows[wsID] = Subscription{WorkspaceID: wsID, PlanKey: "pro", Status: "active", Seats: 3, Interval: IntervalMonth, Version: 1}
+	e.members.reservedErr = errors.New("db down")
+	if rec := e.summary(ownerID); rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", rec.Code)
 	}
 }

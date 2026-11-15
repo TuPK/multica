@@ -32,6 +32,9 @@ type MemberReader interface {
 	Role(ctx context.Context, workspaceID, userID string) (role string, found bool, err error)
 	// Count returns the number of members of the workspace.
 	Count(ctx context.Context, workspaceID string) (int64, error)
+	// Reserved returns the number of seats held by live seat operations that
+	// are not yet members (Appendix B rule 4).
+	Reserved(ctx context.Context, workspaceID string) (int64, error)
 }
 
 // APIDeps are the API's dependencies.
@@ -133,9 +136,9 @@ func rfc3339(t *time.Time) *string {
 	return &s
 }
 
-// purchasedSeats is the seat capacity: the plan's fixed seats, else the
+// PurchasedSeats is the seat capacity: the plan's fixed seats, else the
 // subscription's seats. ok is false for a workspace with no seat limit.
-func purchasedSeats(p plan.Plan, sub *Subscription) (n int64, ok bool) {
+func PurchasedSeats(p plan.Plan, sub *Subscription) (n int64, ok bool) {
 	if p.SeatsFixed != nil && *p.SeatsFixed > 0 {
 		return int64(*p.SeatsFixed), true
 	}
@@ -146,7 +149,7 @@ func purchasedSeats(p plan.Plan, sub *Subscription) (n int64, ok bool) {
 }
 
 // buildSummary assembles the response. sub is nil for a workspace with no row.
-func buildSummary(workspaceID string, sub *Subscription, p plan.Plan, members int64) summaryJSON {
+func buildSummary(workspaceID string, sub *Subscription, p plan.Plan, members, reserved int64) summaryJSON {
 	var overrides plan.Limits
 	status, version := StatusActive, int64(0)
 	if sub != nil {
@@ -181,12 +184,13 @@ func buildSummary(workspaceID string, sub *Subscription, p plan.Plan, members in
 			out.BillingInterval = &interval
 		}
 	}
-	if purchased, ok := purchasedSeats(p, sub); ok {
+	if purchased, ok := PurchasedSeats(p, sub); ok {
 		out.Entitlement.Seats = purchased
 		out.SeatCapacity = &seatCapacityJSON{
 			Purchased:     purchased,
 			Used:          members,
-			Available:     max(purchased-members, 0),
+			Reserved:      reserved,
+			Available:     max(purchased-members-reserved, 0),
 			Overcommitted: members > purchased,
 			// The subscription's version is 0 with no row, and the page needs a
 			// positive one.
@@ -246,7 +250,14 @@ func (a *API) summary(w http.ResponseWriter, r *http.Request) {
 		a.internalError(w, r, "count members", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, buildSummary(ws, subPtr, p, members))
+	var reserved int64
+	if _, limited := PurchasedSeats(p, subPtr); limited {
+		if reserved, err = a.Members.Reserved(r.Context(), ws); err != nil {
+			a.internalError(w, r, "count reserved seats", err)
+			return
+		}
+	}
+	writeJSON(w, http.StatusOK, buildSummary(ws, subPtr, p, members, reserved))
 }
 
 type missingPlanError struct{ key string }

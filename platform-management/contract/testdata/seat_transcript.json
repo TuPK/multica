@@ -1,0 +1,1425 @@
+[
+ {
+  "scenario": "reserve_is_idempotent_and_counts",
+  "step": "first reserve",
+  "method": "POST",
+  "suffix": "reserve",
+  "request": {
+   "expires_at": "2026-08-15T10:10:00Z",
+   "kind": "invitation",
+   "subject_id": "00000000-0000-4000-8000-000000000001",
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "reserved",
+    "expires_at": "2026-08-15T10:10:00Z"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 1,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "reserve_is_idempotent_and_counts",
+  "step": "same token again",
+  "method": "POST",
+  "suffix": "reserve",
+  "request": {
+   "expires_at": "2026-08-15T10:10:00Z",
+   "kind": "invitation",
+   "subject_id": "00000000-0000-4000-8000-000000000001",
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "reserved",
+    "expires_at": "2026-08-15T10:10:00Z"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 1,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "reserve_is_idempotent_and_counts",
+  "step": "second token",
+  "method": "POST",
+  "suffix": "reserve",
+  "request": {
+   "expires_at": "2026-08-15T10:10:00Z",
+   "kind": "invitation",
+   "subject_id": "00000000-0000-4000-8000-000000000002",
+   "token": "00000000-0000-4000-8000-000000000002"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000002",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000002",
+    "state": "reserved",
+    "expires_at": "2026-08-15T10:10:00Z"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 2,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "reserve_is_idempotent_and_counts",
+  "step": "no seat left",
+  "method": "POST",
+  "suffix": "reserve",
+  "request": {
+   "expires_at": "2026-08-15T10:10:00Z",
+   "kind": "invitation",
+   "subject_id": "00000000-0000-4000-8000-000000000003",
+   "token": "00000000-0000-4000-8000-000000000003"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": false,
+   "reason": "capacity_full",
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 2,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "reserve_is_idempotent_and_counts",
+  "step": "first token when full",
+  "method": "POST",
+  "suffix": "reserve",
+  "request": {
+   "expires_at": "2026-08-15T10:10:00Z",
+   "kind": "invitation",
+   "subject_id": "00000000-0000-4000-8000-000000000001",
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "reserved",
+    "expires_at": "2026-08-15T10:10:00Z"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 2,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "reserve_is_idempotent_and_counts",
+  "step": "full again",
+  "method": "POST",
+  "suffix": "reserve",
+  "request": {
+   "expires_at": "2026-08-15T10:10:00Z",
+   "kind": "invitation",
+   "subject_id": "00000000-0000-4000-8000-000000000003",
+   "token": "00000000-0000-4000-8000-000000000003"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": false,
+   "reason": "capacity_full",
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 2,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "members_before_the_platform_are_counted",
+  "step": "members fill the seats",
+  "method": "POST",
+  "suffix": "reserve",
+  "request": {
+   "expires_at": "2026-08-15T10:10:00Z",
+   "kind": "invitation",
+   "subject_id": "00000000-0000-4000-8000-000000000001",
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": false,
+   "reason": "capacity_full",
+   "capacity": {
+    "purchased_seats": 2,
+    "used_seats": 2,
+    "reserved_seats": 0,
+    "version": 1
+   }
+  }
+ },
+ {
+  "scenario": "release_is_idempotent",
+  "step": "reserve",
+  "method": "POST",
+  "suffix": "reserve",
+  "request": {
+   "expires_at": "2026-08-15T10:10:00Z",
+   "kind": "invitation",
+   "subject_id": "00000000-0000-4000-8000-000000000001",
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "reserved",
+    "expires_at": "2026-08-15T10:10:00Z"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 1,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "release_is_idempotent",
+  "step": "release",
+  "method": "POST",
+  "suffix": "release",
+  "request": {
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "released"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 0,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "release_is_idempotent",
+  "step": "release again",
+  "method": "POST",
+  "suffix": "release",
+  "request": {
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": false,
+   "reason": "released",
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "released"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 0,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "release_is_idempotent",
+  "step": "release a token never seen",
+  "method": "POST",
+  "suffix": "release",
+  "request": {
+   "token": "00000000-0000-4000-8000-000000000009"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": false,
+   "reason": "released",
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 0,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "release_is_idempotent",
+  "step": "release a member",
+  "method": "POST",
+  "suffix": "release-member",
+  "request": {
+   "member_id": "00000000-0000-4000-8000-000000000901"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": false,
+   "reason": "released",
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 0,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "release_is_idempotent",
+  "step": "release a member again",
+  "method": "POST",
+  "suffix": "release-member",
+  "request": {
+   "member_id": "00000000-0000-4000-8000-000000000901"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": false,
+   "reason": "released",
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 0,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "release_is_idempotent",
+  "step": "a released token is not reserved again",
+  "method": "POST",
+  "suffix": "reserve",
+  "request": {
+   "expires_at": "2026-08-15T10:10:00Z",
+   "kind": "invitation",
+   "subject_id": "00000000-0000-4000-8000-000000000001",
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": false,
+   "reason": "released",
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "released"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 0,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "release_is_idempotent",
+  "step": "the seat is free",
+  "method": "POST",
+  "suffix": "reserve",
+  "request": {
+   "expires_at": "2026-08-15T10:10:00Z",
+   "kind": "invitation",
+   "subject_id": "00000000-0000-4000-8000-000000000002",
+   "token": "00000000-0000-4000-8000-000000000002"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000002",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000002",
+    "state": "reserved",
+    "expires_at": "2026-08-15T10:10:00Z"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 1,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "consume_and_confirm",
+  "step": "reserve",
+  "method": "POST",
+  "suffix": "reserve",
+  "request": {
+   "expires_at": "2026-08-15T10:10:00Z",
+   "kind": "invitation",
+   "subject_id": "00000000-0000-4000-8000-000000000001",
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "reserved",
+    "expires_at": "2026-08-15T10:10:00Z"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 1,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "consume_and_confirm",
+  "step": "consume",
+  "method": "POST",
+  "suffix": "consume",
+  "request": {
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "consuming"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 1,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "consume_and_confirm",
+  "step": "consume again",
+  "method": "POST",
+  "suffix": "consume",
+  "request": {
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "consuming"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 1,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "consume_and_confirm",
+  "step": "confirm",
+  "method": "POST",
+  "suffix": "confirm",
+  "request": {
+   "member_id": "00000000-0000-4000-8000-000000000901",
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "used"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 2,
+    "reserved_seats": 0,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "consume_and_confirm",
+  "step": "confirm again",
+  "method": "POST",
+  "suffix": "confirm",
+  "request": {
+   "member_id": "00000000-0000-4000-8000-000000000901",
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "used"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 2,
+    "reserved_seats": 0,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "consume_and_confirm",
+  "step": "consume after confirm",
+  "method": "POST",
+  "suffix": "consume",
+  "request": {
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "used"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 2,
+    "reserved_seats": 0,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "consume_and_confirm",
+  "step": "read",
+  "method": "GET",
+  "suffix": "operations/00000000-0000-4000-8000-000000000001",
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": false,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "used"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 2,
+    "reserved_seats": 0,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "consume_and_confirm",
+  "step": "consume a token never seen",
+  "method": "POST",
+  "suffix": "consume",
+  "request": {
+   "token": "00000000-0000-4000-8000-000000000009"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": false,
+   "reason": "released",
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 2,
+    "reserved_seats": 0,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "consume_and_confirm",
+  "step": "confirm a token never seen",
+  "method": "POST",
+  "suffix": "confirm",
+  "request": {
+   "member_id": "00000000-0000-4000-8000-000000000901",
+   "token": "00000000-0000-4000-8000-000000000009"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 2,
+    "reserved_seats": 0,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "share_join_claims_a_seat",
+  "step": "claim",
+  "method": "POST",
+  "suffix": "claim",
+  "request": {
+   "kind": "share_join",
+   "subject_id": "00000000-0000-4000-8000-000000000001",
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "share_join",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "consuming"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 1,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "share_join_claims_a_seat",
+  "step": "claim again",
+  "method": "POST",
+  "suffix": "claim",
+  "request": {
+   "kind": "share_join",
+   "subject_id": "00000000-0000-4000-8000-000000000001",
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "share_join",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "consuming"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 1,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "share_join_claims_a_seat",
+  "step": "second claim",
+  "method": "POST",
+  "suffix": "claim",
+  "request": {
+   "kind": "share_join",
+   "subject_id": "00000000-0000-4000-8000-000000000002",
+   "token": "00000000-0000-4000-8000-000000000002"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000002",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "share_join",
+    "subject_id": "00000000-0000-4000-8000-000000000002",
+    "state": "consuming"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 2,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "share_join_claims_a_seat",
+  "step": "no seat left",
+  "method": "POST",
+  "suffix": "claim",
+  "request": {
+   "kind": "share_join",
+   "subject_id": "00000000-0000-4000-8000-000000000003",
+   "token": "00000000-0000-4000-8000-000000000003"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": false,
+   "reason": "capacity_full",
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 2,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "share_join_claims_a_seat",
+  "step": "release a claim",
+  "method": "POST",
+  "suffix": "release",
+  "request": {
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "share_join",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "released"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 1,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "share_join_claims_a_seat",
+  "step": "the seat is free",
+  "method": "POST",
+  "suffix": "claim",
+  "request": {
+   "kind": "share_join",
+   "subject_id": "00000000-0000-4000-8000-000000000003",
+   "token": "00000000-0000-4000-8000-000000000003"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000003",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "share_join",
+    "subject_id": "00000000-0000-4000-8000-000000000003",
+    "state": "consuming"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 2,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "expired_holds_are_not_counted",
+  "step": "reserve one",
+  "method": "POST",
+  "suffix": "reserve",
+  "request": {
+   "expires_at": "2026-08-15T10:10:00Z",
+   "kind": "invitation",
+   "subject_id": "00000000-0000-4000-8000-000000000001",
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "reserved",
+    "expires_at": "2026-08-15T10:10:00Z"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 1,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "expired_holds_are_not_counted",
+  "step": "reserve two",
+  "method": "POST",
+  "suffix": "reserve",
+  "request": {
+   "expires_at": "2026-08-15T10:10:00Z",
+   "kind": "invitation",
+   "subject_id": "00000000-0000-4000-8000-000000000002",
+   "token": "00000000-0000-4000-8000-000000000002"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000002",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000002",
+    "state": "reserved",
+    "expires_at": "2026-08-15T10:10:00Z"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 2,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "expired_holds_are_not_counted",
+  "step": "full",
+  "method": "POST",
+  "suffix": "reserve",
+  "request": {
+   "expires_at": "2026-08-15T10:30:00Z",
+   "kind": "invitation",
+   "subject_id": "00000000-0000-4000-8000-000000000003",
+   "token": "00000000-0000-4000-8000-000000000003"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": false,
+   "reason": "capacity_full",
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 2,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "expired_holds_are_not_counted",
+  "step": "the holds expired",
+  "method": "POST",
+  "suffix": "reserve",
+  "request": {
+   "expires_at": "2026-08-15T10:30:00Z",
+   "kind": "invitation",
+   "subject_id": "00000000-0000-4000-8000-000000000003",
+   "token": "00000000-0000-4000-8000-000000000003"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000003",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000003",
+    "state": "reserved",
+    "expires_at": "2026-08-15T10:30:00Z"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 1,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "expired_holds_are_not_counted",
+  "step": "read an expired hold",
+  "method": "GET",
+  "suffix": "operations/00000000-0000-4000-8000-000000000001",
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": false,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "released",
+    "expires_at": "2026-08-15T10:10:00Z"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 1,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "expired_holds_are_not_counted",
+  "step": "consume an expired hold",
+  "method": "POST",
+  "suffix": "consume",
+  "request": {
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": false,
+   "reason": "released",
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "released",
+    "expires_at": "2026-08-15T10:10:00Z"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 1,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "expired_holds_are_not_counted",
+  "step": "release an expired hold",
+  "method": "POST",
+  "suffix": "release",
+  "request": {
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": false,
+   "reason": "released",
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "released",
+    "expires_at": "2026-08-15T10:10:00Z"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 1,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "expired_holds_are_not_counted",
+  "step": "consume a live hold",
+  "method": "POST",
+  "suffix": "consume",
+  "request": {
+   "token": "00000000-0000-4000-8000-000000000003"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000003",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000003",
+    "state": "consuming"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 1,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "expired_holds_are_not_counted",
+  "step": "a consuming hold has no expiry",
+  "method": "GET",
+  "suffix": "operations/00000000-0000-4000-8000-000000000003",
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": false,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000003",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000003",
+    "state": "consuming"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 1,
+    "version": 4
+   }
+  }
+ },
+ {
+  "scenario": "overcommit_is_409",
+  "step": "reserve",
+  "method": "POST",
+  "suffix": "reserve",
+  "request": {
+   "expires_at": "2026-08-15T10:10:00Z",
+   "kind": "invitation",
+   "subject_id": "00000000-0000-4000-8000-000000000001",
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 409,
+  "response": {
+   "code": "capacity_overcommitted",
+   "error": "workspace members exceed purchased seats"
+  }
+ },
+ {
+  "scenario": "overcommit_is_409",
+  "step": "claim",
+  "method": "POST",
+  "suffix": "claim",
+  "request": {
+   "kind": "share_join",
+   "subject_id": "00000000-0000-4000-8000-000000000002",
+   "token": "00000000-0000-4000-8000-000000000002"
+  },
+  "status": 409,
+  "response": {
+   "code": "capacity_overcommitted",
+   "error": "workspace members exceed purchased seats"
+  }
+ },
+ {
+  "scenario": "overcommit_is_409",
+  "step": "release still works",
+  "method": "POST",
+  "suffix": "release",
+  "request": {
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": false,
+   "reason": "released",
+   "capacity": {
+    "purchased_seats": 2,
+    "used_seats": 3,
+    "reserved_seats": 0,
+    "version": 5
+   }
+  }
+ },
+ {
+  "scenario": "overcommit_is_409",
+  "step": "full is not overcommitted",
+  "method": "POST",
+  "suffix": "reserve",
+  "request": {
+   "expires_at": "2026-08-15T10:10:00Z",
+   "kind": "invitation",
+   "subject_id": "00000000-0000-4000-8000-000000000001",
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": false,
+   "reason": "capacity_full",
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 3,
+    "reserved_seats": 0,
+    "version": 5
+   }
+  }
+ },
+ {
+  "scenario": "unmanaged_workspaces",
+  "step": "no subscription: reserve",
+  "method": "POST",
+  "suffix": "reserve",
+  "request": {
+   "expires_at": "2026-08-15T10:10:00Z",
+   "kind": "invitation",
+   "subject_id": "00000000-0000-4000-8000-000000000001",
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": false,
+   "allowed": false
+  }
+ },
+ {
+  "scenario": "unmanaged_workspaces",
+  "step": "no subscription: claim",
+  "method": "POST",
+  "suffix": "claim",
+  "request": {
+   "kind": "share_join",
+   "subject_id": "00000000-0000-4000-8000-000000000001",
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": false,
+   "allowed": false
+  }
+ },
+ {
+  "scenario": "unmanaged_workspaces",
+  "step": "no subscription: consume",
+  "method": "POST",
+  "suffix": "consume",
+  "request": {
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": false,
+   "allowed": false
+  }
+ },
+ {
+  "scenario": "unmanaged_workspaces",
+  "step": "no subscription: release",
+  "method": "POST",
+  "suffix": "release",
+  "request": {
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": false,
+   "allowed": false
+  }
+ },
+ {
+  "scenario": "unmanaged_workspaces",
+  "step": "no subscription: release member",
+  "method": "POST",
+  "suffix": "release-member",
+  "request": {
+   "member_id": "00000000-0000-4000-8000-000000000901"
+  },
+  "status": 200,
+  "response": {
+   "managed": false,
+   "allowed": false
+  }
+ },
+ {
+  "scenario": "unmanaged_workspaces",
+  "step": "no subscription: read",
+  "method": "GET",
+  "suffix": "operations/00000000-0000-4000-8000-000000000001",
+  "status": 200,
+  "response": {
+   "managed": false,
+   "allowed": false
+  }
+ },
+ {
+  "scenario": "unmanaged_workspaces",
+  "step": "no seat limit: reserve",
+  "method": "POST",
+  "suffix": "reserve",
+  "request": {
+   "expires_at": "2026-08-15T10:10:00Z",
+   "kind": "invitation",
+   "subject_id": "00000000-0000-4000-8000-000000000001",
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": false,
+   "allowed": false
+  }
+ },
+ {
+  "scenario": "unmanaged_workspaces",
+  "step": "no seat limit: claim",
+  "method": "POST",
+  "suffix": "claim",
+  "request": {
+   "kind": "share_join",
+   "subject_id": "00000000-0000-4000-8000-000000000002",
+   "token": "00000000-0000-4000-8000-000000000002"
+  },
+  "status": 200,
+  "response": {
+   "managed": false,
+   "allowed": false
+  }
+ },
+ {
+  "scenario": "operation_read",
+  "step": "reserve",
+  "method": "POST",
+  "suffix": "reserve",
+  "request": {
+   "expires_at": "2026-08-15T10:10:00Z",
+   "kind": "invitation",
+   "subject_id": "00000000-0000-4000-8000-000000000001",
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": true,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "reserved",
+    "expires_at": "2026-08-15T10:10:00Z"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 1,
+    "version": 6
+   }
+  }
+ },
+ {
+  "scenario": "operation_read",
+  "step": "read",
+  "method": "GET",
+  "suffix": "operations/00000000-0000-4000-8000-000000000001",
+  "status": 200,
+  "response": {
+   "managed": true,
+   "allowed": false,
+   "operation": {
+    "token": "00000000-0000-4000-8000-000000000001",
+    "workspace_id": "11111111-aaaa-4aaa-8aaa-111111111111",
+    "kind": "invitation",
+    "subject_id": "00000000-0000-4000-8000-000000000001",
+    "state": "reserved",
+    "expires_at": "2026-08-15T10:10:00Z"
+   },
+   "capacity": {
+    "purchased_seats": 3,
+    "used_seats": 1,
+    "reserved_seats": 1,
+    "version": 6
+   }
+  }
+ },
+ {
+  "scenario": "operation_read",
+  "step": "unknown token",
+  "method": "GET",
+  "suffix": "operations/00000000-0000-4000-8000-000000000009",
+  "status": 404,
+  "response": {
+   "code": "operation_not_found",
+   "error": "operation not found"
+  }
+ },
+ {
+  "scenario": "failures_are_500",
+  "step": "reserve",
+  "method": "POST",
+  "suffix": "reserve",
+  "request": {
+   "expires_at": "2026-08-15T10:10:00Z",
+   "kind": "invitation",
+   "subject_id": "00000000-0000-4000-8000-000000000001",
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 500,
+  "response": {
+   "code": "internal",
+   "error": "internal error"
+  }
+ },
+ {
+  "scenario": "failures_are_500",
+  "step": "claim",
+  "method": "POST",
+  "suffix": "claim",
+  "request": {
+   "kind": "share_join",
+   "subject_id": "00000000-0000-4000-8000-000000000001",
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 500,
+  "response": {
+   "code": "internal",
+   "error": "internal error"
+  }
+ },
+ {
+  "scenario": "failures_are_500",
+  "step": "consume",
+  "method": "POST",
+  "suffix": "consume",
+  "request": {
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 500,
+  "response": {
+   "code": "internal",
+   "error": "internal error"
+  }
+ },
+ {
+  "scenario": "failures_are_500",
+  "step": "confirm",
+  "method": "POST",
+  "suffix": "confirm",
+  "request": {
+   "member_id": "00000000-0000-4000-8000-000000000901",
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 500,
+  "response": {
+   "code": "internal",
+   "error": "internal error"
+  }
+ },
+ {
+  "scenario": "failures_are_500",
+  "step": "release",
+  "method": "POST",
+  "suffix": "release",
+  "request": {
+   "token": "00000000-0000-4000-8000-000000000001"
+  },
+  "status": 500,
+  "response": {
+   "code": "internal",
+   "error": "internal error"
+  }
+ },
+ {
+  "scenario": "failures_are_500",
+  "step": "release member",
+  "method": "POST",
+  "suffix": "release-member",
+  "request": {
+   "member_id": "00000000-0000-4000-8000-000000000901"
+  },
+  "status": 500,
+  "response": {
+   "code": "internal",
+   "error": "internal error"
+  }
+ },
+ {
+  "scenario": "failures_are_500",
+  "step": "read",
+  "method": "GET",
+  "suffix": "operations/00000000-0000-4000-8000-000000000001",
+  "status": 500,
+  "response": {
+   "code": "internal",
+   "error": "internal error"
+  }
+ }
+]

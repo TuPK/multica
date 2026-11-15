@@ -223,3 +223,15 @@ func TestRequiredListsThePlanAndSubscriptionMigrations(t *testing.T) {
 		}
 	}
 }
+
+func TestRequiredIncludesSeatOperationMigrations(t *testing.T) {
+	for _, v := range []string{
+		"674_platform_seat_operation",
+		"675_platform_seat_operation_uidx",
+		"676_platform_seat_operation_state_idx",
+	} {
+		if !slices.Contains(Required, v) {
+			t.Errorf("Required lacks %s", v)
+		}
+	}
+}
