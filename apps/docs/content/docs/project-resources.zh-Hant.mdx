@@ -43,7 +43,7 @@ import { LocalDirModeDemo } from "@/components/demos/local-dir-mode-demo";
 <Callout type="warning">
 **這是特殊情況下的選項，不要因為方便就選它。** `local_directory` 是給那些"不得不這麼開發"的人準備的，典型是一個 checkout 就幾十 GB 的遊戲專案，不可能每來一次執行就重新 clone 一份。
 
-如果你的目錄只是一個能正常 clone 的普通 git 倉庫，請用 `github_repo`：它預設走 worktree 模式，同一個倉庫上的執行可以同時進行，數量不受限制。`local_directory` 預設同一時間只進行一次執行；如果這個目錄本身是 git 倉庫，可以主動開啟 worktree 模式恢復併發（見[執行如何共享這個目錄](#執行如何共享這個目錄)）。拿不準時，先對照頁首的兩種資源。
+如果你的目錄只是一個能正常 clone 的普通 git 倉庫，請用 `github_repo`：它預設走 worktree 模式，同一個倉庫上的執行可以同時進行，數量不受限制。`local_directory` 預設同一時間只處理一個智能體小組（squad）：同一小組的執行排隊，不同小組的執行可以在同一目錄裡並排進行（見[執行如何共享這個目錄](#執行如何共享這個目錄)）。並排不等於隔離；如果這個目錄本身是 git 倉庫，可以主動開啟 worktree 模式，讓每次執行拿到自己的工作副本。拿不準時，先對照頁首的兩種資源。
 </Callout>
 
 <Steps>
@@ -91,7 +91,9 @@ import { LocalDirModeDemo } from "@/components/demos/local-dir-mode-demo";
 <Tabs items={["in_place（原地，預設）", "worktree（並行）"]}>
 <Tab value="in_place（原地，預設）" id="in-place">
 
-AI 代理直接在你的目錄裡工作，同一時間只進行一次執行。兩次執行使用同一個真實目錄時，後到的執行進入 `waiting_local_directory`，等前一次釋放目錄後繼續。兩個路徑經不同符號連結指向同一目錄時，同樣序列。
+AI 代理直接在你的目錄裡工作。同一小組的執行依次佔用目錄，不同小組的執行可以同時在其中工作。執行發現目錄被佔用時進入 `waiting_local_directory`，等佔用者釋放後繼續。兩個路徑經不同符號連結指向同一目錄時，共用同一把鎖。
+
+共享目錄不等於隔離。所有執行都寫進同一個資料夾，因此兩個小組可能互相覆蓋檔案（例如兩份報告都叫 `01-reader.md`），或讀到另一個小組剛寫入的檔案。Multica 不會阻止這種情況。如果各小組的產出不能衝突，請在指令裡讓它們寫入各自的子資料夾，或在 git 倉庫中使用 worktree 模式。
 
 等待不會修改目錄。等待中的執行可以取消，否則會一直等到目錄可用。
 

@@ -43,7 +43,7 @@ The UI for adding a local directory is Desktop-only, because browsers cannot pic
 <Callout type="warning">
 **This is for special cases; do not pick it just because it is convenient.** `local_directory` exists for people who have no other option — the canonical case is a game project whose checkout is tens of gigabytes, where re-cloning per run is simply not viable.
 
-If your directory is an ordinary git repo you can clone, use `github_repo` instead: it uses worktree mode by default, so any number of runs on the same repo can proceed at once. A `local_directory` processes one run at a time by default; if the directory is a git repo you can opt into worktree mode to get concurrency back (see [How runs share the directory](#how-runs-share-the-directory)). If you are unsure, compare the two resource types at the top of this page.
+If your directory is an ordinary git repo you can clone, use `github_repo` instead: it uses worktree mode by default, so any number of runs on the same repo can proceed at once. By default a `local_directory` runs one squad at a time: runs of the same squad queue, while runs of different squads can share the directory side by side (see [How runs share the directory](#how-runs-share-the-directory)). Sharing is not isolation; if the directory is a git repo you can opt into worktree mode to give each run its own checkout. If you are unsure, compare the two resource types at the top of this page.
 </Callout>
 
 <Steps>
@@ -90,7 +90,9 @@ A local directory has two execution modes, set per resource with `execution_mode
 <Tabs items={["in_place (Direct, default)", "worktree (Parallel)"]}>
 <Tab value="in_place (Direct, default)" id="in-place">
 
-The agent works directly in your directory, and runs execute one at a time. When two runs use the same real directory, the later one enters `waiting_local_directory` and continues after the earlier one releases the directory. Two paths that reach the same directory through different symlinks serialize the same way.
+The agent works directly in your directory. Runs of the same squad take the directory one at a time, and runs of different squads can work in it at the same time. A run that finds the directory held enters `waiting_local_directory` and continues when the holder releases it. Two paths that reach the same directory through different symlinks share one lock.
+
+Sharing a directory is not isolation. Every run writes into the same folder, so two squads can overwrite each other's files (for example two reports both named `01-reader.md`) or read a file another squad has just written. Multica does not prevent this. If the squads' outputs must not collide, have the instructions write to separate subfolders, or use worktree mode in a git repository.
 
 Waiting does not modify the directory. A waiting run can be cancelled; otherwise it waits until the directory becomes available.
 

@@ -43,7 +43,7 @@ import { LocalDirModeDemo } from "@/components/demos/local-dir-mode-demo";
 <Callout type="warning">
 **这是特殊情况下的选项，不要因为方便就选它。** `local_directory` 是给那些"不得不这么开发"的人准备的，典型是一个 checkout 就几十 GB 的游戏项目，不可能每来一次运行就重新 clone 一份。
 
-如果你的目录只是一个能正常 clone 的普通 git 仓库，请用 `github_repo`：它默认走 worktree 模式，同一个仓库上的运行可以同时进行，数量不受限制。`local_directory` 默认同一时间只进行一次运行；如果这个目录本身是 git 仓库，可以主动开启 worktree 模式恢复并发（见[运行如何共享这个目录](#运行如何共享这个目录)）。拿不准时，先对照页首的两种资源。
+如果你的目录只是一个能正常 clone 的普通 git 仓库，请用 `github_repo`：它默认走 worktree 模式，同一个仓库上的运行可以同时进行，数量不受限制。`local_directory` 默认同一时间只处理一个智能体小组（squad）：同一小组的运行排队，不同小组的运行可以在同一目录里并排进行（见[运行如何共享这个目录](#运行如何共享这个目录)）。并排不等于隔离；如果这个目录本身是 git 仓库，可以主动开启 worktree 模式，让每次运行拿到自己的工作副本。拿不准时，先对照页首的两种资源。
 </Callout>
 
 <Steps>
@@ -91,7 +91,9 @@ import { LocalDirModeDemo } from "@/components/demos/local-dir-mode-demo";
 <Tabs items={["in_place（原地，默认）", "worktree（并行）"]}>
 <Tab value="in_place（原地，默认）" id="in-place">
 
-智能体直接在你的目录里工作，同一时间只进行一次运行。两次运行使用同一个真实目录时，后到的运行进入 `waiting_local_directory`，等前一次释放目录后继续。两个路径经不同符号链接指向同一目录时，同样串行。
+智能体直接在你的目录里工作。同一小组的运行依次占用目录，不同小组的运行可以同时在其中工作。运行发现目录被占用时进入 `waiting_local_directory`，等占用者释放后继续。两个路径经不同符号链接指向同一目录时，共用同一把锁。
+
+共享目录不等于隔离。所有运行都写进同一个文件夹，因此两个小组可能互相覆盖文件（例如两份报告都叫 `01-reader.md`），或读到另一个小组刚写入的文件。Multica 不会阻止这种情况。如果各小组的产出不能冲突，请在指令里让它们写入各自的子文件夹，或在 git 仓库中使用 worktree 模式。
 
 等待不会修改目录。等待中的运行可以取消，否则会一直等到目录可用。
 
