@@ -6,16 +6,16 @@ Ngày viết 2026-11-14, đọc ở **HEAD `1c631cf2c`**. **Chưa có mã nào �
 
 ## 0. Cách đọc và quy ước
 
-- **Thứ tự bắt buộc:** pha A (R1, nền tảng an toàn) → pha B (R2, thương mại) → pha C (R3, doanh nghiệp) → pha D (R4, mỗi phần cần đặc tả riêng). Trong một pha, các bước theo đúng số thứ tự trừ khi ghi "độc lập".
+- **Thứ tự bắt buộc:** pha A (R1, nền tảng an toàn) → pha B (R2, thương mại) → pha C (R3, doanh nghiệp) → pha D (R4, mỗi phần cần đặc tả riêng). Đợt bổ sung (R5, năm nhóm tính năng, spec mục 7b) là các bước Q1 đến Q17 ở mục "Đợt bổ sung"; nó chạy sau G-R2, và riêng nhóm tài khoản (Q5 đến Q7) chạy sau G-R3. Trong một pha, các bước theo đúng số thứ tự trừ khi ghi "độc lập".
 - **Cổng:**
   - **G0** có cơ sở dữ liệu test (mục 0.2). Không có thì mọi bước [D] đứng yên.
-  - **G-R1** sau P12. **G-R2** sau P30. **G-R3** sau P40.
+  - **G-R1** sau P12. **G-R2** sau P30. **G-R3** sau P40. **G-R5** sau Q17.
   - **G-LIC** có giấy phép thương mại (spec mục 0). Đứng trước **mọi** lần mở dịch vụ cho người ngoài tổ chức. Không chặn việc viết mã.
 - Mỗi bước là một commit nguyên tử theo conventional commits: `feat(platform): …`, `feat(audit): …`, `fix(auth): …`, `test(platform): …`, `docs(platform): …`. PR theo mẫu của repo; PR có giao diện đính kèm ảnh chụp hoặc video (AGENTS.md "Change and Delivery Rules").
 - **Test viết trước** (đỏ rồi xanh), đặt cạnh mã. Mỗi bước ghi test nào phải đỏ trước khi sửa.
 - Nhãn kiểm: **[N]** không cần DB. **[D]** cần DB test.
 - Ước lượng ngày công ghi cuối mỗi bước là ước lượng của tác giả thiết kế, chưa đo.
-- Mọi quyết định D1 đến D38 đã chốt (spec mục 1.4); không bước nào chờ người dùng trả lời. Các giả định nền U1 đến U9 đã được xác nhận bằng đọc mã (spec mục 15.1). Bước nào xử lý phần còn lại được ghi "Xác nhận U<n>".
+- Mọi quyết định D1 đến D38 đã chốt (spec mục 1.4); không bước nào chờ người dùng trả lời. Đợt bổ sung thêm D39 đến D48, trong đó D41, D43, D44, D46 thay một phần D21, D23, D13, D24 (các quyết định chốt theo ủy quyền, không phải do người dùng chốt); các giá trị chủ dự án phải đặt (spec 7b.7) đều có mặc định nên không bước nào chờ. Các giả định nền U1 đến U9 đã được xác nhận bằng đọc mã (spec mục 15.1). Bước nào xử lý phần còn lại được ghi "Xác nhận U<n>".
 - Việc nền của Multica là một `scheduler.JobSpec` đăng ký ở `server/cmd/server/main.go`; việc nền của platform chạy bằng `platform-management/internal/jobs` (spec mục 3.5, D26). Tên và nơi chạy của từng việc ở spec mục 3.5. Test của việc nền gọi thẳng `Handler` của nó hai lần liên tiếp để chứng minh lũy đẳng.
 
 ### 0.1 Lệnh chuẩn
@@ -60,7 +60,7 @@ Không được làm:
 
 ### 0.3 Dải số migration
 
-Hạng mục giữ dải **651 đến 699** (spec mục 8). Mỗi bước ghi số nó dùng. Phân bổ: R1 dùng 651 đến 662, R2 dùng 663 đến 688, R3 dùng 689 đến 699; nếu thiếu thì dùng dải dự phòng 953 đến 969. Mỗi lần thêm migration chạy `[GN] ./internal/migrations -run 'TestMigrationFilesHaveMatchingDirections|TestMigrationNumericPrefixesAreUnique'` và `[GN] ./cmd/migrate -run 'TestEveryConcurrentUpBuildHasCleanup'`.
+Hạng mục giữ dải **651 đến 699** (spec mục 8). Mỗi bước ghi số nó dùng. Phân bổ: R1 dùng 651 đến 662, R2 dùng 663 đến 688, R3 dùng 689 đến 699; nếu thiếu thì dùng dải dự phòng 953 đến 969. Đợt bổ sung R5 (mục "Đợt bổ sung") dùng 953 đến 968 và để 969 dự phòng; phân bổ từng số ở spec 7b.6 và ở từng bước Q. Mỗi lần thêm migration chạy `[GN] ./internal/migrations -run 'TestMigrationFilesHaveMatchingDirections|TestMigrationNumericPrefixesAreUnique'` và `[GN] ./cmd/migrate -run 'TestEveryConcurrentUpBuildHasCleanup'`.
 
 ## 1. Pha 0: chuẩn bị
 
@@ -412,6 +412,184 @@ Không bước nào ở pha này bắt đầu viết mã trước khi đặc t�
 | P43 | Tích hợp hóa đơn điện tử (spec 7.3) | G-R2; xác nhận của kế toán về thông tin bắt buộc trên hóa đơn |
 | P44 | Thanh toán quốc tế và nhiều tiền tệ (spec 7.4) | P42 |
 
+## Đợt bổ sung
+
+Đợt R5: năm nhóm tính năng của spec mục 7b (quản lý thuê bao cá nhân và doanh nghiệp; nhóm tài khoản và quyền; gói không giới hạn và gói theo mức dùng; cấu hình giá từng gói; admin tạo tài khoản). Quyết định D39 đến D48 ở spec 1.4. Các bước đánh số `Q1` đến `Q17` để không trùng số P. Mọi quy ước ở mục 0 áp dụng: test đỏ trước, một bước một commit nguyên tử, nhãn kiểm ở mục 0.1, các điều cấm ở mục 0.2. Không bước Q nào sửa nội dung bước P; chỗ một bước Q đổi mã do bước P tạo thì ghi rõ tệp.
+
+**Migration.** Đợt này dùng **953 đến 968**, và để 969 dự phòng. Lý do chọn dải này: dải 651 đến 699 đã phân bổ hết cho R1 đến R3 (R3 dùng đủ 689 đến 699) và một phần đã có tệp; ở cây làm việc lúc viết, các số 700 đến 704, 707 đến 709 và 720 đến 739 đã bị công việc khác chiếm (`ls server/migrations`), nên chỉ còn 705 và 706; dải 953 đến 969 là dải dự phòng đã khai ở mục 0.3, liền nhau, đủ 17 số, và đứng sau `plan` (670) và `workspace_subscription` (672) nên lệnh `ALTER TABLE` ở 953 chạy được trên cơ sở dữ liệu mới. Trước mỗi bước có migration, chạy lại `ls server/migrations | sed 's/_.*//' | sort -n | uniq` để chắc số chưa bị chiếm; nếu bị chiếm thì đổi số trong bước và trong spec 7b.6 cùng commit. Chín chỉ mục (955, 957, 958, 960, 962, 963, 965, 967, 968) đều có dòng dọn trong `concurrentIndexCleanups`.
+
+**Điều kiện bắt đầu và thứ tự.**
+
+| Bước | Điều kiện bắt đầu |
+| --- | --- |
+| Q1 | G-R2 (cần P18 và P24); P13 cho danh sách schemacheck |
+| Q2, Q3 | Q1; P21 đến P23 |
+| Q4 | Q3 |
+| Q5 | G-R3 (cần P38 cho vai trò `viewer`); P20 cho cổng hạn mức; P11 cho sổ đăng ký cột người dùng |
+| Q6 | Q5; Q2 và Q3 (Q6 đổi quyền của các route thanh toán do chúng tạo; nếu chúng chưa xong thì phần đó của Q6 làm sau khi chúng xong) |
+| Q7 | Q6 |
+| Q8 | Q1 |
+| Q9 | Q2, Q8; P28 (`platform_usage_daily`) |
+| Q10 | Q9; P21, P23 |
+| Q11 | Q10 |
+| Q12 | Q1; Q9 để nối tra giá theo ngày |
+| Q13 | Q12 |
+| Q14 | Q2; P14, P16 |
+| Q15 | Q14 |
+| Q16 | Q15; Q3 |
+| Q17 | Q1 đến Q16 |
+
+Nhóm 1 (Q1 đến Q4), nhóm 3 (Q8 đến Q11), nhóm 4 (Q12, Q13) và nhóm 5 (Q14 đến Q16) có thể chạy song song giữa các nhóm sau Q1 và Q2, vì chúng chỉ chung Q1 và Q2; nhóm 2 (Q5 đến Q7) độc lập với bốn nhóm kia, trừ việc đổi quyền route thanh toán ở Q6, và chạy sau G-R3. Trong một nhóm, đi theo thứ tự số.
+
+**Q1. Nền mô hình gói và thuê bao mở rộng** [D] (spec 7b.1 dữ liệu, 7b.6)
+
+- Test đỏ trước: (a) tệp nhúng bốn gói giữ đúng các giá trị ở spec 5.5 và nhận thêm `audience` (Free, Pro: `any`; Business, Enterprise: `business`), `billing_model = seat` và `member_groups` (Free 0, Pro 0, Business 50, Enterprise rỗng); (b) kiểm gói: `billing_model` lạ bị từ chối, gói `usage` có `seat_price_*` bị từ chối, `audience` lạ bị từ chối, `version` tăng một mỗi lần sửa; (c) `workspace_subscription` đọc và ghi `pending_change` và `unit_price`; hàng cũ không có hai cột này vẫn đọc được; (d) một test đọc tệp migration 953 và thất bại nếu phiên bản của nó không có trong danh sách của `internal/schemacheck` (mục 0.2, điều 13).
+- Mới: `server/migrations/953_plan_subscription_r5.up.sql` và `.down.sql`: `ALTER TABLE plan ADD COLUMN IF NOT EXISTS audience, billing_model, usage_rates, usage_terms, version` và `ALTER TABLE workspace_subscription ADD COLUMN IF NOT EXISTS pending_change, unit_price`, giá trị mặc định theo spec 7b.1.
+- Đổi: `platform-management/internal/plan/` (`plan.go`, `catalogue.json`, `store.go`, `pgx.go`), `platform-management/internal/subscription/` (`subscription.go`, `store.go`, `pgx.go`), `platform-management/queries/plan.sql` và `subscription.sql`, `platform-management/internal/schemacheck/`, mã sinh ở `platform-management/internal/db/`.
+- Migration: 953.
+
+Kiểm: [PQ], [M], [GN] `./internal/migrations -run 'TestMigrationFilesHaveMatchingDirections|TestMigrationNumericPrefixesAreUnique'`, [PG] `./internal/plan ./internal/subscription ./internal/schemacheck`, [PD] `./internal/plan ./internal/subscription -run 'Catalogue|Audience|Version|PendingChange'`. Ước lượng: 1,5 ngày (ước lượng). Tiêu chí: nền của AC21 và AC48.
+
+**Q2. Hồ sơ thanh toán, loại tài khoản và kiểm `audience`** [D] (spec 7b.1 quy tắc 1 đến 4, 12, 13)
+
+- Test đỏ trước: (a) workspace `individual` mua gói `business` bị 409 `plan_audience_mismatch`; chuyển sang `business` khi hồ sơ thiếu trường bị 409 `billing_profile_incomplete`; hồ sơ đủ thì mua được; chuyển ngược khi đang ở gói chỉ dành cho doanh nghiệp bị từ chối; (b) bảng ca mã số thuế: 10 chữ số đúng, 13 chữ số đúng, có dấu gạch, 9 chữ số, chữ cái, rỗng; (c) workspace `individual` đặt quá `PLATFORM_INDIVIDUAL_MAX_SEATS` ghế bị 409 `account_kind_required`, gói có `seats_fixed` không bị ảnh hưởng; (d) đổi `legal_name` hoặc `tax_code` xóa `verified_at`; (e) `support` không xác minh được, `billing` và `admin` xác minh được; (f) hồ sơ được chụp vào `billing_order.buyer` khi tạo đơn và sửa hồ sơ sau đó không đổi đơn cũ; (g) `GET /api/workspaces/{id}/plans` lọc theo `audience`.
+- Mới: migration 954 (bảng `billing_profile`) và 955 (chỉ mục duy nhất `(workspace_id)`), kèm dòng dọn của 955 trong `concurrentIndexCleanups`; `platform-management/internal/billingprofile/` (kiểm, kho, xác minh); `platform-management/queries/billing_profile.sql`; route console `GET/PUT /tenants/{id}/billing-profile` và `POST .../verify`, `.../unverify` trong `platform-management/internal/console/`; thêm `account_kind` và `available_actions.edit_profile` vào `summary` ở `platform-management/internal/subscription/api.go`.
+- Đổi ở Multica: `server/internal/handler/cloud_billing.go` (hai handler `GET` và `PUT /billing-profile` dùng `requireCloudSubscriptionWorkspace` và `proxyCloudSubscription`), `server/cmd/server/router.go` (hai route dưới `/api/cloud-subscriptions`), `GET /api/workspaces/{id}/plans` (lọc `audience`). Ở bước này quyền ghi là `owner` và `admin` như bảy route hiện có; Q6 đổi sang khóa quyền. Trước khi sửa `router.go`, chạy `git status --short -- server/cmd/server/router.go` (mục 0.2, điều 11).
+- Migration: 954, 955. Thêm 954 và 955 vào danh sách của `internal/schemacheck`.
+
+Kiểm: [PQ], [M], [GN] `./cmd/migrate -run 'TestEveryConcurrentUpBuildHasCleanup'`, [PG] `./internal/billingprofile`, [PD] `./internal/billingprofile ./internal/console -run 'BillingProfile|Verify'`, [D] `./internal/handler -run 'CloudSubscription.*Profile|WorkspacePlans'`, [V]. Ước lượng: 3 ngày (ước lượng). Tiêu chí: AC21; phần staff của AC25.
+
+**Q3. Quản lý thuê bao tự phục vụ, phía platform và proxy của Multica** [D] (spec 7b.1 quy tắc 5 đến 11)
+
+- Test đỏ trước: (a) bảng ca tiền của nâng gói (đầu kỳ, giữa kỳ, ngày cuối của kỳ, kỳ năm, ghế được nâng lên `min_seats`, `delta` bằng 0 và âm đi nhánh hạ gói, `free` và `trialing` đi nhánh `subscribe`), chạy trên hàm thuần; (b) lặp cùng `Idempotency-Key` trả cùng đơn, áp thanh toán hai lần chỉ đổi thuê bao một lần; (c) một đơn `pending` khác thì 409 `order_pending`; (d) số tiền chấp nhận lệch thì 409 `quote_changed`; (e) hạ gói, giảm ghế, đổi chu kỳ chỉ ghi `pending_change`, đơn `renew` kế tiếp tính theo nó và áp rồi xóa nó; giảm ghế dưới số thành viên không gỡ ai (I10); (f) hủy và tiếp tục theo bảng trạng thái, 409 `subscription_not_cancelable` ngoài `active` và `trialing`, hết kỳ về `free` không qua ân hạn; (g) `ApplyPayment` đặt `unit_price`; (h) mỗi thao tác một dòng kiểm toán; (i) tệp mẫu hợp đồng JSON của các route mới đi qua schema zod ở Q4.
+- Mới, trong platform: `platform-management/internal/subscription/` (`quote.go`, `planchange.go`, `cancel.go`), `platform-management/internal/billingapi/` (route `plan-changes/preview`, `plan-changes`, `plan-changes/scheduled`, `cancel`, `resume` dưới `/api/v1/subscriptions/{ws}/`), tệp mẫu ở `platform-management/contract/testdata/`.
+- Đổi, do P21 và P22 tạo: `platform-management/internal/billing/` (`ApplyPayment` đặt `unit_price` và áp `pending_change` khi đơn `renew` được thanh toán); `summary` thêm `pending_change` và `available_actions.change_plan`, `.cancel`, `.resume`.
+- Đổi ở Multica: `server/internal/handler/cloud_billing.go` (năm handler mới), `server/cmd/server/router.go` (năm route dưới `/api/cloud-subscriptions`; quyền `owner` và `admin` ở bước này).
+- Kiểm toán: thêm hằng `subscription.change_scheduled`, `subscription.change_canceled`, `subscription.cancel_requested`, `subscription.cancel_withdrawn` vào `platform-management/audit/audit.go` và `catalog_test.go`.
+- Migration: không.
+
+Kiểm: [PG] `./internal/subscription -run 'Proration|Quote'`, [PD] `./internal/subscription ./internal/billing ./internal/billingapi -run 'PlanChange|Cancel|Resume|ApplyPayment'`, [D] `./internal/handler -run 'CloudSubscription.*(PlanChange|Cancel|Resume)'`, [V]. Ước lượng: 6 ngày (ước lượng). Tiêu chí: AC22, AC23, AC24.
+
+**Q4. Giao diện quản lý thuê bao** [N] (spec 7b.1 màn hình)
+
+- Test đỏ trước: schema zod của các phản hồi mới có test phản hồi sai dạng (`parseWithFallback`, AGENTS.md "API Compatibility") và test phản hồi **không** có trường mới (Multica Cloud) vẫn hợp lệ; test views: bộ chọn gói lọc theo `audience`, hộp thoại xem trước hiện số tiền hay ngày hiệu lực theo `mode`, nút hủy và tiếp tục theo `available_actions`, biểu mẫu hồ sơ với công tắc cá nhân và doanh nghiệp, biểu ngữ `pending_change`, mọi điều khiển ghi ẩn khi `available_actions` vắng mặt.
+- Đổi: `packages/core/api/schemas.ts` và `client.ts`; hook và mutation trong `packages/core/` (cạnh code thanh toán hiện có); `packages/views/settings/components/billing-tab.tsx`; mới: `packages/views/billing/` (hộp thoại đổi gói, biểu mẫu hồ sơ thanh toán); chuỗi giao diện bảy ngôn ngữ, không mô tả thừa (mục 0.2, điều 9). Nối cả web và desktop. Mobile không có trang thanh toán nên không đổi; ghi vào PR.
+
+Kiểm: [B], [W], [T]. PR đính kèm ảnh chụp hoặc video. Ước lượng: 5 ngày (ước lượng). Tiêu chí: giao diện của AC21 đến AC24; AC48 (client ẩn chức năng khi trường mới vắng mặt).
+
+**Q5. Nhóm tài khoản: bảng, kho dữ liệu, API quản lý, danh mục khóa và cổng đếm** [D] (spec 7b.2 quy tắc 1 đến 6, 12 đến 14)
+
+- Test đỏ trước: (a) quy tắc tên (độc nhất không phân biệt hoa thường, độ dài), thành viên bắt buộc là thành viên workspace (`not_a_member`), giới hạn 1.000 thành viên, khóa lạ bị 400 `permission_unknown` và khóa lạ đã lưu bị bỏ qua khi tính quyền; (b) quyền hiệu lực là hợp của vai trò và các nhóm, `billing.manage` kéo theo `billing.view`; (c) cổng `member_groups`: giới hạn 0 trả 402 `plan_feature_unavailable`, vượt trả 402 `plan_limit_reached`, hai request đồng thời ở sát giới hạn chỉ một thành công, hạ gói giữ nguyên nhóm, `MULTICA_CLOUD_URL` rỗng thì không giới hạn; (d) mỗi thay đổi đúng một dòng kiểm toán (quyền có giá trị cũ và mới), và khi `audit.Record` lỗi thì thay đổi không lưu; (e) id nhóm của workspace khác trả 404 `group_not_found`; (f) test sổ đăng ký cột người dùng (P11) thất bại cho tới khi ba cột mới được phân loại; (g) `permissions/me`.
+- Mới: migration 956 (`member_group`), 957 (chỉ mục duy nhất `(workspace_id, id)`), 958 (chỉ mục duy nhất `(workspace_id, lower(name))`), 959 (`member_group_member`), 960 (chỉ mục duy nhất `(workspace_id, user_id, group_id)`), kèm dòng dọn cho 957, 958, 960; `server/pkg/db/queries/member_group.sql` rồi [Q]; `server/internal/membergroup/` (danh mục khóa là hằng, kho, dịch vụ); `server/internal/handler/member_group.go`; các route ở spec 7b.2 trong `server/cmd/server/router.go`, đều sau `RequireHumanActor`.
+- Đổi: `server/internal/entitlement/types.go` và `client.go` (thêm `GateMemberGroups`; cổng vắng mặt vẫn `off`); `platform-management/internal/plan/catalogue.json` và `platform-management/internal/entitlement/` (trả cổng `member_groups` theo bảng gói); `platform-management/audit/audit.go` và `catalog_test.go` (sáu hành động `group.*`); sổ đăng ký cột người dùng `platform-management/accountdeletion/registry.go` (ba cột mới, kèm lý do).
+- Migration: 956 đến 960. Không thêm vào schemacheck của platform (các bảng này thuộc Multica); nhưng `platform-management/internal/console` đọc số đếm nhóm ở Q7, nên đọc có kiểm lỗi khi bảng chưa tồn tại.
+
+Kiểm: [Q], [M], [D] `./internal/membergroup ./internal/handler -run 'MemberGroup|PermissionsMe'`, [GN] `./internal/migrations -run 'TestUserColumnRegistry'`, [GN] `./internal/entitlement -run 'MemberGroups'`, [GN] `./cmd/migrate -run 'TestEveryConcurrentUpBuildHasCleanup'`, [PG] `./audit`, [PD] `./internal/entitlement -run 'Gate'`, [V]. Ước lượng: 5 ngày (ước lượng). Tiêu chí: AC29, AC30; phần sổ đăng ký của AC28.
+
+**Q6. Cưỡng chế quyền theo nhóm** [D] (spec 7b.2 quy tắc 7 đến 11 và danh mục khóa)
+
+- Test đỏ trước: (a) ma trận khóa × route (bộ 11, spec mục 13): với mỗi khóa trong sáu khóa, đúng tập route đã ghi mở cho người có khóa và không route nào khác mở; route ngoài danh mục (đổi vai trò, gỡ thành viên, cập nhật và xóa workspace, plugin, thư viện MCP, quản lý nhóm) vẫn chỉ owner và admin; (b) viewer thuộc nhóm có đủ sáu khóa vẫn bị chặn ở mọi phương thức ghi và đọc được theo khóa; (c) người chỉ có quyền nhóm bị chặn khi workspace `suspended` và `pending_deletion`, owner và admin vẫn dùng được route cho phép; (d) người có `members.invite` mời vai trò `admin` bị 403 `invite_role_not_assignable`, mời `member` và `viewer` được, và không đổi vai trò hay gỡ được ai; (e) bớt khỏi nhóm thì request kế tiếp bị 403 `permission_denied`; (f) gỡ thành viên, rời workspace, xóa tài khoản xóa dòng nhóm trong cùng giao dịch, và khi giao dịch gỡ lỗi thì dòng nhóm còn nguyên; (g) token máy và agent: không đổi so với hôm nay, và route quản lý nhóm 403 với token máy; (h) route mới thuộc nhóm owner và admin sau này mặc định vẫn đóng.
+- Đổi: `server/internal/middleware/workspace.go` (thêm `RequireWorkspacePermissionFromURL` và `RequireWorkspacePermission`: owner và admin qua ngay, vai trò khác tra `membergroup` một truy vấn); `server/cmd/server/router.go` (tách các nhóm route owner và admin theo khóa, spec 7b.2; đổi quyền các route `/api/cloud-subscriptions` và route đơn hàng của Q2, Q3 sang `billing.view` và `billing.manage`); `server/internal/handler/invitation.go` (`CreateInvitation`, kiểm vai trò ở dòng `normalizeMemberRole`) và `share_link.go` (`CreateShareLink`); `server/internal/handler/workspace_revoke.go` (`revokeAndRemoveMember` xóa dòng nhóm); `server/internal/handler/handler.go` chỉ nếu cần hàm trợ giúp. Cập nhật spec 3.3 nếu chạm thêm tệp. Trước khi sửa `router.go`, `invitation.go`, `workspace_revoke.go`, chạy `git status --short -- <tệp>` và `git log -3 --format='%h %s' -- <tệp>` (mục 0.2, điều 11).
+- Migration: không.
+
+Kiểm: [D] `./internal/middleware ./internal/handler -run 'Permission|MemberGroupRoutes|Invitation|ShareLink|Revoke|ViewerGroup'`; toàn bộ test hiện có của thành viên, lời mời, link chia sẻ và tích hợp xanh; [GN] `./internal/workspaceguard -run 'RouterWires'`; [V]. Ước lượng: 5 ngày (ước lượng). Tiêu chí: AC25, AC26, AC27, AC28. Đây là bước rủi ro cao nhất của nhóm 2, vì nó tách các nhóm route hiện có.
+
+**Q7. Giao diện nhóm tài khoản** [N] (spec 7b.2 màn hình)
+
+- Test đỏ trước: schema zod và test phản hồi sai dạng cho `groups`, `permission-catalogue`, `permissions/me`; `rules.ts`: `can(key)` theo `permissions/me`, và quyền không rõ là không có; views: tab "Groups" ẩn với `member`; thành viên có `members.invite` thấy điều khiển mời nhưng không thấy chọn vai trò `admin`; thành viên có `audit.read` thấy tab nhật ký; viewer không thấy điều khiển ghi dù thuộc nhóm.
+- Mới: `packages/core/groups/` (query, mutation, schema), `packages/views/settings/components/groups-tab.tsx` và hộp thoại tạo, sửa; đổi: `packages/core/permissions/rules.ts`, `packages/views/settings/components/members-tab.tsx` (nhóm của từng người, điều khiển theo khóa), các tab nhật ký, thanh toán, tích hợp, hồ sơ runtime (kiểm khóa thay vì vai trò); `platform-management/internal/console/` (`GET /tenants/{id}` thêm `group_count`, chỉ số đếm) và console hiện số nhóm; chuỗi giao diện bảy ngôn ngữ. Mobile: ghi vào PR rằng mobile chỉ cần hiểu `permission_denied`; không đổi mobile ở R5.
+
+Kiểm: [B], [W], [PW], [T]. PR đính kèm ảnh chụp. Ước lượng: 4 ngày (ước lượng). Tiêu chí: giao diện của AC26 và AC30; console không lộ tên nhóm (AC30).
+
+**Q8. Gói không giới hạn, trần tốc độ API và chính sách quyền lợi** [D] (spec 7b.3 quy tắc 1 đến 4, 15)
+
+- Test đỏ trước: (a) tệp nhúng có thêm hai gói `unlimited` và `payg` đúng bảng ở spec 7b.3 (so từng ô); (b) với gói `unlimited`, chính sách quyền lợi trả `action = off` cho mọi cổng đếm và `summary.limits` là `unlimited`; (c) `api_rate_per_minute` rỗng ở gói và ở `limit_overrides` được trả thành `PLATFORM_API_RATE_CEILING` với `action = enforce`, và giá trị tường minh cao hơn trần được dùng nguyên; (d) tạo issue, agent, runtime, tệp, nhóm ở mức vượt mọi gói khác không bị chặn trên gói `unlimited` (client quyền lợi hiện có trỏ vào handler platform); (e) hạ từ `unlimited` xuống gói có giới hạn không xóa dòng nào; (f) `GET /prices` của workspace đang ở gói `usage` trả giá ghế của gói theo ghế công khai rẻ nhất, không bao giờ trả giá của gói `usage`.
+- Đổi: `platform-management/internal/plan/catalogue.json` (hai gói mới), `platform-management/internal/plan/plan.go` (`EffectiveLimit` nhận trần), `platform-management/internal/entitlement/`, `platform-management/internal/subscription/api.go` (`prices`), `platform-management/internal/config/` (`PLATFORM_API_RATE_CEILING`).
+- Migration: không.
+
+Kiểm: [PG] `./internal/plan ./internal/config`, [PD] `./internal/plan ./internal/entitlement ./internal/subscription -run 'Unlimited|Ceiling|Prices|Catalogue'`, [D] `./internal/service ./internal/entitlement -run 'Entitlement|IssueLimit|AutopilotQuota'` với client trỏ vào platform, [V]. Ước lượng: 3 ngày (ước lượng). Tiêu chí: AC31; phần `prices` của AC32.
+
+**Q9. Đo và chấm tiền theo mức dùng, kích hoạt gói theo mức dùng** [D] (spec 7b.3 quy tắc 5 đến 10)
+
+- Bước đầu: định nghĩa "task chạy" của `platform_usage_daily.tasks_run` ở P28 (đề xuất: task hoàn tất theo ngày UTC của `completed_at`). Nếu spec 5.13 chưa ghi, sửa spec 5.13 trong cùng commit và thêm test đối chiếu `tasks_run`, `storage_bytes`, `members` với bảng nguồn trên fixture. Đây là rủi ro 15.3(d).
+- Test đỏ trước: (a) bảng ca tiền của hàm thuần (spec 7b.3 quy tắc 8): ba đồng hồ, tháng 28, 29, 30, 31 ngày, giảm giá 0, 20 và 100 phần trăm, số lượng lên tới 100 TB không tràn số, làm tròn nửa lên đúng ở biên; (b) giảm giá Business chỉ áp khi `account_kind = business` và hồ sơ đã xác minh khi cờ bật, áp cả khi chưa xác minh nếu cờ tắt; (c) mỗi (workspace, ngày, đồng hồ) đúng một dòng; chạy `usage_rating` hai lần và song song không sinh dòng thứ hai; (d) ngày chưa có số liệu không bị chấm, dòng đến muộn được chấm khi đến; (e) ngày workspace `suspended` hoặc `pending_deletion` ghi dòng 0 đồng với `note`, ngày `read_only` vẫn tính; (f) kích hoạt gói `payg`: hồ sơ đủ thì tạo thuê bao `active`, `seats = 0` và đơn `subscribe` 0 đồng `paid`, `seat_capacity` là `null`, lời mời không bị chặn vì ghế; hồ sơ thiếu thì 409 `billing_profile_incomplete`; (g) dòng giữ ảnh chụp giá và tỷ lệ.
+- Mới: migration 961 (`usage_charge`), 962 (chỉ mục duy nhất `(workspace_id, day, meter)`), 963 (chỉ mục `(order_id)` có điều kiện), kèm dòng dọn cho 962 và 963; `platform-management/internal/usage/` (`rating.go` hàm thuần dùng `math/big`, `job.go`, kho); `platform-management/queries/usage_charge.sql`; đăng ký việc nền `usage_rating` ở `platform-management/internal/jobs`; thêm 961 đến 963 vào `internal/schemacheck`.
+- Đổi: `platform-management/internal/billingapi/` (nhánh `checkout-sessions` cho gói `usage`), `platform-management/internal/subscription/` (kích hoạt kỳ tháng dương lịch UTC).
+- Migration: 961, 962, 963.
+
+Kiểm: [PQ], [M], [PG] `./internal/usage -run 'Rating|Math'`, [PD] `./internal/usage ./internal/billingapi -run 'UsageRating|PaygActivation'`, [V]. Ước lượng: 6 ngày (ước lượng). Tiêu chí: AC32, AC33.
+
+**Q10. Hóa đơn theo mức dùng, hạn mức công nợ và nợ** [D] (spec 7b.3 quy tắc 11 đến 14, 16)
+
+- Bước đầu: đọc migration `billing_order` do P21 tạo. Nếu có `CHECK` trên `kind`, thêm migration 969 nới ràng buộc để nhận `usage`; nếu không thì để 969 dự phòng.
+- Test đỏ trước: (a) hóa đơn tháng gồm mọi dòng chưa lập hóa đơn của ngày trước đầu tháng, số tiền bằng tổng, VAT đúng `BILLING_VAT_RATE`, `expires_at` rỗng, các dòng được gắn `order_id` trong cùng giao dịch; (b) tổng dưới `PLATFORM_USAGE_MIN_INVOICE` dồn sang kỳ sau; (c) hóa đơn cuối được lập, bỏ mức tối thiểu, khi thuê bao về `free` hay sang gói theo ghế; (d) chạy `usage_invoicing` hai lần và song song chỉ lập một đơn; (e) đạt hạn mức công nợ thì lập hóa đơn tạm; email 80 phần trăm gửi một lần mỗi tháng; (f) đơn quá hạn đưa thuê bao đi `past_due`, `read_only`, `free` theo đồng hồ giả và dữ liệu không mất; thanh toán đưa về `active`; (g) khi còn nợ, mua gói trả phí bị 409 `usage_invoice_unpaid`, gói `free` vẫn dùng được; (h) chỉ `admin` kèm lý do hủy được đơn `usage`, `billing` bị từ chối, dòng của đơn bị hủy không vào hóa đơn khác; (i) tệp mẫu hợp đồng JSON của `usage` trong `summary` và của `GET /usage`; (j) `GET /api/workspaces/{id}/plans` trả `usage_rates` và `effective_discount_pct` (0 khi chưa xác minh).
+- Mới: `platform-management/internal/usage/` (`invoicing.go`), kind `usage` và `billing_notice` kind `usage_80` ở `platform-management/internal/billing/`; route platform `GET /api/v1/subscriptions/{ws}/usage`.
+- Đổi: `platform-management/internal/lifecycle/` (nhánh đơn `usage` chưa trả), `platform-management/internal/console/` (hủy đơn `usage` chỉ `admin` kèm lý do; `GET /tenants/{id}/usage`), `platform-management/internal/subscription/api.go` (`billing_model`, `usage`), `platform-management/audit/audit.go` (ba hành động `billing.usage_*`); ở Multica `server/internal/handler/cloud_billing.go` (`GET /usage`), route đơn hàng `GET /api/workspaces/{id}/orders/{orderId}/usage`, `GET /api/workspaces/{id}/plans` (đọc `billing_profile`), `server/cmd/server/router.go`; quyền `billing.view` (đã có từ Q6).
+- Migration: không, hoặc 969 như bước đầu.
+
+Kiểm: [PG] `./internal/usage -run 'Invoice|Math'`, [PD] `./internal/usage ./internal/lifecycle ./internal/billing ./internal/console -run 'UsageInvoice|UsageLifecycle|WriteOff'`, [D] `./internal/handler -run 'CloudSubscriptionUsage|OrderUsage|WorkspacePlans'`, [M] chỉ khi có 969, [V]. Ước lượng: 6 ngày (ước lượng). Tiêu chí: AC34, AC35.
+
+**Q11. Giao diện mức dùng: khách và console** [N] (spec 7b.3 màn hình)
+
+- Test đỏ trước: schema zod và test phản hồi sai dạng cho `usage` của `summary`, `GET /usage` và `plans` mở rộng; views: thẻ mức dùng ở các trạng thái (chưa có dữ liệu, dưới và gần hạn mức công nợ), dòng gói theo mức dùng chỉ hiện phần giảm Business khi `effective_discount_pct` dương, danh sách hóa đơn có đơn `usage` với chi tiết dòng theo ngày, biểu ngữ hóa đơn chưa trả; console: tab mức dùng, ngày thiếu số liệu, nút xóa nợ chỉ hiện với `admin` và đòi lý do.
+- Đổi: `packages/core/api/schemas.ts`, `packages/views/settings/components/billing-tab.tsx`, `packages/views/billing/` (thẻ mức dùng, chi tiết hóa đơn); `platform-management/console/` (tab mức dùng ở chi tiết tenant); chuỗi bảy ngôn ngữ.
+
+Kiểm: [B], [W], [PW], [PB], [T]. PR đính kèm ảnh chụp. Ước lượng: 4 ngày (ước lượng). Tiêu chí: giao diện của AC33 và AC35.
+
+**Q12. Lịch thay đổi giá của gói** [D] (spec 7b.4)
+
+- Test đỏ trước: (a) chỉ `admin` lập và hủy, `billing` đọc lịch sử, `support` và người không có phiên nhận 404; (b) `PUT /plans/{key}` có trường giá bị 400 `price_field_via_schedule`; (c) hai yêu cầu lập đồng thời cho một gói chỉ một cái thành công, cái kia 409 `price_change_pending` (cả bằng khóa dòng lẫn bằng chỉ mục duy nhất có điều kiện); (d) bảng ca `price_invalid`: âm, thập phân, giá năm quá 12 lần giá tháng, vượt `PLATFORM_PRICE_MAX`, gói `free` khác 0, gói `usage` có giá ghế, khóa đồng hồ lạ, `per` bằng 0, `discount_pct` ngoài 0 đến 100, `effective_from` của giá theo mức dùng không đúng 00:00 UTC; (e) đổi quá `PLATFORM_PRICE_CONFIRM_PCT` đòi `confirm_large_change`; (f) tiền tệ bị khóa khi đã có thuê bao hoặc đơn; (g) tăng giá cho gói có thuê bao trả phí đòi `effective_from` không sớm hơn `PLATFORM_PRICE_NOTICE_DAYS` ngày, giảm giá và gói chưa có thuê bao thì có hiệu lực ngay trong request; (h) `plan_price_apply` lũy đẳng, song song áp một lần, `version` tăng một lần; (i) đơn đã tạo giữ số tiền, kỳ đã trả không đổi, đơn tạo từ hiệu lực dùng giá mới, báo giá cũ bị 409 `quote_changed`; (j) email báo gửi đúng một lần cho mỗi owner, không gửi cho workspace `pending_deletion`, thư đính chính khi hủy sau khi đã báo; (k) tra giá của một ngày đã qua theo spec 7b.4 quy tắc 9 và chấm muộn sau khi giá đổi vẫn dùng giá của ngày đó; (l) `GET /api/workspaces/{id}/plans` chỉ trả `scheduled_price_change` cho gói đang dùng và chỉ sau khi thư báo đã gửi; (m) `?dry_run=1` không lưu gì và trả số thuê bao bị ảnh hưởng.
+- Mới: migration 964 (`plan_price_change`) và 965 (chỉ mục duy nhất `(plan_key)` có điều kiện `state = 'scheduled'`, kèm dòng dọn); `platform-management/internal/planprice/` (`validate.go` hàm thuần, kho, lập lịch, áp, thư báo); `platform-management/queries/plan_price_change.sql`; việc nền `plan_price_apply`; thêm 964, 965 vào `internal/schemacheck`.
+- Đổi: `platform-management/internal/plan/` (từ chối trường giá ở `PUT`, `POST /plans` cho gói mới), `platform-management/internal/console/` (route `/plans*` ở spec 7b.4), `platform-management/internal/usage/` (tra giá theo ngày dùng lịch sử), `platform-management/internal/billing/` (so báo giá), `GET /api/workspaces/{id}/plans` của Multica, `platform-management/audit/audit.go` (ba hành động `plan.price_*`).
+- Migration: 964, 965.
+
+Kiểm: [PQ], [M], [PG] `./internal/planprice -run 'Validate|Notice|RatesOn'`, [PD] `./internal/planprice ./internal/console ./internal/usage -run 'PriceChange|PlanPrice|RatesOn'`, [D] `./internal/handler -run 'WorkspacePlans'`, [V]. Ước lượng: 6 ngày (ước lượng). Tiêu chí: AC36, AC37, AC38, AC39, AC40.
+
+**Q13. Console cấu hình gói và giá; hiển thị giá sắp đổi cho khách** [N] (spec 7b.4 màn hình)
+
+- Test đỏ trước: schema zod và test phản hồi sai dạng cho `price-changes` và `scheduled_price_change`; console: màn hình Gói chỉ hiện với `admin`, biểu mẫu giá có xem trước tác động bằng `dry_run`, cảnh báo khi đổi quá ngưỡng, hiện `min_effective_from` khi 409, `billing` chỉ thấy lịch sử; Multica: biểu ngữ giá sắp đổi cho owner và `billing.view`.
+- Đổi: `platform-management/console/` (màn hình Gói, lập lịch giá, lịch sử), `packages/core/api/schemas.ts`, `packages/views/settings/components/billing-tab.tsx`; chuỗi bảy ngôn ngữ cho phần của Multica.
+
+Kiểm: [PW], [PB], [B], [W], [T]. PR đính kèm ảnh chụp. Ước lượng: 4 ngày (ước lượng). Tiêu chí: giao diện của AC36, AC38, AC40.
+
+**Q14. Yêu cầu tạo tài khoản: bảng, API console, kiểm đầu vào, hạn mức** [D] (spec 7b.5 quy tắc 1 đến 6, 11, 12)
+
+- Test đỏ trước: (a) chỉ `admin` gọi được các route `/accounts`, `support` và `billing` nhận 404; (b) bảng ca đầu vào: email sai định dạng, quá dài, trùng hoa thường, thiếu hồ sơ khi `business`; (c) email đã thuộc một `user` bị 409 `account_email_exists` và không sửa gì; (d) gửi lại cùng email khi yêu cầu còn sống trả chính yêu cầu đó với 200; hai yêu cầu đồng thời cùng email chỉ một cái được ghi (chỉ mục duy nhất có điều kiện); (e) gói sai `audience` bị 409 `plan_audience_mismatch`; gói trả phí thiếu cả `trial` lẫn `comp_reason` bị 400 `account_activation_required`; `trial` với gói không có `trial_days` bị từ chối; `individual` quá `PLATFORM_INDIVIDUAL_MAX_SEATS` bị từ chối; (f) hạn mức `PLATFORM_ACCOUNT_CREATE_PER_HOUR` theo staff với Redis giả, 429 `account_create_rate_limited`; (g) hủy chỉ khi `pending`; (h) mỗi bước một dòng kiểm toán; thất bại ghi kiểm toán thì yêu cầu không được tạo (I7); (i) xóa tài khoản (P11) ẩn danh hóa `email` và `display_name` của yêu cầu có `user_id` đó.
+- Mới: migration 966 (`platform_account_request`), 967 (chỉ mục duy nhất `(id)`), 968 (chỉ mục duy nhất `(email)` có điều kiện `state IN ('pending', 'provisioned')`), kèm dòng dọn cho 967 và 968; `platform-management/internal/accountrequest/` (kiểm, kho, API); `platform-management/queries/account_request.sql`; route `/api/platform/accounts*` ở `internal/console/`; hằng kiểm toán `account.*` ở `platform-management/audit/audit.go`; thêm 966 đến 968 vào `internal/schemacheck`.
+- Đổi: bước xóa tài khoản của P11 (job ở `platform-management/accountdeletion/` hoặc nơi P11 đặt nó) thêm ẩn danh hóa `platform_account_request`; sổ đăng ký cột người dùng (`platform-management/accountdeletion/registry.go`) phân loại `created_by` và `user_id` là `keep`.
+- Migration: 966, 967, 968.
+
+Kiểm: [PQ], [M], [PG] `./internal/accountrequest -run 'Validate'`, [PD] `./internal/accountrequest ./internal/console -run 'AccountRequest|AccountCreate'`, [D] hoặc [PD] `-run 'AccountRequest'` trên gói của job xóa tài khoản (theo nơi P11 đặt nó), [V]. Ước lượng: 4 ngày (ước lượng). Tiêu chí: AC43 (phần kiểm đầu vào), AC44.
+
+**Q15. Cấp phát phía Multica: tách `workspaceprovision`, việc nền `account_provisioning`** [D] (spec 7b.5 quy tắc 7 bước 2, 8)
+
+- Bước đầu: đọc `server/internal/handler/workspace.go` (`CreateWorkspace`, tác dụng phụ sau commit: analytics, `h.Knowledge.AutoEnable`, `notifyDaemonWorkspacesChanged`) và mã tri thức để xác nhận lượt chạy hằng giờ tự bật cho workspace chưa gọi `AutoEnable`; ghi kết quả vào spec 15.3(f) và sửa phần "tác dụng phụ" của bước này theo đó.
+- Test đỏ trước: (a) hồi quy: toàn bộ test `CreateWorkspace` hiện có xanh trước và sau khi tách; (b) việc nền tạo `user` (tên theo `display_name`), workspace, owner, trạng thái issue, đánh dấu onboarded, ghi `user_id`, `workspace_id`, đặt `provisioned`; (c) slug: dùng `workspace_slug` nếu có, trùng hay dành riêng thì `failed` `slug_unavailable`; suy từ tên (bỏ dấu), trùng thì thêm hậu tố ngẫu nhiên, tối đa 5 lần; (d) email đã có hay miền bị chặn thì `failed` `email_exists`, `email_domain_blocked`, không tạo gì; (e) hai việc nền song song không tạo hai người dùng hay hai workspace (`SKIP LOCKED`, ràng buộc `user.email`); chạy hai lần liên tiếp không đổi kết quả; (f) lỗi tạm thời thử tối đa 3 lần rồi `failed`; (g) người dùng tạo ra đăng nhập được bằng mã email khi `ALLOW_SIGNUP` tắt, bằng đúng đường `findOrCreateUser` (trả người dùng có sẵn); (h) không có dòng `member` hay phiên nào của staff; (i) kiểm toán `workspace.created` và `account.provisioned` (actor `system`, có `workspace_id`).
+- Mới: `server/internal/workspaceprovision/` (hàm giao dịch dùng chung), `server/internal/accountprovision/` (việc nền), `server/pkg/db/queries/platform_account_request.sql` rồi [Q]; đăng ký ở `server/cmd/server/main.go` bằng `schedulerMgr.Register`.
+- Đổi: `server/internal/handler/workspace.go` (`CreateWorkspace` gọi `workspaceprovision.Create`, hành vi giữ nguyên); cập nhật spec 3.3 nếu chạm thêm tệp. Trước khi sửa `workspace.go` và `main.go`, chạy `git status --short -- <tệp>` và `git log -3 --format='%h %s' -- <tệp>` (mục 0.2, điều 11).
+- Migration: không.
+
+Kiểm: [Q], [D] `./internal/workspaceprovision ./internal/accountprovision ./internal/handler -run 'Workspace|AccountProvision'`, [V]. Ước lượng: 5 ngày (ước lượng). Tiêu chí: AC41, AC43, AC45.
+
+**Q16. Hoàn thiện phía platform, thư chào và console tạo tài khoản** [D] (spec 7b.5 quy tắc 7 bước 3, 9, 10, 13)
+
+- Test đỏ trước: (a) `account_request_finalize` ghi `billing_profile` (với `business`: `verified_at` và `verified_by`), thuê bao theo từng kiểu kích hoạt (gói `free` không có thuê bao; `trial`; `comp_reason` một kỳ `interval`; gói `usage`) kèm đơn 0 đồng `admin_grant`, tăng `version`, xóa cache, xóa bản sao hồ sơ trong yêu cầu, đặt `completed`; (b) lũy đẳng và song song; lỗi tạm thời thử tối đa 3 lần; lỗi sau bước 2 để lại `finalize_failed` và giữ người dùng, workspace; (c) thư chào gửi đúng một lần, thử lại tối đa 3 lần khi lỗi gửi, gửi lại tối đa 3 lần mỗi ngày mỗi yêu cầu; nội dung không chứa mã, mật khẩu hay liên kết có token và chỉ có địa chỉ `PLATFORM_APP_URL`; (d) kịch bản đầu cuối trên cơ sở dữ liệu test với đồng hồ giả: tạo yêu cầu, chạy việc nền của Multica (Q15) rồi việc nền của platform, người dùng đăng nhập bằng mã email, thấy workspace và gói (bộ 14, spec mục 13); (e) tài khoản tạo ra bị khóa, buộc đăng xuất và xóa như mọi tài khoản; (f) owner đọc được `account.provisioned` trong nhật ký workspace; console không có route đọc nội dung workspace đó; (g) UI console: biểu mẫu nhập email hai lần, danh sách yêu cầu, lỗi, nút hủy và gửi lại.
+- Mới: `platform-management/internal/accountrequest/` (`finalize.go`, `welcome.go`), mẫu thư chào ở `platform-management/internal/mailer/`, đăng ký việc nền `account_request_finalize` ở `platform-management/internal/jobs`, route `POST /accounts/{id}/resend-welcome`; `platform-management/console/` (màn hình Tạo tài khoản và danh sách yêu cầu).
+- Migration: không.
+
+Kiểm: [PG], [PD] `./internal/accountrequest ./internal/mailer ./internal/console -run 'Finalize|Welcome|AccountEndToEnd'`, [D] `./internal/accountprovision -run 'EndToEnd'`, [PW], [PB], [T], [V]. PR đính kèm ảnh chụp. Ước lượng: 5 ngày (ước lượng). Tiêu chí: AC41, AC42, AC45, AC46, AC47.
+
+**Q17. Cổng G-R5: tích hợp, hồi quy, bảo mật và tài liệu**
+
+- [T], [PG], [PW], [PB], [PI]; toàn bộ test Go của các gói đã chạm trên cơ sở dữ liệu test, gồm [PD] cho module platform; đối chiếu AC21 đến AC48.
+- Hồi quy với mọi cấu hình mới để trống và với `MULTICA_CLOUD_URL` rỗng hoặc trỏ tới Multica Cloud (AC48): route mới trả đúng lỗi của bảy route hiện có, client ẩn chức năng khi trường mới vắng mặt, nhóm tài khoản chạy không giới hạn số nhóm.
+- Rà soát bảo mật theo các bảng của spec 7b: mỗi dòng trỏ tới một test tên cụ thể (như P40).
+- Kiểm tra 3.3 khớp với mọi tệp lõi đã chạm trong R5; kiểm tra danh sách schemacheck có đủ 953, 954, 955, 961 đến 968; chuỗi giao diện đủ bảy ngôn ngữ; không mô tả thừa.
+- Tài liệu: `apps/docs/` cho thuê bao, nhóm tài khoản và gói theo mức dùng; thêm vào `docs/platform-operations.md` quy trình tạo tài khoản cho khách, xóa nợ, đổi giá và báo trước, và bảng kiểm trước khi bật R5 (chạy `server/cmd/migrate up` cho 953 đến 968 trước khi khởi động lại Multica và platform).
+- Cập nhật spec 15.1 hoặc 15.3 nếu Q9 và Q15 đã xác nhận các điều chưa kiểm chứng.
+
+Ước lượng: 3 ngày (ước lượng). **Tổng R5: khoảng 75,5 ngày công (ước lượng).** Theo nhóm: nhóm 1 (Q1 đến Q4) 15,5; nhóm 2 (Q5 đến Q7) 14; nhóm 3 (Q8 đến Q11) 19; nhóm 4 (Q12, Q13) 10; nhóm 5 (Q14 đến Q16) 14; cổng (Q17) 3.
+
 ## 6. Bảng truy vết yêu cầu
 
 | Khoảng trống (spec 2.2) | Bước | Tiêu chí chấp nhận |
@@ -432,7 +610,13 @@ Không bước nào ở pha này bắt đầu viết mã trước khi đặc t�
 | K14 chính sách theo workspace | P34 | AC17 |
 | K15 PAT giới hạn | P37 | AC18 |
 | K16 vai trò chỉ xem | P38 | AC19 |
-| K17 project hạn chế | P41 | đặc tả riêng |
+| K17 | project hạn chế | P41 | đặc tả riêng |
+| K18 quản lý thuê bao cá nhân và doanh nghiệp | Q1, Q2, Q3, Q4 | AC21, AC22, AC23, AC24, AC25 |
+| K19 nhóm tài khoản và quyền | Q5, Q6, Q7 | AC25, AC26, AC27, AC28, AC29, AC30 |
+| K20 gói không giới hạn, gói theo mức dùng | Q8, Q9, Q10, Q11 | AC31, AC32, AC33, AC34, AC35 |
+| K21 cấu hình giá từng gói | Q12, Q13 | AC36, AC37, AC38, AC39, AC40 |
+| K22 tạo tài khoản bởi admin | Q14, Q15, Q16 | AC41, AC42, AC43, AC44, AC45, AC46, AC47 |
+| hồi quy R5 (mọi cấu hình mới để trống; nguồn thương mại khác) | Q1, Q4, Q17 | AC48 |
 
 ## 7. Tổng hợp ước lượng
 
@@ -443,8 +627,12 @@ Không bước nào ở pha này bắt đầu viết mã trước khi đặc t�
 | R2 | 75,5 (ước lượng lại; trước đây 68,5) |
 | R3 | 39,5 |
 | R4 | chưa ước lượng; phụ thuộc đặc tả riêng |
-| Tổng P0 đến R3 | 140,5 (ước lượng lại; trước đây 133,5) |
+| R5 (đợt bổ sung, Q1 đến Q17) | 75,5 (ước lượng) |
+| Tổng P0 đến R3, chưa có đợt bổ sung (số cũ) | 140,5 (ước lượng lại; trước đây 133,5) |
+| **Tổng P0 đến R3 cộng R5 (số mới)** | **216** (140,5 + 75,5; tăng 75,5) |
 
 Số của R2 là ước lượng lại sau D31 đến D38. Các bước đổi: P13 từ 1,5 lên 3,5; P14 từ 2 lên 3,5; P15 từ 4 lên 4,5; P17 từ 6 lên 7,5; P18 từ 4 lên 4,5; P19 từ 6 lên 6,5; P30 từ 3 lên 3,5. Các bước khác của R2 giữ nguyên. P13 phải xong trước P14.
 
 Các bước ghi "độc lập" (P26, P27, P28) có thể làm song song với chuỗi chính của pha B. P17 có thể làm song song với P18 đến P21 sau khi P16 xong.
+
+Số của R5 là ước lượng mới, không có số cũ để so: Q1 1,5; Q2 3; Q3 6; Q4 5; Q5 5; Q6 5; Q7 4; Q8 3; Q9 6; Q10 6; Q11 4; Q12 6; Q13 4; Q14 4; Q15 5; Q16 5; Q17 3. Tổng 75,5 ngày công. Tổng của các pha trước giữ nguyên; tổng chung tăng từ 140,5 lên 216. Phần giao diện (Q4, Q7, Q11, Q13) chiếm 17 ngày và có thể làm song song với phần máy chủ của nhóm khác khi API của nhóm đó đã có tệp mẫu hợp đồng.
