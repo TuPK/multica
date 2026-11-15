@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -452,4 +453,40 @@ func TestIssueFlowVarsExitsCompleteCommandsCallEndpoints(t *testing.T) {
 			}
 		}
 	})
+}
+
+// Resolving a key is a request of its own. A slow resolve used to spend the deadline of the flow call
+// that follows it, so the call timed out on the client although the server had time to answer.
+func TestFlowIssuePathGivesTheFlowCallItsOwnBudget(t *testing.T) {
+	t.Chdir(t.TempDir())
+	const issueID = "1881a167-4bb6-4602-944b-f40ce4192fe6"
+	const resolveDelay = 1200 * time.Millisecond
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/issues/MUL-12" {
+			time.Sleep(resolveDelay)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": issueID, "identifier": "MUL-12"})
+	}))
+	defer srv.Close()
+	t.Setenv("MULTICA_SERVER_URL", srv.URL)
+	t.Setenv("MULTICA_WORKSPACE_ID", "ws-1")
+	t.Setenv("MULTICA_TOKEN", "test-token")
+	t.Setenv("MULTICA_HTTP_TIMEOUT", "3s")
+
+	_, ctx, cancel, path, err := flowIssuePath(&cobra.Command{Use: "flow"}, "MUL-12")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cancel()
+	if path != "/api/issues/"+issueID+"/flow" {
+		t.Fatalf("path = %q", path)
+	}
+	deadline, ok := ctx.Deadline()
+	if !ok {
+		t.Fatal("the flow call has no deadline")
+	}
+	// The budget is the transport timeout plus a 5s grace. After a 1.2s resolve it must still be whole.
+	if left := time.Until(deadline); left < 7500*time.Millisecond {
+		t.Fatalf("the flow call has %v left after a %v resolve, want its whole budget (about 8s)", left, resolveDelay)
+	}
 }

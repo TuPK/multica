@@ -61,6 +61,8 @@ var issueFlowAdvanceCmd = &cobra.Command{
 	Long: "Ask the server to open the missing tasks of the step, or to route the request when every\n" +
 		"task is closed. It is idempotent: run it again and nothing happens when there is\n" +
 		"nothing to do. It answers with what it did and what the request still waits for.\n" +
+		"A task of an agent that has no run gets one (redispatched_tasks); when the task has used all\n" +
+		"its attempts the request stops and the answer says flow_task_stuck.\n" +
 		"Run it after a task closes; do not set the status of the request and do not create\n" +
 		"sub-issues under it yourself.",
 	Example: "  multica issue flow advance MUL-12",
@@ -189,18 +191,22 @@ func init() {
 	issueFlowDetachCmd.Flags().Bool("cancel-tasks", false, "Cancel the open tasks instead of keeping them as sub-issues")
 }
 
-// flowIssuePath resolves the issue argument and returns the flow path of it.
+// flowIssuePath resolves the issue argument and returns the flow path of it, with a context for the
+// flow call itself. Resolving a key such as MUL-12 is a request of its own: it must not spend the
+// budget of the call that follows (an advance can take as long as the transport allows), or a slow
+// server makes the call fail on the client before it has had its time.
 func flowIssuePath(cmd *cobra.Command, ref string) (*cli.APIClient, context.Context, context.CancelFunc, string, error) {
 	client, err := newAPIClient(cmd)
 	if err != nil {
 		return nil, nil, nil, "", err
 	}
-	ctx, cancel := cli.APIContext(context.Background())
-	issue, err := resolveIssueRef(ctx, client, ref)
+	resolveCtx, cancelResolve := cli.APIContext(context.Background())
+	issue, err := resolveIssueRef(resolveCtx, client, ref)
+	cancelResolve()
 	if err != nil {
-		cancel()
 		return nil, nil, nil, "", fmt.Errorf("resolve issue: %w", err)
 	}
+	ctx, cancel := cli.APIContext(context.Background())
 	return client, ctx, cancel, "/api/issues/" + issue.ID + "/flow", nil
 }
 
