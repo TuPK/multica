@@ -661,7 +661,13 @@
     "toast_revoke_all_sessions_failed": "退出所有设备失败",
     "section_security_events": "安全事件",
     "security_events_empty": "暂无安全事件",
-    "security_events_load_failed": "无法加载安全事件"
+    "security_events_load_failed": "无法加载安全事件",
+    "export_title": "下载我的数据",
+    "export_description": "以 JSON 格式提供，每小时限一次。",
+    "export_button": "下载",
+    "toast_export_success": "已下载账户数据",
+    "toast_export_rate_limited": "账户数据每小时只能下载一次",
+    "toast_export_failed": "下载账户数据失败"
   },
   "notifications": {
     "title": "收件箱通知",
@@ -1582,5 +1588,11 @@
     "export_failed": "无法导出审计事件",
     "empty": "暂无审计事件",
     "load_failed": "无法加载审计事件"
+  },
+  "legal": {
+    "title": "必要法律文件",
+    "terms": "服务条款",
+    "privacy": "隐私政策",
+    "accept": "同意"
   }
 }

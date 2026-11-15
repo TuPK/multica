@@ -666,7 +666,13 @@
     "toast_revoke_all_sessions_failed": "Error al cerrar sesión en todos los dispositivos",
     "section_security_events": "Eventos de seguridad",
     "security_events_empty": "No hay eventos de seguridad",
-    "security_events_load_failed": "Error al cargar los eventos de seguridad"
+    "security_events_load_failed": "Error al cargar los eventos de seguridad",
+    "export_title": "Descargar mis datos",
+    "export_description": "Disponible una vez por hora en formato JSON.",
+    "export_button": "Descargar",
+    "toast_export_success": "Datos de la cuenta descargados",
+    "toast_export_rate_limited": "Los datos de la cuenta se pueden descargar una vez por hora",
+    "toast_export_failed": "Error al descargar los datos de la cuenta"
   },
   "notifications": {
     "title": "Notificaciones de la bandeja",
@@ -1593,5 +1599,11 @@
     "export_failed": "Error al exportar los eventos de auditoría",
     "empty": "No hay eventos de auditoría",
     "load_failed": "Error al cargar los eventos de auditoría"
+  },
+  "legal": {
+    "title": "Documentos legales requeridos",
+    "terms": "Términos del servicio",
+    "privacy": "Política de privacidad",
+    "accept": "Aceptar"
   }
 }

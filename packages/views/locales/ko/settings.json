@@ -661,7 +661,13 @@
     "toast_revoke_all_sessions_failed": "모든 기기에서 로그아웃하지 못했습니다",
     "section_security_events": "보안 이벤트",
     "security_events_empty": "보안 이벤트가 없습니다",
-    "security_events_load_failed": "보안 이벤트를 불러오지 못했습니다"
+    "security_events_load_failed": "보안 이벤트를 불러오지 못했습니다",
+    "export_title": "내 데이터 다운로드",
+    "export_description": "1시간마다 1회 JSON 형식으로 제공됩니다.",
+    "export_button": "다운로드",
+    "toast_export_success": "계정 데이터를 다운로드했습니다",
+    "toast_export_rate_limited": "계정 데이터는 1시간에 한 번만 다운로드할 수 있습니다",
+    "toast_export_failed": "계정 데이터를 다운로드하지 못했습니다"
   },
   "notifications": {
     "title": "인박스 알림",
@@ -1582,5 +1588,11 @@
     "export_failed": "감사 이벤트를 내보내지 못했습니다",
     "empty": "감사 이벤트가 없습니다",
     "load_failed": "감사 이벤트를 불러오지 못했습니다"
+  },
+  "legal": {
+    "title": "필수 법적 문서",
+    "terms": "서비스 이용약관",
+    "privacy": "개인정보 처리방침",
+    "accept": "동의"
   }
 }

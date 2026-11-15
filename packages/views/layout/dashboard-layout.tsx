@@ -8,6 +8,7 @@ import { AppRail } from "./app-rail";
 import { AppShellProvider } from "./app-shell-context";
 import { CompactNavSheet } from "./compact-nav-sheet";
 import { DashboardGuard } from "./dashboard-guard";
+import { ConsentGate } from "../legal/consent-gate";
 import { NavigationProgress } from "./navigation-progress";
 import { ShellRouteDataPrefetch } from "./route-data-prefetch";
 import { SpacePanel } from "./space-panel";
@@ -49,6 +50,7 @@ export function DashboardLayout({
         </div>
       }
     >
+      <ConsentGate />
       <SidebarProvider defaultOpen className="h-svh bg-app-shell [--sidebar-wrapper-fill:var(--app-shell)]">
         <AppShellProvider>
           <ShellRouteDataPrefetch>

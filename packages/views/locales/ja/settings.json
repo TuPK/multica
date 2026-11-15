@@ -661,7 +661,13 @@
     "toast_revoke_all_sessions_failed": "すべてのデバイスからのサインアウトに失敗しました",
     "section_security_events": "セキュリティイベント",
     "security_events_empty": "セキュリティイベントはありません",
-    "security_events_load_failed": "セキュリティイベントの読み込みに失敗しました"
+    "security_events_load_failed": "セキュリティイベントの読み込みに失敗しました",
+    "export_title": "データをダウンロード",
+    "export_description": "1時間に1回、JSON形式で利用可能です。",
+    "export_button": "ダウンロード",
+    "toast_export_success": "アカウントデータをダウンロードしました",
+    "toast_export_rate_limited": "アカウントデータは1時間に1回ダウンロードできます",
+    "toast_export_failed": "アカウントデータのダウンロードに失敗しました"
   },
   "notifications": {
     "title": "インボックス通知",
@@ -1582,5 +1588,11 @@
     "export_failed": "監査イベントのエクスポートに失敗しました",
     "empty": "監査イベントはありません",
     "load_failed": "監査イベントの読み込みに失敗しました"
+  },
+  "legal": {
+    "title": "必要な法的文書",
+    "terms": "利用規約",
+    "privacy": "プライバシーポリシー",
+    "accept": "同意する"
   }
 }

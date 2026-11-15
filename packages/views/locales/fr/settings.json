@@ -666,7 +666,13 @@
     "toast_revoke_all_sessions_failed": "Échec de la déconnexion de tous les appareils",
     "section_security_events": "Événements de sécurité",
     "security_events_empty": "Aucun événement de sécurité",
-    "security_events_load_failed": "Échec du chargement des événements de sécurité"
+    "security_events_load_failed": "Échec du chargement des événements de sécurité",
+    "export_title": "Télécharger mes données",
+    "export_description": "Disponible une fois par heure au format JSON.",
+    "export_button": "Télécharger",
+    "toast_export_success": "Données du compte téléchargées",
+    "toast_export_rate_limited": "Les données du compte peuvent être téléchargées une fois par heure",
+    "toast_export_failed": "Échec du téléchargement des données du compte"
   },
   "notifications": {
     "title": "Notifications de la boîte de réception",
@@ -1593,5 +1599,11 @@
     "export_failed": "Échec de l'exportation des événements d'audit",
     "empty": "Aucun événement d'audit",
     "load_failed": "Échec du chargement des événements d'audit"
+  },
+  "legal": {
+    "title": "Documents juridiques requis",
+    "terms": "Conditions d'utilisation",
+    "privacy": "Politique de confidentialité",
+    "accept": "Accepter"
   }
 }

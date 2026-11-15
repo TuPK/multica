@@ -666,7 +666,13 @@
     "toast_revoke_all_sessions_failed": "Failed to sign out of all devices",
     "section_security_events": "Security events",
     "security_events_empty": "No security events",
-    "security_events_load_failed": "Failed to load security events"
+    "security_events_load_failed": "Failed to load security events",
+    "export_title": "Download my data",
+    "export_description": "Available once per hour in JSON format.",
+    "export_button": "Download",
+    "toast_export_success": "Account data downloaded",
+    "toast_export_rate_limited": "Account data can be downloaded once an hour",
+    "toast_export_failed": "Failed to download account data"
   },
   "notifications": {
     "title": "Inbox Notifications",
@@ -1593,5 +1599,11 @@
     "export_failed": "Failed to export audit events",
     "empty": "No audit events",
     "load_failed": "Failed to load audit events"
+  },
+  "legal": {
+    "title": "Required legal documents",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "accept": "Accept"
   }
 }

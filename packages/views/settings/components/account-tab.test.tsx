@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderWithI18n } from "../../test/i18n";
 
 const mockMutateAsync = vi.hoisted(() => vi.fn());
+const mockDownloadAccountExport = vi.hoisted(() => vi.fn());
+const mockSaveBlob = vi.hoisted(() => vi.fn());
 const revokeState = vi.hoisted(() => ({
   isPending: false,
 }));
@@ -68,6 +70,11 @@ vi.mock("@multica/core/account", () => ({
     mutateAsync: mockMutateAsync,
     isPending: revokeState.isPending,
   }),
+  downloadAccountExport: mockDownloadAccountExport,
+}));
+
+vi.mock("../../governance/save-blob", () => ({
+  saveBlob: mockSaveBlob,
 }));
 
 const mockSetUser = vi.hoisted(() => vi.fn());
@@ -318,5 +325,74 @@ describe("AccountTab", () => {
         screen.getByText("Failed to load security events"),
       ).toBeInTheDocument();
     });
+  });
+
+  it("renders the download my data row with title, description, and button", () => {
+    renderAccountTab();
+
+    expect(screen.getByText("Download my data")).toBeInTheDocument();
+    expect(
+      screen.getByText("Available once per hour in JSON format."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Download" }),
+    ).toBeInTheDocument();
+  });
+
+  it("calls downloadAccountExport, saves the file, and shows success toast on button click", async () => {
+    mockDownloadAccountExport.mockResolvedValueOnce({
+      profile: { id: "user-1", name: "Jane Doe" },
+    });
+    renderAccountTab();
+
+    const downloadButton = screen.getByRole("button", { name: "Download" });
+    fireEvent.click(downloadButton);
+
+    await waitFor(() => {
+      expect(mockDownloadAccountExport).toHaveBeenCalledTimes(1);
+    });
+
+    await waitFor(() => {
+      expect(mockSaveBlob).toHaveBeenCalledTimes(1);
+      const [blob, filename] = mockSaveBlob.mock.calls[0] as [Blob, string];
+      expect(filename).toBe("multica-account-export.json");
+      expect(blob).toBeInstanceOf(Blob);
+      expect(mockToastSuccess).toHaveBeenCalledWith("Account data downloaded");
+    });
+  });
+
+  it("shows rate-limited error toast when export returns 429", async () => {
+    mockDownloadAccountExport.mockRejectedValueOnce({
+      code: "export_rate_limited",
+      status: 429,
+    });
+    renderAccountTab();
+
+    const downloadButton = screen.getByRole("button", { name: "Download" });
+    fireEvent.click(downloadButton);
+
+    await waitFor(() => {
+      expect(mockDownloadAccountExport).toHaveBeenCalledTimes(1);
+      expect(mockToastError).toHaveBeenCalledWith(
+        "Account data can be downloaded once an hour",
+      );
+    });
+    expect(mockSaveBlob).not.toHaveBeenCalled();
+  });
+
+  it("shows general error toast when export fails", async () => {
+    mockDownloadAccountExport.mockRejectedValueOnce(
+      new Error("Failed to export"),
+    );
+    renderAccountTab();
+
+    const downloadButton = screen.getByRole("button", { name: "Download" });
+    fireEvent.click(downloadButton);
+
+    await waitFor(() => {
+      expect(mockDownloadAccountExport).toHaveBeenCalledTimes(1);
+      expect(mockToastError).toHaveBeenCalledWith("Failed to export");
+    });
+    expect(mockSaveBlob).not.toHaveBeenCalled();
   });
 });

@@ -19,7 +19,8 @@ import { Loader2 } from "@multica/ui/icons";
 import { toast } from "sonner";
 import { useAuthStore } from "@multica/core/auth";
 import { api } from "@multica/core/api";
-import { useRevokeAllSessions } from "@multica/core/account";
+import { downloadAccountExport, useRevokeAllSessions } from "@multica/core/account";
+import { saveBlob } from "../../governance/save-blob";
 import { securityEventsOptions } from "@multica/core/audit";
 import { AvatarUploadControl } from "../../common/avatar-upload-control";
 import { useLocale, useT } from "../../i18n";
@@ -58,6 +59,7 @@ export function AccountTab() {
     user?.profile_description ?? "",
   );
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const revokeAllSessions = useRevokeAllSessions();
   const isRevoking = Boolean(revokeAllSessions?.isPending);
 
@@ -94,6 +96,42 @@ export function AccountTab() {
           ? error.message
           : t(($) => $.account.toast_revoke_all_sessions_failed),
       );
+    }
+  };
+
+  const handleDownloadExport = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      const data = await downloadAccountExport();
+      const blob =
+        data instanceof Blob
+          ? data
+          : new Blob(
+              [
+                typeof data === "string"
+                  ? data
+                  : JSON.stringify(data, null, 2),
+              ],
+              {
+                type: "application/json",
+              },
+            );
+      saveBlob(blob, "multica-account-export.json");
+      toast.success(t(($) => $.account.toast_export_success));
+    } catch (error: unknown) {
+      const err = error as { code?: string; status?: number };
+      if (err?.code === "export_rate_limited" || err?.status === 429) {
+        toast.error(t(($) => $.account.toast_export_rate_limited));
+      } else {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : t(($) => $.account.toast_export_failed),
+        );
+      }
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -238,6 +276,26 @@ export function AccountTab() {
                 </p>
               ) : null}
             </div>
+          </SettingsRow>
+
+          <SettingsRow
+            anchor="export-data"
+            label={t(($) => $.account.export_title)}
+            description={t(($) => $.account.export_description)}
+          >
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadExport}
+              disabled={isExporting}
+              aria-busy={isExporting || undefined}
+            >
+              {isExporting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : null}
+              {t(($) => $.account.export_button)}
+            </Button>
           </SettingsRow>
         </SettingsCard>
       </SettingsSection>
