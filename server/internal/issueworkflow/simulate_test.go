@@ -696,3 +696,92 @@ func TestPatterns_AllParseAndSimulate(t *testing.T) {
 		}
 	})
 }
+
+// K23: each of the twelve pattern documents passes the validator without an
+// error and then simulates to the outcome its pattern is about (the scripted
+// variants of each pattern are in TestPatterns_AllParseAndSimulate).
+func TestPatterns_AllValidateAndSimulate(t *testing.T) {
+	// Outcome of a run with no script: the happy path of the pattern. Patterns
+	// whose happy path needs a variable or a scripted verdict say so.
+	type want struct {
+		vars    map[string]any
+		script  map[string][]map[string]string
+		outcome string
+		code    string
+	}
+	wants := map[string]want{
+		"p01_sequential":             {outcome: TraceTerminal, code: "done"},
+		"p02_parallel_join_all":      {outcome: TraceTerminal, code: "done"},
+		"p03_exclusive_choice_merge": {outcome: TraceTerminal, code: "done"},
+		"p04_multi_choice":           {outcome: TraceTerminal, code: "done"},
+		"p05_instances_count":        {outcome: TraceTerminal, code: "done"},
+		"p06_instances_from_var":     {vars: map[string]any{"items": []any{"x", "y"}}, outcome: TraceTerminal, code: "done"},
+		"p07_discriminator_any":      {script: map[string][]map[string]string{"race": {{"g1": "open", "g2": "approved", "g3": "open"}}}, outcome: TraceTerminal, code: "done"},
+		"p08_n_of_m_quorum":          {script: map[string][]map[string]string{"vote": {{"v1": "approved", "v2": "approved", "v3": "open"}}}, outcome: TraceTerminal, code: "done"},
+		"p09_nested_cycles":          {outcome: TraceTerminal, code: "done"},
+		"p10_deferred_choice":        {outcome: TraceTerminal, code: "done"},
+		"p11_cancel":                 {outcome: TraceTerminal, code: "done"},
+		"p12_redo_failed_branch":     {script: map[string][]map[string]string{"review": {{"fe_review": "approved", "be_review": "rejected"}}}, outcome: TraceTerminal, code: "done"},
+	}
+	files, _ := filepath.Glob(filepath.Join("testdata", "flows", "patterns", "*.json"))
+	if len(files) != 12 || len(wants) != 12 {
+		t.Fatalf("%d pattern documents and %d expectations, want 12 each", len(files), len(wants))
+	}
+	for _, f := range files {
+		name := strings.TrimSuffix(filepath.Base(f), ".json")
+		w, ok := wants[name]
+		if !ok {
+			t.Fatalf("no expectation for %s", name)
+		}
+		t.Run(name, func(t *testing.T) {
+			issues := ValidateFlowDocJSON(readFile(t, f), vctx())
+			if HasErrors(issues) {
+				t.Fatalf("the document does not validate:%s", describeIssues(issues))
+			}
+			tr := Simulate(loadGraph(t, "patterns/"+name+".json"), w.vars, w.script, 0)
+			if tr.Outcome != w.outcome || tr.Code != w.code {
+				t.Fatalf("outcome %s %q, want %s %q\npath %v", tr.Outcome, tr.Code, w.outcome, w.code, tr.Path())
+			}
+		})
+	}
+}
+
+// C10: the stops the analysis lists are the stops the engine's decision takes:
+// every stop a scenario ends in is in analysis.stops, left by one of the edges
+// the analysis names for it, and each stop of the flow is reached by a scenario.
+func TestAnalyze_StopsMatchTheStopsDecideTakes(t *testing.T) {
+	doc := loadFlowDoc(t, "trade.json")
+	g := NewGraph(doc)
+	analysis := Analyze(doc)
+	edgesOf := map[string][]string{}
+	for _, s := range analysis.Stops {
+		edgesOf[s.Code] = s.Edges
+	}
+	scenarios := map[string]map[string][]map[string]string{
+		"lead reports missing grounds": {"plan": {{ScriptLead: "blocked"}}},
+		"a gate blocks":                {"gate": {{"customs_gate": "blocked"}}},
+		"every gate rejects":           {"gate": entries(5, map[string]string{"customs_gate": "rejected"})},
+	}
+	reached := map[string]bool{}
+	for name, script := range scenarios {
+		tr := Simulate(g, nil, script, 0)
+		if tr.Outcome != TraceStop {
+			t.Fatalf("%s: ended %s %q, want a stop", name, tr.Outcome, tr.Code)
+		}
+		edges, listed := edgesOf[tr.Code]
+		if !listed {
+			t.Fatalf("%s: the stop %q is not in analysis.stops", name, tr.Code)
+		}
+		last := tr.Steps[len(tr.Steps)-1]
+		left := last.Step + "." + last.Edge
+		if !inStrings(edges, left) {
+			t.Fatalf("%s: left by the edge %q, which analysis.stops does not list for %q (%v)", name, left, tr.Code, edges)
+		}
+		reached[tr.Code] = true
+	}
+	for _, s := range analysis.Stops {
+		if s.Code != DocStopStalled && len(s.Edges) > 0 && !reached[s.Code] {
+			t.Errorf("analysis.stops lists %q and no scenario reaches it", s.Code)
+		}
+	}
+}

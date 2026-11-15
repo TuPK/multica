@@ -1,6 +1,8 @@
 package issueworkflow
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/multica-ai/multica/server/internal/issuestatus"
@@ -168,5 +170,46 @@ func TestStalledDecision(t *testing.T) {
 	d := StalledDecision("agent_unavailable")
 	if d.Kind != DecisionRoute || d.Stop != StopStalled || d.StopCode != DocStopStalled || d.Status != DefaultStopStatus || d.Reason != "agent_unavailable" {
 		t.Fatalf("StalledDecision = %+v", d)
+	}
+}
+
+// The frozen oracle (flow_v1_oracle_test.go) is the schema 1 Decide and
+// RoutePlan as they were before the engine decided by the graph (the differential
+// test proves it equals a verbatim copy from commit 1b53012aa, where it was
+// compared with those functions). The production decision is now the graph path
+// that the engine takes (Lift, Adapt, DecideGraph); on the inputs the schema 1
+// tests were written for, both give the same decision in the schema 1 shape.
+func TestOracleMatchesProductionDecide(t *testing.T) {
+	same := func(t *testing.T, want, got Decision, outcome bool) {
+		t.Helper()
+		var wantKeys, gotKeys []string
+		for _, task := range want.Missing {
+			wantKeys = append(wantKeys, task.Key)
+		}
+		for _, task := range got.Missing {
+			gotKeys = append(gotKeys, task.Key)
+		}
+		if want.Kind != got.Kind || strings.Join(wantKeys, ",") != strings.Join(gotKeys, ",") ||
+			want.To != got.To || want.Rework != got.Rework || want.Stop != got.Stop ||
+			want.HumanStop != got.HumanStop || (outcome && want.TasksOutcome != got.TasksOutcome) {
+			t.Fatalf("the engine decides %+v\noracle decides %+v", got, want)
+		}
+	}
+	for name, c := range oracleDecideCases() {
+		t.Run("Decide/"+name, func(t *testing.T) {
+			same(t, oracleDecide(c.def, c.state, c.tasks), graphDecide(t, c.def, c.state, c.tasks), c.state.Step != StartStatus)
+		})
+	}
+	def := tradeFlow()
+	planStates := map[string]FlowState{
+		"plan step":   {Step: "todo", Switches: def.Flow.DefaultSwitches()},
+		"later round": {Step: "todo", Rework: 1, RoundBase: 2, Switches: def.Flow.DefaultSwitches()},
+	}
+	for name, state := range planStates {
+		for _, blocked := range []bool{false, true} {
+			t.Run(fmt.Sprintf("RoutePlan/%s/blocked=%v", name, blocked), func(t *testing.T) {
+				same(t, oracleRoutePlan(def, state, blocked), graphRoutePlan(t, def, state, blocked), false)
+			})
+		}
 	}
 }

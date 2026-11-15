@@ -1284,3 +1284,52 @@ func TestValidateSchema1ForSquad_FindsWhatItShould(t *testing.T) {
 		}
 	})
 }
+
+// R07 looks at what the gate judges, wherever that work stands in the flow: a
+// gate three steps after the work it judges is separated from it as much as the
+// next one, and a gate is not held apart from work it does not judge.
+func TestValidate_R07SeparationIsAcrossTheWholeFlow(t *testing.T) {
+	violations := func(d FlowDoc) []Issue { return issuesOfRule(ValidateFlowDoc(d, vctx()), "R07") }
+	// plan, make (work, ana), polish (work, ben), pad (work, ben), check (gate).
+	build := func(gateRole string, inputs []Input) FlowDoc {
+		work := func(key, role, to string) DocStep {
+			return DocStep{Key: key, Kind: StepKindTasks, Status: StepStatus{Key: "in_progress"},
+				Tasks: []DocTask{{Key: "do_" + key, Title: key, Kind: KindWork, Role: role}},
+				Edges: []DocEdge{{ID: "to_" + to, Label: to, To: to}}}
+		}
+		return FlowDoc{Version: 2, Start: "plan", Roles: []Role{agentRole("ana", 1), agentRole("ben", 1)},
+			Terminals: []Terminal{{Key: "done", Status: "done"}},
+			Steps: []DocStep{
+				{Key: "plan", Kind: StepKindLead, Status: StepStatus{Key: "todo"}, Edges: []DocEdge{{ID: "p", Label: "p", To: "make"}}},
+				work("make", "ana", "polish"), work("polish", "ben", "pad"), work("pad", "ben", "check"),
+				{Key: "check", Kind: StepKindTasks, Status: StepStatus{Key: "in_review"},
+					Tasks: []DocTask{{Key: "judge", Title: "j", Kind: KindGate, Role: gateRole, Inputs: inputs}},
+					Edges: []DocEdge{{ID: "c", Label: "c", To: "done"}}},
+			}}
+	}
+
+	t.Run("a gate judging work from several steps back is separated from it", func(t *testing.T) {
+		got := violations(build("ana", []Input{{From: "make.do_make"}}))
+		if len(got) != 1 || got[0].Code != "separation_violation" {
+			t.Fatalf("ana judges her own work from two steps before: %s", describeIssues(got))
+		}
+		if judged, _ := got[0].Params["judged"].([]string); !reflect.DeepEqual(judged, []string{"make.do_make"}) {
+			t.Errorf("judged = %v", got[0].Params["judged"])
+		}
+	})
+	t.Run("a gate is not held apart from work it does not judge", func(t *testing.T) {
+		// Ben did the two steps before the gate; the gate judges only ana's work.
+		if got := violations(build("ben", []Input{{From: "make.do_make"}})); len(got) != 0 {
+			t.Fatalf("ben judges ana's work: %s", describeIssues(got))
+		}
+	})
+	t.Run("by default the gate judges the work on the path before it", func(t *testing.T) {
+		got := violations(build("ben", nil))
+		if len(got) != 1 || got[0].Params["judged"].([]string)[0] != "pad.do_pad" {
+			t.Fatalf("ben judges ben's last step: %s", describeIssues(got))
+		}
+		if got := violations(build("ana", nil)); len(got) != 0 {
+			t.Fatalf("ana judges ben's work: %s", describeIssues(got))
+		}
+	})
+}

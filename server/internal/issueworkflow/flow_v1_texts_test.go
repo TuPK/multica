@@ -291,3 +291,46 @@ func TestV1StatesDecode(t *testing.T) {
 		})
 	}
 }
+
+// K2: a flow lifted from schema 1 keeps the texts of schema 1. The engine renders a
+// compat graph with the schema 1 functions from the task the stored definition
+// holds (Definition.V1Task), so the lift must mark the graph compat, the task
+// production reads must be the task the golden was rendered from, and the texts
+// must equal the golden of P5 (frozen before the engine changed; the only golden
+// change since is the catalog wording of f32b6e5a1).
+func TestLift_RenderedTextUnchanged(t *testing.T) {
+	flows := loadCatalogFlows(t)
+	if len(flows) != 21 {
+		t.Skipf("%d catalog flows loaded, want 21 (build the catalog first)", len(flows))
+	}
+	for id, f := range flows {
+		t.Run(id, func(t *testing.T) {
+			def, _, err := f.definition()
+			if err != nil {
+				t.Fatal(err)
+			}
+			g, err := Lift(def, LiftOpts{Runtime: true})
+			if err != nil {
+				t.Fatalf("Lift: %v", err)
+			}
+			if g.Compat != CompatV1 {
+				t.Fatalf("the lifted graph is %q, not compat v1: the engine would render it with the schema 2 texts", g.Compat)
+			}
+			for _, step := range def.Steps {
+				for _, task := range step.Tasks {
+					got, ok := def.V1Task(step.StatusKey, task.Key)
+					if !ok || !reflect.DeepEqual(got, task) {
+						t.Fatalf("V1Task(%s, %s) = %+v, %v; the definition holds %+v", step.StatusKey, task.Key, got, ok, task)
+					}
+				}
+			}
+			want, err := os.ReadFile(filepath.Join("testdata", "v1_texts", id+".golden"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := renderV1Texts(t, f); got != string(want) {
+				t.Fatalf("the texts of %s differ from the golden; first difference:\n%s", id, firstDifference(string(want), got))
+			}
+		})
+	}
+}
