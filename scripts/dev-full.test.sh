@@ -334,4 +334,55 @@ require_contains "$tmp_dir/out-summary" "Running       Multica API, Multica web,
 require_contains "$tmp_dir/out-summary" "compose --env-file $ENV_FILE -f docker-compose.selfhost.yml --profile knowledge stop knowledge-postgres knowledge-redis knowledge-docreader knowledge-app knowledge-ui seaweedfs"
 require_absent "$tmp_dir/out-summary" "$(env_value "$ENV_FILE" HUB_S3_SECRET_KEY)"
 
+# ---------- Daemon ----------
+# `make dev-full` runs this script from a recipe, and the Makefile's bare `export` hands every recipe
+# MULTICA_ARGS= (defined, empty). The nested `make cli ARGS="daemon restart"` must still get its ARGS.
+# make -n only prints the recipe: nothing is built or restarted.
+make_bin=$(command -v make) || fail "make is not installed"
+dry_run="$tmp_dir/out-cli-dry-run"
+( cd "$root_dir" && env MULTICA_ARGS= "$make_bin" -n cli ARGS="daemon restart" ) >"$dry_run" 2>&1 \
+  || { sed 's/^/  /' "$dry_run" >&2; fail "make -n cli ARGS=\"daemon restart\" failed"; }
+require_contains "$dry_run" "./bin/multica daemon restart"
+( cd "$root_dir" && env -u MULTICA_ARGS "$make_bin" -n cli ARGS="issue list" ) >"$dry_run" 2>&1
+require_contains "$dry_run" "./cmd/multica issue list"
+
+# start_daemon reports running only when the daemon it finds afterwards is not the one it found before.
+daemon_stub="$tmp_dir/daemon-cli"
+cat >"$daemon_stub" <<'STUB'
+#!/usr/bin/env bash
+# `daemon status --output json`: the pid is the next line of DAEMON_PIDS each call; empty means none runs.
+[ "${1:-} ${2:-}" = "daemon status" ] || exit 2
+line=$(head -n1 "$DAEMON_PIDS")
+sed -i 1d "$DAEMON_PIDS"
+[ -n "$line" ] || { echo '{"status":"stopped"}'; exit 0; }
+printf '{\n  "cli_commit": "abc123",\n  "pid": %s\n}\n' "$line"
+STUB
+chmod +x "$daemon_stub"
+make_stub_dir="$tmp_dir/make-stub"
+mkdir -p "$make_stub_dir"
+printf '#!/usr/bin/env bash\necho "make $*" >>"$MAKE_LOG"\nexit "${MAKE_EXIT:-0}"\n' >"$make_stub_dir/make"
+chmod +x "$make_stub_dir/make"
+printf '{"token": "mul_test"}\n' >"$tmp_dir/profile.json"
+
+run_start_daemon() { # pids before and after, as "before after" ("-" for none)
+  local before=$1 after=$2
+  export DAEMON_PIDS="$tmp_dir/daemon-pids" MAKE_LOG="$tmp_dir/make.log"
+  { [ "$before" = - ] && echo || echo "$before"; [ "$after" = - ] && echo || echo "$after"; } >"$DAEMON_PIDS"
+  : >"$MAKE_LOG"
+  DAEMON_STATUS=""
+  MULTICA_PROFILE_CONFIG="$tmp_dir/profile.json" DAEMON_STATUS_BIN="$daemon_stub" PATH="$make_stub_dir:$PATH" start_daemon >"$tmp_dir/out-daemon" 2>&1
+}
+
+run_start_daemon 111 111
+require_contains "$MAKE_LOG" 'make cli ARGS=daemon restart'
+case $DAEMON_STATUS in "not restarted"*) ;; *) fail "the daemon kept pid 111 and start_daemon said: $DAEMON_STATUS" ;; esac
+run_start_daemon 111 222
+case $DAEMON_STATUS in "running (default profile)"*) ;; *) fail "the daemon went from pid 111 to 222 and start_daemon said: $DAEMON_STATUS" ;; esac
+run_start_daemon - 333
+case $DAEMON_STATUS in "running (default profile)"*) ;; *) fail "a daemon started from none and start_daemon said: $DAEMON_STATUS" ;; esac
+run_start_daemon 111 -
+case $DAEMON_STATUS in "not running"*) ;; *) fail "no daemon answers after the restart and start_daemon said: $DAEMON_STATUS" ;; esac
+MAKE_EXIT=2 run_start_daemon 111 222
+case $DAEMON_STATUS in "failed to start"*) ;; *) fail "make failed and start_daemon said: $DAEMON_STATUS" ;; esac
+
 echo "dev-full.test.sh: all checks passed"

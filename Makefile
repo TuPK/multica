@@ -28,7 +28,12 @@ LOCAL_UPLOAD_BASE_URL ?= http://localhost:$(PORT)
 
 export
 
-MULTICA_ARGS ?= $(ARGS)
+# Not `?=`: the bare export above hands every recipe MULTICA_ARGS= (defined, empty). A nested
+# `make cli ARGS=...` (scripts/dev-full.sh start_daemon) would see it defined, keep it empty and run the
+# CLI with no arguments, which prints the help.
+ifeq ($(strip $(MULTICA_ARGS)),)
+MULTICA_ARGS := $(ARGS)
+endif
 
 COMPOSE := docker compose
 

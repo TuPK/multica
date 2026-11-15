@@ -670,16 +670,38 @@ setup_multica_profile() {
   set_profile_value_if_absent app_url "http://localhost:${FRONTEND_PORT}"
 }
 
+# What identifies the running daemon: its pid and the revision it was built from. Empty when none runs.
+# DAEMON_STATUS_BIN names the CLI that answers (the tests point it at a stub).
+daemon_identity() {
+  local bin=${DAEMON_STATUS_BIN:-server/bin/multica} json
+  [ -x "$bin" ] || return 0
+  json=$("$bin" daemon status --output json 2>/dev/null) || return 0
+  printf '%s:%s' \
+    "$(printf '%s' "$json" | sed -n 's/.*"pid": *\([0-9][0-9]*\).*/\1/p' | head -1)" \
+    "$(printf '%s' "$json" | sed -n 's/.*"cli_commit": *"\([^"]*\)".*/\1/p' | head -1)"
+}
+
 start_daemon() {
   if ! multica_logged_in; then
     DAEMON_STATUS="not started: no Multica login yet (see the next steps)"
     return 0
   fi
+  local before after
+  before=$(daemon_identity)
   info "Starting the daemon: make cli ARGS=\"daemon restart\""
-  if make cli ARGS="daemon restart"; then
-    DAEMON_STATUS="running (default profile); status: make cli ARGS=\"daemon status\""
-  else
+  if ! make cli ARGS="daemon restart"; then
     DAEMON_STATUS="failed to start (see the output above)"
+    return 0
+  fi
+  # The command can succeed without restarting anything (it once printed the help). Report
+  # running only when a daemon answers and it is not the one that was running before.
+  after=$(daemon_identity)
+  if [ -z "$after" ] || [ "$after" = ":" ]; then
+    DAEMON_STATUS="not running: the restart finished but no daemon answers (see the output above)"
+  elif [ "$after" = "$before" ]; then
+    DAEMON_STATUS="not restarted: the daemon (${after%%:*}) is the one that was already running; run: make cli ARGS=\"daemon restart\""
+  else
+    DAEMON_STATUS="running (default profile); status: make cli ARGS=\"daemon status\""
   fi
 }
 
