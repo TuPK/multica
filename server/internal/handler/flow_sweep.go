@@ -200,12 +200,7 @@ func (h *Handler) flowRunStats(ctx context.Context, issueID pgtype.UUID, since t
 // step. It reports whether it changed anything.
 func (h *Handler) sweepStuck(ctx context.Context, run *flowRun) bool {
 	now := time.Now()
-	since := now
-	if t, err := time.Parse(time.RFC3339, run.state.EnteredAt); err == nil {
-		since = t
-	} else {
-		since = run.issue.CreatedAt.Time
-	}
+	since := stepEnteredAt(run)
 	limits := issueworkflow.LimitsOf(run.def.Graph.Doc.Policy)
 	log := slog.With("request_id", uuidToString(run.issue.ID), "step", run.state.Step)
 
@@ -260,6 +255,80 @@ func (h *Handler) sweepStuck(ctx context.Context, run *flowRun) bool {
 		}
 	}
 	return changed
+}
+
+// stepEnteredAt is when the request entered its current step: the moment its runs are counted from.
+func stepEnteredAt(run *flowRun) time.Time {
+	if t, err := time.Parse(time.RFC3339, run.state.EnteredAt); err == nil {
+		return t
+	}
+	return run.issue.CreatedAt.Time
+}
+
+// rescueFlowTasks is what an explicit advance does for the agent tasks of the current step when the
+// engine itself had nothing to do. The sweep does this for a flow the runner moves, after the task has
+// been idle; a request that a lead moves has no sweep for its tasks, so a task whose runs all ended
+// (the daemon restarted under them, say) would sit in todo with no run and no stop for ever.
+//
+// A task with no live run gets one while it has attempts left. A task that used all its attempts stops the
+// request with flow_task_stuck, so the answer carries a stop instead of a noop. A task with a live run is
+// left alone: the sweep owns the hard cap. The advance is the person's or the lead's ask to move on, so
+// the idle wait of the sweep does not apply.
+func (h *Handler) rescueFlowTasks(ctx context.Context, request db.Issue) ([]FlowAction, error) {
+	current, err := h.Queries.GetIssue(ctx, request.ID)
+	if err != nil {
+		return nil, err
+	}
+	run, err := h.loadFlowRun(ctx, h.Queries, current)
+	if err != nil || run.state.ClosedAt != "" || run.state.Stop != nil {
+		return nil, nil
+	}
+	if step, ok := run.def.Graph.Step(run.state.Step); !ok || step.Kind == issueworkflow.StepKindLead {
+		return nil, nil
+	}
+	rows, err := h.loadFlowTasks(ctx, h.Queries, run)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now()
+	since := stepEnteredAt(run)
+	limits := issueworkflow.LimitsOf(run.def.Graph.Doc.Policy)
+	log := slog.With("request_id", uuidToString(run.issue.ID), "step", run.state.Step)
+	var given []string
+	for _, r := range rows {
+		if r.state.Step != run.state.Step || r.state.Round != run.round() || r.state.Closed || r.issue.AssigneeType.String != "agent" {
+			continue
+		}
+		stats, err := h.flowRunStats(ctx, r.issue.ID, since, now)
+		if err != nil {
+			return nil, err
+		}
+		if stats.Active > 0 {
+			continue
+		}
+		if stats.Attempts >= limits.MaxAttempts {
+			reason := fmt.Sprintf("The task %q (%s) was tried %d times without an agent closing it.", r.state.Key, r.issue.Title, limits.MaxAttempts)
+			out, err := h.stallFlow(ctx, run, issueworkflow.ReasonTaskStuck, reason, r.state.Key)
+			if err != nil {
+				return nil, err
+			}
+			if out.action.Kind != "stopped" {
+				return nil, nil
+			}
+			out.action.Tasks = []string{r.state.Key}
+			out.action.Code = "flow_task_stuck"
+			return []FlowAction{out.action}, nil
+		}
+		if err := h.enqueueFlowRun(ctx, r.issue); err != nil {
+			log.Warn("flow advance: give the task a run", "task", r.state.Key, "error", err)
+			continue
+		}
+		given = append(given, r.state.Key)
+	}
+	if len(given) == 0 {
+		return nil, nil
+	}
+	return []FlowAction{{Kind: "redispatched_tasks", Step: run.state.Step, Tasks: given}}, nil
 }
 
 // applyDeadline does what DecideDeadline chose for an issue (the request at the plan step, or a task).
