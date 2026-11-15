@@ -11,6 +11,16 @@ const mockSaveBlob = vi.hoisted(() => vi.fn());
 const revokeState = vi.hoisted(() => ({
   isPending: false,
 }));
+const mockPreviewMutateAsync = vi.hoisted(() => vi.fn());
+const mockRequestMutateAsync = vi.hoisted(() => vi.fn());
+const deleteState = vi.hoisted(() => ({
+  isDeleting: false,
+}));
+const mockLogout = vi.hoisted(() => vi.fn());
+
+vi.mock("../../auth", () => ({
+  useLogout: () => mockLogout,
+}));
 
 const mockSecurityEventsState = vi.hoisted(() => ({
   events: [
@@ -71,6 +81,13 @@ vi.mock("@multica/core/account", () => ({
     isPending: revokeState.isPending,
   }),
   downloadAccountExport: mockDownloadAccountExport,
+  usePreviewAccountDeletion: () => ({
+    mutateAsync: mockPreviewMutateAsync,
+  }),
+  useRequestAccountDeletion: () => ({
+    mutateAsync: mockRequestMutateAsync,
+    isPending: deleteState.isDeleting,
+  }),
 }));
 
 vi.mock("../../governance/save-blob", () => ({
@@ -81,6 +98,7 @@ const mockSetUser = vi.hoisted(() => vi.fn());
 const currentUser = vi.hoisted(() => ({
   id: "user-1",
   name: "Jane Doe",
+  email: "jane@example.com",
   profile_description: "Software Engineer",
   avatar_url: null,
 }));
@@ -175,6 +193,14 @@ describe("AccountTab", () => {
     mockMutateAsync.mockResolvedValue({
       revoked_at: "2026-11-15T00:00:00Z",
       token: "new-jwt-token",
+    });
+    deleteState.isDeleting = false;
+    mockPreviewMutateAsync.mockResolvedValue({
+      sole_workspaces: [],
+      scheduled_at: null,
+    });
+    mockRequestMutateAsync.mockResolvedValue({
+      scheduled_at: "2026-11-29T10:00:00Z",
     });
   });
 
@@ -394,5 +420,211 @@ describe("AccountTab", () => {
       expect(mockToastError).toHaveBeenCalledWith("Failed to export");
     });
     expect(mockSaveBlob).not.toHaveBeenCalled();
+  });
+
+  it("renders the delete account section with title, description, and button", () => {
+    renderAccountTab();
+
+    expect(
+      screen.getByRole("heading", { name: "Delete account" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Permanently delete your account and personal data after a 14-day grace period.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Delete account" }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens delete dialog and calls preview mutation on button click", async () => {
+    renderAccountTab();
+
+    const openButton = screen.getByRole("button", { name: "Delete account" });
+    fireEvent.click(openButton);
+
+    await waitFor(() => {
+      expect(mockPreviewMutateAsync).toHaveBeenCalledTimes(1);
+    });
+
+    expect(
+      screen.getByText(
+        "Deletion takes effect after 14 days. During this time, signing in is only to cancel.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("lists sole-member workspaces to be deleted when preview returns them", async () => {
+    mockPreviewMutateAsync.mockResolvedValueOnce({
+      sole_workspaces: [
+        { id: "ws-1", name: "Solo Workspace Alpha" },
+        { id: "ws-2", name: "Solo Workspace Beta" },
+      ],
+      scheduled_at: null,
+    });
+    renderAccountTab();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "The following workspaces where you are the only member will be deleted:",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Solo Workspace Alpha")).toBeInTheDocument();
+      expect(screen.getByText("Solo Workspace Beta")).toBeInTheDocument();
+    });
+  });
+
+  it("shows blocked view with workspace list and no confirm button when preview is blocked by sole_owner", async () => {
+    mockPreviewMutateAsync.mockRejectedValueOnce({
+      code: "sole_owner",
+      workspaces: [{ id: "ws-team", name: "Team Org", member_count: 5 }],
+    });
+    renderAccountTab();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "Cannot delete account" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "You are the only owner of workspaces with other members. Transfer ownership or delete these workspaces first:",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Team Org")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getAllByRole("button", { name: "Close" }).length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.queryByRole("button", { name: "Delete account" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows recent login required view and offers sign-out action", async () => {
+    mockPreviewMutateAsync.mockRejectedValueOnce({
+      code: "recent_login_required",
+    });
+    renderAccountTab();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "Sign-in required" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "To confirm account deletion, you must sign in again.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    const signOutBtn = screen.getByRole("button", { name: "Sign out" });
+    expect(signOutBtn).toBeInTheDocument();
+    fireEvent.click(signOutBtn);
+    expect(mockLogout).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables confirm button until typed email matches user email exactly", async () => {
+    renderAccountTab();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText(/To confirm, enter your email address/i),
+      ).toBeInTheDocument();
+    });
+
+    // In the dialog, the confirm button has name "Delete account"
+    const buttons = screen.getAllByRole("button", { name: "Delete account" });
+    const confirmButton = buttons[buttons.length - 1];
+    expect(confirmButton).toBeDisabled();
+
+    const input = screen.getByLabelText(/To confirm, enter your email address/i);
+    fireEvent.change(input, { target: { value: "wrong@example.com" } });
+    expect(confirmButton).toBeDisabled();
+
+    fireEvent.change(input, { target: { value: "jane@example.com" } });
+    expect(confirmButton).not.toBeDisabled();
+  });
+
+  it("requests deletion on confirm, displays scheduled date and signs out", async () => {
+    mockRequestMutateAsync.mockResolvedValueOnce({
+      scheduled_at: "2026-11-29T10:00:00Z",
+    });
+    renderAccountTab();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText(/To confirm, enter your email address/i),
+      ).toBeInTheDocument();
+    });
+
+    const input = screen.getByLabelText(/To confirm, enter your email address/i);
+    fireEvent.change(input, { target: { value: "jane@example.com" } });
+
+    const buttons = screen.getAllByRole("button", { name: "Delete account" });
+    const confirmButton = buttons[buttons.length - 1];
+    expect(confirmButton).toBeDefined();
+    fireEvent.click(confirmButton!);
+
+    await waitFor(() => {
+      expect(mockRequestMutateAsync).toHaveBeenCalledTimes(1);
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", {
+          name: "Account scheduled for deletion",
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/Your account will be deleted on/i),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/You have been signed out\./i)).toBeInTheDocument();
+    });
+
+    const signOutBtn = screen.getByRole("button", { name: "Sign out" });
+    fireEvent.click(signOutBtn);
+    expect(mockLogout).toHaveBeenCalledTimes(1);
+  });
+
+  it("handles recent_login_required during deletion request", async () => {
+    mockRequestMutateAsync.mockRejectedValueOnce({
+      code: "recent_login_required",
+    });
+    renderAccountTab();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText(/To confirm, enter your email address/i),
+      ).toBeInTheDocument();
+    });
+
+    const input = screen.getByLabelText(/To confirm, enter your email address/i);
+    fireEvent.change(input, { target: { value: "jane@example.com" } });
+
+    const buttons = screen.getAllByRole("button", { name: "Delete account" });
+    const confirmButton = buttons[buttons.length - 1];
+    expect(confirmButton).toBeDefined();
+    fireEvent.click(confirmButton!);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "Sign-in required" }),
+      ).toBeInTheDocument();
+    });
   });
 });

@@ -672,7 +672,29 @@
     "export_button": "Télécharger",
     "toast_export_success": "Données du compte téléchargées",
     "toast_export_rate_limited": "Les données du compte peuvent être téléchargées une fois par heure",
-    "toast_export_failed": "Échec du téléchargement des données du compte"
+    "toast_export_failed": "Échec du téléchargement des données du compte",
+    "section_delete": "Supprimer le compte",
+    "delete_account_title": "Supprimer le compte",
+    "delete_account_description": "Supprime définitivement votre compte et vos données personnelles après un délai de 14 jours.",
+    "delete_account_button": "Supprimer le compte",
+    "delete_account_dialog_title": "Supprimer le compte",
+    "delete_account_dialog_description": "La suppression prend effet après 14 jours. Pendant cette période, la connexion sert uniquement à annuler.",
+    "delete_account_preview_loading": "Vérification de l'état du compte...",
+    "delete_account_sole_workspaces_title": "Les espaces de travail suivants dont vous êtes le seul membre seront supprimés :",
+    "delete_account_sole_owner_title": "Impossible de supprimer le compte",
+    "delete_account_sole_owner_description": "Vous êtes le seul propriétaire d'espaces de travail avec d'autres membres. Transférez la propriété ou supprimez d'abord ces espaces de travail :",
+    "delete_account_close": "Fermer",
+    "delete_account_confirm_prompt": "Pour confirmer, saisissez votre adresse e-mail ({{email}}) :",
+    "delete_account_confirm_placeholder": "Saisissez votre e-mail",
+    "delete_account_cancel": "Annuler",
+    "delete_account_confirm": "Supprimer le compte",
+    "delete_account_deleting": "Suppression...",
+    "delete_account_recent_login_title": "Reconnexion requise",
+    "delete_account_recent_login_description": "Pour confirmer la suppression du compte, vous devez vous reconnecter.",
+    "delete_account_recent_login_sign_out": "Se déconnecter",
+    "delete_account_success_title": "Suppression du compte programmée",
+    "delete_account_success_description": "Votre compte sera supprimé le {{date}}. Vous avez été déconnecté.",
+    "delete_account_success_sign_out": "Se déconnecter"
   },
   "notifications": {
     "title": "Notifications de la boîte de réception",
@@ -1605,5 +1627,14 @@
     "terms": "Conditions d'utilisation",
     "privacy": "Politique de confidentialité",
     "accept": "Accepter"
+  },
+  "deletion_gate": {
+    "title": "Suppression du compte programmée",
+    "description": "La suppression de votre compte est prévue pour le {{date}}. Pendant cette attente, la connexion sert uniquement à annuler la suppression.",
+    "cancel_button": "Annuler la suppression",
+    "canceling_button": "Annulation...",
+    "sign_out_button": "Se déconnecter",
+    "cancel_success": "Suppression du compte annulée",
+    "cancel_failed": "Échec de l'annulation de la suppression du compte"
   }
 }

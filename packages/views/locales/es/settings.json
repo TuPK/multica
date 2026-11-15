@@ -672,7 +672,29 @@
     "export_button": "Descargar",
     "toast_export_success": "Datos de la cuenta descargados",
     "toast_export_rate_limited": "Los datos de la cuenta se pueden descargar una vez por hora",
-    "toast_export_failed": "Error al descargar los datos de la cuenta"
+    "toast_export_failed": "Error al descargar los datos de la cuenta",
+    "section_delete": "Eliminar cuenta",
+    "delete_account_title": "Eliminar cuenta",
+    "delete_account_description": "Elimina permanentemente tu cuenta y datos personales tras un periodo de gracia de 14 días.",
+    "delete_account_button": "Eliminar cuenta",
+    "delete_account_dialog_title": "Eliminar cuenta",
+    "delete_account_dialog_description": "La eliminación se aplicará tras 14 días. Durante este tiempo, iniciar sesión solo sirve para cancelar.",
+    "delete_account_preview_loading": "Comprobando el estado de la cuenta...",
+    "delete_account_sole_workspaces_title": "Se eliminarán los siguientes espacios de trabajo en los que eres el único miembro:",
+    "delete_account_sole_owner_title": "No se puede eliminar la cuenta",
+    "delete_account_sole_owner_description": "Eres el único propietario de espacios de trabajo con otros miembros. Transfiere la propiedad o elimina estos espacios de trabajo primero:",
+    "delete_account_close": "Cerrar",
+    "delete_account_confirm_prompt": "Para confirmar, introduce tu dirección de correo electrónico ({{email}}):",
+    "delete_account_confirm_placeholder": "Introduce tu correo",
+    "delete_account_cancel": "Cancelar",
+    "delete_account_confirm": "Eliminar cuenta",
+    "delete_account_deleting": "Eliminando...",
+    "delete_account_recent_login_title": "Inicio de sesión requerido",
+    "delete_account_recent_login_description": "Para confirmar la eliminación de la cuenta, debes iniciar sesión de nuevo.",
+    "delete_account_recent_login_sign_out": "Cerrar sesión",
+    "delete_account_success_title": "Cuenta programada para eliminación",
+    "delete_account_success_description": "Tu cuenta se eliminará el {{date}}. Se ha cerrado tu sesión.",
+    "delete_account_success_sign_out": "Cerrar sesión"
   },
   "notifications": {
     "title": "Notificaciones de la bandeja",
@@ -1605,5 +1627,14 @@
     "terms": "Términos del servicio",
     "privacy": "Política de privacidad",
     "accept": "Aceptar"
+  },
+  "deletion_gate": {
+    "title": "Cuenta programada para eliminación",
+    "description": "Tu cuenta está programada para eliminarse el {{date}}. Mientras esté pendiente, iniciar sesión solo sirve para cancelar la eliminación.",
+    "cancel_button": "Cancelar eliminación",
+    "canceling_button": "Cancelando...",
+    "sign_out_button": "Cerrar sesión",
+    "cancel_success": "Eliminación de la cuenta cancelada",
+    "cancel_failed": "Error al cancelar la eliminación de la cuenta"
   }
 }

@@ -667,7 +667,29 @@
     "export_button": "下载",
     "toast_export_success": "已下载账户数据",
     "toast_export_rate_limited": "账户数据每小时只能下载一次",
-    "toast_export_failed": "下载账户数据失败"
+    "toast_export_failed": "下载账户数据失败",
+    "section_delete": "删除账户",
+    "delete_account_title": "删除账户",
+    "delete_account_description": "在 14 天宽限期后永久删除你的账户和个人数据。",
+    "delete_account_button": "删除账户",
+    "delete_account_dialog_title": "删除账户",
+    "delete_account_dialog_description": "删除将在 14 天后生效。在此期间，登录仅用于取消删除。",
+    "delete_account_preview_loading": "正在检查账户状态...",
+    "delete_account_sole_workspaces_title": "你在其中作为唯一成员的以下工作区将被删除：",
+    "delete_account_sole_owner_title": "无法删除账户",
+    "delete_account_sole_owner_description": "你是包含其他成员的工作区的唯一所有者。请先转让所有权或删除这些工作区：",
+    "delete_account_close": "关闭",
+    "delete_account_confirm_prompt": "为确认操作，请输入你的邮箱地址（{{email}}）：",
+    "delete_account_confirm_placeholder": "输入你的邮箱",
+    "delete_account_cancel": "取消",
+    "delete_account_confirm": "删除账户",
+    "delete_account_deleting": "删除中...",
+    "delete_account_recent_login_title": "需要重新登录",
+    "delete_account_recent_login_description": "为确认删除账户，你必须重新登录。",
+    "delete_account_recent_login_sign_out": "退出登录",
+    "delete_account_success_title": "账户已安排删除",
+    "delete_account_success_description": "你的账户将于 {{date}} 删除。你已退出登录。",
+    "delete_account_success_sign_out": "退出登录"
   },
   "notifications": {
     "title": "收件箱通知",
@@ -1594,5 +1616,14 @@
     "terms": "服务条款",
     "privacy": "隐私政策",
     "accept": "同意"
+  },
+  "deletion_gate": {
+    "title": "账户已安排删除",
+    "description": "你的账户计划于 {{date}} 删除。待处理期间，登录仅用于取消删除。",
+    "cancel_button": "取消删除",
+    "canceling_button": "正在取消...",
+    "sign_out_button": "退出登录",
+    "cancel_success": "已取消账户删除",
+    "cancel_failed": "取消账户删除失败"
   }
 }

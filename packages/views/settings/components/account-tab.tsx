@@ -19,7 +19,13 @@ import { Loader2 } from "@multica/ui/icons";
 import { toast } from "sonner";
 import { useAuthStore } from "@multica/core/auth";
 import { api } from "@multica/core/api";
-import { downloadAccountExport, useRevokeAllSessions } from "@multica/core/account";
+import {
+  downloadAccountExport,
+  usePreviewAccountDeletion,
+  useRequestAccountDeletion,
+  useRevokeAllSessions,
+} from "@multica/core/account";
+import { useLogout } from "../../auth";
 import { saveBlob } from "../../governance/save-blob";
 import { securityEventsOptions } from "@multica/core/audit";
 import { AvatarUploadControl } from "../../common/avatar-upload-control";
@@ -62,6 +68,23 @@ export function AccountTab() {
   const [isExporting, setIsExporting] = useState(false);
   const revokeAllSessions = useRevokeAllSessions();
   const isRevoking = Boolean(revokeAllSessions?.isPending);
+
+  const logout = useLogout();
+  const previewAccountDeletion = usePreviewAccountDeletion();
+  const requestAccountDeletion = useRequestAccountDeletion();
+  const isDeleting = Boolean(requestAccountDeletion?.isPending);
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [soleWorkspaces, setSoleWorkspaces] = useState<Array<{ id: string; name: string }>>([]);
+  const [soleOwnerWorkspaces, setSoleOwnerWorkspaces] = useState<
+    Array<{ id: string; name: string; member_count?: number }>
+  >([]);
+  const [isSoleOwnerBlocked, setIsSoleOwnerBlocked] = useState(false);
+  const [isRecentLoginRequired, setIsRecentLoginRequired] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [confirmEmail, setConfirmEmail] = useState("");
+  const [deletionSuccessDate, setDeletionSuccessDate] = useState<string | null>(null);
 
   const securityEventsQuery = useQuery({
     ...securityEventsOptions(user?.id ?? "", 20),
@@ -133,6 +156,91 @@ export function AccountTab() {
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const formatDeletionDate = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat(locale, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(date);
+  };
+
+  const handleOpenDeleteDialog = async () => {
+    setDeleteDialogOpen(true);
+    setPreviewLoading(true);
+    setIsSoleOwnerBlocked(false);
+    setIsRecentLoginRequired(false);
+    setPreviewError(null);
+    setConfirmEmail("");
+    setDeletionSuccessDate(null);
+    setSoleWorkspaces([]);
+    setSoleOwnerWorkspaces([]);
+
+    try {
+      const res = await previewAccountDeletion.mutateAsync();
+      setSoleWorkspaces(res?.sole_workspaces ?? []);
+    } catch (error: unknown) {
+      const err = error as {
+        code?: string;
+        workspaces?: Array<{ id: string; name: string; member_count?: number }>;
+        message?: string;
+      };
+      if (err?.code === "sole_owner") {
+        setIsSoleOwnerBlocked(true);
+        setSoleOwnerWorkspaces(err.workspaces ?? []);
+      } else if (err?.code === "recent_login_required") {
+        setIsRecentLoginRequired(true);
+      } else {
+        setPreviewError(
+          err?.message || t(($) => $.account.delete_account_dialog_description),
+        );
+      }
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleDeleteOpenChange = (open: boolean) => {
+    if (!open && isDeleting) return;
+    if (!open && deletionSuccessDate) {
+      setDeleteDialogOpen(false);
+      logout();
+      return;
+    }
+    setDeleteDialogOpen(open);
+  };
+
+  const handleRequestDelete = async () => {
+    if (isDeleting || !user?.email || confirmEmail !== user.email) return;
+    try {
+      const res = await requestAccountDeletion.mutateAsync();
+      setDeletionSuccessDate(res.scheduled_at);
+    } catch (error: unknown) {
+      const err = error as {
+        code?: string;
+        workspaces?: Array<{ id: string; name: string; member_count?: number }>;
+        message?: string;
+      };
+      if (err?.code === "recent_login_required") {
+        setIsRecentLoginRequired(true);
+      } else if (err?.code === "sole_owner") {
+        setIsSoleOwnerBlocked(true);
+        setSoleOwnerWorkspaces(err.workspaces ?? []);
+      } else {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : t(($) => $.account.delete_account_dialog_description),
+        );
+      }
+    }
+  };
+
+  const handleSuccessSignOut = () => {
+    setDeleteDialogOpen(false);
+    logout();
   };
 
   useEffect(() => {
@@ -392,6 +500,223 @@ export function AccountTab() {
           )}
         </SettingsCard>
       </SettingsSection>
+
+      <SettingsSection
+        title={t(($) => $.account.section_delete)}
+        anchor="delete-account"
+      >
+        <SettingsCard>
+          <SettingsRow
+            anchor="delete-account"
+            label={
+              <span className="text-destructive">
+                {t(($) => $.account.delete_account_title)}
+              </span>
+            }
+            description={t(($) => $.account.delete_account_description)}
+          >
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleOpenDeleteDialog}
+            >
+              {t(($) => $.account.delete_account_button)}
+            </Button>
+          </SettingsRow>
+        </SettingsCard>
+      </SettingsSection>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={handleDeleteOpenChange}>
+        <DialogContent>
+          {previewLoading ? (
+            <div className="flex flex-col items-center justify-center py-6 gap-2">
+              <Loader2 className="size-6 animate-spin text-muted-foreground" />
+              <p className="text-caption text-muted-foreground">
+                {t(($) => $.account.delete_account_preview_loading)}
+              </p>
+            </div>
+          ) : deletionSuccessDate ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>
+                  {t(($) => $.account.delete_account_success_title)}
+                </DialogTitle>
+                <DialogDescription>
+                  {t(($) => $.account.delete_account_success_description, {
+                    date: formatDeletionDate(deletionSuccessDate),
+                  })}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button type="button" onClick={handleSuccessSignOut}>
+                  {t(($) => $.account.delete_account_success_sign_out)}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : isRecentLoginRequired ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>
+                  {t(($) => $.account.delete_account_recent_login_title)}
+                </DialogTitle>
+                <DialogDescription>
+                  {t(($) => $.account.delete_account_recent_login_description)}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <DialogClose
+                  render={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setDeleteDialogOpen(false)}
+                    />
+                  }
+                >
+                  {t(($) => $.account.delete_account_cancel)}
+                </DialogClose>
+                <Button type="button" variant="outline" onClick={logout}>
+                  {t(($) => $.account.delete_account_recent_login_sign_out)}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : isSoleOwnerBlocked ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>
+                  {t(($) => $.account.delete_account_sole_owner_title)}
+                </DialogTitle>
+                <DialogDescription>
+                  {t(($) => $.account.delete_account_sole_owner_description)}
+                </DialogDescription>
+              </DialogHeader>
+              {soleOwnerWorkspaces.length > 0 && (
+                <ul className="max-h-48 overflow-y-auto rounded-md border border-surface-border p-2 space-y-1 text-body">
+                  {soleOwnerWorkspaces.map((ws) => (
+                    <li key={ws.id} className="text-body font-medium">
+                      {ws.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <DialogFooter>
+                <DialogClose
+                  render={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setDeleteDialogOpen(false)}
+                    />
+                  }
+                >
+                  {t(($) => $.account.delete_account_close)}
+                </DialogClose>
+              </DialogFooter>
+            </>
+          ) : previewError ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>
+                  {t(($) => $.account.delete_account_dialog_title)}
+                </DialogTitle>
+                <DialogDescription className="text-destructive">
+                  {previewError}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <DialogClose
+                  render={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setDeleteDialogOpen(false)}
+                    />
+                  }
+                >
+                  {t(($) => $.account.delete_account_close)}
+                </DialogClose>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>
+                  {t(($) => $.account.delete_account_dialog_title)}
+                </DialogTitle>
+                <DialogDescription>
+                  {t(($) => $.account.delete_account_dialog_description)}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                {soleWorkspaces.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-body text-muted-foreground">
+                      {t(($) => $.account.delete_account_sole_workspaces_title)}
+                    </p>
+                    <ul className="max-h-40 overflow-y-auto rounded-md border border-surface-border p-2 space-y-1 text-body">
+                      {soleWorkspaces.map((ws) => (
+                        <li key={ws.id} className="font-medium">
+                          {ws.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="confirm-delete-email"
+                    className="text-caption font-medium text-foreground"
+                  >
+                    {t(($) => $.account.delete_account_confirm_prompt, {
+                      email: user?.email ?? "",
+                    })}
+                  </label>
+                  <Input
+                    id="confirm-delete-email"
+                    type="email"
+                    value={confirmEmail}
+                    onChange={(e) => setConfirmEmail(e.target.value)}
+                    placeholder={t(($) => $.account.delete_account_confirm_placeholder)}
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <DialogClose
+                  render={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isDeleting}
+                    />
+                  }
+                >
+                  {t(($) => $.account.delete_account_cancel)}
+                </DialogClose>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={handleRequestDelete}
+                  disabled={
+                    isDeleting ||
+                    !user?.email ||
+                    confirmEmail !== user.email
+                  }
+                  aria-busy={isDeleting || undefined}
+                >
+                  {isDeleting ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : null}
+                  {isDeleting
+                    ? t(($) => $.account.delete_account_deleting)
+                    : t(($) => $.account.delete_account_confirm)}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </SettingsTab>
   );
 }

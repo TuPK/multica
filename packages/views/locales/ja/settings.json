@@ -667,7 +667,29 @@
     "export_button": "ダウンロード",
     "toast_export_success": "アカウントデータをダウンロードしました",
     "toast_export_rate_limited": "アカウントデータは1時間に1回ダウンロードできます",
-    "toast_export_failed": "アカウントデータのダウンロードに失敗しました"
+    "toast_export_failed": "アカウントデータのダウンロードに失敗しました",
+    "section_delete": "アカウントの削除",
+    "delete_account_title": "アカウントの削除",
+    "delete_account_description": "14日間の猶予期間後、アカウントと個人データを完全に削除します。",
+    "delete_account_button": "アカウントの削除",
+    "delete_account_dialog_title": "アカウントの削除",
+    "delete_account_dialog_description": "削除は14日後に有効になります。この期間中は、サインインしてもキャンセルの操作のみ可能です。",
+    "delete_account_preview_loading": "アカウントの状態を確認中...",
+    "delete_account_sole_workspaces_title": "あなたが唯一のメンバーである以下のワークスペースが削除されます:",
+    "delete_account_sole_owner_title": "アカウントを削除できません",
+    "delete_account_sole_owner_description": "他のメンバーがいるワークスペースの唯一のオーナーです。先に所有権を譲渡するか、これらのワークスペースを削除してください:",
+    "delete_account_close": "閉じる",
+    "delete_account_confirm_prompt": "確認のため、メールアドレス ({{email}}) を入力してください:",
+    "delete_account_confirm_placeholder": "メールアドレスを入力",
+    "delete_account_cancel": "キャンセル",
+    "delete_account_confirm": "アカウントの削除",
+    "delete_account_deleting": "削除中...",
+    "delete_account_recent_login_title": "再サインインが必要です",
+    "delete_account_recent_login_description": "アカウントの削除を確認するには、再度サインインする必要があります。",
+    "delete_account_recent_login_sign_out": "サインアウト",
+    "delete_account_success_title": "アカウントの削除が予定されました",
+    "delete_account_success_description": "アカウントは {{date}} に削除されます。サインアウトしました。",
+    "delete_account_success_sign_out": "サインアウト"
   },
   "notifications": {
     "title": "インボックス通知",
@@ -1594,5 +1616,14 @@
     "terms": "利用規約",
     "privacy": "プライバシーポリシー",
     "accept": "同意する"
+  },
+  "deletion_gate": {
+    "title": "アカウントの削除が予定されました",
+    "description": "アカウントは {{date}} に削除される予定です。保留中は、削除のキャンセルのみサインインが可能です。",
+    "cancel_button": "削除をキャンセル",
+    "canceling_button": "キャンセル中...",
+    "sign_out_button": "サインアウト",
+    "cancel_success": "アカウントの削除をキャンセルしました",
+    "cancel_failed": "アカウント削除のキャンセルに失敗しました"
   }
 }

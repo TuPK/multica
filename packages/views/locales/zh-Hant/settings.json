@@ -667,7 +667,29 @@
     "export_button": "下載",
     "toast_export_success": "已下載帳戶資料",
     "toast_export_rate_limited": "帳戶資料每小時只能下載一次",
-    "toast_export_failed": "下載帳戶資料失敗"
+    "toast_export_failed": "下載帳戶資料失敗",
+    "section_delete": "刪除帳戶",
+    "delete_account_title": "刪除帳戶",
+    "delete_account_description": "在 14 天寬限期後永久刪除你的帳戶和個人資料。",
+    "delete_account_button": "刪除帳戶",
+    "delete_account_dialog_title": "刪除帳戶",
+    "delete_account_dialog_description": "刪除將在 14 天後生效。在此期間，登入僅用於取消刪除。",
+    "delete_account_preview_loading": "正在檢查帳戶狀態...",
+    "delete_account_sole_workspaces_title": "你在其中作為唯一成員的以下工作區將被刪除：",
+    "delete_account_sole_owner_title": "無法刪除帳戶",
+    "delete_account_sole_owner_description": "你是包含其他成員的工作區的唯一擁有者。請先轉讓擁有權或刪除這些工作區：",
+    "delete_account_close": "關閉",
+    "delete_account_confirm_prompt": "為確認操作，請輸入你的電子郵件地址（{{email}}）：",
+    "delete_account_confirm_placeholder": "輸入你的電子郵件",
+    "delete_account_cancel": "取消",
+    "delete_account_confirm": "刪除帳戶",
+    "delete_account_deleting": "刪除中...",
+    "delete_account_recent_login_title": "需要重新登入",
+    "delete_account_recent_login_description": "為確認刪除帳戶，你必須重新登入。",
+    "delete_account_recent_login_sign_out": "退出登入",
+    "delete_account_success_title": "帳戶已排程刪除",
+    "delete_account_success_description": "你的帳戶將於 {{date}} 刪除。你已退出登入。",
+    "delete_account_success_sign_out": "退出登入"
   },
   "notifications": {
     "title": "收件箱通知",
@@ -1594,5 +1616,14 @@
     "terms": "服務條款",
     "privacy": "隱私政策",
     "accept": "同意"
+  },
+  "deletion_gate": {
+    "title": "帳戶已排程刪除",
+    "description": "你的帳戶計劃於 {{date}} 刪除。待處理期間，登入僅用於取消刪除。",
+    "cancel_button": "取消刪除",
+    "canceling_button": "正在取消...",
+    "sign_out_button": "退出登入",
+    "cancel_success": "已取消帳戶刪除",
+    "cancel_failed": "取消帳戶刪除失敗"
   }
 }

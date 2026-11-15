@@ -672,7 +672,29 @@
     "export_button": "Download",
     "toast_export_success": "Account data downloaded",
     "toast_export_rate_limited": "Account data can be downloaded once an hour",
-    "toast_export_failed": "Failed to download account data"
+    "toast_export_failed": "Failed to download account data",
+    "section_delete": "Delete account",
+    "delete_account_title": "Delete account",
+    "delete_account_description": "Permanently delete your account and personal data after a 14-day grace period.",
+    "delete_account_button": "Delete account",
+    "delete_account_dialog_title": "Delete account",
+    "delete_account_dialog_description": "Deletion takes effect after 14 days. During this time, signing in is only to cancel.",
+    "delete_account_preview_loading": "Checking account status...",
+    "delete_account_sole_workspaces_title": "The following workspaces where you are the only member will be deleted:",
+    "delete_account_sole_owner_title": "Cannot delete account",
+    "delete_account_sole_owner_description": "You are the only owner of workspaces with other members. Transfer ownership or delete these workspaces first:",
+    "delete_account_close": "Close",
+    "delete_account_confirm_prompt": "To confirm, enter your email address ({{email}}):",
+    "delete_account_confirm_placeholder": "Enter your email",
+    "delete_account_cancel": "Cancel",
+    "delete_account_confirm": "Delete account",
+    "delete_account_deleting": "Deleting...",
+    "delete_account_recent_login_title": "Sign-in required",
+    "delete_account_recent_login_description": "To confirm account deletion, you must sign in again.",
+    "delete_account_recent_login_sign_out": "Sign out",
+    "delete_account_success_title": "Account scheduled for deletion",
+    "delete_account_success_description": "Your account will be deleted on {{date}}. You have been signed out.",
+    "delete_account_success_sign_out": "Sign out"
   },
   "notifications": {
     "title": "Inbox Notifications",
@@ -1605,5 +1627,14 @@
     "terms": "Terms of Service",
     "privacy": "Privacy Policy",
     "accept": "Accept"
+  },
+  "deletion_gate": {
+    "title": "Account scheduled for deletion",
+    "description": "Your account is scheduled to be deleted on {{date}}. While pending, signing in is only to cancel deletion.",
+    "cancel_button": "Cancel deletion",
+    "canceling_button": "Canceling...",
+    "sign_out_button": "Sign out",
+    "cancel_success": "Account deletion canceled",
+    "cancel_failed": "Failed to cancel account deletion"
   }
 }
