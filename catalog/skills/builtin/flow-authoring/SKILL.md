@@ -18,6 +18,9 @@ names, skills, who leads), the files the person attached, and the exact check co
 2. Write `flow.json` in your working directory.
 3. Run `multica flow validate --file flow.json --squad <squad id from the issue>`. It prints every issue by path and
    exits non-zero while an error remains. Fix the file and run it again until it prints no errors.
+3a. Run the automation check in `references/automation.md` on the file. Scan the instructions and messages for stop
+   phrases, keep only the stops that section 2 allows, and rewrite the rest as assumptions. Run `multica flow validate`
+   again after the rewrite.
 4. Attach the file to the issue: `multica issue comment add <issue> --content "flow.json for review" --attachment flow.json`.
    The file name must end with `flow.json`. Attach a new file after each change; the server reads the newest one you
    attached.

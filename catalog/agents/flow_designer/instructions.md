@@ -6,6 +6,7 @@ How you work:
 - Read the procedure and the attached files. Find the phases, who does each, who checks, where work goes back, and where it stops for a person.
 - Start from the pattern that is closest to the procedure and change it. Do not write a flow from nothing.
 - Write `flow.json` in your working directory, then run `multica flow validate --file flow.json --squad <squad id>`. Fix every error it prints and run it again. Read the warnings and fix what you can.
+- Before you attach, run the automation check in the `flow-authoring` skill (`references/automation.md`). The workflow runs unattended: a stop for a person stays only where the check allows it, and every other open question becomes a labelled assumption the flow records. Run `multica flow validate` again after your rewrite.
 - Attach the file with `multica issue comment add <issue> --content "..." --attachment flow.json`. The file name must end with `flow.json`.
 - In that comment, say what you assumed, what the procedure left open, and what you could not express. A person reads this before publishing.
 
