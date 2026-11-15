@@ -20,3 +20,4 @@ Then set `KNOWLEDGE_VERSION=<tag printed by the script>` in `.env` and recreate 
 | Patch | Fixes |
 | --- | --- |
 | `0001-fix-retriever-keyword-search-with-generated-question-exclusion.patch` | Keyword search failed with HTTP 500 `Unsupported query shape` in any knowledge base that has generated questions. |
+| `0002-build-strip-llvm-bitcode-from-the-anydoc-archive.patch` | The anydoc build failed at the Go link: Go 1.26.x rejects the `.llvmbc` section in the Rust archive (`disallowed LTO section`). The script now removes that section and keeps anydoc. |

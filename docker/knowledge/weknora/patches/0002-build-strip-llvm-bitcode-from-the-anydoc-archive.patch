@@ -1,0 +1,46 @@
+From bf4bb5692250436df20e42dd591b739268f616bb Mon Sep 17 00:00:00 2001
+From: TuPK <tupk@vnpt.vn>
+Date: Sun, 15 Nov 2026 13:53:54 +0700
+Subject: [PATCH] fix(build): strip LLVM sections from the anydoc archive
+
+Go 1.26.x cgo rejects an archive with an LLVM section in #cgo LDFLAGS
+(disallowed LTO section). The Rust std objects in the anydoc staticlib
+carry .llvmbc, .llvmcmd and .llvm_addrsig. Remove those non-loaded
+sections after cargo build; code and symbols are left as built.
+---
+ scripts/build-anydoc-lib.sh | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
+
+diff --git a/scripts/build-anydoc-lib.sh b/scripts/build-anydoc-lib.sh
+index 5f02e98..7333245 100755
+--- a/scripts/build-anydoc-lib.sh
++++ b/scripts/build-anydoc-lib.sh
+@@ -133,6 +133,25 @@ prepare_patched_anydoc
+ # resolver drift must fail the build rather than ship an unaudited tree.
+ cargo build --release --locked --manifest-path "$crate_dir/Cargo.toml" --target "$target"
+ 
++# Rust's bundled std objects carry LLVM sections (.llvmbc bitcode, .llvmcmd, .llvm_addrsig)
++# even with LTO off. Go 1.26.x cgo rejects an archive with an LLVM section in #cgo LDFLAGS
++# ("disallowed LTO section"), so drop every .llvm* section. They are non-loaded metadata;
++# the machine code and symbols are left as built.
++strip_llvm_bitcode() {
++  local archive=$1 tmp member name
++  tmp=$(mktemp -d)
++  (cd "$tmp" && ar x "$archive")
++  for member in "$tmp"/*.o; do
++    for name in $(readelf -SW "$member" | grep -oE '\] \.llvm[^ ]*' | sed 's/^\] //' | sort -u || true); do
++      objcopy --remove-section="$name" "$member"
++    done
++  done
++  rm -f "$archive"
++  ar rcs "$archive" "$tmp"/*.o
++  rm -rf "$tmp"
++}
++strip_llvm_bitcode "$crate_dir/target/$target/release/$lib_name"
++
+ dest="$crate_dir/lib/$lib_dir"
+ mkdir -p "$dest"
+ cp "$crate_dir/target/$target/release/$lib_name" "$dest/$lib_name"
+-- 
+2.43.0
+
