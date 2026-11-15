@@ -52,3 +52,21 @@ func TestConsoleCatalogActionsAreDefined(t *testing.T) {
 		}
 	}
 }
+
+// The billing actions are stored in audit_event.action, so a rename is a data
+// change.
+func TestBillingCatalogActionsAreDefined(t *testing.T) {
+	cases := map[string]string{
+		"billing.order_created": ActionBillingOrderCreated,
+		"billing.order_paid":    ActionBillingOrderPaid,
+		"billing.order_expired": ActionBillingOrderExpired,
+	}
+	for want, got := range cases {
+		if got == "" {
+			t.Errorf("%s: constant is empty", want)
+		}
+		if got != want {
+			t.Errorf("constant = %q, want %q", got, want)
+		}
+	}
+}

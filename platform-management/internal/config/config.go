@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/multica-ai/multica/platform-management/internal/billing"
 	"github.com/multica-ai/multica/platform-management/internal/trust"
 )
 
@@ -62,7 +63,16 @@ type Email struct {
 	SMTPEHLOName string
 }
 
+// Billing holds the order settings.
+type Billing struct {
+	// VATRate is BILLING_VAT_RATE; 0.10 when it is not set.
+	VATRate billing.Rate
+	// Bank is where the manual provider tells customers to transfer.
+	Bank billing.BankDetails
+}
+
 type Config struct {
+	Billing        Billing
 	DatabaseURL    string
 	RedisURL       string
 	AdminEmails    []string
@@ -181,10 +191,39 @@ func Load(getenv func(string) string) (Config, error) {
 		fail("PLATFORM_SECURE_COOKIES", "must be true or false")
 	}
 
+	cfg.Billing = loadBilling(get, fail)
+
 	if len(errs) > 0 {
 		return Config{}, errors.Join(errs...)
 	}
 	return cfg, nil
+}
+
+// loadBilling reads the VAT rate and the bank details. The manual provider is
+// the only provider in this release, so the bank details are always required.
+func loadBilling(get func(string) string, fail func(variable, reason string)) Billing {
+	b := Billing{VATRate: billing.DefaultVATRate}
+	if raw := get("BILLING_VAT_RATE"); raw != "" {
+		rate, err := billing.ParseRate(raw)
+		if err != nil {
+			fail("BILLING_VAT_RATE", err.Error())
+		} else {
+			b.VATRate = rate
+		}
+	}
+	bankField := func(name string) string {
+		v := get(name)
+		if v == "" {
+			fail(name, "is required for the manual payment provider")
+		}
+		return v
+	}
+	b.Bank = billing.BankDetails{
+		AccountName:   bankField("BILLING_BANK_ACCOUNT_NAME"),
+		AccountNumber: bankField("BILLING_BANK_ACCOUNT_NUMBER"),
+		BankName:      bankField("BILLING_BANK_NAME"),
+	}
+	return b
 }
 
 func loadEmail(get func(string) string, getenv func(string) string, fail func(variable, reason string)) Email {

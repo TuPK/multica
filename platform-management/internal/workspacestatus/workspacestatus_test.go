@@ -312,3 +312,44 @@ func TestSetWritesTheActorLabelToTheAuditRow(t *testing.T) {
 		t.Fatalf("audit rows = %+v", f.tx.audits)
 	}
 }
+
+func TestSetInTxRunsInTheCallersTransaction(t *testing.T) {
+	var log []string
+	tx := &fakeTx{log: &log, cur: workspacestate.Record{Status: workspacestate.ReadOnly}, found: true}
+	changed, err := SetInTx(context.Background(), tx, Change{
+		WorkspaceID: wsID, Status: workspacestate.Active, Reason: "payment", ChangedBy: staffID,
+	})
+	if err != nil || !changed {
+		t.Fatalf("SetInTx = %v, %v", changed, err)
+	}
+	if got := strings.Join(log, ","); got != "current "+wsID+",write,audit" {
+		t.Fatalf("log = %s; SetInTx must not begin, commit or touch the cache", got)
+	}
+	if len(tx.audits) != 1 || tx.audits[0].Action != AuditAction {
+		t.Fatalf("audits = %+v", tx.audits)
+	}
+}
+
+func TestSetInTxSameStateWritesNothing(t *testing.T) {
+	var log []string
+	tx := &fakeTx{log: &log}
+	changed, err := SetInTx(context.Background(), tx, Change{WorkspaceID: wsID, Status: workspacestate.Active, ChangedBy: staffID})
+	if err != nil || changed || len(tx.written) != 0 || len(tx.audits) != 0 {
+		t.Fatalf("changed=%v err=%v written=%v audits=%v", changed, err, tx.written, tx.audits)
+	}
+}
+
+func TestSetInTxValidatesAndReturnsErrors(t *testing.T) {
+	var log []string
+	tx := &fakeTx{log: &log, auditErr: errors.New("boom"), cur: workspacestate.Record{Status: workspacestate.ReadOnly}, found: true}
+	if _, err := SetInTx(context.Background(), tx, Change{WorkspaceID: "x", Status: workspacestate.Active, ChangedBy: staffID}); err == nil {
+		t.Error("an invalid workspace id was accepted")
+	}
+	if _, err := SetInTx(context.Background(), tx, Change{WorkspaceID: wsID, Status: "nope", ChangedBy: staffID}); err == nil {
+		t.Error("an unknown status was accepted")
+	}
+	_, err := SetInTx(context.Background(), tx, Change{WorkspaceID: wsID, Status: workspacestate.Active, ChangedBy: staffID})
+	if err == nil || !errors.Is(err, tx.auditErr) {
+		t.Errorf("audit failure err = %v, want it wrapped", err)
+	}
+}

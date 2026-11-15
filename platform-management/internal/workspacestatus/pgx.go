@@ -32,13 +32,16 @@ func (r *PgxRunner) InTx(ctx context.Context, fn func(Tx) error) error {
 		return fmt.Errorf("begin: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }() // a no-op once committed
-	if err := fn(&pgxTx{q: db.New(tx)}); err != nil {
+	if err := fn(NewTx(tx)); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
 }
 
 type pgxTx struct{ q *db.Queries }
+
+// NewTx returns the Tx over a transaction the caller began, for SetInTx.
+func NewTx(dbtx db.DBTX) Tx { return &pgxTx{q: db.New(dbtx)} }
 
 func parseUUID(s string) (pgtype.UUID, error) {
 	var u pgtype.UUID

@@ -5,6 +5,8 @@ import (
 	"net/netip"
 	"strings"
 	"testing"
+
+	"github.com/multica-ai/multica/platform-management/internal/billing"
 )
 
 const goodSecret = "0123456789abcdef0123456789abcdef" // 32 bytes
@@ -17,6 +19,10 @@ func resendEnv() map[string]string {
 		"PLATFORM_SESSION_SECRET": goodSecret,
 		"RESEND_API_KEY":          "re_test",
 		"RESEND_FROM_EMAIL":       "platform@example.com",
+
+		"BILLING_BANK_ACCOUNT_NAME":   "CONG TY TNHH MULTICA",
+		"BILLING_BANK_ACCOUNT_NUMBER": "0123456789",
+		"BILLING_BANK_NAME":           "Vietcombank",
 	}
 }
 
@@ -496,6 +502,75 @@ func TestLoadInvalidTrustedCIDRStopsTheStart(t *testing.T) {
 		}
 		if vars := variables(err); len(vars) != 1 || vars[0] != "PLATFORM_TRUSTED_CIDRS" {
 			t.Errorf("PLATFORM_TRUSTED_CIDRS=%q: variables = %v", raw, vars)
+		}
+	}
+}
+
+func TestBillingDefaults(t *testing.T) {
+	cfg, err := load(resendEnv())
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got, _, err := billing.WithVAT(1000, cfg.Billing.VATRate); err != nil || got != 100 {
+		t.Fatalf("default VAT on 1000 = %d, %v; want 100 (10%%)", got, err)
+	}
+	want := billing.BankDetails{AccountName: "CONG TY TNHH MULTICA", AccountNumber: "0123456789", BankName: "Vietcombank"}
+	if cfg.Billing.Bank != want {
+		t.Fatalf("bank = %+v, want %+v", cfg.Billing.Bank, want)
+	}
+}
+
+func TestBillingVATRateIsRead(t *testing.T) {
+	env := resendEnv()
+	env["BILLING_VAT_RATE"] = " 0.08 "
+	cfg, err := load(env)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got, _, _ := billing.WithVAT(1000, cfg.Billing.VATRate); got != 80 {
+		t.Fatalf("VAT on 1000 at 0.08 = %d, want 80", got)
+	}
+	env["BILLING_VAT_RATE"] = "0"
+	cfg, err = load(env)
+	if err != nil {
+		t.Fatalf("Load with rate 0: %v", err)
+	}
+	if got, _, _ := billing.WithVAT(1000, cfg.Billing.VATRate); got != 0 {
+		t.Fatalf("VAT at rate 0 = %d, want 0", got)
+	}
+}
+
+func TestInvalidVATRateStopsTheStart(t *testing.T) {
+	for _, bad := range []string{"abc", "-0.1", "1.5", "10%", "0.1234567", "1e-1"} {
+		env := resendEnv()
+		env["BILLING_VAT_RATE"] = bad
+		_, err := load(env)
+		if err == nil {
+			t.Errorf("BILLING_VAT_RATE=%q: Load succeeded", bad)
+			continue
+		}
+		if vs := variables(err); len(vs) != 1 || vs[0] != "BILLING_VAT_RATE" {
+			t.Errorf("BILLING_VAT_RATE=%q: variables = %v", bad, vs)
+		}
+		if strings.Contains(err.Error(), bad) {
+			t.Errorf("error repeats the value %q: %v", bad, err)
+		}
+	}
+}
+
+func TestMissingBankDetailsStopTheStart(t *testing.T) {
+	for _, name := range []string{"BILLING_BANK_ACCOUNT_NAME", "BILLING_BANK_ACCOUNT_NUMBER", "BILLING_BANK_NAME"} {
+		for _, value := range []string{"", "   "} {
+			env := resendEnv()
+			env[name] = value
+			_, err := load(env)
+			if err == nil {
+				t.Errorf("%s=%q: Load succeeded", name, value)
+				continue
+			}
+			if vs := variables(err); len(vs) != 1 || vs[0] != name {
+				t.Errorf("%s=%q: variables = %v", name, value, vs)
+			}
 		}
 	}
 }

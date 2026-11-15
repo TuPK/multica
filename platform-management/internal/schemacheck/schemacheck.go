@@ -41,6 +41,12 @@ var Required = []string{
 	"674_platform_seat_operation",           // platform_seat_operation: table
 	"675_platform_seat_operation_uidx",      // platform_seat_operation: unique index on workspace_id, operation_token
 	"676_platform_seat_operation_state_idx", // platform_seat_operation: index on workspace_id, state
+	"677_billing_order",                     // billing_order: table
+	"678_billing_order_id_uidx",             // billing_order: unique index on id
+	"679_billing_order_idem_uidx",           // billing_order: partial unique index on workspace_id, idempotency_key
+	"680_billing_order_transfer_uidx",       // billing_order: unique index on transfer_code
+	"681_billing_order_status_idx",          // billing_order: index on status, created_at
+	"682_billing_order_workspace_idx",       // billing_order: index on workspace_id, created_at
 	"686_workspace_subscription_status_idx", // workspace_subscription: index on status, current_period_end
 	"688_platform_note_id_uidx",             // platform_note: unique index on id
 }

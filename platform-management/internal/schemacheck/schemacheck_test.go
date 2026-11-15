@@ -235,3 +235,18 @@ func TestRequiredIncludesSeatOperationMigrations(t *testing.T) {
 		}
 	}
 }
+
+func TestRequiredCoversTheBillingOrderMigrations(t *testing.T) {
+	for _, v := range []string{
+		"677_billing_order",
+		"678_billing_order_id_uidx",
+		"679_billing_order_idem_uidx",
+		"680_billing_order_transfer_uidx",
+		"681_billing_order_status_idx",
+		"682_billing_order_workspace_idx",
+	} {
+		if !slices.Contains(Required, v) {
+			t.Errorf("Required lacks %s", v)
+		}
+	}
+}

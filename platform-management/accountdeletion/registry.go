@@ -41,6 +41,7 @@ var Columns = []Column{
 	{"approval_policy", "created_by", ActionKeep, refReason},
 	{"autopilot_collaborator", "user_id", ActionDelete, "job removes the rows"},
 	{"autopilot_subscriber", "user_id", ActionDelete, "removed with the membership, or with the workspace"},
+	{"billing_order", "created_by", ActionKeep, "a financial record that must outlive the user; it is the invoice basis"},
 	{"budget", "created_by", ActionKeep, refReason},
 	{"channel_chat_context_generation", "initiator_user_id", ActionKeep, refReason},
 	{"channel_installation", "installer_user_id", ActionKeep, refReason},

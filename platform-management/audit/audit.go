@@ -50,6 +50,13 @@ const (
 	ActionPlanChanged            = "plan.changed"
 )
 
+// Billing actions (spec 5.14): written when an order is created, paid, or expires.
+const (
+	ActionBillingOrderCreated = "billing.order_created"
+	ActionBillingOrderPaid    = "billing.order_paid"
+	ActionBillingOrderExpired = "billing.order_expired"
+)
+
 // Actor types.
 const (
 	ActorMember = "member"
