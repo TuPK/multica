@@ -1,7 +1,11 @@
 import type { ZodType } from "zod";
 import {
+  AcceptConsentsResponseSchema,
+  EMPTY_ACCEPT_CONSENTS_RESPONSE,
   EMPTY_REVOKE_ALL_SESSIONS_RESPONSE,
   RevokeAllSessionsResponseSchema,
+  type AcceptConsentItem,
+  type AcceptConsentsResponse,
   type RevokeAllSessionsResponse,
 } from "../account/schema";
 import { AuditEventPageSchema, EMPTY_AUDIT_EVENT_PAGE, type AuditEventPage } from "../audit/schema";
@@ -1568,6 +1572,26 @@ export class ApiClient {
       EMPTY_REVOKE_ALL_SESSIONS_RESPONSE,
       { endpoint: "POST /api/me/sessions/revoke-all" },
     );
+  }
+
+  /** Record acceptance of legal documents; answers with what is still outstanding. */
+  async acceptConsents(documents: AcceptConsentItem[]): Promise<AcceptConsentsResponse> {
+    const raw = await this.fetch<unknown>("/api/me/consents", {
+      method: "POST",
+      body: JSON.stringify({ documents }),
+    });
+    return parseWithFallback<AcceptConsentsResponse>(
+      raw,
+      AcceptConsentsResponseSchema,
+      EMPTY_ACCEPT_CONSENTS_RESPONSE,
+      { endpoint: "POST /api/me/consents" },
+    );
+  }
+
+  /** The account export file. At most one per hour; a second call is a 429. */
+  async exportAccount(): Promise<Blob> {
+    const res = await this.fetchRaw("/api/me/export");
+    return res.blob();
   }
 
   /** Owner/admin only. Newest first; `cursor` comes from the previous page. */

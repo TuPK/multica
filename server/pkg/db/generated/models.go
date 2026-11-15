@@ -2624,6 +2624,14 @@ type UserComposioConnection struct {
 	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
 }
 
+type UserConsent struct {
+	UserID     pgtype.UUID        `json:"user_id"`
+	Document   string             `json:"document"`
+	Version    string             `json:"version"`
+	AcceptedAt pgtype.Timestamptz `json:"accepted_at"`
+	Ip         string             `json:"ip"`
+}
+
 type VcsCommitStatus struct {
 	ConnectionID pgtype.UUID        `json:"connection_id"`
 	Sha          string             `json:"sha"`

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ConsentRequiredSchema } from "../account/schema";
 import { normalizeHubSourceType } from "../hub/items";
 import type {
   HubItemMeta,
@@ -3374,6 +3375,7 @@ export const UserSchema = z.object({
   // No default: absence is the "server cannot track" signal. A malformed
   // value degrades to that state instead of discarding the whole user.
   whats_new_seen_version: z.string().nullable().optional().catch(undefined),
+  consent_required: ConsentRequiredSchema,
   created_at: z.string().default(""),
   updated_at: z.string().default(""),
 }).loose();

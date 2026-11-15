@@ -3,10 +3,14 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useRevokeAllSessions } from "./mutations";
+import { useAcceptConsents, useRevokeAllSessions } from "./mutations";
 
-const api = vi.hoisted(() => ({ revokeAllSessions: vi.fn() }));
-const authState = vi.hoisted(() => ({ adoptSessionToken: vi.fn() }));
+const api = vi.hoisted(() => ({ revokeAllSessions: vi.fn(), acceptConsents: vi.fn() }));
+const authState = vi.hoisted(() => ({
+  adoptSessionToken: vi.fn(),
+  user: null as unknown,
+  setUser: vi.fn(),
+}));
 
 vi.mock("../api", () => ({ api }));
 vi.mock("../auth", () => ({ useAuthStore: { getState: () => authState } }));
@@ -45,5 +49,37 @@ describe("useRevokeAllSessions", () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(authState.adoptSessionToken).not.toHaveBeenCalled();
+  });
+});
+
+describe("useAcceptConsents", () => {
+  let queryClient: QueryClient;
+  const docs = { documents: [{ document: "terms", version: "2" }] };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authState.user = { id: "u1", consent_required: [{ document: "terms", version: "2", url: "" }] };
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  });
+
+  it("clears the outstanding documents on the signed-in user", async () => {
+    api.acceptConsents.mockResolvedValue({ consent_required: [] });
+    const { result } = renderHook(() => useAcceptConsents(), { wrapper: wrapper(queryClient) });
+
+    result.current.mutate(docs);
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.acceptConsents).toHaveBeenCalledWith(docs.documents);
+    expect(authState.setUser).toHaveBeenCalledWith({ id: "u1", consent_required: [] });
+  });
+
+  it("leaves the user untouched on a 409", async () => {
+    api.acceptConsents.mockRejectedValue(new Error("consent_version_mismatch"));
+    const { result } = renderHook(() => useAcceptConsents(), { wrapper: wrapper(queryClient) });
+
+    result.current.mutate(docs);
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(authState.setUser).not.toHaveBeenCalled();
   });
 });

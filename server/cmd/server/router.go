@@ -1551,6 +1551,10 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	patCache := auth.NewPATCache(rdb)
 	daemonTokenCache := auth.NewDaemonTokenCache(rdb)
 	accountGuard := auth.NewAccountGuard(queries, rdb)
+	accountExportLimiter := handler.NewMemoryAccountExportLimiter()
+	if rdb != nil {
+		accountExportLimiter = handler.NewRedisAccountExportLimiter(rdb)
+	}
 	h.PATCache = patCache
 	h.DaemonTokenCache = daemonTokenCache
 	h.MembershipCache = auth.NewMembershipCache(rdb)
@@ -1856,6 +1860,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 		// credential must not sign its owner out of every device.
 		r.With(handler.RequireHumanActor).Post("/api/me/sessions/revoke-all", h.RevokeAllSessions(accountGuard))
 		r.With(handler.RequireHumanActor).Get("/api/me/security-events", h.ListMySecurityEvents)
+		r.With(handler.RequireHumanActor).Post("/api/me/consents", h.AcceptConsents)
+		r.With(handler.RequireHumanActor).Get("/api/me/export", h.ExportMyAccount(accountExportLimiter))
 		// Credential minting is human-only (MUL-8154): an agent task token
 		// (mat_) or cloud-node PAT (mcn_) authenticates as its owner, so
 		// without this guard a prompt-injected agent could trade its scoped,

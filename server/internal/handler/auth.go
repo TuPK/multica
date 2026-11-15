@@ -20,6 +20,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/platform-management/consent"
 	"github.com/multica-ai/multica/server/internal/analytics"
 	"github.com/multica-ai/multica/server/internal/auth"
 	"github.com/multica-ai/multica/server/internal/logger"
@@ -79,6 +80,8 @@ type UserResponse struct {
 	WhatsNewSeenVersion *string `json:"whats_new_seen_version"`
 	CreatedAt           string  `json:"created_at"`
 	UpdatedAt           string  `json:"updated_at"`
+	// ConsentRequired is set by GET /api/me only, and omitted when empty.
+	ConsentRequired []consent.Required `json:"consent_required,omitempty"`
 }
 
 // MaxProfileDescriptionLen caps the user-supplied profile_description body.
@@ -511,7 +514,14 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, h.userToResponse(user))
+	resp := h.userToResponse(user)
+	pending, err := pendingConsents(r.Context(), h.Queries, user.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load consent state")
+		return
+	}
+	resp.ConsentRequired = pending
+	writeJSON(w, http.StatusOK, resp)
 }
 
 type UpdateMeRequest struct {

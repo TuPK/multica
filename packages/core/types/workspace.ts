@@ -89,8 +89,16 @@ export interface User {
    * so the client must not auto-open the card (it would reappear forever).
    */
   whats_new_seen_version?: string | null;
+  /** Legal documents the user has not accepted at their current version. */
+  consent_required?: ConsentRequirement[];
   created_at: string;
   updated_at: string;
+}
+
+export interface ConsentRequirement {
+  document: string;
+  version: string;
+  url: string;
 }
 
 export interface MemberWithUser {

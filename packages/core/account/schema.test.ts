@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseWithFallback } from "../api/schema";
+import { EMPTY_USER, UserSchema } from "../api/schemas";
 import {
   EMPTY_REVOKE_ALL_SESSIONS_RESPONSE,
   RevokeAllSessionsResponseSchema,
@@ -40,5 +41,32 @@ describe("RevokeAllSessionsResponseSchema", () => {
 
   it("never invents a token for a malformed body", () => {
     expect(parse({ token: false }).token).toBe("");
+  });
+});
+
+describe("consent_required on the user", () => {
+  const base = { id: "u1", name: "A", email: "a@x.test" };
+
+  it("defaults to an empty array when the field is absent", () => {
+    const user = parseWithFallback(base, UserSchema, EMPTY_USER, { endpoint: "GET /api/me" });
+    expect(user.consent_required).toEqual([]);
+  });
+
+  it("keeps the required documents the server lists", () => {
+    const user = parseWithFallback(
+      { ...base, consent_required: [{ document: "terms", version: "2", url: "https://x.test/t" }] },
+      UserSchema,
+      EMPTY_USER,
+      { endpoint: "GET /api/me" },
+    );
+    expect(user.consent_required).toEqual([{ document: "terms", version: "2", url: "https://x.test/t" }]);
+  });
+
+  it("degrades a malformed field to empty without discarding the user", () => {
+    const user = parseWithFallback({ ...base, consent_required: "yes" }, UserSchema, EMPTY_USER, {
+      endpoint: "GET /api/me",
+    });
+    expect(user.id).toBe("u1");
+    expect(user.consent_required).toEqual([]);
   });
 });
