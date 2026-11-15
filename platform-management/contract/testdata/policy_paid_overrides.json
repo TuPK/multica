@@ -5,6 +5,21 @@
   "valid_until": "2026-08-15T10:31:15Z",
   "valid_for_seconds": 30,
   "gates": {
+    "agents": {
+      "action": "enforce",
+      "limit": 5
+    },
+    "api_rate_per_minute": {
+      "action": "enforce",
+      "limit": 1200
+    },
+    "audit_export": {
+      "action": "off"
+    },
+    "audit_retention_days": {
+      "action": "enforce",
+      "limit": 180
+    },
     "autopilot_runs": {
       "action": "enforce",
       "limit": 3000,
@@ -17,6 +32,26 @@
     },
     "issue_count": {
       "action": "off"
+    },
+    "runtimes": {
+      "action": "enforce",
+      "limit": 20
+    },
+    "sso": {
+      "action": "enforce",
+      "limit": 0
+    },
+    "storage_bytes": {
+      "action": "enforce",
+      "limit": 21474836480
+    },
+    "viewer_role": {
+      "action": "enforce",
+      "limit": 0
+    },
+    "workspace_policies": {
+      "action": "enforce",
+      "limit": 0
     }
   }
 }

@@ -91,17 +91,40 @@ func Build(in Inputs, now time.Time) Policy {
 		runs.Notifications = &Notifications{OnRejection: NotifyFirstRejectionPerPeriod}
 	}
 
+	gates := map[string]Gate{
+		plan.GateIssueCount:    issues,
+		plan.GateAutopilotRuns: runs,
+	}
+	// The gates of spec 5.7. A limit the plan leaves out is unlimited, so off.
+	for _, name := range planLimitGates {
+		gates[name] = gate(plan.EffectiveLimit(in.Plan.Limits, in.Overrides, name))
+	}
+	// A feature is a gate with no count: included is off (allowed), not
+	// included is enforce 0 (refused). Overrides carry limits only.
+	for _, name := range plan.FeatureKeys {
+		if in.Plan.Features[name] {
+			gates[name] = Gate{Action: ActionOff}
+			continue
+		}
+		zero := int64(0)
+		gates[name] = Gate{Action: ActionEnforce, Limit: &zero}
+	}
+
 	return Policy{
 		SchemaVersion:       SchemaVersion,
 		PolicyRevision:      PolicyRevision,
 		SubscriptionVersion: in.Version,
 		ValidUntil:          now.Truncate(time.Second).Add(ValidFor),
 		ValidForSeconds:     int64(ValidFor / time.Second),
-		Gates: map[string]Gate{
-			plan.GateIssueCount:    issues,
-			plan.GateAutopilotRuns: runs,
-		},
+		Gates:               gates,
 	}
+}
+
+// planLimitGates are the limit gates other than the two the core has counted
+// since the first release: the three resource quotas and the two plan values.
+var planLimitGates = []string{
+	plan.GateAgents, plan.GateRuntimes, plan.GateStorageBytes,
+	plan.GateAPIRatePerMinute, plan.GateAuditRetentionDay,
 }
 
 // gate turns an effective limit into an instruction: no limit is off.

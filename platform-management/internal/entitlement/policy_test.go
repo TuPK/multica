@@ -66,8 +66,11 @@ func TestBuildFreeWorkspace(t *testing.T) {
 	if runs.Action != "enforce" || runs.Limit == nil || *runs.Limit != 50 {
 		t.Errorf("autopilot_runs = %+v, want enforce 50", runs)
 	}
-	if len(p.Gates) != 2 {
-		t.Errorf("gates = %d, want only the two the client reads", len(p.Gates))
+	if len(p.Gates) != len(wantGateNames) {
+		t.Errorf("gates = %d, want %d: %v", len(p.Gates), len(wantGateNames), p.Gates)
+	}
+	for _, name := range wantGateNames {
+		gateOf(t, p, name)
 	}
 }
 
@@ -94,7 +97,7 @@ func TestBuildPaidWorkspaceWithOverrides(t *testing.T) {
 func TestBuildUsesThePlanWhereThereIsNoOverride(t *testing.T) {
 	p := Build(Inputs{
 		Plan:            catalogue(t)["pro"],
-		Overrides:       plan.Limits{"agents": i64(5)}, // a gate the policy does not carry
+		Overrides:       plan.Limits{"agents": i64(5)}, // a gate other than the two asserted below
 		WorkspaceStatus: "active",
 	}, now)
 	if g := gateOf(t, p, "autopilot_runs"); *g.Limit != 2000 {
@@ -280,5 +283,154 @@ func TestPolicyWireFieldNames(t *testing.T) {
 		t.Errorf("valid_until = %s, want a non-empty RFC 3339 string", top["valid_until"])
 	} else if _, err := time.Parse(time.RFC3339, validUntil); err != nil {
 		t.Errorf("valid_until %q is not RFC 3339: %v", validUntil, err)
+	}
+}
+
+// wantGateNames is every gate the policy carries: the two counted by the core
+// since the first release, the three resource gates of spec 5.7, the two plan
+// values, and the four feature flags.
+var wantGateNames = []string{
+	"issue_count", "autopilot_runs",
+	"agents", "runtimes", "storage_bytes",
+	"api_rate_per_minute", "audit_retention_days",
+	"sso", "workspace_policies", "viewer_role", "audit_export",
+}
+
+// A limit gate takes the plan's value, as an enforce gate; a plan value of
+// "unlimited" is an off gate (spec 5.7).
+func TestBuildLimitGatesTakeThePlansValue(t *testing.T) {
+	for key, want := range map[string]map[string]int64{
+		"free":     {"agents": 3, "runtimes": 2, "storage_bytes": 1 << 30, "api_rate_per_minute": 300, "audit_retention_days": 30},
+		"pro":      {"agents": 30, "runtimes": 20, "storage_bytes": 20 << 30, "api_rate_per_minute": 1200, "audit_retention_days": 180},
+		"business": {"agents": 200, "runtimes": 100, "storage_bytes": 200 << 30, "api_rate_per_minute": 3000, "audit_retention_days": 365},
+	} {
+		p := Build(Inputs{Plan: catalogue(t)[key], WorkspaceStatus: "active"}, now)
+		for gate, limit := range want {
+			g := gateOf(t, p, gate)
+			if g.Action != "enforce" || g.Limit == nil || *g.Limit != limit {
+				t.Errorf("%s %s = %+v, want enforce %d", key, gate, g, limit)
+			}
+			if g.PeriodStart != nil || g.PeriodEnd != nil || g.ResetAt != nil || g.Notifications != nil {
+				t.Errorf("%s %s = %+v, want no period and no notice", key, gate, g)
+			}
+		}
+	}
+}
+
+// A gate the plan leaves out has no limit, so it is off.
+func TestBuildGateMissingFromThePlanIsOff(t *testing.T) {
+	bare := plan.Plan{Key: "bare", Limits: plan.Limits{"issue_count": i64(10)}, Features: map[string]bool{}}
+	p := Build(Inputs{Plan: bare, WorkspaceStatus: "active"}, now)
+	for _, name := range []string{"agents", "runtimes", "storage_bytes", "api_rate_per_minute", "audit_retention_days"} {
+		if g := gateOf(t, p, name); g.Action != "off" || g.Limit != nil {
+			t.Errorf("%s = %+v, want off with no limit", name, g)
+		}
+	}
+
+	// An explicit null in the plan is the same: unlimited.
+	pro := catalogue(t)["pro"]
+	pro.Limits = plan.Limits{"agents": nil}
+	if g := gateOf(t, Build(Inputs{Plan: pro, WorkspaceStatus: "active"}, now), "agents"); g.Action != "off" || g.Limit != nil {
+		t.Errorf("agents = %+v, want off", g)
+	}
+}
+
+// An override replaces the plan's limit, and an empty one lifts it.
+func TestBuildOverrideReplacesAResourceLimit(t *testing.T) {
+	p := Build(Inputs{
+		Plan: catalogue(t)["free"],
+		Overrides: plan.Limits{
+			"agents":        i64(10),
+			"runtimes":      nil,
+			"storage_bytes": i64(0),
+		},
+		WorkspaceStatus: "active",
+	}, now)
+	if g := gateOf(t, p, "agents"); g.Action != "enforce" || *g.Limit != 10 {
+		t.Errorf("agents = %+v, want the override 10 over the plan's 3", g)
+	}
+	if g := gateOf(t, p, "runtimes"); g.Action != "off" || g.Limit != nil {
+		t.Errorf("runtimes = %+v, want the empty override to lift the limit", g)
+	}
+	if g := gateOf(t, p, "storage_bytes"); g.Action != "enforce" || g.Limit == nil || *g.Limit != 0 {
+		t.Errorf("storage_bytes = %+v, want an override of 0 to enforce 0", g)
+	}
+	if g := gateOf(t, p, "api_rate_per_minute"); *g.Limit != 300 {
+		t.Errorf("api_rate_per_minute = %+v, want the plan's 300, which no override touched", g)
+	}
+}
+
+// A flag that is on is off (allowed); a flag that is off is enforce 0 (refused).
+func TestBuildFeatureFlags(t *testing.T) {
+	flags := []string{"sso", "workspace_policies", "viewer_role", "audit_export"}
+	cases := map[string]map[string]bool{
+		"free":     {"audit_export": false, "sso": false, "workspace_policies": false, "viewer_role": false},
+		"pro":      {"audit_export": true, "sso": false, "workspace_policies": false, "viewer_role": false},
+		"business": {"audit_export": true, "sso": true, "workspace_policies": true, "viewer_role": true},
+	}
+	for key, want := range cases {
+		p := Build(Inputs{Plan: catalogue(t)[key], WorkspaceStatus: "active"}, now)
+		for _, f := range flags {
+			g := gateOf(t, p, f)
+			if want[f] {
+				if g.Action != "off" || g.Limit != nil {
+					t.Errorf("%s %s is on, gate = %+v, want off", key, f, g)
+				}
+				continue
+			}
+			if g.Action != "enforce" || g.Limit == nil || *g.Limit != 0 {
+				t.Errorf("%s %s is off, gate = %+v, want enforce with limit 0", key, f, g)
+			}
+		}
+	}
+}
+
+// A flag the plan does not mention is not included in the plan: it is refused.
+func TestBuildFeatureFlagMissingFromThePlanIsRefused(t *testing.T) {
+	bare := plan.Plan{Key: "bare", Limits: plan.Limits{}}
+	p := Build(Inputs{Plan: bare, WorkspaceStatus: "active"}, now)
+	for _, f := range []string{"sso", "workspace_policies", "viewer_role", "audit_export"} {
+		if g := gateOf(t, p, f); g.Action != "enforce" || g.Limit == nil || *g.Limit != 0 {
+			t.Errorf("%s = %+v, want enforce 0", f, g)
+		}
+	}
+}
+
+// Overrides carry limits only. They cannot switch a feature flag on.
+func TestBuildOverridesDoNotTouchFeatureFlags(t *testing.T) {
+	p := Build(Inputs{Plan: catalogue(t)["free"], Overrides: plan.Limits{"sso": nil}, WorkspaceStatus: "active"}, now)
+	if g := gateOf(t, p, "sso"); g.Action != "enforce" || *g.Limit != 0 {
+		t.Errorf("sso = %+v, want enforce 0", g)
+	}
+}
+
+// A workspace that cannot act keeps the plan's resource gates: only the
+// autopilot gate is zeroed (spec 5.5).
+func TestBuildNonActiveWorkspaceKeepsTheResourceGates(t *testing.T) {
+	p := Build(Inputs{Plan: catalogue(t)["free"], WorkspaceStatus: "suspended"}, now)
+	if g := gateOf(t, p, "agents"); g.Action != "enforce" || *g.Limit != 3 {
+		t.Errorf("agents = %+v, want the plan's 3", g)
+	}
+}
+
+// Every gate is valid on the client's rules: enforce has a non-negative limit,
+// off has none.
+func TestBuildEveryGateIsWellFormed(t *testing.T) {
+	for key, pl := range catalogue(t) {
+		p := Build(Inputs{Plan: pl, WorkspaceStatus: "active"}, now)
+		for name, g := range p.Gates {
+			switch g.Action {
+			case "enforce":
+				if g.Limit == nil || *g.Limit < 0 {
+					t.Errorf("%s %s = %+v, enforce needs a non-negative limit", key, name, g)
+				}
+			case "off":
+				if g.Limit != nil {
+					t.Errorf("%s %s = %+v, off carries no limit", key, name, g)
+				}
+			default:
+				t.Errorf("%s %s has action %q", key, name, g.Action)
+			}
+		}
 	}
 }

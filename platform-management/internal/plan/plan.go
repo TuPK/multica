@@ -17,8 +17,9 @@ import (
 	"unicode/utf8"
 )
 
-// The gates a plan carries a limit for. Only the first two are enforced by
-// Multica today; the rest are stored for the gates of spec 5.7.
+// The gates a plan carries a limit for. The entitlement policy serves all of
+// them (spec 5.7); Multica enforces the first five and reads the last two for
+// the API rate limit and the audit retention job.
 const (
 	GateIssueCount        = "issue_count"
 	GateAutopilotRuns     = "autopilot_runs"
