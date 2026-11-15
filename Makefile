@@ -344,8 +344,19 @@ agent-pack: ## Install an agent pack into the current workspace (PACK=market-str
 catalog-build: ## Generate the code built from catalog/ (not committed); the Go and web builds need it
 	@node scripts/catalog/cli.mjs build
 
-multica: catalog-build ## Run the multica CLI entrypoint directly from the Go source tree
+# `daemon start|restart|autostart` must run a built binary: the daemon re-execs its own executable as
+# the execution-environment helper (and autostart records it), and go run deletes that binary on exit,
+# so tasks fail with "fork/exec /tmp/go-build...". Those subcommands build server/bin/multica first.
+# Other subcommands keep go run, which never replaces a binary a running daemon may be watching.
+MULTICA_NEEDS_BUILT_BINARY := $(and $(filter daemon,$(word 1,$(MULTICA_ARGS))),$(filter start restart autostart,$(word 2,$(MULTICA_ARGS))))
+
+multica: catalog-build ## Run the multica CLI entrypoint directly from the Go source tree (daemon start/restart/autostart run the built server/bin/multica)
+ifneq ($(MULTICA_NEEDS_BUILT_BINARY),)
+	cd server && go build -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildCommit=$(BUILD_COMMIT) -X main.date=$(DATE)" -o bin/multica ./cmd/multica
+	cd server && ./bin/multica $(MULTICA_ARGS)
+else
 	cd server && go run -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildCommit=$(BUILD_COMMIT) -X main.date=$(DATE)" ./cmd/multica $(MULTICA_ARGS)
+endif
 
 VERSION ?= $(shell git describe --tags --match 'v[0-9]*' --always --dirty 2>/dev/null || echo dev)
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)

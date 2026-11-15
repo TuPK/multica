@@ -1145,8 +1145,12 @@ func runDaemonForeground(cmd *cobra.Command) error {
 	if daemonAlive(existing) && daemonIdentityMismatch(existing, profile, port) == nil {
 		return fmt.Errorf("daemon %s is already running or starting", describeProfile(profile))
 	}
+	previousExit, previousExitOK := readDaemonShutdownResultOK(profile)
 	if err := writeDaemonShutdownResult(profile, daemonShutdownResult{PID: os.Getpid()}); err != nil {
 		return fmt.Errorf("initialize daemon shutdown result: %w", err)
+	}
+	if notice := unrecordedExitNotice(previousExit, previousExitOK, os.Getpid()); notice != "" {
+		logger.Warn(notice)
 	}
 	healthLn, actualPort, err := bindDaemonHealthPort(cfg.HealthPort, net.Listen)
 	if err != nil {
@@ -1172,7 +1176,9 @@ func runDaemonForeground(cmd *cobra.Command) error {
 	defer os.Remove(daemonPIDPathForProfile(profile))
 
 	runErr := d.RunWithHealthListener(ctx, healthLn)
-	if err := writeDaemonShutdownResult(profile, daemonShutdownResult{PID: os.Getpid(), CleanupConfirmed: d.ShutdownCleanupConfirmed()}); err != nil {
+	exitReason := daemonExitReason(ctx, runErr, d.RestartBinary())
+	logger.Info("daemon exiting", "reason", exitReason)
+	if err := writeDaemonShutdownResult(profile, daemonShutdownResult{PID: os.Getpid(), CleanupConfirmed: d.ShutdownCleanupConfirmed(), Reason: exitReason}); err != nil {
 		return fmt.Errorf("write daemon shutdown result: %w", err)
 	}
 	if runErr != nil && !errors.Is(runErr, context.Canceled) {
