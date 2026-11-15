@@ -1075,3 +1075,100 @@ func TestRehearsalGraph_SweepRemindsHumanTaskWhenRunnerIsOff(t *testing.T) {
 		t.Fatalf("%d reminders with the runner off, want one for each of the 5 human tasks", n)
 	}
 }
+
+// K8: the worst case the analysis announces is the number of task issues the
+// engine really opens on the worst path: the optional tasks on, every gate
+// rejecting until the last round the loop allows, then everything approved.
+func TestRehearsalGraph_WorstCaseTaskIssuesIsTheRealCount(t *testing.T) {
+	rig := newGraphRig(t, "trade", graphRigOpts{})
+	raw, err := json.Marshal(rig.doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, issues := issueworkflow.ParseFlowDoc(raw)
+	if len(issues) > 0 {
+		t.Fatalf("the fixture does not parse: %+v", issues)
+	}
+	analysis := issueworkflow.Analyze(doc)
+
+	request := rig.newRequest()
+	rig.complete(request, map[string]any{"customs_lookup": true, "export": true})
+	rig.finishAll(request, "collect", 0, always(""))
+	rig.advance(request)
+	for round := 0; round <= 2; round++ {
+		rig.finishAll(request, "draft", round, always(""))
+		if st := rig.advance(request); st.Step != "gate" {
+			t.Fatalf("round %d: after the draft the request is at %q, want gate", round, st.Step)
+		}
+		verdict := "rejected"
+		if round == 2 {
+			verdict = "approved"
+		}
+		rig.finishAll(request, "gate", round, always(verdict))
+		st := rig.advance(request)
+		want := "draft"
+		if round == 2 {
+			want = "handover"
+		}
+		if st.Step != want {
+			t.Fatalf("round %d: after the gates the request is at %q, want %q", round, st.Step, want)
+		}
+	}
+	rig.finishAll(request, "handover", 0, always("approved"))
+	if st := rig.advance(request); st.Step != "release" {
+		t.Fatalf("after the handover the request is at %q, want release", st.Step)
+	}
+	if got := rig.subIssues(request); got != analysis.WorstCaseTaskIssues {
+		t.Fatalf("the engine opened %d task issues on the worst path; the analysis says %d", got, analysis.WorstCaseTaskIssues)
+	}
+}
+
+// K9: the simulation and the real engine agree on the same scenario: the gates
+// of the Trade flow reject every round. Both park the request with the same
+// stop, after the same entries into each step and with the same task issues
+// opened.
+func TestRehearsalGraph_SimulationMatchesTheRealRun(t *testing.T) {
+	rig := newGraphRig(t, "trade", graphRigOpts{})
+	raw, err := json.Marshal(rig.doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, issues := issueworkflow.ParseFlowDoc(raw)
+	if len(issues) > 0 {
+		t.Fatalf("the fixture does not parse: %+v", issues)
+	}
+	rejected := make([]map[string]string, 5)
+	for i := range rejected {
+		rejected[i] = map[string]string{"docs_gate": "rejected", "customs_gate": "rejected"}
+	}
+	trace := issueworkflow.Simulate(issueworkflow.NewGraph(doc), map[string]any{"customs_lookup": true},
+		map[string][]map[string]string{"gate": rejected}, 0)
+	simulatedTasks := 0
+	for _, hop := range trace.Steps {
+		simulatedTasks += len(hop.Opened)
+	}
+
+	request := rig.newRequest()
+	rig.complete(request, map[string]any{"customs_lookup": true})
+	rig.finishAll(request, "collect", 0, always(""))
+	rig.advance(request)
+	var st IssueFlowStateResponse
+	for round := 0; round <= 2; round++ {
+		rig.finishAll(request, "draft", round, always(""))
+		rig.advance(request)
+		rig.finishAll(request, "gate", round, always("rejected"))
+		st = rig.advance(request)
+	}
+	if st.Stop == nil || trace.Outcome != issueworkflow.TraceStop || st.Stop.Code != trace.Code {
+		t.Fatalf("the real run stopped with %+v, the simulation ended %s %q", st.Stop, trace.Outcome, trace.Code)
+	}
+	if got := rig.subIssues(request); got != simulatedTasks {
+		t.Fatalf("the engine opened %d task issues, the simulation %d", got, simulatedTasks)
+	}
+	for _, step := range []string{"draft", "gate"} {
+		got := dbfx.Count(t, `SELECT count(DISTINCT flow_round) FROM issue WHERE parent_issue_id = $1 AND flow_step = $2`, request.ID, step)
+		if want := trace.Visits(step); got != want {
+			t.Fatalf("step %s was entered %d times for real, %d in the simulation", step, got, want)
+		}
+	}
+}

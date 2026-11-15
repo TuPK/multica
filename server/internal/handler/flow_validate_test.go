@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -149,5 +150,107 @@ func TestFlowActorLimiter_WindowResets(t *testing.T) {
 	}
 	if !l.allow("a", now.Add(time.Minute)) {
 		t.Fatal("a new window must start fresh")
+	}
+}
+
+// N7: any member of the workspace may check a manifest, a person as well as an
+// agent, and neither needs to manage a squad.
+func TestStatelessValidate_MemberAndAgentAllowed(t *testing.T) {
+	rig := newDraftRig(t, 1)
+	agent := rig.agents[0]
+	taskID := createHandlerTestTaskForAgent(t, agent)
+	asAgent := func(r *http.Request) *http.Request {
+		r.Header.Set("X-Actor-Source", "task_token")
+		r.Header.Set("X-Agent-ID", agent)
+		r.Header.Set("X-Task-ID", taskID)
+		return r
+	}
+	_, asMember := addWorkflowTestMember(t, "stateless")
+	body := map[string]any{"manifest": rig.manifestOf(rig.publishableDoc(agent)), "squad_id": rig.squadID}
+	for name, as := range map[string]func(*http.Request) *http.Request{"plain member": asMember, "agent": asAgent} {
+		t.Run(name, func(t *testing.T) {
+			var out FlowValidationResponse
+			callValidateFlow(t, as, body).Want(http.StatusOK).JSON(&out)
+			// A person who is not an admin cannot create the statuses the sample document
+			// names (C7); that is the answer, not a refusal to answer.
+			for _, issue := range out.Issues {
+				if issue.Code != "status_create_forbidden" {
+					t.Fatalf("unexpected issue %s at %s: %s", issue.Code, issue.Path, issue.Message)
+				}
+			}
+			if out.Analysis == nil {
+				t.Fatal("no analysis in the answer")
+			}
+		})
+	}
+	// The same plain member cannot touch the squad's drafts.
+	wantCode(t, rig.call(testHandler.ListFlowDrafts, asMember, "GET", "/flow-drafts", nil), http.StatusForbidden, "flow_forbidden")
+}
+
+// The check leaves no row behind: no draft, no workflow, no issue, no activity.
+func TestStatelessValidate_WritesNothing(t *testing.T) {
+	rig := newDraftRig(t, 1)
+	count := func() [4]int {
+		var n [4]int
+		for i, q := range []string{
+			`SELECT count(*) FROM issue_workflow_draft WHERE squad_id = $1`,
+			`SELECT count(*) FROM issue_workflow WHERE squad_id = $1`,
+			`SELECT count(*) FROM issue WHERE workspace_id = $1`,
+			`SELECT count(*) FROM activity_log WHERE workspace_id = $1`,
+		} {
+			arg := testWorkspaceID
+			if i < 2 {
+				arg = rig.squadID
+			}
+			dbfx.QueryRow(t, q, arg).Scan(&n[i])
+		}
+		return n
+	}
+	before := count()
+	manifest := rig.manifestOf(rig.publishableDoc(rig.agents[0]))
+	callValidateFlow(t, nil, map[string]any{"manifest": manifest, "squad_id": rig.squadID}).Want(http.StatusOK)
+	broken := rig.publishableDoc(rig.agents[0])
+	asMaps(asMaps(broken["steps"])[1]["tasks"])[0]["role"] = "ghost"
+	callValidateFlow(t, nil, map[string]any{"manifest": rig.manifestOf(broken), "squad_id": rig.squadID}).Want(http.StatusOK)
+	callValidateFlow(t, nil, map[string]any{"manifest": manifest}).Want(http.StatusOK)
+	if after := count(); after != before {
+		t.Fatalf("rows (draft, workflow, issue, activity) before %v, after %v", before, after)
+	}
+}
+
+// The roster of a squad is read only for a squad of the caller's workspace: a
+// squad of another workspace answers as a missing one and the manifest is not
+// checked against it.
+func TestStatelessValidate_SquadRosterOnlyWhenVisible(t *testing.T) {
+	rig := newDraftRig(t, 1)
+	other := newIniWorkspace(t)
+	body := func(squad string) map[string]any {
+		return map[string]any{"manifest": rig.manifestOf(rig.publishableDoc(rig.agents[0])), "squad_id": squad}
+	}
+	resp := callValidateFlow(t, nil, body(other.Product))
+	resp.Want(http.StatusNotFound)
+	if strings.Contains(resp.Body.String(), other.Product) || strings.Contains(resp.Body.String(), other.Leader) {
+		t.Fatalf("the answer names the other workspace's squad or its lead: %s", resp.Body.String())
+	}
+	callValidateFlow(t, nil, body(rig.squadID)).Want(http.StatusOK)
+	// Without a squad nothing is read from one.
+	callValidateFlow(t, nil, map[string]any{"manifest": rig.manifestOf(rig.publishableDoc(rig.agents[0]))}).Want(http.StatusOK)
+}
+
+// The limit is per actor and per workspace, and a refused call says when to come back.
+func TestStatelessValidate_RateLimited(t *testing.T) {
+	rig := newDraftRig(t, 1)
+	manifest := rig.manifestOf(rig.publishableDoc(rig.agents[0]))
+	original := flowValidateLimiter
+	flowValidateLimiter = newFlowActorLimiter(3, time.Minute)
+	t.Cleanup(func() { flowValidateLimiter = original })
+
+	for i := 0; i < 3; i++ {
+		callValidateFlow(t, nil, map[string]any{"manifest": manifest}).Want(http.StatusOK)
+	}
+	resp := callValidateFlow(t, nil, map[string]any{"manifest": manifest})
+	wantCode(t, resp, http.StatusTooManyRequests, "flow_validate_rate_limited")
+	if got := resp.Header().Get("Retry-After"); got != "60" {
+		t.Fatalf("Retry-After = %q, want 60", got)
 	}
 }

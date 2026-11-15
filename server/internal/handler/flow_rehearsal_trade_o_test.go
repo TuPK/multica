@@ -51,7 +51,7 @@ func TestRehearsal_Trade_GateInstructionsSeparateRejectedFromBlocked(t *testing.
 	for _, key := range []string{"docs_gate", "customs_gate"} {
 		var description string
 		dbfx.QueryRow(t, `SELECT description FROM issue WHERE id = $1`, gates[key]).Scan(&description)
-		if !containsAll(description, "blocked --outcome blocked", "Chỉ dùng rejected khi lỗi nằm ở bản nháp") {
+		if !containsAll(description, "blocked --outcome blocked", "Chỉ dùng `rejected` khi lỗi nằm ở bản nháp") {
 			t.Fatalf("%s description does not tell when a gate blocks instead of rejecting:\n%s", key, description)
 		}
 	}

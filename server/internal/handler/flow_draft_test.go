@@ -469,3 +469,36 @@ func TestFlowDraft_EmitsUpdatedEventOnEveryWrite(t *testing.T) {
 		}
 	}
 }
+
+// C9: a Trade draft whose gates reject every round ends parked with loop_exhausted
+// after the two reworks the loop allows, and the simulation writes nothing.
+func TestFlowDraft_SimulateTradeLoopExhaustedWritesNothing(t *testing.T) {
+	rig := newDraftRig(t, 1)
+	d := rig.newDraft("Simulated trade")
+	count := func() string {
+		var s string
+		dbfx.QueryRow(t, `SELECT (SELECT count(*) FROM issue WHERE workspace_id = $1)::text || '/' ||
+			(SELECT count(*) FROM issue_workflow WHERE workspace_id = $1)::text || '/' ||
+			(SELECT count(*) FROM issue_workflow_draft WHERE workspace_id = $1)::text`, testWorkspaceID).Scan(&s)
+		return s
+	}
+	before := count()
+	rejected := make([]map[string]string, 5)
+	for i := range rejected {
+		rejected[i] = map[string]string{"customs_gate": "rejected"}
+	}
+	var trace FlowTraceResponse
+	rig.call(testHandler.SimulateFlowDraft, nil, "POST", "/flow-drafts/"+d.ID+"/simulate", map[string]any{
+		"doc": loadFlowFixture(t, "trade"), "script": map[string]any{"gate": rejected},
+	}, "draftId", d.ID).Want(http.StatusOK).JSON(&trace)
+	if trace.End.Kind != "stop" || trace.End.Code != "loop_exhausted" {
+		t.Fatalf("the simulation ended %+v, want a stop loop_exhausted", trace.End)
+	}
+	last := trace.Hops[len(trace.Hops)-1]
+	if last.Step != "gate" || last.Loops["fix"] != 2 {
+		t.Fatalf("last hop %s with loops %v, want the gate with fix = 2", last.Step, last.Loops)
+	}
+	if after := count(); after != before {
+		t.Fatalf("simulate wrote rows: %s -> %s", before, after)
+	}
+}

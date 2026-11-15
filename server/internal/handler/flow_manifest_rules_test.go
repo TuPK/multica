@@ -50,7 +50,9 @@ func flowManifestViolations(flow catalogFlow) []string {
 			if !slices.Contains(task.Requires, issueworkflow.RequireOutcome) {
 				add("gate %s does not require an outcome", task.Key)
 			}
-			for _, want := range []string{"blocked --outcome blocked", "rejected", "chỉ dùng rejected khi lỗi nằm ở bản nháp"} {
+			// The command `blocked --outcome blocked` comes from the task description the engine writes
+			// (TestRehearsal_Trade_GateInstructionsSeparateRejectedFromBlocked); the manifest says when.
+			for _, want := range []string{"`blocked`", "`rejected`", "chỉ dùng `rejected` khi lỗi nằm ở bản nháp"} {
 				if !strings.Contains(ins, want) {
 					add("gate %s instructions do not contain %q, so the gate cannot tell blocked from rejected", task.Key, want)
 				}
