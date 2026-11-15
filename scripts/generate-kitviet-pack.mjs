@@ -31,7 +31,7 @@
 //   <agent> not in the squad                                                   -> "nhờ lead"
 // Guards throw (or list every violation) on leftovers, unknown references and stale data.
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { frontmatterDescription, skillFiles } from "./lib/skill-bundle.mjs";
@@ -1065,7 +1065,17 @@ function main() {
     return;
   }
   mkdirSync(outDir, { recursive: true });
-  for (const [file, content] of outputs) writeFileSync(join(outDir, file), content);
+  // A running `next dev` reads these files while this runs: write only what changed, through a rename,
+  // and never leave a file missing or half-written.
+  for (const [file, content] of outputs) {
+    const path = join(outDir, file);
+    if (existsSync(path) && readFileSync(path, "utf8") === content) continue;
+    const temp = `${path}.${process.pid}.tmp`;
+    writeFileSync(temp, content);
+    renameSync(temp, path);
+  }
+  // A pack that is gone leaves its file behind otherwise.
+  for (const file of readdirSync(outDir)) if (file.endsWith(".ts") && !outputs.has(file)) rmSync(join(outDir, file));
   console.log(`wrote ${outputs.size} files to ${outDir}`);
 }
 

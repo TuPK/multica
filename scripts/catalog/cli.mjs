@@ -16,6 +16,7 @@ import { catalogDir, goOutDir, repoRoot, tsOutDir } from "./lib/paths.mjs";
 import { validateCatalog } from "./lib/validate.mjs";
 import { scaffold } from "./lib/scaffold.mjs";
 import { buildAll } from "./lib/build.mjs";
+import { defaultLockDir, withBuildLock } from "./lib/lock.mjs";
 
 export function load(root = catalogDir) {
   const config = readRegistryConfig(root);
@@ -78,7 +79,8 @@ export async function main(argv = process.argv.slice(2)) {
       if (!["ts", "go", "all"].includes(target)) throw new Error(`--target must be ts, go or all, got ${target}`);
       const { config, entries, problems } = load();
       if (!report(problems, { quiet: true })) return 1;
-      const written = buildAll({ entries, config, target, tsOutDir, goOutDir });
+      // build rewrites the generated directories from scratch: concurrent builds corrupt each other.
+      const written = withBuildLock(defaultLockDir(repoRoot), () => buildAll({ entries, config, target, tsOutDir, goOutDir }));
       console.log(`catalog build (${target}): ${entries.length} templates, ${written} files written`);
       return 0;
     }

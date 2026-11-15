@@ -1,13 +1,17 @@
 // Tests for the catalog CLI: discovery, validation (every layer that has a rule in the spec) and the
 // generated skill bundle. Run: node --test scripts/catalog/*.test.mjs
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, describe, it } from "node:test";
 import { discover, readRegistryConfig } from "./lib/discover.mjs";
 import { renderSkillsBuiltin, skillsetMembers } from "./lib/build-skills.mjs";
 import { flowRev, flowsById, renderFlows } from "./lib/build-workflows.mjs";
+import { buildAll } from "./lib/build.mjs";
+import { load } from "./cli.mjs";
+import { withBuildLock } from "./lib/lock.mjs";
 import { supportedLocales, validateCatalog } from "./lib/validate.mjs";
 
 const roots = [];
@@ -410,5 +414,100 @@ describe("skill bundle", () => {
     assert.doesNotMatch(text, /"path": "template\.json"/);
     assert.doesNotMatch(text, /"path": "i18n\/en\.json"/);
     assert.deepEqual(skillsetMembers(entries), { demo: ["demo-skill"] });
+  });
+});
+
+describe("build lock", () => {
+  const lockModule = new URL("./lib/lock.mjs", import.meta.url).href;
+
+  it("lets only one process into the build at a time", async () => {
+    const root = mkdtempSync(join(tmpdir(), "catalog-lock-"));
+    roots.push(root);
+    const lockDir = join(root, "build.lock");
+    const marker = join(root, "inside");
+    // Each child fails when it finds another child's marker inside the critical section.
+    const script = `
+      import { existsSync, rmSync, writeFileSync } from "node:fs";
+      import { withBuildLock } from ${JSON.stringify(lockModule)};
+      withBuildLock(${JSON.stringify(lockDir)}, () => {
+        if (existsSync(${JSON.stringify(marker)})) throw new Error("two builds ran at once");
+        writeFileSync(${JSON.stringify(marker)}, String(process.pid));
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 80);
+        rmSync(${JSON.stringify(marker)});
+      });
+    `;
+    const codes = await Promise.all(
+      Array.from({ length: 8 }, () => new Promise((resolve) => {
+        const child = spawn(process.execPath, ["--input-type=module", "-e", script], { stdio: "ignore" });
+        child.on("exit", resolve);
+      })),
+    );
+    assert.deepEqual(codes, Array(8).fill(0));
+    assert.equal(existsSync(lockDir), false, "the lock is released");
+  });
+
+  it("takes over a lock whose owner is gone and releases it when fn throws", () => {
+    const root = mkdtempSync(join(tmpdir(), "catalog-lock-"));
+    roots.push(root);
+    const lockDir = join(root, "build.lock");
+    mkdirSync(lockDir);
+    writeFileSync(join(lockDir, "pid"), "2147483646");
+    assert.equal(withBuildLock(lockDir, () => "ran"), "ran");
+    assert.throws(() => withBuildLock(lockDir, () => { throw new Error("boom"); }), /boom/);
+    assert.equal(existsSync(lockDir), false);
+  });
+
+  it("gives up with a clear error when a live build holds the lock", () => {
+    const root = mkdtempSync(join(tmpdir(), "catalog-lock-"));
+    roots.push(root);
+    const lockDir = join(root, "build.lock");
+    mkdirSync(lockDir);
+    writeFileSync(join(lockDir, "pid"), String(process.pid));
+    assert.throws(() => withBuildLock(lockDir, () => {}, { timeoutMs: 150 }), /held by another build/);
+    assert.equal(existsSync(lockDir), true, "a live owner keeps its lock");
+  });
+});
+
+describe("build output", () => {
+  const mtimes = (dir) => {
+    const out = {};
+    const walk = (d) => {
+      for (const entry of readdirSync(d, { withFileTypes: true })) {
+        const path = join(d, entry.name);
+        if (entry.isDirectory()) walk(path);
+        else out[path] = statSync(path).mtimeMs;
+      }
+    };
+    walk(dir);
+    return out;
+  };
+
+  it("rewrites nothing on a second build and removes only the files no template produces", () => {
+    const root = mkdtempSync(join(tmpdir(), "catalog-out-"));
+    roots.push(root);
+    const tsOutDir = join(root, "ts");
+    const goOutDir = join(root, "go");
+    const { config, entries } = load();
+    const first = buildAll({ entries, config, target: "all", tsOutDir, goOutDir });
+    assert.ok(first > 0);
+
+    // A watcher or compiler reads these folders while a build runs: an unchanged file must not be touched.
+    const before = { ...mtimes(tsOutDir), ...mtimes(goOutDir) };
+    mkdirSync(join(goOutDir), { recursive: true });
+    writeFileSync(join(goOutDir, ".gitkeep"), "");
+    writeFileSync(join(goOutDir, "gone.json"), "{}");
+    writeFileSync(join(tsOutDir, "agent-packs", "gone.json"), "{}");
+    writeFileSync(join(tsOutDir, "kitviet", "gone.ts"), "export {};\n");
+    writeFileSync(join(tsOutDir, "gone.ts"), "export {};\n");
+    const second = buildAll({ entries, config, target: "all", tsOutDir, goOutDir });
+
+    assert.equal(second, 0, "a build with no catalog change writes no file");
+    const after = { ...mtimes(tsOutDir), ...mtimes(goOutDir) };
+    for (const [path, time] of Object.entries(before)) assert.equal(after[path], time, `${path} was rewritten`);
+    for (const stale of [join(goOutDir, "gone.json"), join(tsOutDir, "agent-packs", "gone.json"), join(tsOutDir, "kitviet", "gone.ts"), join(tsOutDir, "gone.ts")]) {
+      assert.equal(existsSync(stale), false, `${stale} should be removed`);
+    }
+    assert.equal(existsSync(join(goOutDir, ".gitkeep")), true, ".gitkeep stays");
+    assert.deepEqual(Object.keys(after).filter((p) => p.endsWith(".tmp")), [], "no temp file is left behind");
   });
 });
