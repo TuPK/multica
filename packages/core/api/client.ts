@@ -21,6 +21,16 @@ import {
 } from "../account/deletion-schema";
 import { AuditEventPageSchema, EMPTY_AUDIT_EVENT_PAGE, type AuditEventPage } from "../audit/schema";
 import { auditQueryString, type AuditFilters, type AuditPageParams } from "../audit/params";
+import {
+  WorkspaceOrderSchema,
+  WorkspaceOrdersResponseSchema,
+  WorkspacePlansResponseSchema,
+} from "../billing/workspace-orders-schemas";
+import type {
+  WorkspaceOrder,
+  WorkspaceOrderBuyer,
+  WorkspacePlan,
+} from "../billing/workspace-orders-types";
 import { parseDigestMode, type DigestSetting, type DigestModeInfo } from "../governance/digest-mode";
 import { AgentRuntimeSchema, EMPTY_RUNTIME } from "../runtimes/schema";
 import type { IssueWakeup, IssueWakeupInput, IssueWakeupSummaryRow, PausedWakeup, SystemWakeup, WakeupRun, WorkspaceSystemWakeup } from "../types/issue-wakeup";
@@ -3028,6 +3038,8 @@ export class ApiClient {
         body: JSON.stringify({
           interval: data.interval,
           idempotency_key: data.idempotencyKey,
+          plan_key: data.planKey,
+          seats: data.seats,
         }),
         extraHeaders: {
           "Content-Type": "application/json",
@@ -3041,6 +3053,71 @@ export class ApiClient {
       CreateWorkspaceSubscriptionCheckoutResponseSchema,
       null,
       { endpoint: "POST /api/cloud-subscriptions/checkout-sessions" },
+    );
+  }
+
+  // Plans and orders of the platform's billing. Like the subscription reads,
+  // a 2xx body that does not match the contract returns null and the caller
+  // renders "unavailable".
+
+  async listWorkspacePlans(wsId: string): Promise<WorkspacePlan[] | null> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${wsId}/plans`);
+    return parseWithFallback<WorkspacePlan[] | null>(
+      raw,
+      WorkspacePlansResponseSchema,
+      null,
+      { endpoint: "GET /api/workspaces/{id}/plans" },
+    );
+  }
+
+  async listWorkspaceOrders(wsId: string): Promise<WorkspaceOrder[] | null> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${wsId}/orders`);
+    return parseWithFallback<WorkspaceOrder[] | null>(
+      raw,
+      WorkspaceOrdersResponseSchema,
+      null,
+      { endpoint: "GET /api/workspaces/{id}/orders" },
+    );
+  }
+
+  async getWorkspaceOrder(
+    wsId: string,
+    orderId: string,
+  ): Promise<WorkspaceOrder | null> {
+    const raw = await this.fetch<unknown>(
+      `/api/workspaces/${wsId}/orders/${orderId}`,
+    );
+    return parseWithFallback<WorkspaceOrder | null>(
+      raw,
+      WorkspaceOrderSchema,
+      null,
+      { endpoint: "GET /api/workspaces/{id}/orders/{orderId}" },
+    );
+  }
+
+  /** Replaces the invoice details of a pending order; 409 `order_not_pending` otherwise. */
+  async updateWorkspaceOrderBuyer(
+    wsId: string,
+    orderId: string,
+    buyer: WorkspaceOrderBuyer,
+  ): Promise<WorkspaceOrder | null> {
+    const raw = await this.fetch<unknown>(
+      `/api/workspaces/${wsId}/orders/${orderId}/buyer`,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          name: buyer.name,
+          tax_code: buyer.taxCode,
+          address: buyer.address,
+          invoice_email: buyer.invoiceEmail,
+        }),
+      },
+    );
+    return parseWithFallback<WorkspaceOrder | null>(
+      raw,
+      WorkspaceOrderSchema,
+      null,
+      { endpoint: "PUT /api/workspaces/{id}/orders/{orderId}/buyer" },
     );
   }
 

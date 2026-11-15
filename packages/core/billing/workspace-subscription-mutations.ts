@@ -5,8 +5,14 @@ import type {
   PreviewWorkspaceSeatPurchaseRequest,
   PurchaseWorkspaceSeatsRequest,
 } from "../types";
+import { workspaceOrderKeys } from "./workspace-orders-queries";
 import { workspaceSubscriptionKeys } from "./workspace-subscription-queries";
 
+/**
+ * Starts a checkout: Stripe's hosted page, or with the platform's manual
+ * provider an order and the address of its page. The order list is read again
+ * because an order may have been created.
+ */
 export function useCreateWorkspaceSubscriptionCheckout(wsId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -15,6 +21,9 @@ export function useCreateWorkspaceSubscriptionCheckout(wsId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: workspaceSubscriptionKeys.summary(wsId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: workspaceOrderKeys.all(wsId),
       });
     },
   });
@@ -47,6 +56,9 @@ export function usePurchaseWorkspaceSeats(wsId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: workspaceSubscriptionKeys.summary(wsId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: workspaceOrderKeys.all(wsId),
       });
     },
   });

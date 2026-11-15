@@ -3715,10 +3715,23 @@ const WorkspaceSubscriptionIntervalSchema = z.enum(["month", "year"]);
 // Stripe hosts Checkout and Portal, so those URLs leave the app. `z.string()
 // .url()` is not enough on its own — `new URL("javascript:...")` parses — and
 // the caller hands this value to location.assign, so the scheme is pinned here.
-const StripeHostedURLSchema = z.string().url().refine(
-  (value) => value.startsWith("https://"),
-  { message: "Stripe hosted URL must use HTTPS" },
-);
+// The platform's checkout returns the address of an order page instead. For
+// development that address may be plain `http`, but only on this machine.
+const LOCAL_HTTP_HOSTS = new Set(["localhost", "127.0.0.1"]);
+
+function isHostedURL(value: string): boolean {
+  if (value.startsWith("https://")) return true;
+  if (!value.startsWith("http://")) return false;
+  try {
+    return LOCAL_HTTP_HOSTS.has(new URL(value).hostname);
+  } catch {
+    return false;
+  }
+}
+
+const StripeHostedURLSchema = z.string().url().refine(isHostedURL, {
+  message: "Hosted URL must use HTTPS, or HTTP on localhost",
+});
 
 const WorkspaceEntitlementLimitSchema = z
   .discriminatedUnion("mode", [
@@ -3807,6 +3820,7 @@ export const WorkspaceSubscriptionSummarySchema = z
       portal: z.boolean(),
       purchase_seats: z.boolean(),
     }).loose(),
+    payment_provider: z.string().optional(),
   })
   .loose()
   .transform(
@@ -3844,6 +3858,10 @@ export const WorkspaceSubscriptionSummarySchema = z
         portal: value.available_actions.portal,
         purchaseSeats: value.available_actions.purchase_seats,
       },
+      // Left out, not set to undefined, when the server does not send it.
+      ...(value.payment_provider !== undefined
+        ? { paymentProvider: value.payment_provider }
+        : {}),
     }),
   );
 

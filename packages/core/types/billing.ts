@@ -239,6 +239,12 @@ export interface WorkspaceSubscriptionSummary {
     portal: boolean;
     purchaseSeats: boolean;
   };
+  /**
+   * How the workspace pays. Multica Cloud does not send it; the platform sends
+   * `manual` (bank transfer, confirmed by staff). Absent means Stripe. An open
+   * string: a later provider must read as unknown.
+   */
+  paymentProvider?: string;
 }
 
 export interface IssueLimitUsage {
@@ -284,6 +290,10 @@ export interface WorkspaceSubscriptionPrices {
 export interface CreateWorkspaceSubscriptionCheckoutRequest {
   interval: WorkspaceSubscriptionInterval;
   idempotencyKey: string;
+  /** The plan to order. Only the platform reads it; omitted, the server picks one. */
+  planKey?: string;
+  /** The number of seats to order. Only the platform reads it. */
+  seats?: number;
 }
 
 export interface CreateWorkspaceSubscriptionCheckoutResponse {
