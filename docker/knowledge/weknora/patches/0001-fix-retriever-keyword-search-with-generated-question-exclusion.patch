@@ -1,0 +1,74 @@
+From 2e0c8727ab0a5b00a050dc4c250c7ae0e753aa98 Mon Sep 17 00:00:00 2001
+From: TuPK <tupk@vnpt.vn>
+Date: Sun, 15 Nov 2026 11:00:19 +0700
+Subject: [PATCH] fix(retriever): keyword search with generated-question
+ exclusion
+
+ParadeDB rejects a text search combined with NOT over a compound predicate
+with 'Unsupported query shape'. A knowledge base that has generated
+questions adds such a NOT (knowledge_base_id IN (...) AND <predicate>) to
+the keyword query, so every keyword search over that base returned HTTP 500,
+while bases without generated questions worked.
+
+The exclusion is now a NOT IN over a subquery that selects the rows to
+drop. It is equivalent and ParadeDB accepts it. Regression test: the keyword
+query carries the subquery form. Reproduced against the running ParadeDB
+v0.25.11 before the change.
+
+Co-Authored-By: Claude Haiku 5.5 <noreply@anthropic.com>
+---
+ .../retriever/postgres/keyword_score_test.go  | 21 +++++++++++++++++++
+ .../retriever/postgres/repository.go          |  6 +++++-
+ 2 files changed, 26 insertions(+), 1 deletion(-)
+
+diff --git a/internal/application/repository/retriever/postgres/keyword_score_test.go b/internal/application/repository/retriever/postgres/keyword_score_test.go
+index 22b0564..474fa6a 100644
+--- a/internal/application/repository/retriever/postgres/keyword_score_test.go
++++ b/internal/application/repository/retriever/postgres/keyword_score_test.go
+@@ -191,3 +191,24 @@ func TestVectorRetrieveDoesNotRequireKeywordScoreFunction(t *testing.T) {
+ 		})
+ 	}
+ }
++
++// ParadeDB rejects a text search (|||) combined with NOT over a compound
++// predicate: "Unsupported query shape". The generated-question exclusion is
++// therefore a NOT IN over a subquery, which the keyword query can carry.
++func TestKeywordsRetrieveExcludesGeneratedQuestionsWithoutNegatingTheSearch(t *testing.T) {
++	repo, mock := newKeywordTestRepository(t)
++	mock.ExpectQuery(regexp.QuoteMeta(keywordScoreFunctionSQL)).
++		WillReturnRows(sqlmock.NewRows([]string{"score_function"}).AddRow("paradedb.score"))
++	mock.ExpectQuery(`content \|\|\| \$.* NOT IN \(SELECT id FROM embeddings WHERE knowledge_base_id IN \(\$.*\) AND `).
++		WillReturnRows(sqlmock.NewRows([]string{"id", "chunk_id", "knowledge_id", "knowledge_base_id", "tag_id", "score"}))
++
++	results, err := repo.Retrieve(context.Background(), types.RetrieveParams{
++		RetrieverType:                 types.KeywordsRetrieverType,
++		Query:                         "bê tông",
++		TopK:                          5,
++		KnowledgeBaseIDs:              []string{"kb-test"},
++		ExcludeGeneratedQuestionKBIDs: []string{"kb-test"},
++	})
++	require.NoError(t, err)
++	require.Len(t, results, 1)
++}
+diff --git a/internal/application/repository/retriever/postgres/repository.go b/internal/application/repository/retriever/postgres/repository.go
+index 9951a04..0acf0a9 100644
+--- a/internal/application/repository/retriever/postgres/repository.go
++++ b/internal/application/repository/retriever/postgres/repository.go
+@@ -800,9 +800,13 @@ func generatedQuestionExclusionClause(kbIDs []string) clause.Expression {
+ 		placeholders[i] = "?"
+ 		vars[i] = id
+ 	}
++	// ParadeDB rejects a text search (|||) combined with NOT over a compound
++	// predicate ("Unsupported query shape"), so the rows to drop are selected in
++	// a subquery and removed with NOT IN.
+ 	return clause.Expr{
+ 		SQL: fmt.Sprintf(
+-			"NOT (knowledge_base_id IN (%s) AND %s)",
++			"id NOT IN (SELECT id FROM %s WHERE knowledge_base_id IN (%s) AND %s)",
++			pgVector{}.TableName(),
+ 			strings.Join(placeholders, ", "),
+ 			types.GeneratedQuestionRowPredicate(""),
+ 		),
+-- 
+2.43.0
+
