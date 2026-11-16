@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/multica-ai/multica/platform-management/internal/plan"
 	"io"
 	"log/slog"
 	"maps"
@@ -424,6 +425,24 @@ type fakeBillingTx struct{ fakeTx }
 
 func (t *fakeBillingTx) InsertOrder(context.Context, billing.NewOrder) (billing.Order, bool, error) {
 	return billing.Order{}, false, errors.New("not used")
+}
+
+// Plan serves the catalogue to the fake transaction, as the database does.
+func (t *fakeBillingTx) Plan(_ context.Context, key string) (plan.Plan, bool, error) {
+	all, err := plan.Catalogue()
+	if err != nil {
+		return plan.Plan{}, false, err
+	}
+	for _, p := range all {
+		if p.Key == key {
+			return p, true, nil
+		}
+	}
+	return plan.Plan{}, false, nil
+}
+
+func (t *fakeBillingTx) PendingOrder(context.Context, string) (billing.Order, bool, error) {
+	return billing.Order{}, false, nil
 }
 
 func (t *fakeBillingTx) OrderByIdempotencyKey(context.Context, string, string) (billing.Order, bool, error) {

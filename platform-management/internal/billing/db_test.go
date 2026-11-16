@@ -3,6 +3,9 @@ package billing
 import (
 	"context"
 	"errors"
+	"github.com/multica-ai/multica/platform-management/internal/plan"
+	"io"
+	"log/slog"
 	"sync"
 	"testing"
 	"time"
@@ -30,6 +33,7 @@ type dbFixture struct {
 func newDBFixture(t *testing.T) *dbFixture {
 	t.Helper()
 	pool := testdb.Open(t)
+	seedCatalogue(t, pool)
 	f := &dbFixture{t: t, pool: pool, inv: &invalidations{}}
 	ctx := context.Background()
 	for _, dst := range []*string{&f.ws, &f.staff, &f.user} {
@@ -311,4 +315,43 @@ func TestDBFailedAuditWriteRollsBackTheSubscription(t *testing.T) {
 	if len(f.inv.ent) != 0 || len(f.inv.ws) != 0 {
 		t.Fatal("caches were cleared for a change that did not commit")
 	}
+}
+
+// seedCatalogue makes the catalogue's plans visible, as the platform does when it
+// starts: ApplyPayment prices a seat from the plan. The rows this adds are removed
+// when the test ends, so the table is as it was for the other tests.
+func seedCatalogue(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	ctx := context.Background()
+	before := map[string]bool{}
+	rows, err := pool.Query(ctx, `SELECT key FROM plan`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			t.Fatal(err)
+		}
+		before[key] = true
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
+	if _, err := plan.Seed(ctx, plan.NewPgxRunner(pool), quiet); err != nil {
+		t.Fatal(err)
+	}
+	all, err := plan.Catalogue()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		for _, p := range all {
+			if !before[p.Key] {
+				pool.Exec(ctx, `DELETE FROM plan WHERE key = $1`, p.Key)
+			}
+		}
+	})
 }
