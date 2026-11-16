@@ -408,6 +408,19 @@ type BillingOrder struct {
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
+type BillingProfile struct {
+	WorkspaceID  pgtype.UUID        `json:"workspace_id"`
+	AccountKind  string             `json:"account_kind"`
+	LegalName    string             `json:"legal_name"`
+	TaxCode      string             `json:"tax_code"`
+	Address      string             `json:"address"`
+	InvoiceEmail string             `json:"invoice_email"`
+	VerifiedAt   pgtype.Timestamptz `json:"verified_at"`
+	VerifiedBy   pgtype.UUID        `json:"verified_by"`
+	UpdatedBy    pgtype.UUID        `json:"updated_by"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Brief struct {
 	ID                pgtype.UUID        `json:"id"`
 	WorkspaceID       pgtype.UUID        `json:"workspace_id"`

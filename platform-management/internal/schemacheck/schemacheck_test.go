@@ -40,7 +40,7 @@ func TestRequiredVersionsAreSortedUniqueAndExist(t *testing.T) {
 // The platform's own tables are the ones with these names. A migration that
 // touches one without its version in Required would let the service start
 // against a schema that lacks the change.
-var platformTable = regexp.MustCompile(`^(platform_.*|plan|workspace_subscription|billing_order|billing_notice|workspace_export|platform_usage_daily|platform_seat_operation)$`)
+var platformTable = regexp.MustCompile(`^(platform_.*|plan|workspace_subscription|billing_order|billing_notice|workspace_export|platform_usage_daily|platform_seat_operation|billing_profile)$`)
 
 var (
 	sqlLineComment  = regexp.MustCompile(`--[^\n]*`)
@@ -113,6 +113,35 @@ func TestEveryPlatformTableMigrationIsRequired(t *testing.T) {
 	}
 	if len(probe) == 0 {
 		t.Fatal("scan found no platform-table migration in 651 to 699; the patterns are not matching")
+	}
+}
+
+// 954 creates billing_profile; the unique index on (workspace_id) is 955 and
+// is not part of this migration.
+func TestBillingProfileMigrationIsRequiredAndHasTheSpecColumns(t *testing.T) {
+	const version = "954_billing_profile"
+	if !slices.Contains(Required, version) {
+		t.Errorf("Required does not list %s", version)
+	}
+	for _, suffix := range []string{".up.sql", ".down.sql"} {
+		if _, err := os.Stat(filepath.Join(migrationsDir, version+suffix)); err != nil {
+			t.Fatalf("migration %s%s: %v", version, suffix, err)
+		}
+	}
+	raw, err := os.ReadFile(filepath.Join(migrationsDir, version+".up.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	up := strings.ToLower(sqlLineComment.ReplaceAllString(sqlBlockComment.ReplaceAllString(string(raw), " "), " "))
+	for _, col := range []string{"workspace_id", "account_kind", "legal_name", "tax_code", "address", "invoice_email", "verified_at", "verified_by", "updated_by", "updated_at"} {
+		if !strings.Contains(up, col) {
+			t.Errorf("up file lacks column %s", col)
+		}
+	}
+	for _, banned := range []string{"references", "primary key", "create index", "create unique index", "on delete"} {
+		if strings.Contains(up, banned) {
+			t.Errorf("up file contains %q: no key, index or cascade belongs in 954", banned)
+		}
 	}
 }
 
