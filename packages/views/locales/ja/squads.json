@@ -620,7 +620,8 @@
       "kind": "種類",
       "code": "コード",
       "class": "クラス",
-      "message_key": "メッセージキー"
+      "message_key": "メッセージキー",
+      "limit_reached": "上限 {{count}} に達しました"
     },
     "loops": {
       "col_header": "ヘッダーステップ",
@@ -660,11 +661,12 @@
       "delete": "タスク {{key}} を削除",
       "role": "ロール",
       "no_inputs": "前のステップにタスクはありません",
-      "no_skills": "スクワッドにスキルがありません",
+      "no_skills": "このロールにはスキルがありません",
       "missing_skills": "R09: ロールに不足しているスキル: {{skills}}",
-      "must_set": "設定必須",
       "instructions": "指示",
-      "instructions_placeholder": "エージェントまたはメンバーが行うこと…"
+      "instructions_placeholder": "エージェントまたはメンバーが行うこと…",
+      "input_slot": "{{from}} のファイルスロット",
+      "input_any_slot": "任意のファイル"
     },
     "terminals": {
       "col_status": "ステータス",

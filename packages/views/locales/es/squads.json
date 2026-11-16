@@ -628,7 +628,8 @@
       "kind": "Tipo",
       "code": "Código",
       "class": "Clase",
-      "message_key": "Clave del mensaje"
+      "message_key": "Clave del mensaje",
+      "limit_reached": "Límite de {{count}} alcanzado"
     },
     "loops": {
       "col_header": "Paso de cabecera",
@@ -668,11 +669,12 @@
       "delete": "Eliminar la tarea {{key}}",
       "role": "Rol",
       "no_inputs": "No hay tareas en pasos anteriores",
-      "no_skills": "El squad no tiene skills",
+      "no_skills": "El rol no tiene skills",
       "missing_skills": "R09: al rol le faltan skills: {{skills}}",
-      "must_set": "Debe establecer",
       "instructions": "Instrucciones",
-      "instructions_placeholder": "Qué hace el agente o el miembro…"
+      "instructions_placeholder": "Qué hace el agente o el miembro…",
+      "input_slot": "Ranura de archivo de {{from}}",
+      "input_any_slot": "Cualquier archivo"
     },
     "terminals": {
       "col_status": "Estado",

@@ -86,6 +86,40 @@ export function FlowGraph({
     return () => observer?.disconnect();
   }, [fit]);
 
+  // The edges that go back to an earlier step: drawn as dashed arcs under the cards, labelled with the loop's max.
+  const backEdges = useMemo(() => {
+    const maxOf = new Map((doc.loops ?? []).map((l) => [l.key, typeof l.max === "number" ? l.max : l.max.cap]));
+    return layout.edges.flatMap((edge) => {
+      const from = layout.positions[edge.source];
+      const to = layout.positions[edge.target];
+      if (!edge.isBack || !from || !to) return [];
+      const startX = from.x + CARD_WIDTH / 2;
+      const endX = to.x + CARD_WIDTH / 2;
+      const y = Math.max(from.y, to.y) + CARD_HEIGHT;
+      const depth = 24 + Math.min(80, Math.abs(startX - endX) / 8);
+      const max = edge.loop ? maxOf.get(edge.loop) : undefined;
+      return [{
+        id: edge.id,
+        path: `M ${startX} ${y} C ${startX} ${y + depth}, ${endX} ${y + depth}, ${endX} ${y}`,
+        labelX: (startX + endX) / 2,
+        labelY: y + depth * 0.75 + 12,
+        label: `↺ ${max ?? "?"}`,
+      }];
+    });
+  }, [layout, doc.loops]);
+
+  // Find a step: Enter selects the first step whose title or key contains the text, and brings it into view.
+  const findStep = () => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return;
+    const hit = doc.steps.find((s) => s.title.toLowerCase().includes(q) || s.key.toLowerCase().includes(q));
+    if (!hit) return;
+    onSelectStep(hit.key);
+    canvasRef.current
+      ?.querySelector<HTMLElement>(`[data-step-key="${CSS.escape(hit.key)}"]`)
+      ?.scrollIntoView?.({ block: "center", inline: "center" });
+  };
+
   // Map loop info by header
   const loopMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -120,6 +154,9 @@ export function FlowGraph({
             <Input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") findStep();
+              }}
               placeholder={t(($) => $.flow_designer.graph.find)}
               className="h-7 pl-7 text-caption w-40"
             />
@@ -203,6 +240,16 @@ export function FlowGraph({
           className="relative min-w-[800px] min-h-[600px] transition-transform"
           style={{ transform: `scale(${zoom})`, transformOrigin: "top left" }}
         >
+          <svg className="absolute left-0 top-0 size-full overflow-visible pointer-events-none" aria-hidden>
+            {backEdges.map((edge) => (
+              <g key={edge.id} data-testid="flow-back-edge" data-edge-id={edge.id} className="text-blue-600">
+                <path d={edge.path} fill="none" stroke="currentColor" strokeWidth={1.5} strokeDasharray="6 4" />
+                <text x={edge.labelX} y={edge.labelY} textAnchor="middle" fill="currentColor" className="text-micro">
+                  {edge.label}
+                </text>
+              </g>
+            ))}
+          </svg>
           {layout.nodes.map((node) => {
             const step = doc.steps.find((s) => s.key === node.id);
             if (!step) return null;
@@ -215,6 +262,7 @@ export function FlowGraph({
             return (
               <div
                 key={node.id}
+                data-step-key={step.key}
                 onClick={() => onSelectStep(step.key)}
                 className={cn(
                   "absolute w-64 p-3 rounded-lg border shadow-xs transition-all cursor-pointer flex flex-col gap-1.5",

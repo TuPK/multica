@@ -67,6 +67,14 @@ export function VarsPanel({
     }
   };
 
+  // The roles of the document that can set a variable through a task (the built-in lead, managers and requester stay as they are).
+  const declaredRoles = doc.roles ?? [];
+  const handleToggleSetBy = (v: FlowDocVar, roleKey: string) => {
+    const current = v.set_by ?? [];
+    const next = current.includes(roleKey) ? current.filter((k) => k !== roleKey) : [...current, roleKey];
+    onChangeVars((doc.vars ?? []).map((x) => (x.key === v.key ? { ...x, set_by: next } : x)));
+  };
+
   const handleDeleteVar = (key: string) => {
     onChangeVars((doc.vars ?? []).filter((v) => v.key !== key));
   };
@@ -105,7 +113,29 @@ export function VarsPanel({
                   {JSON.stringify(v.default)}
                 </td>
                 <td className="p-2 text-micro text-muted-foreground">
-                  {v.set_by?.join(", ") || "—"}
+                  <div className="flex flex-wrap items-center gap-1">
+                    {(v.set_by ?? [])
+                      .filter((key) => !declaredRoles.some((r) => r.key === key))
+                      .map((key) => (
+                        <span key={key}>{key}</span>
+                      ))}
+                    {declaredRoles.map((r) => {
+                      const on = v.set_by?.includes(r.key) ?? false;
+                      return (
+                        <Button
+                          key={r.key}
+                          type="button"
+                          size="xs"
+                          variant={on ? "secondary" : "outline"}
+                          aria-pressed={on}
+                          onClick={() => handleToggleSetBy(v, r.key)}
+                          className="h-6 px-1.5 text-micro font-normal"
+                        >
+                          {r.key}
+                        </Button>
+                      );
+                    })}
+                  </div>
                 </td>
                 <td className="p-2 text-micro text-muted-foreground">
                   {v.set_at?.join(", ") || "—"}

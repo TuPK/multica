@@ -628,7 +628,8 @@
       "kind": "Type",
       "code": "Code",
       "class": "Classe",
-      "message_key": "Clé du message"
+      "message_key": "Clé du message",
+      "limit_reached": "Limite de {{count}} atteinte"
     },
     "loops": {
       "col_header": "Étape d'en-tête",
@@ -668,11 +669,12 @@
       "delete": "Supprimer la tâche {{key}}",
       "role": "Rôle",
       "no_inputs": "Aucune tâche dans les étapes précédentes",
-      "no_skills": "Le squad n'a aucune compétence",
+      "no_skills": "Le rôle n'a aucune compétence",
       "missing_skills": "R09 : il manque des compétences au rôle : {{skills}}",
-      "must_set": "Doit définir",
       "instructions": "Instructions",
-      "instructions_placeholder": "Ce que fait l'agent ou le membre…"
+      "instructions_placeholder": "Ce que fait l'agent ou le membre…",
+      "input_slot": "Emplacement de fichier de {{from}}",
+      "input_any_slot": "Tout fichier"
     },
     "terminals": {
       "col_status": "Statut",

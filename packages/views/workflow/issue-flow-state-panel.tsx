@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Badge } from "@multica/ui/components/ui/badge";
 import { Button } from "@multica/ui/components/ui/button";
@@ -35,9 +35,68 @@ import { issueFlowKeys, useCloseIssueFlowTask, useDetachFlow, useExitIssueFlow, 
 import { useAuthStore } from "@multica/core/auth";
 import { flowErrorCode } from "@multica/core/flow-drafts";
 import { useUpdateIssue } from "@multica/core/issues/mutations";
-import type { IssueFlowState, IssueFlowTask, ResumeFlowRequest } from "@multica/core/types";
+import { issueTimelineOptions } from "@multica/core/issues/queries";
+import type { IssueFlowLink, IssueFlowState, IssueFlowTask, IssueFlowTrailEntry, ResumeFlowRequest } from "@multica/core/types";
 import { issueUpdateErrorMessage } from "../issues/utils/issue-update-error";
 import { cn } from "@multica/ui/lib/utils";
+
+// What the engine looked at when it took an edge: the facts of the `flow_transition` record of that exit. They are
+// read from the log of the issue only once a row is opened.
+function TrailFacts({ issueId, entry }: { issueId: string; entry: IssueFlowTrailEntry }) {
+  const timeline = useQuery(issueTimelineOptions(issueId));
+  const record = (timeline.data ?? []).find(
+    (e) => e.action === "flow_transition" && e.details?.from === entry.step && e.details?.activation === entry.activation,
+  );
+  const facts = record?.details?.facts;
+  if (!facts || typeof facts !== "object" || Array.isArray(facts)) return null;
+  return (
+    <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 px-1.5 pb-1.5 font-mono text-micro">
+      {Object.entries(facts).map(([key, value]) => (
+        <div key={key} className="contents">
+          <dt className="text-muted-foreground">{key}</dt>
+          <dd className="break-all text-foreground">{typeof value === "string" ? value : JSON.stringify(value)}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function TrailRow({ issueId, entry }: { issueId: string; entry: IssueFlowTrailEntry }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <li>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-2 p-1.5 text-left text-muted-foreground hover:bg-muted/40"
+      >
+        <span className="font-medium text-foreground">{entry.step}</span>
+        {entry.edge && <span className="font-mono">{entry.edge}</span>}
+        {entry.at && (
+          <time dateTime={entry.at} className="ml-auto whitespace-nowrap tabular-nums">
+            {new Date(entry.at).toLocaleString()}
+          </time>
+        )}
+      </button>
+      {open && <TrailFacts issueId={issueId} entry={entry} />}
+    </li>
+  );
+}
+
+function LinkList({ label, links }: { label: string; links: IssueFlowLink[] }) {
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-1.5 text-micro">
+      <span className="font-medium text-muted-foreground">{label}</span>
+      {links.map((link) => (
+        <span key={`${link.issue_id}:${link.slot}`} className="font-mono text-foreground">
+          {link.identifier}
+          {link.slot ? ` · ${link.slot}` : ""}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 export interface IssueFlowStatePanelProps {
   wsId: string;
@@ -324,6 +383,29 @@ export function IssueFlowStatePanel({
                   </Badge>
                 )}
               </div>
+              {(task.inputs?.length ?? 0) > 0 && (
+                <LinkList label={tSquads(($) => $.flow_designer.task.inputs)} links={task.inputs!} />
+              )}
+              {(task.feedback?.length ?? 0) > 0 && (
+                <LinkList label={tSquads(($) => $.flow_designer.request.feedback)} links={task.feedback!} />
+              )}
+              {(task.sets ?? []).some((key) => flow.vars && key in flow.vars) && (
+                <div className="flex flex-wrap items-baseline gap-x-1.5 text-micro">
+                  <span className="font-medium text-muted-foreground">{tSquads(($) => $.flow_designer.task.sets)}</span>
+                  {(task.sets ?? [])
+                    .filter((key) => flow.vars && key in flow.vars)
+                    .map((key) => {
+                      const value = flow.vars![key];
+                      return (
+                        <span key={key} className="font-mono">
+                          <span className="text-foreground">{key}</span>
+                          <span className="text-muted-foreground"> = </span>
+                          <span className="text-foreground">{typeof value === "string" ? value : JSON.stringify(value)}</span>
+                        </span>
+                      );
+                    })}
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -359,10 +441,7 @@ export function IssueFlowStatePanel({
           </span>
           <ul className="divide-y divide-border/40 rounded-lg border border-border/60 text-micro">
             {flow.trail.map((entry, idx) => (
-              <li key={idx} className="p-1.5 flex items-center justify-between text-muted-foreground">
-                <span className="font-medium text-foreground">{entry.step}</span>
-                {entry.edge && <span className="font-mono">{entry.edge}</span>}
-              </li>
+              <TrailRow key={idx} issueId={issueId} entry={entry} />
             ))}
           </ul>
         </div>

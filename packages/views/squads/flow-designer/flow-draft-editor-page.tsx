@@ -9,7 +9,7 @@ import { useWorkspacePaths } from "@multica/core/paths";
 import { useCurrentMember } from "@multica/core/permissions";
 import { companySquadMembersOptions } from "@multica/core/company";
 import { useFlowInsights } from "@multica/core/packs";
-import { agentListOptions, memberListOptions } from "@multica/core/workspace/queries";
+import { agentListOptions, memberListOptions, squadSkillsOptions } from "@multica/core/workspace/queries";
 import {
   useExportFlowDraft,
   useFlowCapabilities,
@@ -45,6 +45,7 @@ import { useDraftBuffer } from "./use-draft-buffer";
 import { DraftStatus } from "./draft-status";
 import { Outline } from "./outline";
 import { addStepFromTemplate, type StepTemplateCopy } from "./step-templates";
+import { skillsOfRole } from "./role-skills";
 import { StepInspector } from "./step-inspector";
 import { RolesPanel } from "./roles-panel";
 import { VarsPanel } from "./vars-panel";
@@ -214,6 +215,9 @@ function FlowDraftEditor({ squadId, draftId, draft, capabilities, onReload }: Fl
   const validateMut = useValidateFlowDraft();
   const exportMut = useExportFlowDraft();
   const buffer = useDraftBuffer({ wsId, squadId, draftId, initialDraft: draft });
+  // The skills a task can ask for are read only when a task exists to ask for them.
+  const hasTasks = (buffer.doc.steps ?? []).some((s) => (s.tasks?.length ?? 0) > 0);
+  const squadSkillsQuery = useQuery({ ...squadSkillsOptions(wsId, squadId), enabled: hasTasks });
 
   const currentStep = useMemo(() => {
     const steps = buffer.doc.steps ?? [];
@@ -293,6 +297,13 @@ function FlowDraftEditor({ squadId, draftId, draft, capabilities, onReload }: Fl
         }));
       }}
       doc={buffer.doc}
+      skillsOfRole={(roleKey) =>
+        skillsOfRole(
+          buffer.doc.roles?.find((r) => r.key === roleKey),
+          agentsQuery.data ?? [],
+          (squadSkillsQuery.data ?? []).map((skill) => skill.name),
+        )
+      }
       taskLimit={capabilities?.limits.tasks_per_step ?? 12}
     />
   ) : null;
@@ -536,7 +547,17 @@ function FlowDraftEditor({ squadId, draftId, draft, capabilities, onReload }: Fl
 
         {activeTab === "problems" && (
           <div className="flex-1 overflow-y-auto p-4">
-            <ProblemsPanel issues={issues} onSelectPath={() => setActiveTab("editor")} />
+            <ProblemsPanel
+              issues={issues}
+              doc={buffer.doc}
+              onSelectIssue={(_, stepKey) => {
+                setActiveTab("editor");
+                if (stepKey) {
+                  setSelectedStepKey(stepKey);
+                  if (isMobile) setInspectorOpen(true);
+                }
+              }}
+            />
           </div>
         )}
       </div>

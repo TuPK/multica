@@ -212,6 +212,9 @@ export function Outline({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+          {atLimit && (
+            <p className="mt-1 text-micro text-muted-foreground">{t(($) => $.flow_designer.common.limit_reached, { count: stepLimit })}</p>
+          )}
         </div>
       )}
     </div>

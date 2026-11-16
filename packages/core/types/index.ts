@@ -15,6 +15,8 @@ export type {
   IssueFlowStop,
   IssueFlowSwitchValue,
   IssueFlowTask,
+  IssueFlowLink,
+  IssueFlowTrailEntry,
   IssueFlowNext,
   IssueFlowState,
   IssueFlowActionKind,

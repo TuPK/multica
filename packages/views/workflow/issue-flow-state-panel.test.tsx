@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderWithI18n } from "../test/i18n";
 import { IssueFlowStatePanel } from "./issue-flow-state-panel";
+import { setApiInstance } from "@multica/core/api";
+import type { ApiClient } from "@multica/core/api/client";
+import { IssueFlowStateSchema } from "@multica/core/api/schemas";
 import type { IssueFlowState } from "@multica/core/types";
 
 const mocks = vi.hoisted(() => ({
@@ -536,6 +539,128 @@ describe("IssueFlowStatePanel", () => {
       fireEvent.click(screen.getByRole("button", { name: "Resume" }));
 
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    });
+  });
+  // Spec 11.9, 4.13: the Path of the request, and what each task was given and may set.
+  describe("path, inputs, feedback and variables", () => {
+    const listTimeline = vi.fn();
+    beforeEach(() => {
+      listTimeline.mockReset();
+      setApiInstance({ listTimeline } as unknown as ApiClient);
+      mocks.userId = "user-1";
+    });
+
+    const withTrail: IssueFlowState = {
+      ...sampleFlow,
+      trail: [
+        { step: "plan", activation: 1, edge: "plan_ok", at: "2026-11-13T01:00:00Z" },
+        { step: "gate", activation: 1, edge: "gate_fix", at: "2026-11-13T02:00:00Z" },
+      ],
+    };
+
+    it("lists the trail with the step, the edge and the time of each exit", () => {
+      renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={withTrail} canManage={false} />);
+      expect(screen.getByText("Path")).toBeInTheDocument();
+      const rows = screen.getAllByRole("button", { name: /plan_ok|gate_fix/ });
+      expect(rows).toHaveLength(2);
+      expect(within(rows[0]!).getByText("plan")).toBeInTheDocument();
+      expect(within(rows[0]!).getByText("plan_ok")).toBeInTheDocument();
+      expect(rows[0]!.querySelector("time")?.getAttribute("datetime")).toBe("2026-11-13T01:00:00Z");
+    });
+
+    it("loads nothing until a row is opened, then shows the facts of that exit from the log", async () => {
+      listTimeline.mockResolvedValue([
+        { type: "activity", id: "a1", action: "flow_transition", details: { from: "plan", activation: 1, edge: "plan_ok", facts: { "var.route": "shipment_dossier" } } },
+        { type: "activity", id: "a2", action: "flow_transition", details: { from: "gate", activation: 1, edge: "gate_fix", facts: { "task.docs_gate.class": "fail", "loop.fix.count": 1 } } },
+      ]);
+      renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={withTrail} canManage={false} />);
+      expect(listTimeline).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getAllByRole("button", { name: /gate_fix/ })[0]!);
+      expect(await screen.findByText("task.docs_gate.class")).toBeInTheDocument();
+      expect(screen.getByText("fail")).toBeInTheDocument();
+      expect(screen.getByText("loop.fix.count")).toBeInTheDocument();
+      expect(listTimeline).toHaveBeenCalledWith("req-1");
+      // The other exit is not opened: its facts are not on screen.
+      expect(screen.queryByText("var.route")).toBeNull();
+
+      // A second click closes the row.
+      fireEvent.click(screen.getAllByRole("button", { name: /gate_fix/ })[0]!);
+      expect(screen.queryByText("task.docs_gate.class")).toBeNull();
+    });
+
+    it("opens a row whose log record is missing or unreadable without breaking the panel", async () => {
+      listTimeline.mockResolvedValue([{ type: "activity", id: "a1", action: "flow_transition", details: { from: "gate", activation: 1, facts: "oops" } }]);
+      renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={withTrail} canManage={false} />);
+      fireEvent.click(screen.getAllByRole("button", { name: /gate_fix/ })[0]!);
+      await waitFor(() => expect(listTimeline).toHaveBeenCalled());
+      expect(screen.getByText("MUL-12")).toBeInTheDocument();
+      fireEvent.click(screen.getAllByRole("button", { name: /plan_ok/ })[0]!);
+      expect(screen.getByText("MUL-12")).toBeInTheDocument();
+    });
+
+    it("has no Path when the server sent no trail, or one that is not a list", () => {
+      renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={sampleFlow} canManage={false} />);
+      expect(screen.queryByText("Path")).toBeNull();
+      cleanup();
+      const parsed = IssueFlowStateSchema.parse({ ...sampleFlow, trail: "path" }) as IssueFlowState;
+      renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={parsed} canManage={false} />);
+      expect(screen.queryByText("Path")).toBeNull();
+      expect(screen.getByText("MUL-12")).toBeInTheDocument();
+    });
+
+    it("shows on each task what it was given, what it must answer, and the variables it set", () => {
+      const flow: IssueFlowState = {
+        ...sampleFlow,
+        vars: { sources: ["a", "b"], severity: 3, other: "x" },
+        tasks: [
+          {
+            ...sampleFlow.tasks[1]!,
+            inputs: [{ issue_id: "t-0", identifier: "MUL-9", task: "collect", slot: "report" }],
+            feedback: [{ issue_id: "t-7", identifier: "MUL-11", task: "legal_gate", slot: "" }],
+            sets: ["sources", "severity", "unset_yet"],
+          },
+        ],
+      };
+      renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={flow} canManage={false} />);
+      const row = screen.getByText("MUL-13").closest("li") as HTMLElement;
+      expect(within(row).getByText("Inputs")).toBeInTheDocument();
+      expect(within(row).getByText(/MUL-9/)).toBeInTheDocument();
+      expect(within(row).getByText(/report/)).toBeInTheDocument();
+      expect(within(row).getByText("Feedback")).toBeInTheDocument();
+      expect(within(row).getByText(/MUL-11/)).toBeInTheDocument();
+      expect(within(row).getByText("Sets variables")).toBeInTheDocument();
+      expect(within(row).getByText("severity")).toBeInTheDocument();
+      expect(within(row).getByText("3")).toBeInTheDocument();
+      // A variable the task may set but nobody has set shows no value; one the task does not list is not shown.
+      expect(within(row).queryByText("other")).toBeNull();
+    });
+
+    it("shows none of these headings on a task that has no inputs, feedback or variables", () => {
+      renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={sampleFlow} canManage={false} />);
+      expect(screen.queryByText("Inputs")).toBeNull();
+      expect(screen.queryByText("Feedback")).toBeNull();
+      expect(screen.queryByText("Sets variables")).toBeNull();
+    });
+  });
+
+  describe("one row per entity, the loop counter and who closed", () => {
+    it("shows one row for each instance of a task that fans out", () => {
+      const task = (n: number) => ({ ...sampleFlow.tasks[0]!, issue_id: `t-${n}`, identifier: `MUL-${30 + n}`, task: "review", instance: n, closed_at: null, outcome: null });
+      renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={{ ...sampleFlow, tasks: [task(1), task(2), task(3)] }} canManage={false} />);
+      expect(screen.getAllByText("review")).toHaveLength(3);
+      expect(screen.getAllByRole("listitem")).toHaveLength(3);
+    });
+
+    it("shows the counter of each loop", () => {
+      renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={{ ...sampleFlow, loops: { fix: 2 } }} canManage={false} />);
+      expect(screen.getByText("↺ 2")).toBeInTheDocument();
+    });
+
+    it("badges a task a manager closed on behalf of its agent", () => {
+      const closed = { ...sampleFlow.tasks[0]!, closed_by: { type: "member", id: "u-9", name: "Mai", on_behalf: true } };
+      renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={{ ...sampleFlow, tasks: [closed] }} canManage={false} />);
+      expect(screen.getByText("Closed by Mai on behalf of the agent")).toBeInTheDocument();
     });
   });
 });

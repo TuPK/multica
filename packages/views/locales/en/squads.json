@@ -628,7 +628,8 @@
       "kind": "Kind",
       "code": "Code",
       "class": "Class",
-      "message_key": "Message key"
+      "message_key": "Message key",
+      "limit_reached": "Limit of {{count}} reached"
     },
     "loops": {
       "col_header": "Header step",
@@ -668,11 +669,12 @@
       "delete": "Delete task {{key}}",
       "role": "Role",
       "no_inputs": "No tasks in earlier steps",
-      "no_skills": "The squad has no skills",
+      "no_skills": "The role has no skills",
       "missing_skills": "R09: the role lacks skills: {{skills}}",
-      "must_set": "Must set",
       "instructions": "Instructions",
-      "instructions_placeholder": "What the agent or member does…"
+      "instructions_placeholder": "What the agent or member does…",
+      "input_slot": "File slot of {{from}}",
+      "input_any_slot": "Any file"
     },
     "terminals": {
       "col_status": "Status",

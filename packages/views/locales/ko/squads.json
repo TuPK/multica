@@ -620,7 +620,8 @@
       "kind": "종류",
       "code": "코드",
       "class": "분류",
-      "message_key": "메시지 키"
+      "message_key": "메시지 키",
+      "limit_reached": "한도 {{count}}개에 도달했습니다"
     },
     "loops": {
       "col_header": "헤더 단계",
@@ -660,11 +661,12 @@
       "delete": "작업 {{key}} 삭제",
       "role": "역할",
       "no_inputs": "이전 단계에 작업이 없습니다",
-      "no_skills": "스쿼드에 스킬이 없습니다",
+      "no_skills": "이 역할에는 스킬이 없습니다",
       "missing_skills": "R09: 역할에 없는 스킬: {{skills}}",
-      "must_set": "설정 필수",
       "instructions": "지침",
-      "instructions_placeholder": "에이전트나 멤버가 하는 일…"
+      "instructions_placeholder": "에이전트나 멤버가 하는 일…",
+      "input_slot": "{{from}}의 파일 슬롯",
+      "input_any_slot": "모든 파일"
     },
     "terminals": {
       "col_status": "상태",

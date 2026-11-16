@@ -620,7 +620,8 @@
       "kind": "类型",
       "code": "代码",
       "class": "类别",
-      "message_key": "消息键"
+      "message_key": "消息键",
+      "limit_reached": "已达上限 {{count}}"
     },
     "loops": {
       "col_header": "头部步骤",
@@ -660,11 +661,12 @@
       "delete": "删除任务 {{key}}",
       "role": "角色",
       "no_inputs": "前面的步骤没有任务",
-      "no_skills": "小队没有技能",
+      "no_skills": "该角色没有技能",
       "missing_skills": "R09：角色缺少技能：{{skills}}",
-      "must_set": "必须设置",
       "instructions": "说明",
-      "instructions_placeholder": "智能体或成员要做的事…"
+      "instructions_placeholder": "智能体或成员要做的事…",
+      "input_slot": "{{from}} 的文件槽",
+      "input_any_slot": "任意文件"
     },
     "terminals": {
       "col_status": "状态",

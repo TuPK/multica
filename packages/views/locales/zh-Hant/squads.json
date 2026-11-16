@@ -620,7 +620,8 @@
       "kind": "類型",
       "code": "代碼",
       "class": "類別",
-      "message_key": "訊息鍵"
+      "message_key": "訊息鍵",
+      "limit_reached": "已達上限 {{count}}"
     },
     "loops": {
       "col_header": "標頭步驟",
@@ -660,11 +661,12 @@
       "delete": "刪除任務 {{key}}",
       "role": "角色",
       "no_inputs": "前面的步驟沒有任務",
-      "no_skills": "小隊沒有技能",
+      "no_skills": "該角色沒有技能",
       "missing_skills": "R09：角色缺少技能：{{skills}}",
-      "must_set": "必須設定",
       "instructions": "說明",
-      "instructions_placeholder": "智慧代理或成員要做的事…"
+      "instructions_placeholder": "智慧代理或成員要做的事…",
+      "input_slot": "{{from}} 的檔案槽",
+      "input_any_slot": "任意檔案"
     },
     "terminals": {
       "col_status": "狀態",

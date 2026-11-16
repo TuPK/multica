@@ -1,21 +1,77 @@
 "use client";
 
 import { useMemo } from "react";
-import type { FlowIssue } from "@multica/core/types";
+import type { FlowDoc, FlowIssue } from "@multica/core/types";
 import { Badge } from "@multica/ui/components/ui/badge";
 import { AlertCircle, AlertTriangle, CheckCircle2 } from "@multica/ui/icons";
 import { useT } from "../../i18n";
 
 export interface ProblemsPanelProps {
   issues: FlowIssue[];
-  onSelectPath?: (path?: string) => void;
+  /** The document the issues were found in: it tells which step an issue belongs to. */
+  doc?: FlowDoc;
+  /** An issue was clicked; `stepKey` is the step it belongs to, or null for one that belongs to none. */
+  onSelectIssue?: (issue: FlowIssue, stepKey: string | null) => void;
 }
 
-export function ProblemsPanel({ issues, onSelectPath }: ProblemsPanelProps) {
+/** The step an issue is about: the one its `params.step` names, else the one its path (`steps[2]…`) points into. */
+export function stepKeyOfIssue(issue: FlowIssue, doc?: FlowDoc): string | null {
+  if (!doc) return null;
+  const named = issue.params?.step;
+  if (typeof named === "string" && doc.steps.some((s) => s.key === named)) return named;
+  const index = /^steps\[(\d+)\]/.exec(issue.path ?? "")?.[1];
+  return index === undefined ? null : (doc.steps[Number(index)]?.key ?? null);
+}
+
+export function ProblemsPanel({ issues, doc, onSelectIssue }: ProblemsPanelProps) {
   const { t } = useT("squads");
 
   const errors = useMemo(() => issues.filter((i) => i.severity === "error"), [issues]);
   const warnings = useMemo(() => issues.filter((i) => i.severity === "warning"), [issues]);
+
+  // The issues of no step first, then one group for each step that has some, in the order of the steps.
+  const { loose, groups } = useMemo(() => {
+    const byStep = new Map<string, FlowIssue[]>();
+    const rest: FlowIssue[] = [];
+    for (const issue of issues) {
+      const key = stepKeyOfIssue(issue, doc);
+      if (key === null) rest.push(issue);
+      else byStep.set(key, [...(byStep.get(key) ?? []), issue]);
+    }
+    return {
+      loose: rest,
+      groups: (doc?.steps ?? []).filter((s) => byStep.has(s.key)).map((s) => ({ step: s, issues: byStep.get(s.key)! })),
+    };
+  }, [issues, doc]);
+
+  const renderIssue = (issue: FlowIssue, idx: number) => {
+    const isError = issue.severity === "error";
+    return (
+      <li
+        key={idx}
+        onClick={() => onSelectIssue?.(issue, stepKeyOfIssue(issue, doc))}
+        className="py-2 flex items-start gap-2 cursor-pointer hover:bg-muted/40 px-1.5 rounded transition-colors"
+      >
+        {isError ? (
+          <AlertCircle className="size-4 text-destructive shrink-0 mt-0.5" aria-hidden />
+        ) : (
+          <AlertTriangle className="size-4 text-amber-500 shrink-0 mt-0.5" aria-hidden />
+        )}
+        <div className="flex-1 space-y-0.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-mono text-micro font-medium text-foreground">{issue.code}</span>
+            {issue.path && <span className="font-mono text-micro text-muted-foreground">({issue.path})</span>}
+            {issue.ack && (
+              <Badge variant="outline" className="text-micro text-amber-600 font-normal">
+                {t(($) => $.flow_designer.problems.requires_ack)}
+              </Badge>
+            )}
+          </div>
+          <p className="text-caption text-muted-foreground">{issue.message}</p>
+        </div>
+      </li>
+    );
+  };
 
   if (issues.length === 0) {
     return (
@@ -46,42 +102,17 @@ export function ProblemsPanel({ issues, onSelectPath }: ProblemsPanelProps) {
         </div>
       </div>
 
-      <ul className="divide-y divide-border/60 max-h-60 overflow-y-auto">
-        {issues.map((issue, idx) => {
-          const isError = issue.severity === "error";
-          return (
-            <li
-              key={idx}
-              onClick={() => onSelectPath?.(issue.path)}
-              className="py-2 flex items-start gap-2 cursor-pointer hover:bg-muted/40 px-1.5 rounded transition-colors"
-            >
-              {isError ? (
-                <AlertCircle className="size-4 text-destructive shrink-0 mt-0.5" aria-hidden />
-              ) : (
-                <AlertTriangle className="size-4 text-amber-500 shrink-0 mt-0.5" aria-hidden />
-              )}
-              <div className="flex-1 space-y-0.5">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="font-mono text-micro font-medium text-foreground">
-                    {issue.code}
-                  </span>
-                  {issue.path && (
-                    <span className="font-mono text-micro text-muted-foreground">
-                      ({issue.path})
-                    </span>
-                  )}
-                  {issue.ack && (
-                    <Badge variant="outline" className="text-micro text-amber-600 font-normal">
-                      {t(($) => $.flow_designer.problems.requires_ack)}
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-caption text-muted-foreground">{issue.message}</p>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="max-h-60 space-y-2 overflow-y-auto">
+        {loose.length > 0 && <ul className="divide-y divide-border/60">{loose.map(renderIssue)}</ul>}
+        {groups.map(({ step, issues: stepIssues }) => (
+          <div key={step.key} role="group" aria-labelledby={`problems-${step.key}`} className="space-y-0.5">
+            <h4 id={`problems-${step.key}`} className="px-1.5 text-micro font-semibold text-muted-foreground">
+              {step.title || step.key}
+            </h4>
+            <ul className="divide-y divide-border/60">{stepIssues.map(renderIssue)}</ul>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

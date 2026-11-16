@@ -127,3 +127,73 @@ describe("FlowGraph canvas fit", () => {
     expect(scaleOf()).toBeCloseTo(AVAILABLE(1400) / CONTENT, 2);
   });
 });
+
+describe("FlowGraph with 40 steps (K13)", () => {
+  // A chain of 40 steps with two loops: s10 goes back to s05 (fixed max) and s30 goes back to s20 (max from a variable).
+  const keys = Array.from({ length: 40 }, (_, i) => `s${String(i + 1).padStart(2, "0")}`);
+  const big = {
+    version: 2,
+    start: "s01",
+    terminals: [{ key: "done", status: "done" }],
+    loops: [
+      { key: "fix", header: "s05", max: 3 },
+      { key: "polish", header: "s20", max: { var: "rounds", cap: 5 } },
+    ],
+    steps: keys.map((key, i) => {
+      const next = keys[i + 1] ?? "done";
+      const edges: Array<Record<string, unknown>> = [{ id: `${key}_ok`, label: "Next", to: next }];
+      if (key === "s10") edges.push({ id: "s10_back", label: "Fix", to: "s05", loop: "fix" });
+      if (key === "s30") edges.push({ id: "s30_back", label: "Polish", to: "s20", loop: "polish" });
+      return { key, title: `Step ${key.slice(1)}`, kind: "lead", edges };
+    }),
+  } as unknown as FlowDoc;
+
+  const cardsOnCanvas = () => screen.getByTestId("flow-graph-canvas").querySelectorAll<HTMLElement>("[data-step-key]");
+
+  it("draws every step once, and no two cards sit on the same spot", () => {
+    renderGraph({ doc: big });
+    const cards = [...cardsOnCanvas()];
+    expect(cards.map((c) => c.dataset.stepKey).sort()).toEqual([...keys].sort());
+    const spots = new Set(cards.map((c) => `${c.style.left},${c.style.top}`));
+    expect(spots.size).toBe(40);
+  });
+
+  it("draws each back edge dashed and labelled with its loop max", () => {
+    renderGraph({ doc: big });
+    const back = screen.getAllByTestId("flow-back-edge");
+    expect(back.map((e) => e.getAttribute("data-edge-id")).sort()).toEqual(["s10_back", "s30_back"]);
+    for (const edge of back) {
+      const path = edge.querySelector("path");
+      expect(path?.getAttribute("stroke-dasharray") ?? "").not.toBe("");
+    }
+    const labelOf = (id: string) => back.find((e) => e.getAttribute("data-edge-id") === id)?.querySelector("text")?.textContent;
+    expect(labelOf("s10_back")).toBe("↺ 3");
+    expect(labelOf("s30_back")).toBe("↺ 5");
+  });
+
+  it("selects the step that Find a step names, and no other", () => {
+    const onSelectStep = vi.fn();
+    renderGraph({ doc: big, onSelectStep });
+    const find = screen.getByPlaceholderText("Find a step");
+    fireEvent.change(find, { target: { value: "step 27" } });
+    fireEvent.keyDown(find, { key: "Enter" });
+    expect(onSelectStep).toHaveBeenCalledTimes(1);
+    expect(onSelectStep).toHaveBeenCalledWith("s27");
+
+    // A name that no step has selects nothing.
+    fireEvent.change(find, { target: { value: "no such step" } });
+    fireEvent.keyDown(find, { key: "Enter" });
+    expect(onSelectStep).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the vertical list for phones: all 40 steps in order, shown only below 640px", () => {
+    renderGraph({ doc: big });
+    const list = screen.getByText("Steps in order").parentElement as HTMLElement;
+    expect(list.className).toContain("sm:hidden");
+    const rows = [...list.querySelectorAll("div[class*='cursor-pointer']")];
+    expect(rows).toHaveLength(40);
+    expect(rows[0]?.textContent).toContain("#1 Step 01");
+    expect(rows[39]?.textContent).toContain("#40 Step 40");
+    expect(screen.getByTestId("flow-graph-canvas").parentElement?.className).toMatch(/\bhidden\b.*\bsm:block\b/);
+  });
+});

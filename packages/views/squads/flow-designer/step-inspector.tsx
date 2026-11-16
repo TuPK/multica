@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import type { FlowDoc, FlowDocJoin, FlowDocStep, FlowDocTask, Skill, SquadMember } from "@multica/core/types";
+import type { FlowDoc, FlowDocJoin, FlowDocStep, FlowDocTask, SquadMember } from "@multica/core/types";
 import { Badge } from "@multica/ui/components/ui/badge";
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
@@ -15,7 +15,8 @@ export interface StepInspectorProps {
   onChangeStep: (updated: FlowDocStep) => void;
   doc: FlowDoc;
   squadMembers?: SquadMember[];
-  squadSkills?: Skill[];
+  /** The skills a role has; a task is offered the ones of its own role. */
+  skillsOfRole?: (roleKey: string) => string[];
   taskLimit?: number;
 }
 
@@ -24,24 +25,37 @@ export function StepInspector({
   onChangeStep,
   doc,
   squadMembers = [],
-  squadSkills = [],
+  skillsOfRole,
   taskLimit = 12,
 }: StepInspectorProps) {
   const { t } = useT("squads");
 
   const atTaskLimit = (step.tasks?.length ?? 0) >= taskLimit;
 
-  // Predecessor tasks: tasks from steps that have a path reaching this step
+  // Predecessor tasks (T07): the tasks of other steps with a forward path to this step. A way back along a loop is
+  // not a forward path.
   const predecessorTasks = useMemo(() => {
-    // Collect all steps other than this step
-    const result: { stepKey: string; taskKey: string; label: string }[] = [];
-    for (const otherStep of doc.steps) {
-      if (otherStep.key === step.key) continue;
-      for (const task of otherStep.tasks ?? []) {
+    const before = new Set<string>();
+    const reaching = [step.key];
+    while (reaching.length > 0) {
+      const target = reaching.pop()!;
+      for (const other of doc.steps) {
+        if (before.has(other.key) || other.key === step.key) continue;
+        if (other.edges.some((e) => e.to === target && !e.loop)) {
+          before.add(other.key);
+          reaching.push(other.key);
+        }
+      }
+    }
+    const result: { stepKey: string; taskKey: string; label: string; slots: string[] }[] = [];
+    for (const other of doc.steps) {
+      if (!before.has(other.key)) continue;
+      for (const task of other.tasks ?? []) {
         result.push({
-          stepKey: otherStep.key,
+          stepKey: other.key,
           taskKey: task.key,
           label: task.title || task.key,
+          slots: (task.requires?.files ?? []).map((f) => f.slot).filter((slot): slot is string => Boolean(slot)),
         });
       }
     }
@@ -134,6 +148,21 @@ export function StepInspector({
                 <option value="any">{t(($) => $.flow_designer.join.any)}</option>
                 <option value="quorum">{t(($) => $.flow_designer.inspector.quorum)}</option>
               </select>
+              {step.join?.mode === "quorum" && (
+                <Input
+                  type="number"
+                  min={1}
+                  max={Math.max(1, step.tasks?.length ?? 1)}
+                  value={step.join.k ?? 2}
+                  aria-label={t(($) => $.flow_designer.inspector.quorum)}
+                  onChange={(e) => {
+                    const most = Math.max(1, step.tasks?.length ?? 1);
+                    const k = Math.min(most, Math.max(1, Math.trunc(Number(e.target.value)) || 1));
+                    onChangeStep({ ...step, join: { ...step.join!, k } });
+                  }}
+                  className="mt-1 h-8 text-caption"
+                />
+              )}
             </div>
           )}
 
@@ -191,6 +220,9 @@ export function StepInspector({
               <span>{t(($) => $.flow_designer.task.add)}</span>
             </Button>
           </div>
+          {atTaskLimit && (
+            <p className="text-micro text-muted-foreground">{t(($) => $.flow_designer.common.limit_reached, { count: taskLimit })}</p>
+          )}
 
           <div className="space-y-3">
             {(step.tasks ?? []).map((task, idx) => (
@@ -202,7 +234,7 @@ export function StepInspector({
                 doc={doc}
                 currentStepKey={step.key}
                 squadMembers={squadMembers}
-                squadSkills={squadSkills}
+                roleSkills={skillsOfRole?.(task.role) ?? []}
                 predecessorTasks={predecessorTasks}
               />
             ))}

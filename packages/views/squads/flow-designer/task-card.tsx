@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import type { FlowDoc, FlowDocTask, Skill, SquadMember } from "@multica/core/types";
+import type { FlowDoc, FlowDocTask, SquadMember } from "@multica/core/types";
 import { Badge } from "@multica/ui/components/ui/badge";
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
@@ -16,8 +16,9 @@ export interface TaskCardProps {
   doc: FlowDoc;
   currentStepKey: string;
   squadMembers?: SquadMember[];
-  squadSkills?: Skill[];
-  predecessorTasks?: { stepKey: string; taskKey: string; label: string }[];
+  /** The skills the role of this task has: the ones it can be asked to use. */
+  roleSkills?: string[];
+  predecessorTasks?: { stepKey: string; taskKey: string; label: string; slots?: string[] }[];
 }
 
 export function TaskCard({
@@ -27,7 +28,7 @@ export function TaskCard({
   doc,
   currentStepKey: _currentStepKey,
   squadMembers: _squadMembers = [],
-  squadSkills = [],
+  roleSkills = [],
   predecessorTasks = [],
 }: TaskCardProps) {
   const { t } = useT("squads");
@@ -44,21 +45,18 @@ export function TaskCard({
     return Array.from(new Set([...builtIns, ...custom]));
   }, [doc.verdicts]);
 
-  // Declared variables available for `sets`
+  // The variables the role of this task may set (`Var.set_by`, T08). One the task already sets stays listed, so it can be unticked.
   const declaredVars = useMemo(() => {
-    return (doc.vars ?? []).map((v) => v.key);
-  }, [doc.vars]);
+    return (doc.vars ?? [])
+      .filter((v) => v.set_by?.includes(task.role) || task.sets?.includes(v.key))
+      .map((v) => v.key);
+  }, [doc.vars, task.role, task.sets]);
 
-  // Skills squad agents have
-  const roleAgentSkills = useMemo(() => {
-    return squadSkills.map((s) => s.name);
-  }, [squadSkills]);
-
-  // Check R09: any skill in task.skills not possessed by agents in squad
+  // Check R09: any skill in task.skills that the role does not have
   const missingSkills = useMemo(() => {
     if (!task.skills?.length) return [];
-    return task.skills.filter((s) => !roleAgentSkills.includes(s));
-  }, [task.skills, roleAgentSkills]);
+    return task.skills.filter((s) => !roleSkills.includes(s));
+  }, [task.skills, roleSkills]);
 
   const handleToggleSetVar = (varKey: string) => {
     const currentSets = task.sets ?? [];
@@ -176,22 +174,49 @@ export function TaskCard({
               const isSelected = task.inputs?.some((inp) => inp.from === inputRef);
 
               return (
-                <label key={inputRef} className="flex items-center gap-1.5 text-micro cursor-pointer hover:bg-muted/30 p-1 rounded">
-                  <input
-                    type="checkbox"
-                    checked={isSelected ?? false}
-                    onChange={(e) => {
-                      const cur = task.inputs ?? [];
-                      const next = e.target.checked
-                        ? [...cur, { from: inputRef, required: false }]
-                        : cur.filter((i) => i.from !== inputRef);
-                      onChangeTask({ ...task, inputs: next });
-                    }}
-                    className="size-3 rounded border-input"
-                  />
-                  <span className="font-mono">{inputRef}</span>
-                  <span className="text-muted-foreground">({pt.label})</span>
-                </label>
+                <div key={inputRef} className="flex items-center gap-1.5 text-micro hover:bg-muted/30 p-1 rounded">
+                  <label className="flex flex-1 items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isSelected ?? false}
+                      onChange={(e) => {
+                        const cur = task.inputs ?? [];
+                        const next = e.target.checked
+                          ? [...cur, { from: inputRef, required: false }]
+                          : cur.filter((i) => i.from !== inputRef);
+                        onChangeTask({ ...task, inputs: next });
+                      }}
+                      className="size-3 rounded border-input"
+                    />
+                    <span className="font-mono">{inputRef}</span>
+                    <span className="text-muted-foreground">({pt.label})</span>
+                  </label>
+                  {isSelected && (pt.slots?.length ?? 0) > 0 && (
+                    <select
+                      aria-label={t(($) => $.flow_designer.task_card.input_slot, { from: inputRef })}
+                      value={task.inputs?.find((i) => i.from === inputRef)?.slot ?? ""}
+                      onChange={(e) => {
+                        const slot = e.target.value || undefined;
+                        onChangeTask({
+                          ...task,
+                          inputs: (task.inputs ?? []).map((i) => {
+                            if (i.from !== inputRef) return i;
+                            const { slot: _old, ...rest } = i;
+                            return slot ? { ...rest, slot } : rest;
+                          }),
+                        });
+                      }}
+                      className="h-6 rounded border border-input bg-background px-1 text-micro"
+                    >
+                      <option value="">{t(($) => $.flow_designer.task_card.input_any_slot)}</option>
+                      {pt.slots!.map((slot) => (
+                        <option key={slot} value={slot}>
+                          {slot}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -216,7 +241,7 @@ export function TaskCard({
           )}
         </div>
         <div className="flex gap-1.5 flex-wrap">
-          {roleAgentSkills.map((skillName) => {
+          {roleSkills.map((skillName) => {
             const isSelected = task.skills?.includes(skillName);
             return (
               <Badge
@@ -235,7 +260,7 @@ export function TaskCard({
               </Badge>
             );
           })}
-          {roleAgentSkills.length === 0 && (
+          {roleSkills.length === 0 && (
             <span className="text-micro text-muted-foreground italic">{t(($) => $.flow_designer.task_card.no_skills)}</span>
           )}
         </div>
@@ -271,7 +296,7 @@ export function TaskCard({
                         onChange={() => handleToggleRequiredVar(vKey)}
                         className="size-2.5 rounded border-input"
                       />
-                      <span className="text-micro">{t(($) => $.flow_designer.task_card.must_set)}</span>
+                      <span className="text-micro">{t(($) => $.flow_designer.task.requires_vars)}</span>
                     </label>
                   )}
                 </div>

@@ -213,6 +213,9 @@ export function LoopsPanel({
           <Plus className="size-3.5" aria-hidden />
           <span>{t(($) => $.flow_designer.loops.add)}</span>
         </Button>
+        {atLimit && (
+          <span className="text-micro text-muted-foreground">{t(($) => $.flow_designer.common.limit_reached, { count: loopLimit })}</span>
+        )}
       </div>
     </div>
   );

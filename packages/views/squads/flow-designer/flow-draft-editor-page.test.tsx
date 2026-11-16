@@ -443,6 +443,20 @@ describe("FlowDraftEditorPage", () => {
       await waitFor(() => expect(mocks.navPush).toHaveBeenCalledWith("/acme/squads/squad-1"));
     });
 
+    it("goes nowhere when the publish is refused, whatever the refusal", async () => {
+      fakeApi.publishFlowDraft.mockRejectedValue(apiError(409, { code: "flow_draft_stale", latest_workflow_id: "wf-latest" }, "stale"));
+      const dialog = await openPublish();
+      await waitFor(() => expect(within(dialog).getByRole("button", { name: "Publish" })).toBeEnabled());
+      fireEvent.click(within(dialog).getByRole("button", { name: "Publish" }));
+      await within(dialog).findByRole("button", { name: "Edit the latest version" });
+      expect(mocks.navPush).not.toHaveBeenCalled();
+
+      fakeApi.publishFlowDraft.mockRejectedValue(apiError(422, { code: "flow_invalid" }, "not valid"));
+      fireEvent.click(within(dialog).getByRole("button", { name: "Publish" }));
+      await waitFor(() => expect(fakeApi.publishFlowDraft).toHaveBeenCalledTimes(2));
+      expect(mocks.navPush).not.toHaveBeenCalled();
+    });
+
     it("a stale draft offers a new draft from the latest version", async () => {
       fakeApi.publishFlowDraft.mockRejectedValue(apiError(409, { code: "flow_draft_stale", latest_workflow_id: "wf-latest" }, "stale"));
       fakeApi.createFlowDraft.mockResolvedValue({ ...sampleDraft, id: "draft-2" });
@@ -493,6 +507,41 @@ describe("FlowDraftEditorPage", () => {
     expect(await within(dialog).findByText("terminal: done")).toBeInTheDocument();
     expect(request).not.toHaveProperty("switches");
     expect(request).not.toHaveProperty("path_choices");
+  });
+
+  it("Simulate shows the counter of each loop at the end of the run", async () => {
+    fakeApi.simulateFlowDraft.mockResolvedValue({
+      hops: [
+        { n: 0, step: "verify", activation: 1, edge: "e1", to: "review_step", loops: {} },
+        { n: 1, step: "review_step", activation: 1, edge: "e2", to: "verify", loops: { fix_loop: 1 } },
+        { n: 2, step: "verify", activation: 2, edge: "e1", to: "review_step", loops: { fix_loop: 1 } },
+        { n: 3, step: "review_step", activation: 2, edge: "e2", to: "verify", loops: { fix_loop: 2 } },
+      ],
+      end: { kind: "terminal", code: "done" },
+      truncated: false,
+    });
+    await loaded();
+    fireEvent.click(screen.getByRole("button", { name: "Simulate" }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Run" }));
+    expect(await within(dialog).findByText("fix_loop: 2")).toBeInTheDocument();
+  });
+
+  it("Check lists the problems under their steps, and a click on one opens its step", async () => {
+    fakeApi.validateFlowDraft.mockResolvedValue({
+      ok: false,
+      revision: 1,
+      issues: [{ code: "task_role_missing", severity: "error", path: "steps[1].tasks[0].role", message: "The role of the task is not declared" }],
+      analysis: null,
+      fact_catalog: {},
+    });
+    await loaded();
+    expect(screen.getByDisplayValue("Verify Documents")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Check" }));
+    const group = await screen.findByRole("group", { name: "Legal Review" });
+    fireEvent.click(within(group).getByText("The role of the task is not declared"));
+    expect(await screen.findByDisplayValue("Legal Review")).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Verify Documents")).toBeNull();
   });
 
   it("a role in use cannot be deleted, but an unused role can be deleted", async () => {
@@ -556,6 +605,30 @@ describe("FlowDraftEditorPage", () => {
 
     const saved = fakeApi.updateFlowDraft.mock.calls[0]![2].doc;
     expect(saved.roles.find((r: { key: string }) => r.key === "worker").bind).toEqual({ agent_ids: ["agent-1"] });
+  });
+
+  it("offers a task the skills of the squad and of the agent its role is given to, and no other", async () => {
+    fakeApi.getFlowDraft.mockResolvedValue({
+      ...sampleDraft,
+      doc: { ...sampleDraft.doc, roles: [{ ...sampleDraft.doc.roles![0]!, bind: { agent_ids: ["agent-1"] } }, sampleDraft.doc.roles![1]!] },
+    });
+    fakeApi.listSquadSkills.mockResolvedValue([{ id: "s1", name: "squad-skill" }]);
+    fakeApi.listAgents.mockResolvedValue([
+      { id: "agent-lead", name: "Lead agent", skills: [] },
+      { id: "agent-1", name: "Writer agent", skills: [{ id: "s2", name: "tone-check", description: "" }, { id: "s3", name: "off-skill", description: "", enabled: false }] },
+    ]);
+    await loaded();
+    // The first step is open: its task is the worker's.
+    expect(await screen.findByText("tone-check")).toBeInTheDocument();
+    expect(screen.getByText("squad-skill")).toBeInTheDocument();
+    expect(screen.queryByText("off-skill")).toBeNull();
+  });
+
+  it("takes the limit of steps from capabilities: Add step is disabled at it, with the reason", async () => {
+    fakeApi.getFlowCapabilities.mockResolvedValue(capabilities({ limits: { ...EMPTY_FLOW_CAPABILITIES_RESPONSE.limits, steps: 2 } }));
+    await loaded();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add step" })).toBeDisabled());
+    expect(screen.getByText("Limit of 2 reached")).toBeInTheDocument();
   });
 
   describe("adding a step", () => {

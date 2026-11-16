@@ -194,6 +194,9 @@ export function VerdictsPanel({
           <Plus className="size-3.5" aria-hidden />
           <span>{t(($) => $.flow_designer.verdicts.add)}</span>
         </Button>
+        {atLimit && (
+          <span className="text-micro text-muted-foreground">{t(($) => $.flow_designer.common.limit_reached, { count: verdictLimit })}</span>
+        )}
       </div>
     </div>
   );
