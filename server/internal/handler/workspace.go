@@ -20,7 +20,6 @@ import (
 	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/analytics"
 	"github.com/multica-ai/multica/server/internal/auditstore"
-	"github.com/multica-ai/multica/server/internal/issuestatus"
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/planlimit"
@@ -28,12 +27,12 @@ import (
 	"github.com/multica-ai/multica/server/internal/util"
 	"github.com/multica-ai/multica/server/internal/workspacedeletion"
 	"github.com/multica-ai/multica/server/internal/workspaceguard"
+	"github.com/multica-ai/multica/server/internal/workspaceprovision"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
 
 var nonAlpha = regexp.MustCompile(`[^a-zA-Z]`)
-var nonAlphanumeric = regexp.MustCompile(`[^a-zA-Z0-9]`)
 var workspaceSlugPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 var issuePrefixPattern = regexp.MustCompile(`^[A-Z0-9]{1,10}$`)
 
@@ -51,16 +50,7 @@ var issuePrefixPattern = regexp.MustCompile(`^[A-Z0-9]{1,10}$`)
 // packages/views/onboarding/steps/step-workspace.tsx — what the user sees on
 // the create screen has to be what the server would derive.
 func defaultIssuePrefixFromSlug(slug string) string {
-	head := nonAlphanumeric.ReplaceAllString(slug, "")
-	if head == "" {
-		// Unreachable for a validated slug; keeps the function total so a
-		// future caller can never persist an empty prefix.
-		return "WS"
-	}
-	if len(head) > 4 {
-		head = head[:4]
-	}
-	return strings.ToUpper(head)
+	return workspaceprovision.DefaultIssuePrefix(slug)
 }
 
 // legacyIssuePrefixFromName is the pre-MUL-6050 derivation: first 3 ASCII
@@ -425,52 +415,39 @@ func (h *Handler) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to create workspace")
 		return
 	}
-	ws, err := qtx.CreateWorkspace(r.Context(), db.CreateWorkspaceParams{
+	ws, err := workspaceprovision.Create(r.Context(), qtx, workspaceprovision.Params{
 		Name:        req.Name,
 		Slug:        req.Slug,
 		Description: ptrToText(req.Description),
 		Context:     ptrToText(req.Context),
 		IssuePrefix: issuePrefix,
+		OwnerID:     parseUUID(userID),
+		Record:      func(e audit.Entry) error { return h.recordAuditWith(r, qtx, e) },
 	})
 	if err != nil {
-		if isUniqueViolation(err) {
-			writeError(w, http.StatusConflict, "workspace slug already exists")
+		var stepErr *workspaceprovision.StepError
+		if !errors.As(err, &stepErr) {
+			writeError(w, http.StatusInternalServerError, "failed to create workspace")
 			return
 		}
-		slog.Warn("create workspace failed", append(logger.RequestAttrs(r), "error", err)...)
-		writeError(w, http.StatusInternalServerError, "failed to create workspace")
-		return
-	}
-
-	_, err = qtx.CreateMember(r.Context(), db.CreateMemberParams{
-		WorkspaceID: ws.ID,
-		UserID:      parseUUID(userID),
-		Role:        "owner",
-	})
-	if err != nil {
-		slog.Warn("add owner failed", append(logger.RequestAttrs(r), "error", err)...)
-		writeError(w, http.StatusInternalServerError, "failed to add owner")
-		return
-	}
-
-	// Seed the 7 built-in issue statuses inside the same transaction, so a
-	// workspace is never visible without its status catalog — an issue cannot
-	// be created before its status can be resolved. (MUL-6243)
-	if err := issuestatus.Ensure(r.Context(), qtx, ws.ID); err != nil {
-		slog.Warn("seed issue statuses failed", append(logger.RequestAttrs(r), "error", err)...)
-		writeError(w, http.StatusInternalServerError, "failed to seed issue statuses")
-		return
-	}
-
-	if err := h.recordAudit(r, tx, audit.Entry{
-		WorkspaceID: uuidToString(ws.ID),
-		Action:      audit.ActionWorkspaceCreated,
-		TargetType:  "workspace",
-		TargetID:    uuidToString(ws.ID),
-		TargetLabel: ws.Name,
-	}); err != nil {
-		slog.Warn("audit workspace created failed", append(logger.RequestAttrs(r), "error", err)...)
-		writeError(w, http.StatusInternalServerError, "failed to create workspace")
+		switch stepErr.Step {
+		case "create":
+			if isUniqueViolation(stepErr.Err) {
+				writeError(w, http.StatusConflict, "workspace slug already exists")
+				return
+			}
+			slog.Warn("create workspace failed", append(logger.RequestAttrs(r), "error", stepErr.Err)...)
+			writeError(w, http.StatusInternalServerError, "failed to create workspace")
+		case "owner":
+			slog.Warn("add owner failed", append(logger.RequestAttrs(r), "error", stepErr.Err)...)
+			writeError(w, http.StatusInternalServerError, "failed to add owner")
+		case "statuses":
+			slog.Warn("seed issue statuses failed", append(logger.RequestAttrs(r), "error", stepErr.Err)...)
+			writeError(w, http.StatusInternalServerError, "failed to seed issue statuses")
+		default:
+			slog.Warn("audit workspace created failed", append(logger.RequestAttrs(r), "error", stepErr.Err)...)
+			writeError(w, http.StatusInternalServerError, "failed to create workspace")
+		}
 		return
 	}
 
