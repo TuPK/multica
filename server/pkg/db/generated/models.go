@@ -376,6 +376,13 @@ type AutopilotTrigger struct {
 	CreatedByID pgtype.UUID `json:"created_by_id"`
 }
 
+type BillingNotice struct {
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	NoticeKey   string             `json:"notice_key"`
+	Kind        string             `json:"kind"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
 type BillingOrder struct {
 	ID             pgtype.UUID        `json:"id"`
 	WorkspaceID    pgtype.UUID        `json:"workspace_id"`

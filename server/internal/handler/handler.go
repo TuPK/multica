@@ -219,6 +219,11 @@ type RuntimeRecoveryNotifier interface {
 }
 
 type Handler struct {
+	// WorkspaceDeletionDays is the grace period before DeleteWorkspace deletes a
+	// workspace; 0 deletes at once. main sets it from
+	// PLATFORM_WORKSPACE_DELETION_DAYS, which it validates before the server starts.
+	WorkspaceDeletionDays int
+
 	Queries                *db.Queries
 	ReadSelector           *dbreader.Selector
 	DB                     dbExecutor

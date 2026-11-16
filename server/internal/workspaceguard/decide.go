@@ -141,6 +141,8 @@ func restrictedAllows(method, pattern string) (roles []string, ok bool) {
 		return nil, true
 	case method == http.MethodPost && pattern == "/api/workspaces/{id}/leave":
 		return nil, true
+	case method == http.MethodDelete && pattern == "/api/workspaces/{id}/deletion":
+		return owner, true
 	case isRead(method) && (pattern == "/api/company/export" || pattern == "/api/hub/export"):
 		return owner, true
 	}

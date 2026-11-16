@@ -26,6 +26,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/planlimit"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
+	"github.com/multica-ai/multica/server/internal/workspacedeletion"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
@@ -1386,6 +1387,13 @@ func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 	}
 	if requester.Role != "owner" {
 		writeError(w, http.StatusForbidden, "insufficient permissions")
+		return
+	}
+
+	// With a grace period configured the deletion is scheduled, not carried out;
+	// the workspace_deletion job deletes it through the teardown below.
+	if scheduleAt := workspacedeletion.Decide(time.Now(), h.WorkspaceDeletionDays); scheduleAt != nil {
+		h.scheduleWorkspaceDeletion(w, r, requester, *scheduleAt)
 		return
 	}
 

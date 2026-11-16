@@ -2011,6 +2011,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				})
 				// Owner-only access
 				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner")).Delete("/", h.DeleteWorkspace)
+				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner")).Delete("/deletion", h.CancelWorkspaceDeletion)
 
 				// Plans and orders of the platform's billing. The orders carry
 				// the buyer's invoice details, so only human owners and admins

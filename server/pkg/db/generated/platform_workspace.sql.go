@@ -11,6 +11,127 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const cancelWorkspaceDeletion = `-- name: CancelWorkspaceDeletion :one
+UPDATE platform_workspace
+SET status = 'active',
+    reason = '',
+    changed_by = $1,
+    changed_at = now(),
+    deletion_scheduled_at = NULL
+WHERE workspace_id = $2
+  AND status = 'pending_deletion'
+RETURNING workspace_id
+`
+
+type CancelWorkspaceDeletionParams struct {
+	ChangedBy   pgtype.UUID `json:"changed_by"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
+
+// Returns the workspace to active only while it is pending deletion.
+func (q *Queries) CancelWorkspaceDeletion(ctx context.Context, arg CancelWorkspaceDeletionParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, cancelWorkspaceDeletion, arg.ChangedBy, arg.WorkspaceID)
+	var workspace_id pgtype.UUID
+	err := row.Scan(&workspace_id)
+	return workspace_id, err
+}
+
+const deletePlatformWorkspace = `-- name: DeletePlatformWorkspace :exec
+DELETE FROM platform_workspace
+WHERE workspace_id = $1
+`
+
+func (q *Queries) DeletePlatformWorkspace(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deletePlatformWorkspace, workspaceID)
+	return err
+}
+
+const listDueWorkspaceDeletions = `-- name: ListDueWorkspaceDeletions :many
+SELECT workspace_id
+FROM platform_workspace
+WHERE status = 'pending_deletion'
+  AND deletion_scheduled_at <= $1
+ORDER BY deletion_scheduled_at
+LIMIT $2
+`
+
+type ListDueWorkspaceDeletionsParams struct {
+	Now      pgtype.Timestamptz `json:"now"`
+	RowLimit int32              `json:"row_limit"`
+}
+
+func (q *Queries) ListDueWorkspaceDeletions(ctx context.Context, arg ListDueWorkspaceDeletionsParams) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listDueWorkspaceDeletions, arg.Now, arg.RowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []pgtype.UUID{}
+	for rows.Next() {
+		var workspace_id pgtype.UUID
+		if err := rows.Scan(&workspace_id); err != nil {
+			return nil, err
+		}
+		items = append(items, workspace_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockPendingWorkspaceDeletion = `-- name: LockPendingWorkspaceDeletion :one
+SELECT deletion_scheduled_at
+FROM platform_workspace
+WHERE workspace_id = $1
+  AND status = 'pending_deletion'
+FOR UPDATE
+`
+
+// Locks the row of a workspace that is still pending deletion. A cancel or a
+// second run waits on the lock, then finds the row changed or gone.
+func (q *Queries) LockPendingWorkspaceDeletion(ctx context.Context, workspaceID pgtype.UUID) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, lockPendingWorkspaceDeletion, workspaceID)
+	var deletion_scheduled_at pgtype.Timestamptz
+	err := row.Scan(&deletion_scheduled_at)
+	return deletion_scheduled_at, err
+}
+
+const scheduleWorkspaceDeletion = `-- name: ScheduleWorkspaceDeletion :one
+INSERT INTO platform_workspace (workspace_id, status, reason, changed_by, changed_at, deletion_scheduled_at)
+VALUES ($1, 'pending_deletion', $2, $3, now(), $4)
+ON CONFLICT (workspace_id) DO UPDATE
+SET status = 'pending_deletion',
+    reason = EXCLUDED.reason,
+    changed_by = EXCLUDED.changed_by,
+    changed_at = now(),
+    deletion_scheduled_at = EXCLUDED.deletion_scheduled_at
+WHERE platform_workspace.status <> 'pending_deletion'
+RETURNING deletion_scheduled_at
+`
+
+type ScheduleWorkspaceDeletionParams struct {
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	Reason      string             `json:"reason"`
+	ChangedBy   pgtype.UUID        `json:"changed_by"`
+	ScheduledAt pgtype.Timestamptz `json:"scheduled_at"`
+}
+
+// Marks the workspace pending deletion. A workspace that is already pending
+// keeps its schedule and returns no row, so a repeated request cannot push the
+// date out.
+func (q *Queries) ScheduleWorkspaceDeletion(ctx context.Context, arg ScheduleWorkspaceDeletionParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, scheduleWorkspaceDeletion,
+		arg.WorkspaceID,
+		arg.Reason,
+		arg.ChangedBy,
+		arg.ScheduledAt,
+	)
+	var deletion_scheduled_at pgtype.Timestamptz
+	err := row.Scan(&deletion_scheduled_at)
+	return deletion_scheduled_at, err
+}
+
 const workspaceState = `-- name: WorkspaceState :one
 SELECT status, deletion_scheduled_at
 FROM platform_workspace
@@ -22,8 +143,8 @@ type WorkspaceStateRow struct {
 	DeletionScheduledAt pgtype.Timestamptz `json:"deletion_scheduled_at"`
 }
 
-// The platform writes platform_workspace; the server only reads it. A missing
-// row means the workspace is active.
+// The platform writes platform_workspace, except for the owner's schedule and
+// cancel of a deletion below. A missing row means the workspace is active.
 func (q *Queries) WorkspaceState(ctx context.Context, workspaceID pgtype.UUID) (WorkspaceStateRow, error) {
 	row := q.db.QueryRow(ctx, workspaceState, workspaceID)
 	var i WorkspaceStateRow

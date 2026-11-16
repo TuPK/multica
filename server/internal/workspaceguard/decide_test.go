@@ -13,6 +13,7 @@ var (
 const (
 	routeWorkspace      = "/api/workspaces/{id}"
 	routeLeave          = "/api/workspaces/{id}/leave"
+	routeWsDeletion     = "/api/workspaces/{id}/deletion"
 	routeMemberRemove   = "/api/workspaces/{id}/members/{memberId}"
 	routeInvitation     = "/api/workspaces/{id}/invitations/{invitationId}"
 	routeShareLink      = "/api/workspaces/{id}/share-links/{linkId}"
@@ -63,6 +64,7 @@ func methodsRoles(roles []string, methods ...string) map[string][]string {
 var corpus = []route{
 	{pattern: routeWorkspace, restricted: methodsRoles(nil, "GET", "HEAD", "OPTIONS")},
 	{pattern: routeLeave, readOnly: []string{"POST"}, restricted: methodsRoles(nil, "POST")},
+	{pattern: routeWsDeletion, restricted: methodsRoles(wantOwnerOnly, "DELETE")},
 	{pattern: routeMemberRemove},
 	{pattern: routeInvitation},
 	{pattern: routeShareLink},
@@ -196,6 +198,7 @@ func TestDecideEveryNamedRouteOfTheContract(t *testing.T) {
 		{"POST", routeSubCheckout, wantOwnerAdmin},
 		{"GET", routeSubSummary, wantOwnerAdmin},
 		{"POST", routeLeave, nil},
+		{"DELETE", routeWsDeletion, wantOwnerOnly},
 		{"GET", routeCompanyExport, wantOwnerOnly},
 		{"GET", routeHubExport, wantOwnerOnly},
 	}

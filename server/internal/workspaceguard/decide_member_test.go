@@ -49,6 +49,10 @@ func TestDecideForMemberEnforcesTheRolesOfAnAllowedDecision(t *testing.T) {
 		{"suspended", "GET", routeSubSummary, "owner", true, ""},
 		{"suspended", "GET", routeSubSummary, "member", false, "workspace_suspended"},
 		{"pending_deletion", "POST", routeSubCheckout, "", false, "workspace_pending_deletion"},
+		// The owner may cancel a scheduled deletion; an admin or a member may not.
+		{"pending_deletion", "DELETE", routeWsDeletion, "owner", true, ""},
+		{"pending_deletion", "DELETE", routeWsDeletion, "admin", false, "workspace_pending_deletion"},
+		{"pending_deletion", "DELETE", routeWsDeletion, "member", false, "workspace_pending_deletion"},
 		// No role limit: any member passes.
 		{"suspended", "GET", routeWorkspace, "member", true, ""},
 		// A route that is not allowed keeps Decide's refusal, whatever the role.
