@@ -48,7 +48,6 @@ func TestPlatformHandlerRoutesConsolePathsToTheConsole(t *testing.T) {
 		"/api/platform/tenants/",
 		"/api/platform/tenants/" + id + "/unknown",
 		"/api/platform/plans/",
-		"/api/platform/users/" + id + "/mfa-reset",
 	} {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, httptest.NewRequest("GET", path, nil))

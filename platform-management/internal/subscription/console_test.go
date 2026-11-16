@@ -176,7 +176,7 @@ func (e *consoleEnv) do(user, method, path, body string) *httptest.ResponseRecor
 	}
 	req := httptest.NewRequest(method, path, rd)
 	if user != "" {
-		tok, err := session.Sign(secret, user, t0.Add(-time.Minute))
+		tok, err := platformauth.SignMFASession(secret, user, t0.Add(-time.Minute))
 		if err != nil {
 			e.t.Fatal(err)
 		}
@@ -245,7 +245,7 @@ func TestRoutesAdmitOnlyTheirRoles(t *testing.T) {
 
 func TestWritesNeedTheConsoleOrigin(t *testing.T) {
 	e := newConsoleEnv(t)
-	tok, _ := session.Sign(secret, adminUser, t0.Add(-time.Minute))
+	tok, _ := platformauth.SignMFASession(secret, adminUser, t0.Add(-time.Minute))
 	req := httptest.NewRequest("PUT", subPath, strings.NewReader(proBody))
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: tok})
 	req.Header.Set("Origin", "https://evil.example.com")

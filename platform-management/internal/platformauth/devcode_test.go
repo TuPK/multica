@@ -4,8 +4,10 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/multica-ai/multica/platform-management/internal/emailhash"
+	"github.com/multica-ai/multica/platform-management/internal/mfa"
 )
 
 const devCode = "666666"
@@ -51,10 +53,12 @@ func TestSendCodeWithDevCodeAndAProviderStillMails(t *testing.T) {
 	if e.mailer.count() != 1 {
 		t.Fatalf("mails = %d, want 1", e.mailer.count())
 	}
-	// The real code and the dev code both work.
+	// The real code and the dev code both work. A TOTP step works once, so the
+	// second sign-in comes one step later.
 	if rec := e.verify(staffEmail, e.mailer.last().code); rec.Code != http.StatusOK {
 		t.Errorf("real code: status = %d", rec.Code)
 	}
+	e.now = e.now.Add(mfa.Period * time.Second)
 	if rec := e.verify(staffEmail, devCode); rec.Code != http.StatusOK {
 		t.Errorf("dev code: status = %d", rec.Code)
 	}
@@ -72,7 +76,9 @@ func TestVerifyCodeDevCodeSignsInStaff(t *testing.T) {
 	if len(rec.Result().Cookies()) != 1 {
 		t.Errorf("cookies = %v", rec.Result().Cookies())
 	}
-	// The dev code is not used up.
+	// The dev code is not used up. A TOTP step works once, so the second
+	// sign-in comes one step later.
+	e.now = e.now.Add(mfa.Period * time.Second)
 	if rec := e.verify(staffEmail, devCode); rec.Code != http.StatusOK {
 		t.Errorf("second use: status = %d", rec.Code)
 	}

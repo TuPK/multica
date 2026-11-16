@@ -556,8 +556,12 @@ func TestMiddlewareFailuresAreAll404(t *testing.T) {
 		{"a token older than 12 hours", func(e *env) request {
 			return request{cookies: []*http.Cookie{sessionCookie(e.token(staffUserID, e.now.Add(-12*time.Hour-time.Second)))}}
 		}},
+		{"a session that never passed the second factor", func(e *env) request {
+			tok, _ := session.Sign(secret, staffUserID, e.now)
+			return request{cookies: []*http.Cookie{sessionCookie(tok)}}
+		}},
 		{"a token signed with another secret", func(e *env) request {
-			tok, _ := session.Sign("another-secret-another-secret-0123", staffUserID, e.now)
+			tok, _ := SignMFASession("another-secret-another-secret-0123", staffUserID, e.now)
 			return request{cookies: []*http.Cookie{sessionCookie(tok)}}
 		}},
 		{"a malformed token", func(e *env) request {

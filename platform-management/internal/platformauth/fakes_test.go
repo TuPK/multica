@@ -3,6 +3,8 @@ package platformauth
 import (
 	"bytes"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -15,6 +17,7 @@ import (
 
 	"github.com/multica-ai/multica/platform-management/accountguard"
 	"github.com/multica-ai/multica/platform-management/internal/emailhash"
+	"github.com/multica-ai/multica/platform-management/internal/mfa"
 	"github.com/multica-ai/multica/platform-management/internal/session"
 	"github.com/multica-ai/multica/platform-management/internal/staff"
 )
@@ -28,6 +31,72 @@ const (
 	otherEmail    = "other@example.com"
 	secureDefault = true
 )
+
+// mfaSecret is the base32 TOTP secret the fake staff member enrolled.
+const mfaSecret = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
+
+// testKey is the 32-byte MULTICA_MFA_SECRET_KEY of these tests.
+func testKey() []byte {
+	key := make([]byte, 32)
+	for i := range key {
+		key[i] = byte(i)
+	}
+	return key
+}
+
+// seal encrypts a secret the way Multica does: AES-256-GCM, nonce first.
+func seal(t *testing.T, key []byte, plain string) []byte {
+	t.Helper()
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	return gcm.Seal(nonce, nonce, []byte(plain), nil)
+}
+
+type mfaRow struct {
+	sealed   []byte
+	lastStep int64
+}
+
+// fakeMFA is the confirmed user_mfa rows in memory.
+type fakeMFA struct {
+	mu   sync.Mutex
+	rows map[string]*mfaRow
+	err  error
+}
+
+func (m *fakeMFA) ConfirmedMFA(_ context.Context, userID string) ([]byte, int64, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.err != nil {
+		return nil, 0, false, m.err
+	}
+	r, ok := m.rows[userID]
+	if !ok {
+		return nil, 0, false, nil
+	}
+	return r.sealed, r.lastStep, true, nil
+}
+
+func (m *fakeMFA) UseMFAStep(_ context.Context, userID string, step int64) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.err != nil {
+		return false, m.err
+	}
+	r, ok := m.rows[userID]
+	if !ok || r.lastStep >= step {
+		return false, nil
+	}
+	r.lastStep = step
+	return true, nil
+}
 
 var t0 = time.Date(2030, 5, 6, 7, 8, 9, 0, time.UTC)
 
@@ -255,6 +324,7 @@ type env struct {
 	codes   *fakeCodes
 	limiter *fakeLimiter
 	mailer  *fakeMailer
+	mfa     *fakeMFA
 	logs    *bytes.Buffer
 	now     time.Time
 	cfg     Config
@@ -263,6 +333,11 @@ type env struct {
 func newEnv(t *testing.T, mutate ...func(*Config)) *env {
 	t.Helper()
 	e := &env{t: t, dir: newDirectory(), guard: &fakeGuard{recs: map[string]accountguard.Record{}}, limiter: newLimiter(), mailer: &fakeMailer{}, logs: &bytes.Buffer{}, now: t0}
+	e.mfa = &fakeMFA{rows: map[string]*mfaRow{staffUserID: {sealed: seal(t, testKey(), mfaSecret)}}}
+	crypto, err := mfa.NewCrypto(testKey())
+	if err != nil {
+		t.Fatal(err)
+	}
 	e.seeder = &fakeSeeder{dir: e.dir}
 	e.codes = newCodes(func() time.Time { return e.now })
 	e.cfg = Config{
@@ -282,6 +357,8 @@ func newEnv(t *testing.T, mutate ...func(*Config)) *env {
 		Codes:     e.codes,
 		Limiter:   e.limiter,
 		Mailer:    e.mailer,
+		MFA:       e.mfa,
+		Crypto:    crypto,
 		Log:       slog.New(slog.NewTextHandler(e.logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
 		Now:       func() time.Time { return e.now },
 	})
@@ -330,14 +407,30 @@ func (e *env) sendCode(email string) *httptest.ResponseRecorder {
 	return e.post("/api/platform/auth/send-code", `{"email":"`+email+`"}`)
 }
 
+// verify submits the email code with the staff member's current TOTP code.
 func (e *env) verify(email, code string) *httptest.ResponseRecorder {
-	return e.post("/api/platform/auth/verify-code", `{"email":"`+email+`","code":"`+code+`"}`)
+	return e.verifyWith(email, code, e.totp())
+}
+
+// verifyWith submits the email code and the given TOTP code, which may be empty.
+func (e *env) verifyWith(email, code, totp string) *httptest.ResponseRecorder {
+	return e.post("/api/platform/auth/verify-code", `{"email":"`+email+`","code":"`+code+`","totp":"`+totp+`"}`)
+}
+
+// totp is the code the staff member's authenticator shows at the test clock.
+func (e *env) totp() string {
+	e.t.Helper()
+	c, err := mfa.CodeAt(mfaSecret, e.now)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	return c
 }
 
 // token mints a valid session token for the user, signed at authTime.
 func (e *env) token(userID string, authTime time.Time) string {
 	e.t.Helper()
-	tok, err := session.Sign(secret, userID, authTime)
+	tok, err := SignMFASession(secret, userID, authTime)
 	if err != nil {
 		e.t.Fatal(err)
 	}

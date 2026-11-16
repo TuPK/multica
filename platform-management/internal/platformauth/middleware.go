@@ -31,7 +31,7 @@ func IdentityFrom(ctx context.Context) (Identity, bool) {
 
 // RequirePlatformStaff admits a request only when every check passes: the
 // client IP is inside AdminCIDRs when they are set; the mpa_session cookie
-// holds a valid token no older than 12 hours; the user has an active staff row
+// holds a valid token no older than 12 hours whose amr includes mfa; the user has an active staff row
 // whose role is one of roles (any role when roles is empty); and the Multica
 // account is active with no session revocation after the sign-in. The checks
 // read the staff row and the account on every request, so a revocation applies
@@ -71,6 +71,11 @@ func (h *Handler) authenticate(r *http.Request, roles []staff.Role) (Identity, s
 	claims, err := session.Verify(h.SessionSecret, cookie.Value, h.Now())
 	if err != nil {
 		return Identity{}, "invalid token"
+	}
+
+	// The console accepts only a session that passed the TOTP step.
+	if !slices.Contains(claims.AMR, methodMFA) {
+		return Identity{}, "no second factor in the session"
 	}
 
 	ctx := r.Context()

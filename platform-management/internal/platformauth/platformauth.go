@@ -13,6 +13,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -26,6 +27,7 @@ import (
 
 	"github.com/multica-ai/multica/platform-management/accountguard"
 	"github.com/multica-ai/multica/platform-management/internal/emailhash"
+	"github.com/multica-ai/multica/platform-management/internal/mfa"
 	"github.com/multica-ai/multica/platform-management/internal/session"
 	"github.com/multica-ai/multica/platform-management/internal/staff"
 )
@@ -37,6 +39,9 @@ const (
 	limitWindow = 10 * time.Minute
 	emailLimit  = 5
 	ipLimit     = 20
+
+	// methodMFA is the amr value of a session that passed the TOTP step.
+	methodMFA = "mfa"
 
 	maxBodyBytes = 4 << 10
 	mailTimeout  = 30 * time.Second
@@ -51,6 +56,17 @@ type Directory interface {
 	// no active row, or with a role this build does not know, is not found.
 	ActiveStaff(ctx context.Context, userID string) (role staff.Role, found bool, err error)
 	EmailByUserID(ctx context.Context, userID string) (string, error)
+}
+
+// MFAStore reads the second factor a staff member enrolled in the Multica web
+// app (the user_mfa table).
+type MFAStore interface {
+	// ConfirmedMFA returns the sealed secret and the last used time step of the
+	// user's confirmed row. found is false when there is none.
+	ConfirmedMFA(ctx context.Context, userID string) (sealed []byte, lastStep int64, found bool, err error)
+	// UseMFAStep records step as used, and returns false when step is not after
+	// the last used step.
+	UseMFAStep(ctx context.Context, userID string, step int64) (bool, error)
 }
 
 // Seeder gives a configured administrator their staff row.
@@ -108,8 +124,12 @@ type Deps struct {
 	Codes     CodeStore
 	Limiter   Limiter
 	Mailer    Mailer
-	Log       *slog.Logger
-	Now       func() time.Time
+	MFA       MFAStore
+	// Crypto opens the secrets in MFA. Without it, or without MFA, no one
+	// signs in.
+	Crypto *mfa.Crypto
+	Log    *slog.Logger
+	Now    func() time.Time
 }
 
 // Handler serves /api/platform/.
@@ -319,14 +339,44 @@ func (h *Handler) macOf(code string) []byte {
 	return m.Sum(nil)
 }
 
+// SignMFASession returns a session token for a user who signed in with the
+// email code and then the TOTP code, so its amr names both.
+func SignMFASession(secret, userID string, authTime time.Time) (string, error) {
+	payload, err := json.Marshal(session.Claims{
+		UserID:   userID,
+		AuthUnix: authTime.Unix(),
+		AMR:      []string{session.MethodEmailCode, methodMFA},
+		Exp:      authTime.Add(session.MaxAge).Unix(),
+	})
+	if err != nil {
+		return "", err
+	}
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write(payload)
+	return base64.RawURLEncoding.EncodeToString(payload) + "." + base64.RawURLEncoding.EncodeToString(mac.Sum(nil)), nil
+}
+
+type verifyResult int
+
+const (
+	verifyRefused verifyResult = iota
+	// verifyNeedsTOTP means the email code is right and no TOTP code came yet.
+	verifyNeedsTOTP
+	verifyOK
+)
+
 func (h *Handler) verifyCode(w http.ResponseWriter, r *http.Request) {
-	userID, role, ok := h.tryVerifyCode(r.Context(), w, r)
-	if !ok {
+	userID, role, result := h.tryVerifyCode(r.Context(), w, r)
+	switch result {
+	case verifyRefused:
 		writeError(w, http.StatusBadRequest, "invalid_code", "invalid code")
+		return
+	case verifyNeedsTOTP:
+		writeJSON(w, http.StatusOK, map[string]bool{"mfa_required": true})
 		return
 	}
 	now := h.Now()
-	token, err := session.Sign(h.SessionSecret, userID, now)
+	token, err := SignMFASession(h.SessionSecret, userID, now)
 	if err != nil {
 		h.Log.Error("platform sign-in: token signing failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "internal", "internal error")
@@ -336,56 +386,133 @@ func (h *Handler) verifyCode(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"user_id": userID, "role": string(role)})
 }
 
-func (h *Handler) tryVerifyCode(ctx context.Context, w http.ResponseWriter, r *http.Request) (string, staff.Role, bool) {
+// tryVerifyCode checks the email code, then the TOTP code of the staff member's
+// confirmed second factor. A request that carries the right email code and no
+// TOTP code does not spend the email code, so the console can ask for the TOTP
+// code next. Every request counts as one attempt on the email code, so wrong
+// TOTP codes are limited by the same five attempts.
+func (h *Handler) tryVerifyCode(ctx context.Context, w http.ResponseWriter, r *http.Request) (string, staff.Role, verifyResult) {
 	var body struct {
 		Email string `json:"email"`
 		Code  string `json:"code"`
+		TOTP  string `json:"totp"`
 	}
 	if !decodeBody(w, r, &body) {
-		return "", "", false
+		return "", "", verifyRefused
 	}
 	email, ok := normalizeEmail(body.Email)
 	if !ok {
-		return "", "", false
+		return "", "", verifyRefused
 	}
 	hash := emailhash.Of(email)
 
+	// attempt is the number of this attempt on the stored email code, and 0
+	// when the dev code stood in for it.
+	attempt := 0
 	if !h.devCodeMatches(body.Code) {
-		if !h.checkStoredCode(ctx, hash, body.Code) {
-			return "", "", false
+		if attempt, ok = h.matchStoredCode(ctx, hash, body.Code); !ok {
+			return "", "", verifyRefused
 		}
 	}
+
+	userID, role, step, result := h.checkSecondFactor(ctx, hash, email, body.TOTP)
+	switch result {
+	case verifyNeedsTOTP:
+		return userID, role, result
+	case verifyOK:
+		// A step works once, and an email code works once. If either cannot be
+		// recorded the sign-in must not be accepted.
+		if h.claimStep(ctx, hash, userID, step) && (attempt == 0 || h.spendCode(ctx, hash)) {
+			return userID, role, verifyOK
+		}
+	}
+	if attempt >= maxAttempts {
+		h.deleteCode(ctx, hash)
+	}
+	return "", "", verifyRefused
+}
+
+// checkSecondFactor finds the staff member and checks their TOTP code against
+// the secret they enrolled in Multica. It refuses a staff member with no
+// confirmed second factor, and whenever the secret cannot be read or opened.
+func (h *Handler) checkSecondFactor(ctx context.Context, hash, email, totp string) (string, staff.Role, int64, verifyResult) {
 	userID, found, err := h.Directory.UserIDByEmail(ctx, email)
 	if err != nil || !found {
-		return "", "", false
+		return "", "", 0, verifyRefused
 	}
 	role, ok, err := h.eligible(ctx, userID)
 	if err != nil || !ok {
-		return "", "", false
+		return "", "", 0, verifyRefused
 	}
-	return userID, role, true
+	if h.MFA == nil || h.Crypto == nil {
+		h.Log.Error("platform sign-in: the second factor is not configured; nobody can sign in")
+		return "", "", 0, verifyRefused
+	}
+	sealed, _, found, err := h.MFA.ConfirmedMFA(ctx, userID)
+	if err != nil {
+		h.Log.Warn("platform sign-in: second factor lookup failed", "email_hash", hash, "error", err)
+		return "", "", 0, verifyRefused
+	}
+	if !found {
+		h.Log.Info("platform sign-in refused: the staff member has no confirmed second factor", "email_hash", hash)
+		return "", "", 0, verifyRefused
+	}
+	if strings.TrimSpace(totp) == "" {
+		return userID, role, 0, verifyNeedsTOTP
+	}
+	secretText, err := h.Crypto.Open(sealed)
+	if err != nil {
+		h.Log.Error("platform sign-in: the stored second-factor secret does not open; check MULTICA_MFA_SECRET_KEY", "email_hash", hash)
+		return "", "", 0, verifyRefused
+	}
+	step, ok := mfa.MatchStep(secretText, totp, h.Now())
+	if !ok {
+		return "", "", 0, verifyRefused
+	}
+	return userID, role, step, verifyOK
 }
 
-// checkStoredCode counts an attempt against the code sent to the email and
-// reports whether code is it. A right code is deleted: it works once.
-func (h *Handler) checkStoredCode(ctx context.Context, hash, code string) bool {
+// claimStep records the TOTP step as used, and reports false when it was used
+// already or cannot be recorded.
+func (h *Handler) claimStep(ctx context.Context, hash, userID string, step int64) bool {
+	used, err := h.MFA.UseMFAStep(ctx, userID, step)
+	if err != nil {
+		h.Log.Warn("platform sign-in: TOTP step was not recorded", "email_hash", hash, "error", err)
+		return false
+	}
+	return used
+}
+
+// matchStoredCode counts an attempt against the code sent to the email and
+// reports whether code is it, with the attempt number. A right code is kept
+// until the whole sign-in succeeds.
+func (h *Handler) matchStoredCode(ctx context.Context, hash, code string) (int, bool) {
 	stored, attempt, found, err := h.Codes.Attempt(ctx, hash)
 	if err != nil {
 		h.Log.Warn("platform sign-in: code lookup failed", "email_hash", hash, "error", err)
-		return false
+		return 0, false
 	}
 	if !found {
-		return false
+		return 0, false
 	}
-	if !hmac.Equal(stored, h.macOf(code)) {
+	if attempt > maxAttempts || !hmac.Equal(stored, h.macOf(code)) {
 		if attempt >= maxAttempts {
-			if err := h.Codes.Delete(ctx, hash); err != nil {
-				h.Log.Warn("platform sign-in: spent code was not deleted", "email_hash", hash, "error", err)
-			}
+			h.deleteCode(ctx, hash)
 		}
-		return false
+		return 0, false
 	}
-	// A code works once. If it cannot be deleted it must not be accepted.
+	return attempt, true
+}
+
+func (h *Handler) deleteCode(ctx context.Context, hash string) {
+	if err := h.Codes.Delete(ctx, hash); err != nil {
+		h.Log.Warn("platform sign-in: spent code was not deleted", "email_hash", hash, "error", err)
+	}
+}
+
+// spendCode deletes the email code after a sign-in. A code that cannot be
+// deleted must not be accepted.
+func (h *Handler) spendCode(ctx context.Context, hash string) bool {
 	if err := h.Codes.Delete(ctx, hash); err != nil {
 		h.Log.Warn("platform sign-in: used code was not deleted", "email_hash", hash, "error", err)
 		return false

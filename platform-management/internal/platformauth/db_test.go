@@ -11,7 +11,6 @@ import (
 
 	"github.com/multica-ai/multica/platform-management/accountguard"
 	"github.com/multica-ai/multica/platform-management/internal/db"
-	"github.com/multica-ai/multica/platform-management/internal/session"
 	"github.com/multica-ai/multica/platform-management/internal/staff"
 	"github.com/multica-ai/multica/platform-management/internal/testdb"
 )
@@ -57,7 +56,7 @@ func TestDBRevocationTakesEffectOnTheNextRequest(t *testing.T) {
 		Limiter:   newLimiter(),
 		Mailer:    &fakeMailer{},
 	})
-	tok, err := session.Sign(secret, userID, time.Now())
+	tok, err := SignMFASession(secret, userID, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
