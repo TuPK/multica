@@ -52,6 +52,11 @@ func (s subs) Get(_ context.Context, ws string) (subscription.Subscription, bool
 	return v, ok, nil
 }
 
+// Profile makes subs a billingapi.SubscriptionReader: no row is an individual workspace.
+func (s subs) Profile(context.Context, string) (subscription.BillingProfile, bool, error) {
+	return subscription.BillingProfile{}, false, nil
+}
+
 type statuses map[string]string
 
 func (s statuses) Status(_ context.Context, ws string) (string, error) {
