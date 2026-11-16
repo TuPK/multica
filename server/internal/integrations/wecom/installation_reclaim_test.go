@@ -85,6 +85,8 @@ func seedReclaimOwners(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
 			t.Fatalf("seed reclaim owner: %v", err)
 		}
 	}
+	// The connect audit row names the installer, so the installer must exist.
+	exec(`INSERT INTO "user" (id, name, email) VALUES ($1, 'wecom reclaim installer', 'wecom-reclaim-installer@multica.test') ON CONFLICT (id) DO NOTHING`, wcRclInstall)
 	exec(`INSERT INTO workspace (id, name, slug, description) VALUES ($1, 'wecom reclaim', 'wecom-reclaim', '') ON CONFLICT (id) DO NOTHING`, wcRclWS)
 	exec(`INSERT INTO agent_runtime (id, workspace_id, name, runtime_mode, provider)
 VALUES ($1, $2, 'wecom reclaim runtime', 'local', 'multica_daemon') ON CONFLICT (id) DO NOTHING`, wcRclRuntime, wcRclWS)

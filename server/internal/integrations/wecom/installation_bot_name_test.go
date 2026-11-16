@@ -44,6 +44,8 @@ func setupBotName(t *testing.T) (context.Context, *pgxpool.Pool, *InstallationSe
 			t.Fatalf("seed bot-name fixture: %v", err)
 		}
 	}
+	// The connect audit row names the installer, so the installer must exist.
+	exec(`INSERT INTO "user" (id, name, email) VALUES ($1, 'wecom bot name installer', 'wecom-bot-name-installer@multica.test') ON CONFLICT (id) DO NOTHING`, wcNameUser)
 	exec(`INSERT INTO workspace (id, name, slug, description) VALUES ($1, 'wecom bot name', 'wecom-bot-name', '') ON CONFLICT (id) DO NOTHING`, wcNameWS)
 	exec(`INSERT INTO agent_runtime (id, workspace_id, name, runtime_mode, provider)
 VALUES ($1, $2, 'wecom bot name runtime', 'local', 'multica_daemon') ON CONFLICT (id) DO NOTHING`, wcNameRuntime, wcNameWS)

@@ -90,6 +90,10 @@ func TestRegisterBYO_DifferentAppKey_IsolatesIdentityStateDB(t *testing.T) {
 			t.Fatalf("seed replacement fixture: %v", err)
 		}
 	}
+	// The connect audit row names the installer, so the installer must exist.
+	exec(`INSERT INTO "user" (id, name, email) VALUES ($1, 'dingtalk byo installer', 'dingtalk-byo-installer@multica.test') ON CONFLICT (id) DO NOTHING`, installerID)
+	// byoParams registers the replacement as this initiator.
+	exec(`INSERT INTO "user" (id, name, email) VALUES ('33333333-3333-3333-3333-333333333333', 'dingtalk byo initiator', 'dingtalk-byo-initiator@multica.test') ON CONFLICT (id) DO NOTHING`)
 	exec(`
 INSERT INTO channel_installation (id, workspace_id, agent_id, channel_type, config, installer_user_id)
 VALUES ($1, $2, $3, 'dingtalk', jsonb_build_object('app_id', $4::text), $5)

@@ -80,6 +80,8 @@ func setupScanDB(t *testing.T, agents int) (context.Context, *pgxpool.Pool) {
 			t.Fatalf("seed: %v", err)
 		}
 	}
+	// The connect audit row names the installer, so the initiator must exist.
+	exec(`INSERT INTO "user" (id, name, email) VALUES ($1, 'wecom scan initiator', 'wecom-scan-initiator@multica.test') ON CONFLICT (id) DO NOTHING`, wcScanUser)
 	exec(`INSERT INTO workspace (id, name, slug, description) VALUES ($1, 'wecom scan', 'wecom-scan', '')`, wcScanWS)
 	exec(`INSERT INTO agent_runtime (id, workspace_id, name, runtime_mode, provider)
 VALUES ($1, $2, 'wecom scan runtime', 'local', 'multica_daemon')`, wcScanRuntime, wcScanWS)

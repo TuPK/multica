@@ -70,6 +70,8 @@ func seedProbeOwners(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
 			t.Fatalf("seed probe owner: %v", err)
 		}
 	}
+	// The connect audit row names the installer, so the installer must exist.
+	exec(`INSERT INTO "user" (id, name, email) VALUES ($1, 'wecom probe installer', 'wecom-probe-installer@multica.test') ON CONFLICT (id) DO NOTHING`, wcPrbInstall)
 	exec(`INSERT INTO workspace (id, name, slug, description) VALUES ($1, 'wecom probe', 'wecom-probe', '') ON CONFLICT (id) DO NOTHING`, wcPrbWS)
 	exec(`INSERT INTO workspace (id, name, slug, description) VALUES ($1, 'wecom probe other', 'wecom-probe-other', '') ON CONFLICT (id) DO NOTHING`, wcPrbOtherWS)
 	exec(`INSERT INTO agent_runtime (id, workspace_id, name, runtime_mode, provider)

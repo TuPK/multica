@@ -66,6 +66,8 @@ func setupBotSwap(t *testing.T) (context.Context, *pgxpool.Pool, *InstallationSe
 			t.Fatalf("seed bot-swap fixture: %v", err)
 		}
 	}
+	// The connect audit row names the installer, so the installer must exist.
+	exec(`INSERT INTO "user" (id, name, email) VALUES ($1, 'wecom bot swap installer', 'wecom-bot-swap-installer@multica.test') ON CONFLICT (id) DO NOTHING`, wcSwapUser)
 	exec(`INSERT INTO workspace (id, name, slug, description) VALUES ($1, 'wecom bot swap', 'wecom-bot-swap', '') ON CONFLICT (id) DO NOTHING`, wcSwapWS)
 	exec(`INSERT INTO agent_runtime (id, workspace_id, name, runtime_mode, provider)
 VALUES ($1, $2, 'wecom bot swap runtime', 'local', 'multica_daemon') ON CONFLICT (id) DO NOTHING`, wcSwapRuntime, wcSwapWS)
