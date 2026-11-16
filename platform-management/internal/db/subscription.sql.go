@@ -75,7 +75,7 @@ func (q *Queries) GetMemberRole(ctx context.Context, arg GetMemberRoleParams) (s
 
 const getWorkspaceSubscription = `-- name: GetWorkspaceSubscription :one
 
-SELECT workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at FROM workspace_subscription
+SELECT workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at, pending_change, unit_price FROM workspace_subscription
 WHERE workspace_id = $1
 `
 
@@ -98,12 +98,14 @@ func (q *Queries) GetWorkspaceSubscription(ctx context.Context, workspaceID pgty
 		&i.LimitOverrides,
 		&i.Version,
 		&i.UpdatedAt,
+		&i.PendingChange,
+		&i.UnitPrice,
 	)
 	return i, err
 }
 
 const getWorkspaceSubscriptionForUpdate = `-- name: GetWorkspaceSubscriptionForUpdate :one
-SELECT workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at FROM workspace_subscription
+SELECT workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at, pending_change, unit_price FROM workspace_subscription
 WHERE workspace_id = $1
 FOR UPDATE
 `
@@ -127,6 +129,8 @@ func (q *Queries) GetWorkspaceSubscriptionForUpdate(ctx context.Context, workspa
 		&i.LimitOverrides,
 		&i.Version,
 		&i.UpdatedAt,
+		&i.PendingChange,
+		&i.UnitPrice,
 	)
 	return i, err
 }
@@ -135,12 +139,12 @@ const insertWorkspaceSubscription = `-- name: InsertWorkspaceSubscription :one
 INSERT INTO workspace_subscription (
     workspace_id, plan_key, status, seats, "interval", current_period_start,
     current_period_end, trial_end, grace_until, cancel_at_period_end,
-    limit_overrides, version
+    limit_overrides, pending_change, unit_price, version
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 1
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 1
 )
 ON CONFLICT (workspace_id) DO NOTHING
-RETURNING workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at
+RETURNING workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at, pending_change, unit_price
 `
 
 type InsertWorkspaceSubscriptionParams struct {
@@ -155,6 +159,8 @@ type InsertWorkspaceSubscriptionParams struct {
 	GraceUntil         pgtype.Timestamptz `json:"grace_until"`
 	CancelAtPeriodEnd  bool               `json:"cancel_at_period_end"`
 	LimitOverrides     []byte             `json:"limit_overrides"`
+	PendingChange      []byte             `json:"pending_change"`
+	UnitPrice          pgtype.Int8        `json:"unit_price"`
 }
 
 // The first write of a workspace: version 1, the step from "no row" (0). It
@@ -172,6 +178,8 @@ func (q *Queries) InsertWorkspaceSubscription(ctx context.Context, arg InsertWor
 		arg.GraceUntil,
 		arg.CancelAtPeriodEnd,
 		arg.LimitOverrides,
+		arg.PendingChange,
+		arg.UnitPrice,
 	)
 	var i WorkspaceSubscription
 	err := row.Scan(
@@ -188,6 +196,8 @@ func (q *Queries) InsertWorkspaceSubscription(ctx context.Context, arg InsertWor
 		&i.LimitOverrides,
 		&i.Version,
 		&i.UpdatedAt,
+		&i.PendingChange,
+		&i.UnitPrice,
 	)
 	return i, err
 }
@@ -203,10 +213,12 @@ SET plan_key = $2,
     grace_until = $8,
     cancel_at_period_end = $9,
     limit_overrides = $10,
+    pending_change = $11,
+    unit_price = $12,
     version = version + 1,
     updated_at = now()
 WHERE workspace_id = $1
-RETURNING workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at
+RETURNING workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at, pending_change, unit_price
 `
 
 type UpdateWorkspaceSubscriptionParams struct {
@@ -220,6 +232,8 @@ type UpdateWorkspaceSubscriptionParams struct {
 	GraceUntil         pgtype.Timestamptz `json:"grace_until"`
 	CancelAtPeriodEnd  bool               `json:"cancel_at_period_end"`
 	LimitOverrides     []byte             `json:"limit_overrides"`
+	PendingChange      []byte             `json:"pending_change"`
+	UnitPrice          pgtype.Int8        `json:"unit_price"`
 }
 
 // Every change moves version up by exactly one.
@@ -235,6 +249,8 @@ func (q *Queries) UpdateWorkspaceSubscription(ctx context.Context, arg UpdateWor
 		arg.GraceUntil,
 		arg.CancelAtPeriodEnd,
 		arg.LimitOverrides,
+		arg.PendingChange,
+		arg.UnitPrice,
 	)
 	var i WorkspaceSubscription
 	err := row.Scan(
@@ -251,6 +267,8 @@ func (q *Queries) UpdateWorkspaceSubscription(ctx context.Context, arg UpdateWor
 		&i.LimitOverrides,
 		&i.Version,
 		&i.UpdatedAt,
+		&i.PendingChange,
+		&i.UnitPrice,
 	)
 	return i, err
 }

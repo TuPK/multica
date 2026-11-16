@@ -18,9 +18,9 @@ FOR UPDATE;
 INSERT INTO workspace_subscription (
     workspace_id, plan_key, status, seats, "interval", current_period_start,
     current_period_end, trial_end, grace_until, cancel_at_period_end,
-    limit_overrides, version
+    limit_overrides, pending_change, unit_price, version
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 1
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 1
 )
 ON CONFLICT (workspace_id) DO NOTHING
 RETURNING *;
@@ -37,6 +37,8 @@ SET plan_key = $2,
     grace_until = $8,
     cancel_at_period_end = $9,
     limit_overrides = $10,
+    pending_change = $11,
+    unit_price = $12,
     version = version + 1,
     updated_at = now()
 WHERE workspace_id = $1

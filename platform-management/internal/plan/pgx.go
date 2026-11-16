@@ -155,6 +155,7 @@ func FromRow(r db.Plan) (Plan, error) {
 	p := Plan{
 		Key: r.Key, Name: r.Name, Currency: r.Currency, TrialDays: int(r.TrialDays),
 		IsPublic: r.IsPublic, Sort: int(r.Sort), Limits: Limits{}, Features: map[string]bool{},
+		Audience: r.Audience, BillingModel: r.BillingModel, Version: r.Version,
 	}
 	if err := json.Unmarshal(r.Limits, &p.Limits); err != nil {
 		return Plan{}, fmt.Errorf("plan %s: limits: %w", r.Key, err)
@@ -207,6 +208,8 @@ type insertParams struct {
 	IsPublic       bool               `json:"is_public"`
 	Sort           int32              `json:"sort"`
 	ArchivedAt     pgtype.Timestamptz `json:"archived_at"`
+	Audience       string             `json:"audience"`
+	BillingModel   string             `json:"billing_model"`
 }
 
 func toInsertParams(p Plan) (insertParams, error) {
@@ -228,6 +231,7 @@ func toInsertParams(p Plan) (insertParams, error) {
 	out := insertParams{
 		Key: p.Key, Name: p.Name, Limits: limitsJSON, Features: featuresJSON, Currency: p.Currency,
 		TrialDays: int32(p.TrialDays), IsPublic: p.IsPublic, Sort: int32(p.Sort),
+		Audience: p.Audience, BillingModel: p.BillingModel,
 	}
 	if p.SeatPriceMonth != nil {
 		out.SeatPriceMonth = pgtype.Int8{Int64: *p.SeatPriceMonth, Valid: true}

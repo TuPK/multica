@@ -36,6 +36,18 @@ type Subscription struct {
 	LimitOverrides     plan.Limits
 	Version            int64
 	UpdatedAt          time.Time
+	PendingChange      *PendingChange
+	UnitPrice          *int64
+}
+
+// PendingChange is a downgrade, a seat reduction or an interval change that
+// applies at the next renewal (spec 7b.1, rule 6).
+type PendingChange struct {
+	PlanKey     string    `json:"plan_key"`
+	Seats       int       `json:"seats"`
+	Interval    string    `json:"interval"`
+	RequestedBy string    `json:"requested_by"`
+	RequestedAt time.Time `json:"requested_at"`
 }
 
 // Reader reads a workspace's subscription row.

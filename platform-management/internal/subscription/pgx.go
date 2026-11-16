@@ -78,12 +78,53 @@ func fromRow(r db.WorkspaceSubscription) (Subscription, error) {
 	if overrides == nil {
 		overrides = plan.Limits{}
 	}
+	pending, err := pendingFromJSON(r.PendingChange)
+	if err != nil {
+		return Subscription{}, fmt.Errorf("subscription %s: pending_change: %w", uuidText(r.WorkspaceID), err)
+	}
+	var unitPrice *int64
+	if r.UnitPrice.Valid {
+		v := r.UnitPrice.Int64
+		unitPrice = &v
+	}
 	return Subscription{
 		WorkspaceID: uuidText(r.WorkspaceID), PlanKey: r.PlanKey, Status: r.Status, Seats: int(r.Seats),
 		Interval: r.Interval, CurrentPeriodStart: timePtr(r.CurrentPeriodStart), CurrentPeriodEnd: timePtr(r.CurrentPeriodEnd),
 		TrialEnd: timePtr(r.TrialEnd), GraceUntil: timePtr(r.GraceUntil), CancelAtPeriodEnd: r.CancelAtPeriodEnd,
 		LimitOverrides: overrides, Version: r.Version, UpdatedAt: r.UpdatedAt.Time.UTC(),
+		PendingChange: pending, UnitPrice: unitPrice,
 	}, nil
+}
+
+// pendingFromJSON reads the pending_change column. NULL, a JSON null and an
+// empty object all mean no pending change.
+func pendingFromJSON(raw []byte) (*PendingChange, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil, nil
+	}
+	var p PendingChange
+	if err := json.Unmarshal(raw, &p); err != nil {
+		return nil, err
+	}
+	if p.PlanKey == "" {
+		return nil, nil
+	}
+	return &p, nil
+}
+
+// pendingToJSON is the column value for pending_change: NULL when there is none.
+func pendingToJSON(p *PendingChange) ([]byte, error) {
+	if p == nil {
+		return nil, nil
+	}
+	return json.Marshal(p)
+}
+
+func int8Ptr(v *int64) pgtype.Int8 {
+	if v == nil {
+		return pgtype.Int8{}
+	}
+	return pgtype.Int8{Int64: *v, Valid: true}
 }
 
 type pgxTx struct{ q *db.Queries }
@@ -125,11 +166,16 @@ func (t *pgxTx) Insert(ctx context.Context, s Subscription) (Subscription, bool,
 	if err != nil {
 		return Subscription{}, false, err
 	}
+	pending, err := pendingToJSON(s.PendingChange)
+	if err != nil {
+		return Subscription{}, false, err
+	}
 	row, err := t.q.InsertWorkspaceSubscription(ctx, db.InsertWorkspaceSubscriptionParams{
 		WorkspaceID: uid, PlanKey: s.PlanKey, Status: s.Status, Seats: int32(s.Seats), Interval: s.Interval,
 		CurrentPeriodStart: timestamptz(s.CurrentPeriodStart), CurrentPeriodEnd: timestamptz(s.CurrentPeriodEnd),
 		TrialEnd: timestamptz(s.TrialEnd), GraceUntil: timestamptz(s.GraceUntil),
 		CancelAtPeriodEnd: s.CancelAtPeriodEnd, LimitOverrides: overrides,
+		PendingChange: pending, UnitPrice: int8Ptr(s.UnitPrice),
 	})
 	if errors.Is(err, pgx.ErrNoRows) { // ON CONFLICT DO NOTHING returned no row
 		return Subscription{}, false, nil
@@ -150,11 +196,16 @@ func (t *pgxTx) Update(ctx context.Context, s Subscription) (Subscription, error
 	if err != nil {
 		return Subscription{}, err
 	}
+	pending, err := pendingToJSON(s.PendingChange)
+	if err != nil {
+		return Subscription{}, err
+	}
 	row, err := t.q.UpdateWorkspaceSubscription(ctx, db.UpdateWorkspaceSubscriptionParams{
 		WorkspaceID: uid, PlanKey: s.PlanKey, Seats: int32(s.Seats), Interval: s.Interval,
 		CurrentPeriodStart: timestamptz(s.CurrentPeriodStart), CurrentPeriodEnd: timestamptz(s.CurrentPeriodEnd),
 		TrialEnd: timestamptz(s.TrialEnd), GraceUntil: timestamptz(s.GraceUntil),
 		CancelAtPeriodEnd: s.CancelAtPeriodEnd, LimitOverrides: overrides,
+		PendingChange: pending, UnitPrice: int8Ptr(s.UnitPrice),
 	})
 	if err != nil {
 		return Subscription{}, err

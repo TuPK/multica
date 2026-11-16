@@ -26,21 +26,30 @@ SELECT EXISTS (
 
 -- name: InsertPlanIfAbsent :execrows
 -- Seeds one plan. Two platform processes starting together may both see an
--- empty table; the unique index on key makes the second insert a no-op.
+-- empty table; the unique index on key makes the second insert a no-op. An
+-- empty audience or billing model takes the column default; version starts at 0.
 INSERT INTO plan (
     key, name, limits, features, currency, seat_price_month, seat_price_year,
-    seats_fixed, min_seats, trial_days, is_public, sort, archived_at
+    seats_fixed, min_seats, trial_days, is_public, sort, archived_at,
+    audience, billing_model
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+    COALESCE(NULLIF(sqlc.arg(audience)::text, ''), 'any'), COALESCE(NULLIF(sqlc.arg(billing_model)::text, ''), 'seat')
 )
 ON CONFLICT (key) DO NOTHING;
 
 -- name: UpsertPlan :exec
+-- Creates the plan, or replaces its fields and moves version up by one. An empty
+-- audience or billing model is "not given": a new row takes the default and an
+-- existing row keeps its value, so a writer that does not carry the two fields
+-- does not reset them. usage_rates and usage_terms are not written here.
 INSERT INTO plan (
     key, name, limits, features, currency, seat_price_month, seat_price_year,
-    seats_fixed, min_seats, trial_days, is_public, sort, archived_at
+    seats_fixed, min_seats, trial_days, is_public, sort, archived_at,
+    audience, billing_model
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+    COALESCE(NULLIF(sqlc.arg(audience)::text, ''), 'any'), COALESCE(NULLIF(sqlc.arg(billing_model)::text, ''), 'seat')
 )
 ON CONFLICT (key) DO UPDATE
 SET name = EXCLUDED.name,
@@ -54,7 +63,10 @@ SET name = EXCLUDED.name,
     trial_days = EXCLUDED.trial_days,
     is_public = EXCLUDED.is_public,
     sort = EXCLUDED.sort,
-    archived_at = EXCLUDED.archived_at;
+    archived_at = EXCLUDED.archived_at,
+    audience = COALESCE(NULLIF(sqlc.arg(audience)::text, ''), plan.audience),
+    billing_model = COALESCE(NULLIF(sqlc.arg(billing_model)::text, ''), plan.billing_model),
+    version = plan.version + 1;
 
 -- name: DeletePlan :execrows
 DELETE FROM plan WHERE key = $1;

@@ -23,7 +23,7 @@ SET plan_key = $2,
     version = version + 1,
     updated_at = now()
 WHERE workspace_id = $1
-RETURNING workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at
+RETURNING workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at, pending_change, unit_price
 `
 
 type ApplyPaymentToWorkspaceSubscriptionParams struct {
@@ -66,6 +66,8 @@ func (q *Queries) ApplyPaymentToWorkspaceSubscription(ctx context.Context, arg A
 		&i.LimitOverrides,
 		&i.Version,
 		&i.UpdatedAt,
+		&i.PendingChange,
+		&i.UnitPrice,
 	)
 	return i, err
 }

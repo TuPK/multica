@@ -4,11 +4,13 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/multica-ai/multica/platform-management/internal/db"
 	"github.com/multica-ai/multica/platform-management/internal/testdb"
 )
 
@@ -68,6 +70,15 @@ func TestDBSeedLoadsTheCatalogueIntoAnEmptyTable(t *testing.T) {
 			t.Errorf("%s: seat_price_month = %v, want %v", p.Key, got[i].SeatPriceMonth, p.SeatPriceMonth)
 		}
 	}
+	for i, p := range want {
+		if got[i].Audience != p.Audience || got[i].BillingModel != p.BillingModel || got[i].Version != 0 {
+			t.Errorf("%s: audience/billing_model/version = %q/%q/%d, want %q/%q/0", p.Key, got[i].Audience, got[i].BillingModel, got[i].Version, p.Audience, p.BillingModel)
+		}
+		gotGroups, wantGroups := got[i].Limits[GateMemberGroups], p.Limits[GateMemberGroups]
+		if (gotGroups == nil) != (wantGroups == nil) || (wantGroups != nil && *gotGroups != *wantGroups) {
+			t.Errorf("%s: member_groups = %v, want %v", p.Key, gotGroups, wantGroups)
+		}
+	}
 	if free, ok, _ := NewPgxReader(outer).Get(ctx, "free"); !ok || free.SeatsFixed == nil || *free.SeatsFixed != 3 {
 		t.Errorf("free = %+v, want 3 fixed seats", free)
 	}
@@ -111,6 +122,50 @@ func TestDBSeedAddsMissingPlansAndKeepsEditedRows(t *testing.T) {
 	var count int
 	if err := outer.QueryRow(ctx, `SELECT count(*) FROM plan WHERE key IN ('free', 'pro', 'business', 'enterprise')`).Scan(&count); err != nil || count != 4 {
 		t.Fatalf("catalogue plans = %d (%v), want 4", count, err)
+	}
+	// A row written before migration 953 reads as an any-audience seat plan at
+	// version 0, and the seed leaves it so.
+	free, ok, err := NewPgxReader(outer).Get(ctx, "free")
+	if err != nil || !ok {
+		t.Fatalf("Get free = %v, %v", ok, err)
+	}
+	if free.Audience != AudienceAny || free.BillingModel != BillingSeat || free.Version != 0 {
+		t.Errorf("free audience/billing_model/version = %q/%q/%d, want any/seat/0", free.Audience, free.BillingModel, free.Version)
+	}
+	biz, ok, err := NewPgxReader(outer).Get(ctx, "business")
+	if err != nil || !ok || biz.Audience != AudienceBusiness || biz.Version != 0 {
+		t.Errorf("business = %+v (%v, %v), want the catalogue's audience business at version 0", biz, ok, err)
+	}
+}
+
+// A row staff edited keeps its R5 values: the seed never overwrites an existing row.
+func TestDBSeedKeepsTheAudienceOfAnExistingRow(t *testing.T) {
+	pool := testdb.Open(t)
+	ctx := context.Background()
+	outer, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer outer.Rollback(ctx)
+
+	if _, err := outer.Exec(ctx, `DELETE FROM plan`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := outer.Exec(ctx, `DELETE FROM audit_event WHERE action = 'plan.changed' AND target_type = 'plan' AND detail->>'deleted' = 'true'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := outer.Exec(ctx, `INSERT INTO plan (key, name, currency, audience, version) VALUES ('business', 'Business', 'vnd', 'individual', 7)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Seed(ctx, NewPgxRunner(savepointPool{outer}), discard()); err != nil {
+		t.Fatal(err)
+	}
+	biz, _, err := NewPgxReader(outer).Get(ctx, "business")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if biz.Audience != AudienceIndividual || biz.Version != 7 || biz.Limits[GateMemberGroups] != nil {
+		t.Errorf("business audience/version/limits = %q/%d/%v, want the existing row untouched", biz.Audience, biz.Version, biz.Limits)
 	}
 }
 
@@ -218,5 +273,102 @@ func TestDBPlanRoundTripThroughTheTable(t *testing.T) {
 	}
 	if _, ok, _ := NewPgxReader(pool).Get(ctx, key); ok {
 		t.Fatal("the plan is still there")
+	}
+}
+
+func upsertPlan(t *testing.T, r *PgxRunner, p Plan) {
+	t.Helper()
+	if err := r.InTx(context.Background(), func(tx Tx) error { return tx.Upsert(context.Background(), p) }); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func readPlan(t *testing.T, pool db.DBTX, key string) Plan {
+	t.Helper()
+	got, ok, err := NewPgxReader(pool).Get(context.Background(), key)
+	if err != nil || !ok {
+		t.Fatalf("Get %s = %v, %v", key, ok, err)
+	}
+	return got
+}
+
+// version is 0 on creation and goes up by one on every edit, whatever the
+// caller passes.
+func TestDBVersionIncreasesByOnePerEdit(t *testing.T) {
+	pool := testdb.Open(t)
+	ctx := context.Background()
+	key := randomKey(t)
+	t.Cleanup(func() { pool.Exec(ctx, `DELETE FROM plan WHERE key = $1`, key) })
+	runner := NewPgxRunner(pool)
+
+	p := Plan{Key: key, Name: "V", Currency: "vnd", Limits: Limits{}, Features: map[string]bool{}, Audience: AudienceBusiness, BillingModel: BillingSeat}
+	upsertPlan(t, runner, p)
+	if v := readPlan(t, pool, key).Version; v != 0 {
+		t.Fatalf("version after creation = %d, want 0", v)
+	}
+	for want := int64(1); want <= 3; want++ {
+		p.Name = fmt.Sprintf("V%d", want)
+		p.Version = 99 // ignored: the table owns the number
+		upsertPlan(t, runner, p)
+		if got := readPlan(t, pool, key); got.Version != want || got.Name != p.Name {
+			t.Fatalf("after edit %d: version %d name %q, want version %d", want, got.Version, got.Name, want)
+		}
+	}
+
+	// Seeding a row that exists is not an edit.
+	err := runner.InTx(ctx, func(tx Tx) error {
+		ok, err := tx.InsertIfAbsent(ctx, p)
+		if ok {
+			t.Error("InsertIfAbsent reported an insert for an existing key")
+		}
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v := readPlan(t, pool, key).Version; v != 3 {
+		t.Fatalf("version after InsertIfAbsent = %d, want 3", v)
+	}
+}
+
+func TestDBAudienceAndBillingModelRoundTripAndAnUnsetFieldKeepsTheStoredValue(t *testing.T) {
+	pool := testdb.Open(t)
+	ctx := context.Background()
+	key := randomKey(t)
+	t.Cleanup(func() { pool.Exec(ctx, `DELETE FROM plan WHERE key = $1`, key) })
+	runner := NewPgxRunner(pool)
+
+	p := Plan{
+		Key: key, Name: "R5", Currency: "vnd", Features: map[string]bool{},
+		Limits: Limits{GateMemberGroups: i64(50), "issue_count": nil}, Audience: AudienceBusiness, BillingModel: BillingSeat,
+	}
+	upsertPlan(t, runner, p)
+	got := readPlan(t, pool, key)
+	if got.Audience != AudienceBusiness || got.BillingModel != BillingSeat || got.Limits[GateMemberGroups] == nil || *got.Limits[GateMemberGroups] != 50 {
+		t.Fatalf("got %+v", got)
+	}
+
+	// The console's plan form does not carry the R5 fields yet; an edit through
+	// it must not reset them.
+	p.Name, p.Audience, p.BillingModel = "R5 edited", "", ""
+	upsertPlan(t, runner, p)
+	got = readPlan(t, pool, key)
+	if got.Name != "R5 edited" || got.Audience != AudienceBusiness || got.BillingModel != BillingSeat {
+		t.Fatalf("after an edit with the fields unset: %+v, want the stored audience and billing model kept", got)
+	}
+
+	// A set field is written.
+	p.Audience = AudienceIndividual
+	upsertPlan(t, runner, p)
+	if got = readPlan(t, pool, key); got.Audience != AudienceIndividual || got.Version != 2 {
+		t.Fatalf("audience %q version %d, want individual and 2", got.Audience, got.Version)
+	}
+
+	// A plan created with the fields unset takes the defaults.
+	bare := randomKey(t)
+	t.Cleanup(func() { pool.Exec(ctx, `DELETE FROM plan WHERE key = $1`, bare) })
+	upsertPlan(t, runner, Plan{Key: bare, Name: "Bare", Currency: "vnd", Limits: Limits{}, Features: map[string]bool{}})
+	if got = readPlan(t, pool, bare); got.Audience != AudienceAny || got.BillingModel != BillingSeat {
+		t.Fatalf("a plan created with the fields unset: %q/%q, want any/seat", got.Audience, got.BillingModel)
 	}
 }

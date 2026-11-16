@@ -386,3 +386,100 @@ func TestDBSummaryReflectsTheSubscriptionTheHeldSeatsAndThePendingPurchase(t *te
 		t.Errorf("available_actions = %v", a)
 	}
 }
+
+// pending_change and unit_price are written by Insert and Update and read back;
+// Update replaces them, and a nil clears them.
+func TestDBPendingChangeAndUnitPriceRoundTrip(t *testing.T) {
+	f := newDBFixture(t)
+	ws := f.workspace(nil)
+	p := f.plan(nil)
+	ctx := context.Background()
+	runner := NewPgxRunner(f.pool)
+
+	requestedAt := time.Date(2031, 2, 3, 4, 5, 6, 0, time.UTC)
+	price := int64(149000)
+	base := Subscription{
+		WorkspaceID: ws, PlanKey: p.Key, Status: StatusActive, Seats: 3, Interval: IntervalMonth,
+		LimitOverrides: plan.Limits{},
+		PendingChange:  &PendingChange{PlanKey: plan.FreeKey, Seats: 2, Interval: IntervalYear, RequestedBy: f.randomUUID(), RequestedAt: requestedAt},
+		UnitPrice:      &price,
+	}
+	err := runner.InTx(ctx, func(tx Tx) error {
+		_, ok, err := tx.Insert(ctx, base)
+		if err == nil && !ok {
+			t.Error("Insert lost")
+		}
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, found, err := NewPgxReader(f.pool).Get(ctx, ws)
+	if err != nil || !found {
+		t.Fatalf("Get = %v, %v", found, err)
+	}
+	if got.PendingChange == nil || *got.PendingChange != *base.PendingChange {
+		t.Fatalf("pending change = %+v, want %+v", got.PendingChange, base.PendingChange)
+	}
+	if got.UnitPrice == nil || *got.UnitPrice != price {
+		t.Fatalf("unit price = %v, want %d", got.UnitPrice, price)
+	}
+
+	// Update with new values replaces them; the version moves by one.
+	newer := got
+	newer.PendingChange = &PendingChange{PlanKey: p.Key, Seats: 9, Interval: IntervalMonth, RequestedBy: base.PendingChange.RequestedBy, RequestedAt: requestedAt.Add(time.Hour)}
+	otherPrice := int64(1)
+	newer.UnitPrice = &otherPrice
+	var updated Subscription
+	if err := runner.InTx(ctx, func(tx Tx) error { var e error; updated, e = tx.Update(ctx, newer); return e }); err != nil {
+		t.Fatal(err)
+	}
+	if updated.Version != got.Version+1 || updated.PendingChange == nil || *updated.PendingChange != *newer.PendingChange || *updated.UnitPrice != 1 {
+		t.Fatalf("updated = %+v, %+v, %v", updated.Version, updated.PendingChange, updated.UnitPrice)
+	}
+
+	// Update with nil clears them.
+	cleared := updated
+	cleared.PendingChange, cleared.UnitPrice = nil, nil
+	if err := runner.InTx(ctx, func(tx Tx) error { var e error; updated, e = tx.Update(ctx, cleared); return e }); err != nil {
+		t.Fatal(err)
+	}
+	if again, _, _ := NewPgxReader(f.pool).Get(ctx, ws); again.PendingChange != nil || again.UnitPrice != nil {
+		t.Fatalf("cleared row = %+v, %v; want both empty", again.PendingChange, again.UnitPrice)
+	}
+}
+
+// A row written without the two columns, as every row before migration 953 was,
+// reads with both empty, and a staff change through Apply keeps what is there.
+func TestDBOldRowWithoutPendingChangeReadsCleanly(t *testing.T) {
+	f := newDBFixture(t)
+	ws, staffUser := f.workspace(nil), f.randomUUID()
+	p := f.plan(nil)
+	ctx := context.Background()
+	if _, err := f.pool.Exec(ctx, `INSERT INTO workspace_subscription (workspace_id, plan_key, status, seats, version)
+		VALUES ($1, $2, 'active', 3, 1)`, ws, p.Key); err != nil {
+		t.Fatal(err)
+	}
+	got, found, err := NewPgxReader(f.pool).Get(ctx, ws)
+	if err != nil || !found {
+		t.Fatalf("Get = %v, %v", found, err)
+	}
+	if got.PendingChange != nil || got.UnitPrice != nil {
+		t.Fatalf("old row = %+v, %v; want both empty", got.PendingChange, got.UnitPrice)
+	}
+
+	// A staff change reads the row, edits a copy and writes it: the two new
+	// fields ride along instead of being reset.
+	if _, err := f.pool.Exec(ctx, `UPDATE workspace_subscription SET pending_change = '{"plan_key":"free","seats":1,"interval":"month","requested_by":"x","requested_at":"2031-01-01T00:00:00Z"}', unit_price = 5 WHERE workspace_id = $1`, ws); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.service(&recordingCache{}).Apply(ctx, Change{
+		WorkspaceID: ws, PlanKey: p.Key, Seats: 4, Interval: IntervalMonth, Reason: "r", ActorID: staffUser, ActorLabel: "x",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	after, _, _ := NewPgxReader(f.pool).Get(ctx, ws)
+	if after.Seats != 4 || after.PendingChange == nil || after.PendingChange.PlanKey != "free" || after.UnitPrice == nil || *after.UnitPrice != 5 {
+		t.Fatalf("after a staff change: seats %d, pending %+v, unit price %v; want the two fields kept", after.Seats, after.PendingChange, after.UnitPrice)
+	}
+}

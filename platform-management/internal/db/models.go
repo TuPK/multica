@@ -1956,6 +1956,11 @@ type Plan struct {
 	IsPublic       bool               `json:"is_public"`
 	Sort           int32              `json:"sort"`
 	ArchivedAt     pgtype.Timestamptz `json:"archived_at"`
+	Audience       string             `json:"audience"`
+	BillingModel   string             `json:"billing_model"`
+	UsageRates     []byte             `json:"usage_rates"`
+	UsageTerms     []byte             `json:"usage_terms"`
+	Version        int64              `json:"version"`
 }
 
 type PlanningCycle struct {
@@ -2946,4 +2951,6 @@ type WorkspaceSubscription struct {
 	LimitOverrides     []byte             `json:"limit_overrides"`
 	Version            int64              `json:"version"`
 	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	PendingChange      []byte             `json:"pending_change"`
+	UnitPrice          pgtype.Int8        `json:"unit_price"`
 }

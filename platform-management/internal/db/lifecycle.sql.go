@@ -65,7 +65,7 @@ func (q *Queries) InsertBillingNotice(ctx context.Context, arg InsertBillingNoti
 }
 
 const listSubscriptionsCanceledLapsed = `-- name: ListSubscriptionsCanceledLapsed :many
-SELECT workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at FROM workspace_subscription
+SELECT workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at, pending_change, unit_price FROM workspace_subscription
 WHERE status = 'active' AND cancel_at_period_end
   AND current_period_end IS NOT NULL AND current_period_end <= $1
 ORDER BY current_period_end, workspace_id
@@ -101,6 +101,8 @@ func (q *Queries) ListSubscriptionsCanceledLapsed(ctx context.Context, arg ListS
 			&i.LimitOverrides,
 			&i.Version,
 			&i.UpdatedAt,
+			&i.PendingChange,
+			&i.UnitPrice,
 		); err != nil {
 			return nil, err
 		}
@@ -113,7 +115,7 @@ func (q *Queries) ListSubscriptionsCanceledLapsed(ctx context.Context, arg ListS
 }
 
 const listSubscriptionsForReminder = `-- name: ListSubscriptionsForReminder :many
-SELECT workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at FROM workspace_subscription
+SELECT workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at, pending_change, unit_price FROM workspace_subscription
 WHERE status = 'active' AND NOT cancel_at_period_end
   AND current_period_end IS NOT NULL
   AND current_period_end > $1 AND current_period_end <= $2
@@ -151,6 +153,8 @@ func (q *Queries) ListSubscriptionsForReminder(ctx context.Context, arg ListSubs
 			&i.LimitOverrides,
 			&i.Version,
 			&i.UpdatedAt,
+			&i.PendingChange,
+			&i.UnitPrice,
 		); err != nil {
 			return nil, err
 		}
@@ -163,7 +167,7 @@ func (q *Queries) ListSubscriptionsForReminder(ctx context.Context, arg ListSubs
 }
 
 const listSubscriptionsGraceEnded = `-- name: ListSubscriptionsGraceEnded :many
-SELECT workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at FROM workspace_subscription
+SELECT workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at, pending_change, unit_price FROM workspace_subscription
 WHERE status = 'past_due' AND grace_until IS NOT NULL AND grace_until <= $1
 ORDER BY grace_until, workspace_id
 LIMIT $2
@@ -197,6 +201,8 @@ func (q *Queries) ListSubscriptionsGraceEnded(ctx context.Context, arg ListSubsc
 			&i.LimitOverrides,
 			&i.Version,
 			&i.UpdatedAt,
+			&i.PendingChange,
+			&i.UnitPrice,
 		); err != nil {
 			return nil, err
 		}
@@ -209,7 +215,7 @@ func (q *Queries) ListSubscriptionsGraceEnded(ctx context.Context, arg ListSubsc
 }
 
 const listSubscriptionsPeriodLapsed = `-- name: ListSubscriptionsPeriodLapsed :many
-SELECT workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at FROM workspace_subscription
+SELECT workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at, pending_change, unit_price FROM workspace_subscription
 WHERE status = 'active' AND NOT cancel_at_period_end
   AND current_period_end IS NOT NULL AND current_period_end <= $1
 ORDER BY current_period_end, workspace_id
@@ -245,6 +251,8 @@ func (q *Queries) ListSubscriptionsPeriodLapsed(ctx context.Context, arg ListSub
 			&i.LimitOverrides,
 			&i.Version,
 			&i.UpdatedAt,
+			&i.PendingChange,
+			&i.UnitPrice,
 		); err != nil {
 			return nil, err
 		}
@@ -257,7 +265,7 @@ func (q *Queries) ListSubscriptionsPeriodLapsed(ctx context.Context, arg ListSub
 }
 
 const listSubscriptionsReadOnlyEnded = `-- name: ListSubscriptionsReadOnlyEnded :many
-SELECT workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at FROM workspace_subscription
+SELECT workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at, pending_change, unit_price FROM workspace_subscription
 WHERE status = 'read_only' AND grace_until IS NOT NULL
   AND grace_until + make_interval(days => $3::int) <= $1
 ORDER BY grace_until, workspace_id
@@ -295,6 +303,8 @@ func (q *Queries) ListSubscriptionsReadOnlyEnded(ctx context.Context, arg ListSu
 			&i.LimitOverrides,
 			&i.Version,
 			&i.UpdatedAt,
+			&i.PendingChange,
+			&i.UnitPrice,
 		); err != nil {
 			return nil, err
 		}
@@ -308,7 +318,7 @@ func (q *Queries) ListSubscriptionsReadOnlyEnded(ctx context.Context, arg ListSu
 
 const listSubscriptionsTrialEnded = `-- name: ListSubscriptionsTrialEnded :many
 
-SELECT workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at FROM workspace_subscription
+SELECT workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at, pending_change, unit_price FROM workspace_subscription
 WHERE status = 'trialing' AND trial_end IS NOT NULL AND trial_end <= $1
 ORDER BY trial_end, workspace_id
 LIMIT $2
@@ -345,6 +355,8 @@ func (q *Queries) ListSubscriptionsTrialEnded(ctx context.Context, arg ListSubsc
 			&i.LimitOverrides,
 			&i.Version,
 			&i.UpdatedAt,
+			&i.PendingChange,
+			&i.UnitPrice,
 		); err != nil {
 			return nil, err
 		}
@@ -397,7 +409,7 @@ SET plan_key = $4,
     version = version + 1,
     updated_at = now()
 WHERE workspace_id = $1 AND status = $2 AND version = $3
-RETURNING workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at
+RETURNING workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at, pending_change, unit_price
 `
 
 type MoveWorkspaceSubscriptionParams struct {
@@ -443,6 +455,8 @@ func (q *Queries) MoveWorkspaceSubscription(ctx context.Context, arg MoveWorkspa
 		&i.LimitOverrides,
 		&i.Version,
 		&i.UpdatedAt,
+		&i.PendingChange,
+		&i.UnitPrice,
 	)
 	return i, err
 }

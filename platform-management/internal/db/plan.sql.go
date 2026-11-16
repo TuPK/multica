@@ -38,7 +38,7 @@ func (q *Queries) DeletePlan(ctx context.Context, key string) (int64, error) {
 }
 
 const getPlan = `-- name: GetPlan :one
-SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at FROM plan
+SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at, audience, billing_model, usage_rates, usage_terms, version FROM plan
 WHERE key = $1
 `
 
@@ -59,12 +59,17 @@ func (q *Queries) GetPlan(ctx context.Context, key string) (Plan, error) {
 		&i.IsPublic,
 		&i.Sort,
 		&i.ArchivedAt,
+		&i.Audience,
+		&i.BillingModel,
+		&i.UsageRates,
+		&i.UsageTerms,
+		&i.Version,
 	)
 	return i, err
 }
 
 const getPlanForUpdate = `-- name: GetPlanForUpdate :one
-SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at FROM plan
+SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at, audience, billing_model, usage_rates, usage_terms, version FROM plan
 WHERE key = $1
 FOR UPDATE
 `
@@ -86,6 +91,11 @@ func (q *Queries) GetPlanForUpdate(ctx context.Context, key string) (Plan, error
 		&i.IsPublic,
 		&i.Sort,
 		&i.ArchivedAt,
+		&i.Audience,
+		&i.BillingModel,
+		&i.UsageRates,
+		&i.UsageTerms,
+		&i.Version,
 	)
 	return i, err
 }
@@ -93,9 +103,11 @@ func (q *Queries) GetPlanForUpdate(ctx context.Context, key string) (Plan, error
 const insertPlanIfAbsent = `-- name: InsertPlanIfAbsent :execrows
 INSERT INTO plan (
     key, name, limits, features, currency, seat_price_month, seat_price_year,
-    seats_fixed, min_seats, trial_days, is_public, sort, archived_at
+    seats_fixed, min_seats, trial_days, is_public, sort, archived_at,
+    audience, billing_model
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+    COALESCE(NULLIF($14::text, ''), 'any'), COALESCE(NULLIF($15::text, ''), 'seat')
 )
 ON CONFLICT (key) DO NOTHING
 `
@@ -114,10 +126,13 @@ type InsertPlanIfAbsentParams struct {
 	IsPublic       bool               `json:"is_public"`
 	Sort           int32              `json:"sort"`
 	ArchivedAt     pgtype.Timestamptz `json:"archived_at"`
+	Audience       string             `json:"audience"`
+	BillingModel   string             `json:"billing_model"`
 }
 
 // Seeds one plan. Two platform processes starting together may both see an
-// empty table; the unique index on key makes the second insert a no-op.
+// empty table; the unique index on key makes the second insert a no-op. An
+// empty audience or billing model takes the column default; version starts at 0.
 func (q *Queries) InsertPlanIfAbsent(ctx context.Context, arg InsertPlanIfAbsentParams) (int64, error) {
 	result, err := q.db.Exec(ctx, insertPlanIfAbsent,
 		arg.Key,
@@ -133,6 +148,8 @@ func (q *Queries) InsertPlanIfAbsent(ctx context.Context, arg InsertPlanIfAbsent
 		arg.IsPublic,
 		arg.Sort,
 		arg.ArchivedAt,
+		arg.Audience,
+		arg.BillingModel,
 	)
 	if err != nil {
 		return 0, err
@@ -142,7 +159,7 @@ func (q *Queries) InsertPlanIfAbsent(ctx context.Context, arg InsertPlanIfAbsent
 
 const listPlans = `-- name: ListPlans :many
 
-SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at FROM plan
+SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at, audience, billing_model, usage_rates, usage_terms, version FROM plan
 ORDER BY sort, key
 `
 
@@ -172,6 +189,11 @@ func (q *Queries) ListPlans(ctx context.Context) ([]Plan, error) {
 			&i.IsPublic,
 			&i.Sort,
 			&i.ArchivedAt,
+			&i.Audience,
+			&i.BillingModel,
+			&i.UsageRates,
+			&i.UsageTerms,
+			&i.Version,
 		); err != nil {
 			return nil, err
 		}
@@ -203,9 +225,11 @@ func (q *Queries) PlanDeletedBefore(ctx context.Context, targetID string) (bool,
 const upsertPlan = `-- name: UpsertPlan :exec
 INSERT INTO plan (
     key, name, limits, features, currency, seat_price_month, seat_price_year,
-    seats_fixed, min_seats, trial_days, is_public, sort, archived_at
+    seats_fixed, min_seats, trial_days, is_public, sort, archived_at,
+    audience, billing_model
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+    COALESCE(NULLIF($14::text, ''), 'any'), COALESCE(NULLIF($15::text, ''), 'seat')
 )
 ON CONFLICT (key) DO UPDATE
 SET name = EXCLUDED.name,
@@ -219,7 +243,10 @@ SET name = EXCLUDED.name,
     trial_days = EXCLUDED.trial_days,
     is_public = EXCLUDED.is_public,
     sort = EXCLUDED.sort,
-    archived_at = EXCLUDED.archived_at
+    archived_at = EXCLUDED.archived_at,
+    audience = COALESCE(NULLIF($14::text, ''), plan.audience),
+    billing_model = COALESCE(NULLIF($15::text, ''), plan.billing_model),
+    version = plan.version + 1
 `
 
 type UpsertPlanParams struct {
@@ -236,8 +263,14 @@ type UpsertPlanParams struct {
 	IsPublic       bool               `json:"is_public"`
 	Sort           int32              `json:"sort"`
 	ArchivedAt     pgtype.Timestamptz `json:"archived_at"`
+	Audience       string             `json:"audience"`
+	BillingModel   string             `json:"billing_model"`
 }
 
+// Creates the plan, or replaces its fields and moves version up by one. An empty
+// audience or billing model is "not given": a new row takes the default and an
+// existing row keeps its value, so a writer that does not carry the two fields
+// does not reset them. usage_rates and usage_terms are not written here.
 func (q *Queries) UpsertPlan(ctx context.Context, arg UpsertPlanParams) error {
 	_, err := q.db.Exec(ctx, upsertPlan,
 		arg.Key,
@@ -253,6 +286,8 @@ func (q *Queries) UpsertPlan(ctx context.Context, arg UpsertPlanParams) error {
 		arg.IsPublic,
 		arg.Sort,
 		arg.ArchivedAt,
+		arg.Audience,
+		arg.BillingModel,
 	)
 	return err
 }
