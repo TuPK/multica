@@ -1447,6 +1447,10 @@
       "member": {
         "label": "Membre",
         "description": "Créer des tâches et y travailler"
+      },
+      "viewer": {
+        "label": "Lecteur",
+        "description": "Consulter l'espace de travail sans rien modifier"
       }
     },
     "share_links_create_title": "Créer un lien de partage",

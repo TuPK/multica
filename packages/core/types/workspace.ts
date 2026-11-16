@@ -1,4 +1,8 @@
-export type MemberRole = "owner" | "admin" | "member";
+/**
+ * `viewer` reads what a member reads and writes nothing but personal state
+ * (spec 6.6). A role the server sends that this list does not name is a viewer.
+ */
+export type MemberRole = "owner" | "admin" | "member" | "viewer";
 
 export interface WorkspaceRepo {
   url: string;

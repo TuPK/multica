@@ -1151,6 +1151,10 @@
       "member": {
         "label": "멤버",
         "description": "태스크 생성 및 작업"
+      },
+      "viewer": {
+        "label": "뷰어",
+        "description": "워크스페이스를 읽기만 가능"
       }
     },
     "share_links_create_title": "공유 링크 만들기",

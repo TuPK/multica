@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/integrations/dingtalk"
+	"github.com/multica-ai/multica/server/internal/workspaceguard"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
@@ -763,6 +764,8 @@ func (h *Handler) RedeemDingTalkBindingToken(w http.ResponseWriter, r *http.Requ
 			writeError(w, http.StatusGone, "binding token invalid or expired")
 		case errors.Is(err, dingtalk.ErrBindingAlreadyAssigned):
 			writeError(w, http.StatusConflict, "this DingTalk account is already bound to a different Multica user")
+		case errors.Is(err, dingtalk.ErrBindingViewerReadOnly):
+			writeErrorCode(w, http.StatusForbidden, workspaceguard.CodeViewerReadOnly, workspaceguard.Message(workspaceguard.CodeViewerReadOnly))
 		case errors.Is(err, dingtalk.ErrBindingNotWorkspaceMember):
 			writeError(w, http.StatusForbidden, "binding refused (are you a workspace member?)")
 		default:

@@ -20,6 +20,7 @@ import (
 	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/logger"
 	"github.com/multica-ai/multica/server/internal/seatcapacity"
+	"github.com/multica-ai/multica/server/internal/workspaceguard"
 	"github.com/multica-ai/multica/server/internal/workspacepolicy"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
@@ -95,8 +96,8 @@ func (h *Handler) CreateShareLink(w http.ResponseWriter, r *http.Request) {
 	role := "member"
 	if req.Role != "" {
 		r := strings.ToLower(strings.TrimSpace(req.Role))
-		if r == "admin" {
-			role = "admin"
+		if r == "admin" || r == workspaceguard.RoleViewer {
+			role = r
 		} else if r != "member" {
 			writeError(w, http.StatusBadRequest, "invalid role")
 			return

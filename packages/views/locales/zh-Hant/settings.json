@@ -1437,6 +1437,10 @@
       "member": {
         "label": "成員",
         "description": "建立並處理任務"
+      },
+      "viewer": {
+        "label": "檢視者",
+        "description": "只能檢視工作區，不能修改"
       }
     },
     "share_links_create_title": "建立分享連結",

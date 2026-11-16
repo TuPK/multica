@@ -5,6 +5,7 @@ import {
   Check,
   Copy,
   Crown,
+  Eye,
   Link,
   Loader2,
   Mail,
@@ -134,6 +135,7 @@ const ROLE_ICONS: Record<MemberRole, typeof Crown> = {
   owner: Crown,
   admin: Shield,
   member: User,
+  viewer: Eye,
 };
 
 // Builds the shareable URL for a share-link invite. Prefers the navigation
@@ -167,6 +169,11 @@ function useRoleLabels() {
       label: t(($) => $.members.roles.member.label),
       description: t(($) => $.members.roles.member.description),
       icon: ROLE_ICONS.member,
+    },
+    viewer: {
+      label: t(($) => $.members.roles.viewer.label),
+      description: t(($) => $.members.roles.viewer.description),
+      icon: ROLE_ICONS.viewer,
     },
   } as const;
 }
@@ -890,7 +897,7 @@ export function MembersTab() {
 
   if (!workspace) return null;
 
-  const roleItems = (["member", "admin"] as const).map((value) => ({
+  const roleItems = (["member", "admin", "viewer"] as const).map((value) => ({
     value,
     label: roleConfig[value].label,
   }));

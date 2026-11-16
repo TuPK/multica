@@ -19,6 +19,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/integrations/wecom"
+	"github.com/multica-ai/multica/server/internal/workspaceguard"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
@@ -390,6 +391,8 @@ func (h *Handler) RedeemWecomBindingToken(w http.ResponseWriter, r *http.Request
 			writeError(w, http.StatusGone, "binding token invalid or expired")
 		case errors.Is(err, wecom.ErrBindingAlreadyAssigned):
 			writeError(w, http.StatusConflict, "this WeCom user is already bound to a different Multica user")
+		case errors.Is(err, wecom.ErrBindingViewerReadOnly):
+			writeErrorCode(w, http.StatusForbidden, workspaceguard.CodeViewerReadOnly, workspaceguard.Message(workspaceguard.CodeViewerReadOnly))
 		case errors.Is(err, wecom.ErrBindingNotWorkspaceMember):
 			writeError(w, http.StatusForbidden, "binding refused (are you a workspace member?)")
 		default:

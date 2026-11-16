@@ -445,3 +445,48 @@ describe("canChangeMemberRole", () => {
     expect(canChangeMemberRole(targetOwner, 2, ctxOwner).allowed).toBe(true);
   });
 });
+
+// Spec 6.6: a viewer reads and writes nothing. The owner-match and author-match
+// rules below would otherwise admit a viewer who owns or wrote the resource.
+describe("viewer role (spec 6.6)", () => {
+  const ctxViewer = { userId: ALICE, role: "viewer" as const };
+
+  it("denies a viewer who owns the agent, even with edit rights on owners", () => {
+    const d = canEditAgent(makeAgent({ owner_id: ALICE }), ctxViewer);
+    expect(d.allowed).toBe(false);
+    expect(d.reason).toBe("viewer_read_only");
+  });
+
+  it("denies a viewer assigning any agent, including a workspace-granted one", () => {
+    const d = canAssignAgentToIssue(makeAgent({ owner_id: BOB }), ctxViewer);
+    expect(d.allowed).toBe(false);
+    expect(d.reason).toBe("viewer_read_only");
+  });
+
+  it("denies a viewer editing or deleting a skill they created", () => {
+    expect(canEditSkill(makeSkill(ALICE), ctxViewer).reason).toBe("viewer_read_only");
+    expect(canDeleteSkill(makeSkill(ALICE), ctxViewer).reason).toBe("viewer_read_only");
+  });
+
+  it("denies a viewer editing or deleting their own comment", () => {
+    const own = makeComment({ author_id: ALICE });
+    expect(canEditComment(own, ctxViewer).reason).toBe("viewer_read_only");
+    expect(canDeleteComment(own, ctxViewer).reason).toBe("viewer_read_only");
+  });
+
+  it("denies a viewer deleting a runtime they own", () => {
+    expect(canDeleteRuntime(makeRuntime(ALICE), ctxViewer).reason).toBe("viewer_read_only");
+  });
+
+  it("treats an unknown role from the server as a viewer", () => {
+    const unknown = { userId: ALICE, role: "superuser" as unknown as "viewer" };
+    expect(canEditAgent(makeAgent({ owner_id: ALICE }), unknown).reason).toBe("viewer_read_only");
+    expect(canDeleteRuntime(makeRuntime(ALICE), unknown).reason).toBe("viewer_read_only");
+  });
+
+  it("keeps a member's own-resource rights", () => {
+    const ctxMember = { userId: ALICE, role: "member" as const };
+    expect(canEditAgent(makeAgent({ owner_id: ALICE }), ctxMember).allowed).toBe(true);
+    expect(canEditComment(makeComment({ author_id: ALICE }), ctxMember).allowed).toBe(true);
+  });
+});

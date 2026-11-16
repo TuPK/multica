@@ -449,8 +449,13 @@ func (h *Handler) UploadFile(w http.ResponseWriter, r *http.Request) {
 
 	// If workspace context is available, validate membership before uploading.
 	if workspaceID != "" {
-		if _, err := h.getWorkspaceMember(r.Context(), userID, workspaceID); err != nil {
+		member, err := h.getWorkspaceMember(r.Context(), userID, workspaceID)
+		if err != nil {
 			writeError(w, http.StatusForbidden, "not a member of this workspace")
+			return
+		}
+		// Storing a file in the workspace is a write a viewer may not make (spec 6.6).
+		if refuseViewer(w, member) {
 			return
 		}
 

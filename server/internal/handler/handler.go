@@ -1074,6 +1074,17 @@ func (h *Handler) requireWorkspaceMember(w http.ResponseWriter, r *http.Request,
 	return member, true
 }
 
+// refuseViewer writes the viewer refusal and reports true when member is a
+// viewer (spec 6.6). A handler that authorizes a member itself calls it before
+// any write, because the workspace middleware is not in its path.
+func refuseViewer(w http.ResponseWriter, member db.Member) bool {
+	if member.Role != workspaceguard.RoleViewer {
+		return false
+	}
+	writeErrorCode(w, http.StatusForbidden, workspaceguard.CodeViewerReadOnly, workspaceguard.Message(workspaceguard.CodeViewerReadOnly))
+	return true
+}
+
 // admitByWorkspaceState applies the workspace-state decision table to a member
 // the handler has just authorized, as the workspace middleware does for the
 // routes behind it, and reports whether the request may proceed. When it may

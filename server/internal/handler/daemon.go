@@ -34,6 +34,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/runtimeapps"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
+	"github.com/multica-ai/multica/server/internal/workspaceguard"
 	"github.com/multica-ai/multica/server/pkg/agent"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
@@ -89,11 +90,20 @@ func (h *Handler) requireDaemonWorkspaceAccess(w http.ResponseWriter, r *http.Re
 		}
 	}
 
-	_, ok := h.requireWorkspaceMember(w, r, workspaceID, "not found")
-	if ok && userID != "" {
+	member, ok := h.requireWorkspaceMember(w, r, workspaceID, "not found")
+	if !ok {
+		return false
+	}
+	// A viewer may not reach the daemon routes (spec 6.6), and its membership
+	// is not cached: the cache holds only "is a member", and a viewer must not
+	// be admitted from it.
+	if refuseViewer(w, member) {
+		return false
+	}
+	if userID != "" {
 		h.MembershipCache.Set(r.Context(), userID, workspaceID)
 	}
-	return ok
+	return true
 }
 
 // daemonRuntimeBindingAllowed is the runtime-level half of daemon
@@ -305,8 +315,8 @@ func (h *Handler) verifyDaemonWorkspaceAccess(r *http.Request, workspaceID strin
 	if h.MembershipCache.Get(r.Context(), userID, workspaceID) {
 		return true
 	}
-	_, err := h.getWorkspaceMember(r.Context(), userID, workspaceID)
-	if err != nil {
+	member, err := h.getWorkspaceMember(r.Context(), userID, workspaceID)
+	if err != nil || member.Role == workspaceguard.RoleViewer {
 		return false
 	}
 	h.MembershipCache.Set(r.Context(), userID, workspaceID)
@@ -684,6 +694,10 @@ func (h *Handler) DaemonRegister(w http.ResponseWriter, r *http.Request) {
 	} else {
 		member, ok := h.requireWorkspaceMember(w, r, req.WorkspaceID, "workspace not found")
 		if !ok {
+			return
+		}
+		// A viewer cannot register a runtime (spec 6.6).
+		if refuseViewer(w, member) {
 			return
 		}
 		ownerID = member.UserID

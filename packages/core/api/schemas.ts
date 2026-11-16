@@ -4518,12 +4518,16 @@ export const EMPTY_WORKSPACE_MCP_SERVER: WorkspaceMcpServer = {
 
 // Share links. Introduced with the workspace share-link invite flow; schemas
 // mirror the API responses so malformed payloads fall back to safe defaults.
+// A role this client does not know is a viewer, the lowest privilege (spec
+// 6.6), so a newer server role never grants write access here.
+export const MemberRoleSchema = z.enum(["owner", "admin", "member", "viewer"]).catch("viewer");
+
 export const ShareLinkSchema = z.object({
   id: z.string(),
   workspace_id: z.string(),
   code: z.string(),
   created_by: z.string(),
-  role: z.string(),
+  role: MemberRoleSchema,
   expires_at: z.string().nullable().optional().default(null),
   max_uses: z.number().nullable().optional().default(null),
   use_count: z.number().optional().default(0),
@@ -4552,7 +4556,7 @@ export const ShareLinkInfoSchema = z.object({
   workspace_name: z.string().optional().default(""),
   workspace_slug: z.string().optional().default(""),
   creator_name: z.string().optional().default(""),
-  role: z.string().optional().default("member"),
+  role: MemberRoleSchema.optional().default("viewer"),
 }).loose();
 
 export const EMPTY_SHARE_LINK_INFO: ShareLinkInfo = {
@@ -4565,7 +4569,7 @@ export const MemberWithUserSchema = z.object({
   id: z.string(),
   workspace_id: z.string(),
   user_id: z.string(),
-  role: z.string(),
+  role: MemberRoleSchema,
   created_at: z.string().optional().default(""),
   name: z.string().optional().default(""),
   email: z.string().optional().default(""),
