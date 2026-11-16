@@ -2920,6 +2920,17 @@ type WorkspaceMcpServer struct {
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
+type WorkspacePolicy struct {
+	WorkspaceID          pgtype.UUID        `json:"workspace_id"`
+	AllowedInviteDomains []string           `json:"allowed_invite_domains"`
+	ShareLinksEnabled    bool               `json:"share_links_enabled"`
+	RequireSso           bool               `json:"require_sso"`
+	RequireMfa           bool               `json:"require_mfa"`
+	SessionMaxAgeHours   int32              `json:"session_max_age_hours"`
+	UpdatedBy            pgtype.UUID        `json:"updated_by"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+}
+
 type WorkspaceShareLink struct {
 	ID          pgtype.UUID        `json:"id"`
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
