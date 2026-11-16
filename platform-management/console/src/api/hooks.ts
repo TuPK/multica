@@ -16,13 +16,25 @@ import {
   parseTenantPage,
   parseUserDetail,
   parseUserPage,
+  parseOrderList,
+  parseOrderActionResult,
+  parsePlanList,
+  parsePutPlanResponse,
+  parseDeletePlanResponse,
+  parsePutSubscriptionResponse,
   type Me,
   type Overview,
   type StaffRole,
   type TenantDetail,
   type TenantStatus,
   type UserDetail,
+  type Order,
+  type Plan,
+  type Subscription,
+  type Limits,
 } from "./schemas";
+
+export type { Subscription, Order, Plan, Limits };
 
 /** The states staff may set on a workspace. */
 export type SettableTenantStatus = Exclude<TenantStatus, "unknown">;
@@ -87,6 +99,9 @@ export const platformKeys = {
   userList: (filters: SearchFilters) => ["platform", "users", "list", clean(filters)] as const,
   user: (id: string) => ["platform", "users", "detail", id] as const,
   staff: () => ["platform", "staff"] as const,
+  orders: () => ["platform", "orders"] as const,
+  orderList: (status: string) => ["platform", "orders", "list", status] as const,
+  plans: () => ["platform", "plans"] as const,
   audits: () => ["platform", "audit"] as const,
   audit: (filters: AuditFilters) => ["platform", "audit", clean(filters)] as const,
   overview: () => ["platform", "overview"] as const,
@@ -375,5 +390,179 @@ export function useOverview() {
     queryKey: platformKeys.overview(),
     queryFn: async ({ signal }): Promise<Overview> =>
       orMalformed(parseOverview(await platformFetch("/overview", { signal }))),
+  });
+}
+
+// Orders & Billing
+
+/** List orders by status (pending, paid, expired, canceled, refunded). Default: pending. */
+export function useOrders(status = "pending") {
+  return useQuery({
+    queryKey: platformKeys.orderList(status),
+    queryFn: async ({ signal }): Promise<Order[]> => {
+      const res = await platformFetch(`/orders${queryString({ status })}`, { signal });
+      return parseOrderList(res).orders;
+    },
+  });
+}
+
+/** Variables: `{ orderId, reason, transferReference }`. The reason is required. */
+export function useConfirmOrder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { orderId: string; reason: string; transferReference?: string }) => {
+      const body: Record<string, unknown> = { reason: vars.reason };
+      if (vars.transferReference !== undefined) body.transfer_reference = vars.transferReference;
+      const res = await platformFetch(`/orders/${pathSegment(vars.orderId)}/confirm`, {
+        method: "POST",
+        body,
+      });
+      return parseOrderActionResult(res, "POST /api/platform/orders/{id}/confirm");
+    },
+    onSuccess: () =>
+      invalidateAll(queryClient, [
+        platformKeys.orders(),
+        platformKeys.tenants(),
+        platformKeys.overview(),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+/** Variables: `{ orderId, reason }`. The reason is required. */
+export function useCancelOrder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { orderId: string; reason: string }) => {
+      const res = await platformFetch(`/orders/${pathSegment(vars.orderId)}/cancel`, {
+        method: "POST",
+        body: { reason: vars.reason },
+      });
+      return parseOrderActionResult(res, "POST /api/platform/orders/{id}/cancel");
+    },
+    onSuccess: () =>
+      invalidateAll(queryClient, [
+        platformKeys.orders(),
+        platformKeys.tenants(),
+        platformKeys.overview(),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+// Plans
+
+/** List all plans. Admin only. */
+export function usePlans() {
+  return useQuery({
+    queryKey: platformKeys.plans(),
+    queryFn: async ({ signal }): Promise<Plan[]> => {
+      const res = await platformFetch("/plans", { signal });
+      return parsePlanList(res).plans;
+    },
+  });
+}
+
+export interface PutPlanInput {
+  key: string;
+  name: string;
+  limits: Limits;
+  features: Record<string, boolean>;
+  currency: string;
+  seat_price_month: number | null;
+  seat_price_year: number | null;
+  seats_fixed: number | null;
+  min_seats: number | null;
+  trial_days: number;
+  is_public: boolean;
+  sort: number;
+  archived: boolean;
+}
+
+/** Create or update a plan. Admin only. */
+export function usePutPlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: PutPlanInput) => {
+      const { key, ...body } = vars;
+      const res = await platformFetch(`/plans/${pathSegment(key)}`, {
+        method: "PUT",
+        body,
+      });
+      return parsePutPlanResponse(res);
+    },
+    onSuccess: () =>
+      invalidateAll(queryClient, [
+        platformKeys.plans(),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+/** Delete an unused plan. Admin only. */
+export function useDeletePlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { key: string }) => {
+      const res = await platformFetch(`/plans/${pathSegment(vars.key)}`, {
+        method: "DELETE",
+      });
+      return parseDeletePlanResponse(res);
+    },
+    onSuccess: () =>
+      invalidateAll(queryClient, [
+        platformKeys.plans(),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+// Subscription
+
+export interface UpdateSubscriptionInput {
+  tenantId: string;
+  planKey: string;
+  seats: number;
+  interval: string;
+  currentPeriodStart?: string | null;
+  currentPeriodEnd?: string | null;
+  trialEnd?: string | null;
+  graceUntil?: string | null;
+  cancelAtPeriodEnd?: boolean;
+  limitOverrides?: Limits;
+  reason: string;
+}
+
+/** Update a workspace subscription. Billing or Admin only. */
+export function useUpdateSubscription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: UpdateSubscriptionInput) => {
+      const body: Record<string, unknown> = {
+        plan_key: vars.planKey,
+        seats: vars.seats,
+        interval: vars.interval,
+        reason: vars.reason,
+      };
+      if (vars.currentPeriodStart !== undefined) body.current_period_start = vars.currentPeriodStart;
+      if (vars.currentPeriodEnd !== undefined) body.current_period_end = vars.currentPeriodEnd;
+      if (vars.trialEnd !== undefined) body.trial_end = vars.trialEnd;
+      if (vars.graceUntil !== undefined) body.grace_until = vars.graceUntil;
+      if (vars.cancelAtPeriodEnd !== undefined) body.cancel_at_period_end = vars.cancelAtPeriodEnd;
+      if (vars.limitOverrides !== undefined) body.limit_overrides = vars.limitOverrides;
+
+      const res = await platformFetch(`/tenants/${pathSegment(vars.tenantId)}/subscription`, {
+        method: "PUT",
+        body,
+      });
+      return parsePutSubscriptionResponse(res);
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.tenant(vars.tenantId),
+        platformKeys.tenants(),
+        platformKeys.overview(),
+        platformKeys.audits(),
+      ]),
   });
 }

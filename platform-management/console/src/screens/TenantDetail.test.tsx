@@ -8,6 +8,7 @@ const mockUseTenantNotes = vi.fn();
 const mockUseTenantAudit = vi.fn();
 const mockChangeTenantStatusMutateAsync = vi.fn();
 const mockAddTenantNoteMutateAsync = vi.fn();
+const mockUpdateSubscriptionMutateAsync = vi.fn();
 
 vi.mock("../api/hooks", () => ({
   useTenant: () => mockUseTenant(),
@@ -19,6 +20,10 @@ vi.mock("../api/hooks", () => ({
   }),
   useAddTenantNote: () => ({
     mutateAsync: mockAddTenantNoteMutateAsync,
+    isPending: false,
+  }),
+  useUpdateSubscription: () => ({
+    mutateAsync: mockUpdateSubscriptionMutateAsync,
     isPending: false,
   }),
 }));
@@ -38,6 +43,46 @@ const mockTenantData = {
     changed_at: "2026-11-01T10:00:00Z",
     deletion_scheduled_at: null,
   },
+  subscription: {
+    workspace_id: "t-123",
+    plan_key: "pro",
+    status: "active",
+    seats: 5,
+    interval: "month",
+    current_period_start: "2026-11-01T00:00:00Z",
+    current_period_end: "2026-12-01T00:00:00Z",
+    trial_end: "2026-11-15T00:00:00Z",
+    grace_until: null,
+    cancel_at_period_end: false,
+    limit_overrides: {},
+    version: 1,
+    updated_at: null,
+  },
+  recent_orders: [
+    {
+      id: "ord-101",
+      workspace_id: "t-123",
+      workspace_name: "Acme Corp",
+      kind: "subscribe" as const,
+      plan_key: "pro",
+      interval: "month",
+      seats: 5,
+      amount: 1000000,
+      vat_amount: 100000,
+      currency: "vnd",
+      status: "paid" as const,
+      transfer_code: "MUL99999999",
+      created_at: "2026-11-01T10:00:00Z",
+      expires_at: "2026-11-08T10:00:00Z",
+      paid_at: "2026-11-01T11:00:00Z",
+      buyer: {
+        name: "Acme Corp",
+        tax_code: "0101234567",
+        address: "123 Street",
+        invoice_email: "acme@example.com",
+      },
+    },
+  ],
   notes_count: 1,
   owner: {
     id: "u-owner",
@@ -183,5 +228,67 @@ describe("TenantDetail screen", () => {
         body: "Investigated billing query.",
       });
     });
+  });
+
+  it("subscription panel: displays plan, seats, interval, trial end, and recent orders", () => {
+    render(
+      <TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="billing" />
+    );
+
+    expect(screen.getByRole("heading", { name: "Subscription" })).toBeInTheDocument();
+    expect(screen.getByText("pro")).toBeInTheDocument();
+    expect(screen.getByText("5")).toBeInTheDocument();
+    expect(screen.getByText("month")).toBeInTheDocument();
+
+    // Recent orders
+    expect(screen.getByRole("heading", { name: "Recent Orders" })).toBeInTheDocument();
+    expect(screen.getByText("MUL99999999")).toBeInTheDocument();
+    expect(screen.getByText(/1,100,000/)).toBeInTheDocument();
+  });
+
+  it("subscription panel: edit subscription requires reason and submits PUT /tenants/{id}/subscription", async () => {
+    mockUpdateSubscriptionMutateAsync.mockResolvedValue({
+      changed: true,
+      subscription: { ...mockTenantData.subscription, seats: 10 },
+    });
+
+    render(
+      <TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="billing" />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit subscription" }));
+    expect(screen.getByRole("heading", { name: "Edit Subscription" })).toBeInTheDocument();
+
+    const seatsInput = screen.getByLabelText(/Seats/i);
+    fireEvent.change(seatsInput, { target: { value: "10" } });
+
+    const submitBtn = screen.getByRole("button", { name: "Save subscription" });
+    expect(submitBtn).toBeDisabled();
+
+    const reasonInput = screen.getByLabelText(/Reason/i);
+    fireEvent.change(reasonInput, { target: { value: "Customer upgraded over phone" } });
+    expect(submitBtn).toBeEnabled();
+
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(mockUpdateSubscriptionMutateAsync).toHaveBeenCalledWith({
+        tenantId: "t-123",
+        planKey: "pro",
+        seats: 10,
+        interval: "month",
+        trialEnd: "2026-11-15T00:00:00Z",
+        reason: "Customer upgraded over phone",
+      });
+    });
+  });
+
+  it("subscription panel: support role cannot edit subscription", () => {
+    render(
+      <TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="support" />
+    );
+
+    expect(screen.getByRole("heading", { name: "Subscription" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit subscription" })).not.toBeInTheDocument();
   });
 });

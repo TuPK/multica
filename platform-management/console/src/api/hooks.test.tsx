@@ -24,6 +24,13 @@ import {
   useUser,
   useUsers,
   useVerifyCode,
+  useOrders,
+  useConfirmOrder,
+  useCancelOrder,
+  usePlans,
+  usePutPlan,
+  useDeletePlan,
+  useUpdateSubscription,
 } from "./hooks";
 
 type Handler = Response | ((url: URL, init: RequestInit | undefined) => Response);
@@ -479,5 +486,180 @@ describe("mutations", () => {
       await result.current.mutateAsync({ tenantId: "a/b", status: "active", reason: "ok" });
     });
     expect(calls[0]?.path).toBe("/api/platform/tenants/a%2Fb/status");
+  });
+});
+
+describe("orders and billing hooks", () => {
+  const mockOrder = {
+    id: "ord-1",
+    workspace_id: "ws-1",
+    workspace_name: "Acme",
+    kind: "subscribe",
+    plan_key: "pro",
+    interval: "month",
+    seats: 3,
+    amount: 600000,
+    vat_amount: 60000,
+    currency: "vnd",
+    status: "pending",
+    transfer_code: "MUL12345678",
+    expires_at: "2026-11-20T10:00:00Z",
+    created_at: "2026-11-13T10:00:00Z",
+    paid_at: null,
+    buyer: {
+      name: "Acme",
+      tax_code: "010",
+      address: "HN",
+      invoice_email: "acme@example.com",
+    },
+  };
+
+  it("useOrders fetches default pending orders oldest first", async () => {
+    const calls = stubFetch({ "GET /api/platform/orders": json(200, { orders: [mockOrder] }) });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useOrders(), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(calls[0]?.search).toBe("?status=pending");
+    expect(result.current.data).toEqual([mockOrder]);
+  });
+
+  it("useOrders fetches with specified status", async () => {
+    const calls = stubFetch({ "GET /api/platform/orders": json(200, { orders: [{ ...mockOrder, status: "paid" }] }) });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useOrders("paid"), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(calls[0]?.search).toBe("?status=paid");
+    expect(result.current.data?.[0]?.status).toBe("paid");
+  });
+
+  it("useConfirmOrder sends reason and optional transfer_reference", async () => {
+    const calls = stubFetch({
+      "POST /api/platform/orders/ord-1/confirm": json(200, { order: { ...mockOrder, status: "paid" }, applied: true }),
+    });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useConfirmOrder(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ orderId: "ord-1", reason: "wire received", transferReference: "REF123" });
+    });
+
+    expect(calls[0]?.path).toBe("/api/platform/orders/ord-1/confirm");
+    expect(calls[0]?.body).toEqual({ reason: "wire received", transfer_reference: "REF123" });
+  });
+
+  it("useCancelOrder sends reason", async () => {
+    const calls = stubFetch({
+      "POST /api/platform/orders/ord-1/cancel": json(200, { order: { ...mockOrder, status: "canceled" }, applied: true }),
+    });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useCancelOrder(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ orderId: "ord-1", reason: "user request" });
+    });
+
+    expect(calls[0]?.path).toBe("/api/platform/orders/ord-1/cancel");
+    expect(calls[0]?.body).toEqual({ reason: "user request" });
+  });
+});
+
+describe("plans hooks", () => {
+  const mockPlan = {
+    key: "pro",
+    name: "Pro",
+    limits: {},
+    features: {},
+    currency: "vnd",
+    seat_price_month: 200000,
+    seat_price_year: null,
+    seats_fixed: null,
+    min_seats: 1,
+    trial_days: 14,
+    is_public: true,
+    sort: 10,
+    archived_at: null,
+  };
+
+  it("usePlans fetches plan list", async () => {
+    const calls = stubFetch({ "GET /api/platform/plans": json(200, { plans: [mockPlan] }) });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => usePlans(), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(calls[0]?.path).toBe("/api/platform/plans");
+    expect(result.current.data).toEqual([mockPlan]);
+  });
+
+  it("usePutPlan sends plan updates", async () => {
+    const calls = stubFetch({
+      "PUT /api/platform/plans/pro": json(200, { changed: true, plan: mockPlan }),
+    });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => usePutPlan(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        key: "pro",
+        name: "Pro Plus",
+        trial_days: 30,
+        limits: {},
+        features: {},
+        currency: "vnd",
+        seat_price_month: 200000,
+        seat_price_year: null,
+        seats_fixed: null,
+        min_seats: 1,
+        is_public: true,
+        sort: 10,
+        archived: false,
+      });
+    });
+
+    expect(calls[0]?.path).toBe("/api/platform/plans/pro");
+    expect(calls[0]?.body).toMatchObject({ name: "Pro Plus", trial_days: 30 });
+  });
+
+  it("useDeletePlan deletes a plan", async () => {
+    const calls = stubFetch({
+      "DELETE /api/platform/plans/legacy": json(200, { deleted: true }),
+    });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useDeletePlan(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ key: "legacy" });
+    });
+
+    expect(calls[0]?.path).toBe("/api/platform/plans/legacy");
+  });
+});
+
+describe("subscription hook", () => {
+  it("useUpdateSubscription sends PUT to /tenants/{id}/subscription", async () => {
+    const calls = stubFetch({
+      "PUT /api/platform/tenants/ws-1/subscription": json(200, {
+        changed: true,
+        subscription: { workspace_id: "ws-1", plan_key: "business", seats: 10, interval: "month", version: 2 },
+      }),
+    });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useUpdateSubscription(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        tenantId: "ws-1",
+        planKey: "business",
+        seats: 10,
+        interval: "month",
+        reason: "upgrade request",
+      });
+    });
+
+    expect(calls[0]?.path).toBe("/api/platform/tenants/ws-1/subscription");
+    expect(calls[0]?.body).toEqual({
+      plan_key: "business",
+      seats: 10,
+      interval: "month",
+      reason: "upgrade request",
+    });
   });
 });

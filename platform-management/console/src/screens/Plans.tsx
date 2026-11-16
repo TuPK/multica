@@ -1,0 +1,426 @@
+import { useState } from "react";
+import { Button } from "@multica/ui/components/ui/button";
+import { Input } from "@multica/ui/components/ui/input";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@multica/ui/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@multica/ui/components/ui/dialog";
+import { Spinner } from "@multica/ui/components/ui/spinner";
+import { Badge } from "@multica/ui/components/ui/badge";
+import { Pencil, Trash2 } from "@multica/ui/icons";
+import { LoadingState } from "../components/LoadingState";
+import { ErrorState } from "../components/ErrorState";
+import { EmptyState } from "../components/EmptyState";
+import { usePlans, usePutPlan, useDeletePlan, useMe } from "../api/hooks";
+import { PlatformApiError } from "../api/client";
+import type { StaffRole } from "../components/types";
+import type { Plan } from "../api/schemas";
+
+interface PlansProps {
+  userRole?: StaffRole;
+}
+
+export function Plans({ userRole }: PlansProps) {
+  const { data: me } = useMe();
+  const effectiveRole = userRole || me?.role;
+
+  const { data: plans, isLoading, isError, error, refetch } = usePlans();
+  const putPlan = usePutPlan();
+  const deletePlan = useDeletePlan();
+
+  // Edit dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [planName, setPlanName] = useState("");
+  const [trialDays, setTrialDays] = useState(0);
+  const [minSeats, setMinSeats] = useState<number | null>(null);
+  const [seatsFixed, setSeatsFixed] = useState<number | null>(null);
+  const [isPublic, setIsPublic] = useState(false);
+  const [sortOrder, setSortOrder] = useState(0);
+  const [archived, setArchived] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [planToDelete, setPlanToDelete] = useState<Plan | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Admin only
+  if (effectiveRole && effectiveRole !== "admin") {
+    return (
+      <div role="region" aria-label="Not found">
+        <ErrorState
+          title="Not found"
+          message="The page you requested was not found or you do not have permission to view it."
+        />
+      </div>
+    );
+  }
+
+  const handleOpenEdit = (plan: Plan) => {
+    setSelectedPlan(plan);
+    setPlanName(plan.name);
+    setTrialDays(plan.trial_days);
+    setMinSeats(plan.min_seats);
+    setSeatsFixed(plan.seats_fixed);
+    setIsPublic(plan.is_public);
+    setSortOrder(plan.sort);
+    setArchived(Boolean(plan.archived_at));
+    setEditError(null);
+    setEditDialogOpen(true);
+  };
+
+  const handleSavePlan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPlan || putPlan.isPending) return;
+    setEditError(null);
+
+    try {
+      await putPlan.mutateAsync({
+        key: selectedPlan.key,
+        name: planName.trim(),
+        trial_days: Number(trialDays),
+        limits: selectedPlan.limits,
+        features: selectedPlan.features,
+        currency: selectedPlan.currency,
+        seat_price_month: selectedPlan.seat_price_month,
+        seat_price_year: selectedPlan.seat_price_year,
+        seats_fixed: seatsFixed !== null && !isNaN(seatsFixed) ? Number(seatsFixed) : null,
+        min_seats: minSeats !== null && !isNaN(minSeats) ? Number(minSeats) : null,
+        is_public: isPublic,
+        sort: Number(sortOrder),
+        archived,
+      });
+      setEditDialogOpen(false);
+      setSelectedPlan(null);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setEditError(err.message);
+      } else {
+        setEditError("Failed to update plan");
+      }
+    }
+  };
+
+  const handleOpenDelete = (plan: Plan) => {
+    setPlanToDelete(plan);
+    setDeleteError(null);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!planToDelete || deletePlan.isPending) return;
+    setDeleteError(null);
+
+    try {
+      await deletePlan.mutateAsync({ key: planToDelete.key });
+      setDeleteDialogOpen(false);
+      setPlanToDelete(null);
+    } catch (err: unknown) {
+      if (err instanceof PlatformApiError) {
+        setDeleteError(err.message);
+      } else if (err instanceof Error) {
+        setDeleteError(err.message);
+      } else {
+        setDeleteError("Failed to delete plan");
+      }
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="font-heading text-title-lg font-bold">Plans Catalogue</h1>
+          <p className="text-body text-muted-foreground">
+            Manage plans, seats configuration, and public catalog visibility.
+          </p>
+        </div>
+      </div>
+
+      {isLoading && <LoadingState message="Loading plans..." />}
+
+      {isError && (
+        <ErrorState
+          title="Failed to load plans"
+          message={error instanceof Error ? error.message : "An error occurred while loading plans."}
+          onRetry={refetch}
+        />
+      )}
+
+      {!isLoading && !isError && (!plans || plans.length === 0) && (
+        <EmptyState
+          title="No plans"
+          description="No plans configured in the catalogue."
+        />
+      )}
+
+      {!isLoading && !isError && plans && plans.length > 0 && (
+        <div className="rounded-lg border border-surface-border bg-surface overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Plan</TableHead>
+                <TableHead>Pricing (Monthly / Yearly)</TableHead>
+                <TableHead>Seats Configuration</TableHead>
+                <TableHead>Trial</TableHead>
+                <TableHead>Visibility</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {plans.map((plan: Plan) => {
+                const isArchived = Boolean(plan.archived_at);
+
+                return (
+                  <TableRow key={plan.key}>
+                    <TableCell>
+                      <div className="font-medium text-foreground">{plan.name}</div>
+                      <div className="font-mono text-caption text-muted-foreground">{plan.key}</div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-body font-medium">
+                        {plan.seat_price_month !== null
+                          ? `${plan.seat_price_month.toLocaleString()} ${plan.currency.toUpperCase()}/mo`
+                          : "Free / Fixed"}
+                      </div>
+                      <div className="text-caption text-muted-foreground">
+                        {plan.seat_price_year !== null
+                          ? `${plan.seat_price_year.toLocaleString()} ${plan.currency.toUpperCase()}/yr`
+                          : "-"}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-body">
+                        {plan.seats_fixed !== null
+                          ? `${plan.seats_fixed} fixed seats`
+                          : `${plan.min_seats || 1} min seats`}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-body">
+                        {plan.trial_days > 0 ? `${plan.trial_days} days` : "No trial"}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={plan.is_public ? "default" : "outline"}>
+                        {plan.is_public ? "Public" : "Private"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={isArchived ? "secondary" : "outline"}>
+                        {isArchived ? "Archived" : "Active"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenEdit(plan)}
+                          aria-label={`Edit plan ${plan.name}`}
+                          className="h-8 gap-1.5"
+                        >
+                          <Pencil className="size-3.5" />
+                          <span>Edit</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenDelete(plan)}
+                          aria-label={`Delete plan ${plan.name}`}
+                          className="h-8 gap-1.5 text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="size-3.5" />
+                          <span>Delete</span>
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Edit Plan Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <form onSubmit={handleSavePlan} className="flex flex-col gap-4">
+            <DialogHeader>
+              <DialogTitle>Edit Plan: {selectedPlan?.name}</DialogTitle>
+              <DialogDescription>
+                Update non-price metadata and seat configuration for this plan.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="plan-name-input" className="text-caption font-medium text-foreground">
+                  Plan Name <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  id="plan-name-input"
+                  value={planName}
+                  onChange={(e) => setPlanName(e.target.value)}
+                  required
+                  disabled={putPlan.isPending}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="trial-days-input" className="text-caption font-medium text-foreground">
+                    Trial Days
+                  </label>
+                  <Input
+                    id="trial-days-input"
+                    type="number"
+                    min={0}
+                    value={trialDays}
+                    onChange={(e) => setTrialDays(Number(e.target.value))}
+                    disabled={putPlan.isPending}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="sort-order-input" className="text-caption font-medium text-foreground">
+                    Sort Order
+                  </label>
+                  <Input
+                    id="sort-order-input"
+                    type="number"
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(Number(e.target.value))}
+                    disabled={putPlan.isPending}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="min-seats-input" className="text-caption font-medium text-foreground">
+                    Min Seats (Optional)
+                  </label>
+                  <Input
+                    id="min-seats-input"
+                    type="number"
+                    min={1}
+                    value={minSeats ?? ""}
+                    onChange={(e) => setMinSeats(e.target.value === "" ? null : Number(e.target.value))}
+                    placeholder="Leave blank if N/A"
+                    disabled={putPlan.isPending}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="seats-fixed-input" className="text-caption font-medium text-foreground">
+                    Fixed Seats (Optional)
+                  </label>
+                  <Input
+                    id="seats-fixed-input"
+                    type="number"
+                    min={1}
+                    value={seatsFixed ?? ""}
+                    onChange={(e) => setSeatsFixed(e.target.value === "" ? null : Number(e.target.value))}
+                    placeholder="Leave blank if variable"
+                    disabled={putPlan.isPending}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 pt-1">
+                <label className="flex items-center gap-2 text-body">
+                  <input
+                    type="checkbox"
+                    checked={isPublic}
+                    onChange={(e) => setIsPublic(e.target.checked)}
+                    disabled={putPlan.isPending}
+                    className="size-4 rounded border-surface-border text-primary focus:ring-primary"
+                  />
+                  <span>Public plan (visible in client pricing catalogue)</span>
+                </label>
+
+                <label className="flex items-center gap-2 text-body">
+                  <input
+                    type="checkbox"
+                    checked={archived}
+                    onChange={(e) => setArchived(e.target.checked)}
+                    disabled={putPlan.isPending}
+                    className="size-4 rounded border-surface-border text-primary focus:ring-primary"
+                  />
+                  <span>Archived (existing subscribers retain, no new signups)</span>
+                </label>
+              </div>
+            </div>
+
+            {editError && (
+              <div role="alert" className="text-caption text-destructive">
+                {editError}
+              </div>
+            )}
+
+            <DialogFooter>
+              <DialogClose render={<Button variant="outline" type="button" disabled={putPlan.isPending} />}>
+                Cancel
+              </DialogClose>
+              <Button type="submit" disabled={!planName.trim() || putPlan.isPending}>
+                {putPlan.isPending && <Spinner className="size-3.5" />}
+                Save changes
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Plan Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <div className="flex flex-col gap-4">
+            <DialogHeader>
+              <DialogTitle>Delete Plan: {planToDelete?.name}</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete plan "{planToDelete?.key}"? A plan with any active or past workspace subscriptions cannot be deleted and must be archived instead.
+              </DialogDescription>
+            </DialogHeader>
+
+            {deleteError && (
+              <div role="alert" className="text-caption text-destructive">
+                {deleteError}
+              </div>
+            )}
+
+            <DialogFooter>
+              <DialogClose render={<Button variant="outline" type="button" disabled={deletePlan.isPending} />}>
+                Cancel
+              </DialogClose>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmDelete}
+                disabled={deletePlan.isPending}
+              >
+                {deletePlan.isPending && <Spinner className="size-3.5" />}
+                Confirm delete
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

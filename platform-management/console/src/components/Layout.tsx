@@ -6,6 +6,8 @@ import {
   Shield,
   Activity,
   LogOut,
+  CreditCard,
+  Layers,
 } from "@multica/ui/icons";
 import { Button } from "@multica/ui/components/ui/button";
 import { StatusBadge } from "./StatusBadge";
@@ -30,7 +32,15 @@ export function Layout({
     { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "tenants", label: "Tenants", icon: Building2 },
     { id: "users", label: "Users", icon: Users },
-    ...(user.role === "admin" ? [{ id: "staff", label: "Staff", icon: Shield }] : []),
+    ...(user.role === "billing" || user.role === "admin"
+      ? [{ id: "orders", label: "Orders", icon: CreditCard }]
+      : []),
+    ...(user.role === "admin"
+      ? [
+          { id: "plans", label: "Plans", icon: Layers },
+          { id: "staff", label: "Staff", icon: Shield },
+        ]
+      : []),
     { id: "audit", label: "Audit Log", icon: Activity },
   ];
 

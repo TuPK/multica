@@ -12,6 +12,12 @@ import {
   parseTenantPage,
   parseUserDetail,
   parseUserPage,
+  parseOrderList,
+  parseOrderActionResult,
+  parsePutSubscriptionResponse,
+  parsePlanList,
+  parsePutPlanResponse,
+  parseDeletePlanResponse,
 } from "./schemas";
 
 const tenant = {
@@ -286,6 +292,138 @@ describe("overview", () => {
   it("falls back to null for a malformed body", () => {
     for (const body of [null, "x", [], { workspaces_by_status: { active: "many" } }, { signups_7d: "9" }]) {
       expect(parseOverview(body)).toBeNull();
+    }
+  });
+});
+
+describe("orders", () => {
+  const order = {
+    id: "ord-1",
+    workspace_id: "ws-1",
+    workspace_name: "Acme",
+    kind: "subscribe",
+    plan_key: "pro",
+    interval: "month",
+    seats: 3,
+    amount: 600000,
+    vat_amount: 60000,
+    currency: "vnd",
+    status: "pending",
+    transfer_code: "MUL12345678",
+    expires_at: "2026-11-20T10:00:00Z",
+    created_at: "2026-11-13T10:00:00Z",
+    paid_at: null,
+    buyer: {
+      name: "Acme",
+      tax_code: "010",
+      address: "HN",
+      invoice_email: "acme@example.com",
+    },
+  };
+
+  it("parses a well-formed orders list", () => {
+    const parsed = parseOrderList({ orders: [order] });
+    expect(parsed.orders).toHaveLength(1);
+    expect(parsed.orders[0]?.id).toBe("ord-1");
+    expect(parsed.orders[0]?.transfer_code).toBe("MUL12345678");
+    expect(parsed.orders[0]?.status).toBe("pending");
+  });
+
+  it("falls back to empty list on malformed orders body", () => {
+    for (const body of [null, undefined, "invalid", 123, { orders: "not-an-array" }]) {
+      expect(parseOrderList(body)).toEqual({ orders: [] });
+    }
+  });
+
+  it("parses a well-formed order action result", () => {
+    const parsed = parseOrderActionResult({ order, applied: true }, "POST /orders/{id}/confirm");
+    expect(parsed).toEqual({ order, applied: true });
+  });
+
+  it("falls back to null on malformed order action result", () => {
+    for (const body of [null, undefined, "invalid", {}, { order: null }, { order: "not-an-object" }]) {
+      expect(parseOrderActionResult(body, "POST /orders/{id}/confirm")).toBeNull();
+    }
+  });
+});
+
+describe("subscriptions", () => {
+  const subscription = {
+    workspace_id: "ws-1",
+    plan_key: "pro",
+    status: "active",
+    seats: 5,
+    interval: "month",
+    current_period_start: "2026-11-01T00:00:00Z",
+    current_period_end: "2026-12-01T00:00:00Z",
+    trial_end: null,
+    grace_until: null,
+    cancel_at_period_end: false,
+    limit_overrides: { issue_count: 500 },
+    version: 1,
+    updated_at: "2026-11-01T00:00:00Z",
+  };
+
+  it("parses a well-formed putSubscription response", () => {
+    const parsed = parsePutSubscriptionResponse({ changed: true, subscription });
+    expect(parsed).toEqual({ changed: true, subscription });
+  });
+
+  it("falls back to null on malformed putSubscription response", () => {
+    for (const body of [null, undefined, "bad", {}, { changed: true }, { subscription: "bad" }]) {
+      expect(parsePutSubscriptionResponse(body)).toBeNull();
+    }
+  });
+});
+
+describe("plans", () => {
+  const plan = {
+    key: "pro",
+    name: "Pro",
+    limits: { issue_count: 500 },
+    features: { sso: true },
+    currency: "vnd",
+    seat_price_month: 200000,
+    seat_price_year: 2000000,
+    seats_fixed: null,
+    min_seats: 1,
+    trial_days: 14,
+    is_public: true,
+    sort: 10,
+    archived_at: null,
+  };
+
+  it("parses a well-formed plan list", () => {
+    const parsed = parsePlanList({ plans: [plan] });
+    expect(parsed.plans).toHaveLength(1);
+    expect(parsed.plans[0]?.key).toBe("pro");
+  });
+
+  it("falls back to empty list on malformed plan list", () => {
+    for (const body of [null, undefined, "bad", 42, { plans: "not-an-array" }]) {
+      expect(parsePlanList(body)).toEqual({ plans: [] });
+    }
+  });
+
+  it("parses a well-formed putPlan response", () => {
+    const parsed = parsePutPlanResponse({ changed: true, plan });
+    expect(parsed).toEqual({ changed: true, plan });
+  });
+
+  it("falls back to null on malformed putPlan response", () => {
+    for (const body of [null, undefined, "bad", {}, { plan: null }]) {
+      expect(parsePutPlanResponse(body)).toBeNull();
+    }
+  });
+
+  it("parses a well-formed deletePlan response", () => {
+    const parsed = parseDeletePlanResponse({ deleted: true });
+    expect(parsed).toEqual({ deleted: true });
+  });
+
+  it("falls back to null on malformed deletePlan response", () => {
+    for (const body of [null, undefined, "bad", {}, { deleted: "yes" }]) {
+      expect(parseDeletePlanResponse(body)).toBeNull();
     }
   });
 });

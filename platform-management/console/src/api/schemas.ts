@@ -42,6 +42,12 @@ export const AUDIT_ACTIONS = [
   "staff.added",
   "staff.removed",
   "note.added",
+  "subscription.changed",
+  "plan.changed",
+  "billing.order_created",
+  "billing.order_paid",
+  "billing.order_expired",
+  "billing.order_canceled",
 ] as const;
 
 export type TenantStatus = (typeof TENANT_STATUSES)[number] | "unknown";
@@ -92,10 +98,121 @@ const TenantStateSchema = z.object({
 });
 export type TenantState = z.output<typeof TenantStateSchema>;
 
+// Billing & Orders
+
+export const ORDER_STATUSES = ["pending", "paid", "expired", "canceled", "refunded"] as const;
+export const ORDER_KINDS = ["subscribe", "change_plan", "add_seats", "renew"] as const;
+
+export type OrderStatus = (typeof ORDER_STATUSES)[number] | "unknown";
+export type OrderKind = (typeof ORDER_KINDS)[number] | "unknown";
+
+export const BuyerSchema = z.object({
+  name: text,
+  tax_code: text,
+  address: text,
+  invoice_email: text,
+});
+export type Buyer = z.output<typeof BuyerSchema>;
+
+export const OrderSchema = z.object({
+  id: z.string(),
+  workspace_id: z.string(),
+  workspace_name: text,
+  kind: enumOf(ORDER_KINDS),
+  plan_key: text,
+  interval: text,
+  seats: count,
+  amount: count,
+  vat_amount: count,
+  currency: text,
+  status: enumOf(ORDER_STATUSES),
+  transfer_code: text,
+  expires_at: text,
+  created_at: text,
+  paid_at: nullableText,
+  buyer: BuyerSchema.prefault({}),
+});
+export type Order = z.output<typeof OrderSchema>;
+
+export const OrderListSchema = z.object({
+  orders: z.array(OrderSchema).default([]),
+});
+export type OrderList = z.output<typeof OrderListSchema>;
+
+export const OrderActionResultSchema = z.object({
+  order: OrderSchema,
+  applied: z.boolean().default(true),
+});
+export type OrderActionResult = z.output<typeof OrderActionResultSchema>;
+
+// Subscriptions & Plans
+
+export const LimitsSchema = z.record(z.string(), z.number().nullable()).default({});
+export type Limits = z.output<typeof LimitsSchema>;
+
+export const SubscriptionSchema = z.object({
+  workspace_id: z.string(),
+  plan_key: text,
+  status: text,
+  seats: count,
+  interval: text,
+  current_period_start: nullableText,
+  current_period_end: nullableText,
+  trial_end: nullableText,
+  grace_until: nullableText,
+  cancel_at_period_end: z.boolean().default(false),
+  limit_overrides: LimitsSchema,
+  version: z.number().default(0),
+  updated_at: nullableText,
+});
+export type Subscription = z.output<typeof SubscriptionSchema>;
+
+export const PutSubscriptionResponseSchema = z.object({
+  changed: z.boolean().default(false),
+  subscription: SubscriptionSchema,
+});
+export type PutSubscriptionResponse = z.output<typeof PutSubscriptionResponseSchema>;
+
+export const PlanSchema = z.object({
+  key: z.string(),
+  name: text,
+  limits: LimitsSchema,
+  features: z.record(z.string(), z.boolean()).default({}),
+  currency: text,
+  seat_price_month: z.number().nullable().default(null),
+  seat_price_year: z.number().nullable().default(null),
+  seats_fixed: z.number().nullable().default(null),
+  min_seats: z.number().nullable().default(null),
+  trial_days: count,
+  is_public: z.boolean().default(false),
+  sort: count,
+  archived_at: nullableText,
+  version: z.number().optional(),
+});
+export type Plan = z.output<typeof PlanSchema>;
+
+export const PlanListSchema = z.object({
+  plans: z.array(PlanSchema).default([]),
+});
+export type PlanList = z.output<typeof PlanListSchema>;
+
+export const PutPlanResponseSchema = z.object({
+  changed: z.boolean().default(false),
+  plan: PlanSchema,
+});
+export type PutPlanResponse = z.output<typeof PutPlanResponseSchema>;
+
+export const DeletePlanResponseSchema = z.object({
+  deleted: z.boolean(),
+});
+export type DeletePlanResponse = z.output<typeof DeletePlanResponseSchema>;
+
 export const TenantDetailSchema = TenantSchema.extend({
   state: TenantStateSchema.prefault({}),
   notes_count: count,
   owner: z.object({ id: z.string(), email: text }).nullable().default(null),
+  subscription: SubscriptionSchema.nullable().default(null),
+  recent_orders: z.array(OrderSchema).default([]),
 });
 export type TenantDetail = z.output<typeof TenantDetailSchema>;
 
@@ -221,12 +338,48 @@ export const OverviewSchema = z.object({
       ...byStatus,
     })),
   signups_7d: count,
+  pending_orders: z.number().optional(),
+  by_plan: z.record(z.string(), z.number()).optional(),
 });
 export type Overview = z.output<typeof OverviewSchema>;
 
 // Parsers. A list that fails to parse becomes an empty page. A single record
 // has no honest empty value, so its fallback is null and the hook turns that
 // into an error state instead of showing blank data.
+
+export function parseOrderList(data: unknown): OrderList {
+  return parseWithFallback<OrderList>(data, OrderListSchema, { orders: [] }, {
+    endpoint: "GET /api/platform/orders",
+  });
+}
+
+export function parseOrderActionResult(data: unknown, endpoint: string): OrderActionResult | null {
+  return parseWithFallback<OrderActionResult | null>(data, OrderActionResultSchema, null, { endpoint });
+}
+
+export function parsePutSubscriptionResponse(data: unknown): PutSubscriptionResponse | null {
+  return parseWithFallback<PutSubscriptionResponse | null>(data, PutSubscriptionResponseSchema, null, {
+    endpoint: "PUT /api/platform/tenants/{id}/subscription",
+  });
+}
+
+export function parsePlanList(data: unknown): PlanList {
+  return parseWithFallback<PlanList>(data, PlanListSchema, { plans: [] }, {
+    endpoint: "GET /api/platform/plans",
+  });
+}
+
+export function parsePutPlanResponse(data: unknown): PutPlanResponse | null {
+  return parseWithFallback<PutPlanResponse | null>(data, PutPlanResponseSchema, null, {
+    endpoint: "PUT /api/platform/plans/{key}",
+  });
+}
+
+export function parseDeletePlanResponse(data: unknown): DeletePlanResponse | null {
+  return parseWithFallback<DeletePlanResponse | null>(data, DeletePlanResponseSchema, null, {
+    endpoint: "DELETE /api/platform/plans/{key}",
+  });
+}
 
 export function parseMe(data: unknown): Me | null {
   return parseWithFallback<Me | null>(data, MeSchema, null, { endpoint: "GET /api/platform/me" });

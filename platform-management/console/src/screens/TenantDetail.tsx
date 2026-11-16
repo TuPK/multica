@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@multica/ui/components/ui/button";
+import { Input } from "@multica/ui/components/ui/input";
 import { Textarea } from "@multica/ui/components/ui/textarea";
 import {
   Card,
@@ -16,6 +17,15 @@ import {
   TableHead,
   TableCell,
 } from "@multica/ui/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@multica/ui/components/ui/dialog";
 import { Spinner } from "@multica/ui/components/ui/spinner";
 import { ArrowLeft, Plus } from "@multica/ui/icons";
 import { StatusBadge } from "../components/StatusBadge";
@@ -29,9 +39,10 @@ import {
   useTenantAudit,
   useChangeTenantStatus,
   useAddTenantNote,
+  useUpdateSubscription,
 } from "../api/hooks";
 import type { StaffRole } from "../components/types";
-import type { Note, AuditEvent } from "../api/schemas";
+import type { Note, AuditEvent, Order } from "../api/schemas";
 
 interface TenantDetailProps {
   tenantId: string;
@@ -60,6 +71,7 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
 
   const changeStatus = useChangeTenantStatus();
   const addNote = useAddTenantNote();
+  const updateSubscription = useUpdateSubscription();
 
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [targetStatus, setTargetStatus] = useState("active");
@@ -67,6 +79,17 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
 
   const [noteBody, setNoteBody] = useState("");
   const [noteError, setNoteError] = useState<string | null>(null);
+
+  // Subscription dialog state
+  const [subDialogOpen, setSubDialogOpen] = useState(false);
+  const [subPlanKey, setSubPlanKey] = useState("pro");
+  const [subSeats, setSubSeats] = useState(1);
+  const [subInterval, setSubInterval] = useState("month");
+  const [subTrialEnd, setSubTrialEnd] = useState("");
+  const [subReason, setSubReason] = useState("");
+  const [subError, setSubError] = useState<string | null>(null);
+
+  const canEditSubscription = userRole === "billing" || userRole === "admin";
 
   if (tenantLoading) {
     return <LoadingState message="Loading tenant details..." />;
@@ -105,6 +128,35 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
       const msg =
         err instanceof Error ? err.message : "Failed to change workspace status";
       setStatusError(msg);
+    }
+  };
+
+  const handleOpenSubDialog = () => {
+    setSubPlanKey(tenant.subscription?.plan_key || "pro");
+    setSubSeats(tenant.subscription?.seats ?? 1);
+    setSubInterval(tenant.subscription?.interval || "month");
+    setSubTrialEnd(tenant.subscription?.trial_end || "");
+    setSubReason("");
+    setSubError(null);
+    setSubDialogOpen(true);
+  };
+
+  const handleSaveSubscription = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!subReason.trim() || updateSubscription.isPending) return;
+    setSubError(null);
+    try {
+      await updateSubscription.mutateAsync({
+        tenantId,
+        planKey: subPlanKey,
+        seats: Number(subSeats),
+        interval: subInterval,
+        trialEnd: subTrialEnd.trim() || null,
+        reason: subReason.trim(),
+      });
+      setSubDialogOpen(false);
+    } catch (err: unknown) {
+      setSubError(err instanceof Error ? err.message : "Failed to update subscription");
     }
   };
 
@@ -301,6 +353,105 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
         </Card>
       </div>
 
+      {/* Subscription Panel */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle role="heading" aria-level={2}>Subscription</CardTitle>
+            <CardDescription>
+              Workspace plan, seats, billing interval, and trial period.
+            </CardDescription>
+          </div>
+          {canEditSubscription && (
+            <Button variant="outline" size="sm" onClick={handleOpenSubDialog}>
+              Edit subscription
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4 text-body sm:grid-cols-4">
+            <div>
+              <span className="block text-caption text-muted-foreground">Plan</span>
+              <span className="mt-1 block font-medium capitalize">
+                {tenant.subscription?.plan_key || "free"}
+              </span>
+            </div>
+            <div>
+              <span className="block text-caption text-muted-foreground">Seats</span>
+              <span className="mt-1 block font-medium tabular-nums">
+                {tenant.subscription?.seats ?? 0}
+              </span>
+            </div>
+            <div>
+              <span className="block text-caption text-muted-foreground">Interval</span>
+              <span className="mt-1 block font-medium capitalize">
+                {tenant.subscription?.interval || "month"}
+              </span>
+            </div>
+            <div>
+              <span className="block text-caption text-muted-foreground">Trial End</span>
+              <span className="mt-1 block text-muted-foreground">
+                {tenant.subscription?.trial_end
+                  ? new Date(tenant.subscription.trial_end).toLocaleDateString()
+                  : "-"}
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Recent Orders */}
+      <Card>
+        <CardHeader>
+          <CardTitle role="heading" aria-level={2}>Recent Orders</CardTitle>
+          <CardDescription>
+            Recent payment orders for this workspace (up to 20, newest first).
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!tenant.recent_orders || tenant.recent_orders.length === 0 ? (
+            <p className="text-center text-caption text-muted-foreground py-4">
+              No recent orders for this workspace.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Time</TableHead>
+                    <TableHead>Transfer Code</TableHead>
+                    <TableHead>Plan & Seats</TableHead>
+                    <TableHead>Total (incl. VAT)</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tenant.recent_orders.map((order: Order) => (
+                    <TableRow key={order.id}>
+                      <TableCell className="text-muted-foreground">
+                        {order.created_at ? new Date(order.created_at).toLocaleString() : "-"}
+                      </TableCell>
+                      <TableCell className="font-mono text-body font-semibold">
+                        {order.transfer_code}
+                      </TableCell>
+                      <TableCell className="capitalize">
+                        {order.plan_key} &bull; {order.seats} seats ({order.interval})
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {(order.amount + order.vat_amount).toLocaleString()} {order.currency.toUpperCase()}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={order.status} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Workspace Audit Log</CardTitle>
@@ -374,6 +525,113 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
           </select>
         </div>
       </ConfirmReasonDialog>
+
+      {/* Edit Subscription Dialog */}
+      <Dialog open={subDialogOpen} onOpenChange={setSubDialogOpen}>
+        <DialogContent>
+          <form onSubmit={handleSaveSubscription} className="flex flex-col gap-4">
+            <DialogHeader>
+              <DialogTitle>Edit Subscription</DialogTitle>
+              <DialogDescription>
+                Update subscription plan, seats, billing interval, and trial period.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="sub-plan-key-input" className="text-caption font-medium text-foreground">
+                  Plan <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  id="sub-plan-key-input"
+                  value={subPlanKey}
+                  onChange={(e) => setSubPlanKey(e.target.value)}
+                  placeholder="e.g. pro, business, enterprise"
+                  required
+                  disabled={updateSubscription.isPending}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="sub-seats-input" className="text-caption font-medium text-foreground">
+                    Seats <span className="text-destructive">*</span>
+                  </label>
+                  <Input
+                    id="sub-seats-input"
+                    type="number"
+                    min={0}
+                    value={subSeats}
+                    onChange={(e) => setSubSeats(Number(e.target.value))}
+                    required
+                    disabled={updateSubscription.isPending}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="sub-interval-select" className="text-caption font-medium text-foreground">
+                    Billing Interval <span className="text-destructive">*</span>
+                  </label>
+                  <select
+                    id="sub-interval-select"
+                    value={subInterval}
+                    onChange={(e) => setSubInterval(e.target.value)}
+                    className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-body transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                    disabled={updateSubscription.isPending}
+                  >
+                    <option value="month">Month</option>
+                    <option value="year">Year</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="sub-trial-end-input" className="text-caption font-medium text-foreground">
+                  Trial End (RFC3339 or blank)
+                </label>
+                <Input
+                  id="sub-trial-end-input"
+                  value={subTrialEnd}
+                  onChange={(e) => setSubTrialEnd(e.target.value)}
+                  placeholder="e.g. 2026-12-01T00:00:00Z"
+                  disabled={updateSubscription.isPending}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="sub-reason-input" className="text-caption font-medium text-foreground">
+                  Reason <span className="text-destructive">*</span>
+                </label>
+                <Textarea
+                  id="sub-reason-input"
+                  value={subReason}
+                  onChange={(e) => setSubReason(e.target.value)}
+                  placeholder="Provide a reason for this subscription change..."
+                  rows={3}
+                  required
+                  disabled={updateSubscription.isPending}
+                />
+              </div>
+            </div>
+
+            {subError && (
+              <div role="alert" className="text-caption text-destructive">
+                {subError}
+              </div>
+            )}
+
+            <DialogFooter>
+              <DialogClose render={<Button variant="outline" type="button" disabled={updateSubscription.isPending} />}>
+                Cancel
+              </DialogClose>
+              <Button type="submit" disabled={!subReason.trim() || updateSubscription.isPending}>
+                {updateSubscription.isPending && <Spinner className="size-3.5" />}
+                Save subscription
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
