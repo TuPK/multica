@@ -12,6 +12,7 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -92,6 +93,9 @@ type Config struct {
 	AdminCIDRs []netip.Prefix
 	// AdminEmails are the lower-cased PLATFORM_ADMIN_EMAILS.
 	AdminEmails []string
+	// DevVerificationCode is an extra code verify-code accepts; empty means
+	// none. With it set and a nil Mailer, send-code sends nothing.
+	DevVerificationCode string
 }
 
 // Deps are the Handler's dependencies. Now defaults to time.Now and Log to
@@ -112,6 +116,9 @@ type Deps struct {
 type Handler struct {
 	Deps
 	admins map[string]bool
+	// devMAC is the HMAC of the dev code, nil when none is set. Comparing
+	// HMACs keeps the comparison the same length for any submitted code.
+	devMAC []byte
 	mux    *http.ServeMux
 	mails  sync.WaitGroup
 }
@@ -125,6 +132,9 @@ func New(d Deps) *Handler {
 		d.Now = time.Now
 	}
 	h := &Handler{Deps: d, admins: map[string]bool{}, mux: http.NewServeMux()}
+	if d.DevVerificationCode != "" {
+		h.devMAC = h.macOf(d.DevVerificationCode)
+	}
 	for _, e := range d.AdminEmails {
 		h.admins[strings.ToLower(strings.TrimSpace(e))] = true
 	}
@@ -237,6 +247,10 @@ func (h *Handler) trySendCode(ctx context.Context, w http.ResponseWriter, r *htt
 	if !h.allow(ctx, "mpa:rl:email:"+hash, emailLimit) {
 		return
 	}
+	devOnly := h.Mailer == nil
+	if devOnly {
+		h.Log.Info("platform sign-in: no email provider, code not sent; the dev code applies", "email_hash", hash)
+	}
 
 	if h.admins[email] {
 		if err := h.Seeder.SeedEmail(ctx, email); err != nil {
@@ -259,6 +273,9 @@ func (h *Handler) trySendCode(ctx context.Context, w http.ResponseWriter, r *htt
 		return
 	}
 
+	if devOnly {
+		return
+	}
 	code, err := newCode()
 	if err != nil {
 		h.Log.Error("platform sign-in: code generation failed", "error", err)
@@ -289,6 +306,11 @@ func newCode() (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("%06d", n.Int64()), nil
+}
+
+// devCodeMatches reports whether code is the configured dev code.
+func (h *Handler) devCodeMatches(code string) bool {
+	return h.devMAC != nil && subtle.ConstantTimeCompare(h.devMAC, h.macOf(code)) == 1
 }
 
 func (h *Handler) macOf(code string) []byte {
@@ -328,28 +350,11 @@ func (h *Handler) tryVerifyCode(ctx context.Context, w http.ResponseWriter, r *h
 	}
 	hash := emailhash.Of(email)
 
-	stored, attempt, found, err := h.Codes.Attempt(ctx, hash)
-	if err != nil {
-		h.Log.Warn("platform sign-in: code lookup failed", "email_hash", hash, "error", err)
-		return "", "", false
-	}
-	if !found {
-		return "", "", false
-	}
-	if !hmac.Equal(stored, h.macOf(body.Code)) {
-		if attempt >= maxAttempts {
-			if err := h.Codes.Delete(ctx, hash); err != nil {
-				h.Log.Warn("platform sign-in: spent code was not deleted", "email_hash", hash, "error", err)
-			}
+	if !h.devCodeMatches(body.Code) {
+		if !h.checkStoredCode(ctx, hash, body.Code) {
+			return "", "", false
 		}
-		return "", "", false
 	}
-	// A code works once. If it cannot be deleted it must not be accepted.
-	if err := h.Codes.Delete(ctx, hash); err != nil {
-		h.Log.Warn("platform sign-in: used code was not deleted", "email_hash", hash, "error", err)
-		return "", "", false
-	}
-
 	userID, found, err := h.Directory.UserIDByEmail(ctx, email)
 	if err != nil || !found {
 		return "", "", false
@@ -359,6 +364,33 @@ func (h *Handler) tryVerifyCode(ctx context.Context, w http.ResponseWriter, r *h
 		return "", "", false
 	}
 	return userID, role, true
+}
+
+// checkStoredCode counts an attempt against the code sent to the email and
+// reports whether code is it. A right code is deleted: it works once.
+func (h *Handler) checkStoredCode(ctx context.Context, hash, code string) bool {
+	stored, attempt, found, err := h.Codes.Attempt(ctx, hash)
+	if err != nil {
+		h.Log.Warn("platform sign-in: code lookup failed", "email_hash", hash, "error", err)
+		return false
+	}
+	if !found {
+		return false
+	}
+	if !hmac.Equal(stored, h.macOf(code)) {
+		if attempt >= maxAttempts {
+			if err := h.Codes.Delete(ctx, hash); err != nil {
+				h.Log.Warn("platform sign-in: spent code was not deleted", "email_hash", hash, "error", err)
+			}
+		}
+		return false
+	}
+	// A code works once. If it cannot be deleted it must not be accepted.
+	if err := h.Codes.Delete(ctx, hash); err != nil {
+		h.Log.Warn("platform sign-in: used code was not deleted", "email_hash", hash, "error", err)
+		return false
+	}
+	return true
 }
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {

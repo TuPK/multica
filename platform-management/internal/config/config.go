@@ -71,16 +71,34 @@ type Billing struct {
 	Bank billing.BankDetails
 }
 
+// EmptyBankVariables names the BILLING_BANK_* variables that are empty.
+func (b Billing) EmptyBankVariables() []string {
+	var out []string
+	for _, f := range []struct{ name, value string }{
+		{"BILLING_BANK_ACCOUNT_NAME", b.Bank.AccountName},
+		{"BILLING_BANK_ACCOUNT_NUMBER", b.Bank.AccountNumber},
+		{"BILLING_BANK_NAME", b.Bank.BankName},
+	} {
+		if f.value == "" {
+			out = append(out, f.name)
+		}
+	}
+	return out
+}
+
 type Config struct {
-	Billing        Billing
-	DatabaseURL    string
-	RedisURL       string
-	AdminEmails    []string
-	SessionSecret  string
-	APIPort        string
-	ConsolePort    string
-	Email          Email
-	FrontendOrigin string
+	Billing       Billing
+	DatabaseURL   string
+	RedisURL      string
+	AdminEmails   []string
+	SessionSecret string
+	APIPort       string
+	ConsolePort   string
+	Email         Email
+	// DevVerificationCode is PLATFORM_DEV_VERIFICATION_CODE: empty, or six
+	// digits that staff sign in with in development. Never set in production.
+	DevVerificationCode string
+	FrontendOrigin      string
 	// AppURL is the origin of the Multica web app, as scheme://host[:port],
 	// lower case and without a trailing slash. The billing routes build the
 	// address of an order page from it.
@@ -156,7 +174,8 @@ func Load(getenv func(string) string) (Config, error) {
 		fail("PLATFORM_CONSOLE_PORT", "must differ from PLATFORM_API_PORT")
 	}
 
-	cfg.Email = loadEmail(get, getenv, fail)
+	cfg.DevVerificationCode = loadDevVerificationCode(get, fail)
+	cfg.Email = loadEmail(get, getenv, fail, cfg.DevVerificationCode != "")
 	cfg.FrontendOrigin = get("FRONTEND_ORIGIN")
 
 	if raw := get("PLATFORM_ADMIN_CIDRS"); raw != "" {
@@ -211,8 +230,27 @@ func Load(getenv func(string) string) (Config, error) {
 	return cfg, nil
 }
 
-// loadBilling reads the VAT rate and the bank details. The manual provider is
-// the only provider in this release, so the bank details are always required.
+// loadDevVerificationCode reads the development sign-in code. It refuses a
+// malformed code, and any code when APP_ENV is production.
+func loadDevVerificationCode(get func(string) string, fail func(variable, reason string)) string {
+	const name = "PLATFORM_DEV_VERIFICATION_CODE"
+	code := get(name)
+	if code == "" {
+		return ""
+	}
+	if len(code) != 6 || strings.Trim(code, "0123456789") != "" {
+		fail(name, "must be empty or exactly six digits")
+		return ""
+	}
+	if strings.EqualFold(get("APP_ENV"), "production") {
+		fail(name, "must not be set when APP_ENV is production")
+		return ""
+	}
+	return code
+}
+
+// loadBilling reads the VAT rate and the bank details. The bank details may be
+// empty; the caller logs which ones are.
 func loadBilling(get func(string) string, fail func(variable, reason string)) Billing {
 	b := Billing{VATRate: billing.DefaultVATRate}
 	if raw := get("BILLING_VAT_RATE"); raw != "" {
@@ -223,22 +261,17 @@ func loadBilling(get func(string) string, fail func(variable, reason string)) Bi
 			b.VATRate = rate
 		}
 	}
-	bankField := func(name string) string {
-		v := get(name)
-		if v == "" {
-			fail(name, "is required for the manual payment provider")
-		}
-		return v
-	}
 	b.Bank = billing.BankDetails{
-		AccountName:   bankField("BILLING_BANK_ACCOUNT_NAME"),
-		AccountNumber: bankField("BILLING_BANK_ACCOUNT_NUMBER"),
-		BankName:      bankField("BILLING_BANK_NAME"),
+		AccountName:   get("BILLING_BANK_ACCOUNT_NAME"),
+		AccountNumber: get("BILLING_BANK_ACCOUNT_NUMBER"),
+		BankName:      get("BILLING_BANK_NAME"),
 	}
 	return b
 }
 
-func loadEmail(get func(string) string, getenv func(string) string, fail func(variable, reason string)) Email {
+// loadEmail reads the email provider. With noProviderOK (a dev code is set) an
+// absent provider is not an error and the result is empty.
+func loadEmail(get func(string) string, getenv func(string) string, fail func(variable, reason string), noProviderOK bool) Email {
 	smtpHost := get("SMTP_HOST")
 	resendKey := strings.TrimSpace(getenv("RESEND_API_KEY"))
 
@@ -280,6 +313,8 @@ func loadEmail(get func(string) string, getenv func(string) string, fail func(va
 			fail("RESEND_FROM_EMAIL", "is required when RESEND_API_KEY is set")
 		}
 		return e
+	case noProviderOK:
+		return Email{}
 	default:
 		fail(EmailVariable, "one email provider is required: RESEND_API_KEY with RESEND_FROM_EMAIL, or SMTP_HOST with SMTP_FROM_EMAIL")
 		return Email{}

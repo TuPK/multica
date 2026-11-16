@@ -8,8 +8,10 @@ import (
 	"testing"
 )
 
-// forbidden is split so that this file does not contain the string itself.
-var forbidden = strings.ToLower("dev" + "_verification")
+// forbidden is Multica's own development code variable. The platform reads only
+// its own gated PLATFORM_DEV_VERIFICATION_CODE; make dev-full copies the value.
+// The string is split so that this file does not contain it.
+var forbidden = strings.ToLower("multica" + "_dev_verification")
 
 // filesWithForbidden returns the files under root whose content, lowercased,
 // contains the forbidden string. It skips .git and node_modules: the latter
@@ -73,9 +75,9 @@ func TestScannerSkipsInstalledPackages(t *testing.T) {
 	}
 }
 
-// The platform has no development sign-in path: no fixed code, no bypass.
-func TestPlatformHasNoDevelopmentVerificationPath(t *testing.T) {
+// The platform never reads Multica's development code variable.
+func TestPlatformDoesNotReadMulticaDevCodeVariable(t *testing.T) {
 	if hits := filesWithForbidden(t, "../.."); len(hits) > 0 {
-		t.Fatalf("files mention the development verification path: %v", hits)
+		t.Fatalf("files mention the Multica development code variable: %v", hits)
 	}
 }

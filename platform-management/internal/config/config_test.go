@@ -560,20 +560,134 @@ func TestInvalidVATRateStopsTheStart(t *testing.T) {
 	}
 }
 
-func TestMissingBankDetailsStopTheStart(t *testing.T) {
-	for _, name := range []string{"BILLING_BANK_ACCOUNT_NAME", "BILLING_BANK_ACCOUNT_NUMBER", "BILLING_BANK_NAME"} {
+func TestEmptyBankDetailsStartAndAreReported(t *testing.T) {
+	names := []string{"BILLING_BANK_ACCOUNT_NAME", "BILLING_BANK_ACCOUNT_NUMBER", "BILLING_BANK_NAME"}
+	for _, name := range names {
 		for _, value := range []string{"", "   "} {
 			env := resendEnv()
 			env[name] = value
-			_, err := load(env)
-			if err == nil {
-				t.Errorf("%s=%q: Load succeeded", name, value)
+			cfg, err := load(env)
+			if err != nil {
+				t.Errorf("%s=%q: Load: %v", name, value, err)
 				continue
 			}
-			if vs := variables(err); len(vs) != 1 || vs[0] != name {
-				t.Errorf("%s=%q: variables = %v", name, value, vs)
+			if got := cfg.Billing.EmptyBankVariables(); len(got) != 1 || got[0] != name {
+				t.Errorf("%s=%q: EmptyBankVariables = %v", name, value, got)
 			}
 		}
+	}
+	cfg, err := load(resendEnv())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := cfg.Billing.EmptyBankVariables(); len(got) != 0 {
+		t.Errorf("complete bank details reported empty: %v", got)
+	}
+}
+
+func TestEmptyBankDetailsGiveEmptyManualInstructions(t *testing.T) {
+	env := resendEnv()
+	for _, name := range []string{"BILLING_BANK_ACCOUNT_NAME", "BILLING_BANK_ACCOUNT_NUMBER", "BILLING_BANK_NAME"} {
+		delete(env, name)
+	}
+	cfg, err := load(env)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Billing.Bank != (billing.BankDetails{}) {
+		t.Fatalf("bank = %+v, want empty", cfg.Billing.Bank)
+	}
+	got, err := billing.NewManualProvider(cfg.Billing.Bank).CreatePaymentRequest(billing.Order{TransferCode: "MULABCDEFGH", Currency: "vnd"})
+	if err != nil {
+		t.Fatalf("CreatePaymentRequest: %v", err)
+	}
+	if got.BankAccountName != "" || got.BankAccountNumber != "" || got.BankName != "" {
+		t.Fatalf("instructions = %+v", got)
+	}
+}
+
+func TestDevVerificationCodeMustBeEmptyOrSixDigits(t *testing.T) {
+	for _, bad := range []string{"12345", "1234567", "12345a", "abcdef", "123 56", "１２３４５６", "12345\n6"} {
+		env := resendEnv()
+		env["PLATFORM_DEV_VERIFICATION_CODE"] = bad
+		_, err := load(env)
+		if err == nil {
+			t.Errorf("code %q: no error", bad)
+			continue
+		}
+		if vs := variables(err); len(vs) != 1 || vs[0] != "PLATFORM_DEV_VERIFICATION_CODE" {
+			t.Errorf("code %q: variables = %v", bad, vs)
+		}
+		if strings.Contains(err.Error(), bad) {
+			t.Errorf("error repeats the value %q: %v", bad, err)
+		}
+	}
+	for _, good := range []string{"", "666666", "000000"} {
+		env := resendEnv()
+		env["PLATFORM_DEV_VERIFICATION_CODE"] = good
+		cfg, err := load(env)
+		if err != nil {
+			t.Errorf("code %q: %v", good, err)
+		} else if cfg.DevVerificationCode != good {
+			t.Errorf("code %q: DevVerificationCode = %q", good, cfg.DevVerificationCode)
+		}
+	}
+}
+
+func TestDevVerificationCodeIsRefusedInProduction(t *testing.T) {
+	for _, appEnv := range []string{"production", "Production", "PRODUCTION", " production "} {
+		env := resendEnv()
+		env["APP_ENV"] = appEnv
+		env["PLATFORM_DEV_VERIFICATION_CODE"] = "666666"
+		_, err := load(env)
+		if err == nil {
+			t.Errorf("APP_ENV=%q: no error", appEnv)
+			continue
+		}
+		if vs := variables(err); len(vs) != 1 || vs[0] != "PLATFORM_DEV_VERIFICATION_CODE" {
+			t.Errorf("APP_ENV=%q: variables = %v", appEnv, vs)
+		}
+		if strings.Contains(err.Error(), "666666") {
+			t.Errorf("error repeats the code: %v", err)
+		}
+	}
+	for _, appEnv := range []string{"development", "", "staging"} {
+		env := resendEnv()
+		env["APP_ENV"] = appEnv
+		env["PLATFORM_DEV_VERIFICATION_CODE"] = "666666"
+		if _, err := load(env); err != nil {
+			t.Errorf("APP_ENV=%q: %v", appEnv, err)
+		}
+	}
+	env := resendEnv()
+	env["APP_ENV"] = "production"
+	if _, err := load(env); err != nil {
+		t.Errorf("production without a dev code: %v", err)
+	}
+}
+
+func TestEmailProviderIsOptionalOnlyWithADevCode(t *testing.T) {
+	env := resendEnv()
+	delete(env, "RESEND_API_KEY")
+	delete(env, "RESEND_FROM_EMAIL")
+	_, err := load(env)
+	if vs := variables(err); len(vs) != 1 || vs[0] != EmailVariable {
+		t.Fatalf("no dev code, no provider: err = %v", err)
+	}
+
+	env["PLATFORM_DEV_VERIFICATION_CODE"] = "666666"
+	cfg, err := load(env)
+	if err != nil {
+		t.Fatalf("dev code, no provider: %v", err)
+	}
+	if cfg.Email != (Email{}) {
+		t.Errorf("email = %+v, want empty", cfg.Email)
+	}
+
+	// A half-configured provider is still an error.
+	env["RESEND_API_KEY"] = "re_test"
+	if _, err := load(env); err == nil {
+		t.Error("RESEND_API_KEY without RESEND_FROM_EMAIL started")
 	}
 }
 

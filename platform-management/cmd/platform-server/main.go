@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -54,6 +55,14 @@ func main() {
 	if err := run(); err != nil {
 		slog.Error("platform-server stopped", "error", err)
 		os.Exit(1)
+	}
+}
+
+// warnEmptyBank logs one warning naming the BILLING_BANK_* variables that are
+// empty. The manual provider then tells customers an empty account.
+func warnEmptyBank(log *slog.Logger, b config.Billing) {
+	if empty := b.EmptyBankVariables(); len(empty) > 0 {
+		log.Warn("billing: bank details are empty; manual payment instructions will show empty fields", "empty", strings.Join(empty, ","))
 	}
 }
 
@@ -104,13 +113,21 @@ func run() error {
 		return err
 	}
 
+	warnEmptyBank(slog.Default(), cfg.Billing)
+
 	var smtpDialer mailer.SMTPDialer
 	if cfg.Email.Provider == config.ProviderSMTP {
 		smtpDialer = mailer.NewSMTPDialer(cfg.Email)
 	}
-	mail, err := mailer.New(cfg.Email, &http.Client{Timeout: mailHTTPTimeout}, smtpDialer, slog.Default())
-	if err != nil {
-		return err
+	// With no provider (allowed only with a dev code) the sign-in handler gets
+	// a nil Mailer and sends nothing.
+	var signInMail platformauth.Mailer
+	if cfg.Email.Provider != "" {
+		m, err := mailer.New(cfg.Email, &http.Client{Timeout: mailHTTPTimeout}, smtpDialer, slog.Default())
+		if err != nil {
+			return err
+		}
+		signInMail = m
 	}
 	accountCache := accountcache.NewCache(rdb)
 	guard := accountguard.New(store, accountCache)
@@ -121,13 +138,15 @@ func run() error {
 			SecureCookies: cfg.SecureCookies,
 			AdminCIDRs:    cfg.AdminCIDRs,
 			AdminEmails:   cfg.AdminEmails,
+
+			DevVerificationCode: cfg.DevVerificationCode,
 		},
 		Directory: store,
 		Seeder:    seeder,
 		Guard:     guard,
 		Codes:     platformauth.NewRedisCodes(rdb),
 		Limiter:   platformauth.NewRedisLimiter(rdb),
-		Mailer:    mail,
+		Mailer:    signInMail,
 		Log:       slog.Default(),
 	})
 
@@ -209,21 +228,25 @@ func run() error {
 
 	// The background jobs. Each takes an advisory lock by name, so several
 	// platform instances share one schedule.
-	noticeMail, err := lifecycle.NewMailSender(cfg.Email, &http.Client{Timeout: mailHTTPTimeout}, smtpDialer, time.Now, slog.Default())
-	if err != nil {
-		return err
-	}
-	lifecycleJob, err := lifecycle.New(lifecycle.Deps{
-		Store: lifecycle.NewPgxStore(pool), Mail: noticeMail,
-		Workspaces: workspacestate.New(nil, accountCache), Entitlements: policy,
-		AppURL: cfg.AppURL, Log: slog.Default(),
-	})
-	if err != nil {
-		return err
-	}
 	runner := jobs.New(jobs.NewPoolLocker(pool))
-	if err := runner.Register(lifecycle.JobName, lifecycle.Interval, lifecycleJob.Job(time.Now)); err != nil {
-		return err
+	if cfg.Email.Provider == "" {
+		slog.Warn("lifecycle notices are off: no email provider is configured")
+	} else {
+		noticeMail, err := lifecycle.NewMailSender(cfg.Email, &http.Client{Timeout: mailHTTPTimeout}, smtpDialer, time.Now, slog.Default())
+		if err != nil {
+			return err
+		}
+		lifecycleJob, err := lifecycle.New(lifecycle.Deps{
+			Store: lifecycle.NewPgxStore(pool), Mail: noticeMail,
+			Workspaces: workspacestate.New(nil, accountCache), Entitlements: policy,
+			AppURL: cfg.AppURL, Log: slog.Default(),
+		})
+		if err != nil {
+			return err
+		}
+		if err := runner.Register(lifecycle.JobName, lifecycle.Interval, lifecycleJob.Job(time.Now)); err != nil {
+			return err
+		}
 	}
 
 	apiLn, err := net.Listen("tcp", ":"+cfg.APIPort)
