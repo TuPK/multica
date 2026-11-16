@@ -357,6 +357,14 @@ import { type Logger, noopLogger } from "../logger";
 import { createRequestId, createSafeId } from "../utils";
 import { getCurrentSlug } from "../platform/workspace-storage";
 import { parseWithFallback } from "./schema";
+import {
+  NO_SSO,
+  SSOConnectionSchema,
+  SSODiscoverySchema,
+  type SSOConnection,
+  type SSOConnectionInput,
+  type SSODiscovery,
+} from "./sso-schemas";
 import type { HubItemKind } from "../hub/items";
 import {
   mapHubFileSaveError,
@@ -3119,6 +3127,49 @@ export class ApiClient {
       null,
       { endpoint: "PUT /api/workspaces/{id}/orders/{orderId}/buyer" },
     );
+  }
+
+  // Single sign-on (platform spec 6.3). A body that does not match the contract
+  // reads as "no SSO" or "no connection", so the sign-in page keeps working.
+
+  /** Asks whether an email signs in through SSO. Any failure answers "no". */
+  async discoverSSO(email: string): Promise<SSODiscovery> {
+    const raw = await this.fetch<unknown>("/auth/sso/discover", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }).catch(() => null);
+    return parseWithFallback<SSODiscovery>(raw, SSODiscoverySchema, NO_SSO, {
+      endpoint: "POST /auth/sso/discover",
+    });
+  }
+
+  /** The workspace's connection, or null when it has none. */
+  async getSSOConnection(wsId: string): Promise<SSOConnection | null> {
+    let raw: unknown;
+    try {
+      raw = await this.fetch<unknown>(`/api/workspaces/${wsId}/sso/connection`);
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 404) return null;
+      throw e;
+    }
+    return parseWithFallback<SSOConnection | null>(raw, SSOConnectionSchema, null, {
+      endpoint: "GET /api/workspaces/{id}/sso/connection",
+    });
+  }
+
+  /** Creates or updates the connection. Errors carry a `code` such as `domain_not_verified`. */
+  async putSSOConnection(wsId: string, input: SSOConnectionInput): Promise<SSOConnection | null> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${wsId}/sso/connection`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    });
+    return parseWithFallback<SSOConnection | null>(raw, SSOConnectionSchema, null, {
+      endpoint: "PUT /api/workspaces/{id}/sso/connection",
+    });
+  }
+
+  async deleteSSOConnection(wsId: string): Promise<void> {
+    await this.fetch(`/api/workspaces/${wsId}/sso/connection`, { method: "DELETE" });
   }
 
   async reconcileWorkspaceSubscriptionSeats(): Promise<
