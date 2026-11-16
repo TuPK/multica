@@ -180,3 +180,20 @@ func TestCatalogListsEveryActionConstant(t *testing.T) {
 		t.Errorf("audit.go defines %d actions, Catalog lists %d", found, len(Catalog))
 	}
 }
+
+// The cutover action of the platform-backfill command (gate G-R2). Its name is
+// stored in audit_event.action, so a rename is a data change.
+func TestCutoverCatalogActionIsDefined(t *testing.T) {
+	if ActionSubscriptionBackfilled == "" {
+		t.Fatal("ActionSubscriptionBackfilled is empty")
+	}
+	if ActionSubscriptionBackfilled != "subscription.backfilled" {
+		t.Fatalf("constant = %q, want subscription.backfilled", ActionSubscriptionBackfilled)
+	}
+	for _, a := range Catalog {
+		if a == ActionSubscriptionBackfilled {
+			return
+		}
+	}
+	t.Fatal("Catalog does not list subscription.backfilled")
+}

@@ -159,7 +159,12 @@ var Catalog = []string{
 	ActionWorkspaceExportFailed,
 	ActionWorkspaceDeletionScheduled,
 	ActionWorkspaceDeletionCancelled,
+	ActionSubscriptionBackfilled,
 }
+
+// Cutover action (gate G-R2): written by the platform-backfill command in the
+// transaction that gives a workspace with no subscription row the free plan.
+const ActionSubscriptionBackfilled = "subscription.backfilled"
 
 // Actor types.
 const (
