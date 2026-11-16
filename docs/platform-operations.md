@@ -144,7 +144,7 @@ Chưa chạy trong lần viết tài liệu này: toàn bộ test của `./inter
 
 # Vận hành platform sau R2: hướng dẫn cho nhà vận hành (sections 6 to 12)
 
-Status: **R2 is written. Gate G-R2 is not closed.** See section 12.
+Status: **R2 is written. Gate G-R2 database tests pass (2026-11-16); items still open are in section 12.**
 
 Language of sections 6 to 12: English, as set by the R2 task contract. Sections 1 to 5 stay in Vietnamese. File names, tables, columns, commands and error codes are the same in both parts.
 
@@ -289,29 +289,25 @@ Spec 5.8 says staff export the paid orders for e-invoicing and record the invoic
 
 ## 12. Open gates
 
-**G-R2 is not closed.** It stays open until every item below is done. G-R1 (section 5) is also not passed, and R2 follows it.
+**G-R2 database tests: passed, 2026-11-16.** Test database: `multica_platform_test` (migrated to head), through `scripts/require-test-database.sh`. Every package below was run with `-p 1` and `-count=1`.
 
-**Database tests not yet run.** Each needs a test database whose name ends in `_test`, supplied by the project owner (gate G0), and the guard `scripts/require-test-database.sh`. No run against such a database is recorded for these, so they count as not run. Platform packages use `PLATFORM_TEST_DATABASE_URL` and skip without it (`platform-management/internal/testdb/testdb.go`).
-
-| Step | Package and pattern |
+| Package and pattern | Result |
 | --- | --- |
-| P13 | platform `./internal/schemacheck` |
-| P14 | platform `./internal/staff ./internal/session ./internal/mailer` |
-| P15 | server `./internal/middleware ./internal/handler ./internal/service ./internal/workspaceguard -run 'WorkspaceState\|ClaimRefusal'`; platform `./internal/workspacestatus` |
-| P16 | platform `./internal/console -run 'PlatformConsole\|PlatformIsolation'` |
-| P18 | platform `./internal/plan ./internal/entitlement`; server `./internal/service ./internal/entitlement -run 'Entitlement\|IssueLimit\|AutopilotQuota'` |
-| P19 | platform `./internal/seat`; server `./internal/handler ./internal/seatcapacity -run 'Seat\|Invitation\|ShareLink'` |
-| P20 | server `./internal/handler -run 'PlanLimit\|WorkspaceCreation\|Signup'` |
-| P21 | platform `./internal/billing` |
-| P22 | platform `./internal/billingapi`; server `./internal/handler -run 'CloudSubscription\|Order\|Plans'` |
-| P23 | platform `./internal/lifecycle -run 'Lifecycle'` |
-| P24 | platform `./internal/console -run 'PlatformBilling'` |
-| P25 | server `./internal/handler -run 'WorkspaceDeletion'` |
-| P27 | server `./internal/workspaceexport -run 'WorkspaceExport'` |
-| P28 | server `./internal/usagesnapshot -run 'Usage'`; platform `./internal/console -run 'Overview'` |
-| P29 | server `./internal/handler -run 'Audit'` |
+| server `./internal/handler`: `BillingOrder\|CloudSubscription\|Order\|Plans\|WorkspaceDeletion\|WorkspaceExport\|AuditR2\|SeatCapacity\|Invitation\|ShareLink\|WorkspaceDeletionManifest\|WorkspaceTeardown` | pass |
+| server `./internal/handler`: `PlanLimit\|WorkspaceCreation\|Signup\|Audit`; `WorkspaceState\|ClaimRefusal\|Seat\|ShareLink` | pass |
+| server `./internal/scheduler`, `./internal/usagesnapshot`, `./internal/workspaceexport`, `./internal/workspacedeletion`, `./internal/workspaceguard`, `./internal/middleware`, `./internal/seatcapacity`, `./internal/entitlement`, `./internal/auditaction` | pass |
+| server `./internal/service` (full package, and `-run 'Entitlement\|IssueLimit\|AutopilotQuota\|WorkspaceState\|ClaimRefusal'`) | pass |
+| server `./cmd/server` | pass |
+| server `./internal/integrations/...` | pass, except the `lark` package (pre-existing, below) |
+| platform `./...` (every package, with `PLATFORM_TEST_DATABASE_URL` set to the same DSN as `DATABASE_URL`) | pass |
 
-The R1 database tests listed in section 5 are also still open. P30 also asks for the full Go suite of every touched package on the test database, plus the checks [T], [PG], [PW], [PB] and [PI] of the plan, and a walk through AC7 to AC14 and AC20 (spec 13).
+Fixes made in R2 slices to reach this, on `main`: the deletion manifest and the teardown graph (`ba3ae01ff`); the connect audit test setup (`0eef0e2bc`); the usage snapshot database tests, which no longer create a database (`b663b6ea5`); the workspace state matrix, which matches only state refusals (`047a73c3e`); the WeCom and DingTalk install fixtures, which seed the installer (`acda220d3`); the platform notes visibility scan, which allows the three teardown files to delete the table (`b168b3a21`); the Mika plan-limit test context (`676198be9`); and the non-member audit read status, 404 (`385bf2843`).
+
+**Pre-existing, not R2.** `server/internal/integrations/lark`: `TestLegacyReceiptBackfillIsolatedFromSharedDatabase`, `TestLegacyReceiptBackfillEvidenceAndIdempotence`, `TestLegacyReceiptBackfillBatchLimit`. They use `testutil.IsolatedDB`, which creates a database named `multica_test_<id>` that does not end in `_test`; the create timed out and a later run was killed. Not changed.
+
+**Gate status.** G-R2 meets the database-test criterion of the contract. The items below that the tests do not cover remain open, and the R1 database tests of section 5 are still open. P30's full-suite and [T], [PG], [PW], [PB], [PI] checks and the AC7 to AC14 and AC20 walk-through (spec 13) are not recorded here.
+
+**Open after the tests.** Buyer details of billing orders are not cleared (a retention worker must do this, per the tax and retention rules). Storage objects of workspace exports are not deleted by the teardown. Leftover `multica_test_*` databases from earlier `IsolatedDB` runs remain on the test server and need an owner decision to drop.
 
 **Rehearsal not done.** P30 requires a rehearsal on a non-production copy of the data: build the stack with the `platform` service, run `server/cmd/migrate up`, give every existing workspace a transitional subscription, point `MULTICA_CLOUD_URL` at the platform, and confirm that no workspace is blocked (spec 12). Also check that the platform exits when a migration is missing and starts by itself after the migration; that port 8095 cannot be reached from outside the internal network; and that an `mcn_` token is refused. Write the record of the rehearsal into this file.
 
