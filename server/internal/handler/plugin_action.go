@@ -14,6 +14,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/middleware"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
+	"github.com/multica-ai/multica/server/internal/workspaceguard"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
 	"github.com/multica-ai/multica/server/pkg/plugincontract"
@@ -146,6 +147,12 @@ func (h *Handler) pluginSessionCaller(w http.ResponseWriter, r *http.Request, sc
 	member, err := h.getWorkspaceMember(r.Context(), userID, uuidToString(caller.WorkspaceID))
 	if err != nil {
 		publicapiv1.WriteProblem(w, r, http.StatusNotFound, "not_found", "workspace not found")
+		return service.PluginActionCaller{}, pluginActor{}, false
+	}
+	// A viewer reads through the surface but writes nothing (spec 6.6); the
+	// hook invoke is a write too, so it is refused here with the rest.
+	if member.Role == workspaceguard.RoleViewer && !workspaceguard.IsReadMethod(r.Method) {
+		publicapiv1.WriteProblem(w, r, http.StatusForbidden, workspaceguard.CodeViewerReadOnly, workspaceguard.Message(workspaceguard.CodeViewerReadOnly))
 		return service.PluginActionCaller{}, pluginActor{}, false
 	}
 	return caller, pluginActor{Type: "member", Member: member}, true
