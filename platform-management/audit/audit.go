@@ -163,6 +163,9 @@ var Catalog = []string{
 	ActionWorkspaceDeletionCancelled,
 	ActionSubscriptionBackfilled,
 	ActionWorkspaceAccountKindChanged,
+	ActionPlanPriceScheduled,
+	ActionPlanPriceApplied,
+	ActionPlanPriceCanceled,
 }
 
 // Cutover action (gate G-R2): written by the platform-backfill command in the
@@ -172,6 +175,16 @@ const ActionSubscriptionBackfilled = "subscription.backfilled"
 // R5 action (spec 7b.1, rule 3): written by the platform in the transaction
 // that changes a workspace's account kind; the detail holds the old and new kind.
 const ActionWorkspaceAccountKindChanged = "workspace.account_kind_changed"
+
+// R5 plan price actions (spec 7b.4, rule 15): written in the transaction that
+// schedules, applies or cancels a price change. The detail holds plan (the plan
+// key, which Redact would hide under a name containing "key"), effective_from,
+// the old and new prices and the reason.
+const (
+	ActionPlanPriceScheduled = "plan.price_scheduled"
+	ActionPlanPriceApplied   = "plan.price_applied"
+	ActionPlanPriceCanceled  = "plan.price_canceled"
+)
 
 // Actor types.
 const (
