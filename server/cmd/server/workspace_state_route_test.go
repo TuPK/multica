@@ -8,7 +8,17 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/multica-ai/multica/server/internal/workspaceguard"
 )
+
+// stateRefusalCodes are the refusals of the workspace state middleware.
+var stateRefusalCodes = map[string]bool{
+	workspaceguard.CodeReadOnly:         true,
+	workspaceguard.CodeSuspended:        true,
+	workspaceguard.CodePendingDeletion:  true,
+	workspaceguard.CodeStateUnavailable: true,
+}
 
 // The workspace state matrix through the real router and the real workspace
 // middleware: which requests a read_only, suspended or pending_deletion
@@ -118,7 +128,9 @@ func TestWorkspaceStateMatrixThroughRouter(t *testing.T) {
 				setState(s.status)
 				status, code := call(c.method, c.path, c.body)
 				if s.want == "" {
-					if strings.HasPrefix(code, "workspace_") {
+					// A handler's own refusal (workspace_subscriptions_disabled) is not a
+					// state refusal: the request passed the state check.
+					if stateRefusalCodes[code] {
 						t.Fatalf("%s %s refused with %q (status %d), want it to pass the state check", c.method, c.path, code, status)
 					}
 					return
