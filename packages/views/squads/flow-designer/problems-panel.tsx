@@ -14,13 +14,18 @@ export interface ProblemsPanelProps {
   onSelectIssue?: (issue: FlowIssue, stepKey: string | null) => void;
 }
 
-/** The step an issue is about: the one its `params.step` names, else the one its path (`steps[2]…`) points into. */
+/**
+ * The step an issue is about: the one its `params.step` names, else the one its path points into. The server writes
+ * `steps[<key>]`, and `steps[<index>]` for a step whose key is not valid.
+ */
 export function stepKeyOfIssue(issue: FlowIssue, doc?: FlowDoc): string | null {
   if (!doc) return null;
   const named = issue.params?.step;
   if (typeof named === "string" && doc.steps.some((s) => s.key === named)) return named;
-  const index = /^steps\[(\d+)\]/.exec(issue.path ?? "")?.[1];
-  return index === undefined ? null : (doc.steps[Number(index)]?.key ?? null);
+  const token = /^steps\[([^\]]+)\]/.exec(issue.path ?? "")?.[1];
+  if (token === undefined) return null;
+  if (doc.steps.some((s) => s.key === token)) return token;
+  return /^\d+$/.test(token) ? (doc.steps[Number(token)]?.key ?? null) : null;
 }
 
 export function ProblemsPanel({ issues, doc, onSelectIssue }: ProblemsPanelProps) {
@@ -57,17 +62,17 @@ export function ProblemsPanel({ issues, doc, onSelectIssue }: ProblemsPanelProps
         ) : (
           <AlertTriangle className="size-4 text-amber-500 shrink-0 mt-0.5" aria-hidden />
         )}
-        <div className="flex-1 space-y-0.5">
+        <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="font-mono text-micro font-medium text-foreground">{issue.code}</span>
-            {issue.path && <span className="font-mono text-micro text-muted-foreground">({issue.path})</span>}
+            {issue.path && <span className="font-mono text-micro text-muted-foreground [overflow-wrap:anywhere]">({issue.path})</span>}
             {issue.ack && (
               <Badge variant="outline" className="text-micro text-amber-600 font-normal">
                 {t(($) => $.flow_designer.problems.requires_ack)}
               </Badge>
             )}
           </div>
-          <p className="text-caption text-muted-foreground">{issue.message}</p>
+          <p className="text-caption text-muted-foreground [overflow-wrap:anywhere]">{issue.message}</p>
         </div>
       </li>
     );
@@ -102,7 +107,7 @@ export function ProblemsPanel({ issues, doc, onSelectIssue }: ProblemsPanelProps
         </div>
       </div>
 
-      <div className="max-h-60 space-y-2 overflow-y-auto">
+      <div className="space-y-2">
         {loose.length > 0 && <ul className="divide-y divide-border/60">{loose.map(renderIssue)}</ul>}
         {groups.map(({ step, issues: stepIssues }) => (
           <div key={step.key} role="group" aria-labelledby={`problems-${step.key}`} className="space-y-0.5">

@@ -5,7 +5,7 @@
  * - Back edges (edges with `loop` or creating cycles) are removed to form a forward DAG.
  * - Layer of each step is the length of the longest path from `start` in the forward DAG.
  * - Back edges do not alter layer assignment.
- * - Coordinates are spaced so that no nodes overlap (width 240px, height 100px).
+ * - Coordinates are spaced so that no nodes overlap (NODE_WIDTH by NODE_HEIGHT).
  * - Sorting within layers is deterministic, making the output completely stable
  *   regardless of step declaration order in the input document.
  */
@@ -63,9 +63,11 @@ export interface FlowLayoutResult {
   layers: Record<number, string[]>;
 }
 
-export const NODE_WIDTH = 240;
-export const NODE_HEIGHT = 100;
-export const HORIZONTAL_SPACING = 340;
+// The size of a step card as the designer draws it (w-64, and about this tall), and the pitch between two cards: a gap of
+// 44px keeps a flow of six steps whole in a canvas of a 1280px window.
+export const NODE_WIDTH = 256;
+export const NODE_HEIGHT = 96;
+export const HORIZONTAL_SPACING = 300;
 export const VERTICAL_SPACING = 150;
 
 /**

@@ -2,7 +2,7 @@
 
 import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { FlowDoc, FlowInsights } from "@multica/core/types";
+import type { FlowDoc, FlowInsights, FlowIssue } from "@multica/core/types";
 import { renderWithI18n } from "../../test/i18n";
 import { FlowGraph } from "./flow-graph";
 
@@ -63,8 +63,26 @@ describe("FlowGraph insights", () => {
   });
 });
 
+describe("FlowGraph issue marks", () => {
+  const marked = (key: string) => document.querySelector(`[data-step-key="${key}"] svg.text-amber-500`) !== null;
+
+  // The server names a step in a path by its key. A step that only appears in the path of another step's input is
+  // not the step the issue is about.
+  it("marks the step an issue is about, and not a step that its path only mentions", () => {
+    const issue: FlowIssue = {
+      code: "input_no_files",
+      severity: "warning",
+      message: "No file to read",
+      path: "steps[gate].tasks[check].inputs[plan.notes]",
+    };
+    renderGraph({ issues: [issue] });
+    expect(marked("gate")).toBe(true);
+    expect(marked("plan")).toBe(false);
+  });
+});
+
 describe("FlowGraph canvas fit", () => {
-  // Five steps in a row: the canvas is 4 * 340 + 256 = 1616px wide before the padding.
+  // Five steps in a row: the canvas is 4 * 300 + 256 = 1456px wide before the padding.
   const chain = {
     version: 2,
     start: "s1",
@@ -87,7 +105,7 @@ describe("FlowGraph canvas fit", () => {
     return match ? Number(match[1]) : NaN;
   };
   const AVAILABLE = (w: number) => w - 64; // the canvas has 32px of padding on each side
-  const CONTENT = 1616;
+  const CONTENT = 4 * 300 + 256;
 
   afterEach(() => {
     vi.restoreAllMocks();
@@ -98,6 +116,28 @@ describe("FlowGraph canvas fit", () => {
     sizeOfCanvas();
     renderGraph({ doc: chain });
     expect(scaleOf()).toBeCloseTo(AVAILABLE(1000) / CONTENT, 2);
+  });
+
+  it("shows a six-step flow whole in the canvas of a 1280px window, at a size the text can still be read", () => {
+    // The page of a 1280px window leaves the canvas about 970px: the sidebar and the page padding take the rest.
+    width = 970;
+    sizeOfCanvas();
+    const six = { ...chain, steps: [...chain.steps, { ...chain.steps[4]!, key: "s6", title: "s6" }].map((step, i, all) => ({
+      ...step,
+      edges: [{ id: `${step.key}_ok`, label: "Next", to: all[i + 1]?.key ?? "done" }],
+    })) } as unknown as FlowDoc;
+    renderGraph({ doc: six });
+    const scale = scaleOf();
+    const lastCard = screen.getByTestId("flow-graph-canvas").querySelector<HTMLElement>('[data-step-key="s6"]')!;
+    const drawn = parseFloat(lastCard.style.left) + 256;
+    expect(scale).toBeGreaterThanOrEqual(0.5);
+    expect(drawn * scale).toBeLessThanOrEqual(AVAILABLE(970) + 0.5);
+  });
+
+  it("puts the fitted view on screen at once: a transition would show the graph cut for a moment", () => {
+    sizeOfCanvas();
+    renderGraph({ doc: chain });
+    expect(screen.getByTestId("flow-graph-canvas").className).not.toMatch(/transition/);
   });
 
   it("does not enlarge a graph that already fits", () => {

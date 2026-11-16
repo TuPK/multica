@@ -15,6 +15,7 @@ import {
 import { AlertCircle, AlertTriangle, Plus, RotateCcw, Search } from "@multica/ui/icons";
 import { useT } from "../../i18n";
 import { cn } from "@multica/ui/lib/utils";
+import { stepKeyOfIssue } from "./problems-panel";
 import { STEP_TEMPLATE_IDS, type StepTemplateId } from "./step-templates";
 
 export interface OutlineProps {
@@ -59,17 +60,16 @@ export function Outline({
     return m;
   }, [doc.loops]);
 
-  // Map step key or index to errors/warnings
+  // Errors and warnings of each step, by its key
   const stepIssuesMap = useMemo(() => {
     const m = new Map<string, { errors: number; warnings: number }>();
     for (let i = 0; i < doc.steps.length; i++) {
       const s = doc.steps[i];
       if (!s) continue;
-      const stepPathPrefix = `steps[${i}]`;
       let errors = 0;
       let warnings = 0;
       for (const iss of issues) {
-        if (iss.path?.startsWith(stepPathPrefix) || iss.params?.step === s.key) {
+        if (stepKeyOfIssue(iss, doc) === s.key) {
           if (iss.severity === "error") errors++;
           else warnings++;
         }
@@ -79,7 +79,7 @@ export function Outline({
       }
     }
     return m;
-  }, [doc.steps, issues]);
+  }, [doc, issues]);
 
   const atLimit = (doc.steps?.length ?? 0) >= stepLimit;
 

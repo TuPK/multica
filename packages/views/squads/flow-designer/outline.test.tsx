@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
-import { cleanup, screen } from "@testing-library/react";
+import { cleanup, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { FlowDoc } from "@multica/core/types";
+import type { FlowDoc, FlowIssue } from "@multica/core/types";
 import { renderWithI18n } from "../../test/i18n";
 import { Outline } from "./outline";
 
@@ -48,5 +48,25 @@ describe("Outline step limit", () => {
     renderWithI18n(<Outline doc={doc(1)} selectedStepKey={null} onSelectStep={vi.fn()} onAddStep={vi.fn()} stepLimit={2} />);
     expect((screen.getByRole("button", { name: "Add step" }) as HTMLButtonElement).disabled).toBe(false);
     expect(screen.queryByText(/Limit of/)).toBeNull();
+  });
+});
+
+describe("Outline issue chips", () => {
+  const found = (over: Partial<FlowIssue>): FlowIssue => ({ code: "x", severity: "error", message: "m", ...over });
+  const chipOf = (title: string) => within(screen.getByRole("button", { name: new RegExp(`^${title}`) }));
+
+  // The server names a step in a path by its key: steps[s2].tasks[a].role.
+  it("counts on each step the issues whose path names it by its key, and on no other step", () => {
+    const issues = [
+      found({ path: "steps[s2].tasks[a].role" }),
+      found({ path: "steps[s2].edges[e]" }),
+      found({ severity: "warning", path: "steps[s3].status" }),
+      found({ severity: "warning", path: "steps[s3].tasks[b].inputs[s2.a]" }),
+      found({ severity: "warning", path: "steps[s3].tasks[c].inputs[s2.a]" }),
+    ];
+    renderWithI18n(<Outline doc={doc(3)} selectedStepKey={null} onSelectStep={vi.fn()} issues={issues} />);
+    expect(chipOf("Step 2").getByText("2")).toBeInTheDocument();
+    expect(chipOf("Step 3").getByText("3")).toBeInTheDocument();
+    expect(within(screen.getByRole("button", { name: /^Step 1/ })).queryByText(/^\d+$/)).toBeNull();
   });
 });

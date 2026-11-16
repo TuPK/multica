@@ -2,7 +2,7 @@
 
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { FlowDoc, FlowInsights, FlowIssue } from "@multica/core/types";
-import { layoutFlowGraph } from "@multica/core/squads/flow-layout";
+import { NODE_HEIGHT, NODE_WIDTH, layoutFlowGraph } from "@multica/core/squads/flow-layout";
 import { Badge } from "@multica/ui/components/ui/badge";
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
@@ -15,10 +15,11 @@ import {
 import { cn } from "@multica/ui/lib/utils";
 import { useT } from "../../i18n";
 import { EdgeInsightBadge, StepInsightBadge } from "./insights-badges";
+import { stepKeyOfIssue } from "./problems-panel";
 
-// What the canvas draws: a step card is w-64 wide and about this tall, and the canvas has p-8 around it.
-const CARD_WIDTH = 256;
-const CARD_HEIGHT = 160;
+// What the canvas draws: the size of a step card as the layout spaces it, and the p-8 the canvas has around it.
+const CARD_WIDTH = NODE_WIDTH;
+const CARD_HEIGHT = NODE_HEIGHT;
 const CANVAS_PADDING = 32;
 // The same floor as React Flow's fitView: below it the text of a card cannot be read, and the canvas scrolls.
 const MIN_FIT_ZOOM = 0.5;
@@ -237,7 +238,7 @@ export function FlowGraph({
       <div ref={canvasRef} className="hidden sm:block flex-1 overflow-auto p-8 relative">
         <div
           data-testid="flow-graph-canvas"
-          className="relative min-w-[800px] min-h-[600px] transition-transform"
+          className="relative min-w-[800px] min-h-[600px]"
           style={{ transform: `scale(${zoom})`, transformOrigin: "top left" }}
         >
           <svg className="absolute left-0 top-0 size-full overflow-visible pointer-events-none" aria-hidden>
@@ -255,9 +256,7 @@ export function FlowGraph({
             if (!step) return null;
             const isSelected = step.key === selectedStepKey;
             const loopInfo = loopMap.get(step.key);
-            const stepHasIssues = issues.some(
-              (i) => i.path?.includes(step.key) || i.params?.step === step.key,
-            );
+            const stepHasIssues = issues.some((i) => stepKeyOfIssue(i, doc) === step.key);
 
             return (
               <div

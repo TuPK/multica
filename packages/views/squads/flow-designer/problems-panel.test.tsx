@@ -44,6 +44,22 @@ describe("ProblemsPanel", () => {
     expect(all).toHaveLength(4);
   });
 
+  // The server names a step in a path by its key: steps[gate].tasks[review].role.
+  it("reads the step from a path that names it by its key, as the server writes it", () => {
+    const byKey: FlowIssue[] = [
+      issue({ code: "status_shared", severity: "warning", path: "steps[collect].status", message: "Shared status" }),
+      issue({ code: "input_no_files", severity: "warning", path: "steps[gate].tasks[review].inputs[collect.data]", message: "No file to read" }),
+      issue({ code: "no_start", path: "start", message: "No start step" }),
+    ];
+    const onSelectIssue = vi.fn();
+    renderWithI18n(<ProblemsPanel issues={byKey} doc={DOC} onSelectIssue={onSelectIssue} />);
+    const groups = screen.getAllByRole("group");
+    expect(groups.map((g) => within(g).getByRole("heading").textContent)).toEqual(["Collect", "Gate"]);
+    expect(within(groups[1]!).getByText("No file to read")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("No file to read"));
+    expect(onSelectIssue).toHaveBeenLastCalledWith(byKey[1], "gate");
+  });
+
   it("selects the step an issue is about when it is clicked, and none for an issue of no step", () => {
     const onSelectIssue = vi.fn();
     renderWithI18n(<ProblemsPanel issues={issues} doc={DOC} onSelectIssue={onSelectIssue} />);
