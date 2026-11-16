@@ -15,8 +15,17 @@ import {
 } from "@/components/issue/pickers/due-date-picker-body";
 import { useNewIssueDraftStore } from "@/data/stores/new-issue-draft-store";
 import { useT } from "@/lib/i18n";
+import { WriteAccessGuard } from "@/components/workspace/write-access-notice";
 
 export default function NewIssueDueDatePickerRoute() {
+  return (
+    <WriteAccessGuard>
+      <NewIssueDueDatePickerContent />
+    </WriteAccessGuard>
+  );
+}
+
+function NewIssueDueDatePickerContent() {
   const dueDate = useNewIssueDraftStore((s) => s.dueDate);
   const setDueDate = useNewIssueDraftStore((s) => s.setDueDate);
   const { t } = useT("issues");

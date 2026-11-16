@@ -8,8 +8,17 @@ import { ProjectPickerBody } from "@/components/issue/pickers/project-picker-bod
 import { useNewIssueDraftStore } from "@/data/stores/new-issue-draft-store";
 import { useNativeSearchBar } from "@/lib/use-native-search-bar";
 import { useT } from "@/lib/i18n";
+import { WriteAccessGuard } from "@/components/workspace/write-access-notice";
 
 export default function NewIssueProjectPickerRoute() {
+  return (
+    <WriteAccessGuard>
+      <NewIssueProjectPickerContent />
+    </WriteAccessGuard>
+  );
+}
+
+function NewIssueProjectPickerContent() {
   const { t } = useT("issues");
   const project = useNewIssueDraftStore((s) => s.project);
   const setProject = useNewIssueDraftStore((s) => s.setProject);

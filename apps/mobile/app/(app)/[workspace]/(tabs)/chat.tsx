@@ -82,6 +82,8 @@ import {
   dispatchReasonCode,
 } from "@/lib/dispatch-reason";
 import { useT } from "@/lib/i18n";
+import { formatPlanLimitError } from "@/lib/plan-limit-copy";
+import { useCanWrite } from "@/lib/use-workspace-access";
 import { useAgentPresence } from "@/lib/use-agent-presence";
 import { Header } from "@/components/ui/header";
 import { ChatTitleButton } from "@/components/chat/chat-title-button";
@@ -99,6 +101,8 @@ export default function ChatTab() {
   const qc = useQueryClient();
   const { t } = useT("chat");
   const sendFailureMessage = useCallback((err: unknown) => {
+    const planMessage = formatPlanLimitError(err);
+    if (planMessage) return planMessage;
     switch (dispatchReasonCode(err)) {
       case "invocation_not_allowed":
         return t("failure.invocation_not_allowed");
@@ -114,6 +118,7 @@ export default function ChatTab() {
   }, [t]);
   const wsId = useWorkspaceStore((s) => s.currentWorkspaceId);
   const wsSlug = useWorkspaceStore((s) => s.currentWorkspaceSlug);
+  const canWrite = useCanWrite(wsId);
   const userId = useAuthStore((s) => s.user?.id);
 
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -250,11 +255,12 @@ export default function ChatTab() {
   const isFocused = useIsFocused();
   const markRead = useMarkChatSessionRead();
   useEffect(() => {
+    if (!canWrite) return;
     if (!isFocused) return;
     if (!activeSessionId) return;
     if (!activeSession?.has_unread) return;
     markRead.mutate(activeSessionId);
-  }, [isFocused, activeSessionId, activeSession?.has_unread, markRead]);
+  }, [canWrite, isFocused, activeSessionId, activeSession?.has_unread, markRead]);
 
   // ── Mutations ──────────────────────────────────────────────────────────
   const createSession = useCreateChatSession();
@@ -520,7 +526,8 @@ export default function ChatTab() {
         }
         right={
           <ChatSessionActions
-            showMore={!!activeSession}
+            showMore={canWrite && !!activeSession}
+            canNew={canWrite}
             onMorePress={handleDeleteActive}
             onNewPress={handleNewChat}
           />
@@ -536,33 +543,39 @@ export default function ChatTab() {
           loading={messagesLoading}
           hasSessions={sessions.length > 0}
           agent={currentAgent}
-          onPickPrompt={(text) => setDraft(draftKey, text)}
-          onQuickAction={(action) =>
-            handleSend(action.prompt, [], { clearDraft: false })
+          onPickPrompt={canWrite ? (text) => setDraft(draftKey, text) : undefined}
+          onQuickAction={
+            canWrite
+              ? (action) => handleSend(action.prompt, [], { clearDraft: false })
+              : undefined
           }
           quickActionsDisabled={sending || disabled}
           pendingTask={pendingTask}
           liveTaskMessages={liveTaskMessages}
           availability={presenceAvailability}
         />
-        {runtimeBound ? (
-          <OfflineBanner
-            agentName={currentAgent?.name}
-            availability={presenceAvailability}
-          />
-        ) : currentAgent ? (
-          <RuntimeRequiredBanner agentName={currentAgent.name} />
+        {canWrite ? (
+          <>
+            {runtimeBound ? (
+              <OfflineBanner
+                agentName={currentAgent?.name}
+                availability={presenceAvailability}
+              />
+            ) : currentAgent ? (
+              <RuntimeRequiredBanner agentName={currentAgent.name} />
+            ) : null}
+            <ChatComposer
+              value={draft}
+              onChangeText={(next) => setDraft(draftKey, next)}
+              onSend={handleSend}
+              onStop={handleStop}
+              sending={sending}
+              allowStop={pendingTask?.status !== "queued"}
+              disabled={disabled}
+              disabledReason={disabledReason}
+            />
+          </>
         ) : null}
-        <ChatComposer
-          value={draft}
-          onChangeText={(next) => setDraft(draftKey, next)}
-          onSend={handleSend}
-          onStop={handleStop}
-          sending={sending}
-          allowStop={pendingTask?.status !== "queued"}
-          disabled={disabled}
-          disabledReason={disabledReason}
-        />
       </KeyboardAvoidingView>
 
       <AgentPickerSheet

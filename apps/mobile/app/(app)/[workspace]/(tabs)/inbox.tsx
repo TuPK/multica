@@ -29,6 +29,7 @@ import { useWorkspaceStore } from "@/data/workspace-store";
 import { useColorScheme } from "@/lib/use-color-scheme";
 import { THEME } from "@/lib/theme";
 import { useT } from "@/lib/i18n";
+import { useCanWrite } from "@/lib/use-workspace-access";
 import {
   deduplicateInboxItems,
   getInboxNavigationTarget,
@@ -38,6 +39,7 @@ export default function Inbox() {
   const { t } = useT("inbox");
   const wsId = useWorkspaceStore((s) => s.currentWorkspaceId);
   const wsSlug = useWorkspaceStore((s) => s.currentWorkspaceSlug);
+  const canWrite = useCanWrite(wsId);
   const { colorScheme } = useColorScheme();
   const { data: rawItems, isLoading, error, refetch, isRefetching } = useQuery(
     inboxListOptions(wsId),
@@ -69,25 +71,29 @@ export default function Inbox() {
   // first (most common batch op); "Archive all" is destructive so it gets
   // the iOS red treatment + Alert confirm.
   const onPressMenu = () => {
-    const options = [
-      t("common:actions.cancel"),
-      t("actions.mark_all_read"),
-      t("actions.archive_all_read"),
-      t("actions.archive_completed"),
-      t("actions.archive_all"),
-    ];
+    const actions = ["cancel", "mark_all_read"] as const;
+    const allActions: ("cancel" | "mark_all_read" | "archive_all_read" | "archive_completed" | "archive_all")[] = canWrite
+      ? [...actions, "archive_all_read", "archive_completed", "archive_all"]
+      : [...actions];
+    const options = allActions.map((action) =>
+      action === "cancel"
+        ? t("common:actions.cancel")
+        : t(`actions.${action}`),
+    );
+    const destructiveButtonIndex = allActions.indexOf("archive_all");
     ActionSheetIOS.showActionSheetWithOptions(
       {
         options,
         cancelButtonIndex: 0,
-        destructiveButtonIndex: 4,
+        ...(destructiveButtonIndex >= 0 ? { destructiveButtonIndex } : {}),
         title: t("title"),
       },
       (i) => {
-        if (i === 1) markAllRead.mutate();
-        else if (i === 2) archiveAllRead.mutate();
-        else if (i === 3) archiveCompleted.mutate();
-        else if (i === 4) {
+        const action = allActions[i];
+        if (action === "mark_all_read") markAllRead.mutate();
+        else if (action === "archive_all_read") archiveAllRead.mutate();
+        else if (action === "archive_completed") archiveCompleted.mutate();
+        else if (action === "archive_all") {
           Alert.alert(
             t("archive.confirm_title"),
             t("archive.confirm_body"),
@@ -147,7 +153,7 @@ export default function Inbox() {
             <SwipeableInboxRow
               item={item}
               onPress={() => onPressItem(item)}
-              onArchive={() => archive.mutate(item.id)}
+              onArchive={canWrite ? () => archive.mutate(item.id) : undefined}
             />
           )}
           refreshing={isRefetching}

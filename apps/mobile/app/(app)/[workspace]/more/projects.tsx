@@ -29,10 +29,12 @@ import { ProjectRow } from "@/components/project/project-row";
 import { projectListOptions } from "@/data/queries/projects";
 import { useWorkspaceStore } from "@/data/workspace-store";
 import { useT } from "@/lib/i18n";
+import { useCanWrite } from "@/lib/use-workspace-access";
 
 export default function ProjectsPage() {
   const wsId = useWorkspaceStore((s) => s.currentWorkspaceId);
   const wsSlug = useWorkspaceStore((s) => s.currentWorkspaceSlug);
+  const canWrite = useCanWrite(wsId);
   const { t } = useT("projects");
 
   const { data, isLoading, error, refetch, isRefetching } = useQuery(
@@ -57,7 +59,7 @@ export default function ProjectsPage() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={[]}>
-      <Stack.Screen options={{ headerRight }} />
+      <Stack.Screen options={{ headerRight: canWrite ? headerRight : undefined }} />
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
@@ -75,7 +77,7 @@ export default function ProjectsPage() {
           </Button>
         </View>
       ) : sorted.length === 0 ? (
-        <EmptyState onCreate={goCreate} />
+        <EmptyState onCreate={canWrite ? goCreate : undefined} />
       ) : (
         <FlatList
           data={sorted}
@@ -112,16 +114,18 @@ function PlusButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-function EmptyState({ onCreate }: { onCreate: () => void }) {
+function EmptyState({ onCreate }: { onCreate?: () => void }) {
   const { t } = useT("projects");
   return (
     <View className="flex-1 items-center justify-center px-6 gap-4">
       <Text className="text-base font-medium text-foreground">
         {t("list.empty")}
       </Text>
-      <Button variant="default" onPress={onCreate}>
-        <Text>{t("common:actions.create")}</Text>
-      </Button>
+      {onCreate ? (
+        <Button variant="default" onPress={onCreate}>
+          <Text>{t("common:actions.create")}</Text>
+        </Button>
+      ) : null}
     </View>
   );
 }

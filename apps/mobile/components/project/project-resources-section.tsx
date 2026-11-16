@@ -22,14 +22,16 @@ import { useWorkspaceStore } from "@/data/workspace-store";
 import { useColorScheme } from "@/lib/use-color-scheme";
 import { THEME } from "@/lib/theme";
 import { useT } from "@/lib/i18n";
+import { useCanWrite } from "@/lib/use-workspace-access";
 
 interface Props {
   projectId: string;
-  onAdd: () => void;
+  onAdd?: () => void;
 }
 
 export function ProjectResourcesSection({ projectId, onAdd }: Props) {
   const wsId = useWorkspaceStore((s) => s.currentWorkspaceId);
+  const canWrite = useCanWrite(wsId);
   const { t } = useT("projects");
   const { data: resources, isLoading } = useQuery(
     projectResourcesOptions(wsId, projectId),
@@ -50,9 +52,11 @@ export function ProjectResourcesSection({ projectId, onAdd }: Props) {
         <Text className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
           {t("resources.title")}
         </Text>
-        <Pressable onPress={onAdd} className="px-2 py-1 active:bg-secondary rounded-xs">
+        {onAdd && canWrite ? (
+          <Pressable onPress={onAdd} className="px-2 py-1 active:bg-secondary rounded-xs">
             <Text className="text-xs text-brand">{t("resources.add")}</Text>
-        </Pressable>
+          </Pressable>
+        ) : null}
       </View>
       {isLoading ? (
         <View className="px-4 py-4 items-center">
@@ -69,6 +73,7 @@ export function ProjectResourcesSection({ projectId, onAdd }: Props) {
           <ResourceRow
             key={resource.id}
             resource={resource}
+            canDetach={canWrite}
             onPress={() => onOpen(resource)}
           />
         ))
@@ -79,16 +84,18 @@ export function ProjectResourcesSection({ projectId, onAdd }: Props) {
 
 function ResourceRow({
   resource,
+  canDetach,
   onPress,
 }: {
   resource: ProjectResource;
+  canDetach: boolean;
   onPress: () => void;
 }) {
   const { colorScheme } = useColorScheme();
   const { t } = useT("projects");
   const remove = useDeleteProjectResource(resource.project_id);
   const onLongPress = () => {
-    if (remove.isPending) return;
+    if (!canDetach || remove.isPending) return;
     Alert.alert(
       t("resources.detach_title"),
       describeResource(resource),
@@ -105,7 +112,7 @@ function ResourceRow({
   return (
     <Pressable
       onPress={onPress}
-      onLongPress={onLongPress}
+      onLongPress={canDetach ? onLongPress : undefined}
       disabled={remove.isPending}
       accessibilityState={{ disabled: remove.isPending, busy: remove.isPending }}
       delayLongPress={400}

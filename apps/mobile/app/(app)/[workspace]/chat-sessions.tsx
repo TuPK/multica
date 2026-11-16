@@ -21,9 +21,11 @@ import { useChatSessionPickerStore } from "@/data/stores/chat-session-picker-sto
 import { useWorkspaceStore } from "@/data/workspace-store";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
+import { useCanWrite } from "@/lib/use-workspace-access";
 
 export default function ChatSessionsRoute() {
   const wsId = useWorkspaceStore((s) => s.currentWorkspaceId);
+  const canWrite = useCanWrite(wsId);
   const { t } = useT("chat");
   const { data: sessions = [] } = useQuery(chatSessionsOptions(wsId));
   const activeSessionId = useChatSessionPickerStore((s) => s.activeSessionId);
@@ -78,7 +80,7 @@ export default function ChatSessionsRoute() {
                   requestSelect(session.id);
                   router.back();
                 }}
-                onLongPress={() => confirmDelete(session)}
+                onLongPress={canWrite ? () => confirmDelete(session) : undefined}
                 className={cn(
                   "flex-row items-center gap-3 px-4 py-3 active:bg-secondary",
                   selected && "bg-secondary/60",

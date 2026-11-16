@@ -14,9 +14,11 @@ import type { Issue } from "@multica/core/types";
 import { ReactionBar } from "./reaction-bar";
 import { useToggleIssueReaction } from "@/data/mutations/issues";
 import { useAuthStore } from "@/data/auth-store";
+import { useCanWrite } from "@/lib/use-workspace-access";
 
 export function IssueReactionRow({ issue }: { issue: Issue }) {
   const userId = useAuthStore((s) => s.user?.id);
+  const canWrite = useCanWrite(issue.workspace_id);
   const reactions = useMemo(
     () => issue.reactions ?? [],
     [issue.reactions],
@@ -43,7 +45,7 @@ export function IssueReactionRow({ issue }: { issue: Issue }) {
       <ReactionBar
         reactions={reactions}
         currentUserId={userId}
-        onToggle={onToggle}
+        onToggle={canWrite ? onToggle : undefined}
       />
     </View>
   );

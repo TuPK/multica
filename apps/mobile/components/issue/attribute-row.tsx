@@ -36,6 +36,7 @@ import { useWorkspaceStore } from "@/data/workspace-store";
 import { PRIORITY_LABEL as PRIORITY_FULL_LABEL } from "@/lib/issue-status";
 import { useIssueStatuses } from "@/lib/use-issue-statuses";
 import { i18n, useT } from "@/lib/i18n";
+import { useCanWrite } from "@/lib/use-workspace-access";
 
 // Chip placeholder shortens `none` from "No priority" → "Priority" so the
 // unset chip reads as a placeholder, not as a confusing assigned value.
@@ -83,6 +84,7 @@ function formatDueDate(iso: string | null): string | null {
 export function AttributeRow({ issue }: { issue: Issue }) {
   const wsId = useWorkspaceStore((s) => s.currentWorkspaceId);
   const wsSlug = useWorkspaceStore((s) => s.currentWorkspaceSlug);
+  const canWrite = useCanWrite(wsId);
   const { getName } = useActorLookup();
   const { t } = useT("issues");
   // The chip shows the issue's own status, which may be a custom one — name
@@ -111,7 +113,7 @@ export function AttributeRow({ issue }: { issue: Issue }) {
   const dueLabel = formatDueDate(issue.due_date);
 
   const openPicker = (field: IssuePickerField) => {
-    if (!wsSlug) return;
+    if (!wsSlug || !canWrite) return;
     router.push({
       pathname: ISSUE_PICKER_PATHNAMES[field],
       params: { workspace: wsSlug, id: issue.id },
@@ -132,7 +134,7 @@ export function AttributeRow({ issue }: { issue: Issue }) {
         }
         label={labelOf(issue.status)}
         variant="filled"
-        onPress={() => openPicker("status")}
+        onPress={canWrite ? () => openPicker("status") : undefined}
       />
 
       {/* Priority */}
@@ -140,7 +142,7 @@ export function AttributeRow({ issue }: { issue: Issue }) {
         icon={<PriorityIcon priority={issue.priority} size={14} />}
         label={t(PRIORITY_CHIP_LABEL[issue.priority])}
         variant={issue.priority === "none" ? "dimmed" : "filled"}
-        onPress={() => openPicker("priority")}
+        onPress={canWrite ? () => openPicker("priority") : undefined}
       />
 
       {/* Assignee */}
@@ -156,7 +158,7 @@ export function AttributeRow({ issue }: { issue: Issue }) {
           }
           label={assigneeName ?? t("picker.unknown")}
           variant="filled"
-          onPress={() => openPicker("assignee")}
+          onPress={canWrite ? () => openPicker("assignee") : undefined}
         />
       ) : (
         <AttributeChip
@@ -165,7 +167,7 @@ export function AttributeRow({ issue }: { issue: Issue }) {
           }
           label={t("filters.assignee")}
           variant="dimmed"
-          onPress={() => openPicker("assignee")}
+          onPress={canWrite ? () => openPicker("assignee") : undefined}
         />
       )}
 
@@ -184,7 +186,7 @@ export function AttributeRow({ issue }: { issue: Issue }) {
           }
           label={label.name}
           variant="filled"
-          onPress={() => openPicker("label")}
+          onPress={canWrite ? () => openPicker("label") : undefined}
         />
       ))}
       {labels.length === 0 ? (
@@ -192,7 +194,7 @@ export function AttributeRow({ issue }: { issue: Issue }) {
           icon={<Text className="text-xs text-muted-foreground/70">◯</Text>}
           label={t("filters.label")}
           variant="dimmed"
-          onPress={() => openPicker("label")}
+          onPress={canWrite ? () => openPicker("label") : undefined}
         />
       ) : null}
 
@@ -202,7 +204,7 @@ export function AttributeRow({ issue }: { issue: Issue }) {
           icon={<ProjectIcon icon={project.icon} size="sm" />}
           label={project.title}
           variant="filled"
-          onPress={() => openPicker("project")}
+          onPress={canWrite ? () => openPicker("project") : undefined}
         />
       ) : (
         <AttributeChip
@@ -211,7 +213,7 @@ export function AttributeRow({ issue }: { issue: Issue }) {
           }
           label={t("filters.project")}
           variant="dimmed"
-          onPress={() => openPicker("project")}
+          onPress={canWrite ? () => openPicker("project") : undefined}
         />
       )}
 
@@ -220,7 +222,7 @@ export function AttributeRow({ issue }: { issue: Issue }) {
         icon={<Text className="text-xs text-muted-foreground/80">📅</Text>}
         label={dueLabel ?? t("common:fields.due_date")}
         variant={dueLabel ? "filled" : "dimmed"}
-        onPress={() => openPicker("due-date")}
+        onPress={canWrite ? () => openPicker("due-date") : undefined}
       />
     </View>
   );

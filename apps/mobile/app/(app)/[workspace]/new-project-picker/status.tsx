@@ -7,8 +7,17 @@
 import { router } from "expo-router";
 import { ProjectStatusPickerBody } from "@/components/project/pickers/project-status-picker-body";
 import { useNewProjectDraftStore } from "@/data/stores/new-project-draft-store";
+import { WriteAccessGuard } from "@/components/workspace/write-access-notice";
 
 export default function NewProjectStatusPickerRoute() {
+  return (
+    <WriteAccessGuard>
+      <NewProjectStatusPickerContent />
+    </WriteAccessGuard>
+  );
+}
+
+function NewProjectStatusPickerContent() {
   const status = useNewProjectDraftStore((s) => s.status);
   const setStatus = useNewProjectDraftStore((s) => s.setStatus);
 

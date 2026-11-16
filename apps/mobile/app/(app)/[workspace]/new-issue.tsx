@@ -33,8 +33,18 @@ import { useCreateIssue } from "@/data/mutations/issues";
 import { useNewIssueDraftStore } from "@/data/stores/new-issue-draft-store";
 import { useMentionInput } from "@/lib/use-mention-input";
 import { useT } from "@/lib/i18n";
+import { formatWorkspaceWriteError } from "@/lib/plan-limit-copy";
+import { WriteAccessGuard } from "@/components/workspace/write-access-notice";
 
 export default function NewIssueModal() {
+  return (
+    <WriteAccessGuard>
+      <NewIssueForm />
+    </WriteAccessGuard>
+  );
+}
+
+function NewIssueForm() {
   const { t } = useT("issues");
   const [title, setTitle] = useState("");
   const description = useMentionInput();
@@ -102,7 +112,7 @@ export default function NewIssueModal() {
     } catch (err) {
       Alert.alert(
         t("errors.create_failed"),
-        err instanceof Error ? err.message : t("common:states.error"),
+        formatWorkspaceWriteError(err, t("common:states.error")),
       );
     }
   }, [

@@ -21,6 +21,7 @@ import { runFailureBadgeLabel } from "@/lib/run-failure-badge";
 import { timeAgo } from "@/lib/time-ago";
 import { useT } from "@/lib/i18n";
 import { isCancellableRunStatus, runTranscriptRoute } from "@/lib/run-transcript";
+import { useCanWrite } from "@/lib/use-workspace-access";
 import { useWorkspaceStore } from "@/data/workspace-store";
 import { THEME } from "@/lib/theme";
 
@@ -41,6 +42,7 @@ export function RunRow({ task, issueId }: Props) {
   const { colorScheme } = useColorScheme();
   const theme = THEME[colorScheme === "dark" ? "dark" : "light"];
   const workspace = useWorkspaceStore((s) => s.currentWorkspaceSlug);
+  const canWrite = useCanWrite();
   const isActive = isCancellableRunStatus(task.status);
   const isTerminal = TERMINAL_STATUSES.includes(task.status);
   const summary =
@@ -68,7 +70,7 @@ export function RunRow({ task, issueId }: Props) {
           </Text>
         </View>
       </View>
-      {isActive ? <RunCancelButton taskId={task.id} issueId={issueId} /> : null}
+      {isActive && canWrite ? <RunCancelButton taskId={task.id} issueId={issueId} /> : null}
       {isTerminal ? (
         <Ionicons
           name="chevron-forward"

@@ -41,8 +41,18 @@ import { buildIssueTextUpdate } from "@/data/issue-edit";
 import { useWorkspaceStore } from "@/data/workspace-store";
 import { useT } from "@/lib/i18n";
 import { useMentionInput } from "@/lib/use-mention-input";
+import { formatWorkspaceWriteError } from "@/lib/plan-limit-copy";
+import { WriteAccessGuard } from "@/components/workspace/write-access-notice";
 
 export default function EditIssue() {
+  return (
+    <WriteAccessGuard>
+      <EditIssueForm />
+    </WriteAccessGuard>
+  );
+}
+
+function EditIssueForm() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const wsId = useWorkspaceStore((s) => s.currentWorkspaceId);
   const { t } = useT("issues");
@@ -114,7 +124,7 @@ export default function EditIssue() {
       onError: (err) => {
         Alert.alert(
           t("form.save_failed"),
-          err instanceof Error ? err.message : t("common:states.error"),
+          formatWorkspaceWriteError(err, t("common:states.error")),
         );
       },
     });

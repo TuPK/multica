@@ -48,6 +48,8 @@ import { useAuthStore } from "@/data/auth-store";
 import { useProjectRealtime } from "@/data/realtime/use-project-realtime";
 import { useWorkspaceStore } from "@/data/workspace-store";
 import { useT } from "@/lib/i18n";
+import { formatWorkspaceWriteError } from "@/lib/plan-limit-copy";
+import { useCanWrite } from "@/lib/use-workspace-access";
 
 export default function ProjectDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -79,10 +81,12 @@ export default function ProjectDetail() {
   const projectMissing = !project || project.id === "";
 
   const userId = useAuthStore((s) => s.user?.id ?? null);
+  const canWrite = useCanWrite(wsId);
   const { data: members = [] } = useQuery(memberListOptions(wsId));
   const { data: agents = [] } = useQuery(agentListOptions(wsId, { includeArchived: true }));
   const role = members.find((m) => m.user_id === userId)?.role ?? null;
-  const canDelete = !!project && canDeleteProject(project, userId, role, agents);
+  const canDelete =
+    canWrite && !!project && canDeleteProject(project, userId, role, agents);
   const { data: pins } = useQuery(pinListOptions(wsId, userId));
   const isPinned =
     !!project &&
@@ -96,7 +100,8 @@ export default function ProjectDetail() {
   const onPressMore = () => {
     if (!project) return;
     const wsUrl = process.env.EXPO_PUBLIC_WEB_URL;
-    const actions = ["cancel", isPinned ? "unpin" : "pin", "edit"];
+    const actions = ["cancel", isPinned ? "unpin" : "pin"];
+    if (canWrite) actions.push("edit");
     if (wsUrl) actions.push("open_web");
     if (canDelete) actions.push("delete");
     const options = actions.map((action) =>
@@ -129,7 +134,7 @@ export default function ProjectDetail() {
           deletePin.mutate({ itemType: "project", itemId: project.id });
           return;
         }
-        if (action === "edit") {
+        if (action === "edit" && canWrite) {
           if (wsSlug) router.push(`/${wsSlug}/project/${id}/edit`);
           return;
         }
@@ -156,6 +161,12 @@ export default function ProjectDetail() {
           onPress: () => {
             deleteProject.mutate(undefined, {
               onSuccess: () => router.back(),
+              onError: (err) => {
+                Alert.alert(
+                  t("common:states.error"),
+                  formatWorkspaceWriteError(err, t("common:states.error")),
+                );
+              },
             });
           },
         },
@@ -211,43 +222,63 @@ export default function ProjectDetail() {
         >
           <ProjectHeaderCard
             project={project}
-            onEdit={() => {
-              if (wsSlug) router.push(`/${wsSlug}/project/${id}/edit`);
-            }}
+            onEdit={
+              canWrite
+                ? () => {
+                    if (wsSlug) router.push(`/${wsSlug}/project/${id}/edit`);
+                  }
+                : undefined
+            }
           />
           <ProjectPropertiesSection
             project={project}
-            onPressStatus={() => {
-              if (wsSlug)
-                router.push({
-                  pathname: "/[workspace]/project/[id]/picker/status",
-                  params: { workspace: wsSlug, id },
-                });
-            }}
-            onPressPriority={() => {
-              if (wsSlug)
-                router.push({
-                  pathname: "/[workspace]/project/[id]/picker/priority",
-                  params: { workspace: wsSlug, id },
-                });
-            }}
-            onPressLead={() => {
-              if (wsSlug)
-                router.push({
-                  pathname: "/[workspace]/project/[id]/picker/lead",
-                  params: { workspace: wsSlug, id },
-                });
-            }}
+            onPressStatus={
+              canWrite
+                ? () => {
+                    if (wsSlug)
+                      router.push({
+                        pathname: "/[workspace]/project/[id]/picker/status",
+                        params: { workspace: wsSlug, id },
+                      });
+                  }
+                : undefined
+            }
+            onPressPriority={
+              canWrite
+                ? () => {
+                    if (wsSlug)
+                      router.push({
+                        pathname: "/[workspace]/project/[id]/picker/priority",
+                        params: { workspace: wsSlug, id },
+                      });
+                  }
+                : undefined
+            }
+            onPressLead={
+              canWrite
+                ? () => {
+                    if (wsSlug)
+                      router.push({
+                        pathname: "/[workspace]/project/[id]/picker/lead",
+                        params: { workspace: wsSlug, id },
+                      });
+                  }
+                : undefined
+            }
           />
           <ProjectResourcesSection
             projectId={id}
-            onAdd={() => {
-              if (wsSlug)
-                router.push({
-                  pathname: "/[workspace]/project/[id]/add-resource",
-                  params: { workspace: wsSlug, id },
-                });
-            }}
+            onAdd={
+              canWrite
+                ? () => {
+                    if (wsSlug)
+                      router.push({
+                        pathname: "/[workspace]/project/[id]/add-resource",
+                        params: { workspace: wsSlug, id },
+                      });
+                  }
+                : undefined
+            }
           />
           <View className="h-3" />
           <ProjectRelatedIssues projectId={id} />

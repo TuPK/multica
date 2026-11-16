@@ -9,8 +9,17 @@ import { AssigneePickerBody } from "@/components/issue/pickers/assignee-picker-b
 import { useNewIssueDraftStore } from "@/data/stores/new-issue-draft-store";
 import { useNativeSearchBar } from "@/lib/use-native-search-bar";
 import { useT } from "@/lib/i18n";
+import { WriteAccessGuard } from "@/components/workspace/write-access-notice";
 
 export default function NewIssueAssigneePickerRoute() {
+  return (
+    <WriteAccessGuard>
+      <NewIssueAssigneePickerContent />
+    </WriteAccessGuard>
+  );
+}
+
+function NewIssueAssigneePickerContent() {
   const { t } = useT("issues");
   const assignee = useNewIssueDraftStore((s) => s.assignee);
   const setAssignee = useNewIssueDraftStore((s) => s.setAssignee);

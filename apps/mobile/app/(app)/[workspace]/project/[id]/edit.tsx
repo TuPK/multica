@@ -28,8 +28,18 @@ import { projectDetailOptions } from "@/data/queries/projects";
 import { useUpdateProject } from "@/data/mutations/projects";
 import { useWorkspaceStore } from "@/data/workspace-store";
 import { useT } from "@/lib/i18n";
+import { formatWorkspaceWriteError } from "@/lib/plan-limit-copy";
+import { WriteAccessGuard } from "@/components/workspace/write-access-notice";
 
 export default function EditProject() {
+  return (
+    <WriteAccessGuard>
+      <EditProjectForm />
+    </WriteAccessGuard>
+  );
+}
+
+function EditProjectForm() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const wsId = useWorkspaceStore((s) => s.currentWorkspaceId);
   const { t } = useT("projects");
@@ -93,7 +103,7 @@ export default function EditProject() {
       onError: (err) => {
         Alert.alert(
           t("form.save_failed_edit"),
-          err instanceof Error ? err.message : t("common:states.error"),
+          formatWorkspaceWriteError(err, t("common:states.error")),
         );
       },
     });

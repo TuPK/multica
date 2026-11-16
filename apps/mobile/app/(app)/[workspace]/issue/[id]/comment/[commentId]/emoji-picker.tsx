@@ -28,8 +28,17 @@ import { useAuthStore } from "@/data/auth-store";
 import { useWorkspaceStore } from "@/data/workspace-store";
 import { useColorScheme } from "@/lib/use-color-scheme";
 import { THEME } from "@/lib/theme";
+import { WriteAccessGuard } from "@/components/workspace/write-access-notice";
 
 export default function CommentEmojiPickerRoute() {
+  return (
+    <WriteAccessGuard>
+      <CommentEmojiPickerContent />
+    </WriteAccessGuard>
+  );
+}
+
+function CommentEmojiPickerContent() {
   const { id, commentId } = useLocalSearchParams<{
     id: string;
     commentId: string;

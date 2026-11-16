@@ -43,6 +43,8 @@ import { useCreateProject } from "@/data/mutations/projects";
 import { useNewProjectDraftStore } from "@/data/stores/new-project-draft-store";
 import { useWorkspaceStore } from "@/data/workspace-store";
 import { useT } from "@/lib/i18n";
+import { formatWorkspaceWriteError } from "@/lib/plan-limit-copy";
+import { WriteAccessGuard } from "@/components/workspace/write-access-notice";
 
 /**
  * Typed map of new-project picker route pathnames. Keeps `router.push` calls
@@ -56,6 +58,14 @@ const NEW_PROJECT_PICKER_PATHNAMES = {
 } as const satisfies Record<NewProjectPickerField, string>;
 
 export default function NewProject() {
+  return (
+    <WriteAccessGuard>
+      <NewProjectForm />
+    </WriteAccessGuard>
+  );
+}
+
+function NewProjectForm() {
   const wsSlug = useWorkspaceStore((s) => s.currentWorkspaceSlug);
   const { t } = useT("projects");
   const create = useCreateProject();
@@ -136,7 +146,7 @@ export default function NewProject() {
         onError: (err) => {
           Alert.alert(
             t("form.save_failed"),
-            err instanceof Error ? err.message : t("common:states.error"),
+            formatWorkspaceWriteError(err, t("common:states.error")),
           );
         },
       },

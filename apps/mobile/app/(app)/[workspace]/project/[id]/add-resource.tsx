@@ -26,10 +26,20 @@ import { Text } from "@/components/ui/text";
 import { TextField } from "@/components/ui/text-field";
 import { useCreateProjectResource } from "@/data/mutations/projects";
 import { i18n, useT } from "@/lib/i18n";
+import { formatWorkspaceWriteError } from "@/lib/plan-limit-copy";
+import { WriteAccessGuard } from "@/components/workspace/write-access-notice";
 
 const GITHUB_PATTERN = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(\/|$)/i;
 
 export default function AddResourceRoute() {
+  return (
+    <WriteAccessGuard>
+      <AddResourceForm />
+    </WriteAccessGuard>
+  );
+}
+
+function AddResourceForm() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const createResource = useCreateProjectResource(id);
   const { t } = useT("issues");
@@ -74,7 +84,7 @@ export default function AddResourceRoute() {
         onError: (err) => {
           Alert.alert(
             t("resources.failed"),
-            err instanceof Error ? err.message : t("resources.error"),
+            formatWorkspaceWriteError(err, t("resources.error")),
           );
         },
       },

@@ -53,8 +53,8 @@ interface Props {
   agent: Agent | null;
   /** Receive a conversation-starter tap. Caller writes into the draft store
    *  (or focuses the composer with the text) — empty state stays neutral
-   *  about send vs. preview. */
-  onPickPrompt: (text: string) => void;
+   *  about send vs. preview. Omitted when the user cannot write. */
+  onPickPrompt?: (text: string) => void;
   /** Send a persisted assistant follow-up without first copying it into draft. */
   onQuickAction?: (action: ChatQuickAction) => void | Promise<unknown>;
   quickActionsDisabled?: boolean;

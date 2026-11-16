@@ -12,12 +12,14 @@ import { useT } from "@/lib/i18n";
 
 interface Props {
   showMore: boolean;
+  canNew?: boolean;
   onMorePress: () => void;
   onNewPress: () => void;
 }
 
 export function ChatSessionActions({
   showMore,
+  canNew = true,
   onMorePress,
   onNewPress,
 }: Props) {
@@ -31,12 +33,14 @@ export function ChatSessionActions({
           accessibilityLabel={t("a11y.session_actions")}
         />
       ) : null}
-      <IconButton
-        name="add"
-        iconSize={24}
-        onPress={onNewPress}
-        accessibilityLabel={t("a11y.new_chat")}
-      />
+      {canNew ? (
+        <IconButton
+          name="add"
+          iconSize={24}
+          onPress={onNewPress}
+          accessibilityLabel={t("a11y.new_chat")}
+        />
+      ) : null}
     </>
   );
 }

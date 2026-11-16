@@ -4,8 +4,17 @@
 import { router } from "expo-router";
 import { PriorityPickerBody } from "@/components/issue/pickers/priority-picker-body";
 import { useNewIssueDraftStore } from "@/data/stores/new-issue-draft-store";
+import { WriteAccessGuard } from "@/components/workspace/write-access-notice";
 
 export default function NewIssuePriorityPickerRoute() {
+  return (
+    <WriteAccessGuard>
+      <NewIssuePriorityPickerContent />
+    </WriteAccessGuard>
+  );
+}
+
+function NewIssuePriorityPickerContent() {
   const priority = useNewIssueDraftStore((s) => s.priority);
   const setPriority = useNewIssueDraftStore((s) => s.setPriority);
 

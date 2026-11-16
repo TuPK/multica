@@ -8,8 +8,17 @@ import { PriorityPickerBody } from "@/components/issue/pickers/priority-picker-b
 import { issueDetailOptions } from "@/data/queries/issues";
 import { useUpdateIssue } from "@/data/mutations/issues";
 import { useWorkspaceStore } from "@/data/workspace-store";
+import { WriteAccessGuard } from "@/components/workspace/write-access-notice";
 
 export default function IssuePriorityPickerRoute() {
+  return (
+    <WriteAccessGuard>
+      <IssuePriorityPickerContent />
+    </WriteAccessGuard>
+  );
+}
+
+function IssuePriorityPickerContent() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const wsId = useWorkspaceStore((s) => s.currentWorkspaceId);
   const { data: issue } = useQuery(issueDetailOptions(wsId, id));

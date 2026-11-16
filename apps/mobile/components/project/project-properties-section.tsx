@@ -27,9 +27,9 @@ import { useT } from "@/lib/i18n";
 
 interface Props {
   project: Project;
-  onPressStatus: () => void;
-  onPressPriority: () => void;
-  onPressLead: () => void;
+  onPressStatus?: () => void;
+  onPressPriority?: () => void;
+  onPressLead?: () => void;
 }
 
 export function ProjectPropertiesSection({
@@ -107,21 +107,33 @@ function Row({
   right,
 }: {
   label: string;
-  onPress: () => void;
+  onPress?: () => void;
   left: React.ReactNode;
   right: React.ReactNode;
 }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className="flex-row items-center gap-3 px-4 py-3 active:bg-secondary"
-    >
+  const inner = (
+    <>
       <Text className="text-sm text-muted-foreground w-20">{label}</Text>
       <View className="flex-row items-center gap-2 flex-1">
         {left}
         {right}
       </View>
-      <Chevron />
+      {onPress ? <Chevron /> : null}
+    </>
+  );
+
+  if (!onPress) {
+    return (
+      <View className="flex-row items-center gap-3 px-4 py-3">{inner}</View>
+    );
+  }
+
+  return (
+    <Pressable
+      onPress={onPress}
+      className="flex-row items-center gap-3 px-4 py-3 active:bg-secondary"
+    >
+      {inner}
     </Pressable>
   );
 }

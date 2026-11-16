@@ -20,10 +20,19 @@ import { useLocalSearchParams } from "expo-router";
 import { MentionPickerBody } from "@/components/issue/pickers/mention-picker-body";
 import { useNativeSearchBar } from "@/lib/use-native-search-bar";
 import { useT } from "@/lib/i18n";
+import { WriteAccessGuard } from "@/components/workspace/write-access-notice";
 
 type Mode = "comment" | "chat";
 
 export default function MentionPickerRoute() {
+  return (
+    <WriteAccessGuard>
+      <MentionPickerContent />
+    </WriteAccessGuard>
+  );
+}
+
+function MentionPickerContent() {
   const { mode: rawMode } = useLocalSearchParams<{ mode?: string }>();
   const { t } = useT("issues");
   const mode: Mode = rawMode === "chat" ? "chat" : "comment";

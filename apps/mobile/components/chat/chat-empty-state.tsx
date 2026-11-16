@@ -30,7 +30,7 @@ const FALLBACK_CONVERSATION_STARTER_KEYS = [
 interface Props {
   hasSessions: boolean;
   agent: Agent | null;
-  onPickPrompt: (text: string) => void;
+  onPickPrompt?: (text: string) => void;
 }
 
 export function ChatEmptyState({ hasSessions, agent, onPickPrompt }: Props) {
@@ -65,7 +65,7 @@ export function ChatEmptyState({ hasSessions, agent, onPickPrompt }: Props) {
           </Text>
         ) : null}
       </View>
-      {agent ? (
+      {agent && onPickPrompt ? (
         <View className="w-full max-w-xs gap-2">
           {starters.map((item, index) => (
             <Button

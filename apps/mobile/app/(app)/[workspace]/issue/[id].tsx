@@ -44,6 +44,8 @@ import { useViewedIssuesStore } from "@/data/viewed-issues-store";
 import { useCommentSelectStore } from "@/data/comment-select-store";
 import { useReplyTargetStore } from "@/data/stores/reply-target-store";
 import { useT } from "@/lib/i18n";
+import { formatWorkspaceWriteError } from "@/lib/plan-limit-copy";
+import { useCanWrite } from "@/lib/use-workspace-access";
 
 export default function IssueDetail() {
   // `highlight` + `h` come from inbox deep-link (apps/mobile/app/(app)/
@@ -61,6 +63,7 @@ export default function IssueDetail() {
 
   const detail = useQuery(issueDetailOptions(wsId, id));
   const timeline = useQuery(issueTimelineOptions(wsId, id));
+  const canWrite = useCanWrite(wsId);
 
   // Subscribe to per-issue WS events: status/priority/assignee/label
   // changes, comments, activity, reactions, agent task progress.
@@ -119,12 +122,11 @@ export default function IssueDetail() {
     const issueLink = webUrl
       ? `${webUrl}/${wsSlug}/issue/${issue.identifier}`
       : null;
-    const actions = ["cancel", "pin"];
-    if (isPinned) actions[1] = "unpin";
-    actions.push("edit");
+    const actions = ["cancel", isPinned ? "unpin" : "pin"];
+    if (canWrite) actions.push("edit");
     if (issueLink) actions.push("copy_link");
     if (issueLink) actions.push("open_web");
-    actions.push("delete");
+    if (canWrite) actions.push("delete");
     const options = actions.map((action) =>
       action === "cancel"
         ? t("common:actions.cancel")
@@ -140,12 +142,12 @@ export default function IssueDetail() {
                   ? t("menu.open_web")
                   : t("menu.delete_issue"),
     );
-    const destructiveIndex = options.length - 1;
+    const destructiveIndex = actions.indexOf("delete");
     ActionSheetIOS.showActionSheetWithOptions(
       {
         options,
         cancelButtonIndex: 0,
-        destructiveButtonIndex: destructiveIndex,
+        ...(destructiveIndex >= 0 ? { destructiveButtonIndex: destructiveIndex } : {}),
         title: issue.identifier,
       },
       (i) => {
@@ -154,28 +156,28 @@ export default function IssueDetail() {
           createPin.mutate({ item_type: "issue", item_id: issue.id });
         } else if (action === "unpin") {
           deletePin.mutate({ itemType: "issue", itemId: issue.id });
-        } else if (action === "edit") {
+        } else if (action === "edit" && canWrite) {
           if (wsSlug) router.push(`/${wsSlug}/issue/${issue.id}/edit`);
         } else if (action === "copy_link" && issueLink) {
           Clipboard.setStringAsync(issueLink);
         } else if (action === "open_web" && issueLink) {
           Linking.openURL(issueLink);
-        } else if (action === "delete") {
+        } else if (action === "delete" && canWrite) {
           confirmDelete(issue, t, () =>
             deleteIssue.mutate(issue.id, {
               onSuccess: () => router.back(),
               onError: (error) => Alert.alert(
                 t("delete.failed_title"),
-                error instanceof ApiError && error.status === 403
+                error instanceof ApiError && error.status === 403 && error.code !== "viewer_read_only"
                   ? t("delete.permission_denied")
-                  : t("delete.failed"),
+                  : formatWorkspaceWriteError(error, t("delete.failed")),
               ),
             }),
           );
         }
       },
     );
-  }, [issue, wsSlug, deleteIssue, isPinned, createPin, deletePin, t]);
+  }, [issue, wsSlug, canWrite, deleteIssue, isPinned, createPin, deletePin, t]);
 
   return (
     <View className="flex-1 bg-background">
@@ -229,7 +231,7 @@ export default function IssueDetail() {
             highlightCommentId={highlight}
             highlightNonce={h}
           />
-          <InlineCommentComposer issueId={id} />
+          {canWrite ? <InlineCommentComposer issueId={id} /> : null}
         </View>
       )}
     </View>

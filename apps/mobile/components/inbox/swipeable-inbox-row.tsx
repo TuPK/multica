@@ -49,11 +49,15 @@ const ACTION_WIDTH = 80;
 interface Props {
   item: InboxItem;
   onPress: () => void;
-  onArchive: () => void;
+  onArchive?: () => void;
 }
 
 export function SwipeableInboxRow({ item, onPress, onArchive }: Props) {
   const ref = useRef<SwipeableMethods>(null);
+
+  if (!onArchive) {
+    return <InboxRow item={item} onPress={onPress} />;
+  }
 
   const fireArchive = () => {
     // Close first so the swipe spring doesn't fight the row's removal from

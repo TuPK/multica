@@ -36,6 +36,7 @@ vi.mock("@/data/workspace-store", () => ({
   }),
 }));
 vi.mock("@/lib/use-color-scheme", () => ({ useColorScheme: () => ({ colorScheme: "light" }) }));
+vi.mock("@/lib/use-workspace-access", () => ({ useCanWrite: () => true }));
 vi.mock("@/lib/theme", () => ({ THEME: { light: { mutedForeground: "gray" } } }));
 vi.mock("@/lib/i18n", () => ({ useT: () => ({ t: (key: string) => key }) }));
 vi.mock("@/components/ui/text", () => ({ Text: "Text" }));

@@ -49,7 +49,7 @@ function groupReactions(
 interface Props {
   reactions: ReactionItem[];
   currentUserId: string | undefined;
-  onToggle: (emoji: string) => void;
+  onToggle?: (emoji: string) => void;
   className?: string;
 }
 
@@ -66,28 +66,40 @@ export function ReactionBar({
     <View
       className={cn("flex-row flex-wrap items-center gap-1.5", className)}
     >
-      {grouped.map((g) => (
-        <Pressable
-          key={g.emoji}
-          onPress={() => onToggle(g.emoji)}
-          className={cn(
-            "flex-row items-center gap-1 rounded-full border px-2 py-0.5",
-            g.reacted
-              ? "border-brand/30 bg-brand/10"
-              : "border-border bg-background",
-          )}
-        >
-          <Text className="text-xs">{g.emoji}</Text>
-          <Text
-            className={cn(
-              "text-xs tabular-nums",
-              g.reacted ? "text-brand" : "text-muted-foreground",
-            )}
+      {grouped.map((g) => {
+        const chipClass = cn(
+          "flex-row items-center gap-1 rounded-full border px-2 py-0.5",
+          g.reacted
+            ? "border-brand/30 bg-brand/10"
+            : "border-border bg-background",
+        );
+        const content = (
+          <>
+            <Text className="text-xs">{g.emoji}</Text>
+            <Text
+              className={cn(
+                "text-xs tabular-nums",
+                g.reacted ? "text-brand" : "text-muted-foreground",
+              )}
+            >
+              {g.count}
+            </Text>
+          </>
+        );
+        return onToggle ? (
+          <Pressable
+            key={g.emoji}
+            onPress={() => onToggle(g.emoji)}
+            className={chipClass}
           >
-            {g.count}
-          </Text>
-        </Pressable>
-      ))}
+            {content}
+          </Pressable>
+        ) : (
+          <View key={g.emoji} className={chipClass}>
+            {content}
+          </View>
+        );
+      })}
     </View>
   );
 }

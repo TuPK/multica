@@ -21,8 +21,17 @@ import { issueDetailOptions } from "@/data/queries/issues";
 import { useUpdateIssue } from "@/data/mutations/issues";
 import { useWorkspaceStore } from "@/data/workspace-store";
 import { useT } from "@/lib/i18n";
+import { WriteAccessGuard } from "@/components/workspace/write-access-notice";
 
 export default function IssueDueDatePickerRoute() {
+  return (
+    <WriteAccessGuard>
+      <IssueDueDatePickerContent />
+    </WriteAccessGuard>
+  );
+}
+
+function IssueDueDatePickerContent() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const wsId = useWorkspaceStore((s) => s.currentWorkspaceId);
   const { data: issue } = useQuery(issueDetailOptions(wsId, id));

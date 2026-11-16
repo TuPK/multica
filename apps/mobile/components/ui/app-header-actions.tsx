@@ -12,9 +12,12 @@ import { router } from "expo-router";
 import { IconButton } from "@/components/ui/icon-button";
 import { useWorkspaceStore } from "@/data/workspace-store";
 import { useT } from "@/lib/i18n";
+import { useCanWrite } from "@/lib/use-workspace-access";
 
 export function HeaderActions() {
+  const wsId = useWorkspaceStore((s) => s.currentWorkspaceId);
   const slug = useWorkspaceStore((s) => s.currentWorkspaceSlug);
+  const canWrite = useCanWrite(wsId);
   const { t } = useT();
 
   const onSearch = () => {
@@ -31,12 +34,14 @@ export function HeaderActions() {
         onPress={onSearch}
         accessibilityLabel={t("common:actions.search")}
       />
-      <IconButton
-        name="add"
-        iconSize={24}
-        onPress={onCreate}
-        accessibilityLabel={t("navigation:routes.new_issue")}
-      />
+      {canWrite ? (
+        <IconButton
+          name="add"
+          iconSize={24}
+          onPress={onCreate}
+          accessibilityLabel={t("navigation:routes.new_issue")}
+        />
+      ) : null}
     </>
   );
 }

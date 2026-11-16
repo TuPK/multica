@@ -9,8 +9,17 @@ import { ProjectPriorityPickerBody } from "@/components/project/pickers/project-
 import { projectDetailOptions } from "@/data/queries/projects";
 import { useUpdateProject } from "@/data/mutations/projects";
 import { useWorkspaceStore } from "@/data/workspace-store";
+import { WriteAccessGuard } from "@/components/workspace/write-access-notice";
 
 export default function ProjectPriorityPickerRoute() {
+  return (
+    <WriteAccessGuard>
+      <ProjectPriorityPickerContent />
+    </WriteAccessGuard>
+  );
+}
+
+function ProjectPriorityPickerContent() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const wsId = useWorkspaceStore((s) => s.currentWorkspaceId);
   const { data: project } = useQuery(projectDetailOptions(wsId, id));

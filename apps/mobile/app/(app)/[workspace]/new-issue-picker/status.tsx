@@ -6,8 +6,17 @@
 import { router } from "expo-router";
 import { StatusPickerBody } from "@/components/issue/pickers/status-picker-body";
 import { useNewIssueDraftStore } from "@/data/stores/new-issue-draft-store";
+import { WriteAccessGuard } from "@/components/workspace/write-access-notice";
 
 export default function NewIssueStatusPickerRoute() {
+  return (
+    <WriteAccessGuard>
+      <NewIssueStatusPickerContent />
+    </WriteAccessGuard>
+  );
+}
+
+function NewIssueStatusPickerContent() {
   const status = useNewIssueDraftStore((s) => s.status);
   const setStatus = useNewIssueDraftStore((s) => s.setStatus);
 

@@ -26,6 +26,7 @@ import {
 import { appConfigOptions } from "@/data/queries/billing";
 import { QUICK_EMOJIS } from "@/lib/quick-emojis";
 import { i18n, useT } from "@/lib/i18n";
+import { useCanWrite } from "@/lib/use-workspace-access";
 
 const QUICK_ROW_SIZE = 5;
 
@@ -36,6 +37,7 @@ export function useCommentLongPress(
 ): { onLongPress: () => void; isPressed: boolean } {
   const [isPressed, setIsPressed] = useState(false);
   const wsSlug = useWorkspaceStore((s) => s.currentWorkspaceSlug);
+  const canWrite = useCanWrite();
   const userId = useAuthStore((s) => s.user?.id);
   const toggleReaction = useToggleCommentReaction(issueId);
   const deleteComment = useDeleteComment(issueId);
@@ -58,9 +60,6 @@ export function useCommentLongPress(
     const canCopyLink = !!(webUrl && wsSlug && issueIdentifier);
     const reactions = (entry.reactions ?? []) as Reaction[];
 
-    Haptics.selectionAsync().catch(() => {});
-    setIsPressed(true);
-
     type Action =
       | { kind: "reply" }
       | { kind: "react" }
@@ -78,25 +77,32 @@ export function useCommentLongPress(
       actions.push(action);
     };
 
-    push(t("comments.reply"), { kind: "reply" });
-    push(t("comments.react"), { kind: "react" });
+    if (canWrite) {
+      push(t("comments.reply"), { kind: "reply" });
+      push(t("comments.react"), { kind: "react" });
+    }
     if (hasContent) {
       push(t("comments.copy"), { kind: "copy" });
       push(t("comments.select_text"), { kind: "select" });
     }
     if (canCopyLink) push(t("menu.copy_link"), { kind: "copyLink" });
-    if (isRoot) {
+    if (canWrite && isRoot) {
       push(resolved ? t("comments.unresolve") : t("comments.resolve"), {
         kind: "resolve",
       });
     }
-    if (isOwn) push(t("common:actions.delete"), { kind: "delete" });
+    if (canWrite && isOwn) push(t("common:actions.delete"), { kind: "delete" });
+    if (actions.length === 0) return;
     push(t("common:actions.cancel"), { kind: "cancel" });
 
+    Haptics.selectionAsync().catch(() => {});
+    setIsPressed(true);
+
     const cancelButtonIndex = options.length - 1;
-    const destructiveButtonIndex = isOwn
-      ? actions.findIndex((a) => a.kind === "delete")
-      : undefined;
+    const destructiveButtonIndex =
+      canWrite && isOwn
+        ? actions.findIndex((a) => a.kind === "delete")
+        : undefined;
 
     ActionSheetIOS.showActionSheetWithOptions(
       {
@@ -198,6 +204,7 @@ export function useCommentLongPress(
     entry,
     issueId,
     issueIdentifier,
+    canWrite,
     userId,
     wsSlug,
     toggleReaction,

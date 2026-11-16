@@ -58,6 +58,7 @@ import { THEME } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { continuousCorners } from "@/lib/radius";
 import { useT } from "@/lib/i18n";
+import { useCanWrite } from "@/lib/use-workspace-access";
 import { ReactionBar } from "./reaction-bar";
 import { useCommentLongPress } from "./comment-context-menu";
 import { useCommentSelectStore } from "@/data/comment-select-store";
@@ -429,6 +430,7 @@ function CommentBody({
   const { getName } = useActorLookup();
   const userId = useAuthStore((s) => s.user?.id);
   const wsId = useWorkspaceStore((s) => s.currentWorkspaceId);
+  const canWrite = useCanWrite(wsId);
   const toggle = useToggleCommentReaction(issueId);
   const qc = useQueryClient();
   const createComment = useCreateComment(issueId);
@@ -561,14 +563,14 @@ function CommentBody({
       {failed ? (
         <FailedActions
           error={failed.error}
-          onRetry={handleRetry}
+          onRetry={canWrite ? handleRetry : undefined}
           onDiscard={handleDiscard}
         />
       ) : (
         <ReactionBar
           reactions={reactions}
           currentUserId={userId}
-          onToggle={onToggleReaction}
+          onToggle={canWrite ? onToggleReaction : undefined}
         />
       )}
     </View>
@@ -596,7 +598,7 @@ function FailedActions({
   onDiscard,
 }: {
   error: string;
-  onRetry: () => void;
+  onRetry?: () => void;
   onDiscard: () => void;
 }) {
   const { colorScheme } = useColorScheme();
@@ -611,16 +613,18 @@ function FailedActions({
       >
         {error || t("failed.send")}
       </Text>
-      <Pressable
-        onPress={onRetry}
-        hitSlop={6}
-        accessibilityRole="button"
-        accessibilityLabel={t("failed.retry_a11y")}
-      >
-        <Text className="text-xs text-primary font-medium">
-          {t("failed.retry")}
-        </Text>
-      </Pressable>
+      {onRetry ? (
+        <Pressable
+          onPress={onRetry}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel={t("failed.retry_a11y")}
+        >
+          <Text className="text-xs text-primary font-medium">
+            {t("failed.retry")}
+          </Text>
+        </Pressable>
+      ) : null}
       <Pressable
         onPress={onDiscard}
         hitSlop={6}

@@ -13,8 +13,17 @@ import { useUpdateIssue } from "@/data/mutations/issues";
 import { useWorkspaceStore } from "@/data/workspace-store";
 import { useNativeSearchBar } from "@/lib/use-native-search-bar";
 import { useT } from "@/lib/i18n";
+import { WriteAccessGuard } from "@/components/workspace/write-access-notice";
 
 export default function IssueProjectPickerRoute() {
+  return (
+    <WriteAccessGuard>
+      <IssueProjectPickerContent />
+    </WriteAccessGuard>
+  );
+}
+
+function IssueProjectPickerContent() {
   const { t } = useT("issues");
   const { id } = useLocalSearchParams<{ id: string }>();
   const wsId = useWorkspaceStore((s) => s.currentWorkspaceId);
