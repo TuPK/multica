@@ -27,6 +27,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
 	"github.com/multica-ai/multica/server/internal/workspacedeletion"
+	"github.com/multica-ai/multica/server/internal/workspaceguard"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
@@ -820,11 +821,24 @@ func normalizeMemberRole(role string) (string, bool) {
 
 	role = strings.TrimSpace(role)
 	switch role {
-	case "owner", "admin", "member":
+	case "owner", "admin", "member", workspaceguard.RoleViewer:
 		return role, true
 	default:
 		return "", false
 	}
+}
+
+// canAssignMemberRole reports whether a member with requesterRole may give a
+// member the role (spec 6.6): an owner assigns any role, an admin assigns every
+// role but owner, and no one else assigns a role.
+func canAssignMemberRole(requesterRole, role string) bool {
+	switch requesterRole {
+	case "owner":
+		return true
+	case "admin":
+		return role != "owner"
+	}
+	return false
 }
 
 type UpdateMemberRequest struct {
@@ -865,7 +879,7 @@ func (h *Handler) UpdateMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if (target.Role == "owner" || role == "owner") && requester.Role != "owner" {
+	if !canAssignMemberRole(requester.Role, role) || (target.Role == "owner" && requester.Role != "owner") {
 		writeError(w, http.StatusForbidden, "insufficient permissions")
 		return
 	}

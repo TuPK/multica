@@ -273,6 +273,35 @@ func TestCreateShareLink_RejectsInvalidInput(t *testing.T) {
 	}
 }
 
+// Spec 6.6: a share link may grant the viewer role. A role outside member,
+// admin and viewer is still refused.
+func TestCreateShareLink_GrantsViewerAndRefusesOwner(t *testing.T) {
+	clearShareLinksForTestWorkspace(t)
+
+	req := newRequest("POST", "/api/workspaces/"+testWorkspaceID+"/share-links", CreateShareLinkRequest{Role: "viewer"})
+	req = withURLParam(req, "id", testWorkspaceID)
+	w := httptest.NewRecorder()
+	testHandler.CreateShareLink(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("viewer link: expected 201, got %d: %s", w.Code, w.Body.String())
+	}
+	var link ShareLinkResponse
+	if err := json.NewDecoder(w.Body).Decode(&link); err != nil {
+		t.Fatalf("decode link: %v", err)
+	}
+	if link.Role != "viewer" {
+		t.Fatalf("link role %q, want viewer", link.Role)
+	}
+
+	req2 := newRequest("POST", "/api/workspaces/"+testWorkspaceID+"/share-links", CreateShareLinkRequest{Role: "owner"})
+	req2 = withURLParam(req2, "id", testWorkspaceID)
+	w2 := httptest.NewRecorder()
+	testHandler.CreateShareLink(w2, req2)
+	if w2.Code != http.StatusBadRequest {
+		t.Fatalf("owner link: expected 400, got %d: %s", w2.Code, w2.Body.String())
+	}
+}
+
 func TestCreateShareLink_RejectsOverflowingInput(t *testing.T) {
 	clearShareLinksForTestWorkspace(t)
 
