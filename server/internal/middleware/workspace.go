@@ -279,7 +279,7 @@ func buildMiddleware(queries *db.Queries, resolve workspaceResolver, roles []str
 			// The session policies come first: they refuse a caller whose
 			// session is not good enough for this workspace before the state
 			// of the workspace is looked at.
-			if !guardWorkspacePolicy(w, r, workspaceID) {
+			if !guardWorkspacePolicy(w, r, workspaceID, member) {
 				return
 			}
 			if !guardWorkspaceState(w, r, member, wsUUID) {
@@ -320,6 +320,12 @@ func WorkspaceStateFromContext(ctx context.Context) *workspacestate.Guard {
 // the workspace has none or its plan lacks the feature.
 type PolicyReader interface {
 	Policy(ctx context.Context, workspaceID string) (workspacepolicy.Policy, error)
+}
+
+// SSOReader is the optional second half of a PolicyReader: it says whether
+// require_sso binds a member. A reader that lacks it never refuses for SSO.
+type SSOReader interface {
+	SSOAccess(ctx context.Context, workspaceID, userID string) (workspaceguard.SSOAccess, error)
 }
 
 // WithWorkspacePolicy makes reader the source of workspace policies for every
@@ -366,7 +372,7 @@ func requestSession(r *http.Request) workspaceguard.Session {
 // response has been written. Machine credentials pass without reading the
 // policy. A policy that cannot be read refuses a session, as the state guard
 // does.
-func guardWorkspacePolicy(w http.ResponseWriter, r *http.Request, workspaceID string) bool {
+func guardWorkspacePolicy(w http.ResponseWriter, r *http.Request, workspaceID string, member db.Member) bool {
 	reader, _ := r.Context().Value(ctxKeyWorkspacePolicy).(PolicyReader)
 	if reader == nil {
 		return true
@@ -381,6 +387,21 @@ func guardWorkspacePolicy(w http.ResponseWriter, r *http.Request, workspaceID st
 			"path", r.URL.Path, "workspace_id", workspaceID, "error", err)
 		writeCodedError(w, http.StatusServiceUnavailable, workspaceguard.CodeStateUnavailable, workspaceguard.Message(workspaceguard.CodeStateUnavailable))
 		return false
+	}
+	if policy.RequireSSO {
+		// The SSO facts cost two reads, so only a workspace that requires SSO
+		// pays for them. A failed read refuses, as an unreadable policy does.
+		session.IsOwner = member.Role == "owner"
+		if ssoReader, ok := reader.(SSOReader); ok && !session.IsOwner {
+			access, err := ssoReader.SSOAccess(r.Context(), workspaceID, util.UUIDToString(member.UserID))
+			if err != nil {
+				slog.Warn("workspace: sso access unavailable",
+					"path", r.URL.Path, "workspace_id", workspaceID, "error", err)
+				writeCodedError(w, http.StatusServiceUnavailable, workspaceguard.CodeStateUnavailable, workspaceguard.Message(workspaceguard.CodeStateUnavailable))
+				return false
+			}
+			session.SSOConnectionID, session.SSOCovered = access.ConnectionID, access.Covered
+		}
 	}
 	code := workspaceguard.CheckWorkspaceAccess(policy, session, time.Now())
 	if code == "" {

@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/entitlement"
+	"github.com/multica-ai/multica/server/internal/sso"
 	"github.com/multica-ai/multica/server/internal/util"
 	"github.com/multica-ai/multica/server/internal/workspacepolicy"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -36,13 +37,23 @@ type Session struct {
 	// AllowNoWorkspace admits a bound token on a route with no workspace
 	// context. Only GET /api/me is such a route.
 	AllowNoWorkspace bool
+	// IsOwner marks the owner of the workspace, who require_sso does not bind.
+	IsOwner bool
+	// SSOConnectionID is the active SSO connection of the workspace, or empty
+	// when it has none. Only read when the policy requires SSO.
+	SSOConnectionID string
+	// SSOCovered reports that the caller's email is on a verified domain of the
+	// workspace. Only read when the policy requires SSO.
+	SSOCovered bool
 }
 
 // CheckWorkspaceAccess applies the session policies of one workspace to a
 // request's session and returns the refusal code, or "" when the request may
 // proceed. A personal access token bound to a workspace is refused on any other
-// workspace first, whatever kind of credential it is. require_sso is stored but
-// refuses nothing until P36.
+// workspace first, whatever kind of credential it is. require_sso refuses a
+// member of a verified domain whose session did not come through the
+// workspace's SSO connection; the owner, a member outside the verified domains,
+// and a workspace with no active connection are not refused.
 func CheckWorkspaceAccess(p workspacepolicy.Policy, s Session, now time.Time) string {
 	if s.TokenWorkspaceID != "" {
 		switch {
@@ -54,6 +65,9 @@ func CheckWorkspaceAccess(p workspacepolicy.Policy, s Session, now time.Time) st
 	}
 	if s.Machine {
 		return ""
+	}
+	if p.RequireSSO && s.SSOCovered && s.SSOConnectionID != "" && !s.IsOwner && !sso.HasAMR(s.AMR, s.SSOConnectionID) {
+		return CodeSSORequired
 	}
 	if p.RequireMFA && !workspacepolicy.HasMFA(s.AMR) {
 		return CodeMFARequired
@@ -127,4 +141,51 @@ func EffectivePolicy(ctx context.Context, q *db.Queries, provider entitlement.Pr
 		return workspacepolicy.Default(), nil
 	}
 	return PolicyFromRow(row), nil
+}
+
+// SSOAccess is what require_sso needs to know about one member of a workspace.
+type SSOAccess struct {
+	// ConnectionID is the workspace's active SSO connection, or empty when it
+	// has none: with no way to sign in through SSO, requiring it would lock
+	// everyone out.
+	ConnectionID string
+	// Covered reports that the member's email is on a verified domain of the
+	// workspace. Guests and contractors outside the domains follow the invite
+	// policy instead (spec 6.3).
+	Covered bool
+}
+
+// SSOAccess reads the SSO facts of userID in a workspace.
+func (s *PolicyStore) SSOAccess(ctx context.Context, workspaceID, userID string) (SSOAccess, error) {
+	ws, err := util.ParseUUID(workspaceID)
+	if err != nil {
+		return SSOAccess{}, err
+	}
+	uid, err := util.ParseUUID(userID)
+	if err != nil {
+		return SSOAccess{}, err
+	}
+	conn, err := s.q.GetSSOConnectionByWorkspace(ctx, ws)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return SSOAccess{}, nil
+	}
+	if err != nil {
+		return SSOAccess{}, err
+	}
+	if conn.Status != "active" {
+		return SSOAccess{}, nil
+	}
+	user, err := s.q.GetUser(ctx, uid)
+	if err != nil {
+		return SSOAccess{}, err
+	}
+	domain := sso.EmailDomain(user.Email)
+	if domain == "" {
+		return SSOAccess{ConnectionID: util.UUIDToString(conn.ID)}, nil
+	}
+	covered, err := s.q.HasVerifiedSSODomain(ctx, db.HasVerifiedSSODomainParams{WorkspaceID: ws, Domain: domain})
+	if err != nil {
+		return SSOAccess{}, err
+	}
+	return SSOAccess{ConnectionID: util.UUIDToString(conn.ID), Covered: covered}, nil
 }

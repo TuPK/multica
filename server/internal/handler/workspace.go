@@ -1688,6 +1688,20 @@ func (h *Handler) deleteWorkspaceData(ctx context.Context, tx pgx.Tx, wsID pgtyp
 			run:  func() error { return qtx.DeleteWorkspaceIssueRoots(ctx, wsID) },
 		},
 		{
+			// sso_connection and sso_domain carry no foreign key, so nothing
+			// else removes them. A verified domain left behind would stay
+			// claimed by a workspace that no longer exists.
+			name: "delete sso connection",
+			run: func() error {
+				_, err := qtx.DeleteSSOConnection(ctx, wsID)
+				return err
+			},
+		},
+		{
+			name: "delete sso domains",
+			run:  func() error { return qtx.DeleteSSODomainsByWorkspace(ctx, wsID) },
+		},
+		{
 			// issue_status carries no foreign key by project rule, so its rows
 			// are swept explicitly. Placed after the issue deletes so no issue
 			// row outlives the catalog its status key resolves against.

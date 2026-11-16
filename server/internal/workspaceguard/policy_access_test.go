@@ -38,7 +38,7 @@ func TestCheckWorkspaceAccess(t *testing.T) {
 		{"age limit, auth time unknown", ageOn, Session{AMR: otp}, CodeReauthRequired},
 		{"both, mfa is reported first", both, Session{AMR: otp, AuthTime: stale, AuthTimeKnown: true}, CodeMFARequired},
 		{"both, mfa present but old", both, Session{AMR: mfa, AuthTime: stale, AuthTimeKnown: true}, CodeReauthRequired},
-		{"require_sso refuses nothing before P36", ssoOn, Session{AMR: otp, AuthTime: fresh, AuthTimeKnown: true}, ""},
+		{"require_sso with no connection facts refuses nothing", ssoOn, Session{AMR: otp, AuthTime: fresh, AuthTimeKnown: true}, ""},
 		{"machine credential skips mfa", mfaOn, Session{Machine: true}, ""},
 		{"machine credential skips the age limit", ageOn, Session{Machine: true}, ""},
 		{"machine credential skips both", both, Session{Machine: true, AMR: otp, AuthTime: stale, AuthTimeKnown: true}, ""},

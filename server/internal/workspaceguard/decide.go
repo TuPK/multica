@@ -28,6 +28,7 @@ const (
 const (
 	CodeMFARequired    = "mfa_required"
 	CodeReauthRequired = "reauth_required"
+	CodeSSORequired    = "sso_required"
 )
 
 // Personal access token refusal codes (spec 6.5), returned with HTTP 403.
@@ -216,6 +217,8 @@ func Message(code string) string {
 		return "this workspace requires two-step sign-in"
 	case CodeReauthRequired:
 		return "this workspace requires a recent sign-in"
+	case CodeSSORequired:
+		return "this workspace requires single sign-on"
 	case CodeTokenReadOnly:
 		return "this token is read-only"
 	case CodeTokenWorkspaceMismatch:

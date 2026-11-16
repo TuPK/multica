@@ -47,6 +47,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/research"
 	"github.com/multica-ai/multica/server/internal/seatcapacity"
 	"github.com/multica-ai/multica/server/internal/service"
+	"github.com/multica-ai/multica/server/internal/sso"
 	"github.com/multica-ai/multica/server/internal/storage"
 	"github.com/multica-ai/multica/server/internal/util"
 	"github.com/multica-ai/multica/server/internal/util/secretbox"
@@ -1707,6 +1708,10 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	r.With(authVerifyRL).Post("/auth/verify-code", h.VerifyCode)
 	r.With(authRL).Post("/auth/google", h.GoogleLogin)
 	r.With(authVerifyRL).Post("/auth/mfa/verify", h.VerifyMFA)
+	ssoHandler := handler.NewSSOHandler(h, sso.Client{})
+	r.With(authRL).Post("/auth/sso/discover", ssoHandler.Discover)
+	r.With(authVerifyRL).Get("/auth/sso/start", ssoHandler.Start)
+	r.With(authVerifyRL).Get("/auth/sso/callback", ssoHandler.Callback)
 	r.Post("/auth/logout", h.Logout)
 
 	// Public API
@@ -2024,6 +2029,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Group(func(r chi.Router) {
 					r.Use(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner"))
 					handler.NewSSODomainHandler(h, net.DefaultResolver).Routes(r)
+					ssoHandler.ConnectionRoutes(r)
 				})
 				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner"), handler.RequireHumanActor).Post("/exports", h.CreateWorkspaceExport)
 				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner")).Get("/exports", h.ListWorkspaceExports)
