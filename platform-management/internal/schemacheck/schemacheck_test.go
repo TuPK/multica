@@ -40,7 +40,7 @@ func TestRequiredVersionsAreSortedUniqueAndExist(t *testing.T) {
 // The platform's own tables are the ones with these names. A migration that
 // touches one without its version in Required would let the service start
 // against a schema that lacks the change.
-var platformTable = regexp.MustCompile(`^(platform_.*|plan|workspace_subscription|billing_order|billing_notice|workspace_export|platform_usage_daily|platform_seat_operation|billing_profile)$`)
+var platformTable = regexp.MustCompile(`^(platform_.*|plan|workspace_subscription|billing_order|billing_notice|workspace_export|platform_usage_daily|platform_seat_operation|billing_profile|plan_price_change)$`)
 
 var (
 	sqlLineComment  = regexp.MustCompile(`--[^\n]*`)

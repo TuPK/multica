@@ -1976,6 +1976,22 @@ type Plan struct {
 	Version        int64              `json:"version"`
 }
 
+type PlanPriceChange struct {
+	ID            pgtype.UUID        `json:"id"`
+	PlanKey       string             `json:"plan_key"`
+	State         string             `json:"state"`
+	EffectiveFrom pgtype.Timestamptz `json:"effective_from"`
+	Old           []byte             `json:"old"`
+	New           []byte             `json:"new"`
+	Reason        string             `json:"reason"`
+	NoticeSentAt  pgtype.Timestamptz `json:"notice_sent_at"`
+	CreatedBy     pgtype.UUID        `json:"created_by"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	AppliedAt     pgtype.Timestamptz `json:"applied_at"`
+	CanceledBy    pgtype.UUID        `json:"canceled_by"`
+	CanceledAt    pgtype.Timestamptz `json:"canceled_at"`
+}
+
 type PlanningCycle struct {
 	ID          pgtype.UUID        `json:"id"`
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
