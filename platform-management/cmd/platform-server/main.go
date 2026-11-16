@@ -238,6 +238,7 @@ func run() error {
 		Plans:         plan.NewPgxReader(pool),
 		Members:       subscription.NewPgxMembers(pool),
 		Orders:        orders,
+		Activator:     orders,
 		Workspaces:    billingapi.NewPgxWorkspaces(pool),
 		VATRate:       cfg.Billing.VATRate,
 		AppURL:        cfg.AppURL,

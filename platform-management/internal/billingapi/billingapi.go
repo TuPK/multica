@@ -56,8 +56,16 @@ const (
 	codeUnavailable     = "seat_purchase_unavailable"
 	codeStale           = "seat_purchase_stale"
 	codeProration       = "proration_mismatch"
-	codeInternal        = "internal"
+	// codePlanChangeUnavailable is spec 7b.1's plan_change_unavailable.
+	codePlanChangeUnavailable = "plan_change_unavailable"
+	codeInternal              = "internal"
 )
+
+// UsageActivator activates a workspace on a pay as you go plan. *billing.Service
+// is one.
+type UsageActivator interface {
+	ActivateUsage(ctx context.Context, a billing.UsageActivation) (o billing.Order, created bool, err error)
+}
 
 // OrderCreator creates pending orders. *billing.Service is one.
 type OrderCreator interface {
@@ -85,8 +93,10 @@ type Deps struct {
 	Plans         plan.Reader
 	Members       subscription.MemberReader
 	Orders        OrderCreator
-	Workspaces    WorkspaceReader
-	VATRate       billing.Rate
+	// Activator activates a pay as you go plan at checkout. *billing.Service is one.
+	Activator  UsageActivator
+	Workspaces WorkspaceReader
+	VATRate    billing.Rate
 	// AppURL is the origin of the Multica web app, PLATFORM_APP_URL.
 	AppURL string
 	Now    func() time.Time
@@ -265,6 +275,53 @@ func pickPlan(plans []plan.Plan, sub *subscription.Subscription, key string) (p 
 	return subscription.CheapestPublicPaidPlan(plans)
 }
 
+// checkoutUsage activates a pay as you go plan at once (spec 7b.3, rule 6): no
+// order waits for payment, and the activation's own order is paid for 0 VND. A
+// workspace on a paid plan cannot switch here yet; that switch waits for the
+// renewal (D40), which this release does not implement for usage plans.
+func (h *Handler) checkoutUsage(w http.ResponseWriter, r *http.Request, ws, user, key string, p plan.Plan, sub *subscription.Subscription) {
+	if sub != nil && sub.PlanKey != plan.FreeKey && sub.PlanKey != p.Key {
+		writeJSON(w, http.StatusConflict, map[string]any{
+			"error": "the workspace is on a paid plan; the switch to a usage plan is not available yet",
+			"code":  codePlanChangeUnavailable, "reason": "from_paid_plan",
+		})
+		return
+	}
+	profile, err := subscription.ProfileOrDefault(r.Context(), h.Subscriptions, ws)
+	if err != nil {
+		h.internalError(w, r, "read the billing profile", err)
+		return
+	}
+	if refusal := subscription.UsageProfileReady(profile); refusal != nil {
+		body := map[string]any{"error": refusal.Message, "code": refusal.Code}
+		for k, v := range refusal.Detail {
+			body[k] = v
+		}
+		writeJSON(w, refusal.Status, body)
+		return
+	}
+	slug, found, err := h.Workspaces.Slug(r.Context(), ws)
+	if err != nil {
+		h.internalError(w, r, "read workspace", err)
+		return
+	}
+	if !found {
+		writeError(w, http.StatusNotFound, codeNotFound, "not found")
+		return
+	}
+	order, _, err := h.Activator.ActivateUsage(r.Context(), billing.UsageActivation{
+		WorkspaceID: ws, PlanKey: p.Key, CreatedBy: user, IdempotencyKey: key,
+	})
+	if err != nil {
+		h.internalError(w, r, "activate usage plan", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, checkoutResponse{
+		RequestID: order.ID, SessionID: order.ID,
+		URL: h.AppURL + "/" + url.PathEscape(slug) + "/billing/orders/" + order.ID,
+	})
+}
+
 func (h *Handler) checkout(w http.ResponseWriter, r *http.Request) {
 	var in checkoutRequest
 	if !decodeBody(w, r, &in) {
@@ -313,6 +370,10 @@ func (h *Handler) checkout(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		h.internalError(w, r, "check the plan audience", err)
+		return
+	}
+	if p.BillingModel == plan.BillingUsage {
+		h.checkoutUsage(w, r, ws, user, key, p, sub)
 		return
 	}
 	if !subscription.SellsSeats(p) {
