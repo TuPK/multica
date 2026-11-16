@@ -24,3 +24,6 @@ RETURNING *;
 
 -- name: DeleteSSODomain :execrows
 DELETE FROM sso_domain WHERE workspace_id = $1 AND domain = $2;
+
+-- name: DeleteSSODomainsByWorkspace :exec
+DELETE FROM sso_domain WHERE workspace_id = $1;

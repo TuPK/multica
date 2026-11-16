@@ -54,6 +54,15 @@ func (q *Queries) DeleteSSODomain(ctx context.Context, arg DeleteSSODomainParams
 	return result.RowsAffected(), nil
 }
 
+const deleteSSODomainsByWorkspace = `-- name: DeleteSSODomainsByWorkspace :exec
+DELETE FROM sso_domain WHERE workspace_id = $1
+`
+
+func (q *Queries) DeleteSSODomainsByWorkspace(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteSSODomainsByWorkspace, workspaceID)
+	return err
+}
+
 const getSSODomain = `-- name: GetSSODomain :one
 SELECT workspace_id, domain, token, verified_at FROM sso_domain WHERE workspace_id = $1 AND domain = $2
 `

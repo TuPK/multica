@@ -2559,6 +2559,19 @@ type SquadSkill struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
+type SsoConnection struct {
+	ID              pgtype.UUID        `json:"id"`
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	Issuer          string             `json:"issuer"`
+	ClientID        string             `json:"client_id"`
+	ClientSecretEnc []byte             `json:"client_secret_enc"`
+	DefaultRole     string             `json:"default_role"`
+	Status          string             `json:"status"`
+	CreatedBy       pgtype.UUID        `json:"created_by"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
 type SsoDomain struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	Domain      string             `json:"domain"`
