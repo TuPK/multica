@@ -14,6 +14,8 @@ const (
 	routeWorkspace      = "/api/workspaces/{id}"
 	routeLeave          = "/api/workspaces/{id}/leave"
 	routeWsDeletion     = "/api/workspaces/{id}/deletion"
+	routeExports        = "/api/workspaces/{id}/exports"
+	routeExport         = "/api/workspaces/{id}/exports/{exportId}"
 	routeMemberRemove   = "/api/workspaces/{id}/members/{memberId}"
 	routeInvitation     = "/api/workspaces/{id}/invitations/{invitationId}"
 	routeShareLink      = "/api/workspaces/{id}/share-links/{linkId}"
@@ -280,6 +282,53 @@ func TestMessageIsStablePerCode(t *testing.T) {
 	} {
 		if got := Message(code); got != want {
 			t.Errorf("Message(%q) = %q, want %q", code, got, want)
+		}
+	}
+}
+
+// exportRoutes are the three workspace-export routes of the platform spec 5.11
+// and the method each serves.
+var exportRoutes = []struct{ method, pattern string }{
+	{"POST", routeExports},
+	{"GET", routeExports},
+	{"GET", routeExport},
+}
+
+func TestDecideExportRoutesAreOwnerOnlyInEveryNonActiveStatus(t *testing.T) {
+	for _, status := range []string{"read_only", "suspended", "pending_deletion"} {
+		for _, rt := range exportRoutes {
+			d := Decide(status, rt.method, rt.pattern)
+			if !d.Allowed || !reflect.DeepEqual(d.Roles, wantOwnerOnly) {
+				t.Errorf("%s %s %s = %+v, want allowed for the owner role only", status, rt.method, rt.pattern, d)
+			}
+			for _, role := range []string{"admin", "member"} {
+				got := DecideForMember(status, rt.method, rt.pattern, role, false)
+				if got.Allowed || got.Code != CodeFor(status) {
+					t.Errorf("%s %s %s as %s = %+v, want a %s refusal", status, rt.method, rt.pattern, role, got, CodeFor(status))
+				}
+			}
+			if got := DecideForMember(status, rt.method, rt.pattern, "owner", false); !got.Allowed || got.Code != "" {
+				t.Errorf("%s %s %s as owner = %+v, want allowed", status, rt.method, rt.pattern, got)
+			}
+		}
+	}
+}
+
+func TestDecideExportRoutesOpenNothingElse(t *testing.T) {
+	other := []struct{ method, pattern string }{
+		{"PUT", routeExports}, {"PATCH", routeExport}, {"POST", routeExport},
+		{"POST", "/api/workspaces/{id}/members"},
+	}
+	for _, status := range []string{"read_only", "suspended", "pending_deletion"} {
+		for _, rt := range other {
+			if d := Decide(status, rt.method, rt.pattern); d.Allowed {
+				t.Errorf("%s %s %s allowed: %+v", status, rt.method, rt.pattern, d)
+			}
+		}
+	}
+	for _, rt := range exportRoutes {
+		if d := Decide("active", rt.method, rt.pattern); !d.Allowed || len(d.Roles) != 0 {
+			t.Errorf("active %s %s = %+v, want a plain allow", rt.method, rt.pattern, d)
 		}
 	}
 }

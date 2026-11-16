@@ -2853,6 +2853,20 @@ type Workspace struct {
 	DigestMode            string             `json:"digest_mode"`
 }
 
+type WorkspaceExport struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	RequestedBy pgtype.UUID        `json:"requested_by"`
+	Status      string             `json:"status"`
+	StorageKey  string             `json:"storage_key"`
+	SizeBytes   int64              `json:"size_bytes"`
+	Error       string             `json:"error"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	StartedAt   pgtype.Timestamptz `json:"started_at"`
+	FinishedAt  pgtype.Timestamptz `json:"finished_at"`
+	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+}
+
 type WorkspaceInvitation struct {
 	ID            pgtype.UUID        `json:"id"`
 	WorkspaceID   pgtype.UUID        `json:"workspace_id"`

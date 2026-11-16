@@ -32,6 +32,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/selfhosttelemetry"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/workspacedeletion"
+	"github.com/multica-ai/multica/server/internal/workspaceexport"
 	"github.com/multica-ai/multica/server/internal/workspaceguard"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/featureflag"
@@ -905,6 +906,9 @@ func main() {
 	// their sole-member workspaces deleted (spec 4.6).
 	if err := schedulerMgr.Register(scheduler.AccountDeletionJob(h)); err != nil {
 		slog.Error("scheduler: register account deletion", "error", err)
+	}
+	if err := schedulerMgr.Register(scheduler.WorkspaceExportJob(workspaceexport.NewRunner(queries, h.Storage))); err != nil {
+		slog.Error("scheduler: register workspace export", "error", err)
 	}
 	h.WorkspaceDeletionDays = workspaceDeletionDays
 	if err := schedulerMgr.Register(scheduler.WorkspaceDeletionJob(h, workspaceguard.New(queries, storeRedis))); err != nil {

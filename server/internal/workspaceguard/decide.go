@@ -69,6 +69,11 @@ func Decide(status, method, routePattern string) Decision {
 	refuse := Decision{Code: CodeFor(status)}
 
 	if workspacestate.Status(status) == workspacestate.ReadOnly {
+		// The export routes are owner-only even for reads, so they come before
+		// the read shortcut.
+		if exportRoute(method, pattern) {
+			return Decision{Allowed: true, Roles: owner}
+		}
 		if isRead(method) || readOnlyAllows(method, pattern) {
 			return Decision{Allowed: true}
 		}
@@ -100,6 +105,18 @@ func isRead(method string) bool {
 
 func underSubscriptions(pattern string) bool {
 	return pattern == subscriptionsPrefix || strings.HasPrefix(pattern, subscriptionsPrefix+"/")
+}
+
+// exportRoute reports whether the request is one of the three workspace-export
+// routes of the platform spec 5.11: create, list, and read one export.
+func exportRoute(method, pattern string) bool {
+	switch {
+	case method == http.MethodPost && pattern == "/api/workspaces/{id}/exports":
+		return true
+	case method == http.MethodGet && (pattern == "/api/workspaces/{id}/exports" || pattern == "/api/workspaces/{id}/exports/{exportId}"):
+		return true
+	}
+	return false
 }
 
 // archiveRoutes are the non-DELETE routes that delete or archive a resource.
@@ -142,6 +159,8 @@ func restrictedAllows(method, pattern string) (roles []string, ok bool) {
 	case method == http.MethodPost && pattern == "/api/workspaces/{id}/leave":
 		return nil, true
 	case method == http.MethodDelete && pattern == "/api/workspaces/{id}/deletion":
+		return owner, true
+	case exportRoute(method, pattern):
 		return owner, true
 	case isRead(method) && (pattern == "/api/company/export" || pattern == "/api/hub/export"):
 		return owner, true
