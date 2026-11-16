@@ -123,6 +123,12 @@ type Config struct {
 	// APIRateCeiling is PLATFORM_API_RATE_CEILING: the API rate per minute a
 	// limited plan gets when it leaves the rate empty (spec 7b.3 rule 2).
 	APIRateCeiling int64
+	// AccountCreatePerHour is PLATFORM_ACCOUNT_CREATE_PER_HOUR: the account
+	// requests one staff member may create in an hour (spec 7b.5 rule 1).
+	AccountCreatePerHour int
+	// IndividualMaxSeats is PLATFORM_INDIVIDUAL_MAX_SEATS: the most seats an
+	// individual account may be created with (spec 7b.1, 7b.5 rule 6).
+	IndividualMaxSeats int
 }
 
 // Load reads the configuration through getenv and reports every problem it
@@ -252,10 +258,28 @@ func Load(getenv func(string) string) (Config, error) {
 		}
 	}
 
+	cfg.AccountCreatePerHour = wholeNumber(get, fail, "PLATFORM_ACCOUNT_CREATE_PER_HOUR", 30)
+	cfg.IndividualMaxSeats = wholeNumber(get, fail, "PLATFORM_INDIVIDUAL_MAX_SEATS", 5)
+
 	if len(errs) > 0 {
 		return Config{}, errors.Join(errs...)
 	}
 	return cfg, nil
+}
+
+// wholeNumber reads name as a whole number of 1 or more, or returns def when it
+// is empty.
+func wholeNumber(get func(string) string, fail func(variable, reason string), name string, def int) int {
+	raw := get(name)
+	if raw == "" {
+		return def
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 1 {
+		fail(name, "must be a whole number, 1 or more")
+		return def
+	}
+	return n
 }
 
 // loadDevVerificationCode reads the development sign-in code. It refuses a

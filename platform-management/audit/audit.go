@@ -166,6 +166,9 @@ var Catalog = []string{
 	ActionPlanPriceScheduled,
 	ActionPlanPriceApplied,
 	ActionPlanPriceCanceled,
+	ActionAccountProvisionRequested,
+	ActionAccountProvisionCanceled,
+	ActionAccountProvisionFailed,
 }
 
 // Cutover action (gate G-R2): written by the platform-backfill command in the
@@ -175,6 +178,16 @@ const ActionSubscriptionBackfilled = "subscription.backfilled"
 // R5 action (spec 7b.1, rule 3): written by the platform in the transaction
 // that changes a workspace's account kind; the detail holds the old and new kind.
 const ActionWorkspaceAccountKindChanged = "workspace.account_kind_changed"
+
+// R5 account request actions (spec 7b.5, audit table): written by the platform in the
+// transaction that creates or cancels a request, with the staff actor, no workspace_id and
+// the request's email as the target label. ActionAccountProvisionFailed is written when a
+// request moves to failed.
+const (
+	ActionAccountProvisionRequested = "account.provision_requested"
+	ActionAccountProvisionCanceled  = "account.provision_canceled"
+	ActionAccountProvisionFailed    = "account.provision_failed"
+)
 
 // R5 plan price actions (spec 7b.4, rule 15): written in the transaction that
 // schedules, applies or cancels a price change. The detail holds plan (the plan

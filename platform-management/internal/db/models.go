@@ -2011,6 +2011,32 @@ type PlatformAccount struct {
 	DeletionScheduledAt pgtype.Timestamptz `json:"deletion_scheduled_at"`
 }
 
+type PlatformAccountRequest struct {
+	ID              pgtype.UUID        `json:"id"`
+	Kind            string             `json:"kind"`
+	Email           string             `json:"email"`
+	DisplayName     string             `json:"display_name"`
+	WorkspaceName   string             `json:"workspace_name"`
+	WorkspaceSlug   string             `json:"workspace_slug"`
+	PlanKey         string             `json:"plan_key"`
+	Seats           int32              `json:"seats"`
+	Interval        string             `json:"interval"`
+	Trial           bool               `json:"trial"`
+	CompReason      string             `json:"comp_reason"`
+	BillingProfile  []byte             `json:"billing_profile"`
+	State           string             `json:"state"`
+	ErrorCode       string             `json:"error_code"`
+	Attempts        int32              `json:"attempts"`
+	UserID          pgtype.UUID        `json:"user_id"`
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	CreatedBy       pgtype.UUID        `json:"created_by"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	CompletedAt     pgtype.Timestamptz `json:"completed_at"`
+	WelcomeSentAt   pgtype.Timestamptz `json:"welcome_sent_at"`
+	WelcomeAttempts int32              `json:"welcome_attempts"`
+}
+
 type PlatformNote struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	AuthorID    pgtype.UUID        `json:"author_id"`
