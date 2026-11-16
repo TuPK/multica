@@ -752,6 +752,12 @@ WHERE workspace_invitation.workspace_id = $1;
 -- name: DeleteWorkspaceBillingNotices :exec
 DELETE FROM billing_notice WHERE workspace_id = $1;
 
+-- name: DeleteWorkspaceBillingProfile :exec
+DELETE FROM billing_profile WHERE workspace_id = $1;
+
+-- name: DeleteWorkspacePolicy :exec
+DELETE FROM workspace_policy WHERE workspace_id = $1;
+
 -- name: DeleteWorkspacePlatformNotes :exec
 DELETE FROM platform_note WHERE workspace_id = $1;
 
