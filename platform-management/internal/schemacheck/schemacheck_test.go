@@ -269,3 +269,114 @@ func TestUsageDailyMigrationsAreRequired(t *testing.T) {
 		}
 	}
 }
+
+// The R5 migration that adds the plan and subscription columns (spec 7b.6).
+const r5ColumnsVersion = "953_plan_subscription_r5"
+
+var (
+	addColumn  = regexp.MustCompile(`(?i)\bADD\s+COLUMN\s+IF\s+NOT\s+EXISTS\s+(\w+)\s+([^,;]+)`)
+	dropColumn = regexp.MustCompile(`(?i)\bDROP\s+COLUMN\s+IF\s+EXISTS\s+(\w+)`)
+	alterTable = regexp.MustCompile(`(?i)\bALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(\w+)([^;]*);`)
+)
+
+// columnsByTable returns, for each table a migration alters, the sorted names
+// that columns matches in the alter statements (the added or dropped columns).
+func columnsByTable(t *testing.T, file string, columns *regexp.Regexp) map[string][]string {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(migrationsDir, file))
+	if err != nil {
+		t.Fatalf("read %s: %v", file, err)
+	}
+	sql := sqlLineComment.ReplaceAllString(sqlBlockComment.ReplaceAllString(string(raw), " "), " ")
+	out := map[string][]string{}
+	for _, stmt := range alterTable.FindAllStringSubmatch(sql, -1) {
+		for _, c := range columns.FindAllStringSubmatch(stmt[2], -1) {
+			out[strings.ToLower(stmt[1])] = append(out[strings.ToLower(stmt[1])], strings.ToLower(c[1]))
+		}
+	}
+	for _, names := range out {
+		sort.Strings(names)
+	}
+	return out
+}
+
+func TestR5ColumnMigrationIsRequired(t *testing.T) {
+	if _, err := os.Stat(filepath.Join(migrationsDir, r5ColumnsVersion+".up.sql")); err != nil {
+		t.Fatalf("migration %s has no up file: %v", r5ColumnsVersion, err)
+	}
+	if !slices.Contains(Required, r5ColumnsVersion) {
+		t.Errorf("Required does not list %s", r5ColumnsVersion)
+	}
+}
+
+// A migration in the R5 range that touches a platform table must be listed, as
+// the scan over 651 to 699 does for the earlier ones.
+func TestEveryR5PlatformTableMigrationIsRequired(t *testing.T) {
+	unlisted, err := unlistedMigrations(migrationsDir, 953, 968, Required)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(unlisted) > 0 {
+		t.Fatalf("migrations touch platform tables but are missing from schemacheck.Required: %v", unlisted)
+	}
+	probe, err := unlistedMigrations(migrationsDir, 953, 968, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(probe) == 0 {
+		t.Fatal("scan found no platform-table migration in 953 to 968; the patterns are not matching")
+	}
+}
+
+func TestR5ColumnMigrationAddsTheSpecColumns(t *testing.T) {
+	added := columnsByTable(t, r5ColumnsVersion+".up.sql", addColumn)
+	want := map[string][]string{
+		"plan":                   {"audience", "billing_model", "usage_rates", "usage_terms", "version"},
+		"workspace_subscription": {"pending_change", "unit_price"},
+	}
+	if !reflect.DeepEqual(added, want) {
+		t.Fatalf("up file adds %v, want %v", added, want)
+	}
+
+	raw, err := os.ReadFile(filepath.Join(migrationsDir, r5ColumnsVersion+".up.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	up := strings.Join(strings.Fields(sqlLineComment.ReplaceAllString(sqlBlockComment.ReplaceAllString(string(raw), " "), " ")), " ")
+	// An existing row must read as a seat plan, and the migration builds no
+	// index, so it needs no concurrent build.
+	for _, frag := range []string{
+		"audience text NOT NULL DEFAULT 'any'",
+		"billing_model text NOT NULL DEFAULT 'seat'",
+		"usage_rates jsonb NOT NULL DEFAULT '{}'",
+		"usage_terms jsonb NOT NULL DEFAULT '{}'",
+		"version bigint NOT NULL DEFAULT 0",
+		"pending_change jsonb",
+		"unit_price bigint",
+	} {
+		if !strings.Contains(up, frag) {
+			t.Errorf("up file lacks %q", frag)
+		}
+	}
+	if strings.Contains(strings.ToLower(up), "index") {
+		t.Error("the migration must not create an index")
+	}
+}
+
+func TestR5ColumnMigrationDownDropsOnlyWhatItAdded(t *testing.T) {
+	added := columnsByTable(t, r5ColumnsVersion+".up.sql", addColumn)
+	dropped := columnsByTable(t, r5ColumnsVersion+".down.sql", dropColumn)
+	if len(dropped) == 0 {
+		t.Fatal("down file drops no column")
+	}
+	if !reflect.DeepEqual(added, dropped) {
+		t.Fatalf("down file drops %v, up file adds %v", dropped, added)
+	}
+	raw, err := os.ReadFile(filepath.Join(migrationsDir, r5ColumnsVersion+".down.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if regexp.MustCompile(`(?i)\bdrop\s+(table|index)\b`).Match(raw) {
+		t.Error("down file drops a table or an index")
+	}
+}
