@@ -774,3 +774,47 @@ func TestMFASecretKey(t *testing.T) {
 		})
 	}
 }
+
+// PLATFORM_API_RATE_CEILING is the API rate a limited plan gets when it leaves
+// the rate empty (spec 7b.3 rule 2). Default 6000; a whole number of 1 or more.
+func TestLoadAPIRateCeiling(t *testing.T) {
+	cfg, err := load(resendEnv())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.APIRateCeiling != 6000 {
+		t.Errorf("default APIRateCeiling = %d, want 6000", cfg.APIRateCeiling)
+	}
+
+	env := resendEnv()
+	env["PLATFORM_API_RATE_CEILING"] = " 4500 "
+	cfg, err = load(env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.APIRateCeiling != 4500 {
+		t.Errorf("APIRateCeiling = %d, want 4500", cfg.APIRateCeiling)
+	}
+}
+
+func TestLoadAPIRateCeilingRefusesANonWholeNumber(t *testing.T) {
+	for _, raw := range []string{"abc", "1.5", "6k", "99999999999999999999999"} {
+		env := resendEnv()
+		env["PLATFORM_API_RATE_CEILING"] = raw
+		_, err := load(env)
+		if got := variables(err); len(got) != 1 || got[0] != "PLATFORM_API_RATE_CEILING" {
+			t.Errorf("%q: variables = %v, want [PLATFORM_API_RATE_CEILING] (err %v)", raw, got, err)
+		}
+	}
+}
+
+func TestLoadAPIRateCeilingRefusesBelowOne(t *testing.T) {
+	for _, raw := range []string{"0", "-1"} {
+		env := resendEnv()
+		env["PLATFORM_API_RATE_CEILING"] = raw
+		_, err := load(env)
+		if got := variables(err); len(got) != 1 || got[0] != "PLATFORM_API_RATE_CEILING" {
+			t.Errorf("%q: variables = %v, want [PLATFORM_API_RATE_CEILING] (err %v)", raw, got, err)
+		}
+	}
+}

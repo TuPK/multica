@@ -11,6 +11,7 @@ import (
 
 	"github.com/multica-ai/multica/platform-management/internal/billing"
 	"github.com/multica-ai/multica/platform-management/internal/mfa"
+	"github.com/multica-ai/multica/platform-management/internal/plan"
 	"github.com/multica-ai/multica/platform-management/internal/trust"
 )
 
@@ -119,6 +120,9 @@ type Config struct {
 	ConsoleOrigin string
 	// SecureCookies sets the Secure attribute on the session cookie.
 	SecureCookies bool
+	// APIRateCeiling is PLATFORM_API_RATE_CEILING: the API rate per minute a
+	// limited plan gets when it leaves the rate empty (spec 7b.3 rule 2).
+	APIRateCeiling int64
 }
 
 // Load reads the configuration through getenv and reports every problem it
@@ -237,6 +241,16 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 
 	cfg.Billing = loadBilling(get, fail)
+
+	cfg.APIRateCeiling = plan.DefaultAPIRateCeiling
+	if raw := get("PLATFORM_API_RATE_CEILING"); raw != "" {
+		n, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || n < 1 {
+			fail("PLATFORM_API_RATE_CEILING", "must be a whole number, 1 or more")
+		} else {
+			cfg.APIRateCeiling = n
+		}
+	}
 
 	if len(errs) > 0 {
 		return Config{}, errors.Join(errs...)
