@@ -1931,6 +1931,8 @@ type PersonalAccessToken struct {
 	LastUsedAt  pgtype.Timestamptz `json:"last_used_at"`
 	Revoked     bool               `json:"revoked"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	ReadOnly    bool               `json:"read_only"`
 }
 
 type PinnedItem struct {
@@ -2616,6 +2618,26 @@ type SquadSkill struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
+type SsoConnection struct {
+	ID              pgtype.UUID        `json:"id"`
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	Issuer          string             `json:"issuer"`
+	ClientID        string             `json:"client_id"`
+	ClientSecretEnc []byte             `json:"client_secret_enc"`
+	DefaultRole     string             `json:"default_role"`
+	Status          string             `json:"status"`
+	CreatedBy       pgtype.UUID        `json:"created_by"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
+type SsoDomain struct {
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	Domain      string             `json:"domain"`
+	Token       string             `json:"token"`
+	VerifiedAt  pgtype.Timestamptz `json:"verified_at"`
+}
+
 type SysCronExecution struct {
 	ID           pgtype.UUID        `json:"id"`
 	JobName      string             `json:"job_name"`
@@ -2977,6 +2999,17 @@ type WorkspaceMcpServer struct {
 	CreatedBy   pgtype.UUID        `json:"created_by"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+type WorkspacePolicy struct {
+	WorkspaceID          pgtype.UUID        `json:"workspace_id"`
+	AllowedInviteDomains []string           `json:"allowed_invite_domains"`
+	ShareLinksEnabled    bool               `json:"share_links_enabled"`
+	RequireSso           bool               `json:"require_sso"`
+	RequireMfa           bool               `json:"require_mfa"`
+	SessionMaxAgeHours   int32              `json:"session_max_age_hours"`
+	UpdatedBy            pgtype.UUID        `json:"updated_by"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
 }
 
 type WorkspaceShareLink struct {
