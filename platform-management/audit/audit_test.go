@@ -94,3 +94,9 @@ func TestRecordReturnsWriterError(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 }
+
+func TestUserMFAResetAction(t *testing.T) {
+	if ActionUserMFAReset != "user.mfa_reset" {
+		t.Fatalf("ActionUserMFAReset = %q", ActionUserMFAReset)
+	}
+}

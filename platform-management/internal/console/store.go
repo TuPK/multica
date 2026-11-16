@@ -199,6 +199,10 @@ type Tx interface {
 	// SetSessionsValidAfter upserts only the revocation mark.
 	SetSessionsValidAfter(ctx context.Context, userID, changedBy string, at time.Time) error
 
+	// DeleteUserMFA deletes the user's user_mfa row, confirmed or pending, and
+	// reports whether there was one.
+	DeleteUserMFA(ctx context.Context, userID string) (bool, error)
+
 	// ActiveAdmins locks and returns the user ids of the active administrators.
 	ActiveAdmins(ctx context.Context) ([]string, error)
 	// ActiveStaffRole returns the role of the user's active staff row.

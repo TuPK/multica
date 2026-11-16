@@ -210,6 +210,7 @@ type fakeStore struct {
 	txs        int
 	orders     map[string]billing.Order
 	subs       map[string]subscription.Subscription
+	mfaRows    map[string]bool // user id -> has a user_mfa row
 }
 
 func newFakeStore() *fakeStore {
@@ -222,6 +223,7 @@ func newFakeStore() *fakeStore {
 		sessions: map[string]time.Time{},
 		orders:   map[string]billing.Order{},
 		subs:     map[string]subscription.Subscription{},
+		mfaRows:  map[string]bool{custID: true, suppID: true},
 		staffRows: []fakeStaffRow{
 			{user: adminID, role: "admin"},
 			{user: suppID, role: "support"},
@@ -238,6 +240,7 @@ type snapshot struct {
 	audits    []audit.Entry
 	orders    map[string]billing.Order
 	subs      map[string]subscription.Subscription
+	mfaRows   map[string]bool
 }
 
 func (s *fakeStore) snap() snapshot {
@@ -252,12 +255,14 @@ func (s *fakeStore) snap() snapshot {
 	c.notes = append(c.notes, s.notes...)
 	c.audits = append(c.audits, s.audits...)
 	c.orders, c.subs = maps.Clone(s.orders), maps.Clone(s.subs)
+	c.mfaRows = maps.Clone(s.mfaRows)
 	return c
 }
 
 func (s *fakeStore) restore(c snapshot) {
 	s.accounts, s.sessions, s.staffRows, s.notes, s.audits = c.accounts, c.sessions, c.staffRows, c.notes, c.audits
 	s.orders, s.subs = c.orders, c.subs
+	s.mfaRows = c.mfaRows
 }
 
 func (s *fakeStore) orderRow(o billing.Order) OrderRow {
@@ -329,6 +334,12 @@ func (t *fakeTx) SetSessionsValidAfter(_ context.Context, id, _ string, at time.
 		t.s.accounts[id] = "active"
 	}
 	return nil
+}
+
+func (t *fakeTx) DeleteUserMFA(_ context.Context, id string) (bool, error) {
+	had := t.s.mfaRows[id]
+	delete(t.s.mfaRows, id)
+	return had, nil
 }
 
 func (t *fakeTx) ActiveAdmins(context.Context) ([]string, error) {
@@ -496,6 +507,17 @@ func (n *fakeNotifier) Publish(_ context.Context, user, kind string) error {
 	return n.err
 }
 
+// fakeMailer records the reset notices.
+type fakeMailer struct {
+	sent []string
+	err  error
+}
+
+func (m *fakeMailer) SendMFAReset(_ context.Context, to string) error {
+	m.sent = append(m.sent, to)
+	return m.err
+}
+
 // env is a console Handler behind the real staff middleware, on fakes.
 type env struct {
 	t      *testing.T
@@ -506,10 +528,15 @@ type env struct {
 	ws     *fakeStatusSetter
 	cache  *fakeCache
 	pub    *fakeNotifier
+	mail   *fakeMailer
 	logs   *bytes.Buffer
 }
 
-func newEnv(t *testing.T) *env {
+func newEnv(t *testing.T) *env { return newEnvMail(t, true) }
+
+// newEnvMail builds the environment with a mailer, or with none when withMail
+// is false, as when no email provider is configured.
+func newEnvMail(t *testing.T, withMail bool) *env {
 	t.Helper()
 	e := &env{
 		t: t,
@@ -525,6 +552,7 @@ func newEnv(t *testing.T) *env {
 		ws:    &fakeStatusSetter{changed: true},
 		cache: &fakeCache{},
 		pub:   &fakeNotifier{},
+		mail:  &fakeMailer{},
 		logs:  &bytes.Buffer{},
 	}
 	e.reader.store = e.store
@@ -544,7 +572,12 @@ func newEnv(t *testing.T) *env {
 		Log:       slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Now:       func() time.Time { return t0 },
 	})
+	var mail Mailer
+	if withMail {
+		mail = e.mail
+	}
 	e.h = New(Deps{
+		Mailer:        mail,
 		RequireStaff:  auth.RequirePlatformStaff,
 		RequireOrigin: auth.RequireOrigin,
 		Reader:        e.reader,
@@ -575,7 +608,7 @@ func (e *env) doWith(user, method, path, body, originHeader string) *httptest.Re
 	}
 	req := httptest.NewRequest(method, path, rd)
 	if user != "" {
-		tok, err := session.Sign(secret, user, t0.Add(-time.Minute))
+		tok, err := platformauth.SignMFASession(secret, user, t0.Add(-time.Minute))
 		if err != nil {
 			e.t.Fatal(err)
 		}

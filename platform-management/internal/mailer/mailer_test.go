@@ -292,6 +292,60 @@ func TestSendLogsOnlyTheEmailHash(t *testing.T) {
 	})
 }
 
+// The reset notice goes through the same transports as the sign-in code, and
+// its log line carries the email hash only, as the code's does.
+func TestSendMFAResetSendsTheNotice(t *testing.T) {
+	t.Run("resend", func(t *testing.T) {
+		h := &fakeHTTP{}
+		logger, buf := capture()
+		m, _ := New(resendConfig(), h, nil, logger)
+		if err := m.SendMFAReset(context.Background(), to); err != nil {
+			t.Fatalf("SendMFAReset: %v", err)
+		}
+		var body struct {
+			To      []string `json:"to"`
+			Subject string   `json:"subject"`
+			HTML    string   `json:"html"`
+		}
+		if err := json.Unmarshal(h.body, &body); err != nil {
+			t.Fatalf("body: %v", err)
+		}
+		if len(body.To) != 1 || body.To[0] != to {
+			t.Errorf("to = %v", body.To)
+		}
+		if body.Subject != mfaResetSubject {
+			t.Errorf("subject = %q", body.Subject)
+		}
+		if !strings.Contains(body.HTML, "turned off") {
+			t.Errorf("html does not say two-step sign-in was turned off: %s", body.HTML)
+		}
+		assertLogClean(t, buf.String(), apiKey)
+	})
+	t.Run("smtp", func(t *testing.T) {
+		s := &fakeSession{}
+		logger, buf := capture()
+		m, _ := New(smtpConfig(), nil, &fakeDialer{sessions: []*fakeSession{s}}, logger)
+		if err := m.SendMFAReset(context.Background(), to); err != nil {
+			t.Fatalf("SendMFAReset: %v", err)
+		}
+		msg := s.data.String()
+		if !strings.Contains(msg, "To: "+to+"\r\n") || !strings.Contains(msg, "Subject: "+mfaResetSubject+"\r\n") {
+			t.Errorf("message lacks the recipient or subject:\n%s", msg)
+		}
+		assertLogClean(t, buf.String(), password)
+	})
+	t.Run("rejects a display name", func(t *testing.T) {
+		h := &fakeHTTP{}
+		m, _ := New(resendConfig(), h, nil, nil)
+		if err := m.SendMFAReset(context.Background(), "Staff <"+to+">"); err == nil {
+			t.Fatal("a display name was accepted as a recipient")
+		}
+		if h.req != nil {
+			t.Error("a refused recipient still reached the provider")
+		}
+	})
+}
+
 func assertLogClean(t *testing.T, log, secret string) {
 	t.Helper()
 	if log == "" {

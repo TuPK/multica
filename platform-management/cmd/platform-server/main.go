@@ -29,6 +29,7 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/jobs"
 	"github.com/multica-ai/multica/platform-management/internal/lifecycle"
 	"github.com/multica-ai/multica/platform-management/internal/mailer"
+	"github.com/multica-ai/multica/platform-management/internal/mfa"
 	"github.com/multica-ai/multica/platform-management/internal/plan"
 	"github.com/multica-ai/multica/platform-management/internal/platformauth"
 	"github.com/multica-ai/multica/platform-management/internal/schemacheck"
@@ -106,6 +107,17 @@ func run() error {
 
 	queries := db.New(pool)
 	store := staff.NewStore(queries)
+
+	// The key must open what Multica sealed, or no staff member can sign in.
+	mfaCrypto, err := mfa.NewCrypto(cfg.MFASecretKey)
+	if err != nil {
+		return &config.Error{Variable: mfa.EnvKey, Reason: "is not a usable key"}
+	}
+	mfaStore := staff.NewMFAStore(queries)
+	if err := mfa.CheckKey(startCtx, mfaCrypto, mfaStore); err != nil {
+		return err
+	}
+
 	seeder := staff.NewSeeder(queries, cfg.AdminEmails, slog.Default())
 	// An administrator without a Multica account is logged and skipped; only a
 	// database error stops the start.
@@ -120,14 +132,16 @@ func run() error {
 		smtpDialer = mailer.NewSMTPDialer(cfg.Email)
 	}
 	// With no provider (allowed only with a dev code) the sign-in handler gets
-	// a nil Mailer and sends nothing.
+	// a nil Mailer and sends nothing, and the console sends no reset notice.
 	var signInMail platformauth.Mailer
+	var consoleMail console.Mailer
 	if cfg.Email.Provider != "" {
 		m, err := mailer.New(cfg.Email, &http.Client{Timeout: mailHTTPTimeout}, smtpDialer, slog.Default())
 		if err != nil {
 			return err
 		}
 		signInMail = m
+		consoleMail = m
 	}
 	accountCache := accountcache.NewCache(rdb)
 	guard := accountguard.New(store, accountCache)
@@ -147,6 +161,8 @@ func run() error {
 		Codes:     platformauth.NewRedisCodes(rdb),
 		Limiter:   platformauth.NewRedisLimiter(rdb),
 		Mailer:    signInMail,
+		MFA:       mfaStore,
+		Crypto:    mfaCrypto,
 		Log:       slog.Default(),
 	})
 
@@ -199,6 +215,7 @@ func run() error {
 		Notifier: accountcache.NewPublisher(rdb),
 		Payments: orders,
 		Emails:   store,
+		Mailer:   consoleMail,
 		Log:      slog.Default(),
 	})
 

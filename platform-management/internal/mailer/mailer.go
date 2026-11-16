@@ -23,8 +23,9 @@ import (
 )
 
 const (
-	resendURL = "https://api.resend.com/emails"
-	subject   = "Your Multica platform sign-in code"
+	resendURL       = "https://api.resend.com/emails"
+	subject         = "Your Multica platform sign-in code"
+	mfaResetSubject = "Two-step sign-in was turned off on your Multica account"
 )
 
 // HTTPClient is the part of *http.Client the Resend path uses.
@@ -81,36 +82,53 @@ func New(cfg config.Email, httpClient HTTPClient, dialer SMTPDialer, logger *slo
 
 // SendCode emails the code to the address, which must be a plain address.
 func (m *Mailer) SendCode(ctx context.Context, to, code string) error {
-	if addr, err := mail.ParseAddress(to); err != nil || addr.Address != to || addr.Name != "" {
-		return errors.New("mailer: recipient is not a plain email address")
-	}
 	body := fmt.Sprintf(`<div style="font-family: sans-serif; max-width: 400px; margin: 0 auto;">
 <h2>Your sign-in code</h2>
 <p style="font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 24px 0;">%s</p>
 <p>This code expires in 10 minutes.</p>
 <p style="color: #666; font-size: 14px;">If you did not request this code, you can ignore this email.</p>
 </div>`, code)
+	return m.deliver(ctx, to, subject, body, "sign-in code")
+}
 
+// SendMFAReset tells the user that two-step sign-in was turned off on their
+// account by a staff member. The notice holds no code and no link.
+func (m *Mailer) SendMFAReset(ctx context.Context, to string) error {
+	body := `<div style="font-family: sans-serif; max-width: 400px; margin: 0 auto;">
+<h2>Two-step sign-in was turned off</h2>
+<p>A staff member turned off two-step sign-in on your Multica account. Your sign-in no longer asks for a second code.</p>
+<p>To turn it on again, open security settings in the Multica web app. If you are a staff member of the platform console, you cannot sign in there until you do.</p>
+<p style="color: #666; font-size: 14px;">If you did not expect this, tell your administrator.</p>
+</div>`
+	return m.deliver(ctx, to, mfaResetSubject, body, "two-step sign-in reset notice")
+}
+
+// deliver sends one HTML message through the configured provider and logs the
+// outcome with the email hash only. what names the message in the log.
+func (m *Mailer) deliver(ctx context.Context, to, subj, htmlBody, what string) error {
+	if addr, err := mail.ParseAddress(to); err != nil || addr.Address != to || addr.Name != "" {
+		return errors.New("mailer: recipient is not a plain email address")
+	}
 	var err error
 	switch m.cfg.Provider {
 	case config.ProviderResend:
-		err = m.sendResend(ctx, to, body)
+		err = m.sendResend(ctx, to, subj, htmlBody)
 	default:
-		err = m.sendSMTP(ctx, to, body)
+		err = m.sendSMTP(ctx, to, subj, htmlBody)
 	}
 	if err != nil {
-		m.log.Warn("sign-in code was not sent", "provider", m.cfg.Provider, "email_hash", emailhash.Of(to), "error", err)
+		m.log.Warn(what+" was not sent", "provider", m.cfg.Provider, "email_hash", emailhash.Of(to), "error", err)
 		return err
 	}
-	m.log.Info("sign-in code sent", "provider", m.cfg.Provider, "email_hash", emailhash.Of(to))
+	m.log.Info(what+" sent", "provider", m.cfg.Provider, "email_hash", emailhash.Of(to))
 	return nil
 }
 
-func (m *Mailer) sendResend(ctx context.Context, to, htmlBody string) error {
+func (m *Mailer) sendResend(ctx context.Context, to, subj, htmlBody string) error {
 	payload, err := json.Marshal(map[string]any{
 		"from":    m.cfg.From,
 		"to":      []string{to},
-		"subject": subject,
+		"subject": subj,
 		"html":    htmlBody,
 	})
 	if err != nil {
@@ -135,7 +153,7 @@ func (m *Mailer) sendResend(ctx context.Context, to, htmlBody string) error {
 	return nil
 }
 
-func (m *Mailer) sendSMTP(ctx context.Context, to, htmlBody string) (err error) {
+func (m *Mailer) sendSMTP(ctx context.Context, to, subj, htmlBody string) (err error) {
 	s, err := m.dialer.Dial(ctx)
 	if err != nil {
 		return fmt.Errorf("smtp dial: %w", err)
@@ -173,7 +191,7 @@ func (m *Mailer) sendSMTP(ctx context.Context, to, htmlBody string) (err error) 
 	// The message is ASCII, so no transfer encoding is needed.
 	msg := "From: " + m.cfg.From + "\r\n" +
 		"To: " + to + "\r\n" +
-		"Subject: " + subject + "\r\n" +
+		"Subject: " + subj + "\r\n" +
 		"Date: " + time.Now().UTC().Format(time.RFC1123Z) + "\r\n" +
 		"Message-ID: <" + fmt.Sprint(time.Now().UnixNano()) + "@" + m.cfg.SMTPHost + ">\r\n" +
 		"MIME-Version: 1.0\r\n" +

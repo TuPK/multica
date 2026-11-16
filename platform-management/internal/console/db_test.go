@@ -186,7 +186,7 @@ func (f *dbFixture) do(user, method, path, body string) *httptest.ResponseRecord
 		rd = strings.NewReader(body)
 	}
 	req := httptest.NewRequest(method, path, rd)
-	tok, err := session.Sign(secret, user, time.Now().Add(-time.Minute))
+	tok, err := platformauth.SignMFASession(secret, user, time.Now().Add(-time.Minute))
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -639,5 +639,37 @@ func TestDBOverviewCountsWorkspacesByPlan(t *testing.T) {
 	}
 	if after.ByPlan[key] != 1 {
 		t.Errorf("by_plan[%s] = %d, want 1", key, after.ByPlan[key])
+	}
+}
+
+// The reset deletes the user's user_mfa row in the same transaction as its
+// audit row, and leaves other users' rows.
+func TestDBMFAResetDeletesOnlyThatUsersRow(t *testing.T) {
+	f := newDBFixture(t)
+	ctx := context.Background()
+	admin, adminEmail := f.staffUser(staff.RoleAdmin)
+	target, targetEmail := f.user("mfa-target")
+	other, _ := f.user("mfa-other")
+	for _, id := range []string{target, other} {
+		if _, err := f.pool.Exec(ctx,
+			`INSERT INTO user_mfa VALUES ($1::uuid, '\x00'::bytea, now(), '{}', 0, now())`, id); err != nil {
+			t.Fatalf("create user_mfa row: %v", err)
+		}
+	}
+	t.Cleanup(func() {
+		f.pool.Exec(ctx, `DELETE FROM user_mfa WHERE user_id = ANY($1::uuid[])`, []string{target, other})
+	})
+
+	rec := f.do(admin, "POST", "/api/platform/users/"+target+"/mfa-reset", "")
+	if rec.Code != 200 {
+		t.Fatalf("status = %d, body %s", rec.Code, rec.Body)
+	}
+	const rows = `SELECT count(*) FROM user_mfa WHERE user_id = $1::uuid`
+	if got, kept := f.count(rows, target), f.count(rows, other); got != 0 || kept != 1 {
+		t.Fatalf("rows after reset: target %d, other %d", got, kept)
+	}
+	audits := f.staffRows("user.mfa_reset", admin)
+	if len(audits) != 1 || audits[0].targetID != target || audits[0].actorLabel != adminEmail {
+		t.Fatalf("audit rows = %+v, want one for %s (%s)", audits, target, targetEmail)
 	}
 }

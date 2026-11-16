@@ -53,6 +53,11 @@ type EmailLookup interface {
 	EmailByUserID(ctx context.Context, userID string) (string, error)
 }
 
+// Mailer tells a user their two-step sign-in was reset.
+type Mailer interface {
+	SendMFAReset(ctx context.Context, to string) error
+}
+
 // Deps are the Handler's dependencies. Now defaults to time.Now and Log to
 // slog.Default.
 type Deps struct {
@@ -69,6 +74,9 @@ type Deps struct {
 	Notifier   AccountNotifier
 	Payments   PaymentApplier
 	Emails     EmailLookup
+	// Mailer may be nil when no email provider is configured; a reset then
+	// sends no notice.
+	Mailer Mailer
 
 	Log *slog.Logger
 	Now func() time.Time
@@ -113,6 +121,7 @@ func routeTable() []routeSpec {
 		{base + "/users/{id}", nil, map[string]handlerFunc{http.MethodGet: (*Handler).getUser}},
 		{base + "/users/{id}/status", supportAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).setUserStatus}},
 		{base + "/users/{id}/revoke-sessions", supportAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).revokeSessions}},
+		{base + "/users/{id}/mfa-reset", supportAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).resetUserMFA}},
 		{base + "/staff", adminOnly, map[string]handlerFunc{
 			http.MethodGet:  (*Handler).listStaff,
 			http.MethodPost: (*Handler).addStaff,

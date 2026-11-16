@@ -271,6 +271,7 @@ func TestRouteRoles(t *testing.T) {
 		"/api/platform/users/{id}":                 anyStaff,
 		"/api/platform/users/{id}/status":          supportAdmin,
 		"/api/platform/users/{id}/revoke-sessions": supportAdmin,
+		"/api/platform/users/{id}/mfa-reset":       supportAdmin,
 		"/api/platform/staff":                      admin,
 		"/api/platform/staff/{user_id}":            admin,
 		"/api/platform/audit-events":               anyStaff,

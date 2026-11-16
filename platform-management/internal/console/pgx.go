@@ -608,6 +608,16 @@ func (t *pgxTx) RevokeStaff(ctx context.Context, userID string) (bool, error) {
 	return n > 0, err
 }
 
+// DeleteUserMFA implements Tx.
+func (t *pgxTx) DeleteUserMFA(ctx context.Context, userID string) (bool, error) {
+	uid, err := parseUUID(userID)
+	if err != nil {
+		return false, err
+	}
+	n, err := t.q.DeleteUserMFA(ctx, uid)
+	return n > 0, err
+}
+
 // InsertAuditEvent implements audit.Writer inside the transaction.
 func (t *pgxTx) InsertAuditEvent(ctx context.Context, e audit.Entry) error {
 	var ws pgtype.UUID

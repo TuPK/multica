@@ -309,6 +309,73 @@ func (h *Handler) revokeSessions(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"sessions_valid_after": ts(at)})
 }
 
+// resetUserMFA deletes a user's second factor so they can sign in with the
+// email code alone until they enrol again. It does not sign them out. A staff
+// member cannot reset their own: the console would then let them skip the check
+// it enforces on them. The audit row is in the transaction of the delete, and
+// the user is emailed after it commits.
+func (h *Handler) resetUserMFA(w http.ResponseWriter, r *http.Request) {
+	id, perr := pathID(r, "id")
+	if perr != nil {
+		writeError(w, perr)
+		return
+	}
+	a, err := h.currentActor(r)
+	if err != nil {
+		h.fail(w, r, "resolve staff actor", err)
+		return
+	}
+	if id == a.ID {
+		writeError(w, &apiError{Status: http.StatusForbidden, Code: "self_reset_refused",
+			Message: "staff cannot reset their own two-step sign-in"})
+		return
+	}
+
+	var email string
+	reset := false
+	err = h.Runner.InTx(r.Context(), func(tx Tx) error {
+		var found bool
+		var err error
+		if email, found, err = tx.UserEmail(r.Context(), id); err != nil {
+			return err
+		}
+		if !found {
+			return notFound()
+		}
+		if reset, err = tx.DeleteUserMFA(r.Context(), id); err != nil || !reset {
+			return err
+		}
+		return audit.Record(r.Context(), tx, a.staffEntry(audit.Entry{
+			Action:      audit.ActionUserMFAReset,
+			TargetType:  targetUser,
+			TargetID:    id,
+			TargetLabel: email,
+		}))
+	})
+	if err != nil {
+		h.fail(w, r, "reset two-step sign-in", err)
+		return
+	}
+	if reset {
+		h.mailMFAReset(r.Context(), id, email)
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"reset": reset})
+}
+
+// mailMFAReset emails the user after the reset is committed. A failure is
+// logged and the request still succeeds.
+func (h *Handler) mailMFAReset(ctx context.Context, userID, email string) {
+	if h.Mailer == nil {
+		h.Log.Warn("console: two-step sign-in reset; user notice not sent: no email provider", "user_id", userID)
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), afterChangeTimeout)
+	defer cancel()
+	if err := h.Mailer.SendMFAReset(ctx, email); err != nil {
+		h.Log.Warn("console: two-step sign-in reset; user notice failed", "user_id", userID, "error", err)
+	}
+}
+
 type addStaffBody struct {
 	Email string `json:"email"`
 	Role  string `json:"role"`

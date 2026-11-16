@@ -48,6 +48,7 @@ const (
 	ActionNoteAdded              = "note.added"
 	ActionSubscriptionChanged    = "subscription.changed"
 	ActionPlanChanged            = "plan.changed"
+	ActionUserMFAReset           = "user.mfa_reset"
 )
 
 // Billing actions (spec 5.14): written when an order is created, paid, canceled
@@ -130,6 +131,7 @@ var Catalog = []string{
 	ActionNoteAdded,
 	ActionSubscriptionChanged,
 	ActionPlanChanged,
+	ActionUserMFAReset,
 	ActionBillingOrderCreated,
 	ActionBillingOrderPaid,
 	ActionBillingOrderExpired,
