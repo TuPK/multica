@@ -12,8 +12,10 @@ import { PortalHost } from "@rn-primitives/portal";
 import { api } from "@/data/api";
 import { maybeRenewSession } from "@/data/session-renewal";
 import { queryClient } from "@/data/query-client";
-import { useAuthStore } from "@/data/auth-store";
-import { useWorkspaceStore } from "@/data/workspace-store";
+import { useAuthStore, type SignOutReason } from "@/data/auth-store";
+import { useWorkspaceAccessStore } from "@/data/stores/workspace-access-store";
+import { getCurrentSlug, useWorkspaceStore } from "@/data/workspace-store";
+import { workspaceBlockFromCode } from "@/lib/workspace-access";
 import { SessionActivityBoundary } from "@/components/auth/session-activity-boundary";
 import { LightboxProvider, prewarmHighlighter } from "@/lib/markdown";
 import { NAV_THEME } from "@/lib/theme";
@@ -34,24 +36,38 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
   const signingOutRef = useRef(false);
 
   useEffect(() => {
-    // Wire 401 handling onto the shared ApiClient singleton. Must be set
-    // before any request fires — initialize() below kicks off the first
-    // getMe() call, so do this synchronously first.
+    const performForceSignOut = (reason: SignOutReason | null) => {
+      if (signingOutRef.current) return;
+      signingOutRef.current = true;
+      void (async () => {
+        await useAuthStore.getState().logout(reason);
+        await useWorkspaceStore.getState().clear();
+        useWorkspaceAccessStore.getState().clearAll();
+        qc.clear();
+        router.replace("/login");
+        // Reset on next tick so a fresh session can hit 401/403 again later
+        // without being silently swallowed.
+        setTimeout(() => {
+          signingOutRef.current = false;
+        }, 0);
+      })();
+    };
+
+    // Wire auth and refusal handling onto the shared ApiClient singleton. Must
+    // be set before any request fires — initialize() below kicks off getMe().
     api.setOptions({
-      onUnauthorized: () => {
-        if (signingOutRef.current) return;
-        signingOutRef.current = true;
-        void (async () => {
-          await useAuthStore.getState().logout();
-          await useWorkspaceStore.getState().clear();
-          qc.clear();
-          router.replace("/login");
-          // Reset on next tick so a fresh session can hit 401 again later
-          // without being silently swallowed.
-          setTimeout(() => {
-            signingOutRef.current = false;
-          }, 0);
-        })();
+      onUnauthorized: (code) => {
+        performForceSignOut(code === "session_revoked" ? "session_revoked" : null);
+      },
+      onAccountSuspended: () => {
+        performForceSignOut("account_suspended");
+      },
+      onWorkspaceRefused: (code) => {
+        const slug = getCurrentSlug();
+        const block = workspaceBlockFromCode(code);
+        if (slug && block) {
+          useWorkspaceAccessStore.getState().setBlock(slug, block);
+        }
       },
     });
     // Launch check for the sliding session (MUL-7436). Runs after the token

@@ -1,8 +1,24 @@
 import { useEffect } from "react";
 import type { ComponentProps } from "react";
-import { Redirect, Stack, useLocalSearchParams } from "expo-router";
+import { View } from "react-native";
+import {
+  SafeAreaInsetsContext,
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import {
+  Redirect,
+  Slot,
+  Stack,
+  router,
+  useLocalSearchParams,
+  useSegments,
+} from "expo-router";
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
 import { workspaceListOptions } from "@/data/queries/workspaces";
+import { useWorkspaceAccessStore } from "@/data/stores/workspace-access-store";
 import { useWorkspaceStore } from "@/data/workspace-store";
 import { RealtimeProvider } from "@/data/realtime/realtime-provider";
 import { useInboxRealtime } from "@/data/realtime/use-inbox-realtime";
@@ -13,6 +29,7 @@ import { useProjectsRealtime } from "@/data/realtime/use-projects-realtime";
 import { usePinsRealtime } from "@/data/realtime/use-pins-realtime";
 import { usePresenceRealtime } from "@/data/realtime/use-presence-realtime";
 import { useWorkspacePresencePrefetch } from "@/lib/use-workspace-presence-prefetch";
+import { memberListOptions } from "@/data/queries/members";
 import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useNewIssueDraftResetOnWorkspaceChange } from "@/data/stores/new-issue-draft-store";
 import { useNewProjectDraftResetOnWorkspaceChange } from "@/data/stores/new-project-draft-store";
@@ -89,6 +106,46 @@ function RealtimeSubscriptions() {
   return null;
 }
 
+function WorkspaceMemberWarmup() {
+  const wsId = useWorkspaceStore((s) => s.currentWorkspaceId);
+  useQuery({ ...memberListOptions(wsId), enabled: !!wsId });
+  return null;
+}
+
+function WorkspaceBlockedNotice({
+  block,
+  slug,
+}: {
+  block: "suspended" | "pending_deletion";
+  slug: string;
+}) {
+  const { t } = useT("workspace");
+  const title =
+    block === "pending_deletion"
+      ? t("access.pending_deletion_title")
+      : t("access.suspended_title");
+  const message =
+    block === "pending_deletion"
+      ? t("access.pending_deletion_message")
+      : t("access.suspended_message");
+
+  return (
+    <SafeAreaView className="flex-1 bg-background justify-center items-center px-6 gap-4">
+      <View className="gap-1.5 items-center">
+        <Text className="text-lg font-semibold text-foreground text-center">
+          {title}
+        </Text>
+        <Text className="text-sm text-muted-foreground text-center">
+          {message}
+        </Text>
+      </View>
+      <Button onPress={() => router.push(`/${slug}/switch-workspace`)}>
+        <Text>{t("access.switch_workspace")}</Text>
+      </Button>
+    </SafeAreaView>
+  );
+}
+
 /**
  * Workspace context layout. Reads the slug from the URL (the route is the
  * source of truth — see apps/mobile/CLAUDE.md "Behavioral parity"), validates
@@ -102,9 +159,14 @@ function RealtimeSubscriptions() {
  */
 export default function WorkspaceLayout() {
   const { workspace: slug } = useLocalSearchParams<{ workspace: string }>();
-  const { t } = useT("navigation");
+  const segments = useSegments();
+  const insets = useSafeAreaInsets();
+  const { t } = useT(["navigation", "workspace", "common"]);
   const { data: workspaces, isLoading } = useQuery(workspaceListOptions());
   const setCurrentWorkspace = useWorkspaceStore((s) => s.setCurrentWorkspace);
+  const block = useWorkspaceAccessStore((s) =>
+    slug ? (s.blocks[slug] ?? null) : null,
+  );
 
   const matched = workspaces?.find((w) => w.slug === slug);
 
@@ -127,10 +189,35 @@ export default function WorkspaceLayout() {
 
   if (!matched) return <Redirect href="/select-workspace" />;
 
+  // Blocked workspaces (suspended / pending_deletion) must not mount any
+  // workspace queries or realtime subscriptions. Allow switch-workspace
+  // (which only fetches account-level workspaces) through via Slot.
+  if (block === "suspended" || block === "pending_deletion") {
+    const onSwitchWorkspace = segments[segments.length - 1] === "switch-workspace";
+    if (onSwitchWorkspace) {
+      return (
+        <SafeAreaView className="flex-1 bg-background" edges={["top", "bottom"]}>
+          <View className="px-4 py-2 border-b border-border flex-row items-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onPress={() => router.replace(`/${matched.slug}/inbox`)}
+            >
+              <Text>{t("common:actions.back")}</Text>
+            </Button>
+          </View>
+          <Slot />
+        </SafeAreaView>
+      );
+    }
+    return <WorkspaceBlockedNotice block={block} slug={matched.slug} />;
+  }
+
   // Tabs hide their own header; pushed screens (issue/[id]) get a native
   // iOS Stack header with the standard back button + swipe-to-dismiss.
-  return (
+  const content = (
     <RealtimeProvider>
+      <WorkspaceMemberWarmup />
       <RealtimeSubscriptions />
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -369,4 +456,23 @@ export default function WorkspaceLayout() {
       </Stack>
     </RealtimeProvider>
   );
+
+  if (block === "read_only") {
+    return (
+      <View className="flex-1 bg-background">
+        <SafeAreaView edges={["top"]} className="bg-muted border-b border-border">
+          <View className="px-4 py-1.5 items-center">
+            <Text className="text-xs font-medium text-foreground text-center">
+              {t("workspace:access.read_only_banner")}
+            </Text>
+          </View>
+        </SafeAreaView>
+        <SafeAreaInsetsContext.Provider value={{ ...insets, top: 0 }}>
+          <View className="flex-1">{content}</View>
+        </SafeAreaInsetsContext.Provider>
+      </View>
+    );
+  }
+
+  return content;
 }

@@ -34,5 +34,33 @@
     "empty": "No pinned items yet.",
     "unavailable_issue": "This pinned issue is unavailable.",
     "unavailable_project": "This pinned project is unavailable."
+  },
+  "access": {
+    "read_only_banner": "This workspace is read-only.",
+    "suspended_title": "Workspace suspended",
+    "suspended_message": "This workspace is currently unavailable.",
+    "pending_deletion_title": "Workspace pending deletion",
+    "pending_deletion_message": "This workspace is scheduled for deletion.",
+    "viewer_write_blocked": "Viewers cannot make changes in this workspace.",
+    "switch_workspace": "Switch workspace"
+  },
+  "plan": {
+    "limit_reached_generic": "Plan limit reached ({{used}}/{{limit}}).",
+    "limit_reached_generic_no_counts": "Plan limit reached.",
+    "limit_reached_issue_count": "Issue limit reached ({{used}}/{{limit}}).",
+    "limit_reached_autopilot_runs": "Monthly run limit reached ({{used}}/{{limit}}).",
+    "limit_reached_agents": "Agent limit reached ({{used}}/{{limit}}).",
+    "limit_reached_runtimes": "Runtime limit reached ({{used}}/{{limit}}).",
+    "limit_reached_member_groups": "Member group limit reached ({{used}}/{{limit}}).",
+    "limit_reached_storage_bytes": "Storage limit reached.",
+    "feature_unavailable_generic": "This feature is unavailable on your current plan.",
+    "feature_unavailable_named": "{{feature}} is unavailable on your current plan.",
+    "features": {
+      "sso": "SSO",
+      "workspace_policies": "Workspace policies",
+      "viewer_role": "Viewer role",
+      "audit_export": "Audit export",
+      "member_groups": "Member groups"
+    }
   }
 }

@@ -40,7 +40,12 @@ export default function Verify() {
     setSubmitting(true);
     setError(null);
     try {
-      await verifyCode(email, value);
+      const result = await verifyCode(email, value);
+      if (result.mfaRequired) {
+        setSubmitting(false);
+        router.replace("/mfa");
+        return;
+      }
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/");
     } catch (err) {

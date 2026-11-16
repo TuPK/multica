@@ -22,6 +22,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import { api, MAX_FILE_SIZE, type FileAsset } from "@/data/api";
 import { useT } from "@/lib/i18n";
+import { formatWorkspaceWriteError } from "@/lib/plan-limit-copy";
 
 export interface FileAttachResult {
   /** Attachment id from the server. Callers MUST carry this to the mutation
@@ -70,7 +71,7 @@ export function useFileAttach() {
       } catch (err) {
         Alert.alert(
           t("upload.failed"),
-          err instanceof Error ? err.message : t("upload.error"),
+          formatWorkspaceWriteError(err, t("upload.error")),
         );
         return null;
       } finally {

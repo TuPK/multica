@@ -29,6 +29,7 @@ import { useAuthStore } from "@/data/auth-store";
 import { api } from "@/data/api";
 import type { FileAsset } from "@/data/api";
 import { useT } from "@/lib/i18n";
+import { formatPlanLimitError } from "@/lib/plan-limit-copy";
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5 MB — matches what's reasonable on cellular.
 
@@ -143,9 +144,10 @@ export default function ProfileSettingsScreen() {
     } catch (err) {
       Alert.alert(
         t("avatar.upload_failed"),
-        err instanceof Error
-          ? err.message
-          : t("avatar.upload_failed_default"),
+        formatPlanLimitError(err) ??
+          (err instanceof Error
+            ? err.message
+            : t("avatar.upload_failed_default")),
       );
     } finally {
       setUploading(false);

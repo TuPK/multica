@@ -17,13 +17,14 @@
 import { focusManager, onlineManager, QueryClient } from "@tanstack/react-query";
 import { AppState, type AppStateStatus } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
+import { shouldRetryQuery } from "@/lib/query-retry";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 60 * 1000, // 1 minute
       gcTime: 10 * 60 * 1000, // 10 minutes
-      retry: 1,
+      retry: shouldRetryQuery,
       refetchOnWindowFocus: true, // honored via focusManager bridge below
     },
     mutations: {

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { CardPressable } from "@/components/ui/card";
 import { workspaceListOptions } from "@/data/queries/workspaces";
 import { useAuthStore } from "@/data/auth-store";
+import { useWorkspaceAccessStore } from "@/data/stores/workspace-access-store";
 import { useWorkspaceStore } from "@/data/workspace-store";
 import { useT } from "@/lib/i18n";
 
@@ -18,6 +19,7 @@ export default function SelectWorkspace() {
   const { data, isLoading, error, refetch } = useQuery(workspaceListOptions());
 
   const onSelect = async (id: string, slug: string) => {
+    useWorkspaceAccessStore.getState().clearWorkspace(slug);
     await setCurrentWorkspace(id, slug);
     router.replace(`/${slug}/inbox`);
   };

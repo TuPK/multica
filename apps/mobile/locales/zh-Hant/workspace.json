@@ -34,5 +34,33 @@
     "empty": "還沒有固定項。",
     "unavailable_issue": "該固定任務不可用。",
     "unavailable_project": "該固定專案不可用。"
+  },
+  "access": {
+    "read_only_banner": "此工作區為唯讀狀態。",
+    "suspended_title": "工作區已暫停",
+    "suspended_message": "此工作區目前無法使用。",
+    "pending_deletion_title": "工作區待刪除",
+    "pending_deletion_message": "此工作區已排程刪除。",
+    "viewer_write_blocked": "檢視者無法在此工作區中進行變更。",
+    "switch_workspace": "切換工作區"
+  },
+  "plan": {
+    "limit_reached_generic": "已達到方案上限（{{used}}/{{limit}}）。",
+    "limit_reached_generic_no_counts": "已達到方案上限。",
+    "limit_reached_issue_count": "已達到任務數量上限（{{used}}/{{limit}}）。",
+    "limit_reached_autopilot_runs": "已達到本月執行上限（{{used}}/{{limit}}）。",
+    "limit_reached_agents": "已達到 AI 代理數量上限（{{used}}/{{limit}}）。",
+    "limit_reached_runtimes": "已達到執行環境數量上限（{{used}}/{{limit}}）。",
+    "limit_reached_member_groups": "已達到成員群組數量上限（{{used}}/{{limit}}）。",
+    "limit_reached_storage_bytes": "儲存空間已達上限。",
+    "feature_unavailable_generic": "目前方案不支援此功能。",
+    "feature_unavailable_named": "目前方案不支援{{feature}}。",
+    "features": {
+      "sso": "SSO",
+      "workspace_policies": "工作區策略",
+      "viewer_role": "檢視者角色",
+      "audit_export": "稽核匯出",
+      "member_groups": "成員群組"
+    }
   }
 }

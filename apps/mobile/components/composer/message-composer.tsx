@@ -66,6 +66,7 @@ import {
   type MentionChip,
 } from "@/components/issue/composer-attachment-row";
 import { useT } from "@/lib/i18n";
+import { formatWorkspaceWriteError } from "@/lib/plan-limit-copy";
 
 export interface MessageComposerReplyTarget {
   actorName: string;
@@ -334,8 +335,7 @@ export function MessageComposer({
           ),
         );
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : t("common:states.error");
+        const message = formatWorkspaceWriteError(err, t("common:states.error"));
         setAttachments((prev) =>
           prev.map((it) =>
             it.localId === localId

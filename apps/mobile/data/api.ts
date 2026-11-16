@@ -135,9 +135,16 @@ import {
 } from "./schemas";
 import type { ZodType } from "zod";
 import { getCurrentSlug } from "./workspace-store";
+import { ApiError } from "@/lib/api-error";
 import { parseWithFallback } from "@/lib/parse-response";
 import { createRequestId } from "@/lib/request-id";
+import {
+  isWorkspaceRefusalCode,
+  type WorkspaceRefusalCode,
+} from "@/lib/workspace-access";
 import { buildCommentUpdateBody } from "./revision";
+
+export { ApiError };
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -151,6 +158,26 @@ if (!API_URL) {
 export interface LoginResponse {
   token: string;
   user: User;
+}
+
+export interface MfaChallengeResponse {
+  mfa_required: true;
+  mfa_token: string;
+  expires_in: number;
+}
+
+export type VerifyCodeResponse = LoginResponse | MfaChallengeResponse;
+
+export function isMfaChallengeResponse(
+  res: VerifyCodeResponse,
+): res is MfaChallengeResponse {
+  return (
+    typeof res === "object" &&
+    res !== null &&
+    "mfa_required" in res &&
+    res.mfa_required === true &&
+    typeof res.mfa_token === "string"
+  );
 }
 
 /** Mobile file payload for `uploadFile`. RN doesn't have a browser `File`
@@ -176,22 +203,14 @@ const MAX_FILE_SIZE = 100 * 1024 * 1024;
  *  reasonable Multica payload size on cellular. */
 const FETCH_TIMEOUT_MS = 30_000;
 
-export class ApiError extends Error {
-  readonly status: number;
-  readonly body?: unknown;
-  constructor(message: string, status: number, body?: unknown) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-    this.body = body;
-  }
-}
-
 export interface ApiClientOptions {
-  /** Called once when the server returns 401. The platform layer wires this
-   *  to clear the token + navigate to /login so a stale token doesn't keep
-   *  every subsequent request looping on 401. */
-  onUnauthorized?: () => void;
+  /** Called when the server returns 401 on a non-/auth/ path. Receives the
+   *  structured error code when present (e.g. "session_revoked"). */
+  onUnauthorized?: (code?: string) => void;
+  /** Called when any request returns 403 with code "account_suspended". */
+  onAccountSuspended?: () => void;
+  /** Called when any request returns 403 for a blocked workspace state. */
+  onWorkspaceRefused?: (code: WorkspaceRefusalCode) => void;
 }
 
 class ApiClient {
@@ -211,6 +230,30 @@ class ApiClient {
 
   setOptions(options: ApiClientOptions) {
     this.options = { ...this.options, ...options };
+  }
+
+  private notifyRefusal(
+    path: string,
+    status: number,
+    code: string | undefined,
+  ): void {
+    if (status === 401) {
+      // Auth screens handle their own 401s (e.g. mfa_token_invalid); only
+      // non-/auth/ endpoints mean an active session is no longer valid.
+      if (!path.startsWith("/auth/")) {
+        this.options.onUnauthorized?.(code);
+      }
+      return;
+    }
+    if (status === 403) {
+      if (code === "account_suspended") {
+        this.options.onAccountSuspended?.();
+        return;
+      }
+      if (isWorkspaceRefusalCode(code)) {
+        this.options.onWorkspaceRefused?.(code);
+      }
+    }
   }
 
   private async fetch<T>(
@@ -297,13 +340,6 @@ class ApiClient {
     const duration = Date.now() - start;
 
     if (!res.ok) {
-      // 401 sign-out hook: invoke once, let the platform layer (auth-store)
-      // clear the token + navigate. Subsequent requests in flight will also
-      // 401 and re-enter here, so the callback must be idempotent.
-      if (res.status === 401) {
-        this.options.onUnauthorized?.();
-      }
-
       let body: unknown;
       try {
         body = await res.json();
@@ -315,6 +351,9 @@ class ApiClient {
           ? String((body as { message: unknown }).message)
           : null) ?? `${res.status} ${res.statusText}`;
 
+      const err = new ApiError(message, res.status, body);
+      this.notifyRefusal(path, res.status, err.code);
+
       const level = res.status === 404 ? "warn" : "error";
       console[level](`[api] ← ${res.status} ${path}`, {
         rid,
@@ -322,7 +361,7 @@ class ApiClient {
         error: message,
       });
 
-      throw new ApiError(message, res.status, body);
+      throw err;
     }
 
     console.log(`[api] ← ${res.status} ${path}`, {
@@ -393,10 +432,17 @@ class ApiClient {
     });
   }
 
-  async verifyCode(email: string, code: string): Promise<LoginResponse> {
-    return this.fetch<LoginResponse>("/auth/verify-code", {
+  async verifyCode(email: string, code: string): Promise<VerifyCodeResponse> {
+    return this.fetch<VerifyCodeResponse>("/auth/verify-code", {
       method: "POST",
       body: JSON.stringify({ email, code }),
+    });
+  }
+
+  async verifyMFA(mfaToken: string, code: string): Promise<LoginResponse> {
+    return this.fetch<LoginResponse>("/auth/mfa/verify", {
+      method: "POST",
+      body: JSON.stringify({ mfa_token: mfaToken, code }),
     });
   }
 
@@ -1345,7 +1391,6 @@ class ApiClient {
     const duration = Date.now() - start;
 
     if (!res.ok) {
-      if (res.status === 401) this.options.onUnauthorized?.();
       let body: unknown;
       try {
         body = await res.json();
@@ -1356,12 +1401,14 @@ class ApiClient {
         (body && typeof body === "object" && "message" in body
           ? String((body as { message: unknown }).message)
           : null) ?? `Upload failed: ${res.status}`;
+      const err = new ApiError(message, res.status, body);
+      this.notifyRefusal(path, res.status, err.code);
       console.error(`[api] ← ${res.status} ${path}`, {
         rid,
         duration: `${duration}ms`,
         error: message,
       });
-      throw new ApiError(message, res.status, body);
+      throw err;
     }
 
     console.log(`[api] ← ${res.status} ${path}`, {

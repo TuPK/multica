@@ -2,8 +2,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { parseWithFallback } from "@/lib/parse-response";
 import {
-  ProjectSchema,
   EMPTY_TASK_MESSAGE_LIST,
+  MemberWithUserSchema,
+  ProjectSchema,
   TaskMessageListSchema,
 } from "./schemas";
 
@@ -63,4 +64,30 @@ describe("TaskMessageListSchema", () => {
       ),
     ).toEqual([]);
   });
+});
+
+describe("MemberWithUserSchema", () => {
+  const baseMember = {
+    id: "member-1",
+    workspace_id: "ws-1",
+    user_id: "user-1",
+    created_at: "2026-01-01T00:00:00Z",
+    name: "Alex",
+    email: "alex@example.com",
+    avatar_url: null,
+  };
+
+  it.each(["owner", "admin", "member", "viewer"] as const)(
+    "preserves known role %s",
+    (role) => {
+      expect(MemberWithUserSchema.parse({ ...baseMember, role }).role).toBe(role);
+    },
+  );
+
+  it.each(["guest", "", undefined, 42])(
+    "maps unknown or missing role %j to viewer (fail-closed read-only)",
+    (role) => {
+      expect(MemberWithUserSchema.parse({ ...baseMember, role }).role).toBe("viewer");
+    },
+  );
 });

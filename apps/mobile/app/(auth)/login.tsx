@@ -14,9 +14,22 @@ import { mapAuthError } from "@/lib/auth-error";
 export default function Login() {
   const { t } = useT("auth");
   const sendCode = useAuthStore((s) => s.sendCode);
+  const signOutReason = useAuthStore((s) => s.signOutReason);
+  const mfaFailureReason = useAuthStore((s) => s.mfaFailureReason);
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const reasonBanner =
+    signOutReason === "account_suspended"
+      ? t("reasons.account_suspended")
+      : signOutReason === "session_revoked"
+        ? t("reasons.session_revoked")
+        : mfaFailureReason === "mfa_token_failed"
+          ? t("mfa.token_failed")
+          : mfaFailureReason === "mfa_token_invalid"
+            ? t("mfa.token_invalid")
+            : null;
 
   const onSubmit = async () => {
     const trimmed = email.trim();
@@ -55,6 +68,13 @@ export default function Login() {
           </View>
 
           <View className="gap-3">
+            {reasonBanner ? (
+              <View className="rounded-md bg-destructive/10 border border-destructive/30 px-3 py-2">
+                <Text className="text-sm text-destructive text-center">
+                  {reasonBanner}
+                </Text>
+              </View>
+            ) : null}
             <TextField
               autoCapitalize="none"
               autoComplete="email"

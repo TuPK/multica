@@ -32,6 +32,7 @@ import type { Workspace } from "@multica/core/types";
 import { Text } from "@/components/ui/text";
 import { WorkspaceAvatar } from "@/components/workspace/workspace-avatar";
 import { workspaceListOptions } from "@/data/queries/workspaces";
+import { useWorkspaceAccessStore } from "@/data/stores/workspace-access-store";
 import { useWorkspaceStore } from "@/data/workspace-store";
 import { useColorScheme } from "@/lib/use-color-scheme";
 import { THEME } from "@/lib/theme";
@@ -40,6 +41,10 @@ import { cn } from "@/lib/utils";
 
 export default function SwitchWorkspaceRoute() {
   const activeSlug = useWorkspaceStore((s) => s.currentWorkspaceSlug);
+  const block = useWorkspaceAccessStore((s) =>
+    activeSlug ? (s.blocks[activeSlug] ?? null) : null,
+  );
+  const isBlocked = block === "suspended" || block === "pending_deletion";
   const { colorScheme } = useColorScheme();
   const theme = THEME[colorScheme];
   const { data, isLoading } = useQuery(workspaceListOptions());
@@ -55,7 +60,11 @@ export default function SwitchWorkspaceRoute() {
         {
           text: t("switch.confirm"),
           onPress: () => {
-            router.dismiss();
+            if (activeSlug) {
+              useWorkspaceAccessStore.getState().clearWorkspace(activeSlug);
+            }
+            useWorkspaceAccessStore.getState().clearWorkspace(ws.slug);
+            if (!isBlocked) router.dismiss();
             router.replace(`/${ws.slug}/inbox`);
           },
         },

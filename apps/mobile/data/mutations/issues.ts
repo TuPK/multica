@@ -31,6 +31,8 @@ import {
 } from "@multica/core/issues/comment-deletion";
 import { api } from "@/data/api";
 import { isBuiltInIssueStatus, statusCategoryOfKey } from "@/lib/issue-status";
+import { i18n } from "@/lib/i18n/singleton";
+import { formatWorkspaceWriteError } from "@/lib/plan-limit-copy";
 import { appConfigOptions } from "@/data/queries/billing";
 import { issueKeys } from "@/data/queries/issues";
 import { inboxKeys } from "@/data/queries/inbox";
@@ -128,7 +130,7 @@ export function useCreateComment(issueId: string) {
           content: vars.content,
           parentId: vars.parentId,
           attachmentIds: vars.attachmentIds,
-          error: err instanceof Error ? err.message : "Send failed",
+          error: formatWorkspaceWriteError(err, i18n.t("issues:failed.send")),
         });
       }
     },

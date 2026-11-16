@@ -16,6 +16,7 @@
  */
 import { create } from "zustand";
 import * as SecureStore from "expo-secure-store";
+import { useWorkspaceAccessStore } from "./stores/workspace-access-store";
 
 const SLUG_KEY = "multica_current_workspace_slug";
 
@@ -31,12 +32,17 @@ interface WorkspaceState {
   clear: () => Promise<void>;
 }
 
-export const useWorkspaceStore = create<WorkspaceState>((set) => ({
+export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   currentWorkspaceId: null,
   currentWorkspaceSlug: null,
 
   setCurrentWorkspace: async (id, slug) => {
+    const prevSlug = get().currentWorkspaceSlug;
     set({ currentWorkspaceId: id, currentWorkspaceSlug: slug });
+    if (prevSlug && prevSlug !== slug) {
+      useWorkspaceAccessStore.getState().clearWorkspace(prevSlug);
+      useWorkspaceAccessStore.getState().clearWorkspace(slug);
+    }
     await SecureStore.setItemAsync(SLUG_KEY, slug);
   },
 
@@ -48,6 +54,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
 
   clear: async () => {
     set({ currentWorkspaceId: null, currentWorkspaceSlug: null });
+    useWorkspaceAccessStore.getState().clearAll();
     await SecureStore.deleteItemAsync(SLUG_KEY);
   },
 }));

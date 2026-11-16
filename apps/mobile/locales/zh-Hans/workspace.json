@@ -34,5 +34,33 @@
     "empty": "还没有固定项。",
     "unavailable_issue": "该固定任务不可用。",
     "unavailable_project": "该固定项目不可用。"
+  },
+  "access": {
+    "read_only_banner": "此工作区为只读状态。",
+    "suspended_title": "工作区已暂停",
+    "suspended_message": "此工作区当前不可用。",
+    "pending_deletion_title": "工作区待删除",
+    "pending_deletion_message": "此工作区已安排删除。",
+    "viewer_write_blocked": "查看者无法在此工作区中进行更改。",
+    "switch_workspace": "切换工作区"
+  },
+  "plan": {
+    "limit_reached_generic": "已达到方案上限（{{used}}/{{limit}}）。",
+    "limit_reached_generic_no_counts": "已达到方案上限。",
+    "limit_reached_issue_count": "已达到任务数量上限（{{used}}/{{limit}}）。",
+    "limit_reached_autopilot_runs": "已达到本月运行上限（{{used}}/{{limit}}）。",
+    "limit_reached_agents": "已达到智能体数量上限（{{used}}/{{limit}}）。",
+    "limit_reached_runtimes": "已达到运行时数量上限（{{used}}/{{limit}}）。",
+    "limit_reached_member_groups": "已达到成员组数量上限（{{used}}/{{limit}}）。",
+    "limit_reached_storage_bytes": "存储空间已达上限。",
+    "feature_unavailable_generic": "当前方案不支持此功能。",
+    "feature_unavailable_named": "当前方案不支持{{feature}}。",
+    "features": {
+      "sso": "SSO",
+      "workspace_policies": "工作区策略",
+      "viewer_role": "查看者角色",
+      "audit_export": "审计导出",
+      "member_groups": "成员组"
+    }
   }
 }
