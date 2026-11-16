@@ -17,6 +17,9 @@ const (
 	EdgeCanceledLapsed Edge = "canceled_lapsed"
 	// EdgePeriodLapsed: active to past_due when the period is over.
 	EdgePeriodLapsed Edge = "period_lapsed"
+	// EdgeUsageUnpaid: active to past_due when a usage invoice has stayed unpaid
+	// for PLATFORM_USAGE_DUE_DAYS (spec 7b.3, rule 13).
+	EdgeUsageUnpaid Edge = "usage_unpaid"
 	// EdgeGraceEnded: past_due to read_only when grace_until has passed.
 	EdgeGraceEnded Edge = "grace_ended"
 	// EdgeReadOnlyEnded: read_only to free thirty days after grace_until.
@@ -26,14 +29,14 @@ const (
 // Edges lists the edges in the order a run takes them. A subscription that is
 // overdue by more than one step, after a stop of the job, moves through all of
 // them in one run.
-var Edges = []Edge{EdgeTrialEnded, EdgeCanceledLapsed, EdgePeriodLapsed, EdgeGraceEnded, EdgeReadOnlyEnded}
+var Edges = []Edge{EdgeTrialEnded, EdgeCanceledLapsed, EdgePeriodLapsed, EdgeUsageUnpaid, EdgeGraceEnded, EdgeReadOnlyEnded}
 
 // From is the status the edge leaves.
 func (e Edge) From() string {
 	switch e {
 	case EdgeTrialEnded:
 		return StatusTrialing
-	case EdgeCanceledLapsed, EdgePeriodLapsed:
+	case EdgeCanceledLapsed, EdgePeriodLapsed, EdgeUsageUnpaid:
 		return subscription.StatusActive
 	case EdgeGraceEnded:
 		return StatusPastDue
@@ -48,7 +51,7 @@ func (e Edge) To() string {
 	switch e {
 	case EdgeTrialEnded, EdgeCanceledLapsed, EdgeReadOnlyEnded:
 		return StatusFree
-	case EdgePeriodLapsed:
+	case EdgePeriodLapsed, EdgeUsageUnpaid:
 		return StatusPastDue
 	case EdgeGraceEnded:
 		return StatusReadOnly
@@ -72,6 +75,10 @@ func (e Edge) Due(s subscription.Subscription, now time.Time) bool {
 		return s.CancelAtPeriodEnd && reached(now, s.CurrentPeriodEnd)
 	case EdgePeriodLapsed:
 		return !s.CancelAtPeriodEnd && reached(now, s.CurrentPeriodEnd)
+	case EdgeUsageUnpaid:
+		// The store has set GraceUntil to the end of the grace the debt earns;
+		// it lists only subscriptions whose invoice is past its due day.
+		return s.GraceUntil != nil
 	case EdgeGraceEnded:
 		return reached(now, s.GraceUntil)
 	case EdgeReadOnlyEnded:
@@ -99,6 +106,8 @@ func (e Edge) Apply(s subscription.Subscription) subscription.Subscription {
 			g := s.CurrentPeriodEnd.Add(GracePeriod)
 			s.GraceUntil = &g
 		}
+	case EdgeUsageUnpaid:
+		// grace_until is the one the store computed.
 	case EdgeGraceEnded:
 		// grace_until stays: the read-only period is counted from it.
 	default:

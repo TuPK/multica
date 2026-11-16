@@ -54,13 +54,17 @@ type wsSpec struct {
 
 func newFixture(t *testing.T, pool *pgxpool.Pool) fixture {
 	t.Helper()
+	return newFixtureWithTerms(t, pool, Terms{DiscountPct: map[string]int64{"business": 20}})
+}
+
+func newFixtureWithTerms(t *testing.T, pool *pgxpool.Pool, terms Terms) fixture {
+	t.Helper()
 	f := fixture{t: t, pool: pool, planKey: "payg-job-" + randomSuffix(t)}
 	rates := map[string]Rate{
 		MeterTasksRun:     {Per: 1000, Price: 30000},
 		MeterStorageBytes: {Per: 1 << 30, Price: 3000},
 		MeterMembers:      {Per: 1, Price: 49000},
 	}
-	terms := Terms{DiscountPct: map[string]int64{"business": 20}}
 	ratesJSON, _ := json.Marshal(rates)
 	termsJSON, _ := json.Marshal(terms)
 	mustExec(t, pool, `INSERT INTO plan (key, name, currency, billing_model, audience, usage_rates, usage_terms, is_public)

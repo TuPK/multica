@@ -406,6 +406,11 @@ func (r *PgxReader) GetOrder(ctx context.Context, id string) (OrderRow, bool, er
 	return orderFromRow(row.BillingOrder, row.WorkspaceName), true, nil
 }
 
+// TenantUsage implements Reader.
+func (r *PgxReader) TenantUsage(ctx context.Context, workspaceID string, now time.Time) (usage.Month, error) {
+	return r.usage.Month(ctx, workspaceID, now)
+}
+
 // RecentOrders implements Reader.
 func (r *PgxReader) RecentOrders(ctx context.Context, workspaceID string, limit int) ([]OrderRow, error) {
 	ws, err := parseUUID(workspaceID)

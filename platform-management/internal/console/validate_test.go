@@ -265,6 +265,7 @@ func TestRouteRoles(t *testing.T) {
 		"/api/platform/tenants":                    anyStaff,
 		"/api/platform/tenants/{id}":               anyStaff,
 		"/api/platform/tenants/{id}/status":        supportAdmin,
+		"/api/platform/tenants/{id}/usage":         anyStaff,
 		"/api/platform/tenants/{id}/audit-events":  anyStaff,
 		"/api/platform/tenants/{id}/notes":         anyStaff,
 		"/api/platform/users":                      anyStaff,

@@ -67,6 +67,7 @@ func (q *Queries) InsertBillingNotice(ctx context.Context, arg InsertBillingNoti
 const listSubscriptionsCanceledLapsed = `-- name: ListSubscriptionsCanceledLapsed :many
 SELECT workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at, pending_change, unit_price FROM workspace_subscription
 WHERE status = 'active' AND cancel_at_period_end
+  AND plan_key NOT IN (SELECT key FROM plan WHERE billing_model = 'usage')
   AND current_period_end IS NOT NULL AND current_period_end <= $1
 ORDER BY current_period_end, workspace_id
 LIMIT $2
@@ -117,6 +118,7 @@ func (q *Queries) ListSubscriptionsCanceledLapsed(ctx context.Context, arg ListS
 const listSubscriptionsForReminder = `-- name: ListSubscriptionsForReminder :many
 SELECT workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at, pending_change, unit_price FROM workspace_subscription
 WHERE status = 'active' AND NOT cancel_at_period_end
+  AND plan_key NOT IN (SELECT key FROM plan WHERE billing_model = 'usage')
   AND current_period_end IS NOT NULL
   AND current_period_end > $1 AND current_period_end <= $2
 ORDER BY current_period_end, workspace_id
@@ -217,6 +219,7 @@ func (q *Queries) ListSubscriptionsGraceEnded(ctx context.Context, arg ListSubsc
 const listSubscriptionsPeriodLapsed = `-- name: ListSubscriptionsPeriodLapsed :many
 SELECT workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at, pending_change, unit_price FROM workspace_subscription
 WHERE status = 'active' AND NOT cancel_at_period_end
+  AND plan_key NOT IN (SELECT key FROM plan WHERE billing_model = 'usage')
   AND current_period_end IS NOT NULL AND current_period_end <= $1
 ORDER BY current_period_end, workspace_id
 LIMIT $2
@@ -227,7 +230,8 @@ type ListSubscriptionsPeriodLapsedParams struct {
 	Limit            int32              `json:"limit"`
 }
 
-// active subscriptions that were not renewed by the end of the period.
+// active seat subscriptions that were not renewed by the end of the period. A
+// usage plan has no renewal to miss: its debt has its own edge.
 func (q *Queries) ListSubscriptionsPeriodLapsed(ctx context.Context, arg ListSubscriptionsPeriodLapsedParams) ([]WorkspaceSubscription, error) {
 	rows, err := q.db.Query(ctx, listSubscriptionsPeriodLapsed, arg.CurrentPeriodEnd, arg.Limit)
 	if err != nil {
@@ -357,6 +361,78 @@ func (q *Queries) ListSubscriptionsTrialEnded(ctx context.Context, arg ListSubsc
 			&i.UpdatedAt,
 			&i.PendingChange,
 			&i.UnitPrice,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSubscriptionsUsageUnpaid = `-- name: ListSubscriptionsUsageUnpaid :many
+SELECT s.workspace_id, s.plan_key, s.status, s.seats, s.interval, s.current_period_start, s.current_period_end, s.trial_end, s.grace_until, s.cancel_at_period_end, s.limit_overrides, s.version, s.updated_at, s.pending_change, s.unit_price,
+       (d.oldest + make_interval(days => $1::int + $2::int))::timestamptz AS usage_grace_until
+FROM workspace_subscription s
+JOIN plan p ON p.key = s.plan_key AND p.billing_model = 'usage'
+JOIN LATERAL (
+    SELECT min(o.created_at) AS oldest FROM billing_order o
+    WHERE o.workspace_id = s.workspace_id AND o.kind = 'usage' AND o.status = 'pending'
+) d ON d.oldest IS NOT NULL
+WHERE s.status = 'active'
+  AND d.oldest + make_interval(days => $1::int) <= $3::timestamptz
+ORDER BY d.oldest, s.workspace_id
+LIMIT $4
+`
+
+type ListSubscriptionsUsageUnpaidParams struct {
+	DueDays   int32              `json:"due_days"`
+	GraceDays int32              `json:"grace_days"`
+	Now       pgtype.Timestamptz `json:"now"`
+	RowLimit  int32              `json:"row_limit"`
+}
+
+type ListSubscriptionsUsageUnpaidRow struct {
+	WorkspaceSubscription WorkspaceSubscription `json:"workspace_subscription"`
+	UsageGraceUntil       pgtype.Timestamptz    `json:"usage_grace_until"`
+}
+
+// active usage subscriptions with a pending usage invoice created at or before
+// $1 less $2 days (spec 7b.3, rule 13). usage_grace_until is the oldest such
+// invoice's created_at plus $2 and $3 days.
+func (q *Queries) ListSubscriptionsUsageUnpaid(ctx context.Context, arg ListSubscriptionsUsageUnpaidParams) ([]ListSubscriptionsUsageUnpaidRow, error) {
+	rows, err := q.db.Query(ctx, listSubscriptionsUsageUnpaid,
+		arg.DueDays,
+		arg.GraceDays,
+		arg.Now,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSubscriptionsUsageUnpaidRow{}
+	for rows.Next() {
+		var i ListSubscriptionsUsageUnpaidRow
+		if err := rows.Scan(
+			&i.WorkspaceSubscription.WorkspaceID,
+			&i.WorkspaceSubscription.PlanKey,
+			&i.WorkspaceSubscription.Status,
+			&i.WorkspaceSubscription.Seats,
+			&i.WorkspaceSubscription.Interval,
+			&i.WorkspaceSubscription.CurrentPeriodStart,
+			&i.WorkspaceSubscription.CurrentPeriodEnd,
+			&i.WorkspaceSubscription.TrialEnd,
+			&i.WorkspaceSubscription.GraceUntil,
+			&i.WorkspaceSubscription.CancelAtPeriodEnd,
+			&i.WorkspaceSubscription.LimitOverrides,
+			&i.WorkspaceSubscription.Version,
+			&i.WorkspaceSubscription.UpdatedAt,
+			&i.WorkspaceSubscription.PendingChange,
+			&i.WorkspaceSubscription.UnitPrice,
+			&i.UsageGraceUntil,
 		); err != nil {
 			return nil, err
 		}

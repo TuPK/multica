@@ -58,13 +58,22 @@ const (
 	codeProration       = "proration_mismatch"
 	// codePlanChangeUnavailable is spec 7b.1's plan_change_unavailable.
 	codePlanChangeUnavailable = "plan_change_unavailable"
-	codeInternal              = "internal"
+	// codeUsageInvoiceUnpaid is spec 7b.3's usage_invoice_unpaid.
+	codeUsageInvoiceUnpaid = "usage_invoice_unpaid"
+	codeInternal           = "internal"
 )
 
 // UsageActivator activates a workspace on a pay as you go plan. *billing.Service
 // is one.
 type UsageActivator interface {
 	ActivateUsage(ctx context.Context, a billing.UsageActivation) (o billing.Order, created bool, err error)
+}
+
+// UsageDebts finds a workspace's unpaid usage invoice (spec 7b.3, rule 13).
+// *subscription.PgxPendingOrders is one.
+type UsageDebts interface {
+	// UnpaidUsageOrder returns found == false when the workspace owes nothing.
+	UnpaidUsageOrder(ctx context.Context, workspaceID string) (orderID string, found bool, err error)
 }
 
 // OrderCreator creates pending orders. *billing.Service is one.
@@ -96,6 +105,9 @@ type Deps struct {
 	// Activator activates a pay as you go plan at checkout. *billing.Service is one.
 	Activator  UsageActivator
 	Workspaces WorkspaceReader
+	// UsageDebts refuses a purchase while a usage invoice is unpaid. Nil means
+	// no workspace owes.
+	UsageDebts UsageDebts
 	VATRate    billing.Rate
 	// Changes and ChangeOrders serve the self-service routes (spec 7b.1).
 	Changes      PlanChanger
@@ -281,6 +293,28 @@ func pickPlan(plans []plan.Plan, sub *subscription.Subscription, key string) (p 
 	return subscription.CheapestPublicPaidPlan(plans)
 }
 
+// refuseUnpaidUsage answers 409 usage_invoice_unpaid, with the invoice's id,
+// when the workspace has an unpaid usage invoice and the target plan is not the
+// free plan (spec 7b.3, rule 13). It reports whether it answered.
+func (h *Handler) refuseUnpaidUsage(w http.ResponseWriter, r *http.Request, ws string, target plan.Plan) bool {
+	if h.UsageDebts == nil || target.Key == plan.FreeKey {
+		return false
+	}
+	orderID, owes, err := h.UsageDebts.UnpaidUsageOrder(r.Context(), ws)
+	if err != nil {
+		h.internalError(w, r, "read unpaid usage invoice", err)
+		return true
+	}
+	if !owes {
+		return false
+	}
+	writeJSON(w, http.StatusConflict, map[string]any{
+		"error": "the workspace has an unpaid usage invoice; pay it first",
+		"code":  codeUsageInvoiceUnpaid, "order_id": orderID,
+	})
+	return true
+}
+
 // checkoutUsage activates a pay as you go plan at once (spec 7b.3, rule 6): no
 // order waits for payment, and the activation's own order is paid for 0 VND. A
 // workspace on a paid plan cannot switch here yet; that switch waits for the
@@ -376,6 +410,9 @@ func (h *Handler) checkout(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		h.internalError(w, r, "check the plan audience", err)
+		return
+	}
+	if h.refuseUnpaidUsage(w, r, ws, p) {
 		return
 	}
 	if p.BillingModel == plan.BillingUsage {

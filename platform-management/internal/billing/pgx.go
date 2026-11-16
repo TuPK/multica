@@ -294,3 +294,38 @@ func (t *pgxTx) ReadOnlyForBilling(ctx context.Context, workspaceID string) (boo
 	}
 	return row.Status == "read_only" && row.Reason == ReasonBilling, nil
 }
+
+func (t *pgxTx) UnpaidUsageOrder(ctx context.Context, workspaceID string) (Order, bool, error) {
+	ws, err := parseUUID(workspaceID)
+	if err != nil {
+		return Order{}, false, err
+	}
+	row, err := t.q.GetUnpaidUsageOrderForWorkspace(ctx, ws)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Order{}, false, nil
+	}
+	if err != nil {
+		return Order{}, false, err
+	}
+	return orderFromRow(row), true, nil
+}
+
+func (t *pgxTx) CancelOrder(ctx context.Context, id string) (Order, error) {
+	uid, err := parseUUID(id)
+	if err != nil {
+		return Order{}, err
+	}
+	row, err := t.q.CancelBillingOrder(ctx, uid)
+	if err != nil { // pgx.ErrNoRows here means the locked order was not pending
+		return Order{}, err
+	}
+	return orderFromRow(row), nil
+}
+
+func (t *pgxTx) UsageLines(ctx context.Context, orderID string) (int64, error) {
+	uid, err := parseUUID(orderID)
+	if err != nil {
+		return 0, err
+	}
+	return t.q.CountUsageChargesOfOrder(ctx, uid)
+}

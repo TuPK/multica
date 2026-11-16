@@ -139,6 +139,39 @@ func (f *fakeStore) Due(_ context.Context, e Edge, now time.Time, limit int) ([]
 	return out, nil
 }
 
+// UsageUnpaid lists the active subscriptions with a pending usage invoice that
+// is past its due day, as the database does.
+func (f *fakeStore) UsageUnpaid(_ context.Context, now time.Time, dueDays, limit int) ([]subscription.Subscription, error) {
+	f.mu.Lock()
+	var out []subscription.Subscription
+	for _, s := range f.subs {
+		if s.Status != subscription.StatusActive {
+			continue
+		}
+		var oldest *time.Time
+		for _, o := range f.orders {
+			if o.WorkspaceID == s.WorkspaceID && o.Kind == billing.KindUsage && o.Status == billing.StatusPending &&
+				(oldest == nil || o.CreatedAt.Before(*oldest)) {
+				c := o.CreatedAt
+				oldest = &c
+			}
+		}
+		if oldest != nil && !now.Before(oldest.AddDate(0, 0, dueDays)) {
+			s.GraceUntil = tp(oldest.AddDate(0, 0, dueDays).Add(GracePeriod))
+			out = append(out, s)
+		}
+	}
+	f.mu.Unlock()
+	sort.Slice(out, func(i, j int) bool { return out[i].WorkspaceID < out[j].WorkspaceID })
+	if len(out) > limit {
+		out = out[:limit]
+	}
+	if f.hook != nil {
+		f.hook(string(EdgeUsageUnpaid))
+	}
+	return out, nil
+}
+
 func (f *fakeStore) Reminders(_ context.Context, now, until time.Time, limit int) ([]subscription.Subscription, error) {
 	f.mu.Lock()
 	var out []subscription.Subscription
@@ -329,6 +362,14 @@ func (t *billingTx) PendingOrder(context.Context, string) (billing.Order, bool, 
 	return billing.Order{}, false, nil
 }
 
+func (t *billingTx) UnpaidUsageOrder(context.Context, string) (billing.Order, bool, error) {
+	return billing.Order{}, false, nil
+}
+func (t *billingTx) CancelOrder(context.Context, string) (billing.Order, error) {
+	return billing.Order{}, nil
+}
+func (t *billingTx) UsageLines(context.Context, string) (int64, error) { return 0, nil }
+
 func (t *billingTx) OrderByIdempotencyKey(context.Context, string, string) (billing.Order, bool, error) {
 	return billing.Order{}, false, fmt.Errorf("not used")
 }
@@ -437,7 +478,7 @@ func newEnv(t *testing.T) *env {
 	e := &env{store: newFakeStore(), mail: &fakeMail{}, cache: &cacheLog{}}
 	svc, err := New(Deps{
 		Store: e.store, Mail: e.mail, Workspaces: e.cache, Entitlements: policyCache{e.cache},
-		AppURL: "https://app.example.com",
+		AppURL: "https://app.example.com", UsageDueDays: 7,
 	})
 	if err != nil {
 		t.Fatal(err)

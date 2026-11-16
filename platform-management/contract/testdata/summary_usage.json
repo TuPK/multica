@@ -1,0 +1,70 @@
+{
+  "entitlement": {
+    "workspace_id": "77777777-7777-4777-8777-777777777777",
+    "plan": "payg",
+    "status": "active",
+    "seats": 0,
+    "limits": {
+      "autopilot_runs": {
+        "mode": "unlimited"
+      },
+      "issue_count": {
+        "mode": "unlimited"
+      }
+    },
+    "current_period_end": null,
+    "snapshot_expires_at": null,
+    "version": 3
+  },
+  "billing_interval": "month",
+  "human_members": 4,
+  "seat_capacity": null,
+  "cancel_at_period_end": false,
+  "grace_until": null,
+  "has_stripe_customer": false,
+  "available_actions": {
+    "checkout": true,
+    "portal": false,
+    "purchase_seats": false,
+    "change_plan": true,
+    "cancel": true,
+    "resume": false
+  },
+  "payment_provider": "manual",
+  "pending_change": null,
+  "billing_model": "usage",
+  "usage": {
+    "period_start": "2026-08-01T00:00:00Z",
+    "period_end": "2026-09-01T00:00:00Z",
+    "currency": "vnd",
+    "accrued_amount": 1234567,
+    "credit_limit": 2000000,
+    "unpaid_order_id": "dddddddd-0000-4000-8000-0000000000a1",
+    "meters": [
+      {
+        "key": "tasks_run",
+        "quantity": 2000,
+        "unit_price": 30000,
+        "per": 1000,
+        "discount_pct": 20,
+        "amount": 48000
+      },
+      {
+        "key": "storage_bytes",
+        "quantity": 2147483648,
+        "unit_price": 3000,
+        "per": 1073741824,
+        "discount_pct": 20,
+        "amount": 155
+      },
+      {
+        "key": "members",
+        "quantity": 10,
+        "unit_price": 49000,
+        "per": 1,
+        "discount_pct": 20,
+        "amount": 12645
+      }
+    ]
+  }
+}

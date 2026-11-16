@@ -52,7 +52,7 @@ func newDBFixture(t *testing.T) *dbFixture {
 	cache := &cacheLog{}
 	svc, err := New(Deps{
 		Store: NewPgxStore(pool), Mail: f.mail, Workspaces: cache, Entitlements: policyCache{cache},
-		AppURL: "https://app.example.com",
+		AppURL: "https://app.example.com", UsageDueDays: 7,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -117,7 +117,7 @@ func TestDBConditionalMoveAppliesOnceUnderTwoConcurrentRuns(t *testing.T) {
 	cache := &cacheLog{}
 	svc, err := New(Deps{
 		Store: barrierStore{NewPgxStore(f.pool), b, t}, Mail: f.mail, Workspaces: cache,
-		Entitlements: policyCache{cache}, AppURL: "https://app.example.com",
+		Entitlements: policyCache{cache}, AppURL: "https://app.example.com", UsageDueDays: 7,
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -288,7 +288,7 @@ func TestLifecycleParallelRunsApplyEachEdgeOnce(t *testing.T) {
 	now := t0.Add(100 * day)
 	fixtures := map[Edge]string{
 		EdgeTrialEnded: wsID(1), EdgeCanceledLapsed: wsID(2), EdgePeriodLapsed: wsID(3),
-		EdgeGraceEnded: wsID(4), EdgeReadOnlyEnded: wsID(5),
+		EdgeGraceEnded: wsID(4), EdgeReadOnlyEnded: wsID(5), EdgeUsageUnpaid: wsID(7),
 	}
 	e.store.put(trialingSub(wsID(1), now))
 	canceling := activeSub(wsID(2), now)
@@ -300,7 +300,12 @@ func TestLifecycleParallelRunsApplyEachEdgeOnce(t *testing.T) {
 	e.store.ws[wsID(5)] = wsRow{Status: workspacestate.ReadOnly, Reason: billing.ReasonBilling}
 	// A reminder that both runs find due.
 	e.store.put(activeSub(wsID(6), now.Add(13*day)))
-	for n := 1; n <= 6; n++ {
+	// A usage subscription whose invoice is past its due day.
+	e.store.put(activeSub(wsID(7), now.Add(30*day)))
+	e.store.orders["usage-order"] = billing.Order{
+		ID: "usage-order", WorkspaceID: wsID(7), Kind: billing.KindUsage, Status: billing.StatusPending, CreatedAt: now.Add(-8 * day),
+	}
+	for n := 1; n <= 7; n++ {
 		e.store.contact(wsID(n), admin)
 	}
 	before := map[string]int64{}
@@ -682,7 +687,7 @@ func TestLifecycleWorkspaceWithoutRecipientsSendsNothing(t *testing.T) {
 	e := newEnv(t)
 	svc, err := New(Deps{
 		Store: e.store, Mail: e.mail, Workspaces: e.cache, Entitlements: policyCache{e.cache},
-		AppURL: "https://app.example.com", Log: slog.New(slog.NewTextHandler(&logs, nil)),
+		AppURL: "https://app.example.com", UsageDueDays: 7, Log: slog.New(slog.NewTextHandler(&logs, nil)),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -801,14 +806,14 @@ func TestLifecycleChainKeepsTheFixtureRowCounts(t *testing.T) {
 
 func TestNewRequiresItsDependencies(t *testing.T) {
 	e := newEnv(t)
-	full := Deps{Store: e.store, Mail: e.mail, Workspaces: e.cache, Entitlements: policyCache{e.cache}, AppURL: "https://app.example.com"}
+	full := Deps{Store: e.store, Mail: e.mail, Workspaces: e.cache, Entitlements: policyCache{e.cache}, AppURL: "https://app.example.com", UsageDueDays: 7}
 	if _, err := New(full); err != nil {
 		t.Fatalf("New(full) = %v", err)
 	}
 	for name, mutate := range map[string]func(*Deps){
 		"store": func(d *Deps) { d.Store = nil }, "mail": func(d *Deps) { d.Mail = nil },
 		"workspaces": func(d *Deps) { d.Workspaces = nil }, "entitlements": func(d *Deps) { d.Entitlements = nil },
-		"app url": func(d *Deps) { d.AppURL = "" },
+		"app url": func(d *Deps) { d.AppURL = "" }, "usage due days": func(d *Deps) { d.UsageDueDays = 0 },
 	} {
 		d := full
 		mutate(&d)

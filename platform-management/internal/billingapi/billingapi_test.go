@@ -123,7 +123,16 @@ func (f *fakeWorkspaces) Slug(_ context.Context, ws string) (string, bool, error
 	return s, ok, f.err
 }
 
+// fakeDebts holds the unpaid usage invoice of each workspace.
+type fakeDebts struct{ unpaid map[string]string }
+
+func (f *fakeDebts) UnpaidUsageOrder(_ context.Context, ws string) (string, bool, error) {
+	id, ok := f.unpaid[ws]
+	return id, ok, nil
+}
+
 type env struct {
+	debts       *fakeDebts
 	members     *fakeMembers
 	subs        *fakeSubs
 	plans       *fakePlans
@@ -151,11 +160,12 @@ func newEnv(t *testing.T) *env {
 		plans:       &fakePlans{plans: all},
 		orders:      &fakeOrders{},
 		spaces:      &fakeWorkspaces{slugs: map[string]string{wsID: "acme"}},
+		debts:       &fakeDebts{unpaid: map[string]string{}},
 		changes:     &fakeChanger{},
 		changeOrder: &fakeChangeOrders{},
 	}
 	h, err := New(Deps{
-		Subscriptions: e.subs, Plans: e.plans, Members: e.members, Orders: e.orders, Workspaces: e.spaces,
+		Subscriptions: e.subs, Plans: e.plans, Members: e.members, Orders: e.orders, Workspaces: e.spaces, UsageDebts: e.debts,
 		Changes: e.changes, ChangeOrders: e.changeOrder, IndividualMaxSeats: 5,
 		VATRate: billing.DefaultVATRate, AppURL: appURL,
 		Now: func() time.Time { return now },

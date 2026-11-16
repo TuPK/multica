@@ -73,6 +73,13 @@ type Billing struct {
 	// true when it is not set. With it on, the Business discount on usage
 	// charges applies only to a verified billing profile (spec D45).
 	BusinessDiscountRequiresVerification bool
+	// UsageDueDays is PLATFORM_USAGE_DUE_DAYS: the days a usage invoice may stay
+	// unpaid before the subscription goes past_due; 7 when it is not set.
+	UsageDueDays int
+	// UsageMinInvoice is PLATFORM_USAGE_MIN_INVOICE: the smallest monthly usage
+	// invoice, in the currency's smallest unit; 10000 when it is not set. Less
+	// carries over to the next month.
+	UsageMinInvoice int64
 	// Bank is where the manual provider tells customers to transfer.
 	Bank billing.BankDetails
 }
@@ -308,7 +315,11 @@ func loadDevVerificationCode(get func(string) string, fail func(variable, reason
 // loadBilling reads the VAT rate and the bank details. The bank details may be
 // empty; the caller logs which ones are.
 func loadBilling(get func(string) string, fail func(variable, reason string)) Billing {
-	b := Billing{VATRate: billing.DefaultVATRate, BusinessDiscountRequiresVerification: true}
+	b := Billing{
+		VATRate: billing.DefaultVATRate, BusinessDiscountRequiresVerification: true,
+		UsageDueDays:    wholeNumber(get, fail, "PLATFORM_USAGE_DUE_DAYS", 7),
+		UsageMinInvoice: int64(wholeNumber(get, fail, "PLATFORM_USAGE_MIN_INVOICE", 10000)),
+	}
 	if raw := get("BILLING_VAT_RATE"); raw != "" {
 		rate, err := billing.ParseRate(raw)
 		if err != nil {

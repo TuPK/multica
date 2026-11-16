@@ -41,5 +41,6 @@
     "resume": false
   },
   "payment_provider": "manual",
-  "pending_change": null
+  "pending_change": null,
+  "billing_model": "seat"
 }

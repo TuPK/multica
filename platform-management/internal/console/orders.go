@@ -5,10 +5,12 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/platform-management/internal/billing"
+	"github.com/multica-ai/multica/platform-management/internal/staff"
 )
 
 const (
@@ -32,22 +34,23 @@ type buyerJSON struct {
 }
 
 type orderJSON struct {
-	ID            string    `json:"id"`
-	WorkspaceID   string    `json:"workspace_id"`
-	WorkspaceName string    `json:"workspace_name"`
-	Kind          string    `json:"kind"`
-	PlanKey       string    `json:"plan_key"`
-	Interval      string    `json:"interval"`
-	Seats         int       `json:"seats"`
-	Amount        int64     `json:"amount"`
-	VATAmount     int64     `json:"vat_amount"`
-	Currency      string    `json:"currency"`
-	Status        string    `json:"status"`
-	TransferCode  string    `json:"transfer_code"`
-	ExpiresAt     string    `json:"expires_at"`
-	CreatedAt     string    `json:"created_at"`
-	PaidAt        *string   `json:"paid_at"`
-	Buyer         buyerJSON `json:"buyer"`
+	ID            string `json:"id"`
+	WorkspaceID   string `json:"workspace_id"`
+	WorkspaceName string `json:"workspace_name"`
+	Kind          string `json:"kind"`
+	PlanKey       string `json:"plan_key"`
+	Interval      string `json:"interval"`
+	Seats         int    `json:"seats"`
+	Amount        int64  `json:"amount"`
+	VATAmount     int64  `json:"vat_amount"`
+	Currency      string `json:"currency"`
+	Status        string `json:"status"`
+	TransferCode  string `json:"transfer_code"`
+	// ExpiresAt is null for a usage invoice, which does not expire.
+	ExpiresAt *string   `json:"expires_at"`
+	CreatedAt string    `json:"created_at"`
+	PaidAt    *string   `json:"paid_at"`
+	Buyer     buyerJSON `json:"buyer"`
 }
 
 func toOrderJSON(o OrderRow) orderJSON {
@@ -62,8 +65,15 @@ func toOrderJSON(o OrderRow) orderJSON {
 		ID: o.ID, WorkspaceID: o.WorkspaceID, WorkspaceName: o.WorkspaceName, Kind: string(o.Kind),
 		PlanKey: o.PlanKey, Interval: o.Interval, Seats: o.Seats, Amount: o.Amount, VATAmount: o.VATAmount,
 		Currency: o.Currency, Status: string(o.Status), TransferCode: o.TransferCode,
-		ExpiresAt: ts(o.ExpiresAt), CreatedAt: ts(o.CreatedAt), PaidAt: tsPtr(o.PaidAt), Buyer: buyer,
+		ExpiresAt: expiry(o.ExpiresAt), CreatedAt: ts(o.CreatedAt), PaidAt: tsPtr(o.PaidAt), Buyer: buyer,
 	}
+}
+
+func expiry(t time.Time) *string {
+	if t.IsZero() {
+		return nil
+	}
+	return tsPtr(&t)
 }
 
 func toOrdersJSON(rows []OrderRow) []orderJSON {
@@ -236,6 +246,13 @@ func (h *Handler) cancelOrder(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, "resolve staff actor", err)
 		return
 	}
+	if row, found, err := h.Reader.GetOrder(r.Context(), id); err != nil {
+		h.fail(w, r, "read order", err)
+		return
+	} else if found && row.Kind == billing.KindUsage {
+		h.writeOffUsage(w, r, a, id, reason)
+		return
+	}
 	var out OrderRow
 	err = h.Runner.InTx(r.Context(), func(tx Tx) error {
 		o, found, err := tx.LockOrder(r.Context(), id)
@@ -270,4 +287,35 @@ func (h *Handler) cancelOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"order": toOrderJSON(out), "applied": true})
+}
+
+// writeOffUsage cancels a usage invoice, the debt it records, as a write-off:
+// admin only, with the reason (spec 7b.3, rule 14). billing.Service writes the
+// order, billing.usage_written_off and the restore of the workspace in one
+// transaction.
+func (h *Handler) writeOffUsage(w http.ResponseWriter, r *http.Request, a actor, id, reason string) {
+	if a.Role != staff.RoleAdmin {
+		writeError(w, &apiError{Status: http.StatusForbidden, Code: "usage_cancel_admin_only", Message: "only an admin can write off a usage invoice"})
+		return
+	}
+	o, err := h.Payments.WriteOffUsage(r.Context(), billing.WriteOff{OrderID: id, Reason: reason, StaffID: a.ID, ActorLabel: a.Email})
+	switch {
+	case errors.Is(err, billing.ErrOrderNotFound):
+		err = orderNotFound()
+	case errors.Is(err, billing.ErrInvalidTransition):
+		err = orderNotPending()
+	}
+	if err != nil {
+		h.fail(w, r, "write off usage invoice", err)
+		return
+	}
+	// The write-off is committed. A failed read of the workspace name must not
+	// turn it into an error response, so the name stays empty.
+	row := OrderRow{Order: o}
+	if got, found, err := h.Reader.GetOrder(r.Context(), id); err != nil {
+		h.Log.Error("console: read written-off order failed", "order_id", id, "error", err)
+	} else if found {
+		row = got
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"order": toOrderJSON(row), "applied": true})
 }

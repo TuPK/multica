@@ -46,6 +46,8 @@ type AccountNotifier interface {
 // *billing.Service is one.
 type PaymentApplier interface {
 	ApplyPayment(ctx context.Context, c billing.Confirmation) (billing.Applied, error)
+	// WriteOffUsage cancels a usage invoice as a write-off (spec 7b.3, rule 14).
+	WriteOffUsage(ctx context.Context, w billing.WriteOff) (billing.Order, error)
 }
 
 // EmailLookup returns a user's email. *staff.Store is one.
@@ -113,6 +115,7 @@ func routeTable() []routeSpec {
 		{base + "/tenants", nil, map[string]handlerFunc{http.MethodGet: (*Handler).listTenants}},
 		{base + "/tenants/{id}", nil, map[string]handlerFunc{http.MethodGet: (*Handler).getTenant}},
 		{base + "/tenants/{id}/status", supportAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).setTenantStatus}},
+		{base + "/tenants/{id}/usage", nil, map[string]handlerFunc{http.MethodGet: (*Handler).getTenantUsage}},
 		{base + "/tenants/{id}/audit-events", nil, map[string]handlerFunc{http.MethodGet: (*Handler).listTenantAuditEvents}},
 		{base + "/tenants/{id}/notes", nil, map[string]handlerFunc{
 			http.MethodGet:  (*Handler).listNotes,

@@ -146,6 +146,30 @@ func (h *Handler) getTenant(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+// getTenantUsage is the usage tab of a workspace: this month's rows, the days
+// with no usage numbers, and the unpaid usage invoices. It carries counts and
+// money only (isolation rule I6).
+func (h *Handler) getTenantUsage(w http.ResponseWriter, r *http.Request) {
+	id, perr := pathID(r, "id")
+	if perr != nil {
+		writeError(w, perr)
+		return
+	}
+	if _, found, err := h.Reader.GetTenant(r.Context(), id); err != nil {
+		h.fail(w, r, "get tenant", err)
+		return
+	} else if !found {
+		writeError(w, notFound())
+		return
+	}
+	m, err := h.Reader.TenantUsage(r.Context(), id, h.Now())
+	if err != nil {
+		h.fail(w, r, "tenant usage", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, m)
+}
+
 type userJSON struct {
 	ID               string `json:"id"`
 	Email            string `json:"email"`

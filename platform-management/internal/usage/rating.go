@@ -45,8 +45,12 @@ type Rates map[string]Rate
 
 // Terms is the usage_terms of a plan. DiscountPct["business"] is the Business
 // discount in whole percent (spec 7b.3, rule 9).
+//
+// CreditLimit maps an account kind to the amount of uninvoiced usage at which a
+// temporary invoice is issued (rule 12). A kind it does not name has no limit.
 type Terms struct {
 	DiscountPct map[string]int64 `json:"discount_pct"`
+	CreditLimit map[string]int64 `json:"credit_limit"`
 }
 
 // DaysFor returns the number of days a meter's day is a share of: 1 for

@@ -3,12 +3,17 @@ package usage
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/multica-ai/multica/platform-management/internal/billing"
 	"github.com/multica-ai/multica/platform-management/internal/db"
+	"github.com/multica-ai/multica/platform-management/internal/lifecycle"
 )
 
 // JobName is the usage_rating job's name in internal/jobs; it is the lock key.
@@ -26,17 +31,30 @@ type RaterConfig struct {
 	// RequireVerification is PLATFORM_BUSINESS_DISCOUNT_REQUIRES_VERIFICATION:
 	// the Business discount applies only to a verified profile.
 	RequireVerification bool
+	// VATRate is BILLING_VAT_RATE, for the temporary invoice at the credit limit.
+	VATRate billing.Rate
+	// Mail sends the 80 percent notice. Nil sends none.
+	Mail lifecycle.Sender
+	// AppURL is the origin the notice links to, PLATFORM_APP_URL.
+	AppURL string
 }
 
-// Rater rates closed days into usage_charge.
+// Rater rates closed days into usage_charge, and acts on the credit limit once
+// a day is written (spec 7b.3, rule 12).
 type Rater struct {
-	store Store
-	cfg   RaterConfig
+	pool    *pgxpool.Pool
+	store   Store
+	cfg     RaterConfig
+	invoice *Invoicer
+	notices *lifecycle.PgxStore
 }
 
 // NewRater returns a Rater over pool.
 func NewRater(pool *pgxpool.Pool, cfg RaterConfig) *Rater {
-	return &Rater{store: NewStore(pool), cfg: cfg}
+	return &Rater{
+		pool: pool, store: NewStore(pool), cfg: cfg,
+		invoice: NewInvoicer(pool, InvoicerConfig{VATRate: cfg.VATRate}), notices: lifecycle.NewPgxStore(pool),
+	}
 }
 
 // Run rates every closed day (before the UTC day of now) that has a usage
@@ -47,6 +65,8 @@ func NewRater(pool *pgxpool.Pool, cfg RaterConfig) *Rater {
 func (r *Rater) Run(ctx context.Context, now time.Time) (int64, error) {
 	today := midnightUTC(now)
 	var total int64
+	// A failing credit limit step must not stop the rating of other workspaces.
+	var limitErrs []error
 	for {
 		batch, err := r.store.DaysToRate(ctx, today, batchSize)
 		if err != nil {
@@ -58,11 +78,16 @@ func (r *Rater) Run(ctx context.Context, now time.Time) (int64, error) {
 				return total, fmt.Errorf("rate workspace %s day %s: %w", uuidText(c.WorkspaceID), c.Day.Time.Format(dayLayout), err)
 			}
 			total += n
+			if n > 0 {
+				if err := r.checkCreditLimit(ctx, c.WorkspaceID, now); err != nil {
+					limitErrs = append(limitErrs, fmt.Errorf("credit limit of workspace %s: %w", uuidText(c.WorkspaceID), err))
+				}
+			}
 		}
 		// Every day in a full batch is charged now, so the next query starts
 		// past them. A short batch is the last one.
 		if len(batch) < batchSize {
-			return total, nil
+			return total, errors.Join(limitErrs...)
 		}
 	}
 }
@@ -108,4 +133,42 @@ func (r *Rater) rateDay(ctx context.Context, c db.ListUsageDaysToRateRow) (int64
 func midnightUTC(t time.Time) time.Time {
 	u := t.UTC()
 	return time.Date(u.Year(), u.Month(), u.Day(), 0, 0, 0, 0, time.UTC)
+}
+
+// noticePercent is the share of the credit limit at which the owners are told.
+const noticePercent = 80
+
+// checkCreditLimit reads what the workspace has used and not been invoiced for.
+// At the credit limit it issues a temporary invoice for all of it, with no
+// minimum. At 80 percent it emails the owners once in the month. The limit
+// never blocks usage.
+func (r *Rater) checkCreditLimit(ctx context.Context, ws pgtype.UUID, now time.Time) error {
+	q := db.New(r.pool)
+	terms, err := q.GetUsageTerms(ctx, ws)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var t Terms
+	if err := json.Unmarshal(terms.UsageTerms, &t); err != nil {
+		return fmt.Errorf("plan %s usage_terms: %w", terms.PlanKey, err)
+	}
+	limit := t.CreditLimit[terms.AccountKind]
+	if limit <= 0 {
+		return nil
+	}
+	accrued, err := q.GetUsageAccrual(ctx, ws)
+	if err != nil {
+		return err
+	}
+	switch {
+	case accrued >= limit:
+		_, err := r.invoice.invoice(ctx, ws, now, limit)
+		return err
+	case accrued*100 >= limit*noticePercent && r.cfg.Mail != nil:
+		return r.noticeEighty(ctx, ws, accrued, limit, now)
+	}
+	return nil
 }

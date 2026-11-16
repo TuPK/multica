@@ -60,6 +60,16 @@ const (
 	ActionBillingOrderCanceled = "billing.order_canceled"
 )
 
+// R5 usage billing actions (spec 7b.3, audit table). usage_invoiced is written by
+// the system in the transaction that creates a usage invoice. usage_written_off
+// is written by staff in place of billing.order_canceled when a usage invoice is
+// written off.
+const (
+	ActionBillingUsageInvoiced           = "billing.usage_invoiced"
+	ActionBillingUsageCreditLimitReached = "billing.usage_credit_limit_reached"
+	ActionBillingUsageWrittenOff         = "billing.usage_written_off"
+)
+
 // R2 actions (spec 5.14), written by Multica in the transaction of the change.
 // Details name fields and ids, never a token, an environment value or an MCP
 // configuration.
@@ -179,6 +189,9 @@ var Catalog = []string{
 	ActionGroupMemberAdded,
 	ActionGroupMemberRemoved,
 	ActionGroupPermissionsChanged,
+	ActionBillingUsageInvoiced,
+	ActionBillingUsageCreditLimitReached,
+	ActionBillingUsageWrittenOff,
 }
 
 // R5 subscription actions (spec 7b.1, rules 5 to 8): written by the platform in the

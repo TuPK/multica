@@ -41,12 +41,20 @@ func (t *memTx) Plan(_ context.Context, key string) (plan.Plan, bool, error) {
 // PendingOrder returns the workspace's pending order, as the database would.
 func (t *memTx) PendingOrder(_ context.Context, ws string) (Order, bool, error) {
 	for _, o := range t.m.orders {
-		if o.WorkspaceID == ws && o.Status == StatusPending {
+		if o.WorkspaceID == ws && o.Status == StatusPending && o.Kind != KindUsage {
 			return o, true, nil
 		}
 	}
 	return Order{}, false, nil
 }
+
+// The usage invoice reads are exercised against the database; the in-memory
+// store has no usage invoices.
+func (t *memTx) UnpaidUsageOrder(context.Context, string) (Order, bool, error) {
+	return Order{}, false, nil
+}
+func (t *memTx) CancelOrder(context.Context, string) (Order, error) { return Order{}, nil }
+func (t *memTx) UsageLines(context.Context, string) (int64, error)  { return 0, nil }
 
 // proSeats3 is a pro workspace of 3 seats, paying 149000 a seat for March 2025.
 // The clock is 1 March 2025 10:00, so the whole of March is still left in 30.58

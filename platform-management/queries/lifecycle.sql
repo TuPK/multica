@@ -12,17 +12,37 @@ LIMIT $2;
 -- active subscriptions that end with the period and whose period is over.
 SELECT * FROM workspace_subscription
 WHERE status = 'active' AND cancel_at_period_end
+  AND plan_key NOT IN (SELECT key FROM plan WHERE billing_model = 'usage')
   AND current_period_end IS NOT NULL AND current_period_end <= $1
 ORDER BY current_period_end, workspace_id
 LIMIT $2;
 
 -- name: ListSubscriptionsPeriodLapsed :many
--- active subscriptions that were not renewed by the end of the period.
+-- active seat subscriptions that were not renewed by the end of the period. A
+-- usage plan has no renewal to miss: its debt has its own edge.
 SELECT * FROM workspace_subscription
 WHERE status = 'active' AND NOT cancel_at_period_end
+  AND plan_key NOT IN (SELECT key FROM plan WHERE billing_model = 'usage')
   AND current_period_end IS NOT NULL AND current_period_end <= $1
 ORDER BY current_period_end, workspace_id
 LIMIT $2;
+
+-- name: ListSubscriptionsUsageUnpaid :many
+-- active usage subscriptions with a pending usage invoice created at or before
+-- $1 less $2 days (spec 7b.3, rule 13). usage_grace_until is the oldest such
+-- invoice's created_at plus $2 and $3 days.
+SELECT sqlc.embed(s),
+       (d.oldest + make_interval(days => sqlc.arg('due_days')::int + sqlc.arg('grace_days')::int))::timestamptz AS usage_grace_until
+FROM workspace_subscription s
+JOIN plan p ON p.key = s.plan_key AND p.billing_model = 'usage'
+JOIN LATERAL (
+    SELECT min(o.created_at) AS oldest FROM billing_order o
+    WHERE o.workspace_id = s.workspace_id AND o.kind = 'usage' AND o.status = 'pending'
+) d ON d.oldest IS NOT NULL
+WHERE s.status = 'active'
+  AND d.oldest + make_interval(days => sqlc.arg('due_days')::int) <= sqlc.arg('now')::timestamptz
+ORDER BY d.oldest, s.workspace_id
+LIMIT sqlc.arg('row_limit');
 
 -- name: ListSubscriptionsGraceEnded :many
 SELECT * FROM workspace_subscription
@@ -43,6 +63,7 @@ LIMIT $2;
 -- active subscriptions that end after $1 and by $2 and do not stop at the end.
 SELECT * FROM workspace_subscription
 WHERE status = 'active' AND NOT cancel_at_period_end
+  AND plan_key NOT IN (SELECT key FROM plan WHERE billing_model = 'usage')
   AND current_period_end IS NOT NULL
   AND current_period_end > $1 AND current_period_end <= $2
 ORDER BY current_period_end, workspace_id

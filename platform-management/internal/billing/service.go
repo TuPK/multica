@@ -79,8 +79,16 @@ type Tx interface {
 	// Plan reads a plan. found == false for an unknown key.
 	Plan(ctx context.Context, key string) (plan.Plan, bool, error)
 	// PendingOrder returns the workspace's pending order, found == false when it
-	// has none.
+	// has none. A usage invoice is a debt, not a pending change (spec 7b.1,
+	// rule 9), so it is not one.
 	PendingOrder(ctx context.Context, workspaceID string) (o Order, found bool, err error)
+	// UnpaidUsageOrder returns the workspace's oldest pending usage invoice,
+	// found == false when it has none.
+	UnpaidUsageOrder(ctx context.Context, workspaceID string) (o Order, found bool, err error)
+	// CancelOrder moves a pending order to canceled.
+	CancelOrder(ctx context.Context, id string) (Order, error)
+	// UsageLines counts the usage_charge rows of an invoice.
+	UsageLines(ctx context.Context, orderID string) (int64, error)
 
 	workspacestatus.Tx
 }
@@ -163,6 +171,7 @@ func (d Draft) validate() (Draft, error) {
 			return d, fmt.Errorf("billing: created by: %w", err)
 		}
 	}
+	usage := d.Kind == KindUsage
 	switch {
 	case !d.Kind.Valid():
 		return d, fmt.Errorf("billing: unknown kind %q", d.Kind)
@@ -170,7 +179,11 @@ func (d Draft) validate() (Draft, error) {
 		return d, errors.New("billing: plan key is required")
 	case d.Interval != IntervalMonth && d.Interval != IntervalYear:
 		return d, fmt.Errorf("billing: unknown interval %q", d.Interval)
-	case d.Seats < 1 || d.Seats > MaxSeats:
+	case usage && d.Seats != 0:
+		return d, errors.New("billing: a usage order has no seats")
+	case usage && (d.PeriodStart == nil || d.IdempotencyKey == ""):
+		return d, errors.New("billing: a usage order needs a period and an idempotency key")
+	case !usage && (d.Seats < 1 || d.Seats > MaxSeats):
 		return d, fmt.Errorf("billing: seats must be from 1 to %d", MaxSeats)
 	case d.Amount <= 0:
 		return d, errors.New("billing: amount must be positive")
@@ -199,6 +212,10 @@ func (d Draft) validate() (Draft, error) {
 	}
 	return d, nil
 }
+
+// ValidateDraft checks a draft and returns it with the defaults filled in. The
+// usage invoicing, which writes its orders in its own transaction, uses it.
+func ValidateDraft(d Draft) (Draft, error) { return d.validate() }
 
 // CreateOrder writes a pending order, its transfer code and expires_at (seven
 // days after creation), and the billing.order_created audit row, in one
@@ -304,6 +321,9 @@ func (s *Service) ApplyPayment(ctx context.Context, c Confirmation) (Applied, er
 			return err
 		}
 
+		if o.Kind == KindUsage {
+			return s.applyUsagePayment(ctx, tx, o, confirmedBy, c.ActorLabel, now, &out)
+		}
 		cur, exists, err := tx.LockSubscription(ctx, o.WorkspaceID)
 		if err != nil {
 			return err

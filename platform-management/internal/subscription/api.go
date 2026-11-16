@@ -17,10 +17,11 @@ import (
 const (
 	SummaryPattern = "GET /api/v1/subscriptions/{ws}/summary"
 	PricesPattern  = "GET /api/v1/subscriptions/{ws}/prices"
+	UsagePattern   = "GET /api/v1/subscriptions/{ws}/usage"
 )
 
 // APIPatterns lists the patterns API.Handler serves.
-var APIPatterns = []string{SummaryPattern, PricesPattern}
+var APIPatterns = []string{SummaryPattern, PricesPattern, UsagePattern}
 
 // paymentProvider is the platform's addition to the summary: payment is by
 // bank transfer, confirmed by staff.
@@ -60,12 +61,14 @@ type APIDeps struct {
 	Plans         plan.Reader
 	Members       MemberReader
 	Pending       PendingReader
+	// Usage reads the usage block of a usage plan.
+	Usage UsageReader
 	// Now is the clock. Nil means time.Now.
 	Now func() time.Time
 	Log *slog.Logger
 }
 
-// API serves the billing page's two reads.
+// API serves the billing page's reads.
 type API struct{ APIDeps }
 
 // NewAPI returns an API.
@@ -79,12 +82,13 @@ func NewAPI(d APIDeps) *API {
 	return &API{d}
 }
 
-// Handler serves SummaryPattern and PricesPattern. requireUser is
+// Handler serves SummaryPattern, PricesPattern and UsagePattern. requireUser is
 // trust.Peers.RequireUser.
 func (a *API) Handler(requireUser func(http.Handler) http.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle(SummaryPattern, requireUser(http.HandlerFunc(a.summary)))
 	mux.Handle(PricesPattern, requireUser(http.HandlerFunc(a.prices)))
+	mux.Handle(UsagePattern, requireUser(http.HandlerFunc(a.usage)))
 	return mux
 }
 
@@ -183,6 +187,10 @@ type summaryJSON struct {
 	AvailableActions  actionsJSON        `json:"available_actions"`
 	PaymentProvider   string             `json:"payment_provider"`
 	PendingChange     *pendingChangeJSON `json:"pending_change"`
+	// BillingModel is the plan's, seat or usage (spec 7b.3).
+	BillingModel string `json:"billing_model"`
+	// Usage is the usage block, only for a usage plan.
+	Usage *Usage `json:"usage,omitempty"`
 }
 
 func pendingJSON(p *PendingChange) *pendingChangeJSON {
@@ -255,6 +263,7 @@ func buildSummary(workspaceID string, sub *Subscription, p plan.Plan, members, r
 		},
 		HumanMembers:    members,
 		PaymentProvider: paymentProvider,
+		BillingModel:    p.BillingModel,
 	}
 	if sub != nil {
 		out.Entitlement.Seats = int64(sub.Seats)
@@ -303,36 +312,45 @@ func buildSummary(workspaceID string, sub *Subscription, p plan.Plan, members, r
 	return out
 }
 
-func (a *API) summary(w http.ResponseWriter, r *http.Request) {
-	ws, ok := trust.CanonicalUUID(r.PathValue("ws"))
+// authorize checks that the caller is an owner or admin of the workspace in the
+// path: a non-member gets 404 and any other role 403. It writes the refusal and
+// returns false when the request must stop.
+func (a *API) authorize(w http.ResponseWriter, r *http.Request) (ws string, ok bool) {
+	ws, ok = trust.CanonicalUUID(r.PathValue("ws"))
 	if !ok {
 		writeError(w, http.StatusNotFound, "not_found", "not found")
-		return
+		return "", false
 	}
 	user, ok := trust.UserFrom(r.Context())
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "X-User-ID is required")
-		return
+		return "", false
 	}
 
 	role, found, err := a.Members.Role(r.Context(), ws, user)
 	if err != nil {
 		a.internalError(w, r, "read member role", err)
-		return
+		return "", false
 	}
 	if !found {
 		writeError(w, http.StatusNotFound, "not_found", "not found")
-		return
+		return "", false
 	}
 	if role != "owner" && role != "admin" {
 		writeError(w, http.StatusForbidden, "forbidden", "owner or admin role required")
-		return
+		return "", false
 	}
+	return ws, true
+}
 
+// planOf returns the workspace's subscription (nil when it has no row) and its
+// plan, which is the free plan without a row. It writes the failure and returns
+// false when it cannot read them.
+func (a *API) planOf(w http.ResponseWriter, r *http.Request, ws string) (*Subscription, plan.Plan, bool) {
 	sub, hasSub, err := a.Subscriptions.Get(r.Context(), ws)
 	if err != nil {
 		a.internalError(w, r, "read subscription", err)
-		return
+		return nil, plan.Plan{}, false
 	}
 	key, subPtr := plan.FreeKey, (*Subscription)(nil)
 	if hasSub {
@@ -344,6 +362,18 @@ func (a *API) summary(w http.ResponseWriter, r *http.Request) {
 			err = &missingPlanError{key}
 		}
 		a.internalError(w, r, "read plan", err)
+		return nil, plan.Plan{}, false
+	}
+	return subPtr, p, true
+}
+
+func (a *API) summary(w http.ResponseWriter, r *http.Request) {
+	ws, ok := a.authorize(w, r)
+	if !ok {
+		return
+	}
+	subPtr, p, ok := a.planOf(w, r, ws)
+	if !ok {
 		return
 	}
 	members, err := a.Members.Count(r.Context(), ws)
@@ -368,7 +398,44 @@ func (a *API) summary(w http.ResponseWriter, r *http.Request) {
 			pending = &order
 		}
 	}
-	writeJSON(w, http.StatusOK, buildSummary(ws, subPtr, p, members, reserved, pending, now))
+	out := buildSummary(ws, subPtr, p, members, reserved, pending, now)
+	if p.BillingModel == plan.BillingUsage {
+		u, err := a.Usage.Usage(r.Context(), ws, now)
+		if err != nil {
+			a.internalError(w, r, "read usage", err)
+			return
+		}
+		out.Usage = &u
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+type usageResponse struct {
+	BillingModel string `json:"billing_model"`
+	Usage        *Usage `json:"usage"`
+}
+
+// usage serves the customer's usage of the current month: the usage block of a
+// usage plan, and null for a seat plan.
+func (a *API) usage(w http.ResponseWriter, r *http.Request) {
+	ws, ok := a.authorize(w, r)
+	if !ok {
+		return
+	}
+	_, p, ok := a.planOf(w, r, ws)
+	if !ok {
+		return
+	}
+	out := usageResponse{BillingModel: p.BillingModel}
+	if p.BillingModel == plan.BillingUsage {
+		u, err := a.Usage.Usage(r.Context(), ws, a.Now())
+		if err != nil {
+			a.internalError(w, r, "read usage", err)
+			return
+		}
+		out.Usage = &u
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 type missingPlanError struct{ key string }

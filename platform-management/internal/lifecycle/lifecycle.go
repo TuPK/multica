@@ -4,6 +4,7 @@
 //	trialing --trial_end--> free
 //	active --period over, not renewed--> past_due --grace over--> read_only --30 days--> free
 //	active --period over, cancel_at_period_end--> free
+//	active (usage plan) --usage invoice unpaid past its due days--> past_due, then as above
 //
 // A payment at any step returns the workspace to active; that is
 // billing.Service.ApplyPayment, not this package.
@@ -128,6 +129,11 @@ type Store interface {
 	// Due returns up to limit subscriptions for which e.Due holds at now, the
 	// longest-overdue first.
 	Due(ctx context.Context, e Edge, now time.Time, limit int) ([]subscription.Subscription, error)
+	// UsageUnpaid returns up to limit active subscriptions on a usage plan that
+	// have a pending usage invoice created dueDays or more before now, the
+	// oldest invoice first. Each has GraceUntil set to that invoice's created_at
+	// plus dueDays and GracePeriod: the value the move writes.
+	UsageUnpaid(ctx context.Context, now time.Time, dueDays, limit int) ([]subscription.Subscription, error)
 	// Reminders returns up to limit active subscriptions that do not stop at
 	// the end of the period and whose current_period_end is after now and not
 	// after until.
@@ -165,7 +171,10 @@ type Deps struct {
 	// AppURL is the origin of the Multica web app. The emails link to the
 	// workspace's settings page on it.
 	AppURL string
-	Log    *slog.Logger
+	// UsageDueDays is PLATFORM_USAGE_DUE_DAYS: how long a usage invoice may stay
+	// unpaid before its subscription goes past_due (spec 7b.3, rule 13).
+	UsageDueDays int
+	Log          *slog.Logger
 }
 
 // Service is the subscription_lifecycle job.
@@ -176,8 +185,8 @@ type Service struct {
 // New returns a Service. Store, Mail, Workspaces, Entitlements and AppURL are
 // required.
 func New(d Deps) (*Service, error) {
-	if d.Store == nil || d.Mail == nil || d.Workspaces == nil || d.Entitlements == nil || d.AppURL == "" {
-		return nil, errors.New("lifecycle: Store, Mail, Workspaces, Entitlements and AppURL are required")
+	if d.Store == nil || d.Mail == nil || d.Workspaces == nil || d.Entitlements == nil || d.AppURL == "" || d.UsageDueDays < 1 {
+		return nil, errors.New("lifecycle: Store, Mail, Workspaces, Entitlements, AppURL and UsageDueDays are required")
 	}
 	if d.Log == nil {
 		d.Log = slog.Default()
@@ -209,7 +218,13 @@ func (s *Service) Run(ctx context.Context, now time.Time) (Report, error) {
 		if err := ctx.Err(); err != nil {
 			return rep, errors.Join(append(errs, err)...)
 		}
-		due, err := s.d.Store.Due(ctx, e, now, BatchSize)
+		var due []subscription.Subscription
+		var err error
+		if e == EdgeUsageUnpaid {
+			due, err = s.d.Store.UsageUnpaid(ctx, now, s.d.UsageDueDays, BatchSize)
+		} else {
+			due, err = s.d.Store.Due(ctx, e, now, BatchSize)
+		}
 		if err != nil {
 			errs = append(errs, fmt.Errorf("lifecycle: list %s: %w", e, err))
 			continue

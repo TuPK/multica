@@ -356,6 +356,23 @@ type PgxPendingOrders struct{ q *db.Queries }
 // NewPgxPendingOrders returns a PendingOrders over pool.
 func NewPgxPendingOrders(pool db.DBTX) *PgxPendingOrders { return &PgxPendingOrders{q: db.New(pool)} }
 
+// UnpaidUsageOrder returns the workspace's oldest unpaid usage invoice, found ==
+// false when it has none (spec 7b.3, rule 13).
+func (p *PgxPendingOrders) UnpaidUsageOrder(ctx context.Context, workspaceID string) (string, bool, error) {
+	ws, err := parseUUID(workspaceID)
+	if err != nil {
+		return "", false, err
+	}
+	row, err := p.q.GetUnpaidUsageOrderForWorkspace(ctx, ws)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return uuidText(row.ID), true, nil
+}
+
 // PendingOrder implements PendingOrders.
 func (p *PgxPendingOrders) PendingOrder(ctx context.Context, workspaceID string) (string, bool, error) {
 	ws, err := parseUUID(workspaceID)

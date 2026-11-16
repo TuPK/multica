@@ -163,6 +163,9 @@ func (h *Handler) quotePlanChange(w http.ResponseWriter, r *http.Request, ws str
 		h.fail(w, r, "check the plan audience", err)
 		return quotedChange{}, false
 	}
+	if h.refuseUnpaidUsage(w, r, ws, target) {
+		return quotedChange{}, false
+	}
 	sub, ok := h.subscriptionOf(w, r, ws)
 	if !ok {
 		return quotedChange{}, false

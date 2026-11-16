@@ -43,3 +43,89 @@ INSERT INTO usage_charge (
     sqlc.arg('net_amount'), sqlc.arg('note')
 )
 ON CONFLICT (workspace_id, day, meter) DO NOTHING;
+
+-- The usage invoice (spec 7b.3, rules 11 and 12).
+
+-- name: ListUsageInvoiceWorkspaces :many
+-- Workspaces with usage charges not yet on an invoice: a usage plan's rows of
+-- days before $1 (the monthly invoice), and any row of a workspace that is no
+-- longer on a usage plan (the final invoice).
+SELECT s.workspace_id
+FROM workspace_subscription s
+JOIN plan p ON p.key = s.plan_key
+WHERE EXISTS (
+    SELECT 1 FROM usage_charge c
+    WHERE c.workspace_id = s.workspace_id AND c.order_id IS NULL
+      AND (p.billing_model <> 'usage' OR c.day < sqlc.arg('month_start')::date)
+)
+ORDER BY s.workspace_id;
+
+-- name: LockUsageInvoiceSubscription :one
+-- Serialises the invoicing of one workspace until the transaction ends.
+SELECT s.plan_key, p.billing_model
+FROM workspace_subscription s
+JOIN plan p ON p.key = s.plan_key
+WHERE s.workspace_id = $1
+FOR UPDATE OF s;
+
+-- name: ListUninvoicedUsageCharges :many
+-- The rows an invoice would take, locked. A null before takes all of them.
+SELECT day, net_amount
+FROM usage_charge
+WHERE workspace_id = sqlc.arg('workspace_id') AND order_id IS NULL
+  AND (sqlc.narg('before')::date IS NULL OR day < sqlc.narg('before')::date)
+ORDER BY day
+FOR UPDATE;
+
+-- name: AttachUsageCharges :execrows
+-- Puts the rows of the given days on an invoice. The condition on order_id
+-- keeps a row that is already invoiced where it is.
+UPDATE usage_charge
+SET order_id = sqlc.arg('order_id')
+WHERE workspace_id = sqlc.arg('workspace_id') AND order_id IS NULL
+  AND day = ANY(sqlc.arg('days')::date[]);
+
+-- name: GetUsageAccrual :one
+-- What the workspace has used and not yet been invoiced for.
+SELECT COALESCE(sum(net_amount), 0)::bigint AS accrued
+FROM usage_charge
+WHERE workspace_id = $1 AND order_id IS NULL;
+
+-- name: GetUsageTerms :one
+-- The rates, terms and account facts of a workspace's plan, as they are now.
+SELECT
+    s.plan_key,
+    p.billing_model,
+    p.currency,
+    p.usage_rates,
+    p.usage_terms,
+    COALESCE(bp.account_kind, 'individual')::text AS account_kind,
+    (bp.verified_at IS NOT NULL)::boolean AS verified
+FROM workspace_subscription s
+JOIN plan p ON p.key = s.plan_key
+LEFT JOIN billing_profile bp ON bp.workspace_id = s.workspace_id
+WHERE s.workspace_id = $1;
+
+-- name: ListUsageChargesInRange :many
+-- The rows of days from $2 up to, not including, $3, oldest first.
+SELECT day, meter, quantity, unit_price, per, discount_pct, net_amount, note, order_id
+FROM usage_charge
+WHERE workspace_id = $1 AND day >= $2 AND day < $3
+ORDER BY day, meter;
+
+-- name: ListMissingUsageDays :many
+-- The days from $2 to $3, both included, with no platform_usage_daily row.
+SELECT g.day::date AS day
+FROM generate_series($2::date, $3::date, interval '1 day') AS g(day)
+WHERE NOT EXISTS (
+    SELECT 1 FROM platform_usage_daily u
+    WHERE u.workspace_id = $1 AND u.day = g.day::date
+)
+ORDER BY 1;
+
+-- name: ListUnpaidUsageOrders :many
+-- The workspace's pending usage invoices, oldest first.
+SELECT id, amount, vat_amount, status, created_at, period_start, period_end
+FROM billing_order
+WHERE workspace_id = $1 AND kind = 'usage' AND status = 'pending'
+ORDER BY created_at, id;

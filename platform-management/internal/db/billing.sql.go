@@ -124,6 +124,18 @@ func (q *Queries) CountPendingBillingOrders(ctx context.Context) (int64, error) 
 	return column_1, err
 }
 
+const countUsageChargesOfOrder = `-- name: CountUsageChargesOfOrder :one
+SELECT count(*)::bigint FROM usage_charge
+WHERE order_id = $1
+`
+
+func (q *Queries) CountUsageChargesOfOrder(ctx context.Context, orderID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsageChargesOfOrder, orderID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createBillingOrder = `-- name: CreateBillingOrder :one
 
 INSERT INTO billing_order (
@@ -470,15 +482,55 @@ func (q *Queries) GetPendingAddSeatsOrder(ctx context.Context, arg GetPendingAdd
 
 const getPendingBillingOrderForWorkspace = `-- name: GetPendingBillingOrderForWorkspace :one
 SELECT id, workspace_id, kind, plan_key, interval, seats, amount, vat_amount, currency, status, provider, provider_ref, transfer_code, idempotency_key, buyer, period_start, period_end, einvoice_ref, created_by, confirmed_by, paid_at, expires_at, created_at FROM billing_order
-WHERE workspace_id = $1 AND status = 'pending'
+WHERE workspace_id = $1 AND status = 'pending' AND kind <> 'usage'
 ORDER BY created_at DESC, id DESC
 LIMIT 1
 `
 
 // The workspace's pending order, if it has one. A change is refused while one
-// is pending (spec 7b.1, rule 9).
+// is pending (spec 7b.1, rule 9). A usage invoice is a debt with its own rule
+// (spec 7b.3, rule 13), so it does not count.
 func (q *Queries) GetPendingBillingOrderForWorkspace(ctx context.Context, workspaceID pgtype.UUID) (BillingOrder, error) {
 	row := q.db.QueryRow(ctx, getPendingBillingOrderForWorkspace, workspaceID)
+	var i BillingOrder
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Kind,
+		&i.PlanKey,
+		&i.Interval,
+		&i.Seats,
+		&i.Amount,
+		&i.VatAmount,
+		&i.Currency,
+		&i.Status,
+		&i.Provider,
+		&i.ProviderRef,
+		&i.TransferCode,
+		&i.IdempotencyKey,
+		&i.Buyer,
+		&i.PeriodStart,
+		&i.PeriodEnd,
+		&i.EinvoiceRef,
+		&i.CreatedBy,
+		&i.ConfirmedBy,
+		&i.PaidAt,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getUnpaidUsageOrderForWorkspace = `-- name: GetUnpaidUsageOrderForWorkspace :one
+SELECT id, workspace_id, kind, plan_key, interval, seats, amount, vat_amount, currency, status, provider, provider_ref, transfer_code, idempotency_key, buyer, period_start, period_end, einvoice_ref, created_by, confirmed_by, paid_at, expires_at, created_at FROM billing_order
+WHERE workspace_id = $1 AND kind = 'usage' AND status = 'pending'
+ORDER BY created_at ASC, id ASC
+LIMIT 1
+`
+
+// The workspace's oldest pending usage invoice: its debt (spec 7b.3, rule 13).
+func (q *Queries) GetUnpaidUsageOrderForWorkspace(ctx context.Context, workspaceID pgtype.UUID) (BillingOrder, error) {
+	row := q.db.QueryRow(ctx, getUnpaidUsageOrderForWorkspace, workspaceID)
 	var i BillingOrder
 	err := row.Scan(
 		&i.ID,

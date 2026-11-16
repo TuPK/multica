@@ -111,6 +111,26 @@ func (s *PgxStore) Due(ctx context.Context, e Edge, now time.Time, limit int) ([
 	return nil, fmt.Errorf("lifecycle: unknown edge %q", e)
 }
 
+// UsageUnpaid implements Store.
+func (s *PgxStore) UsageUnpaid(ctx context.Context, now time.Time, dueDays, limit int) ([]subscription.Subscription, error) {
+	rows, err := s.q.ListSubscriptionsUsageUnpaid(ctx, db.ListSubscriptionsUsageUnpaidParams{
+		DueDays: int32(dueDays), GraceDays: GraceDays, Now: timestamptz(now), RowLimit: int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]subscription.Subscription, 0, len(rows))
+	for _, r := range rows {
+		sub, err := fromRow(r.WorkspaceSubscription)
+		if err != nil {
+			return nil, err
+		}
+		sub.GraceUntil = timePtr(r.UsageGraceUntil)
+		out = append(out, sub)
+	}
+	return out, nil
+}
+
 // Reminders implements Store.
 func (s *PgxStore) Reminders(ctx context.Context, now, until time.Time, limit int) ([]subscription.Subscription, error) {
 	return fromRows(s.q.ListSubscriptionsForReminder(ctx, db.ListSubscriptionsForReminderParams{

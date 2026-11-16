@@ -11,6 +11,84 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const attachUsageCharges = `-- name: AttachUsageCharges :execrows
+UPDATE usage_charge
+SET order_id = $1
+WHERE workspace_id = $2 AND order_id IS NULL
+  AND day = ANY($3::date[])
+`
+
+type AttachUsageChargesParams struct {
+	OrderID     pgtype.UUID   `json:"order_id"`
+	WorkspaceID pgtype.UUID   `json:"workspace_id"`
+	Days        []pgtype.Date `json:"days"`
+}
+
+// Puts the rows of the given days on an invoice. The condition on order_id
+// keeps a row that is already invoiced where it is.
+func (q *Queries) AttachUsageCharges(ctx context.Context, arg AttachUsageChargesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, attachUsageCharges, arg.OrderID, arg.WorkspaceID, arg.Days)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const getUsageAccrual = `-- name: GetUsageAccrual :one
+SELECT COALESCE(sum(net_amount), 0)::bigint AS accrued
+FROM usage_charge
+WHERE workspace_id = $1 AND order_id IS NULL
+`
+
+// What the workspace has used and not yet been invoiced for.
+func (q *Queries) GetUsageAccrual(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, getUsageAccrual, workspaceID)
+	var accrued int64
+	err := row.Scan(&accrued)
+	return accrued, err
+}
+
+const getUsageTerms = `-- name: GetUsageTerms :one
+SELECT
+    s.plan_key,
+    p.billing_model,
+    p.currency,
+    p.usage_rates,
+    p.usage_terms,
+    COALESCE(bp.account_kind, 'individual')::text AS account_kind,
+    (bp.verified_at IS NOT NULL)::boolean AS verified
+FROM workspace_subscription s
+JOIN plan p ON p.key = s.plan_key
+LEFT JOIN billing_profile bp ON bp.workspace_id = s.workspace_id
+WHERE s.workspace_id = $1
+`
+
+type GetUsageTermsRow struct {
+	PlanKey      string `json:"plan_key"`
+	BillingModel string `json:"billing_model"`
+	Currency     string `json:"currency"`
+	UsageRates   []byte `json:"usage_rates"`
+	UsageTerms   []byte `json:"usage_terms"`
+	AccountKind  string `json:"account_kind"`
+	Verified     bool   `json:"verified"`
+}
+
+// The rates, terms and account facts of a workspace's plan, as they are now.
+func (q *Queries) GetUsageTerms(ctx context.Context, workspaceID pgtype.UUID) (GetUsageTermsRow, error) {
+	row := q.db.QueryRow(ctx, getUsageTerms, workspaceID)
+	var i GetUsageTermsRow
+	err := row.Scan(
+		&i.PlanKey,
+		&i.BillingModel,
+		&i.Currency,
+		&i.UsageRates,
+		&i.UsageTerms,
+		&i.AccountKind,
+		&i.Verified,
+	)
+	return i, err
+}
+
 const insertUsageCharge = `-- name: InsertUsageCharge :execrows
 INSERT INTO usage_charge (
     workspace_id, day, meter, quantity, plan_key, unit_price, per, discount_pct, net_amount, note
@@ -54,6 +132,185 @@ func (q *Queries) InsertUsageCharge(ctx context.Context, arg InsertUsageChargePa
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const listMissingUsageDays = `-- name: ListMissingUsageDays :many
+SELECT g.day::date AS day
+FROM generate_series($2::date, $3::date, interval '1 day') AS g(day)
+WHERE NOT EXISTS (
+    SELECT 1 FROM platform_usage_daily u
+    WHERE u.workspace_id = $1 AND u.day = g.day::date
+)
+ORDER BY 1
+`
+
+type ListMissingUsageDaysParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	Column2     pgtype.Date `json:"column_2"`
+	Column3     pgtype.Date `json:"column_3"`
+}
+
+// The days from $2 to $3, both included, with no platform_usage_daily row.
+func (q *Queries) ListMissingUsageDays(ctx context.Context, arg ListMissingUsageDaysParams) ([]pgtype.Date, error) {
+	rows, err := q.db.Query(ctx, listMissingUsageDays, arg.WorkspaceID, arg.Column2, arg.Column3)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []pgtype.Date{}
+	for rows.Next() {
+		var day pgtype.Date
+		if err := rows.Scan(&day); err != nil {
+			return nil, err
+		}
+		items = append(items, day)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUninvoicedUsageCharges = `-- name: ListUninvoicedUsageCharges :many
+SELECT day, net_amount
+FROM usage_charge
+WHERE workspace_id = $1 AND order_id IS NULL
+  AND ($2::date IS NULL OR day < $2::date)
+ORDER BY day
+FOR UPDATE
+`
+
+type ListUninvoicedUsageChargesParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	Before      pgtype.Date `json:"before"`
+}
+
+type ListUninvoicedUsageChargesRow struct {
+	Day       pgtype.Date `json:"day"`
+	NetAmount int64       `json:"net_amount"`
+}
+
+// The rows an invoice would take, locked. A null before takes all of them.
+func (q *Queries) ListUninvoicedUsageCharges(ctx context.Context, arg ListUninvoicedUsageChargesParams) ([]ListUninvoicedUsageChargesRow, error) {
+	rows, err := q.db.Query(ctx, listUninvoicedUsageCharges, arg.WorkspaceID, arg.Before)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUninvoicedUsageChargesRow{}
+	for rows.Next() {
+		var i ListUninvoicedUsageChargesRow
+		if err := rows.Scan(&i.Day, &i.NetAmount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUnpaidUsageOrders = `-- name: ListUnpaidUsageOrders :many
+SELECT id, amount, vat_amount, status, created_at, period_start, period_end
+FROM billing_order
+WHERE workspace_id = $1 AND kind = 'usage' AND status = 'pending'
+ORDER BY created_at, id
+`
+
+type ListUnpaidUsageOrdersRow struct {
+	ID          pgtype.UUID        `json:"id"`
+	Amount      int64              `json:"amount"`
+	VatAmount   int64              `json:"vat_amount"`
+	Status      string             `json:"status"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	PeriodStart pgtype.Timestamptz `json:"period_start"`
+	PeriodEnd   pgtype.Timestamptz `json:"period_end"`
+}
+
+// The workspace's pending usage invoices, oldest first.
+func (q *Queries) ListUnpaidUsageOrders(ctx context.Context, workspaceID pgtype.UUID) ([]ListUnpaidUsageOrdersRow, error) {
+	rows, err := q.db.Query(ctx, listUnpaidUsageOrders, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUnpaidUsageOrdersRow{}
+	for rows.Next() {
+		var i ListUnpaidUsageOrdersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Amount,
+			&i.VatAmount,
+			&i.Status,
+			&i.CreatedAt,
+			&i.PeriodStart,
+			&i.PeriodEnd,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsageChargesInRange = `-- name: ListUsageChargesInRange :many
+SELECT day, meter, quantity, unit_price, per, discount_pct, net_amount, note, order_id
+FROM usage_charge
+WHERE workspace_id = $1 AND day >= $2 AND day < $3
+ORDER BY day, meter
+`
+
+type ListUsageChargesInRangeParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	Day         pgtype.Date `json:"day"`
+	Day_2       pgtype.Date `json:"day_2"`
+}
+
+type ListUsageChargesInRangeRow struct {
+	Day         pgtype.Date `json:"day"`
+	Meter       string      `json:"meter"`
+	Quantity    int64       `json:"quantity"`
+	UnitPrice   int64       `json:"unit_price"`
+	Per         int64       `json:"per"`
+	DiscountPct int32       `json:"discount_pct"`
+	NetAmount   int64       `json:"net_amount"`
+	Note        string      `json:"note"`
+	OrderID     pgtype.UUID `json:"order_id"`
+}
+
+// The rows of days from $2 up to, not including, $3, oldest first.
+func (q *Queries) ListUsageChargesInRange(ctx context.Context, arg ListUsageChargesInRangeParams) ([]ListUsageChargesInRangeRow, error) {
+	rows, err := q.db.Query(ctx, listUsageChargesInRange, arg.WorkspaceID, arg.Day, arg.Day_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUsageChargesInRangeRow{}
+	for rows.Next() {
+		var i ListUsageChargesInRangeRow
+		if err := rows.Scan(
+			&i.Day,
+			&i.Meter,
+			&i.Quantity,
+			&i.UnitPrice,
+			&i.Per,
+			&i.DiscountPct,
+			&i.NetAmount,
+			&i.Note,
+			&i.OrderID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listUsageDaysToRate = `-- name: ListUsageDaysToRate :many
@@ -140,4 +397,62 @@ func (q *Queries) ListUsageDaysToRate(ctx context.Context, arg ListUsageDaysToRa
 		return nil, err
 	}
 	return items, nil
+}
+
+const listUsageInvoiceWorkspaces = `-- name: ListUsageInvoiceWorkspaces :many
+
+SELECT s.workspace_id
+FROM workspace_subscription s
+JOIN plan p ON p.key = s.plan_key
+WHERE EXISTS (
+    SELECT 1 FROM usage_charge c
+    WHERE c.workspace_id = s.workspace_id AND c.order_id IS NULL
+      AND (p.billing_model <> 'usage' OR c.day < $1::date)
+)
+ORDER BY s.workspace_id
+`
+
+// The usage invoice (spec 7b.3, rules 11 and 12).
+// Workspaces with usage charges not yet on an invoice: a usage plan's rows of
+// days before $1 (the monthly invoice), and any row of a workspace that is no
+// longer on a usage plan (the final invoice).
+func (q *Queries) ListUsageInvoiceWorkspaces(ctx context.Context, monthStart pgtype.Date) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listUsageInvoiceWorkspaces, monthStart)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []pgtype.UUID{}
+	for rows.Next() {
+		var workspace_id pgtype.UUID
+		if err := rows.Scan(&workspace_id); err != nil {
+			return nil, err
+		}
+		items = append(items, workspace_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockUsageInvoiceSubscription = `-- name: LockUsageInvoiceSubscription :one
+SELECT s.plan_key, p.billing_model
+FROM workspace_subscription s
+JOIN plan p ON p.key = s.plan_key
+WHERE s.workspace_id = $1
+FOR UPDATE OF s
+`
+
+type LockUsageInvoiceSubscriptionRow struct {
+	PlanKey      string `json:"plan_key"`
+	BillingModel string `json:"billing_model"`
+}
+
+// Serialises the invoicing of one workspace until the transaction ends.
+func (q *Queries) LockUsageInvoiceSubscription(ctx context.Context, workspaceID pgtype.UUID) (LockUsageInvoiceSubscriptionRow, error) {
+	row := q.db.QueryRow(ctx, lockUsageInvoiceSubscription, workspaceID)
+	var i LockUsageInvoiceSubscriptionRow
+	err := row.Scan(&i.PlanKey, &i.BillingModel)
+	return i, err
 }

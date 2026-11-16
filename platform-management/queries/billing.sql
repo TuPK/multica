@@ -25,11 +25,23 @@ WHERE id = $1;
 
 -- name: GetPendingBillingOrderForWorkspace :one
 -- The workspace's pending order, if it has one. A change is refused while one
--- is pending (spec 7b.1, rule 9).
+-- is pending (spec 7b.1, rule 9). A usage invoice is a debt with its own rule
+-- (spec 7b.3, rule 13), so it does not count.
 SELECT * FROM billing_order
-WHERE workspace_id = $1 AND status = 'pending'
+WHERE workspace_id = $1 AND status = 'pending' AND kind <> 'usage'
 ORDER BY created_at DESC, id DESC
 LIMIT 1;
+
+-- name: GetUnpaidUsageOrderForWorkspace :one
+-- The workspace's oldest pending usage invoice: its debt (spec 7b.3, rule 13).
+SELECT * FROM billing_order
+WHERE workspace_id = $1 AND kind = 'usage' AND status = 'pending'
+ORDER BY created_at ASC, id ASC
+LIMIT 1;
+
+-- name: CountUsageChargesOfOrder :one
+SELECT count(*)::bigint FROM usage_charge
+WHERE order_id = $1;
 
 -- name: GetBillingOrderByIdempotencyKey :one
 SELECT * FROM billing_order

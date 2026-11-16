@@ -190,6 +190,7 @@ func run() error {
 		Plans:         plan.NewPgxReader(pool),
 		Members:       subscription.NewPgxMembers(pool),
 		Pending:       subscription.NewPgxPending(pool),
+		Usage:         usage.NewView(pool, cfg.Billing.BusinessDiscountRequiresVerification),
 		Log:           slog.Default(),
 	}).Handler(peers.RequireUser)
 	routes := []server.Route{{Pattern: entitlement.PolicyPattern, Handler: policy.Handler()}}
@@ -247,6 +248,7 @@ func run() error {
 		Orders:             orders,
 		Activator:          orders,
 		Workspaces:         billingapi.NewPgxWorkspaces(pool),
+		UsageDebts:         subscription.NewPgxPendingOrders(pool),
 		VATRate:            cfg.Billing.VATRate,
 		AppURL:             cfg.AppURL,
 		Log:                slog.Default(),
@@ -277,10 +279,6 @@ func run() error {
 	}
 	// The price-change notice uses the lifecycle mail sender; nil sends no notice.
 	var noticeSender lifecycle.Sender
-	usageRater := usage.NewRater(pool, usage.RaterConfig{RequireVerification: cfg.Billing.BusinessDiscountRequiresVerification})
-	if err := runner.Register(usage.JobName, usage.Interval, usageRater.Job(time.Now)); err != nil {
-		return err
-	}
 	if cfg.Email.Provider == "" {
 		slog.Warn("lifecycle notices are off: no email provider is configured")
 	} else {
@@ -292,7 +290,7 @@ func run() error {
 		lifecycleJob, err := lifecycle.New(lifecycle.Deps{
 			Store: lifecycle.NewPgxStore(pool), Mail: noticeMail,
 			Workspaces: workspacestate.New(nil, accountCache), Entitlements: policy,
-			AppURL: cfg.AppURL, Log: slog.Default(),
+			AppURL: cfg.AppURL, UsageDueDays: cfg.Billing.UsageDueDays, Log: slog.Default(),
 		})
 		if err != nil {
 			return err
@@ -300,6 +298,20 @@ func run() error {
 		if err := runner.Register(lifecycle.JobName, lifecycle.Interval, lifecycleJob.Job(time.Now)); err != nil {
 			return err
 		}
+	}
+
+	// The usage jobs (spec 7b.3). The rating sends the 80 percent notice through
+	// the lifecycle mail sender; nil sends none.
+	usageRater := usage.NewRater(pool, usage.RaterConfig{
+		RequireVerification: cfg.Billing.BusinessDiscountRequiresVerification,
+		VATRate:             cfg.Billing.VATRate, Mail: noticeSender, AppURL: cfg.AppURL,
+	})
+	if err := runner.Register(usage.JobName, usage.Interval, usageRater.Job(time.Now)); err != nil {
+		return err
+	}
+	usageInvoicer := usage.NewInvoicer(pool, usage.InvoicerConfig{VATRate: cfg.Billing.VATRate, MinInvoice: cfg.Billing.UsageMinInvoice})
+	if err := runner.Register(usage.JobNameInvoicing, usage.Interval, usageInvoicer.Job(time.Now)); err != nil {
+		return err
 	}
 
 	// The plan price-change schedule (spec 7b.4): the apply job and the staff routes.

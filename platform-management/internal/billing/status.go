@@ -30,8 +30,8 @@ var (
 )
 
 // IsExpired reports whether expires_at has passed. At the instant itself the
-// order can still be confirmed.
-func IsExpired(expiresAt, now time.Time) bool { return now.After(expiresAt) }
+// order can still be confirmed. A zero expiresAt is an order that never expires.
+func IsExpired(expiresAt, now time.Time) bool { return !expiresAt.IsZero() && now.After(expiresAt) }
 
 // Transition checks one status change: pending to paid, expired or canceled,
 // and paid to refunded. Paying a pending order needs expiresAt not passed at

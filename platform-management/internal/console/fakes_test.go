@@ -24,6 +24,7 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/session"
 	"github.com/multica-ai/multica/platform-management/internal/staff"
 	"github.com/multica-ai/multica/platform-management/internal/subscription"
+	"github.com/multica-ai/multica/platform-management/internal/usage"
 	"github.com/multica-ai/multica/platform-management/internal/workspacestatus"
 	"github.com/multica-ai/multica/platform-management/workspacestate"
 )
@@ -119,6 +120,10 @@ func (r *fakeReader) ListOrders(_ context.Context, status billing.Status, newest
 	}
 	sortOrders(out, newestFirst)
 	return out, r.err
+}
+
+func (r *fakeReader) TenantUsage(_ context.Context, ws string, _ time.Time) (usage.Month, error) {
+	return usage.Month{WorkspaceID: ws}, nil
 }
 
 func (r *fakeReader) GetOrder(_ context.Context, id string) (OrderRow, bool, error) {
@@ -444,6 +449,14 @@ func (t *fakeBillingTx) Plan(_ context.Context, key string) (plan.Plan, bool, er
 func (t *fakeBillingTx) PendingOrder(context.Context, string) (billing.Order, bool, error) {
 	return billing.Order{}, false, nil
 }
+
+func (t *fakeBillingTx) UnpaidUsageOrder(context.Context, string) (billing.Order, bool, error) {
+	return billing.Order{}, false, nil
+}
+func (t *fakeBillingTx) CancelOrder(context.Context, string) (billing.Order, error) {
+	return billing.Order{}, nil
+}
+func (t *fakeBillingTx) UsageLines(context.Context, string) (int64, error) { return 0, nil }
 
 func (t *fakeBillingTx) OrderByIdempotencyKey(context.Context, string, string) (billing.Order, bool, error) {
 	return billing.Order{}, false, errors.New("not used")

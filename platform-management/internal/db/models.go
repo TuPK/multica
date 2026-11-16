@@ -1853,6 +1853,25 @@ type MemberDelegationDay struct {
 	ActivityDate pgtype.Date `json:"activity_date"`
 }
 
+type MemberGroup struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	Name        string             `json:"name"`
+	Description string             `json:"description"`
+	Permissions []byte             `json:"permissions"`
+	CreatedBy   pgtype.UUID        `json:"created_by"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+type MemberGroupMember struct {
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	GroupID     pgtype.UUID        `json:"group_id"`
+	UserID      pgtype.UUID        `json:"user_id"`
+	AddedBy     pgtype.UUID        `json:"added_by"`
+	AddedAt     pgtype.Timestamptz `json:"added_at"`
+}
+
 type Metric struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	Key         string             `json:"key"`
@@ -2769,6 +2788,21 @@ type TaskUsageHourlyRollupState struct {
 	LastRunFinishedAt pgtype.Timestamptz `json:"last_run_finished_at"`
 	LastRunRows       int64              `json:"last_run_rows"`
 	LastError         pgtype.Text        `json:"last_error"`
+}
+
+type UsageCharge struct {
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	Day         pgtype.Date        `json:"day"`
+	Meter       string             `json:"meter"`
+	Quantity    int64              `json:"quantity"`
+	PlanKey     string             `json:"plan_key"`
+	UnitPrice   int64              `json:"unit_price"`
+	Per         int64              `json:"per"`
+	DiscountPct int32              `json:"discount_pct"`
+	NetAmount   int64              `json:"net_amount"`
+	Note        string             `json:"note"`
+	OrderID     pgtype.UUID        `json:"order_id"`
+	RatedAt     pgtype.Timestamptz `json:"rated_at"`
 }
 
 type User struct {

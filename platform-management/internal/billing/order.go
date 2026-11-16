@@ -5,8 +5,7 @@ import (
 	"time"
 )
 
-// Kind is what an order buys. The database does not check it, so the R5 usage
-// kind is a Go change only.
+// Kind is what an order buys. The database does not check it.
 type Kind string
 
 const (
@@ -14,12 +13,20 @@ const (
 	KindRenew      Kind = "renew"
 	KindAddSeats   Kind = "add_seats"
 	KindChangePlan Kind = "change_plan"
+	// KindUsage is the invoice of a pay as you go plan (spec 7b.3, rule 11). It
+	// has no seats and no expiry.
+	KindUsage Kind = "usage"
 )
+
+// NoticeKindUsage80 is the billing_notice kind of the email sent when a
+// workspace's uninvoiced usage reaches 80 percent of its credit limit (spec
+// 7b.3, rule 12).
+const NoticeKindUsage80 = "usage_80"
 
 // Valid reports whether k is a kind this release sells.
 func (k Kind) Valid() bool {
 	switch k {
-	case KindSubscribe, KindRenew, KindAddSeats, KindChangePlan:
+	case KindSubscribe, KindRenew, KindAddSeats, KindChangePlan, KindUsage:
 		return true
 	}
 	return false
@@ -57,8 +64,10 @@ type Order struct {
 	CreatedBy      string
 	ConfirmedBy    string
 	PaidAt         *time.Time
-	ExpiresAt      time.Time
-	CreatedAt      time.Time
+	// ExpiresAt is the zero time for an order that does not expire: a usage
+	// invoice.
+	ExpiresAt time.Time
+	CreatedAt time.Time
 }
 
 // Total is what the customer pays: the amount plus VAT.

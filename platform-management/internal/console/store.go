@@ -168,6 +168,8 @@ type Reader interface {
 	Overview(ctx context.Context, signupsSince time.Time) (Overview, error)
 	// ListOrders returns up to limit orders in status, ordered by creation time.
 	ListOrders(ctx context.Context, status billing.Status, newestFirst bool, limit int) ([]OrderRow, error)
+	// TenantUsage returns the usage tab of a workspace for the UTC month of now.
+	TenantUsage(ctx context.Context, workspaceID string, now time.Time) (usage.Month, error)
 	// GetOrder returns found == false for an unknown order.
 	GetOrder(ctx context.Context, id string) (o OrderRow, found bool, err error)
 	// RecentOrders returns a workspace's newest orders first, up to limit.
