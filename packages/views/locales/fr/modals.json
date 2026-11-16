@@ -321,6 +321,7 @@
     "expert_review_badge": "Revue par un expert",
     "expert_review_notice": "Une personne qualifiée doit relire les résultats de ce squad avant de les utiliser.",
     "expert_review_ack": "Je prendrai en charge cette relecture.",
+    "included_label": "Installés avec lui",
     "agents_label": "Agents",
     "agent_new": "Nouveau",
     "agent_reused": "Existe déjà",

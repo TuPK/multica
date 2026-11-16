@@ -319,6 +319,7 @@
     "expert_review_badge": "専門家によるレビュー",
     "expert_review_notice": "このスクワッドの成果物は、使用する前に有資格者が確認する必要があります。",
     "expert_review_ack": "そのレビューを手配します。",
+    "included_label": "一緒にインストールされるスクワッド",
     "agents_label": "エージェント",
     "agent_new": "新規",
     "agent_reused": "作成済み",

@@ -4,13 +4,17 @@ import type { Agent, IssueWorkflow, Squad } from "../types";
 import type { CompanyFloor } from "../company/types";
 import {
   planQuickstartAgents,
+  planSquadSetAgents,
   runSquadQuickstart,
+  runSquadSetQuickstart,
+  type QuickstartSetOutcome,
   type SquadQuickstartClient,
 } from "./quickstart";
 import { AGENT_INSTRUCTION_TEMPLATES } from "../agents/instruction-templates";
 import { PLANNING_ROLE_AGENT_INSTRUCTIONS } from "./planning-agent-instructions";
 import { SDLC_ROLE_AGENT_INSTRUCTIONS } from "./sdlc-agent-instructions";
 import { SDLC_BUILTIN_SKILLS } from "../catalog/generated/skills-builtin";
+import { MARKETING_BUILTIN_SKILLS } from "../catalog/generated/skills-builtin-marketing";
 import { SDLC_SKILL_SOURCE } from "./quickstart";
 import { SQUAD_ROLES, SQUAD_TEMPLATES } from "./templates";
 import { SALES_STARTER_SOURCES } from "./sales-starter-sources";
@@ -1396,5 +1400,152 @@ describe("Kit Viet P2 squads on their own floors", () => {
     expect(client.setCompanySeats).toHaveBeenCalledWith([{ squad_id: "squad-1", floor_id: "floor-health", slot: 0 }]);
     expect(out.squad.status).toBe("created");
     expect(out.squad.error ?? "").not.toMatch(/floor|seat/);
+  });
+});
+
+// A client whose agents persist between runs, as the server's do, so a rerun can reuse them.
+function statefulClient(over: Partial<FakeClient> = {}) {
+  const created: Agent[] = [];
+  const squads: Squad[] = [];
+  let n = 0;
+  const client = fakeClient({
+    listAgents: vi.fn(async () => [...created]),
+    createAgent: vi.fn(async (data) => {
+      const agent = asAgent(`agent-${++n}`, data.name);
+      created.push(agent);
+      return agent;
+    }),
+    listSquads: vi.fn(async () => [...squads]),
+    updateSquad: vi.fn(async (id, data) => {
+      const squad = squads.find((x) => x.id === id);
+      if (squad && data.instructions !== undefined) squad.instructions = data.instructions;
+      return {} as Squad;
+    }),
+    createSquad: vi.fn(async (data) => {
+      const squad = { id: `squad-${data.name}`, name: data.name, leader_id: data.leader_id, archived_at: null, instructions: "" } as unknown as Squad;
+      squads.push(squad);
+      return squad;
+    }),
+    ...over,
+  });
+  return client;
+}
+
+// A set: the squads of a template's `includes` run first, then the template's own squad. The runner takes the
+// included templates as given, so these tests use two existing templates and need no data for `includes`.
+describe("runSquadSetQuickstart", () => {
+  const included = marketTemplate;
+  const main = greenfield;
+
+  it("creates the included squad first, then the set's own squad", async () => {
+    const client = statefulClient();
+    const outcome = await runSquadSetQuickstart(client, main, [included], options);
+    expect(client.createSquad.mock.calls.map((c) => c[0].name)).toEqual([included.name, main.name]);
+    expect(outcome.items.map((i) => [i.templateId, i.outcome.squad.status])).toEqual([
+      [included.id, "created"],
+      [main.id, "created"],
+    ]);
+  });
+
+  it("runs the set's own squad alone when no included squad is kept", async () => {
+    const client = statefulClient();
+    const outcome = await runSquadSetQuickstart(client, main, [], options);
+    expect(outcome.items.map((i) => i.templateId)).toEqual([main.id]);
+  });
+
+  it("a squad that fails does not stop the squads after it, and says why", async () => {
+    const client = statefulClient({
+      createSquad: vi.fn(async (data) => {
+        if (data.name === included.name) throw new Error("squad quota reached");
+        return { id: "squad-main", name: data.name } as Squad;
+      }),
+    });
+    const outcome = await runSquadSetQuickstart(client, main, [included], options);
+    const [first, second] = outcome.items;
+    expect(first!.outcome.squad.status).toBe("failed");
+    expect(first!.outcome.squad.error).toContain("squad quota reached");
+    expect(second!.outcome.squad.status).toBe("created");
+  });
+
+  it("a rerun creates no second agent and no second squad", async () => {
+    const client = statefulClient();
+    await runSquadSetQuickstart(client, main, [included], options);
+    const agentsAfterFirst = client.createAgent.mock.calls.length;
+    const squadsAfterFirst = client.createSquad.mock.calls.length;
+    const second = await runSquadSetQuickstart(client, main, [included], options);
+    expect(client.createAgent.mock.calls.length).toBe(agentsAfterFirst);
+    expect(client.createSquad.mock.calls.length).toBe(squadsAfterFirst);
+    expect(second.items.every((i) => i.outcome.squad.status === "existing")).toBe(true);
+  });
+
+  it("reports progress for the squad being created", async () => {
+    const client = statefulClient();
+    const seen: QuickstartSetOutcome[] = [];
+    await runSquadSetQuickstart(client, main, [included], options, (o) => seen.push(o));
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.at(-1)!.items.map((i) => i.templateId)).toEqual([included.id, main.id]);
+  });
+});
+
+describe("planSquadSetAgents", () => {
+  it("lists each agent name once across the squads, marked reused when a live agent has it", () => {
+    const plan = planSquadSetAgents([marketTemplate, greenfield], [asAgent("a1", SQUAD_ROLES[marketTemplate.roles[0]!].name)]);
+    const names = plan.map((p) => p.name);
+    expect(new Set(names).size).toBe(names.length);
+    expect(plan.find((p) => p.name === SQUAD_ROLES[marketTemplate.roles[0]!].name)?.reuse).toBe(true);
+    expect(plan.every((p) => typeof p.reuse === "boolean")).toBe(true);
+  });
+});
+
+// The marketing front door and its specialists, installed as the quickstart installs them (V6, V9).
+describe("marketing squads in the quickstart", () => {
+  const growth = SQUAD_TEMPLATES.find((t) => t.id === "growth_lab")!;
+  const front = SQUAD_TEMPLATES.find((t) => t.id === "marketing")!;
+  const specialists = (front.includes ?? []).map((id) => SQUAD_TEMPLATES.find((t) => t.id === id)!);
+
+  it("installs growth_lab with seven agents, one squad, the shared skills on the squad and the role skills on their agents", async () => {
+    const client = statefulClient();
+    const outcome = await runSquadQuickstart(client, growth, options);
+    expect(outcome.squad.status).toBe("created");
+    expect(client.createAgent).toHaveBeenCalledTimes(7);
+    expect(client.createSquad).toHaveBeenCalledTimes(1);
+    expect(client.setSquadSkills).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.arrayContaining(growth.builtinSkills.map((name) => `skill-${name}`)),
+    );
+    const roleCalls = client.addAgentSkills.mock.calls.length;
+    expect(roleCalls).toBeGreaterThan(0);
+  });
+
+  it("gives the set of the marketing front door 36 agents and five squads, and a rerun adds nothing", async () => {
+    const all = [...specialists, front];
+    const plan = planSquadSetAgents(all, []);
+    expect(plan).toHaveLength(36);
+    const client = statefulClient();
+    const first = await runSquadSetQuickstart(client, front, specialists, options);
+    expect(first.items).toHaveLength(5);
+    expect(client.createSquad).toHaveBeenCalledTimes(5);
+    expect(client.createAgent).toHaveBeenCalledTimes(36);
+    await runSquadSetQuickstart(client, front, specialists, options);
+    expect(client.createSquad).toHaveBeenCalledTimes(5);
+    expect(client.createAgent).toHaveBeenCalledTimes(36);
+  });
+
+  it("installs only the squads the boss kept: an unchecked specialist is not created", async () => {
+    const client = statefulClient();
+    const kept = specialists.filter((t) => t.id !== "kv_pr");
+    const outcome = await runSquadSetQuickstart(client, front, kept, options);
+    expect(outcome.items.map((i) => i.templateId)).not.toContain("kv_pr");
+    expect(client.createSquad.mock.calls.map((c) => c[0].name)).not.toContain(SQUAD_TEMPLATES.find((t) => t.id === "kv_pr")!.name);
+  });
+
+  it("imports a skill of the marketing chunk from the chunk's own text, which the SDLC bundle does not carry", async () => {
+    const client = statefulClient();
+    await runSquadQuickstart(client, growth, options);
+    const chunkSkill = MARKETING_BUILTIN_SKILLS.find((b) => b.name === "mkt-context");
+    expect(chunkSkill).toBeDefined();
+    expect(SDLC_BUILTIN_SKILLS.some((b) => b.name === "mkt-context")).toBe(false);
+    const created = client.createSkill.mock.calls.find((c) => c[0].name === "mkt-context");
+    expect(created?.[0].content).toBe(chunkSkill!.content);
   });
 });

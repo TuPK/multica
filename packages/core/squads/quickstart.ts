@@ -50,6 +50,8 @@ import { CONTENT_STUDIO_ROLE_AGENT_INSTRUCTIONS, type CsRoleKey } from "./conten
 import { RESEARCH_LAB_ROLE_AGENT_INSTRUCTIONS, type RlRoleKey } from "./research-lab";
 import { SDLC_ROLE_AGENT_INSTRUCTIONS, type SdlcRoleKey } from "./sdlc-agent-instructions";
 import type { BuiltinSkill } from "../catalog/generated/skills-builtin";
+import { SKILLSET_CHUNK_LOADERS } from "../catalog/generated/skillsets";
+import { skillsetMembers } from "../catalog/skillsets";
 import { SALES_ROLE_AGENT_INSTRUCTIONS, type SalesRoleKey } from "./sales-agent-instructions";
 import { SALES_STARTER_SOURCES, starterSourceDocument } from "./sales-starter-sources";
 import {
@@ -522,9 +524,18 @@ function loadKitvietSkills(pack: string | undefined): Promise<ReadonlyMap<string
   return skills;
 }
 
+/** The loader of the chunk skillset (chunk: true) a skill belongs to, if it has one. */
+function chunkLoaderOf(name: string) {
+  const set = Object.keys(SKILLSET_CHUNK_LOADERS).find((id) => skillsetMembers(id).includes(name));
+  return set === undefined ? undefined : SKILLSET_CHUNK_LOADERS[set];
+}
+
 /** The built-in skill with this name: a Kit Viet skill from the squad's pack, or an SDLC one. */
 async function builtinSkillNamed(name: string, pack: string | undefined): Promise<BuiltinSkill | undefined> {
   if (isKitvietSkillName(name)) return (await loadKitvietSkills(pack)).get(name);
+  // A skill of a chunk skillset loads with its own module, so installing another squad does not pay for it.
+  const loadChunk = chunkLoaderOf(name);
+  if (loadChunk) return (await loadChunk()).find((b) => b.name === name);
   // The bundle is about 2 MB of skill text, so it loads when a quickstart installs skills, not with the page.
   const { SDLC_BUILTIN_SKILLS } = await import("../catalog/generated/skills-builtin");
   return SDLC_BUILTIN_SKILLS.find((b) => b.name === name);
@@ -688,13 +699,9 @@ export function withAgentSkillFailures(
  * exists, except the charter of a squad that an earlier run made and left
  * without one. Running it again after a partial failure finishes the job.
  */
-export async function runSquadQuickstart(
-  client: SquadQuickstartClient,
-  template: SquadTemplate,
-  options: QuickstartOptions,
-  onProgress?: (outcome: QuickstartOutcome) => void,
-): Promise<QuickstartOutcome> {
-  const outcome: QuickstartOutcome = {
+/** The outcome before any step ran: nothing created, nothing failed yet. */
+function newQuickstartOutcome(): QuickstartOutcome {
+  return {
     agents: [],
     squad: { id: null, status: "failed" },
     workflow: { status: "skipped" },
@@ -702,6 +709,15 @@ export async function runSquadQuickstart(
     routines: [],
     sources: { status: "skipped", written: 0, failed: 0 },
   };
+}
+
+export async function runSquadQuickstart(
+  client: SquadQuickstartClient,
+  template: SquadTemplate,
+  options: QuickstartOptions,
+  onProgress?: (outcome: QuickstartOutcome) => void,
+): Promise<QuickstartOutcome> {
+  const outcome = newQuickstartOutcome();
   const report = () => onProgress?.(structuredClone(outcome));
 
   const existing = await client.listAgents({ include_archived: false });
@@ -945,4 +961,63 @@ export async function runSquadQuickstart(
   }
 
   return outcome;
+}
+
+/** One squad of a set: its template and what the quickstart did for it. */
+export interface QuickstartSetItem {
+  templateId: SquadTemplate["id"];
+  name: string;
+  outcome: QuickstartOutcome;
+}
+
+export interface QuickstartSetOutcome {
+  /** In the order the squads were created: the included squads first, the set's own squad last. */
+  items: QuickstartSetItem[];
+}
+
+/**
+ * Creates a squad set: each included squad the boss kept, in the order given, then the set's own squad. Each
+ * is created by runSquadQuickstart, which is idempotent, so a rerun reuses what the first run made. A squad that
+ * fails does not stop the ones after it; its outcome says why.
+ */
+export async function runSquadSetQuickstart(
+  client: SquadQuickstartClient,
+  template: SquadTemplate,
+  included: readonly SquadTemplate[],
+  options: QuickstartOptions,
+  onProgress?: (outcome: QuickstartSetOutcome) => void,
+): Promise<QuickstartSetOutcome> {
+  const items: QuickstartSetItem[] = [];
+  const report = () => onProgress?.(structuredClone({ items }));
+  for (const tpl of [...included, template]) {
+    const item: QuickstartSetItem = { templateId: tpl.id, name: tpl.name, outcome: newQuickstartOutcome() };
+    items.push(item);
+    try {
+      item.outcome = await runSquadQuickstart(client, tpl, options, (progress) => {
+        item.outcome = progress;
+        report();
+      });
+    } catch (err) {
+      item.outcome = { ...newQuickstartOutcome(), squad: { id: null, status: "failed", error: errorMessage(err) } };
+    }
+    report();
+  }
+  return { items };
+}
+
+/**
+ * The agents a set would create or reuse, once each: the squads' roles merged by agent name, since two squads
+ * that share a role name share its agent.
+ */
+export function planSquadSetAgents(
+  templates: readonly SquadTemplate[],
+  agents: readonly Agent[],
+): { name: string; reuse: boolean }[] {
+  const seen = new Map<string, { name: string; reuse: boolean }>();
+  for (const tpl of templates) {
+    for (const row of planQuickstartAgents(tpl, agents)) {
+      if (!seen.has(row.name)) seen.set(row.name, { name: row.name, reuse: row.reuse });
+    }
+  }
+  return [...seen.values()];
 }

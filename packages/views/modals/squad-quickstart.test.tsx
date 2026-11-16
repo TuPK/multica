@@ -6,7 +6,7 @@ import { cleanup, render, screen, waitFor, within } from "@testing-library/react
 import userEvent from "@testing-library/user-event";
 import { I18nProvider } from "@multica/core/i18n/react";
 import type { Agent } from "@multica/core/types";
-import type { QuickstartOutcome } from "@multica/core/squads";
+import type { QuickstartOutcome, QuickstartSetOutcome, SquadTemplateId } from "@multica/core/squads";
 import enCommon from "../locales/en/common.json";
 import enModals from "../locales/en/modals.json";
 import enAgents from "../locales/en/agents.json";
@@ -54,8 +54,13 @@ vi.mock("@multica/core/squads", async () => {
   );
   return {
     ...actual,
-    useSquadQuickstart: () => ({
-      mutateAsync: mocks.mutateAsync,
+    // The modal runs a squad set. These tests script one squad's outcome; it is wrapped as a set here.
+    useSquadSetQuickstart: () => ({
+      mutateAsync: async (args: { template: { id: SquadTemplateId; name: string } } & Record<string, unknown>) => {
+        const scripted = (await mocks.mutateAsync(args)) as QuickstartOutcome | QuickstartSetOutcome;
+        if ("items" in scripted) return scripted;
+        return { items: [{ templateId: args.template.id, name: args.template.name, outcome: scripted }] } as QuickstartSetOutcome;
+      },
       get isPending() {
         return mocks.isPending;
       },
@@ -84,6 +89,12 @@ vi.mock("../agents/components/runtime-picker", () => ({
 }));
 
 import { SquadQuickstartModal } from "./squad-quickstart";
+import { SQUAD_TEMPLATES } from "@multica/core/squads";
+
+// The catalog name of a squad, as the modal shows it.
+function squadNameOf(id: string): string {
+  return SQUAD_TEMPLATES.find((t) => t.id === id)!.name;
+}
 
 function renderModal() {
   const onClose = vi.fn();
@@ -104,6 +115,66 @@ const readyOutcome: QuickstartOutcome = {
   routines: [],
   sources: { status: "skipped", written: 0, failed: 0 },
 };
+
+describe("SquadQuickstartModal, squad sets", () => {
+  beforeEach(() => {
+    mocks.agents = [];
+    mocks.isPending = false;
+    mocks.mutateAsync.mockReset();
+  });
+  afterEach(cleanup);
+
+  it("shows the squads a set installs, each checked, and none for a squad with no set", async () => {
+    renderModal();
+    const user = userEvent.setup();
+    expect(screen.queryByText("Also installed with it")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("radio", { name: /one marketing squad/ }));
+
+    expect(screen.getByText("Also installed with it")).toBeInTheDocument();
+    for (const name of [/Marketing Studio/, /Content Studio/, /Growth Lab/, /PR & Comms/]) {
+      expect(screen.getByRole("checkbox", { name })).toBeChecked();
+    }
+  });
+
+  it("drops the agents of an unchecked squad from the list", async () => {
+    renderModal();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("radio", { name: /one marketing squad/ }));
+    expect(screen.getByText("Growth Lab Lead")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("checkbox", { name: /Growth Lab/ }));
+
+    expect(screen.queryByText("Growth Lab Lead")).not.toBeInTheDocument();
+  });
+
+  it("shows the result of each squad under its own name", async () => {
+    const ready = {
+      agents: [],
+      squad: { id: "squad-x", status: "created" },
+      workflow: { status: "skipped" },
+      skills: { status: "skipped" },
+      routines: [],
+      sources: { status: "skipped", written: 0, failed: 0 },
+    } as QuickstartOutcome;
+    const marketing = squadNameOf("marketing");
+    const growth = squadNameOf("growth_lab");
+    mocks.mutateAsync.mockResolvedValueOnce({
+      items: [
+        { templateId: "growth_lab", name: growth, outcome: ready },
+        { templateId: "marketing", name: marketing, outcome: ready },
+      ],
+    });
+    renderModal();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("radio", { name: /one marketing squad/ }));
+    await user.click(screen.getByRole("button", { name: "pick runtime" }));
+    await user.click(screen.getByRole("button", { name: "Create squad" }));
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: growth })).toBeInTheDocument());
+    expect(screen.getByRole("heading", { name: marketing })).toBeInTheDocument();
+  });
+});
 
 describe("SquadQuickstartModal", () => {
   beforeEach(() => {

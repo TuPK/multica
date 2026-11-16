@@ -40,11 +40,11 @@ const CLI_COMMANDS = [
   .filter((name) => name !== "research");
 
 describe("research lab template", () => {
-  it("is registered with the core squad templates, after Content Studio", () => {
+  it("is registered with the core squad templates, after the other core squads", () => {
     const ids = SQUAD_TEMPLATES.map((t) => t.id);
     expect(ids).toContain("research_lab");
     expect(SQUAD_TEMPLATES.find((t) => t.id === "research_lab")?.category).toBe("core");
-    expect(ids.indexOf("research_lab")).toBeGreaterThan(ids.indexOf("content_studio"));
+    expect(ids.indexOf("research_lab")).toBeGreaterThan(ids.indexOf("bmad_planning"));
   });
 
   it("has five roles led by the lab lead, on the Research floor, with no routine and no workflow", () => {

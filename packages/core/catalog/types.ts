@@ -35,6 +35,8 @@ export interface CatalogSquad {
   collection: string;
   expertReview?: boolean;
   adapter?: { type: "kitviet" };
+  /** Squads installed with this one, in this order, by the quickstart that creates a set (E9). */
+  includes?: string[];
   squad: CatalogSquadBody;
 }
 

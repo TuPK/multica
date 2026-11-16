@@ -10,7 +10,9 @@ import { CATALOG_SQUADS } from "./generated/squads";
 import { skillsetMembers } from "./skillsets";
 import type { CatalogSquad } from "./types";
 
-export type { SquadTemplateId } from "./generated/squads";
+import type { SquadTemplateId } from "./generated/squads";
+
+export type { SquadTemplateId };
 
 /** The groups of the squad quickstart, in listed order (catalog/collections). */
 export const SQUAD_TEMPLATE_CATEGORIES: readonly SquadTemplateCategory[] = CATALOG_COLLECTIONS.map((c) => c.id);
@@ -73,7 +75,9 @@ export function assembleSquadTemplates(workflows: Readonly<Record<string, SquadW
       builtinSkills: [],
     };
 
+    if (catalogSquad.includes) template.includes = catalogSquad.includes as SquadTemplateId[];
     if (kitviet) {
+      template.adapter = { type: "kitviet" };
       const pack = kitvietSquad(catalogSquad.id);
       template.builtinSkills = pack.builtinSkills;
       template.leaderSkills = pack.leaderSkills;

@@ -319,6 +319,7 @@
     "expert_review_badge": "전문가 검토",
     "expert_review_notice": "이 스쿼드의 결과물은 사용하기 전에 자격을 갖춘 사람이 검토해야 합니다.",
     "expert_review_ack": "해당 검토를 준비하겠습니다.",
+    "included_label": "함께 설치되는 스쿼드",
     "agents_label": "에이전트",
     "agent_new": "신규",
     "agent_reused": "이미 있음",

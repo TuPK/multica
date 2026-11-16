@@ -131,6 +131,14 @@ export function squadTemplateCategory(template: SquadTemplate): SquadTemplateCat
   return template.category ?? "vertical";
 }
 
+/**
+ * Whether a squad is built from the Kit Viet pack (its adapter), whatever group it is listed in. The
+ * group does not decide this: a Kit Viet squad may sit in any collection.
+ */
+export function isKitvietTemplate(template: SquadTemplate): boolean {
+  return template.adapter?.type === "kitviet";
+}
+
 export interface SquadTemplate {
   id: SquadTemplateId;
   /** Name of the created squad. */
@@ -138,6 +146,13 @@ export interface SquadTemplate {
   description: string;
   /** The quickstart group. Missing means "vertical"; see squadTemplateCategory. */
   category?: SquadTemplateCategory;
+  /** Set when the squad is built from a generated pack (the Kit Viet pack); see isKitvietTemplate. */
+  adapter?: { type: "kitviet" };
+  /**
+   * Squads the quickstart creates before this one when it is picked as a set (runSquadSetQuickstart), in
+   * this order. Each is a squad of the same domain that has no `includes` of its own.
+   */
+  includes?: readonly SquadTemplateId[];
   /**
    * True when a qualified person (a clinician, a licensed agent, a credit officer, a safety
    * engineer) must read the squad's output before it is used. The quickstart asks the user to

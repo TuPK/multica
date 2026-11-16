@@ -321,6 +321,7 @@
     "expert_review_badge": "Expert review",
     "expert_review_notice": "A qualified person must review this squad's output before it is used.",
     "expert_review_ack": "I will arrange that review.",
+    "included_label": "Also installed with it",
     "agents_label": "Agents",
     "agent_new": "New",
     "agent_reused": "Already exists",

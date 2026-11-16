@@ -319,6 +319,7 @@
     "expert_review_badge": "需專業審核",
     "expert_review_notice": "使用此小隊的產出前，必須由具備資格的人員審核。",
     "expert_review_ack": "我會安排該審核。",
+    "included_label": "一併安裝的小隊",
     "agents_label": "智慧體",
     "agent_new": "新建",
     "agent_reused": "已存在",

@@ -4,13 +4,15 @@ import { SUPPORTED_LOCALES } from "../i18n/types";
 import { SQUAD_ROLES, SQUAD_TEMPLATES, SQUAD_TEMPLATE_CATEGORIES } from "../squads/templates";
 import { SDLC_BUILTIN_SKILLS } from "./generated/skills-builtin";
 import { catalogText } from "./i18n";
+import { skillsetMembers } from "./skillsets";
 
 // Every squad of the catalog, checked the same way, so a squad added under catalog/squads is covered
 // without a test of its own. The per-squad Kit Viet tests next to this file keep the facts that are
 // specific to one squad.
 const OUTPUT_KINDS = ["issue", "proposal", "kb_document", "report"];
 const CRON_FIELD = /^[\d*/,\-?LW#]+$/;
-const BUNDLED = new Set(SDLC_BUILTIN_SKILLS.map((skill) => skill.name));
+// The SDLC bundle, and the marketing skills, which load from their own chunk (chunk: true) and are not in it.
+const BUNDLED = new Set([...SDLC_BUILTIN_SKILLS.map((skill) => skill.name), ...skillsetMembers("marketing")]);
 
 describe("catalog squads", () => {
   it("lists each squad once, in a known collection", () => {

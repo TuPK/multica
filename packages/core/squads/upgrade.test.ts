@@ -11,7 +11,7 @@ import { hasKitvietSquad, mergeWorkflowSteps, upgradeKitvietSquad, upgradeKitvie
 import { KITVIET_PREVIOUS_AGENT_INSTRUCTIONS, KITVIET_PREVIOUS_SQUAD_INSTRUCTIONS } from "./kitviet-previous-texts";
 import { findKitvietRole } from "./kitviet-squad-roles";
 import { kitvietPackOf } from "./kitviet-packs";
-import { SQUAD_ROLES, SQUAD_TEMPLATES, type SquadRoleKey, type SquadTemplate } from "./templates";
+import { isKitvietTemplate, SQUAD_ROLES, SQUAD_TEMPLATES, type SquadRoleKey, type SquadTemplate } from "./templates";
 
 const template = SQUAD_TEMPLATES.find((t) => t.id === "sdlc_greenfield")!;
 const agentIds = Object.fromEntries(template.roles.map((r) => [r, `id-${r}`])) as Record<SquadRoleKey, string>;
@@ -499,5 +499,24 @@ describe("hasKitvietSquad", () => {
   it("ignores archived squads and squads that are not Kit Viet", () => {
     expect(hasKitvietSquad([{ name: kv.name, archived_at: "2026-11-01T00:00:00Z" }])).toBe(false);
     expect(hasKitvietSquad([{ name: "My own squad", archived_at: null }])).toBe(false);
+  });
+});
+
+// D10: a Kit Viet squad is one built from the Kit Viet pack, whatever its group. A vertical squad is
+// one of them, so the refresh button covers it too.
+describe("isKitvietTemplate", () => {
+  it("is true for a Kit Viet squad in any group", () => {
+    expect(isKitvietTemplate(SQUAD_TEMPLATES.find((t) => t.id === "kv_admin")!)).toBe(true);
+    expect(isKitvietTemplate(SQUAD_TEMPLATES.find((t) => t.id === "kv_health")!)).toBe(true);
+  });
+  it("is false for a squad that is not built from the Kit Viet pack", () => {
+    expect(isKitvietTemplate(SQUAD_TEMPLATES.find((t) => t.id === "content_studio")!)).toBe(false);
+  });
+});
+
+describe("hasKitvietSquad in the vertical group", () => {
+  it("finds a live vertical Kit Viet squad", () => {
+    const vertical = SQUAD_TEMPLATES.find((t) => t.id === "kv_health")!;
+    expect(hasKitvietSquad([{ name: vertical.name, archived_at: null }])).toBe(true);
   });
 });

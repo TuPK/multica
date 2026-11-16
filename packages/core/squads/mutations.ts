@@ -6,10 +6,12 @@ import { workspaceKeys } from "../workspace/queries";
 import type { SalesIntake } from "./sales-intake";
 import {
   runSquadQuickstart,
+  runSquadSetQuickstart,
   type QuickstartOptions,
   type QuickstartOutcome,
+  type QuickstartSetOutcome,
 } from "./quickstart";
-import { SQUAD_TEMPLATES, squadTemplateCategory, type SquadTemplate } from "./templates";
+import { isKitvietTemplate, SQUAD_TEMPLATES, type SquadTemplate } from "./templates";
 import { upgradeKitvietWorkspace, type KitvietWorkspaceUpgradeEntry } from "./upgrade";
 
 export type { KitvietWorkspaceUpgradeEntry };
@@ -20,6 +22,29 @@ export { hasKitvietSquad } from "./upgrade";
  * already existed, and what failed, so the caller reports it instead of
  * treating a partial result as an error.
  */
+/** Creates a squad set: the included squads the boss kept, then the set's own squad. */
+export function useSquadSetQuickstart(wsId: string) {
+  const qc = useQueryClient();
+  return useMutation<
+    QuickstartSetOutcome,
+    Error,
+    {
+      template: SquadTemplate;
+      included: readonly SquadTemplate[];
+      options: QuickstartOptions;
+      onProgress?: (outcome: QuickstartSetOutcome) => void;
+    }
+  >({
+    mutationFn: ({ template, included, options, onProgress }) =>
+      runSquadSetQuickstart(api, template, included, options, onProgress),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: workspaceKeys.agents(wsId) });
+      qc.invalidateQueries({ queryKey: workspaceKeys.squads(wsId) });
+      qc.invalidateQueries({ queryKey: issueWorkflowKeys.all(wsId) });
+    },
+  });
+}
+
 export function useSquadQuickstart(wsId: string) {
   const qc = useQueryClient();
   return useMutation<
@@ -51,7 +76,7 @@ export function useUpgradeKitvietSquads(wsId: string) {
     mutationFn: () =>
       upgradeKitvietWorkspace(
         api,
-        SQUAD_TEMPLATES.filter((tpl) => squadTemplateCategory(tpl) === "kitviet"),
+        SQUAD_TEMPLATES.filter(isKitvietTemplate),
       ),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: workspaceKeys.agents(wsId) });

@@ -9,12 +9,13 @@ import { useWorkspaceId } from "@multica/core/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { isRuntimeUsableForUser, runtimeListOptions } from "@multica/core/runtimes";
 import {
-  planQuickstartAgents,
+  planSquadSetAgents,
   SQUAD_TEMPLATE_CATEGORIES,
   SQUAD_TEMPLATES,
   squadTemplateCategory,
-  useSquadQuickstart,
+  useSquadSetQuickstart,
   type QuickstartOutcome,
+  type QuickstartSetOutcome,
   type SquadTemplate,
 } from "@multica/core/squads";
 import { agentListOptions, memberListOptions } from "@multica/core/workspace/queries";
@@ -44,6 +45,10 @@ function hasProblems(outcome: QuickstartOutcome): boolean {
   );
 }
 
+function hasSetProblems(outcome: QuickstartSetOutcome): boolean {
+  return outcome.items.some((item) => hasProblems(item.outcome));
+}
+
 /** The template groups in list order, leaving out an empty group. */
 const TEMPLATE_GROUPS = SQUAD_TEMPLATE_CATEGORIES.map((category) => ({
   category,
@@ -70,11 +75,24 @@ export function SquadQuickstartModal({ onClose }: { onClose: () => void }) {
   const [runtimeId, setRuntimeId] = useState("");
   const [createWorkflow, setCreateWorkflow] = useState(true);
   const [reviewAcknowledged, setReviewAcknowledged] = useState(false);
-  const [outcome, setOutcome] = useState<QuickstartOutcome | null>(null);
-  const quickstart = useSquadQuickstart(wsId);
+  const [outcome, setOutcome] = useState<QuickstartSetOutcome | null>(null);
+  // The included squads the boss unchecked. Every included squad is kept by default.
+  const [droppedIncluded, setDroppedIncluded] = useState<ReadonlySet<SquadTemplate["id"]>>(new Set());
+  const quickstart = useSquadSetQuickstart(wsId);
 
   const template = SQUAD_TEMPLATES.find((tpl) => tpl.id === templateId)!;
-  const plan = useMemo(() => planQuickstartAgents(template, agents), [template, agents]);
+  const includedTemplates = useMemo(
+    () =>
+      (template.includes ?? []).flatMap((id) => {
+        const included = SQUAD_TEMPLATES.find((tpl) => tpl.id === id);
+        return included && !droppedIncluded.has(id) ? [included] : [];
+      }),
+    [template, droppedIncluded],
+  );
+  const plan = useMemo(
+    () => planSquadSetAgents([...includedTemplates, template], agents),
+    [includedTemplates, template, agents],
+  );
   const runtime = runtimes.find((r) => r.id === runtimeId);
   const needsRuntime = plan.some((p) => !p.reuse);
   const runtimeOk = !needsRuntime || (!!runtime && isRuntimeUsableForUser(runtime, currentUserId));
@@ -87,6 +105,16 @@ export function SquadQuickstartModal({ onClose }: { onClose: () => void }) {
     if (id === templateId) return;
     setTemplateId(id);
     setReviewAcknowledged(false);
+    setDroppedIncluded(new Set());
+  };
+
+  const toggleIncluded = (id: SquadTemplate["id"], keep: boolean) => {
+    setDroppedIncluded((current) => {
+      const next = new Set(current);
+      if (keep) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   const run = async () => {
@@ -94,6 +122,7 @@ export function SquadQuickstartModal({ onClose }: { onClose: () => void }) {
     try {
       const done = await quickstart.mutateAsync({
         template,
+        included: includedTemplates,
         options: {
           runtimeId,
           createWorkflow: createWorkflow && !!template.workflow,
@@ -101,7 +130,7 @@ export function SquadQuickstartModal({ onClose }: { onClose: () => void }) {
         onProgress: setOutcome,
       });
       setOutcome(done);
-      if (!hasProblems(done)) toast.success(t(($) => $.squad_quickstart.toast_done));
+      if (!hasSetProblems(done)) toast.success(t(($) => $.squad_quickstart.toast_done));
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : t(($) => $.squad_quickstart.toast_failed),
@@ -110,6 +139,8 @@ export function SquadQuickstartModal({ onClose }: { onClose: () => void }) {
   };
 
   const finished = outcome !== null && !running;
+  // The set's own squad is the last item; it is the one the boss opens.
+  const openSquadId = outcome?.items.at(-1)?.outcome.squad.id ?? null;
   const statusText = {
     created: t(($) => $.squad_quickstart.status_created),
     reused: t(($) => $.squad_quickstart.status_reused),
@@ -181,13 +212,45 @@ export function SquadQuickstartModal({ onClose }: { onClose: () => void }) {
                 })}
               </div>
 
+              {template.includes && template.includes.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-caption text-muted-foreground">
+                    {t(($) => $.squad_quickstart.included_label)}
+                  </Label>
+                  <ul className="space-y-2">
+                    {template.includes.map((id) => {
+                      const included = SQUAD_TEMPLATES.find((tpl) => tpl.id === id);
+                      if (!included) return null;
+                      const text = catalogText("squad", included.id, locale);
+                      const checkboxId = `squad-quickstart-included-${included.id}`;
+                      return (
+                        <li key={included.id} className="flex items-start gap-2">
+                          <Checkbox
+                            id={checkboxId}
+                            checked={!droppedIncluded.has(included.id)}
+                            onCheckedChange={(v) => toggleIncluded(included.id, v === true)}
+                            className="mt-0.5"
+                          />
+                          <div className="min-w-0 space-y-0.5">
+                            <Label htmlFor={checkboxId} className="text-body">
+                              {text.title}
+                            </Label>
+                            <p className="text-caption text-muted-foreground">{text.description}</p>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label className="text-caption text-muted-foreground">
                   {t(($) => $.squad_quickstart.agents_label)}
                 </Label>
                 <ul className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
                   {plan.map((p) => (
-                    <li key={p.role} className="flex items-center justify-between gap-2 text-body">
+                    <li key={p.name} className="flex items-center justify-between gap-2 text-body">
                       <span className="truncate">{p.name}</span>
                       <span className="shrink-0 text-caption text-muted-foreground">
                         {p.reuse
@@ -238,97 +301,109 @@ export function SquadQuickstartModal({ onClose }: { onClose: () => void }) {
               <p className="text-body font-medium">
                 {running
                   ? t(($) => $.squad_quickstart.creating)
-                  : hasProblems(outcome)
+                  : hasSetProblems(outcome)
                     ? t(($) => $.squad_quickstart.result_problems)
                     : t(($) => $.squad_quickstart.result_ready)}
               </p>
-              <ul className="space-y-1">
-                {outcome.agents.map((a) => (
-                  <li key={a.role} className="flex items-start justify-between gap-3 text-body">
-                    <span className="truncate">{a.name}</span>
-                    <span
-                      className={`shrink-0 text-caption ${
-                        a.status === "failed" ? "text-destructive" : "text-muted-foreground"
-                      }`}
-                    >
-                      {a.status === "failed" && a.error
-                        ? `${t(($) => $.squad_quickstart.status_failed)}: ${a.error}`
-                        : statusText[a.status]}
-                    </span>
-                  </li>
-                ))}
-                {outcome.squad.id !== null || outcome.squad.status === "failed" ? (
-                  <li className="flex items-start justify-between gap-3 text-body font-medium">
-                    <span>{t(($) => $.squad_quickstart.squad_row)}</span>
-                    <span
-                      className={`shrink-0 text-caption ${
-                        outcome.squad.status === "failed" || outcome.squad.error
-                          ? "text-destructive"
-                          : "text-muted-foreground"
-                      }`}
-                    >
-                      {outcome.squad.error
-                        ? `${t(($) => $.squad_quickstart.status_problem)}: ${outcome.squad.error}`
-                        : statusText[outcome.squad.status]}
-                    </span>
-                  </li>
-                ) : null}
-                {outcome.workflow.status !== "skipped" && (
-                  <li className="flex items-start justify-between gap-3 text-body font-medium">
-                    <span>{t(($) => $.squad_quickstart.workflow_row)}</span>
-                    <span
-                      className={`shrink-0 text-caption ${
-                        outcome.workflow.status === "failed"
-                          ? "text-destructive"
-                          : "text-muted-foreground"
-                      }`}
-                    >
-                      {outcome.workflow.status === "failed"
-                        ? `${t(($) => $.squad_quickstart.status_failed)}: ${outcome.workflow.error}`
-                        : outcome.workflow.note === "qa_step_left_out"
-                          ? t(($) => $.squad_quickstart.workflow_without_qa)
-                          : statusText[outcome.workflow.status]}
-                    </span>
-                  </li>
-                )}
-                {outcome.routines.map((r) => (
-                  <li key={r.title} className="flex items-start justify-between gap-3 text-body font-medium">
-                    <span>{r.title}</span>
-                    <span
-                      className={`shrink-0 text-caption ${
-                        r.status === "failed" || r.status === "partial"
-                          ? "text-destructive"
-                          : "text-muted-foreground"
-                      }`}
-                    >
-                      {r.status === "failed"
-                        ? `${t(($) => $.squad_quickstart.status_failed)}: ${r.error}`
-                        : r.status === "partial"
-                          ? `${statusText.partial}: ${r.error}`
-                          : statusText[r.status]}
-                    </span>
-                  </li>
-                ))}
-                {outcome.sources.status !== "skipped" || outcome.sources.error ? (
-                  <li className="flex items-start justify-between gap-3 text-body font-medium">
-                    <span>{t(($) => $.squad_quickstart.sources_row)}</span>
-                    <span
-                      className={`shrink-0 text-caption ${
-                        outcome.sources.status === "failed" || outcome.sources.status === "skipped"
-                          ? "text-destructive"
-                          : "text-muted-foreground"
-                      }`}
-                    >
-                      {outcome.sources.status === "skipped"
-                        ? t(($) => $.squad_quickstart.sources_need_knowledge)
-                        : outcome.sources.status === "failed"
-                          ? `${t(($) => $.squad_quickstart.status_failed)}: ${outcome.sources.failed}`
-                          : t(($) => $.squad_quickstart.sources_written, { count: outcome.sources.written })}
-                    </span>
-                  </li>
-                ) : null}
-              </ul>
-              {finished && !hasProblems(outcome) && (
+              {outcome.items.map((item) => {
+                const current = item.outcome;
+                return (
+                  <div key={item.templateId} className="space-y-2">
+                    {outcome.items.length > 1 && (
+                      <h3 className="text-caption font-medium text-muted-foreground">
+                        {catalogText("squad", item.templateId, locale).title}
+                      </h3>
+                    )}
+                    <ul className="space-y-1">
+                      {current.agents.map((a) => (
+                        <li key={a.role} className="flex items-start justify-between gap-3 text-body">
+                          <span className="truncate">{a.name}</span>
+                          <span
+                            className={`shrink-0 text-caption ${
+                              a.status === "failed" ? "text-destructive" : "text-muted-foreground"
+                            }`}
+                          >
+                            {a.status === "failed" && a.error
+                              ? `${t(($) => $.squad_quickstart.status_failed)}: ${a.error}`
+                              : statusText[a.status]}
+                          </span>
+                        </li>
+                      ))}
+                      {current.squad.id !== null || current.squad.status === "failed" ? (
+                        <li className="flex items-start justify-between gap-3 text-body font-medium">
+                          <span>{t(($) => $.squad_quickstart.squad_row)}</span>
+                          <span
+                            className={`shrink-0 text-caption ${
+                              current.squad.status === "failed" || current.squad.error
+                                ? "text-destructive"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {current.squad.error
+                              ? `${t(($) => $.squad_quickstart.status_problem)}: ${current.squad.error}`
+                              : statusText[current.squad.status]}
+                          </span>
+                        </li>
+                      ) : null}
+                      {current.workflow.status !== "skipped" && (
+                        <li className="flex items-start justify-between gap-3 text-body font-medium">
+                          <span>{t(($) => $.squad_quickstart.workflow_row)}</span>
+                          <span
+                            className={`shrink-0 text-caption ${
+                              current.workflow.status === "failed"
+                                ? "text-destructive"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {current.workflow.status === "failed"
+                              ? `${t(($) => $.squad_quickstart.status_failed)}: ${current.workflow.error}`
+                              : current.workflow.note === "qa_step_left_out"
+                                ? t(($) => $.squad_quickstart.workflow_without_qa)
+                                : statusText[current.workflow.status]}
+                          </span>
+                        </li>
+                      )}
+                      {current.routines.map((r) => (
+                        <li key={r.title} className="flex items-start justify-between gap-3 text-body font-medium">
+                          <span>{r.title}</span>
+                          <span
+                            className={`shrink-0 text-caption ${
+                              r.status === "failed" || r.status === "partial"
+                                ? "text-destructive"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {r.status === "failed"
+                              ? `${t(($) => $.squad_quickstart.status_failed)}: ${r.error}`
+                              : r.status === "partial"
+                                ? `${statusText.partial}: ${r.error}`
+                                : statusText[r.status]}
+                          </span>
+                        </li>
+                      ))}
+                      {current.sources.status !== "skipped" || current.sources.error ? (
+                        <li className="flex items-start justify-between gap-3 text-body font-medium">
+                          <span>{t(($) => $.squad_quickstart.sources_row)}</span>
+                          <span
+                            className={`shrink-0 text-caption ${
+                              current.sources.status === "failed" || current.sources.status === "skipped"
+                                ? "text-destructive"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {current.sources.status === "skipped"
+                              ? t(($) => $.squad_quickstart.sources_need_knowledge)
+                              : current.sources.status === "failed"
+                                ? `${t(($) => $.squad_quickstart.status_failed)}: ${current.sources.failed}`
+                                : t(($) => $.squad_quickstart.sources_written, { count: current.sources.written })}
+                          </span>
+                        </li>
+                      ) : null}
+                    </ul>
+                  </div>
+                );
+              })}
+              {finished && !hasSetProblems(outcome) && (
                 <p className="text-caption text-muted-foreground">
                   {t(($) => $.squad_quickstart.next_step)}
                 </p>
@@ -360,7 +435,7 @@ export function SquadQuickstartModal({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-end gap-2 border-t px-5 py-3">
           {finished ? (
             <>
-              {hasProblems(outcome) && (
+              {hasSetProblems(outcome) && (
                 <Button variant="outline" onClick={() => void run()}>
                   {t(($) => $.squad_quickstart.retry)}
                 </Button>
@@ -368,11 +443,11 @@ export function SquadQuickstartModal({ onClose }: { onClose: () => void }) {
               <Button variant="outline" onClick={onClose}>
                 {t(($) => $.squad_quickstart.close)}
               </Button>
-              {outcome.squad.id && (
+              {openSquadId && (
                 <Button
                   onClick={() => {
                     onClose();
-                    router.push(wsPaths.squadDetail(outcome.squad.id!));
+                    router.push(wsPaths.squadDetail(openSquadId));
                   }}
                 >
                   {t(($) => $.squad_quickstart.open_squad)}

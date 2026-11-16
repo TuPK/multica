@@ -319,6 +319,7 @@
     "expert_review_badge": "需专业审核",
     "expert_review_notice": "使用此小队的产出前，必须由具备资质的人员审核。",
     "expert_review_ack": "我会安排该审核。",
+    "included_label": "一并安装的小队",
     "agents_label": "智能体",
     "agent_new": "新建",
     "agent_reused": "已存在",
