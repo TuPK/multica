@@ -23,6 +23,14 @@ RETURNING *;
 SELECT * FROM billing_order
 WHERE id = $1;
 
+-- name: GetPendingBillingOrderForWorkspace :one
+-- The workspace's pending order, if it has one. A change is refused while one
+-- is pending (spec 7b.1, rule 9).
+SELECT * FROM billing_order
+WHERE workspace_id = $1 AND status = 'pending'
+ORDER BY created_at DESC, id DESC
+LIMIT 1;
+
 -- name: GetBillingOrderByIdempotencyKey :one
 SELECT * FROM billing_order
 WHERE workspace_id = $1 AND idempotency_key = $2 AND idempotency_key <> '';

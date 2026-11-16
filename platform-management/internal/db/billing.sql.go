@@ -468,6 +468,46 @@ func (q *Queries) GetPendingAddSeatsOrder(ctx context.Context, arg GetPendingAdd
 	return i, err
 }
 
+const getPendingBillingOrderForWorkspace = `-- name: GetPendingBillingOrderForWorkspace :one
+SELECT id, workspace_id, kind, plan_key, interval, seats, amount, vat_amount, currency, status, provider, provider_ref, transfer_code, idempotency_key, buyer, period_start, period_end, einvoice_ref, created_by, confirmed_by, paid_at, expires_at, created_at FROM billing_order
+WHERE workspace_id = $1 AND status = 'pending'
+ORDER BY created_at DESC, id DESC
+LIMIT 1
+`
+
+// The workspace's pending order, if it has one. A change is refused while one
+// is pending (spec 7b.1, rule 9).
+func (q *Queries) GetPendingBillingOrderForWorkspace(ctx context.Context, workspaceID pgtype.UUID) (BillingOrder, error) {
+	row := q.db.QueryRow(ctx, getPendingBillingOrderForWorkspace, workspaceID)
+	var i BillingOrder
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Kind,
+		&i.PlanKey,
+		&i.Interval,
+		&i.Seats,
+		&i.Amount,
+		&i.VatAmount,
+		&i.Currency,
+		&i.Status,
+		&i.Provider,
+		&i.ProviderRef,
+		&i.TransferCode,
+		&i.IdempotencyKey,
+		&i.Buyer,
+		&i.PeriodStart,
+		&i.PeriodEnd,
+		&i.EinvoiceRef,
+		&i.CreatedBy,
+		&i.ConfirmedBy,
+		&i.PaidAt,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getWorkspaceSlug = `-- name: GetWorkspaceSlug :one
 SELECT slug FROM workspace
 WHERE id = $1
