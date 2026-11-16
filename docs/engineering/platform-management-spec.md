@@ -628,6 +628,14 @@ Khi `PLATFORM_WORKSPACE_DELETION_DAYS` trên Multica lớn hơn 0, `DeleteWorksp
 
 `platform_usage_daily`: `workspace_id`, `day`, `members`, `agents`, `runtimes`, `issues_total`, `issues_created`, `tasks_run`, `storage_bytes`. Một việc nền hằng đêm của Multica (3.5) tính từ các bảng đã có và ghi vào bảng này, là bảng thuộc platform. Console dùng bảng này để sắp xếp danh sách tenant và vẽ xu hướng; trang chi tiết tenant tính thêm số đếm hiện thời bằng truy vấn có giới hạn.
 
+**Định nghĩa các cột đo (R5, rủi ro 15.3(d)).** Các cột này là nguồn tiền của gói theo mức dùng (7b.3), nên định nghĩa đúng như truy vấn của việc nền ghi trong `server/pkg/db/queries/platform_usage_daily.sql`:
+
+- `tasks_run` là số task có `status = 'completed'` và `completed_at` nằm trong ngày UTC đó (nửa mở: từ 00:00 đến trước 00:00 ngày sau). Task đổi thành hoàn tất đúng 00:00 UTC của ngày sau thuộc ngày sau. Task thất bại không được tính. `agent_task_queue` không có `workspace_id`, nên task thuộc workspace của agent.
+- `members` là số dòng `member` có `created_at` trước 00:00 UTC của ngày sau; `storage_bytes` là tổng `size_bytes` của tệp đính kèm có `created_at` trước mốc đó. Hai cột là bản chụp cuối ngày, không cộng dồn: chạy lại cùng ngày thì thay dòng cũ.
+- Giới hạn đã biết: một thành viên hay tệp bị xóa trước khi việc nền chạy không còn dòng nào, nên ngày đó được đếm thấp hơn cuối ngày. Sai lệch này nghiêng về phía khách và nằm trong rủi ro 15.3(d).
+
+Test đối chiếu ba cột với bảng nguồn trên dữ liệu mẫu: `server/internal/usagesnapshot/db_test.go`, `TestDBCountsMatchAFixtureWorkspace`.
+
 ### 5.14 Kiểm toán đợt R2
 
 Thêm vào danh mục: tích hợp (`integration.connected`, `integration.disconnected` cho GitHub, VCS, Slack, Lark, Telegram, WeCom, DingTalk, Qoder), plugin (`plugin.installed`, `plugin.uninstalled`, `plugin.enabled`, `plugin.disabled`, `plugin.configured`, `plugin.token_rotated`), thư viện MCP, hồ sơ runtime, agent (`agent.created`, `agent.archived`, `agent.permission_changed`, `agent.env_updated`), runtime (`runtime.visibility_changed`, `runtime.deleted`), thanh toán (`billing.order_created`, `billing.order_paid`, `subscription.changed`), trạng thái (`workspace.status_changed`, `account.status_changed`), xuất dữ liệu, và mọi hành động của staff.
