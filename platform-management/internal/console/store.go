@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/multica-ai/multica/platform-management/audit"
+	"github.com/multica-ai/multica/platform-management/internal/billing"
 )
 
 // TenantRow is one workspace in a list.
@@ -103,6 +104,15 @@ type Overview struct {
 	// ByPlan counts the workspaces on each plan key. A workspace with no
 	// subscription row is counted under the free plan.
 	ByPlan map[string]int64
+	// PendingOrders counts the orders waiting for a payment confirmation.
+	PendingOrders int64
+}
+
+// OrderRow is a billing order with the name of its workspace, which is empty
+// when the workspace row is gone.
+type OrderRow struct {
+	billing.Order
+	WorkspaceName string
 }
 
 // TenantSearch asks for a page of workspaces. Pattern is an escaped ILIKE
@@ -148,6 +158,12 @@ type Reader interface {
 	ListAuditEvents(ctx context.Context, q AuditQuery) ([]AuditRow, error)
 	// Overview counts the workspaces and the accounts created since signupsSince.
 	Overview(ctx context.Context, signupsSince time.Time) (Overview, error)
+	// ListOrders returns up to limit orders in status, ordered by creation time.
+	ListOrders(ctx context.Context, status billing.Status, newestFirst bool, limit int) ([]OrderRow, error)
+	// GetOrder returns found == false for an unknown order.
+	GetOrder(ctx context.Context, id string) (o OrderRow, found bool, err error)
+	// RecentOrders returns a workspace's newest orders first, up to limit.
+	RecentOrders(ctx context.Context, workspaceID string, limit int) ([]OrderRow, error)
 }
 
 // Account is the stored state of an account. found is false for an account
@@ -186,6 +202,11 @@ type Tx interface {
 	InsertStaff(ctx context.Context, userID, role, createdBy string) (bool, error)
 	// RevokeStaff sets revoked_at on the user's active row.
 	RevokeStaff(ctx context.Context, userID string) (bool, error)
+
+	// LockOrder reads the order and locks its row.
+	LockOrder(ctx context.Context, id string) (o billing.Order, found bool, err error)
+	// CancelOrder moves a pending order to canceled.
+	CancelOrder(ctx context.Context, id string) (billing.Order, error)
 
 	audit.Writer
 }

@@ -82,3 +82,46 @@ LIMIT 1;
 -- The address of an order page names the workspace by its slug.
 SELECT slug FROM workspace
 WHERE id = $1;
+
+-- name: CancelBillingOrder :one
+-- Moves a pending order to canceled. It returns no row for an order that is not
+-- pending; the console calls it with the row locked.
+UPDATE billing_order
+SET status = 'canceled'
+WHERE id = $1 AND status = 'pending'
+RETURNING *;
+
+-- name: GetBillingOrderWithWorkspace :one
+SELECT sqlc.embed(o), w.name AS workspace_name
+FROM billing_order o
+LEFT JOIN workspace w ON w.id = o.workspace_id
+WHERE o.id = $1;
+
+-- name: ListBillingOrdersByStatusOldestFirst :many
+-- The confirmation queue: the order that has waited longest comes first.
+SELECT sqlc.embed(o), w.name AS workspace_name
+FROM billing_order o
+LEFT JOIN workspace w ON w.id = o.workspace_id
+WHERE o.status = sqlc.arg(status)
+ORDER BY o.created_at ASC, o.id ASC
+LIMIT sqlc.arg(row_limit);
+
+-- name: ListBillingOrdersByStatusNewestFirst :many
+SELECT sqlc.embed(o), w.name AS workspace_name
+FROM billing_order o
+LEFT JOIN workspace w ON w.id = o.workspace_id
+WHERE o.status = sqlc.arg(status)
+ORDER BY o.created_at DESC, o.id DESC
+LIMIT sqlc.arg(row_limit);
+
+-- name: ListBillingOrdersByWorkspace :many
+SELECT sqlc.embed(o), w.name AS workspace_name
+FROM billing_order o
+LEFT JOIN workspace w ON w.id = o.workspace_id
+WHERE o.workspace_id = sqlc.arg(workspace_id)
+ORDER BY o.created_at DESC, o.id DESC
+LIMIT sqlc.arg(row_limit);
+
+-- name: CountPendingBillingOrders :one
+SELECT count(*)::bigint FROM billing_order
+WHERE status = 'pending';

@@ -217,6 +217,7 @@ func TestRouteRoles(t *testing.T) {
 	anyStaff := []staff.Role(nil)
 	supportAdmin := []staff.Role{staff.RoleSupport, staff.RoleAdmin}
 	admin := []staff.Role{staff.RoleAdmin}
+	billingAdmin := []staff.Role{staff.RoleBilling, staff.RoleAdmin}
 	want := map[string][]staff.Role{
 		"/api/platform/tenants":                    anyStaff,
 		"/api/platform/tenants/{id}":               anyStaff,
@@ -231,6 +232,9 @@ func TestRouteRoles(t *testing.T) {
 		"/api/platform/staff/{user_id}":            admin,
 		"/api/platform/audit-events":               anyStaff,
 		"/api/platform/overview":                   anyStaff,
+		"/api/platform/orders":                     billingAdmin,
+		"/api/platform/orders/{id}/confirm":        billingAdmin,
+		"/api/platform/orders/{id}/cancel":         billingAdmin,
 	}
 	got := map[string][]staff.Role{}
 	for _, r := range routeTable() {

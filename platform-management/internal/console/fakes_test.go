@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -16,10 +18,13 @@ import (
 
 	"github.com/multica-ai/multica/platform-management/accountguard"
 	"github.com/multica-ai/multica/platform-management/audit"
+	"github.com/multica-ai/multica/platform-management/internal/billing"
 	"github.com/multica-ai/multica/platform-management/internal/platformauth"
 	"github.com/multica-ai/multica/platform-management/internal/session"
 	"github.com/multica-ai/multica/platform-management/internal/staff"
+	"github.com/multica-ai/multica/platform-management/internal/subscription"
 	"github.com/multica-ai/multica/platform-management/internal/workspacestatus"
+	"github.com/multica-ai/multica/platform-management/workspacestate"
 )
 
 const (
@@ -88,12 +93,63 @@ type fakeReader struct {
 	events   []AuditRow
 	overview Overview
 	err      error
+	store    *fakeStore // the orders ListOrders, GetOrder and RecentOrders read
 
 	lastTenants TenantSearch
 	lastUsers   UserSearch
 	lastNotes   NoteQuery
 	lastAudit   AuditQuery
 	lastSince   time.Time
+
+	lastOrderStatus billing.Status
+	lastNewestFirst bool
+	lastOrderLimit  int
+	lastRecentWS    string
+	lastRecentLimit int
+}
+
+func (r *fakeReader) ListOrders(_ context.Context, status billing.Status, newestFirst bool, limit int) ([]OrderRow, error) {
+	r.lastOrderStatus, r.lastNewestFirst, r.lastOrderLimit = status, newestFirst, limit
+	var out []OrderRow
+	for _, o := range r.store.orders {
+		if o.Status == status {
+			out = append(out, r.store.orderRow(o))
+		}
+	}
+	sortOrders(out, newestFirst)
+	return out, r.err
+}
+
+func (r *fakeReader) GetOrder(_ context.Context, id string) (OrderRow, bool, error) {
+	o, ok := r.store.orders[id]
+	if !ok {
+		return OrderRow{}, false, r.err
+	}
+	return r.store.orderRow(o), true, r.err
+}
+
+func (r *fakeReader) RecentOrders(_ context.Context, workspaceID string, limit int) ([]OrderRow, error) {
+	r.lastRecentWS, r.lastRecentLimit = workspaceID, limit
+	var out []OrderRow
+	for _, o := range r.store.orders {
+		if o.WorkspaceID == workspaceID {
+			out = append(out, r.store.orderRow(o))
+		}
+	}
+	sortOrders(out, true)
+	if len(out) > limit {
+		out = out[:limit]
+	}
+	return out, r.err
+}
+
+func sortOrders(rows []OrderRow, newestFirst bool) {
+	sort.Slice(rows, func(i, j int) bool {
+		if newestFirst {
+			return rows[i].CreatedAt.After(rows[j].CreatedAt)
+		}
+		return rows[i].CreatedAt.Before(rows[j].CreatedAt)
+	})
 }
 
 func (r *fakeReader) SearchTenants(_ context.Context, q TenantSearch) ([]TenantRow, error) {
@@ -152,6 +208,8 @@ type fakeStore struct {
 	audits     []audit.Entry
 	failAudit  error
 	txs        int
+	orders     map[string]billing.Order
+	subs       map[string]subscription.Subscription
 }
 
 func newFakeStore() *fakeStore {
@@ -162,6 +220,8 @@ func newFakeStore() *fakeStore {
 		},
 		accounts: map[string]string{},
 		sessions: map[string]time.Time{},
+		orders:   map[string]billing.Order{},
+		subs:     map[string]subscription.Subscription{},
 		staffRows: []fakeStaffRow{
 			{user: adminID, role: "admin"},
 			{user: suppID, role: "support"},
@@ -176,6 +236,8 @@ type snapshot struct {
 	staffRows []fakeStaffRow
 	notes     []Note
 	audits    []audit.Entry
+	orders    map[string]billing.Order
+	subs      map[string]subscription.Subscription
 }
 
 func (s *fakeStore) snap() snapshot {
@@ -189,11 +251,17 @@ func (s *fakeStore) snap() snapshot {
 	c.staffRows = append(c.staffRows, s.staffRows...)
 	c.notes = append(c.notes, s.notes...)
 	c.audits = append(c.audits, s.audits...)
+	c.orders, c.subs = maps.Clone(s.orders), maps.Clone(s.subs)
 	return c
 }
 
 func (s *fakeStore) restore(c snapshot) {
 	s.accounts, s.sessions, s.staffRows, s.notes, s.audits = c.accounts, c.sessions, c.staffRows, c.notes, c.audits
+	s.orders, s.subs = c.orders, c.subs
+}
+
+func (s *fakeStore) orderRow(o billing.Order) OrderRow {
+	return OrderRow{Order: o, WorkspaceName: s.workspaces[o.WorkspaceID]}
 }
 
 func (s *fakeStore) InTx(_ context.Context, fn func(Tx) error) error {
@@ -306,6 +374,18 @@ func (t *fakeTx) RevokeStaff(_ context.Context, id string) (bool, error) {
 	return false, nil
 }
 
+func (t *fakeTx) LockOrder(_ context.Context, id string) (billing.Order, bool, error) {
+	o, ok := t.s.orders[id]
+	return o, ok, nil
+}
+
+func (t *fakeTx) CancelOrder(_ context.Context, id string) (billing.Order, error) {
+	o := t.s.orders[id]
+	o.Status = billing.StatusCanceled
+	t.s.orders[id] = o
+	return o, nil
+}
+
 func (t *fakeTx) InsertAuditEvent(_ context.Context, e audit.Entry) error {
 	if t.s.failAudit != nil {
 		return t.s.failAudit
@@ -313,6 +393,74 @@ func (t *fakeTx) InsertAuditEvent(_ context.Context, e audit.Entry) error {
 	t.s.audits = append(t.s.audits, e)
 	return nil
 }
+
+// fakeBillingRunner runs billing.Service transactions on the same store as the
+// console's, so a confirm and a cancel see one set of orders and audit rows.
+type fakeBillingRunner struct{ s *fakeStore }
+
+func (r fakeBillingRunner) InTx(_ context.Context, fn func(billing.Tx) error) error {
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+	before := r.s.snap()
+	if err := fn(&fakeBillingTx{fakeTx{s: r.s}}); err != nil {
+		r.s.restore(before)
+		return err
+	}
+	return nil
+}
+
+type fakeBillingTx struct{ fakeTx }
+
+func (t *fakeBillingTx) InsertOrder(context.Context, billing.NewOrder) (billing.Order, bool, error) {
+	return billing.Order{}, false, errors.New("not used")
+}
+
+func (t *fakeBillingTx) OrderByIdempotencyKey(context.Context, string, string) (billing.Order, bool, error) {
+	return billing.Order{}, false, errors.New("not used")
+}
+
+func (t *fakeBillingTx) MarkPaid(_ context.Context, id, by string, at time.Time) (billing.Order, error) {
+	o := t.s.orders[id]
+	o.Status, o.ConfirmedBy, o.PaidAt = billing.StatusPaid, by, &at
+	t.s.orders[id] = o
+	return o, nil
+}
+
+func (t *fakeBillingTx) LockSubscription(_ context.Context, ws string) (subscription.Subscription, bool, error) {
+	s, ok := t.s.subs[ws]
+	return s, ok, nil
+}
+
+func (t *fakeBillingTx) InsertSubscription(_ context.Context, s subscription.Subscription) (subscription.Subscription, bool, error) {
+	s.Version = 1
+	t.s.subs[s.WorkspaceID] = s
+	return s, true, nil
+}
+
+func (t *fakeBillingTx) UpdateSubscription(_ context.Context, s subscription.Subscription) (subscription.Subscription, error) {
+	s.Version = t.s.subs[s.WorkspaceID].Version + 1
+	t.s.subs[s.WorkspaceID] = s
+	return s, nil
+}
+
+func (t *fakeBillingTx) ReadOnlyForBilling(context.Context, string) (bool, error) { return false, nil }
+
+func (t *fakeBillingTx) Current(context.Context, string) (workspacestate.Record, bool, error) {
+	return workspacestate.Record{}, false, nil
+}
+
+func (t *fakeBillingTx) Write(context.Context, workspacestatus.Change) (bool, error) {
+	return false, errors.New("not used")
+}
+
+type noopInvalidator struct{}
+
+func (noopInvalidator) Invalidate(context.Context, string) error { return nil }
+
+type noopEntitlements struct{}
+
+func (noopEntitlements) Invalidate(string) {}
+func (noopEntitlements) InvalidateAll()    {}
 
 // fakeStatusSetter records the changes passed to workspacestatus.Set.
 type fakeStatusSetter struct {
@@ -379,6 +527,15 @@ func newEnv(t *testing.T) *env {
 		pub:   &fakeNotifier{},
 		logs:  &bytes.Buffer{},
 	}
+	e.reader.store = e.store
+	payments, err := billing.New(billing.Deps{
+		Runner: fakeBillingRunner{e.store}, Provider: billing.ProviderManual,
+		Workspaces: noopInvalidator{}, Entitlements: noopEntitlements{},
+		Now: func() time.Time { return t0 },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	log := slog.New(slog.NewTextHandler(e.logs, nil))
 	auth := platformauth.New(platformauth.Deps{
 		Config:    platformauth.Config{SessionSecret: secret, ConsoleOrigin: origin},
@@ -395,6 +552,7 @@ func newEnv(t *testing.T) *env {
 		Workspaces:    e.ws,
 		Cache:         e.cache,
 		Notifier:      e.pub,
+		Payments:      payments,
 		Emails:        e.dir,
 		Log:           log,
 		Now:           func() time.Time { return t0 },

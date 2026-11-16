@@ -443,12 +443,20 @@ func (c *Console) deletePlan(w http.ResponseWriter, r *http.Request) {
 		if n > 0 {
 			return planInUse("subscriptions use this plan; archive it instead")
 		}
+		old, err := planDoc(p)
+		if err != nil {
+			return err
+		}
+		gone := make(map[string]any, len(old))
+		for field, v := range old {
+			gone[field] = map[string]any{"from": v, "to": nil}
+		}
 		if _, err := tx.Delete(r.Context(), key); err != nil {
 			return err
 		}
 		return audit.Record(r.Context(), tx, a.entry(audit.Entry{
 			Action: audit.ActionPlanChanged, TargetType: targetPlan, TargetID: key, TargetLabel: p.Name,
-			Detail: map[string]any{"deleted": true},
+			Detail: map[string]any{"deleted": true, "changes": gone},
 		}))
 	})
 	if err != nil {

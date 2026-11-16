@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/platform-management/audit"
+	"github.com/multica-ai/multica/platform-management/internal/billing"
 	"github.com/multica-ai/multica/platform-management/internal/platformauth"
 	"github.com/multica-ai/multica/platform-management/internal/staff"
 	"github.com/multica-ai/multica/platform-management/internal/workspacestatus"
@@ -41,6 +42,12 @@ type AccountNotifier interface {
 	Publish(ctx context.Context, userID, kind string) error
 }
 
+// PaymentApplier confirms a bank transfer against an order.
+// *billing.Service is one.
+type PaymentApplier interface {
+	ApplyPayment(ctx context.Context, c billing.Confirmation) (billing.Applied, error)
+}
+
 // EmailLookup returns a user's email. *staff.Store is one.
 type EmailLookup interface {
 	EmailByUserID(ctx context.Context, userID string) (string, error)
@@ -60,6 +67,7 @@ type Deps struct {
 	Workspaces StatusSetter
 	Cache      AccountCache
 	Notifier   AccountNotifier
+	Payments   PaymentApplier
 	Emails     EmailLookup
 
 	Log *slog.Logger
@@ -85,6 +93,7 @@ type routeSpec struct {
 
 var (
 	supportAndAdmin = []staff.Role{staff.RoleSupport, staff.RoleAdmin}
+	billingAndAdmin = []staff.Role{staff.RoleBilling, staff.RoleAdmin}
 	adminOnly       = []staff.Role{staff.RoleAdmin}
 )
 
@@ -110,6 +119,9 @@ func routeTable() []routeSpec {
 		}},
 		{base + "/staff/{user_id}", adminOnly, map[string]handlerFunc{http.MethodDelete: (*Handler).removeStaff}},
 		{base + "/audit-events", nil, map[string]handlerFunc{http.MethodGet: (*Handler).listAuditEvents}},
+		{base + "/orders", billingAndAdmin, map[string]handlerFunc{http.MethodGet: (*Handler).listOrders}},
+		{base + "/orders/{id}/confirm", billingAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).confirmOrder}},
+		{base + "/orders/{id}/cancel", billingAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).cancelOrder}},
 		{base + "/overview", nil, map[string]handlerFunc{http.MethodGet: (*Handler).overview}},
 	}
 }

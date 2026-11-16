@@ -57,9 +57,10 @@ func TestConsoleCatalogActionsAreDefined(t *testing.T) {
 // change.
 func TestBillingCatalogActionsAreDefined(t *testing.T) {
 	cases := map[string]string{
-		"billing.order_created": ActionBillingOrderCreated,
-		"billing.order_paid":    ActionBillingOrderPaid,
-		"billing.order_expired": ActionBillingOrderExpired,
+		"billing.order_created":  ActionBillingOrderCreated,
+		"billing.order_paid":     ActionBillingOrderPaid,
+		"billing.order_expired":  ActionBillingOrderExpired,
+		"billing.order_canceled": ActionBillingOrderCanceled,
 	}
 	for want, got := range cases {
 		if got == "" {

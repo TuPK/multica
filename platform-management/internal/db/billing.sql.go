@@ -70,6 +70,58 @@ func (q *Queries) ApplyPaymentToWorkspaceSubscription(ctx context.Context, arg A
 	return i, err
 }
 
+const cancelBillingOrder = `-- name: CancelBillingOrder :one
+UPDATE billing_order
+SET status = 'canceled'
+WHERE id = $1 AND status = 'pending'
+RETURNING id, workspace_id, kind, plan_key, interval, seats, amount, vat_amount, currency, status, provider, provider_ref, transfer_code, idempotency_key, buyer, period_start, period_end, einvoice_ref, created_by, confirmed_by, paid_at, expires_at, created_at
+`
+
+// Moves a pending order to canceled. It returns no row for an order that is not
+// pending; the console calls it with the row locked.
+func (q *Queries) CancelBillingOrder(ctx context.Context, id pgtype.UUID) (BillingOrder, error) {
+	row := q.db.QueryRow(ctx, cancelBillingOrder, id)
+	var i BillingOrder
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Kind,
+		&i.PlanKey,
+		&i.Interval,
+		&i.Seats,
+		&i.Amount,
+		&i.VatAmount,
+		&i.Currency,
+		&i.Status,
+		&i.Provider,
+		&i.ProviderRef,
+		&i.TransferCode,
+		&i.IdempotencyKey,
+		&i.Buyer,
+		&i.PeriodStart,
+		&i.PeriodEnd,
+		&i.EinvoiceRef,
+		&i.CreatedBy,
+		&i.ConfirmedBy,
+		&i.PaidAt,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const countPendingBillingOrders = `-- name: CountPendingBillingOrders :one
+SELECT count(*)::bigint FROM billing_order
+WHERE status = 'pending'
+`
+
+func (q *Queries) CountPendingBillingOrders(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countPendingBillingOrders)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createBillingOrder = `-- name: CreateBillingOrder :one
 
 INSERT INTO billing_order (
@@ -276,6 +328,50 @@ func (q *Queries) GetBillingOrderForUpdate(ctx context.Context, id pgtype.UUID) 
 	return i, err
 }
 
+const getBillingOrderWithWorkspace = `-- name: GetBillingOrderWithWorkspace :one
+SELECT o.id, o.workspace_id, o.kind, o.plan_key, o.interval, o.seats, o.amount, o.vat_amount, o.currency, o.status, o.provider, o.provider_ref, o.transfer_code, o.idempotency_key, o.buyer, o.period_start, o.period_end, o.einvoice_ref, o.created_by, o.confirmed_by, o.paid_at, o.expires_at, o.created_at, w.name AS workspace_name
+FROM billing_order o
+LEFT JOIN workspace w ON w.id = o.workspace_id
+WHERE o.id = $1
+`
+
+type GetBillingOrderWithWorkspaceRow struct {
+	BillingOrder  BillingOrder `json:"billing_order"`
+	WorkspaceName pgtype.Text  `json:"workspace_name"`
+}
+
+func (q *Queries) GetBillingOrderWithWorkspace(ctx context.Context, id pgtype.UUID) (GetBillingOrderWithWorkspaceRow, error) {
+	row := q.db.QueryRow(ctx, getBillingOrderWithWorkspace, id)
+	var i GetBillingOrderWithWorkspaceRow
+	err := row.Scan(
+		&i.BillingOrder.ID,
+		&i.BillingOrder.WorkspaceID,
+		&i.BillingOrder.Kind,
+		&i.BillingOrder.PlanKey,
+		&i.BillingOrder.Interval,
+		&i.BillingOrder.Seats,
+		&i.BillingOrder.Amount,
+		&i.BillingOrder.VatAmount,
+		&i.BillingOrder.Currency,
+		&i.BillingOrder.Status,
+		&i.BillingOrder.Provider,
+		&i.BillingOrder.ProviderRef,
+		&i.BillingOrder.TransferCode,
+		&i.BillingOrder.IdempotencyKey,
+		&i.BillingOrder.Buyer,
+		&i.BillingOrder.PeriodStart,
+		&i.BillingOrder.PeriodEnd,
+		&i.BillingOrder.EinvoiceRef,
+		&i.BillingOrder.CreatedBy,
+		&i.BillingOrder.ConfirmedBy,
+		&i.BillingOrder.PaidAt,
+		&i.BillingOrder.ExpiresAt,
+		&i.BillingOrder.CreatedAt,
+		&i.WorkspaceName,
+	)
+	return i, err
+}
+
 const getPendingAddSeatsOrder = `-- name: GetPendingAddSeatsOrder :one
 SELECT id, workspace_id, kind, plan_key, interval, seats, amount, vat_amount, currency, status, provider, provider_ref, transfer_code, idempotency_key, buyer, period_start, period_end, einvoice_ref, created_by, confirmed_by, paid_at, expires_at, created_at FROM billing_order
 WHERE workspace_id = $1
@@ -335,6 +431,199 @@ func (q *Queries) GetWorkspaceSlug(ctx context.Context, id pgtype.UUID) (string,
 	var slug string
 	err := row.Scan(&slug)
 	return slug, err
+}
+
+const listBillingOrdersByStatusNewestFirst = `-- name: ListBillingOrdersByStatusNewestFirst :many
+SELECT o.id, o.workspace_id, o.kind, o.plan_key, o.interval, o.seats, o.amount, o.vat_amount, o.currency, o.status, o.provider, o.provider_ref, o.transfer_code, o.idempotency_key, o.buyer, o.period_start, o.period_end, o.einvoice_ref, o.created_by, o.confirmed_by, o.paid_at, o.expires_at, o.created_at, w.name AS workspace_name
+FROM billing_order o
+LEFT JOIN workspace w ON w.id = o.workspace_id
+WHERE o.status = $1
+ORDER BY o.created_at DESC, o.id DESC
+LIMIT $2
+`
+
+type ListBillingOrdersByStatusNewestFirstParams struct {
+	Status   string `json:"status"`
+	RowLimit int32  `json:"row_limit"`
+}
+
+type ListBillingOrdersByStatusNewestFirstRow struct {
+	BillingOrder  BillingOrder `json:"billing_order"`
+	WorkspaceName pgtype.Text  `json:"workspace_name"`
+}
+
+func (q *Queries) ListBillingOrdersByStatusNewestFirst(ctx context.Context, arg ListBillingOrdersByStatusNewestFirstParams) ([]ListBillingOrdersByStatusNewestFirstRow, error) {
+	rows, err := q.db.Query(ctx, listBillingOrdersByStatusNewestFirst, arg.Status, arg.RowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBillingOrdersByStatusNewestFirstRow{}
+	for rows.Next() {
+		var i ListBillingOrdersByStatusNewestFirstRow
+		if err := rows.Scan(
+			&i.BillingOrder.ID,
+			&i.BillingOrder.WorkspaceID,
+			&i.BillingOrder.Kind,
+			&i.BillingOrder.PlanKey,
+			&i.BillingOrder.Interval,
+			&i.BillingOrder.Seats,
+			&i.BillingOrder.Amount,
+			&i.BillingOrder.VatAmount,
+			&i.BillingOrder.Currency,
+			&i.BillingOrder.Status,
+			&i.BillingOrder.Provider,
+			&i.BillingOrder.ProviderRef,
+			&i.BillingOrder.TransferCode,
+			&i.BillingOrder.IdempotencyKey,
+			&i.BillingOrder.Buyer,
+			&i.BillingOrder.PeriodStart,
+			&i.BillingOrder.PeriodEnd,
+			&i.BillingOrder.EinvoiceRef,
+			&i.BillingOrder.CreatedBy,
+			&i.BillingOrder.ConfirmedBy,
+			&i.BillingOrder.PaidAt,
+			&i.BillingOrder.ExpiresAt,
+			&i.BillingOrder.CreatedAt,
+			&i.WorkspaceName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBillingOrdersByStatusOldestFirst = `-- name: ListBillingOrdersByStatusOldestFirst :many
+SELECT o.id, o.workspace_id, o.kind, o.plan_key, o.interval, o.seats, o.amount, o.vat_amount, o.currency, o.status, o.provider, o.provider_ref, o.transfer_code, o.idempotency_key, o.buyer, o.period_start, o.period_end, o.einvoice_ref, o.created_by, o.confirmed_by, o.paid_at, o.expires_at, o.created_at, w.name AS workspace_name
+FROM billing_order o
+LEFT JOIN workspace w ON w.id = o.workspace_id
+WHERE o.status = $1
+ORDER BY o.created_at ASC, o.id ASC
+LIMIT $2
+`
+
+type ListBillingOrdersByStatusOldestFirstParams struct {
+	Status   string `json:"status"`
+	RowLimit int32  `json:"row_limit"`
+}
+
+type ListBillingOrdersByStatusOldestFirstRow struct {
+	BillingOrder  BillingOrder `json:"billing_order"`
+	WorkspaceName pgtype.Text  `json:"workspace_name"`
+}
+
+// The confirmation queue: the order that has waited longest comes first.
+func (q *Queries) ListBillingOrdersByStatusOldestFirst(ctx context.Context, arg ListBillingOrdersByStatusOldestFirstParams) ([]ListBillingOrdersByStatusOldestFirstRow, error) {
+	rows, err := q.db.Query(ctx, listBillingOrdersByStatusOldestFirst, arg.Status, arg.RowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBillingOrdersByStatusOldestFirstRow{}
+	for rows.Next() {
+		var i ListBillingOrdersByStatusOldestFirstRow
+		if err := rows.Scan(
+			&i.BillingOrder.ID,
+			&i.BillingOrder.WorkspaceID,
+			&i.BillingOrder.Kind,
+			&i.BillingOrder.PlanKey,
+			&i.BillingOrder.Interval,
+			&i.BillingOrder.Seats,
+			&i.BillingOrder.Amount,
+			&i.BillingOrder.VatAmount,
+			&i.BillingOrder.Currency,
+			&i.BillingOrder.Status,
+			&i.BillingOrder.Provider,
+			&i.BillingOrder.ProviderRef,
+			&i.BillingOrder.TransferCode,
+			&i.BillingOrder.IdempotencyKey,
+			&i.BillingOrder.Buyer,
+			&i.BillingOrder.PeriodStart,
+			&i.BillingOrder.PeriodEnd,
+			&i.BillingOrder.EinvoiceRef,
+			&i.BillingOrder.CreatedBy,
+			&i.BillingOrder.ConfirmedBy,
+			&i.BillingOrder.PaidAt,
+			&i.BillingOrder.ExpiresAt,
+			&i.BillingOrder.CreatedAt,
+			&i.WorkspaceName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBillingOrdersByWorkspace = `-- name: ListBillingOrdersByWorkspace :many
+SELECT o.id, o.workspace_id, o.kind, o.plan_key, o.interval, o.seats, o.amount, o.vat_amount, o.currency, o.status, o.provider, o.provider_ref, o.transfer_code, o.idempotency_key, o.buyer, o.period_start, o.period_end, o.einvoice_ref, o.created_by, o.confirmed_by, o.paid_at, o.expires_at, o.created_at, w.name AS workspace_name
+FROM billing_order o
+LEFT JOIN workspace w ON w.id = o.workspace_id
+WHERE o.workspace_id = $1
+ORDER BY o.created_at DESC, o.id DESC
+LIMIT $2
+`
+
+type ListBillingOrdersByWorkspaceParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	RowLimit    int32       `json:"row_limit"`
+}
+
+type ListBillingOrdersByWorkspaceRow struct {
+	BillingOrder  BillingOrder `json:"billing_order"`
+	WorkspaceName pgtype.Text  `json:"workspace_name"`
+}
+
+func (q *Queries) ListBillingOrdersByWorkspace(ctx context.Context, arg ListBillingOrdersByWorkspaceParams) ([]ListBillingOrdersByWorkspaceRow, error) {
+	rows, err := q.db.Query(ctx, listBillingOrdersByWorkspace, arg.WorkspaceID, arg.RowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBillingOrdersByWorkspaceRow{}
+	for rows.Next() {
+		var i ListBillingOrdersByWorkspaceRow
+		if err := rows.Scan(
+			&i.BillingOrder.ID,
+			&i.BillingOrder.WorkspaceID,
+			&i.BillingOrder.Kind,
+			&i.BillingOrder.PlanKey,
+			&i.BillingOrder.Interval,
+			&i.BillingOrder.Seats,
+			&i.BillingOrder.Amount,
+			&i.BillingOrder.VatAmount,
+			&i.BillingOrder.Currency,
+			&i.BillingOrder.Status,
+			&i.BillingOrder.Provider,
+			&i.BillingOrder.ProviderRef,
+			&i.BillingOrder.TransferCode,
+			&i.BillingOrder.IdempotencyKey,
+			&i.BillingOrder.Buyer,
+			&i.BillingOrder.PeriodStart,
+			&i.BillingOrder.PeriodEnd,
+			&i.BillingOrder.EinvoiceRef,
+			&i.BillingOrder.CreatedBy,
+			&i.BillingOrder.ConfirmedBy,
+			&i.BillingOrder.PaidAt,
+			&i.BillingOrder.ExpiresAt,
+			&i.BillingOrder.CreatedAt,
+			&i.WorkspaceName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listPendingBillingOrders = `-- name: ListPendingBillingOrders :many

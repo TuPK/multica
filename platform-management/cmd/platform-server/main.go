@@ -131,19 +131,6 @@ func run() error {
 		Log:       slog.Default(),
 	})
 
-	consoleAPI := console.New(console.Deps{
-		RequireStaff:  auth.RequirePlatformStaff,
-		RequireOrigin: auth.RequireOrigin,
-		Reader:        console.NewPgxReader(pool),
-		Runner:        console.NewPgxRunner(pool),
-		Workspaces: workspacestatus.New(workspacestatus.NewPgxRunner(pool),
-			workspacestate.New(nil, accountCache), slog.Default()),
-		Cache:    guard,
-		Notifier: accountcache.NewPublisher(rdb),
-		Emails:   store,
-		Log:      slog.Default(),
-	})
-
 	// The entitlement policy, and the staff writes that clear its cache.
 	policy := entitlement.NewService(entitlement.NewPgxLoader(pool), time.Now, slog.Default())
 	billingAPI := subscription.NewConsole(subscription.ConsoleDeps{
@@ -180,6 +167,22 @@ func run() error {
 	if err != nil {
 		return err
 	}
+
+	// The console confirms orders through the same service that creates them.
+	consoleAPI := console.New(console.Deps{
+		RequireStaff:  auth.RequirePlatformStaff,
+		RequireOrigin: auth.RequireOrigin,
+		Reader:        console.NewPgxReader(pool),
+		Runner:        console.NewPgxRunner(pool),
+		Workspaces: workspacestatus.New(workspacestatus.NewPgxRunner(pool),
+			workspacestate.New(nil, accountCache), slog.Default()),
+		Cache:    guard,
+		Notifier: accountcache.NewPublisher(rdb),
+		Payments: orders,
+		Emails:   store,
+		Log:      slog.Default(),
+	})
+
 	billingWrites, err := billingapi.New(billingapi.Deps{
 		Subscriptions: subscription.NewPgxReader(pool),
 		Plans:         plan.NewPgxReader(pool),

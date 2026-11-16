@@ -82,6 +82,8 @@ type tenantDetailJSON struct {
 	State      stateJSON  `json:"state"`
 	NotesCount int64      `json:"notes_count"`
 	Owner      *ownerJSON `json:"owner"`
+	// RecentOrders are the workspace's newest billing orders, newest first.
+	RecentOrders []orderJSON `json:"recent_orders"`
 }
 
 func (h *Handler) listTenants(w http.ResponseWriter, r *http.Request) {
@@ -124,7 +126,15 @@ func (h *Handler) getTenant(w http.ResponseWriter, r *http.Request) {
 		writeError(w, notFound())
 		return
 	}
-	out := tenantDetailJSON{tenantJSON: toTenantJSON(d.TenantRow), State: toStateJSON(d), NotesCount: d.NotesCount}
+	orders, err := h.Reader.RecentOrders(r.Context(), id, recentOrdersLimit)
+	if err != nil {
+		h.fail(w, r, "recent orders", err)
+		return
+	}
+	out := tenantDetailJSON{
+		tenantJSON: toTenantJSON(d.TenantRow), State: toStateJSON(d), NotesCount: d.NotesCount,
+		RecentOrders: toOrdersJSON(orders),
+	}
 	if d.OwnerID != "" {
 		out.Owner = &ownerJSON{ID: d.OwnerID, Email: d.OwnerEmail}
 	}
@@ -378,5 +388,7 @@ func (h *Handler) overview(w http.ResponseWriter, r *http.Request) {
 	for key, n := range o.ByPlan {
 		byPlan[key] = n
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"workspaces_by_status": byStatus, "signups_7d": o.Signups, "by_plan": byPlan})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"workspaces_by_status": byStatus, "signups_7d": o.Signups, "by_plan": byPlan, "pending_orders": o.PendingOrders,
+	})
 }

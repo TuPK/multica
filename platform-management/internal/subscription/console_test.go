@@ -624,3 +624,72 @@ func TestFailedPlanAuditWriteRollsBack(t *testing.T) {
 		t.Fatal("the cache was cleared for a rolled-back change")
 	}
 }
+
+// --- Platform billing (P24): the audit rows keep the old and the new values.
+
+func TestPlatformBillingSubscriptionAuditHasOldAndNewValues(t *testing.T) {
+	e := newConsoleEnv(t)
+	first := `{"plan_key":"pro","seats":5,"interval":"month","trial_end":"2031-05-01T00:00:00Z","reason":"start"}`
+	wantStatus(t, e.do(billUser, "PUT", subPath, first), 200)
+	second := `{"plan_key":"business","seats":9,"interval":"year","trial_end":"2031-06-01T00:00:00Z","reason":"upgrade"}`
+	wantStatus(t, e.do(billUser, "PUT", subPath, second), 200)
+
+	if len(e.subs.audits) != 2 {
+		t.Fatalf("audit rows = %d, want 2", len(e.subs.audits))
+	}
+	got := changes(t, e.subs.audits[1])
+	want := map[string][2]any{
+		"plan":      {"pro", "business"},
+		"seats":     {5, 9},
+		"interval":  {"month", "year"},
+		"trial_end": {"2031-05-01T00:00:00Z", "2031-06-01T00:00:00Z"},
+	}
+	for field, ft := range want {
+		if got[field]["from"] != ft[0] || got[field]["to"] != ft[1] {
+			t.Errorf("%s = %v, want from %v to %v", field, got[field], ft[0], ft[1])
+		}
+	}
+}
+
+func TestPlatformBillingDeletePlanInUseIs409(t *testing.T) {
+	e := newConsoleEnv(t)
+	e.plans.subs["pro"] = 1
+	wantCode(t, e.do(adminUser, "DELETE", "/api/platform/plans/pro", ""), 409, "plan_in_use")
+	if len(e.plans.audits) != 0 {
+		t.Fatalf("a refused delete wrote %d audit rows", len(e.plans.audits))
+	}
+}
+
+func TestPlatformBillingDeleteUnusedPlanAuditsTheOldValues(t *testing.T) {
+	e := newConsoleEnv(t)
+	wantStatus(t, e.do(adminUser, "PUT", "/api/platform/plans/team", teamBody), 200)
+	wantStatus(t, e.do(adminUser, "DELETE", "/api/platform/plans/team", ""), 200)
+
+	last := e.plans.audits[len(e.plans.audits)-1]
+	if last.Action != audit.ActionPlanChanged || last.TargetID != "team" || last.Detail["deleted"] != true {
+		t.Fatalf("audit entry = %+v", last)
+	}
+	diff, ok := last.Detail["changes"].(map[string]any)
+	if !ok {
+		t.Fatalf("detail has no changes: %v", last.Detail)
+	}
+	price, ok := diff["seat_price_month"].(map[string]any)
+	if !ok || price["from"] != float64(99000) || price["to"] != nil {
+		t.Errorf("seat_price_month = %v, want from 99000 to nil", diff["seat_price_month"])
+	}
+}
+
+// A plan change keeps the old and the new value of each field it changes.
+func TestPlatformBillingPlanChangeAuditHasOldAndNewValues(t *testing.T) {
+	e := newConsoleEnv(t)
+	wantStatus(t, e.do(adminUser, "PUT", "/api/platform/plans/team", teamBody), 200)
+	changed := strings.Replace(teamBody, `"seat_price_month":99000`, `"seat_price_month":120000`, 1)
+	wantStatus(t, e.do(adminUser, "PUT", "/api/platform/plans/team", changed), 200)
+
+	last := e.plans.audits[len(e.plans.audits)-1]
+	diff := last.Detail["changes"].(map[string]any)
+	price, ok := diff["seat_price_month"].(map[string]any)
+	if !ok || len(diff) != 1 || price["from"] != float64(99000) || price["to"] != float64(120000) {
+		t.Errorf("changes = %v, want only seat_price_month 99000 -> 120000", diff)
+	}
+}

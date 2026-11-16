@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/platform-management/audit"
+	"github.com/multica-ai/multica/platform-management/internal/billing"
 	"github.com/multica-ai/multica/platform-management/internal/db"
 )
 
@@ -294,7 +295,12 @@ func (r *PgxReader) Overview(ctx context.Context, signupsSince time.Time) (Overv
 	if err != nil {
 		return Overview{}, err
 	}
+	pending, err := r.q.CountPendingBillingOrders(ctx)
+	if err != nil {
+		return Overview{}, err
+	}
 	o := Overview{
+		PendingOrders:   pending,
 		WorkspacesTotal: total, NonActive: make(map[string]int64, len(rows)), Signups: signups,
 		ByPlan: make(map[string]int64, len(plans)),
 	}
@@ -307,7 +313,115 @@ func (r *PgxReader) Overview(ctx context.Context, signupsSince time.Time) (Overv
 	return o, nil
 }
 
+func orderFromRow(r db.BillingOrder, workspaceName pgtype.Text) OrderRow {
+	return OrderRow{
+		Order: billing.Order{
+			ID: uuidText(r.ID), WorkspaceID: uuidText(r.WorkspaceID), Kind: billing.Kind(r.Kind), PlanKey: r.PlanKey,
+			Interval: r.Interval, Seats: int(r.Seats), Amount: r.Amount, VATAmount: r.VatAmount, Currency: r.Currency,
+			Status: billing.Status(r.Status), Provider: r.Provider, ProviderRef: r.ProviderRef, TransferCode: r.TransferCode,
+			IdempotencyKey: r.IdempotencyKey, Buyer: json.RawMessage(r.Buyer),
+			PeriodStart: timePtr(r.PeriodStart), PeriodEnd: timePtr(r.PeriodEnd), EInvoiceRef: r.EinvoiceRef,
+			CreatedBy: uuidText(r.CreatedBy), ConfirmedBy: uuidText(r.ConfirmedBy), PaidAt: timePtr(r.PaidAt),
+			ExpiresAt: r.ExpiresAt.Time.UTC(), CreatedAt: r.CreatedAt.Time.UTC(),
+		},
+		WorkspaceName: workspaceName.String,
+	}
+}
+
+// ListOrders implements Reader.
+func (r *PgxReader) ListOrders(ctx context.Context, status billing.Status, newestFirst bool, limit int) ([]OrderRow, error) {
+	var out []OrderRow
+	if newestFirst {
+		rows, err := r.q.ListBillingOrdersByStatusNewestFirst(ctx, db.ListBillingOrdersByStatusNewestFirstParams{Status: string(status), RowLimit: int32(limit)})
+		if err != nil {
+			return nil, err
+		}
+		for _, row := range rows {
+			out = append(out, orderFromRow(row.BillingOrder, row.WorkspaceName))
+		}
+		return nonNil(out), nil
+	}
+	rows, err := r.q.ListBillingOrdersByStatusOldestFirst(ctx, db.ListBillingOrdersByStatusOldestFirstParams{Status: string(status), RowLimit: int32(limit)})
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		out = append(out, orderFromRow(row.BillingOrder, row.WorkspaceName))
+	}
+	return nonNil(out), nil
+}
+
+func nonNil(rows []OrderRow) []OrderRow {
+	if rows == nil {
+		return []OrderRow{}
+	}
+	return rows
+}
+
+// GetOrder implements Reader.
+func (r *PgxReader) GetOrder(ctx context.Context, id string) (OrderRow, bool, error) {
+	uid, err := parseUUID(id)
+	if err != nil {
+		return OrderRow{}, false, err
+	}
+	row, err := r.q.GetBillingOrderWithWorkspace(ctx, uid)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return OrderRow{}, false, nil
+	}
+	if err != nil {
+		return OrderRow{}, false, err
+	}
+	return orderFromRow(row.BillingOrder, row.WorkspaceName), true, nil
+}
+
+// RecentOrders implements Reader.
+func (r *PgxReader) RecentOrders(ctx context.Context, workspaceID string, limit int) ([]OrderRow, error) {
+	ws, err := parseUUID(workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := r.q.ListBillingOrdersByWorkspace(ctx, db.ListBillingOrdersByWorkspaceParams{WorkspaceID: ws, RowLimit: int32(limit)})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]OrderRow, len(rows))
+	for i, row := range rows {
+		out[i] = orderFromRow(row.BillingOrder, row.WorkspaceName)
+	}
+	return out, nil
+}
+
 type pgxTx struct{ q *db.Queries }
+
+// LockOrder implements Tx.
+func (t *pgxTx) LockOrder(ctx context.Context, id string) (billing.Order, bool, error) {
+	uid, err := parseUUID(id)
+	if err != nil {
+		return billing.Order{}, false, err
+	}
+	row, err := t.q.GetBillingOrderForUpdate(ctx, uid)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return billing.Order{}, false, nil
+	}
+	if err != nil {
+		return billing.Order{}, false, err
+	}
+	return orderFromRow(row, pgtype.Text{}).Order, true, nil
+}
+
+// CancelOrder implements Tx. It returns pgx.ErrNoRows when the locked order is
+// not pending, which LockOrder's caller has already ruled out.
+func (t *pgxTx) CancelOrder(ctx context.Context, id string) (billing.Order, error) {
+	uid, err := parseUUID(id)
+	if err != nil {
+		return billing.Order{}, err
+	}
+	row, err := t.q.CancelBillingOrder(ctx, uid)
+	if err != nil {
+		return billing.Order{}, err
+	}
+	return orderFromRow(row, pgtype.Text{}).Order, nil
+}
 
 func (t *pgxTx) WorkspaceName(ctx context.Context, id string) (string, bool, error) {
 	uid, err := parseUUID(id)

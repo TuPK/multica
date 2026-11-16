@@ -17,6 +17,7 @@ import (
 
 	"github.com/multica-ai/multica/platform-management/accountguard"
 	"github.com/multica-ai/multica/platform-management/internal/accountcache"
+	"github.com/multica-ai/multica/platform-management/internal/billing"
 	"github.com/multica-ai/multica/platform-management/internal/db"
 	"github.com/multica-ai/multica/platform-management/internal/platformauth"
 	"github.com/multica-ai/multica/platform-management/internal/session"
@@ -87,6 +88,13 @@ func newDBFixture(t *testing.T) *dbFixture {
 		Guard:     guard,
 		Log:       quiet,
 	})
+	payments, err := billing.New(billing.Deps{
+		Runner: billing.NewPgxRunner(pool), Provider: billing.ProviderManual,
+		Workspaces: workspacestate.New(nil, f.cache), Entitlements: noopEntitlements{}, Log: quiet,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	f.h = New(Deps{
 		RequireStaff:  auth.RequirePlatformStaff,
 		RequireOrigin: auth.RequireOrigin,
@@ -95,6 +103,7 @@ func newDBFixture(t *testing.T) *dbFixture {
 		Workspaces:    workspacestatus.New(workspacestatus.NewPgxRunner(pool), workspacestate.New(nil, f.cache), quiet),
 		Cache:         guard,
 		Notifier:      f.pub,
+		Payments:      payments,
 		Emails:        store,
 		Log:           quiet,
 	})
