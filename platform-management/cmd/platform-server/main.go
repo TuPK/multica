@@ -33,6 +33,7 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/mfa"
 	"github.com/multica-ai/multica/platform-management/internal/plan"
 	"github.com/multica-ai/multica/platform-management/internal/platformauth"
+	"github.com/multica-ai/multica/platform-management/internal/pricechange"
 	"github.com/multica-ai/multica/platform-management/internal/schemacheck"
 	"github.com/multica-ai/multica/platform-management/internal/seat"
 	"github.com/multica-ai/multica/platform-management/internal/server"
@@ -265,6 +266,8 @@ func run() error {
 	if err := runner.Register(lifecycle.OrderExpiryJobName, lifecycle.OrderExpiryInterval, orderExpiry.Job(time.Now)); err != nil {
 		return err
 	}
+	// The price-change notice uses the lifecycle mail sender; nil sends no notice.
+	var noticeSender lifecycle.Sender
 	if cfg.Email.Provider == "" {
 		slog.Warn("lifecycle notices are off: no email provider is configured")
 	} else {
@@ -272,6 +275,7 @@ func run() error {
 		if err != nil {
 			return err
 		}
+		noticeSender = noticeMail
 		lifecycleJob, err := lifecycle.New(lifecycle.Deps{
 			Store: lifecycle.NewPgxStore(pool), Mail: noticeMail,
 			Workspaces: workspacestate.New(nil, accountCache), Entitlements: policy,
@@ -284,6 +288,27 @@ func run() error {
 			return err
 		}
 	}
+
+	// The plan price-change schedule (spec 7b.4): the apply job and the staff routes.
+	priceSvc, err := pricechange.New(pricechange.Deps{
+		Store: pricechange.NewPgxStore(pool), Mail: noticeSender, Cache: policy,
+		AppURL: cfg.AppURL, Log: slog.Default(),
+	})
+	if err != nil {
+		return err
+	}
+	if err := runner.Register(pricechange.JobName, pricechange.Interval, priceSvc.Job(time.Now)); err != nil {
+		return err
+	}
+	priceChanges := pricechange.NewHandler(pricechange.HandlerDeps{
+		RequireStaff: auth.RequirePlatformStaff, RequireOrigin: auth.RequireOrigin,
+		Service: priceSvc, Emails: store, Log: slog.Default(),
+	})
+	platformHandler := http.NewServeMux()
+	for _, pattern := range pricechange.Patterns {
+		platformHandler.Handle(pattern, priceChanges)
+	}
+	platformHandler.Handle("/", server.NewPlatformHandler(auth, consoleAPI, billingAPI))
 
 	apiLn, err := net.Listen("tcp", ":"+cfg.APIPort)
 	if err != nil {
@@ -310,7 +335,7 @@ func run() error {
 		_ = runner.Run(jobsCtx)
 	}()
 	err = server.Serve(ctx, shutdownGrace,
-		server.Listener{Name: "api", Listener: apiLn, Handler: server.NewAPIHandler(peers, health, server.NewPlatformHandler(auth, consoleAPI, billingAPI), routes...)},
+		server.Listener{Name: "api", Listener: apiLn, Handler: server.NewAPIHandler(peers, health, platformHandler, routes...)},
 		server.Listener{Name: "console", Listener: consoleLn, Handler: server.NewConsoleHandler(health, apiURL, consoleDistDir)},
 	)
 	stopJobs()
