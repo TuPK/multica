@@ -1,6 +1,6 @@
 # Diễn tập bộ skill/agent: từ bộ tới workflow đang chạy (P28)
 
-Báo cáo này ghi bốn bộ được diễn tập từ nhập bộ đến chạy hết một request, bằng test Go chạy trên DB thật và một lần chạy trình duyệt ở 1280px và 390px. Hướng dẫn vận hành nằm ở [flow-authoring-runbook.md](flow-authoring-runbook.md) mục 9. Tiêu chí N1 đến N10 nằm ở spec 12.3.
+Báo cáo này ghi bốn bộ được diễn tập từ nhập bộ đến chạy hết một request, bằng test Go chạy trên DB thật và một lần chạy trình duyệt ở 1280px và 390px. Mục 4 chỉ liệt kê lệnh đã được chạy lại và thấy đạt ngày 2026-11-16; các số liệu cũ hơn được ghi rõ là của lần chạy trước. Hướng dẫn vận hành nằm ở [flow-authoring-runbook.md](flow-authoring-runbook.md) mục 9. Tiêu chí N1 đến N10 nằm ở spec 12.3.
 
 Không agent thật nào chạy: việc của agent do test làm thay (đính `flow.json`, báo kết quả việc), runtime của trình duyệt chỉ là một hàng trông như đang trực tuyến. Không cờ nào được bật trên workspace thật; các test tự bật cờ cho handler của chúng.
 
@@ -24,7 +24,7 @@ Chi tiết từng bộ:
 
 ## 2. Ảnh chụp của lần chạy trình duyệt
 
-Spec `e2e/pack-rehearsal-drill.spec.ts`, bộ gốc `ban-hang-online` đọc từ đĩa và gửi dưới dạng zip, đi từ hộp thoại nhập đến phiên bản đã xuất bản. Ảnh nằm ở `/home/av-server/.cache/claude-delegate/20261113-140138-feature/p21-screens/` (ngoài repo), đánh số tiếp từ 36.
+Spec `e2e/pack-rehearsal-drill.spec.ts`, bộ gốc `ban-hang-online` đọc từ đĩa và gửi dưới dạng zip, đi từ hộp thoại nhập đến phiên bản đã xuất bản. Ảnh của lần chạy 2026-11-16 nằm ở `/home/av-server/.cache/claude-delegate/20261116-054500-kiro-remaining/e2e-run/p28-pack/` (ngoài repo, 17 tệp, số 36 đến 52). Bản mô tả dưới đây viết từ lần chạy trước (`/home/av-server/.cache/claude-delegate/20261113-140138-feature/p21-screens/`); lần chạy này chỉ xem lại ảnh 37 và 43. Ảnh 43 của lần này cho thấy canvas ở 1280px chưa vừa khung: chỉ ba bước đầu hiện, cạnh quay lại `↺ 2` vẽ nét đứt bị cắt ở mép phải (nút **Fit** có sẵn). Dòng "đã sửa sau đó" ở bảng dưới không được xác nhận bởi ảnh này.
 
 | Ảnh | Nội dung |
 | --- | --- |
@@ -56,38 +56,32 @@ Spec còn kiểm bằng mã: không cuộn ngang ở mọi cỡ, `preview` trả
    - Xanh sau sửa: cùng spec đạt, ảnh `46-simulate-1280` có các ô chọn nằm trọn.
 2. **Chưa có test nào cho ô chọn skill của việc (`Task.skills`) trong trình soạn** (tiêu chí N5). Không phải lỗi hành vi: thêm `packages/views/squads/flow-designer/task-card.test.tsx` (4 test, file mới, không sửa test có sẵn); tất cả đạt ngay khi thêm vì mã đã đúng.
 
-Không thấy lỗi nào ở máy chủ. Bốn test Go đạt ngay lần chạy đầu: chúng được viết đủ rồi mới chạy, nên **không ghi nhận được kết quả đỏ**. Để chứng minh chúng bắt được lỗi, đã thử hai biến đổi tạm rồi hoàn lại:
+Không thấy lỗi nào ở máy chủ. Bốn test Go đạt ngay lần chạy đầu: chúng được viết đủ rồi mới chạy, nên **không ghi nhận được kết quả đỏ**. Để chứng minh chúng bắt được lỗi, lần chạy trước đã thử hai biến đổi tạm rồi hoàn lại (không lặp lại ở lần chạy 2026-11-16, nên bảng dưới là lời kể của lần trước):
 
 | Biến đổi tạm | Kết quả |
 | --- | --- |
 | Bỏ yêu cầu ack `proposal_reviewed` ở `flow_publish.go` | `TestRehearsalPack_KitVietUpstreamRaw` đỏ: kỳ vọng 422, nhận 201 |
 | Bỏ qua `flow_workflow_id` ở `issue.go` | `TestRehearsalPack_KitVietUpstreamRaw` đỏ (422 `flow_workflow_invalid`) và `TestRehearsalPack_TwoWorkflowsOneSquad` đỏ (request chạy phiên bản khác) |
 
-Cả hai file đã trả về như cũ. Trong lúc làm, một lần chạy spec bị hỏng ở đăng nhập (`New Issue` không hiện) ngay sau khi sửa mã vì máy chủ dev đang biên dịch lại; chạy lại đạt, không do mã.
+Theo lần chạy trước, cả hai file đã trả về như cũ. Trong lúc làm, một lần chạy spec bị hỏng ở đăng nhập (`New Issue` không hiện) ngay sau khi sửa mã vì máy chủ dev đang biên dịch lại; chạy lại đạt, không do mã.
 
 ## 4. Lệnh đã chạy
 
-DB thử `multica_engine_test`, DSN đặt rõ trước mỗi lệnh DB, mỗi lần một lệnh.
+### 4.1 Lần chạy 2026-11-16 (đã thấy đạt)
+
+DB thử `multica_engine_test`, DSN đặt rõ trước mỗi lệnh DB sau `scripts/require-test-database.sh`, mỗi lần một lệnh nặng. Máy chủ API riêng ở cổng 18080 và web (bản build production trong thư mục tạm) ở cổng 13000, ba cờ bật chỉ trong tiến trình của chúng; đã dừng sau khi chạy.
 
 | Lệnh | Kết quả |
 | --- | --- |
-| `go test -count=1 -p 1 ./internal/handler -run TestRehearsalPack_ -v` | 4 test PASS |
-| `pnpm exec playwright test e2e/pack-rehearsal-drill.spec.ts --project chromium` (máy chủ API cổng 18780, web cổng 3010, ba cờ bật) | `1 passed` (lần cuối 50.7s) |
-| `go test -count=1 -p 1 ./internal/handler` | ok, 267.803s |
-| `go test -count=1 -p 1 ./internal/service` | ok, 137.072s |
-| `go test -count=1 -p 1 ./internal/scheduler` | ok, 1.985s |
-| `go test -count=1 -p 1 ./internal/issueworkflow ./cmd/migrate ./cmd/multica ./internal/catalog ./internal/migrations ./internal/featureflags ./internal/pack ./cmd/server` | tất cả ok: issueworkflow 5.575s, cmd/migrate 96.789s, cmd/multica 19.511s, catalog 0.001s, migrations 2.134s, featureflags 0.001s, pack 0.021s, cmd/server 26.075s |
-| `node scripts/catalog/cli.mjs build --target go` | `205 templates, 6 files written` |
-| `pnpm catalog:build` | `205 templates, 48 files written` |
-| `pnpm catalog:check` | `catalog ok: 205 templates` (ba cảnh báo về skill vendor chưa ghim, giấy phép) |
-| `pnpm typecheck` | 10 tác vụ thành công |
-| `pnpm lint` | 0 lỗi, 21 cảnh báo có sẵn (không có ở file đợt này) |
-| `pnpm test` (một lần, không song song) | 8 tác vụ thành công; core 5224 đạt (1 bỏ qua), ui 430, docs 30, web 321, desktop 839, views 8632, không lỗi và không quá giờ |
-| `git ls-files packages/core/catalog/generated server/internal/catalog/generated` | chỉ `server/internal/catalog/generated/.gitkeep` |
-| `git diff --check` | sạch |
-| `git status --short -- apps/landing apps/mobile` | không có gì |
+| `go test -count=1 -p 1 -timeout 60m ./internal/handler -run 'TestRehearsalPack_' -v` | 4 test PASS (`KitVietUpstreamRaw` 7.10s, `SkillsOnly`, `NativeBundleWithFlow`, `TwoWorkflowsOneSquad`); `ok ... 9.409s` |
+| `pnpm exec playwright test e2e/pack-rehearsal-drill.spec.ts --project chromium` | `1 passed (19.3s)` |
+| `pnpm exec playwright test e2e/pack-import-layout.spec.ts --project chromium` | `2 passed (16.7s)`; ảnh 23 đến 35 ở `/home/av-server/.cache/claude-delegate/20261116-054500-kiro-remaining/e2e-run/p27/` |
 
-Sau khi chạy: máy chủ dừng, `/tmp` dọn sạch, `apps/web/AGENTS.md` trả về bản ở HEAD, test Go không để lại hàng nào. Mỗi lần chạy spec trình duyệt để lại trong `E2E Workspace 0` của DB thử một squad đã lưu trữ (`DeleteSquad` chỉ lưu trữ) và một hàng `squad_pack_install` của nó, như các spec đợt G; agent đã lưu trữ và skill đã xóa.
+### 4.2 Của lần chạy trước, chưa chạy lại
+
+Các dòng sau do lần chạy 2026-11-13 ghi và không được lặp lại ở lần này; đừng đọc chúng như bằng chứng của ngày 2026-11-16: spec trình duyệt ở API 18780/web 3010 (`1 passed`, 50.7s); `go test ./internal/handler` (267.803s), `./internal/service` (137.072s), `./internal/scheduler`, và các gói `issueworkflow`, `cmd/migrate`, `cmd/multica`, `catalog`, `migrations`, `featureflags`, `pack`, `cmd/server`; `node scripts/catalog/cli.mjs build --target go`, `pnpm catalog:build`, `pnpm catalog:check`, `pnpm typecheck`, `pnpm lint`, `pnpm test`, `git ls-files` của mã sinh, `git diff --check`.
+
+Dọn dẹp của lần 2026-11-16: hai workspace `e2e-workspace-0-*` và hai người dùng do `loginAsDefault` tạo đã được xóa qua API và SQL; không còn hàng `squad_pack_install` nào sinh từ lần chạy này. Các squad đã lưu trữ của các lần chạy từ 2026-11-14 vẫn còn trong DB thử.
 
 ## 5. Không chạy
 
@@ -112,7 +106,7 @@ Sau khi chạy: máy chủ dừng, `/tmp` dọn sạch, `apps/web/AGENTS.md` tr�
 | N9 | `TestStart_OtherSquadOrNonFlowRejected`, `TestCreateIssue_FlowWorkflowIDIgnoredForAgentActor`, `TestCreateIssue_FlowWorkflowIDChoosesTheVersion`, `TestRehearsalPack_TwoWorkflowsOneSquad` |
 | N10 | `TestFlowInsights_OnlyThisVersion_TrialExcludedByDefault` (handler), `TestInsights_EndsEdgesLoopsDurations` (issueworkflow), `TestRehearsalPack_TwoWorkflowsOneSquad` và `TestRehearsalPack_NativeBundleWithFlow` (số request và vòng của từng phiên bản) |
 
-Tất cả nằm trong các lần chạy ở mục 4 và đạt.
+Các test Go của bản đồ này nằm trong các lần chạy của lần trước (mục 4.2); lần 2026-11-16 chỉ chạy lại bốn test `TestRehearsalPack_` (mục 4.1).
 
 ## 7. Decisions
 
