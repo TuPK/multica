@@ -2559,6 +2559,13 @@ type SquadSkill struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
+type SsoDomain struct {
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	Domain      string             `json:"domain"`
+	Token       string             `json:"token"`
+	VerifiedAt  pgtype.Timestamptz `json:"verified_at"`
+}
+
 type SysCronExecution struct {
 	ID           pgtype.UUID        `json:"id"`
 	JobName      string             `json:"job_name"`
