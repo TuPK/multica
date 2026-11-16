@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"go/ast"
@@ -87,6 +88,9 @@ func detailHasNo(t *testing.T, row auditRow, secrets ...string) {
 		t.Fatal(err)
 	}
 	for _, s := range secrets {
+		if s == "" {
+			t.Fatal("detailHasNo was given an empty secret; the check would pass for any row")
+		}
 		if strings.Contains(string(raw), s) {
 			t.Errorf("audit row carries the planted secret %q: %s", s, raw)
 		}
@@ -183,6 +187,9 @@ func TestAuditR2WorkspaceExportRequested(t *testing.T) {
 func TestAuditR2GitHubConnectAndDisconnect(t *testing.T) {
 	requirePlatformTestDatabase(t)
 	failAuditWrites(t)
+	// The setup link is signed with the webhook secret; without it the subtests
+	// cannot build their state and the parent t.Fatal runs from a subtest.
+	t.Setenv("GITHUB_WEBHOOK_SECRET", "test-secret-123")
 	t.Cleanup(func() {
 		testPool.Exec(context.Background(), `DELETE FROM github_installation WHERE workspace_id = $1`, testWorkspaceID)
 	})
@@ -328,6 +335,10 @@ func TestAuditR2VCSConnectAndDisconnect(t *testing.T) {
 
 // The five channel integrations share one revoke path. The Lark handler runs it
 // here; the source test below holds the other four to the same call.
+// plantedLarkSecret is stored as app_secret_encrypted, which the installation
+// decoder reads as base64; the audit detail must not carry it.
+const plantedLarkSecret = "cGxhbnRlZC1sYXJrLXNlY3JldA=="
+
 func TestAuditR2ChannelRevokeWritesDisconnected(t *testing.T) {
 	requirePlatformTestDatabase(t)
 	failAuditWrites(t)
@@ -339,8 +350,8 @@ func TestAuditR2ChannelRevokeWritesDisconnected(t *testing.T) {
 		var id string
 		if err := testPool.QueryRow(context.Background(), `
 			INSERT INTO channel_installation (workspace_id, agent_id, channel_type, config, installer_user_id, status)
-			VALUES ($1, $2, 'feishu', jsonb_build_object('app_id', $3::text, 'app_secret_encrypted', 'planted-lark-secret'), $4, 'active')
-			RETURNING id::text`, testWorkspaceID, agentID, appID, testUserID).Scan(&id); err != nil {
+			VALUES ($1, $2, 'feishu', jsonb_build_object('app_id', $3::text, 'app_secret_encrypted', $5::text), $4, 'active')
+			RETURNING id::text`, testWorkspaceID, agentID, appID, testUserID, plantedLarkSecret).Scan(&id); err != nil {
 			t.Fatalf("seed installation: %v", err)
 		}
 		t.Cleanup(func() {
@@ -363,7 +374,7 @@ func TestAuditR2ChannelRevokeWritesDisconnected(t *testing.T) {
 		req, reqID := r2Request(t, revoke(id))
 		testutil.Call(t, testHandler.RevokeLarkInstallation, req).Want(http.StatusNoContent)
 		row := oneAuditRow(t, reqID, audit.ActionIntegrationDisconnected, testWorkspaceID, "integration", id)
-		detailHasNo(t, row, "planted-lark-secret")
+		detailHasNo(t, row, plantedLarkSecret)
 		if row.Detail["provider"] != "lark" {
 			t.Errorf("detail = %v, want provider lark", row.Detail)
 		}
@@ -433,6 +444,11 @@ func TestAuditR2PluginLifecycle(t *testing.T) {
 	withPluginsV1Flag(t, testHandler, true)
 	cleanupPluginInstallations(t)
 	versionID := withLocalPluginSource(t, handlerTestManifest)
+	// Without a deployment key the signing secret is empty, and an empty secret
+	// would make the detail check below pass for any row.
+	previousKey := testHandler.PluginService.DeploymentKey
+	testHandler.PluginService.DeploymentKey = bytes.Repeat([]byte{9}, 32)
+	t.Cleanup(func() { testHandler.PluginService.DeploymentKey = previousKey })
 
 	const plantedSecret = "sk-planted-plugin-secret"
 	call := func(h http.HandlerFunc, method string, body any, params map[string]string, failing bool) (*httptest.ResponseRecorder, string) {
