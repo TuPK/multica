@@ -1921,6 +1921,37 @@ func (h *Handler) deleteWorkspaceData(ctx context.Context, tx pgx.Tx, wsID pgtyp
 			run:  func() error { return qtx.DeleteWorkspaceAdministration(ctx, wsID) },
 		},
 		{
+			// Platform state the workspace owns. billing_order and the plan and
+			// account tables are kept on purpose (see workspace_delete_manifest_test.go).
+			// The export archives in storage are not removed here.
+			name: "delete platform state",
+			run: func() error {
+				if err := qtx.DeleteWorkspaceBillingNotices(ctx, wsID); err != nil {
+					return err
+				}
+				if err := qtx.DeleteWorkspacePlatformNotes(ctx, wsID); err != nil {
+					return err
+				}
+				if err := qtx.DeleteWorkspacePlatformSeatOperations(ctx, wsID); err != nil {
+					return err
+				}
+				if err := qtx.DeleteWorkspacePlatformUsageDaily(ctx, wsID); err != nil {
+					return err
+				}
+				if err := qtx.DeleteWorkspaceSubscriptions(ctx, wsID); err != nil {
+					return err
+				}
+				if err := qtx.DeleteWorkspaceExports(ctx, wsID); err != nil {
+					return err
+				}
+				return qtx.DeletePlatformWorkspace(ctx, wsID)
+			},
+		},
+		{
+			name: "detach audit events",
+			run:  func() error { return qtx.DetachWorkspaceAuditEvents(ctx, wsID) },
+		},
+		{
 			// The caller has resolved the workspace to a valid UUID. The existing final
 			// statement also sweeps any expand-phase compatibility leftovers.
 			name: "delete workspace",

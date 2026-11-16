@@ -4,6 +4,8 @@ import (
 	"context"
 	"sort"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 type workspaceDeleteAction string
@@ -215,6 +217,20 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"workspace":                          workspaceDelete,
 	"workspace_invitation":               workspaceDelete,
 	"workspace_share_link":               workspaceDelete,
+	// Platform-management tables (gate G-R2 decisions).
+	"audit_event":             workspaceDeleteDetach, // rows survive with a NULL workspace_id; the retention job removes them
+	"billing_notice":          workspaceDelete,
+	"billing_order":           workspaceDeleteSettle, // financial record kept for accounting; buyer details are an open item
+	"plan":                    workspaceDeleteKeep,
+	"platform_account":        workspaceDeleteKeep,
+	"platform_note":           workspaceDelete,
+	"platform_seat_operation": workspaceDelete,
+	"platform_staff":          workspaceDeleteKeep,
+	"platform_usage_daily":    workspaceDelete,
+	"platform_workspace":      workspaceDelete,
+	"user_consent":            workspaceDeleteKeep,
+	"workspace_export":        workspaceDelete, // storage archives are an open item
+	"workspace_subscription":  workspaceDelete,
 }
 
 func TestWorkspaceDeletionManifestCoversPublicSchema(t *testing.T) {
@@ -297,5 +313,60 @@ WHERE table_schema = 'public'
 				t.Errorf("%s table %s lost workspace_id; update its teardown selector", action, table)
 			}
 		}
+	}
+}
+
+// TestWorkspaceTeardownAppliesManifestDecisions runs the workspace teardown over
+// one row of each class and checks the result: Delete rows are gone, audit rows
+// keep existing with a NULL workspace_id, and the billing order is kept.
+func TestWorkspaceTeardownAppliesManifestDecisions(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
+	}
+	ctx := context.Background()
+	wsID := dbfx.Workspace(t, "manifest teardown", "wsman-"+uuid.NewString()[:8])
+	dbfx.Member(t, wsID, testUserID, "owner")
+
+	dbfx.Exec(t, `INSERT INTO billing_notice (workspace_id, notice_key, kind) VALUES ($1::uuid, 'manifest', 'test')`, wsID)
+	dbfx.Exec(t, `INSERT INTO platform_note (id, workspace_id, author_id, body) VALUES (gen_random_uuid(), $1::uuid, $2::uuid, 'manifest')`, wsID, testUserID)
+	dbfx.Exec(t, `INSERT INTO platform_seat_operation (workspace_id, operation_token, kind, state) VALUES ($1::uuid, gen_random_uuid(), 'test', 'done')`, wsID)
+	dbfx.Exec(t, `INSERT INTO platform_usage_daily (workspace_id, day) VALUES ($1::uuid, '2026-11-15')`, wsID)
+	dbfx.Exec(t, `INSERT INTO platform_workspace (workspace_id, status, reason) VALUES ($1::uuid, 'active', '')`, wsID)
+	dbfx.Exec(t, `INSERT INTO workspace_export (id, workspace_id, requested_by, status) VALUES (gen_random_uuid(), $1::uuid, $2::uuid, 'queued')`, wsID, testUserID)
+	dbfx.Exec(t, `INSERT INTO workspace_subscription (workspace_id, plan_key, status) VALUES ($1::uuid, 'free', 'active')`, wsID)
+	dbfx.Exec(t, `INSERT INTO billing_order (id, workspace_id, kind, plan_key, "interval", amount, currency, status, provider, transfer_code, expires_at)
+		VALUES (gen_random_uuid(), $1::uuid, 'subscription', 'free', 'month', 0, 'VND', 'pending', 'bank_transfer', 'manifest-' || $1, now() + interval '1 day')`, wsID)
+
+	var auditID string
+	if err := testPool.QueryRow(ctx,
+		`INSERT INTO audit_event (workspace_id, actor_type, action) VALUES ($1::uuid, 'system', 'manifest.test') RETURNING id::text`,
+		wsID).Scan(&auditID); err != nil {
+		t.Fatalf("insert audit row: %v", err)
+	}
+	dbfx.Cleanup(t, `DELETE FROM audit_event WHERE id = $1::uuid`, auditID)
+	dbfx.Cleanup(t, `DELETE FROM billing_order WHERE workspace_id = $1::uuid`, wsID)
+
+	tx, err := testHandler.TxStarter.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin teardown: %v", err)
+	}
+	defer tx.Rollback(ctx)
+	if _, err := testHandler.deleteWorkspaceData(ctx, tx, parseUUID(wsID)); err != nil {
+		t.Fatalf("teardown: %v", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatalf("commit teardown: %v", err)
+	}
+
+	for _, table := range []string{"billing_notice", "platform_note", "platform_seat_operation", "platform_usage_daily", "platform_workspace", "workspace_export", "workspace_subscription"} {
+		if n := dbfx.Count(t, `SELECT count(*) FROM `+table+` WHERE workspace_id = $1::uuid`, wsID); n != 0 {
+			t.Errorf("%s: %d rows left for the deleted workspace; want 0", table, n)
+		}
+	}
+	if n := dbfx.Count(t, `SELECT count(*) FROM audit_event WHERE id = $1::uuid AND workspace_id IS NULL`, auditID); n != 1 {
+		t.Errorf("audit_event row %s: want it kept with a NULL workspace_id", auditID)
+	}
+	if n := dbfx.Count(t, `SELECT count(*) FROM billing_order WHERE workspace_id = $1::uuid`, wsID); n != 1 {
+		t.Errorf("billing_order: %d rows for the deleted workspace; want 1 (kept for accounting)", n)
 	}
 }

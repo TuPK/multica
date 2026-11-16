@@ -175,6 +175,15 @@ func (q *Queries) DeleteWorkspaceAutopilots(ctx context.Context, workspaceID pgt
 	return err
 }
 
+const deleteWorkspaceBillingNotices = `-- name: DeleteWorkspaceBillingNotices :exec
+DELETE FROM billing_notice WHERE workspace_id = $1
+`
+
+func (q *Queries) DeleteWorkspaceBillingNotices(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteWorkspaceBillingNotices, workspaceID)
+	return err
+}
+
 const deleteWorkspaceChatMessages = `-- name: DeleteWorkspaceChatMessages :exec
 DELETE FROM chat_message
 WHERE chat_session_id IN (
@@ -229,6 +238,16 @@ DELETE FROM vcs_connection WHERE vcs_connection.workspace_id = $1
 
 func (q *Queries) DeleteWorkspaceConnections(ctx context.Context, workspaceID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, deleteWorkspaceConnections, workspaceID)
+	return err
+}
+
+const deleteWorkspaceExports = `-- name: DeleteWorkspaceExports :exec
+DELETE FROM workspace_export WHERE workspace_id = $1
+`
+
+// The archives in storage are not removed here; the export job owns them.
+func (q *Queries) DeleteWorkspaceExports(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteWorkspaceExports, workspaceID)
 	return err
 }
 
@@ -547,6 +566,33 @@ func (q *Queries) DeleteWorkspaceLeafData(ctx context.Context, workspaceID pgtyp
 	return err
 }
 
+const deleteWorkspacePlatformNotes = `-- name: DeleteWorkspacePlatformNotes :exec
+DELETE FROM platform_note WHERE workspace_id = $1
+`
+
+func (q *Queries) DeleteWorkspacePlatformNotes(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteWorkspacePlatformNotes, workspaceID)
+	return err
+}
+
+const deleteWorkspacePlatformSeatOperations = `-- name: DeleteWorkspacePlatformSeatOperations :exec
+DELETE FROM platform_seat_operation WHERE workspace_id = $1
+`
+
+func (q *Queries) DeleteWorkspacePlatformSeatOperations(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteWorkspacePlatformSeatOperations, workspaceID)
+	return err
+}
+
+const deleteWorkspacePlatformUsageDaily = `-- name: DeleteWorkspacePlatformUsageDaily :exec
+DELETE FROM platform_usage_daily WHERE workspace_id = $1
+`
+
+func (q *Queries) DeleteWorkspacePlatformUsageDaily(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteWorkspacePlatformUsageDaily, workspaceID)
+	return err
+}
+
 const deleteWorkspacePluginData = `-- name: DeleteWorkspacePluginData :exec
 WITH installations AS MATERIALIZED (
     SELECT plugin_installation.id
@@ -655,6 +701,15 @@ func (q *Queries) DeleteWorkspaceSquadsAndSkills(ctx context.Context, workspaceI
 	return err
 }
 
+const deleteWorkspaceSubscriptions = `-- name: DeleteWorkspaceSubscriptions :exec
+DELETE FROM workspace_subscription WHERE workspace_id = $1
+`
+
+func (q *Queries) DeleteWorkspaceSubscriptions(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteWorkspaceSubscriptions, workspaceID)
+	return err
+}
+
 const detachTaskBatchReferences = `-- name: DetachTaskBatchReferences :exec
 WITH detached_runs AS (
     UPDATE autopilot_run
@@ -677,6 +732,16 @@ WHERE parent_task_id = ANY($1::uuid[])
 // inside one statement is not well defined.
 func (q *Queries) DetachTaskBatchReferences(ctx context.Context, taskIds []pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, detachTaskBatchReferences, taskIds)
+	return err
+}
+
+const detachWorkspaceAuditEvents = `-- name: DetachWorkspaceAuditEvents :exec
+UPDATE audit_event SET workspace_id = NULL WHERE workspace_id = $1
+`
+
+// Audit rows outlive the workspace. The retention job removes them later.
+func (q *Queries) DetachWorkspaceAuditEvents(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, detachWorkspaceAuditEvents, workspaceID)
 	return err
 }
 

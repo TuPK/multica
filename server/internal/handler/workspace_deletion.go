@@ -220,9 +220,6 @@ func (h *Handler) DeleteDueWorkspace(ctx context.Context, workspaceID string, no
 	if err != nil {
 		return false, err
 	}
-	if err := qtx.DeletePlatformWorkspace(ctx, wsID); err != nil {
-		return false, fmt.Errorf("delete platform row: %w", err)
-	}
 	if err := audit.Record(ctx, auditstore.NewTx(h.Queries, tx), audit.Entry{
 		WorkspaceID: workspaceID,
 		ActorType:   audit.ActorSystem,

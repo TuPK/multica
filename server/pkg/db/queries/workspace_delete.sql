@@ -748,3 +748,26 @@ deleted_share_links AS (
 )
 DELETE FROM workspace_invitation
 WHERE workspace_invitation.workspace_id = $1;
+
+-- name: DeleteWorkspaceBillingNotices :exec
+DELETE FROM billing_notice WHERE workspace_id = $1;
+
+-- name: DeleteWorkspacePlatformNotes :exec
+DELETE FROM platform_note WHERE workspace_id = $1;
+
+-- name: DeleteWorkspacePlatformSeatOperations :exec
+DELETE FROM platform_seat_operation WHERE workspace_id = $1;
+
+-- name: DeleteWorkspacePlatformUsageDaily :exec
+DELETE FROM platform_usage_daily WHERE workspace_id = $1;
+
+-- name: DeleteWorkspaceSubscriptions :exec
+DELETE FROM workspace_subscription WHERE workspace_id = $1;
+
+-- name: DeleteWorkspaceExports :exec
+-- The archives in storage are not removed here; the export job owns them.
+DELETE FROM workspace_export WHERE workspace_id = $1;
+
+-- name: DetachWorkspaceAuditEvents :exec
+-- Audit rows outlive the workspace. The retention job removes them later.
+UPDATE audit_event SET workspace_id = NULL WHERE workspace_id = $1;
