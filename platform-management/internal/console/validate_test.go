@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/platform-management/internal/staff"
 	"github.com/multica-ai/multica/platform-management/workspacestate"
 )
@@ -209,6 +210,48 @@ func TestAuditActionFilterAcceptsEveryActionTheConsoleWrites(t *testing.T) {
 		if !isAuditAction(a) {
 			t.Errorf("%s is not accepted as a filter", a)
 		}
+	}
+}
+
+// The filter also takes the actions the other staff routes write (plan,
+// subscription and billing) and the R2 actions Multica writes, so a staff
+// member can find them in the cross-workspace log. The names come from the
+// audit package: a literal such as an agent action would read as a table name
+// to the isolation scan.
+func TestAuditActionFilterAcceptsTheR2AndBillingActions(t *testing.T) {
+	for _, a := range []string{
+		audit.ActionSubscriptionChanged, audit.ActionPlanChanged,
+		audit.ActionBillingOrderCreated, audit.ActionBillingOrderPaid,
+		audit.ActionBillingOrderExpired, audit.ActionBillingOrderCanceled,
+		audit.ActionIntegrationConnected, audit.ActionIntegrationDisconnected,
+		audit.ActionPluginInstalled, audit.ActionPluginUninstalled, audit.ActionPluginEnabled,
+		audit.ActionPluginDisabled, audit.ActionPluginConfigured, audit.ActionPluginTokenRotated,
+		audit.ActionMCPServerCreated, audit.ActionMCPServerUpdated, audit.ActionMCPServerDeleted,
+		audit.ActionRuntimeProfileCreated, audit.ActionRuntimeProfileUpdated, audit.ActionRuntimeProfileDeleted,
+		audit.ActionAgentCreated, audit.ActionAgentArchived, audit.ActionAgentPermissionChanged, audit.ActionAgentEnvUpdated,
+		audit.ActionRuntimeVisibilityChanged, audit.ActionRuntimeDeleted,
+		audit.ActionWorkspaceExportRequested, audit.ActionWorkspaceExportCompleted, audit.ActionWorkspaceExportFailed,
+		audit.ActionWorkspaceDeletionScheduled, audit.ActionWorkspaceDeletionCancelled,
+	} {
+		if !isAuditAction(a) {
+			t.Errorf("%s is not accepted as a filter", a)
+		}
+	}
+}
+
+// The filter reads the audit package's catalogue, so every action in it is
+// accepted and nothing else is.
+func TestAuditActionFilterIsTheAuditCatalog(t *testing.T) {
+	if len(auditActions) != len(audit.Catalog) {
+		t.Errorf("filter holds %d actions, the catalogue %d", len(auditActions), len(audit.Catalog))
+	}
+	for _, a := range audit.Catalog {
+		if !isAuditAction(a) {
+			t.Errorf("%s is in the catalogue and not accepted", a)
+		}
+	}
+	if isAuditAction("nope") {
+		t.Error("an action outside the catalogue is accepted")
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/integrations/channel/engine"
+	"github.com/multica-ai/multica/server/internal/integrations/connectaudit"
 	"github.com/multica-ai/multica/server/internal/util/secretbox"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -55,6 +56,9 @@ type installQueries interface {
 	ListChannelInstallationsByWorkspace(ctx context.Context, arg db.ListChannelInstallationsByWorkspaceParams) ([]db.ChannelInstallation, error)
 	GetChannelInstallationInWorkspace(ctx context.Context, arg db.GetChannelInstallationInWorkspaceParams) (db.ChannelInstallation, error)
 	SetChannelInstallationStatus(ctx context.Context, arg db.SetChannelInstallationStatusParams) error
+	// RecordConnected writes the integration.connected audit row in the
+	// transaction the receiver is bound to.
+	RecordConnected(ctx context.Context, inst db.ChannelInstallation) error
 }
 
 // dbInstallQueries adapts *db.Queries to installQueries — the generated WithTx
@@ -64,6 +68,13 @@ type dbInstallQueries struct{ *db.Queries }
 
 func (q dbInstallQueries) WithTx(tx pgx.Tx) installQueries {
 	return dbInstallQueries{q.Queries.WithTx(tx)}
+}
+
+// RecordConnected implements installQueries over the transaction's queries.
+func (q dbInstallQueries) RecordConnected(ctx context.Context, inst db.ChannelInstallation) error {
+	return connectaudit.Record(ctx, q.Queries, connectaudit.Connected{
+		Provider: "slack", WorkspaceID: inst.WorkspaceID, InstallationID: inst.ID, InstallerUserID: inst.InstallerUserID,
+	})
 }
 
 // InstallService owns the at-rest encryption of the bot + app tokens (so no
@@ -185,6 +196,10 @@ func (s *InstallService) persistInstall(ctx context.Context, p installPersist) (
 			return db.ChannelInstallation{}, s.liveOwnerConflictErr(ctx, p.wsID, p.appIDKey)
 		}
 		return db.ChannelInstallation{}, fmt.Errorf("upsert slack installation: %w", err)
+	}
+	// The audit row commits with the installation; a failed write rolls it back.
+	if err := qtx.RecordConnected(ctx, inst); err != nil {
+		return db.ChannelInstallation{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return db.ChannelInstallation{}, fmt.Errorf("commit slack install: %w", err)

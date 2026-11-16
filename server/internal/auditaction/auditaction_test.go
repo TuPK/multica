@@ -55,3 +55,30 @@ func TestCatalogHasNoDuplicates(t *testing.T) {
 		seen[a] = true
 	}
 }
+
+// The log filter accepts every action the audit package defines that either
+// server writes: the R2 actions of Multica and the billing and plan actions of
+// the platform.
+func TestIsAcceptsTheR2Actions(t *testing.T) {
+	for _, a := range []string{
+		audit.ActionIntegrationConnected, audit.ActionIntegrationDisconnected,
+		audit.ActionPluginInstalled, audit.ActionPluginUninstalled, audit.ActionPluginEnabled,
+		audit.ActionPluginDisabled, audit.ActionPluginConfigured, audit.ActionPluginTokenRotated,
+		audit.ActionMCPServerCreated, audit.ActionMCPServerUpdated, audit.ActionMCPServerDeleted,
+		audit.ActionRuntimeProfileCreated, audit.ActionRuntimeProfileUpdated, audit.ActionRuntimeProfileDeleted,
+		audit.ActionAgentCreated, audit.ActionAgentArchived, audit.ActionAgentPermissionChanged, audit.ActionAgentEnvUpdated,
+		audit.ActionRuntimeVisibilityChanged, audit.ActionRuntimeDeleted,
+		audit.ActionWorkspaceExportRequested, audit.ActionWorkspaceExportCompleted, audit.ActionWorkspaceExportFailed,
+		audit.ActionWorkspaceDeletionScheduled, audit.ActionWorkspaceDeletionCancelled,
+		audit.ActionSubscriptionChanged, audit.ActionPlanChanged,
+		audit.ActionBillingOrderCreated, audit.ActionBillingOrderPaid,
+		audit.ActionBillingOrderExpired, audit.ActionBillingOrderCanceled,
+	} {
+		if a == "" {
+			t.Error("an audit constant is empty")
+		}
+		if !Is(a) {
+			t.Errorf("%q is not accepted", a)
+		}
+	}
+}

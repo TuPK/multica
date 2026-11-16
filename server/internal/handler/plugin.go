@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"sort"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/service"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -256,7 +258,13 @@ func (h *Handler) InstallPlugin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	installation, err := h.PluginService.InstallPlugin(r.Context(), workspaceID, member.UserID, req.VersionID, req.GrantedScopes)
+	installation, err := h.PluginService.InstallPlugin(r.Context(), workspaceID, member.UserID, req.VersionID, req.GrantedScopes,
+		h.pluginAudit(r, audit.ActionPluginInstalled, func(c service.PluginChange) map[string]any {
+			if c.Previous == nil {
+				return nil
+			}
+			return map[string]any{"upgraded": true, "previous_version": c.Previous.Version}
+		}))
 	if err != nil {
 		writePluginError(w, err, "failed to install the Plugin")
 		return
@@ -284,7 +292,16 @@ func (h *Handler) ConfigurePlugin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	updated, err := h.PluginService.SetConfig(r.Context(), installation, req.Values)
+	// Field names only: the values may be secrets.
+	fields := make([]string, 0, len(req.Values))
+	for name := range req.Values {
+		fields = append(fields, name)
+	}
+	sort.Strings(fields)
+	updated, err := h.PluginService.SetConfig(r.Context(), installation, req.Values,
+		h.pluginAudit(r, audit.ActionPluginConfigured, func(service.PluginChange) map[string]any {
+			return map[string]any{"fields": fields}
+		}))
 	if err != nil {
 		writePluginError(w, err, "failed to configure the Plugin")
 		return
@@ -312,7 +329,11 @@ func (h *Handler) setPluginEnabled(w http.ResponseWriter, r *http.Request, enabl
 	if !ok {
 		return
 	}
-	updated, err := h.PluginService.SetEnabled(r.Context(), installation, enabled)
+	action := audit.ActionPluginDisabled
+	if enabled {
+		action = audit.ActionPluginEnabled
+	}
+	updated, err := h.PluginService.SetEnabled(r.Context(), installation, enabled, h.pluginAudit(r, action, nil))
 	if err != nil {
 		writePluginError(w, err, "failed to update the Plugin")
 		return
@@ -331,7 +352,7 @@ func (h *Handler) UninstallPlugin(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if err := h.PluginService.Uninstall(r.Context(), installation); err != nil {
+	if err := h.PluginService.Uninstall(r.Context(), installation, h.pluginAudit(r, audit.ActionPluginUninstalled, nil)); err != nil {
 		writePluginError(w, err, "failed to uninstall the Plugin")
 		return
 	}

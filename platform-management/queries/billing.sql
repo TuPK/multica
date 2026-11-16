@@ -50,6 +50,23 @@ WHERE status = 'pending'
 ORDER BY created_at ASC, id ASC
 LIMIT $1;
 
+-- name: ListExpiredPendingBillingOrders :many
+-- Pending orders whose expires_at is at or before $1, the longest-expired first,
+-- for the order expiry job.
+SELECT * FROM billing_order
+WHERE status = 'pending' AND expires_at <= $1
+ORDER BY expires_at ASC, id ASC
+LIMIT $2;
+
+-- name: ExpireBillingOrder :one
+-- Moves a pending order whose expires_at is at or before $2 to expired. It
+-- returns no row when the order is not pending or has not expired, so a second
+-- run, or a payment that got there first, changes nothing.
+UPDATE billing_order
+SET status = 'expired'
+WHERE id = $1 AND status = 'pending' AND expires_at <= $2
+RETURNING *;
+
 -- name: ApplyPaymentToWorkspaceSubscription :one
 -- The subscription change of a confirmed order. Unlike
 -- UpdateWorkspaceSubscription it also writes status, because a payment makes

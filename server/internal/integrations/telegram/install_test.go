@@ -19,6 +19,10 @@ import (
 )
 
 type fakeTelegramInstallQueries struct {
+	// connected records the installations RecordConnected was asked to audit;
+	// auditErr makes that write fail.
+	connected    []db.ChannelInstallation
+	auditErr     error
 	upsertCalled bool
 	upsert       db.UpsertChannelInstallationParams
 	rowID        pgtype.UUID
@@ -36,6 +40,15 @@ type fakeTelegramInstallQueries struct {
 }
 
 func (f *fakeTelegramInstallQueries) WithTx(pgx.Tx) installQueries { return f }
+
+func (f *fakeTelegramInstallQueries) RecordConnected(_ context.Context, inst db.ChannelInstallation) error {
+	if f.auditErr != nil {
+		return f.auditErr
+	}
+	f.connected = append(f.connected, inst)
+	return nil
+}
+
 func (f *fakeTelegramInstallQueries) ReclaimDeadChannelInstallationByAppID(context.Context, db.ReclaimDeadChannelInstallationByAppIDParams) (pgtype.UUID, error) {
 	return pgtype.UUID{}, pgx.ErrNoRows
 }

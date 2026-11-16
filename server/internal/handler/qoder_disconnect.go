@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/service"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -101,6 +102,11 @@ func (h *Handler) DisconnectQoderConnection(w http.ResponseWriter, r *http.Reque
 	}
 	if tag.RowsAffected() == 0 {
 		writeError(w, http.StatusConflict, "Qoder is stopped and still cancelling remote sessions; retry shortly")
+		return
+	}
+	if err := h.recordAudit(r, tx, integrationEntry(audit.ActionIntegrationDisconnected, wsID, wsID, "Qoder Cloud Agents", "qoder")); err != nil {
+		slog.Warn("qoder disconnect: audit failed", "workspace_id", wsID, "error", err)
+		writeError(w, http.StatusInternalServerError, "cannot disconnect Qoder")
 		return
 	}
 	if err := tx.Commit(r.Context()); err != nil {

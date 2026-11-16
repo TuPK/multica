@@ -36,6 +36,10 @@ func mustUUID(t *testing.T, s string) pgtype.UUID {
 }
 
 type fakeInstallQueries struct {
+	// connected records the installations RecordConnected was asked to audit;
+	// auditErr makes that write fail.
+	connected []db.ChannelInstallation
+	auditErr  error
 	// existing, when set, is the agent's current row; UpsertChannelInstallation
 	// returns it (an UPDATE) so a reconnect reuses the same row id.
 	existing *db.ChannelInstallation
@@ -62,6 +66,14 @@ type fakeInstallQueries struct {
 
 // WithTx returns the same fake — the fake tx is a no-op token.
 func (f *fakeInstallQueries) WithTx(_ pgx.Tx) installQueries { return f }
+
+func (f *fakeInstallQueries) RecordConnected(_ context.Context, inst db.ChannelInstallation) error {
+	if f.auditErr != nil {
+		return f.auditErr
+	}
+	f.connected = append(f.connected, inst)
+	return nil
+}
 
 func (f *fakeInstallQueries) ReclaimDeadChannelInstallationByAppID(_ context.Context, _ db.ReclaimDeadChannelInstallationByAppIDParams) (pgtype.UUID, error) {
 	f.reclaimCalled = true

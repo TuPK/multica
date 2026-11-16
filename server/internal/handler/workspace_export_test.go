@@ -64,7 +64,7 @@ func (o *recordingObjects) DeleteObject(context.Context, string) error { return 
 func runExportJob(t *testing.T, objects workspaceexport.Objects) {
 	t.Helper()
 	r := &workspaceexport.Runner{
-		Store:   workspaceexport.NewDBStore(testHandler.Queries),
+		Store:   workspaceexport.NewDBStore(testHandler.Queries, testHandler.TxStarter),
 		Source:  workspaceexport.NewDBSource(testHandler.Queries),
 		Objects: objects,
 		Now:     time.Now,

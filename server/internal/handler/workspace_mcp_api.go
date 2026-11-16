@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/logger"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -206,6 +207,13 @@ func (h *Handler) CreateWorkspaceMcpServer(w http.ResponseWriter, r *http.Reques
 		writeError(w, http.StatusInternalServerError, "failed to create the MCP server")
 		return
 	}
+	// Name and id only, never the entry: the audit trail must not become a
+	// second copy of the workspace's credentials.
+	if err := h.recordAuditTx(r, qtx, mcpServerEntry(audit.ActionMCPServerCreated, workspaceID, server, nil)); err != nil {
+		slog.Warn("create workspace mcp server: audit failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
+		writeError(w, http.StatusInternalServerError, "failed to create the MCP server")
+		return
+	}
 	if err := tx.Commit(r.Context()); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create the MCP server")
 		return
@@ -254,8 +262,28 @@ func (h *Handler) UpdateWorkspaceMcpServer(w http.ResponseWriter, r *http.Reques
 		params.Config = append([]byte(nil), req.Config...)
 	}
 
-	server, err := h.Queries.UpdateWorkspaceMcpServer(r.Context(), params)
+	var changed []string
+	if params.Name.Valid {
+		changed = append(changed, "name")
+	}
+	if len(params.Config) > 0 {
+		changed = append(changed, "config")
+	}
+	var server db.WorkspaceMcpServer
+	err := h.auditTx(r, func(qtx *db.Queries) (audit.Entry, error) {
+		var err error
+		server, err = qtx.UpdateWorkspaceMcpServer(r.Context(), params)
+		if err != nil {
+			return audit.Entry{}, err
+		}
+		return mcpServerEntry(audit.ActionMCPServerUpdated, workspaceID, server, map[string]any{"fields": changed}), nil
+	})
 	if err != nil {
+		if isAuditWriteError(err) {
+			slog.Warn("update workspace mcp server: audit failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
+			writeError(w, http.StatusInternalServerError, "failed to update the MCP server")
+			return
+		}
 		if isUniqueViolation(err) {
 			writeError(w, http.StatusConflict, "an MCP server with this name already exists in the workspace")
 			return
@@ -298,14 +326,24 @@ func (h *Handler) DeleteWorkspaceMcpServer(w http.ResponseWriter, r *http.Reques
 	// before this transaction (and is swept below) or waits and then finds the
 	// server gone. Without it the add could insert after the sweep, leaving a
 	// binding to a server that no longer exists.
-	if _, err := qtx.LockWorkspaceMcpServerForUpdate(r.Context(), db.LockWorkspaceMcpServerForUpdateParams{
+	_, err = qtx.LockWorkspaceMcpServerForUpdate(r.Context(), db.LockWorkspaceMcpServerForUpdateParams{
 		ID:          serverUUID,
 		WorkspaceID: idUUID,
-	}); err != nil {
+	})
+	if err != nil {
 		writeError(w, http.StatusNotFound, "MCP server not found")
 		return
 	}
 
+	// Read under the lock so the audit row can name the server it removed.
+	deleted, err := qtx.GetWorkspaceMcpServer(r.Context(), db.GetWorkspaceMcpServerParams{
+		ID:          serverUUID,
+		WorkspaceID: idUUID,
+	})
+	if err != nil {
+		writeError(w, http.StatusNotFound, "MCP server not found")
+		return
+	}
 	rows, err := qtx.DeleteWorkspaceMcpServer(r.Context(), db.DeleteWorkspaceMcpServerParams{
 		ID:          serverUUID,
 		WorkspaceID: idUUID,
@@ -321,6 +359,11 @@ func (h *Handler) DeleteWorkspaceMcpServer(w http.ResponseWriter, r *http.Reques
 	}
 	if err := qtx.DeleteAgentMcpServersByServer(r.Context(), serverUUID); err != nil {
 		slog.Warn("sweep agent mcp bindings failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
+		writeError(w, http.StatusInternalServerError, "failed to delete the MCP server")
+		return
+	}
+	if err := h.recordAuditTx(r, qtx, mcpServerEntry(audit.ActionMCPServerDeleted, workspaceID, deleted, nil)); err != nil {
+		slog.Warn("delete workspace mcp server: audit failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
 		writeError(w, http.StatusInternalServerError, "failed to delete the MCP server")
 		return
 	}
@@ -542,4 +585,18 @@ func (h *Handler) writeAgentMcpServers(w http.ResponseWriter, r *http.Request, a
 		})
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// mcpServerEntry is the audit entry of a change to the workspace MCP library.
+// It names the server and, for an update, the fields that changed. The entry
+// itself (url, headers, tokens) never goes into the audit row.
+func mcpServerEntry(action, workspaceID string, server db.WorkspaceMcpServer, detail map[string]any) audit.Entry {
+	return audit.Entry{
+		WorkspaceID: workspaceID,
+		Action:      action,
+		TargetType:  "mcp_server",
+		TargetID:    uuidToString(server.ID),
+		TargetLabel: server.Name,
+		Detail:      detail,
+	}
 }

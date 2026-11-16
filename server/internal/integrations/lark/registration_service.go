@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/events"
+	"github.com/multica-ai/multica/server/internal/integrations/connectaudit"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
@@ -762,6 +763,16 @@ func (s *RegistrationService) finishSuccess(ctx context.Context, sess *registrat
 		s.cfg.Logger.Warn("lark registration: bind installer",
 			"session_id", sess.id, "err", err)
 		s.markError(sess, RegistrationReasonInstallerBindFailed, err.Error())
+		return
+	}
+
+	// The audit row commits with the installation; a failed write rolls it back.
+	if err := connectaudit.Record(ctx, qtx.Queries, connectaudit.Connected{
+		Provider: "lark", WorkspaceID: inst.WorkspaceID, InstallationID: inst.ID, InstallerUserID: inst.InstallerUserID,
+	}); err != nil {
+		s.cfg.Logger.Error("lark registration: audit",
+			"session_id", sess.id, "err", err)
+		s.markError(sess, RegistrationReasonInternalError, err.Error())
 		return
 	}
 

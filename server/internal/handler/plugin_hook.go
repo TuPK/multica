@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/service"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/plugincontract"
@@ -183,7 +184,7 @@ func (h *Handler) RotatePluginToken(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	credentials, err := h.PluginService.RotateInstallCredentials(r.Context(), installation.ID)
+	credentials, err := h.PluginService.RotateInstallCredentials(r.Context(), installation, h.pluginAudit(r, audit.ActionPluginTokenRotated, nil))
 	if err != nil {
 		writePluginError(w, err, "failed to issue the Plugin token")
 		return

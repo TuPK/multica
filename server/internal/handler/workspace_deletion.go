@@ -41,11 +41,25 @@ func (h *Handler) scheduleWorkspaceDeletion(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	scheduled, err := h.Queries.ScheduleWorkspaceDeletion(r.Context(), db.ScheduleWorkspaceDeletionParams{
-		WorkspaceID: requester.WorkspaceID,
-		Reason:      workspacedeletion.Reason,
-		ChangedBy:   requester.UserID,
-		ScheduledAt: pgtype.Timestamptz{Time: scheduleAt, Valid: true},
+	var scheduled pgtype.Timestamptz
+	err := h.auditTx(r, func(qtx *db.Queries) (audit.Entry, error) {
+		var err error
+		scheduled, err = qtx.ScheduleWorkspaceDeletion(r.Context(), db.ScheduleWorkspaceDeletionParams{
+			WorkspaceID: requester.WorkspaceID,
+			Reason:      workspacedeletion.Reason,
+			ChangedBy:   requester.UserID,
+			ScheduledAt: pgtype.Timestamptz{Time: scheduleAt, Valid: true},
+		})
+		if err != nil {
+			return audit.Entry{}, err
+		}
+		return audit.Entry{
+			WorkspaceID: workspaceID,
+			Action:      audit.ActionWorkspaceDeletionScheduled,
+			TargetType:  "workspace",
+			TargetID:    workspaceID,
+			Detail:      map[string]any{"deletion_scheduled_at": scheduled.Time.UTC().Format(time.RFC3339)},
+		}, nil
 	})
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
@@ -84,9 +98,20 @@ func (h *Handler) CancelWorkspaceDeletion(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	_, err := h.Queries.CancelWorkspaceDeletion(r.Context(), db.CancelWorkspaceDeletionParams{
-		WorkspaceID: requester.WorkspaceID,
-		ChangedBy:   requester.UserID,
+	workspaceUUID := uuidToString(requester.WorkspaceID)
+	err := h.auditTx(r, func(qtx *db.Queries) (audit.Entry, error) {
+		if _, err := qtx.CancelWorkspaceDeletion(r.Context(), db.CancelWorkspaceDeletionParams{
+			WorkspaceID: requester.WorkspaceID,
+			ChangedBy:   requester.UserID,
+		}); err != nil {
+			return audit.Entry{}, err
+		}
+		return audit.Entry{
+			WorkspaceID: workspaceUUID,
+			Action:      audit.ActionWorkspaceDeletionCancelled,
+			TargetType:  "workspace",
+			TargetID:    workspaceUUID,
+		}, nil
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeErrorCode(w, http.StatusNotFound, "no_pending_deletion", "the workspace is not scheduled for deletion")

@@ -59,6 +59,108 @@ const (
 	ActionBillingOrderCanceled = "billing.order_canceled"
 )
 
+// R2 actions (spec 5.14), written by Multica in the transaction of the change.
+// Details name fields and ids, never a token, an environment value or an MCP
+// configuration.
+const (
+	ActionIntegrationConnected    = "integration.connected"
+	ActionIntegrationDisconnected = "integration.disconnected"
+
+	ActionPluginInstalled    = "plugin.installed"
+	ActionPluginUninstalled  = "plugin.uninstalled"
+	ActionPluginEnabled      = "plugin.enabled"
+	ActionPluginDisabled     = "plugin.disabled"
+	ActionPluginConfigured   = "plugin.configured"
+	ActionPluginTokenRotated = "plugin.token_rotated"
+
+	ActionMCPServerCreated = "mcp_server.created"
+	ActionMCPServerUpdated = "mcp_server.updated"
+	ActionMCPServerDeleted = "mcp_server.deleted"
+
+	ActionRuntimeProfileCreated = "runtime_profile.created"
+	ActionRuntimeProfileUpdated = "runtime_profile.updated"
+	ActionRuntimeProfileDeleted = "runtime_profile.deleted"
+
+	ActionAgentCreated           = "agent.created"
+	ActionAgentArchived          = "agent.archived"
+	ActionAgentPermissionChanged = "agent.permission_changed"
+	ActionAgentEnvUpdated        = "agent.env_updated"
+
+	ActionRuntimeVisibilityChanged = "runtime.visibility_changed"
+	ActionRuntimeDeleted           = "runtime.deleted"
+
+	ActionWorkspaceExportRequested = "workspace.export_requested"
+	ActionWorkspaceExportCompleted = "workspace.export_completed"
+	ActionWorkspaceExportFailed    = "workspace.export_failed"
+
+	ActionWorkspaceDeletionScheduled = "workspace.deletion_scheduled"
+	ActionWorkspaceDeletionCancelled = "workspace.deletion_cancelled"
+)
+
+// Catalog lists every action name this package defines. The audit log filters
+// of Multica and of the platform console read it, so a new action is listed
+// here and nowhere else; a test fails when a constant is missing from it.
+var Catalog = []string{
+	ActionMemberRoleChanged,
+	ActionMemberRemoved,
+	ActionMemberLeft,
+	ActionInvitationCreated,
+	ActionInvitationRevoked,
+	ActionInvitationAccepted,
+	ActionInvitationDeclined,
+	ActionShareLinkCreated,
+	ActionShareLinkRevoked,
+	ActionShareLinkJoined,
+	ActionWorkspaceCreated,
+	ActionWorkspaceUpdated,
+	ActionWorkspaceDeleted,
+	ActionAuthLogin,
+	ActionAuthSessionsRevoked,
+	ActionPATCreated,
+	ActionPATRevoked,
+	ActionAccountExportRequested,
+	ActionAccountDeletionRequest,
+	ActionAccountDeletionCanceled,
+	ActionConsentAccepted,
+	ActionWorkspaceStatusChanged,
+	ActionAccountStatusChanged,
+	ActionAccountSessionsRevoked,
+	ActionStaffAdded,
+	ActionStaffRemoved,
+	ActionNoteAdded,
+	ActionSubscriptionChanged,
+	ActionPlanChanged,
+	ActionBillingOrderCreated,
+	ActionBillingOrderPaid,
+	ActionBillingOrderExpired,
+	ActionBillingOrderCanceled,
+	ActionIntegrationConnected,
+	ActionIntegrationDisconnected,
+	ActionPluginInstalled,
+	ActionPluginUninstalled,
+	ActionPluginEnabled,
+	ActionPluginDisabled,
+	ActionPluginConfigured,
+	ActionPluginTokenRotated,
+	ActionMCPServerCreated,
+	ActionMCPServerUpdated,
+	ActionMCPServerDeleted,
+	ActionRuntimeProfileCreated,
+	ActionRuntimeProfileUpdated,
+	ActionRuntimeProfileDeleted,
+	ActionAgentCreated,
+	ActionAgentArchived,
+	ActionAgentPermissionChanged,
+	ActionAgentEnvUpdated,
+	ActionRuntimeVisibilityChanged,
+	ActionRuntimeDeleted,
+	ActionWorkspaceExportRequested,
+	ActionWorkspaceExportCompleted,
+	ActionWorkspaceExportFailed,
+	ActionWorkspaceDeletionScheduled,
+	ActionWorkspaceDeletionCancelled,
+}
+
 // Actor types.
 const (
 	ActorMember = "member"

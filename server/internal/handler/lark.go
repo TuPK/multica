@@ -168,8 +168,7 @@ func (h *Handler) RevokeLarkInstallation(w http.ResponseWriter, r *http.Request)
 	} else if !h.canManageAgent(w, r, agent) {
 		return
 	}
-	if err := h.LarkInstallations.Revoke(r.Context(), instUUID); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to revoke installation")
+	if !h.revokeChannelInstallation(w, r, "lark", wsUUID, instUUID) {
 		return
 	}
 	h.publish(protocol.EventLarkInstallationRevoked, uuidToString(wsUUID), "user", userID, map[string]any{

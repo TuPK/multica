@@ -164,13 +164,17 @@ type MemberResponse struct {
 // plain write. The actor defaults to the requesting user, labelled with their
 // email. Callers must fail the request when it returns an error.
 func (h *Handler) recordAudit(r *http.Request, tx pgx.Tx, e audit.Entry) error {
-	ctx := r.Context()
 	q := h.Queries
-	var writer audit.Writer = auditstore.New(h.Queries)
 	if tx != nil {
 		q = h.Queries.WithTx(tx)
-		writer = auditstore.NewTx(h.Queries, tx)
 	}
+	return h.recordAuditWith(r, q, e)
+}
+
+// recordAuditWith is recordAudit for queries that are already bound to the
+// transaction of the change, or to the pool when there is none.
+func (h *Handler) recordAuditWith(r *http.Request, q *db.Queries, e audit.Entry) error {
+	ctx := r.Context()
 	if e.ActorType == "" {
 		uid, err := util.ParseUUID(requestUserID(r))
 		if err != nil {
@@ -185,7 +189,7 @@ func (h *Handler) recordAudit(r *http.Request, tx pgx.Tx, e audit.Entry) error {
 		e.ActorLabel = user.Email
 	}
 	e.IP, e.UserAgent, e.RequestID = auditstore.RequestFields(r, h.clientIPForRateLimit)
-	return audit.Record(ctx, writer, e)
+	return audit.Record(ctx, auditstore.New(q), e)
 }
 
 // recordLogin writes the auth.login audit row for user. On failure it answers

@@ -192,37 +192,16 @@ func parseListParams(q url.Values) (listParams, *apiError) {
 	return p, nil
 }
 
-// auditActions are the names the action filter accepts: the audit package's
-// actions and the workspace state change, which workspacestatus names.
-var auditActions = map[string]bool{
-	audit.ActionMemberRoleChanged:       true,
-	audit.ActionMemberRemoved:           true,
-	audit.ActionMemberLeft:              true,
-	audit.ActionInvitationCreated:       true,
-	audit.ActionInvitationRevoked:       true,
-	audit.ActionInvitationAccepted:      true,
-	audit.ActionInvitationDeclined:      true,
-	audit.ActionShareLinkCreated:        true,
-	audit.ActionShareLinkRevoked:        true,
-	audit.ActionShareLinkJoined:         true,
-	audit.ActionWorkspaceCreated:        true,
-	audit.ActionWorkspaceUpdated:        true,
-	audit.ActionWorkspaceDeleted:        true,
-	audit.ActionAuthLogin:               true,
-	audit.ActionAuthSessionsRevoked:     true,
-	audit.ActionPATCreated:              true,
-	audit.ActionPATRevoked:              true,
-	audit.ActionAccountExportRequested:  true,
-	audit.ActionAccountDeletionRequest:  true,
-	audit.ActionAccountDeletionCanceled: true,
-	audit.ActionConsentAccepted:         true,
-	audit.ActionAccountStatusChanged:    true,
-	audit.ActionAccountSessionsRevoked:  true,
-	audit.ActionStaffAdded:              true,
-	audit.ActionStaffRemoved:            true,
-	audit.ActionNoteAdded:               true,
-	workspacestatus.AuditAction:         true,
-}
+// auditActions are the names the action filter accepts: every action of the
+// audit package's catalogue, the one list that the workspace log of Multica
+// reads too.
+var auditActions = func() map[string]bool {
+	m := make(map[string]bool, len(audit.Catalog))
+	for _, a := range audit.Catalog {
+		m[a] = true
+	}
+	return m
+}()
 
 func isAuditAction(s string) bool { return auditActions[s] }
 

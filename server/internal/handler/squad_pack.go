@@ -1200,6 +1200,11 @@ func (h *Handler) installPack(w http.ResponseWriter, r *http.Request, in install
 			writeError(w, failure.Status, failure.Message)
 			return
 		}
+		if err := h.recordAgentCreated(r, qtx, created, "pack"); err != nil {
+			slog.Warn("install pack: audit failed", append(logger.RequestAttrs(r), "error", err)...)
+			writeError(w, http.StatusInternalServerError, "failed to create agent")
+			return
+		}
 		createdN++
 		if packCommitFailpoint != nil {
 			if err := packCommitFailpoint("agent", createdN); err != nil {

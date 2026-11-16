@@ -908,7 +908,7 @@ func main() {
 	if err := schedulerMgr.Register(scheduler.AccountDeletionJob(h)); err != nil {
 		slog.Error("scheduler: register account deletion", "error", err)
 	}
-	if err := schedulerMgr.Register(scheduler.WorkspaceExportJob(workspaceexport.NewRunner(queries, h.Storage))); err != nil {
+	if err := schedulerMgr.Register(scheduler.WorkspaceExportJob(workspaceexport.NewRunner(queries, pool, h.Storage))); err != nil {
 		slog.Error("scheduler: register workspace export", "error", err)
 	}
 	h.WorkspaceDeletionDays = workspaceDeletionDays

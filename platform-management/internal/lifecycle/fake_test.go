@@ -50,6 +50,8 @@ type fakeStore struct {
 	hook func(point string)
 	// failWrite makes the next workspace write fail.
 	failWrite bool
+	// failAudit makes every audit insert fail.
+	failAudit bool
 	// noticeOrder records the order of notice inserts and deletes.
 	noticeLog []string
 }
@@ -231,6 +233,9 @@ func (t txCore) Write(_ context.Context, c workspacestatus.Change) (bool, error)
 }
 
 func (t txCore) InsertAuditEvent(_ context.Context, e audit.Entry) error {
+	if t.f.failAudit {
+		return fmt.Errorf("audit insert failed")
+	}
 	t.f.audits = append(t.f.audits, e)
 	return nil
 }
@@ -253,6 +258,34 @@ func (t *fakeTx) Move(_ context.Context, from, to subscription.Subscription) (su
 func (t *fakeTx) WorkspaceState(_ context.Context, id string) (workspacestate.Status, string, bool, error) {
 	r, ok := t.f.ws[id]
 	return r.Status, r.Reason, ok, nil
+}
+
+// ExpireOrder is the conditional update of ExpireBillingOrder: it applies to a
+// pending order whose expires_at is at or before now.
+func (t *fakeTx) ExpireOrder(_ context.Context, id string, now time.Time) (billing.Order, bool, error) {
+	o, ok := t.f.orders[id]
+	if !ok || o.Status != billing.StatusPending || o.ExpiresAt.After(now) {
+		return billing.Order{}, false, nil
+	}
+	o.Status = billing.StatusExpired
+	t.f.orders[id] = o
+	return o, true, nil
+}
+
+func (f *fakeStore) DueOrders(_ context.Context, now time.Time, limit int) ([]billing.Order, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []billing.Order
+	for _, o := range f.orders {
+		if o.Status == billing.StatusPending && !o.ExpiresAt.After(now) {
+			out = append(out, o)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	if len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
 }
 
 // billingRunner is the billing.Runner over the same store, so a payment and

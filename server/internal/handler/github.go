@@ -25,6 +25,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
 	"github.com/multica-ai/multica/server/internal/middleware"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -551,22 +552,32 @@ func (h *Handler) GitHubSetupCallback(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	inst, err := h.Queries.CreateGitHubInstallation(r.Context(), db.CreateGitHubInstallationParams{
-		WorkspaceID:      wsUUID,
-		InstallationID:   installationID,
-		AccountLogin:     login,
-		AccountType:      accountType,
-		AccountAvatarUrl: ptrToText(avatar),
-		ConnectedByID:    connectedBy,
+	var inst db.GithubInstallation
+	err = h.auditTx(r, func(qtx *db.Queries) (audit.Entry, error) {
+		var err error
+		inst, err = qtx.CreateGitHubInstallation(r.Context(), db.CreateGitHubInstallationParams{
+			WorkspaceID:      wsUUID,
+			InstallationID:   installationID,
+			AccountLogin:     login,
+			AccountType:      accountType,
+			AccountAvatarUrl: ptrToText(avatar),
+			ConnectedByID:    connectedBy,
+		})
+		if err != nil {
+			return audit.Entry{}, err
+		}
+		if inst, err = h.consumePendingGitHubInstallation(r.Context(), qtx, inst); err != nil {
+			return audit.Entry{}, err
+		}
+		entry := integrationEntry(audit.ActionIntegrationConnected, workspaceID, uuidToString(inst.ID), inst.AccountLogin, "github")
+		if !connectedBy.Valid {
+			// Nobody was signed in when GitHub sent the browser back.
+			entry.ActorType, entry.ActorLabel = audit.ActorSystem, "github setup callback"
+		}
+		return entry, nil
 	})
 	if err != nil {
 		slog.Error("github: failed to persist installation", "err", err, "installation_id", installationID)
-		http.Redirect(w, r, settingsURL+"&github_error=persist_failed", http.StatusFound)
-		return
-	}
-	inst, err = h.consumePendingGitHubInstallation(r.Context(), inst)
-	if err != nil {
-		slog.Error("github: failed to apply pending installation metadata", "err", err, "installation_id", installationID)
 		http.Redirect(w, r, settingsURL+"&github_error=persist_failed", http.StatusFound)
 		return
 	}
@@ -576,15 +587,15 @@ func (h *Handler) GitHubSetupCallback(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, settingsURL+"&github_connected=1", http.StatusFound)
 }
 
-func (h *Handler) consumePendingGitHubInstallation(ctx context.Context, inst db.GithubInstallation) (db.GithubInstallation, error) {
-	pending, err := h.Queries.GetPendingGitHubInstallation(ctx, inst.InstallationID)
+func (h *Handler) consumePendingGitHubInstallation(ctx context.Context, q *db.Queries, inst db.GithubInstallation) (db.GithubInstallation, error) {
+	pending, err := q.GetPendingGitHubInstallation(ctx, inst.InstallationID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return inst, nil
 		}
 		return inst, err
 	}
-	refreshed, err := h.Queries.CreateGitHubInstallation(ctx, db.CreateGitHubInstallationParams{
+	refreshed, err := q.CreateGitHubInstallation(ctx, db.CreateGitHubInstallationParams{
 		WorkspaceID:      inst.WorkspaceID,
 		InstallationID:   inst.InstallationID,
 		AccountLogin:     pending.AccountLogin,
@@ -595,7 +606,7 @@ func (h *Handler) consumePendingGitHubInstallation(ctx context.Context, inst db.
 	if err != nil {
 		return inst, err
 	}
-	if err := h.Queries.DeletePendingGitHubInstallation(ctx, inst.InstallationID); err != nil {
+	if err := q.DeletePendingGitHubInstallation(ctx, inst.InstallationID); err != nil {
 		return inst, err
 	}
 	return refreshed, nil
@@ -949,10 +960,24 @@ func (h *Handler) DeleteGitHubInstallation(w http.ResponseWriter, r *http.Reques
 	if !ok {
 		return
 	}
-	if err := h.Queries.DeleteGitHubInstallation(r.Context(), db.DeleteGitHubInstallationParams{
-		ID:          idUUID,
-		WorkspaceID: wsUUID,
-	}); err != nil {
+	err := h.auditTx(r, func(qtx *db.Queries) (audit.Entry, error) {
+		inst, err := qtx.GetGitHubInstallationByID(r.Context(), idUUID)
+		if errors.Is(err, pgx.ErrNoRows) || (err == nil && inst.WorkspaceID != wsUUID) {
+			// Nothing to remove, so nothing to record; the delete stays idempotent.
+			return audit.Entry{}, nil
+		}
+		if err != nil {
+			return audit.Entry{}, err
+		}
+		if err := qtx.DeleteGitHubInstallation(r.Context(), db.DeleteGitHubInstallationParams{
+			ID:          idUUID,
+			WorkspaceID: wsUUID,
+		}); err != nil {
+			return audit.Entry{}, err
+		}
+		return integrationEntry(audit.ActionIntegrationDisconnected, workspaceID, id, inst.AccountLogin, "github"), nil
+	})
+	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to remove installation")
 		return
 	}

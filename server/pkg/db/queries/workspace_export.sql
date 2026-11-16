@@ -48,7 +48,9 @@ WHERE id = (
   AND status = 'queued'
 RETURNING *;
 
--- name: CompleteWorkspaceExport :execrows
+-- name: CompleteWorkspaceExport :one
+-- Returns no row when the export is not running. The row gives the caller the
+-- workspace for the audit row it writes in the same transaction.
 UPDATE workspace_export
 SET status = 'done',
     storage_key = @storage_key,
@@ -56,15 +58,18 @@ SET status = 'done',
     finished_at = @finished_at,
     expires_at = @expires_at
 WHERE id = @id
-  AND status = 'running';
+  AND status = 'running'
+RETURNING *;
 
--- name: FailWorkspaceExport :execrows
+-- name: FailWorkspaceExport :one
+-- Returns no row when the export is not running.
 UPDATE workspace_export
 SET status = 'failed',
     error = @error,
     finished_at = @finished_at
 WHERE id = @id
-  AND status = 'running';
+  AND status = 'running'
+RETURNING *;
 
 -- name: FailStaleWorkspaceExports :execrows
 -- A running export whose job died would hold the one-at-a-time slot of its

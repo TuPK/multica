@@ -229,6 +229,13 @@ func run() error {
 	// The background jobs. Each takes an advisory lock by name, so several
 	// platform instances share one schedule.
 	runner := jobs.New(jobs.NewPoolLocker(pool))
+	orderExpiry, err := lifecycle.NewOrderExpirer(lifecycle.NewPgxStore(pool), slog.Default())
+	if err != nil {
+		return err
+	}
+	if err := runner.Register(lifecycle.OrderExpiryJobName, lifecycle.OrderExpiryInterval, orderExpiry.Job(time.Now)); err != nil {
+		return err
+	}
 	if cfg.Email.Provider == "" {
 		slog.Warn("lifecycle notices are off: no email provider is configured")
 	} else {

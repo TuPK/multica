@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/pkg/agent"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -181,17 +182,27 @@ func (h *Handler) CreateRuntimeProfile(w http.ResponseWriter, r *http.Request) {
 		enabled = *req.Enabled
 	}
 
-	profile, err := h.Queries.CreateRuntimeProfile(r.Context(), db.CreateRuntimeProfileParams{
-		WorkspaceID:    wsUUID,
-		DisplayName:    req.DisplayName,
-		ProtocolFamily: req.ProtocolFamily,
-		RuntimeType:    req.RuntimeType,
-		CommandName:    req.CommandName,
-		Description:    ptrToText(req.Description),
-		FixedArgs:      fixedArgs,
-		Visibility:     runtimeProfileDefaultVisibility,
-		CreatedBy:      member.UserID,
-		Enabled:        enabled,
+	var profile db.RuntimeProfile
+	err = h.auditTx(r, func(qtx *db.Queries) (audit.Entry, error) {
+		var err error
+		profile, err = qtx.CreateRuntimeProfile(r.Context(), db.CreateRuntimeProfileParams{
+			WorkspaceID:    wsUUID,
+			DisplayName:    req.DisplayName,
+			ProtocolFamily: req.ProtocolFamily,
+			RuntimeType:    req.RuntimeType,
+			CommandName:    req.CommandName,
+			Description:    ptrToText(req.Description),
+			FixedArgs:      fixedArgs,
+			Visibility:     runtimeProfileDefaultVisibility,
+			CreatedBy:      member.UserID,
+			Enabled:        enabled,
+		})
+		if err != nil {
+			return audit.Entry{}, err
+		}
+		return runtimeProfileEntry(audit.ActionRuntimeProfileCreated, wsID, profile, map[string]any{
+			"runtime_type": profile.RuntimeType, "enabled": profile.Enabled,
+		}), nil
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -333,7 +344,32 @@ func (h *Handler) UpdateRuntimeProfile(w http.ResponseWriter, r *http.Request) {
 		params.Enabled = pgtype.Bool{Bool: *req.Enabled, Valid: true}
 	}
 
-	profile, err := h.Queries.UpdateRuntimeProfile(r.Context(), params)
+	// Field names only: fixed arguments and the command line can carry secrets.
+	var changed []string
+	if params.DisplayName.Valid {
+		changed = append(changed, "display_name")
+	}
+	if params.CommandName.Valid {
+		changed = append(changed, "command_name")
+	}
+	if req.Description != nil {
+		changed = append(changed, "description")
+	}
+	if req.FixedArgs != nil {
+		changed = append(changed, "fixed_args")
+	}
+	if params.Enabled.Valid {
+		changed = append(changed, "enabled")
+	}
+	var profile db.RuntimeProfile
+	err := h.auditTx(r, func(qtx *db.Queries) (audit.Entry, error) {
+		var err error
+		profile, err = qtx.UpdateRuntimeProfile(r.Context(), params)
+		if err != nil {
+			return audit.Entry{}, err
+		}
+		return runtimeProfileEntry(audit.ActionRuntimeProfileUpdated, wsID, profile, map[string]any{"fields": changed}), nil
+	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "runtime profile not found")
@@ -615,6 +651,13 @@ func (h *Handler) DeleteRuntimeProfile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if err := h.recordAuditTx(r, qtx, runtimeProfileEntry(audit.ActionRuntimeProfileDeleted, wsID, db.RuntimeProfile{
+		ID: profileUUID, DisplayName: profile.DisplayName,
+	}, map[string]any{"runtimes_removed": len(deletedRuntimes)})); err != nil {
+		slog.Error("DeleteRuntimeProfile audit failed", "error", err, "profile_id", uuidToString(profileUUID))
+		writeError(w, http.StatusInternalServerError, "failed to delete runtime profile")
+		return
+	}
 	if err := tx.Commit(r.Context()); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to commit transaction")
 		return
@@ -673,4 +716,17 @@ func (h *Handler) requestDaemonRuntimeProfileRefresh(workspaceID, profileID stri
 		return
 	}
 	h.DaemonProfileRefresh.NotifyRuntimeProfilesChanged(workspaceID, profileID)
+}
+
+// runtimeProfileEntry is the audit entry of a change to a runtime profile. The
+// detail names fields and counts; the command line and its arguments stay out.
+func runtimeProfileEntry(action, workspaceID string, profile db.RuntimeProfile, detail map[string]any) audit.Entry {
+	return audit.Entry{
+		WorkspaceID: workspaceID,
+		Action:      action,
+		TargetType:  "runtime_profile",
+		TargetID:    uuidToString(profile.ID),
+		TargetLabel: profile.DisplayName,
+		Detail:      detail,
+	}
 }

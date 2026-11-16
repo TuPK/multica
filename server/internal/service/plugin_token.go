@@ -45,12 +45,16 @@ const (
 // an admin who loses it rotates rather than recovers, which is the same trade
 // every other bearer credential in the product makes.
 func (s *PluginService) IssueInstallToken(ctx context.Context, installationID pgtype.UUID) (string, error) {
+	return s.issueInstallToken(ctx, s.Queries, installationID)
+}
+
+func (s *PluginService) issueInstallToken(ctx context.Context, queries *db.Queries, installationID pgtype.UUID) (string, error) {
 	raw := make([]byte, callbackTokenEntropy)
 	if _, err := rand.Read(raw); err != nil {
 		return "", &PluginError{Kind: PluginErrorUnavailable, Message: "generate install token", Err: err}
 	}
 	token := installTokenPrefix + base64.RawURLEncoding.EncodeToString(raw)
-	if err := s.Queries.SetPluginInstallationToken(ctx, db.SetPluginInstallationTokenParams{
+	if err := queries.SetPluginInstallationToken(ctx, db.SetPluginInstallationTokenParams{
 		ID:        installationID,
 		TokenHash: pgtype.Text{String: hashToken(token), Valid: true},
 	}); err != nil {
@@ -71,18 +75,35 @@ type InstallCredentials struct {
 // stored token hash. This keeps an optional hook-signing configuration failure
 // from invalidating the previous token after the response has already become
 // impossible to complete.
-func (s *PluginService) RotateInstallCredentials(ctx context.Context, installationID pgtype.UUID) (InstallCredentials, error) {
+func (s *PluginService) RotateInstallCredentials(ctx context.Context, installation db.PluginInstallation, hook PluginTxHook) (InstallCredentials, error) {
+	if err := requirePluginTxHook(hook); err != nil {
+		return InstallCredentials{}, err
+	}
 	var signingSecret string
 	if len(s.DeploymentKey) > 0 {
-		secret, err := s.HookSigningSecret(installationID)
+		secret, err := s.HookSigningSecret(installation.ID)
 		if err != nil {
 			return InstallCredentials{}, err
 		}
 		signingSecret = secret
 	}
-	token, err := s.IssueInstallToken(ctx, installationID)
+	// The new hash and the hook commit together, so a token is never replaced
+	// without the audit row that says who replaced it.
+	tx, err := s.TxStarter.Begin(ctx)
+	if err != nil {
+		return InstallCredentials{}, &PluginError{Kind: PluginErrorUnavailable, Message: "begin token rotation", Err: err}
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	queries := s.Queries.WithTx(tx)
+	token, err := s.issueInstallToken(ctx, queries, installation.ID)
 	if err != nil {
 		return InstallCredentials{}, err
+	}
+	if err := hook(ctx, queries, PluginChange{Installation: installation, Previous: &installation}); err != nil {
+		return InstallCredentials{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return InstallCredentials{}, &PluginError{Kind: PluginErrorUnavailable, Message: "commit token rotation", Err: err}
 	}
 	return InstallCredentials{Token: token, SigningSecret: signingSecret}, nil
 }

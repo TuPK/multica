@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/logger"
 	"github.com/multica-ai/multica/server/internal/storage"
 	"github.com/multica-ai/multica/server/internal/workspaceexport"
@@ -115,6 +116,16 @@ func (h *Handler) CreateWorkspaceExport(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		slog.Warn("workspace export: insert failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
+		writeError(w, http.StatusInternalServerError, "failed to create export")
+		return
+	}
+	if err := h.recordAuditTx(r, qtx, audit.Entry{
+		WorkspaceID: workspaceID,
+		Action:      audit.ActionWorkspaceExportRequested,
+		TargetType:  "workspace_export",
+		TargetID:    uuidToString(row.ID),
+	}); err != nil {
+		slog.Warn("workspace export: audit failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
 		writeError(w, http.StatusInternalServerError, "failed to create export")
 		return
 	}

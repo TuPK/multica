@@ -14,7 +14,9 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/integrations/vcs"
 	"github.com/multica-ai/multica/server/internal/middleware"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -230,14 +232,24 @@ func (h *Handler) ConnectVCS(w http.ResponseWriter, r *http.Request) {
 		connectedBy = member.UserID
 	}
 
-	conn, err := h.Queries.UpsertVCSConnection(r.Context(), db.UpsertVCSConnectionParams{
-		WorkspaceID:            wsUUID,
-		Provider:               string(provider.Kind()),
-		InstanceUrl:            instanceURL,
-		AccountLogin:           account.Login,
-		AccessTokenEncrypted:   tokenEnc,
-		WebhookSecretEncrypted: secretEnc,
-		ConnectedByID:          connectedBy,
+	var conn db.VcsConnection
+	err = h.auditTx(r, func(qtx *db.Queries) (audit.Entry, error) {
+		var err error
+		conn, err = qtx.UpsertVCSConnection(r.Context(), db.UpsertVCSConnectionParams{
+			WorkspaceID:            wsUUID,
+			Provider:               string(provider.Kind()),
+			InstanceUrl:            instanceURL,
+			AccountLogin:           account.Login,
+			AccessTokenEncrypted:   tokenEnc,
+			WebhookSecretEncrypted: secretEnc,
+			ConnectedByID:          connectedBy,
+		})
+		if err != nil {
+			return audit.Entry{}, err
+		}
+		entry := integrationEntry(audit.ActionIntegrationConnected, workspaceID, uuidToString(conn.ID), conn.AccountLogin, "vcs")
+		entry.Detail["vcs_provider"] = conn.Provider
+		return entry, nil
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to save connection")
@@ -285,15 +297,32 @@ func (h *Handler) DeleteVCSConnection(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if err := h.Queries.DeleteVCSConnection(r.Context(), db.DeleteVCSConnectionParams{
-		ID:          idUUID,
-		WorkspaceID: wsUUID,
-	}); err != nil {
+	connectionID := chi.URLParam(r, "connectionId")
+	err := h.auditTx(r, func(qtx *db.Queries) (audit.Entry, error) {
+		conn, err := qtx.GetVCSConnectionByID(r.Context(), idUUID)
+		if errors.Is(err, pgx.ErrNoRows) || (err == nil && conn.WorkspaceID != wsUUID) {
+			// Nothing to remove, so nothing to record; the delete stays idempotent.
+			return audit.Entry{}, nil
+		}
+		if err != nil {
+			return audit.Entry{}, err
+		}
+		if err := qtx.DeleteVCSConnection(r.Context(), db.DeleteVCSConnectionParams{
+			ID:          idUUID,
+			WorkspaceID: wsUUID,
+		}); err != nil {
+			return audit.Entry{}, err
+		}
+		entry := integrationEntry(audit.ActionIntegrationDisconnected, workspaceID, connectionID, conn.AccountLogin, "vcs")
+		entry.Detail["vcs_provider"] = conn.Provider
+		return entry, nil
+	})
+	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to remove connection")
 		return
 	}
 	h.publish(protocol.EventVCSConnectionDeleted, workspaceID, "system", "", map[string]any{
-		"id": chi.URLParam(r, "connectionId"),
+		"id": connectionID,
 	})
 	w.WriteHeader(http.StatusNoContent)
 }

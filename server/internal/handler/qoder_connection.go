@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/auth"
 	"github.com/multica-ai/multica/server/internal/middleware"
 	"github.com/multica-ai/multica/server/internal/qoderruntime"
@@ -354,6 +355,13 @@ func (h *Handler) saveQoderConnection(w http.ResponseWriter, r *http.Request, re
 	_, err = tx.Exec(r.Context(), `DELETE FROM daemon_token WHERE id IN (SELECT token_id FROM cloud_agent_connection WHERE provider='qoder_cloud' AND workspace_id=$1)`, ws)
 	if err == nil {
 		_, err = tx.Exec(r.Context(), `INSERT INTO cloud_agent_connection(workspace_id,provider,owner_id,token_id,config_encrypted) VALUES($1,'qoder_cloud',$2,$3,$4) ON CONFLICT(workspace_id,provider) DO UPDATE SET owner_id=excluded.owner_id,token_id=excluded.token_id,config_encrypted=excluded.config_encrypted,enabled=($5 OR cloud_agent_connection.enabled),journal_encrypted='',revision=cloud_agent_connection.revision+1,status=CASE WHEN $5 OR cloud_agent_connection.enabled THEN 'starting' ELSE cloud_agent_connection.status END,last_error='',updated_at=now()`, ws, parseUUID(user), pat.ID, encrypted, resume)
+	}
+	if err == nil {
+		// Only the provider and whether the bridge was resumed; the stored
+		// configuration holds the service credential.
+		entry := integrationEntry(audit.ActionIntegrationConnected, uuidToString(ws), uuidToString(ws), "Qoder Cloud Agents", "qoder")
+		entry.Detail["resumed"] = resume
+		err = h.recordAudit(r, tx, entry)
 	}
 	if err != nil || tx.Commit(r.Context()) != nil {
 		writeError(w, 500, "cannot save Qoder Cloud Agents configuration")

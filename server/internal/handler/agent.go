@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/analytics"
 	"github.com/multica-ai/multica/server/internal/attribution"
 	"github.com/multica-ai/multica/server/internal/entitlement"
@@ -1963,6 +1964,11 @@ func (h *Handler) CreateAgent(w http.ResponseWriter, r *http.Request) {
 		writeError(w, failure.Status, failure.Message)
 		return
 	}
+	if err := h.recordAgentCreated(r, qtx, created, "api"); err != nil {
+		slog.Warn("create agent: audit failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
+		writeError(w, http.StatusInternalServerError, "failed to create agent")
+		return
+	}
 	if err := tx.Commit(r.Context()); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to commit agent create")
 		return
@@ -2430,6 +2436,9 @@ func (h *Handler) UpdateAgent(w http.ResponseWriter, r *http.Request) {
 	permissionTouched := hasPermissionMode || hasTargets || req.Visibility != nil
 	replacePermissionTargets := false
 	var resolvedPerm resolvedPermission
+	// Set when the owner's request really changes access; it becomes the
+	// agent.permission_changed row written with the change.
+	var permissionAudit map[string]any
 	if permissionTouched {
 		isAgentOwner := uuidToString(existing.OwnerID) == requestUserID(r)
 		if !isAgentOwner {
@@ -2453,6 +2462,17 @@ func (h *Handler) UpdateAgent(w http.ResponseWriter, r *http.Request) {
 			if permErr != nil {
 				writeError(w, http.StatusBadRequest, permErr.Error())
 				return
+			}
+			changed, permErr := h.permissionInputChangesAgent(r.Context(), existing, req, hasPermissionMode, hasTargets)
+			if permErr != nil {
+				writeError(w, http.StatusInternalServerError, "failed to evaluate invocation permission change")
+				return
+			}
+			if changed {
+				permissionAudit = map[string]any{
+					"permission_mode": map[string]any{"from": existing.PermissionMode, "to": perm.mode},
+					"target_count":    len(perm.targets),
+				}
 			}
 			resolvedPerm = perm
 			replacePermissionTargets = true
@@ -2768,6 +2788,18 @@ func (h *Handler) UpdateAgent(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	// Access changes in the transaction that records it: the row, the invocation
+	// targets and the audit event commit together.
+	var permissionTx pgx.Tx
+	if replacePermissionTargets && bindingTx == nil && instructionTx == nil {
+		permissionTx, err = h.TxStarter.Begin(r.Context())
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to start agent permission transaction")
+			return
+		}
+		defer permissionTx.Rollback(r.Context())
+		updateQueries = h.Queries.WithTx(permissionTx)
+	}
 	updated, err := updateQueries.UpdateAgent(r.Context(), params)
 	if err != nil {
 		// Unique constraint on (workspace_id, name) — mirror CreateAgent and
@@ -2790,6 +2822,21 @@ func (h *Handler) UpdateAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if replacePermissionTargets {
+		if err := replaceInvocationTargetsWithQueries(r.Context(), updateQueries, updated.ID, parseUUID(requestUserID(r)), resolvedPerm.targets); err != nil {
+			slog.Warn("update agent: persist invocation targets failed", append(logger.RequestAttrs(r), "error", err, "agent_id", id)...)
+			writeError(w, http.StatusInternalServerError, "failed to update invocation targets")
+			return
+		}
+		if permissionAudit != nil {
+			if err := h.recordAuditTx(r, updateQueries, agentEntry(audit.ActionAgentPermissionChanged, updated, permissionAudit)); err != nil {
+				slog.Warn("update agent: audit failed", append(logger.RequestAttrs(r), "error", err, "agent_id", id)...)
+				writeError(w, http.StatusInternalServerError, "failed to update agent")
+				return
+			}
+		}
+	}
+
 	if bindingTx != nil {
 		if err := bindingTx.Commit(r.Context()); err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to commit agent binding")
@@ -2802,6 +2849,12 @@ func (h *Handler) UpdateAgent(w http.ResponseWriter, r *http.Request) {
 	if instructionTx != nil {
 		if err := instructionTx.Commit(r.Context()); err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to commit agent instructions")
+			return
+		}
+	}
+	if permissionTx != nil {
+		if err := permissionTx.Commit(r.Context()); err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to commit agent permission")
 			return
 		}
 	}
@@ -2860,16 +2913,8 @@ func (h *Handler) UpdateAgent(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Invocation targets (MUL-3963): replace wholesale when the owner touched
-	// permission. Done after the row update so a permission_mode flip and its
-	// targets land together.
-	if replacePermissionTargets {
-		if err := h.replaceInvocationTargets(r.Context(), updated.ID, parseUUID(requestUserID(r)), resolvedPerm.targets); err != nil {
-			slog.Warn("update agent: persist invocation targets failed", append(logger.RequestAttrs(r), "error", err, "agent_id", id)...)
-			writeError(w, http.StatusInternalServerError, "failed to update invocation targets")
-			return
-		}
-	}
+	// Invocation targets (MUL-3963) were replaced above, in the transaction of
+	// the row update, when the owner touched permission.
 
 	resp := h.agentToResponse(updated)
 	if err := h.enrichAgentResponseWithTargets(r.Context(), &resp, updated.ID); err != nil {
@@ -3137,9 +3182,17 @@ func (h *Handler) ArchiveAgent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userID := requestUserID(r)
-	archived, err := h.Queries.ArchiveAgent(r.Context(), db.ArchiveAgentParams{
-		ID:         agent.ID,
-		ArchivedBy: parseUUID(userID),
+	var archived db.Agent
+	err := h.auditTx(r, func(qtx *db.Queries) (audit.Entry, error) {
+		var err error
+		archived, err = qtx.ArchiveAgent(r.Context(), db.ArchiveAgentParams{
+			ID:         agent.ID,
+			ArchivedBy: parseUUID(userID),
+		})
+		if err != nil {
+			return audit.Entry{}, err
+		}
+		return agentEntry(audit.ActionAgentArchived, archived, nil), nil
 	})
 	if err != nil {
 		slog.Warn("archive agent failed", append(logger.RequestAttrs(r), "error", err, "agent_id", id)...)
@@ -3667,4 +3720,28 @@ func (h *Handler) ListWorkspaceAgentTaskSnapshot(w http.ResponseWriter, r *http.
 	h.hydrateTaskAttributions(r.Context(), attributionsOf(resp))
 
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// agentEntry is the audit entry of a change to an agent. The detail names modes
+// and counts; instructions, environment values, MCP configuration and tokens
+// never go into it.
+func agentEntry(action string, a db.Agent, detail map[string]any) audit.Entry {
+	return audit.Entry{
+		WorkspaceID: uuidToString(a.WorkspaceID),
+		Action:      action,
+		TargetType:  "agent",
+		TargetID:    uuidToString(a.ID),
+		TargetLabel: a.Name,
+		Detail:      detail,
+	}
+}
+
+// recordAgentCreated records agent.created in the transaction that inserted the
+// agent. source says which path created it.
+func (h *Handler) recordAgentCreated(r *http.Request, qtx *db.Queries, created db.Agent, source string) error {
+	return h.recordAuditTx(r, qtx, agentEntry(audit.ActionAgentCreated, created, map[string]any{
+		"source":          source,
+		"runtime_id":      uuidToString(created.RuntimeID),
+		"permission_mode": created.PermissionMode,
+	}))
 }

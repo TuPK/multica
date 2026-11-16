@@ -48,7 +48,7 @@ func (q *Queries) ClaimNextWorkspaceExport(ctx context.Context, now pgtype.Times
 	return i, err
 }
 
-const completeWorkspaceExport = `-- name: CompleteWorkspaceExport :execrows
+const completeWorkspaceExport = `-- name: CompleteWorkspaceExport :one
 UPDATE workspace_export
 SET status = 'done',
     storage_key = $1,
@@ -57,6 +57,7 @@ SET status = 'done',
     expires_at = $4
 WHERE id = $5
   AND status = 'running'
+RETURNING id, workspace_id, requested_by, status, storage_key, size_bytes, error, created_at, started_at, finished_at, expires_at
 `
 
 type CompleteWorkspaceExportParams struct {
@@ -67,18 +68,31 @@ type CompleteWorkspaceExportParams struct {
 	ID         pgtype.UUID        `json:"id"`
 }
 
-func (q *Queries) CompleteWorkspaceExport(ctx context.Context, arg CompleteWorkspaceExportParams) (int64, error) {
-	result, err := q.db.Exec(ctx, completeWorkspaceExport,
+// Returns no row when the export is not running. The row gives the caller the
+// workspace for the audit row it writes in the same transaction.
+func (q *Queries) CompleteWorkspaceExport(ctx context.Context, arg CompleteWorkspaceExportParams) (WorkspaceExport, error) {
+	row := q.db.QueryRow(ctx, completeWorkspaceExport,
 		arg.StorageKey,
 		arg.SizeBytes,
 		arg.FinishedAt,
 		arg.ExpiresAt,
 		arg.ID,
 	)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
+	var i WorkspaceExport
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.RequestedBy,
+		&i.Status,
+		&i.StorageKey,
+		&i.SizeBytes,
+		&i.Error,
+		&i.CreatedAt,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
 }
 
 const createWorkspaceExport = `-- name: CreateWorkspaceExport :one
@@ -154,13 +168,14 @@ func (q *Queries) FailStaleWorkspaceExports(ctx context.Context, arg FailStaleWo
 	return result.RowsAffected(), nil
 }
 
-const failWorkspaceExport = `-- name: FailWorkspaceExport :execrows
+const failWorkspaceExport = `-- name: FailWorkspaceExport :one
 UPDATE workspace_export
 SET status = 'failed',
     error = $1,
     finished_at = $2
 WHERE id = $3
   AND status = 'running'
+RETURNING id, workspace_id, requested_by, status, storage_key, size_bytes, error, created_at, started_at, finished_at, expires_at
 `
 
 type FailWorkspaceExportParams struct {
@@ -169,12 +184,24 @@ type FailWorkspaceExportParams struct {
 	ID         pgtype.UUID        `json:"id"`
 }
 
-func (q *Queries) FailWorkspaceExport(ctx context.Context, arg FailWorkspaceExportParams) (int64, error) {
-	result, err := q.db.Exec(ctx, failWorkspaceExport, arg.Error, arg.FinishedAt, arg.ID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
+// Returns no row when the export is not running.
+func (q *Queries) FailWorkspaceExport(ctx context.Context, arg FailWorkspaceExportParams) (WorkspaceExport, error) {
+	row := q.db.QueryRow(ctx, failWorkspaceExport, arg.Error, arg.FinishedAt, arg.ID)
+	var i WorkspaceExport
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.RequestedBy,
+		&i.Status,
+		&i.StorageKey,
+		&i.SizeBytes,
+		&i.Error,
+		&i.CreatedAt,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
 }
 
 const getLatestWorkspaceExport = `-- name: GetLatestWorkspaceExport :one

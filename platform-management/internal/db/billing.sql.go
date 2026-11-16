@@ -213,6 +213,52 @@ func (q *Queries) CreateBillingOrder(ctx context.Context, arg CreateBillingOrder
 	return i, err
 }
 
+const expireBillingOrder = `-- name: ExpireBillingOrder :one
+UPDATE billing_order
+SET status = 'expired'
+WHERE id = $1 AND status = 'pending' AND expires_at <= $2
+RETURNING id, workspace_id, kind, plan_key, interval, seats, amount, vat_amount, currency, status, provider, provider_ref, transfer_code, idempotency_key, buyer, period_start, period_end, einvoice_ref, created_by, confirmed_by, paid_at, expires_at, created_at
+`
+
+type ExpireBillingOrderParams struct {
+	ID        pgtype.UUID        `json:"id"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+}
+
+// Moves a pending order whose expires_at is at or before $2 to expired. It
+// returns no row when the order is not pending or has not expired, so a second
+// run, or a payment that got there first, changes nothing.
+func (q *Queries) ExpireBillingOrder(ctx context.Context, arg ExpireBillingOrderParams) (BillingOrder, error) {
+	row := q.db.QueryRow(ctx, expireBillingOrder, arg.ID, arg.ExpiresAt)
+	var i BillingOrder
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Kind,
+		&i.PlanKey,
+		&i.Interval,
+		&i.Seats,
+		&i.Amount,
+		&i.VatAmount,
+		&i.Currency,
+		&i.Status,
+		&i.Provider,
+		&i.ProviderRef,
+		&i.TransferCode,
+		&i.IdempotencyKey,
+		&i.Buyer,
+		&i.PeriodStart,
+		&i.PeriodEnd,
+		&i.EinvoiceRef,
+		&i.CreatedBy,
+		&i.ConfirmedBy,
+		&i.PaidAt,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getBillingOrder = `-- name: GetBillingOrder :one
 SELECT id, workspace_id, kind, plan_key, interval, seats, amount, vat_amount, currency, status, provider, provider_ref, transfer_code, idempotency_key, buyer, period_start, period_end, einvoice_ref, created_by, confirmed_by, paid_at, expires_at, created_at FROM billing_order
 WHERE id = $1
@@ -615,6 +661,64 @@ func (q *Queries) ListBillingOrdersByWorkspace(ctx context.Context, arg ListBill
 			&i.BillingOrder.ExpiresAt,
 			&i.BillingOrder.CreatedAt,
 			&i.WorkspaceName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listExpiredPendingBillingOrders = `-- name: ListExpiredPendingBillingOrders :many
+SELECT id, workspace_id, kind, plan_key, interval, seats, amount, vat_amount, currency, status, provider, provider_ref, transfer_code, idempotency_key, buyer, period_start, period_end, einvoice_ref, created_by, confirmed_by, paid_at, expires_at, created_at FROM billing_order
+WHERE status = 'pending' AND expires_at <= $1
+ORDER BY expires_at ASC, id ASC
+LIMIT $2
+`
+
+type ListExpiredPendingBillingOrdersParams struct {
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	Limit     int32              `json:"limit"`
+}
+
+// Pending orders whose expires_at is at or before $1, the longest-expired first,
+// for the order expiry job.
+func (q *Queries) ListExpiredPendingBillingOrders(ctx context.Context, arg ListExpiredPendingBillingOrdersParams) ([]BillingOrder, error) {
+	rows, err := q.db.Query(ctx, listExpiredPendingBillingOrders, arg.ExpiresAt, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []BillingOrder{}
+	for rows.Next() {
+		var i BillingOrder
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Kind,
+			&i.PlanKey,
+			&i.Interval,
+			&i.Seats,
+			&i.Amount,
+			&i.VatAmount,
+			&i.Currency,
+			&i.Status,
+			&i.Provider,
+			&i.ProviderRef,
+			&i.TransferCode,
+			&i.IdempotencyKey,
+			&i.Buyer,
+			&i.PeriodStart,
+			&i.PeriodEnd,
+			&i.EinvoiceRef,
+			&i.CreatedBy,
+			&i.ConfirmedBy,
+			&i.PaidAt,
+			&i.ExpiresAt,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

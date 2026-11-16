@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/integrations/channel/engine"
+	"github.com/multica-ai/multica/server/internal/integrations/connectaudit"
 	"github.com/multica-ai/multica/server/internal/util/secretbox"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -318,6 +319,12 @@ func (s *InstallationService) Upsert(ctx context.Context, p InstallationParams) 
 			return Installation{}, s.botOwnerConflictErr(ctx, p.WorkspaceID, p.BotID)
 		}
 		return Installation{}, fmt.Errorf("wecom: upsert installation: %w", err)
+	}
+	// The audit row commits with the installation; a failed write rolls it back.
+	if err := connectaudit.Record(ctx, qtx.Queries, connectaudit.Connected{
+		Provider: "wecom", WorkspaceID: row.WorkspaceID, InstallationID: row.ID, InstallerUserID: row.InstallerUserID,
+	}); err != nil {
+		return Installation{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return Installation{}, fmt.Errorf("wecom: commit install tx: %w", err)

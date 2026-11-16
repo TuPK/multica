@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/logger"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/dbid"
@@ -206,7 +207,7 @@ func (h *Handler) UpdateAgentEnv(w http.ResponseWriter, r *http.Request) {
 	}
 
 	existing := unmarshalCustomEnv(agent)
-	merged, audit := mergeAgentEnv(existing, req.CustomEnv)
+	merged, envChange := mergeAgentEnv(existing, req.CustomEnv)
 	if len(merged) > 0 && h.rejectQoderOverrides(w, r, agent, qoderOverrides{customEnv: len(merged)}) {
 		return
 	}
@@ -241,10 +242,10 @@ func (h *Handler) UpdateAgentEnv(w http.ResponseWriter, r *http.Request) {
 	auditDetails := map[string]any{
 		"agent_id":       uuidToString(agent.ID),
 		"agent_name":     agent.Name,
-		"added_keys":     audit.added,
-		"removed_keys":   audit.removed,
-		"changed_keys":   audit.changed,
-		"preserved_keys": audit.preserved,
+		"added_keys":     envChange.added,
+		"removed_keys":   envChange.removed,
+		"changed_keys":   envChange.changed,
+		"preserved_keys": envChange.preserved,
 	}
 	details, _ := json.Marshal(auditDetails)
 	if _, err := qtx.CreateActivity(r.Context(), db.CreateActivityParams{
@@ -257,6 +258,19 @@ func (h *Handler) UpdateAgentEnv(w http.ResponseWriter, r *http.Request) {
 		Details:     details,
 	}); err != nil {
 		slog.Error("agent_env_updated audit write failed; rolling back update",
+			append(logger.RequestAttrs(r), "error", err, "agent_id", uuidToString(agent.ID))...)
+		writeError(w, http.StatusInternalServerError, "audit log write failed; env update rolled back")
+		return
+	}
+
+	// Variable names only, never a value. The keys are named without "key" or
+	// "env" because the audit filter hides the value of any key that contains one.
+	if err := h.recordAuditTx(r, qtx, agentEntry(audit.ActionAgentEnvUpdated, updated, map[string]any{
+		"added":   envChange.added,
+		"removed": envChange.removed,
+		"changed": envChange.changed,
+	})); err != nil {
+		slog.Error("agent_env_updated audit event write failed; rolling back update",
 			append(logger.RequestAttrs(r), "error", err, "agent_id", uuidToString(agent.ID))...)
 		writeError(w, http.StatusInternalServerError, "audit log write failed; env update rolled back")
 		return

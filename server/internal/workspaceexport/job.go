@@ -159,7 +159,8 @@ func truncate(s string) string {
 	return s[:maxErrorChars]
 }
 
-// NewRunner returns the job over the database and the object store.
-func NewRunner(q *db.Queries, objects Objects) *Runner {
-	return &Runner{Store: NewDBStore(q), Source: NewDBSource(q), Objects: objects, Now: time.Now}
+// NewRunner returns the job over the database and the object store. tx starts
+// the transactions of the store.
+func NewRunner(q *db.Queries, tx Beginner, objects Objects) *Runner {
+	return &Runner{Store: NewDBStore(q, tx), Source: NewDBSource(q), Objects: objects, Now: time.Now}
 }

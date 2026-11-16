@@ -297,8 +297,7 @@ func (h *Handler) RevokeWecomInstallation(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusInternalServerError, "failed to load installation")
 		return
 	}
-	if err := svc.Revoke(r.Context(), instUUID); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to revoke installation")
+	if !h.revokeChannelInstallation(w, r, "wecom", wsUUID, instUUID) {
 		return
 	}
 	h.publish(protocol.EventWecomInstallationRevoked, uuidToString(wsUUID), "user", userID, map[string]any{

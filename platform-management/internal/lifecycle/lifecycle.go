@@ -115,6 +115,10 @@ type Tx interface {
 	// reason, and found == false when it has no row, which is active. It locks
 	// the row.
 	WorkspaceState(ctx context.Context, workspaceID string) (status workspacestate.Status, reason string, found bool, err error)
+	// ExpireOrder moves the order to expired when it is still pending and its
+	// expires_at is at or before now. It returns expired == false, and writes
+	// nothing, for an order that is not pending or has not expired.
+	ExpireOrder(ctx context.Context, id string, now time.Time) (order billing.Order, expired bool, err error)
 
 	workspacestatus.Tx
 }
@@ -128,6 +132,9 @@ type Store interface {
 	// the end of the period and whose current_period_end is after now and not
 	// after until.
 	Reminders(ctx context.Context, now, until time.Time, limit int) ([]subscription.Subscription, error)
+	// DueOrders returns up to limit pending orders whose expires_at is at or
+	// before now, the longest-expired first.
+	DueOrders(ctx context.Context, now time.Time, limit int) ([]billing.Order, error)
 	// InTx runs fn in one transaction: it commits when fn returns nil and rolls
 	// back otherwise.
 	InTx(ctx context.Context, fn func(Tx) error) error

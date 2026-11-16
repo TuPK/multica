@@ -193,8 +193,7 @@ func (h *Handler) RevokeTelegramInstallation(w http.ResponseWriter, r *http.Requ
 		writeError(w, http.StatusInternalServerError, "failed to load installation")
 		return
 	}
-	if err := h.TelegramInstall.Revoke(r.Context(), instUUID); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to revoke installation")
+	if !h.revokeChannelInstallation(w, r, "telegram", wsUUID, instUUID) {
 		return
 	}
 	h.publish(protocol.EventTelegramInstallationRevoked, uuidToString(wsUUID), "user", userID, map[string]any{

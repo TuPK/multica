@@ -328,6 +328,29 @@ func decodeScopes(raw []byte) []string {
 	return scopes
 }
 
+// PluginChange describes a change to an installation for a PluginTxHook.
+type PluginChange struct {
+	// Installation is the row after the change. For an uninstall it is the row
+	// that is being removed.
+	Installation db.PluginInstallation
+	// Previous is the row before the change. It is nil for a first install.
+	Previous *db.PluginInstallation
+}
+
+// PluginTxHook runs inside the transaction of an installation change, after the
+// change and before the commit. queries is bound to that transaction. An error
+// rolls the whole change back, which is how the caller records an audit row that
+// commits or fails with the change. A nil hook is refused: every plugin change
+// goes through one.
+type PluginTxHook func(ctx context.Context, queries *db.Queries, change PluginChange) error
+
+func requirePluginTxHook(hook PluginTxHook) error {
+	if hook == nil {
+		return &PluginError{Kind: PluginErrorUnavailable, Message: "plugin change has no transaction hook", Err: errors.New("nil PluginTxHook")}
+	}
+	return nil
+}
+
 // InstallPlugin is the second half of the install. grantedScopes must match the
 // manifest exactly: partial consent would leave the plugin silently broken, and
 // consenting to a scope the manifest does not request would grant access the
@@ -337,7 +360,10 @@ func decodeScopes(raw []byte) []string {
 // another version and does not touch this row — upgrading is a second, explicit
 // consent, which is what makes "approved the manifest, ran the code" a true
 // statement rather than an aspiration.
-func (s *PluginService) InstallPlugin(ctx context.Context, workspaceID, userID pgtype.UUID, versionID string, grantedScopes []string) (db.PluginInstallation, error) {
+func (s *PluginService) InstallPlugin(ctx context.Context, workspaceID, userID pgtype.UUID, versionID string, grantedScopes []string, hook PluginTxHook) (db.PluginInstallation, error) {
+	if err := requirePluginTxHook(hook); err != nil {
+		return db.PluginInstallation{}, err
+	}
 	version, err := s.VersionForWorkspace(ctx, workspaceID, versionID)
 	if err != nil {
 		return db.PluginInstallation{}, err
@@ -405,6 +431,9 @@ func (s *PluginService) InstallPlugin(ctx context.Context, workspaceID, userID p
 		if scheduleErr := s.reconcilePluginHookSchedules(ctx, queries, installation, manifest); scheduleErr != nil {
 			return db.PluginInstallation{}, scheduleErr
 		}
+		if hookErr := hook(ctx, queries, PluginChange{Installation: installation}); hookErr != nil {
+			return db.PluginInstallation{}, hookErr
+		}
 		if commitErr := tx.Commit(ctx); commitErr != nil {
 			return db.PluginInstallation{}, &PluginError{Kind: PluginErrorUnavailable, Message: "commit install", Err: commitErr}
 		}
@@ -462,6 +491,9 @@ func (s *PluginService) InstallPlugin(ctx context.Context, workspaceID, userID p
 		return db.PluginInstallation{}, err
 	}
 	if err := s.reconcilePluginHookSchedules(ctx, queries, updated, manifest); err != nil {
+		return db.PluginInstallation{}, err
+	}
+	if err := hook(ctx, queries, PluginChange{Installation: updated, Previous: &existing}); err != nil {
 		return db.PluginInstallation{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -538,7 +570,10 @@ func ParseInstallationManifest(installation db.PluginInstallation) (plugincontra
 // SetConfig validates values against the stored manifest schema and splits them
 // by destination: plain values go on the installation row, secrets go to the
 // encrypted table. A secret value never lands in `config`.
-func (s *PluginService) SetConfig(ctx context.Context, installation db.PluginInstallation, values map[string]any) (db.PluginInstallation, error) {
+func (s *PluginService) SetConfig(ctx context.Context, installation db.PluginInstallation, values map[string]any, hook PluginTxHook) (db.PluginInstallation, error) {
+	if err := requirePluginTxHook(hook); err != nil {
+		return db.PluginInstallation{}, err
+	}
 	manifest, err := ParseInstallationManifest(installation)
 	if err != nil {
 		return db.PluginInstallation{}, &PluginError{Kind: PluginErrorInvalid, Message: "stored plugin manifest is unreadable", Err: err}
@@ -624,6 +659,9 @@ func (s *PluginService) SetConfig(ctx context.Context, installation db.PluginIns
 	if err != nil {
 		return db.PluginInstallation{}, &PluginError{Kind: PluginErrorUnavailable, Message: "store plugin config", Err: err}
 	}
+	if err := hook(ctx, queries, PluginChange{Installation: updated, Previous: &installation}); err != nil {
+		return db.PluginInstallation{}, err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return db.PluginInstallation{}, &PluginError{Kind: PluginErrorUnavailable, Message: "commit configure", Err: err}
 	}
@@ -696,7 +734,10 @@ func (s *PluginService) ConfiguredSecretKeys(ctx context.Context, installationID
 
 // SetEnabled toggles an installation. Disabling hides every contribution
 // immediately but keeps storage and secrets, so re-enabling is not a reinstall.
-func (s *PluginService) SetEnabled(ctx context.Context, installation db.PluginInstallation, enabled bool) (db.PluginInstallation, error) {
+func (s *PluginService) SetEnabled(ctx context.Context, installation db.PluginInstallation, enabled bool, hook PluginTxHook) (db.PluginInstallation, error) {
+	if err := requirePluginTxHook(hook); err != nil {
+		return db.PluginInstallation{}, err
+	}
 	if installation.Enabled == enabled {
 		return installation, nil
 	}
@@ -717,6 +758,9 @@ func (s *PluginService) SetEnabled(ctx context.Context, installation db.PluginIn
 	if err := s.setPluginHookSchedulesEnabled(ctx, queries, installation.ID, enabled); err != nil {
 		return db.PluginInstallation{}, err
 	}
+	if err := hook(ctx, queries, PluginChange{Installation: updated, Previous: &installation}); err != nil {
+		return db.PluginInstallation{}, err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return db.PluginInstallation{}, &PluginError{Kind: PluginErrorUnavailable, Message: "commit plugin state update", Err: err}
 	}
@@ -727,7 +771,10 @@ func (s *PluginService) SetEnabled(ctx context.Context, installation db.PluginIn
 // There are no foreign keys or cascades by repository policy, so the deletes
 // share one transaction: a partial uninstall would strand rows nothing can
 // reach or clean up later.
-func (s *PluginService) Uninstall(ctx context.Context, installation db.PluginInstallation) error {
+func (s *PluginService) Uninstall(ctx context.Context, installation db.PluginInstallation, hook PluginTxHook) error {
+	if err := requirePluginTxHook(hook); err != nil {
+		return err
+	}
 	tx, err := s.TxStarter.Begin(ctx)
 	if err != nil {
 		return &PluginError{Kind: PluginErrorUnavailable, Message: "begin uninstall", Err: err}
@@ -758,6 +805,9 @@ func (s *PluginService) Uninstall(ctx context.Context, installation db.PluginIns
 	}
 	if err := queries.DeletePluginInstallation(ctx, installation.ID); err != nil {
 		return &PluginError{Kind: PluginErrorUnavailable, Message: "delete plugin installation", Err: err}
+	}
+	if err := hook(ctx, queries, PluginChange{Installation: installation, Previous: &installation}); err != nil {
+		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return &PluginError{Kind: PluginErrorUnavailable, Message: "commit uninstall", Err: err}

@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/platform-management/internal/billing"
 	"github.com/multica-ai/multica/platform-management/internal/db"
 	"github.com/multica-ai/multica/platform-management/internal/plan"
 	"github.com/multica-ai/multica/platform-management/internal/subscription"
@@ -223,4 +224,45 @@ func (t *pgxTx) WorkspaceState(ctx context.Context, workspaceID string) (workspa
 		return "", "", false, err
 	}
 	return workspacestate.Status(row.Status), row.Reason, true, nil
+}
+
+// DueOrders implements Store.
+func (s *PgxStore) DueOrders(ctx context.Context, now time.Time, limit int) ([]billing.Order, error) {
+	rows, err := s.q.ListExpiredPendingBillingOrders(ctx, db.ListExpiredPendingBillingOrdersParams{
+		ExpiresAt: timestamptz(now), Limit: int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]billing.Order, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, orderFromRow(r))
+	}
+	return out, nil
+}
+
+// ExpireOrder implements Tx.
+func (t *pgxTx) ExpireOrder(ctx context.Context, id string, now time.Time) (billing.Order, bool, error) {
+	oid, err := parseUUID(id)
+	if err != nil {
+		return billing.Order{}, false, err
+	}
+	row, err := t.q.ExpireBillingOrder(ctx, db.ExpireBillingOrderParams{ID: oid, ExpiresAt: timestamptz(now)})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return billing.Order{}, false, nil
+	}
+	if err != nil {
+		return billing.Order{}, false, err
+	}
+	return orderFromRow(row), true, nil
+}
+
+// orderFromRow reads the fields the expiry step and its audit row use.
+func orderFromRow(r db.BillingOrder) billing.Order {
+	return billing.Order{
+		ID: r.ID.String(), WorkspaceID: r.WorkspaceID.String(), Kind: billing.Kind(r.Kind), PlanKey: r.PlanKey,
+		Interval: r.Interval, Seats: int(r.Seats), Amount: r.Amount, VATAmount: r.VatAmount, Currency: r.Currency,
+		Status: billing.Status(r.Status), TransferCode: r.TransferCode, ExpiresAt: r.ExpiresAt.Time.UTC(),
+		CreatedAt: r.CreatedAt.Time.UTC(),
+	}
 }

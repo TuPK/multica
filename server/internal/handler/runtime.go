@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/agentconfig"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/service"
@@ -574,7 +575,7 @@ func (h *Handler) UpdateAgentRuntime(w http.ResponseWriter, r *http.Request) {
 	changed := false
 
 	if req.Visibility != nil || req.SharedWith != nil {
-		updated, plan, didChange, err := h.updateRuntimeAccessIfNoDependencies(r.Context(), rt, member, req)
+		updated, plan, didChange, err := h.updateRuntimeAccessIfNoDependencies(r, rt, member, req)
 		if err != nil {
 			if writeRuntimeRevocationBusy(w, err) {
 				return
@@ -770,7 +771,8 @@ func (p runtimeWorkspaceAccessRevocationPlan) hasDependencies() bool {
 // A non-empty plan is deliberately returned without committing. The caller
 // turns it into the same confirmation response used by the disruptive path;
 // the confirmed endpoint will take a fresh locked snapshot before revoking.
-func (h *Handler) updateRuntimeAccessIfNoDependencies(ctx context.Context, rt db.AgentRuntime, member db.Member, req UpdateAgentRuntimeRequest) (db.AgentRuntime, runtimeWorkspaceAccessRevocationPlan, bool, error) {
+func (h *Handler) updateRuntimeAccessIfNoDependencies(r *http.Request, rt db.AgentRuntime, member db.Member, req UpdateAgentRuntimeRequest) (db.AgentRuntime, runtimeWorkspaceAccessRevocationPlan, bool, error) {
+	ctx := r.Context()
 	tx, err := h.TxStarter.Begin(ctx)
 	if err != nil {
 		return db.AgentRuntime{}, runtimeWorkspaceAccessRevocationPlan{}, false, fmt.Errorf("begin transaction: %w", err)
@@ -830,6 +832,12 @@ func (h *Handler) updateRuntimeAccessIfNoDependencies(ctx context.Context, rt db
 	})
 	if err != nil {
 		return db.AgentRuntime{}, runtimeWorkspaceAccessRevocationPlan{}, false, fmt.Errorf("update runtime visibility: %w", err)
+	}
+	if err := h.recordAuditTx(r, qtx, runtimeEntry(audit.ActionRuntimeVisibilityChanged, lockedRuntime, map[string]any{
+		"visibility":        map[string]any{"from": lockedRuntime.Visibility, "to": updated.Visibility},
+		"shared_with_count": map[string]any{"from": len(lockedRuntime.SharedWith), "to": len(updated.SharedWith)},
+	})); err != nil {
+		return db.AgentRuntime{}, runtimeWorkspaceAccessRevocationPlan{}, false, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return db.AgentRuntime{}, runtimeWorkspaceAccessRevocationPlan{}, false, fmt.Errorf("commit transaction: %w", err)
@@ -1453,6 +1461,11 @@ func (h *Handler) DeleteAgentRuntime(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to delete runtime")
 		return
 	}
+	if err := h.recordAuditTx(r, qtx, runtimeDeletedEntry(rt, teardown)); err != nil {
+		slog.Error("runtime delete audit failed", "runtime_id", uuidToString(rt.ID), "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to delete runtime")
+		return
+	}
 	if err := tx.Commit(r.Context()); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete runtime")
 		return
@@ -1667,6 +1680,11 @@ func (h *Handler) UnbindAgentsAndDeleteRuntime(w http.ResponseWriter, r *http.Re
 		writeError(w, http.StatusInternalServerError, "failed to delete runtime")
 		return
 	}
+	if err := h.recordAuditTx(r, qtx, runtimeDeletedEntry(rt, teardown)); err != nil {
+		slog.Error("runtime delete audit failed", "runtime_id", uuidToString(rt.ID), "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to delete runtime")
+		return
+	}
 
 	if err := tx.Commit(r.Context()); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to commit transaction")
@@ -1751,4 +1769,25 @@ func taskSetMatches(current []db.AgentTaskQueue, expected map[string]struct{}) b
 		}
 	}
 	return true
+}
+
+// runtimeEntry is the audit entry of a change to a runtime. It names the runtime
+// and the fields that changed; metadata and device details stay out.
+func runtimeEntry(action string, rt db.AgentRuntime, detail map[string]any) audit.Entry {
+	return audit.Entry{
+		WorkspaceID: uuidToString(rt.WorkspaceID),
+		Action:      action,
+		TargetType:  "runtime",
+		TargetID:    uuidToString(rt.ID),
+		TargetLabel: rt.Name,
+		Detail:      detail,
+	}
+}
+
+// runtimeDeletedEntry is runtime.deleted with what the teardown released.
+func runtimeDeletedEntry(rt db.AgentRuntime, teardown service.RuntimeTeardownResult) audit.Entry {
+	return runtimeEntry(audit.ActionRuntimeDeleted, rt, map[string]any{
+		"agents_unbound":  len(teardown.UnboundAgents),
+		"tasks_cancelled": len(teardown.CancelledTasks),
+	})
 }
