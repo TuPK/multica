@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/multica-ai/multica/server/internal/accountprovision"
 	"github.com/multica-ai/multica/server/internal/analytics"
 	"github.com/multica-ai/multica/server/internal/auth"
 	"github.com/multica-ai/multica/server/internal/daemonws"
@@ -26,6 +27,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/logger"
 	"github.com/multica-ai/multica/server/internal/maintenance"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
+	"github.com/multica-ai/multica/server/internal/planlimit"
 	"github.com/multica-ai/multica/server/internal/profiling"
 	"github.com/multica-ai/multica/server/internal/realtime"
 	"github.com/multica-ai/multica/server/internal/scheduler"
@@ -1037,6 +1039,21 @@ func main() {
 	// project its own knowledge base.
 	if err := schedulerMgr.Register(scheduler.KnowledgeAutoEnableJob(h.Knowledge)); err != nil {
 		slog.Error("scheduler: register knowledge auto-enable job", "error", err)
+	}
+	// Account requests from platform management become a user and workspace.
+	// A nil *KnowledgeService must stay a nil interface for the job.
+	accountDeps := accountprovision.Deps{
+		Pool:                pool,
+		Queries:             queries,
+		BlockedEmailDomains: planlimit.ParseBlockedDomains(os.Getenv(planlimit.BlockedDomainsEnv)),
+		Analytics:           h.Analytics,
+		Metrics:             h.Metrics,
+	}
+	if h.Knowledge != nil {
+		accountDeps.Knowledge = h.Knowledge
+	}
+	if err := schedulerMgr.Register(accountprovision.Job(accountprovision.New(accountDeps))); err != nil {
+		slog.Error("scheduler: register account provisioning job", "error", err)
 	}
 	go func() {
 		_ = schedulerMgr.Run(sweepCtx)
