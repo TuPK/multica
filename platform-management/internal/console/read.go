@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/multica-ai/multica/platform-management/internal/usage"
 	"github.com/multica-ai/multica/platform-management/workspacestate"
 )
 
@@ -45,12 +46,14 @@ type tenantJSON struct {
 	MemberCount    int64  `json:"member_count"`
 	CreatedAt      string `json:"created_at"`
 	LastActivityAt string `json:"last_activity_at"`
+	// The newest daily usage row. A workspace with none has a null usage_day and zeros.
+	usage.Snapshot
 }
 
 func toTenantJSON(t TenantRow) tenantJSON {
 	return tenantJSON{
 		ID: t.ID, Name: t.Name, Slug: t.Slug, Status: t.Status, MemberCount: t.MemberCount,
-		CreatedAt: ts(t.CreatedAt), LastActivityAt: ts(t.LastActivityAt),
+		CreatedAt: ts(t.CreatedAt), LastActivityAt: ts(t.LastActivityAt), Snapshot: t.Usage,
 	}
 }
 
@@ -84,6 +87,8 @@ type tenantDetailJSON struct {
 	Owner      *ownerJSON `json:"owner"`
 	// RecentOrders are the workspace's newest billing orders, newest first.
 	RecentOrders []orderJSON `json:"recent_orders"`
+	// UsageCurrent counts the workspace now.
+	UsageCurrent usage.Current `json:"usage_current"`
 }
 
 func (h *Handler) listTenants(w http.ResponseWriter, r *http.Request) {
@@ -133,7 +138,7 @@ func (h *Handler) getTenant(w http.ResponseWriter, r *http.Request) {
 	}
 	out := tenantDetailJSON{
 		tenantJSON: toTenantJSON(d.TenantRow), State: toStateJSON(d), NotesCount: d.NotesCount,
-		RecentOrders: toOrdersJSON(orders),
+		RecentOrders: toOrdersJSON(orders), UsageCurrent: d.Current,
 	}
 	if d.OwnerID != "" {
 		out.Owner = &ownerJSON{ID: d.OwnerID, Email: d.OwnerEmail}
@@ -388,7 +393,11 @@ func (h *Handler) overview(w http.ResponseWriter, r *http.Request) {
 	for key, n := range o.ByPlan {
 		byPlan[key] = n
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	body := map[string]any{
 		"workspaces_by_status": byStatus, "signups_7d": o.Signups, "by_plan": byPlan, "pending_orders": o.PendingOrders,
-	})
+	}
+	for k, v := range o.Usage.Map() {
+		body[k] = v
+	}
+	writeJSON(w, http.StatusOK, body)
 }

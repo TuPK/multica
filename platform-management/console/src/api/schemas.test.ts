@@ -130,6 +130,84 @@ describe("tenants", () => {
   });
 });
 
+describe("tenant usage", () => {
+  const usage = {
+    usage_day: "2026-11-14",
+    usage_members: 3,
+    usage_agents: 2,
+    usage_runtimes: 1,
+    usage_issues_total: 40,
+    usage_issues_created: 5,
+    usage_tasks_run: 9,
+    usage_storage_bytes: 2048,
+  };
+  const noRow = {
+    usage_day: null,
+    usage_members: 0,
+    usage_agents: 0,
+    usage_runtimes: 0,
+    usage_issues_total: 0,
+    usage_issues_created: 0,
+    usage_tasks_run: 0,
+    usage_storage_bytes: 0,
+  };
+
+  it("parses the usage of a workspace that has a row", () => {
+    expect(parseTenantPage({ tenants: [{ ...tenant, ...usage }] }).tenants[0]).toEqual({ ...tenant, ...usage });
+  });
+
+  it("accepts a workspace with no row: a null day and zeros", () => {
+    const parsed = parseTenantPage({ tenants: [{ ...tenant, ...noRow }] }).tenants[0];
+    expect(parsed?.usage_day).toBeNull();
+    expect(parsed?.usage_storage_bytes).toBe(0);
+  });
+
+  it("accepts a tenant that carries no usage fields at all", () => {
+    const parsed = parseTenantPage({ tenants: [tenant] }).tenants[0];
+    expect(parsed).toEqual(tenant);
+    expect(parsed?.usage_day).toBeUndefined();
+  });
+
+  it("refuses a page whose usage fields are malformed", () => {
+    const empty = { tenants: [], next_cursor: null };
+    for (const bad of [{ usage_members: "many" }, { usage_storage_bytes: null }, { usage_day: 20261114 }]) {
+      expect(parseTenantPage({ tenants: [{ ...tenant, ...bad }] })).toEqual(empty);
+    }
+  });
+
+  it("parses the current counts of a detail and leaves a missing block out", () => {
+    const current = { members: 4, agents: 2, runtimes: 1, issues_total: 41, storage_bytes: 4096 };
+    expect(parseTenantDetail({ ...tenant, ...usage, usage_current: current })?.usage_current).toEqual(current);
+    expect(parseTenantDetail({ ...tenant, usage_current: { members: 4 } })?.usage_current).toEqual({
+      members: 4,
+      agents: 0,
+      runtimes: 0,
+      issues_total: 0,
+      storage_bytes: 0,
+    });
+    expect(parseTenantDetail(tenant)?.usage_current).toBeUndefined();
+    expect(parseTenantDetail({ ...tenant, usage_current: { members: "x" } })).toBeNull();
+  });
+
+  it("parses the usage totals of the overview and leaves them out when absent", () => {
+    const totals = {
+      usage_day: "2026-11-14",
+      usage_workspaces: 2,
+      usage_members: 7,
+      usage_agents: 3,
+      usage_runtimes: 2,
+      usage_issues_total: 90,
+      usage_issues_created: 8,
+      usage_tasks_run: 11,
+      usage_storage_bytes: 9000,
+    };
+    expect(parseOverview({ workspaces_by_status: {}, signups_7d: 0, ...totals })).toMatchObject(totals);
+    const bare = parseOverview({ workspaces_by_status: {}, signups_7d: 0 });
+    expect(bare?.usage_day).toBeUndefined();
+    expect(parseOverview({ workspaces_by_status: {}, usage_tasks_run: "x" })).toBeNull();
+  });
+});
+
 describe("users", () => {
   it("parses a page", () => {
     expect(parseUserPage({ users: [user], next_cursor: null })).toEqual({ users: [user], next_cursor: null });

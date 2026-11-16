@@ -2005,6 +2005,19 @@ type PlatformStaff struct {
 	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
 }
 
+type PlatformUsageDaily struct {
+	WorkspaceID   pgtype.UUID        `json:"workspace_id"`
+	Day           pgtype.Date        `json:"day"`
+	Members       int32              `json:"members"`
+	Agents        int32              `json:"agents"`
+	Runtimes      int32              `json:"runtimes"`
+	IssuesTotal   int32              `json:"issues_total"`
+	IssuesCreated int32              `json:"issues_created"`
+	TasksRun      int32              `json:"tasks_run"`
+	StorageBytes  int64              `json:"storage_bytes"`
+	ComputedAt    pgtype.Timestamptz `json:"computed_at"`
+}
+
 type PlatformWorkspace struct {
 	WorkspaceID         pgtype.UUID        `json:"workspace_id"`
 	Status              string             `json:"status"`
@@ -2850,6 +2863,20 @@ type Workspace struct {
 	QuietEnd              pgtype.Time        `json:"quiet_end"`
 	QuietTimezone         string             `json:"quiet_timezone"`
 	DigestMode            string             `json:"digest_mode"`
+}
+
+type WorkspaceExport struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	RequestedBy pgtype.UUID        `json:"requested_by"`
+	Status      string             `json:"status"`
+	StorageKey  string             `json:"storage_key"`
+	SizeBytes   int64              `json:"size_bytes"`
+	Error       string             `json:"error"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	StartedAt   pgtype.Timestamptz `json:"started_at"`
+	FinishedAt  pgtype.Timestamptz `json:"finished_at"`
+	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
 }
 
 type WorkspaceInvitation struct {

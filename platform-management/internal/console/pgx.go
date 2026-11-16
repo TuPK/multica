@@ -13,6 +13,7 @@ import (
 	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/platform-management/internal/billing"
 	"github.com/multica-ai/multica/platform-management/internal/db"
+	"github.com/multica-ai/multica/platform-management/internal/usage"
 )
 
 // Beginner starts a transaction. *pgxpool.Pool is one.
@@ -41,10 +42,15 @@ func (r *PgxRunner) InTx(ctx context.Context, fn func(Tx) error) error {
 }
 
 // PgxReader is the Reader over a Postgres pool.
-type PgxReader struct{ q *db.Queries }
+type PgxReader struct {
+	q     *db.Queries
+	usage *usage.Reader
+}
 
 // NewPgxReader returns a Reader over pool.
-func NewPgxReader(pool db.DBTX) *PgxReader { return &PgxReader{q: db.New(pool)} }
+func NewPgxReader(pool db.DBTX) *PgxReader {
+	return &PgxReader{q: db.New(pool), usage: usage.NewReader(pool)}
+}
 
 func parseUUID(s string) (pgtype.UUID, error) {
 	var u pgtype.UUID
@@ -105,6 +111,18 @@ func (r *PgxReader) SearchTenants(ctx context.Context, q TenantSearch) ([]Tenant
 			MemberCount: row.MemberCount, CreatedAt: row.CreatedAt.Time, LastActivityAt: row.LastActivityAt.Time,
 		}
 	}
+	// A workspace with no usage row keeps the zero Snapshot.
+	ids := make([]string, len(out))
+	for i, t := range out {
+		ids[i] = t.ID
+	}
+	latest, err := r.usage.Latest(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range out {
+		out[i].Usage = latest[out[i].ID]
+	}
 	return out, nil
 }
 
@@ -120,11 +138,21 @@ func (r *PgxReader) GetTenant(ctx context.Context, id string) (TenantDetail, boo
 	if err != nil {
 		return TenantDetail{}, false, err
 	}
+	latest, err := r.usage.Latest(ctx, []string{uuidText(row.ID)})
+	if err != nil {
+		return TenantDetail{}, false, err
+	}
+	current, err := r.usage.Current(ctx, uuidText(row.ID))
+	if err != nil {
+		return TenantDetail{}, false, err
+	}
 	return TenantDetail{
 		TenantRow: TenantRow{
 			ID: uuidText(row.ID), Name: row.Name, Slug: row.Slug, Status: row.Status,
 			MemberCount: row.MemberCount, CreatedAt: row.CreatedAt.Time, LastActivityAt: row.LastActivityAt.Time,
+			Usage: latest[uuidText(row.ID)],
 		},
+		Current:             current,
 		StateReason:         row.StateReason.String,
 		StateChangedBy:      uuidText(row.StateChangedBy),
 		StateChangedAt:      timePtr(row.StateChangedAt),
@@ -299,8 +327,12 @@ func (r *PgxReader) Overview(ctx context.Context, signupsSince time.Time) (Overv
 	if err != nil {
 		return Overview{}, err
 	}
+	totals, err := r.usage.Totals(ctx, time.Now())
+	if err != nil {
+		return Overview{}, err
+	}
 	o := Overview{
-		PendingOrders:   pending,
+		PendingOrders: pending, Usage: totals,
 		WorkspacesTotal: total, NonActive: make(map[string]int64, len(rows)), Signups: signups,
 		ByPlan: make(map[string]int64, len(plans)),
 	}

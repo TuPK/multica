@@ -78,6 +78,32 @@ export type Me = z.output<typeof MeSchema>;
 
 // Tenants
 
+// The newest daily usage row of a workspace. A workspace with no row has a null
+// day and zeros. The fields are optional, not defaulted, so a response from a
+// server that does not send them parses to the same object as before and the
+// screens treat a missing or null day as "no usage".
+const usageNumber = z.number().optional();
+const usageFields = {
+  usage_day: z.string().nullable().optional(),
+  usage_members: usageNumber,
+  usage_agents: usageNumber,
+  usage_runtimes: usageNumber,
+  usage_issues_total: usageNumber,
+  usage_issues_created: usageNumber,
+  usage_tasks_run: usageNumber,
+  usage_storage_bytes: usageNumber,
+};
+
+// Counts of one workspace now, from the detail page's bounded query.
+export const UsageCurrentSchema = z.object({
+  members: count,
+  agents: count,
+  runtimes: count,
+  issues_total: count,
+  storage_bytes: count,
+});
+export type UsageCurrent = z.output<typeof UsageCurrentSchema>;
+
 export const TenantSchema = z.object({
   id: z.string(),
   name: text,
@@ -86,6 +112,7 @@ export const TenantSchema = z.object({
   member_count: count,
   created_at: text,
   last_activity_at: text,
+  ...usageFields,
 });
 export type Tenant = z.output<typeof TenantSchema>;
 
@@ -213,6 +240,7 @@ export const TenantDetailSchema = TenantSchema.extend({
   owner: z.object({ id: z.string(), email: text }).nullable().default(null),
   subscription: SubscriptionSchema.nullable().default(null),
   recent_orders: z.array(OrderSchema).default([]),
+  usage_current: UsageCurrentSchema.optional(),
 });
 export type TenantDetail = z.output<typeof TenantDetailSchema>;
 
@@ -340,6 +368,16 @@ export const OverviewSchema = z.object({
   signups_7d: count,
   pending_orders: z.number().optional(),
   by_plan: z.record(z.string(), z.number()).optional(),
+  // Totals of the newest usage row of each workspace that has one.
+  usage_day: z.string().nullable().optional(),
+  usage_workspaces: z.number().optional(),
+  usage_members: z.number().optional(),
+  usage_agents: z.number().optional(),
+  usage_runtimes: z.number().optional(),
+  usage_issues_total: z.number().optional(),
+  usage_issues_created: z.number().optional(),
+  usage_tasks_run: z.number().optional(),
+  usage_storage_bytes: z.number().optional(),
 });
 export type Overview = z.output<typeof OverviewSchema>;
 

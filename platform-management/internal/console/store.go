@@ -6,6 +6,7 @@ import (
 
 	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/platform-management/internal/billing"
+	"github.com/multica-ai/multica/platform-management/internal/usage"
 )
 
 // TenantRow is one workspace in a list.
@@ -17,6 +18,9 @@ type TenantRow struct {
 	MemberCount    int64
 	CreatedAt      time.Time
 	LastActivityAt time.Time
+	// Usage is the workspace's newest daily usage row. The zero value means it
+	// has none.
+	Usage usage.Snapshot
 }
 
 // TenantDetail is a workspace with its state record, notes count and owner.
@@ -30,6 +34,8 @@ type TenantDetail struct {
 	NotesCount          int64
 	OwnerID             string
 	OwnerEmail          string
+	// Current counts the workspace now, from one query per number.
+	Current usage.Current
 }
 
 // UserRow is one account in a list.
@@ -106,6 +112,8 @@ type Overview struct {
 	ByPlan map[string]int64
 	// PendingOrders counts the orders waiting for a payment confirmation.
 	PendingOrders int64
+	// Usage sums the newest daily usage row of each workspace that has one.
+	Usage usage.Totals
 }
 
 // OrderRow is a billing order with the name of its workspace, which is empty

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { Tenants } from "./Tenants";
 
 const mockUseTenants = vi.fn();
@@ -29,6 +29,89 @@ const mockTenantsList = [
     last_activity_at: "2026-11-10T00:00:00Z",
   },
 ];
+
+const withUsage = {
+  ...mockTenantsList[0]!,
+  usage_day: "2026-11-14",
+  usage_members: 3,
+  usage_agents: 2,
+  usage_runtimes: 1,
+  usage_issues_total: 40,
+  usage_issues_created: 5,
+  usage_tasks_run: 9,
+  usage_storage_bytes: 2048,
+};
+
+const noUsageRow = {
+  ...mockTenantsList[1]!,
+  usage_day: null,
+  usage_members: 0,
+  usage_agents: 0,
+  usage_runtimes: 0,
+  usage_issues_total: 0,
+  usage_issues_created: 0,
+  usage_tasks_run: 0,
+  usage_storage_bytes: 0,
+};
+
+function usageCell(name: string): HTMLElement {
+  const row = screen.getByText(name).closest("tr");
+  expect(row).not.toBeNull();
+  return within(row as HTMLElement).getByTestId("tenant-usage");
+}
+
+describe("Tenants screen usage column", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("renders the members, agents, tasks run and storage of the latest day", () => {
+    mockUseTenants.mockReturnValue({
+      data: { tenants: [withUsage, noUsageRow], next_cursor: null },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    render(<Tenants onSelectTenant={vi.fn()} />);
+
+    expect(screen.getByRole("columnheader", { name: "Usage" })).toBeInTheDocument();
+    const cell = usageCell("Beta Alpha");
+    expect(cell).toHaveTextContent("3 members");
+    expect(cell).toHaveTextContent("2 agents");
+    expect(cell).toHaveTextContent("9 tasks run");
+    expect(cell).toHaveTextContent("2.0 KB");
+    expect(cell).toHaveAttribute("title", expect.stringContaining("2026-11-14"));
+  });
+
+  it("shows an empty value, not zero and not an error, for a tenant with no usage", () => {
+    mockUseTenants.mockReturnValue({
+      data: { tenants: [withUsage, noUsageRow], next_cursor: null },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    render(<Tenants onSelectTenant={vi.fn()} />);
+
+    const cell = usageCell("Gamma Delta");
+    expect(cell.textContent).toBe("-");
+    expect(cell.textContent).not.toMatch(/0/);
+    expect(screen.queryByText("Failed to load tenants")).not.toBeInTheDocument();
+    expect(screen.getByText("Beta Alpha")).toBeInTheDocument();
+  });
+
+  it("handles a tenant that carries no usage fields at all", () => {
+    mockUseTenants.mockReturnValue({
+      data: { tenants: mockTenantsList, next_cursor: null },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    render(<Tenants onSelectTenant={vi.fn()} />);
+
+    expect(usageCell("Beta Alpha").textContent).toBe("-");
+    expect(usageCell("Gamma Delta").textContent).toBe("-");
+  });
+});
 
 describe("Tenants screen", () => {
   beforeEach(() => {

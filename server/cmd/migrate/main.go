@@ -164,6 +164,7 @@ var concurrentIndexCleanups = map[string]string{
 	"686_workspace_subscription_status_idx":                     "workspace_subscription_status_idx",
 	"687_workspace_export_running_uidx":                         "workspace_export_running_uidx",
 	"688_platform_note_id_uidx":                                 "platform_note_id_uidx",
+	"690_platform_usage_daily_uidx":                             "platform_usage_daily_uidx",
 	"940_hub_source_auto_sync_idx":                              "hub_source_auto_sync_due_idx",
 	"951_hub_activity_workspace_created_idx":                    "hub_activity_workspace_created_idx",
 	"952_hub_activity_ref_created_idx":                          "hub_activity_workspace_ref_created_idx",

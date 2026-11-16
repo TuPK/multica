@@ -261,3 +261,11 @@ func TestRequiredCoversTheBillingNoticeMigrations(t *testing.T) {
 		}
 	}
 }
+
+func TestUsageDailyMigrationsAreRequired(t *testing.T) {
+	for _, v := range []string{"689_platform_usage_daily", "690_platform_usage_daily_uidx"} {
+		if !slices.Contains(Required, v) {
+			t.Errorf("%s is not in Required", v)
+		}
+	}
+}

@@ -41,6 +41,7 @@ import {
   useAddTenantNote,
   useUpdateSubscription,
 } from "../api/hooks";
+import { formatBytes } from "./Tenants";
 import type { StaffRole } from "../components/types";
 import type { Note, AuditEvent, Order } from "../api/schemas";
 
@@ -48,6 +49,15 @@ interface TenantDetailProps {
   tenantId: string;
   onBack: () => void;
   userRole: StaffRole;
+}
+
+function UsageValue({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div>
+      <span className="block text-caption text-muted-foreground">{label}</span>
+      <span className="mt-1 block font-medium tabular-nums">{value}</span>
+    </div>
+  );
 }
 
 export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) {
@@ -397,6 +407,52 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
               </span>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Usage */}
+      <Card>
+        <CardHeader>
+          <CardTitle role="heading" aria-level={2}>Usage</CardTitle>
+          <CardDescription>
+            Counts only. Current counts are read now; the daily snapshot is the last closed UTC day.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div
+            data-testid="usage-current"
+            className="grid grid-cols-2 gap-4 text-body sm:grid-cols-5"
+          >
+            <UsageValue label="Members now" value={tenant.usage_current?.members ?? 0} />
+            <UsageValue label="Agents now" value={tenant.usage_current?.agents ?? 0} />
+            <UsageValue label="Runtimes now" value={tenant.usage_current?.runtimes ?? 0} />
+            <UsageValue label="Issues now" value={tenant.usage_current?.issues_total ?? 0} />
+            <UsageValue
+              label="Storage now"
+              value={formatBytes(tenant.usage_current?.storage_bytes ?? 0)}
+            />
+          </div>
+
+          {tenant.usage_day ? (
+            <div data-testid="usage-daily" className="space-y-2">
+              <span className="block text-caption text-muted-foreground">
+                Daily snapshot for {tenant.usage_day} (UTC)
+              </span>
+              <div className="grid grid-cols-2 gap-4 text-body sm:grid-cols-4">
+                <UsageValue label="Members" value={tenant.usage_members ?? 0} />
+                <UsageValue label="Agents" value={tenant.usage_agents ?? 0} />
+                <UsageValue label="Runtimes" value={tenant.usage_runtimes ?? 0} />
+                <UsageValue label="Issues" value={tenant.usage_issues_total ?? 0} />
+                <UsageValue label="Issues created" value={tenant.usage_issues_created ?? 0} />
+                <UsageValue label="Tasks run" value={tenant.usage_tasks_run ?? 0} />
+                <UsageValue label="Storage" value={formatBytes(tenant.usage_storage_bytes ?? 0)} />
+              </div>
+            </div>
+          ) : (
+            <p data-testid="usage-daily" className="text-caption text-muted-foreground">
+              No daily snapshot yet.
+            </p>
+          )}
         </CardContent>
       </Card>
 

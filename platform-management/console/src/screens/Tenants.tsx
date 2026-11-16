@@ -18,6 +18,33 @@ import { EmptyState } from "../components/EmptyState";
 import { useTenants } from "../api/hooks";
 import type { Tenant } from "../api/schemas";
 
+const BYTE_UNITS = ["B", "KB", "MB", "GB", "TB"];
+
+/** Formats a byte count with one decimal for units above bytes: 2048 -> "2.0 KB". */
+export function formatBytes(bytes: number): string {
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < BYTE_UNITS.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return unit === 0 ? `${value} B` : `${value.toFixed(1)} ${BYTE_UNITS[unit]}`;
+}
+
+/**
+ * The usage cell text of a tenant. A tenant with no daily row has a null (or
+ * missing) usage day and shows "-", not zeros.
+ */
+function usageSummary(tenant: Tenant): string {
+  if (!tenant.usage_day) return "-";
+  return [
+    `${tenant.usage_members ?? 0} members`,
+    `${tenant.usage_agents ?? 0} agents`,
+    `${tenant.usage_tasks_run ?? 0} tasks run`,
+    formatBytes(tenant.usage_storage_bytes ?? 0),
+  ].join(" · ");
+}
+
 interface TenantsProps {
   onSelectTenant: (id: string) => void;
 }
@@ -93,6 +120,7 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
                   <TableHead>Slug</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Members</TableHead>
+                  <TableHead>Usage</TableHead>
                   <TableHead>Last Activity</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
@@ -109,6 +137,17 @@ export function Tenants({ onSelectTenant }: TenantsProps) {
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {tenant.member_count}
+                    </TableCell>
+                    <TableCell
+                      data-testid="tenant-usage"
+                      className="text-muted-foreground tabular-nums"
+                      title={
+                        tenant.usage_day
+                          ? `Usage on ${tenant.usage_day} (UTC)`
+                          : "No usage recorded yet"
+                      }
+                    >
+                      {usageSummary(tenant)}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {tenant.last_activity_at

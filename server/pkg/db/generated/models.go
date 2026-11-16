@@ -2006,6 +2006,19 @@ type PlatformStaff struct {
 	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
 }
 
+type PlatformUsageDaily struct {
+	WorkspaceID   pgtype.UUID        `json:"workspace_id"`
+	Day           pgtype.Date        `json:"day"`
+	Members       int32              `json:"members"`
+	Agents        int32              `json:"agents"`
+	Runtimes      int32              `json:"runtimes"`
+	IssuesTotal   int32              `json:"issues_total"`
+	IssuesCreated int32              `json:"issues_created"`
+	TasksRun      int32              `json:"tasks_run"`
+	StorageBytes  int64              `json:"storage_bytes"`
+	ComputedAt    pgtype.Timestamptz `json:"computed_at"`
+}
+
 type PlatformWorkspace struct {
 	WorkspaceID         pgtype.UUID        `json:"workspace_id"`
 	Status              string             `json:"status"`

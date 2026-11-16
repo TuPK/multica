@@ -291,4 +291,42 @@ describe("TenantDetail screen", () => {
     expect(screen.getByRole("heading", { name: "Subscription" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Edit subscription" })).not.toBeInTheDocument();
   });
+
+  it("shows the current counts and the latest daily snapshot", () => {
+    mockUseTenant.mockReturnValue({
+      data: {
+        ...mockTenantData,
+        usage_day: "2026-11-14",
+        usage_members: 3,
+        usage_agents: 2,
+        usage_runtimes: 1,
+        usage_issues_total: 40,
+        usage_issues_created: 5,
+        usage_tasks_run: 9,
+        usage_storage_bytes: 2048,
+        usage_current: { members: 4, agents: 2, runtimes: 1, issues_total: 41, storage_bytes: 4096 },
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    render(<TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="support" />);
+
+    expect(screen.getByRole("heading", { name: "Usage" })).toBeInTheDocument();
+    const current = screen.getByTestId("usage-current");
+    expect(current).toHaveTextContent("41");
+    expect(current).toHaveTextContent("4.0 KB");
+    const daily = screen.getByTestId("usage-daily");
+    expect(daily).toHaveTextContent("2026-11-14");
+    expect(daily).toHaveTextContent("9");
+    expect(daily).toHaveTextContent("2.0 KB");
+  });
+
+  it("shows no daily snapshot, and no error, when the tenant has no usage row", () => {
+    render(<TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="support" />);
+
+    expect(screen.getByRole("heading", { name: "Usage" })).toBeInTheDocument();
+    expect(screen.getByTestId("usage-daily").textContent).toBe("No daily snapshot yet.");
+    expect(screen.getByRole("heading", { name: "Acme Corp" })).toBeInTheDocument();
+  });
 });

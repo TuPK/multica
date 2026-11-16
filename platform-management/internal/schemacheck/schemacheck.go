@@ -49,8 +49,12 @@ var Required = []string{
 	"682_billing_order_workspace_idx",       // billing_order: index on workspace_id, created_at
 	"683_billing_notice",                    // billing_notice: table
 	"684_billing_notice_key_uidx",           // billing_notice: unique index on workspace_id, notice_key
+	"685_workspace_export",                  // workspace_export: table
 	"686_workspace_subscription_status_idx", // workspace_subscription: index on status, current_period_end
+	"687_workspace_export_running_uidx",     // workspace_export: partial unique index on workspace_id
 	"688_platform_note_id_uidx",             // platform_note: unique index on id
+	"689_platform_usage_daily",              // platform_usage_daily: table
+	"690_platform_usage_daily_uidx",         // platform_usage_daily: unique index on workspace_id, day
 }
 
 // Queryer is the part of a pgx pool, connection or transaction that Check uses.
