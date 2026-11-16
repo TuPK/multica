@@ -1963,6 +1963,9 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					// because opening an issue is what asks for it; executable
 					// bytes stay off the authenticated app/API origin.
 					r.Get("/plugins/{installationId}/surfaces/{surfaceKey}/launch", h.GetPluginSurfaceLaunch)
+					// The caller's own role and effective permissions, for every
+					// member including a viewer; people only.
+					r.With(handler.RequireHumanActor).Get("/permissions/me", h.GetMyPermissions)
 				})
 				// Admin-level access
 				r.Group(func(r chi.Router) {
@@ -2046,6 +2049,24 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Get("/orders", h.ListWorkspaceOrders)
 					r.Get("/orders/{orderId}", h.GetWorkspaceOrder)
 					r.Put("/orders/{orderId}/buyer", h.UpdateWorkspaceOrderBuyer)
+				})
+
+				// Account groups (spec 7b.2). Managing groups is for human owners
+				// and admins; no permission key opens these routes, so a group
+				// cannot raise anyone's own permissions. Creating a group is
+				// counted by the member_groups gate in the handler.
+				r.Group(func(r chi.Router) {
+					r.Use(handler.RequireHumanActor)
+					r.Use(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner", "admin"))
+					r.Get("/permission-catalogue", h.GetPermissionCatalogue)
+					r.Get("/groups", h.ListMemberGroups)
+					r.Post("/groups", h.CreateMemberGroup)
+					r.Get("/groups/{groupId}", h.GetMemberGroup)
+					r.Patch("/groups/{groupId}", h.UpdateMemberGroup)
+					r.Delete("/groups/{groupId}", h.DeleteMemberGroup)
+					r.Put("/groups/{groupId}/permissions", h.SetMemberGroupPermissions)
+					r.Post("/groups/{groupId}/members", h.AddMemberGroupMembers)
+					r.Delete("/groups/{groupId}/members/{userId}", h.RemoveMemberGroupMember)
 				})
 
 				// GitHub integration — connect / disconnect remain admin-only;
