@@ -368,27 +368,31 @@ func requestSession(r *http.Request) workspaceguard.Session {
 }
 
 // guardWorkspacePolicy applies the session policies of the workspace (spec
-// 6.4) and reports whether the request may proceed; when it may not, the
-// response has been written. Machine credentials pass without reading the
-// policy. A policy that cannot be read refuses a session, as the state guard
-// does.
+// 6.4) and the viewer rule (spec 6.6), and reports whether the request may
+// proceed; when it may not, the response has been written. Machine credentials
+// pass the session policies without reading the policy, but a viewer's write is
+// refused for every credential. A policy that cannot be read refuses a session,
+// as the state guard does. With no policy reader only the viewer rule applies.
 func guardWorkspacePolicy(w http.ResponseWriter, r *http.Request, workspaceID string, member db.Member) bool {
 	reader, _ := r.Context().Value(ctxKeyWorkspacePolicy).(PolicyReader)
-	if reader == nil {
-		return true
-	}
 	session := requestSession(r)
-	if session.Machine {
-		return true
+	session.Role = member.Role
+	session.Method = r.Method
+	if member.Role == workspaceguard.RoleViewer {
+		session.RoutePattern = leafRoutePattern(r)
 	}
-	policy, err := reader.Policy(r.Context(), workspaceID)
-	if err != nil {
-		slog.Warn("workspace: policy unavailable",
-			"path", r.URL.Path, "workspace_id", workspaceID, "error", err)
-		writeCodedError(w, http.StatusServiceUnavailable, workspaceguard.CodeStateUnavailable, workspaceguard.Message(workspaceguard.CodeStateUnavailable))
-		return false
+	policy := workspacepolicy.Default()
+	if reader != nil && !session.Machine {
+		var err error
+		policy, err = reader.Policy(r.Context(), workspaceID)
+		if err != nil {
+			slog.Warn("workspace: policy unavailable",
+				"path", r.URL.Path, "workspace_id", workspaceID, "error", err)
+			writeCodedError(w, http.StatusServiceUnavailable, workspaceguard.CodeStateUnavailable, workspaceguard.Message(workspaceguard.CodeStateUnavailable))
+			return false
+		}
 	}
-	if policy.RequireSSO {
+	if policy.RequireSSO && !session.Machine {
 		// The SSO facts cost two reads, so only a workspace that requires SSO
 		// pays for them. A failed read refuses, as an unreadable policy does.
 		session.IsOwner = member.Role == "owner"

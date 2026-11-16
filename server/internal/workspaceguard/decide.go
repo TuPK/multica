@@ -37,6 +37,9 @@ const (
 	CodeTokenWorkspaceMismatch = "token_workspace_mismatch"
 )
 
+// CodeViewerReadOnly refuses a write by a viewer, with HTTP 403 (spec 6.6).
+const CodeViewerReadOnly = "viewer_read_only"
+
 // Decision is the verdict on one request.
 type Decision struct {
 	// Allowed reports whether the request may proceed.
@@ -223,6 +226,8 @@ func Message(code string) string {
 		return "this token is read-only"
 	case CodeTokenWorkspaceMismatch:
 		return "this token is bound to a different workspace"
+	case CodeViewerReadOnly:
+		return "viewers can only read this workspace"
 	default:
 		return "workspace is suspended"
 	}

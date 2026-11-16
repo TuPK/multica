@@ -45,12 +45,20 @@ type Session struct {
 	// SSOCovered reports that the caller's email is on a verified domain of the
 	// workspace. Only read when the policy requires SSO.
 	SSOCovered bool
+	// Role is the caller's role in the workspace. A viewer may not write
+	// (spec 6.6); the other roles are not limited by it.
+	Role string
+	// Method and RoutePattern are the request's method and the chi route
+	// template that serves it. Read only for a viewer's request.
+	Method       string
+	RoutePattern string
 }
 
 // CheckWorkspaceAccess applies the session policies of one workspace to a
 // request's session and returns the refusal code, or "" when the request may
 // proceed. A personal access token bound to a workspace is refused on any other
-// workspace first, whatever kind of credential it is. require_sso refuses a
+// workspace first, whatever kind of credential it is. A viewer's write is
+// refused next, whatever the credential, unless it is on the viewer allow-list. require_sso refuses a
 // member of a verified domain whose session did not come through the
 // workspace's SSO connection; the owner, a member outside the verified domains,
 // and a workspace with no active connection are not refused.
@@ -62,6 +70,9 @@ func CheckWorkspaceAccess(p workspacepolicy.Policy, s Session, now time.Time) st
 		case s.WorkspaceID != "" && !strings.EqualFold(s.WorkspaceID, s.TokenWorkspaceID):
 			return CodeTokenWorkspaceMismatch
 		}
+	}
+	if s.Role == RoleViewer && !isRead(s.Method) && !ViewerAllowsWrite(s.Method, s.RoutePattern) {
+		return CodeViewerReadOnly
 	}
 	if s.Machine {
 		return ""
