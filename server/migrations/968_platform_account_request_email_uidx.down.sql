@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS platform_account_request_email_uidx;
