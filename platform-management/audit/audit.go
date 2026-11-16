@@ -164,11 +164,11 @@ var Catalog = []string{
 	ActionSubscriptionBackfilled,
 	ActionWorkspaceAccountKindChanged,
 	ActionPlanPriceScheduled,
-	ActionPlanPriceApplied,
-	ActionPlanPriceCanceled,
 	ActionAccountProvisionRequested,
 	ActionAccountProvisionCanceled,
 	ActionAccountProvisionFailed,
+	ActionPlanPriceApplied,
+	ActionPlanPriceCanceled,
 }
 
 // Cutover action (gate G-R2): written by the platform-backfill command in the
