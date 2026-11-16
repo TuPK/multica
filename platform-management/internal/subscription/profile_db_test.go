@@ -2,8 +2,11 @@ package subscription
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"testing"
+
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/platform-management/internal/plan"
@@ -115,6 +118,26 @@ func TestDBChangeBackIsRefusedOnABusinessOnlyPlan(t *testing.T) {
 	}
 	if err := CheckPlanForWorkspace(ctx, NewPgxProfiles(f.pool), ws, p); err != nil {
 		t.Fatalf("a business buying a business plan: %v", err)
+	}
+}
+
+// Migration 955 makes (workspace_id) unique, so two rows for one workspace
+// cannot exist even when two writers get past the advisory lock.
+func TestDBBillingProfileWorkspaceIDIsUnique(t *testing.T) {
+	f := newDBFixture(t)
+	ws := f.workspace(nil)
+	ctx := context.Background()
+	if n := f.count(`SELECT count(*) FROM pg_indexes WHERE indexname = 'billing_profile_uidx' AND indexdef LIKE 'CREATE UNIQUE INDEX%(workspace_id)'`); n != 1 {
+		t.Fatalf("billing_profile_uidx on (workspace_id) found %d times, want 1: migration 955 is not applied", n)
+	}
+	t.Cleanup(func() { f.pool.Exec(context.Background(), `DELETE FROM billing_profile WHERE workspace_id = $1`, ws) })
+	if _, err := f.pool.Exec(ctx, `INSERT INTO billing_profile (workspace_id) VALUES ($1)`, ws); err != nil {
+		t.Fatal(err)
+	}
+	_, err := f.pool.Exec(ctx, `INSERT INTO billing_profile (workspace_id) VALUES ($1)`, ws)
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
+		t.Fatalf("second row for one workspace: err = %v, want unique_violation", err)
 	}
 }
 

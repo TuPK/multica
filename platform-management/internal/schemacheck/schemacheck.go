@@ -57,6 +57,7 @@ var Required = []string{
 	"690_platform_usage_daily_uidx",         // platform_usage_daily: unique index on workspace_id, day
 	"953_plan_subscription_r5",              // plan, workspace_subscription: R5 columns
 	"954_billing_profile",                   // billing_profile: table
+	"955_billing_profile_uidx",              // billing_profile: unique index on workspace_id
 }
 
 // Queryer is the part of a pgx pool, connection or transaction that Check uses.

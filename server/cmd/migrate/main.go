@@ -169,6 +169,7 @@ var concurrentIndexCleanups = map[string]string{
 	"940_hub_source_auto_sync_idx":                              "hub_source_auto_sync_due_idx",
 	"951_hub_activity_workspace_created_idx":                    "hub_activity_workspace_created_idx",
 	"952_hub_activity_ref_created_idx":                          "hub_activity_workspace_ref_created_idx",
+	"955_billing_profile_uidx":                                  "billing_profile_uidx",
 	"979_publish_channel_platform_idx":                          "publish_channel_workspace_platform_idx",
 	"980_publish_attempt_idempotency_idx":                       "publish_attempt_idempotency_idx",
 	"981_publish_attempt_queue_idx":                             "publish_attempt_queued_idx",

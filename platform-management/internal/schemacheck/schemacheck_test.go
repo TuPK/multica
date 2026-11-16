@@ -145,6 +145,36 @@ func TestBillingProfileMigrationIsRequiredAndHasTheSpecColumns(t *testing.T) {
 	}
 }
 
+// 955 is the unique index on billing_profile (workspace_id): one statement, built
+// concurrently, in its own file, and a platform migration the startup check lists.
+func TestBillingProfileUniqueIndexMigrationIsRequiredAndBuiltConcurrently(t *testing.T) {
+	const version = "955_billing_profile_uidx"
+	if !slices.Contains(Required, version) {
+		t.Errorf("Required does not list %s", version)
+	}
+	for _, suffix := range []string{".up.sql", ".down.sql"} {
+		if _, err := os.Stat(filepath.Join(migrationsDir, version+suffix)); err != nil {
+			t.Fatalf("migration %s%s: %v", version, suffix, err)
+		}
+	}
+	raw, err := os.ReadFile(filepath.Join(migrationsDir, version+".up.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	up := strings.Join(strings.Fields(strings.ToLower(sqlLineComment.ReplaceAllString(sqlBlockComment.ReplaceAllString(string(raw), " "), " "))), " ")
+	const want = "create unique index concurrently if not exists billing_profile_uidx on billing_profile (workspace_id);"
+	if up != want {
+		t.Errorf("up statement = %q, want %q", up, want)
+	}
+	down, err := os.ReadFile(filepath.Join(migrationsDir, version+".down.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.ToLower(string(down)); !strings.Contains(got, "drop index concurrently if exists billing_profile_uidx") {
+		t.Errorf("down file = %q, want a DROP INDEX CONCURRENTLY IF EXISTS billing_profile_uidx", down)
+	}
+}
+
 func TestScanReportsAnUnlistedMigration(t *testing.T) {
 	dir := t.TempDir()
 	write := func(name, sql string) {
