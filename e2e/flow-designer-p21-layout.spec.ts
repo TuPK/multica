@@ -114,6 +114,57 @@ test.describe.serial("P21: the flow draft editor on a laptop and on a phone", ()
     });
   }
 
+  // K13: the Outline is usable with a keyboard. Tab reaches the steps in order; Enter and Space open the step.
+  for (const size of [
+    { name: "1280x800 desktop", width: 1280, height: 800, tag: "1280" },
+    { name: "390x844 phone", width: 390, height: 844, tag: "390" },
+  ]) {
+    test(`${size.name}: the Outline works by keyboard (Tab, then Enter or Space on a step)`, async ({ page }) => {
+      test.setTimeout(240_000);
+      await openEditor(page, size);
+      const phone = size.width < 768;
+      const search = page.getByPlaceholder("Search steps…");
+      const stepButton = (title: string) => page.getByRole("button", { name: new RegExp(`^${title}\\b`) }).first();
+
+      // Tab from the search box reaches the first step, then the next one, in the order of the list.
+      await search.focus();
+      await page.keyboard.press("Tab");
+      const names: string[] = [];
+      for (let i = 0; i < 2; i++) {
+        names.push(await page.evaluate(() => (document.activeElement as HTMLElement | null)?.textContent ?? ""));
+        await page.keyboard.press("Tab");
+      }
+      expect(names[0], "the first Tab from the search box did not land on a step").toMatch(/^Plan/);
+      expect(names[1], "the second Tab did not land on the next step").toMatch(/^Collect/);
+
+      // Enter on a step opens it: its title shows in the inspector.
+      const collect = stepButton("Collect");
+      await collect.focus();
+      await page.keyboard.press("Enter");
+      const title = (phone ? page.locator('[data-slot="sheet-content"]') : page).getByPlaceholder("Step title");
+      await expect(title, "Enter did not open the step").toHaveValue("Collect");
+      if (phone) {
+        // The Sheet takes the focus into itself; Escape closes it and the focus goes back to the step.
+        await expect(page.locator('[data-slot="sheet-content"]').locator(":focus, :has(:focus)").first(), "focus is not inside the Sheet").toBeAttached();
+        await page.keyboard.press("Escape");
+        await expect(page.locator('[data-slot="sheet-content"]')).toBeHidden();
+        await expect(collect, "focus did not return to the step").toBeFocused();
+      } else {
+        await expect(collect, "focus left the step after Enter").toBeFocused();
+      }
+      await noHorizontalScroll(page, `Outline by keyboard at ${size.tag}px`);
+
+      // Space does the same on another step.
+      const next = stepButton("Draft");
+      await next.focus();
+      await page.keyboard.press("Space");
+      await expect(title, "Space did not open the step").toHaveValue(/^Draft/);
+      if (!phone) await expect(next, "focus left the step after Space").toBeFocused();
+      await shot(page, `p21-outline-keyboard-${size.tag}`);
+      await noHorizontalScroll(page, `Outline after Space at ${size.tag}px`);
+    });
+  }
+
   test("390x844 phone: the inspector opens as a Sheet inside the screen", async ({ page }) => {
     test.setTimeout(240_000);
     await openEditor(page, { width: 390, height: 844 });
