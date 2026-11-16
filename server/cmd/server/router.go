@@ -1608,6 +1608,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	r.Use(h.PluginSurfaceHostBoundary)
 	r.Use(middleware.ContentSecurityPolicy)
 	r.Use(middleware.WithWorkspaceState(workspaceState))
+	r.Use(middleware.WithWorkspacePolicy(workspaceguard.NewPolicyStore(queries, h.Entitlements)))
 
 	// Share allowed origins with WebSocket origin checker.
 	realtime.SetAllowedOrigins(origins)
@@ -1978,6 +1979,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Post("/share-links", h.CreateShareLink)
 					r.Delete("/share-links/{linkId}", h.RevokeShareLink)
 					r.Get("/share-links", h.ListShareLinks)
+					r.Get("/policy", h.GetWorkspacePolicy)
 					// Custom runtime profile mutations (admin-only).
 					r.Post("/runtime-profiles", h.CreateRuntimeProfile)
 					r.Patch("/runtime-profiles/{profileId}", h.UpdateRuntimeProfile)
@@ -2016,6 +2018,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				// Owner-only access
 				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner")).Delete("/", h.DeleteWorkspace)
 				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner")).Delete("/deletion", h.CancelWorkspaceDeletion)
+				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner")).Put("/policy", h.UpdateWorkspacePolicy)
 				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner"), handler.RequireHumanActor).Post("/exports", h.CreateWorkspaceExport)
 				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner")).Get("/exports", h.ListWorkspaceExports)
 				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner")).Get("/exports/{exportId}", h.GetWorkspaceExport)

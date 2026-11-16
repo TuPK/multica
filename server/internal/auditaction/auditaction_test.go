@@ -82,3 +82,16 @@ func TestIsAcceptsTheR2Actions(t *testing.T) {
 		}
 	}
 }
+
+// A workspace owner can filter the audit log by the policy change action.
+func TestIsAcceptsPolicyUpdated(t *testing.T) {
+	if PolicyUpdated != "policy.updated" {
+		t.Fatalf("PolicyUpdated = %q", PolicyUpdated)
+	}
+	if !Is(PolicyUpdated) {
+		t.Errorf("%s is not accepted", PolicyUpdated)
+	}
+	if !Is(audit.ActionMemberRemoved) {
+		t.Error("extending the catalog dropped an audit action")
+	}
+}

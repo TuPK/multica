@@ -20,6 +20,7 @@ import (
 	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/logger"
 	"github.com/multica-ai/multica/server/internal/seatcapacity"
+	"github.com/multica-ai/multica/server/internal/workspacepolicy"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
@@ -71,6 +72,17 @@ func (h *Handler) CreateShareLink(w http.ResponseWriter, r *http.Request) {
 	workspaceID := workspaceIDFromURL(r, "id")
 	requester, ok := h.workspaceMember(w, r, workspaceID)
 	if !ok {
+		return
+	}
+
+	policy, err := h.workspacePolicy(r, requester.WorkspaceID)
+	if err != nil {
+		slog.Warn("load workspace policy failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
+		writeError(w, http.StatusInternalServerError, "failed to create share link")
+		return
+	}
+	if !policy.ShareLinksEnabled {
+		writeErrorCode(w, http.StatusForbidden, workspacepolicy.CodeShareLinksDisabled, "share links are turned off for this workspace")
 		return
 	}
 
@@ -340,6 +352,21 @@ func (h *Handler) JoinByShareLink(w http.ResponseWriter, r *http.Request) {
 	// This runs before the seat reservation below, so a refused join reserves
 	// no seat. The joiner is not a member yet, so there is no role to pass.
 	if !h.admitByWorkspaceState(w, r, db.Member{WorkspaceID: linkPreview.WorkspaceID}) {
+		return
+	}
+	// The workspace policy comes before the seat reservation too, so a refused
+	// joiner reserves no seat.
+	policy, err := h.workspacePolicy(r, linkPreview.WorkspaceID)
+	if err != nil {
+		slog.Warn("load workspace policy failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", uuidToString(linkPreview.WorkspaceID))...)
+		writeError(w, http.StatusInternalServerError, "failed to join workspace")
+		return
+	}
+	if !policy.ShareLinksEnabled {
+		writeErrorCode(w, http.StatusForbidden, workspacepolicy.CodeShareLinksDisabled, "share links are turned off for this workspace")
+		return
+	}
+	if !refuseByInvitePolicy(w, policy, user.Email) {
 		return
 	}
 	if _, memberErr := h.Queries.GetMemberByUserAndWorkspace(r.Context(), db.GetMemberByUserAndWorkspaceParams{

@@ -86,6 +86,16 @@ func (h *Handler) CreateInvitation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	policy, err := h.workspacePolicy(r, requester.WorkspaceID)
+	if err != nil {
+		slog.Warn("load workspace policy failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
+		writeError(w, http.StatusInternalServerError, "failed to create invitation")
+		return
+	}
+	if !refuseByInvitePolicy(w, policy, email) {
+		return
+	}
+
 	// Check if the user is already a member.
 	existingUser, err := h.Queries.GetUserByEmail(r.Context(), email)
 	if err == nil {

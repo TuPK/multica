@@ -4,10 +4,13 @@ package auditaction
 
 import "github.com/multica-ai/multica/platform-management/audit"
 
-// Catalog lists every action name the audit package defines, which is every
-// action either server writes. It is the audit package's own list, so the two
-// filters cannot drift from the constants.
-var Catalog = audit.Catalog
+// PolicyUpdated is written when a workspace owner changes the workspace
+// policy. It is not yet an audit package constant, so Catalog adds it here.
+const PolicyUpdated = "policy.updated"
+
+// Catalog lists every action name the audit package defines plus PolicyUpdated,
+// which is every action either server writes.
+var Catalog = append(append([]string(nil), audit.Catalog...), PolicyUpdated)
 
 // Is reports whether s is a known action.
 func Is(s string) bool {
