@@ -28,7 +28,7 @@ func TestDBTenantListShowsWorkspacesWithAndWithoutAUsageRow(t *testing.T) {
 	}
 	t.Cleanup(func() { f.pool.Exec(ctx, `DELETE FROM platform_usage_daily WHERE workspace_id = $1`, withRow) })
 
-	rec := f.do(supportID, "GET", "/api/platform/tenants?limit=200", "")
+	rec := f.do(supportID, "GET", "/api/platform/tenants?limit=100", "")
 	if rec.Code != 200 {
 		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
 	}
