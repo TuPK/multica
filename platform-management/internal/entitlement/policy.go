@@ -66,6 +66,9 @@ type Inputs struct {
 	Overrides plan.Limits
 	// WorkspaceStatus is the platform_workspace status: "active" with no row.
 	WorkspaceStatus string
+	// APIRateCeiling is the rate a limited plan gets when it leaves the API
+	// rate empty. Zero means plan.DefaultAPIRateCeiling.
+	APIRateCeiling int64
 }
 
 // Build returns the policy for in at the instant now. It is pure: the same
@@ -99,6 +102,11 @@ func Build(in Inputs, now time.Time) Policy {
 	for _, name := range planLimitGates {
 		gates[name] = gate(plan.EffectiveLimit(in.Plan.Limits, in.Overrides, name))
 	}
+	ceiling := in.APIRateCeiling
+	if ceiling == 0 {
+		ceiling = plan.DefaultAPIRateCeiling
+	}
+	gates[plan.GateAPIRatePerMinute] = gate(plan.EffectiveAPIRate(in.Plan, in.Overrides, ceiling))
 	// A feature is a gate with no count: included is off (allowed), not
 	// included is enforce 0 (refused). Overrides carry limits only.
 	for _, name := range plan.FeatureKeys {
@@ -121,10 +129,11 @@ func Build(in Inputs, now time.Time) Policy {
 }
 
 // planLimitGates are the limit gates other than the two the core has counted
-// since the first release: the three resource quotas and the two plan values.
+// since the first release: the resource quotas and the audit retention. The API
+// rate has its own rule (plan.EffectiveAPIRate).
 var planLimitGates = []string{
 	plan.GateAgents, plan.GateRuntimes, plan.GateStorageBytes,
-	plan.GateAPIRatePerMinute, plan.GateAuditRetentionDay,
+	plan.GateAuditRetentionDay,
 }
 
 // gate turns an effective limit into an instruction: no limit is off.

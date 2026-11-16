@@ -3,6 +3,7 @@ package plan
 import (
 	"encoding/json"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -200,4 +201,49 @@ func TestRowConversionDefaultsEmptyDocuments(t *testing.T) {
 	if _, err := FromRow(db.Plan{Key: "x", Limits: []byte(`[1]`), Features: []byte(`{}`)}); err == nil {
 		t.Error("a limits array was accepted")
 	}
+}
+
+// Spec 7b.3 rule 2 and contract section 2: an empty API rate on a limited
+// plan or override is the ceiling; an unlimited plan's cap is off; an explicit
+// value is used as it is, even above the ceiling.
+func TestEffectiveAPIRate(t *testing.T) {
+	limited := Plan{Key: "pro", Limits: Limits{GateAPIRatePerMinute: i64(1200), GateIssueCount: i64(5)}}
+	emptyRate := Plan{Key: "pro", Limits: Limits{GateAPIRatePerMinute: nil, GateIssueCount: i64(5)}}
+	unlimited := Plan{Key: UnlimitedKey, Limits: Limits{}}
+	const ceiling = 6000
+	cases := []struct {
+		name      string
+		p         Plan
+		overrides Limits
+		want      *int64
+	}{
+		{"plan's own rate", limited, nil, i64(1200)},
+		{"empty rate on a limited plan is the ceiling", emptyRate, nil, i64(ceiling)},
+		{"empty override on a limited plan is the ceiling", limited, Limits{GateAPIRatePerMinute: nil}, i64(ceiling)},
+		{"explicit override above the ceiling is used as is", limited, Limits{GateAPIRatePerMinute: i64(9000)}, i64(9000)},
+		{"unlimited plan's cap is off", unlimited, nil, nil},
+		{"unlimited plan with an explicit override keeps it", unlimited, Limits{GateAPIRatePerMinute: i64(500)}, i64(500)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := EffectiveAPIRate(tc.p, tc.overrides, ceiling)
+			if (got == nil) != (tc.want == nil) || (got != nil && *got != *tc.want) {
+				t.Errorf("EffectiveAPIRate = %v, want %v", fmtPtr(got), fmtPtr(tc.want))
+			}
+		})
+	}
+}
+
+// DefaultAPIRateCeiling is the default of PLATFORM_API_RATE_CEILING (spec 7b.3 rule 2).
+func TestDefaultAPIRateCeilingIs6000(t *testing.T) {
+	if DefaultAPIRateCeiling != 6000 {
+		t.Errorf("DefaultAPIRateCeiling = %d, want 6000", DefaultAPIRateCeiling)
+	}
+}
+
+func fmtPtr(p *int64) string {
+	if p == nil {
+		return "nil"
+	}
+	return strconv.FormatInt(*p, 10)
 }

@@ -245,6 +245,26 @@ func EffectiveLimit(plan, overrides Limits, gate string) *int64 {
 	return plan[gate]
 }
 
+// DefaultAPIRateCeiling is the API rate per minute that an empty rate on a
+// limited plan or override becomes, when the platform sets no ceiling of its
+// own (PLATFORM_API_RATE_CEILING, spec 7b.3 rule 2).
+const DefaultAPIRateCeiling int64 = 6000
+
+// EffectiveAPIRate returns the API rate per minute that applies to a workspace:
+// the override or the plan's own value when it is set, and used as it is even
+// above the ceiling. An empty rate on a limited plan is the ceiling; an
+// unlimited plan's cap is off (nil), not a number (contract section 2).
+func EffectiveAPIRate(p Plan, overrides Limits, ceiling int64) *int64 {
+	if v := EffectiveLimit(p.Limits, overrides, GateAPIRatePerMinute); v != nil {
+		return v
+	}
+	if IsUnlimited(p) {
+		return nil
+	}
+	c := ceiling
+	return &c
+}
+
 // Reader reads plans.
 type Reader interface {
 	// Get returns found == false for an unknown key.

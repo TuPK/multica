@@ -323,10 +323,14 @@ func TestBuildLimitGatesTakeThePlansValue(t *testing.T) {
 func TestBuildGateMissingFromThePlanIsOff(t *testing.T) {
 	bare := plan.Plan{Key: "bare", Limits: plan.Limits{"issue_count": i64(10)}, Features: map[string]bool{}}
 	p := Build(Inputs{Plan: bare, WorkspaceStatus: "active"}, now)
-	for _, name := range []string{"agents", "runtimes", "storage_bytes", "api_rate_per_minute", "audit_retention_days"} {
+	for _, name := range []string{"agents", "runtimes", "storage_bytes", "audit_retention_days"} {
 		if g := gateOf(t, p, name); g.Action != "off" || g.Limit != nil {
 			t.Errorf("%s = %+v, want off with no limit", name, g)
 		}
+	}
+	// An empty API rate on a limited plan is the ceiling (spec 7b.3 rule 2).
+	if g := gateOf(t, p, "api_rate_per_minute"); g.Action != "enforce" || g.Limit == nil || *g.Limit != 6000 {
+		t.Errorf("api_rate_per_minute = %+v, want enforce 6000", g)
 	}
 
 	// An explicit null in the plan is the same: unlimited.
@@ -540,5 +544,40 @@ func TestBuildGoldenForTheFourOriginalPlans(t *testing.T) {
 		if !reflect.DeepEqual(a, b) {
 			t.Errorf("%s policy changed\n got: %s\nwant: %s", key, got, want[key])
 		}
+	}
+}
+
+// Contract section 2 and spec 7b.3 rule 2: the ceiling applies to an empty
+// API rate on a limited plan; the unlimited plan's cap stays off.
+func TestBuildLimitedPlanWithEmptyAPIRateUsesTheCeiling(t *testing.T) {
+	pl := mustPlan(t, "pro")
+	pl.Limits = plan.Limits{plan.GateIssueCount: i64(5), plan.GateAPIRatePerMinute: nil}
+	p := Build(Inputs{Plan: pl, WorkspaceStatus: "active", APIRateCeiling: 5000}, now)
+	if g := gateOf(t, p, plan.GateAPIRatePerMinute); g.Action != ActionEnforce || g.Limit == nil || *g.Limit != 5000 {
+		t.Errorf("api_rate_per_minute = %+v, want enforce 5000", g)
+	}
+}
+
+func TestBuildAPIRateCeilingDefaultsTo6000(t *testing.T) {
+	pl := mustPlan(t, "pro")
+	pl.Limits = plan.Limits{plan.GateIssueCount: i64(5), plan.GateAPIRatePerMinute: nil}
+	p := Build(Inputs{Plan: pl, WorkspaceStatus: "active"}, now)
+	if g := gateOf(t, p, plan.GateAPIRatePerMinute); g.Action != ActionEnforce || g.Limit == nil || *g.Limit != 6000 {
+		t.Errorf("api_rate_per_minute = %+v, want enforce 6000", g)
+	}
+}
+
+func TestBuildUnlimitedPlanCapStaysOffWithACeiling(t *testing.T) {
+	p := Build(Inputs{Plan: mustPlan(t, "unlimited"), WorkspaceStatus: "active", APIRateCeiling: 5000}, now)
+	if g := gateOf(t, p, plan.GateAPIRatePerMinute); g.Action != ActionOff || g.Limit != nil {
+		t.Errorf("api_rate_per_minute = %+v, want off", g)
+	}
+}
+
+// A plan's own API rate is used as it is; the ceiling only replaces an empty one.
+func TestBuildPlanAPIRateIsNotCappedByTheCeiling(t *testing.T) {
+	p := Build(Inputs{Plan: mustPlan(t, "pro"), WorkspaceStatus: "active", APIRateCeiling: 500}, now)
+	if g := gateOf(t, p, plan.GateAPIRatePerMinute); g.Action != ActionEnforce || g.Limit == nil || *g.Limit != 1200 {
+		t.Errorf("api_rate_per_minute = %+v, want enforce 1200", g)
 	}
 }
