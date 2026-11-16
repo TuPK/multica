@@ -17,9 +17,10 @@ import (
 	"unicode/utf8"
 )
 
-// The gates a plan carries a limit for. The entitlement policy serves all of
-// them (spec 5.7); Multica enforces the first five and reads the last two for
-// the API rate limit and the audit retention job.
+// The gates a plan carries a limit for. The entitlement policy serves the first
+// seven (spec 5.7); Multica enforces the first five and reads the next two for
+// the API rate limit and the audit retention job. GateMemberGroups is read by
+// the member-group feature (spec 7b.2) and is not served by the policy yet.
 const (
 	GateIssueCount        = "issue_count"
 	GateAutopilotRuns     = "autopilot_runs"
@@ -30,6 +31,28 @@ const (
 	GateAuditRetentionDay = "audit_retention_days"
 )
 
+// GateMemberGroups caps the member groups of a workspace (spec 7b.2, 7b.7).
+const GateMemberGroups = "member_groups"
+
+// Audiences: the kind of workspace that may buy a plan (spec 7b.1, rule 2).
+const (
+	AudienceIndividual = "individual"
+	AudienceBusiness   = "business"
+	AudienceAny        = "any"
+)
+
+// Billing models: how a plan is charged (spec 7b.1; the usage kind is spec 7b.3).
+const (
+	BillingSeat  = "seat"
+	BillingUsage = "usage"
+)
+
+// Audiences and BillingModels list the values a plan may carry.
+var (
+	Audiences     = []string{AudienceIndividual, AudienceBusiness, AudienceAny}
+	BillingModels = []string{BillingSeat, BillingUsage}
+)
+
 // FreeKey is the plan of a workspace that has no subscription row.
 const FreeKey = "free"
 
@@ -37,6 +60,7 @@ const FreeKey = "free"
 var LimitGates = []string{
 	GateIssueCount, GateAutopilotRuns, GateAgents, GateRuntimes,
 	GateStorageBytes, GateAPIRatePerMinute, GateAuditRetentionDay,
+	GateMemberGroups,
 }
 
 // FeatureKeys lists every key a plan's features may use.
@@ -49,6 +73,12 @@ type Limits map[string]*int64
 
 // Plan is one row of the plan table. Prices are whole units of the currency's
 // smallest denomination; VND has no decimals.
+//
+// Audience and BillingModel may be empty on a write, which means "not given":
+// a new plan takes the defaults (any, seat) and an existing plan keeps its value.
+// Version is the table's: 0 on creation, one more after every edit. A write
+// never sets it, and the usage_rates and usage_terms columns are not part of
+// the type yet.
 type Plan struct {
 	Key            string          `json:"key"`
 	Name           string          `json:"name"`
@@ -63,6 +93,9 @@ type Plan struct {
 	IsPublic       bool            `json:"is_public"`
 	Sort           int             `json:"sort"`
 	ArchivedAt     *time.Time      `json:"archived_at"`
+	Audience       string          `json:"audience"`
+	BillingModel   string          `json:"billing_model"`
+	Version        int64           `json:"version"`
 }
 
 //go:embed catalogue.json
@@ -154,6 +187,18 @@ func Validate(p Plan) error {
 	}
 	if p.TrialDays < 0 || p.TrialDays > maxTrialDays {
 		return errors.New("trial_days must be from 0 to 365")
+	}
+	if p.Audience != "" && !slices.Contains(Audiences, p.Audience) {
+		return fmt.Errorf("unknown audience %q", p.Audience)
+	}
+	if p.BillingModel != "" && !slices.Contains(BillingModels, p.BillingModel) {
+		return fmt.Errorf("unknown billing_model %q", p.BillingModel)
+	}
+	if p.BillingModel == BillingUsage && (p.SeatPriceMonth != nil || p.SeatPriceYear != nil) {
+		return errors.New("a usage plan has no seat_price_month or seat_price_year")
+	}
+	if p.Version < 0 {
+		return errors.New("version must not be negative")
 	}
 	if err := ValidateLimits(p.Limits); err != nil {
 		return err

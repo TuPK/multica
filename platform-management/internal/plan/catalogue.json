@@ -10,10 +10,13 @@
         "runtimes": 2,
         "storage_bytes": 1073741824,
         "api_rate_per_minute": 300,
-        "audit_retention_days": 30
+        "audit_retention_days": 30,
+        "member_groups": 0
       },
       "features": { "audit_export": false, "sso": false, "workspace_policies": false, "viewer_role": false },
       "currency": "vnd",
+      "audience": "any",
+      "billing_model": "seat",
       "seat_price_month": 0,
       "seat_price_year": 0,
       "seats_fixed": 3,
@@ -32,10 +35,13 @@
         "runtimes": 20,
         "storage_bytes": 21474836480,
         "api_rate_per_minute": 1200,
-        "audit_retention_days": 180
+        "audit_retention_days": 180,
+        "member_groups": 0
       },
       "features": { "audit_export": true, "sso": false, "workspace_policies": false, "viewer_role": false },
       "currency": "vnd",
+      "audience": "any",
+      "billing_model": "seat",
       "seat_price_month": 149000,
       "seat_price_year": 1490000,
       "seats_fixed": null,
@@ -54,10 +60,13 @@
         "runtimes": 100,
         "storage_bytes": 214748364800,
         "api_rate_per_minute": 3000,
-        "audit_retention_days": 365
+        "audit_retention_days": 365,
+        "member_groups": 50
       },
       "features": { "audit_export": true, "sso": true, "workspace_policies": true, "viewer_role": true },
       "currency": "vnd",
+      "audience": "business",
+      "billing_model": "seat",
       "seat_price_month": 349000,
       "seat_price_year": 3490000,
       "seats_fixed": null,
@@ -76,10 +85,13 @@
         "runtimes": 100,
         "storage_bytes": 214748364800,
         "api_rate_per_minute": 3000,
-        "audit_retention_days": 365
+        "audit_retention_days": 365,
+        "member_groups": null
       },
       "features": { "audit_export": true, "sso": true, "workspace_policies": true, "viewer_role": true },
       "currency": "vnd",
+      "audience": "business",
+      "billing_model": "seat",
       "seat_price_month": null,
       "seat_price_year": null,
       "seats_fixed": null,

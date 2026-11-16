@@ -94,6 +94,20 @@ func TestValidate(t *testing.T) {
 		"unknown feature":           func(p *Plan) { p.Features = map[string]bool{"teleport": true} },
 		"negative fixed seats":      func(p *Plan) { n := -1; p.SeatsFixed = &n },
 		"absurd seat count":         func(p *Plan) { n := 1 << 30; p.SeatsFixed = &n },
+		"unknown billing model":     func(p *Plan) { p.BillingModel = "metered" },
+		"billing model in capitals": func(p *Plan) { p.BillingModel = "Seat" },
+		"usage plan with a monthly seat price": func(p *Plan) {
+			p.BillingModel, p.SeatPriceYear = BillingUsage, nil
+		},
+		"usage plan with a yearly seat price": func(p *Plan) {
+			p.BillingModel, p.SeatPriceMonth, p.SeatPriceYear = BillingUsage, nil, i64(10)
+		},
+		"usage plan with a zero seat price": func(p *Plan) {
+			p.BillingModel, p.SeatPriceMonth, p.SeatPriceYear = BillingUsage, i64(0), nil
+		},
+		"unknown audience":     func(p *Plan) { p.Audience = "enterprise" },
+		"audience in capitals": func(p *Plan) { p.Audience = "Business" },
+		"negative version":     func(p *Plan) { p.Version = -1 },
 	}
 	for name, mutate := range bad {
 		p := valid()
@@ -103,9 +117,31 @@ func TestValidate(t *testing.T) {
 		}
 	}
 
+	// The R5 fields: the three audiences, both billing models, and "unset",
+	// which the store reads as the default.
+	for _, audience := range []string{"", AudienceAny, AudienceIndividual, AudienceBusiness} {
+		p := valid()
+		p.Audience = audience
+		if err := Validate(p); err != nil {
+			t.Errorf("audience %q: %v", audience, err)
+		}
+	}
+	for _, model := range []string{"", BillingSeat} {
+		p := valid()
+		p.BillingModel = model
+		if err := Validate(p); err != nil {
+			t.Errorf("billing model %q: %v", model, err)
+		}
+	}
+	usage := valid()
+	usage.BillingModel, usage.SeatPriceMonth, usage.SeatPriceYear = BillingUsage, nil, nil
+	if err := Validate(usage); err != nil {
+		t.Errorf("usage plan without seat prices: %v", err)
+	}
+
 	// Zero is fine for a gate the billing page does not show.
 	p := valid()
-	p.Limits = Limits{"agents": i64(0), "storage_bytes": i64(0)}
+	p.Limits = Limits{"agents": i64(0), "storage_bytes": i64(0), GateMemberGroups: i64(0)}
 	p.SeatsFixed = &zero
 	if err := Validate(p); err != nil {
 		t.Errorf("zero agents and storage: %v", err)
@@ -131,6 +167,7 @@ func TestRowConversionRoundTrips(t *testing.T) {
 		Features:       map[string]bool{"sso": true, "audit_export": false},
 		SeatPriceMonth: i64(149000), SeatPriceYear: nil, SeatsFixed: &seats, MinSeats: nil,
 		TrialDays: 14, IsPublic: true, Sort: 20, ArchivedAt: &archived,
+		Audience: AudienceBusiness, BillingModel: BillingSeat, Version: 4,
 	}
 	params, err := toInsertParams(in)
 	if err != nil {
@@ -140,7 +177,8 @@ func TestRowConversionRoundTrips(t *testing.T) {
 		Key: params.Key, Name: params.Name, Limits: params.Limits, Features: params.Features, Currency: params.Currency,
 		SeatPriceMonth: params.SeatPriceMonth, SeatPriceYear: params.SeatPriceYear, SeatsFixed: params.SeatsFixed,
 		MinSeats: params.MinSeats, TrialDays: params.TrialDays, IsPublic: params.IsPublic, Sort: params.Sort,
-		ArchivedAt: params.ArchivedAt,
+		ArchivedAt: params.ArchivedAt, Audience: params.Audience, BillingModel: params.BillingModel,
+		Version: in.Version, // the store owns the version: it is never a write parameter
 	}
 	out, err := FromRow(row)
 	if err != nil {

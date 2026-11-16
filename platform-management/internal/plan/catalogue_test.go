@@ -212,9 +212,17 @@ func TestEmbeddedCatalogueMatchesTheSpecTable(t *testing.T) {
 			t.Errorf("catalogue has no plan %q", want.Key)
 			continue
 		}
-		// Sort and archived_at are not in the table.
+		// Sort and archived_at are not in the table, nor are the R5 fields
+		// (TestCatalogueCarriesTheR5Fields owns those).
 		cmp := *have
 		cmp.Sort, cmp.ArchivedAt = 0, nil
+		cmp.Audience, cmp.BillingModel = "", ""
+		cmp.Limits = Limits{}
+		for gate, v := range have.Limits {
+			if gate != GateMemberGroups {
+				cmp.Limits[gate] = v
+			}
+		}
 		if !reflect.DeepEqual(cmp, want) {
 			gotJSON, _ := json.Marshal(cmp)
 			wantJSON, _ := json.Marshal(want)
@@ -308,8 +316,20 @@ func TestEnterpriseIsPrivateAndTakesBusinessLimits(t *testing.T) {
 	if ent.IsPublic {
 		t.Error("enterprise must not be public")
 	}
-	if !reflect.DeepEqual(ent.Limits, biz.Limits) || !reflect.DeepEqual(ent.Features, biz.Features) {
-		t.Errorf("enterprise limits/features = %v / %v, want business's %v / %v", ent.Limits, ent.Features, biz.Limits, biz.Features)
+	// member_groups is the one limit that differs: Business caps it, Enterprise does not.
+	entLimits, bizLimits := Limits{}, Limits{}
+	for g, v := range ent.Limits {
+		if g != GateMemberGroups {
+			entLimits[g] = v
+		}
+	}
+	for g, v := range biz.Limits {
+		if g != GateMemberGroups {
+			bizLimits[g] = v
+		}
+	}
+	if !reflect.DeepEqual(entLimits, bizLimits) || !reflect.DeepEqual(ent.Features, biz.Features) {
+		t.Errorf("enterprise limits/features = %v / %v, want business's %v / %v", entLimits, ent.Features, bizLimits, biz.Features)
 	}
 }
 
@@ -321,6 +341,42 @@ func TestCatalogueEntriesPassValidation(t *testing.T) {
 	for _, p := range all {
 		if err := Validate(p); err != nil {
 			t.Errorf("%s: %v", p.Key, err)
+		}
+	}
+}
+
+// The R5 fields of spec 7b.1 and plan step Q1: audience, billing_model and the
+// member_groups limit (7b.7). Enterprise's member_groups is an explicit null:
+// no cap.
+func TestCatalogueCarriesTheR5Fields(t *testing.T) {
+	groups := func(n int64) *int64 { return &n }
+	for _, tc := range []struct {
+		key      string
+		audience string
+		groups   *int64
+	}{
+		{"free", "any", groups(0)},
+		{"pro", "any", groups(0)},
+		{"business", "business", groups(50)},
+		{"enterprise", "business", nil},
+	} {
+		p := byKey(t, tc.key)
+		if p.Audience != tc.audience {
+			t.Errorf("%s audience = %q, want %q", tc.key, p.Audience, tc.audience)
+		}
+		if p.BillingModel != "seat" {
+			t.Errorf("%s billing_model = %q, want seat", tc.key, p.BillingModel)
+		}
+		got, present := p.Limits[GateMemberGroups]
+		if !present {
+			t.Errorf("%s has no member_groups limit; want an explicit entry", tc.key)
+			continue
+		}
+		if (got == nil) != (tc.groups == nil) || (got != nil && *got != *tc.groups) {
+			t.Errorf("%s member_groups = %v, want %v", tc.key, got, tc.groups)
+		}
+		if p.Version != 0 {
+			t.Errorf("%s version = %d, want 0 (the store owns it)", tc.key, p.Version)
 		}
 	}
 }
