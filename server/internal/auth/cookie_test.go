@@ -114,6 +114,20 @@ func TestParseAuthTokenTTL(t *testing.T) {
 	}
 }
 
+// AuthTokenTTL must read the environment on each call. A value cached by the
+// first caller would leak into every later test and every later reload.
+func TestAuthTokenTTLReadsEnvOnEveryCall(t *testing.T) {
+	t.Setenv("AUTH_TOKEN_TTL", "2h")
+	if got := AuthTokenTTL(); got != 2*time.Hour {
+		t.Fatalf("AuthTokenTTL() = %s, want 2h (AUTH_TOKEN_TTL=2h)", got)
+	}
+
+	t.Setenv("AUTH_TOKEN_TTL", "3600")
+	if got := AuthTokenTTL(); got != time.Hour {
+		t.Fatalf("AuthTokenTTL() = %s, want 1h (AUTH_TOKEN_TTL=3600)", got)
+	}
+}
+
 func TestSetAuthCookies_HTTPSProduction(t *testing.T) {
 	t.Setenv("FRONTEND_ORIGIN", "https://app.example.com")
 	t.Setenv("COOKIE_DOMAIN", "app.example.com")

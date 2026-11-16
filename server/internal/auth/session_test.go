@@ -1,26 +1,11 @@
 package auth
 
 import (
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
-
-// resetAuthTokenTTLForTest makes AuthTokenTTL() re-read the environment.
-// The production path caches it behind a sync.Once on purpose — the TTL is
-// deployment configuration, not per-request state — so a test that wants a
-// specific TTL has to clear the cache on both sides of itself.
-func resetAuthTokenTTLForTest(t *testing.T) {
-	t.Helper()
-	clear := func() {
-		authTokenTTLOnce = sync.Once{}
-		authTokenTTLCached = 0
-	}
-	clear()
-	t.Cleanup(clear)
-}
 
 func sessionClaims(t *testing.T, exp time.Time, sid string) jwt.MapClaims {
 	t.Helper()
@@ -57,7 +42,6 @@ func signSession(t *testing.T, claims jwt.MapClaims) string {
 // MUL-7436, so pin both sides of the boundary.
 func TestShouldRenewSession_HalfTTLBoundary(t *testing.T) {
 	t.Setenv("AUTH_TOKEN_TTL", "720h") // 30 days
-	resetAuthTokenTTLForTest(t)
 
 	now := time.Now()
 	ttl := AuthTokenTTL()
@@ -112,7 +96,6 @@ func TestSessionRenewCheckInterval_TracksTTL(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.ttl, func(t *testing.T) {
 			t.Setenv("AUTH_TOKEN_TTL", tc.ttl)
-			resetAuthTokenTTLForTest(t)
 			if got := SessionRenewCheckInterval(); got != tc.want {
 				t.Errorf("SessionRenewCheckInterval() = %s, want %s (TTL=%s: %s)", got, tc.want, tc.ttl, tc.why)
 			}
@@ -133,7 +116,6 @@ func TestSessionRenewCheckInterval_WireValueFitsInsideTheRenewalWindow(t *testin
 	for _, ttl := range []string{"1s", "10s", "1m", "5m", "10m", "30m", "1h", "24h", "720h", "8760h", "87600h"} {
 		t.Run(ttl, func(t *testing.T) {
 			t.Setenv("AUTH_TOKEN_TTL", ttl)
-			resetAuthTokenTTLForTest(t)
 
 			// Exactly what handler.RefreshSession puts on the wire.
 			wireSeconds := int(SessionRenewCheckInterval().Seconds())
@@ -162,7 +144,6 @@ func TestSessionRenewCheckInterval_StaysAboveTheClientFloors(t *testing.T) {
 	for _, ttl := range []string{"1s", "30s", "1m", "10m", "720h"} {
 		t.Run(ttl, func(t *testing.T) {
 			t.Setenv("AUTH_TOKEN_TTL", ttl)
-			resetAuthTokenTTLForTest(t)
 
 			asClientSeesIt := time.Duration(int(SessionRenewCheckInterval().Seconds())) * time.Second
 			if asClientSeesIt < clientFloor {
@@ -188,7 +169,6 @@ func TestAuthTokenTTL_ClampsBelowTheSupportedMinimum(t *testing.T) {
 	for raw, want := range cases {
 		t.Run(raw, func(t *testing.T) {
 			t.Setenv("AUTH_TOKEN_TTL", raw)
-			resetAuthTokenTTLForTest(t)
 			if got := AuthTokenTTL(); got != want {
 				t.Errorf("AuthTokenTTL() = %s, want %s (AUTH_TOKEN_TTL=%s)", got, want, raw)
 			}
@@ -201,7 +181,6 @@ func TestAuthTokenTTL_ClampsBelowTheSupportedMinimum(t *testing.T) {
 // the session.
 func TestRenewSessionToken_CarriesIdentityForward(t *testing.T) {
 	t.Setenv("AUTH_TOKEN_TTL", "720h")
-	resetAuthTokenTTLForTest(t)
 
 	old := sessionClaims(t, time.Now().Add(24*time.Hour), "session-abc")
 	token, expiresAt, err := RenewSessionToken(old)
@@ -407,7 +386,6 @@ func TestSessionIDFromToken(t *testing.T) {
 // rather than as a property of one call.
 func TestSlidingSession_ContinuousUseOutlivesTTL(t *testing.T) {
 	t.Setenv("AUTH_TOKEN_TTL", "720h") // 30 days
-	resetAuthTokenTTLForTest(t)
 
 	ttl := AuthTokenTTL()
 	claims := sessionClaims(t, time.Now().Add(ttl), "sid-live")
@@ -447,7 +425,6 @@ func TestSlidingSession_ContinuousUseOutlivesTTL(t *testing.T) {
 // the scheduled logout, not expiry itself.
 func TestSlidingSession_IdleSessionStillExpires(t *testing.T) {
 	t.Setenv("AUTH_TOKEN_TTL", "720h")
-	resetAuthTokenTTLForTest(t)
 
 	ttl := AuthTokenTTL()
 	lastUsed := time.Now()

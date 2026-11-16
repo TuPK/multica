@@ -70,8 +70,9 @@ const (
 
 var (
 	ipCookieDomainWarnOnce sync.Once
-	authTokenTTLOnce       sync.Once
-	authTokenTTLCached     time.Duration
+	// authTokenTTLLogOnce gates the AUTH_TOKEN_TTL diagnostics. The value is
+	// read on every call, but its warnings are logged once per process.
+	authTokenTTLLogOnce sync.Once
 )
 
 // parseAuthTokenTTL parses a raw AUTH_TOKEN_TTL value into a duration.
@@ -89,10 +90,6 @@ func parseAuthTokenTTL(raw string) (time.Duration, bool) {
 		if d <= 0 {
 			return 0, false
 		}
-		if d > 10*365*24*time.Hour {
-			slog.Warn("AUTH_TOKEN_TTL exceeds 10 years; accepting but verify this is intentional",
-				"value", raw, "hours", d.Hours())
-		}
 		return d, true
 	}
 
@@ -105,42 +102,47 @@ func parseAuthTokenTTL(raw string) (time.Duration, bool) {
 		return 0, false
 	}
 	d := time.Duration(secs) * time.Second
-	if d > 10*365*24*time.Hour {
-		slog.Warn("AUTH_TOKEN_TTL exceeds 10 years; accepting but verify this is intentional",
-			"value", raw, "hours", d.Hours())
-	}
 	return d, true
 }
 
 // AuthTokenTTL returns the configured auth token lifetime. It reads the
-// AUTH_TOKEN_TTL environment variable (Go duration string or integer seconds) on first call and caches
-// the result. When the variable is unset or invalid the default of 30 days
-// is used.
+// AUTH_TOKEN_TTL environment variable (Go duration string or integer seconds)
+// on every call, so a changed value is seen without a restart. When the
+// variable is unset or invalid the default of 30 days is used.
 func AuthTokenTTL() time.Duration {
-	authTokenTTLOnce.Do(func() {
-		raw := os.Getenv("AUTH_TOKEN_TTL")
-		if ttl, ok := parseAuthTokenTTL(raw); ok {
-			if ttl < MinAuthTokenTTL {
-				// Clamping up, not falling back to the default: someone who
-				// asked for 30 seconds is far better served by 1 minute than
-				// by the 30-day default they did not ask for, and the warning
-				// says exactly what happened.
-				slog.Warn("AUTH_TOKEN_TTL is below the shortest supported session lifetime; using the minimum",
-					"value", raw, "minimum_seconds", int(MinAuthTokenTTL.Seconds()),
-					"reason", "a shorter TTL derives a renewal cadence below the floor every client applies, so clients would check on a schedule this server did not choose")
-				ttl = MinAuthTokenTTL
-			}
-			authTokenTTLCached = ttl
-			slog.Info("auth token TTL configured", "seconds", int(ttl.Seconds()))
-			return
-		}
-		authTokenTTLCached = defaultAuthTokenTTL
+	raw := os.Getenv("AUTH_TOKEN_TTL")
+	parsed, ok := parseAuthTokenTTL(raw)
+	ttl := defaultAuthTokenTTL
+	if ok {
+		// Clamping up, not falling back to the default: someone who asked for
+		// 30 seconds is far better served by 1 minute than by the 30-day
+		// default they did not ask for, and the warning says what happened.
+		ttl = max(parsed, MinAuthTokenTTL)
+	}
+	authTokenTTLLogOnce.Do(func() { logAuthTokenTTL(raw, parsed, ok, ttl) })
+	return ttl
+}
+
+// logAuthTokenTTL reports how AUTH_TOKEN_TTL was interpreted. AuthTokenTTL
+// calls it once per process, so the diagnostics do not repeat per request.
+func logAuthTokenTTL(raw string, parsed time.Duration, ok bool, ttl time.Duration) {
+	if !ok {
 		if strings.TrimSpace(raw) != "" {
 			slog.Warn("AUTH_TOKEN_TTL is not a valid duration or positive integer; using default",
 				"value", raw, "default_seconds", int(defaultAuthTokenTTL.Seconds()))
 		}
-	})
-	return authTokenTTLCached
+		return
+	}
+	if parsed > 10*365*24*time.Hour {
+		slog.Warn("AUTH_TOKEN_TTL exceeds 10 years; accepting but verify this is intentional",
+			"value", raw, "hours", parsed.Hours())
+	}
+	if parsed < MinAuthTokenTTL {
+		slog.Warn("AUTH_TOKEN_TTL is below the shortest supported session lifetime; using the minimum",
+			"value", raw, "minimum_seconds", int(MinAuthTokenTTL.Seconds()),
+			"reason", "a shorter TTL derives a renewal cadence below the floor every client applies, so clients would check on a schedule this server did not choose")
+	}
+	slog.Info("auth token TTL configured", "seconds", int(ttl.Seconds()))
 }
 
 // cookieDomain returns the trimmed COOKIE_DOMAIN env value, or "" if it looks
