@@ -2244,6 +2244,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Post("/seats/purchases", h.PurchaseCloudWorkspaceSubscriptionSeats)
 				r.Post("/seats/reconcile", h.ReconcileCloudWorkspaceSubscriptionSeats)
 				r.Post("/portal-sessions", h.CreateCloudWorkspaceSubscriptionPortal)
+				r.Put("/billing-profile", h.UpdateCloudWorkspaceBillingProfile)
 			})
 		})
 

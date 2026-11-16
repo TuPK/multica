@@ -709,6 +709,178 @@ func TestCloudWorkspaceSubscriptionMutationsValidateLocally(t *testing.T) {
 	}
 }
 
+func TestUpdateCloudWorkspaceBillingProfileForwardsTheAllowlistedBody(t *testing.T) {
+	withFeatureFlag(t, testHandler, featureflags.BillingWorkspaceSubscriptions, true)
+	for _, role := range []string{"owner", "admin"} {
+		t.Run(role, func(t *testing.T) {
+			proxy := &fakeCloudRuntimeProxy{
+				enabled: true,
+				resp:    &cloudruntime.Response{StatusCode: http.StatusOK, Body: []byte(`{"account_kind":"business"}`)},
+			}
+			useCloudRuntimeProxy(t, proxy)
+
+			req := withCloudSubscriptionWorkspace(newRequest(http.MethodPut, "/api/cloud-subscriptions/billing-profile", map[string]any{
+				"account_kind":  "business",
+				"legal_name":    "Acme Co",
+				"tax_code":      "0123456789",
+				"address":       "1 Main St",
+				"invoice_email": "ap@acme.test",
+				// Fields the client must not be able to set.
+				"workspace_id": "00000000-0000-0000-0000-000000000000",
+				"verified_at":  "2030-01-01T00:00:00Z",
+				"verified_by":  testUserID,
+			}), role)
+			req.Header.Set(idempotencyKeyHeader, "profile-request-1")
+			w := httptest.NewRecorder()
+			testHandler.UpdateCloudWorkspaceBillingProfile(w, req)
+
+			if w.Code != http.StatusOK {
+				t.Fatalf("status = %d, body = %s", w.Code, w.Body.String())
+			}
+			if proxy.req.Method != http.MethodPut || proxy.req.Path != "/api/v1/subscriptions/"+testWorkspaceID+"/billing-profile" {
+				t.Fatalf("upstream = %s %s", proxy.req.Method, proxy.req.Path)
+			}
+			if proxy.req.UserID != testUserID || proxy.req.Op != "billing" {
+				t.Fatalf("upstream user = %q, op = %q", proxy.req.UserID, proxy.req.Op)
+			}
+			if got := proxy.req.Headers.Get(idempotencyKeyHeader); got != "profile-request-1" {
+				t.Fatalf("upstream idempotency key = %q", got)
+			}
+			var sent map[string]any
+			if err := json.Unmarshal(proxy.req.Body, &sent); err != nil {
+				t.Fatalf("decode upstream body: %v", err)
+			}
+			want := map[string]any{
+				"account_kind": "business", "legal_name": "Acme Co", "tax_code": "0123456789",
+				"address": "1 Main St", "invoice_email": "ap@acme.test",
+			}
+			if len(sent) != len(want) {
+				t.Fatalf("upstream body = %v, want only %v", sent, want)
+			}
+			for k, v := range want {
+				if sent[k] != v {
+					t.Fatalf("upstream body[%s] = %v, want %v", k, sent[k], v)
+				}
+			}
+		})
+	}
+}
+
+func TestUpdateCloudWorkspaceBillingProfileOmitsProfileFieldsTheClientDidNotSend(t *testing.T) {
+	withFeatureFlag(t, testHandler, featureflags.BillingWorkspaceSubscriptions, true)
+	proxy := &fakeCloudRuntimeProxy{enabled: true, resp: &cloudruntime.Response{StatusCode: http.StatusOK, Body: []byte(`{}`)}}
+	useCloudRuntimeProxy(t, proxy)
+
+	req := withCloudSubscriptionWorkspace(newRequest(http.MethodPut, "/api/cloud-subscriptions/billing-profile",
+		map[string]any{"account_kind": "individual"}), "owner")
+	req.Header.Set(idempotencyKeyHeader, "profile-request-2")
+	w := httptest.NewRecorder()
+	testHandler.UpdateCloudWorkspaceBillingProfile(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", w.Code, w.Body.String())
+	}
+	if got := strings.TrimSpace(string(proxy.req.Body)); got != `{"account_kind":"individual"}` {
+		t.Fatalf("upstream body = %s, want only account_kind", got)
+	}
+}
+
+func TestUpdateCloudWorkspaceBillingProfileValidatesLocally(t *testing.T) {
+	withFeatureFlag(t, testHandler, featureflags.BillingWorkspaceSubscriptions, true)
+	long := strings.Repeat("x", 1025)
+
+	cases := []struct {
+		name      string
+		body      any
+		header    string
+		wantError string
+	}{
+		{"missing idempotency key", map[string]any{"account_kind": "business"}, "", "Idempotency-Key or idempotency_key is required"},
+		{"oversized idempotency key", map[string]any{"account_kind": "business"}, strings.Repeat("a", maxCloudSubscriptionIdempotencyKeyLength+1), "idempotency key must be at most 255 bytes"},
+		{"missing kind", map[string]any{"legal_name": "Acme"}, "k", "account_kind must be individual or business"},
+		{"unknown kind", map[string]any{"account_kind": "enterprise"}, "k", "account_kind must be individual or business"},
+		{"field of the wrong type", map[string]any{"account_kind": "business", "legal_name": 7}, "k", "invalid request body"},
+		{"legal name too long", map[string]any{"account_kind": "business", "legal_name": strings.Repeat("x", 256)}, "k", "legal_name is too long"},
+		{"address too long", map[string]any{"account_kind": "business", "address": long}, "k", "address is too long"},
+		{"tax code too long", map[string]any{"account_kind": "business", "tax_code": strings.Repeat("1", 33)}, "k", "tax_code is too long"},
+		{"invoice email too long", map[string]any{"account_kind": "business", "invoice_email": strings.Repeat("a", 250) + "@x.test"}, "k", "invoice_email is too long"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			proxy := &fakeCloudRuntimeProxy{enabled: true}
+			useCloudRuntimeProxy(t, proxy)
+
+			req := withCloudSubscriptionWorkspace(newRequest(http.MethodPut, "/api/cloud-subscriptions/billing-profile", tc.body), "owner")
+			if tc.header != "" {
+				req.Header.Set(idempotencyKeyHeader, tc.header)
+			}
+			w := httptest.NewRecorder()
+			testHandler.UpdateCloudWorkspaceBillingProfile(w, req)
+
+			if w.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, body = %s", w.Code, w.Body.String())
+			}
+			if !strings.Contains(w.Body.String(), tc.wantError) {
+				t.Fatalf("body = %s, want error containing %q", w.Body.String(), tc.wantError)
+			}
+			if proxy.called {
+				t.Fatal("upstream must not be called for a locally invalid request")
+			}
+		})
+	}
+}
+
+func TestUpdateCloudWorkspaceBillingProfileRefusesAMemberAndMachineActors(t *testing.T) {
+	withFeatureFlag(t, testHandler, featureflags.BillingWorkspaceSubscriptions, true)
+
+	cases := []struct {
+		name, role, actorSource string
+	}{
+		{"member", "member", ""},
+		{"viewer", "viewer", ""},
+		{"task token", "owner", "task_token"},
+		{"cloud pat", "owner", "cloud_pat"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			proxy := &fakeCloudRuntimeProxy{enabled: true}
+			useCloudRuntimeProxy(t, proxy)
+
+			req := withCloudSubscriptionWorkspace(newRequest(http.MethodPut, "/api/cloud-subscriptions/billing-profile",
+				map[string]any{"account_kind": "individual"}), tc.role)
+			req.Header.Set(idempotencyKeyHeader, "profile-request-3")
+			if tc.actorSource != "" {
+				req.Header.Set("X-Actor-Source", tc.actorSource)
+			}
+			w := httptest.NewRecorder()
+			testHandler.UpdateCloudWorkspaceBillingProfile(w, req)
+
+			if w.Code != http.StatusForbidden {
+				t.Fatalf("status = %d, body = %s", w.Code, w.Body.String())
+			}
+			if proxy.called {
+				t.Fatal("upstream must not be called")
+			}
+		})
+	}
+}
+
+func TestUpdateCloudWorkspaceBillingProfileIsOffWithTheFlag(t *testing.T) {
+	withFeatureFlag(t, testHandler, featureflags.BillingWorkspaceSubscriptions, false)
+	proxy := &fakeCloudRuntimeProxy{enabled: true}
+	useCloudRuntimeProxy(t, proxy)
+
+	req := withCloudSubscriptionWorkspace(newRequest(http.MethodPut, "/api/cloud-subscriptions/billing-profile",
+		map[string]any{"account_kind": "individual"}), "owner")
+	req.Header.Set(idempotencyKeyHeader, "profile-request-4")
+	w := httptest.NewRecorder()
+	testHandler.UpdateCloudWorkspaceBillingProfile(w, req)
+
+	if w.Code != http.StatusForbidden || proxy.called {
+		t.Fatalf("status = %d, upstream called = %v, body = %s", w.Code, proxy.called, w.Body.String())
+	}
+}
+
 // --- Stripe webhook ---
 
 // TestStripeWebhookForwardsRawBodyAndSignature is the critical

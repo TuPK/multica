@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/multica-ai/multica/server/internal/cloudruntime"
@@ -73,6 +74,24 @@ type cloudSubscriptionCheckoutUpstreamRequest struct {
 	PlanKey        string `json:"plan_key,omitempty"`
 	Seats          *int   `json:"seats,omitempty"`
 }
+
+// cloudBillingProfileRequest is the allowlisted body of PUT billing-profile. The
+// platform owns the format checks and the verification fields; these limits only
+// bound what is forwarded.
+type cloudBillingProfileRequest struct {
+	AccountKind  string  `json:"account_kind"`
+	LegalName    *string `json:"legal_name,omitempty"`
+	TaxCode      *string `json:"tax_code,omitempty"`
+	Address      *string `json:"address,omitempty"`
+	InvoiceEmail *string `json:"invoice_email,omitempty"`
+}
+
+const (
+	maxCloudBillingProfileNameLength    = 255
+	maxCloudBillingProfileTaxCodeLength = 32
+	maxCloudBillingProfileAddressLength = 1024
+	maxCloudBillingProfileEmailLength   = 254
+)
 
 type cloudSubscriptionSeatPurchasePreviewRequest struct {
 	AdditionalSeats int `json:"additional_seats"`
@@ -344,6 +363,57 @@ func (h *Handler) PurchaseCloudWorkspaceSubscriptionSeats(w http.ResponseWriter,
 	}
 	h.proxyCloudSubscription(w, r, http.MethodPost,
 		"/api/v1/subscriptions/"+workspaceID+"/seats/purchases", userID, upstreamBody,
+		http.Header{idempotencyKeyHeader: []string{key}})
+}
+
+// UpdateCloudWorkspaceBillingProfile forwards a change of the workspace's
+// account kind and billing profile. Cloud validates the profile, checks the plan
+// audience and writes the audit row; this handler bounds the body and forwards
+// only the allowlisted fields.
+func (h *Handler) UpdateCloudWorkspaceBillingProfile(w http.ResponseWriter, r *http.Request) {
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, "owner", "admin")
+	if !ok {
+		return
+	}
+	body, ok := readCloudRuntimeJSONBody(w, r)
+	if !ok {
+		return
+	}
+	var in cloudBillingProfileRequest
+	if err := json.Unmarshal(body, &in); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if in.AccountKind != "individual" && in.AccountKind != "business" {
+		writeError(w, http.StatusBadRequest, "account_kind must be individual or business")
+		return
+	}
+	for _, f := range []struct {
+		name  string
+		value *string
+		max   int
+	}{
+		{"legal_name", in.LegalName, maxCloudBillingProfileNameLength},
+		{"tax_code", in.TaxCode, maxCloudBillingProfileTaxCodeLength},
+		{"address", in.Address, maxCloudBillingProfileAddressLength},
+		{"invoice_email", in.InvoiceEmail, maxCloudBillingProfileEmailLength},
+	} {
+		if f.value != nil && utf8.RuneCountInString(*f.value) > f.max {
+			writeError(w, http.StatusBadRequest, f.name+" is too long")
+			return
+		}
+	}
+	key, ok := requireCloudSubscriptionIdempotencyKey(w, r, "")
+	if !ok {
+		return
+	}
+	upstreamBody, err := json.Marshal(in)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to build billing profile request")
+		return
+	}
+	h.proxyCloudSubscription(w, r, http.MethodPut,
+		"/api/v1/subscriptions/"+workspaceID+"/billing-profile", userID, upstreamBody,
 		http.Header{idempotencyKeyHeader: []string{key}})
 }
 
