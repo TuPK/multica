@@ -322,6 +322,16 @@ import type {
   CreateCommentSubIssueAgentRequest,
   CreateCommentSubIssueRequest,
 } from "../types";
+import type {
+  WorkspacePlanChangePreview,
+  CreateWorkspacePlanChangeResponse,
+  WorkspacePendingPlanChangeCleared,
+  WorkspaceSubscriptionCancelState,
+  WorkspaceBillingProfile,
+  PreviewWorkspacePlanChangeRequest,
+  CreateWorkspacePlanChangeRequest,
+  UpdateWorkspaceBillingProfileRequest,
+} from "../types/billing";
 import type { OnboardingCompletionPath } from "../onboarding/types";
 import type {
   CreateFeedbackResponse,
@@ -869,6 +879,11 @@ import {
   WorkspaceSeatPurchasePreviewSchema,
   PurchaseWorkspaceSeatsResponseSchema,
   CreateWorkspaceSubscriptionPortalResponseSchema,
+  WorkspacePlanChangePreviewSchema,
+  CreateWorkspacePlanChangeResponseSchema,
+  ClearWorkspaceScheduledPlanChangeResponseSchema,
+  WorkspaceSubscriptionCancelStateSchema,
+  WorkspaceBillingProfileSchema,
   DingTalkInstallationSchema,
   ListDingTalkInstallationsResponseSchema,
   ListDingTalkGroupsResponseSchema,
@@ -3250,6 +3265,123 @@ export class ApiClient {
       CreateWorkspaceSubscriptionPortalResponseSchema,
       null,
       { endpoint: "POST /api/cloud-subscriptions/portal-sessions" },
+    );
+  }
+
+  async getWorkspaceBillingProfile(): Promise<WorkspaceBillingProfile | null> {
+    const raw = await this.fetch<unknown>("/api/cloud-subscriptions/billing-profile");
+    return parseWithFallback<WorkspaceBillingProfile | null>(
+      raw,
+      WorkspaceBillingProfileSchema,
+      null,
+      { endpoint: "GET /api/cloud-subscriptions/billing-profile" },
+    );
+  }
+
+  async updateWorkspaceBillingProfile(data: UpdateWorkspaceBillingProfileRequest): Promise<WorkspaceBillingProfile | null> {
+    const res = await this.fetchRaw("/api/cloud-subscriptions/billing-profile", {
+      method: "PUT",
+      body: JSON.stringify({
+        account_kind: data.accountKind,
+        legal_name: data.legalName,
+        tax_code: data.taxCode,
+        address: data.address,
+        invoice_email: data.invoiceEmail,
+      }),
+      extraHeaders: { "Content-Type": "application/json" },
+    });
+    const raw = (await res.json()) as unknown;
+    return parseWithFallback<WorkspaceBillingProfile | null>(
+      raw,
+      WorkspaceBillingProfileSchema,
+      null,
+      { endpoint: "PUT /api/cloud-subscriptions/billing-profile" },
+    );
+  }
+
+  async previewWorkspacePlanChange(data: PreviewWorkspacePlanChangeRequest): Promise<WorkspacePlanChangePreview | null> {
+    const res = await this.fetchRaw("/api/cloud-subscriptions/plan-changes/preview", {
+      method: "POST",
+      body: JSON.stringify({
+        plan_key: data.planKey,
+        interval: data.interval,
+        seats: data.seats,
+      }),
+      extraHeaders: { "Content-Type": "application/json" },
+    });
+    const raw = (await res.json()) as unknown;
+    return parseWithFallback<WorkspacePlanChangePreview | null>(
+      raw,
+      WorkspacePlanChangePreviewSchema,
+      null,
+      { endpoint: "POST /api/cloud-subscriptions/plan-changes/preview" },
+    );
+  }
+
+  async createWorkspacePlanChange(data: CreateWorkspacePlanChangeRequest): Promise<CreateWorkspacePlanChangeResponse | null> {
+    const res = await this.fetchRaw("/api/cloud-subscriptions/plan-changes", {
+      method: "POST",
+      body: JSON.stringify({
+        plan_key: data.planKey,
+        interval: data.interval,
+        seats: data.seats,
+        accepted_amount: data.acceptedAmount,
+        expected_version: data.expectedVersion,
+        idempotency_key: data.idempotencyKey,
+      }),
+      extraHeaders: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": data.idempotencyKey,
+      },
+    });
+    const raw = (await res.json()) as unknown;
+    return parseWithFallback<CreateWorkspacePlanChangeResponse | null>(
+      raw,
+      CreateWorkspacePlanChangeResponseSchema,
+      null,
+      { endpoint: "POST /api/cloud-subscriptions/plan-changes" },
+    );
+  }
+
+  async cancelWorkspaceScheduledPlanChange(idempotencyKey: string): Promise<WorkspacePendingPlanChangeCleared | null> {
+    const res = await this.fetchRaw("/api/cloud-subscriptions/plan-changes/scheduled", {
+      method: "DELETE",
+      extraHeaders: { "Idempotency-Key": idempotencyKey },
+    });
+    const raw = (await res.json()) as unknown;
+    return parseWithFallback<WorkspacePendingPlanChangeCleared | null>(
+      raw,
+      ClearWorkspaceScheduledPlanChangeResponseSchema,
+      null,
+      { endpoint: "DELETE /api/cloud-subscriptions/plan-changes/scheduled" },
+    );
+  }
+
+  async cancelWorkspaceSubscription(idempotencyKey: string): Promise<WorkspaceSubscriptionCancelState | null> {
+    const res = await this.fetchRaw("/api/cloud-subscriptions/cancel", {
+      method: "POST",
+      extraHeaders: { "Idempotency-Key": idempotencyKey },
+    });
+    const raw = (await res.json()) as unknown;
+    return parseWithFallback<WorkspaceSubscriptionCancelState | null>(
+      raw,
+      WorkspaceSubscriptionCancelStateSchema,
+      null,
+      { endpoint: "POST /api/cloud-subscriptions/cancel" },
+    );
+  }
+
+  async resumeWorkspaceSubscription(idempotencyKey: string): Promise<WorkspaceSubscriptionCancelState | null> {
+    const res = await this.fetchRaw("/api/cloud-subscriptions/resume", {
+      method: "POST",
+      extraHeaders: { "Idempotency-Key": idempotencyKey },
+    });
+    const raw = (await res.json()) as unknown;
+    return parseWithFallback<WorkspaceSubscriptionCancelState | null>(
+      raw,
+      WorkspaceSubscriptionCancelStateSchema,
+      null,
+      { endpoint: "POST /api/cloud-subscriptions/resume" },
     );
   }
 

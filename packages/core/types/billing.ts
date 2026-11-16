@@ -238,7 +238,14 @@ export interface WorkspaceSubscriptionSummary {
     checkout: boolean;
     portal: boolean;
     purchaseSeats: boolean;
+    // Optional in the type only so existing fixtures keep compiling; the
+    // schema always fills them in.
+    changePlan?: boolean;
+    cancel?: boolean;
+    resume?: boolean;
   };
+  /** A plan change scheduled for the next period; null when none. */
+  pendingChange?: WorkspacePendingPlanChange | null;
   /**
    * How the workspace pays. Multica Cloud does not send it; the platform sends
    * `manual` (bank transfer, confirmed by staff). Absent means Stripe. An open
@@ -347,4 +354,100 @@ export interface WorkspaceSubscriptionSeatReconcileResult {
 
 export interface CreateWorkspaceSubscriptionPortalResponse {
   url: string;
+}
+
+export type WorkspacePlanChangeMode = "charge" | "subscribe" | "schedule";
+
+export interface WorkspacePendingPlanChange {
+  planKey: string;
+  interval: WorkspaceSubscriptionInterval;
+  seats: number;
+  requestedAt: string;
+}
+
+export interface PreviewWorkspacePlanChangeRequest {
+  planKey: string;
+  interval: WorkspaceSubscriptionInterval;
+  seats: number;
+}
+
+export interface WorkspacePlanChangePreview {
+  mode: WorkspacePlanChangeMode;
+  planKey: string;
+  interval: WorkspaceSubscriptionInterval;
+  currentSeats: number;
+  resultingSeats: number;
+  currency: string;
+  amount: number;
+  vatAmount: number;
+  effectiveAt: string;
+  expectedVersion: number;
+  quotedAt: string;
+}
+
+export interface CreateWorkspacePlanChangeRequest {
+  planKey: string;
+  interval: WorkspaceSubscriptionInterval;
+  seats: number;
+  acceptedAmount?: number;
+  expectedVersion?: number;
+  idempotencyKey: string;
+}
+
+export type CreateWorkspacePlanChangeResponse =
+  | {
+      outcome: "scheduled";
+      planKey: string;
+      interval: WorkspaceSubscriptionInterval;
+      seats: number;
+      effectiveAt: string;
+      version: number;
+      changed: boolean;
+    }
+  | {
+      outcome: "order";
+      requestId: string;
+      // Open strings: the platform may add order kinds and statuses.
+      kind: string;
+      status: string;
+      planKey: string;
+      interval: WorkspaceSubscriptionInterval;
+      seats: number;
+      currency: string;
+      amount: number;
+      vatAmount: number;
+      expiresAt: string;
+    };
+
+export interface WorkspacePendingPlanChangeCleared {
+  pendingChange: null;
+  version: number;
+  changed: boolean;
+}
+
+export interface WorkspaceSubscriptionCancelState {
+  cancelAtPeriodEnd: boolean;
+  status: string;
+  currentPeriodEnd: string | null;
+  version: number;
+  changed: boolean;
+}
+
+export type WorkspaceBillingAccountKind = "individual" | "business";
+
+export interface WorkspaceBillingProfile {
+  accountKind: WorkspaceBillingAccountKind;
+  legalName: string;
+  taxCode: string;
+  address: string;
+  invoiceEmail: string;
+  verified: boolean;
+}
+
+export interface UpdateWorkspaceBillingProfileRequest {
+  accountKind: WorkspaceBillingAccountKind;
+  legalName?: string | null;
+  taxCode?: string | null;
+  address?: string | null;
+  invoiceEmail?: string | null;
 }

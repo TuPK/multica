@@ -5,6 +5,11 @@ import type {
   PreviewWorkspaceSeatPurchaseRequest,
   PurchaseWorkspaceSeatsRequest,
 } from "../types";
+import type {
+  CreateWorkspacePlanChangeRequest,
+  PreviewWorkspacePlanChangeRequest,
+  UpdateWorkspaceBillingProfileRequest,
+} from "../types/billing";
 import { workspaceOrderKeys } from "./workspace-orders-queries";
 import { workspaceSubscriptionKeys } from "./workspace-subscription-queries";
 
@@ -69,6 +74,84 @@ export function useCreateWorkspaceSubscriptionPortal(wsId: string) {
   return useMutation({
     mutationFn: (idempotencyKey: string) =>
       api.createWorkspaceSubscriptionPortal(idempotencyKey),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: workspaceSubscriptionKeys.summary(wsId),
+      });
+    },
+  });
+}
+
+export function useUpdateWorkspaceBillingProfile(wsId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateWorkspaceBillingProfileRequest) =>
+      api.updateWorkspaceBillingProfile(data),
+    onSettled: () => {
+      void queryClient.invalidateQueries({
+        queryKey: workspaceSubscriptionKeys.billingProfile(wsId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: workspaceSubscriptionKeys.summary(wsId),
+      });
+    },
+  });
+}
+
+export function usePreviewWorkspacePlanChange() {
+  return useMutation({
+    mutationFn: (data: PreviewWorkspacePlanChangeRequest) =>
+      api.previewWorkspacePlanChange(data),
+  });
+}
+
+export function useCreateWorkspacePlanChange(wsId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateWorkspacePlanChangeRequest) =>
+      api.createWorkspacePlanChange(data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: workspaceSubscriptionKeys.summary(wsId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: workspaceOrderKeys.all(wsId),
+      });
+    },
+  });
+}
+
+export function useCancelWorkspaceScheduledPlanChange(wsId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (idempotencyKey: string) =>
+      api.cancelWorkspaceScheduledPlanChange(idempotencyKey),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: workspaceSubscriptionKeys.summary(wsId),
+      });
+    },
+  });
+}
+
+export function useCancelWorkspaceSubscription(wsId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (idempotencyKey: string) =>
+      api.cancelWorkspaceSubscription(idempotencyKey),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: workspaceSubscriptionKeys.summary(wsId),
+      });
+    },
+  });
+}
+
+export function useResumeWorkspaceSubscription(wsId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (idempotencyKey: string) =>
+      api.resumeWorkspaceSubscription(idempotencyKey),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: workspaceSubscriptionKeys.summary(wsId),

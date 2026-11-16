@@ -173,6 +173,14 @@ import type {
 import type { CloudRuntimeNode } from "../runtimes/cloud-runtime";
 import type { CreateFeedbackResponse } from "../feedback/types";
 
+import type {
+  WorkspacePlanChangePreview,
+  CreateWorkspacePlanChangeResponse,
+  WorkspacePendingPlanChangeCleared,
+  WorkspaceSubscriptionCancelState,
+  WorkspaceBillingProfile,
+} from "../types/billing";
+
 export const PluginConfigFieldSchema = z.object({
   key: z.string(),
   type: z.string().default("string"),
@@ -3820,7 +3828,20 @@ export const WorkspaceSubscriptionSummarySchema = z
       checkout: z.boolean(),
       portal: z.boolean(),
       purchase_seats: z.boolean(),
+      change_plan: z.boolean().optional(),
+      cancel: z.boolean().optional(),
+      resume: z.boolean().optional(),
     }).loose(),
+    pending_change: z
+      .object({
+        plan_key: z.string(),
+        seats: z.number().int().positive(),
+        interval: WorkspaceSubscriptionIntervalSchema,
+        requested_at: z.string(),
+      })
+      .loose()
+      .nullable()
+      .optional(),
     payment_provider: z.string().optional(),
   })
   .loose()
@@ -3858,7 +3879,18 @@ export const WorkspaceSubscriptionSummarySchema = z
         checkout: value.available_actions.checkout,
         portal: value.available_actions.portal,
         purchaseSeats: value.available_actions.purchase_seats,
+        changePlan: value.available_actions.change_plan ?? false,
+        cancel: value.available_actions.cancel ?? false,
+        resume: value.available_actions.resume ?? false,
       },
+      pendingChange: value.pending_change
+        ? {
+            planKey: value.pending_change.plan_key,
+            seats: value.pending_change.seats,
+            interval: value.pending_change.interval,
+            requestedAt: value.pending_change.requested_at,
+          }
+        : null,
       // Left out, not set to undefined, when the server does not send it.
       ...(value.payment_provider !== undefined
         ? { paymentProvider: value.payment_provider }
@@ -3996,6 +4028,151 @@ export const PurchaseWorkspaceSeatsResponseSchema = z
       prorationAmount: value.proration_amount,
       nextInvoiceAmount: value.next_invoice_amount,
       status: value.status,
+    }),
+  );
+
+export const WorkspacePlanChangePreviewSchema = z
+  .object({
+    mode: z.enum(["charge", "subscribe", "schedule"]),
+    plan_key: z.string(),
+    interval: WorkspaceSubscriptionIntervalSchema,
+    current_seats: z.number().int().positive(),
+    resulting_seats: z.number().int().positive(),
+    currency: z.string().regex(/^[a-z]{3}$/),
+    amount: z.number().int().nonnegative(),
+    vat_amount: z.number().int().nonnegative(),
+    effective_at: z.string().min(1),
+    expected_version: z.number().int().nonnegative(),
+    quoted_at: z.string().min(1),
+  })
+  .loose()
+  .transform(
+    (value): WorkspacePlanChangePreview => ({
+      mode: value.mode,
+      planKey: value.plan_key,
+      interval: value.interval,
+      currentSeats: value.current_seats,
+      resultingSeats: value.resulting_seats,
+      currency: value.currency,
+      amount: value.amount,
+      vatAmount: value.vat_amount,
+      effectiveAt: value.effective_at,
+      expectedVersion: value.expected_version,
+      quotedAt: value.quoted_at,
+    }),
+  );
+
+const ScheduledPlanChangeResponseSchema = z
+  .object({
+    mode: z.literal("schedule"),
+    plan_key: z.string(),
+    interval: WorkspaceSubscriptionIntervalSchema,
+    seats: z.number().int().positive(),
+    effective_at: z.string(),
+    version: z.number().int().nonnegative(),
+    changed: z.boolean(),
+  })
+  .loose()
+  .transform(
+    (value): CreateWorkspacePlanChangeResponse => ({
+      outcome: "scheduled",
+      planKey: value.plan_key,
+      interval: value.interval,
+      seats: value.seats,
+      effectiveAt: value.effective_at,
+      version: value.version,
+      changed: value.changed,
+    }),
+  );
+
+const OrderPlanChangeResponseSchema = z
+  .object({
+    request_id: z.string(),
+    kind: z.string(),
+    status: z.string(),
+    plan_key: z.string(),
+    interval: WorkspaceSubscriptionIntervalSchema,
+    seats: z.number().int().positive(),
+    currency: z.string().regex(/^[a-z]{3}$/),
+    amount: z.number().int().nonnegative(),
+    vat_amount: z.number().int().nonnegative(),
+    expires_at: z.string(),
+  })
+  .loose()
+  .transform(
+    (value): CreateWorkspacePlanChangeResponse => ({
+      outcome: "order",
+      requestId: value.request_id,
+      kind: value.kind,
+      status: value.status,
+      planKey: value.plan_key,
+      interval: value.interval,
+      seats: value.seats,
+      currency: value.currency,
+      amount: value.amount,
+      vatAmount: value.vat_amount,
+      expiresAt: value.expires_at,
+    }),
+  );
+
+export const CreateWorkspacePlanChangeResponseSchema = z.union([
+  ScheduledPlanChangeResponseSchema,
+  OrderPlanChangeResponseSchema,
+]);
+
+export const ClearWorkspaceScheduledPlanChangeResponseSchema = z
+  .object({
+    pending_change: z.null(),
+    version: z.number().int().nonnegative(),
+    changed: z.boolean(),
+  })
+  .loose()
+  .transform(
+    (value): WorkspacePendingPlanChangeCleared => ({
+      pendingChange: null,
+      version: value.version,
+      changed: value.changed,
+    }),
+  );
+
+// Answer of both cancel and resume.
+export const WorkspaceSubscriptionCancelStateSchema = z
+  .object({
+    cancel_at_period_end: z.boolean(),
+    status: z.string(),
+    current_period_end: z.string().nullable(),
+    version: z.number().int().nonnegative(),
+    changed: z.boolean(),
+  })
+  .loose()
+  .transform(
+    (value): WorkspaceSubscriptionCancelState => ({
+      cancelAtPeriodEnd: value.cancel_at_period_end,
+      status: value.status,
+      currentPeriodEnd: value.current_period_end,
+      version: value.version,
+      changed: value.changed,
+    }),
+  );
+
+export const WorkspaceBillingProfileSchema = z
+  .object({
+    account_kind: z.enum(["individual", "business"]),
+    legal_name: z.string().default(""),
+    tax_code: z.string().default(""),
+    address: z.string().default(""),
+    invoice_email: z.string().default(""),
+    verified: z.boolean(),
+  })
+  .loose()
+  .transform(
+    (value): WorkspaceBillingProfile => ({
+      accountKind: value.account_kind,
+      legalName: value.legal_name,
+      taxCode: value.tax_code,
+      address: value.address,
+      invoiceEmail: value.invoice_email,
+      verified: value.verified,
     }),
   );
 

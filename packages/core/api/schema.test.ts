@@ -1520,6 +1520,9 @@ describe("workspace subscription contract", () => {
       checkout: false,
       portal: true,
       purchaseSeats: false,
+      changePlan: false,
+      cancel: false,
+      resume: false,
     });
   });
 

@@ -3,10 +3,14 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  ClearWorkspaceScheduledPlanChangeResponseSchema,
+  CreateWorkspacePlanChangeResponseSchema,
   CreateWorkspaceSubscriptionCheckoutResponseSchema,
   CreateWorkspaceSubscriptionPortalResponseSchema,
   PurchaseWorkspaceSeatsResponseSchema,
+  WorkspacePlanChangePreviewSchema,
   WorkspaceSeatPurchasePreviewSchema,
+  WorkspaceSubscriptionCancelStateSchema,
   WorkspaceSubscriptionPricesSchema,
   WorkspaceSubscriptionSeatReconcileResultSchema,
   WorkspaceSubscriptionSummarySchema,
@@ -43,6 +47,29 @@ describe("platform billing routes through the client's zod schemas", () => {
       checkout: true,
       portal: false,
       purchaseSeats: false,
+      changePlan: true,
+      cancel: false,
+      resume: false,
+    });
+    expect(summary.pendingChange).toBeNull();
+  });
+
+  it("GET summary with a scheduled plan change reads pending_change", () => {
+    const body = fixture("summary_paid_pending_purchase.json");
+    body.pending_change = {
+      plan_key: "pro",
+      seats: 5,
+      interval: "year",
+      requested_at: "2026-08-15T10:30:45Z",
+    };
+    const result = WorkspaceSubscriptionSummarySchema.safeParse(body);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data.pendingChange).toEqual({
+      planKey: "pro",
+      seats: 5,
+      interval: "year",
+      requestedAt: "2026-08-15T10:30:45Z",
     });
   });
 
@@ -125,6 +152,95 @@ describe("platform billing routes through the client's zod schemas", () => {
     expect(result.success).toBe(true);
     if (!result.success) return;
     expect(result.data.action).toBe("noop");
+  });
+});
+
+describe("subscription management routes through the client's zod schemas", () => {
+  it("POST plan-changes/preview quotes a charge with its VAT and the version it was made at", () => {
+    const result = WorkspacePlanChangePreviewSchema.safeParse(
+      fixture("plan_change_preview.json"),
+    );
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data).toMatchObject({
+      mode: "charge",
+      planKey: "unlimited",
+      interval: "month",
+      currentSeats: 5,
+      resultingSeats: 5,
+      currency: "vnd",
+      amount: 333333,
+      vatAmount: 33333,
+      expectedVersion: 4,
+    });
+  });
+
+  it("POST plan-changes for an upgrade returns the order to pay", () => {
+    const result = CreateWorkspacePlanChangeResponseSchema.safeParse(
+      fixture("plan_change_order.json"),
+    );
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data).toMatchObject({
+      outcome: "order",
+      requestId: "eeeeeeee-0000-0000-0000-000000000001",
+      status: "pending",
+      planKey: "unlimited",
+      amount: 333333,
+      vatAmount: 33333,
+      expiresAt: "2030-05-18T00:00:00Z",
+    });
+  });
+
+  it("POST plan-changes for a downgrade reports the change as scheduled", () => {
+    const result = CreateWorkspacePlanChangeResponseSchema.safeParse(
+      fixture("plan_change_scheduled.json"),
+    );
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data).toMatchObject({
+      outcome: "scheduled",
+      planKey: "pro",
+      interval: "year",
+      seats: 5,
+      effectiveAt: "2030-05-31T00:00:00Z",
+      version: 5,
+      changed: true,
+    });
+  });
+
+  it("DELETE plan-changes/scheduled answers with pending_change cleared", () => {
+    const result = ClearWorkspaceScheduledPlanChangeResponseSchema.safeParse(
+      fixture("plan_change_scheduled_cleared.json"),
+    );
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data).toEqual({ pendingChange: null, version: 5, changed: true });
+  });
+
+  it("POST cancel and POST resume answer with the cancellation state", () => {
+    const cancel = WorkspaceSubscriptionCancelStateSchema.safeParse(
+      fixture("cancel.json"),
+    );
+    expect(cancel.success).toBe(true);
+    if (cancel.success) {
+      expect(cancel.data).toEqual({
+        cancelAtPeriodEnd: true,
+        status: "active",
+        currentPeriodEnd: "2030-05-31T00:00:00Z",
+        version: 5,
+        changed: true,
+      });
+    }
+
+    const resume = WorkspaceSubscriptionCancelStateSchema.safeParse(
+      fixture("resume.json"),
+    );
+    expect(resume.success).toBe(true);
+    if (resume.success) {
+      expect(resume.data.cancelAtPeriodEnd).toBe(false);
+      expect(resume.data.version).toBe(6);
+    }
   });
 });
 

@@ -415,6 +415,17 @@ export type {
   PurchaseWorkspaceSeatsResponse,
   WorkspaceSubscriptionSeatReconcileResult,
   CreateWorkspaceSubscriptionPortalResponse,
+  WorkspacePlanChangeMode,
+  WorkspacePendingPlanChange,
+  PreviewWorkspacePlanChangeRequest,
+  WorkspacePlanChangePreview,
+  CreateWorkspacePlanChangeRequest,
+  CreateWorkspacePlanChangeResponse,
+  WorkspacePendingPlanChangeCleared,
+  WorkspaceSubscriptionCancelState,
+  WorkspaceBillingAccountKind,
+  WorkspaceBillingProfile,
+  UpdateWorkspaceBillingProfileRequest,
 } from "./billing";
 export type { IssueWakeup, IssueWakeupInput, SystemWakeup, WorkspaceSystemWakeup, WakeupPreview, IssueWakeupSummaryRow, WakeupCondition, WakeupPausedReason, WakeupRun, PausedWakeup, WakeupSource } from "./issue-wakeup";
 
