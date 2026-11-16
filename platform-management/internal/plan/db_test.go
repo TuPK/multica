@@ -78,7 +78,8 @@ func TestDBSeedLoadsTheCatalogueIntoAnEmptyTable(t *testing.T) {
 }
 
 // A table with any row is left as it is.
-func TestDBSeedDoesNothingOnANonEmptyTable(t *testing.T) {
+// A table that holds only free gains the paid plans, and keeps the free row staff edited.
+func TestDBSeedAddsMissingPlansAndKeepsEditedRows(t *testing.T) {
 	pool := testdb.Open(t)
 	ctx := context.Background()
 	outer, err := pool.Begin(ctx)
@@ -90,20 +91,55 @@ func TestDBSeedDoesNothingOnANonEmptyTable(t *testing.T) {
 	if _, err := outer.Exec(ctx, `DELETE FROM plan`); err != nil {
 		t.Fatal(err)
 	}
-	key := randomKey(t)
-	if _, err := outer.Exec(ctx, `INSERT INTO plan (key, name, currency) VALUES ($1, 'Only', 'vnd')`, key); err != nil {
+	if _, err := outer.Exec(ctx, `DELETE FROM audit_event WHERE action = 'plan.changed' AND target_type = 'plan' AND detail->>'deleted' = 'true'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := outer.Exec(ctx, `INSERT INTO plan (key, name, currency) VALUES ('free', 'Free (edited)', 'vnd')`); err != nil {
 		t.Fatal(err)
 	}
 	n, err := Seed(ctx, NewPgxRunner(savepointPool{outer}), discard())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n != 0 {
-		t.Fatalf("seeded %d plans into a table that had one", n)
+	if n != 3 {
+		t.Fatalf("seeded %d plans into a table that had one, want 3", n)
+	}
+	var freeName string
+	if err := outer.QueryRow(ctx, `SELECT name FROM plan WHERE key = 'free'`).Scan(&freeName); err != nil || freeName != "Free (edited)" {
+		t.Fatalf("free name = %q (%v), want the staff edit kept", freeName, err)
 	}
 	var count int
-	if err := outer.QueryRow(ctx, `SELECT count(*) FROM plan`).Scan(&count); err != nil || count != 1 {
-		t.Fatalf("plan rows = %d (%v), want 1", count, err)
+	if err := outer.QueryRow(ctx, `SELECT count(*) FROM plan WHERE key IN ('free', 'pro', 'business', 'enterprise')`).Scan(&count); err != nil || count != 4 {
+		t.Fatalf("catalogue plans = %d (%v), want 4", count, err)
+	}
+}
+
+// A plan with a deletion row in the audit log is not restored by the seed.
+func TestDBSeedDoesNotRestoreADeletedPlan(t *testing.T) {
+	pool := testdb.Open(t)
+	ctx := context.Background()
+	outer, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer outer.Rollback(ctx)
+
+	if _, err := outer.Exec(ctx, `DELETE FROM plan`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := outer.Exec(ctx, `DELETE FROM audit_event WHERE action = 'plan.changed' AND target_type = 'plan' AND detail->>'deleted' = 'true'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := outer.Exec(ctx, `INSERT INTO audit_event (actor_type, actor_label, action, target_type, target_id, target_label, detail, ip, user_agent, request_id)
+		VALUES ('staff', 'test', 'plan.changed', 'plan', 'enterprise', 'Enterprise', '{"deleted": true}', '', '', '')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Seed(ctx, NewPgxRunner(savepointPool{outer}), discard()); err != nil {
+		t.Fatal(err)
+	}
+	var count int
+	if err := outer.QueryRow(ctx, `SELECT count(*) FROM plan WHERE key = 'enterprise'`).Scan(&count); err != nil || count != 0 {
+		t.Fatalf("enterprise rows = %d (%v), want 0: the deleted plan came back", count, err)
 	}
 }
 

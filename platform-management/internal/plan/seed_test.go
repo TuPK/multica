@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"maps"
+	"reflect"
 	"testing"
 
 	"github.com/multica-ai/multica/platform-management/audit"
@@ -41,7 +43,15 @@ func (s *fakeStore) InTx(_ context.Context, fn func(Tx) error) error {
 
 type fakeTx struct{ s *fakeStore }
 
-func (t *fakeTx) Count(context.Context) (int64, error) { return int64(len(t.s.rows)), nil }
+// Deleted reports whether a plan.changed row with deleted=true names key.
+func (t *fakeTx) Deleted(_ context.Context, key string) (bool, error) {
+	for _, e := range t.s.audits {
+		if e.Action == audit.ActionPlanChanged && e.TargetType == "plan" && e.TargetID == key && e.Detail["deleted"] == true {
+			return true, nil
+		}
+	}
+	return false, nil
+}
 
 func (t *fakeTx) InsertIfAbsent(_ context.Context, p Plan) (bool, error) {
 	if t.s.failAfter >= 0 && t.s.inserts >= t.s.failAfter {
@@ -103,28 +113,89 @@ func TestSeedLoadsTheCatalogueIntoAnEmptyTable(t *testing.T) {
 	}
 }
 
-// A table that has rows is staff's now: the catalogue is never merged into it.
-func TestSeedDoesNothingOnANonEmptyTable(t *testing.T) {
+// catalogueRow returns the embedded catalogue's plan with key.
+func catalogueRow(t *testing.T, key string) Plan {
+	t.Helper()
+	cat, err := Catalogue()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range cat {
+		if p.Key == key {
+			return p
+		}
+	}
+	t.Fatalf("catalogue has no plan %q", key)
+	return Plan{}
+}
+
+// A table holding only free gains the paid plans: the catalogue fills what is missing.
+func TestSeedAddsTheMissingPlansToATableWithOnlyFree(t *testing.T) {
 	s := newFakeStore()
-	edited := Plan{Key: "free", Name: "Free (edited)", Currency: "vnd"}
-	s.rows["free"], s.order = edited, []string{"free"}
+	s.rows["free"], s.order = catalogueRow(t, "free"), []string{"free"}
 
 	n, err := Seed(context.Background(), s, discard())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n != 0 || len(s.rows) != 1 || s.rows["free"].Name != "Free (edited)" || s.inserts != 0 {
-		t.Fatalf("seeded %d, rows %d, inserts %d; want a no-op that keeps the staff edit", n, len(s.rows), s.inserts)
+	if n != 3 {
+		t.Fatalf("seeded %d plans, want 3", n)
+	}
+	for _, key := range []string{"free", "pro", "business", "enterprise"} {
+		if _, ok := s.rows[key]; !ok {
+			t.Errorf("plan %s is missing after Seed", key)
+		}
 	}
 }
 
-// A plan that staff deleted stays deleted once the table has any other row.
+// A second Seed over a complete catalogue changes nothing.
+func TestSeedSecondRunChangesNothing(t *testing.T) {
+	s := newFakeStore()
+	if _, err := Seed(context.Background(), s, discard()); err != nil {
+		t.Fatal(err)
+	}
+	before := maps.Clone(s.rows)
+	n, err := Seed(context.Background(), s, discard())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 || !reflect.DeepEqual(before, s.rows) {
+		t.Fatalf("second seed inserted %d and changed rows: %v", n, s.rows)
+	}
+}
+
+// A row staff has edited keeps its values; the missing plans are still added.
+func TestSeedKeepsAnEditedRow(t *testing.T) {
+	s := newFakeStore()
+	edited := catalogueRow(t, "pro")
+	edited.Name = "Pro (edited)"
+	s.rows["pro"], s.order = edited, []string{"pro"}
+
+	if _, err := Seed(context.Background(), s, discard()); err != nil {
+		t.Fatal(err)
+	}
+	if got := s.rows["pro"]; got.Name != "Pro (edited)" {
+		t.Fatalf("pro name = %q, want the staff edit kept", got.Name)
+	}
+	for _, key := range []string{"free", "business", "enterprise"} {
+		if _, ok := s.rows[key]; !ok {
+			t.Errorf("plan %s is missing after Seed", key)
+		}
+	}
+}
+
+// A plan that staff deleted stays deleted. The console writes a plan.changed row
+// with deleted=true when it deletes a plan, and the seed reads that row.
 func TestSeedDoesNotRestoreADeletedPlan(t *testing.T) {
 	s := newFakeStore()
 	if _, err := Seed(context.Background(), s, discard()); err != nil {
 		t.Fatal(err)
 	}
 	delete(s.rows, "enterprise")
+	s.audits = append(s.audits, audit.Entry{
+		Action: audit.ActionPlanChanged, TargetType: "plan", TargetID: "enterprise",
+		Detail: map[string]any{"deleted": true},
+	})
 	if n, err := Seed(context.Background(), s, discard()); err != nil || n != 0 {
 		t.Fatalf("second seed = %d, %v", n, err)
 	}

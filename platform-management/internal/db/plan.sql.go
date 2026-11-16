@@ -11,17 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const countPlans = `-- name: CountPlans :one
-SELECT count(*)::bigint FROM plan
-`
-
-func (q *Queries) CountPlans(ctx context.Context) (int64, error) {
-	row := q.db.QueryRow(ctx, countPlans)
-	var column_1 int64
-	err := row.Scan(&column_1)
-	return column_1, err
-}
-
 const countSubscriptionsOnPlan = `-- name: CountSubscriptionsOnPlan :one
 SELECT count(*)::bigint FROM workspace_subscription
 WHERE plan_key = $1
@@ -192,6 +181,23 @@ func (q *Queries) ListPlans(ctx context.Context) ([]Plan, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const planDeletedBefore = `-- name: PlanDeletedBefore :one
+SELECT EXISTS (
+    SELECT 1 FROM audit_event
+    WHERE action = 'plan.changed' AND target_type = 'plan' AND target_id = $1
+      AND detail->>'deleted' = 'true'
+)
+`
+
+// The console writes this row when staff delete a plan; the seed reads it so a
+// deleted plan is not restored.
+func (q *Queries) PlanDeletedBefore(ctx context.Context, targetID string) (bool, error) {
+	row := q.db.QueryRow(ctx, planDeletedBefore, targetID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const upsertPlan = `-- name: UpsertPlan :exec

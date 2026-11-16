@@ -74,7 +74,10 @@ func (r *PgxReader) List(ctx context.Context) ([]Plan, error) {
 
 type pgxTx struct{ q *db.Queries }
 
-func (t *pgxTx) Count(ctx context.Context) (int64, error) { return t.q.CountPlans(ctx) }
+// Deleted implements Tx.
+func (t *pgxTx) Deleted(ctx context.Context, key string) (bool, error) {
+	return t.q.PlanDeletedBefore(ctx, key)
+}
 
 func (t *pgxTx) InsertIfAbsent(ctx context.Context, p Plan) (bool, error) {
 	params, err := toInsertParams(p)

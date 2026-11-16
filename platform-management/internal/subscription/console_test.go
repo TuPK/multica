@@ -97,7 +97,9 @@ func (s *fakePlanStore) List(context.Context) ([]plan.Plan, error) {
 
 type fakePlanTx struct{ s *fakePlanStore }
 
-func (t *fakePlanTx) Count(context.Context) (int64, error) { return int64(len(t.s.rows)), nil }
+func (t *fakePlanTx) Deleted(context.Context, string) (bool, error) {
+	return false, errors.New("not used")
+}
 func (t *fakePlanTx) InsertIfAbsent(context.Context, plan.Plan) (bool, error) {
 	return false, errors.New("not used")
 }

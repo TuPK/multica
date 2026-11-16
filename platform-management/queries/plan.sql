@@ -15,8 +15,14 @@ SELECT * FROM plan
 WHERE key = $1
 FOR UPDATE;
 
--- name: CountPlans :one
-SELECT count(*)::bigint FROM plan;
+-- name: PlanDeletedBefore :one
+-- The console writes this row when staff delete a plan; the seed reads it so a
+-- deleted plan is not restored.
+SELECT EXISTS (
+    SELECT 1 FROM audit_event
+    WHERE action = 'plan.changed' AND target_type = 'plan' AND target_id = $1
+      AND detail->>'deleted' = 'true'
+);
 
 -- name: InsertPlanIfAbsent :execrows
 -- Seeds one plan. Two platform processes starting together may both see an
