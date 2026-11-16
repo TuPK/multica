@@ -279,6 +279,9 @@ func TestRouteRoles(t *testing.T) {
 		"/api/platform/orders":                     billingAdmin,
 		"/api/platform/orders/{id}/confirm":        billingAdmin,
 		"/api/platform/orders/{id}/cancel":         billingAdmin,
+		"/api/platform/accounts":                   admin,
+		"/api/platform/accounts/{id}":              admin,
+		"/api/platform/accounts/{id}/cancel":       admin,
 	}
 	got := map[string][]staff.Role{}
 	for _, r := range routeTable() {

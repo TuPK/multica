@@ -20,6 +20,7 @@ import (
 
 	"github.com/multica-ai/multica/platform-management/accountguard"
 	"github.com/multica-ai/multica/platform-management/internal/accountcache"
+	"github.com/multica-ai/multica/platform-management/internal/accountrequest"
 	"github.com/multica-ai/multica/platform-management/internal/billing"
 	"github.com/multica-ai/multica/platform-management/internal/billingapi"
 	"github.com/multica-ai/multica/platform-management/internal/config"
@@ -220,9 +221,14 @@ func run() error {
 		Cache:    guard,
 		Notifier: accountcache.NewPublisher(rdb),
 		Payments: orders,
-		Emails:   store,
-		Mailer:   consoleMail,
-		Log:      slog.Default(),
+		Accounts: accountrequest.New(accountrequest.Deps{
+			Runner: accountrequest.NewPgxRunner(pool), Reader: accountrequest.NewPgxReader(pool),
+			Plans: plan.NewPgxReader(pool), Limiter: platformauth.NewRedisLimiter(rdb),
+			CreatePerHour: cfg.AccountCreatePerHour, IndividualMaxSeats: cfg.IndividualMaxSeats,
+		}),
+		Emails: store,
+		Mailer: consoleMail,
+		Log:    slog.Default(),
 	})
 
 	billingWrites, err := billingapi.New(billingapi.Deps{

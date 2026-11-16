@@ -73,6 +73,7 @@ type Deps struct {
 	Cache      AccountCache
 	Notifier   AccountNotifier
 	Payments   PaymentApplier
+	Accounts   AccountRequests
 	Emails     EmailLookup
 	// Mailer may be nil when no email provider is configured; a reset then
 	// sends no notice.
@@ -131,6 +132,12 @@ func routeTable() []routeSpec {
 		{base + "/orders", billingAndAdmin, map[string]handlerFunc{http.MethodGet: (*Handler).listOrders}},
 		{base + "/orders/{id}/confirm", billingAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).confirmOrder}},
 		{base + "/orders/{id}/cancel", billingAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).cancelOrder}},
+		{base + "/accounts", adminOnly, map[string]handlerFunc{
+			http.MethodGet:  (*Handler).listAccountRequests,
+			http.MethodPost: (*Handler).createAccountRequest,
+		}},
+		{base + "/accounts/{id}", adminOnly, map[string]handlerFunc{http.MethodGet: (*Handler).getAccountRequest}},
+		{base + "/accounts/{id}/cancel", adminOnly, map[string]handlerFunc{http.MethodPost: (*Handler).cancelAccountRequest}},
 		{base + "/overview", nil, map[string]handlerFunc{http.MethodGet: (*Handler).overview}},
 	}
 }
