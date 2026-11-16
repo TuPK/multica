@@ -747,8 +747,10 @@ print_summary() {
   echo "  WeKnora UI    ${KNOWLEDGE_UI_URL}"
   echo "  Hub store     ${HUB_S3_ENDPOINT}  (S3 API, bucket ${HUB_S3_BUCKET})"
   echo "  SeaweedFS UI  http://localhost:${HUB_S3_UI_PORT}  (cluster status: /cluster/status)"
+  echo "  Platform      http://localhost:${PLATFORM_CONSOLE_PORT:-30001}  (staff console)"
+  echo "  Platform API  http://localhost:${PLATFORM_API_PORT:-8095}  (health: /healthz)"
   echo ""
-  echo "  Running       Multica API, Multica web, WeKnora (${KNOWLEDGE_SERVICES[*]}), SeaweedFS (${HUB_SERVICES[*]})"
+  echo "  Running       Multica API, Multica web, platform console and API, WeKnora (${KNOWLEDGE_SERVICES[*]}), SeaweedFS (${HUB_SERVICES[*]})"
   echo "  Hub store     $HUB_STORE_STATUS"
   echo "  Hermes        $HERMES_STATUS"
   echo "  Daemon        $DAEMON_STATUS"
@@ -764,21 +766,85 @@ print_summary() {
     echo "  4. Office: Set up your company, then Build your company."
     echo ""
   fi
-  echo "Ctrl-C stops Multica. The daemon, WeKnora and the Hub store keep running. To stop them:"
+  echo "Ctrl-C stops Multica and the platform. The daemon, WeKnora and the Hub store keep running. To stop them:"
   echo "  make cli ARGS=\"daemon stop\""
   echo "  $(compose_cli_hint) stop ${KNOWLEDGE_SERVICES[*]} ${HUB_SERVICES[*]}"
   echo ""
+}
+
+PLATFORM_DIR="$REPO_ROOT/platform-management"
+PLATFORM_REQUIRED=(
+  PLATFORM_ADMIN_EMAILS
+  BILLING_BANK_NAME
+  BILLING_BANK_ACCOUNT_NAME
+  BILLING_BANK_ACCOUNT_NUMBER
+)
+
+# The platform's session secret is written once and kept. The public address is the
+# Multica web app, because the order page lives there, so it follows FRONTEND_PORT.
+fill_platform_secrets() {
+  set_if_empty PLATFORM_SESSION_SECRET "$(openssl rand -hex 32)"
+  local web_port
+  web_port="$(env_value "$ENV_FILE" FRONTEND_PORT)"
+  set_if_empty PLATFORM_APP_URL "http://localhost:${web_port:-3000}"
+}
+
+# The platform cannot start without these values, and it sends its sign-in codes by email,
+# so one email provider must be complete. Nothing is started until they are all filled in.
+check_required_platform() {
+  local key missing=()
+  for key in "${PLATFORM_REQUIRED[@]}"; do
+    if [ -z "$(env_value "$ENV_FILE" "$key")" ]; then
+      missing+=("$key")
+    fi
+  done
+  if { [ -z "$(env_value "$ENV_FILE" RESEND_API_KEY)" ] || [ -z "$(env_value "$ENV_FILE" RESEND_FROM_EMAIL)" ]; } \
+    && { [ -z "$(env_value "$ENV_FILE" SMTP_HOST)" ] || [ -z "$(env_value "$ENV_FILE" SMTP_FROM_EMAIL)" ]; }; then
+    missing+=("RESEND_API_KEY with RESEND_FROM_EMAIL, or SMTP_HOST with SMTP_FROM_EMAIL")
+  fi
+  if [ ${#missing[@]} -eq 0 ]; then
+    return 0
+  fi
+  echo "✗ Nothing was started. These platform values in $ENV_FILE are empty:" >&2
+  for key in "${missing[@]}"; do
+    echo "    $key" >&2
+  done
+  echo "  PLATFORM_ADMIN_EMAILS is the sign-in address of the first platform admin." >&2
+  echo "  Fill them in and run make dev-full again." >&2
+  exit 1
+}
+
+# Starts the platform's API and staff console. It needs the database that make dev has
+# migrated, so it starts after the Multica API answers. The console is built if it is missing.
+start_platform() {
+  info "Starting the platform console and API (platform-management)"
+  if [ ! -f "$PLATFORM_DIR/console/dist/index.html" ]; then
+    (cd "$REPO_ROOT" && pnpm --filter @multica/platform-console build) \
+      || fail "The platform console did not build."
+  fi
+  mkdir -p "$PLATFORM_DIR/bin"
+  (cd "$PLATFORM_DIR" && go build -o bin/platform-server ./cmd/platform-server) \
+    || fail "The platform server did not build."
+  # The server reads the console from console/dist, relative to its working directory.
+  (cd "$PLATFORM_DIR" && exec ./bin/platform-server) >"$PLATFORM_DIR/bin/platform.log" 2>&1 &
+  PLATFORM_PID=$!
+  wait_for_url "Platform API" "http://localhost:${PLATFORM_API_PORT:-8095}/healthz" "$PLATFORM_PID" \
+    || fail "The platform API did not answer. Read $PLATFORM_DIR/bin/platform.log."
+  wait_for_url "Platform console" "http://localhost:${PLATFORM_CONSOLE_PORT:-30001}/" "$PLATFORM_PID" \
+    || fail "The platform console did not answer. Read $PLATFORM_DIR/bin/platform.log."
 }
 
 start_multica() {
   info "Starting Multica: make dev (migrations, API, web)"
   make dev &
   DEV_PID=$!
-  trap 'kill "$DEV_PID" 2>/dev/null || true' EXIT
+  PLATFORM_PID=""
+  trap 'kill "$DEV_PID" 2>/dev/null || true; [ -n "$PLATFORM_PID" ] && kill "$PLATFORM_PID" 2>/dev/null || true' EXIT
   wait_for_url "Multica API" "http://localhost:${PORT}/health" "$DEV_PID" \
     || fail "Multica API did not answer. Read the make dev output above."
   wait_for_url "Multica web" "http://localhost:${FRONTEND_PORT}/" "$DEV_PID" \
     || fail "Multica web did not answer. Read the make dev output above."
+  start_platform
   setup_multica_profile
   start_daemon
   print_summary
@@ -791,7 +857,9 @@ main() {
   resolve_env_file
   fill_knowledge_secrets
   fill_hub_secrets
+  fill_platform_secrets
   check_required_knowledge
+  check_required_platform
   resolve_knowledge_urls
   resolve_hub_ports
   resolve_hub_urls
