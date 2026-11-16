@@ -304,11 +304,7 @@ func run() error {
 		RequireStaff: auth.RequirePlatformStaff, RequireOrigin: auth.RequireOrigin,
 		Service: priceSvc, Emails: store, Log: slog.Default(),
 	})
-	platformHandler := http.NewServeMux()
-	for _, pattern := range pricechange.Patterns {
-		platformHandler.Handle(pattern, priceChanges)
-	}
-	platformHandler.Handle("/", server.NewPlatformHandler(auth, consoleAPI, billingAPI))
+	platformHandler := newPlatformMux(priceChanges, server.NewPlatformHandler(auth, consoleAPI, billingAPI))
 
 	apiLn, err := net.Listen("tcp", ":"+cfg.APIPort)
 	if err != nil {
@@ -343,4 +339,19 @@ func run() error {
 	// Let a code that was just requested finish sending.
 	auth.Wait()
 	return err
+}
+
+// newPlatformMux routes the price-change staff routes to priceChanges. A PUT to
+// /api/platform/plans/{key} that carries a price field is refused with
+// price_field_via_schedule before the console sees it (spec 7b.4 rule 2). The
+// refusal sits here, not in the console, because the console's package cannot
+// import pricechange without a cycle. Every other path goes to rest.
+func newPlatformMux(priceChanges, rest http.Handler) http.Handler {
+	mux := http.NewServeMux()
+	for _, pattern := range pricechange.Patterns {
+		mux.Handle(pattern, priceChanges)
+	}
+	mux.Handle("/api/platform/plans/{key}", pricechange.RefusePriceFields(rest))
+	mux.Handle("/", rest)
+	return mux
 }
