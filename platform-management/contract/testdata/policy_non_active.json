@@ -30,6 +30,10 @@
     "issue_count": {
       "action": "off"
     },
+    "member_groups": {
+      "action": "enforce",
+      "limit": 0
+    },
     "runtimes": {
       "action": "enforce",
       "limit": 20

@@ -17,6 +17,7 @@ var addedGates = []GateName{
 	GateAgents, GateRuntimes, GateStorageBytes,
 	GateAPIRatePerMinute, GateAuditRetentionDays,
 	GateSSO, GateWorkspacePolicies, GateViewerRole, GateAuditExport,
+	GateMemberGroups,
 }
 
 func TestAddedGateNamesAreTheWireNames(t *testing.T) {
@@ -24,7 +25,7 @@ func TestAddedGateNamesAreTheWireNames(t *testing.T) {
 		GateAgents: "agents", GateRuntimes: "runtimes", GateStorageBytes: "storage_bytes",
 		GateAPIRatePerMinute: "api_rate_per_minute", GateAuditRetentionDays: "audit_retention_days",
 		GateSSO: "sso", GateWorkspacePolicies: "workspace_policies", GateViewerRole: "viewer_role",
-		GateAuditExport: "audit_export",
+		GateAuditExport: "audit_export", GateMemberGroups: "member_groups",
 	}
 	if len(want) != len(addedGates) {
 		t.Fatalf("test covers %d names, addedGates has %d", len(want), len(addedGates))
@@ -51,6 +52,7 @@ func policyWithAddedGates() wirePolicy {
 	policy.Gates["sso"] = wireGate{Action: "enforce", Limit: limit(0)}
 	policy.Gates["workspace_policies"] = wireGate{Action: "enforce", Limit: limit(0)}
 	policy.Gates["viewer_role"] = wireGate{Action: "off"}
+	policy.Gates["member_groups"] = wireGate{Action: "enforce", Limit: limit(50)}
 	return policy
 }
 
@@ -70,7 +72,7 @@ func TestPolicyWithAddedGatesParses(t *testing.T) {
 	for gate, want := range map[GateName]int{
 		GateAgents: 30, GateRuntimes: 20, GateStorageBytes: 21474836480,
 		GateAPIRatePerMinute: 1200, GateAuditRetentionDays: 180,
-		GateSSO: 0, GateWorkspacePolicies: 0,
+		GateSSO: 0, GateWorkspacePolicies: 0, GateMemberGroups: 50,
 	} {
 		d := client.Gate(ctx, ws, gate)
 		if d.Gate.Action != ActionEnforce || d.Gate.Limit == nil || *d.Gate.Limit != want {
@@ -227,5 +229,94 @@ func TestAddedGatesAreOffWhenDisabled(t *testing.T) {
 		if d.Gate.Action != ActionOff || d.Reason != ReasonDisabled {
 			t.Errorf("%s = %+v, want off/disabled", gate, d)
 		}
+	}
+}
+
+// member_groups is a counted gate of spec 7b.2: a plan that includes no groups
+// is `enforce` with limit 0, a plan with a cap is `enforce` with the cap, and an
+// unlimited plan is `off`.
+func TestMemberGroupsGateIsParsedFromThePolicy(t *testing.T) {
+	if !GateMemberGroups.valid() || string(GateMemberGroups) != "member_groups" {
+		t.Fatalf("GateMemberGroups = %q, valid %v", GateMemberGroups, GateMemberGroups.valid())
+	}
+	found := false
+	for _, name := range optionalGates {
+		found = found || name == GateMemberGroups
+	}
+	if !found {
+		t.Fatal("member_groups is not an optional gate: a policy without it would be invalid or the gate never read")
+	}
+
+	zero, fifty := 0, 50
+	for name, tc := range map[string]struct {
+		gate  wireGate
+		limit *int
+		off   bool
+	}{
+		"none included": {gate: wireGate{Action: "enforce", Limit: &zero}, limit: &zero},
+		"capped":        {gate: wireGate{Action: "enforce", Limit: &fifty}, limit: &fifty},
+		"unlimited":     {gate: wireGate{Action: "off"}, off: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			policy := policyWithAddedGates()
+			policy.Gates["member_groups"] = tc.gate
+			client, ws := clientFor(t, policy)
+			d := client.Gate(context.Background(), ws, GateMemberGroups)
+			if tc.off {
+				if d.Gate.Action != ActionOff || d.Gate.Limit != nil {
+					t.Fatalf("member_groups = %+v, want off", d)
+				}
+				return
+			}
+			if d.Gate.Action != ActionEnforce || d.Gate.Limit == nil || *d.Gate.Limit != *tc.limit {
+				t.Fatalf("member_groups = %+v, want enforce %d", d, *tc.limit)
+			}
+			if d.Reason != ReasonRefreshed && d.Reason != ReasonCacheFresh {
+				t.Errorf("reason = %s", d.Reason)
+			}
+		})
+	}
+}
+
+// A policy from an older platform or Cloud has no member_groups gate; it is
+// off, so the number of groups is not limited.
+func TestMemberGroupsGateAbsentIsOff(t *testing.T) {
+	client, ws := clientFor(t, samplePolicy(1, 0, 60, ActionEnforce))
+	d := client.Gate(context.Background(), ws, GateMemberGroups)
+	if d.Gate.Action != ActionOff || d.Gate.Limit != nil || d.Reason == ReasonUnknownGate || d.Reason == ReasonInvalidPolicy {
+		t.Fatalf("member_groups = %+v, want off with the policy's own reason", d)
+	}
+}
+
+func TestMemberGroupsGateMalformedInvalidatesThePolicy(t *testing.T) {
+	negative := -1
+	for name, g := range map[string]wireGate{
+		"enforce without a limit": {Action: "enforce"},
+		"negative limit":          {Action: "enforce", Limit: &negative},
+		"unknown action":          {Action: "observe"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			policy := policyWithAddedGates()
+			policy.Gates["member_groups"] = g
+			var wire wirePolicy
+			body, _ := json.Marshal(policy)
+			if err := json.Unmarshal(body, &wire); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := normalizePolicy(wire); !errors.Is(err, ErrInvalidPolicy) {
+				t.Fatalf("normalizePolicy = %v, want ErrInvalidPolicy", err)
+			}
+		})
+	}
+}
+
+func TestMemberGroupsGateIsOffWhenDisabled(t *testing.T) {
+	client, err := New(Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := client.Gate(context.Background(), uuid.New(), GateMemberGroups)
+	if d.Gate.Action != ActionOff || d.Reason != ReasonDisabled {
+		t.Fatalf("member_groups = %+v, want off/disabled", d)
 	}
 }

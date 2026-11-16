@@ -30,6 +30,10 @@ const (
 	GateWorkspacePolicies  GateName = "workspace_policies"
 	GateViewerRole         GateName = "viewer_role"
 	GateAuditExport        GateName = "audit_export"
+
+	// GateMemberGroups caps the account groups of a workspace (spec 7b.2). The
+	// group routes count it when a group is created.
+	GateMemberGroups GateName = "member_groups"
 )
 
 // requiredGates must be present in every policy. An absent one makes the
@@ -42,6 +46,7 @@ var optionalGates = []GateName{
 	GateAgents, GateRuntimes, GateStorageBytes,
 	GateAPIRatePerMinute, GateAuditRetentionDays,
 	GateSSO, GateWorkspacePolicies, GateViewerRole, GateAuditExport,
+	GateMemberGroups,
 }
 
 func (n GateName) valid() bool {
@@ -49,7 +54,8 @@ func (n GateName) valid() bool {
 	case GateIssueCount, GateAutopilotRuns,
 		GateAgents, GateRuntimes, GateStorageBytes,
 		GateAPIRatePerMinute, GateAuditRetentionDays,
-		GateSSO, GateWorkspacePolicies, GateViewerRole, GateAuditExport:
+		GateSSO, GateWorkspacePolicies, GateViewerRole, GateAuditExport,
+		GateMemberGroups:
 		return true
 	default:
 		return false

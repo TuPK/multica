@@ -34,6 +34,10 @@
       "issue_count": {
         "action": "off"
       },
+      "member_groups": {
+        "action": "enforce",
+        "limit": 50
+      },
       "runtimes": {
         "action": "enforce",
         "limit": 100
@@ -86,6 +90,9 @@
         }
       },
       "issue_count": {
+        "action": "off"
+      },
+      "member_groups": {
         "action": "off"
       },
       "runtimes": {
@@ -144,6 +151,10 @@
         "action": "enforce",
         "limit": 200
       },
+      "member_groups": {
+        "action": "enforce",
+        "limit": 0
+      },
       "runtimes": {
         "action": "enforce",
         "limit": 2
@@ -200,6 +211,10 @@
       },
       "issue_count": {
         "action": "off"
+      },
+      "member_groups": {
+        "action": "enforce",
+        "limit": 0
       },
       "runtimes": {
         "action": "enforce",

@@ -290,12 +290,13 @@ func TestPolicyWireFieldNames(t *testing.T) {
 
 // wantGateNames is every gate the policy carries: the two counted by the core
 // since the first release, the three resource gates of spec 5.7, the two plan
-// values, and the four feature flags.
+// values, the four feature flags, and the member_groups count of spec 7b.2.
 var wantGateNames = []string{
 	"issue_count", "autopilot_runs",
 	"agents", "runtimes", "storage_bytes",
 	"api_rate_per_minute", "audit_retention_days",
 	"sso", "workspace_policies", "viewer_role", "audit_export",
+	"member_groups",
 }
 
 // A limit gate takes the plan's value, as an enforce gate; a plan value of
@@ -441,8 +442,6 @@ func TestBuildEveryGateIsWellFormed(t *testing.T) {
 	}
 }
 
-// The counted gates the policy serves (spec 7b.3 rule 1; member_groups is not
-// served yet).
 // mustPlan returns a catalogue plan and fails when the catalogue lacks it.
 func mustPlan(t *testing.T, key string) plan.Plan {
 	t.Helper()
@@ -453,8 +452,10 @@ func mustPlan(t *testing.T, key string) plan.Plan {
 	return p
 }
 
+// The counted gates the policy serves (spec 7b.3 rule 1).
 var countedGates = []string{
 	plan.GateIssueCount, plan.GateAutopilotRuns, plan.GateAgents, plan.GateRuntimes, plan.GateStorageBytes,
+	plan.GateMemberGroups,
 }
 
 func TestBuildUnlimitedPlanIsOffOnEveryCountedGate(t *testing.T) {
@@ -579,5 +580,48 @@ func TestBuildPlanAPIRateIsNotCappedByTheCeiling(t *testing.T) {
 	p := Build(Inputs{Plan: mustPlan(t, "pro"), WorkspaceStatus: "active", APIRateCeiling: 500}, now)
 	if g := gateOf(t, p, plan.GateAPIRatePerMinute); g.Action != ActionEnforce || g.Limit == nil || *g.Limit != 1200 {
 		t.Errorf("api_rate_per_minute = %+v, want enforce 1200", g)
+	}
+}
+
+// The member_groups gate of spec 7b.2 rule 12: Free and Pro include no groups
+// (enforce 0), Business caps them at 50, Enterprise and the unlimited plan have
+// no cap (off).
+func TestBuildMemberGroupsGateFollowsThePlan(t *testing.T) {
+	for key, want := range map[string]*int64{
+		"free": i64(0), "pro": i64(0), "business": i64(50), "enterprise": nil, "unlimited": nil,
+	} {
+		p := Build(Inputs{Plan: mustPlan(t, key), WorkspaceStatus: "active"}, now)
+		g := gateOf(t, p, "member_groups")
+		if want == nil {
+			if g.Action != ActionOff || g.Limit != nil {
+				t.Errorf("%s member_groups = %+v, want off", key, g)
+			}
+		} else if g.Action != ActionEnforce || g.Limit == nil || *g.Limit != *want {
+			t.Errorf("%s member_groups = %+v, want enforce %d", key, g, *want)
+		}
+		if g.PeriodStart != nil || g.PeriodEnd != nil || g.ResetAt != nil || g.Notifications != nil {
+			t.Errorf("%s member_groups = %+v, want no period and no notice", key, g)
+		}
+	}
+}
+
+// A workspace override replaces the plan's cap, and an empty one lifts it.
+func TestBuildMemberGroupsGateTakesOverrides(t *testing.T) {
+	free := mustPlan(t, "free")
+	p := Build(Inputs{Plan: free, Overrides: plan.Limits{plan.GateMemberGroups: i64(10)}, WorkspaceStatus: "active"}, now)
+	if g := gateOf(t, p, "member_groups"); g.Action != ActionEnforce || *g.Limit != 10 {
+		t.Errorf("override 10: %+v", g)
+	}
+	p = Build(Inputs{Plan: free, Overrides: plan.Limits{plan.GateMemberGroups: nil}, WorkspaceStatus: "active"}, now)
+	if g := gateOf(t, p, "member_groups"); g.Action != ActionOff || g.Limit != nil {
+		t.Errorf("empty override: %+v", g)
+	}
+}
+
+// A suspended workspace keeps its member_groups cap: only autopilot is zeroed.
+func TestBuildNonActiveWorkspaceKeepsTheMemberGroupsGate(t *testing.T) {
+	p := Build(Inputs{Plan: mustPlan(t, "business"), WorkspaceStatus: "suspended"}, now)
+	if g := gateOf(t, p, "member_groups"); g.Action != ActionEnforce || *g.Limit != 50 {
+		t.Errorf("member_groups = %+v, want enforce 50", g)
 	}
 }

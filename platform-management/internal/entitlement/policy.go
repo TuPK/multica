@@ -129,11 +129,11 @@ func Build(in Inputs, now time.Time) Policy {
 }
 
 // planLimitGates are the limit gates other than the two the core has counted
-// since the first release: the resource quotas and the audit retention. The API
-// rate has its own rule (plan.EffectiveAPIRate).
+// since the first release: the resource quotas, the audit retention and the
+// number of member groups. The API rate has its own rule (plan.EffectiveAPIRate).
 var planLimitGates = []string{
 	plan.GateAgents, plan.GateRuntimes, plan.GateStorageBytes,
-	plan.GateAuditRetentionDay,
+	plan.GateAuditRetentionDay, plan.GateMemberGroups,
 }
 
 // gate turns an effective limit into an instruction: no limit is off.
