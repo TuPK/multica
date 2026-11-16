@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill",
+  "id": "distribution-analysis",
+  "version": "1.0.0",
+  "sets": [
+    "marketing"
+  ],
+  "domain": "marketing",
+  "source": {
+    "type": "vendored",
+    "repo": "https://github.com/MaxKmet/idea-validation-agents",
+    "ref": "3a4c800a3022e73e9997533b603c79b60ee7597a",
+    "license": "MIT"
+  }
+}

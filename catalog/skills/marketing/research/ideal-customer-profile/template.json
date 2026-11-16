@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill",
+  "id": "ideal-customer-profile",
+  "version": "1.0.0",
+  "sets": [
+    "marketing"
+  ],
+  "domain": "marketing",
+  "source": {
+    "type": "vendored",
+    "repo": "https://github.com/phuryn/pm-skills",
+    "ref": "2a12295a7717569baa7be181b4cfebe3ca38a6bb",
+    "license": "MIT"
+  }
+}

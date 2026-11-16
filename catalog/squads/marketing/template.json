@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "kind": "squad",
+  "id": "marketing",
+  "version": "1.0.0",
+  "collection": "marketing",
+  "domain": "marketing",
+  "markets": [
+    "vn",
+    "intl"
+  ],
+  "order": 5,
+  "includes": [
+    "kv_marketing",
+    "content_studio",
+    "growth_lab",
+    "kv_pr"
+  ],
+  "squad": {
+    "name": "Marketing",
+    "description": "The one marketing squad to create. Send any marketing request here: it sets the market, routes the work to Marketing Studio, Content Studio, Growth Lab or PR & Comms, and reports back. Choosing it also installs those four squads.",
+    "floorName": "Launch",
+    "leader": "mktg_chief",
+    "operatingReview": true,
+    "workflow": null,
+    "roles": [
+      {
+        "key": "mktg_chief",
+        "agentTemplate": "growth_lead",
+        "name": "Marketing Chief",
+        "description": "Receives every marketing request, sets its market, and routes it to the squad that does the work. Checks what comes back and reports.",
+        "role": "Squad leader and single entry point"
+      }
+    ],
+    "routines": [
+      {
+        "title": "Weekly marketing report",
+        "issueTitleTemplate": "Weekly marketing report, week of {{date}}",
+        "cron": "0 8 * * 1",
+        "description": "Weekly marketing report. Cover the open requests and their status, what each squad finished in the last seven days, and anything stuck or waiting for a person (name the person and the decision). Name the market of each item. A week with nothing new is a valid result: say so in one line. Write in English; quote public copy in its market's language."
+      }
+    ],
+    "skills": {
+      "sets": [],
+      "extra": [
+        "automation-policy",
+        "mkt-context",
+        "mkt-market-vn",
+        "mkt-market-intl",
+        "evidence-discipline",
+        "product-marketing",
+        "marketing-plan",
+        "marketing-loops",
+        "launch",
+        "marketing-ideas"
+      ]
+    },
+    "charter": {
+      "mission": "Take every marketing request to a checked result in the right market, through the right squad, with every gate in place. Vietnam first, then international markets.",
+      "responsibilities": [
+        {
+          "key": "intake",
+          "text": "Name the market and the kind of work for each request, and write both in the first comment."
+        },
+        {
+          "key": "routing",
+          "text": "Choose the squad for each part of the work, and chain them when one needs another's output."
+        },
+        {
+          "key": "verification",
+          "text": "Check each squad's result against the request before it goes back to the requester."
+        },
+        {
+          "key": "reporting",
+          "text": "Report each week on what is open, what finished, and what waits for a person."
+        }
+      ],
+      "outputs": [
+        {
+          "key": "marketing_report",
+          "kind": "report",
+          "cadenceHint": "weekly"
+        },
+        {
+          "key": "marketing_context",
+          "kind": "kb_document",
+          "cadenceHint": "once, and when it changes"
+        }
+      ],
+      "boundaries": "Does not write the finished piece for a squad that owns it, does not replace a gate, and does not send, publish, post or spend money. A person does those.",
+      "escalation": "A request blocked in a squad goes back to the requester with that squad's reason. A request that needs a decision becomes a proposal for the person who owns it.",
+      "intake": "Every marketing request arrives as an issue assigned to this squad. The weekly report opens its own issue."
+    }
+  }
+}

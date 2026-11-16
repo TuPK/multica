@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill",
+  "id": "obviously-awesome",
+  "version": "1.4.1",
+  "sets": [
+    "marketing"
+  ],
+  "domain": "marketing",
+  "source": {
+    "type": "vendored",
+    "repo": "https://github.com/wondelai/skills",
+    "ref": "c172996495bed0fcd26896a9416b2093fd7073f0",
+    "license": "MIT"
+  }
+}

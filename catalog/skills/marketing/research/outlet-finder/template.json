@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill",
+  "id": "outlet-finder",
+  "version": "1.0.0",
+  "sets": [
+    "marketing"
+  ],
+  "domain": "marketing",
+  "source": {
+    "type": "authored"
+  }
+}

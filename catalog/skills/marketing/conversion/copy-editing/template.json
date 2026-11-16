@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill",
+  "id": "copy-editing",
+  "version": "2.2.4",
+  "sets": [
+    "marketing"
+  ],
+  "domain": "marketing",
+  "source": {
+    "type": "vendored",
+    "repo": "https://github.com/coreyhaines31/marketingskills",
+    "ref": "1f837447b20bb6f0e72d87b80ece1c221c362c7d",
+    "license": "MIT"
+  }
+}

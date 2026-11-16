@@ -2,9 +2,13 @@
   "schemaVersion": 1,
   "kind": "squad",
   "id": "kv_marketing",
-  "version": "1.0.0",
-  "collection": "kitviet",
-  "order": 30,
+  "version": "1.0.1",
+  "collection": "marketing",
+  "domain": "marketing",
+  "markets": [
+    "vn"
+  ],
+  "order": 10,
   "squad": {
     "name": "Marketing Studio (Marketing)",
     "description": "Drafts campaign content and ad copy from Growth & GTM briefs, and checks every claim against the Marketing regulation register before a person publishes. Posts and runs nothing.",

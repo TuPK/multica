@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 1,
+  "kind": "squad",
+  "id": "growth_lab",
+  "version": "1.0.0",
+  "collection": "marketing",
+  "domain": "marketing",
+  "markets": [
+    "vn",
+    "intl"
+  ],
+  "order": 30,
+  "squad": {
+    "name": "Growth Lab",
+    "description": "Audits and tunes search, conversion, paid media, lifecycle email and measurement. Recommends what to change, with evidence; changes nothing that is running.",
+    "floorName": "Launch",
+    "leader": "gl_lead",
+    "operatingReview": true,
+    "workflow": null,
+    "roles": [
+      {
+        "key": "gl_lead",
+        "agentTemplate": "growth_lead",
+        "name": "Growth Lab Lead",
+        "description": "Plans the growth work: sorts each request, sets the market, hands out the audits, and consolidates the recommendations for the requester.",
+        "role": "Squad leader"
+      },
+      {
+        "key": "gl_search",
+        "agentTemplate": "market_scout",
+        "name": "Growth Lab Search",
+        "description": "Audits search: SEO and AI search visibility, site structure, content plans and link opportunities.",
+        "role": "Search audit and optimisation"
+      },
+      {
+        "key": "gl_conversion",
+        "agentTemplate": "prd_writer",
+        "name": "Growth Lab Conversion",
+        "description": "Audits pages, forms, sign-up flows and popups, and writes the copy changes that would convert better.",
+        "role": "Conversion audit and copy changes"
+      },
+      {
+        "key": "gl_paid",
+        "agentTemplate": "competitor_analyst",
+        "name": "Growth Lab Paid Media",
+        "description": "Reviews paid campaigns and creative: what to keep, cut or test, with the reasons from the numbers.",
+        "role": "Paid media review"
+      },
+      {
+        "key": "gl_lifecycle",
+        "agentTemplate": "customer_lead",
+        "name": "Growth Lab Lifecycle",
+        "description": "Reviews the email and onboarding sequences, churn and referral programmes, and pricing as a lifecycle lever.",
+        "role": "Lifecycle review"
+      },
+      {
+        "key": "gl_measure",
+        "agentTemplate": "validation_analyst",
+        "name": "Growth Lab Measurement",
+        "description": "Designs the measurement and the experiments: hypothesis, metric, sample size and stop rule.",
+        "role": "Measurement and experiments"
+      },
+      {
+        "key": "gl_checker",
+        "agentTemplate": "critic",
+        "name": "Growth Lab Checker",
+        "description": "Checks every recommendation and every figure independently. Writes no recommendations of its own.",
+        "role": "Independent check of the work"
+      }
+    ],
+    "routines": [
+      {
+        "title": "Weekly growth review",
+        "issueTitleTemplate": "Weekly growth review, week of {{date}}",
+        "cron": "0 9 * * 1",
+        "description": "Weekly growth review. Scope: the markets, pages, campaigns and sequences named in the knowledge base 'Hồ sơ marketing' and the last review; if none are named, say which you chose. Look at what changed in the last seven days: traffic, conversions, paid results, email results, and any change the company made. Check each finding against its data and its date. Bar for a recommendation: a change that a person can decide this week, with its evidence, its expected effect and what would show it failed. Mark every missing input MISSING and say what would unlock the conclusion. A review with nothing new is a valid result. Write in English; write each piece of copy in the market's language."
+      }
+    ],
+    "skills": {
+      "sets": [],
+      "extra": [
+        "automation-policy",
+        "mkt-context",
+        "mkt-market-vn",
+        "mkt-market-intl",
+        "evidence-discipline"
+      ],
+      "leader": [
+        "product-marketing",
+        "marketing-plan",
+        "marketing-loops",
+        "launch",
+        "marketing-ideas"
+      ],
+      "byRole": {
+        "gl_search": [
+          "seo-audit",
+          "ai-seo",
+          "programmatic-seo",
+          "schema",
+          "site-architecture",
+          "content-strategy",
+          "link-building",
+          "competitor-profiling"
+        ],
+        "gl_conversion": [
+          "cro",
+          "signup",
+          "popups",
+          "copywriting",
+          "copy-editing",
+          "competitors",
+          "marketing-psychology",
+          "customer-research"
+        ],
+        "gl_paid": [
+          "ads",
+          "ad-creative",
+          "ab-testing",
+          "offers"
+        ],
+        "gl_lifecycle": [
+          "emails",
+          "onboarding",
+          "churn-prevention",
+          "referrals",
+          "lead-magnets",
+          "pricing"
+        ],
+        "gl_measure": [
+          "analytics",
+          "attribution",
+          "ab-testing"
+        ]
+      }
+    },
+    "charter": {
+      "mission": "Find and rank the changes that would raise traffic, conversion, retention and revenue, with evidence, for Vietnam first and then international markets. Nothing leaves the workspace.",
+      "responsibilities": [
+        {
+          "key": "triage",
+          "text": "Sort each request into an audit, a plan, an experiment or a report, and set its market."
+        },
+        {
+          "key": "audit",
+          "text": "Audit search, conversion, paid media, lifecycle and measurement, and recommend changes by role."
+        },
+        {
+          "key": "experiments",
+          "text": "Design experiments with a hypothesis, a metric, a sample size and a stop rule."
+        },
+        {
+          "key": "review",
+          "text": "Have the checker verify every recommendation and every figure before it is filed."
+        }
+      ],
+      "outputs": [
+        {
+          "key": "growth_report",
+          "kind": "report",
+          "cadenceHint": "weekly"
+        },
+        {
+          "key": "audit",
+          "kind": "kb_document",
+          "cadenceHint": "per request"
+        },
+        {
+          "key": "experiment_plan",
+          "kind": "kb_document",
+          "cadenceHint": "per request"
+        }
+      ],
+      "boundaries": "Does not edit pages, ad accounts, email sends or running tracking; does not send, publish, or spend money; does not invent data. Missing input is marked MISSING. Any public copy is a draft that goes through the claim gate before a person uses it.",
+      "escalation": "A recommendation that needs a decision (spend, a price change, a tracking change) becomes a proposal for the person who owns it. A request that is blocked goes back to the requester with the reason.",
+      "intake": "Requests arrive as issues assigned to this squad. The weekly review opens its own issue."
+    }
+  }
+}

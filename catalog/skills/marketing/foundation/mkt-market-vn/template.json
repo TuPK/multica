@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill",
+  "id": "mkt-market-vn",
+  "version": "1.0.0",
+  "status": "beta",
+  "sets": [
+    "marketing"
+  ],
+  "domain": "marketing",
+  "markets": [
+    "vn"
+  ],
+  "source": {
+    "type": "authored"
+  }
+}

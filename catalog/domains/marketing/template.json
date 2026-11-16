@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "kind": "domain",
+  "id": "marketing",
+  "version": "1.0.0",
+  "markets": [
+    {
+      "id": "vn",
+      "role": "primary"
+    },
+    {
+      "id": "intl",
+      "role": "expansion"
+    }
+  ],
+  "related": [
+    {
+      "kind": "squad",
+      "id": "market_research",
+      "note": "Scans markets for the product pipeline; feeds Growth Lab with sources."
+    },
+    {
+      "kind": "squad",
+      "id": "kv_ecom",
+      "note": "Marketplace listings and margin; commerce, not campaigns."
+    },
+    {
+      "kind": "squad",
+      "id": "sales_loop",
+      "note": "Outbound and sales enablement; a separate domain."
+    }
+  ]
+}

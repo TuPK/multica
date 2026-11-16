@@ -2,9 +2,14 @@
   "schemaVersion": 1,
   "kind": "squad",
   "id": "content_studio",
-  "version": "1.0.0",
-  "collection": "core",
-  "order": 60,
+  "version": "1.0.1",
+  "collection": "marketing",
+  "domain": "marketing",
+  "markets": [
+    "vn",
+    "intl"
+  ],
+  "order": 20,
   "squad": {
     "name": "Content Studio",
     "description": "Drafts content for Vietnam and international markets, checks claims, market rules and voice, and files each item for the boss to approve before Ayrshare publishes it.",

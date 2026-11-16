@@ -2,6 +2,11 @@
   "schemaVersion": 1,
   "kind": "pack",
   "id": "market-strategist",
+  "domain": "marketing",
+  "markets": [
+    "vn",
+    "intl"
+  ],
   "version": "1.0.0",
   "source": {
     "type": "authored"
