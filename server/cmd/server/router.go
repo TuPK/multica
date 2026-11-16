@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/netip"
 	"os"
@@ -2019,6 +2020,11 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner")).Delete("/", h.DeleteWorkspace)
 				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner")).Delete("/deletion", h.CancelWorkspaceDeletion)
 				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner")).Put("/policy", h.UpdateWorkspacePolicy)
+				// Domain verification for SSO and the invite policy: owner only.
+				r.Group(func(r chi.Router) {
+					r.Use(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner"))
+					handler.NewSSODomainHandler(h, net.DefaultResolver).Routes(r)
+				})
 				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner"), handler.RequireHumanActor).Post("/exports", h.CreateWorkspaceExport)
 				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner")).Get("/exports", h.ListWorkspaceExports)
 				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner")).Get("/exports/{exportId}", h.GetWorkspaceExport)

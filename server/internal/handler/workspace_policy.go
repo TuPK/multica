@@ -84,6 +84,30 @@ func refuseByInvitePolicy(w http.ResponseWriter, p workspacepolicy.Policy, email
 	return false
 }
 
+// requireVerifiedInviteDomains answers 400 domain_not_verified and returns
+// false when any of domains is not a domain this workspace has verified.
+func (h *Handler) requireVerifiedInviteDomains(w http.ResponseWriter, r *http.Request, workspaceID pgtype.UUID, domains []string) bool {
+	if len(domains) == 0 {
+		return true
+	}
+	verified, err := h.Queries.ListVerifiedSSODomainNames(r.Context(), workspaceID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load verified domains")
+		return false
+	}
+	have := make(map[string]bool, len(verified))
+	for _, d := range verified {
+		have[d] = true
+	}
+	for _, d := range domains {
+		if !have[d] {
+			writeErrorCode(w, http.StatusBadRequest, "domain_not_verified", d+" is not a verified domain of this workspace")
+			return false
+		}
+	}
+	return true
+}
+
 // GetWorkspacePolicy returns the workspace policy to owners and admins.
 // GET /api/workspaces/{id}/policy
 func (h *Handler) GetWorkspacePolicy(w http.ResponseWriter, r *http.Request) {
@@ -111,8 +135,9 @@ func (h *Handler) GetWorkspacePolicy(w http.ResponseWriter, r *http.Request) {
 
 // UpdateWorkspacePolicy changes the workspace policy; owner only. It needs the
 // workspace_policies plan feature. Turning share links off deactivates the
-// workspace's active links in the same transaction, and a change writes
+// workspace's active links in the same transaction. A change writes
 // policy.updated with the old and new value of each changed field.
+// allowed_invite_domains accepts only domains the workspace has verified.
 // PUT /api/workspaces/{id}/policy
 func (h *Handler) UpdateWorkspacePolicy(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUserID(w, r)
@@ -148,6 +173,9 @@ func (h *Handler) UpdateWorkspacePolicy(w http.ResponseWriter, r *http.Request) 
 		var err error
 		if domains, err = workspacepolicy.NormalizeDomains(*req.AllowedInviteDomains); err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if !h.requireVerifiedInviteDomains(w, r, workspaceUUID, domains) {
 			return
 		}
 	}

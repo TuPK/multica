@@ -144,6 +144,7 @@ func TestPolicyReadReturnsDefaultsWhenNoRowExists(t *testing.T) {
 func TestPolicyWriteStoresAndReadsBack(t *testing.T) {
 	ws := policyWorkspace(t)
 	setPolicyFeature(t, ws, true)
+	verifiedDomain(t, ws, "example.com")
 	put := putPolicy(t, ws, map[string]any{
 		"allowed_invite_domains": []string{" Example.COM "},
 		"share_links_enabled":    true,
@@ -168,6 +169,7 @@ func TestPolicyWriteStoresAndReadsBack(t *testing.T) {
 func TestPolicyOmittedFieldsKeepTheirValue(t *testing.T) {
 	ws := policyWorkspace(t)
 	setPolicyFeature(t, ws, true)
+	verifiedDomain(t, ws, "example.com")
 	putPolicy(t, ws, map[string]any{"require_mfa": true, "session_max_age_hours": 6})
 	got := putPolicy(t, ws, map[string]any{"allowed_invite_domains": []string{"example.com"}})
 	if !got.RequireMFA || got.SessionMaxAgeHours != 6 || len(got.AllowedInviteDomains) != 1 {
@@ -245,6 +247,7 @@ func TestPolicyReadWithoutThePlanFeatureReturnsDefaults(t *testing.T) {
 func TestStoredPolicyIsNotEnforcedWithoutThePlanFeature(t *testing.T) {
 	ws := policyWorkspace(t)
 	setPolicyFeature(t, ws, true)
+	verifiedDomain(t, ws, "example.com")
 	putPolicy(t, ws, map[string]any{"allowed_invite_domains": []string{"example.com"}, "share_links_enabled": false})
 
 	setPolicyFeature(t, ws, false)
@@ -260,6 +263,7 @@ func TestStoredPolicyIsNotEnforcedWithoutThePlanFeature(t *testing.T) {
 func TestInvitationRefusesADomainOutsideThePolicy(t *testing.T) {
 	ws := policyWorkspace(t)
 	setPolicyFeature(t, ws, true)
+	verifiedDomain(t, ws, "example.test")
 	putPolicy(t, ws, map[string]any{"allowed_invite_domains": []string{"example.test"}})
 
 	for _, email := range []string{"a@other.org", "a@evilexample.test", "a@example.test.evil.io"} {
@@ -284,6 +288,7 @@ func TestInvitationOtherWorkspaceIsUnaffected(t *testing.T) {
 	restricted := policyWorkspace(t)
 	other := policyWorkspace(t)
 	setPolicyFeature(t, restricted, true)
+	verifiedDomain(t, restricted, "example.test")
 	putPolicy(t, restricted, map[string]any{"allowed_invite_domains": []string{"example.test"}})
 	testutil.Call(t, testHandler.CreateInvitation, inviteRequest(other, "a@other.org")).Want(http.StatusCreated)
 }
@@ -292,6 +297,7 @@ func TestJoinByShareLinkChecksTheJoinersDomain(t *testing.T) {
 	ws := policyWorkspace(t)
 	setPolicyFeature(t, ws, true)
 	link := createTestShareLink(t, ws, "member", 0, 0)
+	verifiedDomain(t, ws, "example.test")
 	putPolicy(t, ws, map[string]any{"allowed_invite_domains": []string{"example.test"}})
 
 	outsider := dbfx.User(t, "outsider", "outsider-"+uuid.NewString()[:8]+"@other.org")
@@ -394,6 +400,7 @@ func policyAuditRows(t *testing.T, ws string) []policyAuditRow {
 func TestPolicyWriteAuditsOldAndNewOfChangedFields(t *testing.T) {
 	ws := policyWorkspace(t)
 	setPolicyFeature(t, ws, true)
+	verifiedDomain(t, ws, "example.com")
 	putPolicy(t, ws, map[string]any{"require_mfa": true, "session_max_age_hours": 8})
 	putPolicy(t, ws, map[string]any{"session_max_age_hours": 24, "allowed_invite_domains": []string{"example.com"}})
 
