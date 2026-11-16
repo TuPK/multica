@@ -66,7 +66,7 @@ describe("kitvietPackOf", () => {
   it("maps each extension target to its extension pack (spec 7)", () => {
     for (const extension of KITVIET_EXTENSIONS) {
       for (const target of extension.targets) {
-        expect(kitvietPacks.kitvietPackOf(target), target).toBe(extension.pack);
+        expect(kitvietPacks.kitvietExtensionPackOf(target), target).toBe(extension.pack);
       }
     }
   });

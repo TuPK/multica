@@ -518,6 +518,26 @@
           "name": "增长负责人",
           "description": "撰写市场推广计划，并每周撰写上线项目的指标报告。"
         },
+        "data_lead": {
+          "name": "数据分析负责人",
+          "description": "梳理数据调研范围，协调分析流程，并对照业务需求核实结论。"
+        },
+        "data_profiler": {
+          "name": "数据探查员",
+          "description": "编目数据模式，检查字段类型与数据清洗规则，并记录实体关联。"
+        },
+        "data_analyst": {
+          "name": "数据分析师",
+          "description": "编写SQL查询，执行统计测算并分析指标波动，绝不编造虚假数字。"
+        },
+        "data_viz": {
+          "name": "数据可视化专家",
+          "description": "制作可交付的专业图表、统计曲线与交互式看板，清晰呈现分析洞察。"
+        },
+        "data_validator": {
+          "name": "数据校验员",
+          "description": "独立验证指标公式、查询逻辑与测算结果，给出QUA或CHẶN校验结论。"
+        },
         "support_lead": {
           "name": "客户支持负责人",
           "description": "每天分拣客户请求，把附带复现步骤的缺陷升级处理，并把答案写回知识库。"

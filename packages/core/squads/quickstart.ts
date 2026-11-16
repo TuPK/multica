@@ -641,12 +641,15 @@ export async function attachBuiltinSkills(
   return { status: ids.size > 0 ? "partial" : "failed", error: failures.join("; ") };
 }
 
+/** What attachAgentSkills did: whether any agent got a skill, and the failures. */
+export type AgentSkillResult = { granted: boolean; failures: string[] };
+
 /**
  * Attaches the leader's skills (`leaderSkills`) and each role's skills (`roleSkills`) to that
  * agent alone, with addAgentSkills, which adds to what the agent has. The server keeps one row
  * per skill, so a rerun adds nothing twice. Only the agents in `eligible` get them: the ones this
  * quickstart made, and the members of its own squad. A reused agent elsewhere keeps its skills.
- * Returns the failures; a skill that cannot be imported is attached to nobody, and the rest still are.
+ * A skill that cannot be imported is attached to nobody, and the rest still are.
  */
 export async function attachAgentSkills(
   client: SquadQuickstartClient,
@@ -654,7 +657,7 @@ export async function attachAgentSkills(
   agentIds: Partial<Record<SquadRoleKey, string>>,
   eligible: ReadonlySet<string>,
   pack: string | undefined,
-): Promise<string[]> {
+): Promise<AgentSkillResult> {
   const grants = template.roles.flatMap((role) => {
     const agentId = agentIds[role];
     const names = [
@@ -665,31 +668,41 @@ export async function attachAgentSkills(
     ];
     return agentId && eligible.has(agentId) && names.length > 0 ? [{ role, agentId, names }] : [];
   });
-  if (grants.length === 0) return [];
+  if (grants.length === 0) return { granted: false, failures: [] };
   const { ids, failures } = await importBuiltinSkills(
     client,
     [...new Set(grants.flatMap((grant) => grant.names))],
     pack,
   );
+  let granted = false;
   for (const grant of grants) {
     const skillIds = grant.names.flatMap((name) => ids.get(name) ?? []);
     if (skillIds.length === 0) continue;
     try {
       await client.addAgentSkills(grant.agentId, { skill_ids: skillIds });
+      granted = true;
     } catch (err) {
       failures.push(`${SQUAD_ROLES[grant.role].name}: ${errorMessage(err)}`);
     }
   }
-  return failures;
+  return { granted, failures };
 }
 
-/** Adds the agents' skill failures to the squad's skill outcome, which they make partial. */
-export function withAgentSkillFailures(
+/**
+ * Folds the agents' skill result into the squad's skill outcome. A failure makes it partial.
+ * A squad that names no skills of its own has a skipped outcome; when its agents got skills,
+ * that is ready, not skipped.
+ */
+export function withAgentSkills(
   skills: QuickstartOutcome["skills"],
-  failures: readonly string[],
+  agents: AgentSkillResult,
 ): QuickstartOutcome["skills"] {
-  const error = [skills.error, ...failures].filter(Boolean).join("; ");
-  return { status: skills.status === "failed" ? "failed" : "partial", error };
+  if (agents.failures.length > 0) {
+    const error = [skills.error, ...agents.failures].filter(Boolean).join("; ");
+    return { status: skills.status === "failed" ? "failed" : "partial", error };
+  }
+  if (agents.granted && skills.status === "skipped") return { status: "ready" };
+  return skills;
 }
 
 /**
@@ -877,16 +890,16 @@ export async function runSquadQuickstart(
   } catch (err) {
     outcome.squad = { id: null, status: "failed", error: errorMessage(err) };
   }
+  let agentSkills: AgentSkillResult = { granted: false, failures: [] };
   try {
-    agentSkillFailures.push(
-      ...(await attachAgentSkills(client, template, agentIds, eligibleAgents, kitvietPackOf(template.id))),
-    );
+    agentSkills = await attachAgentSkills(client, template, agentIds, eligibleAgents, kitvietPackOf(template.id));
   } catch (err) {
-    agentSkillFailures.push(`skills: ${errorMessage(err)}`);
+    agentSkills = { granted: false, failures: [`skills: ${errorMessage(err)}`] };
   }
-  if (agentSkillFailures.length > 0) {
-    outcome.skills = withAgentSkillFailures(outcome.skills, agentSkillFailures);
-  }
+  outcome.skills = withAgentSkills(outcome.skills, {
+    granted: agentSkills.granted,
+    failures: [...agentSkillFailures, ...agentSkills.failures],
+  });
   report();
 
   if (options.createWorkflow && template.workflow) {

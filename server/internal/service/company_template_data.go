@@ -55,12 +55,13 @@ type companySquad struct {
 }
 
 type companyRole struct {
-	Key           string `json:"key"`
-	Name          string `json:"name"`
-	Description   string `json:"description"`
-	AgentTemplate string `json:"agentTemplate"`
-	Runtime       string `json:"runtime"`
-	Role          string `json:"role"`
+	Key           string   `json:"key"`
+	Name          string   `json:"name"`
+	Description   string   `json:"description"`
+	AgentTemplate string   `json:"agentTemplate"`
+	Runtime       string   `json:"runtime"`
+	Role          string   `json:"role"`
+	Skills        []string `json:"skills"`
 }
 
 type companyRoutine struct {

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CreateSkillRequest, Skill, Squad, UpdateSkillRequest } from "../types";
 import { KITVIET_EXTENSION_BUILTIN_SKILLS } from "./kitviet-extensions";
-import { kitvietPackOf, loadKitvietSkillPacks } from "./kitviet-packs";
+import { kitvietExtensionPackOf, kitvietPackOf, loadKitvietSkillPacks } from "./kitviet-packs";
 import {
   attachKitvietExtensions,
   kitvietExtensionTargetOf,
@@ -145,13 +145,13 @@ describe("attachKitvietExtensions (spec 7)", () => {
 
   it("is idempotent: a second run writes nothing", async () => {
     const fake = fakeClient();
-    await attachKitvietExtensions(fake.client, [squad("people-sq", "People & Performance")]);
+    await attachKitvietExtensions(fake.client, [squad("support-sq", "Support")]);
     const createdAfterFirst = fake.writes.createSkill.length;
     const setAfterFirst = fake.writes.setSquadSkills.length;
 
-    const outcomes = await attachKitvietExtensions(fake.client, [squad("people-sq", "People & Performance")]);
+    const outcomes = await attachKitvietExtensions(fake.client, [squad("support-sq", "Support")]);
 
-    expect(outcomes).toEqual([{ squadId: "people-sq", target: "people_performance", status: "ready" }]);
+    expect(outcomes).toEqual([{ squadId: "support-sq", target: "support", status: "ready" }]);
     expect(fake.writes.createSkill).toHaveLength(createdAfterFirst);
     expect(fake.writes.updateSkill).toEqual([]);
     expect(fake.writes.setSquadSkills).toHaveLength(setAfterFirst);
@@ -189,6 +189,17 @@ describe("attachKitvietExtensions (spec 7)", () => {
     expect(fake.writes.createSkill).toEqual([]);
   });
 
+  it("attaches onboarding-30-60-90 from the people extension pack to kv_talent (D9)", async () => {
+    const fake = fakeClient();
+    const outcomes = await attachKitvietExtensions(fake.client, [
+      squad("talent-sq", "Talent Acquisition", { template_key: "kv_talent" }),
+    ]);
+
+    expect(outcomes).toEqual([{ squadId: "talent-sq", target: "kv_talent", status: "ready" }]);
+    expect(fake.namesOf("talent-sq")).toContain("kv--onboarding-30-60-90");
+    expect(vi.mocked(loadKitvietSkillPacks)).toHaveBeenCalledWith("people");
+  });
+
   it("names the boss's own skill under an extension name, leaves it alone, and attaches the rest", async () => {
     const bossCopy = makeSkill("boss-1", "kv--dac-ta-yeu-cau-srs", {}, "the boss's own text");
     const fake = fakeClient([bossCopy], { "build-sq": ["boss-1"] });
@@ -215,7 +226,8 @@ describe("attachKitvietExtensions (spec 7)", () => {
 describe("kitvietExtensionTargetOf", () => {
   it("matches a company squad by its card name when it has no template_key", () => {
     expect(kitvietExtensionTargetOf(squad("x", "Product Analysis"))).toBe("product_analysis");
-    expect(kitvietExtensionTargetOf(squad("x", "People & Performance"))).toBe("people_performance");
+    expect(kitvietExtensionTargetOf(squad("x", "Support"))).toBe("support");
+    expect(kitvietExtensionTargetOf(squad("x", "People & Performance"))).toBeUndefined();
   });
 
   it("matches a template-made squad by its template_key, not its name", () => {
@@ -226,7 +238,7 @@ describe("kitvietExtensionTargetOf", () => {
 describe("extension skill guard (K8-style)", () => {
   it("every skill each target attaches exists in the pack the target loads", async () => {
     for (const [target, names] of Object.entries(KITVIET_EXTENSION_BUILTIN_SKILLS)) {
-      const packs = await loadKitvietSkillPacks(kitvietPackOf(target));
+      const packs = await loadKitvietSkillPacks(kitvietExtensionPackOf(target) ?? kitvietPackOf(target));
       const exported = new Set(packs.flatMap((pack) => pack.KITVIET_BUILTIN_SKILLS.map((skill) => skill.name)));
       expect(names.filter((name) => !exported.has(name)), target).toEqual([]);
     }

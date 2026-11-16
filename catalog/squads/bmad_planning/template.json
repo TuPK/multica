@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "squad",
   "id": "bmad_planning",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "contracts": [
     "squad.planning"
   ],
@@ -101,7 +101,14 @@
     "skills": {
       "sets": [
         "planning"
-      ]
+      ],
+      "byRole": {
+        "plan_ux": [
+          "kwp-design-handoff",
+          "kwp-ux-copy",
+          "kwp-design-critique"
+        ]
+      }
     }
   }
 }

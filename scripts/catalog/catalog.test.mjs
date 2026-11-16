@@ -643,11 +643,18 @@ describe("chunked skillset", () => {
     assert.match(starter, /a chunk skillset must have target "quickstart"/);
   });
 
-  it("refuses a skill of a chunk skillset that also names another skillset", () => {
+  it("refuses a skill of a chunk skillset that also names another quickstart skillset", () => {
     const root = chunked();
     write(root, "skillsets/other/template.json", { schemaVersion: 1, kind: "skillset", id: "other", version: "1.0.0", target: "quickstart" });
     write(root, "skills/g/demo-skill/template.json", { schemaVersion: 1, kind: "skill", id: "demo-skill", version: "1.0.0", sets: ["demo", "other"], source: { type: "authored" } });
-    assert.match(check(root).errors.join("\n"), /must name no other skillset/);
+    assert.match(check(root).errors.join("\n"), /must name no other quickstart skillset/);
+  });
+
+  it("allows a skill of a chunk skillset to also belong to a starter skillset", () => {
+    const root = chunked();
+    write(root, "skillsets/starter_demo/template.json", { schemaVersion: 1, kind: "skillset", id: "starter_demo", version: "1.0.0", target: "starter" });
+    write(root, "skills/g/demo-skill/template.json", { schemaVersion: 1, kind: "skill", id: "demo-skill", version: "1.0.0", sets: ["demo", "starter_demo"], source: { type: "authored" } });
+    assert.deepEqual(check(root).errors, []);
   });
 });
 
@@ -699,6 +706,147 @@ describe("build lock", () => {
     writeFileSync(join(lockDir, "pid"), String(process.pid));
     assert.throws(() => withBuildLock(lockDir, () => {}, { timeoutMs: 150 }), /held by another build/);
     assert.equal(existsSync(lockDir), true, "a live owner keeps its lock");
+  });
+});
+
+describe("knowledge work plugins (KWP) skills", () => {
+  it("enforces Multica runtime rules and forbids interactive or external steps in authored KWP skills", () => {
+    const { entries } = load();
+    const kwpAuthored = entries.filter((e) => e.kind === "skill" && e.manifest.id.startsWith("kwp-") && e.manifest.source?.type === "authored");
+    assert.equal(kwpAuthored.length, 15, "all 15 authored KWP skills must be present");
+
+    const forbidden = [
+      "~~",
+      "$ARGUMENTS",
+      "@$1",
+      "argument-hint",
+      "Ask the user",
+      "ask the user",
+      "send for signature",
+      "DocuSign",
+      "AskUserQuestion",
+    ];
+
+    for (const entry of kwpAuthored) {
+      const content = readFileSync(join(entry.dir, "SKILL.md"), "utf8");
+      assert.match(
+        content,
+        /^source:\s*"derived from .+ at e605d8dd \(Apache-2\.0\)"/m,
+        `${entry.manifest.id} must declare derived source in frontmatter`,
+      );
+      assert.match(
+        content,
+        /^description:\s*"Use when you are /m,
+        `${entry.manifest.id} description must start with "Use when you are "`,
+      );
+      assert.ok(
+        content.includes("## Multica runtime rules"),
+        `${entry.manifest.id} must include '## Multica runtime rules'`,
+      );
+      for (const phrase of forbidden) {
+        assert.ok(
+          !content.includes(phrase),
+          `${entry.manifest.id} must not contain forbidden phrase "${phrase}"`,
+        );
+      }
+    }
+  });
+
+  it("checks KWP skillset memberships: all 26 in kwp and exact 14 starter skills in kwp_company", () => {
+    const { entries } = load();
+    const skills = entries.filter((e) => e.kind === "skill");
+    const kwpMembers = skills.filter((e) => e.manifest.sets?.includes("kwp")).map((e) => e.manifest.id).sort();
+    assert.equal(kwpMembers.length, 26, "kwp skillset must hold all 26 KWP skills");
+
+    const expectedCompanySkills = [
+      "kwp-absent-is-not-zero",
+      "kwp-change-request",
+      "kwp-customer-escalation",
+      "kwp-incident-response",
+      "kwp-kb-article",
+      "kwp-knowledge-synthesis",
+      "kwp-runbook",
+      "kwp-search-strategy",
+      "kwp-synthesize-research",
+      "kwp-ticket-triage",
+      "kwp-untrusted-content",
+      "risk-assessment",
+      "user-research",
+      "validate-data",
+    ];
+    const companyMembers = skills
+      .filter((e) => e.manifest.sets?.includes("kwp_company"))
+      .map((e) => e.manifest.id)
+      .sort();
+    assert.deepEqual(companyMembers, expectedCompanySkills);
+
+    const company = entries.find((e) => e.kind === "company" && e.manifest.id === "starter");
+    assert.ok(company, "starter company exists");
+    const roleAssigned = [
+      ...new Set(
+        company.manifest.company.squads.flatMap((squad) =>
+          squad.roles.flatMap((role) => role.skills ?? []),
+        ),
+      ),
+    ].sort();
+    assert.deepEqual(roleAssigned, expectedCompanySkills);
+  });
+
+  it("checks group A vendored KWP skills have no forbidden interactive or external steps", () => {
+    const { entries } = load();
+    const groupAIds = [
+      "analyze",
+      "explore-data",
+      "sql-queries",
+      "statistical-analysis",
+      "validate-data",
+      "create-viz",
+      "build-dashboard",
+      "tech-debt",
+      "risk-assessment",
+      "variance-analysis",
+      "user-research",
+    ];
+    const groupA = entries.filter((e) => e.kind === "skill" && groupAIds.includes(e.manifest.id) && e.manifest.sets?.includes("kwp"));
+    assert.equal(groupA.length, 11, "all 11 group A KWP skills must be present");
+
+    const forbidden = [
+      "~~",
+      "$ARGUMENTS",
+      "@$1",
+      "Ask the user",
+      "ask the user",
+      "send for signature",
+      "DocuSign",
+      "AskUserQuestion",
+    ];
+
+    for (const entry of groupA) {
+      const content = readFileSync(join(entry.dir, "SKILL.md"), "utf8");
+      for (const phrase of forbidden) {
+        assert.ok(
+          !content.includes(phrase),
+          `group A skill ${entry.manifest.id} must not contain forbidden phrase "${phrase}"`,
+        );
+      }
+    }
+  });
+
+  it("ensures every skill named on a starter company role exists in the catalog", () => {
+    const { entries } = load();
+    const skillIds = new Set(entries.filter((e) => e.kind === "skill").map((e) => e.manifest.id));
+    const company = entries.find((e) => e.kind === "company" && e.manifest.id === "starter");
+    assert.ok(company, "starter company exists");
+
+    for (const squad of company.manifest.company.squads) {
+      for (const role of squad.roles) {
+        if (role.skills) {
+          for (const skill of role.skills) {
+            assert.ok(skillIds.has(skill), `role ${squad.key}/${role.key} names unknown skill "${skill}"`);
+          }
+        }
+      }
+    }
   });
 });
 

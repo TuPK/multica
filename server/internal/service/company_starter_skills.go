@@ -111,15 +111,28 @@ func isStarterSkillConfig(config []byte) bool {
 
 // starterSkillsForRole returns the starter skills an agent of a role gets. The
 // Secretary gets its built-in bundle. A squad leader gets the reporting and the
-// directive skills. Other roles get none.
+// directive skills plus any skills named in role.Skills. Other roles get the skills
+// named in role.Skills. Duplicate skill names are deduplicated while preserving order.
 func starterSkillsForRole(card companySquad, role companyRole) []string {
 	if role.Runtime == "secretary" {
 		return SecretarySkills
 	}
-	if role.Key == card.Leader {
-		return []string{StarterSkillSquadReporting, StarterSkillDirectiveExecution}
+	var out []string
+	seen := make(map[string]bool)
+	add := func(name string) {
+		if name != "" && !seen[name] {
+			seen[name] = true
+			out = append(out, name)
+		}
 	}
-	return nil
+	if role.Key == card.Leader {
+		add(StarterSkillSquadReporting)
+		add(StarterSkillDirectiveExecution)
+	}
+	for _, name := range role.Skills {
+		add(name)
+	}
+	return out
 }
 
 // floorChiefStarterSkills are the skills a floor chief gets. The starter company

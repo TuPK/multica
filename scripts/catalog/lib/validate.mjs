@@ -117,7 +117,8 @@ function validateSkill(entry, problems, context) {
     }
     // A skill of a chunk skillset is loaded from that module alone, so it cannot also be a plain quickstart skill.
     const chunks = manifest.sets.filter((set) => context.entries.some((e) => e.kind === "skillset" && e.manifest.id === set && e.manifest.chunk === true));
-    if (chunks.length > 0 && manifest.sets.length > 1) err(`a skill of the chunk skillset "${chunks[0]}" must name no other skillset`);
+    const quickstartSets = manifest.sets.filter((set) => context.entries.some((e) => e.kind === "skillset" && e.manifest.id === set && e.manifest.target === "quickstart"));
+    if (chunks.length > 0 && quickstartSets.length > 1) err(`a skill of the chunk skillset "${chunks[0]}" must name no other quickstart skillset`);
   }
   if (manifest.source?.type === "vendored") {
     for (const field of ["repo", "ref", "license"]) {

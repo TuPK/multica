@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "kind": "squad",
+  "id": "data_insights",
+  "version": "1.0.0",
+  "collection": "core",
+  "order": 60,
+  "squad": {
+    "name": "Data & Insights",
+    "description": "Answers questions with verified data insights: schema profiling, SQL analysis, variance breakdowns, charts, and quality validation.",
+    "floorName": "Product",
+    "leader": "data_lead",
+    "workflow": null,
+    "roles": [
+      {
+        "key": "data_lead",
+        "agentTemplate": "data_lead",
+        "name": "Data Lead",
+        "description": "Scopes data investigations, coordinates the analysis pipeline, and verifies answers against stakeholder questions.",
+        "role": "Squad leader"
+      },
+      {
+        "key": "data_profiler",
+        "agentTemplate": "data_profiler",
+        "name": "Data Profiler",
+        "description": "Inspects schemas, profiles columns, and catalogs data context.",
+        "role": "Data profiling and schema documentation"
+      },
+      {
+        "key": "data_analyst",
+        "agentTemplate": "data_analyst",
+        "name": "Data Analyst",
+        "description": "Authors SQL queries, computes statistics, and analyzes metric variances.",
+        "role": "SQL queries and statistical analysis"
+      },
+      {
+        "key": "data_viz",
+        "agentTemplate": "data_viz",
+        "name": "Data Visualizer",
+        "description": "Builds charts, plots, and interactive dashboards.",
+        "role": "Data visualization and dashboards"
+      },
+      {
+        "key": "data_validator",
+        "agentTemplate": "data_validator",
+        "name": "Data Validator",
+        "description": "Validates analytical logic and figures with QUA or CHẶN verdicts.",
+        "role": "Independent data validation gate"
+      }
+    ],
+    "routines": [],
+    "charter": {
+      "mission": "Transform stakeholder questions and raw datasets into verified, truthful analytical insights, metrics, and dashboards.",
+      "responsibilities": [
+        {
+          "key": "profiling",
+          "text": "Profile schemas and document entity relationships before querying."
+        },
+        {
+          "key": "analysis",
+          "text": "Author accurate queries and compute statistical variances without inventing numbers."
+        },
+        {
+          "key": "validation",
+          "text": "Independently validate figures and formulas before final delivery."
+        }
+      ],
+      "outputs": [
+        {
+          "key": "analytical_report",
+          "kind": "report",
+          "cadenceHint": "per request"
+        }
+      ],
+      "boundaries": "Read-only data access. Never modifies database records, alters schemas, or runs on fabricated data.",
+      "escalation": "Missing data access credentials or broken schemas set status to blocked and escalate to the requester.",
+      "intake": "Analytical requests arrive as issues assigned to this squad."
+    },
+    "skills": {
+      "sets": [],
+      "byRole": {
+        "data_lead": [
+          "analyze",
+          "kwp-untrusted-content"
+        ],
+        "data_profiler": [
+          "explore-data",
+          "kwp-data-context-extractor",
+          "kwp-untrusted-content"
+        ],
+        "data_analyst": [
+          "sql-queries",
+          "statistical-analysis",
+          "variance-analysis",
+          "kwp-absent-is-not-zero"
+        ],
+        "data_viz": [
+          "create-viz",
+          "build-dashboard"
+        ],
+        "data_validator": [
+          "validate-data",
+          "kwp-absent-is-not-zero"
+        ]
+      }
+    }
+  }
+}

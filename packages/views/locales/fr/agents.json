@@ -530,6 +530,26 @@
           "name": "Responsable croissance",
           "description": "Rédige le plan de mise sur le marché et, chaque semaine, le rapport d'indicateurs des initiatives lancées."
         },
+        "data_lead": {
+          "name": "Responsable des données",
+          "description": "Cadre les analyses de données, coordonne le flux analytique et valide les réponses face aux questions posées."
+        },
+        "data_profiler": {
+          "name": "Profileur de données",
+          "description": "Catalogue les schémas, inspecte les types de colonnes, vérifie la qualité et documente les relations d'entités."
+        },
+        "data_analyst": {
+          "name": "Analyste de données",
+          "description": "Rédige des requêtes SQL, effectue des calculs statistiques et analyse les écarts sans inventer de chiffres."
+        },
+        "data_viz": {
+          "name": "Spécialiste visualisation",
+          "description": "Crée des graphiques professionnels, des tracés statistiques et des tableaux de bord interactifs pertinents."
+        },
+        "data_validator": {
+          "name": "Validateur de données",
+          "description": "Vérifie de manière indépendante les formules, la logique des requêtes et rend un verdict QUA ou CHẶN."
+        },
         "support_lead": {
           "name": "Responsable support",
           "description": "Trie chaque jour les demandes clients, transmet les bugs avec leurs étapes de reproduction, et enrichit la base de connaissances."

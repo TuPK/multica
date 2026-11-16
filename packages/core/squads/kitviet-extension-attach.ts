@@ -1,7 +1,7 @@
 import type { Squad } from "../types";
 import { COMPANY_SQUAD_CARDS } from "./company-template";
 import { KITVIET_EXTENSION_BUILTIN_SKILLS } from "./kitviet-extensions";
-import { kitvietPackOf } from "./kitviet-packs";
+import { kitvietExtensionPackOf, kitvietPackOf } from "./kitviet-packs";
 import {
   attachBuiltinSkills,
   errorMessage,
@@ -34,7 +34,7 @@ function isExtensionTarget(key: string): boolean {
  * The extension target of a squad, or undefined when it is not one. A squad the quickstart made
  * matches by its template_key. A company starter squad has no template_key (the server does not set
  * one), so it matches by its card name, the same way the server reuses it. Any other squad is left
- * alone, including a Kit Viet squad, whose key is not a target.
+ * alone, including Kit Viet squads except `kv_talent` (which receives the people onboarding extension, D9).
  */
 export function kitvietExtensionTargetOf(squad: Squad): string | undefined {
   if (squad.archived_at) return undefined;
@@ -62,7 +62,8 @@ export async function attachKitvietExtensions(
     const target = kitvietExtensionTargetOf(squad);
     if (target === undefined) continue;
     const names = KITVIET_EXTENSION_BUILTIN_SKILLS[target] ?? [];
-    const skills = await attachBuiltinSkills(client, squad.id, names, kitvietPackOf(target)).catch(
+    const pack = kitvietExtensionPackOf(target) ?? kitvietPackOf(target);
+    const skills = await attachBuiltinSkills(client, squad.id, names, pack).catch(
       (err): QuickstartOutcome["skills"] => ({ status: "failed", error: errorMessage(err) }),
     );
     outcomes.push({ squadId: squad.id, target, ...skills });

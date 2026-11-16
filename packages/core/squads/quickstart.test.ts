@@ -1016,7 +1016,8 @@ describe("runSquadQuickstart built-in skills", () => {
 
     const out = await runSquadQuickstart(client, greenfield, options);
 
-    expect(client.createSkill).toHaveBeenCalledTimes(sdlcNames.length);
+    const totalSkillsCount = sdlcNames.length + Object.values(greenfield.roleSkills ?? {}).flat().length;
+    expect(client.createSkill).toHaveBeenCalledTimes(totalSkillsCount);
     const first = client.createSkill.mock.calls[0]![0];
     expect(first).toMatchObject({
       name: sdlcNames[0],
@@ -1120,8 +1121,9 @@ describe("runSquadQuickstart built-in skills", () => {
 
   it("imports no skill for a template that names none", async () => {
     const client = fakeClient();
+    const templateWithoutSkills = { ...marketTemplate, builtinSkills: [], roleSkills: undefined, leaderSkills: undefined };
 
-    await runSquadQuickstart(client, marketTemplate, options);
+    await runSquadQuickstart(client, templateWithoutSkills, options);
 
     expect(client.listSkills).not.toHaveBeenCalled();
     expect(client.setSquadSkills).not.toHaveBeenCalled();
@@ -1183,7 +1185,8 @@ describe("runSquadQuickstart planning squad", () => {
     );
     expect(client.addSquadMember).toHaveBeenCalledTimes(6);
     expect(client.createIssueWorkflow.mock.calls[0]![0]).toMatchObject({ name: "BMAD Planning Auto" });
-    expect(client.createSkill.mock.calls.map((c) => c[0].name)).toEqual(planning.builtinSkills);
+    const expectedPlanningSkills = [...planning.builtinSkills, ...Object.values(planning.roleSkills ?? {}).flat()];
+    expect(client.createSkill.mock.calls.map((c) => c[0].name)).toEqual(expectedPlanningSkills);
     expect(out.skills).toEqual({ status: "ready" });
     expect(out.workflow.status).toBe("created");
   });
@@ -1547,5 +1550,61 @@ describe("marketing squads in the quickstart", () => {
     expect(SDLC_BUILTIN_SKILLS.some((b) => b.name === "mkt-context")).toBe(false);
     const created = client.createSkill.mock.calls.find((c) => c[0].name === "mkt-context");
     expect(created?.[0].content).toBe(chunkSkill!.content);
+  });
+});
+
+describe("KWP roleSkills and data_insights in quickstart", () => {
+  it("attaches KWP role skills from the kwp chunk to their specific roles without adding them to squad builtinSkills", async () => {
+    const client = fakeClient();
+    const maintenance = SQUAD_TEMPLATES.find((t) => t.id === "sdlc_maintenance")!;
+
+    const out = await runSquadQuickstart(client, maintenance, options);
+
+    expect(out.skills).toEqual({ status: "ready" });
+    const idOf = (role: string) => out.agents.find((a) => a.role === role)!.id!;
+    expect(client.addAgentSkills.mock.calls).toEqual([
+      [idOf("lead"), { skill_ids: ["skill-tech-debt"] }],
+      [idOf("ux"), { skill_ids: ["skill-kwp-design-handoff", "skill-kwp-ux-copy", "skill-kwp-design-critique"] }],
+    ]);
+    expect(client.setSquadSkills).toHaveBeenCalledWith(
+      "squad-1",
+      maintenance.builtinSkills.map((name) => `skill-${name}`),
+    );
+  });
+
+  it("installs data_insights with its five roles on the Product floor and attaches each role's KWP skills", async () => {
+    const client = fakeClient({
+      listCompanyFloors: vi.fn(async () => [asFloor("floor-product", "Product", 2)]),
+    });
+    const dataInsights = SQUAD_TEMPLATES.find((t) => t.id === "data_insights")!;
+
+    const out = await runSquadQuickstart(client, dataInsights, options);
+
+    expect(out.agents.map((a) => [a.role, a.status])).toEqual([
+      ["data_lead", "created"],
+      ["data_profiler", "created"],
+      ["data_analyst", "created"],
+      ["data_viz", "created"],
+      ["data_validator", "created"],
+    ]);
+    expect(out.squad).toEqual({ id: "squad-1", status: "created" });
+    expect(out.routines).toEqual([]);
+    expect(out.workflow.status).toBe("skipped");
+    // The squad names no skills of its own, but its roles' KWP skills were attached.
+    expect(out.skills).toEqual({ status: "ready" });
+    expect(client.setCompanySeats).toHaveBeenCalledWith([
+      { squad_id: "squad-1", floor_id: "floor-product", slot: 0 },
+    ]);
+    expect(client.setSquadSkills).not.toHaveBeenCalled();
+    expect(client.createSkill).toHaveBeenCalledTimes(11);
+
+    const idOf = (role: string) => out.agents.find((a) => a.role === role)!.id!;
+    expect(client.addAgentSkills.mock.calls).toEqual([
+      [idOf("data_lead"), { skill_ids: ["skill-analyze", "skill-kwp-untrusted-content"] }],
+      [idOf("data_profiler"), { skill_ids: ["skill-explore-data", "skill-kwp-data-context-extractor", "skill-kwp-untrusted-content"] }],
+      [idOf("data_analyst"), { skill_ids: ["skill-sql-queries", "skill-statistical-analysis", "skill-variance-analysis", "skill-kwp-absent-is-not-zero"] }],
+      [idOf("data_viz"), { skill_ids: ["skill-create-viz", "skill-build-dashboard"] }],
+      [idOf("data_validator"), { skill_ids: ["skill-validate-data", "skill-kwp-absent-is-not-zero"] }],
+    ]);
   });
 });

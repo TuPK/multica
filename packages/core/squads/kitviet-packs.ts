@@ -20,13 +20,20 @@ export interface KitvietPackModule {
 const KITVIET_PACK_LOADERS: Readonly<Record<string, () => Promise<KitvietPackModule>>> = GENERATED_PACK_LOADERS;
 
 /**
+ * The pack of the extension that attaches to this target (spec 7).
+ */
+export function kitvietExtensionPackOf(target: string): string | undefined {
+  return KITVIET_EXTENSIONS.find((extension) => extension.targets.includes(target))?.pack;
+}
+
+/**
  * The pack of the Kit Viet squad with this template id, or of the extension that attaches to this
  * target (a SquadTemplate id or a company squad key, spec 7). Undefined for any other template.
  */
 export function kitvietPackOf(templateId: string): string | undefined {
   return (
     KITVIET_SQUADS.find((squad) => squad.templateId === templateId)?.pack ??
-    KITVIET_EXTENSIONS.find((extension) => extension.targets.includes(templateId))?.pack
+    kitvietExtensionPackOf(templateId)
   );
 }
 

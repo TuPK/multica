@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill",
+  "id": "kwp-synthesize-research",
+  "version": "1.0.0",
+  "sets": [
+    "kwp",
+    "kwp_company"
+  ],
+  "source": {
+    "type": "authored"
+  }
+}

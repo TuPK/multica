@@ -488,7 +488,7 @@ Secretary trong Executive Office giữ vai định tuyến; Office Admin không 
 
 Không tạo squad mới, chỉ gắn skill vào squad có sẵn. Đã làm: `kitviet-extension-attach.ts` khớp squad công ty theo tên card (squad công ty không có `template_key`) và thêm bundle bằng `attachBuiltinSkills`, không xóa skill nào; client chạy sau mỗi lần apply công ty (`useApplyCompanyTemplate`). Cổng rà soát nội dung không còn là điều kiện (Q1). Danh sách skill:
 - **Support** ← CSKH của `kinh-doanh`: `kich-ban-tong-dai-cskh`, `phan-hoi-khieu-nai-cskh`, `phan-tich-nps-csat`.
-- **People & Performance** ← HR vận hành của `nhan-su`: `soat-hop-dong-lao-dong`, `soat-bang-cham-cong`, `onboarding-30-60-90`, `quy-trinh-ky-luat-lao-dong`, `danh-gia-thu-viec`.
+- **Talent Acquisition (`kv_talent`)** ← Onboarding của `nhan-su` (D9): `onboarding-30-60-90`. Các skill HR vận hành khác (`soat-hop-dong-lao-dong`, `soat-bang-cham-cong`, `quy-trinh-ky-luat-lao-dong`, `danh-gia-thu-viec`) chờ squad People Ops.
 - **Product Analysis / Planning / Build** ← CNTT: `dac-ta-yeu-cau-srs`, `viet-user-story-tieu-chi`, `sinh-test-case-tu-yeu-cau`, `chuyen-yeu-cau-khach-thanh-task`,
   `release-note-song-ngu`, `soat-du-lieu-ca-nhan-phan-mem`.
 

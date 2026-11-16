@@ -109,7 +109,7 @@ export const SKILLSET_CHUNK_LOADERS: Readonly<Record<string, () => Promise<reado
 export function starterSkillsForGo(entries) {
   return skillsOfTarget(entries, "starter").map((entry) => {
     const content = readFileSync(resolve(entry.dir, "SKILL.md"), "utf8");
-    const description = /^description: "(.*)"$/m.exec(content)?.[1];
+    const description = frontmatterDescription(content, entry.folder);
     if (!description) throw new Error(`${entry.folder}/SKILL.md has no description in its frontmatter`);
     const files = installedFiles(entry.dir).filter((file) => file.path.endsWith(".md") && !file.path.includes("/"));
     return { name: entry.manifest.id, description, content, files };

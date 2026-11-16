@@ -18,7 +18,7 @@ import {
   instructionsFor,
   type QuickstartOutcome,
   type SquadQuickstartClient,
-  withAgentSkillFailures,
+  withAgentSkills,
   workflowSteps,
 } from "./quickstart";
 import {
@@ -357,8 +357,8 @@ export async function upgradeKitvietSquad(
       // Only the quickstart's own squad gives its leader and members the agent skills.
       const members: SquadMember[] = await client.listSquadMembers(squad.id);
       const eligible = new Set([leaderId, ...members.map((m) => m.member_id)]);
-      const failures = await attachAgentSkills(client, template, agentIds, eligible, pack);
-      if (failures.length > 0) result.skills = withAgentSkillFailures(result.skills, failures);
+      const agentSkills = await attachAgentSkills(client, template, agentIds, eligible, pack);
+      result.skills = withAgentSkills(result.skills, agentSkills);
     } catch (err) {
       result.skills = { status: "failed", error: errorMessage(err) };
     }

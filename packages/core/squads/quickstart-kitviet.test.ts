@@ -304,7 +304,7 @@ describe("runSquadQuickstart Kit Viet skills: which agents get them", () => {
     expect(out.agents.find((a) => a.role === "developer")).toMatchObject({ id: "boss-dev", status: "reused" });
     // The leader is made by this run, so it still gets its skill.
     expect(granted).toEqual([out.agents.find((a) => a.role === kvSquad.leader)!.id]);
-    expect(out.skills).toEqual({ status: "skipped" });
+    expect(out.skills).toEqual({ status: "ready" });
   });
 
   it("does not attach skills to a reused agent that is not a member of the quickstart's squad", async () => {

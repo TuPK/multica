@@ -518,6 +518,26 @@
           "name": "成長負責人",
           "description": "撰寫市場推廣計畫，並每週撰寫上線專案的指標報告。"
         },
+        "data_lead": {
+          "name": "數據分析負責人",
+          "description": "梳理數據調研範圍，協調分析流程，並對照業務需求核實結論。"
+        },
+        "data_profiler": {
+          "name": "數據探查員",
+          "description": "編目數據架構，檢查欄位類型與數據清洗規則，並記錄實體關聯。"
+        },
+        "data_analyst": {
+          "name": "數據分析師",
+          "description": "編寫SQL查詢，執行統計計算並分析指標波動，絕不編造虛假數字。"
+        },
+        "data_viz": {
+          "name": "數據可視化專家",
+          "description": "製作可交付的專業圖表、統計曲線與互動式看板，清晰呈現分析洞察。"
+        },
+        "data_validator": {
+          "name": "數據校驗員",
+          "description": "獨立驗證指標公式、查詢邏輯與計算結果，給出QUA或CHẶN校驗結論。"
+        },
         "support_lead": {
           "name": "客戶支援負責人",
           "description": "每天分揀客戶請求，把附帶重現步驟的缺陷升級處理，並把答案寫回知識庫。"

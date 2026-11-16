@@ -530,6 +530,26 @@
           "name": "Growth Lead",
           "description": "Writes the go-to-market plan, and each week the metrics report for launched initiatives."
         },
+        "data_lead": {
+          "name": "Data Lead",
+          "description": "Scopes data inquiries, coordinates the analysis pipeline, and verifies answers against stakeholder questions."
+        },
+        "data_profiler": {
+          "name": "Data Profiler",
+          "description": "Catalogs schemas, inspects column data types, checks data hygiene, and documents entity relationships."
+        },
+        "data_analyst": {
+          "name": "Data Analyst",
+          "description": "Authors SQL queries, runs statistical calculations, and analyzes metric variances without inventing numbers."
+        },
+        "data_viz": {
+          "name": "Data Visualizer",
+          "description": "Creates publication-ready charts, statistical plots, and interactive dashboards communicating data insights."
+        },
+        "data_validator": {
+          "name": "Data Validator",
+          "description": "Independently validates analytical formulas, query logic, and calculations with QUA or CHẶN verdicts."
+        },
         "support_lead": {
           "name": "Support Lead",
           "description": "Triages customer requests each day, escalates bugs with steps to reproduce, and writes answers back to the knowledge base."

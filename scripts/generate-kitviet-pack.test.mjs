@@ -234,6 +234,17 @@ describe("generated output", () => {
       for (const re of leftovers) assert.doesNotMatch(content, re, `${file} still matches ${re}`);
     }
   });
+
+  it("leaves people_performance with no HR skills attached (D9)", () => {
+    const extensions = outputs.get("extensions.ts");
+    assert.doesNotMatch(extensions, /"targets":\s*\[[^\]]*"people_performance"[^\]]*\]/);
+  });
+
+  it("attaches onboarding-30-60-90 to kv_talent via people extension (D9)", () => {
+    const extensions = outputs.get("extensions.ts");
+    assert.match(extensions, /"targets":\s*\[[^\]]*"kv_talent"[^\]]*\]/);
+    assert.match(extensions, /"kv--onboarding-30-60-90"/);
+  });
 });
 
 describe("display names and the squad header", () => {

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "squad",
   "id": "sdlc_greenfield",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "contracts": [
     "squad.sdlc"
   ],
@@ -110,7 +110,14 @@
     "skills": {
       "sets": [
         "sdlc"
-      ]
+      ],
+      "byRole": {
+        "ux": [
+          "kwp-design-handoff",
+          "kwp-ux-copy",
+          "kwp-design-critique"
+        ]
+      }
     }
   }
 }

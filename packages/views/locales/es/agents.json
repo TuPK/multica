@@ -530,6 +530,26 @@
           "name": "Líder de crecimiento",
           "description": "Redacta el plan de salida al mercado y, cada semana, el informe de métricas de las iniciativas lanzadas."
         },
+        "data_lead": {
+          "name": "Líder de datos",
+          "description": "Delimita las consultas de datos, coordina el flujo de análisis y verifica las respuestas frente a las preguntas."
+        },
+        "data_profiler": {
+          "name": "Perfilador de datos",
+          "description": "Cataloga esquemas, inspecciona tipos de datos, revisa la calidad y documenta las relaciones entre entidades."
+        },
+        "data_analyst": {
+          "name": "Analista de datos",
+          "description": "Escribe consultas SQL, ejecuta cálculos estadísticos y analiza variaciones sin inventar cifras."
+        },
+        "data_viz": {
+          "name": "Especialista en visualización",
+          "description": "Genera gráficos claros, trazados estadísticos y paneles interactivos listos para comunicar hallazgos."
+        },
+        "data_validator": {
+          "name": "Validador de datos",
+          "description": "Valida de forma independiente fórmulas, lógica de consultas y cálculos emitiendo veredictos QUA o CHẶN."
+        },
         "support_lead": {
           "name": "Líder de soporte",
           "description": "Clasifica cada día las solicitudes de clientes, escala los errores con pasos para reproducirlos y devuelve las respuestas a la base de conocimiento."

@@ -57,8 +57,13 @@
   },
   "promoted": [],
   "deferredSkills": [
+    "danh-gia-thu-viec",
     "ke-hoach-dao-tao-nam",
     "khao-sat-gan-ket-nhan-vien",
-    "phong-van-thoi-viec"
+    "phong-van-thoi-viec",
+    "quy-trinh-ky-luat-lao-dong",
+    "soat-bang-cham-cong",
+    "soat-hop-dong-lao-dong",
+    "tra-cuu-quy-dinh-lao-dong"
   ]
 }

@@ -134,6 +134,29 @@ describe("squad cards", () => {
 
     expect(secretaries).toEqual(["executive_office/secretary"]);
   });
+
+  it("defaults role skills to an array and keeps the 14 squads and 35 roles", () => {
+    let totalRoles = 0;
+    for (const card of COMPANY_SQUAD_CARDS) {
+      totalRoles += card.roles.length;
+      for (const role of card.roles) {
+        expect(Array.isArray(role.skills), `${card.key}/${role.key}`).toBe(true);
+        expect(role.skills.length, `${card.key}/${role.key}`).toBeLessThanOrEqual(6);
+      }
+    }
+    expect(COMPANY_SQUAD_CARDS).toHaveLength(14);
+    expect(totalRoles).toBe(35);
+
+    const buildCard = companySquadCard("build");
+    const rawRoleWithoutSkills = Object.fromEntries(
+      Object.entries(buildCard.roles[0]!).filter(([key]) => key !== "skills"),
+    );
+    const reparsed = CompanySquadCardSchema.parse({
+      ...buildCard,
+      roles: [rawRoleWithoutSkills, ...buildCard.roles.slice(1)],
+    });
+    expect(reparsed.roles[0]!.skills).toEqual([]);
+  });
 });
 
 describe("pipeline stages", () => {

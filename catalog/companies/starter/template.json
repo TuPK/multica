@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "company",
   "id": "starter",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "contracts": [
     "company.executive_office"
   ],
@@ -114,7 +114,11 @@
             "description": "Keeps the knowledge base accurate, findable, and current.",
             "agentTemplate": "knowledge_curator",
             "runtime": "worker",
-            "role": "Knowledge curation: triage, freshness, retrieval checks, taxonomy audit"
+            "role": "Knowledge curation: triage, freshness, retrieval checks, taxonomy audit",
+            "skills": [
+              "kwp-knowledge-synthesis",
+              "kwp-search-strategy"
+            ]
           }
         ],
         "routines": [
@@ -241,7 +245,10 @@
             "description": "Challenges the evidence before anything is filed, and writes no findings of its own.",
             "agentTemplate": "critic",
             "runtime": "worker",
-            "role": "Challenges the evidence"
+            "role": "Challenges the evidence",
+            "skills": [
+              "validate-data"
+            ]
           }
         ],
         "routines": [
@@ -319,7 +326,10 @@
             "description": "Challenges each candidate's evidence before an opportunity is filed.",
             "agentTemplate": "critic",
             "runtime": "worker",
-            "role": "Challenges the evidence"
+            "role": "Challenges the evidence",
+            "skills": [
+              "validate-data"
+            ]
           }
         ],
         "routines": [
@@ -460,7 +470,11 @@
             "description": "Leads Customer Voice: the weekly support-signal scan and the monthly customer synthesis.",
             "agentTemplate": "customer_lead",
             "runtime": "worker",
-            "role": "Customer evidence: scans and synthesis"
+            "role": "Customer evidence: scans and synthesis",
+            "skills": [
+              "kwp-synthesize-research",
+              "kwp-untrusted-content"
+            ]
           }
         ],
         "routines": [
@@ -539,7 +553,10 @@
             "description": "Tests an opportunity's thesis against customer and market evidence.",
             "agentTemplate": "validation_analyst",
             "runtime": "worker",
-            "role": "Validation evidence"
+            "role": "Validation evidence",
+            "skills": [
+              "user-research"
+            ]
           }
         ],
         "routines": [
@@ -909,7 +926,12 @@
             "description": "Checks deployment, rollback, and monitoring for a release candidate.",
             "agentTemplate": "devops_engineer",
             "runtime": "worker",
-            "role": "Deployment, rollback and monitoring checks"
+            "role": "Deployment, rollback and monitoring checks",
+            "skills": [
+              "kwp-incident-response",
+              "kwp-runbook",
+              "kwp-change-request"
+            ]
           }
         ],
         "routines": [
@@ -1038,7 +1060,10 @@
             "description": "Leads Support: triage, escalations to the build squad, and knowledge write-back.",
             "agentTemplate": "support_lead",
             "runtime": "worker",
-            "role": "Squad leader; owns the customer side of Operate"
+            "role": "Squad leader; owns the customer side of Operate",
+            "skills": [
+              "kwp-customer-escalation"
+            ]
           },
           {
             "key": "support_agent",
@@ -1046,7 +1071,12 @@
             "description": "Answers customer requests from the company's knowledge, and escalates what it cannot answer.",
             "agentTemplate": "support_agent",
             "runtime": "worker",
-            "role": "Customer requests"
+            "role": "Customer requests",
+            "skills": [
+              "kwp-ticket-triage",
+              "kwp-kb-article",
+              "kwp-untrusted-content"
+            ]
           }
         ],
         "routines": [
@@ -1119,7 +1149,11 @@
             "description": "Leads Finance & Risk: reviews spending proposals and keeps the risk register current.",
             "agentTemplate": "finance_lead",
             "runtime": "worker",
-            "role": "Squad leader; money and risk review"
+            "role": "Squad leader; money and risk review",
+            "skills": [
+              "risk-assessment",
+              "kwp-absent-is-not-zero"
+            ]
           }
         ],
         "routines": [],

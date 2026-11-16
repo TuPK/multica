@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill",
+  "id": "create-viz",
+  "version": "1.0.0",
+  "sets": [
+    "kwp"
+  ],
+  "source": {
+    "type": "vendored",
+    "repo": "https://github.com/anthropics/knowledge-work-plugins",
+    "ref": "e605d8ddbfb688da57dfaaceebd93f12a64ef1d3",
+    "license": "Apache-2.0"
+  }
+}

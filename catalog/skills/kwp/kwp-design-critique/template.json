@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill",
+  "id": "kwp-design-critique",
+  "version": "1.0.0",
+  "sets": [
+    "kwp"
+  ],
+  "source": {
+    "type": "authored"
+  }
+}

@@ -11,8 +11,8 @@ import { skillsetMembers } from "./skillsets";
 // specific to one squad.
 const OUTPUT_KINDS = ["issue", "proposal", "kb_document", "report"];
 const CRON_FIELD = /^[\d*/,\-?LW#]+$/;
-// The SDLC bundle, and the marketing skills, which load from their own chunk (chunk: true) and are not in it.
-const BUNDLED = new Set([...SDLC_BUILTIN_SKILLS.map((skill) => skill.name), ...skillsetMembers("marketing")]);
+// The SDLC bundle, and the marketing and kwp skills, which load from their own chunk (chunk: true) and are not in it.
+const BUNDLED = new Set([...SDLC_BUILTIN_SKILLS.map((skill) => skill.name), ...skillsetMembers("marketing"), ...skillsetMembers("kwp")]);
 
 describe("catalog squads", () => {
   it("lists each squad once, in a known collection", () => {

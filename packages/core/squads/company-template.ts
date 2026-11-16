@@ -73,6 +73,8 @@ const CompanyRoleSchema = z.object({
   runtime: z.enum(["worker", "secretary"]),
   /** Roster text the leader reads; context only. */
   role: z.string().min(1),
+  /** Skills attached to this role beyond leader/shared skills. */
+  skills: z.array(z.string().min(1)).default([]),
 });
 
 const CompanyRoutineSchema = z.object({

@@ -35,6 +35,24 @@ func TestStarterSkillsForRole(t *testing.T) {
 			role: companyRole{Key: "scout", Runtime: "worker"},
 			want: nil,
 		},
+		{
+			name: "a member with named skills gets those skills",
+			card: card,
+			role: companyRole{Key: "scout", Runtime: "worker", Skills: []string{"kwp-ticket-triage", "kwp-kb-article"}},
+			want: []string{"kwp-ticket-triage", "kwp-kb-article"},
+		},
+		{
+			name: "a squad leader with named skills gets leader skills followed by its own skills",
+			card: card,
+			role: companyRole{Key: "research_lead", Runtime: "worker", Skills: []string{"risk-assessment", "kwp-absent-is-not-zero"}},
+			want: []string{StarterSkillSquadReporting, StarterSkillDirectiveExecution, "risk-assessment", "kwp-absent-is-not-zero"},
+		},
+		{
+			name: "duplicate skill names are deduplicated preserving order",
+			card: card,
+			role: companyRole{Key: "research_lead", Runtime: "worker", Skills: []string{StarterSkillSquadReporting, "validate-data", "validate-data"}},
+			want: []string{StarterSkillSquadReporting, StarterSkillDirectiveExecution, "validate-data"},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -156,6 +174,27 @@ func TestStarterSkillUpdateDue(t *testing.T) {
 	for name, tc := range cases {
 		if got := starterSkillUpdateDue(tc.existing, next); got != tc.want {
 			t.Errorf("%s: starterSkillUpdateDue() = %v, want %v", name, got, tc.want)
+		}
+	}
+}
+
+func TestStarterRoleSkillsPresentInStarterSkills(t *testing.T) {
+	t.Parallel()
+	data, err := loadCompanyData()
+	if err != nil {
+		t.Fatalf("loadCompanyData: %v", err)
+	}
+	starterSkills := make(map[string]bool)
+	for _, sk := range data.StarterSkills {
+		starterSkills[sk.Name] = true
+	}
+	for _, squad := range data.Squads {
+		for _, role := range squad.Roles {
+			for _, skill := range role.Skills {
+				if !starterSkills[skill] {
+					t.Errorf("role %s/%s names skill %q which is missing from StarterSkills", squad.Key, role.Key, skill)
+				}
+			}
 		}
 	}
 }

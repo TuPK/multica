@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "squad",
   "id": "sales_loop",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "collection": "core",
   "order": 40,
   "squad": {
@@ -112,7 +112,12 @@
     "skills": {
       "sets": [
         "sales"
-      ]
+      ],
+      "byRole": {
+        "sales_analyst": [
+          "kwp-untrusted-content"
+        ]
+      }
     }
   }
 }

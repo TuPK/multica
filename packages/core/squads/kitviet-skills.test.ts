@@ -222,10 +222,14 @@ describe("extension packs (spec 7)", () => {
     }
   });
 
-  it("gives each target to one extension, and never to a Kit Viet squad", () => {
+  it("gives each target to one extension, and never to a Kit Viet squad except kv_talent (D9)", () => {
     const targets = KITVIET_EXTENSIONS.flatMap((extension) => extension.targets);
     expect(new Set(targets).size).toBe(targets.length);
-    for (const target of targets) expect(kitvietTemplateIds.has(target), target).toBe(false);
+    for (const target of targets) {
+      if (target !== "kv_talent") {
+        expect(kitvietTemplateIds.has(target), target).toBe(false);
+      }
+    }
   });
 
   for (const config of extensionsConfig) {

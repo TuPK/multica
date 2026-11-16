@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "squad",
   "id": "market_research",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "collection": "core",
   "order": 30,
   "squad": {
@@ -82,7 +82,12 @@
       "intake": "The weekly market scan routine opens each week's issue."
     },
     "skills": {
-      "sets": []
+      "sets": [],
+      "byRole": {
+        "critic": [
+          "validate-data"
+        ]
+      }
     }
   }
 }

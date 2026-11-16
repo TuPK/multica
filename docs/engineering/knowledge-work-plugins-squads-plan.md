@@ -1,294 +1,309 @@
-# Knowledge Work Plugins (KWP) squads: implementation plan
+# Knowledge Work Plugins (KWP): kế hoạch triển khai
 
-Kế hoạch triển khai cho [knowledge-work-plugins-squads.md](knowledge-work-plugins-squads.md). Đọc spec trước; các mục "10.x" dưới đây trỏ về spec. Kế hoạch này viết để giao cho agent làm từng task độc lập.
+Kế hoạch cho [knowledge-work-plugins-squads.md](knowledge-work-plugins-squads.md) (đánh giá lại 2026-11-16, mô hình chọn lọc: 11 vendor nguyên văn, 13 dẫn xuất, 2 nguyên tắc chung). Bảng quyết định từng skill: [knowledge-work-plugins-disposition.md](knowledge-work-plugins-disposition.md). Mọi "mục x.y" trỏ về spec.
 
 Quy ước thực hiện (theo AGENTS.md):
 
-- Commit nhỏ, mỗi task một commit, kiểu conventional (`feat(squads): ...`). Kết thúc commit bằng dòng `Co-Authored-By` theo hướng dẫn của phiên làm việc.
-- PR chỉ mở vào `--repo TuPK/multica`, không bao giờ vào `multica-ai/multica`. Mô tả PR theo mẫu (Problem, Goal, Proposal) và nêu phạm vi nội dung đã đọc (với skill đánh dấu ✱ ở spec 10.5).
-- Sau mỗi task chạy kiểm tra hẹp nhất có ích; cuối mỗi giai đoạn chạy `pnpm typecheck`, `pnpm lint`, `pnpm test`, và test Go liên quan. Báo cáo đúng những gì đã chạy và những gì bỏ qua.
-- Dữ liệu sinh không sửa tay: sửa nguồn rồi chạy `pnpm generate:kwp-skills` và `pnpm generate:company-template`.
-- Chuỗi UI qua i18n đủ bảy ngôn ngữ (en, zh-Hans, zh-Hant, fr, es, ko, ja); mô tả card theo mục "UI descriptions" của `conventions.mdx`.
-- Test mặc định **không** gọi mạng, không chạy agent CLI thật. Phần "chạy thật" chỉ chạy khi người dùng cho phép.
-- Test Go dùng chung một cơ sở dữ liệu: nếu có lỗi trùng khóa, kiểm dòng sót của lần chạy bị ngắt trước khi coi là hồi quy. Không chạy hai lần song song.
-- Chỉ stage đường dẫn của task mình; cây làm việc có thể có thay đổi của phiên khác. Không `git add -A`.
-- Không khóa ngoại, không cascade, không migration: kế hoạch này không đụng schema.
-- Sửa chữ trong skill KWP chỉ qua `kwp-rewrites.json` hoặc skill viết mới; không sửa tay `kwp-skills/` hay `kwp-skills-data.ts`.
+- Nội dung nguồn nằm trong `catalog/`. Mã sinh (`packages/core/catalog/generated/`, `server/internal/catalog/generated/`) không commit. Chạy `pnpm catalog:build` trước `vitest`, `tsc`, `go test` chạy trực tiếp; `pnpm catalog:check` kiểm nguồn.
+- Thêm squad, agent, skillset: `pnpm catalog:new <kind> <id> …` rồi sửa thư mục vừa tạo. Không sửa tay mã sinh.
+- Mỗi task một commit, kiểu conventional (`feat(catalog): …`, `feat(company): …`, `fix(squads): …`, `test(…)`). Kết thúc commit bằng dòng `Co-Authored-By` theo hướng dẫn của phiên.
+- PR mở vào `--repo TuPK/multica`, không bao giờ vào `multica-ai/multica`. Mô tả theo mẫu (Problem, Goal, Proposal), ghi phạm vi đã đọc.
+- Chuỗi UI qua i18n đủ bảy ngôn ngữ (`en, zh-Hans, zh-Hant, fr, es, ko, ja`).
+- Test mặc định không gọi mạng, không chạy agent CLI thật. Chạy thật chỉ khi người dùng cho phép.
+- Test Go dùng chung một cơ sở dữ liệu: lỗi trùng khóa thì kiểm dòng sót (`go-test-db-leftovers`) trước khi kết luận là hồi quy. Không chạy hai lần song song.
+- Chỉ stage đường dẫn của task. Không `git add -A`.
+- Không khóa ngoại, không cascade, không migration.
+- Nhóm A không sửa tay ngoài hai dòng đã nêu (spec 4.1). Nhóm B và D là skill viết tay, ghi nguồn trong frontmatter.
+- Quyết định đã chốt ở spec 9.2 (D6, D9, D10, D12). Nếu một điều kiện đảo ngược xảy ra, dừng, cập nhật spec 9.2, rồi mới đổi code.
 
-## Nền đã có và ranh giới (đã kiểm trong mã, 2026-11-11)
+## Trạng thái cổng (đã kiểm trên mã 2026-11-16)
 
-- Thẻ công ty: `packages/core/squads/company-template.ts` (14 squad) → `pnpm generate:company-template` → `server/internal/service/company_template_data.json` (nhúng vào Go). `starterSkillsForRole` (`server/internal/service/company_starter_skills.go`) chỉ cho leader `squad-reporting` và `directive-execution`; thành viên không có skill. Skill starter đọc từ `catalog/skills/starter/`.
-- Template quickstart: `SQUAD_TEMPLATES` trong `packages/core/squads/templates.ts`; `attachBuiltinSkills` (`quickstart.ts`, dòng ~396) gắn cấp squad bằng `setSquadSkills`. Chưa có `roleSkills` và chưa có `addAgentSkills` trong `SquadQuickstartClient`.
-- Khung Kit Việt (`scripts/generate-kitviet-pack.mjs`, `scripts/lib/skill-bundle.mjs`, `roleSkills`) **chưa có trong repo** tại thời điểm viết. Cổng G1 kiểm lại.
-- Mẫu agent instruction: `packages/core/agents/instruction-templates.ts` (`SHARED_BLOCKS`, `WORKING_RULES`, `SQUAD_LEADER_RULES`); tên và mô tả dịch ở `packages/views/locales/*/agents.json` theo `id`; tên và mô tả template ở `locales/*/modals.json`, khóa `templates.<id>`.
-- Squad skill đến mọi thành viên (`ListEffectiveAgentSkills`); skill gắn riêng agent qua `AddAgentSkill` cộng dồn.
-
-## Tổng quan giai đoạn
-
-| Giai đoạn | Nội dung | Phụ thuộc | Đụng server Go | Kích cỡ | Rủi ro |
-| --- | --- | --- | --- | --- | --- |
-| G | Bốn cổng đọc mã | không | không | nhỏ | thấp |
-| 1 · Khung (PR 1) | Vendor, chuyển đổi, generator, ba skill mới, sửa spec Kit Việt | G | không | lớn | trung bình |
-| 2 · Đường thẻ công ty (PR 2) | Trường `skills` của vai, Go, generator; Support và Release & Ops | 1 | có | vừa | trung bình |
-| 3 · Growth & Finance (PR 3) | Hai agent mới và skill | 2 | không | vừa | trung bình |
-| 4 · Research, Product, Librarian (PR 4) | Gắn skill vào thẻ có sẵn | 3 (cùng tệp thẻ) | không | nhỏ | thấp |
-| 5 · Đường template (PR 5) | `roleSkills`, `addAgentSkills`; SDLC UX, Maintenance, BMAD, Market Research, Sales Loop | 1 | không | vừa | trung bình |
-| 6 · Data & Insights (PR 6) | Template mới, năm agent | 5 | không | vừa | trung bình |
-| 7 · Gắn vào squad Kit Việt (PR 7) | `kv_b2b`, `kv_legal`, `kv_marketing` | 5 và squad Kit Việt tương ứng đã vào repo | không | nhỏ | thấp |
-
-Thứ tự: G → 1 → (2 → 3 → 4) song song với (5 → 6) → 7. PR 3 và PR 4 cùng sửa `company-template.ts` nên làm tuần tự. PR 2 và PR 5 không chung tệp (PR 2: `company-template.ts`, Go; PR 5: `templates.ts`, `quickstart.ts`) nên chạy song song được.
+| Cổng | Câu hỏi | Kết quả |
+| --- | --- | --- |
+| G1 | Cơ chế gắn skill theo vai có chưa? | **Có.** `skills.byRole` → `template.roleSkills` (`packages/core/catalog/squads.ts:89`); `attachAgentSkills` (`quickstart.ts` ~645–678); `POST /api/agents/{id}/skills/add` (`server/cmd/server/router.go`). |
+| G2 | Có giới hạn số skill cho agent không? | **Không tìm thấy** (tìm `maxSkills`, `MaxAgentSkill` trong `server/internal` và `packages/core`). Kiểm lại trong Task 5.6. |
+| G3 | Kích thước `company.json` | 332 536 byte hiện nay. Dự kiến **tăng khoảng 110 KB** do 14 skill `kwp_company` (spec 5.1). Ghi con số thực vào PR. |
+| G4 | Rerun apply có thêm vai/skill vào squad đã có không? | **Chưa kiểm.** Kiểm bằng test DB trong Task 5.6. |
+| G5 | Khung Kit Việt có chưa? | **Có** trên `main`. |
+| G6 | Quy tắc chunk có chặn membership `starter` không? | **Có** (`validate.mjs:120`). Gỡ ở Task 5.1. |
+| G7 | Tên skill KWP có trùng id nào trong catalog không? | **Không** (kiểm 11 tên nhóm A và 13 tên nhóm B). |
+| G8 | Vendor nguyên văn có đi qua validator không? | **Có.** Validator yêu cầu `name:` trong SKILL.md bằng id (`validate.mjs:106`); nhóm A giữ tên gốc nên khớp. |
+| G9 | Các role key trong `byRole` và thẻ có tồn tại không? | **Có.** Đã kiểm: `sdlc_greenfield` (`ux`), `sdlc_maintenance` (`lead`, `ux`), `bmad_planning` (`plan_ux`), `market_research` (`critic`), `sales_loop` (`sales_analyst`); thẻ công ty `support_lead`, `support_agent`, `release_engineer`, `librarian` (executive_office), `customer_lead`, `validation_analyst` (product_discovery), `critic` (market_research, opportunity_lab), `finance_lead`. |
 
 ---
 
-## Giai đoạn G: các cổng đọc mã
+## Giai đoạn 1: vendor nhóm A (PR 1)
 
-Mỗi cổng ra một đoạn kết luận ngắn ghi vào spec mục 10 (đánh dấu đã đóng). Kết quả "không" thì sửa thiết kế trước khi sang Giai đoạn 1.
+D6 đã chốt (spec 9.2). Không phụ thuộc giai đoạn nào khác.
 
-| Cổng | Câu hỏi | Cách trả lời | Nếu kết quả khác |
-| --- | --- | --- | --- |
-| G1 | Khung Kit Việt (`scripts/lib/skill-bundle.mjs`, `generate-kitviet-pack.mjs`, `SquadTemplate.roleSkills`, `addAgentSkills` trong client) đã vào repo chưa? | `ls scripts scripts/lib`; `git log --oneline -- catalog/_sources/kitviet/upstream`; đọc `quickstart.ts` | Nếu **đã có**: Task 1.1 và 5.1 dùng lại, không viết lại. Nếu **chưa**: làm theo thiết kế ở spec Kit Việt 5.10, 8.1 (PR 1 "tiếp"); khi khung Kit Việt vào sau thì hợp nhất, không để hai bản |
-| G2 | Giới hạn số hoặc kích thước skill gắn cho một agent hoặc một workspace? | Đọc `server/internal/handler/skill.go`, `agent_skill`, `AddAgentSkill`, các hằng giới hạn | Nếu có giới hạn thấp hơn 6 skill/agent hay thấp hơn kích thước `build-dashboard` (25 KB): chỉnh bảng gắn trước khi làm |
-| G3 | Máy chủ Go nhúng `company_template_data.json` hiện nặng bao nhiêu và có giới hạn nào (test kích thước, giới hạn payload)? | `wc -c server/internal/service/company_template_data.json`; grep test liên quan | Nếu gần ngưỡng: đổi sang tải skill KWP lúc apply (ngoài phạm vi), báo người đặt |
-| G4 | Apply rerun trên workspace đã có squad: thêm vai mới vào thẻ có tạo agent mới và gắn vào squad có sẵn không? | Đọc `company_template.go`, `company_setup.go`, `phase4_company_db_test.go` | Nếu apply bỏ qua squad đã tồn tại: thêm bước "ensure member" vào Task 3.3, có test |
+### 1.1 Chép 11 skill
 
----
+Files: `catalog/skills/kwp/{analyze,explore-data,sql-queries,statistical-analysis,validate-data,create-viz,build-dashboard,tech-debt,risk-assessment,variance-analysis,user-research}/`.
 
-## Giai đoạn 1: khung (PR 1)
+- Clone `https://github.com/anthropics/knowledge-work-plugins.git`, checkout `e605d8ddbfb688da57dfaaceebd93f12a64ef1d3`.
+- Chép nguyên văn từ: `data/skills/{analyze,explore-data,sql-queries,statistical-analysis,validate-data,create-viz,build-dashboard}`, `engineering/skills/tech-debt`, `operations/skills/risk-assessment`, `finance/skills/variance-analysis`, `design/skills/user-research`.
+- Kiểm: `find catalog/skills/kwp -name SKILL.md | wc -l` = 11 (sau 1.3).
 
-### 1.1 Thư viện dùng chung (bỏ qua nếu G1 báo đã có)
+### 1.2 Hai thay đổi cục bộ
 
-Files: `scripts/lib/skill-bundle.mjs` (mới: `skillFiles`, `frontmatterDescription`), `scripts/generate-sdlc-skills.mjs` (import lại).
+- `analyze/SKILL.md` dòng 44: "1. Ask the user to provide data in one of these ways:" → thay bằng "1. Use the data the request attaches or pastes; if none, state the assumption and continue:" (giữ phần còn lại của danh sách).
+- `explore-data/SKILL.md` dòng 36: "1. Ask the user to provide a table name (with their warehouse connected) or upload a file" → "1. Use the table or file the request names; if none, record the gap as MISSING and continue".
+- Không sửa gì khác. Kiểm sau khi sửa: so từng tệp với upstream, chỉ hai tệp này khác và chỉ ở hai dòng trên.
+- Mỗi nhóm A chỉ có một tệp `SKILL.md`, không có `references/`. Chép cả thư mục là đủ.
 
-- Bước: chuyển hai hàm từ `generate-sdlc-skills.mjs` sang lib; script cũ import; chạy `pnpm catalog:build`; `git diff --stat packages/core/squads/sdlc-skills-data.ts` phải rỗng.
-- Kiểm: test stale của `sdlc-skills.test.ts` xanh.
-- Commit: `refactor(scripts): share the skill bundle helpers between generators`.
+### 1.3 `template.json` và skillset
 
-### 1.2 Vendor upstream
+Files: `catalog/skills/kwp/<id>/template.json` (11 tệp), `catalog/skillsets/kwp/template.json`.
 
-Files: `packages/core/squads/kwp-upstream/{LICENSE,NOTICE.md,UPSTREAM.json}` và 43 thư mục skill.
+- Mỗi skill: `{"schemaVersion": 1, "kind": "skill", "id": "<tên gốc>", "version": "1.0.0", "sets": ["kwp"], "source": {"type": "vendored", "repo": "https://github.com/anthropics/knowledge-work-plugins", "ref": "e605d8ddbfb688da57dfaaceebd93f12a64ef1d3", "license": "Apache-2.0"}}`.
+- Skillset: `{"schemaVersion": 1, "kind": "skillset", "id": "kwp", "version": "1.0.0", "target": "quickstart", "chunk": true}`. Chunk theo D10 (spec 5.1).
 
-- Clone `https://github.com/anthropics/knowledge-work-plugins.git` vào thư mục tạm, `git checkout e605d8ddbfb688da57dfaaceebd93f12a64ef1d3`. Chép **nguyên văn**, giữ cấu trúc `<plugin>/skills/<skill>/` (kèm `references/` nếu có), đúng danh sách sau (đây là cột Nguồn của spec 10.5, bỏ ba skill viết mới):
-  - customer-support: `ticket-triage kb-article draft-response customer-escalation customer-research`
-  - marketing: `campaign-plan performance-report seo-audit`
-  - product-management: `metrics-review competitive-brief synthesize-research write-spec roadmap-update`
-  - data: `statistical-analysis validate-data analyze explore-data data-context-extractor sql-queries create-viz build-dashboard`
-  - operations: `vendor-review risk-assessment compliance-tracking runbook change-request status-report`
-  - finance: `variance-analysis`
-  - engineering: `deploy-checklist incident-response tech-debt`
-  - design: `user-research design-handoff ux-copy design-critique`
-  - enterprise-search: `knowledge-synthesis search-strategy`
-  - sales: `win-loss-review deal-review handle-objection close-plan stakeholder-map`
-  - legal: `legal-risk-assessment`
-  Tổng 43 (đếm lại bằng `find kwp-upstream -name SKILL.md | wc -l`; lệch thì dừng và báo).
-- Chép thêm `LICENSE` gốc (Apache-2.0). `UPSTREAM.json` và `NOTICE.md` theo spec 10.2.
-- Kiểm: băm từng tệp với bản clone (script một lần, không commit). `pnpm lint` không quét thư mục này (thêm vào ignore nếu cần).
-- Commit: `chore(squads): vendor 43 Knowledge Work Plugins skills at a pinned commit`.
+### 1.4 Giấy phép và nguồn
 
-### 1.3 Quy tắc chạy, bảng chuyển đổi và generator
+Files: `catalog/skills/kwp/SOURCES.md`, `catalog/skills/kwp/licenses/kwp.LICENSE`.
 
-Files: `packages/core/squads/kwp-runtime-rules.md`, `packages/core/squads/kwp-rewrites.json`, `scripts/generate-kwp-skills.mjs`, `package.json` (script `generate:kwp-skills`), `packages/core/squads/kwp-skills/**` và `kwp-skills-data.ts` (sinh).
+- `kwp.LICENSE`: bản sao `LICENSE` gốc của repo (Apache-2.0). Các plugin `operations`, `engineering`, `design` không có `LICENSE` riêng, nên dùng bản gốc.
+- `SOURCES.md` theo mẫu `catalog/skills/marketing/SOURCES.md`: nguồn, commit, giấy phép; bảng 11 skill; mục "Thay đổi cục bộ" (hai dòng 1.2); mục "Không lấy" kèm lý do (tóm tắt bảng disposition); mục "Nâng commit" mô tả quy trình đọc diff.
 
-- Việc 1: viết `kwp-runtime-rules.md` (spec 10.3 mục 8), ≤ 25 dòng, tiếng Anh (văn bản dành cho agent).
-- Việc 2: viết generator theo spec 10.2 và 10.3: áp chuyển đổi chung (bước 1 đến 8), rồi mục riêng trong `kwp-rewrites.json`; báo lỗi rõ khi mỏ neo không tìm thấy, khi `~~` còn sót, khi hai skill trùng tên; hỗ trợ `--check` (so với tệp đã sinh, thoát mã khác 0 nếu cũ).
-- Việc 3: **mỗi skill một mục `kwp-rewrites.json`**, theo cột "Chỉnh sửa riêng" của spec 10.5. Với skill ✱: đọc trọn `SKILL.md` và `references/` trước, rồi viết mục; ghi vào mô tả PR "đã đọc trọn: …". Làm theo từng nhóm, commit riêng cho mỗi nhóm (bên dưới).
-- Việc 4: `kwp-skills-data.ts` xuất `KWP_BUILTIN_SKILLS` cùng dạng `BuiltinSkill` như `SDLC_BUILTIN_SKILLS`. Không import nó ở đâu ngoài chỗ nạp động (Task 5.1 và 2.2).
-- Kiểm: `pnpm generate:kwp-skills --check`; test chuỗi cấm (Task 1.5).
-- Commit (một cho khung, rồi sáu cho nhóm): 
-  1. `feat(squads): add the generator that turns KWP skills into Multica skills`
-  2. `feat(squads): convert the KWP customer-support and operations skills` (Support, Release & Ops, Finance & Risk)
-  3. `feat(squads): convert the KWP marketing and product-management skills`
-  4. `feat(squads): convert the KWP data skills`
-  5. `feat(squads): convert the KWP design, engineering and enterprise-search skills`
-  6. `feat(squads): convert the KWP sales and legal skills`
+### 1.5 Kiểm tra
 
-### 1.4 Ba skill viết mới
-
-Files: `packages/core/squads/kwp-skills/{kwp-untrusted-content,kwp-absent-is-not-zero,kwp-pre-signature-checklist}/SKILL.md`.
-
-- Nguồn: `small-business/shared/untrusted-content.md`, `absent-is-not-zero.md` ở upstream (đọc từ bản clone; không vendor cả thư mục `small-business`), và phần checklist của `legal/skills/signature-request`. Nội dung theo spec 10.4. Mỗi skill: frontmatter (`name`, `description` mở đầu "Use when you are …"), ≤ 90 dòng, tiếng Anh, có dòng ghi nguồn và giấy phép.
-- Generator đọc thư mục `kwp-skills/` có sẵn hai loại: thư mục sinh ra và thư mục viết tay. Phân biệt bằng danh sách `handwritten` trong `kwp-rewrites.json`; thư mục không thuộc cả hai là lỗi.
-- Commit: `feat(squads): add the untrusted-content, absent-is-not-zero and pre-signature skills`.
-
-### 1.5 Test khung
-
-Files: `packages/core/squads/kwp-skills.test.ts` (đầu tệp `// @vitest-environment node`).
-
-- Kiểm: (a) dữ liệu sinh không cũ; (b) 46 skill, mỗi tên `kwp-…`, tên bằng thư mục, mô tả ≤ 300 ký tự; (c) không chuỗi cấm (spec 10.3, danh sách đầy đủ); (d) mọi skill có khối `## Multica runtime rules`; (e) không skill nào còn dòng bắt đầu bằng `/` trong khối mã dạng lệnh; (f) kích thước tổng ≤ 600 KB.
-- Chạy: `pnpm --filter @multica/core exec vitest run squads/kwp-skills.test.ts`.
-- Commit: `test(squads): check the converted KWP skills for forbidden steps`.
-
-### 1.6 Sửa spec Kit Việt
-
-Files: `docs/engineering/kitviet-squads.md`.
-
-- Làm đúng spec 10.8 (ba ý). Không đổi nội dung khác.
-- Kiểm: `git diff --check`; đọc lại mục 7 và 5.10.
-- Commit: `docs(squads): move HR skills out of People & Performance and reference KWP`.
-
-Cổng ra Giai đoạn 1: test xanh; `pnpm generate:kwp-skills --check` sạch; chưa có squad nào dùng skill.
+- `pnpm catalog:check` sạch (không có cảnh báo "unpinned" cho nhóm kwp).
+- Script băm một lần (không commit): so 11 thư mục với commit ghim; chỉ hai tệp khác, đúng hai dòng.
+- Commit: `feat(catalog): vendor eleven Knowledge Work Plugins skills at a pinned commit`.
 
 ---
 
-## Giai đoạn 2: đường thẻ công ty (PR 2)
+## Giai đoạn 2: dẫn xuất nhóm B và nguyên tắc nhóm D (PR 2)
 
-### 2.1 Trường `skills` của vai
+Phụ thuộc Giai đoạn 1 (skillset `kwp` tồn tại).
 
-Files: `packages/core/squads/company-template.ts`, `company-template.test.ts`.
+Với mỗi skill: đọc trọn SKILL.md và `references/` upstream trước khi viết (spec 4.2). Viết bằng tiếng Anh, theo mẫu skill sẵn có. Frontmatter: `name` bằng id, `description` có mở đầu "Use when you are …", dòng `Source: derived from <plugin>/<skill> at e605d8dd (Apache-2.0)`. Cuối file có khối `## Multica runtime rules` (8 dòng, spec 5.3). `template.json`: `sets: ["kwp"]`, `source: {"type": "authored"}`.
 
-- Thêm `skills: z.array(z.string().min(1)).default([])` vào `CompanyRoleSchema`. `superRefine` của thẻ kiểm mỗi tên có thư mục trong `kwp-skills/` hoặc `skills/` (đọc bằng `fs` trong test; schema chỉ kiểm dạng tên để không kéo `fs` vào gói trình duyệt). Test mới: tên lạ thì fail; vai không `skills` thì `[]`.
-- Chưa gắn skill nào ở task này.
-- Kiểm: `pnpm --filter @multica/core exec vitest run squads/company-template.test.ts`.
-- Commit: `feat(squads): let a company role name the skills it gets`.
+### 2.1 Hỗ trợ khách hàng
 
-### 2.2 Generator thẻ công ty
+Files: `catalog/skills/kwp/kwp-{ticket-triage,customer-escalation,kb-article}/`.
 
-Files: `scripts/generate-company-template.mjs`, `company-template-data.test.ts`.
+- `kwp-ticket-triage`: phân loại, P1–P4, kiểm trùng bằng `multica knowledge search` và issue đang mở. Không tra cứu support platform.
+- `kwp-customer-escalation`: brief cho squad Build qua issue, có bước tái hiện. Hoàn tiền, ngoại lệ, hứa ngày là việc của boss.
+- `kwp-kb-article`: nháp KB, tìm trùng trước khi tạo.
+- Commit: `feat(catalog): add the derived support skills`.
 
-- Sau khi dựng `starter_skills` từ `squads/skills`, thêm skill `kwp-*` mà vai nhắc đến (đọc từ `squads/kwp-skills/<tên>` giống cách đọc `SKILL.md` và tệp phụ hiện có). Tên thiếu thì generator lỗi.
-- Test: mỗi tên trong `skills` của mọi vai có mặt trong `starter_skills` của JSON sinh; JSON khớp hằng số.
-- Kiểm: `pnpm generate:company-template` rồi `pnpm --filter @multica/core exec vitest run squads/company-template-data.test.ts`.
-- Commit: `feat(squads): ship the KWP skills a company role names in the starter data`.
+### 2.2 Sự cố, runbook, thay đổi
 
-### 2.3 Máy chủ Go
+Files: `catalog/skills/kwp/kwp-{incident-response,runbook,change-request}/`.
 
-Files: `server/internal/service/company_template_data.go` (thêm `Skills []string` với thẻ `json:"skills"` vào `companyRole`), `company_starter_skills.go`, `company_starter_skills_test.go`.
+- `kwp-incident-response`: giữ SEV1–4, nhịp cập nhật, postmortem không đổ lỗi, 5 whys. Bỏ paging và chat; thông báo khách là nháp.
+- `kwp-runbook`: lệnh trong runbook là văn bản; không chạy.
+- `kwp-change-request`: bản nháp, có rollback; boss duyệt.
+- Commit: `feat(catalog): add the derived incident, runbook and change skills`.
 
-- `starterSkillsForRole`: leader nhận hai skill hiện có cộng `role.Skills`; vai khác nhận `role.Skills`; loại trùng, giữ thứ tự (leader skills trước); Secretary không đổi.
-- Test bảng: thêm ca "thành viên có skill", "leader có skill riêng", "trùng tên", "role không có skill".
-- Kiểm: `(cd server && go test ./internal/service -run 'StarterSkill' -count=1)`.
-- Commit: `feat(company): attach the skills a role names to its agent`.
+### 2.3 Tri thức và khách hàng
 
-### 2.4 Support và Release & Ops
+Files: `catalog/skills/kwp/kwp-{knowledge-synthesis,search-strategy,synthesize-research}/`.
 
-Files: `packages/core/squads/company-template.ts` (vai `support_lead`, `support_agent`, `release_lead`, `release_engineer`), JSON sinh, `company-template.test.ts`.
+- `kwp-knowledge-synthesis`: 26 chỗ `~~` của upstream được thay bằng `multica knowledge search`; giữ gộp trùng và chấm độ tin theo độ mới và độ chính thống.
+- `kwp-search-strategy`: phân rã câu hỏi theo KB.
+- `kwp-synthesize-research`: chủ đề kèm trích dẫn nguyên văn có nguồn.
+- Commit: `feat(catalog): add the derived knowledge and research skills`.
 
-- Điền `skills` theo bảng spec 10.6 cho bốn vai này. Chạy `pnpm generate:company-template`.
-- Test: số skill mỗi vai ≤ 6; `support_agent` có `kwp-untrusted-content`; không vai nào có hai skill cùng nhóm trùng (xem spec mục 7: không có nhóm trùng nào ở bốn vai này, test chỉ ghi nhận).
-- Test có DB: trong `phase4_company_db_test.go` (hoặc tệp mới `company_kwp_skills_db_test.go`), chạy apply hai lần cho thẻ `support` và `release_ops`; khẳng định agent `Support Agent` có `kwp-ticket-triage`, không nhân đôi agent hay skill ở lần hai, và một skill `kwp-ticket-triage` do boss tạo trước đó không bị ghi đè (dùng `testutil` và `dbfx`; khẳng định trên hàng của fixture, không trên tổng).
-- Kiểm: `pnpm --filter @multica/core exec vitest run squads/company-template`; `(cd server && go test ./internal/service -run 'Company|StarterSkill' -count=1)`.
-- Commit: `feat(squads): give Support and Release & Ops their KWP skills`.
+### 2.4 Thiết kế và dữ liệu
 
-Cổng ra Giai đoạn 2: `pnpm typecheck`, `pnpm lint`, `pnpm test`; `pnpm generate:company-template` không đổi tệp; kích thước `company_template_data.json` tăng bao nhiêu ghi vào mô tả PR.
+Files: `catalog/skills/kwp/kwp-{design-handoff,ux-copy,design-critique,data-context-extractor}/`.
 
----
+- `kwp-design-handoff`: spec cho dev (token, state, breakpoint); dùng token của dự án khi có.
+- `kwp-ux-copy`: microcopy; theo quy ước "UI descriptions" của repo.
+- `kwp-design-critique`: phê bình có khung và mức nghiêm trọng; không sửa.
+- `kwp-data-context-extractor`: chỉ chế độ bootstrap; bỏ bước phỏng vấn; ghi bối cảnh vào KB.
+- Commit: `feat(catalog): add the derived design and data-context skills`.
 
-## Giai đoạn 3: Growth & GTM và Finance & Risk (PR 3)
+### 2.5 Nguyên tắc chung (nhóm D)
 
-### 3.1 Hai mẫu agent
+Files: `catalog/skills/kwp/kwp-{untrusted-content,absent-is-not-zero}/`.
 
-Files: `packages/core/agents/instruction-templates.ts`, `instruction-templates.test.ts`, `packages/views/locales/{en,es,fr,ja,ko,zh-Hans,zh-Hant}/agents.json`, `packages/views/i18n/resources-types.ts` (nếu kiểu khóa tạo từ tệp en thì chỉ cần cập nhật en).
+- Đọc trọn `small-business/shared/untrusted-content.md` và `absent-is-not-zero.md` từ bản clone. Chắt lọc theo spec 4.3, bỏ ví dụ connector và tên nhà cung cấp.
+- Commit: `feat(catalog): add the untrusted-content and absent-is-not-zero skills`.
 
-- Thêm id `growth_analyst`, `risk_analyst` vào `AgentInstructionTemplate["id"]` và hai khối `instructions` theo spec 10.6 mục 2 (mỗi khối kết bằng `${SHARED_BLOCKS}` và `${WORKING_RULES}`; không `PIPELINE_OWNER_RULES`, đây là thành viên). Văn bản dành cho agent bằng tiếng Anh, theo mẫu `support_agent`.
-- Bản dịch tên và mô tả: đặt cạnh `growth_lead` (khóa tương tự); mô tả ≤ 200 ký tự, không nhắc lại tên.
-- Test: test hiện có của `instruction-templates.test.ts` (mỗi id có bản dịch ở cả bảy ngôn ngữ, mỗi mẫu kết bằng quy tắc chung) phải xanh; thêm ca cho hai id mới nếu test hiện chưa duyệt toàn bộ id.
-- Kiểm: `pnpm --filter @multica/core exec vitest run agents/instruction-templates.test.ts`; `pnpm --filter @multica/views exec vitest run i18n` (nếu có test kiểm khóa dịch).
-- Commit: `feat(agents): add the growth analyst and risk analyst instruction templates`.
+### 2.6 Test chuỗi cấm
 
-### 3.2 Vai mới trong hai thẻ
+Files: `scripts/catalog/catalog.test.mjs`.
 
-Files: `packages/core/squads/company-template.ts`, test, JSON sinh.
+- Với mọi `kwp-*` có `source.type: authored`: có khối `## Multica runtime rules`; không có `~~`, `$ARGUMENTS`, `@$1`, `argument-hint`, "Ask the user", "ask the user", "send for signature", "DocuSign", `AskUserQuestion`.
+- Với nhóm A: không có chuỗi cấm, trừ hai dòng đã sửa (đã nêu trong SOURCES).
+- Kiểm: `node --test scripts/catalog/catalog.test.mjs`; `pnpm catalog:check`.
+- Commit: `test(catalog): check the derived KWP skills for forbidden steps`.
 
-- Thẻ `growth_gtm` thêm vai `growth_analyst` (runtime `worker`, `agentTemplate: "growth_analyst"`, `role`: "Metrics reports"); thẻ `finance_risk` thêm `risk_analyst` ("Risk register"). Charter hai squad thêm một dòng `responsibilities` (spec 10.6 mục 3). Điền `skills` cho **bốn** vai `growth_lead`, `growth_analyst`, `finance_lead`, `risk_analyst` theo bảng spec 10.6.
-- `pnpm generate:company-template`; test `company-template.test.ts` vẫn `toHaveLength(14)`; test mới: hai vai mới có mặt, leader không đổi.
-- Commit: `feat(squads): add the growth analyst and risk analyst to the starter company`.
-
-### 3.3 Rerun trên workspace có sẵn
-
-Files: test Go như Task 2.4; sửa `company_template.go`/`company_setup.go` chỉ khi G4 cho biết cần.
-
-- Test có DB: dựng workspace đã apply bản cũ (squad `growth_gtm` có `Growth Lead`); apply bản mới; khẳng định `Growth Analyst` được tạo, là thành viên squad, có `kwp-metrics-review`, và `Growth Lead` giữ nguyên.
-- Kiểm: `(cd server && go test ./internal/service ./internal/handler -run 'Company' -count=1)`.
-- Commit: `test(company): rerun the starter company over a workspace that predates the analysts`.
-
-Cổng ra: bộ test đầy đủ xanh; ghi vào ghi chú phát hành: "rerun thêm hai agent vào Growth & GTM và Finance & Risk".
+Cổng ra Giai đoạn 2: 26 skill trong `catalog/skills/kwp/`, `pnpm catalog:check` và test chuỗi cấm xanh.
 
 ---
 
-## Giai đoạn 4: Research, Product, Executive Office (PR 4)
+## Giai đoạn 3: gắn vai trong squad quickstart (PR 3)
 
-### 4.1 Gắn skill vào các thẻ còn lại
+Phụ thuộc Giai đoạn 1 và 2. Không đụng thẻ công ty.
 
-Files: `packages/core/squads/company-template.ts`, JSON sinh, `company-template.test.ts`.
+Files: `catalog/squads/{sdlc_greenfield,sdlc_maintenance,bmad_planning,market_research,sales_loop}/template.json`.
 
-- Điền `skills` cho: `librarian`, hai `critic` (Market Research, Opportunity Lab), `competitor_analyst`, `customer_lead`, `validation_analyst`, `prd_writer`, theo bảng spec 10.6. Chạy `pnpm generate:company-template`.
-- Test: `kwp-write-spec` chỉ xuất hiện ở `prd_writer`; `kwp-validate-data` chỉ ở các vai gate và `validation_analyst`; không vai nào quá 6 skill.
-- Kiểm: như Task 2.4.
-- Commit: `feat(squads): give the research, product and librarian roles their KWP skills`.
+| Squad | Vai | `byRole` |
+| --- | --- | --- |
+| `sdlc_greenfield` | `ux` | `kwp-design-handoff`, `kwp-ux-copy`, `kwp-design-critique` |
+| `sdlc_maintenance` | `lead` | `tech-debt` |
+| `sdlc_maintenance` | `ux` | `kwp-design-handoff`, `kwp-ux-copy`, `kwp-design-critique` |
+| `bmad_planning` | `plan_ux` | `kwp-design-handoff`, `kwp-ux-copy`, `kwp-design-critique` |
+| `market_research` | `critic` | `validate-data` |
+| `sales_loop` | `sales_analyst` | `kwp-untrusted-content` |
 
-Cổng ra: `pnpm typecheck`, `pnpm lint`, `pnpm test`, test Go `Company|StarterSkill`.
-
----
-
-## Giai đoạn 5: đường template (PR 5)
-
-### 5.1 `roleSkills` và `addAgentSkills` (bỏ qua nếu G1 báo đã có)
-
-Files: `packages/core/squads/templates.ts`, `quickstart.ts`, `quickstart.test.ts`, `packages/core/api/client.ts`, hook `useSquadQuickstart` ở `packages/views/` (đường dẫn cụ thể: grep `useSquadQuickstart`).
-
-- `SquadTemplate.roleSkills?` (spec 10.7). `SquadQuickstartClient` thêm `addAgentSkills(agentId, skillIds)`; nối client thật tới `POST /agents/{id}/skills/add` (`AddAgentSkills` trong `server/cmd/server/router.go`, dòng ~2678); kiểm `packages/core/api/client.ts` đã có phương thức tương ứng chưa.
-- `attachBuiltinSkills` đổi chữ ký để nhận tên từ hai nguồn: `SDLC_BUILTIN_SKILLS` (đồng bộ) và `kwp-*` qua `await import("./kwp-skills-data")`. Giữ nguyên hành vi hiện tại cho tên khác.
-- Trong luồng tạo squad (dòng ~542 và ~593 của `quickstart.ts`): sau khi có agent theo role key, gắn `roleSkills` bằng skill id đã tạo hoặc tìm theo tên; lỗi một skill không hủy việc tạo squad (như `.catch` hiện có), ghi vào `outcome`.
-- Test đơn vị (client giả): vai nhận đúng skill; skill thiếu trong bundle thì báo trong outcome, squad vẫn tạo; mô-đun `kwp-skills-data` chỉ nạp khi template có `roleSkills`.
-- Kiểm: `pnpm --filter @multica/core exec vitest run squads/quickstart.test.ts`.
-- Commit: `feat(squads): attach skills to single roles when a template starts a squad`.
-
-### 5.2 Gắn skill vào template có sẵn
-
-Files: `packages/core/squads/templates.ts`, `templates.test.ts`.
-
-- Điền `roleSkills` theo bảng spec 10.7 cho `sdlc_greenfield` (`ux`), `sdlc_maintenance` (`ux`, `lead`), `bmad_planning` (`plan_ux`), `market_research` (`competitor`, `critic`), `sales_loop` (`sales_analyst`).
-- Test: `roleSkills` chỉ nêu vai thuộc template; mỗi vai ≤ 6; `kwp-write-spec` không xuất hiện ở bất kỳ template nào; skill `accessibility-*` vẫn trong `builtinSkills` của SDLC (không bị thay).
-- Kiểm: `pnpm --filter @multica/core exec vitest run squads/templates.test.ts`.
-- Commit: `feat(squads): give the SDLC, planning, research and sales templates their KWP skills`.
-
-Cổng ra: `pnpm typecheck`, `pnpm lint`, `pnpm test`; chạy thử quickstart `sdlc_maintenance` trên workspace thử và xác nhận `SDLC UX Designer` có ba skill và `SDLC Lead` có `kwp-tech-debt` (cần người cho phép nếu chạy thật; không thì ghi "chưa chạy thật").
+- Đừng thêm `risk-assessment`, `user-research` vào đây: chúng gắn ở thẻ công ty (Giai đoạn 5).
+- Kiểm: `pnpm catalog:check`; `pnpm catalog:build`; `pnpm --filter @multica/core exec vitest run squads/quickstart.test.ts`.
+- Commit: `feat(catalog): give the SDLC, planning, research and sales roles their KWP skills`.
 
 ---
 
-## Giai đoạn 6: Data & Insights (PR 6)
+## Giai đoạn 4: squad Data & Insights (PR 4)
 
-### 6.1 Năm mẫu agent
+D12 đã chốt (spec 9.2). Phụ thuộc Giai đoạn 1 và 2.
 
-Files: `packages/core/agents/instruction-templates.ts`, test, `locales/*/agents.json` (7 ngôn ngữ).
+### 4.1 Năm agent
 
-- Thêm id `data_lead`, `data_profiler`, `data_analyst`, `data_viz`, `data_validator`. Nội dung theo spec 10.7 (luồng, chỉ đọc, `VERDICT:`, tối đa 2 vòng sửa); `data_lead` kết bằng `${SQUAD_LEADER_RULES}`; tất cả kết bằng `${SHARED_BLOCKS}` và `${WORKING_RULES}`. Lead tự đối chiếu kết quả với câu hỏi ban đầu (không vai bàn giao ở bản đầu).
-- Commit: `feat(agents): add the data analysis instruction templates`.
+Files: `catalog/agents/{data_lead,data_profiler,data_analyst,data_viz,data_validator}/{template.json,instructions.md}`.
 
-### 6.2 Template `data_insights`
+- `template.json`: `{"schemaVersion": 1, "kind": "agent", "id", "version": "1.0.0", "order"}`. `order` đặt sau các agent `kv_*`.
+- `instructions.md` dùng `{{block:shared_blocks}}` và `{{block:working_rules}}`. `data_lead` thêm `{{block:squad_leader_rules}}`. Nội dung theo spec 4.4.
+- `data_validator`: kết luận dòng đầu `VERDICT: QUA` hoặc `VERDICT: CHẶN`; không sửa bài; tối đa hai vòng sửa.
+- Kiểm: `pnpm catalog:check`.
+- Commit: `feat(catalog): add the data analysis agents`.
 
-Files: `templates.ts` (`SquadTemplateId`, `SquadRoleKey`, `SQUAD_ROLES`, `SQUAD_TEMPLATES`, hằng `DATA_INSIGHTS_INSTRUCTIONS`), `templates.test.ts`, `packages/views/locales/*/modals.json` (khóa `templates.data_insights`), `squad-quickstart` modal và `company-setup-card.tsx` chỉ sửa nếu cổng G (của Kit Việt G3) chưa xác nhận chúng duyệt `SQUAD_TEMPLATES`.
+### 4.2 Bản dịch agent
 
-- Theo bảng spec 10.7: năm vai, leader `data_lead`, `floorName: "Product"`, charter, `routines: []`, `workflow: null`, `builtinSkills: []`, `roleSkills` như bảng. `DATA_INSIGHTS_INSTRUCTIONS` là văn bản lead đọc (theo mẫu `MARKET_RESEARCH_INSTRUCTIONS`, nêu điều kiện chỉ đọc và `blocked` khi thiếu quyền).
-- Test: đủ vai và leader; `roleSkills` hợp lệ; `floorName` là "Product"; số template tăng 1; bản dịch bảy ngôn ngữ có khóa mới.
-- Kiểm: `pnpm --filter @multica/core exec vitest run squads/templates.test.ts`; `pnpm --filter @multica/views exec vitest run` cho các test modal liên quan.
-- Commit: `feat(squads): add the Data & Insights squad template`.
+Files: `packages/views/locales/{en,es,fr,ja,ko,zh-Hans,zh-Hant}/agents.json`.
 
-### 6.3 Diễn tập (chỉ khi người dùng cho phép)
+- Khóa theo `agentTemplate` (`data_lead`, …), cạnh `growth_lead`. Tên và mô tả ≤200 ký tự, không nhắc lại tên.
+- Kiểm trước khi commit, không để mở: `packages/views/modals/squad-quickstart.tsx` dòng ~320 hiển thị `a.name`. Đọc nơi `a` được tạo (thường là `template.roles` trong `packages/core/catalog/squads.ts`).
+  - Nếu `a.name` lấy từ `template.json` (tiếng Anh): không cần khóa dịch cho vai, chỉ cần khóa `agentTemplate` nếu picker agent đọc `agents.json`. Ghi kết quả trong PR.
+  - Mặc định nếu chưa rõ: thêm khóa theo `agentTemplate` vào `agents.json` (như `growth_lead`), vì picker agent đọc khóa này.
+- Kiểm: `pnpm --filter @multica/views exec vitest run i18n` nếu có.
+- Commit: `feat(views): translate the data analysis agents`.
 
-Ba lần chạy thật theo spec 10.9: đủ dữ liệu, thiếu quyền đọc (kỳ vọng `blocked`), truy vấn có join nổ (kỳ vọng `VERDICT: CHẶN`). Dán biên bản vào PR. Không chạy được thì ghi "chưa chạy thật".
+### 4.3 Squad
 
-Cổng ra: `pnpm typecheck`, `pnpm lint`, `pnpm test`; `make check` nếu thay đổi chạm cả web và server.
+Files: `catalog/squads/data_insights/{template.json,instructions.md,i18n/*.json}`.
+
+- `pnpm catalog:new squad data_insights --collection core`, rồi điền:
+  - `leader: "data_lead"`, `floorName: "Product"`, `workflow: null`, `routines: []`.
+  - Năm vai theo spec 4.4, kèm `byRole`: `data_lead` (`analyze`, `kwp-untrusted-content`); `data_profiler` (`explore-data`, `kwp-data-context-extractor`, `kwp-untrusted-content`); `data_analyst` (`sql-queries`, `statistical-analysis`, `variance-analysis`, `kwp-absent-is-not-zero`); `data_viz` (`create-viz`, `build-dashboard`); `data_validator` (`validate-data`, `kwp-absent-is-not-zero`).
+  - `instructions.md`: điều kiện chỉ đọc; `blocked` khi thiếu quyền hoặc dữ liệu; không phân tích trên số bịa.
+  - `i18n/` đủ bảy ngôn ngữ (title, description).
+- Kiểm: `pnpm catalog:check`; `pnpm catalog:build`; `pnpm --filter @multica/core exec vitest run catalog/squad-invariants.test.ts`.
+- Commit: `feat(catalog): add the Data & Insights squad`.
+
+### 4.4 Diễn tập (chỉ khi người dùng cho phép)
+
+Ba lần chạy thật (spec 7): dữ liệu đủ; thiếu quyền đọc (kỳ vọng `blocked`); truy vấn có join nổ (kỳ vọng `VERDICT: CHẶN`). Dán biên bản vào PR, hoặc ghi "chưa chạy thật".
+
+Cổng ra: `pnpm typecheck`, `pnpm lint`, `pnpm test`.
 
 ---
 
-## Giai đoạn 7: gắn vào squad Kit Việt (PR 7)
+## Giai đoạn 5: thẻ công ty (PR 5)
 
-Chỉ làm khi `kv_b2b`, `kv_legal`, `kv_marketing` đã có trong `SQUAD_TEMPLATES` (spec Kit Việt PR 3, 4, 5). Nếu chưa, giữ giai đoạn này và không đoán tên vai.
+Phụ thuộc Giai đoạn 2 (skill tồn tại). Độc lập với Giai đoạn 3 và 4.
 
-### 7.1 Gắn skill
+### 5.1 Gỡ quy tắc chunk cho membership starter
 
-Files: `packages/core/squads/kitviet-templates.ts` (hoặc tệp template Kit Việt hiện hành), test của tệp đó.
+Files: `scripts/catalog/lib/validate.mjs` (dòng ~120), `scripts/catalog/catalog.test.mjs`.
 
-- Thêm vào `roleSkills` hiện có (không ghi đè): `b2b_quote_drafter` ← `kwp-close-plan`; `b2b_company_lookup` ← `kwp-stakeholder-map`; `legal_lead` ← `kwp-legal-risk-assessment`; `legal_handover` ← `kwp-pre-signature-checklist`; `mkt_scout` ← `kwp-seo-audit`.
-- Test: sau khi thêm, mỗi vai vẫn ≤ 6 skill tính cả skill Kit Việt; `kwp-close-plan` có `b2b_commit_gate` trong cùng squad; không skill KWP nào nằm ở vai gate (trừ `kwp-validate-data` ở Data).
-- Commit: `feat(squads): add the KWP skills to the Kit Viet B2B, Legal and Marketing squads`.
+- Quy tắc mới: skill chunk không được có skillset `target: quickstart` khác. Skillset `target: starter` được phép.
+- Test: (a) skill chunk có `kwp` và `kwp_company` không lỗi; (b) skill chunk có hai skillset quickstart là lỗi.
+- Lý do đã kiểm: `renderSkillsBuiltin` và `renderSkillsChunk` lọc theo `quickstart`; `starterSkillsForGo` lọc theo `starter`. Hai đường không lẫn.
+- Commit: `fix(catalog): let a chunk skill also belong to a starter skillset`.
+
+### 5.2 Skillset `kwp_company` và membership
+
+Files: `catalog/skillsets/kwp_company/template.json` (mới), `sets` của 14 skill.
+
+- `{"schemaVersion": 1, "kind": "skillset", "id": "kwp_company", "version": "1.0.0", "target": "starter"}`.
+- Thêm `kwp_company` vào `sets` của: `kwp-ticket-triage`, `kwp-customer-escalation`, `kwp-kb-article`, `kwp-incident-response`, `kwp-runbook`, `kwp-change-request`, `kwp-knowledge-synthesis`, `kwp-search-strategy`, `kwp-synthesize-research`, `kwp-untrusted-content`, `kwp-absent-is-not-zero`, và các skill vendor `user-research`, `validate-data`, `risk-assessment`.
+- Kiểm: `pnpm catalog:check`; `node --test scripts/catalog/catalog.test.mjs`.
+- Commit: `feat(catalog): add the kwp_company skillset for starter roles`.
+
+### 5.3 Trường `skills` của vai thẻ
+
+Files: `catalog/companies/starter/template.json`, `packages/core/squads/company-template.ts` (`CompanyRoleSchema`), `packages/core/squads/company-template.test.ts`.
+
+- Vai và skill theo spec 4.5:
+
+| Squad | Vai | `skills` |
+| --- | --- | --- |
+| `support` | `support_lead` | `kwp-customer-escalation` |
+| `support` | `support_agent` | `kwp-ticket-triage`, `kwp-kb-article`, `kwp-untrusted-content` |
+| `release_ops` | `release_engineer` | `kwp-incident-response`, `kwp-runbook`, `kwp-change-request` |
+| `executive_office` | `librarian` | `kwp-knowledge-synthesis`, `kwp-search-strategy` |
+| `customer_voice` | `customer_lead` | `kwp-synthesize-research`, `kwp-untrusted-content` |
+| `product_discovery` | `validation_analyst` | `user-research` |
+| `market_research` | `critic` | `validate-data` |
+| `opportunity_lab` | `critic` | `validate-data` |
+| `finance_risk` | `finance_lead` | `risk-assessment`, `kwp-absent-is-not-zero` |
+
+- `CompanyRoleSchema` thêm `skills: z.array(z.string().min(1)).default([])`. Schema không strict, nên trường phải khai báo, nếu không zod bỏ lặng lẽ.
+- Test: mặc định `[]`; mọi tên trong bảng trên tồn tại trong `catalog/skills/` (kiểm trong `catalog.test.mjs`, không đọc tệp trong schema); 14 squad, 35 vai không đổi.
+- Kiểm: `pnpm catalog:build`; `pnpm --filter @multica/core exec vitest run squads/company-template`.
+- Commit: `feat(company): let the starter roles name their skills`.
+
+### 5.4 Go
+
+Files: `server/internal/service/company_template_data.go` (`companyRole`, dòng 57), `server/internal/service/company_starter_skills.go`, `server/internal/service/company_starter_skills_test.go`.
+
+- `companyRole` thêm `Skills []string` (json `skills`).
+- `starterSkillsForRole`: trả skill leader hiện có cộng `role.Skills`, bỏ trùng, giữ thứ tự. Secretary không đổi.
+- Test bảng: thành viên có skill; leader có skill riêng; trùng tên; vai không có skill; mọi tên trong `skills` có trong `starter_skills` của `company.json`.
+- Kiểm: `pnpm catalog:build`; `(cd server && go test ./internal/service -run 'StarterSkill' -count=1)`.
+- Commit: `feat(company): attach the skills a starter role names to its agent`.
+
+### 5.5 Dung lượng
+
+- Đo `company.json` trước và sau. Ghi vào PR. Dự kiến tăng khoảng 110 KB (G3). Nếu tăng nhiều hơn, dừng và báo.
+
+### 5.6 Test DB: apply, rerun, G2 và G4
+
+Files: `server/internal/service/company_kwp_skills_db_test.go` (mới), dùng `server/internal/testutil`.
+
+- Apply hai lần: `support_agent` có `kwp-ticket-triage`; lần hai không nhân đôi agent hay skill.
+- Skill cùng tên do boss tạo trước đó không bị ghi đè.
+- G4: dựng workspace bằng bản apply cũ (có `growth_gtm`, `support` với vai đã có). Apply bản mới. Kiểm vai đã có vẫn nguyên, skill mới được gắn cho đúng vai. Nếu apply bỏ qua vai thiếu trong squad đã có, sửa để tạo, có test, và cập nhật G4.
+- G2: tìm lại giới hạn số skill mỗi agent; ghi kết quả vào plan.
+- Khẳng định trên hàng của fixture, không trên tổng.
+- Kiểm: `(cd server && go test ./internal/service -run 'Company|StarterSkill' -count=1)`.
+- Commit: `test(company): check the KWP skills over the database, rerun included`.
+
+Cổng ra Giai đoạn 5: `pnpm catalog:check`, `pnpm catalog:build`, `pnpm typecheck`, `pnpm lint`, `pnpm test`; test Go `Company|StarterSkill` xanh; ghi kích thước `company.json` và kết quả G2, G4.
 
 ---
 
-## Phụ lục: kiểm tra chéo trước khi gộp từng PR
+## Giai đoạn 6: HR trong Kit Việt (PR 6, D9)
 
-1. `git diff --stat` chỉ chứa đường dẫn của PR; không có `kwp-skills-data.ts` sửa tay (so với đầu ra generator).
-2. `pnpm generate:kwp-skills --check` và `pnpm generate:company-template` không đổi tệp.
-3. Không còn chuỗi cấm trong `kwp-skills/` (spec 10.3); không `~~`.
-4. Mô tả PR có: phạm vi đã đọc, kích thước thay đổi (`company_template_data.json`, chunk trình duyệt), việc chưa chạy thật.
-5. PR mở bằng `gh pr create --repo TuPK/multica`. Sau khi mở PR: `get_status` và `bind_pr` nếu chưa gắn.
+Độc lập với các giai đoạn khác. Có thể làm trước.
+
+Files: `catalog/_sources/kitviet/extensions/people.json`, `docs/engineering/kitviet-squads.md` (mục 7, dòng ~491).
+
+- `people.json`: `targets` đổi từ `["people_performance"]` thành `["kv_talent"]`; `skills` chỉ còn `onboarding-30-60-90`. Bốn skill `soat-hop-dong-lao-dong`, `soat-bang-cham-cong`, `quy-trinh-ky-luat-lao-dong`, `danh-gia-thu-viec` rời khỏi extension cho đến khi có squad People Ops.
+- Sinh lại: `pnpm generate:kitviet`. Không sửa tay pack sinh ra.
+- `kitviet-squads.md` mục 7: bỏ dòng "People & Performance ← HR vận hành"; ghi `onboarding-30-60-90` cho `kv_talent` và phần còn lại chờ squad People Ops.
+- Test: `node --test scripts/generate-kitviet-pack.test.mjs` với hai ca mới: `people_performance` không có skill HR; `kv_talent` có `onboarding-30-60-90`.
+- Nếu D9 chọn khác khuyến nghị, sửa đích tương ứng và ghi lại.
+- Commit: `fix(squads): move onboarding to Talent Acquisition and drop the other HR skills from People & Performance`.
+
+---
+
+## Không làm trong kế hoạch này
+
+- Gắn KWP cho `kv_*` (D11): hoãn. `close-plan`, `stakeholder-map`, `legal-risk-assessment` và `kwp-pre-signature-checklist` không lấy.
+- `growth_analyst`, `risk_analyst`: bỏ (D8). `growth_lab` và `finance_lead` đảm nhiệm.
+- Các plugin nguyên gói, MCP server, slash command, `partner-built`, `small-business` (ngoài hai nguyên tắc): không lấy.
+
+## Phụ lục: kiểm tra trước khi gộp mỗi PR
+
+1. `git diff --stat` chỉ chứa đường dẫn của PR. Không có tệp sinh nào (`packages/core/catalog/generated/`, `server/internal/catalog/generated/`) trong diff.
+2. `pnpm catalog:check` sạch; cảnh báo còn lại (nếu có) ghi trong PR.
+3. `pnpm catalog:build` chạy được; sau đó `pnpm typecheck`, `pnpm lint`, `pnpm test`; test Go liên quan xanh.
+4. Nhóm A: băm vẫn khớp commit ghim, trừ hai dòng đã nêu.
+5. Nhóm B và D: không còn chuỗi cấm (Giai đoạn 2.6).
+6. Mô tả PR nêu: phạm vi đã đọc, kích thước `company.json` trước và sau, việc chưa chạy thật.
+7. Mở PR: `gh pr create --repo TuPK/multica`.
