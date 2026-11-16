@@ -15,8 +15,9 @@ import (
 )
 
 // Database tests. They skip unless DATABASE_URL names a database that ends in
-// _test, and they run in a database of their own (testutil.IsolatedDB) so the
-// all-workspaces scan sees only their fixtures.
+// _test. They share that database with the other packages' tests, so they
+// assert on their own fixture rows only; the all-workspaces scan is limited to
+// the fixture workspace.
 func openDB(t *testing.T) (*pgxpool.Pool, *testutil.Fixture) {
 	t.Helper()
 	dsn := os.Getenv("DATABASE_URL")
@@ -27,7 +28,11 @@ func openDB(t *testing.T) (*pgxpool.Pool, *testutil.Fixture) {
 	if err != nil || !strings.HasSuffix(cfg.Database, "_test") {
 		t.Skip("DATABASE_URL must name a database ending in _test")
 	}
-	pool := testutil.IsolatedDB(t, dsn)
+	pool, err := pgxpool.New(context.Background(), dsn)
+	if err != nil {
+		t.Fatalf("open test database: %v", err)
+	}
+	t.Cleanup(pool.Close)
 	return pool, testutil.New(pool, "", "")
 }
 
@@ -102,11 +107,24 @@ func TestDBCountsMatchAFixtureWorkspace(t *testing.T) {
 	}
 }
 
+// fixtureWorkspaces lists only the fixture workspace, so a run writes no rows
+// for the other workspaces of the shared database.
+type fixtureWorkspaces struct {
+	Store
+	ids []string
+}
+
+func (s fixtureWorkspaces) WorkspaceIDs(_ context.Context, after string, _ int) ([]string, error) {
+	if after != "" {
+		return nil, nil
+	}
+	return s.ids, nil
+}
+
 func TestDBTwoRunsForTheSameDayLeaveOneRowWithTheSameNumbers(t *testing.T) {
 	pool, _ := openDB(t)
 	s := seed(t, pool)
-	store := NewDBStore(pool)
-	j := New(store)
+	j := New(fixtureWorkspaces{Store: NewDBStore(pool), ids: []string{s.workspaceID}})
 	now := s.day.AddDate(0, 0, 1).Add(time.Hour) // 01:00 UTC on the 15th computes the 14th
 
 	for i := 0; i < 2; i++ {
@@ -134,15 +152,24 @@ func TestDBWorkspacesWithAndWithoutARowAreListed(t *testing.T) {
 	pool, _ := openDB(t)
 	s := seed(t, pool)
 	other := testutil.New(pool, "", "").Workspace(t, "Empty", "usage-empty-"+uuid.NewString()[:8])
-	ids, err := NewDBStore(pool).WorkspaceIDs(context.Background(), "00000000-0000-0000-0000-000000000000", 100)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// Page through the whole listing: the shared database may hold more
+	// workspaces than one page.
 	have := map[string]bool{}
-	for _, id := range ids {
-		have[id] = true
+	after := ""
+	for {
+		ids, err := NewDBStore(pool).WorkspaceIDs(context.Background(), after, 500)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(ids) == 0 {
+			break
+		}
+		for _, id := range ids {
+			have[id] = true
+		}
+		after = ids[len(ids)-1]
 	}
 	if !have[s.workspaceID] || !have[other] {
-		t.Fatalf("ids = %v, want both %s and %s", ids, s.workspaceID, other)
+		t.Fatalf("listing lacks %s or %s", s.workspaceID, other)
 	}
 }
