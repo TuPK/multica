@@ -69,6 +69,10 @@ type Email struct {
 type Billing struct {
 	// VATRate is BILLING_VAT_RATE; 0.10 when it is not set.
 	VATRate billing.Rate
+	// BusinessDiscountRequiresVerification is PLATFORM_BUSINESS_DISCOUNT_REQUIRES_VERIFICATION;
+	// true when it is not set. With it on, the Business discount on usage
+	// charges applies only to a verified billing profile (spec D45).
+	BusinessDiscountRequiresVerification bool
 	// Bank is where the manual provider tells customers to transfer.
 	Bank billing.BankDetails
 }
@@ -304,7 +308,7 @@ func loadDevVerificationCode(get func(string) string, fail func(variable, reason
 // loadBilling reads the VAT rate and the bank details. The bank details may be
 // empty; the caller logs which ones are.
 func loadBilling(get func(string) string, fail func(variable, reason string)) Billing {
-	b := Billing{VATRate: billing.DefaultVATRate}
+	b := Billing{VATRate: billing.DefaultVATRate, BusinessDiscountRequiresVerification: true}
 	if raw := get("BILLING_VAT_RATE"); raw != "" {
 		rate, err := billing.ParseRate(raw)
 		if err != nil {
@@ -312,6 +316,13 @@ func loadBilling(get func(string) string, fail func(variable, reason string)) Bi
 		} else {
 			b.VATRate = rate
 		}
+	}
+	switch raw := get("PLATFORM_BUSINESS_DISCOUNT_REQUIRES_VERIFICATION"); raw {
+	case "", "true":
+	case "false":
+		b.BusinessDiscountRequiresVerification = false
+	default:
+		fail("PLATFORM_BUSINESS_DISCOUNT_REQUIRES_VERIFICATION", "must be true or false")
 	}
 	b.Bank = billing.BankDetails{
 		AccountName:   get("BILLING_BANK_ACCOUNT_NAME"),

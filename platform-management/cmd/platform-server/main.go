@@ -40,6 +40,7 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/staff"
 	"github.com/multica-ai/multica/platform-management/internal/subscription"
 	"github.com/multica-ai/multica/platform-management/internal/trust"
+	"github.com/multica-ai/multica/platform-management/internal/usage"
 	"github.com/multica-ai/multica/platform-management/internal/workspacestatus"
 	"github.com/multica-ai/multica/platform-management/workspacestate"
 )
@@ -268,6 +269,10 @@ func run() error {
 	}
 	// The price-change notice uses the lifecycle mail sender; nil sends no notice.
 	var noticeSender lifecycle.Sender
+	usageRater := usage.NewRater(pool, usage.RaterConfig{RequireVerification: cfg.Billing.BusinessDiscountRequiresVerification})
+	if err := runner.Register(usage.JobName, usage.Interval, usageRater.Job(time.Now)); err != nil {
+		return err
+	}
 	if cfg.Email.Provider == "" {
 		slog.Warn("lifecycle notices are off: no email provider is configured")
 	} else {

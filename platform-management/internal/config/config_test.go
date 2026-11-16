@@ -543,6 +543,40 @@ func TestBillingVATRateIsRead(t *testing.T) {
 	}
 }
 
+func TestBusinessDiscountRequiresVerificationByDefault(t *testing.T) {
+	cfg, err := load(resendEnv())
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.Billing.BusinessDiscountRequiresVerification {
+		t.Fatal("the Business discount requires verification unless the flag says otherwise (spec D45)")
+	}
+	env := resendEnv()
+	env["PLATFORM_BUSINESS_DISCOUNT_REQUIRES_VERIFICATION"] = "false"
+	cfg, err = load(env)
+	if err != nil {
+		t.Fatalf("Load with the flag off: %v", err)
+	}
+	if cfg.Billing.BusinessDiscountRequiresVerification {
+		t.Fatal("the flag is false but the config says it is on")
+	}
+}
+
+func TestBusinessDiscountFlagRefusesOtherValues(t *testing.T) {
+	for _, bad := range []string{"no", "0", "TRUE"} {
+		env := resendEnv()
+		env["PLATFORM_BUSINESS_DISCOUNT_REQUIRES_VERIFICATION"] = bad
+		_, err := load(env)
+		if err == nil {
+			t.Errorf("PLATFORM_BUSINESS_DISCOUNT_REQUIRES_VERIFICATION=%q: Load succeeded", bad)
+			continue
+		}
+		if vs := variables(err); len(vs) != 1 || vs[0] != "PLATFORM_BUSINESS_DISCOUNT_REQUIRES_VERIFICATION" {
+			t.Errorf("value %q: variables = %v", bad, vs)
+		}
+	}
+}
+
 func TestInvalidVATRateStopsTheStart(t *testing.T) {
 	for _, bad := range []string{"abc", "-0.1", "1.5", "10%", "0.1234567", "1e-1"} {
 		env := resendEnv()
