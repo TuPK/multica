@@ -36,7 +36,7 @@ const (
 )
 
 // Patterns lists the patterns Handler.Handler serves.
-var Patterns = []string{CheckoutPattern, PreviewPattern, PurchasePattern, ReconcilePattern, PortalPattern}
+var Patterns = append([]string{CheckoutPattern, PreviewPattern, PurchasePattern, ReconcilePattern, PortalPattern}, PlanChangePatterns...)
 
 const (
 	maxBody           = 64 << 10
@@ -87,6 +87,11 @@ type Deps struct {
 	Orders        OrderCreator
 	Workspaces    WorkspaceReader
 	VATRate       billing.Rate
+	// Changes and ChangeOrders serve the self-service routes (spec 7b.1).
+	Changes      PlanChanger
+	ChangeOrders ChangeOrderCreator
+	// IndividualMaxSeats is PLATFORM_INDIVIDUAL_MAX_SEATS (spec 7b.1, rule 4).
+	IndividualMaxSeats int
 	// AppURL is the origin of the Multica web app, PLATFORM_APP_URL.
 	AppURL string
 	Now    func() time.Time
@@ -125,6 +130,7 @@ func (h *Handler) Handler(requireUser func(http.Handler) http.Handler) http.Hand
 	mux.Handle(PurchasePattern, requireUser(http.HandlerFunc(h.purchase)))
 	mux.Handle(ReconcilePattern, requireUser(http.HandlerFunc(h.reconcile)))
 	mux.Handle(PortalPattern, requireUser(http.HandlerFunc(h.portal)))
+	h.registerPlanChangeRoutes(mux, requireUser)
 	return mux
 }
 

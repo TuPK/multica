@@ -1,0 +1,9 @@
+{
+  "mode": "schedule",
+  "plan_key": "pro",
+  "interval": "year",
+  "seats": 5,
+  "effective_at": "2030-05-31T00:00:00Z",
+  "version": 5,
+  "changed": true
+}

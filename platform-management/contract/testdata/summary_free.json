@@ -35,7 +35,11 @@
   "available_actions": {
     "checkout": true,
     "portal": false,
-    "purchase_seats": false
+    "purchase_seats": false,
+    "change_plan": true,
+    "cancel": false,
+    "resume": false
   },
-  "payment_provider": "manual"
+  "payment_provider": "manual",
+  "pending_change": null
 }

@@ -158,18 +158,41 @@ type actionsJSON struct {
 	Checkout      bool `json:"checkout"`
 	Portal        bool `json:"portal"`
 	PurchaseSeats bool `json:"purchase_seats"`
+	ChangePlan    bool `json:"change_plan"`
+	Cancel        bool `json:"cancel"`
+	Resume        bool `json:"resume"`
+}
+
+// pendingChangeJSON is the change that applies at the next renewal (spec 7b.1,
+// rule 6), or null.
+type pendingChangeJSON struct {
+	PlanKey     string `json:"plan_key"`
+	Seats       int    `json:"seats"`
+	Interval    string `json:"interval"`
+	RequestedAt string `json:"requested_at"`
 }
 
 type summaryJSON struct {
-	Entitlement       entitlementJSON   `json:"entitlement"`
-	BillingInterval   *string           `json:"billing_interval"`
-	HumanMembers      int64             `json:"human_members"`
-	SeatCapacity      *seatCapacityJSON `json:"seat_capacity"`
-	CancelAtPeriodEnd bool              `json:"cancel_at_period_end"`
-	GraceUntil        *string           `json:"grace_until"`
-	HasStripeCustomer bool              `json:"has_stripe_customer"`
-	AvailableActions  actionsJSON       `json:"available_actions"`
-	PaymentProvider   string            `json:"payment_provider"`
+	Entitlement       entitlementJSON    `json:"entitlement"`
+	BillingInterval   *string            `json:"billing_interval"`
+	HumanMembers      int64              `json:"human_members"`
+	SeatCapacity      *seatCapacityJSON  `json:"seat_capacity"`
+	CancelAtPeriodEnd bool               `json:"cancel_at_period_end"`
+	GraceUntil        *string            `json:"grace_until"`
+	HasStripeCustomer bool               `json:"has_stripe_customer"`
+	AvailableActions  actionsJSON        `json:"available_actions"`
+	PaymentProvider   string             `json:"payment_provider"`
+	PendingChange     *pendingChangeJSON `json:"pending_change"`
+}
+
+func pendingJSON(p *PendingChange) *pendingChangeJSON {
+	if p == nil {
+		return nil
+	}
+	return &pendingChangeJSON{
+		PlanKey: p.PlanKey, Seats: p.Seats, Interval: p.Interval,
+		RequestedAt: p.RequestedAt.UTC().Format(time.RFC3339Nano),
+	}
 }
 
 func rfc3339(t *time.Time) *string {
@@ -269,6 +292,13 @@ func buildSummary(workspaceID string, sub *Subscription, p plan.Plan, members, r
 	out.AvailableActions = actionsJSON{Checkout: true}
 	if sub != nil {
 		out.AvailableActions.PurchaseSeats = CanPurchaseSeats(p, *sub, now)
+		out.PendingChange = pendingJSON(sub.PendingChange)
+		// A free workspace (no row) changes plan by buying a period (rule 5).
+		out.AvailableActions.ChangePlan = CanCancel(*sub) && !sub.CancelAtPeriodEnd
+		out.AvailableActions.Cancel = CanCancel(*sub) && !sub.CancelAtPeriodEnd
+		out.AvailableActions.Resume = CanResume(*sub, now)
+	} else {
+		out.AvailableActions.ChangePlan = true
 	}
 	return out
 }

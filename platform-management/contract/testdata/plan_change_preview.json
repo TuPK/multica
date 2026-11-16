@@ -1,0 +1,13 @@
+{
+  "mode": "charge",
+  "plan_key": "unlimited",
+  "interval": "month",
+  "current_seats": 5,
+  "resulting_seats": 5,
+  "currency": "vnd",
+  "amount": 333333,
+  "vat_amount": 33333,
+  "effective_at": "2030-05-11T00:00:00Z",
+  "expected_version": 4,
+  "quoted_at": "2030-05-11T00:00:00Z"
+}

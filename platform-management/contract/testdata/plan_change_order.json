@@ -1,0 +1,12 @@
+{
+  "request_id": "eeeeeeee-0000-0000-0000-000000000001",
+  "kind": "change_plan",
+  "status": "pending",
+  "plan_key": "unlimited",
+  "interval": "month",
+  "seats": 5,
+  "currency": "vnd",
+  "amount": 333333,
+  "vat_amount": 33333,
+  "expires_at": "2030-05-18T00:00:00Z"
+}
