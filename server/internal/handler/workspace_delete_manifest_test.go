@@ -112,6 +112,8 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"job_status":                         workspaceDeleteKeep, // Global scheduler state (one row per job), not workspace-owned.
 	"member":                             workspaceDelete,
 	"member_delegation_day":              workspaceDeleteKeep, // user-scoped telemetry ledger, no workspace_id
+	"member_group":                       workspaceDelete,     // workspace-owned account group (spec 7b.2); its members go with it
+	"member_group_member":                workspaceDelete,     // workspace-owned group membership (spec 7b.2)
 	"agent_mcp_server":                   workspaceDelete,
 	"brief":                              workspaceDelete,
 	"brief_feedback":                     workspaceDelete,
