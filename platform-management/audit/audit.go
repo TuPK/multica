@@ -169,7 +169,21 @@ var Catalog = []string{
 	ActionAccountProvisionFailed,
 	ActionPlanPriceApplied,
 	ActionPlanPriceCanceled,
+	ActionSubscriptionChangeScheduled,
+	ActionSubscriptionChangeCanceled,
+	ActionSubscriptionCancelRequested,
+	ActionSubscriptionCancelWithdrawn,
 }
+
+// R5 subscription actions (spec 7b.1, rules 5 to 8): written by the platform in the
+// transaction of a scheduled plan change, a cancelled one, and a cancel or resume
+// request. The detail holds the plan, seats and interval, or the period end.
+const (
+	ActionSubscriptionChangeScheduled = "subscription.change_scheduled"
+	ActionSubscriptionChangeCanceled  = "subscription.change_canceled"
+	ActionSubscriptionCancelRequested = "subscription.cancel_requested"
+	ActionSubscriptionCancelWithdrawn = "subscription.cancel_withdrawn"
+)
 
 // Cutover action (gate G-R2): written by the platform-backfill command in the
 // transaction that gives a workspace with no subscription row the free plan.
