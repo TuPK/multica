@@ -15,9 +15,12 @@ import (
 
 	"github.com/multica-ai/multica/server/internal/entitlement"
 	"github.com/multica-ai/multica/server/internal/entitlement/entitlementtest"
+	"github.com/multica-ai/multica/server/internal/middleware"
 	"github.com/multica-ai/multica/server/internal/planlimit"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/testutil"
+	"github.com/multica-ai/multica/server/internal/util"
+	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
 // Database tests for the quota gates of platform spec 5.7 and the owner limit.
@@ -617,9 +620,20 @@ func TestPlanLimitAgentsMikaCreation(t *testing.T) {
 	dbfx.Agent(t, "live", runtime, testutil.Cols{"workspace_id": ws})
 	setPlanLimitGates(t, ws, map[entitlement.GateName]int{entitlement.GateAgents: 1})
 
-	resp := testutil.Call(t, testHandler.CreateMikaAgent, planLimitRequest(ws, http.MethodPost, "/api/agents/mika", map[string]any{
+	// The handler reads the workspace from the request context, as the router's
+	// membership middleware sets it; the header alone is not enough.
+	memberRow, err := testHandler.Queries.GetMemberByUserAndWorkspace(context.Background(), db.GetMemberByUserAndWorkspaceParams{
+		UserID:      util.MustParseUUID(testUserID),
+		WorkspaceID: util.MustParseUUID(ws),
+	})
+	if err != nil {
+		t.Fatalf("load owner member row: %v", err)
+	}
+	mikaReq := planLimitRequest(ws, http.MethodPost, "/api/agents/mika", map[string]any{
 		"runtime_id": runtime, "language": "en",
-	}))
+	})
+	mikaReq = mikaReq.WithContext(middleware.SetMemberContext(mikaReq.Context(), ws, memberRow))
+	resp := testutil.Call(t, testHandler.CreateMikaAgent, mikaReq)
 	wantPlanLimit(t, resp, "agents", 1, 1)
 	if n := dbfx.Count(t, `SELECT count(*) FROM agent WHERE workspace_id = $1 AND system_key IS NOT NULL AND kind = 'user'`, ws); n != 0 {
 		t.Fatal("a refused creation left Mika behind")
