@@ -47,6 +47,7 @@ func (f *dbFixture) cleanup() {
 		f.pool.Exec(ctx, `DELETE FROM billing_order WHERE workspace_id = $1`, ws)
 		f.pool.Exec(ctx, `DELETE FROM platform_seat_operation WHERE workspace_id = $1`, ws)
 		f.pool.Exec(ctx, `DELETE FROM workspace_subscription WHERE workspace_id = $1`, ws)
+		f.pool.Exec(ctx, `DELETE FROM billing_profile WHERE workspace_id = $1`, ws)
 		f.pool.Exec(ctx, `DELETE FROM member WHERE workspace_id = $1`, ws)
 		f.pool.Exec(ctx, `DELETE FROM workspace WHERE id = $1`, ws)
 	}

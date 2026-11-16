@@ -162,11 +162,16 @@ var Catalog = []string{
 	ActionWorkspaceDeletionScheduled,
 	ActionWorkspaceDeletionCancelled,
 	ActionSubscriptionBackfilled,
+	ActionWorkspaceAccountKindChanged,
 }
 
 // Cutover action (gate G-R2): written by the platform-backfill command in the
 // transaction that gives a workspace with no subscription row the free plan.
 const ActionSubscriptionBackfilled = "subscription.backfilled"
+
+// R5 action (spec 7b.1, rule 3): written by the platform in the transaction
+// that changes a workspace's account kind; the detail holds the old and new kind.
+const ActionWorkspaceAccountKindChanged = "workspace.account_kind_changed"
 
 // Actor types.
 const (

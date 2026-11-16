@@ -197,3 +197,17 @@ func TestCutoverCatalogActionIsDefined(t *testing.T) {
 	}
 	t.Fatal("Catalog does not list subscription.backfilled")
 }
+
+// The R5 action of the account kind change (spec 7b.1, rule 3). Its name is
+// stored in audit_event.action, so a rename is a data change.
+func TestR5AccountKindActionIsDefined(t *testing.T) {
+	if ActionWorkspaceAccountKindChanged != "workspace.account_kind_changed" {
+		t.Fatalf("constant = %q, want workspace.account_kind_changed", ActionWorkspaceAccountKindChanged)
+	}
+	for _, a := range Catalog {
+		if a == ActionWorkspaceAccountKindChanged {
+			return
+		}
+	}
+	t.Fatal("Catalog does not list workspace.account_kind_changed")
+}

@@ -27,6 +27,9 @@ type Error struct {
 	Status  int
 	Code    string
 	Message string
+	// Detail holds extra fields of the JSON error body, such as the fields[] of
+	// a profile refusal. It never replaces "error" or "code".
+	Detail map[string]any
 }
 
 func (e *Error) Error() string { return e.Code + ": " + e.Message }

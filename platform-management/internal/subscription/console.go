@@ -125,7 +125,7 @@ func (c *Console) methodSwitch(rt routeSpec) http.Handler {
 func (c *Console) fail(w http.ResponseWriter, r *http.Request, op string, err error) {
 	var e *Error
 	if errors.As(err, &e) {
-		writeError(w, e.Status, e.Code, e.Message)
+		writeAPIError(w, e)
 		return
 	}
 	// The cause may name the database, so it goes to the log only.
@@ -324,7 +324,7 @@ func planKey(w http.ResponseWriter, r *http.Request, onInvalid func() *Error) (s
 	return key, true
 }
 
-func writeFromError(w http.ResponseWriter, e *Error) { writeError(w, e.Status, e.Code, e.Message) }
+func writeFromError(w http.ResponseWriter, e *Error) { writeAPIError(w, e) }
 
 // putPlan creates a plan or replaces every field of it. Its key is the path's;
 // the body names no key. A plan that is archived is kept for its subscribers and

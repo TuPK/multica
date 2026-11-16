@@ -99,6 +99,18 @@ func writeError(w http.ResponseWriter, status int, code, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg, "code": code})
 }
 
+// errorBody is the JSON body of a refusal: error and code, then its Detail.
+func errorBody(e *Error) map[string]any {
+	body := map[string]any{}
+	for k, v := range e.Detail {
+		body[k] = v
+	}
+	body["error"], body["code"] = e.Message, e.Code
+	return body
+}
+
+func writeAPIError(w http.ResponseWriter, e *Error) { writeJSON(w, e.Status, errorBody(e)) }
+
 func (a *API) internalError(w http.ResponseWriter, r *http.Request, op string, err error) {
 	// The cause may name the database, so it goes to the log only.
 	a.Log.Error("subscription api: "+op+" failed", "path", r.URL.Path, "error", err)
