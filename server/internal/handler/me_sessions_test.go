@@ -256,7 +256,7 @@ func TestRevokeAllSessionsDisconnectsTheUsersWebSocket(t *testing.T) {
 	testHandler.Hub = hub
 	t.Cleanup(func() { testHandler.Hub = prevHub })
 
-	token, err := testHandler.issueJWT(db.User{ID: parseUUID(testUserID), Email: handlerTestEmail, Name: handlerTestName})
+	token, err := testHandler.issueJWT(db.User{ID: parseUUID(testUserID), Email: handlerTestEmail, Name: handlerTestName}, []string{"otp"})
 	if err != nil {
 		t.Fatal(err)
 	}

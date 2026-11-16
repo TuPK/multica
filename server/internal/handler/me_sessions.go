@@ -97,7 +97,7 @@ func (h *Handler) RevokeAllSessions(guard *accountguard.Guard) http.HandlerFunc 
 		}
 		h.Hub.DisconnectUser(userID)
 
-		token, err := h.issueJWT(user)
+		token, err := h.issueJWT(user, sessionAMRFromRequest(r))
 		if err != nil {
 			slog.Warn("revoke all sessions: failed to issue replacement token", append(logger.RequestAttrs(r), "error", err, "user_id", userID)...)
 			writeError(w, http.StatusInternalServerError, "failed to generate token")

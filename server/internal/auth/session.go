@@ -47,6 +47,15 @@ const (
 	// compares against platform_account.sessions_valid_after.
 	AuthTimeClaim = "auth_time"
 
+	// AMRClaim lists how the user signed in: "otp" (email code), "google",
+	// and later "sso:<connection_id>" and "mfa". Renewal copies it; it never
+	// adds a method.
+	AMRClaim = "amr"
+
+	// AMROTP and AMRGoogle are the methods a sign-in path can set today.
+	AMROTP    = "otp"
+	AMRGoogle = "google"
+
 	// sessionRenewCheckDivisor derives the client-side re-check cadence
 	// from the configured TTL: a client that checks every TTL/10 gets
 	// roughly five attempts inside the renewal window, so several
@@ -217,6 +226,32 @@ func SessionAuthTime(claims jwt.MapClaims) (int64, bool) {
 	return 0, false
 }
 
+// SessionAMR returns the sign-in methods a session token records. A token
+// without the claim was issued before it existed, when email code was the
+// only way in, so it reads as ["otp"]. A claim that is present but not a list
+// of strings proves nothing and reads as empty.
+func SessionAMR(claims jwt.MapClaims) []string {
+	raw, present := claims[AMRClaim]
+	if !present {
+		return []string{AMROTP}
+	}
+	switch v := raw.(type) {
+	case []string:
+		return append([]string(nil), v...)
+	case []any:
+		out := make([]string, 0, len(v))
+		for _, item := range v {
+			m, ok := item.(string)
+			if !ok {
+				return nil
+			}
+			out = append(out, m)
+		}
+		return out
+	}
+	return nil
+}
+
 // SessionRevoked reports whether a session token predates validAfter, the
 // user's "sign out of all devices" mark. A zero mark revokes nothing. A token
 // that proves no login time cannot show it is newer than the mark, so it is
@@ -248,7 +283,7 @@ func claimUnixSeconds(raw any) (int64, bool) {
 // RenewSessionToken re-signs the identity carried by claims with a fresh
 // lifetime, returning the new token and its expiry.
 //
-// Only `exp` and `iat` move. `sub`, `email`, `name`, `sid` and `auth_time` are
+// Only `exp` and `iat` move. `sub`, `email`, `name`, `sid`, `auth_time` and `amr` are
 // copied forward verbatim (a token without `auth_time` gets its old `iat`), which is what makes renewal free of any database read:
 // the claims were signed by this server, so they are already authoritative
 // for exactly the fields the auth middleware reads back out.
@@ -294,6 +329,11 @@ func RenewSessionToken(claims jwt.MapClaims) (string, time.Time, error) {
 		"iat":          now.Unix(),
 		sessionIDClaim: sid,
 		AuthTimeClaim:  authTime,
+	}
+	// Copied only when present: a legacy token stays claimless and keeps
+	// reading as "otp".
+	if amr, present := claims[AMRClaim]; present {
+		next[AMRClaim] = amr
 	}
 	if email != "" {
 		next["email"] = email

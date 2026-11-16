@@ -474,3 +474,64 @@ func TestParseSessionToken_StillEnforcesExpiryAfterTheSplit(t *testing.T) {
 		t.Error("SessionIDFromToken must still read the same token")
 	}
 }
+
+func TestSessionAMR(t *testing.T) {
+	t.Run("missing claim is read as otp", func(t *testing.T) {
+		got := SessionAMR(sessionClaims(t, time.Now().Add(time.Hour), "sid"))
+		if len(got) != 1 || got[0] != "otp" {
+			t.Fatalf("SessionAMR = %v, want [otp]", got)
+		}
+	})
+	t.Run("present claim is returned as signed", func(t *testing.T) {
+		claims := sessionClaims(t, time.Now().Add(time.Hour), "sid")
+		claims[AMRClaim] = []any{"google"}
+		got := SessionAMR(claims)
+		if len(got) != 1 || got[0] != "google" {
+			t.Fatalf("SessionAMR = %v, want [google]", got)
+		}
+	})
+	t.Run("malformed claim proves nothing", func(t *testing.T) {
+		claims := sessionClaims(t, time.Now().Add(time.Hour), "sid")
+		claims[AMRClaim] = "otp"
+		if got := SessionAMR(claims); len(got) != 0 {
+			t.Fatalf("SessionAMR = %v, want empty", got)
+		}
+	})
+}
+
+func TestRenewSessionTokenKeepsAMRAndAuthTime(t *testing.T) {
+	claims := sessionClaims(t, time.Now().Add(time.Hour), "sid-1")
+	claims[AuthTimeClaim] = float64(1700000000)
+	claims[AMRClaim] = []any{"google"}
+	signed, _, err := RenewSessionToken(claims)
+	if err != nil {
+		t.Fatal(err)
+	}
+	renewed, err := ParseSessionToken(signed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := SessionAMR(renewed); len(got) != 1 || got[0] != "google" {
+		t.Fatalf("renewed amr = %v, want [google]", got)
+	}
+	if at, _ := SessionAuthTime(renewed); at != 1700000000 {
+		t.Fatalf("renewed auth_time = %d, want 1700000000", at)
+	}
+}
+
+func TestRenewSessionTokenDoesNotAddAMRToLegacyToken(t *testing.T) {
+	signed, _, err := RenewSessionToken(sessionClaims(t, time.Now().Add(time.Hour), "sid-1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	renewed, err := ParseSessionToken(signed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, present := renewed[AMRClaim]; present {
+		t.Fatalf("renewal added an amr claim to a token that had none: %v", renewed[AMRClaim])
+	}
+	if got := SessionAMR(renewed); len(got) != 1 || got[0] != "otp" {
+		t.Fatalf("SessionAMR = %v, want [otp]", got)
+	}
+}

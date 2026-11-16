@@ -171,7 +171,9 @@ func isSixDigitCode(code string) bool {
 	return true
 }
 
-func (h *Handler) issueJWT(user db.User) (string, error) {
+// issueJWT signs a session token. amr records how the user signed in; every
+// caller states it, so a new sign-in path cannot forget the claim.
+func (h *Handler) issueJWT(user db.User, amr []string) (string, error) {
 	if auth.IsTemporarilyDisabledUser(uuidToString(user.ID), user.Email) {
 		return "", auth.ErrTemporarilyDisabledUser
 	}
@@ -195,8 +197,21 @@ func (h *Handler) issueJWT(user db.User) (string, error) {
 		"exp":              now.Add(auth.AuthTokenTTL()).Unix(),
 		"iat":              now.Unix(),
 		auth.AuthTimeClaim: now.Unix(),
+		auth.AMRClaim:      amr,
 	})
 	return token.SignedString(auth.JWTSecret())
+}
+
+// sessionAMRFromRequest returns the sign-in methods of the caller's own
+// session token, for a token minted from that session. A credential that is
+// not one of our session JWTs reads like a token without the claim: ["otp"].
+func sessionAMRFromRequest(r *http.Request) []string {
+	raw, _ := sessionTokenFromRequest(r)
+	claims, err := auth.ParseSessionToken(raw)
+	if err != nil {
+		return auth.SessionAMR(nil)
+	}
+	return auth.SessionAMR(claims)
 }
 
 // findOrCreateUser returns the existing user for an email, or creates one if
@@ -474,7 +489,7 @@ func (h *Handler) VerifyCode(w http.ResponseWriter, r *http.Request) {
 		obsmetrics.RecordEvent(h.Analytics, h.Metrics, analytics.Signup(uuidToString(user.ID), user.Email, signupSourceFromRequest(r)))
 	}
 
-	tokenString, err := h.issueJWT(user)
+	tokenString, err := h.issueJWT(user, []string{auth.AMROTP})
 	if err != nil {
 		if errors.Is(err, auth.ErrTemporarilyDisabledUser) {
 			writeError(w, http.StatusForbidden, auth.TemporarilyDisabledUserError)
@@ -758,7 +773,7 @@ func (h *Handler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	tokenString, err := h.issueJWT(user)
+	tokenString, err := h.issueJWT(user, []string{auth.AMRGoogle})
 	if err != nil {
 		if writeGoogleLoginActionableError(w, err) {
 			return
@@ -811,7 +826,7 @@ func (h *Handler) IssueCliToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokenString, err := h.issueJWT(user)
+	tokenString, err := h.issueJWT(user, sessionAMRFromRequest(r))
 	if err != nil {
 		if errors.Is(err, auth.ErrTemporarilyDisabledUser) {
 			writeError(w, http.StatusForbidden, auth.TemporarilyDisabledUserError)
