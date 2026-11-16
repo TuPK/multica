@@ -277,14 +277,18 @@ func DaemonAuth(queries *db.Queries, patCache *auth.PATCache, daemonCache *auth.
 			if strings.HasPrefix(tokenString, "mul_") {
 				hash := auth.HashToken(tokenString)
 
-				if userID, ok := patCache.Get(r.Context(), hash); ok {
-					if rejectTemporarilyDisabledUser(w, r, userID, "", DaemonAuthPathPAT) {
+				if entry, ok := patCache.GetEntry(r.Context(), hash); ok {
+					if rejectTemporarilyDisabledUser(w, r, entry.UserID, "", DaemonAuthPathPAT) {
 						return
 					}
-					if _, ok := guardAccount(w, r, guard, userID, DaemonAuthPathPAT); !ok {
+					if _, ok := guardAccount(w, r, guard, entry.UserID, DaemonAuthPathPAT); !ok {
 						return
 					}
-					r.Header.Set("X-User-ID", userID)
+					r.Header.Set("X-User-ID", entry.UserID)
+					r, ok := enforcePATRestrictions(w, r, queries, entry)
+					if !ok {
+						return
+					}
 					ctx := context.WithValue(r.Context(), ctxKeyDaemonAuthPath, DaemonAuthPathPAT)
 					next.ServeHTTP(w, r.WithContext(ctx))
 					return
@@ -301,25 +305,29 @@ func DaemonAuth(queries *db.Queries, patCache *auth.PATCache, daemonCache *auth.
 					return
 				}
 
-				userID := uuidToString(pat.UserID)
-				if rejectTemporarilyDisabledUser(w, r, userID, "", DaemonAuthPathPAT) {
+				entry := patEntryFromRow(pat)
+				if rejectTemporarilyDisabledUser(w, r, entry.UserID, "", DaemonAuthPathPAT) {
 					return
 				}
-				if _, ok := guardAccount(w, r, guard, userID, DaemonAuthPathPAT); !ok {
+				if _, ok := guardAccount(w, r, guard, entry.UserID, DaemonAuthPathPAT); !ok {
 					return
 				}
-				r.Header.Set("X-User-ID", userID)
+				r.Header.Set("X-User-ID", entry.UserID)
 
 				var expiresAt time.Time
 				if pat.ExpiresAt.Valid {
 					expiresAt = pat.ExpiresAt.Time
 				}
-				patCache.Set(r.Context(), hash, userID, auth.TTLForExpiry(time.Now(), expiresAt))
+				patCache.SetEntry(r.Context(), hash, entry, auth.TTLForExpiry(time.Now(), expiresAt))
 
 				// Cache miss = first request in this TTL window. Refresh
 				// last_used_at; subsequent hits skip the write entirely.
 				go queries.UpdatePersonalAccessTokenLastUsed(context.Background(), pat.ID)
 
+				r, ok := enforcePATRestrictions(w, r, queries, entry)
+				if !ok {
+					return
+				}
 				ctx := context.WithValue(r.Context(), ctxKeyDaemonAuthPath, DaemonAuthPathPAT)
 				next.ServeHTTP(w, r.WithContext(ctx))
 				return

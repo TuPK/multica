@@ -35,6 +35,9 @@ type PersonalAccessTokenResponse struct {
 	ExpiresAt  *string `json:"expires_at"`
 	LastUsedAt *string `json:"last_used_at"`
 	CreatedAt  string  `json:"created_at"`
+	// WorkspaceID is the workspace the token is bound to; null means any.
+	WorkspaceID *string `json:"workspace_id"`
+	ReadOnly    bool    `json:"read_only"`
 }
 
 type CreatePATResponse struct {
@@ -44,18 +47,24 @@ type CreatePATResponse struct {
 
 func patToResponse(pat db.PersonalAccessToken) PersonalAccessTokenResponse {
 	return PersonalAccessTokenResponse{
-		ID:         uuidToString(pat.ID),
-		Name:       pat.Name,
-		Prefix:     pat.TokenPrefix,
-		ExpiresAt:  timestampToPtr(pat.ExpiresAt),
-		LastUsedAt: timestampToPtr(pat.LastUsedAt),
-		CreatedAt:  timestampToString(pat.CreatedAt),
+		ID:          uuidToString(pat.ID),
+		Name:        pat.Name,
+		Prefix:      pat.TokenPrefix,
+		ExpiresAt:   timestampToPtr(pat.ExpiresAt),
+		LastUsedAt:  timestampToPtr(pat.LastUsedAt),
+		CreatedAt:   timestampToString(pat.CreatedAt),
+		WorkspaceID: uuidToPtr(pat.WorkspaceID),
+		ReadOnly:    pat.ReadOnly,
 	}
 }
 
 type CreatePATRequest struct {
 	Name          string `json:"name"`
 	ExpiresInDays *int   `json:"expires_in_days"`
+	// WorkspaceID binds the token to one workspace the caller belongs to.
+	WorkspaceID *string `json:"workspace_id"`
+	// ReadOnly limits the token to GET, HEAD and OPTIONS requests.
+	ReadOnly bool `json:"read_only"`
 }
 
 // CreatePersonalAccessToken mints a PAT for the caller. Machine credentials
@@ -80,6 +89,28 @@ func (h *Handler) CreatePersonalAccessToken(w http.ResponseWriter, r *http.Reque
 	if req.Name == "" {
 		writeError(w, http.StatusBadRequest, "name is required")
 		return
+	}
+
+	var boundWorkspace pgtype.UUID
+	if req.WorkspaceID != nil {
+		var ok bool
+		boundWorkspace, ok = parseUUIDOrBadRequest(w, *req.WorkspaceID, "workspace_id")
+		if !ok {
+			return
+		}
+		// A non-member gets the same answer as the workspace middleware gives
+		// for a workspace that does not exist.
+		if _, err := h.Queries.GetMemberByUserAndWorkspace(r.Context(), db.GetMemberByUserAndWorkspaceParams{
+			UserID:      parseUUID(userID),
+			WorkspaceID: boundWorkspace,
+		}); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				writeError(w, http.StatusNotFound, "workspace not found")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "failed to create token")
+			return
+		}
 	}
 
 	rawToken, err := auth.GeneratePATToken()
@@ -114,6 +145,8 @@ func (h *Handler) CreatePersonalAccessToken(w http.ResponseWriter, r *http.Reque
 		TokenHash:   auth.HashToken(rawToken),
 		TokenPrefix: prefix,
 		ExpiresAt:   expiresAt,
+		WorkspaceID: boundWorkspace,
+		ReadOnly:    req.ReadOnly,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create token")

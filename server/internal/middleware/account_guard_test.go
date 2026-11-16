@@ -105,7 +105,7 @@ func guardCases() []guardCase {
 	}
 	patCache := func(userID string) *auth.PATCache {
 		rdb, mock := redismock.NewClientMock()
-		mock.Regexp().ExpectGet(`^mul:auth:pat:`).SetVal(userID)
+		mock.Regexp().ExpectGet(`^mul:auth:pat:v2:`).SetVal(`{"user_id":"` + userID + `"}`)
 		return auth.NewPATCache(rdb)
 	}
 	daemonCache := func(t *testing.T, ownerID string) *auth.DaemonTokenCache {
@@ -393,7 +393,7 @@ func TestAuthGuardRunsBeforeSessionRevokedCheck(t *testing.T) {
 // user revokes on its own, so the mark never applies to it.
 func TestAuthSessionRevokedDoesNotApplyToPAT(t *testing.T) {
 	rdb, mock := redismock.NewClientMock()
-	mock.Regexp().ExpectGet(`^mul:auth:pat:`).SetVal(guardTestUserID)
+	mock.Regexp().ExpectGet(`^mul:auth:pat:v2:`).SetVal(`{"user_id":"` + guardTestUserID + `"}`)
 	req := httptest.NewRequest("GET", "/api/issues", nil)
 	req.Header.Set("Authorization", "Bearer mul_unaffected")
 	got, _ := serve(t, Auth(nil, auth.NewPATCache(rdb), nil, nil, guardOver(revokedAfter(time.Now().Add(time.Hour)))), req)
@@ -462,7 +462,7 @@ func TestDaemonAuthSessionRevokedCheck(t *testing.T) {
 
 func TestDaemonAuthSessionRevokedDoesNotApplyToPAT(t *testing.T) {
 	rdb, mock := redismock.NewClientMock()
-	mock.Regexp().ExpectGet(`^mul:auth:pat:`).SetVal(guardTestUserID)
+	mock.Regexp().ExpectGet(`^mul:auth:pat:v2:`).SetVal(`{"user_id":"` + guardTestUserID + `"}`)
 	req := httptest.NewRequest("GET", "/api/daemon/workspaces", nil)
 	req.Header.Set("Authorization", "Bearer mul_unaffected")
 	got, _ := serve(t, DaemonAuth(nil, auth.NewPATCache(rdb), nil, nil, guardOver(revokedAfter(time.Now().Add(time.Hour)))), req)

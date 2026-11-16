@@ -30,6 +30,12 @@ const (
 	CodeReauthRequired = "reauth_required"
 )
 
+// Personal access token refusal codes (spec 6.5), returned with HTTP 403.
+const (
+	CodeTokenReadOnly          = "token_read_only"
+	CodeTokenWorkspaceMismatch = "token_workspace_mismatch"
+)
+
 // Decision is the verdict on one request.
 type Decision struct {
 	// Allowed reports whether the request may proceed.
@@ -210,6 +216,10 @@ func Message(code string) string {
 		return "this workspace requires two-step sign-in"
 	case CodeReauthRequired:
 		return "this workspace requires a recent sign-in"
+	case CodeTokenReadOnly:
+		return "this token is read-only"
+	case CodeTokenWorkspaceMismatch:
+		return "this token is bound to a different workspace"
 	default:
 		return "workspace is suspended"
 	}

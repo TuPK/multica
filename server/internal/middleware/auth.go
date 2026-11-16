@@ -300,14 +300,18 @@ func Auth(queries *db.Queries, patCache *auth.PATCache, cloudPAT *auth.CloudPATV
 				// last time we looked, and nothing has invalidated the
 				// entry since. Skip the DB SELECT and the last_used_at
 				// UPDATE — last_used_at is bumped once per TTL window.
-				if userID, ok := patCache.Get(r.Context(), hash); ok {
-					if rejectTemporarilyDisabledUser(w, r, userID, "", "pat_cache") {
+				if entry, ok := patCache.GetEntry(r.Context(), hash); ok {
+					if rejectTemporarilyDisabledUser(w, r, entry.UserID, "", "pat_cache") {
 						return
 					}
-					if _, ok := guardAccount(w, r, guard, userID, "pat_cache"); !ok {
+					if _, ok := guardAccount(w, r, guard, entry.UserID, "pat_cache"); !ok {
 						return
 					}
-					r.Header.Set("X-User-ID", userID)
+					r.Header.Set("X-User-ID", entry.UserID)
+					r, ok := enforcePATRestrictions(w, r, queries, entry)
+					if !ok {
+						return
+					}
 					next.ServeHTTP(w, r)
 					return
 				}
@@ -323,14 +327,14 @@ func Auth(queries *db.Queries, patCache *auth.PATCache, cloudPAT *auth.CloudPATV
 					return
 				}
 
-				userID := uuidToString(pat.UserID)
-				if rejectTemporarilyDisabledUser(w, r, userID, "", "pat") {
+				entry := patEntryFromRow(pat)
+				if rejectTemporarilyDisabledUser(w, r, entry.UserID, "", "pat") {
 					return
 				}
-				if _, ok := guardAccount(w, r, guard, userID, "pat"); !ok {
+				if _, ok := guardAccount(w, r, guard, entry.UserID, "pat"); !ok {
 					return
 				}
-				r.Header.Set("X-User-ID", userID)
+				r.Header.Set("X-User-ID", entry.UserID)
 
 				// Clamp cache TTL to the token's remaining lifetime so a
 				// PAT expiring in <AuthCacheTTL can't continue passing
@@ -339,13 +343,17 @@ func Auth(queries *db.Queries, patCache *auth.PATCache, cloudPAT *auth.CloudPATV
 				if pat.ExpiresAt.Valid {
 					expiresAt = pat.ExpiresAt.Time
 				}
-				patCache.Set(r.Context(), hash, userID, auth.TTLForExpiry(time.Now(), expiresAt))
+				patCache.SetEntry(r.Context(), hash, entry, auth.TTLForExpiry(time.Now(), expiresAt))
 
 				// Cache miss = TTL expired (or first use after revoke /
 				// process restart). Refresh last_used_at; subsequent hits
 				// within the TTL window skip this write entirely.
 				go queries.UpdatePersonalAccessTokenLastUsed(context.Background(), pat.ID)
 
+				r, ok := enforcePATRestrictions(w, r, queries, entry)
+				if !ok {
+					return
+				}
 				next.ServeHTTP(w, r)
 				return
 			}

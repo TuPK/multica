@@ -3,6 +3,7 @@ package workspaceguard
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,12 +27,31 @@ type Session struct {
 	// AuthTime is the Unix second of the login, valid when AuthTimeKnown.
 	AuthTime      int64
 	AuthTimeKnown bool
+	// TokenWorkspaceID is the workspace a personal access token is bound to,
+	// or empty for any other credential and for an unbound token.
+	TokenWorkspaceID string
+	// WorkspaceID is the workspace the request targets, or empty when the route
+	// has no workspace context.
+	WorkspaceID string
+	// AllowNoWorkspace admits a bound token on a route with no workspace
+	// context. Only GET /api/me is such a route.
+	AllowNoWorkspace bool
 }
 
 // CheckWorkspaceAccess applies the session policies of one workspace to a
 // request's session and returns the refusal code, or "" when the request may
-// proceed. require_sso is stored but refuses nothing until P36.
+// proceed. A personal access token bound to a workspace is refused on any other
+// workspace first, whatever kind of credential it is. require_sso is stored but
+// refuses nothing until P36.
 func CheckWorkspaceAccess(p workspacepolicy.Policy, s Session, now time.Time) string {
+	if s.TokenWorkspaceID != "" {
+		switch {
+		case s.WorkspaceID == "" && !s.AllowNoWorkspace:
+			return CodeTokenWorkspaceMismatch
+		case s.WorkspaceID != "" && !strings.EqualFold(s.WorkspaceID, s.TokenWorkspaceID):
+			return CodeTokenWorkspaceMismatch
+		}
+	}
 	if s.Machine {
 		return ""
 	}

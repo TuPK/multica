@@ -25,6 +25,7 @@ const (
 	ctxKeyWorkspaceState
 	ctxKeyWorkspacePolicy
 	ctxKeySession
+	ctxKeyPAT
 )
 
 // MemberFromContext returns the workspace member injected by the workspace middleware.
@@ -213,6 +214,12 @@ func buildMiddleware(queries *db.Queries, resolve workspaceResolver, roles []str
 			}
 			if workspaceID == "" {
 				writeError(w, http.StatusBadRequest, "workspace_id or workspace_slug is required")
+				return
+			}
+
+			// A personal access token bound to another workspace stops here, even
+			// when Auth could not tell which workspace the route names.
+			if !guardTokenWorkspace(w, r, workspaceID) {
 				return
 			}
 
