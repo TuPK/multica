@@ -869,3 +869,18 @@ func TestRouteLead_BlockedFollowsAnEdgeThatNamesIt(t *testing.T) {
 		t.Fatalf("a blocked lead took %q (stop code %q); want plan_blocked to stop with grounds", d.TransitionID, d.StopCode)
 	}
 }
+
+// The bound a request panel shows next to the counter is the bound the engine follows now.
+func TestGraph_LoopLimitsAreTheBoundsTheEngineFollows(t *testing.T) {
+	g := loadGraph(t, "research.json")
+	st := at(g, "decide", 1, map[string]any{"max_rounds": 9})
+	got := g.LoopLimits(st)
+	for _, l := range g.Doc.Loops {
+		if want := g.loopLimit(st, l); got[l.Key] != want {
+			t.Errorf("limit of %s = %d, want %d", l.Key, got[l.Key], want)
+		}
+	}
+	if got["rounds"] != 5 || got["fixes"] != 2 || len(got) != len(g.Doc.Loops) {
+		t.Errorf("limits = %v, want rounds 5 (variable 9 clamped to its cap) and fixes 2", got)
+	}
+}

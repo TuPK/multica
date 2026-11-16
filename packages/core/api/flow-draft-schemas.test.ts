@@ -230,6 +230,14 @@ describe("request state of a flow (extended)", () => {
     expect(out).toMatchObject({ schema: 1, loops: {}, activations: {}, vars: {}, facts: {}, checkpoints: [], unreviewed: false, trail: [], trial: false });
   });
 
+  it("reads the bound of the loops, and no bound from an older server or from a value of the wrong type", () => {
+    expect(IssueFlowStateSchema.parse({ ...base, loops: { fix: 1 }, loop_max: { fix: 3 } }).loop_max).toEqual({ fix: 3 });
+    expect(IssueFlowStateSchema.parse({ ...base, loops: { fix: 1 } }).loop_max).toEqual({});
+    for (const loop_max of [null, [3], "3", { fix: "3" }]) {
+      expect(IssueFlowStateSchema.parse({ ...base, loop_max }).loop_max).toEqual({});
+    }
+  });
+
   it("drops a checkpoint or a trail entry it cannot read, and keeps the others", () => {
     const out = IssueFlowStateSchema.parse({
       ...base,

@@ -337,7 +337,7 @@ export function IssueFlowStatePanel({
           {flow.loops && Object.keys(flow.loops).length > 0 && (
             <Badge variant="outline" className="text-caption text-blue-600 border-blue-500/30">
               {Object.entries(flow.loops)
-                .map(([_, count]) => `↺ ${count}`)
+                .map(([key, count]) => (flow.loop_max?.[key] === undefined ? `↺ ${count}` : `↺ ${count}/${flow.loop_max[key]}`))
                 .join(", ")}
             </Badge>
           )}

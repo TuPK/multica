@@ -657,6 +657,11 @@ describe("IssueFlowStatePanel", () => {
       expect(screen.getByText("↺ 2")).toBeInTheDocument();
     });
 
+    it("shows each counter against the bound of its loop, and the counter alone when the server sent no bound", () => {
+      renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={{ ...sampleFlow, loops: { fix: 2, polish: 1 }, loop_max: { fix: 3 } }} canManage={false} />);
+      expect(screen.getByText("↺ 2/3, ↺ 1")).toBeInTheDocument();
+    });
+
     it("badges a task a manager closed on behalf of its agent", () => {
       const closed = { ...sampleFlow.tasks[0]!, closed_by: { type: "member", id: "u-9", name: "Mai", on_behalf: true } };
       renderPanel(<IssueFlowStatePanel wsId="ws-1" issueId="req-1" flow={{ ...sampleFlow, tasks: [closed] }} canManage={false} />);

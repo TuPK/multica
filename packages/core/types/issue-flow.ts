@@ -176,6 +176,8 @@ export interface IssueFlowState {
   schema?: number;
   /** Loop counters for the request. */
   loops?: Record<string, number>;
+  /** The bound of each loop now, by loop key: what a counter in `loops` is read against. Absent from an older server. */
+  loop_max?: Record<string, number>;
   /** Number of times each step has been entered. */
   activations?: Record<string, number>;
   /** Flow variables. */

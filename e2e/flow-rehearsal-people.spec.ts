@@ -72,6 +72,7 @@ interface FlowStateView {
   closed?: boolean;
   stop: { code: string } | null;
   loops?: Record<string, number>;
+  loop_max?: Record<string, number>;
   viewer?: { can_manage: boolean; closable_task_ids: string[] };
 }
 
@@ -362,6 +363,11 @@ test.describe.serial("P28: the Trade copy, from the owner's draft to the release
     await openRequestPage(page, owner!);
     const release = page.getByRole("button", { name: "Release", exact: true });
     await expect(release, "the owner is offered the Release exit").toBeVisible({ timeout: 60_000 });
+    // The loop counter is read against the bound of its loop: the gate sent the draft back once, of at most two.
+    const open = await state();
+    expect(open.loops?.fix, "the loop counter").toBe(1);
+    expect(open.loop_max?.fix, "the bound of the loop fix").toBe(2);
+    await expect(page.getByText("↺ 1/2"), "the request panel shows the counter against its bound").toBeVisible();
     await shot(page, "p28-6-before-release");
     const exited = page.waitForResponse((r) => r.url().includes(`/flow/exits/`) && r.request().method() === "POST");
     await release.click();

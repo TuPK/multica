@@ -856,7 +856,7 @@ Dùng lại cây AND/OR/NOT của `packages/views/workflow/designer/condition-bu
 
 ### 11.6 Màn hình request (chạy)
 
-`IssueFlowStatePanel` (`packages/views/workflow/issue-flow-state-panel.tsx`): hiển thị vòng `↺ n/max`, bước đang ở, mỗi thực thể một hàng, class và verdict, huy hiệu "đóng thay", nút chọn verdict theo bộ verdict của task (thay hai nút Approve/Reject hiện tại, chỉ hiện khi `viewer.closable_task_ids` chứa task; bản hiện tại hiện cho mọi người, xem E1), nút cạnh `manual` cho `exit_role`, nút "Close on behalf" cho quản lý.
+`IssueFlowStatePanel` (`packages/views/workflow/issue-flow-state-panel.tsx`): hiển thị vòng `↺ n/max` (`n` từ `loops`, `max` từ `loop_max` của `GET /api/issues/{id}/flow`: giới hạn hiện hành của từng vòng, trường thêm vào, mặc định `{}`; máy chủ cũ không gửi thì chỉ hiện `↺ n`), bước đang ở, mỗi thực thể một hàng, class và verdict, huy hiệu "đóng thay", nút chọn verdict theo bộ verdict của task (thay hai nút Approve/Reject hiện tại, chỉ hiện khi `viewer.closable_task_ids` chứa task; bản hiện tại hiện cho mọi người, xem E1), nút cạnh `manual` cho `exit_role`, nút "Close on behalf" cho quản lý.
 
 ### 11.7 Nội dung 7 ngôn ngữ
 

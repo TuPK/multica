@@ -8,6 +8,7 @@ import (
 
 	"github.com/multica-ai/multica/server/internal/issueworkflow"
 	"github.com/multica-ai/multica/server/internal/testutil"
+	"github.com/multica-ai/multica/server/internal/util"
 )
 
 // The web client shows verdict controls only on an open gate, so the task kind
@@ -101,5 +102,25 @@ func TestFlowState_ViewerFieldsOnlyForManagers(t *testing.T) {
 		if task.IssueID == fx.Gate && task.ClosedBy != nil {
 			t.Fatalf("reopened gate closed_by = %+v, want none", task.ClosedBy)
 		}
+	}
+}
+
+// The counter of a loop is shown against its bound, and an older client that does not know the bound still reads
+// the state.
+func TestFlowState_LoopMaxIsTheBoundOfEachLoop(t *testing.T) {
+	fx := newFlowFixture(t)
+	req := withURLParam(newRequest("GET", "/api/issues/"+fx.Request+"/flow", nil), "id", fx.Request)
+	var state IssueFlowStateResponse
+	testutil.Call(t, testHandler.GetIssueFlow, req).Want(http.StatusOK).JSON(&state)
+	issue, err := testHandler.Queries.GetIssue(req.Context(), util.MustParseUUID(fx.Request))
+	if err != nil {
+		t.Fatalf("load issue: %v", err)
+	}
+	run, err := testHandler.loadFlowRun(req.Context(), testHandler.Queries, issue)
+	if err != nil {
+		t.Fatalf("load run: %v", err)
+	}
+	if want := run.def.Graph.LoopLimits(run.state); !reflect.DeepEqual(state.LoopMax, want) || len(want) == 0 {
+		t.Fatalf("loop_max = %v, want the limits of the graph %v (not empty)", state.LoopMax, want)
 	}
 }

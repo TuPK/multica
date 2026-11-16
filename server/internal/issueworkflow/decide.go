@@ -732,6 +732,16 @@ func (g Graph) loopLimit(st State, l Loop) int {
 	return n
 }
 
+// LoopLimits is the bound of every loop of the graph for the state: what a reader of the request sees next to
+// each loop's counter.
+func (g Graph) LoopLimits(st State) map[string]int {
+	out := make(map[string]int, len(g.Doc.Loops))
+	for _, l := range g.Doc.Loops {
+		out[l.Key] = g.loopLimit(st, l)
+	}
+	return out
+}
+
 // decisionFor builds the decision of following an edge.
 func (g Graph) decisionFor(st State, tasks []TaskState, step DocStep, ge GraphEdge, result string) GraphDecision {
 	e := ge.Edge

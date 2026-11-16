@@ -135,8 +135,10 @@ type IssueFlowStateResponse struct {
 	// the request is stopped and that step has a rework transition.
 	ReworkStep string `json:"rework_step"`
 	// Schema is the schema of the workflow the request is pinned to.
-	Schema      int                        `json:"schema"`
-	Loops       map[string]int             `json:"loops"`
+	Schema int            `json:"schema"`
+	Loops  map[string]int `json:"loops"`
+	// LoopMax is the bound of each loop now, by the key of the loop: the number a counter in Loops is read against.
+	LoopMax     map[string]int             `json:"loop_max"`
 	Activations map[string]int             `json:"activations"`
 	Vars        map[string]any             `json:"vars"`
 	Facts       map[string]any             `json:"facts"`
@@ -202,6 +204,7 @@ func (h *Handler) flowStateResponse(ctx context.Context, request db.Issue, role 
 		Viewer:       IssueFlowViewerResponse{ClosableTaskIDs: []string{}},
 		Schema:       1,
 		Loops:        copyLoops(run.state.Loops),
+		LoopMax:      g.LoopLimits(run.state),
 		Activations:  copyLoops(run.state.Activations),
 		Vars:         run.state.Vars,
 		Checkpoints:  run.state.Checkpoints,

@@ -1841,6 +1841,7 @@ export const IssueFlowStateSchema = z.object({
   }),
   schema: z.number().default(1).catch(1),
   loops: z.record(z.string(), z.number()).default({}).catch({}),
+  loop_max: z.record(z.string(), z.number()).default({}).catch({}),
   activations: z.record(z.string(), z.number()).default({}).catch({}),
   vars: z.record(z.string(), z.unknown()).default({}).catch({}),
   facts: z.record(z.string(), z.unknown()).default({}).catch({}),
