@@ -60,7 +60,10 @@ make dev-full
 4. **Required values.** It checks the knowledge values only you can supply (see the table
    below). If any is empty, it lists them with what each is for, and stops. Nothing is
    started.
-5. **WeKnora.** It starts the five knowledge services (`knowledge-postgres`,
+5. **WeKnora.** Before it, if `KNOWLEDGE_EMBEDDING_URL` names Ollama on this machine, it starts
+   Ollama as the Docker container `multica-ollama` on `172.17.0.1:11434` and pulls
+   `KNOWLEDGE_EMBEDDING_MODEL` into it. Ollama is not installed on the host, and you do not run
+   `ollama pull` by hand. Then it starts the five knowledge services (`knowledge-postgres`,
    `knowledge-redis`, `knowledge-docreader`, `knowledge-app`, `knowledge-ui`) and waits for
    `http://localhost:8090/health`.
 6. **Hub store.** It starts `seaweedfs`, the S3-compatible store for Hub bundles, and waits for
@@ -109,7 +112,7 @@ random value when it is empty. The `HERMES_*` values are read only by `make dev-
 | `KNOWLEDGE_LLM_BASE_URL` | required | OpenAI-compatible chat endpoint for summaries, Wiki and reranking. WeKnora calls it from its container, so use an address the container can reach. See [The 9router gateway](#the-9router-gateway) | `http://host.docker.internal:<port>/v1` |
 | `KNOWLEDGE_LLM_API_KEY` | required | Key for that endpoint. WeKnora stores it and does not show it back | `<key from your gateway>` |
 | `KNOWLEDGE_LLM_MODEL` | required | The chat model the endpoint serves | `<model name>` |
-| `KNOWLEDGE_EMBEDDING_URL` | required | Embedding endpoint that WeKnora calls. Ollama on the Docker host is reached at `host.docker.internal:11434`, and must be bound to the Docker bridge address, not all interfaces (see `SELF_HOSTING.md`, Company Knowledge Base). WeKnora's own Ollama address follows it unless `KNOWLEDGE_OLLAMA_URL` is set | `http://host.docker.internal:11434` |
+| `KNOWLEDGE_EMBEDDING_URL` | required | Embedding endpoint that WeKnora calls. Ollama is the Docker container that step 5 starts, reached at `host.docker.internal:11434` and published only on the Docker bridge address (see `SELF_HOSTING.md`, Company Knowledge Base). WeKnora's own Ollama address follows it unless `KNOWLEDGE_OLLAMA_URL` is set | `http://host.docker.internal:11434` |
 | `KNOWLEDGE_EMBEDDING_MODEL` | required | Embedding model. It is fixed for each knowledge base once the base exists, so decide first | `bge-m3` |
 | `KNOWLEDGE_VISION_MODEL` | required | Vision model served by the chat endpoint. Setup > Models tests it, so knowledge is not ready without it | `<model name>` |
 | `KNOWLEDGE_EMBEDDING_PROVIDER` | optional | `ollama` (default), or `generic` for an OpenAI-compatible endpoint, which also needs `KNOWLEDGE_EMBEDDING_API_KEY` | `ollama` |

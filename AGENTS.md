@@ -32,6 +32,7 @@ Multica is a task management platform where people and agents collaborate on iss
 Use `Makefile`, workspace `package.json` files, and `pnpm-workspace.yaml` for current commands and versions. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and worktree operations.
 
 - Use the checkout's managed environment: `make up`, `make status`, `make down`. `make down` preserves data; `make destroy` removes the environment and its data.
+- Knowledge embeddings: `make dev-full` runs Ollama as the Docker container `multica-ollama`, published on `172.17.0.1:11434`, and pulls `KNOWLEDGE_EMBEDDING_MODEL` (`bge-m3`). Do not install Ollama on the host or tell the user to run `ollama pull`; see `SELF_HOSTING.md` section 1.
 - Worktrees share PostgreSQL but have isolated databases/ports. Use the environment scripts and `.env.worktree`; do not copy the main checkout's `.env` or manually create a database through an assumed PostgreSQL instance.
 - Regenerate sqlc with `make sqlc` after SQL changes.
 - Code generated from `catalog/` (`packages/core/catalog/generated/`, `server/internal/catalog/generated/`) is not committed. `pnpm catalog:build` writes it; turbo tasks, `make build|test|server`, and the Docker builds run it first. Run it yourself before `vitest`, `tsc` or `go test` outside those. `pnpm catalog:check` validates the catalog.

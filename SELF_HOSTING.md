@@ -446,13 +446,11 @@ The stack adds five containers behind the `knowledge` compose profile: `knowledg
 
 ### 1. Choose an embedding model
 
-The embedding model is fixed per knowledge base when it is created, and changing it later means re-ingesting everything, so decide first. The default is `bge-m3` (multilingual) served by a local [Ollama](https://ollama.com):
+The embedding model is fixed per knowledge base when it is created, and changing it later means re-ingesting everything, so decide first. The default is `bge-m3` (multilingual), served by [Ollama](https://ollama.com).
 
-```bash
-ollama pull bge-m3
-```
+`make dev-full` runs Ollama for you as the Docker container `multica-ollama` (volume `multica-ollama`) and pulls `KNOWLEDGE_EMBEDDING_MODEL` into it. Do not install Ollama on the host or run `ollama pull` by hand: the setup does not read a host Ollama. The container is published only on `172.17.0.1:11434`, the Docker bridge address, so WeKnora reaches it at `host.docker.internal` and the network does not. This applies when `KNOWLEDGE_EMBEDDING_URL` names Ollama on this machine (`http://host.docker.internal:11434`, `http://172.17.0.1:11434`, or `localhost` or `127.0.0.1` on port 11434). Any other URL is used as given, and no container is started.
 
-Ollama must be reachable from containers without being exposed to the network. On Linux, bind it to the Docker bridge address only (for example `OLLAMA_HOST=172.17.0.1:11434`), not `0.0.0.0`. The compose file maps `host.docker.internal` to the Docker host and allow-lists it. To use an OpenAI-compatible endpoint instead, set `KNOWLEDGE_EMBEDDING_PROVIDER=generic`, `KNOWLEDGE_EMBEDDING_URL`, `KNOWLEDGE_EMBEDDING_MODEL`, `KNOWLEDGE_EMBEDDING_DIMENSION` and `KNOWLEDGE_EMBEDDING_API_KEY`.
+To check the model: `docker exec multica-ollama ollama list` shows `bge-m3`. To use an OpenAI-compatible endpoint instead, set `KNOWLEDGE_EMBEDDING_PROVIDER=generic`, `KNOWLEDGE_EMBEDDING_URL`, `KNOWLEDGE_EMBEDDING_MODEL`, `KNOWLEDGE_EMBEDDING_DIMENSION` and `KNOWLEDGE_EMBEDDING_API_KEY`.
 
 > WeKnora refuses model URLs that resolve to a private address (its SSRF guard) unless the host is listed in `KNOWLEDGE_SSRF_WHITELIST_EXTRA`. Setting that variable **replaces** WeKnora's own default list, so list every internal host it must reach.
 
