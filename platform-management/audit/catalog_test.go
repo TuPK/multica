@@ -233,3 +233,18 @@ func TestPlanPriceActionsAreDefinedAndCataloged(t *testing.T) {
 		}
 	}
 }
+
+// The R5 subscription actions (spec 7b.1): the names are stored in audit_event.action.
+func TestSubscriptionChangeCatalogActionsAreDefined(t *testing.T) {
+	cases := map[string]string{
+		"subscription.change_scheduled": ActionSubscriptionChangeScheduled,
+		"subscription.change_canceled":  ActionSubscriptionChangeCanceled,
+		"subscription.cancel_requested": ActionSubscriptionCancelRequested,
+		"subscription.cancel_withdrawn": ActionSubscriptionCancelWithdrawn,
+	}
+	for want, got := range cases {
+		if got != want {
+			t.Errorf("constant = %q, want %q", got, want)
+		}
+	}
+}

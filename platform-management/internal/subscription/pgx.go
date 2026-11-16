@@ -349,3 +349,25 @@ func (p *PgxPending) PendingSeats(ctx context.Context, workspaceID string, now t
 	}
 	return PendingPurchase{OrderID: uuidText(row.ID), Seats: int64(row.Seats), ExpiresAt: row.ExpiresAt.Time.UTC()}, true, nil
 }
+
+// PgxPendingOrders is the PendingOrders over billing_order.
+type PgxPendingOrders struct{ q *db.Queries }
+
+// NewPgxPendingOrders returns a PendingOrders over pool.
+func NewPgxPendingOrders(pool db.DBTX) *PgxPendingOrders { return &PgxPendingOrders{q: db.New(pool)} }
+
+// PendingOrder implements PendingOrders.
+func (p *PgxPendingOrders) PendingOrder(ctx context.Context, workspaceID string) (string, bool, error) {
+	ws, err := parseUUID(workspaceID)
+	if err != nil {
+		return "", false, err
+	}
+	row, err := p.q.GetPendingBillingOrderForWorkspace(ctx, ws)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return uuidText(row.ID), true, nil
+}

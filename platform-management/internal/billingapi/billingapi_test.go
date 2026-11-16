@@ -124,12 +124,14 @@ func (f *fakeWorkspaces) Slug(_ context.Context, ws string) (string, bool, error
 }
 
 type env struct {
-	members *fakeMembers
-	subs    *fakeSubs
-	plans   *fakePlans
-	orders  *fakeOrders
-	spaces  *fakeWorkspaces
-	h       http.Handler
+	members     *fakeMembers
+	subs        *fakeSubs
+	plans       *fakePlans
+	orders      *fakeOrders
+	spaces      *fakeWorkspaces
+	changes     *fakeChanger
+	changeOrder *fakeChangeOrders
+	h           http.Handler
 }
 
 func newEnv(t *testing.T) *env {
@@ -145,13 +147,16 @@ func newEnv(t *testing.T) *env {
 			},
 			count: 2,
 		},
-		subs:   &fakeSubs{rows: map[string]subscription.Subscription{}},
-		plans:  &fakePlans{plans: all},
-		orders: &fakeOrders{},
-		spaces: &fakeWorkspaces{slugs: map[string]string{wsID: "acme"}},
+		subs:        &fakeSubs{rows: map[string]subscription.Subscription{}},
+		plans:       &fakePlans{plans: all},
+		orders:      &fakeOrders{},
+		spaces:      &fakeWorkspaces{slugs: map[string]string{wsID: "acme"}},
+		changes:     &fakeChanger{},
+		changeOrder: &fakeChangeOrders{},
 	}
 	h, err := New(Deps{
 		Subscriptions: e.subs, Plans: e.plans, Members: e.members, Orders: e.orders, Workspaces: e.spaces,
+		Changes: e.changes, ChangeOrders: e.changeOrder, IndividualMaxSeats: 5,
 		VATRate: billing.DefaultVATRate, AppURL: appURL,
 		Now: func() time.Time { return now },
 		Log: slog.New(slog.NewTextHandler(io.Discard, nil)),

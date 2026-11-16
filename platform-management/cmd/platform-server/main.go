@@ -233,16 +233,23 @@ func run() error {
 		Log:    slog.Default(),
 	})
 
+	// Self-service changes and cancellations (spec 7b.1). The order of a charged
+	// change is written by the same billing service that creates the others.
+	planChanges := subscription.NewPlanChanges(subscription.NewPgxRunner(pool), policy,
+		subscription.NewPgxPendingOrders(pool), time.Now)
 	billingWrites, err := billingapi.New(billingapi.Deps{
-		Subscriptions: subscription.NewPgxReader(pool),
-		Plans:         plan.NewPgxReader(pool),
-		Members:       subscription.NewPgxMembers(pool),
-		Orders:        orders,
-		Activator:     orders,
-		Workspaces:    billingapi.NewPgxWorkspaces(pool),
-		VATRate:       cfg.Billing.VATRate,
-		AppURL:        cfg.AppURL,
-		Log:           slog.Default(),
+		Changes:            planChanges,
+		ChangeOrders:       orders,
+		IndividualMaxSeats: cfg.IndividualMaxSeats,
+		Subscriptions:      subscription.NewPgxReader(pool),
+		Plans:              plan.NewPgxReader(pool),
+		Members:            subscription.NewPgxMembers(pool),
+		Orders:             orders,
+		Activator:          orders,
+		Workspaces:         billingapi.NewPgxWorkspaces(pool),
+		VATRate:            cfg.Billing.VATRate,
+		AppURL:             cfg.AppURL,
+		Log:                slog.Default(),
 	})
 	if err != nil {
 		return err

@@ -12,7 +12,10 @@ import (
 
 // Statuses. A new row is active; later steps (renewal, grace, cancellation)
 // move it.
-const StatusActive = "active"
+const (
+	StatusActive   = "active"
+	StatusTrialing = "trialing"
+)
 
 // Billing intervals.
 const (

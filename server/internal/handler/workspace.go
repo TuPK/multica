@@ -1943,6 +1943,12 @@ func (h *Handler) deleteWorkspaceData(ctx context.Context, tx pgx.Tx, wsID pgtyp
 				if err := qtx.DeleteWorkspaceBillingNotices(ctx, wsID); err != nil {
 					return err
 				}
+				if err := qtx.DeleteWorkspaceBillingProfile(ctx, wsID); err != nil {
+					return err
+				}
+				if err := qtx.DeleteWorkspacePolicy(ctx, wsID); err != nil {
+					return err
+				}
 				if err := qtx.DeleteWorkspacePlatformNotes(ctx, wsID); err != nil {
 					return err
 				}

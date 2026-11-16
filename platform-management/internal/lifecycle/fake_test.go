@@ -311,6 +311,24 @@ func (t *billingTx) InsertOrder(context.Context, billing.NewOrder) (billing.Orde
 	return billing.Order{}, false, fmt.Errorf("not used")
 }
 
+// Plan serves the catalogue to the fake transaction, as the database does.
+func (t *billingTx) Plan(_ context.Context, key string) (plan.Plan, bool, error) {
+	all, err := plan.Catalogue()
+	if err != nil {
+		return plan.Plan{}, false, err
+	}
+	for _, p := range all {
+		if p.Key == key {
+			return p, true, nil
+		}
+	}
+	return plan.Plan{}, false, nil
+}
+
+func (t *billingTx) PendingOrder(context.Context, string) (billing.Order, bool, error) {
+	return billing.Order{}, false, nil
+}
+
 func (t *billingTx) OrderByIdempotencyKey(context.Context, string, string) (billing.Order, bool, error) {
 	return billing.Order{}, false, fmt.Errorf("not used")
 }

@@ -76,6 +76,11 @@ type Tx interface {
 	// ReadOnlyForBilling reports whether the workspace is read_only with the
 	// reason ReasonBilling.
 	ReadOnlyForBilling(ctx context.Context, workspaceID string) (bool, error)
+	// Plan reads a plan. found == false for an unknown key.
+	Plan(ctx context.Context, key string) (plan.Plan, bool, error)
+	// PendingOrder returns the workspace's pending order, found == false when it
+	// has none.
+	PendingOrder(ctx context.Context, workspaceID string) (o Order, found bool, err error)
 
 	workspacestatus.Tx
 }
@@ -307,6 +312,22 @@ func (s *Service) ApplyPayment(ctx context.Context, c Confirmation) (Applied, er
 		if err != nil {
 			return err
 		}
+		if o.Kind != KindAddSeats {
+			// The unit price is the seat price of the plan and interval now paid
+			// for (spec 7b.1, rule 5). add_seats buys seats at the price already set.
+			p, found, err := tx.Plan(ctx, next.PlanKey)
+			if err != nil {
+				return err
+			}
+			if !found {
+				return fmt.Errorf("billing: plan %q does not exist", next.PlanKey)
+			}
+			unit, ok := subscription.SeatUnitPrice(p, next.Interval)
+			if !ok {
+				return fmt.Errorf("billing: plan %q has no seat price for %s", next.PlanKey, next.Interval)
+			}
+			next.UnitPrice = &unit
+		}
 		if o, err = tx.MarkPaid(ctx, orderID, confirmedBy, now); err != nil {
 			return err
 		}
@@ -385,6 +406,14 @@ func SubscriptionAfter(o Order, cur subscription.Subscription, exists bool) (sub
 		if o.PeriodStart == nil || o.PeriodEnd == nil || !o.PeriodEnd.After(*o.PeriodStart) {
 			return subscription.Subscription{}, errors.New("billing: the order has no valid period")
 		}
+		// A renewal is priced from the pending change (rule 6), so a paid renewal
+		// must be the pending change; applying it clears the pending change.
+		if o.Kind == KindRenew && exists && cur.PendingChange != nil {
+			pc := cur.PendingChange
+			if pc.PlanKey != o.PlanKey || pc.Seats != o.Seats || pc.Interval != o.Interval {
+				return subscription.Subscription{}, errors.New("billing: the renewal order does not match the pending change")
+			}
+		}
 		if !exists {
 			cur = subscription.Subscription{WorkspaceID: o.WorkspaceID, LimitOverrides: plan.Limits{}}
 		}
@@ -393,6 +422,7 @@ func SubscriptionAfter(o Order, cur subscription.Subscription, exists bool) (sub
 		cur.CurrentPeriodStart, cur.CurrentPeriodEnd = &start, &end
 		cur.Status = subscription.StatusActive
 		cur.GraceUntil = nil
+		cur.PendingChange = nil
 		return cur, nil
 	}
 	return subscription.Subscription{}, fmt.Errorf("billing: unknown kind %q", o.Kind)

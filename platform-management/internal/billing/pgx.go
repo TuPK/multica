@@ -253,6 +253,33 @@ func (t *pgxTx) UpdateSubscription(ctx context.Context, s subscription.Subscript
 	return subscriptionFromRow(row)
 }
 
+func (t *pgxTx) Plan(ctx context.Context, key string) (plan.Plan, bool, error) {
+	row, err := t.q.GetPlan(ctx, key)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return plan.Plan{}, false, nil
+	}
+	if err != nil {
+		return plan.Plan{}, false, err
+	}
+	p, err := plan.FromRow(row)
+	return p, err == nil, err
+}
+
+func (t *pgxTx) PendingOrder(ctx context.Context, workspaceID string) (Order, bool, error) {
+	ws, err := parseUUID(workspaceID)
+	if err != nil {
+		return Order{}, false, err
+	}
+	row, err := t.q.GetPendingBillingOrderForWorkspace(ctx, ws)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Order{}, false, nil
+	}
+	if err != nil {
+		return Order{}, false, err
+	}
+	return orderFromRow(row), true, nil
+}
+
 func (t *pgxTx) ReadOnlyForBilling(ctx context.Context, workspaceID string) (bool, error) {
 	ws, err := parseUUID(workspaceID)
 	if err != nil {

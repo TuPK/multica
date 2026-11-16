@@ -184,6 +184,15 @@ func (q *Queries) DeleteWorkspaceBillingNotices(ctx context.Context, workspaceID
 	return err
 }
 
+const deleteWorkspaceBillingProfile = `-- name: DeleteWorkspaceBillingProfile :exec
+DELETE FROM billing_profile WHERE workspace_id = $1
+`
+
+func (q *Queries) DeleteWorkspaceBillingProfile(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteWorkspaceBillingProfile, workspaceID)
+	return err
+}
+
 const deleteWorkspaceChatMessages = `-- name: DeleteWorkspaceChatMessages :exec
 DELETE FROM chat_message
 WHERE chat_session_id IN (
@@ -646,6 +655,15 @@ DELETE FROM plugin_installation WHERE id IN (SELECT id FROM installations)
 // stored bundles as the largest orphan the plugin surface can produce.
 func (q *Queries) DeleteWorkspacePluginData(ctx context.Context, workspaceID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, deleteWorkspacePluginData, workspaceID)
+	return err
+}
+
+const deleteWorkspacePolicy = `-- name: DeleteWorkspacePolicy :exec
+DELETE FROM workspace_policy WHERE workspace_id = $1
+`
+
+func (q *Queries) DeleteWorkspacePolicy(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteWorkspacePolicy, workspaceID)
 	return err
 }
 
