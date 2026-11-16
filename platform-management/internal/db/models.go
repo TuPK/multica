@@ -2730,6 +2730,15 @@ type UserConsent struct {
 	Ip         string             `json:"ip"`
 }
 
+type UserMfa struct {
+	UserID         pgtype.UUID        `json:"user_id"`
+	SecretEnc      []byte             `json:"secret_enc"`
+	ConfirmedAt    pgtype.Timestamptz `json:"confirmed_at"`
+	RecoveryHashes []string           `json:"recovery_hashes"`
+	LastUsedStep   int64              `json:"last_used_step"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
 type VcsCommitStatus struct {
 	ConnectionID pgtype.UUID        `json:"connection_id"`
 	Sha          string             `json:"sha"`

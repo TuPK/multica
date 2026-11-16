@@ -245,3 +245,51 @@ func TestDBQueriesAgainstTheRealSchema(t *testing.T) {
 		}
 	}
 }
+
+func TestDBMFAStoreReadsAndUsesTheConfirmedRow(t *testing.T) {
+	f := newDBFixture(t)
+	ctx := context.Background()
+	id, _ := f.user()
+	userID := uuidString(id)
+	store := NewMFAStore(f.q)
+
+	if _, _, found, err := store.ConfirmedMFA(ctx, userID); err != nil || found {
+		t.Fatalf("no row: found %v, err %v", found, err)
+	}
+	if _, err := f.pool.Exec(ctx, `INSERT INTO user_mfa (user_id, secret_enc) VALUES ($1, '\x0102'::bytea)`, id); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { f.pool.Exec(ctx, `DELETE FROM user_mfa WHERE user_id = $1`, id) })
+
+	// A pending enrolment is not a second factor.
+	if _, _, found, err := store.ConfirmedMFA(ctx, userID); err != nil || found {
+		t.Fatalf("pending row: found %v, err %v", found, err)
+	}
+	if ok, err := store.UseMFAStep(ctx, userID, 10); err != nil || ok {
+		t.Fatalf("pending row used a step: %v, %v", ok, err)
+	}
+
+	if _, err := f.pool.Exec(ctx, `UPDATE user_mfa SET confirmed_at = now(), last_used_step = 5 WHERE user_id = $1`, id); err != nil {
+		t.Fatal(err)
+	}
+	sealed, last, found, err := store.ConfirmedMFA(ctx, userID)
+	if err != nil || !found || last != 5 || len(sealed) != 2 {
+		t.Fatalf("confirmed row: %v %d %v %v", sealed, last, found, err)
+	}
+	for _, tc := range []struct {
+		step int64
+		want bool
+	}{{10, true}, {10, false}, {9, false}, {11, true}} {
+		if ok, err := store.UseMFAStep(ctx, userID, tc.step); err != nil || ok != tc.want {
+			t.Fatalf("UseMFAStep(%d) = %v, %v; want %v", tc.step, ok, err, tc.want)
+		}
+	}
+	if _, err := store.UseMFAStep(ctx, "not-a-uuid", 1); err == nil {
+		t.Fatal("an invalid user id was accepted")
+	}
+
+	secret, found, err := store.AnyConfirmedSecret(ctx)
+	if err != nil || !found || len(secret) == 0 {
+		t.Fatalf("AnyConfirmedSecret: %v %v %v", secret, found, err)
+	}
+}

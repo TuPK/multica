@@ -17,6 +17,7 @@ func resendEnv() map[string]string {
 		"REDIS_URL":               "redis://cache:6379/0",
 		"PLATFORM_ADMIN_EMAILS":   "ops@example.com",
 		"PLATFORM_SESSION_SECRET": goodSecret,
+		"MULTICA_MFA_SECRET_KEY":  "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
 		"RESEND_API_KEY":          "re_test",
 		"RESEND_FROM_EMAIL":       "platform@example.com",
 
@@ -739,5 +740,37 @@ func TestBadOrMissingAppURLStopsTheStart(t *testing.T) {
 		if strings.Contains(err.Error(), "pw@") {
 			t.Errorf("error repeats the credentials: %v", err)
 		}
+	}
+}
+
+func TestMFASecretKey(t *testing.T) {
+	t.Run("loaded as bytes", func(t *testing.T) {
+		cfg, err := load(resendEnv())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(cfg.MFASecretKey) != 32 {
+			t.Fatalf("key length = %d, want 32", len(cfg.MFASecretKey))
+		}
+	})
+	for name, value := range map[string]string{
+		"missing":    "",
+		"not base64": "%%%not-base64%%%",
+		"too short":  "c2hvcnQ=",
+	} {
+		t.Run(name, func(t *testing.T) {
+			env := resendEnv()
+			env["MULTICA_MFA_SECRET_KEY"] = value
+			_, err := load(env)
+			if err == nil {
+				t.Fatal("expected an error")
+			}
+			if got := variables(err); len(got) != 1 || got[0] != "MULTICA_MFA_SECRET_KEY" {
+				t.Fatalf("variables = %v", got)
+			}
+			if value != "" && strings.Contains(err.Error(), value) {
+				t.Fatalf("error repeats the value: %v", err)
+			}
+		})
 	}
 }

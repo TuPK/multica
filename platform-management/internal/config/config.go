@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/multica-ai/multica/platform-management/internal/billing"
+	"github.com/multica-ai/multica/platform-management/internal/mfa"
 	"github.com/multica-ai/multica/platform-management/internal/trust"
 )
 
@@ -92,9 +93,12 @@ type Config struct {
 	RedisURL      string
 	AdminEmails   []string
 	SessionSecret string
-	APIPort       string
-	ConsolePort   string
-	Email         Email
+	// MFASecretKey is MULTICA_MFA_SECRET_KEY decoded: the key Multica seals
+	// TOTP secrets with, shared so the console can check staff codes.
+	MFASecretKey []byte
+	APIPort      string
+	ConsolePort  string
+	Email        Email
 	// DevVerificationCode is PLATFORM_DEV_VERIFICATION_CODE: empty, or six
 	// digits that staff sign in with in development. Never set in production.
 	DevVerificationCode string
@@ -158,6 +162,16 @@ func Load(getenv func(string) string) (Config, error) {
 		fail("PLATFORM_SESSION_SECRET", "is required")
 	case len(cfg.SessionSecret) < minSessionSecretBytes:
 		fail("PLATFORM_SESSION_SECRET", "must be at least "+strconv.Itoa(minSessionSecretBytes)+" bytes")
+	}
+
+	// The same variable and value as the Multica server's, so the console can
+	// open the TOTP secrets that Multica sealed.
+	if raw := get(mfa.EnvKey); raw == "" {
+		fail(mfa.EnvKey, "is required")
+	} else if key, err := mfa.ParseKey(raw); err != nil {
+		fail(mfa.EnvKey, err.Error())
+	} else {
+		cfg.MFASecretKey = key
 	}
 
 	cfg.APIPort = portOrDefault(get("PLATFORM_API_PORT"), defaultAPIPort)
