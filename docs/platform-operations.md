@@ -185,6 +185,33 @@ Spec 5.1. The platform checks its own settings at start and exits with a message
 
 Until both are done, do not accept real orders. D49 is open (section 12).
 
+### 6.2 Staff two-step sign-in (decision D51)
+
+Every staff member signs in to the console with the email code and then a six-digit code from the authenticator app they enrolled in the Multica web app. The session records `mfa` in its `amr` claim, and the console refuses a session without it. A staff member with no confirmed second factor cannot sign in. The recovery codes of the Multica web app are not accepted at the console.
+
+The platform reads `MULTICA_MFA_SECRET_KEY`, the same variable and value as the Multica server, because it opens the secrets that Multica sealed. Without it the platform exits at start. At start it also opens one confirmed `user_mfa` row; if the key does not open it, the platform exits with a message naming `MULTICA_MFA_SECRET_KEY`. Set the same value in both services.
+
+**Rollout order** (do not start the new platform before step 3 is done for every staff member):
+
+1. Set `MULTICA_MFA_SECRET_KEY` in the Multica server and in the platform to the same value, and deploy Multica.
+2. Each staff member, including every address in `PLATFORM_ADMIN_EMAILS`, signs in to the Multica web app and turns on two-step sign-in. Check: `SELECT u.email FROM platform_staff s JOIN "user" u ON u.id = s.user_id WHERE s.revoked_at IS NULL AND NOT EXISTS (SELECT 1 FROM user_mfa m WHERE m.user_id = s.user_id AND m.confirmed_at IS NOT NULL);` returns no rows.
+3. Deploy the platform with this change.
+
+**Reset from the console.** A `support` or `admin` member opens the user in the console and chooses "Reset two-step sign-in". The `user_mfa` row is deleted, the audit event `user.mfa_reset` names the staff member and the user, and the user is emailed. The user is not signed out and signs in with the email code alone until they enrol again. A staff member cannot reset their own (`self_reset_refused`).
+
+**Lockout recovery.**
+
+- A staff member who lost their phone but has a recovery code: sign in to the Multica web app with the recovery code, turn two-step sign-in off with another recovery code, enrol again, then sign in to the console.
+- A staff member with neither: another `support` or `admin` member resets them from the console, then they enrol again in the Multica web app.
+- The first admin when no other staff member can sign in, for example because the rollout order was not followed: run this on the shared database, then enrol again in the Multica web app and sign in to the console. The change has no audit row, so write the reason in your change log.
+
+```sql
+DELETE FROM user_mfa
+WHERE user_id = (SELECT id FROM "user" WHERE email = 'admin@example.com');
+```
+
+Until the user enrols again they cannot sign in to the console, because a staff member with no confirmed second factor is refused.
+
 ## 7. Bank transfer reconciliation
 
 Who: staff with the `billing` or `admin` role. Other roles do not get the Orders screen.
