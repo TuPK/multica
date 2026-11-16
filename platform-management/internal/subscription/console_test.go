@@ -695,3 +695,25 @@ func TestPlatformBillingPlanChangeAuditHasOldAndNewValues(t *testing.T) {
 		t.Errorf("changes = %v, want only seat_price_month 99000 -> 120000", diff)
 	}
 }
+
+// A PUT that sends only a name keeps the stored prices and currency; it must
+// not write NULL prices or a new currency.
+func TestNameOnlyPutKeepsTheStoredPricesAndCurrency(t *testing.T) {
+	e := newConsoleEnv(t)
+	wantStatus(t, e.do(adminUser, "PUT", "/api/platform/plans/team", teamBody), 200)
+	rec := e.do(adminUser, "PUT", "/api/platform/plans/team", `{"name":"Team renamed"}`)
+	wantStatus(t, rec, 200)
+	got := e.plans.rows["team"]
+	if got.Name != "Team renamed" {
+		t.Fatalf("name = %q, the rename was not written", got.Name)
+	}
+	if got.SeatPriceMonth == nil || *got.SeatPriceMonth != 99000 {
+		t.Fatalf("seat_price_month = %v, want 99000", got.SeatPriceMonth)
+	}
+	if got.SeatPriceYear == nil || *got.SeatPriceYear != 990000 {
+		t.Fatalf("seat_price_year = %v, want 990000", got.SeatPriceYear)
+	}
+	if got.Currency != "vnd" {
+		t.Fatalf("currency = %q, want vnd", got.Currency)
+	}
+}

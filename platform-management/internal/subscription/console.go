@@ -360,6 +360,20 @@ func (c *Console) putPlan(w http.ResponseWriter, r *http.Request) {
 			SeatPriceMonth: body.SeatPriceMonth, SeatPriceYear: body.SeatPriceYear, SeatsFixed: body.SeatsFixed,
 			MinSeats: body.MinSeats, TrialDays: body.TrialDays, IsPublic: body.IsPublic, Sort: body.Sort,
 		}
+		// A body that omits a price or the currency keeps the stored value, so a
+		// rename does not write NULL prices (prices change only by a scheduled price
+		// change, spec 7b.4).
+		if exists {
+			if body.SeatPriceMonth == nil {
+				next.SeatPriceMonth = old.SeatPriceMonth
+			}
+			if body.SeatPriceYear == nil {
+				next.SeatPriceYear = old.SeatPriceYear
+			}
+			if next.Currency == "" {
+				next.Currency = old.Currency
+			}
+		}
 		if next.Limits == nil {
 			next.Limits = plan.Limits{}
 		}
