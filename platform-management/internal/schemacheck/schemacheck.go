@@ -58,6 +58,9 @@ var Required = []string{
 	"953_plan_subscription_r5",                // plan, workspace_subscription: R5 columns
 	"954_billing_profile",                     // billing_profile: table
 	"955_billing_profile_uidx",                // billing_profile: unique index on workspace_id
+	"961_usage_charge",                        // usage_charge: table
+	"962_usage_charge_uidx",                   // usage_charge: unique index on workspace_id, day, meter
+	"963_usage_charge_order_idx",              // usage_charge: partial index on order_id
 	"964_plan_price_change",                   // plan_price_change: table
 	"965_plan_price_change_scheduled_uidx",    // plan_price_change: partial unique index on plan_key, scheduled rows
 	"966_platform_account_request",            // platform_account_request: table

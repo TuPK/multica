@@ -173,6 +173,8 @@ var concurrentIndexCleanups = map[string]string{
 	"951_hub_activity_workspace_created_idx":                    "hub_activity_workspace_created_idx",
 	"952_hub_activity_ref_created_idx":                          "hub_activity_workspace_ref_created_idx",
 	"955_billing_profile_uidx":                                  "billing_profile_uidx",
+	"962_usage_charge_uidx":                                     "usage_charge_uidx",
+	"963_usage_charge_order_idx":                                "usage_charge_order_idx",
 	"965_plan_price_change_scheduled_uidx":                      "plan_price_change_scheduled_uidx",
 	"967_platform_account_request_id_uidx":                      "platform_account_request_id_uidx",
 	"968_platform_account_request_email_uidx":                   "platform_account_request_email_uidx",
