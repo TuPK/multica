@@ -749,6 +749,7 @@ print_summary() {
   echo "  SeaweedFS UI  http://localhost:${HUB_S3_UI_PORT}  (cluster status: /cluster/status)"
   echo "  Platform      http://localhost:${PLATFORM_CONSOLE_PORT:-30001}  (staff console)"
   echo "  Platform API  http://localhost:${PLATFORM_API_PORT:-8095}  (health: /healthz)"
+  echo "  Platform sign-in  $DEV_ADMIN_EMAIL, with the development code in MULTICA_DEV_VERIFICATION_CODE"
   echo ""
   echo "  Running       Multica API, Multica web, platform console and API, WeKnora (${KNOWLEDGE_SERVICES[*]}), SeaweedFS (${HUB_SERVICES[*]})"
   echo "  Hub store     $HUB_STORE_STATUS"
@@ -773,45 +774,44 @@ print_summary() {
 }
 
 PLATFORM_DIR="$REPO_ROOT/platform-management"
-PLATFORM_REQUIRED=(
-  PLATFORM_ADMIN_EMAILS
-  BILLING_BANK_NAME
-  BILLING_BANK_ACCOUNT_NAME
-  BILLING_BANK_ACCOUNT_NUMBER
-)
+# The development system admin. Its Multica account is created on this machine's first run,
+# and the platform makes it the platform admin when it starts.
+DEV_ADMIN_EMAIL="system@admin.com"
 
 # The platform's session secret is written once and kept. The public address is the
-# Multica web app, because the order page lives there, so it follows FRONTEND_PORT.
+# Multica web app, because the order page lives there, so it follows FRONTEND_PORT. The
+# development sign-in code is Multica's own, so both accept the same code here.
 fill_platform_secrets() {
   set_if_empty PLATFORM_SESSION_SECRET "$(openssl rand -hex 32)"
-  local web_port
+  local web_port dev_code
   web_port="$(env_value "$ENV_FILE" FRONTEND_PORT)"
   set_if_empty PLATFORM_APP_URL "http://localhost:${web_port:-3000}"
+  set_if_empty PLATFORM_ADMIN_EMAILS "$DEV_ADMIN_EMAIL"
+  dev_code="$(env_value "$ENV_FILE" MULTICA_DEV_VERIFICATION_CODE)"
+  if [ -n "$dev_code" ]; then
+    set_if_empty PLATFORM_DEV_VERIFICATION_CODE "$dev_code"
+  fi
 }
 
-# The platform cannot start without these values, and it sends its sign-in codes by email,
-# so one email provider must be complete. Nothing is started until they are all filled in.
-check_required_platform() {
-  local key missing=()
-  for key in "${PLATFORM_REQUIRED[@]}"; do
-    if [ -z "$(env_value "$ENV_FILE" "$key")" ]; then
-      missing+=("$key")
-    fi
-  done
-  if { [ -z "$(env_value "$ENV_FILE" RESEND_API_KEY)" ] || [ -z "$(env_value "$ENV_FILE" RESEND_FROM_EMAIL)" ]; } \
-    && { [ -z "$(env_value "$ENV_FILE" SMTP_HOST)" ] || [ -z "$(env_value "$ENV_FILE" SMTP_FROM_EMAIL)" ]; }; then
-    missing+=("RESEND_API_KEY with RESEND_FROM_EMAIL, or SMTP_HOST with SMTP_FROM_EMAIL")
-  fi
-  if [ ${#missing[@]} -eq 0 ]; then
+# Creates the Multica account of the platform admin with Multica's development sign-in code,
+# so the platform can make it an admin when it starts. Without that code there is nothing to
+# sign in with, so the account is not created and the script says so.
+seed_system_admin() {
+  local dev_code body
+  dev_code="$(env_value "$ENV_FILE" MULTICA_DEV_VERIFICATION_CODE)"
+  if [ -z "$dev_code" ]; then
+    echo "! Not seeded: MULTICA_DEV_VERIFICATION_CODE is empty, so no account is created for $DEV_ADMIN_EMAIL." >&2
     return 0
   fi
-  echo "✗ Nothing was started. These platform values in $ENV_FILE are empty:" >&2
-  for key in "${missing[@]}"; do
-    echo "    $key" >&2
-  done
-  echo "  PLATFORM_ADMIN_EMAILS is the sign-in address of the first platform admin." >&2
-  echo "  Fill them in and run make dev-full again." >&2
-  exit 1
+  body="{\"email\":\"$DEV_ADMIN_EMAIL\"}"
+  # Multica limits send-code per IP, so a rerun can be refused here. The verify step below
+  # still needs a code row, which an earlier run left behind, so a refusal is not fatal.
+  curl -fsS -o /dev/null -H 'Content-Type: application/json' -d "$body" "http://localhost:${PORT}/auth/send-code" \
+    || echo "! Multica refused a new sign-in code for $DEV_ADMIN_EMAIL; trying the existing one." >&2
+  body="{\"email\":\"$DEV_ADMIN_EMAIL\",\"code\":\"$dev_code\"}"
+  curl -fsS -o /dev/null -H 'Content-Type: application/json' -d "$body" "http://localhost:${PORT}/auth/verify-code" \
+    || fail "Multica did not accept the development code for $DEV_ADMIN_EMAIL."
+  ok "Multica account $DEV_ADMIN_EMAIL is ready"
 }
 
 # Starts the platform's API and staff console. It needs the database that make dev has
@@ -844,6 +844,7 @@ start_multica() {
     || fail "Multica API did not answer. Read the make dev output above."
   wait_for_url "Multica web" "http://localhost:${FRONTEND_PORT}/" "$DEV_PID" \
     || fail "Multica web did not answer. Read the make dev output above."
+  seed_system_admin
   start_platform
   setup_multica_profile
   start_daemon
@@ -859,7 +860,6 @@ main() {
   fill_hub_secrets
   fill_platform_secrets
   check_required_knowledge
-  check_required_platform
   resolve_knowledge_urls
   resolve_hub_ports
   resolve_hub_urls
