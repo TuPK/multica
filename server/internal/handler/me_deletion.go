@@ -421,6 +421,7 @@ func (h *Handler) DeleteAccount(ctx context.Context, userID string, now time.Tim
 		{"lark bindings", func() error { return qtx.DeleteUserLarkBindings(ctx, uid) }},
 		{"knowledge owner accounts", func() error { return qtx.DeleteUserKnowledgeOwnerAccounts(ctx, uid) }},
 		{"consents", func() error { return qtx.DeleteUserConsents(ctx, uid) }},
+		{"second factor", func() error { _, err := qtx.DeleteUserMFA(ctx, uid); return err }},
 		{"feedback", func() error { return qtx.DeleteUserFeedback(ctx, uid) }},
 		{"client usage", func() error { return qtx.DeleteUserClientUsage(ctx, uid) }},
 		{"notification preferences", func() error { return qtx.DeleteUserNotificationPreferences(ctx, uid) }},

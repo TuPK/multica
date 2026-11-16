@@ -95,6 +95,7 @@ var Columns = []Column{
 	{"task_token", "user_id", ActionDelete, "job removes the rows"},
 	{"user_composio_connection", "user_id", ActionDelete, "job removes the rows"},
 	{"user_consent", "user_id", ActionDelete, "job removes the rows"},
+	{"user_mfa", "user_id", ActionDelete, "job removes the row, with the secret and recovery codes"},
 	{"wecom_install_session", "initiator_user_id", ActionKeep, refReason},
 	{"workspace_invitation", "invitee_user_id", ActionDelete, "job removes the rows"},
 	{"workspace_invitation", "inviter_id", ActionKeep, "an invitation record in a workspace that continues"},
