@@ -366,6 +366,137 @@ func (h *Handler) PurchaseCloudWorkspaceSubscriptionSeats(w http.ResponseWriter,
 		http.Header{idempotencyKeyHeader: []string{key}})
 }
 
+// cloudSubscriptionPlanChangeRequest is what a plan-change route accepts. The
+// upstream body is built from these fields only, so the workspace and any other
+// field the client sends are dropped (the workspace comes from the route).
+type cloudSubscriptionPlanChangeRequest struct {
+	PlanKey         string `json:"plan_key"`
+	Interval        string `json:"interval"`
+	Seats           int    `json:"seats"`
+	AcceptedAmount  *int64 `json:"accepted_amount,omitempty"`
+	ExpectedVersion int64  `json:"expected_version,omitempty"`
+	IdempotencyKey  string `json:"idempotency_key,omitempty"`
+}
+
+// readCloudSubscriptionPlanChange reads and checks the body of a plan-change
+// route. The seats, amount and version are checked for sign only; Cloud owns the
+// rest (the plan's audience, the price, the period).
+func readCloudSubscriptionPlanChange(w http.ResponseWriter, r *http.Request) (cloudSubscriptionPlanChangeRequest, bool) {
+	var in cloudSubscriptionPlanChangeRequest
+	body, ok := readCloudRuntimeJSONBody(w, r)
+	if !ok {
+		return in, false
+	}
+	if err := json.Unmarshal(body, &in); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return in, false
+	}
+	in.PlanKey = strings.TrimSpace(in.PlanKey)
+	if in.PlanKey == "" || len(in.PlanKey) > maxCloudSubscriptionPlanKeyLength {
+		writeError(w, http.StatusBadRequest, "plan_key is required and must be at most 64 characters")
+		return in, false
+	}
+	if in.Interval != "month" && in.Interval != "year" {
+		writeError(w, http.StatusBadRequest, "interval must be month or year")
+		return in, false
+	}
+	if in.Seats < 0 || in.ExpectedVersion < 0 || (in.AcceptedAmount != nil && *in.AcceptedAmount < 0) {
+		writeError(w, http.StatusBadRequest, "seats, expected_version and accepted_amount must not be negative")
+		return in, false
+	}
+	return in, true
+}
+
+// PreviewCloudWorkspaceSubscriptionPlanChange quotes a plan change for an owner
+// or admin. Nothing is written; Cloud returns the mode (charge, subscribe or
+// schedule), the amount before VAT and the version the quote was made at.
+func (h *Handler) PreviewCloudWorkspaceSubscriptionPlanChange(w http.ResponseWriter, r *http.Request) {
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, "owner", "admin")
+	if !ok {
+		return
+	}
+	in, ok := readCloudSubscriptionPlanChange(w, r)
+	if !ok {
+		return
+	}
+	upstreamBody, err := json.Marshal(cloudSubscriptionPlanChangeRequest{PlanKey: in.PlanKey, Interval: in.Interval, Seats: in.Seats})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to build plan change preview")
+		return
+	}
+	h.proxyCloudSubscription(w, r, http.MethodPost,
+		"/api/v1/subscriptions/"+workspaceID+"/plan-changes/preview", userID, upstreamBody, nil)
+}
+
+// CreateCloudWorkspaceSubscriptionPlanChange applies a quoted plan change. An
+// upgrade is charged now and returns its order; a downgrade, seat reduction or
+// interval change is stored for the next renewal. The Idempotency-Key is
+// required: a repeat of it returns the same order (spec 7b.1, rule 11).
+func (h *Handler) CreateCloudWorkspaceSubscriptionPlanChange(w http.ResponseWriter, r *http.Request) {
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, "owner", "admin")
+	if !ok {
+		return
+	}
+	in, ok := readCloudSubscriptionPlanChange(w, r)
+	if !ok {
+		return
+	}
+	idempotencyKey, ok := requireCloudSubscriptionIdempotencyKey(w, r, in.IdempotencyKey)
+	if !ok {
+		return
+	}
+	in.IdempotencyKey = idempotencyKey
+	upstreamBody, err := json.Marshal(in)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to build plan change")
+		return
+	}
+	h.proxyCloudSubscription(w, r, http.MethodPost,
+		"/api/v1/subscriptions/"+workspaceID+"/plan-changes", userID, upstreamBody, cloudSubscriptionIdempotencyHeaders(r))
+}
+
+// CancelCloudWorkspaceSubscriptionScheduledPlanChange withdraws the change stored
+// for the next renewal. The rest of the subscription is unchanged.
+func (h *Handler) CancelCloudWorkspaceSubscriptionScheduledPlanChange(w http.ResponseWriter, r *http.Request) {
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, "owner", "admin")
+	if !ok {
+		return
+	}
+	if _, ok := requireCloudSubscriptionIdempotencyKey(w, r, ""); !ok {
+		return
+	}
+	h.proxyCloudSubscription(w, r, http.MethodDelete,
+		"/api/v1/subscriptions/"+workspaceID+"/plan-changes/scheduled", userID, nil, cloudSubscriptionIdempotencyHeaders(r))
+}
+
+// CancelCloudWorkspaceSubscription sets the subscription to end at the period end
+// (spec 7b.1, rule 8). Cloud refuses a status other than active or trialing.
+func (h *Handler) CancelCloudWorkspaceSubscription(w http.ResponseWriter, r *http.Request) {
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, "owner", "admin")
+	if !ok {
+		return
+	}
+	if _, ok := requireCloudSubscriptionIdempotencyKey(w, r, ""); !ok {
+		return
+	}
+	h.proxyCloudSubscription(w, r, http.MethodPost,
+		"/api/v1/subscriptions/"+workspaceID+"/cancel", userID, nil, cloudSubscriptionIdempotencyHeaders(r))
+}
+
+// ResumeCloudWorkspaceSubscription clears the end-of-period cancellation while the
+// period, or the trial, has not ended.
+func (h *Handler) ResumeCloudWorkspaceSubscription(w http.ResponseWriter, r *http.Request) {
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, "owner", "admin")
+	if !ok {
+		return
+	}
+	if _, ok := requireCloudSubscriptionIdempotencyKey(w, r, ""); !ok {
+		return
+	}
+	h.proxyCloudSubscription(w, r, http.MethodPost,
+		"/api/v1/subscriptions/"+workspaceID+"/resume", userID, nil, cloudSubscriptionIdempotencyHeaders(r))
+}
+
 // UpdateCloudWorkspaceBillingProfile forwards a change of the workspace's
 // account kind and billing profile. Cloud validates the profile, checks the plan
 // audience and writes the audit row; this handler bounds the body and forwards

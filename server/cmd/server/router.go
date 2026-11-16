@@ -2257,6 +2257,11 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Post("/seats/reconcile", h.ReconcileCloudWorkspaceSubscriptionSeats)
 				r.Post("/portal-sessions", h.CreateCloudWorkspaceSubscriptionPortal)
 				r.Put("/billing-profile", h.UpdateCloudWorkspaceBillingProfile)
+				r.Post("/plan-changes/preview", h.PreviewCloudWorkspaceSubscriptionPlanChange)
+				r.Post("/plan-changes", h.CreateCloudWorkspaceSubscriptionPlanChange)
+				r.Delete("/plan-changes/scheduled", h.CancelCloudWorkspaceSubscriptionScheduledPlanChange)
+				r.Post("/cancel", h.CancelCloudWorkspaceSubscription)
+				r.Post("/resume", h.ResumeCloudWorkspaceSubscription)
 			})
 		})
 
