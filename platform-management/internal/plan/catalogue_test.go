@@ -178,7 +178,8 @@ func TestEmbeddedCatalogueMatchesTheSpecTable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Catalogue: %v", err)
 	}
-	if len(got) != len(header) {
+	// The table of 5.5 holds four plans; the catalogue adds the plans of 7b.3.
+	if len(got) < len(header) {
 		t.Fatalf("catalogue has %d plans, the spec table has %d", len(got), len(header))
 	}
 
@@ -243,7 +244,7 @@ func TestCatalogueOrderFollowsTheSpecColumns(t *testing.T) {
 			t.Errorf("%s has sort %d, not after %s (%d)", p.Key, p.Sort, got[i-1].Key, got[i-1].Sort)
 		}
 	}
-	if want := []string{"free", "pro", "business", "enterprise"}; !reflect.DeepEqual(keys, want) {
+	if want := []string{"free", "pro", "business", "enterprise", "unlimited"}; !reflect.DeepEqual(keys, want) {
 		t.Fatalf("keys = %v, want %v", keys, want)
 	}
 }
@@ -378,5 +379,66 @@ func TestCatalogueCarriesTheR5Fields(t *testing.T) {
 		if p.Version != 0 {
 			t.Errorf("%s version = %d, want 0 (the store owns it)", tc.key, p.Version)
 		}
+	}
+}
+
+// The unlimited plan of spec 7b.3, cell by cell.
+func TestCatalogueUnlimitedPlanMatchesSpec7b3(t *testing.T) {
+	p := byKey(t, UnlimitedKey)
+	n := func(v int64) *int64 { return &v }
+	want := Plan{
+		Key: "unlimited", Name: "Unlimited", Currency: "vnd",
+		Limits: Limits{
+			GateIssueCount: nil, GateAutopilotRuns: nil, GateAgents: nil, GateRuntimes: nil,
+			GateStorageBytes: nil, GateMemberGroups: nil,
+			GateAPIRatePerMinute: nil, GateAuditRetentionDay: n(180), // the rate cap is off (contract 2)
+		},
+		Features:       map[string]bool{"audit_export": true, "sso": false, "workspace_policies": false, "viewer_role": false},
+		SeatPriceMonth: n(249000), SeatPriceYear: n(2490000), MinSeats: intPtr(1),
+		TrialDays: 14, IsPublic: true, Sort: p.Sort, Audience: AudienceAny, BillingModel: BillingSeat,
+	}
+	if !reflect.DeepEqual(p, want) {
+		gotJSON, _ := json.Marshal(p)
+		wantJSON, _ := json.Marshal(want)
+		t.Errorf("unlimited differs from spec 7b.3\n got: %s\nwant: %s", gotJSON, wantJSON)
+	}
+	if !IsUnlimited(p) {
+		t.Error("the unlimited plan has a counted limit set")
+	}
+}
+
+func TestCatalogueOnlyTheUnlimitedPlanIsUnlimited(t *testing.T) {
+	all, err := Catalogue()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range all {
+		if got, want := IsUnlimited(p), p.Key == UnlimitedKey; got != want {
+			t.Errorf("%s IsUnlimited = %v, want %v", p.Key, got, want)
+		}
+	}
+}
+
+func TestIsUnlimitedIgnoresTheRateAndRetentionPlanValues(t *testing.T) {
+	n := int64(5)
+	p := Plan{Limits: Limits{GateAPIRatePerMinute: &n, GateAuditRetentionDay: &n}}
+	if !IsUnlimited(p) {
+		t.Error("a plan with no counted limit is unlimited whatever its rate cap")
+	}
+	p.Limits[GateStorageBytes] = &n
+	if IsUnlimited(p) {
+		t.Error("a plan with a storage limit is not unlimited")
+	}
+}
+
+func TestValidateAcceptsTheUnlimitedPlanAndRefusesAContradictoryOne(t *testing.T) {
+	if err := Validate(byKey(t, UnlimitedKey)); err != nil {
+		t.Fatalf("unlimited plan refused: %v", err)
+	}
+	bad := byKey(t, UnlimitedKey)
+	n := int64(10)
+	bad.Limits[GateAgents] = &n
+	if err := Validate(bad); err == nil {
+		t.Error("Validate accepted an unlimited plan with an agents limit")
 	}
 }

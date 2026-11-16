@@ -41,6 +41,16 @@
       "seats_fixed": null,
       "min_seats": 5,
       "trial_days": 14
+    },
+    {
+      "key": "unlimited",
+      "name": "Unlimited",
+      "currency": "vnd",
+      "seat_price_month": 249000,
+      "seat_price_year": 2490000,
+      "seats_fixed": null,
+      "min_seats": 1,
+      "trial_days": 14
     }
   ]
 }

@@ -138,10 +138,10 @@ func TestSeedAddsTheMissingPlansToATableWithOnlyFree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n != 3 {
-		t.Fatalf("seeded %d plans, want 3", n)
+	if n != 4 {
+		t.Fatalf("seeded %d plans, want 4", n)
 	}
-	for _, key := range []string{"free", "pro", "business", "enterprise"} {
+	for _, key := range []string{"free", "pro", "business", "enterprise", "unlimited"} {
 		if _, ok := s.rows[key]; !ok {
 			t.Errorf("plan %s is missing after Seed", key)
 		}

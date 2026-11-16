@@ -99,6 +99,31 @@
       "trial_days": 0,
       "is_public": false,
       "sort": 40
+    },
+    {
+      "key": "unlimited",
+      "name": "Unlimited",
+      "limits": {
+        "issue_count": null,
+        "autopilot_runs": null,
+        "agents": null,
+        "runtimes": null,
+        "storage_bytes": null,
+        "api_rate_per_minute": null,
+        "audit_retention_days": 180,
+        "member_groups": null
+      },
+      "features": { "audit_export": true, "sso": false, "workspace_policies": false, "viewer_role": false },
+      "currency": "vnd",
+      "audience": "any",
+      "billing_model": "seat",
+      "seat_price_month": 249000,
+      "seat_price_year": 2490000,
+      "seats_fixed": null,
+      "min_seats": 1,
+      "trial_days": 14,
+      "is_public": true,
+      "sort": 50
     }
   ]
 }

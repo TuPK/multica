@@ -112,16 +112,16 @@ func TestDBSeedAddsMissingPlansAndKeepsEditedRows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n != 3 {
-		t.Fatalf("seeded %d plans into a table that had one, want 3", n)
+	if n != 4 {
+		t.Fatalf("seeded %d plans into a table that had one, want 4", n)
 	}
 	var freeName string
 	if err := outer.QueryRow(ctx, `SELECT name FROM plan WHERE key = 'free'`).Scan(&freeName); err != nil || freeName != "Free (edited)" {
 		t.Fatalf("free name = %q (%v), want the staff edit kept", freeName, err)
 	}
 	var count int
-	if err := outer.QueryRow(ctx, `SELECT count(*) FROM plan WHERE key IN ('free', 'pro', 'business', 'enterprise')`).Scan(&count); err != nil || count != 4 {
-		t.Fatalf("catalogue plans = %d (%v), want 4", count, err)
+	if err := outer.QueryRow(ctx, `SELECT count(*) FROM plan WHERE key IN ('free', 'pro', 'business', 'enterprise', 'unlimited')`).Scan(&count); err != nil || count != 5 {
+		t.Fatalf("catalogue plans = %d (%v), want 5", count, err)
 	}
 	// A row written before migration 953 reads as an any-audience seat plan at
 	// version 0, and the seed leaves it so.

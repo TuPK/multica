@@ -53,6 +53,27 @@ var (
 	BillingModels = []string{BillingSeat, BillingUsage}
 )
 
+// UnlimitedKey is the catalogue plan with every counted limit off (spec 7b.3,
+// rule 1; decision D42).
+const UnlimitedKey = "unlimited"
+
+// CountedGates are the limits an unlimited plan leaves empty. The API rate and
+// the audit retention are plan values, not counted limits.
+var CountedGates = []string{
+	GateIssueCount, GateAutopilotRuns, GateAgents, GateRuntimes,
+	GateStorageBytes, GateMemberGroups,
+}
+
+// IsUnlimited reports whether p sets no counted limit.
+func IsUnlimited(p Plan) bool {
+	for _, gate := range CountedGates {
+		if p.Limits[gate] != nil {
+			return false
+		}
+	}
+	return true
+}
+
 // FreeKey is the plan of a workspace that has no subscription row.
 const FreeKey = "free"
 
@@ -202,6 +223,9 @@ func Validate(p Plan) error {
 	}
 	if err := ValidateLimits(p.Limits); err != nil {
 		return err
+	}
+	if p.Key == UnlimitedKey && !IsUnlimited(p) {
+		return errors.New("the unlimited plan has no counted limit")
 	}
 	for f := range p.Features {
 		if !slices.Contains(FeatureKeys, f) {

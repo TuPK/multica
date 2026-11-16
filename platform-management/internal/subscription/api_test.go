@@ -567,9 +567,9 @@ func TestPricesListThePublicPlansOnly(t *testing.T) {
 	for _, p := range list {
 		keys = append(keys, obj(t, p, "plan")["key"].(string))
 	}
-	// enterprise is private and business is archived.
-	if strings.Join(keys, ",") != "free,pro" {
-		t.Fatalf("plans = %v, want free,pro", keys)
+	// enterprise is private and business is archived; unlimited is public (spec 7b.3).
+	if strings.Join(keys, ",") != "free,pro,unlimited" {
+		t.Fatalf("plans = %v, want free,pro,unlimited", keys)
 	}
 	pro := obj(t, list[1], "pro")
 	if pro["seat_price_month"] != float64(149000) || pro["min_seats"] != float64(1) || pro["trial_days"] != float64(14) {
