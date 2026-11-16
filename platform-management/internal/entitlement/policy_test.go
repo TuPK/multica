@@ -2,6 +2,8 @@ package entitlement
 
 import (
 	"encoding/json"
+	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -431,6 +433,112 @@ func TestBuildEveryGateIsWellFormed(t *testing.T) {
 			default:
 				t.Errorf("%s %s has action %q", key, name, g.Action)
 			}
+		}
+	}
+}
+
+// The counted gates the policy serves (spec 7b.3 rule 1; member_groups is not
+// served yet).
+// mustPlan returns a catalogue plan and fails when the catalogue lacks it.
+func mustPlan(t *testing.T, key string) plan.Plan {
+	t.Helper()
+	p, ok := catalogue(t)[key]
+	if !ok {
+		t.Fatalf("the catalogue has no plan %q", key)
+	}
+	return p
+}
+
+var countedGates = []string{
+	plan.GateIssueCount, plan.GateAutopilotRuns, plan.GateAgents, plan.GateRuntimes, plan.GateStorageBytes,
+}
+
+func TestBuildUnlimitedPlanIsOffOnEveryCountedGate(t *testing.T) {
+	p := Build(Inputs{Plan: mustPlan(t, "unlimited"), WorkspaceStatus: "active"}, now)
+	for _, name := range countedGates {
+		g := gateOf(t, p, name)
+		if g.Action != ActionOff || g.Limit != nil {
+			t.Errorf("%s = %+v, want off with no limit", name, g)
+		}
+	}
+	if g := gateOf(t, p, plan.GateAutopilotRuns); g.Notifications != nil {
+		t.Errorf("an off autopilot gate carries notifications: %+v", g.Notifications)
+	}
+}
+
+func TestBuildPlanWithALimitKeepsItEvenNextToUnlimitedGates(t *testing.T) {
+	pl := mustPlan(t, "unlimited")
+	pl.Limits = plan.Limits{plan.GateAgents: i64(7)}
+	p := Build(Inputs{Plan: pl, WorkspaceStatus: "active"}, now)
+	if g := gateOf(t, p, plan.GateAgents); g.Action != ActionEnforce || g.Limit == nil || *g.Limit != 7 {
+		t.Errorf("agents = %+v, want enforce 7", g)
+	}
+	if g := gateOf(t, p, plan.GateRuntimes); g.Action != ActionOff {
+		t.Errorf("runtimes = %+v, want off", g)
+	}
+}
+
+// Contract section 2: a plan whose api_rate_per_minute is empty has an off
+// rate gate, not a ceiling number.
+func TestBuildEmptyAPIRateIsOff(t *testing.T) {
+	pl := mustPlan(t, "unlimited")
+	pl.Limits = plan.Limits{plan.GateAPIRatePerMinute: nil}
+	p := Build(Inputs{Plan: pl, WorkspaceStatus: "active"}, now)
+	if g := gateOf(t, p, plan.GateAPIRatePerMinute); g.Action != ActionOff || g.Limit != nil {
+		t.Errorf("api_rate_per_minute = %+v, want off with no limit", g)
+	}
+}
+
+// Contract section 2: the unlimited plan's API rate cap is off, not a number.
+func TestBuildUnlimitedPlanAPIRateIsOff(t *testing.T) {
+	p := Build(Inputs{Plan: mustPlan(t, "unlimited"), WorkspaceStatus: "active"}, now)
+	if g := gateOf(t, p, plan.GateAPIRatePerMinute); g.Action != ActionOff || g.Limit != nil {
+		t.Errorf("api_rate_per_minute = %+v, want off with no limit", g)
+	}
+}
+
+// A workspace that cannot act still has no runs on an unlimited plan (spec 7b.3 rule 3).
+func TestBuildUnlimitedPlanDoesNotExemptANonActiveWorkspace(t *testing.T) {
+	p := Build(Inputs{Plan: mustPlan(t, "unlimited"), WorkspaceStatus: "suspended"}, now)
+	if g := gateOf(t, p, plan.GateAutopilotRuns); g.Action != ActionEnforce || g.Limit == nil || *g.Limit != 0 {
+		t.Errorf("autopilot_runs = %+v, want enforce 0", g)
+	}
+}
+
+// Moving off the unlimited plan applies the new limits at once; nothing else
+// in the policy depends on the old plan.
+func TestBuildAfterDowngradeFromUnlimitedUsesTheNewLimits(t *testing.T) {
+	cat := catalogue(t)
+	before := Build(Inputs{Plan: mustPlan(t, "unlimited"), Version: 1, WorkspaceStatus: "active"}, now)
+	after := Build(Inputs{Plan: cat["free"], Version: 2, WorkspaceStatus: "active"}, now)
+	if gateOf(t, before, plan.GateAgents).Action != ActionOff {
+		t.Fatal("unlimited agents gate is not off")
+	}
+	if g := gateOf(t, after, plan.GateAgents); g.Action != ActionEnforce || *g.Limit != 3 {
+		t.Errorf("free agents = %+v, want enforce 3", g)
+	}
+}
+
+// The four plans of spec 5.5 produce the policy they produced before Q8.
+func TestBuildGoldenForTheFourOriginalPlans(t *testing.T) {
+	raw, err := os.ReadFile("testdata/policy_golden.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &want); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"free", "pro", "business", "enterprise"} {
+		got, err := json.Marshal(Build(Inputs{Plan: catalogue(t)[key], Version: 3, WorkspaceStatus: "active"}, now))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var a, b any
+		_ = json.Unmarshal(got, &a)
+		_ = json.Unmarshal(want[key], &b)
+		if !reflect.DeepEqual(a, b) {
+			t.Errorf("%s policy changed\n got: %s\nwant: %s", key, got, want[key])
 		}
 	}
 }
