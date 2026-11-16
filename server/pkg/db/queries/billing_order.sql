@@ -26,3 +26,16 @@ UPDATE billing_order
 SET buyer = $3
 WHERE workspace_id = $1 AND id = $2 AND status = 'pending'
 RETURNING *;
+
+-- name: GetWorkspaceBillingProfile :one
+SELECT * FROM billing_profile
+WHERE workspace_id = $1;
+
+-- name: ListUsageChargesForOrder :many
+-- The day lines of a usage invoice, in day order and the meters' fixed order.
+SELECT day, meter, quantity, unit_price, per, discount_pct, net_amount, note
+FROM usage_charge
+WHERE order_id = $1
+ORDER BY day,
+    CASE meter WHEN 'tasks_run' THEN 1 WHEN 'storage_bytes' THEN 2 WHEN 'members' THEN 3 ELSE 4 END,
+    meter;

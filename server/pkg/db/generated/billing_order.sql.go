@@ -52,6 +52,29 @@ func (q *Queries) GetWorkspaceBillingOrder(ctx context.Context, arg GetWorkspace
 	return i, err
 }
 
+const getWorkspaceBillingProfile = `-- name: GetWorkspaceBillingProfile :one
+SELECT workspace_id, account_kind, legal_name, tax_code, address, invoice_email, verified_at, verified_by, updated_by, updated_at FROM billing_profile
+WHERE workspace_id = $1
+`
+
+func (q *Queries) GetWorkspaceBillingProfile(ctx context.Context, workspaceID pgtype.UUID) (BillingProfile, error) {
+	row := q.db.QueryRow(ctx, getWorkspaceBillingProfile, workspaceID)
+	var i BillingProfile
+	err := row.Scan(
+		&i.WorkspaceID,
+		&i.AccountKind,
+		&i.LegalName,
+		&i.TaxCode,
+		&i.Address,
+		&i.InvoiceEmail,
+		&i.VerifiedAt,
+		&i.VerifiedBy,
+		&i.UpdatedBy,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const listPublicPlans = `-- name: ListPublicPlans :many
 
 SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at, audience, billing_model, usage_rates, usage_terms, version FROM plan
@@ -91,6 +114,56 @@ func (q *Queries) ListPublicPlans(ctx context.Context) ([]Plan, error) {
 			&i.UsageRates,
 			&i.UsageTerms,
 			&i.Version,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsageChargesForOrder = `-- name: ListUsageChargesForOrder :many
+SELECT day, meter, quantity, unit_price, per, discount_pct, net_amount, note
+FROM usage_charge
+WHERE order_id = $1
+ORDER BY day,
+    CASE meter WHEN 'tasks_run' THEN 1 WHEN 'storage_bytes' THEN 2 WHEN 'members' THEN 3 ELSE 4 END,
+    meter
+`
+
+type ListUsageChargesForOrderRow struct {
+	Day         pgtype.Date `json:"day"`
+	Meter       string      `json:"meter"`
+	Quantity    int64       `json:"quantity"`
+	UnitPrice   int64       `json:"unit_price"`
+	Per         int64       `json:"per"`
+	DiscountPct int32       `json:"discount_pct"`
+	NetAmount   int64       `json:"net_amount"`
+	Note        string      `json:"note"`
+}
+
+// The day lines of a usage invoice, in day order and the meters' fixed order.
+func (q *Queries) ListUsageChargesForOrder(ctx context.Context, orderID pgtype.UUID) ([]ListUsageChargesForOrderRow, error) {
+	rows, err := q.db.Query(ctx, listUsageChargesForOrder, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUsageChargesForOrderRow{}
+	for rows.Next() {
+		var i ListUsageChargesForOrderRow
+		if err := rows.Scan(
+			&i.Day,
+			&i.Meter,
+			&i.Quantity,
+			&i.UnitPrice,
+			&i.Per,
+			&i.DiscountPct,
+			&i.NetAmount,
+			&i.Note,
 		); err != nil {
 			return nil, err
 		}

@@ -2791,6 +2791,21 @@ type TaskUsageHourlyRollupState struct {
 	LastError         pgtype.Text        `json:"last_error"`
 }
 
+type UsageCharge struct {
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	Day         pgtype.Date        `json:"day"`
+	Meter       string             `json:"meter"`
+	Quantity    int64              `json:"quantity"`
+	PlanKey     string             `json:"plan_key"`
+	UnitPrice   int64              `json:"unit_price"`
+	Per         int64              `json:"per"`
+	DiscountPct int32              `json:"discount_pct"`
+	NetAmount   int64              `json:"net_amount"`
+	Note        string             `json:"note"`
+	OrderID     pgtype.UUID        `json:"order_id"`
+	RatedAt     pgtype.Timestamptz `json:"rated_at"`
+}
+
 type User struct {
 	ID                      pgtype.UUID        `json:"id"`
 	Name                    string             `json:"name"`

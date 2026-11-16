@@ -203,6 +203,17 @@ func (h *Handler) GetCloudWorkspaceSubscriptionSummary(w http.ResponseWriter, r 
 	h.proxyCloudSubscription(w, r, http.MethodGet, "/api/v1/subscriptions/"+workspaceID+"/summary", userID, nil, nil)
 }
 
+// GetCloudWorkspaceSubscriptionUsage forwards the platform's usage read: the
+// current period of a pay as you go plan, meter by meter. Owner and admin; the
+// billing.view group permission is not enforced on any route yet.
+func (h *Handler) GetCloudWorkspaceSubscriptionUsage(w http.ResponseWriter, r *http.Request) {
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, "owner", "admin")
+	if !ok {
+		return
+	}
+	h.proxyCloudSubscription(w, r, http.MethodGet, "/api/v1/subscriptions/"+workspaceID+"/usage", userID, nil, nil)
+}
+
 // GetCloudWorkspaceSubscriptionPrices forwards cloud's validated per-seat price
 // read so the client never hardcodes an amount that Stripe can change.
 //

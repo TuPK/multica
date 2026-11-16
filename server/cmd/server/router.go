@@ -2048,6 +2048,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Get("/plans", h.ListWorkspacePlans)
 					r.Get("/orders", h.ListWorkspaceOrders)
 					r.Get("/orders/{orderId}", h.GetWorkspaceOrder)
+					r.Get("/orders/{orderId}/usage", h.GetWorkspaceOrderUsage)
 					r.Put("/orders/{orderId}/buyer", h.UpdateWorkspaceOrderBuyer)
 				})
 
@@ -2272,6 +2273,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			})
 			r.Group(func(r chi.Router) {
 				r.Use(middleware.RequireWorkspaceRole(queries, "owner", "admin"))
+				r.Get("/usage", h.GetCloudWorkspaceSubscriptionUsage)
 				r.Post("/checkout-sessions", h.CreateCloudWorkspaceSubscriptionCheckout)
 				r.Post("/seats/purchase-preview", h.PreviewCloudWorkspaceSubscriptionSeatPurchase)
 				r.Post("/seats/purchases", h.PurchaseCloudWorkspaceSubscriptionSeats)

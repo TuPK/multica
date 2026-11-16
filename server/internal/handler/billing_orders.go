@@ -9,6 +9,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/go-chi/chi/v5"
@@ -49,6 +50,39 @@ type workspacePlanJSON struct {
 	SeatsFixed     *int32 `json:"seats_fixed"`
 	MinSeats       *int32 `json:"min_seats"`
 	TrialDays      int32  `json:"trial_days"`
+
+	BillingModel         string                   `json:"billing_model"`
+	UsageRates           map[string]usageRateJSON `json:"usage_rates"`
+	EffectiveDiscountPct int                      `json:"effective_discount_pct"`
+}
+
+// usageRateJSON is one meter of a usage plan: price VND for per units.
+type usageRateJSON struct {
+	Per   int64 `json:"per"`
+	Price int64 `json:"price"`
+}
+
+// orderUsageLineJSON is the charge of one day and meter on a usage invoice.
+type orderUsageLineJSON struct {
+	Day         string `json:"day"`
+	Meter       string `json:"meter"`
+	Quantity    int64  `json:"quantity"`
+	UnitPrice   int64  `json:"unit_price"`
+	Per         int64  `json:"per"`
+	DiscountPct int32  `json:"discount_pct"`
+	NetAmount   int64  `json:"net_amount"`
+	Note        string `json:"note"`
+}
+
+type orderUsageResponse struct {
+	OrderID string               `json:"order_id"`
+	Lines   []orderUsageLineJSON `json:"lines"`
+}
+
+// businessDiscountRequiresVerification mirrors the platform's rule (spec 7b.3
+// rule 9): the Business discount needs a verified profile unless the env is "false".
+func businessDiscountRequiresVerification() bool {
+	return strings.TrimSpace(os.Getenv("PLATFORM_BUSINESS_DISCOUNT_REQUIRES_VERIFICATION")) != "false"
 }
 
 type workspacePlansResponse struct {
@@ -168,7 +202,8 @@ func (h *Handler) requireBillingWorkspace(w http.ResponseWriter, r *http.Request
 // ListWorkspacePlans serves GET /api/workspaces/{id}/plans: the public plans and
 // their seat prices, for the plan selector. Owner and admin.
 func (h *Handler) ListWorkspacePlans(w http.ResponseWriter, r *http.Request) {
-	if _, ok := h.requireBillingWorkspace(w, r); !ok {
+	workspaceUUID, ok := h.requireBillingWorkspace(w, r)
+	if !ok {
 		return
 	}
 	rows, err := h.Queries.ListPublicPlans(r.Context())
@@ -177,12 +212,36 @@ func (h *Handler) ListWorkspacePlans(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to list plans")
 		return
 	}
+	// A workspace without a billing profile is an unverified individual.
+	profile, err := h.Queries.GetWorkspaceBillingProfile(r.Context(), workspaceUUID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		slog.Warn("get billing profile failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to list plans")
+		return
+	}
+	businessDiscount := err == nil && profile.AccountKind == "business" &&
+		(profile.VerifiedAt.Valid || !businessDiscountRequiresVerification())
 	plans := make([]workspacePlanJSON, len(rows))
 	for i, p := range rows {
 		plans[i] = workspacePlanJSON{
 			Key: p.Key, Name: p.Name, Currency: p.Currency, SeatPriceMonth: int8Ptr(p.SeatPriceMonth),
 			SeatPriceYear: int8Ptr(p.SeatPriceYear), SeatsFixed: int4Ptr(p.SeatsFixed), MinSeats: int4Ptr(p.MinSeats),
-			TrialDays: p.TrialDays,
+			TrialDays: p.TrialDays, BillingModel: p.BillingModel, UsageRates: map[string]usageRateJSON{},
+		}
+		if p.BillingModel != "usage" {
+			continue
+		}
+		// Malformed rates or terms read as none: the platform validates them on write.
+		_ = json.Unmarshal(p.UsageRates, &plans[i].UsageRates)
+		if plans[i].UsageRates == nil {
+			plans[i].UsageRates = map[string]usageRateJSON{}
+		}
+		if businessDiscount {
+			var terms struct {
+				DiscountPct map[string]int `json:"discount_pct"`
+			}
+			_ = json.Unmarshal(p.UsageTerms, &terms)
+			plans[i].EffectiveDiscountPct = terms.DiscountPct["business"]
 		}
 	}
 	writeJSON(w, http.StatusOK, workspacePlansResponse{Plans: plans})
@@ -235,6 +294,46 @@ func (h *Handler) GetWorkspaceOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, toWorkspaceOrderJSON(order, billingBankDetails()))
+}
+
+// GetWorkspaceOrderUsage serves GET /api/workspaces/{id}/orders/{orderId}/usage:
+// the day lines of a usage invoice. An order of another workspace, or one that
+// is not a usage invoice, is a 404.
+func (h *Handler) GetWorkspaceOrderUsage(w http.ResponseWriter, r *http.Request) {
+	workspaceUUID, ok := h.requireBillingWorkspace(w, r)
+	if !ok {
+		return
+	}
+	orderUUID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "orderId"), "order id")
+	if !ok {
+		return
+	}
+	order, err := h.Queries.GetWorkspaceBillingOrder(r.Context(), db.GetWorkspaceBillingOrderParams{
+		WorkspaceID: workspaceUUID, ID: orderUUID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && order.Kind != "usage") {
+		writeError(w, http.StatusNotFound, "order not found")
+		return
+	}
+	if err != nil {
+		slog.Warn("get billing order failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to get order usage")
+		return
+	}
+	charges, err := h.Queries.ListUsageChargesForOrder(r.Context(), order.ID)
+	if err != nil {
+		slog.Warn("list order usage failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to get order usage")
+		return
+	}
+	lines := make([]orderUsageLineJSON, len(charges))
+	for i, c := range charges {
+		lines[i] = orderUsageLineJSON{
+			Day: c.Day.Time.Format(time.DateOnly), Meter: c.Meter, Quantity: c.Quantity, UnitPrice: c.UnitPrice,
+			Per: c.Per, DiscountPct: c.DiscountPct, NetAmount: c.NetAmount, Note: c.Note,
+		}
+	}
+	writeJSON(w, http.StatusOK, orderUsageResponse{OrderID: uuidToString(order.ID), Lines: lines})
 }
 
 // buyerFieldError names the field a buyer value was refused for.
