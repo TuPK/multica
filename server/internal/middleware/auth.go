@@ -41,6 +41,7 @@ const (
 	codeAccountPendingDeletion  = "account_pending_deletion"
 	codeAccountStateUnavailable = "account_state_unavailable"
 	codeSessionRevoked          = "session_revoked"
+	codeMFAPending              = "mfa_pending"
 )
 
 func writeCodedError(w http.ResponseWriter, status int, code, msg string) {
@@ -366,6 +367,15 @@ func Auth(queries *db.Queries, patCache *auth.PATCache, cloudPAT *auth.CloudPATV
 			if !ok {
 				slog.Warn("auth: invalid claims", "path", r.URL.Path)
 				http.Error(w, `{"error":"invalid claims"}`, http.StatusUnauthorized)
+				return
+			}
+
+			// A token that proves only the first factor is not a session and
+			// opens no route; POST /auth/mfa/verify is public and reads it
+			// itself.
+			if auth.IsMFAPendingClaims(claims) {
+				slog.Warn("auth: mfa pending token refused", "path", r.URL.Path)
+				writeCodedError(w, http.StatusUnauthorized, codeMFAPending, "second factor required")
 				return
 			}
 

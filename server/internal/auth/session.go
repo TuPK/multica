@@ -52,9 +52,11 @@ const (
 	// adds a method.
 	AMRClaim = "amr"
 
-	// AMROTP and AMRGoogle are the methods a sign-in path can set today.
+	// AMROTP and AMRGoogle are the first-factor methods a sign-in path can set
+	// today. AMRMFA is added once the second factor has been passed.
 	AMROTP    = "otp"
 	AMRGoogle = "google"
+	AMRMFA    = "mfa"
 
 	// sessionRenewCheckDivisor derives the client-side re-check cadence
 	// from the configured TTL: a client that checks every TTL/10 gets
@@ -185,7 +187,15 @@ func parseSignedToken(tokenString string, opts ...jwt.ParserOption) (jwt.MapClai
 // This is the AUTHENTICATION parser: use it wherever the answer decides
 // whether the caller is logged in or whether a session may be extended.
 func ParseSessionToken(tokenString string) (jwt.MapClaims, error) {
-	return parseSignedToken(tokenString)
+	claims, err := parseSignedToken(tokenString)
+	if err != nil {
+		return nil, err
+	}
+	// A token that waits on the second factor is not a session.
+	if IsMFAPendingClaims(claims) {
+		return nil, ErrNotSessionToken
+	}
+	return claims, nil
 }
 
 // SessionIDFromToken returns the `sid` claim of a token we signed, or "" for

@@ -1704,6 +1704,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	r.With(authRL).Post("/auth/send-code", h.SendCode)
 	r.With(authVerifyRL).Post("/auth/verify-code", h.VerifyCode)
 	r.With(authRL).Post("/auth/google", h.GoogleLogin)
+	r.With(authVerifyRL).Post("/auth/mfa/verify", h.VerifyMFA)
 	r.Post("/auth/logout", h.Logout)
 
 	// Public API
@@ -1867,6 +1868,9 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 		// Human-only for the same reason as /api/cli-token: a machine
 		// credential must not sign its owner out of every device.
 		r.With(handler.RequireHumanActor).Post("/api/me/sessions/revoke-all", h.RevokeAllSessions(accountGuard))
+		r.With(handler.RequireHumanActor).Post("/api/me/mfa/enroll", h.EnrollMFA)
+		r.With(handler.RequireHumanActor).Post("/api/me/mfa/confirm", h.ConfirmMFA)
+		r.With(handler.RequireHumanActor).Post("/api/me/mfa/disable", h.DisableMFA)
 		r.With(handler.RequireHumanActor).Get("/api/me/security-events", h.ListMySecurityEvents)
 		r.With(handler.RequireHumanActor).Post("/api/me/consents", h.AcceptConsents)
 		r.With(handler.RequireHumanActor).Get("/api/me/export", h.ExportMyAccount(accountExportLimiter))
