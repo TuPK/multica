@@ -309,7 +309,42 @@ Fixes made in R2 slices to reach this, on `main`: the deletion manifest and the 
 
 **Open after the tests.** Buyer details of billing orders are not cleared (a retention worker must do this, per the tax and retention rules). Storage objects of workspace exports are not deleted by the teardown. Leftover `multica_test_*` databases from earlier `IsolatedDB` runs remain on the test server and need an owner decision to drop.
 
-**Rehearsal not done.** P30 requires a rehearsal on a non-production copy of the data: build the stack with the `platform` service, run `server/cmd/migrate up`, give every existing workspace a transitional subscription, point `MULTICA_CLOUD_URL` at the platform, and confirm that no workspace is blocked (spec 12). Also check that the platform exits when a migration is missing and starts by itself after the migration; that port 8095 cannot be reached from outside the internal network; and that an `mcn_` token is refused. Write the record of the rehearsal into this file.
+**G-R2 cutover rehearsal, 2026-11-16: not closed.** The backfill command is `platform-management/cmd/platform-backfill` (commit `b12ccfa2c`). It gives each workspace with no `workspace_subscription` row the free plan, one batch of 500 per transaction, with a `subscription.backfilled` audit row in the same transaction. It is safe to run again.
+
+The rehearsal ran on `multica_platform_test`, through `scripts/require-test-database.sh`. That database held no workspace rows, so the rehearsal used four fixture workspaces, `rehearsal-1` to `rehearsal-4`: three with no subscription row and one with a row (plan `team`, version 2). The fixtures and their audit rows were deleted after the checks.
+
+| Count | Result |
+| --- | --- |
+| Workspaces with no subscription row, before | 3 of 4 |
+| First run: batches, inserted | 1 batch, 3 inserted |
+| Workspaces with no subscription row, after | 0 |
+| `subscription.backfilled` audit rows after the first run | 3 |
+| Paid-row fixture after the run | unchanged (plan `team`, version 2) |
+| Second run: batches, inserted | 0 batches, 0 inserted |
+| `subscription.backfilled` audit rows after the second run | 3 |
+
+| Check | Result |
+| --- | --- |
+| `migrate up` on the test DSN | at head: 925 migration files and 925 rows before and after |
+| Backfilled rows: `free`, `active`, 0 seats, `month`, version 1, no period, trial or grace date | pass |
+| Platform on 8095, `/healthz` answers | answers, but HTTP 503 with `redis` failed: no Redis listens on 127.0.0.1:6379 here |
+| Platform refuses to start when a migration is missing | pass: exit 1, `missing required migrations: 690_platform_usage_daily_uidx` |
+| Entitlement policy readable for every rehearsal workspace | **fail** as seeded: rehearsal-1 to -3 return 200; rehearsal-4 returns 500, `plan "team" does not exist`. In a supplemental run with rehearsal-4 on `free`, all four return 200; that run is not the record. |
+| No workspace read-only or suspended because of the cutover | pass: no `platform_workspace` row of a fixture is read-only, suspended or not active, before or after |
+| Command guard refuses a name without `_test` | pass: exit 1 before any connection |
+| Port 8095 not reachable from outside; `mcn_` token refused | not run; outside the checks of this rehearsal |
+
+G-R2 is not closed because the policy check failed. The `plan` table of `multica_platform_test` holds only `free`. `plan.Seed` fills the table only when it is empty, so `pro`, `business` and `enterprise` are absent here, and a workspace on a paid plan cannot be read until the catalogue is complete. The backfill itself passed every check it was given.
+
+Open items:
+
+- Complete the plan catalogue in the test database, or choose a rehearsal fixture that the owner accepts, then repeat the policy check.
+- `docker-compose.selfhost.yml` has no `platform` service (section 11).
+- Paid workspaces need a plan set by hand; the backfill never assigns one.
+- The production run is the owner's: `platform-backfill --allow-production`, with the production `DATABASE_URL`.
+- `/healthz` reports healthy only with Redis running.
+
+Deviation from the contract: the audit detail is `{"plan": "free", "source": "cutover"}`, not `plan_key`. `audit.Record` redacts keys that contain `key`.
 
 **Decision D49 open.** Bank details are empty by decision of the project owner. Real payments cannot start until `BILLING_BANK_*` are set and the order page shows them (section 6).
 
