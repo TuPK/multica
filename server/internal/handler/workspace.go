@@ -422,7 +422,7 @@ func (h *Handler) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
 		Context:     ptrToText(req.Context),
 		IssuePrefix: issuePrefix,
 		OwnerID:     parseUUID(userID),
-		Record:      func(e audit.Entry) error { return h.recordAuditWith(r, qtx, e) },
+		Record:      func(e audit.Entry) error { return h.recordAudit(r, tx, e) },
 	})
 	if err != nil {
 		var stepErr *workspaceprovision.StepError
