@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/multica-ai/multica/server/internal/integrations/telegram"
+	"github.com/multica-ai/multica/server/internal/workspaceguard"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
@@ -249,6 +250,8 @@ func (h *Handler) RedeemTelegramBindingToken(w http.ResponseWriter, r *http.Requ
 			writeError(w, http.StatusGone, "binding token invalid or expired")
 		case errors.Is(err, telegram.ErrBindingAlreadyAssigned):
 			writeError(w, http.StatusConflict, "this Telegram account is already bound to a different Multica user")
+		case errors.Is(err, telegram.ErrBindingViewerReadOnly):
+			writeErrorCode(w, http.StatusForbidden, workspaceguard.CodeViewerReadOnly, workspaceguard.Message(workspaceguard.CodeViewerReadOnly))
 		case errors.Is(err, telegram.ErrBindingNotWorkspaceMember):
 			writeError(w, http.StatusForbidden, "binding refused (are you a workspace member?)")
 		default:

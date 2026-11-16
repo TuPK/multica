@@ -12,6 +12,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/multica-ai/multica/server/internal/workspaceguard"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
@@ -167,12 +169,20 @@ func (s *BindingTokenService) RedeemAndBind(ctx context.Context, raw string, mul
 	// check it here. Returning before Commit rolls the consume back, so
 	// a non-member's attempt does not burn the token — same outcome the
 	// FK violation produced.
-	isMember, err := qtx.IsWorkspaceMember(ctx, row.WorkspaceID, multicaUserID)
+	member, err := qtx.GetMemberByUserAndWorkspace(ctx, db.GetMemberByUserAndWorkspaceParams{
+		UserID:      multicaUserID,
+		WorkspaceID: row.WorkspaceID,
+	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return RedeemedBindingToken{}, ErrBindingNotWorkspaceMember
+		}
 		return RedeemedBindingToken{}, fmt.Errorf("check membership: %w", err)
 	}
-	if !isMember {
-		return RedeemedBindingToken{}, ErrBindingNotWorkspaceMember
+	// A viewer reads a workspace and writes nothing (spec 6.6). Checked in the
+	// same transaction as membership so a concurrent role change cannot slip by.
+	if member.Role == workspaceguard.RoleViewer {
+		return RedeemedBindingToken{}, ErrBindingViewerReadOnly
 	}
 
 	_, err = qtx.CreateLarkUserBinding(ctx, CreateUserBindingParams{
@@ -285,6 +295,10 @@ var ErrBindingAlreadyAssigned = errors.New("lark open_id is already bound to a d
 // (MUL-3515 §4 removed the member FK that used to enforce this).
 // Translated to 403 at the HTTP boundary.
 var ErrBindingNotWorkspaceMember = errors.New("redeemer is not a workspace member")
+
+// ErrBindingViewerReadOnly is returned by RedeemAndBind when the redeemer is a
+// workspace viewer (spec 6.6). Translated to 403 viewer_read_only.
+var ErrBindingViewerReadOnly = errors.New("redeemer is a workspace viewer")
 
 func randomToken(n int) (string, error) {
 	buf := make([]byte, n)

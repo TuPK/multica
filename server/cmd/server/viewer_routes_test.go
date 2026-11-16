@@ -52,7 +52,7 @@ func TestViewerIsRefusedEveryWorkspaceWriteRoute(t *testing.T) {
 			}
 		case exempt:
 			// Not a workspace write, or one a handler refuses itself. The reason
-			// is printed so an open gap is visible in the test output.
+			// is printed so the exemption is visible in the test output.
 			t.Logf("%s: not checked here: %s", key, reason)
 		default:
 			if reached {
@@ -75,8 +75,8 @@ func TestViewerIsRefusedEveryWorkspaceWriteRoute(t *testing.T) {
 
 // viewerWriteExceptions are write routes that the workspace guard does not
 // cover, by "METHOD route". Each reason says why the route is outside the
-// guard. An entry that starts with OPEN GAP is a viewer write that is still
-// possible; it is listed, not accepted.
+// guard. Every entry is either the caller's own state or enforced by its handler,
+// which refuses a viewer itself and has a named test.
 var viewerWriteExceptions = map[string]string{
 	// User-scoped: the caller's own account, tokens, or sign-in. No workspace data.
 	"POST /api/auth/refresh":                             "user session refresh",
@@ -115,13 +115,14 @@ var viewerWriteExceptions = map[string]string{
 	"POST /auth/verify-code":                             "sign-in flow, no workspace",
 	// Handler-enforced: the handler refuses a viewer itself (see the named test).
 	"POST /api/upload-file": "handler-enforced: UploadFile calls refuseViewer (TestUploadFileRefusesAViewer)",
-	// OPEN GAP: a chat-app binding redeem creates the caller's binding to the
-	// workspace inside the redeem transaction, with only a membership check.
-	"POST /api/dingtalk/binding/redeem": "OPEN GAP: binding redeem admits a viewer; needs a role check in the integration package",
-	"POST /api/lark/binding/redeem":     "OPEN GAP: binding redeem admits a viewer; needs a role check in the integration package",
-	"POST /api/slack/binding/redeem":    "OPEN GAP: binding redeem admits a viewer; needs a role check in the integration package",
-	"POST /api/telegram/binding/redeem": "OPEN GAP: binding redeem admits a viewer; needs a role check in the integration package",
-	"POST /api/wecom/binding/redeem":    "OPEN GAP: binding redeem admits a viewer; needs a role check in the integration package",
+	// Handler-enforced: the workspace comes from the binding token, not from a
+	// header, so the workspace middleware cannot see it. The redeem transaction
+	// refuses a viewer (TestBindingRedeemRefusesAViewerAndAdmitsAMember).
+	"POST /api/dingtalk/binding/redeem": "handler-enforced: redeem refuses a viewer in its transaction (TestBindingRedeemRefusesAViewerAndAdmitsAMember)",
+	"POST /api/lark/binding/redeem":     "handler-enforced: redeem refuses a viewer in its transaction (TestBindingRedeemRefusesAViewerAndAdmitsAMember)",
+	"POST /api/slack/binding/redeem":    "handler-enforced: redeem refuses a viewer in its transaction (TestBindingRedeemRefusesAViewerAndAdmitsAMember)",
+	"POST /api/telegram/binding/redeem": "handler-enforced: redeem refuses a viewer in its transaction (TestBindingRedeemRefusesAViewerAndAdmitsAMember)",
+	"POST /api/wecom/binding/redeem":    "handler-enforced: redeem refuses a viewer in its transaction (TestBindingRedeemRefusesAViewerAndAdmitsAMember)",
 }
 
 // viewerExemptPrefixes are whole route families outside the guard. Daemon

@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/integrations/channel/engine"
+	"github.com/multica-ai/multica/server/internal/workspaceguard"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
@@ -37,6 +38,9 @@ var (
 	// ErrBindingNotWorkspaceMember: the redeemer is not a member of the token's
 	// workspace.
 	ErrBindingNotWorkspaceMember = errors.New("telegram: redeemer is not a workspace member")
+	// ErrBindingViewerReadOnly: the redeemer is a viewer, who may not create a
+	// binding (spec 6.6). Translated to 403 viewer_read_only at the HTTP boundary.
+	ErrBindingViewerReadOnly = errors.New("telegram: redeemer is a workspace viewer")
 )
 
 // BindingToken is a freshly minted token; the raw value is returned exactly
@@ -116,14 +120,18 @@ func (s *BindingTokenService) RedeemAndBind(ctx context.Context, raw string, mul
 
 	// Explicit membership gate (no member FK): returning before Commit rolls
 	// the consume back, so a non-member's attempt does not burn the token.
-	if _, err := qtx.GetMemberByUserAndWorkspace(ctx, db.GetMemberByUserAndWorkspaceParams{
+	member, err := qtx.GetMemberByUserAndWorkspace(ctx, db.GetMemberByUserAndWorkspaceParams{
 		UserID:      multicaUserID,
 		WorkspaceID: row.WorkspaceID,
-	}); err != nil {
+	})
+	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return RedeemedBindingToken{}, ErrBindingNotWorkspaceMember
 		}
 		return RedeemedBindingToken{}, fmt.Errorf("check membership: %w", err)
+	}
+	if member.Role == workspaceguard.RoleViewer {
+		return RedeemedBindingToken{}, ErrBindingViewerReadOnly
 	}
 
 	if _, err := qtx.CreateChannelUserBinding(ctx, db.CreateChannelUserBindingParams{
