@@ -109,8 +109,10 @@ func TestListWorkspaceAuditEvents_AccessAndIsolation(t *testing.T) {
 	if rec := auditGet(t, router, member, path); rec.Code != http.StatusForbidden {
 		t.Fatalf("member: status %d, want 403", rec.Code)
 	}
-	if rec := auditGet(t, router, otherOwner, path); rec.Code != http.StatusForbidden {
-		t.Fatalf("owner of another workspace: status %d, want 403", rec.Code)
+	// A non-member gets 404 from the membership gate, not 403: the workspace is
+	// not revealed to someone outside it.
+	if rec := auditGet(t, router, otherOwner, path); rec.Code != http.StatusNotFound {
+		t.Fatalf("owner of another workspace: status %d, want 404", rec.Code)
 	}
 	for name, uid := range map[string]string{"owner": owner, "admin": admin} {
 		rec := auditGet(t, router, uid, path)
