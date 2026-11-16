@@ -16,7 +16,23 @@ function readText(path, root) {
   return buffer.toString("utf8");
 }
 
-export function buildPackBundle(packDir, root) {
+// A skill a pack names resolves to one place: packs/<id>/skills/<name> or, when the pack holds no copy, the
+// catalog skill with the same id (catalog/skills/<group>/<folder>). The catalog copy carries its own manifest
+// and translations, which are not part of an installed skill.
+export const CATALOG_SKILL_EXCLUDED = (path) => path === "template.json" || path.startsWith("i18n/");
+
+export function resolvePackSkill(packDir, name, catalogSkillDirs) {
+  const own = join(packDir, "skills", name);
+  const inPack = existsSync(join(own, "SKILL.md"));
+  const inCatalog = catalogSkillDirs.has(name);
+  if (inPack && inCatalog) throw new Error(`skill ${name} is in both packs/${basename(packDir)}/skills and the catalog: keep one copy`);
+  if (inPack) return { dir: own, catalog: false };
+  if (inCatalog) return { dir: catalogSkillDirs.get(name), catalog: true };
+  throw new Error(`skill ${name} is in neither packs/${basename(packDir)}/skills nor the catalog`);
+}
+
+// catalogSkillDirs: skill id -> folder, for the catalog skills (a pack may name them).
+export function buildPackBundle(packDir, root, catalogSkillDirs = new Map()) {
   const id = basename(packDir);
   const manifest = JSON.parse(readText(join(packDir, "pack.json"), root));
   const { agent } = manifest;
@@ -29,11 +45,12 @@ export function buildPackBundle(packDir, root) {
       max_concurrent_tasks: agent.max_concurrent_tasks,
     },
     skills: manifest.skills.map((name) => {
-      const skillDir = join(packDir, "skills", name);
+      const { dir: skillDir, catalog } = resolvePackSkill(packDir, name, catalogSkillDirs);
       return {
         name,
         files: listFiles(skillDir)
           .map((file) => ({ path: relative(skillDir, file).split("\\").join("/"), content: readText(file, root) }))
+          .filter((file) => !catalog || !CATALOG_SKILL_EXCLUDED(file.path))
           .sort((a, b) => a.path.localeCompare(b.path)),
       };
     }),
@@ -56,7 +73,7 @@ ${sorted.map((id) => `  ${JSON.stringify(id)}: () => import(${JSON.stringify(`./
 `;
 }
 
-export function validatePack(entry, problems) {
+export function validatePack(entry, problems, context = { entries: [] }) {
   const err = (message) => problems.errors.push(`${entry.path}: ${message}`);
   let manifest;
   try {
@@ -68,10 +85,20 @@ export function validatePack(entry, problems) {
   if (!agent || typeof agent.name !== "string" || typeof agent.instructions_file !== "string") return err("pack.json needs agent.name and agent.instructions_file");
   if (!existsSync(join(entry.dir, agent.instructions_file))) err(`${agent.instructions_file} is missing`);
   if (!Array.isArray(manifest.skills) || manifest.skills.length === 0) err("pack.json must list skills");
+  const catalogSkills = catalogSkillDirsOf(context.entries);
   for (const name of manifest.skills ?? []) {
     if (!/^[a-z0-9][a-z0-9._-]*$/.test(name)) err(`skill name ${name} is not valid`);
-    if (!existsSync(join(entry.dir, "skills", name, "SKILL.md"))) err(`skills/${name}/SKILL.md is missing`);
+    try {
+      resolvePackSkill(entry.dir, name, catalogSkills);
+    } catch (e) {
+      err(e.message);
+    }
   }
+}
+
+// The catalog skills by id, to resolve the names a pack lists.
+export function catalogSkillDirsOf(entries) {
+  return new Map(entries.filter((e) => e.kind === "skill").map((e) => [e.manifest.id, e.dir]));
 }
 
 export function packDirs(catalogRoot) {

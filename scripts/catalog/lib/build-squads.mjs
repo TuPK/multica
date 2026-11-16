@@ -34,6 +34,7 @@ export function squadRecords(entries) {
         collection: manifest.collection,
         ...(manifest.expertReview === undefined ? {} : { expertReview: manifest.expertReview }),
         ...(manifest.adapter === undefined ? {} : { adapter: manifest.adapter }),
+        ...(manifest.includes === undefined ? {} : { includes: manifest.includes }),
         squad,
       };
     });

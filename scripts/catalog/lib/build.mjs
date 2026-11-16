@@ -7,8 +7,8 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { catalogDir, repoRoot } from "./paths.mjs";
-import { renderSkillsBuiltin, renderSkillsets } from "./build-skills.mjs";
-import { buildPackBundle, packDirs, renderPackIndex } from "./build-packs.mjs";
+import { chunkSkillsets, renderSkillsBuiltin, renderSkillsChunk, renderSkillsets } from "./build-skills.mjs";
+import { buildPackBundle, catalogSkillDirsOf, packDirs, renderPackIndex } from "./build-packs.mjs";
 import { renderCollections, renderI18n, renderRoleInstructions, renderSquads } from "./build-squads.mjs";
 import { companyForGo, renderAgents, renderCompany } from "./build-company.mjs";
 import { designerTemplates, flowsById, renderFlows, renderWorkflows, workflowsById } from "./build-workflows.mjs";
@@ -53,6 +53,7 @@ export function buildAll({ entries, config, target, tsOutDir, goOutDir }) {
   if (target === "ts" || target === "all") {
     written += write(join(tsOutDir, "skills-builtin.ts"), renderSkillsBuiltin(entries));
     written += write(join(tsOutDir, "skillsets.ts"), renderSkillsets(entries));
+    for (const set of chunkSkillsets(entries)) written += write(join(tsOutDir, `skills-builtin-${set}.ts`), renderSkillsChunk(entries, set));
     written += write(join(tsOutDir, "collections.ts"), renderCollections(entries));
     written += write(join(tsOutDir, "squads.ts"), renderSquads(entries));
     written += write(join(tsOutDir, "i18n.ts"), renderI18n(entries, config.locales));
@@ -65,8 +66,9 @@ export function buildAll({ entries, config, target, tsOutDir, goOutDir }) {
     // The kitviet folder is written (and its own stale files removed) by the generator.
     execFileSync(process.execPath, [join(repoRoot, "scripts/generate-kitviet-pack.mjs"), "--out", join(tsOutDir, "kitviet")], { stdio: ["ignore", "ignore", "inherit"] });
     const packIds = [];
+    const catalogSkills = catalogSkillDirsOf(entries);
     for (const dir of packDirs(catalogDir)) {
-      const bundle = buildPackBundle(dir, repoRoot);
+      const bundle = buildPackBundle(dir, repoRoot, catalogSkills);
       packIds.push(bundle.id);
       written += write(join(tsOutDir, "agent-packs", `${bundle.id}.json`), `${JSON.stringify(bundle, null, 2)}\n`);
     }

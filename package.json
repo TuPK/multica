@@ -37,7 +37,8 @@
     "catalog:build": "node scripts/catalog/cli.mjs build",
     "catalog:check": "node scripts/catalog/cli.mjs check",
     "catalog:new": "node scripts/catalog/cli.mjs new",
-    "catalog:list": "node scripts/catalog/cli.mjs list"
+    "catalog:list": "node scripts/catalog/cli.mjs list",
+    "catalog:map": "node scripts/catalog/cli.mjs map"
   },
   "engines": {
     "node": ">=22"

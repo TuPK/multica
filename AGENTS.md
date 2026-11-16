@@ -20,7 +20,7 @@ Multica is a task management platform where people and agents collaborate on iss
 | `apps/desktop/` | Electron and desktop-only UI/state. Application navigation goes through `apps/desktop/src/renderer/src/platform/`. |
 | `apps/mobile/` | Independent Expo/React Native client: owns UI, state, hooks, providers, i18n, build, and release. Shares core types and pure utilities, including platform-independent schemas. |
 | `apps/docs/` | Fumadocs documentation site |
-| `catalog/` | Template content that changes often: skills, squads, agent instruction templates, workflows, starter company, agent packs, with their translations. Source only; code is generated from it. See [catalog/README.md](catalog/README.md) |
+| `catalog/` | Template content that changes often: skills, squads, agent instruction templates, workflows, starter company, agent packs, domains, with their translations. Source only; code is generated from it. See [catalog/README.md](catalog/README.md) |
 
 - Dependency direction is `views -> core + ui`; core and ui remain independent. Shared packages export raw TypeScript compiled by consuming apps.
 - Extract logic used by both web and desktop into the appropriate shared package. Keep framework/Electron APIs in the app layer; inject platform-specific UI through props/slots.

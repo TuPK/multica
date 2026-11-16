@@ -2,15 +2,17 @@
 // generated skill bundle. Run: node --test scripts/catalog/*.test.mjs
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, describe, it } from "node:test";
 import { discover, readRegistryConfig } from "./lib/discover.mjs";
-import { renderSkillsBuiltin, skillsetMembers } from "./lib/build-skills.mjs";
+import { renderSkillsBuiltin, renderSkillsChunk, renderSkillsets, skillsetMembers } from "./lib/build-skills.mjs";
 import { flowRev, flowsById, renderFlows } from "./lib/build-workflows.mjs";
 import { buildAll } from "./lib/build.mjs";
 import { load } from "./cli.mjs";
+import { buildMap } from "./lib/map.mjs";
+import { buildPackBundle, catalogSkillDirsOf } from "./lib/build-packs.mjs";
 import { withBuildLock } from "./lib/lock.mjs";
 import { supportedLocales, validateCatalog } from "./lib/validate.mjs";
 
@@ -210,6 +212,20 @@ describe("squad validation", () => {
     assert.match(text, /role demo_lead: name comes from the Kit Viet pack/);
   });
 
+  it("accepts skill names in extra, leader and byRole that are quickstart skills", () => {
+    const skills = { sets: [], extra: ["demo-skill"], leader: ["demo-skill"], byRole: { demo_lead: ["demo-skill"] } };
+    assert.deepEqual(check(squadFixture(squadManifest({ skills }))).errors, []);
+  });
+
+  it("rejects a skill name in extra, leader or byRole that is not a quickstart skill, and a byRole key that is not a role", () => {
+    const skills = { sets: [], extra: ["no-such-skill"], leader: ["no-such-skill"], byRole: { ghost: ["demo-skill"], demo_lead: ["no-such-skill"] } };
+    const text = check(squadFixture(squadManifest({ skills }))).errors.join("\n");
+    assert.match(text, /squad\.skills\.extra names "no-such-skill", which is not a skill of a quickstart skillset/);
+    assert.match(text, /squad\.skills\.leader names "no-such-skill"/);
+    assert.match(text, /squad\.skills\.byRole\.demo_lead names "no-such-skill"/);
+    assert.match(text, /squad\.skills\.byRole names role "ghost", which is not a role of this squad/);
+  });
+
   it("requires a role several squads share to be defined the same way", () => {
     const other = squadManifest();
     other.id = "other_squad";
@@ -219,6 +235,190 @@ describe("squad validation", () => {
     write(root, "squads/other_squad/instructions.md", "x\n");
     for (const locale of LOCALES) write(root, `squads/other_squad/i18n/${locale}.json`, { title: "t", description: "d" });
     assert.match(check(root).errors.join("\n"), /role demo_lead is defined differently in/);
+  });
+});
+
+// A domain with a README, one primary and one expansion market, and a skill that belongs to it.
+function domainFixture(domainManifest, skillManifest, overrides = {}) {
+  return fixture({
+    "domains/demo/template.json": domainManifest,
+    "domains/demo/README.md": "# Demo\n",
+    "skills/g/demo-skill/template.json": skillManifest,
+    ...overrides,
+  });
+}
+const DOMAIN = {
+  schemaVersion: 1, kind: "domain", id: "demo", version: "1.0.0",
+  markets: [{ id: "vn", role: "primary" }, { id: "intl", role: "expansion" }],
+  related: [],
+};
+const SKILL_IN_DOMAIN = {
+  schemaVersion: 1, kind: "skill", id: "demo-skill", version: "1.0.0", sets: ["demo"], source: { type: "authored" },
+  domain: "demo", markets: ["vn"],
+};
+
+describe("domain validation", () => {
+  it("accepts a domain with a README, and members that name it and its markets", () => {
+    assert.deepEqual(check(domainFixture(DOMAIN, SKILL_IN_DOMAIN)).errors, []);
+  });
+
+  it("requires a README.md, exactly one primary market, and related targets that exist", () => {
+    const noReadme = check(domainFixture(DOMAIN, SKILL_IN_DOMAIN, { "domains/demo/README.md": null })).errors.join("\n");
+    assert.match(noReadme, /README\.md is missing/);
+    const twoPrimary = check(domainFixture({ ...DOMAIN, markets: [{ id: "vn", role: "primary" }, { id: "intl", role: "primary" }] }, SKILL_IN_DOMAIN)).errors.join("\n");
+    assert.match(twoPrimary, /exactly one market is primary, got 2/);
+    const badRelated = check(domainFixture({ ...DOMAIN, related: [{ kind: "squad", id: "nowhere" }] }, SKILL_IN_DOMAIN)).errors.join("\n");
+    assert.match(badRelated, /related names squad "nowhere", which does not exist/);
+  });
+
+  it("refuses a member whose domain does not exist, or a market the domain does not list", () => {
+    const unknown = check(domainFixture(DOMAIN, { ...SKILL_IN_DOMAIN, domain: "ghost" })).errors.join("\n");
+    assert.match(unknown, /domain "ghost" does not exist/);
+    const market = check(domainFixture(DOMAIN, { ...SKILL_IN_DOMAIN, markets: ["zz"] })).errors.join("\n");
+    assert.match(market, /market "zz" is not a market of domain "demo"/);
+    const orphan = check(domainFixture(DOMAIN, { ...SKILL_IN_DOMAIN, domain: undefined, markets: ["vn"] })).errors.join("\n");
+    assert.match(orphan, /markets needs a domain/);
+  });
+
+  it("requires a squad of a domain to sit in the collection of the same id", () => {
+    const manifest = squadManifest();
+    manifest.domain = "demo";
+    manifest.markets = ["vn"];
+    const root = squadFixture(manifest);
+    write(root, "domains/demo/template.json", DOMAIN);
+    write(root, "domains/demo/README.md", "# Demo\n");
+    assert.match(check(root).errors.join("\n"), /must sit in collection "demo", not "main"/);
+  });
+});
+
+// A pack that names one skill of the catalog and holds no copy of it (E5).
+function packFixture(skills, overrides = {}) {
+  const files = {
+    "packs/demo-pack/template.json": { schemaVersion: 1, kind: "pack", id: "demo-pack", version: "1.0.0", source: { type: "authored" } },
+    "packs/demo-pack/pack.json": { agent: { name: "Demo Pack", description: "d", instructions_file: "instructions.md" }, skills },
+    "packs/demo-pack/instructions.md": "x\n",
+    ...overrides,
+  };
+  for (const locale of LOCALES) files[`packs/demo-pack/i18n/${locale}.json`] = { title: "Demo Pack", description: "d" };
+  return fixture(files);
+}
+
+describe("pack skills", () => {
+  it("resolves a skill the pack names to the catalog copy, and builds the same shape", () => {
+    const root = packFixture(["demo-skill"]);
+    assert.deepEqual(check(root).errors, []);
+    const { entries } = discover(root);
+    const bundle = buildPackBundle(join(root, "packs/demo-pack"), root, catalogSkillDirsOf(entries));
+    assert.equal(bundle.skills[0].name, "demo-skill");
+    const paths = bundle.skills[0].files.map((f) => f.path);
+    assert.deepEqual(paths, ["references/notes.md", "SKILL.md"]);
+  });
+
+  it("refuses a skill that is in both the pack and the catalog, and one that is in neither", () => {
+    const both = packFixture(["demo-skill"], { "packs/demo-pack/skills/demo-skill/SKILL.md": "---\nname: demo-skill\n---\n" });
+    assert.match(check(both).errors.join("\n"), /skill demo-skill is in both packs\/demo-pack\/skills and the catalog/);
+    const neither = packFixture(["ghost-skill"]);
+    assert.match(check(neither).errors.join("\n"), /skill ghost-skill is in neither/);
+  });
+});
+
+describe("map", () => {
+  // A domain with a normal squad, a Kit Viet squad (its skills come from _sources), a skill and a pack.
+  function mapFixture() {
+    return domainFixture(
+      { ...DOMAIN, related: [{ kind: "squad", id: "demo_squad", note: "outside" }] },
+      SKILL_IN_DOMAIN,
+      {
+        "squads/demo_squad/template.json": { ...squadManifest({ skills: { sets: ["demo"], extra: ["demo-skill"] } }), collection: "demo", domain: "demo", markets: ["vn"] },
+        "squads/demo_squad/instructions.md": "x\n",
+        "squads/demo_squad/i18n/en.json": { title: "t", description: "d" },
+        "_sources/kitviet/squads/kv.json": { templateId: "kv_demo", builtinSkills: ["shared-one"], leaderSkills: ["lead-one"], roleSkills: { kv_role: ["role-one"] } },
+        "packs/demo-pack/template.json": { schemaVersion: 1, kind: "pack", id: "demo-pack", version: "1.0.0", domain: "demo", source: { type: "authored" } },
+        "packs/demo-pack/pack.json": { agent: { name: "Demo Pack", description: "d", instructions_file: "instructions.md" }, skills: ["demo-skill"] },
+        "packs/demo-pack/instructions.md": "x\n",
+      },
+    );
+  }
+
+  it("lists the squads, skills, packs and related templates of one domain, as data", () => {
+    const root = mapFixture();
+    const { entries } = discover(root);
+    const map = buildMap(entries, "demo", root);
+    assert.deepEqual(map.domain.markets, DOMAIN.markets);
+    assert.deepEqual(map.squads.map((s) => [s.id, s.collection, s.markets, s.skills, s.kitviet]), [["demo_squad", "demo", ["vn"], 1, false]]);
+    assert.deepEqual(map.skills.groups, { g: [{ id: "demo-skill", markets: ["vn"], source: "authored" }] });
+    assert.deepEqual(map.packs, [{ id: "demo-pack", name: "Demo Pack", skills: ["demo-skill"], markets: [] }]);
+    assert.deepEqual(map.related, [{ kind: "squad", id: "demo_squad", note: "outside" }]);
+    assert.deepEqual(map.warnings, []);
+  });
+
+  it("names the Kit Viet skills of a Kit Viet squad with the kv: prefix, read from its source", () => {
+    const root = mapFixture();
+    const kv = { ...squadManifest(), id: "kv_demo", collection: "kitviet", domain: "demo", markets: ["vn"], adapter: { type: "kitviet" } };
+    kv.squad = { ...kv.squad, name: "KV Demo", leader: "kv_role", roles: [{ key: "kv_role", description: "d", role: "r" }] };
+    delete kv.squad.skills;
+    write(root, "squads/kv_demo/template.json", kv);
+    for (const locale of LOCALES) write(root, `squads/kv_demo/i18n/${locale}.json`, { title: "t", description: "d" });
+    const { entries } = discover(root);
+    const row = buildMap(entries, "demo", root).squads.find((s) => s.id === "kv_demo");
+    assert.equal(row.kitviet, true);
+    assert.equal(row.skills, 3);
+  });
+
+  it("refuses an unknown domain and warns about a skill under the domain's folder that names no domain", () => {
+    const root = mapFixture();
+    const { entries } = discover(root);
+    assert.throws(() => buildMap(entries, "ghost", root), /no domain "ghost"/);
+    const orphaned = fixture({ "domains/demo/template.json": DOMAIN, "domains/demo/README.md": "# Demo\n" });
+    write(orphaned, "skills/demo/loose-skill/SKILL.md", '---\nname: loose-skill\ndescription: "Use when testing."\n---\n\n# Loose\n');
+    write(orphaned, "skills/demo/loose-skill/template.json", { schemaVersion: 1, kind: "skill", id: "loose-skill", version: "1.0.0", sets: ["demo"], source: { type: "authored" } });
+    const found = discover(orphaned).entries;
+    assert.match(buildMap(found, "demo", orphaned).warnings.join("\n"), /skill loose-skill sits under skills\/demo\/ but has no "domain"/);
+  });
+});
+
+describe("squad includes", () => {
+  // The demo squad (in domain demo, collection demo) and one other squad of the domain, both valid.
+  function setFixture(includes, partOverrides = {}) {
+    const root = squadFixture({ ...squadManifest({ skills: { sets: [] } }), collection: "demo", domain: "demo", markets: ["vn"], includes });
+    write(root, "domains/demo/template.json", DOMAIN);
+    write(root, "domains/demo/README.md", "# Demo\n");
+    write(root, "collections/demo/template.json", { schemaVersion: 1, kind: "collection", id: "demo", version: "1.0.0", for: "squad" });
+    for (const locale of LOCALES) write(root, `collections/demo/i18n/${locale}.json`, { title: "Demo" });
+    const part = {
+      ...squadManifest({ leader: "part_lead", roles: [{ key: "part_lead", agentTemplate: "tech_lead", name: "Part Lead", description: "Leads.", role: "Squad leader" }], skills: { sets: [] } }),
+      id: "part_squad", collection: "demo", domain: "demo", markets: ["vn"], ...partOverrides,
+    };
+    write(root, "squads/part_squad/template.json", part);
+    write(root, "squads/part_squad/instructions.md", "x\n");
+    for (const locale of LOCALES) write(root, `squads/part_squad/i18n/${locale}.json`, { title: "Part", description: "d" });
+    return root;
+  }
+
+  it("accepts a set of squads in one domain, one level deep", () => {
+    assert.deepEqual(check(setFixture(["part_squad"])).errors, []);
+  });
+
+  it("refuses an id that does not exist, a squad of another domain, a repeat and the squad itself", () => {
+    assert.match(check(setFixture(["ghost"])).errors.join("\n"), /includes names squad "ghost", which does not exist/);
+    assert.match(check(setFixture(["part_squad"], { domain: "other" })).errors.join("\n"), /includes "part_squad", which is not in domain "demo"/);
+    assert.match(check(setFixture(["part_squad", "part_squad"])).errors.join("\n"), /includes lists a squad twice/);
+    assert.match(check(setFixture(["demo_squad"])).errors.join("\n"), /includes names the squad itself/);
+  });
+
+  it("refuses a squad that is itself a set: a set is one level deep", () => {
+    const root = setFixture(["part_squad"]);
+    const part = JSON.parse(readFileSync(join(root, "squads/part_squad/template.json"), "utf8"));
+    write(root, "squads/part_squad/template.json", { ...part, includes: ["demo_squad"] });
+    assert.match(check(root).errors.join("\n"), /includes "part_squad", which includes squads of its own; a set is one level deep/);
+  });
+
+  it("needs a domain to include anything", () => {
+    const root = setFixture(["part_squad"]);
+    const demo = JSON.parse(readFileSync(join(root, "squads/demo_squad/template.json"), "utf8"));
+    delete demo.domain;
+    write(root, "squads/demo_squad/template.json", demo);
+    assert.match(check(root).errors.join("\n"), /includes needs a domain/);
   });
 });
 
@@ -414,6 +614,40 @@ describe("skill bundle", () => {
     assert.doesNotMatch(text, /"path": "template\.json"/);
     assert.doesNotMatch(text, /"path": "i18n\/en\.json"/);
     assert.deepEqual(skillsetMembers(entries), { demo: ["demo-skill"] });
+  });
+});
+
+describe("chunked skillset", () => {
+  // The demo skillset becomes a chunk: its skill leaves the SDLC bundle and gets a module of its own.
+  const chunked = () => fixture({ "skillsets/demo/template.json": { schemaVersion: 1, kind: "skillset", id: "demo", version: "1.0.0", target: "quickstart", chunk: true } });
+
+  it("keeps a chunk skill out of the main bundle and writes it into its own module", () => {
+    const { entries } = discover(chunked());
+    assert.doesNotMatch(renderSkillsBuiltin(entries), /"name": "demo-skill"/);
+    const module = renderSkillsChunk(entries, "demo");
+    assert.match(module, /export const DEMO_BUILTIN_SKILLS: readonly BuiltinSkill\[\] = \[/);
+    assert.match(module, /"name": "demo-skill"/);
+    assert.match(renderSkillsets(entries), /"demo": async \(\) => \(await import\("\.\/skills-builtin-demo"\)\)\.DEMO_BUILTIN_SKILLS,/);
+  });
+
+  it("keeps a skill of the main bundle in the bundle when no skillset is a chunk", () => {
+    const { entries } = discover(fixture());
+    assert.match(renderSkillsBuiltin(entries), /"name": "demo-skill"/);
+    assert.match(renderSkillsets(entries), /SKILLSET_CHUNK_LOADERS: Readonly<Record<string, \(\) => Promise<readonly BuiltinSkill\[\]>>> = \{\};/);
+  });
+
+  it("requires chunk to be a boolean on a quickstart skillset, and refuses a chunk on a starter skillset", () => {
+    const notBool = check(fixture({ "skillsets/demo/template.json": { schemaVersion: 1, kind: "skillset", id: "demo", version: "1.0.0", target: "quickstart", chunk: "yes" } })).errors.join("\n");
+    assert.match(notBool, /chunk must be a boolean/);
+    const starter = check(fixture({ "skillsets/demo/template.json": { schemaVersion: 1, kind: "skillset", id: "demo", version: "1.0.0", target: "starter", chunk: true } })).errors.join("\n");
+    assert.match(starter, /a chunk skillset must have target "quickstart"/);
+  });
+
+  it("refuses a skill of a chunk skillset that also names another skillset", () => {
+    const root = chunked();
+    write(root, "skillsets/other/template.json", { schemaVersion: 1, kind: "skillset", id: "other", version: "1.0.0", target: "quickstart" });
+    write(root, "skills/g/demo-skill/template.json", { schemaVersion: 1, kind: "skill", id: "demo-skill", version: "1.0.0", sets: ["demo", "other"], source: { type: "authored" } });
+    assert.match(check(root).errors.join("\n"), /must name no other skillset/);
   });
 });
 

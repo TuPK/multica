@@ -57,12 +57,31 @@ MAX_TASKS=$(jq -r '.agent.max_concurrent_tasks // 6' "$PACK_JSON")
 INSTRUCTIONS_PATH="$PACK_DIR/$INSTRUCTIONS_FILE"
 [ -f "$INSTRUCTIONS_PATH" ] || { echo "Missing instructions file: $INSTRUCTIONS_PATH" >&2; exit 2; }
 
+# A skill is a copy in the pack (skills/<name>) or, when the pack holds none, the catalog skill with the same
+# id (catalog/skills/<group>/<name with ':' as '--'>). Both is an error: one copy of each skill.
+CATALOG_SKILLS="$(cd "$(dirname "$0")/.." && pwd)/catalog/skills"
+declare -A SKILL_DIRS=()
+declare -A SKILL_FROM_CATALOG=()
 mapfile -t SKILLS < <(jq -r '.skills[]' "$PACK_JSON")
 for name in "${SKILLS[@]}"; do
   case "$name" in
     ""|*[!a-z0-9._-]*|.*) echo "Invalid skill name in pack.json: '$name'" >&2; exit 2 ;;
   esac
-  [ -f "$PACK_DIR/skills/$name/SKILL.md" ] || { echo "Missing skills/$name/SKILL.md" >&2; exit 2; }
+  in_pack=0; [ -f "$PACK_DIR/skills/$name/SKILL.md" ] && in_pack=1
+  catalog_dirs=$(find "$CATALOG_SKILLS" -type d -name "${name//:/--}" -exec test -f '{}/SKILL.md' \; -print 2>/dev/null || true)
+  in_catalog=0; [ -n "$catalog_dirs" ] && in_catalog=1
+  if [ "$in_pack" = 1 ] && [ "$in_catalog" = 1 ]; then
+    echo "Skill $name is in both $PACK_DIR/skills and catalog/skills: keep one copy" >&2; exit 2
+  fi
+  if [ "$in_pack" = 1 ]; then
+    SKILL_DIRS["$name"]="$PACK_DIR/skills/$name"
+  elif [ "$in_catalog" = 1 ]; then
+    [ "$(printf '%s\n' "$catalog_dirs" | wc -l)" = 1 ] || { echo "Skill $name is in more than one catalog folder: $catalog_dirs" >&2; exit 2; }
+    SKILL_DIRS["$name"]="$catalog_dirs"
+    SKILL_FROM_CATALOG["$name"]=1
+  else
+    echo "Missing skill $name: no $PACK_DIR/skills/$name/SKILL.md and no catalog/skills folder for it" >&2; exit 2
+  fi
 done
 
 TMP=$(mktemp -d)
@@ -94,7 +113,12 @@ for name in "${SKILLS[@]}"; do
     continue
   fi
   archive="$TMP/$name.zip"
-  (cd "$PACK_DIR/skills/$name" && zip -qrX "$archive" . -x '.DS_Store' '*/.DS_Store')
+  if [ -n "${SKILL_FROM_CATALOG[$name]:-}" ]; then
+    # A catalog skill's manifest and translations are not part of the installed skill.
+    (cd "${SKILL_DIRS[$name]}" && zip -qrX "$archive" . -x '.DS_Store' '*/.DS_Store' 'template.json' 'i18n/*')
+  else
+    (cd "${SKILL_DIRS[$name]}" && zip -qrX "$archive" . -x '.DS_Store' '*/.DS_Store')
+  fi
   strategy=fail; [ "$exists" = 1 ] && strategy=overwrite
   if out=$(multica skill import --file "$archive" --on-conflict "$strategy" --output json 2>&1); then
     SKILL_IDS["$name"]=$(printf '%s' "$out" | jq -r '.skill.id // .id')

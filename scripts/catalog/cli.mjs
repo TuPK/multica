@@ -5,6 +5,7 @@
 //   node scripts/catalog/cli.mjs build [--target ts|go|all] validate, then write the generated code
 //   node scripts/catalog/cli.mjs new <kind> <id> [options]   scaffold a template
 //   node scripts/catalog/cli.mjs list                        print every template
+//   node scripts/catalog/cli.mjs map <domain> [--json]       what a domain holds: squads, skills, packs, markets
 //
 // Generated code is not committed: this runs in every build entry point (turbo task //#catalog:build,
 // make catalog-build, the Dockerfile stages). It needs only Node, no installed packages.
@@ -17,6 +18,7 @@ import { validateCatalog } from "./lib/validate.mjs";
 import { scaffold } from "./lib/scaffold.mjs";
 import { buildAll } from "./lib/build.mjs";
 import { defaultLockDir, withBuildLock } from "./lib/lock.mjs";
+import { buildMap, formatMap } from "./lib/map.mjs";
 
 export function load(root = catalogDir) {
   const config = readRegistryConfig(root);
@@ -47,7 +49,7 @@ function baseIdProblems(base, entries, config) {
   }
   const current = new Set(entries.map((e) => `${e.kind}:${e.manifest?.id}`));
   const removed = new Set(config.removed ?? []);
-  const KIND_BY_DIR = { collections: "collection", skillsets: "skillset", squads: "squad", workflows: "workflow", companies: "company", agents: "agent", packs: "pack", bundles: "bundle" };
+  const KIND_BY_DIR = { collections: "collection", skillsets: "skillset", squads: "squad", workflows: "workflow", companies: "company", agents: "agent", packs: "pack", bundles: "bundle", domains: "domain" };
   for (const line of listing.split("\n")) {
     const match = /^catalog\/([^/]+)\/([^/]+)\/template\.json$/.exec(line);
     if (match && KIND_BY_DIR[match[1]]) {
@@ -89,6 +91,14 @@ export async function main(argv = process.argv.slice(2)) {
       for (const e of entries) console.log(`${e.kind.padEnd(10)} ${String(e.manifest?.id).padEnd(40)} ${e.manifest?.version ?? "?"}  ${relative(catalogDir, e.dir)}`);
       return 0;
     }
+    case "map": {
+      const [domainId] = args.filter((a) => !a.startsWith("--"));
+      if (!domainId) throw new Error("usage: map <domain> [--json]");
+      const { entries } = load();
+      const map = buildMap(entries, domainId, catalogDir);
+      process.stdout.write(args.includes("--json") ? `${JSON.stringify(map, null, 2)}\n` : formatMap(map));
+      return 0;
+    }
     case "new": {
       const [kind, id] = args;
       if (!kind || !id) throw new Error("usage: new <kind> <id> [--collection <id>] [--set <id>]");
@@ -97,7 +107,7 @@ export async function main(argv = process.argv.slice(2)) {
       return 0;
     }
     default:
-      console.error("usage: cli.mjs <check|build|new|list>");
+      console.error("usage: cli.mjs <check|build|new|list|map>");
       return 2;
   }
 }

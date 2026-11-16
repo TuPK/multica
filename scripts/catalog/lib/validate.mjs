@@ -115,6 +115,9 @@ function validateSkill(entry, problems, context) {
     for (const set of manifest.sets) {
       if (!context.ids.has(keyOf("skillset", set))) err(`sets names unknown skillset "${set}"`);
     }
+    // A skill of a chunk skillset is loaded from that module alone, so it cannot also be a plain quickstart skill.
+    const chunks = manifest.sets.filter((set) => context.entries.some((e) => e.kind === "skillset" && e.manifest.id === set && e.manifest.chunk === true));
+    if (chunks.length > 0 && manifest.sets.length > 1) err(`a skill of the chunk skillset "${chunks[0]}" must name no other skillset`);
   }
   if (manifest.source?.type === "vendored") {
     for (const field of ["repo", "ref", "license"]) {
@@ -142,6 +145,10 @@ function validateSkill(entry, problems, context) {
 function validateSkillset(entry, problems) {
   const { manifest, path } = entry;
   if (!["quickstart", "starter"].includes(manifest.target)) problems.errors.push(`${path}: target must be "quickstart" or "starter"`);
+  if (manifest.chunk !== undefined) {
+    if (typeof manifest.chunk !== "boolean") problems.errors.push(`${path}: chunk must be a boolean`);
+    else if (manifest.chunk && manifest.target !== "quickstart") problems.errors.push(`${path}: a chunk skillset must have target "quickstart"`);
+  }
 }
 
 // The i18n files of a template: { title, description } for every locale, nothing else, no blank value.
@@ -186,6 +193,104 @@ function validateCollection(entry, problems) {
   if (entry.manifest.for !== "squad") problems.errors.push(`${entry.path}: for must be "squad"`);
 }
 
+// A domain is a folder of templates (squads, skills, a skillset, packs) that share a README, a set of
+// markets and the templates outside it that the domain's map points at (`related`). Its members name it
+// with `domain`; the domain itself holds no content, so it has no translations.
+const MARKET_ROLES = ["primary", "expansion"];
+
+function validateDomain(entry, problems, context) {
+  const { manifest, dir, path } = entry;
+  const err = (message) => problems.errors.push(`${path}: ${message}`);
+  if (!existsSync(join(dir, "README.md"))) err("README.md is missing; the domain's README is its front page");
+  if (!Array.isArray(manifest.markets) || manifest.markets.length === 0) return err("markets must be a non-empty array of { id, role }");
+  const ids = new Set();
+  for (const market of manifest.markets) {
+    if (!isObject(market) || !isNonEmptyString(market.id) || !MARKET_ROLES.includes(market.role)) {
+      err(`each market needs an id and a role of ${MARKET_ROLES.join(" or ")}`);
+      continue;
+    }
+    if (ids.has(market.id)) err(`market "${market.id}" is listed twice`);
+    ids.add(market.id);
+  }
+  const primaries = manifest.markets.filter((m) => m?.role === "primary").length;
+  if (primaries !== 1) err(`exactly one market is primary, got ${primaries}`);
+  if (manifest.related !== undefined) {
+    if (!Array.isArray(manifest.related)) return err("related must be an array of { kind, id, note }");
+    for (const item of manifest.related) {
+      if (!isObject(item) || !isNonEmptyString(item.kind) || !isNonEmptyString(item.id)) {
+        err("each related item needs a kind and an id");
+        continue;
+      }
+      if (!context.ids.has(keyOf(item.kind, item.id))) err(`related names ${item.kind} "${item.id}", which does not exist`);
+    }
+  }
+}
+
+// `domain` and `markets` on a member template (squad, skill, skillset, pack). The domain must exist; a
+// market must be one the domain lists. A squad of a domain sits in the collection of the same id (D2).
+function validateMembership(entry, problems, context) {
+  const { manifest, path } = entry;
+  const err = (message) => problems.errors.push(`${path}: ${message}`);
+  if (manifest.domain === undefined && manifest.markets === undefined) return;
+  if (manifest.domain === undefined) return err("markets needs a domain: name the domain the template belongs to");
+  if (!isNonEmptyString(manifest.domain) || !context.ids.has(keyOf("domain", manifest.domain))) {
+    return err(`domain "${manifest.domain}" does not exist`);
+  }
+  const domainMarkets = new Set(context.domains.get(manifest.domain)?.markets?.map((m) => m.id) ?? []);
+  if (manifest.markets !== undefined) {
+    if (!Array.isArray(manifest.markets) || !manifest.markets.every(isNonEmptyString)) return err("markets must be an array of market ids");
+    for (const market of manifest.markets) {
+      if (!domainMarkets.has(market)) err(`market "${market}" is not a market of domain "${manifest.domain}"`);
+    }
+  }
+  if (entry.kind === "squad" && manifest.collection !== manifest.domain) {
+    err(`a squad of domain "${manifest.domain}" must sit in collection "${manifest.domain}", not "${manifest.collection}"`);
+  }
+}
+
+// The skills a squad names by hand (`extra`, `leader`, `byRole`) must be quickstart skills that exist, and
+// byRole may only name the squad's own roles. Without this a wrong name shows up only when the quickstart runs.
+function validateSquadSkillNames(skills, roleKeys, context, err) {
+  const quickstartSets = new Set(context.entries.filter((e) => e.kind === "skillset" && e.manifest.target === "quickstart").map((e) => e.manifest.id));
+  const quickstartSkills = new Set(
+    context.entries.filter((e) => e.kind === "skill" && (e.manifest.sets ?? []).some((set) => quickstartSets.has(set))).map((e) => e.manifest.id),
+  );
+  const check = (where, names) => {
+    for (const name of names) if (!quickstartSkills.has(name)) err(`${where} names "${name}", which is not a skill of a quickstart skillset`);
+  };
+  for (const field of ["extra", "leader"]) {
+    if (skills[field] === undefined) continue;
+    if (!Array.isArray(skills[field]) || !skills[field].every(isNonEmptyString)) err(`squad.skills.${field} must be an array of skill ids`);
+    else check(`squad.skills.${field}`, skills[field]);
+  }
+  if (skills.byRole === undefined) return;
+  if (!isObject(skills.byRole)) return err("squad.skills.byRole must be an object of role key to skill ids");
+  for (const [role, names] of Object.entries(skills.byRole)) {
+    if (!roleKeys.has(role)) err(`squad.skills.byRole names role "${role}", which is not a role of this squad`);
+    if (!Array.isArray(names) || !names.every(isNonEmptyString)) err(`squad.skills.byRole.${role} must be an array of skill ids`);
+    else check(`squad.skills.byRole.${role}`, names);
+  }
+}
+
+// `includes`: the squads a set installs with this one (E9). One level: an included squad has none of its own,
+// and every one is in the same domain, so a set never reaches into another domain.
+function validateIncludes(entry, context, err) {
+  const { manifest } = entry;
+  if (!Array.isArray(manifest.includes) || !manifest.includes.every(isNonEmptyString)) return err("includes must be an array of squad ids");
+  if (manifest.includes.length > 0 && manifest.domain === undefined) err("includes needs a domain: a set holds the squads of one domain");
+  if (new Set(manifest.includes).size !== manifest.includes.length) err("includes lists a squad twice");
+  for (const id of manifest.includes) {
+    if (id === manifest.id) {
+      err("includes names the squad itself");
+      continue;
+    }
+    const target = context.entries.find((e) => e.kind === "squad" && e.manifest?.id === id);
+    if (!target) err(`includes names squad "${id}", which does not exist`);
+    else if (target.manifest.domain !== manifest.domain) err(`includes "${id}", which is not in domain "${manifest.domain}"`);
+    else if (target.manifest.includes !== undefined) err(`includes "${id}", which includes squads of its own; a set is one level deep`);
+  }
+}
+
 function validateSquad(entry, problems, context) {
   const { manifest, path } = entry;
   const err = (message) => problems.errors.push(`${path}: ${message}`);
@@ -225,8 +330,10 @@ function validateSquad(entry, problems, context) {
     const skills = squad.skills;
     if (!isObject(skills) || !Array.isArray(skills.sets)) err("squad.skills.sets must be an array of skillset ids");
     else for (const set of skills.sets) if (!context.ids.has(keyOf("skillset", set))) err(`squad.skills names unknown skillset "${set}"`);
+    if (isObject(skills)) validateSquadSkillNames(skills, keys, context, err);
     if (!existsSync(join(entry.dir, "instructions.md"))) err("instructions.md is missing");
   }
+  if (manifest.includes !== undefined) validateIncludes(entry, context, err);
   if (kitviet && existsSync(join(entry.dir, "instructions.md"))) err("a Kit Viet squad's instructions come from the pack; remove instructions.md");
   const rolesDir = join(entry.dir, "roles");
   if (existsSync(rolesDir)) {
@@ -243,7 +350,8 @@ function validateSquad(entry, problems, context) {
 }
 
 // The validators of the other kinds register themselves here as the catalog grows.
-export const kindValidators = { skill: validateSkill, skillset: validateSkillset, collection: validateCollection, squad: validateSquad, agent: validateAgent, company: validateCompany, bundle: validateBundle, workflow: validateWorkflow, pack: validatePack };
+export const kindValidators = { skill: validateSkill, skillset: validateSkillset, collection: validateCollection, squad: validateSquad, agent: validateAgent, company: validateCompany, bundle: validateBundle, workflow: validateWorkflow, pack: validatePack, domain: validateDomain };
+const MEMBER_KINDS = ["squad", "skill", "skillset", "pack"];
 
 export function validateCatalog({ entries, discoverErrors = [], config, root = catalogDir }) {
   const problems = { errors: [...discoverErrors], warnings: [] };
@@ -264,12 +372,14 @@ export function validateCatalog({ entries, discoverErrors = [], config, root = c
     if (removed.has(keyOf(entry.kind, entry.manifest?.id))) problems.errors.push(`${entry.path}: id was removed (registry.config.json) and cannot be reused`);
   }
 
-  const context = { ids, entries, config, locales, unpinned: new Set(), noLicense: new Set(), restricted: new Set(), roleDefinitions: new Map(), roleInstructionFiles: new Map(), flowSquads: new Map(), blocks: blocksOf(root) };
+  const domains = new Map(entries.filter((e) => e.kind === "domain").map((e) => [e.manifest?.id, e.manifest]));
+  const context = { ids, entries, config, locales, domains, unpinned: new Set(), noLicense: new Set(), restricted: new Set(), roleDefinitions: new Map(), roleInstructionFiles: new Map(), flowSquads: new Map(), blocks: blocksOf(root) };
   for (const entry of entries) {
     for (const required of entry.manifest?.requires ?? []) {
       if (!ids.has(keyOf(required.kind, required.id))) problems.errors.push(`${entry.path}: requires unknown ${required.kind} "${required.id}"`);
     }
     kindValidators[entry.kind]?.(entry, problems, context);
+    if (MEMBER_KINDS.includes(entry.kind)) validateMembership(entry, problems, context);
     if (KINDS_WITH_UI_TEXT.includes(entry.kind) && !(entry.kind === "workflow" && entry.manifest?.ui === false)) {
       validateI18n(entry, locales, problems);
     }

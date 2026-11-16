@@ -10,7 +10,8 @@ Do not confuse it with `deploy/helm/multica/templates/` or `.github/ISSUE_TEMPLA
 
 | Folder | Holds |
 | --- | --- |
-| `collections/<id>/` | The groups of the squad quickstart (core, kitviet, vertical). Title in `i18n/` |
+| `collections/<id>/` | The groups of the squad quickstart (core, marketing, kitviet, vertical). Title in `i18n/` |
+| `domains/<id>/` | A domain: a line of work whose squads, skills, skillset and packs name it with `domain`. `template.json` lists its markets and related templates; `README.md` is its front page. See [domains/marketing](domains/marketing/README.md) |
 | `skillsets/<id>/` | Named sets of skills (`sdlc`, `planning`, ...). Members are the skills whose `sets` name it |
 | `skills/<group>/<id>/` | A skill: `SKILL.md`, its reference files, and `template.json` (`sets`, `source`). The group folder only sorts them |
 | `squads/<id>/` | A quickstart squad: `template.json`, `instructions.md`, `i18n/`, and `roles/<role>.md` for a role that writes its own agent instructions |
@@ -29,9 +30,10 @@ pnpm catalog:new skill my-skill --set sdlc          # a skill under skills/custo
 pnpm catalog:check                                  # validate; also runs in CI
 pnpm catalog:build                                  # write the generated code
 pnpm catalog:list
+pnpm catalog:map <domain>                           # what a domain holds: squads, skills, packs, markets
 ```
 
-Adding a squad, skill, skillset or collection edits nothing outside `catalog/`.
+Adding a squad, skill, skillset, collection or domain edits nothing outside `catalog/`.
 
 ## Rules
 
@@ -45,7 +47,10 @@ Adding a squad, skill, skillset or collection edits nothing outside `catalog/`.
 - **Every language is required.** A template with a title (collection, squad, pack) needs `i18n/<locale>.json` for
   every locale in `packages/core/i18n/types.ts`. There is no fallback to English.
 - **Skill folders are installed as they are.** `template.json` and `i18n/` are never part of an installed skill.
-- A vendored skill names its `source` (`repo`, `ref`, `license`).
+- A vendored skill names its `source` (`repo`, `ref`, `license`). A vendored skill of a domain is pinned to a 40-character commit, and its local changes are listed in that folder's `SOURCES.md`.
+- A member of a domain (squad, skill, skillset, pack) names it with `domain`. A squad of a domain sits in the collection with the same id. A `markets` list is a subset of the domain's markets.
+- A squad's `includes` lists squads of the same domain, one level deep. Choosing the squad in the quickstart creates them too.
+- A squad's own skills (`skills.extra`, `leader`, `byRole`) name quickstart skills that exist, and `byRole` names its roles.
 - Bump `version` when you change a template's content.
 - A template the code finds by name or id declares `contracts` (e.g. `squad.sdlc`). The server lists what it needs in
   `server/internal/catalog/contracts.go` and the client in `packages/core/catalog/contracts.ts`; the tests fail when

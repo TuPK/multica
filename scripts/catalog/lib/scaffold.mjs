@@ -25,6 +25,11 @@ export function scaffold({ kind, id, collection, set }) {
   }
   if (kind === "skillset") manifest.target = "quickstart";
   if (kind === "collection") manifest.for = "squad";
+  if (kind === "domain") {
+    manifest.markets = [{ id: "main", role: "primary" }];
+    manifest.related = [];
+    write(join(dir, "README.md"), `# ${id}\n\nTODO: what this domain covers, which squad to start with, and how to extend it.\n`, created);
+  }
   if (kind === "squad") {
     const title = id.split("_").map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
     manifest.collection = collection ?? "core";

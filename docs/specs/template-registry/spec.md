@@ -166,7 +166,8 @@ Kiểm chứng sau khi triển khai: băm bước Go dựng từ manifest (sau `
 catalog/
 ├── README.md                             hướng dẫn: thêm / sửa / xóa / đổi tên
 ├── registry.config.json                  locale, id đã gỡ (removed)
-├── collections/<id>/                     nhóm hiển thị trong bộ chọn squad (core, kitviet, vertical)
+├── domains/<id>/                         (mở rộng) lĩnh vực: markets, related, README.md; thành viên khai "domain". Xem docs/specs/marketing-domain/spec.md
+├── collections/<id>/                     nhóm hiển thị trong bộ chọn squad (core, marketing, kitviet, vertical)
 │   ├── template.json
 │   └── i18n/<locale>.json                chỉ có "title"
 ├── skillsets/<id>/template.json          tập skill đặt tên (sdlc, planning, sales, research_lab, starter_company, secretary)

@@ -16,6 +16,7 @@ export const KIND_DIRS = {
   agent: "agents",
   pack: "packs",
   bundle: "bundles",
+  domain: "domains",
 };
 
 const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
