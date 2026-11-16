@@ -5,12 +5,14 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/platform-management/workspacestate"
 	"github.com/multica-ai/multica/server/internal/util"
 	"github.com/multica-ai/multica/server/internal/workspaceguard"
+	"github.com/multica-ai/multica/server/internal/workspacepolicy"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
@@ -21,6 +23,8 @@ const (
 	ctxKeyWorkspaceID contextKey = iota
 	ctxKeyMember
 	ctxKeyWorkspaceState
+	ctxKeyWorkspacePolicy
+	ctxKeySession
 )
 
 // MemberFromContext returns the workspace member injected by the workspace middleware.
@@ -265,6 +269,12 @@ func buildMiddleware(queries *db.Queries, resolve workspaceResolver, roles []str
 				}
 			}
 
+			// The session policies come first: they refuse a caller whose
+			// session is not good enough for this workspace before the state
+			// of the workspace is looked at.
+			if !guardWorkspacePolicy(w, r, workspaceID) {
+				return
+			}
 			if !guardWorkspaceState(w, r, member, wsUUID) {
 				return
 			}
@@ -297,6 +307,82 @@ func WithWorkspaceState(guard *workspacestate.Guard) func(http.Handler) http.Han
 func WorkspaceStateFromContext(ctx context.Context) *workspacestate.Guard {
 	guard, _ := ctx.Value(ctxKeyWorkspaceState).(*workspacestate.Guard)
 	return guard
+}
+
+// PolicyReader returns the policy in force for a workspace: the defaults when
+// the workspace has none or its plan lacks the feature.
+type PolicyReader interface {
+	Policy(ctx context.Context, workspaceID string) (workspacepolicy.Policy, error)
+}
+
+// WithWorkspacePolicy makes reader the source of workspace policies for every
+// workspace middleware below it. A nil reader skips the check; that is for
+// tests only.
+func WithWorkspacePolicy(reader PolicyReader) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		if reader == nil {
+			return next
+		}
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := context.WithValue(r.Context(), ctxKeyWorkspacePolicy, reader)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+type sessionFacts struct {
+	amr           []string
+	authTime      int64
+	authTimeKnown bool
+}
+
+// WithSession records how the caller's session token says they signed in. Auth
+// calls it for a session JWT and for nothing else, so a request whose context
+// carries no session came in on a machine credential.
+func WithSession(ctx context.Context, amr []string, authTime int64, authTimeKnown bool) context.Context {
+	return context.WithValue(ctx, ctxKeySession, sessionFacts{amr: amr, authTime: authTime, authTimeKnown: authTimeKnown})
+}
+
+// requestSession returns the session of a request for the policy check. A
+// request is a machine credential when it carries no session, came through the
+// daemon routes, or was authenticated by a task token or a cloud node token.
+func requestSession(r *http.Request) workspaceguard.Session {
+	facts, ok := r.Context().Value(ctxKeySession).(sessionFacts)
+	if !ok || DaemonAuthPathFromContext(r.Context()) != "" || r.Header.Get("X-Actor-Source") != "" {
+		return workspaceguard.Session{Machine: true}
+	}
+	return workspaceguard.Session{AMR: facts.amr, AuthTime: facts.authTime, AuthTimeKnown: facts.authTimeKnown}
+}
+
+// guardWorkspacePolicy applies the session policies of the workspace (spec
+// 6.4) and reports whether the request may proceed; when it may not, the
+// response has been written. Machine credentials pass without reading the
+// policy. A policy that cannot be read refuses a session, as the state guard
+// does.
+func guardWorkspacePolicy(w http.ResponseWriter, r *http.Request, workspaceID string) bool {
+	reader, _ := r.Context().Value(ctxKeyWorkspacePolicy).(PolicyReader)
+	if reader == nil {
+		return true
+	}
+	session := requestSession(r)
+	if session.Machine {
+		return true
+	}
+	policy, err := reader.Policy(r.Context(), workspaceID)
+	if err != nil {
+		slog.Warn("workspace: policy unavailable",
+			"path", r.URL.Path, "workspace_id", workspaceID, "error", err)
+		writeCodedError(w, http.StatusServiceUnavailable, workspaceguard.CodeStateUnavailable, workspaceguard.Message(workspaceguard.CodeStateUnavailable))
+		return false
+	}
+	code := workspaceguard.CheckWorkspaceAccess(policy, session, time.Now())
+	if code == "" {
+		return true
+	}
+	slog.Warn("workspace: request refused by policy",
+		"path", r.URL.Path, "method", r.Method, "workspace_id", workspaceID, "code", code)
+	writeCodedError(w, http.StatusForbidden, code, workspaceguard.Message(code))
+	return false
 }
 
 // guardWorkspaceState applies the workspace-state decision table to a member's

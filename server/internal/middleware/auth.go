@@ -408,6 +408,10 @@ func Auth(queries *db.Queries, patCache *auth.PATCache, cloudPAT *auth.CloudPATV
 			// (MUL-7436).
 			r = renewCookieSession(w, r, claims, fromCookie, cfSigner)
 
+			// The workspace middleware reads these for the session policies.
+			authTime, authTimeKnown := auth.SessionAuthTime(claims)
+			r = r.WithContext(WithSession(r.Context(), auth.SessionAMR(claims), authTime, authTimeKnown))
+
 			next.ServeHTTP(w, r)
 		})
 	}

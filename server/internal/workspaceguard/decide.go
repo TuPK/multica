@@ -23,6 +23,13 @@ const (
 	CodeStateUnavailable = "workspace_state_unavailable"
 )
 
+// Policy refusal codes (spec 6.4), returned with HTTP 403. They refuse one
+// workspace only; the user still reaches their other workspaces.
+const (
+	CodeMFARequired    = "mfa_required"
+	CodeReauthRequired = "reauth_required"
+)
+
 // Decision is the verdict on one request.
 type Decision struct {
 	// Allowed reports whether the request may proceed.
@@ -199,6 +206,10 @@ func Message(code string) string {
 		return "workspace is pending deletion"
 	case CodeStateUnavailable:
 		return "workspace state unavailable"
+	case CodeMFARequired:
+		return "this workspace requires two-step sign-in"
+	case CodeReauthRequired:
+		return "this workspace requires a recent sign-in"
 	default:
 		return "workspace is suspended"
 	}
