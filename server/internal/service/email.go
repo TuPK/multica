@@ -3,6 +3,7 @@ package service
 import (
 	"crypto/tls"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"html"
 	"mime"
@@ -446,6 +447,44 @@ func buildAccountDeletionScheduledParams(from, to, scheduledAt, appURL string) *
 				<p>To cancel, sign in at %s before then and choose <strong>Cancel deletion</strong>.</p>
 				<p style="color: #666; font-size: 14px;">If you did not request this, sign in and cancel the deletion, then review your account security.</p>
 			</div>`, when, html.EscapeString(appURL)),
+	}
+}
+
+// ErrMailerNotConfigured means no mail transport is set up, so nothing was sent.
+var ErrMailerNotConfigured = errors.New("mailer not configured")
+
+// SendMFADisabledEmail tells the user that two-step sign-in was turned off. It
+// carries no link or code.
+func (s *EmailService) SendMFADisabledEmail(to string) error {
+	if s.smtpHost == "" && s.client == nil {
+		return ErrMailerNotConfigured
+	}
+	appURL := strings.TrimSpace(os.Getenv("FRONTEND_ORIGIN"))
+	if appURL == "" {
+		appURL = "https://multica.ai"
+	}
+	params := buildMFADisabledParams(s.fromEmail, to, appURL)
+	if s.smtpHost != "" {
+		return s.sendSMTP(to, params.Subject, params.Html)
+	}
+	_, err := s.client.Emails.Send(params)
+	return err
+}
+
+// buildMFADisabledParams assembles the disable notice, separate from the send
+// so the text can be tested without a mail server.
+func buildMFADisabledParams(from, to, appURL string) *resend.SendEmailRequest {
+	return &resend.SendEmailRequest{
+		From:    from,
+		To:      []string{to},
+		Subject: "Two-step sign-in was turned off for your Multica account",
+		Html: fmt.Sprintf(
+			`<div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+				<h2>Two-step sign-in was turned off</h2>
+				<p>The authenticator code that protected your Multica sign-in has been removed. Signing in now needs only your email code.</p>
+				<p>To turn it back on, sign in at %s and open your account security settings.</p>
+				<p style="color: #666; font-size: 14px;">If you did not turn this off, sign in and turn it back on, then review your account security.</p>
+			</div>`, html.EscapeString(appURL)),
 	}
 }
 
