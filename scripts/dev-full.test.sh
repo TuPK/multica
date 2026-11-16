@@ -385,4 +385,46 @@ case $DAEMON_STATUS in "not running"*) ;; *) fail "no daemon answers after the r
 MAKE_EXIT=2 run_start_daemon 111 222
 case $DAEMON_STATUS in "failed to start"*) ;; *) fail "make failed and start_daemon said: $DAEMON_STATUS" ;; esac
 
+# ---------- Ollama embedding ----------
+# start_ollama_embedding runs a local Ollama container only when KNOWLEDGE_EMBEDDING_URL points at
+# Ollama on this machine. This docker stub answers `container inspect` with "exists" only when
+# OLLAMA_EXISTS=1; every other call succeeds and is logged.
+ollama_bin="$tmp_dir/ollama-bin"
+mkdir -p "$ollama_bin"
+cat >"$ollama_bin/docker" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$DOCKER_LOG"
+case "$*" in
+  "container inspect "*) [ "${OLLAMA_EXISTS:-0}" = 1 ]; exit $? ;;
+esac
+exit 0
+STUB
+chmod +x "$ollama_bin/docker"
+
+run_start_ollama() { # embedding URL, and 1 when the Ollama container already exists
+  printf 'KNOWLEDGE_EMBEDDING_URL=%s\nKNOWLEDGE_EMBEDDING_MODEL=bge-m3\n' "$1" >"$ENV_FILE"
+  : >"$docker_log"
+  if ! (
+    export OLLAMA_EXISTS="$2" DOCKER_LOG="$docker_log" PATH="$ollama_bin:$PATH"
+    start_ollama_embedding
+  ) >"$tmp_dir/out-ollama" 2>&1; then
+    sed 's/^/  /' "$tmp_dir/out-ollama" >&2
+    fail "start_ollama_embedding failed for $1"
+  fi
+}
+
+run_start_ollama "http://10.20.30.40:11434" 0
+[ ! -s "$docker_log" ] || fail "a remote embedding endpoint must not start a local Ollama container"
+require_contains "$tmp_dir/out-ollama" "not a local Ollama"
+
+run_start_ollama "http://host.docker.internal:11434" 0
+require_contains "$docker_log" "run -d --name multica-ollama --restart unless-stopped -p 172.17.0.1:11434:11434 -v multica-ollama:/root/.ollama ollama/ollama:latest"
+require_contains "$docker_log" "exec multica-ollama ollama pull bge-m3"
+
+run_start_ollama "http://host.docker.internal:11434" 1
+require_contains "$docker_log" "start multica-ollama"
+if grep -Fq "run -d" "$docker_log"; then
+  fail "an existing Ollama container must be started, not created again"
+fi
+
 echo "dev-full.test.sh: all checks passed"

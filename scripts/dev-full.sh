@@ -293,6 +293,38 @@ register_knowledge_service_user() {
   fi
 }
 
+# WeKnora embeds through KNOWLEDGE_EMBEDDING_URL. When that points at Ollama on this machine,
+# run Ollama as a container published only on the Docker bridge address, which
+# host.docker.internal resolves to, so WeKnora reaches it and the LAN does not.
+OLLAMA_CONTAINER="${OLLAMA_CONTAINER:-multica-ollama}"
+OLLAMA_VOLUME="${OLLAMA_VOLUME:-multica-ollama}"
+OLLAMA_IMAGE="${OLLAMA_IMAGE:-ollama/ollama:latest}"
+OLLAMA_BIND="${OLLAMA_BIND:-172.17.0.1:11434}"
+
+start_ollama_embedding() {
+  local url model
+  url=$(env_value "$ENV_FILE" KNOWLEDGE_EMBEDDING_URL)
+  case "$url" in
+    http://host.docker.internal:11434*|http://172.17.0.1:11434*|http://localhost:11434*|http://127.0.0.1:11434*) ;;
+    *) info "Embeddings use $url, not a local Ollama, so no Ollama container is started"; return 0 ;;
+  esac
+  model=$(env_value "$ENV_FILE" KNOWLEDGE_EMBEDDING_MODEL)
+  info "Starting Ollama for embeddings on $OLLAMA_BIND (container $OLLAMA_CONTAINER)"
+  docker volume inspect "$OLLAMA_VOLUME" >/dev/null 2>&1 || docker volume create "$OLLAMA_VOLUME" >/dev/null
+  # `docker container inspect`: plain `docker inspect` also matches a volume with the same name.
+  if docker container inspect "$OLLAMA_CONTAINER" >/dev/null 2>&1; then
+    docker start "$OLLAMA_CONTAINER" >/dev/null || fail "Could not start the Ollama container $OLLAMA_CONTAINER"
+  else
+    docker run -d --name "$OLLAMA_CONTAINER" --restart unless-stopped \
+      -p "${OLLAMA_BIND}:11434" -v "${OLLAMA_VOLUME}:/root/.ollama" "$OLLAMA_IMAGE" >/dev/null \
+      || fail "Could not start Ollama on $OLLAMA_BIND. Check that the Docker bridge has that address: ip -4 addr show docker0"
+  fi
+  wait_for_url "Ollama" "http://$OLLAMA_BIND/api/tags" || fail "Ollama is not answering on $OLLAMA_BIND"
+  info "Pulling the embedding model $model into Ollama (does nothing when it is already there)"
+  docker exec "$OLLAMA_CONTAINER" ollama pull "$model" || fail "Could not pull $model into Ollama"
+  ok "Ollama serves $model at http://$OLLAMA_BIND"
+}
+
 start_knowledge() {
   local url
   url=$(env_value "$ENV_FILE" KNOWLEDGE_URL)
@@ -764,6 +796,7 @@ main() {
   resolve_hub_ports
   resolve_hub_urls
   load_env
+  start_ollama_embedding
   start_knowledge
   start_hub_store
   setup_hermes
