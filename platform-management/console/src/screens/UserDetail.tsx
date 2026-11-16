@@ -15,7 +15,17 @@ import {
   TableHead,
   TableCell,
 } from "@multica/ui/components/ui/table";
-import { ArrowLeft, Ban, RotateCcw, LogOut } from "@multica/ui/icons";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@multica/ui/components/ui/dialog";
+import { Spinner } from "@multica/ui/components/ui/spinner";
+import { ArrowLeft, Ban, RotateCcw, LogOut, Shield } from "@multica/ui/icons";
 import { StatusBadge } from "../components/StatusBadge";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
@@ -25,6 +35,7 @@ import {
   useUser,
   useChangeUserStatus,
   useRevokeUserSessions,
+  useResetUserMfa,
 } from "../api/hooks";
 import type { Membership } from "../components/types";
 
@@ -44,6 +55,7 @@ export function UserDetail({ userId, onBack }: UserDetailProps) {
 
   const changeStatus = useChangeUserStatus();
   const revokeSessions = useRevokeUserSessions();
+  const resetMfa = useResetUserMfa();
 
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [statusDialogTarget, setStatusDialogTarget] = useState<"suspended" | "active">("suspended");
@@ -51,6 +63,9 @@ export function UserDetail({ userId, onBack }: UserDetailProps) {
 
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
   const [revokeError, setRevokeError] = useState<string | null>(null);
+
+  const [mfaDialogOpen, setMfaDialogOpen] = useState(false);
+  const [mfaError, setMfaError] = useState<string | null>(null);
 
   if (isLoading) {
     return <LoadingState message="Loading user details..." />;
@@ -109,6 +124,18 @@ export function UserDetail({ userId, onBack }: UserDetailProps) {
     }
   };
 
+  const handleConfirmResetMfa = async () => {
+    setMfaError(null);
+    try {
+      await resetMfa.mutateAsync({ userId });
+      setMfaDialogOpen(false);
+    } catch (err: unknown) {
+      setMfaError(
+        err instanceof Error ? err.message : "Failed to reset two-step sign-in",
+      );
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -163,6 +190,18 @@ export function UserDetail({ userId, onBack }: UserDetailProps) {
           >
             <LogOut className="size-4" />
             <span>Sign out everywhere</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => {
+              setMfaError(null);
+              setMfaDialogOpen(true);
+            }}
+            className="gap-1.5"
+          >
+            <Shield className="size-4" />
+            <span>Reset two-step sign-in</span>
           </Button>
         </div>
       </div>
@@ -299,6 +338,40 @@ export function UserDetail({ userId, onBack }: UserDetailProps) {
         error={revokeError}
         onConfirm={handleConfirmRevokeSessions}
       />
+
+      <Dialog open={mfaDialogOpen} onOpenChange={setMfaDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset two-step sign-in</DialogTitle>
+            <DialogDescription>
+              The user signs in without a second step until they set it up again. They are not signed out, and they are told by email.
+            </DialogDescription>
+          </DialogHeader>
+          {mfaError && (
+            <div
+              role="alert"
+              className="rounded-md bg-destructive/10 p-3 text-caption text-destructive"
+            >
+              {mfaError}
+            </div>
+          )}
+          <DialogFooter>
+            <DialogClose render={<Button type="button" variant="outline" />}>
+              Cancel
+            </DialogClose>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={resetMfa.isPending}
+              aria-busy={resetMfa.isPending}
+              onClick={handleConfirmResetMfa}
+            >
+              {resetMfa.isPending && <Spinner className="size-3.5" />}
+              Reset and email the user
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

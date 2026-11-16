@@ -6,6 +6,7 @@ import { UserDetail } from "./UserDetail";
 const mockUseUser = vi.fn();
 const mockChangeUserStatusMutateAsync = vi.fn();
 const mockRevokeUserSessionsMutateAsync = vi.fn();
+const mockResetUserMfaMutateAsync = vi.fn();
 
 vi.mock("../api/hooks", () => ({
   useUser: () => mockUseUser(),
@@ -15,6 +16,10 @@ vi.mock("../api/hooks", () => ({
   }),
   useRevokeUserSessions: () => ({
     mutateAsync: mockRevokeUserSessionsMutateAsync,
+    isPending: false,
+  }),
+  useResetUserMfa: () => ({
+    mutateAsync: mockResetUserMfaMutateAsync,
     isPending: false,
   }),
 }));
@@ -155,5 +160,33 @@ describe("UserDetail screen", () => {
         reason: "Credential breach",
       });
     });
+  });
+
+  it("resets the user's two-step sign-in only after a confirmation", async () => {
+    mockUseUser.mockReturnValue({ data: mockActiveUser, isLoading: false, isError: false, refetch: vi.fn() });
+    mockResetUserMfaMutateAsync.mockResolvedValue({ reset: true });
+
+    render(<UserDetail userId="u-active" onBack={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset two-step sign-in" }));
+    expect(mockResetUserMfaMutateAsync).not.toHaveBeenCalled();
+    expect(screen.getByRole("heading", { name: "Reset two-step sign-in" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset and email the user" }));
+    await waitFor(() => {
+      expect(mockResetUserMfaMutateAsync).toHaveBeenCalledWith({ userId: "u-active" });
+    });
+  });
+
+  it("shows the server's refusal when the reset fails", async () => {
+    mockUseUser.mockReturnValue({ data: mockActiveUser, isLoading: false, isError: false, refetch: vi.fn() });
+    mockResetUserMfaMutateAsync.mockRejectedValue(new Error("you cannot reset your own two-step sign-in"));
+
+    render(<UserDetail userId="u-active" onBack={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset two-step sign-in" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reset and email the user" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("you cannot reset your own two-step sign-in");
   });
 });

@@ -21,6 +21,8 @@ import {
   parsePlanList,
   parsePutPlanResponse,
   parseDeletePlanResponse,
+  parseVerifyCodeResponse,
+  parseResetMfaResponse,
   parsePutSubscriptionResponse,
   type Me,
   type Overview,
@@ -147,14 +149,26 @@ export function useSendCode() {
   });
 }
 
-/** Variables: `{ email, code }`. A wrong code rejects with code `invalid_code`. */
+/**
+ * Variables: `{ email, code, totp? }`. Resolves `{ mfaRequired: true }` when the
+ * email code is right and the authenticator code is still needed: submit again
+ * with `totp`. A wrong code rejects with code `invalid_code`.
+ */
 export function useVerifyCode() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (vars: { email: string; code: string }): Promise<void> => {
-      await platformFetch("/auth/verify-code", { method: "POST", body: { email: vars.email, code: vars.code } });
+    mutationFn: async (vars: { email: string; code: string; totp?: string }): Promise<{ mfaRequired: boolean }> => {
+      const res = parseVerifyCodeResponse(
+        await platformFetch("/auth/verify-code", {
+          method: "POST",
+          body: { email: vars.email, code: vars.code, ...(vars.totp === undefined ? {} : { totp: vars.totp }) },
+        }),
+      );
+      if (res === null) throw new Error("Unexpected answer from the server");
+      return { mfaRequired: res.mfa_required };
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: platformKeys.me() }),
+    onSuccess: ({ mfaRequired }) =>
+      mfaRequired ? undefined : queryClient.invalidateQueries({ queryKey: platformKeys.me() }),
   });
 }
 
@@ -329,6 +343,25 @@ export function useRevokeUserSessions() {
         method: "POST",
         body: { reason: vars.reason },
       });
+    },
+    onSuccess: (_data, vars) => invalidateAll(queryClient, [platformKeys.user(vars.userId), platformKeys.audits()]),
+  });
+}
+
+/**
+ * Variables: `{ userId }`. Deletes the user's two-step sign-in and emails them.
+ * Resolves `{ reset: false }` when the user had none. A staff member's own is
+ * refused with code `self_reset_refused`.
+ */
+export function useResetUserMfa() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { userId: string }) => {
+      const res = parseResetMfaResponse(
+        await platformFetch(`/users/${pathSegment(vars.userId)}/mfa-reset`, { method: "POST" }),
+      );
+      if (res === null) throw new Error("Unexpected answer from the server");
+      return res;
     },
     onSuccess: (_data, vars) => invalidateAll(queryClient, [platformKeys.user(vars.userId), platformKeys.audits()]),
   });

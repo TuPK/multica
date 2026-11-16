@@ -44,6 +44,7 @@ export const AUDIT_ACTIONS = [
   "note.added",
   "subscription.changed",
   "plan.changed",
+  "user.mfa_reset",
   "billing.order_created",
   "billing.order_paid",
   "billing.order_canceled",
@@ -259,6 +260,20 @@ export const DeletePlanResponseSchema = z.object({
 });
 export type DeletePlanResponse = z.output<typeof DeletePlanResponseSchema>;
 
+/**
+ * The answer to verify-code: `mfa_required` asks for the authenticator code
+ * next. A signed-in answer carries no such field.
+ */
+export const VerifyCodeResponseSchema = z.object({
+  mfa_required: z.boolean().default(false),
+});
+export type VerifyCodeResponse = z.output<typeof VerifyCodeResponseSchema>;
+
+export const ResetMfaResponseSchema = z.object({
+  reset: z.boolean(),
+});
+export type ResetMfaResponse = z.output<typeof ResetMfaResponseSchema>;
+
 export const TenantDetailSchema = TenantSchema.extend({
   state: TenantStateSchema.prefault({}),
   notes_count: count,
@@ -441,6 +456,18 @@ export function parsePutPlanResponse(data: unknown): PutPlanResponse | null {
 export function parseDeletePlanResponse(data: unknown): DeletePlanResponse | null {
   return parseWithFallback<DeletePlanResponse | null>(data, DeletePlanResponseSchema, null, {
     endpoint: "DELETE /api/platform/plans/{key}",
+  });
+}
+
+export function parseVerifyCodeResponse(data: unknown): VerifyCodeResponse | null {
+  return parseWithFallback<VerifyCodeResponse | null>(data, VerifyCodeResponseSchema, null, {
+    endpoint: "POST /api/platform/auth/verify-code",
+  });
+}
+
+export function parseResetMfaResponse(data: unknown): ResetMfaResponse | null {
+  return parseWithFallback<ResetMfaResponse | null>(data, ResetMfaResponseSchema, null, {
+    endpoint: "POST /api/platform/users/{id}/mfa-reset",
   });
 }
 

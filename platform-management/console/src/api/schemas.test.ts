@@ -18,6 +18,8 @@ import {
   parsePlanList,
   parsePutPlanResponse,
   parseDeletePlanResponse,
+  parseVerifyCodeResponse,
+  parseResetMfaResponse,
 } from "./schemas";
 
 const tenant = {
@@ -502,6 +504,37 @@ describe("plans", () => {
   it("falls back to null on malformed deletePlan response", () => {
     for (const body of [null, undefined, "bad", {}, { deleted: "yes" }]) {
       expect(parseDeletePlanResponse(body)).toBeNull();
+    }
+  });
+});
+
+describe("verify-code response", () => {
+  it("asks for the authenticator code when the server says so", () => {
+    expect(parseVerifyCodeResponse({ mfa_required: true })).toEqual({ mfa_required: true });
+  });
+
+  it("reads a signed-in answer as no further step", () => {
+    for (const body of [{ user_id: "u1", role: "admin" }, {}, { mfa_required: false }]) {
+      expect(parseVerifyCodeResponse(body)).toEqual({ mfa_required: false });
+    }
+  });
+
+  it("falls back to null on a malformed body", () => {
+    for (const body of [null, undefined, "bad", 42, [], { mfa_required: "yes" }, { mfa_required: null }]) {
+      expect(parseVerifyCodeResponse(body)).toBeNull();
+    }
+  });
+});
+
+describe("mfa-reset response", () => {
+  it("parses a well-formed response", () => {
+    expect(parseResetMfaResponse({ reset: true })).toEqual({ reset: true });
+    expect(parseResetMfaResponse({ reset: false })).toEqual({ reset: false });
+  });
+
+  it("falls back to null on a malformed body", () => {
+    for (const body of [null, undefined, "bad", 42, {}, { reset: "yes" }, { reset: null }]) {
+      expect(parseResetMfaResponse(body)).toBeNull();
     }
   });
 });

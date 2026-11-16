@@ -19,7 +19,8 @@ interface LoginProps {
 export function Login({ onSuccess }: LoginProps) {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [step, setStep] = useState<"email" | "code">("email");
+  const [totp, setTotp] = useState("");
+  const [step, setStep] = useState<"email" | "code" | "totp">("email");
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -44,11 +45,36 @@ export function Login({ onSuccess }: LoginProps) {
     if (!code.trim() || verifyCode.isPending) return;
     setErrorMessage(null);
     try {
-      await verifyCode.mutateAsync({ email: email.trim(), code: code.trim() });
+      const result = await verifyCode.mutateAsync({ email: email.trim(), code: code.trim() });
+      if (result?.mfaRequired) {
+        setInfoMessage(null);
+        setStep("totp");
+        return;
+      }
       onSuccess();
     } catch {
       setErrorMessage("That code is not valid.");
     }
+  };
+
+  const handleVerifyTotp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!totp.trim() || verifyCode.isPending) return;
+    setErrorMessage(null);
+    try {
+      await verifyCode.mutateAsync({ email: email.trim(), code: code.trim(), totp: totp.trim() });
+      onSuccess();
+    } catch {
+      setErrorMessage("That code is not valid.");
+    }
+  };
+
+  const backToEmail = () => {
+    setStep("email");
+    setCode("");
+    setTotp("");
+    setErrorMessage(null);
+    setInfoMessage(null);
   };
 
   return (
@@ -62,7 +88,9 @@ export function Login({ onSuccess }: LoginProps) {
           <CardDescription>
             {step === "email"
               ? "Sign in with your staff email address"
-              : "Enter the verification code"}
+              : step === "code"
+                ? "Enter the verification code"
+                : "Enter the code from your authenticator app"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -114,7 +142,7 @@ export function Login({ onSuccess }: LoginProps) {
                 Send sign-in code
               </Button>
             </form>
-          ) : (
+          ) : step === "code" ? (
             <form onSubmit={handleVerifyCode} className="space-y-4">
               <div className="space-y-1.5">
                 <label
@@ -149,14 +177,50 @@ export function Login({ onSuccess }: LoginProps) {
                 type="button"
                 variant="ghost"
                 className="w-full text-caption"
-                onClick={() => {
-                  setStep("email");
-                  setCode("");
-                  setErrorMessage(null);
-                  setInfoMessage(null);
-                }}
+                onClick={backToEmail}
               >
                 Use a different email
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyTotp} className="space-y-4">
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="totp-input"
+                  className="text-caption font-medium text-foreground"
+                >
+                  Authenticator code
+                </label>
+                <Input
+                  id="totp-input"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  value={totp}
+                  onChange={(e) => setTotp(e.target.value)}
+                  placeholder="000000"
+                  maxLength={6}
+                  required
+                  disabled={verifyCode.isPending}
+                  autoFocus
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={!totp.trim() || verifyCode.isPending}
+                aria-busy={verifyCode.isPending}
+              >
+                {verifyCode.isPending && <Spinner className="size-3.5" />}
+                Sign in
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full text-caption"
+                onClick={backToEmail}
+              >
+                Start over
               </Button>
             </form>
           )}

@@ -15,6 +15,7 @@ import {
   useOverview,
   useRemoveStaff,
   useRevokeUserSessions,
+  useResetUserMfa,
   useSendCode,
   useStaff,
   useTenant,
@@ -315,6 +316,38 @@ describe("session mutations", () => {
     expect(calls.find((c) => c.path.endsWith("/verify-code"))?.body).toEqual({ email: "a@example.com", code: "123456" });
   });
 
+  it("useVerifyCode sends the authenticator code when it has one", async () => {
+    const calls = stubFetch({ "POST /api/platform/auth/verify-code": json(200, { user_id: "u1", role: "support" }) });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useVerifyCode(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ email: "a@example.com", code: "123456", totp: "654321" });
+    });
+    expect(calls[0]?.body).toEqual({ email: "a@example.com", code: "123456", totp: "654321" });
+  });
+
+  it("useVerifyCode reports that the authenticator code is needed, and does not refetch who is signed in", async () => {
+    stubFetch({ "POST /api/platform/auth/verify-code": json(200, { mfa_required: true }) });
+    const { queryClient, wrapper } = setup();
+    queryClient.setQueryData(platformKeys.me(), null);
+    const { result } = renderHook(() => useVerifyCode(), { wrapper });
+    let answer: { mfaRequired: boolean } | undefined;
+    await act(async () => {
+      answer = await result.current.mutateAsync({ email: "a@example.com", code: "123456" });
+    });
+    expect(answer).toEqual({ mfaRequired: true });
+    expect(queryClient.getQueryState(platformKeys.me())?.isInvalidated).toBe(false);
+  });
+
+  it("useVerifyCode rejects a malformed answer", async () => {
+    stubFetch({ "POST /api/platform/auth/verify-code": json(200, { mfa_required: "yes" }) });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useVerifyCode(), { wrapper });
+    await act(async () => {
+      await expect(result.current.mutateAsync({ email: "a@example.com", code: "123456" })).rejects.toBeInstanceOf(Error);
+    });
+  });
+
   it("useVerifyCode rejects with the server's code for a wrong code", async () => {
     stubFetch({ "POST /api/platform/auth/verify-code": json(400, { error: "invalid code", code: "invalid_code" }) });
     const { wrapper } = setup();
@@ -385,6 +418,7 @@ function useAllMutations() {
     addTenantNote: useAddTenantNote(),
     changeUserStatus: useChangeUserStatus(),
     revokeUserSessions: useRevokeUserSessions(),
+    resetUserMfa: useResetUserMfa(),
     addStaff: useAddStaff(),
     removeStaff: useRemoveStaff(),
   };
@@ -421,6 +455,14 @@ const mutationCases: MutationCase[] = [
     response: json(200, { sessions_valid_after: "2026-01-01T00:00:00Z" }),
     run: (h) => h.revokeUserSessions.mutateAsync({ userId: "u1", reason: "lost laptop" }),
     request: { method: "POST", path: "/api/platform/users/u1/revoke-sessions", body: { reason: "lost laptop" } },
+    invalidates: ["user", "audit", "auditFiltered"],
+  },
+  {
+    name: "useResetUserMfa",
+    route: "POST /api/platform/users/u1/mfa-reset",
+    response: json(200, { reset: true }),
+    run: (h) => h.resetUserMfa.mutateAsync({ userId: "u1" }),
+    request: { method: "POST", path: "/api/platform/users/u1/mfa-reset" },
     invalidates: ["user", "audit", "auditFiltered"],
   },
   {

@@ -147,4 +147,64 @@ describe("Login screen", () => {
     fireEvent.click(screen.getByRole("button", { name: /Use a different email/i }));
     expect(screen.getByLabelText(/Email address/i)).toBeInTheDocument();
   });
+
+  async function reachCodeStep() {
+    mockSendCodeMutateAsync.mockResolvedValue({});
+    fireEvent.change(screen.getByLabelText(/Email address/i), {
+      target: { value: "staff@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Send sign-in code/i }));
+    await waitFor(() => {
+      expect(screen.getByLabelText(/6-digit code/i)).toBeInTheDocument();
+    });
+  }
+
+  it("asks for the authenticator code after the email code, and signs in with both", async () => {
+    mockVerifyCodeMutateAsync
+      .mockResolvedValueOnce({ mfaRequired: true })
+      .mockResolvedValueOnce({ mfaRequired: false });
+    const onSuccess = vi.fn();
+    render(<Login onSuccess={onSuccess} />);
+    await reachCodeStep();
+
+    fireEvent.change(screen.getByLabelText(/6-digit code/i), { target: { value: "111111" } });
+    fireEvent.click(screen.getByRole("button", { name: /Sign in/i }));
+
+    const totpInput = await screen.findByLabelText(/authenticator code/i);
+    expect(mockVerifyCodeMutateAsync).toHaveBeenNthCalledWith(1, {
+      email: "staff@example.com",
+      code: "111111",
+    });
+    expect(onSuccess).not.toHaveBeenCalled();
+
+    fireEvent.change(totpInput, { target: { value: "222222" } });
+    fireEvent.click(screen.getByRole("button", { name: /Sign in/i }));
+
+    await waitFor(() => {
+      expect(mockVerifyCodeMutateAsync).toHaveBeenNthCalledWith(2, {
+        email: "staff@example.com",
+        code: "111111",
+        totp: "222222",
+      });
+      expect(onSuccess).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("a wrong authenticator code shows the same message and keeps the step", async () => {
+    mockVerifyCodeMutateAsync
+      .mockResolvedValueOnce({ mfaRequired: true })
+      .mockRejectedValueOnce(new Error("Invalid code"));
+    const onSuccess = vi.fn();
+    render(<Login onSuccess={onSuccess} />);
+    await reachCodeStep();
+
+    fireEvent.change(screen.getByLabelText(/6-digit code/i), { target: { value: "111111" } });
+    fireEvent.click(screen.getByRole("button", { name: /Sign in/i }));
+    fireEvent.change(await screen.findByLabelText(/authenticator code/i), { target: { value: "000000" } });
+    fireEvent.click(screen.getByRole("button", { name: /Sign in/i }));
+
+    expect(await screen.findByText("That code is not valid.")).toBeInTheDocument();
+    expect(screen.getByLabelText(/authenticator code/i)).toBeInTheDocument();
+    expect(onSuccess).not.toHaveBeenCalled();
+  });
 });
