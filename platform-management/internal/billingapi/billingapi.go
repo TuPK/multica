@@ -72,9 +72,16 @@ type WorkspaceReader interface {
 	Slug(ctx context.Context, workspaceID string) (slug string, found bool, err error)
 }
 
+// SubscriptionReader reads a workspace's subscription and its billing profile.
+// *subscription.PgxReader is one.
+type SubscriptionReader interface {
+	subscription.Reader
+	subscription.KindReader
+}
+
 // Deps are the handler's dependencies. All but Now and Log are required.
 type Deps struct {
-	Subscriptions subscription.Reader
+	Subscriptions SubscriptionReader
 	Plans         plan.Reader
 	Members       subscription.MemberReader
 	Orders        OrderCreator
@@ -293,6 +300,19 @@ func (h *Handler) checkout(w http.ResponseWriter, r *http.Request) {
 	p, found := pickPlan(plans, sub, in.PlanKey)
 	if !found {
 		writeError(w, http.StatusNotFound, codePlanNotFound, "plan not found")
+		return
+	}
+	if err := subscription.CheckPlanForWorkspace(r.Context(), h.Subscriptions, ws, p); err != nil {
+		var refusal *subscription.Error
+		if errors.As(err, &refusal) {
+			body := map[string]any{"error": refusal.Message, "code": refusal.Code}
+			for k, v := range refusal.Detail {
+				body[k] = v
+			}
+			writeJSON(w, refusal.Status, body)
+			return
+		}
+		h.internalError(w, r, "check the plan audience", err)
 		return
 	}
 	if !subscription.SellsSeats(p) {

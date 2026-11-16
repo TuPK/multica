@@ -56,7 +56,14 @@ func (f *fakeMembers) Reserved(context.Context, string) (int64, error) { return 
 
 type fakeSubs struct {
 	rows map[string]subscription.Subscription
-	err  error
+	// profiles are the billing profiles; a workspace without one is individual.
+	profiles map[string]subscription.BillingProfile
+	err      error
+}
+
+func (f *fakeSubs) Profile(_ context.Context, ws string) (subscription.BillingProfile, bool, error) {
+	p, ok := f.profiles[ws]
+	return p, ok, f.err
 }
 
 func (f *fakeSubs) Get(_ context.Context, ws string) (subscription.Subscription, bool, error) {
@@ -259,6 +266,7 @@ func TestCheckoutCreatesASubscribeOrderForAFreeWorkspace(t *testing.T) {
 
 func TestCheckoutTakesPlanKeyAndSeats(t *testing.T) {
 	e := newEnv(t)
+	e.setKind(subscription.AccountBusiness)
 	rec := e.checkout(adminID, obj{
 		"workspace_id": wsID, "interval": "year", "idempotency_key": "k", "plan_key": "business", "seats": 7,
 	})
@@ -273,6 +281,7 @@ func TestCheckoutTakesPlanKeyAndSeats(t *testing.T) {
 
 func TestCheckoutOfAPaidWorkspaceIsAChangePlanOrder(t *testing.T) {
 	e := newEnv(t)
+	e.setKind(subscription.AccountBusiness)
 	e.paid()
 	rec := e.checkout(ownerID, obj{"workspace_id": wsID, "interval": "month", "idempotency_key": "k", "plan_key": "business"})
 	if rec.Code != 200 {
@@ -340,6 +349,7 @@ func TestCheckoutRefusesBadInput(t *testing.T) {
 	}
 	for name, body := range cases {
 		e := newEnv(t)
+		e.setKind(subscription.AccountBusiness)
 		rec := e.checkout(ownerID, body)
 		if rec.Code != 400 {
 			t.Errorf("%s: status %d, want 400: %s", name, rec.Code, rec.Body)
@@ -368,6 +378,95 @@ func TestCheckoutRefusesAPlanTheWorkspaceCannotBuy(t *testing.T) {
 	if len(e.orders.drafts) != 0 {
 		t.Error("an order was created")
 	}
+}
+
+func (e *env) setKind(kind string) {
+	e.subs.profiles = map[string]subscription.BillingProfile{wsID: {WorkspaceID: wsID, AccountKind: kind}}
+}
+
+func TestCheckoutRefusesABusinessPlanForAnIndividualWorkspace(t *testing.T) {
+	for name, profiles := range map[string]string{"no profile row": "", "individual row": subscription.AccountIndividual} {
+		e := newEnv(t)
+		if profiles != "" {
+			e.setKind(profiles)
+		}
+		rec := e.checkout(ownerID, obj{"workspace_id": wsID, "interval": "month", "idempotency_key": "k", "plan_key": "business"})
+		wantCode(t, rec, 409, "plan_audience_mismatch")
+		m := decode(t, rec)
+		if m["plan_key"] != "business" || m["account_kind"] != "individual" {
+			t.Errorf("%s: body = %v, want plan_key business and account_kind individual", name, m)
+		}
+		if len(e.orders.drafts) != 0 {
+			t.Errorf("%s: an order was created", name)
+		}
+	}
+}
+
+func TestCheckoutLetsABusinessWorkspaceBuyABusinessPlan(t *testing.T) {
+	e := newEnv(t)
+	e.setKind(subscription.AccountBusiness)
+	rec := e.checkout(ownerID, obj{"workspace_id": wsID, "interval": "month", "idempotency_key": "k", "plan_key": "business"})
+	if rec.Code != 200 {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body)
+	}
+	if len(e.orders.drafts) != 1 || e.orders.drafts[0].PlanKey != "business" {
+		t.Fatalf("drafts = %+v", e.orders.drafts)
+	}
+}
+
+func TestCheckoutRefusesAPlanOnlyForIndividualsToABusinessWorkspace(t *testing.T) {
+	e := newEnv(t)
+	e.setKind(subscription.AccountBusiness)
+	for i := range e.plans.plans {
+		if e.plans.plans[i].Key == "pro" {
+			e.plans.plans[i].Audience = plan.AudienceIndividual
+		}
+	}
+	rec := e.checkout(ownerID, obj{"workspace_id": wsID, "interval": "month", "idempotency_key": "k", "plan_key": "pro"})
+	wantCode(t, rec, 409, "plan_audience_mismatch")
+	if len(e.orders.drafts) != 0 {
+		t.Error("an order was created")
+	}
+}
+
+func TestCheckoutOfAnAnyPlanIsOpenToBothKinds(t *testing.T) {
+	for _, kind := range []string{subscription.AccountIndividual, subscription.AccountBusiness} {
+		e := newEnv(t)
+		e.setKind(kind)
+		rec := e.checkout(ownerID, obj{"workspace_id": wsID, "interval": "month", "idempotency_key": "k", "plan_key": "pro"})
+		if rec.Code != 200 {
+			t.Errorf("%s: status %d: %s", kind, rec.Code, rec.Body)
+		}
+	}
+}
+
+func TestCheckoutRefusesWhenTheProfileCannotBeRead(t *testing.T) {
+	e := newEnv(t)
+	// A profile read that fails must not let the order through.
+	failing := &failingProfiles{fakeSubs: e.subs}
+	h, err := New(Deps{
+		Subscriptions: failing, Plans: e.plans, Members: e.members, Orders: e.orders, Workspaces: e.spaces,
+		VATRate: billing.DefaultVATRate, AppURL: appURL, Now: func() time.Time { return now },
+		Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.h = h.Handler(trust.New(trust.DefaultCIDRs()).RequireUser)
+	rec := e.checkout(ownerID, obj{"workspace_id": wsID, "interval": "month", "idempotency_key": "k", "plan_key": "pro"})
+	wantCode(t, rec, 500, "internal")
+	if strings.Contains(rec.Body.String(), "profile boom") {
+		t.Errorf("the cause leaked: %s", rec.Body)
+	}
+	if len(e.orders.drafts) != 0 {
+		t.Error("an order was created")
+	}
+}
+
+type failingProfiles struct{ *fakeSubs }
+
+func (f *failingProfiles) Profile(context.Context, string) (subscription.BillingProfile, bool, error) {
+	return subscription.BillingProfile{}, false, errors.New("profile boom")
 }
 
 func TestCheckoutRoleChecks(t *testing.T) {

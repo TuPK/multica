@@ -33,9 +33,8 @@ func (r *PgxProfileRunner) InTx(ctx context.Context, fn func(ProfileTx) error) e
 
 type pgxProfileTx struct{ *pgxTx }
 
-// LockedProfile implements ProfileTx. The advisory lock stands in for the
-// unique index of migration 955, which is not applied yet: it keeps two first
-// writes of one workspace from inserting two rows.
+// LockedProfile implements ProfileTx. The advisory lock keeps two first writes
+// of one workspace from racing into the unique index of migration 955.
 func (t *pgxProfileTx) LockedProfile(ctx context.Context, workspaceID string) (BillingProfile, bool, error) {
 	uid, err := parseUUID(workspaceID)
 	if err != nil {
@@ -112,6 +111,16 @@ func NewPgxProfiles(pool db.DBTX) *PgxProfiles { return &PgxProfiles{q: db.New(p
 
 // Profile implements KindReader.
 func (r *PgxProfiles) Profile(ctx context.Context, workspaceID string) (BillingProfile, bool, error) {
+	uid, err := parseUUID(workspaceID)
+	if err != nil {
+		return BillingProfile{}, false, err
+	}
+	return readProfile(ctx, r.q, uid)
+}
+
+// Profile makes *PgxReader a KindReader, so a handler that already reads the
+// subscription can also read the account kind.
+func (r *PgxReader) Profile(ctx context.Context, workspaceID string) (BillingProfile, bool, error) {
 	uid, err := parseUUID(workspaceID)
 	if err != nil {
 		return BillingProfile{}, false, err
