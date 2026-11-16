@@ -700,11 +700,19 @@ export interface PersonalAccessToken {
   expires_at: string | null;
   last_used_at: string | null;
   created_at: string;
+  /** Workspace the token is bound to; null or absent means any workspace. */
+  workspace_id?: string | null;
+  /** True when the token is refused on every method but GET, HEAD and OPTIONS. */
+  read_only?: boolean;
 }
 
 export interface CreatePersonalAccessTokenRequest {
   name: string;
   expires_in_days?: number;
+  /** Bind the token to one workspace the caller belongs to. */
+  workspace_id?: string;
+  /** Limit the token to read requests. Defaults to false. */
+  read_only?: boolean;
 }
 
 export interface CreatePersonalAccessTokenResponse extends PersonalAccessToken {
