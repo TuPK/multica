@@ -1447,6 +1447,10 @@
       "member": {
         "label": "Member",
         "description": "Create and work on issues"
+      },
+      "viewer": {
+        "label": "Viewer",
+        "description": "Read the workspace without changing it"
       }
     },
     "share_links_create_title": "Create share link",

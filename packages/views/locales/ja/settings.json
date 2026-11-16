@@ -1437,6 +1437,10 @@
       "member": {
         "label": "メンバー",
         "description": "タスクの作成と作業"
+      },
+      "viewer": {
+        "label": "閲覧者",
+        "description": "ワークスペースを閲覧のみ可能"
       }
     },
     "share_links_create_title": "共有リンクを作成",
