@@ -54,7 +54,7 @@ func (q *Queries) GetWorkspaceBillingOrder(ctx context.Context, arg GetWorkspace
 
 const listPublicPlans = `-- name: ListPublicPlans :many
 
-SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at FROM plan
+SELECT key, name, limits, features, currency, seat_price_month, seat_price_year, seats_fixed, min_seats, trial_days, is_public, sort, archived_at, audience, billing_model, usage_rates, usage_terms, version FROM plan
 WHERE is_public AND archived_at IS NULL
 ORDER BY sort, key
 `
@@ -86,6 +86,11 @@ func (q *Queries) ListPublicPlans(ctx context.Context) ([]Plan, error) {
 			&i.IsPublic,
 			&i.Sort,
 			&i.ArchivedAt,
+			&i.Audience,
+			&i.BillingModel,
+			&i.UsageRates,
+			&i.UsageTerms,
+			&i.Version,
 		); err != nil {
 			return nil, err
 		}

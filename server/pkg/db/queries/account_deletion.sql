@@ -76,6 +76,16 @@ SET name = 'Deleted user',
     updated_at = now()
 WHERE id = $1;
 
+-- name: AnonymizeAccountRequestsForUser :exec
+-- Platform account requests that named the user (platform spec 7b.5, rule 11).
+-- The personal values are overwritten and the rows stay, so the request ids and
+-- the staff who asked are kept. The email gets the address the user row gets.
+UPDATE platform_account_request
+SET email = 'deleted+' || user_id::text || '@deleted.invalid',
+    display_name = 'Deleted user',
+    updated_at = now()
+WHERE user_id = $1;
+
 -- name: DeleteUserPersonalAccessTokens :many
 -- Returns token_hash so the caller can drop the auth cache entries.
 DELETE FROM personal_access_token WHERE user_id = $1 RETURNING token_hash;

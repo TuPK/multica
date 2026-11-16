@@ -221,19 +221,20 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"workspace_invitation":               workspaceDelete,
 	"workspace_share_link":               workspaceDelete,
 	// Platform-management tables (gate G-R2 decisions).
-	"audit_event":             workspaceDeleteDetach, // rows survive with a NULL workspace_id; the retention job removes them
-	"billing_notice":          workspaceDelete,
-	"billing_order":           workspaceDeleteSettle, // financial record kept for accounting; buyer details are an open item
-	"plan":                    workspaceDeleteKeep,
-	"platform_account":        workspaceDeleteKeep,
-	"platform_note":           workspaceDelete,
-	"platform_seat_operation": workspaceDelete,
-	"platform_staff":          workspaceDeleteKeep,
-	"platform_usage_daily":    workspaceDelete,
-	"platform_workspace":      workspaceDelete,
-	"user_consent":            workspaceDeleteKeep,
-	"workspace_export":        workspaceDelete, // storage archives are an open item
-	"workspace_subscription":  workspaceDelete,
+	"audit_event":              workspaceDeleteDetach, // rows survive with a NULL workspace_id; the retention job removes them
+	"billing_notice":           workspaceDelete,
+	"billing_order":            workspaceDeleteSettle, // financial record kept for accounting; buyer details are an open item
+	"plan":                     workspaceDeleteKeep,
+	"platform_account":         workspaceDeleteKeep,
+	"platform_account_request": workspaceDeleteKeep, // the request row stays as the record; its workspace_id resolves to nothing once the workspace is gone
+	"platform_note":            workspaceDelete,
+	"platform_seat_operation":  workspaceDelete,
+	"platform_staff":           workspaceDeleteKeep,
+	"platform_usage_daily":     workspaceDelete,
+	"platform_workspace":       workspaceDelete,
+	"user_consent":             workspaceDeleteKeep,
+	"workspace_export":         workspaceDelete, // storage archives are an open item
+	"workspace_subscription":   workspaceDelete,
 }
 
 func TestWorkspaceDeletionManifestCoversPublicSchema(t *testing.T) {

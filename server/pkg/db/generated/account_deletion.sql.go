@@ -11,6 +11,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const anonymizeAccountRequestsForUser = `-- name: AnonymizeAccountRequestsForUser :exec
+UPDATE platform_account_request
+SET email = 'deleted+' || user_id::text || '@deleted.invalid',
+    display_name = 'Deleted user',
+    updated_at = now()
+WHERE user_id = $1
+`
+
+// Platform account requests that named the user (platform spec 7b.5, rule 11).
+// The personal values are overwritten and the rows stay, so the request ids and
+// the staff who asked are kept. The email gets the address the user row gets.
+func (q *Queries) AnonymizeAccountRequestsForUser(ctx context.Context, userID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, anonymizeAccountRequestsForUser, userID)
+	return err
+}
+
 const anonymizeDeletedUser = `-- name: AnonymizeDeletedUser :exec
 UPDATE "user"
 SET name = 'Deleted user',

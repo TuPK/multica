@@ -409,6 +409,19 @@ type BillingOrder struct {
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
+type BillingProfile struct {
+	WorkspaceID  pgtype.UUID        `json:"workspace_id"`
+	AccountKind  string             `json:"account_kind"`
+	LegalName    string             `json:"legal_name"`
+	TaxCode      string             `json:"tax_code"`
+	Address      string             `json:"address"`
+	InvoiceEmail string             `json:"invoice_email"`
+	VerifiedAt   pgtype.Timestamptz `json:"verified_at"`
+	VerifiedBy   pgtype.UUID        `json:"verified_by"`
+	UpdatedBy    pgtype.UUID        `json:"updated_by"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Brief struct {
 	ID                pgtype.UUID        `json:"id"`
 	WorkspaceID       pgtype.UUID        `json:"workspace_id"`
@@ -1959,6 +1972,27 @@ type Plan struct {
 	IsPublic       bool               `json:"is_public"`
 	Sort           int32              `json:"sort"`
 	ArchivedAt     pgtype.Timestamptz `json:"archived_at"`
+	Audience       string             `json:"audience"`
+	BillingModel   string             `json:"billing_model"`
+	UsageRates     []byte             `json:"usage_rates"`
+	UsageTerms     []byte             `json:"usage_terms"`
+	Version        int64              `json:"version"`
+}
+
+type PlanPriceChange struct {
+	ID            pgtype.UUID        `json:"id"`
+	PlanKey       string             `json:"plan_key"`
+	State         string             `json:"state"`
+	EffectiveFrom pgtype.Timestamptz `json:"effective_from"`
+	Old           []byte             `json:"old"`
+	New           []byte             `json:"new"`
+	Reason        string             `json:"reason"`
+	NoticeSentAt  pgtype.Timestamptz `json:"notice_sent_at"`
+	CreatedBy     pgtype.UUID        `json:"created_by"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	AppliedAt     pgtype.Timestamptz `json:"applied_at"`
+	CanceledBy    pgtype.UUID        `json:"canceled_by"`
+	CanceledAt    pgtype.Timestamptz `json:"canceled_at"`
 }
 
 type PlanningCycle struct {
@@ -1978,6 +2012,32 @@ type PlatformAccount struct {
 	ChangedAt           pgtype.Timestamptz `json:"changed_at"`
 	SessionsValidAfter  pgtype.Timestamptz `json:"sessions_valid_after"`
 	DeletionScheduledAt pgtype.Timestamptz `json:"deletion_scheduled_at"`
+}
+
+type PlatformAccountRequest struct {
+	ID              pgtype.UUID        `json:"id"`
+	Kind            string             `json:"kind"`
+	Email           string             `json:"email"`
+	DisplayName     string             `json:"display_name"`
+	WorkspaceName   string             `json:"workspace_name"`
+	WorkspaceSlug   string             `json:"workspace_slug"`
+	PlanKey         string             `json:"plan_key"`
+	Seats           int32              `json:"seats"`
+	Interval        string             `json:"interval"`
+	Trial           bool               `json:"trial"`
+	CompReason      string             `json:"comp_reason"`
+	BillingProfile  []byte             `json:"billing_profile"`
+	State           string             `json:"state"`
+	ErrorCode       string             `json:"error_code"`
+	Attempts        int32              `json:"attempts"`
+	UserID          pgtype.UUID        `json:"user_id"`
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	CreatedBy       pgtype.UUID        `json:"created_by"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	CompletedAt     pgtype.Timestamptz `json:"completed_at"`
+	WelcomeSentAt   pgtype.Timestamptz `json:"welcome_sent_at"`
+	WelcomeAttempts int32              `json:"welcome_attempts"`
 }
 
 type PlatformNote struct {
@@ -2980,4 +3040,6 @@ type WorkspaceSubscription struct {
 	LimitOverrides     []byte             `json:"limit_overrides"`
 	Version            int64              `json:"version"`
 	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	PendingChange      []byte             `json:"pending_change"`
+	UnitPrice          pgtype.Int8        `json:"unit_price"`
 }

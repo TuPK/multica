@@ -435,6 +435,58 @@ func TestAccountDeletionJobAnonymisesAndRemoves(t *testing.T) {
 	}
 }
 
+// Platform account requests that named the user (platform spec 7b.5, rule 11)
+// keep their rows and ids, but lose the personal values: the email and display
+// name. Another person's request is left alone.
+func TestAccountDeletionJobAnonymisesAccountRequests(t *testing.T) {
+	requirePlatformTestDatabase(t)
+	ctx := context.Background()
+	f := newDeletionFixture(t)
+	makeDue(t, f.userID)
+
+	clientEmail := "client-" + uuid.NewString()[:8] + "@example.test"
+	reqID := dbfx.Insert(t, "platform_account_request", testutil.Cols{
+		"id": uuid.NewString(), "kind": "individual", "email": clientEmail, "display_name": "Client Person",
+		"workspace_name": "Client workspace", "plan_key": "free", "state": "provisioned",
+		"user_id": f.userID, "created_by": f.otherUserID,
+	})
+	otherEmail := "other-" + uuid.NewString()[:8] + "@example.test"
+	otherID := dbfx.Insert(t, "platform_account_request", testutil.Cols{
+		"id": uuid.NewString(), "kind": "individual", "email": otherEmail, "display_name": "Other Person",
+		"workspace_name": "Other workspace", "plan_key": "free", "state": "pending",
+		"created_by": f.otherUserID,
+	})
+
+	done, err := testHandler.DeleteAccount(ctx, f.userID, time.Now())
+	if err != nil || !done {
+		t.Fatalf("DeleteAccount = %v, %v", done, err)
+	}
+
+	var email, displayName string
+	var userID *string
+	if err := testPool.QueryRow(ctx,
+		`SELECT email, display_name, user_id::text FROM platform_account_request WHERE id = $1::uuid`, reqID).
+		Scan(&email, &displayName, &userID); err != nil {
+		t.Fatal(err)
+	}
+	if email != "deleted+"+f.userID+"@deleted.invalid" || displayName != "Deleted user" {
+		t.Fatalf("request row = %q %q; want the anonymised values", email, displayName)
+	}
+	if userID == nil || *userID != f.userID {
+		t.Fatal("the request no longer names the user it was made for")
+	}
+
+	var otherName, otherAddr string
+	if err := testPool.QueryRow(ctx,
+		`SELECT email, display_name FROM platform_account_request WHERE id = $1::uuid`, otherID).
+		Scan(&otherAddr, &otherName); err != nil {
+		t.Fatal(err)
+	}
+	if otherAddr != otherEmail || otherName != "Other Person" {
+		t.Fatalf("another person's request changed: %q %q", otherAddr, otherName)
+	}
+}
+
 func TestAccountDeletionJobLeavesAccountsThatAreNotDue(t *testing.T) {
 	requirePlatformTestDatabase(t)
 	ctx := context.Background()
