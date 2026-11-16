@@ -60,7 +60,7 @@ Không được làm:
 
 ### 0.3 Dải số migration
 
-Hạng mục giữ dải **651 đến 699** (spec mục 8). Mỗi bước ghi số nó dùng. Phân bổ: R1 dùng 651 đến 662, R2 dùng 663 đến 688, R3 dùng 689 đến 699; nếu thiếu thì dùng dải dự phòng 953 đến 969. Đợt bổ sung R5 (mục "Đợt bổ sung") dùng 953 đến 968 và để 969 dự phòng; phân bổ từng số ở spec 7b.6 và ở từng bước Q. Mỗi lần thêm migration chạy `[GN] ./internal/migrations -run 'TestMigrationFilesHaveMatchingDirections|TestMigrationNumericPrefixesAreUnique'` và `[GN] ./cmd/migrate -run 'TestEveryConcurrentUpBuildHasCleanup'`.
+Hạng mục giữ dải **651 đến 699** (spec mục 8). Mỗi bước ghi số nó dùng. Phân bổ: R1 dùng 651 đến 662, R2 dùng 663 đến 688, R3 dùng 691 đến 699. Lệch khỏi phân bổ ban đầu: P27 dùng 685 và 687 (686 đã có), P28 dùng 689 và 690 (687 và 688 đã có), nên R3 bắt đầu từ 691. Nếu thiếu thì dùng dải dự phòng 953 đến 969. Đợt bổ sung R5 (mục "Đợt bổ sung") dùng 953 đến 968 và để 969 dự phòng; phân bổ từng số ở spec 7b.6 và ở từng bước Q. Mỗi lần thêm migration chạy `[GN] ./internal/migrations -run 'TestMigrationFilesHaveMatchingDirections|TestMigrationNumericPrefixesAreUnique'` và `[GN] ./cmd/migrate -run 'TestEveryConcurrentUpBuildHasCleanup'`.
 
 ## 1. Pha 0: chuẩn bị
 
