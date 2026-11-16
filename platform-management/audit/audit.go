@@ -173,6 +173,12 @@ var Catalog = []string{
 	ActionSubscriptionChangeCanceled,
 	ActionSubscriptionCancelRequested,
 	ActionSubscriptionCancelWithdrawn,
+	ActionGroupCreated,
+	ActionGroupUpdated,
+	ActionGroupDeleted,
+	ActionGroupMemberAdded,
+	ActionGroupMemberRemoved,
+	ActionGroupPermissionsChanged,
 }
 
 // R5 subscription actions (spec 7b.1, rules 5 to 8): written by the platform in the
@@ -211,6 +217,18 @@ const (
 	ActionPlanPriceScheduled = "plan.price_scheduled"
 	ActionPlanPriceApplied   = "plan.price_applied"
 	ActionPlanPriceCanceled  = "plan.price_canceled"
+)
+
+// R5 account group actions (spec 7b.2, rule 13): written by Multica in the
+// transaction of the change. group.updated records only the names of the fields
+// that changed; group.permissions_changed records the old and new key arrays.
+const (
+	ActionGroupCreated            = "group.created"
+	ActionGroupUpdated            = "group.updated"
+	ActionGroupDeleted            = "group.deleted"
+	ActionGroupMemberAdded        = "group.member_added"
+	ActionGroupMemberRemoved      = "group.member_removed"
+	ActionGroupPermissionsChanged = "group.permissions_changed"
 )
 
 // Actor types.

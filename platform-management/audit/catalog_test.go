@@ -248,3 +248,29 @@ func TestSubscriptionChangeCatalogActionsAreDefined(t *testing.T) {
 		}
 	}
 }
+
+// The account group actions (spec 7b.2, rule 13) are stored in
+// audit_event.action, so a rename is a data change. Each is in Catalog, which
+// the audit log filters read.
+func TestGroupCatalogActionsAreDefinedAndCataloged(t *testing.T) {
+	cases := map[string]string{
+		"group.created":             ActionGroupCreated,
+		"group.updated":             ActionGroupUpdated,
+		"group.deleted":             ActionGroupDeleted,
+		"group.member_added":        ActionGroupMemberAdded,
+		"group.member_removed":      ActionGroupMemberRemoved,
+		"group.permissions_changed": ActionGroupPermissionsChanged,
+	}
+	for want, got := range cases {
+		if got != want {
+			t.Errorf("constant = %q, want %q", got, want)
+		}
+		found := false
+		for _, a := range Catalog {
+			found = found || a == want
+		}
+		if !found {
+			t.Errorf("%s is not in Catalog", want)
+		}
+	}
+}

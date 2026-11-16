@@ -19,6 +19,7 @@ var userColumnNames = map[string]bool{
 	"creator_id": true,
 	"created_by": true,
 	"inviter_id": true,
+	"added_by":   true,
 }
 
 func isUserColumnName(name string) bool {
