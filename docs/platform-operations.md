@@ -309,40 +309,44 @@ Fixes made in R2 slices to reach this, on `main`: the deletion manifest and the 
 
 **Open after the tests.** Buyer details of billing orders are not cleared (a retention worker must do this, per the tax and retention rules). Storage objects of workspace exports are not deleted by the teardown. Leftover `multica_test_*` databases from earlier `IsolatedDB` runs remain on the test server and need an owner decision to drop.
 
-**G-R2 cutover rehearsal, 2026-11-16: not closed.** The backfill command is `platform-management/cmd/platform-backfill` (commit `b12ccfa2c`). It gives each workspace with no `workspace_subscription` row the free plan, one batch of 500 per transaction, with a `subscription.backfilled` audit row in the same transaction. It is safe to run again.
+**G-R2 cutover rehearsal, 2026-11-16: closed.** The backfill command is `platform-management/cmd/platform-backfill` (commit `b12ccfa2c`). It gives each workspace with no `workspace_subscription` row the free plan, one batch of 500 per transaction, with a `subscription.backfilled` audit row in the same transaction. It is safe to run again.
 
-The rehearsal ran on `multica_platform_test`, through `scripts/require-test-database.sh`. That database held no workspace rows, so the rehearsal used four fixture workspaces, `rehearsal-1` to `rehearsal-4`: three with no subscription row and one with a row (plan `team`, version 2). The fixtures and their audit rows were deleted after the checks.
+The rehearsal ran on `multica_platform_test`, through `scripts/require-test-database.sh`. That database held no workspace rows, so the rehearsal used four fixture workspaces, `rehearsal-1` to `rehearsal-4`: three with no subscription row, and one with a paid row (plan `pro`, version 2). The fixtures and their audit rows were deleted after the checks.
+
+The rehearsal ran twice. The first run failed the policy check: the test database's plan table held only `free`, because `plan.Seed` filled the table only when it was empty. The fix is `b8b0ab763`: Seed now inserts each catalogue plan whose key is missing, unless staff deleted it, and never changes an existing row. The second run, below, is the record. The first run's paid fixture used the plan key `team`, which is not in the catalogue; the catalogue's paid plans are `pro`, `business` and `enterprise`, so the fixture now uses `pro`.
+
+Second run, with the fix, Redis on 127.0.0.1:16379 (a `redis:7-alpine` container started for the rehearsal and removed afterwards), and the platform on 8095:
 
 | Count | Result |
 | --- | --- |
 | Workspaces with no subscription row, before | 3 of 4 |
-| First run: batches, inserted | 1 batch, 3 inserted |
+| First backfill run: batches, inserted | 1 batch, 3 inserted |
 | Workspaces with no subscription row, after | 0 |
 | `subscription.backfilled` audit rows after the first run | 3 |
-| Paid-row fixture after the run | unchanged (plan `team`, version 2) |
-| Second run: batches, inserted | 0 batches, 0 inserted |
+| Second backfill run: batches, inserted | 0 batches, 0 inserted |
 | `subscription.backfilled` audit rows after the second run | 3 |
+| Paid-row fixture after the runs | unchanged (plan `pro`, version 2) |
 
 | Check | Result |
 | --- | --- |
-| `migrate up` on the test DSN | at head: 925 migration files and 925 rows before and after |
-| Backfilled rows: `free`, `active`, 0 seats, `month`, version 1, no period, trial or grace date | pass |
-| Platform on 8095, `/healthz` answers | answers, but HTTP 503 with `redis` failed: no Redis listens on 127.0.0.1:6379 here |
-| Platform refuses to start when a migration is missing | pass: exit 1, `missing required migrations: 690_platform_usage_daily_uidx` |
-| Entitlement policy readable for every rehearsal workspace | **fail** as seeded: rehearsal-1 to -3 return 200; rehearsal-4 returns 500, `plan "team" does not exist`. In a supplemental run with rehearsal-4 on `free`, all four return 200; that run is not the record. |
-| No workspace read-only or suspended because of the cutover | pass: no `platform_workspace` row of a fixture is read-only, suspended or not active, before or after |
+| `migrate up` on the test DSN (first run) | at head: 925 migration files and 925 rows before and after |
+| Backfilled rows: `free`, `active`, 0 seats, `month`, version 1, no period, trial or grace date (first run) | pass |
+| Platform on 8095, `/healthz` | pass: HTTP 200, `{"status":"ok"}` |
+| Entitlement policy for each of the four fixtures | pass: rehearsal-1 to -4 all HTTP 200 |
+| Platform refuses to start when a migration is missing (first run) | pass: exit 1, `missing required migrations: 690_platform_usage_daily_uidx`; the row was restored exactly |
+| No workspace read-only, suspended or not active because of the cutover | pass: 0 `platform_workspace` rows among the fixtures |
 | Command guard refuses a name without `_test` | pass: exit 1 before any connection |
-| Port 8095 not reachable from outside; `mcn_` token refused | not run; outside the checks of this rehearsal |
+| Port 8095 unreachable from outside; `mcn_` token refused | not run; outside the checks of this rehearsal |
 
-G-R2 is not closed because the policy check failed. The `plan` table of `multica_platform_test` holds only `free`. `plan.Seed` fills the table only when it is empty, so `pro`, `business` and `enterprise` are absent here, and a workspace on a paid plan cannot be read until the catalogue is complete. The backfill itself passed every check it was given.
+After the platform started, the plan table of the test database held `business`, `enterprise`, `free` and `pro`. The platform suite passed with the test DSN and without it, after the Seed fix. One run of the console package failed `TestDBOverviewCountsWorkspacesByPlan` during a parallel run: the test compares global counts, and another package's test may create or delete a workspace in between. It passed in the two later isolated runs and in the next full run.
+
+G-R2 is closed: the policy check passes for all four fixtures, and `/healthz` returns 200.
 
 Open items:
 
-- Complete the plan catalogue in the test database, or choose a rehearsal fixture that the owner accepts, then repeat the policy check.
 - `docker-compose.selfhost.yml` has no `platform` service (section 11).
 - Paid workspaces need a plan set by hand; the backfill never assigns one.
 - The production run is the owner's: `platform-backfill --allow-production`, with the production `DATABASE_URL`.
-- `/healthz` reports healthy only with Redis running.
 
 Deviation from the contract: the audit detail is `{"plan": "free", "source": "cutover"}`, not `plan_key`. `audit.Record` redacts keys that contain `key`.
 
