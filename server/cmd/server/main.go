@@ -31,6 +31,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/scheduler"
 	"github.com/multica-ai/multica/server/internal/selfhosttelemetry"
 	"github.com/multica-ai/multica/server/internal/service"
+	"github.com/multica-ai/multica/server/internal/usagesnapshot"
 	"github.com/multica-ai/multica/server/internal/workspacedeletion"
 	"github.com/multica-ai/multica/server/internal/workspaceexport"
 	"github.com/multica-ai/multica/server/internal/workspaceguard"
@@ -913,6 +914,10 @@ func main() {
 	h.WorkspaceDeletionDays = workspaceDeletionDays
 	if err := schedulerMgr.Register(scheduler.WorkspaceDeletionJob(h, workspaceguard.New(queries, storeRedis))); err != nil {
 		slog.Error("scheduler: register workspace deletion", "error", err)
+	}
+	// Daily at 01:00 UTC: the usage rows of the day that just ended (platform console).
+	if err := schedulerMgr.Register(scheduler.UsageSnapshotJob(usagesnapshot.New(usagesnapshot.NewDBStore(pool)))); err != nil {
+		slog.Error("scheduler: register usage snapshot", "error", err)
 	}
 	// Governance (spec 4.6): nightly scorecards, the probation verdicts and the
 	// monthly review routine.
