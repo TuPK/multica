@@ -16,6 +16,24 @@ const serverDir = "../../../server"
 
 var notesName = regexp.MustCompile(`\bplatform_note\b|\bPlatformNote\b`)
 
+// The workspace teardown deletes a deleted workspace's notes with the workspace
+// (the manifest's Delete decision). These files name the table to delete it and
+// read nothing; no other server file may name it.
+var notesTeardownFiles = []string{
+	"server/internal/handler/workspace_delete_manifest_test.go",
+	"server/pkg/db/generated/workspace_delete.sql.go",
+	"server/pkg/db/queries/workspace_delete.sql",
+}
+
+func isNotesTeardownFile(slash string) bool {
+	for _, f := range notesTeardownFiles {
+		if strings.HasSuffix(slash, f) {
+			return true
+		}
+	}
+	return false
+}
+
 func TestMulticaServerNeverReadsPlatformNotes(t *testing.T) {
 	if _, err := os.Stat(serverDir); err != nil {
 		t.Fatalf("server directory: %v", err)
@@ -45,7 +63,7 @@ func TestMulticaServerNeverReadsPlatformNotes(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if notesName.Match(body) {
+		if notesName.Match(body) && !isNotesTeardownFile(slash) {
 			t.Errorf("%s names the notes table", slash)
 		}
 		return nil
