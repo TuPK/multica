@@ -8,7 +8,11 @@ No dependency install was run; `node_modules` was present. `pnpm catalog:build` 
 
 ## Verdict
 
-The R5 gate is **not closed**. Every check runs green except two reproduction tests that predate R5 (both red on main since the R3 gate). Thirteen more acceptance criteria are only partly covered by tests. The open list is in section 6. Nothing in this record fixes product code; each gap needs a decision from the owner.
+See section 8 for the closing update: every acceptance criterion is now covered by a named test, and the checks are green except the two squad repro tests. The gate is closed for the criteria; the security rows and items in section 8.2 and 8.3 remain open.
+
+The verdict below was written before the closing update.
+
+The R5 gate was **not closed** at that point. Every check runs green except two reproduction tests that predate R5 (both red on main since the R3 gate). Thirteen more acceptance criteria are only partly covered by tests. The open list is in section 6. Nothing in this record fixes product code; each gap needs a decision from the owner.
 
 ### Update after the closing commits (2026-11-17)
 
@@ -238,3 +242,66 @@ Each row in sections 3 and 4 marked "gap" is a missing test. They are listed the
 ## 7. Documentation (Q17 step 7)
 
 R5 user pages were written under `apps/docs/content/docs/` (subscriptions, account groups, usage billing). The operator checklist is section 13 of `docs/platform-operations.md`. Both were written from the code, not from the spec's plans; the in-app upcoming-price notice and the removed-member cleanup are left out because they are not built. At review, one claim was corrected: the subscription page said staff can mark a profile verified in the product, which is not built (6.1 item 1); the page now says verification is recorded outside the console. The operations checklist section 13 also notes that migration 969 is applied by `migrate up` but not checked by the platform, and that the `PLATFORM_PRICE_*` settings have no effect. Section 11 of the same file still names migration 690 as the last required one; that stale text was not edited.
+
+## 8. Closing update: partial acceptance criteria closed (2026-11-17)
+
+Each partial criterion in section 3 got its test first, from the criterion's wording, and a fix only where the test showed the behaviour missing. Backend work was done by kiro and frontend by agy, reviewed by hand; each slice was committed with explicit paths and pushed to origin main.
+
+| Slice | Commit | Criteria | What changed |
+| --- | --- | --- | --- |
+| A | `255bb1192` | AC25, AC26, AC27 | Group `billing.view` and `billing.manage` keys now open the subscription and order routes; viewers still refused on writes. AC26 tests passed on first run. |
+| B | `d4c4eaef0` | AC21, AC37, AC38, gate item 3a and 4 | `PLATFORM_PRICE_NOTICE_DAYS`, `PLATFORM_PRICE_CONFIRM_PCT`, `PLATFORM_PRICE_MAX` read from the environment; individual seat cap on checkout and seat purchase; migration 969 in the required list. |
+| C | `94a301c1b` | AC23(i), AC33, AC38, AC39 | Renewal clears `pending_change` and stores `unit_price`; daily rating uses the price in force at 00:00 UTC of the day. AC32, AC33 (100 TB), AC38 (`pending_deletion`) tests passed on first run. |
+| D | `2440ee68b` | AC35, AC41, AC46, AC47, AC48 | Tests for the write-off rule, admin-created sign-in with signup off, console route isolation, admin-created account lifecycle and the cloud-URL regression. The contract fixture for the paid workspace is now a business account. |
+| E | `9db96de12` | AC25 | Console `GET /api/platform/tenants/{id}/billing-profile`; customer `GET /api/cloud-subscriptions/billing-profile` under `billing.view`. |
+| F | `ae478aca5` | AC25 (console follow-up) | Tenant detail reads the verification on page load; verify and unverify update that cache. |
+| G | `69f398aca` | AC23(ii) | A seat-to-usage plan change is stored as `pending_change` with no charge and applies at the end of the paid period through a `usage_switch` lifecycle edge, with no renewal order. |
+| H | `8db23ff2b` | AC48 (client) | Tests that the billing UI and schemas hide features when the optional fields are absent. Passed on first run. |
+| payg | `798500681` | AC32, gate item 3b | The `payg` plan is in the seed catalogue with the spec's rates; `GET /prices` no longer lists usage plans. |
+| J | `662b69636` | AC25, AC28, AC34 | Tests that the billing profile stays out of the summary and export, that a usage order never expires, and that account deletion removes group rows. Passed on first run. |
+| K | `564467dca` | (gate check) | A stale-worker seat test depended on other tests' due rows in the shared database; it now claims until its own row comes back, as in `9b2a6ac3a`. |
+
+### 8.1 Status of each criterion after the closing slices
+
+Covered (by named tests, including the slices above): AC21, AC22, AC23 (both halves), AC24, AC25, AC26, AC27, AC28, AC29, AC30, AC31, AC32, AC33, AC34, AC35, AC36, AC37, AC38, AC39, AC40, AC41, AC42, AC43, AC44, AC45, AC46, AC47, AC48.
+
+Caveats the tests do not remove:
+- AC28: group rows on account deletion are removed by the shared `revokeAndRemoveMember` transaction; the deletion job test checks that outcome.
+- AC32: "invitations and share links are not blocked by seats on a usage plan" is tested in the platform seat package (`TestDBInvitationsAndShareLinksAreNotBlockedBySeatsOnAUsagePlan`), not through the Multica invitation handler.
+- AC23(ii): the switch is stored and applied at period end. Storing a second pending change is not refused by a new rule; the existing flow replaces the pending change unless an order is pending. The spec's AC23 wording does not name that refusal.
+- AC39 and AC23(ii): a usage period starts at the instant the paid seat period ends, so the transition UTC day is rated wholly at usage rates. The gate accepts this as under one day of overlap; the owner should confirm it.
+- AC25 (summary and export): tested by `TestSummaryNeverCarriesTheBillingProfile` and `TestExportHasNoBillingProfile`; the Multica proxy forwards the platform body unchanged and has no separate test.
+
+### 8.2 Security rows still without a test (section 4)
+
+These are spec 7b security rows, not acceptance criteria, so they do not block closing the criteria. They remain open:
+- MFA on the console price routes (7b.4 "admin bị chiếm").
+- MFA on the account-creation route (7b.5 "tạo hàng loạt").
+- Debt bypass: an owner who abandons a usage debt and opens a new free workspace (7b.3).
+- Removal of the profile copy in the account request after completion (7b.5).
+- Unused-account indicator in the console (7b.5): not built.
+- Welcome email link host (7b.5): only the no-secret check is tested.
+- Group audit privacy (7b.2): group names kept out of the audit log is not tested.
+
+### 8.3 Other open items
+
+- The console `PUT /tenants/{id}/billing-profile` in spec 7b.1 is not built (not an acceptance criterion).
+- The two squad repro tests stay red, as instructed.
+- The items carried from earlier: the removed-member gap in Q9, mobile SSO sign-in, web and desktop follow-ups, the `platform_account_request` teardown gap, and the `sso_domain` cleanup.
+- Operations doc section 11 still names migration 690 as the last required one (stale, not edited here).
+
+### 8.4 Final checks (after K)
+
+| Check | Result |
+| --- | --- |
+| Platform module on `multica_r5_test`: `go vet ./...`; `go test -p 1 -count=1 ./...` | vet exit 0; 35 packages `ok`, exit 0 |
+| Server migration checks (four named tests) on `multica_platform_test` | pass, exit 0 |
+| Server R5 packages on `multica_platform_test`, `-p 1` (19 packages, excluding the handler full run) | 18 `ok`, exit 0 in the same lane run before K; the handler package is run separately below |
+| `server/internal/handler` full package on `multica_platform_test` (after K) | fails only the two squad repro tests; all other tests pass |
+| Console `vitest` | pass: 17 files, 242 tests |
+| Console `tsc --noEmit` | exit 0 |
+| `packages/core` vitest / typecheck | pass: 374 files, 5569 tests, 1 skipped / exit 0 |
+| `packages/views` vitest / typecheck | pass: 733 files, 8881 tests / exit 0 |
+| `pnpm lint` | exit 0, 7 of 7 tasks (turbo may have served cached results) |
+
+Gate verdict: every acceptance criterion in section 3 is now covered by a named test, and every check above is green except the two squad repro tests. The security rows in 8.2 and the items in 8.3 remain open and are listed with their reasons.
