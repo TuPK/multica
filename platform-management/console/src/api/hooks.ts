@@ -25,6 +25,7 @@ import {
   parseVerifyCodeResponse,
   parseResetMfaResponse,
   parsePutSubscriptionResponse,
+  parseBillingProfile,
   parseBillingProfileVerifyResponse,
   parseAccountRequestList,
   parseAccountRequest,
@@ -43,6 +44,7 @@ import {
   type Order,
   type Plan,
   type Subscription,
+  type BillingProfile,
   type BillingProfileVerifyResponse,
   type Limits,
   type AccountRequest,
@@ -57,6 +59,7 @@ import {
 
 export type {
   Subscription,
+  BillingProfile,
   BillingProfileVerifyResponse,
   Order,
   Plan,
@@ -126,6 +129,7 @@ export const platformKeys = {
   tenantList: (filters: SearchFilters) => ["platform", "tenants", "list", clean(filters)] as const,
   tenant: (id: string) => ["platform", "tenants", "detail", id] as const,
   tenantUsage: (id: string) => ["platform", "tenants", "usage", id] as const,
+  tenantBillingProfile: (id: string) => ["platform", "tenants", "billing-profile", id] as const,
   tenantAudits: (id: string) => ["platform", "tenants", "audit", id] as const,
   tenantAudit: (id: string, filters: AuditFilters) => ["platform", "tenants", "audit", id, clean(filters)] as const,
   tenantNotes: (id: string) => ["platform", "tenants", "notes", id] as const,
@@ -256,6 +260,19 @@ export function useTenantUsage(id: string | undefined) {
     enabled: !!id,
     queryFn: async ({ signal }): Promise<TenantUsage> =>
       orMalformed(parseTenantUsage(await platformFetch(`/tenants/${pathSegment(id ?? "")}/usage`, { signal }))),
+  });
+}
+
+export function useTenantBillingProfile(id: string | undefined) {
+  return useQuery({
+    queryKey: platformKeys.tenantBillingProfile(id ?? ""),
+    enabled: !!id,
+    queryFn: async ({ signal }): Promise<BillingProfile> =>
+      orMalformed(
+        parseBillingProfile(
+          await platformFetch(`/tenants/${pathSegment(id ?? "")}/billing-profile`, { signal }),
+        ),
+      ),
   });
 }
 
@@ -765,12 +782,18 @@ export function useSetBillingProfileVerified() {
         ),
       );
     },
-    onSuccess: (_data, vars) =>
-      invalidateAll(queryClient, [
+    onSuccess: (data, vars) => {
+      queryClient.setQueryData<BillingProfile>(
+        platformKeys.tenantBillingProfile(vars.tenantId),
+        (prev) => (prev ? { ...prev, ...data } : prev),
+      );
+      return invalidateAll(queryClient, [
         platformKeys.tenant(vars.tenantId),
+        platformKeys.tenantBillingProfile(vars.tenantId),
         platformKeys.tenantAudits(vars.tenantId),
         platformKeys.audits(),
-      ]),
+      ]);
+    },
   });
 }
 

@@ -29,6 +29,7 @@ import {
   parseSchedulePriceChangeResponse,
   parseCancelPriceChangeResponse,
   parseBillingProfileVerifyResponse,
+  parseBillingProfile,
 } from "./schemas";
 
 const tenant = {
@@ -940,6 +941,58 @@ describe("billing profile verification", () => {
       { workspace_id: "ws-1", account_kind: "business", verified: null, verified_at: null },
     ]) {
       expect(parseBillingProfileVerifyResponse(bad)).toBeNull();
+    }
+  });
+});
+
+describe("tenant billing profile (GET /tenants/{id}/billing-profile)", () => {
+  const validBusiness = {
+    workspace_id: "ws-1",
+    account_kind: "business",
+    legal_name: "Acme Co",
+    tax_code: "0123456789",
+    address: "1 Main St",
+    invoice_email: "ap@acme.test",
+    verified: true,
+    verified_at: "2026-11-17T00:00:00Z",
+  };
+
+  const individualDefault = {
+    workspace_id: "ws-2",
+    account_kind: "individual",
+    legal_name: "",
+    tax_code: "",
+    address: "",
+    invoice_email: "",
+    verified: false,
+    verified_at: null,
+  };
+
+  it("parses a verified business profile and an unverified individual default", () => {
+    expect(parseBillingProfile({ ...validBusiness, extra_field: "ignored" })).toEqual(validBusiness);
+    expect(parseBillingProfile(individualDefault)).toEqual(individualDefault);
+  });
+
+  it("maps an unknown account_kind string to unknown", () => {
+    expect(parseBillingProfile({ ...validBusiness, account_kind: "enterprise" })?.account_kind).toBe("unknown");
+  });
+
+  it("rejects a response with a bad account_kind or malformed fields", () => {
+    for (const bad of [
+      null,
+      undefined,
+      "bad",
+      42,
+      [],
+      {},
+      { ...validBusiness, account_kind: 123 },
+      { ...validBusiness, account_kind: null },
+      { ...validBusiness, account_kind: ["business"] },
+      { ...validBusiness, verified: undefined },
+      { ...validBusiness, verified: "yes" },
+      { ...validBusiness, verified: null },
+    ]) {
+      expect(parseBillingProfile(bad)).toBeNull();
     }
   });
 });

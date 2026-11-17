@@ -306,6 +306,18 @@ export const TenantBillingProfileSchema = z.object({
 });
 export type TenantBillingProfile = z.output<typeof TenantBillingProfileSchema>;
 
+export const BillingProfileSchema = z.object({
+  workspace_id: text,
+  account_kind: enumOf(ACCOUNT_KINDS),
+  legal_name: text,
+  tax_code: text,
+  address: text,
+  invoice_email: text,
+  verified: z.boolean(),
+  verified_at: nullableText,
+});
+export type BillingProfile = z.output<typeof BillingProfileSchema>;
+
 export const BillingProfileVerifyResponseSchema = z.object({
   workspace_id: text,
   account_kind: enumOf(ACCOUNT_KINDS),
@@ -560,6 +572,12 @@ export function parseTenantPage(data: unknown): TenantPage {
 export function parseTenantDetail(data: unknown): TenantDetail | null {
   return parseWithFallback<TenantDetail | null>(data, TenantDetailSchema, null, {
     endpoint: "GET /api/platform/tenants/{id}",
+  });
+}
+
+export function parseBillingProfile(data: unknown): BillingProfile | null {
+  return parseWithFallback<BillingProfile | null>(data, BillingProfileSchema, null, {
+    endpoint: "GET /api/platform/tenants/{id}/billing-profile",
   });
 }
 

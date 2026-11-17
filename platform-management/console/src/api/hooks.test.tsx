@@ -22,6 +22,7 @@ import {
   useTenantAudit,
   useTenantNotes,
   useTenantUsage,
+  useTenantBillingProfile,
   useTenants,
   useUser,
   useUsers,
@@ -158,6 +159,12 @@ describe("query keys", () => {
     expect(key.slice(0, platformKeys.tenants().length)).toEqual(platformKeys.tenants());
     expect(key).not.toEqual(platformKeys.tenantUsage("t2"));
   });
+
+  it("keeps tenant billing profile keys under platform/tenants", () => {
+    const key = platformKeys.tenantBillingProfile("t1");
+    expect(key.slice(0, platformKeys.tenants().length)).toEqual(platformKeys.tenants());
+    expect(key).not.toEqual(platformKeys.tenantBillingProfile("t2"));
+  });
 });
 
 describe("reads", () => {
@@ -256,6 +263,44 @@ describe("reads", () => {
     expect(queryClient.getQueryState(platformKeys.tenantUsage("t1"))?.status).toBe("success");
     expect((bad.result.current.error as PlatformApiError).code).toBe("malformed_response");
     expect(calls.map((c) => c.path)).toContain("/api/platform/tenants/a%2Fb/usage");
+    expect(calls).toHaveLength(3);
+  });
+
+  it("useTenantBillingProfile fetches under the billing profile key and errors on a malformed body", async () => {
+    const validProfile = {
+      workspace_id: "t1",
+      account_kind: "business",
+      legal_name: "Acme Co",
+      tax_code: "0123456789",
+      address: "1 Main St",
+      invoice_email: "ap@acme.test",
+      verified: true,
+      verified_at: "2026-11-17T00:00:00Z",
+    };
+    const calls = stubFetch({
+      "GET /api/platform/tenants/t1/billing-profile": json(200, validProfile),
+      "GET /api/platform/tenants/t2/billing-profile": json(200, { workspace_id: "t2" }),
+      "GET /api/platform/tenants/a%2Fb/billing-profile": json(200, {
+        ...validProfile,
+        workspace_id: "a/b",
+        verified: false,
+        verified_at: null,
+      }),
+    });
+    const { queryClient, wrapper } = setup();
+    const ok = renderHook(() => useTenantBillingProfile("t1"), { wrapper });
+    const bad = renderHook(() => useTenantBillingProfile("t2"), { wrapper });
+    const encoded = renderHook(() => useTenantBillingProfile("a/b"), { wrapper });
+    renderHook(() => useTenantBillingProfile(undefined), { wrapper });
+
+    await waitFor(() => expect(ok.result.current.isSuccess).toBe(true));
+    await waitFor(() => expect(bad.result.current.isError).toBe(true));
+    await waitFor(() => expect(encoded.result.current.isSuccess).toBe(true));
+
+    expect(ok.result.current.data).toEqual(validProfile);
+    expect(queryClient.getQueryState(platformKeys.tenantBillingProfile("t1"))?.status).toBe("success");
+    expect((bad.result.current.error as PlatformApiError).code).toBe("malformed_response");
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toContain("GET /api/platform/tenants/a%2Fb/billing-profile");
     expect(calls).toHaveLength(3);
   });
 
@@ -1141,5 +1186,47 @@ describe("billing profile verification hook", () => {
       "POST /api/platform/tenants/ws-1/billing-profile/unverify",
       "POST /api/platform/tenants/ws-2/billing-profile/verify",
     ]);
+  });
+
+  it("useSetBillingProfileVerified invalidates the tenant billing profile query key", async () => {
+    stubFetch({
+      "POST /api/platform/tenants/ws-1/billing-profile/verify": json(200, {
+        workspace_id: "ws-1",
+        account_kind: "business",
+        verified: true,
+        verified_at: "2026-11-17T00:00:00Z",
+      }),
+      "POST /api/platform/tenants/ws-1/billing-profile/unverify": json(200, {
+        workspace_id: "ws-1",
+        account_kind: "business",
+        verified: false,
+        verified_at: null,
+      }),
+    });
+    const { queryClient, wrapper } = setup();
+    queryClient.setQueryData(platformKeys.tenantBillingProfile("ws-1"), {
+      workspace_id: "ws-1",
+      account_kind: "business",
+      legal_name: "Acme Co",
+      tax_code: "0123456789",
+      address: "1 Main St",
+      invoice_email: "ap@acme.test",
+      verified: false,
+      verified_at: null,
+    });
+    queryClient.setQueryData(platformKeys.tenantBillingProfile("ws-2"), null);
+
+    const { result } = renderHook(() => useSetBillingProfileVerified(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ tenantId: "ws-1", verified: true });
+    });
+    expect(queryClient.getQueryState(platformKeys.tenantBillingProfile("ws-1"))?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(platformKeys.tenantBillingProfile("ws-2"))?.isInvalidated).toBe(false);
+
+    await act(async () => {
+      await result.current.mutateAsync({ tenantId: "ws-1", verified: false });
+    });
+    expect(queryClient.getQueryState(platformKeys.tenantBillingProfile("ws-1"))?.isInvalidated).toBe(true);
   });
 });

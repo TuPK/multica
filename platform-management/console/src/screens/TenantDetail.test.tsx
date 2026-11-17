@@ -7,6 +7,7 @@ import { PlatformApiError } from "../api/client";
 const mockUseMe = vi.fn();
 const mockUseTenant = vi.fn();
 const mockUseTenantUsage = vi.fn();
+const mockUseTenantBillingProfile = vi.fn();
 const mockUseTenantNotes = vi.fn();
 const mockUseTenantAudit = vi.fn();
 const mockChangeTenantStatusMutateAsync = vi.fn();
@@ -19,6 +20,7 @@ vi.mock("../api/hooks", () => ({
   useMe: () => mockUseMe(),
   useTenant: () => mockUseTenant(),
   useTenantUsage: () => mockUseTenantUsage(),
+  useTenantBillingProfile: (id?: string) => mockUseTenantBillingProfile(id),
   useTenantNotes: () => mockUseTenantNotes(),
   useTenantAudit: () => mockUseTenantAudit(),
   useChangeTenantStatus: () => ({
@@ -128,6 +130,20 @@ describe("TenantDetail screen", () => {
       isLoading: false,
       isError: false,
       refetch: vi.fn(),
+    });
+    mockUseTenantBillingProfile.mockReturnValue({
+      data: {
+        workspace_id: "t-123",
+        account_kind: "individual",
+        legal_name: "",
+        tax_code: "",
+        address: "",
+        invoice_email: "",
+        verified: false,
+        verified_at: null,
+      },
+      isLoading: false,
+      isError: false,
     });
     mockUseTenantNotes.mockReturnValue({
       data: [
@@ -641,6 +657,100 @@ describe("TenantDetail screen", () => {
         expect(alert).toHaveTextContent("address");
         expect(alert).toHaveTextContent("invoice_email");
       });
+    });
+
+    it("shows Verified on load when the billing profile read says verified is true, and Unverified when false, without any click", () => {
+      const verifiedAt = "2026-11-17T09:30:00Z";
+      mockUseTenantBillingProfile.mockReturnValue({
+        data: {
+          workspace_id: "t-123",
+          account_kind: "business",
+          legal_name: "Acme Corp",
+          tax_code: "0101234567",
+          address: "123 Street",
+          invoice_email: "acme@example.com",
+          verified: true,
+          verified_at: verifiedAt,
+        },
+        isLoading: false,
+        isError: false,
+      });
+
+      const { unmount } = render(
+        <TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="billing" />,
+      );
+
+      expect(mockUseTenantBillingProfile).toHaveBeenCalledWith("t-123");
+      const verifiedCard = getBillingProfileCard();
+      expect(within(verifiedCard).getByText("Verified")).toBeInTheDocument();
+      expect(within(verifiedCard).getByText("business")).toBeInTheDocument();
+      expect(within(verifiedCard).getByText(new Date(verifiedAt).toLocaleString())).toBeInTheDocument();
+      expect(within(verifiedCard).getByRole("button", { name: "Unverify" })).toBeInTheDocument();
+      expect(mockSetBillingProfileVerifiedMutateAsync).not.toHaveBeenCalled();
+      unmount();
+
+      mockUseTenantBillingProfile.mockReturnValue({
+        data: {
+          workspace_id: "t-123",
+          account_kind: "individual",
+          legal_name: "",
+          tax_code: "",
+          address: "",
+          invoice_email: "",
+          verified: false,
+          verified_at: null,
+        },
+        isLoading: false,
+        isError: false,
+      });
+
+      render(<TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="billing" />);
+      const unverifiedCard = getBillingProfileCard();
+      expect(within(unverifiedCard).getByText("Unverified")).toBeInTheDocument();
+      expect(within(unverifiedCard).getByText("individual")).toBeInTheDocument();
+      expect(within(unverifiedCard).getByRole("button", { name: "Verify" })).toBeInTheDocument();
+      expect(mockSetBillingProfileVerifiedMutateAsync).not.toHaveBeenCalled();
+    });
+
+    it("unverifies a profile loaded as verified and updates status from the mutation response", async () => {
+      const verifiedAt = "2026-11-17T09:30:00Z";
+      mockUseTenantBillingProfile.mockReturnValue({
+        data: {
+          workspace_id: "t-123",
+          account_kind: "business",
+          legal_name: "Acme Corp",
+          tax_code: "0101234567",
+          address: "123 Street",
+          invoice_email: "acme@example.com",
+          verified: true,
+          verified_at: verifiedAt,
+        },
+        isLoading: false,
+        isError: false,
+      });
+      mockSetBillingProfileVerifiedMutateAsync.mockResolvedValueOnce({
+        workspace_id: "t-123",
+        account_kind: "business",
+        verified: false,
+        verified_at: null,
+      });
+
+      render(<TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="admin" />);
+      const card = getBillingProfileCard();
+      expect(within(card).getByText("Verified")).toBeInTheDocument();
+
+      fireEvent.click(within(card).getByRole("button", { name: "Unverify" }));
+
+      await waitFor(() => {
+        expect(mockSetBillingProfileVerifiedMutateAsync).toHaveBeenCalledWith({
+          tenantId: "t-123",
+          verified: false,
+        });
+      });
+      await waitFor(() => {
+        expect(within(card).getByText("Unverified")).toBeInTheDocument();
+      });
+      expect(within(card).getByRole("button", { name: "Verify" })).toBeInTheDocument();
     });
   });
 });

@@ -38,6 +38,7 @@ import {
   useMe,
   useTenant,
   useTenantUsage,
+  useTenantBillingProfile,
   useTenantNotes,
   useTenantAudit,
   useChangeTenantStatus,
@@ -285,6 +286,10 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
   } = useTenantUsage(tenantId);
 
   const {
+    data: billingProfile,
+  } = useTenantBillingProfile(tenantId);
+
+  const {
     data: notesData,
     isLoading: notesLoading,
   } = useTenantNotes(tenantId);
@@ -439,6 +444,7 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
 
   const activeProfile =
     (profileOverride?.tenantId === tenantId ? profileOverride.profile : null) ??
+    billingProfile ??
     tenant.billing_profile ??
     null;
   const accountKind = activeProfile?.account_kind ?? "individual";
