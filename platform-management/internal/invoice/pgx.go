@@ -239,3 +239,71 @@ func uuidString(u pgtype.UUID) string {
 	b := u.Bytes
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }
+
+func (s *PgxStore) ListPaidWithoutRecord(ctx context.Context, startAt time.Time, limit int) ([]PaidOrder, error) {
+	rows, err := s.q.ListPaidOrdersNeedingEinvoice(ctx, db.ListPaidOrdersNeedingEinvoiceParams{
+		StartAt: pgtype.Timestamptz{Time: startAt, Valid: true},
+		MaxRows: int32(limit),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list paid orders needing einvoice: %w", err)
+	}
+	out := make([]PaidOrder, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, PaidOrder{
+			ID:          uuidString(r.ID),
+			WorkspaceID: uuidString(r.WorkspaceID),
+			Currency:    r.Currency,
+			Amount:      r.Amount,
+			VATAmount:   r.VatAmount,
+			Buyer:       r.Buyer,
+		})
+	}
+	return out, nil
+}
+
+func (s *PgxStore) Claim(ctx context.Context, now time.Time, lease time.Duration, limit int) ([]Record, error) {
+	rows, err := s.q.ClaimDueEinvoiceIssuance(ctx, db.ClaimDueEinvoiceIssuanceParams{
+		LeaseUntil: pgtype.Timestamptz{Time: now.Add(lease), Valid: true},
+		Now:        pgtype.Timestamptz{Time: now, Valid: true},
+		MaxRows:    int32(limit),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("claim einvoice issuance: %w", err)
+	}
+	out := make([]Record, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, fromRow(r))
+	}
+	return out, nil
+}
+
+func (s *PgxStore) RecordAttempt(ctx context.Context, orderID string, revision int, a Attempt) error {
+	oid, err := parseID(orderID)
+	if err != nil {
+		return err
+	}
+	fields := a.MissingFields
+	if fields == nil {
+		fields = []string{}
+	}
+	missing, err := json.Marshal(fields)
+	if err != nil {
+		return fmt.Errorf("record einvoice attempt: %w", err)
+	}
+	n, err := s.q.SetEinvoiceAttempt(ctx, db.SetEinvoiceAttemptParams{
+		State:         string(a.State),
+		NextAttemptAt: pgtype.Timestamptz{Time: a.NextAttemptAt, Valid: true},
+		LastErrorCode: a.LastErrorCode,
+		MissingFields: missing,
+		OrderID:       oid,
+		Revision:      int32(revision),
+	})
+	if err != nil {
+		return fmt.Errorf("record einvoice attempt: %w", err)
+	}
+	if n > 0 {
+		return nil
+	}
+	return conflictOrNotFound(ctx, s.q, orderID, revision)
+}

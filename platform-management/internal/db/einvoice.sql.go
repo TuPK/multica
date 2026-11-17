@@ -41,6 +41,76 @@ func (q *Queries) CancelEinvoiceIssued(ctx context.Context, arg CancelEinvoiceIs
 	return result.RowsAffected(), nil
 }
 
+const claimDueEinvoiceIssuance = `-- name: ClaimDueEinvoiceIssuance :many
+UPDATE einvoice_issuance
+SET locked_until = $1::timestamptz,
+    attempts = attempts + 1,
+    updated_at = now()
+WHERE (order_id, revision) IN (
+    SELECT d.order_id, d.revision FROM einvoice_issuance d
+    WHERE d.state = 'pending'
+      AND d.next_attempt_at <= $2::timestamptz
+      AND (d.locked_until IS NULL OR d.locked_until <= $2::timestamptz)
+    ORDER BY d.next_attempt_at, d.id
+    LIMIT $3::int
+    FOR UPDATE SKIP LOCKED
+)
+RETURNING id, order_id, revision, workspace_id, state, provider, provider_invoice_id, invoice_number, lookup_url, currency, amount, vat_amount, buyer, missing_fields, attempts, next_attempt_at, locked_until, last_error_code, issued_at, cancelled_at, cancelled_by, cancel_reason, created_at, updated_at
+`
+
+type ClaimDueEinvoiceIssuanceParams struct {
+	LeaseUntil pgtype.Timestamptz `json:"lease_until"`
+	Now        pgtype.Timestamptz `json:"now"`
+	MaxRows    int32              `json:"max_rows"`
+}
+
+// Leases due pending rows so a concurrent run skips them. The attempt is
+// counted at claim time, before the provider is called.
+func (q *Queries) ClaimDueEinvoiceIssuance(ctx context.Context, arg ClaimDueEinvoiceIssuanceParams) ([]EinvoiceIssuance, error) {
+	rows, err := q.db.Query(ctx, claimDueEinvoiceIssuance, arg.LeaseUntil, arg.Now, arg.MaxRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []EinvoiceIssuance{}
+	for rows.Next() {
+		var i EinvoiceIssuance
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderID,
+			&i.Revision,
+			&i.WorkspaceID,
+			&i.State,
+			&i.Provider,
+			&i.ProviderInvoiceID,
+			&i.InvoiceNumber,
+			&i.LookupUrl,
+			&i.Currency,
+			&i.Amount,
+			&i.VatAmount,
+			&i.Buyer,
+			&i.MissingFields,
+			&i.Attempts,
+			&i.NextAttemptAt,
+			&i.LockedUntil,
+			&i.LastErrorCode,
+			&i.IssuedAt,
+			&i.CancelledAt,
+			&i.CancelledBy,
+			&i.CancelReason,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getEinvoiceIssuance = `-- name: GetEinvoiceIssuance :one
 SELECT id, order_id, revision, workspace_id, state, provider, provider_invoice_id, invoice_number, lookup_url, currency, amount, vat_amount, buyer, missing_fields, attempts, next_attempt_at, locked_until, last_error_code, issued_at, cancelled_at, cancelled_by, cancel_reason, created_at, updated_at FROM einvoice_issuance WHERE order_id = $1 AND revision = $2
 `
@@ -207,6 +277,59 @@ func (q *Queries) ListDueEinvoiceIssuance(ctx context.Context, arg ListDueEinvoi
 	return items, nil
 }
 
+const listPaidOrdersNeedingEinvoice = `-- name: ListPaidOrdersNeedingEinvoice :many
+SELECT o.id, o.workspace_id, o.currency, o.amount, o.vat_amount, o.buyer
+FROM billing_order o
+WHERE o.status = 'paid'
+  AND o.amount > 0
+  AND o.provider <> 'admin_grant'
+  AND o.paid_at >= $1::timestamptz
+  AND NOT EXISTS (SELECT 1 FROM einvoice_issuance e WHERE e.order_id = o.id)
+ORDER BY o.paid_at, o.id
+LIMIT $2::int
+`
+
+type ListPaidOrdersNeedingEinvoiceParams struct {
+	StartAt pgtype.Timestamptz `json:"start_at"`
+	MaxRows int32              `json:"max_rows"`
+}
+
+type ListPaidOrdersNeedingEinvoiceRow struct {
+	ID          pgtype.UUID `json:"id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	Currency    string      `json:"currency"`
+	Amount      int64       `json:"amount"`
+	VatAmount   int64       `json:"vat_amount"`
+	Buyer       []byte      `json:"buyer"`
+}
+
+func (q *Queries) ListPaidOrdersNeedingEinvoice(ctx context.Context, arg ListPaidOrdersNeedingEinvoiceParams) ([]ListPaidOrdersNeedingEinvoiceRow, error) {
+	rows, err := q.db.Query(ctx, listPaidOrdersNeedingEinvoice, arg.StartAt, arg.MaxRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPaidOrdersNeedingEinvoiceRow{}
+	for rows.Next() {
+		var i ListPaidOrdersNeedingEinvoiceRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Currency,
+			&i.Amount,
+			&i.VatAmount,
+			&i.Buyer,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markEinvoiceIssued = `-- name: MarkEinvoiceIssued :execrows
 UPDATE einvoice_issuance
 SET state = 'issued',
@@ -233,6 +356,41 @@ func (q *Queries) MarkEinvoiceIssued(ctx context.Context, arg MarkEinvoiceIssued
 		arg.InvoiceNumber,
 		arg.LookupUrl,
 		arg.IssuedAt,
+		arg.OrderID,
+		arg.Revision,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const setEinvoiceAttempt = `-- name: SetEinvoiceAttempt :execrows
+UPDATE einvoice_issuance
+SET state = $1::text,
+    next_attempt_at = $2::timestamptz,
+    last_error_code = $3::text,
+    missing_fields = $4::jsonb,
+    locked_until = NULL,
+    updated_at = now()
+WHERE order_id = $5 AND revision = $6 AND state = 'pending'
+`
+
+type SetEinvoiceAttemptParams struct {
+	State         string             `json:"state"`
+	NextAttemptAt pgtype.Timestamptz `json:"next_attempt_at"`
+	LastErrorCode string             `json:"last_error_code"`
+	MissingFields []byte             `json:"missing_fields"`
+	OrderID       pgtype.UUID        `json:"order_id"`
+	Revision      int32              `json:"revision"`
+}
+
+func (q *Queries) SetEinvoiceAttempt(ctx context.Context, arg SetEinvoiceAttemptParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setEinvoiceAttempt,
+		arg.State,
+		arg.NextAttemptAt,
+		arg.LastErrorCode,
+		arg.MissingFields,
 		arg.OrderID,
 		arg.Revision,
 	)
