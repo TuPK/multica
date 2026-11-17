@@ -8,6 +8,7 @@ import {
   BookOpen,
   CreditCard,
   FolderGit2,
+  Globe,
   Keyboard,
   KeyRound,
   ListPlus,
@@ -19,8 +20,10 @@ import {
   Server,
   Settings,
   ScrollText,
+  Shield,
   ShieldCheck,
   SlidersHorizontal,
+  Smartphone,
   Tags,
   User,
   Users,
@@ -41,9 +44,12 @@ import { AppLink, useNavigation } from "../../navigation";
 import { AccountTab } from "./account-tab";
 import { PreferencesTab } from "./preferences-tab";
 import { TokensTab } from "./tokens-tab";
+import { TwoStepTab } from "./two-step-tab";
 import { WorkspaceTab } from "./workspace-tab";
 import { MembersTab } from "./members-tab";
 import { GroupsTab } from "./groups-tab";
+import { PolicyTab } from "./policy-tab";
+import { SSOTab } from "./sso-tab";
 import { AuditLogTab } from "./audit-log-tab";
 import { CodeTab } from "./code-tab";
 import { ChannelsTab } from "./channels-tab";
@@ -115,6 +121,7 @@ export function SettingsPage({ extraDeviceTabs = [] }: SettingsPageProps = {}) {
   const workspaceName = workspace?.name ?? t(($) => $.page.workspace_fallback);
   const { role } = useCurrentMember(wsId);
   const isMember = role === "member";
+  const isOwner = role === "owner";
   const isManager = role === "owner" || role === "admin";
   const canReadAudit = useCan(wsId, "audit.read").allowed;
   const canViewBilling = useCan(wsId, "billing.view").allowed;
@@ -165,6 +172,7 @@ export function SettingsPage({ extraDeviceTabs = [] }: SettingsPageProps = {}) {
               ? [entry("apps", t(($) => $.page.tabs.apps), Plug, <ConnectedAppsTab />)]
               : []),
             entry("tokens", t(($) => $.page.tabs.tokens), KeyRound, <TokensTab />),
+            entry("security", t(($) => $.page.tabs.security), Smartphone, <TwoStepTab />),
           ],
         },
       ],
@@ -190,6 +198,26 @@ export function SettingsPage({ extraDeviceTabs = [] }: SettingsPageProps = {}) {
                     t(($) => $.page.tabs.groups),
                     ShieldCheck,
                     <GroupsTab />,
+                  ),
+                ]
+              : []),
+            ...(isManager
+              ? [
+                  entry(
+                    "policy",
+                    t(($) => $.page.tabs.policy),
+                    Shield,
+                    <PolicyTab />,
+                  ),
+                ]
+              : []),
+            ...(isOwner
+              ? [
+                  entry(
+                    "sso",
+                    t(($) => $.page.tabs.sso),
+                    Globe,
+                    <SSOTab />,
                   ),
                 ]
               : []),
@@ -300,7 +328,9 @@ export function SettingsPage({ extraDeviceTabs = [] }: SettingsPageProps = {}) {
   const candidate =
     (location.tab === "billing" && (!billingEnabled || !canViewBilling)) ||
     (location.tab === "groups" && !isManager) ||
-    (location.tab === "audit" && !canReadAudit)
+    (location.tab === "audit" && !canReadAudit) ||
+    (location.tab === "policy" && !isManager) ||
+    (location.tab === "sso" && !isOwner)
       ? "workspace"
       : location.tab;
   const active =

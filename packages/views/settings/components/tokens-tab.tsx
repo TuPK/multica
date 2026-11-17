@@ -1,14 +1,22 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useId, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Trash2, Copy, Check, Info } from "@multica/ui/icons";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@multica/ui/components/ui/tooltip";
-import type { PersonalAccessToken } from "@multica/core/types";
+import type {
+  CreatePersonalAccessTokenRequest,
+  PersonalAccessToken,
+} from "@multica/core/types";
+import { workspaceListOptions } from "@multica/core/workspace/queries";
 import { Alert, AlertDescription } from "@multica/ui/components/ui/alert";
+import { Badge } from "@multica/ui/components/ui/badge";
 import { Checkbox } from "@multica/ui/components/ui/checkbox";
 import { Input } from "@multica/ui/components/ui/input";
+import { Label } from "@multica/ui/components/ui/label";
 import { Button } from "@multica/ui/components/ui/button";
 import { Card, CardContent } from "@multica/ui/components/ui/card";
+import { Switch } from "@multica/ui/components/ui/switch";
 import {
   Select,
   SelectTrigger,
@@ -36,22 +44,40 @@ import {
 import { Skeleton } from "@multica/ui/components/ui/skeleton";
 import { copyText } from "@multica/ui/lib/clipboard";
 import { toast } from "sonner";
-import { api } from "@multica/core/api";
+import { ApiError, api, errorCode } from "@multica/core/api";
 import { useLocale, useT } from "../../i18n";
 import { SettingsSection, SettingsTab } from "./settings-layout";
 
 const EXPIRY_KEYS = ["30", "90", "365", "never"] as const;
+const ANY_WORKSPACE = "__any__";
 
 export function TokensTab() {
   const { t } = useT("settings");
   const locale = useLocale();
+  const baseId = useId();
+  const { data: workspaces = [] } = useQuery(workspaceListOptions());
+
   const expiryItems = EXPIRY_KEYS.map((value) => ({
     value,
     label: t(($) => $.tokens.expiry[value]),
   }));
+  const workspaceItems = useMemo(
+    () => [
+      { value: ANY_WORKSPACE, label: t(($) => $.tokens.workspace_any) },
+      ...workspaces.map((ws) => ({ value: ws.id, label: ws.name })),
+    ],
+    [t, workspaces],
+  );
+  const workspaceNamesById = useMemo(
+    () => new Map(workspaces.map((ws) => [ws.id, ws.name])),
+    [workspaces],
+  );
+
   const [tokens, setTokens] = useState<PersonalAccessToken[]>([]);
   const [tokenName, setTokenName] = useState("");
   const [tokenExpiry, setTokenExpiry] = useState("90");
+  const [workspaceId, setWorkspaceId] = useState(ANY_WORKSPACE);
+  const [readOnly, setReadOnly] = useState(false);
   const [tokenCreating, setTokenCreating] = useState(false);
   const [newToken, setNewToken] = useState<string | null>(null);
   const [tokenCopied, setTokenCopied] = useState(false);
@@ -81,13 +107,28 @@ export function TokensTab() {
     setTokenCreating(true);
     try {
       const expiresInDays = tokenExpiry === "never" ? undefined : Number(tokenExpiry);
-      const result = await api.createPersonalAccessToken({ name: tokenName, expires_in_days: expiresInDays });
+      const payload: CreatePersonalAccessTokenRequest = {
+        name: tokenName,
+        ...(expiresInDays !== undefined ? { expires_in_days: expiresInDays } : {}),
+        ...(workspaceId !== ANY_WORKSPACE ? { workspace_id: workspaceId } : {}),
+        ...(readOnly ? { read_only: true } : {}),
+      };
+      const result = await api.createPersonalAccessToken(payload);
       setNewToken(result.token);
       setTokenName("");
       setTokenExpiry("90");
+      setWorkspaceId(ANY_WORKSPACE);
+      setReadOnly(false);
       await loadTokens();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t(($) => $.tokens.toast_create_failed));
+      if (
+        errorCode(e) === "viewer_read_only" ||
+        (e instanceof ApiError && e.status === 403)
+      ) {
+        toast.error(t(($) => $.tokens.toast_forbidden));
+      } else {
+        toast.error(e instanceof Error ? e.message : t(($) => $.tokens.toast_create_failed));
+      }
     } finally {
       setTokenCreating(false);
     }
@@ -128,6 +169,8 @@ export function TokensTab() {
     setCommandCopied(false);
     setStoredConfirmed(false);
   };
+
+  const readOnlyId = `${baseId}-read-only`;
 
   return (
     <SettingsTab title={t(($) => $.tokens.title)} description={t(($) => $.tokens.purpose)} scope="account">
@@ -171,6 +214,46 @@ export function TokensTab() {
                 {tokenCreating ? t(($) => $.tokens.creating) : t(($) => $.tokens.create)}
               </Button>
             </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <div className="flex items-center gap-2">
+                <span className="text-caption text-muted-foreground">
+                  {t(($) => $.tokens.workspace_label)}
+                </span>
+                <Select
+                  items={workspaceItems}
+                  value={workspaceId}
+                  onValueChange={(v) => { if (v) setWorkspaceId(v); }}
+                >
+                  <SelectTrigger
+                    size="sm"
+                    aria-label={t(($) => $.tokens.workspace_label)}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {workspaceItems.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id={readOnlyId}
+                  checked={readOnly}
+                  onCheckedChange={setReadOnly}
+                  aria-label={t(($) => $.tokens.read_only_label)}
+                />
+                <Label htmlFor={readOnlyId} className="text-body font-normal">
+                  {t(($) => $.tokens.read_only_label)}
+                </Label>
+                <span className="text-caption text-muted-foreground">
+                  {t(($) => $.tokens.read_only_hint)}
+                </span>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -198,45 +281,62 @@ export function TokensTab() {
           </Card>
         ) : (
           <div className="space-y-2">
-            {tokens.map((token) => (
-              <Card key={token.id}>
-                <CardContent className="flex items-center gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="text-body font-medium truncate">{token.name}</div>
-                    <div className="text-caption text-muted-foreground">
-                      {t(($) => $.tokens.metadata_prefix, {
-                        prefix: token.token_prefix,
-                        created: new Date(token.created_at).toLocaleDateString(locale),
-                        lastUsed: token.last_used_at
-                          ? t(($) => $.tokens.last_used_with_date, {
-                              date: new Date(token.last_used_at!).toLocaleDateString(locale),
-                            })
-                          : t(($) => $.tokens.last_used_never),
-                      })}
-                      {token.expires_at && t(($) => $.tokens.expires_with_date, {
-                        date: new Date(token.expires_at!).toLocaleDateString(locale),
-                      })}
+            {tokens.map((token) => {
+              const boundWorkspaceName = token.workspace_id
+                ? workspaceNamesById.get(token.workspace_id)
+                : undefined;
+              return (
+                <Card key={token.id}>
+                  <CardContent className="flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="truncate text-body font-medium">{token.name}</span>
+                        {token.workspace_id ? (
+                          <Badge variant="secondary">
+                            {boundWorkspaceName ?? t(($) => $.tokens.workspace_scoped)}
+                          </Badge>
+                        ) : null}
+                        {token.read_only ? (
+                          <Badge variant="outline">
+                            {t(($) => $.tokens.read_only_badge)}
+                          </Badge>
+                        ) : null}
+                      </div>
+                      <div className="text-caption text-muted-foreground">
+                        {t(($) => $.tokens.metadata_prefix, {
+                          prefix: token.token_prefix,
+                          created: new Date(token.created_at).toLocaleDateString(locale),
+                          lastUsed: token.last_used_at
+                            ? t(($) => $.tokens.last_used_with_date, {
+                                date: new Date(token.last_used_at!).toLocaleDateString(locale),
+                              })
+                            : t(($) => $.tokens.last_used_never),
+                        })}
+                        {token.expires_at && t(($) => $.tokens.expires_with_date, {
+                          date: new Date(token.expires_at!).toLocaleDateString(locale),
+                        })}
+                      </div>
                     </div>
-                  </div>
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => setRevokeConfirmId(token.id)}
-                          disabled={tokenRevoking === token.id}
-                          aria-label={t(($) => $.tokens.revoke_aria, { name: token.name })}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      }
-                    />
-                    <TooltipContent>{t(($) => $.tokens.revoke_tooltip)}</TooltipContent>
-                  </Tooltip>
-                </CardContent>
-              </Card>
-            ))}
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => setRevokeConfirmId(token.id)}
+                            disabled={tokenRevoking === token.id}
+                            aria-label={t(($) => $.tokens.revoke_aria, { name: token.name })}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        }
+                      />
+                      <TooltipContent>{t(($) => $.tokens.revoke_tooltip)}</TooltipContent>
+                    </Tooltip>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </SettingsSection>
