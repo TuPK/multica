@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -561,5 +562,55 @@ func TestAccountDeletionJobKeepsOtherMembersAndRefusesToOrphanAWorkspace(t *test
 	}
 	if status, _ := accountStatus(t, uid); status != "pending_deletion" {
 		t.Fatalf("status = %q, want the account left pending", status)
+	}
+}
+
+// Spec 13, AC28: deleting an account removes every group row of that user in the
+// same run, and leaves the other members' rows.
+func TestAccountDeletionJobRemovesTheUsersGroupRows(t *testing.T) {
+	requirePlatformTestDatabase(t)
+	ctx := context.Background()
+	f := newDeletionFixture(t)
+	groups := make([]string, 2)
+	for i := range groups {
+		groups[i] = dbfx.Insert(t, "member_group", testutil.Cols{
+			"workspace_id": f.sharedWS, "name": "g" + strconv.Itoa(i) + "-" + uuid.NewString()[:8],
+			"description": "", "permissions": "{}", "created_by": f.otherUserID,
+		})
+		for _, u := range []string{f.userID, f.otherUserID} {
+			dbfx.Exec(t, `INSERT INTO member_group_member (workspace_id, group_id, user_id) VALUES ($1::uuid, $2::uuid, $3::uuid)`,
+				f.sharedWS, groups[i], u)
+		}
+	}
+	dbfx.Cleanup(t, `DELETE FROM member_group_member WHERE workspace_id = $1::uuid`, f.sharedWS)
+	dbfx.Cleanup(t, `DELETE FROM member_group WHERE workspace_id = $1::uuid`, f.sharedWS)
+	makeDue(t, f.userID)
+
+	if done, err := testHandler.DeleteAccount(ctx, f.userID, time.Now()); err != nil || !done {
+		t.Fatalf("DeleteAccount = %v, %v", done, err)
+	}
+	if n := dbfx.Count(t, `SELECT count(*) FROM member_group_member WHERE user_id = $1::uuid`, f.userID); n != 0 {
+		t.Fatalf("group rows naming the deleted user = %d, want 0", n)
+	}
+	if n := dbfx.Count(t, `SELECT count(*) FROM member_group_member WHERE workspace_id = $1::uuid AND user_id = $2::uuid`, f.sharedWS, f.otherUserID); n != 2 {
+		t.Fatalf("the other member's group rows = %d, want 2", n)
+	}
+}
+
+// Spec 13, AC25: the account export never carries a billing profile.
+func TestExportHasNoBillingProfile(t *testing.T) {
+	requirePlatformTestDatabase(t)
+	dbfx.Exec(t, `INSERT INTO billing_profile (workspace_id, account_kind, legal_name, tax_code, address, invoice_email)
+		VALUES ($1::uuid, 'business', 'Sentinel Legal Name Co', 'TAX-SENTINEL-0123', '1 Sentinel Street', 'invoice-sentinel@example.test')`, testWorkspaceID)
+	dbfx.Cleanup(t, `DELETE FROM billing_profile WHERE workspace_id = $1::uuid`, testWorkspaceID)
+	t.Cleanup(func() {
+		_, _ = testPool.Exec(context.Background(), `DELETE FROM audit_event WHERE action = 'account.export_requested' AND actor_id = $1`, testUserID)
+	})
+
+	body := testutil.Call(t, exportHandler(newExportLimiter()), exportRequest()).Want(http.StatusOK).Text()
+	for _, leak := range []string{"Sentinel Legal Name Co", "TAX-SENTINEL-0123", "1 Sentinel Street", "invoice-sentinel@example.test", "billing_profile", "tax_code", "legal_name"} {
+		if strings.Contains(body, leak) {
+			t.Errorf("account export contains %q", leak)
+		}
 	}
 }

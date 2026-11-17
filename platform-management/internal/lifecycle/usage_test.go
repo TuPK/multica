@@ -233,3 +233,28 @@ func TestUsageLifecyclePeriodSkipsUsagePlans(t *testing.T) {
 		t.Errorf("status with cancel_at_period_end = %q, want active", status)
 	}
 }
+
+// A usage invoice has no expires_at and never expires by itself (spec 13, AC34).
+func TestOrderExpiryNeverTouchesAUsageOrder(t *testing.T) {
+	f := newUsageFixture(t, subscription.StatusActive, nil)
+	var expires *time.Time
+	if err := f.pool.QueryRow(context.Background(), `SELECT expires_at FROM billing_order WHERE id = $1`, f.orderID).Scan(&expires); err != nil {
+		t.Fatal(err)
+	}
+	if expires != nil {
+		t.Fatalf("fixture usage order has expires_at %v, want none", expires)
+	}
+	x, err := NewOrderExpirer(NewPgxStore(f.pool), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := x.Run(context.Background(), t0.AddDate(10, 0, 0)); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if got := f.orderStatus(f.orderID); got != string(billing.StatusPending) {
+		t.Fatalf("usage order status = %q, want pending", got)
+	}
+	if n := f.count(`SELECT count(*) FROM audit_event WHERE workspace_id = $1 AND action = 'billing.order_expired'`); n != 0 {
+		t.Fatalf("order_expired audit rows = %d, want 0", n)
+	}
+}

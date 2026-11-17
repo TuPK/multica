@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -122,5 +123,26 @@ func TestSummaryUsageRouteServesTheBlockOfAUsagePlanOnly(t *testing.T) {
 	}
 	if rec := e.get(path, ownerID, "203.0.113.9:1"); rec.Code != http.StatusForbidden {
 		t.Errorf("untrusted peer: %d, want 403", rec.Code)
+	}
+}
+
+// The billing profile is never part of the summary (spec 13, AC25): the summary
+// has no profile reader, and no key or value of the profile may appear in it.
+func TestSummaryNeverCarriesTheBillingProfile(t *testing.T) {
+	e, _ := usageEnv(t)
+	for _, planKey := range []string{"free", "payg"} {
+		e.subs.rows[wsID] = Subscription{
+			WorkspaceID: wsID, PlanKey: planKey, Status: "active", Interval: IntervalMonth, Version: 1,
+		}
+		rec := e.summary(ownerID)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s summary: %d %s", planKey, rec.Code, rec.Body)
+		}
+		body := strings.ToLower(rec.Body.String())
+		for _, key := range []string{"legal_name", "tax_code", "invoice_email", "address", "billing_profile", "buyer"} {
+			if strings.Contains(body, `"`+key+`"`) {
+				t.Errorf("%s summary has a %q key: %s", planKey, key, rec.Body)
+			}
+		}
 	}
 }
