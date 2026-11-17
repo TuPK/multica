@@ -34,8 +34,10 @@ import (
 	"github.com/multica-ai/multica/server/internal/integrations/telegram"
 	"github.com/multica-ai/multica/server/internal/integrations/wecom"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
+	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/middleware"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/publish"
 	"github.com/multica-ai/multica/server/internal/realtime"
 	"github.com/multica-ai/multica/server/internal/research"
@@ -1180,7 +1182,7 @@ func (h *Handler) loadIssueForUser(w http.ResponseWriter, r *http.Request, issue
 	// silently returns false for non-identifier strings, falling through to
 	// the UUID path below.
 	if issue, ok := h.resolveIssueByIdentifier(r.Context(), issueID, workspaceID); ok {
-		return issue, true
+		return h.issueInViewerScope(w, r, issue)
 	}
 
 	issueUUID, err := util.ParseUUID(issueID)
@@ -1200,6 +1202,87 @@ func (h *Handler) loadIssueForUser(w http.ResponseWriter, r *http.Request, issue
 		WorkspaceID: wsUUID,
 	})
 	if err != nil {
+		writeError(w, http.StatusNotFound, "issue not found")
+		return db.Issue{}, false
+	}
+	return h.issueInViewerScope(w, r, issue)
+}
+
+// viewerScope computes what the caller may see in the workspace (spec 7.1). A
+// failure ends the request: a read must never continue without a Scope.
+func (h *Handler) viewerScope(w http.ResponseWriter, r *http.Request, workspaceID pgtype.UUID) (projectaccess.Scope, bool) {
+	if errors.Is(r.Context().Err(), context.Canceled) {
+		// The client is gone; keep the status for logs and send no body.
+		w.WriteHeader(middleware.StatusClientClosedRequest)
+		return projectaccess.Scope{}, false
+	}
+	userID, ok := parseUUIDOrBadRequest(w, requestUserID(r), "user id")
+	if !ok {
+		return projectaccess.Scope{}, false
+	}
+	scope, err := projectaccess.ForViewer(r.Context(), h.Queries, workspaceID, userID)
+	if errors.Is(err, projectaccess.ErrNotMember) {
+		writeError(w, http.StatusNotFound, "workspace not found")
+		return projectaccess.Scope{}, false
+	}
+	if err != nil {
+		slog.Error("compute project scope", append(logger.RequestAttrs(r), "error", err)...)
+		writeErrorCode(w, http.StatusServiceUnavailable, "scope_unavailable", "visibility could not be determined")
+		return projectaccess.Scope{}, false
+	}
+	return scope, true
+}
+
+// scopeCondition is projectaccess.Fragment for hand-built SQL: it binds the
+// scope parameters through addArg and returns text that continues a WHERE
+// clause that already has a condition.
+func scopeCondition(scope projectaccess.Scope, column string, addArg func(any) string) string {
+	return strings.NewReplacer(
+		"sqlc.arg(scope_mode)", addArg(scope.Mode()),
+		"sqlc.arg(scope_user_id)", addArg(scope.UserID()),
+	).Replace(projectaccess.Fragment(column))
+}
+
+// memberSeesProject reports whether userID sees projectID. A user who is not a
+// member of the workspace sees nothing.
+func memberSeesProject(ctx context.Context, q projectaccess.Querier, workspaceID, userID, projectID pgtype.UUID) (bool, error) {
+	scope, err := projectaccess.ForViewer(ctx, q, workspaceID, userID)
+	if errors.Is(err, projectaccess.ErrNotMember) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return scope.Allows(projectID), nil
+}
+
+// assigneeSeesProject enforces spec 7.1 rule 6: a member assigned to an issue
+// of a project must see that project. It writes the 400 or 503 and returns
+// false when the assignment must not go on.
+func (h *Handler) assigneeSeesProject(w http.ResponseWriter, r *http.Request, workspaceID pgtype.UUID, assigneeType pgtype.Text, assigneeID, projectID pgtype.UUID) bool {
+	if assigneeType.String != "member" || !assigneeID.Valid || !projectID.Valid {
+		return true
+	}
+	sees, err := memberSeesProject(r.Context(), h.Queries, workspaceID, assigneeID, projectID)
+	if err != nil {
+		slog.Error("compute assignee project scope", append(logger.RequestAttrs(r), "error", err)...)
+		writeErrorCode(w, http.StatusServiceUnavailable, "scope_unavailable", "visibility could not be determined")
+		return false
+	}
+	if !sees {
+		writeErrorCode(w, http.StatusBadRequest, "project_member_invalid", "project_member_invalid")
+		return false
+	}
+	return true
+}
+
+// issueInViewerScope answers a hidden issue exactly like a missing one.
+func (h *Handler) issueInViewerScope(w http.ResponseWriter, r *http.Request, issue db.Issue) (db.Issue, bool) {
+	scope, ok := h.viewerScope(w, r, issue.WorkspaceID)
+	if !ok {
+		return db.Issue{}, false
+	}
+	if !scope.Allows(issue.ProjectID) {
 		writeError(w, http.StatusNotFound, "issue not found")
 		return db.Issue{}, false
 	}

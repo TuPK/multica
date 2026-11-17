@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
 	"github.com/multica-ai/multica/server/internal/logger"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
@@ -187,6 +188,10 @@ func (h *Handler) ListProjects(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 	var statusFilter pgtype.Text
 	if s := r.URL.Query().Get("status"); s != "" {
 		statusFilter = pgtype.Text{String: s, Valid: true}
@@ -204,6 +209,13 @@ func (h *Handler) ListProjects(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to list projects")
 		return
 	}
+	visible := projects[:0]
+	for _, p := range projects {
+		if scope.Allows(p.ID) {
+			visible = append(visible, p)
+		}
+	}
+	projects = visible
 
 	// Batch-fetch issue stats and resource counts for all projects
 	statsMap := make(map[string]db.GetProjectIssueStatsRow)
@@ -255,10 +267,14 @@ func (h *Handler) GetProject(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 	project, err := h.Queries.GetProjectInWorkspace(r.Context(), db.GetProjectInWorkspaceParams{
 		ID: idUUID, WorkspaceID: wsUUID,
 	})
-	if err != nil {
+	if err != nil || !scope.Allows(project.ID) {
 		writeError(w, http.StatusNotFound, "project not found")
 		return
 	}
@@ -779,7 +795,7 @@ type SearchProjectResponse struct {
 }
 
 // buildProjectSearchQuery builds a dynamic SQL query for project search.
-func buildProjectSearchQuery(phrase string, terms []string, includeClosed bool) (string, []any) {
+func buildProjectSearchQuery(phrase string, terms []string, includeClosed bool, scope projectaccess.Scope) (string, []any) {
 	phrase = strings.ToLower(phrase)
 	for i, t := range terms {
 		terms[i] = strings.ToLower(t)
@@ -837,6 +853,7 @@ func buildProjectSearchQuery(phrase string, terms []string, includeClosed bool) 
 	if !includeClosed {
 		whereClause += " AND p.status NOT IN ('completed', 'cancelled')"
 	}
+	whereClause += "\n" + scopeCondition(scope, "p.id", nextArg)
 
 	// --- ORDER BY ranking ---
 	var rankCases []string
@@ -953,7 +970,12 @@ func (h *Handler) SearchProjects(w http.ResponseWriter, r *http.Request) {
 	}
 	terms := splitSearchTerms(q)
 
-	sqlQuery, args := buildProjectSearchQuery(q, terms, includeClosed)
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
+
+	sqlQuery, args := buildProjectSearchQuery(q, terms, includeClosed, scope)
 	args[1] = wsUUID
 	args[len(args)-2] = limit
 	args[len(args)-1] = offset

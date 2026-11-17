@@ -626,6 +626,13 @@ WHERE i.workspace_id = $1
              AND a.owner_id     = sqlc.narg('involves_user_id')::uuid
     ))
   )
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ORDER BY i.position ASC, i.created_at DESC;
 
 -- name: CountIssues :one
@@ -693,8 +700,15 @@ ORDER BY number ASC;
 -- Within each parent, order by number ASC for the same sibling-stable
 -- creation order as ListChildIssues.
 SELECT * FROM issue
-WHERE workspace_id = sqlc.arg('workspace_id')
-  AND parent_issue_id = ANY(sqlc.arg('parent_ids')::uuid[])
+WHERE issue.workspace_id = sqlc.arg('workspace_id')
+  AND issue.parent_issue_id = ANY(sqlc.arg('parent_ids')::uuid[])
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (issue.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
 ORDER BY parent_issue_id, number ASC;
 
 -- name: GetIssueByOrigin :one
@@ -724,13 +738,20 @@ WHERE workspace_id = $1
 GROUP BY assignee_type, assignee_id;
 
 -- name: ChildIssueProgress :many
-SELECT parent_issue_id,
+SELECT issue.parent_issue_id,
        COUNT(*)::bigint AS total,
-       COUNT(*) FILTER (WHERE status = ANY(sqlc.arg('terminal_status_keys')::text[]))::bigint AS done
+       COUNT(*) FILTER (WHERE issue.status = ANY(sqlc.arg('terminal_status_keys')::text[]))::bigint AS done
 FROM issue
-WHERE workspace_id = $1
-  AND parent_issue_id IS NOT NULL
-GROUP BY parent_issue_id;
+WHERE issue.workspace_id = $1
+  AND issue.parent_issue_id IS NOT NULL
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (issue.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
+GROUP BY issue.parent_issue_id;
 
 -- SearchIssues: moved to handler (dynamic SQL for multi-word search support).
 

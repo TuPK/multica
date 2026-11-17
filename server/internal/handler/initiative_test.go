@@ -137,7 +137,8 @@ func (fx iniWorkspace) as(req *http.Request, userID string) *http.Request {
 }
 
 func (fx iniWorkspace) asAgent(req *http.Request, agentID, taskID string) *http.Request {
-	return testutil.WithHeaders(req, "X-Workspace-ID", fx.ID, "X-Agent-ID", agentID, "X-Task-ID", taskID)
+	// A task token carries the user who started the run, who is a member.
+	return testutil.WithHeaders(req, "X-Workspace-ID", fx.ID, "X-User-ID", fx.AdminID, "X-Agent-ID", agentID, "X-Task-ID", taskID)
 }
 
 // createInitiative starts one as the admin and returns its id.

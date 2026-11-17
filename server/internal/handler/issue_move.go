@@ -86,6 +86,14 @@ func (h *Handler) MoveIssue(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "project not found in this workspace")
 			return
 		}
+		scope, ok := h.viewerScope(w, r, current.WorkspaceID)
+		if !ok {
+			return
+		}
+		if !scope.Allows(*projectID) {
+			writeError(w, http.StatusNotFound, "project not found")
+			return
+		}
 	}
 
 	beforeID, ok := decodeIssueMoveAnchor(w, fields["before_id"], "before_id")

@@ -3,6 +3,8 @@ package handler
 import (
 	"strings"
 	"testing"
+
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 )
 
 func TestBuildSearchQuery_SingleTerm(t *testing.T) {
@@ -53,7 +55,7 @@ func TestBuildSearchQuery_OmitsUnusedExactTotal(t *testing.T) {
 }
 
 func TestBuildProjectSearchQuery_OmitsUnusedExactTotal(t *testing.T) {
-	query, _ := buildProjectSearchQuery("Hello", []string{"Hello"}, false)
+	query, _ := buildProjectSearchQuery("Hello", []string{"Hello"}, false, projectaccess.Scope{})
 
 	if strings.Contains(query, "COUNT(*) OVER()") || strings.Contains(query, "total_count") {
 		t.Fatalf("project search query should not calculate an unused exact total:\n%s", query)
@@ -216,7 +218,7 @@ func TestBuildSearchQuery_SpecialChars(t *testing.T) {
 // --- Project search tests ---
 
 func TestBuildProjectSearchQuery_SingleTerm(t *testing.T) {
-	query, args := buildProjectSearchQuery("Hello", []string{"Hello"}, false)
+	query, args := buildProjectSearchQuery("Hello", []string{"Hello"}, false, projectaccess.Scope{})
 
 	if args[0] != "hello" {
 		t.Errorf("expected phrase arg to be lowercased, got %q", args[0])
@@ -239,7 +241,7 @@ func TestBuildProjectSearchQuery_SingleTerm(t *testing.T) {
 }
 
 func TestBuildProjectSearchQuery_MultiTerm(t *testing.T) {
-	query, args := buildProjectSearchQuery("Foo Bar", []string{"Foo", "Bar"}, false)
+	query, args := buildProjectSearchQuery("Foo Bar", []string{"Foo", "Bar"}, false, projectaccess.Scope{})
 
 	if args[0] != "foo bar" {
 		t.Errorf("expected phrase arg lowercased, got %q", args[0])
@@ -257,7 +259,7 @@ func TestBuildProjectSearchQuery_MultiTerm(t *testing.T) {
 }
 
 func TestBuildProjectSearchQuery_IncludeClosed(t *testing.T) {
-	query, _ := buildProjectSearchQuery("test", []string{"test"}, true)
+	query, _ := buildProjectSearchQuery("test", []string{"test"}, true, projectaccess.Scope{})
 
 	if strings.Contains(query, "NOT IN ('completed', 'cancelled')") {
 		t.Error("query should not exclude completed/cancelled when includeClosed=true")
@@ -511,7 +513,7 @@ func TestBuildSearchQuery_DoneNotDemotedAheadOfRelevance(t *testing.T) {
 // projects above issues — an undemoted cancelled project can be the first row
 // of the entire result list.
 func TestBuildProjectSearchQuery_CancelledDemotedAheadOfRelevance(t *testing.T) {
-	query, _ := buildProjectSearchQuery("platform", []string{"platform"}, true)
+	query, _ := buildProjectSearchQuery("platform", []string{"platform"}, true, projectaccess.Scope{})
 	orderBy := orderByClause(t, query)
 
 	cancelledAt := strings.Index(orderBy, "p.status = 'cancelled'")

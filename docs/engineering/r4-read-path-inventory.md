@@ -74,7 +74,7 @@ How units are found:
 | `server/pkg/db/queries/inbox_archive.sql` | `ListArchivedInboxPage` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/initiative.sql` | `ListGateProposalsForInitiative` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/initiative.sql` | `MinIssuePositionInStatus` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue.sql` | `ChildIssueProgress` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/issue.sql` | `ChildIssueProgress` | sql-query | scoped | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `CountCreatedIssueAssignees` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `CountIssues` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `CountIssuesInTriage` | sql-query | todo | Reads issue or project; no visibility filter today |
@@ -93,13 +93,13 @@ How units are found:
 | `server/pkg/db/queries/issue.sql` | `GetIssueTriageState` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `IssueHasDuplicates` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `ListChildIssues` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue.sql` | `ListChildrenByParents` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/issue.sql` | `ListChildrenByParents` | sql-query | scoped | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `ListIssueDuplicates` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `ListIssueGCStatuses` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `ListIssueRefsInWorkspace` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `ListIssues` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `ListIssuesByIDsInWorkspace` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue.sql` | `ListOpenIssues` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/issue.sql` | `ListOpenIssues` | sql-query | scoped | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `ListReleasableQueuedIssues` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `ListRunQueueWaits` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `LockIssueForAttachmentWrite` | sql-query | todo | Reads issue or project; no visibility filter today |
@@ -248,7 +248,7 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/flow_sweep.go` | `Handler.sweepManualHumanTasks` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/github.go` | `Handler.lookupIssueByIdentifier` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/github.go` | `Handler.resolvePRLinkPolicy` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/handler.go` | `Handler.loadIssueForUser` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/handler.go` | `Handler.loadIssueForUser` | go-call | scoped | Calls a reader query; no visibility filter today |
 | `server/internal/handler/handler.go` | `Handler.resolveIssueByIdentifier` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/inbox.go` | `Handler.ArchiveCompletedInbox` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/inbox.go` | `Handler.ListArchivedInbox` | go-call | todo | Calls a reader query; no visibility filter today |
@@ -260,10 +260,10 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/initiative.go` | `initiativeReads.view` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/issue.go` | `Handler.BatchDeleteIssues` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/issue.go` | `Handler.BatchUpdateIssues` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue.go` | `Handler.ChildIssueProgress` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/issue.go` | `Handler.ChildIssueProgress` | go-call | scoped | Calls a reader query; no visibility filter today |
 | `server/internal/handler/issue.go` | `Handler.CreateIssue` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue.go` | `Handler.ListChildIssues` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue.go` | `Handler.ListChildrenByParents` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/issue.go` | `Handler.ListChildIssues` | go-call | scoped | Calls a reader query; no visibility filter today |
+| `server/internal/handler/issue.go` | `Handler.ListChildrenByParents` | go-call | scoped | Calls a reader query; no visibility filter today |
 | `server/internal/handler/issue.go` | `Handler.QueryIssues` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/issue.go` | `Handler.QuickCreateIssue` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/issue.go` | `Handler.UpdateIssue` | go-call | todo | Calls a reader query; no visibility filter today |
@@ -312,9 +312,9 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/plugin_action.go` | `Handler.resolvePluginIssue` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/pr_auto_complete.go` | `Handler.maybeAutoCompleteIssue` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/project.go` | `Handler.DeleteProject` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/project.go` | `Handler.GetProject` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/project.go` | `Handler.ListProjects` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/project.go` | `Handler.SearchProjects` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/project.go` | `Handler.GetProject` | go-call | scoped | Calls a reader query; no visibility filter today |
+| `server/internal/handler/project.go` | `Handler.ListProjects` | go-call | scoped | Calls a reader query; no visibility filter today |
+| `server/internal/handler/project.go` | `Handler.SearchProjects` | go-call | scoped | Calls a reader query; no visibility filter today |
 | `server/internal/handler/project.go` | `Handler.UpdateProject` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/project.go` | `Handler.loadProjectIssueStats` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/project_resource.go` | `Handler.loadProjectForResource` | go-call | todo | Calls a reader query; no visibility filter today |
@@ -438,7 +438,7 @@ Grouped by file; a function appears once per file.
 
 | File | Function | Kind | Status | Note |
 | --- | --- | --- | --- | --- |
-| `server/internal/handler/issue.go` | `Handler.ListGroupedIssues` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
+| `server/internal/handler/issue.go` | `Handler.ListGroupedIssues` | raw-sql | scoped | Inline SQL reads issue or project; no visibility filter today |
 | `server/internal/handler/issue.go` | `buildSearchQuery` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
 | `server/internal/handler/issue_move.go` | `Handler.issueMoveAnchorPosition` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
 | `server/internal/handler/issue_table_advanced.go` | `issueTableFilterCompiler.fieldPredicate` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
@@ -454,7 +454,7 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/issue_table_group.go` | `resolvedIssueTableGroup.contextExpression` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
 | `server/internal/handler/issue_table_query.go` | `Handler.compileIssueTableQuery` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
 | `server/internal/handler/issue_table_rows.go` | `Handler.queryIssueTableRows` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
-| `server/internal/handler/project.go` | `buildProjectSearchQuery` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
+| `server/internal/handler/project.go` | `buildProjectSearchQuery` | raw-sql | scoped | Inline SQL reads issue or project; no visibility filter today |
 | `server/internal/issueposition/position.go` | `NextTopPosition` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
 | `server/internal/projectaccess/scope.go` | `<file-level>` | raw-sql | exempt | Defines the shared predicate text (Fragment); not a read path |
 | `server/internal/service/issue_wakeup_condition.go` | `IssueWakeupService.evaluateCondition` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
@@ -466,7 +466,7 @@ Grouped by file; a function appears once per file.
 
 | File | Function | Kind | Status | Note |
 | --- | --- | --- | --- | --- |
-| `server/internal/handler/issue.go` | `Handler.ListIssues` | go-call+raw-sql | todo | Calls a reader query and has inline SQL; no visibility filter today |
+| `server/internal/handler/issue.go` | `Handler.ListIssues` | go-call+raw-sql | scoped | Calls a reader query and has inline SQL; no visibility filter today |
 | `server/internal/handler/issue_move.go` | `Handler.MoveIssue` | go-call+raw-sql | todo | Calls a reader query and has inline SQL; no visibility filter today |
 | `server/internal/service/issue_wakeup.go` | `IssueWakeupService.Disable` | go-call+raw-sql | todo | Calls a reader query and has inline SQL; no visibility filter today |
 | `server/internal/service/issue_wakeup.go` | `IssueWakeupService.EditInstruction` | go-call+raw-sql | todo | Calls a reader query and has inline SQL; no visibility filter today |

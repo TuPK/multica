@@ -501,12 +501,18 @@ func (h *Handler) compileIssueTableQuery(w http.ResponseWriter, r *http.Request,
 		return issueTableSQL{}, false
 	}
 
+	scope, ok := h.viewerScope(w, r, workspaceUUID)
+	if !ok {
+		return issueTableSQL{}, false
+	}
+
 	where := []string{"i.workspace_id = $1"}
 	args := []any{workspaceUUID}
 	addArg := func(value any) string {
 		args = append(args, value)
 		return "$" + strconv.Itoa(len(args))
 	}
+	where = append(where, "TRUE\n"+scopeCondition(scope, "i.project_id", addArg))
 
 	negated := make(map[string]bool, len(spec.Filters.Negate))
 	for _, field := range spec.Filters.Negate {

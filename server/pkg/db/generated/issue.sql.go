@@ -12,18 +12,27 @@ import (
 )
 
 const childIssueProgress = `-- name: ChildIssueProgress :many
-SELECT parent_issue_id,
+SELECT issue.parent_issue_id,
        COUNT(*)::bigint AS total,
-       COUNT(*) FILTER (WHERE status = ANY($2::text[]))::bigint AS done
+       COUNT(*) FILTER (WHERE issue.status = ANY($2::text[]))::bigint AS done
 FROM issue
-WHERE workspace_id = $1
-  AND parent_issue_id IS NOT NULL
-GROUP BY parent_issue_id
+WHERE issue.workspace_id = $1
+  AND issue.parent_issue_id IS NOT NULL
+  -- projectaccess:scope
+  AND ($3::text = 'all'
+    OR (issue.project_id IS NULL AND $3::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = $4::uuid)
+    OR ($3::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
+GROUP BY issue.parent_issue_id
 `
 
 type ChildIssueProgressParams struct {
 	WorkspaceID        pgtype.UUID `json:"workspace_id"`
 	TerminalStatusKeys []string    `json:"terminal_status_keys"`
+	ScopeMode          string      `json:"scope_mode"`
+	ScopeUserID        pgtype.UUID `json:"scope_user_id"`
 }
 
 type ChildIssueProgressRow struct {
@@ -33,7 +42,12 @@ type ChildIssueProgressRow struct {
 }
 
 func (q *Queries) ChildIssueProgress(ctx context.Context, arg ChildIssueProgressParams) ([]ChildIssueProgressRow, error) {
-	rows, err := q.db.Query(ctx, childIssueProgress, arg.WorkspaceID, arg.TerminalStatusKeys)
+	rows, err := q.db.Query(ctx, childIssueProgress,
+		arg.WorkspaceID,
+		arg.TerminalStatusKeys,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -1338,14 +1352,23 @@ func (q *Queries) ListChildIssues(ctx context.Context, parentIssueID pgtype.UUID
 
 const listChildrenByParents = `-- name: ListChildrenByParents :many
 SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, properties, revision, last_activity_at, triage_state, duplicate_of_issue_id, done_at, reopen_count, last_reopened_at, run_queued, run_after_issue_ids, run_start_status, outcome, flow, flow_step, flow_task, flow_round FROM issue
-WHERE workspace_id = $1
-  AND parent_issue_id = ANY($2::uuid[])
+WHERE issue.workspace_id = $1
+  AND issue.parent_issue_id = ANY($2::uuid[])
+  -- projectaccess:scope
+  AND ($3::text = 'all'
+    OR (issue.project_id IS NULL AND $3::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = $4::uuid)
+    OR ($3::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
 ORDER BY parent_issue_id, number ASC
 `
 
 type ListChildrenByParentsParams struct {
 	WorkspaceID pgtype.UUID   `json:"workspace_id"`
 	ParentIds   []pgtype.UUID `json:"parent_ids"`
+	ScopeMode   string        `json:"scope_mode"`
+	ScopeUserID pgtype.UUID   `json:"scope_user_id"`
 }
 
 // Batched variant of ListChildIssues: returns all children for the given
@@ -1356,7 +1379,12 @@ type ListChildrenByParentsParams struct {
 // Within each parent, order by number ASC for the same sibling-stable
 // creation order as ListChildIssues.
 func (q *Queries) ListChildrenByParents(ctx context.Context, arg ListChildrenByParentsParams) ([]Issue, error) {
-	rows, err := q.db.Query(ctx, listChildrenByParents, arg.WorkspaceID, arg.ParentIds)
+	rows, err := q.db.Query(ctx, listChildrenByParents,
+		arg.WorkspaceID,
+		arg.ParentIds,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -1920,6 +1948,13 @@ WHERE i.workspace_id = $1
              AND a.owner_id     = $10::uuid
     ))
   )
+  -- projectaccess:scope
+  AND ($11::text = 'all'
+    OR (i.project_id IS NULL AND $11::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $12::uuid)
+    OR ($11::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ORDER BY i.position ASC, i.created_at DESC
 `
 
@@ -1934,6 +1969,8 @@ type ListOpenIssuesParams struct {
 	MetadataFilter     []byte        `json:"metadata_filter"`
 	PropertiesFilter   []byte        `json:"properties_filter"`
 	InvolvesUserID     pgtype.UUID   `json:"involves_user_id"`
+	ScopeMode          string        `json:"scope_mode"`
+	ScopeUserID        pgtype.UUID   `json:"scope_user_id"`
 }
 
 type ListOpenIssuesRow struct {
@@ -1979,6 +2016,8 @@ func (q *Queries) ListOpenIssues(ctx context.Context, arg ListOpenIssuesParams) 
 		arg.MetadataFilter,
 		arg.PropertiesFilter,
 		arg.InvolvesUserID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
 	)
 	if err != nil {
 		return nil, err

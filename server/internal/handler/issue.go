@@ -309,14 +309,71 @@ func (h *Handler) updateIssueWithStatusGuard(ctx context.Context, workspaceID pg
 	return issue, nil
 }
 
+// projectMoveKey marks a write context in which the issue changes project, so
+// the write in the same transaction also drops the assignee and watchers who
+// cannot see the destination (spec 7.1 rule 7).
+type projectMoveKey struct{}
+
+type projectMove struct{ workspaceID pgtype.UUID }
+
+func withProjectMove(ctx context.Context, workspaceID pgtype.UUID) context.Context {
+	return context.WithValue(ctx, projectMoveKey{}, projectMove{workspaceID: workspaceID})
+}
+
+// removeSubscribersWhoCannotSee unsubscribes the member watchers of issue who
+// cannot see its project.
+func removeSubscribersWhoCannotSee(ctx context.Context, q *db.Queries, workspaceID pgtype.UUID, issue db.Issue) error {
+	subscribers, err := q.ListIssueSubscribers(ctx, issue.ID)
+	if err != nil {
+		return fmt.Errorf("list issue subscribers: %w", err)
+	}
+	for _, sub := range subscribers {
+		if sub.UserType != "member" {
+			continue
+		}
+		sees, err := memberSeesProject(ctx, q, workspaceID, sub.UserID, issue.ProjectID)
+		if err != nil {
+			return fmt.Errorf("check watcher project visibility: %w", err)
+		}
+		if sees {
+			continue
+		}
+		if err := q.RemoveIssueSubscriber(ctx, db.RemoveIssueSubscriberParams{
+			IssueID: issue.ID, UserType: sub.UserType, UserID: sub.UserID,
+		}); err != nil {
+			return fmt.Errorf("remove issue subscriber: %w", err)
+		}
+	}
+	return nil
+}
+
 // updateIssueStoppingWakeups writes params and, when the write moves the issue
 // into a done/closed status, ends its wakeups with the same queries. Callers
 // run it inside the status write's transaction and broadcast the returned runs
 // after commit.
 func updateIssueStoppingWakeups(ctx context.Context, q *db.Queries, params db.UpdateIssueParams) (db.Issue, []db.AgentTaskQueue, error) {
+	move, moved := ctx.Value(projectMoveKey{}).(projectMove)
+	if moved && params.AssigneeType.String == "member" && params.AssigneeID.Valid {
+		sees, err := memberSeesProject(ctx, q, move.workspaceID, params.AssigneeID, params.ProjectID)
+		if err != nil {
+			return db.Issue{}, nil, fmt.Errorf("check assignee project visibility: %w", err)
+		}
+		if !sees {
+			params.AssigneeType = pgtype.Text{}
+			params.AssigneeID = pgtype.UUID{}
+		}
+	}
 	issue, err := q.UpdateIssue(ctx, params)
-	if err != nil || !params.Status.Valid {
+	if err != nil {
 		return issue, nil, err
+	}
+	if moved {
+		if err := removeSubscribersWhoCannotSee(ctx, q, move.workspaceID, issue); err != nil {
+			return db.Issue{}, nil, err
+		}
+	}
+	if !params.Status.Valid {
+		return issue, nil, nil
 	}
 	cancelled, err := service.StopClosedIssueWakeups(ctx, q, issue)
 	if err != nil {
@@ -1323,6 +1380,10 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 	if h.refuseBoardListForSecretary(w, r, wsUUID) {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 
 	// Parse optional filter params. Malformed UUIDs in filters return 400 —
 	// silently coercing them to a zero UUID would mask a client bug and let
@@ -1423,6 +1484,8 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 			InvolvesUserID:     involvesUserFilter,
 			MetadataFilter:     metadataFilter,
 			PropertiesFilter:   openPropertiesFilter,
+			ScopeMode:          scope.Mode(),
+			ScopeUserID:        scope.UserID(),
 		})
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to list issues")
@@ -1748,7 +1811,7 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 )`, ref))
 	}
 
-	whereSql := strings.Join(where, " AND ")
+	whereSql := strings.Join(where, " AND ") + "\n" + scopeCondition(scope, "i.project_id", addArg)
 
 	// Build ORDER BY clause.
 	// Count queries use only filter parameters. Sort-only CASE parameters must
@@ -2072,12 +2135,18 @@ func (h *Handler) ListGroupedIssues(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
+
 	where := []string{"i.workspace_id = $1"}
 	args := []any{wsUUID}
 	addArg := func(v any) string {
 		args = append(args, v)
 		return "$" + strconv.Itoa(len(args))
 	}
+	where = append(where, "TRUE\n"+scopeCondition(scope, "i.project_id", addArg))
 
 	statuses := splitCommaParam(r.URL.Query().Get("statuses"))
 	if len(statuses) == 0 {
@@ -2574,11 +2643,22 @@ func (h *Handler) ListChildIssues(w http.ResponseWriter, r *http.Request) {
 	if h.refuseOutsideSecretaryTree(w, r, issue) {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, issue.WorkspaceID)
+	if !ok {
+		return
+	}
 	children, err := h.Queries.ListChildIssues(r.Context(), issue.ID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list child issues")
 		return
 	}
+	visible := children[:0]
+	for _, child := range children {
+		if scope.Allows(child.ProjectID) {
+			visible = append(visible, child)
+		}
+	}
+	children = visible
 	prefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
 	ids := make([]pgtype.UUID, len(children))
 	for i, child := range children {
@@ -2628,6 +2708,10 @@ func (h *Handler) ListChildrenByParents(w http.ResponseWriter, r *http.Request) 
 	if h.refuseBoardListForSecretary(w, r, wsUUID) {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 
 	raw := r.URL.Query().Get("parent_ids")
 	if raw == "" {
@@ -2663,6 +2747,8 @@ func (h *Handler) ListChildrenByParents(w http.ResponseWriter, r *http.Request) 
 	children, err := h.Queries.ListChildrenByParents(r.Context(), db.ListChildrenByParentsParams{
 		WorkspaceID: wsUUID,
 		ParentIds:   parentIDs,
+		ScopeMode:   scope.Mode(),
+		ScopeUserID: scope.UserID(),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list child issues")
@@ -2702,6 +2788,11 @@ func (h *Handler) ChildIssueProgress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
+
 	terminalStatusKeys, err := h.terminalIssueStatusKeys(r.Context(), wsUUID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to resolve status categories")
@@ -2710,6 +2801,8 @@ func (h *Handler) ChildIssueProgress(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.Queries.ChildIssueProgress(r.Context(), db.ChildIssueProgressParams{
 		WorkspaceID:        wsUUID,
 		TerminalStatusKeys: terminalStatusKeys,
+		ScopeMode:          scope.Mode(),
+		ScopeUserID:        scope.UserID(),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to get child issue progress")
@@ -3476,6 +3569,9 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+	}
+	if !h.assigneeSeesProject(w, r, wsUUID, assigneeType, assigneeID, workflowProjectID) {
+		return
 	}
 	// Project existence and the final parent boundary check are enforced inside
 	// IssueService.Create atomically with the create. The handler preloads a
@@ -4266,6 +4362,14 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 				writeError(w, http.StatusBadRequest, "project not found in this workspace")
 				return
 			}
+			scope, ok := h.viewerScope(w, r, prevIssue.WorkspaceID)
+			if !ok {
+				return
+			}
+			if !scope.Allows(projectUUID) {
+				writeError(w, http.StatusNotFound, "project not found")
+				return
+			}
 			params.ProjectID = projectUUID
 		} else {
 			params.ProjectID = pgtype.UUID{Valid: false}
@@ -4355,6 +4459,9 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 			writeError(w, status, msg)
 			return
 		}
+		if !h.assigneeSeesProject(w, r, prevIssue.WorkspaceID, params.AssigneeType, params.AssigneeID, params.ProjectID) {
+			return
+		}
 	}
 
 	attachmentIDs, ok := parseUUIDSliceOrBadRequest(w, req.AttachmentIDs, "attachment_ids")
@@ -4365,6 +4472,9 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	// The agent this write hands the issue to gets the change as its own run,
 	// not also through its event wakeups.
 	writeCtx := withWakeupHandedTo(r.Context(), h.handedToAgent(r.Context(), prevIssue, params, handoff != nil))
+	if params.ProjectID.Valid && params.ProjectID != prevIssue.ProjectID {
+		writeCtx = withProjectMove(writeCtx, prevIssue.WorkspaceID)
+	}
 	var issue db.Issue
 	attachmentsChanged := false
 	if req.Description != nil || req.TitleBase != nil || req.DescriptionBase != nil || len(attachmentIDs) > 0 {
