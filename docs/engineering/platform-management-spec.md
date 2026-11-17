@@ -798,19 +798,52 @@ Một adapter `PaymentProvider` ở platform, đối soát chuyển khoản tự
 
 **Hiện trạng đã kiểm ở HEAD `f39cbcc4e`.** Giao diện `PaymentProvider` đã có ba phương thức (`platform-management/internal/billing/provider.go:42`); `Notification` hiện chỉ có `TransferCode`, `ProviderRef`, `Amount` (`provider.go`, ghi chú "the R4 adapter fills it"); `Manual.ParseNotification` trả `ErrUnsupported` (`provider.go:74`). `ApplyPayment` (`platform-management/internal/billing/service.go:296`) nhận `Confirmation{OrderID, ConfirmedBy, ActorLabel}` (`service.go:269`) và đòi `ConfirmedBy` là UUID; một lần xác nhận bằng máy không có staff, nên P42.5 thêm cách ghi nguồn tự động (`confirmed_by` rỗng, nhãn `provider:<tên>`, actor kiểm toán `system`). Chi tiết cách `ApplyPayment` ghi `confirmed_by` và kiểm toán: chưa xác minh, P42.5 đọc trước khi đổi. Nhà cung cấp được chọn lúc khởi động qua cấu hình, hiện cố định `billing.ProviderManual` (`platform-management/cmd/platform-server/main.go:216`).
 
-**Hợp đồng của nhà cung cấp đầu tiên (O-R4-1).** Chưa đọc; P42.1 điền bảng này trước khi viết mã của adapter, và phải ghi cả tên, địa chỉ tài liệu, ngày đọc.
+**Hợp đồng của nhà cung cấp đầu tiên (O-R4-1).** Đọc tài liệu chính thức ngày 2026-11-17 (P42.1). Chọn **SePay** (sản phẩm SePay Webhooks), vì chỉ SePay có đủ ba tiêu chí: đặc tả webhook công khai, chữ ký HMAC-SHA256 được ghi tài liệu, và thử lại cùng mã sự kiện được ghi tài liệu.
+
+Loại các ứng viên khác:
+
+- **Casso**: không đạt tiêu chí (b). Trang chính thức `developer.casso.vn` không nêu tên header chữ ký, thuật toán, hay byte được ký; chi tiết đó chỉ có trong kho mã mẫu mà trang liên kết tới. Không đạt tiêu chí (c) đầy đủ: hai trang chính thức ghi khác nhau, một ghi thử lại trong 12 giờ và một ghi 24 giờ (cả hai đều ghi tối đa 17 lần). Có mã sự kiện `id` ("Mã định danh duy nhất của giao dịch").
+- **payOS**: không đạt tiêu chí (c). Trang chính thức có chữ ký HMAC-SHA256 cho webhook, nhưng không có chính sách thử lại, và không trang nào nêu trường mã sự kiện là duy nhất theo từng lần gửi. Trang chỉ nói: "Phản hồi trạng thái mã 2XX để xác nhận webhook gửi thành công".
+
+Bảng hợp đồng (SePay):
 
 | Mục | Giá trị |
 | --- | --- |
-| Tên nhà cung cấp | chưa xác minh |
-| Địa chỉ tài liệu chính thức | chưa xác minh |
-| Ngày đọc | chưa xác minh |
-| Cách ký thông báo (HMAC, chứng chỉ hay mã tĩnh) và header | chưa xác minh |
-| Mã sự kiện duy nhất của nhà cung cấp | chưa xác minh |
-| Cách thử lại khi platform trả lỗi (số lần, khoảng cách, mã HTTP được coi là thành công) | chưa xác minh |
-| Định dạng số tiền và tiền tệ | chưa xác minh |
-| Trường chứa nội dung chuyển khoản | chưa xác minh |
-| Dải IP công bố của nhà cung cấp, nếu có | chưa xác minh |
+| Tên nhà cung cấp | SePay (sepay.vn), sản phẩm SePay Webhooks. Không phải Bank Hub (khóa tĩnh, sản phẩm khác) |
+| Địa chỉ tài liệu chính thức | `developer.sepay.vn/en/sepay-webhooks/tich-hop-webhook` (payload, phản hồi, chống trùng); `.../xac-thuc` (chữ ký); `.../xu-ly-loi` (thử lại); `developer.sepay.vn/en/dia-chi-ip` (IP). Bản tiếng Việt cùng đường dẫn với `/vi/` |
+| Ngày đọc | 2026-11-17 |
+| Endpoint và đăng ký | Ta đăng ký URL trong dashboard của SePay; phương thức `POST`; thân `application/json`. Đường dẫn do ta chọn, miễn là khớp `POST /api/payments/webhook/{provider}` của listener (`xac-thuc`, `tich-hop-webhook`) |
+| Cách ký thông báo và header | HMAC-SHA256 với Secret Key. Header `X-SePay-Signature: sha256={hex_hash}` và `X-SePay-Timestamp` (Unix giây lúc ký). Chuỗi được ký là `{timestamp}.{raw_body}`, trên byte thô của thân ("SePay signs the raw bytes of the body") (`xac-thuc`, 2026-11-17). Secret Key chỉ hiện đầy đủ một lần lúc tạo webhook, sau đó chỉ thấy 4 ký tự cuối (`xac-thuc`) |
+| Mã sự kiện duy nhất | Trường `id` (số nguyên), mô tả là "SePay transaction ID. Same value across retries and replays, use as the dedup key" (`tich-hop-webhook`, 2026-11-17). Ta dùng `id` làm `EventID`. Tài liệu không nói `id` là duy nhất trên mọi giao dịch; xem U6 |
+| Phản hồi Multica phải trả | HTTP `200` hoặc `201`, thân đúng `{"success": true}`, trong 30 giây. Mọi thứ khác là thất bại, kể cả HTTP `202`, chuyển hướng, `4xx`, `5xx`, hoặc thân khác (`xu-ly-loi`, `tich-hop-webhook`, 2026-11-17) |
+| Cách thử lại | Tổng 8 lần gửi (lần đầu và 7 lần thử lại); khoảng cách 1, 1, 2, 3, 5, 8, 13 phút (Fibonacci); tổng khoảng 33 phút ("wrapping up around 33 minutes"). Lỗi không kết nối được (DNS, từ chối kết nối, hết giờ, SSL) luôn được thử lại. HTTP ngoài 200 đến 299 chỉ được thử lại khi bật tùy chọn "Tự động gửi lại khi server trả lỗi" (`xu-ly-loi`, 2026-11-17). Ta phải bật tùy chọn này. Hết 8 lần thì đánh dấu Failed; không có thử lại nào sau đó (`xu-ly-loi`) |
+| Thời gian chờ | Quá 30 giây không có phản hồi là timeout (`xu-ly-loi`, `tich-hop-webhook`) |
+| Không đảm bảo thứ tự | "Does SePay guarantee webhook ordering? No." (`xu-ly-loi`). Adapter không giả định thứ tự |
+| Định dạng số tiền và tiền tệ | `transferAmount`: số nguyên, đơn vị VND, luôn dương ("Transaction amount in VND, always positive", `tich-hop-webhook`). Không có trường tiền tệ; adapter đặt `Currency = "VND"` (xem U9) |
+| Trường chứa nội dung chuyển khoản | `content`: "Original transfer memo from the bank" (`tich-hop-webhook`). Adapter tự rút `transfer_code` từ `content` và không dựa vào `code` (mã do SePay bóc, có thể `null`) |
+| Chiều tiền | `transferType`: `in` hoặc `out`. Ta cấu hình chỉ nhận tiền vào; adapter vẫn bỏ qua `out` |
+| Dải IP công bố | IPv4: 172.236.138.20, 172.233.83.68, 171.244.35.2, 151.158.108.68, 151.158.109.79, 103.255.238.139, 45.57.137.67. IPv6: 2400:8905::2000:8cff:fe98:45cd, 2600:3c15::2000:8aff:fedd:874b. Trang cảnh báo "The IP list may be updated in the future" (`dia-chi-ip`, 2026-11-17). `PAYMENT_WEBHOOK_CIDRS` là lớp lọc thêm, không thay chữ ký |
+
+**Điểm chưa xác minh của SePay.** Mọi điều dưới đây không có trong tài liệu chính thức đã đọc. Không điền từ trí nhớ.
+
+- U1. Chưa xác minh: `X-SePay-Timestamp` và chữ ký có được tính lại cho mỗi lần thử lại hay giữ nguyên lần đầu. Lý do: tài liệu không nói. Hệ quả: nếu giữ nguyên, các lần thử cuối có thể bị lệch thời gian. Đo ở Test mode trước khi chốt cửa sổ kiểm timestamp (P42.3).
+- U2. Chưa xác minh: Secret Key dùng làm khóa HMAC là chuỗi UTF-8 nguyên văn hay phải giải mã. Tài liệu không nói rõ.
+- U3. Chưa xác minh: cửa sổ lệch timestamp được chấp nhận. Mã mẫu PHP kiểm `abs(time() - $timestamp) > 300` và có chú thích "Anti-replay: reject timestamps off by more than 5 minutes". Đây là mã mẫu, không phải chính sách của SePay.
+- U4. Chưa xác minh: thân tối đa mà SePay gửi. Ta dùng giới hạn 64 KiB của spec.
+- U5. Chưa xác minh: tập giá trị đầy đủ của `transferType` ngoài `in` và `out`.
+- U6. Chưa xác minh: `id` có duy nhất trên mọi giao dịch hay chỉ ổn định qua thử lại. Tài liệu chỉ nói "same value across retries and replays" và "integer".
+- U7. Chưa xác minh: múi giờ chính xác của `transactionDate` ("Vietnam time", không ghi độ lệch UTC). Giả định UTC+7.
+- U8. Chưa xác minh: HTTP `201` với thân sai có được thử lại hay không. Tài liệu nói `200 to 299` được thử lại có điều kiện, nhưng không nói rõ `201` kèm thân sai.
+- U9. Chưa xác minh: tiền tệ luôn là VND. Tài liệu chỉ nói `transferAmount` "in VND".
+- U10. Chưa xác minh: sự kiện đang thử lại dùng Secret Key cũ hay mới khi đổi khóa.
+- U11. Chưa xác minh: độ trễ từ lúc tiền vào đến lúc webhook gửi. Tài liệu chỉ nói "real time".
+
+**Casso và payOS (lý do loại, không dùng làm adapter).**
+
+- C1. Chưa xác minh: tổng thời gian thử lại của Casso (12 giờ hay 24 giờ). Hai trang chính thức ghi khác nhau.
+- C2. Chưa xác minh (trong trang chính thức): tên header chữ ký của Casso, thuật toán và byte được ký. Chỉ có trong kho mã mẫu liên kết.
+- P1. Chưa xác minh: số lần thử lại, khoảng cách và thời gian chờ của payOS. Trang đã đọc không nêu.
+- P2. Chưa xác minh: trường nào là mã sự kiện của payOS và có ổn định qua thử lại hay không.
 
 **Luồng.**
 
