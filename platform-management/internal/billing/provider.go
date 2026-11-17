@@ -3,6 +3,7 @@ package billing
 import (
 	"errors"
 	"net/http"
+	"time"
 )
 
 // ErrUnsupported is returned by a provider method the provider does not have.
@@ -34,6 +35,12 @@ type Notification struct {
 	TransferCode string
 	ProviderRef  string
 	Amount       int64
+	// EventID is the provider's event id, as a decimal string.
+	EventID string
+	// Currency is the ISO code as the provider sent it.
+	Currency string
+	// OccurredAt is the transaction time the provider reported.
+	OccurredAt time.Time
 }
 
 // PaymentProvider is the part of billing that differs between payment
