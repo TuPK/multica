@@ -111,12 +111,14 @@ func clearShareLinksForTestWorkspace(t *testing.T) {
 func createTestUserAndMember(t *testing.T, role string) string {
 	t.Helper()
 	ctx := context.Background()
-	seq := testSeq.Add(1)
+	// A per-run suffix, not the process counter: rows left by an earlier killed
+	// run would otherwise collide on user_email_key.
+	suffix := hubTestUUID(t)
 	var userID string
 	if err := testPool.QueryRow(ctx,
 		`INSERT INTO "user" (name, email) VALUES ($1, $2) RETURNING id`,
-		fmt.Sprintf("sharelink-test-%d", seq),
-		fmt.Sprintf("sharelink-test-%d@multica.ai", seq),
+		"sharelink-test-"+suffix,
+		"sharelink-test-"+suffix+"@multica.ai",
 	).Scan(&userID); err != nil {
 		t.Fatalf("create share-link test user: %v", err)
 	}
