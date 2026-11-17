@@ -85,6 +85,17 @@ type Billing struct {
 	Bank billing.BankDetails
 }
 
+// VATRateOf returns the VAT rate for a currency. Only the default currency has
+// BILLING_VAT_RATE; any other currency is 0 (spec 7.4 rule 4). No
+// BILLING_VAT_RATE_<CURRENCY> variable is read yet, as vnd is the only enabled currency.
+func (b Billing) VATRateOf(currency string) billing.Rate {
+	if currency == money.Default {
+		return b.VATRate
+	}
+	zero, _ := billing.ParseRate("0") // constant input, cannot fail
+	return zero
+}
+
 // EmptyBankVariables names the BILLING_BANK_* variables that are empty.
 func (b Billing) EmptyBankVariables() []string {
 	var out []string
