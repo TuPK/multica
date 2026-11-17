@@ -3,6 +3,38 @@ name: multica
 services:
   postgres:
     image: pgvector/pgvector:pg17
+    # Tuned for a ~12-core, 23 GB host with SSD storage. Flags live here, not in
+    # ALTER SYSTEM, so the same file applies the settings on any machine.
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - shared_buffers=4GB
+      - -c
+      - effective_cache_size=12GB
+      - -c
+      - work_mem=32MB
+      - -c
+      - maintenance_work_mem=512MB
+      - -c
+      - max_worker_processes=12
+      - -c
+      - max_parallel_workers=12
+      - -c
+      - max_parallel_workers_per_gather=4
+      - -c
+      - max_parallel_maintenance_workers=4
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - max_wal_size=4GB
+      - -c
+      - track_io_timing=on
+      - -c
+      - log_min_duration_statement=500
     environment:
       POSTGRES_DB: multica
       POSTGRES_USER: ${POSTGRES_USER:-multica}
@@ -11,6 +43,7 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
 
 volumes:
   pgdata:
