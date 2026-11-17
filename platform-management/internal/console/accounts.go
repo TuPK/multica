@@ -21,6 +21,7 @@ const (
 type AccountRequests interface {
 	Create(ctx context.Context, by accountrequest.Actor, in accountrequest.Input) (r accountrequest.Request, created bool, err error)
 	Cancel(ctx context.Context, by accountrequest.Actor, id string) (accountrequest.Request, error)
+	ResendWelcome(ctx context.Context, by accountrequest.Actor, id string) (accountrequest.Request, error)
 	List(ctx context.Context, q accountrequest.ListQuery) ([]accountrequest.Request, error)
 	Get(ctx context.Context, id string) (r accountrequest.Request, found bool, err error)
 }
@@ -192,6 +193,27 @@ func (h *Handler) cancelAccountRequest(w http.ResponseWriter, r *http.Request) {
 	req, err := h.Accounts.Cancel(r.Context(), by, id)
 	if err != nil {
 		h.failAccount(w, r, "cancel account request", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toAccountRequestJSON(req))
+}
+
+// resendWelcome sends the welcome email again, in the request of the staff
+// member, and answers with the request.
+func (h *Handler) resendWelcome(w http.ResponseWriter, r *http.Request) {
+	id, perr := pathID(r, "id")
+	if perr != nil {
+		writeError(w, perr)
+		return
+	}
+	by, err := h.accountActor(r)
+	if err != nil {
+		h.fail(w, r, "resolve staff actor", err)
+		return
+	}
+	req, err := h.Accounts.ResendWelcome(r.Context(), by, id)
+	if err != nil {
+		h.failAccount(w, r, "resend welcome", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, toAccountRequestJSON(req))

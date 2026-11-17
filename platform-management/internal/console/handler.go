@@ -141,6 +141,7 @@ func routeTable() []routeSpec {
 		}},
 		{base + "/accounts/{id}", adminOnly, map[string]handlerFunc{http.MethodGet: (*Handler).getAccountRequest}},
 		{base + "/accounts/{id}/cancel", adminOnly, map[string]handlerFunc{http.MethodPost: (*Handler).cancelAccountRequest}},
+		{base + "/accounts/{id}/resend-welcome", adminOnly, map[string]handlerFunc{http.MethodPost: (*Handler).resendWelcome}},
 		{base + "/overview", nil, map[string]handlerFunc{http.MethodGet: (*Handler).overview}},
 	}
 }

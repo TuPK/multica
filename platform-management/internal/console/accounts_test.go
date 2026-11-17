@@ -61,6 +61,21 @@ func (f *fakeAccounts) Cancel(_ context.Context, a accountrequest.Actor, id stri
 	return r, nil
 }
 
+func (f *fakeAccounts) ResendWelcome(_ context.Context, a accountrequest.Actor, id string) (accountrequest.Request, error) {
+	f.calls++
+	f.actors = append(f.actors, a)
+	if f.err != nil {
+		return accountrequest.Request{}, f.err
+	}
+	r, ok := f.rows[id]
+	if !ok {
+		return accountrequest.Request{}, accountrequest.ErrNotFound
+	}
+	sent := t0
+	r.WelcomeSentAt = &sent
+	return r, nil
+}
+
 func (f *fakeAccounts) List(_ context.Context, q accountrequest.ListQuery) ([]accountrequest.Request, error) {
 	f.calls++
 	f.listed = append(f.listed, q)
@@ -156,6 +171,7 @@ func TestAccountRequestRoutesAreAdminOnly(t *testing.T) {
 		{"GET", "/api/platform/accounts/" + reqID, "", 200},
 		{"POST", "/api/platform/accounts", createBody, 202},
 		{"POST", "/api/platform/accounts/" + reqID + "/cancel", "", 200},
+		{"POST", "/api/platform/accounts/" + reqID + "/resend-welcome", "", 200},
 	}
 	for _, rt := range routes {
 		e := newAccountsEnv(t)
@@ -180,6 +196,7 @@ func TestAccountRequestWrongMethodIsAnUnknownRoute(t *testing.T) {
 	for _, c := range [][2]string{
 		{"DELETE", "/api/platform/accounts"}, {"PUT", "/api/platform/accounts/" + reqID},
 		{"GET", "/api/platform/accounts/" + reqID + "/cancel"}, {"POST", "/api/platform/accounts/" + reqID},
+		{"GET", "/api/platform/accounts/" + reqID + "/resend-welcome"}, {"PUT", "/api/platform/accounts/" + reqID + "/resend-welcome"},
 	} {
 		wantUnknownRoute(t, e.do(adminID, c[0], c[1], ""))
 	}
@@ -354,5 +371,67 @@ func TestAccountRequestWritesNeedTheConsoleOrigin(t *testing.T) {
 	e.h.ServeHTTP(rec, req)
 	if rec.Code < 400 || e.acc.calls != 0 {
 		t.Errorf("status %d, service calls %d", rec.Code, e.acc.calls)
+	}
+}
+
+// Spec 7b.5, rule 9: the resend answers with the request, whose welcome_sent_at
+// is now set, and maps the service's refusals to their codes.
+func TestWelcomeResendRoute(t *testing.T) {
+	e := newAccountsEnv(t)
+	rec := e.do(adminID, "POST", "/api/platform/accounts/"+reqID+"/resend-welcome", "")
+	wantStatus(t, rec, 200)
+	body := decode(t, rec)
+	if body["id"] != reqID || body["welcome_sent_at"] == nil {
+		t.Errorf("body = %s", rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), "Hidden Co") {
+		t.Error("the billing profile of a third party is in the response")
+	}
+	if len(e.acc.actors) != 1 || e.acc.actors[0].ID != adminID || e.acc.actors[0].Label != adminMail {
+		t.Errorf("actor = %+v, want the signed-in admin and their email", e.acc.actors)
+	}
+	wantCode(t, e.do(adminID, "POST", "/api/platform/accounts/eeeeeeee-0000-0000-0000-000000000009/resend-welcome", ""), 404, "not_found")
+	wantCode(t, e.do(adminID, "POST", "/api/platform/accounts/not-a-uuid/resend-welcome", ""), 404, "not_found")
+}
+
+func TestWelcomeResendRouteMapsServiceErrorsToTheSpecCodes(t *testing.T) {
+	cases := []struct {
+		name   string
+		err    error
+		status int
+		code   string
+		check  func(*testing.T, map[string]any, http.Header)
+	}{
+		{"not resendable", &accountrequest.Error{Status: 409, Code: "account_request_not_resendable", Message: "m", State: "pending"}, 409, "account_request_not_resendable",
+			func(t *testing.T, b map[string]any, _ http.Header) {
+				if b["state"] != "pending" {
+					t.Errorf("state = %v", b["state"])
+				}
+			}},
+		{"rate limited", &accountrequest.Error{Status: 429, Code: "welcome_resend_rate_limited", Message: "m", RetryAfter: 24 * time.Hour}, 429, "welcome_resend_rate_limited",
+			func(t *testing.T, _ map[string]any, h http.Header) {
+				if got := h.Get("Retry-After"); got != "86400" {
+					t.Errorf("Retry-After = %q, want 86400", got)
+				}
+			}},
+		{"send failed", &accountrequest.Error{Status: 502, Code: "welcome_send_failed", Message: "the email could not be sent"}, 502, "welcome_send_failed", nil},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			e := newAccountsEnv(t)
+			e.acc.err = c.err
+			rec := e.do(adminID, "POST", "/api/platform/accounts/"+reqID+"/resend-welcome", "")
+			wantCode(t, rec, c.status, c.code)
+			if c.check != nil {
+				c.check(t, decode(t, rec), rec.Header())
+			}
+		})
+	}
+	e := newAccountsEnv(t)
+	e.acc.err = errors.New("smtp relay 10.0.0.5 refused")
+	rec := e.do(adminID, "POST", "/api/platform/accounts/"+reqID+"/resend-welcome", "")
+	wantCode(t, rec, 500, "internal")
+	if strings.Contains(rec.Body.String(), "10.0.0.5") {
+		t.Error("the response repeats the cause")
 	}
 }
