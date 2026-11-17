@@ -11,6 +11,7 @@ import (
 
 	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/platform-management/internal/billing"
+	"github.com/multica-ai/multica/platform-management/internal/money"
 	"github.com/multica-ai/multica/platform-management/internal/plan"
 	"github.com/multica-ai/multica/platform-management/internal/subscription"
 )
@@ -316,7 +317,7 @@ func (f *Finalizer) writeGrant(ctx context.Context, tx FinalizeTx, r Request, p 
 	next.WorkspaceID = r.WorkspaceID
 	currency := strings.ToLower(p.Currency)
 	if currency == "" {
-		currency = "vnd"
+		currency = money.Default
 	}
 	buyer := json.RawMessage(`{}`)
 	if bp := r.BillingProfile; bp != nil {

@@ -62,14 +62,19 @@ Count: 151 scanned units (file and term pairs), 151 rows.
 | --- | --- | --- | --- | --- | --- | --- |
 | `platform-management/cmd/platform-server/main.go` | `currency` | `run` | literal | code | todo | Looks up the provider for "vnd"; P44.2: look up by order currency. |
 | `platform-management/cmd/platform-server/main.go` | `vnd` | `run` | literal | code | todo | Hard-coded "vnd" provider lookup and comment; P44.2: read from plan or subscription. |
-| `platform-management/internal/accountrequest/finalize.go` | `currency` | `writeGrant`, `orderDetail` | field | code | todo | Lower-cases the plan currency; falls back to the literal in the vnd row. |
-| `platform-management/internal/accountrequest/finalize.go` | `vnd` | `writeGrant` | literal | code | todo | Empty plan currency becomes "vnd"; P44.2: read from plan or subscription. |
+| `platform-management/internal/accountrequest/finalize.go` | `currency` | `writeGrant`, `orderDetail` | field | code | ruled | Lower-cases the plan currency; an empty one falls back to money.Default (P44.2). |
 | `platform-management/internal/billing/changeorder.go` | `currency` | `CreateChangeOrder`, `RenewalDraft` | field | code | todo | Change order copies Currency from the target plan. |
 | `platform-management/internal/billing/order.go` | `currency` | `Order.Currency` | field | code | todo | Order.Currency. |
 | `platform-management/internal/billing/pgx.go` | `currency` | `orderFromRow`, `InsertOrder` | field | code | todo | Row mapping for orders. |
 | `platform-management/internal/billing/pricing.go` | `vnd` | `daysCeil` | text | comment | todo | Comment: rounds to whole VND; reword when P44.2 lands. |
 | `platform-management/internal/billing/provider.go` | `currency` | `Instructions.Currency`, `file-level comment`, `Notification.Currency`, `CreatePaymentRequest` | field | code | todo | Instructions, Notification and CreatePaymentRequest carry Currency. |
 | `platform-management/internal/billing/rate.go` | `vnd` | `file-level comment` | text | comment | todo | Comment: money is integer VND; reword when P44.2 lands. |
+| `platform-management/internal/money/exponent.go` | `currency` | `Exponent` | field | code | ruled | The rule set itself: the exponent table of enabled currencies (P44.2). |
+| `platform-management/internal/money/exponent.go` | `vnd` | `exponents` | literal | code | ruled | The rule set itself: the one place the vnd exponent (0) lives (P44.2). |
+| `platform-management/internal/money/money.go` | `currency` | `Default` | field | code | ruled | The rule set itself: the package doc and the default currency constant (P44.2). |
+| `platform-management/internal/money/money.go` | `vnd` | `Default` | literal | code | ruled | The rule set itself: Default = "vnd", the one place the default literal lives (P44.2). |
+| `platform-management/internal/billing/reconcile.go` | `currency` | `noticeEntry` | field | code | todo | Audit detail copies the notice currency next to the order currency. Added at P44.2 (row was missing from the P44.1 table). |
+| `platform-management/internal/billing/reconcile_match.go` | `currency` | `matchNotice` | field | code | todo | Compares notice and order currency (`currency_mismatch`). Added at P44.2 (row was missing from the P44.1 table). |
 | `platform-management/internal/billing/registry.go` | `currency` | `file-level comment`, `ErrNoProvider`, `NewRegistry`, `ForCurrency` | field | code | todo | Registry maps currency code to provider; ForCurrency is the lookup. |
 | `platform-management/internal/billing/registry.go` | `vnd` | `file-level comment`, `NewRegistry` | literal | code | todo | Empty spec means "vnd=manual"; P44.2: configure per plan currency. |
 | `platform-management/internal/billing/sepay.go` | `currency` | `sepayCurrency`, `ParseNotification` | literal | code | todo | sepayCurrency constant used for the notice currency; P44.2: read from the order. |
@@ -83,7 +88,7 @@ Count: 151 scanned units (file and term pairs), 151 rows.
 | `platform-management/internal/billingapi/billingapi.go` | `vnd` | `refuseUnpaidUsage` | text | comment | todo | Comment: paid for 0 VND; reword when P44.2 lands. |
 | `platform-management/internal/billingapi/planchange.go` | `currency` | `planChangePreviewResponse.Currency`, `planChangeOrderResponse.Currency`, `previewPlanChange`, `writeChangeOrder` | field | code | todo | Plan-change preview and order response Currency. |
 | `platform-management/internal/config/config.go` | `currency` | `Error`, `EmptyBankVariables`, `loadBilling`, `loadPayments` | literal | code | todo | loadPayments requires a provider for "vnd"; P44.2: require one per plan currency. |
-| `platform-management/internal/config/config.go` | `vnd` | `loadBilling`, `loadPayments` | literal | code | todo | Boot check ForCurrency("vnd") and error text; P44.2: per plan currency. |
+| `platform-management/internal/config/config.go` | `vnd` | `loadBilling`, `loadPayments` | literal | code | todo | Boot check uses money.Default (P44.2); the comment above loadPayments still names vnd. Per-plan-currency check stays todo. |
 | `platform-management/internal/console/orders.go` | `currency` | `orderJSON.Currency`, `toOrderJSON`, `cancelOrder` | field | code | todo | Order JSON Currency. |
 | `platform-management/internal/console/pgx.go` | `currency` | `orderFromRow` | field | code | todo | Row mapping for orders. |
 | `platform-management/internal/db/models.go` | `currency` | `BillingOrder.Currency`, `EinvoiceIssuance.Currency`, `PaymentNotice.Currency`, `Plan.Currency` | field | code | todo | sqlc model fields for billing_order, einvoice_issuance, payment_notice and plan. |
@@ -91,6 +96,8 @@ Count: 151 scanned units (file and term pairs), 151 rows.
 | `platform-management/internal/invoice/pgx.go` | `currency` | `insert`, `ReplaceIssued`, `fromRow` | field | code | todo | Insert and row mapping for e-invoice issuance. |
 | `platform-management/internal/invoice/provider.go` | `currency` | `IssueRequest.Currency` | field | code | todo | IssueRequest.Currency. |
 | `platform-management/internal/invoice/record.go` | `currency` | `Record.Currency`, `NewRecord.Currency` | field | code | todo | Record and NewRecord Currency. |
+| `platform-management/internal/invoice/service.go` | `currency` | `Enqueue`, `process` | field | code | todo | Copies the order and record currency into the issuance request. Added at P44.2 (row was missing from the P44.1 table). |
+| `platform-management/internal/invoice/store.go` | `currency` | `PaidOrder` | field | code | todo | PaidOrder.Currency. Added at P44.2 (row was missing from the P44.1 table). |
 | `platform-management/internal/lifecycle/expire.go` | `currency` | `Run` | field | code | todo | Audit detail copies the order currency. |
 | `platform-management/internal/lifecycle/pgx.go` | `currency` | `orderFromRow` | field | code | todo | Row mapping for orders. |
 | `platform-management/internal/paymentnotice/notice.go` | `currency` | `Notice.Currency`, `NewNotice.Currency` | field | code | todo | Notice and NewNotice Currency. |
@@ -255,7 +262,6 @@ The rule set (`platform-management/internal/money`, P44.2) does not exist yet. T
 - `platform-management/console/src/screens/Plans.tsx` `vnd` (literal)
 - `platform-management/console/src/screens/PriceSchedule.tsx` `currency` (formatter)
 - `platform-management/console/src/screens/TenantDetail.tsx` `currency` (formatter)
-- `platform-management/internal/accountrequest/finalize.go` `vnd` (literal)
 - `platform-management/internal/billing/registry.go` `vnd` (literal)
 - `platform-management/internal/billing/sepay.go` `currency` (literal)
 - `platform-management/internal/billing/sepay.go` `vnd` (literal)

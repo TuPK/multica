@@ -11,6 +11,7 @@ import (
 
 	"github.com/multica-ai/multica/platform-management/internal/billing"
 	"github.com/multica-ai/multica/platform-management/internal/mfa"
+	"github.com/multica-ai/multica/platform-management/internal/money"
 	"github.com/multica-ai/multica/platform-management/internal/plan"
 	"github.com/multica-ai/multica/platform-management/internal/trust"
 )
@@ -388,8 +389,8 @@ func loadPayments(get func(string) string, getenv func(string) string, fail func
 	registry, err := billing.NewRegistry(getenv("PAYMENT_PROVIDERS"), bank, secret)
 	if err != nil {
 		fail("PAYMENT_PROVIDERS", err.Error())
-	} else if _, _, err := registry.ForCurrency("vnd"); err != nil {
-		fail("PAYMENT_PROVIDERS", "must list a provider for vnd")
+	} else if _, _, err := registry.ForCurrency(money.Default); err != nil {
+		fail("PAYMENT_PROVIDERS", "must list a provider for "+money.Default)
 	} else {
 		p.Registry = registry
 	}
