@@ -116,6 +116,14 @@ R1 luôn bật, không phụ thuộc cấu hình thương mại, nên bản tự
 | D49 | **Sai lệch so với P21 (thông tin chuyển khoản).** Ba biến `BILLING_BANK_*` không còn bắt buộc ở mọi môi trường. Khi trống, platform vẫn khởi động và ghi một cảnh báo khi khởi động; phương thức `manual` trả các trường trống. Lý do: chủ dự án chốt rằng giai đoạn này chưa thu tiền thật, nên thông tin ngân hàng chưa cần. Trước khi nhận đơn thật, phải đặt lại các biến này; nếu không khách không biết chuyển tiền đi đâu | Chủ dự án chốt; **điều kiện để mở thu tiền thật**: đặt lại `BILLING_BANK_*` và kiểm tra trang đơn hàng hiển thị đủ |
 | D50 | **Đường đăng nhập dev cho staff platform (không phải đăng nhập bằng mật khẩu).** Khi `PLATFORM_DEV_VERIFICATION_CODE` có sáu chữ số, mã đó được chấp nhận ở bước xác minh mã, thêm vào mã email; kiểm tra quyền staff vẫn áp dụng, và mã sai vẫn bị từ chối như trước. Khi có mã này và không có nhà cung cấp email, platform không gửi thư và chỉ ghi log không chứa địa chỉ hay mã. Platform từ chối khởi động khi `APP_ENV=production` và mã này được đặt. Khi có mã dev, nhà cung cấp email không còn bắt buộc. `make dev-full` lấy mã này từ `MULTICA_DEV_VERIFICATION_CODE` và tạo tài khoản `system@admin.com` làm admin. Lý do: môi trường phát triển không có nhà cung cấp email, và chủ dự án muốn đăng nhập bằng cùng mã với Multica. Mục 5.2 vẫn là đường đăng nhập chính; không thêm mật khẩu | Chủ dự án chốt cho môi trường dev; **không dùng cho production**. Commit `90d7eb4f0` và `0f0ae1d87` |
 | D51 | **Một khóa cho bí mật MFA (thay 15.3(b)).** Platform đọc `MULTICA_MFA_SECRET_KEY`, cùng tên và giá trị với máy chủ Multica, để mở bí mật TOTP mà Multica đã mã hóa trong `user_mfa`. Thay `PLATFORM_SECRET_KEY` nêu ở 15.3(b), để một bí mật chỉ có một khóa. Platform từ chối khởi động khi thiếu khóa; khi khởi động nó mở thử một dòng `user_mfa` đã xác nhận, và nếu không khớp thì dừng với thông báo nêu tên biến. Triển khai: mọi staff đăng ký MFA trong Multica trước, rồi mới khởi động platform có P33 | Đã chốt khi triển khai P33 (`4ff0ca870` đến `cd669b273`); 15.3(b) đọc theo tên mới |
+| D52 | **Hiển thị của project hạn chế.** Cột `project.access` có giá trị `workspace` hoặc `restricted`, mặc định `workspace`. Bảng `project_member` ghi người được cấp. Mọi đường đọc `issue` và `project` đi qua **một vị từ nhìn thấy dùng chung** (`server/internal/projectaccess`), không có vị từ viết riêng ở từng nơi. Owner và admin luôn thấy mọi project (giả định R4-a, 7.1 quy tắc 2). Lý do: lỗi bỏ sót ở một đường đọc là rò rỉ dữ liệu giữa người cùng workspace (7.1) | Đề xuất R4, chốt theo ủy quyền |
+| D53 | **Khách mời là cờ, không phải vai trò.** Cột `member.is_guest` (boolean). Không nới ràng buộc `CHECK` của vai trò, nên D21 và D41 vẫn đúng. Khách chỉ thấy project được cấp và issue trong đó; khách không quản lý được thành viên, cài đặt workspace, thanh toán hay nhóm tài khoản. Lý do: một vai trò mới buộc sửa mọi `CHECK` và mọi route theo vai trò (cùng loại rủi ro đã nêu ở D41) | Đề xuất R4, chốt theo ủy quyền |
+| D54 | **Sự kiện và chỉ mục tìm kiếm phía client của issue trong project hạn chế được phát theo người, không theo workspace.** Khách không vào phòng `ScopeWorkspace`; mọi sự kiện của họ đi qua phòng của riêng họ. Lý do: phát theo workspace đưa nội dung tới mọi kết nối trong workspace | Đề xuất R4, chốt theo ủy quyền |
+| D55 | **Agent thừa hưởng tầm nhìn của người kích hoạt.** Người kích hoạt là `agent_task_queue.originator_user_id` (migration 129). Lần chạy mà người kích hoạt không còn thấy project bị từ chối nhận ở `claimRefusalFor`, task ở lại hàng đợi (cùng cơ chế D25). Lý do: agent chạy theo quyền của người đã kích hoạt nó (6.4); cho agent thấy nhiều hơn người đó là đường rò rỉ | Đề xuất R4, chốt theo ủy quyền |
+| D56 | **Đối soát chuyển khoản tự động là một adapter sau `PaymentProvider` ở platform.** Khớp theo `transfer_code`; kiểm chữ ký **trước** khi dùng thân thông báo; mỗi sự kiện của nhà cung cấp chỉ được ghi một lần (duy nhất theo `provider` và `provider_event_id`); thông báo không khớp đơn nào hoặc lệch số tiền vào hàng chờ do staff vai trò `billing` xử lý; khớp đúng thì gọi `ApplyPayment`. Cụ thể hóa D30 và D13 | Đề xuất R4, chốt theo ủy quyền |
+| D57 | **Một bản ghi hóa đơn điện tử cho mỗi đơn đã trả, ở bảng riêng `einvoice_issuance`** (không phải cột JSON của `billing_order`). Phát hành bằng việc nền; thất bại không làm đơn mất trạng thái đã trả. Hóa đơn đã phát hành không bao giờ bị xóa, chỉ hủy hoặc thay thế qua nhà cung cấp, và mỗi bước đều ghi kiểm toán | Đề xuất R4, chốt theo ủy quyền |
+| D58 | **Nhiều tiền tệ vẫn là dữ liệu (D4).** Adapter thanh toán thứ hai đứng sau cùng giao diện `PaymentProvider`. **Chọn vùng lưu dữ liệu không làm ở R4**, vì trái D2 (một cơ sở dữ liệu chung); đó là quyết định còn mở O-R4-6 | Đề xuất R4, chốt theo ủy quyền |
+| D59 | **Webhook của nhà cung cấp là route duy nhất của platform phải tới được từ internet.** Nó chạy trên một **listener riêng**, không phải 8095 và không phải 30001, và listener đó chỉ trả lời `POST /api/payments/webhook/{provider}`; mọi đường khác trên nó trả 404. Đây là quyết định mới, thay giả định ngầm ở D32 rằng không có gì của platform được mở ra ngoài; nó không sửa D32 | Đề xuất R4, chốt theo ủy quyền |
 
 ## 2. Hiện trạng và khoảng trống
 
@@ -156,6 +164,9 @@ R1 luôn bật, không phụ thuộc cấu hình thương mại, nên bản tự
 | K20 | Chỉ có giá theo ghế và hai cổng hạn mức; không có gói không giới hạn rõ ràng, không có tính tiền theo mức dùng | `server/internal/entitlement/types.go:15`, D23 | 7b.3 |
 | K21 | Giá của gói là cột sửa tại chỗ, không có lịch hiệu lực, lịch sử, báo trước hay kiểm tra nhập sai | mục 5.5 (`plan.seat_price_month`), D24 | 7b.4 |
 | K22 | Người dùng chỉ được tạo khi tự đăng nhập; nhà vận hành không có đường tạo tài khoản và workspace cho khách | `server/internal/handler/auth.go:205`, `:270` | 7b.5 |
+| K23 | Chuyển khoản chỉ được xác nhận bằng tay: bộ `manual` không nhận thông báo nào, và đường duy nhất gọi `ApplyPayment` là route xác nhận của staff | `platform-management/internal/billing/provider.go:74` (`ParseNotification` trả `ErrUnsupported`), `platform-management/internal/console/orders.go:197`, `platform-management/cmd/platform-server/main.go:216` (`Provider: billing.ProviderManual`) | 7.2 |
+| K24 | Chưa có tích hợp hóa đơn điện tử: chỉ có cột văn bản `einvoice_ref` do người ghi tay; không có mã nào trong `server/` hay `platform-management/` gọi nhà cung cấp hóa đơn (`grep -rni einvoice` chỉ ra cột này, mã sqlc sinh từ nó, và các tên chứa `eInvoice` do trùng chuỗi trong `UsageInvoice`) | `server/migrations/677_billing_order.up.sql:19` | 7.3 |
+| K25 | Tiền tệ đã là dữ liệu của gói và đơn, nhưng có ba chỗ viết cứng `vnd` và chỉ một bộ thanh toán được nối | `server/migrations/670_plan.up.sql:6`, `server/migrations/677_billing_order.up.sql:10`, `platform-management/internal/billing/usage.go:63`, `platform-management/internal/usage/invoicing.go:208`, `platform-management/internal/accountrequest/finalize.go:319` | 7.4 |
 
 ## 3. Kiến trúc
 
@@ -707,27 +718,289 @@ Client: `MemberRole` thêm `viewer`; `rules.ts` từ chối mọi quyền ghi ch
 
 Đòi cờ `viewer_role` của gói.
 
-## 7. R4: mở rộng (mỗi phần cần đặc tả riêng)
+## 7. R4: mở rộng
+
+Ngày viết R4: 2026-11-17. Đọc mã ở **HEAD `f39cbcc4e`**, nhánh `main`. Trích dẫn `tệp:dòng` trong mục này đã kiểm bằng `grep -n` ở HEAD đó; trích dẫn chỉ có tên tệp nghĩa là tệp có thật nhưng chưa ghi dòng; điều chưa kiểm ghi "chưa xác minh" và được gom ở mục 15.4. Bốn phần của R4 (7.1 đến 7.4) từng chỉ có hướng thiết kế; mục này là đặc tả riêng của chúng, theo điều kiện "mỗi phần cần đặc tả riêng trước khi viết mã" ở mục 1.3. Chưa có mã nào của R4 được viết. Kế hoạch: P41 đến P44.
+
+### 7.0 Mục tiêu, quyết định và việc chưa quyết
+
+**Mục tiêu.** (1) Cho một project giới hạn người xem, kể cả với người cùng workspace, và cho phép mời khách chỉ thấy project được cấp (7.1). (2) Thay bước staff xác nhận chuyển khoản bằng đối soát tự động khi nhà cung cấp báo có tiền, mà mô hình đơn hàng không đổi (7.2). (3) Phát hóa đơn điện tử cho mỗi đơn đã trả, không làm đơn đã trả bị ảnh hưởng khi nhà cung cấp lỗi (7.3). (4) Chuẩn bị cho nhiều tiền tệ và nhà cung cấp thứ hai mà không dựng nhà cung cấp thứ hai (7.4).
+
+**Quyết định.** D52 đến D55 thuộc 7.1; D56 và D59 thuộc 7.2; D57 thuộc 7.3; D58 thuộc 7.4. Cả tám là đề xuất của R4 chốt theo ủy quyền, không phải quyết định của người dùng (mục 1.4). Mọi cấu hình mới của R4 mặc định tắt hoặc rỗng (I2): project mặc định `workspace`, không có khách, `PLATFORM_WEBHOOK_PORT` rỗng thì không có listener, `PLATFORM_EINVOICE_PROVIDER` rỗng thì không phát hóa đơn, `PLATFORM_CURRENCIES` mặc định chỉ `vnd`. AC61 kiểm điều này.
+
+**Việc chưa quyết.** Mỗi mục có mặc định đề xuất, nên bước tương ứng đi tiếp mà không chờ ai. Chỉ O-R4-4 là chỗ chờ người mà mục 16 đòi (xác nhận của kế toán), và chỉ trước lần phát hành hóa đơn thật đầu tiên; mã và test không chờ.
+
+| # | Câu hỏi | Mặc định đề xuất | Ai quyết sau này | Chặn mã? |
+| --- | --- | --- | --- | --- |
+| O-R4-1 | Nhà cung cấp thông báo giao dịch ngân hàng nào là adapter đầu tiên | Chọn sau khi đọc tài liệu chính thức của họ ở bước 1 của P42, theo ba tiêu chí: có đặc tả webhook công khai, có chữ ký được ghi tài liệu, có cơ chế thử lại và mã sự kiện được ghi tài liệu. Kết quả ghi ở 7.2 | Tác giả bước P42 chọn theo tiêu chí; chủ dự án đổi được | Không chặn P42.1. Chặn mã adapter (từ P42.3) cho tới khi P42.1 xong; việc đó do người làm bước thực hiện, không chờ ai |
+| O-R4-2 | Khách có tính là ghế không | Có, như `viewer` (D21): ghế đếm theo dòng `member`, nên khách tự được tính, không cần mã riêng | Chủ dự án | Không chặn P41 |
+| O-R4-3 | Lần chạy agent từ automation dùng tầm nhìn của ai | Người tạo automation. Nếu người đó không còn là thành viên hoặc không còn thấy project thì lần chạy bị từ chối và task ở lại hàng đợi | Chủ dự án | Không chặn P41; P41.8 áp mặc định |
+| O-R4-4 | Nhà cung cấp hóa đơn điện tử và các trường người mua bắt buộc | Nhà cung cấp có tài liệu API cho phát hành, tra cứu và hủy; trường bắt buộc lấy từ tài liệu của họ; kế toán (mục 16) xác nhận các trường trước khi phát hành thật. Phát triển và test không chờ. Đây là chỗ chờ duy nhất mà mục 16 đòi | Kế toán, qua mục 16 | Không chặn mã và test. Chặn lần phát hành thật đầu tiên |
+| O-R4-5 | Nhà cung cấp thanh toán thứ hai cho P44 | P44 chỉ dựng chỗ cắm giao diện và test tiền tệ. Không có adapter thứ hai cho tới khi chủ dự án nêu tên nhà cung cấp cho một thị trường | Chủ dự án | Không chặn P44 |
+| O-R4-6 | Chọn vùng lưu dữ liệu | Không làm ở R4: trái D2. Cần chủ dự án sửa D2 trước | Chủ dự án | Không chặn; ngoài phạm vi (mục 14) |
+| O-R4-7 | Có lưu nguyên văn thân thông báo ngân hàng không | Chỉ lưu các trường đã diễn giải và giá trị băm của thân, không lưu nguyên văn (thân có thể chứa dữ liệu cá nhân của người chuyển tiền). Chủ dự án xác nhận với tư vấn pháp lý (mục 16) | Chủ dự án, kèm tư vấn pháp lý | Không chặn mã (mặc định đã an toàn). Chặn việc đổi sang lưu nguyên văn |
+| O-R4-8 | Ai xử lý một thông báo trong hàng chờ | Staff vai trò `billing` và `admin` (quy tắc của `ApplyPayment` ở R2), kèm một dòng kiểm toán và lý do | Chủ dự án | Không chặn |
 
 ### 7.1 Project hạn chế truy cập và khách mời (K17)
 
 **Yêu cầu.** Một project có thể đặt là hạn chế; chỉ người được cấp mới thấy project và issue trong đó. Khách mời là thành viên chỉ thấy các project được cấp.
 
-**Vì sao không gộp vào đợt này.** Đo ở HEAD: bảng `issue` được đọc ở khoảng 100 câu truy vấn trong 29 tệp query; sự kiện issue được phát cho toàn bộ workspace qua `ScopeWorkspace`; client đồng bộ chỉ mục tìm kiếm cục bộ của cả workspace; agent đọc được mọi issue; bảng điều khiển và các bản tổng hợp cộng dồn qua mọi issue. Một lỗi bỏ sót ở bất kỳ đường nào là rò rỉ dữ liệu giữa những người trong cùng workspace, tức là loại lỗi mà chính tính năng này bán lời hứa ngăn chặn.
+**Vì sao không gộp vào R1 đến R3.** Đo ở đợt viết đầu của tài liệu: bảng `issue` được đọc ở khoảng 100 câu truy vấn trong 29 tệp query; sự kiện issue được phát cho toàn bộ workspace qua `ScopeWorkspace`; client đồng bộ chỉ mục tìm kiếm cục bộ của cả workspace; agent đọc được mọi issue; bảng điều khiển và các bản tổng hợp cộng dồn qua mọi issue. Đo lại ở HEAD `f39cbcc4e` bằng `grep -rl 'FROM issue\b\|JOIN issue\b' server/pkg/db/queries`: 38 tệp đọc `issue`, và 8 tệp đọc `project` (số câu truy vấn chưa đếm lại; P41.1 đếm). Một lỗi bỏ sót ở bất kỳ đường nào là rò rỉ dữ liệu giữa những người trong cùng workspace, tức là loại lỗi mà chính tính năng này bán lời hứa ngăn chặn.
 
-**Hướng thiết kế để đặc tả riêng triển khai.** Cột `project.access` (`workspace`, `restricted`) và bảng `project_member`; một vị từ nhìn thấy duy nhất dùng chung cho mọi đường đọc; sự kiện của issue hạn chế phát theo người thay vì theo workspace; chỉ mục tìm kiếm lọc theo người; agent thừa hưởng tầm nhìn của người kích hoạt. Bước đầu tiên của đặc tả đó là bản kiểm kê đầy đủ các đường đọc, có test tự động phát hiện đường mới.
+**Hướng thiết kế.** Cột `project.access` (`workspace`, `restricted`) và bảng `project_member`; một vị từ nhìn thấy duy nhất dùng chung cho mọi đường đọc; sự kiện của issue hạn chế phát theo người thay vì theo workspace; chỉ mục tìm kiếm lọc theo người; agent thừa hưởng tầm nhìn của người kích hoạt. Bước đầu tiên là bản kiểm kê đầy đủ các đường đọc, có test tự động phát hiện đường mới (P41.1).
 
-### 7.2 Cổng thanh toán tự động
+**Quy tắc.**
 
-Một adapter `PaymentProvider` ở platform, đối soát chuyển khoản tự động (D30): nhà cung cấp gửi thông báo mỗi khi tài khoản nhận tiền; adapter kiểm chữ ký, tìm đơn theo `transfer_code` trong nội dung chuyển tiền, so số tiền, rồi gọi `ApplyPayment`. Giao dịch không khớp đơn nào hoặc lệch số tiền được đưa vào hàng chờ cho staff xử lý tay. Hợp đồng API của nhà cung cấp chưa được kiểm chứng trong tài liệu này; đặc tả R4 phải đọc tài liệu chính thức của họ trước khi thiết kế adapter.
+1. **Dữ liệu.** `project.access` mặc định `workspace`. Giá trị lạ (ví dụ do client hoặc bản sau thêm vào) được vị từ coi là `restricted`, tức là đóng theo mặc định. `project_member` (7.5) ghi người được cấp. Không khóa ngoại: người bị gỡ khỏi workspace, project bị xóa và tài khoản bị xóa dọn dòng `project_member` bằng mã trong cùng giao dịch (quy tắc 10).
+2. **Ai thấy gì.** Giả định R4-a (có nhãn): owner và admin của workspace luôn thấy và quản lý mọi project, để một project hạn chế không bao giờ mồ côi khi người được cấp rời đi. Nếu chủ dự án muốn owner và admin cũng phải được cấp, chỉ cần bỏ nhánh này ở `projectaccess`.
 
-### 7.3 Hóa đơn điện tử
+| Người | Project `workspace` | Project `restricted` | Issue không thuộc project nào |
+| --- | --- | --- | --- |
+| owner, admin | thấy | thấy | thấy |
+| `member`, `viewer` không phải khách | thấy | thấy khi có dòng `project_member` | thấy |
+| khách (`is_guest`) | thấy khi có dòng `project_member` | thấy khi có dòng `project_member` | không thấy |
 
-Tích hợp một nhà cung cấp hóa đơn điện tử: phát hành khi đơn chuyển `paid`, lưu số và liên kết tra cứu vào `einvoice_ref`.
+3. **Vị từ duy nhất.** Gói mới `server/internal/projectaccess` có hàm `ForViewer(ctx, q, workspaceID, userID)` trả một `Scope`: cờ khách, và danh sách project phải che hoặc được cấp. `Scope` có hai dạng dùng: `Allows(projectID)` cho nơi đã tải một bản ghi, và hai tham số chuẩn cho câu truy vấn sqlc. Mỗi câu truy vấn đọc `issue`, `project` hoặc bảng dẫn xuất nhận đúng đoạn SQL chuẩn đó, có dòng dấu `-- projectaccess:scope` để test kiểm kê nhận ra. Tính `Scope` lỗi thì request lỗi (503), không bao giờ chạy tiếp không có `Scope` (I8).
+4. **Phạm vi của vị từ.** Không chỉ bảng `issue`. Mọi bảng dẫn xuất theo `issue_id` hay `project_id` đi theo issue hoặc project của nó: bình luận, tệp đính kèm, nhật ký hoạt động (`activity_log`, K3), phản ứng, người theo dõi, mục hộp thư, task của agent, tài liệu tri thức của project, tài nguyên project. P41.1 lập danh sách bảng này bằng script đọc `server/migrations/`, không viết tay.
+5. **Không lộ sự tồn tại.** Project hạn chế mà người gọi không được cấp trả **404 `project_not_found`**, không phải 403, giống hệt project không tồn tại. Route issue trả đúng 404 mà route đó trả khi không có issue. Danh sách và các số đếm (số issue của project, số issue của workspace, số trong manifest tìm kiếm) bỏ phần không thấy. Dãy số issue (`MUL-123`) có thể có khoảng trống do issue ẩn; đây là điều chấp nhận được, ghi ở 7.7.
+6. **Người nhận việc.** Issue của project hạn chế chỉ giao được cho, và chỉ thêm người theo dõi là, người thấy project (kể cả owner, admin); trái thì 400 `project_member_invalid`. @nhắc một người không thấy project bị bỏ qua, không tạo thông báo.
+7. **Chuyển issue giữa project.** Người chuyển phải thấy cả project nguồn và đích. Sau khi chuyển, assignee và người theo dõi không thấy project đích bị gỡ khỏi issue trong cùng giao dịch.
+8. **Đổi `access`.** Chỉ owner và admin. Chuyển sang `restricted`: trong cùng giao dịch, người tạo project, người dẫn project (nếu có) và mọi người dùng đang là assignee của issue trong project được thêm vào `project_member`, nên không ai mất chỗ làm việc của mình ngay; yêu cầu có thể kèm `member_ids`. Chuyển ngược về `workspace`: các dòng `project_member` được giữ nguyên (không mất dữ liệu; vị từ bỏ qua chúng với người không phải khách). Không issue, bình luận hay tệp nào bị đổi hoặc xóa ở cả hai chiều. Mỗi lần đổi một dòng kiểm toán.
+9. **Khách.** Cờ `member.is_guest` chỉ đặt được khi vai trò là `member` hoặc `viewer`; trái thì 400 `project_member_invalid`. Khách chỉ được các route nằm trong một **bảng cho phép** viết trong mã: đọc, tạo và sửa issue và bình luận trong project được cấp (theo đúng vai trò `member` hoặc `viewer` của họ), tìm kiếm, hộp thư, tùy chọn cá nhân, danh sách tên và ảnh của thành viên và agent để hiển thị tác giả và assignee (không có email). Mọi route khác trả 403 `guest_forbidden`: quản lý thành viên và lời mời, cài đặt workspace, thanh toán, nhóm tài khoản, tích hợp, plugin, runtime, agent, skill, tri thức, automation. Test duyệt toàn bộ bảng route của router để chứng minh route nào không nằm trong bảng cho phép thì bị chặn, theo mẫu test của vai trò `viewer` (6.6). Chủ dự án đổi được việc khách đọc danh sách tên mà không đổi thiết kế còn lại.
+10. **Khách vào bằng lời mời.** Lời mời có thêm `is_guest` và `guest_project_ids` (7.5). Khi chấp nhận, dòng `member` (kèm `is_guest`) và các dòng `project_member` được tạo trong **cùng một giao dịch**, nên không có khoảng thời gian khách là thành viên đầy đủ. Link chia sẻ không bao giờ tạo khách. Lời mời khách chỉ có vai trò `member` hoặc `viewer`. Khách đi qua đường giữ ghế như mọi lượt mời (O-R4-2).
+11. **Dọn quyền.** Gỡ thành viên, rời workspace, xóa tài khoản (4.6) và xóa project xóa các dòng `project_member` liên quan trong cùng giao dịch với thao tác chính. Sổ đăng ký cột người dùng (4.6) phải phân loại `project_member.user_id` (xóa) và `project_member.added_by` (giữ).
+12. **Agent.** Người kích hoạt một lần chạy là `agent_task_queue.originator_user_id` (migration 129): "người thật ở đầu chuỗi, NULL với lần chạy của automation và hệ thống". Khi nhận task (`claimRefusalFor`, `server/internal/service/budget_gate.go:318`), nếu issue của task thuộc project mà người kích hoạt không thấy thì từ chối và task ở lại hàng đợi (D25). Khi chạy, các route agent gọi bằng token `mat_` dùng `Scope` của người kích hoạt, không phải của agent, nên mất quyền giữa chừng thì request kế tiếp đã 404. Task không có người kích hoạt: với automation dùng người tạo automation (O-R4-3, mặc định); với nguồn khác, không thấy project hạn chế nào (đóng theo mặc định). Không ghi người tạo automation vào `originator_user_id`, vì cột này quyết định lớp phủ Composio (migration 129); `Scope` của lần chạy được tính lúc nhận task và lúc mỗi request.
+13. **Sự kiện.** `registerListeners` (`server/cmd/server/listeners.go:101`) hiện phát sự kiện issue tới phòng `ScopeWorkspace` (`server/internal/realtime/broadcaster.go:7`). R4 thêm hàm `projectaccess.Audience(projectID)` trả "cả workspace" hoặc danh sách người nhận. Cả workspace: đi `ScopeWorkspace` như hiện nay, **và khách không ở trong phòng này**. Danh sách người: đi phòng `ScopeWorkspaceMember` (`broadcaster.go:18`, `WorkspaceMemberScopeID`) của từng người, nơi mỗi lần ghi đã được kiểm lại tư cách thành viên. Người nhận của project hạn chế là owner, admin và `project_member` không phải khách và khách được cấp; của project `workspace` là cả workspace cộng khách được cấp. Đổi cờ khách của một người gọi lại ngắt kết nối của họ (cách `membership.go` đang làm khi gỡ thành viên) để họ vào lại đúng phòng. Cấp hoặc thu quyền project chỉ đổi danh sách người nhận nên có hiệu lực ở sự kiện kế tiếp, không cần ngắt kết nối. Chuyển issue giữa hai project: người chỉ ở nhóm nhận mới nhận sự kiện như issue vừa tạo, người chỉ ở nhóm cũ nhận sự kiện như issue bị xóa (dùng đúng hai kiểu sự kiện hiện có; tên và dạng dữ liệu chưa xác minh, P41.5 đọc `listeners.go`). Đổi `access` của một project phát sự kiện `project:access_changed` chỉ mang `project_id` và giá trị mới, cho người đã thấy project, để client làm mới và xóa khỏi bộ nhớ đệm; tạo project hạn chế không phát sự kiện nào ra ngoài danh sách người nhận. Sự kiện đi qua relay Redis (`redis_relay.go`) phải giữ nguyên danh sách người nhận; relay có hỗ trợ `ScopeWorkspaceMember` cho mọi đường (`BroadcastToScope`, publish, stream) hay không là chưa xác minh, P41.5 có test với relay giả trước khi sửa.
+14. **Tìm kiếm.** Tìm kiếm phía máy chủ (`server/internal/handler/search.go`) và ba lời gọi đồng bộ chỉ mục phía client (`search_index.go`: `manifest`, `snapshot`, `changes`; truy vấn ở `server/pkg/db/queries/search_index.sql`; client ở `packages/core/search-index/`) nhận `Scope`, nên manifest chỉ đếm, và snapshot cùng changes chỉ trả, những gì người đó thấy. Vì bản sao trên máy người dùng không thể bị thu hồi từng dòng, manifest trả thêm `scope_version`: giá trị băm của tập project người đó thấy. Khi `scope_version` đổi, client coi con trỏ đồng bộ là hết hiệu lực và dựng lại bản sao từ manifest, bằng đường bootstrap đã có (và hạn chế số lượt bootstrap đồng thời, `search_index.go`). Cách client hiện xử lý con trỏ hết hiệu lực là chưa xác minh; P41.6 đọc `packages/core/search-index/` trước khi chọn chỗ gắn `scope_version`.
+15. **Tương tác với cổng hạn mức và trạng thái workspace.** Khách tính ghế (O-R4-2). Đổi `access`, thêm hoặc bớt `project_member` và đặt cờ khách là thao tác ghi, nên bị chặn khi workspace `read_only`, `suspended` hay `pending_deletion` như mọi thao tác ghi khác (5.3). R4 không thêm cờ gói riêng; nếu chủ dự án muốn bán project hạn chế hoặc khách như một tính năng của gói, thêm cờ theo mẫu `viewer_role` (D21) mà không đổi thiết kế này.
 
-### 7.4 Quốc tế
+**API.** Route của máy chủ Multica, dưới `/api/projects` (nhóm đã có ở `server/cmd/server/router.go:2572`, workspace chọn qua `X-Workspace-ID`) và `/api/workspaces`. Đều là người thật (`RequireHumanActor`).
 
-Adapter thanh toán quốc tế, nhiều tiền tệ trong danh mục gói, lựa chọn vùng lưu dữ liệu. Mô hình đơn hàng và thuê bao ở mục 5 không cần đổi.
+| Route | Quyền | Nội dung |
+| --- | --- | --- |
+| `GET /api/projects/{id}`, danh sách project | người thấy project | thêm trường tùy chọn `access` và `can_manage_access` (I9) |
+| `PUT /api/projects/{id}/access` | owner, admin | `{access, member_ids[]}`; quy tắc 8; 404 `project_not_found` nếu không thấy; 400 `project_member_invalid` |
+| `GET /api/projects/{id}/members` | người thấy project | danh sách người được cấp |
+| `POST /api/projects/{id}/members` | owner, admin | `{user_ids[]}`; 400 `project_member_invalid` nếu không phải thành viên workspace; lặp lại là không làm gì |
+| `DELETE /api/projects/{id}/members/{userId}` | owner, admin | gỡ; có hiệu lực ở request kế tiếp |
+| `PATCH /api/workspaces/{id}/members/{memberId}` (`UpdateMember`, đã có) | owner, admin | thêm trường tùy chọn `is_guest`; 400 `project_member_invalid` với owner, admin |
+| `POST /api/workspaces/{id}/members` (`CreateInvitation`, đã có, `router.go:2037`) | owner, admin | thêm trường tùy chọn `is_guest`, `guest_project_ids[]` |
+
+**Mã lỗi.** `project_not_found` (404, không có trường thêm), `guest_forbidden` (403), `project_member_invalid` (400, `field`). Bảng tổng ở mục 10.
+
+**Kiểm toán.** `project.access_changed` (ghi `access` cũ và mới, số người được thêm tự động, số issue), `project.member_added`, `project.member_removed` (đích là người được cấp), `member.guest_set`, `member.guest_unset`. Lời mời khách ghi `is_guest` và số project vào `detail` của dòng mời đã có. Mọi dòng ghi trong cùng giao dịch với thay đổi (I7). Hằng tên thêm vào `platform-management/audit/audit.go` và `audit.Catalog` ở bước P41.2, P41.7.
+
+**Màn hình.** Mục 7.6. **Bảo mật.** Mục 7.7. **Tiêu chí chấp nhận.** AC49 đến AC54 và AC61 (mục 13).
+
+### 7.2 Đối soát chuyển khoản tự động (D30, D56, D59)
+
+Một adapter `PaymentProvider` ở platform, đối soát chuyển khoản tự động (D30): nhà cung cấp gửi thông báo mỗi khi tài khoản nhận tiền; adapter kiểm chữ ký, tìm đơn theo `transfer_code` trong nội dung chuyển tiền, so số tiền, rồi gọi `ApplyPayment`. Giao dịch không khớp đơn nào hoặc lệch số tiền được đưa vào hàng chờ cho staff xử lý tay. Khách vẫn chuyển khoản như ở 5.8; chỉ bước xác nhận đổi từ người sang máy, và staff vẫn xác nhận tay được.
+
+**Hiện trạng đã kiểm ở HEAD `f39cbcc4e`.** Giao diện `PaymentProvider` đã có ba phương thức (`platform-management/internal/billing/provider.go:42`); `Notification` hiện chỉ có `TransferCode`, `ProviderRef`, `Amount` (`provider.go`, ghi chú "the R4 adapter fills it"); `Manual.ParseNotification` trả `ErrUnsupported` (`provider.go:74`). `ApplyPayment` (`platform-management/internal/billing/service.go:296`) nhận `Confirmation{OrderID, ConfirmedBy, ActorLabel}` (`service.go:269`) và đòi `ConfirmedBy` là UUID; một lần xác nhận bằng máy không có staff, nên P42.5 thêm cách ghi nguồn tự động (`confirmed_by` rỗng, nhãn `provider:<tên>`, actor kiểm toán `system`). Chi tiết cách `ApplyPayment` ghi `confirmed_by` và kiểm toán: chưa xác minh, P42.5 đọc trước khi đổi. Nhà cung cấp được chọn lúc khởi động qua cấu hình, hiện cố định `billing.ProviderManual` (`platform-management/cmd/platform-server/main.go:216`).
+
+**Hợp đồng của nhà cung cấp đầu tiên (O-R4-1).** Chưa đọc; P42.1 điền bảng này trước khi viết mã của adapter, và phải ghi cả tên, địa chỉ tài liệu, ngày đọc.
+
+| Mục | Giá trị |
+| --- | --- |
+| Tên nhà cung cấp | chưa xác minh |
+| Địa chỉ tài liệu chính thức | chưa xác minh |
+| Ngày đọc | chưa xác minh |
+| Cách ký thông báo (HMAC, chứng chỉ hay mã tĩnh) và header | chưa xác minh |
+| Mã sự kiện duy nhất của nhà cung cấp | chưa xác minh |
+| Cách thử lại khi platform trả lỗi (số lần, khoảng cách, mã HTTP được coi là thành công) | chưa xác minh |
+| Định dạng số tiền và tiền tệ | chưa xác minh |
+| Trường chứa nội dung chuyển khoản | chưa xác minh |
+| Dải IP công bố của nhà cung cấp, nếu có | chưa xác minh |
+
+**Luồng.**
+
+1. Khách tạo đơn như 5.8 và nhận thông tin chuyển khoản cùng `transfer_code`. Đơn mang `provider` là tên adapter.
+2. Khách chuyển tiền; nhà cung cấp gửi `POST /api/payments/webhook/{provider}` tới listener webhook (bên dưới).
+3. Listener đọc thân thô với giới hạn kích thước (mặc định 64 KiB, lựa chọn chưa đo), rồi **kiểm chữ ký bằng so sánh thời gian không đổi trước khi diễn giải thân**. Chữ ký sai hoặc thiếu: 401 `payment_signature_invalid`, không ghi gì vào cơ sở dữ liệu, không ghi thân vào nhật ký (chỉ ghi tên nhà cung cấp, mã yêu cầu, kết quả).
+4. Adapter diễn giải thân thành `Notification` (thêm `EventID`, `Currency`, `OccurredAt`). Thân hợp lệ chữ ký nhưng không diễn giải được: ghi một dòng `needs_review` với lý do `unparsable` và mã sự kiện lấy từ giá trị băm của thân, trả 200 để nhà cung cấp ngừng thử lại, và staff thấy nó trong hàng chờ.
+5. **Ghi trước, áp sau.** `INSERT` dòng `payment_notice` với `ON CONFLICT (provider, provider_event_id) DO NOTHING`. Sự kiện đã có và đã xong: trả 200, không làm gì thêm. Hai lần gửi đồng thời của cùng sự kiện: một lần chèn, lần kia chờ khóa duy nhất rồi thấy dòng đã có. Dòng ở trạng thái `received` (tiến trình chết giữa chừng) được lần gửi lại hoặc việc nền `payment_notice_redrive` xử lý tiếp.
+6. **Khớp.** Chuẩn hóa nội dung (chữ hoa, bỏ khoảng trắng và dấu gạch), rút `transfer_code` (dạng `ValidTransferCode`, `platform-management/internal/billing/transfer.go:35`), tìm đơn theo chỉ mục duy nhất `(transfer_code)`. Không tìm thấy, hoặc nội dung có nhiều mã: `needs_review`.
+7. **Khớp đúng** khi đơn `pending`, chưa hết hạn, tiền tệ của thông báo bằng `billing_order.currency`, và số tiền bằng đúng tổng của đơn (`amount` cộng `vat_amount`, `Order.Total()`). Khi đó gọi `ApplyPayment` và đặt dòng thành `applied`. Các trường hợp còn lại đặt `needs_review` với lý do: `unknown_code`, `ambiguous_code`, `amount_mismatch` (thiếu hoặc thừa; không bao giờ áp một phần), `currency_mismatch`, `order_not_pending` (gồm đơn đã trả, hủy hoặc hết hạn), `unparsable`, `apply_failed`. **Không có đơn nào đổi** khi `needs_review`.
+8. Trả 200 cho mọi trường hợp đã ghi được. Lỗi cơ sở dữ liệu trả 503 để nhà cung cấp thử lại; lúc đó dòng chưa tồn tại hoặc còn `received`, và bước 5 xử lý lần sau.
+9. Tiền nhận hai lần cho một đơn, hoặc nhận cho đơn đã bị hủy, không tự hoàn: dòng vào hàng chờ với lý do `order_not_pending`. Hoàn tiền ở ngoài hệ thống (mục 14).
+
+**Listener webhook (D59).** Một `http.Server` thứ ba trong `platform-management/cmd/platform-server/main.go`, cổng đặt bằng `PLATFORM_WEBHOOK_PORT`; rỗng thì không mở listener. Mux của nó chỉ có một mẫu `POST /api/payments/webhook/{provider}`; mọi đường khác, mọi phương thức khác trên cùng đường, và `{provider}` chưa cấu hình đều trả 404 (kể cả trường hợp mux mặc định trả 405, phải ép về 404). Nó không dùng chung mux với API 8095 hay console 30001, nên `/api/platform/*` và các route nội bộ `/api/v1/internal/*` không tồn tại trên cổng này. Ghi chú vận hành: đây là cổng duy nhất của platform được publish ra ngoài ngoài 30001 (bổ sung cho mục 12, mục Compose); TLS do reverse proxy phụ trách, giống console (cách 30001 hiện được bảo vệ TLS: chưa xác minh). Nếu nhà cung cấp công bố dải IP, `PAYMENT_WEBHOOK_CIDRS` cho phép lọc thêm; chữ ký vẫn là kiểm tra chính.
+
+**Cấu hình** (vào bảng 3.4 ở bước P42):
+
+| Biến | Ý nghĩa | Mặc định |
+| --- | --- | --- |
+| `PAYMENT_PROVIDERS` | ánh xạ tiền tệ sang nhà cung cấp, dạng `vnd=manual` | `vnd=manual` |
+| `PLATFORM_WEBHOOK_PORT` | cổng listener webhook; rỗng là tắt | rỗng |
+| `PAYMENT_WEBHOOK_SECRET_<TÊN>` | bí mật hoặc khóa công khai để kiểm chữ ký của nhà cung cấp `<TÊN>`; tên chính xác chốt ở P42.1 | rỗng |
+| `PAYMENT_WEBHOOK_MAX_BYTES` | giới hạn thân thông báo | 65536 |
+| `PAYMENT_WEBHOOK_CIDRS` | tùy chọn: chỉ nhận từ các dải IP này | rỗng |
+
+Platform từ chối khởi động nếu `PAYMENT_PROVIDERS` có nhà cung cấp tự động mà thiếu bí mật chữ ký, hoặc `PLATFORM_WEBHOOK_PORT` trùng `PLATFORM_API_PORT` hay `PLATFORM_CONSOLE_PORT`.
+
+**Hàng chờ cho staff.** Bảng `payment_notice` (7.5). Console thêm các route dưới `/api/platform`, vai trò `billing` và `admin` (O-R4-8); `support` bị từ chối như với `POST /orders/{id}/confirm`.
+
+| Route | Vai trò | Nội dung |
+| --- | --- | --- |
+| `GET /payment-notices` | `billing`, `admin` | lọc theo `state`; mặc định `needs_review`, cũ nhất trước |
+| `GET /payment-notices/{id}` | `billing`, `admin` | các trường đã diễn giải, lý do, đơn ứng viên (theo mã hoặc theo số tiền); không có thân nguyên văn (O-R4-7) |
+| `POST /payment-notices/{id}/resolve` | `billing`, `admin` | `{order_id, reason}`; gọi `ApplyPayment` với staff làm người xác nhận; đơn phải `pending`; lệch số tiền được phép nhưng ghi cả hai số vào kiểm toán; 409 `order_not_pending` nếu đơn đã đổi |
+| `POST /payment-notices/{id}/dismiss` | `billing`, `admin` | `{reason}`; dùng khi tiền không thuộc về hệ thống hoặc đã hoàn ngoài hệ thống |
+
+Chỉ dòng `needs_review` mới giải quyết hay bỏ qua được; dòng ở trạng thái khác trả 409 `payment_notice_closed` kèm `state`. Gọi lại `resolve` với cùng `order_id` trên dòng đã `resolved` bằng đúng lệnh đó là không làm gì và trả 200.
+
+**Kiểm toán.** `payment.notice_applied` (actor `system`, có `workspace_id` của đơn, ghi `provider`, mã sự kiện, số tiền), `payment.notice_needs_review` (actor `system`, ghi lý do), `payment.notice_resolved` và `payment.notice_dismissed` (actor `staff`, ghi lý do bắt buộc, `order_id`, số tiền thông báo và số tiền đơn). Đơn được áp vẫn ghi `billing.order_paid` như `ApplyPayment` đang làm (5.14). Chữ ký sai và sự kiện lặp chỉ đếm bằng số đo, không ghi kiểm toán, vì kẻ gọi ngoài internet không được tạo dòng kiểm toán tùy ý. Ghi kiểm toán và áp thanh toán nằm trong cùng giao dịch của `ApplyPayment` (I7); bước đánh dấu `applied` của `payment_notice` là giao dịch thứ hai và lũy đẳng, vì `ApplyPayment` trên đơn đã trả không làm gì.
+
+**Việc nền.** `payment_notice_redrive` (platform, mỗi 5 phút): xử lý lại dòng `received` đã quá 2 phút, tối đa 100 dòng mỗi lần; tên và nhịp là lựa chọn chưa đo; thêm vào bảng 3.5 ở P42.
+
+**Tương tác với `ApplyPayment`, cổng hạn mức và trạng thái workspace.**
+
+- `ApplyPayment` không đổi quy tắc: khóa dòng đơn, đơn `pending` và chưa hết hạn, một giao dịch. Chỉ thêm nguồn xác nhận tự động.
+- Đơn `add_seats` được trả thì sức chứa ghế tăng như 5.6; đơn `usage` được trả thì bỏ chặn `usage_invoice_unpaid` ở cổng hạn mức (7b.3); workspace `read_only` vì quá hạn trở về `active`; workspace `suspended` và `pending_deletion` giữ nguyên trạng thái (thanh toán không mở khóa nó, 5.3).
+- Platform ngừng: nhà cung cấp không đưa được thông báo, tiếp tục thử lại theo tài liệu của họ; staff vẫn xác nhận tay được khi platform chạy lại. Máy chủ Multica không bị ảnh hưởng (D35).
+
+**Tiêu chí chấp nhận.** AC55 đến AC57 và AC61.
+
+### 7.3 Hóa đơn điện tử (D57)
+
+Tích hợp một nhà cung cấp hóa đơn điện tử: phát hành khi đơn chuyển `paid`, lưu số và liên kết tra cứu vào bản ghi của hóa đơn (và chép vào `einvoice_ref` của đơn để các màn hình hiện có đọc được).
+
+**Quy tắc.**
+
+1. **Một bản ghi cho mỗi đơn đã trả.** Bảng `einvoice_issuance` (7.5), khóa tự nhiên `(order_id, revision)`. `revision` bắt đầu từ 1; thay thế hóa đơn tạo `revision` kế tiếp sau khi bản trước đã `cancelled`. Mọi lần chèn dùng `revision = max + 1`, nên hai tiến trình cùng chèn thì một cái vi phạm tính duy nhất và dừng. Đơn 0 đồng, đơn `provider = admin_grant` và đơn trả trước mốc `PLATFORM_EINVOICE_START_AT` không có bản ghi.
+2. **Trạng thái.** `pending` (chờ phát hành hoặc chờ thử lại), `issued` (đã có số hóa đơn), `needs_info` (thiếu trường người mua bắt buộc, chưa gọi nhà cung cấp), `failed` (hết số lần thử hoặc lỗi nhà cung cấp không thử lại được), `cancelled` (đã hủy qua nhà cung cấp, bản ghi giữ lại). Bản ghi `issued` và `cancelled` không bao giờ bị xóa hay sửa số hóa đơn.
+3. **Phát hành bằng việc nền.** Hai việc của platform, mỗi phút: `einvoice_enqueue` (tạo bản ghi `pending` cho đơn đã trả chưa có bản ghi; sao chép `billing_order.buyer` vào `einvoice_issuance.buyer`) và `einvoice_issue` (nhận các dòng `pending` đã đến hạn bằng `FOR UPDATE SKIP LOCKED` và một thời hạn khóa `locked_until`, gọi nhà cung cấp). Không có móc trong `ApplyPayment`: đơn đã trả, dù do staff hay do đối soát tự động xác nhận, được việc quét bắt lấy, nên thanh toán không bao giờ bị hỏng vì hóa đơn (D57). Đổi lại, hóa đơn xuất hiện chậm tối đa vài phút.
+4. **Không gọi khi thiếu thông tin.** Trước khi gọi, kiểm các trường người mua bắt buộc (O-R4-4). Thiếu thì đặt `needs_info`, ghi tên trường thiếu (không ghi giá trị) và **không gọi nhà cung cấp**. Bộ trường bắt buộc nằm trong một hàm theo nhà cung cấp, lấy từ tài liệu của họ; test và phát triển dùng nhà cung cấp giả có bộ trường tên đơn vị, mã số thuế, địa chỉ, email, giống `billing_order.buyer` (5.8).
+5. **Thử lại.** Lỗi tạm thời (mạng, hết thời gian, 429, 5xx) tăng `attempts`, đặt `next_attempt_at` theo cấp số nhân từ 1 phút, trần 6 giờ, và dừng ở `PLATFORM_EINVOICE_MAX_ATTEMPTS` (mặc định 8, lựa chọn chưa đo) với `failed`. Lỗi vĩnh viễn (nhà cung cấp từ chối dữ liệu) đặt `failed` ngay, hoặc `needs_info` nếu nhà cung cấp nêu rõ là thiếu trường. Đơn luôn giữ `paid`. Chống phát hành đôi: mỗi lần gọi mang mã tham chiếu phía client là `order_id` cộng `revision`; sau một lỗi không rõ kết quả (hết thời gian), việc nền **tra cứu theo mã tham chiếu đó** trước khi phát hành lại.
+6. **Hủy và thay thế.** Chỉ `admin`, kèm lý do bắt buộc, chỉ với bản ghi `issued`. Hủy gọi nhà cung cấp rồi đặt `cancelled`. Thay thế là hủy cộng tạo bản ghi `pending` mới với `revision + 1` và `buyer` đã sửa. Không có cách xóa.
+7. **Người mua sửa thông tin.** Với bản ghi `needs_info` hoặc `failed`, owner và admin của workspace sửa được `buyer` của bản ghi (không sửa `billing_order.buyer`, vì đơn đã trả không đổi); sửa xong, bản ghi về `pending`. Bản ghi `issued` bị 409 `einvoice_already_issued`. Tên trường bắt buộc còn thiếu khi yêu cầu thử lại hoặc thay thế trả 409 `einvoice_buyer_incomplete` kèm `fields[]`.
+8. **Dữ liệu người mua nhạy cảm.** `buyer` có tên, mã số thuế, địa chỉ, email. Không ghi giá trị này vào nhật ký ứng dụng, thông điệp lỗi hay kiểm toán (`detail` chỉ chứa tên trường). Xóa tài khoản (4.6) **không** ẩn danh `buyer` của hóa đơn đã phát hành, vì nghĩa vụ lưu trữ hóa đơn; điều này cần xác nhận (mục 16, điểm 4) và ghi ở 15.4.
+9. **Cấu hình.** `PLATFORM_EINVOICE_PROVIDER` rỗng là tắt (I2): không có bản ghi nào được tạo. `PLATFORM_EINVOICE_START_AT` (RFC 3339) chặn việc phát hành hồi tố cho đơn cũ. Bí mật của nhà cung cấp là biến riêng, tên chốt ở P43.1.
+
+**API.**
+
+| Route | Quyền | Nội dung |
+| --- | --- | --- |
+| `GET /api/workspaces/{id}/orders/{orderId}` (Multica, đã có) | owner, admin, người thật | thêm trường tùy chọn `einvoice`: `{state, number, lookup_url, missing_fields[]}` (I9); Multica đọc `einvoice_issuance` từ cơ sở dữ liệu chung |
+| `PUT /api/workspaces/{id}/orders/{orderId}/invoice-buyer` (Multica, mới) | owner, admin, người thật (từ R5: quyền `billing.manage`) | sửa `buyer` của bản ghi `needs_info` hoặc `failed`; 409 `einvoice_already_issued`; 400 nếu sai định dạng |
+| `GET /api/platform/einvoices`, `GET /api/platform/einvoices/{orderId}` (console) | `billing`, `admin` | lọc theo `state` (mặc định `failed`, `needs_info`); lịch sử các `revision` của một đơn |
+| `POST /api/platform/einvoices/{orderId}/retry` (console) | `billing`, `admin` | đặt `failed` về `pending`, `attempts` về 0; 409 `einvoice_buyer_incomplete` |
+| `POST /api/platform/einvoices/{orderId}/cancel`, `.../replace` (console) | `admin`, kèm `reason` | quy tắc 6; 404 nếu đơn không có bản ghi `issued`; 409 `einvoice_buyer_incomplete` với `replace` thiếu trường |
+
+**Mã lỗi.** `einvoice_buyer_incomplete` (409, `fields[]`), `einvoice_already_issued` (409). `needs_info`, `failed` là trạng thái của bản ghi, không phải mã HTTP.
+
+**Kiểm toán.** `einvoice.requested` (việc nền tạo bản ghi, actor `system`), `einvoice.issued` (ghi số hóa đơn và mã nhà cung cấp), `einvoice.needs_info` (tên trường thiếu), `einvoice.failed` (mã lỗi, số lần thử), `einvoice.buyer_updated` (actor là người sửa, chỉ tên trường), `einvoice.retried` (staff), `einvoice.cancelled`, `einvoice.replaced` (staff, lý do bắt buộc). Mọi bước hủy và thay thế ghi trong cùng giao dịch với đổi trạng thái bản ghi (I7); lời gọi nhà cung cấp nằm ngoài giao dịch, nên thứ tự là: gọi nhà cung cấp, thành công mới ghi trạng thái và kiểm toán, và lần gọi lại sau lỗi không rõ kết quả dùng tra cứu ở quy tắc 5.
+
+**Tương tác.** Đơn đã trả đã ở trạng thái cuối nên hóa đơn không đổi quyền lợi, cổng hạn mức hay trạng thái workspace. Workspace `suspended` hay `pending_deletion` vẫn nhận hóa đơn cho đơn đã trả (nghĩa vụ thuế không phụ thuộc trạng thái). Việc nền thuộc platform (D26): `einvoice_enqueue` và `einvoice_issue`, thêm vào bảng 3.5 ở P43.
+
+**Thông tin chờ xác nhận (O-R4-4).** Tên nhà cung cấp, địa chỉ tài liệu, ngày đọc, bộ trường bắt buộc, cách tra cứu theo mã tham chiếu, cách hủy, hỗ trợ ngoại tệ và tỷ giá: chưa xác minh; P43.1 điền ở đây trước khi viết adapter. Kế toán xác nhận bộ trường (mục 16, điểm 4) trước lần phát hành thật đầu tiên.
+
+**Tiêu chí chấp nhận.** AC58, AC59, AC61.
+
+### 7.4 Quốc tế và nhiều tiền tệ (D58)
+
+Adapter thanh toán quốc tế, nhiều tiền tệ trong danh mục gói, lựa chọn vùng lưu dữ liệu. Mô hình đơn hàng và thuê bao ở mục 5 không cần đổi. R4 làm hai trong ba phần này ở mức dữ liệu và chỗ cắm, và không làm phần thứ ba.
+
+**Đã là dữ liệu (D4).** `plan.currency` (`server/migrations/670_plan.up.sql:6`) và `billing_order.currency` (`server/migrations/677_billing_order.up.sql:10`) là cột văn bản; gói chỉ nhận mã ba chữ cái chữ thường (`platform-management/internal/plan/plan.go:198`); đơn đổi gói và đơn mới lấy tiền tệ từ gói (`platform-management/internal/billing/changeorder.go:118`, `:189`); tiền tệ của gói không đổi khi đã có thuê bao hoặc đơn (`plan_currency_locked`, 7b.4); client định dạng theo tiền tệ của đơn (`formatStripeMinorAmount` trong `packages/views/settings/components/billing-format.ts`, danh sách tiền tệ không có phần thập phân có `VND` ở `:12`).
+
+**Quy tắc R4.**
+
+1. **Một đơn một tiền tệ**, bằng tiền tệ của gói lúc tạo. Một thuê bao có đúng một tiền tệ, là tiền tệ của gói hiện tại. Đổi sang gói khác tiền tệ khi đang có thuê bao trả phí bị từ chối bằng 409 `plan_change_unavailable` với `reason = currency_mismatch` (thêm một giá trị vào enum đã có, 7b.1; client có fallback cho giá trị lạ, I9). Mua ghế và đơn `usage` dùng tiền tệ của thuê bao. Một gói bán bằng hai tiền tệ là hai gói có `key` khác nhau.
+2. **Số tiền** là số nguyên theo đơn vị nhỏ nhất của tiền tệ (7b.0). Gói `internal/money` (mới) giữ bảng số chữ số thập phân của tập tiền tệ được bật: `vnd` 0, và các tiền tệ khác khi được thêm. `PLATFORM_CURRENCIES` (mặc định `vnd`) là tập được bật; gói có tiền tệ ngoài tập bị từ chối lúc lưu bằng 400 `price_invalid` với `field = currency` (mã của 7b.4).
+3. **Ba chỗ viết cứng `vnd`** (`platform-management/internal/billing/usage.go:63`, `platform-management/internal/usage/invoicing.go:208`, `platform-management/internal/accountrequest/finalize.go:319`) đọc tiền tệ từ gói hoặc thuê bao. P44.1 lập đủ bản kiểm kê bằng grep trước khi sửa.
+4. **Thuế.** `BILLING_VAT_RATE` là thuế suất của đơn `vnd`. Đơn tiền tệ khác dùng `BILLING_VAT_RATE_<TIỀN TỆ>` (rỗng nghĩa là 0). Đây là mặc định kỹ thuật, không phải ý kiến thuế; cần xác nhận (mục 16, điểm 4).
+5. **Không quy đổi.** Không có tỷ giá, không cộng chéo tiền tệ. Mọi tổng ở console được nhóm theo tiền tệ.
+6. **Chỗ cắm cho nhà cung cấp thứ hai.** `PAYMENT_PROVIDERS` chọn nhà cung cấp theo tiền tệ của đơn. `billing.PaymentProvider` (`provider.go:42`) không đổi. Đơn của tiền tệ chưa có nhà cung cấp cấu hình, hoặc nhà cung cấp đang tắt, bị từ chối tạo với **503 `payment_provider_unavailable`** (kèm `Retry-After`). Chọn 503 thay vì 402: client hiện hiểu 402 là "đạt hạn mức, cần nâng gói" (`plan_limit_reached`) và sẽ hiện nhầm lời mời nâng cấp; điều kiện này là cấu hình hoặc sự cố tạm thời phía nhà vận hành, không phải lỗi của khách, nên 503 đúng nghĩa. Với route `POST /api/payments/webhook/{provider}`, nhà cung cấp chưa cấu hình trả 404 (7.2), không phải 503.
+7. **Không có nhà cung cấp thứ hai nào được nối** (O-R4-5). Test dùng một nhà cung cấp giả thứ hai ở bước P44 để chứng minh chỗ cắm; khi nó tắt thì luồng hiện tại không đổi. Trường địa chỉ thanh toán cho nhà cung cấp dạng thẻ (`Instructions` hiện không có) không thêm trước khi có nhà cung cấp cụ thể.
+
+**Không làm ở R4.** Chọn vùng lưu dữ liệu (trái D2, O-R4-6); adapter thanh toán quốc tế thật; quy đổi tiền tệ; thuế theo quốc gia; hoàn tiền; giá theo người dùng; hóa đơn điện tử ngoại tệ ngoài việc chuyển tiếp `currency` cho nhà cung cấp (khả năng của nhà cung cấp chưa xác minh, 7.3).
+
+**Tiêu chí chấp nhận.** AC60 và AC61.
+
+### 7.5 Mô hình dữ liệu và migration của R4
+
+Tất cả là bảng mới, trừ ba thay đổi cột trên bảng đã có. Không khóa ngoại, không cascade, không `PRIMARY KEY` hay `UNIQUE` nội tuyến (I3). Mọi chỉ mục tạo bằng `CREATE [UNIQUE] INDEX CONCURRENTLY IF NOT EXISTS`, mỗi chỉ mục một tệp một câu lệnh, có tệp `down` và một dòng trong `concurrentIndexCleanups` (`server/cmd/migrate/main.go:142`).
+
+| Bảng | Đợt | Chủ sở hữu | Chỉ mục duy nhất | Chỉ mục khác |
+| --- | --- | --- | --- | --- |
+| `project_member` | R4 | Multica | `(project_id, user_id)` | `(user_id, project_id)` |
+| `payment_notice` | R4 | platform | `(provider, provider_event_id)`; `(id)` | `(received_at, id)` có điều kiện `state = 'needs_review'` |
+| `einvoice_issuance` | R4 | platform | `(order_id, revision)` | `(next_attempt_at, id)` có điều kiện `state = 'pending'` |
+
+**Cột của bảng mới.**
+
+- `project_member`: `project_id`, `workspace_id`, `user_id`, `added_by`, `created_at`.
+- `payment_notice`: `id`, `provider`, `provider_event_id`, `state` (`received`, `applied`, `needs_review`, `resolved`, `dismissed`), `review_reason`, `transfer_code`, `amount`, `currency`, `order_id` (rỗng nếu không khớp), `body_sha256`, `received_at`, `decided_at`, `decided_by`, `decision_reason`. Không có cột chứa thân nguyên văn (O-R4-7).
+- `einvoice_issuance`: `order_id`, `revision`, `workspace_id`, `state` (`pending`, `issued`, `needs_info`, `failed`, `cancelled`), `provider`, `provider_invoice_id`, `invoice_number`, `lookup_url`, `currency`, `amount`, `vat_amount`, `buyer` (JSONB), `missing_fields` (JSONB, chỉ tên trường), `attempts`, `next_attempt_at`, `locked_until`, `last_error_code`, `issued_at`, `cancelled_at`, `cancelled_by`, `cancel_reason`, `created_at`, `updated_at`.
+
+**Thay đổi cột trên bảng đã có** (đều chỉ thêm, mặc định hằng, không khóa bảng lâu):
+
+| Bảng | Cột | Chủ sở hữu | Nội dung |
+| --- | --- | --- | --- |
+| `project` (tạo ở `034_projects.up.sql`) | `access text NOT NULL DEFAULT 'workspace'` | Multica | không thêm `CHECK`; giá trị lạ được vị từ coi là `restricted` |
+| `member` (tạo ở `001_init.up.sql`) | `is_guest boolean NOT NULL DEFAULT false` | Multica | không đụng `CHECK` vai trò (D53) |
+| `workspace_invitation` (tạo ở `041_workspace_invitation.up.sql`) | `is_guest boolean NOT NULL DEFAULT false`, `guest_project_ids uuid[] NOT NULL DEFAULT '{}'` | Multica | chỉ dùng khi lời mời là lời mời khách |
+
+**Đánh số.** R4 dùng **1002 đến 1013**, dự phòng 1014 và 1015. Lý do: 953 đến 969 đã là của R5, 970 đến 1001 bị công việc khác chiếm (1000 và 1001 là tệp chưa commit của một phiên khác, không dùng), và 1002 trở lên còn trống ở HEAD `f39cbcc4e`. Trước mỗi bước có migration, chạy `ls server/migrations | sed 's/_.*//' | sort -n | uniq`; số bị chiếm thì đổi trong bước và ở bảng này trong cùng commit.
+
+| Migration | Nội dung | Bước | Chủ sở hữu |
+| --- | --- | --- | --- |
+| 1002 | `project.access` | P41.2 | Multica |
+| 1003 | `member.is_guest` và hai cột của `workspace_invitation` | P41.2 | Multica |
+| 1004 | bảng `project_member` | P41.2 | Multica |
+| 1005 | chỉ mục duy nhất `project_member (project_id, user_id)` | P41.2 | Multica |
+| 1006 | chỉ mục `project_member (user_id, project_id)` | P41.2 | Multica |
+| 1007 | bảng `payment_notice` | P42.2 | platform |
+| 1008 | chỉ mục duy nhất `payment_notice (provider, provider_event_id)` | P42.2 | platform |
+| 1009 | chỉ mục duy nhất `payment_notice (id)` | P42.2 | platform |
+| 1010 | chỉ mục `payment_notice (received_at, id)` có điều kiện `needs_review` | P42.2 | platform |
+| 1011 | bảng `einvoice_issuance` | P43.2 | platform |
+| 1012 | chỉ mục duy nhất `einvoice_issuance (order_id, revision)` | P43.2 | platform |
+| 1013 | chỉ mục `einvoice_issuance (next_attempt_at, id)` có điều kiện `pending` | P43.2 | platform |
+| 1014, 1015 | dự phòng của P44, chỉ dùng nếu bản kiểm kê tiền tệ thấy thiếu cột | P44.1 | platform |
+
+**Thứ tự áp dụng trên cơ sở dữ liệu mới.** Trình chạy sắp tệp theo thứ tự chuỗi (`server/internal/migrations/migrations.go:69`), nên số bốn chữ số đứng **trước** mọi số ba chữ số từ `101` trở lên (ví dụ `1002_` đứng trước `670_`). Hệ quả: 1002, 1003 chỉ thêm cột cho bảng được tạo ở tệp số nhỏ hơn 100 (`project` ở 034, `member` ở 001, `workspace_invitation` ở 041), nên đúng ở cả cơ sở dữ liệu mới. Các bảng mới không phụ thuộc bảng khác. Nếu P44 cần thêm cột cho `billing_order` (677) hoặc `plan` (670), số 1014 hoặc 1015 **sẽ lỗi trên cơ sở dữ liệu mới**; khi đó P44 dùng một số ba chữ số còn trống lớn hơn 677 và sửa bảng này cùng commit.
+
+**Dòng dọn trong `concurrentIndexCleanups`** (khóa là phiên bản, giá trị là tên chỉ mục): `1005_project_member_uidx`, `1006_project_member_user_idx`, `1008_payment_notice_event_uidx`, `1009_payment_notice_id_uidx`, `1010_payment_notice_review_idx`, `1012_einvoice_issuance_order_uidx`, `1013_einvoice_issuance_due_idx`. Tên tệp migration là khóa đó cộng `.up.sql` hoặc `.down.sql`.
+
+**Danh sách `internal/schemacheck` của platform.** Platform đọc hoặc ghi `payment_notice` và `einvoice_issuance`, và đọc bảng `member` (số đếm thành viên, vai trò), nên các phiên bản `1003_guest_flag`, `1007_payment_notice`, `1008_payment_notice_event_uidx`, `1009_payment_notice_id_uidx`, `1010_payment_notice_review_idx`, `1011_einvoice_issuance`, `1012_einvoice_issuance_order_uidx`, `1013_einvoice_issuance_due_idx` được thêm vào danh sách (kế hoạch 0.2, điều 13). Các bảng `project_member` và cột `project.access` thuộc Multica, platform không đọc, nên không vào danh sách.
+
+**Ngoại lệ về người ghi (bổ sung cho mục 8).** Multica đọc `einvoice_issuance` và chỉ ghi các cột `buyer`, `missing_fields`, `state` (từ `needs_info` hoặc `failed` về `pending`) và `updated_at` khi owner hoặc admin sửa thông tin người mua (7.3, quy tắc 7), theo tiền lệ cột `buyer` của `billing_order` (5.8). Mọi cột khác của hai bảng platform do platform ghi.
+
+**Cấu hình và việc nền mới.** Biến cấu hình ở 7.2 (`PAYMENT_PROVIDERS`, `PLATFORM_WEBHOOK_PORT`, `PAYMENT_WEBHOOK_SECRET_<TÊN>`, `PAYMENT_WEBHOOK_MAX_BYTES`, `PAYMENT_WEBHOOK_CIDRS`), 7.3 (`PLATFORM_EINVOICE_PROVIDER`, `PLATFORM_EINVOICE_START_AT`, `PLATFORM_EINVOICE_MAX_ATTEMPTS`, cộng bí mật của nhà cung cấp) và 7.4 (`PLATFORM_CURRENCIES`, `BILLING_VAT_RATE_<TIỀN TỆ>`) chỉ là của platform; Multica không có biến mới. Việc nền mới, đều của platform: `payment_notice_redrive`, `einvoice_enqueue`, `einvoice_issue`. Mỗi bước thêm các dòng này vào bảng 3.4, 3.5 và các điểm móc vào bảng 3.3 trong cùng commit (kế hoạch 0.2, điều 5).
+
+### 7.6 Màn hình
+
+**Web và desktop (Multica).** Mọi chuỗi mới đủ bảy ngôn ngữ của `packages/views/locales/` (`en`, `es`, `fr`, `ja`, `ko`, `zh-Hans`, `zh-Hant`); mobile là mã riêng với bản dịch riêng nên là việc theo sau, đọc `apps/mobile/AGENTS.md` trước. Không viết đoạn mô tả nếu không có điều gì khó thấy cần giải thích (AGENTS.md "UI Copy"; `conventions.mdx` "UI descriptions").
+
+- **Cài đặt project** (`packages/views/projects/components/project-detail.tsx` hoặc một hộp thoại mới cạnh nó): chọn "mọi người trong workspace" hay "chỉ người được thêm"; danh sách người được cấp với thêm và gỡ; người không có quyền quản lý chỉ thấy danh sách. Dấu khóa cạnh tên project hạn chế ở danh sách và bộ chọn project.
+- **Danh sách thành viên** (`packages/views/settings/components/members-tab.tsx`): công tắc "khách" cho mỗi thành viên không phải owner hay admin; hộp thoại mời có tùy chọn khách kèm chọn project.
+- **Trang thanh toán và trang đơn hàng** (`packages/views/settings/components/billing-tab.tsx`, `packages/views/billing/`): với đơn đã trả, hiện liên kết tra cứu hóa đơn điện tử khi `einvoice.state = issued`; khi `needs_info` hoặc `failed`, hiện biểu mẫu sửa thông tin người mua. Liên kết phải là `https`, giống ràng buộc của `StripeHostedURLSchema` (`packages/core/api/schemas.ts`).
+- Client coi mọi trường mới là tùy chọn và có fallback cho giá trị lạ (I9): `access` lạ coi là `restricted`; `einvoice` vắng mặt thì ẩn.
+
+**Console (platform).** Hai màn hình mới trong `platform-management/console/src/screens/` cho `billing` và `admin`: **hàng chờ thông báo** (danh sách `needs_review`, chi tiết một thông báo cùng đơn ứng viên, nút khớp tay và bỏ qua, mỗi nút đòi lý do) và **hóa đơn điện tử lỗi** (danh sách `failed` và `needs_info`, nút thử lại; hủy và thay thế chỉ cho `admin`). Màn hình đơn hàng hiện có thêm cột trạng thái hóa đơn. Console hiện chưa có cơ chế dịch (chưa xác minh bằng đọc kỹ; P42.6 kiểm); nếu có bảng chuỗi thì mọi chuỗi mới đủ bảy ngôn ngữ như quy tắc 9 của kế hoạch, nếu không thì theo cách các màn hình console hiện có đang làm.
+
+### 7.7 Bảo mật
+
+| Mối nguy | Biện pháp |
+| --- | --- |
+| Nội dung project hạn chế lọt qua chỉ mục tìm kiếm | Tìm kiếm máy chủ dùng `Scope` của người gọi; manifest, snapshot, changes lọc theo `Scope`; manifest mang `scope_version` và client dựng lại bản sao khi nó đổi; AC51 |
+| Lọt qua sự kiện realtime | Sự kiện của project hạn chế đi theo người qua phòng `ScopeWorkspaceMember`, khách không vào `ScopeWorkspace`; danh sách người nhận tính lại ở mỗi sự kiện, nên cấp và thu quyền có hiệu lực ngay; test cả đường relay Redis; AC50 |
+| Lọt qua agent | Agent đọc bằng `Scope` của người kích hoạt (`originator_user_id`), tính lại ở mỗi request; task mà người kích hoạt không thấy bị từ chối ở `claimRefusalFor` và nằm lại hàng đợi; task không có người kích hoạt xác định thấy tối thiểu; AC52 |
+| Lọt qua bản xuất, hộp thư, thống kê, bảng điều khiển, thông báo | Mọi bảng dẫn xuất theo `issue_id` hay `project_id` nằm trong bản kiểm kê và đi qua `Scope` hoặc có lý do miễn ghi rõ; bản xuất workspace (5.11) là của owner, người thấy mọi project; số liệu `platform_usage_daily` chỉ là số đếm, không có nội dung (I6); test kiểm kê (AC49) |
+| Mã lỗi hoặc số đếm lộ sự tồn tại của project | 404 `project_not_found` cho project hạn chế chưa được cấp, giống hệt project không tồn tại; số đếm và danh sách bỏ phần không thấy; khoảng trống trong dãy số issue có thể lộ **số lượng** issue ẩn nhưng không lộ nội dung (chấp nhận, ghi ở 15.4) |
+| Khách tự nâng quyền | Cờ `is_guest` chỉ owner và admin đặt được, và chỉ với `member` hay `viewer`; khách không gọi được route quản lý (bảng cho phép, mặc định 403 `guest_forbidden`, test duyệt toàn bộ route); lời mời khách tạo cờ và quyền trong cùng giao dịch với dòng `member`; link chia sẻ không tạo khách; AC53 |
+| Người được cấp tự cấp thêm cho mình hoặc người khác | Chỉ owner và admin thêm hoặc gỡ `project_member` và đổi `access` (D41 cùng nguyên tắc: không ai nâng quyền cho chính mình qua đường không phải quản trị) |
+| Bản sao chỉ mục còn trên thiết bị sau khi mất quyền | Bản sao đã tải không thu hồi được từng dòng; thiết bị đang trực tuyến nhận `scope_version` mới ở lần đồng bộ kế tiếp và dựng lại; thiết bị ngoại tuyến giữ bản sao cũ tới khi đồng bộ (rủi ro còn lại, ghi ở 15.4); việc xóa bản sao khi đăng xuất chưa xác minh |
+| Webhook giả hoặc phát lại | Kiểm chữ ký bằng so sánh thời gian không đổi trước khi dùng thân; chữ ký sai trả 401 và không ghi gì; sự kiện duy nhất theo `(provider, provider_event_id)`; phát lại một thông báo thật chỉ trả kết quả đã ghi; AC55, AC56 |
+| Chuyển khoản lặp, hoặc số tiền bị sửa | Khớp đòi đơn `pending`, đúng tiền tệ và đúng tổng (`amount` cộng `vat_amount`); lệch thì `needs_review`, không áp một phần; `ApplyPayment` lũy đẳng và khóa dòng; tiền nhận lần hai vào hàng chờ; AC56, AC57 |
+| Staff lạm dụng việc khớp tay | Chỉ `billing` và `admin`; lý do bắt buộc; kiểm toán ghi cả số tiền thông báo và số tiền đơn; `support` bị từ chối |
+| Hóa đơn trùng | Khóa duy nhất `(order_id, revision)`; việc nền nhận dòng bằng `FOR UPDATE SKIP LOCKED` và `locked_until`; mã tham chiếu phía client là `order_id` cộng `revision`, tra cứu trước khi phát hành lại sau lỗi không rõ kết quả; AC58 |
+| Hủy hoặc thay thế hóa đơn trái phép | Chỉ `admin`, lý do bắt buộc, kiểm toán từng bước; không có đường xóa |
+| Dữ liệu thuế của người mua trong nhật ký | `buyer` chỉ nằm trong cột JSONB; nhật ký ứng dụng, thông điệp lỗi và `detail` kiểm toán chỉ có tên trường; test quét nhật ký của một lần phát hành thất bại |
+| Thân thông báo ngân hàng chứa dữ liệu cá nhân của người chuyển tiền | Không lưu thân nguyên văn, chỉ trường đã diễn giải và `body_sha256` (O-R4-7); không ghi thân vào nhật ký |
+| Listener webhook chạm route nội bộ | Mux riêng, một mẫu duy nhất, mọi đường khác 404; không dùng chung mux với 8095 hay 30001; test khẳng định `/api/platform/*` và `/api/v1/internal/*` trả 404 trên cổng này; khởi động từ chối khi cổng trùng; AC55 |
+| Làm ngập listener (thân lớn, gửi dồn) | Giới hạn kích thước thân và thời gian đọc; kiểm chữ ký trên thân đã bị chặn trần; tùy chọn lọc dải IP; giới hạn tốc độ theo IP ở reverse proxy |
 
 ## 7b. Đợt bổ sung: năm nhóm tính năng
 
@@ -1303,6 +1576,8 @@ Thay đổi trên bảng đã có (R3): `personal_access_token` thêm `workspace
 
 **Bảng và cột của R5** nằm ở 7b.1 đến 7b.5, theo đúng các quy tắc trên (không khóa ngoại, chỉ mục duy nhất tạo riêng). Đợt R5 giữ dải dự phòng **953 đến 969** (17 số), vì ba lý do: dải 651 đến 699 đã được phân bổ hết cho R1 đến R3 và một phần đã dùng (686 và 688 đã có tệp); các số 700 đến 709 và 720 đến 739 đã bị công việc khác chiếm ở cây làm việc hiện tại, nên không còn trống; và dải 953 đến 969 là dải liền duy nhất đủ 17 số, đứng sau mọi bảng mà R5 đổi (`plan` ở 670, `workspace_subscription` ở 672). Phân bổ chi tiết ở bảng 7b.6; 16 số dùng, số 969 dự phòng. Ngoại lệ về người ghi của R5: Multica ghi một số cột của `platform_account_request` ở bước 2 của 7b.5.
 
+**Bảng và cột của R4** nằm ở 7.5. Đợt R4 dùng dải **1002 đến 1015** (1002 đến 1013 đã phân bổ, 1014 và 1015 dự phòng); lý do chọn dải và lưu ý về thứ tự áp dụng của số bốn chữ số ở 7.5.
+
 ## 9. API
 
 Chỉ liệt kê route mới và route đổi hành vi. Mọi phản hồi cho giao diện có schema zod ở client và test phản hồi sai dạng. Route ở bảng là của máy chủ Multica, trừ ba dòng ghi rõ platform.
@@ -1333,6 +1608,8 @@ Chỉ liệt kê route mới và route đổi hành vi. Mọi phản hồi cho g
 
 Route của R5 (mục 7b) không lặp lại ở bảng này; mỗi nhóm có bảng route riêng: 7b.1 (`/api/cloud-subscriptions/billing-profile`, `plan-changes`, `cancel`, `resume`), 7b.2 (`/api/workspaces/{id}/groups`, `permissions/me`), 7b.3 (`/api/cloud-subscriptions/usage`, `.../orders/{orderId}/usage`), 7b.4 (`/api/platform/plans/{key}/price-changes`), 7b.5 (`/api/platform/accounts`). Các route nội bộ mới của platform dưới `/api/v1/subscriptions/{id}/…` theo cùng quy tắc mạng nội bộ như route đã có (mục 11).
 
+Route của R4 (mục 7) không nằm trong bảng này; chúng được liệt kê ở 7.1 (project hạn chế và khách mời), 7.2 (hàng chờ thông báo của console và webhook) và 7.3 (hóa đơn điện tử).
+
 ## 10. Mã lỗi
 
 Mọi lỗi mới trả JSON `{"error": "<thông điệp>", "code": "<mã>"}`; trường bổ sung ghi ở cột cuối. Client dịch theo `code`, không theo thông điệp.
@@ -1355,6 +1632,8 @@ Mọi lỗi mới trả JSON `{"error": "<thông điệp>", "code": "<mã>"}`; t
 | `viewer_read_only` | 403 | |
 
 Mã lỗi của R5 ghi cùng route ở bảng của từng nhóm: 7b.1 (`plan_audience_mismatch`, `billing_profile_invalid`, `billing_profile_incomplete`, `account_kind_required`, `order_pending`, `plan_change_unavailable`, `subscription_not_cancelable`, `quote_changed`), 7b.2 (`permission_denied`, `invite_role_not_assignable`, `group_name_taken`, `group_not_found`, `not_a_member`, `group_member_limit`, `permission_unknown`), 7b.3 (`usage_invoice_unpaid`), 7b.4 (`price_invalid`, `price_field_via_schedule`, `price_change_pending`, `price_change_not_found`, `price_change_confirm_required`, `price_notice_too_short`, `plan_currency_locked`, `plan_version_conflict`), 7b.5 (`account_request_invalid`, `account_activation_required`, `account_email_exists`, `account_request_not_cancelable`, `account_create_rate_limited`). Cùng quy ước: client dịch theo `code`.
+
+Mã lỗi của R4 ghi cùng route ở từng mục: 7.1 (`project_not_found` 404, dùng cho project hạn chế chưa được cấp; `guest_forbidden` 403; `project_member_invalid` 400), 7.2 (`payment_signature_invalid` 401 trên route webhook; `payment_notice_closed` 409 trên hàng chờ của console; `payment_notice_needs_review` là trạng thái của hàng chờ, không phải mã HTTP, vì webhook vẫn trả 200 cho thông báo đã ghi), 7.3 (`einvoice_buyer_incomplete` 409, `einvoice_already_issued` 409), 7.4 (`payment_provider_unavailable` 503 kèm `Retry-After`; chọn 503 thay vì 402 vì client hiểu 402 là hạn mức gói và sẽ hiện nhầm lời mời nâng cấp, trong khi đây là cấu hình hoặc sự cố tạm thời phía nhà vận hành). Cùng quy ước: client dịch theo `code`.
 
 ## 11. Bảo mật
 
@@ -1439,6 +1718,21 @@ R3:
 - AC18. PAT gắn workspace A bị từ chối ở workspace B; PAT chỉ đọc bị từ chối ở mọi phương thức ghi.
 - AC19. Viewer bị từ chối ở mọi route ghi của workspace (test duyệt bảng route) trừ danh sách cho phép, và không đăng ký được runtime.
 
+R4 (mục 7):
+- AC49. Test kiểm kê `TestEveryIssueAndProjectReaderIsClassified` thất bại khi thêm một câu truy vấn đọc `issue`, `project` hoặc một bảng có `issue_id` hay `project_id`, một đường phát sự kiện của issue, hoặc một đường đồng bộ chỉ mục tìm kiếm mà bản kiểm kê chưa phân loại là `scoped` hay `exempt` kèm lý do; và thất bại khi một câu `scoped` thiếu đoạn vị từ chuẩn của `projectaccess`.
+- AC50. Sự kiện realtime của issue trong project hạn chế chỉ tới kết nối của owner, admin và người được cấp; người không được cấp và khách không được cấp không nhận; chuyển issue vào hoặc ra project hạn chế, đổi `access` và gỡ một người khỏi project đều đổi người nhận từ sự kiện kế tiếp, kể cả khi sự kiện đi qua relay Redis từ tiến trình khác.
+- AC51. Tìm kiếm máy chủ và ba lời gọi đồng bộ chỉ mục phía client (`manifest`, `snapshot`, `changes`) không trả issue, bình luận hay project của project hạn chế cho người không được cấp; số đếm trong manifest chỉ gồm phần người đó thấy; `scope_version` đổi khi tập project người đó thấy đổi và client dựng lại bản sao.
+- AC52. Lần chạy agent dùng tầm nhìn của người kích hoạt: đọc bằng token `mat_` chỉ thấy phần người đó thấy; nếu người đó không thấy project của issue thì `claimRefusalFor` từ chối và task ở lại hàng đợi, rồi nhận được khi người đó được cấp; lần chạy của automation dùng người tạo automation (O-R4-3); task không có người kích hoạt xác định không đọc được project hạn chế.
+- AC53. Khách chỉ thấy project được cấp và issue trong đó (danh sách, tìm kiếm, sự kiện, hộp thư) và làm được đúng những gì vai trò `member` hay `viewer` của họ cho phép trong các project đó; mọi route ngoài bảng cho phép trả 403 `guest_forbidden` (test duyệt toàn bộ bảng route); khi bị gỡ khỏi project, request kế tiếp đã trả 404 `project_not_found` và sự kiện ngừng tới; lời mời khách tạo dòng `member` cùng cờ và các dòng `project_member` trong một giao dịch; khách không đặt được cho owner hay admin (400 `project_member_invalid`).
+- AC54. Đổi project từ `workspace` sang `restricted` rồi ngược lại không làm mất hay đổi issue, bình luận hay tệp nào; mỗi lần đổi sinh đúng một dòng kiểm toán `project.access_changed` (ghi giá trị cũ và mới); assignee người dùng của issue trong project được thêm vào `project_member` khi chuyển sang hạn chế; làm hỏng việc ghi kiểm toán thì việc đổi không lưu.
+- AC55. Webhook với chữ ký sai hoặc thiếu trả 401 `payment_signature_invalid`, không đổi dòng nào trong cơ sở dữ liệu và không ghi thân vào nhật ký; listener chỉ trả lời `POST /api/payments/webhook/{provider}`, mọi đường và phương thức khác trả 404; `/api/platform/*` và `/api/v1/internal/*` không tới được trên cổng này; platform từ chối khởi động khi cổng webhook trùng cổng API hoặc console.
+- AC56. Cùng một sự kiện của nhà cung cấp gửi hai lần liên tiếp, hoặc đồng thời, chỉ áp một lần: đúng một dòng `payment_notice`, đúng một lần `ApplyPayment` đổi đơn, đúng một dòng kiểm toán `billing.order_paid`; tiến trình chết giữa ghi và áp thì lần gửi lại hoặc `payment_notice_redrive` hoàn tất mà không áp hai lần.
+- AC57. Thông báo khớp đúng (đơn `pending`, đúng tiền tệ, đúng tổng gồm VAT) áp qua `ApplyPayment` và đặt `applied`; số tiền lệch, mã không có, nhiều mã, tiền tệ lệch hoặc đơn không còn `pending` đặt `needs_review` với lý do đúng và không đổi đơn nào; staff `support` không giải quyết được dòng này; `billing` hay `admin` giải quyết kèm lý do thì có dòng kiểm toán `payment.notice_resolved` ghi cả hai số tiền; dòng đã đóng trả 409 `payment_notice_closed`.
+- AC58. Mỗi đơn đã trả có đúng một bản ghi `einvoice_issuance` (với đơn có tiền, sau mốc `PLATFORM_EINVOICE_START_AT`) và đúng một hóa đơn ở nhà cung cấp giả; nhà cung cấp lỗi tạm thời thì thử lại theo lịch và đơn vẫn `paid`; hết số lần thử thì `failed` mà đơn vẫn `paid`; hai lần chạy `einvoice_issue`, kể cả song song, không sinh hóa đơn thứ hai, và sau một lỗi hết thời gian việc nền tra cứu theo mã tham chiếu trước khi phát hành lại.
+- AC59. Đơn thiếu trường người mua bắt buộc đặt bản ghi `needs_info` kèm tên trường thiếu và **không có lời gọi nào tới nhà cung cấp**; owner sửa `buyer` thì bản ghi về `pending` và được phát hành; sửa bản ghi đã `issued` trả 409 `einvoice_already_issued`; thử lại hay thay thế khi còn thiếu trường trả 409 `einvoice_buyer_incomplete`; nhật ký và `detail` kiểm toán không chứa giá trị người mua.
+- AC60. Gói có tiền tệ khác được tính tiền, ghi đơn và gửi nhà cung cấp hóa đơn bằng đúng tiền tệ đó, với số chữ số thập phân đúng bảng; đổi sang gói khác tiền tệ khi đang có thuê bao trả phí bị 409 `plan_change_unavailable` với `reason = currency_mismatch`; tạo đơn cho tiền tệ chưa có nhà cung cấp trả 503 `payment_provider_unavailable`; thêm một nhà cung cấp thứ hai ở trạng thái tắt không đổi kết quả nào của luồng hiện tại.
+- AC61. Hồi quy R4: khi mọi cấu hình mới để trống (`PLATFORM_WEBHOOK_PORT`, `PLATFORM_EINVOICE_PROVIDER`, `PAYMENT_PROVIDERS` mặc định, `PLATFORM_CURRENCIES` mặc định), toàn bộ test hiện có xanh; mọi workspace mà các project đều có `access = workspace` và không có khách hành xử đúng như trước R4, kể cả kết quả danh sách, tìm kiếm, sự kiện và số đếm.
+
 R5 (mục 7b). Mỗi tiêu chí là một test chạy được; tiêu chí của nhóm 2 chạy sau G-R3.
 
 Nhóm 1, quản lý thuê bao cá nhân và doanh nghiệp (7b.1):
@@ -1494,6 +1788,7 @@ Hồi quy R5:
 - Tín dụng trả trước và runtime đám mây do nhà vận hành cung cấp (`/api/cloud-billing/*`, `/api/cloud-runtime/*`): đây là sản phẩm của Multica Cloud, không dựng lại.
 - Mỗi khách một hệ thống riêng (D2).
 - Thuộc đợt bổ sung R5 và để ngoài có chủ ý: thuê bao ở cấp người dùng (A1); vai trò tùy biến tự do và quyền "cấm" (D41); thêm đồng hồ tính tiền ngoài ba đồng hồ của 7b.3; điều chỉnh từng dòng mức dùng (chỉ có xóa nợ theo cả đơn); giá ghi đè theo từng workspace (dùng gói riêng, D46); tạo tài khoản hàng loạt và thêm thành viên vào workspace có sẵn bằng console (7b.5); mật khẩu và mạo danh (D10); gói vô thời hạn mua một lần (A3); số dư trả trước (D44).
+- Thuộc đợt R4 và để ngoài có chủ ý: chọn vùng lưu dữ liệu (O-R4-6, trái D2); vai trò chung cho khách mời (D53: khách là cờ, không phải vai trò); giới hạn một project theo vai trò hoặc theo nhóm (R4 chỉ cấp theo từng người); hoàn tiền, và với hóa đơn điện tử thì mọi việc ngoài hủy và thay thế qua nhà cung cấp (7.3); quy đổi tiền tệ và thuế theo quốc gia (7.4); adapter thanh toán thứ hai thật (O-R4-5).
 
 ## 15. Chưa kiểm chứng và rủi ro
 
@@ -1543,6 +1838,24 @@ TTL cache guard 60 giây; cache chính sách ở platform 30 giây; cửa sổ c
 | (h) R5: năm diễn giải A1 đến A5 của yêu cầu gốc có thể sai | trung bình | Mỗi diễn giải chỉ quyết định một quy tắc đã tách riêng (bảng 7b.0); chủ dự án xem ở 7b.7 trước Q1 |
 | (i) R5: tài khoản do admin tạo mà khách không bao giờ đăng nhập; email gõ nhầm | thấp | Nhập email hai lần; hiển thị "chưa đăng nhập lần nào"; workspace trống nên thiệt hại tối đa là một gói miễn phí hay dùng thử; chưa có dọn tự động |
 | (j) R5: migration của P21 có thể đặt `CHECK` trên `billing_order.kind` | thấp | Q10 kiểm migration của P21 và dùng số 969 nếu cần nới |
+
+### 15.4 R4 chưa kiểm chứng
+
+Các điểm dưới đây chưa kiểm chứng lúc viết R4 (2026-11-17, HEAD `f39cbcc4e`). Mỗi điểm có bước kế hoạch kiểm nó.
+
+| Điểm chưa kiểm chứng | Bước kiểm |
+| --- | --- |
+| Hợp đồng webhook của nhà cung cấp thông báo giao dịch ngân hàng: tên, chữ ký, mã sự kiện, cách thử lại, định dạng tiền và nội dung chuyển khoản. Bảng ở 7.2 còn "chưa xác minh" | P42.1, cần truy cập web |
+| API của nhà cung cấp hóa đơn điện tử: phát hành, tra cứu theo mã tham chiếu, hủy, bộ trường bắt buộc, hỗ trợ ngoại tệ và tỷ giá | P43.1, cần truy cập web; kế toán xác nhận trước lần phát hành thật (O-R4-4) |
+| Danh sách đầy đủ các bảng, câu truy vấn và đường sự kiện đọc issue và project (số đã đo mới là số tệp) | P41.1 |
+| Relay Redis có chuyển `ScopeWorkspaceMember` trên mọi đường (`BroadcastToScope`, publish, stream) hay không; tên và dạng dữ liệu của hai sự kiện issue dùng khi chuyển project | P41.5 |
+| Cách client tìm kiếm cục bộ xử lý con trỏ hết hiệu lực và việc xóa bản sao khi đăng xuất | P41.6 |
+| Chi phí của vị từ (mảng project che hoặc được cấp truyền vào ~38 tệp query) trên workspace lớn | P41.3, đo trước và sau; chưa có số đo |
+| Cách `ApplyPayment` ghi `confirmed_by` và kiểm toán khi không có staff | P42.5 |
+| Console có cơ chế dịch chuỗi hay không | P42.6 |
+| Giữ `buyer` của hóa đơn đã phát hành khi xóa tài khoản (D16) có phù hợp nghĩa vụ lưu trữ hay không; thuế suất mặc định 0 của đơn không phải `vnd` | tư vấn pháp lý và kế toán (mục 16), không có bước mã |
+| Dãy số issue lộ số lượng issue ẩn trong project hạn chế (rủi ro chấp nhận, không lộ nội dung) | chủ dự án xác nhận; không có bước mã |
+| Bản sao chỉ mục tìm kiếm của thiết bị ngoại tuyến giữ nội dung cũ tới lần đồng bộ kế tiếp (rủi ro còn lại) | chủ dự án xác nhận; không có bước mã |
 
 ## 16. Việc pháp lý và thuế cần người có chuyên môn xác nhận
 

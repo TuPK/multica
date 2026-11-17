@@ -62,6 +62,8 @@ Không được làm:
 
 Hạng mục giữ dải **651 đến 699** (spec mục 8). Mỗi bước ghi số nó dùng. Phân bổ: R1 dùng 651 đến 662, R2 dùng 663 đến 688, R3 dùng 691 đến 699. Lệch khỏi phân bổ ban đầu: P27 dùng 685 và 687 (686 đã có), P28 dùng 689 và 690 (687 và 688 đã có), nên R3 bắt đầu từ 691. Nếu thiếu thì dùng dải dự phòng 953 đến 969. Đợt bổ sung R5 (mục "Đợt bổ sung") dùng 953 đến 968 và để 969 dự phòng; phân bổ từng số ở spec 7b.6 và ở từng bước Q. Mỗi lần thêm migration chạy `[GN] ./internal/migrations -run 'TestMigrationFilesHaveMatchingDirections|TestMigrationNumericPrefixesAreUnique'` và `[GN] ./cmd/migrate -run 'TestEveryConcurrentUpBuildHasCleanup'`.
 
+**R4.** Đợt R4 (mục 5) dùng **1002 đến 1015**: 1002 đến 1013 đã phân bổ từng số ở spec 7.5 và ở từng bước nhỏ của P41 đến P43; 1014 và 1015 dự phòng cho P44 và chỉ dùng nếu bản kiểm kê tiền tệ thấy thiếu cột. Lý do chọn dải: 953 đến 969 là của R5 và đã có tệp, 970 đến 1001 bị công việc khác chiếm, trong đó 1000 và 1001 là tệp chưa commit của một phiên khác nên không được dùng. Trước mỗi bước có migration, chạy `ls server/migrations | sed 's/_.*//' | sort -n | uniq` để chắc dải còn trống; nếu một số đã bị chiếm thì đổi số trong bước đó và trong spec 7.5 trong cùng một commit. Số bốn chữ số sắp trước số ba chữ số theo thứ tự chuỗi (`server/internal/migrations/migrations.go:69`), nên migration R4 chỉ thêm cột cho bảng tạo ở tệp số nhỏ hơn 100 (spec 7.5).
+
 ## 1. Pha 0: chuẩn bị
 
 **P0. Kiểm lại nền trước khi viết mã** [N]
@@ -403,14 +405,305 @@ Kiểm: các lệnh ở `apps/mobile/AGENTS.md`. Ước lượng: 5 ngày.
 
 ## 5. Pha D: R4
 
-Không bước nào ở pha này bắt đầu viết mã trước khi đặc tả riêng của nó được viết, đối chiếu với mã và commit vào `docs/engineering/`. Hướng thiết kế của từng phần đã chốt ở spec mục 7.
+Đặc tả của R4 là spec mục 7 (viết 2026-11-17, đọc mã ở HEAD `f39cbcc4e`): quyết định D52 đến D59, việc chưa quyết O-R4-1 đến O-R4-8 (mỗi việc có mặc định nên không bước nào chờ người, trừ chỗ ghi rõ ở P43), dữ liệu và migration ở spec 7.5. Bước nào cần xem lại hợp đồng của bên ngoài (P42.1, P43.1) làm việc đó và ghi kết quả vào spec trước khi viết mã của adapter tương ứng.
 
 | Bước | Việc | Điều kiện bắt đầu |
 | --- | --- | --- |
-| P41 | Đặc tả project hạn chế truy cập và khách mời (spec 7.1). Bước đầu là bản kiểm kê mọi đường đọc `issue` và `project`, kèm test phát hiện đường mới | G-R3 |
-| P42 | Adapter đối soát chuyển khoản tự động (spec 7.2, D30). Bước đầu của đặc tả là đọc tài liệu API chính thức của nhà cung cấp và ghi hợp đồng thông báo, chữ ký, thử lại | G-R2 |
-| P43 | Tích hợp hóa đơn điện tử (spec 7.3) | G-R2; xác nhận của kế toán về thông tin bắt buộc trên hóa đơn |
-| P44 | Thanh toán quốc tế và nhiều tiền tệ (spec 7.4) | P42 |
+| P41 | Project hạn chế truy cập và khách mời (spec 7.1; D52 đến D55; O-R4-2, O-R4-3). Bước đầu P41.1 là bản kiểm kê mọi đường đọc `issue` và `project`, kèm test thất bại khi có đường mới | G-R3 (cần P38; khách là cờ trên `member` vai trò `member` hoặc `viewer`) |
+| P42 | Đối soát chuyển khoản tự động (spec 7.2; D56, D59; O-R4-1, O-R4-7, O-R4-8). Bước đầu P42.1 là đọc tài liệu chính thức của nhà cung cấp và ghi hợp đồng thông báo, chữ ký, mã sự kiện, thử lại vào spec 7.2 | G-R2. Chạy song song với P41: P42 sửa `platform-management/` và `server/migrations/`; P41 sửa `server/internal/`, `server/pkg/db/` và `packages/` |
+| P43 | Hóa đơn điện tử (spec 7.3; D57; O-R4-4). Bước đầu P43.1 là đọc tài liệu API của nhà cung cấp hóa đơn | G-R2. Xác nhận của kế toán (spec 16) chỉ đứng trước lần phát hành thật đầu tiên, không chặn mã và test. Không phụ thuộc mã vào P42 (xem P43) |
+| P44 | Nhiều tiền tệ và chỗ cắm nhà cung cấp thứ hai (spec 7.4; D58; O-R4-5, O-R4-6). Bước đầu P44.1 là bản kiểm kê các trường tiền tệ bằng grep | P42 (dùng `PAYMENT_PROVIDERS` và registry của P42.3) |
+
+**Quy tắc chung của pha R4.** Áp cho mọi bước nhỏ dưới đây; mỗi bước chỉ ghi phần riêng của nó.
+
+- Test đỏ trước, mỗi bước nhỏ một commit nguyên tử (mục 0). Tên test nêu ở bước là tên để tìm lại, đặt ở gói cạnh mã.
+- Trước khi sửa một tệp, chạy `git status --short -- <tệp>` và `git log -3 --format='%h %s' -- <tệp>` (mục 0.2, điều 11). Lúc viết (2026-11-17) cây làm việc có sửa chưa commit của công việc khác ở `server/internal/handler/workspace.go`, `packages/core/api/client.ts`, `packages/views/settings/components/settings-page.tsx` và `packages/views/locales/*/settings.json`; `server/cmd/migrate/main.go` cũng từng có sửa chưa commit của một phiên khác. P41.2, P41.7, P41.9 và mọi bước thêm dòng vào `concurrentIndexCleanups` kiểm lại tình trạng này ngay trước khi sửa, và chờ nếu còn.
+- Mỗi bước có migration: chạy `ls server/migrations | sed 's/_.*//' | sort -n | uniq` trước (mục 0.3); mỗi migration có `.up.sql` và `.down.sql`; bảng mới không khóa ngoại, không cascade, không `PRIMARY KEY` hay `UNIQUE` nội tuyến; mỗi chỉ mục là `CREATE [UNIQUE] INDEX CONCURRENTLY IF NOT EXISTS`, một chỉ mục một tệp một câu lệnh, có một dòng trong `concurrentIndexCleanups` (`server/cmd/migrate/main.go`, khóa `<phiên bản>_<tên chỉ mục>`, giá trị là tên chỉ mục) do bước đó liệt kê. Kiểm bằng `[GN] ./internal/migrations -run 'TestMigrationFilesHaveMatchingDirections|TestMigrationNumericPrefixesAreUnique'` và `[GN] ./cmd/migrate -run 'TestEveryConcurrentUpBuildHasCleanup'`.
+- Bảng hay cột mà platform đọc hoặc ghi: thêm phiên bản vào `platform-management/internal/schemacheck/schemacheck.go` (`Required`) trong cùng commit (mục 0.2, điều 13).
+- Tệp ở danh sách điểm móc (spec 3.3) bị sửa thì cập nhật spec 3.3; biến cấu hình mới vào spec 3.4; việc nền mới vào spec 3.5, trong cùng commit (mục 0.2, điều 5).
+- Chuỗi giao diện mới đủ bảy ngôn ngữ của `packages/views/locales/`, không mô tả thừa (mục 0.2, điều 9). Mobile là việc theo sau có bước riêng, đọc `apps/mobile/AGENTS.md` trước (mục 0.2, điều 8); mỗi bước giao diện ghi vào PR những gì mobile cần.
+- Bước cần cơ sở dữ liệu là [D] và đứng yên tới G0; trước G0 chỉ viết test và PR ghi "chưa chạy".
+
+**P41. Project hạn chế truy cập và khách mời** [D] (spec 7.1)
+
+Bước lớn nhất của R4, chia thành P41.1 đến P41.10, mỗi bước một commit. Thứ tự: P41.1, P41.2; rồi P41.3 và P41.7 độc lập; P41.4, P41.5, P41.6, P41.8 sau P41.3; P41.9 sau P41.2 và khi các API của P41.5 đến P41.8 đã có tệp mẫu; P41.10 cuối. Điều kiện bắt đầu: G-R3. Quyết định: D52 đến D55; O-R4-2 (khách tính ghế, không cần mã) và O-R4-3 (automation dùng người tạo) lấy mặc định.
+
+**P41.1. Kiểm kê đường đọc và test chặn đường mới** [N] (spec 7.1; D52)
+
+- Quyết định: không đường đọc `issue` hay `project` nào được thêm mà chưa được phân loại (AC49).
+- Việc: dựng bản kiểm kê thành tệp dữ liệu, mỗi dòng là một đường đọc với trạng thái `scoped` (đi qua vị từ chuẩn), `exempt` (kèm lý do viết ra, ví dụ chỉ dùng cho owner) hoặc `todo` (chưa xử lý; chỉ được tồn tại tới P41.10). Bảng hạt giống dưới đây là những gì đã đo ở HEAD `f39cbcc4e`; bản kiểm kê thật do script và đọc mã lập, và bảng này được điền đủ trong chính bước này.
+
+| Nhóm đường đọc | Cách tìm | Đã đo |
+| --- | --- | --- |
+| Truy vấn sqlc đọc `issue` | `grep -rl 'FROM issue\b\|JOIN issue\b' server/pkg/db/queries` | 38 tệp; số câu chưa đếm |
+| Truy vấn sqlc đọc `project` | `grep -rl 'FROM project\b\|JOIN project\b' server/pkg/db/queries` | 8 tệp; số câu chưa đếm |
+| Bảng dẫn xuất theo `issue_id` hay `project_id` (bình luận, tệp đính kèm, `activity_log`, phản ứng, người theo dõi, hộp thư, task, tri thức project) | script đọc `server/migrations/` | chưa đếm |
+| Handler tải issue hoặc project | `server/internal/handler/`: `loadIssueForUser` (`handler.go:1168`), `issue*.go`, `project*.go`, `search.go`, `search_index.go`, `hub_sync.go`, `knowledge_project_docs.go`, `squad_project.go`, `daemon.go` | chưa đếm |
+| Trình nghe sự kiện | `server/cmd/server/*listeners.go` (`listeners.go:101` là chỗ phát realtime) | 10 tệp |
+| Hạ tầng realtime | `server/internal/realtime/` (`broadcaster.go`, `redis_relay.go`, `sharded_stream_relay.go`, `relay_lifecycle.go`) | chưa đếm |
+| Tìm kiếm và đồng bộ chỉ mục | `search.go`, `search_index.go`, `server/pkg/db/queries/search_index.sql`, `packages/core/search-index/` | chưa đếm |
+| Bản xuất và số liệu | `server/internal/workspaceexport/`, `server/internal/usagesnapshot/` | chưa đếm |
+| Đường của agent và daemon | token `mat_`, `server/internal/handler/daemon.go`, `server/internal/service/` | chưa đếm |
+
+- Test đỏ trước: `TestEveryIssueAndProjectReaderIsClassified` (quét tệp `.sql` và Go bằng hệ thống tệp, không cần DB, đối chiếu với tệp kiểm kê; đỏ vì chưa có tệp kiểm kê); `TestInventoryDetectsNewQuery` (thêm một câu truy vấn giả vào thư mục tạm của test thì test thất bại); `TestScopedRowsCarryTheScopeMarker` (câu `scoped` phải có dòng dấu `-- projectaccess:scope`). Trạng thái `todo` được chấp nhận ở bước này; `TestNoTodoLeft` có sẵn nhưng bị bỏ qua tới P41.10.
+- Mới: `server/internal/projectaccess/inventory.json` (tệp kiểm kê), `server/internal/projectaccess/inventory_test.go`.
+- Đổi: không. Migration: không. Schemacheck: không.
+
+Kiểm: [GN] `./internal/projectaccess -run 'Inventory|Classified|ScopeMarker'`. Ước lượng: 2 ngày (ước lượng). Tiêu chí: nền của AC49.
+
+**P41.2. Dữ liệu, vị từ chung và API cấp quyền project** [D] (spec 7.1 quy tắc 1 đến 3, 8, 11; 7.5)
+
+- Quyết định: một vị từ nhìn thấy duy nhất `projectaccess.ForViewer`; không khóa ngoại, dọn `project_member` bằng mã (D52).
+- Test đỏ trước: `TestScopeMatrix` (người × `access` ∈ `workspace`, `restricted`, giá trị lạ × khách × owner, admin; bảng ở spec 7.1 quy tắc 2); `TestUnknownAccessValueIsRestricted`; `TestScopeErrorFailsRequest` (lỗi DB khi tính `Scope` thì 503, không bao giờ chạy tiếp không có `Scope`); `TestSwitchAccessKeepsIssuesAndAudits` và `TestSwitchToRestrictedAddsAssignees` (AC54; hai lần đổi đồng thời không để dữ liệu lẫn); `TestProjectAccessRoutes` (quyền owner, admin; người không thấy project nhận 404 `project_not_found`; `project_member_invalid` cho người không phải thành viên workspace); `TestProjectMemberRowsRemovedOnMemberRemovalProjectDeleteAccountDelete`; test sổ đăng ký cột người dùng (`TestUserColumnRegistry`) thất bại cho tới khi `project_member.user_id` (xóa) và `project_member.added_by` (giữ) được phân loại; `TestAuditFailureRollsBackAccessChange`.
+- Mới: `server/migrations/1002_project_access.{up,down}.sql`, `1003_guest_flag.{up,down}.sql`, `1004_project_member.{up,down}.sql`, `1005_project_member_uidx.{up,down}.sql`, `1006_project_member_user_idx.{up,down}.sql`; `server/pkg/db/queries/project_access.sql`; `server/internal/projectaccess/` (`scope.go`, `store.go`, `service.go`); `server/internal/handler/project_access.go` (bốn route của spec 7.1: `PUT /api/projects/{id}/access`, `GET`, `POST`, `DELETE .../members`); các hằng kiểm toán `project.access_changed`, `project.member_added`, `project.member_removed` trong `platform-management/audit/audit.go` và `catalog_test.go`.
+- Đổi: `server/cmd/server/router.go` (nhóm `/api/projects`, `:2572`; chạy `git status` trước, mục 0.2 điều 11); `server/internal/handler/workspace_revoke.go` (`revokeAndRemoveMember` xóa dòng `project_member` cùng giao dịch); `server/internal/handler/project.go` (đường xóa project dọn dòng; `GET /api/projects/{id}` thêm trường tùy chọn `access`, `can_manage_access`); `platform-management/accountdeletion/registry.go` (hai cột mới); `server/internal/auditaction/`; spec 3.3.
+- Migration: 1002 (`project.access`), 1003 (`member.is_guest`, `workspace_invitation.is_guest`, `workspace_invitation.guest_project_ids`; dùng ở P41.7), 1004 (bảng), 1005, 1006 (hai chỉ mục). Dòng thêm vào `concurrentIndexCleanups`: `"1005_project_member_uidx": "project_member_uidx"` và `"1006_project_member_user_idx": "project_member_user_idx"`.
+- Schemacheck: thêm `1003_guest_flag` (platform đọc bảng `member`, spec 7.5). Các phiên bản 1002, 1004, 1005, 1006 không thêm (platform không đọc).
+
+Kiểm: [Q], [M], [GN] `./internal/migrations ./cmd/migrate` (hai lệnh ở quy tắc chung), [D] `./internal/projectaccess ./internal/handler -run 'Scope|ProjectAccess|ProjectMember'`, [GN] `./internal/migrations -run 'TestUserColumnRegistry'`, [PG] `./audit ./internal/schemacheck`, [V]. Ước lượng: 4 ngày (ước lượng). Tiêu chí: AC54; nền của AC53.
+
+**P41.3. Áp vị từ vào đường đọc issue và project** [D] (spec 7.1 quy tắc 3, 5, 6, 7)
+
+- Quyết định: mọi dòng `todo` thuộc nhóm "truy vấn đọc `issue`, `project`" và "handler tải issue hoặc project" của bản kiểm kê thành `scoped` hoặc `exempt` có lý do; 404 thay vì 403.
+- Test đỏ trước: `TestRestrictedProjectHiddenFromEveryIssueRoute` (bảng theo dòng kiểm kê: với mỗi route có fixture, người không được cấp nhận 404 hoặc không thấy dòng trong danh sách; người được cấp, owner, admin thấy); `TestProjectNotFoundLooksLikeMissing` (phản hồi 404 của project hạn chế chưa cấp và của project không tồn tại giống nhau từng byte, trừ id); `TestCountsExcludeHiddenIssues`; `TestAssigneeMustSeeProject` (400 `project_member_invalid`); `TestMoveIssueNeedsBothProjects`; `TestIssueNumberGapDoesNotLeakContent`; `TestScopeParamsRequiredInEveryScopedQuery` (đã có ở P41.1, chạy lại sau [Q]); đo: so sánh `EXPLAIN` của danh sách issue trước và sau trên một workspace fixture lớn, ghi số vào PR (chưa có số đo ở spec 15.4).
+- Đổi: các tệp `server/pkg/db/queries/*.sql` có dòng `todo` thuộc hai nhóm trên, `server/internal/handler/handler.go` (`loadIssueForUser` `:1168`), `issue*.go`, `project*.go`, `hub_sync.go`, `search.go` chỉ phần không phải chỉ mục (chỉ mục ở P41.6), `knowledge_project_docs.go`, `squad_project.go`; mã sinh `server/pkg/db/generated/*` (commit cùng); `server/internal/projectaccess/inventory.json`. Trước khi sửa mỗi tệp chạy `git status` và `git log -3`. Migration: không. Schemacheck: không.
+
+Kiểm: [Q], [D] `./internal/handler -run 'RestrictedProject|ProjectNotFound|CountsExclude|AssigneeMustSee|MoveIssue'`, [GN] `./internal/projectaccess -run 'Inventory|ScopeMarker'`, [V]. Ước lượng: 6 ngày (ước lượng; có thể gấp rưỡi nếu số câu truy vấn thật nhiều hơn dự kiến). Tiêu chí: AC49 (phần đọc), AC53 (phần danh sách), AC54 (phần đọc).
+
+**P41.4. Áp vị từ vào bảng dẫn xuất, thông báo và tổng hợp** [D] (spec 7.1 quy tắc 4)
+
+- Quyết định: bình luận, tệp đính kèm, `activity_log`, phản ứng, người theo dõi, hộp thư, task, tri thức project, thông báo và các tổng hợp đi theo issue hay project của chúng.
+- Test đỏ trước: `TestDerivedRowsFollowIssueVisibility` (một test theo bảng dẫn xuất trong bản kiểm kê); `TestInboxHidesIssueAfterAccessLost`; `TestNoNotificationForNonVisibleRecipient` (`server/cmd/server/notification_listeners.go`); `TestSubscriberWithoutAccessIsIgnored`; `TestAggregateCountsExcludeHidden` (bảng điều khiển, số liệu project); `TestWorkspaceExportIsOwnerOnlyAndComplete` (bản xuất vẫn đủ cho owner, 5.11); `TestMentionOfNonVisibleUserIsIgnored`.
+- Đổi: `server/pkg/db/queries/` (comment, attachment, inbox, activity, issue_reaction, issue_unread, knowledge_project_file, project_resource, dashboard), `server/cmd/server/notification_listeners.go`, `subscriber_listeners.go`, `activity_listeners.go`, `issue_unread_listeners.go`; mã sinh; `inventory.json`. Migration: không. Schemacheck: không.
+
+Kiểm: [Q], [D] `./internal/handler ./cmd/server -run 'DerivedRows|InboxHides|NoNotification|SubscriberWithout|AggregateCounts|WorkspaceExport|MentionOfNon'`, [V]. Ước lượng: 5 ngày (ước lượng). Tiêu chí: AC49 (phần dẫn xuất), AC53 (hộp thư).
+
+**P41.5. Sự kiện theo người** [D] (spec 7.1 quy tắc 13; D54)
+
+- Quyết định: sự kiện của issue và project đi tới danh sách người nhận do `projectaccess.Audience` tính, qua `ScopeWorkspaceMember`; khách không vào `ScopeWorkspace`.
+- Test đỏ trước (mẫu: `server/cmd/server/chat_realtime_privacy_test.go`): `TestRestrictedIssueEventReachesOnlyGranted`; `TestGuestNeverJoinsWorkspaceRoom`; `TestMoveIssueSplitsAudience` (nhóm mới nhận như tạo, nhóm cũ nhận như xóa); `TestAccessChangedEventCarriesNoContent`; `TestRevokedPersonStopsReceivingAtNextEvent`; `TestGuestFlagChangeDisconnectsUser`; `TestRelayKeepsRecipients` (relay giả; đường publish và stream); `TestWorkspaceWideEventsStillReachNonGuests` (hồi quy). Client: `use-realtime-sync.test.ts` có ca `project:access_changed` (làm mới truy vấn project và issue).
+- Đổi: `server/cmd/server/listeners.go` (`:101`), `server/internal/realtime/broadcaster.go`, `redis_relay.go` và `sharded_stream_relay.go` nếu test của relay đỏ, `server/internal/realtime/hub.go` (vào phòng theo cờ khách), `server/internal/realtime/membership.go` (ngắt kết nối khi đổi cờ khách), `packages/core/realtime/use-realtime-sync.ts`; mới: `server/internal/projectaccess/audience.go`. Đọc `listeners.go` để chốt tên hai sự kiện issue dùng khi chuyển project (spec 15.4). Cập nhật spec 3.3 (`hub.go`, `listeners.go`). Migration: không. Schemacheck: không.
+
+Kiểm: [D] `./cmd/server ./internal/realtime -run 'RestrictedIssueEvent|GuestNeverJoins|MoveIssueSplits|AccessChangedEvent|Revoked|GuestFlagChange|RelayKeeps|WorkspaceWide'`, [B], [W], [V]. Ước lượng: 4 ngày (ước lượng). Tiêu chí: AC50.
+
+**P41.6. Tìm kiếm phía máy chủ và chỉ mục phía client** [D] (spec 7.1 quy tắc 14; D54)
+
+- Quyết định: ba lời gọi đồng bộ và tìm kiếm máy chủ nhận `Scope`; `scope_version` buộc client dựng lại bản sao khi tầm nhìn đổi.
+- Test đỏ trước: `TestSearchHidesRestrictedFromNonMembers` (issue, bình luận, project); `TestManifestCountsOnlyVisible`; `TestSnapshotAndChangesFilteredByScope`; `TestScopeVersionChangesWithVisibleSet`; client: `engine.test` hoặc `host.test.ts` có ca `scope_version` đổi thì dựng lại và bản sao cũ bị xóa; `TestSearchCandidateParityStillHolds` (`search_candidate_parity_test.go` hiện có phải xanh).
+- Đổi: `server/internal/handler/search.go`, `search_index.go`, `server/pkg/db/queries/search_index.sql`; mã sinh; `packages/core/search-index/` (`engine.ts`, `host.ts`, `worker.ts`) và schema zod của manifest; `inventory.json`. Đọc `packages/core/search-index/` trước để chốt chỗ gắn `scope_version` và xác nhận việc xóa bản sao khi đăng xuất (spec 15.4). Migration: không. Schemacheck: không.
+
+Kiểm: [Q], [D] `./internal/handler -run 'Search|SearchIndex|Manifest|ScopeVersion'`, [B], [W] `search-index`, [V]. Ước lượng: 5 ngày (ước lượng). Tiêu chí: AC51.
+
+**P41.7. Khách mời: cờ, bảng cho phép route, lời mời** [D] (spec 7.1 quy tắc 9, 10; D53)
+
+- Quyết định: khách là cờ `member.is_guest`; mọi route ngoài bảng cho phép bị 403 `guest_forbidden`.
+- Test đỏ trước: `TestGuestRouteTableDefaultsToForbidden` (duyệt toàn bộ route của router như test của vai trò viewer, P38; route không nằm trong bảng cho phép phải 403); `TestGuestCannotBeOwnerOrAdmin` (400 `project_member_invalid`); `TestGuestInviteCreatesMemberFlagAndGrantsInOneTx` (kể cả khi bước cấp lỗi giữa chừng thì không có dòng `member`); `TestShareLinkNeverCreatesGuest`; `TestGuestLosesAccessAtOnce` (bỏ khỏi project thì request kế tiếp 404); `TestGuestMemberListHasNoEmail`; `TestGuestCountsAsSeat` (O-R4-2); `TestGuestWriteFollowsRole` (khách `viewer` không ghi, khách `member` ghi trong project được cấp); `TestGuestFlagAudited`.
+- Đổi: `server/internal/workspaceguard/` (nhánh khách trong `CheckWorkspaceAccess`, bảng cho phép), `server/internal/handler/workspace.go` (`UpdateMember`: trường `is_guest`; trước khi sửa chạy `git status`, tệp đang có sửa chưa commit của công việc khác), `server/internal/handler/invitation.go` (tạo lời mời nhận `is_guest` và `guest_project_ids`; đường chấp nhận tạo `member` cùng `project_member` trong một giao dịch), `server/pkg/db/queries/` (member, invitation) và mã sinh, `server/cmd/server/router.go`, `server/internal/auditaction/`, hằng `member.guest_set`, `member.guest_unset` trong `platform-management/audit/audit.go` và `catalog_test.go`; spec 3.3. Migration: không (1003 đã áp ở P41.2). Schemacheck: không thêm (đã có `1003_guest_flag`).
+
+Kiểm: [Q], [D] `./internal/workspaceguard ./internal/handler -run 'Guest'`, [PG] `./audit`, [V]. Ước lượng: 4,5 ngày (ước lượng). Tiêu chí: AC53.
+
+**P41.8. Agent thừa hưởng tầm nhìn** [D] (spec 7.1 quy tắc 12; D55; O-R4-3)
+
+- Quyết định: người kích hoạt là `agent_task_queue.originator_user_id` (migration 129); automation dùng người tạo automation; không ghi người đó vào `originator_user_id`.
+- Test đỏ trước: `TestClaimRefusedWhenOriginatorCannotSee` (task ở lại hàng đợi, không đổi trạng thái); `TestTaskClaimedAfterGrant`; `TestMatTokenReadsWithOriginatorScope` (đọc issue và danh sách bằng token `mat_`); `TestAccessLostMidRunReturns404`; `TestAutopilotRunUsesCreatorVisibility` (người tạo không còn là thành viên thì từ chối và task ở lại); `TestNullOriginatorSeesNoRestrictedProject`; `TestOriginatorUserIDNotOverwrittenByAutopilot`; `TestChatTaskInitiatorStillResolved`.
+- Đổi: `server/internal/service/budget_gate.go` (`claimRefusalFor`, `:318`; trước khi sửa chạy `git status` và `git log -3`), `server/internal/service/` (đường lấy người tạo automation; tên tệp chốt khi đọc mã), phần xác định người kích hoạt cho token `mat_` ở `server/internal/middleware/` hoặc `server/internal/handler/daemon.go` (chỗ chính xác chưa xác minh; đọc trước), `server/internal/projectaccess/` (`ForPrincipal`), `inventory.json`; spec 3.3. Migration: không. Schemacheck: không.
+
+Kiểm: [D] `./internal/service ./internal/handler ./internal/middleware -run 'ClaimRefused|TaskClaimedAfterGrant|MatToken|AccessLostMidRun|AutopilotRunUses|NullOriginator|OriginatorUserID'`, [V]. Ước lượng: 3 ngày (ước lượng). Tiêu chí: AC52.
+
+**P41.9. Giao diện web và desktop, schema client** [N] (spec 7.6)
+
+- Quyết định: giao diện chỉ phản chiếu; máy chủ quyết định quyền (I1).
+- Test đỏ trước: schema zod của `access`, `can_manage_access`, `is_guest`, `guest_project_ids` có test phản hồi sai dạng và phản hồi không có trường mới (`parseWithFallback`; `access` lạ thành `restricted`); views: hộp thoại cài đặt project (chọn phạm vi, thêm, gỡ), dấu khóa, công tắc khách, hộp thoại mời khách có chọn project, ẩn điều khiển ghi khi người dùng không có quyền quản lý; `rules.ts` từ chối ghi cho khách `viewer`; test chuỗi bảy ngôn ngữ (`packages/views/locales/parity.test.ts`).
+- Đổi: `packages/core/api/schemas.ts` và `client.ts` (`client.ts` đang có sửa chưa commit của công việc khác; chờ), `packages/core/permissions/rules.ts`, hook và mutation trong `packages/core/` cạnh code project hiện có (chốt khi đọc), `packages/views/projects/components/project-detail.tsx` và một hộp thoại mới cạnh nó, `packages/views/settings/components/members-tab.tsx`, `packages/views/locales/*/` (bảy ngôn ngữ; `settings.json` đang có sửa chưa commit của công việc khác). Nối cả web và desktop. Mobile: không đổi ở bước này; ghi vào PR danh sách việc (project hạn chế ẩn khỏi mọi danh sách, khách, mã `project_not_found` và `guest_forbidden`) cho bước mobile sau, sau khi đọc `apps/mobile/AGENTS.md`.
+- Migration: không. Schemacheck: không.
+
+Kiểm: [B], [W], [T]. PR đính kèm ảnh chụp hoặc video (cài đặt project, công tắc khách). Ước lượng: 7 ngày (ước lượng). Tiêu chí: giao diện của AC53, AC54.
+
+**P41.10. Đóng bước: kiểm kê sạch, hồi quy, bảo mật** [D] (spec 7.1, 7.7)
+
+- Test đỏ trước: bật `TestNoTodoLeft` (đỏ nếu còn dòng `todo`); `TestRestrictedFlowEndToEnd` (tạo project hạn chế, cấp, issue, bình luận, sự kiện, tìm kiếm, agent, thu quyền, đổi lại `workspace`); `TestAllWorkspaceProjectsBehaveAsBefore` (AC61 phần P41: workspace chỉ có project `workspace` và không khách cho kết quả danh sách, tìm kiếm, sự kiện, số đếm giống trước R4); rà soát bảng 7.7 từng dòng của 7.1 trỏ tới một test tên cụ thể.
+- Đổi: `server/internal/projectaccess/inventory_test.go` (bỏ qua có điều kiện thành bắt buộc); tài liệu người dùng ở `apps/docs/` về project hạn chế và khách mời. Migration: không. Schemacheck: không.
+
+Kiểm: [T], [D] `./internal/projectaccess ./internal/handler ./internal/realtime ./internal/service ./cmd/server`, [V]. Ước lượng: 3 ngày (ước lượng). Tiêu chí: AC49, AC52, AC53, AC54, AC61 (phần P41).
+
+Ước lượng P41: 2 + 4 + 6 + 5 + 4 + 5 + 4,5 + 3 + 7 + 3 = **43,5 ngày** (ước lượng của tác giả, chưa đo; số đường đọc thật chưa đếm nên độ bất định cao, cận trên khoảng 60 ngày nếu P41.3 và P41.4 gấp rưỡi). Tiêu chí của cả P41: AC49, AC50, AC51, AC52, AC53, AC54, AC61 (mỗi bước nhỏ ghi phần của nó).
+
+**P42. Đối soát chuyển khoản tự động** [D] (spec 7.2)
+
+Điều kiện bắt đầu: G-R2. Chạy song song với P41. Quyết định: D56, D59; O-R4-1 (chọn ở P42.1), O-R4-7 (không lưu thân), O-R4-8 (`billing`, `admin`). P42.2, P42.5 và P42.7 cần DB; P42.1, P42.3, P42.4 và P42.6 không cần.
+
+**P42.1. Đọc tài liệu của nhà cung cấp và ghi hợp đồng** [N] (spec 7.2; O-R4-1)
+
+- Quyết định: chọn nhà cung cấp đầu tiên theo ba tiêu chí của O-R4-1 (đặc tả webhook công khai, chữ ký có tài liệu, thử lại và mã sự kiện có tài liệu).
+- **Bước này cần truy cập web** (đọc tài liệu chính thức công khai qua `web_fetch` hoặc trình duyệt). Nếu môi trường không có truy cập web, dừng bước và báo; không suy đoán hợp đồng từ trí nhớ.
+- Việc: chọn nhà cung cấp; ghi vào bảng ở spec 7.2 **tên, địa chỉ tài liệu, ngày đọc**, cách ký và header, mã sự kiện duy nhất, hành vi thử lại, định dạng số tiền và tiền tệ, trường chứa nội dung chuyển khoản, dải IP công bố; chép một mẫu thân thông báo từ tài liệu (đã bỏ dữ liệu cá nhân) vào `platform-management/internal/billing/testdata/`; đặt tên biến `PAYMENT_WEBHOOK_SECRET_<TÊN>`; xóa dòng tương ứng ở spec 15.4.
+- Test đỏ trước: không có test mã ở bước này, vì bước chỉ ghi tài liệu và mẫu. Test của P42.3 (`TestProviderFixturesParse`) dùng các tệp mẫu này và đỏ cho tới khi adapter có. Điều kiện hoàn tất: bảng 7.2 không còn ô "chưa xác minh".
+- Đổi: `docs/engineering/platform-management-spec.md` (mục 7.2, 15.4). Mới: `platform-management/internal/billing/testdata/`. Migration: không. Schemacheck: không.
+
+Kiểm: `git diff --check`, đọc lại bảng 7.2. Không chạy test mã. Ước lượng: 1 ngày (ước lượng). Tiêu chí: điều kiện đủ cho AC55 đến AC57 (hợp đồng chữ ký, mã sự kiện).
+
+**P42.2. Bảng thông báo và kho dữ liệu** [D] (spec 7.5; D56)
+
+- Quyết định: `payment_notice` không lưu thân nguyên văn (O-R4-7); khóa duy nhất theo `(provider, provider_event_id)`.
+- Test đỏ trước: `TestNoticeInsertIsIdempotentOnProviderEvent` (lần hai không chèn, đọc lại được dòng đầu); `TestNoticeStateTransitions` (`received` sang `applied`, `needs_review`; `needs_review` sang `resolved`, `dismissed`; không đi ngược); `TestNoticeHasNoBodyColumn` (đọc schema, không cột nào chứa thân); `TestQueueListsOnlyNeedsReviewOldestFirst`; test quét của `schemacheck` đỏ cho tới khi bốn phiên bản được thêm.
+- Mới: `server/migrations/1007_payment_notice.{up,down}.sql`, `1008_payment_notice_event_uidx.{up,down}.sql`, `1009_payment_notice_id_uidx.{up,down}.sql`, `1010_payment_notice_review_idx.{up,down}.sql`; `platform-management/queries/payment_notice.sql`; `platform-management/internal/paymentnotice/` (`notice.go`, `store.go`, `pgx.go`); mã sinh ở `platform-management/internal/db/`.
+- Đổi: `server/cmd/migrate/main.go` (ba dòng, xem dưới; chạy `git status` trước), `platform-management/internal/schemacheck/schemacheck.go`.
+- Migration: 1007 (bảng), 1008 (duy nhất `(provider, provider_event_id)`), 1009 (duy nhất `(id)`), 1010 (`(received_at, id)` có điều kiện `state = 'needs_review'`). Dòng thêm vào `concurrentIndexCleanups`: `"1008_payment_notice_event_uidx": "payment_notice_event_uidx"`, `"1009_payment_notice_id_uidx": "payment_notice_id_uidx"`, `"1010_payment_notice_review_idx": "payment_notice_review_idx"`.
+- Schemacheck: thêm `1007_payment_notice`, `1008_payment_notice_event_uidx`, `1009_payment_notice_id_uidx`, `1010_payment_notice_review_idx`.
+
+Kiểm: [PQ], [M], [GN] `./internal/migrations ./cmd/migrate` (hai lệnh ở quy tắc chung), [PG] `./internal/schemacheck`, [PD] `./internal/paymentnotice -run 'Notice'`. Ước lượng: 2,5 ngày (ước lượng). Tiêu chí: nền của AC56 (khóa duy nhất) và AC57.
+
+**P42.3. Adapter, registry và `Notification` mở rộng** [N] (spec 7.2 bước 3, 4; D56)
+
+- Quyết định: adapter kiểm chữ ký trước khi diễn giải thân; `PaymentProvider` giữ ba phương thức, `Notification` có thêm `EventID`, `Currency`, `OccurredAt` (spec 7.2).
+- Test đỏ trước: `TestProviderFixturesParse` (mẫu của P42.1 diễn giải ra đúng `TransferCode`, `Amount`, `Currency`, `EventID`); `TestSignatureCheckedBeforeBodyIsParsed` (bộ diễn giải giả báo lỗi nếu bị gọi khi chữ ký sai); `TestBadOrMissingSignatureReturnsErrSignatureInvalid`; `TestSignatureComparisonIsConstantTime` (kiểm bằng đọc mã trong test cấu trúc: dùng `hmac.Equal` hoặc tương đương); `TestTransferCodeExtractionNormalizesNote` (chữ hoa, bỏ khoảng trắng và gạch, nhiều mã thì báo mơ hồ); `TestRegistryDefaultsToManual` (`PAYMENT_PROVIDERS` rỗng thì `vnd=manual`); `TestStartupRejectsAutoProviderWithoutSecret`.
+- Mới: thư mục adapter dưới `platform-management/internal/billing/` (tên theo nhà cung cấp chốt ở P42.1), `platform-management/internal/billing/registry.go`.
+- Đổi: `platform-management/internal/billing/provider.go` (`Notification`, lỗi `ErrSignatureInvalid`), `platform-management/internal/config/config.go` (`PAYMENT_PROVIDERS`, `PAYMENT_WEBHOOK_SECRET_<TÊN>`, `PAYMENT_WEBHOOK_MAX_BYTES`, `PAYMENT_WEBHOOK_CIDRS`, `PLATFORM_WEBHOOK_PORT`), `platform-management/cmd/platform-server/main.go` (`:216`, chọn nhà cung cấp từ registry; chạy `git status` trước); spec 3.4. Migration: không. Schemacheck: không.
+
+Kiểm: [PG] `./internal/billing/... ./internal/config -run 'Provider|Signature|TransferCode|Registry|Startup'`. Ước lượng: 3 ngày (ước lượng). Tiêu chí: AC55 (chữ ký), nền của AC57.
+
+**P42.4. Listener webhook** [N] (spec 7.2 "Listener webhook"; D59)
+
+- Quyết định: một `http.Server` thứ ba, mux riêng một mẫu duy nhất, mọi đường khác 404.
+- Test đỏ trước (mẫu: `platform-management/cmd/platform-server/console_isolation_test.go`): `TestListenerServesOnlyWebhookPath` (GET, PUT, đường khác, `/api/platform/me`, `/api/v1/internal/entitlement-policies/x`, `{provider}` chưa cấu hình, phương thức sai trên đúng đường: tất cả 404, kể cả chỗ mux mặc định trả 405); `TestBadSignature401NoWriteNoBodyLog` (kho giả không nhận lời gọi ghi; nhật ký bắt được không chứa thân); `TestBodyOverLimitRejected`; `TestListenerOffWhenPortEmpty`; `TestStartupRejectsWebhookPortClash` (trùng `PLATFORM_API_PORT` hoặc `PLATFORM_CONSOLE_PORT`); `TestInternalRoutesAbsentOnWebhookPort`.
+- Mới: `platform-management/internal/webhook/` (`handler.go`, `handler_test.go`).
+- Đổi: `platform-management/cmd/platform-server/main.go` (nghe cổng thứ ba), `platform-management/internal/config/config.go` (kiểm cổng); spec 3.4 và mục 12 (Compose: cổng webhook chỉ publish khi bật). Migration: không. Schemacheck: không.
+
+Kiểm: [PG] `./internal/webhook ./cmd/platform-server ./internal/config -run 'Listener|Webhook|Startup'`. Ước lượng: 2,5 ngày (ước lượng). Tiêu chí: AC55.
+
+**P42.5. Dịch vụ đối soát, `ApplyPayment` tự động, hàng chờ cho staff** [D] (spec 7.2 bước 5 đến 9; D56; O-R4-8)
+
+- Quyết định: ghi trước, áp sau, lũy đẳng ở cả hai đầu; mọi trường hợp không khớp đúng vào `needs_review` mà không đổi đơn; `support` không giải quyết được.
+- Test đỏ trước: AC56: `TestSameEventTwiceAppliesOnce`, `TestSameEventConcurrentAppliesOnce` (nhiều goroutine, đúng một dòng `payment_notice`, một lần đổi đơn, một dòng `billing.order_paid`), `TestCrashBetweenRecordAndApplyIsRedriven` (dòng `received` được lần gửi lại và việc `payment_notice_redrive` xử lý, chạy hai lần không áp hai lần). AC57: `TestExactMatchAppliesThroughApplyPayment`, `TestAmountMismatchNeedsReview` (thiếu và thừa), `TestUnknownCodeNeedsReview`, `TestAmbiguousCodeNeedsReview`, `TestCurrencyMismatchNeedsReview`, `TestPaidOrderNoticeNeedsReview`, `TestExpiredOrderNoticeNeedsReview`, `TestNeedsReviewChangesNoOrder`, `TestSupportCannotResolve`, `TestResolveWritesAuditWithBothAmounts`, `TestDismissRequiresReason`, `TestClosedNoticeReturns409`, `TestResolveRepeatIsNoop`; `TestApplyPaymentAutomaticSourceAuditedAsSystem`; test cô lập tenant của console (`internal/console/isolation_test.go`) vẫn xanh với handler mới; `TestWebhookEndToEndOnRealDB`.
+- Mới: `platform-management/internal/reconcile/` (`service.go`, `match.go`, `job.go`), `platform-management/internal/console/payment_notices.go`; các hằng `payment.notice_applied`, `payment.notice_needs_review`, `payment.notice_resolved`, `payment.notice_dismissed` trong `platform-management/audit/audit.go` và `catalog_test.go`.
+- Đổi: `platform-management/internal/billing/service.go` (`Confirmation` thêm nguồn tự động; `ApplyPayment` `:296`; đọc cách ghi `confirmed_by` và kiểm toán trước khi đổi, spec 15.4), `platform-management/internal/console/handler.go`, `store.go`, `pgx.go` (các route của hàng chờ), `platform-management/cmd/platform-server/main.go` (nối webhook, đăng ký việc `payment_notice_redrive`), `platform-management/internal/jobs/`; spec 3.3, 3.5. Migration: không (đã có ở P42.2). Schemacheck: không thêm.
+
+Kiểm: [PD] `./internal/reconcile ./internal/billing ./internal/console ./internal/paymentnotice -run 'Notice|Reconcile|ApplyPayment|SameEvent|Crash|Resolve|Dismiss|Support|WebhookEndToEnd|Isolation'`, [PG] `./audit`. Ước lượng: 4 ngày (ước lượng). Tiêu chí: AC56, AC57.
+
+**P42.6. Màn hình hàng chờ của console** [N] (spec 7.6)
+
+- Quyết định: màn hình cho `billing` và `admin`; mỗi nút khớp tay và bỏ qua đòi lý do.
+- Test đỏ trước: schema zod của phản hồi hàng chờ có test phản hồi sai dạng (`parseWithFallback`); `PaymentNotices.test.tsx` (danh sách, chi tiết với đơn ứng viên, khớp tay đòi lý do, ẩn nút với `support`, trạng thái lỗi và rỗng).
+- Mới: `platform-management/console/src/screens/PaymentNotices.tsx` và test. Đổi: `platform-management/console/src/api/schemas.ts`, `client.ts`, `hooks.ts`, `platform-management/console/src/App.tsx` (route), `components/Layout.tsx` (mục menu). Kiểm bằng grep cách console xử lý chuỗi giao diện trước khi viết (spec 7.6); nếu có bảng chuỗi thì bảy ngôn ngữ. Migration: không. Schemacheck: không.
+
+Kiểm: [B], [PW], [PB]. PR đính kèm ảnh chụp hoặc video. Ước lượng: 3 ngày (ước lượng). Tiêu chí: giao diện của AC57.
+
+**P42.7. Đóng bước** [D]
+
+- Test đỏ trước: `TestWebhookDisabledByDefault` (mọi cấu hình R4 trống thì không có listener, luồng `manual` giữ nguyên, AC61 phần P42); `TestManualConfirmStillWorks`; `TestPaymentFlowThroughFakeProviderEndToEnd`.
+- Đổi: `docker-compose.selfhost.yml` (publish cổng webhook chỉ khi `PLATFORM_WEBHOOK_PORT` đặt; chạy `git status` trước), tài liệu vận hành trong `apps/docs/` (cách đăng ký URL webhook với nhà cung cấp, đặt bí mật, kiểm chữ ký); spec 7.2 (ghi nhà cung cấp đã chọn nếu chưa). Migration: không. Schemacheck: không.
+
+Kiểm: [PD] `./internal/... -run 'WebhookDisabled|ManualConfirm|PaymentFlow'`, [T], [PG]. Ước lượng: 1,5 ngày (ước lượng). Tiêu chí: AC61 (phần P42); AC55 đến AC57 chạy lại.
+
+Ước lượng P42: 1 + 2,5 + 3 + 2,5 + 4 + 3 + 1,5 = **17,5 ngày** (ước lượng). Tiêu chí của cả P42: AC55, AC56, AC57, AC61.
+
+**P43. Hóa đơn điện tử** [D] (spec 7.3)
+
+Điều kiện bắt đầu: G-R2. Quyết định: D57; O-R4-4. **Không phụ thuộc mã vào P42.** Spec 7.3 quy tắc 3 chọn việc nền quét đơn đã trả thay cho một móc "order-paid" trong `ApplyPayment`, nên P43 không sửa `platform-management/internal/billing/service.go` (tệp mà P42.5 sửa) và hai bước chạy song song. Xác nhận của kế toán (spec 16, O-R4-4) chỉ đứng trước lần bật `PLATFORM_EINVOICE_PROVIDER` ở production; mã, test và nhà cung cấp giả không chờ. P43.1 cần web; P43.2, P43.4, P43.5 và P43.7 cần DB.
+
+**P43.1. Đọc tài liệu của nhà cung cấp hóa đơn** [N] (spec 7.3; O-R4-4)
+
+- Quyết định: chọn nhà cung cấp có tài liệu API cho phát hành, tra cứu theo mã tham chiếu và hủy; trường bắt buộc lấy từ tài liệu của họ.
+- **Bước này cần truy cập web.** Không có thì dừng và báo; không suy đoán.
+- Việc: ghi vào spec 7.3 (đoạn "Thông tin chờ xác nhận") tên, địa chỉ tài liệu, ngày đọc, bộ trường người mua bắt buộc, cách tra cứu theo mã tham chiếu, cách hủy, hỗ trợ ngoại tệ và tỷ giá; chép mẫu yêu cầu và phản hồi vào `platform-management/internal/einvoice/testdata/`; xóa dòng tương ứng ở spec 15.4; gửi bộ trường cho kế toán xác nhận (spec 16) song song, không chờ.
+- Test đỏ trước: không có test mã ở bước này (chỉ tài liệu và mẫu); `TestEinvoiceFixturesParse` của P43.3 dùng các mẫu này và đỏ cho tới khi adapter có.
+- Đổi: spec 7.3 và 15.4. Mới: `platform-management/internal/einvoice/testdata/`. Migration: không. Schemacheck: không.
+
+Kiểm: `git diff --check`. Ước lượng: 1 ngày (ước lượng). Tiêu chí: điều kiện đủ cho AC58, AC59.
+
+**P43.2. Bảng và kho dữ liệu** [D] (spec 7.5; D57)
+
+- Quyết định: khóa duy nhất `(order_id, revision)`; bản ghi không bao giờ bị xóa.
+- Test đỏ trước: `TestRevisionUniqueRejectsSecondLiveRecord` (hai lần chèn đồng thời cùng `revision` thì một lần thất bại); `TestInsertUsesMaxPlusOne`; `TestStoreHasNoDeleteQuery` (quét `platform-management/queries/einvoice.sql`: không có `DELETE`); `TestIssuedRecordNumberNeverChanges`; `TestDueIndexQueryOnlyReturnsPendingDue`; test quét của `schemacheck` đỏ cho tới khi ba phiên bản được thêm.
+- Mới: `server/migrations/1011_einvoice_issuance.{up,down}.sql`, `1012_einvoice_issuance_order_uidx.{up,down}.sql`, `1013_einvoice_issuance_due_idx.{up,down}.sql`; `platform-management/queries/einvoice.sql`; `platform-management/internal/einvoice/` (`record.go`, `store.go`, `pgx.go`); mã sinh.
+- Đổi: `server/cmd/migrate/main.go` (hai dòng; chạy `git status` trước), `platform-management/internal/schemacheck/schemacheck.go`.
+- Migration: 1011 (bảng), 1012 (duy nhất `(order_id, revision)`), 1013 (`(next_attempt_at, id)` có điều kiện `state = 'pending'`). Dòng thêm vào `concurrentIndexCleanups`: `"1012_einvoice_issuance_order_uidx": "einvoice_issuance_order_uidx"`, `"1013_einvoice_issuance_due_idx": "einvoice_issuance_due_idx"`.
+- Schemacheck: thêm `1011_einvoice_issuance`, `1012_einvoice_issuance_order_uidx`, `1013_einvoice_issuance_due_idx`.
+
+Kiểm: [PQ], [M], [GN] `./internal/migrations ./cmd/migrate` (hai lệnh ở quy tắc chung), [PG] `./internal/schemacheck`, [PD] `./internal/einvoice -run 'Revision|Store|Due|Issued'`. Ước lượng: 2,5 ngày (ước lượng). Tiêu chí: nền của AC58.
+
+**P43.3. Giao diện nhà cung cấp, nhà cung cấp giả, lịch thử lại** [N] (spec 7.3 quy tắc 4, 5)
+
+- Quyết định: giao diện `einvoice.Provider` có `Issue`, `Lookup` (theo mã tham chiếu), `Cancel`; nhà cung cấp giả có kịch bản lỗi; adapter thật theo O-R4-4 sau P43.1.
+- Test đỏ trước: `TestEinvoiceFixturesParse`; `TestRequiredBuyerFieldsReportedByName` (thiếu thì trả tên trường, không giá trị); `TestIssueSendsClientRef` (mã tham chiếu là `order_id` cộng `revision`); `TestLookupBeforeReissueAfterTimeout`; `TestBackoffSchedule` (1 phút nhân đôi, trần 6 giờ, dừng ở `PLATFORM_EINVOICE_MAX_ATTEMPTS`); `TestPermanentErrorFailsImmediately`; `TestMissingFieldErrorFromProviderIsNeedsInfo`; `TestErrorsNeverContainBuyerValues`; `TestForeignCurrencyForwarded` (AC60 phần hóa đơn).
+- Mới: `platform-management/internal/einvoice/provider.go`, `fake.go`, `retry.go`, thư mục adapter thật (tên theo P43.1). Đổi: `platform-management/internal/config/config.go` (`PLATFORM_EINVOICE_PROVIDER`, `PLATFORM_EINVOICE_START_AT`, `PLATFORM_EINVOICE_MAX_ATTEMPTS`, bí mật của nhà cung cấp); spec 3.4. Migration: không. Schemacheck: không.
+
+Kiểm: [PG] `./internal/einvoice ./internal/config -run 'Fixtures|Buyer|ClientRef|Lookup|Backoff|Permanent|Errors|Currency'`. Ước lượng: 3 ngày (ước lượng). Tiêu chí: AC58 (lịch thử lại), AC59 (không gọi khi thiếu trường), AC60 (phần hóa đơn).
+
+**P43.4. Việc nền phát hành** [D] (spec 7.3 quy tắc 1 đến 3, 5, 6)
+
+- Quyết định: `einvoice_enqueue` tạo bản ghi cho đơn đã trả; `einvoice_issue` phát hành; hủy và thay thế là route của console.
+- Test đỏ trước: `TestEnqueueCreatesOneRecordPerPaidOrder` (đơn 0 đồng, `admin_grant` và đơn trước mốc bị bỏ qua); `TestEnqueueTwiceIsIdempotent`; `TestIssueTwiceConcurrentlyMakesOneInvoice` (hai lần chạy song song, một hóa đơn ở nhà cung cấp giả); `TestProviderFailureRetriesAndOrderStaysPaid`; `TestMissingFieldsMakeNeedsInfoWithNoProviderCall`; `TestExhaustedAttemptsBecomeFailed`; `TestCancelRequiresAdminReasonAndKeepsRecord`; `TestReplaceCreatesNextRevision`; `TestInvoiceAuditActionsWritten`; `TestEinvoiceOffWhenProviderEmpty`.
+- Mới: `platform-management/internal/einvoice/jobs.go`, `platform-management/internal/console/einvoices.go`; hằng `einvoice.requested`, `einvoice.issued`, `einvoice.needs_info`, `einvoice.failed`, `einvoice.buyer_updated`, `einvoice.retried`, `einvoice.cancelled`, `einvoice.replaced` trong `platform-management/audit/audit.go` và `catalog_test.go`.
+- Đổi: `platform-management/cmd/platform-server/main.go` (đăng ký hai việc), `platform-management/internal/console/handler.go`, `store.go`, `pgx.go`; chép `invoice_number` và `lookup_url` vào `billing_order.einvoice_ref` bằng một câu lệnh của platform; spec 3.3, 3.5. Migration: không (đã có ở P43.2). Schemacheck: không thêm.
+
+Kiểm: [PD] `./internal/einvoice ./internal/console -run 'Enqueue|Issue|Provider|Missing|Exhausted|Cancel|Replace|Audit|Off'`, [PG] `./audit`. Ước lượng: 3,5 ngày (ước lượng). Tiêu chí: AC58, AC59.
+
+**P43.5. Phía Multica: đọc hóa đơn và sửa thông tin người mua** [D] (spec 7.3 quy tắc 7; API)
+
+- Quyết định: Multica đọc `einvoice_issuance` và chỉ ghi `buyer`, `missing_fields`, `state`, `updated_at` theo spec 7.5.
+- Test đỏ trước: `TestOrderJSONIncludesEinvoiceWhenPresent` và `TestOrderJSONWithoutEinvoiceStillValid` (I9); `TestInvoiceBuyerUpdateMovesNeedsInfoToPending`; `TestInvoiceBuyerUpdateOnIssuedReturns409`; `TestInvoiceBuyerUpdateValidates` (dùng `normalizeOrderBuyer`, `server/internal/handler/billing_orders.go:425`); `TestInvoiceBuyerUpdateDoesNotTouchOrderBuyer`; `TestInvoiceBuyerRouteNeedsHumanActorAndRole`; `TestAuditDetailHasFieldNamesOnly`; schema zod của `einvoice` có test sai dạng ở P43.6.
+- Mới: `server/pkg/db/queries/einvoice_issuance.sql` rồi [Q]. Đổi: `server/internal/handler/billing_orders.go` (`GetWorkspaceOrder` `:354`, `toWorkspaceOrderJSON` `:172`; route mới cạnh `UpdateWorkspaceOrderBuyer` `:459`), `server/cmd/server/router.go` (chạy `git status` trước), mã sinh; spec 3.3. Migration: không. Schemacheck: không.
+
+Kiểm: [Q], [D] `./internal/handler -run 'OrderJSON|InvoiceBuyer'`, [V]. Ước lượng: 3 ngày (ước lượng). Tiêu chí: AC59 (phần sửa), AC58 (phần đọc).
+
+**P43.6. Giao diện: liên kết hóa đơn và màn hình lỗi** [N] (spec 7.6)
+
+- Quyết định: owner thấy liên kết hóa đơn và sửa được thông tin người mua; staff xử lý hóa đơn lỗi ở console.
+- Test đỏ trước: schema zod của `einvoice` có test sai dạng và phản hồi không có trường (ẩn); views: trang đơn hàng hiện liên kết khi `issued` (chỉ `https`), biểu mẫu sửa người mua khi `needs_info` hoặc `failed`, không hiện gì khi vắng mặt; console: `EinvoiceFailures.test.tsx` (danh sách, thử lại, hủy và thay thế chỉ cho `admin`, lý do bắt buộc), `Orders.test.tsx` có cột trạng thái hóa đơn; test chuỗi bảy ngôn ngữ ở phần Multica.
+- Mới: `platform-management/console/src/screens/EinvoiceFailures.tsx`. Đổi: `packages/core/api/schemas.ts` và `client.ts` (`client.ts` đang có sửa chưa commit của công việc khác; chờ), `packages/views/settings/components/billing-tab.tsx`, `packages/views/billing/`, `packages/views/locales/*/` (bảy ngôn ngữ), `platform-management/console/src/` (`api`, `App.tsx`, `components/Layout.tsx`, `screens/Orders.tsx`). Mobile: không có trang đơn hàng; ghi vào PR. Migration: không. Schemacheck: không.
+
+Kiểm: [B], [W], [PW], [PB], [T]. PR đính kèm ảnh chụp hoặc video. Ước lượng: 3 ngày (ước lượng). Tiêu chí: giao diện của AC58, AC59.
+
+**P43.7. Đóng bước** [D]
+
+- Test đỏ trước: `TestEinvoiceDisabledByDefault` (mọi cấu hình R4 trống thì không có bản ghi nào, AC61 phần P43); `TestPaidOrderFlowUnchangedWithEinvoiceOn`; `TestOrderPaidWhileProviderDown`.
+- Đổi: tài liệu vận hành ở `apps/docs/` (trình tự bật: kế toán xác nhận bộ trường theo spec 16 rồi mới đặt `PLATFORM_EINVOICE_PROVIDER` và `PLATFORM_EINVOICE_START_AT` ở production). Migration: không. Schemacheck: không.
+
+Kiểm: [PD] `./internal/... -run 'EinvoiceDisabled|PaidOrderFlow|ProviderDown'`, [T], [PG]. Ước lượng: 1,5 ngày (ước lượng). Tiêu chí: AC61 (phần P43); AC58, AC59 chạy lại.
+
+Ước lượng P43: 1 + 2,5 + 3 + 3,5 + 3 + 3 + 1,5 = **17,5 ngày** (ước lượng). Tiêu chí của cả P43: AC58, AC59, AC61.
+
+**P44. Nhiều tiền tệ và chỗ cắm nhà cung cấp thứ hai** [D] (spec 7.4)
+
+Điều kiện bắt đầu: P42 (dùng `PAYMENT_PROVIDERS` và registry của P42.3). Quyết định: D58; O-R4-5 (mặc định: không có adapter thứ hai thật), O-R4-6 (không làm vùng dữ liệu). Migration dự phòng 1014 và 1015 chỉ dùng nếu P44.1 thấy thiếu cột; mặc định là không có migration. P44.1 không cần DB; các bước còn lại cần DB.
+
+**P44.1. Kiểm kê trường tiền tệ** [N] (spec 7.4; K25)
+
+- Quyết định: biết đủ mọi chỗ tiền tệ được đọc, ghi hay viết cứng trước khi sửa.
+- Việc: chạy và ghi vào bước (thành bảng) kết quả của các lệnh sau, mỗi dòng có `tệp:dòng`: `grep -rniE '"vnd"|currency' platform-management/internal platform-management/queries server/internal/handler server/pkg/db/queries --include=*.go --include=*.sql | grep -v _test`; `grep -n currency server/migrations/670_plan.up.sql server/migrations/677_billing_order.up.sql`; `grep -rniE 'currency' packages/core packages/views --include=*.ts --include=*.tsx -l`; màn hình console và trang giá. Hạt giống đã đo ở HEAD `f39cbcc4e`: cột `currency` chỉ có ở `plan` (`670_plan.up.sql:6`) và `billing_order` (`677_billing_order.up.sql:10`) trong nhóm bảng thanh toán; thuê bao lấy tiền tệ qua gói; ba chỗ viết cứng `"vnd"` ở `platform-management/internal/billing/usage.go:63`, `platform-management/internal/usage/invoicing.go:208`, `platform-management/internal/accountrequest/finalize.go:319`; kiểm tiền tệ ở `platform-management/internal/plan/plan.go:198`; đơn đổi gói và gia hạn lấy tiền tệ từ gói ở `platform-management/internal/billing/changeorder.go:118`, `:189`; client định dạng ở `packages/views/settings/components/billing-format.ts` (`VND` ở `:12`).
+- Kết luận cần ghi: có hay không cột tiền tệ còn thiếu (ví dụ ở dòng chấm tiền hay hồ sơ thanh toán). Nếu có và bảng thuộc tệp migration số từ 101 trở lên, **không dùng 1014 hay 1015** (số bốn chữ số sắp trước ba chữ số, spec 7.5): chọn số ba chữ số còn trống lớn hơn số tạo bảng và sửa spec 7.5 cùng commit. Nếu không thiếu cột, ghi "không có migration ở P44".
+- Test đỏ trước: `TestNoHardcodedCurrencyOutsideAllowlist` (quét mã không phải test; danh sách cho phép ban đầu gồm đúng ba chỗ trên; đỏ cho tới khi P44.2 sửa và rút khỏi danh sách; thêm chỗ mới cũng đỏ).
+- Mới: `platform-management/internal/money/inventory_test.go`. Migration: không. Schemacheck: không.
+
+Kiểm: [PG] `./internal/money -run 'NoHardcodedCurrency'` (đỏ có chủ ý ở cuối bước, xanh sau P44.2). Ước lượng: 1 ngày (ước lượng). Tiêu chí: nền của AC60.
+
+**P44.2. Quy tắc tiền tệ và bỏ chỗ viết cứng** [D] (spec 7.4 quy tắc 1 đến 5)
+
+- Quyết định: một đơn một tiền tệ, số nguyên theo đơn vị nhỏ nhất, không quy đổi.
+- Test đỏ trước: `TestCurrencyExponentTable` (`vnd` 0 chữ số; chữ số thập phân đúng bảng cho tiền tệ được bật); `TestRoundingHalfUpMinorUnits`; `TestPlanWithDisabledCurrencyRejected` (400 `price_invalid`, `field = currency`); `TestOrderCurrencyEqualsPlanCurrency`; `TestAddSeatsUsesSubscriptionCurrency`; `TestChangePlanAcrossCurrenciesRefused` (409 `plan_change_unavailable`, `reason = currency_mismatch`); `TestUsageInvoiceUsesPlanCurrency`; `TestAccountRequestOrderUsesPlanCurrency`; `TestVatRateOfForeignCurrencyDefaultsToZero` (`BILLING_VAT_RATE_<TIỀN TỆ>`); `TestConsoleTotalsGroupedByCurrency`; `TestMixedCurrencyInOneOrderRefused`; `TestPlanInOtherCurrencyPricedAndInvoicedInThatCurrency` (AC60). Client: `billing-format` có ca tiền tệ hai chữ số.
+- Mới: `platform-management/internal/money/` (`money.go`, `exponent.go`). Đổi: `platform-management/internal/billing/usage.go`, `platform-management/internal/usage/invoicing.go`, `platform-management/internal/accountrequest/finalize.go`, `platform-management/internal/billing/changeorder.go`, `platform-management/internal/plan/plan.go`, `platform-management/internal/config/config.go` (`PLATFORM_CURRENCIES`, `BILLING_VAT_RATE_<TIỀN TỆ>`), `platform-management/internal/subscription/` (lý do `currency_mismatch`), `platform-management/internal/console/` (nhóm tổng theo tiền tệ), `packages/core/api/schemas.ts` (enum `reason` có fallback; `client.ts` và tệp liên quan đang có sửa chưa commit của công việc khác; chờ); spec 3.4. Chạy `git status` trước mỗi tệp. Migration: chỉ nếu P44.1 kết luận cần (1014, 1015; xem lưu ý ở P44.1), kèm dòng `concurrentIndexCleanups` nếu có chỉ mục. Schemacheck: thêm phiên bản của migration đó nếu có và bảng do platform đọc.
+
+Kiểm: [PD] `./internal/money ./internal/billing ./internal/usage ./internal/accountrequest ./internal/plan ./internal/subscription ./internal/console -run 'Currency|Rounding|Vat|Mixed|OtherCurrency|Totals'`, [W], [V]. Ước lượng: 3,5 ngày (ước lượng). Tiêu chí: AC60.
+
+**P44.3. Chỗ cắm nhà cung cấp thứ hai, không nối nhà cung cấp thật** [D] (spec 7.4 quy tắc 6, 7; O-R4-5)
+
+- Quyết định: `PAYMENT_PROVIDERS` chọn nhà cung cấp theo tiền tệ; không viết adapter thứ hai thật.
+- Test đỏ trước: `TestOrderForCurrencyWithoutProviderReturns503` (`payment_provider_unavailable`, có `Retry-After`; không có dòng đơn nào được tạo); `TestSecondFakeProviderDisabledChangesNothing` (AC60: bật nhà cung cấp giả thứ hai ở trạng thái tắt, mọi kết quả của luồng `vnd` giữ nguyên, kể cả đơn và webhook); `TestSecondFakeProviderEnabledCreatesOrderInItsCurrency`; `TestWebhookRouteOnlyForConfiguredProviders` (nhà cung cấp chưa cấu hình thì 404, P42.4); `TestRegistryRejectsDuplicateCurrencyMapping`; `TestInterfaceUnchanged` (`PaymentProvider` vẫn ba phương thức, `provider.go:42`).
+- Mới: `platform-management/internal/billing/registry_test.go`, nhà cung cấp giả trong test. Đổi: `platform-management/internal/billing/registry.go`, `service.go` (chọn nhà cung cấp theo tiền tệ khi tạo đơn; chạy `git status` trước, tệp do P42.5 cũng sửa nên P44 đứng sau P42), `platform-management/internal/billingapi/` (503 `payment_provider_unavailable`), `packages/core/api/schemas.ts` (mã lỗi mới có fallback), client xử lý 503 (hiện lỗi tạm thời, không phải lời mời nâng gói); spec 3.4. Migration: không. Schemacheck: không.
+
+Kiểm: [PD] `./internal/billing ./internal/billingapi -run 'Provider|Registry|Currency'`, [W], [V]. Ước lượng: 3 ngày (ước lượng). Tiêu chí: AC60.
+
+**P44.4. Đóng bước R4** [D]
+
+- Test đỏ trước: `TestEveryR4SettingEmptyBehavesAsBefore` (AC61 toàn bộ: `PLATFORM_WEBHOOK_PORT`, `PLATFORM_EINVOICE_PROVIDER` rỗng, `PAYMENT_PROVIDERS` và `PLATFORM_CURRENCIES` mặc định); đối chiếu AC49 đến AC61 từng tiêu chí với một test tên cụ thể; rà soát bảng bảo mật spec 7.7, mỗi dòng trỏ tới một test.
+- Đổi: tài liệu người dùng và vận hành ở `apps/docs/` (nhiều tiền tệ, cách thêm nhà cung cấp); spec 15.4 (xóa các dòng đã kiểm). Migration: không. Schemacheck: không.
+
+Kiểm: [T], [PG], [D] `./internal/projectaccess ./internal/handler`, [PD] `./internal/...`, [V]. Ước lượng: 1,5 ngày (ước lượng). Tiêu chí: AC61; AC49 đến AC60 chạy lại.
+
+Ước lượng P44: 1 + 3,5 + 3 + 1,5 = **9 ngày** (ước lượng). Tiêu chí của cả P44: AC60, AC61.
+
+**Tổng R4: 43,5 + 17,5 + 17,5 + 9 = 87,5 ngày công** (ước lượng của tác giả thiết kế, chưa đo).
 
 ## Đợt bổ sung
 
@@ -610,13 +903,17 @@ Kiểm: [PG], [PD] `./internal/accountrequest ./internal/mailer ./internal/conso
 | K14 chính sách theo workspace | P34 | AC17 |
 | K15 PAT giới hạn | P37 | AC18 |
 | K16 vai trò chỉ xem | P38 | AC19 |
-| K17 | project hạn chế | P41 | đặc tả riêng |
+| K17 project hạn chế, khách mời | P41 | AC49, AC50, AC51, AC52, AC53, AC54, AC61 |
 | K18 quản lý thuê bao cá nhân và doanh nghiệp | Q1, Q2, Q3, Q4 | AC21, AC22, AC23, AC24, AC25 |
 | K19 nhóm tài khoản và quyền | Q5, Q6, Q7 | AC25, AC26, AC27, AC28, AC29, AC30 |
 | K20 gói không giới hạn, gói theo mức dùng | Q8, Q9, Q10, Q11 | AC31, AC32, AC33, AC34, AC35 |
 | K21 cấu hình giá từng gói | Q12, Q13 | AC36, AC37, AC38, AC39, AC40 |
 | K22 tạo tài khoản bởi admin | Q14, Q15, Q16 | AC41, AC42, AC43, AC44, AC45, AC46, AC47 |
+| K23 chuyển khoản chỉ xác nhận bằng tay | P42 | AC55, AC56, AC57 |
+| K24 chưa có hóa đơn điện tử | P43 | AC58, AC59 |
+| K25 một bộ thanh toán, tiền tệ viết cứng | P44 | AC60 |
 | hồi quy R5 (mọi cấu hình mới để trống; nguồn thương mại khác) | Q1, Q4, Q17 | AC48 |
+| hồi quy R4 (mọi cấu hình R4 để trống; workspace chỉ có project `workspace`) | P41 đến P44 | AC61 |
 
 ## 7. Tổng hợp ước lượng
 
@@ -626,7 +923,7 @@ Kiểm: [PG], [PD] `./internal/accountrequest ./internal/mailer ./internal/conso
 | R1 | 25 |
 | R2 | 75,5 (ước lượng lại; trước đây 68,5) |
 | R3 | 39,5 |
-| R4 | chưa ước lượng; phụ thuộc đặc tả riêng |
+| R4 (P41 đến P44) | 87,5 (ước lượng của tác giả, chưa đo): P41 43,5; P42 17,5; P43 17,5; P44 9 |
 | R5 (đợt bổ sung, Q1 đến Q17) | 75,5 (ước lượng) |
 | Tổng P0 đến R3, chưa có đợt bổ sung (số cũ) | 140,5 (ước lượng lại; trước đây 133,5) |
 | **Tổng P0 đến R3 cộng R5 (số mới)** | **216** (140,5 + 75,5; tăng 75,5) |
@@ -634,5 +931,7 @@ Kiểm: [PG], [PD] `./internal/accountrequest ./internal/mailer ./internal/conso
 Số của R2 là ước lượng lại sau D31 đến D38. Các bước đổi: P13 từ 1,5 lên 3,5; P14 từ 2 lên 3,5; P15 từ 4 lên 4,5; P17 từ 6 lên 7,5; P18 từ 4 lên 4,5; P19 từ 6 lên 6,5; P30 từ 3 lên 3,5. Các bước khác của R2 giữ nguyên. P13 phải xong trước P14.
 
 Các bước ghi "độc lập" (P26, P27, P28) có thể làm song song với chuỗi chính của pha B. P17 có thể làm song song với P18 đến P21 sau khi P16 xong.
+
+Số của R4 là ước lượng của tác giả viết ngày 2026-11-17, chưa đo; P41 là bước lớn nhất và bất định nhất vì số đường đọc thật chưa đếm. Hai dòng tổng ở bảng trên không gồm R4; tổng P0 đến R3 cộng R5 cộng R4 là 216 + 87,5 = 303,5 ngày công (ước lượng).
 
 Số của R5 là ước lượng mới, không có số cũ để so: Q1 1,5; Q2 3; Q3 6; Q4 5; Q5 5; Q6 5; Q7 4; Q8 3; Q9 6; Q10 6; Q11 4; Q12 6; Q13 4; Q14 4; Q15 5; Q16 5; Q17 3. Tổng 75,5 ngày công. Tổng của các pha trước giữ nguyên; tổng chung tăng từ 140,5 lên 216. Phần giao diện (Q4, Q7, Q11, Q13) chiếm 17 ngày và có thể làm song song với phần máy chủ của nhóm khác khi API của nhóm đó đã có tệp mẫu hợp đồng.
