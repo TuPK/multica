@@ -133,7 +133,11 @@ func (i *Invoicer) invoice(ctx context.Context, ws pgtype.UUID, now time.Time, c
 	if err != nil {
 		return false, err
 	}
-	d, err := invoiceDraft(uuidText(ws), sub.PlanKey, rows, i.cfg.VATRate, buyer)
+	terms, err := q.GetUsageTerms(ctx, ws)
+	if err != nil {
+		return false, err
+	}
+	d, err := invoiceDraft(uuidText(ws), sub.PlanKey, terms.Currency, rows, i.cfg.VATRate, buyer)
 	if err != nil {
 		return false, err
 	}
@@ -189,7 +193,7 @@ func (i *Invoicer) invoice(ctx context.Context, ws pgtype.UUID, now time.Time, c
 // period of whole months from the earliest to the latest day, and a key named
 // for the latest day, so that the same rows never make two orders. rows are
 // oldest day first.
-func invoiceDraft(workspaceID, planKey string, rows []db.ListUninvoicedUsageChargesRow, vat billing.Rate, buyer json.RawMessage) (billing.Draft, error) {
+func invoiceDraft(workspaceID, planKey, currency string, rows []db.ListUninvoicedUsageChargesRow, vat billing.Rate, buyer json.RawMessage) (billing.Draft, error) {
 	if len(rows) == 0 {
 		return billing.Draft{}, errors.New("an invoice needs at least one row")
 	}
@@ -205,7 +209,7 @@ func invoiceDraft(workspaceID, planKey string, rows []db.ListUninvoicedUsageChar
 	start, end := monthStart(first), monthStart(last).AddDate(0, 1, 0)
 	return billing.ValidateDraft(billing.Draft{
 		WorkspaceID: workspaceID, Kind: billing.KindUsage, PlanKey: planKey, Interval: subscription.IntervalMonth,
-		Amount: sum, VATAmount: vatAmount, Currency: "vnd", Buyer: buyer, PeriodStart: &start, PeriodEnd: &end,
+		Amount: sum, VATAmount: vatAmount, Currency: currency, Buyer: buyer, PeriodStart: &start, PeriodEnd: &end,
 		IdempotencyKey: "usage:" + workspaceID + ":" + last.Format(dayLayout),
 	})
 }

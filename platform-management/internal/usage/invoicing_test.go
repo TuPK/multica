@@ -187,7 +187,7 @@ func TestUsageMathVATRounding(t *testing.T) {
 		{"a carried-over invoice spans months", []int64{9000, 1000, 5}, 10005, 1001, "2026-10-01", "2026-12-01", "2026-11-01"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			d, err := invoiceDraft("11111111-1111-4111-8111-111111111111", "payg", rows(tc.nets...), tenPercent(t), nil)
+			d, err := invoiceDraft("11111111-1111-4111-8111-111111111111", "payg", "vnd", rows(tc.nets...), tenPercent(t), nil)
 			if err != nil {
 				t.Fatal(err)
 			}

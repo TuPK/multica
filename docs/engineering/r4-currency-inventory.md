@@ -89,7 +89,9 @@ Count: 151 scanned units (file and term pairs), 151 rows.
 | `platform-management/internal/billingapi/planchange.go` | `currency` | `planChangePreviewResponse.Currency`, `planChangeOrderResponse.Currency`, `previewPlanChange`, `writeChangeOrder` | field | code | todo | Plan-change preview and order response Currency. |
 | `platform-management/internal/config/config.go` | `currency` | `Error`, `EmptyBankVariables`, `loadBilling`, `loadPayments` | literal | code | todo | loadPayments requires a provider for "vnd"; P44.2: require one per plan currency. |
 | `platform-management/internal/config/config.go` | `vnd` | `loadBilling`, `loadPayments` | literal | code | todo | Boot check uses money.Default (P44.2); the comment above loadPayments still names vnd. Per-plan-currency check stays todo. |
+| `platform-management/internal/console/einvoices.go` | `currency` | `ListEinvoices`, `toEinvoiceJSON` | field | code | todo | E-invoice list row and JSON Currency. Added at P44.3 (row was missing from the table). |
 | `platform-management/internal/console/orders.go` | `currency` | `orderJSON.Currency`, `toOrderJSON`, `cancelOrder` | field | code | todo | Order JSON Currency. |
+| `platform-management/internal/console/payment_notices.go` | `currency` | `listEinvoices`, `noticeColumns` | field | code | todo | Payment-notice list columns and the currency match in the notice lookup. Added at P44.3 (row was missing from the table). |
 | `platform-management/internal/console/pgx.go` | `currency` | `orderFromRow` | field | code | todo | Row mapping for orders. |
 | `platform-management/internal/db/models.go` | `currency` | `BillingOrder.Currency`, `EinvoiceIssuance.Currency`, `PaymentNotice.Currency`, `Plan.Currency` | field | code | todo | sqlc model fields for billing_order, einvoice_issuance, payment_notice and plan. |
 | `platform-management/internal/db/models.go` | `usd` | `file-level comment` | text | comment | todo | Comment about provider cost ticks in USD (agent cost accounting, not billing); no change needed. |
@@ -109,8 +111,7 @@ Count: 151 scanned units (file and term pairs), 151 rows.
 | `platform-management/internal/subscription/console.go` | `currency` | `putPlanBody.Currency`, `putPlan` | field | code | todo | PutPlan body currency and the plan_currency_locked check. |
 | `platform-management/internal/subscription/quote.go` | `vnd` | `conflict` | text | comment | todo | Comment on the quote rounding; reword when P44.2 lands. |
 | `platform-management/internal/subscription/usage.go` | `currency` | `Usage.Currency` | field | code | todo | Usage.Currency. |
-| `platform-management/internal/usage/invoicing.go` | `currency` | `invoice`, `invoiceDraft` | literal | code | todo | Usage invoice draft uses "vnd"; P44.2: read from plan or subscription. |
-| `platform-management/internal/usage/invoicing.go` | `vnd` | `invoiceDraft` | literal | code | todo | Literal "vnd" on the usage invoice draft; P44.2: read from plan or subscription. |
+| `platform-management/internal/usage/invoicing.go` | `currency` | `invoice`, `invoiceDraft` | field | code | ruled | Usage invoice draft takes the plan currency from GetUsageTerms (P44.3). The "vnd" literal row is removed with its last literal. |
 | `platform-management/internal/usage/notice.go` | `vnd` | `noticeText` | literal | amount with code in message text | todo | Notice text prints "VND"; P44.2: print the plan currency. |
 | `platform-management/internal/usage/view.go` | `currency` | `UsageInput.Currency`, `BuildUsage`, `Usage` | field | code | todo | UsageInput.Currency and Usage built from plan currency. |
 | `server/cmd/multica/cmd_company_usage.go` | `usd` | `file-level comment`, `runCompanyUsage` | text | UI label | todo | CLI heading "COST (USD TICKS)"; agent cost, no change needed. |
@@ -271,8 +272,6 @@ The rule set (`platform-management/internal/money`, P44.2) does not exist yet. T
 - `platform-management/internal/config/config.go` `vnd` (literal)
 - `platform-management/internal/plan/catalogue.json` `currency` (literal)
 - `platform-management/internal/plan/catalogue.json` `vnd` (literal)
-- `platform-management/internal/usage/invoicing.go` `currency` (literal)
-- `platform-management/internal/usage/invoicing.go` `vnd` (literal)
 - `platform-management/internal/usage/notice.go` `vnd` (literal)
 - `server/internal/service/metrics.go` `usd` (literal)
 - `server/pkg/agent/reasonix.go` `usd` (literal)
