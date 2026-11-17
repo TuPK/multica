@@ -31,6 +31,7 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/lifecycle"
 	"github.com/multica-ai/multica/platform-management/internal/mailer"
 	"github.com/multica-ai/multica/platform-management/internal/mfa"
+	"github.com/multica-ai/multica/platform-management/internal/paymentnotice"
 	"github.com/multica-ai/multica/platform-management/internal/plan"
 	"github.com/multica-ai/multica/platform-management/internal/platformauth"
 	"github.com/multica-ai/multica/platform-management/internal/pricechange"
@@ -369,6 +370,15 @@ func run() error {
 		apiLn.Close()
 		return fmt.Errorf("listen on PLATFORM_CONSOLE_PORT: %w", err)
 	}
+	var webhookLn net.Listener
+	if cfg.Payments.WebhookPort != "" {
+		webhookLn, err = net.Listen("tcp", ":"+cfg.Payments.WebhookPort)
+		if err != nil {
+			apiLn.Close()
+			consoleLn.Close()
+			return fmt.Errorf("listen on PLATFORM_WEBHOOK_PORT: %w", err)
+		}
+	}
 
 	health := server.HealthHandler(
 		server.Check{Name: "database", Ping: pool.Ping},
@@ -384,10 +394,16 @@ func run() error {
 		defer close(jobsDone)
 		_ = runner.Run(jobsCtx)
 	}()
-	err = server.Serve(ctx, shutdownGrace,
-		server.Listener{Name: "api", Listener: apiLn, Handler: server.NewAPIHandler(peers, health, platformHandler, routes...)},
-		server.Listener{Name: "console", Listener: consoleLn, Handler: server.NewConsoleHandler(health, apiURL, consoleDistDir)},
-	)
+	listeners := []server.Listener{
+		{Name: "api", Listener: apiLn, Handler: server.NewAPIHandler(peers, health, platformHandler, routes...)},
+		{Name: "console", Listener: consoleLn, Handler: server.NewConsoleHandler(health, apiURL, consoleDistDir)},
+	}
+	if webhookLn != nil {
+		listeners = append(listeners, server.Listener{Name: "webhook", Listener: webhookLn, Handler: billing.NewWebhookHandler(billing.WebhookDeps{
+			Registry: cfg.Payments.Registry, Notices: paymentnotice.NewPgxStore(pool), Log: slog.Default(),
+		})})
+	}
+	err = server.Serve(ctx, shutdownGrace, listeners...)
 	stopJobs()
 	<-jobsDone
 	// Let a code that was just requested finish sending.
