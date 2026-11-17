@@ -53,7 +53,14 @@ DELETE FROM project WHERE id = $1 AND workspace_id = $2;
 
 -- name: CountIssuesByProject :one
 SELECT count(*) FROM issue
-WHERE project_id = $1;
+WHERE issue.project_id = sqlc.arg('project_id')
+-- projectaccess:scope
+AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (issue.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')));
 
 -- name: GetProjectIssueStats :many
 SELECT project_id,
@@ -97,4 +104,11 @@ RETURNING *;
 SELECT * FROM project
 WHERE workspace_id = sqlc.arg('workspace_id')::uuid
   AND sqlc.arg('squad_id')::uuid = ANY(squad_ids)
+-- projectaccess:scope
+AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (project.id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = project.id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
 ORDER BY created_at, id;

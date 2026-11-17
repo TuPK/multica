@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/entitlement"
 	"github.com/multica-ai/multica/server/internal/imagemetadata"
+	"github.com/multica-ai/multica/server/internal/logger"
 	"github.com/multica-ai/multica/server/internal/planlimit"
 	"github.com/multica-ai/multica/server/internal/storage"
 	"github.com/multica-ai/multica/server/internal/util"
@@ -834,8 +835,59 @@ func (h *Handler) loadAttachmentForRequest(w http.ResponseWriter, r *http.Reques
 		writeError(w, http.StatusNotFound, "attachment not found")
 		return db.Attachment{}, false
 	}
+	if !h.attachmentInViewerScope(w, r, att) {
+		return db.Attachment{}, false
+	}
 
 	return att, true
+}
+
+// attachmentInViewerScope answers an attachment of a hidden issue, directly or
+// through its comment, exactly like a missing attachment (spec 7.1 rule 3).
+// Attachments with neither owner (chat) are not project-scoped.
+func (h *Handler) attachmentInViewerScope(w http.ResponseWriter, r *http.Request, att db.Attachment) bool {
+	issueID := att.IssueID
+	if !issueID.Valid && att.CommentID.Valid {
+		comment, err := h.Queries.GetCommentInWorkspace(r.Context(), db.GetCommentInWorkspaceParams{
+			ID:          att.CommentID,
+			WorkspaceID: att.WorkspaceID,
+		})
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				writeError(w, http.StatusNotFound, "attachment not found")
+			} else {
+				slog.Error("load attachment comment", append(logger.RequestAttrs(r), "error", err)...)
+				writeError(w, http.StatusInternalServerError, "failed to load attachment")
+			}
+			return false
+		}
+		issueID = comment.IssueID
+	}
+	if !issueID.Valid {
+		return true
+	}
+	issue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
+		ID:          issueID,
+		WorkspaceID: att.WorkspaceID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeError(w, http.StatusNotFound, "attachment not found")
+		return false
+	}
+	if err != nil {
+		slog.Error("load attachment issue", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to load attachment")
+		return false
+	}
+	scope, ok := h.viewerScope(w, r, att.WorkspaceID)
+	if !ok {
+		return false
+	}
+	if !scope.Allows(issue.ProjectID) {
+		writeError(w, http.StatusNotFound, "attachment not found")
+		return false
+	}
+	return true
 }
 
 // loadAttachmentForDownload is a workspace-self-resolving variant used by the
@@ -882,6 +934,9 @@ func (h *Handler) loadAttachmentForDownload(w http.ResponseWriter, r *http.Reque
 		return db.Attachment{}, false
 	}
 	if h.MembershipCache.Get(r.Context(), userID, workspaceID) {
+		if !h.attachmentInViewerScope(w, r, att) {
+			return db.Attachment{}, false
+		}
 		return att, true
 	}
 	if _, err := h.getWorkspaceMember(r.Context(), userID, workspaceID); err != nil {
@@ -889,6 +944,9 @@ func (h *Handler) loadAttachmentForDownload(w http.ResponseWriter, r *http.Reque
 		return db.Attachment{}, false
 	}
 	h.MembershipCache.Set(r.Context(), userID, workspaceID)
+	if !h.attachmentInViewerScope(w, r, att) {
+		return db.Attachment{}, false
+	}
 	return att, true
 }
 
@@ -1442,6 +1500,9 @@ func (h *Handler) DeleteAttachment(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		writeError(w, http.StatusNotFound, "attachment not found")
+		return
+	}
+	if !h.attachmentInViewerScope(w, r, att) {
 		return
 	}
 	// Captured-context attachments are immutable historical copies. They are

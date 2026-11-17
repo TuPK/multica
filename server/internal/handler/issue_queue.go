@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
 	"github.com/multica-ai/multica/server/internal/issueworkflow"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/service"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
@@ -72,8 +73,10 @@ func (h *Handler) validateStartStatus(ctx context.Context, w http.ResponseWriter
 
 // validateRunAfter parses the waits and checks them against the issues being
 // queued: the waits must exist in the workspace, must not include the issues
-// themselves, and must not lead back to them (a cycle would never release).
-func (h *Handler) validateRunAfter(ctx context.Context, w http.ResponseWriter, workspaceID pgtype.UUID, targets []pgtype.UUID, queued bool, raw []string) ([]pgtype.UUID, bool) {
+// themselves, and must not lead back to them (a cycle would never release). A
+// wait the viewer cannot see counts as missing, and a path through such an
+// issue is not followed.
+func (h *Handler) validateRunAfter(ctx context.Context, w http.ResponseWriter, scope projectaccess.Scope, workspaceID pgtype.UUID, targets []pgtype.UUID, queued bool, raw []string) ([]pgtype.UUID, bool) {
 	if !queued {
 		return []pgtype.UUID{}, true
 	}
@@ -94,11 +97,17 @@ func (h *Handler) validateRunAfter(ctx context.Context, w http.ResponseWriter, w
 		writeError(w, http.StatusInternalServerError, "failed to check run queue waits")
 		return nil, false
 	}
-	if len(found) != len(ids) {
+	visible := 0
+	for _, issue := range found {
+		if scope.Allows(issue.ProjectID) {
+			visible++
+		}
+	}
+	if visible != len(ids) {
 		writeError(w, http.StatusBadRequest, "after_issue_ids must name issues in this workspace")
 		return nil, false
 	}
-	cycle, err := h.runQueueWouldCycle(ctx, workspaceID, targets, ids)
+	cycle, err := h.runQueueWouldCycle(ctx, scope, workspaceID, targets, ids)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to check run queue waits")
 		return nil, false
@@ -113,7 +122,7 @@ func (h *Handler) validateRunAfter(ctx context.Context, w http.ResponseWriter, w
 // runQueueWouldCycle reports whether any target is reachable from the waits by
 // following run_after_issue_ids. Targets are about to get the same waits, so
 // their stored edges are not expanded: a path through one of them ends there.
-func (h *Handler) runQueueWouldCycle(ctx context.Context, workspaceID pgtype.UUID, targets, waits []pgtype.UUID) (bool, error) {
+func (h *Handler) runQueueWouldCycle(ctx context.Context, scope projectaccess.Scope, workspaceID pgtype.UUID, targets, waits []pgtype.UUID) (bool, error) {
 	targetSet := make(map[string]bool, len(targets))
 	for _, t := range targets {
 		targetSet[uuidToString(t)] = true
@@ -141,7 +150,9 @@ func (h *Handler) runQueueWouldCycle(ctx context.Context, workspaceID pgtype.UUI
 		}
 		frontier = nil
 		for _, row := range rows {
-			frontier = append(frontier, row.RunAfterIssueIds...)
+			if scope.Allows(row.ProjectID) {
+				frontier = append(frontier, row.RunAfterIssueIds...)
+			}
 		}
 	}
 	return false, nil
@@ -167,12 +178,16 @@ func (h *Handler) SetIssueRunQueue(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, issue.WorkspaceID)
+	if !ok {
+		return
+	}
 	var req runQueueRequest
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64*1024)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	after, ok := h.validateRunAfter(r.Context(), w, issue.WorkspaceID, []pgtype.UUID{issue.ID}, req.Queued, req.AfterIssueIDs)
+	after, ok := h.validateRunAfter(r.Context(), w, scope, issue.WorkspaceID, []pgtype.UUID{issue.ID}, req.Queued, req.AfterIssueIDs)
 	if !ok {
 		return
 	}
@@ -306,41 +321,62 @@ func (h *Handler) promoteQueuedIssue(ctx context.Context, prev db.Issue) bool {
 	return true
 }
 
-func (h *Handler) decodeRunQueueBatch(w http.ResponseWriter, r *http.Request) (runQueueRequest, []pgtype.UUID, pgtype.UUID, bool) {
+// decodeRunQueueBatch reads a batch body and returns the issues of it the
+// viewer sees, in the order asked. An id that is missing or hidden is left out.
+func (h *Handler) decodeRunQueueBatch(w http.ResponseWriter, r *http.Request) (runQueueRequest, []db.Issue, projectaccess.Scope, pgtype.UUID, bool) {
 	var req runQueueRequest
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64*1024)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
-		return req, nil, pgtype.UUID{}, false
+		return req, nil, projectaccess.Scope{}, pgtype.UUID{}, false
 	}
 	if len(req.IssueIDs) == 0 || len(req.IssueIDs) > maxQueueBatch {
 		writeError(w, http.StatusBadRequest, "issue_ids must hold 1 to 200 ids")
-		return req, nil, pgtype.UUID{}, false
+		return req, nil, projectaccess.Scope{}, pgtype.UUID{}, false
 	}
 	ids, ok := parseUUIDSliceOrBadRequest(w, req.IssueIDs, "issue_ids")
 	if !ok {
-		return req, nil, pgtype.UUID{}, false
+		return req, nil, projectaccess.Scope{}, pgtype.UUID{}, false
 	}
 	workspaceID, ok := parseUUIDOrBadRequest(w, h.resolveWorkspaceID(r), "workspace_id")
 	if !ok {
-		return req, nil, pgtype.UUID{}, false
+		return req, nil, projectaccess.Scope{}, pgtype.UUID{}, false
 	}
-	return req, uniqueUUIDs(ids), workspaceID, true
+	scope, ok := h.viewerScope(w, r, workspaceID)
+	if !ok {
+		return req, nil, projectaccess.Scope{}, pgtype.UUID{}, false
+	}
+	found, err := h.Queries.ListIssuesByIDsInWorkspace(r.Context(), db.ListIssuesByIDsInWorkspaceParams{WorkspaceID: workspaceID, Ids: uniqueUUIDs(ids)})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load issues")
+		return req, nil, projectaccess.Scope{}, pgtype.UUID{}, false
+	}
+	targets := make([]db.Issue, 0, len(found))
+	for _, issue := range found {
+		if scope.Allows(issue.ProjectID) {
+			targets = append(targets, issue)
+		}
+	}
+	return req, targets, scope, workspaceID, true
+}
+
+func issueIDsOf(issues []db.Issue) []pgtype.UUID {
+	ids := make([]pgtype.UUID, len(issues))
+	for i, issue := range issues {
+		ids[i] = issue.ID
+	}
+	return ids
 }
 
 // BatchSetRunQueue queues or takes out several issues at once, all waiting on
 // the same issues, then promotes whatever the change makes ready.
 func (h *Handler) BatchSetRunQueue(w http.ResponseWriter, r *http.Request) {
-	req, ids, workspaceID, ok := h.decodeRunQueueBatch(w, r)
+	req, targets, scope, workspaceID, ok := h.decodeRunQueueBatch(w, r)
 	if !ok {
 		return
 	}
-	after, ok := h.validateRunAfter(r.Context(), w, workspaceID, ids, req.Queued, req.AfterIssueIDs)
+	ids := issueIDsOf(targets)
+	after, ok := h.validateRunAfter(r.Context(), w, scope, workspaceID, ids, req.Queued, req.AfterIssueIDs)
 	if !ok {
-		return
-	}
-	targets, err := h.Queries.ListIssuesByIDsInWorkspace(r.Context(), db.ListIssuesByIDsInWorkspaceParams{WorkspaceID: workspaceID, Ids: ids})
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to load issues")
 		return
 	}
 	startStatus, ok := h.validateStartStatus(r.Context(), w, workspaceID, targets, req.Queued, req.StartStatus)
@@ -383,16 +419,17 @@ type runQueuePreviewResponse struct {
 
 // PreviewRunQueue answers "if I queue these issues behind these, how many start now".
 func (h *Handler) PreviewRunQueue(w http.ResponseWriter, r *http.Request) {
-	req, ids, workspaceID, ok := h.decodeRunQueueBatch(w, r)
+	req, issues, scope, workspaceID, ok := h.decodeRunQueueBatch(w, r)
 	if !ok {
 		return
 	}
+	ids := issueIDsOf(issues)
 	out := runQueuePreviewResponse{}
 	if !req.Queued {
 		writeJSON(w, http.StatusOK, out)
 		return
 	}
-	after, ok := h.validateRunAfter(r.Context(), w, workspaceID, ids, true, req.AfterIssueIDs)
+	after, ok := h.validateRunAfter(r.Context(), w, scope, workspaceID, ids, true, req.AfterIssueIDs)
 	if !ok {
 		return
 	}
@@ -406,11 +443,6 @@ func (h *Handler) PreviewRunQueue(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusOK, out)
 			return
 		}
-	}
-	issues, err := h.Queries.ListIssuesByIDsInWorkspace(r.Context(), db.ListIssuesByIDsInWorkspaceParams{WorkspaceID: workspaceID, Ids: ids})
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to preview run queue")
-		return
 	}
 	for _, issue := range issues {
 		if issue.Status != "backlog" || issue.TriageState.Valid {
@@ -440,7 +472,15 @@ func (h *Handler) ListRunQueueWaits(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	rows, err := h.Queries.ListRunQueueWaits(r.Context(), workspaceID)
+	scope, ok := h.viewerScope(w, r, workspaceID)
+	if !ok {
+		return
+	}
+	rows, err := h.Queries.ListRunQueueWaits(r.Context(), db.ListRunQueueWaitsParams{
+		WorkspaceID: workspaceID,
+		ScopeMode:   scope.Mode(),
+		ScopeUserID: scope.UserID(),
+	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list run queue waits")
 		return

@@ -7,6 +7,13 @@ SELECT p.*,
         SELECT COUNT(*) FROM issue i
         WHERE i.workspace_id = p.workspace_id
           AND i.properties ? p.id::text
+          -- projectaccess:scope
+          AND (sqlc.arg(scope_mode)::text = 'all'
+            OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+            OR EXISTS (SELECT 1 FROM project_member scope_pm
+                       WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+            OR (sqlc.arg(scope_mode)::text = 'member'
+                AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
     )::bigint AS usage_count
 FROM issue_property p
 WHERE p.workspace_id = sqlc.arg('workspace_id')::uuid

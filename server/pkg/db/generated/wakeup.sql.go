@@ -1085,8 +1085,21 @@ FROM issue_wakeup w JOIN issue i ON i.id=w.issue_id AND i.workspace_id=w.workspa
 WHERE w.workspace_id= $1 AND NOT w.enabled AND w.paused_reason IN ('loop','rate','max_fires')
  AND i.status NOT IN ('done','cancelled')
  AND NOT EXISTS(SELECT 1 FROM issue_status s WHERE s.workspace_id=i.workspace_id AND s.key=i.status AND s.category IN ('done','closed'))
+ -- projectaccess:scope
+ AND ($2::text = 'all'
+   OR (i.project_id IS NULL AND $2::text <> 'guest')
+   OR EXISTS (SELECT 1 FROM project_member scope_pm
+              WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $3::uuid)
+   OR ($2::text = 'member'
+       AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ORDER BY w.updated_at DESC LIMIT 200
 `
+
+type ListPausedWakeupIssuesParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+}
 
 type ListPausedWakeupIssuesRow struct {
 	IssueID      pgtype.UUID `json:"issue_id"`
@@ -1097,8 +1110,8 @@ type ListPausedWakeupIssuesRow struct {
 
 // Rules the platform paused on open issues, for board cues and the
 // workspace banner. Access follows shared issue visibility.
-func (q *Queries) ListPausedWakeupIssues(ctx context.Context, workspaceID pgtype.UUID) ([]ListPausedWakeupIssuesRow, error) {
-	rows, err := q.db.Query(ctx, listPausedWakeupIssues, workspaceID)
+func (q *Queries) ListPausedWakeupIssues(ctx context.Context, arg ListPausedWakeupIssuesParams) ([]ListPausedWakeupIssuesRow, error) {
+	rows, err := q.db.Query(ctx, listPausedWakeupIssues, arg.WorkspaceID, arg.ScopeMode, arg.ScopeUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -1398,6 +1411,13 @@ LEFT JOIN agent source ON source.id=w.filter_agent_id AND source.workspace_id=w.
  WHERE w.workspace_id= $2 AND w.enabled
   AND i.status NOT IN ('done','cancelled')
   AND NOT EXISTS(SELECT 1 FROM issue_status s WHERE s.workspace_id=i.workspace_id AND s.key=i.status AND s.category IN ('done','closed'))
+  -- projectaccess:scope
+  AND ($3::text = 'all'
+    OR (i.project_id IS NULL AND $3::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $4::uuid)
+    OR ($3::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 )
 SELECT issue_id,id,agent_id,agent_name,kind,mode,event_types,filter_actor_type,filter_actor_id,filter_actor_name,filter_task_id,filter_agent_name,interval_seconds,cron_expression,timezone,next_fire_at,condition,active_count,event_count
 FROM ranked WHERE rank<=3 ORDER BY issue_id,rank
@@ -1406,6 +1426,8 @@ FROM ranked WHERE rank<=3 ORDER BY issue_id,rank
 type ListWorkspaceWakeupSummaryRowsParams struct {
 	AgentIds    []pgtype.UUID `json:"agent_ids"`
 	WorkspaceID pgtype.UUID   `json:"workspace_id"`
+	ScopeMode   string        `json:"scope_mode"`
+	ScopeUserID pgtype.UUID   `json:"scope_user_id"`
 }
 
 type ListWorkspaceWakeupSummaryRowsRow struct {
@@ -1432,7 +1454,12 @@ type ListWorkspaceWakeupSummaryRowsRow struct {
 
 // No prompts/history; at most three previews per issue plus exact counts.
 func (q *Queries) ListWorkspaceWakeupSummaryRows(ctx context.Context, arg ListWorkspaceWakeupSummaryRowsParams) ([]ListWorkspaceWakeupSummaryRowsRow, error) {
-	rows, err := q.db.Query(ctx, listWorkspaceWakeupSummaryRows, arg.AgentIds, arg.WorkspaceID)
+	rows, err := q.db.Query(ctx, listWorkspaceWakeupSummaryRows,
+		arg.AgentIds,
+		arg.WorkspaceID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}

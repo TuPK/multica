@@ -599,10 +599,14 @@ func (h *Handler) UpdateProject(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 	prevProject, err := h.Queries.GetProjectInWorkspace(r.Context(), db.GetProjectInWorkspaceParams{
 		ID: idUUID, WorkspaceID: wsUUID,
 	})
-	if err != nil {
+	if err != nil || !scope.Allows(prevProject.ID) {
 		writeError(w, http.StatusNotFound, "project not found")
 		return
 	}
@@ -726,10 +730,14 @@ func (h *Handler) DeleteProject(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 	project, err := h.Queries.GetProjectInWorkspace(r.Context(), db.GetProjectInWorkspaceParams{
 		ID: idUUID, WorkspaceID: wsUUID,
 	})
-	if err != nil {
+	if err != nil || !scope.Allows(project.ID) {
 		writeError(w, http.StatusNotFound, "project not found")
 		return
 	}

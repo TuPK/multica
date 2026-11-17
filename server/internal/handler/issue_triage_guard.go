@@ -64,18 +64,26 @@ func (h *Handler) validateBatchTriageLocks(w http.ResponseWriter, r *http.Reques
 	if len(ids) == 0 {
 		return true
 	}
-	inTriage, err := h.Queries.CountIssuesInTriage(r.Context(), db.CountIssuesInTriageParams{
+	scope, ok := h.viewerScope(w, r, workspaceID)
+	if !ok {
+		return false
+	}
+	// An entry the caller cannot see is skipped by the batch like a missing id,
+	// so it cannot refuse the batch.
+	issues, err := h.Queries.ListIssuesByIDsInWorkspace(r.Context(), db.ListIssuesByIDsInWorkspaceParams{
 		WorkspaceID: workspaceID,
-		IssueIds:    ids,
+		Ids:         ids,
 	})
 	if err != nil {
-		slog.Warn("batch update issues: count triage entries", append(logger.RequestAttrs(r), "error", err)...)
+		slog.Warn("batch update issues: list triage entries", append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "failed to validate issues")
 		return false
 	}
-	if inTriage > 0 {
-		writeIssueInTriage(w, field)
-		return false
+	for _, issue := range issues {
+		if issue.TriageState.Valid && scope.Allows(issue.ProjectID) {
+			writeIssueInTriage(w, field)
+			return false
+		}
 	}
 	return true
 }

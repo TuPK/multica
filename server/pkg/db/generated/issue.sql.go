@@ -238,6 +238,13 @@ WHERE i.workspace_id = $1
              AND a.owner_id     = $10::uuid
     ))
   )
+  -- projectaccess:scope
+  AND ($11::text = 'all'
+    OR (i.project_id IS NULL AND $11::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $12::uuid)
+    OR ($11::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 `
 
 type CountIssuesParams struct {
@@ -251,6 +258,8 @@ type CountIssuesParams struct {
 	Scheduled      pgtype.Bool   `json:"scheduled"`
 	MetadataFilter []byte        `json:"metadata_filter"`
 	InvolvesUserID pgtype.UUID   `json:"involves_user_id"`
+	ScopeMode      string        `json:"scope_mode"`
+	ScopeUserID    pgtype.UUID   `json:"scope_user_id"`
 }
 
 // See ListIssues for the semantics of involves_user_id.
@@ -266,6 +275,8 @@ func (q *Queries) CountIssues(ctx context.Context, arg CountIssuesParams) (int64
 		arg.Scheduled,
 		arg.MetadataFilter,
 		arg.InvolvesUserID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
 	)
 	var count int64
 	err := row.Scan(&count)
@@ -1447,19 +1458,33 @@ func (q *Queries) ListChildrenByParents(ctx context.Context, arg ListChildrenByP
 
 const listIssueDuplicates = `-- name: ListIssueDuplicates :many
 SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, properties, revision, last_activity_at, triage_state, duplicate_of_issue_id, done_at, reopen_count, last_reopened_at, run_queued, run_after_issue_ids, run_start_status, outcome, flow, flow_step, flow_task, flow_round FROM issue
-WHERE workspace_id = $1
-  AND duplicate_of_issue_id = $2::uuid
-  AND status = 'cancelled'
-ORDER BY created_at ASC, id ASC
+WHERE issue.workspace_id = $1
+  AND issue.duplicate_of_issue_id = $2::uuid
+  AND issue.status = 'cancelled'
+  -- projectaccess:scope
+  AND ($3::text = 'all'
+    OR (issue.project_id IS NULL AND $3::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = $4::uuid)
+    OR ($3::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
+ORDER BY issue.created_at ASC, issue.id ASC
 `
 
 type ListIssueDuplicatesParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 	IssueID     pgtype.UUID `json:"issue_id"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
 }
 
 func (q *Queries) ListIssueDuplicates(ctx context.Context, arg ListIssueDuplicatesParams) ([]Issue, error) {
-	rows, err := q.db.Query(ctx, listIssueDuplicates, arg.WorkspaceID, arg.IssueID)
+	rows, err := q.db.Query(ctx, listIssueDuplicates,
+		arg.WorkspaceID,
+		arg.IssueID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -1559,7 +1584,7 @@ func (q *Queries) ListIssueGCStatuses(ctx context.Context, arg ListIssueGCStatus
 }
 
 const listIssueRefsInWorkspace = `-- name: ListIssueRefsInWorkspace :many
-SELECT id, number, title, status FROM issue
+SELECT id, number, title, status, project_id FROM issue
 WHERE workspace_id = $1
   AND id = ANY($2::uuid[])
 `
@@ -1570,14 +1595,16 @@ type ListIssueRefsInWorkspaceParams struct {
 }
 
 type ListIssueRefsInWorkspaceRow struct {
-	ID     pgtype.UUID `json:"id"`
-	Number int32       `json:"number"`
-	Title  string      `json:"title"`
-	Status string      `json:"status"`
+	ID        pgtype.UUID `json:"id"`
+	Number    int32       `json:"number"`
+	Title     string      `json:"title"`
+	Status    string      `json:"status"`
+	ProjectID pgtype.UUID `json:"project_id"`
 }
 
 // GetIssueRefInWorkspace for a page: every original the page's duplicates
-// point at, in one read.
+// point at, in one read. project_id lets the caller drop an original the viewer
+// cannot see.
 func (q *Queries) ListIssueRefsInWorkspace(ctx context.Context, arg ListIssueRefsInWorkspaceParams) ([]ListIssueRefsInWorkspaceRow, error) {
 	rows, err := q.db.Query(ctx, listIssueRefsInWorkspace, arg.WorkspaceID, arg.Ids)
 	if err != nil {
@@ -1592,6 +1619,7 @@ func (q *Queries) ListIssueRefsInWorkspace(ctx context.Context, arg ListIssueRef
 			&i.Number,
 			&i.Title,
 			&i.Status,
+			&i.ProjectID,
 		); err != nil {
 			return nil, err
 		}
@@ -2194,6 +2222,20 @@ WHERE i.workspace_id = $1
   AND i.run_queued
   AND i.status = 'backlog'
   AND i.triage_state IS NULL
+  -- projectaccess:scope
+  AND ($2::text = 'all'
+    OR (i.project_id IS NULL AND $2::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $3::uuid)
+    OR ($2::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
+  -- projectaccess:scope
+  AND ($2::text = 'all'
+    OR (p.project_id IS NULL AND $2::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = p.project_id AND scope_pm.user_id = $3::uuid)
+    OR ($2::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = p.project_id AND scope_p.access = 'workspace')))
   AND (
     NOT (p.status IN ('done', 'cancelled') OR EXISTS (
       SELECT 1 FROM issue_status cs
@@ -2206,6 +2248,12 @@ WHERE i.workspace_id = $1
   )
 `
 
+type ListRunQueueWaitsParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+}
+
 type ListRunQueueWaitsRow struct {
 	IssueID     pgtype.UUID `json:"issue_id"`
 	WaitingOnID pgtype.UUID `json:"waiting_on_id"`
@@ -2213,8 +2261,8 @@ type ListRunQueueWaitsRow struct {
 
 // One row per (queued backlog issue, predecessor) pair where the predecessor is
 // still unfinished or running, so the issue waits on it.
-func (q *Queries) ListRunQueueWaits(ctx context.Context, workspaceID pgtype.UUID) ([]ListRunQueueWaitsRow, error) {
-	rows, err := q.db.Query(ctx, listRunQueueWaits, workspaceID)
+func (q *Queries) ListRunQueueWaits(ctx context.Context, arg ListRunQueueWaitsParams) ([]ListRunQueueWaitsRow, error) {
+	rows, err := q.db.Query(ctx, listRunQueueWaits, arg.WorkspaceID, arg.ScopeMode, arg.ScopeUserID)
 	if err != nil {
 		return nil, err
 	}

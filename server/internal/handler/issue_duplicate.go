@@ -142,8 +142,12 @@ func (h *Handler) ListIssueDuplicates(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, issue.WorkspaceID)
+	if !ok {
+		return
+	}
 	prefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
-	fill := h.newStatusCategoryFiller(r.Context(), issue.WorkspaceID)
+	fill := h.newViewerStatusCategoryFiller(r.Context(), issue.WorkspaceID, scope)
 
 	var duplicateOf *IssueResponse
 	if issue.Status == issuestatus.Cancelled && issue.DuplicateOfIssueID.Valid {
@@ -152,6 +156,8 @@ func (h *Handler) ListIssueDuplicates(w http.ResponseWriter, r *http.Request) {
 			WorkspaceID: issue.WorkspaceID,
 		})
 		switch {
+		case err == nil && !scope.Allows(original.ProjectID):
+			// A hidden original answers like a missing one.
 		case err == nil:
 			resp := issueToResponse(original, prefix)
 			fill(&resp)
@@ -166,6 +172,8 @@ func (h *Handler) ListIssueDuplicates(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.Queries.ListIssueDuplicates(r.Context(), db.ListIssueDuplicatesParams{
 		WorkspaceID: issue.WorkspaceID,
 		IssueID:     issue.ID,
+		ScopeMode:   scope.Mode(),
+		ScopeUserID: scope.UserID(),
 	})
 	if err != nil {
 		slog.Warn("list issue duplicates failed", append(logger.RequestAttrs(r), "error", err, "issue_id", uuidToString(issue.ID))...)

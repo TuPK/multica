@@ -168,6 +168,15 @@ func (h *Handler) PreviewIssueTrigger(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	scopeWorkspace, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace id")
+	if !ok {
+		return
+	}
+	scope, ok := h.viewerScope(w, r, scopeWorkspace)
+	if !ok {
+		return
+	}
+
 	// Resolve the prospective assignee once — a malformed id is a deterministic
 	// 400, never a silent miscount.
 	var (
@@ -218,7 +227,8 @@ func (h *Handler) PreviewIssueTrigger(w http.ResponseWriter, r *http.Request) {
 		// Mirror CreateIssue's workflow handling: the starting column's
 		// handoff when no assignee was picked. (MUL-7420)
 		if req.ProjectID != nil && *req.ProjectID != "" {
-			if projectUUID, err := util.ParseUUID(*req.ProjectID); err == nil {
+			// A project the viewer cannot see contributes no workflow, like a missing one.
+			if projectUUID, err := util.ParseUUID(*req.ProjectID); err == nil && scope.Allows(projectUUID) {
 				if def, project, err := issueworkflow.ForIssue(r.Context(), h.Queries, wsUUID, projectUUID, candidate.AssigneeType, candidate.AssigneeID); err == nil && def != nil {
 					if step, ok := def.Step(candidate.Status); ok && step.HandsOff() && !hasNewAssignee {
 						if t, id, ok := issueworkflow.ResolveHandler(step, project, actorType, parseUUID(actorID)); ok {
@@ -244,8 +254,8 @@ func (h *Handler) PreviewIssueTrigger(w http.ResponseWriter, r *http.Request) {
 			ID:          issueUUID,
 			WorkspaceID: parseUUID(workspaceID),
 		})
-		if err != nil {
-			continue // cross-workspace / unknown id contributes no trigger
+		if err != nil || !scope.Allows(loaded.ProjectID) {
+			continue // cross-workspace, unknown or hidden id contributes no trigger
 		}
 
 		post := loaded

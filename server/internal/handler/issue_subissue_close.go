@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
@@ -19,8 +20,9 @@ import (
 // sub-issues with nobody to advance them. Nothing blocks when the parent is
 // already closed, when the target is not a closed status, or when every
 // sub-issue is closed. A member's close is their own decision and is not
-// checked here; callers decide that by the actor type.
-func (h *Handler) openSubIssuesBlockingClose(ctx context.Context, parent db.Issue, target string) ([]string, error) {
+// checked here; callers decide that by the actor type. A sub-issue the viewer
+// cannot see is neither listed nor counted, as if it did not exist.
+func (h *Handler) openSubIssuesBlockingClose(ctx context.Context, parent db.Issue, target string, scope projectaccess.Scope) ([]string, error) {
 	if !isClosedStatus(ctx, h, parent.WorkspaceID, target) || isClosedStatus(ctx, h, parent.WorkspaceID, parent.Status) {
 		return nil, nil
 	}
@@ -30,7 +32,7 @@ func (h *Handler) openSubIssuesBlockingClose(ctx context.Context, parent db.Issu
 	}
 	var open []string
 	for _, child := range children {
-		if !isClosedStatus(ctx, h, child.WorkspaceID, child.Status) {
+		if scope.Allows(child.ProjectID) && !isClosedStatus(ctx, h, child.WorkspaceID, child.Status) {
 			open = append(open, h.issueIdentifier(ctx, child))
 		}
 	}

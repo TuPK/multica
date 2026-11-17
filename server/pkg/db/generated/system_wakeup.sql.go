@@ -129,16 +129,30 @@ SELECT count(*) FROM issue_wakeup w JOIN issue i ON i.id=w.issue_id AND i.worksp
 WHERE w.workspace_id= $1 AND w.system_rule= $2 AND w.customized_at IS NOT NULL
  AND i.status NOT IN ('done','cancelled')
  AND NOT EXISTS(SELECT 1 FROM issue_status s WHERE s.workspace_id=i.workspace_id AND s.key=i.status AND s.category IN ('done','closed'))
+ -- projectaccess:scope
+ AND ($3::text = 'all'
+    OR (i.project_id IS NULL AND $3::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $4::uuid)
+    OR ($3::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 `
 
 type CountCustomizedSystemWakeupsParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 	SystemRule  pgtype.Text `json:"system_rule"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
 }
 
 // Open issues whose rule a person changed, for the workspace settings page.
 func (q *Queries) CountCustomizedSystemWakeups(ctx context.Context, arg CountCustomizedSystemWakeupsParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countCustomizedSystemWakeups, arg.WorkspaceID, arg.SystemRule)
+	row := q.db.QueryRow(ctx, countCustomizedSystemWakeups,
+		arg.WorkspaceID,
+		arg.SystemRule,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

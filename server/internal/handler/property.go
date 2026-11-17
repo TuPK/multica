@@ -417,9 +417,15 @@ func (h *Handler) ListProperties(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	includeArchived := r.URL.Query().Get("include_archived") == "true"
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 	rows, err := h.Queries.ListIssueProperties(r.Context(), db.ListIssuePropertiesParams{
 		WorkspaceID:     wsUUID,
 		IncludeArchived: includeArchived,
+		ScopeMode:       scope.Mode(),
+		ScopeUserID:     scope.UserID(),
 	})
 	if err != nil {
 		slog.Warn("ListIssueProperties failed", append(logger.RequestAttrs(r), "error", err)...)

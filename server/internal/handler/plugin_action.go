@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,7 +12,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/server/internal/logger"
 	"github.com/multica-ai/multica/server/internal/middleware"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
 	"github.com/multica-ai/multica/server/internal/workspaceguard"
@@ -237,6 +240,25 @@ func (h *Handler) pluginIssueForUser(w http.ResponseWriter, r *http.Request, cal
 	if !ok {
 		publicapiv1.WriteProblem(w, r, http.StatusNotFound, "not_found", "issue not found")
 		return db.Issue{}, false
+	}
+	// A call made for a user reaches what that user sees (spec 7.1 rule 3). An
+	// install token acting as the plugin has no viewer and keeps the standing
+	// workspace reach the installation was granted.
+	if caller.UserID.Valid {
+		scope, err := projectaccess.ForViewer(r.Context(), h.Queries, caller.WorkspaceID, caller.UserID)
+		if errors.Is(err, projectaccess.ErrNotMember) {
+			publicapiv1.WriteProblem(w, r, http.StatusNotFound, "not_found", "issue not found")
+			return db.Issue{}, false
+		}
+		if err != nil {
+			slog.Error("compute plugin project scope", append(logger.RequestAttrs(r), "error", err)...)
+			publicapiv1.WriteProblem(w, r, http.StatusServiceUnavailable, "scope_unavailable", "visibility could not be determined")
+			return db.Issue{}, false
+		}
+		if !scope.Allows(issue.ProjectID) {
+			publicapiv1.WriteProblem(w, r, http.StatusNotFound, "not_found", "issue not found")
+			return db.Issue{}, false
+		}
 	}
 	// A callback grant issued about one issue reaches only that issue. Without
 	// this the grant is worth every issue in the workspace its actor can see,

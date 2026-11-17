@@ -1845,7 +1845,12 @@ func (h *Handler) PreviewIssueWorkflowBrief(w http.ResponseWriter, r *http.Reque
 	projectName := ""
 	if req.ProjectID != "" {
 		if id, err := parseUUIDString(req.ProjectID); err == nil {
-			if p, err := h.Queries.GetProjectInWorkspace(ctx, db.GetProjectInWorkspaceParams{ID: id, WorkspaceID: wsUUID}); err == nil {
+			scope, ok := h.viewerScope(w, r, wsUUID)
+			if !ok {
+				return
+			}
+			// A project the caller cannot see is named like a missing one.
+			if p, err := h.Queries.GetProjectInWorkspace(ctx, db.GetProjectInWorkspaceParams{ID: id, WorkspaceID: wsUUID}); err == nil && scope.Allows(p.ID) {
 				projectName = p.Title
 			}
 		}
@@ -1948,6 +1953,14 @@ func (h *Handler) PreviewWorkflowHandoff(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		if _, err := h.Queries.GetProjectInWorkspace(r.Context(), db.GetProjectInWorkspaceParams{ID: projectID, WorkspaceID: issue.WorkspaceID}); err != nil {
+			writeError(w, http.StatusNotFound, "project not found")
+			return
+		}
+		scope, ok := h.viewerScope(w, r, issue.WorkspaceID)
+		if !ok {
+			return
+		}
+		if !scope.Allows(projectID) {
 			writeError(w, http.StatusNotFound, "project not found")
 			return
 		}

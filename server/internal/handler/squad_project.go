@@ -67,6 +67,10 @@ func (h *Handler) AssignSquadProject(w http.ResponseWriter, r *http.Request) {
 	}
 	wsUUID := squad.WorkspaceID
 	ctx := r.Context()
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 
 	tx, err := h.TxStarter.Begin(ctx)
 	if err != nil {
@@ -86,6 +90,10 @@ func (h *Handler) AssignSquadProject(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeError(w, http.StatusInternalServerError, "failed to assign project")
+		return
+	}
+	if !scope.Allows(project.ID) {
+		writeError(w, http.StatusNotFound, "project not found")
 		return
 	}
 

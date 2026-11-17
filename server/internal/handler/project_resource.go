@@ -528,10 +528,14 @@ func (h *Handler) loadProjectForResource(w http.ResponseWriter, r *http.Request,
 	if !ok {
 		return db.Project{}, false
 	}
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return db.Project{}, false
+	}
 	project, err := h.Queries.GetProjectInWorkspace(r.Context(), db.GetProjectInWorkspaceParams{
 		ID: projectUUID, WorkspaceID: wsUUID,
 	})
-	if err != nil {
+	if err != nil || !scope.Allows(project.ID) {
 		writeError(w, http.StatusNotFound, "project not found")
 		return db.Project{}, false
 	}

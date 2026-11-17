@@ -219,14 +219,23 @@ SELECT p.id, p.workspace_id, p.name, p.type, p.description, p.config, p.position
         SELECT COUNT(*) FROM issue i
         WHERE i.workspace_id = p.workspace_id
           AND i.properties ? p.id::text
+          -- projectaccess:scope
+          AND ($1::text = 'all'
+            OR (i.project_id IS NULL AND $1::text <> 'guest')
+            OR EXISTS (SELECT 1 FROM project_member scope_pm
+                       WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $2::uuid)
+            OR ($1::text = 'member'
+                AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
     )::bigint AS usage_count
 FROM issue_property p
-WHERE p.workspace_id = $1::uuid
-  AND ($2::bool OR p.archived_at IS NULL)
+WHERE p.workspace_id = $3::uuid
+  AND ($4::bool OR p.archived_at IS NULL)
 ORDER BY p.position ASC, LOWER(p.name) ASC
 `
 
 type ListIssuePropertiesParams struct {
+	ScopeMode       string      `json:"scope_mode"`
+	ScopeUserID     pgtype.UUID `json:"scope_user_id"`
 	WorkspaceID     pgtype.UUID `json:"workspace_id"`
 	IncludeArchived bool        `json:"include_archived"`
 }
@@ -250,7 +259,12 @@ type ListIssuePropertiesRow struct {
 // value for this property. `properties ? id` is a seq scan today; fine at
 // the 20-definition / small-workspace scale this feature targets.
 func (q *Queries) ListIssueProperties(ctx context.Context, arg ListIssuePropertiesParams) ([]ListIssuePropertiesRow, error) {
-	rows, err := q.db.Query(ctx, listIssueProperties, arg.WorkspaceID, arg.IncludeArchived)
+	rows, err := q.db.Query(ctx, listIssueProperties,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+		arg.WorkspaceID,
+		arg.IncludeArchived,
+	)
 	if err != nil {
 		return nil, err
 	}

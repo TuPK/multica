@@ -48,6 +48,13 @@ LEFT JOIN agent source ON source.id=w.filter_agent_id AND source.workspace_id=w.
  WHERE w.workspace_id= @workspace_id AND w.enabled
   AND i.status NOT IN ('done','cancelled')
   AND NOT EXISTS(SELECT 1 FROM issue_status s WHERE s.workspace_id=i.workspace_id AND s.key=i.status AND s.category IN ('done','closed'))
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 )
 SELECT issue_id,id,agent_id,agent_name,kind,mode,event_types,filter_actor_type,filter_actor_id,filter_actor_name,filter_task_id,filter_agent_name,interval_seconds,cron_expression,timezone,next_fire_at,condition,active_count,event_count
 FROM ranked WHERE rank<=3 ORDER BY issue_id,rank;
@@ -279,6 +286,13 @@ FROM issue_wakeup w JOIN issue i ON i.id=w.issue_id AND i.workspace_id=w.workspa
 WHERE w.workspace_id= @workspace_id AND NOT w.enabled AND w.paused_reason IN ('loop','rate','max_fires')
  AND i.status NOT IN ('done','cancelled')
  AND NOT EXISTS(SELECT 1 FROM issue_status s WHERE s.workspace_id=i.workspace_id AND s.key=i.status AND s.category IN ('done','closed'))
+ -- projectaccess:scope
+ AND (sqlc.arg(scope_mode)::text = 'all'
+   OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+   OR EXISTS (SELECT 1 FROM project_member scope_pm
+              WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+   OR (sqlc.arg(scope_mode)::text = 'member'
+       AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ORDER BY w.updated_at DESC LIMIT 200;
 
 -- name: FindWaitingIssueRun :one

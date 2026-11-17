@@ -385,10 +385,17 @@ SELECT EXISTS (
 
 -- name: ListIssueDuplicates :many
 SELECT * FROM issue
-WHERE workspace_id = sqlc.arg('workspace_id')
-  AND duplicate_of_issue_id = sqlc.arg('issue_id')::uuid
-  AND status = 'cancelled'
-ORDER BY created_at ASC, id ASC;
+WHERE issue.workspace_id = sqlc.arg('workspace_id')
+  AND issue.duplicate_of_issue_id = sqlc.arg('issue_id')::uuid
+  AND issue.status = 'cancelled'
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (issue.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
+ORDER BY issue.created_at ASC, issue.id ASC;
 
 -- name: GetIssueRefInWorkspace :one
 -- The summary a duplicate's response carries for its original (MUL-7349).
@@ -397,8 +404,9 @@ WHERE id = $1 AND workspace_id = $2;
 
 -- name: ListIssueRefsInWorkspace :many
 -- GetIssueRefInWorkspace for a page: every original the page's duplicates
--- point at, in one read.
-SELECT id, number, title, status FROM issue
+-- point at, in one read. project_id lets the caller drop an original the viewer
+-- cannot see.
+SELECT id, number, title, status, project_id FROM issue
 WHERE workspace_id = sqlc.arg('workspace_id')
   AND id = ANY(sqlc.arg('ids')::uuid[]);
 
@@ -678,7 +686,14 @@ WHERE i.workspace_id = $1
              AND a.workspace_id = $1
              AND a.owner_id     = sqlc.narg('involves_user_id')::uuid
     ))
-  );
+  )
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')));
 
 -- name: ListChildIssues :many
 -- Order by number ASC so sub-issues display in stable creation order
@@ -891,6 +906,20 @@ WHERE i.workspace_id = $1
   AND i.run_queued
   AND i.status = 'backlog'
   AND i.triage_state IS NULL
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (p.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = p.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = p.project_id AND scope_p.access = 'workspace')))
   AND (
     NOT (p.status IN ('done', 'cancelled') OR EXISTS (
       SELECT 1 FROM issue_status cs

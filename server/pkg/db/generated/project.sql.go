@@ -117,11 +117,24 @@ func (q *Queries) ClearSquadProjects(ctx context.Context, arg ClearSquadProjects
 
 const countIssuesByProject = `-- name: CountIssuesByProject :one
 SELECT count(*) FROM issue
-WHERE project_id = $1
+WHERE issue.project_id = $1
+AND ($2::text = 'all'
+    OR (issue.project_id IS NULL AND $2::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = $3::uuid)
+    OR ($2::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
 `
 
-func (q *Queries) CountIssuesByProject(ctx context.Context, projectID pgtype.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countIssuesByProject, projectID)
+type CountIssuesByProjectParams struct {
+	ProjectID   pgtype.UUID `json:"project_id"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+}
+
+// projectaccess:scope
+func (q *Queries) CountIssuesByProject(ctx context.Context, arg CountIssuesByProjectParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countIssuesByProject, arg.ProjectID, arg.ScopeMode, arg.ScopeUserID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -384,18 +397,32 @@ const listProjectsForSquad = `-- name: ListProjectsForSquad :many
 SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
 WHERE workspace_id = $1::uuid
   AND $2::uuid = ANY(squad_ids)
+AND ($3::text = 'all'
+    OR (project.id IS NULL AND $3::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = project.id AND scope_pm.user_id = $4::uuid)
+    OR ($3::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
 ORDER BY created_at, id
 `
 
 type ListProjectsForSquadParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 	SquadID     pgtype.UUID `json:"squad_id"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
 }
 
 // The projects a squad is assigned to. A squad's active workflow changes what
 // its room shows for each of them, so their pages are announced.
+// projectaccess:scope
 func (q *Queries) ListProjectsForSquad(ctx context.Context, arg ListProjectsForSquadParams) ([]Project, error) {
-	rows, err := q.db.Query(ctx, listProjectsForSquad, arg.WorkspaceID, arg.SquadID)
+	rows, err := q.db.Query(ctx, listProjectsForSquad,
+		arg.WorkspaceID,
+		arg.SquadID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}

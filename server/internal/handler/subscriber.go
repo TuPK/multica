@@ -114,6 +114,9 @@ func (h *Handler) SubscribeToIssue(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "target user is not a member of this workspace")
 		return
 	}
+	if !h.assigneeSeesProject(w, r, issue.WorkspaceID, pgtype.Text{String: targetUserType, Valid: true}, parseUUID(targetUserID), issue.ProjectID) {
+		return
+	}
 
 	// Explicit action, so this CLEARS any earlier opt-out tombstone — the user
 	// is overriding their own unsubscribe. Rule-driven subscribes deliberately

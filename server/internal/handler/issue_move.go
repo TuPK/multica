@@ -7,6 +7,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -182,12 +183,22 @@ func (h *Handler) issueMoveAnchorPosition(
 	if id == nil {
 		return nil, true
 	}
+	scope, ok := h.viewerScope(w, r, workspaceID)
+	if !ok {
+		return nil, false
+	}
+	// An anchor the caller cannot see answers like a missing one.
+	args := []any{workspaceID, *id}
+	addArg := func(v any) string {
+		args = append(args, v)
+		return "$" + strconv.Itoa(len(args))
+	}
 	var position float64
 	err := h.DB.QueryRow(r.Context(), `
 		SELECT position
 		FROM issue
 		WHERE workspace_id = $1 AND id = $2
-	`, workspaceID, *id).Scan(&position)
+		`+scopeCondition(scope, "issue.project_id", addArg), args...).Scan(&position)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeError(w, http.StatusBadRequest, "move anchor not found in this workspace")

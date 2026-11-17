@@ -217,9 +217,14 @@ func (h *Handler) CreateIssueView(w http.ResponseWriter, r *http.Request) {
 		}
 		// The project must exist in this workspace — a view on a foreign or
 		// deleted project would be unreachable and could leak across tenants.
+		// A project the viewer cannot see answers like a missing one.
+		scope, ok := h.viewerScope(w, r, wsUUID)
+		if !ok {
+			return
+		}
 		if _, err := h.Queries.GetProjectInWorkspace(r.Context(), db.GetProjectInWorkspaceParams{
 			ID: projUUID, WorkspaceID: wsUUID,
-		}); err != nil {
+		}); err != nil || !scope.Allows(projUUID) {
 			writeError(w, http.StatusNotFound, "project not found")
 			return
 		}

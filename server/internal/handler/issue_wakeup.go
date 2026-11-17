@@ -90,9 +90,14 @@ func (h *Handler) ListWorkspaceWakeups(w http.ResponseWriter, r *http.Request) {
 			isAdmin = roleAllowed(manager.Role, "owner", "admin")
 		}
 	}
+	viewer, ok := h.viewerScope(w, r, member.WorkspaceID)
+	if !ok {
+		return
+	}
 	result, err := h.Queries.ListWorkspaceWakeups(r.Context(), db.ListWorkspaceWakeupsParams{
 		WorkspaceID: parseUUID(workspaceID), AgentIds: ids, MemberID: managerID, IsAdmin: isAdmin,
 		Scope: scope, Kind: kind, Source: source, AgentID: agentID, Search: search, PageLimit: int32(limit), PageOffset: int32(page),
+		ScopeMode: viewer.Mode(), ScopeUserID: viewer.UserID(),
 	})
 	if err != nil {
 		wakeupError(w, err)
@@ -172,7 +177,13 @@ func (h *Handler) ListWorkspaceWakeupSummaries(w http.ResponseWriter, r *http.Re
 	for id := range allowed {
 		ids = append(ids, parseUUID(id))
 	}
-	rows, err := h.Queries.ListWorkspaceWakeupSummaryRows(r.Context(), db.ListWorkspaceWakeupSummaryRowsParams{WorkspaceID: parseUUID(workspaceID), AgentIds: ids})
+	viewer, ok := h.viewerScope(w, r, member.WorkspaceID)
+	if !ok {
+		return
+	}
+	rows, err := h.Queries.ListWorkspaceWakeupSummaryRows(r.Context(), db.ListWorkspaceWakeupSummaryRowsParams{
+		WorkspaceID: parseUUID(workspaceID), AgentIds: ids, ScopeMode: viewer.Mode(), ScopeUserID: viewer.UserID(),
+	})
 	if err != nil {
 		wakeupError(w, err)
 		return
@@ -472,7 +483,16 @@ func (h *Handler) ListPausedWakeups(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.workspaceMember(w, r, workspaceID); !ok {
 		return
 	}
-	rows, err := h.Queries.ListPausedWakeupIssues(r.Context(), parseUUID(workspaceID))
+	wsUUID := parseUUID(workspaceID)
+	viewer, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
+	rows, err := h.Queries.ListPausedWakeupIssues(r.Context(), db.ListPausedWakeupIssuesParams{
+		WorkspaceID: wsUUID,
+		ScopeMode:   viewer.Mode(),
+		ScopeUserID: viewer.UserID(),
+	})
 	if err != nil {
 		wakeupError(w, err)
 		return

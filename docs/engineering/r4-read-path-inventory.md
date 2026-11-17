@@ -20,7 +20,7 @@ To add a read path: add a row in the same commit that adds the path.
 
 ## Scanned readers
 
-Count: 421 scanned units: 150 sql-query, 246 go-call, 19 raw-sql, 6 both go-call and raw-sql (counted once; listed in its own table).
+Count: 423 scanned units: 150 sql-query, 247 go-call, 20 raw-sql, 6 both go-call and raw-sql (counted once; listed in its own table).
 Produced by running the test against an empty table and counting the failure lines:
 `cd server && go test -count=1 ./internal/projectaccess 2>&1 | grep -c 'not listed'`.
 
@@ -76,44 +76,44 @@ How units are found:
 | `server/pkg/db/queries/initiative.sql` | `MinIssuePositionInStatus` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `ChildIssueProgress` | sql-query | scoped | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `CountCreatedIssueAssignees` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue.sql` | `CountIssues` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/issue.sql` | `CountIssues` | sql-query | scoped | SQL carries the marker; no Go caller today (ListIssues builds its own SQL) |
 | `server/pkg/db/queries/issue.sql` | `CountIssuesInTriage` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `CountIssuesUpTo` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `CountUnfinishedIssues` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue.sql` | `DeleteIssue` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/issue.sql` | `DeleteIssue` | sql-query | exempt | (a) delete by id from deleteIssuesAndCollectAttachmentURLs only, after DeleteIssue (loadIssueForUser) or BatchDeleteIssues (Scope.Allows) |
 | `server/pkg/db/queries/issue.sql` | `FindActiveDuplicateIssue` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `FindRecentAutopilotDuplicateIssue` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `GetIssue` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `GetIssueByNumber` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue.sql` | `GetIssueByOrigin` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue.sql` | `GetIssueGCStatus` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/issue.sql` | `GetIssueByOrigin` | sql-query | exempt | (b) internal worker, no viewer: TaskService quick-create completion and SquadHandoff service look up the issue a task produced |
+| `server/pkg/db/queries/issue.sql` | `GetIssueGCStatus` | sql-query | exempt | (b) internal worker, no viewer: daemon GC check (daemon token, Handler.GetIssueGCCheck) |
 | `server/pkg/db/queries/issue.sql` | `GetIssueInWorkspace` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue.sql` | `GetIssueMetadataInWorkspace` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/issue.sql` | `GetIssueMetadataInWorkspace` | sql-query | exempt | (a) reload after a conditional write; runs only after loadIssueForUser in SetIssueMetadataKey and DeleteIssueMetadataKey |
 | `server/pkg/db/queries/issue.sql` | `GetIssueRefInWorkspace` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue.sql` | `GetIssueTriageState` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/issue.sql` | `GetIssueTriageState` | sql-query | exempt | (b) internal worker, no viewer: TaskService queue door checks the issue before it inserts a task |
 | `server/pkg/db/queries/issue.sql` | `IssueHasDuplicates` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `ListChildIssues` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `ListChildrenByParents` | sql-query | scoped | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue.sql` | `ListIssueDuplicates` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue.sql` | `ListIssueGCStatuses` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/issue.sql` | `ListIssueDuplicates` | sql-query | scoped | SQL carries the marker; test TestRestrictedIssueSingleReadsAnswerMissing |
+| `server/pkg/db/queries/issue.sql` | `ListIssueGCStatuses` | sql-query | exempt | (b) internal worker, no viewer: daemon GC check (daemon token, Handler.BatchIssueGCCheck) |
 | `server/pkg/db/queries/issue.sql` | `ListIssueRefsInWorkspace` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue.sql` | `ListIssues` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/issue.sql` | `ListIssues` | sql-query | scoped | SQL carries the marker; no Go caller today (Handler.ListIssues builds its own SQL with Fragment) |
 | `server/pkg/db/queries/issue.sql` | `ListIssuesByIDsInWorkspace` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `ListOpenIssues` | sql-query | scoped | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue.sql` | `ListReleasableQueuedIssues` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue.sql` | `ListRunQueueWaits` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue.sql` | `LockIssueForAttachmentWrite` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue.sql` | `LockIssueForChannelMediaBind` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue.sql` | `LockIssueForDelete` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue.sql` | `LockIssueForDescriptionUpdate` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue.sql` | `LockIssuesForDuplicateMark` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue.sql` | `UpdateIssue` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue.sql` | `UpdateIssueStatus` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/issue.sql` | `ListReleasableQueuedIssues` | sql-query | exempt | (b) internal worker, no viewer: run-queue promoter (scheduler job, queue listener, and the promote pass after a queue write) |
+| `server/pkg/db/queries/issue.sql` | `ListRunQueueWaits` | sql-query | scoped | SQL carries the marker for both the waiting issue and its predecessor; test TestRestrictedIssueListsOmitHidden |
+| `server/pkg/db/queries/issue.sql` | `LockIssueForAttachmentWrite` | sql-query | exempt | (a) lock only, called from attachmentOwnerLockAttempt for DeleteAttachment, which runs attachmentInViewerScope first; test TestRestrictedIssueAttachmentsAnswerMissing |
+| `server/pkg/db/queries/issue.sql` | `LockIssueForChannelMediaBind` | sql-query | exempt | (b) internal worker, no viewer: channel engine BindMediaRefs binds media of an external channel message to the issue the channel session is attached to |
+| `server/pkg/db/queries/issue.sql` | `LockIssueForDelete` | sql-query | exempt | (a) lock by id from deleteIssuesAndCollectAttachmentURLs only, after DeleteIssue (loadIssueForUser) or BatchDeleteIssues (Scope.Allows) |
+| `server/pkg/db/queries/issue.sql` | `LockIssueForDescriptionUpdate` | sql-query | todo | Handler callers are checked: updateIssueAtomically runs after loadIssueForUser or Scope.Allows. Open: the source-context callers (service IssueService.Create, TaskService.EnqueueQuickCreateTask) take the issue from a capture built in handler/source_context.go, outside the issue write group |
+| `server/pkg/db/queries/issue.sql` | `LockIssuesForDuplicateMark` | sql-query | exempt | (a) lock by id from lockAndCheckDuplicateMark only, inside UpdateIssue after loadIssueForUser and the Scope.Allows check of the target |
+| `server/pkg/db/queries/issue.sql` | `UpdateIssue` | sql-query | todo | Issue handlers call it after loadIssueForUser or Scope.Allows (UpdateIssue, BatchUpdateIssues, promoteQueuedIssue is a worker). Open: viewer-triggered service callers outside the issue write group (proposal.go, initiative.go, flow engine through UpdateIssueStatus) are classified with their own rows |
+| `server/pkg/db/queries/issue.sql` | `UpdateIssueStatus` | sql-query | todo | Open: viewer-triggered callers outside the issue write group (service/proposal.go, service/initiative.go, handler/flow_engine*.go); workers (runtime_sweeper, proposal_expiry, qoder lifecycle, TaskService) are internal and need no viewer |
 | `server/pkg/db/queries/issue_label.sql` | `AttachLabelToIssue` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue_label.sql` | `DetachLabelFromIssue` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue_property.sql` | `CountIssuesUsingPropertyOptions` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue_property.sql` | `ListIssueProperties` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/issue_status.sql` | `CountIssuesUsingStatusKey` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/issue_property.sql` | `CountIssuesUsingPropertyOptions` | sql-query | exempt | Owner and admin only (Scope mode all): UpdateProperty gates on requirePropertyAdmin; the guard must count every issue |
+| `server/pkg/db/queries/issue_property.sql` | `ListIssueProperties` | sql-query | scoped | SQL carries the marker on the usage_count subquery; test TestRestrictedIssueListsOmitHidden |
+| `server/pkg/db/queries/issue_status.sql` | `CountIssuesUsingStatusKey` | sql-query | exempt | Owner and admin only (Scope mode all): ArchiveIssueStatus gates on loadIssueStatusForAdmin; the guard must count every issue |
 | `server/pkg/db/queries/issue_unread.sql` | `MarkIssueUnreadForSubscribers` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue_workflow.sql` | `CountProjectIssuesByStatus` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue_workflow.sql` | `CountSquadIssuesByStatus` | sql-query | todo | Reads issue or project; no visibility filter today |
@@ -122,7 +122,7 @@ How units are found:
 | `server/pkg/db/queries/issue_workflow.sql` | `LockProjectForWorkflowChange` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue_workflow.sql` | `RemapProjectIssueStatus` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue_workflow.sql` | `RemapSquadIssueStatus` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/knowledge_project_file.sql` | `ListProjectDocSources` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/knowledge_project_file.sql` | `ListProjectDocSources` | sql-query | exempt | (b) the daemon project-docs sync (ListDaemonProjectDocSources, daemon token, no viewer) |
 | `server/pkg/db/queries/metric.sql` | `BuiltinIssueDeliveryStats` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/metric.sql` | `BuiltinIssuesReopened` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/org_change.sql` | `CountIssuesWithTitle` | sql-query | todo | Reads issue or project; no visibility filter today |
@@ -130,15 +130,15 @@ How units are found:
 | `server/pkg/db/queries/platform_usage_daily.sql` | `CountUsageIssuesCreated` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/platform_usage_daily.sql` | `CountUsageIssuesTotal` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/pr_automation.sql` | `MoveIssueFromPullRequests` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/project.sql` | `CountIssuesByProject` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/project.sql` | `DeleteProject` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/project.sql` | `CountIssuesByProject` | sql-query | scoped | SQL carries the marker; test TestRestrictedProjectCountsOmitHiddenIssues |
+| `server/pkg/db/queries/project.sql` | `DeleteProject` | sql-query | exempt | (a) a write by id that Handler.DeleteProject runs only after its Scope.Allows check; test TestRestrictedProjectRoutesAnswerMissing |
 | `server/pkg/db/queries/project.sql` | `GetOpenSquadProject` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/project.sql` | `GetProjectInWorkspace` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/project.sql` | `GetProjectIssueStats` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/project.sql` | `ListProjects` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/project.sql` | `ListProjectsForSquad` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/project.sql` | `ListProjectsForSquad` | sql-query | scoped | SQL carries the marker; test TestRestrictedProjectCountsOmitHiddenIssues |
 | `server/pkg/db/queries/project.sql` | `LockProjectForChatSessionCreate` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/project.sql` | `LockProjectForDelete` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/project.sql` | `LockProjectForDelete` | sql-query | exempt | (a) a lock by id that Handler.DeleteProject takes only after its Scope.Allows check; test TestRestrictedProjectRoutesAnswerMissing |
 | `server/pkg/db/queries/project_access.sql` | `CountProjectIssues` | sql-query | exempt | Owner and admin only; runs after the handler checked the Scope; counts for the audit row |
 | `server/pkg/db/queries/proposal.sql` | `GetProposalWithIssue` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/proposal.sql` | `ListProposals` | sql-query | todo | Reads issue or project; no visibility filter today |
@@ -161,15 +161,15 @@ How units are found:
 | `server/pkg/db/queries/subscriber.sql` | `HasAncestorOptOut` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/subscriber.sql` | `ListSubscribedIssueIDs` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/subscriber.sql` | `UnsubscribeFromIssueSubtree` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/system_wakeup.sql` | `CountCustomizedSystemWakeups` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/system_wakeup.sql` | `CountCustomizedSystemWakeups` | sql-query | scoped | SQL carries the marker; test TestSystemWakeupsOmitHiddenIssues |
 | `server/pkg/db/queries/system_wakeup.sql` | `ListParentsWithoutSystemWakeup` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/task_usage.sql` | `ListDashboardAgentRunTime` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/task_usage.sql` | `ListDashboardFailuresByAgent` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/task_usage.sql` | `ListDashboardFailuresDaily` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/task_usage.sql` | `ListDashboardRunTimeDaily` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/wakeup.sql` | `CreateWakeupTask` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/wakeup.sql` | `ListPausedWakeupIssues` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/wakeup.sql` | `ListWorkspaceWakeupSummaryRows` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/wakeup.sql` | `ListPausedWakeupIssues` | sql-query | scoped | SQL carries the marker; test TestRestrictedIssueListsOmitHidden |
+| `server/pkg/db/queries/wakeup.sql` | `ListWorkspaceWakeupSummaryRows` | sql-query | scoped | SQL carries the marker; test TestRestrictedIssueListsOmitHidden |
 | `server/pkg/db/queries/wakeup.sql` | `LockWakeupIssue` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/workspace_delete.sql` | `DeleteWorkspaceIssueRoots` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/workspace_delete.sql` | `DeleteWorkspaceLeafData` | sql-query | todo | Reads issue or project; no visibility filter today |
@@ -179,7 +179,7 @@ How units are found:
 | `server/pkg/db/queries/workspace_delete.sql` | `LockWorkspaceTaskOwnerIssues` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/workspace_export.sql` | `ListIssuesForExport` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/workspace_export.sql` | `ListProjectsForExport` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/workspace_wakeup.sql` | `ListWorkspaceWakeups` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/workspace_wakeup.sql` | `ListWorkspaceWakeups` | sql-query | scoped | SQL carries the marker in both branches of the union (member rules and system rules); test TestRestrictedIssueListsOmitHidden |
 
 ### Go call sites
 
@@ -217,6 +217,7 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/dashboard.go` | `Handler.GetDashboardFailuresDaily` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/dashboard.go` | `Handler.GetDashboardRunTimeDaily` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/file.go` | `Handler.UploadFile` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/file.go` | `Handler.attachmentInViewerScope` | go-call | scoped | Scope.Allows on the issue of the attachment, directly or through its comment, answers like a missing attachment; test TestRestrictedIssueAttachmentsAnswerMissing |
 | `server/internal/handler/file.go` | `Handler.attachmentOwnerLockAttempt` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/file.go` | `Handler.createAttachmentWithinQuota` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/flow_api.go` | `Handler.StartIssueFlow` | go-call | todo | Calls a reader query; no visibility filter today |
@@ -258,45 +259,46 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/inbox_archive.go` | `Handler.ListArchivedInboxPage` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/initiative.go` | `Handler.initiativeDetail` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/initiative.go` | `initiativeReads.view` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue.go` | `Handler.BatchDeleteIssues` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue.go` | `Handler.BatchUpdateIssues` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/issue.go` | `Handler.BatchDeleteIssues` | go-call | scoped | Each id is read and kept only when Scope.Allows, so a hidden id is skipped like a missing one; test TestRestrictedIssueWritesAnswerMissing (BatchDeleteIssues) |
+| `server/internal/handler/issue.go` | `Handler.BatchUpdateIssues` | go-call | scoped | Scope.Allows on every issue, parent and destination project; a move drops assignee and watchers who cannot see it; tests TestRestrictedIssueWritesAnswerMissing, TestUpdateIssueMovesDropWatchers, TestBatchUpdateAssigneeMustSeeProject |
 | `server/internal/handler/issue.go` | `Handler.ChildIssueProgress` | go-call | scoped | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue.go` | `Handler.CreateIssue` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/issue.go` | `Handler.CreateIssue` | go-call | scoped | A project or parent the creator cannot see answers 404 project not found or 400 like a missing parent; test TestCreateIssueChecksCreatorAndProject |
 | `server/internal/handler/issue.go` | `Handler.ListChildIssues` | go-call | scoped | Calls a reader query; no visibility filter today |
 | `server/internal/handler/issue.go` | `Handler.ListChildrenByParents` | go-call | scoped | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue.go` | `Handler.QueryIssues` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue.go` | `Handler.QuickCreateIssue` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue.go` | `Handler.UpdateIssue` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue.go` | `Handler.deleteIssuesAndCollectAttachmentURLs` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue.go` | `Handler.loadDuplicateOriginals` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue.go` | `Handler.updateIssueAtomically` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue.go` | `updateIssueStoppingWakeups` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_duplicate.go` | `Handler.ListIssueDuplicates` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_duplicate.go` | `lockAndCheckDuplicateMark` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_metadata.go` | `Handler.DeleteIssueMetadataKey` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_metadata.go` | `Handler.SetIssueMetadataKey` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_queue.go` | `Handler.BatchSetRunQueue` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_queue.go` | `Handler.ListRunQueueWaits` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_queue.go` | `Handler.PreviewRunQueue` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_queue.go` | `Handler.PromoteQueuedIssues` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_queue.go` | `Handler.SetIssueRunQueue` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_queue.go` | `Handler.runQueueWouldCycle` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_queue.go` | `Handler.validateRunAfter` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_status.go` | `Handler.ArchiveIssueStatus` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_subissue_close.go` | `Handler.openSubIssuesBlockingClose` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_system_wakeup.go` | `Handler.childDoneSystemWakeup` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_system_wakeup.go` | `Handler.workspaceSystemWakeups` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_triage_guard.go` | `Handler.validateBatchTriageLocks` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_trigger.go` | `Handler.PreviewIssueTrigger` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_unmoved_run.go` | `Handler.reconcileUnmovedWorkflowRun` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_view.go` | `Handler.CreateIssueView` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_view_preference.go` | `Handler.resolvePreferenceScope` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_wakeup.go` | `Handler.ListPausedWakeups` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_wakeup.go` | `Handler.ListWorkspaceWakeupSummaries` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_wakeup.go` | `Handler.ListWorkspaceWakeups` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/issue.go` | `Handler.QueryIssues` | go-call | scoped | Delegates to ListIssues; test TestRestrictedIssueListsOmitHidden |
+| `server/internal/handler/issue.go` | `Handler.QuickCreateIssue` | go-call | scoped | A project or parent the requester cannot see is refused before the task is enqueued; test TestQuickCreateIssueRespectsProject |
+| `server/internal/handler/issue.go` | `Handler.UpdateIssue` | go-call | scoped | loadIssueForUser, then Scope.Allows for the parent, duplicate target and destination project; a move drops assignee and watchers who cannot see it; tests TestRestrictedIssueWritesAnswerMissing, TestUpdateIssueMovesDropWatchers |
+| `server/internal/handler/issue.go` | `Handler.deleteIssuesAndCollectAttachmentURLs` | go-call | exempt | (a) delete by id after the caller checked visibility: DeleteIssue (loadIssueForUser) and BatchDeleteIssues (Scope.Allows per id); it returns nothing to the viewer |
+| `server/internal/handler/issue.go` | `Handler.loadDuplicateOriginals` | go-call | scoped | With a viewer scope an original that fails Scope.Allows stays nil, so the duplicate mark is left off; test TestRestrictedIssueSingleReadsAnswerMissing |
+| `server/internal/handler/issue.go` | `Handler.updateIssueAtomically` | go-call | exempt | (a) locks and re-reads by id after UpdateIssue (loadIssueForUser) or BatchUpdateIssues (Scope.Allows) accepted the issue |
+| `server/internal/handler/issue.go` | `updateIssueStoppingWakeups` | go-call | scoped | On a project move it clears an assignee and unsubscribes watchers who fail memberSeesProject in the same transaction; test TestUpdateIssueMovesDropWatchers |
+| `server/internal/handler/issue_duplicate.go` | `Handler.ListIssueDuplicates` | go-call | scoped | loadIssueForUser, then the original through Scope.Allows and the duplicates through the SQL marker; test TestRestrictedIssueSingleReadsAnswerMissing |
+| `server/internal/handler/issue_duplicate.go` | `lockAndCheckDuplicateMark` | go-call | exempt | (a) lock by id inside UpdateIssue, which loaded the issue with loadIssueForUser and refused a target that fails Scope.Allows first; test TestRestrictedIssueWritesAnswerMissing (duplicate mark target) |
+| `server/internal/handler/issue_metadata.go` | `Handler.DeleteIssueMetadataKey` | go-call | scoped | loadIssueForUser answers a hidden issue like a missing one before the write; test TestRestrictedIssueWritesAnswerMissing |
+| `server/internal/handler/issue_metadata.go` | `Handler.SetIssueMetadataKey` | go-call | scoped | loadIssueForUser answers a hidden issue like a missing one before the write; test TestRestrictedIssueWritesAnswerMissing |
+| `server/internal/handler/issue_queue.go` | `Handler.BatchSetRunQueue` | go-call | scoped | decodeRunQueueBatch keeps only issues that pass Scope.Allows; test TestRestrictedIssueWritesAnswerMissing |
+| `server/internal/handler/issue_queue.go` | `Handler.ListRunQueueWaits` | go-call | scoped | viewerScope passed to the SQL marker; test TestRestrictedIssueListsOmitHidden |
+| `server/internal/handler/issue_queue.go` | `Handler.PreviewRunQueue` | go-call | scoped | decodeRunQueueBatch keeps only issues that pass Scope.Allows; test TestRestrictedIssueWritesAnswerMissing |
+| `server/internal/handler/issue_queue.go` | `Handler.PromoteQueuedIssues` | go-call | exempt | (b) internal worker, no viewer: the issue queue listener (cmd/server/issue_queue_listeners.go) and the issue_queue_sweep scheduler job; SetIssueRunQueue and BatchSetRunQueue call it and discard the count |
+| `server/internal/handler/issue_queue.go` | `Handler.SetIssueRunQueue` | go-call | scoped | loadIssueForUser, then validateRunAfter with the viewer Scope; test TestRestrictedIssueWritesAnswerMissing (run queue wait) |
+| `server/internal/handler/issue_queue.go` | `Handler.decodeRunQueueBatch` | go-call | scoped | Reads the ids and keeps only issues that pass Scope.Allows; test TestRestrictedIssueWritesAnswerMissing |
+| `server/internal/handler/issue_queue.go` | `Handler.runQueueWouldCycle` | go-call | scoped | A path is not followed through an issue that fails Scope.Allows; test TestRunQueueWaitsIgnoreHiddenIssues |
+| `server/internal/handler/issue_queue.go` | `Handler.validateRunAfter` | go-call | scoped | A wait that fails Scope.Allows counts as missing; test TestRestrictedIssueWritesAnswerMissing (run queue wait) |
+| `server/internal/handler/issue_status.go` | `Handler.ArchiveIssueStatus` | go-call | exempt | Owner and admin only (Scope mode all): loadIssueStatusForAdmin gates the route, and the issue count is the one an owner or admin sees |
+| `server/internal/handler/issue_subissue_close.go` | `Handler.openSubIssuesBlockingClose` | go-call | scoped | A sub-issue that fails Scope.Allows is neither counted nor named; test TestRestrictedIssueWritesDoNotNameHiddenProject (openSubIssuesBlockingClose) |
+| `server/internal/handler/issue_system_wakeup.go` | `Handler.childDoneSystemWakeup` | go-call | scoped | Sub-issues are filtered with Scope.Allows before they are counted or named; test TestSystemWakeupsOmitHiddenIssues |
+| `server/internal/handler/issue_system_wakeup.go` | `Handler.workspaceSystemWakeups` | go-call | scoped | The customized count passes the Scope to the SQL marker; test TestSystemWakeupsOmitHiddenIssues |
+| `server/internal/handler/issue_triage_guard.go` | `Handler.validateBatchTriageLocks` | go-call | scoped | Counts only triage entries that pass Scope.Allows, so a hidden entry is skipped like a missing id; test TestBatchTriageLocksRespectVisibility |
+| `server/internal/handler/issue_trigger.go` | `Handler.PreviewIssueTrigger` | go-call | scoped | A hidden issue or project contributes no trigger, like a missing one; test TestRestrictedIssueListsOmitHidden |
+| `server/internal/handler/issue_unmoved_run.go` | `Handler.reconcileUnmovedWorkflowRun` | go-call | exempt | (b) internal worker, no viewer: CompleteTask (daemon token) re-runs the step handler after a run ends; it returns nothing to a caller |
+| `server/internal/handler/issue_view.go` | `Handler.CreateIssueView` | go-call | scoped | A project the viewer cannot see answers 404 like a missing one; test TestRestrictedProjectViewsAnswerMissing |
+| `server/internal/handler/issue_view_preference.go` | `Handler.resolvePreferenceScope` | go-call | scoped | A project the viewer cannot see answers 404 like a missing one; test TestRestrictedProjectViewsAnswerMissing |
+| `server/internal/handler/issue_wakeup.go` | `Handler.ListPausedWakeups` | go-call | scoped | viewerScope passed to the SQL marker; test TestRestrictedIssueListsOmitHidden |
+| `server/internal/handler/issue_wakeup.go` | `Handler.ListWorkspaceWakeupSummaries` | go-call | scoped | viewerScope passed to the SQL marker; test TestRestrictedIssueListsOmitHidden |
+| `server/internal/handler/issue_wakeup.go` | `Handler.ListWorkspaceWakeups` | go-call | scoped | viewerScope passed to the SQL marker; test TestRestrictedIssueListsOmitHidden |
 | `server/internal/handler/issue_workflow.go` | `Handler.DeleteIssueWorkflow` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_workflow.go` | `Handler.PreviewIssueWorkflowBrief` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/issue_workflow.go` | `Handler.PreviewWorkflowHandoff` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/issue_workflow.go` | `Handler.PreviewIssueWorkflowBrief` | go-call | scoped | A project the caller cannot see is not named in the brief, like a missing one; test TestRestrictedIssueWritesDoNotNameHiddenProject |
+| `server/internal/handler/issue_workflow.go` | `Handler.PreviewWorkflowHandoff` | go-call | scoped | loadIssueForUser, then the project param passes Scope.Allows and answers 404 like a missing project; test TestRestrictedIssueWritesDoNotNameHiddenProject |
 | `server/internal/handler/issue_workflow.go` | `Handler.SetProjectWorkflow` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/issue_workflow.go` | `Handler.UpdateIssueWorkflow` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/issue_workflow.go` | `Handler.loadProjectForWorkflowWrite` | go-call | todo | Calls a reader query; no visibility filter today |
@@ -309,17 +311,17 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/label.go` | `Handler.DetachLabel` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/org_map.go` | `Handler.GetCompanyRequestUsage` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/pin.go` | `Handler.CreatePin` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/plugin_action.go` | `Handler.resolvePluginIssue` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/plugin_action.go` | `Handler.resolvePluginIssue` | go-call | exempt | (a) only caller is pluginIssueForUser, which applies Scope.Allows for the caller's user before the issue is used; test TestRestrictedPluginIssueAnswersMissing |
 | `server/internal/handler/pr_auto_complete.go` | `Handler.maybeAutoCompleteIssue` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/project.go` | `Handler.DeleteProject` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/project.go` | `Handler.DeleteProject` | go-call | scoped | viewerScope and Scope.Allows answer 404 like a missing project; test TestRestrictedProjectRoutesAnswerMissing |
 | `server/internal/handler/project.go` | `Handler.GetProject` | go-call | scoped | Calls a reader query; no visibility filter today |
 | `server/internal/handler/project.go` | `Handler.ListProjects` | go-call | scoped | Calls a reader query; no visibility filter today |
 | `server/internal/handler/project.go` | `Handler.SearchProjects` | go-call | scoped | Calls a reader query; no visibility filter today |
-| `server/internal/handler/project.go` | `Handler.UpdateProject` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/project.go` | `Handler.UpdateProject` | go-call | scoped | viewerScope and Scope.Allows answer 404 like a missing project; test TestRestrictedProjectRoutesAnswerMissing |
 | `server/internal/handler/project.go` | `Handler.loadProjectIssueStats` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/project_resource.go` | `Handler.loadProjectForResource` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/project_resource.go` | `Handler.resolveClaimProjectContext` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/property.go` | `Handler.ListProperties` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/project_resource.go` | `Handler.loadProjectForResource` | go-call | scoped | viewerScope and Scope.Allows answer 404 like a missing project for every project resource route; test TestRestrictedProjectRoutesAnswerMissing |
+| `server/internal/handler/project_resource.go` | `Handler.resolveClaimProjectContext` | go-call | exempt | (b) the daemon task claim (ClaimTask paths in daemon.go) loads the project of the claimed task; no viewer |
+| `server/internal/handler/property.go` | `Handler.ListProperties` | go-call | scoped | viewerScope passed to the ListIssueProperties marker; test TestRestrictedIssueListsOmitHidden |
 | `server/internal/handler/property.go` | `Handler.UpdateProperty` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/proposal.go` | `Handler.GetProposal` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/proposal.go` | `Handler.ListProposals` | go-call | todo | Calls a reader query; no visibility filter today |
@@ -332,7 +334,7 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/squad.go` | `Handler.ListSquadMemberStatus` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/squad_briefing.go` | `secretaryDirectiveBriefing` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/squad_directory.go` | `Handler.ListSquadDirectory` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/squad_project.go` | `Handler.AssignSquadProject` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/squad_project.go` | `Handler.AssignSquadProject` | go-call | scoped | Scope.Allows after LockProjectForWorkflowChange answers 404 like a missing project; test TestRestrictedAssignSquadProjectAnswersMissing |
 | `server/internal/handler/squad_workflow.go` | `Handler.squadWorkflowPlan` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/squad_workflow.go` | `remapSquadIssues` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/subscriber.go` | `Handler.ListSubscribedIssueIDs` | go-call | todo | Calls a reader query; no visibility filter today |
@@ -341,7 +343,7 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/workspace.go` | `deleteWorkspaceTasks` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/workspace.go` | `lockWorkspaceTaskOwners` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/integrations/channel/engine/session.go` | `ChatSession.bindMediaRefs` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/integrations/channel/engine/session.go` | `dbSessionQueries.LockIssueForChannelMediaBind` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/integrations/channel/engine/session.go` | `dbSessionQueries.LockIssueForChannelMediaBind` | go-call | exempt | (b) internal worker, no viewer: the channel engine media binder locks the bound issue and discards the row |
 | `server/internal/issueguard/duplicate.go` | `LockAndFindActiveDuplicate` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/issueguard/duplicate.go` | `LockAndFindRecentAutopilotDuplicate` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/issueworkflow/issueworkflow.go` | `ForIssue` | go-call | todo | Calls a reader query; no visibility filter today |
@@ -391,8 +393,8 @@ Grouped by file; a function appears once per file.
 | `server/internal/service/knowledge.go` | `KnowledgeService.Status` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/knowledge_audit.go` | `KnowledgeService.requestReview` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/knowledge_autoenable.go` | `KnowledgeService.RunAutoEnable` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/service/knowledge_project_docs.go` | `KnowledgeService.ProjectDocSources` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/service/knowledge_project_docs.go` | `KnowledgeService.projectForDocs` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/service/knowledge_project_docs.go` | `KnowledgeService.ProjectDocSources` | go-call | exempt | (b) the daemon project-docs sync (ListDaemonProjectDocSources, daemon token, no viewer) |
+| `server/internal/service/knowledge_project_docs.go` | `KnowledgeService.projectForDocs` | go-call | exempt | (b) the daemon project-docs sync (PostDaemonProjectDocsManifest, PostDaemonProjectDocs; daemon token, no viewer) |
 | `server/internal/service/metrics_builtin.go` | `MetricService.windowReadings` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/org_map.go` | `LoadOrgMap` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/proposal.go` | `ProposalService.Resubmit` | go-call | todo | Calls a reader query; no visibility filter today |
@@ -439,21 +441,22 @@ Grouped by file; a function appears once per file.
 | File | Function | Kind | Status | Note |
 | --- | --- | --- | --- | --- |
 | `server/internal/handler/issue.go` | `Handler.ListGroupedIssues` | raw-sql | scoped | Inline SQL reads issue or project; no visibility filter today |
-| `server/internal/handler/issue.go` | `buildSearchQuery` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
-| `server/internal/handler/issue_move.go` | `Handler.issueMoveAnchorPosition` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
-| `server/internal/handler/issue_table_advanced.go` | `issueTableFilterCompiler.fieldPredicate` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
-| `server/internal/handler/issue_table_facets.go` | `Handler.ListIssueTableFacets` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
+| `server/internal/handler/issue.go` | `buildSearchQuery` | raw-sql | scoped | scopeCondition on the issue_matches CTE; comments reach the result only through it; test TestRestrictedIssueListsOmitHidden |
+| `server/internal/handler/issue_move.go` | `Handler.issueMoveAnchorPosition` | raw-sql | scoped | The anchor query carries scopeCondition, so a hidden anchor answers like a missing one; test TestRestrictedIssueWritesAnswerMissing (move anchor) |
+| `server/internal/handler/issue_table_advanced.go` | `issueTableFilterCompiler.fieldPredicate` | raw-sql | scoped | Predicate is AND-ed onto the scopeCondition that compileIssueTableQuery puts first, so it sees visible rows only; tests TestRestrictedIssueListsOmitHidden |
+| `server/internal/handler/issue_table_facets.go` | `Handler.ListIssueTableFacets` | raw-sql | scoped | Counts run on compileIssueTableQuery output, which carries scopeCondition; test TestRestrictedIssueListsOmitHidden |
 | `server/internal/projectaccess/service.go` | `Service.SwitchAccess` | go-call | exempt | Owner and admin only; the handler checked the Scope before calling |
 | `server/internal/projectaccess/service.go` | `Service.Revoke` | go-call | exempt | Owner and admin only; the handler checked the Scope before calling |
 | `server/internal/projectaccess/service.go` | `Service.Grant` | go-call | exempt | Owner and admin only; the handler checked the Scope before calling |
 | `server/internal/projectaccess/scope.go` | `ForViewer` | go-call | exempt | Computes the Scope; reads the viewer own member row and grants |
-| `server/internal/handler/issue_table_facets.go` | `Handler.issueTableBaseFacetQuery` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
-| `server/internal/handler/issue_table_facets.go` | `Handler.issueTableFacetQuery` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
-| `server/internal/handler/issue_table_group.go` | `Handler.ListIssueTableGroups` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
-| `server/internal/handler/issue_table_group.go` | `Handler.resolveIssueTableGroup` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
-| `server/internal/handler/issue_table_group.go` | `resolvedIssueTableGroup.contextExpression` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
-| `server/internal/handler/issue_table_query.go` | `Handler.compileIssueTableQuery` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
-| `server/internal/handler/issue_table_rows.go` | `Handler.queryIssueTableRows` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
+| `server/internal/handler/issue_table_facets.go` | `Handler.issueTableBaseFacetQuery` | raw-sql | scoped | Runs on compileIssueTableQuery output, which carries scopeCondition; test TestRestrictedIssueListsOmitHidden |
+| `server/internal/handler/issue_table_facets.go` | `Handler.issueTableFacetQuery` | raw-sql | scoped | Runs on compileIssueTableQuery output, which carries scopeCondition; test TestRestrictedIssueListsOmitHidden |
+| `server/internal/handler/issue_table_group.go` | `Handler.ListIssueTableGroups` | raw-sql | scoped | Groups run on compileIssueTableQuery output; the parent sort key and context use scopeCondition; tests TestRestrictedIssueListsOmitHidden, TestParentLookupDoesNotLeakHiddenParent |
+| `server/internal/handler/issue_table_group.go` | `Handler.resolveIssueTableGroup` | raw-sql | scoped | Project title sort reads the project of a row that already passed the scope; the parent sort key moved to sortExpression, which applies scopeCondition; test TestParentLookupDoesNotLeakHiddenParent |
+| `server/internal/handler/issue_table_group.go` | `resolvedIssueTableGroup.contextExpression` | raw-sql | scoped | Parent lookup applies scopeCondition to the parent row; hidden parent gives an empty context; test TestParentLookupDoesNotLeakHiddenParent |
+| `server/internal/handler/issue_table_group.go` | `resolvedIssueTableGroup.sortExpression` | raw-sql | scoped | Parent sort key applies scopeCondition to the parent row; hidden parent sorts like a missing one; test TestParentLookupDoesNotLeakHiddenParent |
+| `server/internal/handler/issue_table_query.go` | `Handler.compileIssueTableQuery` | raw-sql | scoped | Puts scopeCondition into every compiled WHERE; tests TestRestrictedIssueListsOmitHidden |
+| `server/internal/handler/issue_table_rows.go` | `Handler.queryIssueTableRows` | raw-sql | scoped | Rows and hierarchy come from compileIssueTableQuery output; duplicate originals go through the viewer filler; test TestRestrictedIssueListsOmitHidden |
 | `server/internal/handler/project.go` | `buildProjectSearchQuery` | raw-sql | scoped | Inline SQL reads issue or project; no visibility filter today |
 | `server/internal/issueposition/position.go` | `NextTopPosition` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
 | `server/internal/projectaccess/scope.go` | `<file-level>` | raw-sql | exempt | Defines the shared predicate text (Fragment); not a read path |
@@ -467,7 +470,7 @@ Grouped by file; a function appears once per file.
 | File | Function | Kind | Status | Note |
 | --- | --- | --- | --- | --- |
 | `server/internal/handler/issue.go` | `Handler.ListIssues` | go-call+raw-sql | scoped | Calls a reader query and has inline SQL; no visibility filter today |
-| `server/internal/handler/issue_move.go` | `Handler.MoveIssue` | go-call+raw-sql | todo | Calls a reader query and has inline SQL; no visibility filter today |
+| `server/internal/handler/issue_move.go` | `Handler.MoveIssue` | go-call+raw-sql | scoped | loadIssueForUser for the issue, Scope.Allows for the destination, scopeCondition for the anchors; tests TestMoveIssueNeedsBothProjects and TestRestrictedIssueWritesAnswerMissing |
 | `server/internal/service/issue_wakeup.go` | `IssueWakeupService.Disable` | go-call+raw-sql | todo | Calls a reader query and has inline SQL; no visibility filter today |
 | `server/internal/service/issue_wakeup.go` | `IssueWakeupService.EditInstruction` | go-call+raw-sql | todo | Calls a reader query and has inline SQL; no visibility filter today |
 | `server/internal/service/issue_wakeup.go` | `IssueWakeupService.save` | go-call+raw-sql | todo | Calls a reader query and has inline SQL; no visibility filter today |
@@ -494,12 +497,12 @@ Readers the scanner cannot see. The test checks only that Status is a known valu
 | `server/cmd/server/listeners.go` | registerListeners | manual | todo | Issue events go to ScopeWorkspace, so every workspace member receives them |
 | `server/cmd/server` | other `*listeners.go` files | manual | todo | Activity, subscriber, notification, brief and unread listeners read issue data on events |
 | `server/internal/realtime` | broadcaster.go and redis_relay.go fan-out | manual | todo | Workspace-wide rooms; no per-person audience for issue events |
-| `server/internal/handler/search.go` | server-side search | manual | todo | Searches issues of the whole workspace |
+| `server/internal/handler/search.go` | server-side search | manual | scoped | SearchIssues and SearchProjects apply the Scope (scopeCondition); test TestSearchServerSideOmitsHidden |
 | `server/internal/handler/search_index.go` | manifest, snapshot, changes | manual | todo | Client index sync covers the whole workspace |
 | `server/pkg/db/queries/search_index.sql` | search index queries | manual | todo | Queries behind the index sync |
 | `packages/core/search-index` | client search index | manual | todo | Local copy of workspace issues; cannot revoke single rows |
-| `server/internal/handler/hub_sync.go` | hub sync | manual | todo | Read through loaders and queries; check when P41.3 starts |
-| `server/internal/handler/knowledge_project_docs.go` | project knowledge docs | manual | todo | Project-scoped documents |
+| `server/internal/handler/hub_sync.go` | hub sync | manual | exempt | (b) hub source sync (SyncHubSourceAuto worker, SyncHubSource admin trigger); reads no issue or project row, hub items are skills and plugin packages |
+| `server/internal/handler/knowledge_project_docs.go` | project knowledge docs | manual | exempt | (b) the daemon project-docs sync routes under /api/daemon (daemon token, no viewer) |
 | `server/internal/handler/squad_project.go` | squad project | manual | todo | Reads project data |
 | `server/internal/workspaceexport` | workspace export | manual | todo | Exports every issue and project of the workspace |
 | `server/internal/usagesnapshot` | usage snapshot | manual | todo | Aggregates across issues and projects |

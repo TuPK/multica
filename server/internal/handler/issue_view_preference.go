@@ -38,9 +38,13 @@ func (h *Handler) resolvePreferenceScope(
 		if !ok {
 			return pgtype.UUID{}, false
 		}
+		scope, ok := h.viewerScope(w, r, wsUUID)
+		if !ok {
+			return pgtype.UUID{}, false
+		}
 		if _, err := h.Queries.GetProjectInWorkspace(r.Context(), db.GetProjectInWorkspaceParams{
 			ID: projUUID, WorkspaceID: wsUUID,
-		}); err != nil {
+		}); err != nil || !scope.Allows(projUUID) {
 			writeError(w, http.StatusNotFound, "project not found")
 			return pgtype.UUID{}, false
 		}

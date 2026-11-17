@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/service"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -59,7 +60,7 @@ type systemWakeupResponse struct {
 // childDoneSystemWakeup describes what the parent is waiting for. It returns
 // nil when there is nothing left to wait for: no sub-issues, every sub-issue
 // closed, or the parent itself closed.
-func (h *Handler) childDoneSystemWakeup(r *http.Request, parent db.Issue) (*systemWakeupResponse, error) {
+func (h *Handler) childDoneSystemWakeup(r *http.Request, parent db.Issue, scope projectaccess.Scope) (*systemWakeupResponse, error) {
 	ctx := r.Context()
 	categories := map[string]string{}
 	closed := func(status string) (bool, error) {
@@ -76,9 +77,19 @@ func (h *Handler) childDoneSystemWakeup(r *http.Request, parent db.Issue) (*syst
 	if isClosed, err := closed(parent.Status); err != nil || isClosed {
 		return nil, err
 	}
-	children, err := h.Queries.ListChildIssues(ctx, parent.ID)
-	if err != nil || len(children) == 0 {
+	allChildren, err := h.Queries.ListChildIssues(ctx, parent.ID)
+	if err != nil {
 		return nil, err
+	}
+	// Sub-issues the viewer cannot see are neither counted nor named.
+	children := make([]db.Issue, 0, len(allChildren))
+	for _, c := range allChildren {
+		if scope.Allows(c.ProjectID) {
+			children = append(children, c)
+		}
+	}
+	if len(children) == 0 {
+		return nil, nil
 	}
 	open := make([]db.Issue, 0, len(children))
 	var stage pgtype.Int4
@@ -162,9 +173,9 @@ func (h *Handler) childDoneSystemWakeup(r *http.Request, parent db.Issue) (*syst
 	return out, nil
 }
 
-func (h *Handler) listSystemWakeups(r *http.Request, issue db.Issue) ([]systemWakeupResponse, error) {
+func (h *Handler) listSystemWakeups(r *http.Request, issue db.Issue, scope projectaccess.Scope) ([]systemWakeupResponse, error) {
 	rules := []systemWakeupResponse{}
-	childDone, err := h.childDoneSystemWakeup(r, issue)
+	childDone, err := h.childDoneSystemWakeup(r, issue, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +190,11 @@ func (h *Handler) ListIssueSystemWakeups(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
-	rules, err := h.listSystemWakeups(r, issue)
+	scope, ok := h.viewerScope(w, r, issue.WorkspaceID)
+	if !ok {
+		return
+	}
+	rules, err := h.listSystemWakeups(r, issue, scope)
 	if err != nil {
 		slog.Warn("list system wakeups failed", "error", err, "issue_id", uuidToString(issue.ID))
 		writeError(w, 500, "could not load system wakeups")
@@ -237,7 +252,11 @@ func (h *Handler) UpdateIssueSystemWakeup(w http.ResponseWriter, r *http.Request
 		writeError(w, 500, "could not save system wakeup")
 		return
 	}
-	rules, err := h.listSystemWakeups(r, issue)
+	scope, ok := h.viewerScope(w, r, issue.WorkspaceID)
+	if !ok {
+		return
+	}
+	rules, err := h.listSystemWakeups(r, issue, scope)
 	if err != nil {
 		writeError(w, 500, "could not load system wakeups")
 		return
@@ -256,12 +275,15 @@ type workspaceSystemWakeupResponse struct {
 	Customized int64 `json:"customized"`
 }
 
-func (h *Handler) workspaceSystemWakeups(r *http.Request, workspaceID pgtype.UUID) ([]workspaceSystemWakeupResponse, error) {
+func (h *Handler) workspaceSystemWakeups(r *http.Request, workspaceID pgtype.UUID, scope projectaccess.Scope) ([]workspaceSystemWakeupResponse, error) {
 	ws, err := h.Queries.GetWorkspace(r.Context(), workspaceID)
 	if err != nil {
 		return nil, err
 	}
-	customized, err := h.Queries.CountCustomizedSystemWakeups(r.Context(), db.CountCustomizedSystemWakeupsParams{WorkspaceID: workspaceID, SystemRule: pgtype.Text{String: service.SystemRuleChildDone, Valid: true}})
+	customized, err := h.Queries.CountCustomizedSystemWakeups(r.Context(), db.CountCustomizedSystemWakeupsParams{
+		WorkspaceID: workspaceID, SystemRule: pgtype.Text{String: service.SystemRuleChildDone, Valid: true},
+		ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -278,7 +300,11 @@ func (h *Handler) ListWorkspaceSystemWakeups(w http.ResponseWriter, r *http.Requ
 	if _, ok := h.workspaceMember(w, r, workspaceID); !ok {
 		return
 	}
-	rules, err := h.workspaceSystemWakeups(r, parseUUID(workspaceID))
+	scope, ok := h.viewerScope(w, r, parseUUID(workspaceID))
+	if !ok {
+		return
+	}
+	rules, err := h.workspaceSystemWakeups(r, parseUUID(workspaceID), scope)
 	if err != nil {
 		writeError(w, 500, "could not load system wakeups")
 		return
@@ -318,7 +344,11 @@ func (h *Handler) UpdateWorkspaceSystemWakeup(w http.ResponseWriter, r *http.Req
 		writeError(w, 500, "could not save system wakeup")
 		return
 	}
-	rules, err := h.workspaceSystemWakeups(r, parseUUID(workspaceID))
+	scope, ok := h.viewerScope(w, r, parseUUID(workspaceID))
+	if !ok {
+		return
+	}
+	rules, err := h.workspaceSystemWakeups(r, parseUUID(workspaceID), scope)
 	if err != nil {
 		writeError(w, 500, "could not load system wakeups")
 		return

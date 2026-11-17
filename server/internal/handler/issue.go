@@ -29,6 +29,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/middleware"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/qoderruntime"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
@@ -418,12 +419,12 @@ func validateIssueEnum(w http.ResponseWriter, field, value string, allowed []str
 // page full of custom ones costs one catalog read rather than one per row. The
 // Resolver includes ARCHIVED statuses, because an issue left on an archived
 // status still belongs in its category's column. (MUL-6243)
-func (h *Handler) fillStatusCategories(ctx context.Context, wsID pgtype.UUID, resps []IssueResponse) {
+func (h *Handler) fillStatusCategories(ctx context.Context, wsID pgtype.UUID, scope projectaccess.Scope, resps []IssueResponse) {
 	var originals []pgtype.UUID
 	for i := range resps {
 		originals = appendDuplicateOriginal(originals, resps[i].Status, resps[i].duplicateOfIssueID)
 	}
-	fill := h.newStatusCategoryFiller(ctx, wsID, originals...)
+	fill := h.newViewerStatusCategoryFiller(ctx, wsID, scope, originals...)
 	for i := range resps {
 		fill(&resps[i])
 	}
@@ -440,16 +441,27 @@ func (h *Handler) fillStatusCategories(ctx context.Context, wsID pgtype.UUID, re
 // up front, the way labelsByIssue loads a page's labels; an original that was
 // not passed still resolves, one read per distinct original. (MUL-7349)
 func (h *Handler) newStatusCategoryFiller(ctx context.Context, wsID pgtype.UUID, originals ...pgtype.UUID) func(*IssueResponse) {
+	return h.statusCategoryFiller(ctx, wsID, nil, originals)
+}
+
+// newViewerStatusCategoryFiller is newStatusCategoryFiller for responses a
+// viewer reads: a duplicate original in a project the viewer cannot see is left
+// off, as if it did not exist.
+func (h *Handler) newViewerStatusCategoryFiller(ctx context.Context, wsID pgtype.UUID, scope projectaccess.Scope, originals ...pgtype.UUID) func(*IssueResponse) {
+	return h.statusCategoryFiller(ctx, wsID, &scope, originals)
+}
+
+func (h *Handler) statusCategoryFiller(ctx context.Context, wsID pgtype.UUID, scope *projectaccess.Scope, originals []pgtype.UUID) func(*IssueResponse) {
 	resolver := issuestatus.NewResolver(wsID)
 	refs := duplicateOriginals{}
-	h.loadDuplicateOriginals(ctx, wsID, refs, originals)
+	h.loadDuplicateOriginals(ctx, wsID, scope, refs, originals)
 	return func(resp *IssueResponse) {
 		if resp == nil {
 			return
 		}
 		// Every response that resolves its status also resolves its duplicate
 		// mark, so the two never disagree about which endpoints carry them.
-		h.fillDuplicateOf(ctx, wsID, resp, refs)
+		h.fillDuplicateOf(ctx, wsID, scope, resp, refs)
 		if resp.StatusCategory != "" {
 			return
 		}
@@ -491,8 +503,9 @@ func appendDuplicateOriginal(originals []pgtype.UUID, status string, id pgtype.U
 	return originals
 }
 
-// loadDuplicateOriginals reads every id not yet in refs in one query.
-func (h *Handler) loadDuplicateOriginals(ctx context.Context, wsID pgtype.UUID, refs duplicateOriginals, ids []pgtype.UUID) {
+// loadDuplicateOriginals reads every id not yet in refs in one query. With a
+// scope, an original the viewer cannot see stays nil, like a missing one.
+func (h *Handler) loadDuplicateOriginals(ctx context.Context, wsID pgtype.UUID, scope *projectaccess.Scope, refs duplicateOriginals, ids []pgtype.UUID) {
 	var missing []pgtype.UUID
 	for _, id := range ids {
 		if _, seen := refs[id]; !seen {
@@ -512,6 +525,9 @@ func (h *Handler) loadDuplicateOriginals(ctx context.Context, wsID pgtype.UUID, 
 		return
 	}
 	for i := range rows {
+		if scope != nil && !scope.Allows(rows[i].ProjectID) {
+			continue
+		}
 		refs[rows[i].ID] = &rows[i]
 	}
 }
@@ -519,12 +535,12 @@ func (h *Handler) loadDuplicateOriginals(ctx context.Context, wsID pgtype.UUID, 
 // fillDuplicateOf resolves a duplicate mark to its original (MUL-7349),
 // through refs so a page's originals cost one read (see
 // newStatusCategoryFiller). A missing original leaves DuplicateOf unset.
-func (h *Handler) fillDuplicateOf(ctx context.Context, wsID pgtype.UUID, resp *IssueResponse, refs duplicateOriginals) {
+func (h *Handler) fillDuplicateOf(ctx context.Context, wsID pgtype.UUID, scope *projectaccess.Scope, resp *IssueResponse, refs duplicateOriginals) {
 	id := resp.duplicateOfIssueID
 	if !id.Valid {
 		return
 	}
-	h.loadDuplicateOriginals(ctx, wsID, refs, []pgtype.UUID{id})
+	h.loadDuplicateOriginals(ctx, wsID, scope, refs, []pgtype.UUID{id})
 	row := refs[id]
 	if row == nil {
 		return
@@ -881,7 +897,7 @@ type searchResult struct {
 // case-insensitive LIKE semantics as the legacy query. The pipeline deliberately
 // trades the title, description, and comment content GIN fast paths for one
 // predictable pass over each relation within the selected workspace.
-func buildSearchQuery(phrase string, terms []string, queryNum int, hasNum bool, includeClosed bool, terminalStatusKeys []string) (string, []any) {
+func buildSearchQuery(phrase string, terms []string, queryNum int, hasNum bool, includeClosed bool, terminalStatusKeys []string, scope projectaccess.Scope) (string, []any) {
 	// Lowercase in Go so SQL only needs LOWER() on the column side.
 	phrase = strings.ToLower(phrase)
 	for i, term := range terms {
@@ -918,6 +934,10 @@ func buildSearchQuery(phrase string, terms []string, queryNum int, hasNum bool, 
 		// searchable instead of disappearing from the default result set.
 		terminalStatusesParam = nextArg(terminalStatusKeys)
 	}
+
+	// The scope condition binds its two parameters here so that limit and offset
+	// stay the last two arguments, where the caller fills them.
+	issueScope := scopeCondition(scope, "i.project_id", nextArg)
 
 	limitParam := nextArg(nil)
 	offsetParam := nextArg(nil)
@@ -964,6 +984,7 @@ func buildSearchQuery(phrase string, terms []string, queryNum int, hasNum bool, 
 	if terminalStatusesParam != "" {
 		issueWhere += fmt.Sprintf(" AND NOT (i.status = ANY(%s::text[]))", terminalStatusesParam)
 	}
+	issueWhere += "\n" + issueScope
 	// PostgreSQL otherwise inlines scalar LATERAL subqueries and recomputes the
 	// LOWER expressions for every flag. The OFFSET 0 fences cache the normalized
 	// title and description per issue row without materializing the whole CTE.
@@ -1225,6 +1246,10 @@ func (h *Handler) SearchIssues(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 	terms := splitSearchTerms(q)
 	queryNum, hasNum := parseQueryNumber(q)
 	var terminalStatusKeys []string
@@ -1241,7 +1266,7 @@ func (h *Handler) SearchIssues(w http.ResponseWriter, r *http.Request) {
 		terminalStatusKeys = resolvedKeys
 	}
 
-	sqlQuery, args := buildSearchQuery(q, terms, queryNum, hasNum, includeClosed, terminalStatusKeys)
+	sqlQuery, args := buildSearchQuery(q, terms, queryNum, hasNum, includeClosed, terminalStatusKeys, scope)
 	// Fill placeholder args: $4 = workspace_id, last two = limit, offset
 	args[3] = wsUUID
 	args[len(args)-2] = limit
@@ -1314,7 +1339,7 @@ func (h *Handler) SearchIssues(w http.ResponseWriter, r *http.Request) {
 	for _, sr := range results {
 		originals = appendDuplicateOriginal(originals, sr.issue.Status, sr.issue.DuplicateOfIssueID)
 	}
-	fillSearch := h.newStatusCategoryFiller(ctx, wsUUID, originals...)
+	fillSearch := h.newViewerStatusCategoryFiller(ctx, wsUUID, scope, originals...)
 	resp := make([]SearchIssueResponse, len(results))
 	for i, sr := range results {
 		sir := SearchIssueResponse{
@@ -1500,7 +1525,7 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 			originals = appendDuplicateOriginal(originals, issue.Status, issue.DuplicateOfIssueID)
 		}
 		labelsMap := h.labelsByIssue(ctx, wsUUID, ids)
-		fillOpen := h.newStatusCategoryFiller(ctx, wsUUID, originals...)
+		fillOpen := h.newViewerStatusCategoryFiller(ctx, wsUUID, scope, originals...)
 		resp := make([]IssueResponse, len(issues))
 		for i, issue := range issues {
 			resp[i] = openIssueRowToResponse(issue, prefix)
@@ -1934,7 +1959,7 @@ LIMIT %s OFFSET %s`, whereSql, orderBy, limitRef, offsetRef)
 		}
 		resp[i].Labels = &labels
 	}
-	h.fillStatusCategories(ctx, wsUUID, resp)
+	h.fillStatusCategories(ctx, wsUUID, scope, resp)
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"issues": resp,
@@ -2548,7 +2573,7 @@ ORDER BY
 	prefix := h.getIssuePrefix(ctx, wsUUID)
 	// One Resolver for the whole page — a per-row filler would query the
 	// catalog once per custom-status row. (MUL-6243)
-	fillGrouped := h.newStatusCategoryFiller(ctx, wsUUID, originals...)
+	fillGrouped := h.newViewerStatusCategoryFiller(ctx, wsUUID, scope, originals...)
 
 	groups := []IssueAssigneeGroupResponse{}
 	groupIndex := map[string]int{}
@@ -2589,9 +2614,13 @@ func (h *Handler) GetIssue(w http.ResponseWriter, r *http.Request) {
 	if h.refuseOutsideSecretaryTree(w, r, issue) {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, issue.WorkspaceID)
+	if !ok {
+		return
+	}
 	prefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
 	resp := issueToResponse(issue, prefix)
-	h.fillStatusCategory(r.Context(), issue.WorkspaceID, &resp)
+	h.newViewerStatusCategoryFiller(r.Context(), issue.WorkspaceID, scope)(&resp)
 	detailLabels := h.labelsByIssue(r.Context(), issue.WorkspaceID, []pgtype.UUID{issue.ID})[uuidToString(issue.ID)]
 	if detailLabels == nil {
 		detailLabels = []LabelResponse{}
@@ -2914,6 +2943,10 @@ func (h *Handler) QuickCreateIssue(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 
 	// Resolve the actor to the agent that will actually run the task. For
 	// agent picks that's the agent itself; for squad picks it's the squad's
@@ -3030,6 +3063,10 @@ func (h *Handler) QuickCreateIssue(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			return
 		}
+		if !scope.Allows(pid) {
+			writeError(w, http.StatusNotFound, "project not found")
+			return
+		}
 		if _, err := h.Queries.GetProjectInWorkspace(r.Context(), db.GetProjectInWorkspaceParams{
 			ID:          pid,
 			WorkspaceID: wsUUID,
@@ -3054,7 +3091,7 @@ func (h *Handler) QuickCreateIssue(w http.ResponseWriter, r *http.Request) {
 			ID:          pid,
 			WorkspaceID: wsUUID,
 		})
-		if err != nil || !parent.ID.Valid {
+		if err != nil || !parent.ID.Valid || !scope.Allows(parent.ProjectID) {
 			writeError(w, http.StatusBadRequest, "parent issue not found in this workspace")
 			return
 		}
@@ -3447,6 +3484,10 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 
 	status := req.Status
 	if status == "" {
@@ -3494,15 +3535,15 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 		// found" rather than a 403 that leaks nothing about which input was wrong.
 		// The row itself is no longer needed: the assignee gate keys on the actor's
 		// originator, not on a scope bound to the parent (MUL-6951).
-		if assigneeType.Valid && (assigneeType.String == "agent" || assigneeType.String == "squad") {
-			parent, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
-				ID:          parentIssueID,
-				WorkspaceID: wsUUID,
-			})
-			if err != nil || !parent.ID.Valid {
-				writeError(w, http.StatusBadRequest, "parent issue not found in this workspace")
-				return
-			}
+		// A parent the caller cannot see is as missing as one that does not exist.
+		parent, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
+			ID:          parentIssueID,
+			WorkspaceID: wsUUID,
+		})
+		agentAssignee := assigneeType.Valid && (assigneeType.String == "agent" || assigneeType.String == "squad")
+		if (err == nil && !scope.Allows(parent.ProjectID)) || (agentAssignee && (err != nil || !parent.ID.Valid)) {
+			writeError(w, http.StatusBadRequest, "parent issue not found in this workspace")
+			return
 		}
 	}
 
@@ -3514,6 +3555,10 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 	if req.ProjectID != nil {
 		id, ok := parseUUIDOrBadRequest(w, *req.ProjectID, "project_id")
 		if !ok {
+			return
+		}
+		if !scope.Allows(id) {
+			writeError(w, http.StatusNotFound, "project not found")
 			return
 		}
 		projectID = id
@@ -4169,6 +4214,10 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, prevIssue.WorkspaceID)
+	if !ok {
+		return
+	}
 	userID := requestUserID(r)
 	workspaceID := uuidToString(prevIssue.WorkspaceID)
 
@@ -4199,6 +4248,16 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	duplicateOfID, ok := parseDuplicateMark(w, &req, rawFields, prevIssue.ID)
 	if !ok {
 		return
+	}
+	if duplicateOfID.Valid {
+		// A target the caller cannot see answers like a missing one; the write
+		// itself still validates it under lock.
+		if target, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
+			ID: duplicateOfID, WorkspaceID: prevIssue.WorkspaceID,
+		}); err == nil && !scope.Allows(target.ProjectID) {
+			writeDuplicateMarkError(w, errDuplicateTargetNotFound)
+			return
+		}
 	}
 
 	// Pre-fill nullable fields (bare sqlc.narg) with current values
@@ -4318,10 +4377,11 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			// Validate parent exists in the same workspace.
-			if _, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
+			// A parent the caller cannot see is as missing as one that does not exist.
+			if newParent, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
 				ID:          newParentID,
 				WorkspaceID: prevIssue.WorkspaceID,
-			}); err != nil {
+			}); err != nil || !scope.Allows(newParent.ProjectID) {
 				writeError(w, http.StatusBadRequest, "parent issue not found in this workspace")
 				return
 			}
@@ -4360,10 +4420,6 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				writeError(w, http.StatusBadRequest, "project not found in this workspace")
-				return
-			}
-			scope, ok := h.viewerScope(w, r, prevIssue.WorkspaceID)
-			if !ok {
 				return
 			}
 			if !scope.Allows(projectUUID) {
@@ -4444,7 +4500,7 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		if params.Status.Valid {
 			target = params.Status.String
 		}
-		open, err := h.openSubIssuesBlockingClose(r.Context(), prevIssue, target)
+		open, err := h.openSubIssuesBlockingClose(r.Context(), prevIssue, target, scope)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to check sub-issues before closing")
 			return
@@ -4472,7 +4528,7 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	// The agent this write hands the issue to gets the change as its own run,
 	// not also through its event wakeups.
 	writeCtx := withWakeupHandedTo(r.Context(), h.handedToAgent(r.Context(), prevIssue, params, handoff != nil))
-	if params.ProjectID.Valid && params.ProjectID != prevIssue.ProjectID {
+	if params.ProjectID != prevIssue.ProjectID {
 		writeCtx = withProjectMove(writeCtx, prevIssue.WorkspaceID)
 	}
 	var issue db.Issue
@@ -5140,6 +5196,10 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 	// Status is validated against this workspace's catalog, so it has to wait
 	// for wsUUID above. One check for the whole batch — every issue in it
 	// shares the workspace — and a rejection rather than a silent skip, so a
@@ -5176,6 +5236,10 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "project not found in this workspace")
 			return
 		}
+		if !scope.Allows(projectUUID) {
+			writeError(w, http.StatusNotFound, "project not found")
+			return
+		}
 		batchProjectID = projectUUID
 	}
 
@@ -5191,7 +5255,7 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			prevIssue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: issueUUID, WorkspaceID: wsUUID})
-			if err != nil || prevIssue.Status == "done" {
+			if err != nil || !scope.Allows(prevIssue.ProjectID) || prevIssue.Status == "done" {
 				continue
 			}
 			if err := service.CheckSecretaryRequestAnswered(r.Context(), h.Queries, prevIssue); err != nil {
@@ -5224,7 +5288,7 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			prevIssue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: issueUUID, WorkspaceID: wsUUID})
-			if err != nil {
+			if err != nil || !scope.Allows(prevIssue.ProjectID) {
 				continue
 			}
 			if batchOutcome != "" && !h.outcomeKeyAllowed(r.Context(), prevIssue, batchOutcome) {
@@ -5273,7 +5337,7 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 			ID:          issueUUID,
 			WorkspaceID: wsUUID,
 		})
-		if err != nil {
+		if err != nil || !scope.Allows(prevIssue.ProjectID) {
 			continue
 		}
 
@@ -5356,10 +5420,10 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 				// Validate parent exists in the same workspace.
-				if _, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
+				if newParent, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
 					ID:          newParentID,
 					WorkspaceID: prevIssue.WorkspaceID,
-				}); err != nil {
+				}); err != nil || !scope.Allows(newParent.ProjectID) {
 					continue
 				}
 				// Cycle detection: walk up from the new parent to ensure we don't reach this issue.
@@ -5425,7 +5489,7 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 				target = params.Status.String
 			}
 			// A batch skips an item it cannot apply, as it does for the other guards.
-			if open, err := h.openSubIssuesBlockingClose(r.Context(), prevIssue, target); err != nil || len(open) > 0 {
+			if open, err := h.openSubIssuesBlockingClose(r.Context(), prevIssue, target, scope); err != nil || len(open) > 0 {
 				continue
 			}
 		}
@@ -5437,9 +5501,24 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 			if status, _ := h.validateAssigneePair(r.Context(), r, workspaceID, params.AssigneeType, params.AssigneeID); status != 0 {
 				continue
 			}
+			// A member who cannot see the issue's project cannot hold it; skipped like the other guards.
+			if params.AssigneeType.String == "member" && params.AssigneeID.Valid {
+				sees, err := memberSeesProject(r.Context(), h.Queries, wsUUID, params.AssigneeID, params.ProjectID)
+				if err != nil {
+					slog.Error("batch update issues: assignee project scope", append(logger.RequestAttrs(r), "error", err)...)
+					writeErrorCode(w, http.StatusServiceUnavailable, "scope_unavailable", "visibility could not be determined")
+					return
+				}
+				if !sees {
+					continue
+				}
+			}
 		}
 
 		writeCtx := withWakeupHandedTo(r.Context(), h.handedToAgent(r.Context(), prevIssue, params, handoff != nil))
+		if params.ProjectID != prevIssue.ProjectID {
+			writeCtx = withProjectMove(writeCtx, prevIssue.WorkspaceID)
+		}
 		var issue db.Issue
 		if req.Updates.Description != nil {
 			// One batch-level base cannot describe multiple issue documents.
@@ -5572,6 +5651,10 @@ func (h *Handler) BatchDeleteIssues(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 	issues := make([]db.Issue, 0, len(req.IssueIDs))
 	excludedIDs := make([]pgtype.UUID, 0, len(req.IssueIDs))
 	seenIssueIDs := make(map[pgtype.UUID]struct{}, len(req.IssueIDs))
@@ -5587,7 +5670,7 @@ func (h *Handler) BatchDeleteIssues(w http.ResponseWriter, r *http.Request) {
 			ID:          issueUUID,
 			WorkspaceID: wsUUID,
 		})
-		if err != nil {
+		if err != nil || !scope.Allows(issue.ProjectID) {
 			continue
 		}
 
