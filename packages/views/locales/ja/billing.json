@@ -73,6 +73,8 @@
     "plan": {
       "free": "Free",
       "pro": "Pro",
+      "payg": "従量課金",
+      "unlimited": "Unlimited",
       "unknown": "不明なプラン"
     },
     "status": {
@@ -162,7 +164,9 @@
       "pro_for_team_other": "{{count}}席で Pro を利用",
       "price_loading": "サブスクリプション価格を読み込んでいます",
       "unit_price": "1席あたり {{price}}",
-      "price_at_checkout": "購入前にサーバーがユーザーメンバーを再集計します。お支払い前に Stripe Checkout で正式な席単価と合計金額を確認できます。"
+      "price_at_checkout": "購入前にサーバーがユーザーメンバーを再集計します。お支払い前に Stripe Checkout で正式な席単価と合計金額を確認できます。",
+      "business_discount": "ビジネス割引: {{pct}}%",
+      "usage_billing_note": "利用分を月末締めで後払い請求します。"
     },
     "management": {
       "title": "サブスクリプション管理",
@@ -287,6 +291,56 @@
       "keep": "サブスクリプションを継続",
       "cancel_failed": "サブスクリプションを解約できませんでした。しばらくしてから再試行してください。",
       "resume_failed": "サブスクリプションを再開できませんでした。しばらくしてから再試行してください。"
+    },
+    "usage": {
+      "title": "今期の使用量",
+      "loading": "使用量を読み込み中",
+      "unavailable": "使用量の詳細は一時的に利用できません。",
+      "empty": "今期の使用量はまだ記録されていません。",
+      "period": "{{start}} – {{end}}",
+      "accrued": "今期の累計額",
+      "credit_limit": "利用限度額",
+      "credit_progress": "{{accrued}} / {{limit}}",
+      "credit_progress_label": "利用限度額の使用状況",
+      "warning_title": "利用限度額に近づいています",
+      "warning_body": "使用額が利用限度額の {{percent}}% に達しました。100% に達すると中間請求書が発行されます。",
+      "rate": "{{price}} / {{per}}",
+      "discount_badge": "-{{pct}}%",
+      "meters": {
+        "tasks_run": "タスク実行",
+        "storage_bytes": "ストレージ",
+        "members": "メンバー",
+        "unknown": "不明なメーター"
+      }
+    },
+    "unpaid_usage": {
+      "title": "未払いの従量請求書",
+      "body": "有料プランへのアップグレードや変更を行う前に、未払いの従量請求書をお支払いください。",
+      "view_invoice": "請求書を見る"
+    },
+    "invoices": {
+      "title": "請求書",
+      "loading": "請求書を読み込み中",
+      "unavailable": "請求書は一時的に利用できません。",
+      "empty": "請求書はまだありません。",
+      "usage_kind": "従量請求書",
+      "kind_subscribe": "サブスクリプション",
+      "kind_change_plan": "プラン変更",
+      "kind_add_seats": "席追加",
+      "kind_renew": "更新",
+      "kind_unknown": "請求書",
+      "view_lines": "詳細を表示",
+      "hide_lines": "詳細を隠す",
+      "lines_loading": "使用明細を読み込み中",
+      "lines_unavailable": "使用明細を読み込めませんでした。",
+      "lines_empty": "この請求書に使用明細はありません。",
+      "col_day": "日付",
+      "col_meter": "メーター",
+      "col_quantity": "数量",
+      "col_rate": "単価",
+      "col_discount": "割引",
+      "col_amount": "金額",
+      "note_suspended": "ワークスペース停止中"
     }
   },
   "shared": {
@@ -339,6 +393,7 @@
     "order_not_pending": "保留中の注文のみ更新できます",
     "loading": "注文を読み込み中...",
     "not_found": "注文が見つかりません",
-    "load_failed": "注文の読み込みに失敗しました"
+    "load_failed": "注文の読み込みに失敗しました",
+    "usage_lines_title": "使用明細"
   }
 }

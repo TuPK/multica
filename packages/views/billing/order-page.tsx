@@ -34,6 +34,7 @@ import { Skeleton } from "@multica/ui/components/ui/skeleton";
 import { useLocale, useT } from "../i18n";
 import { useNavigation } from "../navigation";
 import { formatStripeMinorAmount } from "../settings/components/billing-format";
+import { UsageInvoiceLines } from "./usage-invoice-lines";
 
 export interface BuyerInfo {
   name: string;
@@ -51,7 +52,7 @@ export interface BankTransferDetails {
 export interface BillingOrder {
   id: string;
   workspaceId: string;
-  kind: "subscribe" | "renew" | "add_seats" | "change_plan" | string;
+  kind: "subscribe" | "renew" | "add_seats" | "change_plan" | "usage" | string;
   planKey: string;
   interval: "month" | "year" | string;
   seats: number;
@@ -61,7 +62,7 @@ export interface BillingOrder {
   status: "pending" | "paid" | "expired" | "canceled" | "refunded" | string;
   provider?: string;
   transferCode: string;
-  expiresAt: string;
+  expiresAt: string | null;
   createdAt?: string;
   bankDetails?: BankTransferDetails;
   bankName?: string;
@@ -475,6 +476,23 @@ export function BillingOrderPage({
           </div>
         </CardContent>
       </Card>
+
+      {order.kind === "usage" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle role="heading" aria-level={2} className="text-title-md">
+              {t(($) => $.order.usage_lines_title)}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <UsageInvoiceLines
+              wsId={order.workspaceId || wsId}
+              orderId={order.id}
+              currency={order.currency}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
 
       {/* Buyer Details Form Card */}
       <Card>

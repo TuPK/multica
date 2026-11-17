@@ -54,6 +54,7 @@ const mockOrder: BillingOrder = {
 
 const mocks = vi.hoisted(() => ({
   updateBuyer: vi.fn(),
+  getOrderUsage: vi.fn(),
   workspaceId: "ws-456",
 }));
 
@@ -66,6 +67,7 @@ vi.mock("@multica/core/api", async () => {
       updateWorkspaceOrderBuyer: (...args: any[]) => mocks.updateBuyer(...args),
       updateOrderBuyer: (...args: any[]) => mocks.updateBuyer(...args),
       getWorkspaceOrder: vi.fn(),
+      getWorkspaceOrderUsage: (...args: any[]) => mocks.getOrderUsage(...args),
     },
   };
 });
@@ -240,5 +242,44 @@ describe("BillingOrderPage", () => {
     expect(screen.getByLabelText("Address")).toBeDisabled();
     expect(screen.getByLabelText("Invoice email")).toBeDisabled();
     expect(screen.getByRole("button", { name: "Save buyer details" })).toBeDisabled();
+  });
+
+  it("renders per-day usage lines for a usage order and omits expiry", async () => {
+    mocks.getOrderUsage.mockResolvedValue({
+      orderId: "order-usage-1",
+      lines: [
+        {
+          day: "2026-08-03",
+          meter: "tasks_run",
+          quantity: 120,
+          unitPrice: 30000,
+          per: 1000,
+          discountPct: 20,
+          netAmount: 2880,
+          note: "",
+        },
+      ],
+    });
+    const usageOrder: BillingOrder = {
+      ...mockOrder,
+      id: "order-usage-1",
+      kind: "usage",
+      planKey: "payg",
+      seats: 0,
+      expiresAt: null,
+    };
+
+    renderWithProviders(<BillingOrderPage initialOrder={usageOrder} />);
+
+    expect(screen.queryByText(/Expires at/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Usage breakdown" }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("Tasks run")).toBeInTheDocument();
+    expect(screen.getByText("120")).toBeInTheDocument();
+    expect(mocks.getOrderUsage).toHaveBeenCalledWith(
+      "ws-456",
+      "order-usage-1",
+    );
   });
 });

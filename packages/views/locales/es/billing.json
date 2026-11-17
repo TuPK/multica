@@ -73,6 +73,8 @@
     "plan": {
       "free": "Gratis",
       "pro": "Pro",
+      "payg": "Pago por uso",
+      "unlimited": "Ilimitado",
       "unknown": "Plan desconocido"
     },
     "status": {
@@ -164,7 +166,9 @@
       "pro_for_team_other": "Pro para {{count}} puestos humanos",
       "price_loading": "Cargando precios de suscripción",
       "unit_price": "{{price}} por puesto humano",
-      "price_at_checkout": "El servidor vuelve a contar los miembros humanos antes de la compra. Stripe Checkout muestra el precio por puesto y el total autorizados antes de que pagues."
+      "price_at_checkout": "El servidor vuelve a contar los miembros humanos antes de la compra. Stripe Checkout muestra el precio por puesto y el total autorizados antes de que pagues.",
+      "business_discount": "Descuento Business: {{pct}}%",
+      "usage_billing_note": "Facturado mensualmente después del uso."
     },
     "management": {
       "title": "Gestión de la suscripción",
@@ -294,6 +298,56 @@
       "keep": "Mantener suscripción",
       "cancel_failed": "No se pudo cancelar la suscripción. Reintenta en un momento.",
       "resume_failed": "No se pudo reanudar la suscripción. Reintenta en un momento."
+    },
+    "usage": {
+      "title": "Uso de este periodo",
+      "loading": "Cargando uso",
+      "unavailable": "Los detalles de uso no están disponibles temporalmente.",
+      "empty": "Aún no hay uso registrado para este periodo.",
+      "period": "{{start}} – {{end}}",
+      "accrued": "Acumulado este periodo",
+      "credit_limit": "Límite de crédito",
+      "credit_progress": "{{accrued}} / {{limit}}",
+      "credit_progress_label": "Uso del límite de crédito",
+      "warning_title": "Acercándose al límite de crédito",
+      "warning_body": "El uso ha alcanzado el {{percent}}% de tu límite de crédito. Al llegar al 100% se emitirá una factura provisional.",
+      "rate": "{{price}} / {{per}}",
+      "discount_badge": "-{{pct}}%",
+      "meters": {
+        "tasks_run": "Ejecuciones de tareas",
+        "storage_bytes": "Almacenamiento",
+        "members": "Miembros",
+        "unknown": "Medidor desconocido"
+      }
+    },
+    "unpaid_usage": {
+      "title": "Factura de uso impagada",
+      "body": "Paga la factura de uso pendiente antes de actualizar o cambiar a un plan de pago.",
+      "view_invoice": "Ver factura"
+    },
+    "invoices": {
+      "title": "Facturas",
+      "loading": "Cargando facturas",
+      "unavailable": "Las facturas no están disponibles temporalmente.",
+      "empty": "Aún no hay facturas.",
+      "usage_kind": "Factura de uso",
+      "kind_subscribe": "Suscripción",
+      "kind_change_plan": "Cambio de plan",
+      "kind_add_seats": "Añadir puestos",
+      "kind_renew": "Renovación",
+      "kind_unknown": "Factura",
+      "view_lines": "Ver detalles",
+      "hide_lines": "Ocultar detalles",
+      "lines_loading": "Cargando desglose de uso",
+      "lines_unavailable": "No se pudo cargar el desglose de uso.",
+      "lines_empty": "No hay líneas de uso para esta factura.",
+      "col_day": "Día",
+      "col_meter": "Medidor",
+      "col_quantity": "Cantidad",
+      "col_rate": "Tarifa",
+      "col_discount": "Descuento",
+      "col_amount": "Importe",
+      "note_suspended": "Espacio de trabajo suspendido"
     }
   },
   "shared": {
@@ -346,6 +400,7 @@
     "order_not_pending": "Solo se pueden actualizar los pedidos pendientes",
     "loading": "Cargando pedido...",
     "not_found": "Pedido no encontrado",
-    "load_failed": "Error al cargar el pedido"
+    "load_failed": "Error al cargar el pedido",
+    "usage_lines_title": "Desglose de uso"
   }
 }

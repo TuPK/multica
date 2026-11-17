@@ -73,6 +73,8 @@
     "plan": {
       "free": "Free",
       "pro": "Pro",
+      "payg": "Pay as you go",
+      "unlimited": "Unlimited",
       "unknown": "Unknown plan"
     },
     "status": {
@@ -164,7 +166,9 @@
       "pro_for_team_other": "Pro for {{count}} human seats",
       "price_loading": "Loading subscription prices",
       "unit_price": "{{price}} per human seat",
-      "price_at_checkout": "The server re-counts human members before purchase. Stripe Checkout shows the authoritative per-seat price and total before you pay."
+      "price_at_checkout": "The server re-counts human members before purchase. Stripe Checkout shows the authoritative per-seat price and total before you pay.",
+      "business_discount": "Business discount: {{pct}}%",
+      "usage_billing_note": "Billed monthly after use."
     },
     "management": {
       "title": "Subscription management",
@@ -294,6 +298,56 @@
       "keep": "Keep subscription",
       "cancel_failed": "Could not cancel subscription. Retry in a moment.",
       "resume_failed": "Could not resume subscription. Retry in a moment."
+    },
+    "usage": {
+      "title": "Usage this period",
+      "loading": "Loading usage",
+      "unavailable": "Usage details are temporarily unavailable.",
+      "empty": "No usage recorded for this period yet.",
+      "period": "{{start}} – {{end}}",
+      "accrued": "Accrued this period",
+      "credit_limit": "Credit limit",
+      "credit_progress": "{{accrued}} / {{limit}}",
+      "credit_progress_label": "Credit limit usage",
+      "warning_title": "Approaching credit limit",
+      "warning_body": "Usage has reached {{percent}}% of your credit limit. Reaching 100% triggers an interim invoice.",
+      "rate": "{{price}} / {{per}}",
+      "discount_badge": "-{{pct}}%",
+      "meters": {
+        "tasks_run": "Tasks run",
+        "storage_bytes": "Storage",
+        "members": "Members",
+        "unknown": "Unknown meter"
+      }
+    },
+    "unpaid_usage": {
+      "title": "Unpaid usage invoice",
+      "body": "Pay the outstanding usage invoice before upgrading or changing to a paid plan.",
+      "view_invoice": "View invoice"
+    },
+    "invoices": {
+      "title": "Invoices",
+      "loading": "Loading invoices",
+      "unavailable": "Invoices are temporarily unavailable.",
+      "empty": "No invoices yet.",
+      "usage_kind": "Usage invoice",
+      "kind_subscribe": "Subscription",
+      "kind_change_plan": "Plan change",
+      "kind_add_seats": "Add seats",
+      "kind_renew": "Renewal",
+      "kind_unknown": "Invoice",
+      "view_lines": "View details",
+      "hide_lines": "Hide details",
+      "lines_loading": "Loading usage breakdown",
+      "lines_unavailable": "Usage breakdown could not be loaded.",
+      "lines_empty": "No usage lines for this invoice.",
+      "col_day": "Day",
+      "col_meter": "Meter",
+      "col_quantity": "Quantity",
+      "col_rate": "Rate",
+      "col_discount": "Discount",
+      "col_amount": "Amount",
+      "note_suspended": "Workspace suspended"
     }
   },
   "shared": {
@@ -346,6 +400,7 @@
     "order_not_pending": "Only pending orders can be updated",
     "loading": "Loading order...",
     "not_found": "Order not found",
-    "load_failed": "Failed to load order"
+    "load_failed": "Failed to load order",
+    "usage_lines_title": "Usage breakdown"
   }
 }

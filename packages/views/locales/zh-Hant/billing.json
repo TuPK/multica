@@ -73,6 +73,8 @@
     "plan": {
       "free": "Free",
       "pro": "Pro",
+      "payg": "按量計費",
+      "unlimited": "Unlimited",
       "unknown": "未知套餐"
     },
     "status": {
@@ -162,7 +164,9 @@
       "pro_for_team_other": "為 {{count}} 個成員席位升級 Pro",
       "price_loading": "正在載入訂閱價格",
       "unit_price": "每個成員席位 {{price}}",
-      "price_at_checkout": "購買前，服務端會重新統計成員。付款前，Stripe Checkout 會顯示權威的單席位價格和總額。"
+      "price_at_checkout": "購買前，服務端會重新統計成員。付款前，Stripe Checkout 會顯示權威的單席位價格和總額。",
+      "business_discount": "企業折扣：{{pct}}%",
+      "usage_billing_note": "按月後付費結算。"
     },
     "management": {
       "title": "訂閱管理",
@@ -287,6 +291,56 @@
       "keep": "保留訂閱",
       "cancel_failed": "無法取消訂閱，請稍後重試。",
       "resume_failed": "無法恢復訂閱，請稍後重試。"
+    },
+    "usage": {
+      "title": "本期用量",
+      "loading": "正在載入用量",
+      "unavailable": "用量詳情暫時不可用。",
+      "empty": "本期尚無用量記錄。",
+      "period": "{{start}} – {{end}}",
+      "accrued": "本期累計金額",
+      "credit_limit": "信用額度",
+      "credit_progress": "{{accrued}} / {{limit}}",
+      "credit_progress_label": "信用額度使用情況",
+      "warning_title": "接近信用額度",
+      "warning_body": "用量已達到信用額度的 {{percent}}%。達到 100% 時會產生臨時帳單。",
+      "rate": "{{price}} / {{per}}",
+      "discount_badge": "-{{pct}}%",
+      "meters": {
+        "tasks_run": "執行次數",
+        "storage_bytes": "儲存空間",
+        "members": "成員",
+        "unknown": "未知計費項"
+      }
+    },
+    "unpaid_usage": {
+      "title": "有未支付的按量帳單",
+      "body": "升級或變更為付費套餐前，請先支付未結清的按量帳單。",
+      "view_invoice": "檢視帳單"
+    },
+    "invoices": {
+      "title": "帳單",
+      "loading": "正在載入帳單",
+      "unavailable": "帳單暫時不可用。",
+      "empty": "暫無帳單。",
+      "usage_kind": "按量帳單",
+      "kind_subscribe": "訂閱",
+      "kind_change_plan": "變更套餐",
+      "kind_add_seats": "新增席位",
+      "kind_renew": "續約",
+      "kind_unknown": "帳單",
+      "view_lines": "檢視明細",
+      "hide_lines": "收起明細",
+      "lines_loading": "正在載入用量明細",
+      "lines_unavailable": "無法載入用量明細。",
+      "lines_empty": "該帳單沒有用量明細。",
+      "col_day": "日期",
+      "col_meter": "計費項",
+      "col_quantity": "用量",
+      "col_rate": "單價",
+      "col_discount": "折扣",
+      "col_amount": "金額",
+      "note_suspended": "工作區已暫停"
     }
   },
   "shared": {
@@ -339,6 +393,7 @@
     "order_not_pending": "僅待付款訂單支援修改買方資訊",
     "loading": "正在載入訂單...",
     "not_found": "找不到訂單",
-    "load_failed": "載入訂單失敗"
+    "load_failed": "載入訂單失敗",
+    "usage_lines_title": "用量明細"
   }
 }

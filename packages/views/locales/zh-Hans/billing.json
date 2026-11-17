@@ -73,6 +73,8 @@
     "plan": {
       "free": "Free",
       "pro": "Pro",
+      "payg": "按量计费",
+      "unlimited": "Unlimited",
       "unknown": "未知套餐"
     },
     "status": {
@@ -162,7 +164,9 @@
       "pro_for_team_other": "为 {{count}} 个成员席位升级 Pro",
       "price_loading": "正在加载订阅价格",
       "unit_price": "每个成员席位 {{price}}",
-      "price_at_checkout": "购买前，服务端会重新统计成员。付款前，Stripe Checkout 会显示权威的单席位价格和总额。"
+      "price_at_checkout": "购买前，服务端会重新统计成员。付款前，Stripe Checkout 会显示权威的单席位价格和总额。",
+      "business_discount": "企业折扣：{{pct}}%",
+      "usage_billing_note": "按月后付费结算。"
     },
     "management": {
       "title": "订阅管理",
@@ -287,6 +291,56 @@
       "keep": "保留订阅",
       "cancel_failed": "无法取消订阅，请稍后重试。",
       "resume_failed": "无法恢复订阅，请稍后重试。"
+    },
+    "usage": {
+      "title": "本期用量",
+      "loading": "正在加载用量",
+      "unavailable": "用量详情暂时不可用。",
+      "empty": "本期尚无用量记录。",
+      "period": "{{start}} – {{end}}",
+      "accrued": "本期累计金额",
+      "credit_limit": "信用额度",
+      "credit_progress": "{{accrued}} / {{limit}}",
+      "credit_progress_label": "信用额度使用情况",
+      "warning_title": "接近信用额度",
+      "warning_body": "用量已达到信用额度的 {{percent}}%。达到 100% 时会生成临时账单。",
+      "rate": "{{price}} / {{per}}",
+      "discount_badge": "-{{pct}}%",
+      "meters": {
+        "tasks_run": "运行次数",
+        "storage_bytes": "存储空间",
+        "members": "成员",
+        "unknown": "未知计费项"
+      }
+    },
+    "unpaid_usage": {
+      "title": "有未支付的按量账单",
+      "body": "升级或更改为付费套餐前，请先支付未结清的按量账单。",
+      "view_invoice": "查看账单"
+    },
+    "invoices": {
+      "title": "账单",
+      "loading": "正在加载账单",
+      "unavailable": "账单暂时不可用。",
+      "empty": "暂无账单。",
+      "usage_kind": "按量账单",
+      "kind_subscribe": "订阅",
+      "kind_change_plan": "更改套餐",
+      "kind_add_seats": "添加席位",
+      "kind_renew": "续费",
+      "kind_unknown": "账单",
+      "view_lines": "查看明细",
+      "hide_lines": "收起明细",
+      "lines_loading": "正在加载用量明细",
+      "lines_unavailable": "无法加载用量明细。",
+      "lines_empty": "该账单没有用量明细。",
+      "col_day": "日期",
+      "col_meter": "计费项",
+      "col_quantity": "用量",
+      "col_rate": "单价",
+      "col_discount": "折扣",
+      "col_amount": "金额",
+      "note_suspended": "工作区已暂停"
     }
   },
   "shared": {
@@ -339,6 +393,7 @@
     "order_not_pending": "仅待支付订单支持修改买方信息",
     "loading": "正在加载订单...",
     "not_found": "未找到订单",
-    "load_failed": "加载订单失败"
+    "load_failed": "加载订单失败",
+    "usage_lines_title": "用量明细"
   }
 }

@@ -21,6 +21,9 @@ const mocks = vi.hoisted(() => ({
   refetch: vi.fn(),
   refetchSummary: vi.fn(),
   refetchUsage: vi.fn(),
+  refetchSubscriptionUsage: vi.fn(),
+  refetchOrders: vi.fn(),
+  refetchOrderUsage: vi.fn(),
   refetchIssueLimitUsage: vi.fn(),
   refetchPrices: vi.fn(),
   refetchPlans: vi.fn(),
@@ -28,6 +31,13 @@ const mocks = vi.hoisted(() => ({
   workspaceId: "workspace-1",
   plans: [] as any[],
   plansLoading: false,
+  orders: [] as any[],
+  ordersLoading: false,
+  ordersError: false,
+  orderUsageById: {} as Record<string, any>,
+  subscriptionUsage: null as any,
+  subscriptionUsagePending: false,
+  subscriptionUsageError: false,
   prices: null as {
     month: {
       currency: string;
@@ -148,11 +158,20 @@ vi.mock("@multica/core/billing", () => ({
   workspacePlansOptions: (wsId: string) => ({
     queryKey: ["workspace-plans", wsId, "list"],
   }),
+  workspaceOrdersOptions: (wsId: string) => ({
+    queryKey: ["workspace-orders", wsId, "list"],
+  }),
+  workspaceOrderUsageOptions: (wsId: string, orderId: string) => ({
+    queryKey: ["workspace-orders", wsId, "usage", orderId],
+  }),
   workspaceSubscriptionPricesOptions: (wsId: string) => ({
     queryKey: ["workspace-subscriptions", wsId, "prices"],
   }),
   workspaceSubscriptionSummaryOptions: (wsId: string) => ({
     queryKey: ["workspace-subscriptions", wsId, "summary"],
+  }),
+  workspaceSubscriptionUsageOptions: (wsId: string) => ({
+    queryKey: ["workspace-subscriptions", wsId, "usage"],
   }),
   issueLimitUsageOptions: (wsId: string) => ({
     queryKey: ["workspace-subscriptions", wsId, "issue-limit-usage"],
@@ -284,6 +303,13 @@ describe("BillingTab", () => {
     mocks.pricesError = false;
     mocks.plans = [];
     mocks.plansLoading = false;
+    mocks.orders = [];
+    mocks.ordersLoading = false;
+    mocks.ordersError = false;
+    mocks.orderUsageById = {};
+    mocks.subscriptionUsage = null;
+    mocks.subscriptionUsagePending = false;
+    mocks.subscriptionUsageError = false;
     mocks.summaryPending = false;
     mocks.summaryFetching = false;
     mocks.summaryError = false;
@@ -314,6 +340,8 @@ describe("BillingTab", () => {
       cancelAtPeriodEnd: false,
       graceUntil: null,
       hasStripeCustomer: false,
+      billingModel: undefined,
+      usage: undefined,
       availableActions: {
         checkout: true,
         portal: false,
@@ -383,15 +411,52 @@ describe("BillingTab", () => {
           refetch: mocks.refetchIssueLimitUsage,
         };
       }
+      if (
+        queryKey?.[0] === "workspace-orders" &&
+        queryKey?.[2] === "list"
+      ) {
+        return {
+          data: mocks.ordersError ? undefined : mocks.orders,
+          isPending: mocks.ordersLoading,
+          isFetching: false,
+          isError: mocks.ordersError,
+          refetch: mocks.refetchOrders,
+        };
+      }
+      if (
+        queryKey?.[0] === "workspace-orders" &&
+        queryKey?.[2] === "usage"
+      ) {
+        const orderId = String(queryKey?.[3] ?? "");
+        return {
+          data: mocks.orderUsageById[orderId] ?? null,
+          isPending: false,
+          isFetching: false,
+          isError: false,
+          refetch: mocks.refetchOrderUsage,
+        };
+      }
+      if (
+        queryKey?.[0] === "workspace-subscriptions" &&
+        queryKey?.[queryKey.length - 1] === "usage"
+      ) {
+        return {
+          data: mocks.subscriptionUsageError ? undefined : mocks.subscriptionUsage,
+          isPending: mocks.subscriptionUsagePending,
+          isFetching: false,
+          isError: mocks.subscriptionUsageError,
+          refetch: mocks.refetchSubscriptionUsage,
+        };
+      }
       if (queryKey?.[queryKey.length - 1] === "usage") {
         return {
           data: mocks.usageError ? undefined : mocks.usage,
           isPending: mocks.usagePending,
           isFetching: mocks.usageFetching,
           isError: mocks.usageError,
-        refetch: mocks.refetchUsage,
-      };
-    }
+          refetch: mocks.refetchUsage,
+        };
+      }
       return {
         data: mocks.entitlements,
         isPending: false,
@@ -1744,6 +1809,282 @@ describe("BillingTab", () => {
       expect(
         screen.queryByRole("button", { name: "Cancel subscription" }),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("usage billing", () => {
+    beforeEach(() => {
+      configStore.getState().setFeatureFlags({
+        [BILLING_WORKSPACE_SUBSCRIPTIONS_FLAG]: true,
+      });
+    });
+
+    it("renders the usage card and unpaid usage banner when unpaidOrderId is set", () => {
+      Object.assign(mocks.entitlements, {
+        plan: "payg",
+        status: "active",
+        limits: {
+          issueCount: { mode: "unlimited", limit: null },
+          autopilotRuns: { mode: "unlimited", limit: null },
+        },
+      });
+      mocks.summary.billingModel = "usage";
+      mocks.summary.usage = {
+        periodStart: "2026-08-01T00:00:00Z",
+        periodEnd: "2026-09-01T00:00:00Z",
+        currency: "vnd",
+        accruedAmount: 1_700_000,
+        creditLimit: 2_000_000,
+        unpaidOrderId: "ord-unpaid-1",
+        meters: [
+          {
+            key: "tasks_run",
+            quantity: 2000,
+            unitPrice: 30000,
+            per: 1000,
+            discountPct: 0,
+            amount: 60000,
+          },
+        ],
+      };
+      mocks.subscriptionUsage = {
+        billingModel: "usage",
+        usage: mocks.summary.usage,
+      };
+
+      renderWithI18n(<BillingTab />);
+
+      expect(
+        screen.getByRole("heading", { name: "Usage this period" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Unpaid usage invoice")).toBeInTheDocument();
+      expect(
+        screen.getByText("Approaching credit limit"),
+      ).toBeInTheDocument();
+    });
+
+    it("hides the unpaid usage banner when unpaidOrderId is null", () => {
+      Object.assign(mocks.entitlements, {
+        plan: "payg",
+        status: "active",
+      });
+      mocks.summary.billingModel = "usage";
+      mocks.summary.usage = {
+        periodStart: "2026-08-01T00:00:00Z",
+        periodEnd: "2026-09-01T00:00:00Z",
+        currency: "vnd",
+        accruedAmount: 60_000,
+        creditLimit: 2_000_000,
+        unpaidOrderId: null,
+        meters: [
+          {
+            key: "tasks_run",
+            quantity: 2000,
+            unitPrice: 30000,
+            per: 1000,
+            discountPct: 0,
+            amount: 60000,
+          },
+        ],
+      };
+      mocks.subscriptionUsage = {
+        billingModel: "usage",
+        usage: mocks.summary.usage,
+      };
+
+      renderWithI18n(<BillingTab />);
+
+      expect(
+        screen.getByRole("heading", { name: "Usage this period" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Unpaid usage invoice"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows usage plan rates and displays Business discount only when effectiveDiscountPct > 0", () => {
+      mocks.plans = [
+        {
+          key: "pro",
+          name: "Pro",
+          currency: "vnd",
+          seatPriceMonth: 149000,
+          seatPriceYear: 1490000,
+          audience: "any",
+          billingModel: "seat",
+          usageRates: {},
+          effectiveDiscountPct: 0,
+        },
+        {
+          key: "payg",
+          name: "Pay as you go",
+          currency: "vnd",
+          seatPriceMonth: null,
+          seatPriceYear: null,
+          audience: "any",
+          billingModel: "usage",
+          usageRates: {
+            tasks_run: { per: 1000, price: 30000 },
+            storage_bytes: { per: 1073741824, price: 3000 },
+            members: { per: 1, price: 49000 },
+          },
+          effectiveDiscountPct: 20,
+        },
+      ];
+
+      const { unmount } = renderWithI18n(<BillingTab />);
+
+      expect(
+        screen.getByRole("button", { name: "Pay as you go" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/Tasks run/)).toBeInTheDocument();
+      expect(screen.getByText(/Business discount: 20%/)).toBeInTheDocument();
+      unmount();
+
+      mocks.plans[1].effectiveDiscountPct = 0;
+      renderWithI18n(<BillingTab />);
+
+      expect(
+        screen.getByRole("button", { name: "Pay as you go" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/Tasks run/)).toBeInTheDocument();
+      expect(
+        screen.queryByText(/Business discount/i),
+      ).not.toBeInTheDocument();
+    });
+
+    it("lists a usage order in invoices and expands it to per-day usage lines", async () => {
+      const user = userEvent.setup();
+      Object.assign(mocks.entitlements, {
+        plan: "payg",
+        status: "active",
+      });
+      mocks.summary.billingModel = "usage";
+      mocks.summary.usage = {
+        periodStart: "2026-08-01T00:00:00Z",
+        periodEnd: "2026-09-01T00:00:00Z",
+        currency: "vnd",
+        accruedAmount: 0,
+        creditLimit: 2_000_000,
+        unpaidOrderId: "ord-usage-1",
+        meters: [],
+      };
+      mocks.orders = [
+        {
+          id: "ord-usage-1",
+          workspaceId: "workspace-1",
+          kind: "usage",
+          planKey: "payg",
+          interval: "month",
+          seats: 0,
+          amount: 1_234_567,
+          vatAmount: 123_457,
+          totalAmount: 1_358_024,
+          currency: "vnd",
+          status: "pending",
+          provider: "manual",
+          transferCode: "MUL-USAGE-1",
+          bankDetails: { bankName: "", accountName: "", accountNumber: "" },
+          buyer: { name: "", taxCode: "", address: "", invoiceEmail: "" },
+          periodStart: "2026-07-01T00:00:00Z",
+          periodEnd: "2026-08-01T00:00:00Z",
+          expiresAt: null,
+          paidAt: null,
+          createdAt: "2026-08-02T00:00:00Z",
+        },
+      ];
+      mocks.orderUsageById["ord-usage-1"] = {
+        orderId: "ord-usage-1",
+        lines: [
+          {
+            day: "2026-07-15",
+            meter: "tasks_run",
+            quantity: 120,
+            unitPrice: 30000,
+            per: 1000,
+            discountPct: 20,
+            netAmount: 2880,
+            note: "",
+          },
+        ],
+      };
+
+      renderWithI18n(<BillingTab />);
+
+      expect(
+        screen.getByRole("heading", { name: "Invoices" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Usage invoice")).toBeInTheDocument();
+      expect(screen.queryByText("120")).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "View details" }));
+
+      expect(await screen.findByText("Tasks run")).toBeInTheDocument();
+      expect(screen.getByText("120")).toBeInTheDocument();
+      expect(screen.getByText("-20%")).toBeInTheDocument();
+    });
+
+    it("expands the unpaid usage invoice when clicking View invoice on the banner", async () => {
+      const user = userEvent.setup();
+      Object.assign(mocks.entitlements, {
+        plan: "payg",
+        status: "past_due",
+      });
+      mocks.summary.billingModel = "usage";
+      mocks.summary.usage = {
+        periodStart: "2026-08-01T00:00:00Z",
+        periodEnd: "2026-09-01T00:00:00Z",
+        currency: "vnd",
+        accruedAmount: 0,
+        creditLimit: 2_000_000,
+        unpaidOrderId: "ord-usage-unpaid",
+        meters: [],
+      };
+      mocks.orders = [
+        {
+          id: "ord-usage-unpaid",
+          workspaceId: "workspace-1",
+          kind: "usage",
+          planKey: "payg",
+          interval: "month",
+          seats: 0,
+          amount: 100_000,
+          vatAmount: 10_000,
+          totalAmount: 110_000,
+          currency: "vnd",
+          status: "pending",
+          provider: "manual",
+          transferCode: "MUL-USAGE-2",
+          bankDetails: { bankName: "", accountName: "", accountNumber: "" },
+          buyer: { name: "", taxCode: "", address: "", invoiceEmail: "" },
+          periodStart: "2026-07-01T00:00:00Z",
+          periodEnd: "2026-08-01T00:00:00Z",
+          expiresAt: null,
+          paidAt: null,
+          createdAt: "2026-08-02T00:00:00Z",
+        },
+      ];
+      mocks.orderUsageById["ord-usage-unpaid"] = {
+        orderId: "ord-usage-unpaid",
+        lines: [
+          {
+            day: "2026-07-20",
+            meter: "members",
+            quantity: 2,
+            unitPrice: 49000,
+            per: 1,
+            discountPct: 0,
+            netAmount: 98000,
+            note: "",
+          },
+        ],
+      };
+
+      renderWithI18n(<BillingTab />);
+
+      expect(screen.queryByText("Members")).not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "View invoice" }));
+      expect(await screen.findByText("Members")).toBeInTheDocument();
     });
   });
 });

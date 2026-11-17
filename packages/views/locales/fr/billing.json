@@ -73,6 +73,8 @@
     "plan": {
       "free": "Gratuit",
       "pro": "Pro",
+      "payg": "Paiement à l'usage",
+      "unlimited": "Illimité",
       "unknown": "Forfait inconnu"
     },
     "status": {
@@ -164,7 +166,9 @@
       "pro_for_team_other": "Pro pour {{count}} sièges humains",
       "price_loading": "Chargement des tarifs d'abonnement",
       "unit_price": "{{price}} par siège humain",
-      "price_at_checkout": "Le serveur recompte les membres humains avant l'achat. Stripe Checkout affiche le tarif par siège et le total faisant foi avant le paiement."
+      "price_at_checkout": "Le serveur recompte les membres humains avant l'achat. Stripe Checkout affiche le tarif par siège et le total faisant foi avant le paiement.",
+      "business_discount": "Remise Business : {{pct}}%",
+      "usage_billing_note": "Facturé mensuellement après consommation."
     },
     "management": {
       "title": "Gestion de l'abonnement",
@@ -294,6 +298,56 @@
       "keep": "Conserver l'abonnement",
       "cancel_failed": "Impossible de résilier l'abonnement. Réessayez dans un instant.",
       "resume_failed": "Impossible de reprendre l'abonnement. Réessayez dans un instant."
+    },
+    "usage": {
+      "title": "Consommation de la période",
+      "loading": "Chargement de la consommation",
+      "unavailable": "Les détails de consommation sont temporairement indisponibles.",
+      "empty": "Aucune consommation enregistrée pour cette période.",
+      "period": "{{start}} – {{end}}",
+      "accrued": "Cumulé sur cette période",
+      "credit_limit": "Plafond de crédit",
+      "credit_progress": "{{accrued}} / {{limit}}",
+      "credit_progress_label": "Utilisation du plafond de crédit",
+      "warning_title": "Proche du plafond de crédit",
+      "warning_body": "La consommation a atteint {{percent}}% de votre plafond de crédit. Atteindre 100% déclenche une facture intermédiaire.",
+      "rate": "{{price}} / {{per}}",
+      "discount_badge": "-{{pct}}%",
+      "meters": {
+        "tasks_run": "Exécutions de tâches",
+        "storage_bytes": "Stockage",
+        "members": "Membres",
+        "unknown": "Compteur inconnu"
+      }
+    },
+    "unpaid_usage": {
+      "title": "Facture d'usage impayée",
+      "body": "Réglez la facture d'usage impayée avant de passer ou de changer vers un forfait payant.",
+      "view_invoice": "Voir la facture"
+    },
+    "invoices": {
+      "title": "Factures",
+      "loading": "Chargement des factures",
+      "unavailable": "Les factures sont temporairement indisponibles.",
+      "empty": "Aucune facture pour le moment.",
+      "usage_kind": "Facture d'usage",
+      "kind_subscribe": "Abonnement",
+      "kind_change_plan": "Changement de forfait",
+      "kind_add_seats": "Ajout de sièges",
+      "kind_renew": "Renouvellement",
+      "kind_unknown": "Facture",
+      "view_lines": "Voir les détails",
+      "hide_lines": "Masquer les détails",
+      "lines_loading": "Chargement du détail de consommation",
+      "lines_unavailable": "Impossible de charger le détail de consommation.",
+      "lines_empty": "Aucune ligne de consommation pour cette facture.",
+      "col_day": "Jour",
+      "col_meter": "Compteur",
+      "col_quantity": "Quantité",
+      "col_rate": "Tarif",
+      "col_discount": "Remise",
+      "col_amount": "Montant",
+      "note_suspended": "Espace de travail suspendu"
     }
   },
   "shared": {
@@ -346,6 +400,7 @@
     "order_not_pending": "Seules les commandes en attente peuvent être modifiées",
     "loading": "Chargement de la commande...",
     "not_found": "Commande introuvable",
-    "load_failed": "Échec du chargement de la commande"
+    "load_failed": "Échec du chargement de la commande",
+    "usage_lines_title": "Détail de consommation"
   }
 }

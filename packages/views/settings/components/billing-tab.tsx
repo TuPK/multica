@@ -5,6 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   CreditCard,
   ExternalLink,
   Info,
@@ -15,6 +17,7 @@ import {
 import { ApiError, errorCode } from "@multica/core/api";
 import { autopilotQuotaUsageOptions } from "@multica/core/autopilots";
 import {
+  type WorkspaceOrder,
   useCancelWorkspaceScheduledPlanChange,
   useCancelWorkspaceSubscription,
   useCreateWorkspacePlanChange,
@@ -27,9 +30,11 @@ import {
   useUpdateWorkspaceBillingProfile,
   issueLimitUsageOptions,
   workspaceBillingProfileOptions,
+  workspaceOrdersOptions,
   workspacePlansOptions,
   workspaceSubscriptionPricesOptions,
   workspaceSubscriptionSummaryOptions,
+  workspaceSubscriptionUsageOptions,
 } from "@multica/core/billing";
 import { useFeatureEnabled } from "@multica/core/config";
 import { BILLING_WORKSPACE_SUBSCRIPTIONS_FLAG } from "@multica/core/feature-flags";
@@ -96,6 +101,15 @@ import { PlanChangeDialog } from "../../billing/plan-change-dialog";
 import {
   SubscriptionLifecycleSection,
 } from "../../billing/subscription-lifecycle-section";
+import { UnpaidUsageBanner } from "../../billing/unpaid-usage-banner";
+import {
+  UsageCard,
+  formatUsageMoney,
+  formatUsageUnitPer,
+  formatUsageUtcDate,
+  resolveMeterLabel,
+} from "../../billing/usage-card";
+import { UsageInvoiceLines } from "../../billing/usage-invoice-lines";
 import {
   SettingsCard,
   SettingsRow,
@@ -253,10 +267,14 @@ function BillingTabContent() {
   const [planChangePlanName, setPlanChangePlanName] = useState("");
   const [planChangeError, setPlanChangeError] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [expandedOrderIds, setExpandedOrderIds] = useState<
+    Record<string, boolean>
+  >({});
   const [isSyncingCheckout, setIsSyncingCheckout] = useState(
     returnResult === "success",
   );
   const [syncTimedOut, setSyncTimedOut] = useState(false);
+  const invoicesSectionRef = useRef<HTMLDivElement | null>(null);
   const checkoutIntentRef = useRef<{
     wsId: string;
     interval: WorkspaceSubscriptionInterval;
@@ -297,6 +315,7 @@ function BillingTabContent() {
     setPlanChangePlanName("");
     setPlanChangeError(null);
     setProfileError(null);
+    setExpandedOrderIds({});
   }, [wsId]);
 
   // Consume Stripe callback params once, then remove them with replace so a
@@ -379,6 +398,17 @@ function BillingTabContent() {
   const summaryUnavailable =
     summaryQuery.isError ||
     (!summaryQuery.isPending && summaryQuery.data == null);
+  const isUsagePlanSummary =
+    summaryQuery.data?.billingModel === "usage" ||
+    summaryQuery.data?.usage != null;
+  const subscriptionUsageQuery = useQuery({
+    ...workspaceSubscriptionUsageOptions(wsId),
+    enabled: wsId.length > 0 && isUsagePlanSummary,
+  });
+  const ordersQuery = useQuery({
+    ...workspaceOrdersOptions(wsId),
+    enabled: wsId.length > 0 && summaryQuery.data != null,
+  });
   const quotaUsageQuery = useQuery(autopilotQuotaUsageOptions(wsId));
   const issueLimitUsageQuery = useQuery({
     ...issueLimitUsageOptions(wsId),
@@ -598,9 +628,63 @@ function BillingTabContent() {
         return t(($) => $.workspace.plan.free);
       case "pro":
         return t(($) => $.workspace.plan.pro);
+      case "payg":
+        return t(($) => $.workspace.plan.payg);
+      case "unlimited":
+        return t(($) => $.workspace.plan.unlimited);
       default:
         return t(($) => $.workspace.plan.unknown);
     }
+  };
+
+  const orderKindLabel = (kind: string) => {
+    switch (kind) {
+      case "usage":
+        return t(($) => $.workspace.invoices.usage_kind);
+      case "subscribe":
+        return t(($) => $.workspace.invoices.kind_subscribe);
+      case "change_plan":
+        return t(($) => $.workspace.invoices.kind_change_plan);
+      case "add_seats":
+        return t(($) => $.workspace.invoices.kind_add_seats);
+      case "renew":
+        return t(($) => $.workspace.invoices.kind_renew);
+      default:
+        return t(($) => $.workspace.invoices.kind_unknown);
+    }
+  };
+
+  const orderStatusLabel = (status: string) => {
+    switch (status) {
+      case "pending":
+        return t(($) => $.order.status.pending);
+      case "paid":
+        return t(($) => $.order.status.paid);
+      case "expired":
+        return t(($) => $.order.status.expired);
+      case "canceled":
+        return t(($) => $.order.status.canceled);
+      case "refunded":
+        return t(($) => $.order.status.refunded);
+      default:
+        return t(($) => $.order.status.unknown);
+    }
+  };
+
+  const orderStatusVariant = (
+    status: string,
+  ): "default" | "secondary" | "outline" => {
+    if (status === "paid") return "default";
+    if (status === "pending") return "outline";
+    return "secondary";
+  };
+
+  const handleViewUsageInvoice = (orderId: string) => {
+    setExpandedOrderIds((prev) => ({ ...prev, [orderId]: true }));
+    invoicesSectionRef.current?.scrollIntoView?.({
+      behavior: "smooth",
+      block: "nearest",
+    });
   };
 
   const statusLabel = (status: string) => {
@@ -1158,6 +1242,20 @@ function BillingTabContent() {
         locale,
       )
     : null;
+  const isUsageBilling =
+    isUsagePlanSummary || subscriptionUsageQuery.data?.billingModel === "usage";
+  const activeUsagePeriod =
+    subscriptionUsageQuery.data?.usage ?? summaryQuery.data?.usage ?? null;
+  const unpaidUsageOrderId =
+    summaryQuery.data?.usage?.unpaidOrderId ??
+    subscriptionUsageQuery.data?.usage?.unpaidOrderId ??
+    null;
+  const orders: WorkspaceOrder[] = ordersQuery.data ?? [];
+  const showInvoicesSection =
+    isUsageBilling ||
+    isManualProvider ||
+    orders.length > 0 ||
+    ordersQuery.isError;
 
   return (
     <SettingsTab
@@ -1333,6 +1431,11 @@ function BillingTabContent() {
         onCancel={() => void handleCancelScheduledPlanChange()}
       />
 
+      <UnpaidUsageBanner
+        unpaidOrderId={unpaidUsageOrderId}
+        onViewInvoice={handleViewUsageInvoice}
+      />
+
       <SettingsSection title={t(($) => $.workspace.current.title)}>
         <SettingsCard>
           <SettingsRow
@@ -1387,6 +1490,20 @@ function BillingTabContent() {
         />
       </SettingsSection>
 
+      {isUsageBilling ? (
+        <UsageCard
+          usage={activeUsagePeriod}
+          loading={subscriptionUsageQuery.isPending && !activeUsagePeriod}
+          error={
+            (subscriptionUsageQuery.isError ||
+              (!subscriptionUsageQuery.isPending &&
+                subscriptionUsageQuery.data === null)) &&
+            !activeUsagePeriod
+          }
+          onRetry={() => void subscriptionUsageQuery.refetch()}
+        />
+      ) : null}
+
       {canUpgrade || canChangePlan ? (
         <SettingsSection
           title={
@@ -1406,112 +1523,184 @@ function BillingTabContent() {
                     {t(($) => $.workspace.upgrade.plan_label)}
                   </p>
                   <div
-                    className="inline-flex w-full flex-wrap gap-2 rounded-lg border border-surface-border p-1 sm:w-auto"
+                    className="flex w-full flex-wrap gap-2 rounded-lg border border-surface-border p-1 sm:w-auto"
                     role="group"
                     aria-label={t(($) => $.workspace.upgrade.plan_label)}
                   >
-                    {pickerPlans.map((p) => (
-                      <button
-                        key={p.key}
-                        type="button"
-                        aria-pressed={
-                          (selectedPlan ?? pickerPlans[0]?.key) === p.key
-                        }
-                        className="min-h-11 flex-1 rounded-md px-4 text-body font-medium text-muted-foreground transition-[color,background-color,box-shadow] hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-pressed:bg-surface-selected aria-pressed:text-surface-selected-foreground aria-pressed:shadow-sm sm:min-w-28"
-                        onClick={() => {
-                          setSelectedPlan(p.key);
-                          checkoutIntentRef.current = null;
-                        }}
-                      >
-                        {p.name}
-                      </button>
-                    ))}
+                    {pickerPlans.map((p) => {
+                      const isPressed =
+                        (selectedPlan ?? pickerPlans[0]?.key) === p.key;
+                      const isUsagePlan = p.billingModel === "usage";
+                      const usageRateEntries = isUsagePlan
+                        ? Object.entries(p.usageRates ?? {})
+                        : [];
+                      const discountPct = p.effectiveDiscountPct ?? 0;
+
+                      if (!isUsagePlan) {
+                        return (
+                          <button
+                            key={p.key}
+                            type="button"
+                            aria-pressed={isPressed}
+                            className="min-h-11 flex-1 rounded-md px-4 text-body font-medium text-muted-foreground transition-[color,background-color,box-shadow] hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-pressed:bg-surface-selected aria-pressed:text-surface-selected-foreground aria-pressed:shadow-sm sm:min-w-28"
+                            onClick={() => {
+                              setSelectedPlan(p.key);
+                              checkoutIntentRef.current = null;
+                            }}
+                          >
+                            {p.name}
+                          </button>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={p.key}
+                          className="flex w-full flex-col gap-2 rounded-md border border-surface-border p-3"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <button
+                              type="button"
+                              aria-pressed={isPressed}
+                              className="min-h-11 rounded-md px-4 text-body font-medium text-muted-foreground transition-[color,background-color,box-shadow] hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-pressed:bg-surface-selected aria-pressed:text-surface-selected-foreground aria-pressed:shadow-sm"
+                              onClick={() => {
+                                setSelectedPlan(p.key);
+                                checkoutIntentRef.current = null;
+                              }}
+                            >
+                              {p.name}
+                            </button>
+                            {discountPct > 0 ? (
+                              <Badge variant="secondary" className="tabular-nums">
+                                {t(($) => $.workspace.upgrade.business_discount, {
+                                  pct: discountPct,
+                                })}
+                              </Badge>
+                            ) : null}
+                          </div>
+                          {usageRateEntries.length > 0 ? (
+                            <ul className="space-y-1 text-caption text-muted-foreground">
+                              {usageRateEntries.map(([meterKey, rate]) => (
+                                <li
+                                  key={meterKey}
+                                  className="flex flex-wrap items-center justify-between gap-2 tabular-nums"
+                                >
+                                  <span>{resolveMeterLabel(meterKey, t)}</span>
+                                  <span>
+                                    {t(($) => $.workspace.usage.rate, {
+                                      price: formatUsageMoney(
+                                        rate.price,
+                                        p.currency,
+                                        locale,
+                                      ),
+                                      per: formatUsageUnitPer(
+                                        meterKey,
+                                        rate.per,
+                                        locale,
+                                      ),
+                                    })}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ) : null}
 
-              <div
-                className="inline-flex w-full rounded-lg border border-surface-border p-1 sm:w-auto"
-                role="group"
-                aria-label={t(($) => $.workspace.upgrade.interval_label)}
-              >
-                {(["month", "year"] as const).map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    aria-pressed={interval === value}
-                    className="min-h-11 flex-1 rounded-md px-4 text-body font-medium text-muted-foreground transition-[color,background-color,box-shadow] hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-pressed:bg-surface-selected aria-pressed:text-surface-selected-foreground aria-pressed:shadow-sm sm:min-w-32"
-                    onClick={() => {
-                      setInterval(value);
-                      checkoutIntentRef.current = null;
-                    }}
+              {activePlan?.billingModel === "usage" ? (
+                <p className="text-body text-muted-foreground">
+                  {t(($) => $.workspace.upgrade.usage_billing_note)}
+                </p>
+              ) : (
+                <>
+                  <div
+                    className="inline-flex w-full rounded-lg border border-surface-border p-1 sm:w-auto"
+                    role="group"
+                    aria-label={t(($) => $.workspace.upgrade.interval_label)}
                   >
-                    {value === "month"
-                      ? t(($) => $.workspace.upgrade.monthly)
-                      : t(($) => $.workspace.upgrade.yearly)}
-                  </button>
-                ))}
-              </div>
-              {canUpgrade ? (
-                <div className="space-y-2">
-                  <p className="text-body font-medium">
-                    {t(($) => $.workspace.upgrade.pro_for_team, {
-                      count: actualSeats,
-                    })}
-                  </p>
-                  {pricesQuery.isLoading ? (
-                    <div
-                      className="space-y-2 motion-reduce:[&_[data-slot=skeleton]]:animate-none"
-                      role="status"
-                      aria-label={t(($) => $.workspace.upgrade.price_loading)}
-                    >
-                      <Skeleton className="h-5 w-48" />
-                      <Skeleton className="h-4 w-64 max-w-full" />
-                    </div>
-                  ) : hasDisplayableUnitPrice ? (
-                    <div className="space-y-1">
-                      <p className="text-body font-semibold tabular-nums">
-                        {t(($) => $.workspace.upgrade.unit_price, {
-                          price: formattedUnitPrice,
+                    {(["month", "year"] as const).map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        aria-pressed={interval === value}
+                        className="min-h-11 flex-1 rounded-md px-4 text-body font-medium text-muted-foreground transition-[color,background-color,box-shadow] hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-pressed:bg-surface-selected aria-pressed:text-surface-selected-foreground aria-pressed:shadow-sm sm:min-w-32"
+                        onClick={() => {
+                          setInterval(value);
+                          checkoutIntentRef.current = null;
+                        }}
+                      >
+                        {value === "month"
+                          ? t(($) => $.workspace.upgrade.monthly)
+                          : t(($) => $.workspace.upgrade.yearly)}
+                      </button>
+                    ))}
+                  </div>
+                  {canUpgrade ? (
+                    <div className="space-y-2">
+                      <p className="text-body font-medium">
+                        {t(($) => $.workspace.upgrade.pro_for_team, {
+                          count: actualSeats,
                         })}
                       </p>
+                      {pricesQuery.isLoading ? (
+                        <div
+                          className="space-y-2 motion-reduce:[&_[data-slot=skeleton]]:animate-none"
+                          role="status"
+                          aria-label={t(($) => $.workspace.upgrade.price_loading)}
+                        >
+                          <Skeleton className="h-5 w-48" />
+                          <Skeleton className="h-4 w-64 max-w-full" />
+                        </div>
+                      ) : hasDisplayableUnitPrice ? (
+                        <div className="space-y-1">
+                          <p className="text-body font-semibold tabular-nums">
+                            {t(($) => $.workspace.upgrade.unit_price, {
+                              price: formattedUnitPrice,
+                            })}
+                          </p>
+                        </div>
+                      ) : null}
+                      <p className="max-w-[65ch] text-caption leading-5 text-muted-foreground">
+                        {t(($) => $.workspace.upgrade.price_at_checkout)}
+                      </p>
+                      {canRetryPrice ? (
+                        <>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            aria-busy={pricesQuery.isFetching}
+                            disabled={pricesQuery.isFetching}
+                            onClick={() => void pricesQuery.refetch()}
+                          >
+                            {pricesQuery.isFetching ? (
+                              <Loader2 className="animate-spin" />
+                            ) : (
+                              <RefreshCw />
+                            )}
+                            {t(($) => $.workspace.actions.retry)}
+                          </Button>
+                          {pricesQuery.isFetching ? (
+                            <span
+                              className="sr-only"
+                              role="status"
+                              aria-label={t(
+                                ($) => $.workspace.upgrade.price_loading,
+                              )}
+                            >
+                              {t(($) => $.workspace.upgrade.price_loading)}
+                            </span>
+                          ) : null}
+                        </>
+                      ) : null}
                     </div>
                   ) : null}
-                  <p className="max-w-[65ch] text-caption leading-5 text-muted-foreground">
-                    {t(($) => $.workspace.upgrade.price_at_checkout)}
-                  </p>
-                  {canRetryPrice ? (
-                    <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        aria-busy={pricesQuery.isFetching}
-                        disabled={pricesQuery.isFetching}
-                        onClick={() => void pricesQuery.refetch()}
-                      >
-                        {pricesQuery.isFetching ? (
-                          <Loader2 className="animate-spin" />
-                        ) : (
-                          <RefreshCw />
-                        )}
-                        {t(($) => $.workspace.actions.retry)}
-                      </Button>
-                      {pricesQuery.isFetching ? (
-                        <span
-                          className="sr-only"
-                          role="status"
-                          aria-label={t(
-                            ($) => $.workspace.upgrade.price_loading,
-                          )}
-                        >
-                          {t(($) => $.workspace.upgrade.price_loading)}
-                        </span>
-                      ) : null}
-                    </>
-                  ) : null}
-                </div>
-              ) : null}
+                </>
+              )}
               <div className="flex flex-wrap gap-3">
                 {canUpgrade ? (
                   <Button
@@ -1927,6 +2116,128 @@ function BillingTabContent() {
             </SettingsRow>
           </SettingsCard>
         </SettingsSection>
+      ) : null}
+
+      {showInvoicesSection ? (
+        <div ref={invoicesSectionRef}>
+          <SettingsSection title={t(($) => $.workspace.invoices.title)}>
+            {ordersQuery.isPending ? (
+              <SettingsCard>
+                <div
+                  className="space-y-3 p-4 motion-reduce:[&_[data-slot=skeleton]]:animate-none"
+                  role="status"
+                  aria-label={t(($) => $.workspace.invoices.loading)}
+                >
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              </SettingsCard>
+            ) : ordersQuery.isError || ordersQuery.data === null ? (
+              <Alert variant="destructive">
+                <AlertCircle />
+                <AlertDescription>
+                  <p>{t(($) => $.workspace.invoices.unavailable)}</p>
+                  <Button
+                    className="mt-2"
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void ordersQuery.refetch()}
+                  >
+                    <RefreshCw />
+                    {t(($) => $.workspace.actions.retry)}
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            ) : orders.length === 0 ? (
+              <SettingsCard>
+                <div className="px-4 py-4 text-body text-muted-foreground">
+                  {t(($) => $.workspace.invoices.empty)}
+                </div>
+              </SettingsCard>
+            ) : (
+              <SettingsCard>
+                {orders.map((order) => {
+                  const isUsageOrder = order.kind === "usage";
+                  const isExpanded = Boolean(expandedOrderIds[order.id]);
+                  const periodStart = formatUsageUtcDate(
+                    order.periodStart,
+                    locale,
+                  );
+                  const periodEnd = formatUsageUtcDate(
+                    order.periodEnd,
+                    locale,
+                  );
+                  const periodText =
+                    periodStart && periodEnd
+                      ? t(($) => $.workspace.usage.period, {
+                          start: periodStart,
+                          end: periodEnd,
+                        })
+                      : formatDate(order.createdAt, locale);
+
+                  return (
+                    <div key={order.id} className="divide-y divide-surface-border">
+                      <SettingsRow
+                        label={
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span>{orderKindLabel(order.kind)}</span>
+                            <Badge variant={orderStatusVariant(order.status)}>
+                              {orderStatusLabel(order.status)}
+                            </Badge>
+                          </div>
+                        }
+                        description={
+                          periodText ? (
+                            <span className="tabular-nums">{periodText}</span>
+                          ) : undefined
+                        }
+                      >
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <span className="font-medium tabular-nums">
+                            {formatUsageMoney(
+                              order.totalAmount,
+                              order.currency,
+                              locale,
+                            )}
+                          </span>
+                          {isUsageOrder ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              aria-expanded={isExpanded}
+                              onClick={() =>
+                                setExpandedOrderIds((prev) => ({
+                                  ...prev,
+                                  [order.id]: !isExpanded,
+                                }))
+                              }
+                            >
+                              {isExpanded ? <ChevronDown /> : <ChevronRight />}
+                              {isExpanded
+                                ? t(($) => $.workspace.invoices.hide_lines)
+                                : t(($) => $.workspace.invoices.view_lines)}
+                            </Button>
+                          ) : null}
+                        </div>
+                      </SettingsRow>
+                      {isUsageOrder && isExpanded ? (
+                        <div className="px-4 py-3">
+                          <UsageInvoiceLines
+                            wsId={wsId}
+                            orderId={order.id}
+                            currency={order.currency}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </SettingsCard>
+            )}
+          </SettingsSection>
+        </div>
       ) : null}
 
       <Dialog
