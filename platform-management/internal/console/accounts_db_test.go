@@ -3,6 +3,7 @@ package console
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/db"
 	"github.com/multica-ai/multica/platform-management/internal/plan"
 	"github.com/multica-ai/multica/platform-management/internal/platformauth"
+	"github.com/multica-ai/multica/platform-management/internal/session"
 	"github.com/multica-ai/multica/platform-management/internal/staff"
 )
 
@@ -100,6 +102,39 @@ func TestAccountRequestDBAdminCreatesListsAndCancels(t *testing.T) {
 	wantCode(t, rec, 409, "account_request_not_cancelable")
 	if decode(t, rec)["state"] != "canceled" {
 		t.Errorf("body = %s", rec.Body.String())
+	}
+}
+
+// An admin session that never passed the TOTP step (no mfa in amr) cannot
+// create an account request, and the refused request writes no row (spec 7b.5).
+func TestAccountCreateDBRefusesAnAdminSessionWithoutMFA(t *testing.T) {
+	f := accountsDBFixture(t, 30)
+	adminUser, _ := f.staffUser(staff.RoleAdmin)
+	email := "acct-db-" + randomHex(t) + "@example.test"
+	body := `{"kind":"individual","email":"` + email + `","display_name":"Ana","workspace_name":"Ana space"}`
+	post := func(sign func(secret, userID string, authTime time.Time) (string, error)) *httptest.ResponseRecorder {
+		tok, err := sign(secret, adminUser, time.Now().Add(-time.Minute))
+		if err != nil {
+			t.Fatal(err)
+		}
+		req := httptest.NewRequest("POST", "/api/platform/accounts", strings.NewReader(body))
+		req.AddCookie(&http.Cookie{Name: session.CookieName, Value: tok})
+		req.Header.Set("Origin", origin)
+		rec := httptest.NewRecorder()
+		f.h.ServeHTTP(rec, req)
+		return rec
+	}
+
+	if rec := post(session.Sign); rec.Code != http.StatusNotFound {
+		t.Fatalf("admin session without mfa = %d, want 404", rec.Code)
+	}
+	if n := f.count(`SELECT count(*) FROM platform_account_request WHERE email = $1`, email); n != 0 {
+		t.Fatalf("%d rows after the refused create", n)
+	}
+
+	wantStatus(t, post(platformauth.SignMFASession), 202)
+	if n := f.count(`SELECT count(*) FROM platform_account_request WHERE email = $1`, email); n != 1 {
+		t.Fatalf("%d rows after the mfa create, want 1", n)
 	}
 }
 
