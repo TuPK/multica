@@ -103,6 +103,9 @@ func (h *Handler) CreateShareLink(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if !roleAssignableByInviter(w, requester, role) {
+		return
+	}
 
 	// Validate expiry and usage bounds instead of silently treating bad input
 	// as "no limit": zero/negative and overflow-range values are rejected

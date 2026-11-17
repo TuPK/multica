@@ -54,6 +54,22 @@ func invitationToResponse(inv db.WorkspaceInvitation) InvitationResponse {
 	}
 }
 
+// roleAssignableByInviter reports whether requester may hand out role in an
+// invitation or share link. Only an owner or admin may assign admin; a member
+// holding members.invite may not (spec 7b.2, rule 9). When it may not, the
+// response has been written.
+func roleAssignableByInviter(w http.ResponseWriter, requester db.Member, role string) bool {
+	if role != "admin" || requester.Role == "owner" || requester.Role == "admin" {
+		return true
+	}
+	writeJSON(w, http.StatusForbidden, map[string]string{
+		"error": "only an owner or admin can invite an admin",
+		"code":  "invite_role_not_assignable",
+		"role":  role,
+	})
+	return false
+}
+
 // CreateInvitation replaces the old "instant-add" CreateMember flow.
 // POST /api/workspaces/{id}/members  (same endpoint, new behaviour)
 
@@ -83,6 +99,9 @@ func (h *Handler) CreateInvitation(w http.ResponseWriter, r *http.Request) {
 	}
 	if role == "owner" {
 		writeError(w, http.StatusBadRequest, "cannot invite as owner")
+		return
+	}
+	if !roleAssignableByInviter(w, requester, role) {
 		return
 	}
 
