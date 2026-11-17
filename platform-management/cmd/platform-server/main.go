@@ -27,6 +27,7 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/console"
 	"github.com/multica-ai/multica/platform-management/internal/db"
 	"github.com/multica-ai/multica/platform-management/internal/entitlement"
+	"github.com/multica-ai/multica/platform-management/internal/invoice"
 	"github.com/multica-ai/multica/platform-management/internal/jobs"
 	"github.com/multica-ai/multica/platform-management/internal/lifecycle"
 	"github.com/multica-ai/multica/platform-management/internal/mailer"
@@ -355,6 +356,13 @@ func run() error {
 		return err
 	}
 	if err := runner.Register(pricechange.JobName, pricechange.Interval, priceSvc.Job(time.Now)); err != nil {
+		return err
+	}
+	// No e-invoice provider adapter exists yet, so the provider is nil and the
+	// service stays off (spec 7.3 rule 9). P43.1 wires the SePay provider and
+	// PLATFORM_EINVOICE_START_AT.
+	einvoices := invoice.NewService(invoice.NewPgxStore(pool), nil, invoice.Config{})
+	if err := registerPaymentJobs(runner, reconciler, einvoices); err != nil {
 		return err
 	}
 	priceChanges := pricechange.NewHandler(pricechange.HandlerDeps{
