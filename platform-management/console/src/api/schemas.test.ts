@@ -23,6 +23,7 @@ import {
   parseAccountRequestList,
   parseAccountRequest,
   parseResendWelcomeResponse,
+  parseTenantUsage,
 } from "./schemas";
 
 const tenant = {
@@ -602,6 +603,112 @@ describe("account requests", () => {
     expect(parseResendWelcomeResponse(accountReq)).toMatchObject({ id: "req-1" });
     for (const body of [null, "bad", 42, [], { sent: "yes" }]) {
       expect(parseResendWelcomeResponse(body)).toBeNull();
+    }
+  });
+});
+
+describe("tenant monthly usage (GET /tenants/{id}/usage)", () => {
+  const validUsage = {
+    workspace_id: "t1",
+    period_start: "2026-11-01T00:00:00Z",
+    period_end: "2026-12-01T00:00:00Z",
+    rows: [
+      {
+        day: "2026-11-01",
+        meter: "tasks_run",
+        quantity: 7,
+        unit_price: 30000,
+        per: 1000,
+        discount_pct: 20,
+        net_amount: 168,
+        note: "",
+        order_id: null,
+      },
+      {
+        day: "2026-11-02",
+        meter: "storage_bytes",
+        quantity: 1073741824,
+        unit_price: 3000,
+        per: 1073741824,
+        discount_pct: 0,
+        net_amount: 100,
+        note: "workspace_suspended",
+        order_id: "ord-u1",
+      },
+    ],
+    missing_days: ["2026-11-03", "2026-11-04"],
+    unpaid_orders: [
+      {
+        id: "ord-u1",
+        amount: 50000,
+        vat_amount: 5000,
+        status: "pending",
+        created_at: "2026-11-01T00:00:00Z",
+        period_start: "2026-10-01T00:00:00Z",
+        period_end: "2026-11-01T00:00:00Z",
+      },
+    ],
+  };
+
+  it("parses a well-formed tenant usage response", () => {
+    expect(parseTenantUsage(validUsage)).toEqual(validUsage);
+  });
+
+  it("parses an empty seat-plan response and nullable period bounds on unpaid orders", () => {
+    const emptyUsage = {
+      workspace_id: "t1",
+      period_start: "2026-11-01T00:00:00Z",
+      period_end: "2026-12-01T00:00:00Z",
+      rows: [],
+      missing_days: [],
+      unpaid_orders: [
+        {
+          id: "ord-u2",
+          amount: 12000,
+          vat_amount: 1200,
+          status: "pending",
+          created_at: "2026-11-10T00:00:00Z",
+          period_start: null,
+          period_end: null,
+        },
+      ],
+    };
+    expect(parseTenantUsage(emptyUsage)).toEqual(emptyUsage);
+  });
+
+  it("maps an unknown unpaid order status to unknown", () => {
+    const parsed = parseTenantUsage({
+      ...validUsage,
+      unpaid_orders: [{ ...validUsage.unpaid_orders[0], status: "in_collection" }],
+    });
+    expect(parsed?.unpaid_orders[0]?.status).toBe("unknown");
+  });
+
+  it("falls back to null on malformed responses", () => {
+    const { missing_days: _missingDays, ...withoutMissingDays } = validUsage;
+    const { rows: _rows, ...withoutRows } = validUsage;
+    const { unpaid_orders: _unpaid, ...withoutUnpaidOrders } = validUsage;
+    const malformedBodies = [
+      null,
+      undefined,
+      "bad",
+      [],
+      {},
+      withoutMissingDays,
+      withoutRows,
+      withoutUnpaidOrders,
+      { ...validUsage, missing_days: "2026-11-03" },
+      { ...validUsage, missing_days: [20261103] },
+      { ...validUsage, rows: [{ ...validUsage.rows[0], quantity: "many" }] },
+      { ...validUsage, rows: [{ ...validUsage.rows[0], quantity: null }] },
+      { ...validUsage, rows: [{ ...validUsage.rows[0], day: 20261101 }] },
+      { ...validUsage, rows: [{ ...validUsage.rows[0], day: null }] },
+      { ...validUsage, rows: [{ ...validUsage.rows[0], net_amount: "168" }] },
+      { ...validUsage, unpaid_orders: [{ ...validUsage.unpaid_orders[0], amount: "50000" }] },
+      { ...validUsage, unpaid_orders: [{ id: "ord-u1" }] },
+    ];
+    for (const body of malformedBodies) {
+      expect(parseTenantUsage(body)).toBeNull();
     }
   });
 });

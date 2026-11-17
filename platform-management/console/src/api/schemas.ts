@@ -306,6 +306,40 @@ export const TenantDetailSchema = TenantSchema.extend({
 });
 export type TenantDetail = z.output<typeof TenantDetailSchema>;
 
+export const TenantUsageRowSchema = z.object({
+  day: z.string(),
+  meter: z.string(),
+  quantity: z.number(),
+  unit_price: z.number().default(0),
+  per: z.number().default(1),
+  discount_pct: z.number().default(0),
+  net_amount: z.number(),
+  note: text,
+  order_id: nullableText,
+});
+export type TenantUsageRow = z.output<typeof TenantUsageRowSchema>;
+
+export const TenantUsageUnpaidOrderSchema = z.object({
+  id: z.string(),
+  amount: z.number(),
+  vat_amount: count,
+  status: enumOf(ORDER_STATUSES),
+  created_at: text,
+  period_start: nullableText,
+  period_end: nullableText,
+});
+export type TenantUsageUnpaidOrder = z.output<typeof TenantUsageUnpaidOrderSchema>;
+
+export const TenantUsageSchema = z.object({
+  workspace_id: z.string(),
+  period_start: z.string(),
+  period_end: z.string(),
+  rows: z.array(TenantUsageRowSchema),
+  missing_days: z.array(z.string()),
+  unpaid_orders: z.array(TenantUsageUnpaidOrderSchema),
+});
+export type TenantUsage = z.output<typeof TenantUsageSchema>;
+
 export const TenantPageSchema = z.object({
   tenants: z.array(TenantSchema).default([]),
   next_cursor: nextCursor,
@@ -506,6 +540,12 @@ export function parseTenantPage(data: unknown): TenantPage {
 export function parseTenantDetail(data: unknown): TenantDetail | null {
   return parseWithFallback<TenantDetail | null>(data, TenantDetailSchema, null, {
     endpoint: "GET /api/platform/tenants/{id}",
+  });
+}
+
+export function parseTenantUsage(data: unknown): TenantUsage | null {
+  return parseWithFallback<TenantUsage | null>(data, TenantUsageSchema, null, {
+    endpoint: "GET /api/platform/tenants/{id}/usage",
   });
 }
 

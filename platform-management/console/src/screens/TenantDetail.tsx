@@ -27,6 +27,7 @@ import {
   DialogClose,
 } from "@multica/ui/components/ui/dialog";
 import { Spinner } from "@multica/ui/components/ui/spinner";
+import { Badge } from "@multica/ui/components/ui/badge";
 import { ArrowLeft, Plus } from "@multica/ui/icons";
 import { StatusBadge } from "../components/StatusBadge";
 import { LoadingState } from "../components/LoadingState";
@@ -34,21 +35,217 @@ import { ErrorState } from "../components/ErrorState";
 import { EmptyState } from "../components/EmptyState";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
 import {
+  useMe,
   useTenant,
+  useTenantUsage,
   useTenantNotes,
   useTenantAudit,
   useChangeTenantStatus,
   useAddTenantNote,
   useUpdateSubscription,
+  useCancelOrder,
 } from "../api/hooks";
 import { formatBytes } from "./Tenants";
 import type { StaffRole } from "../components/types";
-import type { Note, AuditEvent, Order } from "../api/schemas";
+import type {
+  Note,
+  AuditEvent,
+  Order,
+  TenantUsage,
+  TenantUsageRow,
+  TenantUsageUnpaidOrder,
+} from "../api/schemas";
 
 interface TenantDetailProps {
   tenantId: string;
   onBack: () => void;
-  userRole: StaffRole;
+  userRole?: StaffRole;
+}
+
+function formatUsageQuantity(row: TenantUsageRow): string {
+  if (row.meter === "storage_bytes") {
+    return formatBytes(row.quantity);
+  }
+  return row.quantity.toLocaleString();
+}
+
+interface MonthlyUsageCardProps {
+  usageData: TenantUsage | undefined;
+  isLoading: boolean;
+  isError: boolean;
+  error: unknown;
+  onRetry: () => void;
+  canWriteOff: boolean;
+  onWriteOff: (order: TenantUsageUnpaidOrder) => void;
+}
+
+/** Monthly rated usage charges, unrated missing days, and unpaid usage invoices. */
+function MonthlyUsageCard({
+  usageData,
+  isLoading,
+  isError,
+  error,
+  onRetry,
+  canWriteOff,
+  onWriteOff,
+}: MonthlyUsageCardProps) {
+  return (
+    <Card data-testid="usage-month">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle role="heading" aria-level={2}>Monthly Usage</CardTitle>
+        {usageData && (
+          <span className="font-mono text-caption text-muted-foreground">
+            {usageData.period_start.slice(0, 10)} to {usageData.period_end.slice(0, 10)} (UTC)
+          </span>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {isLoading && <LoadingState message="Loading monthly usage..." />}
+        {isError && (
+          <ErrorState
+            title="Failed to load monthly usage"
+            message={error instanceof Error ? error.message : "Unable to load monthly usage."}
+            onRetry={onRetry}
+          />
+        )}
+        {!isLoading && !isError && usageData && (
+          <>
+            <div data-testid="usage-rows" className="space-y-2">
+              <h3 className="text-caption font-medium text-foreground">Daily charges</h3>
+              {usageData.rows.length === 0 ? (
+                <p className="text-caption text-muted-foreground">
+                  No rated usage rows for this month.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Day</TableHead>
+                        <TableHead>Meter</TableHead>
+                        <TableHead className="text-right">Quantity</TableHead>
+                        <TableHead className="text-right">Unit price</TableHead>
+                        <TableHead className="text-right">Discount</TableHead>
+                        <TableHead className="text-right">Net amount</TableHead>
+                        <TableHead>Note</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {usageData.rows.map((row) => (
+                        <TableRow key={`${row.day}-${row.meter}`}>
+                          <TableCell className="font-mono text-caption">{row.day}</TableCell>
+                          <TableCell className="font-mono text-caption">{row.meter}</TableCell>
+                          <TableCell
+                            className="text-right tabular-nums"
+                            title={
+                              row.meter === "storage_bytes"
+                                ? `${row.quantity.toLocaleString()} bytes`
+                                : undefined
+                            }
+                          >
+                            {formatUsageQuantity(row)}
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground tabular-nums">
+                            {row.unit_price.toLocaleString()} / {row.per.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground tabular-nums">
+                            {row.discount_pct > 0 ? `${row.discount_pct}%` : "-"}
+                          </TableCell>
+                          <TableCell className="text-right font-medium tabular-nums">
+                            {row.net_amount.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-caption text-muted-foreground">
+                            {row.note || "-"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+
+            {usageData.missing_days.length > 0 && (
+              <div data-testid="usage-missing-days" className="space-y-2">
+                <h3 className="text-caption font-medium text-foreground">Missing days</h3>
+                <ul className="flex flex-wrap gap-2">
+                  {usageData.missing_days.map((day) => (
+                    <li
+                      key={day}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-surface-border bg-muted/40 px-2.5 py-1 text-caption"
+                    >
+                      <span className="font-mono">{day}</span>
+                      <Badge variant="outline">missing</Badge>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div data-testid="usage-unpaid-orders" className="space-y-2">
+              <h3 className="text-caption font-medium text-foreground">Unpaid usage orders</h3>
+              {usageData.unpaid_orders.length === 0 ? (
+                <p className="text-caption text-muted-foreground">
+                  No unpaid usage orders.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Order</TableHead>
+                        <TableHead>Period</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-right">VAT</TableHead>
+                        <TableHead>Status</TableHead>
+                        {canWriteOff && <TableHead className="text-right">Action</TableHead>}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {usageData.unpaid_orders.map((order) => (
+                        <TableRow key={order.id}>
+                          <TableCell className="font-mono text-caption">{order.id}</TableCell>
+                          <TableCell className="font-mono text-caption text-muted-foreground">
+                            {order.period_start && order.period_end
+                              ? `${order.period_start.slice(0, 10)} – ${order.period_end.slice(0, 10)}`
+                              : "-"}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {order.created_at ? new Date(order.created_at).toLocaleString() : "-"}
+                          </TableCell>
+                          <TableCell className="text-right font-medium tabular-nums">
+                            {order.amount.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground tabular-nums">
+                            {order.vat_amount.toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={order.status} />
+                          </TableCell>
+                          {canWriteOff && (
+                            <TableCell className="text-right">
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => onWriteOff(order)}
+                              >
+                                Write off
+                              </Button>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 function UsageValue({ label, value }: { label: string; value: number | string }) {
@@ -61,6 +258,7 @@ function UsageValue({ label, value }: { label: string; value: number | string })
 }
 
 export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) {
+  const { data: me } = useMe();
   const {
     data: tenant,
     isLoading: tenantLoading,
@@ -68,6 +266,14 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
     error: tenantErrorObj,
     refetch: refetchTenant,
   } = useTenant(tenantId);
+
+  const {
+    data: usageData,
+    isLoading: usageLoading,
+    isError: usageError,
+    error: usageErrorObj,
+    refetch: refetchUsage,
+  } = useTenantUsage(tenantId);
 
   const {
     data: notesData,
@@ -82,6 +288,7 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
   const changeStatus = useChangeTenantStatus();
   const addNote = useAddTenantNote();
   const updateSubscription = useUpdateSubscription();
+  const cancelOrder = useCancelOrder();
 
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [targetStatus, setTargetStatus] = useState("active");
@@ -99,7 +306,13 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
   const [subReason, setSubReason] = useState("");
   const [subError, setSubError] = useState<string | null>(null);
 
-  const canEditSubscription = userRole === "billing" || userRole === "admin";
+  // Usage debt write-off dialog state
+  const [writeOffOrder, setWriteOffOrder] = useState<TenantUsageUnpaidOrder | null>(null);
+  const [writeOffError, setWriteOffError] = useState<string | null>(null);
+
+  const effectiveRole = userRole ?? me?.role;
+  const canEditSubscription = effectiveRole === "billing" || effectiveRole === "admin";
+  const canWriteOff = me === null ? false : (me?.role ?? userRole) === "admin";
 
   if (tenantLoading) {
     return <LoadingState message="Loading tenant details..." />;
@@ -186,11 +399,30 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
     }
   };
 
+  const handleOpenWriteOffDialog = (order: TenantUsageUnpaidOrder) => {
+    setWriteOffOrder(order);
+    setWriteOffError(null);
+  };
+
+  const handleConfirmWriteOff = async (reason: string) => {
+    if (!writeOffOrder) return;
+    setWriteOffError(null);
+    try {
+      await cancelOrder.mutateAsync({
+        orderId: writeOffOrder.id,
+        reason,
+      });
+      setWriteOffOrder(null);
+    } catch (err: unknown) {
+      setWriteOffError(err instanceof Error ? err.message : "Failed to write off order");
+    }
+  };
+
   const availableStatuses = [
     { value: "active", label: "Active" },
     { value: "read_only", label: "Read-only" },
     { value: "suspended", label: "Suspended" },
-    ...(userRole === "admin"
+    ...(effectiveRole === "admin"
       ? [{ value: "pending_deletion", label: "Pending deletion" }]
       : []),
   ];
@@ -456,6 +688,17 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
         </CardContent>
       </Card>
 
+      {/* Monthly Usage */}
+      <MonthlyUsageCard
+        usageData={usageData}
+        isLoading={usageLoading}
+        isError={usageError}
+        error={usageErrorObj}
+        onRetry={refetchUsage}
+        canWriteOff={canWriteOff}
+        onWriteOff={handleOpenWriteOffDialog}
+      />
+
       {/* Recent Orders */}
       <Card>
         <CardHeader>
@@ -688,6 +931,27 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmReasonDialog
+        open={writeOffOrder !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setWriteOffOrder(null);
+            setWriteOffError(null);
+          }
+        }}
+        title="Write off usage order"
+        description={
+          writeOffOrder
+            ? `Write off pending usage order ${writeOffOrder.id} (${(writeOffOrder.amount + writeOffOrder.vat_amount).toLocaleString()} total)? Its lines will stay excluded from future invoices.`
+            : ""
+        }
+        confirmLabel="Write off order"
+        confirmVariant="destructive"
+        isPending={cancelOrder.isPending}
+        error={writeOffError}
+        onConfirm={handleConfirmWriteOff}
+      />
     </div>
   );
 }

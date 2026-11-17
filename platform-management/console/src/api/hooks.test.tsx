@@ -21,6 +21,7 @@ import {
   useTenant,
   useTenantAudit,
   useTenantNotes,
+  useTenantUsage,
   useTenants,
   useUser,
   useUsers,
@@ -147,6 +148,12 @@ describe("query keys", () => {
     expect(key.slice(0, platformKeys.tenantAudits("t1").length)).toEqual(platformKeys.tenantAudits("t1"));
     expect(key.slice(0, platformKeys.tenantAudits("t2").length)).not.toEqual(platformKeys.tenantAudits("t2"));
   });
+
+  it("keeps tenant usage keys under platform/tenants", () => {
+    const key = platformKeys.tenantUsage("t1");
+    expect(key.slice(0, platformKeys.tenants().length)).toEqual(platformKeys.tenants());
+    expect(key).not.toEqual(platformKeys.tenantUsage("t2"));
+  });
 });
 
 describe("reads", () => {
@@ -203,6 +210,49 @@ describe("reads", () => {
     const { wrapper } = setup();
     renderHook(() => useTenant(undefined), { wrapper });
     expect(calls).toHaveLength(0);
+  });
+
+  it("useTenantUsage fetches under the tenant usage key and errors on a malformed body", async () => {
+    const validUsage = {
+      workspace_id: "t1",
+      period_start: "2026-11-01T00:00:00Z",
+      period_end: "2026-12-01T00:00:00Z",
+      rows: [
+        {
+          day: "2026-11-01",
+          meter: "tasks_run",
+          quantity: 12,
+          unit_price: 30000,
+          per: 1000,
+          discount_pct: 0,
+          net_amount: 360,
+          note: "",
+          order_id: null,
+        },
+      ],
+      missing_days: ["2026-11-02"],
+      unpaid_orders: [],
+    };
+    const calls = stubFetch({
+      "GET /api/platform/tenants/t1/usage": json(200, validUsage),
+      "GET /api/platform/tenants/t2/usage": json(200, { workspace_id: "t2" }),
+      "GET /api/platform/tenants/a%2Fb/usage": json(200, { ...validUsage, workspace_id: "a/b" }),
+    });
+    const { queryClient, wrapper } = setup();
+    const ok = renderHook(() => useTenantUsage("t1"), { wrapper });
+    const bad = renderHook(() => useTenantUsage("t2"), { wrapper });
+    const encoded = renderHook(() => useTenantUsage("a/b"), { wrapper });
+    renderHook(() => useTenantUsage(undefined), { wrapper });
+
+    await waitFor(() => expect(ok.result.current.isSuccess).toBe(true));
+    await waitFor(() => expect(bad.result.current.isError).toBe(true));
+    await waitFor(() => expect(encoded.result.current.isSuccess).toBe(true));
+
+    expect(ok.result.current.data).toEqual(validUsage);
+    expect(queryClient.getQueryState(platformKeys.tenantUsage("t1"))?.status).toBe("success");
+    expect((bad.result.current.error as PlatformApiError).code).toBe("malformed_response");
+    expect(calls.map((c) => c.path)).toContain("/api/platform/tenants/a%2Fb/usage");
+    expect(calls).toHaveLength(3);
   });
 
   it("useTenantAudit sends the filters and keys by workspace and filters", async () => {
@@ -595,11 +645,12 @@ describe("orders and billing hooks", () => {
     expect(calls[0]?.body).toEqual({ reason: "wire received", transfer_reference: "REF123" });
   });
 
-  it("useCancelOrder sends reason", async () => {
+  it("useCancelOrder sends reason and invalidates tenant usage", async () => {
     const calls = stubFetch({
       "POST /api/platform/orders/ord-1/cancel": json(200, { order: { ...mockOrder, status: "canceled" }, applied: true }),
     });
-    const { wrapper } = setup();
+    const { queryClient, wrapper } = setup();
+    queryClient.setQueryData(platformKeys.tenantUsage("ws-1"), null);
     const { result } = renderHook(() => useCancelOrder(), { wrapper });
 
     await act(async () => {
@@ -608,6 +659,7 @@ describe("orders and billing hooks", () => {
 
     expect(calls[0]?.path).toBe("/api/platform/orders/ord-1/cancel");
     expect(calls[0]?.body).toEqual({ reason: "user request" });
+    expect(queryClient.getQueryState(platformKeys.tenantUsage("ws-1"))?.isInvalidated).toBe(true);
   });
 });
 

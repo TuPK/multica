@@ -14,6 +14,7 @@ import {
   parseStaffList,
   parseTenantDetail,
   parseTenantPage,
+  parseTenantUsage,
   parseUserDetail,
   parseUserPage,
   parseOrderList,
@@ -32,6 +33,7 @@ import {
   type StaffRole,
   type TenantDetail,
   type TenantStatus,
+  type TenantUsage,
   type UserDetail,
   type Order,
   type Plan,
@@ -41,7 +43,7 @@ import {
   type AccountRequestState,
 } from "./schemas";
 
-export type { Subscription, Order, Plan, Limits };
+export type { Subscription, Order, Plan, Limits, TenantUsage };
 
 /** The states staff may set on a workspace. */
 export type SettableTenantStatus = Exclude<TenantStatus, "unknown">;
@@ -98,6 +100,7 @@ export const platformKeys = {
   tenantLists: () => ["platform", "tenants", "list"] as const,
   tenantList: (filters: SearchFilters) => ["platform", "tenants", "list", clean(filters)] as const,
   tenant: (id: string) => ["platform", "tenants", "detail", id] as const,
+  tenantUsage: (id: string) => ["platform", "tenants", "usage", id] as const,
   tenantAudits: (id: string) => ["platform", "tenants", "audit", id] as const,
   tenantAudit: (id: string, filters: AuditFilters) => ["platform", "tenants", "audit", id, clean(filters)] as const,
   tenantNotes: (id: string) => ["platform", "tenants", "notes", id] as const,
@@ -218,6 +221,15 @@ export function useTenant(id: string | undefined) {
     enabled: !!id,
     queryFn: async ({ signal }): Promise<TenantDetail> =>
       orMalformed(parseTenantDetail(await platformFetch(`/tenants/${pathSegment(id ?? "")}`, { signal }))),
+  });
+}
+
+export function useTenantUsage(id: string | undefined) {
+  return useQuery({
+    queryKey: platformKeys.tenantUsage(id ?? ""),
+    enabled: !!id,
+    queryFn: async ({ signal }): Promise<TenantUsage> =>
+      orMalformed(parseTenantUsage(await platformFetch(`/tenants/${pathSegment(id ?? "")}/usage`, { signal }))),
   });
 }
 

@@ -1,17 +1,22 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { TenantDetail } from "./TenantDetail";
 
+const mockUseMe = vi.fn();
 const mockUseTenant = vi.fn();
+const mockUseTenantUsage = vi.fn();
 const mockUseTenantNotes = vi.fn();
 const mockUseTenantAudit = vi.fn();
 const mockChangeTenantStatusMutateAsync = vi.fn();
 const mockAddTenantNoteMutateAsync = vi.fn();
 const mockUpdateSubscriptionMutateAsync = vi.fn();
+const mockCancelOrderMutateAsync = vi.fn();
 
 vi.mock("../api/hooks", () => ({
+  useMe: () => mockUseMe(),
   useTenant: () => mockUseTenant(),
+  useTenantUsage: () => mockUseTenantUsage(),
   useTenantNotes: () => mockUseTenantNotes(),
   useTenantAudit: () => mockUseTenantAudit(),
   useChangeTenantStatus: () => ({
@@ -24,6 +29,10 @@ vi.mock("../api/hooks", () => ({
   }),
   useUpdateSubscription: () => ({
     mutateAsync: mockUpdateSubscriptionMutateAsync,
+    isPending: false,
+  }),
+  useCancelOrder: () => ({
+    mutateAsync: mockCancelOrderMutateAsync,
     isPending: false,
   }),
 }));
@@ -93,8 +102,22 @@ const mockTenantData = {
 describe("TenantDetail screen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseMe.mockReturnValue({ data: undefined });
     mockUseTenant.mockReturnValue({
       data: mockTenantData,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    mockUseTenantUsage.mockReturnValue({
+      data: {
+        workspace_id: "t-123",
+        period_start: "2026-11-01T00:00:00Z",
+        period_end: "2026-12-01T00:00:00Z",
+        rows: [],
+        missing_days: [],
+        unpaid_orders: [],
+      },
       isLoading: false,
       isError: false,
       refetch: vi.fn(),
@@ -328,5 +351,189 @@ describe("TenantDetail screen", () => {
     expect(screen.getByRole("heading", { name: "Usage" })).toBeInTheDocument();
     expect(screen.getByTestId("usage-daily").textContent).toBe("No daily snapshot yet.");
     expect(screen.getByRole("heading", { name: "Acme Corp" })).toBeInTheDocument();
+  });
+
+  describe("monthly usage and usage debt write-off", () => {
+    const monthlyUsageData = {
+      workspace_id: "t-123",
+      period_start: "2026-11-01T00:00:00Z",
+      period_end: "2026-12-01T00:00:00Z",
+      rows: [
+        {
+          day: "2026-11-01",
+          meter: "tasks_run",
+          quantity: 120,
+          unit_price: 30000,
+          per: 1000,
+          discount_pct: 20,
+          net_amount: 2880,
+          note: "",
+          order_id: null,
+        },
+        {
+          day: "2026-11-02",
+          meter: "members",
+          quantity: 4,
+          unit_price: 49000,
+          per: 1,
+          discount_pct: 0,
+          net_amount: 6533,
+          note: "",
+          order_id: null,
+        },
+      ],
+      missing_days: ["2026-11-03", "2026-11-04"],
+      unpaid_orders: [
+        {
+          id: "ord-usage-1",
+          amount: 50000,
+          vat_amount: 5000,
+          status: "pending" as const,
+          created_at: "2026-11-01T00:05:00Z",
+          period_start: "2026-10-01T00:00:00Z",
+          period_end: "2026-11-01T00:00:00Z",
+        },
+        {
+          id: "ord-usage-2",
+          amount: 75000,
+          vat_amount: 7500,
+          status: "pending" as const,
+          created_at: "2026-11-10T00:05:00Z",
+          period_start: null,
+          period_end: null,
+        },
+      ],
+    };
+
+    it("renders monthly usage rows, lists missing_days as missing (never 0), and leaves usage-current intact", () => {
+      mockUseMe.mockReturnValue({
+        data: { user_id: "u-support", email: "support@example.com", role: "support" },
+      });
+      mockUseTenantUsage.mockReturnValue({
+        data: monthlyUsageData,
+        isLoading: false,
+        isError: false,
+        refetch: vi.fn(),
+      });
+
+      render(<TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="support" />);
+
+      expect(screen.getByTestId("usage-current")).toBeInTheDocument();
+
+      const rowsRegion = screen.getByTestId("usage-rows");
+      expect(within(rowsRegion).getByText("2026-11-01")).toBeInTheDocument();
+      expect(within(rowsRegion).getByText("tasks_run")).toBeInTheDocument();
+      expect(within(rowsRegion).getByText("120")).toBeInTheDocument();
+      expect(within(rowsRegion).getByText("2,880")).toBeInTheDocument();
+      expect(within(rowsRegion).getByText("2026-11-02")).toBeInTheDocument();
+      expect(within(rowsRegion).getByText("members")).toBeInTheDocument();
+      expect(within(rowsRegion).getByText("6,533")).toBeInTheDocument();
+
+      const missingRegion = screen.getByTestId("usage-missing-days");
+      for (const missingDay of ["2026-11-03", "2026-11-04"]) {
+        const dayEl = within(missingRegion).getByText(missingDay);
+        const container = dayEl.closest("li") ?? dayEl.parentElement!;
+        expect(container).toHaveTextContent(/missing/i);
+        expect(container.textContent?.replace(missingDay, "")).not.toMatch(/\b0\b/);
+      }
+    });
+
+    it("shows unpaid orders without Write off button for billing and support roles", () => {
+      mockUseTenantUsage.mockReturnValue({
+        data: monthlyUsageData,
+        isLoading: false,
+        isError: false,
+        refetch: vi.fn(),
+      });
+
+      for (const role of ["billing", "support"] as const) {
+        mockUseMe.mockReturnValue({
+          data: { user_id: `u-${role}`, email: `${role}@example.com`, role },
+        });
+        // Even if userRole prop were passed as admin, useMe governs Write off visibility.
+        const { unmount } = render(
+          <TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="admin" />,
+        );
+
+        const unpaidRegion = screen.getByTestId("usage-unpaid-orders");
+        expect(within(unpaidRegion).getByText("ord-usage-1")).toBeInTheDocument();
+        expect(within(unpaidRegion).getByText("50,000")).toBeInTheDocument();
+        expect(within(unpaidRegion).getAllByText("pending").length).toBeGreaterThanOrEqual(2);
+        expect(within(unpaidRegion).queryByRole("button", { name: /write off/i })).not.toBeInTheDocument();
+        unmount();
+      }
+    });
+
+    it("shows Write off button only for admin, requires a reason, and submits cancel with reason", async () => {
+      mockCancelOrderMutateAsync.mockResolvedValue({
+        order: { ...mockTenantData.recent_orders[0], id: "ord-usage-2", status: "canceled" },
+        applied: true,
+      });
+      mockUseMe.mockReturnValue({
+        data: { user_id: "u-admin", email: "admin@example.com", role: "admin" },
+      });
+      mockUseTenantUsage.mockReturnValue({
+        data: monthlyUsageData,
+        isLoading: false,
+        isError: false,
+        refetch: vi.fn(),
+      });
+
+      render(<TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="admin" />);
+
+      const unpaidRegion = screen.getByTestId("usage-unpaid-orders");
+      const writeOffButtons = within(unpaidRegion).getAllByRole("button", { name: /write off/i });
+      expect(writeOffButtons).toHaveLength(2);
+
+      fireEvent.click(writeOffButtons[1]!);
+
+      expect(screen.getByRole("heading", { name: /write off/i })).toBeInTheDocument();
+
+      const submitBtn = screen.getByRole("button", { name: /write off order/i });
+      expect(submitBtn).toBeDisabled();
+
+      const reasonInput = screen.getByLabelText(/reason/i);
+      fireEvent.change(reasonInput, { target: { value: "   " } });
+      expect(submitBtn).toBeDisabled();
+      expect(mockCancelOrderMutateAsync).not.toHaveBeenCalled();
+
+      fireEvent.change(reasonInput, { target: { value: "Customer disputed usage spike" } });
+      expect(submitBtn).toBeEnabled();
+
+      fireEvent.click(submitBtn);
+
+      await waitFor(() => {
+        expect(mockCancelOrderMutateAsync).toHaveBeenCalledWith({
+          orderId: "ord-usage-2",
+          reason: "Customer disputed usage spike",
+        });
+      });
+    });
+
+    it("keeps dialog open and shows alert when write-off fails", async () => {
+      mockCancelOrderMutateAsync.mockRejectedValue(new Error("only an admin can write off a usage invoice"));
+      mockUseMe.mockReturnValue({
+        data: { user_id: "u-admin", email: "admin@example.com", role: "admin" },
+      });
+      mockUseTenantUsage.mockReturnValue({
+        data: monthlyUsageData,
+        isLoading: false,
+        isError: false,
+        refetch: vi.fn(),
+      });
+
+      render(<TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="admin" />);
+
+      const unpaidRegion = screen.getByTestId("usage-unpaid-orders");
+      fireEvent.click(within(unpaidRegion).getAllByRole("button", { name: /write off/i })[0]!);
+
+      fireEvent.change(screen.getByLabelText(/reason/i), { target: { value: "Goodwill credit" } });
+      fireEvent.click(screen.getByRole("button", { name: /write off order/i }));
+
+      await waitFor(() => {
+        expect(screen.getByRole("alert")).toHaveTextContent("only an admin can write off a usage invoice");
+      });
+      expect(screen.getByRole("heading", { name: /write off/i })).toBeInTheDocument();
+    });
   });
 });
