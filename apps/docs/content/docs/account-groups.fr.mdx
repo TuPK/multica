@@ -1,0 +1,56 @@
+---
+title: Groupes de comptes
+description: Accordez des autorisations supplémentaires à un ensemble de membres de l'espace de travail avec un groupe, sans en faire des admin.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+Un groupe de comptes accorde aux membres qui en font partie des autorisations supplémentaires, en plus de leur rôle. Utilisez-le pour qu'une personne de la finance consulte la facturation ou qu'une personne des opérations invite des membres, sans les passer en `admin`.
+
+Les owner et admin gèrent les groupes dans **Paramètres → Groupes**. Cet onglet n'apparaît pas pour les autres rôles, et aucune clé d'autorisation n'ouvre la gestion des groupes : personne ne peut donc s'en servir pour élever ses propres droits.
+
+<Callout type="info">
+Les groupes de comptes ne sont inclus dans un forfait que si sa limite `member_groups` est supérieure à zéro. Une limite de zéro signifie que le forfait ne les inclut pas, et la création d'un groupe est refusée. Dans le catalogue par défaut, Free et Pro n'en ont aucun, Business en autorise jusqu'à 50 par espace de travail, et le forfait illimité et Enterprise n'ont aucun plafond.
+</Callout>
+
+## Créer un groupe
+
+Choisissez **Créer un groupe** et définissez :
+
+- **Nom.** De 1 à 64 caractères, unique dans l'espace de travail. `Finance` et `finance` comptent comme le même nom.
+- **Description.** Facultative, 280 caractères au maximum.
+- **Autorisations.** N'importe quelle combinaison des six clés ci-dessous.
+- **Membres.** Recherchez des membres de l'espace de travail et ajoutez-les. Une requête ajoute jusqu'à 100 personnes, et un groupe en contient jusqu'à 1 000. Une personne peut appartenir à plusieurs groupes, et seuls les membres actuels de l'espace de travail peuvent être ajoutés.
+
+Les changements s'appliquent à la prochaine requête de la personne, sans nouvelle connexion. Supprimer un groupe, ou en retirer quelqu'un, retire immédiatement les autorisations qu'il accordait.
+
+## Les six clés d'autorisation
+
+| Clé | Ce qu'elle ouvre |
+|---|---|
+| `members.invite` | Inviter des membres, gérer les invitations en attente et créer des liens de partage. La personne ne peut pas inviter d'`admin`. |
+| `audit.read` | Consulter le journal d'audit de l'espace de travail |
+| `billing.view` | Lister et ouvrir les commandes de l'espace de travail et leurs lignes de consommation, et voir l'onglet **Facturation** |
+| `billing.manage` | Modifier les informations de l'acheteur sur une commande. Inclut `billing.view`. |
+| `integrations.manage` | Connecter et déconnecter des intégrations comme GitHub, le contrôle de version et Qoder |
+| `runtime_profiles.manage` | Créer, modifier et supprimer des profils de runtime personnalisés |
+
+Les owner et admin détiennent toujours les six clés. Les groupes ajoutent des clés au rôle `member`. Ils n'en retirent jamais, et les clés de plusieurs groupes s'additionnent.
+
+<Callout type="warning">
+`billing.manage` ne permet pas encore à un simple membre de modifier l'abonnement. L'achat et le changement de forfait, l'ajout de sièges, la résiliation, la reprise, le profil de facturation et les chiffres de consommation de l'onglet **Facturation** exigent toujours le rôle `owner` ou `admin`. Voir [Abonnements](/subscriptions).
+</Callout>
+
+## Viewers
+
+Un groupe ne permet jamais à un `viewer` d'écrire. Un viewer membre d'un groupe qui a `audit.read` ou `billing.view` peut lire ce que la clé ouvre. Toute écriture est refusée par le rôle viewer, même si le viewer détient la clé correspondante. Voir [Membres et rôles](/members-roles).
+
+## Erreurs
+
+| Message | Cause |
+|---|---|
+| Un autre groupe porte déjà ce nom. | Le nom correspond à un groupe existant, sans tenir compte de la casse. |
+| Un groupe peut contenir au maximum 1 000 membres. | Le groupe est plein. |
+| Ajoutez au maximum 100 membres à la fois. | La requête désigne plus de 100 personnes. |
+| Les groupes de comptes ne sont pas disponibles dans cette offre. | La limite `member_groups` du forfait est de zéro. |
+| Cet espace de travail a atteint sa limite de groupes de comptes. | L'espace de travail a déjà autant de groupes que le forfait en autorise. |

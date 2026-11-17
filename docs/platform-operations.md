@@ -387,3 +387,77 @@ Deviation from the contract: the audit detail is `{"plan": "free", "source": "cu
 - The console's **Edit subscription** dialog clears dates on a subscription (section 8.1).
 - `docker-compose.selfhost.yml` has no `platform` service, and does not pass `BILLING_BANK_*` to the Multica server (sections 6 and 11).
 - Rules for underpayment, overpayment and refunds are not in the spec (section 7.1).
+
+## 13. Bảng kiểm trước khi bật R5
+
+Nguồn: mã trong `server/migrations/`, `platform-management/internal/schemacheck/`, `platform-management/internal/config/config.go` và `server/internal/handler/`. Đường dẫn tính từ gốc repo. Mục này chỉ ghi điều đã đọc trong mã; điều chưa kiểm được ghi rõ.
+
+### 13.1 Migration
+
+Migration R5 có số từ 953 đến 969 trong `server/migrations/`.
+
+1. Sao lưu cơ sở dữ liệu (mục 11, bước 1).
+2. Chạy lệnh migrate của Multica **trước khi** khởi động lại Multica và platform:
+
+```bash
+cd server && go run ./cmd/migrate up
+```
+
+3. Lệnh này áp cả dải 953 đến 969. Hai nhóm không nằm trong danh sách kiểm của platform vẫn do lệnh này áp:
+   - 956 đến 960 tạo bảng nhóm tài khoản (`member_group`, `member_group_member`) và chỉ mục của chúng. Chỉ máy chủ Multica đọc các bảng này.
+   - **969** (`billing_order.expires_at` cho phép NULL) thuộc R5. Platform **không** kiểm migration này lúc khởi động (`schemacheck.go` không liệt kê nó), nên platform vẫn khởi động khi thiếu 969. Khi đó việc lập hóa đơn theo mức dùng không ghi được: cột còn `NOT NULL` (`677_billing_order.up.sql:23`), còn `usage.Invoicer` ghi đơn không có `expires_at` (`platform-management/internal/usage/invoicing.go:144`). Hãy kiểm `schema_migrations` có dòng `969_billing_order_usage_expiry` sau khi chạy lệnh.
+
+### 13.2 Platform từ chối khởi động khi thiếu migration
+
+Lúc khởi động, platform so `schema_migrations` với danh sách `Required` trong `platform-management/internal/schemacheck/schemacheck.go`. Thiếu một phiên bản thì nó thoát, với thông báo `database schema is missing required migrations:` kèm các phiên bản thiếu.
+
+Các phiên bản R5 trong danh sách:
+
+| Phiên bản | Bảng hoặc cột |
+| --- | --- |
+| `953_plan_subscription_r5` | cột R5 của `plan` và `workspace_subscription` |
+| `954_billing_profile`, `955_billing_profile_uidx` | `billing_profile` |
+| `961_usage_charge`, `962_usage_charge_uidx`, `963_usage_charge_order_idx` | `usage_charge` |
+| `964_plan_price_change`, `965_plan_price_change_scheduled_uidx` | `plan_price_change` |
+| `966_platform_account_request`, `967_platform_account_request_id_uidx`, `968_platform_account_request_email_uidx` | `platform_account_request` |
+
+Tức là 953, 954, 955 và 961 đến 968. Phần trước đó của danh sách là các phiên bản R1 và R2 (651 đến 690).
+
+### 13.3 Thứ tự khởi động lại
+
+1. Chạy migrate (13.1).
+2. Khởi động lại máy chủ Multica.
+3. Khởi động lại dịch vụ platform.
+
+### 13.4 Biến môi trường R5 của platform
+
+Platform đọc các biến này trong `platform-management/internal/config/config.go`. Thư mục `config/` không có tệp `account.go` hay `usage.go`; các biến nằm cả trong `config.go`. Bỏ trống thì dùng mặc định. Giá trị sai (không phải số nguyên từ 1 trở lên, hoặc không phải `true` hay `false`) làm platform thoát với thông báo nêu tên biến.
+
+| Biến | Mặc định | Ý nghĩa |
+| --- | --- | --- |
+| `PLATFORM_INDIVIDUAL_MAX_SEATS` | 5 | Số ghế tối đa của workspace `individual` khi đổi gói. |
+| `PLATFORM_ACCOUNT_CREATE_PER_HOUR` | 30 | Số yêu cầu tạo tài khoản tối đa mỗi giờ cho mỗi staff. |
+| `PLATFORM_USAGE_DUE_DAYS` | 7 | Số ngày hóa đơn theo mức dùng được chưa trả trước khi thuê bao sang `past_due`. |
+| `PLATFORM_USAGE_MIN_INVOICE` | 10000 | Số tiền tối thiểu của hóa đơn tháng, tính theo đơn vị nhỏ nhất của tiền tệ. Dưới mức này, các dòng dồn sang tháng sau. |
+| `BILLING_VAT_RATE` | 0.10 | Thuế suất của đơn hàng, gồm hóa đơn theo mức dùng. Biến này có từ R2. |
+| `PLATFORM_BUSINESS_DISCOUNT_REQUIRES_VERIFICATION` | `true` | Với `true`, giảm giá Business chỉ áp cho hồ sơ đã được staff xác minh. Chỉ nhận đúng `true` hoặc `false`. |
+| `PLATFORM_API_RATE_CEILING` | 6000 | Trần số request API mỗi phút khi gói để trống hạn mức này (gói không giới hạn). |
+
+Spec 7b.7 còn nêu `PLATFORM_PRICE_NOTICE_DAYS`, `PLATFORM_PRICE_CONFIRM_PCT` và `PLATFORM_PRICE_MAX`. Không có mã nào đọc ba biến này (`config.go` không có chúng, và `pricechange` chỉ nhắc tên trong chú thích). Đặt chúng không có tác dụng; lịch đổi giá dùng giá trị cố định 30 ngày, 50 phần trăm và 1.000.000.000 (`platform-management/internal/pricechange/pricechange.go`).
+
+### 13.5 `MULTICA_CLOUD_URL` với bản tự lưu trữ
+
+Với bản tự lưu trữ, để `MULTICA_CLOUD_URL` **trống**. Đã kiểm trong mã:
+
+- Các route `/api/cloud-subscriptions/*` (gồm hồ sơ thanh toán, đổi gói, hủy, tiếp tục, mua ghế) không gọi platform. Máy chủ trả 403 `cloud_runtime_not_configured`, hoặc 403 `workspace_subscriptions_disabled` khi cờ `billing_workspace_subscriptions` tắt (`server/internal/handler/cloud_billing.go:113`, `:145`).
+- Cổng `member_groups` tắt: không có provider quyền lợi nên `planlimit.Resolve` trả chính sách `off` (`server/internal/planlimit/planlimit.go:50`, `server/cmd/server/router.go:507`). Tạo nhóm tài khoản không bị giới hạn theo gói.
+
+Điều này **không** có nghĩa mọi route R5 giữ nguyên như trước. Các route nhóm tài khoản (`/api/workspaces/{id}/groups`) và việc kiểm khóa quyền (`members.invite`, `audit.read` và các khóa khác) chỉ đọc cơ sở dữ liệu, không phụ thuộc `MULTICA_CLOUD_URL`. Chúng chạy sau khi triển khai bản R5 dù biến để trống. Tôi chưa kiểm các hành vi R5 khác với biến trống.
+
+Chỉ trỏ `MULTICA_CLOUD_URL` về platform theo mục 11, bước 5.
+
+### 13.6 Hoàn tác
+
+- Dừng dịch vụ platform thì các route R5 phía platform ngừng trả lời: hồ sơ thanh toán, đổi gói, hủy và tiếp tục, mua ghế, đọc mức dùng, và các việc nền của platform (chấm tiền theo mức dùng, lập hóa đơn, áp đổi giá). Máy chủ Multica vẫn chạy.
+- Phần nằm trong máy chủ Multica không dừng theo: các route nhóm tài khoản và việc kiểm khóa quyền đọc cơ sở dữ liệu (13.5).
+- Migration **không** tự hoàn tác. Chạy lại bản Multica cũ không rút migration nào. Mỗi migration có tệp `.down.sql`, và `cmd/migrate` nhận lệnh `down`, nhưng không có bước nào gọi lệnh này tự động. Chỉ chạy `down` khi có quyết định riêng và đã có bản sao lưu.

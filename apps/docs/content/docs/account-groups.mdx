@@ -1,0 +1,56 @@
+---
+title: Account groups
+description: Give a set of workspace members extra permissions with a group, without making them admins.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+An account group gives the members in it extra permissions on top of their role. Use it to let a finance person see billing or an operations person invite members, without making either an `admin`.
+
+Owners and admins manage groups in **Settings → Groups**. A group does not appear for other roles, and no permission key opens group management, so nobody can use a group to raise their own access.
+
+<Callout type="info">
+Account groups are in the plan only when its `member_groups` limit is above zero. A limit of zero means the plan does not include them, and creating a group is refused. In the default catalogue, Free and Pro have none, Business allows up to 50 groups per workspace, and the unlimited and Enterprise plans have no cap.
+</Callout>
+
+## Create a group
+
+Choose **Create group** and set:
+
+- **Name.** 1 to 64 characters, unique in the workspace. `Finance` and `finance` count as the same name.
+- **Description.** Optional, up to 280 characters.
+- **Permissions.** Any of the six keys below.
+- **Members.** Search the workspace members and add them. One request adds up to 100 people, and a group holds up to 1,000. A person can be in several groups, and only current workspace members can be added.
+
+Changes apply on the person's next request, with no new sign-in. Deleting a group, or removing someone from it, takes its permissions away at once.
+
+## The six permission keys
+
+| Key | What it opens |
+|---|---|
+| `members.invite` | Invite members, manage pending invitations, and create share links. The person cannot invite an `admin`. |
+| `audit.read` | Read the workspace audit log |
+| `billing.view` | List and open the workspace's orders and their usage lines, and see the **Billing** tab |
+| `billing.manage` | Edit buyer details on an order. It includes `billing.view`. |
+| `integrations.manage` | Connect and disconnect integrations such as GitHub, version control, and Qoder |
+| `runtime_profiles.manage` | Create, edit, and delete custom runtime profiles |
+
+Owners and admins always hold all six keys. Groups add keys for the `member` role. They never remove one, and the keys of several groups add up.
+
+<Callout type="warning">
+`billing.manage` does not yet let a plain member change the subscription. Buying a plan, changing plan, adding seats, cancelling, resuming, the billing profile, and the usage figures on the **Billing** tab still need the `owner` or `admin` role. See [Subscriptions](/subscriptions).
+</Callout>
+
+## Viewers
+
+A group never lets a `viewer` write. A viewer in a group with `audit.read` or `billing.view` can read what the key opens. Every write is refused by the viewer role, even when the viewer holds the matching key. See [Members and roles](/members-roles).
+
+## Errors
+
+| Message | Cause |
+|---|---|
+| Another group already uses that name. | The name matches an existing group, ignoring case. |
+| Groups can hold at most 1,000 members. | The group is full. |
+| Add at most 100 members at a time. | The request names more than 100 people. |
+| Account groups are not available on this plan. | The plan's `member_groups` limit is zero. |
+| This workspace reached its account group limit. | The workspace already has as many groups as the plan allows. |

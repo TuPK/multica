@@ -1,0 +1,60 @@
+---
+title: Usage billing
+description: The unlimited plan and the pay-as-you-go plan, monthly usage invoices with VAT, the minimum invoice, the credit limit, and the business discount.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+Besides seat plans (see [Subscriptions](/subscriptions)), a workspace can be on one of two other kinds of plan. Amounts are in VND.
+
+## The unlimited plan
+
+The unlimited plan sets none of the counted limits: issues, automation runs, agents, runtimes, and storage are all off. It is still priced per seat, and in the default catalogue it is open to both account types.
+
+"Unlimited" is not infinite. The API request rate stays under a platform-wide ceiling, and audit log retention still has a limit.
+
+## The pay-as-you-go plan
+
+A pay-as-you-go plan has no seats and no payment up front. You use the workspace, and the invoice comes after the month.
+
+To start it, choose the plan in **Settings → Billing**. It starts at once, with an order of 0. The billing profile must be filled in first:
+
+- An individual account needs a legal name and an invoice email.
+- A business account needs all four fields. See [Subscriptions](/subscriptions#individual-and-business-accounts).
+
+A workspace on a paid seat plan cannot switch to a pay-as-you-go plan in this release.
+
+Usage is counted per UTC day on three meters:
+
+| Meter | What is counted |
+|---|---|
+| Tasks run | Agent runs that completed in the day. Failed runs are not counted. |
+| Storage | Bytes of attachments at the end of the day. The monthly price is shared over the days of the month. |
+| Members | Members at the end of the day. The monthly price is shared over the days of the month. |
+
+Each day is priced at the plan's rate and kept as a line with the price it was rated at, so a later price change does not alter past days. A suspended workspace is rated at zero. The **Usage this period** card shows the quantity, rate, and amount of each meter for the current month.
+
+## Usage invoices
+
+At the start of each UTC month, the days of the previous month become one usage invoice. It adds VAT at the rate in `BILLING_VAT_RATE` (10% when it is not set). It is a bank-transfer order like any other, and it does not expire. **View details** under **Invoices** lists the daily lines.
+
+- **Minimum amount.** A monthly invoice below the minimum is not issued, and its lines carry over to the next month. The default minimum is 10,000 VND, set by `PLATFORM_USAGE_MIN_INVOICE`. The final invoice, issued when a workspace leaves a pay-as-you-go plan, has no minimum.
+- **Due date.** An invoice that stays unpaid for 7 days (`PLATFORM_USAGE_DUE_DAYS`) moves the subscription to `past_due`.
+- **Unpaid invoice.** While a usage invoice is unpaid, buying or changing to a paid plan is refused. A banner links to the invoice. Changing to the free plan is still allowed.
+
+## Credit limit
+
+A pay-as-you-go plan can set a credit limit for each account type. It is the amount of usage that has accrued and not yet been invoiced. A plan with no limit for your account type has none.
+
+- At **80%**, the card shows a warning, and owners and admins get one email in that month.
+- At **100%**, an interim invoice for all uninvoiced usage is issued at once, with no minimum.
+
+The limit never blocks usage.
+
+## Business discount
+
+A plan can give business accounts a percentage discount on usage. It applies only to `business` accounts. By default it applies only when staff have verified the billing profile. If your administrator sets `PLATFORM_BUSINESS_DISCOUNT_REQUIRES_VERIFICATION` to `false`, every business account gets it. Each meter and invoice line shows the discount it was rated with. Changing the legal name or tax code removes the verification.
+
+<Callout type="info">
+The discount is rounded once per daily line, not once per invoice.
+</Callout>

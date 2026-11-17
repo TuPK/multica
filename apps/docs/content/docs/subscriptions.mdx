@@ -1,0 +1,57 @@
+---
+title: Subscriptions
+description: Choose an individual or business account, buy and change a plan, add seats, and cancel or resume a subscription.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+A subscription belongs to a [workspace](/workspaces). Owners and admins manage it in **Settings → Billing**. The tab appears only when workspace subscriptions are turned on for your deployment and you can view billing.
+
+Amounts are in VND. Every purchase creates an order that you pay by bank transfer. The order page shows the bank details and a transfer code to put in the transfer note, and the plan, seats, or change apply once the payment is confirmed.
+
+## Individual and business accounts
+
+Every workspace is an `individual` account until you switch it. Each plan is sold to individuals, to businesses, or to both. A plan that is not sold to your account type is refused.
+
+To switch to `business`, fill in the **Billing profile** with all four fields:
+
+| Field | Rule |
+|---|---|
+| Legal name | Required |
+| Tax code | 10 digits, or 13 digits (10 plus a 3-digit branch code) with an optional hyphen after the tenth |
+| Address | Required |
+| Invoice email | Required |
+
+Multica checks only the format of the tax code. It does not look the code up with a tax authority. Staff record verification outside the console for now, and changing the legal name or tax code clears that mark. Verification matters for the usage discount in [Usage billing](/usage-billing).
+
+Switching back to `individual` keeps the profile. It is refused while the workspace is on a plan that is sold to businesses only.
+
+An individual account is limited in seats, 5 by default. A plan change that goes above the limit is refused. Switch the workspace to a business account first.
+
+## Buy a plan and change plan
+
+A workspace on the free plan or a trial buys a plan for a full period at the new price. Choose a monthly or yearly interval and the number of seats. The order is created when you confirm.
+
+On a paid subscription, **Change plan** shows a quote before anything is charged:
+
+| Change | When it applies | Charge |
+|---|---|---|
+| Upgrade on the same interval | After the order is paid | The price difference for the days left in the period, plus VAT |
+| Downgrade, fewer seats, or a switch between monthly and yearly | At the next renewal | None, and no refund |
+
+An upgrade keeps the larger of your current seats and the new plan's minimum. A scheduled change shows as a banner with **Cancel scheduled change**. A change is refused while the workspace has another order waiting for payment, and when the quote changed since you opened it. Review the new quote and confirm again.
+
+## Add seats
+
+Seats are for human members. Agents never use a seat, and pending invitations reserve one until they are accepted or expire. **Add seats** shows the prorated charge for the rest of the current period and the amount of the next renewal. Seats can be added only on an active paid subscription, inside its current period. Reducing seats is a plan change, so it waits for the next renewal.
+
+## Cancel and resume
+
+**Cancel subscription** sets the subscription to end with the current period. The plan stays active until then, and the workspace returns to the free plan afterwards. A scheduled plan change is kept but unused while the cancellation stands.
+
+- Cancel works on an `active` or `trialing` subscription. It is refused when the subscription is `past_due`.
+- **Resume subscription** removes the cancellation as long as the period, or the trial, has not ended.
+
+<Callout type="info">
+A workspace with an unpaid usage invoice cannot buy or change to a paid plan until the invoice is paid. See [Usage billing](/usage-billing).
+</Callout>

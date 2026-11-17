@@ -1,0 +1,57 @@
+---
+title: Abonnements
+description: Choisissez un compte particulier ou professionnel, achetez et changez de forfait, ajoutez des sièges, résiliez ou reprenez un abonnement.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+Un abonnement appartient à un [espace de travail](/workspaces). Les owner et admin le gèrent dans **Paramètres → Facturation**. L'onglet n'apparaît que si les abonnements d'espace de travail sont activés sur votre déploiement et si vous pouvez consulter la facturation.
+
+Les montants sont en VND. Chaque achat crée une commande que vous payez par virement bancaire. La page de la commande affiche les coordonnées bancaires et un code de virement à indiquer dans le libellé du virement. Le forfait, les sièges ou le changement s'appliquent une fois le paiement confirmé.
+
+## Comptes particulier et professionnel
+
+Un espace de travail est un compte `individual` tant que vous ne le changez pas. Chaque forfait est vendu aux particuliers, aux professionnels ou aux deux. Un forfait qui n'est pas vendu à votre type de compte est refusé.
+
+Pour passer en `business`, remplissez les quatre champs du **Profil de facturation** :
+
+| Champ | Règle |
+|---|---|
+| Raison sociale | Obligatoire |
+| Numéro fiscal | 10 chiffres, ou 13 chiffres (10 chiffres plus un code d'établissement de 3 chiffres), avec un tiret facultatif après le dixième |
+| Adresse | Obligatoire |
+| E-mail de facturation | Obligatoire |
+
+Multica ne vérifie que le format du numéro fiscal, sans interroger l'administration fiscale. La vérification est enregistrée par le staff en dehors de la console pour l'instant ; modifier la raison sociale ou le numéro fiscal efface cette marque. La vérification compte pour la remise sur la consommation décrite dans [Paiement à l'usage](/usage-billing).
+
+Repasser en `individual` conserve le profil. Le passage est refusé tant que l'espace de travail utilise un forfait réservé aux professionnels.
+
+Un compte particulier est limité en sièges, à 5 par défaut. Un changement de forfait qui dépasse la limite est refusé. Passez d'abord l'espace de travail en compte professionnel.
+
+## Acheter un forfait et en changer
+
+Un espace de travail sur le forfait gratuit ou en période d'essai achète une période complète au nouveau prix. Choisissez l'intervalle mensuel ou annuel et le nombre de sièges. La commande est créée à la confirmation.
+
+Sur un abonnement payant, **Changer de forfait** affiche un devis avant tout paiement :
+
+| Changement | Quand il s'applique | Coût |
+|---|---|---|
+| Passage à un forfait supérieur sur le même intervalle | Une fois la commande payée | La différence de prix pour les jours restants de la période, plus la TVA |
+| Passage à un forfait inférieur, moins de sièges, ou bascule entre mensuel et annuel | Au prochain renouvellement | Aucun, et pas de remboursement |
+
+Un passage à un forfait supérieur conserve le plus grand nombre entre vos sièges actuels et le minimum du nouveau forfait. Un changement programmé s'affiche dans un bandeau avec **Annuler le changement programmé**. Un changement est refusé si l'espace de travail a une autre commande en attente de paiement, ou si le devis a changé depuis son ouverture. Vérifiez le nouveau devis, puis confirmez à nouveau.
+
+## Ajouter des sièges
+
+Les sièges sont réservés aux membres humains. Les agents n'en utilisent jamais, et une invitation en attente en réserve un jusqu'à son acceptation ou son expiration. **Ajouter des sièges** affiche le montant au prorata pour le reste de la période en cours et le montant du prochain renouvellement. On ne peut ajouter des sièges que sur un abonnement payant actif, pendant sa période en cours. Réduire les sièges est un changement de forfait : il attend le prochain renouvellement.
+
+## Résilier et reprendre
+
+**Résilier l'abonnement** fait se terminer l'abonnement à la fin de la période en cours. Le forfait reste actif jusque-là, puis l'espace de travail revient au forfait gratuit. Un changement de forfait programmé est conservé, mais inutilisé tant que la résiliation est en vigueur.
+
+- La résiliation fonctionne sur un abonnement `active` ou `trialing`. Elle est refusée quand l'abonnement est `past_due`.
+- **Reprendre l'abonnement** annule la résiliation tant que la période, ou l'essai, n'est pas terminé.
+
+<Callout type="info">
+Un espace de travail qui a une facture de consommation impayée ne peut ni acheter un forfait payant ni passer à un tel forfait avant le paiement de la facture. Voir [Paiement à l'usage](/usage-billing).
+</Callout>

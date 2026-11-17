@@ -1,0 +1,60 @@
+---
+title: Paiement à l'usage
+description: Le forfait illimité et le forfait à l'usage, les factures mensuelles de consommation avec TVA, le montant minimum de facture, le plafond de crédit et la remise professionnelle.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+En plus des forfaits facturés par siège (voir [Abonnements](/subscriptions)), un espace de travail peut utiliser deux autres types de forfait. Les montants sont en VND.
+
+## Le forfait illimité
+
+Le forfait illimité ne fixe aucune limite chiffrée : tâches, exécutions d'automatisation, agents, runtimes et stockage sont tous sans limite. Il reste facturé par siège et, dans le catalogue par défaut, les deux types de compte peuvent l'acheter.
+
+« Illimité » ne veut pas dire infini. Le débit de requêtes de l'API reste sous un plafond commun à toute la plateforme, et la durée de conservation du journal d'audit reste limitée.
+
+## Le forfait à l'usage
+
+Un forfait à l'usage n'a pas de sièges et ne demande aucun paiement d'avance. Vous utilisez l'espace de travail, et la facture arrive après la fin du mois.
+
+Pour le démarrer, choisissez ce forfait dans **Paramètres → Facturation**. Il démarre immédiatement, avec une commande de 0. Le profil de facturation doit d'abord être rempli :
+
+- Un compte particulier a besoin d'un nom (celui du payeur) et d'un e-mail de facturation.
+- Un compte professionnel a besoin des quatre champs. Voir [Abonnements](/subscriptions#comptes-particulier-et-professionnel).
+
+Dans cette version, un espace de travail sur un forfait payant par siège ne peut pas passer à un forfait à l'usage.
+
+La consommation est comptée par jour UTC sur trois compteurs :
+
+| Compteur | Ce qui est compté |
+|---|---|
+| Exécutions de tâches | Les exécutions d'agent terminées dans la journée. Les exécutions en échec ne comptent pas. |
+| Stockage | Les octets de pièces jointes en fin de journée. Le prix mensuel est réparti sur les jours du mois. |
+| Membres | Les membres en fin de journée. Le prix mensuel est réparti sur les jours du mois. |
+
+Chaque jour est valorisé au tarif du forfait et conservé comme une ligne avec le prix de ce moment : un changement de prix ultérieur ne modifie donc pas les jours passés. Un espace de travail suspendu est valorisé à zéro. La carte **Consommation de la période** affiche la quantité, le tarif et le montant de chaque compteur pour le mois en cours.
+
+## Factures de consommation
+
+Au début de chaque mois UTC, les jours du mois précédent forment une facture de consommation. Elle ajoute la TVA au taux de `BILLING_VAT_RATE` (10 % s'il n'est pas défini). C'est une commande réglée par virement bancaire comme les autres, et elle n'expire pas. **Voir les détails**, sous **Factures**, liste les lignes quotidiennes.
+
+- **Montant minimum.** Une facture mensuelle inférieure au minimum n'est pas émise et ses lignes sont reportées au mois suivant. Le minimum par défaut est de 10 000 VND, défini par `PLATFORM_USAGE_MIN_INVOICE`. La facture finale, émise quand un espace de travail quitte un forfait à l'usage, n'a pas de minimum.
+- **Échéance.** Une facture de consommation qui reste impayée 7 jours (`PLATFORM_USAGE_DUE_DAYS`) fait passer l'abonnement à `past_due`.
+- **Facture impayée.** Tant qu'une facture de consommation est impayée, l'achat d'un forfait payant ou le passage à un tel forfait est refusé. Un bandeau renvoie vers la facture. Le passage au forfait gratuit reste possible.
+
+## Plafond de crédit
+
+Un forfait à l'usage peut fixer un plafond de crédit pour chaque type de compte. Il s'agit du montant de consommation accumulé et pas encore facturé. Un forfait sans plafond pour votre type de compte n'en a pas.
+
+- À **80 %**, la carte affiche un avertissement, et les owner et admin reçoivent un e-mail, une fois dans le mois.
+- À **100 %**, une facture provisoire couvrant toute la consommation non facturée est émise aussitôt, sans minimum.
+
+Le plafond ne bloque jamais l'utilisation.
+
+## Remise professionnelle
+
+Un forfait peut accorder aux comptes professionnels une remise en pourcentage sur la consommation. Elle ne s'applique qu'aux comptes `business`. Par défaut, elle ne s'applique que si le staff a vérifié le profil de facturation. Si votre administrateur définit `PLATFORM_BUSINESS_DISCOUNT_REQUIRES_VERIFICATION` sur `false`, tous les comptes professionnels en bénéficient. Chaque compteur et chaque ligne de facture affichent la remise utilisée pour la valorisation. Modifier la raison sociale ou le numéro fiscal supprime la vérification.
+
+<Callout type="info">
+La remise est arrondie une fois par ligne quotidienne, et non une fois par facture.
+</Callout>
