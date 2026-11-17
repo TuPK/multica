@@ -222,6 +222,20 @@ func (q *Queries) PlanDeletedBefore(ctx context.Context, targetID string) (bool,
 	return exists, err
 }
 
+const planHasSubscriptionsOrOrders = `-- name: PlanHasSubscriptionsOrOrders :one
+SELECT (EXISTS (SELECT 1 FROM workspace_subscription ws WHERE ws.plan_key = $1)
+    OR EXISTS (SELECT 1 FROM billing_order bo WHERE bo.plan_key = $1))::boolean
+`
+
+// True when any subscription row or billing order names the plan, whatever its
+// status: the plan's currency is then fixed (spec 7b.4 rule 6).
+func (q *Queries) PlanHasSubscriptionsOrOrders(ctx context.Context, planKey string) (bool, error) {
+	row := q.db.QueryRow(ctx, planHasSubscriptionsOrOrders, planKey)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const upsertPlan = `-- name: UpsertPlan :exec
 INSERT INTO plan (
     key, name, limits, features, currency, seat_price_month, seat_price_year,

@@ -395,6 +395,16 @@ func (c *Console) putPlan(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
+		if exists && body.Currency != "" && body.Currency != old.Currency {
+			inUse, err := tx.InUse(r.Context(), key)
+			if err != nil {
+				return err
+			}
+			if inUse {
+				return &Error{Status: http.StatusConflict, Code: "plan_currency_locked",
+					Message: "the currency of a plan that has a subscription or an order cannot change"}
+			}
+		}
 		next := plan.Plan{
 			Key: key, Name: body.Name, Limits: body.Limits, Features: body.Features, Currency: body.Currency,
 			SeatPriceMonth: body.SeatPriceMonth, SeatPriceYear: body.SeatPriceYear, SeatsFixed: body.SeatsFixed,

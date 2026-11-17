@@ -117,6 +117,10 @@ func (t *pgxTx) CountSubscriptions(ctx context.Context, key string) (int64, erro
 	return t.q.CountSubscriptionsOnPlan(ctx, key)
 }
 
+func (t *pgxTx) InUse(ctx context.Context, key string) (bool, error) {
+	return t.q.PlanHasSubscriptionsOrOrders(ctx, key)
+}
+
 // InsertAuditEvent implements audit.Writer inside the transaction.
 func (t *pgxTx) InsertAuditEvent(ctx context.Context, e audit.Entry) error {
 	var ws pgtype.UUID

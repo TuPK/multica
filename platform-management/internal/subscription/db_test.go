@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -483,4 +484,80 @@ func TestDBOldRowWithoutPendingChangeReadsCleanly(t *testing.T) {
 	if after.Seats != 4 || after.PendingChange == nil || after.PendingChange.PlanKey != "free" || after.UnitPrice == nil || *after.UnitPrice != 5 {
 		t.Fatalf("after a staff change: seats %d, pending %+v, unit price %v; want the two fields kept", after.Seats, after.PendingChange, after.UnitPrice)
 	}
+}
+
+// dbConsole is the console routes on the real plan tables.
+func (f *dbFixture) dbConsole(t *testing.T) *consoleEnv {
+	t.Helper()
+	e := &consoleEnv{t: t, subs: newFakeStore(t), profs: newFakeProfiles(t), cache: &recordingCache{}, policy: &recordingCache{}}
+	e.h = buildConsole(t, e, plan.NewPgxReader(f.pool), plan.NewPgxRunner(f.pool))
+	return e
+}
+
+// putPlanCurrency sends the full plan with only its currency changed.
+func (f *dbFixture) putPlanCurrency(e *consoleEnv, key, currency string) *httptest.ResponseRecorder {
+	body := strings.Replace(teamBody, `"currency":"vnd"`, `"currency":"`+currency+`"`, 1)
+	return e.do(adminUser, "PUT", "/api/platform/plans/"+key, body)
+}
+
+func (f *dbFixture) storedCurrency(key string) string {
+	f.t.Helper()
+	var c string
+	if err := f.pool.QueryRow(context.Background(), `SELECT currency FROM plan WHERE key = $1`, key).Scan(&c); err != nil {
+		f.t.Fatal(err)
+	}
+	return c
+}
+
+// The plan audit rows carry the key as target and no workspace.
+func (f *dbFixture) dropPlanAudits(key string) {
+	f.t.Cleanup(func() {
+		f.pool.Exec(context.Background(), `DELETE FROM audit_event WHERE target_type = 'plan' AND target_id = $1`, key)
+	})
+}
+
+func TestDBCurrencyLockedWithSubscriptionRow(t *testing.T) {
+	f := newDBFixture(t)
+	e := f.dbConsole(t)
+	p := f.plan(nil)
+	f.dropPlanAudits(p.Key)
+	wantStatus(t, f.putPlanCurrency(e, p.Key, "vnd"), 200)
+	wantStatus(t, f.putPlanCurrency(e, p.Key, "usd"), 200) // not in use yet
+	wantStatus(t, f.putPlanCurrency(e, p.Key, "vnd"), 200)
+
+	ws := f.workspace(nil)
+	now := time.Now().UTC()
+	if _, err := f.pool.Exec(context.Background(), `
+		INSERT INTO workspace_subscription (workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, version)
+		VALUES ($1, $2, 'active', 1, 'month', $3, $4, 1)`, ws, p.Key, now.Add(-time.Hour), now.Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	wantCode(t, f.putPlanCurrency(e, p.Key, "usd"), 409, "plan_currency_locked")
+	if got := f.storedCurrency(p.Key); got != "vnd" {
+		t.Errorf("stored currency = %q after a refused change", got)
+	}
+	wantStatus(t, f.putPlanCurrency(e, p.Key, "vnd"), 200)
+}
+
+func TestDBCurrencyLockedWithBillingOrder(t *testing.T) {
+	f := newDBFixture(t)
+	e := f.dbConsole(t)
+	p := f.plan(nil)
+	f.dropPlanAudits(p.Key)
+	wantStatus(t, f.putPlanCurrency(e, p.Key, "vnd"), 200)
+
+	ws := f.workspace(nil)
+	now := time.Now().UTC()
+	if _, err := f.pool.Exec(context.Background(), `
+		INSERT INTO billing_order (id, workspace_id, kind, plan_key, interval, seats, amount, vat_amount, currency,
+			status, provider, transfer_code, expires_at, created_at)
+		VALUES (gen_random_uuid(), $1, 'new', $2, 'month', 1, 100000, 10000, 'vnd', 'expired', 'manual', $3, $4, $5)`,
+		ws, p.Key, "MUL"+hexSuffix(t), now.Add(time.Hour), now); err != nil {
+		t.Fatal(err)
+	}
+	wantCode(t, f.putPlanCurrency(e, p.Key, "usd"), 409, "plan_currency_locked")
+	if got := f.storedCurrency(p.Key); got != "vnd" {
+		t.Errorf("stored currency = %q after a refused change", got)
+	}
+	wantStatus(t, f.putPlanCurrency(e, p.Key, "vnd"), 200)
 }

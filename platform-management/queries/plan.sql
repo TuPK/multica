@@ -71,6 +71,12 @@ SET name = EXCLUDED.name,
 -- name: DeletePlan :execrows
 DELETE FROM plan WHERE key = $1;
 
+-- name: PlanHasSubscriptionsOrOrders :one
+-- True when any subscription row or billing order names the plan, whatever its
+-- status: the plan's currency is then fixed (spec 7b.4 rule 6).
+SELECT (EXISTS (SELECT 1 FROM workspace_subscription ws WHERE ws.plan_key = $1)
+    OR EXISTS (SELECT 1 FROM billing_order bo WHERE bo.plan_key = $1))::boolean;
+
 -- name: CountSubscriptionsOnPlan :one
 -- Every row counts, whatever its status or whether its workspace still exists:
 -- a plan that any row names must stay readable.

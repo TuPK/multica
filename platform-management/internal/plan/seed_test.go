@@ -89,6 +89,10 @@ func (t *fakeTx) CountSubscriptions(_ context.Context, key string) (int64, error
 	return t.s.subs[key], nil
 }
 
+func (t *fakeTx) InUse(_ context.Context, key string) (bool, error) {
+	return t.s.subs[key] > 0, nil
+}
+
 func (t *fakeTx) InsertAuditEvent(_ context.Context, e audit.Entry) error {
 	t.s.audits = append(t.s.audits, e)
 	return nil

@@ -26,6 +26,9 @@ type Tx interface {
 	// CountSubscriptions counts the subscription rows that name the plan.
 	CountSubscriptions(ctx context.Context, key string) (int64, error)
 
+	// InUse reports whether a subscription or a billing order names the plan.
+	InUse(ctx context.Context, key string) (bool, error)
+
 	audit.Writer
 }
 

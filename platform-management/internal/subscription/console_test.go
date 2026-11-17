@@ -63,6 +63,7 @@ func (activeGuard) State(context.Context, string) (accountguard.Record, error) {
 type fakePlanStore struct {
 	rows      map[string]plan.Plan
 	subs      map[string]int64
+	orders    map[string]int64
 	audits    []audit.Entry
 	failAudit error
 }
@@ -116,6 +117,9 @@ func (t *fakePlanTx) Delete(_ context.Context, key string) (bool, error) {
 func (t *fakePlanTx) CountSubscriptions(_ context.Context, key string) (int64, error) {
 	return t.s.subs[key], nil
 }
+func (t *fakePlanTx) InUse(_ context.Context, key string) (bool, error) {
+	return t.s.subs[key] > 0 || t.s.orders[key] > 0, nil
+}
 func (t *fakePlanTx) InsertAuditEvent(_ context.Context, e audit.Entry) error {
 	if t.s.failAudit != nil {
 		return t.s.failAudit
@@ -138,12 +142,20 @@ type consoleEnv struct {
 func newConsoleEnv(t *testing.T) *consoleEnv {
 	t.Helper()
 	subStore := newFakeStore(t)
-	planStore := &fakePlanStore{rows: map[string]plan.Plan{}, subs: map[string]int64{}}
+	planStore := &fakePlanStore{rows: map[string]plan.Plan{}, subs: map[string]int64{}, orders: map[string]int64{}}
 	for k, v := range subStore.plans {
 		planStore.rows[k] = v
 	}
 	e := &consoleEnv{t: t, plans: planStore, subs: subStore, profs: newFakeProfiles(t), cache: &recordingCache{}, policy: &recordingCache{}}
 
+	e.h = buildConsole(t, e, planStore, planStore)
+	return e
+}
+
+// buildConsole wires the console routes behind the real staff middleware, on
+// the given plan reader and runner.
+func buildConsole(t *testing.T, e *consoleEnv, plans plan.Reader, runner plan.Runner) http.Handler {
+	t.Helper()
 	dir := &fakeDirectory{
 		roles:  map[string]staff.Role{adminUser: staff.RoleAdmin, suppUser: staff.RoleSupport, billUser: staff.RoleBilling},
 		emails: map[string]string{adminUser: adminMail, suppUser: "support@example.com", billUser: staffEm},
@@ -155,19 +167,18 @@ func newConsoleEnv(t *testing.T) *consoleEnv {
 		Log:       slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Now:       func() time.Time { return t0 },
 	})
-	e.h = NewConsole(ConsoleDeps{
+	return NewConsole(ConsoleDeps{
 		RequireStaff:  auth.RequirePlatformStaff,
 		RequireOrigin: auth.RequireOrigin,
-		Plans:         planStore,
-		PlanRunner:    planStore,
-		Subscriptions: NewService(subStore, e.cache),
+		Plans:         plans,
+		PlanRunner:    runner,
+		Subscriptions: NewService(e.subs, e.cache),
 		Profiles:      NewProfileService(e.profs),
 		Emails:        dir,
 		Cache:         e.policy,
 		Log:           slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Now:           func() time.Time { return t0 },
 	})
-	return e
 }
 
 func (e *consoleEnv) do(user, method, path, body string) *httptest.ResponseRecorder {
@@ -789,5 +800,70 @@ func TestVerifyRouteRefusesGET(t *testing.T) {
 	}
 	if e.profs.profiles[wsID].VerifiedAt != nil {
 		t.Fatal("a GET verified the profile")
+	}
+}
+
+func putCurrency(t *testing.T, e *consoleEnv, key, currency string) *httptest.ResponseRecorder {
+	t.Helper()
+	body := strings.Replace(teamBody, `"currency":"vnd"`, `"currency":"`+currency+`"`, 1)
+	return e.do(adminUser, "PUT", "/api/platform/plans/"+key, body)
+}
+
+func seedTeamPlan(t *testing.T, e *consoleEnv) {
+	t.Helper()
+	wantStatus(t, e.do(adminUser, "PUT", "/api/platform/plans/team", teamBody), 200)
+}
+
+func wantCurrencyLocked(t *testing.T, e *consoleEnv) {
+	t.Helper()
+	auditsBefore := len(e.plans.audits)
+	wantCode(t, putCurrency(t, e, "team", "usd"), 409, "plan_currency_locked")
+	if got := e.plans.rows["team"].Currency; got != "vnd" {
+		t.Errorf("stored currency = %q after a refused change", got)
+	}
+	if len(e.plans.audits) != auditsBefore {
+		t.Error("a refused change wrote an audit row")
+	}
+}
+
+func TestPutPlanRefusesACurrencyChangeOnAPlanWithASubscription(t *testing.T) {
+	e := newConsoleEnv(t)
+	seedTeamPlan(t, e)
+	e.plans.subs["team"] = 1
+	wantCurrencyLocked(t, e)
+}
+
+func TestPutPlanRefusesACurrencyChangeOnAPlanWithAnOrder(t *testing.T) {
+	e := newConsoleEnv(t)
+	seedTeamPlan(t, e)
+	e.plans.orders["team"] = 1
+	wantCurrencyLocked(t, e)
+}
+
+func TestPutPlanAllowsTheSameCurrencyOnAPlanInUse(t *testing.T) {
+	e := newConsoleEnv(t)
+	seedTeamPlan(t, e)
+	e.plans.subs["team"] = 1
+	e.plans.orders["team"] = 1
+	wantStatus(t, putCurrency(t, e, "team", "vnd"), 200)
+}
+
+func TestPutPlanAllowsACurrencyChangeOnAPlanNotInUse(t *testing.T) {
+	e := newConsoleEnv(t)
+	seedTeamPlan(t, e)
+	wantStatus(t, putCurrency(t, e, "team", "usd"), 200)
+	if got := e.plans.rows["team"].Currency; got != "usd" {
+		t.Errorf("stored currency = %q, want usd", got)
+	}
+}
+
+func TestPutPlanWithoutCurrencyKeepsItOnAPlanInUse(t *testing.T) {
+	e := newConsoleEnv(t)
+	seedTeamPlan(t, e)
+	e.plans.subs["team"] = 1
+	body := strings.Replace(teamBody, `"currency":"vnd",`, ``, 1)
+	wantStatus(t, e.do(adminUser, "PUT", "/api/platform/plans/team", body), 200)
+	if got := e.plans.rows["team"].Currency; got != "vnd" {
+		t.Errorf("stored currency = %q, want vnd", got)
 	}
 }
