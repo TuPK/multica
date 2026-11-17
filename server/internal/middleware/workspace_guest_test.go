@@ -43,7 +43,7 @@ func TestGuestIsRefusedOutsideTheAllowList(t *testing.T) {
 		{http.MethodPost, "/api/inbox/abc/read", http.StatusNoContent, ""},
 		{http.MethodDelete, "/api/issues/abc", http.StatusForbidden, "guest_forbidden"},
 		{http.MethodPost, "/api/agents/", http.StatusForbidden, "guest_forbidden"},
-		{http.MethodGet, "/api/workspaces/abc/members", http.StatusForbidden, "guest_forbidden"},
+		{http.MethodGet, "/api/workspaces/abc/members", http.StatusNoContent, ""},
 	}
 	for _, machine := range []bool{false, true} {
 		h := guestRouter("member")

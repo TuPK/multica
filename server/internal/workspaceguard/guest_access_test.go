@@ -27,10 +27,10 @@ func TestGuestAllowListMatrix(t *testing.T) {
 		{"list pins", http.MethodGet, "/api/pins", true},
 		{"read issue view preferences", http.MethodGet, "/api/issue-view-preferences", true},
 		{"leave the workspace", http.MethodPost, "/api/workspaces/{id}/leave", true},
+		{"list members (names and avatars, no emails)", http.MethodGet, "/api/workspaces/{id}/members", true},
 
 		// Closed by default: nothing in this list is granted to a guest.
 		{"read the workspace", http.MethodGet, "/api/workspaces/{id}", false},
-		{"list members with emails", http.MethodGet, "/api/workspaces/{id}/members", false},
 		{"invite a member", http.MethodPost, "/api/workspaces/{id}/members", false},
 		{"change workspace settings", http.MethodPatch, "/api/workspaces/{id}", false},
 		{"delete a member", http.MethodDelete, "/api/workspaces/{id}/members/{memberId}", false},

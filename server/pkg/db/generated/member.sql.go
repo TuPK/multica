@@ -292,6 +292,30 @@ func (q *Queries) RecordMemberRemoval(ctx context.Context, arg RecordMemberRemov
 	return err
 }
 
+const updateMemberGuest = `-- name: UpdateMemberGuest :one
+UPDATE member SET is_guest = $2 WHERE id = $1 RETURNING id, workspace_id, user_id, role, created_at, is_guest, pinned_at
+`
+
+type UpdateMemberGuestParams struct {
+	ID      pgtype.UUID `json:"id"`
+	IsGuest bool        `json:"is_guest"`
+}
+
+func (q *Queries) UpdateMemberGuest(ctx context.Context, arg UpdateMemberGuestParams) (Member, error) {
+	row := q.db.QueryRow(ctx, updateMemberGuest, arg.ID, arg.IsGuest)
+	var i Member
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.UserID,
+		&i.Role,
+		&i.CreatedAt,
+		&i.IsGuest,
+		&i.PinnedAt,
+	)
+	return i, err
+}
+
 const updateMemberRole = `-- name: UpdateMemberRole :one
 UPDATE member SET role = $2
 WHERE id = $1

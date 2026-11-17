@@ -12,6 +12,8 @@ import (
 // R1 action catalog (spec 4.3).
 const (
 	ActionMemberRoleChanged = "member.role_changed"
+	ActionMemberGuestSet    = "member.guest_set"
+	ActionMemberGuestUnset  = "member.guest_unset"
 	ActionMemberRemoved     = "member.removed"
 	ActionMemberLeft        = "member.left"
 
@@ -124,6 +126,8 @@ const (
 // here and nowhere else; a test fails when a constant is missing from it.
 var Catalog = []string{
 	ActionMemberRoleChanged,
+	ActionMemberGuestSet,
+	ActionMemberGuestUnset,
 	ActionMemberRemoved,
 	ActionMemberLeft,
 	ActionInvitationCreated,

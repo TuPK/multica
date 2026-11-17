@@ -364,3 +364,25 @@ func TestEinvoiceActionsAreDefinedAndCataloged(t *testing.T) {
 		}
 	}
 }
+
+// The guest flag actions (spec 7.1 rule 9, audit) are stored in
+// audit_event.action, so a rename is a data change. Each is in Catalog, which
+// the audit log filters read.
+func TestGuestCatalogActionsAreDefinedAndCataloged(t *testing.T) {
+	cases := map[string]string{
+		"member.guest_set":   ActionMemberGuestSet,
+		"member.guest_unset": ActionMemberGuestUnset,
+	}
+	for want, got := range cases {
+		if got == "" || got != want {
+			t.Errorf("constant = %q, want %q", got, want)
+		}
+		found := false
+		for _, a := range Catalog {
+			found = found || a == want
+		}
+		if !found {
+			t.Errorf("%s is not in Catalog", want)
+		}
+	}
+}

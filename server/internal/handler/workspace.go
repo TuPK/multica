@@ -755,6 +755,10 @@ type MemberWithUserResponse struct {
 
 func (h *Handler) ListMembersWithUser(w http.ResponseWriter, r *http.Request) {
 	workspaceID := workspaceIDFromURL(r, "id")
+	requester, ok := h.workspaceMember(w, r, workspaceID)
+	if !ok {
+		return
+	}
 	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace id")
 	if !ok {
 		return
@@ -777,6 +781,10 @@ func (h *Handler) ListMembersWithUser(w http.ResponseWriter, r *http.Request) {
 			Name:        m.UserName,
 			Email:       m.UserEmail,
 			AvatarURL:   h.resolveAvatarURLPtr(textToPtr(m.UserAvatarUrl)),
+		}
+		// A guest sees names and avatars, not emails (spec 7.1 rule 9).
+		if requester.IsGuest {
+			resp[i].Email = ""
 		}
 	}
 
@@ -829,7 +837,8 @@ func canAssignMemberRole(requesterRole, role string) bool {
 }
 
 type UpdateMemberRequest struct {
-	Role string `json:"role"`
+	Role    string `json:"role"`
+	IsGuest *bool  `json:"is_guest,omitempty"`
 }
 
 func (h *Handler) UpdateMember(w http.ResponseWriter, r *http.Request) {
@@ -883,6 +892,16 @@ func (h *Handler) UpdateMember(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Spec 7.1 rule 9: a guest is only a member or a viewer.
+	guest := target.IsGuest
+	if req.IsGuest != nil {
+		guest = *req.IsGuest
+	}
+	if guest && role != "member" && role != "viewer" {
+		writeErrorCode(w, http.StatusBadRequest, "project_member_invalid", "a guest can only be a member or a viewer")
+		return
+	}
+
 	user, err := h.Queries.GetUser(r.Context(), target.UserID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to load member")
@@ -915,6 +934,32 @@ func (h *Handler) UpdateMember(w http.ResponseWriter, r *http.Request) {
 		slog.Warn("audit member role changed failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
 		writeError(w, http.StatusInternalServerError, "failed to update member")
 		return
+	}
+	if guest != target.IsGuest {
+		updatedMember, err = h.Queries.WithTx(tx).UpdateMemberGuest(r.Context(), db.UpdateMemberGuestParams{
+			ID:      target.ID,
+			IsGuest: guest,
+		})
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to update member")
+			return
+		}
+		action := audit.ActionMemberGuestSet
+		if !guest {
+			action = audit.ActionMemberGuestUnset
+		}
+		if err := h.recordAudit(r, tx, audit.Entry{
+			WorkspaceID: uuidToString(target.WorkspaceID),
+			Action:      action,
+			TargetType:  "member",
+			TargetID:    uuidToString(target.UserID),
+			TargetLabel: user.Email,
+			Detail:      map[string]any{"from": target.IsGuest, "to": guest},
+		}); err != nil {
+			slog.Warn("audit member guest flag failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
+			writeError(w, http.StatusInternalServerError, "failed to update member")
+			return
+		}
 	}
 	if err := tx.Commit(r.Context()); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to update member")

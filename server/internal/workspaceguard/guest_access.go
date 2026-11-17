@@ -17,7 +17,8 @@ const CodeGuestForbidden = "guest_forbidden"
 // own role (member or viewer) still applies after this check, so a guest
 // viewer writes nothing.
 //
-// Deliberately closed: the workspace itself and its member list (emails), every
+// The member list is open but the handler blanks the email of every row for a
+// guest. Deliberately closed: the workspace itself, every
 // agent, label, status, workflow and project route, and the issue
 // sub-resources not named below (children, attachments, labels, reactions,
 // subscribers, read marks, wakeups, flow, pull requests, metadata, properties).
@@ -65,6 +66,9 @@ var guestAllows = map[string]bool{
 	"PUT /api/notification-preferences":    true,
 	"GET /api/issue-view-preferences":      true,
 	"PUT /api/issue-view-preferences":      true,
+
+	// Member names and avatars, without emails (handler narrows the rows).
+	"GET /api/workspaces/{id}/members": true,
 
 	// Leaving the workspace.
 	"POST /api/workspaces/{id}/leave": true,

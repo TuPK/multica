@@ -40,6 +40,9 @@ UPDATE member SET role = $2
 WHERE id = $1
 RETURNING *;
 
+-- name: UpdateMemberGuest :one
+UPDATE member SET is_guest = $2 WHERE id = $1 RETURNING *;
+
 -- name: DeleteMember :exec
 DELETE FROM member WHERE id = $1;
 
