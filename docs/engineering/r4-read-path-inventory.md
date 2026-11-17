@@ -132,7 +132,7 @@ How units are found:
 | `server/pkg/db/queries/pr_automation.sql` | `MoveIssueFromPullRequests` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/project.sql` | `CountIssuesByProject` | sql-query | scoped | SQL carries the marker; test TestRestrictedProjectCountsOmitHiddenIssues |
 | `server/pkg/db/queries/project.sql` | `DeleteProject` | sql-query | exempt | (a) a write by id that Handler.DeleteProject runs only after its Scope.Allows check; test TestRestrictedProjectRoutesAnswerMissing |
-| `server/pkg/db/queries/project.sql` | `GetOpenSquadProject` | sql-query | todo | needs decision: 409 conflict check; hiding rows would allow a second open squad project |
+| `server/pkg/db/queries/project.sql` | `GetOpenSquadProject` | sql-query | exempt | Yes or no only: the 409 conflict check counts open projects the caller cannot see, so a squad keeps one open project; the response names no project (lead default: return project details only to viewers who see the project). Test TestOpenSquadProjectConflictHidesProjectDetails (passed on first run; the 409 path already named no project, so there was no red state) |
 | `server/pkg/db/queries/project.sql` | `GetProjectInWorkspace` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/project.sql` | `GetProjectIssueStats` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/project.sql` | `ListProjects` | sql-query | todo | Reads issue or project; no visibility filter today |
