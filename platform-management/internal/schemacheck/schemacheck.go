@@ -21,6 +21,9 @@ var Required = []string{
 	"1008_payment_notice_event_uidx",          // payment_notice: unique index on provider event
 	"1009_payment_notice_id_uidx",             // payment_notice: unique index on id
 	"1010_payment_notice_review_idx",          // payment_notice: partial index, needs_review queue
+	"1011_einvoice_issuance",                  // einvoice_issuance: table
+	"1012_einvoice_issuance_order_uidx",       // einvoice_issuance: unique index on order and revision
+	"1013_einvoice_issuance_due_idx",          // einvoice_issuance: partial index, pending queue
 	"651_platform_account",                    // platform_account: table
 	"652_platform_account_user_idx",           // platform_account: unique index on user_id
 	"653_platform_account_status_idx",         // platform_account: partial index on status

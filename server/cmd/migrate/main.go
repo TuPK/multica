@@ -196,6 +196,8 @@ var concurrentIndexCleanups = map[string]string{
 	"1008_payment_notice_event_uidx":                            "payment_notice_event_uidx",
 	"1009_payment_notice_id_uidx":                               "payment_notice_id_uidx",
 	"1010_payment_notice_review_idx":                            "payment_notice_review_idx",
+	"1012_einvoice_issuance_order_uidx":                         "einvoice_issuance_order_uidx",
+	"1013_einvoice_issuance_due_idx":                            "einvoice_issuance_due_idx",
 	"905_issue_directive_origin_index":                          "idx_issue_directive_origin",
 	"907_squad_skill_unique_index":                              "idx_squad_skill_squad_skill",
 	"908_squad_plugin_unique_index":                             "idx_squad_plugin_squad_name",
