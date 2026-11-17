@@ -16,7 +16,9 @@ import (
 	"github.com/multica-ai/multica/platform-management/workspacestate"
 	"github.com/multica-ai/multica/server/internal/middleware"
 	"github.com/multica-ai/multica/server/internal/testutil"
+	"github.com/multica-ai/multica/server/internal/util"
 	"github.com/multica-ai/multica/server/internal/workspaceguard"
+	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
 // Database-backed: they run only against the dedicated *_test database named by
@@ -127,6 +129,47 @@ func setDeletionDays(t *testing.T, days int) {
 func workspaceExists(t *testing.T, wsID string) bool {
 	t.Helper()
 	return dbfx.Count(t, `SELECT count(*) FROM workspace WHERE id = $1::uuid`, wsID) == 1
+}
+
+// sso_domain and sso_connection carry no foreign key, so teardown removes them.
+// A verified domain left behind would stay claimed by a workspace that is gone,
+// and its unique index would keep every other workspace from claiming it.
+func TestDeleteWorkspaceReleasesSSODomainAndConnection(t *testing.T) {
+	requirePlatformTestDatabase(t)
+	setDeletionDays(t, 0)
+	wsID := ownedWorkspace(t, "Delete with sso")
+	otherID := ownedWorkspace(t, "Claims the freed domain")
+	domain := "sso-" + uuid.NewString()[:8] + ".example.test"
+	dbfx.Cleanup(t, `DELETE FROM sso_domain WHERE domain = $1`, domain)
+	dbfx.Cleanup(t, `DELETE FROM sso_connection WHERE workspace_id IN ($1::uuid, $2::uuid)`, wsID, otherID)
+	// Assumption: a verified claim and a connection are the state a workspace
+	// has once its single sign-on is set up.
+	dbfx.Exec(t, `INSERT INTO sso_domain (workspace_id, domain, token, verified_at) VALUES ($1::uuid, $2, 'token', now())`, wsID, domain)
+	dbfx.Exec(t, `INSERT INTO sso_connection (workspace_id, issuer, client_id, client_secret_enc) VALUES ($1::uuid, 'https://idp.example.test', 'client', '\x00')`, wsID)
+
+	testutil.Call(t, testHandler.DeleteWorkspace, deleteRequest(wsID)).Want(http.StatusNoContent)
+
+	if workspaceExists(t, wsID) {
+		t.Fatal("the workspace still exists")
+	}
+	if n := dbfx.Count(t, `SELECT count(*) FROM sso_domain WHERE workspace_id = $1::uuid`, wsID); n != 0 {
+		t.Errorf("%d sso_domain rows remain for the deleted workspace", n)
+	}
+	if n := dbfx.Count(t, `SELECT count(*) FROM sso_connection WHERE workspace_id = $1::uuid`, wsID); n != 0 {
+		t.Errorf("%d sso_connection rows remain for the deleted workspace", n)
+	}
+
+	// The claim code's own insert, then the verification that the unique index guards.
+	if _, err := testHandler.Queries.AddSSODomain(context.Background(), db.AddSSODomainParams{
+		WorkspaceID: util.MustParseUUID(otherID), Domain: domain, Token: "token",
+	}); err != nil {
+		t.Fatalf("another workspace cannot claim the domain: %v", err)
+	}
+	if _, err := testHandler.Queries.MarkSSODomainVerified(context.Background(), db.MarkSSODomainVerifiedParams{
+		WorkspaceID: util.MustParseUUID(otherID), Domain: domain,
+	}); err != nil {
+		t.Fatalf("another workspace cannot verify the domain: %v", err)
+	}
 }
 
 func TestDeleteWorkspaceWithZeroDaysDeletesAtOnce(t *testing.T) {
