@@ -130,6 +130,7 @@ type consoleEnv struct {
 	h      http.Handler
 	plans  *fakePlanStore
 	subs   *fakeStore
+	profs  *fakeProfiles
 	cache  *recordingCache
 	policy *recordingCache // the cache the plan routes clear
 }
@@ -141,7 +142,7 @@ func newConsoleEnv(t *testing.T) *consoleEnv {
 	for k, v := range subStore.plans {
 		planStore.rows[k] = v
 	}
-	e := &consoleEnv{t: t, plans: planStore, subs: subStore, cache: &recordingCache{}, policy: &recordingCache{}}
+	e := &consoleEnv{t: t, plans: planStore, subs: subStore, profs: newFakeProfiles(t), cache: &recordingCache{}, policy: &recordingCache{}}
 
 	dir := &fakeDirectory{
 		roles:  map[string]staff.Role{adminUser: staff.RoleAdmin, suppUser: staff.RoleSupport, billUser: staff.RoleBilling},
@@ -160,6 +161,7 @@ func newConsoleEnv(t *testing.T) *consoleEnv {
 		Plans:         planStore,
 		PlanRunner:    planStore,
 		Subscriptions: NewService(subStore, e.cache),
+		Profiles:      NewProfileService(e.profs),
 		Emails:        dir,
 		Cache:         e.policy,
 		Log:           slog.New(slog.NewTextHandler(io.Discard, nil)),
@@ -275,6 +277,8 @@ func TestOtherMethodsOnTheseRoutesAre404(t *testing.T) {
 func TestPatternsListTheRoutesTheServerMounts(t *testing.T) {
 	want := map[string]bool{
 		"/api/platform/plans": true, "/api/platform/plans/{key}": true, "/api/platform/tenants/{id}/subscription": true,
+		"/api/platform/tenants/{id}/billing-profile/verify":   true,
+		"/api/platform/tenants/{id}/billing-profile/unverify": true,
 	}
 	got := ConsolePatterns()
 	if len(got) != len(want) {
@@ -715,5 +719,75 @@ func TestNameOnlyPutKeepsTheStoredPricesAndCurrency(t *testing.T) {
 	}
 	if got.Currency != "vnd" {
 		t.Fatalf("currency = %q, want vnd", got.Currency)
+	}
+}
+
+// --- POST /tenants/{id}/billing-profile/verify and /unverify
+
+const (
+	verifyPath   = "/api/platform/tenants/" + wsID + "/billing-profile/verify"
+	unverifyPath = "/api/platform/tenants/" + wsID + "/billing-profile/unverify"
+)
+
+func TestVerifyRouteAllowsBillingAndAdminOnly(t *testing.T) {
+	for _, tc := range []struct {
+		user string
+		want int
+	}{{"", 404}, {suppUser, 404}, {billUser, 200}, {adminUser, 200}} {
+		e := newConsoleEnv(t)
+		e.profs.profiles[wsID] = businessProfile()
+		rec := e.do(tc.user, "POST", verifyPath, "")
+		wantStatus(t, rec, tc.want)
+		if tc.want != 200 {
+			if len(e.profs.audits) != 0 || e.profs.profiles[wsID].VerifiedAt != nil {
+				t.Errorf("user %q: a refused call changed the profile", tc.user)
+			}
+			continue
+		}
+		m := decodeMap(t, rec)
+		if m["workspace_id"] != wsID || m["account_kind"] != AccountBusiness || m["verified"] != true || m["verified_at"] != t0.Truncate(time.Microsecond).Format(time.RFC3339Nano) {
+			t.Errorf("user %q: body = %v", tc.user, m)
+		}
+		if got := e.profs.profiles[wsID]; got.VerifiedBy != tc.user || len(e.profs.audits) != 1 || e.profs.audits[0].ActorType != audit.ActorStaff {
+			t.Errorf("user %q: verified_by = %q, audits = %+v", tc.user, got.VerifiedBy, e.profs.audits)
+		}
+	}
+}
+
+func TestUnverifyRouteClearsAndReportsNull(t *testing.T) {
+	e := newConsoleEnv(t)
+	e.profs.profiles[wsID] = businessProfile()
+	wantStatus(t, e.do(billUser, "POST", verifyPath, ""), 200)
+	m := decodeMap(t, e.do(adminUser, "POST", unverifyPath, ""))
+	if m["verified"] != false || m["verified_at"] != nil || m["workspace_id"] != wsID {
+		t.Fatalf("body = %v", m)
+	}
+	if e.profs.profiles[wsID].VerifiedAt != nil || len(e.profs.audits) != 2 {
+		t.Fatalf("profile = %+v, audits = %d", e.profs.profiles[wsID], len(e.profs.audits))
+	}
+	if refused := e.do(suppUser, "POST", unverifyPath, ""); refused.Code != 404 {
+		t.Fatalf("support unverify: status %d", refused.Code)
+	}
+}
+
+func TestVerifyRouteErrors(t *testing.T) {
+	e := newConsoleEnv(t)
+	rec := e.do(billUser, "POST", verifyPath, "")
+	wantCode(t, rec, 409, "billing_profile_incomplete")
+	if f, _ := decodeMap(t, rec)["fields"].([]any); len(f) != 4 {
+		t.Fatalf("fields = %v", f)
+	}
+	wantCode(t, e.do(billUser, "POST", "/api/platform/tenants/"+otherWS+"/billing-profile/verify", ""), 404, "not_found")
+	wantCode(t, e.do(billUser, "POST", "/api/platform/tenants/acme/billing-profile/verify", ""), 404, "not_found")
+}
+
+func TestVerifyRouteRefusesGET(t *testing.T) {
+	e := newConsoleEnv(t)
+	e.profs.profiles[wsID] = businessProfile()
+	for _, path := range []string{verifyPath, unverifyPath} {
+		wantStatus(t, e.do(adminUser, "GET", path, ""), 404)
+	}
+	if e.profs.profiles[wsID].VerifiedAt != nil {
+		t.Fatal("a GET verified the profile")
 	}
 }

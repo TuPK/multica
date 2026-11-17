@@ -29,6 +29,7 @@ const (
 	fieldTaxCode          = "tax_code"
 	fieldAddress          = "address"
 	fieldInvoiceEmail     = "invoice_email"
+	fieldVerifiedAt       = "verified_at"
 	auditChanges          = "changes"
 )
 
@@ -337,4 +338,108 @@ func (s *ProfileService) currentPlanAllows(ctx context.Context, tx ProfileTx, wo
 		return e
 	}
 	return nil
+}
+
+// VerifyChange asks for a workspace's billing profile to be marked verified, or
+// unverified, by a staff member who checked the tax code outside the system.
+// At is the time stored as verified_at.
+type VerifyChange struct {
+	WorkspaceID string
+	Verified    bool
+	At          time.Time
+
+	ActorType  string
+	ActorID    string
+	ActorLabel string
+}
+
+// VerifyResult is the profile after a VerifyChange. Changed is false when the
+// profile already was in the asked state: nothing was written.
+type VerifyResult struct {
+	Profile BillingProfile
+	Changed bool
+}
+
+// Verify sets or clears the verification of a workspace's billing profile (spec
+// 7b.1, rule 12). The profile must be stored and have all four fields; its
+// account kind is not checked. A change writes the profile and a
+// billing_profile.verified or billing_profile.unverified audit row in one
+// transaction.
+func (s *ProfileService) Verify(ctx context.Context, c VerifyChange) (VerifyResult, error) {
+	ws, ok := trust.CanonicalUUID(c.WorkspaceID)
+	if !ok {
+		return VerifyResult{}, badRequest(codeProfileInvalid, "workspace id is not a UUID")
+	}
+	if c.ActorID != "" {
+		id, ok := trust.CanonicalUUID(c.ActorID)
+		if !ok {
+			return VerifyResult{}, badRequest(codeProfileInvalid, "actor id is not a UUID")
+		}
+		c.ActorID = id
+	}
+
+	var res VerifyResult
+	err := s.runner.InTx(ctx, func(tx ProfileTx) error {
+		res = VerifyResult{}
+		name, found, err := tx.WorkspaceName(ctx, ws)
+		if err != nil {
+			return err
+		}
+		if !found {
+			return NotFound()
+		}
+		cur, found, err := tx.LockedProfile(ctx, ws)
+		if err != nil {
+			return err
+		}
+		if !found {
+			return incomplete(missingFields(ProfileFields{}))
+		}
+		if m := missingFields(fieldsOf(cur)); len(m) > 0 {
+			return incomplete(m)
+		}
+		if (cur.VerifiedAt != nil) == c.Verified {
+			res = VerifyResult{Profile: cur}
+			return nil
+		}
+
+		next := cur
+		action := audit.ActionBillingProfileUnverified
+		var to any
+		if c.Verified {
+			at := c.At.UTC()
+			next.VerifiedAt, next.VerifiedBy = &at, c.ActorID
+			action, to = audit.ActionBillingProfileVerified, at.Format(time.RFC3339Nano)
+		} else {
+			next.VerifiedAt, next.VerifiedBy = nil, ""
+		}
+		var from any
+		if cur.VerifiedAt != nil {
+			from = cur.VerifiedAt.UTC().Format(time.RFC3339Nano)
+		}
+		if err := tx.SaveProfile(ctx, next); err != nil {
+			return err
+		}
+		if err := audit.Record(ctx, tx, audit.Entry{
+			WorkspaceID: ws,
+			ActorType:   c.ActorType,
+			ActorID:     c.ActorID,
+			ActorLabel:  c.ActorLabel,
+			Action:      action,
+			TargetType:  targetWorkspace,
+			TargetID:    ws,
+			TargetLabel: name,
+			Detail: map[string]any{
+				auditChanges: map[string]any{fieldVerifiedAt: map[string]any{"from": from, "to": to}},
+			},
+		}); err != nil {
+			return err
+		}
+		res = VerifyResult{Profile: next, Changed: true}
+		return nil
+	})
+	if err != nil {
+		return VerifyResult{}, err
+	}
+	return res, nil
 }

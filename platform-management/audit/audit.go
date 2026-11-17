@@ -173,6 +173,8 @@ var Catalog = []string{
 	ActionWorkspaceDeletionCancelled,
 	ActionSubscriptionBackfilled,
 	ActionWorkspaceAccountKindChanged,
+	ActionBillingProfileVerified,
+	ActionBillingProfileUnverified,
 	ActionPlanPriceScheduled,
 	ActionAccountProvisionRequested,
 	ActionAccountProvisionCanceled,
@@ -214,6 +216,14 @@ const ActionSubscriptionBackfilled = "subscription.backfilled"
 // R5 action (spec 7b.1, rule 3): written by the platform in the transaction
 // that changes a workspace's account kind; the detail holds the old and new kind.
 const ActionWorkspaceAccountKindChanged = "workspace.account_kind_changed"
+
+// R5 actions (spec 7b.1, rule 12): written by the platform in the transaction in
+// which staff verify or unverify a workspace's billing profile. The detail holds
+// the old and new verified_at, never the tax code.
+const (
+	ActionBillingProfileVerified   = "billing_profile.verified"
+	ActionBillingProfileUnverified = "billing_profile.unverified"
+)
 
 // R5 account request actions (spec 7b.5, audit table): written by the platform in the
 // transaction that creates or cancels a request, with the staff actor, no workspace_id and

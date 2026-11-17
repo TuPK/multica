@@ -179,6 +179,7 @@ func run() error {
 		Plans:         plan.NewPgxReader(pool),
 		PlanRunner:    planRunner,
 		Subscriptions: subscription.NewService(subscription.NewPgxRunner(pool), policy),
+		Profiles:      subscription.NewProfileService(subscription.NewPgxProfileRunner(pool)),
 		Emails:        store,
 		Cache:         policy,
 		Log:           slog.Default(),

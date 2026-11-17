@@ -3,9 +3,12 @@ package subscription
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/platform-management/internal/plan"
@@ -423,6 +426,128 @@ func TestChangingNameOrTaxCodeClearsTheVerification(t *testing.T) {
 				t.Fatalf("verified = %v by %q after changing the %s", got.VerifiedAt, got.VerifiedBy, name)
 			}
 		})
+	}
+}
+
+func verifyChange(verified bool) VerifyChange {
+	return VerifyChange{
+		WorkspaceID: wsID, Verified: verified, At: t0,
+		ActorType: audit.ActorStaff, ActorID: staffID, ActorLabel: staffEm,
+	}
+}
+
+func businessProfile() BillingProfile {
+	f := completeProfile()
+	return BillingProfile{
+		WorkspaceID: wsID, AccountKind: AccountBusiness, LegalName: f.LegalName, TaxCode: f.TaxCode,
+		Address: f.Address, InvoiceEmail: f.InvoiceEmail,
+	}
+}
+
+func TestVerifySetsVerifiedAtAndVerifiedBy(t *testing.T) {
+	s := newFakeProfiles(t)
+	s.profiles[wsID] = businessProfile()
+	res, err := NewProfileService(s).Verify(context.Background(), verifyChange(true))
+	if err != nil || !res.Changed {
+		t.Fatalf("Verify = %+v, %v", res, err)
+	}
+	got := s.profiles[wsID]
+	if got.VerifiedAt == nil || !got.VerifiedAt.Equal(t0) || got.VerifiedBy != staffID {
+		t.Fatalf("stored verified_at = %v, verified_by = %q", got.VerifiedAt, got.VerifiedBy)
+	}
+	if res.Profile.VerifiedAt == nil || !res.Profile.VerifiedAt.Equal(t0) {
+		t.Fatalf("result verified_at = %v", res.Profile.VerifiedAt)
+	}
+	if len(s.audits) != 1 {
+		t.Fatalf("audit rows = %d, want 1", len(s.audits))
+	}
+	e := s.audits[0]
+	if e.Action != audit.ActionBillingProfileVerified || e.WorkspaceID != wsID || e.TargetType != "workspace" ||
+		e.TargetID != wsID || e.TargetLabel != wsName || e.ActorType != audit.ActorStaff || e.ActorID != staffID || e.ActorLabel != staffEm {
+		t.Fatalf("audit = %+v", e)
+	}
+	if strings.Contains(fmt.Sprint(e.Detail), completeProfile().TaxCode) {
+		t.Fatalf("the tax code reached the audit detail: %v", e.Detail)
+	}
+}
+
+func TestUnverifyClearsVerification(t *testing.T) {
+	s := newFakeProfiles(t)
+	p := businessProfile()
+	at := t0.Add(-time.Hour)
+	p.VerifiedAt, p.VerifiedBy = &at, staffID
+	s.profiles[wsID] = p
+	res, err := NewProfileService(s).Verify(context.Background(), verifyChange(false))
+	if err != nil || !res.Changed {
+		t.Fatalf("Verify = %+v, %v", res, err)
+	}
+	if got := s.profiles[wsID]; got.VerifiedAt != nil || got.VerifiedBy != "" {
+		t.Fatalf("stored verified_at = %v, verified_by = %q", got.VerifiedAt, got.VerifiedBy)
+	}
+	if len(s.audits) != 1 || s.audits[0].Action != audit.ActionBillingProfileUnverified || s.audits[0].WorkspaceID != wsID {
+		t.Fatalf("audits = %+v", s.audits)
+	}
+}
+
+func TestVerifyTwiceWritesNothingTheSecondTime(t *testing.T) {
+	s := newFakeProfiles(t)
+	s.profiles[wsID] = businessProfile()
+	svc := NewProfileService(s)
+	if _, err := svc.Verify(context.Background(), verifyChange(true)); err != nil {
+		t.Fatal(err)
+	}
+	later := verifyChange(true)
+	later.At = t0.Add(time.Hour)
+	res, err := svc.Verify(context.Background(), later)
+	if err != nil || res.Changed {
+		t.Fatalf("second Verify = %+v, %v; want Changed false", res, err)
+	}
+	if got := s.profiles[wsID]; !got.VerifiedAt.Equal(t0) {
+		t.Fatalf("verified_at moved to %v", got.VerifiedAt)
+	}
+	if len(s.audits) != 1 {
+		t.Fatalf("audit rows = %d, want 1", len(s.audits))
+	}
+	// Unverifying a profile that is not verified writes nothing either.
+	s2 := newFakeProfiles(t)
+	s2.profiles[wsID] = businessProfile()
+	if res, err := NewProfileService(s2).Verify(context.Background(), verifyChange(false)); err != nil || res.Changed || len(s2.audits) != 0 {
+		t.Fatalf("unverify of an unverified profile = %+v, %v, %d audit rows", res, err, len(s2.audits))
+	}
+}
+
+func TestVerifyNeedsCompleteProfile(t *testing.T) {
+	s := newFakeProfiles(t)
+	svc := NewProfileService(s)
+	_, err := svc.Verify(context.Background(), verifyChange(true))
+	e := asError(t, err)
+	if e.Status != http.StatusConflict || e.Code != "billing_profile_incomplete" ||
+		!reflect.DeepEqual(e.Detail["fields"], []string{"legal_name", "tax_code", "address", "invoice_email"}) {
+		t.Fatalf("no row: %v, fields %v", e, e.Detail["fields"])
+	}
+
+	p := businessProfile()
+	p.TaxCode = ""
+	s.profiles[wsID] = p
+	_, err = svc.Verify(context.Background(), verifyChange(true))
+	e = asError(t, err)
+	if e.Status != http.StatusConflict || e.Code != "billing_profile_incomplete" || !reflect.DeepEqual(e.Detail["fields"], []string{"tax_code"}) {
+		t.Fatalf("missing tax code: %v, fields %v", e, e.Detail["fields"])
+	}
+	if got := s.profiles[wsID]; got.VerifiedAt != nil || len(s.audits) != 0 {
+		t.Fatalf("a refused verify wrote verified_at %v and %d audit rows", got.VerifiedAt, len(s.audits))
+	}
+}
+
+func TestVerifyUnknownWorkspaceIsNotFound(t *testing.T) {
+	s := newFakeProfiles(t)
+	c := verifyChange(true)
+	c.WorkspaceID = "bbbbbbbb-0000-0000-0000-0000000000ff"
+	if e := asError(t, func() error { _, err := NewProfileService(s).Verify(context.Background(), c); return err }()); e.Status != http.StatusNotFound {
+		t.Fatalf("unknown workspace: %v", e)
+	}
+	if len(s.audits) != 0 {
+		t.Fatalf("audit rows = %d", len(s.audits))
 	}
 }
 

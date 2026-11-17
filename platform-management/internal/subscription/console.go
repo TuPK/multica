@@ -40,6 +40,7 @@ type ConsoleDeps struct {
 	Plans         plan.Reader
 	PlanRunner    plan.Runner
 	Subscriptions *Service
+	Profiles      *ProfileService
 	Emails        EmailLookup
 	// Cache is cleared for every workspace after a plan changes.
 	Cache Invalidator
@@ -74,6 +75,12 @@ func routeTable() []routeSpec {
 		}},
 		{base + "/tenants/{id}/subscription", []staff.Role{staff.RoleBilling, staff.RoleAdmin}, map[string]handlerFunc{
 			http.MethodPut: (*Console).putSubscription,
+		}},
+		{base + "/tenants/{id}/billing-profile/verify", []staff.Role{staff.RoleBilling, staff.RoleAdmin}, map[string]handlerFunc{
+			http.MethodPost: (*Console).verifyProfile,
+		}},
+		{base + "/tenants/{id}/billing-profile/unverify", []staff.Role{staff.RoleBilling, staff.RoleAdmin}, map[string]handlerFunc{
+			http.MethodPost: (*Console).unverifyProfile,
 		}},
 	}
 }
@@ -245,6 +252,39 @@ func (c *Console) putSubscription(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"changed": res.Changed, "subscription": toSubscriptionJSON(res.Subscription)})
+}
+
+// --- billing profile verification
+
+func (c *Console) verifyProfile(w http.ResponseWriter, r *http.Request)   { c.setVerified(w, r, true) }
+func (c *Console) unverifyProfile(w http.ResponseWriter, r *http.Request) { c.setVerified(w, r, false) }
+
+// setVerified marks the workspace's billing profile verified or unverified after
+// the staff member's out-of-system check of the tax code (spec 7b.1, rule 12).
+// The routes take no body.
+func (c *Console) setVerified(w http.ResponseWriter, r *http.Request, verified bool) {
+	ws, ok := trust.CanonicalUUID(r.PathValue("id"))
+	if !ok {
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+		return
+	}
+	a, err := c.currentActor(r)
+	if err != nil {
+		c.fail(w, r, "resolve staff actor", err)
+		return
+	}
+	res, err := c.Profiles.Verify(r.Context(), VerifyChange{
+		WorkspaceID: ws, Verified: verified, At: c.Now().UTC().Truncate(time.Microsecond),
+		ActorType: audit.ActorStaff, ActorID: a.ID, ActorLabel: a.Label,
+	})
+	if err != nil {
+		c.fail(w, r, "verify billing profile", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"workspace_id": ws, "account_kind": res.Profile.AccountKind,
+		"verified": res.Profile.VerifiedAt != nil, "verified_at": rfc3339(res.Profile.VerifiedAt),
+	})
 }
 
 // --- plans

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 
@@ -150,5 +151,62 @@ func TestDBChangeAccountKindOfAnUnknownWorkspaceIs404(t *testing.T) {
 	})
 	if e := asError(t, err); e.Status != http.StatusNotFound {
 		t.Fatalf("refusal = %v", e)
+	}
+}
+
+func TestDBVerifyPersistsAndUnverifyClears(t *testing.T) {
+	f := newDBFixture(t)
+	owner := f.user()
+	staffUser := f.user()
+	ws := f.workspace(map[string]string{owner: "owner"})
+	svc := NewProfileService(NewPgxProfileRunner(f.pool))
+	reader := NewPgxProfiles(f.pool)
+	ctx := context.Background()
+	verify := func(verified bool, at time.Time) (VerifyResult, error) {
+		return svc.Verify(ctx, VerifyChange{
+			WorkspaceID: ws, Verified: verified, At: at,
+			ActorType: audit.ActorStaff, ActorID: staffUser, ActorLabel: "billing@example.test",
+		})
+	}
+
+	if _, err := verify(true, time.Now()); asError(t, err).Code != "billing_profile_incomplete" {
+		t.Fatalf("verify without a profile: %v", err)
+	}
+	fields := completeProfile()
+	if _, err := svc.ChangeAccountKind(ctx, KindChange{
+		WorkspaceID: ws, Kind: AccountBusiness, Profile: &fields, ActorType: audit.ActorMember, ActorID: owner,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	at := time.Now().UTC().Truncate(time.Microsecond)
+	res, err := verify(true, at)
+	if err != nil || !res.Changed {
+		t.Fatalf("verify = %+v, %v", res, err)
+	}
+	got, _, err := reader.Profile(ctx, ws)
+	if err != nil || got.VerifiedAt == nil || !got.VerifiedAt.Equal(at) || got.VerifiedBy != staffUser {
+		t.Fatalf("stored = %+v, %v", got, err)
+	}
+	if res, err := verify(true, at.Add(time.Hour)); err != nil || res.Changed {
+		t.Fatalf("second verify = %+v, %v", res, err)
+	}
+	if n := f.count(`SELECT count(*) FROM audit_event WHERE workspace_id = $1 AND action = $2 AND actor_type = 'staff' AND actor_id = $3`,
+		ws, audit.ActionBillingProfileVerified, staffUser); n != 1 {
+		t.Fatalf("verified audit rows = %d, want 1", n)
+	}
+
+	if res, err := verify(false, at.Add(2*time.Hour)); err != nil || !res.Changed {
+		t.Fatalf("unverify = %+v, %v", res, err)
+	}
+	got, _, err = reader.Profile(ctx, ws)
+	if err != nil || got.VerifiedAt != nil || got.VerifiedBy != "" || got.AccountKind != AccountBusiness || got.TaxCode != fields.TaxCode {
+		t.Fatalf("after unverify = %+v, %v", got, err)
+	}
+	if n := f.count(`SELECT count(*) FROM audit_event WHERE workspace_id = $1 AND action = $2`, ws, audit.ActionBillingProfileUnverified); n != 1 {
+		t.Fatalf("unverified audit rows = %d, want 1", n)
+	}
+	if n := f.count(`SELECT count(*) FROM audit_event WHERE workspace_id = $1 AND detail::text LIKE '%0123456789%'`, ws); n != 0 {
+		t.Fatal("the tax code reached the audit log")
 	}
 }

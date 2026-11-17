@@ -212,6 +212,27 @@ func TestR5AccountKindActionIsDefined(t *testing.T) {
 	t.Fatal("Catalog does not list workspace.account_kind_changed")
 }
 
+// The billing profile verification actions (spec 7b.1, rule 12) are stored in
+// audit_event.action, so a rename is a data change.
+func TestBillingProfileVerificationActionsAreDefinedAndCataloged(t *testing.T) {
+	cases := map[string]string{
+		"billing_profile.verified":   ActionBillingProfileVerified,
+		"billing_profile.unverified": ActionBillingProfileUnverified,
+	}
+	for want, got := range cases {
+		if got != want {
+			t.Errorf("constant = %q, want %q", got, want)
+		}
+		found := false
+		for _, a := range Catalog {
+			found = found || a == want
+		}
+		if !found {
+			t.Errorf("%s is not in Catalog", want)
+		}
+	}
+}
+
 // The plan price actions (spec 7b.4) are stored in audit_event.action, so a
 // rename is a data change. Each is in Catalog, which the audit log filters read.
 func TestPlanPriceActionsAreDefinedAndCataloged(t *testing.T) {
