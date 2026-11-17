@@ -43,6 +43,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/membergroup"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/middleware"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/publish"
 	"github.com/multica-ai/multica/server/internal/realtime"
 	"github.com/multica-ai/multica/server/internal/research"
@@ -2569,6 +2570,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			r.Post("/api/flow/validate", h.ValidateFlowManifest)
 
 			// Projects
+			projectAccess := projectaccess.NewHandler(queries, pool)
 			r.Route("/api/projects", func(r chi.Router) {
 				r.Get("/search", h.SearchProjects)
 				r.Get("/", h.ListProjects)
@@ -2582,6 +2584,10 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Post("/resources", h.CreateProjectResource)
 					r.Put("/resources/{resourceId}", h.UpdateProjectResource)
 					r.Delete("/resources/{resourceId}", h.DeleteProjectResource)
+					r.With(handler.RequireHumanActor).Put("/access", projectAccess.PutAccess)
+					r.With(handler.RequireHumanActor).Get("/members", projectAccess.ListMembers)
+					r.With(handler.RequireHumanActor).Post("/members", projectAccess.AddMembers)
+					r.With(handler.RequireHumanActor).Delete("/members/{userId}", projectAccess.RemoveMember)
 				})
 			})
 

@@ -1,0 +1,1 @@
+ALTER TABLE project ADD COLUMN IF NOT EXISTS access text NOT NULL DEFAULT 'workspace';

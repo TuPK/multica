@@ -1846,6 +1846,7 @@ type Member struct {
 	UserID      pgtype.UUID        `json:"user_id"`
 	Role        string             `json:"role"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	IsGuest     bool               `json:"is_guest"`
 	PinnedAt    pgtype.Timestamptz `json:"pinned_at"`
 }
 
@@ -1946,6 +1947,23 @@ type OrgChangeApplication struct {
 	ProbationNote      string             `json:"probation_note"`
 	ProbationCheckedAt pgtype.Timestamptz `json:"probation_checked_at"`
 	RollbackProposalID pgtype.UUID        `json:"rollback_proposal_id"`
+}
+
+type PaymentNotice struct {
+	ID              pgtype.UUID        `json:"id"`
+	Provider        string             `json:"provider"`
+	ProviderEventID string             `json:"provider_event_id"`
+	State           string             `json:"state"`
+	ReviewReason    string             `json:"review_reason"`
+	TransferCode    string             `json:"transfer_code"`
+	Amount          int64              `json:"amount"`
+	Currency        string             `json:"currency"`
+	OrderID         string             `json:"order_id"`
+	BodySha256      string             `json:"body_sha256"`
+	ReceivedAt      pgtype.Timestamptz `json:"received_at"`
+	DecidedAt       pgtype.Timestamptz `json:"decided_at"`
+	DecidedBy       string             `json:"decided_by"`
+	DecisionReason  string             `json:"decision_reason"`
 }
 
 type PersonalAccessToken struct {
@@ -2229,12 +2247,21 @@ type Project struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 	Priority    string             `json:"priority"`
+	Access      string             `json:"access"`
 	StartDate   pgtype.Date        `json:"start_date"`
 	DueDate     pgtype.Date        `json:"due_date"`
 	WorkflowID  pgtype.UUID        `json:"workflow_id"`
 	CreatorType pgtype.Text        `json:"creator_type"`
 	CreatorID   pgtype.UUID        `json:"creator_id"`
 	SquadIds    []pgtype.UUID      `json:"squad_ids"`
+}
+
+type ProjectMember struct {
+	ProjectID   pgtype.UUID        `json:"project_id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	UserID      pgtype.UUID        `json:"user_id"`
+	AddedBy     pgtype.UUID        `json:"added_by"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
 type ProjectResource struct {
@@ -3013,16 +3040,18 @@ type WorkspaceExport struct {
 }
 
 type WorkspaceInvitation struct {
-	ID            pgtype.UUID        `json:"id"`
-	WorkspaceID   pgtype.UUID        `json:"workspace_id"`
-	InviterID     pgtype.UUID        `json:"inviter_id"`
-	InviteeEmail  string             `json:"invitee_email"`
-	InviteeUserID pgtype.UUID        `json:"invitee_user_id"`
-	Role          string             `json:"role"`
-	Status        string             `json:"status"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
-	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
+	ID              pgtype.UUID        `json:"id"`
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	InviterID       pgtype.UUID        `json:"inviter_id"`
+	InviteeEmail    string             `json:"invitee_email"`
+	InviteeUserID   pgtype.UUID        `json:"invitee_user_id"`
+	Role            string             `json:"role"`
+	Status          string             `json:"status"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
+	IsGuest         bool               `json:"is_guest"`
+	GuestProjectIds []pgtype.UUID      `json:"guest_project_ids"`
 }
 
 type WorkspaceKnowledge struct {

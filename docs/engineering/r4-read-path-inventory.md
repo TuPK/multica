@@ -20,7 +20,7 @@ To add a read path: add a row in the same commit that adds the path.
 
 ## Scanned readers
 
-Count: 410 scanned units: 145 sql-query, 241 go-call, 18 raw-sql, 6 both go-call and raw-sql (counted once; listed in its own table).
+Count: 421 scanned units: 150 sql-query, 246 go-call, 19 raw-sql, 6 both go-call and raw-sql (counted once; listed in its own table).
 Produced by running the test against an empty table and counting the failure lines:
 `cd server && go test -count=1 ./internal/projectaccess 2>&1 | grep -c 'not listed'`.
 
@@ -139,6 +139,7 @@ How units are found:
 | `server/pkg/db/queries/project.sql` | `ListProjectsForSquad` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/project.sql` | `LockProjectForChatSessionCreate` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/project.sql` | `LockProjectForDelete` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/project_access.sql` | `CountProjectIssues` | sql-query | exempt | Owner and admin only; runs after the handler checked the Scope; counts for the audit row |
 | `server/pkg/db/queries/proposal.sql` | `GetProposalWithIssue` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/proposal.sql` | `ListProposals` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/proposal.sql` | `ListRecentProposalsForPriorArt` | sql-query | todo | Reads issue or project; no visibility filter today |
@@ -189,6 +190,10 @@ Grouped by file; a function appears once per file.
 | `server/internal/daemon/project_docs.go` | `Daemon.runProjectDocsSync` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/activity.go` | `Handler.GetAssigneeFrequency` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/agent.go` | `Handler.ListWorkspaceWorkingAgents` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/pkg/db/queries/project_access.sql` | `LockProjectAccess` | sql-query | exempt | Owner and admin write; runs after the handler checked the Scope |
+| `server/pkg/db/queries/project_access.sql` | `ListViewerProjectAccess` | sql-query | exempt | Source of the Scope itself; reads only the viewer own grants and restricted project ids |
+| `server/pkg/db/queries/project_access.sql` | `GrantProjectMembersFromProject` | sql-query | exempt | Owner and admin write; reads the project and its issue assignees to grant them |
+| `server/pkg/db/queries/project_access.sql` | `GetProjectAccess` | sql-query | scoped | Handler.load applies Scope.Allows to the row before use |
 | `server/internal/handler/autopilot.go` | `Handler.parseAutopilotProjectID` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/channel_action.go` | `ChannelActions.apply` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/channel_command.go` | `ChannelActions.pendingDecisions` | go-call | todo | Calls a reader query; no visibility filter today |
@@ -340,6 +345,7 @@ Grouped by file; a function appears once per file.
 | `server/internal/issueguard/duplicate.go` | `LockAndFindActiveDuplicate` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/issueguard/duplicate.go` | `LockAndFindRecentAutopilotDuplicate` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/issueworkflow/issueworkflow.go` | `ForIssue` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/projectaccess/handler.go` | `Handler.load` | go-call | scoped | Computes the Scope, then applies Scope.Allows to the loaded project; hidden and missing both 404 |
 | `server/internal/service/approval_policy.go` | `ApprovalPolicyService.AutoApprovals` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/approval_policy.go` | `ApprovalPolicyService.List` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/approval_policy.go` | `ApprovalPolicyService.ListRecentAutoApprovals` | go-call | todo | Calls a reader query; no visibility filter today |
@@ -437,6 +443,10 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/issue_move.go` | `Handler.issueMoveAnchorPosition` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
 | `server/internal/handler/issue_table_advanced.go` | `issueTableFilterCompiler.fieldPredicate` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
 | `server/internal/handler/issue_table_facets.go` | `Handler.ListIssueTableFacets` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
+| `server/internal/projectaccess/service.go` | `Service.SwitchAccess` | go-call | exempt | Owner and admin only; the handler checked the Scope before calling |
+| `server/internal/projectaccess/service.go` | `Service.Revoke` | go-call | exempt | Owner and admin only; the handler checked the Scope before calling |
+| `server/internal/projectaccess/service.go` | `Service.Grant` | go-call | exempt | Owner and admin only; the handler checked the Scope before calling |
+| `server/internal/projectaccess/scope.go` | `ForViewer` | go-call | exempt | Computes the Scope; reads the viewer own member row and grants |
 | `server/internal/handler/issue_table_facets.go` | `Handler.issueTableBaseFacetQuery` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
 | `server/internal/handler/issue_table_facets.go` | `Handler.issueTableFacetQuery` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
 | `server/internal/handler/issue_table_group.go` | `Handler.ListIssueTableGroups` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
@@ -446,6 +456,7 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/issue_table_rows.go` | `Handler.queryIssueTableRows` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
 | `server/internal/handler/project.go` | `buildProjectSearchQuery` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
 | `server/internal/issueposition/position.go` | `NextTopPosition` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
+| `server/internal/projectaccess/scope.go` | `<file-level>` | raw-sql | exempt | Defines the shared predicate text (Fragment); not a read path |
 | `server/internal/service/issue_wakeup_condition.go` | `IssueWakeupService.evaluateCondition` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
 | `server/internal/service/issue_wakeup_condition.go` | `loadSubIssues` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
 | `server/internal/service/issue_wakeup_condition.go` | `validateCondition` | raw-sql | todo | Inline SQL reads issue or project; no visibility filter today |
@@ -501,4 +512,4 @@ Readers the scanner cannot see. The test checks only that Status is a known valu
 
 ## Not yet in the visibility set
 
-All rows above are `todo`. No path calls `projectaccess` yet (checked with `grep -rn projectaccess server --include=*.go`; only the test file mentions the package).
+Every row above is `todo` except the `projectaccess` package itself and its `project_access.sql` queries (P41.2). No issue or project read path calls `projectaccess` yet; P41.3 changes them.

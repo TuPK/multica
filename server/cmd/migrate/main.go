@@ -193,6 +193,8 @@ var concurrentIndexCleanups = map[string]string{
 	"997_squad_pack_install_squad_idx":                          "idx_squad_pack_install_squad",
 	"999_user_mfa_uidx":                                         "user_mfa_uidx",
 	"1001_member_removal_workspace_removed_idx":                 "idx_member_removal_workspace_removed",
+	"1005_project_member_uidx":                                  "project_member_uidx",
+	"1006_project_member_user_idx":                              "project_member_user_idx",
 	"1008_payment_notice_event_uidx":                            "payment_notice_event_uidx",
 	"1009_payment_notice_id_uidx":                               "payment_notice_id_uidx",
 	"1010_payment_notice_review_idx":                            "payment_notice_review_idx",

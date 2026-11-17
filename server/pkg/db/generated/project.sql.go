@@ -15,7 +15,7 @@ const clearSquadFromOtherProjects = `-- name: ClearSquadFromOtherProjects :many
 UPDATE project SET squad_ids = array_remove(squad_ids, $1::uuid), updated_at = now()
 WHERE workspace_id = $2
   AND $1::uuid = ANY(squad_ids) AND id <> $3
-RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids
+RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids
 `
 
 type ClearSquadFromOtherProjectsParams struct {
@@ -46,6 +46,7 @@ func (q *Queries) ClearSquadFromOtherProjects(ctx context.Context, arg ClearSqua
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Priority,
+			&i.Access,
 			&i.StartDate,
 			&i.DueDate,
 			&i.WorkflowID,
@@ -66,7 +67,7 @@ func (q *Queries) ClearSquadFromOtherProjects(ctx context.Context, arg ClearSqua
 const clearSquadProjects = `-- name: ClearSquadProjects :many
 UPDATE project SET squad_ids = array_remove(squad_ids, $1::uuid), updated_at = now()
 WHERE workspace_id = $2 AND $1::uuid = ANY(squad_ids)
-RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids
+RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids
 `
 
 type ClearSquadProjectsParams struct {
@@ -96,6 +97,7 @@ func (q *Queries) ClearSquadProjects(ctx context.Context, arg ClearSquadProjects
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Priority,
+			&i.Access,
 			&i.StartDate,
 			&i.DueDate,
 			&i.WorkflowID,
@@ -132,7 +134,7 @@ INSERT INTO project (
     creator_type, creator_id
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
-) RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids
+) RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids
 `
 
 type CreateProjectParams struct {
@@ -180,6 +182,7 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Priority,
+		&i.Access,
 		&i.StartDate,
 		&i.DueDate,
 		&i.WorkflowID,
@@ -206,7 +209,7 @@ func (q *Queries) DeleteProject(ctx context.Context, arg DeleteProjectParams) er
 }
 
 const getOpenSquadProject = `-- name: GetOpenSquadProject :one
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
 WHERE workspace_id = $1
   AND $2::uuid = ANY(squad_ids) AND id <> $3
   AND status NOT IN ('completed', 'cancelled')
@@ -235,6 +238,7 @@ func (q *Queries) GetOpenSquadProject(ctx context.Context, arg GetOpenSquadProje
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Priority,
+		&i.Access,
 		&i.StartDate,
 		&i.DueDate,
 		&i.WorkflowID,
@@ -246,7 +250,7 @@ func (q *Queries) GetOpenSquadProject(ctx context.Context, arg GetOpenSquadProje
 }
 
 const getProjectInWorkspace = `-- name: GetProjectInWorkspace :one
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
 WHERE id = $1 AND workspace_id = $2
 `
 
@@ -270,6 +274,7 @@ func (q *Queries) GetProjectInWorkspace(ctx context.Context, arg GetProjectInWor
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Priority,
+		&i.Access,
 		&i.StartDate,
 		&i.DueDate,
 		&i.WorkflowID,
@@ -323,7 +328,7 @@ func (q *Queries) GetProjectIssueStats(ctx context.Context, arg GetProjectIssueS
 }
 
 const listProjects = `-- name: ListProjects :many
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
 WHERE workspace_id = $1
   AND ($2::text IS NULL OR status = $2)
   AND ($3::text IS NULL OR priority = $3)
@@ -357,6 +362,7 @@ func (q *Queries) ListProjects(ctx context.Context, arg ListProjectsParams) ([]P
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Priority,
+			&i.Access,
 			&i.StartDate,
 			&i.DueDate,
 			&i.WorkflowID,
@@ -375,7 +381,7 @@ func (q *Queries) ListProjects(ctx context.Context, arg ListProjectsParams) ([]P
 }
 
 const listProjectsForSquad = `-- name: ListProjectsForSquad :many
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
+SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
 WHERE workspace_id = $1::uuid
   AND $2::uuid = ANY(squad_ids)
 ORDER BY created_at, id
@@ -409,6 +415,7 @@ func (q *Queries) ListProjectsForSquad(ctx context.Context, arg ListProjectsForS
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Priority,
+			&i.Access,
 			&i.StartDate,
 			&i.DueDate,
 			&i.WorkflowID,
@@ -469,7 +476,7 @@ func (q *Queries) LockProjectForDelete(ctx context.Context, arg LockProjectForDe
 const setProjectSquadIDs = `-- name: SetProjectSquadIDs :one
 UPDATE project SET squad_ids = $1::uuid[], updated_at = now()
 WHERE id = $2 AND workspace_id = $3
-RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids
+RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids
 `
 
 type SetProjectSquadIDsParams struct {
@@ -494,6 +501,7 @@ func (q *Queries) SetProjectSquadIDs(ctx context.Context, arg SetProjectSquadIDs
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Priority,
+		&i.Access,
 		&i.StartDate,
 		&i.DueDate,
 		&i.WorkflowID,
@@ -517,7 +525,7 @@ UPDATE project SET
     due_date = CASE WHEN $15::boolean THEN $16 ELSE due_date END,
     updated_at = now()
 WHERE id = $1
-RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids
+RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids
 `
 
 type UpdateProjectParams struct {
@@ -571,6 +579,7 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (P
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Priority,
+		&i.Access,
 		&i.StartDate,
 		&i.DueDate,
 		&i.WorkflowID,
