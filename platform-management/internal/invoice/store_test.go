@@ -41,6 +41,7 @@ func newRecordFixture(t *testing.T) *recordFixture {
 	}
 	t.Cleanup(func() {
 		pool.Exec(context.Background(), `DELETE FROM einvoice_issuance WHERE order_id = $1`, orderID)
+		pool.Exec(context.Background(), `DELETE FROM audit_event WHERE target_type = 'einvoice' AND target_id = $1`, orderID)
 	})
 	return &recordFixture{t: t, store: NewPgxStore(pool), pool: pool, orderID: orderID, wsID: wsID}
 }
@@ -245,7 +246,7 @@ func TestReplacedOriginalBecomesCancelled(t *testing.T) {
 	ctx := context.Background()
 	original := f.insert()
 
-	if _, err := f.store.ReplaceIssued(ctx, original.OrderID, original.Revision, []byte(`{}`), "admin-1", "wrong buyer"); !errors.Is(err, ErrStateConflict) {
+	if _, err := f.store.ReplaceIssued(ctx, original.OrderID, original.Revision, []byte(`{}`), "00000000-0000-4000-8000-0000000000a1", "wrong buyer"); !errors.Is(err, ErrStateConflict) {
 		t.Fatalf("replace of a pending record: err = %v, want ErrStateConflict", err)
 	}
 
@@ -259,7 +260,7 @@ func TestReplacedOriginalBecomesCancelled(t *testing.T) {
 	}
 
 	buyer := []byte(`{"name":"Cong ty B"}`)
-	next, err := f.store.ReplaceIssued(ctx, original.OrderID, original.Revision, buyer, "admin-1", "wrong buyer")
+	next, err := f.store.ReplaceIssued(ctx, original.OrderID, original.Revision, buyer, "00000000-0000-4000-8000-0000000000a1", "wrong buyer")
 	if err != nil {
 		t.Fatalf("replace: %v", err)
 	}
@@ -277,7 +278,7 @@ func TestReplacedOriginalBecomesCancelled(t *testing.T) {
 	if got.State != StateCancelled {
 		t.Errorf("original state = %q, want %q", got.State, StateCancelled)
 	}
-	if got.CancelReason != "wrong buyer" || got.CancelledBy != "admin-1" || got.CancelledAt == nil {
+	if got.CancelReason != "wrong buyer" || got.CancelledBy != "00000000-0000-4000-8000-0000000000a1" || got.CancelledAt == nil {
 		t.Errorf("original cancel fields = reason %q by %q at %v; want the admin's reason, actor and a time", got.CancelReason, got.CancelledBy, got.CancelledAt)
 	}
 	if got.InvoiceNumber != "INV-0002" {

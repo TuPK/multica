@@ -340,3 +340,27 @@ func TestPaymentNoticeActionsAreDefinedAndCataloged(t *testing.T) {
 		}
 	}
 }
+
+// The e-invoice actions (spec 7.3, audit) are stored in audit_event.action, so a
+// rename is a data change. Each is in Catalog, which the audit log filters read.
+func TestEinvoiceActionsAreDefinedAndCataloged(t *testing.T) {
+	cases := map[string]string{
+		"einvoice.requested":  ActionEinvoiceRequested,
+		"einvoice.issued":     ActionEinvoiceIssued,
+		"einvoice.needs_info": ActionEinvoiceNeedsInfo,
+		"einvoice.failed":     ActionEinvoiceFailed,
+		"einvoice.replaced":   ActionEinvoiceReplaced,
+	}
+	for want, got := range cases {
+		if got == "" || got != want {
+			t.Errorf("constant = %q, want %q", got, want)
+		}
+		found := false
+		for _, a := range Catalog {
+			found = found || a == want
+		}
+		if !found {
+			t.Errorf("%s is not in Catalog", want)
+		}
+	}
+}

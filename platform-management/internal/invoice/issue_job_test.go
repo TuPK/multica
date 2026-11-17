@@ -49,6 +49,7 @@ func newIssueFixture(t *testing.T) *issueFixture {
 		ctx := context.Background()
 		for _, id := range f.orders {
 			pool.Exec(ctx, `DELETE FROM einvoice_issuance WHERE order_id = $1`, id)
+			pool.Exec(ctx, `DELETE FROM audit_event WHERE target_type = 'einvoice' AND target_id = $1`, id)
 			pool.Exec(ctx, `DELETE FROM billing_order WHERE id = $1`, id)
 		}
 	})
@@ -383,7 +384,7 @@ func TestCancelRequiresAdminReasonAndKeepsRecord(t *testing.T) {
 		t.Fatalf("after rejected replace: state = %q, want issued", rec.State)
 	}
 
-	if _, err := s.Replace(ctx, id, 1, buyer, "staff-1", "wrong tax code"); err != nil {
+	if _, err := s.Replace(ctx, id, 1, buyer, "00000000-0000-4000-8000-0000000000a1", "wrong tax code"); err != nil {
 		t.Fatalf("replace: %v", err)
 	}
 	orig := f.get(id, 1)
@@ -405,7 +406,7 @@ func TestReplaceCreatesNextRevision(t *testing.T) {
 	original := f.get(id, 1)
 
 	buyer := Buyer{Name: "Cong ty A", TaxCode: "0312345678", Address: "1 Pho A", Email: "new@example.com"}
-	next, err := s.Replace(ctx, id, 1, buyer, "staff-1", "wrong email")
+	next, err := s.Replace(ctx, id, 1, buyer, "00000000-0000-4000-8000-0000000000a1", "wrong email")
 	if err != nil {
 		t.Fatalf("replace: %v", err)
 	}
@@ -437,7 +438,7 @@ func TestReplaceRejectsIncompleteBuyer(t *testing.T) {
 	f.mustIssue(s)
 
 	noEmail := Buyer{Name: "Cong ty A", TaxCode: "0312345678", Address: "1 Pho A"}
-	_, err := s.Replace(ctx, id, 1, noEmail, "staff-1", "wrong email")
+	_, err := s.Replace(ctx, id, 1, noEmail, "00000000-0000-4000-8000-0000000000a1", "wrong email")
 	var pe *ProviderError
 	if !errors.As(err, &pe) || pe.Kind != KindMissingFields || len(pe.Fields) != 1 || pe.Fields[0] != "email" {
 		t.Fatalf("replace with incomplete buyer: err = %v, want missing field email", err)

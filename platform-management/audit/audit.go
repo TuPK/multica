@@ -213,7 +213,25 @@ var Catalog = []string{
 	ActionPaymentNoticeNeedsReview,
 	ActionPaymentNoticeResolved,
 	ActionPaymentNoticeDismissed,
+	ActionEinvoiceRequested,
+	ActionEinvoiceIssued,
+	ActionEinvoiceNeedsInfo,
+	ActionEinvoiceFailed,
+	ActionEinvoiceReplaced,
 }
+
+// E-invoice actions (spec 7.3, audit): written in the transaction of the status
+// change they record. The system writes requested, issued, needs_info and
+// failed; staff write replaced, with a required reason. The detail holds the
+// order id, revisions, the invoice number and provider invoice id, error codes,
+// attempt counts and missing field names, never a buyer value.
+const (
+	ActionEinvoiceRequested = "einvoice.requested"
+	ActionEinvoiceIssued    = "einvoice.issued"
+	ActionEinvoiceNeedsInfo = "einvoice.needs_info"
+	ActionEinvoiceFailed    = "einvoice.failed"
+	ActionEinvoiceReplaced  = "einvoice.replaced"
+)
 
 // R5 subscription actions (spec 7b.1, rules 5 to 8): written by the platform in the
 // transaction of a scheduled plan change, a cancelled one, and a cancel or resume

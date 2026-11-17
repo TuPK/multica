@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/platform-management/internal/db"
 )
 
@@ -28,8 +29,92 @@ func NewPgxStore(pool *pgxpool.Pool) *PgxStore {
 
 // Errors below never include buyer data or the input values.
 
+// Insert stores the pending record and its einvoice.requested audit row in one
+// transaction. A unique-key loss returns the error and writes no audit row.
 func (s *PgxStore) Insert(ctx context.Context, n NewRecord) (Record, error) {
-	return insert(ctx, s.q, n)
+	var rec Record
+	err := s.inTx(ctx, func(q *db.Queries) error {
+		var err error
+		if rec, err = insert(ctx, q, n); err != nil {
+			return err
+		}
+		return recordAudit(ctx, q, audit.Entry{
+			WorkspaceID: rec.WorkspaceID,
+			ActorType:   audit.ActorSystem,
+			ActorLabel:  "einvoice enqueue",
+			Action:      audit.ActionEinvoiceRequested,
+			TargetType:  auditTarget,
+			TargetID:    rec.OrderID,
+			TargetLabel: revisionLabel(rec.Revision),
+			Detail:      map[string]any{"order_id": rec.OrderID, "revision": rec.Revision, "provider": rec.Provider},
+		})
+	})
+	if err != nil {
+		return Record{}, err
+	}
+	return rec, nil
+}
+
+const auditTarget = "einvoice"
+
+func revisionLabel(revision int) string { return fmt.Sprintf("revision %d", revision) }
+
+// inTx runs fn on a transaction and commits it when fn succeeds. fn's error is
+// returned as it is, so callers can still match sentinels and pg error codes.
+func (s *PgxStore) inTx(ctx context.Context, fn func(q *db.Queries) error) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }() // a no-op once committed
+	if err := fn(s.q.WithTx(tx)); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+	return nil
+}
+
+// auditWriter implements audit.Writer on the queries of one transaction.
+type auditWriter struct{ q *db.Queries }
+
+func recordAudit(ctx context.Context, q *db.Queries, e audit.Entry) error {
+	if err := audit.Record(ctx, auditWriter{q}, e); err != nil {
+		return fmt.Errorf("record audit event: %w", err)
+	}
+	return nil
+}
+
+func (w auditWriter) InsertAuditEvent(ctx context.Context, e audit.Entry) error {
+	var ws pgtype.UUID
+	if e.WorkspaceID != "" {
+		if err := ws.Scan(e.WorkspaceID); err != nil {
+			return fmt.Errorf("invalid workspace id: %w", err)
+		}
+	}
+	detail := e.Detail
+	if detail == nil {
+		detail = map[string]any{}
+	}
+	raw, err := json.Marshal(detail)
+	if err != nil {
+		return err
+	}
+	return w.q.InsertAuditEvent(ctx, db.InsertAuditEventParams{
+		WorkspaceID: ws,
+		ActorType:   e.ActorType,
+		ActorID:     pgtype.Text{String: e.ActorID, Valid: e.ActorID != ""},
+		ActorLabel:  e.ActorLabel,
+		Action:      e.Action,
+		TargetType:  e.TargetType,
+		TargetID:    e.TargetID,
+		TargetLabel: e.TargetLabel,
+		Detail:      raw,
+		Ip:          e.IP,
+		UserAgent:   e.UserAgent,
+		RequestID:   e.RequestID,
+	})
 }
 
 func insert(ctx context.Context, q *db.Queries, n NewRecord) (Record, error) {
@@ -79,26 +164,46 @@ func get(ctx context.Context, q *db.Queries, orderID string, revision int) (Reco
 	return fromRow(row), nil
 }
 
+// MarkIssued moves the record to issued and writes einvoice.issued in the same
+// transaction. A record that is not pending writes nothing.
 func (s *PgxStore) MarkIssued(ctx context.Context, orderID string, revision int, i Issued) error {
 	oid, err := parseID(orderID)
 	if err != nil {
 		return err
 	}
-	n, err := s.q.MarkEinvoiceIssued(ctx, db.MarkEinvoiceIssuedParams{
-		ProviderInvoiceID: i.ProviderInvoiceID,
-		InvoiceNumber:     i.InvoiceNumber,
-		LookupUrl:         i.LookupURL,
-		IssuedAt:          pgtype.Timestamptz{Time: i.IssuedAt, Valid: true},
-		OrderID:           oid,
-		Revision:          int32(revision),
+	return s.inTx(ctx, func(q *db.Queries) error {
+		n, err := q.MarkEinvoiceIssued(ctx, db.MarkEinvoiceIssuedParams{
+			ProviderInvoiceID: i.ProviderInvoiceID,
+			InvoiceNumber:     i.InvoiceNumber,
+			LookupUrl:         i.LookupURL,
+			IssuedAt:          pgtype.Timestamptz{Time: i.IssuedAt, Valid: true},
+			OrderID:           oid,
+			Revision:          int32(revision),
+		})
+		if err != nil {
+			return fmt.Errorf("mark einvoice issued: %w", err)
+		}
+		if n == 0 {
+			return conflictOrNotFound(ctx, q, orderID, revision)
+		}
+		rec, err := get(ctx, q, orderID, revision)
+		if err != nil {
+			return err
+		}
+		return recordAudit(ctx, q, audit.Entry{
+			WorkspaceID: rec.WorkspaceID,
+			ActorType:   audit.ActorSystem,
+			ActorLabel:  "einvoice issue",
+			Action:      audit.ActionEinvoiceIssued,
+			TargetType:  auditTarget,
+			TargetID:    orderID,
+			TargetLabel: revisionLabel(revision),
+			Detail: map[string]any{
+				"order_id": orderID, "revision": revision,
+				"invoice_number": i.InvoiceNumber, "provider_invoice_id": i.ProviderInvoiceID,
+			},
+		})
 	})
-	if err != nil {
-		return fmt.Errorf("mark einvoice issued: %w", err)
-	}
-	if n > 0 {
-		return nil
-	}
-	return conflictOrNotFound(ctx, s.q, orderID, revision)
 }
 
 func (s *PgxStore) ListDue(ctx context.Context, now time.Time, limit int) ([]Record, error) {
@@ -116,50 +221,65 @@ func (s *PgxStore) ListDue(ctx context.Context, now time.Time, limit int) ([]Rec
 	return out, nil
 }
 
+// ReplaceIssued cancels the issued record, inserts the next revision and writes
+// einvoice.replaced, all in one transaction. The actor must be a staff UUID.
 func (s *PgxStore) ReplaceIssued(ctx context.Context, orderID string, revision int, buyer []byte, by, reason string) (Record, error) {
 	oid, err := parseID(orderID)
 	if err != nil {
 		return Record{}, err
 	}
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return Record{}, fmt.Errorf("replace einvoice issuance: %w", err)
+	var actor pgtype.UUID
+	if err := actor.Scan(by); err != nil || !actor.Valid {
+		return Record{}, ErrInvalidActor
 	}
-	defer tx.Rollback(ctx)
-	q := s.q.WithTx(tx)
-
-	// The conditional UPDATE takes the row lock, so a concurrent replace of the
-	// same original sees state cancelled and gets ErrStateConflict.
-	n, err := q.CancelEinvoiceIssued(ctx, db.CancelEinvoiceIssuedParams{
-		CancelledBy:  by,
-		CancelReason: reason,
-		OrderID:      oid,
-		Revision:     int32(revision),
+	var next Record
+	err = s.inTx(ctx, func(q *db.Queries) error {
+		// The conditional UPDATE takes the row lock, so a concurrent replace of the
+		// same original sees state cancelled and gets ErrStateConflict.
+		n, err := q.CancelEinvoiceIssued(ctx, db.CancelEinvoiceIssuedParams{
+			CancelledBy:  by,
+			CancelReason: reason,
+			OrderID:      oid,
+			Revision:     int32(revision),
+		})
+		if err != nil {
+			return fmt.Errorf("cancel einvoice issuance: %w", err)
+		}
+		if n == 0 {
+			return conflictOrNotFound(ctx, q, orderID, revision)
+		}
+		orig, err := get(ctx, q, orderID, revision)
+		if err != nil {
+			return err
+		}
+		next, err = insert(ctx, q, NewRecord{
+			OrderID:     orig.OrderID,
+			WorkspaceID: orig.WorkspaceID,
+			Provider:    orig.Provider,
+			Currency:    orig.Currency,
+			Amount:      orig.Amount,
+			VATAmount:   orig.VATAmount,
+			Buyer:       buyer,
+		})
+		if err != nil {
+			return err
+		}
+		return recordAudit(ctx, q, audit.Entry{
+			WorkspaceID: orig.WorkspaceID,
+			ActorType:   audit.ActorStaff,
+			ActorID:     by,
+			ActorLabel:  by,
+			Action:      audit.ActionEinvoiceReplaced,
+			TargetType:  auditTarget,
+			TargetID:    orderID,
+			TargetLabel: revisionLabel(revision),
+			Detail: map[string]any{
+				"order_id": orderID, "revision": revision, "new_revision": next.Revision, "reason": reason,
+			},
+		})
 	})
 	if err != nil {
-		return Record{}, fmt.Errorf("cancel einvoice issuance: %w", err)
-	}
-	if n == 0 {
-		return Record{}, conflictOrNotFound(ctx, q, orderID, revision)
-	}
-	orig, err := get(ctx, q, orderID, revision)
-	if err != nil {
 		return Record{}, err
-	}
-	next, err := insert(ctx, q, NewRecord{
-		OrderID:     orig.OrderID,
-		WorkspaceID: orig.WorkspaceID,
-		Provider:    orig.Provider,
-		Currency:    orig.Currency,
-		Amount:      orig.Amount,
-		VATAmount:   orig.VATAmount,
-		Buyer:       buyer,
-	})
-	if err != nil {
-		return Record{}, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return Record{}, fmt.Errorf("replace einvoice issuance: %w", err)
 	}
 	return next, nil
 }
@@ -291,19 +411,47 @@ func (s *PgxStore) RecordAttempt(ctx context.Context, orderID string, revision i
 	if err != nil {
 		return fmt.Errorf("record einvoice attempt: %w", err)
 	}
-	n, err := s.q.SetEinvoiceAttempt(ctx, db.SetEinvoiceAttemptParams{
-		State:         string(a.State),
-		NextAttemptAt: pgtype.Timestamptz{Time: a.NextAttemptAt, Valid: true},
-		LastErrorCode: a.LastErrorCode,
-		MissingFields: missing,
-		OrderID:       oid,
-		Revision:      int32(revision),
+	return s.inTx(ctx, func(q *db.Queries) error {
+		n, err := q.SetEinvoiceAttempt(ctx, db.SetEinvoiceAttemptParams{
+			State:         string(a.State),
+			NextAttemptAt: pgtype.Timestamptz{Time: a.NextAttemptAt, Valid: true},
+			LastErrorCode: a.LastErrorCode,
+			MissingFields: missing,
+			OrderID:       oid,
+			Revision:      int32(revision),
+		})
+		if err != nil {
+			return fmt.Errorf("record einvoice attempt: %w", err)
+		}
+		if n == 0 {
+			return conflictOrNotFound(ctx, q, orderID, revision)
+		}
+		// A retry that leaves the record pending is not an outcome yet.
+		if a.State != StateFailed && a.State != StateNeedsInfo {
+			return nil
+		}
+		rec, err := get(ctx, q, orderID, revision)
+		if err != nil {
+			return err
+		}
+		e := audit.Entry{
+			WorkspaceID: rec.WorkspaceID,
+			ActorType:   audit.ActorSystem,
+			ActorLabel:  "einvoice issue",
+			TargetType:  auditTarget,
+			TargetID:    orderID,
+			TargetLabel: revisionLabel(revision),
+		}
+		if a.State == StateNeedsInfo {
+			e.Action = audit.ActionEinvoiceNeedsInfo
+			e.Detail = map[string]any{"order_id": orderID, "revision": revision, "missing_fields": fields}
+		} else {
+			e.Action = audit.ActionEinvoiceFailed
+			e.Detail = map[string]any{
+				"order_id": orderID, "revision": revision,
+				"error_code": a.LastErrorCode, "attempts": rec.Attempts,
+			}
+		}
+		return recordAudit(ctx, q, e)
 	})
-	if err != nil {
-		return fmt.Errorf("record einvoice attempt: %w", err)
-	}
-	if n > 0 {
-		return nil
-	}
-	return conflictOrNotFound(ctx, s.q, orderID, revision)
 }

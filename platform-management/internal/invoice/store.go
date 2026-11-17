@@ -10,6 +10,8 @@ var (
 	// ErrStateConflict means the record is not in the state the operation requires.
 	ErrStateConflict = errors.New("invoice: record not in required state")
 	ErrNotFound      = errors.New("invoice: record not found")
+	// ErrInvalidActor means the staff actor of a replacement is not a UUID.
+	ErrInvalidActor = errors.New("invoice: actor is not a staff id")
 )
 
 // PaidOrder is a paid billing order that has no issuance record yet. Buyer
@@ -32,16 +34,19 @@ type Attempt struct {
 }
 
 type Store interface {
-	// Insert stores a pending record with revision max+1 for the order.
+	// Insert stores a pending record with revision max+1 for the order and an
+	// einvoice.requested audit row, in one transaction.
 	Insert(ctx context.Context, n NewRecord) (Record, error)
 	Get(ctx context.Context, orderID string, revision int) (Record, error)
-	// MarkIssued moves a pending record to issued; any other state is ErrStateConflict.
+	// MarkIssued moves a pending record to issued and writes einvoice.issued in
+	// the same transaction; any other state is ErrStateConflict.
 	MarkIssued(ctx context.Context, orderID string, revision int, i Issued) error
 	// ListDue returns pending records whose next_attempt_at is not after now, oldest first.
 	ListDue(ctx context.Context, now time.Time, limit int) ([]Record, error)
 	// ReplaceIssued cancels an issued record locally (no provider call) and
 	// inserts the next revision as pending with the given buyer, in one
-	// transaction. A record that is not issued gives ErrStateConflict.
+	// transaction with an einvoice.replaced audit row. A record that is not
+	// issued gives ErrStateConflict; an actor that is not a UUID, ErrInvalidActor.
 	ReplaceIssued(ctx context.Context, orderID string, revision int, buyer []byte, by, reason string) (Record, error)
 	// ListPaidWithoutRecord returns paid, invoiceable orders paid at or after
 	// startAt that have no record, oldest first.
@@ -50,6 +55,7 @@ type Store interface {
 	// attempt on each. A leased record is skipped by other claims.
 	Claim(ctx context.Context, now time.Time, lease time.Duration, limit int) ([]Record, error)
 	// RecordAttempt stores the outcome of an attempt and releases the lease.
-	// A record that is not pending gives ErrStateConflict.
+	// A failed or needs_info outcome also writes its audit row in the same
+	// transaction. A record that is not pending gives ErrStateConflict.
 	RecordAttempt(ctx context.Context, orderID string, revision int, a Attempt) error
 }
