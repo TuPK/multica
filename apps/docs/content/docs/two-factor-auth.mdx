@@ -1,0 +1,46 @@
+---
+title: Two-factor authentication
+description: Protect your account with a time-based one-time code from an authenticator app.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+Two-factor authentication (MFA) adds a time-based one-time password (TOTP) after your first sign-in step. Any TOTP authenticator app works.
+
+<Callout type="warning">
+**Status.** The web and desktop apps have no enrolment screen and no second sign-in step. Enrolment is API-only for now. Mobile sign-in with MFA has not been verified, so do not rely on it.
+</Callout>
+
+## Turn on MFA
+
+1. Call `POST /api/me/mfa/enroll` to start enrolling an authenticator app.
+2. Confirm with one valid code through `POST /api/me/mfa/confirm`.
+
+Confirming returns ten recovery codes. They are shown once, so store them somewhere safe.
+
+## Sign in with MFA
+
+After the first factor (email code or Google), the server does not issue a session. It returns a pending token valid for 5 minutes. Send the pending token and a TOTP or recovery code to `POST /auth/mfa/verify`. The server then issues a session that records `mfa`.
+
+| Limit | Value |
+|---|---|
+| Wrong codes per pending token | 5, then the token fails |
+| TOTP code reuse | Not allowed in the same time step |
+| Recovery code | Works once |
+
+## Turn off MFA
+
+Call `POST /api/me/mfa/disable` with a valid TOTP code or a recovery code.
+
+## Lost device
+
+Use a recovery code. If you have none, ask platform staff to reset MFA. The reset is audited and you are emailed.
+
+## Require MFA in a workspace
+
+An owner can set the `require_mfa` policy so members must have signed in with MFA. See [Workspace policies](/workspace-policies). Agent and daemon tokens are exempt; see [Authentication and tokens](/auth-tokens).
+
+## Next steps
+
+- [Workspace policies](/workspace-policies) — require MFA for a workspace.
+- [Authentication and tokens](/auth-tokens) — sessions and personal access tokens.

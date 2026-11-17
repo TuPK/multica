@@ -1,0 +1,67 @@
+---
+title: Single sign-on (SSO)
+description: Let members sign in to a workspace through your OpenID Connect identity provider.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+A workspace can connect to one OpenID Connect (OIDC) identity provider. Members whose email belongs to a verified domain sign in through that provider.
+
+SSO is available on the Business and Enterprise plans only. Free, Pro, and Unlimited do not include it.
+
+<Callout type="warning">
+**Status.** The web and desktop apps have no SSO settings screen and no SSO sign-in button. Setup is through the API for now. The mobile app does not sign in through SSO yet.
+</Callout>
+
+## Verify a domain
+
+A workspace owner proves control of an email domain by adding a TXT record to its DNS.
+
+- Only one workspace can verify a given domain.
+- Public email domains, such as gmail.com, are refused.
+
+## SSO connection
+
+Each workspace has at most one connection. It holds:
+
+| Field | Meaning |
+|---|---|
+| Issuer | The identity provider's OIDC issuer |
+| Client ID | The client registered with the provider |
+| Client secret | The secret for that client |
+| Default role | The role given to new members who join through SSO |
+| Status | `enabled` or `disabled` |
+
+Deleting a workspace removes its SSO connection and verified-domain rows.
+
+## How sign-in works
+
+1. The login page sends the email to `POST /auth/sso/discover`.
+2. If the email's domain is verified by the workspace and the connection is enabled, the client is sent to the identity provider. The flow is authorization code with PKCE, state, and nonce.
+3. After the provider redirects back, the server checks the ID token signature, `iss`, `aud`, nonce, and expiry. It requires `email_verified`, and the email domain must be one of the workspace's own verified domains.
+
+A user who is not yet a member is added with the connection's default role. If the workspace has no seat left, the join is refused.
+
+## Require SSO
+
+Turn on the `require_sso` policy (see [Workspace policies](/workspace-policies)) so that a member whose email domain is verified must sign in through this workspace's connection to enter this workspace. Other sign-in methods get `403` with code `sso_required`.
+
+- Workspace owners are exempt.
+- Members outside the verified domains, such as contractors and guests, are not blocked by this rule.
+- Other workspaces are not affected.
+
+## API routes
+
+| Route | Purpose |
+|---|---|
+| `GET /auth/sso/start` | Start the provider redirect |
+| `GET /auth/sso/callback` | Receive the provider response |
+| `POST /auth/sso/discover` | Find the connection for an email |
+| `/api/workspaces/{id}/sso/` | Manage the connection and domains |
+
+Authenticate API calls with a token as described in [Authentication and tokens](/auth-tokens).
+
+## Next steps
+
+- [Workspace policies](/workspace-policies) — require SSO, MFA, and session age.
+- [Members and roles](/members-roles) — roles for new SSO members.

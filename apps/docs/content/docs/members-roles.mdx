@@ -1,23 +1,25 @@
 ---
 title: Members and roles
-description: Invite members and manage workspace permissions with the owner, admin, and member roles.
+description: Invite members and manage workspace permissions with the owner, admin, member, and viewer roles.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { RolesDemo } from "@/components/demos/roles-demo";
 
-Everyone who joins a [workspace](/workspaces) is a member, and each member has one role: `owner`, `admin`, or `member`. Roles only control workspace settings and team management; day-to-day collaboration — creating issues, writing comments — is open to all members.
+Everyone who joins a [workspace](/workspaces) is a member, and each member has one role: `owner`, `admin`, `member`, or `viewer`. Roles only control workspace settings and team management; day-to-day collaboration — creating issues, writing comments — is open to `owner`, `admin`, and `member`.
 
-## The three roles
+## The four roles
 
-| Action | owner | admin | member |
-|---|:---:|:---:|:---:|
-| View the workspace and collaborate day to day | ✓ | ✓ | ✓ |
-| Change workspace settings | ✓ | ✓ | — |
-| Invite an `admin` or `member` | ✓ | ✓ | — |
-| Change or remove an `admin` or `member` | ✓ | ✓ | — |
-| Grant, revoke, or remove `owner` | ✓ | — | — |
-| Delete the workspace | ✓ | — | — |
+| Action | owner | admin | member | viewer |
+|---|:---:|:---:|:---:|:---:|
+| View the workspace | ✓ | ✓ | ✓ | ✓ |
+| Collaborate day to day | ✓ | ✓ | ✓ | — |
+| Leave the workspace or set personal preferences | ✓ | ✓ | ✓ | ✓ |
+| Change workspace settings | ✓ | ✓ | — | — |
+| Invite an `admin` or `member` | ✓ | ✓ | — | — |
+| Change or remove an `admin` or `member` | ✓ | ✓ | — | — |
+| Grant, revoke, or remove `owner` | ✓ | — | — | — |
+| Delete the workspace | ✓ | — | — | — |
 
 A workspace must always keep at least one `owner`: the last `owner` cannot be demoted, removed, or leave.
 
@@ -27,9 +29,15 @@ A workspace must always keep at least one `owner`: the last `owner` cannot be de
 Roles do not decide who can run an agent. Each agent has its own Access scope, and `owner` and `admin` cannot bypass it to run agents they were not granted. See [Agents](/agents#permissions-and-access).
 </Callout>
 
+## Viewer
+
+A `viewer` can read everything a `member` can read and cannot change anything. The exceptions are personal state: marking inbox items read, notification preferences, pins, and leaving the workspace. A `viewer` also cannot register a daemon runtime or upload files.
+
+The `viewer` role is available on the Business and Enterprise plans only. `owner` and `admin` can assign `viewer`, `member`, and `admin`; only an `owner` can assign `owner`. Assign it from the Members settings in the web and desktop apps.
+
 ## Invite members
 
-`owner` and `admin` open **Settings → Members**, click **Invite member**, enter an email, pick a role, and send. Invitations can only grant `admin` or `member`; an `owner` must join the workspace first and then be promoted by an existing `owner`.
+`owner` and `admin` open **Settings → Members**, click **Invite member**, enter an email, pick a role, and send. Invitations can grant `admin`, `member`, or `viewer`; an `owner` must join the workspace first and then be promoted by an existing `owner`.
 
 ![Member management: the invite form and the roster with roles](/images/docs/members-roster.webp)
 

@@ -1,0 +1,41 @@
+---
+title: Workspace policies
+description: Set invite, share link, MFA, SSO, and session rules for a workspace.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+A workspace policy is a set of access rules that apply to the whole workspace. Only owners can change it. Workspace policies are available on the Business and Enterprise plans only.
+
+<Callout type="warning">
+**Status.** There is no web or desktop screen for policies yet. Use the API.
+</Callout>
+
+## Read and change the policy
+
+| Request | Who | Notes |
+|---|---|---|
+| `GET /api/workspaces/{id}/policy` | Owner or admin | Read the policy |
+| `PUT /api/workspaces/{id}/policy` | Owner | Without the Business or Enterprise plan, the write is refused with `402` |
+
+Stored values are not enforced when the workspace's plan does not include the feature. Every change writes an audit row, `policy.updated`, with the old and new values.
+
+## Fields
+
+| Field | Effect | Error code |
+|---|---|---|
+| `allowed_invite_domains` | Invitations and share-link joins are refused for emails outside these domains. An empty list allows any domain. | `invite_domain_not_allowed` |
+| `share_links_enabled` | When `false`, creating and joining share links is refused. Turning it off deactivates the workspace's active links. | `share_links_disabled` |
+| `require_mfa` | Members must have signed in with MFA. | `mfa_required` |
+| `require_sso` | Members with a verified email domain must sign in through the workspace's SSO connection. | `sso_required` |
+| `session_max_age_hours` | A member whose sign-in is older than this must sign in again. | `reauth_required` |
+
+`require_mfa`, `require_sso`, and `session_max_age_hours` block only this workspace. The user keeps access to their other workspaces.
+
+Agent and daemon tokens are exempt from the session age, MFA, and SSO checks.
+
+## Next steps
+
+- [Single sign-on (SSO)](/sso) — connect an identity provider.
+- [Two-factor authentication](/two-factor-auth) — enrol an authenticator app.
+- [Members and roles](/members-roles) — roles, including `viewer`.
