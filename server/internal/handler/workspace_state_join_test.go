@@ -76,7 +76,7 @@ func (r joinRow) Scan(dest ...any) error {
 	case "GetActiveShareLinkByCode": // id, workspace_id, ...
 		*dest[0].(*pgtype.UUID) = joinUUID("55555555-5555-4555-8555-555555555555")
 		*dest[1].(*pgtype.UUID) = joinUUID(joinTestWorkspace)
-	case "GetMemberByUserAndWorkspace":
+	case "GetMemberByUserAndWorkspace", "GetWorkspacePolicy": // no policy row means the default policy
 		return pgx.ErrNoRows
 	default:
 		return errors.New("joinDB: unexpected query " + r.name)

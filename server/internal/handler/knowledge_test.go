@@ -156,11 +156,41 @@ func TestKnowledgeEnableReportsOfflineSidecar(t *testing.T) {
 	}
 }
 
+// createKnowledgeTestUser inserts a user with an email unique to this run and,
+// when role is not empty, a member row in the test workspace. Rows left by an
+// earlier run cannot collide on user_email_key.
+func createKnowledgeTestUser(t *testing.T, role string) string {
+	t.Helper()
+	ctx := context.Background()
+	suffix := hubTestUUID(t)
+	var userID string
+	if err := testPool.QueryRow(ctx,
+		`INSERT INTO "user" (name, email) VALUES ($1, $2) RETURNING id`,
+		"knowledge-test-"+suffix,
+		"knowledge-"+suffix+"@example.test",
+	).Scan(&userID); err != nil {
+		t.Fatalf("create knowledge test user: %v", err)
+	}
+	t.Cleanup(func() {
+		testPool.Exec(context.Background(), `DELETE FROM member WHERE user_id = $1`, parseUUID(userID))
+		testPool.Exec(context.Background(), `DELETE FROM "user" WHERE id = $1`, parseUUID(userID))
+	})
+	if role != "" {
+		if _, err := testPool.Exec(ctx,
+			`INSERT INTO member (workspace_id, user_id, role) VALUES ($1, $2, $3)`,
+			parseUUID(testWorkspaceID), parseUUID(userID), role,
+		); err != nil {
+			t.Fatalf("create knowledge test member: %v", err)
+		}
+	}
+	return userID
+}
+
 func TestKnowledgeIsOwnerAndAdminOnly(t *testing.T) {
 	fake := useKnowledge(t)
-	member := createTestUserAndMember(t, "member")
-	admin := createTestUserAndMember(t, "admin")
-	stranger := createTestUserAndMember(t, "")
+	member := createKnowledgeTestUser(t, "member")
+	admin := createKnowledgeTestUser(t, "admin")
+	stranger := createKnowledgeTestUser(t, "")
 
 	for _, method := range []string{http.MethodGet, http.MethodPost} {
 		for name, user := range map[string]string{"member": member, "non-member": stranger} {
