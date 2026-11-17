@@ -97,4 +97,30 @@ describe("Layout navigation", () => {
     );
     expect(screen.getByRole("button", { name: /Accounts/i })).toBeInTheDocument();
   });
+
+  it("shows Payment notices to billing and admin, hides it from support", () => {
+    const { rerender } = render(
+      <Layout
+        currentScreen="overview"
+        onNavigate={vi.fn()}
+        user={{ user_id: "u-supp", email: "support@example.com", role: "support" }}
+        onLogout={vi.fn()}
+      >
+        <div>Content</div>
+      </Layout>
+    );
+    expect(screen.queryByRole("button", { name: /Payment notices/i })).not.toBeInTheDocument();
+
+    rerender(
+      <Layout
+        currentScreen="overview"
+        onNavigate={vi.fn()}
+        user={{ user_id: "u-bill", email: "billing@example.com", role: "billing" }}
+        onLogout={vi.fn()}
+      >
+        <div>Content</div>
+      </Layout>
+    );
+    expect(screen.getByRole("button", { name: /Payment notices/i })).toBeInTheDocument();
+  });
 });

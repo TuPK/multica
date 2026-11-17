@@ -224,6 +224,49 @@ export const OrderActionResultSchema = z.object({
 });
 export type OrderActionResult = z.output<typeof OrderActionResultSchema>;
 
+// Payment notices
+
+export const NOTICE_STATES = ["received", "needs_review", "applied", "resolved", "dismissed"] as const;
+export type NoticeState = (typeof NOTICE_STATES)[number] | "unknown";
+
+export const NoticeSchema = z.object({
+  id: z.string(),
+  provider: text,
+  provider_event_id: text,
+  state: enumOf(NOTICE_STATES),
+  transfer_code: text,
+  amount: count,
+  currency: text,
+  review_reason: text,
+  order_id: text,
+  received_at: text,
+  decided_at: nullableText,
+});
+export type Notice = z.output<typeof NoticeSchema>;
+
+export const NoticeCandidateSchema = z.object({
+  order_id: z.string(),
+  workspace_id: text,
+  state: text,
+  transfer_code: text,
+  amount: count,
+  vat_amount: count,
+  currency: text,
+  created_at: text,
+  match: text,
+});
+export type NoticeCandidate = z.output<typeof NoticeCandidateSchema>;
+
+export const NoticeDetailSchema = NoticeSchema.extend({
+  candidates: z.array(NoticeCandidateSchema).default([]),
+});
+export type NoticeDetail = z.output<typeof NoticeDetailSchema>;
+
+export const NoticeListSchema = z.object({
+  notices: z.array(NoticeSchema).default([]),
+});
+export type NoticeList = z.output<typeof NoticeListSchema>;
+
 // Subscriptions & Plans
 
 export const LimitsSchema = z.record(z.string(), z.number().nullable()).default({});
@@ -527,6 +570,22 @@ export function parseOrderList(data: unknown): OrderList {
 
 export function parseOrderActionResult(data: unknown, endpoint: string): OrderActionResult | null {
   return parseWithFallback<OrderActionResult | null>(data, OrderActionResultSchema, null, { endpoint });
+}
+
+export function parseNoticeList(data: unknown): NoticeList {
+  return parseWithFallback<NoticeList>(data, NoticeListSchema, { notices: [] }, {
+    endpoint: "GET /api/platform/payment-notices",
+  });
+}
+
+export function parseNoticeDetail(data: unknown): NoticeDetail | null {
+  return parseWithFallback<NoticeDetail | null>(data, NoticeDetailSchema, null, {
+    endpoint: "GET /api/platform/payment-notices/{id}",
+  });
+}
+
+export function parseNotice(data: unknown, endpoint: string): Notice | null {
+  return parseWithFallback<Notice | null>(data, NoticeSchema, null, { endpoint });
 }
 
 export function parsePutSubscriptionResponse(data: unknown): PutSubscriptionResponse | null {

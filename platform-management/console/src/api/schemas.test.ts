@@ -5,6 +5,9 @@ import {
   AUDIT_ACTIONS,
   parseAuditPage,
   parseMe,
+  parseNotice,
+  parseNoticeDetail,
+  parseNoticeList,
   parseNotePage,
   parseOverview,
   parseStaffList,
@@ -1074,6 +1077,65 @@ describe("put billing profile response (PUT /tenants/{id}/billing-profile)", () 
       { ...validPut, changed: null },
     ]) {
       expect(parsePutBillingProfileResponse(bad)).toBeNull();
+    }
+  });
+});
+
+describe("payment notices", () => {
+  const notice = {
+    id: "11111111-1111-4111-8111-111111111111",
+    provider: "sepay",
+    provider_event_id: "evt-123",
+    state: "needs_review",
+    transfer_code: "MUL12345678",
+    amount: 660000,
+    currency: "vnd",
+    review_reason: "ambiguous_code",
+    order_id: "",
+    received_at: "2026-11-17T10:00:00Z",
+    decided_at: null,
+  };
+  const candidate = {
+    order_id: "22222222-2222-4222-8222-222222222222",
+    workspace_id: "33333333-3333-4333-8333-333333333333",
+    state: "pending",
+    transfer_code: "MUL12345678",
+    amount: 600000,
+    vat_amount: 60000,
+    currency: "vnd",
+    created_at: "2026-11-13T10:00:00Z",
+    match: "code",
+  };
+
+  it("parses a well-formed notice list", () => {
+    const parsed = parseNoticeList({ notices: [notice] });
+    expect(parsed.notices).toHaveLength(1);
+    expect(parsed.notices[0]?.transfer_code).toBe("MUL12345678");
+  });
+
+  it("falls back to an empty list for a malformed body", () => {
+    for (const body of [null, undefined, "invalid", 123, { notices: "not-an-array" }]) {
+      expect(parseNoticeList(body)).toEqual({ notices: [] });
+    }
+  });
+
+  it("parses a detail with candidates and maps an unknown state to unknown", () => {
+    const parsed = parseNoticeDetail({ ...notice, state: "some_future_state", candidates: [candidate] });
+    expect(parsed?.state).toBe("unknown");
+    expect(parsed?.candidates).toHaveLength(1);
+    expect(parsed?.candidates[0]?.match).toBe("code");
+  });
+
+  it("falls back to null for a malformed detail", () => {
+    for (const body of [null, undefined, "invalid", {}, { ...notice, id: 5 }, { ...notice, candidates: "x" }]) {
+      expect(parseNoticeDetail(body)).toBeNull();
+    }
+  });
+
+  it("parses a resolve or dismiss answer and falls back to null when malformed", () => {
+    expect(parseNotice(notice, "POST /api/platform/payment-notices/{id}/dismiss")?.id).toBe(notice.id);
+    for (const body of [null, undefined, "invalid", {}, { id: 1 }]) {
+      expect(parseNotice(body, "POST /api/platform/payment-notices/{id}/resolve")).toBeNull();
     }
   });
 });

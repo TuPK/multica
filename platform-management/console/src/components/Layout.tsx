@@ -7,6 +7,7 @@ import {
   Activity,
   LogOut,
   CreditCard,
+  Inbox,
   Layers,
   UserPlus,
 } from "@multica/ui/icons";
@@ -34,7 +35,10 @@ export function Layout({
     { id: "tenants", label: "Tenants", icon: Building2 },
     { id: "users", label: "Users", icon: Users },
     ...(user.role === "billing" || user.role === "admin"
-      ? [{ id: "orders", label: "Orders", icon: CreditCard }]
+      ? [
+          { id: "orders", label: "Orders", icon: CreditCard },
+          { id: "payment-notices", label: "Payment notices", icon: Inbox },
+        ]
       : []),
     ...(user.role === "admin"
       ? [

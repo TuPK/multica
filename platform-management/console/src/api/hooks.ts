@@ -19,6 +19,9 @@ import {
   parseUserPage,
   parseOrderList,
   parseOrderActionResult,
+  parseNotice,
+  parseNoticeDetail,
+  parseNoticeList,
   parsePlanList,
   parsePutPlanResponse,
   parseDeletePlanResponse,
@@ -43,6 +46,10 @@ import {
   type TenantUsage,
   type UserDetail,
   type Order,
+  type Notice,
+  type NoticeCandidate,
+  type NoticeDetail,
+  type NoticeState,
   type Plan,
   type Subscription,
   type BillingProfile,
@@ -65,6 +72,10 @@ export type {
   BillingProfileVerifyResponse,
   PutBillingProfileResponse,
   Order,
+  Notice,
+  NoticeCandidate,
+  NoticeDetail,
+  NoticeState,
   Plan,
   Limits,
   TenantUsage,
@@ -143,6 +154,9 @@ export const platformKeys = {
   staff: () => ["platform", "staff"] as const,
   orders: () => ["platform", "orders"] as const,
   orderList: (status: string) => ["platform", "orders", "list", status] as const,
+  notices: () => ["platform", "payment-notices"] as const,
+  noticeList: () => ["platform", "payment-notices", "list"] as const,
+  notice: (id: string) => ["platform", "payment-notices", "detail", id] as const,
   plans: () => ["platform", "plans"] as const,
   priceChanges: (key: string) => ["platform", "plans", key, "price-changes"] as const,
   audits: () => ["platform", "audit"] as const,
@@ -542,6 +556,73 @@ export function useCancelOrder() {
         platformKeys.tenants(),
         platformKeys.overview(),
         platformKeys.audits(),
+      ]),
+  });
+}
+
+// Payment notices
+
+/** List payment notices awaiting staff review, oldest first. Billing or Admin only. */
+export function usePaymentNotices() {
+  return useQuery({
+    queryKey: platformKeys.noticeList(),
+    queryFn: async ({ signal }): Promise<Notice[]> => {
+      const res = await platformFetch(`/payment-notices${queryString({ state: "needs_review" })}`, { signal });
+      return parseNoticeList(res).notices;
+    },
+  });
+}
+
+/** Fetch one payment notice and its candidate orders. Billing or Admin only. */
+export function usePaymentNotice(id: string | null) {
+  return useQuery({
+    queryKey: platformKeys.notice(id ?? ""),
+    enabled: id !== null,
+    queryFn: async ({ signal }): Promise<NoticeDetail> => {
+      const res = await platformFetch(`/payment-notices/${pathSegment(id ?? "")}`, { signal });
+      return orMalformed(parseNoticeDetail(res));
+    },
+  });
+}
+
+/** Variables: `{ noticeId, orderId, reason }`. Matches a payment notice to a pending order. */
+export function useResolvePaymentNotice() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { noticeId: string; orderId: string; reason: string }): Promise<Notice> => {
+      const res = await platformFetch(`/payment-notices/${pathSegment(vars.noticeId)}/resolve`, {
+        method: "POST",
+        body: { order_id: vars.orderId, reason: vars.reason },
+      });
+      return orMalformed(parseNotice(res, "POST /api/platform/payment-notices/{id}/resolve"));
+    },
+    onSuccess: () =>
+      invalidateAll(queryClient, [
+        platformKeys.notices(),
+        platformKeys.orders(),
+        platformKeys.audits(),
+        platformKeys.overview(),
+      ]),
+  });
+}
+
+/** Variables: `{ noticeId, reason }`. Dismisses a payment notice without matching an order. */
+export function useDismissPaymentNotice() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { noticeId: string; reason: string }): Promise<Notice> => {
+      const res = await platformFetch(`/payment-notices/${pathSegment(vars.noticeId)}/dismiss`, {
+        method: "POST",
+        body: { reason: vars.reason },
+      });
+      return orMalformed(parseNotice(res, "POST /api/platform/payment-notices/{id}/dismiss"));
+    },
+    onSuccess: () =>
+      invalidateAll(queryClient, [
+        platformKeys.notices(),
+        platformKeys.orders(),
+        platformKeys.audits(),
+        platformKeys.overview(),
       ]),
   });
 }
