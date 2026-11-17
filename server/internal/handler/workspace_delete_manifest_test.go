@@ -243,6 +243,12 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"workspace_subscription":   workspaceDelete,
 }
 
+// workspaceDeletionColumns classifies a workspace_id column on a table whose
+// rows the manifest keeps (table.column keys).
+var workspaceDeletionColumns = map[string]workspaceDeleteAction{
+	"personal_access_token.workspace_id": workspaceDeleteKeep, // user-level token; a binding to a deleted workspace matches nothing, so the token is refused everywhere
+}
+
 func TestWorkspaceDeletionManifestCoversPublicSchema(t *testing.T) {
 	if testPool == nil {
 		t.Skip("database not available")
@@ -315,7 +321,7 @@ WHERE table_schema = 'public'
 		_, hasWorkspaceID := withWorkspaceID[table]
 		switch action {
 		case workspaceDeleteKeep:
-			if hasWorkspaceID {
+			if _, classified := workspaceDeletionColumns[table+".workspace_id"]; hasWorkspaceID && !classified {
 				t.Errorf("KEEP table %s gained workspace_id; classify its teardown behavior", table)
 			}
 		case workspaceDeleteDetach, workspaceDeleteSettle:
