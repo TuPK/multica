@@ -108,6 +108,7 @@
     "./company/layout": "./company/layout.ts",
     "./company/queries": "./company/queries.ts",
     "./company/mutations": "./company/mutations.ts",
+    "./groups": "./groups/index.ts",
     "./permissions": "./permissions/index.ts",
     "./search/cancelled-rank": "./search/cancelled-rank.ts",
     "./search-index": "./search-index/index.ts",
