@@ -61,6 +61,8 @@ const (
 	// codeUsageInvoiceUnpaid is spec 7b.3's usage_invoice_unpaid.
 	codeUsageInvoiceUnpaid = "usage_invoice_unpaid"
 	codeInternal           = "internal"
+
+	codePaymentProviderUnavailable = "payment_provider_unavailable"
 )
 
 // UsageActivator activates a workspace on a pay as you go plan. *billing.Service
@@ -165,6 +167,17 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 func writeError(w http.ResponseWriter, status int, code, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg, "code": code})
+}
+
+// orderError answers a failed CreateOrder. A currency without a provider is a
+// retryable 503, not a plan-limit 402.
+func (h *Handler) orderError(w http.ResponseWriter, r *http.Request, err error) {
+	if errors.Is(err, billing.ErrNoProvider) {
+		w.Header().Set("Retry-After", "300")
+		writeError(w, http.StatusServiceUnavailable, codePaymentProviderUnavailable, "payment provider unavailable for this currency")
+		return
+	}
+	h.internalError(w, r, "create order", err)
 }
 
 func (h *Handler) internalError(w http.ResponseWriter, r *http.Request, op string, err error) {
@@ -471,7 +484,7 @@ func (h *Handler) checkout(w http.ResponseWriter, r *http.Request) {
 		IdempotencyKey: key, CreatedBy: user,
 	})
 	if err != nil {
-		h.internalError(w, r, "create order", err)
+		h.orderError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, checkoutResponse{
@@ -678,7 +691,7 @@ func (h *Handler) purchase(w http.ResponseWriter, r *http.Request) {
 		IdempotencyKey: key, CreatedBy: user,
 	})
 	if err != nil {
-		h.internalError(w, r, "create order", err)
+		h.orderError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, purchaseResponse{

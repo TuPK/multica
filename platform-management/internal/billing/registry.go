@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -65,4 +66,23 @@ func (r *Registry) ForCurrency(currency string) (PaymentProvider, string, error)
 func (r *Registry) ByName(name string) (PaymentProvider, bool) {
 	p, ok := r.providers[name]
 	return p, ok
+}
+
+// OrderCreator creates pending orders.
+type OrderCreator interface {
+	CreateOrder(ctx context.Context, d Draft) (Order, bool, error)
+}
+
+// CurrencyGate refuses an order whose currency has no provider before Next
+// writes anything.
+type CurrencyGate struct {
+	Registry *Registry
+	Next     OrderCreator
+}
+
+func (g CurrencyGate) CreateOrder(ctx context.Context, d Draft) (Order, bool, error) {
+	if _, _, err := g.Registry.ForCurrency(d.Currency); err != nil {
+		return Order{}, false, err
+	}
+	return g.Next.CreateOrder(ctx, d)
 }

@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"context"
 	"errors"
 	"testing"
 )
@@ -81,5 +82,31 @@ func TestRegistryMapsEachCurrencyToItsProvider(t *testing.T) {
 	}
 	if _, name, err := r.ForCurrency("vnd"); err != nil || name != ProviderManual {
 		t.Fatalf("provider for vnd = %q, %v; want %q", name, err, ProviderManual)
+	}
+}
+
+// recordingOrders counts the orders written through it.
+type recordingOrders struct{ calls int }
+
+func (r *recordingOrders) CreateOrder(context.Context, Draft) (Order, bool, error) {
+	r.calls++
+	return Order{}, true, nil
+}
+
+func TestCurrencyGateRefusesCurrencyWithoutProviderBeforeWriting(t *testing.T) {
+	reg, err := NewRegistry("vnd=manual", testBank(), noSecret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	next := &recordingOrders{}
+	gate := CurrencyGate{Registry: reg, Next: next}
+	if _, _, err := gate.CreateOrder(context.Background(), Draft{Currency: "usd"}); !errors.Is(err, ErrNoProvider) {
+		t.Fatalf("CreateOrder(usd) error = %v, want ErrNoProvider", err)
+	}
+	if next.calls != 0 {
+		t.Fatalf("an order without a provider was written %d times", next.calls)
+	}
+	if _, _, err := gate.CreateOrder(context.Background(), Draft{Currency: "vnd"}); err != nil || next.calls != 1 {
+		t.Fatalf("CreateOrder(vnd) error = %v, writes = %d; want one write", err, next.calls)
 	}
 }

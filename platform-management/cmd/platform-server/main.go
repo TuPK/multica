@@ -273,7 +273,7 @@ func run() error {
 		Subscriptions:      subscription.NewPgxReader(pool),
 		Plans:              plan.NewPgxReader(pool),
 		Members:            subscription.NewPgxMembers(pool),
-		Orders:             orders,
+		Orders:             billing.CurrencyGate{Registry: cfg.Payments.Registry, Next: orders},
 		Activator:          orders,
 		Workspaces:         billingapi.NewPgxWorkspaces(pool),
 		UsageDebts:         subscription.NewPgxPendingOrders(pool),
