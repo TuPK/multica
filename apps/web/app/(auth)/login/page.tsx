@@ -221,6 +221,7 @@ function LoginPageContent() {
 
   return (
     <LoginPage
+      ssoEnabled
       onSuccess={handleSuccess}
       google={
         googleClientId

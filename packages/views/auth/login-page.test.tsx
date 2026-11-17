@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement, ReactNode } from "react";
+import { ApiError } from "@multica/core/api";
 import { I18nProvider } from "@multica/core/i18n/react";
 import enCommon from "../locales/en/common.json";
 import enAuth from "../locales/en/auth.json";
@@ -29,12 +30,17 @@ function renderWithI18n(ui: ReactElement) {
 
 const mockSendCode = vi.hoisted(() => vi.fn());
 const mockVerifyCode = vi.hoisted(() => vi.fn());
+const mockVerifyMFA = vi.hoisted(() => vi.fn());
 const mockApiListWorkspaces = vi.hoisted(() => vi.fn());
 const mockApiVerifyCode = vi.hoisted(() => vi.fn());
+const mockApiAttemptLoginCode = vi.hoisted(() => vi.fn());
+const mockApiVerifyMFALogin = vi.hoisted(() => vi.fn());
+const mockApiDiscoverSSO = vi.hoisted(() => vi.fn());
 const mockApiSetToken = vi.hoisted(() => vi.fn());
 const mockApiGetMe = vi.hoisted(() => vi.fn());
 const mockApiIssueCliToken = vi.hoisted(() => vi.fn());
 const mockSetQueryData = vi.hoisted(() => vi.fn());
+const mockLocationAssign = vi.hoisted(() => vi.fn());
 // Mutable slice of auth state the component subscribes to.
 const mockAuthState = vi.hoisted(() => ({ expired: false }));
 
@@ -52,6 +58,7 @@ vi.mock("@multica/core/auth", () => ({
       const state = {
         sendCode: mockSendCode,
         verifyCode: mockVerifyCode,
+        verifyMFA: mockVerifyMFA,
         expired: mockAuthState.expired,
       };
       return selector ? selector(state) : state;
@@ -60,15 +67,20 @@ vi.mock("@multica/core/auth", () => ({
       getState: () => ({
         sendCode: mockSendCode,
         verifyCode: mockVerifyCode,
+        verifyMFA: mockVerifyMFA,
       }),
     },
   ),
 }));
 
-vi.mock("@multica/core/api", () => ({
+vi.mock("@multica/core/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@multica/core/api")>()),
   api: {
     listWorkspaces: mockApiListWorkspaces,
     verifyCode: mockApiVerifyCode,
+    attemptLoginCode: mockApiAttemptLoginCode,
+    verifyMFALogin: mockApiVerifyMFALogin,
+    discoverSSO: mockApiDiscoverSSO,
     setToken: mockApiSetToken,
     getMe: mockApiGetMe,
     issueCliToken: mockApiIssueCliToken,
@@ -105,11 +117,16 @@ describe("LoginPage", () => {
     mockAuthState.expired = false;
     // Default: no existing session (getMe rejects when no auth)
     mockApiGetMe.mockRejectedValue(new Error("unauthorized"));
+    mockApiDiscoverSSO.mockResolvedValue({ sso: false, start_url: null });
     localStorage.clear();
     // Reset window.location for tests that change it
     Object.defineProperty(window, "location", {
       writable: true,
-      value: { href: "http://localhost:3000" },
+      value: {
+        href: "http://localhost:3000",
+        search: "",
+        assign: mockLocationAssign,
+      },
     });
   });
 
@@ -269,7 +286,10 @@ describe("LoginPage", () => {
 
   it("calls verifyCode, seeds workspace list cache, then onSuccess", async () => {
     mockSendCode.mockResolvedValueOnce(undefined);
-    mockVerifyCode.mockResolvedValueOnce(undefined);
+    mockVerifyCode.mockResolvedValueOnce({
+      kind: "session",
+      user: { id: "u-1", email: "test@example.com", name: "Test" },
+    });
     mockApiListWorkspaces.mockResolvedValueOnce([{ id: "ws-1" }]);
 
     renderWithI18n(<LoginPage onSuccess={onSuccess} />);
@@ -611,7 +631,11 @@ describe("LoginPage", () => {
 
   it("CLI code verification redirects to callback URL", async () => {
     mockSendCode.mockResolvedValueOnce(undefined);
-    mockApiVerifyCode.mockResolvedValueOnce({ token: "new-jwt-token" });
+    mockApiAttemptLoginCode.mockResolvedValueOnce({
+      kind: "session",
+      token: "new-jwt-token",
+      user: { id: "u-1", email: "cli@example.com", name: "CLI User" },
+    });
     const onTokenObtained = vi.fn();
 
     render(
@@ -636,7 +660,7 @@ describe("LoginPage", () => {
     await user.type(otpInput, "654321");
 
     await waitFor(() => {
-      expect(mockApiVerifyCode).toHaveBeenCalledWith(
+      expect(mockApiAttemptLoginCode).toHaveBeenCalledWith(
         "cli@example.com",
         "654321",
       );
@@ -672,7 +696,10 @@ describe("LoginPage", () => {
 
   it("calls onTokenObtained after successful verification", async () => {
     mockSendCode.mockResolvedValueOnce(undefined);
-    mockVerifyCode.mockResolvedValueOnce(undefined);
+    mockVerifyCode.mockResolvedValueOnce({
+      kind: "session",
+      user: { id: "u-1", email: "test@example.com", name: "Test" },
+    });
     mockApiListWorkspaces.mockResolvedValueOnce([{ id: "ws-1" }]);
     const onTokenObtained = vi.fn();
 
@@ -725,6 +752,384 @@ describe("LoginPage", () => {
     expect(
       screen.getByText(/sign in to multica/i),
     ).toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------------
+  // Two-step MFA verification
+  // -------------------------------------------------------------------------
+
+  describe("two-step MFA", () => {
+    async function enterCodeStep(
+      user: ReturnType<typeof userEvent.setup>,
+      email = "test@example.com",
+    ) {
+      await user.type(screen.getByLabelText(/email/i), email);
+      await user.click(screen.getByRole("button", { name: /continue/i }));
+      await waitFor(() => {
+        expect(screen.getByText(/check your email/i)).toBeInTheDocument();
+      });
+    }
+
+    it("moves to mfa step on challenge without signing in, does not auto-submit 6 chars, trims recovery code, and calls onSuccess", async () => {
+      mockSendCode.mockResolvedValueOnce(undefined);
+      mockVerifyCode.mockResolvedValueOnce({
+        kind: "mfa",
+        mfaToken: "mfa-token-123",
+        expiresIn: 300,
+      });
+      mockVerifyMFA.mockResolvedValueOnce({
+        id: "u-1",
+        email: "test@example.com",
+        name: "Test User",
+      });
+      mockApiListWorkspaces.mockResolvedValueOnce([{ id: "ws-1" }]);
+      const onTokenObtained = vi.fn();
+
+      renderWithI18n(
+        <LoginPage onSuccess={onSuccess} onTokenObtained={onTokenObtained} />,
+      );
+
+      const user = userEvent.setup();
+      await enterCodeStep(user);
+      await user.type(getOTPInput(), "123456");
+
+      await waitFor(() => {
+        expect(screen.getByText(/two-step sign-in/i)).toBeInTheDocument();
+      });
+
+      expect(onSuccess).not.toHaveBeenCalled();
+      expect(mockApiListWorkspaces).not.toHaveBeenCalled();
+      expect(localStorage.getItem("multica_token")).toBeNull();
+
+      const mfaInput = screen.getByLabelText(/authenticator or recovery code/i);
+      expect(mfaInput).toHaveAttribute("maxLength", "32");
+
+      // Typing 6 characters must NOT auto-submit because recovery codes are longer.
+      await user.type(mfaInput, "123456");
+      expect(mockVerifyMFA).not.toHaveBeenCalled();
+
+      await user.clear(mfaInput);
+      await user.type(mfaInput, "  abcd-efgh-1234  ");
+      await user.click(screen.getByRole("button", { name: /verify/i }));
+
+      await waitFor(() => {
+        expect(mockVerifyMFA).toHaveBeenCalledWith(
+          "mfa-token-123",
+          "abcd-efgh-1234",
+        );
+        expect(mockApiListWorkspaces).toHaveBeenCalled();
+        expect(mockSetQueryData).toHaveBeenCalledWith(
+          expect.arrayContaining(["workspaces", "list"]),
+          [{ id: "ws-1" }],
+        );
+        expect(onTokenObtained).toHaveBeenCalled();
+        expect(onSuccess).toHaveBeenCalled();
+      });
+    });
+
+    it("returns to email step with a message on mfa_token_invalid", async () => {
+      mockSendCode.mockResolvedValueOnce(undefined);
+      mockVerifyCode.mockResolvedValueOnce({
+        kind: "mfa",
+        mfaToken: "mfa-token-expired",
+        expiresIn: 300,
+      });
+      mockVerifyMFA.mockRejectedValueOnce(
+        new ApiError("Expired MFA token", 401, "Unauthorized", {
+          code: "mfa_token_invalid",
+        }),
+      );
+
+      renderWithI18n(<LoginPage onSuccess={onSuccess} />);
+
+      const user = userEvent.setup();
+      await enterCodeStep(user);
+      await user.type(getOTPInput(), "123456");
+
+      await waitFor(() => {
+        expect(screen.getByText(/two-step sign-in/i)).toBeInTheDocument();
+      });
+
+      await user.type(
+        screen.getByLabelText(/authenticator or recovery code/i),
+        "123456",
+      );
+      await user.click(screen.getByRole("button", { name: /verify/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText(/sign in to multica/i)).toBeInTheDocument();
+      });
+      expect(screen.getByText(/expired.*sign in again/i)).toBeInTheDocument();
+      expect(onSuccess).not.toHaveBeenCalled();
+    });
+
+    it("returns to email step with a message on mfa_token_failed", async () => {
+      mockSendCode.mockResolvedValueOnce(undefined);
+      mockVerifyCode.mockResolvedValueOnce({
+        kind: "mfa",
+        mfaToken: "mfa-token-locked",
+        expiresIn: 300,
+      });
+      mockVerifyMFA.mockRejectedValueOnce(
+        new ApiError("Too many attempts", 401, "Unauthorized", {
+          code: "mfa_token_failed",
+        }),
+      );
+
+      renderWithI18n(<LoginPage onSuccess={onSuccess} />);
+
+      const user = userEvent.setup();
+      await enterCodeStep(user);
+      await user.type(getOTPInput(), "123456");
+
+      await waitFor(() => {
+        expect(screen.getByText(/two-step sign-in/i)).toBeInTheDocument();
+      });
+
+      await user.type(
+        screen.getByLabelText(/authenticator or recovery code/i),
+        "123456",
+      );
+      await user.click(screen.getByRole("button", { name: /verify/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText(/sign in to multica/i)).toBeInTheDocument();
+      });
+      expect(screen.getByText(/too many failed attempts/i)).toBeInTheDocument();
+      expect(onSuccess).not.toHaveBeenCalled();
+    });
+
+    it("stays on mfa step, clears the input, and shows a message on invalid_code", async () => {
+      mockSendCode.mockResolvedValueOnce(undefined);
+      mockVerifyCode.mockResolvedValueOnce({
+        kind: "mfa",
+        mfaToken: "mfa-token-123",
+        expiresIn: 300,
+      });
+      mockVerifyMFA.mockRejectedValueOnce(
+        new ApiError("Wrong code", 400, "Bad Request", {
+          code: "invalid_code",
+        }),
+      );
+
+      renderWithI18n(<LoginPage onSuccess={onSuccess} />);
+
+      const user = userEvent.setup();
+      await enterCodeStep(user);
+      await user.type(getOTPInput(), "123456");
+
+      await waitFor(() => {
+        expect(screen.getByText(/two-step sign-in/i)).toBeInTheDocument();
+      });
+
+      const mfaInput = screen.getByLabelText(/authenticator or recovery code/i);
+      await user.type(mfaInput, "999999");
+      await user.click(screen.getByRole("button", { name: /verify/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText(/invalid or expired code/i)).toBeInTheDocument();
+      });
+      expect(screen.getByText(/two-step sign-in/i)).toBeInTheDocument();
+      expect(mfaInput).toHaveValue("");
+      expect(onSuccess).not.toHaveBeenCalled();
+    });
+
+    it("Back button on mfa step returns to email step", async () => {
+      mockSendCode.mockResolvedValueOnce(undefined);
+      mockVerifyCode.mockResolvedValueOnce({
+        kind: "mfa",
+        mfaToken: "mfa-token-123",
+        expiresIn: 300,
+      });
+
+      renderWithI18n(<LoginPage onSuccess={onSuccess} />);
+
+      const user = userEvent.setup();
+      await enterCodeStep(user);
+      await user.type(getOTPInput(), "123456");
+
+      await waitFor(() => {
+        expect(screen.getByText(/two-step sign-in/i)).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole("button", { name: /back/i }));
+
+      expect(screen.getByText(/sign in to multica/i)).toBeInTheDocument();
+    });
+
+    it("CLI path with a challenge shows mfa step, calls verifyMFALogin, and redirects to CLI callback", async () => {
+      mockSendCode.mockResolvedValueOnce(undefined);
+      mockApiAttemptLoginCode.mockResolvedValueOnce({
+        kind: "mfa",
+        mfaToken: "cli-mfa-token",
+        expiresIn: 300,
+      });
+      mockApiVerifyMFALogin.mockResolvedValueOnce({
+        token: "cli-mfa-jwt",
+        user: { id: "u-1", email: "cli@example.com", name: "CLI User" },
+      });
+      const onTokenObtained = vi.fn();
+
+      renderWithI18n(
+        <LoginPage
+          onSuccess={onSuccess}
+          onTokenObtained={onTokenObtained}
+          cliCallback={{ url: "http://localhost:9876/callback", state: "xyz" }}
+        />,
+      );
+
+      const user = userEvent.setup();
+      await enterCodeStep(user, "cli@example.com");
+      await user.type(getOTPInput(), "654321");
+
+      await waitFor(() => {
+        expect(mockApiAttemptLoginCode).toHaveBeenCalledWith(
+          "cli@example.com",
+          "654321",
+        );
+        expect(screen.getByText(/two-step sign-in/i)).toBeInTheDocument();
+      });
+
+      expect(mockVerifyCode).not.toHaveBeenCalled();
+
+      await user.type(
+        screen.getByLabelText(/authenticator or recovery code/i),
+        "112233",
+      );
+      await user.click(screen.getByRole("button", { name: /verify/i }));
+
+      await waitFor(() => {
+        expect(mockApiVerifyMFALogin).toHaveBeenCalledWith(
+          "cli-mfa-token",
+          "112233",
+        );
+        expect(localStorage.getItem("multica_token")).toBe("cli-mfa-jwt");
+        expect(mockApiSetToken).toHaveBeenCalledWith("cli-mfa-jwt");
+        expect(onTokenObtained).toHaveBeenCalled();
+        expect(window.location.href).toContain(
+          "http://localhost:9876/callback?token=cli-mfa-jwt&state=xyz",
+        );
+      });
+
+      expect(mockVerifyMFA).not.toHaveBeenCalled();
+      expect(onSuccess).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // SSO sign-in
+  // -------------------------------------------------------------------------
+
+  describe("SSO sign-in", () => {
+    it("when ssoEnabled and discoverSSO returns sso true, shows Continue with SSO, skips sendCode, and navigates on click", async () => {
+      mockApiDiscoverSSO.mockResolvedValueOnce({
+        sso: true,
+        start_url: "https://idp.example.com/sso/start",
+      });
+
+      renderWithI18n(<LoginPage onSuccess={onSuccess} ssoEnabled />);
+
+      const user = userEvent.setup();
+      await user.type(screen.getByLabelText(/email/i), "alice@acme.com");
+      await user.click(screen.getByRole("button", { name: /continue/i }));
+
+      await waitFor(() => {
+        expect(mockApiDiscoverSSO).toHaveBeenCalledWith("alice@acme.com");
+        expect(
+          screen.getByRole("button", { name: /continue with sso/i }),
+        ).toBeInTheDocument();
+      });
+      expect(mockSendCode).not.toHaveBeenCalled();
+
+      await user.click(
+        screen.getByRole("button", { name: /continue with sso/i }),
+      );
+      expect(mockLocationAssign).toHaveBeenCalledWith(
+        "https://idp.example.com/sso/start",
+      );
+    });
+
+    it("'Email me a code instead' sends the code and moves to the code step", async () => {
+      mockApiDiscoverSSO.mockResolvedValueOnce({
+        sso: true,
+        start_url: "https://idp.example.com/sso/start",
+      });
+      mockSendCode.mockResolvedValueOnce(undefined);
+
+      renderWithI18n(<LoginPage onSuccess={onSuccess} ssoEnabled />);
+
+      const user = userEvent.setup();
+      await user.type(screen.getByLabelText(/email/i), "alice@acme.com");
+      await user.click(screen.getByRole("button", { name: /continue/i }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /email me a code instead/i }),
+        ).toBeInTheDocument();
+      });
+
+      await user.click(
+        screen.getByRole("button", { name: /email me a code instead/i }),
+      );
+
+      await waitFor(() => {
+        expect(mockSendCode).toHaveBeenCalledWith("alice@acme.com");
+        expect(screen.getByText(/check your email/i)).toBeInTheDocument();
+      });
+    });
+
+    it("when ssoEnabled and discoverSSO returns sso false, follows the normal email code path", async () => {
+      mockApiDiscoverSSO.mockResolvedValueOnce({
+        sso: false,
+        start_url: null,
+      });
+      mockSendCode.mockResolvedValueOnce(undefined);
+
+      renderWithI18n(<LoginPage onSuccess={onSuccess} ssoEnabled />);
+
+      const user = userEvent.setup();
+      await user.type(screen.getByLabelText(/email/i), "bob@example.com");
+      await user.click(screen.getByRole("button", { name: /continue/i }));
+
+      await waitFor(() => {
+        expect(mockApiDiscoverSSO).toHaveBeenCalledWith("bob@example.com");
+        expect(mockSendCode).toHaveBeenCalledWith("bob@example.com");
+        expect(screen.getByText(/check your email/i)).toBeInTheDocument();
+      });
+    });
+
+    it("when ssoEnabled is false, never calls discoverSSO", async () => {
+      mockSendCode.mockResolvedValueOnce(undefined);
+
+      renderWithI18n(<LoginPage onSuccess={onSuccess} />);
+
+      const user = userEvent.setup();
+      await user.type(screen.getByLabelText(/email/i), "bob@example.com");
+      await user.click(screen.getByRole("button", { name: /continue/i }));
+
+      await waitFor(() => {
+        expect(mockSendCode).toHaveBeenCalledWith("bob@example.com");
+        expect(screen.getByText(/check your email/i)).toBeInTheDocument();
+      });
+      expect(mockApiDiscoverSSO).not.toHaveBeenCalled();
+    });
+
+    it("shows generic error message when ?sso_error=<code> is in URL on mount", () => {
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: {
+          href: "http://localhost:3000/login?sso_error=access_denied",
+          search: "?sso_error=access_denied",
+          assign: mockLocationAssign,
+        },
+      });
+
+      renderWithI18n(<LoginPage onSuccess={onSuccess} ssoEnabled />);
+
+      expect(
+        screen.getByText(/single sign-on failed/i),
+      ).toBeInTheDocument();
+    });
   });
 
 });

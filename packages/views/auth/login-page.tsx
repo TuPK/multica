@@ -21,7 +21,7 @@ import {
 } from "@multica/ui/components/ui/input-otp";
 import { useAuthStore } from "@multica/core/auth";
 import { workspaceKeys } from "@multica/core/workspace/queries";
-import { api } from "@multica/core/api";
+import { api, errorCode } from "@multica/core/api";
 import type { User } from "@multica/core/types";
 import { useT } from "../i18n";
 
@@ -60,6 +60,23 @@ interface LoginPageProps {
    *  app?" prompt; desktop omits it (a download prompt inside the app
    *  would be absurd). */
   extra?: ReactNode;
+  /** Whether workspace SSO discovery is enabled on the email step (web only). */
+  ssoEnabled?: boolean;
+}
+
+function readErrorCode(err: unknown): string | undefined {
+  if (typeof errorCode === "function") {
+    const code = errorCode(err);
+    if (code) return code;
+  }
+  if (err && typeof err === "object" && "body" in err) {
+    const body = (err as { body?: unknown }).body;
+    if (body && typeof body === "object") {
+      const code = (body as { code?: unknown }).code;
+      if (typeof code === "string" && code.length > 0) return code;
+    }
+  }
+  return undefined;
 }
 
 // Helpers
@@ -100,16 +117,27 @@ export function LoginPage({
   onTokenObtained,
   onGoogleLogin,
   extra,
+  ssoEnabled = false,
 }: LoginPageProps) {
   const { t } = useT("auth");
   const qc = useQueryClient();
-  const [step, setStep] = useState<"email" | "code" | "cli_confirm">("email");
+  const [step, setStep] = useState<"email" | "code" | "mfa" | "cli_confirm">("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
+  // Keep the short-lived MFA challenge token in React state only.
+  const [mfaChallenge, setMfaChallenge] = useState<{
+    token: string;
+    expiresIn: number;
+  } | null>(null);
+  const [ssoStartUrl, setSsoStartUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [existingUser, setExistingUser] = useState<User | null>(null);
+  const tRef = useRef(t);
+  tRef.current = t;
   // Tracks how the existing session was detected so handleCliAuthorize
   // uses the matching token source (cookie → issueCliToken, localStorage → direct).
   const authSourceRef = useRef<"cookie" | "localStorage">("cookie");
@@ -117,6 +145,17 @@ export function LoginPage({
   // because the user asked to leave. Without saying so, landing here reads as
   // the app having lost their work for no reason.
   const sessionExpired = useAuthStore((state) => state.expired);
+
+  // Read ?sso_error=<code> once on mount.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const ssoError = new URLSearchParams(window.location.search ?? "").get(
+      "sso_error",
+    );
+    if (ssoError) {
+      setError(tRef.current(($) => $.errors.sso_failed));
+    }
+  }, []);
 
   // Check for existing session when CLI callback is present.
   // Prioritises cookie auth (= current browser session) to avoid authorising
@@ -167,6 +206,67 @@ export function LoginPage({
     return () => clearTimeout(timer);
   }, [cooldown]);
 
+  const returnToEmailStep = useCallback((nextError = "") => {
+    setStep("email");
+    setCode("");
+    setMfaCode("");
+    setMfaChallenge(null);
+    setSsoStartUrl(null);
+    setError(nextError);
+    setLoading(false);
+  }, []);
+
+  const enterMfaStep = useCallback((mfaToken: string, expiresIn: number) => {
+    setMfaChallenge({ token: mfaToken, expiresIn });
+    setMfaCode("");
+    setCode("");
+    setStep("mfa");
+    setLoading(false);
+  }, []);
+
+  const finishNormalLogin = useCallback(async () => {
+    // Seed the workspace list into the Query cache so the caller's onSuccess
+    // can read it synchronously to compute a destination URL (first workspace's
+    // slug, or /workspaces/new for zero-workspace users).
+    const wsList = await api.listWorkspaces();
+    qc.setQueryData(workspaceKeys.list(), wsList);
+    onTokenObtained?.();
+    onSuccess();
+  }, [onSuccess, onTokenObtained, qc]);
+
+  const finishCliLogin = useCallback(
+    (token: string) => {
+      if (!cliCallback) return;
+      localStorage.setItem("multica_token", token);
+      api.setToken(token);
+      onTokenObtained?.();
+      redirectToCliCallback(cliCallback.url, token, cliCallback.state);
+    },
+    [cliCallback, onTokenObtained],
+  );
+
+  const sendEmailCode = useCallback(async () => {
+    setSendingCode(true);
+    try {
+      await useAuthStore.getState().sendCode(email);
+      setSsoStartUrl(null);
+      setMfaChallenge(null);
+      setMfaCode("");
+      setStep("code");
+      setCode("");
+      setCooldown(60);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : `${t(($) => $.errors.send_failed)} ${t(($) => $.errors.server_unreachable)}`,
+      );
+    } finally {
+      setSendingCode(false);
+      setLoading(false);
+    }
+  }, [email, t]);
+
   const handleSendCode = useCallback(
     async (e?: React.FormEvent) => {
       e?.preventDefault();
@@ -174,25 +274,36 @@ export function LoginPage({
         setError(t(($) => $.common.email_required));
         return;
       }
+      if (ssoStartUrl) {
+        window.location.assign(ssoStartUrl);
+        return;
+      }
       setLoading(true);
       setError("");
-      try {
-        await useAuthStore.getState().sendCode(email);
-        setStep("code");
-        setCode("");
-        setCooldown(60);
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : `${t(($) => $.errors.send_failed)} ${t(($) => $.errors.server_unreachable)}`,
-        );
-      } finally {
-        setLoading(false);
+      if (ssoEnabled) {
+        const discovery = await api
+          .discoverSSO(email)
+          .catch(() => ({ sso: false, start_url: null }));
+        if (discovery.sso && discovery.start_url) {
+          setSsoStartUrl(discovery.start_url);
+          setLoading(false);
+          return;
+        }
       }
+      await sendEmailCode();
     },
-    [email, t],
+    [email, sendEmailCode, ssoEnabled, ssoStartUrl, t],
   );
+
+  const handleEmailCodeFallback = useCallback(async () => {
+    if (!email) {
+      setError(t(($) => $.common.email_required));
+      return;
+    }
+    setLoading(true);
+    setError("");
+    await sendEmailCode();
+  }, [email, sendEmailCode, t]);
 
   const handleVerify = useCallback(
     async (value: string) => {
@@ -202,23 +313,21 @@ export function LoginPage({
       try {
         if (cliCallback) {
           // CLI path: get token directly for the redirect URL
-          const { token } = await api.verifyCode(email, value);
-          localStorage.setItem("multica_token", token);
-          api.setToken(token);
-          onTokenObtained?.();
-          redirectToCliCallback(cliCallback.url, token, cliCallback.state);
+          const attempt = await api.attemptLoginCode(email, value);
+          if (attempt.kind === "mfa") {
+            enterMfaStep(attempt.mfaToken, attempt.expiresIn);
+            return;
+          }
+          finishCliLogin(attempt.token);
           return;
         }
 
-        // Normal path: seed the workspace list into the Query cache so the
-        // caller's onSuccess can read it synchronously to compute a destination
-        // URL (first workspace's slug, or /workspaces/new for zero-workspace
-        // users).
-        await useAuthStore.getState().verifyCode(email, value);
-        const wsList = await api.listWorkspaces();
-        qc.setQueryData(workspaceKeys.list(), wsList);
-        onTokenObtained?.();
-        onSuccess();
+        const result = await useAuthStore.getState().verifyCode(email, value);
+        if (result.kind === "mfa") {
+          enterMfaStep(result.mfaToken, result.expiresIn);
+          return;
+        }
+        await finishNormalLogin();
       } catch (err) {
         setError(
           err instanceof Error
@@ -229,7 +338,59 @@ export function LoginPage({
         setLoading(false);
       }
     },
-    [email, onSuccess, cliCallback, onTokenObtained, qc, t],
+    [email, cliCallback, enterMfaStep, finishCliLogin, finishNormalLogin, t],
+  );
+
+  const handleVerifyMfa = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      const trimmed = mfaCode.trim();
+      if (!trimmed || !mfaChallenge) return;
+      setLoading(true);
+      setError("");
+      try {
+        if (cliCallback) {
+          const { token } = await api.verifyMFALogin(
+            mfaChallenge.token,
+            trimmed,
+          );
+          finishCliLogin(token);
+          return;
+        }
+        await useAuthStore.getState().verifyMFA(mfaChallenge.token, trimmed);
+        await finishNormalLogin();
+      } catch (err) {
+        const errCode = readErrorCode(err);
+        if (errCode === "mfa_token_invalid") {
+          returnToEmailStep(t(($) => $.errors.mfa_token_invalid));
+          return;
+        }
+        if (errCode === "mfa_token_failed") {
+          returnToEmailStep(t(($) => $.errors.mfa_token_failed));
+          return;
+        }
+        setMfaCode("");
+        setLoading(false);
+        if (errCode === "invalid_code") {
+          setError(t(($) => $.errors.code_invalid));
+          return;
+        }
+        setError(
+          err instanceof Error
+            ? err.message
+            : t(($) => $.errors.code_invalid),
+        );
+      }
+    },
+    [
+      mfaCode,
+      mfaChallenge,
+      cliCallback,
+      finishCliLogin,
+      finishNormalLogin,
+      returnToEmailStep,
+      t,
+    ],
   );
 
   const handleResend = async () => {
@@ -266,10 +427,8 @@ export function LoginPage({
       onTokenObtained?.();
       redirectToCliCallback(cliCallback.url, token, cliCallback.state);
     } catch {
-      setError(t(($) => $.errors.cli_auth_failed));
       setExistingUser(null);
-      setStep("email");
-      setLoading(false);
+      returnToEmailStep(t(($) => $.errors.cli_auth_failed));
     }
   };
 
@@ -322,7 +481,7 @@ export function LoginPage({
               className="w-full"
               onClick={() => {
                 setExistingUser(null);
-                setStep("email");
+                returnToEmailStep();
               }}
             >
               {t(($) => $.cli.different_account)}
@@ -389,11 +548,70 @@ export function LoginPage({
               type="button"
               variant="ghost"
               className="w-full"
-              onClick={() => {
-                setStep("email");
-                setCode("");
-                setError("");
-              }}
+              onClick={() => returnToEmailStep()}
+            >
+              {t(($) => $.common.back)}
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
+  // Two-step MFA verification step
+
+  if (step === "mfa") {
+    return (
+      <div className="flex min-h-svh items-center justify-center">
+        <Card className="w-full max-w-sm">
+          <CardHeader className="text-center">
+            {logo && <div className="mx-auto mb-4">{logo}</div>}
+            <CardTitle className="text-display-sm">
+              {t(($) => $.mfa.title)}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <form onSubmit={handleVerifyMfa} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="login-mfa-code">
+                  {t(($) => $.mfa.code_label)}
+                </Label>
+                <Input
+                  id="login-mfa-code"
+                  type="text"
+                  autoComplete="one-time-code"
+                  maxLength={32}
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value)}
+                  placeholder={t(($) => $.mfa.code_placeholder)}
+                  disabled={loading}
+                  autoFocus
+                  className="font-mono"
+                />
+              </div>
+              {error && (
+                <p className="text-body text-destructive">{error}</p>
+              )}
+              <Button
+                type="submit"
+                className="w-full"
+                size="lg"
+                disabled={!mfaCode.trim() || loading}
+                aria-busy={loading || undefined}
+              >
+                {loading
+                  ? t(($) => $.mfa.verifying)
+                  : t(($) => $.mfa.verify)}
+              </Button>
+            </form>
+          </CardContent>
+          <CardFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              disabled={loading}
+              onClick={() => returnToEmailStep()}
             >
               {t(($) => $.common.back)}
             </Button>
@@ -433,7 +651,10 @@ export function LoginPage({
                 type="email"
                 placeholder={t(($) => $.common.email_placeholder)}
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (ssoStartUrl) setSsoStartUrl(null);
+                }}
                 autoFocus
                 required
               />
@@ -444,17 +665,44 @@ export function LoginPage({
           </form>
         </CardContent>
         <CardFooter className="flex flex-col gap-3">
-          <Button
-            type="submit"
-            form="login-form"
-            className="w-full"
-            size="lg"
-            disabled={!email || loading}
-          >
-            {loading
-              ? t(($) => $.signin.sending)
-              : t(($) => $.signin.continue)}
-          </Button>
+          {ssoStartUrl ? (
+            <>
+              <Button
+                type="button"
+                className="w-full"
+                size="lg"
+                disabled={loading}
+                onClick={() => window.location.assign(ssoStartUrl)}
+              >
+                {t(($) => $.signin.sso_continue)}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                disabled={loading}
+                aria-busy={sendingCode || undefined}
+                onClick={handleEmailCodeFallback}
+              >
+                {sendingCode
+                  ? t(($) => $.signin.sending)
+                  : t(($) => $.signin.sso_email_instead)}
+              </Button>
+            </>
+          ) : (
+            <Button
+              type="submit"
+              form="login-form"
+              className="w-full"
+              size="lg"
+              disabled={!email || loading}
+              aria-busy={loading || undefined}
+            >
+              {sendingCode
+                ? t(($) => $.signin.sending)
+                : t(($) => $.signin.continue)}
+            </Button>
+          )}
           {(google || onGoogleLogin) && (
             <Button
               type="button"
