@@ -32,6 +32,12 @@ import {
   usePutPlan,
   useDeletePlan,
   useUpdateSubscription,
+  accountKeys,
+  AccountApiError,
+  useAccountRequests,
+  useCreateAccountRequest,
+  useCancelAccountRequest,
+  useResendWelcome,
 } from "./hooks";
 
 type Handler = Response | ((url: URL, init: RequestInit | undefined) => Response);
@@ -703,5 +709,175 @@ describe("subscription hook", () => {
       interval: "month",
       reason: "upgrade request",
     });
+  });
+});
+
+describe("account request hooks", () => {
+  const mockReq = {
+    id: "req-1",
+    kind: "individual",
+    email: "ana@example.com",
+    display_name: "Ana",
+    workspace_name: "Ana Space",
+    workspace_slug: "",
+    plan_key: "free",
+    seats: 1,
+    interval: "month",
+    trial: false,
+    comp_reason: "",
+    state: "pending",
+    error_code: "",
+    attempts: 0,
+    created_by: "u-admin",
+    created_at: "2026-11-16T10:00:00Z",
+    updated_at: "2026-11-16T10:00:00Z",
+    completed_at: null,
+    welcome_sent_at: null,
+    welcome_attempts: 0,
+  };
+
+  it("useAccountRequests fetches requests with optional state filter and errors on malformed body", async () => {
+    const calls = stubFetch({
+      "GET /api/platform/accounts": (url) =>
+        url.searchParams.get("state") === "failed"
+          ? json(200, { requests: "bad" })
+          : json(200, { requests: [mockReq] }),
+    });
+    const { wrapper } = setup();
+
+    const ok = renderHook(() => useAccountRequests(), { wrapper });
+    await waitFor(() => expect(ok.result.current.isSuccess).toBe(true));
+    expect(calls[0]?.search).toBe("");
+    expect(ok.result.current.data?.[0]?.id).toBe("req-1");
+
+    const bad = renderHook(() => useAccountRequests("failed"), { wrapper });
+    await waitFor(() => expect(bad.result.current.isError).toBe(true));
+    expect((bad.result.current.error as PlatformApiError).code).toBe("malformed_response");
+  });
+
+  it("useCreateAccountRequest sends Idempotency-Key and surfaces fields and Retry-After on errors", async () => {
+    const seenHeaders: string[] = [];
+    stubFetch({
+      "POST /api/platform/accounts": (_url, init) => {
+        const key = new Headers(init?.headers).get("Idempotency-Key") ?? "";
+        seenHeaders.push(key);
+        if (key === "key-invalid") {
+          return json(400, {
+            error: "the request has invalid fields",
+            code: "account_request_invalid",
+            fields: ["email", "workspace_slug"],
+          });
+        }
+        if (key === "key-rate") {
+          return new Response(
+            JSON.stringify({ error: "too many requests", code: "account_create_rate_limited" }),
+            { status: 429, headers: { "Content-Type": "application/json", "Retry-After": "90" } },
+          );
+        }
+        return json(202, mockReq);
+      },
+    });
+    const { queryClient, wrapper } = setup();
+    queryClient.setQueryData(accountKeys.list(), [mockReq]);
+    const { result } = renderHook(() => useCreateAccountRequest(), { wrapper });
+
+    await act(async () => {
+      const created = await result.current.mutateAsync({
+        idempotencyKey: "key-ok",
+        input: {
+          kind: "individual",
+          email: "ana@example.com",
+          display_name: "Ana",
+          workspace_name: "Ana Space",
+          plan_key: "free",
+          seats: 1,
+          interval: "month",
+        },
+      });
+      expect(created.id).toBe("req-1");
+    });
+    expect(seenHeaders[0]).toBe("key-ok");
+    expect(queryClient.getQueryState(accountKeys.list())?.isInvalidated).toBe(true);
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({
+          idempotencyKey: "key-invalid",
+          input: {
+            kind: "individual",
+            email: "bad",
+            display_name: "Ana",
+            workspace_name: "Ana Space",
+            plan_key: "free",
+            seats: 1,
+            interval: "month",
+          },
+        }),
+      ).rejects.toMatchObject({
+        status: 400,
+        code: "account_request_invalid",
+        fields: ["email", "workspace_slug"],
+      });
+    });
+
+    await act(async () => {
+      try {
+        await result.current.mutateAsync({
+          idempotencyKey: "key-rate",
+          input: {
+            kind: "individual",
+            email: "ana@example.com",
+            display_name: "Ana",
+            workspace_name: "Ana Space",
+            plan_key: "free",
+            seats: 1,
+            interval: "month",
+          },
+        });
+        throw new Error("expected rate limit error");
+      } catch (err) {
+        expect(err).toBeInstanceOf(AccountApiError);
+        expect((err as AccountApiError).status).toBe(429);
+        expect((err as AccountApiError).retryAfter).toBe("90");
+      }
+    });
+  });
+
+  it("useCancelAccountRequest and useResendWelcome invalidate account queries", async () => {
+    const calls = stubFetch({
+      "POST /api/platform/accounts/req-1/cancel": json(200, { ...mockReq, state: "canceled" }),
+      "POST /api/platform/accounts/req-2/resend-welcome": new Response(
+        JSON.stringify({ error: "rate limited", code: "account_welcome_rate_limited" }),
+        { status: 429, headers: { "Content-Type": "application/json", "Retry-After": "60" } },
+      ),
+      "POST /api/platform/accounts/req-3/resend-welcome": noContent(),
+    });
+    const { queryClient, wrapper } = setup();
+    queryClient.setQueryData(accountKeys.list(), [mockReq]);
+
+    const cancelHook = renderHook(() => useCancelAccountRequest(), { wrapper });
+    await act(async () => {
+      const res = await cancelHook.result.current.mutateAsync({ id: "req-1" });
+      expect(res.state).toBe("canceled");
+    });
+    expect(queryClient.getQueryState(accountKeys.list())?.isInvalidated).toBe(true);
+
+    const resendHook = renderHook(() => useResendWelcome(), { wrapper });
+    await act(async () => {
+      await expect(resendHook.result.current.mutateAsync({ id: "req-2" })).rejects.toMatchObject({
+        status: 429,
+        retryAfter: "60",
+      });
+    });
+
+    await act(async () => {
+      const res = await resendHook.result.current.mutateAsync({ id: "req-3" });
+      expect(res).toBeNull();
+    });
+    expect(calls.map((c) => c.path)).toEqual([
+      "/api/platform/accounts/req-1/cancel",
+      "/api/platform/accounts/req-2/resend-welcome",
+      "/api/platform/accounts/req-3/resend-welcome",
+    ]);
   });
 });

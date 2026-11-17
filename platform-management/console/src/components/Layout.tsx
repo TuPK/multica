@@ -8,6 +8,7 @@ import {
   LogOut,
   CreditCard,
   Layers,
+  UserPlus,
 } from "@multica/ui/icons";
 import { Button } from "@multica/ui/components/ui/button";
 import { StatusBadge } from "./StatusBadge";
@@ -37,6 +38,7 @@ export function Layout({
       : []),
     ...(user.role === "admin"
       ? [
+          { id: "accounts", label: "Accounts", icon: UserPlus },
           { id: "plans", label: "Plans", icon: Layers },
           { id: "staff", label: "Staff", icon: Shield },
         ]

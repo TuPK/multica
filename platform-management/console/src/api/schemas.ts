@@ -84,6 +84,9 @@ export const AUDIT_ACTIONS = [
   "account.provision_requested",
   "account.provision_canceled",
   "account.provision_failed",
+  "account.provisioned",
+  "account.welcome_sent",
+  "account.welcome_failed",
   "plan.price_scheduled",
   "plan.price_applied",
   "plan.price_canceled",
@@ -537,5 +540,83 @@ export function parseAuditPage(data: unknown, endpoint: string): AuditPage {
 export function parseOverview(data: unknown): Overview | null {
   return parseWithFallback<Overview | null>(data, OverviewSchema, null, {
     endpoint: "GET /api/platform/overview",
+  });
+}
+
+// Account requests (spec 7b.5)
+
+export const ACCOUNT_KINDS = ["individual", "business"] as const;
+export const ACCOUNT_REQUEST_STATES = [
+  "pending",
+  "provisioned",
+  "completed",
+  "failed",
+  "canceled",
+] as const;
+export const BILLING_INTERVALS = ["month", "year"] as const;
+
+export type AccountKind = (typeof ACCOUNT_KINDS)[number] | "unknown";
+export type AccountRequestState = (typeof ACCOUNT_REQUEST_STATES)[number] | "unknown";
+export type BillingInterval = (typeof BILLING_INTERVALS)[number] | "unknown";
+
+export const AccountRequestSchema = z.object({
+  id: z.string(),
+  kind: enumOf(ACCOUNT_KINDS),
+  email: text,
+  display_name: text,
+  workspace_name: text,
+  workspace_slug: text,
+  plan_key: text,
+  seats: count,
+  interval: enumOf(BILLING_INTERVALS),
+  trial: z.boolean().default(false),
+  comp_reason: text,
+  state: enumOf(ACCOUNT_REQUEST_STATES),
+  error_code: text,
+  attempts: count,
+  user_id: text,
+  workspace_id: text,
+  created_by: text,
+  created_at: text,
+  updated_at: text,
+  completed_at: nullableText,
+  welcome_sent_at: nullableText,
+  welcome_attempts: count,
+});
+export type AccountRequest = z.output<typeof AccountRequestSchema>;
+
+export const AccountRequestListSchema = z.object({
+  requests: z.array(AccountRequestSchema),
+});
+export type AccountRequestList = z.output<typeof AccountRequestListSchema>;
+
+export const ResendWelcomeResponseSchema = z.union([
+  AccountRequestSchema,
+  z.object({
+    sent: z.boolean().optional(),
+    welcome_sent_at: z.string().nullable().optional(),
+    welcome_attempts: z.number().optional(),
+  }),
+]);
+export type ResendWelcomeResponse = z.output<typeof ResendWelcomeResponseSchema>;
+
+export function parseAccountRequestList(data: unknown): AccountRequestList | null {
+  return parseWithFallback<AccountRequestList | null>(data, AccountRequestListSchema, null, {
+    endpoint: "GET /api/platform/accounts",
+  });
+}
+
+export function parseAccountRequest(
+  data: unknown,
+  endpoint = "POST /api/platform/accounts",
+): AccountRequest | null {
+  return parseWithFallback<AccountRequest | null>(data, AccountRequestSchema, null, {
+    endpoint,
+  });
+}
+
+export function parseResendWelcomeResponse(data: unknown): ResendWelcomeResponse | null {
+  return parseWithFallback<ResendWelcomeResponse | null>(data, ResendWelcomeResponseSchema, null, {
+    endpoint: "POST /api/platform/accounts/{id}/resend-welcome",
   });
 }

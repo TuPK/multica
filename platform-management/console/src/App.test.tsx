@@ -48,6 +48,29 @@ vi.mock("./api/hooks", () => ({
     isLoading: false,
     isError: false,
   }),
+  usePlans: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+  }),
+  useAccountRequests: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+  useCreateAccountRequest: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useCancelAccountRequest: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useResendWelcome: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }));
 
 describe("App", () => {
@@ -156,5 +179,28 @@ describe("App", () => {
       expect(mockLogoutMutateAsync).toHaveBeenCalledTimes(1);
       expect(mockRefetch).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it("role gating: admin sees Accounts tab and can navigate to it, non-admins do not", () => {
+    mockUseMe.mockReturnValue({
+      data: { user_id: "u-billing", email: "billing@example.com", role: "billing" },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    const { rerender } = render(<App />);
+    expect(screen.queryByRole("button", { name: /Accounts/i })).not.toBeInTheDocument();
+
+    mockUseMe.mockReturnValue({
+      data: { user_id: "u-admin", email: "admin@example.com", role: "admin" },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    rerender(<App />);
+    const accountsTab = screen.getByRole("button", { name: /Accounts/i });
+    expect(accountsTab).toBeInTheDocument();
+    fireEvent.click(accountsTab);
+    expect(screen.getByRole("heading", { name: "Accounts" })).toBeInTheDocument();
   });
 });

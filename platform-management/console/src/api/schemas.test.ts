@@ -20,6 +20,9 @@ import {
   parseDeletePlanResponse,
   parseVerifyCodeResponse,
   parseResetMfaResponse,
+  parseAccountRequestList,
+  parseAccountRequest,
+  parseResendWelcomeResponse,
 } from "./schemas";
 
 const tenant = {
@@ -535,6 +538,70 @@ describe("mfa-reset response", () => {
   it("falls back to null on a malformed body", () => {
     for (const body of [null, undefined, "bad", 42, {}, { reset: "yes" }, { reset: null }]) {
       expect(parseResetMfaResponse(body)).toBeNull();
+    }
+  });
+});
+
+describe("account requests", () => {
+  const accountReq = {
+    id: "req-1",
+    kind: "business",
+    email: "boss@acme.example",
+    display_name: "Boss",
+    workspace_name: "Acme",
+    workspace_slug: "acme",
+    plan_key: "business",
+    seats: 5,
+    interval: "month",
+    trial: true,
+    comp_reason: "",
+    state: "pending",
+    error_code: "",
+    attempts: 0,
+    created_by: "u-admin",
+    created_at: "2026-11-16T00:00:00Z",
+    updated_at: "2026-11-16T00:00:00Z",
+    completed_at: null,
+    welcome_sent_at: null,
+    welcome_attempts: 0,
+  };
+
+  it("parses a well-formed account request list and defaults missing optional fields", () => {
+    const parsed = parseAccountRequestList({ requests: [accountReq] });
+    expect(parsed?.requests).toHaveLength(1);
+    expect(parsed?.requests[0]).toEqual({
+      ...accountReq,
+      user_id: "",
+      workspace_id: "",
+    });
+  });
+
+  it("maps unknown kind, state, and interval to unknown", () => {
+    const parsed = parseAccountRequest({
+      id: "req-2",
+      kind: "enterprise",
+      state: "retrying",
+      interval: "decade",
+    });
+    expect(parsed?.kind).toBe("unknown");
+    expect(parsed?.state).toBe("unknown");
+    expect(parsed?.interval).toBe("unknown");
+  });
+
+  it("falls back to null on malformed account request list or item", () => {
+    for (const body of [null, undefined, "bad", {}, { requests: "nope" }, { requests: [{ email: "no-id" }] }]) {
+      expect(parseAccountRequestList(body)).toBeNull();
+    }
+    for (const body of [null, "bad", [], {}, { id: 7 }]) {
+      expect(parseAccountRequest(body)).toBeNull();
+    }
+  });
+
+  it("parses resend-welcome responses and rejects malformed ones", () => {
+    expect(parseResendWelcomeResponse({ sent: true })).toEqual({ sent: true });
+    expect(parseResendWelcomeResponse(accountReq)).toMatchObject({ id: "req-1" });
+    for (const body of [null, "bad", 42, [], { sent: "yes" }]) {
+      expect(parseResendWelcomeResponse(body)).toBeNull();
     }
   });
 });

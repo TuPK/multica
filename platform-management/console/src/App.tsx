@@ -9,6 +9,7 @@ import { TenantDetail } from "./screens/TenantDetail";
 import { Users } from "./screens/Users";
 import { UserDetail } from "./screens/UserDetail";
 import { Staff } from "./screens/Staff";
+import { Accounts } from "./screens/Accounts";
 import { Audit } from "./screens/Audit";
 
 type Screen =
@@ -17,6 +18,7 @@ type Screen =
   | "tenant-detail"
   | "users"
   | "user-detail"
+  | "accounts"
   | "staff"
   | "audit";
 
@@ -41,8 +43,8 @@ export function App() {
   }
 
   const handleNavigate = (screen: string) => {
-    // Role gating: billing and support do not see the staff screen
-    if (screen === "staff" && me.role !== "admin") {
+    // Role gating: billing and support do not see the staff or accounts screens
+    if ((screen === "staff" || screen === "accounts") && me.role !== "admin") {
       setCurrentScreen("overview");
       return;
     }
@@ -120,6 +122,11 @@ export function App() {
             }}
           />
         );
+      case "accounts":
+        if (me.role !== "admin") {
+          return <Overview />;
+        }
+        return <Accounts userRole={me.role} />;
       case "staff":
         if (me.role !== "admin") {
           return <Overview />;

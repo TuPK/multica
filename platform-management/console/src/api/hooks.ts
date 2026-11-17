@@ -24,6 +24,9 @@ import {
   parseVerifyCodeResponse,
   parseResetMfaResponse,
   parsePutSubscriptionResponse,
+  parseAccountRequestList,
+  parseAccountRequest,
+  parseResendWelcomeResponse,
   type Me,
   type Overview,
   type StaffRole,
@@ -34,6 +37,8 @@ import {
   type Plan,
   type Subscription,
   type Limits,
+  type AccountRequest,
+  type AccountRequestState,
 } from "./schemas";
 
 export type { Subscription, Order, Plan, Limits };
@@ -597,5 +602,177 @@ export function useUpdateSubscription() {
         platformKeys.overview(),
         platformKeys.audits(),
       ]),
+  });
+}
+
+// Account Requests (spec 7b.5)
+
+export type { AccountRequest, AccountRequestState };
+
+export const accountKeys = {
+  all: ["platform", "accounts"] as const,
+  list: (state?: string) => ["platform", "accounts", "list", state || "all"] as const,
+};
+
+export interface AccountBillingProfileInput {
+  legal_name: string;
+  tax_code: string;
+  address: string;
+  invoice_email: string;
+}
+
+export interface CreateAccountInput {
+  kind: "individual" | "business";
+  email: string;
+  display_name: string;
+  workspace_name: string;
+  workspace_slug?: string;
+  plan_key: string;
+  seats: number;
+  interval: "month" | "year";
+  trial?: boolean;
+  comp_reason?: string;
+  billing_profile?: AccountBillingProfileInput | null;
+}
+
+/** A PlatformApiError enriched with field names and Retry-After wait for account endpoints. */
+export class AccountApiError extends PlatformApiError {
+  readonly fields: string[];
+  readonly retryAfter: string | null;
+  readonly state: string | null;
+
+  constructor(
+    status: number,
+    code: string | null,
+    message: string,
+    fields: string[] = [],
+    retryAfter: string | null = null,
+    state: string | null = null,
+  ) {
+    super(status, code, message);
+    this.name = "AccountApiError";
+    this.fields = fields;
+    this.retryAfter = retryAfter;
+    this.state = state;
+  }
+}
+
+async function accountFetch(
+  path: string,
+  init: Omit<RequestInit, "body" | "credentials"> & { body?: unknown } = {},
+): Promise<{ status: number; data: unknown }> {
+  const { body, headers, ...rest } = init;
+  const requestHeaders = new Headers(headers);
+  requestHeaders.set("Accept", "application/json");
+  if (body !== undefined) requestHeaders.set("Content-Type", "application/json");
+
+  const res = await fetch(`/api/platform${path}`, {
+    ...rest,
+    headers: requestHeaders,
+    body: body === undefined ? undefined : JSON.stringify(body),
+    credentials: "same-origin",
+  });
+
+  if (!res.ok) {
+    const retryAfter = res.headers.get("Retry-After");
+    const fallbackMessage = `Request failed with status ${res.status}`;
+    let parsed: unknown = null;
+    try {
+      parsed = JSON.parse(await res.text());
+    } catch {
+      throw new AccountApiError(res.status, null, fallbackMessage, [], retryAfter, null);
+    }
+    if (typeof parsed !== "object" || parsed === null) {
+      throw new AccountApiError(res.status, null, fallbackMessage, [], retryAfter, null);
+    }
+    const obj = parsed as { code?: unknown; error?: unknown; fields?: unknown; state?: unknown };
+    const code = typeof obj.code === "string" ? obj.code : null;
+    const message = typeof obj.error === "string" && obj.error !== "" ? obj.error : fallbackMessage;
+    const fields = Array.isArray(obj.fields)
+      ? obj.fields.filter((f): f is string => typeof f === "string")
+      : [];
+    const state = typeof obj.state === "string" ? obj.state : null;
+    throw new AccountApiError(res.status, code, message, fields, retryAfter, state);
+  }
+
+  const text = await res.text();
+  if (text === "") return { status: res.status, data: null };
+  try {
+    return { status: res.status, data: JSON.parse(text) };
+  } catch {
+    throw new PlatformApiError(res.status, "malformed_response", "The server answered with a body that is not JSON");
+  }
+}
+
+/** List account requests, optionally filtered by state. Admin only. */
+export function useAccountRequests(state?: Exclude<AccountRequestState, "unknown"> | "") {
+  const normalizedState = state || undefined;
+  return useQuery({
+    queryKey: accountKeys.list(normalizedState),
+    queryFn: async ({ signal }): Promise<AccountRequest[]> => {
+      const res = await platformFetch(`/accounts${queryString({ state: normalizedState })}`, { signal });
+      return orMalformed(parseAccountRequestList(res)).requests;
+    },
+  });
+}
+
+/** Create an account request with an Idempotency-Key header. Admin only. */
+export function useCreateAccountRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { input: CreateAccountInput; idempotencyKey: string }): Promise<AccountRequest> => {
+      const { input, idempotencyKey } = vars;
+      const body: Record<string, unknown> = {
+        kind: input.kind,
+        email: input.email,
+        display_name: input.display_name,
+        workspace_name: input.workspace_name,
+        workspace_slug: input.workspace_slug ?? "",
+        plan_key: input.plan_key,
+        seats: input.seats,
+        interval: input.interval,
+        trial: Boolean(input.trial),
+        comp_reason: input.comp_reason ?? "",
+      };
+      if (input.billing_profile) {
+        body.billing_profile = input.billing_profile;
+      }
+      const res = await accountFetch("/accounts", {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
+        body,
+      });
+      return orMalformed(parseAccountRequest(res.data, "POST /api/platform/accounts"));
+    },
+    onSuccess: () => invalidateAll(queryClient, [accountKeys.all, platformKeys.audits()]),
+  });
+}
+
+/** Cancel a pending account request. Admin only. */
+export function useCancelAccountRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { id: string }): Promise<AccountRequest> => {
+      const res = await accountFetch(`/accounts/${pathSegment(vars.id)}/cancel`, {
+        method: "POST",
+      });
+      return orMalformed(parseAccountRequest(res.data, "POST /api/platform/accounts/{id}/cancel"));
+    },
+    onSuccess: () => invalidateAll(queryClient, [accountKeys.all, platformKeys.audits()]),
+  });
+}
+
+/** Resend the welcome email for a completed or finalize_failed account request. Admin only. */
+export function useResendWelcome() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { id: string }) => {
+      const res = await accountFetch(`/accounts/${pathSegment(vars.id)}/resend-welcome`, {
+        method: "POST",
+      });
+      if (res.data === null) return null;
+      return orMalformed(parseResendWelcomeResponse(res.data));
+    },
+    onSuccess: () => invalidateAll(queryClient, [accountKeys.all, platformKeys.audits()]),
   });
 }

@@ -59,4 +59,42 @@ describe("Layout navigation", () => {
     expect(screen.getByRole("button", { name: /Plans/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Staff/i })).toBeInTheDocument();
   });
+
+  it("shows Accounts only to admin role", () => {
+    const { rerender } = render(
+      <Layout
+        currentScreen="overview"
+        onNavigate={vi.fn()}
+        user={{ user_id: "u-supp", email: "support@example.com", role: "support" }}
+        onLogout={vi.fn()}
+      >
+        <div>Content</div>
+      </Layout>
+    );
+    expect(screen.queryByRole("button", { name: /Accounts/i })).not.toBeInTheDocument();
+
+    rerender(
+      <Layout
+        currentScreen="overview"
+        onNavigate={vi.fn()}
+        user={{ user_id: "u-bill", email: "billing@example.com", role: "billing" }}
+        onLogout={vi.fn()}
+      >
+        <div>Content</div>
+      </Layout>
+    );
+    expect(screen.queryByRole("button", { name: /Accounts/i })).not.toBeInTheDocument();
+
+    rerender(
+      <Layout
+        currentScreen="overview"
+        onNavigate={vi.fn()}
+        user={{ user_id: "u-admin", email: "admin@example.com", role: "admin" }}
+        onLogout={vi.fn()}
+      >
+        <div>Content</div>
+      </Layout>
+    );
+    expect(screen.getByRole("button", { name: /Accounts/i })).toBeInTheDocument();
+  });
 });
