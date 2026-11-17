@@ -23,6 +23,8 @@ export const workspaceSubscriptionKeys = {
     [...workspaceSubscriptionKeys.all(wsId), "billing-profile"] as const,
   issueLimitUsage: (wsId: string) =>
     [...workspaceSubscriptionKeys.all(wsId), "issue-limit-usage"] as const,
+  usage: (wsId: string) =>
+    [...workspaceSubscriptionKeys.all(wsId), "usage"] as const,
 };
 
 /**
@@ -35,6 +37,20 @@ export function workspaceSubscriptionSummaryOptions(wsId: string) {
   return queryOptions({
     queryKey: workspaceSubscriptionKeys.summary(wsId),
     queryFn: () => api.getWorkspaceSubscriptionSummary(),
+    enabled: wsId.length > 0,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+/**
+ * The current period of a pay as you go plan. Refetched on focus like the
+ * summary, since the period accrues while the customer works.
+ */
+export function workspaceSubscriptionUsageOptions(wsId: string) {
+  return queryOptions({
+    queryKey: workspaceSubscriptionKeys.usage(wsId),
+    queryFn: () => api.getWorkspaceSubscriptionUsage(),
     enabled: wsId.length > 0,
     staleTime: 30 * 1000,
     refetchOnWindowFocus: true,

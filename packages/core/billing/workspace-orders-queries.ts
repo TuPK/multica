@@ -12,6 +12,8 @@ export const workspaceOrderKeys = {
   list: (wsId: string) => [...workspaceOrderKeys.all(wsId), "list"] as const,
   detail: (wsId: string, orderId: string) =>
     [...workspaceOrderKeys.all(wsId), "detail", orderId] as const,
+  usage: (wsId: string, orderId: string) =>
+    [...workspaceOrderKeys.all(wsId), "usage", orderId] as const,
 };
 
 export const workspacePlanKeys = {
@@ -49,5 +51,15 @@ export function workspaceOrderOptions(wsId: string, orderId: string) {
     enabled: wsId.length > 0 && orderId.length > 0,
     staleTime: 30 * 1000,
     refetchOnWindowFocus: true,
+  });
+}
+
+/** The day lines of a usage invoice. An invoice's lines do not change once it is issued. */
+export function workspaceOrderUsageOptions(wsId: string, orderId: string) {
+  return queryOptions({
+    queryKey: workspaceOrderKeys.usage(wsId, orderId),
+    queryFn: () => api.getWorkspaceOrderUsage(wsId, orderId),
+    enabled: wsId.length > 0 && orderId.length > 0,
+    staleTime: 5 * 60 * 1000,
   });
 }
