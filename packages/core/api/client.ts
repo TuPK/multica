@@ -390,6 +390,23 @@ import {
   type SSOConnectionInput,
   type SSODiscovery,
 } from "./sso-schemas";
+import {
+  CreatePersonalAccessTokenResponseSchema,
+  DEFAULT_WORKSPACE_POLICY,
+  MFAConfirmResponseSchema,
+  MFAEnrollResponseSchema,
+  NO_SSO_DOMAINS,
+  PersonalAccessTokenListSchema,
+  SSODomainListSchema,
+  SSODomainSchema,
+  WorkspacePolicySchema,
+  type MFAConfirmResponse,
+  type MFAEnrollResponse,
+  type SSODomain,
+  type SSODomainList,
+  type WorkspacePolicy,
+  type WorkspacePolicyInput,
+} from "./security-schemas";
 import type { HubItemKind } from "../hub/items";
 import {
   mapHubFileSaveError,
@@ -1110,6 +1127,10 @@ function packPreviewFromResponse(raw: unknown): PackPreview {
   // A preview with no digest cannot be committed: the server's answer was not one.
   if (!preview.digest) throw new Error("The pack preview could not be read");
   return preview;
+}
+
+function unverifiedDomain(domain: string): SSODomain {
+  return { domain, txt_name: "", txt_value: "", verified_at: null };
 }
 
 export class ApiError extends Error {
@@ -3230,6 +3251,94 @@ export class ApiClient {
     await this.fetch(`/api/workspaces/${wsId}/sso/connection`, { method: "DELETE" });
   }
 
+  async listSSODomains(wsId: string): Promise<SSODomainList> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${wsId}/sso/domains`);
+    return parseWithFallback<SSODomainList>(raw, SSODomainListSchema, NO_SSO_DOMAINS, {
+      endpoint: "GET /api/workspaces/{id}/sso/domains",
+    });
+  }
+
+  /** A malformed answer reads as an unverified claim with no TXT record to show. */
+  async addSSODomain(wsId: string, domain: string): Promise<SSODomain> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${wsId}/sso/domains`, {
+      method: "POST",
+      body: JSON.stringify({ domain }),
+    });
+    return parseWithFallback<SSODomain>(raw, SSODomainSchema, unverifiedDomain(domain), {
+      endpoint: "POST /api/workspaces/{id}/sso/domains",
+    });
+  }
+
+  /** Errors carry a `code` such as `domain_not_verified`. */
+  async verifySSODomain(wsId: string, domain: string): Promise<SSODomain> {
+    const raw = await this.fetch<unknown>(
+      `/api/workspaces/${wsId}/sso/domains/${encodeURIComponent(domain)}/verify`,
+      { method: "POST" },
+    );
+    return parseWithFallback<SSODomain>(raw, SSODomainSchema, unverifiedDomain(domain), {
+      endpoint: "POST /api/workspaces/{id}/sso/domains/{domain}/verify",
+    });
+  }
+
+  async removeSSODomain(wsId: string, domain: string): Promise<void> {
+    await this.fetch(`/api/workspaces/${wsId}/sso/domains/${encodeURIComponent(domain)}`, {
+      method: "DELETE",
+    });
+  }
+
+  // Workspace policy and MFA (platform spec R3). Errors keep the API `code` on
+  // `ApiError.body` (invite_domain_not_allowed, plan_feature_unavailable,
+  // mfa_already_enabled).
+
+  async getWorkspacePolicy(wsId: string): Promise<WorkspacePolicy> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${wsId}/policy`);
+    return parseWithFallback<WorkspacePolicy>(raw, WorkspacePolicySchema, DEFAULT_WORKSPACE_POLICY, {
+      endpoint: "GET /api/workspaces/{id}/policy",
+    });
+  }
+
+  async updateWorkspacePolicy(wsId: string, input: WorkspacePolicyInput): Promise<WorkspacePolicy> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${wsId}/policy`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    });
+    return parseWithFallback<WorkspacePolicy>(raw, WorkspacePolicySchema, DEFAULT_WORKSPACE_POLICY, {
+      endpoint: "PUT /api/workspaces/{id}/policy",
+    });
+  }
+
+  async enrollMFA(): Promise<MFAEnrollResponse> {
+    const raw = await this.fetch<unknown>("/api/me/mfa/enroll", { method: "POST" });
+    // Without the secret there is nothing to scan, so a malformed answer is an error.
+    const parsed = parseWithFallback<MFAEnrollResponse | null>(raw, MFAEnrollResponseSchema, null, {
+      endpoint: "POST /api/me/mfa/enroll",
+    });
+    if (!parsed) throw new Error("The server did not return a multi-factor secret");
+    return parsed;
+  }
+
+  async confirmMFA(code: string): Promise<MFAConfirmResponse> {
+    const raw = await this.fetch<unknown>("/api/me/mfa/confirm", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+    // The codes are shown once and cannot be fetched again: an answer without
+    // them is an error, never an empty list the user would confirm past.
+    const parsed = parseWithFallback<MFAConfirmResponse | null>(raw, MFAConfirmResponseSchema, null, {
+      endpoint: "POST /api/me/mfa/confirm",
+    });
+    if (!parsed) throw new Error("The server confirmed two-step sign-in but returned no recovery codes");
+    return parsed;
+  }
+
+  /** `code` is a TOTP code or a recovery code. */
+  async disableMFA(code: string): Promise<void> {
+    await this.fetch("/api/me/mfa/disable", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+  }
+
   async reconcileWorkspaceSubscriptionSeats(): Promise<
     WorkspaceSubscriptionSeatReconcileResult | null
   > {
@@ -4929,14 +5038,27 @@ export class ApiClient {
 
   // Personal Access Tokens
   async listPersonalAccessTokens(): Promise<PersonalAccessToken[]> {
-    return this.fetch("/api/tokens");
+    const raw = await this.fetch<unknown>("/api/tokens");
+    return parseWithFallback<PersonalAccessToken[]>(raw, PersonalAccessTokenListSchema, [], {
+      endpoint: "GET /api/tokens",
+    });
   }
 
   async createPersonalAccessToken(data: CreatePersonalAccessTokenRequest): Promise<CreatePersonalAccessTokenResponse> {
-    return this.fetch("/api/tokens", {
+    const raw = await this.fetch<unknown>("/api/tokens", {
       method: "POST",
       body: JSON.stringify(data),
     });
+    // The secret is shown once and the token already exists, so a response
+    // without it is an error the caller must see, not an empty fallback.
+    const parsed = parseWithFallback<CreatePersonalAccessTokenResponse | null>(
+      raw,
+      CreatePersonalAccessTokenResponseSchema,
+      null,
+      { endpoint: "POST /api/tokens" },
+    );
+    if (!parsed) throw new Error("The server created the token but returned no secret");
+    return parsed;
   }
 
   async revokePersonalAccessToken(id: string): Promise<void> {

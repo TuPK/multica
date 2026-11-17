@@ -149,6 +149,7 @@
     "./issue-views/definition": "./issue-views/definition.ts",
     "./issue-views/rename-store": "./issue-views/rename-store.ts",
     "./billing": "./billing/index.ts",
+    "./security": "./security/index.ts",
     "./billing/recovery": "./billing/recovery.ts",
     "./billing/queries": "./billing/queries.ts",
     "./billing/mutations": "./billing/mutations.ts",
