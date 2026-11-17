@@ -177,7 +177,7 @@ func (t *pgxTx) MarkPaid(ctx context.Context, id, confirmedBy string, paidAt tim
 	if err != nil {
 		return Order{}, err
 	}
-	by, err := parseUUID(confirmedBy)
+	by, err := optionalUUID(confirmedBy)
 	if err != nil {
 		return Order{}, err
 	}

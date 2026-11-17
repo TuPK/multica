@@ -60,6 +60,17 @@ const (
 	ActionBillingOrderCanceled = "billing.order_canceled"
 )
 
+// R4 payment notice actions (spec 7.2, audit): applied and needs_review are
+// written by the system when the reconciler decides a bank transfer notice;
+// resolved and dismissed are written by staff and carry a required reason. The
+// detail holds ids and amounts, never the notice body, a signature or a secret.
+const (
+	ActionPaymentNoticeApplied     = "payment.notice_applied"
+	ActionPaymentNoticeNeedsReview = "payment.notice_needs_review"
+	ActionPaymentNoticeResolved    = "payment.notice_resolved"
+	ActionPaymentNoticeDismissed   = "payment.notice_dismissed"
+)
+
 // R5 usage billing actions (spec 7b.3, audit table). usage_invoiced is written by
 // the system in the transaction that creates a usage invoice. usage_written_off
 // is written by staff in place of billing.order_canceled when a usage invoice is
@@ -198,6 +209,10 @@ var Catalog = []string{
 	ActionBillingUsageInvoiced,
 	ActionBillingUsageCreditLimitReached,
 	ActionBillingUsageWrittenOff,
+	ActionPaymentNoticeApplied,
+	ActionPaymentNoticeNeedsReview,
+	ActionPaymentNoticeResolved,
+	ActionPaymentNoticeDismissed,
 }
 
 // R5 subscription actions (spec 7b.1, rules 5 to 8): written by the platform in the

@@ -63,7 +63,8 @@ type Tx interface {
 	OrderByIdempotencyKey(ctx context.Context, workspaceID, key string) (o Order, found bool, err error)
 	// LockOrder reads the order and locks its row.
 	LockOrder(ctx context.Context, id string) (o Order, found bool, err error)
-	// MarkPaid moves a pending order to paid.
+	// MarkPaid moves a pending order to paid. An empty confirmedBy, the
+	// automatic source, stores NULL.
 	MarkPaid(ctx context.Context, id, confirmedBy string, paidAt time.Time) (Order, error)
 	// LockSubscription reads the workspace's subscription and locks its row.
 	LockSubscription(ctx context.Context, workspaceID string) (s subscription.Subscription, found bool, err error)
@@ -91,6 +92,17 @@ type Tx interface {
 	UsageLines(ctx context.Context, orderID string) (int64, error)
 
 	workspacestatus.Tx
+}
+
+// NoticeTx is the payment notice write of a billing transaction. It is a
+// separate interface so that implementations of Tx written for other packages'
+// tests keep compiling; the Postgres Tx implements it, and a Tx without it
+// cannot carry a notice decision.
+type NoticeTx interface {
+	// DecideNotice moves a payment notice from d.Notice.State to d.To and sets
+	// its order. It reports false, and writes nothing, when the notice is no
+	// longer in that state.
+	DecideNotice(ctx context.Context, d NoticeDecision, orderID string) (bool, error)
 }
 
 // Runner runs fn in one transaction: it commits when fn returns nil and rolls
@@ -265,12 +277,20 @@ func (s *Service) CreateOrder(ctx context.Context, d Draft) (o Order, created bo
 }
 
 // Confirmation is a confirmed payment: the staff member who matched the
-// transfer and the order they confirm.
+// transfer and the order they confirm. An automatic confirmation has no staff
+// member: ConfirmedBy is empty and Provider names the source (spec 7.2).
 type Confirmation struct {
 	OrderID     string
 	ConfirmedBy string
-	// ActorLabel is the staff member's email, copied to the audit rows.
+	// ActorLabel is the staff member's email, copied to the audit rows. An
+	// automatic confirmation ignores it and uses "provider:<Provider>".
 	ActorLabel string
+	// Provider is the automatic source's name. It is read only when ConfirmedBy is empty.
+	Provider string
+	// Notice, when set, is moved to its new state in the same transaction as
+	// the payment. A notice that is no longer in Notice.Notice.State fails the
+	// call with ErrNoticeConflict and writes nothing.
+	Notice *NoticeDecision
 }
 
 // Applied is the result of ApplyPayment.
@@ -292,14 +312,21 @@ type Applied struct {
 // read_only by an overdue subscription back to active, and writes
 // billing.order_paid. A failure anywhere, the audit write included, rolls the
 // whole change back. On an order that is already paid it writes nothing and
-// returns that order.
+// returns that order. A Confirmation with no ConfirmedBy and a Provider is an
+// automatic one: see Confirmation. It refuses a workspace that is read_only for
+// billing with ErrAutomaticReactivation, because that change needs a staff member.
 func (s *Service) ApplyPayment(ctx context.Context, c Confirmation) (Applied, error) {
 	orderID, err := canonicalUUID(c.OrderID)
 	if err != nil {
 		return Applied{}, fmt.Errorf("billing: order id: %w", err)
 	}
-	confirmedBy, err := canonicalUUID(c.ConfirmedBy)
-	if err != nil {
+	// The automatic source has no staff member: it is audited as the system,
+	// labelled with the provider, and confirmed_by stays NULL.
+	auto := c.ConfirmedBy == "" && c.Provider != ""
+	confirmedBy := ""
+	if auto {
+		c.ActorLabel = "provider:" + c.Provider
+	} else if confirmedBy, err = canonicalUUID(c.ConfirmedBy); err != nil {
 		return Applied{}, fmt.Errorf("billing: confirmed by: %w", err)
 	}
 
@@ -319,6 +346,22 @@ func (s *Service) ApplyPayment(ctx context.Context, c Confirmation) (Applied, er
 		now := s.d.Now().UTC()
 		if err := Transition(o.Status, StatusPaid, o.ExpiresAt, now); err != nil {
 			return err
+		}
+		if auto {
+			// Leaving read_only is a staff-attributed change; a machine confirmation
+			// leaves that workspace to a staff confirmation.
+			if overdue, err := tx.ReadOnlyForBilling(ctx, o.WorkspaceID); err != nil {
+				return err
+			} else if overdue {
+				return ErrAutomaticReactivation
+			}
+		}
+		if c.Notice != nil {
+			d := *c.Notice
+			d.ActorID, d.ActorLabel = confirmedBy, c.ActorLabel
+			if err := decideNotice(ctx, tx, d, &o); err != nil {
+				return err
+			}
 		}
 
 		if o.Kind == KindUsage {
@@ -465,10 +508,14 @@ func orderCreatedEntry(o Order) audit.Entry {
 func orderPaidEntry(o Order, sub subscription.Subscription, staffID, label string) audit.Entry {
 	d := orderDetail(o)
 	d["subscription_version"] = sub.Version
-	return audit.Entry{
+	e := audit.Entry{
 		WorkspaceID: o.WorkspaceID, ActorType: audit.ActorStaff, ActorID: staffID, ActorLabel: label,
 		Action: audit.ActionBillingOrderPaid, TargetType: auditOrderTarget, TargetID: o.ID, Detail: d,
 	}
+	if staffID == "" {
+		e.ActorType = audit.ActorSystem
+	}
+	return e
 }
 
 // orderDetail avoids key names the audit redaction filter treats as secrets,

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/multica-ai/multica/platform-management/audit"
+	"github.com/multica-ai/multica/platform-management/internal/paymentnotice"
 	"github.com/multica-ai/multica/platform-management/internal/subscription"
 	"github.com/multica-ai/multica/platform-management/internal/workspacestatus"
 	"github.com/multica-ai/multica/platform-management/workspacestate"
@@ -26,6 +27,7 @@ const (
 // as a rollback does.
 type memory struct {
 	orders    map[string]Order
+	notices   map[string]paymentnotice.Notice
 	subs      map[string]subscription.Subscription
 	ws        map[string]workspacestate.Record
 	wsReason  map[string]string
@@ -37,7 +39,7 @@ type memory struct {
 
 func newMemory() *memory {
 	return &memory{
-		collide: new(int), orders: map[string]Order{}, subs: map[string]subscription.Subscription{},
+		collide: new(int), orders: map[string]Order{}, notices: map[string]paymentnotice.Notice{}, subs: map[string]subscription.Subscription{},
 		ws: map[string]workspacestate.Record{}, wsReason: map[string]string{},
 	}
 }
@@ -45,6 +47,7 @@ func newMemory() *memory {
 func (m *memory) snapshot() *memory {
 	c := *m
 	c.orders, c.subs, c.ws, c.wsReason = maps.Clone(m.orders), maps.Clone(m.subs), maps.Clone(m.ws), maps.Clone(m.wsReason)
+	c.notices = maps.Clone(m.notices)
 	c.audits = slices.Clone(m.audits)
 	return &c
 }
@@ -105,6 +108,16 @@ func (t *memTx) MarkPaid(_ context.Context, id, by string, at time.Time) (Order,
 	o.Status, o.ConfirmedBy, o.PaidAt = StatusPaid, by, &at
 	t.m.orders[id] = o
 	return o, nil
+}
+
+func (t *memTx) DecideNotice(_ context.Context, d NoticeDecision, orderID string) (bool, error) {
+	n, ok := t.m.notices[d.Notice.ID]
+	if !ok || n.State != d.Notice.State {
+		return false, nil
+	}
+	n.State, n.OrderID = d.To, orderID
+	t.m.notices[n.ID] = n
+	return true, nil
 }
 
 func (t *memTx) LockSubscription(_ context.Context, ws string) (subscription.Subscription, bool, error) {
