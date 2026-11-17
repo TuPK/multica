@@ -72,18 +72,34 @@ func (q *Queries) CountUsageIssuesTotal(ctx context.Context, arg CountUsageIssue
 }
 
 const countUsageMembers = `-- name: CountUsageMembers :one
-SELECT count(*)::int FROM member
-WHERE workspace_id = $1
-  AND created_at < $2::timestamptz
+SELECT (
+  (SELECT count(*) FROM member m
+   WHERE m.workspace_id = $1
+     AND m.created_at < $2::timestamptz)
+  +
+  (SELECT count(DISTINCT r.user_id) FROM member_removal r
+   WHERE r.workspace_id = $1
+     AND r.removed_at >= $3::timestamptz
+     AND r.removed_at < $2::timestamptz
+     AND NOT EXISTS (
+       SELECT 1 FROM member m2
+       WHERE m2.workspace_id = r.workspace_id
+         AND m2.user_id = r.user_id
+         AND m2.created_at < $2::timestamptz))
+)::int
 `
 
 type CountUsageMembersParams struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	DayEnd      pgtype.Timestamptz `json:"day_end"`
+	DayStart    pgtype.Timestamptz `json:"day_start"`
 }
 
+// Members of the workspace at any point in the day [day_start, day_end): current
+// rows created before day_end, plus users removed during the day (their row is
+// deleted) who have no such row, so a remove-and-re-add counts once.
 func (q *Queries) CountUsageMembers(ctx context.Context, arg CountUsageMembersParams) (int32, error) {
-	row := q.db.QueryRow(ctx, countUsageMembers, arg.WorkspaceID, arg.DayEnd)
+	row := q.db.QueryRow(ctx, countUsageMembers, arg.WorkspaceID, arg.DayEnd, arg.DayStart)
 	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err

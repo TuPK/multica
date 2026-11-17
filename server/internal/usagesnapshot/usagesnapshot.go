@@ -53,7 +53,7 @@ type Metric struct {
 
 // Metrics lists every count, in column order.
 var Metrics = []Metric{
-	{"members", "CountUsageMembers", BoundsEnd},
+	{"members", "CountUsageMembers", BoundsWindow},
 	{"agents", "CountUsageAgents", BoundsEnd},
 	{"runtimes", "CountUsageRuntimes", BoundsEnd},
 	{"issues_total", "CountUsageIssuesTotal", BoundsEnd},

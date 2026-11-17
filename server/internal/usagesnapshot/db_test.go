@@ -173,3 +173,52 @@ func TestDBWorkspacesWithAndWithoutARowAreListed(t *testing.T) {
 		t.Fatalf("listing lacks %s or %s", s.workspaceID, other)
 	}
 }
+
+// A removed member's row is deleted, so member_removal keeps them in the count
+// for the day they left.
+func TestDBMembersRemovedDuringTheDayAreCounted(t *testing.T) {
+	pool, _ := openDB(t)
+	ctx := context.Background()
+	f := testutil.New(pool, "", "")
+	owner := f.User(t, "Owner", testutil.UniqueEmail("usage-rm-owner"))
+	ws := f.Workspace(t, "UsageRemoval", "usage-rm-"+uuid.NewString()[:8])
+	f = testutil.New(pool, ws, owner)
+
+	day := time.Date(2026, 11, 14, 0, 0, 0, 0, time.UTC)
+	f.Member(t, ws, owner, "owner", testutil.Cols{"created_at": day.Add(-48 * time.Hour)})
+
+	removal := func(user string, at time.Time) {
+		f.Insert(t, "member_removal", testutil.Cols{"workspace_id": ws, "user_id": user, "removed_at": at})
+	}
+	newUser := func(name string) string {
+		return f.User(t, name, testutil.UniqueEmail("usage-rm-"+name))
+	}
+	// (a) in the workspace at 00:00, removed at 12:00.
+	removal(newUser("a"), day.Add(12*time.Hour))
+	// (b) added and removed on the same day: no member row at all.
+	removal(newUser("b"), day.Add(9*time.Hour))
+	// (c) removed on the previous day.
+	removal(newUser("c"), day.Add(-14*time.Hour))
+	// (d) removed and re-added on the same day: one member row plus one removal.
+	d := newUser("d")
+	f.Member(t, ws, d, "member", testutil.Cols{"created_at": day.Add(15 * time.Hour)})
+	removal(d, day.Add(10*time.Hour))
+	removal(d, day.Add(11*time.Hour)) // removed twice: still one person
+
+	got, err := NewDBStore(pool).Counts(ctx, ws, DayWindow(day))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// owner + a + b + d = 4
+	if got.Members != 4 {
+		t.Fatalf("members = %d, want 4", got.Members)
+	}
+	// The next day: owner and d are members; a and b were removed the day before.
+	got, err = NewDBStore(pool).Counts(ctx, ws, DayWindow(day.AddDate(0, 0, 1)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Members != 2 {
+		t.Fatalf("members on the next day = %d, want 2", got.Members)
+	}
+}

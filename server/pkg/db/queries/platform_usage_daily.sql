@@ -11,9 +11,24 @@ ORDER BY id
 LIMIT sqlc.arg('row_limit');
 
 -- name: CountUsageMembers :one
-SELECT count(*)::int FROM member
-WHERE workspace_id = sqlc.arg('workspace_id')
-  AND created_at < sqlc.arg('day_end')::timestamptz;
+-- Members of the workspace at any point in the day [day_start, day_end): current
+-- rows created before day_end, plus users removed during the day (their row is
+-- deleted) who have no such row, so a remove-and-re-add counts once.
+SELECT (
+  (SELECT count(*) FROM member m
+   WHERE m.workspace_id = sqlc.arg('workspace_id')
+     AND m.created_at < sqlc.arg('day_end')::timestamptz)
+  +
+  (SELECT count(DISTINCT r.user_id) FROM member_removal r
+   WHERE r.workspace_id = sqlc.arg('workspace_id')
+     AND r.removed_at >= sqlc.arg('day_start')::timestamptz
+     AND r.removed_at < sqlc.arg('day_end')::timestamptz
+     AND NOT EXISTS (
+       SELECT 1 FROM member m2
+       WHERE m2.workspace_id = r.workspace_id
+         AND m2.user_id = r.user_id
+         AND m2.created_at < sqlc.arg('day_end')::timestamptz))
+)::int;
 
 -- name: CountUsageAgents :one
 -- Agents that exist and are not archived at the end of the day.

@@ -1873,6 +1873,13 @@ type MemberGroupMember struct {
 	AddedAt     pgtype.Timestamptz `json:"added_at"`
 }
 
+type MemberRemoval struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	UserID      pgtype.UUID        `json:"user_id"`
+	RemovedAt   pgtype.Timestamptz `json:"removed_at"`
+}
+
 type Metric struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	Key         string             `json:"key"`

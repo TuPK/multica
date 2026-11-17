@@ -270,6 +270,13 @@ func (h *Handler) revokeAndRemoveMember(ctx context.Context, workspaceID, userID
 		result.ReadyChats = append(result.ReadyChats, readyChats...)
 	}
 
+	if err := qtx.RecordMemberRemoval(ctx, db.RecordMemberRemovalParams{
+		WorkspaceID: workspaceID,
+		UserID:      userID,
+	}); err != nil {
+		return empty, err
+	}
+
 	if err := qtx.DeleteMember(ctx, memberID); err != nil {
 		return empty, err
 	}

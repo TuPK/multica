@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_member_removal_workspace_removed;

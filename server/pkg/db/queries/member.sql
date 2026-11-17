@@ -45,3 +45,6 @@ FROM member m
 JOIN "user" u ON u.id = m.user_id
 WHERE m.workspace_id = $1
 ORDER BY m.created_at ASC;
+
+-- name: RecordMemberRemoval :exec
+INSERT INTO member_removal (workspace_id, user_id) VALUES ($1, $2);

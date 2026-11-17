@@ -63,7 +63,7 @@ func (s *DBStore) Counts(ctx context.Context, workspaceID string, w Window) (Cou
 		run    func() error
 	}{
 		{"members", func() (err error) {
-			c.Members, err = s.q.CountUsageMembers(ctx, db.CountUsageMembersParams{WorkspaceID: ws, DayEnd: end})
+			c.Members, err = s.q.CountUsageMembers(ctx, db.CountUsageMembersParams{WorkspaceID: ws, DayStart: start, DayEnd: end})
 			return
 		}},
 		{"agents", func() (err error) {

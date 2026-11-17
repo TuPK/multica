@@ -69,7 +69,7 @@ func TestMetricsMatchTheContractDefinitions(t *testing.T) {
 		byColumn[m.Column] = m
 	}
 	for column, bounds := range map[string]Bounds{
-		"members": BoundsEnd, "agents": BoundsEnd, "runtimes": BoundsEnd, "issues_total": BoundsEnd,
+		"members": BoundsWindow, "agents": BoundsEnd, "runtimes": BoundsEnd, "issues_total": BoundsEnd,
 		"storage_bytes": BoundsEnd, "issues_created": BoundsWindow, "tasks_run": BoundsWindow,
 	} {
 		if byColumn[column].Bounds != bounds {

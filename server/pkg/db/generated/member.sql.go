@@ -237,6 +237,20 @@ func (q *Queries) ListWorkspaceManagerUserIDs(ctx context.Context, workspaceID p
 	return items, nil
 }
 
+const recordMemberRemoval = `-- name: RecordMemberRemoval :exec
+INSERT INTO member_removal (workspace_id, user_id) VALUES ($1, $2)
+`
+
+type RecordMemberRemovalParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	UserID      pgtype.UUID `json:"user_id"`
+}
+
+func (q *Queries) RecordMemberRemoval(ctx context.Context, arg RecordMemberRemovalParams) error {
+	_, err := q.db.Exec(ctx, recordMemberRemoval, arg.WorkspaceID, arg.UserID)
+	return err
+}
+
 const updateMemberRole = `-- name: UpdateMemberRole :one
 UPDATE member SET role = $2
 WHERE id = $1
