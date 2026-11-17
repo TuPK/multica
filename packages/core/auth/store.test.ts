@@ -222,4 +222,85 @@ describe("authStore", () => {
       expect(api.setToken).not.toHaveBeenCalled();
     });
   });
+
+  describe("two-step login", () => {
+    const apiWith = (m: Record<string, unknown>) =>
+      ({ setToken: vi.fn(), ...m }) as unknown as ApiClient;
+
+    it("verifyCode with a challenge changes no state", async () => {
+      const storage = makeStorage();
+      const api = apiWith({
+        attemptLoginCode: vi.fn().mockResolvedValue({ kind: "mfa", mfaToken: "m", expiresIn: 300 }),
+      });
+      const onLogin = vi.fn();
+      const store = createAuthStore({ api, storage, onLogin });
+      store.setState({ user: null, status: "unauthenticated", isLoading: false });
+
+      await expect(store.getState().verifyCode("a@x.test", "123456")).resolves.toEqual({
+        kind: "mfa",
+        mfaToken: "m",
+        expiresIn: 300,
+      });
+      expect(store.getState().user).toBeNull();
+      expect(store.getState().status).toBe("unauthenticated");
+      expect(storage.snapshot().multica_token).toBeUndefined();
+      expect(api.setToken).not.toHaveBeenCalled();
+      expect(onLogin).not.toHaveBeenCalled();
+    });
+
+    it("verifyCode with a session sets the user and the token in token mode", async () => {
+      const storage = makeStorage();
+      const api = apiWith({
+        attemptLoginCode: vi.fn().mockResolvedValue({ kind: "session", token: "tok", user: fakeUser }),
+      });
+      const onLogin = vi.fn();
+      const store = createAuthStore({ api, storage, onLogin });
+
+      await expect(store.getState().verifyCode("a@x.test", "123456")).resolves.toEqual({
+        kind: "session",
+        user: fakeUser,
+      });
+      expect(store.getState().user).toEqual(fakeUser);
+      expect(store.getState().status).toBe("authenticated");
+      expect(storage.snapshot().multica_token).toBe("tok");
+      expect(api.setToken).toHaveBeenCalledWith("tok");
+      expect(onLogin).toHaveBeenCalledOnce();
+    });
+
+    it("verifyCode with a session stores no token in cookie mode", async () => {
+      const storage = makeStorage();
+      const api = apiWith({
+        attemptLoginCode: vi.fn().mockResolvedValue({ kind: "session", token: "tok", user: fakeUser }),
+      });
+      const store = createAuthStore({ api, storage, cookieAuth: true });
+      await store.getState().verifyCode("a@x.test", "123456");
+      expect(storage.snapshot().multica_token).toBeUndefined();
+      expect(api.setToken).not.toHaveBeenCalled();
+      expect(store.getState().status).toBe("authenticated");
+    });
+
+    it("verifyMFA sets the user and token", async () => {
+      const storage = makeStorage();
+      const verifyMFALogin = vi.fn().mockResolvedValue({ token: "tok", user: fakeUser });
+      const api = apiWith({ verifyMFALogin });
+      const store = createAuthStore({ api, storage });
+
+      await expect(store.getState().verifyMFA("m", "123456")).resolves.toEqual(fakeUser);
+      expect(verifyMFALogin).toHaveBeenCalledWith("m", "123456");
+      expect(store.getState().user).toEqual(fakeUser);
+      expect(store.getState().status).toBe("authenticated");
+      expect(storage.snapshot().multica_token).toBe("tok");
+      expect(api.setToken).toHaveBeenCalledWith("tok");
+    });
+
+    it("verifyMFA failure leaves the store untouched", async () => {
+      const storage = makeStorage();
+      const api = apiWith({ verifyMFALogin: vi.fn().mockRejectedValue(new Error("bad")) });
+      const store = createAuthStore({ api, storage });
+      store.setState({ user: null, status: "unauthenticated", isLoading: false });
+      await expect(store.getState().verifyMFA("m", "1")).rejects.toThrow("bad");
+      expect(store.getState().user).toBeNull();
+      expect(store.getState().status).toBe("unauthenticated");
+    });
+  });
 });

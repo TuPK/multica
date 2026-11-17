@@ -25,6 +25,11 @@ export type AuthStatus =
   | "unauthenticated"
   | "recovering";
 
+/** Outcome of the code step: a session, or a challenge for the second step. */
+export type LoginStep =
+  | { kind: "session"; user: User }
+  | { kind: "mfa"; mfaToken: string; expiresIn: number };
+
 export interface AuthState {
   user: User | null;
   isLoading: boolean;
@@ -40,7 +45,8 @@ export interface AuthState {
 
   retryAuthentication: () => void;
   sendCode: (email: string) => Promise<void>;
-  verifyCode: (email: string, code: string) => Promise<User>;
+  verifyCode: (email: string, code: string) => Promise<LoginStep>;
+  verifyMFA: (mfaToken: string, code: string) => Promise<User>;
   loginWithGoogle: (code: string, redirectUri: string) => Promise<User>;
   loginWithToken: (token: string) => Promise<User>;
   logout: () => void;
@@ -59,6 +65,23 @@ export interface AuthState {
 export function createAuthStore(options: AuthStoreOptions) {
   const { api, storage, onLogin, onLogout, onSessionExpired, cookieAuth } =
     options;
+
+  // Shared success path of every login that ends in a session.
+  const completeLogin = (
+    token: string,
+    user: User,
+    set: (partial: Partial<AuthState>) => void,
+  ): User => {
+    if (!cookieAuth) {
+      // Token mode: persist for Electron / legacy.
+      storage.setItem("multica_token", token);
+      api.setToken(token);
+    }
+    onLogin?.();
+    identifyAnalytics(user.id, { email: user.email, name: user.name });
+    set({ user, isLoading: false, status: "authenticated", expired: false });
+    return user;
+  };
 
   return create<AuthState>((set, get) => ({
     user: null,
@@ -79,17 +102,18 @@ export function createAuthStore(options: AuthStoreOptions) {
       await api.sendCode(email);
     },
 
-    verifyCode: async (email: string, code: string) => {
-      const { token, user } = await api.verifyCode(email, code);
-      if (!cookieAuth) {
-        // Token mode: persist for Electron / legacy.
-        storage.setItem("multica_token", token);
-        api.setToken(token);
+    verifyCode: async (email: string, code: string): Promise<LoginStep> => {
+      const attempt = await api.attemptLoginCode(email, code);
+      if (attempt.kind === "mfa") {
+        return { kind: "mfa", mfaToken: attempt.mfaToken, expiresIn: attempt.expiresIn };
       }
-      onLogin?.();
-      identifyAnalytics(user.id, { email: user.email, name: user.name });
-      set({ user, isLoading: false, status: "authenticated", expired: false });
-      return user;
+      const user = completeLogin(attempt.token, attempt.user, set);
+      return { kind: "session", user };
+    },
+
+    verifyMFA: async (mfaToken: string, code: string) => {
+      const { token, user } = await api.verifyMFALogin(mfaToken, code);
+      return completeLogin(token, user, set);
     },
 
     loginWithGoogle: async (code: string, redirectUri: string) => {

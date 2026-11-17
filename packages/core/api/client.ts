@@ -382,6 +382,7 @@ import { type Logger, noopLogger } from "../logger";
 import { createRequestId, createSafeId } from "../utils";
 import { getCurrentSlug } from "../platform/workspace-storage";
 import { parseWithFallback } from "./schema";
+import { LoginAttemptSchema, LoginResponseSchema, type LoginAttempt } from "./login-schemas";
 import {
   NO_SSO,
   SSOConnectionSchema,
@@ -1116,6 +1117,8 @@ export interface LoginResponse {
   user: User;
 }
 
+export type { LoginAttempt };
+
 function parseSearchIndexResponse<T>(raw: unknown, schema: ZodType, endpoint: string): T {
   const parsed = parseWithFallback<T | null>(raw, schema, null, { endpoint });
   if (parsed === null) throw new Error(`Malformed response from ${endpoint}`);
@@ -1659,6 +1662,36 @@ export class ApiClient {
       method: "POST",
       body: JSON.stringify({ email, code }),
     });
+  }
+
+  /**
+   * First step of sign-in. Answers a session, or an MFA challenge when the
+   * user has two-step sign-in. A malformed answer throws: a login must never
+   * be silently accepted without a token and user.
+   */
+  async attemptLoginCode(email: string, code: string): Promise<LoginAttempt> {
+    const raw = await this.fetch<unknown>("/auth/verify-code", {
+      method: "POST",
+      body: JSON.stringify({ email, code }),
+    });
+    const parsed = parseWithFallback<LoginAttempt | null>(raw, LoginAttemptSchema, null, {
+      endpoint: "POST /auth/verify-code",
+    });
+    if (!parsed) throw new Error("Malformed response from POST /auth/verify-code");
+    return parsed;
+  }
+
+  /** Second step: exchanges the pending MFA token and a TOTP or recovery code for a session. */
+  async verifyMFALogin(mfaToken: string, code: string): Promise<LoginResponse> {
+    const raw = await this.fetch<unknown>("/auth/mfa/verify", {
+      method: "POST",
+      body: JSON.stringify({ mfa_token: mfaToken, code }),
+    });
+    const parsed = parseWithFallback<LoginResponse | null>(raw, LoginResponseSchema, null, {
+      endpoint: "POST /auth/mfa/verify",
+    });
+    if (!parsed) throw new Error("Malformed response from POST /auth/mfa/verify");
+    return parsed;
   }
 
   async googleLogin(code: string, redirectUri: string): Promise<LoginResponse> {
