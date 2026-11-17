@@ -2038,11 +2038,9 @@ Các điểm dưới đây chưa kiểm chứng lúc viết R4 (2026-11-17, HEAD
 | --- | --- |
 | Hợp đồng webhook của nhà cung cấp thông báo giao dịch ngân hàng: tên, chữ ký, mã sự kiện, cách thử lại, định dạng tiền và nội dung chuyển khoản. Bảng ở 7.2 còn "chưa xác minh" | P42.1, cần truy cập web |
 | Hợp đồng nhà cung cấp hóa đơn điện tử (SePay, đọc 2026-11-17): đã có phát hành, tra cứu theo mã tham chiếu, khóa idempotency, trạng thái. Đã quyết: không hủy, chỉ thay thế qua `POST /v1/invoices/replace` (SePay không có endpoint hủy hóa đơn đã phát hành; quyết định của chủ dự án). Còn mở: trạng thái của bản ghi gốc sau thay thế (P43.2), bộ trường người mua bắt buộc theo loại (kế toán, mục 16), trường tỷ giá, đường dẫn trạng thái của yêu cầu create, webhook, và quy định Nghị định 254/2026 (chưa kiểm chứng) | P43.1 đã làm phần đọc; phần còn lại chờ kế toán hoặc P43.2; không chặn mã |
-| Danh sách đầy đủ các bảng, câu truy vấn và đường sự kiện đọc issue và project (số đã đo mới là số tệp) | P41.1 |
 | Relay Redis có chuyển `ScopeWorkspaceMember` trên mọi đường (`BroadcastToScope`, publish, stream) hay không; tên và dạng dữ liệu của hai sự kiện issue dùng khi chuyển project | P41.5 |
 | Cách client tìm kiếm cục bộ xử lý con trỏ hết hiệu lực và việc xóa bản sao khi đăng xuất | P41.6 |
 | Chi phí của vị từ (mảng project che hoặc được cấp truyền vào ~38 tệp query) trên workspace lớn | P41.3, đo trước và sau; chưa có số đo |
-| Cách `ApplyPayment` ghi `confirmed_by` và kiểm toán khi không có staff | P42.5 |
 | Console có cơ chế dịch chuỗi hay không | P42.6 |
 | Giữ `buyer` của hóa đơn đã phát hành khi xóa tài khoản (D16) có phù hợp nghĩa vụ lưu trữ hay không; thuế suất mặc định 0 của đơn không phải `vnd` | tư vấn pháp lý và kế toán (mục 16), không có bước mã |
 | Dãy số issue lộ số lượng issue ẩn trong project hạn chế (rủi ro chấp nhận, không lộ nội dung) | chủ dự án xác nhận; không có bước mã |
