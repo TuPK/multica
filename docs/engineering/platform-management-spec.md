@@ -926,7 +926,159 @@ Tích hợp một nhà cung cấp hóa đơn điện tử: phát hành khi đơn
 
 **Tương tác.** Đơn đã trả đã ở trạng thái cuối nên hóa đơn không đổi quyền lợi, cổng hạn mức hay trạng thái workspace. Workspace `suspended` hay `pending_deletion` vẫn nhận hóa đơn cho đơn đã trả (nghĩa vụ thuế không phụ thuộc trạng thái). Việc nền thuộc platform (D26): `einvoice_enqueue` và `einvoice_issue`, thêm vào bảng 3.5 ở P43.
 
-**Thông tin chờ xác nhận (O-R4-4).** Tên nhà cung cấp, địa chỉ tài liệu, ngày đọc, bộ trường bắt buộc, cách tra cứu theo mã tham chiếu, cách hủy, hỗ trợ ngoại tệ và tỷ giá: chưa xác minh; P43.1 điền ở đây trước khi viết adapter. Kế toán xác nhận bộ trường (mục 16, điểm 4) trước lần phát hành thật đầu tiên.
+**Nhà cung cấp đã chọn (O-R4-4).** SePay eInvoice API.
+
+Lý do: trong các ứng viên đã đọc, SePay là nhà cung cấp duy nhất có tài liệu công khai cho cả năm việc sau: phát hành, tra cứu theo mã tham chiếu, khóa idempotency do client cấp, thay thế/điều chỉnh, và truy vấn trạng thái kèm bảng lỗi riêng. SePay không có thao tác hủy hóa đơn đã phát hành (xem mục "Điểm chưa đủ: hủy").
+
+Các ứng viên khác bị loại:
+
+| Ứng viên | Lý do loại |
+|---|---|
+| Tingee | Không có tra cứu hóa đơn theo mã tham chiếu (chỉ tải PDF theo `invoiceCode`) và không có endpoint trạng thái hóa đơn. Cũng không có thao tác hủy. |
+| MISA meInvoice | Mọi URL tài liệu trên doc.meinvoice.vn trả HTTP 404 khi đọc, nên chưa xác nhận được gì. Chưa loại vì tài liệu kém, mà vì không đọc được. |
+| Viettel S-Invoice | Không tìm thấy tài liệu API công khai chính thức. |
+| VNPT Invoice | Không tìm thấy tài liệu API công khai chính thức. |
+| BKAV | Không tìm thấy tài liệu API công khai chính thức. |
+
+**Ngày đọc và nguồn.** Ngày đọc: 2026-11-17. Chưa gửi request nào tới API của nhà cung cấp và chưa đăng nhập ở đâu. Các URL đã đọc:
+
+- https://developer.sepay.vn/en/einvoice-api/v1/bat-dau-nhanh
+- https://developer.sepay.vn/vi/einvoice-api/v1/xuat-hoa-don-dien-tu
+- https://developer.sepay.vn/en/einvoice-api/v1/xuat-hoa-don-thay-the
+- https://developer.sepay.vn/en/einvoice-api/v1/xuat-hoa-don-dieu-chinh
+- https://developer.sepay.vn/vi/einvoice-api/v1/theo-doi-trang-thai-phat-hanh-hoa-don
+- https://developer.sepay.vn/vi/einvoice-api/v1/chi-tiet-hoa-don
+- https://developer.sepay.vn/en/einvoice-api/v1/xu-ly-loi.md
+- https://developer.sepay.vn/en/einvoice-api/v1/tao-token.md
+- https://developer.sepay.vn/en/einvoice-api/v1/sandbox.md
+- https://developer.sepay.vn/en/einvoice-api/v1/theo-doi-trang-thai-xuat-hoa-don.md
+- https://developer.sepay.vn/en/einvoice-api/v1/chi-tiet-hoa-don.md
+- https://developer.sepay.vn/en/einvoice-api/v1/xoa-hoa-don-nhap.md
+- https://developer.sepay.vn/llms.txt
+
+Trang https://developer.sepay.vn/en/v1/index không đọc được (chuyển hướng sang http, công cụ đọc từ chối). Các trang `.vi` của trạng thái và chi tiết chỉ có JSON mẫu, nên tên trường lấy từ các trang `.md`.
+
+**Điểm chưa đủ: hủy.** SePay không có endpoint hủy hóa đơn đã phát hành. Chỉ mục 21 trang eInvoice trong `llms.txt` đã được rà, không có mục nào như vậy. Quy tắc 6 của mục này đang giả định có thao tác hủy.
+
+Các route có tài liệu:
+
+- Thay thế: `POST /v1/invoices/replace`. Mỗi hóa đơn gốc chỉ được thay thế một lần.
+- Điều chỉnh: `POST /v1/invoices/adjust`.
+- Xóa hóa đơn nháp: `POST /v1/invoices/delete/{reference_code}`. Chỉ áp dụng cho bản nháp chưa phát hành.
+
+Yêu cầu thay thế và điều chỉnh đều không có trường lý do. Trường gần nhất là `notes` (tối đa 255 ký tự).
+
+**QUYẾT ĐỊNH MỞ cho chủ sở hữu (chưa chọn):**
+
+- (a) Quy tắc 6 chỉ dùng thay thế.
+- (b) Thao tác hủy chờ một nhà cung cấp có tài liệu về hủy.
+
+**Xác thực.**
+
+- Base URL production: `https://einvoice-api.sepay.vn`. Sandbox: `https://einvoice-api-sandbox.sepay.vn`. Token chỉ dùng được trên môi trường đã cấp ra nó.
+- Lấy token: `POST /v1/token`, header `Authorization: Basic base64(client_id:client_secret)`, body rỗng.
+- Phản hồi: `{success, data:{access_token, token_type:"Bearer", expires_in:86400}}`. Token sống 86400 giây (24 giờ).
+- Các lệnh sau gửi `Authorization: Bearer <token>`.
+- Tài liệu yêu cầu mọi lệnh gọi chạy ở phía server. `client_id`, `client_secret` và token không đưa xuống trình duyệt, app desktop hay app mobile.
+
+**Phát hành.** `POST /v1/invoices/create`.
+
+Trường bắt buộc: `template_code`, `invoice_series`, `issued_date`, `currency`, `provider_account_id`, `is_draft`, `buyer`, `items`.
+
+Trường tùy chọn: `reference_code`, `seller_store_xid`, `payment_method` (TM, CK, TM/CK, KHAC), `notes`, `total_amount`.
+
+- `currency`: VND, USD hoặc CAD.
+- `issued_date`: định dạng `YYYY-MM-DD HH:mm:ss`. Tài liệu ghi chỉ hỗ trợ ngày hiện tại, tức là phát hành cùng ngày.
+- `invoice_series`: `C{YY}` theo năm hiện tại, ví dụ `C26` cho năm 2026. Tính từ ngày hiện tại, không ghi cứng trong mã.
+- `tax_rate`: chỉ bắt buộc khi dùng cho công ty. Với hóa đơn bán hàng (`template_code = 2`), hệ thống bỏ qua `tax_rate` và `tax_amount`.
+- Thành công là HTTP 200 với `{success, data:{tracking_code, tracking_url, message}}`. Phản hồi này chỉ xác nhận đã nhận yêu cầu. Chưa có nghĩa là hóa đơn đã phát hành.
+
+**Tra cứu theo mã tham chiếu.** `GET /v1/invoices/{reference_code}` trả người mua, dòng hàng, trạng thái và `pdf_url`.
+
+Kết quả bất đồng bộ lấy qua endpoint trạng thái bằng `tracking_code`. Mã này do server cấp và dùng chung cho create, adjust và replace. Tài liệu có mâu thuẫn về đường dẫn:
+
+- Phản hồi create ghi `tracking_url` là `/v1/invoices/create/check/{tracking_code}`.
+- Trang trạng thái ghi `GET /v1/invoices/issue/check/{tracking_code}`.
+- Tài liệu không cho biết đường nào áp dụng cho yêu cầu create. **CHƯA XÁC NHẬN.**
+
+Phản hồi adjust và replace cũng có `tracking_url` riêng (`/v1/invoices/adjust/check/...`, `/v1/invoices/replace/check/...`), trong khi trang trạng thái nói một endpoint bao cả ba. Chưa xác nhận.
+
+Cách thăm dò: tài liệu nói thăm dò mỗi 2-3 giây và dùng `retry.next_retry_at` để giãn cách. Nếu `next_retry_at` là `null`, thăm dò mỗi 1-2 phút. Không thấy webhook eInvoice trong mục lục.
+
+**Khóa idempotency.** `reference_code` do client cấp và phải duy nhất trong tài khoản. Nếu bỏ trống, SePay tự sinh UUID, nên mọi yêu cầu phát hành của ta luôn tự gửi `reference_code`. Gửi lại một `reference_code` đã có hóa đơn trả 409 `EINVOICE_DOCUMENT_EXISTED`. Tài liệu ghi lớp chặn này không thay cho bước kiểm tra trong mục "Lỗi không rõ kết quả".
+
+**Trạng thái.**
+
+| Trường | Giá trị |
+|---|---|
+| Kết quả thăm dò `status` | `Pending`, `Success`, `Failed` |
+| `invoice.status` | `draft`, `issued` |
+
+Khi `Pending`, phản hồi có thể kèm khối `retry` gồm `retries_count`, `max_retries`, `next_retry_at`. Một yêu cầu có thể ở `Pending` tới khoảng 2 giờ. Tài liệu hỏi "có gửi lại yêu cầu đang Pending không" và trả lời: không.
+
+**Bảng mã lỗi.**
+
+| Mã | HTTP | Nghĩa theo tài liệu | Thử lại? |
+|---|---|---|---|
+| `VALIDATION_ERROR` | 400 | Thiếu hoặc sai định dạng trường. | Không tự thử lại. Tài liệu ghi là lỗi cuối: sửa dữ liệu rồi gọi lại. |
+| `INVALID_IS_DRAFT_TYPE` | 400 | `is_draft` không phải boolean thật. | Không ghi rõ |
+| `ISSUED_DATE_INVALID`, `INVALID_ISSUED_DATE` | 400 | Ngày không phải hôm nay hoặc sai định dạng. | Không ghi rõ |
+| `SELLER_STORE_NOT_FOUND`, `SELLER_STORE_INACTIVE` | 400 | Địa điểm bán sai hoặc đã ngừng. | Không ghi rõ |
+| `TOKEN_EXPIRED` | 401 | Token hết hạn. | Có: lấy token mới rồi gọi lại. |
+| `UNAUTHORIZED` | 401 | Sai `client_id` hoặc secret ở lệnh lấy token. | Không ghi rõ |
+| (không mã) | 404 | Không tìm thấy `reference_code` hoặc `tracking_code`. | Không ghi rõ. Với tra cứu trước khi gửi lại, 404 nghĩa là gửi lại an toàn. |
+| (không mã) | 405 | Sai phương thức HTTP. | Không ghi rõ |
+| `EINVOICE_DOCUMENT_EXISTED` | 409 | Hệ thống đã ghi nhận hóa đơn cho mã tham chiếu này. | Không ghi rõ. Không gửi lại: hóa đơn đã có. |
+| `REGISTRATION_NOT_TAX_APPROVED` | 422 | Không xử lý được qua API. | Không: lỗi cuối. |
+| `INVOICE_DATE_BEFORE_TAX_APPROVAL` | 422 | Ngày trước ngày cơ quan thuế chấp thuận. | Không ghi rõ |
+| `INVALID_ORIGIN_INVOICE` | 422 | Hóa đơn gốc không đủ điều kiện thay thế hoặc điều chỉnh. | Không ghi rõ |
+| `QUOTA_HAS_BEEN_USERD_UP` | 500 | Hết hạn mức. Tên mã sai chính tả ngay trong API, giữ nguyên khi so khớp. | Không: tài liệu ghi đừng thử lại tự động vì lỗi này không tự hết. |
+| `REGISTRATION_NOT_COMPLETE` | 500 | Trạng thái tài khoản. | Không: gọi lại không đổi kết quả. |
+| `BILLING_IS_UNPAID` | 500 | Trạng thái tài khoản. | Không: gọi lại không đổi kết quả. |
+| (không có mã nhận diện được) | 500 | Lỗi hệ thống thật sự. | Không ghi rõ |
+
+Lỗi hạ tầng (5xx từ nhà cung cấp, quá thời gian, mất kết nối) do chính SePay thử lại: tối đa 8 lần trong khoảng 33 phút, giới hạn cứng 2 giờ. Ta không thêm vòng thử lại thứ hai ở phía mình. Trạng thái `Failed` do dữ liệu hoặc tài khoản được trả ngay. Không có tài liệu về 429, giới hạn tốc độ hay timeout phía client của lệnh create ngoài quy tắc kiểm tra trước khi gửi lại.
+
+**Lỗi không rõ kết quả.** Khi lệnh create bị lỗi hoặc trạng thái là `Failed` mà ta không biết hóa đơn đã được ghi nhận chưa, gọi `GET /v1/invoices/{reference_code}` trước khi làm gì khác:
+
+- 404: chưa có hóa đơn, gửi lại là an toàn.
+- Thông báo "Hệ thống chưa xác nhận được kết quả phát hành với nhà cung cấp hóa đơn": **KHÔNG gửi lại.** Tài liệu cảnh báo việc này có thể tạo hóa đơn trùng đã được ký và nộp.
+
+Mục này ứng với quy tắc 5 của mục này.
+
+**Trường người mua.** `buyer` là đối tượng bắt buộc. Các trường có trong tài liệu:
+
+| Trường | Ghi chú |
+|---|---|
+| `type` | `personal` hoặc `company` |
+| `name` | |
+| `legal_name` | Dùng khi `buyer.type` là `company` |
+| `tax_code` | |
+| `address` | |
+| `email` | |
+| `phone` | |
+| `buyer_code` | |
+| `national_id` | |
+
+Tài liệu đánh dấu mọi trường con là `required=false`. Bộ trường bắt buộc cho từng loại người mua **CHƯA XÁC NHẬN**; do kế toán xác nhận (mục 16).
+
+**Ngoại tệ và tỷ giá.** `currency` nhận VND, USD hoặc CAD. Không thấy trường tỷ giá trong danh sách trường của yêu cầu create. **CHƯA XÁC NHẬN** cách tài liệu xử lý tỷ giá.
+
+**Chưa xác minh.**
+
+- Hủy hóa đơn đã phát hành: không có endpoint nào được tìm thấy (quyết định mở ở trên).
+- Bộ trường người mua bắt buộc theo từng loại người mua.
+- Trường tỷ giá cho ngoại tệ.
+- Đường dẫn trạng thái cho yêu cầu create: `/v1/invoices/create/check/{tracking_code}` hay `/v1/invoices/issue/check/{tracking_code}`; và `tracking_url` nào áp dụng cho adjust và replace.
+- Sandbox có cần tài khoản đã đăng ký hay không. Lệnh gọi API thật cần `client_id` và `client_secret` từ tài khoản SePay eInvoice.
+- Webhook eInvoice: chỉ biết là không có trong mục lục eInvoice.
+- Giới hạn tốc độ và hành vi 429.
+- Đường dẫn chính xác của lệnh phát hành từ bản nháp và của lệnh liệt kê. Chỉ thấy `GET /v1/invoices` trong nội dung trang.
+- Quy định pháp lý: SePay vẫn dẫn Nghị định 123/2020 trong mô tả `llms.txt`. Các nguồn bên thứ ba (Comarch, RSM) nói Nghị định 254/2026/NĐ-CP và Thông tư 91/2026/TT-BTC thay Nghị định 123 từ 2026-07-01. Chưa kiểm chứng điều này, và chưa kiểm chứng tài liệu nhà cung cấp đã theo quy định mới chưa.
+- MISA meInvoice: mọi tiêu chí chưa xác nhận vì tài liệu không đọc được. Chưa rõ trang lỗi do công cụ đọc hay trang đã gỡ.
+- Tingee: bảng tham số đầy đủ của lệnh create không hiển thị khi đọc, nên trường bắt buộc, quy tắc người mua, tỷ giá chưa xác nhận.
+
+Kế toán xác nhận bộ trường người mua và cách xử lý hủy (mục 16, điểm 4) trước lần phát hành thật đầu tiên; mã và test không chờ.
 
 **Tiêu chí chấp nhận.** AC58, AC59, AC61.
 
@@ -1879,7 +2031,7 @@ Các điểm dưới đây chưa kiểm chứng lúc viết R4 (2026-11-17, HEAD
 | Điểm chưa kiểm chứng | Bước kiểm |
 | --- | --- |
 | Hợp đồng webhook của nhà cung cấp thông báo giao dịch ngân hàng: tên, chữ ký, mã sự kiện, cách thử lại, định dạng tiền và nội dung chuyển khoản. Bảng ở 7.2 còn "chưa xác minh" | P42.1, cần truy cập web |
-| API của nhà cung cấp hóa đơn điện tử: phát hành, tra cứu theo mã tham chiếu, hủy, bộ trường bắt buộc, hỗ trợ ngoại tệ và tỷ giá | P43.1, cần truy cập web; kế toán xác nhận trước lần phát hành thật (O-R4-4) |
+| Hợp đồng nhà cung cấp hóa đơn điện tử (SePay, đọc 2026-11-17): đã có phát hành, tra cứu theo mã tham chiếu, khóa idempotency, trạng thái. Còn mở: hủy (quyết định mở ở 7.3), bộ trường người mua bắt buộc theo loại (kế toán, mục 16), trường tỷ giá, đường dẫn trạng thái của yêu cầu create, webhook | P43.1 đã làm phần đọc; phần còn lại chờ quyết định hoặc kế toán; không chặn mã |
 | Danh sách đầy đủ các bảng, câu truy vấn và đường sự kiện đọc issue và project (số đã đo mới là số tệp) | P41.1 |
 | Relay Redis có chuyển `ScopeWorkspaceMember` trên mọi đường (`BroadcastToScope`, publish, stream) hay không; tên và dạng dữ liệu của hai sự kiện issue dùng khi chuyển project | P41.5 |
 | Cách client tìm kiếm cục bộ xử lý con trỏ hết hiệu lực và việc xóa bản sao khi đăng xuất | P41.6 |
