@@ -329,6 +329,35 @@ func TestFinalizeWritesBillingProfileSubscriptionAndGrant(t *testing.T) {
 	}
 }
 
+// Spec 7b.5: the copy of a third party's billing profile in the request is
+// removed once the request completes; the workspace keeps the real profile.
+func TestFinalizeRemovesTheProfileCopyFromTheRequest(t *testing.T) {
+	e := newFinEnv(t)
+	e.fin.Mailer = nil
+	in := e.businessInput("copy", e.bizPlan())
+	in.Seats, in.Trial = 5, true
+	r := e.provisioned(in)
+	var before bool
+	if err := e.pool.QueryRow(context.Background(),
+		`SELECT billing_profile IS NOT NULL FROM platform_account_request WHERE id = $1`, r.ID).Scan(&before); err != nil || !before {
+		t.Fatalf("the request has no profile copy before finalize: %v %v", before, err)
+	}
+	e.run()
+
+	var state string
+	var copyIsNull bool
+	if err := e.pool.QueryRow(context.Background(),
+		`SELECT state, billing_profile IS NULL FROM platform_account_request WHERE id = $1`, r.ID).Scan(&state, &copyIsNull); err != nil {
+		t.Fatal(err)
+	}
+	if state != StateCompleted || !copyIsNull {
+		t.Errorf("request state %s, billing_profile NULL %v; want completed and NULL", state, copyIsNull)
+	}
+	if n := e.count(`SELECT count(*) FROM billing_profile WHERE workspace_id = $1`, r.WorkspaceID); n != 1 {
+		t.Errorf("%d billing_profile rows for the workspace, want 1", n)
+	}
+}
+
 // A workspace that already has a row (the backfill gives each workspace the
 // free plan) is moved on, and its version goes up by one.
 func TestFinalizeIncrementsTheVersionOfAnExistingSubscription(t *testing.T) {
