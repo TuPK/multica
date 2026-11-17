@@ -391,3 +391,45 @@ func TestPendingWorkspaceRefusesWritesAndServesReads(t *testing.T) {
 		t.Fatalf("write body = %v, want code %s", body, workspaceguard.CodePendingDeletion)
 	}
 }
+
+// The account request is the platform's record of who asked for the account, so
+// it outlives the workspace. It has no foreign key, so teardown clears the
+// workspace_id it points at.
+func TestDeleteWorkspaceClearsAccountRequestWorkspaceID(t *testing.T) {
+	requirePlatformTestDatabase(t)
+	setDeletionDays(t, 0)
+	wsID := ownedWorkspace(t, "Delete with account request")
+	email := "client-" + uuid.NewString()[:8] + "@example.test"
+	reqID := dbfx.Insert(t, "platform_account_request", testutil.Cols{
+		"id": uuid.NewString(), "kind": "individual", "email": email, "display_name": "Client Person",
+		"workspace_name": "Client workspace", "plan_key": "free", "state": "completed",
+		"user_id": testUserID, "workspace_id": wsID, "created_by": testUserID,
+	})
+	var createdAt time.Time
+	if err := testPool.QueryRow(context.Background(),
+		`SELECT created_at FROM platform_account_request WHERE id = $1::uuid`, reqID).Scan(&createdAt); err != nil {
+		t.Fatal(err)
+	}
+
+	testutil.Call(t, testHandler.DeleteWorkspace, deleteRequest(wsID)).Want(http.StatusNoContent)
+
+	if workspaceExists(t, wsID) {
+		t.Fatal("the workspace still exists")
+	}
+	var (
+		state, gotEmail string
+		userID, gotWsID *string
+		gotCreatedAt    time.Time
+	)
+	if err := testPool.QueryRow(context.Background(),
+		`SELECT state, email, user_id::text, workspace_id::text, created_at FROM platform_account_request WHERE id = $1::uuid`, reqID).
+		Scan(&state, &gotEmail, &userID, &gotWsID, &gotCreatedAt); err != nil {
+		t.Fatalf("the account request row is gone: %v", err)
+	}
+	if gotWsID != nil {
+		t.Errorf("workspace_id = %s; want NULL", *gotWsID)
+	}
+	if state != "completed" || gotEmail != email || userID == nil || *userID != testUserID || !gotCreatedAt.Equal(createdAt) {
+		t.Errorf("other columns changed: state=%q email=%q user_id=%v created_at=%v", state, gotEmail, userID, gotCreatedAt)
+	}
+}

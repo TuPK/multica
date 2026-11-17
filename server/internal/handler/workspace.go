@@ -1703,6 +1703,12 @@ func (h *Handler) deleteWorkspaceData(ctx context.Context, tx pgx.Tx, wsID pgtyp
 			run:  func() error { return qtx.DeleteSSODomainsByWorkspace(ctx, wsID) },
 		},
 		{
+			// The request row is the platform's record and is kept; only its
+			// pointer to the deleted workspace is cleared.
+			name: "detach account requests",
+			run:  func() error { return qtx.ClearAccountRequestWorkspaceForWorkspace(ctx, wsID) },
+		},
+		{
 			// issue_status carries no foreign key by project rule, so its rows
 			// are swept explicitly. Placed after the issue deletes so no issue
 			// row outlives the catalog its status key resolves against.

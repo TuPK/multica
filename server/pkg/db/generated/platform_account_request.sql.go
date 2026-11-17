@@ -11,6 +11,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const clearAccountRequestWorkspaceForWorkspace = `-- name: ClearAccountRequestWorkspaceForWorkspace :exec
+UPDATE platform_account_request
+SET workspace_id = NULL
+WHERE workspace_id = $1
+`
+
+// The table has no foreign key and the request row outlives the workspace.
+func (q *Queries) ClearAccountRequestWorkspaceForWorkspace(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, clearAccountRequestWorkspaceForWorkspace, workspaceID)
+	return err
+}
+
 const incrementAccountRequestAttempts = `-- name: IncrementAccountRequestAttempts :one
 UPDATE platform_account_request
 SET attempts = attempts + 1, updated_at = now()
