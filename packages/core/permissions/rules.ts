@@ -72,14 +72,14 @@ export function can(
   opts: { write?: boolean } = {},
 ): Decision {
   if (!isPermissionKey(key)) {
-    return deny("unknown_permission", "This permission is not known to this version.");
+    return deny("unknown", "This permission is not known to this version.");
   }
   if (grant === null) {
-    return deny("permission_missing", "You do not have this permission.");
+    return deny("unknown", "You do not have this permission.");
   }
   if (opts.write && isViewerRole(grant.role)) return viewerDenial();
   if (grant.permissions.includes(key)) return ALLOW;
-  return deny("permission_missing", "You do not have this permission.");
+  return deny("unknown", "You do not have this permission.");
 }
 
 // ---- Agents ----------------------------------------------------------------

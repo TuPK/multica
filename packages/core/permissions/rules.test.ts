@@ -505,18 +505,18 @@ describe("can (permissions/me)", () => {
   it("refuses a key the person does not hold", () => {
     const d = can("billing.manage", grant("member", ["audit.read"]));
     expect(d.allowed).toBe(false);
-    expect(d.reason).toBe("permission_missing");
+    expect(d.reason).toBe("unknown");
   });
 
   it("refuses every key when permissions are not loaded yet", () => {
     expect(can("audit.read", null).allowed).toBe(false);
-    expect(can("audit.read", null).reason).toBe("permission_missing");
+    expect(can("audit.read", null).reason).toBe("unknown");
   });
 
   it("refuses a key this client does not know, even when the server lists it", () => {
     const d = can("future.key", grant("owner", ["future.key"]));
     expect(d.allowed).toBe(false);
-    expect(d.reason).toBe("unknown_permission");
+    expect(d.reason).toBe("unknown");
   });
 
   it("refuses a write to a viewer, even one holding every key in a group", () => {
