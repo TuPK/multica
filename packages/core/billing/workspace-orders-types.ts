@@ -2,6 +2,8 @@
 // served by `GET /api/workspaces/{id}/plans` and `/orders`. Amounts are whole
 // units of the currency; VND has no decimals.
 
+import type { WorkspaceBillingModel } from "../types/billing";
+
 /** Which workspaces may buy a plan. Unknown server values read as "any". */
 export type WorkspacePlanAudience = "individual" | "business" | "any";
 
@@ -16,6 +18,16 @@ export interface WorkspacePlan {
   minSeats: number | null;
   trialDays: number;
   audience: WorkspacePlanAudience;
+  billingModel: WorkspaceBillingModel;
+  /** Usage plans only: the price of `per` units of each meter, keyed by meter. */
+  usageRates: Record<string, WorkspaceUsageRate>;
+  /** The Business discount that applies to this workspace; 0 unless its profile is verified. */
+  effectiveDiscountPct: number;
+}
+
+export interface WorkspaceUsageRate {
+  per: number;
+  price: number;
 }
 
 /** Who the invoice is made out to. Every field may be empty. */
@@ -58,7 +70,8 @@ export interface WorkspaceOrder {
   buyer: WorkspaceOrderBuyer;
   periodStart: string | null;
   periodEnd: string | null;
-  expiresAt: string;
+  /** Null for a usage invoice, which stays payable until it is paid or written off. */
+  expiresAt: string | null;
   paidAt: string | null;
   createdAt: string;
 }
@@ -66,4 +79,22 @@ export interface WorkspaceOrder {
 export interface UpdateWorkspaceOrderBuyerInput {
   orderId: string;
   buyer: WorkspaceOrderBuyer;
+}
+
+/** One day and meter of a usage invoice. Amounts are whole units; `netAmount` is after the discount. */
+export interface WorkspaceOrderUsageLine {
+  day: string;
+  meter: string;
+  quantity: number;
+  unitPrice: number;
+  per: number;
+  discountPct: number;
+  netAmount: number;
+  note: string;
+}
+
+/** `GET /api/workspaces/{id}/orders/{orderId}/usage`. */
+export interface WorkspaceOrderUsage {
+  orderId: string;
+  lines: WorkspaceOrderUsageLine[];
 }

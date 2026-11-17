@@ -23,12 +23,14 @@ import { AuditEventPageSchema, EMPTY_AUDIT_EVENT_PAGE, type AuditEventPage } fro
 import { auditQueryString, type AuditFilters, type AuditPageParams } from "../audit/params";
 import {
   WorkspaceOrderSchema,
+  WorkspaceOrderUsageSchema,
   WorkspaceOrdersResponseSchema,
   WorkspacePlansResponseSchema,
 } from "../billing/workspace-orders-schemas";
 import type {
   WorkspaceOrder,
   WorkspaceOrderBuyer,
+  WorkspaceOrderUsage,
   WorkspacePlan,
 } from "../billing/workspace-orders-types";
 import { parseDigestMode, type DigestSetting, type DigestModeInfo } from "../governance/digest-mode";
@@ -307,6 +309,7 @@ import type {
   BillingCheckoutSessionStatus,
   CreateBillingPortalSessionResponse,
   WorkspaceSubscriptionSummary,
+  WorkspaceSubscriptionUsage,
   IssueLimitUsage,
   WorkspaceSubscriptionPrices,
   CreateWorkspaceSubscriptionCheckoutRequest,
@@ -871,6 +874,7 @@ import {
   BillingCheckoutSessionStatusSchema,
   CreateBillingPortalSessionResponseSchema,
   WorkspaceSubscriptionSummarySchema,
+  WorkspaceSubscriptionUsageSchema,
   IssueLimitUsageSchema,
   PlanLimitReachedBodySchema,
   WorkspaceSubscriptionPricesSchema,
@@ -3051,6 +3055,17 @@ export class ApiClient {
     );
   }
 
+  /** The current period of a pay as you go plan; null when the body does not match. */
+  async getWorkspaceSubscriptionUsage(): Promise<WorkspaceSubscriptionUsage | null> {
+    const raw = await this.fetch<unknown>("/api/cloud-subscriptions/usage");
+    return parseWithFallback<WorkspaceSubscriptionUsage | null>(
+      raw,
+      WorkspaceSubscriptionUsageSchema,
+      null,
+      { endpoint: "GET /api/cloud-subscriptions/usage" },
+    );
+  }
+
   async createWorkspaceSubscriptionCheckout(
     data: CreateWorkspaceSubscriptionCheckoutRequest,
   ): Promise<CreateWorkspaceSubscriptionCheckoutResponse | null> {
@@ -3115,6 +3130,22 @@ export class ApiClient {
       WorkspaceOrderSchema,
       null,
       { endpoint: "GET /api/workspaces/{id}/orders/{orderId}" },
+    );
+  }
+
+  /** The day and meter lines of a usage invoice; null when the body does not match. */
+  async getWorkspaceOrderUsage(
+    wsId: string,
+    orderId: string,
+  ): Promise<WorkspaceOrderUsage | null> {
+    const raw = await this.fetch<unknown>(
+      `/api/workspaces/${wsId}/orders/${orderId}/usage`,
+    );
+    return parseWithFallback<WorkspaceOrderUsage | null>(
+      raw,
+      WorkspaceOrderUsageSchema,
+      null,
+      { endpoint: "GET /api/workspaces/{id}/orders/{orderId}/usage" },
     );
   }
 

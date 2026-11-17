@@ -85,6 +85,9 @@ describe("workspace plans", () => {
         minSeats: 1,
         trialDays: 14,
         audience: "business",
+        billingModel: "seat",
+        usageRates: {},
+        effectiveDiscountPct: 0,
       },
     ]);
     expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe(
@@ -107,6 +110,9 @@ describe("workspace plans", () => {
         minSeats: null,
         trialDays: 0,
         audience: "any",
+        billingModel: "seat",
+        usageRates: {},
+        effectiveDiscountPct: 0,
       },
     ]);
   });
@@ -205,7 +211,7 @@ describe("workspace orders", () => {
       { orders: [{ ...order, vat_amount: -1 }] },
       { orders: [{ ...order, id: undefined }] },
       { orders: [{ ...order, transfer_code: 7 }] },
-      { orders: [{ ...order, expires_at: null }] },
+      { orders: [{ ...order, expires_at: 20261231 }] },
       { orders: [{ ...order, buyer: "ACME" }] },
       [order],
     ]) {

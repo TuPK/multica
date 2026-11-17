@@ -3,8 +3,11 @@ import type {
   WorkspaceOrder,
   WorkspaceOrderBank,
   WorkspaceOrderBuyer,
+  WorkspaceOrderUsage,
+  WorkspaceOrderUsageLine,
   WorkspacePlan,
   WorkspacePlanAudience,
+  WorkspaceUsageRate,
 } from "./workspace-orders-types";
 
 // Like the subscription schemas, these have no synthetic fallback: a body that
@@ -36,6 +39,14 @@ export const WorkspacePlanSchema = z
     min_seats: nonNegativeInt.nullable().default(null),
     trial_days: nonNegativeInt.default(0),
     audience: z.string().nullable().default(null),
+    billing_model: z.string().default("seat"),
+    usage_rates: z
+      .record(
+        z.string(),
+        z.object({ per: nonNegativeInt, price: nonNegativeInt }).loose(),
+      )
+      .default({}),
+    effective_discount_pct: z.number().int().min(0).max(100).default(0),
   })
   .loose()
   .transform(
@@ -49,6 +60,15 @@ export const WorkspacePlanSchema = z
       minSeats: value.min_seats,
       trialDays: value.trial_days,
       audience: parsePlanAudience(value.audience),
+      // An unknown model reads as seat, which has no usage rates to show.
+      billingModel: value.billing_model === "usage" ? "usage" : "seat",
+      usageRates: Object.fromEntries(
+        Object.entries(value.usage_rates).map(([meter, rate]): [string, WorkspaceUsageRate] => [
+          meter,
+          { per: rate.per, price: rate.price },
+        ]),
+      ),
+      effectiveDiscountPct: value.effective_discount_pct,
     }),
   );
 
@@ -113,7 +133,8 @@ export const WorkspaceOrderSchema = z
     buyer: BuyerSchema.prefault(EMPTY_BUYER),
     period_start: z.string().nullable().optional(),
     period_end: z.string().nullable().optional(),
-    expires_at: z.string().min(1),
+    // Null for a usage invoice: it does not expire (spec 7b.3 rule 11).
+    expires_at: z.string().nullable().optional(),
     paid_at: z.string().nullable().optional(),
     created_at: z.string().default(""),
   })
@@ -137,7 +158,7 @@ export const WorkspaceOrderSchema = z
       buyer: value.buyer,
       periodStart: value.period_start ?? null,
       periodEnd: value.period_end ?? null,
-      expiresAt: value.expires_at,
+      expiresAt: value.expires_at ?? null,
       paidAt: value.paid_at ?? null,
       createdAt: value.created_at,
     }),
@@ -147,3 +168,41 @@ export const WorkspaceOrdersResponseSchema = z
   .object({ orders: z.array(WorkspaceOrderSchema) })
   .loose()
   .transform((value): WorkspaceOrder[] => value.orders);
+
+const OrderUsageLineSchema = z
+  .object({
+    day: z.string().min(1),
+    meter: z.string().min(1),
+    quantity: nonNegativeInt,
+    unit_price: nonNegativeInt,
+    per: z.number().int().positive(),
+    discount_pct: z.number().int().min(0).max(100),
+    net_amount: nonNegativeInt,
+    note: z.string().default(""),
+  })
+  .loose()
+  .transform(
+    (value): WorkspaceOrderUsageLine => ({
+      day: value.day,
+      meter: value.meter,
+      quantity: value.quantity,
+      unitPrice: value.unit_price,
+      per: value.per,
+      discountPct: value.discount_pct,
+      netAmount: value.net_amount,
+      note: value.note,
+    }),
+  );
+
+export const WorkspaceOrderUsageSchema = z
+  .object({
+    order_id: z.string().min(1),
+    lines: z.array(OrderUsageLineSchema),
+  })
+  .loose()
+  .transform(
+    (value): WorkspaceOrderUsage => ({
+      orderId: value.order_id,
+      lines: value.lines,
+    }),
+  );

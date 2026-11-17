@@ -93,6 +93,9 @@ import type {
   CreateBillingPortalSessionResponse,
   WorkspaceSubscriptionEntitlements,
   WorkspaceSubscriptionSummary,
+  WorkspaceSubscriptionUsage,
+  WorkspaceUsageMeter,
+  WorkspaceUsagePeriod,
   IssueLimitUsage,
   WorkspaceSubscriptionPrice,
   WorkspaceSubscriptionPrices,
@@ -3795,6 +3798,68 @@ export const WorkspaceSubscriptionEntitlementsSchema = z
     }),
   );
 
+// Usage of a pay as you go plan (spec 7b.3). The summary and the usage read
+// share the period shape. Rates are optional here: the summary sends only
+// amounts, while the usage read also carries each meter's price.
+const WorkspaceUsageMeterSchema = z
+  .object({
+    key: z.string().min(1),
+    quantity: z.number().int().nonnegative(),
+    unit_price: z.number().int().nonnegative().default(0),
+    per: z.number().int().positive().default(1),
+    discount_pct: z.number().int().min(0).max(100).default(0),
+    amount: z.number().int().nonnegative(),
+  })
+  .loose()
+  .transform(
+    (value): WorkspaceUsageMeter => ({
+      key: value.key,
+      quantity: value.quantity,
+      unitPrice: value.unit_price,
+      per: value.per,
+      discountPct: value.discount_pct,
+      amount: value.amount,
+    }),
+  );
+
+const WorkspaceUsagePeriodSchema = z
+  .object({
+    period_start: z.string().min(1),
+    period_end: z.string().min(1),
+    currency: z.string().min(1),
+    accrued_amount: z.number().int().nonnegative(),
+    credit_limit: z.number().int().nonnegative(),
+    unpaid_order_id: z.string().nullable().optional(),
+    meters: z.array(WorkspaceUsageMeterSchema).default([]),
+  })
+  .loose()
+  .transform(
+    (value): WorkspaceUsagePeriod => ({
+      periodStart: value.period_start,
+      periodEnd: value.period_end,
+      currency: value.currency,
+      accruedAmount: value.accrued_amount,
+      creditLimit: value.credit_limit,
+      unpaidOrderId: value.unpaid_order_id ?? null,
+      meters: value.meters,
+    }),
+  );
+
+// `GET /api/cloud-subscriptions/usage`: a seat plan answers with no period.
+export const WorkspaceSubscriptionUsageSchema = z
+  .object({
+    billing_model: z.string().default("seat"),
+    usage: WorkspaceUsagePeriodSchema.nullable().default(null),
+  })
+  .loose()
+  .transform(
+    (value): WorkspaceSubscriptionUsage => ({
+      // An unknown model reads as seat, which shows no usage card.
+      billingModel: value.billing_model === "usage" ? "usage" : "seat",
+      usage: value.usage,
+    }),
+  );
+
 export const WorkspaceSubscriptionSummarySchema = z
   .object({
     entitlement: WorkspaceSubscriptionEntitlementsSchema,
@@ -3843,6 +3908,8 @@ export const WorkspaceSubscriptionSummarySchema = z
       .nullable()
       .optional(),
     payment_provider: z.string().optional(),
+    billing_model: z.string().optional(),
+    usage: WorkspaceUsagePeriodSchema.nullable().optional(),
   })
   .loose()
   .transform(
@@ -3895,6 +3962,8 @@ export const WorkspaceSubscriptionSummarySchema = z
       ...(value.payment_provider !== undefined
         ? { paymentProvider: value.payment_provider }
         : {}),
+      billingModel: value.billing_model === "usage" ? "usage" : "seat",
+      usage: value.usage ?? null,
     }),
   );
 

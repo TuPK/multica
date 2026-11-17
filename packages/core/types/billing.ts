@@ -222,6 +222,40 @@ export interface WorkspaceSubscriptionEntitlements {
  * subscription, served from cloud's own database — never a synchronous Stripe
  * call, so it stays readable while Stripe is degraded.
  */
+/** `seat` plans are paid per seat in advance; `usage` plans are billed after use. */
+export type WorkspaceBillingModel = "seat" | "usage";
+
+/** One metered quantity of a usage plan for the current period. */
+export interface WorkspaceUsageMeter {
+  /** `tasks_run`, `storage_bytes` or `members`; open, so a new meter reads as unknown. */
+  key: string;
+  quantity: number;
+  /** VND for `per` units. */
+  unitPrice: number;
+  per: number;
+  /** Business discount in percent, 0 to 100. */
+  discountPct: number;
+  amount: number;
+}
+
+/** The current billing period of a usage plan, accrued up to the last rated day. */
+export interface WorkspaceUsagePeriod {
+  periodStart: string;
+  periodEnd: string;
+  currency: string;
+  accruedAmount: number;
+  creditLimit: number;
+  /** The unpaid usage invoice, if any. Its presence is what blocks paid purchases. */
+  unpaidOrderId: string | null;
+  meters: WorkspaceUsageMeter[];
+}
+
+/** `GET /api/cloud-subscriptions/usage`. */
+export interface WorkspaceSubscriptionUsage {
+  billingModel: WorkspaceBillingModel;
+  usage: WorkspaceUsagePeriod | null;
+}
+
 export interface WorkspaceSubscriptionSummary {
   entitlement: WorkspaceSubscriptionEntitlements;
   billingInterval: WorkspaceSubscriptionInterval | null;
@@ -246,6 +280,10 @@ export interface WorkspaceSubscriptionSummary {
   };
   /** A plan change scheduled for the next period; null when none. */
   pendingChange?: WorkspacePendingPlanChange | null;
+  /** `usage` for a pay as you go plan; absent or `seat` otherwise. */
+  billingModel?: WorkspaceBillingModel;
+  /** The current period of a usage plan; null for a seat plan. */
+  usage?: WorkspaceUsagePeriod | null;
   /**
    * How the workspace pays. Multica Cloud does not send it; the platform sends
    * `manual` (bank transfer, confirmed by staff). Absent means Stripe. An open
