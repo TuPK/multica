@@ -952,3 +952,53 @@ func TestWebhookPortIsReadAndChecked(t *testing.T) {
 		}
 	}
 }
+
+func TestWebhookListenerOffWhenPortUnsetOrProvidersEmpty(t *testing.T) {
+	env := resendEnv()
+	delete(env, "PLATFORM_WEBHOOK_PORT")
+	cfg, err := load(env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Payments.WebhookPort != "" {
+		t.Errorf("port unset: WebhookPort = %q, want empty", cfg.Payments.WebhookPort)
+	}
+	env["PAYMENT_PROVIDERS"] = ""
+	cfg, err = load(env)
+	if err != nil {
+		t.Fatalf("empty PAYMENT_PROVIDERS: %v", err)
+	}
+	if cfg.Payments.WebhookPort != "" {
+		t.Errorf("empty providers: WebhookPort = %q, want empty", cfg.Payments.WebhookPort)
+	}
+}
+
+func TestWebhookMaxBytesIsReadAndChecked(t *testing.T) {
+	env := resendEnv()
+	delete(env, "PAYMENT_WEBHOOK_MAX_BYTES")
+	cfg, err := load(env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Payments.WebhookMaxBytes != 65536 {
+		t.Errorf("unset: WebhookMaxBytes = %d, want 65536", cfg.Payments.WebhookMaxBytes)
+	}
+	env["PAYMENT_WEBHOOK_MAX_BYTES"] = "16384"
+	cfg, err = load(env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Payments.WebhookMaxBytes != 16384 {
+		t.Errorf("WebhookMaxBytes = %d, want 16384", cfg.Payments.WebhookMaxBytes)
+	}
+	env["PAYMENT_WEBHOOK_MAX_BYTES"] = "10485760"
+	if _, err := load(env); err != nil {
+		t.Errorf("10 MiB exactly: %v", err)
+	}
+	for _, bad := range []string{"0", "-1", "abc", "   ", "10485761"} {
+		env["PAYMENT_WEBHOOK_MAX_BYTES"] = bad
+		if vars := variables(func() error { _, err := load(env); return err }()); len(vars) != 1 || vars[0] != "PAYMENT_WEBHOOK_MAX_BYTES" {
+			t.Errorf("value %q: variables = %v, want [PAYMENT_WEBHOOK_MAX_BYTES]", bad, vars)
+		}
+	}
+}

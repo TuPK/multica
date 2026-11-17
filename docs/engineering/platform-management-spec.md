@@ -313,6 +313,7 @@ Các biến hiện có của Multica (`DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`,
 | `PAYMENT_PROVIDERS` | ánh xạ tiền tệ sang nhà cung cấp, dạng `vnd=manual`; trống là `vnd=manual`; phải có nhà cung cấp cho `vnd` | R4 |
 | `PAYMENT_WEBHOOK_SECRET_<TÊN>` | bí mật kiểm chữ ký webhook của nhà cung cấp `<TÊN>` (ví dụ `PAYMENT_WEBHOOK_SECRET_SEPAY`); nhà cung cấp tự động thiếu bí mật thì platform không khởi động | R4 |
 | `PLATFORM_WEBHOOK_PORT` | cổng listener webhook; trống là tắt; không trùng cổng API hay console | R4 |
+| `PAYMENT_WEBHOOK_MAX_BYTES` | giới hạn kích thước thân thông báo webhook, tính bằng byte; mặc định 65536; từ 1 đến 10485760 | R4 |
 | `PLATFORM_APP_URL` | origin của web app Multica, để dựng địa chỉ trang đơn hàng trả cho `checkout-sessions` | R2 |
 | `BILLING_VAT_RATE` | thuế suất của đơn hàng | R2 |
 | `PLATFORM_SECRET_KEY` | như bảng trên; platform dùng để giải mã bí mật MFA khi xác minh TOTP của staff | R3 |

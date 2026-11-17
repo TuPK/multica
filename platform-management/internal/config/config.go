@@ -120,6 +120,9 @@ type Payments struct {
 	Registry *billing.Registry
 	// WebhookPort is PLATFORM_WEBHOOK_PORT; empty means the webhook listener is off.
 	WebhookPort string
+	// WebhookMaxBytes is PAYMENT_WEBHOOK_MAX_BYTES: the body limit of a webhook
+	// notice in bytes; 65536 when it is not set.
+	WebhookMaxBytes int64
 }
 
 type Config struct {
@@ -378,14 +381,20 @@ func loadBilling(get func(string) string, fail func(variable, reason string)) Bi
 	return b
 }
 
-// loadPayments reads the payment providers and the webhook port. A provider
-// that needs a webhook secret refuses the start when the secret is missing, and
-// the platform must have a provider for vnd, the only currency this release bills.
+const (
+	defaultWebhookMaxBytes = 65536
+	maxWebhookMaxBytes     = 10 << 20
+)
+
+// loadPayments reads the payment providers, the webhook port and the webhook
+// body limit. A provider that needs a webhook secret refuses the start when the
+// secret is missing, and the platform must have a provider for vnd, the only
+// currency this release bills.
 func loadPayments(get func(string) string, getenv func(string) string, fail func(variable, reason string), bank billing.BankDetails, apiPort, consolePort string) Payments {
 	secret := func(provider string) string {
 		return strings.TrimSpace(getenv("PAYMENT_WEBHOOK_SECRET_" + strings.ToUpper(provider)))
 	}
-	p := Payments{}
+	p := Payments{WebhookMaxBytes: defaultWebhookMaxBytes}
 	registry, err := billing.NewRegistry(getenv("PAYMENT_PROVIDERS"), bank, secret)
 	if err != nil {
 		fail("PAYMENT_PROVIDERS", err.Error())
@@ -402,6 +411,14 @@ func loadPayments(get func(string) string, getenv func(string) string, fail func
 			fail("PLATFORM_WEBHOOK_PORT", "must differ from PLATFORM_API_PORT and PLATFORM_CONSOLE_PORT")
 		default:
 			p.WebhookPort = raw
+		}
+	}
+	if raw := getenv("PAYMENT_WEBHOOK_MAX_BYTES"); raw != "" {
+		n, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
+		if err != nil || n < 1 || n > maxWebhookMaxBytes {
+			fail("PAYMENT_WEBHOOK_MAX_BYTES", "must be a whole number of bytes from 1 to 10485760")
+		} else {
+			p.WebhookMaxBytes = n
 		}
 	}
 	return p
