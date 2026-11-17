@@ -85,6 +85,7 @@ import {
   EMPTY_ISSUE_STATUS_ENTRY,
 } from "./schemas";
 import { IssueUnreadPageSchema, EMPTY_ISSUE_UNREAD_PAGE } from "./schemas";
+import { ScheduledPriceChangeSchema } from "./schemas";
 import { parseWithFallback } from "./schema";
 
 describe("IssueUnreadPageSchema", () => {
@@ -2735,5 +2736,60 @@ describe("Flow Engine Schema 2 and C13 malformed response cases", () => {
     expect(parsed.limits.steps).toBe(40);
     expect(parsed.step_kinds).toContain("tasks");
     expect(parsed.features.authoring).toBe(false);
+  });
+});
+
+describe("ScheduledPriceChangeSchema", () => {
+  it("parses a scheduled price change into camelCase", () => {
+    const parsed = parseWithFallback(
+      {
+        effective_from: "2027-01-01T00:00:00Z",
+        seat_price_month: 249000,
+        seat_price_year: 2490000,
+        extra_future_field: "ignored",
+      },
+      ScheduledPriceChangeSchema,
+      null,
+      { endpoint: "GET /api/workspaces/{id}/plans" },
+    );
+    expect(parsed).toEqual({
+      effectiveFrom: "2027-01-01T00:00:00Z",
+      seatPriceMonth: 249000,
+      seatPriceYear: 2490000,
+    });
+  });
+
+  it("defaults missing seat prices to null and missing/null object to null", () => {
+    expect(
+      ScheduledPriceChangeSchema.parse({ effective_from: "2027-01-01T00:00:00Z" }),
+    ).toEqual({
+      effectiveFrom: "2027-01-01T00:00:00Z",
+      seatPriceMonth: null,
+      seatPriceYear: null,
+    });
+    expect(ScheduledPriceChangeSchema.parse(undefined)).toBeNull();
+    expect(ScheduledPriceChangeSchema.parse(null)).toBeNull();
+  });
+
+  it("returns fallback null without throwing on malformed payloads", () => {
+    for (const bad of [
+      {},
+      { effective_from: "" },
+      { effective_from: 123 },
+      { effective_from: null },
+      { effective_from: "2027-01-01T00:00:00Z", seat_price_month: "249000" },
+      { effective_from: "2027-01-01T00:00:00Z", seat_price_month: -1 },
+      { effective_from: "2027-01-01T00:00:00Z", seat_price_year: 12.5 },
+      "bad",
+      123,
+      [],
+    ]) {
+      expect(ScheduledPriceChangeSchema.safeParse(bad).success).toBe(false);
+      expect(
+        parseWithFallback(bad, ScheduledPriceChangeSchema, null, {
+          endpoint: "GET /api/workspaces/{id}/plans",
+        }),
+      ).toBeNull();
+    }
   });
 });

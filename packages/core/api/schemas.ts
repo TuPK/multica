@@ -183,6 +183,8 @@ import type {
   WorkspaceSubscriptionCancelState,
   WorkspaceBillingProfile,
 } from "../types/billing";
+import type { ScheduledPriceChange } from "../billing/workspace-orders-types";
+export type { ScheduledPriceChange };
 
 export const PluginConfigFieldSchema = z.object({
   key: z.string(),
@@ -4255,6 +4257,23 @@ export const CreateWorkspaceSubscriptionPortalResponseSchema = z
       url: value.url,
     }),
   );
+
+export const ScheduledPriceChangeSchema = z
+  .object({
+    effective_from: z.string().min(1),
+    seat_price_month: z.number().int().nonnegative().nullable().default(null),
+    seat_price_year: z.number().int().nonnegative().nullable().default(null),
+  })
+  .loose()
+  .transform(
+    (value): ScheduledPriceChange => ({
+      effectiveFrom: value.effective_from,
+      seatPriceMonth: value.seat_price_month,
+      seatPriceYear: value.seat_price_year,
+    }),
+  )
+  .nullable()
+  .default(null);
 
 // Runtime model discovery (`POST /api/runtimes/:id/models`,
 // `GET /api/runtimes/:id/models/:requestId`). Both endpoints return the same

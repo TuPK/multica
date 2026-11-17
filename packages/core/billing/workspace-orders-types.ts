@@ -7,6 +7,13 @@ import type { WorkspaceBillingModel } from "../types/billing";
 /** Which workspaces may buy a plan. Unknown server values read as "any". */
 export type WorkspacePlanAudience = "individual" | "business" | "any";
 
+/** Scheduled price change disclosed to subscribers once notice is sent (spec 7b.4 rule 11). */
+export interface ScheduledPriceChange {
+  effectiveFrom: string;
+  seatPriceMonth: number | null;
+  seatPriceYear: number | null;
+}
+
 /** A public plan and its per-seat prices. A null price means the plan is not sold per seat. */
 export interface WorkspacePlan {
   key: string;
@@ -23,6 +30,8 @@ export interface WorkspacePlan {
   usageRates: Record<string, WorkspaceUsageRate>;
   /** The Business discount that applies to this workspace; 0 unless its profile is verified. */
   effectiveDiscountPct: number;
+  /** Upcoming price change once notice has been sent to this workspace; null otherwise. */
+  scheduledPriceChange: ScheduledPriceChange | null;
 }
 
 export interface WorkspaceUsageRate {

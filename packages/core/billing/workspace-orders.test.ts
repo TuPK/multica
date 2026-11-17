@@ -88,6 +88,7 @@ describe("workspace plans", () => {
         billingModel: "seat",
         usageRates: {},
         effectiveDiscountPct: 0,
+        scheduledPriceChange: null,
       },
     ]);
     expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe(
@@ -113,8 +114,53 @@ describe("workspace plans", () => {
         billingModel: "seat",
         usageRates: {},
         effectiveDiscountPct: 0,
+        scheduledPriceChange: null,
       },
     ]);
+  });
+
+  it("parses scheduled_price_change when present and defaults null when absent or null", async () => {
+    stubFetchJson({
+      plans: [
+        {
+          ...plan,
+          scheduled_price_change: {
+            effective_from: "2027-01-01T00:00:00Z",
+            seat_price_month: 199000,
+            seat_price_year: 1990000,
+          },
+        },
+        {
+          ...plan,
+          key: "business",
+          name: "Business",
+          scheduled_price_change: null,
+        },
+      ],
+    });
+    const parsed = await client().listWorkspacePlans("ws-1");
+    expect(parsed?.[0]?.scheduledPriceChange).toEqual({
+      effectiveFrom: "2027-01-01T00:00:00Z",
+      seatPriceMonth: 199000,
+      seatPriceYear: 1990000,
+    });
+    expect(parsed?.[1]?.scheduledPriceChange).toBeNull();
+  });
+
+  it("falls back to null when scheduled_price_change is malformed", async () => {
+    for (const bad of [
+      {},
+      { effective_from: 123 },
+      { effective_from: "" },
+      { effective_from: "2027-01-01T00:00:00Z", seat_price_month: -5 },
+      { effective_from: "2027-01-01T00:00:00Z", seat_price_year: "1990000" },
+      "bad",
+    ]) {
+      stubFetchJson({
+        plans: [{ ...plan, scheduled_price_change: bad }],
+      });
+      await expect(client().listWorkspacePlans("ws-1")).resolves.toBeNull();
+    }
   });
 
   it("falls back to any for a missing or unknown audience", async () => {

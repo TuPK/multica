@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ScheduledPriceChangeSchema } from "../api/schemas";
 import type {
   WorkspaceOrder,
   WorkspaceOrderBank,
@@ -47,6 +48,7 @@ export const WorkspacePlanSchema = z
       )
       .default({}),
     effective_discount_pct: z.number().int().min(0).max(100).default(0),
+    scheduled_price_change: ScheduledPriceChangeSchema,
   })
   .loose()
   .transform(
@@ -69,6 +71,7 @@ export const WorkspacePlanSchema = z
         ]),
       ),
       effectiveDiscountPct: value.effective_discount_pct,
+      scheduledPriceChange: value.scheduled_price_change,
     }),
   );
 
