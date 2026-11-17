@@ -789,24 +789,33 @@ func (h *Handler) loadInitiativeFor(w http.ResponseWriter, r *http.Request, wsUU
 	}
 	// A transition moves the backing issue, so an initiative whose issue the
 	// caller cannot see answers like a missing one.
-	issue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: ini.IssueID, WorkspaceID: wsUUID})
-	if err != nil {
-		if isNotFound(err) {
-			writeError(w, http.StatusNotFound, "initiative not found")
-		} else {
-			writeError(w, http.StatusInternalServerError, "failed to load initiative")
-		}
-		return db.Initiative{}, false
-	}
-	scope, ok := h.viewerScope(w, r, wsUUID)
+	sees, ok := h.viewerSeesInitiative(w, r, wsUUID, ini)
 	if !ok {
 		return db.Initiative{}, false
 	}
-	if !scope.Allows(issue.ProjectID) {
+	if !sees {
 		writeError(w, http.StatusNotFound, "initiative not found")
 		return db.Initiative{}, false
 	}
 	return ini, true
+}
+
+// viewerSeesInitiative reports whether the caller sees the issue that backs the
+// initiative. ok is false when the failure answer is already written.
+func (h *Handler) viewerSeesInitiative(w http.ResponseWriter, r *http.Request, wsUUID pgtype.UUID, ini db.Initiative) (sees, ok bool) {
+	issue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: ini.IssueID, WorkspaceID: wsUUID})
+	if err != nil {
+		if isNotFound(err) {
+			return false, true
+		}
+		writeError(w, http.StatusInternalServerError, "failed to load initiative")
+		return false, false
+	}
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return false, false
+	}
+	return scope.Allows(issue.ProjectID), true
 }
 
 // decodeInitiativeBody reads a JSON body. An empty body is an empty request.

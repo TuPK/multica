@@ -1289,6 +1289,25 @@ func (h *Handler) issueInViewerScope(w http.ResponseWriter, r *http.Request, iss
 	return issue, true
 }
 
+// viewerSeesIssue reports whether the caller sees the issue. A missing issue is
+// not seen. ok is false when the failure answer is already written.
+func (h *Handler) viewerSeesIssue(w http.ResponseWriter, r *http.Request, workspaceID, issueID pgtype.UUID) (sees, ok bool) {
+	issue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: issueID, WorkspaceID: workspaceID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, true
+	}
+	if err != nil {
+		slog.Error("load issue for visibility", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to load issue")
+		return false, false
+	}
+	scope, ok := h.viewerScope(w, r, workspaceID)
+	if !ok {
+		return false, false
+	}
+	return scope.Allows(issue.ProjectID), true
+}
+
 // resolveIssueByIdentifier tries to look up an issue by "PREFIX-NUMBER" format.
 //
 // The prefix must match the workspace's own issue prefix, the same rule

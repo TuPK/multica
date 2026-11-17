@@ -405,6 +405,19 @@ func (h *Handler) resolveSourceContextAuthors(ctx context.Context, workspaceID p
 	return states
 }
 
+// sourceAnchorHidden reports whether the comment's issue is one the caller
+// cannot see. Such a comment answers like a deleted one, as a missing comment
+// does. ok is false when the failure answer is already written.
+func (h *Handler) sourceAnchorHidden(w http.ResponseWriter, r *http.Request, workspaceID, commentID pgtype.UUID) (hidden, ok bool) {
+	anchor, err := h.Queries.GetCommentInWorkspace(r.Context(), db.GetCommentInWorkspaceParams{ID: commentID, WorkspaceID: workspaceID})
+	if err != nil {
+		// A missing or unreadable comment is answered by BuildSourceContext.
+		return false, true
+	}
+	sees, ok := h.viewerSeesIssue(w, r, workspaceID, anchor.IssueID)
+	return !sees, ok
+}
+
 func (h *Handler) PreviewCommentSubIssue(w http.ResponseWriter, r *http.Request) {
 	workspaceID := h.resolveWorkspaceID(r)
 	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id")
@@ -416,6 +429,14 @@ func (h *Handler) PreviewCommentSubIssue(w http.ResponseWriter, r *http.Request)
 	}
 	anchorCommentID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "commentId"), "comment_id")
 	if !ok {
+		return
+	}
+	hidden, ok := h.sourceAnchorHidden(w, r, wsUUID, anchorCommentID)
+	if !ok {
+		return
+	}
+	if hidden {
+		h.writeSourceContextError(w, service.ErrAnchorCommentDeleted, service.SourceContextLimitUsage{})
 		return
 	}
 	build, err := service.BuildSourceContext(r.Context(), h.Queries, wsUUID, anchorCommentID)
@@ -467,7 +488,17 @@ func (h *Handler) CreateCommentSubIssue(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusConflict, map[string]any{"code": "source_context_changed", "error": "source context preview is invalid; refresh and try again"})
 		return
 	}
-	build, err := service.BuildSourceContext(r.Context(), h.Queries, wsUUID, anchorCommentID)
+	hidden, ok := h.sourceAnchorHidden(w, r, wsUUID, anchorCommentID)
+	if !ok {
+		return
+	}
+	var build service.SourceContextBuild
+	var err error
+	if hidden {
+		err = service.ErrAnchorCommentDeleted
+	} else {
+		build, err = service.BuildSourceContext(r.Context(), h.Queries, wsUUID, anchorCommentID)
+	}
 	if errors.Is(err, service.ErrAnchorCommentDeleted) {
 		if _, issueErr := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: tokenIssueID, WorkspaceID: wsUUID}); errors.Is(issueErr, pgx.ErrNoRows) {
 			err = service.ErrSourceIssueDeleted

@@ -14,6 +14,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/knowledge"
 	"github.com/multica-ai/multica/server/internal/logger"
 	"github.com/multica-ai/multica/server/internal/service"
+	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
 // The knowledge read and write endpoints. Members and agents read, search and
@@ -185,6 +186,20 @@ func (h *Handler) CreateKnowledgeDocument(w http.ResponseWriter, r *http.Request
 	if req.InitiativeID != nil && *req.InitiativeID != "" {
 		if in.InitiativeID, ok = parseUUIDOrBadRequest(w, *req.InitiativeID, "initiative_id"); !ok {
 			return
+		}
+		// Publishing can advance the initiative and write its backing issue, so
+		// one whose issue the caller cannot see answers like a missing one.
+		if ini, err := h.Queries.GetInitiativeInWorkspace(r.Context(), db.GetInitiativeInWorkspaceParams{
+			ID: in.InitiativeID, WorkspaceID: parseUUID(workspaceID),
+		}); err == nil {
+			sees, ok := h.viewerSeesInitiative(w, r, parseUUID(workspaceID), ini)
+			if !ok {
+				return
+			}
+			if !sees {
+				writeKnowledgeError(w, r, workspaceID, &service.KnowledgeInvalidError{Message: "initiative_id is not an initiative of this workspace"})
+				return
+			}
 		}
 	}
 	if req.SupersedesID != nil && *req.SupersedesID != "" {

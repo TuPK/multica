@@ -485,6 +485,15 @@ func (h *Handler) UploadFile(w http.ResponseWriter, r *http.Request) {
 				writeError(w, http.StatusForbidden, "invalid issue_id")
 				return
 			}
+			// A hidden issue answers like a missing one.
+			scope, ok := h.viewerScope(w, r, issue.WorkspaceID)
+			if !ok {
+				return
+			}
+			if !scope.Allows(issue.ProjectID) {
+				writeError(w, http.StatusForbidden, "invalid issue_id")
+				return
+			}
 			params.IssueID = issue.ID
 		}
 		if commentID := r.FormValue("comment_id"); commentID != "" {

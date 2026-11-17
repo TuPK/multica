@@ -110,6 +110,15 @@ func (h *Handler) AskBriefInquiry(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// A hidden issue answers like a missing one.
+	sees, ok := h.viewerSeesIssue(w, r, wsUUID, issueUUID)
+	if !ok {
+		return
+	}
+	if !sees {
+		writeError(w, http.StatusBadRequest, "issue_id: no issue in this workspace")
+		return
+	}
 	question := cleanProposalText(req.Question)
 	if question == "" {
 		writeError(w, http.StatusBadRequest, "question is required")
