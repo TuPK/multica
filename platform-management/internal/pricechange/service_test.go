@@ -506,3 +506,45 @@ func TestLargeChangeNeedsConfirmation(t *testing.T) {
 		t.Fatalf("confirmed: %v", err)
 	}
 }
+
+func newServiceWith(t *testing.T, st Store, settings Settings) *Service {
+	t.Helper()
+	s, err := New(Deps{Store: st, Settings: settings, AppURL: "https://app.example.com"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return s
+}
+
+func TestConfiguredNoticeDaysDecideTheNoticeCheck(t *testing.T) {
+	s := newServiceWith(t, newFakeStore(), Settings{NoticeDays: 10})
+	ctx := context.Background()
+	in10Days := t0.Add(10 * 24 * time.Hour)
+	_, err := s.Schedule(ctx, admin, "pro", seatReq(in10Days.Add(-time.Second), "100001", "1000010"), false, t0)
+	e := apiErr(t, err)
+	if e.Status != 409 || e.Code != "price_notice_too_short" || e.Detail["min_effective_from"] != in10Days.Format(time.RFC3339) {
+		t.Fatalf("error = %d %s %v, want 409 price_notice_too_short with a 10 day minimum", e.Status, e.Code, e.Detail)
+	}
+	if _, err := s.Schedule(ctx, admin, "pro", seatReq(in10Days, "100001", "1000010"), false, t0); err != nil {
+		t.Fatalf("exactly 10 days: %v", err)
+	}
+}
+
+func TestConfiguredConfirmPctDecidesTheConfirmCheck(t *testing.T) {
+	s := newServiceWith(t, newFakeStore(), Settings{ConfirmPct: 10})
+	// 100000 to 120000 is +20 percent.
+	_, err := s.Schedule(context.Background(), admin, "pro", seatReq(in31Days, "120000", "1200000"), false, t0)
+	if e := apiErr(t, err); e.Status != 409 || e.Code != "price_change_confirm_required" {
+		t.Fatalf("error = %d %s, want 409 price_change_confirm_required", e.Status, e.Code)
+	}
+}
+
+func TestConfiguredMaxPriceIsRefusedAsInvalid(t *testing.T) {
+	s := newServiceWith(t, newFakeStore(), Settings{Max: 150000})
+	req := seatReq(in31Days, "150001", "1500010")
+	req.ConfirmLargeChange = true
+	_, err := s.Schedule(context.Background(), admin, "pro", req, false, t0)
+	if e := apiErr(t, err); e.Status != 400 || e.Code != "price_invalid" {
+		t.Fatalf("error = %d %s, want 400 price_invalid", e.Status, e.Code)
+	}
+}

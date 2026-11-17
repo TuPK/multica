@@ -325,6 +325,7 @@ func TestCheckoutOfAPaidWorkspaceWithoutAPlanKeepsItsPlanAndSeats(t *testing.T) 
 func TestCheckoutDefaultSeatsCoverTheMembers(t *testing.T) {
 	e := newEnv(t)
 	e.members.count = 9
+	e.setKind(subscription.AccountBusiness)
 	e.checkout(ownerID, obj{"workspace_id": wsID, "interval": "month", "idempotency_key": "k"})
 	if d := e.orders.drafts[0]; d.Seats != 9 {
 		t.Errorf("seats = %d, want the 9 members", d.Seats)
@@ -568,6 +569,7 @@ func purchasePath(ws string) string { return "/api/v1/subscriptions/" + ws + "/s
 
 func TestPreviewPricesExtraSeatsByProration(t *testing.T) {
 	e := newEnv(t)
+	e.setKind(subscription.AccountBusiness)
 	sub := e.paid()
 	rec := e.do("POST", previewPath(wsID), ownerID, nil, obj{"additional_seats": 3})
 	if rec.Code != 200 {
@@ -656,6 +658,7 @@ func confirm(q obj, key string) obj {
 
 func TestPurchaseCreatesAPendingAddSeatsOrder(t *testing.T) {
 	e := newEnv(t)
+	e.setKind(subscription.AccountBusiness)
 	e.paid()
 	rec := e.do("POST", purchasePath(wsID), adminID, nil, confirm(e.quote(t), "buy-1"))
 	if rec.Code != 200 {
@@ -700,6 +703,7 @@ func TestPurchaseRefusesAStaleQuote(t *testing.T) {
 	}
 	for name, tc := range cases {
 		e := newEnv(t)
+		e.setKind(subscription.AccountBusiness)
 		e.paid()
 		body := confirm(e.quote(t), "k")
 		tc.edit(body)
@@ -716,6 +720,7 @@ func TestPurchaseRefusesAStaleQuote(t *testing.T) {
 
 func TestPurchaseAcceptsAnUpperCaseCurrency(t *testing.T) {
 	e := newEnv(t)
+	e.setKind(subscription.AccountBusiness)
 	e.paid()
 	body := confirm(e.quote(t), "k")
 	body["currency"] = "VND"
@@ -727,6 +732,7 @@ func TestPurchaseAcceptsAnUpperCaseCurrency(t *testing.T) {
 func TestPurchaseRefusesIncompleteConfirmations(t *testing.T) {
 	for _, drop := range []string{"additional_seats", "expected_current_seats", "expected_purchase_version", "currency", "idempotency_key"} {
 		e := newEnv(t)
+		e.setKind(subscription.AccountBusiness)
 		e.paid()
 		body := confirm(e.quote(t), "k")
 		delete(body, drop)
@@ -735,6 +741,7 @@ func TestPurchaseRefusesIncompleteConfirmations(t *testing.T) {
 		}
 	}
 	e := newEnv(t)
+	e.setKind(subscription.AccountBusiness)
 	e.paid()
 	body := confirm(e.quote(t), "k")
 	body["accepted_proration_amount"] = -1
@@ -745,6 +752,7 @@ func TestPurchaseRefusesIncompleteConfirmations(t *testing.T) {
 
 func TestPurchaseRepeatedKeyReturnsTheSameOrder(t *testing.T) {
 	e := newEnv(t)
+	e.setKind(subscription.AccountBusiness)
 	e.paid()
 	body := confirm(e.quote(t), "same")
 	a, b := decode(t, e.do("POST", purchasePath(wsID), ownerID, nil, body)), decode(t, e.do("POST", purchasePath(wsID), ownerID, nil, body))

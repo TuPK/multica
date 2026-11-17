@@ -852,3 +852,45 @@ func TestLoadAPIRateCeilingRefusesBelowOne(t *testing.T) {
 		}
 	}
 }
+
+func TestPriceSettingsDefaults(t *testing.T) {
+	cfg, err := load(resendEnv())
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got := cfg.Price; got.NoticeDays != 30 || got.ConfirmPct != 50 || got.Max != 1_000_000_000 {
+		t.Fatalf("price settings = %+v, want 30 days, 50 percent, 1000000000", got)
+	}
+}
+
+func TestPriceSettingsAreRead(t *testing.T) {
+	env := resendEnv()
+	env["PLATFORM_PRICE_NOTICE_DAYS"] = " 45 "
+	env["PLATFORM_PRICE_CONFIRM_PCT"] = "100"
+	env["PLATFORM_PRICE_MAX"] = "5000000"
+	cfg, err := load(env)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got := cfg.Price; got.NoticeDays != 45 || got.ConfirmPct != 100 || got.Max != 5_000_000 {
+		t.Fatalf("price settings = %+v", got)
+	}
+}
+
+func TestInvalidPriceSettingsStopTheStart(t *testing.T) {
+	for _, name := range []string{"PLATFORM_PRICE_NOTICE_DAYS", "PLATFORM_PRICE_CONFIRM_PCT", "PLATFORM_PRICE_MAX"} {
+		for _, raw := range []string{"abc", "1.5", "0", "-1"} {
+			env := resendEnv()
+			env[name] = raw
+			_, err := load(env)
+			if vars := variables(err); len(vars) != 1 || vars[0] != name {
+				t.Errorf("%s=%q: variables = %v, want [%s]", name, raw, vars, name)
+			}
+		}
+	}
+	env := resendEnv()
+	env["PLATFORM_PRICE_CONFIRM_PCT"] = "101"
+	if vars := variables(func() error { _, err := load(env); return err }()); len(vars) != 1 || vars[0] != "PLATFORM_PRICE_CONFIRM_PCT" {
+		t.Errorf("CONFIRM_PCT=101: variables = %v", vars)
+	}
+}

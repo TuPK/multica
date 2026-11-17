@@ -88,7 +88,7 @@ func TestDBCheckoutAndPurchaseWriteScopedPendingOrders(t *testing.T) {
 	}
 	h, err := New(Deps{
 		Subscriptions: subscription.NewPgxReader(pool), Plans: plan.NewPgxReader(pool), Members: subscription.NewPgxMembers(pool),
-		Orders: orders, Workspaces: NewPgxWorkspaces(pool), VATRate: billing.DefaultVATRate, AppURL: "https://app.example.com",
+		Orders: orders, Workspaces: NewPgxWorkspaces(pool), IndividualMaxSeats: 5, VATRate: billing.DefaultVATRate, AppURL: "https://app.example.com",
 		Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	})
 	if err != nil {

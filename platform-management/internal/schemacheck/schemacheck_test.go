@@ -439,3 +439,10 @@ func TestR5ColumnMigrationDownDropsOnlyWhatItAdded(t *testing.T) {
 		t.Error("down file drops a table or an index")
 	}
 }
+
+func TestUsageInvoiceExpiryMigrationIsRequired(t *testing.T) {
+	const version = "969_billing_order_usage_expiry"
+	if !slices.Contains(Required, version) {
+		t.Errorf("Required does not list %s", version)
+	}
+}

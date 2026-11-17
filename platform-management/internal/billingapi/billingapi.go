@@ -436,7 +436,7 @@ func (h *Handler) checkout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	seats, ok := h.checkoutSeats(w, r, ws, p, sub, current, in.Seats)
-	if !ok {
+	if !ok || !h.withinAccountSeats(w, r, ws, seats) {
 		return
 	}
 	amount, err := billing.Price(p, in.Interval, seats)
@@ -553,6 +553,9 @@ func (h *Handler) quote(w http.ResponseWriter, r *http.Request, ws string, addit
 	resulting := sub.Seats + additional
 	if resulting > billing.MaxSeats {
 		writeError(w, http.StatusBadRequest, codeInvalidSeats, "the subscription would have too many seats")
+		return seatQuote{}, false
+	}
+	if !h.withinAccountSeats(w, r, ws, resulting) {
 		return seatQuote{}, false
 	}
 	unit := p.SeatPriceMonth

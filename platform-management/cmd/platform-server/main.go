@@ -338,7 +338,7 @@ func run() error {
 	// The plan price-change schedule (spec 7b.4): the apply job and the staff routes.
 	priceSvc, err := pricechange.New(pricechange.Deps{
 		Store: pricechange.NewPgxStore(pool), Mail: noticeSender, Cache: policy,
-		AppURL: cfg.AppURL, Log: slog.Default(),
+		Settings: priceSettings(cfg), AppURL: cfg.AppURL, Log: slog.Default(),
 	})
 	if err != nil {
 		return err
@@ -400,4 +400,9 @@ func newPlatformMux(priceChanges, rest http.Handler) http.Handler {
 	mux.Handle("/api/platform/plans/{key}", pricechange.RefusePriceFields(rest))
 	mux.Handle("/", rest)
 	return mux
+}
+
+// priceSettings returns the price-change limits of the configuration.
+func priceSettings(cfg config.Config) pricechange.Settings {
+	return pricechange.Settings{NoticeDays: cfg.Price.NoticeDays, ConfirmPct: cfg.Price.ConfirmPct, Max: cfg.Price.Max}
 }

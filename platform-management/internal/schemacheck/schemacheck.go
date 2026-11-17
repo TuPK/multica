@@ -66,6 +66,7 @@ var Required = []string{
 	"966_platform_account_request",            // platform_account_request: table
 	"967_platform_account_request_id_uidx",    // platform_account_request: unique index on id
 	"968_platform_account_request_email_uidx", // platform_account_request: partial unique index on email, live requests
+	"969_billing_order_usage_expiry",          // billing_order: expires_at nullable for usage invoices
 }
 
 // Queryer is the part of a pgx pool, connection or transaction that Check uses.

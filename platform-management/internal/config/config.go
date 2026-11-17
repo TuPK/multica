@@ -99,8 +99,22 @@ func (b Billing) EmptyBankVariables() []string {
 	return out
 }
 
+// Price holds the limits of a plan price change (spec 7b.4 rules 4, 5 and 7).
+type Price struct {
+	// NoticeDays is PLATFORM_PRICE_NOTICE_DAYS: the days of notice before a
+	// price increase takes effect for paid subscribers; 30 when it is not set.
+	NoticeDays int
+	// ConfirmPct is PLATFORM_PRICE_CONFIRM_PCT: the change, in percent, above
+	// which the admin must confirm; 50 when it is not set.
+	ConfirmPct int
+	// Max is PLATFORM_PRICE_MAX: the largest price of one unit; 1000000000
+	// when it is not set.
+	Max int64
+}
+
 type Config struct {
 	Billing       Billing
+	Price         Price
 	DatabaseURL   string
 	RedisURL      string
 	AdminEmails   []string
@@ -271,6 +285,15 @@ func Load(getenv func(string) string) (Config, error) {
 
 	cfg.AccountCreatePerHour = wholeNumber(get, fail, "PLATFORM_ACCOUNT_CREATE_PER_HOUR", 30)
 	cfg.IndividualMaxSeats = wholeNumber(get, fail, "PLATFORM_INDIVIDUAL_MAX_SEATS", 5)
+
+	cfg.Price = Price{
+		NoticeDays: wholeNumber(get, fail, "PLATFORM_PRICE_NOTICE_DAYS", 30),
+		ConfirmPct: wholeNumber(get, fail, "PLATFORM_PRICE_CONFIRM_PCT", 50),
+		Max:        int64(wholeNumber(get, fail, "PLATFORM_PRICE_MAX", 1_000_000_000)),
+	}
+	if cfg.Price.ConfirmPct > 100 {
+		fail("PLATFORM_PRICE_CONFIRM_PCT", "must be a whole number from 1 to 100")
+	}
 
 	if len(errs) > 0 {
 		return Config{}, errors.Join(errs...)

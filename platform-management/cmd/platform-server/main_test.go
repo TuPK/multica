@@ -8,6 +8,7 @@ import (
 
 	"github.com/multica-ai/multica/platform-management/internal/billing"
 	"github.com/multica-ai/multica/platform-management/internal/config"
+	"github.com/multica-ai/multica/platform-management/internal/pricechange"
 )
 
 func TestWarnEmptyBankLogsOneWarningNamingTheEmptyVariables(t *testing.T) {
@@ -33,5 +34,14 @@ func TestWarnEmptyBankIsSilentWhenComplete(t *testing.T) {
 	warnEmptyBank(slog.New(slog.NewTextHandler(&buf, nil)), config.Billing{Bank: billing.BankDetails{AccountName: "a", AccountNumber: "b", BankName: "c"}})
 	if buf.Len() != 0 {
 		t.Fatalf("logged: %s", buf.String())
+	}
+}
+
+func TestPriceSettingsComeFromTheConfiguration(t *testing.T) {
+	var cfg config.Config
+	cfg.Price = config.Price{NoticeDays: 12, ConfirmPct: 34, Max: 56}
+	want := pricechange.Settings{NoticeDays: 12, ConfirmPct: 34, Max: 56}
+	if got := priceSettings(cfg); got != want {
+		t.Fatalf("priceSettings = %+v, want %+v", got, want)
 	}
 }

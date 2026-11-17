@@ -225,3 +225,39 @@ func TestPlanChangeRoutesAreForOwnersAndAdminsOnly(t *testing.T) {
 		t.Fatalf("the admin's cancel did not reach the service")
 	}
 }
+
+func TestCheckoutRefusesSeatsAboveTheIndividualLimit(t *testing.T) {
+	e := newEnv(t)
+	e.setKind(subscription.AccountIndividual)
+	body := func(seats int, key string) obj {
+		return obj{"workspace_id": wsID, "interval": "month", "idempotency_key": key, "plan_key": "pro", "seats": seats}
+	}
+	rec := e.checkout(adminID, body(6, "k-over"))
+	wantCode(t, rec, http.StatusConflict, "account_kind_required")
+	if decode(t, rec)["max_seats"] != float64(5) || len(e.orders.drafts) != 0 {
+		t.Fatalf("body = %s, orders = %d", rec.Body, len(e.orders.drafts))
+	}
+	if rec := e.checkout(adminID, body(5, "k-at")); rec.Code != http.StatusOK {
+		t.Fatalf("at the limit: status %d: %s", rec.Code, rec.Body)
+	}
+}
+
+func TestSeatPurchaseRefusesSeatsAboveTheIndividualLimit(t *testing.T) {
+	e := newEnv(t)
+	sub := e.paid() // five seats, an individual workspace
+	rec := e.do("POST", previewPath(wsID), ownerID, nil, obj{"additional_seats": 1})
+	wantCode(t, rec, http.StatusConflict, "account_kind_required")
+	q := obj{"current_seats": float64(5), "purchase_version": float64(sub.Version), "proration_amount": float64(0), "currency": "vnd"}
+	body := confirm(q, "buy-over")
+	body["additional_seats"] = 1
+	wantCode(t, e.do("POST", purchasePath(wsID), adminID, nil, body), http.StatusConflict, "account_kind_required")
+	if len(e.orders.drafts) != 0 {
+		t.Fatalf("a refused purchase wrote %d orders", len(e.orders.drafts))
+	}
+
+	sub.Seats = 4
+	e.subs.rows[wsID] = sub
+	if rec := e.do("POST", previewPath(wsID), ownerID, nil, obj{"additional_seats": 1}); rec.Code != http.StatusOK {
+		t.Fatalf("at the limit: status %d: %s", rec.Code, rec.Body)
+	}
+}
