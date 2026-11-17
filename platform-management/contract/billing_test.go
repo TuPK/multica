@@ -77,7 +77,7 @@ func billingMux(t *testing.T) http.Handler {
 	})
 	writes, err := billingapi.New(billingapi.Deps{
 		Subscriptions: subRows, Plans: plans, Members: m, Orders: orders{}, Workspaces: slugs{},
-		VATRate: billing.DefaultVATRate, AppURL: appURL, Now: func() time.Time { return fixedNow }, Log: quiet,
+		VATRate: billing.DefaultVATRate, IndividualMaxSeats: 5, AppURL: appURL, Now: func() time.Time { return fixedNow }, Log: quiet,
 	})
 	if err != nil {
 		t.Fatal(err)

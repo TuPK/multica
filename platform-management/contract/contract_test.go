@@ -53,8 +53,13 @@ func (s subs) Get(_ context.Context, ws string) (subscription.Subscription, bool
 	return v, ok, nil
 }
 
-// Profile makes subs a billingapi.SubscriptionReader: no row is an individual workspace.
-func (s subs) Profile(context.Context, string) (subscription.BillingProfile, bool, error) {
+// Profile makes subs a billingapi.SubscriptionReader: no row is an individual
+// workspace. The paid workspace buys seats past the individual cap, so it is a
+// business account.
+func (s subs) Profile(_ context.Context, ws string) (subscription.BillingProfile, bool, error) {
+	if ws == wsPaid {
+		return subscription.BillingProfile{WorkspaceID: ws, AccountKind: subscription.AccountBusiness}, true, nil
+	}
 	return subscription.BillingProfile{}, false, nil
 }
 

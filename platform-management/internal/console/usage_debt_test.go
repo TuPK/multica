@@ -126,6 +126,36 @@ func TestWriteOffUsageOrderAdminOnlyWithReason(t *testing.T) {
 	wantError(t, d.do(adminID, "POST", path, `{"reason":"again"}`), 409, "order_not_pending")
 }
 
+// TestUsageDebtWriteOffRefusedForEveryRoleButAdmin is AC35: only a staff admin,
+// with a reason, can clear a usage debt. Every other role is refused, even with
+// a reason, and the debt stays.
+func TestUsageDebtWriteOffRefusedForEveryRoleButAdmin(t *testing.T) {
+	d := newUsageDebt(t)
+	path := "/api/platform/orders/" + d.orderID + "/cancel"
+
+	// Support is below the orders routes, which answer it as an unknown route;
+	// billing reaches the route and is refused by the write-off rule.
+	supportID, _ := d.staffUser(staff.RoleSupport)
+	if rec := d.do(supportID, "POST", path, `{"reason":"customer dispute"}`); rec.Code != 404 {
+		t.Errorf("role support: status %d, want 404: %s", rec.Code, rec.Body)
+	}
+	billID, _ := d.staffUser(staff.RoleBilling)
+	wantError(t, d.do(billID, "POST", path, `{"reason":"customer dispute"}`), 403, "usage_cancel_admin_only")
+	adminID, _ := d.staffUser(staff.RoleAdmin)
+	for _, body := range []string{`{}`, `{"reason":""}`, `{"reason":"   "}`} {
+		wantError(t, d.do(adminID, "POST", path, body), 400, "reason_required")
+	}
+	if got := d.orderStatus(d.orderID); got != "pending" {
+		t.Fatalf("order status after the refusals = %q, want pending", got)
+	}
+	if got := d.subscriptionStatus(); got != "read_only" {
+		t.Errorf("subscription status after the refusals = %q, want read_only", got)
+	}
+	if n := len(d.staffRows("billing.usage_written_off", adminID)); n != 0 {
+		t.Errorf("billing.usage_written_off rows after the refusals = %d, want none", n)
+	}
+}
+
 func TestWriteOffKeepsLinesOutOfNextInvoice(t *testing.T) {
 	d := newUsageDebt(t)
 	adminID, _ := d.staffUser(staff.RoleAdmin)
