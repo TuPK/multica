@@ -356,3 +356,47 @@ func TestJobRegistersUnderItsNameAndInterval(t *testing.T) {
 		t.Fatal("Interval must be positive")
 	}
 }
+
+// AC39 (spec 7b.4, rule 9d): the rating of day D uses the price in force at
+// 00:00 UTC of D, also when the job rates it after a later price change.
+func TestDBRatingUsesThePriceInForceAtMidnightOfTheDayEvenWhenRunLate(t *testing.T) {
+	pool := testdb.Open(t)
+	f := newFixture(t, pool)
+	ws := f.workspace(wsSpec{})
+	before, from, after := day("2026-11-13"), day("2026-11-14"), day("2026-11-15")
+	for _, d := range []time.Time{before, from, after} {
+		f.snapshot(ws, d)
+	}
+
+	// The tasks price went from 30000 to 99999 per 1000 tasks, effective at
+	// 00:00 UTC on 14 November, and the discount from 20 to 0 with it. The job
+	// has not run since before the change.
+	oldRates, _ := json.Marshal(map[string]Rate{MeterTasksRun: {Per: 1000, Price: 30000}})
+	oldTerms, _ := json.Marshal(Terms{DiscountPct: map[string]int64{"business": 20}})
+	newRates, _ := json.Marshal(map[string]Rate{MeterTasksRun: {Per: 1000, Price: 99999}})
+	mustExec(t, pool, `UPDATE plan SET usage_rates = $2 WHERE key = $1`, f.planKey, newRates)
+	mustExec(t, pool, `INSERT INTO plan_price_change (plan_key, state, effective_from, old, new, reason, applied_at)
+		VALUES ($1, 'applied', $2, jsonb_build_object('usage_rates', $3::jsonb, 'usage_terms', $4::jsonb),
+		        jsonb_build_object('usage_rates', $5::jsonb), 'test', $2)`,
+		f.planKey, from, oldRates, oldTerms, newRates)
+	t.Cleanup(func() { f.exec(`DELETE FROM plan_price_change WHERE plan_key = $1`, f.planKey) })
+
+	if _, err := NewRater(pool, RaterConfig{}).Run(context.Background(), jobNow); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		name  string
+		day   time.Time
+		price int64
+		net   int64
+	}{
+		{"the day before the change", before, 30000, 30000},
+		{"the day the change takes effect", from, 99999, 99999},
+		{"the day after", after, 99999, 99999},
+	} {
+		got := f.charges(ws, c.day)[MeterTasksRun]
+		if got.unitPrice != c.price || got.net != c.net {
+			t.Errorf("%s: unit price %d net %d, want %d and %d", c.name, got.unitPrice, got.net, c.price, c.net)
+		}
+	}
+}

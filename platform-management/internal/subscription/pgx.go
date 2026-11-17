@@ -70,6 +70,10 @@ func timePtr(t pgtype.Timestamptz) *time.Time {
 	return &v
 }
 
+// FromRow converts a workspace_subscription row, including its pending change
+// and unit price.
+func FromRow(r db.WorkspaceSubscription) (Subscription, error) { return fromRow(r) }
+
 func fromRow(r db.WorkspaceSubscription) (Subscription, error) {
 	overrides := plan.Limits{}
 	if err := json.Unmarshal(r.LimitOverrides, &overrides); err != nil {

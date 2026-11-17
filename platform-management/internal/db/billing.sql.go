@@ -20,6 +20,8 @@ SET plan_key = $2,
     current_period_end = $6,
     status = $7,
     grace_until = $8,
+    pending_change = $9,
+    unit_price = $10,
     version = version + 1,
     updated_at = now()
 WHERE workspace_id = $1
@@ -35,11 +37,14 @@ type ApplyPaymentToWorkspaceSubscriptionParams struct {
 	CurrentPeriodEnd   pgtype.Timestamptz `json:"current_period_end"`
 	Status             string             `json:"status"`
 	GraceUntil         pgtype.Timestamptz `json:"grace_until"`
+	PendingChange      []byte             `json:"pending_change"`
+	UnitPrice          pgtype.Int8        `json:"unit_price"`
 }
 
 // The subscription change of a confirmed order. Unlike
 // UpdateWorkspaceSubscription it also writes status, because a payment makes
-// the subscription active. Moves version up by exactly one.
+// the subscription active. It also writes pending_change (a paid renewal clears
+// it) and unit_price. Moves version up by exactly one.
 func (q *Queries) ApplyPaymentToWorkspaceSubscription(ctx context.Context, arg ApplyPaymentToWorkspaceSubscriptionParams) (WorkspaceSubscription, error) {
 	row := q.db.QueryRow(ctx, applyPaymentToWorkspaceSubscription,
 		arg.WorkspaceID,
@@ -50,6 +55,8 @@ func (q *Queries) ApplyPaymentToWorkspaceSubscription(ctx context.Context, arg A
 		arg.CurrentPeriodEnd,
 		arg.Status,
 		arg.GraceUntil,
+		arg.PendingChange,
+		arg.UnitPrice,
 	)
 	var i WorkspaceSubscription
 	err := row.Scan(

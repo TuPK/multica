@@ -90,7 +90,8 @@ RETURNING *;
 -- name: ApplyPaymentToWorkspaceSubscription :one
 -- The subscription change of a confirmed order. Unlike
 -- UpdateWorkspaceSubscription it also writes status, because a payment makes
--- the subscription active. Moves version up by exactly one.
+-- the subscription active. It also writes pending_change (a paid renewal clears
+-- it) and unit_price. Moves version up by exactly one.
 UPDATE workspace_subscription
 SET plan_key = $2,
     seats = $3,
@@ -99,6 +100,8 @@ SET plan_key = $2,
     current_period_end = $6,
     status = $7,
     grace_until = $8,
+    pending_change = $9,
+    unit_price = $10,
     version = version + 1,
     updated_at = now()
 WHERE workspace_id = $1

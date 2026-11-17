@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/multica-ai/multica/platform-management/audit"
@@ -279,11 +280,55 @@ func (s *Service) Job(now func() time.Time) func(context.Context) error {
 	return func(ctx context.Context) error { return s.Run(ctx, now()) }
 }
 
-// PriceOnDay returns the prices in force at 00:00 UTC of day.
-//
-// TODO(Q9): the lookup of a price by day belongs to slice Q9 (spec 7b.4 rule 9d:
-// the `old` of the earliest applied change whose effective_from is after that
-// moment, else the plan's current prices). Q12 leaves the signature only.
+// PriceOnDay returns the prices in force at 00:00 UTC of day (spec 7b.4 rule
+// 9d): the plan's current prices, with each field a later applied change
+// touched taken back to its `old` value from the earliest such change.
 func PriceOnDay(ctx context.Context, st Store, planKey string, day time.Time) (Prices, error) {
-	return nil, errors.New("pricechange: PriceOnDay is slice Q9's")
+	var current Prices
+	err := st.InTx(ctx, func(tx Tx) error {
+		p, found, err := tx.LockPlan(ctx, planKey)
+		if err != nil {
+			return err
+		}
+		if !found {
+			return errors.New("the plan does not exist")
+		}
+		current = p.Prices
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	history, err := st.History(ctx, planKey)
+	if err != nil {
+		return nil, err
+	}
+	return PricesOn(current, history, day), nil
+}
+
+// PricesOn returns the prices in force at 00:00 UTC of day, from the plan's
+// current prices and its changes. Only an applied change whose effective_from
+// is after that moment counts; a change effective at 00:00 itself is already in
+// force. Where several changes touched a field, the earliest one's `old` wins.
+func PricesOn(current Prices, history []Change, day time.Time) Prices {
+	u := day.UTC()
+	at := time.Date(u.Year(), u.Month(), u.Day(), 0, 0, 0, 0, time.UTC)
+	later := make([]Change, 0, len(history))
+	for _, c := range history {
+		if c.State == StateApplied && c.EffectiveFrom.After(at) {
+			later = append(later, c)
+		}
+	}
+	// Latest first, so that the earliest change writes last.
+	slices.SortFunc(later, func(a, b Change) int { return b.EffectiveFrom.Compare(a.EffectiveFrom) })
+	out := make(Prices, len(current))
+	for k, v := range current {
+		out[k] = v
+	}
+	for _, c := range later {
+		for k, v := range c.Old {
+			out[k] = v
+		}
+	}
+	return out
 }

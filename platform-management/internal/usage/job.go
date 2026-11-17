@@ -14,6 +14,7 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/billing"
 	"github.com/multica-ai/multica/platform-management/internal/db"
 	"github.com/multica-ai/multica/platform-management/internal/lifecycle"
+	"github.com/multica-ai/multica/platform-management/internal/pricechange"
 )
 
 // JobName is the usage_rating job's name in internal/jobs; it is the lock key.
@@ -47,6 +48,7 @@ type Rater struct {
 	cfg     RaterConfig
 	invoice *Invoicer
 	notices *lifecycle.PgxStore
+	prices  pricechange.Store
 }
 
 // NewRater returns a Rater over pool.
@@ -54,6 +56,7 @@ func NewRater(pool *pgxpool.Pool, cfg RaterConfig) *Rater {
 	return &Rater{
 		pool: pool, store: NewStore(pool), cfg: cfg,
 		invoice: NewInvoicer(pool, InvoicerConfig{VATRate: cfg.VATRate}), notices: lifecycle.NewPgxStore(pool),
+		prices: pricechange.NewPgxStore(pool),
 	}
 }
 
@@ -103,12 +106,18 @@ func (r *Rater) Job(now func() time.Time) func(context.Context) error {
 // rateDay rates one candidate day from the plan, account and workspace facts
 // the query read, and writes its rows.
 func (r *Rater) rateDay(ctx context.Context, c db.ListUsageDaysToRateRow) (int64, error) {
+	// The prices of the day, not of now: a change effective after 00:00 UTC of
+	// the day does not touch it (spec 7b.4, rule 9d).
+	prices, err := pricechange.PriceOnDay(ctx, r.prices, c.PlanKey, c.Day.Time)
+	if err != nil {
+		return 0, fmt.Errorf("plan %s prices on the day: %w", c.PlanKey, err)
+	}
 	var rates Rates
-	if err := json.Unmarshal(c.UsageRates, &rates); err != nil {
+	if err := json.Unmarshal(prices[pricechange.FieldUsageRates], &rates); err != nil {
 		return 0, fmt.Errorf("plan %s usage_rates: %w", c.PlanKey, err)
 	}
 	var terms Terms
-	if err := json.Unmarshal(c.UsageTerms, &terms); err != nil {
+	if err := json.Unmarshal(prices[pricechange.FieldUsageTerms], &terms); err != nil {
 		return 0, fmt.Errorf("plan %s usage_terms: %w", c.PlanKey, err)
 	}
 	discount := BusinessDiscountPct(terms, c.AccountKind, c.Verified, r.cfg.RequireVerification)

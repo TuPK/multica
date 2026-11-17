@@ -110,19 +110,7 @@ func orderFromRow(r db.BillingOrder) Order {
 }
 
 func subscriptionFromRow(r db.WorkspaceSubscription) (subscription.Subscription, error) {
-	overrides := plan.Limits{}
-	if err := json.Unmarshal(r.LimitOverrides, &overrides); err != nil {
-		return subscription.Subscription{}, fmt.Errorf("subscription %s: limit_overrides: %w", uuidText(r.WorkspaceID), err)
-	}
-	if overrides == nil {
-		overrides = plan.Limits{}
-	}
-	return subscription.Subscription{
-		WorkspaceID: uuidText(r.WorkspaceID), PlanKey: r.PlanKey, Status: r.Status, Seats: int(r.Seats),
-		Interval: r.Interval, CurrentPeriodStart: timePtr(r.CurrentPeriodStart), CurrentPeriodEnd: timePtr(r.CurrentPeriodEnd),
-		TrialEnd: timePtr(r.TrialEnd), GraceUntil: timePtr(r.GraceUntil), CancelAtPeriodEnd: r.CancelAtPeriodEnd,
-		LimitOverrides: overrides, Version: r.Version, UpdatedAt: r.UpdatedAt.Time.UTC(),
-	}, nil
+	return subscription.FromRow(r)
 }
 
 func (t *pgxTx) InsertOrder(ctx context.Context, n NewOrder) (Order, bool, error) {
@@ -246,10 +234,21 @@ func (t *pgxTx) UpdateSubscription(ctx context.Context, s subscription.Subscript
 	if err != nil {
 		return subscription.Subscription{}, err
 	}
+	var pending []byte // NULL when there is no pending change
+	if s.PendingChange != nil {
+		if pending, err = json.Marshal(s.PendingChange); err != nil {
+			return subscription.Subscription{}, err
+		}
+	}
+	var unitPrice pgtype.Int8
+	if s.UnitPrice != nil {
+		unitPrice = pgtype.Int8{Int64: *s.UnitPrice, Valid: true}
+	}
 	row, err := t.q.ApplyPaymentToWorkspaceSubscription(ctx, db.ApplyPaymentToWorkspaceSubscriptionParams{
 		WorkspaceID: ws, PlanKey: s.PlanKey, Seats: int32(s.Seats), Interval: s.Interval,
 		CurrentPeriodStart: timestamptz(s.CurrentPeriodStart), CurrentPeriodEnd: timestamptz(s.CurrentPeriodEnd),
 		Status: s.Status, GraceUntil: timestamptz(s.GraceUntil),
+		PendingChange: pending, UnitPrice: unitPrice,
 	})
 	if err != nil {
 		return subscription.Subscription{}, err
