@@ -176,15 +176,16 @@ func run() error {
 	// The entitlement policy, and the staff writes that clear its cache.
 	policy := entitlement.NewService(entitlement.NewPgxLoader(pool), time.Now, slog.Default())
 	billingAPI := subscription.NewConsole(subscription.ConsoleDeps{
-		RequireStaff:  auth.RequirePlatformStaff,
-		RequireOrigin: auth.RequireOrigin,
-		Plans:         plan.NewPgxReader(pool),
-		PlanRunner:    planRunner,
-		Subscriptions: subscription.NewService(subscription.NewPgxRunner(pool), policy),
-		Profiles:      subscription.NewProfileService(subscription.NewPgxProfileRunner(pool)),
-		Emails:        store,
-		Cache:         policy,
-		Log:           slog.Default(),
+		RequireStaff:      auth.RequirePlatformStaff,
+		RequireOrigin:     auth.RequireOrigin,
+		Plans:             plan.NewPgxReader(pool),
+		PlanRunner:        planRunner,
+		Subscriptions:     subscription.NewService(subscription.NewPgxRunner(pool), policy),
+		Profiles:          subscription.NewProfileService(subscription.NewPgxProfileRunner(pool)),
+		Emails:            store,
+		Cache:             policy,
+		EnabledCurrencies: cfg.Billing.Currencies,
+		Log:               slog.Default(),
 	})
 
 	// The routes Multica's clients call. The billing routes carry X-User-ID and

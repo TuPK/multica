@@ -105,6 +105,7 @@ Count: 151 scanned units (file and term pairs), 151 rows.
 | `platform-management/internal/paymentnotice/notice.go` | `currency` | `Notice.Currency`, `NewNotice.Currency` | field | code | todo | Notice and NewNotice Currency. |
 | `platform-management/internal/paymentnotice/pgx.go` | `currency` | `Insert`, `fromRow` | field | code | todo | Insert and row mapping for payment notices. |
 | `platform-management/internal/plan/pgx.go` | `currency` | `InsertIfAbsent`, `FromRow`, `insertParams.Currency`, `toInsertParams` | field | code | todo | Insert params and row mapping for plan. |
+| `platform-management/internal/plan/currency.go` | `currency` | `ValidateCurrency` | field | code | ruled | The enabled-set check on plan save: a currency outside PLATFORM_CURRENCIES is refused (P44.2b slice 3a). |
 | `platform-management/internal/plan/plan.go` | `currency` | `IsUnlimited`, `Plan.Currency`, `Catalogue`, `Validate` | field | code | todo | Plan.Currency and the lower-case three-letter pattern. |
 | `platform-management/internal/plan/plan.go` | `vnd` | `IsUnlimited` | text | comment | todo | Comment: VND has no decimals; reword when P44.2 lands. |
 | `platform-management/internal/subscription/api.go` | `currency` | `priceJSON.Currency`, `listedPlanJSON.Currency`, `buildPrices` | field | code | todo | priceJSON and listedPlanJSON Currency from the plan. |

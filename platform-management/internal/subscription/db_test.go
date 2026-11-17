@@ -490,7 +490,7 @@ func TestDBOldRowWithoutPendingChangeReadsCleanly(t *testing.T) {
 func (f *dbFixture) dbConsole(t *testing.T) *consoleEnv {
 	t.Helper()
 	e := &consoleEnv{t: t, subs: newFakeStore(t), profs: newFakeProfiles(t), cache: &recordingCache{}, policy: &recordingCache{}}
-	e.h = buildConsole(t, e, plan.NewPgxReader(f.pool), plan.NewPgxRunner(f.pool))
+	e.h = buildConsole(t, e, plan.NewPgxReader(f.pool), plan.NewPgxRunner(f.pool), []string{"vnd"})
 	return e
 }
 

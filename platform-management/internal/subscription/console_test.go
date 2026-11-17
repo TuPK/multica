@@ -142,6 +142,11 @@ type consoleEnv struct {
 
 func newConsoleEnv(t *testing.T) *consoleEnv {
 	t.Helper()
+	return newConsoleEnvWithCurrencies(t, []string{"vnd"})
+}
+
+func newConsoleEnvWithCurrencies(t *testing.T, currencies []string) *consoleEnv {
+	t.Helper()
 	subStore := newFakeStore(t)
 	planStore := &fakePlanStore{rows: map[string]plan.Plan{}, subs: map[string]int64{}, orders: map[string]int64{}}
 	for k, v := range subStore.plans {
@@ -149,13 +154,13 @@ func newConsoleEnv(t *testing.T) *consoleEnv {
 	}
 	e := &consoleEnv{t: t, plans: planStore, subs: subStore, profs: newFakeProfiles(t), cache: &recordingCache{}, policy: &recordingCache{}}
 
-	e.h = buildConsole(t, e, planStore, planStore)
+	e.h = buildConsole(t, e, planStore, planStore, currencies)
 	return e
 }
 
 // buildConsole wires the console routes behind the real staff middleware, on
 // the given plan reader and runner.
-func buildConsole(t *testing.T, e *consoleEnv, plans plan.Reader, runner plan.Runner) http.Handler {
+func buildConsole(t *testing.T, e *consoleEnv, plans plan.Reader, runner plan.Runner, currencies []string) http.Handler {
 	t.Helper()
 	dir := &fakeDirectory{
 		roles:  map[string]staff.Role{adminUser: staff.RoleAdmin, suppUser: staff.RoleSupport, billUser: staff.RoleBilling},
@@ -169,16 +174,17 @@ func buildConsole(t *testing.T, e *consoleEnv, plans plan.Reader, runner plan.Ru
 		Now:       func() time.Time { return t0 },
 	})
 	return NewConsole(ConsoleDeps{
-		RequireStaff:  auth.RequirePlatformStaff,
-		RequireOrigin: auth.RequireOrigin,
-		Plans:         plans,
-		PlanRunner:    runner,
-		Subscriptions: NewService(e.subs, e.cache),
-		Profiles:      NewProfileService(e.profs),
-		Emails:        dir,
-		Cache:         e.policy,
-		Log:           slog.New(slog.NewTextHandler(io.Discard, nil)),
-		Now:           func() time.Time { return t0 },
+		RequireStaff:      auth.RequirePlatformStaff,
+		RequireOrigin:     auth.RequireOrigin,
+		Plans:             plans,
+		PlanRunner:        runner,
+		Subscriptions:     NewService(e.subs, e.cache),
+		Profiles:          NewProfileService(e.profs),
+		Emails:            dir,
+		Cache:             e.policy,
+		EnabledCurrencies: currencies,
+		Log:               slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Now:               func() time.Time { return t0 },
 	})
 }
 
@@ -881,7 +887,7 @@ func TestPutPlanAllowsTheSameCurrencyOnAPlanInUse(t *testing.T) {
 }
 
 func TestPutPlanAllowsACurrencyChangeOnAPlanNotInUse(t *testing.T) {
-	e := newConsoleEnv(t)
+	e := newConsoleEnvWithCurrencies(t, []string{"vnd", "usd"})
 	seedTeamPlan(t, e)
 	wantStatus(t, putCurrency(t, e, "team", "usd"), 200)
 	if got := e.plans.rows["team"].Currency; got != "usd" {

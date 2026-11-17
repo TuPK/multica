@@ -44,6 +44,9 @@ type ConsoleDeps struct {
 	Emails        EmailLookup
 	// Cache is cleared for every workspace after a plan changes.
 	Cache Invalidator
+	// EnabledCurrencies are the currencies the platform sells in
+	// (PLATFORM_CURRENCIES). A plan in another currency is refused on save.
+	EnabledCurrencies []string
 
 	Log *slog.Logger
 	Now func() time.Time
@@ -522,6 +525,11 @@ func (c *Console) putPlan(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := plan.Validate(next); err != nil {
 			return badRequest("invalid_plan", err.Error())
+		}
+		if err := plan.ValidateCurrency(next.Currency, c.EnabledCurrencies); err != nil {
+			e := badRequest("price_invalid", err.Error())
+			e.Detail = map[string]any{"field": "currency"}
+			return e
 		}
 		var before *plan.Plan
 		if exists {

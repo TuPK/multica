@@ -70,6 +70,9 @@ type Email struct {
 type Billing struct {
 	// VATRate is BILLING_VAT_RATE; 0.10 when it is not set.
 	VATRate billing.Rate
+	// Currencies is PLATFORM_CURRENCIES: the currencies the platform sells in,
+	// lower case, in the order given; ["vnd"] when it is not set.
+	Currencies []string
 	// BusinessDiscountRequiresVerification is PLATFORM_BUSINESS_DISCOUNT_REQUIRES_VERIFICATION;
 	// true when it is not set. With it on, the Business discount on usage
 	// charges applies only to a verified billing profile (spec D45).
@@ -375,6 +378,18 @@ func loadBilling(get func(string) string, fail func(variable, reason string)) Bi
 			fail("BILLING_VAT_RATE", err.Error())
 		} else {
 			b.VATRate = rate
+		}
+	}
+	b.Currencies = []string{money.Default}
+	if raw := get("PLATFORM_CURRENCIES"); raw != "" {
+		b.Currencies = b.Currencies[:0]
+		for _, entry := range strings.Split(raw, ",") {
+			code := strings.ToLower(strings.TrimSpace(entry))
+			if _, err := money.Exponent(code); err != nil {
+				fail("PLATFORM_CURRENCIES", "unknown currency \""+code+"\"")
+				continue
+			}
+			b.Currencies = append(b.Currencies, code)
 		}
 	}
 	switch raw := get("PLATFORM_BUSINESS_DISCOUNT_REQUIRES_VERIFICATION"); raw {
