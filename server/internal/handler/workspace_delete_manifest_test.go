@@ -166,7 +166,7 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"knowledge_project_file":             workspaceDelete,
 	"notification_preference":            workspaceDelete,
 	"company_floor":                      workspaceDelete,
-	"personal_access_token":              workspaceDeleteKeep,
+	"personal_access_token":              workspaceDelete, // workspace-bound PATs (migration 698) are revoked with the workspace, as account deletion revokes PATs
 	"pinned_item":                        workspaceDelete,
 	"plugin_installation":                workspaceDelete,
 	"plugin_hook_schedule":               workspaceDelete,
