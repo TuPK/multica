@@ -56,6 +56,7 @@ var keyedRoutes = []keyedRoute{
 	{membergroup.KeyBillingView, http.MethodGet, "/orders/{orderId}", "GetWorkspaceOrder"},
 	{membergroup.KeyBillingView, http.MethodGet, "/orders/{orderId}/usage", "GetWorkspaceOrderUsage"},
 	{membergroup.KeyBillingView, http.MethodGet, "/api/cloud-subscriptions/usage", "GetCloudWorkspaceSubscriptionUsage"},
+	{membergroup.KeyBillingView, http.MethodGet, "/api/cloud-subscriptions/billing-profile", "GetCloudWorkspaceBillingProfile"},
 	// billing.manage: every write of /api/cloud-subscriptions, and the buyer route
 	{membergroup.KeyBillingManage, http.MethodPut, "/orders/{orderId}/buyer", "UpdateWorkspaceOrderBuyer"},
 	{membergroup.KeyBillingManage, http.MethodPost, "/api/cloud-subscriptions/checkout-sessions", "CreateCloudWorkspaceSubscriptionCheckout"},

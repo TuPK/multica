@@ -2299,6 +2299,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			r.Group(func(r chi.Router) {
 				r.Use(middleware.RequireWorkspacePermission(queries, membergroup.KeyBillingView))
 				r.Get("/usage", h.GetCloudWorkspaceSubscriptionUsage)
+				r.Get("/billing-profile", h.GetCloudWorkspaceBillingProfile)
 			})
 			r.Group(func(r chi.Router) {
 				r.Use(middleware.RequireWorkspacePermission(queries, membergroup.KeyBillingManage))

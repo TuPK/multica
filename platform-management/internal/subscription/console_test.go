@@ -288,6 +288,7 @@ func TestOtherMethodsOnTheseRoutesAre404(t *testing.T) {
 func TestPatternsListTheRoutesTheServerMounts(t *testing.T) {
 	want := map[string]bool{
 		"/api/platform/plans": true, "/api/platform/plans/{key}": true, "/api/platform/tenants/{id}/subscription": true,
+		"/api/platform/tenants/{id}/billing-profile":          true,
 		"/api/platform/tenants/{id}/billing-profile/verify":   true,
 		"/api/platform/tenants/{id}/billing-profile/unverify": true,
 	}
@@ -865,5 +866,75 @@ func TestPutPlanWithoutCurrencyKeepsItOnAPlanInUse(t *testing.T) {
 	wantStatus(t, e.do(adminUser, "PUT", "/api/platform/plans/team", body), 200)
 	if got := e.plans.rows["team"].Currency; got != "vnd" {
 		t.Errorf("stored currency = %q, want vnd", got)
+	}
+}
+
+// --- GET /tenants/{id}/billing-profile
+
+const readProfilePath = "/api/platform/tenants/" + wsID + "/billing-profile"
+
+func TestReadProfileRouteAllowsEveryStaffRole(t *testing.T) {
+	for _, tc := range []struct {
+		user string
+		want int
+	}{{"", 404}, {"aaaaaaaa-0000-0000-0000-0000000000ee", 404}, {suppUser, 200}, {billUser, 200}, {adminUser, 200}} {
+		e := newConsoleEnv(t)
+		e.profs.profiles[wsID] = businessProfile()
+		wantStatus(t, e.do(tc.user, "GET", readProfilePath, ""), tc.want)
+	}
+}
+
+func TestReadProfileRouteReturnsTheRowWithoutVerifiedBy(t *testing.T) {
+	e := newConsoleEnv(t)
+	p := businessProfile()
+	at := t0.Truncate(time.Microsecond)
+	p.VerifiedAt, p.VerifiedBy = &at, billUser
+	e.profs.profiles[wsID] = p
+	m := decodeMap(t, e.do(suppUser, "GET", readProfilePath, ""))
+	want := map[string]any{
+		"workspace_id": wsID, "account_kind": "business", "legal_name": "Acme Co", "tax_code": "0123456789",
+		"address": "1 Main St", "invoice_email": "ap@acme.test", "verified": true,
+		"verified_at": at.Format(time.RFC3339Nano),
+	}
+	if len(m) != len(want) {
+		t.Errorf("body = %v, want exactly %v", m, want)
+	}
+	for k, v := range want {
+		if m[k] != v {
+			t.Errorf("%s = %v, want %v", k, m[k], v)
+		}
+	}
+	if len(e.profs.audits) != 0 {
+		t.Error("a read wrote an audit row")
+	}
+}
+
+func TestReadProfileRouteOfATenantWithNoRowIsAnUnverifiedIndividual(t *testing.T) {
+	e := newConsoleEnv(t)
+	m := decodeMap(t, e.do(suppUser, "GET", readProfilePath, ""))
+	if m["account_kind"] != AccountIndividual || m["verified"] != false || m["verified_at"] != nil || m["legal_name"] != "" || m["workspace_id"] != wsID {
+		t.Fatalf("body = %v", m)
+	}
+	if len(e.profs.profiles) != 0 {
+		t.Error("a read stored a row")
+	}
+}
+
+func TestReadProfileRouteErrors(t *testing.T) {
+	e := newConsoleEnv(t)
+	e.profs.profiles[otherWS] = businessProfile()
+	for _, id := range []string{otherWS, "acme"} {
+		rec := e.do(suppUser, "GET", "/api/platform/tenants/"+id+"/billing-profile", "")
+		wantCode(t, rec, 404, "not_found")
+		if strings.Contains(rec.Body.String(), "Acme") {
+			t.Errorf("%s: the profile leaked: %s", id, rec.Body)
+		}
+	}
+}
+
+func TestReadProfileRouteIsGETOnly(t *testing.T) {
+	e := newConsoleEnv(t)
+	for _, method := range []string{"POST", "DELETE"} {
+		wantStatus(t, e.do(adminUser, method, readProfilePath, ""), 404)
 	}
 }

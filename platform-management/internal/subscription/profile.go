@@ -353,6 +353,32 @@ type VerifyChange struct {
 	ActorLabel string
 }
 
+// Read returns the workspace's billing profile, or the individual profile a
+// workspace with no row has. found is false for an unknown workspace.
+func (s *ProfileService) Read(ctx context.Context, workspaceID string) (p BillingProfile, found bool, err error) {
+	ws, ok := trust.CanonicalUUID(workspaceID)
+	if !ok {
+		return BillingProfile{}, false, nil
+	}
+	err = s.runner.InTx(ctx, func(tx ProfileTx) error {
+		_, found, err = tx.WorkspaceName(ctx, ws)
+		if err != nil || !found {
+			return err
+		}
+		var stored bool
+		if p, stored, err = tx.LockedProfile(ctx, ws); err != nil {
+			return err
+		}
+		if !stored {
+			p = defaultProfile(ws)
+		} else if !validKind(p.AccountKind) {
+			return fmt.Errorf("billing profile %s: unknown account kind %q", ws, p.AccountKind)
+		}
+		return nil
+	})
+	return p, found, err
+}
+
 // VerifyResult is the profile after a VerifyChange. Changed is false when the
 // profile already was in the asked state: nothing was written.
 type VerifyResult struct {

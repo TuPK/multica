@@ -32,7 +32,7 @@ func newProfileAPIEnv(t *testing.T) *profileAPIEnv {
 		profiles: newFakeProfiles(t),
 	}
 	api := NewProfileAPI(ProfileAPIDeps{
-		Service: NewProfileService(e.profiles), Members: e.members,
+		Service: NewProfileService(e.profiles), Profiles: e.profiles, Members: e.members,
 		Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	})
 	e.h = api.Handler(trust.New(trust.DefaultCIDRs()).RequireUser)
@@ -244,6 +244,84 @@ func TestProfileAPIDoesNotLeakAnInternalError(t *testing.T) {
 	e := newProfileAPIEnv(t)
 	e.members.err = io.ErrUnexpectedEOF
 	rec := e.put(profilePath, ownerID, businessBody())
+	wantRefusal(t, rec, 500, "internal")
+	if strings.Contains(rec.Body.String(), "EOF") {
+		t.Errorf("the cause leaked: %s", rec.Body)
+	}
+}
+
+// --- GET /billing-profile
+
+func (e *profileAPIEnv) get(path, user string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodGet, path, nil)
+	req.RemoteAddr = "10.0.0.7:4000"
+	if user != "" {
+		req.Header.Set(trust.UserHeader, user)
+	}
+	rec := httptest.NewRecorder()
+	e.h.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestProfileAPIGetReturnsTheStoredProfileWithoutVerifiedBy(t *testing.T) {
+	e := newProfileAPIEnv(t)
+	p := businessProfile()
+	at := t0
+	p.VerifiedAt, p.VerifiedBy = &at, adminID
+	e.profiles.profiles[wsID] = p
+	for name, user := range map[string]string{"owner": ownerID, "admin": adminID, "member": memberID, "viewer": viewerID} {
+		rec := e.get(profilePath, user)
+		if rec.Code != 200 {
+			t.Fatalf("%s: status %d: %s", name, rec.Code, rec.Body)
+		}
+		m := bodyOf(t, rec)
+		want := map[string]any{
+			"account_kind": "business", "legal_name": "Acme Co", "tax_code": "0123456789",
+			"address": "1 Main St", "invoice_email": "ap@acme.test", "verified": true,
+		}
+		if len(m) != len(want) {
+			t.Errorf("%s: body = %v, want exactly %v", name, m, want)
+		}
+		for k, v := range want {
+			if m[k] != v {
+				t.Errorf("%s: %s = %v, want %v", name, k, m[k], v)
+			}
+		}
+	}
+}
+
+func TestProfileAPIGetOfAWorkspaceWithNoRowIsAnUnverifiedIndividual(t *testing.T) {
+	e := newProfileAPIEnv(t)
+	rec := e.get(profilePath, memberID)
+	if rec.Code != 200 {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body)
+	}
+	m := bodyOf(t, rec)
+	if m["account_kind"] != "individual" || m["verified"] != false || m["legal_name"] != "" || m["tax_code"] != "" {
+		t.Errorf("body = %v", m)
+	}
+	if e.profiles.txs != 0 && len(e.profiles.audits) != 0 {
+		t.Error("a read wrote an audit row")
+	}
+}
+
+func TestProfileAPIGetHidesTheWorkspaceFromANonMember(t *testing.T) {
+	e := newProfileAPIEnv(t)
+	e.profiles.profiles[wsID] = businessProfile()
+	rec := e.get(profilePath, strangID)
+	wantRefusal(t, rec, 404, "not_found")
+	if strings.Contains(rec.Body.String(), "Acme") {
+		t.Errorf("the profile leaked: %s", rec.Body)
+	}
+}
+
+func TestProfileAPIGetNeedsATrustedUserAndDoesNotLeakErrors(t *testing.T) {
+	e := newProfileAPIEnv(t)
+	if rec := e.get(profilePath, ""); rec.Code != 401 {
+		t.Errorf("no X-User-ID: status %d, want 401", rec.Code)
+	}
+	e.members.err = io.ErrUnexpectedEOF
+	rec := e.get(profilePath, ownerID)
 	wantRefusal(t, rec, 500, "internal")
 	if strings.Contains(rec.Body.String(), "EOF") {
 		t.Errorf("the cause leaked: %s", rec.Body)

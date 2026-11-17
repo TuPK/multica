@@ -39,6 +39,7 @@ func TestCloudSubscriptionRoutesAnswerAlikeWithoutCloudURL(t *testing.T) {
 	}
 	added := []route{
 		{"usage", "GET", sub + "/usage", nil, h.GetCloudWorkspaceSubscriptionUsage},
+		{"billing profile read", "GET", sub + "/billing-profile", nil, h.GetCloudWorkspaceBillingProfile},
 		{"billing profile", "PUT", sub + "/billing-profile", map[string]any{"account_kind": "individual"}, h.UpdateCloudWorkspaceBillingProfile},
 		{"plan change preview", "POST", sub + "/plan-changes/preview", map[string]any{"plan_key": "pro", "interval": "month", "seats": 3}, h.PreviewCloudWorkspaceSubscriptionPlanChange},
 		{"plan change", "POST", sub + "/plan-changes", map[string]any{"plan_key": "pro", "interval": "month", "seats": 3}, h.CreateCloudWorkspaceSubscriptionPlanChange},

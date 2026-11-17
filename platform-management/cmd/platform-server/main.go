@@ -202,11 +202,14 @@ func run() error {
 		routes = append(routes, server.Route{Pattern: pattern, Handler: billingReads})
 	}
 	billingProfile := subscription.NewProfileAPI(subscription.ProfileAPIDeps{
-		Service: subscription.NewProfileService(subscription.NewPgxProfileRunner(pool)),
-		Members: subscription.NewPgxMembers(pool),
-		Log:     slog.Default(),
+		Service:  subscription.NewProfileService(subscription.NewPgxProfileRunner(pool)),
+		Profiles: subscription.NewPgxProfiles(pool),
+		Members:  subscription.NewPgxMembers(pool),
+		Log:      slog.Default(),
 	}).Handler(peers.RequireUser)
-	routes = append(routes, server.Route{Pattern: subscription.ProfilePattern, Handler: billingProfile})
+	routes = append(routes,
+		server.Route{Pattern: subscription.ProfilePattern, Handler: billingProfile},
+		server.Route{Pattern: subscription.ProfileReadPattern, Handler: billingProfile})
 	// Orders are created here and confirmed by staff in the console; the manual
 	// provider is the only one in this release.
 	orders, err := billing.New(billing.Deps{

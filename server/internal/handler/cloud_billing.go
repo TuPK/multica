@@ -550,6 +550,17 @@ func (h *Handler) ResumeCloudWorkspaceSubscription(w http.ResponseWriter, r *htt
 		"/api/v1/subscriptions/"+workspaceID+"/resume", userID, nil, cloudSubscriptionIdempotencyHeaders(r))
 }
 
+// GetCloudWorkspaceBillingProfile forwards the platform's read of the
+// workspace's billing profile: account kind, the four fields and whether staff
+// verified it. Needs billing.view.
+func (h *Handler) GetCloudWorkspaceBillingProfile(w http.ResponseWriter, r *http.Request) {
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, membergroup.KeyBillingView)
+	if !ok {
+		return
+	}
+	h.proxyCloudSubscription(w, r, http.MethodGet, "/api/v1/subscriptions/"+workspaceID+"/billing-profile", userID, nil, nil)
+}
+
 // UpdateCloudWorkspaceBillingProfile forwards a change of the workspace's
 // account kind and billing profile. Cloud validates the profile, checks the plan
 // audience and writes the audit row; this handler bounds the body and forwards

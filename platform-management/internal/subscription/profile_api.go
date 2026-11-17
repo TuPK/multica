@@ -20,6 +20,11 @@ import (
 // it carries X-User-ID and no credential.
 const ProfilePattern = "PUT /api/v1/subscriptions/{ws}/billing-profile"
 
+// ProfileReadPattern is the route GET /api/cloud-subscriptions/billing-profile
+// is forwarded to. Any member of the workspace may read; Multica's billing.view
+// check runs before the call.
+const ProfileReadPattern = "GET /api/v1/subscriptions/{ws}/billing-profile"
+
 const (
 	maxProfileBody  = 16 << 10
 	maxNameLen      = 255
@@ -39,12 +44,13 @@ type KindChanger interface {
 
 // ProfileAPIDeps are the profile route's dependencies.
 type ProfileAPIDeps struct {
-	Service KindChanger
-	Members MemberReader
-	Log     *slog.Logger
+	Service  KindChanger
+	Profiles KindReader
+	Members  MemberReader
+	Log      *slog.Logger
 }
 
-// ProfileAPI serves ProfilePattern.
+// ProfileAPI serves ProfilePattern and ProfileReadPattern.
 type ProfileAPI struct{ ProfileAPIDeps }
 
 // NewProfileAPI returns a ProfileAPI.
@@ -59,6 +65,7 @@ func NewProfileAPI(d ProfileAPIDeps) *ProfileAPI {
 func (a *ProfileAPI) Handler(requireUser func(http.Handler) http.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle(ProfilePattern, requireUser(http.HandlerFunc(a.put)))
+	mux.Handle(ProfileReadPattern, requireUser(http.HandlerFunc(a.get)))
 	return mux
 }
 
@@ -82,6 +89,47 @@ type profileResponse struct {
 	InvoiceEmail string `json:"invoice_email"`
 	Verified     bool   `json:"verified"`
 	Changed      bool   `json:"changed"`
+}
+
+// profileReadResponse is profileResponse without changed.
+type profileReadResponse struct {
+	AccountKind  string `json:"account_kind"`
+	LegalName    string `json:"legal_name"`
+	TaxCode      string `json:"tax_code"`
+	Address      string `json:"address"`
+	InvoiceEmail string `json:"invoice_email"`
+	Verified     bool   `json:"verified"`
+}
+
+func (a *ProfileAPI) get(w http.ResponseWriter, r *http.Request) {
+	ws, ok := trust.CanonicalUUID(r.PathValue("ws"))
+	if !ok {
+		writeAPIError(w, NotFound())
+		return
+	}
+	user, ok := trust.UserFrom(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "X-User-ID is required")
+		return
+	}
+	_, found, err := a.Members.Role(r.Context(), ws, user)
+	if err != nil {
+		a.internalError(w, r, "read member role", err)
+		return
+	}
+	if !found {
+		writeAPIError(w, NotFound())
+		return
+	}
+	p, err := ProfileOrDefault(r.Context(), a.Profiles, ws)
+	if err != nil {
+		a.internalError(w, r, "read the billing profile", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, profileReadResponse{
+		AccountKind: p.AccountKind, LegalName: p.LegalName, TaxCode: p.TaxCode, Address: p.Address,
+		InvoiceEmail: p.InvoiceEmail, Verified: p.VerifiedAt != nil,
+	})
 }
 
 func (a *ProfileAPI) put(w http.ResponseWriter, r *http.Request) {

@@ -76,6 +76,9 @@ func routeTable() []routeSpec {
 		{base + "/tenants/{id}/subscription", []staff.Role{staff.RoleBilling, staff.RoleAdmin}, map[string]handlerFunc{
 			http.MethodPut: (*Console).putSubscription,
 		}},
+		{base + "/tenants/{id}/billing-profile", nil, map[string]handlerFunc{
+			http.MethodGet: (*Console).getProfile,
+		}},
 		{base + "/tenants/{id}/billing-profile/verify", []staff.Role{staff.RoleBilling, staff.RoleAdmin}, map[string]handlerFunc{
 			http.MethodPost: (*Console).verifyProfile,
 		}},
@@ -252,6 +255,32 @@ func (c *Console) putSubscription(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"changed": res.Changed, "subscription": toSubscriptionJSON(res.Subscription)})
+}
+
+// --- billing profile
+
+// getProfile returns the tenant's billing profile for the console. It carries
+// verified_at and omits verified_by, like the customer's read.
+func (c *Console) getProfile(w http.ResponseWriter, r *http.Request) {
+	ws, ok := trust.CanonicalUUID(r.PathValue("id"))
+	if !ok {
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+		return
+	}
+	p, found, err := c.Profiles.Read(r.Context(), ws)
+	if err != nil {
+		c.fail(w, r, "read billing profile", err)
+		return
+	}
+	if !found {
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"workspace_id": ws, "account_kind": p.AccountKind, "legal_name": p.LegalName, "tax_code": p.TaxCode,
+		"address": p.Address, "invoice_email": p.InvoiceEmail,
+		"verified": p.VerifiedAt != nil, "verified_at": rfc3339(p.VerifiedAt),
+	})
 }
 
 // --- billing profile verification

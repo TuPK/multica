@@ -46,6 +46,7 @@ func billingKeyRoutes(ws string) []billingKeyRoute {
 	sub := "/api/v1/subscriptions/" + ws
 	return []billingKeyRoute{
 		{key: membergroup.KeyBillingView, method: http.MethodGet, path: "/api/cloud-subscriptions/usage", want: 200, upstream: sub + "/usage"},
+		{key: membergroup.KeyBillingView, method: http.MethodGet, path: "/api/cloud-subscriptions/billing-profile", want: 200, upstream: sub + "/billing-profile"},
 		{key: membergroup.KeyBillingView, method: http.MethodGet, path: "/api/workspaces/" + ws + "/orders", want: 200},
 		{key: membergroup.KeyBillingView, method: http.MethodGet, path: "/api/workspaces/" + ws + "/orders/{order}", want: 200},
 		{key: membergroup.KeyBillingView, method: http.MethodGet, path: "/api/workspaces/" + ws + "/orders/{order}/usage", want: 404},
@@ -106,6 +107,7 @@ func billingKeyRouter(q *db.Queries, outer ...func(http.Handler) http.Handler) h
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireWorkspacePermission(q, membergroup.KeyBillingView))
 			r.Get("/usage", h.GetCloudWorkspaceSubscriptionUsage)
+			r.Get("/billing-profile", h.GetCloudWorkspaceBillingProfile)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireWorkspacePermission(q, membergroup.KeyBillingManage))
@@ -314,5 +316,28 @@ func TestBillingGroupMemberRefusedWhileSuspendedOrPendingDeletion(t *testing.T) 
 				e.wantReaches(usage, user, "owner or admin", e.call(usage, user))
 			}
 		})
+	}
+}
+
+// The billing profile read hands the caller the platform's body as it is, so
+// verified_by stays where the platform leaves it out (spec 7b.1, API table).
+func TestBillingProfileReadReturnsTheProxiedBodyWithoutVerifiedBy(t *testing.T) {
+	e := newBillingKeyEnv(t)
+	body := `{"account_kind":"business","legal_name":"Acme Co","tax_code":"0123456789","address":"1 Main St","invoice_email":"ap@acme.test","verified":true}`
+	e.proxy.resp = &cloudruntime.Response{StatusCode: http.StatusOK, Body: []byte(body)}
+	e.groupWith([]string{membergroup.KeyBillingView}, e.member)
+	rt := billingKeyRoute{key: membergroup.KeyBillingView, method: http.MethodGet, path: "/api/cloud-subscriptions/billing-profile"}
+	got := e.call(rt, e.member)
+	if got.Code != http.StatusOK {
+		t.Fatalf("status = %d (%s), want 200", got.Code, strings.TrimSpace(got.Text()))
+	}
+	if strings.TrimSpace(got.Text()) != body {
+		t.Errorf("body = %s, want the proxied %s", got.Text(), body)
+	}
+	if strings.Contains(got.Text(), "verified_by") {
+		t.Errorf("the body carries verified_by: %s", got.Text())
+	}
+	if e.proxy.req.Method != http.MethodGet || e.proxy.req.Path != "/api/v1/subscriptions/"+e.ws+"/billing-profile" || e.proxy.req.UserID != e.member {
+		t.Errorf("upstream = %+v", e.proxy.req)
 	}
 }
