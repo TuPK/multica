@@ -82,8 +82,10 @@ type ownerJSON struct {
 
 type tenantDetailJSON struct {
 	tenantJSON
-	State      stateJSON  `json:"state"`
-	NotesCount int64      `json:"notes_count"`
+	State      stateJSON `json:"state"`
+	NotesCount int64     `json:"notes_count"`
+	// GroupCount is the number of account groups the workspace has (spec 7b.2).
+	GroupCount int64      `json:"group_count"`
 	Owner      *ownerJSON `json:"owner"`
 	// RecentOrders are the workspace's newest billing orders, newest first.
 	RecentOrders []orderJSON `json:"recent_orders"`
@@ -138,7 +140,7 @@ func (h *Handler) getTenant(w http.ResponseWriter, r *http.Request) {
 	}
 	out := tenantDetailJSON{
 		tenantJSON: toTenantJSON(d.TenantRow), State: toStateJSON(d), NotesCount: d.NotesCount,
-		RecentOrders: toOrdersJSON(orders), UsageCurrent: d.Current,
+		GroupCount: d.GroupCount, RecentOrders: toOrdersJSON(orders), UsageCurrent: d.Current,
 	}
 	if d.OwnerID != "" {
 		out.Owner = &ownerJSON{ID: d.OwnerID, Email: d.OwnerEmail}

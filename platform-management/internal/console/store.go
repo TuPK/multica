@@ -32,8 +32,11 @@ type TenantDetail struct {
 	StateChangedAt      *time.Time
 	DeletionScheduledAt *time.Time
 	NotesCount          int64
-	OwnerID             string
-	OwnerEmail          string
+	// GroupCount counts the workspace's account groups (spec 7b.2). Only the
+	// count is read: names, members and keys stay in Multica (isolation rule I6).
+	GroupCount int64
+	OwnerID    string
+	OwnerEmail string
 	// Current counts the workspace now, from one query per number.
 	Current usage.Current
 }

@@ -44,12 +44,29 @@ func (r *PgxRunner) InTx(ctx context.Context, fn func(Tx) error) error {
 // PgxReader is the Reader over a Postgres pool.
 type PgxReader struct {
 	q     *db.Queries
+	pool  db.DBTX
 	usage *usage.Reader
 }
 
 // NewPgxReader returns a Reader over pool.
 func NewPgxReader(pool db.DBTX) *PgxReader {
-	return &PgxReader{q: db.New(pool), usage: usage.NewReader(pool)}
+	return &PgxReader{q: db.New(pool), pool: pool, usage: usage.NewReader(pool)}
+}
+
+// groupCount counts a workspace's account groups. member_group belongs to
+// Multica, and a platform database may not have the table yet, so a missing
+// table reads as zero rather than failing the tenant page.
+func (r *PgxReader) groupCount(ctx context.Context, id pgtype.UUID) (int64, error) {
+	var exists bool
+	if err := r.pool.QueryRow(ctx, `SELECT to_regclass('member_group') IS NOT NULL`).Scan(&exists); err != nil {
+		return 0, err
+	}
+	if !exists {
+		return 0, nil
+	}
+	var n int64
+	err := r.pool.QueryRow(ctx, `SELECT count(*) FROM member_group WHERE workspace_id = $1`, id).Scan(&n)
+	return n, err
 }
 
 func parseUUID(s string) (pgtype.UUID, error) {
@@ -146,7 +163,12 @@ func (r *PgxReader) GetTenant(ctx context.Context, id string) (TenantDetail, boo
 	if err != nil {
 		return TenantDetail{}, false, err
 	}
+	groups, err := r.groupCount(ctx, row.ID)
+	if err != nil {
+		return TenantDetail{}, false, err
+	}
 	return TenantDetail{
+		GroupCount: groups,
 		TenantRow: TenantRow{
 			ID: uuidText(row.ID), Name: row.Name, Slug: row.Slug, Status: row.Status,
 			MemberCount: row.MemberCount, CreatedAt: row.CreatedAt.Time, LastActivityAt: row.LastActivityAt.Time,
