@@ -556,36 +556,48 @@ func TestClaimNextDueSeatCapacityIntentIsExclusiveAcrossReplicas(t *testing.T) {
 		_, _ = testPool.Exec(ctx, `DELETE FROM seat_capacity_outbox WHERE operation_token = $1`, token)
 	})
 
+	// The claim is not scoped to a workspace, so rows other tests left due are
+	// claimed too. Each claimer drains every due row; the property under test is
+	// that no row is handed out twice and that our own row is handed out once.
 	start := make(chan struct{})
-	results := make(chan error, 2)
+	var mu sync.Mutex
+	claimedBy := map[uuid.UUID]int{}
+	errs := make(chan error, 2)
 	var wg sync.WaitGroup
 	for range 2 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			<-start
-			_, claimErr := queries.ClaimNextDueSeatCapacityIntent(ctx, pgtype.Timestamptz{
-				Time: time.Now().Add(5 * time.Minute), Valid: true,
-			})
-			results <- claimErr
+			for {
+				intent, claimErr := queries.ClaimNextDueSeatCapacityIntent(ctx, pgtype.Timestamptz{
+					Time: time.Now().Add(5 * time.Minute), Valid: true,
+				})
+				if errors.Is(claimErr, pgx.ErrNoRows) {
+					return
+				}
+				if claimErr != nil {
+					errs <- claimErr
+					return
+				}
+				mu.Lock()
+				claimedBy[uuid.UUID(intent.OperationToken.Bytes)]++
+				mu.Unlock()
+			}
 		}()
 	}
 	close(start)
 	wg.Wait()
-	close(results)
-
-	var claimed, empty int
-	for claimErr := range results {
-		switch {
-		case claimErr == nil:
-			claimed++
-		case errors.Is(claimErr, pgx.ErrNoRows):
-			empty++
-		default:
-			t.Fatal(claimErr)
+	close(errs)
+	for err := range errs {
+		t.Fatal(err)
+	}
+	for tok, n := range claimedBy {
+		if n != 1 {
+			t.Fatalf("row %s claimed %d times, want at most 1", tok, n)
 		}
 	}
-	if claimed != 1 || empty != 1 {
-		t.Fatalf("claimed=%d empty=%d, want 1/1", claimed, empty)
+	if claimedBy[token] != 1 {
+		t.Fatalf("own row claimed %d times, want 1", claimedBy[token])
 	}
 }
