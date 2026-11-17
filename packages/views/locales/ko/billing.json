@@ -268,6 +268,13 @@
       "cancel": "예정된 변경 취소",
       "cancel_failed": "예정된 변경을 취소하지 못했습니다. 잠시 후 다시 시도하세요."
     },
+    "scheduled_price_change": {
+      "title": "가격 변경 예정",
+      "body": "{{planName}} 요금이 {{date}}에 변경됩니다.",
+      "body_no_date": "{{planName}} 요금 변경이 예정되어 있습니다.",
+      "monthly_price": "월간: {{price}} / 좌석",
+      "yearly_price": "연간: {{price}} / 좌석"
+    },
     "profile": {
       "title": "결제 프로필",
       "business_switch": "기업 계정",

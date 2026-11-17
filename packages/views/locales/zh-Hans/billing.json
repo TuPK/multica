@@ -268,6 +268,13 @@
       "cancel": "取消预约更改",
       "cancel_failed": "无法取消预约更改，请稍后重试。"
     },
+    "scheduled_price_change": {
+      "title": "价格调整通知",
+      "body": "{{planName}} 将于 {{date}} 起调整价格。",
+      "body_no_date": "{{planName}} 已安排价格调整。",
+      "monthly_price": "月付：{{price}} / 席位",
+      "yearly_price": "年付：{{price}} / 席位"
+    },
     "profile": {
       "title": "账单资料",
       "business_switch": "企业账号",

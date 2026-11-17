@@ -275,6 +275,13 @@
       "cancel": "Cancel scheduled change",
       "cancel_failed": "Could not cancel scheduled change. Retry in a moment."
     },
+    "scheduled_price_change": {
+      "title": "Scheduled price change",
+      "body": "{{planName}} pricing updates on {{date}}.",
+      "body_no_date": "{{planName}} pricing is scheduled to update.",
+      "monthly_price": "Monthly: {{price}} / seat",
+      "yearly_price": "Yearly: {{price}} / seat"
+    },
     "profile": {
       "title": "Billing profile",
       "business_switch": "Business account",

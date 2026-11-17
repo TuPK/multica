@@ -275,6 +275,13 @@
       "cancel": "Cancelar cambio programado",
       "cancel_failed": "No se pudo cancelar el cambio programado. Reintenta en un momento."
     },
+    "scheduled_price_change": {
+      "title": "Cambio de precio programado",
+      "body": "El precio de {{planName}} se actualizará el {{date}}.",
+      "body_no_date": "El precio de {{planName}} tiene una actualización programada.",
+      "monthly_price": "Mensual: {{price}} / puesto",
+      "yearly_price": "Anual: {{price}} / puesto"
+    },
     "profile": {
       "title": "Perfil de facturación",
       "business_switch": "Cuenta de empresa",

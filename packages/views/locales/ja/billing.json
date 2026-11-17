@@ -268,6 +268,13 @@
       "cancel": "予定された変更をキャンセル",
       "cancel_failed": "予定された変更をキャンセルできませんでした。しばらくしてから再試行してください。"
     },
+    "scheduled_price_change": {
+      "title": "価格改定のお知らせ",
+      "body": "{{planName}} の料金は {{date}} に改定されます。",
+      "body_no_date": "{{planName}} の料金改定が予定されています。",
+      "monthly_price": "月払い: {{price}} / 席",
+      "yearly_price": "年払い: {{price}} / 席"
+    },
     "profile": {
       "title": "請求先プロフィール",
       "business_switch": "法人アカウント",

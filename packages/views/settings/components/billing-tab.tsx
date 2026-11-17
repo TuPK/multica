@@ -96,6 +96,9 @@ import {
 import {
   PendingChangeBanner,
 } from "../../billing/pending-change-banner";
+import {
+  ScheduledPriceChangeBanner,
+} from "../../billing/scheduled-price-change-banner";
 import { plansForAccountKind } from "../../billing/plan-audience";
 import { PlanChangeDialog } from "../../billing/plan-change-dialog";
 import {
@@ -1430,6 +1433,20 @@ function BillingTabContent() {
         cancelling={cancelScheduledPlanChangeMutation.isPending}
         onCancel={() => void handleCancelScheduledPlanChange()}
       />
+
+      {(() => {
+        if (!canUpgrade && !canChangePlan) return null;
+        const currentPlan =
+          availablePlans.find((p) => p.key === entitlements.plan) ?? null;
+        if (!currentPlan?.scheduledPriceChange) return null;
+        return (
+          <ScheduledPriceChangeBanner
+            scheduledPriceChange={currentPlan.scheduledPriceChange}
+            planName={currentPlan.name}
+            currency={currentPlan.currency}
+          />
+        );
+      })()}
 
       <UnpaidUsageBanner
         unpaidOrderId={unpaidUsageOrderId}

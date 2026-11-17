@@ -275,6 +275,13 @@
       "cancel": "Annuler le changement programmé",
       "cancel_failed": "Impossible d'annuler le changement programmé. Réessayez dans un instant."
     },
+    "scheduled_price_change": {
+      "title": "Changement de tarif programmé",
+      "body": "Le tarif de {{planName}} sera mis à jour le {{date}}.",
+      "body_no_date": "Une mise à jour du tarif de {{planName}} est programmée.",
+      "monthly_price": "Mensuel : {{price}} / siège",
+      "yearly_price": "Annuel : {{price}} / siège"
+    },
     "profile": {
       "title": "Profil de facturation",
       "business_switch": "Compte professionnel",
