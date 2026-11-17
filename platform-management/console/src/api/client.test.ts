@@ -126,5 +126,33 @@ describe("platformFetch error mapping", () => {
     const err = await catchError(platformFetch("/overview"));
     expect(err.status).toBe(403);
     expect(err.code).toBeNull();
+    expect(err.details).toEqual({});
+  });
+
+  it("captures extra error body fields in details and defaults to an empty object", async () => {
+    const plain = new PlatformApiError(400, "bad", "bad request");
+    expect(plain.details).toEqual({});
+
+    mockFetch(
+      json(409, {
+        error: "a price increase needs notice before it takes effect",
+        code: "price_notice_too_short",
+        min_effective_from: "2026-12-20T00:00:00Z",
+      }),
+    );
+    const err = await catchError(platformFetch("/plans/pro/price-changes", { method: "POST", body: {} }));
+    expect(err.status).toBe(409);
+    expect(err.code).toBe("price_notice_too_short");
+    expect(err.details).toEqual({ min_effective_from: "2026-12-20T00:00:00Z" });
+
+    mockFetch(
+      json(400, {
+        error: "prices change only through a scheduled price change",
+        code: "price_field_via_schedule",
+        fields: ["seat_price_month", "seat_price_year"],
+      }),
+    );
+    const fieldErr = await catchError(platformFetch("/plans/pro", { method: "PUT", body: {} }));
+    expect(fieldErr.details).toEqual({ fields: ["seat_price_month", "seat_price_year"] });
   });
 });

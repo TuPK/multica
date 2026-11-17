@@ -24,6 +24,10 @@ import {
   parseAccountRequest,
   parseResendWelcomeResponse,
   parseTenantUsage,
+  parsePriceChangeList,
+  parsePriceChangeDryRunResponse,
+  parseSchedulePriceChangeResponse,
+  parseCancelPriceChangeResponse,
 } from "./schemas";
 
 const tenant = {
@@ -709,6 +713,171 @@ describe("tenant monthly usage (GET /tenants/{id}/usage)", () => {
     ];
     for (const body of malformedBodies) {
       expect(parseTenantUsage(body)).toBeNull();
+    }
+  });
+});
+
+describe("price changes", () => {
+  const change = {
+    id: "pc-1",
+    plan_key: "pro",
+    state: "scheduled",
+    effective_from: "2026-12-20T00:00:00Z",
+    old: { seat_price_month: 149000, seat_price_year: 1490000 },
+    new: { seat_price_month: 199000, seat_price_year: 1990000 },
+    reason: "Annual pricing update",
+    notice_sent_at: null,
+    created_by: "u-admin",
+    created_at: "2026-11-17T00:00:00Z",
+    applied_at: null,
+    canceled_by: "",
+    canceled_at: null,
+  };
+
+  it("parses a price-change list and maps unknown states to unknown", () => {
+    const parsed = parsePriceChangeList({
+      price_changes: [change, { ...change, id: "pc-2", state: "superseded" }],
+    });
+    expect(parsed.price_changes).toHaveLength(2);
+    expect(parsed.price_changes[0]).toEqual(change);
+    expect(parsed.price_changes[1]?.state).toBe("unknown");
+  });
+
+  it("parses a Change without optional new fields", () => {
+    const minimal = {
+      id: "pc-min",
+      plan_key: "pro",
+      state: "applied",
+      effective_from: "2026-12-20T00:00:00Z",
+      old: { seat_price_month: 149000 },
+      new: { seat_price_month: 199000 },
+      reason: "Adjustment",
+      created_by: "u-admin",
+      created_at: "2026-11-17T00:00:00Z",
+    };
+    const parsed = parsePriceChangeList({ price_changes: [minimal] });
+    expect(parsed.price_changes[0]).toEqual({
+      ...minimal,
+      notice_sent_at: null,
+      applied_at: null,
+      canceled_by: "",
+      canceled_at: null,
+    });
+  });
+
+  it("falls back to an empty list on malformed price-change list bodies", () => {
+    const malformed = [
+      null,
+      undefined,
+      "bad",
+      [],
+      {},
+      { price_changes: "not-an-array" },
+      { price_changes: [{ ...change, id: undefined }] },
+      { price_changes: [{ ...change, id: null }] },
+      { price_changes: [{ ...change, plan_key: 123 }] },
+      { price_changes: [{ ...change, state: null }] },
+      { price_changes: [{ ...change, effective_from: null }] },
+      { price_changes: [{ ...change, old: null }] },
+      { price_changes: [{ ...change, new: "not-an-object" }] },
+      { price_changes: [{ ...change, reason: null }] },
+      { price_changes: [{ ...change, canceled_by: null }] },
+    ];
+    for (const body of malformed) {
+      expect(parsePriceChangeList(body)).toEqual({ price_changes: [] });
+    }
+  });
+
+  it("parses dry-run responses and falls back to null on malformed ones", () => {
+    expect(
+      parsePriceChangeDryRunResponse({
+        dry_run: true,
+        affected_subscribers: 12,
+        notice_date: "2026-11-17",
+      }),
+    ).toEqual({
+      dry_run: true,
+      affected_subscribers: 12,
+      notice_date: "2026-11-17",
+    });
+
+    expect(
+      parsePriceChangeDryRunResponse({
+        dry_run: true,
+        affected_subscribers: 0,
+        notice_date: null,
+      }),
+    ).toEqual({
+      dry_run: true,
+      affected_subscribers: 0,
+      notice_date: null,
+    });
+
+    for (const bad of [
+      null,
+      "bad",
+      {},
+      { dry_run: "true", affected_subscribers: 1, notice_date: null },
+      { dry_run: true, affected_subscribers: "1", notice_date: null },
+      { dry_run: true, affected_subscribers: -1, notice_date: null },
+      { dry_run: true, affected_subscribers: null, notice_date: null },
+      { dry_run: true, affected_subscribers: 2, notice_date: 20261117 },
+      { affected_subscribers: 2, notice_date: null },
+    ]) {
+      expect(parsePriceChangeDryRunResponse(bad)).toBeNull();
+    }
+  });
+
+  it("parses schedule responses (including when optional notice_date is omitted) and falls back to null on malformed ones", () => {
+    const full = {
+      price_change: change,
+      applied: false,
+      affected_subscribers: 5,
+      notice_date: "2026-11-17",
+    };
+    expect(parseSchedulePriceChangeResponse(full)).toEqual(full);
+
+    expect(
+      parseSchedulePriceChangeResponse({
+        price_change: change,
+        applied: true,
+      }),
+    ).toEqual({
+      price_change: change,
+      applied: true,
+      affected_subscribers: 0,
+      notice_date: "",
+    });
+
+    for (const bad of [
+      null,
+      "bad",
+      {},
+      { applied: false, affected_subscribers: 0, notice_date: "" },
+      { price_change: null, applied: false, affected_subscribers: 0, notice_date: "" },
+      { price_change: { id: "pc-1" }, applied: false },
+      { price_change: change, applied: "no" },
+      { price_change: change, applied: null },
+      { price_change: change, applied: false, affected_subscribers: "5" },
+      { price_change: change, applied: false, notice_date: null },
+    ]) {
+      expect(parseSchedulePriceChangeResponse(bad)).toBeNull();
+    }
+  });
+
+  it("parses cancel responses and falls back to null on malformed ones", () => {
+    const canceled = { ...change, state: "canceled", canceled_by: "u-admin", canceled_at: "2026-11-18T00:00:00Z" };
+    expect(parseCancelPriceChangeResponse({ price_change: canceled })).toEqual({ price_change: canceled });
+
+    for (const bad of [
+      null,
+      undefined,
+      "bad",
+      {},
+      { price_change: null },
+      { price_change: { id: "pc-1" } },
+    ]) {
+      expect(parseCancelPriceChangeResponse(bad)).toBeNull();
     }
   });
 });

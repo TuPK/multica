@@ -5,18 +5,30 @@ import { Plans } from "./Plans";
 import { PlatformApiError } from "../api/client";
 
 const mockUsePlans = vi.fn();
+const mockUsePriceChanges = vi.fn();
 const mockPutPlanMutateAsync = vi.fn();
 const mockDeletePlanMutateAsync = vi.fn();
+const mockSchedulePriceMutateAsync = vi.fn();
+const mockCancelPriceMutateAsync = vi.fn();
 let mockMeRole = "admin";
 
 vi.mock("../api/hooks", () => ({
-  usePlans: () => mockUsePlans(),
+  usePlans: (enabled = true) => mockUsePlans(enabled),
+  usePriceChanges: (key: string | undefined, enabled = true) => mockUsePriceChanges(key, enabled),
   usePutPlan: () => ({
     mutateAsync: mockPutPlanMutateAsync,
     isPending: false,
   }),
   useDeletePlan: () => ({
     mutateAsync: mockDeletePlanMutateAsync,
+    isPending: false,
+  }),
+  useSchedulePriceChange: () => ({
+    mutateAsync: mockSchedulePriceMutateAsync,
+    isPending: false,
+  }),
+  useCancelScheduledPriceChange: () => ({
+    mutateAsync: mockCancelPriceMutateAsync,
     isPending: false,
   }),
   useMe: () => ({
@@ -69,15 +81,67 @@ describe("Plans screen", () => {
       isError: false,
       refetch: vi.fn(),
     });
+    mockUsePriceChanges.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
   });
 
-  it("lists plans with their configuration", () => {
+  it("lists plans with their configuration and edit/schedule/delete actions for admin", () => {
     render(<Plans userRole="admin" />);
 
     expect(screen.getByRole("heading", { name: "Plans Catalogue" })).toBeInTheDocument();
     expect(screen.getByText("Pro Plan")).toBeInTheDocument();
     expect(screen.getByText("Legacy Plan")).toBeInTheDocument();
     expect(screen.getByText("pro")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit plan Pro Plan" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Schedule price for Pro Plan" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete plan Pro Plan" })).toBeInTheDocument();
+  });
+
+  it("billing role sees read-only price change history without plans table or edit/schedule actions", () => {
+    mockMeRole = "billing";
+    mockUsePriceChanges.mockReturnValue({
+      data: [
+        {
+          id: "pc-1",
+          plan_key: "pro",
+          state: "scheduled",
+          effective_from: "2026-12-20T00:00:00Z",
+          old: { seat_price_month: 149000, seat_price_year: 1490000 },
+          new: { seat_price_month: 199000, seat_price_year: 1990000 },
+          reason: "Annual price revision",
+          notice_sent_at: null,
+          created_by: "u-admin",
+          created_at: "2026-11-17T00:00:00Z",
+          applied_at: null,
+          canceled_by: "",
+          canceled_at: null,
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    render(<Plans userRole="billing" />);
+
+    expect(mockUsePlans).toHaveBeenCalledWith(false);
+    expect(mockUsePriceChanges).toHaveBeenCalledWith("pro", true);
+    expect(screen.queryByRole("heading", { name: "Plans Catalogue" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Edit plan/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Schedule price/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Preview impact/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Cancel scheduled change/i })).not.toBeInTheDocument();
+
+    expect(screen.getByRole("heading", { name: "Price Change History" })).toBeInTheDocument();
+    expect(screen.getByText("scheduled")).toBeInTheDocument();
+    expect(screen.getByText(/2026-12-20/)).toBeInTheDocument();
+    expect(screen.getByText(/149,000/)).toBeInTheDocument();
+    expect(screen.getByText(/199,000/)).toBeInTheDocument();
+    expect(screen.getByText("Annual price revision")).toBeInTheDocument();
   });
 
   it("support role sees the not-found state", () => {
@@ -85,10 +149,11 @@ describe("Plans screen", () => {
     render(<Plans userRole="support" />);
 
     expect(screen.queryByRole("heading", { name: "Plans Catalogue" })).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Not found" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Not found" })).toBeInTheDocument();
   });
 
-  it("edits the non-price fields without a version check", async () => {
+  it("edits non-price fields without sending seat_price_month or seat_price_year", async () => {
     mockPutPlanMutateAsync.mockResolvedValue({ changed: true, plan: { ...mockPlanList[0], name: "Pro Plus" } });
     render(<Plans userRole="admin" />);
 
@@ -114,8 +179,6 @@ describe("Plans screen", () => {
         limits: { issue_count: 500, autopilot_runs: 50 },
         features: { sso: true },
         currency: "vnd",
-        seat_price_month: 200000,
-        seat_price_year: 2000000,
         seats_fixed: null,
         min_seats: 1,
         is_public: true,
@@ -123,6 +186,16 @@ describe("Plans screen", () => {
         archived: false,
       });
     });
+
+    const sent = mockPutPlanMutateAsync.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(sent).not.toHaveProperty("seat_price_month");
+    expect(sent).not.toHaveProperty("seat_price_year");
+  });
+
+  it("opens PriceSchedule when admin clicks Schedule price for a plan", () => {
+    render(<Plans userRole="admin" />);
+    fireEvent.click(screen.getByRole("button", { name: "Schedule price for Pro Plan" }));
+    expect(screen.getByRole("heading", { name: /Price Schedule: Pro Plan/i })).toBeInTheDocument();
   });
 
   it("delete of a plan in use shows plan_in_use error", async () => {

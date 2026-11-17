@@ -32,6 +32,9 @@ import {
   usePlans,
   usePutPlan,
   useDeletePlan,
+  usePriceChanges,
+  useSchedulePriceChange,
+  useCancelScheduledPriceChange,
   useUpdateSubscription,
   accountKeys,
   AccountApiError,
@@ -689,7 +692,7 @@ describe("plans hooks", () => {
     expect(result.current.data).toEqual([mockPlan]);
   });
 
-  it("usePutPlan sends plan updates", async () => {
+  it("usePutPlan sends plan updates without seat price fields", async () => {
     const calls = stubFetch({
       "PUT /api/platform/plans/pro": json(200, { changed: true, plan: mockPlan }),
     });
@@ -704,8 +707,6 @@ describe("plans hooks", () => {
         limits: {},
         features: {},
         currency: "vnd",
-        seat_price_month: 200000,
-        seat_price_year: null,
         seats_fixed: null,
         min_seats: 1,
         is_public: true,
@@ -716,6 +717,10 @@ describe("plans hooks", () => {
 
     expect(calls[0]?.path).toBe("/api/platform/plans/pro");
     expect(calls[0]?.body).toMatchObject({ name: "Pro Plus", trial_days: 30 });
+    expect(calls[0]?.body).not.toHaveProperty("seat_price_month");
+    expect(calls[0]?.body).not.toHaveProperty("seat_price_year");
+    expect(calls[0]?.body).not.toHaveProperty("usage_rates");
+    expect(calls[0]?.body).not.toHaveProperty("usage_terms");
   });
 
   it("useDeletePlan deletes a plan", async () => {
@@ -730,6 +735,142 @@ describe("plans hooks", () => {
     });
 
     expect(calls[0]?.path).toBe("/api/platform/plans/legacy");
+  });
+});
+
+describe("price change hooks", () => {
+  const mockChange = {
+    id: "pc-1",
+    plan_key: "pro",
+    state: "scheduled",
+    effective_from: "2026-12-20T00:00:00Z",
+    old: { seat_price_month: 149000, seat_price_year: 1490000 },
+    new: { seat_price_month: 199000, seat_price_year: 1990000 },
+    reason: "Annual update",
+    notice_sent_at: null,
+    created_by: "u-admin",
+    created_at: "2026-11-17T00:00:00Z",
+    applied_at: null,
+    canceled_by: "",
+    canceled_at: null,
+  };
+
+  it("usePriceChanges fetches plan history and skips when key is undefined", async () => {
+    const calls = stubFetch({
+      "GET /api/platform/plans/pro/price-changes": json(200, { price_changes: [mockChange] }),
+    });
+    const { queryClient, wrapper } = setup();
+    renderHook(() => usePriceChanges(undefined), { wrapper });
+    expect(calls).toHaveLength(0);
+
+    const { result } = renderHook(() => usePriceChanges("pro"), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.path).toBe("/api/platform/plans/pro/price-changes");
+    expect(result.current.data).toEqual([mockChange]);
+    expect(queryClient.getQueryState(platformKeys.priceChanges("pro"))?.status).toBe("success");
+  });
+
+  it("useSchedulePriceChange sends dry_run=1 without invalidating plans or audits", async () => {
+    const calls = stubFetch({
+      "POST /api/platform/plans/pro/price-changes": json(200, {
+        dry_run: true,
+        affected_subscribers: 4,
+        notice_date: "2026-11-17",
+      }),
+    });
+    const { queryClient, wrapper } = setup();
+    queryClient.setQueryData(platformKeys.plans(), []);
+    queryClient.setQueryData(platformKeys.priceChanges("pro"), []);
+    queryClient.setQueryData(platformKeys.audit({}), { pages: [], pageParams: [] });
+
+    const { result } = renderHook(() => useSchedulePriceChange(), { wrapper });
+    let answer: unknown;
+    await act(async () => {
+      answer = await result.current.mutateAsync({
+        key: "pro",
+        effective_from: "2026-12-20T00:00:00Z",
+        new: { seat_price_month: 199000 },
+        reason: "Annual update",
+        confirm_large_change: false,
+        dryRun: true,
+      });
+    });
+
+    expect(calls[0]?.path).toBe("/api/platform/plans/pro/price-changes");
+    expect(calls[0]?.search).toBe("?dry_run=1");
+    expect(calls[0]?.body).toEqual({
+      effective_from: "2026-12-20T00:00:00Z",
+      new: { seat_price_month: 199000 },
+      reason: "Annual update",
+      confirm_large_change: false,
+    });
+    expect(answer).toEqual({ dry_run: true, affected_subscribers: 4, notice_date: "2026-11-17" });
+    expect(queryClient.getQueryState(platformKeys.plans())?.isInvalidated).toBe(false);
+    expect(queryClient.getQueryState(platformKeys.priceChanges("pro"))?.isInvalidated).toBe(false);
+    expect(queryClient.getQueryState(platformKeys.audit({}))?.isInvalidated).toBe(false);
+  });
+
+  it("useSchedulePriceChange submits without dry_run and invalidates plans and audits", async () => {
+    const calls = stubFetch({
+      "POST /api/platform/plans/pro/price-changes": json(201, {
+        price_change: mockChange,
+        applied: false,
+        affected_subscribers: 4,
+        notice_date: "2026-11-17",
+      }),
+    });
+    const { queryClient, wrapper } = setup();
+    queryClient.setQueryData(platformKeys.plans(), []);
+    queryClient.setQueryData(platformKeys.priceChanges("pro"), []);
+    queryClient.setQueryData(platformKeys.audit({}), { pages: [], pageParams: [] });
+
+    const { result } = renderHook(() => useSchedulePriceChange(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({
+        key: "pro",
+        effective_from: "2026-12-20T00:00:00Z",
+        new: { seat_price_month: 199000 },
+        reason: "Annual update",
+        confirm_large_change: true,
+      });
+    });
+
+    expect(calls[0]?.search).toBe("");
+    expect(calls[0]?.body).toEqual({
+      effective_from: "2026-12-20T00:00:00Z",
+      new: { seat_price_month: 199000 },
+      reason: "Annual update",
+      confirm_large_change: true,
+    });
+    expect(queryClient.getQueryState(platformKeys.plans())?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(platformKeys.priceChanges("pro"))?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(platformKeys.audit({}))?.isInvalidated).toBe(true);
+  });
+
+  it("useCancelScheduledPriceChange sends DELETE and invalidates plans and audits", async () => {
+    const calls = stubFetch({
+      "DELETE /api/platform/plans/pro/price-changes/scheduled": json(200, {
+        price_change: { ...mockChange, state: "canceled" },
+      }),
+    });
+    const { queryClient, wrapper } = setup();
+    queryClient.setQueryData(platformKeys.plans(), []);
+    queryClient.setQueryData(platformKeys.priceChanges("pro"), []);
+    queryClient.setQueryData(platformKeys.audit({}), { pages: [], pageParams: [] });
+
+    const { result } = renderHook(() => useCancelScheduledPriceChange(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ key: "pro" });
+    });
+
+    expect(calls[0]).toMatchObject({
+      method: "DELETE",
+      path: "/api/platform/plans/pro/price-changes/scheduled",
+    });
+    expect(queryClient.getQueryState(platformKeys.plans())?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(platformKeys.priceChanges("pro"))?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(platformKeys.audit({}))?.isInvalidated).toBe(true);
   });
 });
 

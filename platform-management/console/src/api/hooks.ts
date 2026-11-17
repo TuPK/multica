@@ -28,6 +28,10 @@ import {
   parseAccountRequestList,
   parseAccountRequest,
   parseResendWelcomeResponse,
+  parsePriceChangeList,
+  parsePriceChangeDryRunResponse,
+  parseSchedulePriceChangeResponse,
+  parseCancelPriceChangeResponse,
   type Me,
   type Overview,
   type StaffRole,
@@ -41,9 +45,27 @@ import {
   type Limits,
   type AccountRequest,
   type AccountRequestState,
+  type PriceChange,
+  type PriceChangeState,
+  type PriceSnapshot,
+  type PriceChangeDryRunResponse,
+  type SchedulePriceChangeResponse,
+  type CancelPriceChangeResponse,
 } from "./schemas";
 
-export type { Subscription, Order, Plan, Limits, TenantUsage };
+export type {
+  Subscription,
+  Order,
+  Plan,
+  Limits,
+  TenantUsage,
+  PriceChange,
+  PriceChangeState,
+  PriceSnapshot,
+  PriceChangeDryRunResponse,
+  SchedulePriceChangeResponse,
+  CancelPriceChangeResponse,
+};
 
 /** The states staff may set on a workspace. */
 export type SettableTenantStatus = Exclude<TenantStatus, "unknown">;
@@ -112,6 +134,7 @@ export const platformKeys = {
   orders: () => ["platform", "orders"] as const,
   orderList: (status: string) => ["platform", "orders", "list", status] as const,
   plans: () => ["platform", "plans"] as const,
+  priceChanges: (key: string) => ["platform", "plans", key, "price-changes"] as const,
   audits: () => ["platform", "audit"] as const,
   audit: (filters: AuditFilters) => ["platform", "audit", clean(filters)] as const,
   overview: () => ["platform", "overview"] as const,
@@ -503,9 +526,10 @@ export function useCancelOrder() {
 // Plans
 
 /** List all plans. Admin only. */
-export function usePlans() {
+export function usePlans(enabled = true) {
   return useQuery({
     queryKey: platformKeys.plans(),
+    enabled,
     queryFn: async ({ signal }): Promise<Plan[]> => {
       const res = await platformFetch("/plans", { signal });
       return parsePlanList(res).plans;
@@ -519,8 +543,6 @@ export interface PutPlanInput {
   limits: Limits;
   features: Record<string, boolean>;
   currency: string;
-  seat_price_month: number | null;
-  seat_price_year: number | null;
   seats_fixed: number | null;
   min_seats: number | null;
   trial_days: number;
@@ -529,15 +551,38 @@ export interface PutPlanInput {
   archived: boolean;
 }
 
-/** Create or update a plan. Admin only. */
+/** Create or update non-price plan fields. Admin only. */
 export function usePutPlan() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (vars: PutPlanInput) => {
-      const { key, ...body } = vars;
+      const {
+        key,
+        name,
+        limits,
+        features,
+        currency,
+        seats_fixed,
+        min_seats,
+        trial_days,
+        is_public,
+        sort,
+        archived,
+      } = vars;
       const res = await platformFetch(`/plans/${pathSegment(key)}`, {
         method: "PUT",
-        body,
+        body: {
+          name,
+          limits,
+          features,
+          currency,
+          seats_fixed,
+          min_seats,
+          trial_days,
+          is_public,
+          sort,
+          archived,
+        },
       });
       return parsePutPlanResponse(res);
     },
@@ -558,6 +603,86 @@ export function useDeletePlan() {
         method: "DELETE",
       });
       return parseDeletePlanResponse(res);
+    },
+    onSuccess: () =>
+      invalidateAll(queryClient, [
+        platformKeys.plans(),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+// Price changes (spec 7b.4)
+
+/** List price-change history and any scheduled change for a plan. Billing or Admin. */
+export function usePriceChanges(key: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: platformKeys.priceChanges(key ?? ""),
+    enabled: Boolean(key) && enabled,
+    queryFn: async ({ signal }): Promise<PriceChange[]> => {
+      const res = await platformFetch(`/plans/${pathSegment(key ?? "")}/price-changes`, { signal });
+      return parsePriceChangeList(res).price_changes;
+    },
+  });
+}
+
+export interface SchedulePriceChangeInput {
+  key: string;
+  effective_from: string;
+  new: {
+    seat_price_month?: number;
+    seat_price_year?: number;
+  };
+  reason: string;
+  confirm_large_change?: boolean;
+  dryRun?: boolean;
+}
+
+/**
+ * Preview (`dryRun: true`) or schedule a price change for a plan. Admin only.
+ * Only non-dry submissions invalidate plans and audit caches.
+ */
+export function useSchedulePriceChange() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      vars: SchedulePriceChangeInput,
+    ): Promise<PriceChangeDryRunResponse | SchedulePriceChangeResponse> => {
+      const { key, dryRun, confirm_large_change, effective_from, new: nextPrices, reason } = vars;
+      const path = `/plans/${pathSegment(key)}/price-changes${dryRun ? "?dry_run=1" : ""}`;
+      const res = await platformFetch(path, {
+        method: "POST",
+        body: {
+          effective_from,
+          new: nextPrices,
+          reason,
+          confirm_large_change: Boolean(confirm_large_change),
+        },
+      });
+      if (dryRun) {
+        return orMalformed(parsePriceChangeDryRunResponse(res));
+      }
+      return orMalformed(parseSchedulePriceChangeResponse(res));
+    },
+    onSuccess: (_data, vars) => {
+      if (vars.dryRun) return undefined;
+      return invalidateAll(queryClient, [
+        platformKeys.plans(),
+        platformKeys.audits(),
+      ]);
+    },
+  });
+}
+
+/** Cancel a plan's currently scheduled price change. Admin only. */
+export function useCancelScheduledPriceChange() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { key: string }): Promise<CancelPriceChangeResponse> => {
+      const res = await platformFetch(`/plans/${pathSegment(vars.key)}/price-changes/scheduled`, {
+        method: "DELETE",
+      });
+      return orMalformed(parseCancelPriceChangeResponse(res));
     },
     onSuccess: () =>
       invalidateAll(queryClient, [

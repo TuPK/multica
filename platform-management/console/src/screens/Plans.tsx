@@ -20,14 +20,17 @@ import {
 } from "@multica/ui/components/ui/dialog";
 import { Spinner } from "@multica/ui/components/ui/spinner";
 import { Badge } from "@multica/ui/components/ui/badge";
-import { Pencil, Trash2 } from "@multica/ui/icons";
+import { Pencil, Trash2, CalendarClock } from "@multica/ui/icons";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
 import { EmptyState } from "../components/EmptyState";
+import { PriceSchedule } from "./PriceSchedule";
 import { usePlans, usePutPlan, useDeletePlan, useMe } from "../api/hooks";
 import { PlatformApiError } from "../api/client";
 import type { StaffRole } from "../components/types";
 import type { Plan } from "../api/schemas";
+
+const HISTORY_PLAN_KEYS = ["pro", "business", "unlimited", "enterprise", "free"] as const;
 
 interface PlansProps {
   userRole?: StaffRole;
@@ -36,10 +39,20 @@ interface PlansProps {
 export function Plans({ userRole }: PlansProps) {
   const { data: me } = useMe();
   const effectiveRole = userRole || me?.role;
+  const isAdmin = effectiveRole === "admin";
+  const isBilling = effectiveRole === "billing";
 
-  const { data: plans, isLoading, isError, error, refetch } = usePlans();
+  const { data: plans, isLoading, isError, error, refetch } = usePlans(isAdmin);
   const putPlan = usePutPlan();
   const deletePlan = useDeletePlan();
+
+  // Billing read-only history selection
+  const [historyPlanKey, setHistoryPlanKey] = useState<string>("pro");
+  const [customPlanKey, setCustomPlanKey] = useState<string>("");
+
+  // Price schedule view state (admin)
+  const [schedulePlanKey, setSchedulePlanKey] = useState<string | null>(null);
+  const [selectedSchedulePlan, setSelectedSchedulePlan] = useState<Plan | null>(null);
 
   // Edit dialog state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -58,8 +71,7 @@ export function Plans({ userRole }: PlansProps) {
   const [planToDelete, setPlanToDelete] = useState<Plan | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  // Admin only
-  if (effectiveRole && effectiveRole !== "admin") {
+  if (effectiveRole && !isAdmin && !isBilling) {
     return (
       <div role="region" aria-label="Not found">
         <ErrorState
@@ -67,6 +79,70 @@ export function Plans({ userRole }: PlansProps) {
           message="The page you requested was not found or you do not have permission to view it."
         />
       </div>
+    );
+  }
+
+  if (isBilling) {
+    const handleCustomSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      const trimmed = customPlanKey.trim();
+      if (trimmed) setHistoryPlanKey(trimmed);
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="font-heading text-title-lg font-bold">Price Change History</h1>
+            <p className="text-body text-muted-foreground">
+              Read-only price change history per plan.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {HISTORY_PLAN_KEYS.map((key) => (
+            <Button
+              key={key}
+              type="button"
+              size="sm"
+              variant={historyPlanKey === key ? "default" : "outline"}
+              onClick={() => setHistoryPlanKey(key)}
+            >
+              {key}
+            </Button>
+          ))}
+          <form onSubmit={handleCustomSubmit} className="flex items-center gap-2">
+            <Input
+              aria-label="Custom plan key"
+              value={customPlanKey}
+              onChange={(e) => setCustomPlanKey(e.target.value)}
+              placeholder="Other plan key..."
+              className="h-8 w-44"
+            />
+            <Button type="submit" size="sm" variant="outline" disabled={!customPlanKey.trim()}>
+              Load
+            </Button>
+          </form>
+        </div>
+
+        <PriceSchedule planKey={historyPlanKey} readOnly />
+      </div>
+    );
+  }
+
+  if (schedulePlanKey) {
+    const currentSchedulePlan =
+      plans?.find((p) => p.key === schedulePlanKey) ?? selectedSchedulePlan ?? undefined;
+    return (
+      <PriceSchedule
+        plan={currentSchedulePlan}
+        planKey={schedulePlanKey}
+        onBack={() => {
+          setSchedulePlanKey(null);
+          setSelectedSchedulePlan(null);
+        }}
+      />
     );
   }
 
@@ -96,8 +172,6 @@ export function Plans({ userRole }: PlansProps) {
         limits: selectedPlan.limits,
         features: selectedPlan.features,
         currency: selectedPlan.currency,
-        seat_price_month: selectedPlan.seat_price_month,
-        seat_price_year: selectedPlan.seat_price_year,
         seats_fixed: seatsFixed !== null && !isNaN(seatsFixed) ? Number(seatsFixed) : null,
         min_seats: minSeats !== null && !isNaN(minSeats) ? Number(minSeats) : null,
         is_public: isPublic,
@@ -228,6 +302,19 @@ export function Plans({ userRole }: PlansProps) {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedSchedulePlan(plan);
+                            setSchedulePlanKey(plan.key);
+                          }}
+                          aria-label={`Schedule price for ${plan.name}`}
+                          className="h-8 gap-1.5"
+                        >
+                          <CalendarClock className="size-3.5" />
+                          <span>Price schedule</span>
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"

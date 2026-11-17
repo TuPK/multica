@@ -5,12 +5,20 @@ export class PlatformApiError extends Error {
   readonly status: number;
   /** The `code` of the error body, or null when the body has none. */
   readonly code: string | null;
+  /** Extra fields from the error JSON body other than `code` and `error`. */
+  readonly details: Record<string, unknown>;
 
-  constructor(status: number, code: string | null, message: string) {
+  constructor(
+    status: number,
+    code: string | null,
+    message: string,
+    details: Record<string, unknown> = {},
+  ) {
     super(message);
     this.name = "PlatformApiError";
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -19,19 +27,28 @@ export type PlatformRequestInit = Omit<RequestInit, "body" | "credentials"> & {
   body?: unknown;
 };
 
-async function readErrorBody(res: Response): Promise<{ code: string | null; message: string }> {
-  const fallback = { code: null, message: `Request failed with status ${res.status}` };
+async function readErrorBody(res: Response): Promise<{
+  code: string | null;
+  message: string;
+  details: Record<string, unknown>;
+}> {
+  const fallback = {
+    code: null,
+    message: `Request failed with status ${res.status}`,
+    details: {},
+  };
   let parsed: unknown;
   try {
     parsed = JSON.parse(await res.text());
   } catch {
     return fallback;
   }
-  if (typeof parsed !== "object" || parsed === null) return fallback;
-  const { code, error } = parsed as { code?: unknown; error?: unknown };
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return fallback;
+  const { code, error, ...details } = parsed as Record<string, unknown>;
   return {
     code: typeof code === "string" ? code : null,
     message: typeof error === "string" && error !== "" ? error : fallback.message,
+    details,
   };
 }
 
@@ -56,8 +73,8 @@ export async function platformFetch(path: string, init: PlatformRequestInit = {}
   });
 
   if (!res.ok) {
-    const { code, message } = await readErrorBody(res);
-    throw new PlatformApiError(res.status, code, message);
+    const { code, message, details } = await readErrorBody(res);
+    throw new PlatformApiError(res.status, code, message, details);
   }
 
   const text = await res.text();

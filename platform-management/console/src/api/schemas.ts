@@ -660,3 +660,90 @@ export function parseResendWelcomeResponse(data: unknown): ResendWelcomeResponse
     endpoint: "POST /api/platform/accounts/{id}/resend-welcome",
   });
 }
+
+// Price changes (spec 7b.4)
+
+export const PRICE_CHANGE_STATES = ["scheduled", "applied", "canceled"] as const;
+export type PriceChangeState = (typeof PRICE_CHANGE_STATES)[number] | "unknown";
+
+export const PriceSnapshotSchema = z.record(z.string(), z.unknown());
+export type PriceSnapshot = z.output<typeof PriceSnapshotSchema>;
+
+export const PriceChangeSchema = z.object({
+  id: z.string(),
+  plan_key: z.string(),
+  state: z
+    .string()
+    .transform((v): PriceChangeState =>
+      (PRICE_CHANGE_STATES as readonly string[]).includes(v) ? (v as PriceChangeState) : "unknown",
+    ),
+  effective_from: z.string(),
+  old: PriceSnapshotSchema,
+  new: PriceSnapshotSchema,
+  reason: text,
+  notice_sent_at: nullableText,
+  created_by: text,
+  created_at: z.string(),
+  applied_at: nullableText,
+  canceled_by: text,
+  canceled_at: nullableText,
+});
+export type PriceChange = z.output<typeof PriceChangeSchema>;
+
+export const PriceChangeListSchema = z.object({
+  price_changes: z.array(PriceChangeSchema),
+});
+export type PriceChangeList = z.output<typeof PriceChangeListSchema>;
+
+export const PriceChangeDryRunResponseSchema = z.object({
+  dry_run: z.boolean(),
+  affected_subscribers: z.number().int().nonnegative(),
+  notice_date: nullableText,
+});
+export type PriceChangeDryRunResponse = z.output<typeof PriceChangeDryRunResponseSchema>;
+
+export const SchedulePriceChangeResponseSchema = z.object({
+  price_change: PriceChangeSchema,
+  applied: z.boolean(),
+  affected_subscribers: z.number().int().nonnegative().default(0),
+  notice_date: z.string().default(""),
+});
+export type SchedulePriceChangeResponse = z.output<typeof SchedulePriceChangeResponseSchema>;
+
+export const CancelPriceChangeResponseSchema = z.object({
+  price_change: PriceChangeSchema,
+});
+export type CancelPriceChangeResponse = z.output<typeof CancelPriceChangeResponseSchema>;
+
+export function parsePriceChangeList(data: unknown): PriceChangeList {
+  return parseWithFallback<PriceChangeList>(data, PriceChangeListSchema, { price_changes: [] }, {
+    endpoint: "GET /api/platform/plans/{key}/price-changes",
+  });
+}
+
+export function parsePriceChangeDryRunResponse(data: unknown): PriceChangeDryRunResponse | null {
+  return parseWithFallback<PriceChangeDryRunResponse | null>(
+    data,
+    PriceChangeDryRunResponseSchema,
+    null,
+    { endpoint: "POST /api/platform/plans/{key}/price-changes?dry_run=1" },
+  );
+}
+
+export function parseSchedulePriceChangeResponse(data: unknown): SchedulePriceChangeResponse | null {
+  return parseWithFallback<SchedulePriceChangeResponse | null>(
+    data,
+    SchedulePriceChangeResponseSchema,
+    null,
+    { endpoint: "POST /api/platform/plans/{key}/price-changes" },
+  );
+}
+
+export function parseCancelPriceChangeResponse(data: unknown): CancelPriceChangeResponse | null {
+  return parseWithFallback<CancelPriceChangeResponse | null>(
+    data,
+    CancelPriceChangeResponseSchema,
+    null,
+    { endpoint: "DELETE /api/platform/plans/{key}/price-changes/scheduled" },
+  );
+}
