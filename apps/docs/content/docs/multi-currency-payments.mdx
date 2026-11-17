@@ -1,0 +1,57 @@
+---
+title: Multi-currency and payment providers
+description: Operator configuration for platform currencies, VAT rates, payment provider routing, and adding a second payment provider.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+The platform service treats currency and payment provider selection as configuration data. In this release, `vnd` is the only enabled currency and no second real payment provider is shipped.
+
+## Currencies (`PLATFORM_CURRENCIES`)
+
+`PLATFORM_CURRENCIES` lists the lowercase ISO currency codes the platform sells in, separated by commas. It defaults to `vnd`.
+
+- Only `vnd` is enabled in this release. Listing an unenabled currency fails platform startup.
+- Each plan and order uses a single currency, and amounts are stored as integers in the currency's smallest unit (`0` minor digits for `vnd`).
+- Saving a plan in a currency outside `PLATFORM_CURRENCIES` is refused with HTTP `400` `price_invalid` (`field: currency`).
+- No currency conversion is performed.
+
+## VAT rates (`BILLING_VAT_RATE`)
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `BILLING_VAT_RATE` | `10%` (`0.10`) | VAT rate applied to `vnd` orders |
+| `BILLING_VAT_RATE_<CURRENCY>` | `0%` | VAT rate for another currency; unset means `0%` |
+
+<Callout type="info">
+The `0%` default for non-`vnd` currencies is a technical default, not tax advice. Confirm tax treatment with your accountant before enabling another currency.
+</Callout>
+
+## Payment providers (`PAYMENT_PROVIDERS`)
+
+`PAYMENT_PROVIDERS` maps each currency to a payment provider as comma-separated `currency=provider` pairs. When unset, it defaults to `vnd=manual`.
+
+- `vnd` must have a configured provider at startup.
+- When an order is created for a currency without a configured provider, or whose provider is disabled, the API refuses the request with HTTP `503` `payment_provider_unavailable` and a `Retry-After` header. No order is written.
+
+## Plan changes across currencies
+
+A workspace on a paid subscription cannot change to a plan in another currency. The request is refused with HTTP `409` `plan_change_unavailable` and reason `currency_mismatch`. Seat additions and usage invoices use the subscription's currency.
+
+## Adding a second payment provider
+
+Payment channels sit behind the `billing.PaymentProvider` interface in `platform-management/internal/billing/provider.go`:
+
+| Method | Responsibility |
+|---|---|
+| `CreatePaymentRequest(o Order) (Instructions, error)` | Return the payment instructions for an order |
+| `ParseNotification(body []byte, headers http.Header) (Notification, error)` | Verify and parse a provider payment notification |
+| `QueryStatus(o Order) (Status, error)` | Query the provider for an order's payment status |
+
+To wire a second provider:
+
+1. Implement the three methods of `billing.PaymentProvider`.
+2. Register the provider in `billing.NewRegistry` (`platform-management/internal/billing/registry.go`) and map its currency in `PAYMENT_PROVIDERS` (for example, `vnd=manual,<currency>=<provider>`).
+3. If the provider uses webhooks, set `PAYMENT_WEBHOOK_SECRET_<PROVIDER>` and configure `PLATFORM_WEBHOOK_PORT`.
+
+No second real provider is shipped in this release.

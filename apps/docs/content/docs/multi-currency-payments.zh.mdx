@@ -1,0 +1,57 @@
+---
+title: 多币种与支付渠道
+description: 平台货币、VAT 税率、支付渠道路由以及接入第二个支付渠道的运维配置。
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+platform 服务将货币与支付渠道的选择作为配置数据管理。当前版本仅启用 `vnd`，未内置第二个真实支付渠道。
+
+## 货币（`PLATFORM_CURRENCIES`）
+
+`PLATFORM_CURRENCIES` 指定平台支持的销售货币，以逗号分隔的小写 ISO 货币代码表示，默认值为 `vnd`。
+
+- 当前版本仅启用 `vnd`。配置未启用的货币会导致 platform 启动失败。
+- 每个套餐与每笔订单只使用一种货币，金额以该货币最小单位的整数存储（`vnd` 的小数位数为 `0`）。
+- 保存套餐时若使用 `PLATFORM_CURRENCIES` 之外的货币，请求会被拒绝并返回 HTTP `400` `price_invalid`（`field: currency`）。
+- 系统不进行汇率换算。
+
+## VAT 税率（`BILLING_VAT_RATE`）
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `BILLING_VAT_RATE` | `10%`（`0.10`） | 适用于 `vnd` 订单的 VAT 税率 |
+| `BILLING_VAT_RATE_<CURRENCY>` | `0%` | 适用于其他货币的 VAT 税率；未设置时为 `0%` |
+
+<Callout type="info">
+非 `vnd` 货币的 `0%` 默认值仅为技术默认值，不构成税务意见。启用其他货币前，必须由运营方的会计师确认税务处理方式。
+</Callout>
+
+## 支付渠道（`PAYMENT_PROVIDERS`）
+
+`PAYMENT_PROVIDERS` 通过逗号分隔的 `currency=provider` 映射为每种货币指定支付渠道。未设置时默认为 `vnd=manual`。
+
+- 启动时必须为 `vnd` 配置一个支付渠道。
+- 当订单使用的货币未配置支付渠道或对应渠道已停用时，API 会拒绝创建订单并返回 HTTP `503` `payment_provider_unavailable` 及 `Retry-After` 响应头，且不会写入订单记录。
+
+## 跨币种变更套餐
+
+已有付费订阅的工作区不能变更为其他货币的套餐。此类请求会被拒绝并返回 HTTP `409` `plan_change_unavailable`，原因为 `currency_mismatch`。增购席位与用量账单使用当前订阅的货币。
+
+## 接入第二个支付渠道
+
+支付渠道位于 `platform-management/internal/billing/provider.go` 中的 `billing.PaymentProvider` 接口之后：
+
+| 方法 | 职责 |
+|---|---|
+| `CreatePaymentRequest(o Order) (Instructions, error)` | 返回客户支付订单所需的付款指引 |
+| `ParseNotification(body []byte, headers http.Header) (Notification, error)` | 校验并解析支付渠道发来的付款通知 |
+| `QueryStatus(o Order) (Status, error)` | 向支付渠道查询订单的支付状态 |
+
+接入第二个支付渠道的步骤如下：
+
+1. 实现 `billing.PaymentProvider` 的三个方法。
+2. 在 `billing.NewRegistry`（`platform-management/internal/billing/registry.go`）中注册该渠道，并在 `PAYMENT_PROVIDERS` 中绑定对应货币（例如 `vnd=manual,<currency>=<provider>`）。
+3. 如果该渠道使用 webhook，设置 `PAYMENT_WEBHOOK_SECRET_<PROVIDER>` 并配置 `PLATFORM_WEBHOOK_PORT`。
+
+当前版本未内置第二个真实支付渠道。
