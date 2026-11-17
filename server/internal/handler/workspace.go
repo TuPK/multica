@@ -307,6 +307,10 @@ type CreateWorkspaceRequest struct {
 // plan_limit_reached: no plan gate is involved and the response has no gate.
 const freeOwnedWorkspaceLimitCode = "free_workspace_limit_reached"
 
+// ownerUsageDebtCode is the code of the refusal for an owner with an unpaid
+// usage invoice.
+const ownerUsageDebtCode = "owner_usage_debt"
+
 // freeOwnedWorkspaceLimit reads FREE_PLAN_OWNED_WORKSPACE_LIMIT. Unset or 0 is
 // no limit, and then CreateWorkspace takes no lock and runs no query.
 func freeOwnedWorkspaceLimit(r *http.Request) int {
@@ -405,6 +409,12 @@ func (h *Handler) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
 
 	qtx := h.Queries.WithTx(tx)
 	if _, err := planlimit.CheckOwnerLimit(r.Context(), qtx, parseUUID(userID), ownedLimit); err != nil {
+		var debtErr *planlimit.OwnerDebtError
+		if errors.As(err, &debtErr) {
+			writeErrorCode(w, http.StatusForbidden, ownerUsageDebtCode,
+				"you own a workspace with an unpaid usage invoice; pay it to create another workspace")
+			return
+		}
 		var limitErr *planlimit.OwnerLimitError
 		if errors.As(err, &limitErr) {
 			writeErrorCode(w, http.StatusForbidden, freeOwnedWorkspaceLimitCode,

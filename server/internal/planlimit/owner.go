@@ -56,6 +56,15 @@ const OwnerGate = "free_owned_workspaces"
 type OwnerStore interface {
 	Locker
 	ListOwnedWorkspacePlanKeys(ctx context.Context, userID pgtype.UUID) ([]string, error)
+	OwnerHasUnpaidUsageInvoice(ctx context.Context, userID pgtype.UUID) (bool, error)
+}
+
+// OwnerDebtError reports that the user owns a workspace with an unpaid usage
+// invoice, so opening another workspace would escape the debt.
+type OwnerDebtError struct{}
+
+func (e *OwnerDebtError) Error() string {
+	return "owner has an unpaid usage invoice"
 }
 
 // OwnerLimitError reports that the user owns the most free workspaces allowed.
@@ -69,9 +78,10 @@ func (e *OwnerLimitError) Error() string {
 }
 
 // CheckOwnerLimit refuses a new workspace for a user who owns `limit` free
-// ones. It takes the user's advisory lock first, so two simultaneous creations
-// by one user count one after the other; the caller creates the workspace on
-// the same transaction before it commits. A limit of 0 or less runs nothing.
+// ones, or who owns a workspace with an unpaid usage invoice. It takes the
+// user's advisory lock first, so two simultaneous creations by one user count
+// one after the other; the caller creates the workspace on the same transaction
+// before it commits. A limit of 0 or less runs nothing.
 func CheckOwnerLimit(ctx context.Context, q OwnerStore, userID pgtype.UUID, limit int) (used int, err error) {
 	if limit <= 0 {
 		return 0, nil
@@ -80,6 +90,13 @@ func CheckOwnerLimit(ctx context.Context, q OwnerStore, userID pgtype.UUID, limi
 		Scope: uuid.UUID(userID.Bytes).String(), Gate: OwnerGate,
 	}); err != nil {
 		return 0, fmt.Errorf("lock owner workspace creation: %w", err)
+	}
+	indebted, err := q.OwnerHasUnpaidUsageInvoice(ctx, userID)
+	if err != nil {
+		return 0, fmt.Errorf("read owner usage debt: %w", err)
+	}
+	if indebted {
+		return 0, &OwnerDebtError{}
 	}
 	keys, err := q.ListOwnedWorkspacePlanKeys(ctx, userID)
 	if err != nil {

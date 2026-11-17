@@ -500,6 +500,31 @@ func TestFreeOwnerLimitCountsAWorkspaceOnTheFreePlanRow(t *testing.T) {
 	})).Want(http.StatusForbidden)
 }
 
+// A usage invoice that is still pending is a debt tied to its workspace. The
+// owner must not escape it by opening a new free workspace (spec 7b.3).
+func TestFreeOwnerLimitRefusesAnOwnerWithAnUnpaidUsageInvoice(t *testing.T) {
+	requirePlanLimitDB(t)
+	t.Setenv(planlimit.OwnerLimitEnv, "5")
+	user := dbfx.User(t, "Owner", testutil.UniqueEmail("owner-debt"))
+	ws := dbfx.Workspace(t, "owned", "owner-debt-"+uuid.NewString()[:8])
+	dbfx.Member(t, ws, user, "owner")
+	subscribeWorkspace(t, ws, "usage")
+	dbfx.Exec(t, `INSERT INTO billing_order (id, workspace_id, kind, plan_key, interval, amount, currency, status, provider, transfer_code)
+		VALUES ($1, $2, 'usage', 'usage', 'month', 100000, 'VND', 'pending', 'bank_transfer', $3)`,
+		uuid.New(), ws, "DEBT"+uuid.NewString()[:8])
+	dbfx.Cleanup(t, `DELETE FROM billing_order WHERE workspace_id = $1`, ws)
+
+	slug := "owner-debt-new-" + uuid.NewString()[:6]
+	t.Cleanup(func() { testPool.Exec(context.Background(), `DELETE FROM workspace WHERE slug = $1`, slug) })
+	resp := testutil.Call(t, testHandler.CreateWorkspace, newRequestAs(user, http.MethodPost, "/api/workspaces", map[string]any{
+		"name": slug, "slug": slug,
+	}))
+	resp.Want(http.StatusForbidden)
+	if got := resp.Map()["code"]; got != ownerUsageDebtCode {
+		t.Fatalf("code = %v, want %s: %s", got, ownerUsageDebtCode, resp.Text())
+	}
+}
+
 // Unset and 0 mean no limit.
 func TestFreeOwnerLimitUnsetAndZeroMeanNoLimit(t *testing.T) {
 	requirePlanLimitDB(t)

@@ -18,9 +18,14 @@ import (
 
 // fakeStore records the order of what runs in the transaction.
 type fakeStore struct {
-	events  *[]string
-	lockErr error
-	keys    []string
+	events   *[]string
+	lockErr  error
+	keys     []string
+	indebted bool
+}
+
+func (f *fakeStore) OwnerHasUnpaidUsageInvoice(context.Context, pgtype.UUID) (bool, error) {
+	return f.indebted, nil
 }
 
 func (f *fakeStore) LockPlanGate(_ context.Context, arg db.LockPlanGateParams) error {

@@ -82,6 +82,25 @@ func (q *Queries) LockPlanGate(ctx context.Context, arg LockPlanGateParams) erro
 	return err
 }
 
+const ownerHasUnpaidUsageInvoice = `-- name: OwnerHasUnpaidUsageInvoice :one
+SELECT EXISTS (
+    SELECT 1
+    FROM member m
+    JOIN billing_order o ON o.workspace_id = m.workspace_id
+    WHERE m.user_id = $1 AND m.role = 'owner'
+      AND o.kind = 'usage' AND o.status = 'pending'
+)
+`
+
+// Whether any workspace the user owns has a usage invoice still pending: a debt
+// tied to the workspace (platform spec 7b.3, rule 13).
+func (q *Queries) OwnerHasUnpaidUsageInvoice(ctx context.Context, userID pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, ownerHasUnpaidUsageInvoice, userID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const sumPlanLimitAttachmentBytes = `-- name: SumPlanLimitAttachmentBytes :one
 SELECT COALESCE(sum(size_bytes), 0)::bigint FROM attachment WHERE workspace_id = $1
 `

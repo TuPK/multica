@@ -23,3 +23,14 @@ SELECT COALESCE(s.plan_key, '')::text AS plan_key
 FROM member m
 LEFT JOIN workspace_subscription s ON s.workspace_id = m.workspace_id
 WHERE m.user_id = $1 AND m.role = 'owner';
+
+-- name: OwnerHasUnpaidUsageInvoice :one
+-- Whether any workspace the user owns has a usage invoice still pending: a debt
+-- tied to the workspace (platform spec 7b.3, rule 13).
+SELECT EXISTS (
+    SELECT 1
+    FROM member m
+    JOIN billing_order o ON o.workspace_id = m.workspace_id
+    WHERE m.user_id = $1 AND m.role = 'owner'
+      AND o.kind = 'usage' AND o.status = 'pending'
+);

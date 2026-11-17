@@ -133,3 +133,15 @@ func TestCheckOwnerLimitRefusesOnlyFreeOwned(t *testing.T) {
 		t.Fatalf("one free and two paid: err = %v, want nil", err)
 	}
 }
+
+// An owner with an unpaid usage invoice is refused before any count, even
+// below the limit.
+func TestCheckOwnerLimitRefusesAnIndebtedOwner(t *testing.T) {
+	var events []string
+	store := &fakeStore{events: &events, indebted: true}
+	_, err := CheckOwnerLimit(context.Background(), store, pg(uuid.New()), 5)
+	var debt *OwnerDebtError
+	if !errors.As(err, &debt) {
+		t.Fatalf("err = %v, want *OwnerDebtError", err)
+	}
+}
