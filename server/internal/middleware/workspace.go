@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/platform-management/workspacestate"
+	"github.com/multica-ai/multica/server/internal/membergroup"
 	"github.com/multica-ai/multica/server/internal/util"
 	"github.com/multica-ai/multica/server/internal/workspaceguard"
 	"github.com/multica-ai/multica/server/internal/workspacepolicy"
@@ -171,13 +173,13 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 // (fallback), validates membership, and injects the member and workspace ID
 // into the request context.
 func RequireWorkspaceMember(queries *db.Queries) func(http.Handler) http.Handler {
-	return buildMiddleware(queries, resolveWorkspaceUUID(queries), nil)
+	return buildMiddleware(queries, resolveWorkspaceUUID(queries), nil, "")
 }
 
 // RequireWorkspaceRole is like RequireWorkspaceMember but additionally checks
 // that the member has one of the specified roles.
 func RequireWorkspaceRole(queries *db.Queries, roles ...string) func(http.Handler) http.Handler {
-	return buildMiddleware(queries, resolveWorkspaceUUID(queries), roles)
+	return buildMiddleware(queries, resolveWorkspaceUUID(queries), roles, "")
 }
 
 // RequireWorkspaceMemberFromURL resolves the workspace ID from a chi URL
@@ -189,7 +191,7 @@ func RequireWorkspaceMemberFromURL(queries *db.Queries, param string) func(http.
 			return "", nil
 		}
 		return id, nil
-	}, nil)
+	}, nil, "")
 }
 
 // RequireWorkspaceRoleFromURL is like RequireWorkspaceMemberFromURL but
@@ -201,10 +203,52 @@ func RequireWorkspaceRoleFromURL(queries *db.Queries, param string, roles ...str
 			return "", nil
 		}
 		return id, nil
-	}, roles)
+	}, roles, "")
 }
 
-func buildMiddleware(queries *db.Queries, resolve workspaceResolver, roles []string) func(http.Handler) http.Handler {
+// RequireWorkspacePermission is like RequireWorkspaceMember but additionally
+// requires the permission key (spec 7b.2). owner and admin pass without a group
+// lookup; any other role passes only when one of its groups grants key.
+func RequireWorkspacePermission(queries *db.Queries, key string) func(http.Handler) http.Handler {
+	return buildMiddleware(queries, resolveWorkspaceUUID(queries), nil, key)
+}
+
+// RequireWorkspacePermissionFromURL is RequireWorkspacePermission with the
+// workspace taken from a chi URL parameter.
+func RequireWorkspacePermissionFromURL(queries *db.Queries, param, key string) func(http.Handler) http.Handler {
+	return buildMiddleware(queries, func(r *http.Request) (string, error) {
+		return chi.URLParam(r, param), nil
+	}, nil, key)
+}
+
+// guardPermission reports whether member holds key, and writes the refusal when
+// not. The groups are read on every request, so a removal from a group applies
+// to the next one.
+func guardPermission(w http.ResponseWriter, r *http.Request, queries *db.Queries, member db.Member, key string) bool {
+	if member.Role == "owner" || member.Role == "admin" {
+		return true
+	}
+	access, err := membergroup.New(queries).Access(r.Context(), member.WorkspaceID, member.UserID)
+	if err != nil {
+		slog.Warn("workspace: permission lookup failed",
+			"path", r.URL.Path, "workspace_id", util.UUIDToString(member.WorkspaceID), "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to check permissions")
+		return false
+	}
+	if membergroup.Has(access.Permissions, key) {
+		return true
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusForbidden)
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"error": "insufficient permissions", "code": "permission_denied", "permission": key,
+	})
+	return false
+}
+
+// buildMiddleware checks the role list and, when permission is set, the
+// permission key. Both are optional.
+func buildMiddleware(queries *db.Queries, resolve workspaceResolver, roles []string, permission string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			workspaceID, resolveErr := resolve(r)
@@ -274,6 +318,12 @@ func buildMiddleware(queries *db.Queries, resolve workspaceResolver, roles []str
 					writeError(w, http.StatusForbidden, "insufficient permissions")
 					return
 				}
+			}
+
+			// The key check precedes the policy guard so a viewer who holds the
+			// key is still refused a write by the viewer rule (spec 7b.2, rule 7).
+			if permission != "" && !guardPermission(w, r, queries, member, permission) {
+				return
 			}
 
 			// The session policies come first: they refuse a caller whose
