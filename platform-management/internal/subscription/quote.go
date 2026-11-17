@@ -66,12 +66,21 @@ func QuotePlanChange(in QuoteInput) (Quote, *Error) {
 	if in.Request.Seats < 0 || in.Request.Seats > maxSeats {
 		return Quote{}, badRequest("invalid_subscription", "seats must be from 0 to 1000000")
 	}
+	cur := in.Current
+
+	// Rule 7: from a paid seat plan to a usage plan, the change waits for the end
+	// of the paid period. It has no price and no seats. Any other way onto a
+	// usage plan is the checkout route's.
+	if in.Target.BillingModel == plan.BillingUsage && in.HasRow && cur.Status == StatusActive &&
+		cur.PlanKey != plan.FreeKey && in.CurrentPlan.BillingModel == plan.BillingSeat {
+		return Quote{Mode: ModeSchedule}, nil
+	}
+
 	unit, ok := SeatUnitPrice(in.Target, in.Request.Interval)
 	if !ok {
 		return Quote{}, badRequest("plan_not_purchasable", "the plan has no seat price for this interval")
 	}
 	minimum := minSeats(in.Target)
-	cur := in.Current
 
 	// A workspace with no row, a free plan or a trial has no paid period to
 	// prorate: it buys one period at the full price (rule 5).

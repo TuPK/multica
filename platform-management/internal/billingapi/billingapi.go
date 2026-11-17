@@ -317,12 +317,12 @@ func (h *Handler) refuseUnpaidUsage(w http.ResponseWriter, r *http.Request, ws s
 
 // checkoutUsage activates a pay as you go plan at once (spec 7b.3, rule 6): no
 // order waits for payment, and the activation's own order is paid for 0 VND. A
-// workspace on a paid plan cannot switch here yet; that switch waits for the
-// renewal (D40), which this release does not implement for usage plans.
+// workspace on a paid plan cannot switch here: that switch waits for the end of
+// the paid period and goes through plan-changes (spec 7b.1, rule 7).
 func (h *Handler) checkoutUsage(w http.ResponseWriter, r *http.Request, ws, user, key string, p plan.Plan, sub *subscription.Subscription) {
 	if sub != nil && sub.PlanKey != plan.FreeKey && sub.PlanKey != p.Key {
 		writeJSON(w, http.StatusConflict, map[string]any{
-			"error": "the workspace is on a paid plan; the switch to a usage plan is not available yet",
+			"error": "the workspace is on a paid plan; the switch to a usage plan is made with a plan change and applies at the end of the paid period",
 			"code":  codePlanChangeUnavailable, "reason": "from_paid_plan",
 		})
 		return

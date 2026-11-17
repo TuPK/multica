@@ -240,3 +240,25 @@ func TestPlanChangeQuoteFallsBackToTheCataloguePrice(t *testing.T) {
 		t.Fatalf("quote = %+v, want a charge of 500000", got)
 	}
 }
+
+// AC23 (spec 7b.1, rule 7): from a paid seat plan to a usage plan the change is
+// stored for the end of the paid period. It has no price and no seats.
+func TestSeatToUsageSwitchIsScheduledWithNoChargeAndNoSeats(t *testing.T) {
+	payg := plan.Plan{Key: "payg", Currency: "VND", Audience: plan.AudienceAny, BillingModel: plan.BillingUsage}
+	in := qInput(qPaidMonthly(5), payg, IntervalMonth, 0, "2030-03-10T00:00:00Z")
+	q, refusal := QuotePlanChange(in)
+	if refusal != nil {
+		t.Fatalf("refused: %+v", refusal)
+	}
+	if q.Mode != ModeSchedule || q.Amount != 0 || q.Seats != 0 {
+		t.Fatalf("quote = %+v, want a schedule with no amount and no seats", q)
+	}
+
+	// A workspace with no paid period has nothing to wait for; activation is the
+	// checkout route's job, so this route still refuses it.
+	free := in
+	free.HasRow = false
+	if _, refusal := QuotePlanChange(free); refusal == nil {
+		t.Fatal("a workspace with no subscription was quoted a switch to a usage plan")
+	}
+}

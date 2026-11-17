@@ -372,6 +372,60 @@ func (q *Queries) ListSubscriptionsTrialEnded(ctx context.Context, arg ListSubsc
 	return items, nil
 }
 
+const listSubscriptionsUsageSwitchDue = `-- name: ListSubscriptionsUsageSwitchDue :many
+SELECT workspace_id, plan_key, status, seats, interval, current_period_start, current_period_end, trial_end, grace_until, cancel_at_period_end, limit_overrides, version, updated_at, pending_change, unit_price FROM workspace_subscription
+WHERE status = 'active' AND NOT cancel_at_period_end
+  AND plan_key NOT IN (SELECT key FROM plan WHERE billing_model = 'usage')
+  AND pending_change->>'plan_key' IN (SELECT key FROM plan WHERE billing_model = 'usage')
+  AND current_period_end IS NOT NULL AND current_period_end <= $1
+ORDER BY current_period_end, workspace_id
+LIMIT $2
+`
+
+type ListSubscriptionsUsageSwitchDueParams struct {
+	CurrentPeriodEnd pgtype.Timestamptz `json:"current_period_end"`
+	Limit            int32              `json:"limit"`
+}
+
+// active seat subscriptions whose paid period is over and whose pending change
+// is a usage plan: the switch applies now, with no renewal order (spec 7b.1,
+// rule 7). A subscription that stops at the period end goes to free instead.
+func (q *Queries) ListSubscriptionsUsageSwitchDue(ctx context.Context, arg ListSubscriptionsUsageSwitchDueParams) ([]WorkspaceSubscription, error) {
+	rows, err := q.db.Query(ctx, listSubscriptionsUsageSwitchDue, arg.CurrentPeriodEnd, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []WorkspaceSubscription{}
+	for rows.Next() {
+		var i WorkspaceSubscription
+		if err := rows.Scan(
+			&i.WorkspaceID,
+			&i.PlanKey,
+			&i.Status,
+			&i.Seats,
+			&i.Interval,
+			&i.CurrentPeriodStart,
+			&i.CurrentPeriodEnd,
+			&i.TrialEnd,
+			&i.GraceUntil,
+			&i.CancelAtPeriodEnd,
+			&i.LimitOverrides,
+			&i.Version,
+			&i.UpdatedAt,
+			&i.PendingChange,
+			&i.UnitPrice,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSubscriptionsUsageUnpaid = `-- name: ListSubscriptionsUsageUnpaid :many
 SELECT s.workspace_id, s.plan_key, s.status, s.seats, s.interval, s.current_period_start, s.current_period_end, s.trial_end, s.grace_until, s.cancel_at_period_end, s.limit_overrides, s.version, s.updated_at, s.pending_change, s.unit_price,
        (d.oldest + make_interval(days => $1::int + $2::int))::timestamptz AS usage_grace_until
@@ -482,6 +536,9 @@ SET plan_key = $4,
     current_period_end = $8,
     grace_until = $9,
     cancel_at_period_end = $10,
+    interval = $11,
+    pending_change = $12,
+    unit_price = $13,
     version = version + 1,
     updated_at = now()
 WHERE workspace_id = $1 AND status = $2 AND version = $3
@@ -499,6 +556,9 @@ type MoveWorkspaceSubscriptionParams struct {
 	CurrentPeriodEnd   pgtype.Timestamptz `json:"current_period_end"`
 	GraceUntil         pgtype.Timestamptz `json:"grace_until"`
 	CancelAtPeriodEnd  bool               `json:"cancel_at_period_end"`
+	Interval           string             `json:"interval"`
+	PendingChange      []byte             `json:"pending_change"`
+	UnitPrice          pgtype.Int8        `json:"unit_price"`
 }
 
 // One lifecycle step. It applies only to the row the job saw: the same status
@@ -515,6 +575,9 @@ func (q *Queries) MoveWorkspaceSubscription(ctx context.Context, arg MoveWorkspa
 		arg.CurrentPeriodEnd,
 		arg.GraceUntil,
 		arg.CancelAtPeriodEnd,
+		arg.Interval,
+		arg.PendingChange,
+		arg.UnitPrice,
 	)
 	var i WorkspaceSubscription
 	err := row.Scan(

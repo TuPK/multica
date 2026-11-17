@@ -13,7 +13,6 @@ import (
 
 	"github.com/multica-ai/multica/platform-management/internal/billing"
 	"github.com/multica-ai/multica/platform-management/internal/db"
-	"github.com/multica-ai/multica/platform-management/internal/plan"
 	"github.com/multica-ai/multica/platform-management/internal/subscription"
 	"github.com/multica-ai/multica/platform-management/internal/workspacestatus"
 	"github.com/multica-ai/multica/platform-management/workspacestate"
@@ -60,19 +59,7 @@ func timePtr(t pgtype.Timestamptz) *time.Time {
 }
 
 func fromRow(r db.WorkspaceSubscription) (subscription.Subscription, error) {
-	overrides := plan.Limits{}
-	if err := json.Unmarshal(r.LimitOverrides, &overrides); err != nil {
-		return subscription.Subscription{}, fmt.Errorf("subscription %s: limit_overrides: %w", r.WorkspaceID.String(), err)
-	}
-	if overrides == nil {
-		overrides = plan.Limits{}
-	}
-	return subscription.Subscription{
-		WorkspaceID: r.WorkspaceID.String(), PlanKey: r.PlanKey, Status: r.Status, Seats: int(r.Seats),
-		Interval: r.Interval, CurrentPeriodStart: timePtr(r.CurrentPeriodStart), CurrentPeriodEnd: timePtr(r.CurrentPeriodEnd),
-		TrialEnd: timePtr(r.TrialEnd), GraceUntil: timePtr(r.GraceUntil), CancelAtPeriodEnd: r.CancelAtPeriodEnd,
-		LimitOverrides: overrides, Version: r.Version, UpdatedAt: r.UpdatedAt.Time.UTC(),
-	}, nil
+	return subscription.FromRow(r)
 }
 
 func fromRows(rows []db.WorkspaceSubscription, err error) ([]subscription.Subscription, error) {
@@ -99,6 +86,8 @@ func (s *PgxStore) Due(ctx context.Context, e Edge, now time.Time, limit int) ([
 		return fromRows(s.q.ListSubscriptionsTrialEnded(ctx, db.ListSubscriptionsTrialEndedParams{TrialEnd: at, Limit: n}))
 	case EdgeCanceledLapsed:
 		return fromRows(s.q.ListSubscriptionsCanceledLapsed(ctx, db.ListSubscriptionsCanceledLapsedParams{CurrentPeriodEnd: at, Limit: n}))
+	case EdgeUsageSwitch:
+		return fromRows(s.q.ListSubscriptionsUsageSwitchDue(ctx, db.ListSubscriptionsUsageSwitchDueParams{CurrentPeriodEnd: at, Limit: n}))
 	case EdgePeriodLapsed:
 		return fromRows(s.q.ListSubscriptionsPeriodLapsed(ctx, db.ListSubscriptionsPeriodLapsedParams{CurrentPeriodEnd: at, Limit: n}))
 	case EdgeGraceEnded:
@@ -214,11 +203,22 @@ func (t *pgxTx) Move(ctx context.Context, from, to subscription.Subscription) (s
 	if err != nil {
 		return subscription.Subscription{}, false, err
 	}
+	var pending []byte
+	if to.PendingChange != nil {
+		if pending, err = json.Marshal(to.PendingChange); err != nil {
+			return subscription.Subscription{}, false, err
+		}
+	}
+	var unitPrice pgtype.Int8
+	if to.UnitPrice != nil {
+		unitPrice = pgtype.Int8{Int64: *to.UnitPrice, Valid: true}
+	}
 	row, err := t.q.MoveWorkspaceSubscription(ctx, db.MoveWorkspaceSubscriptionParams{
 		WorkspaceID: id, Status: from.Status, Version: from.Version,
 		PlanKey: to.PlanKey, Status_2: to.Status, Seats: int32(to.Seats),
 		CurrentPeriodStart: timestamptzPtr(to.CurrentPeriodStart), CurrentPeriodEnd: timestamptzPtr(to.CurrentPeriodEnd),
 		GraceUntil: timestamptzPtr(to.GraceUntil), CancelAtPeriodEnd: to.CancelAtPeriodEnd,
+		Interval: to.Interval, PendingChange: pending, UnitPrice: unitPrice,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return subscription.Subscription{}, false, nil

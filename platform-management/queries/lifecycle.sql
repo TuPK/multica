@@ -27,6 +27,18 @@ WHERE status = 'active' AND NOT cancel_at_period_end
 ORDER BY current_period_end, workspace_id
 LIMIT $2;
 
+-- name: ListSubscriptionsUsageSwitchDue :many
+-- active seat subscriptions whose paid period is over and whose pending change
+-- is a usage plan: the switch applies now, with no renewal order (spec 7b.1,
+-- rule 7). A subscription that stops at the period end goes to free instead.
+SELECT * FROM workspace_subscription
+WHERE status = 'active' AND NOT cancel_at_period_end
+  AND plan_key NOT IN (SELECT key FROM plan WHERE billing_model = 'usage')
+  AND pending_change->>'plan_key' IN (SELECT key FROM plan WHERE billing_model = 'usage')
+  AND current_period_end IS NOT NULL AND current_period_end <= $1
+ORDER BY current_period_end, workspace_id
+LIMIT $2;
+
 -- name: ListSubscriptionsUsageUnpaid :many
 -- active usage subscriptions with a pending usage invoice created at or before
 -- $1 less $2 days (spec 7b.3, rule 13). usage_grace_until is the oldest such
@@ -80,6 +92,9 @@ SET plan_key = $4,
     current_period_end = $8,
     grace_until = $9,
     cancel_at_period_end = $10,
+    interval = $11,
+    pending_change = $12,
+    unit_price = $13,
     version = version + 1,
     updated_at = now()
 WHERE workspace_id = $1 AND status = $2 AND version = $3

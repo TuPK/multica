@@ -4,6 +4,7 @@
 //	trialing --trial_end--> free
 //	active --period over, not renewed--> past_due --grace over--> read_only --30 days--> free
 //	active --period over, cancel_at_period_end--> free
+//	active (seat plan, usage plan pending) --period over--> active (usage plan), no renewal order
 //	active (usage plan) --usage invoice unpaid past its due days--> past_due, then as above
 //
 // A payment at any step returns the workspace to active; that is
@@ -21,6 +22,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/platform-management/internal/billing"
 	"github.com/multica-ai/multica/platform-management/internal/subscription"
 	"github.com/multica-ai/multica/platform-management/internal/workspacestatus"
@@ -261,6 +263,16 @@ func (s *Service) step(ctx context.Context, e Edge, before subscription.Subscrip
 			return err
 		}
 		after, applied = moved, true
+		if e == EdgeUsageSwitch {
+			return audit.Record(ctx, tx, audit.Entry{
+				WorkspaceID: before.WorkspaceID, ActorType: audit.ActorSystem, ActorLabel: systemLabel,
+				Action: audit.ActionSubscriptionChanged, TargetType: "workspace", TargetID: before.WorkspaceID,
+				Detail: map[string]any{
+					"plan": after.PlanKey, "billing_model": "usage", "from_plan": before.PlanKey,
+					"edge": string(e), "version": after.Version,
+				},
+			})
+		}
 		workspaceChanged, err = s.moveWorkspace(ctx, tx, e, before.WorkspaceID)
 		return err
 	})
@@ -279,6 +291,10 @@ func (s *Service) step(ctx context.Context, e Edge, before subscription.Subscrip
 			s.d.Log.Warn("lifecycle: workspace state cache key not deleted; the cached state stays until it expires",
 				"workspace_id", after.WorkspaceID, "ttl", workspacestate.TTL, "error", err)
 		}
+	}
+	if e == EdgeUsageSwitch {
+		// The subscription stays active, and the owner asked for the change.
+		return nil
 	}
 	return s.notifyState(ctx, e, before, after, rep)
 }

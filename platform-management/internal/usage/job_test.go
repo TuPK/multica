@@ -400,3 +400,27 @@ func TestDBRatingUsesThePriceInForceAtMidnightOfTheDayEvenWhenRunLate(t *testing
 		}
 	}
 }
+
+// AC23: a workspace that switched from a seat plan to a usage plan part-way
+// through a month is not charged usage rates for the days it had paid for on
+// the seat plan. Rating starts at the day its usage period starts.
+func TestDBRatingSkipsDaysBeforeTheUsagePeriodStarts(t *testing.T) {
+	pool := testdb.Open(t)
+	f := newFixture(t, pool)
+	ws := f.workspace(wsSpec{})
+	mustExec(t, pool, `UPDATE workspace_subscription SET current_period_start = '2026-11-10 14:30:00+00' WHERE workspace_id = $1`, ws)
+	r := NewRater(pool, RaterConfig{})
+
+	f.snapshot(ws, day("2026-11-05"))
+	f.snapshot(ws, day("2026-11-09"))
+	f.snapshot(ws, day("2026-11-10"))
+	f.snapshot(ws, day("2026-11-12"))
+	if _, err := r.Run(context.Background(), jobNow); err != nil {
+		t.Fatal(err)
+	}
+	for d, want := range map[string]int{"2026-11-05": 0, "2026-11-09": 0, "2026-11-10": 3, "2026-11-12": 3} {
+		if n := len(f.charges(ws, day(d))); n != want {
+			t.Errorf("%s has %d charge rows, want %d", d, n, want)
+		}
+	}
+}

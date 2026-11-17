@@ -289,6 +289,7 @@ func TestLifecycleParallelRunsApplyEachEdgeOnce(t *testing.T) {
 	fixtures := map[Edge]string{
 		EdgeTrialEnded: wsID(1), EdgeCanceledLapsed: wsID(2), EdgePeriodLapsed: wsID(3),
 		EdgeGraceEnded: wsID(4), EdgeReadOnlyEnded: wsID(5), EdgeUsageUnpaid: wsID(7),
+		EdgeUsageSwitch: wsID(8),
 	}
 	e.store.put(trialingSub(wsID(1), now))
 	canceling := activeSub(wsID(2), now)
@@ -305,7 +306,11 @@ func TestLifecycleParallelRunsApplyEachEdgeOnce(t *testing.T) {
 	e.store.orders["usage-order"] = billing.Order{
 		ID: "usage-order", WorkspaceID: wsID(7), Kind: billing.KindUsage, Status: billing.StatusPending, CreatedAt: now.Add(-8 * day),
 	}
-	for n := 1; n <= 7; n++ {
+	// A seat subscription whose paid period is over with a usage plan pending.
+	switching := activeSub(wsID(8), now)
+	switching.PendingChange = &subscription.PendingChange{PlanKey: "payg", Interval: subscription.IntervalMonth}
+	e.store.put(switching)
+	for n := 1; n <= 8; n++ {
 		e.store.contact(wsID(n), admin)
 	}
 	before := map[string]int64{}
@@ -358,15 +363,17 @@ func TestLifecycleParallelRunsApplyEachEdgeOnce(t *testing.T) {
 			t.Errorf("%s: version %d, want %d: the row moved more than once", ws, got, before[ws]+1)
 		}
 	}
-	if reminders != 1 || stateMails != len(Edges) || e.mail.count() != 1+len(Edges) {
+	// The usage switch keeps the subscription active and sends no state email.
+	stateEdges := len(Edges) - 1
+	if reminders != 1 || stateMails != stateEdges || e.mail.count() != 1+stateEdges {
 		t.Errorf("emails: %d reminders, %d state, %d sent in all; want 1, %d, %d",
-			reminders, stateMails, e.mail.count(), len(Edges), 1+len(Edges))
+			reminders, stateMails, e.mail.count(), stateEdges, 1+stateEdges)
 	}
-	if got := e.store.noticeCount(); got != 1+len(Edges) {
-		t.Errorf("billing_notice rows = %d, want %d", got, 1+len(Edges))
+	if got := e.store.noticeCount(); got != 1+stateEdges {
+		t.Errorf("billing_notice rows = %d, want %d", got, 1+stateEdges)
 	}
-	if got := len(e.store.audits); got != 2 { // read_only, then back to active
-		t.Errorf("workspace audit rows = %d, want 2", got)
+	if got := len(e.store.audits); got != 3 { // read_only, then back to active, and the usage switch
+		t.Errorf("audit rows = %d, want 3", got)
 	}
 }
 

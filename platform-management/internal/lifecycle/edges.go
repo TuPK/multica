@@ -13,6 +13,10 @@ type Edge string
 const (
 	// EdgeTrialEnded: trialing to free when trial_end has passed.
 	EdgeTrialEnded Edge = "trial_ended"
+	// EdgeUsageSwitch: active on a seat plan to active on a usage plan when the
+	// paid period is over and pending_change is that usage plan (spec 7b.1,
+	// rule 7). There is no renewal order: a usage plan has no seats to renew.
+	EdgeUsageSwitch Edge = "usage_switch"
 	// EdgeCanceledLapsed: active with cancel_at_period_end to free when the period is over.
 	EdgeCanceledLapsed Edge = "canceled_lapsed"
 	// EdgePeriodLapsed: active to past_due when the period is over.
@@ -28,15 +32,16 @@ const (
 
 // Edges lists the edges in the order a run takes them. A subscription that is
 // overdue by more than one step, after a stop of the job, moves through all of
-// them in one run.
-var Edges = []Edge{EdgeTrialEnded, EdgeCanceledLapsed, EdgePeriodLapsed, EdgeUsageUnpaid, EdgeGraceEnded, EdgeReadOnlyEnded}
+// them in one run. EdgeUsageSwitch comes before EdgePeriodLapsed, so a period
+// that ends with a usage plan pending never lapses.
+var Edges = []Edge{EdgeTrialEnded, EdgeUsageSwitch, EdgeCanceledLapsed, EdgePeriodLapsed, EdgeUsageUnpaid, EdgeGraceEnded, EdgeReadOnlyEnded}
 
 // From is the status the edge leaves.
 func (e Edge) From() string {
 	switch e {
 	case EdgeTrialEnded:
 		return StatusTrialing
-	case EdgeCanceledLapsed, EdgePeriodLapsed, EdgeUsageUnpaid:
+	case EdgeUsageSwitch, EdgeCanceledLapsed, EdgePeriodLapsed, EdgeUsageUnpaid:
 		return subscription.StatusActive
 	case EdgeGraceEnded:
 		return StatusPastDue
@@ -51,6 +56,8 @@ func (e Edge) To() string {
 	switch e {
 	case EdgeTrialEnded, EdgeCanceledLapsed, EdgeReadOnlyEnded:
 		return StatusFree
+	case EdgeUsageSwitch:
+		return subscription.StatusActive
 	case EdgePeriodLapsed, EdgeUsageUnpaid:
 		return StatusPastDue
 	case EdgeGraceEnded:
@@ -71,6 +78,10 @@ func (e Edge) Due(s subscription.Subscription, now time.Time) bool {
 	switch e {
 	case EdgeTrialEnded:
 		return reached(now, s.TrialEnd)
+	case EdgeUsageSwitch:
+		// A usage plan has no seats, and a seat plan always has at least one, so
+		// a pending change with none is the usage plan. The store checks the plan.
+		return !s.CancelAtPeriodEnd && s.PendingChange != nil && s.PendingChange.Seats == 0 && reached(now, s.CurrentPeriodEnd)
 	case EdgeCanceledLapsed:
 		return s.CancelAtPeriodEnd && reached(now, s.CurrentPeriodEnd)
 	case EdgePeriodLapsed:
@@ -100,6 +111,14 @@ func (e Edge) Due(s subscription.Subscription, now time.Time) bool {
 func (e Edge) Apply(s subscription.Subscription) subscription.Subscription {
 	s.Status = e.To()
 	switch e {
+	case EdgeUsageSwitch:
+		// The usage period starts when the paid seat period ends and runs to the
+		// end of that UTC month (spec 7b.3, rule 6). Rating starts at its first day.
+		start := *s.CurrentPeriodEnd
+		_, end := subscription.UsagePeriod(start)
+		s.PlanKey, s.Seats, s.Interval = s.PendingChange.PlanKey, 0, subscription.IntervalMonth
+		s.CurrentPeriodStart, s.CurrentPeriodEnd, s.GraceUntil = &start, &end, nil
+		s.PendingChange, s.UnitPrice = nil, nil
 	case EdgePeriodLapsed:
 		s.GraceUntil = nil
 		if s.CurrentPeriodEnd != nil {

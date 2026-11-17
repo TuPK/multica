@@ -275,6 +275,10 @@ func (h *Handler) changePlan(w http.ResponseWriter, r *http.Request) {
 	}
 	actor := subscription.Actor{ID: user}
 	if q.Mode == subscription.ModeSchedule {
+		// A usage plan is billed by the calendar month, whatever interval was sent.
+		if q.target.BillingModel == plan.BillingUsage {
+			in.Interval = subscription.IntervalMonth
+		}
 		res, err := h.Changes.Schedule(ctx, subscription.ScheduleChange{
 			WorkspaceID: ws, PlanKey: q.target.Key, Interval: in.Interval, Seats: q.Seats,
 			ExpectedVersion: in.ExpectedVersion,

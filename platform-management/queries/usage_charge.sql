@@ -5,7 +5,9 @@
 -- name: ListUsageDaysToRate :many
 -- The closed days (before today, UTC) that have a usage snapshot row and no
 -- charge row yet, for workspaces on a usage plan. A day is written as a whole
--- in one transaction, so a day with any charge row is done. The workspace's
+-- in one transaction, so a day with any charge row is done. Days before the
+-- subscription's period start are not rated: a workspace that switched from a
+-- seat plan starts its usage period when the seat period ended. The workspace's
 -- plan, account kind and verification are read as they are now.
 SELECT
     u.workspace_id,
@@ -25,6 +27,7 @@ JOIN plan p ON p.key = s.plan_key AND p.billing_model = 'usage'
 LEFT JOIN billing_profile bp ON bp.workspace_id = u.workspace_id
 LEFT JOIN platform_workspace w ON w.workspace_id = u.workspace_id
 WHERE u.day < sqlc.arg('today')::date
+  AND u.day >= COALESCE((s.current_period_start AT TIME ZONE 'UTC')::date, u.day)
   AND NOT EXISTS (
       SELECT 1 FROM usage_charge c
       WHERE c.workspace_id = u.workspace_id AND c.day = u.day
