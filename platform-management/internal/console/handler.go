@@ -75,6 +75,8 @@ type Deps struct {
 	Cache      AccountCache
 	Notifier   AccountNotifier
 	Payments   PaymentApplier
+	// Reconciler decides payment notices. *billing.Reconciler is one.
+	Reconciler NoticeResolver
 	Accounts   AccountRequests
 	Logins     LoginLookup
 	Emails     EmailLookup
@@ -136,6 +138,11 @@ func routeTable() []routeSpec {
 		{base + "/orders", billingAndAdmin, map[string]handlerFunc{http.MethodGet: (*Handler).listOrders}},
 		{base + "/orders/{id}/confirm", billingAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).confirmOrder}},
 		{base + "/orders/{id}/cancel", billingAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).cancelOrder}},
+		{base + "/payment-notices", billingAndAdmin, map[string]handlerFunc{http.MethodGet: (*Handler).listPaymentNotices}},
+		{base + "/payment-notices/{id}", billingAndAdmin, map[string]handlerFunc{http.MethodGet: (*Handler).getPaymentNotice}},
+		{base + "/payment-notices/{id}/resolve", billingAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).resolvePaymentNotice}},
+		{base + "/payment-notices/{id}/dismiss", billingAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).dismissPaymentNotice}},
+		{base + "/einvoices", billingAndAdmin, map[string]handlerFunc{http.MethodGet: (*Handler).listEinvoices}},
 		{base + "/accounts", adminOnly, map[string]handlerFunc{
 			http.MethodGet:  (*Handler).listAccountRequests,
 			http.MethodPost: (*Handler).createAccountRequest,

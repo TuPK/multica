@@ -246,9 +246,10 @@ func run() error {
 		Runner:        console.NewPgxRunner(pool),
 		Workspaces: workspacestatus.New(workspacestatus.NewPgxRunner(pool),
 			workspacestate.New(nil, accountCache), slog.Default()),
-		Cache:    guard,
-		Notifier: accountcache.NewPublisher(rdb),
-		Payments: orders,
+		Cache:      guard,
+		Notifier:   accountcache.NewPublisher(rdb),
+		Payments:   orders,
+		Reconciler: reconciler,
 		Accounts: accountrequest.New(accountrequest.Deps{
 			Runner: accountrequest.NewPgxRunner(pool), Reader: accountrequest.NewPgxReader(pool),
 			Plans: plan.NewPgxReader(pool), Limiter: platformauth.NewRedisLimiter(rdb),
