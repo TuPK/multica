@@ -9,6 +9,7 @@ export const TENANT_STATUSES = ["active", "read_only", "suspended", "pending_del
 export const ACCOUNT_STATUSES = ["active", "suspended", "pending_deletion", "deleted"] as const;
 export const STAFF_ROLES = ["support", "billing", "admin"] as const;
 export const ACTOR_TYPES = ["member", "agent", "system", "staff"] as const;
+export const ACCOUNT_KINDS = ["individual", "business"] as const;
 
 /**
  * The audit action codes the console API's `action` filter accepts. Kept in
@@ -52,6 +53,8 @@ export const AUDIT_ACTIONS = [
   "billing.usage_invoiced",
   "billing.usage_credit_limit_reached",
   "billing.usage_written_off",
+  "billing_profile.verified",
+  "billing_profile.unverified",
   "integration.connected",
   "integration.disconnected",
   "plugin.installed",
@@ -296,12 +299,28 @@ export const ResetMfaResponseSchema = z.object({
 });
 export type ResetMfaResponse = z.output<typeof ResetMfaResponseSchema>;
 
+export const TenantBillingProfileSchema = z.object({
+  account_kind: enumOf(ACCOUNT_KINDS),
+  verified: z.boolean().default(false),
+  verified_at: nullableText,
+});
+export type TenantBillingProfile = z.output<typeof TenantBillingProfileSchema>;
+
+export const BillingProfileVerifyResponseSchema = z.object({
+  workspace_id: text,
+  account_kind: enumOf(ACCOUNT_KINDS),
+  verified: z.boolean(),
+  verified_at: nullableText,
+});
+export type BillingProfileVerifyResponse = z.output<typeof BillingProfileVerifyResponseSchema>;
+
 export const TenantDetailSchema = TenantSchema.extend({
   state: TenantStateSchema.prefault({}),
   notes_count: count,
   group_count: count,
   owner: z.object({ id: z.string(), email: text }).nullable().default(null),
   subscription: SubscriptionSchema.nullable().default(null),
+  billing_profile: TenantBillingProfileSchema.nullable().optional(),
   recent_orders: z.array(OrderSchema).default([]),
   usage_current: UsageCurrentSchema.optional(),
 });
@@ -544,6 +563,18 @@ export function parseTenantDetail(data: unknown): TenantDetail | null {
   });
 }
 
+export function parseBillingProfileVerifyResponse(
+  data: unknown,
+  endpoint = "POST /api/platform/tenants/{id}/billing-profile/verify",
+): BillingProfileVerifyResponse | null {
+  return parseWithFallback<BillingProfileVerifyResponse | null>(
+    data,
+    BillingProfileVerifyResponseSchema,
+    null,
+    { endpoint },
+  );
+}
+
 export function parseTenantUsage(data: unknown): TenantUsage | null {
   return parseWithFallback<TenantUsage | null>(data, TenantUsageSchema, null, {
     endpoint: "GET /api/platform/tenants/{id}/usage",
@@ -586,7 +617,6 @@ export function parseOverview(data: unknown): Overview | null {
 
 // Account requests (spec 7b.5)
 
-export const ACCOUNT_KINDS = ["individual", "business"] as const;
 export const ACCOUNT_REQUEST_STATES = [
   "pending",
   "provisioned",

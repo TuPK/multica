@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { TenantDetail } from "./TenantDetail";
+import { PlatformApiError } from "../api/client";
 
 const mockUseMe = vi.fn();
 const mockUseTenant = vi.fn();
@@ -12,6 +13,7 @@ const mockChangeTenantStatusMutateAsync = vi.fn();
 const mockAddTenantNoteMutateAsync = vi.fn();
 const mockUpdateSubscriptionMutateAsync = vi.fn();
 const mockCancelOrderMutateAsync = vi.fn();
+const mockSetBillingProfileVerifiedMutateAsync = vi.fn();
 
 vi.mock("../api/hooks", () => ({
   useMe: () => mockUseMe(),
@@ -33,6 +35,10 @@ vi.mock("../api/hooks", () => ({
   }),
   useCancelOrder: () => ({
     mutateAsync: mockCancelOrderMutateAsync,
+    isPending: false,
+  }),
+  useSetBillingProfileVerified: () => ({
+    mutateAsync: mockSetBillingProfileVerifiedMutateAsync,
     isPending: false,
   }),
 }));
@@ -536,6 +542,105 @@ describe("TenantDetail screen", () => {
         expect(screen.getByRole("alert")).toHaveTextContent("only an admin can write off a usage invoice");
       });
       expect(screen.getByRole("heading", { name: /write off/i })).toBeInTheDocument();
+    });
+  });
+
+  describe("billing profile verification", () => {
+    function getBillingProfileCard(): HTMLElement {
+      const heading = screen.getByRole("heading", { name: "Billing profile" });
+      return heading.closest<HTMLElement>("[data-slot='card']") ?? heading.parentElement!.parentElement!;
+    }
+
+    it("shows verify to billing and admin", () => {
+      for (const role of ["billing", "admin"] as const) {
+        const { unmount } = render(
+          <TenantDetail tenantId="t-123" onBack={vi.fn()} userRole={role} />,
+        );
+
+        const card = getBillingProfileCard();
+        expect(within(card).getByRole("button", { name: "Verify" })).toBeInTheDocument();
+        unmount();
+      }
+    });
+
+    it("hides the verify control from support", () => {
+      render(<TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="support" />);
+
+      const card = getBillingProfileCard();
+      expect(within(card).getByText("Unverified")).toBeInTheDocument();
+      expect(within(card).queryByRole("button", { name: "Verify" })).not.toBeInTheDocument();
+      expect(within(card).queryByRole("button", { name: "Unverify" })).not.toBeInTheDocument();
+    });
+
+    it("calls the verify endpoint and shows verified", async () => {
+      const verifiedAt = "2026-11-17T10:00:00Z";
+      mockSetBillingProfileVerifiedMutateAsync.mockResolvedValueOnce({
+        workspace_id: "t-123",
+        account_kind: "business",
+        verified: true,
+        verified_at: verifiedAt,
+      });
+
+      render(<TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="billing" />);
+
+      const card = getBillingProfileCard();
+
+      fireEvent.click(within(card).getByRole("button", { name: "Verify" }));
+
+      await waitFor(() => {
+        expect(mockSetBillingProfileVerifiedMutateAsync).toHaveBeenCalledWith({
+          tenantId: "t-123",
+          verified: true,
+        });
+      });
+
+      await waitFor(() => {
+        expect(within(card).getByText("Verified")).toBeInTheDocument();
+      });
+      expect(within(card).getByText("business")).toBeInTheDocument();
+      expect(within(card).getByText(new Date(verifiedAt).toLocaleString())).toBeInTheDocument();
+      expect(within(card).getByRole("button", { name: "Unverify" })).toBeInTheDocument();
+
+      mockSetBillingProfileVerifiedMutateAsync.mockResolvedValueOnce({
+        workspace_id: "t-123",
+        account_kind: "business",
+        verified: false,
+        verified_at: null,
+      });
+      fireEvent.click(within(card).getByRole("button", { name: "Unverify" }));
+
+      await waitFor(() => {
+        expect(mockSetBillingProfileVerifiedMutateAsync).toHaveBeenLastCalledWith({
+          tenantId: "t-123",
+          verified: false,
+        });
+      });
+      await waitFor(() => {
+        expect(within(card).getByText("Unverified")).toBeInTheDocument();
+      });
+      expect(within(card).getByRole("button", { name: "Verify" })).toBeInTheDocument();
+    });
+
+    it("lists the missing fields on billing_profile_incomplete", async () => {
+      mockSetBillingProfileVerifiedMutateAsync.mockRejectedValueOnce(
+        new PlatformApiError(409, "billing_profile_incomplete", "billing profile is incomplete", {
+          fields: ["legal_name", "tax_code", "address", "invoice_email"],
+        }),
+      );
+
+      render(<TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="admin" />);
+
+      const card = getBillingProfileCard();
+
+      fireEvent.click(within(card).getByRole("button", { name: "Verify" }));
+
+      await waitFor(() => {
+        const alert = within(card).getByRole("alert");
+        expect(alert).toHaveTextContent("legal_name");
+        expect(alert).toHaveTextContent("tax_code");
+        expect(alert).toHaveTextContent("address");
+        expect(alert).toHaveTextContent("invoice_email");
+      });
     });
   });
 });

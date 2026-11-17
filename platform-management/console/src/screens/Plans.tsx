@@ -58,12 +58,14 @@ export function Plans({ userRole }: PlansProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [planName, setPlanName] = useState("");
+  const [currency, setCurrency] = useState("vnd");
   const [trialDays, setTrialDays] = useState(0);
   const [minSeats, setMinSeats] = useState<number | null>(null);
   const [seatsFixed, setSeatsFixed] = useState<number | null>(null);
   const [isPublic, setIsPublic] = useState(false);
   const [sortOrder, setSortOrder] = useState(0);
   const [archived, setArchived] = useState(false);
+  const [currencyError, setCurrencyError] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
 
   // Delete dialog state
@@ -149,12 +151,14 @@ export function Plans({ userRole }: PlansProps) {
   const handleOpenEdit = (plan: Plan) => {
     setSelectedPlan(plan);
     setPlanName(plan.name);
+    setCurrency(plan.currency);
     setTrialDays(plan.trial_days);
     setMinSeats(plan.min_seats);
     setSeatsFixed(plan.seats_fixed);
     setIsPublic(plan.is_public);
     setSortOrder(plan.sort);
     setArchived(Boolean(plan.archived_at));
+    setCurrencyError(null);
     setEditError(null);
     setEditDialogOpen(true);
   };
@@ -162,6 +166,7 @@ export function Plans({ userRole }: PlansProps) {
   const handleSavePlan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPlan || putPlan.isPending) return;
+    setCurrencyError(null);
     setEditError(null);
 
     try {
@@ -171,7 +176,7 @@ export function Plans({ userRole }: PlansProps) {
         trial_days: Number(trialDays),
         limits: selectedPlan.limits,
         features: selectedPlan.features,
-        currency: selectedPlan.currency,
+        currency: currency.trim(),
         seats_fixed: seatsFixed !== null && !isNaN(seatsFixed) ? Number(seatsFixed) : null,
         min_seats: minSeats !== null && !isNaN(minSeats) ? Number(minSeats) : null,
         is_public: isPublic,
@@ -181,7 +186,11 @@ export function Plans({ userRole }: PlansProps) {
       setEditDialogOpen(false);
       setSelectedPlan(null);
     } catch (err: unknown) {
-      if (err instanceof Error) {
+      if (err instanceof PlatformApiError && err.code === "plan_currency_locked") {
+        setCurrencyError(
+          "The currency can't change because this plan has subscriptions or orders.",
+        );
+      } else if (err instanceof Error) {
         setEditError(err.message);
       } else {
         setEditError("Failed to update plan");
@@ -368,6 +377,29 @@ export function Plans({ userRole }: PlansProps) {
                   required
                   disabled={putPlan.isPending}
                 />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="plan-currency-input" className="text-caption font-medium text-foreground">
+                  Currency
+                </label>
+                <Input
+                  id="plan-currency-input"
+                  value={currency}
+                  onChange={(e) => {
+                    setCurrency(e.target.value);
+                    setCurrencyError(null);
+                  }}
+                  placeholder="e.g. vnd, usd"
+                  aria-invalid={Boolean(currencyError)}
+                  aria-describedby={currencyError ? "plan-currency-error" : undefined}
+                  disabled={putPlan.isPending}
+                />
+                {currencyError && (
+                  <p id="plan-currency-error" role="alert" className="text-caption text-destructive">
+                    {currencyError}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">

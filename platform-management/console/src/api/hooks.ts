@@ -25,6 +25,7 @@ import {
   parseVerifyCodeResponse,
   parseResetMfaResponse,
   parsePutSubscriptionResponse,
+  parseBillingProfileVerifyResponse,
   parseAccountRequestList,
   parseAccountRequest,
   parseResendWelcomeResponse,
@@ -42,6 +43,7 @@ import {
   type Order,
   type Plan,
   type Subscription,
+  type BillingProfileVerifyResponse,
   type Limits,
   type AccountRequest,
   type AccountRequestState,
@@ -55,6 +57,7 @@ import {
 
 export type {
   Subscription,
+  BillingProfileVerifyResponse,
   Order,
   Plan,
   Limits,
@@ -737,6 +740,35 @@ export function useUpdateSubscription() {
         platformKeys.tenant(vars.tenantId),
         platformKeys.tenants(),
         platformKeys.overview(),
+        platformKeys.audits(),
+      ]),
+  });
+}
+
+/** Verify or unverify a workspace's billing profile. Billing or Admin only. */
+export function useSetBillingProfileVerified() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: {
+      tenantId: string;
+      verified: boolean;
+    }): Promise<BillingProfileVerifyResponse> => {
+      const action = vars.verified ? "verify" : "unverify";
+      const res = await platformFetch(
+        `/tenants/${pathSegment(vars.tenantId)}/billing-profile/${action}`,
+        { method: "POST" },
+      );
+      return orMalformed(
+        parseBillingProfileVerifyResponse(
+          res,
+          `POST /api/platform/tenants/{id}/billing-profile/${action}`,
+        ),
+      );
+    },
+    onSuccess: (_data, vars) =>
+      invalidateAll(queryClient, [
+        platformKeys.tenant(vars.tenantId),
+        platformKeys.tenantAudits(vars.tenantId),
         platformKeys.audits(),
       ]),
   });

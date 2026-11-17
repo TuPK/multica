@@ -43,14 +43,17 @@ import {
   useChangeTenantStatus,
   useAddTenantNote,
   useUpdateSubscription,
+  useSetBillingProfileVerified,
   useCancelOrder,
 } from "../api/hooks";
+import { PlatformApiError } from "../api/client";
 import { formatBytes } from "./Tenants";
 import type { StaffRole } from "../components/types";
 import type {
   Note,
   AuditEvent,
   Order,
+  BillingProfileVerifyResponse,
   TenantUsage,
   TenantUsageRow,
   TenantUsageUnpaidOrder,
@@ -248,6 +251,12 @@ function MonthlyUsageCard({
   );
 }
 
+function formatTimestamp(value: string | null | undefined): string {
+  if (!value) return "-";
+  const ms = Date.parse(value);
+  return Number.isNaN(ms) ? value : new Date(ms).toLocaleString();
+}
+
 function UsageValue({ label, value }: { label: string; value: number | string }) {
   return (
     <div>
@@ -288,7 +297,17 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
   const changeStatus = useChangeTenantStatus();
   const addNote = useAddTenantNote();
   const updateSubscription = useUpdateSubscription();
+  const setBillingProfileVerified = useSetBillingProfileVerified();
   const cancelOrder = useCancelOrder();
+
+  const [profileOverride, setProfileOverride] = useState<{
+    tenantId: string;
+    profile: BillingProfileVerifyResponse;
+  } | null>(null);
+  const [profileError, setProfileError] = useState<{
+    tenantId: string;
+    message: string;
+  } | null>(null);
 
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [targetStatus, setTargetStatus] = useState("active");
@@ -415,6 +434,52 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
       setWriteOffOrder(null);
     } catch (err: unknown) {
       setWriteOffError(err instanceof Error ? err.message : "Failed to write off order");
+    }
+  };
+
+  const activeProfile =
+    (profileOverride?.tenantId === tenantId ? profileOverride.profile : null) ??
+    tenant.billing_profile ??
+    null;
+  const accountKind = activeProfile?.account_kind ?? "individual";
+  const isProfileVerified = activeProfile?.verified ?? false;
+  const profileVerifiedAt = activeProfile?.verified_at ?? null;
+
+  const activeProfileError =
+    profileError?.tenantId === tenantId ? profileError.message : null;
+
+  const handleToggleProfileVerified = async () => {
+    if (setBillingProfileVerified.isPending) return;
+    setProfileError(null);
+    try {
+      const res = await setBillingProfileVerified.mutateAsync({
+        tenantId,
+        verified: !isProfileVerified,
+      });
+      if (res) {
+        setProfileOverride({ tenantId, profile: res });
+      }
+    } catch (err: unknown) {
+      if (err instanceof PlatformApiError && err.code === "billing_profile_incomplete") {
+        const fields = Array.isArray(err.details.fields)
+          ? err.details.fields.filter((f): f is string => typeof f === "string" && f.length > 0)
+          : [];
+        setProfileError({
+          tenantId,
+          message:
+            fields.length > 0
+              ? `Missing billing profile fields: ${fields.join(", ")}`
+              : err.message,
+        });
+      } else {
+        setProfileError({
+          tenantId,
+          message:
+            err instanceof Error
+              ? err.message
+              : "Failed to update billing profile verification",
+        });
+      }
     }
   };
 
@@ -645,6 +710,62 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
               </span>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Billing Profile */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle role="heading" aria-level={2}>Billing profile</CardTitle>
+          {canEditSubscription && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleToggleProfileVerified}
+              disabled={setBillingProfileVerified.isPending}
+              aria-busy={setBillingProfileVerified.isPending}
+            >
+              {setBillingProfileVerified.isPending && <Spinner className="size-3.5" />}
+              {isProfileVerified ? "Unverify" : "Verify"}
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4 text-body sm:grid-cols-3">
+            <div>
+              <span className="block text-caption text-muted-foreground">Account kind</span>
+              <span className="mt-1 block font-medium capitalize">
+                {accountKind}
+              </span>
+            </div>
+            <div>
+              <span className="block text-caption text-muted-foreground">Status</span>
+              <div className="mt-1">
+                {isProfileVerified ? (
+                  <Badge
+                    variant="outline"
+                    className="border-emerald-600/30 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+                  >
+                    Verified
+                  </Badge>
+                ) : (
+                  <Badge variant="outline">Unverified</Badge>
+                )}
+              </div>
+            </div>
+            <div>
+              <span className="block text-caption text-muted-foreground">Verified at</span>
+              <span className="mt-1 block text-muted-foreground">
+                {formatTimestamp(profileVerifiedAt)}
+              </span>
+            </div>
+          </div>
+
+          {activeProfileError && (
+            <p role="alert" className="text-caption text-destructive">
+              {activeProfileError}
+            </p>
+          )}
         </CardContent>
       </Card>
 

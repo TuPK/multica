@@ -36,6 +36,7 @@ import {
   useSchedulePriceChange,
   useCancelScheduledPriceChange,
   useUpdateSubscription,
+  useSetBillingProfileVerified,
   accountKeys,
   AccountApiError,
   useAccountRequests,
@@ -1071,6 +1072,74 @@ describe("account request hooks", () => {
       "/api/platform/accounts/req-1/cancel",
       "/api/platform/accounts/req-2/resend-welcome",
       "/api/platform/accounts/req-3/resend-welcome",
+    ]);
+  });
+});
+
+describe("billing profile verification hook", () => {
+  it("useSetBillingProfileVerified posts verify/unverify, invalidates tenant, and preserves incomplete fields", async () => {
+    const calls = stubFetch({
+      "POST /api/platform/tenants/ws-1/billing-profile/verify": json(200, {
+        workspace_id: "ws-1",
+        account_kind: "business",
+        verified: true,
+        verified_at: "2026-11-17T00:00:00Z",
+      }),
+      "POST /api/platform/tenants/ws-1/billing-profile/unverify": json(200, {
+        workspace_id: "ws-1",
+        account_kind: "business",
+        verified: false,
+        verified_at: null,
+      }),
+      "POST /api/platform/tenants/ws-2/billing-profile/verify": json(409, {
+        error: "billing profile is incomplete",
+        code: "billing_profile_incomplete",
+        fields: ["tax_code", "address"],
+      }),
+    });
+    const { queryClient, wrapper } = setup();
+    queryClient.setQueryData(platformKeys.tenant("ws-1"), null);
+    queryClient.setQueryData(platformKeys.tenant("ws-2"), null);
+
+    const { result } = renderHook(() => useSetBillingProfileVerified(), { wrapper });
+
+    let verifiedRes: unknown;
+    await act(async () => {
+      verifiedRes = await result.current.mutateAsync({ tenantId: "ws-1", verified: true });
+    });
+    expect(verifiedRes).toEqual({
+      workspace_id: "ws-1",
+      account_kind: "business",
+      verified: true,
+      verified_at: "2026-11-17T00:00:00Z",
+    });
+    expect(queryClient.getQueryState(platformKeys.tenant("ws-1"))?.isInvalidated).toBe(true);
+
+    let unverifiedRes: unknown;
+    await act(async () => {
+      unverifiedRes = await result.current.mutateAsync({ tenantId: "ws-1", verified: false });
+    });
+    expect(unverifiedRes).toEqual({
+      workspace_id: "ws-1",
+      account_kind: "business",
+      verified: false,
+      verified_at: null,
+    });
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({ tenantId: "ws-2", verified: true }),
+      ).rejects.toMatchObject({
+        status: 409,
+        code: "billing_profile_incomplete",
+        details: { fields: ["tax_code", "address"] },
+      });
+    });
+    expect(queryClient.getQueryState(platformKeys.tenant("ws-2"))?.isInvalidated).toBe(false);
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      "POST /api/platform/tenants/ws-1/billing-profile/verify",
+      "POST /api/platform/tenants/ws-1/billing-profile/unverify",
+      "POST /api/platform/tenants/ws-2/billing-profile/verify",
     ]);
   });
 });

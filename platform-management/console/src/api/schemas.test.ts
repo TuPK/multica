@@ -28,6 +28,7 @@ import {
   parsePriceChangeDryRunResponse,
   parseSchedulePriceChangeResponse,
   parseCancelPriceChangeResponse,
+  parseBillingProfileVerifyResponse,
 } from "./schemas";
 
 const tenant = {
@@ -881,6 +882,64 @@ describe("price changes", () => {
       { price_change: { id: "pc-1" } },
     ]) {
       expect(parseCancelPriceChangeResponse(bad)).toBeNull();
+    }
+  });
+});
+
+describe("billing profile verification", () => {
+  it("parses the verify response", () => {
+    expect(
+      parseBillingProfileVerifyResponse({
+        workspace_id: "ws-1",
+        account_kind: "business",
+        verified: true,
+        verified_at: "2026-11-17T00:00:00Z",
+        extra_field: "ignored",
+      }),
+    ).toEqual({
+      workspace_id: "ws-1",
+      account_kind: "business",
+      verified: true,
+      verified_at: "2026-11-17T00:00:00Z",
+    });
+
+    expect(
+      parseBillingProfileVerifyResponse({
+        workspace_id: "ws-1",
+        account_kind: "business",
+        verified: false,
+        verified_at: null,
+      }),
+    ).toEqual({
+      workspace_id: "ws-1",
+      account_kind: "business",
+      verified: false,
+      verified_at: null,
+    });
+
+    expect(
+      parseBillingProfileVerifyResponse({
+        workspace_id: "ws-1",
+        account_kind: "enterprise",
+        verified: true,
+        verified_at: "2026-11-17T00:00:00Z",
+      })?.account_kind,
+    ).toBe("unknown");
+  });
+
+  it("rejects a response missing verified", () => {
+    for (const bad of [
+      null,
+      undefined,
+      "bad",
+      42,
+      [],
+      {},
+      { workspace_id: "ws-1", account_kind: "business", verified_at: null },
+      { workspace_id: "ws-1", account_kind: "business", verified: "yes", verified_at: null },
+      { workspace_id: "ws-1", account_kind: "business", verified: null, verified_at: null },
+    ]) {
+      expect(parseBillingProfileVerifyResponse(bad)).toBeNull();
     }
   });
 });

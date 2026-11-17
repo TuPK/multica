@@ -214,4 +214,60 @@ describe("Plans screen", () => {
       expect(screen.getByRole("alert")).toHaveTextContent("subscriptions use this plan; archive it instead");
     });
   });
+
+  it("shows the currency lock message on plan_currency_locked", async () => {
+    mockPutPlanMutateAsync.mockRejectedValueOnce(
+      new PlatformApiError(
+        409,
+        "plan_currency_locked",
+        "the currency of a plan that has a subscription or an order cannot change",
+      ),
+    );
+
+    render(<Plans userRole="admin" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit plan Pro Plan" }));
+
+    const currencyInput = screen.getByLabelText(/Currency/i);
+    fireEvent.change(currencyInput, { target: { value: "usd" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(mockPutPlanMutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ key: "pro", currency: "usd" }),
+      );
+    });
+
+    const currencyFieldContainer = currencyInput.closest("div")!;
+    await waitFor(() => {
+      expect(currencyFieldContainer).toHaveTextContent(
+        "The currency can't change because this plan has subscriptions or orders.",
+      );
+    });
+  });
+
+  it("keeps other save errors unchanged", async () => {
+    mockPutPlanMutateAsync.mockRejectedValueOnce(
+      new PlatformApiError(400, "invalid_plan", "currency must be a three-letter lower-case code"),
+    );
+
+    render(<Plans userRole="admin" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit plan Pro Plan" }));
+
+    const currencyInput = screen.getByLabelText(/Currency/i);
+    fireEvent.change(currencyInput, { target: { value: "US" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "currency must be a three-letter lower-case code",
+      );
+    });
+    expect(currencyInput.closest("div")).not.toHaveTextContent(
+      "The currency can't change because this plan has subscriptions or orders.",
+    );
+  });
 });
