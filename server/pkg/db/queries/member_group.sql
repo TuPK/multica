@@ -70,6 +70,11 @@ RETURNING user_id;
 -- name: DeleteMemberGroupMember :execrows
 DELETE FROM member_group_member WHERE workspace_id = $1 AND group_id = $2 AND user_id = $3;
 
+-- name: DeleteMemberGroupMembersByUser :exec
+-- Drops one person's group rows in a workspace, in the transaction that removes
+-- the member.
+DELETE FROM member_group_member WHERE workspace_id = $1 AND user_id = $2;
+
 -- name: GetMemberPermissionInputs :one
 -- The role of a member and the permission arrays of every group they are in,
 -- in one statement. No row means the user is not a member of the workspace.

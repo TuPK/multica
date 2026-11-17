@@ -198,6 +198,15 @@ func (h *Handler) revokeAndRemoveMember(ctx context.Context, workspaceID, userID
 		return empty, err
 	}
 
+	// member_group_member carries no FK: a removed member's group rows go in
+	// this tx, or a re-invite would restore their permissions (spec 7b.2, rule 10).
+	if err := qtx.DeleteMemberGroupMembersByUser(ctx, db.DeleteMemberGroupMembersByUserParams{
+		WorkspaceID: workspaceID,
+		UserID:      userID,
+	}); err != nil {
+		return empty, err
+	}
+
 	// issue_subscriber carries no FK either (same MUL-3515 rule as the two
 	// prunes above), and MUL-5483 gave agents a path that writes member
 	// subscriber rows on their own initiative. Dropping them in this tx is what

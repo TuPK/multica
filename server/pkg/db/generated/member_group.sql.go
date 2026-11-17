@@ -167,6 +167,22 @@ func (q *Queries) DeleteMemberGroupMembers(ctx context.Context, arg DeleteMember
 	return result.RowsAffected(), nil
 }
 
+const deleteMemberGroupMembersByUser = `-- name: DeleteMemberGroupMembersByUser :exec
+DELETE FROM member_group_member WHERE workspace_id = $1 AND user_id = $2
+`
+
+type DeleteMemberGroupMembersByUserParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	UserID      pgtype.UUID `json:"user_id"`
+}
+
+// Drops one person's group rows in a workspace, in the transaction that removes
+// the member.
+func (q *Queries) DeleteMemberGroupMembersByUser(ctx context.Context, arg DeleteMemberGroupMembersByUserParams) error {
+	_, err := q.db.Exec(ctx, deleteMemberGroupMembersByUser, arg.WorkspaceID, arg.UserID)
+	return err
+}
+
 const getMemberGroup = `-- name: GetMemberGroup :one
 SELECT id, workspace_id, name, description, permissions, created_by, created_at, updated_at FROM member_group WHERE workspace_id = $1 AND id = $2
 `
