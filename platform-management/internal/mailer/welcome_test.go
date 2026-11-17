@@ -3,6 +3,7 @@ package mailer
 import (
 	"context"
 	"encoding/json"
+	"net/url"
 	"regexp"
 	"strings"
 	"testing"
@@ -99,5 +100,59 @@ func TestWelcomeRefusesABadAddressOrAppURL(t *testing.T) {
 				t.Error("a message went out")
 			}
 		})
+	}
+}
+
+// linkProblems lists every http(s) URL in text whose parsed host differs from
+// the host of appURL, or that carries a query, a fragment, userinfo or a path.
+func linkProblems(t *testing.T, text, appURL string) []string {
+	t.Helper()
+	app, err := url.Parse(appURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var bad []string
+	for _, l := range regexp.MustCompile(`https?://[^"'\s<>)]+`).FindAllString(text, -1) {
+		u, err := url.Parse(l)
+		switch {
+		case err != nil, u.Host != app.Host:
+			bad = append(bad, l+" (host)")
+		case u.RawQuery != "" || u.Fragment != "" || u.User != nil || strings.Trim(u.Path, "/") != "":
+			bad = append(bad, l+" (query, fragment, userinfo or path)")
+		}
+	}
+	return bad
+}
+
+// Spec 7b.5 security table: the only links are the configured web app address.
+func TestWelcomeLinksAreOnlyTheAppHost(t *testing.T) {
+	html, subject := sentWelcome(t)
+	if !strings.Contains(html, welcomeAppURL) {
+		t.Fatalf("the welcome has no link to the app: %s", html)
+	}
+	for name, text := range map[string]string{"subject": subject, "body": html} {
+		if bad := linkProblems(t, text, welcomeAppURL); len(bad) > 0 {
+			t.Errorf("%s has links off the app host: %v", name, bad)
+		}
+	}
+}
+
+// The check compares parsed hosts: a look-alike that holds the app host as a
+// substring must be caught.
+func TestWelcomeLinkCheckComparesHosts(t *testing.T) {
+	for _, text := range []string{
+		"see https://app.example.com.evil.test/",
+		"see https://app.example.com@evil.test/",
+		"see https://evil.test/app.example.com",
+		"see https://app.example.com/?t=abc",
+		"see https://app.example.com/reset/abc",
+		"see http://app.example.community",
+	} {
+		if len(linkProblems(t, text, welcomeAppURL)) == 0 {
+			t.Errorf("look-alike not caught: %s", text)
+		}
+	}
+	if bad := linkProblems(t, "go to https://app.example.com or https://app.example.com/", welcomeAppURL); len(bad) > 0 {
+		t.Errorf("the app link was refused: %v", bad)
 	}
 }
