@@ -24,6 +24,12 @@ const url = vi.hoisted(() => {
   };
 });
 const data = vi.hoisted(() => ({
+  // The caller's keys from permissions/me (spec 7b.2). Empty by default.
+  myPermissions: { role: "member", permissions: [] as string[] } as {
+    role: string;
+    permissions: string[];
+  },
+  groups: [] as Array<Record<string, unknown>>,
   members: [] as Array<Record<string, unknown>>,
   invitations: [] as Array<Record<string, unknown>>,
   shareLinks: [] as Array<Record<string, unknown>>,
@@ -34,6 +40,8 @@ const mockUseQuery = vi.hoisted(() =>
   vi.fn((opts: { queryKey: unknown[]; enabled?: boolean }) => {
     const key = JSON.stringify(opts.queryKey);
     if (opts.enabled === false) return { data: undefined };
+    if (key.includes('"permissions"')) return { data: data.myPermissions };
+    if (key.includes('"groups"')) return { data: data.groups };
     if (key.includes("invitations")) return { data: data.invitations };
     if (key.includes("share-links")) return { data: data.shareLinks };
     if (key.includes("members")) return { data: data.members };
@@ -44,6 +52,7 @@ const mockUseQuery = vi.hoisted(() =>
 vi.mock("@tanstack/react-query", () => ({
   queryOptions: <T,>(opts: T) => opts,
   useQuery: (opts: { queryKey: unknown[]; enabled?: boolean }) => mockUseQuery(opts),
+  useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useQueryClient: () => ({
     invalidateQueries: vi.fn(),
     fetchQuery: vi.fn(),
@@ -108,6 +117,17 @@ const member = (id: string, name: string, role: string) => ({
 beforeEach(() => {
   vi.clearAllMocks();
   url.set("tab=members");
+  data.myPermissions = {
+    role: "owner",
+    permissions: [
+      "members.invite",
+      "audit.read",
+      "billing.view",
+      "billing.manage",
+      "integrations.manage",
+      "runtime_profiles.manage",
+    ],
+  };
   data.members = [
     member("user-1", "Ada Lovelace", "owner"),
     member("user-2", "Grace Hopper", "admin"),
@@ -249,6 +269,7 @@ describe("MembersTab", () => {
   });
 
   it("gives members a read-only view without invite or share-link controls", () => {
+    data.myPermissions = { role: "member", permissions: [] };
     data.members = [
       member("user-1", "Ada Lovelace", "member"),
       member("user-2", "Grace Hopper", "owner"),
@@ -262,6 +283,7 @@ describe("MembersTab", () => {
   });
 
   it("does not request the invitation list for a member role", () => {
+    data.myPermissions = { role: "member", permissions: [] };
     data.members = [
       member("user-1", "Ada Lovelace", "member"),
       member("user-2", "Grace Hopper", "owner"),
@@ -287,5 +309,63 @@ describe("MembersTab", () => {
     );
     expect(invitationQueryCall).toBeDefined();
     expect(invitationQueryCall?.[0]).toMatchObject({ enabled: true });
+  });
+});
+
+// Account groups (spec 7b.2): what a key or a group lets the caller touch.
+describe("MembersTab with account-group keys", () => {
+  const allKeys = ["members.invite", "audit.read", "billing.view", "billing.manage", "integrations.manage", "runtime_profiles.manage"];
+
+  beforeEach(() => {
+    data.members = [
+      member("user-1", "Ada Lovelace", "member"),
+      member("user-2", "Grace Hopper", "owner"),
+    ];
+    data.groups = [{ id: "g1", name: "Accounting", description: "", permissions: [], member_count: 0 }];
+    data.invitations = [];
+    data.shareLinks = [];
+  });
+
+  it("shows the invite control to a member who holds members.invite", () => {
+    data.myPermissions = { role: "member", permissions: ["members.invite"] };
+    renderWithI18n(<MembersTab />);
+    expect(screen.getByRole("button", { name: "Invite member" })).toBeInTheDocument();
+  });
+
+  it("offers a member with members.invite the member and viewer roles, never admin", async () => {
+    data.myPermissions = { role: "member", permissions: ["members.invite"] };
+    const user = userEvent.setup();
+    renderWithI18n(<MembersTab />);
+    await user.click(screen.getByRole("button", { name: "Invite member" }));
+    const dialog = await screen.findByRole("dialog", { name: "Invite member" });
+    await user.click(within(dialog).getByRole("combobox", { name: "Role" }));
+    expect(screen.queryByRole("option", { name: "Admin" })).toBeNull();
+    expect(screen.getByRole("option", { name: "Member" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Viewer" })).toBeInTheDocument();
+  });
+
+  it("gives an owner a group control on each other member", () => {
+    data.members = [
+      member("user-1", "Grace Hopper", "owner"),
+      member("user-2", "Ada Lovelace", "member"),
+    ];
+    data.myPermissions = { role: "owner", permissions: allKeys };
+    renderWithI18n(<MembersTab />);
+    expect(screen.getByRole("button", { name: /^Groups for Ada Lovelace/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Groups for Grace Hopper/ })).toBeNull();
+  });
+
+  it("gives no group control to a member holding members.invite", () => {
+    data.myPermissions = { role: "member", permissions: ["members.invite"] };
+    renderWithI18n(<MembersTab />);
+    expect(screen.queryByRole("button", { name: /^Groups for/ })).toBeNull();
+  });
+
+  it("gives a viewer in a group with every key no write control", () => {
+    data.myPermissions = { role: "viewer", permissions: allKeys };
+    renderWithI18n(<MembersTab />);
+    expect(screen.queryByRole("button", { name: "Invite member" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Groups for/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Actions for/ })).toBeNull();
   });
 });

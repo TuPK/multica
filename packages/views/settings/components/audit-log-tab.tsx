@@ -22,7 +22,7 @@ import {
   TableRow,
 } from "@multica/ui/components/ui/table";
 import { useCurrentWorkspace } from "@multica/core/paths";
-import { useCurrentMember } from "@multica/core/permissions";
+import { useCan } from "@multica/core/permissions";
 import {
   auditEventsOptions,
   exportAuditCsv,
@@ -57,8 +57,7 @@ export function AuditLogTab() {
   const locale = useLocale();
   const workspace = useCurrentWorkspace();
   const wsId = workspace?.id ?? "";
-  const { role } = useCurrentMember(wsId);
-  const isMember = role === "member";
+  const canReadAudit = useCan(wsId, "audit.read").allowed;
 
   const [actionFilter, setActionFilter] = useState<string>("");
   const [fromDate, setFromDate] = useState<string>("");
@@ -75,7 +74,7 @@ export function AuditLogTab() {
 
   const query = useInfiniteQuery({
     ...auditEventsOptions(wsId, filterParams),
-    enabled: Boolean(wsId && !isMember),
+    enabled: Boolean(wsId && canReadAudit),
   });
 
   const events = useMemo(
@@ -130,7 +129,7 @@ export function AuditLogTab() {
     }
   };
 
-  if (isMember) {
+  if (!canReadAudit) {
     return (
       <SettingsTab title={t(($) => $.page.tabs.audit)} scope="workspace">
         <SettingsReadOnlyNotice wsId={wsId} />

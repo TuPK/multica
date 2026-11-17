@@ -7,6 +7,7 @@ import { renderWithI18n } from "../../test/i18n";
 
 const currentMemberState = vi.hoisted(() => ({
   role: "owner" as "owner" | "admin" | "member",
+  keys: [] as string[],
 }));
 
 vi.mock("@multica/core/paths", () => ({
@@ -17,6 +18,14 @@ vi.mock("@multica/core/permissions", () => ({
   useCurrentMember: () => ({
     role: currentMemberState.role,
     isLoading: false,
+  }),
+  useCan: (_wsId: string, key: string) => ({
+    allowed:
+      currentMemberState.role === "owner" ||
+      currentMemberState.role === "admin" ||
+      currentMemberState.keys.includes(key),
+    reason: "allowed",
+    message: "",
   }),
 }));
 
@@ -153,6 +162,7 @@ describe("AuditLogTab", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     currentMemberState.role = "owner";
+    currentMemberState.keys = [];
     mockAuditState.isError = false;
     mockAuditState.pages[0]!.next_cursor = "cursor-page-2";
     mockAuditState.pages[0]!.events = [
@@ -327,5 +337,16 @@ describe("AuditLogTab", () => {
 
     expect(screen.getByRole("note")).toBeInTheDocument();
     expect(screen.getByText("View only")).toBeInTheDocument();
+  });
+
+  it("lets a member with audit.read view audit events", async () => {
+    currentMemberState.role = "member";
+    currentMemberState.keys = ["audit.read"];
+    renderAuditLogTab();
+
+    await waitFor(() => {
+      expect(screen.getByText("member.role_changed")).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("note")).toBeNull();
   });
 });

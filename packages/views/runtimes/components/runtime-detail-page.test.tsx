@@ -11,6 +11,7 @@ import {
   agentListOptions,
   memberListOptions,
 } from "@multica/core/workspace/queries";
+import { myPermissionsOptions } from "@multica/core/groups";
 import enCommon from "../../locales/en/common.json";
 import enLayout from "../../locales/en/layout.json";
 import enRuntimes from "../../locales/en/runtimes.json";
@@ -96,10 +97,14 @@ function makeRuntime(overrides: Partial<AgentRuntime> = {}): AgentRuntime {
 function renderPage({
   runtimeId = "rt-claude",
   runtimes = [makeRuntime()],
+  role = "owner",
+  permissions = ["runtime_profiles.manage"],
 }: {
   runtimeId?: string;
   /** `null` leaves the runtime list unseeded, so the page renders loading. */
   runtimes?: AgentRuntime[] | null;
+  role?: "owner" | "admin" | "member" | "viewer";
+  permissions?: string[];
 } = {}) {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
@@ -113,13 +118,17 @@ function renderPage({
       id: "member-1",
       workspace_id: WS,
       user_id: "user-1",
-      role: "owner",
+      role,
       created_at: new Date(NOW).toISOString(),
       name: "Jiayuan",
       email: "jiayuan@example.com",
       avatar_url: null,
     },
   ]);
+  qc.setQueryData(myPermissionsOptions(WS).queryKey, {
+    role,
+    permissions,
+  });
   return render(
     <QueryClientProvider client={qc}>
       <I18nProvider locale="en" resources={TEST_RESOURCES}>
@@ -198,5 +207,18 @@ describe("RuntimeDetailPage", () => {
       "href",
       "/runtimes",
     );
+  });
+
+  it("lets a member with runtime_profiles.manage add a custom runtime, while hiding it from members without the key and viewers", () => {
+    const first = renderPage({ role: "member", permissions: ["runtime_profiles.manage"] });
+    expect(screen.getByRole("button", { name: /Add custom runtime/ })).toBeInTheDocument();
+    first.unmount();
+
+    const second = renderPage({ role: "member", permissions: [] });
+    expect(screen.queryByRole("button", { name: /Add custom runtime/ })).toBeNull();
+    second.unmount();
+
+    renderPage({ role: "viewer", permissions: ["runtime_profiles.manage"] });
+    expect(screen.queryByRole("button", { name: /Add custom runtime/ })).toBeNull();
   });
 });

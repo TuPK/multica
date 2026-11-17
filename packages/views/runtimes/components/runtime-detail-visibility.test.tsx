@@ -21,6 +21,7 @@ const mockDeleteRuntimeProfile = vi.hoisted(() => vi.fn());
 const mockQueryData = vi.hoisted(() => ({
   members: [] as Array<Record<string, unknown>>,
   profiles: [] as RuntimeProfile[],
+  permissions: [] as string[],
 }));
 
 vi.mock("@multica/core/hooks", () => ({
@@ -66,6 +67,29 @@ vi.mock("@tanstack/react-query", async () => {
       }
       if (key?.[0] === "workspaces" && key?.[2] === "members") {
         return { data: mockQueryData.members, isLoading: false };
+      }
+      if (key?.[0] === "workspaces" && key?.[2] === "permissions") {
+        const caller = mockQueryData.members.find((m) => m.user_id === "user-me") as
+          | { role?: string }
+          | undefined;
+        const role = caller?.role ?? "";
+        return {
+          data: {
+            role,
+            permissions:
+              role === "owner" || role === "admin"
+                ? [
+                    "members.invite",
+                    "audit.read",
+                    "billing.view",
+                    "billing.manage",
+                    "integrations.manage",
+                    "runtime_profiles.manage",
+                  ]
+                : mockQueryData.permissions,
+          },
+          isLoading: false,
+        };
       }
       return { data: [], isLoading: false };
     }),
@@ -228,6 +252,7 @@ describe("RuntimeDetail visibility section", () => {
     vi.clearAllMocks();
     mockQueryData.members = [];
     mockQueryData.profiles = [];
+    mockQueryData.permissions = [];
     mockUpdateRuntimeError.value = null;
     mockDeleteRuntimeProfile.mockResolvedValue(undefined);
   });
@@ -537,6 +562,35 @@ describe("RuntimeDetail visibility section", () => {
       }),
     );
 
+    expect(
+      within(screen.getByRole("banner")).queryByRole("button", { name: "More actions" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("allows custom runtime delete for a member holding runtime_profiles.manage, not for viewers", () => {
+    const profile = makeProfile();
+    mockQueryData.profiles = [profile];
+    mockQueryData.members = [{ user_id: "user-me", role: "member", name: "Me" }];
+    mockQueryData.permissions = ["runtime_profiles.manage"];
+
+    const first = renderDetail(
+      makeRuntime({
+        owner_id: "someone-else",
+        profile_id: profile.id,
+      }),
+    );
+    expect(
+      within(screen.getByRole("banner")).getByRole("button", { name: "More actions" }),
+    ).toBeInTheDocument();
+    first.unmount();
+
+    mockQueryData.members = [{ user_id: "user-me", role: "viewer", name: "Viewer" }];
+    renderDetail(
+      makeRuntime({
+        owner_id: "someone-else",
+        profile_id: profile.id,
+      }),
+    );
     expect(
       within(screen.getByRole("banner")).queryByRole("button", { name: "More actions" }),
     ).not.toBeInTheDocument();

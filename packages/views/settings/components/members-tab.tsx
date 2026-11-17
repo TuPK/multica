@@ -13,6 +13,7 @@ import {
   Plus,
   Search,
   Shield,
+  ShieldCheck,
   Trash2,
   User,
   UserMinus,
@@ -29,6 +30,7 @@ import type {
   ShareLink,
   WorkspaceSeatPurchasePreview,
 } from "@multica/core/types";
+import { Checkbox } from "@multica/ui/components/ui/checkbox";
 import { Input } from "@multica/ui/components/ui/input";
 import { Button } from "@multica/ui/components/ui/button";
 import { IconButton } from "@multica/ui/components/common/icon-button";
@@ -88,6 +90,15 @@ import {
   shareLinkListOptions,
   workspaceKeys,
 } from "@multica/core/workspace/queries";
+import {
+  memberGroupDetailOptions,
+  memberGroupListOptions,
+  myPermissionsOptions,
+  useAddMemberGroupMembers,
+  useRemoveMemberGroupMember,
+  type MemberGroup,
+} from "@multica/core/groups";
+import { useCan } from "@multica/core/permissions";
 import { api, errorCode } from "@multica/core/api";
 import { useLocale, useT } from "../../i18n";
 import { ObjectSectionEmpty } from "../../layout/object-page";
@@ -185,6 +196,7 @@ function MemberRow({
   ownerCount,
   isSelf,
   busy,
+  onManageGroups,
   onRoleChange,
   onRemove,
 }: {
@@ -196,6 +208,7 @@ function MemberRow({
   ownerCount: number;
   isSelf: boolean;
   busy: boolean;
+  onManageGroups: () => void;
   onRoleChange: (role: MemberRole) => void;
   onRemove: () => void;
 }) {
@@ -206,6 +219,7 @@ function MemberRow({
   const RoleIcon = rc.icon;
   const canEditRole = canManage && !isSelf && (member.role !== "owner" || canManageOwners);
   const canRemove = canManage && !isSelf && (member.role !== "owner" || canManageOwners);
+  const canAssignGroups = canManage && !isSelf;
   const isLastOwner = member.role === "owner" && ownerCount <= 1;
   const showMenu = canEditRole || canRemove;
 
@@ -232,8 +246,20 @@ function MemberRow({
         <RoleIcon className="size-3.5 text-muted-foreground" aria-hidden="true" />
         {rc.label}
       </span>
-      <span className="flex size-7 shrink-0 items-center justify-center">
-      {showMenu && (
+      <span className="flex shrink-0 items-center justify-end gap-1">
+        {canAssignGroups ? (
+          <IconButton
+            variant="ghost"
+            size="icon-sm"
+            disabled={busy}
+            onClick={onManageGroups}
+            label={t(($) => $.members.groups_for_aria, { name: member.name })}
+          >
+            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+          </IconButton>
+        ) : null}
+        <span className="flex size-7 shrink-0 items-center justify-center">
+        {showMenu && (
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
@@ -303,6 +329,7 @@ function MemberRow({
           </DropdownMenuContent>
         </DropdownMenu>
       )}
+        </span>
       </span>
     </div>
   );
@@ -428,16 +455,23 @@ export function MembersTab() {
   const navigation = useOptionalNavigation();
   const { data: members = [] } = useQuery(memberListOptions(wsId));
   const currentMember = members.find((m) => m.user_id === user?.id) ?? null;
+  const { data: myPermissions } = useQuery({
+    ...myPermissionsOptions(wsId),
+    enabled: Boolean(wsId),
+  });
+  const canInvite = useCan(wsId, "members.invite", { write: true }).allowed;
+  const effectiveRole = myPermissions?.role || currentMember?.role;
   const canManageWorkspace =
-    currentMember?.role === "owner" || currentMember?.role === "admin";
-  // Only owners/admins may list pending invitations (avoids exposing invitee
-  // emails to plain members; server returns 403 to members).
+    effectiveRole === "owner" || effectiveRole === "admin";
+  // Only owners/admins or holders of members.invite may list pending invitations
+  // (avoids exposing invitee emails to plain members; server returns 403).
   const { data: invitations = [] } = useQuery(
-    invitationListOptions(wsId, canManageWorkspace),
+    invitationListOptions(wsId, canManageWorkspace || canInvite),
   );
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [shareLinkOpen, setShareLinkOpen] = useState(false);
+  const [groupsMember, setGroupsMember] = useState<MemberWithUser | null>(null);
   const requestedView = resolveSettingsLocation(
     navigation?.searchParams ?? new URLSearchParams(),
   ).section;
@@ -492,21 +526,23 @@ export function MembersTab() {
   });
 
   // The Team panel's invite button links here with `?invite=1`; it waits for
-  // the member list so only managers get the dialog.
+  // the caller permissions so only invite-authorized users get the dialog.
   const inviteRequested = navigation?.searchParams.has("invite") ?? false;
   useEffect(() => {
     if (!inviteRequested || !navigation || !currentMember) return;
-    if (canManageWorkspace) setInviteOpen(true);
+    if (canInvite) setInviteOpen(true);
     const params = new URLSearchParams(navigation.searchParams);
     params.delete("invite");
     navigation.replace(`${navigation.pathname}?${params}`);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- consume the intent once the role is known
-  }, [inviteRequested, currentMember?.role]);
-  const isOwner = currentMember?.role === "owner";
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- consume the intent once permissions are known
+  }, [inviteRequested, canInvite, currentMember?.role]);
+  const isOwner = effectiveRole === "owner";
   const ownerCount = members.filter((m) => m.role === "owner").length;
-  // Only owners/admins may list share links; skip the request for plain
-  // members (the server would 403) once the current member's role is known.
-  const { data: shareLinks = [] } = useQuery(shareLinkListOptions(wsId, canManageWorkspace));
+  // Only owners/admins or holders of members.invite may list share links; skip
+  // the request for plain members/viewers (server returns 403).
+  const { data: shareLinks = [] } = useQuery(
+    shareLinkListOptions(wsId, canManageWorkspace || canInvite),
+  );
   const billingEnabled = useFeatureEnabled(BILLING_WORKSPACE_SUBSCRIPTIONS_FLAG, false);
   const seats = useQuery({
     ...workspaceSubscriptionSummaryOptions(wsId),
@@ -535,10 +571,15 @@ export function MembersTab() {
     [qc, t, workspace, wsId],
   );
 
+  const effectiveInviteRole: MemberRole =
+    !canManageWorkspace && inviteRole === "admin" ? "member" : inviteRole;
+  const effectiveShareLinkRole: MemberRole =
+    !canManageWorkspace && shareLinkRole === "admin" ? "member" : shareLinkRole;
+
   const handleInviteMember = async () => {
-    if (!workspace) return;
+    if (!workspace || !canInvite) return;
     const email = inviteEmail.trim();
-    const role = inviteRole;
+    const role = effectiveInviteRole;
     setInviteLoading(true);
     try {
       await sendInvitation(email, role);
@@ -843,10 +884,10 @@ export function MembersTab() {
   };
 
   const handleCreateShareLink = async () => {
-    if (!workspace) return;
+    if (!workspace || !canInvite) return;
     setShareLinkLoading(true);
     try {
-      await api.createShareLink(workspace.id, { role: shareLinkRole, expires_in: parseInt(shareLinkExpiry) || undefined });
+      await api.createShareLink(workspace.id, { role: effectiveShareLinkRole, expires_in: parseInt(shareLinkExpiry) || undefined });
       qc.invalidateQueries({ queryKey: workspaceKeys.shareLinks(wsId) });
       setShareLinkOpen(false);
       toast.success(t(($) => $.members.toast_share_link_created));
@@ -897,7 +938,10 @@ export function MembersTab() {
 
   if (!workspace) return null;
 
-  const roleItems = (["member", "admin", "viewer"] as const).map((value) => ({
+  const allowedInviteRoles = canManageWorkspace
+    ? (["member", "admin", "viewer"] as const)
+    : (["member", "viewer"] as const);
+  const roleItems = allowedInviteRoles.map((value) => ({
     value,
     label: roleConfig[value].label,
   }));
@@ -910,7 +954,7 @@ export function MembersTab() {
   const views: { value: MembersView; label: string; count: number }[] = [
     { value: "members", label: t(($) => $.members.members_label), count: members.length },
     { value: "invitations", label: t(($) => $.members.pending_label), count: invitations.length },
-    ...(canManageWorkspace
+    ...(canInvite
       ? [{ value: "links" as const, label: t(($) => $.members.share_links_label), count: shareLinks.length }]
       : []),
   ];
@@ -921,7 +965,7 @@ export function MembersTab() {
       title={t(($) => $.page.tabs.members)}
       scope="workspace"
       actions={
-        canManageWorkspace ? (
+        canInvite ? (
           <Button onClick={() => setInviteOpen(true)}>
             <Plus />
             {t(($) => $.members.invite_title)}
@@ -929,7 +973,7 @@ export function MembersTab() {
         ) : undefined
       }
     >
-      {currentMember && !canManageWorkspace ? (
+      {currentMember && !canManageWorkspace && !canInvite ? (
         <SettingsReadOnlyNotice wsId={wsId} />
       ) : null}
       <section className="space-y-3">
@@ -975,7 +1019,7 @@ export function MembersTab() {
                   className="pl-8"
                 />
               </div>
-            ) : activeView === "links" ? (
+            ) : activeView === "links" && canInvite ? (
               <Button variant="outline" size="sm" onClick={() => setShareLinkOpen(true)}>
                 <Plus />
                 {t(($) => $.members.share_links_create_title)}
@@ -996,6 +1040,7 @@ export function MembersTab() {
                     ownerCount={ownerCount}
                     isSelf={m.user_id === user?.id}
                     busy={memberActionId === m.id}
+                    onManageGroups={() => setGroupsMember(m)}
                     onRoleChange={(role) => handleRoleChange(m.id, role)}
                     onRemove={() => handleRemoveMember(m)}
                   />
@@ -1015,7 +1060,7 @@ export function MembersTab() {
                 <div key={inv.id}>
                   <InvitationRow
                     invitation={inv}
-                    canManage={canManageWorkspace}
+                    canManage={canInvite}
                     onRevoke={() => handleRevokeInvitation(inv)}
                     busy={invitationActionId === inv.id}
                   />
@@ -1078,15 +1123,19 @@ export function MembersTab() {
               <Label htmlFor="invite-role">{t(($) => $.members.role_label)}</Label>
               <Select
                 items={roleItems}
-                value={inviteRole}
+                value={effectiveInviteRole}
                 onValueChange={(value) => setInviteRole(value as MemberRole)}
               >
                 <SelectTrigger id="invite-role" className="w-full">
-                  <SelectValue>{() => roleConfig[inviteRole].label}</SelectValue>
+                  <SelectValue>{() => roleConfig[effectiveInviteRole].label}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {roleItems.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
+                    <SelectItem
+                      key={item.value}
+                      value={item.value}
+                      aria-label={item.label}
+                    >
                       <span className="flex flex-col">
                         <span>{item.label}</span>
                         <span className="text-caption text-muted-foreground">
@@ -1135,11 +1184,11 @@ export function MembersTab() {
               <Label htmlFor="share-link-role">{t(($) => $.members.role_label)}</Label>
               <Select
                 items={roleItems}
-                value={shareLinkRole}
+                value={effectiveShareLinkRole}
                 onValueChange={(value) => setShareLinkRole(value as MemberRole)}
               >
                 <SelectTrigger id="share-link-role" className="w-full">
-                  <SelectValue>{() => roleConfig[shareLinkRole].label}</SelectValue>
+                  <SelectValue>{() => roleConfig[effectiveShareLinkRole].label}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {roleItems.map((item) => (
@@ -1329,6 +1378,152 @@ export function MembersTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {groupsMember && canManageWorkspace ? (
+        <MemberGroupsDialog
+          wsId={wsId}
+          member={groupsMember}
+          onClose={() => setGroupsMember(null)}
+        />
+      ) : null}
     </SettingsTab>
+  );
+}
+
+function MemberGroupsDialog({
+  wsId,
+  member,
+  onClose,
+}: {
+  wsId: string;
+  member: MemberWithUser;
+  onClose: () => void;
+}) {
+  const { t } = useT("settings");
+  const [error, setError] = useState<string | null>(null);
+  const { data: groups = [], isLoading } = useQuery({
+    ...memberGroupListOptions(wsId),
+    enabled: Boolean(wsId),
+  });
+
+  return (
+    <Dialog open onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {t(($) => $.members.member_groups_title, { name: member.name })}
+          </DialogTitle>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="flex items-center gap-2 py-2 text-body text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            <span>{t(($) => $.groups.loading)}</span>
+          </div>
+        ) : groups.length === 0 ? (
+          <p className="py-2 text-body text-muted-foreground">
+            {t(($) => $.members.member_groups_empty)}
+          </p>
+        ) : (
+          <div className="max-h-72 divide-y divide-surface-border overflow-y-auto rounded-lg border">
+            {groups.map((group) => (
+              <MemberGroupToggleRow
+                key={group.id}
+                wsId={wsId}
+                group={group}
+                member={member}
+                onError={setError}
+              />
+            ))}
+          </div>
+        )}
+
+        {error ? (
+          <p className="text-caption text-destructive" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            {t(($) => $.members.member_groups_close)}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function MemberGroupToggleRow({
+  wsId,
+  group,
+  member,
+  onError,
+}: {
+  wsId: string;
+  group: MemberGroup;
+  member: MemberWithUser;
+  onError: (msg: string | null) => void;
+}) {
+  const { t } = useT("settings");
+  const { data: detail, isLoading } = useQuery({
+    ...memberGroupDetailOptions(wsId, group.id),
+    enabled: Boolean(wsId && group.id),
+  });
+  const addMembers = useAddMemberGroupMembers(wsId, group.id);
+  const removeMember = useRemoveMemberGroupMember(wsId, group.id);
+
+  const detailReady = Boolean(detail && Array.isArray(detail.members));
+  const isMember =
+    detailReady && detail!.members.some((entry) => entry.user_id === member.user_id);
+  const isPending = addMembers.isPending || removeMember.isPending;
+  const cbId = `member-${member.user_id}-group-${group.id}`;
+
+  const handleToggle = async (checked: boolean) => {
+    onError(null);
+    try {
+      if (checked) {
+        await addMembers.mutateAsync([member.user_id]);
+        toast.success(
+          t(($) => $.members.member_groups_added, { group: group.name }),
+        );
+      } else {
+        await removeMember.mutateAsync(member.user_id);
+        toast.success(
+          t(($) => $.members.member_groups_removed, { group: group.name }),
+        );
+      }
+    } catch {
+      const msg = t(($) => $.members.member_groups_failed);
+      onError(msg);
+      toast.error(msg);
+    }
+  };
+
+  return (
+    <label
+      htmlFor={cbId}
+      className="flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 hover:bg-muted/40"
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <Checkbox
+          id={cbId}
+          checked={isMember}
+          disabled={isLoading || !detailReady || isPending}
+          onCheckedChange={(val) => void handleToggle(val === true)}
+        />
+        <div className="min-w-0">
+          <div className="truncate text-body font-medium">{group.name}</div>
+          {group.description ? (
+            <div className="truncate text-caption text-muted-foreground">
+              {group.description}
+            </div>
+          ) : null}
+        </div>
+      </div>
+      <span className="shrink-0 text-caption tabular-nums text-muted-foreground">
+        {group.member_count}
+      </span>
+    </label>
   );
 }

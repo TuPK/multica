@@ -8,10 +8,13 @@ import { I18nProvider } from "@multica/core/i18n/react";
 import enCommon from "../../locales/en/common.json";
 import enSettings from "../../locales/en/settings.json";
 
-type MemberRole = "owner" | "admin" | "member" | "guest";
+type MemberRole = "owner" | "admin" | "member" | "viewer" | "guest";
 
 const membersRef = vi.hoisted(() => ({
   current: [{ user_id: "user-1", role: "owner" as MemberRole }],
+}));
+const permissionsRef = vi.hoisted(() => ({
+  current: [] as string[],
 }));
 const installationsRef = vi.hoisted(() => ({
   current: {
@@ -32,6 +35,26 @@ vi.mock("@tanstack/react-query", () => ({
   useQuery: (opts: { queryKey: unknown[]; enabled?: boolean }) => {
     if (opts.enabled === false) return { data: undefined, isLoading: false };
     const key = JSON.stringify(opts.queryKey);
+    if (key.includes('"permissions"')) {
+      const role = membersRef.current[0]?.role ?? "";
+      return {
+        data: {
+          role,
+          permissions:
+            role === "owner" || role === "admin"
+              ? [
+                  "members.invite",
+                  "audit.read",
+                  "billing.view",
+                  "billing.manage",
+                  "integrations.manage",
+                  "runtime_profiles.manage",
+                ]
+              : permissionsRef.current,
+        },
+        isLoading: false,
+      };
+    }
     if (key.includes("members")) return { data: membersRef.current, isLoading: false };
     if (key.includes("installations")) {
       return {
@@ -114,6 +137,7 @@ function renderUI(children: ReactNode) {
 function resetFixtures() {
   vi.clearAllMocks();
   membersRef.current = [{ user_id: "user-1", role: "owner" }];
+  permissionsRef.current = [];
   installationsRef.current = { installations: [], configured: true, install_supported: true };
   telegramQueryErrorRef.current = false;
   telegramQueryLoadingRef.current = false;
@@ -327,5 +351,32 @@ describe("TelegramTab", () => {
     renderUI(<TelegramTab />);
     expect(screen.getByText(/Failed to load Telegram installations/i)).toBeTruthy();
     expect(screen.queryByText(/Telegram integration not enabled/i)).toBeNull();
+  });
+
+  it("lets a member with integrations.manage disconnect, while denying viewers with all keys", () => {
+    installationsRef.current = {
+      installations: [
+        { id: "i1", agent_id: "agent-7", status: "active", bot_username: "my_bot" },
+      ],
+      configured: true,
+      install_supported: true,
+    };
+    membersRef.current = [{ user_id: "user-1", role: "member" }];
+    permissionsRef.current = ["integrations.manage"];
+    const { unmount } = renderUI(<TelegramTab />);
+    expect(screen.getByText(/Disconnect/i)).toBeTruthy();
+    unmount();
+
+    membersRef.current = [{ user_id: "user-1", role: "viewer" }];
+    permissionsRef.current = [
+      "members.invite",
+      "audit.read",
+      "billing.view",
+      "billing.manage",
+      "integrations.manage",
+      "runtime_profiles.manage",
+    ];
+    renderUI(<TelegramTab />);
+    expect(screen.queryByText(/Disconnect/i)).toBeNull();
   });
 });

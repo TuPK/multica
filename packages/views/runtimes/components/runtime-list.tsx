@@ -34,6 +34,7 @@ import {
   runtimeUsageOptions,
 } from "@multica/core/runtimes";
 import { useWorkspacePaths } from "@multica/core/paths";
+import { useCan } from "@multica/core/permissions";
 import {
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -573,6 +574,9 @@ export function RuntimeList({
   const isAdmin = currentMember
     ? currentMember.role === "owner" || currentMember.role === "admin"
     : false;
+  const canManageRuntimeProfiles = useCan(wsId, "runtime_profiles.manage", {
+    write: true,
+  }).allowed;
 
   const workloadIndex = useMemo(
     () => buildWorkloadIndex(agents, snapshot),
@@ -616,12 +620,20 @@ export function RuntimeList({
           : null,
         workload: workloadIndex.get(runtime.id) ?? EMPTY_WORKLOAD,
         canDelete: isCustomRuntime
-          ? isAdmin && !!profile
+          ? canManageRuntimeProfiles && !!profile
           : !isPendingCustomRuntime(runtime) &&
             (isAdmin || (!!user && runtime.owner_id === user.id)),
       };
     });
-  }, [runtimes, profileById, memberById, workloadIndex, isAdmin, user]);
+  }, [
+    runtimes,
+    profileById,
+    memberById,
+    workloadIndex,
+    isAdmin,
+    canManageRuntimeProfiles,
+    user,
+  ]);
 
   const columns: CollectionColumn<RuntimeRow>[] = [
     {

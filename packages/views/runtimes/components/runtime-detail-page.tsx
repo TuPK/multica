@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@multica/core/auth";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
+import { useCan } from "@multica/core/permissions";
 import { agentTaskSnapshotOptions } from "@multica/core/agents";
 import { runtimeProfileListOptions } from "@multica/core/runtimes";
 import { runtimeKeys, runtimeListOptions } from "@multica/core/runtimes/queries";
@@ -198,12 +199,15 @@ export function RuntimeDetailPage({
     : null;
   const isAdmin =
     currentMember?.role === "owner" || currentMember?.role === "admin";
+  const canManageRuntimeProfiles = useCan(wsId, "runtime_profiles.manage", {
+    write: true,
+  }).allowed;
   const quickstartRuntime =
     machine && machine.mode === "local"
       ? machineUpdateRuntime(machine, currentUserId, isAdmin)
       : null;
   const canAddRuntime =
-    isAdmin && machine?.mode === "local" && !!machine.daemonId;
+    canManageRuntimeProfiles && machine?.mode === "local" && !!machine.daemonId;
   const renameTarget = useMemo(() => {
     if (!machine || machine.runtimes.length === 0) return null;
     const editable = isAdmin

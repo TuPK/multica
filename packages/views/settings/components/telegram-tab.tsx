@@ -27,9 +27,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@multica/ui/components/ui/alert-dialog";
-import { useAuthStore } from "@multica/core/auth";
 import { useWorkspaceId } from "@multica/core/hooks";
-import { memberListOptions } from "@multica/core/workspace/queries";
+import { useCan } from "@multica/core/permissions";
 import { useActorName } from "@multica/core/workspace/hooks";
 import { telegramInstallationsOptions, telegramKeys } from "@multica/core/telegram";
 import { api } from "@multica/core/api";
@@ -41,8 +40,8 @@ import { useLocale, useT } from "../../i18n";
 import { TooltipHint } from "@multica/ui/components/common/tooltip-hint";
 
 // TelegramTab is the workspace settings panel for Telegram bot installations,
-// mirroring SlackTab: listing is member-visible; the disconnect action is
-// admin-only (backend-enforced; the UI hides the button to match). Adding a
+// mirroring SlackTab: listing is member-visible; disconnect requires
+// integrations.manage (write) (backend-enforced; the UI hides the button to match). Adding a
 // new installation flows through the Agent detail page — the install path is
 // per-agent (one bot per agent, the (workspace_id, agent_id, channel_type)
 // UNIQUE in channel_installation).
@@ -50,12 +49,7 @@ export function TelegramTab() {
   const { t } = useT("settings");
   const wsId = useWorkspaceId();
   const qc = useQueryClient();
-  const user = useAuthStore((s) => s.user);
-
-  const { data: members = [] } = useQuery(memberListOptions(wsId));
-  const currentMember = members.find((m) => m.user_id === user?.id) ?? null;
-  const canManage =
-    currentMember?.role === "owner" || currentMember?.role === "admin";
+  const canManage = useCan(wsId, "integrations.manage", { write: true }).allowed;
 
   const { data, isLoading, isError } = useQuery({
     ...telegramInstallationsOptions(wsId),
@@ -260,7 +254,6 @@ export function TelegramAgentBindButton({
   const { t, i18n } = useT("settings");
   const wsId = useWorkspaceId();
   const qc = useQueryClient();
-  const user = useAuthStore((s) => s.user);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [botToken, setBotToken] = useState("");
@@ -272,13 +265,7 @@ export function TelegramAgentBindButton({
   });
   const installSupported = listing?.install_supported === true;
 
-  const { data: members = [] } = useQuery({
-    ...memberListOptions(wsId),
-    enabled: !!wsId,
-  });
-  const currentMember = members.find((m) => m.user_id === user?.id) ?? null;
-  const canManage =
-    currentMember?.role === "owner" || currentMember?.role === "admin";
+  const canManage = useCan(wsId, "integrations.manage", { write: true }).allowed;
 
   if (!canManage) return null;
 

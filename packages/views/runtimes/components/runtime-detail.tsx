@@ -30,6 +30,7 @@ import {
   useWorkspacePresenceMap,
 } from "@multica/core/agents";
 import { useWorkspacePaths } from "@multica/core/paths";
+import { useCan } from "@multica/core/permissions";
 import { IconButton } from "@multica/ui/components/common/icon-button";
 import {
   DropdownMenu,
@@ -125,6 +126,9 @@ export function RuntimeDetail({
   const isAdmin = currentMember
     ? currentMember.role === "owner" || currentMember.role === "admin"
     : false;
+  const canManageRuntimeProfiles = useCan(wsId, "runtime_profiles.manage", {
+    write: true,
+  }).allowed;
   const isRuntimeOwner = user && runtime.owner_id === user.id;
   const canEditRuntime = isAdmin || isRuntimeOwner;
   const canReadRuntime = isRuntimeUsableForUser(runtime, user?.id ?? null);
@@ -133,7 +137,7 @@ export function RuntimeDetail({
     : null;
   const isCustomRuntime = !!runtime.profile_id;
   const canDelete = isCustomRuntime
-    ? isAdmin && !!runtimeProfile
+    ? canManageRuntimeProfiles && !!runtimeProfile
     : canEditRuntime;
 
   const servingAgents = agents.filter(

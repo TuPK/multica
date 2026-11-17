@@ -19,6 +19,7 @@ import {
   Server,
   Settings,
   ScrollText,
+  ShieldCheck,
   SlidersHorizontal,
   Tags,
   User,
@@ -28,7 +29,7 @@ import {
 } from "@multica/ui/icons";
 import { useCurrentWorkspace } from "@multica/core/paths";
 import { useFeatureEnabled } from "@multica/core/config";
-import { useCurrentMember } from "@multica/core/permissions";
+import { useCan, useCurrentMember } from "@multica/core/permissions";
 import {
   BILLING_WORKSPACE_SUBSCRIPTIONS_FLAG,
   PLUGINS_V1_FLAG,
@@ -42,6 +43,7 @@ import { PreferencesTab } from "./preferences-tab";
 import { TokensTab } from "./tokens-tab";
 import { WorkspaceTab } from "./workspace-tab";
 import { MembersTab } from "./members-tab";
+import { GroupsTab } from "./groups-tab";
 import { AuditLogTab } from "./audit-log-tab";
 import { CodeTab } from "./code-tab";
 import { ChannelsTab } from "./channels-tab";
@@ -109,9 +111,13 @@ const ANCHOR_WAIT_MS = 1500;
 export function SettingsPage({ extraDeviceTabs = [] }: SettingsPageProps = {}) {
   const { t } = useT("settings");
   const workspace = useCurrentWorkspace();
+  const wsId = workspace?.id ?? "";
   const workspaceName = workspace?.name ?? t(($) => $.page.workspace_fallback);
-  const { role } = useCurrentMember(workspace?.id ?? "");
+  const { role } = useCurrentMember(wsId);
   const isMember = role === "member";
+  const isManager = role === "owner" || role === "admin";
+  const canReadAudit = useCan(wsId, "audit.read").allowed;
+  const canViewBilling = useCan(wsId, "billing.view").allowed;
   const navigation = useNavigation();
   const listCollapsed = useListColumnCollapsed();
   const pluginsEnabled = useFeatureEnabled(PLUGINS_V1_FLAG, false);
@@ -177,10 +183,27 @@ export function SettingsPage({ extraDeviceTabs = [] }: SettingsPageProps = {}) {
             entry("members", t(($) => $.page.tabs.members), Users, <MembersTab />, {
               adminOnly: true,
             }),
-            entry("audit", t(($) => $.page.tabs.audit), ScrollText, <AuditLogTab />, {
-              adminOnly: true,
-            }),
-            ...(billingEnabled
+            ...(isManager
+              ? [
+                  entry(
+                    "groups",
+                    t(($) => $.page.tabs.groups),
+                    ShieldCheck,
+                    <GroupsTab />,
+                  ),
+                ]
+              : []),
+            ...(canReadAudit
+              ? [
+                  entry(
+                    "audit",
+                    t(($) => $.page.tabs.audit),
+                    ScrollText,
+                    <AuditLogTab />,
+                  ),
+                ]
+              : []),
+            ...(billingEnabled && canViewBilling
               ? [
                   entry(
                     "billing",
@@ -275,7 +298,11 @@ export function SettingsPage({ extraDeviceTabs = [] }: SettingsPageProps = {}) {
   );
   const location = resolveSettingsLocation(navigation.searchParams);
   const candidate =
-    location.tab === "billing" && !billingEnabled ? "workspace" : location.tab;
+    (location.tab === "billing" && (!billingEnabled || !canViewBilling)) ||
+    (location.tab === "groups" && !isManager) ||
+    (location.tab === "audit" && !canReadAudit)
+      ? "workspace"
+      : location.tab;
   const active =
     allEntries.find((item) => item.value === candidate) ?? allEntries[0]!;
   const href = (value: string) =>

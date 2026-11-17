@@ -27,9 +27,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@multica/ui/components/ui/alert-dialog";
-import { useAuthStore } from "@multica/core/auth";
 import { useWorkspaceId } from "@multica/core/hooks";
-import { memberListOptions } from "@multica/core/workspace/queries";
+import { useCan } from "@multica/core/permissions";
 import { useActorName } from "@multica/core/workspace/hooks";
 import { slackInstallationsOptions, slackKeys } from "@multica/core/slack";
 import { api } from "@multica/core/api";
@@ -41,8 +40,8 @@ import { useLocale, useT } from "../../i18n";
 import { TooltipHint } from "@multica/ui/components/common/tooltip-hint";
 
 // SlackTab is the workspace settings panel for Slack bot installations.
-// Listing is member-visible; the disconnect action is admin-only (the backend
-// enforces it; the UI hides the button for non-admins to match).
+// Listing is member-visible; disconnect requires integrations.manage (write)
+// (the backend enforces it; the UI hides the button to match).
 //
 // Adding a new installation flows through the Agent detail page: the install
 // path is per-agent (each Multica agent gets exactly one bot — the
@@ -52,12 +51,7 @@ export function SlackTab() {
   const { t } = useT("settings");
   const wsId = useWorkspaceId();
   const qc = useQueryClient();
-  const user = useAuthStore((s) => s.user);
-
-  const { data: members = [] } = useQuery(memberListOptions(wsId));
-  const currentMember = members.find((m) => m.user_id === user?.id) ?? null;
-  const canManage =
-    currentMember?.role === "owner" || currentMember?.role === "admin";
+  const canManage = useCan(wsId, "integrations.manage", { write: true }).allowed;
 
   const { data, isLoading } = useQuery({
     ...slackInstallationsOptions(wsId),
@@ -275,7 +269,6 @@ export function SlackAgentBindButton({
   const { t, i18n } = useT("settings");
   const wsId = useWorkspaceId();
   const qc = useQueryClient();
-  const user = useAuthStore((s) => s.user);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [botToken, setBotToken] = useState("");
@@ -288,13 +281,7 @@ export function SlackAgentBindButton({
   });
   const installSupported = listing?.install_supported === true;
 
-  const { data: members = [] } = useQuery({
-    ...memberListOptions(wsId),
-    enabled: !!wsId,
-  });
-  const currentMember = members.find((m) => m.user_id === user?.id) ?? null;
-  const canManage =
-    currentMember?.role === "owner" || currentMember?.role === "admin";
+  const canManage = useCan(wsId, "integrations.manage", { write: true }).allowed;
 
   if (!canManage) return null;
 

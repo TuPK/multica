@@ -63,6 +63,8 @@ vi.mock("./billing-tab", stub("BillingTab"));
 const shell = vi.hoisted(() => ({
   appsAvailable: false,
   role: "owner" as "owner" | "admin" | "member",
+  // Keys granted to the caller, from permissions/me (spec 7b.2).
+  keys: [] as string[],
 }));
 vi.mock("./connected-apps-tab", () => ({
   ConnectedAppsTab: () => <div>ConnectedAppsTab</div>,
@@ -75,8 +77,14 @@ vi.mock("@multica/core/paths", () => ({
 vi.mock("@multica/core/workspace/avatar-url", () => ({
   resolvePublicFileUrl: (url: string | null | undefined) => url ?? null,
 }));
-vi.mock("@multica/core/permissions", () => ({
+vi.mock("@multica/core/permissions", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@multica/core/permissions")>()),
   useCurrentMember: () => ({ role: shell.role, isLoading: false }),
+  useCan: (_wsId: string, key: string) => ({
+    allowed: shell.role === "owner" || shell.role === "admin" || shell.keys.includes(key),
+    reason: "allowed",
+    message: "",
+  }),
 }));
 vi.mock("@multica/core/auth", () => {
   const state = { user: { id: "user-1", name: "Ada Lovelace", avatar_url: null } };
@@ -130,6 +138,7 @@ beforeEach(() => {
   navigationState.search = "";
   shell.appsAvailable = false;
   shell.role = "owner";
+  shell.keys = [];
   tabs.channelDetail = false;
   configStore.getState().setFeatureFlags({});
   replace.mockClear();
@@ -499,5 +508,34 @@ describe("SettingsPage search for the browser notifications row", () => {
     expect(
       within(results).getByRole("option", { name: /Show system notifications/ }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("SettingsPage account groups (spec 7b.2)", () => {
+  it("shows the Groups tab to an owner", () => {
+    shell.role = "owner";
+    renderWithI18n(<SettingsPage />);
+    expect(screen.getByRole("link", { name: /^Groups/ })).toBeInTheDocument();
+  });
+
+  it("hides the Groups tab from a member, even one holding every key", () => {
+    shell.role = "member";
+    shell.keys = ["members.invite", "audit.read", "billing.view", "billing.manage", "integrations.manage", "runtime_profiles.manage"];
+    renderWithI18n(<SettingsPage />);
+    expect(screen.queryByRole("link", { name: /^Groups/ })).toBeNull();
+  });
+
+  it("shows the audit tab to a member who holds audit.read", () => {
+    shell.role = "member";
+    shell.keys = ["audit.read"];
+    renderWithI18n(<SettingsPage />);
+    expect(screen.getByRole("link", { name: /Audit log/ })).toBeInTheDocument();
+  });
+
+  it("hides the audit tab from a member without audit.read", () => {
+    shell.role = "member";
+    shell.keys = ["members.invite"];
+    renderWithI18n(<SettingsPage />);
+    expect(screen.queryByRole("link", { name: /Audit log/ })).toBeNull();
   });
 });
