@@ -438,6 +438,23 @@ func TestPendingWorkspaceRefusesWritesAndServesReads(t *testing.T) {
 // The account request is the platform's record of who asked for the account, so
 // it outlives the workspace. It has no foreign key, so teardown clears the
 // workspace_id it points at.
+func TestDeleteWorkspaceRemovesMemberRemovalRows(t *testing.T) {
+	requirePlatformTestDatabase(t)
+	setDeletionDays(t, 0)
+	wsID := ownedWorkspace(t, "Delete with member removal")
+	dbfx.Cleanup(t, `DELETE FROM member_removal WHERE workspace_id = $1::uuid`, wsID)
+	dbfx.Exec(t, `INSERT INTO member_removal (workspace_id, user_id) VALUES ($1::uuid, $2::uuid)`, wsID, testUserID)
+
+	testutil.Call(t, testHandler.DeleteWorkspace, deleteRequest(wsID)).Want(http.StatusNoContent)
+
+	if workspaceExists(t, wsID) {
+		t.Fatal("the workspace still exists")
+	}
+	if n := dbfx.Count(t, `SELECT count(*) FROM member_removal WHERE workspace_id = $1::uuid`, wsID); n != 0 {
+		t.Errorf("%d member_removal rows remain for the deleted workspace", n)
+	}
+}
+
 func TestDeleteWorkspaceClearsAccountRequestWorkspaceID(t *testing.T) {
 	requirePlatformTestDatabase(t)
 	setDeletionDays(t, 0)

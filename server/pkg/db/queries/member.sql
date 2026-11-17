@@ -48,3 +48,7 @@ ORDER BY m.created_at ASC;
 
 -- name: RecordMemberRemoval :exec
 INSERT INTO member_removal (workspace_id, user_id) VALUES ($1, $2);
+
+-- member_removal has no foreign key, so workspace deletion removes its rows here.
+-- name: DeleteMemberRemovalsByWorkspace :exec
+DELETE FROM member_removal WHERE workspace_id = $1;

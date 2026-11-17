@@ -47,6 +47,16 @@ func (q *Queries) DeleteMember(ctx context.Context, id pgtype.UUID) error {
 	return err
 }
 
+const deleteMemberRemovalsByWorkspace = `-- name: DeleteMemberRemovalsByWorkspace :exec
+DELETE FROM member_removal WHERE workspace_id = $1
+`
+
+// member_removal has no foreign key, so workspace deletion removes its rows here.
+func (q *Queries) DeleteMemberRemovalsByWorkspace(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteMemberRemovalsByWorkspace, workspaceID)
+	return err
+}
+
 const getMember = `-- name: GetMember :one
 SELECT id, workspace_id, user_id, role, created_at, is_guest, pinned_at FROM member
 WHERE id = $1

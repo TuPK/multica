@@ -1703,6 +1703,11 @@ func (h *Handler) deleteWorkspaceData(ctx context.Context, tx pgx.Tx, wsID pgtyp
 			run:  func() error { return qtx.DeleteSSODomainsByWorkspace(ctx, wsID) },
 		},
 		{
+			// member_removal carries no foreign key, so nothing else removes it.
+			name: "delete member removals",
+			run:  func() error { return qtx.DeleteMemberRemovalsByWorkspace(ctx, wsID) },
+		},
+		{
 			// The request row is the platform's record and is kept; only its
 			// pointer to the deleted workspace is cleared.
 			name: "detach account requests",
