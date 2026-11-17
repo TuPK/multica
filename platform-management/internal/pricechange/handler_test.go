@@ -181,6 +181,36 @@ func TestWritesNeedTheConsoleOrigin(t *testing.T) {
 	}
 }
 
+// A session without the mfa claim is otherwise valid: signed cookie, console
+// origin, active admin. Only the second factor is missing.
+func TestScheduleNeedsAnMFASession(t *testing.T) {
+	post := func(e *env, token string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest("POST", changesPath, strings.NewReader(postBody))
+		req.AddCookie(&http.Cookie{Name: session.CookieName, Value: token})
+		req.Header.Set("Origin", origin)
+		rec := httptest.NewRecorder()
+		e.h.ServeHTTP(rec, req)
+		return rec
+	}
+	authTime := t0.Add(-time.Minute)
+	noMFA, err := session.Sign(secret, adminUser, authTime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withMFA, err := platformauth.SignMFASession(secret, adminUser, authTime)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	e := newEnv(t)
+	if rec := post(e, noMFA); rec.Code != 404 || len(e.st.changes) != 0 || len(e.st.audits) != 0 {
+		t.Fatalf("without mfa: status %d, %d changes, %d audits; want 404 and none", rec.Code, len(e.st.changes), len(e.st.audits))
+	}
+	if rec := post(e, withMFA); rec.Code != 201 || len(e.st.changes) != 1 {
+		t.Fatalf("with mfa: status %d, %d changes; want 201 and one: %s", rec.Code, len(e.st.changes), rec.Body)
+	}
+}
+
 func TestScheduleHistoryAndCancelOverHTTP(t *testing.T) {
 	e := newEnv(t)
 	rec := e.do(adminUser, "POST", changesPath, postBody)
