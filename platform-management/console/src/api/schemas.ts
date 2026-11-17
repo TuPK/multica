@@ -299,6 +299,7 @@ export type ResetMfaResponse = z.output<typeof ResetMfaResponseSchema>;
 export const TenantDetailSchema = TenantSchema.extend({
   state: TenantStateSchema.prefault({}),
   notes_count: count,
+  group_count: count,
   owner: z.object({ id: z.string(), email: text }).nullable().default(null),
   subscription: SubscriptionSchema.nullable().default(null),
   recent_orders: z.array(OrderSchema).default([]),

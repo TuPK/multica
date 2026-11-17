@@ -43,6 +43,7 @@ const mockTenantData = {
   slug: "acme",
   status: "active",
   member_count: 8,
+  group_count: 3,
   created_at: "2026-11-01T10:00:00Z",
   last_activity_at: "2026-11-15T12:00:00Z",
   state: {
@@ -165,6 +166,7 @@ describe("TenantDetail screen", () => {
 
     expect(screen.getByRole("heading", { name: "Acme Corp" })).toBeInTheDocument();
     expect(screen.getByText("acme • ID: t-123")).toBeInTheDocument();
+    expect(within(screen.getByText("Account groups").parentElement!).getByText("3")).toBeInTheDocument();
     expect(screen.getByText("owner@acme.com")).toBeInTheDocument();
     expect(screen.getByText("Verified payment issue.")).toBeInTheDocument();
     expect(screen.getByText("workspace.status_changed")).toBeInTheDocument();

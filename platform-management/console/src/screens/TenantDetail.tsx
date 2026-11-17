@@ -482,6 +482,12 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
                 </span>
               </div>
               <div>
+                <span className="block text-caption text-muted-foreground">Account groups</span>
+                <span className="mt-1 block font-medium tabular-nums">
+                  {tenant.group_count}
+                </span>
+              </div>
+              <div>
                 <span className="block text-caption text-muted-foreground">Owner</span>
                 <span className="mt-1 block font-medium">
                   {tenant.owner?.email || "Unknown"}

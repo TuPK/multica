@@ -114,15 +114,17 @@ describe("tenants", () => {
       ...tenant,
       state: { status: "suspended", reason: "abuse", changed_by: "u9", changed_at: "2026-02-02T00:00:00Z", deletion_scheduled_at: null },
       notes_count: 2,
+      group_count: 4,
       owner: { id: "u1", email: "a@example.com" },
     });
     expect(detail?.state.status).toBe("suspended");
     expect(detail?.state.reason).toBe("abuse");
     expect(detail?.owner).toEqual({ id: "u1", email: "a@example.com" });
     expect(detail?.notes_count).toBe(2);
+    expect(detail?.group_count).toBe(4);
   });
 
-  it("defaults a missing state, owner and notes count in a detail", () => {
+  it("defaults a missing state, owner, group count and notes count in a detail", () => {
     const detail = parseTenantDetail(tenant);
     expect(detail?.state).toEqual({
       status: "unknown",
@@ -133,6 +135,7 @@ describe("tenants", () => {
     });
     expect(detail?.owner).toBeNull();
     expect(detail?.notes_count).toBe(0);
+    expect(detail?.group_count).toBe(0);
   });
 
   it("falls back to null for a malformed detail", () => {
