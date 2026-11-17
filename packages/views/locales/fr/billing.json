@@ -247,6 +247,53 @@
     "confirm": {
       "title": "Continuer vers Stripe Checkout ?",
       "description": "Intervalle de facturation : {{interval}}. Membres humains actuels : {{count}}. Stripe recomptera les sièges et affichera le montant final avant le paiement."
+    },
+    "plan_change": {
+      "action": "Changer de forfait",
+      "title": "Passer à {{planName}}",
+      "due_now": "Dû maintenant",
+      "effective_on": "Prend effet le {{date}}",
+      "confirm_charge": "Continuer vers le paiement",
+      "confirm_schedule": "Programmer le changement",
+      "cancel": "Annuler",
+      "preview_failed": "Impossible de charger le devis de changement de forfait. Réessayez dans un instant.",
+      "confirm_failed": "Impossible de changer de forfait. Réessayez dans un instant.",
+      "quote_changed": "Le devis a changé. Vérifiez le montant actualisé avant de confirmer.",
+      "scheduled_title": "Changement de forfait programmé",
+      "scheduled_description": "Votre forfait passera à {{planName}}.",
+      "order_title": "Commande créée",
+      "order_description": "La commande {{requestId}} a été créée."
+    },
+    "pending_change": {
+      "title": "Changement programmé",
+      "body": "Votre forfait passe à {{planName}} le {{date}}.",
+      "body_no_date": "Votre forfait passe à {{planName}}.",
+      "cancel": "Annuler le changement programmé",
+      "cancel_failed": "Impossible d'annuler le changement programmé. Réessayez dans un instant."
+    },
+    "profile": {
+      "title": "Profil de facturation",
+      "business_switch": "Compte professionnel",
+      "account_kind": "Type de compte",
+      "individual": "Particulier",
+      "business": "Professionnel",
+      "legal_name": "Raison sociale",
+      "tax_code": "Numéro fiscal",
+      "address": "Adresse",
+      "invoice_email": "E-mail de facturation",
+      "save": "Enregistrer le profil",
+      "saved": "Profil de facturation enregistré",
+      "save_failed": "Impossible d'enregistrer le profil de facturation. Réessayez dans un instant."
+    },
+    "lifecycle": {
+      "cancel": "Résilier l'abonnement",
+      "resume": "Reprendre l'abonnement",
+      "cancel_title": "Résilier l'abonnement ?",
+      "cancel_body": "Votre forfait reste actif jusqu'au {{date}}.",
+      "cancel_confirm": "Résilier à la fin de la période",
+      "keep": "Conserver l'abonnement",
+      "cancel_failed": "Impossible de résilier l'abonnement. Réessayez dans un instant.",
+      "resume_failed": "Impossible de reprendre l'abonnement. Réessayez dans un instant."
     }
   },
   "shared": {

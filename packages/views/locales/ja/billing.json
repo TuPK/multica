@@ -240,6 +240,53 @@
     "confirm": {
       "title": "Stripe Checkout に進みますか？",
       "description": "請求期間: {{interval}}。現在のユーザーメンバー: {{count}}。Stripe が席数を再集計し、お支払い前に最終金額を表示します。"
+    },
+    "plan_change": {
+      "action": "プランを変更",
+      "title": "{{planName}} に変更",
+      "due_now": "今回のお支払い額",
+      "effective_on": "{{date}} に適用されます",
+      "confirm_charge": "支払いに進む",
+      "confirm_schedule": "変更を予約",
+      "cancel": "キャンセル",
+      "preview_failed": "プラン変更の見積もりを読み込めませんでした。しばらくしてから再試行してください。",
+      "confirm_failed": "プランを変更できませんでした。しばらくしてから再試行してください。",
+      "quote_changed": "見積もりが変更されました。更新後の金額を確認してから確定してください。",
+      "scheduled_title": "プラン変更を予約しました",
+      "scheduled_description": "プランは {{planName}} に変更されます。",
+      "order_title": "注文を作成しました",
+      "order_description": "注文 {{requestId}} を作成しました。"
+    },
+    "pending_change": {
+      "title": "予定された変更",
+      "body": "プランは {{date}} に {{planName}} へ変更されます。",
+      "body_no_date": "プランは {{planName}} へ変更されます。",
+      "cancel": "予定された変更をキャンセル",
+      "cancel_failed": "予定された変更をキャンセルできませんでした。しばらくしてから再試行してください。"
+    },
+    "profile": {
+      "title": "請求先プロフィール",
+      "business_switch": "法人アカウント",
+      "account_kind": "アカウント種別",
+      "individual": "個人",
+      "business": "法人",
+      "legal_name": "法人名",
+      "tax_code": "登録番号 / 法人番号",
+      "address": "住所",
+      "invoice_email": "請求送信用メールアドレス",
+      "save": "プロフィールを保存",
+      "saved": "請求先プロフィールを保存しました",
+      "save_failed": "請求先プロフィールを保存できませんでした。しばらくしてから再試行してください。"
+    },
+    "lifecycle": {
+      "cancel": "サブスクリプションを解約",
+      "resume": "サブスクリプションを再開",
+      "cancel_title": "サブスクリプションを解約しますか？",
+      "cancel_body": "現在のプランは {{date}} まで有効です。",
+      "cancel_confirm": "期間終了時に解約",
+      "keep": "サブスクリプションを継続",
+      "cancel_failed": "サブスクリプションを解約できませんでした。しばらくしてから再試行してください。",
+      "resume_failed": "サブスクリプションを再開できませんでした。しばらくしてから再試行してください。"
     }
   },
   "shared": {

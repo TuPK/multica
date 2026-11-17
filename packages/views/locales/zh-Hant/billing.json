@@ -240,6 +240,53 @@
     "confirm": {
       "title": "前往 Stripe Checkout？",
       "description": "付款週期：{{interval}}。當前成員：{{count}}。Stripe 會重新統計席位，並在付款前顯示最終金額。"
+    },
+    "plan_change": {
+      "action": "變更套餐",
+      "title": "變更為 {{planName}}",
+      "due_now": "目前應付",
+      "effective_on": "將於 {{date}} 生效",
+      "confirm_charge": "繼續付款",
+      "confirm_schedule": "預約變更",
+      "cancel": "取消",
+      "preview_failed": "無法取得套餐變更報價，請稍後重試。",
+      "confirm_failed": "無法變更套餐，請稍後重試。",
+      "quote_changed": "報價已變動，請檢視更新後的金額再確認。",
+      "scheduled_title": "已預約套餐變更",
+      "scheduled_description": "套餐將變更為 {{planName}}。",
+      "order_title": "訂單已建立",
+      "order_description": "已建立訂單 {{requestId}}。"
+    },
+    "pending_change": {
+      "title": "已預約的變更",
+      "body": "套餐將於 {{date}} 變更為 {{planName}}。",
+      "body_no_date": "套餐將變更為 {{planName}}。",
+      "cancel": "取消預約變更",
+      "cancel_failed": "無法取消預約變更，請稍後重試。"
+    },
+    "profile": {
+      "title": "帳單資料",
+      "business_switch": "企業帳號",
+      "account_kind": "帳號類型",
+      "individual": "個人",
+      "business": "企業",
+      "legal_name": "企業名稱",
+      "tax_code": "稅號",
+      "address": "地址",
+      "invoice_email": "發票電子郵件",
+      "save": "儲存資料",
+      "saved": "帳單資料已儲存",
+      "save_failed": "無法儲存帳單資料，請稍後重試。"
+    },
+    "lifecycle": {
+      "cancel": "取消訂閱",
+      "resume": "恢復訂閱",
+      "cancel_title": "取消訂閱？",
+      "cancel_body": "目前套餐在 {{date}} 前仍可繼續使用。",
+      "cancel_confirm": "在目前週期結束時取消",
+      "keep": "保留訂閱",
+      "cancel_failed": "無法取消訂閱，請稍後重試。",
+      "resume_failed": "無法恢復訂閱，請稍後重試。"
     }
   },
   "shared": {

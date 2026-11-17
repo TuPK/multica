@@ -15,11 +15,18 @@ import {
 import { ApiError, errorCode } from "@multica/core/api";
 import { autopilotQuotaUsageOptions } from "@multica/core/autopilots";
 import {
+  useCancelWorkspaceScheduledPlanChange,
+  useCancelWorkspaceSubscription,
+  useCreateWorkspacePlanChange,
   useCreateWorkspaceSubscriptionCheckout,
   useCreateWorkspaceSubscriptionPortal,
+  usePreviewWorkspacePlanChange,
   usePreviewWorkspaceSeatPurchase,
   usePurchaseWorkspaceSeats,
+  useResumeWorkspaceSubscription,
+  useUpdateWorkspaceBillingProfile,
   issueLimitUsageOptions,
+  workspaceBillingProfileOptions,
   workspacePlansOptions,
   workspaceSubscriptionPricesOptions,
   workspaceSubscriptionSummaryOptions,
@@ -29,6 +36,10 @@ import { BILLING_WORKSPACE_SUBSCRIPTIONS_FLAG } from "@multica/core/feature-flag
 import { useCurrentWorkspace } from "@multica/core/paths";
 import type {
   PurchaseWorkspaceSeatsRequest,
+  UpdateWorkspaceBillingProfileRequest,
+  WorkspaceBillingAccountKind,
+  WorkspaceBillingProfile,
+  WorkspacePlanChangePreview,
   WorkspaceSeatPurchasePreview,
   WorkspaceSubscriptionInterval,
 } from "@multica/core/types";
@@ -74,6 +85,17 @@ import { Skeleton } from "@multica/ui/components/ui/skeleton";
 import { useLocale, useT } from "../../i18n";
 import { useNavigation } from "../../navigation";
 import { openExternal } from "../../platform";
+import {
+  BillingProfileForm,
+} from "../../billing/billing-profile-form";
+import {
+  PendingChangeBanner,
+} from "../../billing/pending-change-banner";
+import { plansForAccountKind } from "../../billing/plan-audience";
+import { PlanChangeDialog } from "../../billing/plan-change-dialog";
+import {
+  SubscriptionLifecycleSection,
+} from "../../billing/subscription-lifecycle-section";
 import {
   SettingsCard,
   SettingsRow,
@@ -217,10 +239,20 @@ function BillingTabContent() {
   const [seatPurchasePollingTimedOut, setSeatPurchasePollingTimedOut] =
     useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<{
+    title: string;
+    description: string;
+  } | null>(null);
   const [portalUnavailable, setPortalUnavailable] = useState(false);
   const [seatPurchaseMessage, setSeatPurchaseMessage] = useState<string | null>(
     null,
   );
+  const [planChangeOpen, setPlanChangeOpen] = useState(false);
+  const [planChangePreview, setPlanChangePreview] =
+    useState<WorkspacePlanChangePreview | null>(null);
+  const [planChangePlanName, setPlanChangePlanName] = useState("");
+  const [planChangeError, setPlanChangeError] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [isSyncingCheckout, setIsSyncingCheckout] = useState(
     returnResult === "success",
   );
@@ -258,7 +290,13 @@ function BillingTabContent() {
     setSeatPurchasePollingTimedOut(false);
     setPortalUnavailable(false);
     setActionError(null);
+    setActionMessage(null);
     setSeatPurchaseMessage(null);
+    setPlanChangeOpen(false);
+    setPlanChangePreview(null);
+    setPlanChangePlanName("");
+    setPlanChangeError(null);
+    setProfileError(null);
   }, [wsId]);
 
   // Consume Stripe callback params once, then remove them with replace so a
@@ -348,25 +386,62 @@ function BillingTabContent() {
       wsId.length > 0 &&
       entitlements?.limits.issueCount.mode === "limited",
   });
+  const billingProfileQuery = useQuery(workspaceBillingProfileOptions(wsId));
+  const rawBillingProfile = billingProfileQuery.data;
+  const billingProfile: WorkspaceBillingProfile | null =
+    rawBillingProfile &&
+    typeof rawBillingProfile === "object" &&
+    "accountKind" in rawBillingProfile
+      ? rawBillingProfile
+      : null;
+  const accountKind: WorkspaceBillingAccountKind =
+    billingProfile?.accountKind === "business" ? "business" : "individual";
+
   const hasSeatCapacity = hasActiveWorkspaceSeatCapacity(summaryQuery.data);
   const canUpgrade = summaryQuery.data?.availableActions.checkout === true;
+  const canChangePlan = summaryQuery.data?.availableActions.changePlan === true;
+  const canCancelSubscription =
+    summaryQuery.data?.availableActions.cancel === true;
+  const canResumeSubscription =
+    summaryQuery.data?.availableActions.resume === true;
+  const canEditProfile =
+    (
+      summaryQuery.data?.availableActions as
+        | { editProfile?: boolean }
+        | undefined
+    )?.editProfile === true;
+  const pendingChange = summaryQuery.data?.pendingChange ?? null;
+
   const pricesQuery = useQuery({
     ...workspaceSubscriptionPricesOptions(wsId),
     enabled: wsId.length > 0 && canUpgrade,
   });
   const plansQuery = useQuery({
     ...workspacePlansOptions(wsId),
-    enabled: wsId.length > 0 && canUpgrade,
+    enabled:
+      wsId.length > 0 &&
+      (canUpgrade || canChangePlan || pendingChange !== null),
   });
   const availablePlans = plansQuery.data ?? [];
+  const pickerPlans = plansForAccountKind(
+    availablePlans as readonly ((typeof availablePlans)[number] & {
+      audience?: string | null;
+    })[],
+    accountKind,
+  );
   const activePlan =
-    availablePlans.find((p) => p.key === selectedPlan) ??
-    availablePlans[0] ??
-    null;
+    pickerPlans.find((p) => p.key === selectedPlan) ?? pickerPlans[0] ?? null;
   const checkoutMutation = useCreateWorkspaceSubscriptionCheckout(wsId);
   const portalMutation = useCreateWorkspaceSubscriptionPortal(wsId);
   const previewSeatPurchaseMutation = usePreviewWorkspaceSeatPurchase();
   const purchaseSeatsMutation = usePurchaseWorkspaceSeats(wsId);
+  const updateBillingProfileMutation = useUpdateWorkspaceBillingProfile(wsId);
+  const previewPlanChangeMutation = usePreviewWorkspacePlanChange();
+  const createPlanChangeMutation = useCreateWorkspacePlanChange(wsId);
+  const cancelScheduledPlanChangeMutation =
+    useCancelWorkspaceScheduledPlanChange(wsId);
+  const cancelSubscriptionMutation = useCancelWorkspaceSubscription(wsId);
+  const resumeSubscriptionMutation = useResumeWorkspaceSubscription(wsId);
   const refetchSummary = summaryQuery.refetch;
   const previewSeatPurchase = previewSeatPurchaseMutation.mutateAsync;
 
@@ -762,6 +837,198 @@ function BillingTabContent() {
     setSeatPreview(null);
   };
 
+  const handleOpenPlanChange = async () => {
+    if (!activePlan) return;
+    setActionError(null);
+    setActionMessage(null);
+    setPlanChangeError(null);
+    const targetSeats = Math.max(
+      billedSeats ?? actualSeats,
+      activePlan.minSeats ?? 1,
+    );
+    try {
+      const preview = await previewPlanChangeMutation.mutateAsync({
+        planKey: activePlan.key,
+        interval,
+        seats: targetSeats,
+      });
+      if (!preview) {
+        setActionError(t(($) => $.workspace.plan_change.preview_failed));
+        return;
+      }
+      setPlanChangePreview(preview);
+      setPlanChangePlanName(activePlan.name || activePlan.key);
+      setPlanChangeOpen(true);
+    } catch (error) {
+      reportActionError(
+        error,
+        t(($) => $.workspace.plan_change.preview_failed),
+      );
+    }
+  };
+
+  const handleConfirmPlanChange = async () => {
+    if (!planChangePreview) return;
+    setPlanChangeError(null);
+    setActionError(null);
+    setActionMessage(null);
+    try {
+      const response = await createPlanChangeMutation.mutateAsync({
+        planKey: planChangePreview.planKey,
+        interval: planChangePreview.interval,
+        seats: planChangePreview.resultingSeats,
+        acceptedAmount: planChangePreview.amount,
+        expectedVersion: planChangePreview.expectedVersion,
+        idempotencyKey: createIdempotencyKey("plan-change", wsId),
+      });
+      if (!response) {
+        setPlanChangeError(t(($) => $.workspace.plan_change.confirm_failed));
+        return;
+      }
+      setPlanChangeOpen(false);
+      setPlanChangePreview(null);
+      setPlanChangeError(null);
+      const targetPlanName =
+        availablePlans.find((p) => p.key === response.planKey)?.name ??
+        (planChangePlanName || response.planKey);
+      if (response.outcome === "scheduled") {
+        setActionMessage({
+          title: t(($) => $.workspace.plan_change.scheduled_title),
+          description: t(($) => $.workspace.plan_change.scheduled_description, {
+            planName: targetPlanName,
+          }),
+        });
+      } else {
+        setActionMessage({
+          title: t(($) => $.workspace.plan_change.order_title),
+          description: t(($) => $.workspace.plan_change.order_description, {
+            requestId: response.requestId,
+          }),
+        });
+      }
+    } catch (error) {
+      if (error instanceof ApiError && errorCode(error) === "quote_changed") {
+        try {
+          const refreshedPreview = await previewPlanChangeMutation.mutateAsync({
+            planKey: planChangePreview.planKey,
+            interval: planChangePreview.interval,
+            seats: planChangePreview.resultingSeats,
+          });
+          if (refreshedPreview) {
+            setPlanChangePreview(refreshedPreview);
+            setPlanChangeError(t(($) => $.workspace.plan_change.quote_changed));
+            return;
+          }
+        } catch (previewError) {
+          setPlanChangeOpen(false);
+          reportActionError(
+            previewError,
+            t(($) => $.workspace.plan_change.preview_failed),
+          );
+          return;
+        }
+        setPlanChangeError(t(($) => $.workspace.plan_change.preview_failed));
+        return;
+      }
+      setPlanChangeOpen(false);
+      reportActionError(
+        error,
+        t(($) => $.workspace.plan_change.confirm_failed),
+      );
+    }
+  };
+
+  const handlePlanChangeOpenChange = (open: boolean) => {
+    if (
+      !open &&
+      (createPlanChangeMutation.isPending || previewPlanChangeMutation.isPending)
+    ) {
+      return;
+    }
+    setPlanChangeOpen(open);
+    if (!open) {
+      setPlanChangeError(null);
+    }
+  };
+
+  const handleCancelScheduledPlanChange = async () => {
+    setActionError(null);
+    setActionMessage(null);
+    try {
+      await cancelScheduledPlanChangeMutation.mutateAsync(
+        createIdempotencyKey("cancel-plan-change", wsId),
+      );
+    } catch (error) {
+      reportActionError(
+        error,
+        t(($) => $.workspace.pending_change.cancel_failed),
+      );
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    setActionError(null);
+    setActionMessage(null);
+    try {
+      await cancelSubscriptionMutation.mutateAsync(
+        createIdempotencyKey("cancel", wsId),
+      );
+    } catch (error) {
+      reportActionError(
+        error,
+        t(($) => $.workspace.lifecycle.cancel_failed),
+      );
+    }
+  };
+
+  const handleResumeSubscription = async () => {
+    setActionError(null);
+    setActionMessage(null);
+    try {
+      await resumeSubscriptionMutation.mutateAsync(
+        createIdempotencyKey("resume", wsId),
+      );
+    } catch (error) {
+      reportActionError(
+        error,
+        t(($) => $.workspace.lifecycle.resume_failed),
+      );
+    }
+  };
+
+  const handleSaveBillingProfile = async (
+    data: UpdateWorkspaceBillingProfileRequest,
+  ) => {
+    setProfileError(null);
+    setActionError(null);
+    setActionMessage(null);
+    try {
+      await updateBillingProfileMutation.mutateAsync(data);
+      setActionMessage({
+        title: t(($) => $.workspace.profile.title),
+        description: t(($) => $.workspace.profile.saved),
+      });
+    } catch (error) {
+      const code = errorCode(error);
+      if (
+        code === "workspace_subscriptions_disabled" ||
+        code === "cloud_runtime_not_configured"
+      ) {
+        setProfileError(t(($) => $.workspace.errors.not_enabled));
+        return;
+      }
+      if (error instanceof ApiError && error.status === 503) {
+        setProfileError(t(($) => $.workspace.errors.temporarily_unavailable));
+        return;
+      }
+      if (error instanceof ApiError && error.status === 403) {
+        setProfileError(t(($) => $.workspace.errors.permission_changed));
+        return;
+      }
+      setProfileError(t(($) => $.workspace.profile.save_failed));
+    }
+  };
+
   if (summaryQuery.isPending) {
     return (
       <SettingsTab
@@ -849,7 +1116,16 @@ function BillingTabContent() {
   const isMutating =
     checkoutMutation.isPending ||
     portalMutation.isPending ||
-    purchaseSeatsMutation.isPending;
+    purchaseSeatsMutation.isPending ||
+    previewPlanChangeMutation.isPending ||
+    createPlanChangeMutation.isPending ||
+    cancelScheduledPlanChangeMutation.isPending ||
+    cancelSubscriptionMutation.isPending ||
+    resumeSubscriptionMutation.isPending;
+  const pendingPlanName = pendingChange
+    ? (availablePlans.find((p) => p.key === pendingChange.planKey)?.name ??
+      pendingChange.planKey)
+    : "";
   const selectedPrice = pricesQuery.data?.[interval] ?? null;
   const planUnitPrice =
     activePlan
@@ -1045,6 +1321,23 @@ function BillingTabContent() {
         </Alert>
       ) : null}
 
+      {actionMessage ? (
+        <Alert>
+          <CheckCircle2 />
+          <AlertTitle>{actionMessage.title}</AlertTitle>
+          <AlertDescription>{actionMessage.description}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      <PendingChangeBanner
+        pendingChange={pendingChange}
+        planName={pendingPlanName}
+        effectiveAt={summaryQuery.data?.entitlement.currentPeriodEnd ?? null}
+        canCancel={canChangePlan}
+        cancelling={cancelScheduledPlanChangeMutation.isPending}
+        onCancel={() => void handleCancelScheduledPlanChange()}
+      />
+
       <SettingsSection title={t(($) => $.workspace.current.title)}>
         <SettingsCard>
           <SettingsRow
@@ -1088,16 +1381,31 @@ function BillingTabContent() {
             </SettingsRow>
           ) : null}
         </SettingsCard>
+        <SubscriptionLifecycleSection
+          canCancel={canCancelSubscription}
+          canResume={canResumeSubscription}
+          periodEnd={summaryQuery.data?.entitlement.currentPeriodEnd ?? null}
+          cancelling={cancelSubscriptionMutation.isPending}
+          resuming={resumeSubscriptionMutation.isPending}
+          onCancel={() => void handleCancelSubscription()}
+          onResume={() => void handleResumeSubscription()}
+        />
       </SettingsSection>
 
-      {canUpgrade ? (
+      {canUpgrade || canChangePlan ? (
         <SettingsSection
-          title={t(($) => $.workspace.upgrade.title)}
-          description={t(($) => $.workspace.upgrade.description)}
+          title={
+            canUpgrade
+              ? t(($) => $.workspace.upgrade.title)
+              : t(($) => $.workspace.plan_change.action)
+          }
+          description={
+            canUpgrade ? t(($) => $.workspace.upgrade.description) : undefined
+          }
         >
           <SettingsCard>
             <div className="space-y-5 p-4 sm:p-5">
-              {availablePlans.length > 0 ? (
+              {pickerPlans.length > 0 ? (
                 <div className="space-y-2">
                   <p className="text-body font-medium">
                     {t(($) => $.workspace.upgrade.plan_label)}
@@ -1107,12 +1415,12 @@ function BillingTabContent() {
                     role="group"
                     aria-label={t(($) => $.workspace.upgrade.plan_label)}
                   >
-                    {availablePlans.map((p) => (
+                    {pickerPlans.map((p) => (
                       <button
                         key={p.key}
                         type="button"
                         aria-pressed={
-                          (selectedPlan ?? availablePlans[0]?.key) === p.key
+                          (selectedPlan ?? pickerPlans[0]?.key) === p.key
                         }
                         className="min-h-11 flex-1 rounded-md px-4 text-body font-medium text-muted-foreground transition-[color,background-color,box-shadow] hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-pressed:bg-surface-selected aria-pressed:text-surface-selected-foreground aria-pressed:shadow-sm sm:min-w-28"
                         onClick={() => {
@@ -1149,74 +1457,107 @@ function BillingTabContent() {
                   </button>
                 ))}
               </div>
-              <div className="space-y-2">
-                <p className="text-body font-medium">
-                  {t(($) => $.workspace.upgrade.pro_for_team, {
-                    count: actualSeats,
-                  })}
-                </p>
-                {pricesQuery.isLoading ? (
-                  <div
-                    className="space-y-2 motion-reduce:[&_[data-slot=skeleton]]:animate-none"
-                    role="status"
-                    aria-label={t(($) => $.workspace.upgrade.price_loading)}
-                  >
-                    <Skeleton className="h-5 w-48" />
-                    <Skeleton className="h-4 w-64 max-w-full" />
-                  </div>
-                ) : hasDisplayableUnitPrice ? (
-                  <div className="space-y-1">
-                    <p className="text-body font-semibold tabular-nums">
-                      {t(($) => $.workspace.upgrade.unit_price, {
-                        price: formattedUnitPrice,
-                      })}
-                    </p>
-                  </div>
-                ) : null}
-                <p className="max-w-[65ch] text-caption leading-5 text-muted-foreground">
-                  {t(($) => $.workspace.upgrade.price_at_checkout)}
-                </p>
-                {canRetryPrice ? (
-                  <>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      aria-busy={pricesQuery.isFetching}
-                      disabled={pricesQuery.isFetching}
-                      onClick={() => void pricesQuery.refetch()}
+              {canUpgrade ? (
+                <div className="space-y-2">
+                  <p className="text-body font-medium">
+                    {t(($) => $.workspace.upgrade.pro_for_team, {
+                      count: actualSeats,
+                    })}
+                  </p>
+                  {pricesQuery.isLoading ? (
+                    <div
+                      className="space-y-2 motion-reduce:[&_[data-slot=skeleton]]:animate-none"
+                      role="status"
+                      aria-label={t(($) => $.workspace.upgrade.price_loading)}
                     >
-                      {pricesQuery.isFetching ? (
-                        <Loader2 className="animate-spin" />
-                      ) : (
-                        <RefreshCw />
-                      )}
-                      {t(($) => $.workspace.actions.retry)}
-                    </Button>
-                    {pricesQuery.isFetching ? (
-                      <span
-                        className="sr-only"
-                        role="status"
-                        aria-label={t(
-                          ($) => $.workspace.upgrade.price_loading,
-                        )}
+                      <Skeleton className="h-5 w-48" />
+                      <Skeleton className="h-4 w-64 max-w-full" />
+                    </div>
+                  ) : hasDisplayableUnitPrice ? (
+                    <div className="space-y-1">
+                      <p className="text-body font-semibold tabular-nums">
+                        {t(($) => $.workspace.upgrade.unit_price, {
+                          price: formattedUnitPrice,
+                        })}
+                      </p>
+                    </div>
+                  ) : null}
+                  <p className="max-w-[65ch] text-caption leading-5 text-muted-foreground">
+                    {t(($) => $.workspace.upgrade.price_at_checkout)}
+                  </p>
+                  {canRetryPrice ? (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        aria-busy={pricesQuery.isFetching}
+                        disabled={pricesQuery.isFetching}
+                        onClick={() => void pricesQuery.refetch()}
                       >
-                        {t(($) => $.workspace.upgrade.price_loading)}
-                      </span>
+                        {pricesQuery.isFetching ? (
+                          <Loader2 className="animate-spin" />
+                        ) : (
+                          <RefreshCw />
+                        )}
+                        {t(($) => $.workspace.actions.retry)}
+                      </Button>
+                      {pricesQuery.isFetching ? (
+                        <span
+                          className="sr-only"
+                          role="status"
+                          aria-label={t(
+                            ($) => $.workspace.upgrade.price_loading,
+                          )}
+                        >
+                          {t(($) => $.workspace.upgrade.price_loading)}
+                        </span>
+                      ) : null}
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
+              <div className="flex flex-wrap gap-3">
+                {canUpgrade ? (
+                  <Button
+                    className="h-11 w-full sm:w-auto"
+                    disabled={isMutating}
+                    onClick={() => setCheckoutConfirmOpen(true)}
+                  >
+                    <CreditCard />
+                    {t(($) => $.workspace.actions.upgrade)}
+                  </Button>
+                ) : null}
+                {canChangePlan ? (
+                  <Button
+                    type="button"
+                    className="h-11 w-full sm:w-auto"
+                    variant={canUpgrade ? "outline" : "default"}
+                    disabled={isMutating || !activePlan}
+                    aria-busy={previewPlanChangeMutation.isPending}
+                    onClick={() => void handleOpenPlanChange()}
+                  >
+                    {previewPlanChangeMutation.isPending ? (
+                      <Loader2 className="animate-spin motion-reduce:animate-none" />
                     ) : null}
-                  </>
+                    {t(($) => $.workspace.plan_change.action)}
+                  </Button>
                 ) : null}
               </div>
-              <Button
-                className="h-11 w-full sm:w-auto"
-                disabled={isMutating}
-                onClick={() => setCheckoutConfirmOpen(true)}
-              >
-                <CreditCard />
-                {t(($) => $.workspace.actions.upgrade)}
-              </Button>
             </div>
           </SettingsCard>
+        </SettingsSection>
+      ) : null}
+
+      {billingProfileQuery.data ? (
+        <SettingsSection title={t(($) => $.workspace.profile.title)}>
+          <BillingProfileForm
+            profile={billingProfile}
+            canEdit={canEditProfile}
+            saving={updateBillingProfileMutation.isPending}
+            error={profileError}
+            onSave={(data) => void handleSaveBillingProfile(data)}
+          />
         </SettingsSection>
       ) : null}
 
@@ -1770,6 +2111,19 @@ function BillingTabContent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <PlanChangeDialog
+        open={planChangeOpen}
+        onOpenChange={handlePlanChangeOpenChange}
+        planName={planChangePlanName}
+        preview={planChangePreview}
+        submitting={
+          createPlanChangeMutation.isPending ||
+          previewPlanChangeMutation.isPending
+        }
+        error={planChangeError}
+        onConfirm={() => void handleConfirmPlanChange()}
+      />
     </SettingsTab>
   );
 }

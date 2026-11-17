@@ -118,6 +118,33 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 vi.mock("@multica/core/billing", () => ({
+  workspaceBillingProfileOptions: (wsId: string) => ({
+    queryKey: ["workspace-subscriptions", wsId, "billing-profile"],
+  }),
+  useUpdateWorkspaceBillingProfile: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  usePreviewWorkspacePlanChange: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useCreateWorkspacePlanChange: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useCancelWorkspaceScheduledPlanChange: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useCancelWorkspaceSubscription: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useResumeWorkspaceSubscription: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   workspacePlansOptions: (wsId: string) => ({
     queryKey: ["workspace-plans", wsId, "list"],
   }),
@@ -1645,5 +1672,78 @@ describe("BillingTab", () => {
     const request = mocks.checkout.mock.calls[0]?.[0] as any;
     expect(request.planKey ?? request.plan_key).toBe("business");
     expect(request.seats).toBe(3);
+  });
+
+  describe("subscription management", () => {
+    beforeEach(() => {
+      configStore.getState().setFeatureFlags({
+        [BILLING_WORKSPACE_SUBSCRIPTIONS_FLAG]: true,
+      });
+      mocks.summaryPending = false;
+      mocks.summaryError = false;
+      mocks.summaryMalformed = false;
+      mocks.summary.pendingChange = null;
+      mocks.summary.cancelAtPeriodEnd = false;
+      mocks.entitlements.currentPeriodEnd = null;
+      Object.assign(mocks.summary.availableActions, {
+        checkout: false,
+        portal: false,
+        purchaseSeats: false,
+        changePlan: false,
+        cancel: false,
+        resume: false,
+        editProfile: false,
+      });
+    });
+
+    it("shows the scheduled change banner from the summary", () => {
+      mocks.summary.pendingChange = {
+        planKey: "pro",
+        interval: "year",
+        seats: 2,
+        requestedAt: "2030-01-15T00:00:00Z",
+      };
+      mocks.entitlements.currentPeriodEnd = "2030-02-01T00:00:00Z";
+      Object.assign(mocks.summary.availableActions, { changePlan: true });
+
+      renderWithI18n(<BillingTab />);
+
+      expect(screen.getByText("Scheduled change")).toBeInTheDocument();
+      expect(screen.getByText(/Your plan changes to .* on /)).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Cancel scheduled change" }),
+      ).toBeInTheDocument();
+    });
+
+    it("hides plan, cancel, resume and profile controls when available_actions has none", () => {
+      renderWithI18n(<BillingTab />);
+
+      expect(
+        screen.queryByRole("button", { name: "Change plan" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Cancel subscription" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Resume subscription" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Save profile" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("offers resume only when available_actions allows it", () => {
+      mocks.summary.cancelAtPeriodEnd = true;
+      Object.assign(mocks.summary.availableActions, { resume: true });
+
+      renderWithI18n(<BillingTab />);
+
+      expect(
+        screen.getByRole("button", { name: "Resume subscription" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Cancel subscription" }),
+      ).not.toBeInTheDocument();
+    });
   });
 });

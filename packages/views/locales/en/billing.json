@@ -247,6 +247,53 @@
     "confirm": {
       "title": "Continue to Stripe Checkout?",
       "description": "Billing interval: {{interval}}. Current human members: {{count}}. Stripe will re-count seats and show the final amount before payment."
+    },
+    "plan_change": {
+      "action": "Change plan",
+      "title": "Change to {{planName}}",
+      "due_now": "Due now",
+      "effective_on": "Takes effect on {{date}}",
+      "confirm_charge": "Continue to payment",
+      "confirm_schedule": "Schedule change",
+      "cancel": "Cancel",
+      "preview_failed": "Could not load plan change quote. Retry in a moment.",
+      "confirm_failed": "Could not change plan. Retry in a moment.",
+      "quote_changed": "The quote changed. Review the updated amount before confirming.",
+      "scheduled_title": "Plan change scheduled",
+      "scheduled_description": "Your plan will change to {{planName}}.",
+      "order_title": "Order created",
+      "order_description": "Order {{requestId}} was created."
+    },
+    "pending_change": {
+      "title": "Scheduled change",
+      "body": "Your plan changes to {{planName}} on {{date}}.",
+      "body_no_date": "Your plan changes to {{planName}}.",
+      "cancel": "Cancel scheduled change",
+      "cancel_failed": "Could not cancel scheduled change. Retry in a moment."
+    },
+    "profile": {
+      "title": "Billing profile",
+      "business_switch": "Business account",
+      "account_kind": "Account type",
+      "individual": "Individual",
+      "business": "Business",
+      "legal_name": "Legal name",
+      "tax_code": "Tax code",
+      "address": "Address",
+      "invoice_email": "Invoice email",
+      "save": "Save profile",
+      "saved": "Billing profile saved",
+      "save_failed": "Could not save billing profile. Retry in a moment."
+    },
+    "lifecycle": {
+      "cancel": "Cancel subscription",
+      "resume": "Resume subscription",
+      "cancel_title": "Cancel subscription?",
+      "cancel_body": "Your plan stays active until {{date}}.",
+      "cancel_confirm": "Cancel at period end",
+      "keep": "Keep subscription",
+      "cancel_failed": "Could not cancel subscription. Retry in a moment.",
+      "resume_failed": "Could not resume subscription. Retry in a moment."
     }
   },
   "shared": {

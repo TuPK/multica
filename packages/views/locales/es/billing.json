@@ -247,6 +247,53 @@
     "confirm": {
       "title": "¿Continuar a Stripe Checkout?",
       "description": "Intervalo de facturación: {{interval}}. Miembros humanos actuales: {{count}}. Stripe volverá a contar los puestos y mostrará el importe final antes del pago."
+    },
+    "plan_change": {
+      "action": "Cambiar de plan",
+      "title": "Cambiar a {{planName}}",
+      "due_now": "Importe a pagar ahora",
+      "effective_on": "Entra en vigor el {{date}}",
+      "confirm_charge": "Continuar al pago",
+      "confirm_schedule": "Programar cambio",
+      "cancel": "Cancelar",
+      "preview_failed": "No se pudo cargar el presupuesto de cambio de plan. Reintenta en un momento.",
+      "confirm_failed": "No se pudo cambiar de plan. Reintenta en un momento.",
+      "quote_changed": "El presupuesto ha cambiado. Revisa el importe actualizado antes de confirmar.",
+      "scheduled_title": "Cambio de plan programado",
+      "scheduled_description": "Tu plan cambiará a {{planName}}.",
+      "order_title": "Pedido creado",
+      "order_description": "Se creó el pedido {{requestId}}."
+    },
+    "pending_change": {
+      "title": "Cambio programado",
+      "body": "Tu plan cambiará a {{planName}} el {{date}}.",
+      "body_no_date": "Tu plan cambiará a {{planName}}.",
+      "cancel": "Cancelar cambio programado",
+      "cancel_failed": "No se pudo cancelar el cambio programado. Reintenta en un momento."
+    },
+    "profile": {
+      "title": "Perfil de facturación",
+      "business_switch": "Cuenta de empresa",
+      "account_kind": "Tipo de cuenta",
+      "individual": "Individual",
+      "business": "Empresa",
+      "legal_name": "Razón social",
+      "tax_code": "NIF / CIF",
+      "address": "Dirección",
+      "invoice_email": "Correo de facturación",
+      "save": "Guardar perfil",
+      "saved": "Perfil de facturación guardado",
+      "save_failed": "No se pudo guardar el perfil de facturación. Reintenta en un momento."
+    },
+    "lifecycle": {
+      "cancel": "Cancelar suscripción",
+      "resume": "Reanudar suscripción",
+      "cancel_title": "¿Cancelar suscripción?",
+      "cancel_body": "Tu plan permanecerá activo hasta el {{date}}.",
+      "cancel_confirm": "Cancelar al final del periodo",
+      "keep": "Mantener suscripción",
+      "cancel_failed": "No se pudo cancelar la suscripción. Reintenta en un momento.",
+      "resume_failed": "No se pudo reanudar la suscripción. Reintenta en un momento."
     }
   },
   "shared": {

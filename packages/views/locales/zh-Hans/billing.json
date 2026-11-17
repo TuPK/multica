@@ -240,6 +240,53 @@
     "confirm": {
       "title": "前往 Stripe Checkout？",
       "description": "付款周期：{{interval}}。当前成员：{{count}}。Stripe 会重新统计席位，并在付款前显示最终金额。"
+    },
+    "plan_change": {
+      "action": "更改套餐",
+      "title": "更改为 {{planName}}",
+      "due_now": "当前应付",
+      "effective_on": "将于 {{date}} 生效",
+      "confirm_charge": "继续付款",
+      "confirm_schedule": "预约更改",
+      "cancel": "取消",
+      "preview_failed": "无法获取套餐变更报价，请稍后重试。",
+      "confirm_failed": "无法更改套餐，请稍后重试。",
+      "quote_changed": "报价已变化，请查看更新后的金额后再确认。",
+      "scheduled_title": "已预约套餐更改",
+      "scheduled_description": "套餐将更改为 {{planName}}。",
+      "order_title": "订单已创建",
+      "order_description": "已创建订单 {{requestId}}。"
+    },
+    "pending_change": {
+      "title": "已预约的变更",
+      "body": "套餐将于 {{date}} 更改为 {{planName}}。",
+      "body_no_date": "套餐将更改为 {{planName}}。",
+      "cancel": "取消预约更改",
+      "cancel_failed": "无法取消预约更改，请稍后重试。"
+    },
+    "profile": {
+      "title": "账单资料",
+      "business_switch": "企业账号",
+      "account_kind": "账号类型",
+      "individual": "个人",
+      "business": "企业",
+      "legal_name": "企业名称",
+      "tax_code": "税号",
+      "address": "地址",
+      "invoice_email": "发票邮箱",
+      "save": "保存资料",
+      "saved": "账单资料已保存",
+      "save_failed": "无法保存账单资料，请稍后重试。"
+    },
+    "lifecycle": {
+      "cancel": "取消订阅",
+      "resume": "恢复订阅",
+      "cancel_title": "取消订阅？",
+      "cancel_body": "当前套餐在 {{date}} 前仍可继续使用。",
+      "cancel_confirm": "在当前周期结束时取消",
+      "keep": "保留订阅",
+      "cancel_failed": "无法取消订阅，请稍后重试。",
+      "resume_failed": "无法恢复订阅，请稍后重试。"
     }
   },
   "shared": {
