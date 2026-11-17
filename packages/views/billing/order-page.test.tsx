@@ -141,6 +141,12 @@ describe("BillingOrderPage", () => {
     expect(screen.getByText("Subtotal")).toBeInTheDocument();
     expect(screen.getByText("VAT")).toBeInTheDocument();
     expect(screen.getAllByText("Total amount").length).toBeGreaterThan(0);
+
+    // Non-usage order does not show usage breakdown
+    expect(
+      screen.queryByRole("heading", { name: "Usage breakdown" }),
+    ).not.toBeInTheDocument();
+    expect(mocks.getOrderUsage).not.toHaveBeenCalled();
   });
 
   it("copies the transfer code to the clipboard when copy button is clicked", async () => {

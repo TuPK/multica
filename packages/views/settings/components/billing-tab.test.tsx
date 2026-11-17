@@ -7,6 +7,7 @@ import { BILLING_WORKSPACE_SUBSCRIPTIONS_FLAG } from "@multica/core/feature-flag
 import type {
   AutopilotQuotaUsage,
   IssueLimitUsage,
+  WorkspaceBillingProfile,
   WorkspaceSubscriptionEntitlements,
   WorkspaceSubscriptionSummary,
 } from "@multica/core/types";
@@ -38,6 +39,7 @@ const mocks = vi.hoisted(() => ({
   subscriptionUsage: null as any,
   subscriptionUsagePending: false,
   subscriptionUsageError: false,
+  billingProfile: undefined as WorkspaceBillingProfile | null | undefined,
   prices: null as {
     month: {
       currency: string;
@@ -310,6 +312,7 @@ describe("BillingTab", () => {
     mocks.subscriptionUsage = null;
     mocks.subscriptionUsagePending = false;
     mocks.subscriptionUsageError = false;
+    mocks.billingProfile = undefined;
     mocks.summaryPending = false;
     mocks.summaryFetching = false;
     mocks.summaryError = false;
@@ -434,6 +437,18 @@ describe("BillingTab", () => {
           isFetching: false,
           isError: false,
           refetch: mocks.refetchOrderUsage,
+        };
+      }
+      if (
+        queryKey?.[0] === "workspace-subscriptions" &&
+        queryKey?.[queryKey.length - 1] === "billing-profile"
+      ) {
+        return {
+          data: mocks.billingProfile,
+          isPending: false,
+          isFetching: false,
+          isError: false,
+          refetch: mocks.refetch,
         };
       }
       if (
@@ -2085,6 +2100,177 @@ describe("BillingTab", () => {
       expect(screen.queryByText("Members")).not.toBeInTheDocument();
       await user.click(screen.getByRole("button", { name: "View invoice" }));
       expect(await screen.findByText("Members")).toBeInTheDocument();
+    });
+  });
+
+  describe("optional field degradation (AC48)", () => {
+    it("hides usage card, pending banner, scheduled banner, and unpaid usage banner when optional fields are absent", () => {
+      delete (mocks.summary as any).pendingChange;
+      delete (mocks.summary as any).paymentProvider;
+      delete (mocks.summary as any).payment_provider;
+      delete (mocks.summary as any).billingModel;
+      delete (mocks.summary as any).usage;
+      delete (mocks.summary as any).scheduledPriceChange;
+      delete (mocks.summary as any).scheduled_price_change;
+      mocks.plans = [
+        {
+          key: "pro",
+          name: "Pro",
+          currency: "vnd",
+          seatPriceMonth: 149000,
+          seatPriceYear: 1490000,
+        },
+      ];
+      mocks.billingProfile = undefined;
+
+      renderWithI18n(<BillingTab />);
+
+      expect(
+        screen.getByRole("heading", { name: "Billing" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Free")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Pro" })).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: "Usage this period" }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Scheduled change")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Scheduled price change"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Unpaid usage invoice"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Billing profile")).not.toBeInTheDocument();
+      expect(mocks.useQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryKey: ["workspace-subscriptions", "workspace-1", "usage"],
+          enabled: false,
+        }),
+      );
+    });
+
+    it("renders all optional features when summary, plans, and billing profile carry them", () => {
+      Object.assign(mocks.entitlements, {
+        plan: "payg",
+        status: "active",
+        currentPeriodEnd: "2030-03-01T00:00:00Z",
+      });
+      Object.assign(mocks.summary, {
+        paymentProvider: "manual",
+        billingModel: "usage",
+        pendingChange: {
+          planKey: "pro",
+          interval: "year",
+          seats: 2,
+          requestedAt: "2030-01-15T00:00:00Z",
+        },
+        usage: {
+          periodStart: "2026-08-01T00:00:00Z",
+          periodEnd: "2026-09-01T00:00:00Z",
+          currency: "vnd",
+          accruedAmount: 1_700_000,
+          creditLimit: 2_000_000,
+          unpaidOrderId: "ord-unpaid-1",
+          meters: [
+            {
+              key: "tasks_run",
+              quantity: 2000,
+              unitPrice: 30000,
+              per: 1000,
+              discountPct: 20,
+              amount: 48000,
+            },
+          ],
+        },
+        availableActions: {
+          checkout: false,
+          portal: false,
+          purchaseSeats: false,
+          changePlan: true,
+          cancel: true,
+          resume: false,
+        },
+      });
+      mocks.subscriptionUsage = {
+        billingModel: "usage",
+        usage: mocks.summary.usage,
+      };
+      mocks.billingProfile = {
+        accountKind: "business",
+        legalName: "Acme Co",
+        taxCode: "0123456789",
+        address: "1 Main St",
+        invoiceEmail: "billing@acme.test",
+        verified: true,
+      };
+      mocks.plans = [
+        {
+          key: "payg",
+          name: "Pay as you go",
+          currency: "vnd",
+          seatPriceMonth: null,
+          seatPriceYear: null,
+          audience: "any",
+          billingModel: "usage",
+          usageRates: { tasks_run: { per: 1000, price: 30000 } },
+          effectiveDiscountPct: 20,
+          scheduledPriceChange: {
+            effectiveFrom: "2030-04-01T00:00:00Z",
+            seatPriceMonth: 249000,
+            seatPriceYear: 2490000,
+          },
+        },
+        {
+          key: "pro",
+          name: "Pro",
+          currency: "vnd",
+          seatPriceMonth: 149000,
+          seatPriceYear: 1490000,
+          audience: "business",
+          billingModel: "seat",
+          usageRates: {},
+          effectiveDiscountPct: 0,
+          scheduledPriceChange: null,
+        },
+        {
+          key: "personal",
+          name: "Personal",
+          currency: "vnd",
+          seatPriceMonth: 99000,
+          seatPriceYear: 990000,
+          audience: "individual",
+          billingModel: "seat",
+          usageRates: {},
+          effectiveDiscountPct: 0,
+          scheduledPriceChange: null,
+        },
+      ];
+
+      renderWithI18n(<BillingTab />);
+
+      expect(
+        screen.getByRole("heading", { name: "Usage this period" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Approaching credit limit"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Scheduled change")).toBeInTheDocument();
+      expect(screen.getByText("Scheduled price change")).toBeInTheDocument();
+      expect(screen.getByText("Unpaid usage invoice")).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Billing profile" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Invoices" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Cancel subscription" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/Business discount: 20%/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Pro" })).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Personal" }),
+      ).not.toBeInTheDocument();
     });
   });
 });

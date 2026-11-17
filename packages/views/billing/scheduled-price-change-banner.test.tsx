@@ -271,4 +271,23 @@ describe("BillingTab scheduled price change banner", () => {
     renderWithI18n(<BillingTab />);
     expect(screen.queryByText("Scheduled price change")).not.toBeInTheDocument();
   });
+
+  it("hides the banner without throwing when plans are empty or omit scheduledPriceChange", () => {
+    mocks.plans = [];
+    const { unmount } = renderWithI18n(<BillingTab />);
+    expect(screen.queryByText("Scheduled price change")).not.toBeInTheDocument();
+    unmount();
+
+    mocks.plans = [
+      {
+        key: "pro",
+        name: "Pro",
+        currency: "vnd",
+        seatPriceMonth: 149000,
+        seatPriceYear: 1490000,
+      },
+    ];
+    renderWithI18n(<BillingTab />);
+    expect(screen.queryByText("Scheduled price change")).not.toBeInTheDocument();
+  });
 });

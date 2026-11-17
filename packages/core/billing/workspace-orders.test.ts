@@ -167,10 +167,47 @@ describe("workspace plans", () => {
     stubFetchJson({
       plans: [
         { key: "a", name: "A", currency: "vnd", audience: "enterprise" },
+        { key: "b", name: "B", currency: "vnd" },
       ],
     });
     await expect(client().listWorkspacePlans("ws-1")).resolves.toEqual([
       expect.objectContaining({ key: "a", audience: "any" }),
+      expect.objectContaining({ key: "b", audience: "any" }),
+    ]);
+  });
+
+  it("parses a plan carrying all new optional fields", async () => {
+    stubFetchJson({
+      plans: [
+        {
+          ...plan,
+          key: "payg",
+          name: "Pay as you go",
+          audience: "business",
+          billing_model: "usage",
+          usage_rates: { tasks_run: { per: 1000, price: 30000 } },
+          effective_discount_pct: 20,
+          scheduled_price_change: {
+            effective_from: "2027-01-01T00:00:00Z",
+            seat_price_month: null,
+            seat_price_year: null,
+          },
+        },
+      ],
+    });
+    await expect(client().listWorkspacePlans("ws-1")).resolves.toEqual([
+      expect.objectContaining({
+        key: "payg",
+        audience: "business",
+        billingModel: "usage",
+        usageRates: { tasks_run: { per: 1000, price: 30000 } },
+        effectiveDiscountPct: 20,
+        scheduledPriceChange: {
+          effectiveFrom: "2027-01-01T00:00:00Z",
+          seatPriceMonth: null,
+          seatPriceYear: null,
+        },
+      }),
     ]);
   });
 

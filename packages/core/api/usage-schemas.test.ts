@@ -86,6 +86,11 @@ describe("GET /api/cloud-subscriptions/usage", () => {
     expect(parseOrNull(body, WorkspaceSubscriptionUsageSchema)).toBeNull();
   });
 
+  it("defaults missing billing_model and usage to seat and null", () => {
+    const usage = parseOrNull({}, WorkspaceSubscriptionUsageSchema);
+    expect(usage).toEqual({ billingModel: "seat", usage: null });
+  });
+
   it("returns null when the discount is outside 0 to 100", () => {
     const body = fixture("usage.json");
     body.usage.meters[0].discount_pct = 150;

@@ -82,25 +82,30 @@ describe("malformed subscription management responses", () => {
 });
 
 describe("responses without the management fields (Multica Cloud, older backends)", () => {
-  // Multica Cloud sends none of pending_change, the three new actions, or
-  // payment_provider. The page must still read the summary, with those
-  // actions off and no pending change.
+  // Multica Cloud sends none of pending_change, scheduled_price_change,
+  // payment_provider, billing_model, usage, or the three new actions. The page
+  // must still read the summary, with those actions off and null/defaulted values.
   function legacySummary() {
     const body = fixture("summary_free.json");
     delete body.pending_change;
+    delete body.scheduled_price_change;
     delete body.payment_provider;
+    delete body.billing_model;
+    delete body.usage;
     delete body.available_actions.change_plan;
     delete body.available_actions.cancel;
     delete body.available_actions.resume;
     return body;
   }
 
-  it("still parses the summary and reads the missing actions as off", () => {
+  it("still parses the summary and reads the missing actions as off and optional fields as defaults", () => {
     const summary = parseOrNull(legacySummary(), WorkspaceSubscriptionSummarySchema) as
       | Record<string, any>
       | null;
     expect(summary).not.toBeNull();
     expect(summary?.pendingChange).toBeNull();
+    expect(summary?.billingModel).toBe("seat");
+    expect(summary?.usage).toBeNull();
     expect(summary?.availableActions).toEqual({
       checkout: true,
       portal: false,
@@ -110,6 +115,55 @@ describe("responses without the management fields (Multica Cloud, older backends
       resume: false,
     });
     expect("paymentProvider" in (summary ?? {})).toBe(false);
+  });
+
+  it("parses a summary carrying all new optional fields together", () => {
+    const body = {
+      ...fixture("summary_usage.json"),
+      pending_change: {
+        plan_key: "pro",
+        seats: 4,
+        interval: "year",
+        requested_at: "2026-08-15T10:30:45Z",
+      },
+      scheduled_price_change: {
+        effective_from: "2027-01-01T00:00:00Z",
+        seat_price_month: 199000,
+        seat_price_year: 1990000,
+      },
+      payment_provider: "manual",
+      available_actions: {
+        checkout: false,
+        portal: false,
+        purchase_seats: false,
+        change_plan: true,
+        cancel: true,
+        resume: false,
+      },
+    };
+    const summary = parseOrNull(body, WorkspaceSubscriptionSummarySchema) as
+      | Record<string, any>
+      | null;
+    expect(summary).not.toBeNull();
+    expect(summary?.paymentProvider).toBe("manual");
+    expect(summary?.billingModel).toBe("usage");
+    expect(summary?.usage?.unpaidOrderId).toBe(
+      "dddddddd-0000-4000-8000-0000000000a1",
+    );
+    expect(summary?.pendingChange).toEqual({
+      planKey: "pro",
+      seats: 4,
+      interval: "year",
+      requestedAt: "2026-08-15T10:30:45Z",
+    });
+    expect(summary?.availableActions).toEqual({
+      checkout: false,
+      portal: false,
+      purchaseSeats: false,
+      changePlan: true,
+      cancel: true,
+      resume: false,
+    });
   });
 });
 

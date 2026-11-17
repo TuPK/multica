@@ -51,6 +51,22 @@ describe("PendingChangeBanner", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("renders without a date when effectiveAt is null", () => {
+    renderWithI18n(
+      <PendingChangeBanner
+        pendingChange={pending}
+        planName="Personal"
+        effectiveAt={null}
+        canCancel={false}
+        cancelling={false}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText("Your plan changes to Personal."),
+    ).toBeInTheDocument();
+  });
+
   it("cancels the scheduled change when the action is available", async () => {
     const onCancel = vi.fn();
     renderWithI18n(

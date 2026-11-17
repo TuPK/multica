@@ -152,4 +152,32 @@ describe("UsageCard", () => {
     expect(screen.getByText("Unknown meter")).toBeInTheDocument();
     expect(screen.queryByText(/Business discount/i)).not.toBeInTheDocument();
   });
+
+  it("omits rates and credit limit progress when unitPrice and creditLimit are 0", () => {
+    renderWithI18n(
+      <UsageCard
+        usage={makeUsagePeriod({
+          creditLimit: 0,
+          accruedAmount: 60000,
+          meters: [
+            {
+              key: "tasks_run",
+              quantity: 2000,
+              unitPrice: 0,
+              per: 1,
+              discountPct: 0,
+              amount: 60000,
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Tasks run")).toBeInTheDocument();
+    expect(screen.getByText("2,000")).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Approaching credit limit"),
+    ).not.toBeInTheDocument();
+  });
 });
