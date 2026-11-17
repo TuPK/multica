@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -704,7 +705,7 @@ func TestMemberGroupAuditRowsOnePerChange(t *testing.T) {
 	resp.Want(http.StatusCreated).JSON(&g)
 	wantOneAudit(t, reqID, auditWant{
 		action: audit.ActionGroupCreated, workspaceID: e.ws, actorID: owner, actorLabel: ownerEmail,
-		targetType: "group", targetID: g.ID, targetLabel: "Audited",
+		targetType: "group", targetID: g.ID,
 	})
 
 	// group.updated records only the names of the fields that changed.
@@ -712,14 +713,14 @@ func TestMemberGroupAuditRowsOnePerChange(t *testing.T) {
 	resp.Want(http.StatusOK)
 	wantOneAudit(t, reqID, auditWant{
 		action: audit.ActionGroupUpdated, workspaceID: e.ws, actorID: owner,
-		targetType: "group", targetID: g.ID, targetLabel: "Audited",
+		targetType: "group", targetID: g.ID,
 		detail: map[string]any{"fields": []any{"description"}},
 	})
 	resp, reqID = e.doAudited(http.MethodPatch, "/groups/"+g.ID, owner, map[string]any{"name": "Renamed", "description": "changed"})
 	resp.Want(http.StatusOK)
 	wantOneAudit(t, reqID, auditWant{
 		action: audit.ActionGroupUpdated, workspaceID: e.ws, actorID: owner,
-		targetType: "group", targetID: g.ID, targetLabel: "Renamed",
+		targetType: "group", targetID: g.ID,
 		detail: map[string]any{"fields": []any{"name"}},
 	})
 	// An update that changes nothing writes nothing.
@@ -732,14 +733,14 @@ func TestMemberGroupAuditRowsOnePerChange(t *testing.T) {
 	resp.Want(http.StatusOK)
 	wantOneAudit(t, reqID, auditWant{
 		action: audit.ActionGroupPermissionsChanged, workspaceID: e.ws, actorID: owner,
-		targetType: "group", targetID: g.ID, targetLabel: "Renamed",
+		targetType: "group", targetID: g.ID,
 		detail: map[string]any{"old": []any{}, "new": []any{"audit.read", "billing.manage"}},
 	})
 	resp, reqID = e.doAudited(http.MethodPut, "/groups/"+g.ID+"/permissions", owner, map[string]any{"permissions": []string{"audit.read"}})
 	resp.Want(http.StatusOK)
 	wantOneAudit(t, reqID, auditWant{
 		action: audit.ActionGroupPermissionsChanged, workspaceID: e.ws, actorID: owner,
-		targetType: "group", targetID: g.ID, targetLabel: "Renamed",
+		targetType: "group", targetID: g.ID,
 		detail: map[string]any{"old": []any{"audit.read", "billing.manage"}, "new": []any{"audit.read"}},
 	})
 	// The same set again is not a change.
@@ -773,7 +774,7 @@ func TestMemberGroupAuditRowsOnePerChange(t *testing.T) {
 	resp.Want(http.StatusNoContent)
 	wantOneAudit(t, reqID, auditWant{
 		action: audit.ActionGroupMemberRemoved, workspaceID: e.ws, actorID: owner,
-		targetType: "group", targetID: g.ID, targetLabel: "Renamed",
+		targetType: "group", targetID: g.ID,
 		detail: map[string]any{"user_id": e.member},
 	})
 	resp, reqID = e.doAudited(http.MethodDelete, "/groups/"+g.ID+"/members/"+e.member, owner, nil)
@@ -785,9 +786,41 @@ func TestMemberGroupAuditRowsOnePerChange(t *testing.T) {
 	resp.Want(http.StatusNoContent)
 	wantOneAudit(t, reqID, auditWant{
 		action: audit.ActionGroupDeleted, workspaceID: e.ws, actorID: owner,
-		targetType: "group", targetID: g.ID, targetLabel: "Renamed",
+		targetType: "group", targetID: g.ID,
 		detail: map[string]any{"member_count": float64(1)},
 	})
+}
+
+// Spec 7b.2: a group name never reaches the audit log. The whole row is
+// searched, so a name in any column or in the detail payload fails the test.
+func TestMemberGroupAuditRowsCarryNoGroupName(t *testing.T) {
+	e := newMGEnv(t)
+	owner := e.owner
+	const first, second = "Zq-Finance-Secret", "Zq-Treasury-Secret"
+
+	resp, createID := e.doAudited(http.MethodPost, "/groups", owner, map[string]any{"name": first})
+	var g mgGroup
+	resp.Want(http.StatusCreated).JSON(&g)
+	resp, renameID := e.doAudited(http.MethodPatch, "/groups/"+g.ID, owner, map[string]any{"name": second})
+	resp.Want(http.StatusOK)
+	resp, deleteID := e.doAudited(http.MethodDelete, "/groups/"+g.ID, owner, nil)
+	resp.Want(http.StatusNoContent)
+
+	for action, reqID := range map[string]string{
+		audit.ActionGroupCreated: createID, audit.ActionGroupUpdated: renameID, audit.ActionGroupDeleted: deleteID,
+	} {
+		var row string
+		if err := testPool.QueryRow(context.Background(),
+			`SELECT row_to_json(a)::text FROM audit_event a WHERE request_id = $1 AND action = $2`,
+			reqID, action).Scan(&row); err != nil {
+			t.Fatalf("%s: read audit row: %v", action, err)
+		}
+		for _, name := range []string{first, second} {
+			if strings.Contains(row, name) {
+				t.Errorf("%s: audit row contains group name %q: %s", action, name, row)
+			}
+		}
+	}
 }
 
 // A refused request writes no audit row.

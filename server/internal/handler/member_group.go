@@ -112,7 +112,6 @@ func memberGroupAudit(action string, g db.MemberGroup, detail map[string]any) au
 		Action:      action,
 		TargetType:  "group",
 		TargetID:    uuidToString(g.ID),
-		TargetLabel: g.Name,
 		Detail:      detail,
 	}
 }
