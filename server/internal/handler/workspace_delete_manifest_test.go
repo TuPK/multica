@@ -236,6 +236,7 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"platform_staff":           workspaceDeleteKeep,
 	"platform_usage_daily":     workspaceDelete,
 	"platform_workspace":       workspaceDelete,
+	"usage_charge":             workspaceDelete, // per-workspace usage charges, rated from platform_usage_daily (spec 7b.3)
 	"user_consent":             workspaceDeleteKeep,
 	"workspace_policy":         workspaceDelete, // per-workspace configuration, like sso_connection (spec 6.4)
 	"workspace_export":         workspaceDelete, // storage archives are an open item
