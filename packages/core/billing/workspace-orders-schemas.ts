@@ -4,6 +4,7 @@ import type {
   WorkspaceOrderBank,
   WorkspaceOrderBuyer,
   WorkspacePlan,
+  WorkspacePlanAudience,
 } from "./workspace-orders-types";
 
 // Like the subscription schemas, these have no synthetic fallback: a body that
@@ -11,6 +12,18 @@ import type {
 // keeps unknown keys, so a newer server does not break an older client.
 
 const nonNegativeInt = z.number().int().nonnegative();
+
+const PLAN_AUDIENCES: readonly WorkspacePlanAudience[] = [
+  "individual",
+  "business",
+  "any",
+];
+
+// A missing or unknown audience is treated as "any": the server still enforces
+// audience on purchase (409 plan_audience_mismatch), so this only shapes the picker.
+function parsePlanAudience(value: string | null): WorkspacePlanAudience {
+  return PLAN_AUDIENCES.find((audience) => audience === value) ?? "any";
+}
 
 export const WorkspacePlanSchema = z
   .object({
@@ -22,6 +35,7 @@ export const WorkspacePlanSchema = z
     seats_fixed: nonNegativeInt.nullable().default(null),
     min_seats: nonNegativeInt.nullable().default(null),
     trial_days: nonNegativeInt.default(0),
+    audience: z.string().nullable().default(null),
   })
   .loose()
   .transform(
@@ -34,6 +48,7 @@ export const WorkspacePlanSchema = z
       seatsFixed: value.seats_fixed,
       minSeats: value.min_seats,
       trialDays: value.trial_days,
+      audience: parsePlanAudience(value.audience),
     }),
   );
 

@@ -68,6 +68,7 @@ const plan = {
   seats_fixed: null,
   min_seats: 1,
   trial_days: 14,
+  audience: "business",
 };
 
 describe("workspace plans", () => {
@@ -83,6 +84,7 @@ describe("workspace plans", () => {
         seatsFixed: null,
         minSeats: 1,
         trialDays: 14,
+        audience: "business",
       },
     ]);
     expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe(
@@ -104,7 +106,19 @@ describe("workspace plans", () => {
         seatsFixed: null,
         minSeats: null,
         trialDays: 0,
+        audience: "any",
       },
+    ]);
+  });
+
+  it("falls back to any for a missing or unknown audience", async () => {
+    stubFetchJson({
+      plans: [
+        { key: "a", name: "A", currency: "vnd", audience: "enterprise" },
+      ],
+    });
+    await expect(client().listWorkspacePlans("ws-1")).resolves.toEqual([
+      expect.objectContaining({ key: "a", audience: "any" }),
     ]);
   });
 

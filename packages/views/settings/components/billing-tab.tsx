@@ -423,12 +423,7 @@ function BillingTabContent() {
       (canUpgrade || canChangePlan || pendingChange !== null),
   });
   const availablePlans = plansQuery.data ?? [];
-  const pickerPlans = plansForAccountKind(
-    availablePlans as readonly ((typeof availablePlans)[number] & {
-      audience?: string | null;
-    })[],
-    accountKind,
-  );
+  const pickerPlans = plansForAccountKind(availablePlans, accountKind);
   const activePlan =
     pickerPlans.find((p) => p.key === selectedPlan) ?? pickerPlans[0] ?? null;
   const checkoutMutation = useCreateWorkspaceSubscriptionCheckout(wsId);

@@ -2,6 +2,9 @@
 // served by `GET /api/workspaces/{id}/plans` and `/orders`. Amounts are whole
 // units of the currency; VND has no decimals.
 
+/** Which workspaces may buy a plan. Unknown server values read as "any". */
+export type WorkspacePlanAudience = "individual" | "business" | "any";
+
 /** A public plan and its per-seat prices. A null price means the plan is not sold per seat. */
 export interface WorkspacePlan {
   key: string;
@@ -12,6 +15,7 @@ export interface WorkspacePlan {
   seatsFixed: number | null;
   minSeats: number | null;
   trialDays: number;
+  audience: WorkspacePlanAudience;
 }
 
 /** Who the invoice is made out to. Every field may be empty. */
