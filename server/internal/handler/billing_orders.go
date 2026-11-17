@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -54,6 +55,16 @@ type workspacePlanJSON struct {
 	BillingModel         string                   `json:"billing_model"`
 	UsageRates           map[string]usageRateJSON `json:"usage_rates"`
 	EffectiveDiscountPct int                      `json:"effective_discount_pct"`
+
+	// ScheduledPriceChange is set only on the plan the workspace is on, once the
+	// notice of the change is sent.
+	ScheduledPriceChange *scheduledPriceChangeJSON `json:"scheduled_price_change"`
+}
+
+type scheduledPriceChangeJSON struct {
+	EffectiveFrom  string `json:"effective_from"`
+	SeatPriceMonth *int64 `json:"seat_price_month"`
+	SeatPriceYear  *int64 `json:"seat_price_year"`
 }
 
 // usageRateJSON is one meter of a usage plan: price VND for per units.
@@ -221,12 +232,21 @@ func (h *Handler) ListWorkspacePlans(w http.ResponseWriter, r *http.Request) {
 	}
 	businessDiscount := err == nil && profile.AccountKind == "business" &&
 		(profile.VerifiedAt.Valid || !businessDiscountRequiresVerification())
+	inUse, scheduled, err := h.scheduledPriceChange(r.Context(), workspaceUUID)
+	if err != nil {
+		slog.Warn("read scheduled price change failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to list plans")
+		return
+	}
 	plans := make([]workspacePlanJSON, len(rows))
 	for i, p := range rows {
 		plans[i] = workspacePlanJSON{
 			Key: p.Key, Name: p.Name, Currency: p.Currency, SeatPriceMonth: int8Ptr(p.SeatPriceMonth),
 			SeatPriceYear: int8Ptr(p.SeatPriceYear), SeatsFixed: int4Ptr(p.SeatsFixed), MinSeats: int4Ptr(p.MinSeats),
 			TrialDays: p.TrialDays, BillingModel: p.BillingModel, UsageRates: map[string]usageRateJSON{},
+		}
+		if scheduled != nil && p.Key == inUse {
+			plans[i].ScheduledPriceChange = scheduled.json(p)
 		}
 		if p.BillingModel != "usage" {
 			continue
@@ -245,6 +265,59 @@ func (h *Handler) ListWorkspacePlans(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, http.StatusOK, workspacePlansResponse{Plans: plans})
+}
+
+// scheduledChange is a plan's scheduled price change: the changed price fields
+// of the row, which a seat price that is absent from leaves as it is.
+type scheduledChange struct {
+	effectiveFrom time.Time
+	prices        map[string]*int64
+}
+
+// json returns the change as the page sees it: a price the change does not set
+// is the plan's current one.
+func (c *scheduledChange) json(p db.Plan) *scheduledPriceChangeJSON {
+	price := func(field string, current pgtype.Int8) *int64 {
+		if v, set := c.prices[field]; set {
+			return v
+		}
+		return int8Ptr(current)
+	}
+	return &scheduledPriceChangeJSON{
+		EffectiveFrom:  c.effectiveFrom.UTC().Format(time.RFC3339),
+		SeatPriceMonth: price("seat_price_month", p.SeatPriceMonth),
+		SeatPriceYear:  price("seat_price_year", p.SeatPriceYear),
+	}
+}
+
+// scheduledPriceChange returns the key of the plan the workspace is on (free
+// without a subscription row) and its scheduled change once the notice is sent,
+// nil when it has none.
+func (h *Handler) scheduledPriceChange(ctx context.Context, workspaceID pgtype.UUID) (string, *scheduledChange, error) {
+	key, err := h.Queries.GetWorkspacePlanKey(ctx, workspaceID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		key, err = "free", nil
+	}
+	if err != nil {
+		return "", nil, err
+	}
+	row, err := h.Queries.GetNoticedScheduledPlanPriceChange(ctx, key)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return key, nil, nil
+	}
+	if err != nil {
+		return "", nil, err
+	}
+	c := &scheduledChange{effectiveFrom: row.EffectiveFrom.Time, prices: map[string]*int64{}}
+	var changed map[string]*int64
+	// Malformed prices read as no change: the platform validates them on write.
+	_ = json.Unmarshal(row.New, &changed)
+	for _, field := range []string{"seat_price_month", "seat_price_year"} {
+		if v, set := changed[field]; set {
+			c.prices[field] = v
+		}
+	}
+	return key, c, nil
 }
 
 // ListWorkspaceOrders serves GET /api/workspaces/{id}/orders: the workspace's

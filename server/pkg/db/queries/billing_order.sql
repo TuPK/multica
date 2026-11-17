@@ -8,6 +8,15 @@ SELECT * FROM plan
 WHERE is_public AND archived_at IS NULL
 ORDER BY sort, key;
 
+-- name: GetWorkspacePlanKey :one
+-- The plan the workspace is on. No row is the free plan.
+SELECT plan_key FROM workspace_subscription WHERE workspace_id = $1;
+
+-- name: GetNoticedScheduledPlanPriceChange :one
+-- The plan's scheduled price change, once its notice is sent (spec 7b.4 rule 11).
+SELECT effective_from, new FROM plan_price_change
+WHERE plan_key = $1 AND state = 'scheduled' AND notice_sent_at IS NOT NULL;
+
 -- name: ListWorkspaceBillingOrders :many
 SELECT * FROM billing_order
 WHERE workspace_id = $1

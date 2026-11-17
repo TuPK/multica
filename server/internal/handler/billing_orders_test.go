@@ -420,3 +420,87 @@ func TestWorkspaceOrderBuyerValidatesTheTaxCode(t *testing.T) {
 		}
 	}
 }
+
+// A plan's scheduled price change reaches the page only on the plan the
+// workspace is on, and only once its notice is sent (spec 7b.4 rule 11).
+func TestListWorkspacePlansShowsScheduledPriceChangeAfterNoticeOnly(t *testing.T) {
+	withFeatureFlag(t, testHandler, featureflags.BillingWorkspaceSubscriptions, true)
+	effective := time.Now().UTC().Add(48 * time.Hour).Truncate(time.Second)
+
+	for name, tc := range map[string]struct {
+		onOwnPlan bool // the change is on the plan in use, not on another plan
+		noticed   bool
+		want      bool
+	}{
+		"plan in use, notice sent":     {onOwnPlan: true, noticed: true, want: true},
+		"plan in use, notice not sent": {onOwnPlan: true, noticed: false, want: false},
+		"another plan, notice sent":    {onOwnPlan: false, noticed: true, want: false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			inUse := billingPlan(t, true, false, int64Ptr(149000), int64Ptr(1490000))
+			other := billingPlan(t, true, false, int64Ptr(249000), int64Ptr(2490000))
+			dbfx.Exec(t, `INSERT INTO workspace_subscription (workspace_id, plan_key, status) VALUES ($1, $2, 'active')`, testWorkspaceID, inUse)
+			dbfx.Cleanup(t, `DELETE FROM workspace_subscription WHERE workspace_id = $1`, testWorkspaceID)
+
+			changed := other
+			if tc.onOwnPlan {
+				changed = inUse
+			}
+			cols := testutil.Cols{
+				"plan_key": changed, "effective_from": effective, "reason": "test",
+				"new": testutil.Raw(`'{"seat_price_month": 179000}'::jsonb`),
+			}
+			if tc.noticed {
+				cols["notice_sent_at"] = testutil.Raw("now()")
+			}
+			dbfx.Insert(t, "plan_price_change", cols)
+
+			w := httptest.NewRecorder()
+			testHandler.ListWorkspacePlans(w, billingRequest(http.MethodGet, "/api/workspaces/x/plans", nil, "owner", ""))
+			if w.Code != http.StatusOK {
+				t.Fatalf("status = %d, body = %s", w.Code, w.Body.String())
+			}
+			var raw struct {
+				Plans []map[string]json.RawMessage `json:"plans"`
+			}
+			if err := json.Unmarshal(w.Body.Bytes(), &raw); err != nil {
+				t.Fatal(err)
+			}
+			byKey := map[string]map[string]json.RawMessage{}
+			for _, p := range raw.Plans {
+				var key string
+				_ = json.Unmarshal(p["key"], &key)
+				byKey[key] = p
+			}
+			for _, key := range []string{inUse, other} {
+				entry, ok := byKey[key]
+				if !ok {
+					t.Fatalf("plan %s is not listed", key)
+				}
+				field, present := entry["scheduled_price_change"]
+				if !present {
+					t.Fatalf("plan %s has no scheduled_price_change field; it must be an object or null", key)
+				}
+				if !(tc.want && key == inUse) {
+					if string(field) != "null" {
+						t.Errorf("plan %s: scheduled_price_change = %s, want null", key, field)
+					}
+					continue
+				}
+				var got struct {
+					EffectiveFrom  string `json:"effective_from"`
+					SeatPriceMonth *int64 `json:"seat_price_month"`
+					SeatPriceYear  *int64 `json:"seat_price_year"`
+				}
+				if err := json.Unmarshal(field, &got); err != nil {
+					t.Fatalf("plan %s: scheduled_price_change = %s: %v", key, field, err)
+				}
+				if got.EffectiveFrom != effective.Format(time.RFC3339) || got.SeatPriceMonth == nil || *got.SeatPriceMonth != 179000 ||
+					got.SeatPriceYear == nil || *got.SeatPriceYear != 1490000 {
+					t.Errorf("plan %s: scheduled_price_change = %s, want %s, 179000 a month, the current 1490000 a year",
+						key, field, effective.Format(time.RFC3339))
+				}
+			}
+		})
+	}
+}

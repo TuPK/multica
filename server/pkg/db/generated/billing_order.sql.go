@@ -11,6 +11,24 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const getNoticedScheduledPlanPriceChange = `-- name: GetNoticedScheduledPlanPriceChange :one
+SELECT effective_from, new FROM plan_price_change
+WHERE plan_key = $1 AND state = 'scheduled' AND notice_sent_at IS NOT NULL
+`
+
+type GetNoticedScheduledPlanPriceChangeRow struct {
+	EffectiveFrom pgtype.Timestamptz `json:"effective_from"`
+	New           []byte             `json:"new"`
+}
+
+// The plan's scheduled price change, once its notice is sent (spec 7b.4 rule 11).
+func (q *Queries) GetNoticedScheduledPlanPriceChange(ctx context.Context, planKey string) (GetNoticedScheduledPlanPriceChangeRow, error) {
+	row := q.db.QueryRow(ctx, getNoticedScheduledPlanPriceChange, planKey)
+	var i GetNoticedScheduledPlanPriceChangeRow
+	err := row.Scan(&i.EffectiveFrom, &i.New)
+	return i, err
+}
+
 const getWorkspaceBillingOrder = `-- name: GetWorkspaceBillingOrder :one
 SELECT id, workspace_id, kind, plan_key, interval, seats, amount, vat_amount, currency, status, provider, provider_ref, transfer_code, idempotency_key, buyer, period_start, period_end, einvoice_ref, created_by, confirmed_by, paid_at, expires_at, created_at FROM billing_order
 WHERE workspace_id = $1 AND id = $2
@@ -73,6 +91,18 @@ func (q *Queries) GetWorkspaceBillingProfile(ctx context.Context, workspaceID pg
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getWorkspacePlanKey = `-- name: GetWorkspacePlanKey :one
+SELECT plan_key FROM workspace_subscription WHERE workspace_id = $1
+`
+
+// The plan the workspace is on. No row is the free plan.
+func (q *Queries) GetWorkspacePlanKey(ctx context.Context, workspaceID pgtype.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getWorkspacePlanKey, workspaceID)
+	var plan_key string
+	err := row.Scan(&plan_key)
+	return plan_key, err
 }
 
 const listPublicPlans = `-- name: ListPublicPlans :many

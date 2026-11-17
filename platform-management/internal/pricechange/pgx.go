@@ -15,6 +15,7 @@ import (
 	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/platform-management/internal/db"
 	"github.com/multica-ai/multica/platform-management/internal/lifecycle"
+	"github.com/multica-ai/multica/platform-management/internal/subscription"
 )
 
 // uniqueViolation is the SQLSTATE of a unique index refusing a row.
@@ -361,4 +362,45 @@ func (t *pgxTx) InsertAuditEvent(ctx context.Context, e audit.Entry) error {
 		UserAgent:   e.UserAgent,
 		RequestID:   e.RequestID,
 	})
+}
+
+// ScheduledPriceChange implements subscription.PriceChangeReader.
+func (s *PgxStore) ScheduledPriceChange(ctx context.Context, planKey string) (subscription.PriceChange, bool, error) {
+	row, err := s.q.GetScheduledPlanPriceChange(ctx, planKey)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return subscription.PriceChange{}, false, nil
+	}
+	if err != nil {
+		return subscription.PriceChange{}, false, err
+	}
+	c, err := changeFromRow(row)
+	if err != nil {
+		return subscription.PriceChange{}, false, err
+	}
+	month, err := priceUpdate(c.New, FieldSeatPriceMonth)
+	if err != nil {
+		return subscription.PriceChange{}, false, err
+	}
+	year, err := priceUpdate(c.New, FieldSeatPriceYear)
+	if err != nil {
+		return subscription.PriceChange{}, false, err
+	}
+	return subscription.PriceChange{
+		PlanKey: c.PlanKey, EffectiveFrom: c.EffectiveFrom, NoticeSentAt: c.NoticeSentAt,
+		SeatPriceMonth: month, SeatPriceYear: year,
+	}, true, nil
+}
+
+// priceUpdate reads a seat price field of a change: unset when the change omits
+// it, nil when it sets none.
+func priceUpdate(p Prices, field string) (subscription.PriceUpdate, error) {
+	raw, ok := p[field]
+	if !ok {
+		return subscription.PriceUpdate{}, nil
+	}
+	var v *int64
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return subscription.PriceUpdate{}, fmt.Errorf("price change: %s: %w", field, err)
+	}
+	return subscription.PriceUpdate{Set: true, Value: v}, nil
 }

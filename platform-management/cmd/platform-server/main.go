@@ -193,6 +193,7 @@ func run() error {
 		Plans:         plan.NewPgxReader(pool),
 		Members:       subscription.NewPgxMembers(pool),
 		Pending:       subscription.NewPgxPending(pool),
+		PriceChanges:  pricechange.NewPgxStore(pool),
 		Usage:         usage.NewView(pool, cfg.Billing.BusinessDiscountRequiresVerification),
 		Log:           slog.Default(),
 	}).Handler(peers.RequireUser)

@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -90,7 +91,18 @@ func (f *fakePending) PendingSeats(context.Context, string, time.Time) (PendingP
 	return f.order, f.has && f.err == nil, f.err
 }
 
+type fakePriceChanges struct {
+	byPlan map[string]PriceChange
+	err    error
+}
+
+func (f *fakePriceChanges) ScheduledPriceChange(_ context.Context, planKey string) (PriceChange, bool, error) {
+	c, ok := f.byPlan[planKey]
+	return c, ok, f.err
+}
+
 type apiEnv struct {
+	changes *fakePriceChanges
 	members *fakeMembers
 	subs    *fakeSubs
 	plans   *fakePlans
@@ -114,9 +126,10 @@ func newAPIEnv(t *testing.T) *apiEnv {
 		subs:    &fakeSubs{rows: map[string]Subscription{}},
 		plans:   &fakePlans{plans: all},
 		pending: &fakePending{},
+		changes: &fakePriceChanges{byPlan: map[string]PriceChange{}},
 	}
 	api := NewAPI(APIDeps{
-		Subscriptions: e.subs, Plans: e.plans, Members: e.members, Pending: e.pending,
+		Subscriptions: e.subs, Plans: e.plans, Members: e.members, Pending: e.pending, PriceChanges: e.changes,
 		Now: func() time.Time { return t0 },
 		Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	})
@@ -734,5 +747,57 @@ func TestSummaryFailsWhenReservedSeatsCannotBeRead(t *testing.T) {
 	e.members.reservedErr = errors.New("db down")
 	if rec := e.summary(ownerID); rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500", rec.Code)
+	}
+}
+
+// --- scheduled_price_change (spec 7b.4 rule 11)
+
+func TestSummaryShowsScheduledPriceChangeOnlyForThePlanInUseAfterNotice(t *testing.T) {
+	effective := time.Date(2031, 3, 1, 0, 0, 0, 0, time.UTC)
+	noticed := t0.Add(-time.Hour)
+	change := func(planKey string, notice *time.Time) PriceChange {
+		return PriceChange{
+			PlanKey: planKey, EffectiveFrom: effective, NoticeSentAt: notice,
+			SeatPriceMonth: PriceUpdate{Set: true, Value: i64(179000)},
+		}
+	}
+	for name, tc := range map[string]struct {
+		change PriceChange
+		want   map[string]any
+	}{
+		"own plan, notice sent": {change("pro", &noticed), map[string]any{
+			"effective_from": "2031-03-01T00:00:00Z", "seat_price_month": float64(179000), "seat_price_year": float64(1490000),
+		}},
+		"own plan, notice not sent": {change("pro", nil), nil},
+		"another plan":              {change("business", &noticed), nil},
+	} {
+		t.Run(name, func(t *testing.T) {
+			e := newAPIEnv(t)
+			e.subs.rows[wsID] = paidRow(t0.Add(-time.Hour), t0.Add(time.Hour))
+			e.changes.byPlan[tc.change.PlanKey] = tc.change
+			m := decodeMap(t, e.summary(ownerID))
+			got, present := m["scheduled_price_change"]
+			if !present {
+				t.Fatal("scheduled_price_change is absent; it must be an object or null")
+			}
+			if tc.want == nil {
+				if got != nil {
+					t.Errorf("scheduled_price_change = %v, want null", got)
+				}
+				return
+			}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("scheduled_price_change = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSummaryScheduledPriceChangeIsNullWithoutAChange(t *testing.T) {
+	e := newAPIEnv(t)
+	e.subs.rows[wsID] = paidRow(t0.Add(-time.Hour), t0.Add(time.Hour))
+	m := decodeMap(t, e.summary(ownerID))
+	if v, present := m["scheduled_price_change"]; !present || v != nil {
+		t.Errorf("scheduled_price_change = %v (present %v), want null", v, present)
 	}
 }

@@ -47,5 +47,6 @@
   },
   "payment_provider": "manual",
   "pending_change": null,
+  "scheduled_price_change": null,
   "billing_model": "seat"
 }

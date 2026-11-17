@@ -32,6 +32,7 @@
   },
   "payment_provider": "manual",
   "pending_change": null,
+  "scheduled_price_change": null,
   "billing_model": "usage",
   "usage": {
     "period_start": "2026-08-01T00:00:00Z",

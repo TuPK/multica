@@ -55,12 +55,37 @@ type PendingReader interface {
 	PendingSeats(ctx context.Context, workspaceID string, now time.Time) (p PendingPurchase, found bool, err error)
 }
 
+// PriceUpdate is one price field of a scheduled change. Set is false when the
+// change leaves the price as it is; Value is nil when it sets no listed price.
+type PriceUpdate struct {
+	Set   bool
+	Value *int64
+}
+
+// PriceChange is a plan's scheduled price change (spec 7b.4).
+type PriceChange struct {
+	PlanKey        string
+	EffectiveFrom  time.Time
+	NoticeSentAt   *time.Time
+	SeatPriceMonth PriceUpdate
+	SeatPriceYear  PriceUpdate
+}
+
+// PriceChangeReader reads the schedule of plan price changes.
+type PriceChangeReader interface {
+	// ScheduledPriceChange returns found == false when the plan has no
+	// scheduled change.
+	ScheduledPriceChange(ctx context.Context, planKey string) (c PriceChange, found bool, err error)
+}
+
 // APIDeps are the API's dependencies.
 type APIDeps struct {
 	Subscriptions Reader
 	Plans         plan.Reader
 	Members       MemberReader
 	Pending       PendingReader
+	// PriceChanges reads the plan's scheduled price change.
+	PriceChanges PriceChangeReader
 	// Usage reads the usage block of a usage plan.
 	Usage UsageReader
 	// Now is the clock. Nil means time.Now.
@@ -187,10 +212,40 @@ type summaryJSON struct {
 	AvailableActions  actionsJSON        `json:"available_actions"`
 	PaymentProvider   string             `json:"payment_provider"`
 	PendingChange     *pendingChangeJSON `json:"pending_change"`
+	// ScheduledPriceChange is the plan's announced price change, or null.
+	ScheduledPriceChange *scheduledPriceChangeJSON `json:"scheduled_price_change"`
 	// BillingModel is the plan's, seat or usage (spec 7b.3).
 	BillingModel string `json:"billing_model"`
 	// Usage is the usage block, only for a usage plan.
 	Usage *Usage `json:"usage,omitempty"`
+}
+
+// scheduledPriceChangeJSON is a price change the plan in use will take, once its
+// notice is sent (spec 7b.4 rule 11).
+type scheduledPriceChangeJSON struct {
+	EffectiveFrom  string `json:"effective_from"`
+	SeatPriceMonth *int64 `json:"seat_price_month"`
+	SeatPriceYear  *int64 `json:"seat_price_year"`
+}
+
+// scheduledJSON returns the change as the page sees it, or nil when it is not
+// for plan p, has no notice yet, or is none. A price the change does not set is
+// the plan's current one.
+func scheduledJSON(p plan.Plan, c PriceChange, found bool) *scheduledPriceChangeJSON {
+	if !found || c.PlanKey != p.Key || c.NoticeSentAt == nil {
+		return nil
+	}
+	price := func(u PriceUpdate, current *int64) *int64 {
+		if u.Set {
+			return u.Value
+		}
+		return current
+	}
+	return &scheduledPriceChangeJSON{
+		EffectiveFrom:  c.EffectiveFrom.UTC().Format(time.RFC3339),
+		SeatPriceMonth: price(c.SeatPriceMonth, p.SeatPriceMonth),
+		SeatPriceYear:  price(c.SeatPriceYear, p.SeatPriceYear),
+	}
 }
 
 func pendingJSON(p *PendingChange) *pendingChangeJSON {
@@ -399,6 +454,14 @@ func (a *API) summary(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	out := buildSummary(ws, subPtr, p, members, reserved, pending, now)
+	if a.PriceChanges != nil {
+		change, has, err := a.PriceChanges.ScheduledPriceChange(r.Context(), p.Key)
+		if err != nil {
+			a.internalError(w, r, "read scheduled price change", err)
+			return
+		}
+		out.ScheduledPriceChange = scheduledJSON(p, change, has)
+	}
 	if p.BillingModel == plan.BillingUsage {
 		u, err := a.Usage.Usage(r.Context(), ws, now)
 		if err != nil {
