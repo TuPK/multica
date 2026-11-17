@@ -90,6 +90,47 @@ func TestDBSeedLoadsTheCatalogueIntoAnEmptyTable(t *testing.T) {
 
 // A table with any row is left as it is.
 // A table that holds only free gains the paid plans, and keeps the free row staff edited.
+// A seeded payg row carries the usage prices and terms of spec 7b.3 in its
+// jsonb columns, and a seat plan keeps the empty default (AC32).
+func TestDBSeedStoresThePaygUsagePrices(t *testing.T) {
+	pool := testdb.Open(t)
+	ctx := context.Background()
+	outer, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer outer.Rollback(ctx)
+
+	if _, err := outer.Exec(ctx, `DELETE FROM plan`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := outer.Exec(ctx, `DELETE FROM audit_event WHERE action = 'plan.changed' AND target_type = 'plan' AND detail->>'deleted' = 'true'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Seed(ctx, NewPgxRunner(savepointPool{outer}), discard()); err != nil {
+		t.Fatal(err)
+	}
+	var billing, rates, terms string
+	err = outer.QueryRow(ctx, `SELECT billing_model, usage_rates::text, usage_terms::text FROM plan WHERE key = 'payg'`).Scan(&billing, &rates, &terms)
+	if err != nil {
+		t.Fatalf("payg row: %v", err)
+	}
+	if billing != BillingUsage {
+		t.Errorf("payg billing_model = %q, want usage", billing)
+	}
+	var ok bool
+	err = outer.QueryRow(ctx, `SELECT usage_rates = '{"tasks_run": {"per": 1000, "price": 30000}, "storage_bytes": {"per": 1073741824, "price": 3000}, "members": {"per": 1, "price": 49000}}'::jsonb
+		AND usage_terms = '{"discount_pct": {"business": 20}, "credit_limit": {"individual": 2000000, "business": 20000000}}'::jsonb
+		FROM plan WHERE key = 'payg'`).Scan(&ok)
+	if err != nil || !ok {
+		t.Errorf("payg usage_rates = %s, usage_terms = %s (%v), want the spec 7b.3 values", rates, terms, err)
+	}
+	var seatRates string
+	if err := outer.QueryRow(ctx, `SELECT usage_rates::text FROM plan WHERE key = 'pro'`).Scan(&seatRates); err != nil || seatRates != "{}" {
+		t.Errorf("pro usage_rates = %q (%v), want {}", seatRates, err)
+	}
+}
+
 func TestDBSeedAddsMissingPlansAndKeepsEditedRows(t *testing.T) {
 	pool := testdb.Open(t)
 	ctx := context.Background()
@@ -112,16 +153,17 @@ func TestDBSeedAddsMissingPlansAndKeepsEditedRows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n != 4 {
-		t.Fatalf("seeded %d plans into a table that had one, want 4", n)
+	// payg is part of the spec's initial set (7b.3).
+	if n != 5 {
+		t.Fatalf("seeded %d plans into a table that had one, want 5", n)
 	}
 	var freeName string
 	if err := outer.QueryRow(ctx, `SELECT name FROM plan WHERE key = 'free'`).Scan(&freeName); err != nil || freeName != "Free (edited)" {
 		t.Fatalf("free name = %q (%v), want the staff edit kept", freeName, err)
 	}
 	var count int
-	if err := outer.QueryRow(ctx, `SELECT count(*) FROM plan WHERE key IN ('free', 'pro', 'business', 'enterprise', 'unlimited')`).Scan(&count); err != nil || count != 5 {
-		t.Fatalf("catalogue plans = %d (%v), want 5", count, err)
+	if err := outer.QueryRow(ctx, `SELECT count(*) FROM plan WHERE key IN ('free', 'pro', 'business', 'enterprise', 'unlimited', 'payg')`).Scan(&count); err != nil || count != 6 {
+		t.Fatalf("catalogue plans = %d (%v), want 6", count, err)
 	}
 	// A row written before migration 953 reads as an any-audience seat plan at
 	// version 0, and the seed leaves it so.

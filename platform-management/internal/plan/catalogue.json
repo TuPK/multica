@@ -124,6 +124,40 @@
       "trial_days": 14,
       "is_public": true,
       "sort": 50
+    },
+    {
+      "key": "payg",
+      "name": "Pay as you go",
+      "limits": {
+        "issue_count": null,
+        "autopilot_runs": null,
+        "agents": null,
+        "runtimes": null,
+        "storage_bytes": null,
+        "api_rate_per_minute": 1200,
+        "audit_retention_days": 180,
+        "member_groups": null
+      },
+      "features": { "audit_export": true, "sso": false, "workspace_policies": false, "viewer_role": false },
+      "currency": "vnd",
+      "audience": "any",
+      "billing_model": "usage",
+      "seat_price_month": null,
+      "seat_price_year": null,
+      "seats_fixed": null,
+      "min_seats": null,
+      "trial_days": 0,
+      "is_public": true,
+      "sort": 60,
+      "usage_rates": {
+        "tasks_run": { "per": 1000, "price": 30000 },
+        "storage_bytes": { "per": 1073741824, "price": 3000 },
+        "members": { "per": 1, "price": 49000 }
+      },
+      "usage_terms": {
+        "discount_pct": { "business": 20 },
+        "credit_limit": { "individual": 2000000, "business": 20000000 }
+      }
     }
   ]
 }

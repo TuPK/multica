@@ -84,7 +84,14 @@ func (t *pgxTx) InsertIfAbsent(ctx context.Context, p Plan) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	n, err := t.q.InsertPlanIfAbsent(ctx, db.InsertPlanIfAbsentParams(params))
+	n, err := t.q.InsertPlanIfAbsent(ctx, db.InsertPlanIfAbsentParams{
+		Key: params.Key, Name: params.Name, Limits: params.Limits, Features: params.Features,
+		Currency: params.Currency, SeatPriceMonth: params.SeatPriceMonth, SeatPriceYear: params.SeatPriceYear,
+		SeatsFixed: params.SeatsFixed, MinSeats: params.MinSeats, TrialDays: params.TrialDays,
+		IsPublic: params.IsPublic, Sort: params.Sort, ArchivedAt: params.ArchivedAt,
+		Audience: params.Audience, BillingModel: params.BillingModel,
+		UsageRates: p.UsageRates, UsageTerms: p.UsageTerms,
+	})
 	return n > 0, err
 }
 

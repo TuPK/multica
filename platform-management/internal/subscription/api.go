@@ -553,6 +553,7 @@ func CheapestPublicPaidPlan(plans []plan.Plan) (plan.Plan, bool) {
 }
 
 // buildPrices returns the response for plan p; plans lists every public plan.
+// A usage plan is never listed: its price is not a seat price (spec 7b.3, rule 15).
 func buildPrices(p plan.Plan, plans []plan.Plan) pricesJSON {
 	out := pricesJSON{
 		Month: priceJSON{Currency: p.Currency, UnitAmount: *p.SeatPriceMonth, Interval: IntervalMonth, IntervalCount: 1},
@@ -560,7 +561,7 @@ func buildPrices(p plan.Plan, plans []plan.Plan) pricesJSON {
 		Plans: []listedPlanJSON{},
 	}
 	for _, l := range plans {
-		if listed(l) {
+		if listed(l) && l.BillingModel != plan.BillingUsage {
 			out.Plans = append(out.Plans, listedPlanJSON{
 				Key: l.Key, Name: l.Name, Currency: l.Currency, SeatPriceMonth: l.SeatPriceMonth,
 				SeatPriceYear: l.SeatPriceYear, SeatsFixed: l.SeatsFixed, MinSeats: l.MinSeats, TrialDays: l.TrialDays,

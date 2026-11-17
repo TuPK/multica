@@ -28,13 +28,15 @@ SELECT EXISTS (
 -- Seeds one plan. Two platform processes starting together may both see an
 -- empty table; the unique index on key makes the second insert a no-op. An
 -- empty audience or billing model takes the column default; version starts at 0.
+-- Absent usage_rates and usage_terms take the column default, an empty object.
 INSERT INTO plan (
     key, name, limits, features, currency, seat_price_month, seat_price_year,
     seats_fixed, min_seats, trial_days, is_public, sort, archived_at,
-    audience, billing_model
+    audience, billing_model, usage_rates, usage_terms
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-    COALESCE(NULLIF(sqlc.arg(audience)::text, ''), 'any'), COALESCE(NULLIF(sqlc.arg(billing_model)::text, ''), 'seat')
+    COALESCE(NULLIF(sqlc.arg(audience)::text, ''), 'any'), COALESCE(NULLIF(sqlc.arg(billing_model)::text, ''), 'seat'),
+    COALESCE(sqlc.narg(usage_rates)::jsonb, '{}'), COALESCE(sqlc.narg(usage_terms)::jsonb, '{}')
 )
 ON CONFLICT (key) DO NOTHING;
 

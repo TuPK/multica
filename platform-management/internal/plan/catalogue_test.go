@@ -244,7 +244,8 @@ func TestCatalogueOrderFollowsTheSpecColumns(t *testing.T) {
 			t.Errorf("%s has sort %d, not after %s (%d)", p.Key, p.Sort, got[i-1].Key, got[i-1].Sort)
 		}
 	}
-	if want := []string{"free", "pro", "business", "enterprise", "unlimited"}; !reflect.DeepEqual(keys, want) {
+	// payg is part of the spec's initial set (7b.3, "Gói khởi tạo bổ sung").
+	if want := []string{"free", "pro", "business", "enterprise", "unlimited", "payg"}; !reflect.DeepEqual(keys, want) {
 		t.Fatalf("keys = %v, want %v", keys, want)
 	}
 }
@@ -407,38 +408,122 @@ func TestCatalogueUnlimitedPlanMatchesSpec7b3(t *testing.T) {
 	}
 }
 
-func TestCatalogueOnlyTheUnlimitedPlanIsUnlimited(t *testing.T) {
+// Counted limits are all empty on exactly two plans: unlimited, and payg, whose
+// usage is paid for by the meter instead of capped (spec 7b.3, D42).
+func TestCatalogueOnlyUnlimitedAndPaygLeaveEveryCountedLimitEmpty(t *testing.T) {
 	all, err := Catalogue()
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, p := range all {
-		if got, want := IsUnlimited(p), p.Key == UnlimitedKey; got != want {
+		if got, want := IsUnlimited(p), p.Key == UnlimitedKey || p.Key == "payg"; got != want {
 			t.Errorf("%s IsUnlimited = %v, want %v", p.Key, got, want)
 		}
 	}
 }
 
-func TestIsUnlimitedIgnoresTheRateAndRetentionPlanValues(t *testing.T) {
-	n := int64(5)
-	p := Plan{Limits: Limits{GateAPIRatePerMinute: &n, GateAuditRetentionDay: &n}}
-	if !IsUnlimited(p) {
-		t.Error("a plan with no counted limit is unlimited whatever its rate cap")
+// The pay-as-you-go plan of spec 7b.3 (AC32), cell by cell. Its usage prices are
+// checked on the raw file in TestCataloguePaygUsagePricesMatchSpec7b3.
+func TestCataloguePaygPlanMatchesSpec7b3(t *testing.T) {
+	p := byKey(t, "payg")
+	if p.Name != "Pay as you go" || p.Currency != "vnd" || !p.IsPublic {
+		t.Errorf("payg name/currency/public = %q/%q/%v, want Pay as you go/vnd/true", p.Name, p.Currency, p.IsPublic)
 	}
-	p.Limits[GateStorageBytes] = &n
-	if IsUnlimited(p) {
-		t.Error("a plan with a storage limit is not unlimited")
+	if p.Audience != AudienceAny || p.BillingModel != BillingUsage {
+		t.Errorf("payg audience/billing_model = %q/%q, want any/usage", p.Audience, p.BillingModel)
+	}
+	n := func(v int64) *int64 { return &v }
+	wantLimits := Limits{
+		GateIssueCount: nil, GateAutopilotRuns: nil, GateAgents: nil, GateRuntimes: nil,
+		GateStorageBytes: nil, GateMemberGroups: nil,
+		GateAPIRatePerMinute: n(1200), GateAuditRetentionDay: n(180),
+	}
+	if !reflect.DeepEqual(p.Limits, wantLimits) {
+		gotJSON, _ := json.Marshal(p.Limits)
+		wantJSON, _ := json.Marshal(wantLimits)
+		t.Errorf("payg limits\n got: %s\nwant: %s", gotJSON, wantJSON)
+	}
+	wantFeatures := map[string]bool{"audit_export": true, "sso": false, "workspace_policies": false, "viewer_role": false}
+	if !reflect.DeepEqual(p.Features, wantFeatures) {
+		t.Errorf("payg features = %v, want %v", p.Features, wantFeatures)
+	}
+	if !IsUnlimited(p) {
+		t.Error("payg has a counted limit set")
 	}
 }
 
-func TestValidateAcceptsTheUnlimitedPlanAndRefusesAContradictoryOne(t *testing.T) {
-	if err := Validate(byKey(t, UnlimitedKey)); err != nil {
-		t.Fatalf("unlimited plan refused: %v", err)
+// A usage plan is not bought by seats: no seat price, no fixed or minimum seats,
+// no trial (spec 7b.3 rule 5).
+func TestCataloguePaygIsNotASeatPlan(t *testing.T) {
+	p := byKey(t, "payg")
+	if p.BillingModel == BillingSeat {
+		t.Error("payg billing_model is seat")
 	}
-	bad := byKey(t, UnlimitedKey)
-	n := int64(10)
-	bad.Limits[GateAgents] = &n
-	if err := Validate(bad); err == nil {
-		t.Error("Validate accepted an unlimited plan with an agents limit")
+	if p.SeatPriceMonth != nil || p.SeatPriceYear != nil {
+		t.Errorf("payg has a seat price: %v / %v", p.SeatPriceMonth, p.SeatPriceYear)
+	}
+	if p.SeatsFixed != nil || p.MinSeats != nil {
+		t.Errorf("payg has seats_fixed %v or min_seats %v, want neither", p.SeatsFixed, p.MinSeats)
+	}
+	if p.TrialDays != 0 {
+		t.Errorf("payg trial_days = %d, want 0", p.TrialDays)
+	}
+}
+
+// rawCatalogueEntry returns the catalogue file's object for key, untouched by
+// the Plan type.
+func rawCatalogueEntry(t *testing.T, key string) map[string]json.RawMessage {
+	t.Helper()
+	var file struct {
+		Plans []map[string]json.RawMessage `json:"plans"`
+	}
+	if err := json.Unmarshal(catalogueJSON, &file); err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range file.Plans {
+		if string(e["key"]) == strconv.Quote(key) {
+			return e
+		}
+	}
+	t.Fatalf("catalogue file has no plan %q", key)
+	return nil
+}
+
+// usage_rates and usage_terms of payg, spec 7b.3: 30.000 per 1.000 tasks, 3.000
+// per GiB-month, 49.000 per member-month; Business discount 20; credit limits
+// 2.000.000 (individual) and 20.000.000 (business).
+func TestCataloguePaygUsagePricesMatchSpec7b3(t *testing.T) {
+	e := rawCatalogueEntry(t, "payg")
+	type rate struct{ Per, Price int64 }
+	var rates map[string]rate
+	if err := json.Unmarshal(e["usage_rates"], &rates); err != nil {
+		t.Fatalf("usage_rates: %v (%s)", err, e["usage_rates"])
+	}
+	wantRates := map[string]rate{
+		"tasks_run":     {Per: 1000, Price: 30000},
+		"storage_bytes": {Per: gigabyte, Price: 3000},
+		"members":       {Per: 1, Price: 49000},
+	}
+	if !reflect.DeepEqual(rates, wantRates) {
+		t.Errorf("payg usage_rates = %v, want %v", rates, wantRates)
+	}
+	var terms struct {
+		DiscountPct map[string]int64 `json:"discount_pct"`
+		CreditLimit map[string]int64 `json:"credit_limit"`
+	}
+	if err := json.Unmarshal(e["usage_terms"], &terms); err != nil {
+		t.Fatalf("usage_terms: %v (%s)", err, e["usage_terms"])
+	}
+	if want := map[string]int64{"business": 20}; !reflect.DeepEqual(terms.DiscountPct, want) {
+		t.Errorf("payg discount_pct = %v, want %v", terms.DiscountPct, want)
+	}
+	if want := map[string]int64{"individual": 2_000_000, "business": 20_000_000}; !reflect.DeepEqual(terms.CreditLimit, want) {
+		t.Errorf("payg credit_limit = %v, want %v", terms.CreditLimit, want)
+	}
+	// Seat plans carry no usage prices.
+	for _, key := range []string{"free", "pro", "business", "enterprise", "unlimited"} {
+		if _, ok := rawCatalogueEntry(t, key)["usage_rates"]; ok {
+			t.Errorf("%s has usage_rates, want none", key)
+		}
 	}
 }

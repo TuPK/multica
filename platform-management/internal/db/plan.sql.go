@@ -104,10 +104,11 @@ const insertPlanIfAbsent = `-- name: InsertPlanIfAbsent :execrows
 INSERT INTO plan (
     key, name, limits, features, currency, seat_price_month, seat_price_year,
     seats_fixed, min_seats, trial_days, is_public, sort, archived_at,
-    audience, billing_model
+    audience, billing_model, usage_rates, usage_terms
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-    COALESCE(NULLIF($14::text, ''), 'any'), COALESCE(NULLIF($15::text, ''), 'seat')
+    COALESCE(NULLIF($14::text, ''), 'any'), COALESCE(NULLIF($15::text, ''), 'seat'),
+    COALESCE($16::jsonb, '{}'), COALESCE($17::jsonb, '{}')
 )
 ON CONFLICT (key) DO NOTHING
 `
@@ -128,11 +129,14 @@ type InsertPlanIfAbsentParams struct {
 	ArchivedAt     pgtype.Timestamptz `json:"archived_at"`
 	Audience       string             `json:"audience"`
 	BillingModel   string             `json:"billing_model"`
+	UsageRates     []byte             `json:"usage_rates"`
+	UsageTerms     []byte             `json:"usage_terms"`
 }
 
 // Seeds one plan. Two platform processes starting together may both see an
 // empty table; the unique index on key makes the second insert a no-op. An
 // empty audience or billing model takes the column default; version starts at 0.
+// Absent usage_rates and usage_terms take the column default, an empty object.
 func (q *Queries) InsertPlanIfAbsent(ctx context.Context, arg InsertPlanIfAbsentParams) (int64, error) {
 	result, err := q.db.Exec(ctx, insertPlanIfAbsent,
 		arg.Key,
@@ -150,6 +154,8 @@ func (q *Queries) InsertPlanIfAbsent(ctx context.Context, arg InsertPlanIfAbsent
 		arg.ArchivedAt,
 		arg.Audience,
 		arg.BillingModel,
+		arg.UsageRates,
+		arg.UsageTerms,
 	)
 	if err != nil {
 		return 0, err

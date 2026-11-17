@@ -566,6 +566,26 @@ func TestPricesAreTheEntryPaidPlansPerSeatPrice(t *testing.T) {
 	}
 }
 
+// AC32, spec 7b.3 rule 15: GET /prices never returns the price of a usage plan,
+// whatever the workspace's own plan is. payg is public and seeded, so it is the
+// plan that would leak.
+func TestPricesNeverListAUsagePlan(t *testing.T) {
+	e := newAPIEnv(t)
+	for _, key := range []string{"", "pro", "payg"} {
+		sub := Subscription{WorkspaceID: wsID, PlanKey: key, Status: "active", Interval: IntervalMonth, Version: 1}
+		if key != "" {
+			e.subs.rows[wsID] = sub
+		}
+		m := decodeMap(t, e.prices(ownerID))
+		list, _ := m["plans"].([]any)
+		for _, p := range list {
+			if k := obj(t, p, "plan")["key"]; k == "payg" {
+				t.Errorf("workspace on plan %q: /prices lists payg", key)
+			}
+		}
+	}
+}
+
 func TestPricesListThePublicPlansOnly(t *testing.T) {
 	e := newAPIEnv(t)
 	for i := range e.plans.plans {

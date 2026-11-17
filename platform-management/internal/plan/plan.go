@@ -98,8 +98,12 @@ type Limits map[string]*int64
 // Audience and BillingModel may be empty on a write, which means "not given":
 // a new plan takes the defaults (any, seat) and an existing plan keeps its value.
 // Version is the table's: 0 on creation, one more after every edit. A write
-// never sets it, and the usage_rates and usage_terms columns are not part of
-// the type yet.
+// never sets it.
+//
+// UsageRates and UsageTerms (spec 7b.3) are read from the catalogue file and
+// written by the seed only. A plan read from the table does not carry them, and
+// an edit through UpsertPlan leaves the stored values alone: price changes
+// reach them through plan_price_change.
 type Plan struct {
 	Key            string          `json:"key"`
 	Name           string          `json:"name"`
@@ -117,6 +121,8 @@ type Plan struct {
 	Audience       string          `json:"audience"`
 	BillingModel   string          `json:"billing_model"`
 	Version        int64           `json:"version"`
+	UsageRates     json.RawMessage `json:"usage_rates,omitempty"`
+	UsageTerms     json.RawMessage `json:"usage_terms,omitempty"`
 }
 
 //go:embed catalogue.json
