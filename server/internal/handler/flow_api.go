@@ -45,6 +45,10 @@ func (h *Handler) flowRequestFor(w http.ResponseWriter, r *http.Request, allowTa
 			writeFlowRejection(w, errFlowNotManaged)
 			return db.Issue{}, "", false
 		}
+		// The task may sit outside the project of its request.
+		if _, ok := h.issueInViewerScope(w, r, parent); !ok {
+			return db.Issue{}, "", false
+		}
 		return parent, issueworkflow.RoleTask, true
 	}
 	return issue, issueworkflow.RoleRequest, true

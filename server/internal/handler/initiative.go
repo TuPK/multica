@@ -787,6 +787,25 @@ func (h *Handler) loadInitiativeFor(w http.ResponseWriter, r *http.Request, wsUU
 		writeError(w, http.StatusNotFound, "initiative not found")
 		return db.Initiative{}, false
 	}
+	// A transition moves the backing issue, so an initiative whose issue the
+	// caller cannot see answers like a missing one.
+	issue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: ini.IssueID, WorkspaceID: wsUUID})
+	if err != nil {
+		if isNotFound(err) {
+			writeError(w, http.StatusNotFound, "initiative not found")
+		} else {
+			writeError(w, http.StatusInternalServerError, "failed to load initiative")
+		}
+		return db.Initiative{}, false
+	}
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return db.Initiative{}, false
+	}
+	if !scope.Allows(issue.ProjectID) {
+		writeError(w, http.StatusNotFound, "initiative not found")
+		return db.Initiative{}, false
+	}
 	return ini, true
 }
 

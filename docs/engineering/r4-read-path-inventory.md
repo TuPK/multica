@@ -108,7 +108,7 @@ How units are found:
 | `server/pkg/db/queries/issue.sql` | `LockIssueForDescriptionUpdate` | sql-query | todo | Handler callers are checked: updateIssueAtomically runs after loadIssueForUser or Scope.Allows. Open: the source-context callers (service IssueService.Create, TaskService.EnqueueQuickCreateTask) take the issue from a capture built in handler/source_context.go, outside the issue write group |
 | `server/pkg/db/queries/issue.sql` | `LockIssuesForDuplicateMark` | sql-query | exempt | (a) lock by id from lockAndCheckDuplicateMark only, inside UpdateIssue after loadIssueForUser and the Scope.Allows check of the target |
 | `server/pkg/db/queries/issue.sql` | `UpdateIssue` | sql-query | todo | Issue handlers call it after loadIssueForUser or Scope.Allows (UpdateIssue, BatchUpdateIssues, promoteQueuedIssue is a worker). Open: viewer-triggered service callers outside the issue write group (proposal.go, initiative.go, flow engine through UpdateIssueStatus) are classified with their own rows |
-| `server/pkg/db/queries/issue.sql` | `UpdateIssueStatus` | sql-query | todo | Open: viewer-triggered callers outside the issue write group (service/proposal.go, service/initiative.go, handler/flow_engine*.go); workers (runtime_sweeper, proposal_expiry, qoder lifecycle, TaskService) are internal and need no viewer |
+| `server/pkg/db/queries/issue.sql` | `UpdateIssueStatus` | sql-query | todo | Open: InitiativeService.LinkArtifact reaches it (moveTo) from a document publish (KnowledgeService.linkInitiativeArtifact, service/knowledge_write.go) with no visibility check; knowledge group. Flow routes, DecideProposal (owner/admin) and initiative transitions (loadInitiativeFor) are checked; workers (runtime_sweeper, proposal_expiry, qoder lifecycle, TaskService) are internal |
 | `server/pkg/db/queries/issue_label.sql` | `AttachLabelToIssue` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue_label.sql` | `DetachLabelFromIssue` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue_property.sql` | `CountIssuesUsingPropertyOptions` | sql-query | exempt | Owner and admin only (Scope mode all): UpdateProperty gates on requirePropertyAdmin; the guard must count every issue |
@@ -220,21 +220,21 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/file.go` | `Handler.attachmentInViewerScope` | go-call | scoped | Scope.Allows on the issue of the attachment, directly or through its comment, answers like a missing attachment; test TestRestrictedIssueAttachmentsAnswerMissing |
 | `server/internal/handler/file.go` | `Handler.attachmentOwnerLockAttempt` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/file.go` | `Handler.createAttachmentWithinQuota` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/flow_api.go` | `Handler.StartIssueFlow` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/flow_api.go` | `Handler.flowRequestFor` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/flow_api_run.go` | `Handler.CloseIssueFlowTask` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/flow_api_run.go` | `Handler.SetIssueFlowVar` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/flow_engine.go` | `Handler.advanceOnce` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/flow_engine.go` | `Handler.flowAdvanceResponse` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/flow_engine.go` | `Handler.loadFlowTasks` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/flow_engine.go` | `Handler.reopenCancelledWork` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/flow_engine.go` | `Handler.stallFlow` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/flow_engine.go` | `cancelFlowTasks` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/flow_engine.go` | `moveFlowRequest` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/flow_engine.go` | `supersedeFlowTasks` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/flow_engine_ops.go` | `Handler.DetachFlow` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/flow_engine_ops.go` | `Handler.ResumeFlow` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/flow_engine_ops.go` | `Handler.lockFlowRun` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/flow_api.go` | `Handler.StartIssueFlow` | go-call | scoped | flowRequestFor hides the issue like a missing one; TestRestrictedFlowAndProposalWritesAnswerMissing |
+| `server/internal/handler/flow_api.go` | `Handler.flowRequestFor` | go-call | scoped | loadIssueForUser, and issueInViewerScope on the request of a flow task; TestRestrictedFlowAndProposalWritesAnswerMissing |
+| `server/internal/handler/flow_api_run.go` | `Handler.CloseIssueFlowTask` | go-call | scoped | flowRequestFor hides the issue like a missing one; TestRestrictedFlowAndProposalWritesAnswerMissing |
+| `server/internal/handler/flow_api_run.go` | `Handler.SetIssueFlowVar` | go-call | scoped | flowRequestFor hides the issue like a missing one; TestRestrictedFlowAndProposalWritesAnswerMissing |
+| `server/internal/handler/flow_engine.go` | `Handler.advanceOnce` | go-call | exempt | (a) reached only from the flow routes (flow_api*.go), which load the request through flowRequestFor (loadIssueForUser, plus issueInViewerScope on the parent of a task); also run by the flow runner and sweep workers (b) |
+| `server/internal/handler/flow_engine.go` | `Handler.flowAdvanceResponse` | go-call | exempt | (a) reached only from the flow routes (flow_api*.go), which load the request through flowRequestFor (loadIssueForUser, plus issueInViewerScope on the parent of a task); also run by the flow runner and sweep workers (b) |
+| `server/internal/handler/flow_engine.go` | `Handler.loadFlowTasks` | go-call | exempt | (a) reached only from the flow routes (flow_api*.go), which load the request through flowRequestFor (loadIssueForUser, plus issueInViewerScope on the parent of a task); also run by the flow runner and sweep workers (b) |
+| `server/internal/handler/flow_engine.go` | `Handler.reopenCancelledWork` | go-call | exempt | (a) reached only from the flow routes (flow_api*.go), which load the request through flowRequestFor (loadIssueForUser, plus issueInViewerScope on the parent of a task); also run by the flow runner and sweep workers (b) |
+| `server/internal/handler/flow_engine.go` | `Handler.stallFlow` | go-call | exempt | (a) reached only from the flow routes (flow_api*.go), which load the request through flowRequestFor (loadIssueForUser, plus issueInViewerScope on the parent of a task); also run by the flow runner and sweep workers (b) |
+| `server/internal/handler/flow_engine.go` | `cancelFlowTasks` | go-call | exempt | (a) reached only from the flow routes (flow_api*.go), which load the request through flowRequestFor (loadIssueForUser, plus issueInViewerScope on the parent of a task); also run by the flow runner and sweep workers (b) |
+| `server/internal/handler/flow_engine.go` | `moveFlowRequest` | go-call | exempt | (a) reached only from the flow routes (flow_api*.go), which load the request through flowRequestFor (loadIssueForUser, plus issueInViewerScope on the parent of a task); also run by the flow runner and sweep workers (b) |
+| `server/internal/handler/flow_engine.go` | `supersedeFlowTasks` | go-call | exempt | (a) reached only from the flow routes (flow_api*.go), which load the request through flowRequestFor (loadIssueForUser, plus issueInViewerScope on the parent of a task); also run by the flow runner and sweep workers (b) |
+| `server/internal/handler/flow_engine_ops.go` | `Handler.DetachFlow` | go-call | exempt | (a) reached only from the flow routes (flow_api*.go), which load the request through flowRequestFor (loadIssueForUser, plus issueInViewerScope on the parent of a task); also run by the flow runner and sweep workers (b) |
+| `server/internal/handler/flow_engine_ops.go` | `Handler.ResumeFlow` | go-call | exempt | (a) reached only from the flow routes (flow_api*.go), which load the request through flowRequestFor (loadIssueForUser, plus issueInViewerScope on the parent of a task); also run by the flow runner and sweep workers (b) |
+| `server/internal/handler/flow_engine_ops.go` | `Handler.lockFlowRun` | go-call | exempt | (a) reached only from the flow routes (flow_api*.go), which load the request through flowRequestFor (loadIssueForUser, plus issueInViewerScope on the parent of a task); also run by the flow runner and sweep workers (b) |
 | `server/internal/handler/flow_guards.go` | `Handler.checkFlowChildCreate` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/flow_guards.go` | `Handler.claimFlowBrief` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/flow_guards.go` | `Handler.flowTaskRun` | go-call | todo | Calls a reader query; no visibility filter today |
@@ -258,6 +258,7 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/inbox_archive.go` | `Handler.GetArchivedInboxFacets` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/inbox_archive.go` | `Handler.ListArchivedInboxPage` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/initiative.go` | `Handler.initiativeDetail` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/initiative.go` | `Handler.loadInitiativeFor` | go-call | scoped | Scope.Allows on the backing issue; hidden answers 404 initiative not found; TestRestrictedFlowAndProposalWritesAnswerMissing |
 | `server/internal/handler/initiative.go` | `initiativeReads.view` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/issue.go` | `Handler.BatchDeleteIssues` | go-call | scoped | Each id is read and kept only when Scope.Allows, so a hidden id is skipped like a missing one; test TestRestrictedIssueWritesAnswerMissing (BatchDeleteIssues) |
 | `server/internal/handler/issue.go` | `Handler.BatchUpdateIssues` | go-call | scoped | Scope.Allows on every issue, parent and destination project; a move drops assignee and watchers who cannot see it; tests TestRestrictedIssueWritesAnswerMissing, TestUpdateIssueMovesDropWatchers, TestBatchUpdateAssigneeMustSeeProject |
@@ -372,8 +373,8 @@ Grouped by file; a function appears once per file.
 | `server/internal/service/directive_authority.go` | `AuthorizeDirective` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/directive_authority.go` | `checkDirectiveTarget` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/flow_start.go` | `startFlow` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/service/initiative.go` | `InitiativeService.closeLocked` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/service/initiative.go` | `InitiativeService.moveTo` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/service/initiative.go` | `InitiativeService.closeLocked` | go-call | todo | Transitions from the initiative routes pass loadInitiativeFor (TestRestrictedFlowAndProposalWritesAnswerMissing); open: LinkArtifact from a document publish (service/knowledge_write.go) reaches moveTo unchecked |
+| `server/internal/service/initiative.go` | `InitiativeService.moveTo` | go-call | todo | Transitions from the initiative routes pass loadInitiativeFor (TestRestrictedFlowAndProposalWritesAnswerMissing); open: LinkArtifact from a document publish (service/knowledge_write.go) reaches moveTo unchecked |
 | `server/internal/service/initiative_build.go` | `InitiativeService.minTopPosition` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/initiative_gate.go` | `InitiativeService.fileDueOperateGates` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/initiative_gate.go` | `InitiativeService.gateIsDue` | go-call | todo | Calls a reader query; no visibility filter today |
@@ -400,14 +401,14 @@ Grouped by file; a function appears once per file.
 | `server/internal/service/org_map.go` | `LoadOrgMap` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/proposal.go` | `ProposalService.Resubmit` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/proposal.go` | `ProposalService.askForChanges` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/service/proposal.go` | `ProposalService.resumeWaitingIssues` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/service/proposal.go` | `ProposalService.revertDecision` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/service/proposal.go` | `ProposalService.settleInTx` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/service/proposal.go` | `ProposalService.resumeWaitingIssues` | go-call | exempt | called from the same DecideProposal path as settleInTx (owner and admin only, rule 2); the cited issue ids come from the proposal text, never from a non-admin caller |
+| `server/internal/service/proposal.go` | `ProposalService.revertDecision` | go-call | exempt | called from the same DecideProposal path as settleInTx (owner and admin only, rule 2) |
+| `server/internal/service/proposal.go` | `ProposalService.settleInTx` | go-call | exempt | decision writes run only from DecideProposal, which admits owner and admin only; both see every project (rule 2), so the issue is always visible to the decider. Also ExpireDueProposals (b). Reviewer: not literally (a); the check is the role, not a loader |
 | `server/internal/service/proposal.go` | `ProposalService.snooze` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/service/proposal_expiry.go` | `ProposalService.expireOne` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/service/proposal_expiry.go` | `ProposalService.expireOne` | go-call | exempt | (b) internal worker, no viewer: the proposal expiry sweep (Handler.ExpireDueProposals) |
 | `server/internal/service/proposal_prior_art.go` | `ProposalService.RelatedProposalsByTitle` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/proposal_prior_art.go` | `ProposalService.relatedProposalsByTitle` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/service/qoder_issue_lifecycle.go` | `syncQoderIssue` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/service/qoder_issue_lifecycle.go` | `syncQoderIssue` | go-call | exempt | (b) internal worker, no viewer: TaskService qoder task claim and completion (daemon token) |
 | `server/internal/service/review.go` | `ReviewService.FileMonthlyReviews` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/scorecard.go` | `ScorecardInputsFor` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/secretary_reply_gate.go` | `checkAssessmentReply` | go-call | todo | Calls a reader query; no visibility filter today |
@@ -420,7 +421,7 @@ Grouped by file; a function appears once per file.
 | `server/internal/service/squad_handoff.go` | `SquadHandoffService.perform` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/squad_handoff.go` | `SquadHandoffService.resultOf` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/squad_handoff.go` | `SquadHandoffService.targetRequest` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/service/task.go` | `TaskService.HandleFailedTasks` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/service/task.go` | `TaskService.HandleFailedTasks` | go-call | exempt | (b) internal worker, no viewer: runtime sweeper (cmd/server/runtime_sweeper.go) and the daemon route RecoverOrphanedTasks (daemon token) |
 | `server/internal/service/task.go` | `TaskService.RecoverPendingDelegatedFailures` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/task.go` | `TaskService.RerunIssue` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/task.go` | `TaskService.ResolveTaskScopeChecked` | go-call | todo | Calls a reader query; no visibility filter today |
