@@ -487,12 +487,23 @@ func TestStaleSeatCapacityWorkerCannotMutateReactivatedIntent(t *testing.T) {
 	t.Cleanup(func() {
 		_, _ = testPool.Exec(ctx, `DELETE FROM seat_capacity_outbox WHERE operation_token = $1`, created.OperationToken)
 	})
-	claimed, err := queries.ClaimNextDueSeatCapacityIntent(ctx, pgtype.Timestamptz{Time: time.Now().Add(5 * time.Minute), Valid: true})
-	if err != nil {
-		t.Fatal(err)
+	// The claim is not scoped to a workspace, so rows other tests left due may
+	// be handed out first. Keep claiming until our own row comes back.
+	var claimed db.SeatCapacityOutbox
+	for {
+		claimed, err = queries.ClaimNextDueSeatCapacityIntent(ctx, pgtype.Timestamptz{Time: time.Now().Add(5 * time.Minute), Valid: true})
+		if errors.Is(err, pgx.ErrNoRows) {
+			t.Fatalf("own intent %s was never claimed", created.OperationToken)
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if claimed.OperationToken == created.OperationToken {
+			break
+		}
 	}
-	if claimed.OperationToken != created.OperationToken || !claimed.LeaseToken.Valid {
-		t.Fatalf("claimed unexpected intent: %+v", claimed)
+	if !claimed.LeaseToken.Valid {
+		t.Fatalf("claimed own intent without a lease: %+v", claimed)
 	}
 	if _, err := queries.CreateOrReactivateShareJoinCapacityIntent(ctx, db.CreateOrReactivateShareJoinCapacityIntentParams{
 		WorkspaceID: workspaceID, OperationToken: uuidToPG(uuid.New()),
