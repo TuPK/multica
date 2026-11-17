@@ -42,6 +42,7 @@ func accountsDBFixture(t *testing.T, perHour int) *dbFixture {
 			Plans: plan.NewPgxReader(f.pool), Limiter: &countingLimiter{},
 			CreatePerHour: perHour, IndividualMaxSeats: 5,
 		}),
+		Logins: NewPgxLogins(f.pool),
 		Emails: store,
 	})
 	t.Cleanup(func() {
@@ -113,5 +114,59 @@ func TestAccountCreateDBRateLimitAnswers429WithRetryAfter(t *testing.T) {
 	wantCode(t, rec, 429, "account_create_rate_limited")
 	if rec.Header().Get("Retry-After") == "" {
 		t.Error("no Retry-After header")
+	}
+}
+
+// A provisioned request whose user has an auth.login row shows logged_in true;
+// one whose user has only other audit rows shows false (spec 7b.5).
+func TestAccountRequestDBShowsWhetherTheUserEverLoggedIn(t *testing.T) {
+	f := accountsDBFixture(t, 30)
+	adminUser, _ := f.staffUser(staff.RoleAdmin)
+	used, _ := f.user("acct-db-used")
+	unused, _ := f.user("acct-db-unused")
+	ctx := context.Background()
+	ids := map[string]string{}
+	for name, user := range map[string]string{"used": used, "unused": unused, "none": ""} {
+		var id string
+		var uid any
+		if user != "" {
+			uid = user
+		}
+		if err := f.pool.QueryRow(ctx, `INSERT INTO platform_account_request
+			(id, kind, email, display_name, workspace_name, plan_key, state, user_id, created_by)
+			VALUES (gen_random_uuid(), 'individual', $1, 'A', 'W', 'free', $2, $3, $4) RETURNING id::text`,
+			"acct-db-"+name+"-"+randomHex(t)+"@example.test", map[bool]string{true: "provisioned", false: "pending"}[user != ""], uid, adminUser,
+		).Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		ids[name] = id
+	}
+	for _, u := range []struct{ user, action string }{{used, "auth.login"}, {unused, "account.provision_requested"}, {unused, "auth.logout"}} {
+		if _, err := f.pool.Exec(ctx, `INSERT INTO audit_event (actor_type, actor_id, action) VALUES ('member', $1, $2)`, u.user, u.action); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	rec := f.do(adminUser, "GET", "/api/platform/accounts?limit=200", "")
+	wantStatus(t, rec, 200)
+	got := map[string]any{}
+	reqs, _ := decode(t, rec)["requests"].([]any)
+	for _, r := range reqs {
+		row := r.(map[string]any)
+		for name, id := range ids {
+			if row["id"] == id {
+				got[name] = row["logged_in"]
+			}
+		}
+	}
+	want := map[string]any{"used": true, "unused": false, "none": nil}
+	for name, w := range want {
+		if v, ok := got[name]; !ok || v != w {
+			t.Errorf("%s: logged_in = %v (found %v), want %v", name, v, ok, w)
+		}
+	}
+	one := decode(t, f.do(adminUser, "GET", "/api/platform/accounts/"+ids["used"], ""))
+	if one["logged_in"] != true {
+		t.Errorf("get: logged_in = %v, want true", one["logged_in"])
 	}
 }

@@ -45,6 +45,7 @@ import {
   useAddTenantNote,
   useUpdateSubscription,
   useSetBillingProfileVerified,
+  useUpdateTenantBillingProfile,
   useCancelOrder,
 } from "../api/hooks";
 import { PlatformApiError } from "../api/client";
@@ -54,7 +55,7 @@ import type {
   Note,
   AuditEvent,
   Order,
-  BillingProfileVerifyResponse,
+  BillingProfile,
   TenantUsage,
   TenantUsageRow,
   TenantUsageUnpaidOrder,
@@ -267,6 +268,36 @@ function UsageValue({ label, value }: { label: string; value: number | string })
   );
 }
 
+const BILLING_PROFILE_FIELDS = [
+  "account_kind",
+  "legal_name",
+  "tax_code",
+  "address",
+  "invoice_email",
+] as const;
+
+type BillingProfileField = (typeof BILLING_PROFILE_FIELDS)[number];
+
+const BILLING_PROFILE_INCOMPLETE_MESSAGES: Record<BillingProfileField, string> = {
+  account_kind: "Account kind is required.",
+  legal_name: "Legal name is required.",
+  tax_code: "Tax code is required.",
+  address: "Address is required.",
+  invoice_email: "Invoice email is required.",
+};
+
+const BILLING_PROFILE_INVALID_MESSAGES: Record<BillingProfileField, string> = {
+  account_kind: "Select a valid account kind.",
+  legal_name: "Legal name is invalid or exceeds 255 characters.",
+  tax_code: "Enter a valid 10-digit (or 10-3) tax code.",
+  address: "Address is invalid or exceeds 255 characters.",
+  invoice_email: "Enter a valid invoice email address.",
+};
+
+function isBillingProfileField(value: string): value is BillingProfileField {
+  return (BILLING_PROFILE_FIELDS as readonly string[]).includes(value);
+}
+
 export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) {
   const { data: me } = useMe();
   const {
@@ -303,16 +334,29 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
   const addNote = useAddTenantNote();
   const updateSubscription = useUpdateSubscription();
   const setBillingProfileVerified = useSetBillingProfileVerified();
+  const updateBillingProfile = useUpdateTenantBillingProfile();
   const cancelOrder = useCancelOrder();
 
   const [profileOverride, setProfileOverride] = useState<{
     tenantId: string;
-    profile: BillingProfileVerifyResponse;
+    profile: BillingProfile;
   } | null>(null);
   const [profileError, setProfileError] = useState<{
     tenantId: string;
     message: string;
   } | null>(null);
+
+  // Billing profile dialog state
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [profileKind, setProfileKind] = useState<"individual" | "business">("individual");
+  const [profileLegalNameInput, setProfileLegalNameInput] = useState("");
+  const [profileTaxCodeInput, setProfileTaxCodeInput] = useState("");
+  const [profileAddressInput, setProfileAddressInput] = useState("");
+  const [profileInvoiceEmailInput, setProfileInvoiceEmailInput] = useState("");
+  const [profileFieldErrors, setProfileFieldErrors] = useState<
+    Partial<Record<BillingProfileField, string>>
+  >({});
+  const [profileFormError, setProfileFormError] = useState<string | null>(null);
 
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [targetStatus, setTargetStatus] = useState("active");
@@ -442,17 +486,95 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
     }
   };
 
-  const activeProfile =
+  const fullProfile: BillingProfile | null =
     (profileOverride?.tenantId === tenantId ? profileOverride.profile : null) ??
     billingProfile ??
-    tenant.billing_profile ??
     null;
+  const activeProfile = fullProfile ?? tenant.billing_profile ?? null;
   const accountKind = activeProfile?.account_kind ?? "individual";
+  const profileLegalName = fullProfile?.legal_name ?? "";
+  const profileTaxCode = fullProfile?.tax_code ?? "";
+  const profileAddress = fullProfile?.address ?? "";
+  const profileInvoiceEmail = fullProfile?.invoice_email ?? "";
   const isProfileVerified = activeProfile?.verified ?? false;
   const profileVerifiedAt = activeProfile?.verified_at ?? null;
 
   const activeProfileError =
     profileError?.tenantId === tenantId ? profileError.message : null;
+
+  const clearProfileFieldError = (field: BillingProfileField) => {
+    setProfileFieldErrors((prev) => {
+      if (!(field in prev)) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const handleOpenProfileDialog = () => {
+    setProfileKind(accountKind === "business" ? "business" : "individual");
+    setProfileLegalNameInput(profileLegalName);
+    setProfileTaxCodeInput(profileTaxCode);
+    setProfileAddressInput(profileAddress);
+    setProfileInvoiceEmailInput(profileInvoiceEmail);
+    setProfileFieldErrors({});
+    setProfileFormError(null);
+    setProfileDialogOpen(true);
+  };
+
+  const handleSaveBillingProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (updateBillingProfile.isPending) return;
+    setProfileFieldErrors({});
+    setProfileFormError(null);
+    try {
+      const res = await updateBillingProfile.mutateAsync({
+        tenantId,
+        account_kind: profileKind,
+        legal_name: profileLegalNameInput.trim(),
+        tax_code: profileTaxCodeInput.trim(),
+        address: profileAddressInput.trim(),
+        invoice_email: profileInvoiceEmailInput.trim(),
+      });
+      const { changed: _changed, ...savedProfile } = res;
+      setProfileOverride({ tenantId, profile: savedProfile });
+      setProfileError(null);
+      setProfileDialogOpen(false);
+    } catch (err: unknown) {
+      if (err instanceof PlatformApiError) {
+        const fields = Array.isArray(err.details.fields)
+          ? err.details.fields.filter((f): f is string => typeof f === "string" && f.length > 0)
+          : [];
+        if (fields.length > 0) {
+          const messages =
+            err.code === "billing_profile_incomplete"
+              ? BILLING_PROFILE_INCOMPLETE_MESSAGES
+              : BILLING_PROFILE_INVALID_MESSAGES;
+          const nextFieldErrors: Partial<Record<BillingProfileField, string>> = {};
+          const unmapped: string[] = [];
+          for (const f of fields) {
+            if (isBillingProfileField(f)) {
+              nextFieldErrors[f] = messages[f];
+            } else {
+              unmapped.push(f);
+            }
+          }
+          setProfileFieldErrors(nextFieldErrors);
+          if (unmapped.length > 0 || Object.keys(nextFieldErrors).length === 0) {
+            setProfileFormError(
+              unmapped.length > 0 ? `${err.message}: ${unmapped.join(", ")}` : err.message,
+            );
+          }
+          return;
+        }
+        setProfileFormError(err.message);
+        return;
+      }
+      setProfileFormError(
+        err instanceof Error ? err.message : "Failed to update billing profile",
+      );
+    }
+  };
 
   const handleToggleProfileVerified = async () => {
     if (setBillingProfileVerified.isPending) return;
@@ -463,7 +585,16 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
         verified: !isProfileVerified,
       });
       if (res) {
-        setProfileOverride({ tenantId, profile: res });
+        setProfileOverride({
+          tenantId,
+          profile: {
+            legal_name: profileLegalName,
+            tax_code: profileTaxCode,
+            address: profileAddress,
+            invoice_email: profileInvoiceEmail,
+            ...res,
+          },
+        });
       }
     } catch (err: unknown) {
       if (err instanceof PlatformApiError && err.code === "billing_profile_incomplete") {
@@ -724,16 +855,21 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle role="heading" aria-level={2}>Billing profile</CardTitle>
           {canEditSubscription && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleToggleProfileVerified}
-              disabled={setBillingProfileVerified.isPending}
-              aria-busy={setBillingProfileVerified.isPending}
-            >
-              {setBillingProfileVerified.isPending && <Spinner className="size-3.5" />}
-              {isProfileVerified ? "Unverify" : "Verify"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleOpenProfileDialog}>
+                Edit
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleToggleProfileVerified}
+                disabled={setBillingProfileVerified.isPending}
+                aria-busy={setBillingProfileVerified.isPending}
+              >
+                {setBillingProfileVerified.isPending && <Spinner className="size-3.5" />}
+                {isProfileVerified ? "Unverify" : "Verify"}
+              </Button>
+            </div>
           )}
         </CardHeader>
         <CardContent className="space-y-4">
@@ -763,6 +899,30 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
               <span className="block text-caption text-muted-foreground">Verified at</span>
               <span className="mt-1 block text-muted-foreground">
                 {formatTimestamp(profileVerifiedAt)}
+              </span>
+            </div>
+            <div>
+              <span className="block text-caption text-muted-foreground">Legal name</span>
+              <span className="mt-1 block font-medium">
+                {profileLegalName || "-"}
+              </span>
+            </div>
+            <div>
+              <span className="block text-caption text-muted-foreground">Tax code</span>
+              <span className="mt-1 block font-mono">
+                {profileTaxCode || "-"}
+              </span>
+            </div>
+            <div>
+              <span className="block text-caption text-muted-foreground">Address</span>
+              <span className="mt-1 block">
+                {profileAddress || "-"}
+              </span>
+            </div>
+            <div className="sm:col-span-2">
+              <span className="block text-caption text-muted-foreground">Invoice email</span>
+              <span className="mt-1 block">
+                {profileInvoiceEmail || "-"}
               </span>
             </div>
           </div>
@@ -1059,6 +1219,126 @@ export function TenantDetail({ tenantId, onBack, userRole }: TenantDetailProps) 
               <Button type="submit" disabled={!subReason.trim() || updateSubscription.isPending}>
                 {updateSubscription.isPending && <Spinner className="size-3.5" />}
                 Save subscription
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Billing Profile Dialog */}
+      <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
+        <DialogContent>
+          <form noValidate onSubmit={handleSaveBillingProfile} className="flex flex-col gap-4">
+            <DialogHeader>
+              <DialogTitle>Edit Billing Profile</DialogTitle>
+              <DialogDescription>
+                Update workspace account kind and billing contact details.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="bp-account-kind" className="text-caption font-medium text-foreground">
+                  Account kind
+                </label>
+                <select
+                  id="bp-account-kind"
+                  value={profileKind}
+                  onChange={(e) => {
+                    setProfileKind(e.target.value as "individual" | "business");
+                    clearProfileFieldError("account_kind");
+                  }}
+                  aria-invalid={Boolean(profileFieldErrors.account_kind)}
+                  disabled={updateBillingProfile.isPending}
+                  className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-body transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20"
+                >
+                  <option value="individual">Individual</option>
+                  <option value="business">Business</option>
+                </select>
+                {profileFieldErrors.account_kind && (
+                  <p className="text-caption text-destructive">{profileFieldErrors.account_kind}</p>
+                )}
+              </div>
+
+              {[
+                {
+                  field: "legal_name" as const,
+                  id: "bp-legal-name",
+                  label: "Legal name",
+                  type: "text",
+                  value: profileLegalNameInput,
+                  setValue: setProfileLegalNameInput,
+                },
+                {
+                  field: "tax_code" as const,
+                  id: "bp-tax-code",
+                  label: "Tax code",
+                  type: "text",
+                  value: profileTaxCodeInput,
+                  setValue: setProfileTaxCodeInput,
+                },
+                {
+                  field: "address" as const,
+                  id: "bp-address",
+                  label: "Address",
+                  type: "text",
+                  value: profileAddressInput,
+                  setValue: setProfileAddressInput,
+                },
+                {
+                  field: "invoice_email" as const,
+                  id: "bp-invoice-email",
+                  label: "Invoice email",
+                  type: "email",
+                  value: profileInvoiceEmailInput,
+                  setValue: setProfileInvoiceEmailInput,
+                },
+              ].map(({ field, id, label, type, value, setValue }) => (
+                <div key={field} className="flex flex-col gap-1.5">
+                  <label htmlFor={id} className="text-caption font-medium text-foreground">
+                    {label}
+                  </label>
+                  <Input
+                    id={id}
+                    type={type}
+                    value={value}
+                    onChange={(e) => {
+                      setValue(e.target.value);
+                      clearProfileFieldError(field);
+                    }}
+                    aria-invalid={Boolean(profileFieldErrors[field])}
+                    disabled={updateBillingProfile.isPending}
+                  />
+                  {profileFieldErrors[field] && (
+                    <p className="text-caption text-destructive">{profileFieldErrors[field]}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {profileFormError && (
+              <div role="alert" className="text-caption text-destructive">
+                {profileFormError}
+              </div>
+            )}
+
+            <DialogFooter>
+              <DialogClose
+                render={
+                  <Button variant="outline" type="button" disabled={updateBillingProfile.isPending} />
+                }
+              >
+                Cancel
+              </DialogClose>
+              <Button
+                type="submit"
+                disabled={updateBillingProfile.isPending}
+                aria-busy={updateBillingProfile.isPending}
+              >
+                {updateBillingProfile.isPending && (
+                  <Spinner className="size-3.5" aria-hidden="true" />
+                )}
+                Save
               </Button>
             </DialogFooter>
           </form>

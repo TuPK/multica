@@ -34,6 +34,20 @@ type fakeAccounts struct {
 	rows    map[string]accountrequest.Request
 	created bool
 	err     error
+	// list, when set, is what List returns.
+	list []accountrequest.Request
+}
+
+// fakeLogins is the LoginLookup: the users who have an auth.login row.
+type fakeLogins struct {
+	users map[string]bool
+	asked [][]string
+	err   error
+}
+
+func (f *fakeLogins) UsersWithLogin(_ context.Context, ids []string) (map[string]bool, error) {
+	f.asked = append(f.asked, ids)
+	return f.users, f.err
 }
 
 func (f *fakeAccounts) Create(_ context.Context, a accountrequest.Actor, in accountrequest.Input) (accountrequest.Request, bool, error) {
@@ -79,6 +93,9 @@ func (f *fakeAccounts) ResendWelcome(_ context.Context, a accountrequest.Actor, 
 func (f *fakeAccounts) List(_ context.Context, q accountrequest.ListQuery) ([]accountrequest.Request, error) {
 	f.calls++
 	f.listed = append(f.listed, q)
+	if f.list != nil {
+		return f.list, nil
+	}
 	return []accountrequest.Request{f.rows[reqID]}, nil
 }
 
@@ -93,6 +110,7 @@ type accountsEnv struct {
 	h   http.Handler
 	acc *fakeAccounts
 	dir *fakeDirectory
+	log *fakeLogins
 }
 
 func newAccountsEnv(t *testing.T) *accountsEnv {
@@ -103,6 +121,7 @@ func newAccountsEnv(t *testing.T) *accountsEnv {
 			roles:  map[string]staff.Role{adminID: staff.RoleAdmin, suppID: staff.RoleSupport, billID: staff.RoleBilling},
 			emails: map[string]string{adminID: adminMail, suppID: suppMail, billID: billMail, custID: custMail},
 		},
+		log: &fakeLogins{users: map[string]bool{}},
 		acc: &fakeAccounts{
 			rows: map[string]accountrequest.Request{
 				reqID: {
@@ -131,6 +150,7 @@ func newAccountsEnv(t *testing.T) *accountsEnv {
 		RequireStaff:  auth.RequirePlatformStaff,
 		RequireOrigin: auth.RequireOrigin,
 		Accounts:      e.acc,
+		Logins:        e.log,
 		Emails:        e.dir,
 		Now:           func() time.Time { return t0 },
 	})
@@ -433,5 +453,78 @@ func TestWelcomeResendRouteMapsServiceErrorsToTheSpecCodes(t *testing.T) {
 	wantCode(t, rec, 500, "internal")
 	if strings.Contains(rec.Body.String(), "10.0.0.5") {
 		t.Error("the response repeats the cause")
+	}
+}
+
+// Spec 7b.5, security table: an account nobody used shows "never logged in",
+// decided by an auth.login audit row of its user.
+func TestAccountListShowsWhetherTheUserEverLoggedIn(t *testing.T) {
+	const userIn, userOut = "eeeeeeee-0000-0000-0000-000000000001", "eeeeeeee-0000-0000-0000-000000000002"
+	e := newAccountsEnv(t)
+	mk := func(id, user string) accountrequest.Request {
+		r := e.acc.rows[reqNew]
+		r.ID, r.UserID = id, user
+		return r
+	}
+	e.acc.list = []accountrequest.Request{
+		mk(reqID, ""), mk("dddddddd-0000-0000-0000-000000000003", userIn), mk("dddddddd-0000-0000-0000-000000000004", userOut),
+	}
+	e.log.users[userIn] = true
+	rec := e.do(adminID, "GET", "/api/platform/accounts", "")
+	wantStatus(t, rec, 200)
+	reqs, _ := decode(t, rec)["requests"].([]any)
+	if len(reqs) != 3 {
+		t.Fatalf("body = %s", rec.Body)
+	}
+	for i, want := range []any{nil, true, false} {
+		row := reqs[i].(map[string]any)
+		got, has := row["logged_in"]
+		if !has || got != want {
+			t.Errorf("row %d logged_in = %v (present %v), want %v", i, got, has, want)
+		}
+	}
+	if len(e.log.asked) != 1 || len(e.log.asked[0]) != 2 {
+		t.Errorf("lookups = %v, want one call for the two users", e.log.asked)
+	}
+}
+
+func TestAccountGetShowsWhetherTheUserEverLoggedIn(t *testing.T) {
+	const user = "eeeeeeee-0000-0000-0000-000000000001"
+	e := newAccountsEnv(t)
+	r := e.acc.rows[reqNew]
+	r.UserID = user
+	e.acc.rows[reqNew] = r
+	for _, want := range []bool{false, true} {
+		e.log.users[user] = want
+		rec := e.do(adminID, "GET", "/api/platform/accounts/"+reqNew, "")
+		wantStatus(t, rec, 200)
+		if got := decode(t, rec)["logged_in"]; got != want {
+			t.Errorf("logged_in = %v, want %v", got, want)
+		}
+	}
+	rec := e.do(adminID, "GET", "/api/platform/accounts/"+reqID, "")
+	if got, has := decode(t, rec)["logged_in"]; !has || got != nil {
+		t.Errorf("no user: logged_in = %v (present %v), want null", got, has)
+	}
+}
+
+func TestAccountListSkipsTheLookupWhenNoRequestHasAUser(t *testing.T) {
+	e := newAccountsEnv(t)
+	wantStatus(t, e.do(adminID, "GET", "/api/platform/accounts", ""), 200)
+	if len(e.log.asked) != 0 {
+		t.Errorf("lookups = %v, want none", e.log.asked)
+	}
+}
+
+func TestAccountListDoesNotLeakALookupError(t *testing.T) {
+	e := newAccountsEnv(t)
+	r := e.acc.rows[reqNew]
+	r.UserID = "eeeeeeee-0000-0000-0000-000000000001"
+	e.acc.list = []accountrequest.Request{r}
+	e.log.err = errors.New("pq: relation locked")
+	rec := e.do(adminID, "GET", "/api/platform/accounts", "")
+	wantStatus(t, rec, 500)
+	if strings.Contains(rec.Body.String(), "relation locked") {
+		t.Errorf("body = %s", rec.Body)
 	}
 }

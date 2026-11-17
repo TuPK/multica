@@ -678,3 +678,21 @@ func (t *pgxTx) InsertAuditEvent(ctx context.Context, e audit.Entry) error {
 		RequestID:   e.RequestID,
 	})
 }
+
+// PgxLogins is the LoginLookup over a Postgres pool.
+type PgxLogins struct{ q *db.Queries }
+
+// NewPgxLogins returns a LoginLookup over pool.
+func NewPgxLogins(pool db.DBTX) *PgxLogins { return &PgxLogins{q: db.New(pool)} }
+
+func (l *PgxLogins) UsersWithLogin(ctx context.Context, userIDs []string) (map[string]bool, error) {
+	ids, err := l.q.ListUserIDsWithLogin(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		out[id] = true
+	}
+	return out, nil
+}

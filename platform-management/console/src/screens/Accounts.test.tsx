@@ -546,4 +546,30 @@ describe("Accounts screen", () => {
     });
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
+
+  it("shows Never logged in tag only when logged_in is false (not for true, null, or omitted)", () => {
+    mockUseAccountRequests.mockReturnValue({
+      data: [
+        { ...baseRequest, id: "req-unseen", email: "unseen@example.com", state: "completed", logged_in: false },
+        { ...baseRequest, id: "req-seen", email: "seen@example.com", state: "completed", logged_in: true },
+        { ...baseRequest, id: "req-nouser", email: "nouser@example.com", state: "pending", logged_in: null },
+        { ...baseRequest, id: "req-legacy", email: "legacy@example.com", state: "completed" },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    render(<Accounts userRole="admin" />);
+
+    const unseenRow = screen.getByText("unseen@example.com").closest("tr")!;
+    const seenRow = screen.getByText("seen@example.com").closest("tr")!;
+    const noUserRow = screen.getByText("nouser@example.com").closest("tr")!;
+    const legacyRow = screen.getByText("legacy@example.com").closest("tr")!;
+
+    expect(within(unseenRow).getByText("Never logged in")).toBeInTheDocument();
+    expect(within(seenRow).queryByText("Never logged in")).not.toBeInTheDocument();
+    expect(within(noUserRow).queryByText("Never logged in")).not.toBeInTheDocument();
+    expect(within(legacyRow).queryByText("Never logged in")).not.toBeInTheDocument();
+  });
 });

@@ -38,6 +38,7 @@ import {
   useCancelScheduledPriceChange,
   useUpdateSubscription,
   useSetBillingProfileVerified,
+  useUpdateTenantBillingProfile,
   accountKeys,
   AccountApiError,
   useAccountRequests,
@@ -1228,5 +1229,153 @@ describe("billing profile verification hook", () => {
       await result.current.mutateAsync({ tenantId: "ws-1", verified: false });
     });
     expect(queryClient.getQueryState(platformKeys.tenantBillingProfile("ws-1"))?.isInvalidated).toBe(true);
+  });
+
+  it("useUpdateTenantBillingProfile sends PUT, updates/invalidates tenant and billing profile caches, and surfaces field errors", async () => {
+    const updated = {
+      workspace_id: "ws-1",
+      account_kind: "business" as const,
+      legal_name: "Beta Co",
+      tax_code: "0123456789",
+      address: "2 New St",
+      invoice_email: "ap@beta.test",
+      verified: false,
+      verified_at: null,
+      changed: true,
+    };
+    const calls = stubFetch({
+      "PUT /api/platform/tenants/ws-1/billing-profile": json(200, updated),
+      "PUT /api/platform/tenants/a%2Fb/billing-profile": json(200, { ...updated, workspace_id: "a/b" }),
+      "PUT /api/platform/tenants/ws-incomplete/billing-profile": json(409, {
+        error: "billing profile is incomplete",
+        code: "billing_profile_incomplete",
+        fields: ["legal_name", "tax_code"],
+      }),
+      "PUT /api/platform/tenants/ws-invalid/billing-profile": json(400, {
+        error: "billing profile has invalid fields",
+        code: "billing_profile_invalid",
+        fields: ["tax_code"],
+      }),
+      "PUT /api/platform/tenants/ws-bad/billing-profile": json(200, { nope: true }),
+    });
+    const { queryClient, wrapper } = setup();
+    queryClient.setQueryData(platformKeys.tenant("ws-1"), null);
+    queryClient.setQueryData(platformKeys.tenantBillingProfile("ws-1"), {
+      workspace_id: "ws-1",
+      account_kind: "business",
+      legal_name: "Acme Co",
+      tax_code: "0123456789",
+      address: "1 Main St",
+      invoice_email: "ap@acme.test",
+      verified: true,
+      verified_at: "2026-11-17T00:00:00Z",
+    });
+    queryClient.setQueryData(platformKeys.tenantAudit("ws-1", {}), { pages: [], pageParams: [] });
+    queryClient.setQueryData(platformKeys.audit({}), { pages: [], pageParams: [] });
+    queryClient.setQueryData(platformKeys.tenant("ws-2"), null);
+    queryClient.setQueryData(platformKeys.tenantBillingProfile("ws-2"), null);
+    queryClient.setQueryData(platformKeys.tenant("ws-incomplete"), null);
+
+    const { result } = renderHook(() => useUpdateTenantBillingProfile(), { wrapper });
+
+    let res: unknown;
+    await act(async () => {
+      res = await result.current.mutateAsync({
+        tenantId: "ws-1",
+        account_kind: "business",
+        legal_name: "Beta Co",
+        tax_code: "0123456789",
+        address: "2 New St",
+        invoice_email: "ap@beta.test",
+      });
+    });
+
+    expect(res).toEqual(updated);
+    expect(calls[0]).toMatchObject({
+      method: "PUT",
+      path: "/api/platform/tenants/ws-1/billing-profile",
+      body: {
+        account_kind: "business",
+        legal_name: "Beta Co",
+        tax_code: "0123456789",
+        address: "2 New St",
+        invoice_email: "ap@beta.test",
+      },
+    });
+    expect(queryClient.getQueryData(platformKeys.tenantBillingProfile("ws-1"))).toEqual({
+      workspace_id: "ws-1",
+      account_kind: "business",
+      legal_name: "Beta Co",
+      tax_code: "0123456789",
+      address: "2 New St",
+      invoice_email: "ap@beta.test",
+      verified: false,
+      verified_at: null,
+    });
+    expect(queryClient.getQueryState(platformKeys.tenant("ws-1"))?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(platformKeys.tenantBillingProfile("ws-1"))?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(platformKeys.tenantAudit("ws-1", {}))?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(platformKeys.audit({}))?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(platformKeys.tenant("ws-2"))?.isInvalidated).toBe(false);
+    expect(queryClient.getQueryState(platformKeys.tenantBillingProfile("ws-2"))?.isInvalidated).toBe(false);
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        tenantId: "a/b",
+        account_kind: "individual",
+      });
+    });
+    expect(calls[1]?.path).toBe("/api/platform/tenants/a%2Fb/billing-profile");
+    expect(calls[1]?.body).toEqual({ account_kind: "individual" });
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({
+          tenantId: "ws-incomplete",
+          account_kind: "business",
+          legal_name: "",
+          tax_code: "",
+          address: "1 Main St",
+          invoice_email: "ap@acme.test",
+        }),
+      ).rejects.toMatchObject({
+        status: 409,
+        code: "billing_profile_incomplete",
+        details: { fields: ["legal_name", "tax_code"] },
+      });
+    });
+    expect(queryClient.getQueryState(platformKeys.tenant("ws-incomplete"))?.isInvalidated).toBe(false);
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({
+          tenantId: "ws-invalid",
+          account_kind: "business",
+          legal_name: "Acme Co",
+          tax_code: "123",
+          address: "1 Main St",
+          invoice_email: "ap@acme.test",
+        }),
+      ).rejects.toMatchObject({
+        status: 400,
+        code: "billing_profile_invalid",
+        details: { fields: ["tax_code"] },
+      });
+    });
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({
+          tenantId: "ws-bad",
+          account_kind: "individual",
+          legal_name: "",
+          tax_code: "",
+          address: "",
+          invoice_email: "",
+        }),
+      ).rejects.toMatchObject({
+        code: "malformed_response",
+      });
+    });
   });
 });

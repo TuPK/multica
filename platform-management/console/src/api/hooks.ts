@@ -27,6 +27,7 @@ import {
   parsePutSubscriptionResponse,
   parseBillingProfile,
   parseBillingProfileVerifyResponse,
+  parsePutBillingProfileResponse,
   parseAccountRequestList,
   parseAccountRequest,
   parseResendWelcomeResponse,
@@ -46,6 +47,7 @@ import {
   type Subscription,
   type BillingProfile,
   type BillingProfileVerifyResponse,
+  type PutBillingProfileResponse,
   type Limits,
   type AccountRequest,
   type AccountRequestState,
@@ -61,6 +63,7 @@ export type {
   Subscription,
   BillingProfile,
   BillingProfileVerifyResponse,
+  PutBillingProfileResponse,
   Order,
   Plan,
   Limits,
@@ -786,6 +789,55 @@ export function useSetBillingProfileVerified() {
       queryClient.setQueryData<BillingProfile>(
         platformKeys.tenantBillingProfile(vars.tenantId),
         (prev) => (prev ? { ...prev, ...data } : prev),
+      );
+      return invalidateAll(queryClient, [
+        platformKeys.tenant(vars.tenantId),
+        platformKeys.tenantBillingProfile(vars.tenantId),
+        platformKeys.tenantAudits(vars.tenantId),
+        platformKeys.audits(),
+      ]);
+    },
+  });
+}
+
+export interface UpdateTenantBillingProfileInput {
+  tenantId: string;
+  account_kind: "individual" | "business";
+  legal_name?: string;
+  tax_code?: string;
+  address?: string;
+  invoice_email?: string;
+}
+
+/** Update a workspace's billing profile. Billing or Admin only. */
+export function useUpdateTenantBillingProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      vars: UpdateTenantBillingProfileInput,
+    ): Promise<PutBillingProfileResponse> => {
+      const body: Record<string, unknown> = {
+        account_kind: vars.account_kind,
+      };
+      if (vars.legal_name !== undefined) body.legal_name = vars.legal_name;
+      if (vars.tax_code !== undefined) body.tax_code = vars.tax_code;
+      if (vars.address !== undefined) body.address = vars.address;
+      if (vars.invoice_email !== undefined) body.invoice_email = vars.invoice_email;
+
+      const res = await platformFetch(
+        `/tenants/${pathSegment(vars.tenantId)}/billing-profile`,
+        {
+          method: "PUT",
+          body,
+        },
+      );
+      return orMalformed(parsePutBillingProfileResponse(res));
+    },
+    onSuccess: (data, vars) => {
+      const { changed: _changed, ...profile } = data;
+      queryClient.setQueryData<BillingProfile>(
+        platformKeys.tenantBillingProfile(vars.tenantId),
+        profile,
       );
       return invalidateAll(queryClient, [
         platformKeys.tenant(vars.tenantId),

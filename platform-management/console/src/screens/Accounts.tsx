@@ -596,7 +596,14 @@ export function Accounts({ userRole }: AccountsProps) {
                 return (
                   <TableRow key={req.id}>
                     <TableCell>
-                      <AccountStateBadge req={req} />
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <AccountStateBadge req={req} />
+                        {req.logged_in === false && (
+                          <Badge variant="outline" className="text-muted-foreground">
+                            Never logged in
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="font-medium text-foreground">{req.email}</div>

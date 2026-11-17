@@ -204,3 +204,10 @@ GROUP BY pw.status;
 -- name: CountSignupsSince :one
 SELECT count(*)::bigint FROM "user"
 WHERE created_at >= $1;
+
+-- name: ListUserIDsWithLogin :many
+-- The users, among the ids given, with an auth.login audit row. The (actor_id,
+-- created_at) index serves the actor_id filter.
+SELECT DISTINCT actor_id::text AS user_id
+FROM audit_event
+WHERE action = 'auth.login' AND actor_id = ANY(sqlc.arg('user_ids')::text[]);

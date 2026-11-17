@@ -30,6 +30,7 @@ import {
   parseCancelPriceChangeResponse,
   parseBillingProfileVerifyResponse,
   parseBillingProfile,
+  parsePutBillingProfileResponse,
 } from "./schemas";
 
 const tenant = {
@@ -583,7 +584,16 @@ describe("account requests", () => {
       ...accountReq,
       user_id: "",
       workspace_id: "",
+      logged_in: null,
     });
+  });
+
+  it("parses logged_in as boolean or null and defaults absent logged_in to null", () => {
+    expect(parseAccountRequest({ ...accountReq, logged_in: false })?.logged_in).toBe(false);
+    expect(parseAccountRequest({ ...accountReq, logged_in: true })?.logged_in).toBe(true);
+    expect(parseAccountRequest({ ...accountReq, logged_in: null })?.logged_in).toBeNull();
+    expect(parseAccountRequest(accountReq)?.logged_in).toBeNull();
+    expect(parseAccountRequest({ ...accountReq, logged_in: "yes" })).toBeNull();
   });
 
   it("maps unknown kind, state, and interval to unknown", () => {
@@ -993,6 +1003,77 @@ describe("tenant billing profile (GET /tenants/{id}/billing-profile)", () => {
       { ...validBusiness, verified: null },
     ]) {
       expect(parseBillingProfile(bad)).toBeNull();
+    }
+  });
+});
+
+describe("put billing profile response (PUT /tenants/{id}/billing-profile)", () => {
+  const validPut = {
+    workspace_id: "ws-1",
+    account_kind: "business",
+    legal_name: "Acme Co",
+    tax_code: "0123456789",
+    address: "1 Main St",
+    invoice_email: "ap@acme.test",
+    verified: false,
+    verified_at: null,
+    changed: true,
+  };
+
+  it("parses a well-formed PUT response and strips unknown keys", () => {
+    expect(parsePutBillingProfileResponse({ ...validPut, extra_field: "ignored" })).toEqual(validPut);
+    expect(
+      parsePutBillingProfileResponse({
+        ...validPut,
+        verified: true,
+        verified_at: "2026-11-17T00:00:00Z",
+        changed: false,
+      }),
+    ).toEqual({
+      ...validPut,
+      verified: true,
+      verified_at: "2026-11-17T00:00:00Z",
+      changed: false,
+    });
+  });
+
+  it("defaults optional fields and maps unknown account_kind to unknown", () => {
+    expect(
+      parsePutBillingProfileResponse({
+        workspace_id: "ws-1",
+        account_kind: "enterprise",
+        verified: false,
+      }),
+    ).toEqual({
+      workspace_id: "ws-1",
+      account_kind: "unknown",
+      legal_name: "",
+      tax_code: "",
+      address: "",
+      invoice_email: "",
+      verified: false,
+      verified_at: null,
+      changed: false,
+    });
+  });
+
+  it("falls back to null on malformed PUT responses", () => {
+    for (const bad of [
+      null,
+      undefined,
+      "bad",
+      42,
+      [],
+      {},
+      { ...validPut, account_kind: 123 },
+      { ...validPut, account_kind: null },
+      { ...validPut, verified: undefined },
+      { ...validPut, verified: "no" },
+      { ...validPut, verified: null },
+      { ...validPut, changed: "yes" },
+      { ...validPut, changed: null },
+    ]) {
+      expect(parsePutBillingProfileResponse(bad)).toBeNull();
     }
   });
 });

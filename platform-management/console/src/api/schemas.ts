@@ -55,6 +55,7 @@ export const AUDIT_ACTIONS = [
   "billing.usage_written_off",
   "billing_profile.verified",
   "billing_profile.unverified",
+  "billing_profile.updated",
   "integration.connected",
   "integration.disconnected",
   "plugin.installed",
@@ -326,6 +327,11 @@ export const BillingProfileVerifyResponseSchema = z.object({
 });
 export type BillingProfileVerifyResponse = z.output<typeof BillingProfileVerifyResponseSchema>;
 
+export const PutBillingProfileResponseSchema = BillingProfileSchema.extend({
+  changed: z.boolean().default(false),
+});
+export type PutBillingProfileResponse = z.output<typeof PutBillingProfileResponseSchema>;
+
 export const TenantDetailSchema = TenantSchema.extend({
   state: TenantStateSchema.prefault({}),
   notes_count: count,
@@ -593,6 +599,15 @@ export function parseBillingProfileVerifyResponse(
   );
 }
 
+export function parsePutBillingProfileResponse(data: unknown): PutBillingProfileResponse | null {
+  return parseWithFallback<PutBillingProfileResponse | null>(
+    data,
+    PutBillingProfileResponseSchema,
+    null,
+    { endpoint: "PUT /api/platform/tenants/{id}/billing-profile" },
+  );
+}
+
 export function parseTenantUsage(data: unknown): TenantUsage | null {
   return parseWithFallback<TenantUsage | null>(data, TenantUsageSchema, null, {
     endpoint: "GET /api/platform/tenants/{id}/usage",
@@ -671,6 +686,7 @@ export const AccountRequestSchema = z.object({
   completed_at: nullableText,
   welcome_sent_at: nullableText,
   welcome_attempts: count,
+  logged_in: z.boolean().nullable().default(null),
 });
 export type AccountRequest = z.output<typeof AccountRequestSchema>;
 

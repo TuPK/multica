@@ -76,6 +76,7 @@ type Deps struct {
 	Notifier   AccountNotifier
 	Payments   PaymentApplier
 	Accounts   AccountRequests
+	Logins     LoginLookup
 	Emails     EmailLookup
 	// Mailer may be nil when no email provider is configured; a reset then
 	// sends no notice.

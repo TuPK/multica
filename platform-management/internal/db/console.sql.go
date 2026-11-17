@@ -329,6 +329,34 @@ func (q *Queries) ListAllAuditEvents(ctx context.Context, arg ListAllAuditEvents
 	return items, nil
 }
 
+const listUserIDsWithLogin = `-- name: ListUserIDsWithLogin :many
+SELECT DISTINCT actor_id::text AS user_id
+FROM audit_event
+WHERE action = 'auth.login' AND actor_id = ANY($1::text[])
+`
+
+// The users, among the ids given, with an auth.login audit row. The (actor_id,
+// created_at) index serves the actor_id filter.
+func (q *Queries) ListUserIDsWithLogin(ctx context.Context, userIds []string) ([]string, error) {
+	rows, err := q.db.Query(ctx, listUserIDsWithLogin, userIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var user_id string
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUserMemberships = `-- name: ListUserMemberships :many
 SELECT w.id AS workspace_id, w.name AS workspace_name, m.role
 FROM member m

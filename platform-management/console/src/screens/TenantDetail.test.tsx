@@ -15,6 +15,8 @@ const mockAddTenantNoteMutateAsync = vi.fn();
 const mockUpdateSubscriptionMutateAsync = vi.fn();
 const mockCancelOrderMutateAsync = vi.fn();
 const mockSetBillingProfileVerifiedMutateAsync = vi.fn();
+const mockUpdateTenantBillingProfileMutateAsync = vi.fn();
+let mockUpdateBillingProfileIsPending = false;
 
 vi.mock("../api/hooks", () => ({
   useMe: () => mockUseMe(),
@@ -42,6 +44,10 @@ vi.mock("../api/hooks", () => ({
   useSetBillingProfileVerified: () => ({
     mutateAsync: mockSetBillingProfileVerifiedMutateAsync,
     isPending: false,
+  }),
+  useUpdateTenantBillingProfile: () => ({
+    mutateAsync: mockUpdateTenantBillingProfileMutateAsync,
+    isPending: mockUpdateBillingProfileIsPending,
   }),
 }));
 
@@ -111,6 +117,7 @@ const mockTenantData = {
 describe("TenantDetail screen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUpdateBillingProfileIsPending = false;
     mockUseMe.mockReturnValue({ data: undefined });
     mockUseTenant.mockReturnValue({
       data: mockTenantData,
@@ -751,6 +758,234 @@ describe("TenantDetail screen", () => {
         expect(within(card).getByText("Unverified")).toBeInTheDocument();
       });
       expect(within(card).getByRole("button", { name: "Verify" })).toBeInTheDocument();
+    });
+  });
+
+  describe("billing profile editing", () => {
+    function getBillingProfileCard(): HTMLElement {
+      const heading = screen.getByRole("heading", { name: "Billing profile" });
+      return heading.closest<HTMLElement>("[data-slot='card']") ?? heading.parentElement!.parentElement!;
+    }
+
+    it("hides the Edit button for support and shows it for billing and admin", () => {
+      const { unmount } = render(<TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="support" />);
+      expect(within(getBillingProfileCard()).queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+      unmount();
+
+      for (const role of ["billing", "admin"] as const) {
+        const view = render(<TenantDetail tenantId="t-123" onBack={vi.fn()} userRole={role} />);
+        expect(within(getBillingProfileCard()).getByRole("button", { name: "Edit" })).toBeInTheDocument();
+        view.unmount();
+      }
+    });
+
+    it("opens prefilled form, discards on Cancel, submits PUT on Save, and refreshes view", async () => {
+      mockUseTenantBillingProfile.mockReturnValue({
+        data: {
+          workspace_id: "t-123",
+          account_kind: "business",
+          legal_name: "Acme Corp",
+          tax_code: "0101234567",
+          address: "123 Street",
+          invoice_email: "acme@example.com",
+          verified: false,
+          verified_at: null,
+        },
+        isLoading: false,
+        isError: false,
+      });
+      mockUpdateTenantBillingProfileMutateAsync.mockResolvedValueOnce({
+        workspace_id: "t-123",
+        account_kind: "business",
+        legal_name: "Acme Holdings",
+        tax_code: "0101234567",
+        address: "456 Avenue",
+        invoice_email: "billing@acme.test",
+        verified: false,
+        verified_at: null,
+        changed: true,
+      });
+
+      render(<TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="billing" />);
+
+      const card = getBillingProfileCard();
+      fireEvent.click(within(card).getByRole("button", { name: "Edit" }));
+
+      const dialog = screen.getByRole("dialog");
+      expect(within(dialog).getByLabelText(/Account kind/i)).toHaveValue("business");
+      expect(within(dialog).getByLabelText(/Legal name/i)).toHaveValue("Acme Corp");
+      expect(within(dialog).getByLabelText(/Tax code/i)).toHaveValue("0101234567");
+      expect(within(dialog).getByLabelText(/^Address$/i)).toHaveValue("123 Street");
+      expect(within(dialog).getByLabelText(/Invoice email/i)).toHaveValue("acme@example.com");
+
+      fireEvent.change(within(dialog).getByLabelText(/Legal name/i), { target: { value: "Discarded Name" } });
+      fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+      expect(mockUpdateTenantBillingProfileMutateAsync).not.toHaveBeenCalled();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(within(card).getByText("Acme Corp")).toBeInTheDocument();
+
+      fireEvent.click(within(card).getByRole("button", { name: "Edit" }));
+      const dialog2 = screen.getByRole("dialog");
+      expect(within(dialog2).getByLabelText(/Legal name/i)).toHaveValue("Acme Corp");
+
+      fireEvent.change(within(dialog2).getByLabelText(/Legal name/i), { target: { value: "Acme Holdings" } });
+      fireEvent.change(within(dialog2).getByLabelText(/^Address$/i), { target: { value: "456 Avenue" } });
+      fireEvent.change(within(dialog2).getByLabelText(/Invoice email/i), { target: { value: "billing@acme.test" } });
+
+      fireEvent.click(within(dialog2).getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(mockUpdateTenantBillingProfileMutateAsync).toHaveBeenCalledWith({
+          tenantId: "t-123",
+          account_kind: "business",
+          legal_name: "Acme Holdings",
+          tax_code: "0101234567",
+          address: "456 Avenue",
+          invoice_email: "billing@acme.test",
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
+      expect(within(card).getByText("Acme Holdings")).toBeInTheDocument();
+      expect(within(card).getByText("456 Avenue")).toBeInTheDocument();
+      expect(within(card).getByText("billing@acme.test")).toBeInTheDocument();
+    });
+
+    it("shows missing field errors on 409 billing_profile_incomplete and disables Save while pending", async () => {
+      mockUpdateTenantBillingProfileMutateAsync.mockRejectedValueOnce(
+        new PlatformApiError(409, "billing_profile_incomplete", "billing profile is incomplete", {
+          fields: ["legal_name", "tax_code", "address", "invoice_email"],
+        }),
+      );
+
+      const { rerender } = render(<TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="admin" />);
+      fireEvent.click(within(getBillingProfileCard()).getByRole("button", { name: "Edit" }));
+
+      const dialog = screen.getByRole("dialog");
+      fireEvent.change(within(dialog).getByLabelText(/Account kind/i), { target: { value: "business" } });
+      fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(within(dialog).getByLabelText(/Legal name/i)).toHaveAttribute("aria-invalid", "true");
+        expect(within(dialog).getByLabelText(/Tax code/i)).toHaveAttribute("aria-invalid", "true");
+        expect(within(dialog).getByLabelText(/^Address$/i)).toHaveAttribute("aria-invalid", "true");
+        expect(within(dialog).getByLabelText(/Invoice email/i)).toHaveAttribute("aria-invalid", "true");
+      });
+      expect(within(dialog).getByText(/Legal name is required/i)).toBeInTheDocument();
+      expect(within(dialog).getByText(/Tax code is required/i)).toBeInTheDocument();
+      expect(within(dialog).getByText(/Address is required/i)).toBeInTheDocument();
+      expect(within(dialog).getByText(/Invoice email is required/i)).toBeInTheDocument();
+
+      // Editing clears that field's error
+      fireEvent.change(within(dialog).getByLabelText(/Tax code/i), { target: { value: "0101234567" } });
+      expect(within(dialog).getByLabelText(/Tax code/i)).toHaveAttribute("aria-invalid", "false");
+      expect(within(dialog).queryByText(/Tax code is required/i)).not.toBeInTheDocument();
+
+      mockUpdateBillingProfileIsPending = true;
+      rerender(<TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="admin" />);
+      expect(within(screen.getByRole("dialog")).getByRole("button", { name: "Save" })).toBeDisabled();
+    });
+
+    it("shows invalid field errors on 400 billing_profile_invalid and message on 409 plan_audience_mismatch", async () => {
+      mockUpdateTenantBillingProfileMutateAsync
+        .mockRejectedValueOnce(
+          new PlatformApiError(400, "billing_profile_invalid", "invalid billing profile", {
+            fields: ["tax_code"],
+          }),
+        )
+        .mockRejectedValueOnce(
+          new PlatformApiError(
+            409,
+            "plan_audience_mismatch",
+            "current plan is only available for business accounts",
+          ),
+        );
+
+      render(<TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="admin" />);
+      fireEvent.click(within(getBillingProfileCard()).getByRole("button", { name: "Edit" }));
+
+      const dialog = screen.getByRole("dialog");
+      fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(within(dialog).getByLabelText(/Tax code/i)).toHaveAttribute("aria-invalid", "true");
+      });
+      expect(within(dialog).getByLabelText(/Legal name/i)).toHaveAttribute("aria-invalid", "false");
+      expect(within(dialog).getByText(/10-digit/i)).toBeInTheDocument();
+
+      fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(within(dialog).getByRole("alert")).toHaveTextContent(
+          /current plan is only available for business accounts/i,
+        );
+      });
+    });
+
+    it("saving a legal_name change clears Verified to Unverified and restores Verify control", async () => {
+      mockUseTenantBillingProfile.mockReturnValue({
+        data: {
+          workspace_id: "t-123",
+          account_kind: "business",
+          legal_name: "Acme Corp",
+          tax_code: "0101234567",
+          address: "123 Street",
+          invoice_email: "acme@example.com",
+          verified: true,
+          verified_at: "2026-11-17T09:30:00Z",
+        },
+        isLoading: false,
+        isError: false,
+      });
+      mockUpdateTenantBillingProfileMutateAsync.mockResolvedValueOnce({
+        workspace_id: "t-123",
+        account_kind: "business",
+        legal_name: "Renamed Corp",
+        tax_code: "0101234567",
+        address: "123 Street",
+        invoice_email: "acme@example.com",
+        verified: false,
+        verified_at: null,
+        changed: true,
+      });
+
+      render(<TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="admin" />);
+      const card = getBillingProfileCard();
+      expect(within(card).getByText("Verified")).toBeInTheDocument();
+      expect(within(card).getByRole("button", { name: "Unverify" })).toBeInTheDocument();
+
+      fireEvent.click(within(card).getByRole("button", { name: "Edit" }));
+      const dialog = screen.getByRole("dialog");
+      fireEvent.change(within(dialog).getByLabelText(/Legal name/i), { target: { value: "Renamed Corp" } });
+      fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
+      expect(within(card).getByText("Renamed Corp")).toBeInTheDocument();
+      expect(within(card).getByText("Unverified")).toBeInTheDocument();
+      expect(within(card).getByRole("button", { name: "Verify" })).toBeInTheDocument();
+    });
+
+    it("shows non-field errors (like malformed_response or plan_audience_mismatch) without crashing", async () => {
+      mockUpdateTenantBillingProfileMutateAsync.mockRejectedValueOnce(
+        new PlatformApiError(200, "malformed_response", "The server answered with data the console cannot read"),
+      );
+
+      render(<TenantDetail tenantId="t-123" onBack={vi.fn()} userRole="billing" />);
+      fireEvent.click(within(getBillingProfileCard()).getByRole("button", { name: "Edit" }));
+
+      const dialog = screen.getByRole("dialog");
+      fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(within(dialog).getByRole("alert")).toHaveTextContent(
+          /The server answered with data the console cannot read/i,
+        );
+      });
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
     });
   });
 });

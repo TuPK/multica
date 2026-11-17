@@ -26,6 +26,13 @@ type AccountRequests interface {
 	Get(ctx context.Context, id string) (r accountrequest.Request, found bool, err error)
 }
 
+// LoginLookup tells which users have ever signed in (an auth.login audit row).
+// *PgxLogins is one.
+type LoginLookup interface {
+	// UsersWithLogin returns the ids, among userIDs, that have signed in.
+	UsersWithLogin(ctx context.Context, userIDs []string) (map[string]bool, error)
+}
+
 // accountRequestJSON is a request as the console shows it. It leaves out the
 // billing profile: it is a third party's data, kept only until the platform has
 // written the workspace's profile.
@@ -52,6 +59,9 @@ type accountRequestJSON struct {
 	CompletedAt     *string `json:"completed_at"`
 	WelcomeSentAt   *string `json:"welcome_sent_at"`
 	WelcomeAttempts int     `json:"welcome_attempts"`
+	// LoggedIn is null while the request has no user, then whether the user has
+	// an auth.login audit row. False is the "never logged in" indicator.
+	LoggedIn *bool `json:"logged_in"`
 }
 
 func toAccountRequestJSON(r accountrequest.Request) accountRequestJSON {
@@ -70,6 +80,44 @@ func toAccountRequestJSON(r accountrequest.Request) accountRequestJSON {
 		CreatedAt: r.CreatedAt.UTC().Format(time.RFC3339), UpdatedAt: r.UpdatedAt.UTC().Format(time.RFC3339),
 		CompletedAt: ts(r.CompletedAt), WelcomeSentAt: ts(r.WelcomeSentAt), WelcomeAttempts: r.WelcomeAttempts,
 	}
+}
+
+// accountRequestsJSON renders requests with their logged_in indicator, from one
+// lookup for all of them.
+func (h *Handler) accountRequestsJSON(ctx context.Context, rows []accountrequest.Request) ([]accountRequestJSON, error) {
+	var ids []string
+	for _, r := range rows {
+		if r.UserID != "" {
+			ids = append(ids, r.UserID)
+		}
+	}
+	var seen map[string]bool
+	if len(ids) > 0 {
+		var err error
+		if seen, err = h.Logins.UsersWithLogin(ctx, ids); err != nil {
+			return nil, err
+		}
+	}
+	out := make([]accountRequestJSON, 0, len(rows))
+	for _, r := range rows {
+		j := toAccountRequestJSON(r)
+		if r.UserID != "" {
+			in := seen[r.UserID]
+			j.LoggedIn = &in
+		}
+		out = append(out, j)
+	}
+	return out, nil
+}
+
+// writeAccountRequest answers status with one request.
+func (h *Handler) writeAccountRequest(w http.ResponseWriter, r *http.Request, status int, req accountrequest.Request) {
+	out, err := h.accountRequestsJSON(r.Context(), []accountrequest.Request{req})
+	if err != nil {
+		h.fail(w, r, "look up account logins", err)
+		return
+	}
+	writeJSON(w, status, out[0])
 }
 
 // failAccount answers a service refusal with its status and code, an unknown
@@ -126,7 +174,7 @@ func (h *Handler) createAccountRequest(w http.ResponseWriter, r *http.Request) {
 	if created {
 		status = http.StatusAccepted
 	}
-	writeJSON(w, status, toAccountRequestJSON(req))
+	h.writeAccountRequest(w, r, status, req)
 }
 
 func (h *Handler) listAccountRequests(w http.ResponseWriter, r *http.Request) {
@@ -154,9 +202,10 @@ func (h *Handler) listAccountRequests(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, "list account requests", err)
 		return
 	}
-	out := make([]accountRequestJSON, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, toAccountRequestJSON(row))
+	out, err := h.accountRequestsJSON(r.Context(), rows)
+	if err != nil {
+		h.fail(w, r, "look up account logins", err)
+		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"requests": out})
 }
@@ -176,7 +225,7 @@ func (h *Handler) getAccountRequest(w http.ResponseWriter, r *http.Request) {
 		writeError(w, notFound())
 		return
 	}
-	writeJSON(w, http.StatusOK, toAccountRequestJSON(req))
+	h.writeAccountRequest(w, r, http.StatusOK, req)
 }
 
 func (h *Handler) cancelAccountRequest(w http.ResponseWriter, r *http.Request) {
@@ -195,7 +244,7 @@ func (h *Handler) cancelAccountRequest(w http.ResponseWriter, r *http.Request) {
 		h.failAccount(w, r, "cancel account request", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, toAccountRequestJSON(req))
+	h.writeAccountRequest(w, r, http.StatusOK, req)
 }
 
 // resendWelcome sends the welcome email again, in the request of the staff
@@ -216,5 +265,5 @@ func (h *Handler) resendWelcome(w http.ResponseWriter, r *http.Request) {
 		h.failAccount(w, r, "resend welcome", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, toAccountRequestJSON(req))
+	h.writeAccountRequest(w, r, http.StatusOK, req)
 }
