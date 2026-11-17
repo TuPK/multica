@@ -112,8 +112,18 @@ type Price struct {
 	Max int64
 }
 
+// Payments holds the payment provider settings (spec 7.2).
+type Payments struct {
+	// Registry maps each currency to its provider, from PAYMENT_PROVIDERS and
+	// PAYMENT_WEBHOOK_SECRET_<NAME>.
+	Registry *billing.Registry
+	// WebhookPort is PLATFORM_WEBHOOK_PORT; empty means the webhook listener is off.
+	WebhookPort string
+}
+
 type Config struct {
 	Billing       Billing
+	Payments      Payments
 	Price         Price
 	DatabaseURL   string
 	RedisURL      string
@@ -272,6 +282,7 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 
 	cfg.Billing = loadBilling(get, fail)
+	cfg.Payments = loadPayments(get, getenv, fail, cfg.Billing.Bank, cfg.APIPort, cfg.ConsolePort)
 
 	cfg.APIRateCeiling = plan.DefaultAPIRateCeiling
 	if raw := get("PLATFORM_API_RATE_CEILING"); raw != "" {
@@ -364,6 +375,35 @@ func loadBilling(get func(string) string, fail func(variable, reason string)) Bi
 		BankName:      get("BILLING_BANK_NAME"),
 	}
 	return b
+}
+
+// loadPayments reads the payment providers and the webhook port. A provider
+// that needs a webhook secret refuses the start when the secret is missing, and
+// the platform must have a provider for vnd, the only currency this release bills.
+func loadPayments(get func(string) string, getenv func(string) string, fail func(variable, reason string), bank billing.BankDetails, apiPort, consolePort string) Payments {
+	secret := func(provider string) string {
+		return strings.TrimSpace(getenv("PAYMENT_WEBHOOK_SECRET_" + strings.ToUpper(provider)))
+	}
+	p := Payments{}
+	registry, err := billing.NewRegistry(getenv("PAYMENT_PROVIDERS"), bank, secret)
+	if err != nil {
+		fail("PAYMENT_PROVIDERS", err.Error())
+	} else if _, _, err := registry.ForCurrency("vnd"); err != nil {
+		fail("PAYMENT_PROVIDERS", "must list a provider for vnd")
+	} else {
+		p.Registry = registry
+	}
+	if raw := get("PLATFORM_WEBHOOK_PORT"); raw != "" {
+		switch {
+		case !validPort(raw):
+			fail("PLATFORM_WEBHOOK_PORT", "must be a port number from 1 to 65535")
+		case raw == apiPort || raw == consolePort:
+			fail("PLATFORM_WEBHOOK_PORT", "must differ from PLATFORM_API_PORT and PLATFORM_CONSOLE_PORT")
+		default:
+			p.WebhookPort = raw
+		}
+	}
+	return p
 }
 
 // loadEmail reads the email provider. With noProviderOK (a dev code is set) an

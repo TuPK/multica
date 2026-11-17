@@ -210,10 +210,14 @@ func run() error {
 	routes = append(routes,
 		server.Route{Pattern: subscription.ProfilePattern, Handler: billingProfile},
 		server.Route{Pattern: subscription.ProfileReadPattern, Handler: billingProfile})
-	// Orders are created here and confirmed by staff in the console; the manual
-	// provider is the only one in this release.
+	// New orders take the name of the vnd provider. Confirmation by the webhook
+	// is wired in P42.4 and P42.5; until then staff confirm them in the console.
+	_, vndProvider, err := cfg.Payments.Registry.ForCurrency("vnd")
+	if err != nil {
+		return err
+	}
 	orders, err := billing.New(billing.Deps{
-		Runner: billing.NewPgxRunner(pool), Provider: billing.ProviderManual,
+		Runner: billing.NewPgxRunner(pool), Provider: vndProvider,
 		Workspaces: workspacestate.New(nil, accountCache), Entitlements: policy, Log: slog.Default(),
 	})
 	if err != nil {

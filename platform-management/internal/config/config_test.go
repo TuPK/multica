@@ -894,3 +894,61 @@ func TestInvalidPriceSettingsStopTheStart(t *testing.T) {
 		t.Errorf("CONFIRM_PCT=101: variables = %v", vars)
 	}
 }
+
+const testSePaySecret = "test-secret-not-real"
+
+func TestPaymentsDefaultToManualWithNoWebhook(t *testing.T) {
+	cfg, err := load(resendEnv())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Payments.WebhookPort != "" {
+		t.Errorf("WebhookPort = %q, want empty (listener off)", cfg.Payments.WebhookPort)
+	}
+	_, name, err := cfg.Payments.Registry.ForCurrency("vnd")
+	if err != nil || name != billing.ProviderManual {
+		t.Errorf("vnd provider = %q, %v; want %q", name, err, billing.ProviderManual)
+	}
+}
+
+func TestRejectsAutoProviderWithoutSecret(t *testing.T) {
+	env := resendEnv()
+	env["PAYMENT_PROVIDERS"] = "vnd=sepay"
+	if vars := variables(func() error { _, err := load(env); return err }()); len(vars) != 1 || vars[0] != "PAYMENT_PROVIDERS" {
+		t.Fatalf("no secret: variables = %v, want [PAYMENT_PROVIDERS]", vars)
+	}
+	env["PAYMENT_WEBHOOK_SECRET_SEPAY"] = testSePaySecret
+	cfg, err := load(env)
+	if err != nil {
+		t.Fatalf("with the secret set: %v", err)
+	}
+	if _, name, _ := cfg.Payments.Registry.ForCurrency("vnd"); name != billing.ProviderSePay {
+		t.Errorf("vnd provider = %q, want %q", name, billing.ProviderSePay)
+	}
+}
+
+func TestRejectsPaymentsWithoutVND(t *testing.T) {
+	env := resendEnv()
+	env["PAYMENT_PROVIDERS"] = "usd=manual"
+	if vars := variables(func() error { _, err := load(env); return err }()); len(vars) != 1 || vars[0] != "PAYMENT_PROVIDERS" {
+		t.Errorf("variables = %v, want [PAYMENT_PROVIDERS]", vars)
+	}
+}
+
+func TestWebhookPortIsReadAndChecked(t *testing.T) {
+	env := resendEnv()
+	env["PLATFORM_WEBHOOK_PORT"] = "8096"
+	cfg, err := load(env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Payments.WebhookPort != "8096" {
+		t.Errorf("WebhookPort = %q, want 8096", cfg.Payments.WebhookPort)
+	}
+	for _, clash := range []string{"8095", "30001"} {
+		env["PLATFORM_WEBHOOK_PORT"] = clash
+		if vars := variables(func() error { _, err := load(env); return err }()); len(vars) != 1 || vars[0] != "PLATFORM_WEBHOOK_PORT" {
+			t.Errorf("port %s: variables = %v, want [PLATFORM_WEBHOOK_PORT]", clash, vars)
+		}
+	}
+}
