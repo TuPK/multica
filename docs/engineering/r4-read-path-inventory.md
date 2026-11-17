@@ -442,7 +442,7 @@ Grouped by file; a function appears once per file.
 | File | Function | Kind | Status | Note |
 | --- | --- | --- | --- | --- |
 | `server/internal/handler/issue.go` | `Handler.ListGroupedIssues` | raw-sql | scoped | Inline SQL reads issue or project; no visibility filter today |
-| `server/internal/handler/issue.go` | `buildSearchQuery` | raw-sql | scoped | scopeCondition on the issue_matches CTE; comments reach the result only through it; test TestRestrictedIssueListsOmitHidden |
+| `server/internal/handler/issue.go` | `buildSearchQuery` | raw-sql | scoped | scopeCondition on the issue_matches CTE; comments reach the result only through it; tests TestRestrictedIssueListsOmitHidden, TestRestrictedSearchIssuesOmitsHidden, TestRestrictedSearchCountsOmitHidden |
 | `server/internal/handler/issue_move.go` | `Handler.issueMoveAnchorPosition` | raw-sql | scoped | The anchor query carries scopeCondition, so a hidden anchor answers like a missing one; test TestRestrictedIssueWritesAnswerMissing (move anchor) |
 | `server/internal/handler/issue_table_advanced.go` | `issueTableFilterCompiler.fieldPredicate` | raw-sql | scoped | Predicate is AND-ed onto the scopeCondition that compileIssueTableQuery puts first, so it sees visible rows only; tests TestRestrictedIssueListsOmitHidden |
 | `server/internal/handler/issue_table_facets.go` | `Handler.ListIssueTableFacets` | raw-sql | scoped | Counts run on compileIssueTableQuery output, which carries scopeCondition; test TestRestrictedIssueListsOmitHidden |
@@ -498,7 +498,7 @@ Readers the scanner cannot see. The test checks only that Status is a known valu
 | `server/cmd/server/listeners.go` | registerListeners | manual | todo | Issue events go to ScopeWorkspace, so every workspace member receives them |
 | `server/cmd/server` | other `*listeners.go` files | manual | todo | Activity, subscriber, notification, brief and unread listeners read issue data on events |
 | `server/internal/realtime` | broadcaster.go and redis_relay.go fan-out | manual | todo | Workspace-wide rooms; no per-person audience for issue events |
-| `server/internal/handler/search.go` | server-side search | manual | scoped | SearchIssues and SearchProjects apply the Scope (scopeCondition); test TestSearchServerSideOmitsHidden |
+| `server/internal/handler/search.go` | server-side search | manual | scoped | SearchIssues and SearchProjects apply the Scope (scopeCondition); tests TestSearchServerSideOmitsHidden, TestRestrictedSearchIssuesOmitsHidden, TestRestrictedSearchCountsOmitHidden |
 | `server/internal/handler/search_index.go` | manifest, snapshot, changes | manual | todo | Client index sync covers the whole workspace |
 | `server/pkg/db/queries/search_index.sql` | search index queries | manual | todo | Queries behind the index sync |
 | `packages/core/search-index` | client search index | manual | todo | Local copy of workspace issues; cannot revoke single rows |
