@@ -225,6 +225,8 @@ func run() error {
 		return err
 	}
 
+	reconciler := billing.NewReconciler(orders, billing.NewPgxReconcileStore(pool))
+
 	// Step 3 of an account request and its welcome (spec 7b.5). With no email
 	// provider the job still finishes the accounts and sends no welcome.
 	accountFinalizer, err := accountrequest.NewFinalizer(accountrequest.FinalizerDeps{
@@ -400,7 +402,7 @@ func run() error {
 	}
 	if webhookLn != nil {
 		listeners = append(listeners, server.Listener{Name: "webhook", Listener: webhookLn, Handler: billing.NewWebhookHandler(billing.WebhookDeps{
-			Registry: cfg.Payments.Registry, Notices: paymentnotice.NewPgxStore(pool), Log: slog.Default(),
+			Registry: cfg.Payments.Registry, Notices: paymentnotice.NewPgxStore(pool), Reconciler: reconciler, Log: slog.Default(),
 		})})
 	}
 	err = server.Serve(ctx, shutdownGrace, listeners...)

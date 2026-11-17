@@ -23,15 +23,22 @@ type NoticeStore interface {
 	Transition(ctx context.Context, c paymentnotice.Change) error
 }
 
+// NoticeReconciler applies a stored notice to its order. It is a no-op for a notice
+// that is no longer in state received.
+type NoticeReconciler interface {
+	Reconcile(ctx context.Context, noticeID string) (paymentnotice.Notice, error)
+}
+
 type WebhookDeps struct {
-	Registry *Registry
-	Notices  NoticeStore
-	MaxBytes int64 // 0 means DefaultWebhookMaxBytes
-	Log      *slog.Logger
+	Registry   *Registry
+	Notices    NoticeStore
+	Reconciler NoticeReconciler // required
+	MaxBytes   int64            // 0 means DefaultWebhookMaxBytes
+	Log        *slog.Logger
 }
 
 // NewWebhookHandler serves POST /api/payments/webhook/{provider} and answers
-// 404 to everything else. It records the notice and applies nothing.
+// 404 to everything else. It records the notice, then hands it to the reconciler.
 func NewWebhookHandler(d WebhookDeps) http.Handler {
 	if d.MaxBytes <= 0 {
 		d.MaxBytes = DefaultWebhookMaxBytes
@@ -86,7 +93,7 @@ func (h *webhook) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, inserted, err := h.Notices.Insert(r.Context(), paymentnotice.NewNotice{
+	stored, inserted, err := h.Notices.Insert(r.Context(), paymentnotice.NewNotice{
 		Provider: name, ProviderEventID: n.EventID, TransferCode: n.TransferCode,
 		Amount: n.Amount, Currency: n.Currency, BodySHA256: bodyHash,
 	})
@@ -97,6 +104,12 @@ func (h *webhook) serve(w http.ResponseWriter, r *http.Request) {
 	outcome := "stored"
 	if !inserted {
 		outcome = "duplicate"
+	}
+	// Write first, apply after. A duplicate is reconciled too: it is how a
+	// notice left in received by a crashed run is picked up. The row is stored,
+	// so a failure here keeps the 200; the redrive job finishes the notice.
+	if _, err := h.Reconciler.Reconcile(r.Context(), stored.ID); err != nil {
+		h.Log.Error("payment webhook reconcile failed", "provider", name, "notice_id", stored.ID, "error", err)
 	}
 	h.done(w, name, http.StatusOK, outcome, `{"success":true}`)
 }
