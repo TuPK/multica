@@ -1,8 +1,10 @@
 // Package accountrequest holds the account requests of spec 7b.5: an admin asks
 // for an account to be created for a person. This package checks the input,
 // stores the request as pending, counts the staff member's requests and cancels
-// a pending one. Multica's job creates the user and workspace, and the
-// platform's later job finishes the subscription; neither is here.
+// a pending one. Multica's job then creates the user and workspace; the
+// platform's finalize job (Finalizer) writes the billing profile, the
+// subscription and the zero-amount grant order, and sends the welcome email,
+// which staff can send again.
 package accountrequest
 
 import (
@@ -42,7 +44,15 @@ const (
 	CodeNotCancelable    = "account_request_not_cancelable"
 	CodeRateLimited      = "account_create_rate_limited"
 	CodeAudienceMismatch = "plan_audience_mismatch"
+
+	CodeNotResendable      = "account_request_not_resendable"
+	CodeWelcomeRateLimited = "welcome_resend_rate_limited"
+	CodeWelcomeSendFailed  = "welcome_send_failed"
 )
+
+// ErrorCodeFinalizeFailed is the error_code of a request whose step 3 failed
+// after Multica had created the user and the workspace (spec 7b.5, rule 7).
+const ErrorCodeFinalizeFailed = "finalize_failed"
 
 // BillingProfile is the buyer's identity a business account needs (spec 7b.1,
 // rule 3). The request keeps it until the platform has written the workspace's

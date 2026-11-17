@@ -12,7 +12,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/platform-management/audit"
+	"github.com/multica-ai/multica/platform-management/internal/billing"
 	"github.com/multica-ai/multica/platform-management/internal/db"
+	"github.com/multica-ai/multica/platform-management/internal/subscription"
 )
 
 // Beginner starts a transaction. *pgxpool.Pool is one.
@@ -220,4 +222,181 @@ func uuidText(u pgtype.UUID) string {
 	b := u.Bytes
 	h := fmt.Sprintf("%x", b)
 	return strings.Join([]string{h[0:8], h[8:12], h[12:16], h[16:20], h[20:32]}, "-")
+}
+
+// PgxFinalizeStore is the FinalizeStore over a Postgres pool.
+type PgxFinalizeStore struct {
+	pool interface {
+		Beginner
+		db.DBTX
+	}
+}
+
+// NewPgxFinalizeStore returns a FinalizeStore that opens one transaction per call.
+func NewPgxFinalizeStore(pool interface {
+	Beginner
+	db.DBTX
+}) *PgxFinalizeStore {
+	return &PgxFinalizeStore{pool: pool}
+}
+
+// InTx implements FinalizeStore.
+func (s *PgxFinalizeStore) InTx(ctx context.Context, fn func(FinalizeTx) error) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }() // a no-op once committed
+	if err := fn(&pgxFinalizeTx{pgxTx: pgxTx{q: db.New(tx)}, bill: billing.NewTx(tx), sub: subscription.NewTx(tx), prof: subscription.NewProfileTx(tx)}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// ListProvisioned implements FinalizeStore.
+func (s *PgxFinalizeStore) ListProvisioned(ctx context.Context, limit int) ([]string, error) {
+	ids, err := db.New(s.pool).ListProvisionedAccountRequestIDs(ctx, int32(limit))
+	if err != nil {
+		return nil, fmt.Errorf("list provisioned account requests: %w", err)
+	}
+	return uuidTexts(ids), nil
+}
+
+// ListWelcomeDue implements FinalizeStore.
+func (s *PgxFinalizeStore) ListWelcomeDue(ctx context.Context, limit, maxAttempts int) ([]string, error) {
+	ids, err := db.New(s.pool).ListWelcomeDueAccountRequestIDs(ctx, db.ListWelcomeDueAccountRequestIDsParams{
+		MaxAttempts: int32(maxAttempts), RowLimit: int32(limit),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list account requests due a welcome: %w", err)
+	}
+	return uuidTexts(ids), nil
+}
+
+func uuidTexts(ids []pgtype.UUID) []string {
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, uuidText(id))
+	}
+	return out
+}
+
+// pgxFinalizeTx writes the request rows itself and delegates the order,
+// subscription and profile writes to the billing and subscription transactions
+// over the same pgx transaction.
+type pgxFinalizeTx struct {
+	pgxTx
+	bill billing.Tx
+	sub  subscription.Tx
+	prof subscription.ProfileTx
+}
+
+func (t *pgxFinalizeTx) LockProvisioned(ctx context.Context, id string) (Request, bool, error) {
+	u, err := parseUUID(id)
+	if err != nil {
+		return Request{}, false, err
+	}
+	row, err := t.q.LockProvisionedAccountRequest(ctx, u)
+	return one(row, err)
+}
+
+func (t *pgxFinalizeTx) LockWelcomeDue(ctx context.Context, id string, maxAttempts int) (Request, bool, error) {
+	u, err := parseUUID(id)
+	if err != nil {
+		return Request{}, false, err
+	}
+	row, err := t.q.LockWelcomeDueAccountRequest(ctx, db.LockWelcomeDueAccountRequestParams{ID: u, MaxAttempts: int32(maxAttempts)})
+	return one(row, err)
+}
+
+func (t *pgxFinalizeTx) LockRequest(ctx context.Context, id string) (Request, bool, error) {
+	return t.Lock(ctx, id)
+}
+
+func (t *pgxFinalizeTx) StaffEmail(ctx context.Context, userID string) (string, error) {
+	u, err := parseUUID(userID)
+	if err != nil {
+		return "", err
+	}
+	email, err := t.q.GetUserEmailByID(ctx, u)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+	return email, err
+}
+
+func (t *pgxFinalizeTx) SaveProfile(ctx context.Context, p subscription.BillingProfile) error {
+	if _, _, err := t.prof.LockedProfile(ctx, p.WorkspaceID); err != nil {
+		return err
+	}
+	return t.prof.SaveProfile(ctx, p)
+}
+
+func (t *pgxFinalizeTx) LockSubscription(ctx context.Context, ws string) (subscription.Subscription, bool, error) {
+	return t.sub.Get(ctx, ws)
+}
+
+func (t *pgxFinalizeTx) InsertSubscription(ctx context.Context, s subscription.Subscription) (subscription.Subscription, bool, error) {
+	return t.sub.Insert(ctx, s)
+}
+
+func (t *pgxFinalizeTx) UpdateSubscription(ctx context.Context, s subscription.Subscription) (subscription.Subscription, error) {
+	return t.sub.Update(ctx, s)
+}
+
+func (t *pgxFinalizeTx) InsertOrder(ctx context.Context, n billing.NewOrder) (billing.Order, bool, error) {
+	return t.bill.InsertOrder(ctx, n)
+}
+
+func (t *pgxFinalizeTx) MarkOrderPaid(ctx context.Context, id, confirmedBy string, paidAt time.Time) (billing.Order, error) {
+	return t.bill.MarkPaid(ctx, id, confirmedBy, paidAt)
+}
+
+func (t *pgxFinalizeTx) Complete(ctx context.Context, id string, at time.Time) (Request, error) {
+	u, err := parseUUID(id)
+	if err != nil {
+		return Request{}, err
+	}
+	row, err := t.q.CompleteAccountRequest(ctx, db.CompleteAccountRequestParams{ID: u, CompletedAt: pgtype.Timestamptz{Time: at, Valid: true}})
+	if err != nil {
+		return Request{}, fmt.Errorf("complete account request: %w", err)
+	}
+	return fromRow(row)
+}
+
+func (t *pgxFinalizeTx) RecordFinalizeFailure(ctx context.Context, id string, permanent bool, maxAttempts int) (Request, bool, error) {
+	u, err := parseUUID(id)
+	if err != nil {
+		return Request{}, false, err
+	}
+	row, err := t.q.RecordAccountRequestFinalizeFailure(ctx, db.RecordAccountRequestFinalizeFailureParams{
+		ID: u, Permanent: permanent, MaxAttempts: int32(maxAttempts),
+	})
+	return one(row, err)
+}
+
+func (t *pgxFinalizeTx) MarkWelcomeSent(ctx context.Context, id string, at time.Time) (Request, error) {
+	u, err := parseUUID(id)
+	if err != nil {
+		return Request{}, err
+	}
+	row, err := t.q.MarkAccountRequestWelcomeSent(ctx, db.MarkAccountRequestWelcomeSentParams{
+		ID: u, WelcomeSentAt: pgtype.Timestamptz{Time: at, Valid: true},
+	})
+	if err != nil {
+		return Request{}, fmt.Errorf("mark welcome sent: %w", err)
+	}
+	return fromRow(row)
+}
+
+func (t *pgxFinalizeTx) MarkWelcomeFailed(ctx context.Context, id string) (Request, error) {
+	u, err := parseUUID(id)
+	if err != nil {
+		return Request{}, err
+	}
+	row, err := t.q.MarkAccountRequestWelcomeFailed(ctx, u)
+	if err != nil {
+		return Request{}, fmt.Errorf("mark welcome failed: %w", err)
+	}
+	return fromRow(row)
 }

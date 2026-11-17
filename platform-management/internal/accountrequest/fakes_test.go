@@ -210,3 +210,53 @@ func (e *env) auditActions() []string {
 func (e *env) count() int { return len(e.store.rows) }
 
 func admin(id string) Actor { return Actor{ID: id, Label: id + "@staff.example"} }
+
+// fakeWelcomeMailer records each welcome it is asked to send. err is returned
+// for every call; delay holds the call open, to let a parallel run overlap.
+type fakeWelcomeMailer struct {
+	mu    sync.Mutex
+	calls []welcomeCall
+	err   error
+	delay time.Duration
+}
+
+type welcomeCall struct{ to, workspace, plan, appURL string }
+
+func (m *fakeWelcomeMailer) SendWelcome(_ context.Context, to, workspaceName, planName, appURL string) error {
+	m.mu.Lock()
+	m.calls = append(m.calls, welcomeCall{to, workspaceName, planName, appURL})
+	err, delay := m.err, m.delay
+	m.mu.Unlock()
+	time.Sleep(delay)
+	return err
+}
+
+func (m *fakeWelcomeMailer) count() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return len(m.calls)
+}
+
+func (m *fakeWelcomeMailer) setErr(err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.err = err
+}
+
+// fakeInvalidator records the workspaces whose cached policy was dropped.
+type fakeInvalidator struct {
+	mu  sync.Mutex
+	ids []string
+}
+
+func (c *fakeInvalidator) Invalidate(id string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ids = append(c.ids, id)
+}
+
+func (c *fakeInvalidator) has(id string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return slices.Contains(c.ids, id)
+}

@@ -31,7 +31,9 @@ type Deps struct {
 	CreatePerHour int
 	// IndividualMaxSeats is PLATFORM_INDIVIDUAL_MAX_SEATS.
 	IndividualMaxSeats int
-	Now                func() time.Time
+	// Welcome sends the welcome email. Nil means ResendWelcome is unavailable.
+	Welcome *Finalizer
+	Now     func() time.Time
 }
 
 // Service creates, cancels and reads account requests.

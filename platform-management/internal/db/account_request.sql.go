@@ -49,6 +49,52 @@ func (q *Queries) CancelAccountRequest(ctx context.Context, id pgtype.UUID) (Pla
 	return i, err
 }
 
+const completeAccountRequest = `-- name: CompleteAccountRequest :one
+UPDATE platform_account_request
+SET state = 'completed', billing_profile = NULL, error_code = '',
+    completed_at = $1, updated_at = now()
+WHERE id = $2 AND state = 'provisioned'
+RETURNING id, kind, email, display_name, workspace_name, workspace_slug, plan_key, seats, interval, trial, comp_reason, billing_profile, state, error_code, attempts, user_id, workspace_id, created_by, created_at, updated_at, completed_at, welcome_sent_at, welcome_attempts
+`
+
+type CompleteAccountRequestParams struct {
+	CompletedAt pgtype.Timestamptz `json:"completed_at"`
+	ID          pgtype.UUID        `json:"id"`
+}
+
+// Clears the copy of the billing profile, a third party's data, once it is
+// written to the workspace.
+func (q *Queries) CompleteAccountRequest(ctx context.Context, arg CompleteAccountRequestParams) (PlatformAccountRequest, error) {
+	row := q.db.QueryRow(ctx, completeAccountRequest, arg.CompletedAt, arg.ID)
+	var i PlatformAccountRequest
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.Email,
+		&i.DisplayName,
+		&i.WorkspaceName,
+		&i.WorkspaceSlug,
+		&i.PlanKey,
+		&i.Seats,
+		&i.Interval,
+		&i.Trial,
+		&i.CompReason,
+		&i.BillingProfile,
+		&i.State,
+		&i.ErrorCode,
+		&i.Attempts,
+		&i.UserID,
+		&i.WorkspaceID,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CompletedAt,
+		&i.WelcomeSentAt,
+		&i.WelcomeAttempts,
+	)
+	return i, err
+}
+
 const getAccountRequest = `-- name: GetAccountRequest :one
 SELECT id, kind, email, display_name, workspace_name, workspace_slug, plan_key, seats, interval, trial, comp_reason, billing_profile, state, error_code, attempts, user_id, workspace_id, created_by, created_at, updated_at, completed_at, welcome_sent_at, welcome_attempts FROM platform_account_request
 WHERE id = $1
@@ -270,6 +316,71 @@ func (q *Queries) ListAccountRequests(ctx context.Context, arg ListAccountReques
 	return items, nil
 }
 
+const listProvisionedAccountRequestIDs = `-- name: ListProvisionedAccountRequestIDs :many
+
+SELECT id FROM platform_account_request
+WHERE state = 'provisioned' AND user_id IS NOT NULL AND workspace_id IS NOT NULL
+ORDER BY created_at, id
+LIMIT $1
+`
+
+// Step 3 of spec 7b.5, rule 7 (the finalize job), and the welcome email of rule 9.
+// Multica's step 2 owns state, user_id, workspace_id, error_code, attempts and
+// updated_at up to 'provisioned'; the platform moves a provisioned request on.
+// A request without a user or a workspace is not ready: step 2 writes both with
+// the state, so none should exist; it is skipped rather than half finished.
+func (q *Queries) ListProvisionedAccountRequestIDs(ctx context.Context, rowLimit int32) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listProvisionedAccountRequestIDs, rowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []pgtype.UUID{}
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listWelcomeDueAccountRequestIDs = `-- name: ListWelcomeDueAccountRequestIDs :many
+SELECT id FROM platform_account_request
+WHERE state = 'completed' AND welcome_sent_at IS NULL AND welcome_attempts < $1::int
+ORDER BY completed_at, id
+LIMIT $2
+`
+
+type ListWelcomeDueAccountRequestIDsParams struct {
+	MaxAttempts int32 `json:"max_attempts"`
+	RowLimit    int32 `json:"row_limit"`
+}
+
+func (q *Queries) ListWelcomeDueAccountRequestIDs(ctx context.Context, arg ListWelcomeDueAccountRequestIDsParams) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listWelcomeDueAccountRequestIDs, arg.MaxAttempts, arg.RowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []pgtype.UUID{}
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockAccountRequest = `-- name: LockAccountRequest :one
 SELECT id, kind, email, display_name, workspace_name, workspace_slug, plan_key, seats, interval, trial, comp_reason, billing_profile, state, error_code, attempts, user_id, workspace_id, created_by, created_at, updated_at, completed_at, welcome_sent_at, welcome_attempts FROM platform_account_request
 WHERE id = $1
@@ -278,6 +389,223 @@ FOR UPDATE
 
 func (q *Queries) LockAccountRequest(ctx context.Context, id pgtype.UUID) (PlatformAccountRequest, error) {
 	row := q.db.QueryRow(ctx, lockAccountRequest, id)
+	var i PlatformAccountRequest
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.Email,
+		&i.DisplayName,
+		&i.WorkspaceName,
+		&i.WorkspaceSlug,
+		&i.PlanKey,
+		&i.Seats,
+		&i.Interval,
+		&i.Trial,
+		&i.CompReason,
+		&i.BillingProfile,
+		&i.State,
+		&i.ErrorCode,
+		&i.Attempts,
+		&i.UserID,
+		&i.WorkspaceID,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CompletedAt,
+		&i.WelcomeSentAt,
+		&i.WelcomeAttempts,
+	)
+	return i, err
+}
+
+const lockProvisionedAccountRequest = `-- name: LockProvisionedAccountRequest :one
+SELECT id, kind, email, display_name, workspace_name, workspace_slug, plan_key, seats, interval, trial, comp_reason, billing_profile, state, error_code, attempts, user_id, workspace_id, created_by, created_at, updated_at, completed_at, welcome_sent_at, welcome_attempts FROM platform_account_request
+WHERE id = $1 AND state = 'provisioned' AND user_id IS NOT NULL AND workspace_id IS NOT NULL
+FOR UPDATE SKIP LOCKED
+`
+
+// SKIP LOCKED: a parallel run that holds the row, or a request another run has
+// already finished, returns no row.
+func (q *Queries) LockProvisionedAccountRequest(ctx context.Context, id pgtype.UUID) (PlatformAccountRequest, error) {
+	row := q.db.QueryRow(ctx, lockProvisionedAccountRequest, id)
+	var i PlatformAccountRequest
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.Email,
+		&i.DisplayName,
+		&i.WorkspaceName,
+		&i.WorkspaceSlug,
+		&i.PlanKey,
+		&i.Seats,
+		&i.Interval,
+		&i.Trial,
+		&i.CompReason,
+		&i.BillingProfile,
+		&i.State,
+		&i.ErrorCode,
+		&i.Attempts,
+		&i.UserID,
+		&i.WorkspaceID,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CompletedAt,
+		&i.WelcomeSentAt,
+		&i.WelcomeAttempts,
+	)
+	return i, err
+}
+
+const lockWelcomeDueAccountRequest = `-- name: LockWelcomeDueAccountRequest :one
+SELECT id, kind, email, display_name, workspace_name, workspace_slug, plan_key, seats, interval, trial, comp_reason, billing_profile, state, error_code, attempts, user_id, workspace_id, created_by, created_at, updated_at, completed_at, welcome_sent_at, welcome_attempts FROM platform_account_request
+WHERE id = $1 AND state = 'completed' AND welcome_sent_at IS NULL
+  AND welcome_attempts < $2::int
+FOR UPDATE SKIP LOCKED
+`
+
+type LockWelcomeDueAccountRequestParams struct {
+	ID          pgtype.UUID `json:"id"`
+	MaxAttempts int32       `json:"max_attempts"`
+}
+
+// The lock is held while the email is sent, so a parallel run skips the row and
+// the welcome goes out once.
+func (q *Queries) LockWelcomeDueAccountRequest(ctx context.Context, arg LockWelcomeDueAccountRequestParams) (PlatformAccountRequest, error) {
+	row := q.db.QueryRow(ctx, lockWelcomeDueAccountRequest, arg.ID, arg.MaxAttempts)
+	var i PlatformAccountRequest
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.Email,
+		&i.DisplayName,
+		&i.WorkspaceName,
+		&i.WorkspaceSlug,
+		&i.PlanKey,
+		&i.Seats,
+		&i.Interval,
+		&i.Trial,
+		&i.CompReason,
+		&i.BillingProfile,
+		&i.State,
+		&i.ErrorCode,
+		&i.Attempts,
+		&i.UserID,
+		&i.WorkspaceID,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CompletedAt,
+		&i.WelcomeSentAt,
+		&i.WelcomeAttempts,
+	)
+	return i, err
+}
+
+const markAccountRequestWelcomeFailed = `-- name: MarkAccountRequestWelcomeFailed :one
+UPDATE platform_account_request
+SET welcome_attempts = welcome_attempts + 1, updated_at = now()
+WHERE id = $1
+RETURNING id, kind, email, display_name, workspace_name, workspace_slug, plan_key, seats, interval, trial, comp_reason, billing_profile, state, error_code, attempts, user_id, workspace_id, created_by, created_at, updated_at, completed_at, welcome_sent_at, welcome_attempts
+`
+
+func (q *Queries) MarkAccountRequestWelcomeFailed(ctx context.Context, id pgtype.UUID) (PlatformAccountRequest, error) {
+	row := q.db.QueryRow(ctx, markAccountRequestWelcomeFailed, id)
+	var i PlatformAccountRequest
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.Email,
+		&i.DisplayName,
+		&i.WorkspaceName,
+		&i.WorkspaceSlug,
+		&i.PlanKey,
+		&i.Seats,
+		&i.Interval,
+		&i.Trial,
+		&i.CompReason,
+		&i.BillingProfile,
+		&i.State,
+		&i.ErrorCode,
+		&i.Attempts,
+		&i.UserID,
+		&i.WorkspaceID,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CompletedAt,
+		&i.WelcomeSentAt,
+		&i.WelcomeAttempts,
+	)
+	return i, err
+}
+
+const markAccountRequestWelcomeSent = `-- name: MarkAccountRequestWelcomeSent :one
+UPDATE platform_account_request
+SET welcome_sent_at = $2, updated_at = now()
+WHERE id = $1
+RETURNING id, kind, email, display_name, workspace_name, workspace_slug, plan_key, seats, interval, trial, comp_reason, billing_profile, state, error_code, attempts, user_id, workspace_id, created_by, created_at, updated_at, completed_at, welcome_sent_at, welcome_attempts
+`
+
+type MarkAccountRequestWelcomeSentParams struct {
+	ID            pgtype.UUID        `json:"id"`
+	WelcomeSentAt pgtype.Timestamptz `json:"welcome_sent_at"`
+}
+
+func (q *Queries) MarkAccountRequestWelcomeSent(ctx context.Context, arg MarkAccountRequestWelcomeSentParams) (PlatformAccountRequest, error) {
+	row := q.db.QueryRow(ctx, markAccountRequestWelcomeSent, arg.ID, arg.WelcomeSentAt)
+	var i PlatformAccountRequest
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.Email,
+		&i.DisplayName,
+		&i.WorkspaceName,
+		&i.WorkspaceSlug,
+		&i.PlanKey,
+		&i.Seats,
+		&i.Interval,
+		&i.Trial,
+		&i.CompReason,
+		&i.BillingProfile,
+		&i.State,
+		&i.ErrorCode,
+		&i.Attempts,
+		&i.UserID,
+		&i.WorkspaceID,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CompletedAt,
+		&i.WelcomeSentAt,
+		&i.WelcomeAttempts,
+	)
+	return i, err
+}
+
+const recordAccountRequestFinalizeFailure = `-- name: RecordAccountRequestFinalizeFailure :one
+UPDATE platform_account_request
+SET attempts = attempts + 1,
+    state = CASE WHEN $1::boolean OR attempts + 1 >= $2::int
+                 THEN 'failed' ELSE state END,
+    error_code = CASE WHEN $1::boolean OR attempts + 1 >= $2::int
+                      THEN 'finalize_failed' ELSE error_code END,
+    updated_at = now()
+WHERE id = $3 AND state = 'provisioned'
+RETURNING id, kind, email, display_name, workspace_name, workspace_slug, plan_key, seats, interval, trial, comp_reason, billing_profile, state, error_code, attempts, user_id, workspace_id, created_by, created_at, updated_at, completed_at, welcome_sent_at, welcome_attempts
+`
+
+type RecordAccountRequestFinalizeFailureParams struct {
+	Permanent   bool        `json:"permanent"`
+	MaxAttempts int32       `json:"max_attempts"`
+	ID          pgtype.UUID `json:"id"`
+}
+
+// One failed attempt. The request goes to failed with finalize_failed when the
+// error is permanent or this was the last attempt; otherwise it stays provisioned
+// for the next run. The user and the workspace are not touched.
+func (q *Queries) RecordAccountRequestFinalizeFailure(ctx context.Context, arg RecordAccountRequestFinalizeFailureParams) (PlatformAccountRequest, error) {
+	row := q.db.QueryRow(ctx, recordAccountRequestFinalizeFailure, arg.Permanent, arg.MaxAttempts, arg.ID)
 	var i PlatformAccountRequest
 	err := row.Scan(
 		&i.ID,

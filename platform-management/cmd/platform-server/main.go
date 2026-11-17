@@ -138,6 +138,7 @@ func run() error {
 	// a nil Mailer and sends nothing, and the console sends no reset notice.
 	var signInMail platformauth.Mailer
 	var consoleMail console.Mailer
+	var welcomeMail accountrequest.WelcomeMailer
 	if cfg.Email.Provider != "" {
 		m, err := mailer.New(cfg.Email, &http.Client{Timeout: mailHTTPTimeout}, smtpDialer, slog.Default())
 		if err != nil {
@@ -145,6 +146,7 @@ func run() error {
 		}
 		signInMail = m
 		consoleMail = m
+		welcomeMail = m
 	}
 	accountCache := accountcache.NewCache(rdb)
 	guard := accountguard.New(store, accountCache)
@@ -213,6 +215,16 @@ func run() error {
 		return err
 	}
 
+	// Step 3 of an account request and its welcome (spec 7b.5). With no email
+	// provider the job still finishes the accounts and sends no welcome.
+	accountFinalizer, err := accountrequest.NewFinalizer(accountrequest.FinalizerDeps{
+		Store: accountrequest.NewPgxFinalizeStore(pool), Plans: plan.NewPgxReader(pool), Cache: policy,
+		Mailer: welcomeMail, AppURL: cfg.AppURL, Log: slog.Default(),
+	})
+	if err != nil {
+		return err
+	}
+
 	// The console confirms orders through the same service that creates them.
 	consoleAPI := console.New(console.Deps{
 		RequireStaff:  auth.RequirePlatformStaff,
@@ -228,6 +240,7 @@ func run() error {
 			Runner: accountrequest.NewPgxRunner(pool), Reader: accountrequest.NewPgxReader(pool),
 			Plans: plan.NewPgxReader(pool), Limiter: platformauth.NewRedisLimiter(rdb),
 			CreatePerHour: cfg.AccountCreatePerHour, IndividualMaxSeats: cfg.IndividualMaxSeats,
+			Welcome: accountFinalizer,
 		}),
 		Emails: store,
 		Mailer: consoleMail,
@@ -275,6 +288,12 @@ func run() error {
 		return err
 	}
 	if err := runner.Register(lifecycle.OrderExpiryJobName, lifecycle.OrderExpiryInterval, orderExpiry.Job(time.Now)); err != nil {
+		return err
+	}
+	if welcomeMail == nil {
+		slog.Warn("account welcome emails are off: no email provider is configured")
+	}
+	if err := runner.RegisterAccountRequestFinalize(accountFinalizer.RunOnce); err != nil {
 		return err
 	}
 	// The price-change notice uses the lifecycle mail sender; nil sends no notice.
