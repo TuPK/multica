@@ -19,6 +19,7 @@ import (
 
 	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/logger"
+	"github.com/multica-ai/multica/server/internal/membergroup"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
@@ -185,11 +186,12 @@ func toWorkspaceOrderJSON(o db.BillingOrder, bank orderBankJSON) workspaceOrderJ
 	}
 }
 
-// requireBillingWorkspace is the handler-level backstop behind the router's role
-// middleware, as requireCloudSubscriptionWorkspace is for the Cloud routes: a
-// human actor who is an owner or admin of the workspace, with the workspace
-// subscriptions flag on. It returns the workspace's UUID.
-func (h *Handler) requireBillingWorkspace(w http.ResponseWriter, r *http.Request) (pgtype.UUID, bool) {
+// requireBillingWorkspace is the handler-level backstop behind the router's
+// permission middleware, as requireCloudSubscriptionWorkspace is for the Cloud
+// routes: a human actor who holds permission in the workspace, with the
+// workspace subscriptions flag on. An empty permission means owner or admin
+// only. It returns the workspace's UUID.
+func (h *Handler) requireBillingWorkspace(w http.ResponseWriter, r *http.Request, permission string) (pgtype.UUID, bool) {
 	if isMachineCredentialActor(r) {
 		writeError(w, http.StatusForbidden, "this endpoint is only available to human actors")
 		return pgtype.UUID{}, false
@@ -203,8 +205,12 @@ func (h *Handler) requireBillingWorkspace(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusForbidden, "workspace membership required")
 		return pgtype.UUID{}, false
 	}
-	if !roleAllowed(member.Role, "owner", "admin") {
-		writeError(w, http.StatusForbidden, "insufficient permissions")
+	if permission == "" {
+		if !roleAllowed(member.Role, "owner", "admin") {
+			writeError(w, http.StatusForbidden, "insufficient permissions")
+			return pgtype.UUID{}, false
+		}
+	} else if !h.requireMemberPermission(w, r, member, permission) {
 		return pgtype.UUID{}, false
 	}
 	return parseUUIDOrBadRequest(w, workspaceIDFromURL(r, "id"), "workspace id")
@@ -213,7 +219,7 @@ func (h *Handler) requireBillingWorkspace(w http.ResponseWriter, r *http.Request
 // ListWorkspacePlans serves GET /api/workspaces/{id}/plans: the public plans and
 // their seat prices, for the plan selector. Owner and admin.
 func (h *Handler) ListWorkspacePlans(w http.ResponseWriter, r *http.Request) {
-	workspaceUUID, ok := h.requireBillingWorkspace(w, r)
+	workspaceUUID, ok := h.requireBillingWorkspace(w, r, "")
 	if !ok {
 		return
 	}
@@ -321,9 +327,9 @@ func (h *Handler) scheduledPriceChange(ctx context.Context, workspaceID pgtype.U
 }
 
 // ListWorkspaceOrders serves GET /api/workspaces/{id}/orders: the workspace's
-// newest orders first. Owner and admin.
+// newest orders first. Needs billing.view.
 func (h *Handler) ListWorkspaceOrders(w http.ResponseWriter, r *http.Request) {
-	workspaceUUID, ok := h.requireBillingWorkspace(w, r)
+	workspaceUUID, ok := h.requireBillingWorkspace(w, r, membergroup.KeyBillingView)
 	if !ok {
 		return
 	}
@@ -346,7 +352,7 @@ func (h *Handler) ListWorkspaceOrders(w http.ResponseWriter, r *http.Request) {
 // GetWorkspaceOrder serves GET /api/workspaces/{id}/orders/{orderId}. An order of
 // another workspace is a 404.
 func (h *Handler) GetWorkspaceOrder(w http.ResponseWriter, r *http.Request) {
-	workspaceUUID, ok := h.requireBillingWorkspace(w, r)
+	workspaceUUID, ok := h.requireBillingWorkspace(w, r, membergroup.KeyBillingView)
 	if !ok {
 		return
 	}
@@ -373,7 +379,7 @@ func (h *Handler) GetWorkspaceOrder(w http.ResponseWriter, r *http.Request) {
 // the day lines of a usage invoice. An order of another workspace, or one that
 // is not a usage invoice, is a 404.
 func (h *Handler) GetWorkspaceOrderUsage(w http.ResponseWriter, r *http.Request) {
-	workspaceUUID, ok := h.requireBillingWorkspace(w, r)
+	workspaceUUID, ok := h.requireBillingWorkspace(w, r, membergroup.KeyBillingView)
 	if !ok {
 		return
 	}
@@ -451,7 +457,7 @@ func normalizeOrderBuyer(in orderBuyerJSON) (orderBuyerJSON, *buyerFieldError) {
 // pending is a 409 order_not_pending. This is the one write the server makes to
 // a platform table other than platform_workspace.
 func (h *Handler) UpdateWorkspaceOrderBuyer(w http.ResponseWriter, r *http.Request) {
-	workspaceUUID, ok := h.requireBillingWorkspace(w, r)
+	workspaceUUID, ok := h.requireBillingWorkspace(w, r, membergroup.KeyBillingManage)
 	if !ok {
 		return
 	}

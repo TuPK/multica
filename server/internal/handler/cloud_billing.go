@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"unicode/utf8"
@@ -11,7 +12,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/multica-ai/multica/server/internal/cloudruntime"
 	"github.com/multica-ai/multica/server/internal/featureflags"
+	"github.com/multica-ai/multica/server/internal/logger"
+	"github.com/multica-ai/multica/server/internal/membergroup"
 	"github.com/multica-ai/multica/server/internal/util"
+	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
 // Cloud billing endpoints proxy to the same multica-cloud HTTP service
@@ -107,10 +111,11 @@ type cloudSubscriptionSeatPurchaseRequest struct {
 }
 
 // requireCloudSubscriptionWorkspace is the handler-level backstop behind the
-// router's membership and role middleware. Local roles are a cheap
+// router's membership and permission middleware. Local checks are a cheap
 // defense-in-depth guard; Cloud still performs the authoritative authorization
-// before every billing mutation.
-func (h *Handler) requireCloudSubscriptionWorkspace(w http.ResponseWriter, r *http.Request, roles ...string) (string, string, bool) {
+// before every billing mutation. permission is the key the route needs (spec
+// 7b.2); empty means any member.
+func (h *Handler) requireCloudSubscriptionWorkspace(w http.ResponseWriter, r *http.Request, permission string) (string, string, bool) {
 	if isMachineCredentialActor(r) {
 		writeError(w, http.StatusForbidden, "this endpoint is only available to human actors")
 		return "", "", false
@@ -131,8 +136,7 @@ func (h *Handler) requireCloudSubscriptionWorkspace(w http.ResponseWriter, r *ht
 		writeError(w, http.StatusForbidden, "workspace membership required")
 		return "", "", false
 	}
-	if len(roles) > 0 && !roleAllowed(member.Role, roles...) {
-		writeError(w, http.StatusForbidden, "insufficient permissions")
+	if permission != "" && !h.requireMemberPermission(w, r, member, permission) {
 		return "", "", false
 	}
 	userID, ok := requireUserID(w, r)
@@ -140,6 +144,45 @@ func (h *Handler) requireCloudSubscriptionWorkspace(w http.ResponseWriter, r *ht
 		return "", "", false
 	}
 	return util.UUIDToString(workspaceUUID), userID, true
+}
+
+// requireMemberPermission reports whether member holds key, and writes the
+// refusal when not. owner and admin hold every key; any other role holds it
+// through a group, read from the database on every call so a removal from the
+// group applies to the next request (spec 7b.2, rule 11). A viewer never writes
+// by a key (rule 7); the router's viewer guard runs first, and this keeps the
+// handler as strict as the owner and admin check it replaces.
+func (h *Handler) requireMemberPermission(w http.ResponseWriter, r *http.Request, member db.Member, key string) bool {
+	if member.Role == "owner" || member.Role == "admin" {
+		return true
+	}
+	if member.Role == "viewer" && r.Method != http.MethodGet && r.Method != http.MethodHead {
+		writeMemberPermissionDenied(w, key)
+		return false
+	}
+	access, err := membergroup.New(h.Queries).Access(r.Context(), member.WorkspaceID, member.UserID)
+	if errors.Is(err, membergroup.ErrNotAMember) {
+		writeMemberPermissionDenied(w, key)
+		return false
+	}
+	if err != nil {
+		slog.Warn("permission lookup failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to check permissions")
+		return false
+	}
+	if !membergroup.Has(access.Permissions, key) {
+		writeMemberPermissionDenied(w, key)
+		return false
+	}
+	return true
+}
+
+// writeMemberPermissionDenied is the refusal the router's permission
+// middleware gives, so a route answers the same in both places.
+func writeMemberPermissionDenied(w http.ResponseWriter, key string) {
+	writeJSON(w, http.StatusForbidden, map[string]string{
+		"error": "insufficient permissions", "code": "permission_denied", "permission": key,
+	})
 }
 
 func (h *Handler) proxyCloudSubscription(w http.ResponseWriter, r *http.Request, method, path, userID string, body []byte, headers http.Header) {
@@ -196,7 +239,7 @@ func requireCloudSubscriptionIdempotencyKey(w http.ResponseWriter, r *http.Reque
 // available while Stripe is degraded. A cloud that predates the endpoint
 // answers 404 and the client treats the page as unavailable — never as Free.
 func (h *Handler) GetCloudWorkspaceSubscriptionSummary(w http.ResponseWriter, r *http.Request) {
-	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r)
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, "")
 	if !ok {
 		return
 	}
@@ -204,10 +247,9 @@ func (h *Handler) GetCloudWorkspaceSubscriptionSummary(w http.ResponseWriter, r 
 }
 
 // GetCloudWorkspaceSubscriptionUsage forwards the platform's usage read: the
-// current period of a pay as you go plan, meter by meter. Owner and admin; the
-// billing.view group permission is not enforced on any route yet.
+// current period of a pay as you go plan, meter by meter. Needs billing.view.
 func (h *Handler) GetCloudWorkspaceSubscriptionUsage(w http.ResponseWriter, r *http.Request) {
-	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, "owner", "admin")
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, membergroup.KeyBillingView)
 	if !ok {
 		return
 	}
@@ -223,7 +265,7 @@ func (h *Handler) GetCloudWorkspaceSubscriptionUsage(w http.ResponseWriter, r *h
 // side — and answers 503 when a configured Price cannot be validated, which the
 // client renders as "price confirmed at Checkout" rather than a guessed number.
 func (h *Handler) GetCloudWorkspaceSubscriptionPrices(w http.ResponseWriter, r *http.Request) {
-	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r)
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, "")
 	if !ok {
 		return
 	}
@@ -235,7 +277,7 @@ func (h *Handler) GetCloudWorkspaceSubscriptionPrices(w http.ResponseWriter, r *
 // caller cannot smuggle a different workspace or Stripe payer identity through
 // JSON; Cloud remains authoritative for the price, quantity, and Checkout.
 func (h *Handler) CreateCloudWorkspaceSubscriptionCheckout(w http.ResponseWriter, r *http.Request) {
-	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, "owner", "admin")
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, membergroup.KeyBillingManage)
 	if !ok {
 		return
 	}
@@ -298,7 +340,7 @@ func (h *Handler) CreateCloudWorkspaceSubscriptionCheckout(w http.ResponseWriter
 // handler nor its caller supplies a seat quantity. Cloud re-counts human
 // members from its least-privilege product-database connection.
 func (h *Handler) ReconcileCloudWorkspaceSubscriptionSeats(w http.ResponseWriter, r *http.Request) {
-	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, "owner", "admin")
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, membergroup.KeyBillingManage)
 	if !ok {
 		return
 	}
@@ -309,7 +351,7 @@ func (h *Handler) ReconcileCloudWorkspaceSubscriptionSeats(w http.ResponseWriter
 // count. Cloud reads the authoritative current quantity and returns Stripe's
 // estimated proration plus the next full recurring invoice.
 func (h *Handler) PreviewCloudWorkspaceSubscriptionSeatPurchase(w http.ResponseWriter, r *http.Request) {
-	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, "owner", "admin")
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, membergroup.KeyBillingManage)
 	if !ok {
 		return
 	}
@@ -339,7 +381,7 @@ func (h *Handler) PreviewCloudWorkspaceSubscriptionSeatPurchase(w http.ResponseW
 // The allowlisted body omits any client workspace or absolute target quantity;
 // Cloud repeats the quote and owns concurrency, idempotency, and Stripe writes.
 func (h *Handler) PurchaseCloudWorkspaceSubscriptionSeats(w http.ResponseWriter, r *http.Request) {
-	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, "owner", "admin")
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, membergroup.KeyBillingManage)
 	if !ok {
 		return
 	}
@@ -422,7 +464,7 @@ func readCloudSubscriptionPlanChange(w http.ResponseWriter, r *http.Request) (cl
 // or admin. Nothing is written; Cloud returns the mode (charge, subscribe or
 // schedule), the amount before VAT and the version the quote was made at.
 func (h *Handler) PreviewCloudWorkspaceSubscriptionPlanChange(w http.ResponseWriter, r *http.Request) {
-	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, "owner", "admin")
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, membergroup.KeyBillingManage)
 	if !ok {
 		return
 	}
@@ -444,7 +486,7 @@ func (h *Handler) PreviewCloudWorkspaceSubscriptionPlanChange(w http.ResponseWri
 // interval change is stored for the next renewal. The Idempotency-Key is
 // required: a repeat of it returns the same order (spec 7b.1, rule 11).
 func (h *Handler) CreateCloudWorkspaceSubscriptionPlanChange(w http.ResponseWriter, r *http.Request) {
-	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, "owner", "admin")
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, membergroup.KeyBillingManage)
 	if !ok {
 		return
 	}
@@ -469,7 +511,7 @@ func (h *Handler) CreateCloudWorkspaceSubscriptionPlanChange(w http.ResponseWrit
 // CancelCloudWorkspaceSubscriptionScheduledPlanChange withdraws the change stored
 // for the next renewal. The rest of the subscription is unchanged.
 func (h *Handler) CancelCloudWorkspaceSubscriptionScheduledPlanChange(w http.ResponseWriter, r *http.Request) {
-	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, "owner", "admin")
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, membergroup.KeyBillingManage)
 	if !ok {
 		return
 	}
@@ -483,7 +525,7 @@ func (h *Handler) CancelCloudWorkspaceSubscriptionScheduledPlanChange(w http.Res
 // CancelCloudWorkspaceSubscription sets the subscription to end at the period end
 // (spec 7b.1, rule 8). Cloud refuses a status other than active or trialing.
 func (h *Handler) CancelCloudWorkspaceSubscription(w http.ResponseWriter, r *http.Request) {
-	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, "owner", "admin")
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, membergroup.KeyBillingManage)
 	if !ok {
 		return
 	}
@@ -497,7 +539,7 @@ func (h *Handler) CancelCloudWorkspaceSubscription(w http.ResponseWriter, r *htt
 // ResumeCloudWorkspaceSubscription clears the end-of-period cancellation while the
 // period, or the trial, has not ended.
 func (h *Handler) ResumeCloudWorkspaceSubscription(w http.ResponseWriter, r *http.Request) {
-	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, "owner", "admin")
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, membergroup.KeyBillingManage)
 	if !ok {
 		return
 	}
@@ -513,7 +555,7 @@ func (h *Handler) ResumeCloudWorkspaceSubscription(w http.ResponseWriter, r *htt
 // audience and writes the audit row; this handler bounds the body and forwards
 // only the allowlisted fields.
 func (h *Handler) UpdateCloudWorkspaceBillingProfile(w http.ResponseWriter, r *http.Request) {
-	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, "owner", "admin")
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, membergroup.KeyBillingManage)
 	if !ok {
 		return
 	}
@@ -572,7 +614,7 @@ func isASCIICurrency(value string) bool {
 }
 
 func (h *Handler) CreateCloudWorkspaceSubscriptionPortal(w http.ResponseWriter, r *http.Request) {
-	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, "owner", "admin")
+	workspaceID, userID, ok := h.requireCloudSubscriptionWorkspace(w, r, membergroup.KeyBillingManage)
 	if !ok {
 		return
 	}
