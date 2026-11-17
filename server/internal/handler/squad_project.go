@@ -132,14 +132,18 @@ func (h *Handler) AssignSquadProject(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, "failed to read workflow")
 			return
 		}
-		plan, err = h.squadWorkflowPlan(ctx, qtx, wsUUID, squad.ID, target)
+		plan, err = h.squadWorkflowPlan(ctx, qtx, wsUUID, squad.ID, scope, target)
+		if errors.Is(err, errSquadIssuesHidden) {
+			writeError(w, http.StatusForbidden, "only a workspace admin can move issues in projects you cannot see")
+			return
+		}
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to assign project")
 			return
 		}
 		// No one picks destinations on the first activation, so every status the
 		// workflow lacks moves to the status the plan suggests.
-		changed, cancelled, err = remapSquadIssues(ctx, qtx, wsUUID, squad.ID, plan, suggestedMapping(plan))
+		changed, cancelled, err = remapSquadIssues(ctx, qtx, wsUUID, squad.ID, scope, plan, suggestedMapping(plan))
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to move issues to the new statuses")
 			return

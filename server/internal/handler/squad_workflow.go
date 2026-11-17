@@ -14,6 +14,7 @@ import (
 
 	"github.com/multica-ai/multica/server/internal/issueworkflow"
 	"github.com/multica-ai/multica/server/internal/logger"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
@@ -209,6 +210,10 @@ func (h *Handler) SetSquadActiveWorkflow(w http.ResponseWriter, r *http.Request)
 	}
 	wsUUID := squad.WorkspaceID
 	ctx := r.Context()
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 
 	tx, err := h.TxStarter.Begin(ctx)
 	if err != nil {
@@ -249,7 +254,11 @@ func (h *Handler) SetSquadActiveWorkflow(w http.ResponseWriter, r *http.Request)
 		writeError(w, http.StatusInternalServerError, "failed to read workflow")
 		return
 	}
-	plan, err := h.squadWorkflowPlan(ctx, qtx, wsUUID, squad.ID, target)
+	plan, err := h.squadWorkflowPlan(ctx, qtx, wsUUID, squad.ID, scope, target)
+	if errors.Is(err, errSquadIssuesHidden) {
+		writeError(w, http.StatusForbidden, "only a workspace admin can move issues in projects you cannot see")
+		return
+	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to change workflow")
 		return
@@ -271,7 +280,7 @@ func (h *Handler) SetSquadActiveWorkflow(w http.ResponseWriter, r *http.Request)
 		writeErrorCode(w, http.StatusConflict, "workflow_belongs_to_other_squad", "this workflow belongs to another squad's library")
 		return
 	}
-	changed, cancelledWakeups, err := remapSquadIssues(ctx, qtx, wsUUID, squad.ID, plan, req.StatusMapping)
+	changed, cancelledWakeups, err := remapSquadIssues(ctx, qtx, wsUUID, squad.ID, scope, plan, req.StatusMapping)
 	if err != nil {
 		slog.Warn("SetSquadActiveWorkflow remap failed", append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "failed to move issues to the new statuses")
@@ -310,9 +319,44 @@ func adoptSquadWorkflow(ctx context.Context, q *db.Queries, wsUUID, squadID pgty
 	return true, nil
 }
 
+// errSquadIssuesHidden means a squad's routed issues in projects the viewer
+// cannot see sit on statuses a workflow change would move. Only an owner or
+// admin may move them.
+var errSquadIssuesHidden = errors.New("squad issues in projects the viewer cannot see need a status move")
+
+// squadStatusCounts censuses a squad's routed issues that scope allows. For a
+// viewer who cannot manage, it fails with errSquadIssuesHidden when issues the
+// viewer cannot see sit on a status allowed rejects, because the remap would
+// skip them and leave them on a status their workflow lacks.
+func squadStatusCounts(ctx context.Context, q *db.Queries, wsUUID, squadID pgtype.UUID, scope projectaccess.Scope, allowed func(string) bool) ([]db.CountSquadIssuesByStatusRow, error) {
+	counts, err := q.CountSquadIssuesByStatus(ctx, db.CountSquadIssuesByStatusParams{
+		WorkspaceID: wsUUID, SquadID: squadID, ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+	})
+	if err != nil || scope.CanManage() {
+		return counts, err
+	}
+	every, err := q.CountSquadIssuesByStatus(ctx, db.CountSquadIssuesByStatusParams{
+		WorkspaceID: wsUUID, SquadID: squadID, ScopeMode: projectaccess.ModeAll,
+	})
+	if err != nil {
+		return nil, err
+	}
+	seen := make(map[string]int64, len(counts))
+	for _, c := range counts {
+		seen[c.Status] = c.IssueCount
+	}
+	for _, c := range every {
+		if !allowed(c.Status) && c.IssueCount > seen[c.Status] {
+			return nil, errSquadIssuesHidden
+		}
+	}
+	return counts, nil
+}
+
 // squadWorkflowPlan censors a squad's routed issues against a target workflow,
-// as a project's workflow switch censors the project's issues.
-func (h *Handler) squadWorkflowPlan(ctx context.Context, q *db.Queries, wsUUID, squadID pgtype.UUID, target issueworkflow.Definition) (workflowMappingPlan, error) {
+// as a project's workflow switch censors the project's issues. It reports
+// errSquadIssuesHidden when scope hides issues the switch would move.
+func (h *Handler) squadWorkflowPlan(ctx context.Context, q *db.Queries, wsUUID, squadID pgtype.UUID, scope projectaccess.Scope, target issueworkflow.Definition) (workflowMappingPlan, error) {
 	// A flow runs the squad's requests and their tasks, not its other issues:
 	// those keep the project's workflow, so no issue changes status.
 	if target.HasFlow() {
@@ -322,7 +366,7 @@ func (h *Handler) squadWorkflowPlan(ctx context.Context, q *db.Queries, wsUUID, 
 	if err != nil {
 		return workflowMappingPlan{}, err
 	}
-	counts, err := q.CountSquadIssuesByStatus(ctx, db.CountSquadIssuesByStatusParams{WorkspaceID: wsUUID, SquadID: squadID})
+	counts, err := squadStatusCounts(ctx, q, wsUUID, squadID, scope, target.Has)
 	if err != nil {
 		return workflowMappingPlan{}, err
 	}
@@ -366,9 +410,10 @@ func mergeStatusCounts(a, b []db.CountProjectIssuesByStatusRow) []db.CountProjec
 	return out
 }
 
-// remapSquadIssues applies a validated mapping to a squad's routed issues
-// inside the caller's transaction, with the same effects as remapIssues.
-func remapSquadIssues(ctx context.Context, qtx *db.Queries, wsUUID, squadID pgtype.UUID, plan workflowMappingPlan, mapping map[string]string) ([]db.Issue, []db.AgentTaskQueue, error) {
+// remapSquadIssues applies a validated mapping to the squad's routed issues
+// that scope allows, inside the caller's transaction, with the same effects as
+// remapIssues.
+func remapSquadIssues(ctx context.Context, qtx *db.Queries, wsUUID, squadID pgtype.UUID, scope projectaccess.Scope, plan workflowMappingPlan, mapping map[string]string) ([]db.Issue, []db.AgentTaskQueue, error) {
 	var changed []db.Issue
 	var cancelled []db.AgentTaskQueue
 	for _, req := range plan.Required {
@@ -381,6 +426,8 @@ func remapSquadIssues(ctx context.Context, qtx *db.Queries, wsUUID, squadID pgty
 			SquadID:     squadID,
 			FromStatus:  req.StatusKey,
 			ToStatus:    to,
+			ScopeMode:   scope.Mode(),
+			ScopeUserID: scope.UserID(),
 		})
 		if err != nil {
 			return nil, nil, err

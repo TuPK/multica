@@ -116,12 +116,12 @@ How units are found:
 | `server/pkg/db/queries/issue_status.sql` | `CountIssuesUsingStatusKey` | sql-query | exempt | Owner and admin only (Scope mode all): ArchiveIssueStatus gates on loadIssueStatusForAdmin; the guard must count every issue |
 | `server/pkg/db/queries/issue_unread.sql` | `MarkIssueUnreadForSubscribers` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue_workflow.sql` | `CountProjectIssuesByStatus` | sql-query | scoped | Marker predicate on i.project_id; test TestRestrictedWorkflowQueriesApplyScope |
-| `server/pkg/db/queries/issue_workflow.sql` | `CountSquadIssuesByStatus` | sql-query | todo | Not scoped: callers squad_workflow.go and squad_project.go (squad group) would not compile with scope params; UpdateIssueWorkflow also calls it |
+| `server/pkg/db/queries/issue_workflow.sql` | `CountSquadIssuesByStatus` | sql-query | scoped | SQL carries the marker; test TestRestrictedSquadWorkflowCountsOmitHidden |
 | `server/pkg/db/queries/issue_workflow.sql` | `ListProjectsUsingDefaultIssueWorkflow` | sql-query | scoped | Marker predicate on project.id; test TestRestrictedWorkflowQueriesApplyScope |
 | `server/pkg/db/queries/issue_workflow.sql` | `ListProjectsUsingIssueWorkflow` | sql-query | scoped | Marker predicate on project.id; test TestRestrictedWorkflowQueriesApplyScope |
 | `server/pkg/db/queries/issue_workflow.sql` | `LockProjectForWorkflowChange` | sql-query | exempt | (a) lock by id after the project passed Scope.Allows: SetProjectWorkflow (loadProjectForWorkflowWrite). saveHandoffOnProjectCopy and AssignSquadProject apply Scope.Allows to the returned row before anything else; tests TestRestrictedWorkflowRoutesAnswerMissing, TestRestrictedAssignSquadProjectAnswersMissing |
 | `server/pkg/db/queries/issue_workflow.sql` | `RemapProjectIssueStatus` | sql-query | scoped | Marker predicate on i.project_id; test TestRestrictedWorkflowRemapSkipsNothingVisibleToOwner |
-| `server/pkg/db/queries/issue_workflow.sql` | `RemapSquadIssueStatus` | sql-query | todo | Not scoped: caller remapSquadIssues (squad_workflow.go, squad group) would not compile with scope params |
+| `server/pkg/db/queries/issue_workflow.sql` | `RemapSquadIssueStatus` | sql-query | scoped | SQL carries the marker; tests TestRestrictedSquadRemapNeedsManage, TestRestrictedAssignSquadProjectRemapNeedsManage |
 | `server/pkg/db/queries/knowledge_project_file.sql` | `ListProjectDocSources` | sql-query | exempt | (b) the daemon project-docs sync (ListDaemonProjectDocSources, daemon token, no viewer) |
 | `server/pkg/db/queries/metric.sql` | `BuiltinIssueDeliveryStats` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/metric.sql` | `BuiltinIssuesReopened` | sql-query | todo | Reads issue or project; no visibility filter today |
@@ -132,7 +132,7 @@ How units are found:
 | `server/pkg/db/queries/pr_automation.sql` | `MoveIssueFromPullRequests` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/project.sql` | `CountIssuesByProject` | sql-query | scoped | SQL carries the marker; test TestRestrictedProjectCountsOmitHiddenIssues |
 | `server/pkg/db/queries/project.sql` | `DeleteProject` | sql-query | exempt | (a) a write by id that Handler.DeleteProject runs only after its Scope.Allows check; test TestRestrictedProjectRoutesAnswerMissing |
-| `server/pkg/db/queries/project.sql` | `GetOpenSquadProject` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/project.sql` | `GetOpenSquadProject` | sql-query | todo | needs decision: 409 conflict check; hiding rows would allow a second open squad project |
 | `server/pkg/db/queries/project.sql` | `GetProjectInWorkspace` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/project.sql` | `GetProjectIssueStats` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/project.sql` | `ListProjects` | sql-query | todo | Reads issue or project; no visibility filter today |
@@ -300,7 +300,7 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/issue_workflow.go` | `Handler.PreviewIssueWorkflowBrief` | go-call | scoped | A project the caller cannot see is not named in the brief, like a missing one; tests TestRestrictedIssueWritesDoNotNameHiddenProject, TestRestrictedWorkflowRoutesAnswerMissing/PreviewIssueWorkflowBrief |
 | `server/internal/handler/issue_workflow.go` | `Handler.PreviewWorkflowHandoff` | go-call | scoped | loadIssueForUser, then the project param passes Scope.Allows and answers 404 like a missing project; tests TestRestrictedIssueWritesDoNotNameHiddenProject, TestRestrictedWorkflowRoutesAnswerMissing/PreviewWorkflowHandoff |
 | `server/internal/handler/issue_workflow.go` | `Handler.SetProjectWorkflow` | go-call | scoped | loadProjectForWorkflowWrite answers 404 project not found for a hidden project; census and remap carry the marker; test TestRestrictedWorkflowRoutesAnswerMissing/SetProjectWorkflow |
-| `server/internal/handler/issue_workflow.go` | `Handler.UpdateIssueWorkflow` | go-call | todo | Project part scoped (non-manager refused with 404 when a hidden project uses the workflow; test TestRestrictedWorkflowRoutesAnswerMissing/UpdateIssueWorkflow); squad census and remap still unscoped, see CountSquadIssuesByStatus |
+| `server/internal/handler/issue_workflow.go` | `Handler.UpdateIssueWorkflow` | go-call | scoped | Project part: non-manager refused with 404 when a hidden project uses the workflow (TestRestrictedWorkflowRoutesAnswerMissing/UpdateIssueWorkflow). Squad part: census and remap scoped, and a non-manager whose edit would move hidden squad issues gets 404 (TestRestrictedSquadWorkflowCountsOmitHidden, TestRestrictedSquadRemapNeedsManage) |
 | `server/internal/handler/issue_workflow.go` | `Handler.loadProjectForWorkflowWrite` | go-call | scoped | Scope.Allows after GetProjectInWorkspace answers 404 like a missing project; test TestRestrictedWorkflowRoutesAnswerMissing/SetProjectWorkflow |
 | `server/internal/handler/issue_workflow.go` | `Handler.openFlowRequestCounts` | go-call | todo | Per-workflow count from CountOpenFlowRequestsByWorkflow (flow.sql row) and also called by squad_workflow.go (squad group); scope it with that query |
 | `server/internal/handler/issue_workflow.go` | `Handler.projectIDsByWorkflow` | go-call | scoped | Scope.Allows on each loaded project; test TestRestrictedWorkflowListsOmitHidden |
@@ -334,9 +334,10 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/squad.go` | `Handler.ListSquadMemberStatus` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/squad_briefing.go` | `secretaryDirectiveBriefing` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/squad_directory.go` | `Handler.ListSquadDirectory` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/squad_project.go` | `Handler.AssignSquadProject` | go-call | scoped | Scope.Allows after LockProjectForWorkflowChange answers 404 like a missing project; test TestRestrictedAssignSquadProjectAnswersMissing |
-| `server/internal/handler/squad_workflow.go` | `Handler.squadWorkflowPlan` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/squad_workflow.go` | `remapSquadIssues` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/squad_project.go` | `Handler.AssignSquadProject` | go-call | scoped | Scope.Allows after LockProjectForWorkflowChange answers 404 like a missing project (TestRestrictedAssignSquadProjectAnswersMissing); the first-activation remap uses the Scope and a non-manager is refused with 403 when hidden issues would move (TestRestrictedAssignSquadProjectRemapNeedsManage) |
+| `server/internal/handler/squad_workflow.go` | `Handler.squadWorkflowPlan` | go-call | scoped | Census goes through squadStatusCounts with the viewer's Scope; tests TestRestrictedSquadWorkflowCountsOmitHidden, TestRestrictedAssignSquadProjectRemapNeedsManage |
+| `server/internal/handler/squad_workflow.go` | `remapSquadIssues` | go-call | scoped | Passes the Scope to RemapSquadIssueStatus; tests TestRestrictedSquadRemapNeedsManage, TestRestrictedAssignSquadProjectRemapNeedsManage |
+| `server/internal/handler/squad_workflow.go` | `squadStatusCounts` | go-call | scoped | Calls CountSquadIssuesByStatus with the viewer's Scope; a non-manager is refused (errSquadIssuesHidden) when hidden issues sit on a status the move drops; tests TestRestrictedSquadWorkflowCountsOmitHidden, TestRestrictedSquadRemapNeedsManage |
 | `server/internal/handler/subscriber.go` | `Handler.ListSubscribedIssueIDs` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/subscriber.go` | `Handler.unsubscribeSubtreeSerialized` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/workspace.go` | `Handler.deleteWorkspaceData` | go-call | todo | Calls a reader query; no visibility filter today |

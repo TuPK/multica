@@ -98,6 +98,12 @@ WHERE i.workspace_id = $1::uuid
             AND a.home_squad_id = $2::uuid
       ))
   )
+AND ($3::text = 'all'
+    OR (i.project_id IS NULL AND $3::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $4::uuid)
+    OR ($3::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 GROUP BY i.status
 ORDER BY i.status
 `
@@ -105,6 +111,8 @@ ORDER BY i.status
 type CountSquadIssuesByStatusParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 	SquadID     pgtype.UUID `json:"squad_id"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
 }
 
 type CountSquadIssuesByStatusRow struct {
@@ -115,8 +123,14 @@ type CountSquadIssuesByStatusRow struct {
 // Status census for a squad's active-workflow switch or an edit of that workflow:
 // the project issues routed to the squad, either assigned to it or to an agent
 // whose home squad it is. Issues outside any project take no workflow.
+// projectaccess:scope
 func (q *Queries) CountSquadIssuesByStatus(ctx context.Context, arg CountSquadIssuesByStatusParams) ([]CountSquadIssuesByStatusRow, error) {
-	rows, err := q.db.Query(ctx, countSquadIssuesByStatus, arg.WorkspaceID, arg.SquadID)
+	rows, err := q.db.Query(ctx, countSquadIssuesByStatus,
+		arg.WorkspaceID,
+		arg.SquadID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -916,6 +930,12 @@ WHERE i.workspace_id = $2::uuid
   )
   AND i.status = $4::text
   AND i.status <> $1::text
+AND ($5::text = 'all'
+    OR (i.project_id IS NULL AND $5::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $6::uuid)
+    OR ($5::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 RETURNING i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.origin_type, i.origin_id, i.first_executed_at, i.start_date, i.metadata, i.stage, i.properties, i.revision, i.last_activity_at, i.triage_state, i.duplicate_of_issue_id, i.done_at, i.reopen_count, i.last_reopened_at, i.run_queued, i.run_after_issue_ids, i.run_start_status, i.outcome, i.flow, i.flow_step, i.flow_task, i.flow_round
 `
 
@@ -924,16 +944,21 @@ type RemapSquadIssueStatusParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 	SquadID     pgtype.UUID `json:"squad_id"`
 	FromStatus  string      `json:"from_status"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
 }
 
 // Moves a squad's routed project issues (the same set CountSquadIssuesByStatus
 // counts) from one status to another, with RemapProjectIssueStatus's effects.
+// projectaccess:scope
 func (q *Queries) RemapSquadIssueStatus(ctx context.Context, arg RemapSquadIssueStatusParams) ([]Issue, error) {
 	rows, err := q.db.Query(ctx, remapSquadIssueStatus,
 		arg.ToStatus,
 		arg.WorkspaceID,
 		arg.SquadID,
 		arg.FromStatus,
+		arg.ScopeMode,
+		arg.ScopeUserID,
 	)
 	if err != nil {
 		return nil, err

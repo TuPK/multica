@@ -262,6 +262,13 @@ WHERE i.workspace_id = sqlc.arg('workspace_id')::uuid
             AND a.home_squad_id = sqlc.arg('squad_id')::uuid
       ))
   )
+-- projectaccess:scope
+AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 GROUP BY i.status
 ORDER BY i.status;
 
@@ -295,6 +302,13 @@ WHERE i.workspace_id = sqlc.arg('workspace_id')::uuid
   )
   AND i.status = sqlc.arg('from_status')::text
   AND i.status <> sqlc.arg('to_status')::text
+-- projectaccess:scope
+AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 RETURNING i.*;
 
 -- name: LockProjectForWorkflowChange :one

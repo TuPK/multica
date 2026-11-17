@@ -1242,7 +1242,11 @@ func (h *Handler) UpdateIssueWorkflow(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		for _, squad := range squads {
-			squadCounts, err := qtx.CountSquadIssuesByStatus(ctx, db.CountSquadIssuesByStatusParams{WorkspaceID: wsUUID, SquadID: squad.ID})
+			squadCounts, err := squadStatusCounts(ctx, qtx, wsUUID, squad.ID, scope, next.Has)
+			if errors.Is(err, errSquadIssuesHidden) {
+				writeError(w, http.StatusNotFound, "workflow not found")
+				return
+			}
 			if err != nil {
 				writeError(w, http.StatusInternalServerError, "failed to save workflow")
 				return
@@ -1292,7 +1296,7 @@ func (h *Handler) UpdateIssueWorkflow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, squad := range squads {
-		squadChanged, squadCancelled, err := remapSquadIssues(ctx, qtx, wsUUID, squad.ID, plan, req.StatusMapping)
+		squadChanged, squadCancelled, err := remapSquadIssues(ctx, qtx, wsUUID, squad.ID, scope, plan, req.StatusMapping)
 		if err != nil {
 			slog.Warn("UpdateIssueWorkflow squad remap failed", append(logger.RequestAttrs(r), "error", err)...)
 			writeError(w, http.StatusInternalServerError, "failed to move issues to the new statuses")
