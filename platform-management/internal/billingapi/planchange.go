@@ -178,6 +178,14 @@ func (h *Handler) quotePlanChange(w http.ResponseWriter, r *http.Request, ws str
 			h.internalError(w, r, "read current plan", err)
 			return quotedChange{}, false
 		}
+		// Spec 7.4, rule 1: a paid subscription cannot move to a plan in another currency.
+		if cur.PlanKey != plan.FreeKey && target.Currency != curPlan.Currency {
+			writeJSON(w, http.StatusConflict, map[string]any{
+				"error": "the plan is priced in another currency than the current paid plan",
+				"code":  codePlanChangeUnavailable, "reason": "currency_mismatch",
+			})
+			return quotedChange{}, false
+		}
 	}
 	q, refusal := subscription.QuotePlanChange(subscription.QuoteInput{
 		Current: cur, HasRow: sub != nil, CurrentPlan: curPlan, Target: target,
