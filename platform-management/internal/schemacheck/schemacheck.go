@@ -17,6 +17,10 @@ import (
 // a migration for such a table adds its version here in the same commit; the
 // scan test in this package fails when one is missing. Keep the list sorted.
 var Required = []string{
+	"1007_payment_notice",                     // payment_notice: bank transfer notices, no raw body
+	"1008_payment_notice_event_uidx",          // payment_notice: unique index on provider event
+	"1009_payment_notice_id_uidx",             // payment_notice: unique index on id
+	"1010_payment_notice_review_idx",          // payment_notice: partial index, needs_review queue
 	"651_platform_account",                    // platform_account: table
 	"652_platform_account_user_idx",           // platform_account: unique index on user_id
 	"653_platform_account_status_idx",         // platform_account: partial index on status

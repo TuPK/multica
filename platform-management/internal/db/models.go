@@ -1872,6 +1872,13 @@ type MemberGroupMember struct {
 	AddedAt     pgtype.Timestamptz `json:"added_at"`
 }
 
+type MemberRemoval struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	UserID      pgtype.UUID        `json:"user_id"`
+	RemovedAt   pgtype.Timestamptz `json:"removed_at"`
+}
+
 type Metric struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	Key         string             `json:"key"`
@@ -1938,6 +1945,23 @@ type OrgChangeApplication struct {
 	ProbationNote      string             `json:"probation_note"`
 	ProbationCheckedAt pgtype.Timestamptz `json:"probation_checked_at"`
 	RollbackProposalID pgtype.UUID        `json:"rollback_proposal_id"`
+}
+
+type PaymentNotice struct {
+	ID              pgtype.UUID        `json:"id"`
+	Provider        string             `json:"provider"`
+	ProviderEventID string             `json:"provider_event_id"`
+	State           string             `json:"state"`
+	ReviewReason    string             `json:"review_reason"`
+	TransferCode    string             `json:"transfer_code"`
+	Amount          int64              `json:"amount"`
+	Currency        string             `json:"currency"`
+	OrderID         string             `json:"order_id"`
+	BodySha256      string             `json:"body_sha256"`
+	ReceivedAt      pgtype.Timestamptz `json:"received_at"`
+	DecidedAt       pgtype.Timestamptz `json:"decided_at"`
+	DecidedBy       string             `json:"decided_by"`
+	DecisionReason  string             `json:"decision_reason"`
 }
 
 type PersonalAccessToken struct {
