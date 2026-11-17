@@ -28,6 +28,8 @@ export type DecisionReason =
   | "last_owner"
   | "private_visibility"
   | "viewer_read_only"
+  | "permission_missing"
+  | "unknown_permission"
   | "unknown";
 
 export interface Decision {

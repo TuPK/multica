@@ -26,11 +26,61 @@ const isAdminLike = (role: MemberRole | null) =>
  * A viewer writes nothing (spec 6.6). A role this client does not know counts
  * as a viewer, so a newer server role never gains write rights here.
  */
-const isViewerRole = (role: MemberRole | null) =>
+const isViewerRole = (role: string | null) =>
   role !== null && role !== "owner" && role !== "admin" && role !== "member";
 
 const viewerDenial = () =>
   deny("viewer_read_only", "Viewers can only read this workspace.");
+
+// ---- Account-group permission keys (spec 7b.2) ----------------------------
+
+/**
+ * The fixed catalogue of permission keys. Mirrors `membergroup.catalogue` on
+ * the server. A key outside this list is refused here even if the server
+ * lists it, so a newer build never grants a right this client cannot name.
+ */
+export const PERMISSION_KEYS = [
+  "members.invite",
+  "audit.read",
+  "billing.view",
+  "billing.manage",
+  "integrations.manage",
+  "runtime_profiles.manage",
+] as const;
+
+export type PermissionKey = (typeof PERMISSION_KEYS)[number];
+
+/** What `/permissions/me` says about the caller. `null` means not loaded yet. */
+export interface PermissionGrant {
+  /** The server's role string. A role this client does not know is a viewer. */
+  role: string | null;
+  permissions: readonly string[];
+}
+
+const isPermissionKey = (key: string): key is PermissionKey =>
+  (PERMISSION_KEYS as readonly string[]).includes(key);
+
+/**
+ * Whether the caller holds `key`, read from `/permissions/me`. Unknown keys
+ * and an absent grant are refused. Pass `write: true` for a mutation: a
+ * viewer never writes, even with a group that grants every key (spec 7b.2
+ * rule 7). Reads use the key like any member.
+ */
+export function can(
+  key: string,
+  grant: PermissionGrant | null,
+  opts: { write?: boolean } = {},
+): Decision {
+  if (!isPermissionKey(key)) {
+    return deny("unknown_permission", "This permission is not known to this version.");
+  }
+  if (grant === null) {
+    return deny("permission_missing", "You do not have this permission.");
+  }
+  if (opts.write && isViewerRole(grant.role)) return viewerDenial();
+  if (grant.permissions.includes(key)) return ALLOW;
+  return deny("permission_missing", "You do not have this permission.");
+}
 
 // ---- Agents ----------------------------------------------------------------
 

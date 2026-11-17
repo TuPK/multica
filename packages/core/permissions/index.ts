@@ -12,10 +12,19 @@ export type {
   PermissionContext,
 } from "./types";
 
-export { canAssignAgentToIssue, canEditAgent, canManageKnowledge } from "./rules";
+export {
+  PERMISSION_KEYS,
+  can,
+  canAssignAgentToIssue,
+  canEditAgent,
+  canManageKnowledge,
+  type PermissionGrant,
+  type PermissionKey,
+} from "./rules";
 
 export {
   useAgentPermissions,
   useSkillPermissions,
 } from "./use-resource-permissions";
+export { useCan } from "./use-can";
 export { useCurrentMember } from "./use-current-member";

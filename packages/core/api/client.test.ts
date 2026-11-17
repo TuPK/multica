@@ -3349,3 +3349,50 @@ describe("ApiClient shared credential across windows", () => {
     expect(onUnauthorized).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("ApiClient account groups (spec 7b.2)", () => {
+  const json = (body: unknown) =>
+    new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+
+  it("grants nothing when permissions/me is malformed", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ role: "member", permissions: "audit.read" })));
+    const client = new ApiClient("https://api.example.test");
+    expect(await client.getMyPermissions("ws-1")).toEqual({ role: "", permissions: [] });
+  });
+
+  it("reads permissions/me without the permissions field as no keys", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ role: "member" })));
+    const client = new ApiClient("https://api.example.test");
+    expect(await client.getMyPermissions("ws-1")).toEqual({ role: "member", permissions: [] });
+  });
+
+  it("returns an empty catalogue for a malformed body", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ permissions: 3 })));
+    const client = new ApiClient("https://api.example.test");
+    expect(await client.getPermissionCatalogue("ws-1")).toEqual([]);
+  });
+
+  it("returns an empty group list for a malformed body", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ groups: [] })));
+    const client = new ApiClient("https://api.example.test");
+    expect(await client.listMemberGroups("ws-1")).toEqual([]);
+  });
+
+  it("sets group keys with a PUT of the permissions array", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(json({ id: "g1", name: "Ops", permissions: ["audit.read"] }));
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new ApiClient("https://api.example.test");
+    const group = await client.setMemberGroupPermissions("ws-1", "g1", ["audit.read"]);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("https://api.example.test/api/workspaces/ws-1/groups/g1/permissions");
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ permissions: ["audit.read"] });
+    expect(group.permissions).toEqual(["audit.read"]);
+  });
+
+  it("falls back to an empty group on a malformed create response", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ id: 5 })));
+    const client = new ApiClient("https://api.example.test");
+    const group = await client.createMemberGroup("ws-1", { name: "Ops" });
+    expect(group.id).toBe("");
+    expect(group.permissions).toEqual([]);
+  });
+});

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { MemberRole } from "../types";
 import type { Agent, Comment, Member, RuntimeDevice, Skill } from "../types";
 import {
   canAssignAgentToIssue,
@@ -12,6 +13,7 @@ import {
   canEditSkill,
   canManageKnowledge,
   canManageMembers,
+  can,
   canUpdateWorkspaceSettings,
 } from "./rules";
 
@@ -488,5 +490,46 @@ describe("viewer role (spec 6.6)", () => {
     const ctxMember = { userId: ALICE, role: "member" as const };
     expect(canEditAgent(makeAgent({ owner_id: ALICE }), ctxMember).allowed).toBe(true);
     expect(canEditComment(makeComment({ author_id: ALICE }), ctxMember).allowed).toBe(true);
+  });
+});
+
+// ---- Account-group permission keys (spec 7b.2) -----------------------------
+
+describe("can (permissions/me)", () => {
+  const grant = (role: MemberRole, permissions: string[]) => ({ role, permissions });
+
+  it("allows a key the person holds", () => {
+    expect(can("audit.read", grant("member", ["audit.read"])).allowed).toBe(true);
+  });
+
+  it("refuses a key the person does not hold", () => {
+    const d = can("billing.manage", grant("member", ["audit.read"]));
+    expect(d.allowed).toBe(false);
+    expect(d.reason).toBe("permission_missing");
+  });
+
+  it("refuses every key when permissions are not loaded yet", () => {
+    expect(can("audit.read", null).allowed).toBe(false);
+    expect(can("audit.read", null).reason).toBe("permission_missing");
+  });
+
+  it("refuses a key this client does not know, even when the server lists it", () => {
+    const d = can("future.key", grant("owner", ["future.key"]));
+    expect(d.allowed).toBe(false);
+    expect(d.reason).toBe("unknown_permission");
+  });
+
+  it("refuses a write to a viewer, even one holding every key in a group", () => {
+    const all = ["members.invite", "audit.read", "billing.view", "billing.manage", "integrations.manage", "runtime_profiles.manage"];
+    expect(can("billing.manage", grant("viewer", all), { write: true }).allowed).toBe(false);
+    expect(can("billing.manage", grant("viewer", all), { write: true }).reason).toBe("viewer_read_only");
+  });
+
+  it("lets a viewer read with a key it holds", () => {
+    expect(can("audit.read", grant("viewer", ["audit.read"])).allowed).toBe(true);
+  });
+
+  it("refuses a role this client does not know as a write", () => {
+    expect(can("billing.manage", grant("guest" as MemberRole, ["billing.manage"]), { write: true }).allowed).toBe(false);
   });
 });

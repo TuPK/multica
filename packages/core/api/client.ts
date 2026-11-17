@@ -46,6 +46,18 @@ import type { ArchivedInboxPage, ArchivedInboxFacets } from "../types/inbox";
 import { parseQoderConnection, parseQoderCatalog, type QoderInput } from "../runtimes/qoder-schema";
 import { configStore } from "../config";
 import {
+  AddMemberGroupMembersResponseSchema,
+  MemberGroupDetailSchema,
+  MemberGroupListSchema,
+  MemberGroupSchema,
+  MyPermissionsSchema,
+  PermissionCatalogueSchema,
+  emptyGroup,
+  type MemberGroup,
+  type MemberGroupDetail,
+  type MyPermissions,
+} from "../groups/schema";
+import {
   EMPTY_COMPANY_FLOOR,
   EMPTY_COMPANY_FLOOR_LIST,
   EMPTY_COMPANY_SEATS_RESPONSE,
@@ -4625,6 +4637,92 @@ export class ApiClient {
     await this.fetch(`/api/invitations/${invitationId}/decline`, {
       method: "POST",
     });
+  }
+
+  // ---- Account groups (platform spec 7b.2) ----
+
+  /** The fixed permission keys. Empty when the call fails, so nothing is granted. */
+  async getPermissionCatalogue(workspaceId: string): Promise<string[]> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${workspaceId}/permission-catalogue`);
+    return parseWithFallback(raw, PermissionCatalogueSchema, { permissions: [] }, {
+      endpoint: "GET /api/workspaces/{id}/permission-catalogue",
+    }).permissions;
+  }
+
+  /** The caller's role and effective keys. An empty grant when the call fails. */
+  async getMyPermissions(workspaceId: string): Promise<MyPermissions> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${workspaceId}/permissions/me`);
+    return parseWithFallback<MyPermissions>(raw, MyPermissionsSchema, { role: "", permissions: [] }, {
+      endpoint: "GET /api/workspaces/{id}/permissions/me",
+    });
+  }
+
+  async listMemberGroups(workspaceId: string): Promise<MemberGroup[]> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${workspaceId}/groups`);
+    return parseWithFallback<MemberGroup[]>(raw, MemberGroupListSchema, [], {
+      endpoint: "GET /api/workspaces/{id}/groups",
+    });
+  }
+
+  async getMemberGroup(workspaceId: string, groupId: string): Promise<MemberGroupDetail> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${workspaceId}/groups/${groupId}`);
+    return parseWithFallback<MemberGroupDetail>(raw, MemberGroupDetailSchema, { ...emptyGroup(), members: [] }, {
+      endpoint: "GET /api/workspaces/{id}/groups/{groupId}",
+    });
+  }
+
+  async createMemberGroup(workspaceId: string, data: { name: string; description?: string }): Promise<MemberGroup> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${workspaceId}/groups`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback<MemberGroup>(raw, MemberGroupSchema, emptyGroup(), {
+      endpoint: "POST /api/workspaces/{id}/groups",
+    });
+  }
+
+  async updateMemberGroup(
+    workspaceId: string,
+    groupId: string,
+    data: { name?: string; description?: string },
+  ): Promise<MemberGroup> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${workspaceId}/groups/${groupId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback<MemberGroup>(raw, MemberGroupSchema, emptyGroup(), {
+      endpoint: "PATCH /api/workspaces/{id}/groups/{groupId}",
+    });
+  }
+
+  async deleteMemberGroup(workspaceId: string, groupId: string): Promise<void> {
+    await this.fetch(`/api/workspaces/${workspaceId}/groups/${groupId}`, { method: "DELETE" });
+  }
+
+  /** Replaces the keys of a group. The server returns the group with its new keys. */
+  async setMemberGroupPermissions(workspaceId: string, groupId: string, permissions: string[]): Promise<MemberGroup> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${workspaceId}/groups/${groupId}/permissions`, {
+      method: "PUT",
+      body: JSON.stringify({ permissions }),
+    });
+    return parseWithFallback<MemberGroup>(raw, MemberGroupSchema, emptyGroup(), {
+      endpoint: "PUT /api/workspaces/{id}/groups/{groupId}/permissions",
+    });
+  }
+
+  /** Adds people to a group (100 at most per call). Returns the ids the server added. */
+  async addMemberGroupMembers(workspaceId: string, groupId: string, userIds: string[]): Promise<string[]> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${workspaceId}/groups/${groupId}/members`, {
+      method: "POST",
+      body: JSON.stringify({ user_ids: userIds }),
+    });
+    return parseWithFallback(raw, AddMemberGroupMembersResponseSchema, { added: [] }, {
+      endpoint: "POST /api/workspaces/{id}/groups/{groupId}/members",
+    }).added;
+  }
+
+  async removeMemberGroupMember(workspaceId: string, groupId: string, userId: string): Promise<void> {
+    await this.fetch(`/api/workspaces/${workspaceId}/groups/${groupId}/members/${userId}`, { method: "DELETE" });
   }
 
   async createShareLink(workspaceId: string, data: { role?: string; expires_in?: number; max_uses?: number }): Promise<ShareLink> {
