@@ -40,6 +40,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/integrations/slack"
 	"github.com/multica-ai/multica/server/internal/integrations/telegram"
 	"github.com/multica-ai/multica/server/internal/integrations/wecom"
+	"github.com/multica-ai/multica/server/internal/membergroup"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/middleware"
 	"github.com/multica-ai/multica/server/internal/publish"
@@ -1924,9 +1925,6 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			r.Get("/", h.ListWorkspaces)
 			r.Post("/", h.CreateWorkspace)
 			r.Route("/{id}", func(r chi.Router) {
-				// The pending-invitation list exposes invitee emails, so it is
-				// limited to owners and admins.
-				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner", "admin")).Get("/invitations", h.ListWorkspaceInvitations)
 				// Member-level access
 				r.Group(func(r chi.Router) {
 					r.Use(middleware.RequireWorkspaceMemberFromURL(queries, "id"))
@@ -1971,29 +1969,18 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Group(func(r chi.Router) {
 					r.Use(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner", "admin"))
 					r.Put("/", h.UpdateWorkspace)
-					r.Get("/audit-events", h.ListWorkspaceAuditEvents)
 					r.Patch("/", h.UpdateWorkspace)
-					r.Post("/members", h.CreateInvitation)
 					r.Route("/members/{memberId}", func(r chi.Router) {
 						r.Patch("/", h.UpdateMember)
 						r.Delete("/", h.DeleteMember)
 					})
-					r.Delete("/invitations/{invitationId}", h.RevokeInvitation)
 					// Curating the shared MCP library is an admin action.
 					// Creating an entry binds it to no agent; an agent owner
 					// adds it to their own agent through the agent routes.
 					r.Post("/mcp-servers", h.CreateWorkspaceMcpServer)
 					r.Put("/mcp-servers/{serverId}", h.UpdateWorkspaceMcpServer)
 					r.Delete("/mcp-servers/{serverId}", h.DeleteWorkspaceMcpServer)
-					r.Post("/share-links", h.CreateShareLink)
-					r.Delete("/share-links/{linkId}", h.RevokeShareLink)
-					r.Get("/share-links", h.ListShareLinks)
 					r.Get("/policy", h.GetWorkspacePolicy)
-					// Custom runtime profile mutations (admin-only).
-					r.Post("/runtime-profiles", h.CreateRuntimeProfile)
-					r.Patch("/runtime-profiles/{profileId}", h.UpdateRuntimeProfile)
-					r.Put("/runtime-profiles/{profileId}", h.UpdateRuntimeProfile)
-					r.Delete("/runtime-profiles/{profileId}", h.DeleteRuntimeProfile)
 					// Publishing. The author uploads an artifact bundle and we
 					// store it; a version is immutable once published, so
 					// there is no update route here by design.
@@ -2038,18 +2025,55 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner")).Get("/exports", h.ListWorkspaceExports)
 				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner")).Get("/exports/{exportId}", h.GetWorkspaceExport)
 
+				// Permission keys (spec 7b.2): owner and admin hold every key; a
+				// member reaches a route only through a group that grants its
+				// key. Each group below starts with its key. A route outside
+				// the catalogue stays in an owner and admin group.
+				//
+				// members.invite: the role an inviter may assign is limited in
+				// the handlers.
+				r.Group(func(r chi.Router) {
+					r.Use(middleware.RequireWorkspacePermissionFromURL(queries, "id", membergroup.KeyMembersInvite))
+					r.Post("/members", h.CreateInvitation)
+					// The pending-invitation list exposes invitee emails.
+					r.Get("/invitations", h.ListWorkspaceInvitations)
+					r.Delete("/invitations/{invitationId}", h.RevokeInvitation)
+					r.Get("/share-links", h.ListShareLinks)
+					r.Post("/share-links", h.CreateShareLink)
+					r.Delete("/share-links/{linkId}", h.RevokeShareLink)
+				})
+				r.Group(func(r chi.Router) {
+					r.Use(middleware.RequireWorkspacePermissionFromURL(queries, "id", membergroup.KeyAuditRead))
+					r.Get("/audit-events", h.ListWorkspaceAuditEvents)
+				})
 				// Plans and orders of the platform's billing. The orders carry
-				// the buyer's invoice details, so only human owners and admins
-				// reach them. The buyer route is the one write the server makes
-				// to a platform table besides platform_workspace.
+				// the buyer's invoice details, so only people reach them. The
+				// buyer route is the one write the server makes to a platform
+				// table besides platform_workspace. The plan list is not in the
+				// catalogue and stays with owners and admins.
 				r.Group(func(r chi.Router) {
 					r.Use(handler.RequireHumanActor)
 					r.Use(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner", "admin"))
 					r.Get("/plans", h.ListWorkspacePlans)
+				})
+				r.Group(func(r chi.Router) {
+					r.Use(middleware.RequireWorkspacePermissionFromURL(queries, "id", membergroup.KeyBillingView))
+					r.Use(handler.RequireHumanActor)
 					r.Get("/orders", h.ListWorkspaceOrders)
 					r.Get("/orders/{orderId}", h.GetWorkspaceOrder)
 					r.Get("/orders/{orderId}/usage", h.GetWorkspaceOrderUsage)
+				})
+				r.Group(func(r chi.Router) {
+					r.Use(middleware.RequireWorkspacePermissionFromURL(queries, "id", membergroup.KeyBillingManage))
+					r.Use(handler.RequireHumanActor)
 					r.Put("/orders/{orderId}/buyer", h.UpdateWorkspaceOrderBuyer)
+				})
+				r.Group(func(r chi.Router) {
+					r.Use(middleware.RequireWorkspacePermissionFromURL(queries, "id", membergroup.KeyRuntimeProfilesManage))
+					r.Post("/runtime-profiles", h.CreateRuntimeProfile)
+					r.Patch("/runtime-profiles/{profileId}", h.UpdateRuntimeProfile)
+					r.Put("/runtime-profiles/{profileId}", h.UpdateRuntimeProfile)
+					r.Delete("/runtime-profiles/{profileId}", h.DeleteRuntimeProfile)
 				})
 
 				// Account groups (spec 7b.2). Managing groups is for human owners
@@ -2070,11 +2094,12 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Delete("/groups/{groupId}/members/{userId}", h.RemoveMemberGroupMember)
 				})
 
-				// GitHub integration — connect / disconnect remain admin-only;
-				// the read-only list endpoint lives in the member-level group
-				// above so non-admins can see the workspace's connection state.
+				// GitHub, VCS and Qoder connect / disconnect need
+				// integrations.manage; the read-only list endpoints live in the
+				// member-level group above so non-admins can see the
+				// workspace's connection state.
 				r.Group(func(r chi.Router) {
-					r.Use(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner", "admin"))
+					r.Use(middleware.RequireWorkspacePermissionFromURL(queries, "id", membergroup.KeyIntegrationsManage))
 					r.Get("/github/connect", h.GitHubConnect)
 					r.Get("/github/installations/{installationId}/repositories", h.ListGitHubInstallationRepositories)
 					r.Delete("/github/installations/{installationId}", h.DeleteGitHubInstallation)
@@ -2129,7 +2154,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Get("/wecom/installations", h.ListWecomInstallations)
 				})
 				r.Group(func(r chi.Router) {
-					r.Use(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner", "admin"))
+					r.Use(middleware.RequireWorkspacePermissionFromURL(queries, "id", membergroup.KeyIntegrationsManage))
 					r.Delete("/slack/installations/{installationId}", h.RevokeSlackInstallation)
 					r.Post("/slack/install/byo", h.RegisterSlackBYO)
 					r.Delete("/wecom/installations/{installationId}", h.RevokeWecomInstallation)
@@ -2157,7 +2182,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Get("/telegram/installations", h.ListTelegramInstallations)
 				})
 				r.Group(func(r chi.Router) {
-					r.Use(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner", "admin"))
+					r.Use(middleware.RequireWorkspacePermissionFromURL(queries, "id", membergroup.KeyIntegrationsManage))
 					r.Delete("/telegram/installations/{installationId}", h.RevokeTelegramInstallation)
 					r.Post("/telegram/install", h.RegisterTelegramBot)
 				})
@@ -2259,7 +2284,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 
 		// Workspace subscriptions use the same cloud transport and Stripe
 		// webhook as the existing owner-credit billing surface, but every request
-		// is workspace-scoped. Summary and prices are member-readable. Local role
+		// is workspace-scoped. Summary and prices are member-readable. Local permission
 		// checks cheaply reject unauthorized writes; Cloud remains the final
 		// authority and validates every mutation before external writes. Handlers
 		// also enforce billing_workspace_subscriptions so a route refactor cannot
@@ -2272,8 +2297,11 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Get("/prices", h.GetCloudWorkspaceSubscriptionPrices)
 			})
 			r.Group(func(r chi.Router) {
-				r.Use(middleware.RequireWorkspaceRole(queries, "owner", "admin"))
+				r.Use(middleware.RequireWorkspacePermission(queries, membergroup.KeyBillingView))
 				r.Get("/usage", h.GetCloudWorkspaceSubscriptionUsage)
+			})
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.RequireWorkspacePermission(queries, membergroup.KeyBillingManage))
 				r.Post("/checkout-sessions", h.CreateCloudWorkspaceSubscriptionCheckout)
 				r.Post("/seats/purchase-preview", h.PreviewCloudWorkspaceSubscriptionSeatPurchase)
 				r.Post("/seats/purchases", h.PurchaseCloudWorkspaceSubscriptionSeats)
