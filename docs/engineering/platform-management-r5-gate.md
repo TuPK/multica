@@ -8,7 +8,36 @@ No dependency install was run; `node_modules` was present. `pnpm catalog:build` 
 
 ## Verdict
 
-The R5 gate is **not closed**. Every check runs green except two reproduction tests that predate R5 (both red on main since the R3 gate). Three spec features are not built: staff verification of business profiles (AC25, rule 12), the `plan_currency_locked` refusal (AC37), and the upcoming price-change field that AC40 names. Thirteen more acceptance criteria are only partly covered by tests. The open list is in section 6. Nothing in this record fixes product code; each gap needs a decision from the owner.
+The R5 gate is **not closed**. Every check runs green except two reproduction tests that predate R5 (both red on main since the R3 gate). Thirteen more acceptance criteria are only partly covered by tests. The open list is in section 6. Nothing in this record fixes product code; each gap needs a decision from the owner.
+
+### Update after the closing commits (2026-11-17)
+
+Three features that this record marked as not built are now built, each with its tests (test-first, seen failing before the change):
+
+| Gap | Closed by | Tests (named) | State |
+| --- | --- | --- | --- |
+| 6.1 item 1: staff verification of business profiles (AC25, rule 12) | `89ef83695` (platform route, audit, service); `f3ecb1507` (console verify control) | `TestVerifySetsVerifiedAtAndVerifiedBy`, `TestUnverifyClearsVerification`, `TestVerifyRouteAllowsBillingAndAdminOnly`, `TestDBVerifyPersistsAndUnverifyClears`; console `TenantDetail.test.tsx` | Closed, with one follow-up (below) |
+| 6.1 item 3: `plan_currency_locked` (AC37) | `6156d9875` (platform); `f3ecb1507` (console message) | `TestPutPlanRefusesACurrencyChangeOnAPlanWithASubscription`, `TestPutPlanRefusesACurrencyChangeOnAPlanWithAnOrder`, `TestDBCurrencyLockedWithBillingOrder`; console `Plans.test.tsx` | Closed |
+| 6.1 item 2: scheduled price change never reaches the customer (AC40) | `99ccba960` (platform summary and Multica plans response) | `TestSummaryShowsScheduledPriceChangeOnlyForThePlanInUseAfterNotice`, `TestDBSummaryScheduledPriceChangeReadsTheStore`, `TestListWorkspacePlansShowsScheduledPriceChangeAfterNoticeOnly` | Closed; the Multica banner needed no change |
+
+Re-run of the Q17 checks after these commits:
+
+| Check | Result |
+| --- | --- |
+| Platform suite on `multica_r5_test` (`go vet ./...`, `go test -p 1 ./...`) | pass: `go vet` exit 0; 35 packages `ok` |
+| `server/internal/handler` on `multica_platform_test` (full package) | fails the same 2 pre-existing squad reproduction tests (6.1 item 6); all others pass |
+| Migration checks (`TestMigrationFilesHaveMatchingDirections`, `TestMigrationNumericPrefixesAreUnique`, `TestEveryConcurrentUpBuildHasCleanup`, `TestUserColumnRegistry`) | pass |
+| Console vitest (`platform-management/console`) | pass: 17 files, 234 tests |
+| Console `tsc --noEmit` | exit 0 |
+| `pnpm -C packages/core test` / `typecheck` | pass: 374 files, 5566 tests, 1 skipped / exit 0 |
+| `pnpm -C packages/views test` / `typecheck` | pass: 733 files, 8876 tests / exit 0 |
+| `pnpm lint` | exit 0, 7 of 7 tasks; 23 warnings, 0 errors (unused eslint-disable directives in core and views) |
+
+Items still open after this update:
+- **Follow-up from the console verify control:** `TenantDetail` shows "Unverified" when the page loads, because no console route returns a tenant's billing profile. The status is correct only after a verify or unverify click in the same session. The read route (`GET /tenants/{id}/billing-profile`, spec 7b.1) is not built.
+- 6.1 items 0, 3a, 3b, 4, 5, 6 remain as listed below.
+- The ACs marked "Partial" in section 3 are unchanged, except that AC25, AC37 and AC40 now have the tests named above; their remaining gaps still stand.
+- The console has no lint script, so the console itself was not linted.
 
 ## 1. Commands and results
 
@@ -185,9 +214,9 @@ See the AC48 row in section 3. The regression check is partial: the old routes r
 ### 6.1 Product gaps found by the gate (not fixed here)
 
 0. **Group billing keys do not work on subscription routes** (AC25, AC27). `billing.view` and `billing.manage` are opened in the router, but the handlers in `cloud_billing.go` (including the usage read) still require owner or admin. A group member holding `billing.manage` is refused.
-1. **Staff verification of business profiles is not built.** Spec 7b.1 rule 12 and the console's billing block need a verify action that sets `verified_at` and `verified_by`, with the audit actions `billing_profile.verified` and `billing_profile.unverified`. None exists in code: no route, no audit action, no console button. Until this exists, the business discount (D45) cannot be turned on from the product.
-2. **The upcoming price change never reaches the customer.** `scheduled_price_change` is parsed in `packages/core` and rendered in `packages/views/billing/scheduled-price-change-banner.tsx`, but no server or platform code emits it. AC40 names the response of `GET /api/workspaces/{id}/plans`.
-3. **`plan_currency_locked` is not built.** AC37 requires a 409 when the currency changes on a plan that has subscriptions. Neither the code nor the tests contain it. `plan_version_conflict` (in the spec's error table) is also absent.
+1. **[Closed, see the update above]** Staff verification of business profiles was not built. Spec 7b.1 rule 12 and the console's billing block need a verify action that sets `verified_at` and `verified_by`, with the audit actions `billing_profile.verified` and `billing_profile.unverified`. None exists in code: no route, no audit action, no console button. Until this exists, the business discount (D45) cannot be turned on from the product.
+2. **[Closed, see the update above]** The upcoming price change never reached the customer. `scheduled_price_change` is parsed in `packages/core` and rendered in `packages/views/billing/scheduled-price-change-banner.tsx`, but no server or platform code emits it. AC40 names the response of `GET /api/workspaces/{id}/plans`.
+3. **[Closed, see the update above]** `plan_currency_locked` was not built. AC37 requires a 409 when the currency changes on a plan that has subscriptions. Neither the code nor the tests contain it. `plan_version_conflict` (in the spec's error table) is also absent.
 3a. **Price settings are not read from the environment.** `PLATFORM_PRICE_NOTICE_DAYS`, `PLATFORM_PRICE_CONFIRM_PCT` and `PLATFORM_PRICE_MAX` (spec 3.4, AC37, AC38) are not read by `config.go`; the code uses fixed defaults (30 days, 50 percent). `PLATFORM_INDIVIDUAL_MAX_SEATS` is read but enforced only on plan change (AC21).
 3b. **No pay-as-you-go plan is seeded.** The seed has the four original plans and the unlimited plan. Staff must create a `payg` plan before any account can activate it. This is a seed gap for AC32 and the operator checklist, not a code defect.
 4. **Migration 969 is missing from the platform schema check** (section 2.1).
