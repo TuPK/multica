@@ -25,6 +25,7 @@ type fakeProfiles struct {
 	profiles   map[string]BillingProfile
 	audits     []audit.Entry
 	txs        int
+	failAudit  error
 }
 
 func newFakeProfiles(t *testing.T) *fakeProfiles {
@@ -84,6 +85,9 @@ func (t *fakeProfileTx) SaveProfile(_ context.Context, p BillingProfile) error {
 }
 
 func (t *fakeProfileTx) InsertAuditEvent(_ context.Context, e audit.Entry) error {
+	if t.s.failAudit != nil {
+		return t.s.failAudit
+	}
 	t.s.audits = append(t.s.audits, e)
 	return nil
 }

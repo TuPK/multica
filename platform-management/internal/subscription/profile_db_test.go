@@ -210,3 +210,63 @@ func TestDBVerifyPersistsAndUnverifyClears(t *testing.T) {
 		t.Fatal("the tax code reached the audit log")
 	}
 }
+
+func TestDBEditingFieldsOfTheSameKindPersists(t *testing.T) {
+	f := newDBFixture(t)
+	owner := f.user()
+	staffUser := f.user()
+	ws := f.workspace(map[string]string{owner: "owner"})
+	svc := NewProfileService(NewPgxProfileRunner(f.pool))
+	reader := NewPgxProfiles(f.pool)
+	ctx := context.Background()
+	fields := completeProfile()
+	if _, err := svc.ChangeAccountKind(ctx, KindChange{
+		WorkspaceID: ws, Kind: AccountBusiness, Profile: &fields, ActorType: audit.ActorMember, ActorID: owner,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	at := time.Now().UTC().Truncate(time.Microsecond)
+	if _, err := svc.Verify(ctx, VerifyChange{WorkspaceID: ws, Verified: true, At: at, ActorType: audit.ActorStaff, ActorID: staffUser}); err != nil {
+		t.Fatal(err)
+	}
+	edit := func(f ProfileFields) KindResult {
+		t.Helper()
+		res, err := svc.ChangeAccountKind(ctx, KindChange{
+			WorkspaceID: ws, Kind: AccountBusiness, Profile: &f, ActorType: audit.ActorStaff, ActorID: staffUser, ActorLabel: "billing@example.test",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res
+	}
+
+	fields.Address = "2 New St"
+	if res := edit(fields); !res.Changed {
+		t.Fatal("an address edit reported no change")
+	}
+	got, _, err := reader.Profile(ctx, ws)
+	if err != nil || got.Address != "2 New St" || got.VerifiedAt == nil || got.VerifiedBy != staffUser {
+		t.Fatalf("after an address edit = %+v, %v", got, err)
+	}
+	if res := edit(fields); res.Changed {
+		t.Fatal("the same fields reported a change")
+	}
+
+	fields.LegalName = "Beta Co"
+	edit(fields)
+	got, _, err = reader.Profile(ctx, ws)
+	if err != nil || got.LegalName != "Beta Co" || got.VerifiedAt != nil || got.VerifiedBy != "" {
+		t.Fatalf("after a name edit = %+v, %v", got, err)
+	}
+	if n := f.count(`SELECT count(*) FROM audit_event WHERE workspace_id = $1 AND action = $2 AND actor_type = 'staff'
+		AND detail->'fields' = '["address"]'::jsonb`, ws, audit.ActionBillingProfileUpdated); n != 1 {
+		t.Fatalf("address audit rows = %d, want 1", n)
+	}
+	if n := f.count(`SELECT count(*) FROM audit_event WHERE workspace_id = $1 AND action = $2 AND detail->'fields' = '["legal_name"]'::jsonb`,
+		ws, audit.ActionBillingProfileUpdated); n != 1 {
+		t.Fatalf("name audit rows = %d, want 1", n)
+	}
+	if n := f.count(`SELECT count(*) FROM audit_event WHERE workspace_id = $1 AND (detail::text LIKE '%0123456789%' OR detail::text LIKE '%Beta%' OR detail::text LIKE '%New St%')`, ws); n != 0 {
+		t.Fatal("a field value reached the audit log")
+	}
+}

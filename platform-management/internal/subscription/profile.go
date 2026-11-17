@@ -206,7 +206,7 @@ type KindChange struct {
 }
 
 // KindResult is the profile after a KindChange. Changed is false when the
-// workspace already had the kind: nothing was written.
+// workspace already had the kind and the fields: nothing was written.
 type KindResult struct {
 	Profile BillingProfile
 	Changed bool
@@ -257,16 +257,17 @@ func (s *ProfileService) ChangeAccountKind(ctx context.Context, c KindChange) (K
 		if !validKind(cur.AccountKind) {
 			return fmt.Errorf("billing profile %s: unknown account kind %q", ws, cur.AccountKind)
 		}
-		if cur.AccountKind == c.Kind {
-			res = KindResult{Profile: cur}
-			return nil
-		}
-
 		next := cur
 		next.AccountKind = c.Kind
 		if c.Profile != nil {
 			f := c.Profile.trimmed()
 			next.LegalName, next.TaxCode, next.Address, next.InvoiceEmail = f.LegalName, f.TaxCode, f.Address, f.InvoiceEmail
+		}
+		kindChanged := cur.AccountKind != c.Kind
+		edited := changedFields(cur, next)
+		if !kindChanged && len(edited) == 0 {
+			res = KindResult{Profile: cur}
+			return nil
 		}
 		if next.LegalName != cur.LegalName || next.TaxCode != cur.TaxCode {
 			next.VerifiedAt, next.VerifiedBy = nil, ""
@@ -278,8 +279,10 @@ func (s *ProfileService) ChangeAccountKind(ctx context.Context, c KindChange) (K
 				return incomplete(m)
 			}
 		case AccountIndividual:
-			if err := s.currentPlanAllows(ctx, tx, ws, AccountIndividual); err != nil {
-				return err
+			if kindChanged {
+				if err := s.currentPlanAllows(ctx, tx, ws, AccountIndividual); err != nil {
+					return err
+				}
 			}
 		}
 		if next.TaxCode != "" && !taxCodePattern.MatchString(next.TaxCode) {
@@ -290,20 +293,26 @@ func (s *ProfileService) ChangeAccountKind(ctx context.Context, c KindChange) (K
 		if err := tx.SaveProfile(ctx, next); err != nil {
 			return err
 		}
+		action := audit.ActionWorkspaceAccountKindChanged
+		detail := map[string]any{
+			auditChanges: map[string]any{
+				fieldAccountKind: map[string]any{"from": cur.AccountKind, "to": next.AccountKind},
+			},
+		}
+		if !kindChanged {
+			// Names only: a tax code or an address must not reach the audit log.
+			action, detail = audit.ActionBillingProfileUpdated, map[string]any{"fields": edited}
+		}
 		if err := audit.Record(ctx, tx, audit.Entry{
 			WorkspaceID: ws,
 			ActorType:   c.ActorType,
 			ActorID:     c.ActorID,
 			ActorLabel:  c.ActorLabel,
-			Action:      audit.ActionWorkspaceAccountKindChanged,
+			Action:      action,
 			TargetType:  targetWorkspace,
 			TargetID:    ws,
 			TargetLabel: name,
-			Detail: map[string]any{
-				auditChanges: map[string]any{
-					fieldAccountKind: map[string]any{"from": cur.AccountKind, "to": next.AccountKind},
-				},
-			},
+			Detail:      detail,
 		}); err != nil {
 			return err
 		}
@@ -314,6 +323,23 @@ func (s *ProfileService) ChangeAccountKind(ctx context.Context, c KindChange) (K
 		return KindResult{}, err
 	}
 	return res, nil
+}
+
+// changedFields names the profile fields whose value differs, sorted.
+func changedFields(from, to BillingProfile) []string {
+	var out []string
+	for _, c := range []struct {
+		name     string
+		old, new string
+	}{
+		{fieldAddress, from.Address, to.Address}, {fieldInvoiceEmail, from.InvoiceEmail, to.InvoiceEmail},
+		{fieldLegalName, from.LegalName, to.LegalName}, {fieldTaxCode, from.TaxCode, to.TaxCode},
+	} {
+		if c.old != c.new {
+			out = append(out, c.name)
+		}
+	}
+	return out
 }
 
 // currentPlanAllows refuses when the workspace's current plan is not sold to

@@ -61,28 +61,40 @@ type handlerFunc func(*Console, http.ResponseWriter, *http.Request)
 type routeSpec struct {
 	pattern string
 	roles   []staff.Role
-	methods map[string]handlerFunc
+	// methodRoles overrides roles for the methods it names.
+	methodRoles map[string][]staff.Role
+	methods     map[string]handlerFunc
+}
+
+func (rt routeSpec) rolesFor(method string) []staff.Role {
+	if r, ok := rt.methodRoles[method]; ok {
+		return r
+	}
+	return rt.roles
 }
 
 func routeTable() []routeSpec {
 	const base = "/api/platform"
 	admin := []staff.Role{staff.RoleAdmin}
 	return []routeSpec{
-		{base + "/plans", admin, map[string]handlerFunc{http.MethodGet: (*Console).listPlans}},
-		{base + "/plans/{key}", admin, map[string]handlerFunc{
+		{base + "/plans", admin, nil, map[string]handlerFunc{http.MethodGet: (*Console).listPlans}},
+		{base + "/plans/{key}", admin, nil, map[string]handlerFunc{
 			http.MethodPut:    (*Console).putPlan,
 			http.MethodDelete: (*Console).deletePlan,
 		}},
-		{base + "/tenants/{id}/subscription", []staff.Role{staff.RoleBilling, staff.RoleAdmin}, map[string]handlerFunc{
+		{base + "/tenants/{id}/subscription", []staff.Role{staff.RoleBilling, staff.RoleAdmin}, nil, map[string]handlerFunc{
 			http.MethodPut: (*Console).putSubscription,
 		}},
-		{base + "/tenants/{id}/billing-profile", nil, map[string]handlerFunc{
-			http.MethodGet: (*Console).getProfile,
-		}},
-		{base + "/tenants/{id}/billing-profile/verify", []staff.Role{staff.RoleBilling, staff.RoleAdmin}, map[string]handlerFunc{
+		{base + "/tenants/{id}/billing-profile", nil,
+			map[string][]staff.Role{http.MethodPut: {staff.RoleBilling, staff.RoleAdmin}},
+			map[string]handlerFunc{
+				http.MethodGet: (*Console).getProfile,
+				http.MethodPut: (*Console).putProfile,
+			}},
+		{base + "/tenants/{id}/billing-profile/verify", []staff.Role{staff.RoleBilling, staff.RoleAdmin}, nil, map[string]handlerFunc{
 			http.MethodPost: (*Console).verifyProfile,
 		}},
-		{base + "/tenants/{id}/billing-profile/unverify", []staff.Role{staff.RoleBilling, staff.RoleAdmin}, map[string]handlerFunc{
+		{base + "/tenants/{id}/billing-profile/unverify", []staff.Role{staff.RoleBilling, staff.RoleAdmin}, nil, map[string]handlerFunc{
 			http.MethodPost: (*Console).unverifyProfile,
 		}},
 	}
@@ -97,9 +109,9 @@ func ConsolePatterns() []string {
 	return out
 }
 
-// NewConsole builds the Console. Every route is wrapped by the staff middleware
-// outside its method switch, so a refused request and a wrong method both get
-// the 404 of an unknown route.
+// NewConsole builds the Console. Every method is wrapped by the staff middleware
+// for its roles, so a refused request and a wrong method both get the 404 of an
+// unknown route.
 func NewConsole(d ConsoleDeps) *Console {
 	if d.Log == nil {
 		d.Log = slog.Default()
@@ -109,7 +121,7 @@ func NewConsole(d ConsoleDeps) *Console {
 	}
 	c := &Console{ConsoleDeps: d, mux: http.NewServeMux()}
 	for _, rt := range routeTable() {
-		c.mux.Handle(rt.pattern, d.RequireStaff(rt.roles...)(c.methodSwitch(rt)))
+		c.mux.Handle(rt.pattern, c.methodSwitch(rt))
 	}
 	return c
 }
@@ -123,12 +135,11 @@ func (c *Console) methodSwitch(rt routeSpec) http.Handler {
 			http.NotFound(w, r)
 			return
 		}
-		call := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fn(c, w, r) })
-		if r.Method == http.MethodGet {
-			call.ServeHTTP(w, r)
-			return
+		var call http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fn(c, w, r) })
+		if r.Method != http.MethodGet {
+			call = c.RequireOrigin(call)
 		}
-		c.RequireOrigin(call).ServeHTTP(w, r)
+		c.RequireStaff(rt.rolesFor(r.Method)...)(call).ServeHTTP(w, r)
 	})
 }
 
@@ -280,6 +291,48 @@ func (c *Console) getProfile(w http.ResponseWriter, r *http.Request) {
 		"workspace_id": ws, "account_kind": p.AccountKind, "legal_name": p.LegalName, "tax_code": p.TaxCode,
 		"address": p.Address, "invoice_email": p.InvoiceEmail,
 		"verified": p.VerifiedAt != nil, "verified_at": rfc3339(p.VerifiedAt),
+	})
+}
+
+// putProfile sets a tenant's account kind and the four profile fields, with the
+// same validation as the customer's route. It never sets verified_at; changing
+// the legal name or tax code clears it (spec 7b.1, rule 12).
+func (c *Console) putProfile(w http.ResponseWriter, r *http.Request) {
+	ws, ok := trust.CanonicalUUID(r.PathValue("id"))
+	if !ok {
+		writeError(w, http.StatusNotFound, "not_found", "not found")
+		return
+	}
+	var in profileRequest
+	if perr := decodeBody(w, r, &in); perr != nil {
+		c.fail(w, r, "decode billing profile", perr)
+		return
+	}
+	change := KindChange{WorkspaceID: ws, Kind: in.AccountKind, ActorType: audit.ActorStaff}
+	if in.LegalName != nil || in.TaxCode != nil || in.Address != nil || in.InvoiceEmail != nil {
+		f := ProfileFields{LegalName: deref(in.LegalName), TaxCode: deref(in.TaxCode), Address: deref(in.Address), InvoiceEmail: deref(in.InvoiceEmail)}.trimmed()
+		if e := checkProfileFormat(f); e != nil {
+			c.fail(w, r, "check billing profile", e)
+			return
+		}
+		change.Profile = &f
+	}
+	a, err := c.currentActor(r)
+	if err != nil {
+		c.fail(w, r, "resolve staff actor", err)
+		return
+	}
+	change.ActorID, change.ActorLabel = a.ID, a.Label
+	res, err := c.Profiles.ChangeAccountKind(r.Context(), change)
+	if err != nil {
+		c.fail(w, r, "change billing profile", err)
+		return
+	}
+	p := res.Profile
+	writeJSON(w, http.StatusOK, map[string]any{
+		"workspace_id": ws, "account_kind": p.AccountKind, "legal_name": p.LegalName, "tax_code": p.TaxCode,
+		"address": p.Address, "invoice_email": p.InvoiceEmail,
+		"verified": p.VerifiedAt != nil, "verified_at": rfc3339(p.VerifiedAt), "changed": res.Changed,
 	})
 }
 

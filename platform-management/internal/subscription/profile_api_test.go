@@ -240,6 +240,26 @@ func TestProfileAPIOfTheSameKindChangesNothing(t *testing.T) {
 	}
 }
 
+func TestProfileAPIEditsFieldsOfTheSameKind(t *testing.T) {
+	e := newProfileAPIEnv(t)
+	e.profiles.profiles[wsID] = businessProfile()
+	body := businessBody()
+	body["address"] = "2 New St"
+	rec := e.put(profilePath, ownerID, body)
+	if rec.Code != 200 {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body)
+	}
+	if m := bodyOf(t, rec); m["changed"] != true || m["address"] != "2 New St" {
+		t.Errorf("body = %v", m)
+	}
+	if got := e.profiles.profiles[wsID].Address; got != "2 New St" {
+		t.Errorf("stored address = %q", got)
+	}
+	if len(e.profiles.audits) != 1 || e.profiles.audits[0].Action != audit.ActionBillingProfileUpdated || e.profiles.audits[0].ActorType != audit.ActorMember {
+		t.Errorf("audits = %+v", e.profiles.audits)
+	}
+}
+
 func TestProfileAPIDoesNotLeakAnInternalError(t *testing.T) {
 	e := newProfileAPIEnv(t)
 	e.members.err = io.ErrUnexpectedEOF

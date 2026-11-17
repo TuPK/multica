@@ -175,6 +175,7 @@ var Catalog = []string{
 	ActionWorkspaceAccountKindChanged,
 	ActionBillingProfileVerified,
 	ActionBillingProfileUnverified,
+	ActionBillingProfileUpdated,
 	ActionPlanPriceScheduled,
 	ActionAccountProvisionRequested,
 	ActionAccountProvisionCanceled,
@@ -223,6 +224,9 @@ const ActionWorkspaceAccountKindChanged = "workspace.account_kind_changed"
 const (
 	ActionBillingProfileVerified   = "billing_profile.verified"
 	ActionBillingProfileUnverified = "billing_profile.unverified"
+	// ActionBillingProfileUpdated is a change of the four profile fields with the
+	// account kind unchanged. The detail names the fields, never their values.
+	ActionBillingProfileUpdated = "billing_profile.updated"
 )
 
 // R5 account request actions (spec 7b.5, audit table): written by the platform in the

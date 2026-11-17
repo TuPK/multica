@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -507,6 +508,36 @@ func TestPutPlanCreatesThenReplaces(t *testing.T) {
 	}
 }
 
+// A session without the mfa claim is otherwise valid: signed cookie, console
+// origin, active admin. Only the second factor is missing.
+func TestPutPlanNeedsAnMFASession(t *testing.T) {
+	e := newConsoleEnv(t)
+	const path = "/api/platform/plans/team"
+	wantStatus(t, e.do(adminUser, "PUT", path, teamBody), 200)
+	stored, audits := e.plans.rows["team"], len(e.plans.audits)
+	changed := strings.Replace(teamBody, `"seat_price_month":99000`, `"seat_price_month":109000`, 1)
+
+	noMFA, err := session.Sign(secret, adminUser, t0.Add(-time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest("PUT", path, strings.NewReader(changed))
+	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: noMFA})
+	req.Header.Set("Origin", origin)
+	rec := httptest.NewRecorder()
+	e.h.ServeHTTP(rec, req)
+	wantStatus(t, rec, 404)
+	if got := e.plans.rows["team"]; *got.SeatPriceMonth != *stored.SeatPriceMonth || len(e.plans.audits) != audits || e.policy.all != 1 {
+		t.Fatalf("a refused PUT wrote: price %d, audits %d, cache clears %d", *got.SeatPriceMonth, len(e.plans.audits), e.policy.all)
+	}
+
+	// The same body with the mfa claim is accepted, so the refusal above is the second factor.
+	wantStatus(t, e.do(adminUser, "PUT", path, changed), 200)
+	if got := e.plans.rows["team"]; *got.SeatPriceMonth != 109000 {
+		t.Fatalf("stored price = %d, want 109000", *got.SeatPriceMonth)
+	}
+}
+
 func TestPutPlanThatChangesNothingWritesNothing(t *testing.T) {
 	e := newConsoleEnv(t)
 	wantStatus(t, e.do(adminUser, "PUT", "/api/platform/plans/team", teamBody), 200)
@@ -936,5 +967,182 @@ func TestReadProfileRouteIsGETOnly(t *testing.T) {
 	e := newConsoleEnv(t)
 	for _, method := range []string{"POST", "DELETE"} {
 		wantStatus(t, e.do(adminUser, method, readProfilePath, ""), 404)
+	}
+}
+
+// --- PUT /tenants/{id}/billing-profile
+
+func putBody(over map[string]any) string {
+	m := businessBody()
+	for k, v := range over {
+		m[k] = v
+	}
+	raw, _ := json.Marshal(m)
+	return string(raw)
+}
+
+func TestPutProfileAllowsBillingAndAdminOnly(t *testing.T) {
+	for _, tc := range []struct {
+		user string
+		want int
+	}{{"", 404}, {suppUser, 404}, {billUser, 200}, {adminUser, 200}} {
+		e := newConsoleEnv(t)
+		wantStatus(t, e.do(tc.user, "PUT", readProfilePath, putBody(nil)), tc.want)
+		if tc.want == 404 && (len(e.profs.profiles) != 0 || len(e.profs.audits) != 0) {
+			t.Errorf("user %q: a refused call wrote something", tc.user)
+		}
+	}
+}
+
+func TestPutProfileRefusesUnknownFieldsAndBadKind(t *testing.T) {
+	e := newConsoleEnv(t)
+	wantCode(t, e.do(adminUser, "PUT", readProfilePath, putBody(map[string]any{"verified": true})), 400, "invalid_body")
+	wantCode(t, e.do(adminUser, "PUT", readProfilePath, putBody(map[string]any{"account_kind": "other"})), 400, "billing_profile_invalid")
+	if len(e.profs.profiles) != 0 || len(e.profs.audits) != 0 {
+		t.Error("a refused call wrote something")
+	}
+}
+
+func TestPutProfileValidatesLikeTheCustomerRoute(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		over  map[string]any
+		code  string
+		field string
+		want  int
+	}{
+		{"bad tax code", map[string]any{"tax_code": "12ab"}, "billing_profile_invalid", "tax_code", 400},
+		{"long name", map[string]any{"legal_name": strings.Repeat("a", 256)}, "billing_profile_invalid", "legal_name", 400},
+		{"bad email", map[string]any{"invoice_email": "not an email"}, "billing_profile_invalid", "invoice_email", 400},
+		{"empty address", map[string]any{"address": ""}, "billing_profile_incomplete", "address", 409},
+	} {
+		e := newConsoleEnv(t)
+		rec := e.do(adminUser, "PUT", readProfilePath, putBody(tc.over))
+		wantCode(t, rec, tc.want, tc.code)
+		if f, _ := decodeMap(t, rec)["fields"].([]any); len(f) != 1 || f[0] != tc.field {
+			t.Errorf("%s: fields = %v", tc.name, f)
+		}
+		if len(e.profs.profiles) != 0 {
+			t.Errorf("%s: a refused call stored a profile", tc.name)
+		}
+	}
+}
+
+func TestPutProfileEditsTheFieldsOfTheSameKind(t *testing.T) {
+	e := newConsoleEnv(t)
+	e.profs.profiles[wsID] = businessProfile()
+	rec := e.do(billUser, "PUT", readProfilePath, putBody(map[string]any{"address": "2 New St"}))
+	wantStatus(t, rec, 200)
+	if m := decodeMap(t, rec); m["changed"] != true || m["address"] != "2 New St" || m["workspace_id"] != wsID {
+		t.Fatalf("body = %v", m)
+	}
+	if got := e.profs.profiles[wsID].Address; got != "2 New St" {
+		t.Fatalf("stored address = %q", got)
+	}
+}
+
+func TestPutProfileWritesAnAuditRowWithFieldNamesOnly(t *testing.T) {
+	e := newConsoleEnv(t)
+	e.profs.profiles[wsID] = businessProfile()
+	wantStatus(t, e.do(billUser, "PUT", readProfilePath, putBody(map[string]any{"legal_name": "Beta Co"})), 200)
+	if len(e.profs.audits) != 1 {
+		t.Fatalf("audit rows = %+v", e.profs.audits)
+	}
+	a := e.profs.audits[0]
+	if a.Action != audit.ActionBillingProfileUpdated || a.ActorType != audit.ActorStaff || a.ActorID != billUser || a.ActorLabel != staffEm ||
+		a.WorkspaceID != wsID || a.TargetID != wsID {
+		t.Fatalf("entry = %+v", a)
+	}
+	if !reflect.DeepEqual(a.Detail, map[string]any{"fields": []string{"legal_name"}}) {
+		t.Fatalf("detail = %#v", a.Detail)
+	}
+	raw, _ := json.Marshal(a.Detail)
+	for _, v := range []string{"Beta Co", "Acme Co", "0123456789", "1 Main St", "ap@acme.test"} {
+		if strings.Contains(string(raw), v) {
+			t.Errorf("the detail holds the value %q", v)
+		}
+	}
+}
+
+func TestPutProfileKeepsVerificationOnlyUntilANameOrTaxCodeChanges(t *testing.T) {
+	e := newConsoleEnv(t)
+	e.profs.profiles[wsID] = businessProfile()
+	wantStatus(t, e.do(billUser, "POST", verifyPath, ""), 200)
+
+	rec := e.do(billUser, "PUT", readProfilePath, putBody(map[string]any{"address": "2 New St", "invoice_email": "x@acme.test"}))
+	wantStatus(t, rec, 200)
+	if m := decodeMap(t, rec); m["verified"] != true || m["verified_at"] == nil {
+		t.Fatalf("an address edit cleared the verification: %v", m)
+	}
+	if got := e.profs.profiles[wsID]; got.VerifiedAt == nil || got.VerifiedBy != billUser {
+		t.Fatalf("stored = %+v", got)
+	}
+
+	rec = e.do(billUser, "PUT", readProfilePath, putBody(map[string]any{"address": "2 New St", "invoice_email": "x@acme.test", "legal_name": "Beta Co"}))
+	wantStatus(t, rec, 200)
+	if m := decodeMap(t, rec); m["verified"] != false || m["verified_at"] != nil {
+		t.Fatalf("a name edit kept the verification: %v", m)
+	}
+	if got := e.profs.profiles[wsID]; got.VerifiedAt != nil || got.VerifiedBy != "" {
+		t.Fatalf("stored = %+v", got)
+	}
+
+	wantStatus(t, e.do(billUser, "POST", verifyPath, ""), 200)
+	last := e.profs.audits[len(e.profs.audits)-1]
+	if e.profs.profiles[wsID].VerifiedAt == nil || last.Action != audit.ActionBillingProfileVerified {
+		t.Fatalf("verify after an edit: %+v, last audit %s", e.profs.profiles[wsID], last.Action)
+	}
+
+	// A tax code change clears it too.
+	wantStatus(t, e.do(billUser, "PUT", readProfilePath, putBody(map[string]any{"address": "2 New St", "invoice_email": "x@acme.test", "legal_name": "Beta Co", "tax_code": "9876543210"})), 200)
+	if e.profs.profiles[wsID].VerifiedAt != nil {
+		t.Fatal("a tax code edit kept the verification")
+	}
+}
+
+func TestPutProfileNeverVerifies(t *testing.T) {
+	e := newConsoleEnv(t)
+	e.profs.profiles[wsID] = businessProfile()
+	rec := e.do(adminUser, "PUT", readProfilePath, putBody(map[string]any{"address": "2 New St"}))
+	wantStatus(t, rec, 200)
+	if m := decodeMap(t, rec); m["verified"] != false || m["verified_at"] != nil {
+		t.Fatalf("body = %v", m)
+	}
+	if _, has := decodeMap(t, rec)["verified_by"]; has {
+		t.Error("verified_by is returned")
+	}
+}
+
+func TestPutProfileUnchangedWritesNothing(t *testing.T) {
+	e := newConsoleEnv(t)
+	e.profs.profiles[wsID] = businessProfile()
+	rec := e.do(adminUser, "PUT", readProfilePath, putBody(nil))
+	wantStatus(t, rec, 200)
+	if decodeMap(t, rec)["changed"] != false || len(e.profs.audits) != 0 {
+		t.Fatalf("body = %s, audits = %d", rec.Body, len(e.profs.audits))
+	}
+}
+
+func TestPutProfileOfUnknownTenantIs404(t *testing.T) {
+	e := newConsoleEnv(t)
+	wantCode(t, e.do(adminUser, "PUT", "/api/platform/tenants/"+otherWS+"/billing-profile", putBody(nil)), 404, "not_found")
+	wantCode(t, e.do(adminUser, "PUT", "/api/platform/tenants/acme/billing-profile", putBody(nil)), 404, "not_found")
+}
+
+func TestPutProfileDoesNotLeakInternalErrors(t *testing.T) {
+	e := newConsoleEnv(t)
+	e.profs.failAudit = errors.New("pq: relation locked")
+	rec := e.do(adminUser, "PUT", readProfilePath, putBody(nil))
+	wantCode(t, rec, 500, "internal")
+	if strings.Contains(rec.Body.String(), "relation locked") || !strings.Contains(rec.Body.String(), "internal error") {
+		t.Errorf("body = %s", rec.Body)
+	}
+}
+
+func TestPutProfileKindChangeWithFieldChangeWritesOneRow(t *testing.T) {
+	e := newConsoleEnv(t)
+	wantStatus(t, e.do(adminUser, "PUT", readProfilePath, putBody(nil)), 200)
+	if len(e.profs.audits) != 1 || e.profs.audits[0].Action != audit.ActionWorkspaceAccountKindChanged {
+		t.Fatalf("audits = %+v", e.profs.audits)
 	}
 }

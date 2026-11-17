@@ -23,3 +23,15 @@ func TestAccountProvisionActionsAreDefined(t *testing.T) {
 		}
 	}
 }
+
+func TestBillingProfileUpdatedActionIsDefined(t *testing.T) {
+	if ActionBillingProfileUpdated != "billing_profile.updated" {
+		t.Fatalf("constant = %q", ActionBillingProfileUpdated)
+	}
+	for _, a := range Catalog {
+		if a == ActionBillingProfileUpdated {
+			return
+		}
+	}
+	t.Fatal("billing_profile.updated is not in Catalog")
+}
