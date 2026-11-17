@@ -230,7 +230,7 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"plan":                     workspaceDeleteKeep,
 	"plan_price_change":        workspaceDeleteKeep, // plan-level: plan_key, no workspace_id (spec 7b.4)
 	"platform_account":         workspaceDeleteKeep,
-	"platform_account_request": workspaceDeleteKeep, // the request row stays as the record; its workspace_id resolves to nothing once the workspace is gone
+	"platform_account_request": workspaceDeleteDetach, // the request row survives as the record; teardown must clear its workspace_id (not implemented yet)
 	"platform_note":            workspaceDelete,
 	"platform_seat_operation":  workspaceDelete,
 	"platform_staff":           workspaceDeleteKeep,
