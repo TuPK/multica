@@ -30,6 +30,12 @@ WHERE i.workspace_id = $1::uuid
             WHEN i.assignee_type = 'agent' THEN (SELECT a.home_squad_id FROM agent a WHERE a.id = i.assignee_id)
         END
   )
+AND ($3::text = 'all'
+    OR (i.project_id IS NULL AND $3::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $4::uuid)
+    OR ($3::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 GROUP BY i.status
 ORDER BY i.status
 `
@@ -37,6 +43,8 @@ ORDER BY i.status
 type CountProjectIssuesByStatusParams struct {
 	WorkspaceID pgtype.UUID   `json:"workspace_id"`
 	ProjectIds  []pgtype.UUID `json:"project_ids"`
+	ScopeMode   string        `json:"scope_mode"`
+	ScopeUserID pgtype.UUID   `json:"scope_user_id"`
 }
 
 type CountProjectIssuesByStatusRow struct {
@@ -48,8 +56,14 @@ type CountProjectIssuesByStatusRow struct {
 // terminal issues: every issue of the project that the project's workflow
 // governs must end on a status it lists. Issues a squad routes through its own
 // active workflow are left out (see the NOT EXISTS below).
+// projectaccess:scope
 func (q *Queries) CountProjectIssuesByStatus(ctx context.Context, arg CountProjectIssuesByStatusParams) ([]CountProjectIssuesByStatusRow, error) {
-	rows, err := q.db.Query(ctx, countProjectIssuesByStatus, arg.WorkspaceID, arg.ProjectIds)
+	rows, err := q.db.Query(ctx, countProjectIssuesByStatus,
+		arg.WorkspaceID,
+		arg.ProjectIds,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -536,11 +550,24 @@ const listProjectsUsingDefaultIssueWorkflow = `-- name: ListProjectsUsingDefault
 SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
 WHERE workspace_id = $1::uuid
   AND workflow_id IS NULL
+AND ($2::text = 'all'
+    OR (project.id IS NULL AND $2::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = project.id AND scope_pm.user_id = $3::uuid)
+    OR ($2::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
 ORDER BY created_at, id
 `
 
-func (q *Queries) ListProjectsUsingDefaultIssueWorkflow(ctx context.Context, workspaceID pgtype.UUID) ([]Project, error) {
-	rows, err := q.db.Query(ctx, listProjectsUsingDefaultIssueWorkflow, workspaceID)
+type ListProjectsUsingDefaultIssueWorkflowParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+}
+
+// projectaccess:scope
+func (q *Queries) ListProjectsUsingDefaultIssueWorkflow(ctx context.Context, arg ListProjectsUsingDefaultIssueWorkflowParams) ([]Project, error) {
+	rows, err := q.db.Query(ctx, listProjectsUsingDefaultIssueWorkflow, arg.WorkspaceID, arg.ScopeMode, arg.ScopeUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -582,16 +609,30 @@ const listProjectsUsingIssueWorkflow = `-- name: ListProjectsUsingIssueWorkflow 
 SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids FROM project
 WHERE workspace_id = $1::uuid
   AND workflow_id = $2::uuid
+AND ($3::text = 'all'
+    OR (project.id IS NULL AND $3::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = project.id AND scope_pm.user_id = $4::uuid)
+    OR ($3::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
 ORDER BY created_at, id
 `
 
 type ListProjectsUsingIssueWorkflowParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 	WorkflowID  pgtype.UUID `json:"workflow_id"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
 }
 
+// projectaccess:scope
 func (q *Queries) ListProjectsUsingIssueWorkflow(ctx context.Context, arg ListProjectsUsingIssueWorkflowParams) ([]Project, error) {
-	rows, err := q.db.Query(ctx, listProjectsUsingIssueWorkflow, arg.WorkspaceID, arg.WorkflowID)
+	rows, err := q.db.Query(ctx, listProjectsUsingIssueWorkflow,
+		arg.WorkspaceID,
+		arg.WorkflowID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -751,6 +792,12 @@ WHERE i.workspace_id = $2::uuid
             WHEN i.assignee_type = 'agent' THEN (SELECT a.home_squad_id FROM agent a WHERE a.id = i.assignee_id)
         END
   )
+AND ($5::text = 'all'
+    OR (i.project_id IS NULL AND $5::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $6::uuid)
+    OR ($5::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 RETURNING i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.origin_type, i.origin_id, i.first_executed_at, i.start_date, i.metadata, i.stage, i.properties, i.revision, i.last_activity_at, i.triage_state, i.duplicate_of_issue_id, i.done_at, i.reopen_count, i.last_reopened_at, i.run_queued, i.run_after_issue_ids, i.run_start_status, i.outcome, i.flow, i.flow_step, i.flow_task, i.flow_round
 `
 
@@ -759,6 +806,8 @@ type RemapProjectIssueStatusParams struct {
 	WorkspaceID pgtype.UUID   `json:"workspace_id"`
 	ProjectIds  []pgtype.UUID `json:"project_ids"`
 	FromStatus  string        `json:"from_status"`
+	ScopeMode   string        `json:"scope_mode"`
+	ScopeUserID pgtype.UUID   `json:"scope_user_id"`
 }
 
 // Moves every issue of the given projects that the project's workflow governs
@@ -769,12 +818,15 @@ type RemapProjectIssueStatusParams struct {
 // deliberately touches nothing else, so it never hands an issue off or starts a
 // run. The squad-routed issues CountProjectIssuesByStatus leaves out are left
 // out here too.
+// projectaccess:scope
 func (q *Queries) RemapProjectIssueStatus(ctx context.Context, arg RemapProjectIssueStatusParams) ([]Issue, error) {
 	rows, err := q.db.Query(ctx, remapProjectIssueStatus,
 		arg.ToStatus,
 		arg.WorkspaceID,
 		arg.ProjectIds,
 		arg.FromStatus,
+		arg.ScopeMode,
+		arg.ScopeUserID,
 	)
 	if err != nil {
 		return nil, err

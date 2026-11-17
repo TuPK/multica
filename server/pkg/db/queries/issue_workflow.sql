@@ -50,6 +50,13 @@ WHERE workspace_id = sqlc.arg('workspace_id')::uuid
 SELECT * FROM project
 WHERE workspace_id = sqlc.arg('workspace_id')::uuid
   AND workflow_id IS NULL
+-- projectaccess:scope
+AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (project.id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = project.id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
 ORDER BY created_at, id;
 
 -- name: GetIssueWorkflow :one
@@ -146,6 +153,13 @@ ORDER BY lower(name);
 SELECT * FROM project
 WHERE workspace_id = sqlc.arg('workspace_id')::uuid
   AND workflow_id = sqlc.arg('workflow_id')::uuid
+-- projectaccess:scope
+AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (project.id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = project.id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
 ORDER BY created_at, id;
 
 -- name: CountProjectIssuesByStatus :many
@@ -171,6 +185,13 @@ WHERE i.workspace_id = sqlc.arg('workspace_id')::uuid
             WHEN i.assignee_type = 'agent' THEN (SELECT a.home_squad_id FROM agent a WHERE a.id = i.assignee_id)
         END
   )
+-- projectaccess:scope
+AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 GROUP BY i.status
 ORDER BY i.status;
 
@@ -213,6 +234,13 @@ WHERE i.workspace_id = sqlc.arg('workspace_id')::uuid
             WHEN i.assignee_type = 'agent' THEN (SELECT a.home_squad_id FROM agent a WHERE a.id = i.assignee_id)
         END
   )
+-- projectaccess:scope
+AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 RETURNING i.*;
 
 -- name: CountSquadIssuesByStatus :many
