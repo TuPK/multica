@@ -33,6 +33,14 @@ func (r *PgxProfileRunner) InTx(ctx context.Context, fn func(ProfileTx) error) e
 
 type pgxProfileTx struct{ *pgxTx }
 
+// NewTx returns the Tx over a transaction the caller began, for a writer that
+// puts a subscription row in the same transaction as its own rows.
+func NewTx(tx pgx.Tx) Tx { return &pgxTx{q: db.New(tx)} }
+
+// NewProfileTx returns the ProfileTx over a transaction the caller began, for a
+// writer that saves a billing profile in the same transaction as its own rows.
+func NewProfileTx(tx pgx.Tx) ProfileTx { return &pgxProfileTx{pgxTx: &pgxTx{q: db.New(tx)}} }
+
 // LockedProfile implements ProfileTx. The advisory lock keeps two first writes
 // of one workspace from racing into the unique index of migration 955.
 func (t *pgxProfileTx) LockedProfile(ctx context.Context, workspaceID string) (BillingProfile, bool, error) {

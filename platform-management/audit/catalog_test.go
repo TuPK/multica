@@ -274,3 +274,25 @@ func TestGroupCatalogActionsAreDefinedAndCataloged(t *testing.T) {
 		}
 	}
 }
+
+// The finalize and welcome actions of spec 7b.5 are stored in audit_event.action,
+// so a rename is a data change.
+func TestAccountFinalizeAndWelcomeActionsAreDefined(t *testing.T) {
+	cases := map[string]string{
+		"account.provisioned":    ActionAccountProvisioned,
+		"account.welcome_sent":   ActionAccountWelcomeSent,
+		"account.welcome_failed": ActionAccountWelcomeFailed,
+	}
+	for want, got := range cases {
+		if got != want {
+			t.Errorf("constant = %q, want %q", got, want)
+		}
+		listed := false
+		for _, a := range Catalog {
+			listed = listed || a == want
+		}
+		if !listed {
+			t.Errorf("%s is not in Catalog", want)
+		}
+	}
+}

@@ -56,6 +56,10 @@ func newPgxTx(tx pgx.Tx) *pgxTx {
 	return &pgxTx{Tx: workspacestatus.NewTx(tx), q: db.New(tx)}
 }
 
+// NewTx returns the Tx over a transaction the caller began, for a writer that
+// puts an order and a subscription in the same transaction as its own rows.
+func NewTx(tx pgx.Tx) Tx { return newPgxTx(tx) }
+
 func parseUUID(s string) (pgtype.UUID, error) {
 	var u pgtype.UUID
 	if err := u.Scan(s); err != nil || !u.Valid {

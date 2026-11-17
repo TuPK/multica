@@ -177,6 +177,9 @@ var Catalog = []string{
 	ActionAccountProvisionRequested,
 	ActionAccountProvisionCanceled,
 	ActionAccountProvisionFailed,
+	ActionAccountProvisioned,
+	ActionAccountWelcomeSent,
+	ActionAccountWelcomeFailed,
 	ActionPlanPriceApplied,
 	ActionPlanPriceCanceled,
 	ActionSubscriptionChangeScheduled,
@@ -220,6 +223,16 @@ const (
 	ActionAccountProvisionRequested = "account.provision_requested"
 	ActionAccountProvisionCanceled  = "account.provision_canceled"
 	ActionAccountProvisionFailed    = "account.provision_failed"
+)
+
+// R5 account request actions written by the platform's finalize job (spec 7b.5,
+// rules 7, 9 and 13). account.provisioned carries the workspace_id, so the owner
+// reads it in the workspace log; its actor is the staff member who made the
+// request. The welcome actions have no workspace_id.
+const (
+	ActionAccountProvisioned   = "account.provisioned"
+	ActionAccountWelcomeSent   = "account.welcome_sent"
+	ActionAccountWelcomeFailed = "account.welcome_failed"
 )
 
 // R5 plan price actions (spec 7b.4, rule 15): written in the transaction that
