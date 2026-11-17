@@ -30,6 +30,11 @@ INSERT INTO member (workspace_id, user_id, role)
 VALUES ($1, $2, $3)
 RETURNING *;
 
+-- name: CreateGuestMember :one
+INSERT INTO member (workspace_id, user_id, role, is_guest)
+VALUES ($1, $2, $3, true)
+RETURNING *;
+
 -- name: UpdateMemberRole :one
 UPDATE member SET role = $2
 WHERE id = $1

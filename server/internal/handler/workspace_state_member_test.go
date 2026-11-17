@@ -47,9 +47,9 @@ func (r wsStateMemberRow) Scan(dest ...any) error {
 		return pgx.ErrNoRows
 	}
 	// GetMemberByUserAndWorkspace columns: id, workspace_id, user_id, role,
-	// created_at, pinned_at.
+	// created_at, is_guest, pinned_at.
 	role, ok := dest[3].(*string)
-	if !ok || len(dest) != 6 {
+	if !ok || len(dest) != 7 {
 		return errors.New("unexpected member column layout")
 	}
 	*role = r.role

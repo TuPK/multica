@@ -38,20 +38,39 @@ func (q *Queries) AcceptInvitation(ctx context.Context, id pgtype.UUID) (Workspa
 	return i, err
 }
 
+const countWorkspaceProjectsByIDs = `-- name: CountWorkspaceProjectsByIDs :one
+SELECT count(*) FROM project
+WHERE workspace_id = $1 AND id = ANY($2::uuid[])
+`
+
+type CountWorkspaceProjectsByIDsParams struct {
+	WorkspaceID pgtype.UUID   `json:"workspace_id"`
+	ProjectIds  []pgtype.UUID `json:"project_ids"`
+}
+
+func (q *Queries) CountWorkspaceProjectsByIDs(ctx context.Context, arg CountWorkspaceProjectsByIDsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countWorkspaceProjectsByIDs, arg.WorkspaceID, arg.ProjectIds)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createInvitation = `-- name: CreateInvitation :one
-INSERT INTO workspace_invitation (id, workspace_id, inviter_id, invitee_email, invitee_user_id, role, expires_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO workspace_invitation (id, workspace_id, inviter_id, invitee_email, invitee_user_id, role, expires_at, is_guest, guest_project_ids)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING id, workspace_id, inviter_id, invitee_email, invitee_user_id, role, status, created_at, updated_at, expires_at, is_guest, guest_project_ids
 `
 
 type CreateInvitationParams struct {
-	ID            pgtype.UUID        `json:"id"`
-	WorkspaceID   pgtype.UUID        `json:"workspace_id"`
-	InviterID     pgtype.UUID        `json:"inviter_id"`
-	InviteeEmail  string             `json:"invitee_email"`
-	InviteeUserID pgtype.UUID        `json:"invitee_user_id"`
-	Role          string             `json:"role"`
-	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
+	ID              pgtype.UUID        `json:"id"`
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	InviterID       pgtype.UUID        `json:"inviter_id"`
+	InviteeEmail    string             `json:"invitee_email"`
+	InviteeUserID   pgtype.UUID        `json:"invitee_user_id"`
+	Role            string             `json:"role"`
+	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
+	IsGuest         bool               `json:"is_guest"`
+	GuestProjectIds []pgtype.UUID      `json:"guest_project_ids"`
 }
 
 func (q *Queries) CreateInvitation(ctx context.Context, arg CreateInvitationParams) (WorkspaceInvitation, error) {
@@ -63,6 +82,8 @@ func (q *Queries) CreateInvitation(ctx context.Context, arg CreateInvitationPara
 		arg.InviteeUserID,
 		arg.Role,
 		arg.ExpiresAt,
+		arg.IsGuest,
+		arg.GuestProjectIds,
 	)
 	var i WorkspaceInvitation
 	err := row.Scan(
@@ -214,6 +235,33 @@ func (q *Queries) GetPendingInvitationByEmail(ctx context.Context, arg GetPendin
 		&i.GuestProjectIds,
 	)
 	return i, err
+}
+
+const grantGuestInvitationProjects = `-- name: GrantGuestInvitationProjects :execrows
+INSERT INTO project_member (project_id, workspace_id, user_id, added_by)
+SELECT p.id, p.workspace_id, $1, $2 FROM project p
+WHERE p.workspace_id = $3 AND p.id = ANY($4::uuid[])
+ON CONFLICT (project_id, user_id) DO NOTHING
+`
+
+type GrantGuestInvitationProjectsParams struct {
+	UserID      pgtype.UUID   `json:"user_id"`
+	AddedBy     pgtype.UUID   `json:"added_by"`
+	WorkspaceID pgtype.UUID   `json:"workspace_id"`
+	ProjectIds  []pgtype.UUID `json:"project_ids"`
+}
+
+func (q *Queries) GrantGuestInvitationProjects(ctx context.Context, arg GrantGuestInvitationProjectsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, grantGuestInvitationProjects,
+		arg.UserID,
+		arg.AddedBy,
+		arg.WorkspaceID,
+		arg.ProjectIds,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const hasPendingInvitationForEmail = `-- name: HasPendingInvitationForEmail :one

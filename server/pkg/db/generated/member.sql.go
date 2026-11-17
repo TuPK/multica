@@ -11,6 +11,33 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createGuestMember = `-- name: CreateGuestMember :one
+INSERT INTO member (workspace_id, user_id, role, is_guest)
+VALUES ($1, $2, $3, true)
+RETURNING id, workspace_id, user_id, role, created_at, is_guest, pinned_at
+`
+
+type CreateGuestMemberParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	UserID      pgtype.UUID `json:"user_id"`
+	Role        string      `json:"role"`
+}
+
+func (q *Queries) CreateGuestMember(ctx context.Context, arg CreateGuestMemberParams) (Member, error) {
+	row := q.db.QueryRow(ctx, createGuestMember, arg.WorkspaceID, arg.UserID, arg.Role)
+	var i Member
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.UserID,
+		&i.Role,
+		&i.CreatedAt,
+		&i.IsGuest,
+		&i.PinnedAt,
+	)
+	return i, err
+}
+
 const createMember = `-- name: CreateMember :one
 INSERT INTO member (workspace_id, user_id, role)
 VALUES ($1, $2, $3)

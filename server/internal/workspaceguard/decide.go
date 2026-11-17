@@ -228,6 +228,8 @@ func Message(code string) string {
 		return "this token is bound to a different workspace"
 	case CodeViewerReadOnly:
 		return "viewers can only read this workspace"
+	case CodeGuestForbidden:
+		return "guests cannot use this route"
 	default:
 		return "workspace is suspended"
 	}

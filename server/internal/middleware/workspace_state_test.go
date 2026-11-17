@@ -22,27 +22,37 @@ const (
 	stateTestUser      = "33333333-3333-4333-8333-333333333333"
 )
 
-// memberDB answers GetMemberByUserAndWorkspace with a member of role.
+// memberDB answers GetMemberByUserAndWorkspace with a member of role, a guest
+// when guest is set.
 type memberDB struct {
 	db.DBTX
-	role string
+	role  string
+	guest bool
 }
 
-func (m memberDB) QueryRow(context.Context, string, ...any) pgx.Row { return memberRow{role: m.role} }
+func (m memberDB) QueryRow(context.Context, string, ...any) pgx.Row {
+	return memberRow{role: m.role, guest: m.guest}
+}
 
 type memberRow struct {
 	pgx.Row
-	role string
+	role  string
+	guest bool
 }
 
 func (r memberRow) Scan(dest ...any) error {
 	// Column order of GetMemberByUserAndWorkspace: id, workspace_id, user_id,
-	// role, created_at, pinned_at.
+	// role, created_at, is_guest, pinned_at.
 	role, ok := dest[3].(*string)
-	if !ok || len(dest) != 6 {
+	if !ok || len(dest) != 7 {
+		return errors.New("unexpected member column layout")
+	}
+	guest, ok := dest[5].(*bool)
+	if !ok {
 		return errors.New("unexpected member column layout")
 	}
 	*role = r.role
+	*guest = r.guest
 	return nil
 }
 

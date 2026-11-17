@@ -36,8 +36,9 @@ type permissionRow struct {
 
 func (r permissionRow) Scan(dest ...any) error {
 	switch len(dest) {
-	case 6: // GetMemberByUserAndWorkspace: id, workspace_id, user_id, role, ...
+	case 7: // GetMemberByUserAndWorkspace: id, workspace_id, user_id, role, created_at, is_guest, pinned_at
 		*(dest[3].(*string)) = r.d.role
+		*(dest[5].(*bool)) = false
 	case 2: // GetMemberPermissionInputs: role, group_permissions
 		*r.d.groupLookup++
 		*(dest[0].(*string)) = r.d.role

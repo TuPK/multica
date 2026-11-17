@@ -248,6 +248,12 @@ func guardPermission(w http.ResponseWriter, r *http.Request, queries *db.Queries
 
 // buildMiddleware checks the role list and, when permission is set, the
 // permission key. Both are optional.
+//
+// It is not inlined so that every workspace guard shares one closure code
+// pointer, which the route-table tests use to tell a workspace guard from other
+// middleware.
+//
+//go:noinline
 func buildMiddleware(queries *db.Queries, resolve workspaceResolver, roles []string, permission string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -303,6 +309,13 @@ func buildMiddleware(queries *db.Queries, resolve workspaceResolver, roles []str
 			})
 			if err != nil {
 				writeError(w, http.StatusNotFound, "workspace not found")
+				return
+			}
+
+			// A guest reaches only the allow-list (spec 7.1 rule 9). This runs
+			// before the role check so every other route reports guest_forbidden.
+			if member.IsGuest && !workspaceguard.GuestAllows(r.Method, leafRoutePattern(r)) {
+				writeCodedError(w, http.StatusForbidden, workspaceguard.CodeGuestForbidden, workspaceguard.Message(workspaceguard.CodeGuestForbidden))
 				return
 			}
 

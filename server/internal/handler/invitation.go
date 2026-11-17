@@ -16,7 +16,9 @@ import (
 	"github.com/multica-ai/multica/server/internal/analytics"
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/seatcapacity"
+	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
@@ -33,6 +35,9 @@ type InvitationResponse struct {
 	CreatedAt     string  `json:"created_at"`
 	UpdatedAt     string  `json:"updated_at"`
 	ExpiresAt     string  `json:"expires_at"`
+	// IsGuest and GuestProjectIDs describe a guest invitation (spec 7.1 rule 10).
+	IsGuest         bool     `json:"is_guest"`
+	GuestProjectIDs []string `json:"guest_project_ids"`
 	// Enriched fields (present in list responses).
 	InviterName   string `json:"inviter_name,omitempty"`
 	InviterEmail  string `json:"inviter_email,omitempty"`
@@ -40,17 +45,23 @@ type InvitationResponse struct {
 }
 
 func invitationToResponse(inv db.WorkspaceInvitation) InvitationResponse {
+	guestProjects := make([]string, 0, len(inv.GuestProjectIds))
+	for _, id := range inv.GuestProjectIds {
+		guestProjects = append(guestProjects, uuidToString(id))
+	}
 	return InvitationResponse{
-		ID:            uuidToString(inv.ID),
-		WorkspaceID:   uuidToString(inv.WorkspaceID),
-		InviterID:     uuidToString(inv.InviterID),
-		InviteeEmail:  inv.InviteeEmail,
-		InviteeUserID: uuidToPtr(inv.InviteeUserID),
-		Role:          inv.Role,
-		Status:        inv.Status,
-		CreatedAt:     timestampToString(inv.CreatedAt),
-		UpdatedAt:     timestampToString(inv.UpdatedAt),
-		ExpiresAt:     timestampToString(inv.ExpiresAt),
+		IsGuest:         inv.IsGuest,
+		GuestProjectIDs: guestProjects,
+		ID:              uuidToString(inv.ID),
+		WorkspaceID:     uuidToString(inv.WorkspaceID),
+		InviterID:       uuidToString(inv.InviterID),
+		InviteeEmail:    inv.InviteeEmail,
+		InviteeUserID:   uuidToPtr(inv.InviteeUserID),
+		Role:            inv.Role,
+		Status:          inv.Status,
+		CreatedAt:       timestampToString(inv.CreatedAt),
+		UpdatedAt:       timestampToString(inv.UpdatedAt),
+		ExpiresAt:       timestampToString(inv.ExpiresAt),
 	}
 }
 
@@ -70,6 +81,66 @@ func roleAssignableByInviter(w http.ResponseWriter, requester db.Member, role st
 	return false
 }
 
+// createInvitationRequest is the create body: a member invitation, plus the
+// guest flag and the projects a guest is granted (spec 7.1 rule 10).
+type createInvitationRequest struct {
+	CreateMemberRequest
+	IsGuest         bool     `json:"is_guest"`
+	GuestProjectIDs []string `json:"guest_project_ids"`
+}
+
+// guestProjectsForInvitation validates a guest invitation and returns the
+// project ids to store. A guest is a member or viewer, and every named project
+// belongs to the workspace and is visible to the inviter. When it returns
+// false the response has been written.
+func (h *Handler) guestProjectsForInvitation(w http.ResponseWriter, r *http.Request, requester db.Member, role string, rawIDs []string) ([]pgtype.UUID, bool) {
+	invalid := func() ([]pgtype.UUID, bool) {
+		writeErrorCode(w, http.StatusBadRequest, "project_member_invalid", "guest invitation is invalid")
+		return nil, false
+	}
+	if role != "member" && role != "viewer" {
+		return invalid()
+	}
+	ids := make([]pgtype.UUID, 0, len(rawIDs))
+	seen := make(map[pgtype.UUID]bool, len(rawIDs))
+	for _, raw := range rawIDs {
+		id, err := util.ParseUUID(raw)
+		if err != nil {
+			return invalid()
+		}
+		if !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) == 0 {
+		return ids, true
+	}
+	count, err := h.Queries.CountWorkspaceProjectsByIDs(r.Context(), db.CountWorkspaceProjectsByIDsParams{
+		WorkspaceID: requester.WorkspaceID, ProjectIds: ids,
+	})
+	if err != nil {
+		slog.Warn("count guest invitation projects failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to create invitation")
+		return nil, false
+	}
+	if int(count) != len(ids) {
+		return invalid()
+	}
+	scope, err := projectaccess.ForViewer(r.Context(), h.Queries, requester.WorkspaceID, requester.UserID)
+	if err != nil {
+		slog.Error("guest invitation: compute scope", append(logger.RequestAttrs(r), "error", err)...)
+		writeErrorCode(w, http.StatusServiceUnavailable, "scope_unavailable", "visibility could not be determined")
+		return nil, false
+	}
+	for _, id := range ids {
+		if !scope.Allows(id) {
+			return invalid()
+		}
+	}
+	return ids, true
+}
+
 // CreateInvitation replaces the old "instant-add" CreateMember flow.
 // POST /api/workspaces/{id}/members  (same endpoint, new behaviour)
 
@@ -80,7 +151,7 @@ func (h *Handler) CreateInvitation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req CreateMemberRequest
+	var req createInvitationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
@@ -96,6 +167,13 @@ func (h *Handler) CreateInvitation(w http.ResponseWriter, r *http.Request) {
 	if !valid {
 		writeError(w, http.StatusBadRequest, "invalid member role")
 		return
+	}
+	guestProjects := []pgtype.UUID{}
+	if req.IsGuest {
+		var ok bool
+		if guestProjects, ok = h.guestProjectsForInvitation(w, r, requester, role, req.GuestProjectIDs); !ok {
+			return
+		}
 	}
 	if role == "owner" {
 		writeError(w, http.StatusBadRequest, "cannot invite as owner")
@@ -199,6 +277,7 @@ func (h *Handler) CreateInvitation(w http.ResponseWriter, r *http.Request) {
 		ID: uuidToPG(invitationID), WorkspaceID: requester.WorkspaceID, InviterID: requester.UserID,
 		InviteeEmail: email, InviteeUserID: inviteeUserID, Role: role,
 		ExpiresAt: pgtype.Timestamptz{Time: expiresAt, Valid: true},
+		IsGuest:   req.IsGuest, GuestProjectIds: guestProjects,
 	}
 	var inv db.WorkspaceInvitation
 	tx, txErr := h.TxStarter.Begin(r.Context())
@@ -222,7 +301,7 @@ func (h *Handler) CreateInvitation(w http.ResponseWriter, r *http.Request) {
 			TargetType:  "invitation",
 			TargetID:    uuidToString(inv.ID),
 			TargetLabel: inv.InviteeEmail,
-			Detail:      map[string]any{"role": inv.Role},
+			Detail:      map[string]any{"role": inv.Role, "is_guest": inv.IsGuest},
 		})
 	}
 	if err == nil {
@@ -581,11 +660,17 @@ func (h *Handler) AcceptInvitation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	member, err := qtx.CreateMember(r.Context(), db.CreateMemberParams{
+	memberParams := db.CreateMemberParams{
 		WorkspaceID: accepted.WorkspaceID,
 		UserID:      user.ID,
 		Role:        accepted.Role,
-	})
+	}
+	var member db.Member
+	if accepted.IsGuest {
+		member, err = qtx.CreateGuestMember(r.Context(), db.CreateGuestMemberParams(memberParams))
+	} else {
+		member, err = qtx.CreateMember(r.Context(), memberParams)
+	}
 	if err != nil {
 		if isUniqueViolation(err) {
 			writeError(w, http.StatusConflict, "you are already a member of this workspace")
@@ -593,6 +678,19 @@ func (h *Handler) AcceptInvitation(w http.ResponseWriter, r *http.Request) {
 		}
 		writeError(w, http.StatusInternalServerError, "failed to create membership")
 		return
+	}
+
+	if accepted.IsGuest {
+		if _, err := qtx.GrantGuestInvitationProjects(r.Context(), db.GrantGuestInvitationProjectsParams{
+			WorkspaceID: accepted.WorkspaceID,
+			UserID:      user.ID,
+			AddedBy:     accepted.InviterID,
+			ProjectIds:  accepted.GuestProjectIds,
+		}); err != nil {
+			slog.Warn("accept invitation: grant guest projects failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", uuidToString(accepted.WorkspaceID))...)
+			writeError(w, http.StatusInternalServerError, "failed to accept invitation")
+			return
+		}
 	}
 
 	// Accepting an invite marks the invitee as onboarded. The web /
@@ -623,7 +721,7 @@ func (h *Handler) AcceptInvitation(w http.ResponseWriter, r *http.Request) {
 		TargetType:  "invitation",
 		TargetID:    uuidToString(accepted.ID),
 		TargetLabel: accepted.InviteeEmail,
-		Detail:      map[string]any{"role": accepted.Role},
+		Detail:      map[string]any{"role": accepted.Role, "is_guest": accepted.IsGuest},
 	}); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to accept invitation")
 		return

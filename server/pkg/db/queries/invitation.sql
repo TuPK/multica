@@ -1,7 +1,17 @@
 -- name: CreateInvitation :one
-INSERT INTO workspace_invitation (id, workspace_id, inviter_id, invitee_email, invitee_user_id, role, expires_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO workspace_invitation (id, workspace_id, inviter_id, invitee_email, invitee_user_id, role, expires_at, is_guest, guest_project_ids)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
+
+-- name: CountWorkspaceProjectsByIDs :one
+SELECT count(*) FROM project
+WHERE workspace_id = @workspace_id AND id = ANY(@project_ids::uuid[]);
+
+-- name: GrantGuestInvitationProjects :execrows
+INSERT INTO project_member (project_id, workspace_id, user_id, added_by)
+SELECT p.id, p.workspace_id, @user_id, @added_by FROM project p
+WHERE p.workspace_id = @workspace_id AND p.id = ANY(@project_ids::uuid[])
+ON CONFLICT (project_id, user_id) DO NOTHING;
 
 -- name: GetInvitation :one
 SELECT * FROM workspace_invitation
