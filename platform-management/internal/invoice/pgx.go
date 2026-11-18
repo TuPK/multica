@@ -221,7 +221,7 @@ func (s *PgxStore) RetryRecord(ctx context.Context, orderID string, revision int
 			TargetLabel: revisionLabel(revision),
 			Detail: map[string]any{
 				"order_id": orderID, "revision": revision, "previous_state": string(prev.State),
-				"attempts_reset": true, "previous_attempts": prev.Attempts,
+				"previous_attempts": prev.Attempts,
 			},
 		})
 	})

@@ -343,6 +343,41 @@ func TestJobLooksUpBeforeReissue(t *testing.T) {
 	}
 }
 
+// TestRetryAfterTimeoutLooksUpBeforeReissue: a record that failed after a
+// timeout may already exist at the provider. A staff retry must keep the
+// attempt count, so the next run looks the invoice up by reference code first
+// and does not issue a second one (spec 7.3 rule 5, AC58).
+func TestRetryAfterTimeoutLooksUpBeforeReissue(t *testing.T) {
+	f := newIssueFixture(t)
+	id := f.paidOrder(fullBuyerJSON)
+	s := f.service(1)
+	f.mustEnqueue(s)
+
+	f.fake.FailNextIssue(&ProviderError{Kind: KindUnknownOutcome, Code: "TIMEOUT"}, true)
+	f.mustIssue(s)
+	if rec := f.get(id, 1); rec.State != StateFailed {
+		t.Fatalf("after timeout with one attempt: state = %q, want failed", rec.State)
+	}
+
+	var staff string
+	if err := f.pool.QueryRow(context.Background(), `SELECT gen_random_uuid()::text`).Scan(&staff); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Retry(context.Background(), id, 1, staff); err != nil {
+		t.Fatalf("retry: %v", err)
+	}
+
+	f.makeDue(id, 1)
+	f.mustIssue(s)
+	rec := f.get(id, 1)
+	if rec.State != StateIssued || rec.InvoiceNumber == "" {
+		t.Fatalf("after retry: state %q number %q, want issued with a number", rec.State, rec.InvoiceNumber)
+	}
+	if got := f.fake.IssueCalls(); got != 1 {
+		t.Fatalf("provider issue calls = %d, want 1 (retry must look up before reissue)", got)
+	}
+}
+
 // TestIssueSendsReferenceCodeFromOrderAndRevision: the client reference code is
 // order_id and revision, and the amount, currency and buyer are forwarded.
 func TestIssueSendsReferenceCodeFromOrderAndRevision(t *testing.T) {

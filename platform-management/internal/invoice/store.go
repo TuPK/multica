@@ -46,7 +46,7 @@ type Store interface {
 	// GetLatest returns the highest revision of the order; ErrNotFound when it has none.
 	GetLatest(ctx context.Context, orderID string) (Record, error)
 	// RetryRecord moves a failed or needs_info record back to pending with its
-	// attempts reset and next_attempt_at at now, and writes einvoice.retried in
+	// attempts kept and next_attempt_at at now, and writes einvoice.retried in
 	// the same transaction. Any other state is ErrStateConflict. The audit
 	// detail holds no buyer value.
 	RetryRecord(ctx context.Context, orderID string, revision int, by string, now time.Time) (Record, error)

@@ -87,10 +87,10 @@ SELECT * FROM einvoice_issuance WHERE order_id = $1 ORDER BY revision DESC LIMIT
 
 -- name: RetryEinvoiceIssuance :execrows
 -- Staff retry: a failed or needs_info record goes back to pending and is due
--- now, with the attempt count reset.
+-- now. The attempt count is kept: an earlier attempt may have reached the
+-- provider, so the next run must look the invoice up before it issues again.
 UPDATE einvoice_issuance
 SET state = 'pending',
-    attempts = 0,
     next_attempt_at = sqlc.arg('now')::timestamptz,
     last_error_code = '',
     missing_fields = '[]'::jsonb,

@@ -519,7 +519,7 @@ Bộ trường người mua bắt buộc theo mã: `name`, `tax_code`, `address`
 
 `POST /api/platform/einvoices/{orderId}/retry`, vai trò `billing` hoặc `admin` (`platform-management/internal/console/handler.go:149`). Mọi phương thức ghi đi qua `RequireOrigin` (`handler.go:201`). Middleware so header `Origin` với `PLATFORM_CONSOLE_ORIGIN` (`platform-management/internal/platformauth/platformauth.go:177`, `config.go:296`); `Origin` sai, hoặc không có `Origin` mà có `Cookie`, bị 403 `bad_origin`.
 
-Bản ghi `failed` hoặc `needs_info` về `pending`, `attempts` về 0 (`platform-management/queries/einvoice.sql:88`). Handler ở `platform-management/internal/console/einvoices.go:341`; lỗi ở `einvoices.go:298`:
+Bản ghi `failed` hoặc `needs_info` về `pending`, `attempts` giữ nguyên (`platform-management/queries/einvoice.sql:88`). Handler ở `platform-management/internal/console/einvoices.go:341`; lỗi ở `einvoices.go:298`:
 
 | Mã | Khi nào |
 | --- | --- |
@@ -538,7 +538,7 @@ Mã tham chiếu của mỗi lần phát hành là `order_id-revision` (`platfor
 
 - Không phát hành lại bằng tay. Không tạo hóa đơn thứ hai trên SePay cho cùng một đơn.
 - Thấy trên SePay một hóa đơn mà platform không hiện, thì tra theo mã tham chiếu `order_id-revision` trước.
-- **Khoảng trống đã biết:** sau lần thử lại của staff, `attempts` về 0 (`platform-management/internal/invoice/service.go:185`), nên lần nhận đầu tiên có `attempts = 1` và **không** tra cứu trước khi gọi (`service.go:116`). Với bản ghi `failed` do hết thời gian, lần thử lại này có thể phát hành lại khi hóa đơn đã tồn tại trên SePay. Trước khi thử lại, kiểm trên SePay xem hóa đơn theo mã `order_id-revision` đã có chưa. Đây là khác biệt so với quy tắc 5 của spec 7.3 và AC58; chưa sửa trong bước đóng P43.
+- **Thử lại không làm mất lịch sử lần gọi:** thử lại giữ `attempts`, nên lần nhận sau đó luôn tra cứu theo mã `order_id-revision` trước khi phát hành lại (`service.go:116`). Hệ quả: bản ghi `failed` đã hết số lần thử vẫn có một lần thử nữa khi staff thử lại, và lỗi tạm thời ở lần đó lập tức đưa về `failed`. Đây là khoảng trống về ngân sách thử lại, chưa có bước nào đổi.
 
 ### 14.8 Xem lịch sử
 

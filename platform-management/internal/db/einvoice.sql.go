@@ -404,7 +404,6 @@ func (q *Queries) MarkEinvoiceIssued(ctx context.Context, arg MarkEinvoiceIssued
 const retryEinvoiceIssuance = `-- name: RetryEinvoiceIssuance :execrows
 UPDATE einvoice_issuance
 SET state = 'pending',
-    attempts = 0,
     next_attempt_at = $1::timestamptz,
     last_error_code = '',
     missing_fields = '[]'::jsonb,

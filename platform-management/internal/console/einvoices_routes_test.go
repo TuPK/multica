@@ -179,14 +179,14 @@ func TestEinvoiceRetryMovesFailedToPending(t *testing.T) {
 		t.Fatalf("got %d %s", rec.Code, rec.Body)
 	}
 	body := decodeMap(t, rec)
-	if body["state"] != "pending" || body["order_id"] != order || body["revision"] != float64(1) || body["attempts"] != float64(0) {
+	if body["state"] != "pending" || body["order_id"] != order || body["revision"] != float64(1) || body["attempts"] != float64(4) {
 		t.Errorf("response = %s", rec.Body)
 	}
 	if _, ok := body["missing_fields"]; !ok || strings.Contains(rec.Body.String(), "Cong ty") {
 		t.Errorf("response is not the list shape or leaks the buyer: %s", rec.Body)
 	}
 	got := x.record(order, 1)
-	if got.State != invoice.StatePending || got.Attempts != 0 || got.NextAttemptAt.Before(before) || got.NextAttemptAt.After(time.Now().Add(time.Minute)) {
+	if got.State != invoice.StatePending || got.Attempts != 4 || got.NextAttemptAt.Before(before) || got.NextAttemptAt.After(time.Now().Add(time.Minute)) {
 		t.Errorf("record = state %s attempts %d next %v", got.State, got.Attempts, got.NextAttemptAt)
 	}
 	logs := x.audits(order, "einvoice.retried")
@@ -195,7 +195,7 @@ func TestEinvoiceRetryMovesFailedToPending(t *testing.T) {
 	}
 	var d map[string]any
 	_ = json.Unmarshal([]byte(logs[0]), &d)
-	if d["order_id"] != order || d["revision"] != float64(1) || d["previous_state"] != "failed" || d["attempts_reset"] != true {
+	if d["order_id"] != order || d["revision"] != float64(1) || d["previous_state"] != "failed" || d["previous_attempts"] != float64(4) {
 		t.Errorf("detail = %s", logs[0])
 	}
 	if strings.Contains(logs[0], "Cong ty") || strings.Contains(logs[0], "0312345678") || strings.Contains(logs[0], "a@example.com") {
@@ -214,7 +214,7 @@ func TestEinvoiceRetryMovesNeedsInfoToPendingWhenBuyerComplete(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("got %d %s", rec.Code, rec.Body)
 	}
-	if got := x.record(order, 1); got.State != invoice.StatePending || got.Attempts != 0 || len(got.MissingFields) != 0 {
+	if got := x.record(order, 1); got.State != invoice.StatePending || got.Attempts != 4 || len(got.MissingFields) != 0 {
 		t.Errorf("record = %+v", got)
 	}
 	logs := x.audits(order, "einvoice.retried")
