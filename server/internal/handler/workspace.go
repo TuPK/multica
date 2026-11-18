@@ -148,6 +148,7 @@ type MemberResponse struct {
 	UserID      string `json:"user_id"`
 	Role        string `json:"role"`
 	CreatedAt   string `json:"created_at"`
+	IsGuest     bool   `json:"is_guest"`
 }
 
 // recordAudit writes one audit event for the request. With a non-nil tx the
@@ -211,6 +212,7 @@ func memberToResponse(m db.Member) MemberResponse {
 		UserID:      uuidToString(m.UserID),
 		Role:        m.Role,
 		CreatedAt:   timestampToString(m.CreatedAt),
+		IsGuest:     m.IsGuest,
 	}
 }
 
@@ -751,6 +753,7 @@ type MemberWithUserResponse struct {
 	Name        string  `json:"name"`
 	Email       string  `json:"email"`
 	AvatarURL   *string `json:"avatar_url"`
+	IsGuest     bool    `json:"is_guest"`
 }
 
 func (h *Handler) ListMembersWithUser(w http.ResponseWriter, r *http.Request) {
@@ -781,6 +784,7 @@ func (h *Handler) ListMembersWithUser(w http.ResponseWriter, r *http.Request) {
 			Name:        m.UserName,
 			Email:       m.UserEmail,
 			AvatarURL:   h.resolveAvatarURLPtr(textToPtr(m.UserAvatarUrl)),
+			IsGuest:     m.IsGuest,
 		}
 		// A guest sees names and avatars, not emails (spec 7.1 rule 9).
 		if requester.IsGuest {
@@ -806,6 +810,7 @@ func (h *Handler) memberWithUserResponse(member db.Member, user db.User) MemberW
 		Name:        user.Name,
 		Email:       user.Email,
 		AvatarURL:   h.resolveAvatarURLPtr(textToPtr(user.AvatarUrl)),
+		IsGuest:     member.IsGuest,
 	}
 }
 

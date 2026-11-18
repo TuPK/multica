@@ -47,7 +47,7 @@ UPDATE member SET is_guest = $2 WHERE id = $1 RETURNING *;
 DELETE FROM member WHERE id = $1;
 
 -- name: ListMembersWithUser :many
-SELECT m.id, m.workspace_id, m.user_id, m.role, m.created_at,
+SELECT m.id, m.workspace_id, m.user_id, m.role, m.created_at, m.is_guest,
        u.name as user_name, u.email as user_email, u.avatar_url as user_avatar_url
 FROM member m
 JOIN "user" u ON u.id = m.user_id

@@ -30,10 +30,16 @@ type ProjectResponse struct {
 	Icon        *string `json:"icon"`
 	Status      string  `json:"status"`
 	Priority    string  `json:"priority"`
-	LeadType    *string `json:"lead_type"`
-	LeadID      *string `json:"lead_id"`
-	CreatorType *string `json:"creator_type"`
-	CreatorID   *string `json:"creator_id"`
+	// Access is the stored mode: "workspace" or "restricted".
+	Access string `json:"access"`
+	// CanManageAccess is true when the caller may manage project access (owner
+	// or admin). It is set only on responses built for one caller (list, get,
+	// update); events and other builders leave it false.
+	CanManageAccess bool    `json:"can_manage_access"`
+	LeadType        *string `json:"lead_type"`
+	LeadID          *string `json:"lead_id"`
+	CreatorType     *string `json:"creator_type"`
+	CreatorID       *string `json:"creator_id"`
 	// StartDate / DueDate are calendar days ("YYYY-MM-DD"), no time-of-day or
 	// timezone — same contract as issue.start_date / issue.due_date.
 	StartDate  *string `json:"start_date"`
@@ -80,6 +86,7 @@ func projectToResponse(p db.Project) ProjectResponse {
 		Icon:        textToPtr(p.Icon),
 		Status:      p.Status,
 		Priority:    p.Priority,
+		Access:      p.Access,
 		LeadType:    textToPtr(p.LeadType),
 		LeadID:      uuidToPtr(p.LeadID),
 		CreatorType: textToPtr(p.CreatorType),
@@ -247,6 +254,7 @@ func (h *Handler) ListProjects(w http.ResponseWriter, r *http.Request) {
 	resp := make([]ProjectResponse, len(projects))
 	for i, p := range projects {
 		resp[i] = projectToResponse(p)
+		resp[i].CanManageAccess = scope.CanManage()
 		if s, ok := statsMap[resp[i].ID]; ok {
 			resp[i].IssueCount = s.TotalCount
 			resp[i].DoneCount = s.DoneCount
@@ -279,6 +287,7 @@ func (h *Handler) GetProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := projectToResponse(project)
+	resp.CanManageAccess = scope.CanManage()
 	resp.IssueCount, resp.DoneCount = h.loadProjectIssueStats(r.Context(), wsUUID, project.ID)
 	resp.ResourceCount = h.loadProjectResourceCount(r.Context(), project.ID)
 	squads, err := h.loadProjectSquads(r.Context(), wsUUID, project)
@@ -716,6 +725,8 @@ func (h *Handler) UpdateProject(w http.ResponseWriter, r *http.Request) {
 	resp.IssueCount, resp.DoneCount = h.loadProjectIssueStats(r.Context(), wsUUID, project.ID)
 	resp.ResourceCount = h.loadProjectResourceCount(r.Context(), project.ID)
 	h.publish(protocol.EventProjectUpdated, workspaceID, "member", userID, map[string]any{"project": resp})
+	// Set after publishing: the event goes to every member, this value is the caller's.
+	resp.CanManageAccess = scope.CanManage()
 	writeJSON(w, http.StatusOK, resp)
 }
 
