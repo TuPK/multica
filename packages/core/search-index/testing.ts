@@ -5,7 +5,7 @@ import type {
   SearchIndexManifest,
   SearchIndexSnapshotPage,
 } from "../types";
-import type { IndexFetcher } from "./sync";
+import { IndexFetchError, type IndexFetcher } from "./sync";
 
 // Shared fixtures for the search index tests.
 
@@ -53,6 +53,14 @@ export class FakeServer implements IndexFetcher {
   comments = new Map<string, SearchIndexComment>();
   log: Change[] = [];
   textBytes = 100;
+  /**
+   * When set, cursors carry it and a cursor issued under another value is
+   * answered 410, as the real server does when the viewer's visible project
+   * set changed (scope_version).
+   */
+  scopeVersion: string | undefined;
+  /** Issues the viewer cannot see: left out of snapshots and changes. */
+  hiddenIssues = new Set<string>();
   calls: string[] = [];
   failNext: Partial<Record<"manifest" | "snapshot" | "changes", Error>> = {};
 
@@ -82,11 +90,19 @@ export class FakeServer implements IndexFetcher {
     }
   }
 
+  private cursorAt(version: number): string {
+    return this.scopeVersion === undefined ? `c${version}` : `c${version}@${this.scopeVersion}`;
+  }
+
+  private visibleIssues(): SearchIndexIssue[] {
+    return [...this.issues.values()].filter((i) => !this.hiddenIssues.has(i.id));
+  }
+
   async manifest(): Promise<SearchIndexManifest> {
     this.take("manifest");
     return {
-      cursor: `c${this.version}`,
-      issue_count: this.issues.size,
+      cursor: this.cursorAt(this.version),
+      issue_count: this.visibleIssues().length,
       comment_count: this.comments.size,
       project_count: 0,
       text_bytes: this.textBytes,
@@ -95,7 +111,7 @@ export class FakeServer implements IndexFetcher {
 
   async snapshot(afterNumber: number, limit: number): Promise<SearchIndexSnapshotPage> {
     this.take("snapshot");
-    const page = [...this.issues.values()]
+    const page = this.visibleIssues()
       .filter((i) => i.number > afterNumber)
       .sort((a, b) => a.number - b.number)
       .slice(0, Math.min(limit, 2));
@@ -111,19 +127,23 @@ export class FakeServer implements IndexFetcher {
 
   async changes(cursor: string): Promise<SearchIndexChanges> {
     this.take("changes");
-    const from = Number(cursor.slice(1));
+    const [versionPart, scopePart] = cursor.slice(1).split("@");
+    if (this.scopeVersion !== undefined && scopePart !== this.scopeVersion) {
+      throw new IndexFetchError("scope changed", 410);
+    }
+    const from = Number(versionPart);
     const out: SearchIndexChanges = {
       issues: [],
       comments: [],
       projects: [],
       deleted: { issues: [], comments: [], projects: [] },
-      cursor: `c${this.version}`,
+      cursor: this.cursorAt(this.version),
       has_more: false,
     };
     for (const change of this.log.slice(from)) {
       if (change.kind === "issue") {
         const live = this.issues.get(change.record.id);
-        if (live) out.issues.push(live);
+        if (live && !this.hiddenIssues.has(live.id)) out.issues.push(live);
         else out.deleted.issues.push(change.record.id);
       } else if (change.kind === "comment") {
         const live = this.comments.get(change.record.id);

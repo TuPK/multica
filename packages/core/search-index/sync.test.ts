@@ -129,6 +129,38 @@ describe("WorkspaceIndex", () => {
     expect(index.isServing()).toBe(true);
   });
 
+  it("rebuilds from the manifest and removes the old copy when scope_version changes", async () => {
+    const server = new FakeServer();
+    server.scopeVersion = "visible-a";
+    server.apply({ kind: "issue", record: issueRecord(1, "Open title") });
+    server.apply({ kind: "issue", record: issueRecord(2, "Restricted title") });
+    server.apply({ kind: "comment", record: commentRecord("c-restricted", "issue-2", "restricted comment") });
+    const { index, store } = makeIndex(server, undefined, { retryBaseMs: 0 });
+    await started(index);
+    expect((await index.searchIssues({ q: "restricted" }))?.issues.map((i) => i.id)).toEqual(["issue-2"]);
+    expect(server.calls.filter((c) => c === "manifest")).toHaveLength(1);
+
+    // The viewer loses access to the project of issue-2; the server keeps no
+    // per-row revocation, so the next catch-up is refused.
+    server.hiddenIssues.add("issue-2");
+    server.scopeVersion = "visible-b";
+    await index.sync();
+    expect(store.issues.has("issue-2")).toBe(false);
+    expect(store.comments.size).toBe(0);
+    expect(index.isServing()).toBe(false);
+
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await index.sync();
+
+    expect(server.calls.filter((c) => c === "manifest")).toHaveLength(2);
+    expect(index.isServing()).toBe(true);
+    expect([...store.issues.keys()]).toEqual(["issue-1"]);
+    expect(store.comments.size).toBe(0);
+    expect((await index.searchIssues({ q: "restricted" }))?.issues).toEqual([]);
+    expect((await index.searchIssues({ q: "open" }))?.issues.map((i) => i.id)).toEqual(["issue-1"]);
+    expect(store.meta?.cursor).toBe(`c${server.version}@visible-b`);
+  });
+
   it("drops the local copy when the workspace is no longer accessible", async () => {
     const server = new FakeServer();
     server.apply({ kind: "issue", record: issueRecord(1, "Private title") });

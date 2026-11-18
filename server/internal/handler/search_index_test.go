@@ -21,6 +21,9 @@ func searchIndexWorkspace(t *testing.T, prefix string) string {
 	t.Helper()
 	token := fmt.Sprintf("%d", time.Now().UnixNano())
 	wsID := dbfx.Workspace(t, "Search index "+token, "search-index-"+token, testutil.Cols{"issue_prefix": prefix})
+	// The index reads are limited to the caller's project scope, which needs a
+	// member row; the cleanup runs before the workspace is removed.
+	dbfx.Member(t, wsID, testUserID, "owner")
 	// Registered before any fixture row, so it runs after their cleanups and
 	// also removes the change rows those deletes log.
 	t.Cleanup(func() {

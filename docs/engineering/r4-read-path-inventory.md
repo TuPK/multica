@@ -146,11 +146,13 @@ How units are found:
 | `server/pkg/db/queries/qoder_issue_lifecycle.sql` | `LockQoderTaskIssue` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/request_usage.sql` | `GetRequestUsageSummary` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/scorecard.sql` | `ScorecardDoneIssues` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/search_index.sql` | `GetSearchIndexManifest` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/search_index.sql` | `ListSearchIndexIssuesByIDs` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/search_index.sql` | `ListSearchIndexIssuesPage` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/search_index.sql` | `ListSearchIndexProjects` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/search_index.sql` | `ListSearchIndexProjectsByIDs` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/search_index.sql` | `GetSearchIndexManifest` | sql-query | scoped | counts and bytes of issue, comment and project apply the Scope fragment; test TestManifestCountsOnlyVisible |
+| `server/pkg/db/queries/search_index.sql` | `ListSearchIndexCommentsByIDs` | sql-query | scoped | Joins the comment's issue and applies the fragment on issue.project_id; hidden rows read as deleted; test TestSnapshotAndChangesFilteredByScope |
+| `server/pkg/db/queries/search_index.sql` | `ListSearchIndexIssuesByIDs` | sql-query | scoped | fragment on issue.project_id; hidden rows read as deleted; test TestSnapshotAndChangesFilteredByScope |
+| `server/pkg/db/queries/search_index.sql` | `ListSearchIndexIssuesPage` | sql-query | scoped | fragment on issue.project_id; test TestSnapshotAndChangesFilteredByScope |
+| `server/pkg/db/queries/search_index.sql` | `ListSearchIndexProjects` | sql-query | scoped | fragment on project.id; test TestSnapshotAndChangesFilteredByScope |
+| `server/pkg/db/queries/search_index.sql` | `ListSearchIndexProjectsByIDs` | sql-query | scoped | fragment on project.id; hidden rows read as deleted; test TestSnapshotAndChangesFilteredByScope |
+| `server/pkg/db/queries/search_index.sql` | `ListSearchIndexVisibleProjectIDs` | sql-query | scoped | Fragment on project.id; the ids are hashed into scope_version; test TestScopeVersionChangesWithVisibleSet |
 | `server/pkg/db/queries/secretary_request.sql` | `CountOpenSecretaryRequests` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/secretary_request.sql` | `ListSecretaryRequestsPastDeadline` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/squad.sql` | `ListSquadMemberStatusRows` | sql-query | todo | Reads issue or project; no visibility filter today |
@@ -329,9 +331,9 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/proposal.go` | `Handler.GetProposal` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/proposal.go` | `Handler.ListProposals` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/reaction.go` | `Handler.AddReaction` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/search_index.go` | `Handler.GetSearchIndexManifest` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/search_index.go` | `Handler.GetSearchIndexSnapshot` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/search_index.go` | `Handler.ListSearchIndexChanges` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/search_index.go` | `Handler.GetSearchIndexManifest` | go-call | scoped | passes viewerScope to the manifest query and returns scope_version; tests TestManifestCountsOnlyVisible, TestScopeVersionChangesWithVisibleSet |
+| `server/internal/handler/search_index.go` | `Handler.GetSearchIndexSnapshot` | go-call | scoped | passes viewerScope to the page, project and comment reads; test TestSnapshotAndChangesFilteredByScope |
+| `server/internal/handler/search_index.go` | `Handler.ListSearchIndexChanges` | go-call | scoped | passes viewerScope to the by-id reads and answers 410 when the cursor's scope_version differs; tests TestSnapshotAndChangesFilteredByScope, TestScopeVersionChangesWithVisibleSet |
 | `server/internal/handler/source_context.go` | `Handler.CreateCommentSubIssue` | go-call | scoped | sourceAnchorHidden (viewerSeesIssue on the comment issue) answers a hidden comment like a deleted one before the snapshot is built; TestRestrictedIssueCallersAnswerMissing/comment_sub-issue_of_a_hidden_issue |
 | `server/internal/handler/source_context.go` | `Handler.prepareAgentCommentSubIssue` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/squad.go` | `Handler.ListSquadMemberStatus` | go-call | todo | Calls a reader query; no visibility filter today |
@@ -502,9 +504,9 @@ Readers the scanner cannot see. The test checks only that Status is a known valu
 | `server/cmd/server` | other `*listeners.go` files | manual | todo | Activity, subscriber, notification, brief and unread listeners read issue data on events |
 | `server/internal/realtime` | broadcaster.go and redis_relay.go fan-out | manual | todo | Workspace-wide rooms; no per-person audience for issue events |
 | `server/internal/handler/search.go` | server-side search | manual | scoped | SearchIssues and SearchProjects apply the Scope (scopeCondition); tests TestSearchServerSideOmitsHidden, TestRestrictedSearchIssuesOmitsHidden, TestRestrictedSearchCountsOmitHidden |
-| `server/internal/handler/search_index.go` | manifest, snapshot, changes | manual | todo | Client index sync covers the whole workspace |
-| `server/pkg/db/queries/search_index.sql` | search index queries | manual | todo | Queries behind the index sync |
-| `packages/core/search-index` | client search index | manual | todo | Local copy of workspace issues; cannot revoke single rows |
+| `server/internal/handler/search_index.go` | manifest, snapshot, changes | manual | scoped | All three calls take the viewer's Scope; scope_version in the manifest and in every cursor; tests TestManifestCountsOnlyVisible, TestSnapshotAndChangesFilteredByScope, TestScopeVersionChangesWithVisibleSet |
+| `server/pkg/db/queries/search_index.sql` | search index queries | manual | scoped | Every reader query carries the projectaccess:scope fragment; ListSearchIndexVisibleProjectIDs feeds scope_version |
+| `packages/core/search-index` | client search index | manual | scoped | The server binds each cursor to scope_version and answers 410 when it changes; the client rebuilds from a fresh manifest and resets its store (sync.test.ts) |
 | `server/internal/handler/hub_sync.go` | hub sync | manual | exempt | (b) hub source sync (SyncHubSourceAuto worker, SyncHubSource admin trigger); reads no issue or project row, hub items are skills and plugin packages |
 | `server/internal/handler/knowledge_project_docs.go` | project knowledge docs | manual | exempt | (b) the daemon project-docs sync routes under /api/daemon (daemon token, no viewer) |
 | `server/internal/handler/squad_project.go` | squad project | manual | todo | Reads project data |

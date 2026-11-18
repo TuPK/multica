@@ -2,7 +2,9 @@ package handler
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,6 +21,7 @@ import (
 
 	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/logger"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
@@ -32,6 +35,13 @@ import (
 // but not in the snapshot the client already holds. Comparing xids against
 // pg_snapshot values is exact under any commit order and is not held back by
 // long-running transactions elsewhere in the database.
+//
+// Every read is limited to what the caller sees (projectaccess.Scope, spec 7.1
+// rule 14). A copy already on a user's machine cannot be revoked row by row, so
+// the manifest also returns scope_version, a hash of the set of projects the
+// caller sees, and every cursor carries the value it was issued under. A
+// cursor whose value no longer matches is answered like an expired one (410),
+// which makes the client rebuild its copy from a fresh manifest.
 //
 // Every read runs on the primary: a replica would hand out a snapshot and rows
 // from different points in time, and the difference would be lost silently.
@@ -111,8 +121,10 @@ func validPGSnapshotText(s string) bool {
 // catch-up spans several pages; once it completes, Target becomes the next
 // Since.
 type searchIndexCursor struct {
-	Version   int    `json:"v"`
-	Since     string `json:"s"`
+	Version int    `json:"v"`
+	Since   string `json:"s"`
+	// Scope is the scope_version the cursor was issued under.
+	Scope     string `json:"sv,omitempty"`
 	Target    string `json:"t,omitempty"`
 	AfterXid  string `json:"x,omitempty"`
 	AfterType string `json:"e,omitempty"`
@@ -198,7 +210,9 @@ type SearchIndexComment struct {
 }
 
 type SearchIndexManifestResponse struct {
-	Cursor       string `json:"cursor"`
+	Cursor string `json:"cursor"`
+	// ScopeVersion changes when the set of projects the caller sees changes.
+	ScopeVersion string `json:"scope_version"`
 	IssueCount   int64  `json:"issue_count"`
 	CommentCount int64  `json:"comment_count"`
 	ProjectCount int64  `json:"project_count"`
@@ -266,6 +280,37 @@ func (h *Handler) runSearchIndexRead(ctx context.Context, fn func(q *db.Queries)
 	return tx.Commit(ctx)
 }
 
+// searchIndexScopeVersion hashes the projects the caller sees. Whether the
+// caller is a guest is part of it because guests do not see issues without a
+// project; owner, admin and member differ only through the project set.
+func searchIndexScopeVersion(scope projectaccess.Scope, projectIDs []pgtype.UUID) string {
+	h := sha256.New()
+	if scope.Mode() == projectaccess.ModeGuest {
+		h.Write([]byte("guest\n"))
+	} else {
+		h.Write([]byte("full\n"))
+	}
+	for _, id := range projectIDs {
+		h.Write([]byte(uuidToString(id)))
+		h.Write([]byte{'\n'})
+	}
+	return hex.EncodeToString(h.Sum(nil)[:16])
+}
+
+// readSearchIndexScopeVersion runs inside the search index transaction, so the
+// value describes the same snapshot as the rows read with it.
+func readSearchIndexScopeVersion(ctx context.Context, q *db.Queries, wsUUID pgtype.UUID, scope projectaccess.Scope) (string, error) {
+	ids, err := q.ListSearchIndexVisibleProjectIDs(ctx, db.ListSearchIndexVisibleProjectIDsParams{
+		WorkspaceID: wsUUID,
+		ScopeMode:   scope.Mode(),
+		ScopeUserID: scope.UserID(),
+	})
+	if err != nil {
+		return "", err
+	}
+	return searchIndexScopeVersion(scope, ids), nil
+}
+
 func (h *Handler) writeSearchIndexError(w http.ResponseWriter, r *http.Request, op string, err error) {
 	if isSearchStatementTimeout(err) {
 		writeError(w, http.StatusServiceUnavailable, "search index read timed out; please retry")
@@ -282,16 +327,31 @@ func (h *Handler) GetSearchIndexManifest(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 	release, ok := acquireSearchIndexBootstrapSlot(r.Context())
 	if !ok {
 		writeSearchIndexBusy(w)
 		return
 	}
 	defer release()
-	var row db.GetSearchIndexManifestRow
+	var (
+		row          db.GetSearchIndexManifestRow
+		scopeVersion string
+	)
 	err := h.runSearchIndexRead(r.Context(), func(q *db.Queries) error {
 		var err error
-		row, err = q.GetSearchIndexManifest(r.Context(), wsUUID)
+		row, err = q.GetSearchIndexManifest(r.Context(), db.GetSearchIndexManifestParams{
+			WorkspaceID: wsUUID,
+			ScopeMode:   scope.Mode(),
+			ScopeUserID: scope.UserID(),
+		})
+		if err != nil {
+			return err
+		}
+		scopeVersion, err = readSearchIndexScopeVersion(r.Context(), q, wsUUID, scope)
 		return err
 	})
 	if err != nil {
@@ -299,7 +359,8 @@ func (h *Handler) GetSearchIndexManifest(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	writeJSON(w, http.StatusOK, SearchIndexManifestResponse{
-		Cursor:       encodeSearchIndexCursor(searchIndexCursor{Since: row.Snapshot}),
+		Cursor:       encodeSearchIndexCursor(searchIndexCursor{Since: row.Snapshot, Scope: scopeVersion}),
+		ScopeVersion: scopeVersion,
 		IssueCount:   row.IssueCount,
 		CommentCount: row.CommentCount,
 		ProjectCount: row.ProjectCount,
@@ -333,6 +394,10 @@ func (h *Handler) GetSearchIndexSnapshot(w http.ResponseWriter, r *http.Request)
 		}
 		limit = min(v, searchIndexSnapshotMaxLimit)
 	}
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 	release, ok := acquireSearchIndexBootstrapSlot(ctx)
 	if !ok {
 		writeSearchIndexBusy(w)
@@ -351,6 +416,8 @@ func (h *Handler) GetSearchIndexSnapshot(w http.ResponseWriter, r *http.Request)
 			WorkspaceID: wsUUID,
 			AfterNumber: int32(afterNumber),
 			PageLimit:   int32(limit),
+			ScopeMode:   scope.Mode(),
+			ScopeUserID: scope.UserID(),
 		})
 		if err != nil {
 			return err
@@ -369,7 +436,11 @@ func (h *Handler) GetSearchIndexSnapshot(w http.ResponseWriter, r *http.Request)
 			}
 		}
 		if afterNumber == 0 {
-			projects, err = q.ListSearchIndexProjects(ctx, wsUUID)
+			projects, err = q.ListSearchIndexProjects(ctx, db.ListSearchIndexProjectsParams{
+				WorkspaceID: wsUUID,
+				ScopeMode:   scope.Mode(),
+				ScopeUserID: scope.UserID(),
+			})
 		}
 		return err
 	})
@@ -417,21 +488,33 @@ func (h *Handler) ListSearchIndexChanges(w http.ResponseWriter, r *http.Request)
 		writeError(w, http.StatusBadRequest, "invalid cursor")
 		return
 	}
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 	limit := searchIndexChangesDefaultLimit
 	if req.Limit > 0 {
 		limit = min(req.Limit, searchIndexChangesMaxLimit)
 	}
 
 	var (
-		pruned   bool
-		target   = cur.Target
-		changes  []db.ListSearchIndexChangesRow
-		issues   []db.Issue
-		comments []db.ListSearchIndexCommentsByIDsRow
-		projects []db.Project
+		pruned       bool
+		scopeVersion string
+		target       = cur.Target
+		changes      []db.ListSearchIndexChangesRow
+		issues       []db.Issue
+		comments     []db.ListSearchIndexCommentsByIDsRow
+		projects     []db.Project
 	)
 	err = h.runSearchIndexRead(ctx, func(q *db.Queries) error {
 		var err error
+		if scopeVersion, err = readSearchIndexScopeVersion(ctx, q, wsUUID, scope); err != nil {
+			return err
+		}
+		if cur.Scope != scopeVersion {
+			// Also covers cursors issued before scope_version existed.
+			return nil
+		}
 		if pruned, err = q.SearchIndexSinceIsPruned(ctx, cur.Since); err != nil || pruned {
 			return err
 		}
@@ -472,17 +555,17 @@ func (h *Handler) ListSearchIndexChanges(w http.ResponseWriter, r *http.Request)
 			}
 		}
 		if len(issueIDs) > 0 {
-			if issues, err = q.ListSearchIndexIssuesByIDs(ctx, db.ListSearchIndexIssuesByIDsParams{WorkspaceID: wsUUID, Ids: issueIDs}); err != nil {
+			if issues, err = q.ListSearchIndexIssuesByIDs(ctx, db.ListSearchIndexIssuesByIDsParams{WorkspaceID: wsUUID, Ids: issueIDs, ScopeMode: scope.Mode(), ScopeUserID: scope.UserID()}); err != nil {
 				return err
 			}
 		}
 		if len(commentIDs) > 0 {
-			if comments, err = q.ListSearchIndexCommentsByIDs(ctx, db.ListSearchIndexCommentsByIDsParams{WorkspaceID: wsUUID, Ids: commentIDs}); err != nil {
+			if comments, err = q.ListSearchIndexCommentsByIDs(ctx, db.ListSearchIndexCommentsByIDsParams{WorkspaceID: wsUUID, Ids: commentIDs, ScopeMode: scope.Mode(), ScopeUserID: scope.UserID()}); err != nil {
 				return err
 			}
 		}
 		if len(projectIDs) > 0 {
-			if projects, err = q.ListSearchIndexProjectsByIDs(ctx, db.ListSearchIndexProjectsByIDsParams{WorkspaceID: wsUUID, Ids: projectIDs}); err != nil {
+			if projects, err = q.ListSearchIndexProjectsByIDs(ctx, db.ListSearchIndexProjectsByIDsParams{WorkspaceID: wsUUID, Ids: projectIDs, ScopeMode: scope.Mode(), ScopeUserID: scope.UserID()}); err != nil {
 				return err
 			}
 		}
@@ -497,6 +580,10 @@ func (h *Handler) ListSearchIndexChanges(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		h.writeSearchIndexError(w, r, "changes", err)
+		return
+	}
+	if cur.Scope != scopeVersion {
+		writeError(w, http.StatusGone, "search index scope changed; rebuild the local index")
 		return
 	}
 	if pruned {
@@ -554,13 +641,14 @@ func (h *Handler) ListSearchIndexChanges(w http.ResponseWriter, r *http.Request)
 		resp.HasMore = true
 		resp.Cursor = encodeSearchIndexCursor(searchIndexCursor{
 			Since:     cur.Since,
+			Scope:     scopeVersion,
 			Target:    target,
 			AfterXid:  last.ChangeXid,
 			AfterType: last.EntityType,
 			AfterID:   uuidToString(last.EntityID),
 		})
 	} else {
-		resp.Cursor = encodeSearchIndexCursor(searchIndexCursor{Since: target})
+		resp.Cursor = encodeSearchIndexCursor(searchIndexCursor{Since: target, Scope: scopeVersion})
 	}
 	writeJSON(w, http.StatusOK, resp)
 }

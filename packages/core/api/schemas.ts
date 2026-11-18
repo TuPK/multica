@@ -2212,6 +2212,7 @@ const SearchIndexCommentSchema = z.object({
 
 export const SearchIndexManifestSchema = z.object({
   cursor: z.string().min(1),
+  scope_version: z.string().optional(),
   issue_count: z.number(),
   comment_count: z.number(),
   project_count: z.number(),

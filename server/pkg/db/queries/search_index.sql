@@ -7,20 +7,76 @@
 -- than this snapshot and reaches the client through the change log. The byte
 -- totals let the client reject a workspace too large for its memory budget
 -- before downloading it; octet_length reads the stored length, so TOASTed
--- bodies are not decompressed.
+-- bodies are not decompressed. Counts and bytes cover only what the viewer
+-- sees; a comment is visible with its issue.
 WITH ws AS (SELECT @workspace_id::uuid AS id)
 SELECT
     pg_current_snapshot()::text AS snapshot,
-    (SELECT count(*) FROM issue i, ws WHERE i.workspace_id = ws.id)::bigint AS issue_count,
+    (SELECT count(*) FROM issue i, ws WHERE i.workspace_id = ws.id
+        -- projectaccess:scope
+        AND (sqlc.arg(scope_mode)::text = 'all'
+            OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+            OR EXISTS (SELECT 1 FROM project_member scope_pm
+                       WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+            OR (sqlc.arg(scope_mode)::text = 'member'
+                AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace'))))::bigint AS issue_count,
     (SELECT COALESCE(sum(octet_length(i.title) + COALESCE(octet_length(i.description), 0)), 0)
-        FROM issue i, ws WHERE i.workspace_id = ws.id)::bigint AS issue_bytes,
-    (SELECT count(*) FROM comment c, ws
-        WHERE c.workspace_id = ws.id AND c.deleted_at IS NULL)::bigint AS comment_count,
-    (SELECT COALESCE(sum(octet_length(c.content)), 0) FROM comment c, ws
-        WHERE c.workspace_id = ws.id AND c.deleted_at IS NULL)::bigint AS comment_bytes,
-    (SELECT count(*) FROM project p, ws WHERE p.workspace_id = ws.id)::bigint AS project_count,
+        FROM issue i, ws WHERE i.workspace_id = ws.id
+        -- projectaccess:scope
+        AND (sqlc.arg(scope_mode)::text = 'all'
+            OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+            OR EXISTS (SELECT 1 FROM project_member scope_pm
+                       WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+            OR (sqlc.arg(scope_mode)::text = 'member'
+                AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace'))))::bigint AS issue_bytes,
+    (SELECT count(*) FROM comment c JOIN issue ci ON ci.id = c.issue_id, ws
+        WHERE c.workspace_id = ws.id AND c.deleted_at IS NULL
+        -- projectaccess:scope
+        AND (sqlc.arg(scope_mode)::text = 'all'
+            OR (ci.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+            OR EXISTS (SELECT 1 FROM project_member scope_pm
+                       WHERE scope_pm.project_id = ci.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+            OR (sqlc.arg(scope_mode)::text = 'member'
+                AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = ci.project_id AND scope_p.access = 'workspace'))))::bigint AS comment_count,
+    (SELECT COALESCE(sum(octet_length(c.content)), 0) FROM comment c JOIN issue ci ON ci.id = c.issue_id, ws
+        WHERE c.workspace_id = ws.id AND c.deleted_at IS NULL
+        -- projectaccess:scope
+        AND (sqlc.arg(scope_mode)::text = 'all'
+            OR (ci.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+            OR EXISTS (SELECT 1 FROM project_member scope_pm
+                       WHERE scope_pm.project_id = ci.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+            OR (sqlc.arg(scope_mode)::text = 'member'
+                AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = ci.project_id AND scope_p.access = 'workspace'))))::bigint AS comment_bytes,
+    (SELECT count(*) FROM project p, ws WHERE p.workspace_id = ws.id
+        -- projectaccess:scope
+        AND (sqlc.arg(scope_mode)::text = 'all'
+            OR (p.id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+            OR EXISTS (SELECT 1 FROM project_member scope_pm
+                       WHERE scope_pm.project_id = p.id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+            OR (sqlc.arg(scope_mode)::text = 'member'
+                AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = p.id AND scope_p.access = 'workspace'))))::bigint AS project_count,
     (SELECT COALESCE(sum(octet_length(p.title) + COALESCE(octet_length(p.description), 0)), 0)
-        FROM project p, ws WHERE p.workspace_id = ws.id)::bigint AS project_bytes;
+        FROM project p, ws WHERE p.workspace_id = ws.id
+        -- projectaccess:scope
+        AND (sqlc.arg(scope_mode)::text = 'all'
+            OR (p.id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+            OR EXISTS (SELECT 1 FROM project_member scope_pm
+                       WHERE scope_pm.project_id = p.id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+            OR (sqlc.arg(scope_mode)::text = 'member'
+                AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = p.id AND scope_p.access = 'workspace'))))::bigint AS project_bytes;
+
+-- name: ListSearchIndexVisibleProjectIDs :many
+-- The projects the viewer sees; scope_version is a hash of this set.
+SELECT project.id FROM project
+WHERE project.workspace_id = @workspace_id
+-- projectaccess:scope
+AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (project.id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = project.id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
+ORDER BY project.id;
 
 -- name: GetSearchIndexCurrentSnapshot :one
 SELECT pg_current_snapshot()::text AS snapshot;
@@ -28,13 +84,28 @@ SELECT pg_current_snapshot()::text AS snapshot;
 -- name: ListSearchIndexIssuesPage :many
 -- Pages by the unique (workspace_id, number) index.
 SELECT * FROM issue
-WHERE workspace_id = @workspace_id AND number > @after_number
-ORDER BY number
+WHERE issue.workspace_id = @workspace_id AND issue.number > @after_number
+-- projectaccess:scope
+AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (issue.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
+ORDER BY issue.number
 LIMIT @page_limit;
 
 -- name: ListSearchIndexIssuesByIDs :many
+-- Rows the viewer cannot see are left out, so the caller reports them as deleted.
 SELECT * FROM issue
-WHERE workspace_id = @workspace_id AND id = ANY(@ids::uuid[]);
+WHERE issue.workspace_id = @workspace_id AND issue.id = ANY(@ids::uuid[])
+-- projectaccess:scope
+AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (issue.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')));
 
 -- name: ListSearchIndexCommentsByIssues :many
 SELECT id, issue_id, content, created_at
@@ -45,18 +116,41 @@ WHERE workspace_id = @workspace_id
 
 -- name: ListSearchIndexCommentsByIDs :many
 -- Tombstoned comments are returned so the caller can report them as deleted.
-SELECT id, issue_id, content, created_at, deleted_at
-FROM comment
-WHERE workspace_id = @workspace_id AND id = ANY(@ids::uuid[]);
+-- Comments on issues the viewer cannot see are left out.
+SELECT c.id, c.issue_id, c.content, c.created_at, c.deleted_at
+FROM comment c
+JOIN issue ci ON ci.id = c.issue_id
+WHERE c.workspace_id = @workspace_id AND c.id = ANY(@ids::uuid[])
+-- projectaccess:scope
+AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (ci.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = ci.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = ci.project_id AND scope_p.access = 'workspace')));
 
 -- name: ListSearchIndexProjects :many
 SELECT * FROM project
-WHERE workspace_id = @workspace_id
-ORDER BY id;
+WHERE project.workspace_id = @workspace_id
+-- projectaccess:scope
+AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (project.id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = project.id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
+ORDER BY project.id;
 
 -- name: ListSearchIndexProjectsByIDs :many
 SELECT * FROM project
-WHERE workspace_id = @workspace_id AND id = ANY(@ids::uuid[]);
+WHERE project.workspace_id = @workspace_id AND project.id = ANY(@ids::uuid[])
+-- projectaccess:scope
+AND (sqlc.arg(scope_mode)::text = 'all'
+    OR (project.id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = project.id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+    OR (sqlc.arg(scope_mode)::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')));
 
 -- name: SearchIndexSinceIsPruned :one
 -- True when retention pruning may have removed a change the client has not
