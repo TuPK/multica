@@ -38,6 +38,41 @@ The `0%` default for non-`vnd` currencies is a technical default, not tax advice
 
 A workspace on a paid subscription cannot change to a plan in another currency. The request is refused with HTTP `409` `plan_change_unavailable` and reason `currency_mismatch`. Seat additions and usage invoices use the subscription's currency.
 
+## Automatic bank-transfer reconciliation (SePay)
+
+By default `vnd` uses the `manual` provider and staff confirm each transfer in the console. To match transfers automatically, enable the SePay webhook listener. Staff confirmation keeps working alongside it.
+
+1. Set the provider and the listener port, then restart the platform:
+
+   ```bash
+   PAYMENT_PROVIDERS=vnd=sepay
+   PLATFORM_WEBHOOK_PORT=<port>
+   PAYMENT_WEBHOOK_SECRET_SEPAY=<secret key from the SePay dashboard>
+   ```
+
+   The port must differ from `PLATFORM_API_PORT` and `PLATFORM_CONSOLE_PORT`. The platform refuses to start if the secret is missing. Keep the secret in your secret store, not in the repository.
+2. Put a TLS reverse proxy in front of the webhook port. It is the only platform port besides the console that is reachable from outside.
+3. In the SePay dashboard, create a webhook that sends `POST` with a JSON body to `https://<your-host>/api/payments/webhook/sepay`. Copy its Secret Key into `PAYMENT_WEBHOOK_SECRET_SEPAY`; SePay shows the full key only once.
+4. Optionally set `PAYMENT_WEBHOOK_CIDRS` to the IP ranges SePay publishes. The signature remains the main check.
+
+### Checking the signature
+
+SePay sends `X-SePay-Timestamp` (Unix seconds) and `X-SePay-Signature: sha256=<hex>`. The signature is the HMAC-SHA256 of `<timestamp>.<raw body>` with the secret key. To test a request by hand:
+
+```bash
+printf '%s' "$TIMESTAMP.$BODY" | openssl dgst -sha256 -hmac "$SECRET" -hex
+```
+
+The listener answers:
+
+| Result | Response |
+|---|---|
+| Signature valid | `200` with `{"success":true}`, including a repeat of an event it already has |
+| Signature missing or wrong | `401` `payment_signature_invalid` |
+| Any other path, method, or an unconfigured provider | `404` |
+
+A transfer that matches no pending order, or whose amount differs, goes to the payment notices queue for staff and changes no order. With `PLATFORM_WEBHOOK_PORT` unset, no listener runs.
+
 ## Adding a second payment provider
 
 Payment channels sit behind the `billing.PaymentProvider` interface in `platform-management/internal/billing/provider.go`:

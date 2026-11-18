@@ -38,6 +38,41 @@ platform 服务将货币与支付渠道的选择作为配置数据管理。当�
 
 已有付费订阅的工作区不能变更为其他货币的套餐。此类请求会被拒绝并返回 HTTP `409` `plan_change_unavailable`，原因为 `currency_mismatch`。增购席位与用量账单使用当前订阅的货币。
 
+## 自动银行转账对账（SePay）
+
+默认情况下，`vnd` 使用 `manual` 渠道，由员工在控制台逐笔确认转账。如需自动匹配转账，请启用 SePay webhook 监听端口。员工手动确认仍然可用。
+
+1. 设置支付渠道与监听端口，然后重启 platform：
+
+   ```bash
+   PAYMENT_PROVIDERS=vnd=sepay
+   PLATFORM_WEBHOOK_PORT=<port>
+   PAYMENT_WEBHOOK_SECRET_SEPAY=<SePay 控制台中的 Secret Key>
+   ```
+
+   该端口不能与 `PLATFORM_API_PORT`、`PLATFORM_CONSOLE_PORT` 相同。缺少密钥时 platform 拒绝启动。请把密钥放在密钥管理中，不要写入仓库。
+2. 在 webhook 端口前部署带 TLS 的反向代理。除控制台外，它是 platform 唯一对外开放的端口。
+3. 在 SePay 控制台创建 webhook：方法 `POST`，JSON 请求体，地址 `https://<your-host>/api/payments/webhook/sepay`。把它的 Secret Key 填入 `PAYMENT_WEBHOOK_SECRET_SEPAY`；SePay 只显示一次完整密钥。
+4. 可选：把 `PAYMENT_WEBHOOK_CIDRS` 设为 SePay 公布的 IP 段。签名仍是主要校验。
+
+### 校验签名
+
+SePay 发送 `X-SePay-Timestamp`（Unix 秒）和 `X-SePay-Signature: sha256=<hex>`。签名是用密钥对 `<timestamp>.<原始请求体>` 计算的 HMAC-SHA256。手动验证一个请求：
+
+```bash
+printf '%s' "$TIMESTAMP.$BODY" | openssl dgst -sha256 -hmac "$SECRET" -hex
+```
+
+监听端口的响应：
+
+| 情况 | 响应 |
+|---|---|
+| 签名有效 | `200`，正文 `{"success":true}`；已收到过的事件重发时同样如此 |
+| 签名缺失或错误 | `401` `payment_signature_invalid` |
+| 其他路径、方法，或未配置的渠道 | `404` |
+
+找不到待支付订单、或金额不符的转账会进入员工的付款通知队列，不会改动任何订单。未设置 `PLATFORM_WEBHOOK_PORT` 时不运行监听端口。
+
 ## 接入第二个支付渠道
 
 支付渠道位于 `platform-management/internal/billing/provider.go` 中的 `billing.PaymentProvider` 接口之后：

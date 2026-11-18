@@ -330,6 +330,40 @@ services:
       - "127.0.0.1:${LANDING_PORT:-30002}:80"
     restart: unless-stopped
 
+  # Platform service (platform-management): console on 30001, internal API on
+  # 8095. There is no published image yet, so it is built from this checkout by
+  # platform-management/Dockerfile. It does not run migrations and exits until
+  # the schema is current, so restart: unless-stopped retries it. The API port
+  # is reachable by other services as http://platform:8095 and is not
+  # published. The webhook listener is published only when PLATFORM_WEBHOOK_PORT
+  # is set; leave it empty to run without one. Compose cannot omit a list item,
+  # so with the variable unset the second ports entry repeats the console
+  # mapping and Compose merges the two into one.
+  platform:
+    image: ${MULTICA_PLATFORM_IMAGE:-multica-platform}:${MULTICA_IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: platform-management/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${PLATFORM_CONSOLE_PORT:-30001}:30001"
+      - "127.0.0.1:${PLATFORM_WEBHOOK_PORT:-${PLATFORM_CONSOLE_PORT:-30001}}:${PLATFORM_WEBHOOK_PORT:-30001}"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-multica}:${POSTGRES_PASSWORD:-multica}@postgres:5432/${POSTGRES_DB:-multica}?sslmode=disable
+      REDIS_URL: ${REDIS_URL:-}
+      PLATFORM_WEBHOOK_PORT: ${PLATFORM_WEBHOOK_PORT:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-noreply@multica.ai}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-25}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      SMTP_TLS: ${SMTP_TLS:-}
+    restart: unless-stopped
+
   # ---------------------------------------------------------------------------
   # Company knowledge base: a pinned WeKnora sidecar. Opt-in:
   #   docker compose -f docker-compose.selfhost.yml --profile knowledge up -d
