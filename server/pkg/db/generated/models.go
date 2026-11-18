@@ -923,6 +923,33 @@ type DingtalkGroupRoute struct {
 	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
 }
 
+type EinvoiceIssuance struct {
+	ID                pgtype.UUID        `json:"id"`
+	OrderID           pgtype.UUID        `json:"order_id"`
+	Revision          int32              `json:"revision"`
+	WorkspaceID       pgtype.UUID        `json:"workspace_id"`
+	State             string             `json:"state"`
+	Provider          string             `json:"provider"`
+	ProviderInvoiceID string             `json:"provider_invoice_id"`
+	InvoiceNumber     string             `json:"invoice_number"`
+	LookupUrl         string             `json:"lookup_url"`
+	Currency          string             `json:"currency"`
+	Amount            int64              `json:"amount"`
+	VatAmount         int64              `json:"vat_amount"`
+	Buyer             []byte             `json:"buyer"`
+	MissingFields     []byte             `json:"missing_fields"`
+	Attempts          int32              `json:"attempts"`
+	NextAttemptAt     pgtype.Timestamptz `json:"next_attempt_at"`
+	LockedUntil       pgtype.Timestamptz `json:"locked_until"`
+	LastErrorCode     string             `json:"last_error_code"`
+	IssuedAt          pgtype.Timestamptz `json:"issued_at"`
+	CancelledAt       pgtype.Timestamptz `json:"cancelled_at"`
+	CancelledBy       string             `json:"cancelled_by"`
+	CancelReason      string             `json:"cancel_reason"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Feedback struct {
 	ID          pgtype.UUID        `json:"id"`
 	UserID      pgtype.UUID        `json:"user_id"`
