@@ -215,3 +215,32 @@ func (s *Service) Replace(ctx context.Context, orderID string, revision int, buy
 	}
 	return s.store.ReplaceIssued(ctx, orderID, revision, b, by, reason)
 }
+
+// Latest returns the highest revision of the order.
+func (s *Service) Latest(ctx context.Context, orderID string) (Record, error) {
+	return s.store.GetLatest(ctx, orderID)
+}
+
+// Retry queues a failed or needs_info record for the next Issue run. A buyer
+// that still lacks required fields is refused with a missing-fields
+// ProviderError and the record is left as it is.
+func (s *Service) Retry(ctx context.Context, orderID string, revision int, by string) (Record, error) {
+	if s.provider == nil {
+		return Record{}, errors.New("invoice: e-invoicing is not configured")
+	}
+	rec, err := s.store.Get(ctx, orderID, revision)
+	if err != nil {
+		return Record{}, err
+	}
+	if rec.State != StateFailed && rec.State != StateNeedsInfo {
+		return Record{}, ErrStateConflict
+	}
+	var buyer Buyer
+	if err := json.Unmarshal(rec.Buyer, &buyer); err != nil {
+		buyer = Buyer{}
+	}
+	if missing := CheckBuyer(s.provider, buyer); len(missing) > 0 {
+		return Record{}, &ProviderError{Kind: KindMissingFields, Code: "VALIDATION_ERROR", Fields: missing}
+	}
+	return s.store.RetryRecord(ctx, orderID, revision, by, s.now())
+}

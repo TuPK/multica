@@ -222,11 +222,12 @@ var Catalog = []string{
 	ActionEinvoiceNeedsInfo,
 	ActionEinvoiceFailed,
 	ActionEinvoiceReplaced,
+	ActionEinvoiceRetried,
 }
 
 // E-invoice actions (spec 7.3, audit): written in the transaction of the status
 // change they record. The system writes requested, issued, needs_info and
-// failed; staff write replaced, with a required reason. The detail holds the
+// failed; staff write replaced, with a required reason, and retried. The detail holds the
 // order id, revisions, the invoice number and provider invoice id, error codes,
 // attempt counts and missing field names, never a buyer value.
 const (
@@ -235,6 +236,7 @@ const (
 	ActionEinvoiceNeedsInfo = "einvoice.needs_info"
 	ActionEinvoiceFailed    = "einvoice.failed"
 	ActionEinvoiceReplaced  = "einvoice.replaced"
+	ActionEinvoiceRetried   = "einvoice.retried"
 )
 
 // R5 subscription actions (spec 7b.1, rules 5 to 8): written by the platform in the

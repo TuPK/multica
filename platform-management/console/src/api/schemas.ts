@@ -111,6 +111,7 @@ export const AUDIT_ACTIONS = [
   "einvoice.needs_info",
   "einvoice.failed",
   "einvoice.replaced",
+  "einvoice.retried",
 ] as const;
 
 export type TenantStatus = (typeof TENANT_STATUSES)[number] | "unknown";

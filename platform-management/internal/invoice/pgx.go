@@ -164,6 +164,73 @@ func get(ctx context.Context, q *db.Queries, orderID string, revision int) (Reco
 	return fromRow(row), nil
 }
 
+// GetLatest returns the highest revision of the order.
+func (s *PgxStore) GetLatest(ctx context.Context, orderID string) (Record, error) {
+	oid, err := parseID(orderID)
+	if err != nil {
+		return Record{}, err
+	}
+	row, err := s.q.GetLatestEinvoiceIssuance(ctx, oid)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Record{}, ErrNotFound
+	}
+	if err != nil {
+		return Record{}, fmt.Errorf("get latest einvoice issuance: %w", err)
+	}
+	return fromRow(row), nil
+}
+
+// RetryRecord moves a failed or needs_info record to pending and writes
+// einvoice.retried in the same transaction. The actor must be a staff UUID.
+func (s *PgxStore) RetryRecord(ctx context.Context, orderID string, revision int, by string, now time.Time) (Record, error) {
+	oid, err := parseID(orderID)
+	if err != nil {
+		return Record{}, err
+	}
+	var actor pgtype.UUID
+	if err := actor.Scan(by); err != nil || !actor.Valid {
+		return Record{}, ErrInvalidActor
+	}
+	var out Record
+	err = s.inTx(ctx, func(q *db.Queries) error {
+		prev, err := get(ctx, q, orderID, revision)
+		if err != nil {
+			return err
+		}
+		// The conditional UPDATE takes the row lock and checks the state again.
+		n, err := q.RetryEinvoiceIssuance(ctx, db.RetryEinvoiceIssuanceParams{
+			Now: pgtype.Timestamptz{Time: now, Valid: true}, OrderID: oid, Revision: int32(revision),
+		})
+		if err != nil {
+			return fmt.Errorf("retry einvoice issuance: %w", err)
+		}
+		if n == 0 {
+			return ErrStateConflict
+		}
+		if out, err = get(ctx, q, orderID, revision); err != nil {
+			return err
+		}
+		return recordAudit(ctx, q, audit.Entry{
+			WorkspaceID: prev.WorkspaceID,
+			ActorType:   audit.ActorStaff,
+			ActorID:     by,
+			ActorLabel:  by,
+			Action:      audit.ActionEinvoiceRetried,
+			TargetType:  auditTarget,
+			TargetID:    orderID,
+			TargetLabel: revisionLabel(revision),
+			Detail: map[string]any{
+				"order_id": orderID, "revision": revision, "previous_state": string(prev.State),
+				"attempts_reset": true, "previous_attempts": prev.Attempts,
+			},
+		})
+	})
+	if err != nil {
+		return Record{}, err
+	}
+	return out, nil
+}
+
 // MarkIssued moves the record to issued and writes einvoice.issued in the same
 // transaction. A record that is not pending writes nothing.
 func (s *PgxStore) MarkIssued(ctx context.Context, orderID string, revision int, i Issued) error {

@@ -81,3 +81,19 @@ SET state = sqlc.arg('state')::text,
     locked_until = NULL,
     updated_at = now()
 WHERE order_id = sqlc.arg('order_id') AND revision = sqlc.arg('revision') AND state = 'pending';
+
+-- name: GetLatestEinvoiceIssuance :one
+SELECT * FROM einvoice_issuance WHERE order_id = $1 ORDER BY revision DESC LIMIT 1;
+
+-- name: RetryEinvoiceIssuance :execrows
+-- Staff retry: a failed or needs_info record goes back to pending and is due
+-- now, with the attempt count reset.
+UPDATE einvoice_issuance
+SET state = 'pending',
+    attempts = 0,
+    next_attempt_at = sqlc.arg('now')::timestamptz,
+    last_error_code = '',
+    missing_fields = '[]'::jsonb,
+    locked_until = NULL,
+    updated_at = now()
+WHERE order_id = sqlc.arg('order_id') AND revision = sqlc.arg('revision') AND state IN ('failed', 'needs_info');

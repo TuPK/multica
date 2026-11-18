@@ -152,6 +152,42 @@ func (q *Queries) GetEinvoiceIssuance(ctx context.Context, arg GetEinvoiceIssuan
 	return i, err
 }
 
+const getLatestEinvoiceIssuance = `-- name: GetLatestEinvoiceIssuance :one
+SELECT id, order_id, revision, workspace_id, state, provider, provider_invoice_id, invoice_number, lookup_url, currency, amount, vat_amount, buyer, missing_fields, attempts, next_attempt_at, locked_until, last_error_code, issued_at, cancelled_at, cancelled_by, cancel_reason, created_at, updated_at FROM einvoice_issuance WHERE order_id = $1 ORDER BY revision DESC LIMIT 1
+`
+
+func (q *Queries) GetLatestEinvoiceIssuance(ctx context.Context, orderID pgtype.UUID) (EinvoiceIssuance, error) {
+	row := q.db.QueryRow(ctx, getLatestEinvoiceIssuance, orderID)
+	var i EinvoiceIssuance
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.Revision,
+		&i.WorkspaceID,
+		&i.State,
+		&i.Provider,
+		&i.ProviderInvoiceID,
+		&i.InvoiceNumber,
+		&i.LookupUrl,
+		&i.Currency,
+		&i.Amount,
+		&i.VatAmount,
+		&i.Buyer,
+		&i.MissingFields,
+		&i.Attempts,
+		&i.NextAttemptAt,
+		&i.LockedUntil,
+		&i.LastErrorCode,
+		&i.IssuedAt,
+		&i.CancelledAt,
+		&i.CancelledBy,
+		&i.CancelReason,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const insertEinvoiceIssuance = `-- name: InsertEinvoiceIssuance :one
 INSERT INTO einvoice_issuance (order_id, revision, workspace_id, state, provider, currency, amount, vat_amount, buyer)
 SELECT $1::uuid,
@@ -359,6 +395,34 @@ func (q *Queries) MarkEinvoiceIssued(ctx context.Context, arg MarkEinvoiceIssued
 		arg.OrderID,
 		arg.Revision,
 	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const retryEinvoiceIssuance = `-- name: RetryEinvoiceIssuance :execrows
+UPDATE einvoice_issuance
+SET state = 'pending',
+    attempts = 0,
+    next_attempt_at = $1::timestamptz,
+    last_error_code = '',
+    missing_fields = '[]'::jsonb,
+    locked_until = NULL,
+    updated_at = now()
+WHERE order_id = $2 AND revision = $3 AND state IN ('failed', 'needs_info')
+`
+
+type RetryEinvoiceIssuanceParams struct {
+	Now      pgtype.Timestamptz `json:"now"`
+	OrderID  pgtype.UUID        `json:"order_id"`
+	Revision int32              `json:"revision"`
+}
+
+// Staff retry: a failed or needs_info record goes back to pending and is due
+// now, with the attempt count reset.
+func (q *Queries) RetryEinvoiceIssuance(ctx context.Context, arg RetryEinvoiceIssuanceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, retryEinvoiceIssuance, arg.Now, arg.OrderID, arg.Revision)
 	if err != nil {
 		return 0, err
 	}
