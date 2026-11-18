@@ -915,6 +915,8 @@ Chỉ dòng `needs_review` mới giải quyết hay bỏ qua được; dòng ở
 
 ### 7.3 Hóa đơn điện tử (D57)
 
+**Trạng thái R4 (đóng P43, 2026-11-18).** Đã xây: adapter SePay, hai việc nền `einvoice_enqueue` và `einvoice_issue` (mỗi phút), cấu hình `PLATFORM_EINVOICE_*`, route retry và hai route danh sách của console, route người mua sửa thông tin, phần hóa đơn trên trang đơn của khách và các sự kiện kiểm toán `einvoice.*`. Không xây: thay thế và hủy hóa đơn (quyết định của người dùng 2026-11-18, quy tắc 6; SePay không có endpoint hủy), và nút Retry trên màn hình console `EinvoiceFailures`, nên retry chỉ gọi qua API. Còn mở: kế toán xác nhận (mục 16, điểm 4) chỉ chặn lần bật `PLATFORM_EINVOICE_PROVIDER` và `PLATFORM_EINVOICE_START_AT` đầu tiên ở production, còn kiểm sandbox (`TestSepaySandboxLive`) cần thông tin đăng nhập sandbox thật và chưa có kết quả; mã và test không chờ hai việc này. Hướng dẫn vận hành nằm ở mục 14 của `docs/platform-operations.md`; danh sách việc còn mở ở cuối mục 7.3.
+
 Tích hợp một nhà cung cấp hóa đơn điện tử: phát hành khi đơn chuyển `paid`, lưu số và liên kết tra cứu vào bản ghi của hóa đơn (và chép vào `einvoice_ref` của đơn để các màn hình hiện có đọc được).
 
 **Quy tắc.**
@@ -927,7 +929,7 @@ Tích hợp một nhà cung cấp hóa đơn điện tử: phát hành khi đơn
 6. **Chỉ thử lại, không thay thế và không hủy (quyết định của người dùng, 2026-11-18; thay quyết định D57 / O-R4-4 trước đó).** SePay không có endpoint đã xác nhận cho việc hủy hay thay thế hóa đơn đã phát hành (tài liệu đọc 2026-11-17 và 2026-11-18, mục 7.3 phần chưa xác minh), nên console không có thao tác hủy, không có thao tác thay thế, và không ghi trạng thái `cancelled` qua nhà cung cấp. Hóa đơn xuất sai do `admin` xử lý ngay trên SePay. Hóa đơn đã phát hành không bao giờ bị xóa hay sửa.
 7. **Người mua sửa thông tin.** Với bản ghi `needs_info` hoặc `failed`, owner và admin của workspace sửa được `buyer` của bản ghi (không sửa `billing_order.buyer`, vì đơn đã trả không đổi); sửa xong, bản ghi về `pending`. Bản ghi `issued` bị 409 `einvoice_already_issued`. Tên trường bắt buộc còn thiếu khi yêu cầu thử lại trả 409 `einvoice_buyer_incomplete` kèm `fields[]`.
 8. **Dữ liệu người mua nhạy cảm.** `buyer` có tên, mã số thuế, địa chỉ, email. Không ghi giá trị này vào nhật ký ứng dụng, thông điệp lỗi hay kiểm toán (`detail` chỉ chứa tên trường). Xóa tài khoản (4.6) **không** ẩn danh `buyer` của hóa đơn đã phát hành, vì nghĩa vụ lưu trữ hóa đơn; điều này cần xác nhận (mục 16, điểm 4) và ghi ở 15.4.
-9. **Cấu hình.** `PLATFORM_EINVOICE_PROVIDER` rỗng là tắt (I2): không có bản ghi nào được tạo. `PLATFORM_EINVOICE_START_AT` (RFC 3339) chặn việc phát hành hồi tố cho đơn cũ. Bí mật của nhà cung cấp là biến riêng, tên chốt ở P43.1.
+9. **Cấu hình.** `PLATFORM_EINVOICE_PROVIDER` rỗng là tắt (I2): không có bản ghi nào được tạo. `PLATFORM_EINVOICE_START_AT` (RFC 3339) chặn việc phát hành hồi tố cho đơn cũ. Với `sepay`, platform từ chối khởi động nếu thiếu `PLATFORM_EINVOICE_SEPAY_API_KEY` (dạng `client_id:client_secret`), `PLATFORM_EINVOICE_SEPAY_BASE_URL` (`https://einvoice-api.sepay.vn` hoặc `https://einvoice-api-sandbox.sepay.vn`), `PLATFORM_EINVOICE_SEPAY_PROVIDER_ACCOUNT_ID` (UUID) hoặc `PLATFORM_EINVOICE_START_AT`. Bí mật của nhà cung cấp chỉ nằm trong biến môi trường.
 
 **API.**
 
@@ -935,12 +937,14 @@ Tích hợp một nhà cung cấp hóa đơn điện tử: phát hành khi đơn
 | --- | --- | --- |
 | `GET /api/workspaces/{id}/orders/{orderId}` (Multica, đã có) | owner, admin, người thật | thêm trường tùy chọn `einvoice`: `{state, number, lookup_url, missing_fields[]}` (I9); Multica đọc `einvoice_issuance` từ cơ sở dữ liệu chung |
 | `PUT /api/workspaces/{id}/orders/{orderId}/invoice-buyer` (Multica, mới) | owner, admin, người thật (từ R5: quyền `billing.manage`) | sửa `buyer` của bản ghi `needs_info` hoặc `failed`; 409 `einvoice_already_issued`; 400 nếu sai định dạng |
-| `GET /api/platform/einvoices`, `GET /api/platform/einvoices/{orderId}` (console) | `billing`, `admin` | lọc theo `state` (mặc định `failed`, `needs_info`); lịch sử các `revision` của một đơn |
-| `POST /api/platform/einvoices/{orderId}/retry` (console) | `billing`, `admin` | đặt `failed` hoặc `needs_info` về `pending`, `attempts` về 0; 409 `einvoice_buyer_incomplete`; 409 `einvoice_state_conflict` nếu bản ghi không ở hai trạng thái đó; 404 nếu đơn không có bản ghi. Route `.../replace` đã bỏ (2026-11-18): trả 404 |
+| `GET /api/platform/einvoices`, `GET /api/platform/orders/{id}/einvoices` (console) | `billing`, `admin` | lọc theo `state` (mặc định `failed`, `needs_info`); lịch sử các `revision` của một đơn. Đường dẫn thứ hai đã đổi ở P43.6 (trước là `/api/platform/einvoices/{orderId}`) |
+| `POST /api/platform/einvoices/{orderId}/retry` (console) | `billing`, `admin` | đặt `failed` hoặc `needs_info` về `pending`, `attempts` về 0; 409 `einvoice_buyer_incomplete`; 409 `einvoice_state_conflict` nếu bản ghi không ở hai trạng thái đó; 404 nếu đơn không có bản ghi; 503 `einvoice_provider_not_configured` khi `PLATFORM_EINVOICE_PROVIDER` rỗng. Route `.../replace` đã bỏ (2026-11-18): trả 404 |
+
+Màn hình console `EinvoiceFailures` chưa có nút Retry, nên trong R4 retry chỉ gọi qua API. Các nút Retry, Cancel và Replace mô tả ở 7.6 và CSN-27 (`docs/engineering/platform-management-features.md`) chưa xây; Cancel và Replace không xây theo quy tắc 6.
 
 **Mã lỗi.** `einvoice_buyer_incomplete` (409, `fields[]`), `einvoice_already_issued` (409). `needs_info`, `failed` là trạng thái của bản ghi, không phải mã HTTP.
 
-**Kiểm toán.** `einvoice.requested` (việc nền tạo bản ghi, actor `system`), `einvoice.issued` (ghi số hóa đơn và mã nhà cung cấp), `einvoice.needs_info` (tên trường thiếu), `einvoice.failed` (mã lỗi, số lần thử), `einvoice.buyer_updated` (actor là người sửa, chỉ tên trường), `einvoice.retried` (staff). Hằng `einvoice.cancelled` và `einvoice.replaced` còn trong danh mục kiểm toán vì lịch sử đã lưu có thể chứa chúng; không còn mã nào ghi hai hành động này. Lời gọi nhà cung cấp nằm ngoài giao dịch, nên thứ tự là: gọi nhà cung cấp, thành công mới ghi trạng thái và kiểm toán, và lần gọi lại sau lỗi không rõ kết quả dùng tra cứu ở quy tắc 5.
+**Kiểm toán.** `einvoice.requested` (việc nền tạo bản ghi, actor `system`), `einvoice.issued` (ghi số hóa đơn và mã nhà cung cấp), `einvoice.needs_info` (tên trường thiếu), `einvoice.failed` (mã lỗi, số lần thử), `einvoice.buyer_updated` (actor là người sửa, chỉ tên trường), `einvoice.retried` (staff). Hằng `einvoice.replaced` còn trong danh mục kiểm toán (`platform-management/audit/audit.go:238`) vì lịch sử đã lưu có thể chứa nó; không còn mã nào ghi hành động này. `einvoice.cancelled` không có hằng trong mã. Lời gọi nhà cung cấp nằm ngoài giao dịch, nên thứ tự là: gọi nhà cung cấp, thành công mới ghi trạng thái và kiểm toán, và lần gọi lại sau lỗi không rõ kết quả dùng tra cứu ở quy tắc 5.
 
 **Tương tác.** Đơn đã trả đã ở trạng thái cuối nên hóa đơn không đổi quyền lợi, cổng hạn mức hay trạng thái workspace. Workspace `suspended` hay `pending_deletion` vẫn nhận hóa đơn cho đơn đã trả (nghĩa vụ thuế không phụ thuộc trạng thái). Việc nền thuộc platform (D26): `einvoice_enqueue` và `einvoice_issue`, thêm vào bảng 3.5 ở P43.
 
@@ -990,6 +994,8 @@ Yêu cầu thay thế và điều chỉnh đều không có trường lý do. Tr
 
 - (a) Quy tắc 6 chỉ dùng thay thế.
 - (b) Thao tác hủy chờ một nhà cung cấp có tài liệu về hủy.
+
+Quyết định này vẫn chưa chọn và không còn chặn R4: R4 không có thao tác thay thế hay hủy (quy tắc 6).
 
 **Xác thực.**
 
@@ -1115,6 +1121,13 @@ Tài liệu đánh dấu mọi trường con là `required=false`. Bộ trườn
 - Tingee: bảng tham số đầy đủ của lệnh create không hiển thị khi đọc, nên trường bắt buộc, quy tắc người mua, tỷ giá chưa xác nhận.
 
 Kế toán xác nhận bộ trường người mua và cách xử lý hủy (mục 16, điểm 4) trước lần phát hành thật đầu tiên; mã và test không chờ.
+
+**Việc còn mở sau R4.**
+
+- Kế toán xác nhận (mục 16, điểm 4): bộ trường người mua bắt buộc theo từng loại người mua, cách xử lý hóa đơn đã phát hành sai (R4 không có hủy hay thay thế), và trường tỷ giá cho ngoại tệ. Chỉ chặn lần bật `PLATFORM_EINVOICE_PROVIDER` và `PLATFORM_EINVOICE_START_AT` đầu tiên ở production; mã và test không chờ.
+- Kiểm sandbox chưa làm, thuộc P43.4: tra cứu bản nháp theo mã tham chiếu và bộ trường người mua bắt buộc. Test có cổng là `TestSepaySandboxLive` (`platform-management/internal/einvoice/sandbox_live_test.go`); cần thông tin đăng nhập sandbox thật.
+- Retry trên console web: chưa có nút Retry ở `EinvoiceFailures`; retry chỉ qua `POST /api/platform/einvoices/{orderId}/retry`. Chưa gắn vào bước kế hoạch nào, cần giao một bước console.
+- Khoảng trống so với quy tắc 5 và AC58: thử lại thủ công đặt `attempts` về 0, nên bản ghi `failed` do hết thời gian được phát hành lại mà không tra cứu theo mã tham chiếu trước (`platform-management/internal/invoice/service.go:116`, `:185`). Đây là lỗi sản phẩm, chưa sửa trong P43.7; cần một bước mã riêng và test đỏ trước.
 
 **Tiêu chí chấp nhận.** AC58, AC59, AC61.
 
@@ -2067,7 +2080,7 @@ Các điểm dưới đây chưa kiểm chứng lúc viết R4 (2026-11-17, HEAD
 | Điểm chưa kiểm chứng | Bước kiểm |
 | --- | --- |
 | Hợp đồng webhook của nhà cung cấp thông báo giao dịch ngân hàng: tên, chữ ký, mã sự kiện, cách thử lại, định dạng tiền và nội dung chuyển khoản. Bảng ở 7.2 còn "chưa xác minh" | P42.1, cần truy cập web |
-| Hợp đồng nhà cung cấp hóa đơn điện tử (SePay, đọc 2026-11-17 và đọc lại 2026-11-18): đã xác nhận sandbox host, token Basic 24 giờ, luồng nháp rồi issue, trạng thái `Pending`/`Success`/`Failed`, lịch thử lại, cấu trúc lỗi, tra cứu theo mã tham chiếu (`GET /v1/invoices/{reference_code}`). Chưa xác nhận trên sandbox: lookup của bản nháp (7.3), `POST /v1/invoices/replace` (có trong tài liệu, **không dùng**: thao tác thay thế đã bỏ 2026-11-18). Còn mở: bộ trường người mua bắt buộc (kế toán, mục 16), trường tỷ giá, webhook, quy định Nghị định 254/2026 (chưa kiểm chứng). Không hủy, không thay thế: SePay không có endpoint hủy đã xác nhận, và thay thế đã bỏ khỏi platform (2026-11-18) | P43.4 kiểm trên sandbox (`TestSepaySandboxLive`); kế toán xác nhận trước lần phát hành thật; không chặn mã |
+| Hợp đồng nhà cung cấp hóa đơn điện tử (SePay, đọc 2026-11-17 và đọc lại 2026-11-18): đã xác nhận sandbox host, token Basic 24 giờ, luồng nháp rồi issue, trạng thái `Pending`/`Success`/`Failed`, lịch thử lại, cấu trúc lỗi, tra cứu theo mã tham chiếu (`GET /v1/invoices/{reference_code}`). Chưa xác nhận trên sandbox: lookup của bản nháp theo mã tham chiếu (7.3) và bộ trường người mua bắt buộc. Còn mở: bộ trường người mua bắt buộc theo loại người mua và cách xử lý hóa đơn xuất sai (kế toán, mục 16, điểm 4), trường tỷ giá ngoại tệ, webhook, quy định Nghị định 254/2026 (chưa kiểm chứng). Thay thế (`POST /v1/invoices/replace`, có trong tài liệu) nằm ngoài phạm vi R4, **không dùng**; không hủy: SePay không có endpoint hủy đã xác nhận | P43.4 kiểm trên sandbox (`TestSepaySandboxLive`, cần thông tin đăng nhập sandbox thật, chưa có kết quả) cho lookup bản nháp và bộ trường bắt buộc; kế toán xác nhận (mục 16, điểm 4) cho bộ trường người mua, xử lý hóa đơn xuất sai và trường tỷ giá, chặn lần bật production đầu tiên; webhook và Nghị định 254/2026 chưa gắn vào bước nào (adapter thăm dò trạng thái nên mã không cần webhook); không chặn mã |
 | Relay Redis có chuyển `ScopeWorkspaceMember` trên mọi đường (`BroadcastToScope`, publish, stream) hay không; tên và dạng dữ liệu của hai sự kiện issue dùng khi chuyển project | P41.5 |
 | Cách client tìm kiếm cục bộ xử lý con trỏ hết hiệu lực và việc xóa bản sao khi đăng xuất | P41.6 |
 | Chi phí của vị từ (mảng project che hoặc được cấp truyền vào ~38 tệp query) trên workspace lớn | P41.3, đo trước và sau; chưa có số đo |

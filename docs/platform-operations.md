@@ -461,3 +461,123 @@ Chỉ trỏ `MULTICA_CLOUD_URL` về platform theo mục 11, bước 5.
 - Dừng dịch vụ platform thì các route R5 phía platform ngừng trả lời: hồ sơ thanh toán, đổi gói, hủy và tiếp tục, mua ghế, đọc mức dùng, và các việc nền của platform (chấm tiền theo mức dùng, lập hóa đơn, áp đổi giá). Máy chủ Multica vẫn chạy.
 - Phần nằm trong máy chủ Multica không dừng theo: các route nhóm tài khoản và việc kiểm khóa quyền đọc cơ sở dữ liệu (13.5).
 - Migration **không** tự hoàn tác. Chạy lại bản Multica cũ không rút migration nào. Mỗi migration có tệp `.down.sql`, và `cmd/migrate` nhận lệnh `down`, nhưng không có bước nào gọi lệnh này tự động. Chỉ chạy `down` khi có quyết định riêng và đã có bản sao lưu.
+
+## 14. Hóa đơn điện tử (R4): hướng dẫn cho nhà vận hành
+
+Nguồn: spec 7.3 ([platform-management-spec.md](engineering/platform-management-spec.md)) và bước P43.7 ([platform-management-plan.md](engineering/platform-management-plan.md)). Mục này chỉ ghi điều đã đọc trong mã và spec. Chưa chạy bước nào trên SePay, nên không có kết luận nào ở đây dựa trên một lần gọi thật.
+
+### 14.1 Cấu hình
+
+Platform đọc các biến này trong `loadEinvoice` (`platform-management/internal/config/config.go:437`). Thông báo lỗi chỉ nêu tên biến, không in giá trị. Thiếu hoặc sai một biến bắt buộc thì platform thoát lúc khởi động.
+
+| Biến | Giá trị | Ghi chú |
+| --- | --- | --- |
+| `PLATFORM_EINVOICE_PROVIDER` | rỗng hoặc `sepay` | Rỗng là tắt. Giá trị khác thì thoát (`config.go:445`). |
+| `PLATFORM_EINVOICE_SEPAY_API_KEY` | `client_id:client_secret` | Bắt buộc khi provider là `sepay`; thiếu một trong hai phần thì thoát (`config.go:452`). Không in ra. |
+| `PLATFORM_EINVOICE_SEPAY_BASE_URL` | `https://einvoice-api.sepay.vn` (production) hoặc `https://einvoice-api-sandbox.sepay.vn` (sandbox) | Mã kiểm scheme là `https` và host là một trong hai host trên; đường dẫn và cổng không được kiểm riêng (`config.go:455`). |
+| `PLATFORM_EINVOICE_SEPAY_PROVIDER_ACCOUNT_ID` | UUID | Bắt buộc khi provider là `sepay` (`config.go:463`). |
+| `PLATFORM_EINVOICE_START_AT` | RFC 3339, ví dụ `2026-02-01T00:00:00+07:00` | Bắt buộc khi provider là `sepay`. Đơn trả trước mốc này không có hóa đơn (`config.go:467`). |
+| `PLATFORM_EINVOICE_MAX_ATTEMPTS` | số nguyên | Mặc định 8 khi không đặt (`config.go:439`). |
+| `BILLING_VAT_RATE` | tỷ lệ, mặc định 0.10 | Thuế suất cho đơn `vnd`. Khi provider là `sepay`, `newEinvoiceService` yêu cầu tỷ lệ này là số phần trăm nguyên (0.10 hợp lệ, 0.085 không); sai thì thoát với lỗi nêu `BILLING_VAT_RATE` (`platform-management/cmd/platform-server/main.go:454`). |
+
+Khi `PLATFORM_EINVOICE_PROVIDER` rỗng, dịch vụ tắt và không tạo bản ghi nào (`main.go:449`, spec 7.3 quy tắc 9). Các biến SePay không được đọc trong trường hợp này (`config.go:437`).
+
+### 14.2 Sandbox và production
+
+Sandbox không gửi hóa đơn lên cơ quan thuế, và token chỉ dùng được trên môi trường đã cấp ra nó (spec 7.3, phần "Xác thực" và "Hợp đồng đã đọc lại"). Vì vậy `PLATFORM_EINVOICE_SEPAY_BASE_URL` và `PLATFORM_EINVOICE_SEPAY_API_KEY` phải cùng một môi trường. Không ghép khóa sandbox với host production, và ngược lại. Host production chỉ dùng sau khi kế toán xác nhận (14.3).
+
+### 14.3 Thứ tự bật ở production
+
+Kế toán xác nhận bộ trường người mua bắt buộc và cách xử lý hóa đơn sai (spec mục 16, điểm 4) **trước khi** đặt `PLATFORM_EINVOICE_PROVIDER` và `PLATFORM_EINVOICE_START_AT` ở production (spec 7.3 và plan P43.7). Mã và test không chờ xác nhận này. Chỉ lần bật ở production chờ. Xác nhận của kế toán hiện **còn mở**.
+
+### 14.4 Hai việc nền
+
+Cả hai chạy mỗi phút (`platform-management/internal/jobs/einvoice.go:20`, `:25`; đăng ký ở `platform-management/cmd/platform-server/payment_jobs.go:26`, `:32`).
+
+- `einvoice_enqueue` tạo bản ghi `pending` cho mỗi đơn `paid` chưa có bản ghi (`platform-management/internal/invoice/service.go:43`). Điều kiện nằm trong `ListPaidOrdersNeedingEinvoice` (`platform-management/queries/einvoice.sql:46`): `amount > 0`, `provider <> 'admin_grant'`, `paid_at >= PLATFORM_EINVOICE_START_AT`. Đơn 0 đồng, đơn `admin_grant` và đơn trả trước mốc không có bản ghi.
+- `einvoice_issue` nhận các dòng `pending` đã đến hạn bằng `FOR UPDATE SKIP LOCKED` và gọi nhà cung cấp (`platform-management/queries/einvoice.sql:57`, `:71`; `service.go:77`). Lần nhận tăng `attempts` trước khi gọi.
+
+Đơn luôn giữ `paid`, bất kể hóa đơn ra sao (spec 7.3 quy tắc 5). Thử lại lỗi tạm thời cách nhau theo cấp số nhân từ 1 phút, trần 6 giờ (`platform-management/internal/invoice/retry.go:13`); hết `PLATFORM_EINVOICE_MAX_ATTEMPTS` thì `failed` (`retry.go:33`).
+
+### 14.5 Trạng thái và việc cần làm
+
+Tên trạng thái ở `platform-management/internal/invoice/record.go:10`.
+
+| Trạng thái | Ý nghĩa với nhà vận hành |
+| --- | --- |
+| `pending` | Chờ phát hành hoặc chờ lần thử lại tiếp theo. |
+| `issued` | Đã có số hóa đơn và liên kết tra cứu. Platform không xóa và không sửa. |
+| `needs_info` | Thiếu trường người mua bắt buộc. **Chưa gọi** nhà cung cấp (`service.go:94`). Bản ghi lưu tên trường thiếu, không lưu giá trị. |
+| `failed` | Hết số lần thử với lỗi tạm thời (mạng, hết thời gian, 429, 5xx), hoặc nhà cung cấp từ chối dữ liệu vĩnh viễn (`retry.go:33`). Đọc mã lỗi trong hàng `einvoice.failed` (14.8). |
+| `cancelled` | Giá trị cũ. Không có mã nào đặt trạng thái này (spec 7.3 quy tắc 2). |
+
+Với `needs_info` và `failed` do dữ liệu người mua, người sửa là khách. Khách sửa ở trang đơn qua `PUT /api/workspaces/{id}/orders/{orderId}/invoice-buyer` (`server/cmd/server/router.go:2071`, handler `server/internal/handler/billing_orders.go:578`). Route yêu cầu quyền `billing.manage` và người thật; spec 7.3 viết "owner và admin" cho cùng route. Sửa xong, bản ghi về `pending`; bản ghi `issued` trả 409 `einvoice_already_issued`. Console không có thao tác sửa người mua. Sau khi khách sửa, bản ghi `failed` vẫn cần staff thử lại (14.6).
+
+Bộ trường người mua bắt buộc theo mã: `name`, `tax_code`, `address`, `email` (`platform-management/internal/einvoice/sepay.go:92`). Một trường rỗng tính là thiếu (`platform-management/internal/invoice/provider.go:119`). Đây là bộ **tạm**: SePay không công bố bộ trường bắt buộc, và mã ghi rõ là giả định (spec 7.3, mục "Trường người mua bắt buộc (chưa xác nhận)"). Bộ này chờ kế toán xác nhận (spec mục 16, điểm 4).
+
+### 14.6 Thử lại
+
+`POST /api/platform/einvoices/{orderId}/retry`, vai trò `billing` hoặc `admin` (`platform-management/internal/console/handler.go:149`). Mọi phương thức ghi đi qua `RequireOrigin` (`handler.go:201`). Middleware so header `Origin` với `PLATFORM_CONSOLE_ORIGIN` (`platform-management/internal/platformauth/platformauth.go:177`, `config.go:296`); `Origin` sai, hoặc không có `Origin` mà có `Cookie`, bị 403 `bad_origin`.
+
+Bản ghi `failed` hoặc `needs_info` về `pending`, `attempts` về 0 (`platform-management/queries/einvoice.sql:88`). Handler ở `platform-management/internal/console/einvoices.go:341`; lỗi ở `einvoices.go:298`:
+
+| Mã | Khi nào |
+| --- | --- |
+| 409 `einvoice_buyer_incomplete` (kèm `fields[]`) | Người mua vẫn thiếu trường bắt buộc. Bản ghi giữ nguyên. |
+| 409 `einvoice_state_conflict` | Bản ghi không ở `failed` hay `needs_info`. |
+| 404 | Đơn không có bản ghi. |
+| 503 `einvoice_provider_not_configured` | Provider tắt. |
+
+Màn hình `EinvoiceFailures` (`platform-management/console/src/screens/EinvoiceFailures.tsx`) **không có nút thử lại**. Hiện chỉ thử lại được bằng lời gọi API. Đây là việc còn mở (spec 7.6; CSN-27 trong `docs/engineering/platform-management-features.md`). Mục này không mô tả giao diện nào chưa có.
+
+Route `.../replace` đã bỏ: `POST` trả 404 (`TestReplaceRouteIsGone`, `platform-management/internal/console/einvoices_routes_test.go:328`). Không có route hủy. Hóa đơn sai do `admin` sửa trực tiếp trên SePay (spec 7.3 quy tắc 6).
+
+### 14.7 Kết quả không rõ sau khi hết thời gian
+
+Mã tham chiếu của mỗi lần phát hành là `order_id-revision` (`platform-management/internal/invoice/provider.go:26`). Khi một lần thử trước có thể đã tới nhà cung cấp (`attempts > 1` lúc xử lý, `service.go:116`), việc nền tra cứu theo mã này trước khi phát hành lại (`provider.go:137`; `Lookup` ở `platform-management/internal/einvoice/sepay.go:257`). Một hóa đơn nháp chưa tính là đã phát hành, và lần chạy sau tiếp tục từ bản nháp.
+
+- Không phát hành lại bằng tay. Không tạo hóa đơn thứ hai trên SePay cho cùng một đơn.
+- Thấy trên SePay một hóa đơn mà platform không hiện, thì tra theo mã tham chiếu `order_id-revision` trước.
+- **Khoảng trống đã biết:** sau lần thử lại của staff, `attempts` về 0 (`platform-management/internal/invoice/service.go:185`), nên lần nhận đầu tiên có `attempts = 1` và **không** tra cứu trước khi gọi (`service.go:116`). Với bản ghi `failed` do hết thời gian, lần thử lại này có thể phát hành lại khi hóa đơn đã tồn tại trên SePay. Trước khi thử lại, kiểm trên SePay xem hóa đơn theo mã `order_id-revision` đã có chưa. Đây là khác biệt so với quy tắc 5 của spec 7.3 và AC58; chưa sửa trong bước đóng P43.
+
+### 14.8 Xem lịch sử
+
+- Danh sách: `GET /api/platform/einvoices`. Mặc định lọc `needs_info` và `failed`. Tham số `state` nhận `pending`, `issued`, `needs_info`, `failed`; `cancelled` và giá trị khác trả 400 `invalid_state` (`platform-management/internal/console/einvoices.go:240`, `:258`). Màn hình `EinvoiceFailures` dùng danh sách này.
+- Một đơn: `GET /api/platform/orders/{id}/einvoices`, mọi `revision`, mới nhất trước; đơn không có bản ghi trả 200 với danh sách rỗng (`handler.go:141`, `einvoices.go:177`). Spec 7.3 ghi `/api/platform/einvoices/{orderId}`; đường dẫn đã xây là đường dẫn theo đơn.
+- Màn hình console: hook `useOrderEinvoices` (`platform-management/console/src/api/hooks.ts:1136`) chỉ được gọi ở màn hình Orders, trong hộp thoại "E-invoice history" mở bằng nút History trên từng đơn (`platform-management/console/src/screens/Orders.tsx:96`, `:330`).
+- Khách: trang đơn hiện trạng thái, số hóa đơn, liên kết tra cứu (chỉ `https`) và tên trường thiếu, qua `EinvoiceStatusSummary` trong `packages/views/billing/einvoice-section.tsx:119`. Mã không có thành phần tên `EinvoiceSection`; tên đó chỉ là tên tệp.
+
+### 14.9 Kiểm toán
+
+Sáu sự kiện: `einvoice.requested`, `einvoice.issued`, `einvoice.needs_info`, `einvoice.failed`, `einvoice.retried` (hằng ở `platform-management/audit/audit.go:234`) và `einvoice.buyer_updated`. Sự kiện cuối là chuỗi cố định trong `server/internal/handler/billing_orders.go:550`, không có trong danh mục `audit.go`. `audit.go` còn hằng `einvoice.replaced`; không còn mã nào ghi nó.
+
+`detail` chứa tên trường, mã lỗi, số lần thử, số hóa đơn và mã hóa đơn của nhà cung cấp, không chứa giá trị người mua (`platform-management/internal/invoice/pgx.go:218`, `:264`, `:451`; `billing_orders.go:669`). `target_type` là `einvoice`, `target_id` là UUID đơn (`pgx.go:58`).
+
+```sql
+SELECT created_at, action, actor_type, actor_label, target_label, detail
+FROM audit_event
+WHERE target_type = 'einvoice'
+  AND target_id = '<order id>'
+ORDER BY created_at, id;
+```
+
+Giữ nguyên hạn chế ở mục 2: không sửa `audit_event` bằng tay.
+
+### 14.10 Giới hạn
+
+- Không dùng webhook cho hóa đơn: spec 7.3 liệt webhook vào mục "Chưa xác minh". Trạng thái phát hành được lấy bằng thăm dò.
+- `TestSepaySandboxLive` (`platform-management/internal/einvoice/sandbox_live_test.go:17`) đọc hai biến riêng của test, `SEPAY_EINVOICE_API_KEY` và `SEPAY_EINVOICE_PROVIDER_ACCOUNT_ID`, không đọc tên `PLATFORM_EINVOICE_*`; thiếu thì bị bỏ qua. Test này **chưa chạy** khi viết mục này.
+- Bộ trường người mua bắt buộc và cách xử lý hóa đơn sai chờ kế toán (spec mục 16, điểm 4). Còn mở.
+- Spec còn các điểm chưa xác minh: tỷ giá ngoại tệ, giới hạn tốc độ, 429, Nghị định 254/2026, lookup bản nháp trên sandbox.
+
+### 14.11 Bảng kiểm trước khi bật ở production
+
+Các mục dưới là việc cần làm. Mục này không ghi mục nào đã xong.
+
+1. Kế toán đã xác nhận bộ trường người mua bắt buộc và cách xử lý hóa đơn sai; xác nhận được lưu ở nơi nhóm tra cứu được.
+2. `PLATFORM_EINVOICE_SEPAY_BASE_URL` là host production, và `PLATFORM_EINVOICE_SEPAY_API_KEY` cùng `PLATFORM_EINVOICE_SEPAY_PROVIDER_ACCOUNT_ID` được cấp từ môi trường production.
+3. `PLATFORM_EINVOICE_START_AT` đặt đúng giờ bật, kèm múi giờ.
+4. `BILLING_VAT_RATE` là số phần trăm nguyên và khớp với thuế suất kế toán xác nhận.
+5. `PLATFORM_CONSOLE_ORIGIN` khớp với origin console dùng để gọi API thử lại.
+6. Luồng trên sandbox đã chạy: một đơn phát hành được, một đơn `needs_info` được khách sửa, và API thử lại được gọi thành công một lần.
+7. `TestSepaySandboxLive` đã chạy với khóa sandbox của nhóm.
