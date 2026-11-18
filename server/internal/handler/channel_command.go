@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/integrations/channel"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/service"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -52,7 +54,7 @@ func (a *ChannelActions) Command(ctx context.Context, c channel.Command) (channe
 		msg, err := a.latestBrief(ctx, binding.WorkspaceID)
 		return msg, err == nil, err
 	case channel.CommandDecisions:
-		msg, err := a.pendingDecisions(ctx, binding.WorkspaceID)
+		msg, err := a.pendingDecisions(ctx, binding.WorkspaceID, binding.MulticaUserID)
 		return msg, err == nil, err
 	}
 	return channel.Message{}, false, nil
@@ -81,11 +83,21 @@ func (a *ChannelActions) latestBrief(ctx context.Context, workspaceID pgtype.UUI
 
 // pendingDecisions replies with up to chatDecisionsLimit pending proposals, each
 // with its title and its Company link. A snoozed proposal is left out until its
-// snooze ends, as the brief push leaves it out.
-func (a *ChannelActions) pendingDecisions(ctx context.Context, workspaceID pgtype.UUID) (channel.Message, error) {
+// snooze ends, as the brief push leaves it out. A proposal whose issue sits in a
+// project the bound member cannot see is left out, as the app leaves it out.
+func (a *ChannelActions) pendingDecisions(ctx context.Context, workspaceID, userID pgtype.UUID) (channel.Message, error) {
+	scope, err := projectaccess.ForViewer(ctx, a.h.Queries, workspaceID, userID)
+	if errors.Is(err, projectaccess.ErrNotMember) {
+		return channel.Message{Text: chatMsgNoDecisions}, nil
+	}
+	if err != nil {
+		return channel.Message{}, fmt.Errorf("compute project scope: %w", err)
+	}
 	rows, err := a.h.Queries.ListProposals(ctx, db.ListProposalsParams{
 		WorkspaceID: workspaceID,
 		State:       pgtype.Text{String: service.ProposalStatePending, Valid: true},
+		ScopeMode:   scope.Mode(),
+		ScopeUserID: scope.UserID(),
 	})
 	if err != nil {
 		return channel.Message{}, fmt.Errorf("list proposals: %w", err)
