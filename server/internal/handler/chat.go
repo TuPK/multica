@@ -124,6 +124,15 @@ func (h *Handler) CreateChatSession(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, "failed to lock project")
 			return
 		}
+		// A project the viewer cannot see answers like a missing one (spec 7.1 rule 5).
+		scope, ok := h.viewerScope(w, r, workspaceUUID)
+		if !ok {
+			return
+		}
+		if !scope.Allows(projectID) {
+			writeError(w, http.StatusNotFound, "project not found")
+			return
+		}
 	}
 
 	session, err := qtx.CreateChatSession(r.Context(), db.CreateChatSessionParams{
@@ -433,6 +442,15 @@ func (h *Handler) UpdateChatSession(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				writeError(w, http.StatusInternalServerError, "failed to lock project")
+				return
+			}
+			// A project the viewer cannot see answers like a missing one (spec 7.1 rule 5).
+			scope, scopeOK := h.viewerScope(w, r, session.WorkspaceID)
+			if !scopeOK {
+				return
+			}
+			if !scope.Allows(projectID) {
+				writeError(w, http.StatusNotFound, "project not found")
 				return
 			}
 		}

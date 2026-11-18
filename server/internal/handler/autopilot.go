@@ -1337,6 +1337,15 @@ func (h *Handler) parseAutopilotProjectID(
 		writeError(w, http.StatusBadRequest, "project_id must reference a project in this workspace")
 		return pgtype.UUID{}, false
 	}
+	// A project the viewer cannot see answers like a missing one (spec 7.1 rule 5).
+	scope, ok := h.viewerScope(w, r, workspaceID)
+	if !ok {
+		return pgtype.UUID{}, false
+	}
+	if !scope.Allows(projectID) {
+		writeError(w, http.StatusBadRequest, "project_id must reference a project in this workspace")
+		return pgtype.UUID{}, false
+	}
 	return projectID, true
 }
 
