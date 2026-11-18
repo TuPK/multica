@@ -1505,7 +1505,16 @@
     "member_groups_close": "Terminé",
     "member_groups_added": "Ajouté à {{group}}",
     "member_groups_removed": "Retiré de {{group}}",
-    "member_groups_failed": "Impossible de mettre à jour les groupes"
+    "member_groups_failed": "Impossible de mettre à jour les groupes",
+    "guest_badge": "Invité",
+    "guest_toggle_label": "Invité",
+    "guest_toggle_aria": "Accès invité pour {{name}}",
+    "invite_guest_label": "Inviter en tant qu'invité",
+    "invite_guest_projects_label": "Projets",
+    "invite_guest_projects_empty": "Aucun projet pour l'instant",
+    "toast_guest_updated": "Accès invité mis à jour",
+    "error_guest_forbidden": "Les invités n'ont pas la permission d'effectuer cette action.",
+    "error_project_member_invalid": "Les propriétaires et administrateurs ne peuvent pas être invités, et les invités doivent conserver un rôle de membre ou lecteur."
   },
   "integrations": {
     "status_connected": "Connecté",

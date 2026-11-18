@@ -1505,7 +1505,16 @@
     "member_groups_close": "Done",
     "member_groups_added": "Added to {{group}}",
     "member_groups_removed": "Removed from {{group}}",
-    "member_groups_failed": "Could not update groups"
+    "member_groups_failed": "Could not update groups",
+    "guest_badge": "Guest",
+    "guest_toggle_label": "Guest",
+    "guest_toggle_aria": "Guest access for {{name}}",
+    "invite_guest_label": "Invite as guest",
+    "invite_guest_projects_label": "Projects",
+    "invite_guest_projects_empty": "No projects yet",
+    "toast_guest_updated": "Guest access updated",
+    "error_guest_forbidden": "Guests do not have permission for this action.",
+    "error_project_member_invalid": "Owners and admins cannot be guests, and guests must keep a member or viewer role."
   },
   "integrations": {
     "status_connected": "Connected",

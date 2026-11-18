@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FolderKanban } from "@multica/ui/icons";
+import { FolderKanban, Lock } from "@multica/ui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { projectListOptions } from "@multica/core/projects/queries";
 import { useWorkspaceId } from "@multica/core/hooks";
@@ -90,6 +90,13 @@ export function ProjectPicker({
             <>
               <ProjectIcon project={current} size="sm" />
               <span className="truncate">{current.title}</span>
+              {"access" in current && current.access === "restricted" && (
+                <Lock
+                  role="img"
+                  aria-label={t(($) => $.access.restricted_label)}
+                  className="size-3.5 shrink-0 text-muted-foreground"
+                />
+              )}
             </>
           ) : (
             <>
@@ -126,6 +133,13 @@ export function ProjectPicker({
           >
             <ProjectIcon project={p} size="sm" />
             <span className="truncate">{p.title}</span>
+            {"access" in p && p.access === "restricted" && (
+              <Lock
+                role="img"
+                aria-label={t(($) => $.access.restricted_label)}
+                className="size-3.5 shrink-0 text-muted-foreground"
+              />
+            )}
           </PickerItem>
         ))}
 

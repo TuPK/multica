@@ -165,6 +165,25 @@
     "confirm": "削除",
     "cancel": "キャンセル"
   },
+  "access": {
+    "section_header": "アクセス",
+    "restricted_label": "限定公開プロジェクト",
+    "workspace_option": "ワークスペース内の全員",
+    "restricted_option": "追加された人のみ",
+    "add_member": "メンバーを追加",
+    "add_member_empty": "ワークスペースの全メンバーがすでにアクセス権を持っています。",
+    "members_empty": "メンバーはまだ追加されていません。",
+    "remove_member_aria": "{{name}} をプロジェクトから削除",
+    "toast_access_updated": "プロジェクトのアクセス設定を更新しました",
+    "toast_access_failed": "プロジェクトのアクセス設定を更新できませんでした",
+    "toast_member_added": "メンバーを追加しました",
+    "toast_member_add_failed": "メンバーを追加できませんでした",
+    "toast_member_removed": "メンバーを削除しました",
+    "toast_member_remove_failed": "メンバーを削除できませんでした",
+    "error_project_not_found": "プロジェクトが見つかりません。",
+    "error_guest_forbidden": "ゲストにはこの操作を行う権限がありません。",
+    "error_project_member_invalid": "このメンバーはこのプロジェクトで更新できません。"
+  },
   "picker": {
     "no_project": "プロジェクトなし",
     "empty": "プロジェクトはまだありません",

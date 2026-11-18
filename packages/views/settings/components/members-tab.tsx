@@ -8,6 +8,7 @@ import {
   Eye,
   Link,
   Loader2,
+  Lock,
   Mail,
   MoreHorizontal,
   Plus,
@@ -35,6 +36,7 @@ import { Input } from "@multica/ui/components/ui/input";
 import { Button } from "@multica/ui/components/ui/button";
 import { IconButton } from "@multica/ui/components/common/icon-button";
 import { Label } from "@multica/ui/components/ui/label";
+import { Switch } from "@multica/ui/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -90,6 +92,7 @@ import {
   shareLinkListOptions,
   workspaceKeys,
 } from "@multica/core/workspace/queries";
+import { projectListOptions } from "@multica/core/projects/queries";
 import {
   memberGroupDetailOptions,
   memberGroupListOptions,
@@ -127,6 +130,8 @@ type InviteSeatPurchase = {
   workspaceId: string;
   email: string;
   role: MemberRole;
+  isGuest?: boolean;
+  guestProjectIds?: string[];
   preview: WorkspaceSeatPurchasePreview;
   idempotencyKey: string;
   phase: "review" | "purchasing" | "waiting" | "inviting" | "error";
@@ -197,6 +202,7 @@ function MemberRow({
   isSelf,
   busy,
   onManageGroups,
+  onGuestToggle,
   onRoleChange,
   onRemove,
 }: {
@@ -209,6 +215,7 @@ function MemberRow({
   isSelf: boolean;
   busy: boolean;
   onManageGroups: () => void;
+  onGuestToggle: (isGuest: boolean) => void;
   onRoleChange: (role: MemberRole) => void;
   onRemove: () => void;
 }) {
@@ -217,9 +224,12 @@ function MemberRow({
   const roleConfig = useRoleLabels();
   const rc = roleConfig[member.role];
   const RoleIcon = rc.icon;
+  const memberIsGuest = "is_guest" in member && Boolean(member.is_guest);
   const canEditRole = canManage && !isSelf && (member.role !== "owner" || canManageOwners);
   const canRemove = canManage && !isSelf && (member.role !== "owner" || canManageOwners);
   const canAssignGroups = canManage && !isSelf;
+  const canToggleGuest =
+    canManage && !isSelf && member.role !== "owner" && member.role !== "admin";
   const isLastOwner = member.role === "owner" && ownerCount <= 1;
   const showMenu = canEditRole || canRemove;
 
@@ -232,6 +242,11 @@ function MemberRow({
           {isSelf ? (
             <Badge variant="secondary" className="shrink-0">
               {t(($) => $.members.you)}
+            </Badge>
+          ) : null}
+          {memberIsGuest ? (
+            <Badge variant="outline" className="shrink-0">
+              {t(($) => $.members.guest_badge)}
             </Badge>
           ) : null}
         </div>
@@ -247,6 +262,20 @@ function MemberRow({
         {rc.label}
       </span>
       <span className="flex shrink-0 items-center justify-end gap-1">
+        {canToggleGuest ? (
+          <div className="flex shrink-0 items-center gap-1.5 pr-1">
+            <span className="text-caption text-muted-foreground">
+              {t(($) => $.members.guest_toggle_label)}
+            </span>
+            <Switch
+              size="sm"
+              checked={memberIsGuest}
+              disabled={busy}
+              aria-label={t(($) => $.members.guest_toggle_aria, { name: member.name })}
+              onCheckedChange={(checked) => onGuestToggle(checked)}
+            />
+          </div>
+        ) : null}
         {canAssignGroups ? (
           <IconButton
             variant="ghost"
@@ -350,6 +379,8 @@ function InvitationRow({
   const locale = useLocale();
   const roleConfig = useRoleLabels();
   const rc = roleConfig[invitation.role];
+  const invitationIsGuest =
+    "is_guest" in invitation && Boolean(invitation.is_guest);
 
   return (
     <div className="flex items-center gap-3 px-4 py-3">
@@ -357,7 +388,14 @@ function InvitationRow({
         <Mail className="size-4 text-muted-foreground" aria-hidden="true" />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="truncate text-body font-medium">{invitation.invitee_email}</div>
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-body font-medium">{invitation.invitee_email}</span>
+          {invitationIsGuest ? (
+            <Badge variant="outline" className="shrink-0">
+              {t(($) => $.members.guest_badge)}
+            </Badge>
+          ) : null}
+        </div>
         <div className="truncate text-caption text-muted-foreground">
           {t(($) => $.members.invitation_meta, {
             sent: new Date(invitation.created_at).toLocaleDateString(locale),
@@ -459,10 +497,19 @@ export function MembersTab() {
     ...myPermissionsOptions(wsId),
     enabled: Boolean(wsId),
   });
-  const canInvite = useCan(wsId, "members.invite", { write: true }).allowed;
+  const canInviteKey = useCan(wsId, "members.invite", { write: true }).allowed;
+  const isCurrentGuest =
+    (currentMember !== null &&
+      "is_guest" in currentMember &&
+      Boolean(currentMember.is_guest)) ||
+    Boolean(
+      myPermissions && "is_guest" in myPermissions && myPermissions.is_guest,
+    );
+  const canInvite = !isCurrentGuest && canInviteKey;
   const effectiveRole = myPermissions?.role || currentMember?.role;
   const canManageWorkspace =
-    effectiveRole === "owner" || effectiveRole === "admin";
+    !isCurrentGuest &&
+    (effectiveRole === "owner" || effectiveRole === "admin");
   // Only owners/admins or holders of members.invite may list pending invitations
   // (avoids exposing invitee emails to plain members; server returns 403).
   const { data: invitations = [] } = useQuery(
@@ -497,6 +544,8 @@ export function MembersTab() {
   const [memberQuery, setMemberQuery] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<MemberRole>("member");
+  const [inviteIsGuest, setInviteIsGuest] = useState(false);
+  const [inviteGuestProjectIds, setInviteGuestProjectIds] = useState<string[]>([]);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteSeatPurchase, setInviteSeatPurchase] =
     useState<InviteSeatPurchase | null>(null);
@@ -557,22 +606,59 @@ export function MembersTab() {
       )
     : members;
 
+  const { data: guestSelectableProjects = [] } = useQuery({
+    ...projectListOptions(wsId),
+    enabled: inviteOpen && inviteIsGuest && Boolean(wsId),
+  });
+
+  const resetInviteForm = useCallback(() => {
+    setInviteEmail("");
+    setInviteRole("member");
+    setInviteIsGuest(false);
+    setInviteGuestProjectIds([]);
+  }, []);
+
+  const memberErrorMessage = useCallback(
+    (err: unknown, fallback: string) => {
+      const code = errorCode(err);
+      if (code === "guest_forbidden") return t(($) => $.members.error_guest_forbidden);
+      if (code === "project_member_invalid") {
+        return t(($) => $.members.error_project_member_invalid);
+      }
+      return err instanceof Error ? err.message : fallback;
+    },
+    [t],
+  );
+
   const sendInvitation = useCallback(
-    async (email: string, role: MemberRole) => {
+    async (
+      email: string,
+      role: MemberRole,
+      guestOpts?: { isGuest?: boolean; guestProjectIds?: string[] },
+    ) => {
       if (!workspace) return;
-      await api.createMember(workspace.id, { email, role });
-      setInviteEmail("");
-      setInviteRole("member");
+      const payload = guestOpts?.isGuest
+        ? {
+            email,
+            role,
+            is_guest: true,
+            guest_project_ids: guestOpts.guestProjectIds ?? [],
+          }
+        : { email, role };
+      await api.createMember(workspace.id, payload);
+      resetInviteForm();
       await qc.invalidateQueries({
         queryKey: workspaceKeys.invitations(wsId),
       });
       toast.success(t(($) => $.members.toast_invitation_sent));
     },
-    [qc, t, workspace, wsId],
+    [qc, resetInviteForm, t, workspace, wsId],
   );
 
   const effectiveInviteRole: MemberRole =
-    !canManageWorkspace && inviteRole === "admin" ? "member" : inviteRole;
+    (!canManageWorkspace || inviteIsGuest) && inviteRole === "admin"
+      ? "member"
+      : inviteRole;
   const effectiveShareLinkRole: MemberRole =
     !canManageWorkspace && shareLinkRole === "admin" ? "member" : shareLinkRole;
 
@@ -580,9 +666,12 @@ export function MembersTab() {
     if (!workspace || !canInvite) return;
     const email = inviteEmail.trim();
     const role = effectiveInviteRole;
+    const guestOpts = inviteIsGuest
+      ? { isGuest: true, guestProjectIds: inviteGuestProjectIds }
+      : undefined;
     setInviteLoading(true);
     try {
-      await sendInvitation(email, role);
+      await sendInvitation(email, role, guestOpts);
       setInviteOpen(false);
     } catch (e) {
       const code = errorCode(e);
@@ -639,6 +728,8 @@ export function MembersTab() {
             workspaceId: workspace.id,
             email,
             role,
+            isGuest: inviteIsGuest || undefined,
+            guestProjectIds: inviteIsGuest ? inviteGuestProjectIds : undefined,
             preview,
             idempotencyKey: createSeatPurchaseKey(workspace.id),
             phase: "review",
@@ -661,7 +752,9 @@ export function MembersTab() {
         toast.error(t(($) => $.members.toast_seat_capacity_rate_limited));
         return;
       }
-      toast.error(e instanceof Error ? e.message : t(($) => $.members.toast_invitation_failed));
+      toast.error(
+        memberErrorMessage(e, t(($) => $.members.toast_invitation_failed)),
+      );
     } finally {
       setInviteLoading(false);
     }
@@ -766,7 +859,13 @@ export function MembersTab() {
 
     dispatchedInvitePurchaseKey.current = purchase.idempotencyKey;
     setInviteSeatPurchase({ ...purchase, phase: "inviting" });
-    void sendInvitation(purchase.email, purchase.role)
+    void sendInvitation(
+      purchase.email,
+      purchase.role,
+      purchase.isGuest
+        ? { isGuest: true, guestProjectIds: purchase.guestProjectIds }
+        : undefined,
+    )
       .then(() => setInviteSeatPurchase(null))
       .catch((error) => {
         const code = errorCode(error);
@@ -856,7 +955,24 @@ export function MembersTab() {
       qc.invalidateQueries({ queryKey: workspaceKeys.members(wsId) });
       toast.success(t(($) => $.members.toast_role_updated));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t(($) => $.members.toast_role_failed));
+      toast.error(memberErrorMessage(e, t(($) => $.members.toast_role_failed)));
+    } finally {
+      setMemberActionId(null);
+    }
+  };
+
+  const handleGuestToggle = async (member: MemberWithUser, isGuest: boolean) => {
+    if (!workspace) return;
+    setMemberActionId(member.id);
+    try {
+      await api.updateMember(workspace.id, member.id, {
+        role: member.role,
+        is_guest: isGuest,
+      });
+      qc.invalidateQueries({ queryKey: workspaceKeys.members(wsId) });
+      toast.success(t(($) => $.members.toast_guest_updated));
+    } catch (e) {
+      toast.error(memberErrorMessage(e, t(($) => $.members.toast_role_failed)));
     } finally {
       setMemberActionId(null);
     }
@@ -938,10 +1054,18 @@ export function MembersTab() {
 
   if (!workspace) return null;
 
-  const allowedInviteRoles = canManageWorkspace
+  const allowedShareLinkRoles = canManageWorkspace
     ? (["member", "admin", "viewer"] as const)
     : (["member", "viewer"] as const);
-  const roleItems = allowedInviteRoles.map((value) => ({
+  const roleItems = allowedShareLinkRoles.map((value) => ({
+    value,
+    label: roleConfig[value].label,
+  }));
+  const allowedInviteRoles =
+    canManageWorkspace && !inviteIsGuest
+      ? (["member", "admin", "viewer"] as const)
+      : (["member", "viewer"] as const);
+  const inviteRoleItems = allowedInviteRoles.map((value) => ({
     value,
     label: roleConfig[value].label,
   }));
@@ -1041,6 +1165,7 @@ export function MembersTab() {
                     isSelf={m.user_id === user?.id}
                     busy={memberActionId === m.id}
                     onManageGroups={() => setGroupsMember(m)}
+                    onGuestToggle={(isGuest) => void handleGuestToggle(m, isGuest)}
                     onRoleChange={(role) => handleRoleChange(m.id, role)}
                     onRemove={() => handleRemoveMember(m)}
                   />
@@ -1091,7 +1216,10 @@ export function MembersTab() {
       <Dialog
         open={inviteOpen}
         onOpenChange={(open) => {
-          if (!open && !inviteLoading) setInviteOpen(false);
+          if (!open && !inviteLoading) {
+            setInviteOpen(false);
+            resetInviteForm();
+          }
         }}
       >
         <DialogContent className="sm:max-w-md">
@@ -1122,7 +1250,7 @@ export function MembersTab() {
             <div className="space-y-1.5">
               <Label htmlFor="invite-role">{t(($) => $.members.role_label)}</Label>
               <Select
-                items={roleItems}
+                items={inviteRoleItems}
                 value={effectiveInviteRole}
                 onValueChange={(value) => setInviteRole(value as MemberRole)}
               >
@@ -1130,7 +1258,7 @@ export function MembersTab() {
                   <SelectValue>{() => roleConfig[effectiveInviteRole].label}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {roleItems.map((item) => (
+                  {inviteRoleItems.map((item) => (
                     <SelectItem
                       key={item.value}
                       value={item.value}
@@ -1147,11 +1275,80 @@ export function MembersTab() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="invite-guest">
+                {t(($) => $.members.invite_guest_label)}
+              </Label>
+              <Switch
+                id="invite-guest"
+                aria-label={t(($) => $.members.invite_guest_label)}
+                checked={inviteIsGuest}
+                onCheckedChange={(checked) => {
+                  setInviteIsGuest(checked);
+                  if (!checked) setInviteGuestProjectIds([]);
+                }}
+              />
+            </div>
+            {inviteIsGuest && (
+              <div className="space-y-1.5">
+                <span className="text-caption font-medium">
+                  {t(($) => $.members.invite_guest_projects_label)}
+                </span>
+                {guestSelectableProjects.length === 0 ? (
+                  <p className="text-caption text-muted-foreground">
+                    {t(($) => $.members.invite_guest_projects_empty)}
+                  </p>
+                ) : (
+                  <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border p-2">
+                    {guestSelectableProjects.map((project) => {
+                      const checked = inviteGuestProjectIds.includes(project.id);
+                      const checkboxId = `invite-guest-project-${project.id}`;
+                      return (
+                        <div
+                          key={project.id}
+                          className="flex items-center gap-2 rounded px-1.5 py-1 text-caption hover:bg-accent/50"
+                        >
+                          <Checkbox
+                            id={checkboxId}
+                            aria-label={project.title}
+                            checked={checked}
+                            onCheckedChange={(next) => {
+                              setInviteGuestProjectIds((prev) =>
+                                next
+                                  ? prev.includes(project.id)
+                                    ? prev
+                                    : [...prev, project.id]
+                                  : prev.filter((id) => id !== project.id),
+                              );
+                            }}
+                          />
+                          <label
+                            htmlFor={checkboxId}
+                            className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5"
+                          >
+                            {"access" in project && project.access === "restricted" && (
+                              <Lock
+                                aria-hidden="true"
+                                className="size-3.5 shrink-0 text-muted-foreground"
+                              />
+                            )}
+                            <span className="min-w-0 truncate">{project.title}</span>
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
             <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setInviteOpen(false)}
+                onClick={() => {
+                  setInviteOpen(false);
+                  resetInviteForm();
+                }}
                 disabled={inviteLoading}
               >
                 {t(($) => $.members.confirm_cancel)}

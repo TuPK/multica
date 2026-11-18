@@ -7,6 +7,7 @@ import { useRecentContextStore } from "../chat/recent-context-store";
 import { clearIssueSurfaceViewState } from "../issues/stores/surface-view-store";
 import { issueScopeKey } from "../issues/surface/scope";
 import type { Project, CreateProjectRequest, UpdateProjectRequest, ListProjectsResponse } from "../types";
+import type { ProjectAccess } from "../api/schemas";
 
 export function useCreateProject() {
   const qc = useQueryClient();
@@ -99,6 +100,52 @@ export function useDeleteProject() {
       // event invalidates too, but a delivery gap must not leave the window
       // wrong forever — the global staleTime is Infinity.
       qc.invalidateQueries({ queryKey: issueKeys.tableAll(wsId) });
+    },
+  });
+}
+
+export function useSetProjectAccess() {
+  const qc = useQueryClient();
+  const wsId = useWorkspaceId();
+  return useMutation({
+    mutationFn: ({
+      id,
+      access,
+      member_ids,
+    }: {
+      id: string;
+      access: ProjectAccess;
+      member_ids?: string[];
+    }) => api.setProjectAccess(id, { access, member_ids }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: projectKeys.detail(wsId, vars.id) });
+      qc.invalidateQueries({ queryKey: projectKeys.members(wsId, vars.id) });
+      qc.invalidateQueries({ queryKey: projectKeys.list(wsId) });
+      qc.invalidateQueries({ queryKey: issueKeys.all(wsId) });
+    },
+  });
+}
+
+export function useAddProjectMembers() {
+  const qc = useQueryClient();
+  const wsId = useWorkspaceId();
+  return useMutation({
+    mutationFn: ({ id, user_ids }: { id: string; user_ids: string[] }) =>
+      api.addProjectMembers(id, user_ids),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: projectKeys.members(wsId, vars.id) });
+    },
+  });
+}
+
+export function useRemoveProjectMember() {
+  const qc = useQueryClient();
+  const wsId = useWorkspaceId();
+  return useMutation({
+    mutationFn: ({ id, userId }: { id: string; userId: string }) =>
+      api.removeProjectMember(id, userId),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: projectKeys.members(wsId, vars.id) });
     },
   });
 }

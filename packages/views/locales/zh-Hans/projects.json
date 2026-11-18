@@ -165,6 +165,25 @@
     "confirm": "删除",
     "cancel": "取消"
   },
+  "access": {
+    "section_header": "访问权限",
+    "restricted_label": "受限项目",
+    "workspace_option": "工作区所有人",
+    "restricted_option": "仅限已添加成员",
+    "add_member": "添加成员",
+    "add_member_empty": "工作区的所有成员都已有访问权限。",
+    "members_empty": "暂未添加成员。",
+    "remove_member_aria": "从项目中移除 {{name}}",
+    "toast_access_updated": "项目访问权限已更新",
+    "toast_access_failed": "更新项目访问权限失败",
+    "toast_member_added": "成员已添加",
+    "toast_member_add_failed": "添加成员失败",
+    "toast_member_removed": "成员已移除",
+    "toast_member_remove_failed": "移除成员失败",
+    "error_project_not_found": "未找到该项目。",
+    "error_guest_forbidden": "访客没有执行此操作的权限。",
+    "error_project_member_invalid": "无法在该项目中更新此成员。"
+  },
   "picker": {
     "no_project": "无项目",
     "empty": "还没有项目",

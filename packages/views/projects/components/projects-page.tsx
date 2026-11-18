@@ -5,6 +5,7 @@ import {
   ExternalLink,
   FolderKanban,
   LayoutGrid,
+  Lock,
   Pin,
   PinOff,
   Rows3,
@@ -312,6 +313,23 @@ function ProjectInlineCell({
   return <>{children(handleUpdate)}</>;
 }
 
+function RestrictedProjectLock({
+  project,
+  label,
+}: {
+  project: Project;
+  label: string;
+}) {
+  if (!("access" in project) || project.access !== "restricted") return null;
+  return (
+    <Lock
+      role="img"
+      aria-label={label}
+      className="size-3.5 shrink-0 text-muted-foreground"
+    />
+  );
+}
+
 // Card (comfortable) view — kept from the prior page.
 
 function ProjectCard({
@@ -346,6 +364,10 @@ function ProjectCard({
           >
             <ProjectIcon project={project} size="sm" />
             <h3 className="truncate text-body font-medium">{project.title}</h3>
+            <RestrictedProjectLock
+              project={project}
+              label={t(($) => $.access.restricted_label)}
+            />
           </AppLink>
           <ProjectRowActions project={project} pinned={pinned} canDelete={canDelete} />
           <ProjectStatusBadge project={project} handleUpdate={handleUpdate} triggerClassName="shrink-0" />
@@ -623,6 +645,12 @@ export function ProjectsPage() {
           <CollectionNameCell
             icon={<ProjectIcon project={project} size="sm" />}
             title={project.title}
+            badges={
+              <RestrictedProjectLock
+                project={project}
+                label={t(($) => $.access.restricted_label)}
+              />
+            }
           />
         ),
       },

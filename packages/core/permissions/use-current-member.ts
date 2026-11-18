@@ -1,8 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import type { MemberWithGuest } from "../api/schemas";
 import { useAuthStore } from "../auth";
-import type { MemberRole, MemberWithUser } from "../types";
+import type { MemberRole } from "../types";
 import { memberListOptions } from "../workspace/queries";
 
 /**
@@ -17,7 +18,8 @@ import { memberListOptions } from "../workspace/queries";
 export function useCurrentMember(wsId: string): {
   userId: string | null;
   role: MemberRole | null;
-  member: MemberWithUser | null;
+  member: MemberWithGuest | null;
+  isGuest: boolean;
   isLoading: boolean;
 } {
   const userId = useAuthStore((s) => s.user?.id ?? null);
@@ -27,6 +29,7 @@ export function useCurrentMember(wsId: string): {
     userId,
     role: member?.role ?? null,
     member,
+    isGuest: member?.is_guest === true,
     isLoading,
   };
 }

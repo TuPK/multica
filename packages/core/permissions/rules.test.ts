@@ -13,6 +13,8 @@ import {
   canEditSkill,
   canManageKnowledge,
   canManageMembers,
+  canReadIssue,
+  canWriteIssue,
   can,
   canUpdateWorkspaceSettings,
 } from "./rules";
@@ -531,5 +533,52 @@ describe("can (permissions/me)", () => {
 
   it("refuses a role this client does not know as a write", () => {
     expect(can("billing.manage", grant("guest" as MemberRole, ["billing.manage"]), { write: true }).allowed).toBe(false);
+  });
+});
+
+describe("guest permissions (spec 7.1 rule 9)", () => {
+  const ctxGuestViewer = { userId: ALICE, role: "viewer" as const, is_guest: true };
+  const ctxGuestMember = { userId: ALICE, role: "member" as const, is_guest: true };
+
+  it("refuses write actions for a guest viewer (is_guest = true, role viewer) and allows read", () => {
+    expect(canReadIssue(ctxGuestViewer).allowed).toBe(true);
+    expect(can("audit.read", { role: "viewer", permissions: ["audit.read"], is_guest: true }).allowed).toBe(true);
+
+    expect(canWriteIssue(ctxGuestViewer).allowed).toBe(false);
+    expect(canWriteIssue(ctxGuestViewer).reason).toBe("viewer_read_only");
+    expect(canEditAgent(makeAgent({ owner_id: ALICE }), ctxGuestViewer).allowed).toBe(false);
+    expect(canAssignAgentToIssue(makeAgent({ owner_id: ALICE }), ctxGuestViewer).allowed).toBe(false);
+    expect(canEditSkill(makeSkill(ALICE), ctxGuestViewer).allowed).toBe(false);
+    expect(canDeleteSkill(makeSkill(ALICE), ctxGuestViewer).allowed).toBe(false);
+    expect(canEditComment(makeComment({ author_id: ALICE }), ctxGuestViewer).allowed).toBe(false);
+    expect(canDeleteComment(makeComment({ author_id: ALICE }), ctxGuestViewer).allowed).toBe(false);
+    expect(canDeleteRuntime(makeRuntime(ALICE), ctxGuestViewer).allowed).toBe(false);
+    expect(canUpdateWorkspaceSettings(ctxGuestViewer).allowed).toBe(false);
+    expect(canDeleteWorkspace(ctxGuestViewer).allowed).toBe(false);
+    expect(canManageKnowledge(ctxGuestViewer).allowed).toBe(false);
+    expect(canManageMembers(ctxGuestViewer).allowed).toBe(false);
+    expect(canChangeMemberRole({ role: "member" }, 1, ctxGuestViewer).allowed).toBe(false);
+    expect(
+      can("billing.manage", { role: "viewer", permissions: ["billing.manage"], is_guest: true }, { write: true }).allowed,
+    ).toBe(false);
+  });
+
+  it("refuses non-allow-listed writes for a guest member while permitting issue/comment writes and reads", () => {
+    expect(canReadIssue(ctxGuestMember).allowed).toBe(true);
+    expect(canWriteIssue(ctxGuestMember).allowed).toBe(true);
+    expect(canEditComment(makeComment({ author_id: ALICE }), ctxGuestMember).allowed).toBe(true);
+    expect(canDeleteComment(makeComment({ author_id: ALICE }), ctxGuestMember).allowed).toBe(true);
+
+    expect(canEditAgent(makeAgent({ owner_id: ALICE }), ctxGuestMember).allowed).toBe(false);
+    expect(canAssignAgentToIssue(makeAgent({ owner_id: ALICE }), ctxGuestMember).allowed).toBe(false);
+    expect(canEditSkill(makeSkill(ALICE), ctxGuestMember).allowed).toBe(false);
+    expect(canDeleteSkill(makeSkill(ALICE), ctxGuestMember).allowed).toBe(false);
+    expect(canDeleteRuntime(makeRuntime(ALICE), ctxGuestMember).allowed).toBe(false);
+    expect(canUpdateWorkspaceSettings(ctxGuestMember).allowed).toBe(false);
+    expect(canManageKnowledge(ctxGuestMember).allowed).toBe(false);
+    expect(canManageMembers(ctxGuestMember).allowed).toBe(false);
+    expect(
+      can("billing.manage", { role: "member", permissions: ["billing.manage"], is_guest: true }, { write: true }).allowed,
+    ).toBe(false);
   });
 });

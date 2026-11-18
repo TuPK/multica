@@ -1495,7 +1495,16 @@
     "member_groups_close": "完成",
     "member_groups_added": "已新增至 {{group}}",
     "member_groups_removed": "已從 {{group}} 移除",
-    "member_groups_failed": "更新帳號組失敗"
+    "member_groups_failed": "更新帳號組失敗",
+    "guest_badge": "訪客",
+    "guest_toggle_label": "訪客",
+    "guest_toggle_aria": "{{name}} 的訪客權限",
+    "invite_guest_label": "以訪客身分邀請",
+    "invite_guest_projects_label": "專案",
+    "invite_guest_projects_empty": "還沒有專案",
+    "toast_guest_updated": "訪客權限已更新",
+    "error_guest_forbidden": "訪客沒有執行此操作的權限。",
+    "error_project_member_invalid": "擁有者和管理員不能設為訪客，且訪客必須保持成員或檢視者角色。"
   },
   "integrations": {
     "status_connected": "已連線",

@@ -165,6 +165,25 @@
     "confirm": "刪除",
     "cancel": "取消"
   },
+  "access": {
+    "section_header": "存取權限",
+    "restricted_label": "受限專案",
+    "workspace_option": "工作區所有人",
+    "restricted_option": "僅限已新增成員",
+    "add_member": "新增成員",
+    "add_member_empty": "工作區的所有成員都已有存取權限。",
+    "members_empty": "尚未新增成員。",
+    "remove_member_aria": "從專案中移除 {{name}}",
+    "toast_access_updated": "專案存取權限已更新",
+    "toast_access_failed": "更新專案存取權限失敗",
+    "toast_member_added": "成員已新增",
+    "toast_member_add_failed": "新增成員失敗",
+    "toast_member_removed": "成員已移除",
+    "toast_member_remove_failed": "移除成員失敗",
+    "error_project_not_found": "找不到該專案。",
+    "error_guest_forbidden": "訪客沒有執行此操作的權限。",
+    "error_project_member_invalid": "無法在此專案中更新該成員。"
+  },
   "picker": {
     "no_project": "無專案",
     "empty": "還沒有專案",

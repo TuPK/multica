@@ -494,3 +494,20 @@ describe("ProjectsPage header", () => {
     expect(mocks.openModal).toHaveBeenCalledWith("create-project");
   });
 });
+
+describe("ProjectsPage restricted lock icon", () => {
+  it.each(["compact", "comfortable"])("renders a lock icon next to restricted projects in %s mode", (mode) => {
+    mocks.projectViewState.viewMode = mode;
+    mocks.projects = [
+      { ...PROJECT, id: "p-open", title: "Open Project", access: "workspace" } as Project,
+      { ...PROJECT, id: "p-secret", title: "Secret Project", access: "restricted" } as Project,
+    ];
+    renderProjects();
+
+    expect(screen.getAllByRole("img", { name: "Restricted project" })).toHaveLength(1);
+    const openContainer = screen.getByText("Open Project").closest('[role="row"], .group\\/card');
+    const secretContainer = screen.getByText("Secret Project").closest('[role="row"], .group\\/card');
+    expect(within(openContainer as HTMLElement).queryByRole("img", { name: "Restricted project" })).toBeNull();
+    expect(within(secretContainer as HTMLElement).getByRole("img", { name: "Restricted project" })).toBeInTheDocument();
+  });
+});

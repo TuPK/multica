@@ -7,6 +7,7 @@ import { BILLING_WORKSPACE_SUBSCRIPTIONS_FLAG } from "@multica/core/feature-flag
 import { renderWithI18n } from "../../test/i18n";
 
 const mockCreateMember = vi.hoisted(() => vi.fn());
+const mockUpdateMember = vi.hoisted(() => vi.fn());
 // The URL the settings router holds; `setSearch` stands in for navigation.
 const url = vi.hoisted(() => {
   const listeners = new Set<() => void>();
@@ -33,6 +34,7 @@ const data = vi.hoisted(() => ({
   members: [] as Array<Record<string, unknown>>,
   invitations: [] as Array<Record<string, unknown>>,
   shareLinks: [] as Array<Record<string, unknown>>,
+  projects: [] as Array<Record<string, unknown>>,
   summary: null as Record<string, unknown> | null,
 }));
 
@@ -42,6 +44,7 @@ const mockUseQuery = vi.hoisted(() =>
     if (opts.enabled === false) return { data: undefined };
     if (key.includes('"permissions"')) return { data: data.myPermissions };
     if (key.includes('"groups"')) return { data: data.groups };
+    if (key.includes('"projects"')) return { data: data.projects };
     if (key.includes("invitations")) return { data: data.invitations };
     if (key.includes("share-links")) return { data: data.shareLinks };
     if (key.includes("members")) return { data: data.members };
@@ -71,7 +74,7 @@ vi.mock("@multica/core/paths", () => ({
 }));
 vi.mock("@multica/core/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@multica/core/api")>()),
-  api: { createMember: mockCreateMember },
+  api: { createMember: mockCreateMember, updateMember: mockUpdateMember },
 }));
 vi.mock("@multica/core/auth", () => {
   const state = { user: { id: "user-1" } };
@@ -148,6 +151,7 @@ beforeEach(() => {
     },
   ];
   data.shareLinks = [];
+  data.projects = [];
   data.summary = null;
   configStore.getState().setFeatureFlags({});
 });
@@ -367,5 +371,83 @@ describe("MembersTab with account-group keys", () => {
     expect(screen.queryByRole("button", { name: "Invite member" })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Groups for/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Actions for/ })).toBeNull();
+  });
+});
+
+describe("MembersTab guest members and guest invitations", () => {
+  it("renders guest switch only for non-owner, non-admin members and toggles via updateMember", async () => {
+    mockUpdateMember.mockResolvedValue({});
+    const user = userEvent.setup();
+    data.members = [
+      { ...member("user-1", "Ada Lovelace", "owner"), is_guest: false },
+      { ...member("user-2", "Grace Hopper", "admin"), is_guest: false },
+      { ...member("user-3", "Alan Turing", "member"), is_guest: false },
+      { ...member("user-4", "Barbara Liskov", "viewer"), is_guest: true },
+    ];
+    renderWithI18n(<MembersTab />);
+
+    expect(screen.queryByRole("switch", { name: "Guest access for Ada Lovelace" })).toBeNull();
+    expect(screen.queryByRole("switch", { name: "Guest access for Grace Hopper" })).toBeNull();
+
+    const alanSwitch = screen.getByRole("switch", { name: "Guest access for Alan Turing" });
+    const barbaraSwitch = screen.getByRole("switch", { name: "Guest access for Barbara Liskov" });
+    expect(alanSwitch).not.toBeChecked();
+    expect(barbaraSwitch).toBeChecked();
+
+    await user.click(alanSwitch);
+    await waitFor(() =>
+      expect(mockUpdateMember).toHaveBeenCalledWith("ws-1", "m-user-3", {
+        role: "member",
+        is_guest: true,
+      }),
+    );
+
+    await user.click(barbaraSwitch);
+    await waitFor(() =>
+      expect(mockUpdateMember).toHaveBeenCalledWith("ws-1", "m-user-4", {
+        role: "viewer",
+        is_guest: false,
+      }),
+    );
+  });
+
+  it("hides guest switches and write controls when viewer cannot manage members", () => {
+    data.myPermissions = { role: "member", permissions: [] };
+    data.members = [
+      { ...member("user-1", "Ada Lovelace", "member"), is_guest: false },
+      { ...member("user-2", "Alan Turing", "member"), is_guest: true },
+    ];
+    renderWithI18n(<MembersTab />);
+
+    expect(screen.queryByRole("switch", { name: /Guest access for/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Invite member" })).toBeNull();
+  });
+
+  it("sends is_guest and guest_project_ids from the invite dialog when guest toggle is on", async () => {
+    mockCreateMember.mockResolvedValue({});
+    const user = userEvent.setup();
+    data.projects = [
+      { id: "proj-1", title: "Alpha", access: "workspace" },
+      { id: "proj-2", title: "Beta", access: "restricted" },
+    ];
+    renderWithI18n(<MembersTab />);
+
+    await user.click(screen.getByRole("button", { name: "Invite member" }));
+    const dialog = await screen.findByRole("dialog", { name: "Invite member" });
+    await user.type(within(dialog).getByRole("textbox", { name: "Email" }), "guest@acme.dev");
+    await user.click(within(dialog).getByRole("switch", { name: "Invite as guest" }));
+
+    await user.click(await within(dialog).findByRole("checkbox", { name: "Alpha" }));
+    await user.click(within(dialog).getByRole("checkbox", { name: "Beta" }));
+    await user.click(within(dialog).getByRole("button", { name: "Invite" }));
+
+    await waitFor(() =>
+      expect(mockCreateMember).toHaveBeenCalledWith("ws-1", {
+        email: "guest@acme.dev",
+        role: "member",
+        is_guest: true,
+        guest_project_ids: ["proj-1", "proj-2"],
+      }),
+    );
   });
 });

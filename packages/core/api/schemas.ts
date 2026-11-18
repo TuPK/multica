@@ -128,6 +128,7 @@ import type {
   Project,
   ListProjectsResponse,
   MemberWithUser,
+  Invitation,
   IssueProperty,
   ListPropertiesResponse,
   QuickAction,
@@ -2148,6 +2149,24 @@ export const EMPTY_SEARCH_ISSUES_RESPONSE: SearchIssuesResponse = {
   issues: [],
 };
 
+export const PROJECT_ACCESS_VALUES = ["workspace", "restricted"] as const;
+export type ProjectAccess = (typeof PROJECT_ACCESS_VALUES)[number];
+
+/**
+ * Unknown access values fail closed to "restricted" (spec 7.1 rule 1);
+ * absent access defaults to "workspace" on the ProjectSchema field.
+ */
+export const ProjectAccessSchema = z
+  .string()
+  .transform((value): ProjectAccess =>
+    value === "workspace" ? "workspace" : "restricted",
+  );
+
+export interface ProjectWithAccess extends Project {
+  access?: ProjectAccess;
+  can_manage_access?: boolean;
+}
+
 export const ProjectSchema = z.object({
   id: z.string(),
   workspace_id: z.string(),
@@ -2156,6 +2175,8 @@ export const ProjectSchema = z.object({
   icon: z.string().nullable(),
   status: z.string(),
   priority: z.string(),
+  access: ProjectAccessSchema.optional().default("workspace"),
+  can_manage_access: z.boolean().optional().default(false),
   lead_type: z.string().nullable(),
   lead_id: z.string().nullable(),
   creator_type: z.string().nullable().default(null).catch(null),
@@ -2175,11 +2196,12 @@ export const ProjectSchema = z.object({
   squad_ids: z.array(z.string()).nullish(),
 }).loose();
 
-export const EMPTY_PROJECT: Project = {
+export const EMPTY_PROJECT: ProjectWithAccess = {
   id: "", workspace_id: "", title: "", description: null, icon: null,
-  status: "planned", priority: "none", lead_type: null, lead_id: null,
-  creator_type: null, creator_id: null, start_date: null, due_date: null,
-  created_at: "", updated_at: "", issue_count: 0, done_count: 0, resource_count: 0,
+  status: "planned", priority: "none", access: "workspace", can_manage_access: false,
+  lead_type: null, lead_id: null, creator_type: null, creator_id: null,
+  start_date: null, due_date: null, created_at: "", updated_at: "",
+  issue_count: 0, done_count: 0, resource_count: 0,
 };
 
 export const ListProjectsResponseSchema = z.object({
@@ -2187,7 +2209,48 @@ export const ListProjectsResponseSchema = z.object({
   total: z.number().default(0),
 }).loose();
 
-export const EMPTY_LIST_PROJECTS_RESPONSE: ListProjectsResponse = { projects: [], total: 0 };
+export const EMPTY_LIST_PROJECTS_RESPONSE: ListProjectsResponse & {
+  projects: ProjectWithAccess[];
+} = { projects: [], total: 0 };
+
+export const SetProjectAccessResponseSchema = z.object({
+  project_id: z.string(),
+  access: ProjectAccessSchema,
+  auto_added: z.number().int().nonnegative().optional().default(0),
+}).loose();
+
+export type SetProjectAccessResponse = z.infer<typeof SetProjectAccessResponseSchema>;
+
+export const EMPTY_SET_PROJECT_ACCESS_RESPONSE: SetProjectAccessResponse = {
+  project_id: "",
+  access: "restricted",
+  auto_added: 0,
+};
+
+export const ProjectMemberSchema = z.object({
+  user_id: z.string(),
+  name: z.string().optional().default(""),
+  added_by: z.string().nullable().optional().default(null),
+  created_at: z.string().optional().default(""),
+}).loose();
+
+export type ProjectMember = z.infer<typeof ProjectMemberSchema>;
+
+export const ListProjectMembersResponseSchema = z.object({
+  members: z.array(ProjectMemberSchema).default([]),
+}).loose();
+
+export type ListProjectMembersResponse = z.infer<typeof ListProjectMembersResponseSchema>;
+
+export const EMPTY_LIST_PROJECT_MEMBERS_RESPONSE: ListProjectMembersResponse = {
+  members: [],
+};
+
+export const AddProjectMembersResponseSchema = z.object({
+  added: z.number().int().nonnegative().optional().default(0),
+}).loose();
+
+export type AddProjectMembersResponse = z.infer<typeof AddProjectMembersResponseSchema>;
 
 const SearchProjectResultSchema = ProjectSchema.extend({
   match_source: z.string(),
@@ -4882,6 +4945,10 @@ export const EMPTY_SHARE_LINK_INFO: ShareLinkInfo = {
   role: "member",
 };
 
+export interface MemberWithGuest extends MemberWithUser {
+  is_guest?: boolean;
+}
+
 export const MemberWithUserSchema = z.object({
   id: z.string(),
   workspace_id: z.string(),
@@ -4891,7 +4958,70 @@ export const MemberWithUserSchema = z.object({
   name: z.string().optional().default(""),
   email: z.string().optional().default(""),
   avatar_url: z.string().nullable().optional().default(null),
+  is_guest: z.boolean().optional().default(false),
 }).loose();
+
+export const MemberWithUserListSchema = z.array(MemberWithUserSchema).default([]);
+
+export const EMPTY_MEMBER_WITH_USER: MemberWithGuest = {
+  id: "",
+  workspace_id: "",
+  user_id: "",
+  role: "viewer",
+  created_at: "",
+  name: "",
+  email: "",
+  avatar_url: null,
+  is_guest: false,
+};
+
+export const InvitationStatusSchema = z
+  .enum(["pending", "accepted", "declined", "expired"])
+  .catch("pending");
+
+export interface InvitationWithGuest extends Invitation {
+  is_guest?: boolean;
+  guest_project_ids?: string[];
+}
+
+export const InvitationSchema = z.object({
+  id: z.string(),
+  workspace_id: z.string().optional().default(""),
+  inviter_id: z.string().optional().default(""),
+  invitee_email: z.string().optional().default(""),
+  invitee_user_id: z.string().nullable().optional().default(null),
+  role: MemberRoleSchema,
+  status: InvitationStatusSchema.optional().default("pending"),
+  created_at: z.string().optional().default(""),
+  updated_at: z.string().optional().default(""),
+  expires_at: z.string().optional().default(""),
+  is_guest: z.boolean().optional().default(false),
+  guest_project_ids: z
+    .array(z.string())
+    .nullable()
+    .optional()
+    .transform((v) => v ?? []),
+  inviter_name: z.string().optional(),
+  inviter_email: z.string().optional(),
+  workspace_name: z.string().optional(),
+}).loose();
+
+export const InvitationListSchema = z.array(InvitationSchema).default([]);
+
+export const EMPTY_INVITATION: InvitationWithGuest = {
+  id: "",
+  workspace_id: "",
+  inviter_id: "",
+  invitee_email: "",
+  invitee_user_id: null,
+  role: "viewer",
+  status: "pending",
+  created_at: "",
+  updated_at: "",
+  expires_at: "",
+  is_guest: false,
+  guest_project_ids: [],
+};
 
 export const JoinShareLinkResponseSchema = z.object({
   member: MemberWithUserSchema,
@@ -4900,20 +5030,11 @@ export const JoinShareLinkResponseSchema = z.object({
 }).loose();
 
 export const EMPTY_JOIN_SHARE_LINK_RESPONSE: {
-  member: MemberWithUser;
+  member: MemberWithGuest;
   workspace_id: string;
   workspace_slug: string;
 } = {
-  member: {
-    id: "",
-    workspace_id: "",
-    user_id: "",
-    role: "member",
-    created_at: "",
-    name: "",
-    email: "",
-    avatar_url: null,
-  },
+  member: { ...EMPTY_MEMBER_WITH_USER, role: "member" },
   workspace_id: "",
   workspace_slug: "",
 };

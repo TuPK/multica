@@ -165,6 +165,25 @@
     "confirm": "Supprimer",
     "cancel": "Annuler"
   },
+  "access": {
+    "section_header": "Accès",
+    "restricted_label": "Projet restreint",
+    "workspace_option": "Tout le monde dans l'espace de travail",
+    "restricted_option": "Uniquement les personnes ajoutées",
+    "add_member": "Ajouter un membre",
+    "add_member_empty": "Tous les membres de l'espace de travail ont déjà accès.",
+    "members_empty": "Aucun membre ajouté pour l'instant.",
+    "remove_member_aria": "Retirer {{name}} du projet",
+    "toast_access_updated": "Accès au projet mis à jour",
+    "toast_access_failed": "Impossible de mettre à jour l'accès au projet",
+    "toast_member_added": "Membre ajouté",
+    "toast_member_add_failed": "Impossible d'ajouter le membre",
+    "toast_member_removed": "Membre retiré",
+    "toast_member_remove_failed": "Impossible de retirer le membre",
+    "error_project_not_found": "Projet introuvable.",
+    "error_guest_forbidden": "Les invités n'ont pas la permission d'effectuer cette action.",
+    "error_project_member_invalid": "Ce membre ne peut pas être modifié pour ce projet."
+  },
   "picker": {
     "no_project": "Aucun projet",
     "empty": "Aucun projet pour l'instant",

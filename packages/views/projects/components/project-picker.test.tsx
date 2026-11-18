@@ -10,8 +10,8 @@ import { PillButton } from "../../common/pill-button";
 vi.mock("@tanstack/react-query", () => ({
   useQuery: () => ({
     data: [
-      { id: "project-1", title: "Launch Command Center", icon: null },
-      { id: "project-2", title: "Mobile Web", icon: null },
+      { id: "project-1", title: "Launch Command Center", icon: null, access: "workspace" },
+      { id: "project-2", title: "Mobile Web", icon: null, access: "restricted" },
     ],
   }),
 }));
@@ -165,5 +165,20 @@ describe("ProjectPicker", () => {
     render(withI18n(<ProjectPicker projectId="project-1" onUpdate={onUpdate} disabled open />));
     expect(screen.queryByPlaceholderText(SEARCH_PLACEHOLDER)).not.toBeInTheDocument();
     expect(onUpdate).not.toHaveBeenCalled();
+  });
+
+  it("renders a lock icon for restricted projects in the list and trigger", async () => {
+    const user = userEvent.setup();
+    renderPicker({ projectId: "project-2" });
+
+    const trigger = screen.getByRole("button", { name: /mobile web/i });
+    expect(within(trigger).getByRole("img", { name: "Restricted project" })).toBeInTheDocument();
+
+    await user.click(trigger);
+    const rows = Array.from(document.querySelectorAll<HTMLButtonElement>("button[data-picker-item]"));
+    const openRow = rows.find((row) => row.textContent === "Launch Command Center")!;
+    const restrictedRow = rows.find((row) => row.textContent === "Mobile Web")!;
+    expect(within(openRow).queryByRole("img", { name: "Restricted project" })).toBeNull();
+    expect(within(restrictedRow).getByRole("img", { name: "Restricted project" })).toBeInTheDocument();
   });
 });

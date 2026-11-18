@@ -16,6 +16,10 @@ const mocks = vi.hoisted(() => ({
   copyText: vi.fn(),
   deleteProject: vi.fn(),
   getProject: vi.fn(),
+  setProjectAccess: vi.fn(),
+  listProjectMembers: vi.fn(),
+  addProjectMembers: vi.fn(),
+  removeProjectMember: vi.fn(),
   getShareableUrl: vi.fn((path: string) => `https://app.example${path}`),
   push: vi.fn(),
   recordVisit: vi.fn(),
@@ -41,7 +45,10 @@ vi.mock("@multica/core/pins", () => ({
 vi.mock("@multica/core/workspace/queries", () => ({
   memberListOptions: () => ({
     queryKey: ["members"],
-    queryFn: async () => [{ user_id: "user-1", name: "User One", role: mocks.role }],
+    queryFn: async () => [
+      { user_id: "user-1", name: "User One", role: mocks.role },
+      { user_id: "user-2", name: "Alice Member", role: "member" },
+    ],
   }),
   agentListOptions: () => ({ queryKey: ["agents"], queryFn: async () => [] }),
 }));
@@ -248,7 +255,10 @@ function deferred() {
 }
 
 function renderProjectDetail() {
-  qc.setQueryData(["members"], [{ user_id: "user-1", name: "User One", role: mocks.role }]);
+  qc.setQueryData(["members"], [
+    { user_id: "user-1", name: "User One", role: mocks.role },
+    { user_id: "user-2", name: "Alice Member", role: "member" },
+  ]);
   const adapter: NavigationAdapter = {
     push: mocks.push,
     replace: vi.fn(),
@@ -278,7 +288,22 @@ beforeEach(() => {
   mocks.copyText.mockReset().mockResolvedValue(true);
   mocks.deleteProject.mockReset().mockReturnValue(pending.promise);
   mocks.getProject.mockReset().mockResolvedValue(PROJECT);
-  setApiInstance({ deleteProject: mocks.deleteProject, getProject: mocks.getProject } as unknown as ApiClient);
+  mocks.setProjectAccess.mockReset().mockResolvedValue({
+    project_id: PROJECT.id,
+    access: "restricted",
+    auto_added: 0,
+  });
+  mocks.listProjectMembers.mockReset().mockResolvedValue({ members: [] });
+  mocks.addProjectMembers.mockReset().mockResolvedValue({ added: 1 });
+  mocks.removeProjectMember.mockReset().mockResolvedValue(undefined);
+  setApiInstance({
+    deleteProject: mocks.deleteProject,
+    getProject: mocks.getProject,
+    setProjectAccess: mocks.setProjectAccess,
+    listProjectMembers: mocks.listProjectMembers,
+    addProjectMembers: mocks.addProjectMembers,
+    removeProjectMember: mocks.removeProjectMember,
+  } as unknown as ApiClient);
   mocks.getShareableUrl.mockClear();
   mocks.push.mockReset();
   mocks.recordVisit.mockReset();
@@ -407,5 +432,106 @@ describe("ProjectDetail project deletion", () => {
     expect(
       screen.queryByRole("button", { name: "Delete project" }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("ProjectDetail access", () => {
+  it("renders both access options and switches between workspace and restricted", async () => {
+    const user = userEvent.setup();
+    qc.setQueryData(projectKeys.detail("workspace-1", PROJECT.id), {
+      ...PROJECT,
+      access: "workspace",
+      can_manage_access: true,
+    });
+    renderProjectDetail();
+
+    expect(screen.queryByRole("img", { name: "Restricted project" })).toBeNull();
+
+    const accessSection = screen.getByRole("region", { name: "Access" });
+    const workspaceOption = within(accessSection).getByRole("radio", {
+      name: /Everyone in the workspace/i,
+    });
+    const restrictedOption = within(accessSection).getByRole("radio", {
+      name: /Only people added/i,
+    });
+    expect(workspaceOption).toHaveAttribute("aria-checked", "true");
+    expect(restrictedOption).toHaveAttribute("aria-checked", "false");
+
+    await user.click(restrictedOption);
+    await waitFor(() =>
+      expect(mocks.setProjectAccess).toHaveBeenCalledWith(PROJECT.id, {
+        access: "restricted",
+        member_ids: [],
+      }),
+    );
+  });
+
+  it("shows lock icon, lists granted members, and sends add/remove grant calls", async () => {
+    const user = userEvent.setup();
+    qc.setQueryData(projectKeys.detail("workspace-1", PROJECT.id), {
+      ...PROJECT,
+      access: "restricted",
+      can_manage_access: true,
+    });
+    mocks.listProjectMembers.mockResolvedValue({
+      members: [
+        {
+          user_id: "user-1",
+          name: "User One",
+          added_by: null,
+          created_at: "2026-06-01T00:00:00Z",
+        },
+      ],
+    });
+    renderProjectDetail();
+
+    expect(screen.getByRole("img", { name: "Restricted project" })).toBeInTheDocument();
+
+    const accessSection = screen.getByRole("region", { name: "Access" });
+    expect(await within(accessSection).findByText("User One")).toBeInTheDocument();
+
+    await user.click(within(accessSection).getByRole("button", { name: "Alice Member" }));
+    await waitFor(() =>
+      expect(mocks.addProjectMembers).toHaveBeenCalledWith(PROJECT.id, ["user-2"]),
+    );
+
+    await user.click(
+      within(accessSection).getByRole("button", { name: "Remove User One from project" }),
+    );
+    await waitFor(() =>
+      expect(mocks.removeProjectMember).toHaveBeenCalledWith(PROJECT.id, "user-1"),
+    );
+  });
+
+  it("keeps access controls read-only when can_manage_access is false", async () => {
+    qc.setQueryData(projectKeys.detail("workspace-1", PROJECT.id), {
+      ...PROJECT,
+      access: "restricted",
+      can_manage_access: false,
+    });
+    mocks.listProjectMembers.mockResolvedValue({
+      members: [
+        {
+          user_id: "user-1",
+          name: "User One",
+          added_by: null,
+          created_at: "2026-06-01T00:00:00Z",
+        },
+      ],
+    });
+    renderProjectDetail();
+
+    const accessSection = screen.getByRole("region", { name: "Access" });
+    expect(await within(accessSection).findByText("User One")).toBeInTheDocument();
+    expect(
+      within(accessSection).getByRole("radio", { name: /Everyone in the workspace/i }),
+    ).toBeDisabled();
+    expect(
+      within(accessSection).getByRole("radio", { name: /Only people added/i }),
+    ).toBeDisabled();
+    expect(within(accessSection).queryByRole("button", { name: /Add member/i })).toBeNull();
+    expect(
+      within(accessSection).queryByRole("button", { name: /Remove User One from project/i }),
+    ).toBeNull();
   });
 });

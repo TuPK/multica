@@ -165,6 +165,25 @@
     "confirm": "Delete",
     "cancel": "Cancel"
   },
+  "access": {
+    "section_header": "Access",
+    "restricted_label": "Restricted project",
+    "workspace_option": "Everyone in the workspace",
+    "restricted_option": "Only people added",
+    "add_member": "Add member",
+    "add_member_empty": "All workspace members already have access.",
+    "members_empty": "No members added yet.",
+    "remove_member_aria": "Remove {{name}} from project",
+    "toast_access_updated": "Project access updated",
+    "toast_access_failed": "Failed to update project access",
+    "toast_member_added": "Member added",
+    "toast_member_add_failed": "Failed to add member",
+    "toast_member_removed": "Member removed",
+    "toast_member_remove_failed": "Failed to remove member",
+    "error_project_not_found": "Project not found.",
+    "error_guest_forbidden": "Guests do not have permission for this action.",
+    "error_project_member_invalid": "This member cannot be updated for this project."
+  },
   "picker": {
     "no_project": "No project",
     "empty": "No projects yet",

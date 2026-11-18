@@ -3,17 +3,26 @@
 import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { useRegisterCommandBarContext } from "../../search/register-context";
 import { useDefaultLayout, usePanelRef } from "react-resizable-panels";
-import { Check, ChevronRight, FileQuestion, Link2, PanelRight, Pin, PinOff, Trash2, UserMinus } from "@multica/ui/icons";
+import { Check, ChevronRight, FileQuestion, Link2, Lock, PanelRight, Pin, PinOff, Plus, Trash2, UserMinus, X } from "@multica/ui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@multica/ui/lib/utils";
 import { copyText } from "@multica/ui/lib/clipboard";
 import { toast } from "sonner";
 import type { Project, ProjectStatus, ProjectPriority } from "@multica/core/types";
+import { errorCode } from "@multica/core/api";
+import type { ProjectAccess } from "@multica/core/api/schemas";
 import { useAuthStore } from "@multica/core/auth";
 import { canDeleteProject } from "@multica/core/projects/deletion-permissions";
-import { projectDetailOptions } from "@multica/core/projects/queries";
+import { projectDetailOptions, projectMembersOptions } from "@multica/core/projects/queries";
 import { Spinner } from "@multica/ui/components/ui/spinner";
-import { useUpdateProject, useDeleteProject, ProjectDeletionOfflineError } from "@multica/core/projects/mutations";
+import {
+  useUpdateProject,
+  useDeleteProject,
+  useSetProjectAccess,
+  useAddProjectMembers,
+  useRemoveProjectMember,
+  ProjectDeletionOfflineError,
+} from "@multica/core/projects/mutations";
 import { pinListOptions } from "@multica/core/pins";
 import { useCreatePin, useDeletePin } from "@multica/core/pins";
 import { memberListOptions, agentListOptions } from "@multica/core/workspace/queries";
@@ -107,6 +116,250 @@ function ProjectWorkflowPropRow({ project }: { project: Project }) {
     <PropRow label={t(($) => $.workflows.project.label)}>
       <ProjectWorkflowControl project={project} />
     </PropRow>
+  );
+}
+
+function ProjectAccessSection({
+  projectId,
+  access,
+  canManageAccess,
+  workspaceMembers,
+}: {
+  projectId: string;
+  access: ProjectAccess;
+  canManageAccess: boolean;
+  workspaceMembers: Array<{ user_id: string; name: string }>;
+}) {
+  const { t } = useT("projects");
+  const wsId = useWorkspaceId();
+  const isRestricted = access === "restricted";
+  const [open, setOpen] = useState(true);
+  const [addOpen, setAddOpen] = useState(false);
+  const [addFilter, setAddFilter] = useState("");
+
+  const { data: projectMembers = [] } = useQuery({
+    ...projectMembersOptions(wsId, projectId),
+    enabled: isRestricted && Boolean(wsId),
+  });
+  const setProjectAccess = useSetProjectAccess();
+  const addProjectMembers = useAddProjectMembers();
+  const removeProjectMember = useRemoveProjectMember();
+
+  const formatAccessError = useCallback(
+    (err: unknown, fallback: string) => {
+      const code = errorCode(err);
+      if (code === "project_not_found") return t(($) => $.access.error_project_not_found);
+      if (code === "guest_forbidden") return t(($) => $.access.error_guest_forbidden);
+      if (code === "project_member_invalid") return t(($) => $.access.error_project_member_invalid);
+      return err instanceof Error ? err.message : fallback;
+    },
+    [t],
+  );
+
+  const handleSelectAccess = (nextAccess: ProjectAccess) => {
+    if (!canManageAccess || nextAccess === access || setProjectAccess.isPending) return;
+    setProjectAccess.mutate(
+      { id: projectId, access: nextAccess, member_ids: [] },
+      {
+        onSuccess: () => toast.success(t(($) => $.access.toast_access_updated)),
+        onError: (err) =>
+          toast.error(formatAccessError(err, t(($) => $.access.toast_access_failed))),
+      },
+    );
+  };
+
+  const handleAddMember = (memberUserId: string) => {
+    if (!canManageAccess || addProjectMembers.isPending) return;
+    addProjectMembers.mutate(
+      { id: projectId, user_ids: [memberUserId] },
+      {
+        onSuccess: () => {
+          setAddOpen(false);
+          setAddFilter("");
+          toast.success(t(($) => $.access.toast_member_added));
+        },
+        onError: (err) =>
+          toast.error(formatAccessError(err, t(($) => $.access.toast_member_add_failed))),
+      },
+    );
+  };
+
+  const handleRemoveMember = (memberUserId: string) => {
+    if (!canManageAccess || removeProjectMember.isPending) return;
+    removeProjectMember.mutate(
+      { id: projectId, userId: memberUserId },
+      {
+        onSuccess: () => toast.success(t(($) => $.access.toast_member_removed)),
+        onError: (err) =>
+          toast.error(formatAccessError(err, t(($) => $.access.toast_member_remove_failed))),
+      },
+    );
+  };
+
+  const grantedIds = useMemo(
+    () => new Set(projectMembers.map((m) => m.user_id)),
+    [projectMembers],
+  );
+  const query = addFilter.trim().toLowerCase();
+  const ungrantedMembers = workspaceMembers.filter(
+    (m) =>
+      !grantedIds.has(m.user_id) &&
+      (m.name.toLowerCase().includes(query) || matchesPinyin(m.name, query)),
+  );
+
+  return (
+    <section aria-label={t(($) => $.access.section_header)}>
+      <button
+        type="button"
+        className={`flex w-full items-center gap-1 rounded-md px-2 py-1 text-caption font-medium transition-colors mb-2 hover:bg-accent/70 ${open ? "" : "text-muted-foreground hover:text-foreground"}`}
+        onClick={() => setOpen(!open)}
+      >
+        {t(($) => $.access.section_header)}
+        <ChevronRight
+          className={`!size-3 shrink-0 stroke-[2.5] text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`}
+        />
+      </button>
+      {open && (
+        <div className="space-y-3 pl-2">
+          <div
+            role="radiogroup"
+            aria-label={t(($) => $.access.section_header)}
+            className="space-y-1.5"
+          >
+            {(["workspace", "restricted"] as const).map((option) => {
+              const selected = access === option;
+              const label =
+                option === "workspace"
+                  ? t(($) => $.access.workspace_option)
+                  : t(($) => $.access.restricted_option);
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  disabled={!canManageAccess || setProjectAccess.isPending}
+                  onClick={() => handleSelectAccess(option)}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-left text-caption transition-colors",
+                    selected
+                      ? "border-primary/60 bg-accent/60 text-foreground hover:bg-accent"
+                      : "border-border text-muted-foreground hover:bg-accent/40 hover:text-foreground",
+                    (!canManageAccess || setProjectAccess.isPending) &&
+                      "cursor-not-allowed opacity-60",
+                  )}
+                >
+                  <Check
+                    className={cn(
+                      "size-3.5 shrink-0",
+                      selected ? "opacity-100 text-primary" : "opacity-0",
+                    )}
+                  />
+                  <span className="truncate">{label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {isRestricted && (
+            <div className="space-y-1.5">
+              {projectMembers.length === 0 ? (
+                <p className="text-caption text-muted-foreground">
+                  {t(($) => $.access.members_empty)}
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {projectMembers.map((pm) => {
+                    const displayName = pm.name || pm.user_id;
+                    return (
+                      <li
+                        key={pm.user_id}
+                        className="flex items-center justify-between gap-2 rounded-md px-1.5 py-1 hover:bg-accent/40"
+                      >
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                          <ActorAvatar
+                            actorType="member"
+                            actorId={pm.user_id}
+                            size="sm"
+                          />
+                          <span className="truncate text-caption">{displayName}</span>
+                        </div>
+                        {canManageAccess && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            aria-label={t(($) => $.access.remove_member_aria, {
+                              name: displayName,
+                            })}
+                            disabled={removeProjectMember.isPending}
+                            onClick={() => handleRemoveMember(pm.user_id)}
+                          >
+                            <X className="size-3.5" />
+                          </Button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              {canManageAccess && (
+                <Popover
+                  open={addOpen}
+                  onOpenChange={(next) => {
+                    setAddOpen(next);
+                    if (!next) setAddFilter("");
+                  }}
+                >
+                  <PopoverTrigger
+                    render={
+                      <Button type="button" variant="outline" size="xs">
+                        <Plus className="size-3.5" />
+                        {t(($) => $.access.add_member)}
+                      </Button>
+                    }
+                  />
+                  <PopoverContent align="start" className="w-56 p-1">
+                    <input
+                      type="text"
+                      value={addFilter}
+                      onChange={(e) => setAddFilter(e.target.value)}
+                      placeholder={t(($) => $.lead.assign_placeholder)}
+                      className="w-full border-b bg-transparent px-2 py-1.5 text-caption outline-none placeholder:text-muted-foreground"
+                    />
+                    <div className="max-h-48 overflow-y-auto pt-1">
+                      {ungrantedMembers.length === 0 ? (
+                        <div className="px-2 py-1.5 text-caption text-muted-foreground">
+                          {t(($) => $.access.add_member_empty)}
+                        </div>
+                      ) : (
+                        ungrantedMembers.map((m) => (
+                          <button
+                            key={m.user_id}
+                            type="button"
+                            disabled={addProjectMembers.isPending}
+                            onClick={() => handleAddMember(m.user_id)}
+                            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-caption transition-colors hover:bg-accent"
+                          >
+                            <ActorAvatar
+                              actorType="member"
+                              actorId={m.user_id}
+                              size="sm"
+                            />
+                            <span className="truncate">{m.name}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -282,6 +535,10 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
 
   const issueMetrics = getProjectIssueMetrics(project);
   const statusCfg = PROJECT_STATUS_CONFIG[project.status];
+  const projectAccess: ProjectAccess =
+    "access" in project && project.access === "restricted" ? "restricted" : "workspace";
+  const canManageAccess =
+    "can_manage_access" in project && project.can_manage_access === true;
 
   const sidebarContent = (
     <div className="space-y-5">
@@ -310,16 +567,25 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
             />
           </PopoverContent>
         </Popover>
-        <TitleEditor
-          key={`title-${projectId}`}
-          defaultValue={project.title}
-          placeholder={t(($) => $.detail.title_placeholder)}
-          className="mt-2 w-full text-title-sm font-semibold leading-snug tracking-tight"
-          onBlur={(value) => {
-            const trimmed = value.trim();
-            if (trimmed && trimmed !== project.title) handleUpdateField({ title: trimmed });
-          }}
-        />
+        <div className="mt-2 flex items-start gap-1.5">
+          {projectAccess === "restricted" && (
+            <Lock
+              role="img"
+              aria-label={t(($) => $.access.restricted_label)}
+              className="mt-1 size-4 shrink-0 text-muted-foreground"
+            />
+          )}
+          <TitleEditor
+            key={`title-${projectId}`}
+            defaultValue={project.title}
+            placeholder={t(($) => $.detail.title_placeholder)}
+            className="min-w-0 flex-1 text-title-sm font-semibold leading-snug tracking-tight"
+            onBlur={(value) => {
+              const trimmed = value.trim();
+              if (trimmed && trimmed !== project.title) handleUpdateField({ title: trimmed });
+            }}
+          />
+        </div>
       </div>
 
       {/* Properties */}
@@ -514,6 +780,14 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
 
       {/* Resources */}
       <ProjectResourcesSection projectId={projectId} />
+
+      {/* Access */}
+      <ProjectAccessSection
+        projectId={projectId}
+        access={projectAccess}
+        canManageAccess={canManageAccess}
+        workspaceMembers={members}
+      />
     </div>
   );
 

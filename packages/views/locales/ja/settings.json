@@ -1495,7 +1495,16 @@
     "member_groups_close": "完了",
     "member_groups_added": "{{group}} に追加しました",
     "member_groups_removed": "{{group}} から削除しました",
-    "member_groups_failed": "グループを更新できませんでした"
+    "member_groups_failed": "グループを更新できませんでした",
+    "guest_badge": "ゲスト",
+    "guest_toggle_label": "ゲスト",
+    "guest_toggle_aria": "{{name}} のゲストアクセス",
+    "invite_guest_label": "ゲストとして招待",
+    "invite_guest_projects_label": "プロジェクト",
+    "invite_guest_projects_empty": "プロジェクトはまだありません",
+    "toast_guest_updated": "ゲストアクセスを更新しました",
+    "error_guest_forbidden": "ゲストにはこの操作を行う権限がありません。",
+    "error_project_member_invalid": "オーナーと管理者はゲストにできず、ゲストはメンバーまたは閲覧者のロールである必要があります。"
   },
   "integrations": {
     "status_connected": "接続済み",

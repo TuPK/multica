@@ -184,7 +184,6 @@ import type {
   SendChatMessageResponse,
   StartMikaOnboardingResponse,
   CancelTaskResponse,
-  Project,
   CreateProjectRequest,
   UpdateProjectRequest,
   ListProjectsResponse,
@@ -226,7 +225,6 @@ import type {
   CreatePinRequest,
   PinnedItemType,
   ReorderPinsRequest,
-  Invitation,
   ShareLink,
   ShareLinkInfo,
   Autopilot,
@@ -854,6 +852,24 @@ import {
   ListProjectsResponseSchema,
   EMPTY_PROJECT,
   EMPTY_LIST_PROJECTS_RESPONSE,
+  SetProjectAccessResponseSchema,
+  EMPTY_SET_PROJECT_ACCESS_RESPONSE,
+  ListProjectMembersResponseSchema,
+  EMPTY_LIST_PROJECT_MEMBERS_RESPONSE,
+  AddProjectMembersResponseSchema,
+  MemberWithUserSchema,
+  MemberWithUserListSchema,
+  EMPTY_MEMBER_WITH_USER,
+  InvitationSchema,
+  InvitationListSchema,
+  EMPTY_INVITATION,
+  type ProjectAccess,
+  type ProjectWithAccess,
+  type SetProjectAccessResponse,
+  type ListProjectMembersResponse,
+  type AddProjectMembersResponse,
+  type MemberWithGuest,
+  type InvitationWithGuest,
   SearchProjectsResponseSchema,
   SearchIndexManifestSchema,
   SearchIndexSnapshotPageSchema,
@@ -1066,6 +1082,15 @@ import {
   type IssueViewPreference,
   type CreateIssueViewRequest,
 } from "./schemas";
+
+export type CreateMemberPayload = CreateMemberRequest & {
+  is_guest?: boolean;
+  guest_project_ids?: string[];
+};
+
+export type UpdateMemberPayload = UpdateMemberRequest & {
+  is_guest?: boolean;
+};
 
 /** Identifies the calling client to the server.
  *  Sent on every HTTP request as X-Client-Platform / X-Client-Version /
@@ -4743,21 +4768,30 @@ export class ApiClient {
   }
 
   // Members
-  async listMembers(workspaceId: string): Promise<MemberWithUser[]> {
-    return this.fetch(`/api/workspaces/${workspaceId}/members`);
-  }
-
-  async createMember(workspaceId: string, data: CreateMemberRequest): Promise<Invitation> {
-    return this.fetch(`/api/workspaces/${workspaceId}/members`, {
-      method: "POST",
-      body: JSON.stringify(data),
+  async listMembers(workspaceId: string): Promise<MemberWithGuest[]> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${workspaceId}/members`);
+    return parseWithFallback(raw, MemberWithUserListSchema, [], {
+      endpoint: "GET /api/workspaces/{id}/members",
     });
   }
 
-  async updateMember(workspaceId: string, memberId: string, data: UpdateMemberRequest): Promise<MemberWithUser> {
-    return this.fetch(`/api/workspaces/${workspaceId}/members/${memberId}`, {
+  async createMember(workspaceId: string, data: CreateMemberPayload): Promise<InvitationWithGuest> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${workspaceId}/members`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, InvitationSchema, EMPTY_INVITATION, {
+      endpoint: "POST /api/workspaces/{id}/members",
+    });
+  }
+
+  async updateMember(workspaceId: string, memberId: string, data: UpdateMemberPayload): Promise<MemberWithGuest> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${workspaceId}/members/${memberId}`, {
       method: "PATCH",
       body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, MemberWithUserSchema, EMPTY_MEMBER_WITH_USER, {
+      endpoint: "PATCH /api/workspaces/{id}/members/{memberId}",
     });
   }
 
@@ -4774,8 +4808,11 @@ export class ApiClient {
   }
 
   // Invitations
-  async listWorkspaceInvitations(workspaceId: string): Promise<Invitation[]> {
-    return this.fetch(`/api/workspaces/${workspaceId}/invitations`);
+  async listWorkspaceInvitations(workspaceId: string): Promise<InvitationWithGuest[]> {
+    const raw = await this.fetch<unknown>(`/api/workspaces/${workspaceId}/invitations`);
+    return parseWithFallback(raw, InvitationListSchema, [], {
+      endpoint: "GET /api/workspaces/{id}/invitations",
+    });
   }
 
   async revokeInvitation(workspaceId: string, invitationId: string): Promise<void> {
@@ -4784,17 +4821,26 @@ export class ApiClient {
     });
   }
 
-  async listMyInvitations(): Promise<Invitation[]> {
-    return this.fetch("/api/invitations");
+  async listMyInvitations(): Promise<InvitationWithGuest[]> {
+    const raw = await this.fetch<unknown>("/api/invitations");
+    return parseWithFallback(raw, InvitationListSchema, [], {
+      endpoint: "GET /api/invitations",
+    });
   }
 
-  async getInvitation(invitationId: string): Promise<Invitation> {
-    return this.fetch(`/api/invitations/${invitationId}`);
+  async getInvitation(invitationId: string): Promise<InvitationWithGuest> {
+    const raw = await this.fetch<unknown>(`/api/invitations/${invitationId}`);
+    return parseWithFallback(raw, InvitationSchema, EMPTY_INVITATION, {
+      endpoint: "GET /api/invitations/{id}",
+    });
   }
 
-  async acceptInvitation(invitationId: string): Promise<MemberWithUser> {
-    return this.fetch(`/api/invitations/${invitationId}/accept`, {
+  async acceptInvitation(invitationId: string): Promise<MemberWithGuest> {
+    const raw = await this.fetch<unknown>(`/api/invitations/${invitationId}/accept`, {
       method: "POST",
+    });
+    return parseWithFallback(raw, MemberWithUserSchema, EMPTY_MEMBER_WITH_USER, {
+      endpoint: "POST /api/invitations/{id}/accept",
     });
   }
 
@@ -5533,7 +5579,7 @@ export class ApiClient {
   }
 
   // Projects
-  async listProjects(params?: { status?: string }): Promise<ListProjectsResponse> {
+  async listProjects(params?: { status?: string }): Promise<ListProjectsResponse & { projects: ProjectWithAccess[] }> {
     const search = new URLSearchParams();
     if (params?.status) search.set("status", params.status);
     const raw = await this.fetch<unknown>(`/api/projects?${search}`);
@@ -5542,12 +5588,12 @@ export class ApiClient {
     });
   }
 
-  async getProject(id: string): Promise<Project> {
+  async getProject(id: string): Promise<ProjectWithAccess> {
     const raw = await this.fetch<unknown>(`/api/projects/${id}`);
     return parseWithFallback(raw, ProjectSchema, EMPTY_PROJECT, { endpoint: "GET /api/projects/:id" });
   }
 
-  async createProject(data: CreateProjectRequest): Promise<Project> {
+  async createProject(data: CreateProjectRequest): Promise<ProjectWithAccess> {
     const raw = await this.fetch<unknown>("/api/projects", {
       method: "POST",
       body: JSON.stringify(data),
@@ -5555,7 +5601,7 @@ export class ApiClient {
     return parseWithFallback(raw, ProjectSchema, EMPTY_PROJECT, { endpoint: "POST /api/projects" });
   }
 
-  async updateProject(id: string, data: UpdateProjectRequest): Promise<Project> {
+  async updateProject(id: string, data: UpdateProjectRequest): Promise<ProjectWithAccess> {
     const raw = await this.fetch<unknown>(`/api/projects/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
@@ -5565,6 +5611,57 @@ export class ApiClient {
 
   async deleteProject(id: string): Promise<void> {
     await this.fetch(`/api/projects/${id}`, { method: "DELETE" });
+  }
+
+  async setProjectAccess(
+    projectId: string,
+    data: { access: ProjectAccess; member_ids?: string[] },
+  ): Promise<SetProjectAccessResponse> {
+    const raw = await this.fetch<unknown>(`/api/projects/${projectId}/access`, {
+      method: "PUT",
+      body: JSON.stringify({
+        access: data.access,
+        member_ids: data.member_ids ?? [],
+      }),
+    });
+    return parseWithFallback(
+      raw,
+      SetProjectAccessResponseSchema,
+      EMPTY_SET_PROJECT_ACCESS_RESPONSE,
+      { endpoint: "PUT /api/projects/:id/access" },
+    );
+  }
+
+  async listProjectMembers(projectId: string): Promise<ListProjectMembersResponse> {
+    const raw = await this.fetch<unknown>(`/api/projects/${projectId}/members`);
+    return parseWithFallback(
+      raw,
+      ListProjectMembersResponseSchema,
+      EMPTY_LIST_PROJECT_MEMBERS_RESPONSE,
+      { endpoint: "GET /api/projects/:id/members" },
+    );
+  }
+
+  async addProjectMembers(
+    projectId: string,
+    userIds: string[],
+  ): Promise<AddProjectMembersResponse> {
+    const raw = await this.fetch<unknown>(`/api/projects/${projectId}/members`, {
+      method: "POST",
+      body: JSON.stringify({ user_ids: userIds }),
+    });
+    return parseWithFallback(
+      raw,
+      AddProjectMembersResponseSchema,
+      { added: 0 },
+      { endpoint: "POST /api/projects/:id/members" },
+    );
+  }
+
+  async removeProjectMember(projectId: string, userId: string): Promise<void> {
+    await this.fetch(`/api/projects/${projectId}/members/${userId}`, {
+      method: "DELETE",
+    });
   }
 
   // Project resources

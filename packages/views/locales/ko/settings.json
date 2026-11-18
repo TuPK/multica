@@ -1209,7 +1209,16 @@
     "member_groups_close": "완료",
     "member_groups_added": "{{group}}에 추가되었습니다",
     "member_groups_removed": "{{group}}에서 제거되었습니다",
-    "member_groups_failed": "그룹을 업데이트하지 못했습니다"
+    "member_groups_failed": "그룹을 업데이트하지 못했습니다",
+    "guest_badge": "게스트",
+    "guest_toggle_label": "게스트",
+    "guest_toggle_aria": "{{name}}의 게스트 접근 권한",
+    "invite_guest_label": "게스트로 초대",
+    "invite_guest_projects_label": "프로젝트",
+    "invite_guest_projects_empty": "아직 프로젝트가 없습니다",
+    "toast_guest_updated": "게스트 접근 권한이 업데이트되었습니다",
+    "error_guest_forbidden": "게스트는 이 작업을 수행할 권한이 없습니다.",
+    "error_project_member_invalid": "소유자와 관리자는 게스트가 될 수 없으며 게스트는 멤버 또는 뷰어 역할을 유지해야 합니다."
   },
   "lark": {
     "section_title": "Lark",

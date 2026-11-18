@@ -1495,7 +1495,16 @@
     "member_groups_close": "完成",
     "member_groups_added": "已添加到 {{group}}",
     "member_groups_removed": "已从 {{group}} 移除",
-    "member_groups_failed": "更新账号组失败"
+    "member_groups_failed": "更新账号组失败",
+    "guest_badge": "访客",
+    "guest_toggle_label": "访客",
+    "guest_toggle_aria": "{{name}} 的访客权限",
+    "invite_guest_label": "作为访客邀请",
+    "invite_guest_projects_label": "项目",
+    "invite_guest_projects_empty": "还没有项目",
+    "toast_guest_updated": "访客权限已更新",
+    "error_guest_forbidden": "访客没有执行此操作的权限。",
+    "error_project_member_invalid": "所有者和管理员不能设为访客，且访客必须保持成员或查看者角色。"
   },
   "integrations": {
     "status_connected": "已连接",
