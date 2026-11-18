@@ -377,7 +377,7 @@ func (s *KnowledgeService) UpdateDocumentProperties(ctx context.Context, workspa
 			return KnowledgeDocumentView{}, fmt.Errorf("record property change: %w", err)
 		}
 	}
-	return s.linkView(ctx, workspaceID, updated)
+	return s.linkViewFor(ctx, workspaceID, actor, updated)
 }
 
 func knownField(fields []KindField, key string) error {

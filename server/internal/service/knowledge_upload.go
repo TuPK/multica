@@ -161,7 +161,7 @@ func (s *KnowledgeService) UploadDocument(ctx context.Context, workspaceID pgtyp
 		return KnowledgeDocumentView{}, false, fmt.Errorf("load upload: %w", err)
 	}
 	if claimed == 0 && link.State != KnowledgeLinkFailed {
-		view, err := s.linkView(ctx, workspaceID, link)
+		view, err := s.linkViewFor(ctx, workspaceID, actor, link)
 		return view, false, err
 	}
 
@@ -183,6 +183,6 @@ func (s *KnowledgeService) UploadDocument(ctx context.Context, workspaceID pgtyp
 	if err != nil {
 		return KnowledgeDocumentView{}, false, fmt.Errorf("record upload: %w", err)
 	}
-	view, err := s.linkView(ctx, workspaceID, settled)
+	view, err := s.linkViewFor(ctx, workspaceID, actor, settled)
 	return view, true, err
 }

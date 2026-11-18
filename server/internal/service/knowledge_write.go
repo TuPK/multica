@@ -419,6 +419,12 @@ func (s *KnowledgeService) CreateDocument(ctx context.Context, workspaceID pgtyp
 		return KnowledgeDocumentView{}, false, fmt.Errorf("load knowledge base: %w", err)
 	}
 	if in.SupersedesLinkID.Valid {
+		if hidden, herr := s.linkHiddenFrom(ctx, workspaceID, actor, in.SupersedesLinkID); herr != nil {
+			return KnowledgeDocumentView{}, false, fmt.Errorf("load superseded document: %w", herr)
+		} else if hidden {
+			// A document the actor cannot see answers like a missing one.
+			return KnowledgeDocumentView{}, false, &KnowledgeInvalidError{"supersedes_id is not a document of this workspace"}
+		}
 		if _, err := s.Queries.GetKnowledgeLink(ctx, db.GetKnowledgeLinkParams{ID: in.SupersedesLinkID, WorkspaceID: workspaceID}); errors.Is(err, pgx.ErrNoRows) {
 			return KnowledgeDocumentView{}, false, &KnowledgeInvalidError{"supersedes_id is not a document of this workspace"}
 		} else if err != nil {
@@ -497,7 +503,7 @@ func (s *KnowledgeService) CreateDocument(ctx context.Context, workspaceID pgtyp
 	}
 	if claimed == 0 && link.State != KnowledgeLinkFailed {
 		// A retry of a write that already landed.
-		view, err := s.linkView(ctx, workspaceID, link)
+		view, err := s.linkViewFor(ctx, workspaceID, actor, link)
 		return view, false, err
 	}
 
@@ -522,7 +528,7 @@ func (s *KnowledgeService) CreateDocument(ctx context.Context, workspaceID pgtyp
 		})
 	}
 	s.linkInitiativeArtifact(ctx, settled, actor)
-	view, err := s.linkView(ctx, workspaceID, settled)
+	view, err := s.linkViewFor(ctx, workspaceID, actor, settled)
 	return view, true, err
 }
 
@@ -872,6 +878,7 @@ func (s *KnowledgeService) ListDocumentsFor(ctx context.Context, workspaceID pgt
 			if _, ok := bases[util.UUIDToString(l.KnowledgeBaseID)]; ok {
 				v := linkViewWith(bases, l)
 				v.Superseded = supersededSet[v.ID]
+				s.maskHiddenReferences(ctx, workspaceID, actor, &v)
 				out.Documents = append(out.Documents, v)
 			}
 		}
@@ -1038,6 +1045,17 @@ func (s *KnowledgeService) hitTaxonomy(ctx context.Context, workspaceID pgtype.U
 	return out, nil
 }
 
+// linkViewFor is linkView for a document handed to the actor, with the ids of
+// what the actor cannot see removed.
+func (s *KnowledgeService) linkViewFor(ctx context.Context, workspaceID pgtype.UUID, actor KnowledgeActor, l db.KnowledgeLink) (KnowledgeDocumentView, error) {
+	v, err := s.linkView(ctx, workspaceID, l)
+	if err != nil {
+		return v, err
+	}
+	s.maskHiddenReferences(ctx, workspaceID, actor, &v)
+	return v, nil
+}
+
 func (s *KnowledgeService) linkView(ctx context.Context, workspaceID pgtype.UUID, l db.KnowledgeLink) (KnowledgeDocumentView, error) {
 	bases, err := s.baseKeys(ctx, workspaceID)
 	if err != nil {
@@ -1069,6 +1087,87 @@ func (s *KnowledgeService) documentProperties(ctx context.Context, workspaceID p
 		return nil, fmt.Errorf("encode properties: %w", err)
 	}
 	return raw, nil
+}
+
+// linkHiddenFrom reports whether the document lives in a project base the actor
+// cannot see. A missing document is not hidden: it is simply missing.
+func (s *KnowledgeService) linkHiddenFrom(ctx context.Context, workspaceID pgtype.UUID, actor KnowledgeActor, linkID pgtype.UUID) (bool, error) {
+	if !actor.restrictsProjects() {
+		return false, nil
+	}
+	link, err := s.Queries.GetKnowledgeLink(ctx, db.GetKnowledgeLinkParams{ID: linkID, WorkspaceID: workspaceID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	base, err := s.baseByID(ctx, workspaceID, link.KnowledgeBaseID)
+	if err != nil {
+		return false, err
+	}
+	return actor.hides(base.Key), nil
+}
+
+// sourceHiddenFrom reports whether a document's source (an issue, a comment's
+// issue or a project) belongs to a project the actor cannot see. It reuses the
+// actor's hidden project bases, so there is one rule for what a project hides.
+func (s *KnowledgeService) sourceHiddenFrom(ctx context.Context, workspaceID pgtype.UUID, actor KnowledgeActor, sourceType string, sourceID pgtype.UUID) (bool, error) {
+	if !actor.restrictsProjects() || !sourceID.Valid {
+		return false, nil
+	}
+	projectID := pgtype.UUID{}
+	switch sourceType {
+	case "project":
+		projectID = sourceID
+	case "issue", "comment":
+		issueID := sourceID
+		if sourceType == "comment" {
+			c, err := s.Queries.GetCommentInWorkspace(ctx, db.GetCommentInWorkspaceParams{ID: sourceID, WorkspaceID: workspaceID})
+			if errors.Is(err, pgx.ErrNoRows) {
+				return false, nil
+			}
+			if err != nil {
+				return false, err
+			}
+			issueID = c.IssueID
+		}
+		issue, err := s.Queries.GetIssueInWorkspace(ctx, db.GetIssueInWorkspaceParams{ID: issueID, WorkspaceID: workspaceID})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		if err != nil {
+			return false, err
+		}
+		projectID = issue.ProjectID
+	default:
+		return false, nil
+	}
+	return projectID.Valid && actor.hides(ProjectBaseKey(projectID)), nil
+}
+
+// maskHiddenReferences removes from a document view the ids of what the actor
+// cannot see: the document it replaces and the issue or project it was written
+// from. The fields go null, as for a document that has none. If the answer
+// cannot be computed the references are removed.
+func (s *KnowledgeService) maskHiddenReferences(ctx context.Context, workspaceID pgtype.UUID, actor KnowledgeActor, v *KnowledgeDocumentView) {
+	if !actor.restrictsProjects() {
+		return
+	}
+	if v.SupersedesID != nil {
+		if id, err := util.ParseUUID(*v.SupersedesID); err != nil {
+			v.SupersedesID = nil
+		} else if hidden, err := s.linkHiddenFrom(ctx, workspaceID, actor, id); err != nil || hidden {
+			v.SupersedesID = nil
+		}
+	}
+	if v.SourceID != nil {
+		if id, err := util.ParseUUID(*v.SourceID); err != nil {
+			v.SourceID = nil
+		} else if hidden, err := s.sourceHiddenFrom(ctx, workspaceID, actor, v.SourceType, id); err != nil || hidden {
+			v.SourceID = nil
+		}
+	}
 }
 
 func linkViewWith(bases map[string]db.KnowledgeBase, l db.KnowledgeLink) KnowledgeDocumentView {
