@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "note": "Seed set. Bugs come from this repository's history: the commit that introduced the bug is the reviewed change, and the answer key is the fix that later corrected it. Two bugs and one control are too few to measure recall; grow the set (see README.md) before reading any number as a rate.",
+  "cases": [
+    {
+      "id": "group-name-in-audit",
+      "split": "tuning",
+      "kind": "bug",
+      "base": "d277fd43b^",
+      "head": "d277fd43b",
+      "files": ["server/internal/handler/member_group.go"],
+      "keywords": ["group name", "targetlabel"],
+      "answer": "The group audit rows set TargetLabel to the group name, so group names leak into the audit log.",
+      "fixedBy": "05df7a442"
+    },
+    {
+      "id": "workspace-created-audit-route",
+      "split": "fixed",
+      "kind": "bug",
+      "base": "fbe02d53f^",
+      "head": "fbe02d53f",
+      "files": ["server/internal/handler/workspace.go"],
+      "keywords": ["recordauditwith", "workspace.created"],
+      "answer": "CreateWorkspace writes the workspace.created audit row through recordAuditWith on the query transaction instead of recordAudit, so CreateWorkspace no longer has a recordAudit call and the audit-catalog test fails.",
+      "fixedBy": "efca4f429"
+    },
+    {
+      "id": "clean-tooltip-change",
+      "split": "control",
+      "kind": "control",
+      "base": "d51665feb^",
+      "head": "d51665feb",
+      "files": [],
+      "keywords": [],
+      "answer": "No bug. Merged, never reverted, and no later fix touched its files."
+    }
+  ]
+}
