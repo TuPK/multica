@@ -401,6 +401,21 @@
     "loading": "正在載入訂單...",
     "not_found": "找不到訂單",
     "load_failed": "載入訂單失敗",
-    "usage_lines_title": "用量明細"
+    "usage_lines_title": "用量明細",
+    "einvoice": {
+      "title": "電子發票",
+      "number_label": "發票號碼",
+      "view_link": "查看電子發票",
+      "missing_fields": "缺少欄位：{{fields}}",
+      "already_issued": "此電子發票已開立",
+      "status": {
+        "pending": "待開立",
+        "issued": "已開立",
+        "needs_info": "需要補充買方資訊",
+        "failed": "開立失敗",
+        "cancelled": "已作廢",
+        "unknown": "未知"
+      }
+    }
   }
 }

@@ -54,6 +54,25 @@ export interface WorkspaceOrderBank {
   accountNumber: string;
 }
 
+export const WORKSPACE_ORDER_EINVOICE_STATES = [
+  "pending",
+  "issued",
+  "needs_info",
+  "failed",
+  "cancelled",
+] as const;
+
+export type WorkspaceOrderEinvoiceState =
+  | (typeof WORKSPACE_ORDER_EINVOICE_STATES)[number]
+  | "unknown";
+
+export interface WorkspaceOrderEinvoice {
+  state: WorkspaceOrderEinvoiceState;
+  number: string;
+  lookupUrl: string;
+  missingFields: string[];
+}
+
 export interface WorkspaceOrder {
   id: string;
   workspaceId: string;
@@ -83,6 +102,7 @@ export interface WorkspaceOrder {
   expiresAt: string | null;
   paidAt: string | null;
   createdAt: string;
+  einvoice: WorkspaceOrderEinvoice | null;
 }
 
 export interface UpdateWorkspaceOrderBuyerInput {

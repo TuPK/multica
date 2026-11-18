@@ -85,7 +85,7 @@ import {
   EMPTY_ISSUE_STATUS_ENTRY,
 } from "./schemas";
 import { IssueUnreadPageSchema, EMPTY_ISSUE_UNREAD_PAGE } from "./schemas";
-import { ScheduledPriceChangeSchema } from "./schemas";
+import { ScheduledPriceChangeSchema, WorkspaceOrderEinvoiceSchema } from "./schemas";
 import { parseWithFallback } from "./schema";
 
 describe("IssueUnreadPageSchema", () => {
@@ -2789,6 +2789,94 @@ describe("ScheduledPriceChangeSchema", () => {
         parseWithFallback(bad, ScheduledPriceChangeSchema, null, {
           endpoint: "GET /api/workspaces/{id}/plans",
         }),
+      ).toBeNull();
+    }
+  });
+});
+
+describe("WorkspaceOrderEinvoiceSchema", () => {
+  const endpoint = "GET /api/workspaces/{id}/orders/{orderId}";
+
+  it("parses valid einvoice states and camelCases fields", () => {
+    const parsed = parseWithFallback(
+      {
+        state: "issued",
+        number: "00001234",
+        lookup_url: "https://einvoice.sepay.vn/lookup/abc",
+        missing_fields: [],
+      },
+      WorkspaceOrderEinvoiceSchema,
+      null,
+      { endpoint },
+    );
+    expect(parsed).toEqual({
+      state: "issued",
+      number: "00001234",
+      lookupUrl: "https://einvoice.sepay.vn/lookup/abc",
+      missingFields: [],
+    });
+
+    for (const state of ["pending", "issued", "needs_info", "failed", "cancelled"] as const) {
+      expect(WorkspaceOrderEinvoiceSchema.parse({ state })?.state).toBe(state);
+    }
+  });
+
+  it("defaults optional fields and treats absent/null einvoice as null", () => {
+    expect(
+      WorkspaceOrderEinvoiceSchema.parse({ state: "needs_info", missing_fields: ["tax_code"] }),
+    ).toEqual({
+      state: "needs_info",
+      number: "",
+      lookupUrl: "",
+      missingFields: ["tax_code"],
+    });
+    expect(WorkspaceOrderEinvoiceSchema.parse(undefined)).toBeNull();
+    expect(WorkspaceOrderEinvoiceSchema.parse(null)).toBeNull();
+  });
+
+  it("falls back unknown enum values to unknown and clears non-https lookup URLs", () => {
+    expect(
+      WorkspaceOrderEinvoiceSchema.parse({
+        state: "awaiting_provider",
+        lookup_url: "http://example.com/inv",
+      }),
+    ).toEqual({
+      state: "unknown",
+      number: "",
+      lookupUrl: "",
+      missingFields: [],
+    });
+
+    expect(
+      WorkspaceOrderEinvoiceSchema.parse({
+        state: "issued",
+        lookup_url: "javascript:alert(1)",
+      }),
+    ).toEqual({
+      state: "issued",
+      number: "",
+      lookupUrl: "",
+      missingFields: [],
+    });
+  });
+
+  it("rejects wrong-shape einvoice payloads and returns null via parseWithFallback", () => {
+    for (const bad of [
+      {},
+      { state: "" },
+      { state: 123 },
+      { state: null },
+      { state: "issued", number: 123 },
+      { state: "issued", lookup_url: 123 },
+      { state: "issued", missing_fields: "tax_code" },
+      { state: "issued", missing_fields: [123] },
+      "bad",
+      123,
+      [],
+    ]) {
+      expect(WorkspaceOrderEinvoiceSchema.safeParse(bad).success).toBe(false);
+      expect(
+        parseWithFallback(bad, WorkspaceOrderEinvoiceSchema, null, { endpoint }),
       ).toBeNull();
     }
   });

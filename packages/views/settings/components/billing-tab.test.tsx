@@ -19,11 +19,13 @@ const mocks = vi.hoisted(() => ({
   portal: vi.fn(),
   previewSeats: vi.fn(),
   purchaseSeats: vi.fn(),
+  updateInvoiceBuyer: vi.fn(),
   refetch: vi.fn(),
   refetchSummary: vi.fn(),
   refetchUsage: vi.fn(),
   refetchSubscriptionUsage: vi.fn(),
   refetchOrders: vi.fn(),
+  refetchOrderDetail: vi.fn(),
   refetchOrderUsage: vi.fn(),
   refetchIssueLimitUsage: vi.fn(),
   refetchPrices: vi.fn(),
@@ -35,6 +37,7 @@ const mocks = vi.hoisted(() => ({
   orders: [] as any[],
   ordersLoading: false,
   ordersError: false,
+  orderDetailById: {} as Record<string, any>,
   orderUsageById: {} as Record<string, any>,
   subscriptionUsage: null as any,
   subscriptionUsagePending: false,
@@ -163,8 +166,16 @@ vi.mock("@multica/core/billing", () => ({
   workspaceOrdersOptions: (wsId: string) => ({
     queryKey: ["workspace-orders", wsId, "list"],
   }),
+  workspaceOrderOptions: (wsId: string, orderId: string) => ({
+    queryKey: ["workspace-orders", wsId, "detail", orderId],
+    enabled: Boolean(wsId && orderId),
+  }),
   workspaceOrderUsageOptions: (wsId: string, orderId: string) => ({
     queryKey: ["workspace-orders", wsId, "usage", orderId],
+  }),
+  useUpdateWorkspaceOrderInvoiceBuyer: () => ({
+    mutateAsync: (...args: any[]) => mocks.updateInvoiceBuyer(...args),
+    isPending: false,
   }),
   workspaceSubscriptionPricesOptions: (wsId: string) => ({
     queryKey: ["workspace-subscriptions", wsId, "prices"],
@@ -308,6 +319,7 @@ describe("BillingTab", () => {
     mocks.orders = [];
     mocks.ordersLoading = false;
     mocks.ordersError = false;
+    mocks.orderDetailById = {};
     mocks.orderUsageById = {};
     mocks.subscriptionUsage = null;
     mocks.subscriptionUsagePending = false;
@@ -424,6 +436,19 @@ describe("BillingTab", () => {
           isFetching: false,
           isError: mocks.ordersError,
           refetch: mocks.refetchOrders,
+        };
+      }
+      if (
+        queryKey?.[0] === "workspace-orders" &&
+        queryKey?.[2] === "detail"
+      ) {
+        const orderId = String(queryKey?.[3] ?? "");
+        return {
+          data: mocks.orderDetailById[orderId] ?? null,
+          isPending: false,
+          isFetching: false,
+          isError: false,
+          refetch: mocks.refetchOrderDetail,
         };
       }
       if (
@@ -2271,6 +2296,147 @@ describe("BillingTab", () => {
       expect(
         screen.queryByRole("button", { name: "Personal" }),
       ).not.toBeInTheDocument();
+    });
+
+    describe("e-invoice", () => {
+      const basePaidOrder = {
+        id: "ord-paid-1",
+        workspaceId: "workspace-1",
+        kind: "subscribe",
+        planKey: "pro",
+        interval: "month",
+        seats: 3,
+        amount: 447000,
+        vatAmount: 44700,
+        totalAmount: 491700,
+        currency: "vnd",
+        status: "paid",
+        provider: "manual",
+        transferCode: "MUL-PAID-1",
+        bankDetails: { bankName: "", accountName: "", accountNumber: "" },
+        buyer: {
+          name: "Acme Corp",
+          taxCode: "0101234567",
+          address: "1 Le Loi",
+          invoiceEmail: "billing@acme.test",
+        },
+        periodStart: "2026-07-01T00:00:00Z",
+        periodEnd: "2026-08-01T00:00:00Z",
+        expiresAt: null,
+        paidAt: "2026-07-01T01:00:00Z",
+        createdAt: "2026-07-01T00:00:00Z",
+        einvoice: null,
+      };
+
+      it("shows nothing when einvoice is absent on a paid order", async () => {
+        const user = userEvent.setup();
+        mocks.orders = [basePaidOrder];
+        mocks.orderDetailById["ord-paid-1"] = { ...basePaidOrder, einvoice: null };
+
+        renderWithI18n(<BillingTab />);
+
+        expect(screen.queryByRole("link", { name: /View e-invoice/ })).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "View details" }));
+        expect(screen.queryByText("E-invoice")).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: /View e-invoice/ })).not.toBeInTheDocument();
+      });
+
+      it("shows the https lookup link when expanded paid order detail is issued, and omits unsafe URLs", async () => {
+        const user = userEvent.setup();
+        mocks.orders = [basePaidOrder];
+        mocks.orderDetailById["ord-paid-1"] = {
+          ...basePaidOrder,
+          einvoice: {
+            state: "issued",
+            number: "00009999",
+            lookupUrl: "https://einvoice.sepay.vn/lookup/ord-1",
+            missingFields: [],
+          },
+        };
+
+        const { unmount } = renderWithI18n(<BillingTab />);
+        await user.click(screen.getByRole("button", { name: "View details" }));
+
+        const link = await screen.findByRole("link", { name: /View e-invoice/ });
+        expect(link).toHaveAttribute("href", "https://einvoice.sepay.vn/lookup/ord-1");
+        expect(screen.getByText("00009999")).toBeInTheDocument();
+        unmount();
+
+        mocks.orderDetailById["ord-paid-1"] = {
+          ...basePaidOrder,
+          einvoice: {
+            state: "issued",
+            number: "00009999",
+            lookupUrl: "http://insecure.example.com/ord-1",
+            missingFields: [],
+          },
+        };
+        renderWithI18n(<BillingTab />);
+        await user.click(screen.getByRole("button", { name: "View details" }));
+        expect(await screen.findByText("Issued")).toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: /View e-invoice/ })).not.toBeInTheDocument();
+      });
+
+      it("shows the buyer edit form for needs_info and failed states and submits update", async () => {
+        const user = userEvent.setup();
+        mocks.updateInvoiceBuyer.mockResolvedValue({
+          ...basePaidOrder,
+          einvoice: {
+            state: "pending",
+            number: "",
+            lookupUrl: "",
+            missingFields: [],
+          },
+        });
+        mocks.orders = [basePaidOrder];
+        mocks.orderDetailById["ord-paid-1"] = {
+          ...basePaidOrder,
+          einvoice: {
+            state: "needs_info",
+            number: "",
+            lookupUrl: "",
+            missingFields: ["tax_code"],
+          },
+        };
+
+        const { unmount } = renderWithI18n(<BillingTab />);
+        await user.click(screen.getByRole("button", { name: "View details" }));
+
+        expect(await screen.findByText("Needs buyer details")).toBeInTheDocument();
+        const taxInput = screen.getByLabelText("Tax code");
+        await user.clear(taxInput);
+        await user.type(taxInput, "0301112223");
+        await user.click(screen.getByRole("button", { name: "Save buyer details" }));
+
+        await waitFor(() => {
+          expect(mocks.updateInvoiceBuyer).toHaveBeenCalledWith({
+            orderId: "ord-paid-1",
+            buyer: {
+              name: "Acme Corp",
+              taxCode: "0301112223",
+              address: "1 Le Loi",
+              invoiceEmail: "billing@acme.test",
+            },
+          });
+        });
+        unmount();
+
+        mocks.orderDetailById["ord-paid-1"] = {
+          ...basePaidOrder,
+          einvoice: {
+            state: "failed",
+            number: "",
+            lookupUrl: "",
+            missingFields: [],
+          },
+        };
+        renderWithI18n(<BillingTab />);
+        await user.click(screen.getByRole("button", { name: "View details" }));
+        expect(await screen.findByText("Failed")).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: "Save buyer details" }),
+        ).toBeEnabled();
+      });
     });
   });
 });

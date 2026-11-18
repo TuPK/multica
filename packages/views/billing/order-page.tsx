@@ -7,13 +7,11 @@ import {
   Building2,
   Calendar,
   Check,
-  CheckCircle2,
   Copy,
   CreditCard,
   FileText,
-  Loader2,
 } from "@multica/ui/icons";
-import { api, ApiError } from "@multica/core/api";
+import { api } from "@multica/core/api";
 import { useCurrentWorkspace } from "@multica/core/paths";
 import {
   Alert,
@@ -29,11 +27,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@multica/ui/components/ui/card";
-import { Input } from "@multica/ui/components/ui/input";
 import { Skeleton } from "@multica/ui/components/ui/skeleton";
 import { useLocale, useT } from "../i18n";
 import { useNavigation } from "../navigation";
 import { formatStripeMinorAmount } from "../settings/components/billing-format";
+import {
+  EinvoiceStatusSummary,
+  OrderBuyerForm,
+  canEditEinvoiceBuyer,
+  normalizeEinvoice,
+  resolveBuyerSaveErrorMessage,
+  validateTaxCode,
+  type OrderEinvoice,
+} from "./einvoice-section";
 import { UsageInvoiceLines } from "./usage-invoice-lines";
 
 export interface BuyerInfo {
@@ -69,6 +75,7 @@ export interface BillingOrder {
   accountName?: string;
   accountNumber?: string;
   buyer?: Partial<BuyerInfo>;
+  einvoice?: OrderEinvoice | null;
 }
 
 export interface BillingOrderPageProps {
@@ -76,12 +83,7 @@ export interface BillingOrderPageProps {
   initialOrder?: BillingOrder;
 }
 
-export function validateTaxCode(taxCode: string): boolean {
-  const trimmed = taxCode.trim();
-  if (trimmed === "") return true;
-  const digitsOnly = trimmed.replace(/-/g, "");
-  return /^\d{10}$/.test(digitsOnly) || /^\d{13}$/.test(digitsOnly);
-}
+export { validateTaxCode };
 
 export function normalizeOrder(raw: any): BillingOrder {
   return {
@@ -125,6 +127,7 @@ export function normalizeOrder(raw: any): BillingOrder {
       address: raw.buyer?.address ?? "",
       invoiceEmail: raw.buyer?.invoice_email ?? raw.buyer?.invoiceEmail ?? "",
     },
+    einvoice: normalizeEinvoice(raw.einvoice),
   };
 }
 
@@ -202,6 +205,7 @@ export function BillingOrderPage({
       tax_code: string;
       address: string;
       invoice_email: string;
+      mode: "order" | "einvoice";
     }) => {
       const buyerPayload = {
         name: data.name,
@@ -209,6 +213,13 @@ export function BillingOrderPage({
         address: data.address,
         invoiceEmail: data.invoice_email,
       };
+      if (data.mode === "einvoice") {
+        return (api as any).updateWorkspaceOrderInvoiceBuyer(
+          wsId,
+          orderId,
+          buyerPayload,
+        );
+      }
       if (typeof (api as any).updateWorkspaceOrderBuyer === "function") {
         return (api as any).updateWorkspaceOrderBuyer(
           wsId,
@@ -221,23 +232,30 @@ export function BillingOrderPage({
       }
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (updated) => {
       setFormSuccess(true);
       setFormError(null);
+      if (
+        updated &&
+        typeof updated === "object" &&
+        "id" in updated &&
+        typeof (updated as { id?: unknown }).id === "string" &&
+        (updated as { id: string }).id !== ""
+      ) {
+        queryClient.setQueryData(
+          ["workspace-orders", wsId, "detail", orderId],
+          normalizeOrder(updated),
+        );
+      }
       void queryClient.invalidateQueries({
-        queryKey: ["workspace-orders", wsId],
-      });
-      void queryClient.invalidateQueries({
-        queryKey: ["workspace-orders", wsId, "detail", orderId],
+        queryKey: ["workspace-orders", wsId, "list"],
       });
     },
-    onError: (err: unknown) => {
+    onError: (err: unknown, variables) => {
       setFormSuccess(false);
-      if (err instanceof ApiError && err.status === 409) {
-        setFormError(t(($) => $.order.order_not_pending));
-      } else {
-        setFormError(t(($) => $.order.buyer_save_failed));
-      }
+      setFormError(
+        resolveBuyerSaveErrorMessage(err, t, variables.mode === "einvoice"),
+      );
     },
   });
 
@@ -260,7 +278,9 @@ export function BillingOrderPage({
     setFormError(null);
     setFormSuccess(false);
 
-    if (order && order.status !== "pending") {
+    const isOrderPending = order?.status === "pending";
+    const isInvoiceEditable = canEditEinvoiceBuyer(order?.einvoice);
+    if (order && !isOrderPending && !isInvoiceEditable) {
       setFormError(t(($) => $.order.order_not_pending));
       return;
     }
@@ -276,6 +296,7 @@ export function BillingOrderPage({
       tax_code: buyerTaxCode.trim(),
       address: buyerAddress.trim(),
       invoice_email: buyerEmail.trim(),
+      mode: !isOrderPending && isInvoiceEditable ? "einvoice" : "order",
     });
   };
 
@@ -324,6 +345,7 @@ export function BillingOrderPage({
     : "";
 
   const isPending = order.status === "pending";
+  const canEditBuyer = isPending || canEditEinvoiceBuyer(order.einvoice);
   const bank = order.bankDetails ?? {
     bankName: order.bankName ?? "",
     accountName: order.accountName ?? "",
@@ -494,6 +516,22 @@ export function BillingOrderPage({
         </Card>
       ) : null}
 
+      {order.einvoice ? (
+        <Card>
+          <CardHeader>
+            <CardTitle role="heading" aria-level={2} className="text-title-md">
+              {t(($) => $.order.einvoice.title)}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <EinvoiceStatusSummary
+              einvoice={order.einvoice}
+              showHeading={false}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
+
       {/* Buyer Details Form Card */}
       <Card>
         <CardHeader>
@@ -502,102 +540,26 @@ export function BillingOrderPage({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleBuyerSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="buyer-name" className="text-body font-medium">
-                {t(($) => $.order.buyer_name)}
-              </label>
-              <Input
-                id="buyer-name"
-                name="name"
-                value={buyerName}
-                onChange={(e) => setBuyerName(e.target.value)}
-                disabled={!isPending || updateBuyerMutation.isPending}
-                className="mt-1"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="buyer-tax-code" className="text-body font-medium">
-                {t(($) => $.order.buyer_tax_code)}
-              </label>
-              <Input
-                id="buyer-tax-code"
-                name="tax_code"
-                value={buyerTaxCode}
-                onChange={(e) => {
-                  setBuyerTaxCode(e.target.value);
-                  if (taxCodeError) setTaxCodeError(null);
-                }}
-                disabled={!isPending || updateBuyerMutation.isPending}
-                className="mt-1"
-              />
-              {taxCodeError ? (
-                <p className="mt-1 text-caption text-destructive" role="alert">
-                  {taxCodeError}
-                </p>
-              ) : null}
-            </div>
-
-            <div>
-              <label htmlFor="buyer-address" className="text-body font-medium">
-                {t(($) => $.order.buyer_address)}
-              </label>
-              <Input
-                id="buyer-address"
-                name="address"
-                value={buyerAddress}
-                onChange={(e) => setBuyerAddress(e.target.value)}
-                disabled={!isPending || updateBuyerMutation.isPending}
-                className="mt-1"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="buyer-email" className="text-body font-medium">
-                {t(($) => $.order.buyer_email)}
-              </label>
-              <Input
-                id="buyer-email"
-                name="invoice_email"
-                type="email"
-                value={buyerEmail}
-                onChange={(e) => setBuyerEmail(e.target.value)}
-                disabled={!isPending || updateBuyerMutation.isPending}
-                className="mt-1"
-              />
-            </div>
-
-            {formError ? (
-              <Alert variant="destructive">
-                <AlertCircle />
-                <AlertDescription>{formError}</AlertDescription>
-              </Alert>
-            ) : null}
-
-            {formSuccess ? (
-              <Alert>
-                <CheckCircle2 />
-                <AlertDescription>
-                  {t(($) => $.order.buyer_saved)}
-                </AlertDescription>
-              </Alert>
-            ) : null}
-
-            <div className="pt-2">
-              <Button
-                type="submit"
-                variant="default"
-                disabled={!isPending || updateBuyerMutation.isPending}
-                aria-busy={updateBuyerMutation.isPending}
-              >
-                {updateBuyerMutation.isPending ? (
-                  <Loader2 className="animate-spin motion-reduce:animate-none" />
-                ) : null}
-                {t(($) => $.order.buyer_save)}
-              </Button>
-            </div>
-          </form>
+          <OrderBuyerForm
+            idPrefix="buyer"
+            name={buyerName}
+            taxCode={buyerTaxCode}
+            address={buyerAddress}
+            invoiceEmail={buyerEmail}
+            onNameChange={setBuyerName}
+            onTaxCodeChange={(value) => {
+              setBuyerTaxCode(value);
+              if (taxCodeError) setTaxCodeError(null);
+            }}
+            onAddressChange={setBuyerAddress}
+            onEmailChange={setBuyerEmail}
+            disabled={!canEditBuyer}
+            isSubmitting={updateBuyerMutation.isPending}
+            taxCodeError={taxCodeError}
+            formError={formError}
+            formSuccess={formSuccess}
+            onSubmit={handleBuyerSubmit}
+          />
         </CardContent>
       </Card>
     </div>

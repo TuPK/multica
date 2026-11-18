@@ -123,4 +123,42 @@ describe("Layout navigation", () => {
     );
     expect(screen.getByRole("button", { name: /Payment notices/i })).toBeInTheDocument();
   });
+
+  it("shows E-invoices to billing and admin, hides it from support", () => {
+    const { rerender } = render(
+      <Layout
+        currentScreen="overview"
+        onNavigate={vi.fn()}
+        user={{ user_id: "u-supp", email: "support@example.com", role: "support" }}
+        onLogout={vi.fn()}
+      >
+        <div>Content</div>
+      </Layout>
+    );
+    expect(screen.queryByRole("button", { name: /E-invoices/i })).not.toBeInTheDocument();
+
+    rerender(
+      <Layout
+        currentScreen="overview"
+        onNavigate={vi.fn()}
+        user={{ user_id: "u-bill", email: "billing@example.com", role: "billing" }}
+        onLogout={vi.fn()}
+      >
+        <div>Content</div>
+      </Layout>
+    );
+    expect(screen.getByRole("button", { name: /E-invoices/i })).toBeInTheDocument();
+
+    rerender(
+      <Layout
+        currentScreen="overview"
+        onNavigate={vi.fn()}
+        user={{ user_id: "u-admin", email: "admin@example.com", role: "admin" }}
+        onLogout={vi.fn()}
+      >
+        <div>Content</div>
+      </Layout>
+    );
+    expect(screen.getByRole("button", { name: /E-invoices/i })).toBeInTheDocument();
+  });
 });

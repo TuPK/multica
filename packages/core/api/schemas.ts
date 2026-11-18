@@ -183,8 +183,18 @@ import type {
   WorkspaceSubscriptionCancelState,
   WorkspaceBillingProfile,
 } from "../types/billing";
-import type { ScheduledPriceChange } from "../billing/workspace-orders-types";
-export type { ScheduledPriceChange };
+import {
+  WORKSPACE_ORDER_EINVOICE_STATES,
+  type ScheduledPriceChange,
+  type WorkspaceOrderEinvoice,
+  type WorkspaceOrderEinvoiceState,
+} from "../billing/workspace-orders-types";
+export { WORKSPACE_ORDER_EINVOICE_STATES };
+export type {
+  ScheduledPriceChange,
+  WorkspaceOrderEinvoice,
+  WorkspaceOrderEinvoiceState,
+};
 
 export const PluginConfigFieldSchema = z.object({
   key: z.string(),
@@ -4271,6 +4281,47 @@ export const ScheduledPriceChangeSchema = z
       effectiveFrom: value.effective_from,
       seatPriceMonth: value.seat_price_month,
       seatPriceYear: value.seat_price_year,
+    }),
+  )
+  .nullable()
+  .default(null);
+
+const KNOWN_EINVOICE_STATE_SET = new Set<string>(WORKSPACE_ORDER_EINVOICE_STATES);
+
+function parseEinvoiceState(value: string): WorkspaceOrderEinvoiceState {
+  return KNOWN_EINVOICE_STATE_SET.has(value)
+    ? (value as WorkspaceOrderEinvoiceState)
+    : "unknown";
+}
+
+function sanitizeHttpsUrl(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("https://")) return "";
+  try {
+    return new URL(trimmed).protocol === "https:" ? trimmed : "";
+  } catch {
+    return "";
+  }
+}
+
+export const WorkspaceOrderEinvoiceSchema = z
+  .object({
+    state: z.string().min(1).transform(parseEinvoiceState),
+    number: z.string().optional().default(""),
+    lookup_url: z.string().optional().default(""),
+    missing_fields: z
+      .array(z.string())
+      .nullable()
+      .optional()
+      .transform((value) => value ?? []),
+  })
+  .loose()
+  .transform(
+    (value): WorkspaceOrderEinvoice => ({
+      state: value.state,
+      number: value.number,
+      lookupUrl: sanitizeHttpsUrl(value.lookup_url),
+      missingFields: value.missing_fields,
     }),
   )
   .nullable()

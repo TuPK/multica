@@ -3215,14 +3215,14 @@ export class ApiClient {
     );
   }
 
-  /** Replaces the invoice details of a pending order; 409 `order_not_pending` otherwise. */
-  async updateWorkspaceOrderBuyer(
+  private async submitWorkspaceOrderBuyerUpdate(
     wsId: string,
     orderId: string,
+    subpath: "buyer" | "invoice-buyer",
     buyer: WorkspaceOrderBuyer,
   ): Promise<WorkspaceOrder | null> {
     const raw = await this.fetch<unknown>(
-      `/api/workspaces/${wsId}/orders/${orderId}/buyer`,
+      `/api/workspaces/${wsId}/orders/${orderId}/${subpath}`,
       {
         method: "PUT",
         body: JSON.stringify({
@@ -3237,7 +3237,30 @@ export class ApiClient {
       raw,
       WorkspaceOrderSchema,
       null,
-      { endpoint: "PUT /api/workspaces/{id}/orders/{orderId}/buyer" },
+      { endpoint: `PUT /api/workspaces/{id}/orders/{orderId}/${subpath}` },
+    );
+  }
+
+  /** Replaces the invoice details of a pending order; 409 `order_not_pending` otherwise. */
+  async updateWorkspaceOrderBuyer(
+    wsId: string,
+    orderId: string,
+    buyer: WorkspaceOrderBuyer,
+  ): Promise<WorkspaceOrder | null> {
+    return this.submitWorkspaceOrderBuyerUpdate(wsId, orderId, "buyer", buyer);
+  }
+
+  /** Updates invoice buyer details for an order whose e-invoice needs info or failed. */
+  async updateWorkspaceOrderInvoiceBuyer(
+    wsId: string,
+    orderId: string,
+    buyer: WorkspaceOrderBuyer,
+  ): Promise<WorkspaceOrder | null> {
+    return this.submitWorkspaceOrderBuyerUpdate(
+      wsId,
+      orderId,
+      "invoice-buyer",
+      buyer,
     );
   }
 

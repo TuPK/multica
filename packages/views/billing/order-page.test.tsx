@@ -54,6 +54,7 @@ const mockOrder: BillingOrder = {
 
 const mocks = vi.hoisted(() => ({
   updateBuyer: vi.fn(),
+  updateInvoiceBuyer: vi.fn(),
   getOrderUsage: vi.fn(),
   workspaceId: "ws-456",
 }));
@@ -65,6 +66,8 @@ vi.mock("@multica/core/api", async () => {
     api: {
       ...actual.api,
       updateWorkspaceOrderBuyer: (...args: any[]) => mocks.updateBuyer(...args),
+      updateWorkspaceOrderInvoiceBuyer: (...args: any[]) =>
+        mocks.updateInvoiceBuyer(...args),
       updateOrderBuyer: (...args: any[]) => mocks.updateBuyer(...args),
       getWorkspaceOrder: vi.fn(),
       getWorkspaceOrderUsage: (...args: any[]) => mocks.getOrderUsage(...args),
@@ -287,5 +290,199 @@ describe("BillingOrderPage", () => {
       "ws-456",
       "order-usage-1",
     );
+  });
+});
+
+describe("BillingOrderPage e-invoice", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSearchParams.set("order_id", "order-123");
+    mocks.updateInvoiceBuyer.mockResolvedValue({
+      ...mockOrder,
+      status: "paid",
+      einvoice: {
+        state: "pending",
+        number: "",
+        lookupUrl: "",
+        missingFields: [],
+      },
+    });
+  });
+
+  it("shows nothing when einvoice is absent", () => {
+    renderWithProviders(
+      <BillingOrderPage
+        initialOrder={{ ...mockOrder, status: "paid", einvoice: null }}
+      />,
+    );
+
+    expect(screen.queryByRole("heading", { name: "E-invoice" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /View e-invoice/ })).not.toBeInTheDocument();
+  });
+
+  it("shows an https lookup link and number when einvoice is issued", () => {
+    renderWithProviders(
+      <BillingOrderPage
+        initialOrder={{
+          ...mockOrder,
+          status: "paid",
+          einvoice: {
+            state: "issued",
+            number: "00001234",
+            lookupUrl: "https://einvoice.sepay.vn/lookup/abc",
+            missingFields: [],
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "E-invoice" })).toBeInTheDocument();
+    expect(screen.getByText("Issued")).toBeInTheDocument();
+    expect(screen.getByText("00001234")).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: /View e-invoice/ });
+    expect(link).toHaveAttribute("href", "https://einvoice.sepay.vn/lookup/abc");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
+  });
+
+  it("never renders a lookup link for non-https URLs", () => {
+    for (const unsafeUrl of [
+      "http://insecure.example.com/inv/1",
+      "http://localhost:8080/inv/1",
+      "javascript:alert(1)",
+      "",
+    ]) {
+      const { unmount } = renderWithProviders(
+        <BillingOrderPage
+          initialOrder={{
+            ...mockOrder,
+            status: "paid",
+            einvoice: {
+              state: "issued",
+              number: "00001234",
+              lookupUrl: unsafeUrl,
+              missingFields: [],
+            },
+          }}
+        />,
+      );
+
+      expect(screen.getByText("Issued")).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: /View e-invoice/ })).not.toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it("shows an editable buyer form for needs_info and calls PUT invoice-buyer", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <BillingOrderPage
+        initialOrder={{
+          ...mockOrder,
+          status: "paid",
+          einvoice: {
+            state: "needs_info",
+            number: "",
+            lookupUrl: "",
+            missingFields: ["tax_code", "invoice_email"],
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Needs buyer details")).toBeInTheDocument();
+    expect(screen.getByText(/Tax code, Invoice email/)).toBeInTheDocument();
+
+    const taxInput = screen.getByLabelText("Tax code");
+    expect(taxInput).not.toBeDisabled();
+    await user.clear(taxInput);
+    await user.type(taxInput, "0309998887");
+    await user.click(screen.getByRole("button", { name: "Save buyer details" }));
+
+    await waitFor(() => {
+      expect(mocks.updateInvoiceBuyer).toHaveBeenCalledWith(
+        "ws-456",
+        "order-123",
+        {
+          name: "Acme Corp",
+          taxCode: "0309998887",
+          address: "123 Main Street",
+          invoiceEmail: "billing@acme.com",
+        },
+      );
+    });
+
+    expect(await screen.findByText("Buyer details saved")).toBeInTheDocument();
+    expect(screen.getByText("Pending")).toBeInTheDocument();
+  });
+
+  it("shows an editable buyer form for failed and handles 409 einvoice_already_issued", async () => {
+    const user = userEvent.setup();
+    mocks.updateInvoiceBuyer.mockRejectedValue(
+      new ApiError("already issued", 409, "Conflict", {
+        code: "einvoice_already_issued",
+      }),
+    );
+
+    renderWithProviders(
+      <BillingOrderPage
+        initialOrder={{
+          ...mockOrder,
+          status: "paid",
+          einvoice: {
+            state: "failed",
+            number: "",
+            lookupUrl: "",
+            missingFields: [],
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Failed")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Save buyer details" }));
+
+    expect(
+      await screen.findByText("This e-invoice has already been issued"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows status only without link or editable form for pending or cancelled states", () => {
+    const { unmount } = renderWithProviders(
+      <BillingOrderPage
+        initialOrder={{
+          ...mockOrder,
+          status: "paid",
+          einvoice: {
+            state: "pending",
+            number: "",
+            lookupUrl: "",
+            missingFields: [],
+          },
+        }}
+      />,
+    );
+    expect(screen.getByText("Pending")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /View e-invoice/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save buyer details" })).toBeDisabled();
+    unmount();
+
+    renderWithProviders(
+      <BillingOrderPage
+        initialOrder={{
+          ...mockOrder,
+          status: "paid",
+          einvoice: {
+            state: "cancelled",
+            number: "",
+            lookupUrl: "",
+            missingFields: [],
+          },
+        }}
+      />,
+    );
+    expect(screen.getByText("Cancelled")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /View e-invoice/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save buyer details" })).toBeDisabled();
   });
 });

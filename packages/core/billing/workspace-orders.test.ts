@@ -439,3 +439,115 @@ describe("query keys", () => {
     expect(workspaceOrderOptions("ws-1", "o").enabled).toBe(true);
   });
 });
+
+describe("order einvoice", () => {
+  const buyer = {
+    name: "ACME",
+    taxCode: "0123456789",
+    address: "1 Le Loi",
+    invoiceEmail: "ke.toan@example.com",
+  };
+
+  it("parses an order without an einvoice field as einvoice: null (hidden)", async () => {
+    stubFetchJson(order);
+    const parsed = await client().getWorkspaceOrder("ws-1", order.id);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.einvoice).toBeNull();
+  });
+
+  it("parses an issued einvoice and rejects a wrong-shape einvoice", async () => {
+    stubFetchJson({
+      ...order,
+      status: "paid",
+      einvoice: {
+        state: "issued",
+        number: "00001234",
+        lookup_url: "https://einvoice.sepay.vn/lookup/abc",
+        missing_fields: [],
+      },
+    });
+    await expect(client().getWorkspaceOrder("ws-1", order.id)).resolves.toMatchObject({
+      einvoice: {
+        state: "issued",
+        number: "00001234",
+        lookupUrl: "https://einvoice.sepay.vn/lookup/abc",
+        missingFields: [],
+      },
+    });
+
+    for (const badEinvoice of [
+      "issued",
+      123,
+      {},
+      { state: "" },
+      { state: 123 },
+      { state: "issued", number: 123 },
+      { state: "issued", lookup_url: 99 },
+      { state: "issued", missing_fields: "tax_code" },
+    ]) {
+      stubFetchJson({ ...order, einvoice: badEinvoice });
+      await expect(client().getWorkspaceOrder("ws-1", order.id)).resolves.toBeNull();
+    }
+  });
+
+  it("falls back unknown einvoice state to unknown and strips non-https lookup URLs", async () => {
+    stubFetchJson({
+      ...order,
+      status: "paid",
+      einvoice: {
+        state: "retrying_at_provider",
+        lookup_url: "http://insecure.example.com/inv/1",
+      },
+    });
+    await expect(client().getWorkspaceOrder("ws-1", order.id)).resolves.toMatchObject({
+      einvoice: {
+        state: "unknown",
+        number: "",
+        lookupUrl: "",
+        missingFields: [],
+      },
+    });
+  });
+
+  it("updates the invoice buyer via PUT /invoice-buyer and surfaces 409/404", async () => {
+    stubFetchJson({
+      ...order,
+      status: "paid",
+      einvoice: {
+        state: "pending",
+        number: "",
+        lookup_url: "",
+        missing_fields: [],
+      },
+    });
+    const saved = await client().updateWorkspaceOrderInvoiceBuyer("ws-1", order.id, buyer);
+    expect(saved?.einvoice).toEqual({
+      state: "pending",
+      number: "",
+      lookupUrl: "",
+      missingFields: [],
+    });
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0] ?? [];
+    expect(url).toBe(
+      `https://api.example.test/api/workspaces/ws-1/orders/${order.id}/invoice-buyer`,
+    );
+    expect((init as RequestInit).method).toBe("PUT");
+    expect(JSON.parse(String((init as RequestInit).body))).toEqual({
+      name: "ACME",
+      tax_code: "0123456789",
+      address: "1 Le Loi",
+      invoice_email: "ke.toan@example.com",
+    });
+
+    stubFetchJson({ error: "invoice already issued", code: "einvoice_already_issued" }, 409);
+    await expect(
+      client().updateWorkspaceOrderInvoiceBuyer("ws-1", order.id, buyer),
+    ).rejects.toMatchObject({ status: 409 });
+
+    stubFetchJson({ error: "no einvoice record", code: "einvoice_not_found" }, 404);
+    await expect(
+      client().updateWorkspaceOrderInvoiceBuyer("ws-1", order.id, buyer),
+    ).rejects.toMatchObject({ status: 404 });
+  });
+});

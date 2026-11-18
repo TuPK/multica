@@ -38,6 +38,7 @@ import {
   parsePriceChangeDryRunResponse,
   parseSchedulePriceChangeResponse,
   parseCancelPriceChangeResponse,
+  parseEinvoiceList,
   type Me,
   type Overview,
   type StaffRole,
@@ -64,6 +65,8 @@ import {
   type PriceChangeDryRunResponse,
   type SchedulePriceChangeResponse,
   type CancelPriceChangeResponse,
+  type Einvoice,
+  type EinvoiceState,
 } from "./schemas";
 
 export type {
@@ -76,6 +79,8 @@ export type {
   NoticeCandidate,
   NoticeDetail,
   NoticeState,
+  Einvoice,
+  EinvoiceState,
   Plan,
   Limits,
   TenantUsage,
@@ -157,6 +162,8 @@ export const platformKeys = {
   notices: () => ["platform", "payment-notices"] as const,
   noticeList: () => ["platform", "payment-notices", "list"] as const,
   notice: (id: string) => ["platform", "payment-notices", "detail", id] as const,
+  einvoices: () => ["platform", "einvoices"] as const,
+  einvoiceList: (state = "") => ["platform", "einvoices", "list", state] as const,
   plans: () => ["platform", "plans"] as const,
   priceChanges: (key: string) => ["platform", "plans", key, "price-changes"] as const,
   audits: () => ["platform", "audit"] as const,
@@ -1099,5 +1106,20 @@ export function useResendWelcome() {
       return orMalformed(parseResendWelcomeResponse(res.data));
     },
     onSuccess: () => invalidateAll(queryClient, [accountKeys.all, platformKeys.audits()]),
+  });
+}
+
+// E-invoices (spec 7.3, 7.6)
+
+export type EinvoiceFilterState = Exclude<EinvoiceState, "cancelled" | "unknown"> | "";
+
+/** List e-invoice issuance records, defaulting to failed and needs_info. Billing or Admin only. */
+export function useEinvoices(state: EinvoiceFilterState = "") {
+  return useQuery({
+    queryKey: platformKeys.einvoiceList(state),
+    queryFn: async ({ signal }): Promise<Einvoice[]> => {
+      const res = await platformFetch(`/einvoices${queryString({ state: state || undefined })}`, { signal });
+      return parseEinvoiceList(res).einvoices;
+    },
   });
 }

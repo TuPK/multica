@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { ScheduledPriceChangeSchema } from "../api/schemas";
+import {
+  ScheduledPriceChangeSchema,
+  WorkspaceOrderEinvoiceSchema,
+} from "../api/schemas";
 import type {
   WorkspaceOrder,
   WorkspaceOrderBank,
@@ -140,6 +143,7 @@ export const WorkspaceOrderSchema = z
     expires_at: z.string().nullable().optional(),
     paid_at: z.string().nullable().optional(),
     created_at: z.string().default(""),
+    einvoice: WorkspaceOrderEinvoiceSchema,
   })
   .loose()
   .transform(
@@ -164,6 +168,7 @@ export const WorkspaceOrderSchema = z
       expiresAt: value.expires_at ?? null,
       paidAt: value.paid_at ?? null,
       createdAt: value.created_at,
+      einvoice: value.einvoice,
     }),
   );
 

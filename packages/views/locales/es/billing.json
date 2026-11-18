@@ -408,6 +408,21 @@
     "loading": "Cargando pedido...",
     "not_found": "Pedido no encontrado",
     "load_failed": "Error al cargar el pedido",
-    "usage_lines_title": "Desglose de uso"
+    "usage_lines_title": "Desglose de uso",
+    "einvoice": {
+      "title": "Factura electrónica",
+      "number_label": "Número de factura",
+      "view_link": "Ver factura electrónica",
+      "missing_fields": "Campos faltantes: {{fields}}",
+      "already_issued": "Esta factura electrónica ya ha sido emitida",
+      "status": {
+        "pending": "Pendiente",
+        "issued": "Emitida",
+        "needs_info": "Faltan datos del comprador",
+        "failed": "Error",
+        "cancelled": "Anulada",
+        "unknown": "Desconocido"
+      }
+    }
   }
 }

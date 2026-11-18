@@ -7,6 +7,7 @@ import {
   Activity,
   LogOut,
   CreditCard,
+  FileText,
   Inbox,
   Layers,
   UserPlus,
@@ -38,6 +39,7 @@ export function Layout({
       ? [
           { id: "orders", label: "Orders", icon: CreditCard },
           { id: "payment-notices", label: "Payment notices", icon: Inbox },
+          { id: "einvoices", label: "E-invoices", icon: FileText },
         ]
       : []),
     ...(user.role === "admin"

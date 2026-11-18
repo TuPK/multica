@@ -34,6 +34,8 @@ import {
   parseBillingProfileVerifyResponse,
   parseBillingProfile,
   parsePutBillingProfileResponse,
+  EINVOICE_STATES,
+  parseEinvoiceList,
 } from "./schemas";
 
 const tenant = {
@@ -1136,6 +1138,90 @@ describe("payment notices", () => {
     expect(parseNotice(notice, "POST /api/platform/payment-notices/{id}/dismiss")?.id).toBe(notice.id);
     for (const body of [null, undefined, "invalid", {}, { id: 1 }]) {
       expect(parseNotice(body, "POST /api/platform/payment-notices/{id}/resolve")).toBeNull();
+    }
+  });
+});
+
+describe("e-invoices (GET /api/platform/einvoices)", () => {
+  const item = {
+    order_id: "ord-1",
+    workspace_id: "ws-1",
+    revision: 1,
+    state: "failed",
+    currency: "vnd",
+    amount: 600000,
+    vat_amount: 60000,
+    provider: "sepay",
+    invoice_number: "",
+    lookup_url: "",
+    attempts: 8,
+    last_error_code: "provider_timeout",
+    missing_fields: ["tax_code", "address"],
+    next_attempt_at: "2026-11-18T12:00:00Z",
+    updated_at: "2026-11-18T11:00:00Z",
+  };
+
+  it("parses a valid e-invoice list with all known states and strips non-https lookup URLs", () => {
+    expect(EINVOICE_STATES).toEqual(["pending", "issued", "needs_info", "failed", "cancelled"]);
+    const parsed = parseEinvoiceList({
+      einvoices: [
+        item,
+        {
+          ...item,
+          order_id: "ord-2",
+          state: "issued",
+          invoice_number: "00001234",
+          lookup_url: "https://einvoice.sepay.vn/lookup/abc",
+          missing_fields: [],
+        },
+        {
+          ...item,
+          order_id: "ord-3",
+          state: "issued",
+          lookup_url: "http://insecure.example.com/inv/3",
+        },
+      ],
+    });
+    expect(parsed.einvoices).toHaveLength(3);
+    expect(parsed.einvoices[0]).toEqual(item);
+    expect(parsed.einvoices[1]?.lookup_url).toBe("https://einvoice.sepay.vn/lookup/abc");
+    expect(parsed.einvoices[2]?.lookup_url).toBe("");
+  });
+
+  it("defaults optional fields and maps unknown state to unknown", () => {
+    const parsed = parseEinvoiceList({
+      einvoices: [{ order_id: "ord-4", state: "future_state" }],
+    });
+    expect(parsed.einvoices[0]).toEqual({
+      order_id: "ord-4",
+      workspace_id: "",
+      revision: 1,
+      state: "unknown",
+      currency: "",
+      amount: 0,
+      vat_amount: 0,
+      provider: "",
+      invoice_number: "",
+      lookup_url: "",
+      attempts: 0,
+      last_error_code: "",
+      missing_fields: [],
+      next_attempt_at: "",
+      updated_at: "",
+    });
+  });
+
+  it("falls back to an empty list when the payload is malformed", () => {
+    for (const bad of [
+      null,
+      undefined,
+      "bad",
+      123,
+      { einvoices: "not-an-array" },
+      { einvoices: [{ state: "failed" }] },
+      { einvoices: [{ order_id: 42, state: "failed" }] },
+    ]) {
+      expect(parseEinvoiceList(bad)).toEqual({ einvoices: [] });
     }
   });
 });

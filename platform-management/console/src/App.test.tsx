@@ -71,6 +71,13 @@ vi.mock("./api/hooks", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useEinvoices: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
 }));
 
 describe("App", () => {
@@ -202,5 +209,27 @@ describe("App", () => {
     expect(accountsTab).toBeInTheDocument();
     fireEvent.click(accountsTab);
     expect(screen.getByRole("heading", { name: "Accounts" })).toBeInTheDocument();
+  });
+
+  it("role gating: billing and admin can navigate to E-invoices, support cannot", () => {
+    mockUseMe.mockReturnValue({
+      data: { user_id: "u-support", email: "support@example.com", role: "support" },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    const { rerender } = render(<App />);
+    expect(screen.queryByRole("button", { name: /E-invoices/i })).not.toBeInTheDocument();
+
+    mockUseMe.mockReturnValue({
+      data: { user_id: "u-billing", email: "billing@example.com", role: "billing" },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+    rerender(<App />);
+    const einvoicesTab = screen.getByRole("button", { name: /E-invoices/i });
+    expect(einvoicesTab).toBeInTheDocument();
+    fireEvent.click(einvoicesTab);
+    expect(screen.getByRole("heading", { name: "E-invoices" })).toBeInTheDocument();
   });
 });

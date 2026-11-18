@@ -9,11 +9,18 @@ import { workspaceOrderKeys } from "./workspace-orders-queries";
  * surfaces as an ApiError. Whatever the outcome, the order is read again, so
  * the page shows its real status.
  */
-export function useUpdateWorkspaceOrderBuyer(wsId: string) {
+function useOrderBuyerMutation(
+  wsId: string,
+  updater: (
+    wsId: string,
+    orderId: string,
+    buyer: UpdateWorkspaceOrderBuyerInput["buyer"],
+  ) => ReturnType<typeof api.updateWorkspaceOrderBuyer>,
+) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ orderId, buyer }: UpdateWorkspaceOrderBuyerInput) =>
-      api.updateWorkspaceOrderBuyer(wsId, orderId, buyer),
+      updater(wsId, orderId, buyer),
     onSuccess: (order) => {
       if (order) {
         queryClient.setQueryData(
@@ -28,4 +35,16 @@ export function useUpdateWorkspaceOrderBuyer(wsId: string) {
       });
     },
   });
+}
+
+export function useUpdateWorkspaceOrderBuyer(wsId: string) {
+  return useOrderBuyerMutation(wsId, (w, id, buyer) =>
+    api.updateWorkspaceOrderBuyer(w, id, buyer),
+  );
+}
+
+export function useUpdateWorkspaceOrderInvoiceBuyer(wsId: string) {
+  return useOrderBuyerMutation(wsId, (w, id, buyer) =>
+    api.updateWorkspaceOrderInvoiceBuyer(w, id, buyer),
+  );
 }

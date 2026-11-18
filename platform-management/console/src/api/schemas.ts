@@ -882,3 +882,58 @@ export function parseCancelPriceChangeResponse(data: unknown): CancelPriceChange
     { endpoint: "DELETE /api/platform/plans/{key}/price-changes/scheduled" },
   );
 }
+
+// E-invoices (spec 7.3, 7.6)
+
+export const EINVOICE_STATES = [
+  "pending",
+  "issued",
+  "needs_info",
+  "failed",
+  "cancelled",
+] as const;
+export type EinvoiceState = (typeof EINVOICE_STATES)[number] | "unknown";
+
+export function isSafeHttpsUrl(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("https://")) return false;
+  try {
+    return new URL(trimmed).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function sanitizeHttpsUrl(value: string): string {
+  return isSafeHttpsUrl(value) ? value.trim() : "";
+}
+
+export const EinvoiceSchema = z.object({
+  order_id: z.string().min(1),
+  workspace_id: text,
+  revision: z.number().default(1),
+  state: enumOf(EINVOICE_STATES),
+  currency: text,
+  amount: count,
+  vat_amount: count,
+  provider: text,
+  invoice_number: text,
+  lookup_url: text.transform(sanitizeHttpsUrl),
+  attempts: count,
+  last_error_code: text,
+  missing_fields: z.array(z.string()).default([]),
+  next_attempt_at: text,
+  updated_at: text,
+});
+export type Einvoice = z.output<typeof EinvoiceSchema>;
+
+export const EinvoiceListSchema = z.object({
+  einvoices: z.array(EinvoiceSchema).default([]),
+});
+export type EinvoiceList = z.output<typeof EinvoiceListSchema>;
+
+export function parseEinvoiceList(data: unknown): EinvoiceList {
+  return parseWithFallback<EinvoiceList>(data, EinvoiceListSchema, { einvoices: [] }, {
+    endpoint: "GET /api/platform/einvoices",
+  });
+}

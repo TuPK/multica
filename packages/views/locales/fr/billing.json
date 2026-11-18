@@ -408,6 +408,21 @@
     "loading": "Chargement de la commande...",
     "not_found": "Commande introuvable",
     "load_failed": "Échec du chargement de la commande",
-    "usage_lines_title": "Détail de consommation"
+    "usage_lines_title": "Détail de consommation",
+    "einvoice": {
+      "title": "Facture électronique",
+      "number_label": "Numéro de facture",
+      "view_link": "Voir la facture électronique",
+      "missing_fields": "Champs manquants : {{fields}}",
+      "already_issued": "Cette facture électronique a déjà été émise",
+      "status": {
+        "pending": "En attente",
+        "issued": "Émise",
+        "needs_info": "Informations acheteur requises",
+        "failed": "Échec",
+        "cancelled": "Annulée",
+        "unknown": "Inconnu"
+      }
+    }
   }
 }

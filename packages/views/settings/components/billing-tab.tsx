@@ -28,8 +28,10 @@ import {
   usePurchaseWorkspaceSeats,
   useResumeWorkspaceSubscription,
   useUpdateWorkspaceBillingProfile,
+  useUpdateWorkspaceOrderInvoiceBuyer,
   issueLimitUsageOptions,
   workspaceBillingProfileOptions,
+  workspaceOrderOptions,
   workspaceOrdersOptions,
   workspacePlansOptions,
   workspaceSubscriptionPricesOptions,
@@ -112,6 +114,11 @@ import {
   formatUsageUtcDate,
   resolveMeterLabel,
 } from "../../billing/usage-card";
+import {
+  EinvoiceStatusSummary,
+  InlineInvoiceBuyerForm,
+  canEditEinvoiceBuyer,
+} from "../../billing/einvoice-section";
 import { UsageInvoiceLines } from "../../billing/usage-invoice-lines";
 import {
   SettingsCard,
@@ -195,6 +202,57 @@ function statusBadgeVariant(
     default:
       return "outline";
   }
+}
+
+function PaidOrderEinvoicePanel({
+  wsId,
+  order,
+}: {
+  wsId: string;
+  order: WorkspaceOrder;
+}) {
+  const detailQuery = useQuery({
+    ...workspaceOrderOptions(wsId, order.id),
+    enabled: wsId.length > 0 && order.id.length > 0 && order.status === "paid",
+  });
+  const updateInvoiceBuyer = useUpdateWorkspaceOrderInvoiceBuyer(wsId);
+  const [updatedOrder, setUpdatedOrder] = useState<WorkspaceOrder | null>(null);
+
+  const effectiveOrder =
+    updatedOrder && updatedOrder.id === order.id
+      ? updatedOrder
+      : (detailQuery.data ?? order);
+  const einvoice = effectiveOrder.einvoice ?? null;
+
+  if (detailQuery.isPending && !einvoice) {
+    return (
+      <div className="px-4 py-3">
+        <Skeleton className="h-5 w-32" />
+      </div>
+    );
+  }
+
+  if (!einvoice) return null;
+
+  return (
+    <div className="space-y-4 px-4 py-3">
+      <EinvoiceStatusSummary einvoice={einvoice} />
+      {canEditEinvoiceBuyer(einvoice) ? (
+        <InlineInvoiceBuyerForm
+          idPrefix={`invoice-buyer-${order.id}`}
+          initialBuyer={effectiveOrder.buyer}
+          saving={updateInvoiceBuyer.isPending}
+          onSave={async (buyer) => {
+            const saved = await updateInvoiceBuyer.mutateAsync({
+              orderId: order.id,
+              buyer,
+            });
+            if (saved) setUpdatedOrder(saved);
+          }}
+        />
+      ) : null}
+    </div>
+  );
 }
 
 /**
@@ -2176,6 +2234,7 @@ function BillingTabContent() {
               <SettingsCard>
                 {orders.map((order) => {
                   const isUsageOrder = order.kind === "usage";
+                  const canExpand = isUsageOrder || order.status === "paid";
                   const isExpanded = Boolean(expandedOrderIds[order.id]);
                   const periodStart = formatUsageUtcDate(
                     order.periodStart,
@@ -2218,7 +2277,7 @@ function BillingTabContent() {
                               locale,
                             )}
                           </span>
-                          {isUsageOrder ? (
+                          {canExpand ? (
                             <Button
                               type="button"
                               variant="ghost"
@@ -2247,6 +2306,9 @@ function BillingTabContent() {
                             currency={order.currency}
                           />
                         </div>
+                      ) : null}
+                      {order.status === "paid" && isExpanded ? (
+                        <PaidOrderEinvoicePanel wsId={wsId} order={order} />
                       ) : null}
                     </div>
                   );

@@ -45,6 +45,7 @@ import {
   useCreateAccountRequest,
   useCancelAccountRequest,
   useResendWelcome,
+  useEinvoices,
 } from "./hooks";
 
 type Handler = Response | ((url: URL, init: RequestInit | undefined) => Response);
@@ -1376,6 +1377,49 @@ describe("billing profile verification hook", () => {
       ).rejects.toMatchObject({
         code: "malformed_response",
       });
+    });
+  });
+});
+
+describe("e-invoices hooks", () => {
+  it("useEinvoices fetches /api/platform/einvoices with optional state filter", async () => {
+    const einvoice = {
+      order_id: "ord-1",
+      workspace_id: "ws-1",
+      revision: 1,
+      state: "failed",
+      currency: "vnd",
+      amount: 600000,
+      vat_amount: 60000,
+      provider: "sepay",
+      invoice_number: "",
+      lookup_url: "",
+      attempts: 8,
+      last_error_code: "rejected",
+      missing_fields: [],
+      next_attempt_at: "2026-11-18T12:00:00Z",
+      updated_at: "2026-11-18T11:00:00Z",
+    };
+    const calls = stubFetch({
+      "GET /api/platform/einvoices": () => json(200, { einvoices: [einvoice] }),
+    });
+    const { wrapper } = setup();
+
+    const defaultQuery = renderHook(() => useEinvoices(), { wrapper });
+    await waitFor(() => expect(defaultQuery.result.current.isSuccess).toBe(true));
+    expect(defaultQuery.result.current.data).toEqual([einvoice]);
+    expect(calls[0]).toMatchObject({
+      method: "GET",
+      path: "/api/platform/einvoices",
+      search: "",
+    });
+
+    const filteredQuery = renderHook(() => useEinvoices("issued"), { wrapper });
+    await waitFor(() => expect(filteredQuery.result.current.isSuccess).toBe(true));
+    expect(calls[1]).toMatchObject({
+      method: "GET",
+      path: "/api/platform/einvoices",
+      search: "?state=issued",
     });
   });
 });

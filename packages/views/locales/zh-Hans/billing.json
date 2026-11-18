@@ -401,6 +401,21 @@
     "loading": "正在加载订单...",
     "not_found": "未找到订单",
     "load_failed": "加载订单失败",
-    "usage_lines_title": "用量明细"
+    "usage_lines_title": "用量明细",
+    "einvoice": {
+      "title": "电子发票",
+      "number_label": "发票号码",
+      "view_link": "查看电子发票",
+      "missing_fields": "缺少字段：{{fields}}",
+      "already_issued": "该电子发票已开具",
+      "status": {
+        "pending": "待开具",
+        "issued": "已开具",
+        "needs_info": "需要补充买方信息",
+        "failed": "开具失败",
+        "cancelled": "已作废",
+        "unknown": "未知"
+      }
+    }
   }
 }

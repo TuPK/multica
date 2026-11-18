@@ -408,6 +408,21 @@
     "loading": "Loading order...",
     "not_found": "Order not found",
     "load_failed": "Failed to load order",
-    "usage_lines_title": "Usage breakdown"
+    "usage_lines_title": "Usage breakdown",
+    "einvoice": {
+      "title": "E-invoice",
+      "number_label": "Invoice number",
+      "view_link": "View e-invoice",
+      "missing_fields": "Missing fields: {{fields}}",
+      "already_issued": "This e-invoice has already been issued",
+      "status": {
+        "pending": "Pending",
+        "issued": "Issued",
+        "needs_info": "Needs buyer details",
+        "failed": "Failed",
+        "cancelled": "Cancelled",
+        "unknown": "Unknown"
+      }
+    }
   }
 }

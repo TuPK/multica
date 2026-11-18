@@ -11,6 +11,7 @@ import { UserDetail } from "./screens/UserDetail";
 import { Staff } from "./screens/Staff";
 import { Accounts } from "./screens/Accounts";
 import { PaymentNotices } from "./screens/PaymentNotices";
+import { EinvoiceFailures } from "./screens/EinvoiceFailures";
 import { Audit } from "./screens/Audit";
 
 type Screen =
@@ -20,6 +21,7 @@ type Screen =
   | "users"
   | "user-detail"
   | "payment-notices"
+  | "einvoices"
   | "accounts"
   | "staff"
   | "audit";
@@ -50,7 +52,11 @@ export function App() {
       setCurrentScreen("overview");
       return;
     }
-    if (screen === "payment-notices" && me.role !== "billing" && me.role !== "admin") {
+    if (
+      (screen === "payment-notices" || screen === "einvoices") &&
+      me.role !== "billing" &&
+      me.role !== "admin"
+    ) {
       setCurrentScreen("overview");
       return;
     }
@@ -133,6 +139,11 @@ export function App() {
           return <Overview />;
         }
         return <PaymentNotices userRole={me.role} />;
+      case "einvoices":
+        if (me.role !== "billing" && me.role !== "admin") {
+          return <Overview />;
+        }
+        return <EinvoiceFailures userRole={me.role} />;
       case "accounts":
         if (me.role !== "admin") {
           return <Overview />;
