@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -17,9 +15,7 @@ const (
 	claimLease   = 5 * time.Minute
 )
 
-var ErrReasonRequired = errors.New("invoice: replace needs the actor and a reason")
-
-// ErrProviderNotConfigured is returned by Retry and Replace when the service has
+// ErrProviderNotConfigured is returned by Retry when the service has
 // no provider, before any store or provider call.
 var ErrProviderNotConfigured = errors.New("invoice: e-invoicing provider is not configured")
 
@@ -119,7 +115,7 @@ func (s *Service) process(ctx context.Context, now time.Time, rec Record) error 
 	// reached the provider.
 	afterUnknown := rec.Attempts > 1
 
-	sub, err := s.submit(ctx, rec, req, afterUnknown)
+	sub, err := s.submit(ctx, req, afterUnknown)
 	if err == nil {
 		var inv Invoice
 		inv, err = s.resolve(ctx, sub)
@@ -135,31 +131,9 @@ func (s *Service) process(ctx context.Context, now time.Time, rec Record) error 
 	return s.fail(ctx, now, rec, err)
 }
 
-// submit issues the invoice, or replaces the cancelled previous revision's
-// invoice. A replacement never calls Issue.
-func (s *Service) submit(ctx context.Context, rec Record, req IssueRequest, afterUnknown bool) (Submission, error) {
-	if rec.Revision > 1 {
-		prev, err := s.store.Get(ctx, rec.OrderID, rec.Revision-1)
-		if err != nil && !errors.Is(err, ErrNotFound) {
-			return Submission{}, err
-		}
-		if err == nil && prev.State == StateCancelled && prev.ProviderInvoiceID != "" {
-			if afterUnknown {
-				found, err := s.provider.Lookup(ctx, req.ReferenceCode)
-				if err == nil {
-					return Submission{Ticket: Ticket{ReferenceCode: req.ReferenceCode}, Existing: true, Invoice: found}, nil
-				}
-				if !errors.Is(err, ErrNoInvoice) {
-					return Submission{}, err
-				}
-			}
-			tk, err := s.provider.Replace(ctx, prev.ProviderInvoiceID, req)
-			if err != nil {
-				return Submission{}, err
-			}
-			return Submission{Ticket: tk}, nil
-		}
-	}
+// submit issues the invoice, first looking it up by reference when an earlier
+// attempt ended unknown.
+func (s *Service) submit(ctx context.Context, req IssueRequest, afterUnknown bool) (Submission, error) {
 	return Submit(ctx, s.provider, req, afterUnknown)
 }
 
@@ -198,29 +172,6 @@ func (s *Service) fail(ctx context.Context, now time.Time, rec Record, err error
 		}
 	}
 	return s.store.RecordAttempt(ctx, rec.OrderID, rec.Revision, a)
-}
-
-// Replace cancels the issued record locally and queues the next revision with
-// the corrected buyer. The provider has no cancel; the next Issue run replaces
-// the original invoice at the provider.
-func (s *Service) Replace(ctx context.Context, orderID string, revision int, buyer Buyer, by, reason string) (Record, error) {
-	if s.provider == nil {
-		return Record{}, ErrProviderNotConfigured
-	}
-	if r, ok := s.provider.(interface{ ReplaceSupported() bool }); ok && !r.ReplaceSupported() {
-		return Record{}, ErrReplaceUnsupported
-	}
-	if strings.TrimSpace(by) == "" || strings.TrimSpace(reason) == "" {
-		return Record{}, ErrReasonRequired
-	}
-	if missing := CheckBuyer(s.provider, buyer); len(missing) > 0 {
-		return Record{}, &ProviderError{Kind: KindMissingFields, Code: "VALIDATION_ERROR", Fields: missing}
-	}
-	b, err := json.Marshal(buyer)
-	if err != nil {
-		return Record{}, fmt.Errorf("replace einvoice: %w", err)
-	}
-	return s.store.ReplaceIssued(ctx, orderID, revision, b, by, reason)
 }
 
 // Latest returns the highest revision of the order.

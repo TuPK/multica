@@ -288,69 +288,6 @@ func (s *PgxStore) ListDue(ctx context.Context, now time.Time, limit int) ([]Rec
 	return out, nil
 }
 
-// ReplaceIssued cancels the issued record, inserts the next revision and writes
-// einvoice.replaced, all in one transaction. The actor must be a staff UUID.
-func (s *PgxStore) ReplaceIssued(ctx context.Context, orderID string, revision int, buyer []byte, by, reason string) (Record, error) {
-	oid, err := parseID(orderID)
-	if err != nil {
-		return Record{}, err
-	}
-	var actor pgtype.UUID
-	if err := actor.Scan(by); err != nil || !actor.Valid {
-		return Record{}, ErrInvalidActor
-	}
-	var next Record
-	err = s.inTx(ctx, func(q *db.Queries) error {
-		// The conditional UPDATE takes the row lock, so a concurrent replace of the
-		// same original sees state cancelled and gets ErrStateConflict.
-		n, err := q.CancelEinvoiceIssued(ctx, db.CancelEinvoiceIssuedParams{
-			CancelledBy:  by,
-			CancelReason: reason,
-			OrderID:      oid,
-			Revision:     int32(revision),
-		})
-		if err != nil {
-			return fmt.Errorf("cancel einvoice issuance: %w", err)
-		}
-		if n == 0 {
-			return conflictOrNotFound(ctx, q, orderID, revision)
-		}
-		orig, err := get(ctx, q, orderID, revision)
-		if err != nil {
-			return err
-		}
-		next, err = insert(ctx, q, NewRecord{
-			OrderID:     orig.OrderID,
-			WorkspaceID: orig.WorkspaceID,
-			Provider:    orig.Provider,
-			Currency:    orig.Currency,
-			Amount:      orig.Amount,
-			VATAmount:   orig.VATAmount,
-			Buyer:       buyer,
-		})
-		if err != nil {
-			return err
-		}
-		return recordAudit(ctx, q, audit.Entry{
-			WorkspaceID: orig.WorkspaceID,
-			ActorType:   audit.ActorStaff,
-			ActorID:     by,
-			ActorLabel:  by,
-			Action:      audit.ActionEinvoiceReplaced,
-			TargetType:  auditTarget,
-			TargetID:    orderID,
-			TargetLabel: revisionLabel(revision),
-			Detail: map[string]any{
-				"order_id": orderID, "revision": revision, "new_revision": next.Revision, "reason": reason,
-			},
-		})
-	})
-	if err != nil {
-		return Record{}, err
-	}
-	return next, nil
-}
-
 // conflictOrNotFound explains a zero-row conditional update.
 func conflictOrNotFound(ctx context.Context, q *db.Queries, orderID string, revision int) error {
 	if _, err := get(ctx, q, orderID, revision); err != nil {

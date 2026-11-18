@@ -632,12 +632,12 @@ Kiểm: [PG] `./internal/einvoice ./internal/config -run 'Fixtures|Buyer|ClientR
 
 **P43.4. Việc nền phát hành** [D] (spec 7.3 quy tắc 1 đến 3, 5, 6)
 
-- Quyết định: `einvoice_enqueue` tạo bản ghi cho đơn đã trả; `einvoice_issue` phát hành; hủy và thay thế là route của console.
-- Test đỏ trước: `TestEnqueueCreatesOneRecordPerPaidOrder` (đơn 0 đồng, `admin_grant` và đơn trước mốc bị bỏ qua); `TestEnqueueTwiceIsIdempotent`; `TestIssueTwiceConcurrentlyMakesOneInvoice` (hai lần chạy song song, một hóa đơn ở nhà cung cấp giả); `TestProviderFailureRetriesAndOrderStaysPaid`; `TestMissingFieldsMakeNeedsInfoWithNoProviderCall`; `TestExhaustedAttemptsBecomeFailed`; `TestCancelRequiresAdminReasonAndKeepsRecord`; `TestReplaceCreatesNextRevision`; `TestInvoiceAuditActionsWritten`; `TestEinvoiceOffWhenProviderEmpty`.
+- Quyết định: `einvoice_enqueue` tạo bản ghi cho đơn đã trả; `einvoice_issue` phát hành; thử lại là route của console (không có hủy hay thay thế, 2026-11-18).
+- Test đỏ trước: `TestEnqueueCreatesOneRecordPerPaidOrder` (đơn 0 đồng, `admin_grant` và đơn trước mốc bị bỏ qua); `TestEnqueueTwiceIsIdempotent`; `TestIssueTwiceConcurrentlyMakesOneInvoice` (hai lần chạy song song, một hóa đơn ở nhà cung cấp giả); `TestProviderFailureRetriesAndOrderStaysPaid`; `TestMissingFieldsMakeNeedsInfoWithNoProviderCall`; `TestExhaustedAttemptsBecomeFailed`; `TestReplaceRouteIsGone` (route `.../replace` trả 404); `TestEinvoiceRetryMovesFailedToPending` (thử lại thành công); `TestInvoiceAuditActionsWritten`; `TestEinvoiceOffWhenProviderEmpty`.
 - Mới: `platform-management/internal/einvoice/jobs.go`, `platform-management/internal/console/einvoices.go`; hằng `einvoice.requested`, `einvoice.issued`, `einvoice.needs_info`, `einvoice.failed`, `einvoice.buyer_updated`, `einvoice.retried`, `einvoice.cancelled`, `einvoice.replaced` trong `platform-management/audit/audit.go` và `catalog_test.go`.
 - Đổi: `platform-management/cmd/platform-server/main.go` (đăng ký hai việc), `platform-management/internal/console/handler.go`, `store.go`, `pgx.go`; chép `invoice_number` và `lookup_url` vào `billing_order.einvoice_ref` bằng một câu lệnh của platform; spec 3.3, 3.5. Migration: không (đã có ở P43.2). Schemacheck: không thêm.
 
-Kiểm: [PD] `./internal/einvoice ./internal/console -run 'Enqueue|Issue|Provider|Missing|Exhausted|Cancel|Replace|Audit|Off'`, [PG] `./audit`. Ước lượng: 3,5 ngày (ước lượng). Tiêu chí: AC58, AC59.
+Kiểm: [PD] `./internal/einvoice ./internal/console -run 'Enqueue|Issue|Provider|Missing|Exhausted|Retry|Replace|Audit|Off'`, [PG] `./audit`. Ước lượng: 3,5 ngày (ước lượng). Tiêu chí: AC58, AC59.
 
 **P43.5. Phía Multica: đọc hóa đơn và sửa thông tin người mua** [D] (spec 7.3 quy tắc 7; API)
 
@@ -650,7 +650,7 @@ Kiểm: [Q], [D] `./internal/handler -run 'OrderJSON|InvoiceBuyer'`, [V]. Ước
 **P43.6. Giao diện: liên kết hóa đơn và màn hình lỗi** [N] (spec 7.6)
 
 - Quyết định: owner thấy liên kết hóa đơn và sửa được thông tin người mua; staff xử lý hóa đơn lỗi ở console.
-- Test đỏ trước: schema zod của `einvoice` có test sai dạng và phản hồi không có trường (ẩn); views: trang đơn hàng hiện liên kết khi `issued` (chỉ `https`), biểu mẫu sửa người mua khi `needs_info` hoặc `failed`, không hiện gì khi vắng mặt; console: `EinvoiceFailures.test.tsx` (danh sách, thử lại, hủy và thay thế chỉ cho `admin`, lý do bắt buộc), `Orders.test.tsx` có cột trạng thái hóa đơn; test chuỗi bảy ngôn ngữ ở phần Multica.
+- Test đỏ trước: schema zod của `einvoice` có test sai dạng và phản hồi không có trường (ẩn); views: trang đơn hàng hiện liên kết khi `issued` (chỉ `https`), biểu mẫu sửa người mua khi `needs_info` hoặc `failed`, không hiện gì khi vắng mặt; console: `EinvoiceFailures.test.tsx` (danh sách, thử lại; không có hủy hay thay thế), `Orders.test.tsx` có cột trạng thái hóa đơn; test chuỗi bảy ngôn ngữ ở phần Multica.
 - Mới: `platform-management/console/src/screens/EinvoiceFailures.tsx`. Đổi: `packages/core/api/schemas.ts` và `client.ts` (`client.ts` đang có sửa chưa commit của công việc khác; chờ), `packages/views/settings/components/billing-tab.tsx`, `packages/views/billing/`, `packages/views/locales/*/` (bảy ngôn ngữ), `platform-management/console/src/` (`api`, `App.tsx`, `components/Layout.tsx`, `screens/Orders.tsx`). Mobile: không có trang đơn hàng; ghi vào PR. Migration: không. Schemacheck: không.
 
 Kiểm: [B], [W], [PW], [PB], [T]. PR đính kèm ảnh chụp hoặc video. Ước lượng: 3 ngày (ước lượng). Tiêu chí: giao diện của AC58, AC59.

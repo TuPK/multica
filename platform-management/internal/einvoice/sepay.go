@@ -93,12 +93,6 @@ func (s *SePay) RequiredBuyerFields() []string {
 	return []string{"name", "tax_code", "address", "email"}
 }
 
-func (s *SePay) ReplaceSupported() bool { return false }
-
-func (s *SePay) Replace(context.Context, string, invoice.IssueRequest) (invoice.Ticket, error) {
-	return invoice.Ticket{}, invoice.ErrReplaceUnsupported
-}
-
 type checkData struct {
 	Status  string `json:"status"`
 	Invoice *struct {

@@ -78,7 +78,7 @@ type Deps struct {
 	// Reconciler decides payment notices. *billing.Reconciler is one.
 	Reconciler NoticeResolver
 	Accounts   AccountRequests
-	// Einvoices serves the retry and replace routes. *invoice.Service is one.
+	// Einvoices serves the retry route. *invoice.Service is one.
 	Einvoices EinvoiceOps
 	Logins    LoginLookup
 	Emails    EmailLookup
@@ -146,7 +146,6 @@ func routeTable() []routeSpec {
 		{base + "/payment-notices/{id}/dismiss", billingAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).dismissPaymentNotice}},
 		{base + "/einvoices", billingAndAdmin, map[string]handlerFunc{http.MethodGet: (*Handler).listEinvoices}},
 		{base + "/einvoices/{orderId}/retry", billingAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).retryEinvoice}},
-		{base + "/einvoices/{orderId}/replace", adminOnly, map[string]handlerFunc{http.MethodPost: (*Handler).replaceEinvoice}},
 		{base + "/accounts", adminOnly, map[string]handlerFunc{
 			http.MethodGet:  (*Handler).listAccountRequests,
 			http.MethodPost: (*Handler).createAccountRequest,

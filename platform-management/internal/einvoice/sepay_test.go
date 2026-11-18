@@ -341,20 +341,6 @@ func TestCreateCheckOutcomes(t *testing.T) {
 	}
 }
 
-func TestReplaceUnsupported(t *testing.T) {
-	f := newFakeSePay(t)
-	p := f.client(t)
-	if _, err := p.Replace(context.Background(), "id", request()); !errors.Is(err, invoice.ErrReplaceUnsupported) {
-		t.Errorf("err = %v", err)
-	}
-	if p.ReplaceSupported() {
-		t.Errorf("ReplaceSupported = true")
-	}
-	if n := len(f.all()); n != 0 {
-		t.Errorf("server saw %d requests, want 0", n)
-	}
-}
-
 func TestTokenRefreshedOnTokenExpired(t *testing.T) {
 	f := newFakeSePay(t)
 	f.route("GET /v1/invoices/issue/check/trk-2",

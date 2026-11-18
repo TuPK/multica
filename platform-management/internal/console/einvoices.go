@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/multica-ai/multica/platform-management/internal/invoice"
 )
@@ -41,13 +40,12 @@ type EinvoiceReader interface {
 	ListEinvoices(ctx context.Context, states []invoice.State, limit int) ([]EinvoiceRow, error)
 }
 
-// EinvoiceOps is what the staff retry and replace routes need.
+// EinvoiceOps is what the staff retry route needs.
 // *invoice.Service is one.
 type EinvoiceOps interface {
 	// Latest returns the highest revision of the order; invoice.ErrNotFound when there is none.
 	Latest(ctx context.Context, orderID string) (invoice.Record, error)
 	Retry(ctx context.Context, orderID string, revision int, by string) (invoice.Record, error)
-	Replace(ctx context.Context, orderID string, revision int, buyer invoice.Buyer, by, reason string) (invoice.Record, error)
 }
 
 var errNoEinvoiceReader = errors.New("the console reader does not read e-invoices")
@@ -183,8 +181,6 @@ func recordToRow(rec invoice.Record) EinvoiceRow {
 	}
 }
 
-const maxBuyerFieldChars = 500
-
 // einvoiceError answers an e-invoice write error. A buyer that lacks fields
 // lists the field names only, never a value.
 func (h *Handler) einvoiceError(w http.ResponseWriter, r *http.Request, op string, err error) {
@@ -195,14 +191,9 @@ func (h *Handler) einvoiceError(w http.ResponseWriter, r *http.Request, op strin
 	case errors.Is(err, invoice.ErrStateConflict):
 		writeError(w, &apiError{Status: http.StatusConflict, Code: "einvoice_state_conflict",
 			Message: "the invoice is not in a state this action accepts"})
-	case errors.Is(err, invoice.ErrReasonRequired):
-		writeError(w, badRequest("reason_required", "a reason is required"))
 	case errors.Is(err, invoice.ErrProviderNotConfigured):
 		writeError(w, &apiError{Status: http.StatusServiceUnavailable, Code: "einvoice_provider_not_configured",
 			Message: "e-invoicing is not configured on this platform"})
-	case errors.Is(err, invoice.ErrReplaceUnsupported):
-		writeError(w, &apiError{Status: http.StatusServiceUnavailable, Code: "einvoice_replace_unsupported",
-			Message: "replacing an e-invoice is not supported by the configured provider"})
 	case errors.As(err, &pe) && pe.Kind == invoice.KindMissingFields:
 		fields := pe.Fields
 		if fields == nil {
@@ -251,56 +242,6 @@ func (h *Handler) retryEinvoice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out, err := h.Einvoices.Retry(r.Context(), rec.OrderID, rec.Revision, a.ID)
-	if err != nil {
-		h.einvoiceError(w, r, op, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, toEinvoiceJSON(recordToRow(out)))
-}
-
-func (h *Handler) replaceEinvoice(w http.ResponseWriter, r *http.Request) {
-	const op = "replace e-invoice"
-	var body struct {
-		Reason string         `json:"reason"`
-		Buyer  *invoice.Buyer `json:"buyer"`
-	}
-	if perr := decodeBody(w, r, &body); perr != nil {
-		writeError(w, perr)
-		return
-	}
-	reason, perr := cleanReason(body.Reason)
-	if perr != nil {
-		writeError(w, perr)
-		return
-	}
-	if body.Buyer != nil {
-		for _, v := range []string{body.Buyer.Name, body.Buyer.TaxCode, body.Buyer.Address, body.Buyer.Email} {
-			if hasNUL(v) || utf8.RuneCountInString(v) > maxBuyerFieldChars {
-				writeError(w, badRequest("invalid_buyer", "a buyer field is too long or has a NUL character"))
-				return
-			}
-		}
-	}
-	rec, ok := h.latestEinvoice(w, r, op)
-	if !ok {
-		return
-	}
-	if rec.State != invoice.StateIssued {
-		h.einvoiceError(w, r, op, invoice.ErrStateConflict)
-		return
-	}
-	var buyer invoice.Buyer
-	if body.Buyer != nil {
-		buyer = *body.Buyer
-	} else if err := json.Unmarshal(rec.Buyer, &buyer); err != nil {
-		buyer = invoice.Buyer{}
-	}
-	a, err := h.currentActor(r)
-	if err != nil {
-		h.fail(w, r, "resolve staff actor", err)
-		return
-	}
-	out, err := h.Einvoices.Replace(r.Context(), rec.OrderID, rec.Revision, buyer, a.ID, reason)
 	if err != nil {
 		h.einvoiceError(w, r, op, err)
 		return

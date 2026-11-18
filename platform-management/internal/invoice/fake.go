@@ -12,7 +12,6 @@ type Fake struct {
 	mu           sync.Mutex
 	seq          int
 	byRef        map[string]Invoice
-	byID         map[string]bool // provider invoice ID -> replaced
 	tracking     map[string]string
 	polls        map[string]int
 	pendingPolls int
@@ -28,7 +27,6 @@ var _ Provider = (*Fake)(nil)
 func NewFake() *Fake {
 	return &Fake{
 		byRef:    map[string]Invoice{},
-		byID:     map[string]bool{},
 		tracking: map[string]string{},
 		polls:    map[string]int{},
 	}
@@ -82,7 +80,6 @@ func (f *Fake) create(ref string) Ticket {
 		IssuedAt:          time.Now().UTC(),
 	}
 	f.byRef[ref] = inv
-	f.byID[inv.ProviderInvoiceID] = false
 	track := "fake-trk-" + n
 	f.tracking[track] = ref
 	return Ticket{ReferenceCode: ref, TrackingCode: track}
@@ -141,18 +138,4 @@ func (f *Fake) Lookup(_ context.Context, referenceCode string) (Invoice, error) 
 		return Invoice{}, ErrNoInvoice
 	}
 	return inv, nil
-}
-
-func (f *Fake) Replace(_ context.Context, originalInvoiceID string, req IssueRequest) (Ticket, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	replaced, ok := f.byID[originalInvoiceID]
-	if !ok {
-		return Ticket{}, ErrNoInvoice
-	}
-	if replaced {
-		return Ticket{}, &ProviderError{Kind: KindPermanent, Code: "ALREADY_REPLACED"}
-	}
-	f.byID[originalInvoiceID] = true
-	return f.create(req.ReferenceCode), nil
 }

@@ -13,9 +13,8 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/staff"
 )
 
-// Routes: POST /einvoices/{orderId}/retry (billing, admin) and
-// POST /einvoices/{orderId}/replace (admin). Role, body and not-found tests
-// run on a fake; state, audit and job tests run on the platform test database
+// Route: POST /einvoices/{orderId}/retry (billing, admin). Role and not-found
+// tests run on a fake; state, audit and job tests run on the platform test database
 // with the real invoice store and the fake provider.
 
 const (
@@ -28,7 +27,6 @@ type fakeEinvoiceOps struct {
 	latest  invoice.Record
 	err     error
 	retries int
-	replace int
 }
 
 func (f *fakeEinvoiceOps) Latest(context.Context, string) (invoice.Record, error) {
@@ -37,11 +35,6 @@ func (f *fakeEinvoiceOps) Latest(context.Context, string) (invoice.Record, error
 
 func (f *fakeEinvoiceOps) Retry(context.Context, string, int, string) (invoice.Record, error) {
 	f.retries++
-	return f.latest, f.err
-}
-
-func (f *fakeEinvoiceOps) Replace(context.Context, string, int, invoice.Buyer, string, string) (invoice.Record, error) {
-	f.replace++
 	return f.latest, f.err
 }
 
@@ -67,38 +60,6 @@ func TestEinvoiceRetryRequiresBillingOrAdmin(t *testing.T) {
 		if rec := e.do(id, "POST", "/api/platform/einvoices/"+orderA+"/retry", ""); rec.Code != http.StatusOK {
 			t.Errorf("%s got %d %s, want 200", id, rec.Code, rec.Body)
 		}
-	}
-}
-
-func TestEinvoiceReplaceRequiresAdmin(t *testing.T) {
-	e := newEnv(t)
-	ops := withEinvoiceOps(e, invoice.Record{OrderID: orderA, Revision: 1, State: invoice.StateIssued, Buyer: []byte(fullBuyer)}, nil)
-	body := `{"reason":"wrong tax code"}`
-	for _, id := range []string{billID, suppID} {
-		rec := e.do(id, "POST", "/api/platform/einvoices/"+orderA+"/replace", body)
-		if rec.Code != http.StatusNotFound {
-			t.Errorf("%s got %d %s, want the 404 of an unknown route", id, rec.Code, rec.Body)
-		}
-	}
-	if ops.replace != 0 {
-		t.Errorf("a non-admin reached the replace")
-	}
-	if rec := e.do(adminID, "POST", "/api/platform/einvoices/"+orderA+"/replace", body); rec.Code != http.StatusOK {
-		t.Errorf("admin got %d %s, want 200", rec.Code, rec.Body)
-	}
-}
-
-func TestEinvoiceReplaceRejectsEmptyReasonWith400(t *testing.T) {
-	e := newEnv(t)
-	ops := withEinvoiceOps(e, invoice.Record{OrderID: orderA, Revision: 1, State: invoice.StateIssued, Buyer: []byte(fullBuyer)}, nil)
-	for _, body := range []string{`{}`, `{"reason":""}`, `{"reason":"   "}`, `{"buyer":{"name":"x"}}`} {
-		rec := e.do(adminID, "POST", "/api/platform/einvoices/"+orderA+"/replace", body)
-		if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), `"reason_required"`) {
-			t.Errorf("body %s got %d %s, want 400 reason_required", body, rec.Code, rec.Body)
-		}
-	}
-	if ops.replace != 0 {
-		t.Errorf("a request without a reason reached the replace")
 	}
 }
 
@@ -321,132 +282,34 @@ func TestEinvoiceRetryOnIssuedReturns409(t *testing.T) {
 	}
 }
 
-func TestEinvoiceReplaceCreatesRevisionAndKeepsOld(t *testing.T) {
-	x := newEinvoiceDB(t)
-	admin, _ := x.staffUser(staff.RoleAdmin)
-	order := x.seed(invoice.StateIssued, fullBuyer)
-	newBuyer := `{"name":"Cong ty B","tax_code":"0109999999","address":"2 Pho B","email":"b@example.com"}`
-	rec := x.post(admin, order, "replace", `{"reason":" wrong tax code ","buyer":`+newBuyer+`}`)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("got %d %s", rec.Code, rec.Body)
-	}
-	body := decodeMap(t, rec)
-	if body["revision"] != float64(2) || body["state"] != "pending" || body["order_id"] != order {
-		t.Errorf("response = %s", rec.Body)
-	}
-	old, next := x.record(order, 1), x.record(order, 2)
-	if old.State != invoice.StateCancelled || old.CancelReason != "wrong tax code" || old.CancelledBy != admin {
-		t.Errorf("old = state %s reason %q by %q", old.State, old.CancelReason, old.CancelledBy)
-	}
-	if next.State != invoice.StatePending || buyerOf(t, next.Buyer) != buyerOf(t, []byte(newBuyer)) {
-		t.Errorf("new = state %s buyer %s", next.State, next.Buyer)
-	}
-	if x.fake.IssueCalls() != 0 {
-		t.Errorf("the provider was called by the route")
-	}
-
-	// Without a buyer in the body the replacement keeps the record's buyer.
-	order2 := x.seed(invoice.StateIssued, fullBuyer)
-	if rec := x.post(admin, order2, "replace", `{"reason":"redo"}`); rec.Code != http.StatusOK {
-		t.Fatalf("got %d %s", rec.Code, rec.Body)
-	}
-	if got := x.record(order2, 2); buyerOf(t, got.Buyer) != buyerOf(t, []byte(fullBuyer)) {
-		t.Errorf("kept buyer = %s", got.Buyer)
-	}
-}
-
-func TestEinvoiceReplaceOnPendingReturns409(t *testing.T) {
-	x := newEinvoiceDB(t)
-	admin, _ := x.staffUser(staff.RoleAdmin)
-	for _, s := range []invoice.State{invoice.StatePending, invoice.StateFailed} {
-		order := x.seed(s, fullBuyer)
-		rec := x.post(admin, order, "replace", `{"reason":"redo"}`)
-		if rec.Code != http.StatusConflict || decodeMap(t, rec)["code"] != "einvoice_state_conflict" {
-			t.Errorf("%s: got %d %s", s, rec.Code, rec.Body)
-		}
-		if n := x.count(`SELECT count(*) FROM einvoice_issuance WHERE order_id = $1`, order); n != 1 {
-			t.Errorf("%s: %d rows, want 1", s, n)
-		}
-	}
-}
-
-func TestEinvoiceReplaceWithoutIssuedRecordReturns404(t *testing.T) {
+func TestEinvoiceRetryWithoutRecordReturns404(t *testing.T) {
 	x := newEinvoiceDB(t)
 	admin, _ := x.staffUser(staff.RoleAdmin)
 	var order string
 	if err := x.pool.QueryRow(context.Background(), `SELECT gen_random_uuid()::text`).Scan(&order); err != nil {
 		t.Fatal(err)
 	}
-	for _, action := range []string{"replace", "retry"} {
-		body := ""
-		if action == "replace" {
-			body = `{"reason":"redo"}`
-		}
-		if rec := x.post(admin, order, action, body); rec.Code != http.StatusNotFound {
-			t.Errorf("%s: got %d %s, want 404", action, rec.Code, rec.Body)
-		}
+	if rec := x.post(admin, order, "retry", ""); rec.Code != http.StatusNotFound {
+		t.Errorf("got %d %s, want 404", rec.Code, rec.Body)
 	}
 }
 
-func TestEinvoiceReplaceAuditHasNoBuyerValues(t *testing.T) {
-	x := newEinvoiceDB(t)
-	admin, _ := x.staffUser(staff.RoleAdmin)
-	order := x.seed(invoice.StateIssued, fullBuyer)
-	newBuyer := `{"name":"Cong ty B","tax_code":"0109999999","address":"2 Pho B","email":"b@example.com"}`
-	if rec := x.post(admin, order, "replace", `{"reason":"wrong tax code","buyer":`+newBuyer+`}`); rec.Code != http.StatusOK {
-		t.Fatalf("got %d %s", rec.Code, rec.Body)
-	}
-	logs := x.audits(order, "einvoice.replaced")
-	if len(logs) != 1 {
-		t.Fatalf("got %d einvoice.replaced rows, want exactly 1", len(logs))
-	}
-	var d map[string]any
-	_ = json.Unmarshal([]byte(logs[0]), &d)
-	for k := range d {
-		switch k {
-		case "order_id", "revision", "new_revision", "reason":
-		default:
-			t.Errorf("unexpected detail key %q", k)
-		}
-	}
-	for _, v := range []string{"Cong ty", "0312345678", "0109999999", "Pho", "example.com"} {
-		if strings.Contains(logs[0], v) {
-			t.Errorf("detail has buyer value %q: %s", v, logs[0])
-		}
-	}
-}
-
-// With no e-invoice provider configured, retry and replace answer 503 with a
+// With no e-invoice provider configured, retry answers 503 with a
 // code the client can show, and write nothing.
 func TestEinvoiceRoutesAnswer503WhenNoProviderAndWriteNothing(t *testing.T) {
 	x := newEinvoiceDB(t)
 	x.h.(*Handler).Einvoices = invoice.NewService(x.store, nil, invoice.Config{StartAt: time.Now().Add(-24 * time.Hour), MaxAttempts: 3})
 	billing, _ := x.staffUser(staff.RoleBilling)
-	admin, _ := x.staffUser(staff.RoleAdmin)
 	failed := x.seed(invoice.StateFailed, fullBuyer)
-	issued := x.seed(invoice.StateIssued, fullBuyer)
 
 	if rec := x.post(billing, failed, "retry", ""); rec.Code != http.StatusServiceUnavailable || decodeMap(t, rec)["code"] != "einvoice_provider_not_configured" {
 		t.Errorf("retry got %d %s, want 503 einvoice_provider_not_configured", rec.Code, rec.Body)
 	}
-	if rec := x.post(admin, issued, "replace", `{"reason":"wrong tax code"}`); rec.Code != http.StatusServiceUnavailable || decodeMap(t, rec)["code"] != "einvoice_provider_not_configured" {
-		t.Errorf("replace got %d %s, want 503 einvoice_provider_not_configured", rec.Code, rec.Body)
-	}
 	if got := x.record(failed, 1); got.State != invoice.StateFailed || got.Attempts != 4 {
 		t.Errorf("failed record changed: state %s attempts %d", got.State, got.Attempts)
 	}
-	if got := x.record(issued, 1); got.State != invoice.StateIssued {
-		t.Errorf("the replace target changed: state %s", got.State)
-	}
-	var revisions int
-	if err := x.pool.QueryRow(context.Background(), `SELECT count(*) FROM einvoice_issuance WHERE order_id = $1`, issued).Scan(&revisions); err != nil {
-		t.Fatal(err)
-	}
-	if revisions != 1 {
-		t.Errorf("order has %d revisions, want 1", revisions)
-	}
-	if n := len(x.audits(failed, "einvoice.retried")) + len(x.audits(issued, "einvoice.replaced")); n != 0 {
-		t.Errorf("got %d audit rows for refused actions, want 0", n)
+	if n := len(x.audits(failed, "einvoice.retried")); n != 0 {
+		t.Errorf("got %d audit rows for a refused retry, want 0", n)
 	}
 }
 
@@ -460,11 +323,16 @@ func TestEinvoiceRoutesAnswer503WhenServiceNotWired(t *testing.T) {
 	}
 }
 
-func TestEinvoiceReplaceUnsupportedIs503(t *testing.T) {
+// The replace route was removed (2026-11-18): the router answers 404 even for
+// an admin, and no handler runs.
+func TestReplaceRouteIsGone(t *testing.T) {
 	e := newEnv(t)
-	withEinvoiceOps(e, invoice.Record{}, invoice.ErrReplaceUnsupported)
+	ops := withEinvoiceOps(e, invoice.Record{OrderID: orderA, Revision: 1, State: invoice.StateIssued, Buyer: []byte(fullBuyer)}, nil)
 	rec := e.do(adminID, "POST", "/api/platform/einvoices/"+orderA+"/replace", `{"reason":"wrong tax code"}`)
-	if rec.Code != http.StatusServiceUnavailable || decodeMap(t, rec)["code"] != "einvoice_replace_unsupported" {
-		t.Errorf("got %d %s, want 503 einvoice_replace_unsupported", rec.Code, rec.Body)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("got %d %s, want 404 from the router", rec.Code, rec.Body)
+	}
+	if ops.retries != 0 {
+		t.Errorf("an e-invoice operation ran")
 	}
 }

@@ -196,29 +196,6 @@ func TestForeignCurrencyForwarded(t *testing.T) {
 	}
 }
 
-// TestReplaceOncePerOriginal: the provider accepts one replacement per original invoice.
-func TestReplaceOncePerOriginal(t *testing.T) {
-	ctx := context.Background()
-	p := NewFake()
-	ref := ReferenceCode("ord_rep", 1)
-	if _, err := p.Issue(ctx, testIssueRequest(ref)); err != nil {
-		t.Fatalf("Issue: %v", err)
-	}
-	orig, err := p.Lookup(ctx, ref)
-	if err != nil {
-		t.Fatalf("Lookup: %v", err)
-	}
-
-	if _, err := p.Replace(ctx, orig.ProviderInvoiceID, testIssueRequest(ReferenceCode("ord_rep", 2))); err != nil {
-		t.Fatalf("first Replace: %v", err)
-	}
-	_, err = p.Replace(ctx, orig.ProviderInvoiceID, testIssueRequest(ReferenceCode("ord_rep", 3)))
-	var pe *ProviderError
-	if !errors.As(err, &pe) || pe.Code != "ALREADY_REPLACED" || pe.Kind != KindPermanent {
-		t.Fatalf("second Replace of the same original: err = %v, want permanent ALREADY_REPLACED", err)
-	}
-}
-
 // TestStatusPollsUntilSuccess: an async issue reports pending until the provider finishes.
 func TestStatusPollsUntilSuccess(t *testing.T) {
 	ctx := context.Background()

@@ -10,7 +10,7 @@ var (
 	// ErrStateConflict means the record is not in the state the operation requires.
 	ErrStateConflict = errors.New("invoice: record not in required state")
 	ErrNotFound      = errors.New("invoice: record not found")
-	// ErrInvalidActor means the staff actor of a replacement is not a UUID.
+	// ErrInvalidActor means the staff actor of a retry is not a UUID.
 	ErrInvalidActor = errors.New("invoice: actor is not a staff id")
 )
 
@@ -43,11 +43,6 @@ type Store interface {
 	MarkIssued(ctx context.Context, orderID string, revision int, i Issued) error
 	// ListDue returns pending records whose next_attempt_at is not after now, oldest first.
 	ListDue(ctx context.Context, now time.Time, limit int) ([]Record, error)
-	// ReplaceIssued cancels an issued record locally (no provider call) and
-	// inserts the next revision as pending with the given buyer, in one
-	// transaction with an einvoice.replaced audit row. A record that is not
-	// issued gives ErrStateConflict; an actor that is not a UUID, ErrInvalidActor.
-	ReplaceIssued(ctx context.Context, orderID string, revision int, buyer []byte, by, reason string) (Record, error)
 	// GetLatest returns the highest revision of the order; ErrNotFound when it has none.
 	GetLatest(ctx context.Context, orderID string) (Record, error)
 	// RetryRecord moves a failed or needs_info record back to pending with its

@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// Audit tests (spec 7.3 "Kiểm toán", rule I7): each enqueue, issue, replace and
+// Audit tests (spec 7.3 "Kiểm toán", rule I7): each enqueue, issue and
 // failed outcome writes one audit row in the transaction of the status change.
 // Rows are found by the order id the test created, never by table totals.
 
@@ -17,7 +17,6 @@ const (
 	auditIssued    = "einvoice.issued"
 	auditNeedsInfo = "einvoice.needs_info"
 	auditFailed    = "einvoice.failed"
-	auditReplaced  = "einvoice.replaced"
 )
 
 type auditRow struct {
@@ -181,51 +180,6 @@ func TestRetryableErrorWritesNoAuditRow(t *testing.T) {
 		if n := len(f.auditRows(id, action)); n != 0 {
 			t.Fatalf("%s rows = %d, want 0 for a retryable error", action, n)
 		}
-	}
-}
-
-func TestReplaceWritesOneAuditRowAndRollsBackWithTheChange(t *testing.T) {
-	f := newIssueFixture(t)
-	ctx := context.Background()
-	id := f.paidOrder(fullBuyerJSON)
-	s := f.service(8)
-	f.mustEnqueue(s)
-	f.mustIssue(s)
-
-	var staffID string
-	if err := f.pool.QueryRow(ctx, `SELECT gen_random_uuid()::text`).Scan(&staffID); err != nil {
-		t.Fatal(err)
-	}
-	buyer := Buyer{Name: "Cong ty A", TaxCode: "0312345678", Address: "1 Pho A", Email: "new@example.com"}
-
-	// An actor that is not a UUID is refused and changes nothing.
-	if _, err := s.Replace(ctx, id, 1, buyer, "staff-1", "wrong email"); err == nil {
-		t.Fatal("replace with a non-UUID actor succeeded")
-	}
-	if st := f.get(id, 1).State; st != StateIssued || f.countRows(id) != 1 {
-		t.Fatalf("a refused replace changed the record: state %q rows %d", st, f.countRows(id))
-	}
-
-	if _, err := s.Replace(ctx, id, 1, buyer, staffID, "wrong email"); err != nil {
-		t.Fatalf("replace: %v", err)
-	}
-	r := f.wantOneAudit(id, auditReplaced)
-	if r.ActorType != "staff" || r.ActorID != staffID || r.Detail["reason"] != "wrong email" ||
-		r.Detail["revision"] != float64(1) || r.Detail["new_revision"] != float64(2) {
-		t.Fatalf("actor %q/%q detail %s, want staff %s, revisions 1 to 2 and the reason", r.ActorType, r.ActorID, r.Raw, staffID)
-	}
-	noBuyerValues(t, r)
-	if strings.Contains(r.Raw, "new@example.com") {
-		t.Fatalf("audit detail holds the new email: %s", r.Raw)
-	}
-
-	// The record is no longer issued: a second replace conflicts and writes nothing.
-	if _, err := s.Replace(ctx, id, 1, buyer, staffID, "again"); !errors.Is(err, ErrStateConflict) {
-		t.Fatalf("second replace error = %v, want ErrStateConflict", err)
-	}
-	f.wantOneAudit(id, auditReplaced)
-	if f.countRows(id) != 2 {
-		t.Fatalf("rows = %d, want 2", f.countRows(id))
 	}
 }
 

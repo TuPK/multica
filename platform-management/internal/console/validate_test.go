@@ -286,7 +286,6 @@ func TestRouteRoles(t *testing.T) {
 		"/api/platform/payment-notices/{id}/dismiss": billingAdmin,
 		"/api/platform/einvoices":                    billingAdmin,
 		"/api/platform/einvoices/{orderId}/retry":    billingAdmin,
-		"/api/platform/einvoices/{orderId}/replace":  admin,
 		"/api/platform/accounts":                     admin,
 		"/api/platform/accounts/{id}":                admin,
 		"/api/platform/accounts/{id}/cancel":         admin,

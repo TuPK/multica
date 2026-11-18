@@ -3,7 +3,6 @@ package invoice
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"reflect"
 	"sync"
 	"testing"
@@ -359,95 +358,6 @@ func TestIssueSendsReferenceCodeFromOrderAndRevision(t *testing.T) {
 	}
 	if got.Amount != 150000 || got.Currency != "VND" || got.Buyer.TaxCode != "0312345678" {
 		t.Fatalf("request = amount %d currency %q tax code %q", got.Amount, got.Currency, got.Buyer.TaxCode)
-	}
-}
-
-// TestCancelRequiresAdminReasonAndKeepsRecord: there is no provider cancel
-// (spec 7.3 rule 6). The only correction is replace, which needs the actor and
-// a reason, and the original record stays in the table.
-func TestCancelRequiresAdminReasonAndKeepsRecord(t *testing.T) {
-	f := newIssueFixture(t)
-	ctx := context.Background()
-	id := f.paidOrder(fullBuyerJSON)
-	s := f.service(8)
-	f.mustEnqueue(s)
-	f.mustIssue(s)
-	buyer := Buyer{Name: "Cong ty B", TaxCode: "0312345679", Address: "2 Pho B", Email: "b@example.com"}
-
-	if _, err := s.Replace(ctx, id, 1, buyer, "staff-1", ""); !errors.Is(err, ErrReasonRequired) {
-		t.Fatalf("replace without reason: err = %v, want ErrReasonRequired", err)
-	}
-	if _, err := s.Replace(ctx, id, 1, buyer, "", "wrong tax code"); !errors.Is(err, ErrReasonRequired) {
-		t.Fatalf("replace without actor: err = %v, want ErrReasonRequired", err)
-	}
-	if rec := f.get(id, 1); rec.State != StateIssued {
-		t.Fatalf("after rejected replace: state = %q, want issued", rec.State)
-	}
-
-	if _, err := s.Replace(ctx, id, 1, buyer, "00000000-0000-4000-8000-0000000000a1", "wrong tax code"); err != nil {
-		t.Fatalf("replace: %v", err)
-	}
-	orig := f.get(id, 1)
-	if orig.State != StateCancelled || orig.InvoiceNumber == "" {
-		t.Fatalf("original after replace: state %q number %q, want cancelled and kept", orig.State, orig.InvoiceNumber)
-	}
-}
-
-// TestReplaceCreatesNextRevision: replace makes revision 2 pending with the
-// corrected buyer. The next run calls the provider's replace for the original
-// invoice, not issue, and the original invoice is marked replaced.
-func TestReplaceCreatesNextRevision(t *testing.T) {
-	f := newIssueFixture(t)
-	ctx := context.Background()
-	id := f.paidOrder(fullBuyerJSON)
-	s := f.service(8)
-	f.mustEnqueue(s)
-	f.mustIssue(s)
-	original := f.get(id, 1)
-
-	buyer := Buyer{Name: "Cong ty A", TaxCode: "0312345678", Address: "1 Pho A", Email: "new@example.com"}
-	next, err := s.Replace(ctx, id, 1, buyer, "00000000-0000-4000-8000-0000000000a1", "wrong email")
-	if err != nil {
-		t.Fatalf("replace: %v", err)
-	}
-	if next.Revision != 2 || next.State != StatePending {
-		t.Fatalf("next record revision %d state %q, want 2 pending", next.Revision, next.State)
-	}
-
-	f.makeDue(id, 2)
-	f.mustIssue(s)
-	if rec := f.get(id, 2); rec.State != StateIssued {
-		t.Fatalf("revision 2 state = %q, want issued", rec.State)
-	}
-	if got := f.fake.IssueCalls(); got != 1 {
-		t.Fatalf("provider issue calls = %d, want 1 (replacement must not call issue)", got)
-	}
-	if !f.fake.byID[original.ProviderInvoiceID] {
-		t.Fatalf("original invoice %q is not marked replaced at the provider", original.ProviderInvoiceID)
-	}
-}
-
-// TestReplaceRejectsIncompleteBuyer: a replacement whose buyer lacks a required
-// field is refused with the field name, and nothing changes.
-func TestReplaceRejectsIncompleteBuyer(t *testing.T) {
-	f := newIssueFixture(t)
-	ctx := context.Background()
-	id := f.paidOrder(fullBuyerJSON)
-	s := f.service(8)
-	f.mustEnqueue(s)
-	f.mustIssue(s)
-
-	noEmail := Buyer{Name: "Cong ty A", TaxCode: "0312345678", Address: "1 Pho A"}
-	_, err := s.Replace(ctx, id, 1, noEmail, "00000000-0000-4000-8000-0000000000a1", "wrong email")
-	var pe *ProviderError
-	if !errors.As(err, &pe) || pe.Kind != KindMissingFields || len(pe.Fields) != 1 || pe.Fields[0] != "email" {
-		t.Fatalf("replace with incomplete buyer: err = %v, want missing field email", err)
-	}
-	if _, err := f.store.Get(ctx, id, 2); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("revision 2 after refused replace: err = %v, want ErrNotFound", err)
-	}
-	if rec := f.get(id, 1); rec.State != StateIssued {
-		t.Fatalf("original after refused replace: state = %q, want issued", rec.State)
 	}
 }
 

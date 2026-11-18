@@ -94,16 +94,12 @@ func (e *ProviderError) Error() string {
 
 var ErrNoInvoice = errors.New("invoice provider: no invoice for reference")
 
-// ErrReplaceUnsupported is returned when the provider cannot replace an issued invoice.
-var ErrReplaceUnsupported = errors.New("invoice provider: replace is not supported by this provider")
-
 type Provider interface {
 	Name() string
 	RequiredBuyerFields() []string
 	Issue(ctx context.Context, req IssueRequest) (Ticket, error)
 	Status(ctx context.Context, trackingCode string) (Poll, error)
 	Lookup(ctx context.Context, referenceCode string) (Invoice, error)
-	Replace(ctx context.Context, originalInvoiceID string, req IssueRequest) (Ticket, error)
 }
 
 func buyerField(b Buyer, name string) string {
