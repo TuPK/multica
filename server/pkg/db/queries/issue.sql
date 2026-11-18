@@ -745,12 +745,19 @@ SELECT
   assignee_id,
   COUNT(*)::bigint as frequency
 FROM issue
-WHERE workspace_id = $1
-  AND creator_id = $2
-  AND creator_type = 'member'
-  AND assignee_type IS NOT NULL
-  AND assignee_id IS NOT NULL
-GROUP BY assignee_type, assignee_id;
+WHERE issue.workspace_id = $1
+  AND issue.creator_id = $2
+  AND issue.creator_type = 'member'
+  AND issue.assignee_type IS NOT NULL
+  AND issue.assignee_id IS NOT NULL
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+      OR (issue.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+      OR (sqlc.arg(scope_mode)::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
+GROUP BY issue.assignee_type, issue.assignee_id;
 
 -- name: ChildIssueProgress :many
 SELECT issue.parent_issue_id,

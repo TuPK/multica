@@ -155,17 +155,26 @@ SELECT
   assignee_id,
   COUNT(*)::bigint as frequency
 FROM issue
-WHERE workspace_id = $1
-  AND creator_id = $2
-  AND creator_type = 'member'
-  AND assignee_type IS NOT NULL
-  AND assignee_id IS NOT NULL
-GROUP BY assignee_type, assignee_id
+WHERE issue.workspace_id = $1
+  AND issue.creator_id = $2
+  AND issue.creator_type = 'member'
+  AND issue.assignee_type IS NOT NULL
+  AND issue.assignee_id IS NOT NULL
+  -- projectaccess:scope
+  AND ($3::text = 'all'
+      OR (issue.project_id IS NULL AND $3::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = $4::uuid)
+      OR ($3::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
+GROUP BY issue.assignee_type, issue.assignee_id
 `
 
 type CountCreatedIssueAssigneesParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 	CreatorID   pgtype.UUID `json:"creator_id"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
 }
 
 type CountCreatedIssueAssigneesRow struct {
@@ -176,7 +185,12 @@ type CountCreatedIssueAssigneesRow struct {
 
 // Count assignees on issues created by a specific user.
 func (q *Queries) CountCreatedIssueAssignees(ctx context.Context, arg CountCreatedIssueAssigneesParams) ([]CountCreatedIssueAssigneesRow, error) {
-	rows, err := q.db.Query(ctx, countCreatedIssueAssignees, arg.WorkspaceID, arg.CreatorID)
+	rows, err := q.db.Query(ctx, countCreatedIssueAssignees,
+		arg.WorkspaceID,
+		arg.CreatorID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}

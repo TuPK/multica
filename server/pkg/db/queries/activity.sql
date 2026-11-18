@@ -51,12 +51,20 @@ SELECT
   details->>'to_id' as assignee_id,
   COUNT(*)::bigint as frequency
 FROM activity_log
-WHERE workspace_id = $1
+LEFT JOIN issue scope_i ON scope_i.id = activity_log.issue_id
+WHERE activity_log.workspace_id = $1
   AND actor_id = $2
   AND actor_type = 'member'
   AND action = 'assignee_changed'
   AND details->>'to_type' IS NOT NULL
   AND details->>'to_id' IS NOT NULL
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+      OR (scope_i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = scope_i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+      OR (sqlc.arg(scope_mode)::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = scope_i.project_id AND scope_p.access = 'workspace')))
 GROUP BY details->>'to_type', details->>'to_id';
 
 -- name: GetLastIssueStatusChange :one

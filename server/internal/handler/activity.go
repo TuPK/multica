@@ -412,6 +412,10 @@ func (h *Handler) GetAssigneeFrequency(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	workspaceID := h.resolveWorkspaceID(r)
+	scope, ok := h.viewerScope(w, r, parseUUID(workspaceID))
+	if !ok {
+		return
+	}
 
 	// Aggregate frequency from both data sources.
 	freq := map[string]int64{} // key: "type:id"
@@ -420,6 +424,8 @@ func (h *Handler) GetAssigneeFrequency(w http.ResponseWriter, r *http.Request) {
 	activityCounts, err := h.Queries.CountAssigneeChangesByActor(r.Context(), db.CountAssigneeChangesByActorParams{
 		WorkspaceID: parseUUID(workspaceID),
 		ActorID:     parseUUID(userID),
+		ScopeMode:   scope.Mode(),
+		ScopeUserID: scope.UserID(),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to get assignee frequency")
@@ -437,6 +443,8 @@ func (h *Handler) GetAssigneeFrequency(w http.ResponseWriter, r *http.Request) {
 	issueCounts, err := h.Queries.CountCreatedIssueAssignees(r.Context(), db.CountCreatedIssueAssigneesParams{
 		WorkspaceID: parseUUID(workspaceID),
 		CreatorID:   parseUUID(userID),
+		ScopeMode:   scope.Mode(),
+		ScopeUserID: scope.UserID(),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to get assignee frequency")

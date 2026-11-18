@@ -17,18 +17,28 @@ SELECT
   details->>'to_id' as assignee_id,
   COUNT(*)::bigint as frequency
 FROM activity_log
-WHERE workspace_id = $1
+LEFT JOIN issue scope_i ON scope_i.id = activity_log.issue_id
+WHERE activity_log.workspace_id = $1
   AND actor_id = $2
   AND actor_type = 'member'
   AND action = 'assignee_changed'
   AND details->>'to_type' IS NOT NULL
   AND details->>'to_id' IS NOT NULL
+  -- projectaccess:scope
+  AND ($3::text = 'all'
+      OR (scope_i.project_id IS NULL AND $3::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = scope_i.project_id AND scope_pm.user_id = $4::uuid)
+      OR ($3::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = scope_i.project_id AND scope_p.access = 'workspace')))
 GROUP BY details->>'to_type', details->>'to_id'
 `
 
 type CountAssigneeChangesByActorParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 	ActorID     pgtype.UUID `json:"actor_id"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
 }
 
 type CountAssigneeChangesByActorRow struct {
@@ -39,7 +49,12 @@ type CountAssigneeChangesByActorRow struct {
 
 // Count how many times a user assigned each target via assignee_changed activities.
 func (q *Queries) CountAssigneeChangesByActor(ctx context.Context, arg CountAssigneeChangesByActorParams) ([]CountAssigneeChangesByActorRow, error) {
-	rows, err := q.db.Query(ctx, countAssigneeChangesByActor, arg.WorkspaceID, arg.ActorID)
+	rows, err := q.db.Query(ctx, countAssigneeChangesByActor,
+		arg.WorkspaceID,
+		arg.ActorID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}
