@@ -415,3 +415,47 @@ func TestEinvoiceReplaceAuditHasNoBuyerValues(t *testing.T) {
 		}
 	}
 }
+
+// With no e-invoice provider configured, retry and replace answer 503 with a
+// code the client can show, and write nothing.
+func TestEinvoiceRoutesAnswer503WhenNoProviderAndWriteNothing(t *testing.T) {
+	x := newEinvoiceDB(t)
+	x.h.(*Handler).Einvoices = invoice.NewService(x.store, nil, invoice.Config{StartAt: time.Now().Add(-24 * time.Hour), MaxAttempts: 3})
+	billing, _ := x.staffUser(staff.RoleBilling)
+	admin, _ := x.staffUser(staff.RoleAdmin)
+	failed := x.seed(invoice.StateFailed, fullBuyer)
+	issued := x.seed(invoice.StateIssued, fullBuyer)
+
+	if rec := x.post(billing, failed, "retry", ""); rec.Code != http.StatusServiceUnavailable || decodeMap(t, rec)["code"] != "einvoice_provider_not_configured" {
+		t.Errorf("retry got %d %s, want 503 einvoice_provider_not_configured", rec.Code, rec.Body)
+	}
+	if rec := x.post(admin, issued, "replace", `{"reason":"wrong tax code"}`); rec.Code != http.StatusServiceUnavailable || decodeMap(t, rec)["code"] != "einvoice_provider_not_configured" {
+		t.Errorf("replace got %d %s, want 503 einvoice_provider_not_configured", rec.Code, rec.Body)
+	}
+	if got := x.record(failed, 1); got.State != invoice.StateFailed || got.Attempts != 4 {
+		t.Errorf("failed record changed: state %s attempts %d", got.State, got.Attempts)
+	}
+	if got := x.record(issued, 1); got.State != invoice.StateIssued {
+		t.Errorf("the replace target changed: state %s", got.State)
+	}
+	var revisions int
+	if err := x.pool.QueryRow(context.Background(), `SELECT count(*) FROM einvoice_issuance WHERE order_id = $1`, issued).Scan(&revisions); err != nil {
+		t.Fatal(err)
+	}
+	if revisions != 1 {
+		t.Errorf("order has %d revisions, want 1", revisions)
+	}
+	if n := len(x.audits(failed, "einvoice.retried")) + len(x.audits(issued, "einvoice.replaced")); n != 0 {
+		t.Errorf("got %d audit rows for refused actions, want 0", n)
+	}
+}
+
+// The service is not wired at all (the production state until the provider
+// lands): the same 503, not a 500.
+func TestEinvoiceRoutesAnswer503WhenServiceNotWired(t *testing.T) {
+	e := newEnv(t)
+	rec := e.do(billID, "POST", "/api/platform/einvoices/"+orderA+"/retry", "")
+	if rec.Code != http.StatusServiceUnavailable || decodeMap(t, rec)["code"] != "einvoice_provider_not_configured" {
+		t.Errorf("retry got %d %s, want 503 einvoice_provider_not_configured", rec.Code, rec.Body)
+	}
+}

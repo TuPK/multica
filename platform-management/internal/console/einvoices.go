@@ -197,6 +197,9 @@ func (h *Handler) einvoiceError(w http.ResponseWriter, r *http.Request, op strin
 			Message: "the invoice is not in a state this action accepts"})
 	case errors.Is(err, invoice.ErrReasonRequired):
 		writeError(w, badRequest("reason_required", "a reason is required"))
+	case errors.Is(err, invoice.ErrProviderNotConfigured):
+		writeError(w, &apiError{Status: http.StatusServiceUnavailable, Code: "einvoice_provider_not_configured",
+			Message: "e-invoicing is not configured on this platform"})
 	case errors.As(err, &pe) && pe.Kind == invoice.KindMissingFields:
 		fields := pe.Fields
 		if fields == nil {
@@ -218,7 +221,7 @@ func (h *Handler) latestEinvoice(w http.ResponseWriter, r *http.Request, op stri
 		return invoice.Record{}, false
 	}
 	if h.Einvoices == nil {
-		h.fail(w, r, op, errors.New("e-invoice operations are not configured"))
+		h.einvoiceError(w, r, op, invoice.ErrProviderNotConfigured)
 		return invoice.Record{}, false
 	}
 	rec, err := h.Einvoices.Latest(r.Context(), orderID)

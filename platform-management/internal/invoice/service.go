@@ -19,6 +19,10 @@ const (
 
 var ErrReasonRequired = errors.New("invoice: replace needs the actor and a reason")
 
+// ErrProviderNotConfigured is returned by Retry and Replace when the service has
+// no provider, before any store or provider call.
+var ErrProviderNotConfigured = errors.New("invoice: e-invoicing provider is not configured")
+
 type Config struct {
 	// StartAt is the earliest paid_at that gets an invoice.
 	StartAt     time.Time
@@ -201,7 +205,7 @@ func (s *Service) fail(ctx context.Context, now time.Time, rec Record, err error
 // the original invoice at the provider.
 func (s *Service) Replace(ctx context.Context, orderID string, revision int, buyer Buyer, by, reason string) (Record, error) {
 	if s.provider == nil {
-		return Record{}, errors.New("invoice: e-invoicing is not configured")
+		return Record{}, ErrProviderNotConfigured
 	}
 	if strings.TrimSpace(by) == "" || strings.TrimSpace(reason) == "" {
 		return Record{}, ErrReasonRequired
@@ -226,7 +230,7 @@ func (s *Service) Latest(ctx context.Context, orderID string) (Record, error) {
 // ProviderError and the record is left as it is.
 func (s *Service) Retry(ctx context.Context, orderID string, revision int, by string) (Record, error) {
 	if s.provider == nil {
-		return Record{}, errors.New("invoice: e-invoicing is not configured")
+		return Record{}, ErrProviderNotConfigured
 	}
 	rec, err := s.store.Get(ctx, orderID, revision)
 	if err != nil {
