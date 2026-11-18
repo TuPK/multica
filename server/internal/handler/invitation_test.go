@@ -1017,3 +1017,29 @@ func TestWriteSeatCapacityError_DefaultBranchIsUnavailable(t *testing.T) {
 		}
 	}
 }
+
+// Spec AC20: with the platform stopped, reading workspace data still works
+// while seat-consuming writes return 503 seat_capacity_unavailable.
+func TestSeatCapacityOutageLeavesWorkspaceReadsWorking(t *testing.T) {
+	useUnreachablePlatform(t)
+
+	req := newRequest(http.MethodGet, "/api/workspaces/"+testWorkspaceID, nil)
+	req = withURLParam(req, "id", testWorkspaceID)
+	rec := httptest.NewRecorder()
+	testHandler.GetWorkspace(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GetWorkspace during outage: status %d, want 200: %s", rec.Code, rec.Body.String())
+	}
+	var ws struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &ws); err != nil {
+		t.Fatalf("decode workspace %q: %v", rec.Body.String(), err)
+	}
+	if ws.ID != testWorkspaceID {
+		t.Fatalf("workspace id = %q, want %q", ws.ID, testWorkspaceID)
+	}
+
+	wantSeatErrorCode(t, createInvitationWithSeatClient(t, "platform-outage-read@multica.ai"),
+		http.StatusServiceUnavailable, "seat_capacity_unavailable")
+}
