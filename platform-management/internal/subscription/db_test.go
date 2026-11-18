@@ -489,8 +489,14 @@ func TestDBOldRowWithoutPendingChangeReadsCleanly(t *testing.T) {
 // dbConsole is the console routes on the real plan tables.
 func (f *dbFixture) dbConsole(t *testing.T) *consoleEnv {
 	t.Helper()
+	return f.dbConsoleWithCurrencies(t, "vnd")
+}
+
+// dbConsoleWithCurrencies is dbConsole with the given enabled currencies.
+func (f *dbFixture) dbConsoleWithCurrencies(t *testing.T, currencies ...string) *consoleEnv {
+	t.Helper()
 	e := &consoleEnv{t: t, subs: newFakeStore(t), profs: newFakeProfiles(t), cache: &recordingCache{}, policy: &recordingCache{}}
-	e.h = buildConsole(t, e, plan.NewPgxReader(f.pool), plan.NewPgxRunner(f.pool), []string{"vnd"})
+	e.h = buildConsole(t, e, plan.NewPgxReader(f.pool), plan.NewPgxRunner(f.pool), currencies)
 	return e
 }
 
@@ -518,7 +524,10 @@ func (f *dbFixture) dropPlanAudits(key string) {
 
 func TestDBCurrencyLockedWithSubscriptionRow(t *testing.T) {
 	f := newDBFixture(t)
-	e := f.dbConsole(t)
+	// The default PLATFORM_CURRENCIES is only vnd (spec 7.4, AC61). This test
+	// enables usd for its own case: it changes the plan to usd while no
+	// subscription uses it.
+	e := f.dbConsoleWithCurrencies(t, "vnd", "usd")
 	p := f.plan(nil)
 	f.dropPlanAudits(p.Key)
 	wantStatus(t, f.putPlanCurrency(e, p.Key, "vnd"), 200)
