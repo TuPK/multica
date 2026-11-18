@@ -220,6 +220,13 @@ WHERE workspace_id = sqlc.arg('workspace_id')::uuid
   AND flow IS NOT NULL
   AND flow->>'workflow_id' = sqlc.arg('workflow_id')::text
   AND (sqlc.arg('include_trial')::boolean OR COALESCE(flow->>'trial', 'false') <> 'true')
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+      OR (issue.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+      OR (sqlc.arg(scope_mode)::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
 ORDER BY created_at DESC, id DESC
 LIMIT sqlc.arg('page_limit')::int;
 

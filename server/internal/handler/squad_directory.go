@@ -2,6 +2,8 @@ package handler
 
 import (
 	"net/http"
+
+	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
 // SquadDirectoryEntryResponse is one squad as another squad reads it before it
@@ -29,7 +31,13 @@ func (h *Handler) ListSquadDirectory(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	rows, err := h.Queries.ListSquadDirectory(r.Context(), wsUUID)
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
+	rows, err := h.Queries.ListSquadDirectory(r.Context(), db.ListSquadDirectoryParams{
+		WorkspaceID: wsUUID, ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list the squad directory")
 		return

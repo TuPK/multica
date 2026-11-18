@@ -76,9 +76,14 @@ func (h *Handler) GetFlowInsights(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 	// One more than is shown tells whether the list was cut.
 	requests, err := h.Queries.ListFlowInsightRequests(ctx, db.ListFlowInsightRequestsParams{
-		WorkspaceID: wsUUID, WorkflowID: uuidToString(id), IncludeTrial: includeTrial, PageLimit: flowInsightsMaxRequests + 1,
+		WorkspaceID: wsUUID, WorkflowID: uuidToString(id), IncludeTrial: includeTrial,
+		ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(), PageLimit: flowInsightsMaxRequests + 1,
 	})
 	if err != nil {
 		writeFlowError(w, r, err)

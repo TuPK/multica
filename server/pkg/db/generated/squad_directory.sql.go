@@ -90,13 +90,26 @@ SELECT
           AND r.assignee_type = 'squad'
           AND r.assignee_id = s.id
           AND r.status NOT IN ('done', 'cancelled')
+          -- projectaccess:scope
+          AND ($1::text = 'all'
+              OR (r.project_id IS NULL AND $1::text <> 'guest')
+              OR EXISTS (SELECT 1 FROM project_member scope_pm
+                         WHERE scope_pm.project_id = r.project_id AND scope_pm.user_id = $2::uuid)
+              OR ($1::text = 'member'
+                  AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = r.project_id AND scope_p.access = 'workspace')))
     )::bigint AS open_requests
 FROM squad s
 LEFT JOIN squad_charter c ON c.squad_id = s.id AND c.workspace_id = s.workspace_id
 LEFT JOIN company_floor f ON f.id = s.floor_id AND f.workspace_id = s.workspace_id
-WHERE s.workspace_id = $1::uuid AND s.archived_at IS NULL
+WHERE s.workspace_id = $3::uuid AND s.archived_at IS NULL
 ORDER BY s.created_at ASC, s.id ASC
 `
+
+type ListSquadDirectoryParams struct {
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
 
 type ListSquadDirectoryRow struct {
 	SquadID       pgtype.UUID `json:"squad_id"`
@@ -113,8 +126,8 @@ type ListSquadDirectoryRow struct {
 // and its open requests from other squads. Every query filters by workspace_id.
 // Live squads with their charter, floor name and open squad requests. A squad
 // without a charter reads the charter defaults.
-func (q *Queries) ListSquadDirectory(ctx context.Context, workspaceID pgtype.UUID) ([]ListSquadDirectoryRow, error) {
-	rows, err := q.db.Query(ctx, listSquadDirectory, workspaceID)
+func (q *Queries) ListSquadDirectory(ctx context.Context, arg ListSquadDirectoryParams) ([]ListSquadDirectoryRow, error) {
+	rows, err := q.db.Query(ctx, listSquadDirectory, arg.ScopeMode, arg.ScopeUserID, arg.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}

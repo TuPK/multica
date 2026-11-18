@@ -418,14 +418,23 @@ WHERE workspace_id = $1::uuid
   AND flow IS NOT NULL
   AND flow->>'workflow_id' = $2::text
   AND ($3::boolean OR COALESCE(flow->>'trial', 'false') <> 'true')
+  -- projectaccess:scope
+  AND ($4::text = 'all'
+      OR (issue.project_id IS NULL AND $4::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = $5::uuid)
+      OR ($4::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
 ORDER BY created_at DESC, id DESC
-LIMIT $4::int
+LIMIT $6::int
 `
 
 type ListFlowInsightRequestsParams struct {
 	WorkspaceID  pgtype.UUID `json:"workspace_id"`
 	WorkflowID   string      `json:"workflow_id"`
 	IncludeTrial bool        `json:"include_trial"`
+	ScopeMode    string      `json:"scope_mode"`
+	ScopeUserID  pgtype.UUID `json:"scope_user_id"`
 	PageLimit    int32       `json:"page_limit"`
 }
 
@@ -442,6 +451,8 @@ func (q *Queries) ListFlowInsightRequests(ctx context.Context, arg ListFlowInsig
 		arg.WorkspaceID,
 		arg.WorkflowID,
 		arg.IncludeTrial,
+		arg.ScopeMode,
+		arg.ScopeUserID,
 		arg.PageLimit,
 	)
 	if err != nil {
