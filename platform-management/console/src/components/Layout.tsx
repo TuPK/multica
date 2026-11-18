@@ -55,13 +55,16 @@ export function Layout({
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <header className="sticky top-0 z-40 border-b border-surface-border bg-surface/95 backdrop-blur-sm">
-        <div className="flex h-14 items-center justify-between px-6">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2 font-heading font-semibold text-title-sm">
+        <div className="flex min-h-14 flex-wrap items-center justify-between gap-x-6 gap-y-2 px-6 py-2">
+          <div className="flex min-w-0 grow items-center gap-6">
+            <div className="flex shrink-0 items-center gap-2 font-heading font-semibold text-title-sm">
               <Shield className="size-5 text-primary" />
               <span>Platform Console</span>
             </div>
-            <nav className="flex items-center gap-1" aria-label="Main Navigation">
+            <nav
+              className="flex min-w-0 items-center gap-1 overflow-x-auto"
+              aria-label="Main Navigation"
+            >
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive =
@@ -88,7 +91,7 @@ export function Layout({
             </nav>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex shrink-0 items-center gap-4">
             <div className="flex items-center gap-2 text-body">
               <span className="text-muted-foreground">{user.email}</span>
               <StatusBadge status={user.role} />

@@ -4,6 +4,10 @@
 @import "@multica/ui/styles/tokens.css";
 @import "@multica/ui/styles/base.css";
 
+/* Scan the shared UI primitives too: Dialog, Table and Button classes live in
+   packages/ui, outside this app's source tree, and would not be generated. */
+@source "../../../packages/ui";
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
