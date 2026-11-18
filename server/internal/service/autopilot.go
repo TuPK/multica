@@ -942,11 +942,17 @@ func (s *AutopilotService) notifyAutopilotSubscribersOnCreate(
 		"autopilot_id": util.UUIDToString(ap.ID),
 		"reason":       "autopilot",
 	})
+	audience := inbox.NewIssueAudience(ctx, s.Queries, ap.WorkspaceID, issue.ID)
 	for _, sub := range subscribers {
 		// Autopilot subscribers are restricted to user_type='member' at the
 		// handler boundary; defend in case that constraint is ever relaxed
 		// (agents don't have inbox).
 		if sub.UserType != "member" {
+			continue
+		}
+		// A subscriber who cannot see the issue's project gets no notice
+		// (spec 7.1 rule 4).
+		if !audience.Sees(sub.UserID) {
 			continue
 		}
 		item, inserted, err := inbox.CreateIfEligible(ctx, s.Queries, db.CreateInboxItemParams{

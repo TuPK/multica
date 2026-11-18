@@ -3,10 +3,12 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/logger"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -164,10 +166,17 @@ func (h *Handler) ListInbox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
+
 	items, err := h.Queries.ListInboxItems(r.Context(), db.ListInboxItemsParams{
 		WorkspaceID:   wsUUID,
 		RecipientType: "member",
 		RecipientID:   parseUUID(userID),
+		ScopeMode:     scope.Mode(),
+		ScopeUserID:   scope.UserID(),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list inbox")
@@ -202,10 +211,17 @@ func (h *Handler) ListArchivedInbox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
+
 	items, err := h.Queries.ListArchivedInboxItems(r.Context(), db.ListArchivedInboxItemsParams{
 		WorkspaceID:   wsUUID,
 		RecipientType: "member",
 		RecipientID:   parseUUID(userID),
+		ScopeMode:     scope.Mode(),
+		ScopeUserID:   scope.UserID(),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list archived inbox")
@@ -220,12 +236,39 @@ func (h *Handler) ListArchivedInbox(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// loadVisibleInboxItem loads the caller's own inbox item and answers one whose
+// issue the caller can no longer see like a missing item (spec 7.1 rule 4). An
+// item whose issue is gone shows nothing and stays reachable.
+func (h *Handler) loadVisibleInboxItem(w http.ResponseWriter, r *http.Request, itemID string) (db.InboxItem, bool) {
+	item, ok := h.loadInboxItemForUser(w, r, itemID)
+	if !ok || !item.IssueID.Valid {
+		return item, ok
+	}
+	issue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{ID: item.IssueID, WorkspaceID: item.WorkspaceID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return item, true
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load inbox item")
+		return db.InboxItem{}, false
+	}
+	scope, ok := h.viewerScope(w, r, item.WorkspaceID)
+	if !ok {
+		return db.InboxItem{}, false
+	}
+	if !scope.Allows(issue.ProjectID) {
+		writeError(w, http.StatusNotFound, "inbox item not found")
+		return db.InboxItem{}, false
+	}
+	return item, true
+}
+
 // MarkInboxRead reads the item and, when it belongs to an issue, every other
 // unread active item the caller has on that issue: selecting a row in the inbox
 // opens the whole issue (MUL-8618, see the query comment).
 func (h *Handler) MarkInboxRead(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	prev, ok := h.loadInboxItemForUser(w, r, id)
+	prev, ok := h.loadVisibleInboxItem(w, r, id)
 	if !ok {
 		return
 	}
@@ -255,7 +298,7 @@ func (h *Handler) MarkInboxRead(w http.ResponseWriter, r *http.Request) {
 // — see the query comment.
 func (h *Handler) MarkInboxUnread(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	prev, ok := h.loadInboxItemForUser(w, r, id)
+	prev, ok := h.loadVisibleInboxItem(w, r, id)
 	if !ok {
 		return
 	}
@@ -278,7 +321,7 @@ func (h *Handler) MarkInboxUnread(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) ArchiveInboxItem(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	prev, ok := h.loadInboxItemForUser(w, r, id)
+	prev, ok := h.loadVisibleInboxItem(w, r, id)
 	if !ok {
 		return
 	}
@@ -320,7 +363,7 @@ func (h *Handler) ArchiveInboxItem(w http.ResponseWriter, r *http.Request) {
 // non-archived items, so restoring one is a real addition, not a bug.
 func (h *Handler) UnarchiveInboxItem(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	prev, ok := h.loadInboxItemForUser(w, r, id)
+	prev, ok := h.loadVisibleInboxItem(w, r, id)
 	if !ok {
 		return
 	}
@@ -363,10 +406,17 @@ func (h *Handler) CountUnreadInbox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
+
 	count, err := h.Queries.CountUnreadInbox(r.Context(), db.CountUnreadInboxParams{
 		WorkspaceID:   wsUUID,
 		RecipientType: "member",
 		RecipientID:   parseUUID(userID),
+		ScopeMode:     scope.Mode(),
+		ScopeUserID:   scope.UserID(),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to count unread inbox")
@@ -395,17 +445,35 @@ func (h *Handler) UnreadInboxSummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := h.Queries.CountUnreadInboxByWorkspace(r.Context(), parseUUID(userID))
+	workspaces, err := h.Queries.ListWorkspaces(r.Context(), parseUUID(userID))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to summarize unread inbox")
 		return
 	}
 
-	resp := make([]InboxWorkspaceUnreadResponse, len(rows))
-	for i, row := range rows {
-		resp[i] = InboxWorkspaceUnreadResponse{
-			WorkspaceID: uuidToString(row.WorkspaceID),
-			Count:       row.Count,
+	// The viewer's project scope is per workspace, so each workspace is counted
+	// under its own Scope.
+	resp := make([]InboxWorkspaceUnreadResponse, 0, len(workspaces))
+	for _, workspace := range workspaces {
+		scope, ok := h.viewerScope(w, r, workspace.ID)
+		if !ok {
+			return
+		}
+		rows, err := h.Queries.CountUnreadInboxByWorkspace(r.Context(), db.CountUnreadInboxByWorkspaceParams{
+			RecipientID: parseUUID(userID),
+			WorkspaceID: workspace.ID,
+			ScopeMode:   scope.Mode(),
+			ScopeUserID: scope.UserID(),
+		})
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to summarize unread inbox")
+			return
+		}
+		for _, row := range rows {
+			resp = append(resp, InboxWorkspaceUnreadResponse{
+				WorkspaceID: uuidToString(row.WorkspaceID),
+				Count:       row.Count,
+			})
 		}
 	}
 

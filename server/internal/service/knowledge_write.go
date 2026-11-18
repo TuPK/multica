@@ -96,6 +96,22 @@ type KnowledgeActor struct {
 	// Curator is true for a human owner or admin, who may use restricted bases
 	// that no grant names. The system actor is always a curator.
 	Curator bool
+	// HiddenBases holds the keys of the project bases whose project the actor
+	// cannot see (spec 7.1 rule 4). HideProjectBases hides every project base,
+	// for an actor whose project scope could not be computed.
+	HiddenBases      map[string]bool
+	HideProjectBases bool
+}
+
+// hides reports whether the base is a project's base the actor may not see. A
+// hidden base is treated as absent.
+func (a KnowledgeActor) hides(key string) bool {
+	return a.HiddenBases[key] || (a.HideProjectBases && strings.HasPrefix(key, projectBaseKeyPrefix))
+}
+
+// restrictsProjects reports whether the actor's reach of project bases is limited.
+func (a KnowledgeActor) restrictsProjects() bool {
+	return a.HideProjectBases || len(a.HiddenBases) > 0
 }
 
 // KnowledgeDocumentInput is a new document. Exactly one of Content and URL is
@@ -231,7 +247,7 @@ func (s *KnowledgeService) BasesFor(ctx context.Context, workspaceID pgtype.UUID
 	}
 	visible := make([]KnowledgeBaseView, 0, len(status.KnowledgeBases))
 	for _, b := range status.KnowledgeBases {
-		if knowledgeCanRead(actor, b.Visibility, b.ID, grants) {
+		if !actor.hides(b.Key) && knowledgeCanRead(actor, b.Visibility, b.ID, grants) {
 			visible = append(visible, b)
 		}
 	}
@@ -420,6 +436,9 @@ func (s *KnowledgeService) CreateDocument(ctx context.Context, workspaceID pgtyp
 	grants, err := s.actorKnowledgeGrants(ctx, workspaceID, actor)
 	if err != nil {
 		return KnowledgeDocumentView{}, false, err
+	}
+	if actor.hides(base.Key) {
+		return KnowledgeDocumentView{}, false, ErrKnowledgeBaseNotFound
 	}
 	if !knowledgeCanWrite(actor, base.Visibility, util.UUIDToString(base.ID), grants) {
 		return KnowledgeDocumentView{}, false, ErrKnowledgeForbidden

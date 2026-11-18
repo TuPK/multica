@@ -6477,10 +6477,16 @@ func (h *Handler) ListTasksByIssue(w http.ResponseWriter, r *http.Request) {
 		}
 		// One row beyond the cap, so a full page can be told apart from a
 		// truncated one without a second count query.
+		viewer, ok := h.viewerScope(w, r, issue.WorkspaceID)
+		if !ok {
+			return
+		}
 		rows, err := h.Queries.ListActiveTasksByIssueFamily(r.Context(), db.ListActiveTasksByIssueFamilyParams{
 			WorkspaceID: issue.WorkspaceID,
 			RootIssueID: root,
 			RowLimit:    familyActiveRunCap + 1,
+			ScopeMode:   viewer.Mode(),
+			ScopeUserID: viewer.UserID(),
 		})
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to list tasks")

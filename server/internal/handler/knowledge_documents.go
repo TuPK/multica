@@ -216,7 +216,7 @@ func (h *Handler) CreateKnowledgeDocument(w http.ResponseWriter, r *http.Request
 		in.ValidUntil = pgtype.Date{Time: day, Valid: true}
 	}
 	view, created, err := h.Knowledge.CreateDocument(r.Context(), parseUUID(workspaceID),
-		service.KnowledgeActor{Type: actorType, ID: actorUUID, Curator: h.knowledgeCurator(r, actorType)}, in)
+		h.withKnowledgeProjectScope(r, workspaceID, service.KnowledgeActor{Type: actorType, ID: actorUUID, Curator: h.knowledgeCurator(r, actorType)}), in)
 	if err != nil {
 		writeKnowledgeError(w, r, workspaceID, err)
 		return

@@ -35,10 +35,16 @@ func (h *Handler) ListIssueUnread(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 	params := db.ListIssueUnreadParams{
 		WorkspaceID: wsUUID,
 		UserID:      parseUUID(userID),
 		PageLimit:   int32(issueUnreadPageSize + 1),
+		ScopeMode:   scope.Mode(),
+		ScopeUserID: scope.UserID(),
 	}
 	if cursor := r.URL.Query().Get("cursor"); cursor != "" {
 		params.BeforeCreatedAt, params.BeforeIssueID = parseTranscriptCursor(cursor)

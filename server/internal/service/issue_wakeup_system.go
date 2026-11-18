@@ -593,7 +593,9 @@ func (s *IssueWakeupService) dispatchSystem(ctx context.Context, prev db.IssueWa
 	// assignee whose agent cannot run.
 	if current.Type == "member" || !current.Agent.ID.Valid {
 		facts["outcome"] = "none"
-		if current.Type == "member" {
+		// A member assignee who cannot see the issue's project is not told
+		// (spec 7.1 rule 4); the receipts are still consumed.
+		if current.Type == "member" && inboxwriter.NewIssueAudience(ctx, q, issue.WorkspaceID, issue.ID).Sees(current.ID) {
 			facts["outcome"] = "notified"
 			details, _ := json.Marshal(facts)
 			item, inserted, err := inboxwriter.CreateIfEligible(ctx, q, db.CreateInboxItemParams{

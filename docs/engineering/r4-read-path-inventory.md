@@ -36,9 +36,11 @@ How units are found:
 | --- | --- | --- | --- | --- |
 | `server/pkg/db/queries/agent.sql` | `CreateAgentTask` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/agent.sql` | `CreateDeferredChannelIssueTask` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/agent.sql` | `ListActiveTasksByIssueFamily` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/agent.sql` | `ListActiveTasksByIssueFamily` | sql-query | scoped | fragment on the joined issue.project_id; test TestDerivedRowsFollowIssueVisibility/task |
+| `server/pkg/db/queries/agent.sql` | `ListAgentTasks` | sql-query | scoped | tasks follow their issue (issue_visible subquery); test TestDerivedRowsFollowIssueVisibility/task |
 | `server/pkg/db/queries/agent.sql` | `ListPendingDelegatedFailureRecoveries` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/agent.sql` | `ListWorkspaceWorkingAgents` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/agent.sql` | `ListWorkspaceAgentTaskSnapshot` | sql-query | scoped | both halves follow the task issue; test TestDerivedRowsFollowIssueVisibility/task |
+| `server/pkg/db/queries/agent.sql` | `ListWorkspaceWorkingAgents` | sql-query | scoped | tasks follow their issue (issue_visible subquery); test TestDerivedRowsFollowIssueVisibility/task |
 | `server/pkg/db/queries/approval_policy.sql` | `ListPolicyAutoApprovals` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/approval_policy.sql` | `ListPolicyReversals` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/approval_policy.sql` | `ListRecentPolicyApprovals` | sql-query | todo | Reads issue or project; no visibility filter today |
@@ -48,9 +50,9 @@ How units are found:
 | `server/pkg/db/queries/budget.sql` | `ListBudgetInflightTasks` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/budget.sql` | `ListBudgetTaskCostsSince` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/budget.sql` | `LockBudgetTaskForAccounting` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/comment.sql` | `LockCommentForDelete` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/comment.sql` | `LockLiveComment` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/comment.sql` | `UpdateComment` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/comment.sql` | `LockCommentForDelete` | sql-query | exempt | (a) write or lock by comment id that runs only after the handler (UpdateComment, DeleteComment, AddReaction, RemoveReaction, ResolveComment) passed commentInViewerScope; test TestDerivedRowsFollowIssueVisibility/comment |
+| `server/pkg/db/queries/comment.sql` | `LockLiveComment` | sql-query | exempt | (a) write or lock by comment id that runs only after the handler (UpdateComment, DeleteComment, AddReaction, RemoveReaction, ResolveComment) passed commentInViewerScope; test TestDerivedRowsFollowIssueVisibility/comment |
+| `server/pkg/db/queries/comment.sql` | `UpdateComment` | sql-query | exempt | (a) write or lock by comment id that runs only after the handler (UpdateComment, DeleteComment, AddReaction, RemoveReaction, ResolveComment) passed commentInViewerScope; test TestDerivedRowsFollowIssueVisibility/comment |
 | `server/pkg/db/queries/digest.sql` | `DigestCharterActivity` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/digest.sql` | `DigestPendingProposals` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/digest.sql` | `DigestRecentDoneIssues` | sql-query | todo | Reads issue or project; no visibility filter today |
@@ -67,11 +69,13 @@ How units are found:
 | `server/pkg/db/queries/flow.sql` | `ListOpenFlowRequests` | sql-query | exempt | (b) read only by the flow_sweep job (Handler.SweepFlowRequests via sweepManualHumanTasks); the scheduler has no viewer and nothing it reads is returned to one |
 | `server/pkg/db/queries/flow.sql` | `ListUnstartedFlowRequests` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/flow.sql` | `LockIssueForFlow` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/inbox.sql` | `ArchiveCompletedInbox` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/inbox.sql` | `ListArchivedInboxItems` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/inbox.sql` | `ListInboxItems` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/inbox_archive.sql` | `ArchivedInboxFacets` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/inbox_archive.sql` | `ListArchivedInboxPage` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/inbox.sql` | `ArchiveCompletedInbox` | sql-query | exempt | (a) changes only the caller's own inbox rows; the rows are read through ListInboxItems and ListArchivedInboxItems, which are scoped |
+| `server/pkg/db/queries/inbox.sql` | `CountUnreadInbox` | sql-query | scoped | fragment on iss.project_id; test TestInboxHidesIssueAfterAccessLost |
+| `server/pkg/db/queries/inbox.sql` | `CountUnreadInboxByWorkspace` | sql-query | scoped | one workspace per call, fragment on iss.project_id; the handler computes a Scope per workspace; test TestInboxHidesIssueAfterAccessLost |
+| `server/pkg/db/queries/inbox.sql` | `ListArchivedInboxItems` | sql-query | scoped | fragment on the issue project in the eligible_archived CTE; test TestInboxHidesIssueAfterAccessLost |
+| `server/pkg/db/queries/inbox.sql` | `ListInboxItems` | sql-query | scoped | fragment on iss.project_id; test TestInboxHidesIssueAfterAccessLost |
+| `server/pkg/db/queries/inbox_archive.sql` | `ArchivedInboxFacets` | sql-query | scoped | fragment in the newest CTE; test TestInboxHidesIssueAfterAccessLost |
+| `server/pkg/db/queries/inbox_archive.sql` | `ListArchivedInboxPage` | sql-query | scoped | fragment in the newest CTE; test TestInboxHidesIssueAfterAccessLost |
 | `server/pkg/db/queries/initiative.sql` | `ListGateProposalsForInitiative` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/initiative.sql` | `MinIssuePositionInStatus` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `ChildIssueProgress` | sql-query | scoped | Reads issue or project; no visibility filter today |
@@ -114,7 +118,8 @@ How units are found:
 | `server/pkg/db/queries/issue_property.sql` | `CountIssuesUsingPropertyOptions` | sql-query | exempt | Owner and admin only (Scope mode all): UpdateProperty gates on requirePropertyAdmin; the guard must count every issue |
 | `server/pkg/db/queries/issue_property.sql` | `ListIssueProperties` | sql-query | scoped | SQL carries the marker on the usage_count subquery; test TestRestrictedIssueListsOmitHidden |
 | `server/pkg/db/queries/issue_status.sql` | `CountIssuesUsingStatusKey` | sql-query | exempt | Owner and admin only (Scope mode all): ArchiveIssueStatus gates on loadIssueStatusForAdmin; the guard must count every issue |
-| `server/pkg/db/queries/issue_unread.sql` | `MarkIssueUnreadForSubscribers` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/issue_unread.sql` | `ListIssueUnread` | sql-query | scoped | fragment on the issue project; test TestIssueUnreadFollowsIssueVisibility |
+| `server/pkg/db/queries/issue_unread.sql` | `MarkIssueUnreadForSubscribers` | sql-query | exempt | (b) the issue_unread listener at the end of an agent run; no viewer. The rows are read only through ListIssueUnread, which is scoped |
 | `server/pkg/db/queries/issue_workflow.sql` | `CountProjectIssuesByStatus` | sql-query | scoped | Marker predicate on i.project_id; test TestRestrictedWorkflowQueriesApplyScope |
 | `server/pkg/db/queries/issue_workflow.sql` | `CountSquadIssuesByStatus` | sql-query | scoped | SQL carries the marker; test TestRestrictedSquadWorkflowCountsOmitHidden |
 | `server/pkg/db/queries/issue_workflow.sql` | `ListProjectsUsingDefaultIssueWorkflow` | sql-query | scoped | Marker predicate on project.id; test TestRestrictedWorkflowQueriesApplyScope |
@@ -161,16 +166,18 @@ How units are found:
 | `server/pkg/db/queries/squad_directory.sql` | `ListOverdueSquadRequests` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/squad_directory.sql` | `ListSquadDirectory` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/squad_handoff.sql` | `GetSquadOpenProject` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/subscriber.sql` | `AddDelegatedSubscriber` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/subscriber.sql` | `HasAncestorOptOut` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/subscriber.sql` | `ListSubscribedIssueIDs` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/subscriber.sql` | `UnsubscribeFromIssueSubtree` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/subscriber.sql` | `AddDelegatedSubscriber` | sql-query | exempt | (b) the subscriber listener subscribeDelegatedHuman, which checks issueAudience for the person first; test TestSubscriberWithoutAccessIsIgnored |
+| `server/pkg/db/queries/subscriber.sql` | `HasAncestorOptOut` | sql-query | exempt | (a) runs inside AddDelegatedSubscriber, whose caller checked the audience |
+| `server/pkg/db/queries/subscriber.sql` | `ListSubscribedIssueIDs` | sql-query | scoped | fragment on i.project_id; test TestDerivedRowsFollowIssueVisibility/subscriber |
+| `server/pkg/db/queries/subscriber.sql` | `UnsubscribeFromIssueSubtree` | sql-query | exempt | (a) Handler.UnsubscribeFromIssueSubtree loads the issue through loadIssueForUser first |
 | `server/pkg/db/queries/system_wakeup.sql` | `CountCustomizedSystemWakeups` | sql-query | scoped | SQL carries the marker; test TestSystemWakeupsOmitHiddenIssues |
 | `server/pkg/db/queries/system_wakeup.sql` | `ListParentsWithoutSystemWakeup` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/task_usage.sql` | `ListDashboardAgentRunTime` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/task_usage.sql` | `ListDashboardFailuresByAgent` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/task_usage.sql` | `ListDashboardFailuresDaily` | sql-query | todo | Reads issue or project; no visibility filter today |
-| `server/pkg/db/queries/task_usage.sql` | `ListDashboardRunTimeDaily` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/task_usage.sql` | `ListDashboardAgentRunTime` | sql-query | scoped | fragment on the project of the task issue or of the rollup row; test TestAggregateCountsExcludeHidden |
+| `server/pkg/db/queries/task_usage.sql` | `ListDashboardFailuresByAgent` | sql-query | scoped | fragment on the project of the task issue or of the rollup row; test TestAggregateCountsExcludeHidden |
+| `server/pkg/db/queries/task_usage.sql` | `ListDashboardFailuresDaily` | sql-query | scoped | fragment on the project of the task issue or of the rollup row; test TestAggregateCountsExcludeHidden |
+| `server/pkg/db/queries/task_usage.sql` | `ListDashboardRunTimeDaily` | sql-query | scoped | fragment on the project of the task issue or of the rollup row; test TestAggregateCountsExcludeHidden |
+| `server/pkg/db/queries/task_usage.sql` | `ListDashboardUsageByAgent` | sql-query | scoped | fragment on the project of the task issue or of the rollup row; test TestAggregateCountsExcludeHidden |
+| `server/pkg/db/queries/task_usage.sql` | `ListDashboardUsageDaily` | sql-query | scoped | fragment on the project of the task issue or of the rollup row; test TestAggregateCountsExcludeHidden |
 | `server/pkg/db/queries/wakeup.sql` | `CreateWakeupTask` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/wakeup.sql` | `ListPausedWakeupIssues` | sql-query | scoped | SQL carries the marker; test TestRestrictedIssueListsOmitHidden |
 | `server/pkg/db/queries/wakeup.sql` | `ListWorkspaceWakeupSummaryRows` | sql-query | scoped | SQL carries the marker; test TestRestrictedIssueListsOmitHidden |
@@ -193,6 +200,8 @@ Grouped by file; a function appears once per file.
 | --- | --- | --- | --- | --- |
 | `server/internal/daemon/project_docs.go` | `Daemon.runProjectDocsSync` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/activity.go` | `Handler.GetAssigneeFrequency` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/agent.go` | `Handler.ListAgentTasks` | go-call | scoped | viewerScope passed to the query; test TestDerivedRowsFollowIssueVisibility/task |
+| `server/internal/handler/agent.go` | `Handler.ListWorkspaceAgentTaskSnapshot` | go-call | scoped | viewerScope passed to the query; test TestDerivedRowsFollowIssueVisibility/task |
 | `server/internal/handler/agent.go` | `Handler.ListWorkspaceWorkingAgents` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/pkg/db/queries/project_access.sql` | `LockProjectAccess` | sql-query | exempt | Owner and admin write; runs after the handler checked the Scope |
 | `server/pkg/db/queries/project_access.sql` | `ListViewerProjectAccess` | sql-query | exempt | Source of the Scope itself; reads only the viewer own grants and restricted project ids |
@@ -216,10 +225,12 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/daemon.go` | `Handler.loadClaimParentIssue` | go-call | exempt | (b) daemon task claim: the daemon runtime has no viewer; the parent is read for the claimed task |
 | `server/internal/handler/daemon.go` | `Handler.reconcileCommentsOnCompletion` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/daemon.go` | `Handler.repairStaleCommentPlanIfNeeded` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/dashboard.go` | `Handler.GetDashboardAgentRunTime` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/dashboard.go` | `Handler.GetDashboardFailuresByAgent` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/dashboard.go` | `Handler.GetDashboardFailuresDaily` | go-call | todo | Calls a reader query; no visibility filter today |
-| `server/internal/handler/dashboard.go` | `Handler.GetDashboardRunTimeDaily` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/dashboard.go` | `Handler.GetDashboardAgentRunTime` | go-call | scoped | viewerScope passed to the query; test TestAggregateCountsExcludeHidden |
+| `server/internal/handler/dashboard.go` | `Handler.GetDashboardFailuresByAgent` | go-call | scoped | viewerScope passed to the query; test TestAggregateCountsExcludeHidden |
+| `server/internal/handler/dashboard.go` | `Handler.GetDashboardFailuresDaily` | go-call | scoped | viewerScope passed to the query; test TestAggregateCountsExcludeHidden |
+| `server/internal/handler/dashboard.go` | `Handler.GetDashboardRunTimeDaily` | go-call | scoped | viewerScope passed to the query; test TestAggregateCountsExcludeHidden |
+| `server/internal/handler/dashboard.go` | `Handler.listDashboardUsageByAgent` | go-call | scoped | viewerScope passed to the query; test TestAggregateCountsExcludeHidden |
+| `server/internal/handler/dashboard.go` | `Handler.listDashboardUsageDaily` | go-call | scoped | viewerScope passed to the query; test TestAggregateCountsExcludeHidden |
 | `server/internal/handler/file.go` | `Handler.UploadFile` | go-call | scoped | issue_id of the upload goes through Scope.Allows; a hidden issue answers 403 invalid issue_id like a missing one; TestRestrictedIssueCallersAnswerMissing/upload_a_file_to_an_issue |
 | `server/internal/handler/file.go` | `Handler.attachmentInViewerScope` | go-call | scoped | Scope.Allows on the issue of the attachment, directly or through its comment, answers like a missing attachment; test TestRestrictedIssueAttachmentsAnswerMissing |
 | `server/internal/handler/file.go` | `Handler.attachmentOwnerLockAttempt` | go-call | todo | Calls a reader query; no visibility filter today |
@@ -257,9 +268,12 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/handler.go` | `Handler.resolveIssueByIdentifier` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/handler.go` | `Handler.viewerSeesIssue` | go-call | scoped | Scope.Allows on the issue; missing and hidden both report not seen; TestRestrictedIssueCallersAnswerMissing/brief_inquiry_on_a_hidden_issue and /comment_sub-issue_of_a_hidden_issue |
 | `server/internal/handler/inbox.go` | `Handler.ArchiveCompletedInbox` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/inbox.go` | `Handler.CountUnreadInbox` | go-call | scoped | viewerScope or Allows on the item issue; test TestInboxHidesIssueAfterAccessLost |
 | `server/internal/handler/inbox.go` | `Handler.ListArchivedInbox` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/inbox.go` | `Handler.ListInbox` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/inbox.go` | `Handler.UnreadInboxSummary` | go-call | scoped | viewerScope or Allows on the item issue; test TestInboxHidesIssueAfterAccessLost |
 | `server/internal/handler/inbox.go` | `Handler.enrichInboxResponse` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/inbox.go` | `Handler.loadVisibleInboxItem` | go-call | scoped | viewerScope or Allows on the item issue; test TestInboxHidesIssueAfterAccessLost |
 | `server/internal/handler/inbox_archive.go` | `Handler.GetArchivedInboxFacets` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/inbox_archive.go` | `Handler.ListArchivedInboxPage` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/initiative.go` | `Handler.initiativeDetail` | go-call | todo | Calls a reader query; no visibility filter today |
@@ -298,6 +312,7 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/issue_triage_guard.go` | `Handler.validateBatchTriageLocks` | go-call | scoped | Counts only triage entries that pass Scope.Allows, so a hidden entry is skipped like a missing id; test TestBatchTriageLocksRespectVisibility |
 | `server/internal/handler/issue_trigger.go` | `Handler.PreviewIssueTrigger` | go-call | scoped | A hidden issue or project contributes no trigger, like a missing one; test TestRestrictedIssueListsOmitHidden |
 | `server/internal/handler/issue_unmoved_run.go` | `Handler.reconcileUnmovedWorkflowRun` | go-call | exempt | (b) internal worker, no viewer: CompleteTask (daemon token) re-runs the step handler after a run ends; it returns nothing to a caller |
+| `server/internal/handler/issue_unread.go` | `Handler.ListIssueUnread` | go-call | scoped | viewerScope passed to the query; test TestIssueUnreadFollowsIssueVisibility |
 | `server/internal/handler/issue_view.go` | `Handler.CreateIssueView` | go-call | scoped | A project the viewer cannot see answers 404 like a missing one; test TestRestrictedProjectViewsAnswerMissing |
 | `server/internal/handler/issue_view_preference.go` | `Handler.resolvePreferenceScope` | go-call | scoped | A project the viewer cannot see answers 404 like a missing one; test TestRestrictedProjectViewsAnswerMissing |
 | `server/internal/handler/issue_wakeup.go` | `Handler.ListPausedWakeups` | go-call | scoped | viewerScope passed to the SQL marker; test TestRestrictedIssueListsOmitHidden |
@@ -313,6 +328,7 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/issue_workflow.go` | `Handler.projectIDsByWorkflow` | go-call | scoped | Scope.Allows on each loaded project; test TestRestrictedWorkflowListsOmitHidden |
 | `server/internal/handler/issue_workflow.go` | `Handler.saveHandoffOnProjectCopy` | go-call | scoped | Scope.Allows on the locked project answers 404 like a missing project; test TestRestrictedWorkflowRoutesAnswerMissing/SetIssueWorkflowHandoff_copy |
 | `server/internal/handler/issue_workflow.go` | `remapIssues` | go-call | scoped | Passes the viewer scope to RemapProjectIssueStatus (marker); test TestRestrictedWorkflowRemapSkipsNothingVisibleToOwner |
+| `server/internal/handler/knowledge_acl.go` | `Handler.withKnowledgeProjectScope` | go-call | scoped | computes the person's Scope and hides the bases of projects they cannot see; a Scope failure hides every project base; test TestKnowledgeDocumentFollowsProjectVisibility |
 | `server/internal/handler/knowledge_context.go` | `Handler.issueKnowledgeContext` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/label.go` | `Handler.AttachLabel` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/label.go` | `Handler.DetachLabel` | go-call | todo | Calls a reader query; no visibility filter today |
@@ -352,6 +368,7 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/workspace.go` | `Handler.deleteWorkspaceData` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/workspace.go` | `deleteWorkspaceTasks` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/handler/workspace.go` | `lockWorkspaceTaskOwners` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/inbox/audience.go` | `NewIssueAudience` | go-call | scoped | the one recipient check for background writers: loads the issue project and the recipient's own Scope (ForViewer, Allows); fails closed; tests TestAutopilotNotificationSkipsHiddenRecipient, TestTaskNotificationSkipsHiddenRecipient, TestWakeupNotificationSkipsHiddenRecipient, TestNoNotificationForNonVisibleRecipient |
 | `server/internal/integrations/channel/engine/session.go` | `ChatSession.bindMediaRefs` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/integrations/channel/engine/session.go` | `dbSessionQueries.LockIssueForChannelMediaBind` | go-call | exempt | (b) internal worker, no viewer: the channel engine media binder locks the bound issue and discards the row |
 | `server/internal/issueguard/duplicate.go` | `LockAndFindActiveDuplicate` | go-call | todo | Calls a reader query; no visibility filter today |
@@ -492,20 +509,20 @@ Readers the scanner cannot see. The test checks only that Status is a known valu
 
 | File | Function | Kind | Status | Note |
 | --- | --- | --- | --- | --- |
-| `server/pkg/db/queries/comment.sql` | table `comment` (issue_id) | manual | todo | Derived table; follows its issue |
-| `server/pkg/db/queries/attachment.sql` | table `attachment` (issue_id) | manual | todo | Derived table; follows its issue |
-| `server/pkg/db/queries/activity.sql` | table `activity_log` (issue_id) | manual | todo | Derived table; follows its issue |
-| `server/pkg/db/queries/issue_reaction.sql` | table `issue_reaction` (issue_id) | manual | todo | Derived table; follows its issue |
-| `server/pkg/db/queries/subscriber.sql` | table `issue_subscriber` (issue_id) | manual | todo | Derived table; follows its issue |
-| `server/pkg/db/queries/inbox.sql` | table `inbox_item` (issue_id) | manual | todo | Derived table; follows its issue |
-| `server/pkg/db/queries/agent.sql` | table `agent_task_queue` (issue_id) | manual | todo | Task queue rows; follows its issue |
-| `server/pkg/db/queries/knowledge_project_file.sql` | table `knowledge_project_file` (project_id) | manual | todo | Project knowledge documents; follow their project |
-| `server/pkg/db/queries/project_resource.sql` | table `project_resource` (project_id) | manual | todo | Project resources; follow their project |
+| `server/pkg/db/queries/comment.sql` | `table `comment` (issue_id)` | manual | scoped | list routes load the issue through loadIssueForUser; by-id routes call commentInViewerScope; test TestDerivedRowsFollowIssueVisibility/comment |
+| `server/pkg/db/queries/attachment.sql` | `table `attachment` (issue_id)` | manual | scoped | attachmentInViewerScope on every by-id route, loadIssueForUser on ListAttachments; tests TestRestrictedIssueAttachmentsAnswerMissing, TestDerivedRowsFollowIssueVisibility/attachment |
+| `server/pkg/db/queries/activity.sql` | `table `activity_log` (issue_id)` | manual | scoped | ListTimeline loads the issue through loadIssueForUser; test TestDerivedRowsFollowIssueVisibility/activity_log |
+| `server/pkg/db/queries/issue_reaction.sql` | `table `issue_reaction` (issue_id)` | manual | scoped | both routes load the issue through loadIssueForUser; test TestDerivedRowsFollowIssueVisibility/issue_reaction |
+| `server/pkg/db/queries/subscriber.sql` | `table `issue_subscriber` (issue_id)` | manual | scoped | issue routes load the issue; ListSubscribedIssueIDs carries the marker; listeners skip a recipient who cannot see the issue; tests TestDerivedRowsFollowIssueVisibility/subscriber, TestSubscriberWithoutAccessIsIgnored |
+| `server/pkg/db/queries/inbox.sql` | `table `inbox_item` (issue_id)` | manual | scoped | every list and count query carries the marker, by-id routes use loadVisibleInboxItem, and every writer that names an issue checks the recipient: notification listeners, autopilot subscriber notice, quick-create done, delegated-failure exhaustion, children-done wakeup notice. No issue, so no check: brief_ready (owners see every project), autopilot_paused, autopilot_quota_exceeded, quick-create failure and unconfirmed notices; tests TestInboxHidesIssueAfterAccessLost, TestNoNotificationForNonVisibleRecipient, TestMentionOfNonVisibleUserIsIgnored, TestAutopilotNotificationSkipsHiddenRecipient, TestTaskNotificationSkipsHiddenRecipient, TestWakeupNotificationSkipsHiddenRecipient |
+| `server/pkg/db/queries/agent.sql` | `table `agent_task_queue` (issue_id)` | manual | scoped | task list queries follow their issue; by-issue routes load the issue; test TestDerivedRowsFollowIssueVisibility/task. Per-agent run counts (GetWorkspaceAgentRunCounts, GetWorkspaceAgentActivity30d) stay workspace-wide and carry no issue data |
+| `server/pkg/db/queries/knowledge_project_file.sql` | `table `knowledge_project_file` (project_id)` | manual | scoped | the ledger is read only by the daemon sync; the documents it files live in the project base, which the knowledge handlers hide from a member who cannot see the project (KnowledgeActor.hides: base list, document list, search, Wiki, write, properties); test TestKnowledgeDocumentFollowsProjectVisibility |
+| `server/pkg/db/queries/project_resource.sql` | `table `project_resource` (project_id)` | manual | scoped | every viewer route loads the project through loadProjectForResource (Scope.Allows); the claim path is the daemon; test TestDerivedRowsFollowIssueVisibility/project_resource |
 | `server/pkg/db/queries/issue_label.sql` | table `issue_to_label` (issue_id) | manual | todo | Derived table; follows its issue |
-| `server/pkg/db/queries/issue_unread.sql` | table `issue_unread` (issue_id) | manual | todo | Derived table; follows its issue |
+| `server/pkg/db/queries/issue_unread.sql` | `table `issue_unread` (issue_id)` | manual | scoped | ListIssueUnread carries the marker; MarkIssueUnreadForSubscribers is a worker write; test TestIssueUnreadFollowsIssueVisibility |
 | `server/migrations` | other tables with issue_id or project_id | manual | todo | issue_dependency, issue_pull_request, issue_wakeup, proposal, planning_cycle, pipeline, autopilot, chat_session and similar; list taken from CREATE TABLE blocks in the migrations |
 | `server/cmd/server/listeners.go` | registerListeners | manual | todo | Issue events go to ScopeWorkspace, so every workspace member receives them |
-| `server/cmd/server` | other `*listeners.go` files | manual | todo | Activity, subscriber, notification, brief and unread listeners read issue data on events |
+| `server/cmd/server` | `other `*listeners.go` files` | manual | todo | notification, subscriber and mention listeners check the recipient (P41.4). Left: activity, unread and squad listeners write rows that are read through scoped queries; brief and autopilot-failure notices carry no issue (exempt, see the service rows) |
 | `server/internal/realtime` | broadcaster.go and redis_relay.go fan-out | manual | todo | Workspace-wide rooms; no per-person audience for issue events |
 | `server/internal/handler/search.go` | server-side search | manual | scoped | SearchIssues and SearchProjects apply the Scope (scopeCondition); tests TestSearchServerSideOmitsHidden, TestRestrictedSearchIssuesOmitsHidden, TestRestrictedSearchCountsOmitHidden |
 | `server/internal/handler/search_index.go` | manifest, snapshot, changes | manual | scoped | All three calls take the viewer's Scope; scope_version in the manifest and in every cursor; tests TestManifestCountsOnlyVisible, TestSnapshotAndChangesFilteredByScope, TestScopeVersionChangesWithVisibleSet |
@@ -514,14 +531,14 @@ Readers the scanner cannot see. The test checks only that Status is a known valu
 | `server/internal/handler/hub_sync.go` | hub sync | manual | exempt | (b) hub source sync (SyncHubSourceAuto worker, SyncHubSource admin trigger); reads no issue or project row, hub items are skills and plugin packages |
 | `server/internal/handler/knowledge_project_docs.go` | project knowledge docs | manual | exempt | (b) the daemon project-docs sync routes under /api/daemon (daemon token, no viewer) |
 | `server/internal/handler/squad_project.go` | squad project | manual | scoped | UnassignSquadProject clears the squad only from projects the viewer sees (ClearSquadProjects carries the marker) and counts only those; test TestRestrictedUnassignSquadProjectAnswersMissing |
-| `server/internal/workspaceexport` | workspace export | manual | todo | Exports every issue and project of the workspace |
+| `server/internal/workspaceexport` | `workspace export` | manual | exempt | owner-only (exportOwner on all three routes), and the owner sees every project, so the archive stays complete; test TestWorkspaceExportIsOwnerOnlyAndComplete |
 | `server/internal/usagesnapshot` | usage snapshot | manual | todo | Aggregates across issues and projects |
 | `server/internal/handler/daemon.go` | daemon and mat_ token routes | manual | todo | Agent reads any issue of the workspace today |
 | `server/internal/service` | task claim, budget gate (`claimRefusalFor`) and other services | manual | todo | Agent and daemon read paths; no originator visibility check |
 | `server/internal/handler/mcp_overlay.go` | MCP overlay | manual | todo | Task-level MCP config; confirm whether it exposes issue data |
 | `server/internal/daemon/remote_mcp_broker.go` | MCP broker | manual | todo | MCP tools reach the API with the agent token; confirm at P41.8 |
-| `server/internal/handler/dashboard.go` | dashboard aggregates | manual | todo | Counts and sums across all issues |
-| `server/pkg/db/queries/task_usage.sql` | usage rollups by project_id | manual | todo | Aggregates keyed by project |
+| `server/internal/handler/dashboard.go` | `dashboard aggregates` | manual | scoped | all six dashboard handlers pass viewerScope; test TestAggregateCountsExcludeHidden |
+| `server/pkg/db/queries/task_usage.sql` | `usage rollups by project_id` | manual | scoped | the dashboard rollups carry the marker; test TestAggregateCountsExcludeHidden |
 
 ## Not yet in the visibility set
 

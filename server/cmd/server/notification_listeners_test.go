@@ -30,6 +30,7 @@ func inboxItemsForRecipient(t *testing.T, queries *db.Queries, recipientID strin
 		WorkspaceID:   util.MustParseUUID(testWorkspaceID),
 		RecipientType: "member",
 		RecipientID:   util.MustParseUUID(recipientID),
+		ScopeMode:     "all", // a test reads every row; visibility has its own tests
 	})
 	if err != nil {
 		t.Fatalf("ListInboxItems: %v", err)

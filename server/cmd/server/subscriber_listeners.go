@@ -200,6 +200,9 @@ func subscribeDelegatedHuman(bus *events.Bus, pool *pgxpool.Pool, queries *db.Qu
 	if !ok {
 		return
 	}
+	if !newIssueAudience(ctx, queries, workspaceID, issueID).sees(util.UUIDToString(human)) {
+		return
+	}
 
 	// Two conditions decide whether this subscription may exist, and BOTH can
 	// be invalidated by a concurrent request between a check and the write:
@@ -291,6 +294,11 @@ func extractIssueFields(v any) (handler.IssueResponse, bool) {
 // remaining mentions in the same event.
 func addSubscriber(bus *events.Bus, queries *db.Queries, workspaceID, issueID, userType, userID, reason string) {
 	if userType != "member" && userType != "agent" {
+		return
+	}
+	// A member who cannot see the issue is not subscribed to it (spec 7.1 rule 4).
+	// An agent sees through the person who started its run (rule 12).
+	if userType == "member" && !newIssueAudience(context.Background(), queries, workspaceID, issueID).sees(userID) {
 		return
 	}
 	affected, err := queries.AddIssueSubscriber(context.Background(), db.AddIssueSubscriberParams{

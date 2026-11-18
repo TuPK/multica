@@ -189,18 +189,34 @@ func (q *Queries) ArchiveInboxItem(ctx context.Context, id pgtype.UUID) (InboxIt
 }
 
 const countUnreadInbox = `-- name: CountUnreadInbox :one
-SELECT count(*) FROM inbox_item
-WHERE workspace_id = $1 AND recipient_type = $2 AND recipient_id = $3 AND read = false AND archived = false
+SELECT count(*) FROM inbox_item i
+LEFT JOIN issue iss ON iss.id = i.issue_id
+WHERE i.workspace_id = $1 AND i.recipient_type = $2 AND i.recipient_id = $3 AND i.read = false AND i.archived = false
+AND ($4::text = 'all'
+    OR (iss.project_id IS NULL AND $4::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = iss.project_id AND scope_pm.user_id = $5::uuid)
+    OR ($4::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = iss.project_id AND scope_p.access = 'workspace')))
 `
 
 type CountUnreadInboxParams struct {
 	WorkspaceID   pgtype.UUID `json:"workspace_id"`
 	RecipientType string      `json:"recipient_type"`
 	RecipientID   pgtype.UUID `json:"recipient_id"`
+	ScopeMode     string      `json:"scope_mode"`
+	ScopeUserID   pgtype.UUID `json:"scope_user_id"`
 }
 
+// projectaccess:scope
 func (q *Queries) CountUnreadInbox(ctx context.Context, arg CountUnreadInboxParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countUnreadInbox, arg.WorkspaceID, arg.RecipientType, arg.RecipientID)
+	row := q.db.QueryRow(ctx, countUnreadInbox,
+		arg.WorkspaceID,
+		arg.RecipientType,
+		arg.RecipientID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -213,14 +229,30 @@ FROM (
         i.workspace_id, i.read
     FROM inbox_item i
     JOIN member m ON m.workspace_id = i.workspace_id AND m.user_id = i.recipient_id
+    LEFT JOIN issue iss ON iss.id = i.issue_id
     WHERE i.recipient_type = 'member'
-      AND i.recipient_id = $1
+      AND i.recipient_id = $1::uuid
+      AND i.workspace_id = $2::uuid
       AND i.archived = false
+      -- projectaccess:scope
+      AND ($3::text = 'all'
+          OR (iss.project_id IS NULL AND $3::text <> 'guest')
+          OR EXISTS (SELECT 1 FROM project_member scope_pm
+                     WHERE scope_pm.project_id = iss.project_id AND scope_pm.user_id = $4::uuid)
+          OR ($3::text = 'member'
+              AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = iss.project_id AND scope_p.access = 'workspace')))
     ORDER BY i.workspace_id, COALESCE(i.issue_id, i.id), i.created_at DESC
 ) newest
 WHERE newest.read = false
 GROUP BY newest.workspace_id
 `
+
+type CountUnreadInboxByWorkspaceParams struct {
+	RecipientID pgtype.UUID `json:"recipient_id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+}
 
 type CountUnreadInboxByWorkspaceRow struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
@@ -238,8 +270,15 @@ type CountUnreadInboxByWorkspaceRow struct {
 // member join keeps counts scoped to workspaces the user still belongs to,
 // so a stale item left behind in a workspace the user has since left cannot
 // light the dot.
-func (q *Queries) CountUnreadInboxByWorkspace(ctx context.Context, recipientID pgtype.UUID) ([]CountUnreadInboxByWorkspaceRow, error) {
-	rows, err := q.db.Query(ctx, countUnreadInboxByWorkspace, recipientID)
+// One workspace per call: the viewer's project scope is per workspace, so the
+// handler computes a Scope for each workspace the user belongs to.
+func (q *Queries) CountUnreadInboxByWorkspace(ctx context.Context, arg CountUnreadInboxByWorkspaceParams) ([]CountUnreadInboxByWorkspaceRow, error) {
+	rows, err := q.db.Query(ctx, countUnreadInboxByWorkspace,
+		arg.RecipientID,
+		arg.WorkspaceID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -397,10 +436,18 @@ WITH eligible_archived AS MATERIALIZED (
            i.created_at,
            i.details
     FROM inbox_item i
+    LEFT JOIN issue scope_iss ON scope_iss.id = i.issue_id
     WHERE i.workspace_id = $1
       AND i.recipient_type = $2
       AND i.recipient_id = $3
       AND i.archived = true
+      -- projectaccess:scope
+      AND ($4::text = 'all'
+          OR (scope_iss.project_id IS NULL AND $4::text <> 'guest')
+          OR EXISTS (SELECT 1 FROM project_member scope_pm
+                     WHERE scope_pm.project_id = scope_iss.project_id AND scope_pm.user_id = $5::uuid)
+          OR ($4::text = 'member'
+              AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = scope_iss.project_id AND scope_p.access = 'workspace')))
       AND (i.issue_id IS NULL OR NOT EXISTS (
           SELECT 1
           FROM inbox_item active
@@ -448,6 +495,8 @@ type ListArchivedInboxItemsParams struct {
 	WorkspaceID   pgtype.UUID `json:"workspace_id"`
 	RecipientType string      `json:"recipient_type"`
 	RecipientID   pgtype.UUID `json:"recipient_id"`
+	ScopeMode     string      `json:"scope_mode"`
+	ScopeUserID   pgtype.UUID `json:"scope_user_id"`
 }
 
 type ListArchivedInboxItemsRow struct {
@@ -493,7 +542,13 @@ type ListArchivedInboxItemsRow struct {
 // Keep the materialized working set narrow: full row data is joined only for
 // the final selected ids, not copied for every archived notification scanned.
 func (q *Queries) ListArchivedInboxItems(ctx context.Context, arg ListArchivedInboxItemsParams) ([]ListArchivedInboxItemsRow, error) {
-	rows, err := q.db.Query(ctx, listArchivedInboxItems, arg.WorkspaceID, arg.RecipientType, arg.RecipientID)
+	rows, err := q.db.Query(ctx, listArchivedInboxItems,
+		arg.WorkspaceID,
+		arg.RecipientType,
+		arg.RecipientID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -538,6 +593,12 @@ SELECT i.id, i.workspace_id, i.recipient_type, i.recipient_id, i.type, i.severit
 FROM inbox_item i
 LEFT JOIN issue iss ON iss.id = i.issue_id
 WHERE i.workspace_id = $1 AND i.recipient_type = $2 AND i.recipient_id = $3 AND i.archived = false
+AND ($4::text = 'all'
+    OR (iss.project_id IS NULL AND $4::text <> 'guest')
+    OR EXISTS (SELECT 1 FROM project_member scope_pm
+               WHERE scope_pm.project_id = iss.project_id AND scope_pm.user_id = $5::uuid)
+    OR ($4::text = 'member'
+        AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = iss.project_id AND scope_p.access = 'workspace')))
 ORDER BY i.created_at DESC
 `
 
@@ -545,6 +606,8 @@ type ListInboxItemsParams struct {
 	WorkspaceID   pgtype.UUID `json:"workspace_id"`
 	RecipientType string      `json:"recipient_type"`
 	RecipientID   pgtype.UUID `json:"recipient_id"`
+	ScopeMode     string      `json:"scope_mode"`
+	ScopeUserID   pgtype.UUID `json:"scope_user_id"`
 }
 
 type ListInboxItemsRow struct {
@@ -568,8 +631,15 @@ type ListInboxItemsRow struct {
 	IssuePriority pgtype.Text        `json:"issue_priority"`
 }
 
+// projectaccess:scope
 func (q *Queries) ListInboxItems(ctx context.Context, arg ListInboxItemsParams) ([]ListInboxItemsRow, error) {
-	rows, err := q.db.Query(ctx, listInboxItems, arg.WorkspaceID, arg.RecipientType, arg.RecipientID)
+	rows, err := q.db.Query(ctx, listInboxItems,
+		arg.WorkspaceID,
+		arg.RecipientType,
+		arg.RecipientID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}

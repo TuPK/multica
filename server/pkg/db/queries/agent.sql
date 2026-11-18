@@ -379,6 +379,15 @@ WHERE agent_id = @agent_id
   -- Keep this predicate in sync with handler.visibleTaskHistory.
   AND NOT (escalation_for_task_id IS NOT NULL AND started_at IS NULL
            AND status IN ('deferred', 'cancelled'))
+  AND (agent_task_queue.issue_id IS NULL OR EXISTS (
+        SELECT 1 FROM issue scope_i WHERE scope_i.id = agent_task_queue.issue_id
+          -- projectaccess:scope
+          AND (sqlc.arg(scope_mode)::text = 'all'
+              OR (scope_i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+              OR EXISTS (SELECT 1 FROM project_member scope_pm
+                         WHERE scope_pm.project_id = scope_i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+              OR (sqlc.arg(scope_mode)::text = 'member'
+                  AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = scope_i.project_id AND scope_p.access = 'workspace')))))
   AND (created_at, id) < (@before_created_at::timestamptz, @before_id::uuid)
 ORDER BY created_at DESC, id DESC
 LIMIT @page_limit;
@@ -2517,6 +2526,13 @@ JOIN workspace w ON w.id = i.workspace_id
 WHERE i.workspace_id = @workspace_id
   AND (i.id = @root_issue_id::uuid OR i.parent_issue_id = @root_issue_id::uuid)
   AND atq.status IN ('queued', 'dispatched', 'running', 'waiting_local_directory')
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+      OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+      OR (sqlc.arg(scope_mode)::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ORDER BY
     CASE atq.status
         WHEN 'running' THEN 0
@@ -2606,6 +2622,15 @@ JOIN agent a ON a.id = atq.agent_id
 WHERE a.workspace_id = $1
   AND (atq.status IN ('queued', 'dispatched', 'running', 'waiting_local_directory')
     OR (atq.status='deferred' AND atq.context->>'wakeup_id' IS NOT NULL))
+  AND (atq.issue_id IS NULL OR EXISTS (
+        SELECT 1 FROM issue scope_i WHERE scope_i.id = atq.issue_id
+          -- projectaccess:scope
+          AND (sqlc.arg(scope_mode)::text = 'all'
+              OR (scope_i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+              OR EXISTS (SELECT 1 FROM project_member scope_pm
+                         WHERE scope_pm.project_id = scope_i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+              OR (sqlc.arg(scope_mode)::text = 'member'
+                  AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = scope_i.project_id AND scope_p.access = 'workspace')))))
 
 UNION ALL
 
@@ -2615,6 +2640,15 @@ JOIN LATERAL (
   FROM agent_task_queue atq
   WHERE atq.agent_id = a.id
     AND atq.status IN ('completed', 'failed')
+    AND (atq.issue_id IS NULL OR EXISTS (
+          SELECT 1 FROM issue scope_i WHERE scope_i.id = atq.issue_id
+            -- projectaccess:scope
+            AND (sqlc.arg(scope_mode)::text = 'all'
+                OR (scope_i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+                OR EXISTS (SELECT 1 FROM project_member scope_pm
+                           WHERE scope_pm.project_id = scope_i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+                OR (sqlc.arg(scope_mode)::text = 'member'
+                    AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = scope_i.project_id AND scope_p.access = 'workspace')))))
   ORDER BY atq.completed_at DESC NULLS LAST, atq.created_at DESC, atq.id DESC
   LIMIT 1
 ) latest ON TRUE
@@ -2649,6 +2683,15 @@ WHERE a.workspace_id = $1
   AND a.kind = 'user'
   AND a.archived_at IS NULL
   AND atq.status = 'running'
+  AND (atq.issue_id IS NULL OR EXISTS (
+        SELECT 1 FROM issue scope_i WHERE scope_i.id = atq.issue_id
+          -- projectaccess:scope
+          AND (sqlc.arg(scope_mode)::text = 'all'
+              OR (scope_i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+              OR EXISTS (SELECT 1 FROM project_member scope_pm
+                         WHERE scope_pm.project_id = scope_i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+              OR (sqlc.arg(scope_mode)::text = 'member'
+                  AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = scope_i.project_id AND scope_p.access = 'workspace')))))
   AND (
     @work_type::text = ''
     OR (@work_type::text = 'chat' AND atq.chat_session_id IS NOT NULL)

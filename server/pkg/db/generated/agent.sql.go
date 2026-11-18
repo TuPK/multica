@@ -5411,6 +5411,13 @@ JOIN workspace w ON w.id = i.workspace_id
 WHERE i.workspace_id = $1
   AND (i.id = $2::uuid OR i.parent_issue_id = $2::uuid)
   AND atq.status IN ('queued', 'dispatched', 'running', 'waiting_local_directory')
+  -- projectaccess:scope
+  AND ($3::text = 'all'
+      OR (i.project_id IS NULL AND $3::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $4::uuid)
+      OR ($3::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ORDER BY
     CASE atq.status
         WHEN 'running' THEN 0
@@ -5419,12 +5426,14 @@ ORDER BY
         ELSE 3
     END,
     atq.created_at DESC
-LIMIT $3
+LIMIT $5
 `
 
 type ListActiveTasksByIssueFamilyParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 	RootIssueID pgtype.UUID `json:"root_issue_id"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
 	RowLimit    int32       `json:"row_limit"`
 }
 
@@ -5467,7 +5476,13 @@ type ListActiveTasksByIssueFamilyRow struct {
 // interesting rows, and bounded because a parent with hundreds of children must
 // not turn one coordination read into an unbounded scan.
 func (q *Queries) ListActiveTasksByIssueFamily(ctx context.Context, arg ListActiveTasksByIssueFamilyParams) ([]ListActiveTasksByIssueFamilyRow, error) {
-	rows, err := q.db.Query(ctx, listActiveTasksByIssueFamily, arg.WorkspaceID, arg.RootIssueID, arg.RowLimit)
+	rows, err := q.db.Query(ctx, listActiveTasksByIssueFamily,
+		arg.WorkspaceID,
+		arg.RootIssueID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+		arg.RowLimit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -5503,13 +5518,24 @@ WHERE agent_id = $1
   -- Keep this predicate in sync with handler.visibleTaskHistory.
   AND NOT (escalation_for_task_id IS NOT NULL AND started_at IS NULL
            AND status IN ('deferred', 'cancelled'))
-  AND (created_at, id) < ($2::timestamptz, $3::uuid)
+  AND (agent_task_queue.issue_id IS NULL OR EXISTS (
+        SELECT 1 FROM issue scope_i WHERE scope_i.id = agent_task_queue.issue_id
+          -- projectaccess:scope
+          AND ($2::text = 'all'
+              OR (scope_i.project_id IS NULL AND $2::text <> 'guest')
+              OR EXISTS (SELECT 1 FROM project_member scope_pm
+                         WHERE scope_pm.project_id = scope_i.project_id AND scope_pm.user_id = $3::uuid)
+              OR ($2::text = 'member'
+                  AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = scope_i.project_id AND scope_p.access = 'workspace')))))
+  AND (created_at, id) < ($4::timestamptz, $5::uuid)
 ORDER BY created_at DESC, id DESC
-LIMIT $4
+LIMIT $6
 `
 
 type ListAgentTasksParams struct {
 	AgentID         pgtype.UUID        `json:"agent_id"`
+	ScopeMode       string             `json:"scope_mode"`
+	ScopeUserID     pgtype.UUID        `json:"scope_user_id"`
 	BeforeCreatedAt pgtype.Timestamptz `json:"before_created_at"`
 	BeforeID        pgtype.UUID        `json:"before_id"`
 	PageLimit       int32              `json:"page_limit"`
@@ -5518,6 +5544,8 @@ type ListAgentTasksParams struct {
 func (q *Queries) ListAgentTasks(ctx context.Context, arg ListAgentTasksParams) ([]AgentTaskQueue, error) {
 	rows, err := q.db.Query(ctx, listAgentTasks,
 		arg.AgentID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
 		arg.BeforeCreatedAt,
 		arg.BeforeID,
 		arg.PageLimit,
@@ -6672,6 +6700,15 @@ JOIN agent a ON a.id = atq.agent_id
 WHERE a.workspace_id = $1
   AND (atq.status IN ('queued', 'dispatched', 'running', 'waiting_local_directory')
     OR (atq.status='deferred' AND atq.context->>'wakeup_id' IS NOT NULL))
+  AND (atq.issue_id IS NULL OR EXISTS (
+        SELECT 1 FROM issue scope_i WHERE scope_i.id = atq.issue_id
+          -- projectaccess:scope
+          AND ($2::text = 'all'
+              OR (scope_i.project_id IS NULL AND $2::text <> 'guest')
+              OR EXISTS (SELECT 1 FROM project_member scope_pm
+                         WHERE scope_pm.project_id = scope_i.project_id AND scope_pm.user_id = $3::uuid)
+              OR ($2::text = 'member'
+                  AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = scope_i.project_id AND scope_p.access = 'workspace')))))
 
 UNION ALL
 
@@ -6681,11 +6718,26 @@ JOIN LATERAL (
   FROM agent_task_queue atq
   WHERE atq.agent_id = a.id
     AND atq.status IN ('completed', 'failed')
+    AND (atq.issue_id IS NULL OR EXISTS (
+          SELECT 1 FROM issue scope_i WHERE scope_i.id = atq.issue_id
+            -- projectaccess:scope
+            AND ($2::text = 'all'
+                OR (scope_i.project_id IS NULL AND $2::text <> 'guest')
+                OR EXISTS (SELECT 1 FROM project_member scope_pm
+                           WHERE scope_pm.project_id = scope_i.project_id AND scope_pm.user_id = $3::uuid)
+                OR ($2::text = 'member'
+                    AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = scope_i.project_id AND scope_p.access = 'workspace')))))
   ORDER BY atq.completed_at DESC NULLS LAST, atq.created_at DESC, atq.id DESC
   LIMIT 1
 ) latest ON TRUE
 WHERE a.workspace_id = $1
 `
+
+type ListWorkspaceAgentTaskSnapshotParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+}
 
 // Returns the tasks the front-end reads off one workspace-wide snapshot:
 //   - All active tasks (queued / dispatched / running / waiting_local_directory)
@@ -6712,8 +6764,8 @@ WHERE a.workspace_id = $1
 // Deferred wakeup retries also remain visible as queued work.
 //
 // Both halves JOIN / scan agent because agent_task_queue has no workspace_id.
-func (q *Queries) ListWorkspaceAgentTaskSnapshot(ctx context.Context, workspaceID pgtype.UUID) ([]AgentTaskQueue, error) {
-	rows, err := q.db.Query(ctx, listWorkspaceAgentTaskSnapshot, workspaceID)
+func (q *Queries) ListWorkspaceAgentTaskSnapshot(ctx context.Context, arg ListWorkspaceAgentTaskSnapshotParams) ([]AgentTaskQueue, error) {
+	rows, err := q.db.Query(ctx, listWorkspaceAgentTaskSnapshot, arg.WorkspaceID, arg.ScopeMode, arg.ScopeUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -6815,23 +6867,32 @@ WHERE a.workspace_id = $1
   AND a.kind = 'user'
   AND a.archived_at IS NULL
   AND atq.status = 'running'
+  AND (atq.issue_id IS NULL OR EXISTS (
+        SELECT 1 FROM issue scope_i WHERE scope_i.id = atq.issue_id
+          -- projectaccess:scope
+          AND ($2::text = 'all'
+              OR (scope_i.project_id IS NULL AND $2::text <> 'guest')
+              OR EXISTS (SELECT 1 FROM project_member scope_pm
+                         WHERE scope_pm.project_id = scope_i.project_id AND scope_pm.user_id = $3::uuid)
+              OR ($2::text = 'member'
+                  AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = scope_i.project_id AND scope_p.access = 'workspace')))))
   AND (
-    $2::text = ''
-    OR ($2::text = 'chat' AND atq.chat_session_id IS NOT NULL)
+    $4::text = ''
+    OR ($4::text = 'chat' AND atq.chat_session_id IS NOT NULL)
     OR (
-      $2::text = 'autopilot'
+      $4::text = 'autopilot'
       AND atq.chat_session_id IS NULL
       AND atq.autopilot_run_id IS NOT NULL
     )
     OR (
-      $2::text = 'issue'
+      $4::text = 'issue'
       AND atq.chat_session_id IS NULL
       AND atq.autopilot_run_id IS NULL
       AND atq.issue_id IS NOT NULL
     )
   )
   AND (
-    $3::text = ''
+    $5::text = ''
     OR EXISTS (
       SELECT 1
       FROM issue i
@@ -6839,17 +6900,17 @@ WHERE a.workspace_id = $1
         AND i.workspace_id = a.workspace_id
         AND (
           (
-            $3::text IN ('assigned', 'any')
+            $5::text IN ('assigned', 'any')
             AND i.assignee_type = 'member'
-            AND i.assignee_id = $4::uuid
+            AND i.assignee_id = $6::uuid
           )
           OR (
-            $3::text IN ('created', 'any')
+            $5::text IN ('created', 'any')
             AND i.creator_type = 'member'
-            AND i.creator_id = $4::uuid
+            AND i.creator_id = $6::uuid
           )
           OR (
-            $3::text IN ('involved', 'any')
+            $5::text IN ('involved', 'any')
             AND (
               (
                 i.assignee_type = 'agent'
@@ -6858,7 +6919,7 @@ WHERE a.workspace_id = $1
                   FROM agent owned_agent
                   WHERE owned_agent.id = i.assignee_id
                     AND owned_agent.workspace_id = a.workspace_id
-                    AND owned_agent.owner_id = $4::uuid
+                    AND owned_agent.owner_id = $6::uuid
                 )
               )
               OR (
@@ -6874,14 +6935,14 @@ WHERE a.workspace_id = $1
                         FROM squad_member sm
                         WHERE sm.squad_id = s.id
                           AND sm.member_type = 'member'
-                          AND sm.member_id = $4::uuid
+                          AND sm.member_id = $6::uuid
                       )
                       OR EXISTS (
                         SELECT 1
                         FROM agent leader
                         WHERE leader.id = s.leader_id
                           AND leader.workspace_id = a.workspace_id
-                          AND leader.owner_id = $4::uuid
+                          AND leader.owner_id = $6::uuid
                       )
                       OR EXISTS (
                         SELECT 1
@@ -6890,7 +6951,7 @@ WHERE a.workspace_id = $1
                         WHERE sm.squad_id = s.id
                           AND sm.member_type = 'agent'
                           AND owned_member.workspace_id = a.workspace_id
-                          AND owned_member.owner_id = $4::uuid
+                          AND owned_member.owner_id = $6::uuid
                       )
                     )
                 )
@@ -6901,13 +6962,13 @@ WHERE a.workspace_id = $1
     )
   )
   AND (
-    $5::uuid IS NULL
+    $7::uuid IS NULL
     OR EXISTS (
       SELECT 1
       FROM issue child
       WHERE child.id = atq.issue_id
         AND child.workspace_id = a.workspace_id
-        AND child.parent_issue_id = $5::uuid
+        AND child.parent_issue_id = $7::uuid
     )
   )
 GROUP BY a.id, a.name, a.avatar_url, a.created_at
@@ -6916,6 +6977,8 @@ ORDER BY a.created_at ASC
 
 type ListWorkspaceWorkingAgentsParams struct {
 	WorkspaceID   pgtype.UUID `json:"workspace_id"`
+	ScopeMode     string      `json:"scope_mode"`
+	ScopeUserID   pgtype.UUID `json:"scope_user_id"`
 	WorkType      string      `json:"work_type"`
 	MineRelation  string      `json:"mine_relation"`
 	MemberID      pgtype.UUID `json:"member_id"`
@@ -6945,6 +7008,8 @@ type ListWorkspaceWorkingAgentsRow struct {
 func (q *Queries) ListWorkspaceWorkingAgents(ctx context.Context, arg ListWorkspaceWorkingAgentsParams) ([]ListWorkspaceWorkingAgentsRow, error) {
 	rows, err := q.db.Query(ctx, listWorkspaceWorkingAgents,
 		arg.WorkspaceID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
 		arg.WorkType,
 		arg.MineRelation,
 		arg.MemberID,

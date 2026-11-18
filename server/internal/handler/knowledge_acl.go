@@ -10,8 +10,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/logger"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
+	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
 // Restricted-base access and per-base settings (plan 10.13, 10.11). Owners and
@@ -68,6 +70,46 @@ func (h *Handler) knowledgeReadActor(r *http.Request, workspaceID string) servic
 	actor := service.KnowledgeActor{Type: actorType, Curator: h.knowledgeCurator(r, actorType)}
 	if id, err := util.ParseUUID(actorID); err == nil {
 		actor.ID = id
+	}
+	return h.withKnowledgeProjectScope(r, workspaceID, actor)
+}
+
+// withKnowledgeProjectScope hides from a person the knowledge bases of the
+// projects they cannot see (spec 7.1 rule 4). If the scope cannot be computed
+// every project base is hidden, so a failure never widens what is shown. An agent
+// keeps its grants; its reach follows the person who started the run (rule 12).
+func (h *Handler) withKnowledgeProjectScope(r *http.Request, workspaceID string, actor service.KnowledgeActor) service.KnowledgeActor {
+	if actor.Type != service.KnowledgeActorMember || actor.Curator {
+		return actor
+	}
+	wsUUID, wsErr := util.ParseUUID(workspaceID)
+	userUUID, userErr := util.ParseUUID(requestUserID(r))
+	if wsErr != nil || userErr != nil {
+		actor.HideProjectBases = true
+		return actor
+	}
+	scope, err := projectaccess.ForViewer(r.Context(), h.Queries, wsUUID, userUUID)
+	if err != nil {
+		slog.Warn("knowledge: project scope failed; project bases hidden", append(logger.RequestAttrs(r), "error", err)...)
+		actor.HideProjectBases = true
+		return actor
+	}
+	if scope.CanManage() {
+		return actor
+	}
+	projects, err := h.Queries.ListProjects(r.Context(), db.ListProjectsParams{WorkspaceID: wsUUID})
+	if err != nil {
+		slog.Warn("knowledge: list projects failed; project bases hidden", append(logger.RequestAttrs(r), "error", err)...)
+		actor.HideProjectBases = true
+		return actor
+	}
+	for _, p := range projects {
+		if !scope.Allows(p.ID) {
+			if actor.HiddenBases == nil {
+				actor.HiddenBases = map[string]bool{}
+			}
+			actor.HiddenBases[service.ProjectBaseKey(p.ID)] = true
+		}
 	}
 	return actor
 }

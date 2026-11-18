@@ -3380,6 +3380,9 @@ func (h *Handler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "comment not found")
 		return
 	}
+	if !h.commentInViewerScope(w, r, existing) {
+		return
+	}
 	if bound, err := h.Queries.CommentHasTaskSupplement(r.Context(), db.CommentHasTaskSupplementParams{
 		CommentID: existing.ID, WorkspaceID: wsUUID,
 	}); err != nil {
@@ -3658,6 +3661,9 @@ func (h *Handler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		writeError(w, http.StatusNotFound, "comment not found")
+		return
+	}
+	if !h.commentInViewerScope(w, r, comment) {
 		return
 	}
 
@@ -4079,8 +4085,25 @@ func (h *Handler) loadCommentForActor(w http.ResponseWriter, r *http.Request) (d
 		writeError(w, http.StatusNotFound, "comment not found")
 		return db.Comment{}, "", "", "", false
 	}
+	if !h.commentInViewerScope(w, r, comment) {
+		return db.Comment{}, "", "", "", false
+	}
 	actorType, actorID := h.resolveActor(r, userID, workspaceID)
 	return comment, workspaceID, actorType, actorID, true
+}
+
+// commentInViewerScope answers a comment of a hidden issue exactly like a
+// missing comment (spec 7.1 rules 3 and 4). A comment follows its issue.
+func (h *Handler) commentInViewerScope(w http.ResponseWriter, r *http.Request, comment db.Comment) bool {
+	sees, ok := h.viewerSeesIssue(w, r, comment.WorkspaceID, comment.IssueID)
+	if !ok {
+		return false
+	}
+	if !sees {
+		writeError(w, http.StatusNotFound, "comment not found")
+		return false
+	}
+	return true
 }
 
 func (h *Handler) ResolveComment(w http.ResponseWriter, r *http.Request) {

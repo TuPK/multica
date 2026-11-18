@@ -6901,6 +6901,12 @@ func (s *TaskService) exhaustDelegatedFailureRecovery(ctx context.Context, targe
 				return fmt.Errorf("validate delegated failure exhaustion recipient: %w", err)
 			}
 
+			if !inbox.NewIssueAudience(ctx, qtx, target.issue.WorkspaceID, target.issue.ID).Sees(recipient) {
+				// The recipient cannot see the issue's project (spec 7.1 rule 4):
+				// the comment stays, the notice is not written.
+				return nil
+			}
+
 			details, err := json.Marshal(map[string]any{
 				"failed_task_id":       util.UUIDToString(target.failed.ID),
 				"source_task_id":       util.UUIDToString(target.source.ID),
@@ -8399,6 +8405,11 @@ func (s *TaskService) notifyQuickCreateCompleted(ctx context.Context, task db.Ag
 	// subscriber template, and — missing entirely until MUL-5483 — ordinary
 	// agent-created sub-issues). Keeping a second write here would leave the
 	// same decision encoded in two places that can drift.
+	// A requester who cannot see the issue's project gets no notice (spec 7.1
+	// rule 4); the run itself has already finished.
+	if !inbox.NewIssueAudience(ctx, s.Queries, workspaceID, issue.ID).Sees(requesterID) {
+		return
+	}
 	prefix := s.getIssuePrefix(workspaceID)
 	identifier := fmt.Sprintf("%s-%d", prefix, issue.Number)
 	details, _ := json.Marshal(map[string]any{

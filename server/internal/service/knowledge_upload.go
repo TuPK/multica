@@ -128,6 +128,9 @@ func (s *KnowledgeService) UploadDocument(ctx context.Context, workspaceID pgtyp
 	if err != nil {
 		return KnowledgeDocumentView{}, false, err
 	}
+	if actor.hides(base.Key) {
+		return KnowledgeDocumentView{}, false, ErrKnowledgeBaseNotFound
+	}
 	if !knowledgeCanWrite(actor, base.Visibility, util.UUIDToString(base.ID), grants) {
 		return KnowledgeDocumentView{}, false, ErrKnowledgeForbidden
 	}

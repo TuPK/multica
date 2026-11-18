@@ -385,6 +385,7 @@ func TestDashboardAgentRunTimeReportsMeteredTaskCoverage(t *testing.T) {
 		rows, err := testHandler.Queries.ListDashboardAgentRunTime(context.Background(), db.ListDashboardAgentRunTimeParams{
 			WorkspaceID: parseUUID(testWorkspaceID),
 			Since:       pgtype.Timestamptz{Time: time.Now().Add(-24 * time.Hour), Valid: true},
+			ScopeMode:   "all",
 		})
 		if err != nil {
 			t.Fatalf("list dashboard agent runtime: %v", err)

@@ -57,7 +57,7 @@ func (s *KnowledgeService) wikiBase(ctx context.Context, workspaceID pgtype.UUID
 	if err != nil {
 		return nil, db.KnowledgeBase{}, err
 	}
-	if !knowledgeCanRead(actor, base.Visibility, util.UUIDToString(base.ID), grants) {
+	if actor.hides(base.Key) || !knowledgeCanRead(actor, base.Visibility, util.UUIDToString(base.ID), grants) {
 		return nil, db.KnowledgeBase{}, ErrKnowledgeBaseNotFound
 	}
 	return ws, base, nil

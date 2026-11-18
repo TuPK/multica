@@ -294,6 +294,25 @@ func archiveStaleTaskFailedInbox(
 		"row_count", len(rows), "recipient_count", len(counts))
 }
 
+// issueAudience is inbox.IssueAudience for the string ids the listeners carry
+// (spec 7.1 rule 4).
+type issueAudience struct{ a *inbox.IssueAudience }
+
+func newIssueAudience(ctx context.Context, queries *db.Queries, workspaceID, issueID string) issueAudience {
+	ws, wsErr := util.ParseUUID(workspaceID)
+	issue, issueErr := util.ParseUUID(issueID)
+	if wsErr != nil || issueErr != nil {
+		return issueAudience{inbox.NewIssueAudience(ctx, queries, pgtype.UUID{}, pgtype.UUID{})}
+	}
+	return issueAudience{inbox.NewIssueAudience(ctx, queries, ws, issue)}
+}
+
+// sees reports whether the member sees the issue.
+func (a issueAudience) sees(userID string) bool {
+	id, err := util.ParseUUID(userID)
+	return err == nil && a.a.Sees(id)
+}
+
 // notifySubscribers queries the subscriber table for an issue, excludes the
 // actor and any extra IDs, and creates inbox items for each remaining member
 // subscriber. Publishes an inbox:new event for each notification.
@@ -420,6 +439,9 @@ func notifyIssueSubscribers(
 		}
 	}
 	userPrefs := loadUserPrefs(ctx, queries, workspaceID, memberIDs)
+	// The inbox item points to targetIssueID, so that issue decides who may
+	// receive it, whichever issue's subscribers are being read.
+	audience := newIssueAudience(ctx, queries, workspaceID, targetIssueID)
 
 	for _, sub := range subs {
 		// Only notify member-type subscribers (not agents)
@@ -431,6 +453,11 @@ func notifyIssueSubscribers(
 
 		// Skip the actor
 		if subID == e.ActorID {
+			continue
+		}
+
+		// A subscription outlives access to the issue; the notice does not.
+		if !audience.sees(subID) {
 			continue
 		}
 
@@ -514,6 +541,9 @@ func notifyDirect(
 
 	// Check notification preferences for member recipients.
 	if recipientType == "member" {
+		if !newIssueAudience(ctx, queries, workspaceID, issueID).sees(recipientID) {
+			return
+		}
 		prefs := loadUserPrefs(ctx, queries, workspaceID, []string{recipientID})
 		if p, ok := prefs[recipientID]; ok && isNotifMuted(p, notifType) {
 			return
@@ -619,6 +649,15 @@ func notifyMentionedMembers(
 			for _, m := range members {
 				recipientIDs[util.UUIDToString(m.UserID)] = true
 			}
+		}
+	}
+
+	// A mention reaches only the members who see the issue, @all and @squad
+	// included.
+	audience := newIssueAudience(context.Background(), queries, e.WorkspaceID, issueID)
+	for id := range recipientIDs {
+		if !audience.sees(id) {
+			delete(recipientIDs, id)
 		}
 	}
 

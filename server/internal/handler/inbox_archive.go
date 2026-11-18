@@ -93,9 +93,14 @@ func (h *Handler) ListArchivedInboxPage(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
+	viewer, ok := h.viewerScope(w, r, filters.WorkspaceID)
+	if !ok {
+		return
+	}
 	p := db.ListArchivedInboxPageParams{
 		WorkspaceID: filters.WorkspaceID, RecipientID: filters.RecipientID,
 		Statuses: filters.Statuses, Priorities: filters.Priorities, Actors: filters.Actors, UnreadOnly: filters.UnreadOnly,
+		ScopeMode: viewer.Mode(), ScopeUserID: viewer.UserID(),
 	}
 	limit := 50
 	if raw := r.URL.Query().Get("limit"); raw != "" {
@@ -176,6 +181,11 @@ func (h *Handler) GetArchivedInboxFacets(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
+	viewer, ok := h.viewerScope(w, r, p.WorkspaceID)
+	if !ok {
+		return
+	}
+	p.ScopeMode, p.ScopeUserID = viewer.Mode(), viewer.UserID()
 	rows, err := h.Queries.ArchivedInboxFacets(r.Context(), p)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to load archived inbox filters")

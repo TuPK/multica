@@ -294,6 +294,16 @@ func (s *KnowledgeService) UpdateDocumentProperties(ctx context.Context, workspa
 	if err != nil {
 		return KnowledgeDocumentView{}, err
 	}
+	if actor.restrictsProjects() {
+		// A document of a project the actor cannot see answers like a missing one.
+		base, err := s.baseByID(ctx, workspaceID, link.KnowledgeBaseID)
+		if err != nil {
+			return KnowledgeDocumentView{}, err
+		}
+		if actor.hides(base.Key) {
+			return KnowledgeDocumentView{}, ErrKnowledgeDocumentNotFound
+		}
+	}
 	fields, err := s.kindFieldsFor(ctx, workspaceID, link.Kind)
 	if err != nil {
 		return KnowledgeDocumentView{}, err

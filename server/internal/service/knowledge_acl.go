@@ -128,7 +128,7 @@ func (s *KnowledgeService) dropUnreadable(ctx context.Context, workspaceID pgtyp
 		return err
 	}
 	for id, b := range bases {
-		if !knowledgeCanRead(actor, b.Visibility, id, grants) {
+		if actor.hides(b.Key) || !knowledgeCanRead(actor, b.Visibility, id, grants) {
 			delete(bases, id)
 		}
 	}

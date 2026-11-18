@@ -346,17 +346,31 @@ WHERE i.workspace_id = $1
   AND s.user_type = 'member'
   AND s.user_id = $2
   AND s.unsubscribed_at IS NULL
+  -- projectaccess:scope
+  AND ($3::text = 'all'
+      OR (i.project_id IS NULL AND $3::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $4::uuid)
+      OR ($3::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 `
 
 type ListSubscribedIssueIDsParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 	UserID      pgtype.UUID `json:"user_id"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
 }
 
 // Every issue in the workspace the member actively subscribes to; opt-out
 // tombstones do not count.
 func (q *Queries) ListSubscribedIssueIDs(ctx context.Context, arg ListSubscribedIssueIDsParams) ([]pgtype.UUID, error) {
-	rows, err := q.db.Query(ctx, listSubscribedIssueIDs, arg.WorkspaceID, arg.UserID)
+	rows, err := q.db.Query(ctx, listSubscribedIssueIDs,
+		arg.WorkspaceID,
+		arg.UserID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}

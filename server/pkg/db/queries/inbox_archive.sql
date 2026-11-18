@@ -6,10 +6,18 @@ WITH newest AS MATERIALIZED (
            CASE WHEN i.actor_type = 'system' THEN 'system'
                 ELSE i.actor_type || ':' || i.actor_id::text END AS actor
     FROM inbox_item i
+    LEFT JOIN issue scope_iss ON scope_iss.id = i.issue_id
     WHERE i.workspace_id = sqlc.arg(workspace_id)::uuid
       AND i.recipient_type = 'member'
       AND i.recipient_id = sqlc.arg(recipient_id)::uuid
       AND i.archived = true
+      -- projectaccess:scope
+      AND (sqlc.arg(scope_mode)::text = 'all'
+          OR (scope_iss.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+          OR EXISTS (SELECT 1 FROM project_member scope_pm
+                     WHERE scope_pm.project_id = scope_iss.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+          OR (sqlc.arg(scope_mode)::text = 'member'
+              AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = scope_iss.project_id AND scope_p.access = 'workspace')))
       AND (sqlc.narg(group_id)::uuid IS NULL OR i.issue_id = sqlc.narg(group_id)::uuid
            OR (i.issue_id IS NULL AND i.id = sqlc.narg(group_id)::uuid))
       AND (i.issue_id IS NULL OR NOT EXISTS (
@@ -64,10 +72,18 @@ WITH newest AS MATERIALIZED (
            CASE WHEN i.actor_type = 'system' THEN 'system'
                 ELSE i.actor_type || ':' || i.actor_id::text END AS actor
     FROM inbox_item i
+    LEFT JOIN issue scope_iss ON scope_iss.id = i.issue_id
     WHERE i.workspace_id = sqlc.arg(workspace_id)::uuid
       AND i.recipient_type = 'member'
       AND i.recipient_id = sqlc.arg(recipient_id)::uuid
       AND i.archived = true
+      -- projectaccess:scope
+      AND (sqlc.arg(scope_mode)::text = 'all'
+          OR (scope_iss.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+          OR EXISTS (SELECT 1 FROM project_member scope_pm
+                     WHERE scope_pm.project_id = scope_iss.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+          OR (sqlc.arg(scope_mode)::text = 'member'
+              AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = scope_iss.project_id AND scope_p.access = 'workspace')))
       AND (i.issue_id IS NULL OR NOT EXISTS (
           SELECT 1 FROM inbox_item active
           WHERE active.workspace_id = i.workspace_id

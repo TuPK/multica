@@ -3384,9 +3384,13 @@ func (h *Handler) ListAgentTasks(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	scope, ok := h.viewerScope(w, r, agent.WorkspaceID)
+	if !ok {
+		return
+	}
 	tasks, err := h.Queries.ListAgentTasks(r.Context(), db.ListAgentTasksParams{
 		AgentID: agent.ID, BeforeCreatedAt: beforeCreatedAt, BeforeID: beforeID,
-		PageLimit: int32(limit + 1),
+		PageLimit: int32(limit + 1), ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list agent tasks")
@@ -3546,6 +3550,10 @@ func (h *Handler) ListWorkspaceWorkingAgents(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
+	viewer, ok := h.viewerScope(w, r, parseUUID(workspaceID))
+	if !ok {
+		return
+	}
 	rows, err := h.Queries.ListWorkspaceWorkingAgents(
 		r.Context(),
 		db.ListWorkspaceWorkingAgentsParams{
@@ -3554,6 +3562,8 @@ func (h *Handler) ListWorkspaceWorkingAgents(w http.ResponseWriter, r *http.Requ
 			MineRelation:  mineRelation,
 			MemberID:      memberID,
 			ParentIssueID: parentIssueID,
+			ScopeMode:     viewer.Mode(),
+			ScopeUserID:   viewer.UserID(),
 		},
 	)
 	if err != nil {
@@ -3690,7 +3700,15 @@ func (h *Handler) ListWorkspaceAgentTaskSnapshot(w http.ResponseWriter, r *http.
 		return
 	}
 
-	tasks, err := h.Queries.ListWorkspaceAgentTaskSnapshot(r.Context(), parseUUID(workspaceID))
+	scope, ok := h.viewerScope(w, r, parseUUID(workspaceID))
+	if !ok {
+		return
+	}
+	tasks, err := h.Queries.ListWorkspaceAgentTaskSnapshot(r.Context(), db.ListWorkspaceAgentTaskSnapshotParams{
+		WorkspaceID: parseUUID(workspaceID),
+		ScopeMode:   scope.Mode(),
+		ScopeUserID: scope.UserID(),
+	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list agent task snapshot")
 		return

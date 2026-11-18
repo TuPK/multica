@@ -66,9 +66,15 @@ func (h *Handler) ListSubscribedIssueIDs(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 	ids, err := h.Queries.ListSubscribedIssueIDs(r.Context(), db.ListSubscribedIssueIDsParams{
 		WorkspaceID: wsUUID,
 		UserID:      parseUUID(userID),
+		ScopeMode:   scope.Mode(),
+		ScopeUserID: scope.UserID(),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list subscribed issues")

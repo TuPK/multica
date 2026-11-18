@@ -66,11 +66,11 @@ func (h *Handler) UploadKnowledgeDocument(w http.ResponseWriter, r *http.Request
 	}
 
 	// The service refuses an agent: agents write drafts, they do not upload.
-	actor := service.KnowledgeActor{
+	actor := h.withKnowledgeProjectScope(r, workspaceID, service.KnowledgeActor{
 		Type:    actorType,
 		ID:      actorUUID,
 		Curator: h.knowledgeCurator(r, actorType),
-	}
+	})
 	view, created, err := h.Knowledge.UploadDocument(r.Context(), parseUUID(workspaceID), actor, service.KnowledgeUploadInput{
 		KB:             r.FormValue("kb"),
 		Kind:           r.FormValue("kind"),

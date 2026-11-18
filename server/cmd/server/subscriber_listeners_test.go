@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/multica-ai/multica/server/internal/events"
 	"github.com/multica-ai/multica/server/internal/handler"
 	"github.com/multica-ai/multica/server/internal/util"
@@ -127,6 +128,7 @@ func TestSubscriberIssueCreated_CreatorAndAssignee(t *testing.T) {
 
 	assigneeEmail := "subscriber-assignee-test@multica.ai"
 	assigneeID := createTestUser(t, assigneeEmail)
+	workspaceFixture(t).Member(t, testWorkspaceID, assigneeID, "member")
 	t.Cleanup(func() { cleanupTestUser(t, assigneeEmail) })
 
 	issueID := createTestIssue(t, testWorkspaceID, testUserID)
@@ -211,6 +213,7 @@ func TestSubscriberIssueUpdated_AssigneeChanged(t *testing.T) {
 
 	assigneeEmail := "subscriber-new-assignee-test@multica.ai"
 	assigneeID := createTestUser(t, assigneeEmail)
+	workspaceFixture(t).Member(t, testWorkspaceID, assigneeID, "member")
 	t.Cleanup(func() { cleanupTestUser(t, assigneeEmail) })
 
 	issueID := createTestIssue(t, testWorkspaceID, testUserID)
@@ -285,6 +288,7 @@ func TestSubscriberCommentCreated_CommenterSubscribed(t *testing.T) {
 
 	commenterEmail := "subscriber-commenter-test@multica.ai"
 	commenterID := createTestUser(t, commenterEmail)
+	workspaceFixture(t).Member(t, testWorkspaceID, commenterID, "member")
 	t.Cleanup(func() { cleanupTestUser(t, commenterEmail) })
 
 	issueID := createTestIssue(t, testWorkspaceID, testUserID)
@@ -408,6 +412,7 @@ func TestSubscriberIssueCreated_NonSubscriberMentionsAreSkipped(t *testing.T) {
 
 	mentionedEmail := "subscriber-mention-test@multica.ai"
 	mentionedID := createTestUser(t, mentionedEmail)
+	workspaceFixture(t).Member(t, testWorkspaceID, mentionedID, "member")
 	t.Cleanup(func() { cleanupTestUser(t, mentionedEmail) })
 
 	issueID := createTestIssue(t, testWorkspaceID, testUserID)
@@ -450,5 +455,50 @@ func TestSubscriberIssueCreated_NonSubscriberMentionsAreSkipped(t *testing.T) {
 	}
 	if count := subscriberCount(t, queries, issueID); count != 2 {
 		t.Fatalf("expected creator and mentioned member only, got %d subscribers", count)
+	}
+}
+
+// TestSubscriberWithoutAccessIsIgnored: the auto-subscribe rules (creator,
+// assignee, description mention, commenter) skip a member who cannot see the
+// issue's project and still subscribe one who can (spec 7.1 rule 4).
+func TestSubscriberWithoutAccessIsIgnored(t *testing.T) {
+	f := newListenerVisibilityFixture(t)
+	bus := events.New()
+	registerSubscriberListeners(bus, testPool)
+
+	mention := "[@Outsider](mention://member/" + f.outsiderID + ") [@Grantee](mention://member/" + f.granteeID + ")"
+	bus.Publish(events.Event{
+		Type: protocol.EventIssueCreated, WorkspaceID: testWorkspaceID, ActorType: "member", ActorID: testUserID,
+		Payload: map[string]any{"issue": issuePayload(f.hiddenIssueID, "hidden", testUserID, &f.outsiderID, &mention)},
+	})
+	bus.Publish(events.Event{
+		Type: protocol.EventIssueUpdated, WorkspaceID: testWorkspaceID, ActorType: "member", ActorID: testUserID,
+		Payload: map[string]any{
+			"issue":            issuePayload(f.hiddenIssueID, "hidden", testUserID, &f.outsiderID, nil),
+			"assignee_changed": true,
+		},
+	})
+	bus.Publish(events.Event{
+		Type: protocol.EventCommentCreated, WorkspaceID: testWorkspaceID, ActorType: "member", ActorID: f.outsiderID,
+		Payload: map[string]any{
+			"comment": handler.CommentResponse{
+				ID: uuid.NewString(), IssueID: f.hiddenIssueID, AuthorType: "member", AuthorID: f.outsiderID, Content: "hi", Type: "comment",
+			},
+		},
+	})
+	if f.subscribed(t, f.hiddenIssueID, f.outsiderID) {
+		t.Error("a member who cannot see the issue was subscribed as assignee, mention or commenter")
+	}
+	if !f.subscribed(t, f.hiddenIssueID, f.granteeID) || !f.subscribed(t, f.hiddenIssueID, testUserID) {
+		t.Error("members who see the issue must still be subscribed (mention, creator)")
+	}
+
+	// Regression: on an issue the outsider sees, the same rules subscribe them.
+	bus.Publish(events.Event{
+		Type: protocol.EventIssueCreated, WorkspaceID: testWorkspaceID, ActorType: "member", ActorID: testUserID,
+		Payload: map[string]any{"issue": issuePayload(f.openIssueID, "open", testUserID, &f.outsiderID, nil)},
+	})
+	if !f.subscribed(t, f.openIssueID, f.outsiderID) {
+		t.Error("the assignee of an issue they see must be subscribed")
 	}
 }

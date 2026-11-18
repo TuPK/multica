@@ -14,6 +14,7 @@ import (
 const listIssueUnread = `-- name: ListIssueUnread :many
 SELECT u.issue_id, u.outcome, u.agent_id, u.task_id, u.created_at, run_comment.id AS comment_id
 FROM issue_unread u
+LEFT JOIN issue scope_iss ON scope_iss.id = u.issue_id
 LEFT JOIN LATERAL (
   SELECT c.id
   FROM comment c
@@ -25,17 +26,26 @@ LEFT JOIN LATERAL (
 ) run_comment ON true
 WHERE u.workspace_id = $1
   AND u.user_id = $2
+  -- projectaccess:scope
+  AND ($3::text = 'all'
+      OR (scope_iss.project_id IS NULL AND $3::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = scope_iss.project_id AND scope_pm.user_id = $4::uuid)
+      OR ($3::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = scope_iss.project_id AND scope_p.access = 'workspace')))
   AND (
-    $3::timestamptz IS NULL
-    OR (u.created_at, u.issue_id) < ($3::timestamptz, $4::uuid)
+    $5::timestamptz IS NULL
+    OR (u.created_at, u.issue_id) < ($5::timestamptz, $6::uuid)
   )
 ORDER BY u.created_at DESC, u.issue_id DESC
-LIMIT $5
+LIMIT $7
 `
 
 type ListIssueUnreadParams struct {
 	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
 	UserID          pgtype.UUID        `json:"user_id"`
+	ScopeMode       string             `json:"scope_mode"`
+	ScopeUserID     pgtype.UUID        `json:"scope_user_id"`
 	BeforeCreatedAt pgtype.Timestamptz `json:"before_created_at"`
 	BeforeIssueID   pgtype.UUID        `json:"before_issue_id"`
 	PageLimit       int32              `json:"page_limit"`
@@ -60,6 +70,8 @@ func (q *Queries) ListIssueUnread(ctx context.Context, arg ListIssueUnreadParams
 	rows, err := q.db.Query(ctx, listIssueUnread,
 		arg.WorkspaceID,
 		arg.UserID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
 		arg.BeforeCreatedAt,
 		arg.BeforeIssueID,
 		arg.PageLimit,
