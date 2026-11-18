@@ -632,7 +632,7 @@ func TestSSORequireSSORefusesOtherSignInMethods(t *testing.T) {
 	wantPass(serve(member, "otp"))
 }
 
-// Open item from P35: a deleted workspace takes its SSO rows with it.
+// Deleting a workspace removes its SSO rows.
 func TestSSODeletingAWorkspaceRemovesItsSSORows(t *testing.T) {
 	env := newSSOEnv(t)
 	ctx := context.Background()
