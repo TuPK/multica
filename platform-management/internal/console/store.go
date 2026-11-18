@@ -124,6 +124,9 @@ type Overview struct {
 type OrderRow struct {
 	billing.Order
 	WorkspaceName string
+	// InvoiceState is the state of the order's highest e-invoice revision. It is
+	// set by ListOrders only and is empty when the order has no record.
+	InvoiceState string
 }
 
 // TenantSearch asks for a page of workspaces. Pattern is an escaped ILIKE

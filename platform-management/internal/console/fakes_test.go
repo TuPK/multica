@@ -97,6 +97,10 @@ type fakeReader struct {
 	err      error
 	store    *fakeStore // the orders ListOrders, GetOrder and RecentOrders read
 
+	invoiceStates map[string]string               // order id -> state of its latest e-invoice revision
+	history       map[string][]EinvoiceHistoryRow // order id -> revisions, newest first
+	historyErr    error
+
 	lastTenants TenantSearch
 	lastUsers   UserSearch
 	lastNotes   NoteQuery
@@ -115,11 +119,17 @@ func (r *fakeReader) ListOrders(_ context.Context, status billing.Status, newest
 	var out []OrderRow
 	for _, o := range r.store.orders {
 		if o.Status == status {
-			out = append(out, r.store.orderRow(o))
+			row := r.store.orderRow(o)
+			row.InvoiceState = r.invoiceStates[o.ID]
+			out = append(out, row)
 		}
 	}
 	sortOrders(out, newestFirst)
 	return out, r.err
+}
+
+func (r *fakeReader) ListOrderEinvoices(_ context.Context, orderID string) ([]EinvoiceHistoryRow, error) {
+	return r.history[orderID], r.historyErr
 }
 
 func (r *fakeReader) TenantUsage(_ context.Context, ws string, _ time.Time) (usage.Month, error) {

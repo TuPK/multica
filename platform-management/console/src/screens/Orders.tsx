@@ -1,5 +1,14 @@
 import { useState } from "react";
+import { Badge } from "@multica/ui/components/ui/badge";
 import { Button } from "@multica/ui/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@multica/ui/components/ui/dialog";
 import { Input } from "@multica/ui/components/ui/input";
 import {
   Table,
@@ -9,16 +18,22 @@ import {
   TableHead,
   TableCell,
 } from "@multica/ui/components/ui/table";
-import { Copy, Check } from "@multica/ui/icons";
+import { Copy, Check, ExternalLink } from "@multica/ui/icons";
 import { StatusBadge } from "../components/StatusBadge";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
 import { EmptyState } from "../components/EmptyState";
 import { ConfirmReasonDialog } from "../components/ConfirmReasonDialog";
-import { useOrders, useConfirmOrder, useCancelOrder, useMe } from "../api/hooks";
+import { useOrders, useOrderEinvoices, useConfirmOrder, useCancelOrder, useMe } from "../api/hooks";
 import { PlatformApiError } from "../api/client";
+import {
+  isSafeHttpsUrl,
+  type Order,
+  type OrderStatus,
+  type OrderEinvoice,
+  type OrderEinvoiceState,
+} from "../api/schemas";
 import type { StaffRole } from "../components/types";
-import type { Order, OrderStatus } from "../api/schemas";
 
 interface OrdersProps {
   userRole?: StaffRole;
@@ -31,6 +46,21 @@ const STATUS_TABS: { value: OrderStatus; label: string }[] = [
   { value: "canceled", label: "Canceled" },
   { value: "refunded", label: "Refunded" },
 ];
+
+function InvoiceStateBadge({ state }: { state: OrderEinvoiceState }) {
+  switch (state) {
+    case "issued":
+      return <Badge variant="default">Issued</Badge>;
+    case "needs_info":
+      return <Badge variant="destructive">Needs info</Badge>;
+    case "failed":
+      return <Badge variant="destructive">Failed</Badge>;
+    case "pending":
+      return <Badge variant="outline">Pending</Badge>;
+    default:
+      return <Badge variant="outline">Unknown</Badge>;
+  }
+}
 
 export function Orders({ userRole }: OrdersProps) {
   const { data: me } = useMe();
@@ -54,6 +84,16 @@ export function Orders({ userRole }: OrdersProps) {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [selectedOrderForCancel, setSelectedOrderForCancel] = useState<Order | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
+
+  // E-invoice history dialog state
+  const [historyOrderId, setHistoryOrderId] = useState<string | null>(null);
+  const {
+    data: orderEinvoices,
+    isLoading: historyLoading,
+    isError: historyIsError,
+    error: historyError,
+    refetch: refetchHistory,
+  } = useOrderEinvoices(historyOrderId);
 
   // Role gating: Only billing and admin roles can view the orders screen
   if (effectiveRole && effectiveRole !== "billing" && effectiveRole !== "admin") {
@@ -137,6 +177,10 @@ export function Orders({ userRole }: OrdersProps) {
     return `${amount.toLocaleString()} ${currency.toUpperCase()}`;
   };
 
+  const sortedHistory = orderEinvoices
+    ? [...orderEinvoices].sort((a, b) => b.revision - a.revision)
+    : [];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -200,8 +244,9 @@ export function Orders({ userRole }: OrdersProps) {
                 <TableHead>Total (incl. VAT)</TableHead>
                 <TableHead>Buyer Email</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>E-invoice</TableHead>
                 <TableHead>Expiry</TableHead>
-                {activeTab === "pending" && <TableHead className="text-right">Actions</TableHead>}
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -250,28 +295,44 @@ export function Orders({ userRole }: OrdersProps) {
                     <TableCell>
                       <StatusBadge status={order.status} />
                     </TableCell>
+                    <TableCell>
+                      {order.invoice_state ? (
+                        <InvoiceStateBadge state={order.invoice_state} />
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-caption text-muted-foreground">
                       {order.expires_at ? new Date(order.expires_at).toLocaleString() : "-"}
                     </TableCell>
-                    {activeTab === "pending" && (
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleOpenConfirmDialog(order)}
-                          >
-                            Confirm
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleOpenCancelDialog(order)}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </TableCell>
-                    )}
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {activeTab === "pending" && (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => handleOpenConfirmDialog(order)}
+                            >
+                              Confirm
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleOpenCancelDialog(order)}
+                            >
+                              Cancel
+                            </Button>
+                          </>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setHistoryOrderId(order.id)}
+                        >
+                          History
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -317,6 +378,117 @@ export function Orders({ userRole }: OrdersProps) {
         error={cancelError}
         onConfirm={handleCancelOrder}
       />
+
+      {/* E-invoice History Dialog */}
+      <Dialog
+        open={historyOrderId !== null}
+        onOpenChange={(open) => {
+          if (!open) setHistoryOrderId(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>E-invoice history</DialogTitle>
+          </DialogHeader>
+
+          {historyLoading && <LoadingState message="Loading e-invoice history..." />}
+
+          {historyIsError && (
+            <ErrorState
+              title="Failed to load e-invoice history"
+              message={
+                historyError instanceof PlatformApiError || historyError instanceof Error
+                  ? historyError.message
+                  : "An error occurred while loading e-invoice history."
+              }
+              onRetry={refetchHistory}
+            />
+          )}
+
+          {!historyLoading && !historyIsError && sortedHistory.length === 0 && (
+            <EmptyState title="No e-invoice for this order" />
+          )}
+
+          {!historyLoading && !historyIsError && sortedHistory.length > 0 && (
+            <div className="overflow-x-auto rounded-lg border border-surface-border bg-surface">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Revision</TableHead>
+                    <TableHead>State</TableHead>
+                    <TableHead>Invoice number</TableHead>
+                    <TableHead>Buyer</TableHead>
+                    <TableHead>Attempts</TableHead>
+                    <TableHead>Last error</TableHead>
+                    <TableHead>Updated</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedHistory.map((item: OrderEinvoice) => {
+                    const safeUrl = isSafeHttpsUrl(item.lookup_url) ? item.lookup_url.trim() : "";
+
+                    return (
+                      <TableRow key={item.revision}>
+                        <TableCell className="font-mono text-caption">
+                          rev {item.revision}
+                        </TableCell>
+                        <TableCell>
+                          <InvoiceStateBadge state={item.state} />
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-mono text-caption">
+                            {item.invoice_number || "—"}
+                          </div>
+                          {safeUrl && (
+                            <a
+                              href={safeUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-caption text-primary underline underline-offset-3 hover:opacity-80"
+                            >
+                              <ExternalLink className="size-3.5" />
+                              <span>View</span>
+                            </a>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-body font-medium">
+                            {item.buyer.name || "—"}
+                          </div>
+                          {item.buyer.tax_code && (
+                            <div className="font-mono text-caption text-muted-foreground">
+                              {item.buyer.tax_code}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="tabular-nums text-body">
+                          {item.attempts}
+                        </TableCell>
+                        <TableCell className="font-mono text-caption text-muted-foreground">
+                          {item.last_error_code ? (
+                            <span className="text-destructive">{item.last_error_code}</span>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
+                        <TableCell className="text-caption text-muted-foreground">
+                          {item.updated_at ? new Date(item.updated_at).toLocaleString() : "—"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" type="button" />}>
+              Close
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

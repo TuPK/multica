@@ -10,6 +10,7 @@ import (
 
 	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/platform-management/internal/billing"
+	"github.com/multica-ai/multica/platform-management/internal/invoice"
 	"github.com/multica-ai/multica/platform-management/internal/staff"
 )
 
@@ -76,12 +77,37 @@ func expiry(t time.Time) *string {
 	return tsPtr(&t)
 }
 
+// orderListJSON is an order of GET /orders: the order plus the state of its
+// highest e-invoice revision.
+type orderListJSON struct {
+	orderJSON
+	// InvoiceState is null for an order with no record and for a state the
+	// console does not show (for example cancelled).
+	InvoiceState *string `json:"invoice_state"`
+}
+
 func toOrdersJSON(rows []OrderRow) []orderJSON {
 	out := make([]orderJSON, len(rows))
 	for i, o := range rows {
 		out[i] = toOrderJSON(o)
 	}
 	return out
+}
+
+func toOrderListJSON(rows []OrderRow) []orderListJSON {
+	out := make([]orderListJSON, len(rows))
+	for i, o := range rows {
+		out[i] = orderListJSON{orderJSON: toOrderJSON(o), InvoiceState: shownInvoiceState(o.InvoiceState)}
+	}
+	return out
+}
+
+func shownInvoiceState(state string) *string {
+	switch s := invoice.State(state); s {
+	case invoice.StatePending, invoice.StateIssued, invoice.StateNeedsInfo, invoice.StateFailed:
+		return &state
+	}
+	return nil
 }
 
 func orderNotFound() *apiError {
@@ -130,7 +156,7 @@ func (h *Handler) listOrders(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, "list orders", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"orders": toOrdersJSON(rows)})
+	writeJSON(w, http.StatusOK, map[string]any{"orders": toOrderListJSON(rows)})
 }
 
 type orderBody struct {

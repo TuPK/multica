@@ -382,27 +382,50 @@ func orderFromRow(r db.BillingOrder, workspaceName pgtype.Text) OrderRow {
 	}
 }
 
-// ListOrders implements Reader.
+// listOrdersSQL reads the orders of one status with the state of each order's
+// highest e-invoice revision in a single query. The order direction is the
+// only text added to it.
+const listOrdersSQL = `SELECT o.id, o.workspace_id, o.kind, o.plan_key, o.interval, o.seats, o.amount, o.vat_amount, o.currency,
+		o.status, o.provider, o.provider_ref, o.transfer_code, o.idempotency_key, o.buyer, o.period_start, o.period_end,
+		o.einvoice_ref, o.created_by, o.confirmed_by, o.paid_at, o.expires_at, o.created_at, w.name AS workspace_name,
+		inv.state AS invoice_state
+	FROM billing_order o
+	LEFT JOIN workspace w ON w.id = o.workspace_id
+	LEFT JOIN LATERAL (
+		SELECT e.state FROM einvoice_issuance e WHERE e.order_id = o.id ORDER BY e.revision DESC LIMIT 1
+	) inv ON true
+	WHERE o.status = $1
+	ORDER BY o.created_at %[1]s, o.id %[1]s
+	LIMIT $2`
+
+// ListOrders implements Reader. The pending queue is oldest first.
 func (r *PgxReader) ListOrders(ctx context.Context, status billing.Status, newestFirst bool, limit int) ([]OrderRow, error) {
-	var out []OrderRow
+	dir := "ASC"
 	if newestFirst {
-		rows, err := r.q.ListBillingOrdersByStatusNewestFirst(ctx, db.ListBillingOrdersByStatusNewestFirstParams{Status: string(status), RowLimit: int32(limit)})
-		if err != nil {
-			return nil, err
-		}
-		for _, row := range rows {
-			out = append(out, orderFromRow(row.BillingOrder, row.WorkspaceName))
-		}
-		return nonNil(out), nil
+		dir = "DESC"
 	}
-	rows, err := r.q.ListBillingOrdersByStatusOldestFirst(ctx, db.ListBillingOrdersByStatusOldestFirstParams{Status: string(status), RowLimit: int32(limit)})
+	rows, err := r.pool.Query(ctx, fmt.Sprintf(listOrdersSQL, dir), string(status), int32(limit))
 	if err != nil {
 		return nil, err
 	}
-	for _, row := range rows {
-		out = append(out, orderFromRow(row.BillingOrder, row.WorkspaceName))
+	defer rows.Close()
+	out := []OrderRow{}
+	for rows.Next() {
+		var (
+			o     db.BillingOrder
+			name  pgtype.Text
+			state pgtype.Text
+		)
+		if err := rows.Scan(&o.ID, &o.WorkspaceID, &o.Kind, &o.PlanKey, &o.Interval, &o.Seats, &o.Amount, &o.VatAmount, &o.Currency,
+			&o.Status, &o.Provider, &o.ProviderRef, &o.TransferCode, &o.IdempotencyKey, &o.Buyer, &o.PeriodStart, &o.PeriodEnd,
+			&o.EinvoiceRef, &o.CreatedBy, &o.ConfirmedBy, &o.PaidAt, &o.ExpiresAt, &o.CreatedAt, &name, &state); err != nil {
+			return nil, err
+		}
+		row := orderFromRow(o, name)
+		row.InvoiceState = state.String
+		out = append(out, row)
 	}
-	return nonNil(out), nil
+	return out, rows.Err()
 }
 
 func nonNil(rows []OrderRow) []OrderRow {

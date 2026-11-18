@@ -193,9 +193,23 @@ export type TenantState = z.output<typeof TenantStateSchema>;
 
 export const ORDER_STATUSES = ["pending", "paid", "expired", "canceled", "refunded"] as const;
 export const ORDER_KINDS = ["subscribe", "change_plan", "add_seats", "renew"] as const;
+export const ORDER_INVOICE_STATES = ["pending", "issued", "needs_info", "failed"] as const;
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number] | "unknown";
 export type OrderKind = (typeof ORDER_KINDS)[number] | "unknown";
+export type OrderInvoiceState = (typeof ORDER_INVOICE_STATES)[number];
+
+function parseOrderInvoiceState(v: string | null): OrderInvoiceState | null {
+  switch (v) {
+    case "pending":
+    case "issued":
+    case "needs_info":
+    case "failed":
+      return v;
+    default:
+      return null;
+  }
+}
 
 export const BuyerSchema = z.object({
   name: text,
@@ -217,6 +231,7 @@ export const OrderSchema = z.object({
   vat_amount: count,
   currency: text,
   status: enumOf(ORDER_STATUSES),
+  invoice_state: z.string().nullable().default(null).transform(parseOrderInvoiceState),
   transfer_code: text,
   expires_at: text,
   created_at: text,
@@ -936,5 +951,32 @@ export type EinvoiceList = z.output<typeof EinvoiceListSchema>;
 export function parseEinvoiceList(data: unknown): EinvoiceList {
   return parseWithFallback<EinvoiceList>(data, EinvoiceListSchema, { einvoices: [] }, {
     endpoint: "GET /api/platform/einvoices",
+  });
+}
+
+export type OrderEinvoiceState = OrderInvoiceState | "unknown";
+
+export const OrderEinvoiceSchema = z.object({
+  revision: z.number().int().nonnegative(),
+  state: enumOf(ORDER_INVOICE_STATES),
+  invoice_number: text,
+  lookup_url: text.transform(sanitizeHttpsUrl),
+  buyer: BuyerSchema.prefault({}),
+  attempts: count,
+  last_error_code: text,
+  created_at: text,
+  issued_at: nullableText,
+  updated_at: text,
+});
+export type OrderEinvoice = z.output<typeof OrderEinvoiceSchema>;
+
+export const OrderEinvoiceListSchema = z.object({
+  einvoices: z.array(OrderEinvoiceSchema),
+});
+export type OrderEinvoiceList = z.output<typeof OrderEinvoiceListSchema>;
+
+export function parseOrderEinvoiceList(data: unknown): OrderEinvoiceList | null {
+  return parseWithFallback<OrderEinvoiceList | null>(data, OrderEinvoiceListSchema, null, {
+    endpoint: "GET /api/platform/orders/{id}/einvoices",
   });
 }

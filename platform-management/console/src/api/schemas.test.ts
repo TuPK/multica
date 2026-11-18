@@ -36,6 +36,8 @@ import {
   parsePutBillingProfileResponse,
   EINVOICE_STATES,
   parseEinvoiceList,
+  OrderEinvoiceListSchema,
+  parseOrderEinvoiceList,
 } from "./schemas";
 
 const tenant = {
@@ -436,7 +438,22 @@ describe("orders", () => {
 
   it("parses a well-formed order action result", () => {
     const parsed = parseOrderActionResult({ order, applied: true }, "POST /orders/{id}/confirm");
-    expect(parsed).toEqual({ order, applied: true });
+    expect(parsed).toEqual({ order: { ...order, invoice_state: null }, applied: true });
+  });
+
+  it("parses invoice_state for allowed values, defaults absent or null to null, and maps unknown strings to null", () => {
+    for (const state of ["pending", "issued", "needs_info", "failed"] as const) {
+      const parsed = parseOrderList({ orders: [{ ...order, invoice_state: state }] });
+      expect(parsed.orders[0]?.invoice_state).toBe(state);
+    }
+    expect(parseOrderList({ orders: [{ ...order, invoice_state: null }] }).orders[0]?.invoice_state).toBeNull();
+    expect(parseOrderList({ orders: [order] }).orders[0]?.invoice_state).toBeNull();
+    for (const unknownState of ["cancelled", "archived", "something_else", ""]) {
+      expect(
+        parseOrderList({ orders: [{ ...order, invoice_state: unknownState }] }).orders[0]?.invoice_state,
+      ).toBeNull();
+    }
+    expect(parseOrderList({ orders: [{ ...order, invoice_state: 42 }] })).toEqual({ orders: [] });
   });
 
   it("falls back to null on malformed order action result", () => {
@@ -1222,6 +1239,85 @@ describe("e-invoices (GET /api/platform/einvoices)", () => {
       { einvoices: [{ order_id: 42, state: "failed" }] },
     ]) {
       expect(parseEinvoiceList(bad)).toEqual({ einvoices: [] });
+    }
+  });
+});
+
+describe("order e-invoice history (GET /api/platform/orders/{id}/einvoices)", () => {
+  const historyItem = {
+    revision: 2,
+    state: "issued",
+    invoice_number: "00001234",
+    lookup_url: "https://einvoice.sepay.vn/lookup/abc",
+    buyer: {
+      name: "Acme Vietnam Ltd",
+      tax_code: "0101234567",
+      address: "123 Le Loi, HCMC",
+      invoice_email: "billing@acme.vn",
+    },
+    attempts: 1,
+    last_error_code: "",
+    created_at: "2026-11-18T10:00:00Z",
+    issued_at: "2026-11-18T10:05:00Z",
+    updated_at: "2026-11-18T10:05:00Z",
+  };
+
+  it("accepts an empty einvoices list", () => {
+    expect(OrderEinvoiceListSchema.safeParse({ einvoices: [] })).toEqual({
+      success: true,
+      data: { einvoices: [] },
+    });
+    expect(parseOrderEinvoiceList({ einvoices: [] })).toEqual({ einvoices: [] });
+  });
+
+  it("parses revisions with exact fields, strips non-https lookup URLs, and maps unknown state to unknown", () => {
+    const parsed = parseOrderEinvoiceList({
+      einvoices: [
+        historyItem,
+        {
+          ...historyItem,
+          revision: 1,
+          state: "cancelled",
+          invoice_number: "",
+          lookup_url: "http://insecure.example.com/inv/1",
+          attempts: 3,
+          last_error_code: "provider_timeout",
+          issued_at: null,
+        },
+      ],
+    });
+    expect(parsed?.einvoices).toHaveLength(2);
+    expect(parsed?.einvoices[0]).toEqual(historyItem);
+    expect(parsed?.einvoices[1]).toEqual({
+      ...historyItem,
+      revision: 1,
+      state: "unknown",
+      invoice_number: "",
+      lookup_url: "",
+      attempts: 3,
+      last_error_code: "provider_timeout",
+      issued_at: null,
+    });
+  });
+
+  it("rejects wrong-shape history responses", () => {
+    for (const bad of [
+      null,
+      undefined,
+      "bad",
+      123,
+      [],
+      {},
+      { einvoices: "not-an-array" },
+      { einvoices: [{ ...historyItem, revision: undefined }] },
+      { einvoices: [{ state: "issued" }] },
+      { einvoices: [{ ...historyItem, revision: "2" }] },
+      { einvoices: [{ ...historyItem, revision: null }] },
+      { einvoices: [{ ...historyItem, state: 42 }] },
+      { einvoices: [{ ...historyItem, buyer: "not-an-object" }] },
+    ]) {
+      expect(OrderEinvoiceListSchema.safeParse(bad).success).toBe(false);
+      expect(parseOrderEinvoiceList(bad)).toBeNull();
     }
   });
 });

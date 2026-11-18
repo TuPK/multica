@@ -278,6 +278,7 @@ func TestRouteRoles(t *testing.T) {
 		"/api/platform/audit-events":                 anyStaff,
 		"/api/platform/overview":                     anyStaff,
 		"/api/platform/orders":                       billingAdmin,
+		"/api/platform/orders/{id}/einvoices":        billingAdmin,
 		"/api/platform/orders/{id}/confirm":          billingAdmin,
 		"/api/platform/orders/{id}/cancel":           billingAdmin,
 		"/api/platform/payment-notices":              billingAdmin,

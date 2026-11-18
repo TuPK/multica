@@ -46,6 +46,7 @@ import {
   useCancelAccountRequest,
   useResendWelcome,
   useEinvoices,
+  useOrderEinvoices,
 } from "./hooks";
 
 type Handler = Response | ((url: URL, init: RequestInit | undefined) => Response);
@@ -669,7 +670,7 @@ describe("orders and billing hooks", () => {
     const { result } = renderHook(() => useOrders(), { wrapper });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(calls[0]?.search).toBe("?status=pending");
-    expect(result.current.data).toEqual([mockOrder]);
+    expect(result.current.data).toEqual([{ ...mockOrder, invoice_state: null }]);
   });
 
   it("useOrders fetches with specified status", async () => {
@@ -1420,6 +1421,63 @@ describe("e-invoices hooks", () => {
       method: "GET",
       path: "/api/platform/einvoices",
       search: "?state=issued",
+    });
+  });
+
+  it("useOrderEinvoices fetches /api/platform/orders/{id}/einvoices when orderId is provided", async () => {
+    const historyItem = {
+      revision: 1,
+      state: "issued",
+      invoice_number: "INV-1",
+      lookup_url: "https://einvoice.sepay.vn/lookup/1",
+      buyer: {
+        name: "Acme",
+        tax_code: "010",
+        address: "HN",
+        invoice_email: "acme@example.com",
+      },
+      attempts: 1,
+      last_error_code: "",
+      created_at: "2026-11-18T10:00:00Z",
+      issued_at: "2026-11-18T10:05:00Z",
+      updated_at: "2026-11-18T10:05:00Z",
+    };
+    const calls = stubFetch({
+      "GET /api/platform/orders/ord-1/einvoices": json(200, { einvoices: [historyItem] }),
+      "GET /api/platform/orders/ord-empty/einvoices": json(200, { einvoices: [] }),
+      "GET /api/platform/orders/ord-missing/einvoices": json(404, {
+        error: "order not found",
+        code: "order_not_found",
+      }),
+      "GET /api/platform/orders/ord-bad/einvoices": json(200, { einvoices: "bad" }),
+    });
+    const { queryClient, wrapper } = setup();
+
+    const idleQuery = renderHook(() => useOrderEinvoices(null), { wrapper });
+    expect(idleQuery.result.current.fetchStatus).toBe("idle");
+    expect(calls).toHaveLength(0);
+
+    const historyQuery = renderHook(() => useOrderEinvoices("ord-1"), { wrapper });
+    await waitFor(() => expect(historyQuery.result.current.isSuccess).toBe(true));
+    expect(historyQuery.result.current.data).toEqual([historyItem]);
+    expect(calls[0]?.path).toBe("/api/platform/orders/ord-1/einvoices");
+    expect(queryClient.getQueryData(platformKeys.orderEinvoices("ord-1"))).toEqual([historyItem]);
+
+    const emptyQuery = renderHook(() => useOrderEinvoices("ord-empty"), { wrapper });
+    await waitFor(() => expect(emptyQuery.result.current.isSuccess).toBe(true));
+    expect(emptyQuery.result.current.data).toEqual([]);
+
+    const missingQuery = renderHook(() => useOrderEinvoices("ord-missing"), { wrapper });
+    await waitFor(() => expect(missingQuery.result.current.isError).toBe(true));
+    expect(missingQuery.result.current.error).toMatchObject({
+      status: 404,
+      code: "order_not_found",
+    });
+
+    const malformedQuery = renderHook(() => useOrderEinvoices("ord-bad"), { wrapper });
+    await waitFor(() => expect(malformedQuery.result.current.isError).toBe(true));
+    expect(malformedQuery.result.current.error).toMatchObject({
+      code: "malformed_response",
     });
   });
 });

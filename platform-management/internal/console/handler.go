@@ -138,6 +138,7 @@ func routeTable() []routeSpec {
 		{base + "/staff/{user_id}", adminOnly, map[string]handlerFunc{http.MethodDelete: (*Handler).removeStaff}},
 		{base + "/audit-events", nil, map[string]handlerFunc{http.MethodGet: (*Handler).listAuditEvents}},
 		{base + "/orders", billingAndAdmin, map[string]handlerFunc{http.MethodGet: (*Handler).listOrders}},
+		{base + "/orders/{id}/einvoices", billingAndAdmin, map[string]handlerFunc{http.MethodGet: (*Handler).listOrderEinvoices}},
 		{base + "/orders/{id}/confirm", billingAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).confirmOrder}},
 		{base + "/orders/{id}/cancel", billingAndAdmin, map[string]handlerFunc{http.MethodPost: (*Handler).cancelOrder}},
 		{base + "/payment-notices", billingAndAdmin, map[string]handlerFunc{http.MethodGet: (*Handler).listPaymentNotices}},

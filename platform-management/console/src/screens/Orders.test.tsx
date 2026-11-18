@@ -1,16 +1,18 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { Orders } from "./Orders";
 import { PlatformApiError } from "../api/client";
 
 const mockUseOrders = vi.fn();
+const mockUseOrderEinvoices = vi.fn();
 const mockConfirmOrderMutateAsync = vi.fn();
 const mockCancelOrderMutateAsync = vi.fn();
 let mockMeRole = "billing";
 
 vi.mock("../api/hooks", () => ({
   useOrders: (status?: string) => mockUseOrders(status),
+  useOrderEinvoices: (orderId: string | null) => mockUseOrderEinvoices(orderId),
   useConfirmOrder: () => ({
     mutateAsync: mockConfirmOrderMutateAsync,
     isPending: false,
@@ -36,6 +38,7 @@ const mockPendingOrder = {
   vat_amount: 60000,
   currency: "vnd",
   status: "pending" as const,
+  invoice_state: null,
   transfer_code: "MUL12345678",
   expires_at: "2026-11-20T10:00:00Z",
   created_at: "2026-11-13T10:00:00Z",
@@ -63,6 +66,13 @@ describe("Orders screen", () => {
       data: [mockPendingOrder],
       isLoading: false,
       isError: false,
+      refetch: vi.fn(),
+    });
+    mockUseOrderEinvoices.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
       refetch: vi.fn(),
     });
   });
@@ -195,5 +205,172 @@ describe("Orders screen", () => {
 
     expect(screen.queryByRole("heading", { name: "Orders" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Not found" })).toBeInTheDocument();
+  });
+
+  it("shows the e-invoice state label for pending, issued, needs_info, failed and an em dash for null", () => {
+    mockUseOrders.mockReturnValue({
+      data: [
+        { ...mockPaidOrder, id: "ord-pending", workspace_name: "WS Pending", invoice_state: "pending" },
+        { ...mockPaidOrder, id: "ord-issued", workspace_name: "WS Issued", invoice_state: "issued" },
+        { ...mockPaidOrder, id: "ord-needs-info", workspace_name: "WS Needs Info", invoice_state: "needs_info" },
+        { ...mockPaidOrder, id: "ord-failed", workspace_name: "WS Failed", invoice_state: "failed" },
+        { ...mockPaidOrder, id: "ord-none", workspace_name: "WS None", invoice_state: null },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    render(<Orders userRole="billing" />);
+    fireEvent.click(screen.getByRole("tab", { name: /Paid/i }));
+
+    const rowOf = (workspace: string) => {
+      const cell = screen.getByText(workspace);
+      const row = cell.closest("tr");
+      if (!row) throw new Error(`Missing row for ${workspace}`);
+      return within(row);
+    };
+
+    expect(screen.getByRole("columnheader", { name: /E-invoice|Invoice/i })).toBeInTheDocument();
+    expect(rowOf("WS Pending").getByText("Pending")).toBeInTheDocument();
+    expect(rowOf("WS Issued").getByText("Issued")).toBeInTheDocument();
+    expect(rowOf("WS Needs Info").getByText("Needs info")).toBeInTheDocument();
+    expect(rowOf("WS Failed").getByText("Failed")).toBeInTheDocument();
+    expect(rowOf("WS None").getByText("—")).toBeInTheDocument();
+  });
+
+  it("opens the e-invoice history dialog showing revisions newest first without buyer address or email", () => {
+    mockUseOrders.mockReturnValue({
+      data: [{ ...mockPaidOrder, id: "ord-hist", invoice_state: "issued" }],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    mockUseOrderEinvoices.mockImplementation((orderId: string | null) =>
+      orderId === "ord-hist"
+        ? {
+            data: [
+              {
+                revision: 2,
+                state: "issued",
+                invoice_number: "INV-002",
+                lookup_url: "https://einvoice.sepay.vn/lookup/rev2",
+                buyer: {
+                  name: "Acme Revised Co",
+                  tax_code: "0109998888",
+                  address: "99 Secret Address",
+                  invoice_email: "hidden-rev2@acme.vn",
+                },
+                attempts: 1,
+                last_error_code: "",
+                created_at: "2026-11-18T07:00:00Z",
+                issued_at: "2026-11-18T08:00:00Z",
+                updated_at: "2026-11-18T09:05:00Z",
+              },
+              {
+                revision: 1,
+                state: "failed",
+                invoice_number: "",
+                lookup_url: "http://insecure.example.com/rev1",
+                buyer: {
+                  name: "Acme Old Co",
+                  tax_code: "0101112222",
+                  address: "11 Old Street",
+                  invoice_email: "hidden-rev1@acme.vn",
+                },
+                attempts: 4,
+                last_error_code: "provider_timeout",
+                created_at: "2026-11-17T06:00:00Z",
+                issued_at: null,
+                updated_at: "2026-11-17T08:30:00Z",
+              },
+            ],
+            isLoading: false,
+            isError: false,
+            error: null,
+            refetch: vi.fn(),
+          }
+        : { data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() },
+    );
+
+    render(<Orders userRole="billing" />);
+    fireEvent.click(screen.getByRole("tab", { name: /Paid/i }));
+    fireEvent.click(screen.getByRole("button", { name: /History/i }));
+
+    expect(mockUseOrderEinvoices).toHaveBeenLastCalledWith("ord-hist");
+
+    const dialog = screen.getByRole("dialog");
+    const d = within(dialog);
+    const rows = d.getAllByRole("row");
+    // header + 2 revision rows; revision 2 must appear before revision 1
+    expect(rows).toHaveLength(3);
+    expect(within(rows[1]!).getByText("rev 2")).toBeInTheDocument();
+    expect(within(rows[1]!).getByText("Issued")).toBeInTheDocument();
+    expect(within(rows[1]!).getByText("INV-002")).toBeInTheDocument();
+    expect(within(rows[1]!).getByText("Acme Revised Co")).toBeInTheDocument();
+    expect(within(rows[1]!).getByText("0109998888")).toBeInTheDocument();
+    expect(within(rows[1]!).getByText("1")).toBeInTheDocument();
+    expect(within(rows[1]!).getByText("—")).toBeInTheDocument();
+    expect(within(rows[1]!).getByText(new Date("2026-11-18T09:05:00Z").toLocaleString())).toBeInTheDocument();
+    const links = within(rows[1]!).getAllByRole("link");
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute("href", "https://einvoice.sepay.vn/lookup/rev2");
+
+    expect(within(rows[2]!).getByText("rev 1")).toBeInTheDocument();
+    expect(within(rows[2]!).getByText("Failed")).toBeInTheDocument();
+    expect(within(rows[2]!).getByText("—")).toBeInTheDocument();
+    expect(within(rows[2]!).getByText("Acme Old Co")).toBeInTheDocument();
+    expect(within(rows[2]!).getByText("0101112222")).toBeInTheDocument();
+    expect(within(rows[2]!).getByText("4")).toBeInTheDocument();
+    expect(within(rows[2]!).getByText("provider_timeout")).toBeInTheDocument();
+    expect(within(rows[2]!).getByText(new Date("2026-11-17T08:30:00Z").toLocaleString())).toBeInTheDocument();
+    expect(within(rows[2]!).queryByRole("link")).not.toBeInTheDocument();
+
+    // Buyer address, invoice email, created_at, and issued_at must never appear in the history view
+    expect(d.queryByText(/99 Secret Address/)).not.toBeInTheDocument();
+    expect(d.queryByText(/hidden-rev2@acme\.vn/)).not.toBeInTheDocument();
+    expect(d.queryByText(/11 Old Street/)).not.toBeInTheDocument();
+    expect(d.queryByText(/hidden-rev1@acme\.vn/)).not.toBeInTheDocument();
+    expect(d.queryByText(new Date("2026-11-18T07:00:00Z").toLocaleString())).not.toBeInTheDocument();
+    expect(d.queryByText(new Date("2026-11-18T08:00:00Z").toLocaleString())).not.toBeInTheDocument();
+    expect(d.queryByText(new Date("2026-11-17T06:00:00Z").toLocaleString())).not.toBeInTheDocument();
+  });
+
+  it("shows empty, loading, and error states in the e-invoice history dialog", () => {
+    mockUseOrderEinvoices.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    const { rerender } = render(<Orders userRole="billing" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /History/i }));
+    expect(within(screen.getByRole("dialog")).getByText(/No e-invoice for this order/i)).toBeInTheDocument();
+
+    mockUseOrderEinvoices.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    rerender(<Orders userRole="billing" />);
+    expect(within(screen.getByRole("dialog")).getByText("Loading e-invoice history...")).toBeInTheDocument();
+
+    const refetchHistory = vi.fn();
+    mockUseOrderEinvoices.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new PlatformApiError(404, "order_not_found", "order not found"),
+      refetch: refetchHistory,
+    });
+    rerender(<Orders userRole="billing" />);
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByRole("alert")).toHaveTextContent("order not found");
+    fireEvent.click(dialog.getByRole("button", { name: "Try again" }));
+    expect(refetchHistory).toHaveBeenCalledTimes(1);
   });
 });

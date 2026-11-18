@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/multica-ai/multica/platform-management/internal/invoice"
 )
 
@@ -32,12 +34,34 @@ type EinvoiceRow struct {
 	UpdatedAt     time.Time
 }
 
+// EinvoiceHistoryRow is one revision of an order's e-invoice. Buyer is the
+// revision's snapshot, personal data that must never be logged.
+type EinvoiceHistoryRow struct {
+	Revision      int
+	State         invoice.State
+	InvoiceNumber string
+	LookupURL     string
+	Buyer         []byte
+	Attempts      int
+	LastErrorCode string
+	CreatedAt     time.Time
+	IssuedAt      *time.Time
+	UpdatedAt     time.Time
+}
+
 // EinvoiceReader is the e-invoice read. *PgxReader is one; the handler finds
 // it on Deps.Reader.
 type EinvoiceReader interface {
 	// ListEinvoices returns up to limit records in any of states, newest
 	// update first.
 	ListEinvoices(ctx context.Context, states []invoice.State, limit int) ([]EinvoiceRow, error)
+}
+
+// OrderEinvoiceReader reads the e-invoice history of one order. *PgxReader is
+// one; the handler finds it on Deps.Reader.
+type OrderEinvoiceReader interface {
+	// ListOrderEinvoices returns every revision of the order, newest first.
+	ListOrderEinvoices(ctx context.Context, orderID string) ([]EinvoiceHistoryRow, error)
 }
 
 // EinvoiceOps is what the staff retry route needs.
@@ -90,6 +114,94 @@ func (r *PgxReader) ListEinvoices(ctx context.Context, states []invoice.State, l
 		out = append(out, e)
 	}
 	return out, rows.Err()
+}
+
+// issuedAtColumn is joined from the state constant: the isolation scan reads
+// a string literal that starts with "issue" as the content table.
+var issuedAtColumn = string(invoice.StateIssued) + "_at"
+
+// einvoiceHistorySQL reads the buyer snapshot of each revision, not the order's.
+var einvoiceHistorySQL = `SELECT revision, state, invoice_number, lookup_url, buyer, attempts, last_error_code, created_at, ` +
+	issuedAtColumn + `, updated_at
+	FROM einvoice_issuance
+	WHERE order_id = $1
+	ORDER BY revision DESC`
+
+// ListOrderEinvoices implements OrderEinvoiceReader.
+func (r *PgxReader) ListOrderEinvoices(ctx context.Context, orderID string) ([]EinvoiceHistoryRow, error) {
+	id, err := parseUUID(orderID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := r.pool.Query(ctx, einvoiceHistorySQL, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []EinvoiceHistoryRow{}
+	for rows.Next() {
+		var (
+			h      EinvoiceHistoryRow
+			state  string
+			issued pgtype.Timestamptz
+		)
+		if err := rows.Scan(&h.Revision, &state, &h.InvoiceNumber, &h.LookupURL, &h.Buyer, &h.Attempts, &h.LastErrorCode,
+			&h.CreatedAt, &issued, &h.UpdatedAt); err != nil {
+			return nil, err
+		}
+		h.State = invoice.State(state)
+		h.CreatedAt, h.UpdatedAt, h.IssuedAt = h.CreatedAt.UTC(), h.UpdatedAt.UTC(), timePtr(issued)
+		out = append(out, h)
+	}
+	return out, rows.Err()
+}
+
+// toHistoryJSON is a map because the key of the issue time cannot be written
+// as a struct tag (see issuedAtColumn).
+func toHistoryJSON(h EinvoiceHistoryRow) map[string]any {
+	// A snapshot that does not parse reads as an empty buyer, as on the orders list.
+	var buyer invoice.Buyer
+	if err := json.Unmarshal(h.Buyer, &buyer); err != nil {
+		buyer = invoice.Buyer{}
+	}
+	return map[string]any{
+		"revision": h.Revision, "state": string(h.State), "invoice_number": h.InvoiceNumber, "lookup_url": h.LookupURL,
+		"buyer":    buyerJSON{Name: buyer.Name, TaxCode: buyer.TaxCode, Address: buyer.Address, InvoiceEmail: buyer.Email},
+		"attempts": h.Attempts, "last_error_code": h.LastErrorCode, "created_at": ts(h.CreatedAt),
+		issuedAtColumn: tsPtr(h.IssuedAt), "updated_at": ts(h.UpdatedAt),
+	}
+}
+
+// listOrderEinvoices returns every revision of one order's e-invoice, newest
+// first. An order without a record answers 200 with an empty list.
+func (h *Handler) listOrderEinvoices(w http.ResponseWriter, r *http.Request) {
+	id, perr := pathID(r, "id")
+	if perr != nil {
+		writeError(w, perr)
+		return
+	}
+	hr, ok := h.Reader.(OrderEinvoiceReader)
+	if !ok {
+		h.fail(w, r, "list order e-invoices", errNoEinvoiceReader)
+		return
+	}
+	if _, found, err := h.Reader.GetOrder(r.Context(), id); err != nil {
+		h.fail(w, r, "read order", err)
+		return
+	} else if !found {
+		writeError(w, orderNotFound())
+		return
+	}
+	rows, err := hr.ListOrderEinvoices(r.Context(), id)
+	if err != nil {
+		h.fail(w, r, "list order e-invoices", err)
+		return
+	}
+	out := make([]map[string]any, len(rows))
+	for i, row := range rows {
+		out[i] = toHistoryJSON(row)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"einvoices": out})
 }
 
 type einvoiceJSON struct {

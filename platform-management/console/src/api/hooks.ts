@@ -39,6 +39,7 @@ import {
   parseSchedulePriceChangeResponse,
   parseCancelPriceChangeResponse,
   parseEinvoiceList,
+  parseOrderEinvoiceList,
   type Me,
   type Overview,
   type StaffRole,
@@ -47,6 +48,9 @@ import {
   type TenantUsage,
   type UserDetail,
   type Order,
+  type OrderInvoiceState,
+  type OrderEinvoice,
+  type OrderEinvoiceState,
   type Notice,
   type NoticeCandidate,
   type NoticeDetail,
@@ -75,6 +79,9 @@ export type {
   BillingProfileVerifyResponse,
   PutBillingProfileResponse,
   Order,
+  OrderInvoiceState,
+  OrderEinvoice,
+  OrderEinvoiceState,
   Notice,
   NoticeCandidate,
   NoticeDetail,
@@ -159,6 +166,7 @@ export const platformKeys = {
   staff: () => ["platform", "staff"] as const,
   orders: () => ["platform", "orders"] as const,
   orderList: (status: string) => ["platform", "orders", "list", status] as const,
+  orderEinvoices: (id: string) => ["platform", "orders", "einvoices", id] as const,
   notices: () => ["platform", "payment-notices"] as const,
   noticeList: () => ["platform", "payment-notices", "list"] as const,
   notice: (id: string) => ["platform", "payment-notices", "detail", id] as const,
@@ -1120,6 +1128,18 @@ export function useEinvoices(state: EinvoiceFilterState = "") {
     queryFn: async ({ signal }): Promise<Einvoice[]> => {
       const res = await platformFetch(`/einvoices${queryString({ state: state || undefined })}`, { signal });
       return parseEinvoiceList(res).einvoices;
+    },
+  });
+}
+
+/** Fetch the e-invoice revision history for an order, newest first. Billing or Admin only. */
+export function useOrderEinvoices(orderId: string | null) {
+  return useQuery({
+    queryKey: platformKeys.orderEinvoices(orderId ?? ""),
+    enabled: orderId !== null && orderId !== "",
+    queryFn: async ({ signal }): Promise<OrderEinvoice[]> => {
+      const res = await platformFetch(`/orders/${pathSegment(orderId ?? "")}/einvoices`, { signal });
+      return orMalformed(parseOrderEinvoiceList(res)).einvoices;
     },
   });
 }
