@@ -178,6 +178,7 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"plugin_package_version":             workspaceDelete,
 	"plugin_package_file":                workspaceDelete,
 	"project":                            workspaceDelete,
+	"project_member":                     workspaceDelete,
 	"project_resource":                   workspaceDelete,
 	"quick_action":                       workspaceDelete,
 	"runtime_profile":                    workspaceDelete,
@@ -228,6 +229,8 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 	"billing_notice":           workspaceDelete,
 	"billing_order":            workspaceDeleteSettle, // financial record kept for accounting; buyer details are an open item
 	"billing_profile":          workspaceDelete,       // buyer identity goes with the workspace (spec 7b.1); keeping it for invoices is an owner decision, same open item as billing_order
+	"einvoice_issuance":        workspaceDeleteKeep,   // issued e-invoices are tax records; the row keeps its workspace_id, see workspaceDeletionColumns
+	"payment_notice":           workspaceDeleteKeep,   // inbound bank notice, platform-level: no workspace_id column
 	"plan":                     workspaceDeleteKeep,
 	"plan_price_change":        workspaceDeleteKeep, // plan-level: plan_key, no workspace_id (spec 7b.4)
 	"platform_account":         workspaceDeleteKeep,
@@ -248,6 +251,7 @@ var workspaceDeletionManifest = map[string]workspaceDeleteAction{
 // rows the manifest keeps (table.column keys).
 var workspaceDeletionColumns = map[string]workspaceDeleteAction{
 	"personal_access_token.workspace_id": workspaceDeleteKeep, // user-level token; a binding to a deleted workspace matches nothing, so the token is refused everywhere
+	"einvoice_issuance.workspace_id":     workspaceDeleteKeep, // tax record kept as issued; open item for the owner, same as billing_order
 }
 
 func TestWorkspaceDeletionManifestCoversPublicSchema(t *testing.T) {
