@@ -27,7 +27,7 @@ var (
 		"_test.go", ".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx", ".sql.go",
 	}
 	scanExts   = map[string]bool{".go": true, ".sql": true, ".ts": true, ".tsx": true, ".js": true, ".mjs": true, ".json": true}
-	validState = map[string]bool{"todo": true, "ruled": true}
+	validState = map[string]bool{"todo": true, "ruled": true, "exempt": true}
 
 	// terms are checked in order; every matching term is recorded per file.
 	terms = []struct {
