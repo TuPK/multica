@@ -838,6 +838,16 @@ func (h *Handler) ReviseProposal(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to load proposal")
 		return
 	}
+	// A proposal whose issue was moved into a project the caller cannot see
+	// answers like a missing proposal, before any role check can tell them apart.
+	sees, ok := h.viewerSeesIssue(w, r, wsUUID, existing.IssueID)
+	if !ok {
+		return
+	}
+	if !sees {
+		writeError(w, http.StatusNotFound, "proposal not found")
+		return
+	}
 
 	actorType, actorID := h.resolveActor(r, userID, workspaceID)
 	if !h.mayFileProposalForSquad(w, r, workspaceID, userID, actorType, actorID, existing.SquadID) {

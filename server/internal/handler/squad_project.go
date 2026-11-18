@@ -159,7 +159,9 @@ func (h *Handler) AssignSquadProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	unassigned, err := qtx.ClearSquadFromOtherProjects(ctx, db.ClearSquadFromOtherProjectsParams{WorkspaceID: wsUUID, SquadID: squad.ID, ID: project.ID})
+	unassigned, err := qtx.ClearSquadFromOtherProjects(ctx, db.ClearSquadFromOtherProjectsParams{
+		WorkspaceID: wsUUID, SquadID: squad.ID, ID: project.ID, ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to assign project")
 		return
@@ -207,7 +209,14 @@ func (h *Handler) UnassignSquadProject(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "insufficient permissions")
 		return
 	}
-	unassigned, err := h.Queries.ClearSquadProjects(r.Context(), db.ClearSquadProjectsParams{WorkspaceID: squad.WorkspaceID, SquadID: squad.ID})
+	// Projects the caller cannot see are left alone and not counted.
+	scope, ok := h.viewerScope(w, r, squad.WorkspaceID)
+	if !ok {
+		return
+	}
+	unassigned, err := h.Queries.ClearSquadProjects(r.Context(), db.ClearSquadProjectsParams{
+		WorkspaceID: squad.WorkspaceID, SquadID: squad.ID, ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to unassign project")
 		return

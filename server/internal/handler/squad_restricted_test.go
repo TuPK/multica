@@ -204,3 +204,30 @@ func TestRestrictedAssignSquadProjectRemapNeedsManage(t *testing.T) {
 		t.Errorf("admin assignment moved %d issues, want 2", out.UpdatedIssues)
 	}
 }
+
+// TestRestrictedAssignSquadProjectLeavesHiddenFinishedProjects: a squad leaves
+// its finished projects when it is assigned to a new one, but only the ones the
+// caller sees. A finished restricted project the caller cannot see keeps the
+// squad, and the caller learns nothing about it.
+func TestRestrictedAssignSquadProjectLeavesHiddenFinishedProjects(t *testing.T) {
+	fx := newIniWorkspace(t)
+	squadID := sdlcSquad(t, fx, "Finished mix")
+	dbfx.Exec(t, `UPDATE squad SET creator_id = $2 WHERE id = $1`, squadID, fx.MemberID)
+	target := dbfxProject(t, fx, "Target")
+	visibleFinished := dbfxProject(t, fx, "Visible finished")
+	hiddenFinished := dbfxProject(t, fx, "Hidden finished")
+	dbfx.Exec(t, `UPDATE project SET access = 'restricted' WHERE id = $1`, hiddenFinished)
+	for _, id := range []string{visibleFinished, hiddenFinished} {
+		dbfx.Exec(t, `UPDATE project SET status = 'completed', squad_ids = ARRAY[$2::uuid] WHERE id = $1`, id, squadID)
+	}
+
+	req := newRequestAs(fx.MemberID, "POST", "/api/squads/"+squadID+"/project", map[string]any{"project_id": target})
+	testutil.Call(t, testHandler.AssignSquadProject, withURLParams(req, "workspaceId", fx.ID, "id", squadID)).Want(http.StatusOK)
+
+	if got := projectSquadIDs(t, visibleFinished); len(got) != 0 {
+		t.Errorf("visible finished project still lists the squad: %v", got)
+	}
+	if got := projectSquadIDs(t, hiddenFinished); len(got) != 1 || got[0] != squadID {
+		t.Errorf("hidden finished project lost the squad: %v, want [%s]", got, squadID)
+	}
+}

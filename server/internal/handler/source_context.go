@@ -19,6 +19,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/planlimit"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
 	agentpkg "github.com/multica-ai/multica/server/pkg/agent"
@@ -246,7 +247,10 @@ func sourceContextThreadChangeReasons(captured, current service.SourceContextSna
 	return sourceContextThreadChangeDetails(captured, current).Reasons
 }
 
-func (h *Handler) issueSourceContextDetail(ctx context.Context, issue db.Issue) (*sourceContextDetailResponse, error) {
+// issueSourceContextDetail builds the detail of a sub-issue's source context. A
+// source issue in a project the viewer cannot see is answered like a deleted
+// one: nothing of its live title or comments is read.
+func (h *Handler) issueSourceContextDetail(ctx context.Context, issue db.Issue, scope projectaccess.Scope) (*sourceContextDetailResponse, error) {
 	row, err := h.Queries.GetIssueSourceContextByIssue(ctx, db.GetIssueSourceContextByIssueParams{WorkspaceID: issue.WorkspaceID, IssueID: issue.ID})
 	if err != nil {
 		return nil, err
@@ -263,10 +267,17 @@ func (h *Handler) issueSourceContextDetail(ctx context.Context, issue db.Issue) 
 		Snapshot:      captured, SourceAuthorState: h.resolveSourceContextAuthors(ctx, issue.WorkspaceID, captured.CommentThread),
 	}
 
+	sourceHidden := false
+	if source, err := h.Queries.GetIssueInWorkspace(ctx, db.GetIssueInWorkspaceParams{ID: row.SourceIssueID, WorkspaceID: issue.WorkspaceID}); err == nil {
+		sourceHidden = !scope.Allows(source.ProjectID)
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("load source issue: %w", err)
+	}
+
 	anchor, anchorErr := h.Queries.GetCommentInWorkspace(ctx, db.GetCommentInWorkspaceParams{
 		ID: row.AnchorCommentID, WorkspaceID: issue.WorkspaceID,
 	})
-	anchorExists := anchorErr == nil && anchor.Type == "comment" && !anchor.DeletedAt.Valid
+	anchorExists := anchorErr == nil && anchor.Type == "comment" && !anchor.DeletedAt.Valid && !sourceHidden
 	if anchorExists {
 		response.AnchorCommentState = "available"
 		response.CurrentSource = &sourceContextCurrentSource{
@@ -279,7 +290,9 @@ func (h *Handler) issueSourceContextDetail(ctx context.Context, issue db.Issue) 
 
 	var currentIssue service.SourceContextIssueSnapshot
 	var currentIssueErr error
-	if anchorExists {
+	if sourceHidden {
+		currentIssueErr = service.ErrSourceIssueDeleted
+	} else if anchorExists {
 		currentIssue, _, currentIssueErr = service.BuildSourceIssueSnapshot(ctx, h.Queries, issue.WorkspaceID, anchor.IssueID)
 	} else {
 		currentIssue, _, currentIssueErr = service.BuildSourceIssueSnapshot(ctx, h.Queries, issue.WorkspaceID, row.SourceIssueID)
@@ -302,7 +315,11 @@ func (h *Handler) issueSourceContextDetail(ctx context.Context, issue db.Issue) 
 		response.SourceIssueState = "unavailable"
 	}
 
-	current, buildErr := service.BuildSourceContext(ctx, h.Queries, issue.WorkspaceID, row.AnchorCommentID)
+	var current service.SourceContextBuild
+	buildErr := service.ErrAnchorCommentDeleted
+	if !sourceHidden {
+		current, buildErr = service.BuildSourceContext(ctx, h.Queries, issue.WorkspaceID, row.AnchorCommentID)
+	}
 	switch {
 	case buildErr == nil || (errors.Is(buildErr, service.ErrSourceContextTooLarge) && current.Snapshot.AnchorCommentID != ""):
 		threadChanges := sourceContextThreadChangeDetails(captured, current.Snapshot)
@@ -318,7 +335,11 @@ func (h *Handler) issueSourceContextDetail(ctx context.Context, issue db.Issue) 
 		response.CommentThreadState = "changed"
 		response.CanOpenCurrentSource = false
 		response.CurrentSource = nil
-		currentThread, threadErr := service.BuildSourceContextThreadAtCaptureBoundary(ctx, h.Queries, issue.WorkspaceID, captured)
+		var currentThread []service.SourceContextCommentSnapshot
+		var threadErr error
+		if !sourceHidden {
+			currentThread, threadErr = service.BuildSourceContextThreadAtCaptureBoundary(ctx, h.Queries, issue.WorkspaceID, captured)
+		}
 		if threadErr == nil {
 			currentSnapshot := captured
 			currentSnapshot.CommentThread = currentThread

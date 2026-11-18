@@ -237,9 +237,11 @@ func issueWorkflowToResponse(row db.IssueWorkflow, def issueworkflow.Definition,
 }
 
 // openFlowRequestCounts counts the open flow requests pinned to each workflow
-// of the workspace, keyed by workflow id.
-func (h *Handler) openFlowRequestCounts(ctx context.Context, wsUUID pgtype.UUID) map[string]int {
-	rows, err := h.Queries.CountOpenFlowRequestsByWorkflow(ctx, wsUUID)
+// of the workspace that the viewer sees, keyed by workflow id.
+func (h *Handler) openFlowRequestCounts(ctx context.Context, wsUUID pgtype.UUID, scope projectaccess.Scope) map[string]int {
+	rows, err := h.Queries.CountOpenFlowRequestsByWorkflow(ctx, db.CountOpenFlowRequestsByWorkflowParams{
+		WorkspaceID: wsUUID, ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+	})
 	if err != nil {
 		slog.Warn("count open flow requests failed", "workspace_id", uuidToString(wsUUID), "error", err)
 		return map[string]int{}
@@ -341,7 +343,7 @@ func (h *Handler) ListIssueWorkflows(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to list workflows")
 		return
 	}
-	openRequests := h.openFlowRequestCounts(r.Context(), wsUUID)
+	openRequests := h.openFlowRequestCounts(r.Context(), wsUUID, scope)
 	resp := make([]IssueWorkflowResponse, 0, len(rows))
 	for _, row := range rows {
 		def, err := issueworkflow.Decode(row)
@@ -581,7 +583,7 @@ func (h *Handler) issueWorkflowResponse(ctx context.Context, scope projectaccess
 		byWorkflow = map[string][]string{}
 	}
 	resp := issueWorkflowToResponse(row, def, byWorkflow[uuidToString(row.ID)])
-	resp.OpenFlowRequests = h.openFlowRequestCounts(ctx, row.WorkspaceID)[resp.ID]
+	resp.OpenFlowRequests = h.openFlowRequestCounts(ctx, row.WorkspaceID, scope)[resp.ID]
 	return resp
 }
 
@@ -1335,7 +1337,9 @@ type workflowBlocker struct {
 // deleteBlockers lists why a workflow cannot be deleted yet: projects that use
 // it and squads whose active workflow it is. Either remaps first, so the
 // workflow is never deleted under live work.
-func deleteBlockers(projects []db.Project, squads []db.Squad, flowRequests []string) []workflowBlocker {
+// flowRequests are the open requests the caller sees; flowRequestCount counts
+// all of them, so a request in a hidden project still blocks the delete.
+func deleteBlockers(projects []db.Project, squads []db.Squad, flowRequests []string, flowRequestCount int) []workflowBlocker {
 	var out []workflowBlocker
 	if len(projects) > 0 {
 		ids := make([]string, len(projects))
@@ -1361,12 +1365,12 @@ func deleteBlockers(projects []db.Project, squads []db.Squad, flowRequests []str
 			Message: fmt.Sprintf("%d squad(s) use this workflow as their active workflow; make another workflow active first", len(squads)),
 		})
 	}
-	if len(flowRequests) > 0 {
+	if flowRequestCount > 0 {
 		out = append(out, workflowBlocker{
 			Code:    "workflow_has_flow_requests",
-			Count:   len(flowRequests),
+			Count:   flowRequestCount,
 			IDs:     flowRequests,
-			Message: fmt.Sprintf("%d request(s) still run on this workflow; close or detach them first", len(flowRequests)),
+			Message: fmt.Sprintf("%d request(s) still run on this workflow; close or detach them first", flowRequestCount),
 		})
 	}
 	return out
@@ -1442,20 +1446,38 @@ func (h *Handler) DeleteIssueWorkflow(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to delete workflow")
 		return
 	}
-	flowRequestIDs, err := qtx.ListOpenFlowRequestIDsByWorkflow(ctx, db.ListOpenFlowRequestIDsByWorkflowParams{
-		WorkspaceID: wsUUID,
-		WorkflowID:  uuidToString(idUUID),
-		PageLimit:   openFlowRequestIDsLimit,
-	})
+	openRequestIDs := func(mode string) ([]pgtype.UUID, error) {
+		return qtx.ListOpenFlowRequestIDsByWorkflow(ctx, db.ListOpenFlowRequestIDsByWorkflowParams{
+			WorkspaceID: wsUUID,
+			WorkflowID:  uuidToString(idUUID),
+			PageLimit:   openFlowRequestIDsLimit,
+			ScopeMode:   mode,
+			ScopeUserID: scope.UserID(),
+		})
+	}
+	flowRequestIDs, err := openRequestIDs(scope.Mode())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete workflow")
 		return
+	}
+	// A member who does not see an open request is told no more than for a
+	// missing workflow: the hidden request is neither named nor counted.
+	if !scope.CanManage() {
+		every, err := openRequestIDs(projectaccess.ModeAll)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to delete workflow")
+			return
+		}
+		if len(every) > len(flowRequestIDs) {
+			writeError(w, http.StatusNotFound, "workflow not found")
+			return
+		}
 	}
 	flowRequests := make([]string, len(flowRequestIDs))
 	for i, id := range flowRequestIDs {
 		flowRequests[i] = uuidToString(id)
 	}
-	if blockers := deleteBlockers(projects, squads, flowRequests); len(blockers) > 0 {
+	if blockers := deleteBlockers(projects, squads, flowRequests, len(flowRequestIDs)); len(blockers) > 0 {
 		writeJSON(w, http.StatusConflict, map[string]any{
 			"error":         blockers[0].Message,
 			"code":          blockers[0].Code,

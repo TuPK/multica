@@ -8,6 +8,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -374,5 +375,100 @@ func TestRestrictedWorkflowQueriesApplyScope(t *testing.T) {
 		if got := hasProject(onDefault, f.restrictedProjectID); got != wantRestricted[name] {
 			t.Errorf("ListProjectsUsingDefaultIssueWorkflow as %s: restricted project listed = %v, want %v", name, got, wantRestricted[name])
 		}
+	}
+}
+
+// flowWorkflowWithRequests creates a flow workflow owned by the outsider and
+// two open requests pinned to it: one in the restricted project, one in the
+// workspace project. It returns the workflow id and the two request ids.
+func flowWorkflowWithRequests(t *testing.T, f restrictedFixture) (workflowID, hiddenRequest, visibleRequest string) {
+	t.Helper()
+	seedTestCatalog(t)
+	created := createFlowWorkflowForTest(t, flowWorkflowBody("Hidden requests "+workflowTestSuffix(), seededReadyAgentID(t), nil))
+	dbfx.Exec(t, `UPDATE issue_workflow SET owner_id = $1 WHERE id = $2`, f.outsiderID, created.ID)
+	request := func(title, projectID string) string {
+		return dbfx.Issue(t, title, testutil.Cols{
+			"project_id": projectID,
+			"flow":       testutil.Raw(fmt.Sprintf(`'{"workflow_id":"%s","step":"todo","rework":0}'::jsonb`, created.ID)),
+		})
+	}
+	return created.ID, request("hidden flow request", f.restrictedProjectID), request("visible flow request", f.workspaceProjectID)
+}
+
+// TestRestrictedWorkflowDeleteReasonsOmitHidden: the 409 that blocks deleting a
+// workflow names the open requests the caller sees and no others. The count
+// still includes every open request, so the 409 stays. The owner sees both.
+func TestRestrictedWorkflowDeleteReasonsOmitHidden(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("database not available")
+	}
+	f := newRestrictedFixture(t)
+	workflowID, _, _ := flowWorkflowWithRequests(t, f)
+
+	deleteWorkflowAs := func(userID, id string) *testutil.Response {
+		t.Helper()
+		req := withURLParam(workspaceRequest(userID, testWorkspaceID, "DELETE", "/api/issue-workflows/"+id, nil), "id", id)
+		return testutil.Call(t, testHandler.DeleteIssueWorkflow, req)
+	}
+	reasonOf := func(userID string) (count float64, ids []any) {
+		t.Helper()
+		body := deleteWorkflowAs(userID, workflowID).Want(http.StatusConflict).Map()
+		reasons, _ := body["reasons"].([]any)
+		for _, reason := range reasons {
+			r, _ := reason.(map[string]any)
+			if r["code"] == "workflow_has_flow_requests" {
+				count, _ = r["count"].(float64)
+				ids, _ = r["ids"].([]any)
+				return count, ids
+			}
+		}
+		t.Fatalf("as %s: no workflow_has_flow_requests reason in %v", userID, body)
+		return 0, nil
+	}
+
+	// A member who cannot see one of the requests gets the answer for a
+	// missing workflow, which names nothing and counts nothing.
+	missing := deleteWorkflowAs(f.outsiderID, "00000000-0000-0000-0000-000000000000").Want(http.StatusNotFound).Map()
+	hiddenAnswer := deleteWorkflowAs(f.outsiderID, workflowID).Want(http.StatusNotFound).Map()
+	if hiddenAnswer["error"] != missing["error"] || hiddenAnswer["error"] != "workflow not found" {
+		t.Errorf("outsider hidden-request answer = %v, want the missing-workflow answer %v", hiddenAnswer, missing)
+	}
+	if _, has := hiddenAnswer["reasons"]; has {
+		t.Errorf("outsider answer names blockers: %v", hiddenAnswer)
+	}
+	if count, ids := reasonOf(testUserID); count != 2 || len(ids) != 2 {
+		t.Errorf("owner reason = count %v ids %v, want both requests", count, ids)
+	}
+}
+
+// TestRestrictedWorkflowOpenRequestCountsOmitHidden: open_flow_requests on a
+// workflow counts only the requests the caller sees.
+func TestRestrictedWorkflowOpenRequestCountsOmitHidden(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("database not available")
+	}
+	f := newRestrictedFixture(t)
+	workflowID, _, _ := flowWorkflowWithRequests(t, f)
+
+	openRequests := func(userID string) int {
+		t.Helper()
+		var out struct {
+			Workflows []IssueWorkflowResponse `json:"workflows"`
+		}
+		req := workspaceRequest(userID, testWorkspaceID, "GET", "/api/issue-workflows", nil)
+		testutil.Call(t, testHandler.ListIssueWorkflows, req).Want(http.StatusOK).JSON(&out)
+		for _, wf := range out.Workflows {
+			if wf.ID == workflowID {
+				return wf.OpenFlowRequests
+			}
+		}
+		t.Fatalf("workflow %s missing from the list as %s", workflowID, userID)
+		return 0
+	}
+	if got := openRequests(f.outsiderID); got != 1 {
+		t.Errorf("outsider open_flow_requests = %d, want 1", got)
+	}
+	if got := openRequests(testUserID); got != 2 {
+		t.Errorf("owner open_flow_requests = %d, want 2", got)
 	}
 }

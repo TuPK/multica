@@ -49,13 +49,17 @@ func (h *Handler) ListSquadWorkflows(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	scope, ok := h.viewerScope(w, r, squad.WorkspaceID)
+	if !ok {
+		return
+	}
 	rows, err := h.Queries.ListSquadIssueWorkflows(r.Context(), db.ListSquadIssueWorkflowsParams{WorkspaceID: squad.WorkspaceID, SquadID: squad.ID})
 	if err != nil {
 		slog.Warn("ListSquadWorkflows failed", append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "failed to list workflows")
 		return
 	}
-	openRequests := h.openFlowRequestCounts(r.Context(), squad.WorkspaceID)
+	openRequests := h.openFlowRequestCounts(r.Context(), squad.WorkspaceID, scope)
 	resp := make([]IssueWorkflowResponse, 0, len(rows))
 	for _, row := range rows {
 		def, err := issueworkflow.Decode(row)

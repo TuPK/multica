@@ -493,7 +493,7 @@ func TestCommentSourceContextLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load target issue: %v", err)
 	}
-	detail, err := testHandler.issueSourceContextDetail(ctx, issue)
+	detail, err := testHandler.issueSourceContextDetail(ctx, issue, ownerScope(t))
 	if err != nil {
 		t.Fatalf("load changed source detail: %v", err)
 	}
@@ -526,7 +526,7 @@ func TestCommentSourceContextLifecycle(t *testing.T) {
 	if _, err := testPool.Exec(ctx, `UPDATE comment SET parent_id = NULL WHERE id = $1`, replyID); err != nil {
 		t.Fatalf("re-root source reply: %v", err)
 	}
-	changedPathDetail, err := testHandler.issueSourceContextDetail(ctx, issue)
+	changedPathDetail, err := testHandler.issueSourceContextDetail(ctx, issue, ownerScope(t))
 	if err != nil {
 		t.Fatalf("load changed-path detail: %v", err)
 	}
@@ -554,7 +554,7 @@ func TestCommentSourceContextLifecycle(t *testing.T) {
 	if _, err := testPool.Exec(ctx, `UPDATE issue SET description = 'frozen issue body', revision = revision + 1, updated_at = now() WHERE id = $1`, sourceIssueID); err != nil {
 		t.Fatalf("remove live issue attachment reference: %v", err)
 	}
-	attachmentDetail, err := testHandler.issueSourceContextDetail(ctx, issue)
+	attachmentDetail, err := testHandler.issueSourceContextDetail(ctx, issue, ownerScope(t))
 	if err != nil {
 		t.Fatalf("load attachment-changed detail: %v", err)
 	}
@@ -591,7 +591,7 @@ func TestCommentSourceContextLifecycle(t *testing.T) {
 	if _, err := testPool.Exec(ctx, `DELETE FROM comment WHERE id = $1`, selectedID); err != nil {
 		t.Fatalf("delete anchor comment: %v", err)
 	}
-	deletedPathDetail, err := testHandler.issueSourceContextDetail(ctx, issue)
+	deletedPathDetail, err := testHandler.issueSourceContextDetail(ctx, issue, ownerScope(t))
 	if err != nil {
 		t.Fatalf("load deleted-path detail: %v", err)
 	}
@@ -632,7 +632,7 @@ func TestCommentSourceContextLifecycle(t *testing.T) {
 	if !ok || updatedIssue.ID != targetIssueID || updatedIssue.ParentIssueID != nil || updatedIssue.Stage != nil {
 		t.Fatalf("detached child update issue = %#v", updatePayload["issue"])
 	}
-	deletedDetail, err := testHandler.issueSourceContextDetail(ctx, detached)
+	deletedDetail, err := testHandler.issueSourceContextDetail(ctx, detached, ownerScope(t))
 	if err != nil {
 		t.Fatalf("load deleted-source detail: %v", err)
 	}

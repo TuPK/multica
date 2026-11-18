@@ -2649,7 +2649,7 @@ func (h *Handler) GetIssue(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if sourceContext, err := h.issueSourceContextDetail(r.Context(), issue); err == nil {
+	if sourceContext, err := h.issueSourceContextDetail(r.Context(), issue, scope); err == nil {
 		resp.SourceContext = sourceContext
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		slog.Warn("load issue source context failed", append(logger.RequestAttrs(r), "issue_id", uuidToString(issue.ID), "error", err)...)

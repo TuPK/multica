@@ -103,8 +103,21 @@ FROM issue
 WHERE workspace_id = $1::uuid
   AND flow IS NOT NULL
   AND NOT (flow ? 'closed_at')
+  -- projectaccess:scope
+  AND ($2::text = 'all'
+      OR (issue.project_id IS NULL AND $2::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = $3::uuid)
+      OR ($2::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
 GROUP BY COALESCE(flow->>'workflow_id', '')
 `
+
+type CountOpenFlowRequestsByWorkflowParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+}
 
 type CountOpenFlowRequestsByWorkflowRow struct {
 	WorkflowID string `json:"workflow_id"`
@@ -112,8 +125,8 @@ type CountOpenFlowRequestsByWorkflowRow struct {
 }
 
 // Open requests per workflow, for the workflow list.
-func (q *Queries) CountOpenFlowRequestsByWorkflow(ctx context.Context, workspaceID pgtype.UUID) ([]CountOpenFlowRequestsByWorkflowRow, error) {
-	rows, err := q.db.Query(ctx, countOpenFlowRequestsByWorkflow, workspaceID)
+func (q *Queries) CountOpenFlowRequestsByWorkflow(ctx context.Context, arg CountOpenFlowRequestsByWorkflowParams) ([]CountOpenFlowRequestsByWorkflowRow, error) {
+	rows, err := q.db.Query(ctx, countOpenFlowRequestsByWorkflow, arg.WorkspaceID, arg.ScopeMode, arg.ScopeUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -622,19 +635,34 @@ WHERE workspace_id = $1::uuid
   AND flow IS NOT NULL
   AND NOT (flow ? 'closed_at')
   AND flow->>'workflow_id' = $2::text
+  -- projectaccess:scope
+  AND ($3::text = 'all'
+      OR (issue.project_id IS NULL AND $3::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = $4::uuid)
+      OR ($3::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
 ORDER BY id
-LIMIT $3::int
+LIMIT $5::int
 `
 
 type ListOpenFlowRequestIDsByWorkflowParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 	WorkflowID  string      `json:"workflow_id"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
 	PageLimit   int32       `json:"page_limit"`
 }
 
-// The open requests pinned to a workflow; they block its deletion.
+// The open requests pinned to a workflow that the viewer sees; they block its deletion.
 func (q *Queries) ListOpenFlowRequestIDsByWorkflow(ctx context.Context, arg ListOpenFlowRequestIDsByWorkflowParams) ([]pgtype.UUID, error) {
-	rows, err := q.db.Query(ctx, listOpenFlowRequestIDsByWorkflow, arg.WorkspaceID, arg.WorkflowID, arg.PageLimit)
+	rows, err := q.db.Query(ctx, listOpenFlowRequestIDsByWorkflow,
+		arg.WorkspaceID,
+		arg.WorkflowID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+		arg.PageLimit,
+	)
 	if err != nil {
 		return nil, err
 	}

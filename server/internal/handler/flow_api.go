@@ -197,7 +197,11 @@ func (h *Handler) AdvanceIssueFlow(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(resp.Actions) == 1 && resp.Actions[0].Kind == "noop" {
 		// The engine waits for tasks. A task whose runs all ended would be waited for for ever.
-		rescued, err := h.rescueFlowTasks(r.Context(), request)
+		scope, ok := h.viewerScope(w, r, request.WorkspaceID)
+		if !ok {
+			return
+		}
+		rescued, err := h.rescueFlowTasks(r.Context(), request, scope)
 		if err == nil && len(rescued) > 0 {
 			resp, err = h.flowAdvanceResponse(r.Context(), request, rescued)
 		}

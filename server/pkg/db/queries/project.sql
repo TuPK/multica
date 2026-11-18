@@ -86,16 +86,28 @@ WHERE workspace_id = sqlc.arg('workspace_id')
 LIMIT 1;
 
 -- name: ClearSquadFromOtherProjects :many
--- Removes the squad from its other projects. Only finished ones can remain once GetOpenSquadProject is clear.
+-- Removes the squad from its other projects that the viewer sees. Only finished ones can remain once GetOpenSquadProject is clear.
 UPDATE project SET squad_ids = array_remove(squad_ids, sqlc.arg('squad_id')::uuid), updated_at = now()
-WHERE workspace_id = sqlc.arg('workspace_id')
-  AND sqlc.arg('squad_id')::uuid = ANY(squad_ids) AND id <> sqlc.arg('id')
+WHERE project.workspace_id = sqlc.arg('workspace_id')
+  AND sqlc.arg('squad_id')::uuid = ANY(project.squad_ids) AND project.id <> sqlc.arg('id')
+-- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = project.id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+      OR (sqlc.arg(scope_mode)::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
 RETURNING *;
 
 -- name: ClearSquadProjects :many
--- Removes the squad from every project it is assigned to.
+-- Removes the squad from every project it is assigned to that the viewer sees.
 UPDATE project SET squad_ids = array_remove(squad_ids, sqlc.arg('squad_id')::uuid), updated_at = now()
-WHERE workspace_id = sqlc.arg('workspace_id') AND sqlc.arg('squad_id')::uuid = ANY(squad_ids)
+WHERE project.workspace_id = sqlc.arg('workspace_id') AND sqlc.arg('squad_id')::uuid = ANY(project.squad_ids)
+-- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = project.id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+      OR (sqlc.arg(scope_mode)::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
 RETURNING *;
 
 -- name: ListProjectsForSquad :many

@@ -67,12 +67,19 @@ ORDER BY workspace_id, id
 LIMIT sqlc.arg('page_limit')::int;
 
 -- name: ListOpenFlowRequestIDsByWorkflow :many
--- The open requests pinned to a workflow; they block its deletion.
+-- The open requests pinned to a workflow that the viewer sees; they block its deletion.
 SELECT id FROM issue
 WHERE workspace_id = sqlc.arg('workspace_id')::uuid
   AND flow IS NOT NULL
   AND NOT (flow ? 'closed_at')
   AND flow->>'workflow_id' = sqlc.arg('workflow_id')::text
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+      OR (issue.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+      OR (sqlc.arg(scope_mode)::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
 ORDER BY id
 LIMIT sqlc.arg('page_limit')::int;
 
@@ -83,6 +90,13 @@ FROM issue
 WHERE workspace_id = sqlc.arg('workspace_id')::uuid
   AND flow IS NOT NULL
   AND NOT (flow ? 'closed_at')
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+      OR (issue.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+      OR (sqlc.arg(scope_mode)::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
 GROUP BY COALESCE(flow->>'workflow_id', '');
 
 -- name: SetIssueWorkflowFlowAuto :one

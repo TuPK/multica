@@ -13,8 +13,13 @@ import (
 
 const clearSquadFromOtherProjects = `-- name: ClearSquadFromOtherProjects :many
 UPDATE project SET squad_ids = array_remove(squad_ids, $1::uuid), updated_at = now()
-WHERE workspace_id = $2
-  AND $1::uuid = ANY(squad_ids) AND id <> $3
+WHERE project.workspace_id = $2
+  AND $1::uuid = ANY(project.squad_ids) AND project.id <> $3
+  AND ($4::text = 'all'
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = project.id AND scope_pm.user_id = $5::uuid)
+      OR ($4::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
 RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids
 `
 
@@ -22,11 +27,20 @@ type ClearSquadFromOtherProjectsParams struct {
 	SquadID     pgtype.UUID `json:"squad_id"`
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 	ID          pgtype.UUID `json:"id"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
 }
 
-// Removes the squad from its other projects. Only finished ones can remain once GetOpenSquadProject is clear.
+// Removes the squad from its other projects that the viewer sees. Only finished ones can remain once GetOpenSquadProject is clear.
+// projectaccess:scope
 func (q *Queries) ClearSquadFromOtherProjects(ctx context.Context, arg ClearSquadFromOtherProjectsParams) ([]Project, error) {
-	rows, err := q.db.Query(ctx, clearSquadFromOtherProjects, arg.SquadID, arg.WorkspaceID, arg.ID)
+	rows, err := q.db.Query(ctx, clearSquadFromOtherProjects,
+		arg.SquadID,
+		arg.WorkspaceID,
+		arg.ID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -66,18 +80,31 @@ func (q *Queries) ClearSquadFromOtherProjects(ctx context.Context, arg ClearSqua
 
 const clearSquadProjects = `-- name: ClearSquadProjects :many
 UPDATE project SET squad_ids = array_remove(squad_ids, $1::uuid), updated_at = now()
-WHERE workspace_id = $2 AND $1::uuid = ANY(squad_ids)
+WHERE project.workspace_id = $2 AND $1::uuid = ANY(project.squad_ids)
+  AND ($3::text = 'all'
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = project.id AND scope_pm.user_id = $4::uuid)
+      OR ($3::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = project.id AND scope_p.access = 'workspace')))
 RETURNING id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority, access, start_date, due_date, workflow_id, creator_type, creator_id, squad_ids
 `
 
 type ClearSquadProjectsParams struct {
 	SquadID     pgtype.UUID `json:"squad_id"`
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
 }
 
-// Removes the squad from every project it is assigned to.
+// Removes the squad from every project it is assigned to that the viewer sees.
+// projectaccess:scope
 func (q *Queries) ClearSquadProjects(ctx context.Context, arg ClearSquadProjectsParams) ([]Project, error) {
-	rows, err := q.db.Query(ctx, clearSquadProjects, arg.SquadID, arg.WorkspaceID)
+	rows, err := q.db.Query(ctx, clearSquadProjects,
+		arg.SquadID,
+		arg.WorkspaceID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}
