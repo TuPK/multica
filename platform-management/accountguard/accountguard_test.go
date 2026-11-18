@@ -133,3 +133,10 @@ func TestInvalidate(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 }
+
+// Pins the spec bound (AC1): a state change is seen within 60 seconds.
+func TestCacheTTLIsAtMostSixtySeconds(t *testing.T) {
+	if TTL <= 0 || TTL > 60*time.Second {
+		t.Fatalf("TTL = %s, want > 0 and <= 60s", TTL)
+	}
+}

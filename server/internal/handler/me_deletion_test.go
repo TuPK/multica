@@ -436,6 +436,55 @@ func TestAccountDeletionJobAnonymisesAndRemoves(t *testing.T) {
 	}
 }
 
+// AC5: once the job has anonymised the account, its original email is free, so
+// the same address registers again as a new person and never reaches the old row.
+func TestAccountDeletionFreesTheEmailForANewAccount(t *testing.T) {
+	requirePlatformTestDatabase(t)
+	ctx := context.Background()
+	f := newDeletionFixture(t)
+	makeDue(t, f.userID)
+	if done, err := testHandler.DeleteAccount(ctx, f.userID, time.Now()); err != nil || !done {
+		t.Fatalf("DeleteAccount = %v, %v", done, err)
+	}
+
+	dbfx.Cleanup(t, `DELETE FROM verification_code WHERE email = $1`, f.email)
+	createVerificationCodeForTest(t, f.email, "123456")
+	var out struct {
+		Token string `json:"token"`
+		User  struct {
+			ID    string `json:"id"`
+			Email string `json:"email"`
+		} `json:"user"`
+	}
+	testutil.Call(t, testHandler.VerifyCode, testutil.JSONRequest(http.MethodPost, "/auth/verify-code",
+		map[string]string{"email": f.email, "code": "123456"})).Want(http.StatusOK).JSON(&out)
+	newID := out.User.ID
+	if newID != "" {
+		dbfx.Cleanup(t, `DELETE FROM member WHERE user_id = $1::uuid`, newID)
+		dbfx.Cleanup(t, `DELETE FROM platform_account WHERE user_id = $1::uuid`, newID)
+		dbfx.Cleanup(t, `DELETE FROM "user" WHERE id = $1::uuid`, newID)
+	}
+	if out.Token == "" || newID == "" {
+		t.Fatalf("sign-up returned token %q, user %q; want a token for a new user", out.Token, newID)
+	}
+	if newID == f.userID {
+		t.Fatalf("sign-up returned the deleted user's id %s", newID)
+	}
+	if out.User.Email != f.email {
+		t.Errorf("new user email = %q, want %q", out.User.Email, f.email)
+	}
+	if n := dbfx.Count(t, `SELECT count(*) FROM "user" WHERE id = $1::uuid AND email = $2`, newID, f.email); n != 1 {
+		t.Errorf("new row with the original email: %d, want 1", n)
+	}
+	var oldEmail string
+	if err := testPool.QueryRow(ctx, `SELECT email FROM "user" WHERE id = $1::uuid`, f.userID).Scan(&oldEmail); err != nil {
+		t.Fatal(err)
+	}
+	if oldEmail != "deleted+"+f.userID+"@deleted.invalid" {
+		t.Errorf("old row email = %q, want it to stay anonymised", oldEmail)
+	}
+}
+
 // Platform account requests that named the user (platform spec 7b.5, rule 11)
 // keep their rows and ids, but lose the personal values: the email and display
 // name. Another person's request is left alone.
