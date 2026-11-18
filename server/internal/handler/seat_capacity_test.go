@@ -552,63 +552,66 @@ func TestStaleSeatCapacityWorkerCannotMutateReactivatedIntent(t *testing.T) {
 
 func TestClaimNextDueSeatCapacityIntentIsExclusiveAcrossReplicas(t *testing.T) {
 	ctx := context.Background()
-	queries := db.New(testPool)
 	workspaceID := parseUUID(testWorkspaceID)
-	token := uuid.New()
-	_, err := queries.UpsertSeatCapacityIntent(ctx, db.UpsertSeatCapacityIntentParams{
-		WorkspaceID: workspaceID, OperationToken: uuidToPG(token),
-		Action: seatcapacity.ActionConfirm, MemberID: uuidToPG(uuid.New()),
-		NextAttemptAt: pgtype.Timestamptz{Time: time.Now().Add(-time.Minute), Valid: true},
-	})
-	if err != nil {
-		t.Fatal(err)
+	tokens := []uuid.UUID{uuid.New(), uuid.New()}
+	queries := db.New(testPool)
+	for _, token := range tokens {
+		_, err := queries.UpsertSeatCapacityIntent(ctx, db.UpsertSeatCapacityIntentParams{
+			WorkspaceID: workspaceID, OperationToken: uuidToPG(token),
+			Action: seatcapacity.ActionConfirm, MemberID: uuidToPG(uuid.New()),
+			NextAttemptAt: pgtype.Timestamptz{Time: time.Now().Add(-time.Hour), Valid: true},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	t.Cleanup(func() {
-		_, _ = testPool.Exec(ctx, `DELETE FROM seat_capacity_outbox WHERE operation_token = $1`, token)
+		_, _ = testPool.Exec(ctx, `DELETE FROM seat_capacity_outbox WHERE operation_token = ANY($1)`, tokens)
 	})
 
-	// The claim is not scoped to a workspace, so rows other tests left due are
-	// claimed too. Each claimer drains every due row; the property under test is
-	// that no row is handed out twice and that our own row is handed out once.
+	// The claim is not scoped to a workspace, so a claimer may pick another
+	// test's due row. Each claim runs in a transaction that is rolled back, so
+	// no lease is ever committed on any row. Both transactions stay open until
+	// both claims return, which keeps both row locks live at once.
+	txs := make([]pgx.Tx, 2)
+	for i := range txs {
+		tx, err := testPool.Begin(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		txs[i] = tx
+		t.Cleanup(func() { _ = tx.Rollback(context.Background()) })
+	}
+
+	claimCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 	start := make(chan struct{})
-	var mu sync.Mutex
-	claimedBy := map[uuid.UUID]int{}
-	errs := make(chan error, 2)
+	claimed := make([]pgtype.UUID, 2)
+	errs := make([]error, 2)
 	var wg sync.WaitGroup
-	for range 2 {
+	for i := range txs {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			<-start
-			for {
-				intent, claimErr := queries.ClaimNextDueSeatCapacityIntent(ctx, pgtype.Timestamptz{
-					Time: time.Now().Add(5 * time.Minute), Valid: true,
-				})
-				if errors.Is(claimErr, pgx.ErrNoRows) {
-					return
-				}
-				if claimErr != nil {
-					errs <- claimErr
-					return
-				}
-				mu.Lock()
-				claimedBy[uuid.UUID(intent.OperationToken.Bytes)]++
-				mu.Unlock()
-			}
+			intent, err := db.New(txs[i]).ClaimNextDueSeatCapacityIntent(claimCtx, pgtype.Timestamptz{
+				Time: time.Now().Add(5 * time.Minute), Valid: true,
+			})
+			claimed[i], errs[i] = intent.OperationToken, err
 		}()
 	}
 	close(start)
 	wg.Wait()
-	close(errs)
-	for err := range errs {
-		t.Fatal(err)
-	}
-	for tok, n := range claimedBy {
-		if n != 1 {
-			t.Fatalf("row %s claimed %d times, want at most 1", tok, n)
+
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("claimer %d: %v", i, err)
+		}
+		if !claimed[i].Valid {
+			t.Fatalf("claimer %d got an empty row", i)
 		}
 	}
-	if claimedBy[token] != 1 {
-		t.Fatalf("own row claimed %d times, want 1", claimedBy[token])
+	if claimed[0].Bytes == claimed[1].Bytes {
+		t.Fatalf("row %s was handed to both replicas while both locks were held", uuid.UUID(claimed[0].Bytes))
 	}
 }
