@@ -311,8 +311,10 @@ func (s *TaskService) admitClaimedTask(ctx context.Context, q *db.Queries, ws pg
 // claimRefusalFor is the claim gate's verdict on a queued task at this moment,
 // or nil when the gate admits it. It only reads state, so the runs list asks
 // the same question the claim asks. A workspace that is not active refuses
-// every run, and that check comes first. Otherwise human and exempt runs are
-// always admitted without reading anything. A routine or delegated run is
+// every run, and that check comes first. A run on an issue of a project its
+// acting person cannot see is refused next, for every kind of run
+// (project_not_visible, see RunScope). Otherwise human and exempt runs are
+// admitted without reading company state. A routine or delegated run is
 // refused by the company controls (paused, or quiet hours) or by a hold-mode
 // budget at its limit.
 func (s *TaskService) claimRefusalFor(ctx context.Context, q *db.Queries, ws pgtype.UUID, task db.AgentTaskQueue) (*claimRefusal, error) {
@@ -324,6 +326,15 @@ func (s *TaskService) claimRefusalFor(ctx context.Context, q *db.Queries, ws pgt
 		if code != "" {
 			return &claimRefusal{WorkspaceID: ws, Task: task, Reason: code}, nil
 		}
+	}
+	// A run has the visibility of the person who started it (spec 7.1 rule 12,
+	// D55), whatever its class: a run that person could not read stays queued.
+	notVisible, err := runRefusedForVisibility(ctx, q, ws, task)
+	if err != nil {
+		return nil, err
+	}
+	if notVisible {
+		return &claimRefusal{WorkspaceID: ws, Task: task, Reason: VerdictReasonProjectNotVisible}, nil
 	}
 	class, err := RunClassOfTask(ctx, q, task)
 	if err != nil {

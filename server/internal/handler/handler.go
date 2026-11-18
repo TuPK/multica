@@ -1216,11 +1216,21 @@ func (h *Handler) viewerScope(w http.ResponseWriter, r *http.Request, workspaceI
 		w.WriteHeader(middleware.StatusClientClosedRequest)
 		return projectaccess.Scope{}, false
 	}
-	userID, ok := parseUUIDOrBadRequest(w, requestUserID(r), "user id")
-	if !ok {
-		return projectaccess.Scope{}, false
+	var scope projectaccess.Scope
+	var err error
+	if r.Header.Get("X-Actor-Source") == "task_token" {
+		// A run reads as the person who started it, not as the runtime owner the
+		// token carries (spec 7.1 rule 12). The middleware set X-Task-ID from the
+		// token row, and the scope is computed on every request, so access lost
+		// mid-run ends the next read.
+		scope, err = h.runViewerScope(r, workspaceID)
+	} else {
+		userID, ok := parseUUIDOrBadRequest(w, requestUserID(r), "user id")
+		if !ok {
+			return projectaccess.Scope{}, false
+		}
+		scope, err = projectaccess.ForViewer(r.Context(), h.Queries, workspaceID, userID)
 	}
-	scope, err := projectaccess.ForViewer(r.Context(), h.Queries, workspaceID, userID)
 	if errors.Is(err, projectaccess.ErrNotMember) {
 		writeError(w, http.StatusNotFound, "workspace not found")
 		return projectaccess.Scope{}, false
@@ -1231,6 +1241,19 @@ func (h *Handler) viewerScope(w http.ResponseWriter, r *http.Request, workspaceI
 		return projectaccess.Scope{}, false
 	}
 	return scope, true
+}
+
+// runViewerScope is the Scope of the run that made a mat_ token request. A task
+// that cannot be found has no acting person and sees no restricted project.
+func (h *Handler) runViewerScope(r *http.Request, workspaceID pgtype.UUID) (projectaccess.Scope, error) {
+	var task db.AgentTaskQueue
+	if taskID, err := util.ParseUUID(r.Header.Get("X-Task-ID")); err == nil {
+		task, err = h.Queries.GetAgentTask(r.Context(), taskID)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return projectaccess.Scope{}, err
+		}
+	}
+	return service.RunScope(r.Context(), h.Queries, workspaceID, task)
 }
 
 // scopeCondition is projectaccess.Fragment for hand-built SQL: it binds the
