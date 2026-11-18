@@ -255,7 +255,113 @@ func routeProjectEvent(b realtime.Broadcaster, aud eventAudiences, e events.Even
 		return
 	}
 	realtime.M.RecordEvent(e.Type)
+	if origID := duplicateOriginalID(e.Type, ref); origID != "" {
+		if err := sendWithDuplicateOf(ctx, b, aud, e.WorkspaceID, ws, ref, r, origID, data); err != nil {
+			drop(err)
+		}
+		return
+	}
 	sendToRecipients(b, e.WorkspaceID, r, data)
+}
+
+// duplicateOriginalID returns the original named by the issue's duplicate_of
+// mark, or "" when the event carries none.
+func duplicateOriginalID(eventType string, ref projectRef) string {
+	if eventType != protocol.EventIssueCreated && eventType != protocol.EventIssueUpdated || len(ref.issue) == 0 {
+		return ""
+	}
+	var p struct {
+		DuplicateOf *struct {
+			ID string `json:"id"`
+		} `json:"duplicate_of"`
+	}
+	if json.Unmarshal(ref.issue, &p) != nil || p.DuplicateOf == nil {
+		return ""
+	}
+	return p.DuplicateOf.ID
+}
+
+// withoutDuplicateOf returns the event frame with the issue's duplicate_of
+// removed: the payload a viewer of a missing original gets (spec 7.1 rule 5).
+func withoutDuplicateOf(data []byte) ([]byte, error) {
+	var frame map[string]json.RawMessage
+	if err := json.Unmarshal(data, &frame); err != nil {
+		return nil, err
+	}
+	var payload map[string]json.RawMessage
+	if err := json.Unmarshal(frame["payload"], &payload); err != nil {
+		return nil, err
+	}
+	var issue map[string]json.RawMessage
+	if err := json.Unmarshal(payload["issue"], &issue); err != nil {
+		return nil, err
+	}
+	delete(issue, "duplicate_of")
+	var err error
+	if payload["issue"], err = json.Marshal(issue); err != nil {
+		return nil, err
+	}
+	if frame["payload"], err = json.Marshal(payload); err != nil {
+		return nil, err
+	}
+	return json.Marshal(frame)
+}
+
+// sendWithDuplicateOf delivers a duplicate's event. The duplicate_of mark
+// carries the original's title and status, so only people who see the
+// original's project get it; everyone else gets the issue without the mark,
+// as if the original were missing. r is the duplicate's own audience.
+func sendWithDuplicateOf(ctx context.Context, b realtime.Broadcaster, aud eventAudiences, workspaceID string, ws pgtype.UUID, ref projectRef, r projectaccess.Recipients, originalID string, full []byte) error {
+	stripped, err := withoutDuplicateOf(full)
+	if err != nil {
+		return err
+	}
+	var origProject pgtype.UUID
+	origGone := false
+	id, err := util.ParseUUID(originalID)
+	if err == nil {
+		origProject, err = aud.IssueProject(ctx, id)
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		origGone = true
+	} else if err != nil {
+		return err
+	}
+	if origGone {
+		sendToRecipients(b, workspaceID, r, stripped)
+		return nil
+	}
+	seers, err := aud.Users(ctx, ws, origProject)
+	if err != nil {
+		return err
+	}
+	canSee := make(map[string]bool, len(seers))
+	for _, u := range seers {
+		canSee[u] = true
+	}
+	recipients := r.UserIDs
+	if r.Workspace {
+		// The workspace room only holds non-guests. When all of them see the
+		// original, the room keeps the shared frame; otherwise the duplicate's
+		// audience is delivered to one person at a time.
+		wsWide, err := aud.Audience(ctx, ws, origProject)
+		if err != nil {
+			return err
+		}
+		if wsWide.Workspace {
+			b.BroadcastToWorkspace(workspaceID, full)
+		} else if recipients, err = aud.Users(ctx, ws, ref.project); err != nil {
+			return err
+		}
+	}
+	for _, u := range recipients {
+		data := stripped
+		if canSee[u] {
+			data = full
+		}
+		b.BroadcastToScope(realtime.ScopeWorkspaceMember, realtime.WorkspaceMemberScopeID(workspaceID, u), data)
+	}
+	return nil
 }
 
 // derivedIssueID returns the issue a derived event (comment, reaction,
