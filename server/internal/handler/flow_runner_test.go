@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/multica-ai/multica/server/internal/issueworkflow"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/testutil"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -445,7 +446,7 @@ func TestChildEvents_FailedAdvanceLeavesSweepToRetry(t *testing.T) {
 	// The event handler fails (its context is gone): nothing is half done.
 	gone, cancel := context.WithCancel(context.Background())
 	cancel()
-	testHandler.advanceFlowRequests(gone, request.ID)
+	testHandler.advanceFlowRequests(gone, projectaccess.System(), request.ID)
 	if got := requestStatus(t, request); got != "collect" {
 		t.Fatalf("status = %q after a failed advance, want collect", got)
 	}

@@ -44,6 +44,10 @@ type Scope struct {
 	granted    map[pgtype.UUID]bool
 }
 
+// System is the scope of a background job, which has no viewer and sees every
+// project. A request handler must not use it for a viewer's read or write.
+func System() Scope { return Scope{mode: ModeAll} }
+
 // ForViewer computes the viewer's Scope. Owners and admins see everything and
 // need no project list.
 func ForViewer(ctx context.Context, q Querier, workspaceID, userID pgtype.UUID) (Scope, error) {

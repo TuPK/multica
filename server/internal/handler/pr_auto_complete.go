@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
 	"github.com/multica-ai/multica/server/internal/issueworkflow"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -302,7 +303,7 @@ func (h *Handler) maybeAutoCompleteIssue(ctx context.Context, workspaceID, issue
 	// A merged PR is the most common way a sub-issue reaches done; the parent
 	// hears about it on the same path as a manual status change.
 	if updated.ParentIssueID.Valid {
-		h.processChildEvents(ctx, updated.ParentIssueID)
+		h.processChildEvents(ctx, projectaccess.System(), updated.ParentIssueID)
 	}
 
 	prefix := h.getIssuePrefix(ctx, issue.WorkspaceID)

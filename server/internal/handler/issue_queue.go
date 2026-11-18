@@ -316,7 +316,7 @@ func (h *Handler) promoteQueuedIssue(ctx context.Context, prev db.Issue) bool {
 		h.dispatchIssueRun(ctx, issue, trigger, "system", "", "")
 	}
 	if issue.ParentIssueID.Valid {
-		h.processChildEvents(ctx, issue.ParentIssueID)
+		h.processChildEvents(ctx, projectaccess.System(), issue.ParentIssueID)
 	}
 	return true
 }

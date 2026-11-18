@@ -4693,7 +4693,7 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	// conditions): the write recorded the change; process it now. A failure
 	// is retried by the scheduler sweep.
 	if statusChanged || prevIssue.ParentIssueID != issue.ParentIssueID || prevIssue.Stage != issue.Stage {
-		h.processChildEvents(r.Context(), issue.ParentIssueID, prevIssue.ParentIssueID)
+		h.processChildEvents(r.Context(), scope, issue.ParentIssueID, prevIssue.ParentIssueID)
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -5619,7 +5619,7 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 	// parent, so each parent is evaluated once against the batch's final
 	// state, independent of issue_ids order (MUL-4155). A failure is retried
 	// by the sweep.
-	h.processChildEvents(r.Context(), changedParents...)
+	h.processChildEvents(r.Context(), scope, changedParents...)
 
 	slog.Info("batch update issues", append(logger.RequestAttrs(r), "count", updated)...)
 	writeJSON(w, http.StatusOK, map[string]any{"updated": updated})

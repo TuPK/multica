@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/featureflags"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
@@ -28,8 +29,9 @@ func (h *Handler) isAutoFlowRequest(ctx context.Context, issueID pgtype.UUID) bo
 }
 
 // advanceFlowRequests advances each of these issues that is an auto flow request. A failure is only
-// logged: the sweep (flow_sweep) runs the request again.
-func (h *Handler) advanceFlowRequests(ctx context.Context, requestIDs ...pgtype.UUID) {
+// logged: the sweep (flow_sweep) runs the request again. The scope is the writer's: a request in a
+// project the writer cannot see is not moved by the writer's child event.
+func (h *Handler) advanceFlowRequests(ctx context.Context, scope projectaccess.Scope, requestIDs ...pgtype.UUID) {
 	for _, id := range requestIDs {
 		if !h.isAutoFlowRequest(ctx, id) {
 			continue
@@ -37,6 +39,9 @@ func (h *Handler) advanceFlowRequests(ctx context.Context, requestIDs ...pgtype.
 		request, err := h.Queries.GetIssue(ctx, id)
 		if err != nil {
 			slog.Warn("flow runner: load request", "request_id", uuidToString(id), "error", err)
+			continue
+		}
+		if !scope.Allows(request.ProjectID) {
 			continue
 		}
 		h.advanceRequestLogged(ctx, request, "event")
@@ -69,5 +74,5 @@ func (h *Handler) advanceFlowAfterRun(ctx context.Context, task *db.AgentTaskQue
 	if err != nil || !issue.FlowTask.Valid || !issue.ParentIssueID.Valid {
 		return
 	}
-	h.advanceFlowRequests(ctx, issue.ParentIssueID)
+	h.advanceFlowRequests(ctx, projectaccess.System(), issue.ParentIssueID)
 }

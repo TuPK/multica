@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/issueworkflow"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
@@ -86,7 +87,10 @@ func TestChaos_SweepAndEventConcurrent(t *testing.T) {
 	var wg sync.WaitGroup
 	for i := 0; i < 4; i++ {
 		wg.Add(3)
-		go func() { defer wg.Done(); testHandler.advanceFlowRequests(context.Background(), request.ID) }()
+		go func() {
+			defer wg.Done()
+			testHandler.advanceFlowRequests(context.Background(), projectaccess.System(), request.ID)
+		}()
 		go func() { defer wg.Done(); _, _ = testHandler.SweepFlowRequests(context.Background()) }()
 		go func() {
 			defer wg.Done()
