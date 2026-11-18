@@ -9,6 +9,7 @@ const { lang } = Astro.props;
 const t = getDict(lang).pricing;
 const p = t.personal;
 const b = t.business;
+const e = t.enterprise;
 ---
 
 <section id="gia">
@@ -23,7 +24,6 @@ const b = t.business;
         <div class="plan">{p.plan}</div>
         <div class="amt">{p.amount}<small>{p.per}</small></div>
         <div class="bill">
-          <div><span>{p.quarter.label}</span><b>{p.quarter.price}</b><em>{p.quarter.save}</em></div>
           <div><span>{p.year.label}</span><b>{p.year.price}</b><em>{p.year.save}</em></div>
         </div>
         <ul>
@@ -33,11 +33,19 @@ const b = t.business;
       </div>
       <div class="price hi rv">
         <div class="plan">{b.plan}</div>
-        <div class="amt">{b.amount}</div>
+        <div class="amt">{b.amount}<small>{b.per}</small></div>
         <ul>
           {b.items.map((x) => <li>{x}</li>)}
         </ul>
         <a class="btn btn-primary" href="#dang-ky">{b.btn}</a>
+      </div>
+      <div class="price rv">
+        <div class="plan">{e.plan}</div>
+        <div class="amt">{e.amount}</div>
+        <ul>
+          {e.items.map((x) => <li>{x}</li>)}
+        </ul>
+        <a class="btn btn-ghost" href="#dang-ky">{e.btn}</a>
       </div>
     </div>
   </div>

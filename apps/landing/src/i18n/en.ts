@@ -360,13 +360,12 @@ export const en: Dict = {
   pricing: {
     tag: "Pricing",
     h2: "Pay for a team that works, not a chat box.",
-    p: "The personal plan is billed monthly, quarterly or yearly, and longer terms cost less per month. Businesses get a quote based on headcount and deployment scope.",
+    p: "The personal plan is billed monthly or yearly, and paying yearly costs less. Businesses buy by seat, with a minimum of 5 seats.",
     personal: {
       plan: "Personal",
-      amount: "$23",
+      amount: "$5.73",
       per: " / month",
-      quarter: { label: "Quarterly", price: "$61", save: "Save 12%" },
-      year: { label: "Yearly", price: "$222", save: "Save 20%" },
+      year: { label: "Yearly", price: "$57.31", save: "Save 17%" },
       items: [
         "Runs on the AI accounts you already have",
         "One industry team, add more as needed",
@@ -377,14 +376,24 @@ export const en: Dict = {
     },
     business: {
       plan: "Business",
-      amount: "Contact us",
+      amount: "$13.42",
+      per: " / seat / month",
       items: [
         "Many teams across departments and branches",
         "Roles, change log, budgets by floor",
-        "Self-host on your own server with Docker or Helm",
         "Deployment support as needed",
       ],
       btn: "Book a consultation",
+    },
+    enterprise: {
+      plan: "Self-hosted",
+      amount: "Contact us",
+      items: [
+        "Self-host on your own server with Docker or Helm",
+        "Customised to your needs, with control over your data",
+        "A separate plan, quoted to your deployment scope",
+      ],
+      btn: "Talk to sales",
     },
   },
   faq: {

@@ -358,13 +358,12 @@ export const vi = {
   pricing: {
     tag: "Giá",
     h2: "Trả tiền cho một đội làm việc, không phải một khung chat.",
-    p: "Gói cá nhân tính theo tháng, quý hoặc năm, trả dài hạn thì rẻ hơn mỗi tháng. Doanh nghiệp nhận báo giá theo số người và mức triển khai.",
+    p: "Gói cá nhân tính theo tháng hoặc theo năm, trả cả năm thì rẻ hơn. Doanh nghiệp mua theo ghế, tối thiểu 5 ghế.",
     personal: {
       plan: "Cá nhân",
-      amount: "598.000đ",
+      amount: "149.000đ",
       per: " / tháng",
-      quarter: { label: "Theo quý", price: "1.598.000đ", save: "Tiết kiệm 11%" },
-      year: { label: "Theo năm", price: "5.780.000đ", save: "Tiết kiệm 19%" },
+      year: { label: "Theo năm", price: "1.490.000đ", save: "Tiết kiệm 17%" },
       items: [
         "Chạy bằng chính tài khoản AI bạn đang có",
         "Một đội theo ngành, thêm đội khi cần",
@@ -375,14 +374,24 @@ export const vi = {
     },
     business: {
       plan: "Doanh nghiệp",
-      amount: "Liên hệ",
+      amount: "349.000đ",
+      per: " / ghế / tháng",
       items: [
         "Nhiều đội theo phòng ban và chi nhánh",
         "Phân quyền, nhật ký thay đổi, ngân sách theo tầng",
-        "Tự triển khai trên máy chủ của bạn bằng Docker hoặc Helm",
         "Hỗ trợ triển khai theo nhu cầu",
       ],
       btn: "Đặt lịch tư vấn",
+    },
+    enterprise: {
+      plan: "Tự triển khai",
+      amount: "Liên hệ",
+      items: [
+        "Triển khai trên máy chủ của bạn bằng Docker hoặc Helm",
+        "Tùy chỉnh theo yêu cầu, tự chủ về dữ liệu",
+        "Gói riêng, báo giá theo nhu cầu triển khai",
+      ],
+      btn: "Liên hệ tư vấn",
     },
   },
   faq: {

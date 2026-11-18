@@ -233,7 +233,7 @@ body{margin:0;background:var(--bg)}
 .mc .team-chips span{height:44px;border-radius:12px;display:grid;place-items:center;font-size:12px;font-weight:800;color:#05070a;padding:0 6px;text-align:center}
 
 /* ----- pricing ----- */
-.mc .prices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.mc .prices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
 .mc .price{border:1px solid var(--line2);border-radius:26px;padding:40px;background:var(--panel);display:flex;flex-direction:column;min-width:0}
 .mc .price.hi{border-color:var(--accent);background:var(--hot)}
 .mc .price .plan{font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
