@@ -347,12 +347,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     ports:
       - "127.0.0.1:${PLATFORM_CONSOLE_PORT:-30001}:30001"
       - "127.0.0.1:${PLATFORM_WEBHOOK_PORT:-${PLATFORM_CONSOLE_PORT:-30001}}:${PLATFORM_WEBHOOK_PORT:-30001}"
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-multica}:${POSTGRES_PASSWORD:-multica}@postgres:5432/${POSTGRES_DB:-multica}?sslmode=disable
-      REDIS_URL: ${REDIS_URL:-}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       PLATFORM_WEBHOOK_PORT: ${PLATFORM_WEBHOOK_PORT:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-noreply@multica.ai}
@@ -363,6 +365,21 @@ services:
       SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
       SMTP_TLS: ${SMTP_TLS:-}
     restart: unless-stopped
+
+  # Redis for the platform (rate limits and its queues). Internal only: no host
+  # port is published. Set REDIS_URL to point the platform at an external Redis
+  # instead.
+  redis:
+    image: redis:7.0-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # ---------------------------------------------------------------------------
   # Company knowledge base: a pinned WeKnora sidecar. Opt-in:
@@ -547,6 +564,7 @@ volumes:
   pgdata:
   backend_uploads:
   seaweedfs-data:
+  redis-data:
   # Knowledge sidecar. Back up knowledge-postgres-data and knowledge-data-files
   # together (and keep KNOWLEDGE_SYSTEM_AES_KEY); see SELF_HOSTING.md.
   knowledge-postgres-data:
