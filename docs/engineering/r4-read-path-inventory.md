@@ -20,7 +20,7 @@ To add a read path: add a row in the same commit that adds the path.
 
 ## Scanned readers
 
-Count: 423 scanned units: 150 sql-query, 247 go-call, 20 raw-sql, 6 both go-call and raw-sql (counted once; listed in its own table).
+Count: 432 scanned units: 152 sql-query, 254 go-call, 20 raw-sql, 6 both go-call and raw-sql (counted once; listed in its own table).
 Produced by running the test against an empty table and counting the failure lines:
 `cd server && go test -count=1 ./internal/projectaccess 2>&1 | grep -c 'not listed'`.
 
@@ -78,6 +78,8 @@ How units are found:
 | `server/pkg/db/queries/inbox_archive.sql` | `ListArchivedInboxPage` | sql-query | scoped | fragment in the newest CTE; test TestInboxHidesIssueAfterAccessLost |
 | `server/pkg/db/queries/initiative.sql` | `ListGateProposalsForInitiative` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/initiative.sql` | `MinIssuePositionInStatus` | sql-query | todo | Reads issue or project; no visibility filter today |
+| `server/pkg/db/queries/invitation.sql` | `CountWorkspaceProjectsByIDs` | sql-query | exempt | (b) returns one count of the workspace's projects among the given ids; no project row leaves the query. guestProjectsForInvitation then checks scope.Allows for each id and gives the same project_member_invalid answer for a missing or a hidden project |
+| `server/pkg/db/queries/invitation.sql` | `GrantGuestInvitationProjects` | sql-query | exempt | (a) write: inserts project_member grants for the ids a guest invitation stored at creation, which guestProjectsForInvitation checked against the inviter's scope. Returns rows affected only. Accept does not re-check the inviter's scope; test TestGuestInviteCreatesMemberFlagAndGrantsInOneTx |
 | `server/pkg/db/queries/issue.sql` | `ChildIssueProgress` | sql-query | scoped | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `CountCreatedIssueAssignees` | sql-query | todo | Reads issue or project; no visibility filter today |
 | `server/pkg/db/queries/issue.sql` | `CountIssues` | sql-query | scoped | SQL carries the marker; no Go caller today (ListIssues builds its own SQL) |
@@ -281,6 +283,8 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/initiative.go` | `Handler.loadInitiativeFor` | go-call | scoped | Scope.Allows on the backing issue; hidden answers 404 initiative not found; TestRestrictedFlowAndProposalWritesAnswerMissing |
 | `server/internal/handler/initiative.go` | `Handler.viewerSeesInitiative` | go-call | scoped | Scope.Allows on the backing issue; used by loadInitiativeFor (TestRestrictedFlowAndProposalWritesAnswerMissing) and CreateKnowledgeDocument (TestRestrictedKnowledgeLinkAnswersMissing) |
 | `server/internal/handler/initiative.go` | `initiativeReads.view` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/handler/invitation.go` | `Handler.AcceptInvitation` | go-call | exempt | the invitee accepts an invitation addressed to them and writes the membership; the response is the member record and no issue or project row. Its guest grant is GrantGuestInvitationProjects (sql-query row); test TestGuestInviteCreatesMemberFlagAndGrantsInOneTx |
+| `server/internal/handler/invitation.go` | `Handler.guestProjectsForInvitation` | go-call | scoped | every named project must belong to the workspace (CountWorkspaceProjectsByIDs) and pass scope.Allows for the inviter (projectaccess.ForViewer); otherwise project_member_invalid. Test TestGuestCannotBeOwnerOrAdmin covers the role check only; no test refuses a project hidden from the inviter |
 | `server/internal/handler/issue.go` | `Handler.BatchDeleteIssues` | go-call | scoped | Each id is read and kept only when Scope.Allows, so a hidden id is skipped like a missing one; test TestRestrictedIssueWritesAnswerMissing (BatchDeleteIssues) |
 | `server/internal/handler/issue.go` | `Handler.BatchUpdateIssues` | go-call | scoped | Scope.Allows on every issue, parent and destination project; a move drops assignee and watchers who cannot see it; tests TestRestrictedIssueWritesAnswerMissing, TestUpdateIssueMovesDropWatchers, TestBatchUpdateAssigneeMustSeeProject |
 | `server/internal/handler/issue.go` | `Handler.ChildIssueProgress` | go-call | scoped | Calls a reader query; no visibility filter today |
@@ -353,6 +357,7 @@ Grouped by file; a function appears once per file.
 | `server/internal/handler/search_index.go` | `Handler.GetSearchIndexManifest` | go-call | scoped | passes viewerScope to the manifest query and returns scope_version; tests TestManifestCountsOnlyVisible, TestScopeVersionChangesWithVisibleSet |
 | `server/internal/handler/search_index.go` | `Handler.GetSearchIndexSnapshot` | go-call | scoped | passes viewerScope to the page, project and comment reads; test TestSnapshotAndChangesFilteredByScope |
 | `server/internal/handler/search_index.go` | `Handler.ListSearchIndexChanges` | go-call | scoped | passes viewerScope to the by-id reads and answers 410 when the cursor's scope_version differs; tests TestSnapshotAndChangesFilteredByScope, TestScopeVersionChangesWithVisibleSet |
+| `server/internal/handler/search_index.go` | `readSearchIndexScopeVersion` | go-call | scoped | passes the viewer's Scope to ListSearchIndexVisibleProjectIDs (projectaccess:scope fragment) and returns only a hash of that set; test TestScopeVersionChangesWithVisibleSet |
 | `server/internal/handler/source_context.go` | `Handler.CreateCommentSubIssue` | go-call | scoped | sourceAnchorHidden (viewerSeesIssue on the comment issue) answers a hidden comment like a deleted one before the snapshot is built; TestRestrictedIssueCallersAnswerMissing/comment_sub-issue_of_a_hidden_issue |
 | `server/internal/handler/source_context.go` | `Handler.issueSourceContextDetail` | go-call | scoped | Takes the viewer's Scope (GetIssue); a source issue in a project the viewer cannot see skips the live rebuild and answers like a deleted source; test TestRestrictedSourceDetailAnswersMissing |
 | `server/internal/handler/source_context.go` | `Handler.prepareAgentCommentSubIssue` | go-call | todo | Calls a reader query; no visibility filter today |
@@ -424,6 +429,7 @@ Grouped by file; a function appears once per file.
 | `server/internal/service/knowledge_autoenable.go` | `KnowledgeService.RunAutoEnable` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/knowledge_project_docs.go` | `KnowledgeService.ProjectDocSources` | go-call | exempt | (b) the daemon project-docs sync (ListDaemonProjectDocSources, daemon token, no viewer) |
 | `server/internal/service/knowledge_project_docs.go` | `KnowledgeService.projectForDocs` | go-call | exempt | (b) the daemon project-docs sync (PostDaemonProjectDocsManifest, PostDaemonProjectDocs; daemon token, no viewer) |
+| `server/internal/service/knowledge_write.go` | `KnowledgeService.sourceHiddenFrom` | go-call | scoped | answers from the actor's hidden project bases, which withKnowledgeProjectScope builds from projectaccess.ForViewer for a member; maskHiddenReferences clears the source id of a hidden project. Agent actors are not restricted here (withKnowledgeProjectScope returns early for them); test TestKnowledgeDocumentFollowsProjectVisibility |
 | `server/internal/service/metrics_builtin.go` | `MetricService.windowReadings` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/org_map.go` | `LoadOrgMap` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/proposal.go` | `ProposalService.Resubmit` | go-call | scoped | Reached only from Handler.ReviseProposal (POST /api/proposals/{id}/revision), which calls viewerSeesIssue before the role check; a hidden proposal issue answers 404 proposal not found; test TestRestrictedProposalResubmitAnswersMissing |
@@ -437,6 +443,8 @@ Grouped by file; a function appears once per file.
 | `server/internal/service/proposal_prior_art.go` | `ProposalService.relatedProposalsByTitle` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/qoder_issue_lifecycle.go` | `syncQoderIssue` | go-call | exempt | (b) internal worker, no viewer: TaskService qoder task claim and completion (daemon token) |
 | `server/internal/service/review.go` | `ReviewService.FileMonthlyReviews` | go-call | todo | Calls a reader query; no visibility filter today |
+| `server/internal/service/run_scope.go` | `noPersonQuerier.ListViewerProjectAccess` | go-call | scoped | forwards to the sqlc query that projectaccess.ForViewer loads the viewer's grants from; it adds no rule of its own; test TestClaimRefusedWhenOriginatorCannotSee |
+| `server/internal/service/run_scope.go` | `runRefusedForVisibility` | go-call | scoped | loads the task's issue and its project, then compares them with RunScope (projectaccess.ForViewer for the run's originator); tests TestClaimRefusedWhenOriginatorCannotSee, TestClaimRefusedWhenOriginatorLeftWorkspace |
 | `server/internal/service/scorecard.go` | `ScorecardInputsFor` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/secretary_reply_gate.go` | `checkAssessmentReply` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/secretary_request_caps.go` | `CheckSecretaryRequestCaps` | go-call | todo | Calls a reader query; no visibility filter today |
@@ -445,6 +453,7 @@ Grouped by file; a function appears once per file.
 | `server/internal/service/secretary_request_reply.go` | `IssueInSecretaryTree` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/secretary_request_reply.go` | `isSecretaryRequest` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/source_context.go` | `BuildSourceIssueSnapshot` | go-call | scoped | PreviewCommentSubIssue and CreateCommentSubIssue refuse a comment of a hidden issue before the build (TestRestrictedIssueCallersAnswerMissing/comment_sub-issue_of_a_hidden_issue); Handler.issueSourceContextDetail skips the live rebuild when the source issue is hidden and answers as for a deleted source; test TestRestrictedSourceDetailAnswersMissing |
+| `server/internal/service/squad_handoff.go` | `SquadHandoffService.CloseLoop` | go-call | scoped | the closing note names the target request only when every member who sees the source can also see the target (targetShownToReaders, through inbox.IssueAudience and projectaccess.ForViewer); otherwise it writes the "issue not found" wording. Tests TestCloseLoopHidesRestrictedTargetTitle, TestCloseLoopKeepsTitleForWorkspaceTarget |
 | `server/internal/service/squad_handoff.go` | `SquadHandoffService.perform` | go-call | todo | Calls a reader query; no visibility filter today |
 | `server/internal/service/squad_handoff.go` | `SquadHandoffService.resultOf` | go-call | exempt | (a) handoff routes (GetIssueHandoff, RequestIssueHandoff, DeclineIssueHandoff) call it after loadIssueForUser on the source issue; the handlers serialize only the handoff row (ids), not the target issue; the close-loop listener has no viewer |
 | `server/internal/service/squad_handoff.go` | `SquadHandoffService.targetRequest` | go-call | todo | Calls a reader query; no visibility filter today |
