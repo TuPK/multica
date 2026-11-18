@@ -95,7 +95,7 @@ function fixture(options: { agents?: (sha: string) => string; extra?: Record<str
   put(dir, BASE_FILES);
   put(dir, { "AGENTS.md": "# placeholder\n" });
   git(dir, "add", "-A");
-  git(dir, "commit", "-q", "-m", "init");
+  git(dir, "commit", "-q", "-m", "init", "-m", "Verified-by: fixture run (L3)");
   const sha = git(dir, "rev-parse", "--short", "HEAD");
   put(dir, { "AGENTS.md": (options.agents ?? AGENTS)(sha), ...options.extra });
   return { dir, sha };
@@ -118,7 +118,7 @@ function runnable({ env = "exit 0\n", verify = "exit 0\n", commit = true }: Runn
   });
   if (commit) {
     git(f.dir, "add", "-A");
-    git(f.dir, "commit", "-q", "-m", "harness");
+    git(f.dir, "commit", "-q", "-m", "harness", "-m", "Verified-by: fixture run (L3)");
   }
   return f;
 }
@@ -135,7 +135,7 @@ describe("check-harness", () => {
   it("passes a complete harness, prints JSON, and exits 0", () => {
     const { dir } = fixture();
     const { code, report } = run(dir);
-    expect(report.checks.map((c) => c.id)).toEqual(["H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9", "H10", "H11", "H12", "H13", "H14", "H15", "H16", "H17", "H18"]);
+    expect(report.checks.map((c) => c.id)).toEqual(["H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9", "H10", "H11", "H12", "H13", "H14", "H15", "H16", "H17", "H18", "H19"]);
     expect(report.checks.filter((c) => c.status === "fail").map((c) => `${c.id}: ${c.details.join("; ")}`)).toEqual([]);
     expect(report.ok).toBe(true);
     expect(code).toBe(0);
@@ -349,6 +349,26 @@ describe("check-harness", () => {
     it("counts prose rules in the footprint", () => {
       const { dir } = fixture();
       expect(run(dir).report.footprint).toMatchObject({ proseRules: 1 });
+    });
+  });
+
+  describe("H19", () => {
+    it("reports unstamped commits and commits that say none, and only as a warning", () => {
+      const { dir } = fixture();
+      put(dir, { "notes.txt": "a\n" });
+      git(dir, "add", "-A");
+      git(dir, "commit", "-q", "-m", "unstamped");
+      put(dir, { "notes.txt": "b\n" });
+      git(dir, "add", "-A");
+      git(dir, "commit", "-q", "-m", "unverified", "-m", "Verified-by: none, no runtime available");
+      const h = check(run(dir).report, "H19");
+      expect(h).toMatchObject({ status: "fail", level: "warning" });
+      expect(h.details.join("\n")).toContain("1 of the last 3 commits have no Verified-by trailer");
+      expect(h.details.join("\n")).toContain("1 of the last 3 commits say Verified-by: none");
+      expect(run(dir).report.blocking).not.toContain("H19");
+    });
+    it("passes when every recent commit carries a trailer", () => {
+      expect(check(run(fixture().dir).report, "H19").status).toBe("pass");
     });
   });
 

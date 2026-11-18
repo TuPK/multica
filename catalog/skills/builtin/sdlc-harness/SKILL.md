@@ -91,6 +91,7 @@ must satisfy before it is done. `warning` is reported, never blocks.
 | H2 | `docs/sdlc/harness-cert.json` is valid and its sha is a commit | warns |
 | H17 | No grader or QA verdict in `AGENTS.md`, `CLAUDE.md`, `docs/sdlc/*.md` or the sdlc skills' markdown (the marker list is in the checker and in `docs/sdlc/harness.json`). A hit names the file, line and marker. Exceptions need `reason` and `approver` in `docs/sdlc/harness.json` (`markerExceptions`). A warning in this cycle; it is the last line of defence, after not putting verdicts into the inputs | warns |
 | H18 | Every skill folder, and every markdown file in `docs/` whose path contains "runbook", is named by something, and a pointer to it in AGENTS.md sits under Read when or states a condition. A skill nothing names is never called | warns |
+| H19 | The last 20 non-merge commits carry a `Verified-by:` trailer, or `Verified-by: none` with the reason. Observe only: it reports the commits and blocks nothing, so a gate can be judged from real history first. Full mode only (not `--quick`) | warns |
 | H5 | The toolchain version is pinned and CI uses the same major | warns |
 | H8 | Each Rule ends with `Enforced by:`, and a named path or command exists | warns |
 | H9 | CONTRIBUTING, a PR template, or a commit convention | warns |

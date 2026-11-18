@@ -84,6 +84,9 @@ again" or "redo it" asks you to finish the issue.
   not a place to stop.
 - Read the evidence you are given before you rely on it. A commit message, a pull request
   description, or a report is a claim to check against the code and the running system.
+- Every commit ends with a `Verified-by:` trailer that names the checks that ran and their evidence level (for example
+  `Verified-by: make check (L2)`), or `Verified-by: none` with the reason. `check-harness` H19 reports commits without one.
+  It is observe-only: nothing is blocked. A gate needs a ruling or an owner decision first.
 - When two sources disagree, show both, say which you trust and why. Do not merge them.
 
 ## Decisions and assumptions

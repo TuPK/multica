@@ -767,6 +767,34 @@ function h18(ctx) {
   return details.length > 0 ? fail(details) : pass([`${targets.length} skills or runbooks checked`]);
 }
 
+/**
+ * H19 (observe): recent commits should carry a `Verified-by:` trailer naming the checks that ran, or `none`.
+ * It only reports. Nothing is blocked, so a repository's history can be read before any gate is considered.
+ */
+function h19(ctx) {
+  const out = git(ctx.root, ["log", "-n", "20", "--no-merges", "--format=%h%x1f%B%x1e"]);
+  if (out === null) return pass(["not a git repository: nothing to observe"]);
+  const commits = out
+    .split("\x1e")
+    .map((c) => c.trim())
+    .filter(Boolean)
+    .map((c) => {
+      const [sha, ...body] = c.split("\x1f");
+      return { sha, verified: /^Verified-by:\s*(.+)$/im.exec(body.join("\x1f")) };
+    });
+  if (commits.length === 0) return pass(["no commits to observe"]);
+  const unstamped = commits.filter((c) => c.verified === null);
+  const unverified = commits.filter((c) => c.verified !== null && /^none\b/i.test(c.verified[1].trim()));
+  const details = [];
+  if (unstamped.length > 0) {
+    details.push(`${unstamped.length} of the last ${commits.length} commits have no Verified-by trailer (observe only, nothing is blocked): ${unstamped.slice(0, 5).map((c) => c.sha).join(", ")}`);
+  }
+  if (unverified.length > 0) {
+    details.push(`${unverified.length} of the last ${commits.length} commits say Verified-by: none: ${unverified.slice(0, 5).map((c) => c.sha).join(", ")}`);
+  }
+  return details.length > 0 ? fail(details) : pass([`all ${commits.length} recent commits carry a Verified-by trailer`]);
+}
+
 const CHECKS = [
   { id: "H1", title: "AGENTS.md exists; CLAUDE.md imports it", level: "gate", run: h1 },
   { id: "H2", title: "provenance with a sha that exists in git", level: "warning", run: h2 },
@@ -786,6 +814,7 @@ const CHECKS = [
   { id: "H16", title: "no repository overview in AGENTS.md", level: "warning", run: h16 },
   { id: "H17", title: "instruction files hold no grader or QA output (leak tripwire)", level: "warning", run: h17 },
   { id: "H18", title: "every skill or runbook is named under Read when, with its condition", level: "warning", run: h18 },
+  { id: "H19", title: "recent commits carry a Verified-by trailer (observe only)", level: "warning", run: h19 },
 ];
 
 // ---------------------------------------------------------------------------------------------
@@ -850,6 +879,7 @@ const WHY = {
   H16: "An overview repeats what the code and the README already say, and goes stale.",
   H17: "A grader's or QA's verdict in an instruction file lets the agent copy the answer instead of solving the task.",
   H18: "A skill that nothing names is never called. Its work is lost and its files only add weight.",
+  H19: "A commit without a verification stamp cannot show later what was checked before it was made. Observe first, then decide whether a gate is worth its cost.",
   E1: "The Ensure command is the first thing an agent runs. If it fails, nothing after it can be trusted.",
   E2: "The Done command is the proof. An exit code other than 0 means the work is not verified.",
 };
@@ -874,6 +904,7 @@ const FIX = {
   H16: "Delete the tree, the overview heading or the narrative paragraph. Keep rules and pointers.",
   H17: "Remove the verdict or grade text from the file, or state the rule it implies. Do not paste results into instructions.",
   H18: "Name the skill or runbook under Read when with its condition, or delete it.",
+  H19: "End each commit message with a `Verified-by: <the checks that ran and their level>` trailer, or `Verified-by: none` with the reason.",
   E1: "Fix the Ensure command so it exits 0 on a clean machine, then run `--run` again.",
   E2: "Fix the Done command, or commit the open paths, then run `--run` again.",
 };
