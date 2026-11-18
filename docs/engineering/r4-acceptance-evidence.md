@@ -1,6 +1,6 @@
 # R4 backend closing evidence (report only)
 
-Branch main, shared checkout, working tree as found (uncommitted changes present, read as they are). No repo file was edited. No DSN or secret is written here.
+Branch main, shared checkout, working tree as found (uncommitted changes present, read as they are). The first review was report only. This file was updated at the R4 close (P41.10) with the fixes and the re-run results; see "Overall state" and "Re-run at close". No DSN or secret is written here.
 
 DB command shape (DSN built inside the shell command from the repo .env connection, only the database name replaced; it ends in `multica_platform_test`):
 
@@ -13,9 +13,24 @@ DB command shape (DSN built inside the shell command from the repo .env connecti
 
 ## Overall state
 
-P41.10 is not done. The inventory (`docs/engineering/r4-read-path-inventory.md`) still has 210 `todo` rows (184 scoped, 106 exempt). `TestNoTodoLeft`, `TestRestrictedFlowEndToEnd` and `TestAllWorkspaceProjectsBehaveAsBefore` do not exist (`inventory_test.go` has only `TestEveryIssueAndProjectReaderIsClassified` and `TestInventoryDetectsNewQuery`).
+P41.10 is NOT done. 53 inventory rows are still `todo`, and `TestNoTodoLeft` fails until they are closed.
 
-Many `todo` rows are stale: the code already scopes them (for example `ListProjects` filters with `scope.Allows` at `server/internal/handler/project.go:221`; `ListInbox`, `ListArchivedInbox`, `UpdateComment`, `DeleteComment`, `ListSubscribedIssueIDs`, `AttachLabel` go through viewerScope, `loadIssueForUser` or `commentInViewerScope`). Some `scoped` rows still say "no visibility filter today" in their note (`ListGroupedIssues`, `ListIssues`, `buildProjectSearchQuery`; the last does call `scopeCondition` at `project.go:890`). The inventory is therefore not a reliable gate yet.
+Fixed on main since the first review (all pushed to origin main):
+- `8317827d3` hides proposals whose backing issue is in a restricted project (`ListProposals`, `GetProposal`).
+- `b6c696c66` scopes channel decisions and snooze to the bound member. It fixes a regression that `8317827d3` introduced (channel callers passed no scope).
+- `73aaf6f4a` sends a duplicate's original only to people who see it (split recipients in `server/cmd/server/listeners.go`, `sendWithDuplicateOf`, with a follow-up canSee fix).
+- `7757375ed` makes hidden projects answer as missing for chats and autopilots.
+- `fb7564fc1` scopes squad open requests and flow insights (1e A and B).
+- `599178819` scopes the assignee frequency (1e C).
+- `a04b205b2` adds `TestRestrictedFlowEndToEnd` and `TestAllWorkspaceProjectsBehaveAsBefore`.
+
+Still open:
+- 53 `todo` rows (216 scoped, 230 exempt in the working-tree inventory). Real leaks among them: digest, approval-policy auto-approvals and reversals, brief push, initiatives, org map, daemon GC check, proposal `related[]`, `source_context` project binding, and the `other_issue` wakeup condition. Spec-decision rows: metrics, scorecards, issue limit, flow/other.
+- 1a (`ListSquadMemberStatus`, `squad.go` and `squad.sql`) is blocked: no commit from the handler-test-triage session is on main, and the squad files are not dirty.
+- 1f (`plugin_action.go`, plugin actor without a viewer) is not changed. It needs a spec decision.
+- Known gap: the issue-move path (`routeIssueMove` in `listeners.go`) still sends `duplicate_of` unchanged.
+
+Uncommitted in the working tree (held by the orchestrator, not committed): `docs/engineering/r4-read-path-inventory.md` and `server/internal/projectaccess/inventory_test.go` (with `TestNoTodoLeft`). The inventory counts in the first review (210 `todo`) are superseded by the 53 above.
 
 ## Security findings
 
@@ -23,16 +38,16 @@ Review method: read code only. I did not write throwaway tests (no repo writes a
 
 | Severity | file:line | Finding | Verified by | Status |
 | --- | --- | --- | --- | --- |
-| high | `server/internal/handler/squad.go:829-940` (title at `:890-894`), `server/pkg/db/queries/squad.sql:203-207` | `ListSquadMemberStatus` returns `task_issue_id`, issue number, title and status of each agent task's issue to any workspace member. The query has no `projectaccess:scope` marker and the handler has no `viewerScope`. Scenario: member without a grant lists squad status and reads the title of a task issue in a restricted project (spec rule 5). Inventory row is `todo`. | read | open |
-| high | `server/internal/handler/proposal.go:458-531`, `server/pkg/db/queries/proposal.sql:32-41` | `ListProposals` and `GetProposal` join `issue` and return `issue_title`, `issue_status`, `issue_number` of the backing issue with only a workspace-membership check. Scenario: ungranted member lists proposals and reads titles of issues in a restricted project. Existing test `TestRestrictedFlowAndProposalWritesAnswerMissing` covers writes only. | read | open |
-| high | `server/internal/service/task.go:8153-8174` (`resolveDuplicateOf`), used by `IssueToMapResolved` for `issue:created` and `issue:updated` payloads | The event payload of a cancelled duplicate carries the original's id, identifier, title and status. Listeners route the event by the duplicate's project audience, not the original's. Scenario: duplicate in a `workspace` project, original in a restricted project: every member receives the hidden original's title over WebSocket. The HTTP path filters (`handler/issue.go:538 fillDuplicateOf`); the event path does not (no `duplicate_of` handling in `cmd/server/listeners.go`). The inventory `exempt` reason ("no viewer ... Open: event fan-out") does not hold. | read | open |
-| medium | `server/internal/handler/chat.go:115-126` (create), `:426-436` (update); `queries/project.sql` `LockProjectForChatSessionCreate` | A chat session accepts any project id of the workspace without `scope.Allows`. Scenario: ungranted member posts `project_id` of a restricted project: 201 for an existing hidden project vs 404 "project not found" for a missing one, so existence is confirmed; the session is bound to a project the member cannot see (what the agent then loads for that project was not traced). | read | open |
-| medium | `server/internal/handler/autopilot.go:1320-1341` (`parseAutopilotProjectID`) | Same: autopilot create/update accepts a hidden project (`GetProjectInWorkspace`, no scope). Scenario: ungranted member creates an autopilot that files issues into a restricted project, and learns the project exists from 2xx vs 400. | read | open |
-| low | `server/pkg/db/queries/squad_directory.sql` (`OpenRequests` subquery on `issue`), `server/internal/handler/squad_directory.go:23-51` | `open_requests` per squad counts issues in restricted projects. Scenario: member compares count with what the list shows. Count leak only (spec rule 5 names counts). | read | open |
-| low | `server/internal/handler/flow_insights.go:33-115`, `queries/flow.sql:214-224` | `ListFlowInsightRequests` and the insight numbers include requests of restricted projects. Limited to members who manage the squad; aggregates only, no titles. | read | open |
-| low | `server/internal/handler/activity.go:409-476` | `GetAssigneeFrequency` counts the caller's own past assignee changes and created issues, including issues of projects the caller has since lost. Ids of assignees only. | read | open |
+| high | `server/internal/handler/squad.go:829-940` (title at `:890-894`), `server/pkg/db/queries/squad.sql:203-207` | `ListSquadMemberStatus` returns `task_issue_id`, issue number, title and status of each agent task's issue to any workspace member. The query has no `projectaccess:scope` marker and the handler has no `viewerScope`. Scenario: member without a grant lists squad status and reads the title of a task issue in a restricted project (spec rule 5). Inventory row is `todo`. | read | open: blocked, handler-test-triage commit not on main |
+| high | `server/internal/handler/proposal.go:458-531`, `server/pkg/db/queries/proposal.sql:32-41` | `ListProposals` and `GetProposal` join `issue` and return `issue_title`, `issue_status`, `issue_number` of the backing issue with only a workspace-membership check. Scenario: ungranted member lists proposals and reads titles of issues in a restricted project. Existing test `TestRestrictedFlowAndProposalWritesAnswerMissing` covers writes only. | read | fixed in 8317827d3 (channel regression fixed in b6c696c66) |
+| high | `server/internal/service/task.go:8153-8174` (`resolveDuplicateOf`), used by `IssueToMapResolved` for `issue:created` and `issue:updated` payloads | The event payload of a cancelled duplicate carries the original's id, identifier, title and status. Listeners route the event by the duplicate's project audience, not the original's. Scenario: duplicate in a `workspace` project, original in a restricted project: every member receives the hidden original's title over WebSocket. The HTTP path filters (`handler/issue.go:538 fillDuplicateOf`); the event path does not (no `duplicate_of` handling in `cmd/server/listeners.go`). The inventory `exempt` reason ("no viewer ... Open: event fan-out") does not hold. | read | fixed in 73aaf6f4a (issue-move path `routeIssueMove` still open) |
+| medium | `server/internal/handler/chat.go:115-126` (create), `:426-436` (update); `queries/project.sql` `LockProjectForChatSessionCreate` | A chat session accepts any project id of the workspace without `scope.Allows`. Scenario: ungranted member posts `project_id` of a restricted project: 201 for an existing hidden project vs 404 "project not found" for a missing one, so existence is confirmed; the session is bound to a project the member cannot see (what the agent then loads for that project was not traced). | read | fixed in 7757375ed |
+| medium | `server/internal/handler/autopilot.go:1320-1341` (`parseAutopilotProjectID`) | Same: autopilot create/update accepts a hidden project (`GetProjectInWorkspace`, no scope). Scenario: ungranted member creates an autopilot that files issues into a restricted project, and learns the project exists from 2xx vs 400. | read | fixed in 7757375ed |
+| low | `server/pkg/db/queries/squad_directory.sql` (`OpenRequests` subquery on `issue`), `server/internal/handler/squad_directory.go:23-51` | `open_requests` per squad counts issues in restricted projects. Scenario: member compares count with what the list shows. Count leak only (spec rule 5 names counts). | read | fixed in fb7564fc1 |
+| low | `server/internal/handler/flow_insights.go:33-115`, `queries/flow.sql:214-224` | `ListFlowInsightRequests` and the insight numbers include requests of restricted projects. Limited to members who manage the squad; aggregates only, no titles. | read | fixed in fb7564fc1 |
+| low | `server/internal/handler/activity.go:409-476` | `GetAssigneeFrequency` counts the caller's own past assignee changes and created issues, including issues of projects the caller has since lost. Ids of assignees only. | read | fixed in 599178819 |
 | low | `server/internal/handler/plugin_action.go:234-263` | A plugin install token with no viewer (`caller.UserID` invalid) keeps workspace-wide reach and skips the scope check. The comment states this is intended; spec 7.1 rule text for plugin actors was not checked. | read | needs spec decision |
-| info | `docs/engineering/r4-read-path-inventory.md` | 210 `todo` rows remain, `TestNoTodoLeft` does not exist, 4+ stale notes (see Overall state). Rows `daemon.go`, `service` claim paths, `mcp_overlay.go`, `remote_mcp_broker.go` are `todo` and I did not trace them end to end. | read | open (P41.10) |
+| info | `docs/engineering/r4-read-path-inventory.md` | 53 `todo` rows remain (was 210 at first review), `TestNoTodoLeft` exists and fails, 4+ stale notes (see Overall state). Rows `daemon.go`, `service` claim paths, `mcp_overlay.go`, `remote_mcp_broker.go` are `todo` and I did not trace them end to end. | read | open (P41.10) |
 
 Checked and held (read, plus the passing tests listed below):
 - `projectaccess.ForViewer` (`projectaccess/scope.go:55-79`) and the SQL fragment (`scope.go:127-134`): unknown `access` values are treated as restricted (`= 'workspace'` is exact); guests never see project-less issues.
@@ -119,16 +134,39 @@ Results:
 
 ## No test found
 
-- `TestRestrictedFlowEndToEnd` (plan P41.10): no test with this name or equivalent.
-- `TestAllWorkspaceProjectsBehaveAsBefore` (AC61, P41 part): no test.
-- `TestNoTodoLeft` (plan P41.10): no test; inventory has 210 `todo` rows.
+Now present (commit `a04b205b2` and the uncommitted inventory test):
+- `TestRestrictedFlowEndToEnd`: exists, PASS (9 subtests). Its event step checks the `projectaccess.Audience` result, not a captured bus event. Its reopen step leaves the owner's `project_member` row (SwitchAccess auto-grant), so it asserts no grants except the owner's.
+- `TestAllWorkspaceProjectsBehaveAsBefore`: exists, PASS (7 subtests).
+- `TestNoTodoLeft`: exists (uncommitted), FAIL: 53 rows are still `todo`. It is expected to fail until those rows are closed.
+
+Still not found:
 - `TestEinvoiceDisabledByDefault`: not found by that name; `TestEinvoiceOffByDefault` and `TestEinvoiceOffWhenProviderEmpty` cover it.
 - Spec 7.7 rows without a covering test:
   - "Lọt qua sự kiện realtime ... test cả đường relay Redis": no test that runs two processes or a real Redis relay with a restricted-project event; only `TestRelayKeepsRecipients` (codec/delivery).
   - Restart refusal on a webhook port that clashes with the API or console port: only config-level check, no process-level test.
-  - Proposal reads, squad member status, chat session and autopilot project binding under a restricted project: no test (these are the open findings).
-  - Event payload with `duplicate_of` pointing to a hidden original: no test.
+  - Squad member status under a restricted project (1a is still open).
+  - Event payload with `duplicate_of` on the issue-move path (known gap).
 - AC50 "kể cả khi sự kiện đi qua relay Redis từ tiến trình khác": see above, partial only.
+
+## Re-run at close
+
+Commands (DSN built inside the shell command from the repo `.env` connection with only the database name replaced, as in the shape at the top; never printed):
+
+    cd server && DATABASE_URL=<dsn:multica_platform_test> go test -count=1 ./cmd/server ./internal/realtime ./internal/projectaccess -run '<AC50 filter above>'
+    cd server && DATABASE_URL=<dsn:multica_platform_test> go test -count=1 ./internal/projectaccess -run 'TestEveryIssueAndProjectReaderIsClassified|TestInventoryDetectsNewQuery|TestNoTodoLeft' -v
+    cd server && DATABASE_URL=<dsn:multica_platform_test> go test -count=1 <pkg> -run 'TestRestrictedFlowEndToEnd|TestAllWorkspaceProjectsBehaveAsBefore' -v
+    cd platform-management && DATABASE_URL=<dsn:multica_platform_test> PLATFORM_TEST_DATABASE_URL=<same> go test -count=1 ./internal/config ./internal/invoice -run 'TestEveryR4|TestWebhookDisabledByDefault|TestEinvoiceOff'
+    cd platform-management && DATABASE_URL=<dsn:multica_platform_test> PLATFORM_TEST_DATABASE_URL=<same> go test -p 1 -count=1 ./...
+
+Results:
+- AC50 server suite (`./cmd/server ./internal/realtime ./internal/projectaccess`, AC50 `-run` filter): ok `cmd/server` (6.9s), ok `internal/realtime`, ok `internal/projectaccess`. Exit 0.
+- Inventory: `TestEveryIssueAndProjectReaderIsClassified` PASS; `TestInventoryDetectsNewQuery` PASS; `TestNoTodoLeft` FAIL (53 rows still `todo`, expected until closed).
+- `TestRestrictedFlowEndToEnd` PASS (9 subtests). `TestAllWorkspaceProjectsBehaveAsBefore` PASS (7 subtests).
+- AC61 defaults: platform-management `config` ok, `invoice` ok (`TestEveryR4*`, `TestWebhookDisabledByDefault`, `TestEinvoiceOff*`).
+- AC61 full: `go test -p 1 -count=1 ./...` in `platform-management`: exit 0, all 40 packages ok. The earlier reproducible failure of `TestDBCurrencyLockedWithSubscriptionRow` (recorded in the AC61 section above) did NOT recur in this run. The cause was not found, so this is not a confirmed fix.
+- Handler tests for proposals, chat, autopilot, squad directory, flow insights, activity and listeners pass (reported in the commit messages and the kiro reports; not re-run by this document's author).
+
+Not run at close: full server suite (`make test`), web and desktop checks, Playwright, a two-process Redis relay test, `pnpm catalog:build`.
 
 ## Not run
 
