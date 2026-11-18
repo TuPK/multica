@@ -419,7 +419,8 @@ type RetryEinvoiceIssuanceParams struct {
 }
 
 // Staff retry: a failed or needs_info record goes back to pending and is due
-// now, with the attempt count reset.
+// now. The attempt count is kept: an earlier attempt may have reached the
+// provider, so the next run must look the invoice up before it issues again.
 func (q *Queries) RetryEinvoiceIssuance(ctx context.Context, arg RetryEinvoiceIssuanceParams) (int64, error) {
 	result, err := q.db.Exec(ctx, retryEinvoiceIssuance, arg.Now, arg.OrderID, arg.Revision)
 	if err != nil {
