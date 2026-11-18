@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/multica-ai/multica/platform-management/audit"
 	"github.com/multica-ai/multica/server/internal/featureflags"
 	"github.com/multica-ai/multica/server/internal/logger"
 	"github.com/multica-ai/multica/server/internal/membergroup"
@@ -163,6 +164,18 @@ type workspaceOrderJSON struct {
 	ExpiresAt    string         `json:"expires_at"`
 	PaidAt       *string        `json:"paid_at"`
 	CreatedAt    string         `json:"created_at"`
+	// Einvoice is the order's e-invoice, when a record exists. Only the single
+	// order routes fill it; the key is absent otherwise.
+	Einvoice *orderEinvoiceJSON `json:"einvoice,omitempty"`
+}
+
+// orderEinvoiceJSON is the latest revision of an order's e-invoice as the order
+// page reads it. Number and LookupURL are empty until the invoice is issued.
+type orderEinvoiceJSON struct {
+	State         string   `json:"state"`
+	Number        string   `json:"number"`
+	LookupURL     string   `json:"lookup_url"`
+	MissingFields []string `json:"missing_fields"`
 }
 
 type workspaceOrdersResponse struct {
@@ -372,7 +385,28 @@ func (h *Handler) GetWorkspaceOrder(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to get order")
 		return
 	}
-	writeJSON(w, http.StatusOK, toWorkspaceOrderJSON(order, billingBankDetails()))
+	out := toWorkspaceOrderJSON(order, billingBankDetails())
+	inv, err := h.Queries.GetLatestEinvoiceForOrder(r.Context(), db.GetLatestEinvoiceForOrderParams{
+		WorkspaceID: workspaceUUID, OrderID: order.ID,
+	})
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		slog.Warn("get order einvoice failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to get order")
+		return
+	}
+	if err == nil {
+		out.Einvoice = toOrderEinvoiceJSON(inv)
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+func toOrderEinvoiceJSON(inv db.GetLatestEinvoiceForOrderRow) *orderEinvoiceJSON {
+	missing := []string{}
+	// A value that is not an array of strings reads as no missing field.
+	if err := json.Unmarshal(inv.MissingFields, &missing); err != nil || missing == nil {
+		missing = []string{}
+	}
+	return &orderEinvoiceJSON{State: inv.State, Number: inv.InvoiceNumber, LookupURL: inv.LookupUrl, MissingFields: missing}
 }
 
 // GetWorkspaceOrderUsage serves GET /api/workspaces/{id}/orders/{orderId}/usage:
@@ -509,4 +543,142 @@ func (h *Handler) UpdateWorkspaceOrderBuyer(w http.ResponseWriter, r *http.Reque
 	writeJSON(w, http.StatusConflict, map[string]string{
 		"error": "the order is no longer pending", "code": "order_not_pending", "status": existing.Status,
 	})
+}
+
+// auditEinvoiceBuyerUpdated is the audit action of an invoice buyer edit. The
+// audit package does not define it yet.
+const auditEinvoiceBuyerUpdated = "einvoice.buyer_updated"
+
+// changedBuyerFields names the buyer fields whose value differs. The audit
+// detail carries these names and never a value.
+func changedBuyerFields(oldBuyer, newBuyer orderBuyerJSON) []string {
+	fields := []string{}
+	for _, f := range []struct {
+		name         string
+		before, next string
+	}{
+		{"name", oldBuyer.Name, newBuyer.Name},
+		{"tax_code", oldBuyer.TaxCode, newBuyer.TaxCode},
+		{"address", oldBuyer.Address, newBuyer.Address},
+		{"invoice_email", oldBuyer.InvoiceEmail, newBuyer.InvoiceEmail},
+	} {
+		if f.before != f.next {
+			fields = append(fields, f.name)
+		}
+	}
+	return fields
+}
+
+// UpdateWorkspaceOrderInvoiceBuyer serves PUT /api/workspaces/{id}/orders/{orderId}/invoice-buyer:
+// it replaces the buyer of the order's latest e-invoice record when that record
+// needs information or failed, and sends the record back to pending. The order's
+// own buyer is left alone. A record in any other state is a 409
+// einvoice_already_issued. The columns written are buyer, missing_fields, state
+// and updated_at of einvoice_issuance (spec 7.5).
+func (h *Handler) UpdateWorkspaceOrderInvoiceBuyer(w http.ResponseWriter, r *http.Request) {
+	workspaceUUID, ok := h.requireBillingWorkspace(w, r, membergroup.KeyBillingManage)
+	if !ok {
+		return
+	}
+	orderUUID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "orderId"), "order id")
+	if !ok {
+		return
+	}
+	var in orderBuyerJSON
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&in); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	buyer, ferr := normalizeOrderBuyer(in)
+	if ferr != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": ferr.msg, "code": "buyer_invalid", "field": ferr.field})
+		return
+	}
+	raw, err := json.Marshal(buyer)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to save buyer")
+		return
+	}
+
+	order, err := h.Queries.GetWorkspaceBillingOrder(r.Context(), db.GetWorkspaceBillingOrderParams{
+		WorkspaceID: workspaceUUID, ID: orderUUID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeError(w, http.StatusNotFound, "order not found")
+		return
+	}
+	if err != nil {
+		slog.Warn("get billing order failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to save buyer")
+		return
+	}
+	latest := db.GetLatestEinvoiceForOrderParams{WorkspaceID: workspaceUUID, OrderID: order.ID}
+	inv, err := h.Queries.GetLatestEinvoiceForOrder(r.Context(), latest)
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "the order has no invoice", "code": "einvoice_not_found"})
+		return
+	}
+	if err != nil {
+		slog.Warn("get order einvoice failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to save buyer")
+		return
+	}
+	conflict := func(state string) {
+		writeJSON(w, http.StatusConflict, map[string]string{
+			"error": "the invoice can no longer be changed", "code": "einvoice_already_issued", "state": state,
+		})
+	}
+	if inv.State != "needs_info" && inv.State != "failed" {
+		conflict(inv.State)
+		return
+	}
+
+	var oldBuyer orderBuyerJSON
+	if err := json.Unmarshal(inv.Buyer, &oldBuyer); err != nil {
+		oldBuyer = orderBuyerJSON{}
+	}
+	tx, err := h.TxStarter.Begin(r.Context())
+	if err != nil {
+		slog.Warn("save invoice buyer failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to save buyer")
+		return
+	}
+	defer tx.Rollback(r.Context())
+	qtx := h.Queries.WithTx(tx)
+	n, err := qtx.SetEinvoiceBuyer(r.Context(), db.SetEinvoiceBuyerParams{WorkspaceID: workspaceUUID, ID: inv.ID, Buyer: raw})
+	if err != nil {
+		slog.Warn("save invoice buyer failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to save buyer")
+		return
+	}
+	if n == 0 {
+		// The platform moved the record on after it was read.
+		if now, err := h.Queries.GetLatestEinvoiceForOrder(r.Context(), latest); err == nil {
+			conflict(now.State)
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to save buyer")
+		return
+	}
+	orderID := uuidToString(order.ID)
+	if err := h.recordAuditWith(r, qtx, audit.Entry{
+		WorkspaceID: uuidToString(workspaceUUID),
+		Action:      auditEinvoiceBuyerUpdated,
+		TargetType:  "einvoice",
+		TargetID:    orderID,
+		Detail:      map[string]any{"order_id": orderID, "from_state": inv.State, "fields": changedBuyerFields(oldBuyer, buyer)},
+	}); err != nil {
+		slog.Warn("audit invoice buyer failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to save buyer")
+		return
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		slog.Warn("save invoice buyer failed", append(logger.RequestAttrs(r), "error", err)...)
+		writeError(w, http.StatusInternalServerError, "failed to save buyer")
+		return
+	}
+
+	out := toWorkspaceOrderJSON(order, billingBankDetails())
+	out.Einvoice = &orderEinvoiceJSON{State: "pending", MissingFields: []string{}}
+	writeJSON(w, http.StatusOK, out)
 }

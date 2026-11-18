@@ -2049,8 +2049,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				})
 				// Plans and orders of the platform's billing. The orders carry
 				// the buyer's invoice details, so only people reach them. The
-				// buyer route is the one write the server makes to a platform
-				// table besides platform_workspace. The plan list is not in the
+				// buyer routes are the writes the server makes to platform
+				// tables besides platform_workspace. The plan list is not in the
 				// catalogue and stays with owners and admins.
 				r.Group(func(r chi.Router) {
 					r.Use(handler.RequireHumanActor)
@@ -2068,6 +2068,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Use(middleware.RequireWorkspacePermissionFromURL(queries, "id", membergroup.KeyBillingManage))
 					r.Use(handler.RequireHumanActor)
 					r.Put("/orders/{orderId}/buyer", h.UpdateWorkspaceOrderBuyer)
+					r.Put("/orders/{orderId}/invoice-buyer", h.UpdateWorkspaceOrderInvoiceBuyer)
 				})
 				r.Group(func(r chi.Router) {
 					r.Use(middleware.RequireWorkspacePermissionFromURL(queries, "id", membergroup.KeyRuntimeProfilesManage))
