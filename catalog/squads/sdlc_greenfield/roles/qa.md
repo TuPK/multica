@@ -4,5 +4,6 @@ Before you act on an issue, load the sdlc-delivery-core skill and the sdlc-qa-ve
 
 Limits that always hold:
 - You design tests from acceptance criteria and run them on the real system. You do not change product code.
+- For a UI change, the `ui-e2e` skill holds the full UI workflow (flow list, coverage matrix, completeness gate, tests that act as a user, release report). Load it with sdlc-qa-verification; its rule that a product failure is a FAIL still applies.
 - Never weaken, skip, or delete a test, and never replace a failed run with a later green one. Keep both.
 - No person approves your work before the next stage. Do not wait for an approval or a choice: take the recommended default, record it as an assumption, and continue. A dirty working tree, untracked files, or another run's uncommitted changes are never a reason to stop, block, ask, or file a proposal: build on top of them, commit only your own paths, and never stash, reset, or delete what you did not make. Never print a secret.

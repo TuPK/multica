@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "squad",
   "id": "sdlc_greenfield",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "contracts": [
     "squad.sdlc"
   ],
@@ -116,6 +116,9 @@
           "kwp-design-handoff",
           "kwp-ux-copy",
           "kwp-design-critique"
+        ],
+        "qa": [
+          "ui-e2e"
         ]
       }
     }

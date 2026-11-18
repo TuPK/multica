@@ -28,9 +28,10 @@ afterwards. You report; you do not change product code. Load sdlc-delivery-core 
    property test exists (the Developer writes it, sdlc-development, "Workflow for each story" step 4). A missing one is a
    finding (T-n), not a block.
 3. **Surfaces.** For UI: the routes, the states (empty, loading, error), and the viewports 1440px and 390px. For a backend: the
-   contract, authentication, failure, and retry paths.
+   contract, authentication, failure, and retry paths. For a UI change, load `ui-e2e` and take its flow list (its phases 1 and 2)
+   as the surface list. Each flow in that list becomes a case here.
 4. **Automation marks.** Mark which cases should be automated. Do not generate automation code, scripts, or manual runbooks until the
-   issue owner accepts the plan.
+   issue owner accepts the plan. The `ui-e2e` workflow starts only after that acceptance.
 
 ## Mode 2: execution (after code)
 
@@ -44,6 +45,14 @@ afterwards. You report; you do not change product code. Load sdlc-delivery-core 
 5. Before you run the system, run `docs/sdlc/environment.md`'s `env-ensure` command when it exists, and run an isolated suite on the QA stack, never by stopping the shared one. If the environment is not there, build or ask for what is missing in this order before you block: the local production-like level (sdlc-delivery-core, "Evidence ladder"), then a contract level. Block with class `environment` only when the evidence would fall below the minimum the criterion states.
 6. For UI, run accessibility-scan and accessibility-inspect on the changed pages when the app and Chrome are available. Otherwise record
    the gap as not verified.
+6a. For UI, run the `ui-e2e` workflow on the changed screens: bootstrap the stack (its phase 0) on the QA stack, build the coverage matrix,
+   pass its completeness gate (its phase 7), write the UI tests that act as a user (its phase 4), run them, and classify each failure
+   (test bug, environment, product). Its test titles name the flow ids, so each case keeps its ITC id. Rules that stay with this skill:
+   - A `test.fixme` that records a product failure is a FAIL in your results. It needs a DEF id, its steps, and its evidence. It counts
+     toward the recommendation like any other defect; a fixme does not make a case PASS and does not weaken a check.
+   - Fix only the test bugs. Product failures go back to the developer.
+   - Keep the first run's results. A later green run adds to them and does not replace them.
+   - Its environment and test-database rules apply: a dedicated `_test` database, no secrets printed, and no run against the shared stack.
 7. Run verification-before-completion before you state the recommendation.
 8. **Which commit you verify.** Verify the exact commit the developer named in the handoff, on its pushed branch. Do not wait for
    `main` to contain it: `main` receives the change only after your GO (Landing rule below). Before you run anything, compare
@@ -68,7 +77,7 @@ After GO or CONDITIONAL GO on a commit, you land that exact commit on `main`:
 - State the evidence level each case reached (L1, L2, L3). A check that ran at L2 and could not run at L1 is not a NO GO: record it as a release condition (`docs/sdlc/release-conditions.md`) with its residual risk, and use CONDITIONAL GO.
 - GO, CONDITIONAL GO, or NO GO, with one line why. Any Critical or High defect still open means NO GO.
 - Give every defect an `Owner-role`. A defect whose owner is not the developer (design, requirement, environment) blocks the issue with that class instead of a plain NO GO (sdlc-delivery-core, "When you cannot proceed"), and lists the developer's defects in the same report.
-- The case results table.
+- The case results table, including the `ui-e2e` gate result and its run counts when the change has UI.
 - Open defects, Critical and High first.
 - What was not run, and why.
 
