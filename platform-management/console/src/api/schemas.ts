@@ -17,6 +17,8 @@ export const ACCOUNT_KINDS = ["individual", "business"] as const;
  */
 export const AUDIT_ACTIONS = [
   "member.role_changed",
+  "member.guest_set",
+  "member.guest_unset",
   "member.removed",
   "member.left",
   "invitation.created",
@@ -100,6 +102,15 @@ export const AUDIT_ACTIONS = [
   "group.member_added",
   "group.member_removed",
   "group.permissions_changed",
+  "payment.notice_applied",
+  "payment.notice_needs_review",
+  "payment.notice_resolved",
+  "payment.notice_dismissed",
+  "einvoice.requested",
+  "einvoice.issued",
+  "einvoice.needs_info",
+  "einvoice.failed",
+  "einvoice.replaced",
 ] as const;
 
 export type TenantStatus = (typeof TENANT_STATUSES)[number] | "unknown";
