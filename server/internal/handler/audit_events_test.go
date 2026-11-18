@@ -282,7 +282,7 @@ func TestAuditInvitationEvents(t *testing.T) {
 		wantOneAudit(t, reqID, auditWant{
 			action: audit.ActionInvitationCreated, workspaceID: testWorkspaceID, actorID: testUserID,
 			actorLabel: handlerTestEmail, targetType: "invitation", targetID: inv.ID, targetLabel: email,
-			detail: map[string]any{"role": "member"},
+			detail: map[string]any{"role": "member", "is_guest": false},
 		})
 	})
 
@@ -309,7 +309,7 @@ func TestAuditInvitationEvents(t *testing.T) {
 		wantOneAudit(t, reqID, auditWant{
 			action: audit.ActionInvitationAccepted, workspaceID: testWorkspaceID, actorID: inviteeID,
 			actorLabel: email, targetType: "invitation", targetID: inv.ID, targetLabel: email,
-			detail: map[string]any{"role": "member"},
+			detail: map[string]any{"role": "member", "is_guest": false},
 		})
 	})
 
