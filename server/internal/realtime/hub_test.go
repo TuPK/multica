@@ -63,15 +63,15 @@ func makeTestTokenForUser(t *testing.T, userID, email string) string {
 
 type staticPATResolver map[string]string
 
-func (s staticPATResolver) ResolveToken(_ context.Context, token string) (string, bool) {
+func (s staticPATResolver) ResolveToken(_ context.Context, token string) (auth.PATEntry, bool) {
 	userID, ok := s[token]
-	return userID, ok
+	return auth.PATEntry{UserID: userID}, ok
 }
 
 func TestAuthenticateTokenRejectsTemporarilyDisabledJWTUser(t *testing.T) {
 	token := makeTestTokenForUser(t, "514492f7-b30f-4147-bd33-c0e8ce5d6d4f", "")
 
-	uid, _, errMsg := authenticateToken(token, nil, context.Background())
+	uid, _, errMsg := authenticateToken(token, nil, context.Background(), "")
 	if uid != "" {
 		t.Fatalf("expected no user ID, got %q", uid)
 	}
@@ -83,7 +83,7 @@ func TestAuthenticateTokenRejectsTemporarilyDisabledJWTUser(t *testing.T) {
 func TestAuthenticateTokenRejectsTemporarilyDisabledPATUser(t *testing.T) {
 	uid, _, errMsg := authenticateToken("mul_disabled", staticPATResolver{
 		"mul_disabled": "1d542296-17c6-484a-9914-dcee589be116",
-	}, context.Background())
+	}, context.Background(), "")
 	if uid != "" {
 		t.Fatalf("expected no user ID, got %q", uid)
 	}

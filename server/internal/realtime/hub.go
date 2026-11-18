@@ -19,6 +19,8 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/multica-ai/multica/platform-management/accountguard"
 	"github.com/multica-ai/multica/server/internal/auth"
+	"github.com/multica-ai/multica/server/internal/workspaceguard"
+	"github.com/multica-ai/multica/server/internal/workspacepolicy"
 )
 
 // MembershipChecker verifies a user belongs to a workspace.
@@ -41,9 +43,9 @@ type MembershipIdentity struct {
 // SlugResolver translates a workspace slug to its UUID.
 type SlugResolver func(ctx context.Context, slug string) (workspaceID string, err error)
 
-// PATResolver resolves a Personal Access Token to a user ID.
+// PATResolver resolves a Personal Access Token to its owner and restrictions.
 type PATResolver interface {
-	ResolveToken(ctx context.Context, token string) (userID string, ok bool)
+	ResolveToken(ctx context.Context, token string) (auth.PATEntry, bool)
 }
 
 // ScopeAuthorizer decides whether a connection (identified by userID +
@@ -731,18 +733,29 @@ func (h *Hub) Snapshot() map[string]any {
 }
 
 // authenticateToken validates a JWT or PAT string and returns the user ID and,
-// for a JWT, its claims (nil for a PAT).
-func authenticateToken(tokenStr string, pr PATResolver, ctx context.Context) (string, jwt.MapClaims, string) {
+// for a JWT, its claims (nil for a PAT). A PAT bound to a workspace other than
+// workspaceID is refused. A read-only PAT is admitted: the socket is a read
+// channel and handleFrame has no frame that writes.
+func authenticateToken(tokenStr string, pr PATResolver, ctx context.Context, workspaceID string) (string, jwt.MapClaims, string) {
 	if strings.HasPrefix(tokenStr, "mul_") {
 		if pr == nil {
 			return "", nil, `{"error":"invalid token"}`
 		}
-		uid, ok := pr.ResolveToken(ctx, tokenStr)
+		entry, ok := pr.ResolveToken(ctx, tokenStr)
 		if !ok {
 			return "", nil, `{"error":"invalid token"}`
 		}
+		uid := entry.UserID
 		if auth.IsTemporarilyDisabledUserID(uid) {
 			return "", nil, `{"error":"account disabled"}`
+		}
+		if code := workspaceguard.CheckWorkspaceAccess(workspacepolicy.Default(), workspaceguard.Session{
+			Machine:          true,
+			TokenWorkspaceID: entry.WorkspaceID,
+			WorkspaceID:      workspaceID,
+		}, time.Now()); code != "" {
+			slog.Warn("websocket: workspace-bound token refused", "user_id", uid, "workspace_id", workspaceID, "token_workspace_id", entry.WorkspaceID, "code", code)
+			return "", nil, tokenRefusalBody(code)
 		}
 		return uid, nil, ""
 	}
@@ -857,6 +870,11 @@ func accountRefusal(ctx context.Context, guard *accountguard.Guard, userID strin
 	}
 }
 
+func tokenRefusalBody(code string) string {
+	body, _ := json.Marshal(map[string]string{"error": workspaceguard.Message(code), "code": code})
+	return string(body)
+}
+
 // HandleWebSocket upgrades an HTTP connection to WebSocket with cookie or
 // first-message auth. guard is optional; when non-nil, an account that is not
 // active is refused once the session has identified it.
@@ -880,10 +898,10 @@ func HandleWebSocket(hub *Hub, mc MembershipChecker, pr PATResolver, resolveSlug
 	var userID string
 	var guest bool
 	if cookie, err := r.Cookie(auth.AuthCookieName); err == nil && cookie.Value != "" {
-		uid, claims, errMsg := authenticateToken(cookie.Value, pr, r.Context())
+		uid, claims, errMsg := authenticateToken(cookie.Value, pr, r.Context(), workspaceID)
 		if errMsg != "" {
 			status := http.StatusUnauthorized
-			if errMsg == `{"error":"account disabled"}` {
+			if errMsg == `{"error":"account disabled"}` || strings.Contains(errMsg, `"code":"`+workspaceguard.CodeTokenWorkspaceMismatch+`"`) {
 				status = http.StatusForbidden
 			}
 			http.Error(w, errMsg, status)
@@ -935,7 +953,7 @@ func HandleWebSocket(hub *Hub, mc MembershipChecker, pr PATResolver, resolveSlug
 			writeWSAuthErrorAndClose(conn, []byte(errMsg), "workspace_id", workspaceID)
 			return
 		}
-		uid, claims, errMsg := authenticateToken(tokenStr, pr, r.Context())
+		uid, claims, errMsg := authenticateToken(tokenStr, pr, r.Context(), workspaceID)
 		if errMsg != "" {
 			writeWSAuthErrorAndClose(conn, []byte(errMsg), "workspace_id", workspaceID)
 			return

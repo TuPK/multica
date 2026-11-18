@@ -3346,31 +3346,34 @@ type patResolver struct {
 	cache   *auth.PATCache
 }
 
-func (pr *patResolver) ResolveToken(ctx context.Context, token string) (string, bool) {
+func (pr *patResolver) ResolveToken(ctx context.Context, token string) (auth.PATEntry, bool) {
 	hash := auth.HashToken(token)
 
-	if userID, ok := pr.cache.Get(ctx, hash); ok {
-		return userID, true
+	if entry, ok := pr.cache.GetEntry(ctx, hash); ok {
+		return entry, true
 	}
 
 	pat, err := pr.queries.GetPersonalAccessTokenByHash(ctx, hash)
 	if err != nil {
-		return "", false
+		return auth.PATEntry{}, false
 	}
 
-	userID := util.UUIDToString(pat.UserID)
+	entry := auth.PATEntry{UserID: util.UUIDToString(pat.UserID), ReadOnly: pat.ReadOnly}
+	if pat.WorkspaceID.Valid {
+		entry.WorkspaceID = util.UUIDToString(pat.WorkspaceID)
+	}
 
 	var expiresAt time.Time
 	if pat.ExpiresAt.Valid {
 		expiresAt = pat.ExpiresAt.Time
 	}
-	pr.cache.Set(ctx, hash, userID, auth.TTLForExpiry(time.Now(), expiresAt))
+	pr.cache.SetEntry(ctx, hash, entry, auth.TTLForExpiry(time.Now(), expiresAt))
 
 	// Cache miss = first WS auth in this TTL window. Refresh last_used_at;
 	// subsequent connects within the window skip the write.
 	go pr.queries.UpdatePersonalAccessTokenLastUsed(context.Background(), pat.ID)
 
-	return userID, true
+	return entry, true
 }
 
 // parseUUID is a thin alias for util.MustParseUUID. Call sites here are all
