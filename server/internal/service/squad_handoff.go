@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/server/internal/events"
+	"github.com/multica-ai/multica/server/internal/inbox"
 	"github.com/multica-ai/multica/server/internal/issuestatus"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
@@ -430,7 +431,7 @@ func (s *SquadHandoffService) perform(ctx context.Context, ws pgtype.UUID, sourc
 	}
 	if _, err := q.CreateComment(ctx, db.CreateCommentParams{
 		ID: dbid.NewV7(), IssueID: source.ID, WorkspaceID: ws, AuthorType: actor.Type, AuthorID: actor.ID,
-		Content: fmt.Sprintf("Handed off to %s: [%s](mention://issue/%s).", target.Name, created.Title, util.UUIDToString(created.ID)),
+		Content: handoffNoteContent(ctx, q, source, created, target.Name),
 		Type:    "comment",
 	}); err != nil {
 		return HandoffResult{}, fmt.Errorf("post the handoff note: %w", err)
@@ -519,10 +520,14 @@ func (s *SquadHandoffService) CloseLoop(ctx context.Context, issue db.Issue) err
 	default:
 		return nil
 	}
+	content := fmt.Sprintf("The build request (%s) %s.", hiddenIssueText, verb)
+	if source, serr := s.Queries.GetIssueInWorkspace(ctx, db.GetIssueInWorkspaceParams{ID: row.SourceIssueID, WorkspaceID: issue.WorkspaceID}); serr == nil {
+		content = closingNoteContent(ctx, s.Queries, source, issue, verb)
+	}
 	comment, err := s.Queries.CreateComment(ctx, db.CreateCommentParams{
 		ID: dbid.NewV7(), IssueID: row.SourceIssueID, WorkspaceID: issue.WorkspaceID,
 		AuthorType: "system", AuthorID: pgtype.UUID{Valid: true},
-		Content: fmt.Sprintf("The build request [%s](mention://issue/%s) %s.", issue.Title, util.UUIDToString(issue.ID), verb),
+		Content: content,
 		Type:    "system",
 	})
 	if err != nil {
@@ -542,6 +547,49 @@ func (s *SquadHandoffService) CloseLoop(ctx context.Context, issue db.Issue) err
 		})
 	}
 	return nil
+}
+
+// hiddenIssueText is what a note says in place of a target request that some of
+// its readers cannot see: the wording the API gives for a missing issue
+// (loadIssueForUser answers 404 "issue not found").
+const hiddenIssueText = "issue not found"
+
+// targetShownToReaders reports whether every member who can see the source
+// request can also see the target (spec 7.1 rule 4). A note is stored once and
+// read by all of them, so it names the target only when no reader would lose
+// out. The same project means the same readers. Otherwise each member who sees
+// the source is checked with the one visibility rule (inbox.IssueAudience, which
+// is projectaccess.ForViewer and Scope.Allows). Any failure counts as "not shown".
+func targetShownToReaders(ctx context.Context, q *db.Queries, source, target db.Issue) bool {
+	if source.ProjectID == target.ProjectID {
+		return true
+	}
+	members, err := q.ListMembers(ctx, source.WorkspaceID)
+	if err != nil {
+		return false
+	}
+	sourceAudience := inbox.NewIssueAudience(ctx, q, source.WorkspaceID, source.ID)
+	targetAudience := inbox.NewIssueAudience(ctx, q, target.WorkspaceID, target.ID)
+	for _, m := range members {
+		if sourceAudience.Sees(m.UserID) && !targetAudience.Sees(m.UserID) {
+			return false
+		}
+	}
+	return true
+}
+
+func handoffNoteContent(ctx context.Context, q *db.Queries, source, created db.Issue, squadName string) string {
+	if !targetShownToReaders(ctx, q, source, created) {
+		return fmt.Sprintf("Handed off to %s: %s.", squadName, hiddenIssueText)
+	}
+	return fmt.Sprintf("Handed off to %s: [%s](mention://issue/%s).", squadName, created.Title, util.UUIDToString(created.ID))
+}
+
+func closingNoteContent(ctx context.Context, q *db.Queries, source db.Issue, target db.Issue, verb string) string {
+	if !targetShownToReaders(ctx, q, source, target) {
+		return fmt.Sprintf("The build request (%s) %s.", hiddenIssueText, verb)
+	}
+	return fmt.Sprintf("The build request [%s](mention://issue/%s) %s.", target.Title, util.UUIDToString(target.ID), verb)
 }
 
 // resultOf reads a row as a result, with the target issue and squad when it has them.
