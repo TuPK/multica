@@ -464,7 +464,11 @@ func (h *Handler) ListProposals(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	params := db.ListProposalsParams{WorkspaceID: wsUUID}
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
+	params := db.ListProposalsParams{WorkspaceID: wsUUID, ScopeMode: scope.Mode(), ScopeUserID: scope.UserID()}
 	if state := r.URL.Query().Get("state"); state != "" {
 		switch state {
 		case service.ProposalStatePending, service.ProposalStateApproved, service.ProposalStateRejected,
@@ -513,7 +517,13 @@ func (h *Handler) GetProposal(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	row, err := h.Queries.GetProposalWithIssue(r.Context(), db.GetProposalWithIssueParams{ID: id, WorkspaceID: wsUUID})
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
+	row, err := h.Queries.GetProposalWithIssue(r.Context(), db.GetProposalWithIssueParams{
+		ID: id, WorkspaceID: wsUUID, ScopeMode: scope.Mode(), ScopeUserID: scope.UserID(),
+	})
 	if err != nil {
 		if isNotFound(err) {
 			writeError(w, http.StatusNotFound, "proposal not found")

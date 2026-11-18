@@ -22,7 +22,14 @@ SELECT * FROM proposal WHERE id = $1 AND workspace_id = $2;
 SELECT sqlc.embed(p), i.title AS issue_title, i.number AS issue_number, i.status AS issue_status
 FROM proposal p
 JOIN issue i ON i.id = p.issue_id AND i.workspace_id = p.workspace_id
-WHERE p.id = $1 AND p.workspace_id = $2;
+WHERE p.id = $1 AND p.workspace_id = $2
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+      OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+      OR (sqlc.arg(scope_mode)::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')));
 
 -- name: LockProposalInWorkspace :one
 -- Row lock for a decision, so two concurrent decisions cannot both see
@@ -37,6 +44,13 @@ JOIN issue i ON i.id = p.issue_id AND i.workspace_id = p.workspace_id
 WHERE p.workspace_id = sqlc.arg('workspace_id')
   AND (sqlc.narg('state')::text IS NULL OR p.state = sqlc.narg('state')::text)
   AND (sqlc.narg('squad_id')::uuid IS NULL OR p.squad_id = sqlc.narg('squad_id')::uuid)
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+      OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+      OR (sqlc.arg(scope_mode)::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ORDER BY p.created_at DESC, p.id DESC
 LIMIT 200;
 

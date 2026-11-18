@@ -330,11 +330,20 @@ SELECT p.id, p.workspace_id, p.squad_id, p.issue_id, p.handoff_squad_id, p.urgen
 FROM proposal p
 JOIN issue i ON i.id = p.issue_id AND i.workspace_id = p.workspace_id
 WHERE p.id = $1 AND p.workspace_id = $2
+  -- projectaccess:scope
+  AND ($3::text = 'all'
+      OR (i.project_id IS NULL AND $3::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $4::uuid)
+      OR ($3::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 `
 
 type GetProposalWithIssueParams struct {
 	ID          pgtype.UUID `json:"id"`
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
 }
 
 type GetProposalWithIssueRow struct {
@@ -345,7 +354,12 @@ type GetProposalWithIssueRow struct {
 }
 
 func (q *Queries) GetProposalWithIssue(ctx context.Context, arg GetProposalWithIssueParams) (GetProposalWithIssueRow, error) {
-	row := q.db.QueryRow(ctx, getProposalWithIssue, arg.ID, arg.WorkspaceID)
+	row := q.db.QueryRow(ctx, getProposalWithIssue,
+		arg.ID,
+		arg.WorkspaceID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	var i GetProposalWithIssueRow
 	err := row.Scan(
 		&i.Proposal.ID,
@@ -440,6 +454,13 @@ JOIN issue i ON i.id = p.issue_id AND i.workspace_id = p.workspace_id
 WHERE p.workspace_id = $1
   AND ($2::text IS NULL OR p.state = $2::text)
   AND ($3::uuid IS NULL OR p.squad_id = $3::uuid)
+  -- projectaccess:scope
+  AND ($4::text = 'all'
+      OR (i.project_id IS NULL AND $4::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $5::uuid)
+      OR ($4::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ORDER BY p.created_at DESC, p.id DESC
 LIMIT 200
 `
@@ -448,6 +469,8 @@ type ListProposalsParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 	State       pgtype.Text `json:"state"`
 	SquadID     pgtype.UUID `json:"squad_id"`
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
 }
 
 type ListProposalsRow struct {
@@ -459,7 +482,13 @@ type ListProposalsRow struct {
 
 // Newest first. state and squad_id are optional filters.
 func (q *Queries) ListProposals(ctx context.Context, arg ListProposalsParams) ([]ListProposalsRow, error) {
-	rows, err := q.db.Query(ctx, listProposals, arg.WorkspaceID, arg.State, arg.SquadID)
+	rows, err := q.db.Query(ctx, listProposals,
+		arg.WorkspaceID,
+		arg.State,
+		arg.SquadID,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}
