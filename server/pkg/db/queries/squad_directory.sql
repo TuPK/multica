@@ -50,5 +50,12 @@ WHERE r.workspace_id = sqlc.arg('workspace_id')::uuid
   AND r.assignee_type = 'squad'
   AND r.status NOT IN ('done', 'cancelled')
   AND r.created_at + make_interval(hours => COALESCE(c.response_hours, 48)) < sqlc.arg('now')::timestamptz
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+      OR (r.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = r.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+      OR (sqlc.arg(scope_mode)::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = r.project_id AND scope_p.access = 'workspace')))
 ORDER BY r.created_at ASC, r.id ASC
 LIMIT 50;

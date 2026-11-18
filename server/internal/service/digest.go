@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/server/internal/projectaccess"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
@@ -415,9 +416,17 @@ type DigestService struct {
 	FloorID pgtype.UUID
 	// Mode is squads or floors (see ResolveDigestMode). Empty means squads.
 	Mode string
+	// Scope is what the reader may see. Issues of projects outside it are left
+	// out of the digest's lists, counts and flags (spec 7.1 rule 5). The zero
+	// value sees only issues without a project; a request handler sets the
+	// viewer's scope, and NewDigestService starts with the system scope for
+	// background jobs.
+	Scope projectaccess.Scope
 }
 
-func NewDigestService(q *db.Queries) *DigestService { return &DigestService{Queries: q} }
+func NewDigestService(q *db.Queries) *DigestService {
+	return &DigestService{Queries: q, Scope: projectaccess.System()}
+}
 
 func (s *DigestService) now() time.Time {
 	if s.Now != nil {
@@ -588,6 +597,7 @@ func (s *DigestService) Compute(ctx context.Context, workspaceID pgtype.UUID, si
 		Since:       sinceTS,
 		StaleBefore: pgtype.Timestamptz{Time: now.Add(-DigestStaleAfter), Valid: true},
 		Now:         pgtype.Timestamptz{Time: now, Valid: true},
+		ScopeMode:   s.Scope.Mode(), ScopeUserID: s.Scope.UserID(),
 	})
 	if err != nil {
 		return Digest{}, fmt.Errorf("digest squad stats: %w", err)
@@ -636,7 +646,8 @@ func (s *DigestService) Compute(ctx context.Context, workspaceID pgtype.UUID, si
 		}
 		proposals, err := s.Queries.DigestPendingProposals(ctx, db.DigestPendingProposalsParams{
 			WorkspaceID: workspaceID, SquadIds: ids, PerSquadLimit: DigestProposalListLimit,
-			Now: pgtype.Timestamptz{Time: now, Valid: true},
+			Now:       pgtype.Timestamptz{Time: now, Valid: true},
+			ScopeMode: s.Scope.Mode(), ScopeUserID: s.Scope.UserID(),
 		})
 		if err != nil {
 			return Digest{}, fmt.Errorf("digest pending proposals: %w", err)
@@ -648,6 +659,7 @@ func (s *DigestService) Compute(ctx context.Context, workspaceID pgtype.UUID, si
 		}
 		done, err := s.Queries.DigestRecentDoneIssues(ctx, db.DigestRecentDoneIssuesParams{
 			WorkspaceID: workspaceID, SquadIds: ids, Since: sinceTS, PerSquadLimit: DigestRecentDoneLimit,
+			ScopeMode: s.Scope.Mode(), ScopeUserID: s.Scope.UserID(),
 		})
 		if err != nil {
 			return Digest{}, fmt.Errorf("digest recent done issues: %w", err)
@@ -892,6 +904,7 @@ func (s *DigestService) computeAutoApproved(ctx context.Context, workspaceID pgt
 func (s *DigestService) computeOverdueRequests(ctx context.Context, workspaceID pgtype.UUID, now time.Time, prefix string) ([]DigestOverdueRequest, error) {
 	rows, err := s.Queries.ListOverdueSquadRequests(ctx, db.ListOverdueSquadRequestsParams{
 		WorkspaceID: workspaceID, Now: pgtype.Timestamptz{Time: now, Valid: true},
+		ScopeMode: s.Scope.Mode(), ScopeUserID: s.Scope.UserID(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("digest overdue requests: %w", err)
@@ -914,6 +927,7 @@ func (s *DigestService) computeOverdueRequests(ctx context.Context, workspaceID 
 func (s *DigestService) computeBlockedDirectives(ctx context.Context, workspaceID pgtype.UUID, now time.Time, prefix string) ([]DigestBlockedDirective, error) {
 	rows, err := s.Queries.ListBlockedDirectivesPastDue(ctx, db.ListBlockedDirectivesPastDueParams{
 		WorkspaceID: workspaceID, Now: pgtype.Timestamptz{Time: now, Valid: true},
+		ScopeMode: s.Scope.Mode(), ScopeUserID: s.Scope.UserID(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("digest blocked directives: %w", err)
@@ -942,6 +956,7 @@ func (s *DigestService) computeRequestsPastDeadline(ctx context.Context, workspa
 	}
 	rows, err := s.Queries.ListSecretaryRequestsPastDeadline(ctx, db.ListSecretaryRequestsPastDeadlineParams{
 		WorkspaceID: workspaceID, ProjectID: desk, Now: pgtype.Timestamptz{Time: now, Valid: true},
+		ScopeMode: s.Scope.Mode(), ScopeUserID: s.Scope.UserID(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("digest requests past deadline: %w", err)
@@ -1027,7 +1042,9 @@ func (s *DigestService) attachRoutines(ctx context.Context, workspaceID pgtype.U
 	}
 	list.Items = append(list.Items, offTrack...)
 
-	activity, err := s.Queries.DigestCharterActivity(ctx, workspaceID)
+	activity, err := s.Queries.DigestCharterActivity(ctx, db.DigestCharterActivityParams{
+		WorkspaceID: workspaceID, ScopeMode: s.Scope.Mode(), ScopeUserID: s.Scope.UserID(),
+	})
 	if err != nil {
 		return DigestRoutineRefList{}, fmt.Errorf("digest charter activity: %w", err)
 	}

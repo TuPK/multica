@@ -27,24 +27,56 @@ SELECT
     (SELECT count(*) FROM agent_task_queue t
       WHERE t.squad_id = s.id
         AND t.status = 'failed'
-        AND t.completed_at >= sqlc.arg('since')::timestamptz)::int AS failed_runs_count,
+        AND t.completed_at >= sqlc.arg('since')::timestamptz
+        AND (t.issue_id IS NULL OR EXISTS (
+            SELECT 1 FROM issue ti
+             WHERE ti.id = t.issue_id
+              -- projectaccess:scope
+              AND (sqlc.arg(scope_mode)::text = 'all'
+                  OR (ti.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+                  OR EXISTS (SELECT 1 FROM project_member scope_pm
+                             WHERE scope_pm.project_id = ti.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+                  OR (sqlc.arg(scope_mode)::text = 'member'
+                      AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = ti.project_id AND scope_p.access = 'workspace'))))))::int AS failed_runs_count,
     (SELECT count(*) FROM activity_log al
        JOIN issue ai ON ai.id = al.issue_id AND ai.workspace_id = s.workspace_id
       WHERE al.workspace_id = s.workspace_id
         AND ai.assignee_type = 'squad' AND ai.assignee_id = s.id
         AND al.action = 'squad_leader_evaluated'
         AND al.details->>'outcome' = 'no_action'
-        AND al.created_at >= sqlc.arg('since')::timestamptz)::int AS leader_no_action_count,
+        AND al.created_at >= sqlc.arg('since')::timestamptz
+        -- projectaccess:scope
+        AND (sqlc.arg(scope_mode)::text = 'all'
+            OR (ai.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+            OR EXISTS (SELECT 1 FROM project_member scope_pm
+                       WHERE scope_pm.project_id = ai.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+            OR (sqlc.arg(scope_mode)::text = 'member'
+                AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = ai.project_id AND scope_p.access = 'workspace'))))::int AS leader_no_action_count,
     -- A snoozed proposal is hidden until its snooze passes, as the list below is.
     -- The pending caps are counted by their own queries and still include it.
     (SELECT count(*) FROM proposal p
+       JOIN issue pi ON pi.id = p.issue_id AND pi.workspace_id = p.workspace_id
       WHERE p.workspace_id = s.workspace_id AND p.squad_id = s.id AND p.state = 'pending'
-        AND (p.snoozed_until IS NULL OR p.snoozed_until <= sqlc.arg('now')::timestamptz))::int AS pending_proposal_count
+        AND (p.snoozed_until IS NULL OR p.snoozed_until <= sqlc.arg('now')::timestamptz)
+        -- projectaccess:scope
+        AND (sqlc.arg(scope_mode)::text = 'all'
+            OR (pi.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+            OR EXISTS (SELECT 1 FROM project_member scope_pm
+                       WHERE scope_pm.project_id = pi.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+            OR (sqlc.arg(scope_mode)::text = 'member'
+                AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = pi.project_id AND scope_p.access = 'workspace'))))::int AS pending_proposal_count
 FROM squad s
 LEFT JOIN issue i
        ON i.workspace_id = s.workspace_id
       AND i.assignee_type = 'squad'
       AND i.assignee_id = s.id
+      -- projectaccess:scope
+      AND (sqlc.arg(scope_mode)::text = 'all'
+          OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+          OR EXISTS (SELECT 1 FROM project_member scope_pm
+                     WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+          OR (sqlc.arg(scope_mode)::text = 'member'
+              AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 LEFT JOIN issue_status st
        ON st.workspace_id = i.workspace_id AND st.key = i.status
 WHERE s.workspace_id = sqlc.arg('workspace_id')::uuid
@@ -65,6 +97,13 @@ FROM (
       AND p.state = 'pending'
       AND p.squad_id = ANY(sqlc.arg('squad_ids')::uuid[])
       AND (p.snoozed_until IS NULL OR p.snoozed_until <= sqlc.arg('now')::timestamptz)
+      -- projectaccess:scope
+      AND (sqlc.arg(scope_mode)::text = 'all'
+          OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+          OR EXISTS (SELECT 1 FROM project_member scope_pm
+                     WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+          OR (sqlc.arg(scope_mode)::text = 'member'
+              AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ) ranked
 WHERE rn <= sqlc.arg('per_squad_limit')::int
 ORDER BY squad_id, rn;
@@ -84,6 +123,13 @@ FROM (
       AND i.assignee_id = ANY(sqlc.arg('squad_ids')::uuid[])
       AND i.updated_at >= sqlc.arg('since')::timestamptz
       AND (i.status = 'done' OR st.category = 'done')
+      -- projectaccess:scope
+      AND (sqlc.arg(scope_mode)::text = 'all'
+          OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+          OR EXISTS (SELECT 1 FROM project_member scope_pm
+                     WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+          OR (sqlc.arg(scope_mode)::text = 'member'
+              AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ) ranked
 WHERE rn <= sqlc.arg('per_squad_limit')::int
 ORDER BY squad_id, rn;
@@ -207,10 +253,25 @@ SELECT c.squad_id,
         (SELECT max(i.updated_at) FROM issue i
           WHERE i.workspace_id = c.workspace_id
             AND i.assignee_type = 'squad'
-            AND i.assignee_id = c.squad_id),
+            AND i.assignee_id = c.squad_id
+            -- projectaccess:scope
+            AND (sqlc.arg(scope_mode)::text = 'all'
+                OR (i.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+                OR EXISTS (SELECT 1 FROM project_member scope_pm
+                           WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+                OR (sqlc.arg(scope_mode)::text = 'member'
+                    AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))),
         (SELECT max(p.created_at) FROM proposal p
+           JOIN issue pi ON pi.id = p.issue_id AND pi.workspace_id = p.workspace_id
           WHERE p.workspace_id = c.workspace_id
-            AND p.squad_id = c.squad_id),
+            AND p.squad_id = c.squad_id
+            -- projectaccess:scope
+            AND (sqlc.arg(scope_mode)::text = 'all'
+                OR (pi.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+                OR EXISTS (SELECT 1 FROM project_member scope_pm
+                           WHERE scope_pm.project_id = pi.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+                OR (sqlc.arg(scope_mode)::text = 'member'
+                    AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = pi.project_id AND scope_p.access = 'workspace')))),
         (SELECT max(run.triggered_at) FROM autopilot_run run
           WHERE run.squad_id = c.squad_id)
     )::timestamptz AS last_activity_at

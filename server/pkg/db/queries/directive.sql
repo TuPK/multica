@@ -14,5 +14,12 @@ WHERE workspace_id = sqlc.arg('workspace_id')::uuid
   AND status = 'blocked'
   AND due_date IS NOT NULL
   AND due_date < sqlc.arg('now')::timestamptz
+  -- projectaccess:scope
+  AND (sqlc.arg(scope_mode)::text = 'all'
+      OR (issue.project_id IS NULL AND sqlc.arg(scope_mode)::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = sqlc.arg(scope_user_id)::uuid)
+      OR (sqlc.arg(scope_mode)::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
 ORDER BY due_date ASC, id ASC
 LIMIT 50;

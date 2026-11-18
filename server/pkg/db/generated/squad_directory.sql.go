@@ -26,6 +26,13 @@ WHERE r.workspace_id = $1::uuid
   AND r.assignee_type = 'squad'
   AND r.status NOT IN ('done', 'cancelled')
   AND r.created_at + make_interval(hours => COALESCE(c.response_hours, 48)) < $2::timestamptz
+  -- projectaccess:scope
+  AND ($3::text = 'all'
+      OR (r.project_id IS NULL AND $3::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = r.project_id AND scope_pm.user_id = $4::uuid)
+      OR ($3::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = r.project_id AND scope_p.access = 'workspace')))
 ORDER BY r.created_at ASC, r.id ASC
 LIMIT 50
 `
@@ -33,6 +40,8 @@ LIMIT 50
 type ListOverdueSquadRequestsParams struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	Now         pgtype.Timestamptz `json:"now"`
+	ScopeMode   string             `json:"scope_mode"`
+	ScopeUserID pgtype.UUID        `json:"scope_user_id"`
 }
 
 type ListOverdueSquadRequestsRow struct {
@@ -47,7 +56,12 @@ type ListOverdueSquadRequestsRow struct {
 // Open squad requests whose age has passed the receiving squad's response_hours.
 // The digest reads them for the boss's brief.
 func (q *Queries) ListOverdueSquadRequests(ctx context.Context, arg ListOverdueSquadRequestsParams) ([]ListOverdueSquadRequestsRow, error) {
-	rows, err := q.db.Query(ctx, listOverdueSquadRequests, arg.WorkspaceID, arg.Now)
+	rows, err := q.db.Query(ctx, listOverdueSquadRequests,
+		arg.WorkspaceID,
+		arg.Now,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}

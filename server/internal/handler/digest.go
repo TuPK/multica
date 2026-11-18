@@ -28,7 +28,12 @@ func (h *Handler) GetCompanyDigest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	scope, ok := h.viewerScope(w, r, wsUUID)
+	if !ok {
+		return
+	}
 	svc := service.NewDigestService(h.Queries)
+	svc.Scope = scope
 	if !h.applyDigestScope(w, r, wsUUID, svc) {
 		return
 	}

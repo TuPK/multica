@@ -43,6 +43,13 @@ WHERE workspace_id = $1::uuid
   AND status NOT IN ('done', 'cancelled')
   AND due_date IS NOT NULL
   AND due_date < $3::timestamptz
+  -- projectaccess:scope
+  AND ($4::text = 'all'
+      OR (issue.project_id IS NULL AND $4::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = $5::uuid)
+      OR ($4::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
 ORDER BY due_date ASC, id ASC
 LIMIT 50
 `
@@ -51,6 +58,8 @@ type ListSecretaryRequestsPastDeadlineParams struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	ProjectID   pgtype.UUID        `json:"project_id"`
 	Now         pgtype.Timestamptz `json:"now"`
+	ScopeMode   string             `json:"scope_mode"`
+	ScopeUserID pgtype.UUID        `json:"scope_user_id"`
 }
 
 type ListSecretaryRequestsPastDeadlineRow struct {
@@ -65,7 +74,13 @@ type ListSecretaryRequestsPastDeadlineRow struct {
 // request when it publishes the assessment, so an open one past its due date has
 // no assessment. The digest reads them for the boss's brief (spec 13.7.3).
 func (q *Queries) ListSecretaryRequestsPastDeadline(ctx context.Context, arg ListSecretaryRequestsPastDeadlineParams) ([]ListSecretaryRequestsPastDeadlineRow, error) {
-	rows, err := q.db.Query(ctx, listSecretaryRequestsPastDeadline, arg.WorkspaceID, arg.ProjectID, arg.Now)
+	rows, err := q.db.Query(ctx, listSecretaryRequestsPastDeadline,
+		arg.WorkspaceID,
+		arg.ProjectID,
+		arg.Now,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}

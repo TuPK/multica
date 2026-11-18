@@ -126,16 +126,37 @@ SELECT c.squad_id,
         (SELECT max(i.updated_at) FROM issue i
           WHERE i.workspace_id = c.workspace_id
             AND i.assignee_type = 'squad'
-            AND i.assignee_id = c.squad_id),
+            AND i.assignee_id = c.squad_id
+            -- projectaccess:scope
+            AND ($1::text = 'all'
+                OR (i.project_id IS NULL AND $1::text <> 'guest')
+                OR EXISTS (SELECT 1 FROM project_member scope_pm
+                           WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $2::uuid)
+                OR ($1::text = 'member'
+                    AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))),
         (SELECT max(p.created_at) FROM proposal p
+           JOIN issue pi ON pi.id = p.issue_id AND pi.workspace_id = p.workspace_id
           WHERE p.workspace_id = c.workspace_id
-            AND p.squad_id = c.squad_id),
+            AND p.squad_id = c.squad_id
+            -- projectaccess:scope
+            AND ($1::text = 'all'
+                OR (pi.project_id IS NULL AND $1::text <> 'guest')
+                OR EXISTS (SELECT 1 FROM project_member scope_pm
+                           WHERE scope_pm.project_id = pi.project_id AND scope_pm.user_id = $2::uuid)
+                OR ($1::text = 'member'
+                    AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = pi.project_id AND scope_p.access = 'workspace')))),
         (SELECT max(run.triggered_at) FROM autopilot_run run
           WHERE run.squad_id = c.squad_id)
     )::timestamptz AS last_activity_at
 FROM squad_charter c
-WHERE c.workspace_id = $1::uuid
+WHERE c.workspace_id = $3::uuid
 `
+
+type DigestCharterActivityParams struct {
+	ScopeMode   string      `json:"scope_mode"`
+	ScopeUserID pgtype.UUID `json:"scope_user_id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
 
 type DigestCharterActivityRow struct {
 	SquadID        pgtype.UUID        `json:"squad_id"`
@@ -146,8 +167,8 @@ type DigestCharterActivityRow struct {
 // to it, a proposal it filed, or a run of one of its routines. The digest reports
 // a squad as silent when this is more than seven days old. The charter's own save
 // counts, so a squad chartered yesterday is not silent.
-func (q *Queries) DigestCharterActivity(ctx context.Context, workspaceID pgtype.UUID) ([]DigestCharterActivityRow, error) {
-	rows, err := q.db.Query(ctx, digestCharterActivity, workspaceID)
+func (q *Queries) DigestCharterActivity(ctx context.Context, arg DigestCharterActivityParams) ([]DigestCharterActivityRow, error) {
+	rows, err := q.db.Query(ctx, digestCharterActivity, arg.ScopeMode, arg.ScopeUserID, arg.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -388,8 +409,15 @@ FROM (
       AND p.state = 'pending'
       AND p.squad_id = ANY($2::uuid[])
       AND (p.snoozed_until IS NULL OR p.snoozed_until <= $3::timestamptz)
+      -- projectaccess:scope
+      AND ($4::text = 'all'
+          OR (i.project_id IS NULL AND $4::text <> 'guest')
+          OR EXISTS (SELECT 1 FROM project_member scope_pm
+                     WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $5::uuid)
+          OR ($4::text = 'member'
+              AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ) ranked
-WHERE rn <= $4::int
+WHERE rn <= $6::int
 ORDER BY squad_id, rn
 `
 
@@ -397,6 +425,8 @@ type DigestPendingProposalsParams struct {
 	WorkspaceID   pgtype.UUID        `json:"workspace_id"`
 	SquadIds      []pgtype.UUID      `json:"squad_ids"`
 	Now           pgtype.Timestamptz `json:"now"`
+	ScopeMode     string             `json:"scope_mode"`
+	ScopeUserID   pgtype.UUID        `json:"scope_user_id"`
 	PerSquadLimit int32              `json:"per_squad_limit"`
 }
 
@@ -414,6 +444,8 @@ func (q *Queries) DigestPendingProposals(ctx context.Context, arg DigestPendingP
 		arg.WorkspaceID,
 		arg.SquadIds,
 		arg.Now,
+		arg.ScopeMode,
+		arg.ScopeUserID,
 		arg.PerSquadLimit,
 	)
 	if err != nil {
@@ -447,8 +479,15 @@ FROM (
       AND i.assignee_id = ANY($2::uuid[])
       AND i.updated_at >= $3::timestamptz
       AND (i.status = 'done' OR st.category = 'done')
+      -- projectaccess:scope
+      AND ($4::text = 'all'
+          OR (i.project_id IS NULL AND $4::text <> 'guest')
+          OR EXISTS (SELECT 1 FROM project_member scope_pm
+                     WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $5::uuid)
+          OR ($4::text = 'member'
+              AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 ) ranked
-WHERE rn <= $4::int
+WHERE rn <= $6::int
 ORDER BY squad_id, rn
 `
 
@@ -456,6 +495,8 @@ type DigestRecentDoneIssuesParams struct {
 	WorkspaceID   pgtype.UUID        `json:"workspace_id"`
 	SquadIds      []pgtype.UUID      `json:"squad_ids"`
 	Since         pgtype.Timestamptz `json:"since"`
+	ScopeMode     string             `json:"scope_mode"`
+	ScopeUserID   pgtype.UUID        `json:"scope_user_id"`
 	PerSquadLimit int32              `json:"per_squad_limit"`
 }
 
@@ -473,6 +514,8 @@ func (q *Queries) DigestRecentDoneIssues(ctx context.Context, arg DigestRecentDo
 		arg.WorkspaceID,
 		arg.SquadIds,
 		arg.Since,
+		arg.ScopeMode,
+		arg.ScopeUserID,
 		arg.PerSquadLimit,
 	)
 	if err != nil {
@@ -517,27 +560,59 @@ SELECT
     (SELECT count(*) FROM agent_task_queue t
       WHERE t.squad_id = s.id
         AND t.status = 'failed'
-        AND t.completed_at >= $1::timestamptz)::int AS failed_runs_count,
+        AND t.completed_at >= $1::timestamptz
+        AND (t.issue_id IS NULL OR EXISTS (
+            SELECT 1 FROM issue ti
+             WHERE ti.id = t.issue_id
+              -- projectaccess:scope
+              AND ($3::text = 'all'
+                  OR (ti.project_id IS NULL AND $3::text <> 'guest')
+                  OR EXISTS (SELECT 1 FROM project_member scope_pm
+                             WHERE scope_pm.project_id = ti.project_id AND scope_pm.user_id = $4::uuid)
+                  OR ($3::text = 'member'
+                      AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = ti.project_id AND scope_p.access = 'workspace'))))))::int AS failed_runs_count,
     (SELECT count(*) FROM activity_log al
        JOIN issue ai ON ai.id = al.issue_id AND ai.workspace_id = s.workspace_id
       WHERE al.workspace_id = s.workspace_id
         AND ai.assignee_type = 'squad' AND ai.assignee_id = s.id
         AND al.action = 'squad_leader_evaluated'
         AND al.details->>'outcome' = 'no_action'
-        AND al.created_at >= $1::timestamptz)::int AS leader_no_action_count,
+        AND al.created_at >= $1::timestamptz
+        -- projectaccess:scope
+        AND ($3::text = 'all'
+            OR (ai.project_id IS NULL AND $3::text <> 'guest')
+            OR EXISTS (SELECT 1 FROM project_member scope_pm
+                       WHERE scope_pm.project_id = ai.project_id AND scope_pm.user_id = $4::uuid)
+            OR ($3::text = 'member'
+                AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = ai.project_id AND scope_p.access = 'workspace'))))::int AS leader_no_action_count,
     -- A snoozed proposal is hidden until its snooze passes, as the list below is.
     -- The pending caps are counted by their own queries and still include it.
     (SELECT count(*) FROM proposal p
+       JOIN issue pi ON pi.id = p.issue_id AND pi.workspace_id = p.workspace_id
       WHERE p.workspace_id = s.workspace_id AND p.squad_id = s.id AND p.state = 'pending'
-        AND (p.snoozed_until IS NULL OR p.snoozed_until <= $3::timestamptz))::int AS pending_proposal_count
+        AND (p.snoozed_until IS NULL OR p.snoozed_until <= $5::timestamptz)
+        -- projectaccess:scope
+        AND ($3::text = 'all'
+            OR (pi.project_id IS NULL AND $3::text <> 'guest')
+            OR EXISTS (SELECT 1 FROM project_member scope_pm
+                       WHERE scope_pm.project_id = pi.project_id AND scope_pm.user_id = $4::uuid)
+            OR ($3::text = 'member'
+                AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = pi.project_id AND scope_p.access = 'workspace'))))::int AS pending_proposal_count
 FROM squad s
 LEFT JOIN issue i
        ON i.workspace_id = s.workspace_id
       AND i.assignee_type = 'squad'
       AND i.assignee_id = s.id
+      -- projectaccess:scope
+      AND ($3::text = 'all'
+          OR (i.project_id IS NULL AND $3::text <> 'guest')
+          OR EXISTS (SELECT 1 FROM project_member scope_pm
+                     WHERE scope_pm.project_id = i.project_id AND scope_pm.user_id = $4::uuid)
+          OR ($3::text = 'member'
+              AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = i.project_id AND scope_p.access = 'workspace')))
 LEFT JOIN issue_status st
        ON st.workspace_id = i.workspace_id AND st.key = i.status
-WHERE s.workspace_id = $4::uuid
+WHERE s.workspace_id = $6::uuid
   AND s.archived_at IS NULL
 GROUP BY s.id, s.name, s.floor_id
 `
@@ -545,6 +620,8 @@ GROUP BY s.id, s.name, s.floor_id
 type DigestSquadStatsParams struct {
 	Since       pgtype.Timestamptz `json:"since"`
 	StaleBefore pgtype.Timestamptz `json:"stale_before"`
+	ScopeMode   string             `json:"scope_mode"`
+	ScopeUserID pgtype.UUID        `json:"scope_user_id"`
 	Now         pgtype.Timestamptz `json:"now"`
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 }
@@ -576,6 +653,8 @@ func (q *Queries) DigestSquadStats(ctx context.Context, arg DigestSquadStatsPara
 	rows, err := q.db.Query(ctx, digestSquadStats,
 		arg.Since,
 		arg.StaleBefore,
+		arg.ScopeMode,
+		arg.ScopeUserID,
 		arg.Now,
 		arg.WorkspaceID,
 	)

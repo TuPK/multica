@@ -38,6 +38,13 @@ WHERE workspace_id = $1::uuid
   AND status = 'blocked'
   AND due_date IS NOT NULL
   AND due_date < $2::timestamptz
+  -- projectaccess:scope
+  AND ($3::text = 'all'
+      OR (issue.project_id IS NULL AND $3::text <> 'guest')
+      OR EXISTS (SELECT 1 FROM project_member scope_pm
+                 WHERE scope_pm.project_id = issue.project_id AND scope_pm.user_id = $4::uuid)
+      OR ($3::text = 'member'
+          AND EXISTS (SELECT 1 FROM project scope_p WHERE scope_p.id = issue.project_id AND scope_p.access = 'workspace')))
 ORDER BY due_date ASC, id ASC
 LIMIT 50
 `
@@ -45,6 +52,8 @@ LIMIT 50
 type ListBlockedDirectivesPastDueParams struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	Now         pgtype.Timestamptz `json:"now"`
+	ScopeMode   string             `json:"scope_mode"`
+	ScopeUserID pgtype.UUID        `json:"scope_user_id"`
 }
 
 type ListBlockedDirectivesPastDueRow struct {
@@ -57,7 +66,12 @@ type ListBlockedDirectivesPastDueRow struct {
 // Directives the leader has marked blocked after their due date. The digest
 // reads them so the boss sees a stuck directive without opening each one.
 func (q *Queries) ListBlockedDirectivesPastDue(ctx context.Context, arg ListBlockedDirectivesPastDueParams) ([]ListBlockedDirectivesPastDueRow, error) {
-	rows, err := q.db.Query(ctx, listBlockedDirectivesPastDue, arg.WorkspaceID, arg.Now)
+	rows, err := q.db.Query(ctx, listBlockedDirectivesPastDue,
+		arg.WorkspaceID,
+		arg.Now,
+		arg.ScopeMode,
+		arg.ScopeUserID,
+	)
 	if err != nil {
 		return nil, err
 	}
