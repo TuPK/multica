@@ -47,6 +47,11 @@ Each finding has an id (F-1, F-2, ...), a severity (Critical, High, Medium, Low)
 and a state: open, resolved, accepted-risk, waived, or false-positive. Only a person accepts a risk or grants a waiver. You may
 request one, with the reason and an expiry date.
 
+A finding is `Pre-existing` when the same bug reproduces on the base branch and the change neither adds it nor moves it. Check
+that by running the same check on the base branch. A pre-existing finding is listed after the blocking ones, is tagged
+`Pre-existing`, and does not block the change. It becomes blocking only when the change depends on it or makes it worse. The
+author is not charged with it.
+
 ## Report
 
 One issue comment, verdict first:
