@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "data": {
+    "reference_code": "REF-EXAMPLE-1",
+    "status": "Success",
+    "message": "MESSAGE_PLACEHOLDER",
+    "invoice": {
+      "reference_code": "REF-EXAMPLE-1",
+      "invoice_number": "589",
+      "issued_date": "2026-01-26",
+      "pdf_url": "https://example.invalid/invoice.pdf",
+      "xml_url": null,
+      "status": "issued",
+      "buyer": {"name": "BUYER_NAME_PLACEHOLDER", "tax_code": "0000000000", "address": "ADDRESS_PLACEHOLDER", "email": "buyer@example.com", "phone": ""},
+      "seller_store": null,
+      "total_before_tax": 100000,
+      "tax_amount": 10000,
+      "total_amount": 110000,
+      "notes": "",
+      "source": "api"
+    }
+  }
+}

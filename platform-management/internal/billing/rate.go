@@ -56,6 +56,15 @@ func ParseRate(s string) (Rate, error) {
 
 func (r Rate) valid() bool { return r.den > 0 }
 
+// Percent returns the rate as a whole number of percent, or an error when the
+// rate is not a whole percent (0.085 is 8.5%).
+func (r Rate) Percent() (int64, error) {
+	if !r.valid() || r.num*100%r.den != 0 {
+		return 0, errors.New("rate is not a whole percent")
+	}
+	return r.num * 100 / r.den, nil
+}
+
 // divRoundHalfUp returns n/d rounded to the nearest integer, halves up. n is
 // not negative and d is positive.
 func divRoundHalfUp(n, d *big.Int) *big.Int {

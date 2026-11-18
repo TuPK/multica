@@ -459,3 +459,12 @@ func TestEinvoiceRoutesAnswer503WhenServiceNotWired(t *testing.T) {
 		t.Errorf("retry got %d %s, want 503 einvoice_provider_not_configured", rec.Code, rec.Body)
 	}
 }
+
+func TestEinvoiceReplaceUnsupportedIs503(t *testing.T) {
+	e := newEnv(t)
+	withEinvoiceOps(e, invoice.Record{}, invoice.ErrReplaceUnsupported)
+	rec := e.do(adminID, "POST", "/api/platform/einvoices/"+orderA+"/replace", `{"reason":"wrong tax code"}`)
+	if rec.Code != http.StatusServiceUnavailable || decodeMap(t, rec)["code"] != "einvoice_replace_unsupported" {
+		t.Errorf("got %d %s, want 503 einvoice_replace_unsupported", rec.Code, rec.Body)
+	}
+}

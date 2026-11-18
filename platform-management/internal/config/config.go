@@ -8,6 +8,9 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/multica-ai/multica/platform-management/internal/billing"
 	"github.com/multica-ai/multica/platform-management/internal/mfa"
@@ -139,8 +142,26 @@ type Payments struct {
 	WebhookMaxBytes int64
 }
 
+// Einvoice holds the e-invoice provider settings (spec 7.3). The provider is
+// off when Provider is empty.
+type Einvoice struct {
+	// Provider is PLATFORM_EINVOICE_PROVIDER: empty or "sepay".
+	Provider string
+	// SepayAPIKey is PLATFORM_EINVOICE_SEPAY_API_KEY, as client_id:client_secret.
+	SepayAPIKey string
+	// SepayBaseURL is PLATFORM_EINVOICE_SEPAY_BASE_URL.
+	SepayBaseURL string
+	// SepayProviderAccountID is PLATFORM_EINVOICE_SEPAY_PROVIDER_ACCOUNT_ID.
+	SepayProviderAccountID string
+	// StartAt is PLATFORM_EINVOICE_START_AT: orders paid before it get no invoice.
+	StartAt time.Time
+	// MaxAttempts is PLATFORM_EINVOICE_MAX_ATTEMPTS; 8 when it is not set.
+	MaxAttempts int
+}
+
 type Config struct {
 	Billing       Billing
+	Einvoice      Einvoice
 	Payments      Payments
 	Price         Price
 	DatabaseURL   string
@@ -324,6 +345,8 @@ func Load(getenv func(string) string) (Config, error) {
 		fail("PLATFORM_PRICE_CONFIRM_PCT", "must be a whole number from 1 to 100")
 	}
 
+	cfg.Einvoice = loadEinvoice(get, fail)
+
 	if len(errs) > 0 {
 		return Config{}, errors.Join(errs...)
 	}
@@ -405,6 +428,48 @@ func loadBilling(get func(string) string, fail func(variable, reason string)) Bi
 		BankName:      get("BILLING_BANK_NAME"),
 	}
 	return b
+}
+
+const einvoiceProviderSepay = "sepay"
+
+// loadEinvoice reads the e-invoice provider. The SePay variables are read only
+// when the provider is sepay; a reason never contains a value.
+func loadEinvoice(get func(string) string, fail func(variable, reason string)) Einvoice {
+	e := Einvoice{Provider: get("PLATFORM_EINVOICE_PROVIDER")}
+	e.MaxAttempts = wholeNumber(get, fail, "PLATFORM_EINVOICE_MAX_ATTEMPTS", 8)
+	switch e.Provider {
+	case "":
+		return e
+	case einvoiceProviderSepay:
+	default:
+		fail("PLATFORM_EINVOICE_PROVIDER", "must be empty or sepay")
+		return e
+	}
+
+	e.SepayAPIKey = get("PLATFORM_EINVOICE_SEPAY_API_KEY")
+	id, secret, found := strings.Cut(e.SepayAPIKey, ":")
+	if !found || id == "" || secret == "" {
+		fail("PLATFORM_EINVOICE_SEPAY_API_KEY", "is required, as client_id:client_secret")
+	}
+
+	e.SepayBaseURL = get("PLATFORM_EINVOICE_SEPAY_BASE_URL")
+	u, err := url.Parse(e.SepayBaseURL)
+	if err != nil || u.Scheme != "https" || (u.Host != "einvoice-api.sepay.vn" && u.Host != "einvoice-api-sandbox.sepay.vn") {
+		fail("PLATFORM_EINVOICE_SEPAY_BASE_URL", "must be https://einvoice-api.sepay.vn or https://einvoice-api-sandbox.sepay.vn")
+	}
+
+	e.SepayProviderAccountID = get("PLATFORM_EINVOICE_SEPAY_PROVIDER_ACCOUNT_ID")
+	var account pgtype.UUID
+	if err := account.Scan(e.SepayProviderAccountID); err != nil {
+		fail("PLATFORM_EINVOICE_SEPAY_PROVIDER_ACCOUNT_ID", "is required, as a UUID")
+	}
+
+	at, err := time.Parse(time.RFC3339, get("PLATFORM_EINVOICE_START_AT"))
+	if err != nil {
+		fail("PLATFORM_EINVOICE_START_AT", "is required, as an RFC 3339 time such as 2026-02-01T00:00:00+07:00")
+	}
+	e.StartAt = at.UTC()
+	return e
 }
 
 const (

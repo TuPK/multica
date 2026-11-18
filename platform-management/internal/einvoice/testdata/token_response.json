@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "data": {
+    "access_token": "ACCESS_TOKEN_PLACEHOLDER",
+    "token_type": "Bearer",
+    "expires_in": 86400
+  }
+}

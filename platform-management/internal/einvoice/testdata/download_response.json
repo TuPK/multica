@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "data": {
+    "file_type": "pdf",
+    "file_name": "FILE_NAME_PLACEHOLDER.pdf",
+    "content": "BASE64_PLACEHOLDER"
+  }
+}

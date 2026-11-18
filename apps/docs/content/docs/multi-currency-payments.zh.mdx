@@ -73,6 +73,21 @@ printf '%s' "$TIMESTAMP.$BODY" | openssl dgst -sha256 -hmac "$SECRET" -hex
 
 找不到待支付订单、或金额不符的转账会进入员工的付款通知队列，不会改动任何订单。未设置 `PLATFORM_WEBHOOK_PORT` 时不运行监听端口。
 
+## 电子发票（SePay）
+
+平台可通过 SePay 为每笔已支付订单开具 VAT 电子发票。仅当 `PLATFORM_EINVOICE_PROVIDER` 为 `sepay` 时开启；其他非空值会导致启动失败。API Key 只放在环境变量中，不要写入仓库文件。
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `PLATFORM_EINVOICE_PROVIDER` | 空（关闭） | 设为 `sepay` 开启电子发票 |
+| `PLATFORM_EINVOICE_SEPAY_API_KEY` | 使用 `sepay` 时必填 | SePay 凭据，格式为 `client_id:client_secret` |
+| `PLATFORM_EINVOICE_SEPAY_BASE_URL` | 使用 `sepay` 时必填 | `https://einvoice-api.sepay.vn` 或 `https://einvoice-api-sandbox.sepay.vn` |
+| `PLATFORM_EINVOICE_SEPAY_PROVIDER_ACCOUNT_ID` | 使用 `sepay` 时必填 | SePay 服务商账户（UUID） |
+| `PLATFORM_EINVOICE_START_AT` | 使用 `sepay` 时必填 | RFC 3339 时间；此前支付的订单不开发票 |
+| `PLATFORM_EINVOICE_MAX_ATTEMPTS` | `8` | 发票标记为失败前的尝试次数；不小于 1 |
+
+发票税率取自 `BILLING_VAT_RATE`，只能是 0%、5%、8% 或 10%。SePay 不支持替换发票，因此在控制台替换已开具的发票会返回 `503` `einvoice_replace_unsupported`。
+
 ## 接入第二个支付渠道
 
 支付渠道位于 `platform-management/internal/billing/provider.go` 中的 `billing.PaymentProvider` 接口之后：

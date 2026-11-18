@@ -26,6 +26,7 @@ import (
 	"github.com/multica-ai/multica/platform-management/internal/config"
 	"github.com/multica-ai/multica/platform-management/internal/console"
 	"github.com/multica-ai/multica/platform-management/internal/db"
+	"github.com/multica-ai/multica/platform-management/internal/einvoice"
 	"github.com/multica-ai/multica/platform-management/internal/entitlement"
 	"github.com/multica-ai/multica/platform-management/internal/invoice"
 	"github.com/multica-ai/multica/platform-management/internal/jobs"
@@ -360,10 +361,10 @@ func run() error {
 	if err := runner.Register(pricechange.JobName, pricechange.Interval, priceSvc.Job(time.Now)); err != nil {
 		return err
 	}
-	// No e-invoice provider adapter exists yet, so the provider is nil and the
-	// service stays off (spec 7.3 rule 9). P43.1 wires the SePay provider and
-	// PLATFORM_EINVOICE_START_AT.
-	einvoices := invoice.NewService(invoice.NewPgxStore(pool), nil, invoice.Config{})
+	einvoices, err := newEinvoiceService(cfg, invoice.NewPgxStore(pool))
+	if err != nil {
+		return err
+	}
 	if err := registerPaymentJobs(runner, reconciler, einvoices); err != nil {
 		return err
 	}
@@ -441,4 +442,24 @@ func newPlatformMux(priceChanges, rest http.Handler) http.Handler {
 // priceSettings returns the price-change limits of the configuration.
 func priceSettings(cfg config.Config) pricechange.Settings {
 	return pricechange.Settings{NoticeDays: cfg.Price.NoticeDays, ConfirmPct: cfg.Price.ConfirmPct, Max: cfg.Price.Max}
+}
+
+// newEinvoiceService builds the e-invoice service. With no provider configured
+// the provider is nil and the service stays off (spec 7.3 rule 9).
+func newEinvoiceService(cfg config.Config, store invoice.Store) (*invoice.Service, error) {
+	e := cfg.Einvoice
+	if e.Provider != "sepay" {
+		return invoice.NewService(store, nil, invoice.Config{}), nil
+	}
+	taxRate, err := cfg.Billing.VATRateOf("vnd").Percent()
+	if err != nil {
+		return nil, fmt.Errorf("BILLING_VAT_RATE: %w", err)
+	}
+	provider, err := einvoice.New(einvoice.Config{
+		BaseURL: e.SepayBaseURL, APIKey: e.SepayAPIKey, ProviderAccountID: e.SepayProviderAccountID, TaxRate: taxRate,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return invoice.NewService(store, provider, invoice.Config{StartAt: e.StartAt, MaxAttempts: e.MaxAttempts}), nil
 }

@@ -200,6 +200,9 @@ func (h *Handler) einvoiceError(w http.ResponseWriter, r *http.Request, op strin
 	case errors.Is(err, invoice.ErrProviderNotConfigured):
 		writeError(w, &apiError{Status: http.StatusServiceUnavailable, Code: "einvoice_provider_not_configured",
 			Message: "e-invoicing is not configured on this platform"})
+	case errors.Is(err, invoice.ErrReplaceUnsupported):
+		writeError(w, &apiError{Status: http.StatusServiceUnavailable, Code: "einvoice_replace_unsupported",
+			Message: "replacing an e-invoice is not supported by the configured provider"})
 	case errors.As(err, &pe) && pe.Kind == invoice.KindMissingFields:
 		fields := pe.Fields
 		if fields == nil {

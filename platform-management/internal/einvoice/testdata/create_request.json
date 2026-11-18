@@ -1,0 +1,32 @@
+{
+  "template_code": "1",
+  "invoice_series": "C26TSE",
+  "issued_date": "2026-01-26 00:00:00",
+  "currency": "VND",
+  "provider_account_id": "00000000-0000-0000-0000-000000000001",
+  "reference_code": "REF-EXAMPLE-1",
+  "is_draft": true,
+  "buyer": {
+    "type": "company",
+    "name": "BUYER_NAME_PLACEHOLDER",
+    "legal_name": "BUYER_NAME_PLACEHOLDER",
+    "tax_code": "0000000000",
+    "address": "ADDRESS_PLACEHOLDER",
+    "email": "buyer@example.com"
+  },
+  "items": [
+    {
+      "line_number": 1,
+      "line_type": 1,
+      "item_code": "ITEM-1",
+      "item_name": "ITEM_NAME_PLACEHOLDER",
+      "unit": "UNIT_PLACEHOLDER",
+      "quantity": "1.00",
+      "unit_price": 100000,
+      "tax_rate": 10,
+      "tax_amount": 10000,
+      "before_discount_and_tax_amount": 100000
+    }
+  ],
+  "total_amount": 110000
+}

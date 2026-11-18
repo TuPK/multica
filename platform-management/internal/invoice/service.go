@@ -207,6 +207,9 @@ func (s *Service) Replace(ctx context.Context, orderID string, revision int, buy
 	if s.provider == nil {
 		return Record{}, ErrProviderNotConfigured
 	}
+	if r, ok := s.provider.(interface{ ReplaceSupported() bool }); ok && !r.ReplaceSupported() {
+		return Record{}, ErrReplaceUnsupported
+	}
 	if strings.TrimSpace(by) == "" || strings.TrimSpace(reason) == "" {
 		return Record{}, ErrReasonRequired
 	}

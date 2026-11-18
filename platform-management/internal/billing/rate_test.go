@@ -27,3 +27,21 @@ func TestDefaultVATRateIsTenPercent(t *testing.T) {
 		t.Fatalf("10%% of 1000 = %d, %v; want 100", got, err)
 	}
 }
+
+func TestRatePercent(t *testing.T) {
+	for in, want := range map[string]int64{"0": 0, "0.05": 5, "0.08": 8, "0.10": 10, "1": 100, "0.1": 10} {
+		r, err := ParseRate(in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got, err := r.Percent(); err != nil || got != want {
+			t.Errorf("Percent(%s) = %d, %v; want %d", in, got, err, want)
+		}
+	}
+	for _, in := range []string{"0.085", "0.000001"} {
+		r, _ := ParseRate(in)
+		if got, err := r.Percent(); err == nil {
+			t.Errorf("Percent(%s) = %d, want an error", in, got)
+		}
+	}
+}

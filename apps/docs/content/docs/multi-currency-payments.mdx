@@ -73,6 +73,21 @@ The listener answers:
 
 A transfer that matches no pending order, or whose amount differs, goes to the payment notices queue for staff and changes no order. With `PLATFORM_WEBHOOK_PORT` unset, no listener runs.
 
+## E-invoices (SePay)
+
+The platform can issue a VAT e-invoice for each paid order through SePay. It is off unless `PLATFORM_EINVOICE_PROVIDER` is `sepay`; any other non-empty value fails startup. Keep the API key in the environment, never in a file in the repository.
+
+| Variable | Default | Description |
+|---|---|---|
+| `PLATFORM_EINVOICE_PROVIDER` | empty (off) | `sepay` turns e-invoicing on |
+| `PLATFORM_EINVOICE_SEPAY_API_KEY` | required with `sepay` | SePay credential as `client_id:client_secret` |
+| `PLATFORM_EINVOICE_SEPAY_BASE_URL` | required with `sepay` | `https://einvoice-api.sepay.vn` or `https://einvoice-api-sandbox.sepay.vn` |
+| `PLATFORM_EINVOICE_SEPAY_PROVIDER_ACCOUNT_ID` | required with `sepay` | SePay provider account (UUID) |
+| `PLATFORM_EINVOICE_START_AT` | required with `sepay` | RFC 3339 time; orders paid before it get no invoice |
+| `PLATFORM_EINVOICE_MAX_ATTEMPTS` | `8` | Attempts before an invoice is marked failed; 1 or more |
+
+The invoice's tax rate comes from `BILLING_VAT_RATE` and must be 0%, 5%, 8% or 10%. SePay has no replace operation, so replacing an issued invoice from the console answers `503` `einvoice_replace_unsupported`.
+
 ## Adding a second payment provider
 
 Payment channels sit behind the `billing.PaymentProvider` interface in `platform-management/internal/billing/provider.go`:

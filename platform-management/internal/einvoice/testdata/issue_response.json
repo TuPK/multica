@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "data": {
+    "tracking_code": "00000000-0000-0000-0000-000000000003",
+    "tracking_url": "https://einvoice-api.sepay.vn/v1/invoices/issue/check/00000000-0000-0000-0000-000000000003",
+    "message": "MESSAGE_PLACEHOLDER"
+  }
+}

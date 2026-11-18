@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "data": {
+    "reference_code": "REF-EXAMPLE-1",
+    "status": "Failed",
+    "message": "MESSAGE_PLACEHOLDER"
+  }
+}

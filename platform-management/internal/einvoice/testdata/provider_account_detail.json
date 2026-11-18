@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "data": {
+    "id": "00000000-0000-0000-0000-000000000001",
+    "provider": "matbao",
+    "active": true,
+    "tax_authority_approved_date": "2026-01-01",
+    "templates": [
+      {"template_code": "1", "invoice_series": "C26TSE", "invoice_label": "VAT invoice"},
+      {"template_code": "2", "invoice_series": "C26TSE", "invoice_label": "Sales invoice"}
+    ]
+  }
+}

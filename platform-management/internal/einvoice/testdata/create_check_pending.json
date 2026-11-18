@@ -1,0 +1,9 @@
+{
+  "success": true,
+  "data": {
+    "reference_code": "REF-EXAMPLE-1",
+    "status": "Pending",
+    "message": "MESSAGE_PLACEHOLDER",
+    "retry": {"retries_count": 2, "max_retries": 7, "next_retry_at": "2026-01-26 10:05:00"}
+  }
+}
