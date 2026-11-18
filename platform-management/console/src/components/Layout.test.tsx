@@ -4,6 +4,22 @@ import { render, screen } from "@testing-library/react";
 import { Layout } from "./Layout";
 
 describe("Layout navigation", () => {
+  it("keeps the nav inside its own scroll container so a narrow screen does not overflow the page", () => {
+    render(
+      <Layout
+        currentScreen="overview"
+        onNavigate={vi.fn()}
+        user={{ user_id: "u-admin", email: "admin@example.com", role: "admin" }}
+        onLogout={vi.fn()}
+      >
+        <div>Content</div>
+      </Layout>
+    );
+
+    const nav = screen.getByRole("navigation", { name: "Main Navigation" });
+    expect(nav).toHaveClass("min-w-0", "overflow-x-auto");
+  });
+
   it("hides Orders, Plans, and Staff from support role", () => {
     render(
       <Layout
