@@ -1,26 +1,31 @@
 # Platform management e2e gaps
 
-Companion to [platform-management-flows.md](platform-management-flows.md). Every one of the flows is listed below, so none is dropped silently.
+Companion to [platform-management-flows.md](platform-management-flows.md). Every flow in the list appears in the table below, so none is dropped silently.
 
 ## Status
 
 - Flows in the list: 277
-- Covered by a test in this round: 11 (run: 12 passed, 1 failed)
-- Not covered: 266
+- Covered by a test (fully or partly): 38 (fully: 29, partly: 9)
+- Test marked fixme (product failure): 1
+- Not covered: 238
+- Run: `e2e/platform` — see the commit message for the last green run.
 
-## Product failures (test stays red, product code not changed)
+Customer flows (the Multica app's own login, workspace, SSO and daemon paths) need the Multica server and web app, which the platform harness does not start. The job and deletion flows need a clock and a worker, and the e-invoice flows need a provider; these are listed with their reason below.
+
+## Product failures (test stays red or fixme, product code not changed)
 
 | Flow | Observed | Expected (from flow list) | Test |
 | --- | --- | --- | --- |
-| 276 | `GET /api/v1/internal/entitlement-policies/{id}` with `X-User-ID: not-a-uuid` returns 200 | 401 unauthorized | e2e/platform/api-boundary.spec.ts |
+| 276 | `GET /api/v1/internal/entitlement-policies/{id}` with `X-User-ID: not-a-uuid` returns 200 | 401 unauthorized | e2e/platform/api-boundary.spec.ts (test.fixme) |
 
 ## Observations (test passes)
 
 - Flow 13: after sign-out, `GET /api/platform/me` returns 404, not 401. The flow names no status, so the test asserts only that the session is no longer accepted.
+- Flow 146 and the console's unknown routes: a refused request and a wrong method both get 404, the same as an unknown route, as the code comments say.
 
 ## Flows
 
-| Flow | Name | Status | Reason or test |
+| Flow | Name | Status | Test or reason |
 | --- | --- | --- | --- |
 | 1 | Customer email OTP sign-in (no MFA) | not covered | customer flow in the Multica app (LoginPage/workspace); the Multica server and web app are not started by the platform harness |
 | 2 | Customer Google OAuth sign-in (no MFA) | not covered | customer flow in the Multica app (LoginPage/workspace); the Multica server and web app are not started by the platform harness |
@@ -34,17 +39,17 @@ Companion to [platform-management-flows.md](platform-management-flows.md). Every
 | 10 | Workspace owner reads, saves, or deletes SSO OIDC connection | not covered | customer flow in the Multica app (LoginPage/workspace); the Multica server and web app are not started by the platform harness |
 | 11 | Customer SSO discovery, OIDC login, and JIT workspace provisioning | not covered | customer flow in the Multica app (LoginPage/workspace); the Multica server and web app are not started by the platform harness |
 | 12 | Staff console sign-in (OTP + conditional TOTP MFA) and session check | covered | e2e/platform/sign-in.spec.ts |
-| 13 | Staff console sign-out | covered | e2e/platform/sign-in.spec.ts |
-| 14 | Admin lists, adds, and revokes platform staff members | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
+| 13 | Staff console sign-out | covered | e2e/platform/sign-in.spec.ts — after sign-out the console returns to Login; /api/platform/me answers 404 (observation) |
+| 14 | Admin lists, adds, and revokes platform staff members | partial | e2e/platform/staff-users.spec.ts — add, list and revoke are covered; the admin-only gate and last_admin (257) are not |
 | 15 | Platform API trusted-peer guard and /healthz check | covered | e2e/platform/sign-in.spec.ts |
 | 16 | AccountGuard enforces account status on JWT, PAT, daemon token, and WebSocket | not covered | customer flow in the Multica app (LoginPage/workspace); the Multica server and web app are not started by the platform harness |
 | 17 | Customer revokes all own sessions | not covered | customer flow in the Multica app (LoginPage/workspace); the Multica server and web app are not started by the platform harness |
 | 18 | Customer views personal security events and downloads account export | not covered | customer flow in the Multica app (LoginPage/workspace); the Multica server and web app are not started by the platform harness |
 | 19 | Customer previews, schedules, and cancels self account deletion before deadline | not covered | customer flow in the Multica app (LoginPage/workspace); the Multica server and web app are not started by the platform harness |
 | 20 | Staff searches users and inspects account metadata | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 21 | Staff suspends or reactivates user account with realtime WS disconnect | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 22 | Staff force-revokes all user sessions with realtime WS disconnect | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 23 | Staff resets another user's MFA with email notification | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
+| 21 | Staff suspends or reactivates user account with realtime WS disconnect | partial | e2e/platform/staff-users.spec.ts — suspend and reactivate are covered; the realtime WebSocket disconnect is not checked |
+| 22 | Staff force-revokes all user sessions with realtime WS disconnect | partial | e2e/platform/staff-users.spec.ts — the revoke call answers 200; the sessions cut-off is not checked |
+| 23 | Staff resets another user's MFA with email notification | partial | e2e/platform/staff-users.spec.ts — the MFA row is removed; the notice email is not checked (the harness has no mail provider) |
 | 24 | Admin creates provisioned account request, cancels pending request, or resends welcome email (and customer signs in with ALLOW_SIGNUP=false) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
 | 25 | Admin welcome email resend records spec audit action account.welcome_resent [NOT BUILT] | not covered | NOT BUILT in the code (no test; the spec clause is unimplemented) |
 | 26 | Staff views platform overview KPIs, searches tenants, inspects tenant metadata, views audit logs, and adds internal notes | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
@@ -80,10 +85,10 @@ Companion to [platform-management-flows.md](platform-management-flows.md). Every
 | 56 | Webhook listener rejects source IP outside PAYMENT_WEBHOOK_CIDRS [NOT BUILT] | not covered | NOT BUILT in the code (no test; the spec clause is unimplemented) |
 | 57 | SePay webhook queues payment notice for manual review on mismatch or unparsable body | covered | e2e/platform/payment-webhook.spec.ts |
 | 58 | SePay webhook refuses automatic reactivation of read_only (billing) workspace and queues notice for staff review | not covered | needs the e-invoice provider; PLATFORM_EINVOICE_PROVIDER is empty in the harness, the fake exists only in Go tests, and no real service may be called |
-| 59 | SePay webhook ignores out transfers and dedupes replayed provider events | covered | e2e/platform/payment-webhook.spec.ts |
+| 59 | SePay webhook ignores out transfers and dedupes replayed provider events | covered | e2e/platform/payment-webhook.spec.ts — replay is only checked for a 2xx answer, not for a stored duplicate |
 | 60 | Staff inspects payment notice queue and resolves notice onto candidate pending order | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
 | 61 | Staff dismisses unmatched payment notice from queue | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 62 | Staff confirms or cancels pending order via Console Orders API / unrouted Orders.tsx | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
+| 62 | Staff confirms or cancels pending order via Console Orders API / unrouted Orders.tsx | partial | e2e/platform/console-orders.spec.ts — cancel of a pending order is covered; confirm of a pending order is not |
 | 63 | Staff views, edits, verifies, and unverifies tenant billing profile | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
 | 64 | Staff inspects tenant usage, writes off unpaid usage order (admin), and overrides tenant subscription | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
 | 65 | Admin lists, updates non-price plan metadata, and deletes unused plan via Console API / unrouted Plans.tsx | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
@@ -167,7 +172,7 @@ Companion to [platform-management-flows.md](platform-management-flows.md). Every
 | 143 | Staff enters wrong OTP or TOTP on Console verify-code (invalid_code) | covered | e2e/platform/sign-in.spec.ts |
 | 144 | Browser or caller sends Console auth, price-change, or e-invoice request with bad/missing Origin (bad_origin) | not covered | needs the e-invoice provider; PLATFORM_EINVOICE_PROVIDER is empty in the harness, the fake exists only in Go tests, and no real service may be called |
 | 145 | Caller hits Console proxy with dot segments, non-platform /api/* paths, or dead API upstream (404 / 502) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 146 | Unauthenticated, expired (>12h), non-MFA, revoked, locked, outside-CIDR, wrong-method, or unauthorized-role caller hits /api/platform/* (not_found obfuscation) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
+| 146 | Unauthenticated, expired (>12h), non-MFA, revoked, locked, outside-CIDR, wrong-method, or unauthorized-role caller hits /api/platform/* (not_found obfuscation) | partial | e2e/platform/console-requests.spec.ts — no session and wrong method are covered; the role refusal needs a support seed |
 | 147 | Group-permitted non-admin member or insufficient staff hits handler-level role check (forbidden) | not covered | customer flow in the Multica app (LoginPage/workspace); the Multica server and web app are not started by the platform harness |
 | 148 | Customer mutates non-allowlisted route in read_only workspace (workspace_read_only) | not covered | customer flow in the Multica app (LoginPage/workspace); the Multica server and web app are not started by the platform harness |
 | 149 | Customer accesses non-allowlisted route in suspended workspace (workspace_suspended) | not covered | customer flow in the Multica app (LoginPage/workspace); the Multica server and web app are not started by the platform harness |
@@ -241,9 +246,9 @@ Companion to [platform-management-flows.md](platform-management-flows.md). Every
 | 217 | Staff hits concurrent state change resolving or dismissing payment notice (payment_notice_conflict) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
 | 218 | Customer submits invalid buyer field (including hyphenated tax code) on order buyer or invoice-buyer (buyer_invalid) | not covered | customer flow in the Multica app (LoginPage/workspace); the Multica server and web app are not started by the platform harness |
 | 219 | Customer edits buyer on non-pending order (order_not_pending) | not covered | customer flow in the Multica app (LoginPage/workspace); the Multica server and web app are not started by the platform harness |
-| 220 | Staff confirms or cancels non-pending order (order_not_pending) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 221 | Staff confirms order or resolves notice onto expired pending order (order_expired) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 222 | Staff confirms, cancels, or resolves nonexistent order ID (order_not_found) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
+| 220 | Staff confirms or cancels non-pending order (order_not_pending) | covered | e2e/platform/console-orders.spec.ts |
+| 221 | Staff confirms order or resolves notice onto expired pending order (order_expired) | covered | e2e/platform/console-orders.spec.ts |
+| 222 | Staff confirms, cancels, or resolves nonexistent order ID (order_not_found) | covered | e2e/platform/console-requests.spec.ts |
 | 223 | Staff confirms or resolves order incompatible with current subscription (order_not_applicable) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
 | 224 | Staff confirms or resolves order during concurrent subscription race (order_conflict) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
 | 225 | Billing staff attempts to cancel or write off usage invoice (usage_cancel_admin_only) | not covered | needs the e-invoice provider; PLATFORM_EINVOICE_PROVIDER is empty in the harness, the fake exists only in Go tests, and no real service may be called |
@@ -254,7 +259,7 @@ Companion to [platform-management-flows.md](platform-management-flows.md). Every
 | 230 | Staff calls e-invoice retry or replace on ineligible e-invoice state (einvoice_state_conflict) | not covered | needs the e-invoice provider; PLATFORM_EINVOICE_PROVIDER is empty in the harness, the fake exists only in Go tests, and no real service may be called |
 | 231 | Admin calls e-invoice replace with invalid buyer field (>500 chars or NUL) (invalid_buyer) | not covered | needs the e-invoice provider; PLATFORM_EINVOICE_PROVIDER is empty in the harness, the fake exists only in Go tests, and no real service may be called |
 | 232 | Admin submits invalid price, meter, currency, or non-00:00-UTC effective_from (price_invalid) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 233 | Admin sends price fields directly to PUT /api/platform/plans/{key} (price_field_via_schedule) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
+| 233 | Admin sends price fields directly to PUT /api/platform/plans/{key} (price_field_via_schedule) | covered | e2e/platform/console-requests.spec.ts |
 | 234 | Admin schedules price change when plan already has a scheduled change (price_change_pending) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
 | 235 | Admin cancels scheduled price change when none is scheduled (price_change_not_found) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
 | 236 | Admin schedules price delta above PLATFORM_PRICE_CONFIRM_PCT without confirmation (price_change_confirm_required) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
@@ -273,35 +278,29 @@ Companion to [platform-management-flows.md](platform-management-flows.md). Every
 | 249 | Admin resends welcome email on ineligible account request state (account_request_not_resendable) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
 | 250 | Admin exceeds 3 welcome email resends per day (welcome_resend_rate_limited) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
 | 251 | Admin welcome email resend fails on email transport error (welcome_send_failed) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 252 | Staff targets own account status (self_target) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 253 | Staff attempts self MFA reset (self_reset_refused) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 254 | Staff changes status of permanently deleted user account (account_locked) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 255 | Admin adds staff email that has no Multica account (no_such_account) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 256 | Admin adds user who is already active staff (already_staff) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
+| 252 | Staff targets own account status (self_target) | covered | e2e/platform/console-requests.spec.ts |
+| 253 | Staff attempts self MFA reset (self_reset_refused) | covered | e2e/platform/console-requests.spec.ts |
+| 254 | Staff changes status of permanently deleted user account (account_locked) | covered | e2e/platform/staff-users.spec.ts |
+| 255 | Admin adds staff email that has no Multica account (no_such_account) | covered | e2e/platform/console-requests.spec.ts |
+| 256 | Admin adds user who is already active staff (already_staff) | covered | e2e/platform/console-requests.spec.ts |
 | 257 | Admin attempts to revoke final active admin (last_admin) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 258 | Admin adds staff with invalid role (invalid_role) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 259 | Admin adds staff with malformed or >254-char email (invalid_email) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 260 | Staff submits console mutation with missing or blank reason (reason_required) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 261 | Staff submits console reason exceeding max length (reason_too_long) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 262 | Staff submits transfer_reference >100 chars confirming order (transfer_reference_too_long) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 263 | Staff submits empty internal tenant note (body_required) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 264 | Staff submits internal tenant note >4000 chars (body_too_long) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 265 | Staff submits malformed JSON, trailing data, or NUL byte to Console or pricechange (invalid_body) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 266 | Staff passes invalid query parameter to Console list endpoints (invalid_filter) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 267 | Staff passes invalid pagination cursor to Console list endpoints (invalid_cursor) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 268 | Staff passes malformed UUID path parameter to payment notices endpoints (invalid_id) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 269 | Staff passes non-UUID order_id resolving payment notice (invalid_order_id) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 270 | Staff submits invalid status enum on tenant, user, or order endpoints (invalid_status) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
+| 258 | Admin adds staff with invalid role (invalid_role) | covered | e2e/platform/console-requests.spec.ts |
+| 259 | Admin adds staff with malformed or >254-char email (invalid_email) | covered | e2e/platform/console-requests.spec.ts |
+| 260 | Staff submits console mutation with missing or blank reason (reason_required) | covered | e2e/platform/console-requests.spec.ts |
+| 261 | Staff submits console reason exceeding max length (reason_too_long) | covered | e2e/platform/console-requests.spec.ts |
+| 262 | Staff submits transfer_reference >100 chars confirming order (transfer_reference_too_long) | covered | e2e/platform/console-requests.spec.ts |
+| 263 | Staff submits empty internal tenant note (body_required) | covered | e2e/platform/console-requests.spec.ts |
+| 264 | Staff submits internal tenant note >4000 chars (body_too_long) | covered | e2e/platform/console-requests.spec.ts |
+| 265 | Staff submits malformed JSON, trailing data, or NUL byte to Console or pricechange (invalid_body) | covered | e2e/platform/console-requests.spec.ts |
+| 266 | Staff passes invalid query parameter to Console list endpoints (invalid_filter) | partial | e2e/platform/console-requests.spec.ts — limit is checked; other filters are not |
+| 267 | Staff passes invalid pagination cursor to Console list endpoints (invalid_cursor) | covered | e2e/platform/console-requests.spec.ts |
+| 268 | Staff passes malformed UUID path parameter to payment notices endpoints (invalid_id) | partial | e2e/platform/console-requests.spec.ts — covers payment notices only; the other id routes are not checked |
+| 269 | Staff passes non-UUID order_id resolving payment notice (invalid_order_id) | covered | e2e/platform/console-requests.spec.ts |
+| 270 | Staff submits invalid status enum on tenant, user, or order endpoints (invalid_status) | partial | e2e/platform/console-requests.spec.ts — tenant status and order filter are checked; user status is not |
 | 271 | Staff passes invalid state filter (including cancelled on e-invoices) to payment notices or e-invoices list (invalid_state) | not covered | needs the e-invoice provider; PLATFORM_EINVOICE_PROVIDER is empty in the harness, the fake exists only in Go tests, and no real service may be called |
 | 272 | Admin submits invalid plan key or metadata on PUT /api/platform/plans/{key} (invalid_plan) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
 | 273 | Staff or customer submits invalid subscription fields (invalid_subscription) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
 | 274 | Caller sends bad payload to billingapi, seat, or projectaccess endpoints (invalid_request) | not covered | customer flow in the Multica app (LoginPage/workspace); the Multica server and web app are not started by the platform harness |
 | 275 | Caller sends X-User-ID from outside PLATFORM_TRUSTED_CIDRS to Platform API (untrusted_peer) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-| 276 | Caller hits Platform internal or subscription API without valid UUID X-User-ID (unauthorized) | covered | e2e/platform/api-boundary.spec.ts |
+| 276 | Caller hits Platform internal or subscription API without valid UUID X-User-ID (unauthorized) | fixme | e2e/platform/api-boundary.spec.ts — product failure: the internal route answers 200 for a malformed X-User-ID (test.fixme) |
 | 277 | Caller triggers unhandled server or DB failure on Platform API (internal) | not covered | not yet written: needs more seeded data (workspace, billing order or job clock) or a console screen not covered in this round |
-
-## Not run because of the harness
-
-- Flow 275 (untrusted peer, 403) needs a server whose PLATFORM_TRUSTED_CIDRS excludes loopback; the harness uses the default, so it is not run.
-- The staff sign-in needs a TOTP step; the harness seeds a confirmed `user_mfa` row sealed with a random MULTICA_MFA_SECRET_KEY. The server refuses to start if the test DB holds `user_mfa` rows sealed with another key, so a Go test run that leaves such rows will break the platform suite until they are removed.
-- TOTP codes use the real clock, so the server’s step must advance; a sign-in waits up to one 30-second step (not a fixed clock).

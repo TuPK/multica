@@ -16,6 +16,7 @@ import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { createCipheriv, createHmac, randomBytes, randomUUID } from "node:crypto";
 import { existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
+import type { APIRequestContext } from "@playwright/test";
 import pg from "pg";
 
 export const API_PORT = 8095;
@@ -264,6 +265,26 @@ export async function stopPlatform(seed: StaffSeed | null): Promise<void> {
       await pool.end();
     }
   }
+}
+
+/**
+ * Signs an API request context in as the seeded staff member: the email code,
+ * then the TOTP code. The session cookie stays in the context for later calls.
+ */
+export async function signInApi(context: APIRequestContext, seed: StaffSeed): Promise<void> {
+  const origin = { Origin: CONSOLE_BASE };
+  const send = await context.post(`${CONSOLE_BASE}/api/platform/auth/send-code`, { headers: origin, data: { email: seed.email } });
+  if (send.status() !== 204) throw new Error(`send-code answered ${send.status()}`);
+  const first = await context.post(`${CONSOLE_BASE}/api/platform/auth/verify-code`, {
+    headers: origin,
+    data: { email: seed.email, code: devVerificationCode() },
+  });
+  if (first.status() !== 200) throw new Error(`verify-code (email) answered ${first.status()}`);
+  const second = await context.post(`${CONSOLE_BASE}/api/platform/auth/verify-code`, {
+    headers: origin,
+    data: { email: seed.email, code: devVerificationCode(), totp: await freshTotp(seed) },
+  });
+  if (second.status() !== 200) throw new Error(`verify-code (totp) answered ${second.status()}`);
 }
 
 export function serverOutput(): string {
