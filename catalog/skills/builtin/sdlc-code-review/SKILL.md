@@ -30,7 +30,9 @@ prevents a verdict, the verdict is BLOCKED and names what is missing.
    call site, every field handled, a test, and no stub, dead code, or skeleton.
 4. Re-run the checks that decide the verdict yourself: tests, typecheck, lint, build. A check you did not run is listed as not verified.
    Run verification-before-completion before you state the verdict.
-5. Check the repo rules the diff touches: migrations, naming, UI copy, package boundaries.
+5. Check the repo rules the diff touches: migrations, naming, UI copy, package boundaries. Compare the check definitions
+   (the verify command, test, lint and typecheck configuration, check scripts) with the base branch. A diff that weakens one
+   to make a check pass is a blocking finding (sdlc-delivery-core, "The checks are not part of the change").
 6. Challenge your own verdict once. Look for the strongest reason it is wrong, and drop false positives.
 7. Report.
 

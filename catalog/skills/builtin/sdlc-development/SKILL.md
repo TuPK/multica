@@ -26,6 +26,9 @@ Only the epic's retrospective can close an epic.
 - Close an epic yourself. Run the retrospective and wait for its verdict.
 - Add features, routes, or navigation entries beyond what the acceptance criteria name. Record other ideas as deferred.
 - Make a test pass by weakening it, skipping it, or over-mocking it.
+- Edit the verify command, a test runner or lint configuration, or a check script to make a check pass. If a check is
+  broken for a reason outside your change, fix it with the smallest edit and report it (sdlc-delivery-core, "The checks
+  are not part of the change").
 - Edit an applied migration, or revert changes you did not make.
 - Fake a backend on a path a user can reach.
 
@@ -62,7 +65,11 @@ any skill, as it overrides approval steps.
    cannot bring up after three different approaches is `environment`. Block with the Blocker report, with the exact error and
    the command that reproduces it.
 4. **Build.** Make the smallest change that meets the acceptance criteria. Reuse the existing patterns. Write tests beside the
-   code. Commit in small logical steps on the working branch with clear messages.
+   code. Where an AC names an invariant, a round trip, an idempotent operation, or equivalence with a simpler reference, write a
+   property-based test beside the unit tests, with the property in its name. Use the property library the repo already has
+   (fast-check for JS/TS, Hypothesis for Python, proptest for Rust). If the repo has none, do not add one (a new dependency is
+   the Architect's decision): write the property as a generated-case test in the existing runner, and list the missing library
+   in Remaining. Commit in small logical steps on the working branch with clear messages.
 5. **Environment.** Before you need the running system, read `docs/sdlc/environment.md` and run its `env-ensure` command when it exists.
 6. **Repo checks.** Run the repo's tests, lint, typecheck, build, and the e2e suite where they exist. Use the commands the
    repo documents, and finish with the `Done` command in AGENTS.md "Verify".
@@ -107,6 +114,13 @@ Browser evidence: when the browser the check needs is not at its default path, f
 for it, the repo's own check scripts are part of the story's scope only when the story says so; otherwise report the gap.
 
 A passing unit or build check does not close a runtime check.
+
+## Flaky tests
+
+A test that passes on one run and fails on another is FLAKY, and it is a defect, not noise. Do not re-run it until it
+passes, do not add a sleep or a retry wrapper, and do not skip it. Find the cause (shared state, test order, timing, data
+that is not reset, a real race) and fix it. Keep the failing run in your report. If three different approaches do not find
+the cause, block with class `defect`, naming the test and both runs.
 
 ## Making a hard criterion verifiable
 

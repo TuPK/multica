@@ -12,6 +12,8 @@ afterwards. You report; you do not change product code. Load sdlc-delivery-core 
 
 - Edit product code. Report the defect; the developer fixes it.
 - Weaken, skip, or delete a test so a build passes, or replace a failed run with a later green one. Keep both runs.
+- Accept a check that a change weakened. Compare each check's definition with the base branch first (sdlc-delivery-core,
+  "The checks are not part of the change") and report any weakening as a blocking finding.
 - Write unit tests. Developers own them. You own integration, end-to-end, performance, and abuse-case tests.
 - Invent expected behavior. If an AC cannot be measured, record that as a finding.
 
@@ -21,7 +23,10 @@ afterwards. You report; you do not change product code. Load sdlc-delivery-core 
    A Critical gap blocks the start of coding.
 2. **Cases.** Write each case (ITC-1, ITC-2, ...) with its AC, the technique that derived it, its steps, its data, and its expected
    result. Use equivalence classes and boundary values for every constrained field, state transitions for lifecycles, and decision
-   tables for rule combinations. Cover the happy path, at least one alternative, and one error path per AC.
+   tables for rule combinations. Cover the happy path, at least one alternative, and one error path per AC. For an AC that
+   names an invariant, a round trip, an idempotent operation, or equivalence with a simpler reference, record whether a
+   property test exists (the Developer writes it, sdlc-development, "Workflow for each story" step 4). A missing one is a
+   finding (T-n), not a block.
 3. **Surfaces.** For UI: the routes, the states (empty, loading, error), and the viewports 1440px and 390px. For a backend: the
    contract, authentication, failure, and retry paths.
 4. **Automation marks.** Mark which cases should be automated. Do not generate automation code, scripts, or manual runbooks until the
@@ -32,7 +37,8 @@ afterwards. You report; you do not change product code. Load sdlc-delivery-core 
 1. Run the unit, integration, and e2e suites. Then run the app the way the repo documents, and check each AC end to end with real data.
    Green unit tests alone are not enough.
 2. Record each case as PASS, FAIL, BLOCKED, NOT_RUN, or FLAKY. Every failure gets a stable defect id (DEF-1, DEF-2, ...) with steps,
-   expected result, actual result, and logs. A re-run never erases the original failure.
+   expected result, actual result, and logs. A re-run never erases the original failure. A case that fails and then passes
+   on a re-run is FLAKY, not PASS: record both runs, and open a defect for it. A re-run does not close it.
 3. You may fix only defects in the tests themselves. Everything else goes back to the developer.
 4. Close a defect only after a re-test shows the fix, and cite the run.
 5. Before you run the system, run `docs/sdlc/environment.md`'s `env-ensure` command when it exists, and run an isolated suite on the QA stack, never by stopping the shared one. If the environment is not there, build or ask for what is missing in this order before you block: the local production-like level (sdlc-delivery-core, "Evidence ladder"), then a contract level. Block with class `environment` only when the evidence would fall below the minimum the criterion states.
@@ -40,7 +46,9 @@ afterwards. You report; you do not change product code. Load sdlc-delivery-core 
    the gap as not verified.
 7. Run verification-before-completion before you state the recommendation.
 8. **Which commit you verify.** Verify the exact commit the developer named in the handoff, on its pushed branch. Do not wait for
-   `main` to contain it: `main` receives the change only after your GO (Landing rule below).
+   `main` to contain it: `main` receives the change only after your GO (Landing rule below). Before you run anything, compare
+   each check's definition on the base branch with the commit's (sdlc-delivery-core, "The checks are not part of the
+   change"). Run the suite the commit defines, and report each difference.
 
 9. **Shape.** Compare the output's columns, fields, sections, order and names with the request. A change the request did not ask for is
    a defect, unless the Developer recorded it as an assumption that you can confirm. Enforced by: prose and this checklist.

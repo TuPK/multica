@@ -44,6 +44,20 @@ the branch, including bmad-build and bmad-build-auto's version control sanity ch
   file with yours and say so in Remaining.
 - Do not write about the dirty tree in a comment unless it caused a failing check; then fix that check.
 
+## The checks are not part of the change
+
+The verify command, the test, lint and typecheck configuration, the check scripts, and the harness files (`AGENTS.md`
+"Verify", `docs/sdlc/harness-cert.json`) judge a change. A change must not edit them to make itself pass.
+
+- The reviewer and QA read each check's definition from the base branch (`git show origin/main:<path>`). The branch's
+  copy is the candidate, and each difference is listed in the report.
+- A change that weakens a check (an exclusion, a skipped test, a looser threshold, a longer timeout, a loosened
+  assertion, a removed step) is a blocking finding. Its owner is the Architect: the issue blocks with class `design`, and
+  the Architect rules whether the change stands. Without a ruling that names it, the change is reverted.
+- A check broken for a reason outside the change (a wrong path, a missing variable, a tool that no longer runs) may be
+  fixed in the change with the smallest edit. Say so in the report, with the command and its exit code before and after.
+- Enforced by: prose, and the review and QA steps that compare the diff with the base branch.
+
 ## Never end a run in a waiting state
 
 Your run ends only when your workflow step's move is done, or when only an irreversible action remains. "The issue stays
@@ -194,7 +208,8 @@ architect, analyst, ux, security, devops, or qa.
 - A check that prints nothing, or that cannot report its result, is a failed check. Run it
   yourself with its output captured, and fix the cause (sdlc-development, "When a check fails").
   Waiting for someone else to supply the evidence is not a fix.
-- A transient failure is retried at most twice. A missing input is not retried: ask the
+- A transient failure with a known external cause (a network timeout, a busy port) is retried at most twice. A test that
+  fails and then passes is FLAKY, not transient (sdlc-development, "Flaky tests"). A missing input is not retried: ask the
   owner once on the issue, take the default, and record it.
 - A piece that has taken many attempts: change the approach, split it, or build a smaller check that
   proves part of it, and keep going. Never cut an acceptance criterion to finish. Scope you defer is
