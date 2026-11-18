@@ -16,6 +16,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/realtime"
 	"github.com/multica-ai/multica/server/internal/testutil"
 	"github.com/multica-ai/multica/server/internal/util"
+	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
 
@@ -94,7 +95,7 @@ func TestChatRealtimeIsPrivateToSessionOwner(t *testing.T) {
 	hub := realtime.NewHub()
 	go hub.Run()
 	bus := events.New()
-	registerListeners(bus, hub)
+	registerListeners(bus, hub, queryAudiences{q: db.New(testPool)})
 	router, h := NewRouterWithOptions(testPool, hub, bus, analytics.NoopClient{}, nil, RouterOptions{})
 	server := httptest.NewServer(router)
 	t.Cleanup(server.Close)
@@ -208,7 +209,7 @@ func TestChatRealtimeStopsAtWorkspaceRemoval(t *testing.T) {
 	hub := realtime.NewHub()
 	go hub.Run()
 	bus := events.New()
-	registerListeners(bus, hub)
+	registerListeners(bus, hub, queryAudiences{q: db.New(testPool)})
 	router, h := NewRouterWithOptions(testPool, hub, bus, analytics.NoopClient{}, nil, RouterOptions{})
 	server := httptest.NewServer(router)
 	t.Cleanup(server.Close)

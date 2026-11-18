@@ -27,6 +27,12 @@ type MembershipChecker interface {
 	Members(ctx context.Context, identities []MembershipIdentity) (map[MembershipIdentity]bool, error)
 }
 
+// GuestChecker reads member.is_guest. A MembershipChecker that implements it
+// keeps guests out of the workspace room; one that does not has no guests.
+type GuestChecker interface {
+	IsGuest(ctx context.Context, userID, workspaceID string) (bool, error)
+}
+
 type MembershipIdentity struct {
 	WorkspaceID string
 	UserID      string
@@ -235,6 +241,11 @@ type Client struct {
 	workspaceID string
 	writeMu     sync.Mutex // serializes application writes and the final removal notice
 	stopped     atomic.Bool
+
+	// guest is member.is_guest when the socket connected. A guest never joins
+	// the workspace room; a change of the flag disconnects the user so the
+	// next connect reads it again.
+	guest bool
 
 	// sendMu guards sendClosed so a late inbound-response or fanout send
 	// can never write to the closed send channel. closeSend flips
@@ -867,6 +878,7 @@ func HandleWebSocket(hub *Hub, mc MembershipChecker, pr PATResolver, resolveSlug
 	}
 
 	var userID string
+	var guest bool
 	if cookie, err := r.Cookie(auth.AuthCookieName); err == nil && cookie.Value != "" {
 		uid, claims, errMsg := authenticateToken(cookie.Value, pr, r.Context())
 		if errMsg != "" {
@@ -893,6 +905,11 @@ func HandleWebSocket(hub *Hub, mc MembershipChecker, pr PATResolver, resolveSlug
 		}
 		if !member {
 			http.Error(w, `{"error":"not a member of this workspace"}`, http.StatusForbidden)
+			return
+		}
+		var guestErr error
+		if guest, guestErr = checkGuest(mc, uid, workspaceID); guestErr != nil {
+			http.Error(w, `{"error":"membership lookup failed"}`, http.StatusServiceUnavailable)
 			return
 		}
 		userID = uid
@@ -941,6 +958,11 @@ func HandleWebSocket(hub *Hub, mc MembershipChecker, pr PATResolver, resolveSlug
 			)
 			return
 		}
+		var guestErr error
+		if guest, guestErr = checkGuest(mc, uid, workspaceID); guestErr != nil {
+			writeWSAuthErrorAndClose(conn, []byte(`{"error":"membership lookup failed"}`), "workspace_id", workspaceID)
+			return
+		}
 		userID = uid
 
 		if !writeWSAuthFrame(
@@ -976,6 +998,7 @@ func HandleWebSocket(hub *Hub, mc MembershipChecker, pr PATResolver, resolveSlug
 		send:        make(chan []byte, 256),
 		userID:      userID,
 		workspaceID: workspaceID,
+		guest:       guest,
 	}
 	hub.register <- client
 

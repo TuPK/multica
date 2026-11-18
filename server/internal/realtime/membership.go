@@ -38,6 +38,20 @@ func checkMembership(checker MembershipChecker, userID, workspaceID string) (boo
 	return member, err
 }
 
+func checkGuest(checker MembershipChecker, userID, workspaceID string) (bool, error) {
+	g, ok := checker.(GuestChecker)
+	if !ok {
+		return false, nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), membershipLookupTimeout)
+	defer cancel()
+	guest, err := g.IsGuest(ctx, userID, workspaceID)
+	if err != nil {
+		slog.Warn("ws guest lookup failed", "user_id", userID, "workspace_id", workspaceID, "error", err)
+	}
+	return guest, err
+}
+
 func (h *Hub) registerClient(client *Client) {
 	// Keep the Hub event loop free of database waits. A connection whose
 	// handshake raced revocation is denied by its first content write.
@@ -53,7 +67,11 @@ func (h *Hub) registerClient(client *Client) {
 	h.mu.Unlock()
 	M.ConnectsTotal.Add(1)
 	M.ActiveConnections.Add(1)
-	h.subscribe(client, ScopeWorkspace, client.workspaceID)
+	// A guest gets nothing the workspace room carries; project events reach
+	// them through their member room (spec 7.1 rule 13).
+	if !client.guest {
+		h.subscribe(client, ScopeWorkspace, client.workspaceID)
+	}
 	h.subscribe(client, ScopeUser, client.userID)
 	if client.workspaceID != "" && client.userID != "" {
 		h.subscribe(client, ScopeWorkspaceMember, WorkspaceMemberScopeID(client.workspaceID, client.userID))
@@ -78,6 +96,18 @@ func (h *Hub) DisconnectMember(workspaceID, userID, memberID string) {
 	}
 	job.notice = notice
 	h.disconnectMember(job)
+}
+
+// DisconnectGuestFlagChange closes userID's connections to workspaceID so they
+// reconnect into the rooms their new guest flag allows. Membership did not
+// change, so nothing is revalidated and no removal notice is sent.
+func (h *Hub) DisconnectGuestFlagChange(workspaceID, userID string) {
+	if h == nil || workspaceID == "" || userID == "" {
+		return
+	}
+	for _, client := range h.snapshotMemberRemoval(workspaceID, userID).clients {
+		h.stopClient(client, nil, time.Time{})
+	}
 }
 
 // Only confirmed removals send the target a notice; stale signals are ignored

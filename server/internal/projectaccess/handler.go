@@ -11,9 +11,11 @@ import (
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/server/internal/events"
 	"github.com/multica-ai/multica/server/internal/middleware"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/multica-ai/multica/server/pkg/protocol"
 )
 
 // Handler serves the project-access routes. The routes sit behind the
@@ -23,6 +25,9 @@ type Handler struct {
 	// Scopes computes the viewer's Scope; tests replace it with a failing fake.
 	Scopes  Querier
 	Service *Service
+	// Bus receives project:access_changed after a switch commits. Nil means
+	// no one is listening, as in tests that do not look at events.
+	Bus *events.Bus
 }
 
 // NewHandler returns a Handler over q whose transactions run on tx.
@@ -193,6 +198,21 @@ func (h *Handler) PutAccess(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fail(w, err)
 		return
+	}
+	if res.Changed && h.Bus != nil {
+		h.Bus.Publish(events.Event{
+			Type:        protocol.EventProjectAccessChanged,
+			WorkspaceID: util.UUIDToString(req.workspaceID),
+			ActorType:   "member",
+			ActorID:     util.UUIDToString(req.actor.UserID),
+			// recipient_user_ids routes the event and never reaches a client
+			// (internalOnlyPayloadKeys in cmd/server/listeners.go).
+			Payload: map[string]any{
+				"project_id":         util.UUIDToString(req.projectID),
+				"access":             res.Access,
+				"recipient_user_ids": res.PreviousViewers,
+			},
+		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"project_id": util.UUIDToString(req.projectID), "access": res.Access, "auto_added": res.AutoAdded})
 }

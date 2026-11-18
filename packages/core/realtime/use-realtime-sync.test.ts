@@ -9,6 +9,7 @@ import type { ApiClient } from "../api/client";
 import { chatKeys } from "../chat/queries";
 import { inboxKeys } from "../inbox/queries";
 import { issueKeys } from "../issues/queries";
+import { projectKeys } from "../projects/queries";
 import { notificationPreferenceKeys } from "../notification-preferences/queries";
 import { workspaceKeys } from "../workspace/queries";
 import type {
@@ -27,6 +28,7 @@ import {
   applyChatMessageToCache,
   applyChatQuickActionsToCache,
   applyChatSessionUpdatedToCache,
+  applyProjectAccessChangedToCache,
   applyWorkspaceUpdatedToCache,
   handleInboxNew,
   invalidateChatMessageQueries,
@@ -1295,5 +1297,27 @@ describe("applyChatMessageToCache", () => {
     applyChatMessageToCache(qc, messagePayload());
     expect(qc.getQueryData<ChatMessage[]>(messagesKey)).toBeUndefined();
     expect(qc.getQueryData(chatKeys.messagesPage(sessionId))).toBeUndefined();
+  });
+});
+
+describe("applyProjectAccessChangedToCache", () => {
+  it("invalidates project and issue queries of the event's workspace only", () => {
+    const qc = createQueryClient();
+    const keys = [
+      projectKeys.all("ws-1"),
+      issueKeys.all("ws-1"),
+      issueKeys.tableAll("ws-1"),
+      projectKeys.all("ws-2"),
+      issueKeys.all("ws-2"),
+    ];
+    for (const key of keys) qc.setQueryData(key, []);
+
+    applyProjectAccessChangedToCache(qc, "ws-1");
+
+    expect(qc.getQueryState(projectKeys.all("ws-1"))?.isInvalidated).toBe(true);
+    expect(qc.getQueryState(issueKeys.all("ws-1"))?.isInvalidated).toBe(true);
+    expect(qc.getQueryState(issueKeys.tableAll("ws-1"))?.isInvalidated).toBe(true);
+    expect(qc.getQueryState(projectKeys.all("ws-2"))?.isInvalidated).toBe(false);
+    expect(qc.getQueryState(issueKeys.all("ws-2"))?.isInvalidated).toBe(false);
   });
 });

@@ -71,7 +71,7 @@ func TestMain(m *testing.M) {
 	go hub.Run()
 
 	bus := events.New()
-	registerListeners(bus, hub)
+	registerListeners(bus, hub, queryAudiences{q: db.New(testPool)})
 	// Same wiring as main.go: HTTP writes through the test server log activity.
 	registerActivityListeners(bus, db.New(pool))
 	router := NewRouter(pool, hub, bus, analytics.NoopClient{}, nil)

@@ -23,7 +23,7 @@ type fakeBroadcaster struct {
 func TestRegisterListeners_ChatSessionCreatedGoesOnlyToCreator(t *testing.T) {
 	bus := events.New()
 	fb := &fakeBroadcaster{}
-	registerListeners(bus, fb)
+	registerListeners(bus, fb, wholeWorkspaceAudiences{})
 
 	bus.Publish(events.Event{
 		Type: protocol.EventChatSessionCreated, WorkspaceID: "ws-1",
@@ -49,7 +49,7 @@ func TestRegisterListeners_ChatSessionCreatedGoesOnlyToCreator(t *testing.T) {
 func TestRegisterListeners_ChatSessionTitleUpdateGoesOnlyToCreator(t *testing.T) {
 	bus := events.New()
 	fb := &fakeBroadcaster{}
-	registerListeners(bus, fb)
+	registerListeners(bus, fb, wholeWorkspaceAudiences{})
 
 	bus.Publish(events.Event{
 		Type: protocol.EventChatSessionUpdated, WorkspaceID: "ws-1",
@@ -141,7 +141,7 @@ func TestRegisterListeners_TaskEventsGoToWorkspace(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			bus := events.New()
 			fb := &fakeBroadcaster{}
-			registerListeners(bus, fb)
+			registerListeners(bus, fb, wholeWorkspaceAudiences{})
 
 			bus.Publish(events.Event{
 				Type:          tc.eventType,
@@ -186,7 +186,7 @@ func TestRegisterListeners_ChatContentGoesOnlyToSessionOwner(t *testing.T) {
 		t.Run(tc.eventType, func(t *testing.T) {
 			bus := events.New()
 			fb := &fakeBroadcaster{}
-			registerListeners(bus, fb)
+			registerListeners(bus, fb, wholeWorkspaceAudiences{})
 
 			bus.Publish(events.Event{
 				Type: tc.eventType, WorkspaceID: "ws-1", ActorType: "system",
@@ -221,7 +221,7 @@ func TestRegisterListeners_ChatContentWithoutOwnerIsDropped(t *testing.T) {
 			t.Run(tc.eventType+"/"+missing.name, func(t *testing.T) {
 				bus := events.New()
 				fb := &fakeBroadcaster{}
-				registerListeners(bus, fb)
+				registerListeners(bus, fb, wholeWorkspaceAudiences{})
 
 				bus.Publish(events.Event{
 					Type: tc.eventType, WorkspaceID: missing.workspaceID, ActorType: "system",
@@ -247,7 +247,7 @@ func TestRegisterListeners_ChatRoutingKeepsInProcessListeners(t *testing.T) {
 	for _, eventType := range []string{protocol.EventChatDone, protocol.EventTaskMessage} {
 		bus.Subscribe(eventType, func(e events.Event) { got = append(got, e) })
 	}
-	registerListeners(bus, fb)
+	registerListeners(bus, fb, wholeWorkspaceAudiences{})
 
 	done := protocol.ChatDonePayload{ChatSessionID: "chat-1", TaskID: "task-1", Content: "assistant reply"}
 	message := protocol.TaskMessagePayload{TaskID: "task-1", Seq: 1, Type: "text", Content: "streamed text"}
@@ -279,7 +279,7 @@ func TestRegisterListeners_MemberPrivateEventsGoOnlyToThatMember(t *testing.T) {
 		t.Run(eventType, func(t *testing.T) {
 			bus := events.New()
 			fb := &fakeBroadcaster{}
-			registerListeners(bus, fb)
+			registerListeners(bus, fb, wholeWorkspaceAudiences{})
 
 			bus.Publish(events.Event{
 				Type: eventType, WorkspaceID: "ws-1", ActorType: "member", ActorID: "owner-1",
@@ -302,7 +302,7 @@ func TestRegisterListeners_MemberPrivateEventsGoOnlyToThatMember(t *testing.T) {
 func TestRegisterListeners_PreferenceEventWithoutMemberIsDropped(t *testing.T) {
 	bus := events.New()
 	fb := &fakeBroadcaster{}
-	registerListeners(bus, fb)
+	registerListeners(bus, fb, wholeWorkspaceAudiences{})
 
 	bus.Publish(events.Event{
 		Type: protocol.EventIssueViewPreferenceChanged, WorkspaceID: "ws-1", ActorType: "member", ActorID: "owner-1",
@@ -319,7 +319,7 @@ func TestRegisterListeners_PreferenceEventWithoutMemberIsDropped(t *testing.T) {
 func TestRegisterListeners_SharedIssueViewChangeGoesToWorkspace(t *testing.T) {
 	bus := events.New()
 	fb := &fakeBroadcaster{}
-	registerListeners(bus, fb)
+	registerListeners(bus, fb, wholeWorkspaceAudiences{})
 
 	bus.Publish(events.Event{
 		Type: protocol.EventIssueViewChanged, WorkspaceID: "ws-1", ActorType: "member", ActorID: "owner-1",
@@ -349,7 +349,7 @@ func TestRegisterListeners_InvitationConcludedReachesActorAndWorkspace(t *testin
 		t.Run(tc.name, func(t *testing.T) {
 			bus := events.New()
 			fb := &fakeBroadcaster{}
-			registerListeners(bus, fb)
+			registerListeners(bus, fb, wholeWorkspaceAudiences{})
 
 			bus.Publish(events.Event{
 				Type: tc.eventType, WorkspaceID: "ws-1",
@@ -392,7 +392,7 @@ func TestRegisterListeners_InvitationConcludedReachesActorAndWorkspace(t *testin
 func TestRegisterListeners_InvitationConcludedWithoutActorSkipsTargetedSend(t *testing.T) {
 	bus := events.New()
 	fb := &fakeBroadcaster{}
-	registerListeners(bus, fb)
+	registerListeners(bus, fb, wholeWorkspaceAudiences{})
 
 	bus.Publish(events.Event{
 		Type: protocol.EventInvitationDeclined, WorkspaceID: "ws-1",
@@ -413,7 +413,7 @@ func TestRegisterListeners_InvitationConcludedWithoutActorSkipsTargetedSend(t *t
 func TestRegisterListeners_InvitationRevokedStillTargetsInviteeNotActor(t *testing.T) {
 	bus := events.New()
 	fb := &fakeBroadcaster{}
-	registerListeners(bus, fb)
+	registerListeners(bus, fb, wholeWorkspaceAudiences{})
 
 	bus.Publish(events.Event{
 		Type: protocol.EventInvitationRevoked, WorkspaceID: "ws-1",

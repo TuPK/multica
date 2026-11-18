@@ -967,6 +967,10 @@ func (h *Handler) UpdateMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.MembershipCache.Invalidate(r.Context(), uuidToString(target.UserID), workspaceID)
+	if guest != target.IsGuest {
+		// The sockets joined their rooms under the old flag.
+		h.Hub.DisconnectGuestFlagChange(uuidToString(target.WorkspaceID), uuidToString(target.UserID))
+	}
 
 	userID := requestUserID(r)
 	h.publish(protocol.EventMemberUpdated, uuidToString(requester.WorkspaceID), "member", userID, map[string]any{

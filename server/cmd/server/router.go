@@ -2572,6 +2572,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 
 			// Projects
 			projectAccess := projectaccess.NewHandler(queries, pool)
+			projectAccess.Bus = bus
 			r.Route("/api/projects", func(r chi.Router) {
 				r.Get("/search", h.SearchProjects)
 				r.Get("/", h.ListProjects)
@@ -3288,6 +3289,19 @@ func (mc *membershipChecker) IsMember(ctx context.Context, userID, workspaceID s
 	}
 	return err == nil, err
 }
+
+func (mc *membershipChecker) IsGuest(ctx context.Context, userID, workspaceID string) (bool, error) {
+	member, err := mc.queries.GetMemberByUserAndWorkspace(ctx, db.GetMemberByUserAndWorkspaceParams{
+		UserID:      parseUUID(userID),
+		WorkspaceID: parseUUID(workspaceID),
+	})
+	if err != nil {
+		return false, err
+	}
+	return member.IsGuest, nil
+}
+
+var _ realtime.GuestChecker = (*membershipChecker)(nil)
 
 func (mc *membershipChecker) Members(ctx context.Context, identities []realtime.MembershipIdentity) (map[realtime.MembershipIdentity]bool, error) {
 	params := db.GetRealtimeMembershipsParams{}

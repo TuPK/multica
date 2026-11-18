@@ -57,6 +57,11 @@ type Actor struct {
 type SwitchResult struct {
 	Access    string
 	AutoAdded int
+	// Changed is false when the project already had this access value.
+	Changed bool
+	// PreviousViewers are the people who could see the project before the
+	// switch. They are the only recipients of project:access_changed.
+	PreviousViewers []string
 }
 
 // SwitchAccess sets the project's access and grants memberIDs. Switching to
@@ -76,6 +81,12 @@ func (s *Service) SwitchAccess(ctx context.Context, a Actor, workspaceID, projec
 		}
 		if err := requireMembers(ctx, q, workspaceID, memberIDs, "member_ids"); err != nil {
 			return err
+		}
+		res.Changed = p.Access != access
+		if res.Changed {
+			if res.PreviousViewers, err = AudienceUsers(ctx, q, workspaceID, projectID); err != nil {
+				return err
+			}
 		}
 		auto := int64(0)
 		if access == AccessRestricted {

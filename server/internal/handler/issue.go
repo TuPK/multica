@@ -4627,6 +4627,7 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		"status_changed":      statusChanged,
 		"priority_changed":    priorityChanged,
 		"project_changed":     projectChanged,
+		"prev_project_id":     uuidToPtr(prevIssue.ProjectID),
 		"start_date_changed":  startDateChanged,
 		"due_date_changed":    dueDateChanged,
 		"description_changed": descriptionChanged,
@@ -4972,7 +4973,8 @@ func (h *Handler) DeleteIssue(w http.ResponseWriter, r *http.Request) {
 	// identifier-style payload ("MUL-123") would leave stale entries on
 	// other clients after an identifier-path delete.
 	resolvedID := uuidToString(issue.ID)
-	h.publish(protocol.EventIssueDeleted, uuidToString(issue.WorkspaceID), actorType, actorID, map[string]any{"issue_id": resolvedID})
+	// project_id routes the event to the project's audience; the row is gone.
+	h.publish(protocol.EventIssueDeleted, uuidToString(issue.WorkspaceID), actorType, actorID, map[string]any{"issue_id": resolvedID, "project_id": uuidToPtr(issue.ProjectID)})
 	h.publishIssueSnapshots(r.Context(), deleteResult.DetachedChildren, actorType, actorID)
 	h.publishClearedDuplicates(r.Context(), deleteResult.ClearedDuplicates, actorType, actorID)
 	slog.Info("issue deleted", append(logger.RequestAttrs(r), "issue_id", resolvedID, "workspace_id", uuidToString(issue.WorkspaceID))...)
@@ -5582,6 +5584,7 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 			"status_changed":             statusChanged,
 			"priority_changed":           priorityChanged,
 			"project_changed":            projectChanged,
+			"prev_project_id":            uuidToPtr(prevIssue.ProjectID),
 			"prev_status":                prevIssue.Status,
 			"duplicate_of_issue_id":      liveDuplicateMark(issue.Status, issue.DuplicateOfIssueID),
 			"prev_duplicate_of_issue_id": liveDuplicateMark(prevIssue.Status, prevIssue.DuplicateOfIssueID),
@@ -5694,7 +5697,7 @@ func (h *Handler) BatchDeleteIssues(w http.ResponseWriter, r *http.Request) {
 	h.deleteS3Objects(r.Context(), deleteResult.AttachmentURLs)
 	actorType, actorID := h.resolveActor(r, userID, workspaceID)
 	for _, issue := range issues {
-		h.publish(protocol.EventIssueDeleted, workspaceID, actorType, actorID, map[string]any{"issue_id": uuidToString(issue.ID)})
+		h.publish(protocol.EventIssueDeleted, workspaceID, actorType, actorID, map[string]any{"issue_id": uuidToString(issue.ID), "project_id": uuidToPtr(issue.ProjectID)})
 	}
 	h.publishIssueSnapshots(r.Context(), deleteResult.DetachedChildren, actorType, actorID)
 	h.publishClearedDuplicates(r.Context(), deleteResult.ClearedDuplicates, actorType, actorID)

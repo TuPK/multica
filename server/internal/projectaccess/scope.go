@@ -58,13 +58,9 @@ func ForViewer(ctx context.Context, q Querier, workspaceID, userID pgtype.UUID) 
 	if err != nil {
 		return Scope{}, err
 	}
-	s := Scope{mode: ModeMember, userID: userID}
-	switch {
-	case m.Role == "owner" || m.Role == "admin":
-		s.mode = ModeAll
+	s := scopeOfMember(m.Role, m.IsGuest, userID)
+	if s.mode == ModeAll {
 		return s, nil
-	case m.IsGuest:
-		s.mode = ModeGuest
 	}
 	rows, err := q.ListViewerProjectAccess(ctx, db.ListViewerProjectAccessParams{WorkspaceID: workspaceID, UserID: userID})
 	if err != nil {
@@ -81,6 +77,20 @@ func ForViewer(ctx context.Context, q Querier, workspaceID, userID pgtype.UUID) 
 		}
 	}
 	return s, nil
+}
+
+// scopeOfMember is the Scope mode of one member, before any project list is
+// loaded. ForViewer and Audience both start from it, so the two cannot
+// disagree about who sees everything and who is a guest.
+func scopeOfMember(role string, isGuest bool, userID pgtype.UUID) Scope {
+	s := Scope{mode: ModeMember, userID: userID}
+	switch {
+	case role == "owner" || role == "admin":
+		s.mode = ModeAll
+	case isGuest:
+		s.mode = ModeGuest
+	}
+	return s
 }
 
 // Allows reports whether the viewer sees projectID. An invalid (NULL) id is an

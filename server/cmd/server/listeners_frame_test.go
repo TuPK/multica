@@ -23,7 +23,7 @@ func TestRegisterListeners_FrameContainsActorType(t *testing.T) {
 			name: "workspace broadcast carries actor_type",
 			event: events.Event{
 				Type:        protocol.EventIssueCreated,
-				WorkspaceID: "ws-1",
+				WorkspaceID: "00000000-0000-4000-8000-0000000000a1",
 				ActorID:     "agent-abc",
 				ActorType:   "agent",
 				Payload:     map[string]any{"id": "issue-1"},
@@ -49,7 +49,7 @@ func TestRegisterListeners_FrameContainsActorType(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			bus := events.New()
 			fb := &fakeBroadcaster{}
-			registerListeners(bus, fb)
+			registerListeners(bus, fb, wholeWorkspaceAudiences{})
 
 			bus.Publish(tc.event)
 

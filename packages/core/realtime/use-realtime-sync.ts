@@ -647,6 +647,16 @@ export async function handleInboxNew(
 }
 
 /**
+ * A project's access changed. The payload carries only the project id and the
+ * new access value, so the caches that may hold the project or its issues are
+ * refetched; the server then answers with what this person may still see.
+ */
+export function applyProjectAccessChangedToCache(qc: QueryClient, wsId: string): void {
+  qc.invalidateQueries({ queryKey: projectKeys.all(wsId) });
+  qc.invalidateQueries({ queryKey: issueKeys.all(wsId) });
+}
+
+/**
  * Invalidates all workspace-scoped queries. Used after reconnect and when a
  * new WSClient instance is detected (workspace switch) to recover events
  * missed while disconnected.
@@ -1431,6 +1441,11 @@ export function useRealtimeSync(
       }
     };
 
+    const unsubProjectAccessChanged = ws.on("project:access_changed", () => {
+      const wsId = getCurrentWsId();
+      if (wsId) applyProjectAccessChangedToCache(qc, wsId);
+    });
+
     const unsubWsUpdated = ws.on("workspace:updated", (p) => {
       applyWorkspaceUpdatedToCache(qc, p as WorkspaceUpdatedPayload);
     });
@@ -1939,6 +1954,7 @@ export function useRealtimeSync(
       unsubIssueReactionRemoved();
       unsubSubscriberAdded();
       unsubSubscriberRemoved();
+      unsubProjectAccessChanged();
       unsubWsUpdated();
       unsubWsDeleted();
       unsubMemberRemoved();

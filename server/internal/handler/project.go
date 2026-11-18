@@ -745,6 +745,9 @@ func (h *Handler) DeleteProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userID := requestUserID(r)
+	// The grants go with the project, so who may be told is read before the
+	// delete. Read outside the transaction, which stays unchanged.
+	audience, audienceErr := projectaccess.Audience(r.Context(), h.Queries, project.WorkspaceID, project.ID)
 	tx, err := h.TxStarter.Begin(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to start transaction")
@@ -791,7 +794,19 @@ func (h *Handler) DeleteProject(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to commit project delete")
 		return
 	}
-	h.publish(protocol.EventProjectDeleted, workspaceID, "member", userID, map[string]any{"project_id": uuidToString(project.ID)})
+	if audienceErr != nil {
+		// Without an audience the event would have to go to everyone; clients
+		// learn of the delete on their next fetch instead.
+		slog.Warn("project deleted: audience unknown, not publishing project:deleted", "project_id", uuidToString(project.ID), "error", audienceErr)
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	h.publish(protocol.EventProjectDeleted, workspaceID, "member", userID, map[string]any{
+		"project_id": uuidToString(project.ID),
+		// Routing only; stripped before the event reaches a client.
+		"recipient_workspace": audience.Workspace,
+		"recipient_user_ids":  audience.UserIDs,
+	})
 	w.WriteHeader(http.StatusNoContent)
 }
 

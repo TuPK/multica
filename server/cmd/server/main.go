@@ -623,7 +623,7 @@ func main() {
 			channelLeaseRedis = newNamedRedisClient(opts, "channel-lease")
 		}
 	}
-	registerListeners(bus, broadcaster)
+	registerListeners(bus, broadcaster, queryAudiences{q: db.New(pool)})
 
 	analyticsClient := analytics.NewFromEnv()
 	defer analyticsClient.Close()

@@ -9,6 +9,7 @@ import type { WSClient } from "../api/ws-client";
 import { EMPTY_ISSUE_VIEW_PREFERENCE } from "../api/schemas";
 import { defaultStorage } from "../platform/storage";
 import { issueKeys } from "../issues/queries";
+import { projectKeys } from "../projects/queries";
 import { chatKeys } from "../chat/queries";
 import { runtimeKeys } from "../runtimes/queries";
 import { agentTasksKeys, workspaceWorkingAgentsKeys } from "../agents/queries";
@@ -229,6 +230,19 @@ describe("useRealtimeSync — ws instance change", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("refreshes project and issue queries when a project's access changes", () => {
+    const ws = createMockWs();
+    renderHook(() => useRealtimeSync(ws, stores), { wrapper: createWrapper(qc) });
+    const handler = vi.mocked(ws.on).mock.calls.find(([type]) => type === "project:access_changed")?.[1];
+    expect(handler).toBeTypeOf("function");
+    invalidateSpy.mockClear();
+
+    handler!({ project_id: "project-1", access: "restricted" } as never);
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: projectKeys.all("ws-1") });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: issueKeys.all("ws-1") });
   });
 
   it("refreshes the skill catalog and agent list/details after a remote skill deletion", () => {

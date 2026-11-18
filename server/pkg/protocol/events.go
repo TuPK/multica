@@ -102,6 +102,11 @@ const (
 	EventProjectResourceUpdated = "project_resource:updated"
 	EventProjectResourceDeleted = "project_resource:deleted"
 
+	// EventProjectAccessChanged carries only project_id and the new access
+	// value, and goes only to people who could see the project before the
+	// change.
+	EventProjectAccessChanged = "project:access_changed"
+
 	// Proposal events. A decision is a state change on one proposal, so the
 	// payload carries the whole proposal either way and clients invalidate the
 	// proposal and issue queries.

@@ -283,6 +283,15 @@ handler Multica → client Cloud hiện có → GET /api/v1/internal/entitlement
 | `server/internal/handler/cloud_billing.go` | thêm handler mới cho 7b.1 và 7b.3 dùng lại `requireCloudSubscriptionWorkspace` và `proxyCloudSubscription`; không thêm client | R5 |
 | `server/cmd/server/main.go` | đăng ký việc nền `account_provisioning` của Multica (mục 3.5). Việc nền gọi `h.Knowledge.AutoEnable` và ghi analytics sau commit như handler, không báo daemon; lý do ở 15.3 (f) | R5 |
 | `packages/core/api/schemas.ts`, `packages/core/permissions/rules.ts`, `packages/views/settings/` | schema và giao diện mới của 7b; `rules.ts` phản chiếu quyền nhóm từ `GET /api/workspaces/{id}/permissions/me` | R5 |
+| `server/cmd/server/listeners.go` (`registerListeners`) | R4 (P41.5): sự kiện issue, project và mọi sự kiện có `issue_id` trong payload (bình luận, reaction, hoạt động, người theo dõi, nhãn, task) đi tới `projectaccess.Audience` của dự án thay vì cả phòng workspace; không xác định được đối tượng thì bỏ sự kiện; `project:deleted` dùng đối tượng đã đọc trước khi xóa | R4 |
+| `server/internal/realtime/hub.go` (`GuestChecker`, `Client.guest`) | R4 (P41.5): giao diện `GuestChecker` đọc cờ khách lúc bắt tay để đặt `Client.guest` | R4 |
+| `server/internal/realtime/membership.go` (`registerClient`, `DisconnectGuestFlagChange`) | R4 (P41.5): khách không bao giờ vào phòng `ScopeWorkspace`; thêm `DisconnectGuestFlagChange` để ngắt kết nối khi cờ khách đổi | R4 |
+| `server/internal/handler/issue.go` | R4 (P41.5): `issue:updated` thêm `prev_project_id` (đơn lẻ và hàng loạt) và `issue:deleted` thêm `project_id`, để listener biết dự án cũ khi chuyển issue và dự án của issue đã xóa | R4 |
+| `server/internal/handler/workspace.go` (`UpdateMember`) | R4 (P41.5): gọi `DisconnectGuestFlagChange` sau khi cờ `is_guest` đổi | R4 |
+| `server/internal/handler/project.go` (`DeleteProject`) | R4 (P41.5): đọc `projectaccess.Audience` trước giao dịch xóa và gắn vào `project:deleted` (`recipient_workspace`, `recipient_user_ids`, bị cắt trước khi gửi ra ngoài); giao dịch xóa không đổi | R4 |
+| `server/cmd/server/router.go` | R4 (P41.5): `membershipChecker.IsGuest`, nối `projectAccess.Bus` | R4 |
+| `server/cmd/server/main.go` | R4 (P41.5): `registerListeners` nhận `queryAudiences` | R4 |
+| `server/pkg/protocol/events.go` | R4 (P41.5): thêm hằng `EventProjectAccessChanged` (`project:access_changed`) | R4 |
 
 ### 3.4 Cấu hình
 

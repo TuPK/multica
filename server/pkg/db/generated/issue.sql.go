@@ -1217,6 +1217,19 @@ func (q *Queries) GetIssueMetadataInWorkspace(ctx context.Context, arg GetIssueM
 	return i, err
 }
 
+const getIssueProjectID = `-- name: GetIssueProjectID :one
+SELECT project_id FROM issue WHERE id = $1
+`
+
+// Audience lookup for realtime events about an issue. project_id is NULL for an
+// issue with no project.
+func (q *Queries) GetIssueProjectID(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, getIssueProjectID, id)
+	var project_id pgtype.UUID
+	err := row.Scan(&project_id)
+	return project_id, err
+}
+
 const getIssueRefInWorkspace = `-- name: GetIssueRefInWorkspace :one
 SELECT id, number, title, status FROM issue
 WHERE id = $1 AND workspace_id = $2

@@ -950,3 +950,8 @@ WHERE p.workspace_id = $1
 -- name: ListIssuesByIDsInWorkspace :many
 SELECT * FROM issue
 WHERE workspace_id = $1 AND id = ANY(sqlc.arg('ids')::uuid[]);
+
+-- name: GetIssueProjectID :one
+-- Audience lookup for realtime events about an issue. project_id is NULL for an
+-- issue with no project.
+SELECT project_id FROM issue WHERE id = $1;
