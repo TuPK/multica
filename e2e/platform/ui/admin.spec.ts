@@ -46,9 +46,8 @@ async function openScreen(page: Page, name: string): Promise<void> {
 }
 
 test.describe("navigation", () => {
-  // Product failure: Orders.tsx and Plans.tsx exist, but App.tsx has no route for them, so the nav
-  // item shows the Overview instead of its screen. Observed: the Overview heading after each click.
-  test.fixme("flow 83: Orders and Plans in the nav open their own screens", async ({ page }) => {
+  // Orders and Plans are routed in App.tsx (commit 1a1293ddc); before that the nav fell back to Overview.
+  test("flow 83: Orders and Plans in the nav open their own screens", async ({ page }) => {
     await page.goto(CONSOLE_BASE);
     await openScreen(page, "Orders");
     await expect(page.getByRole("heading", { name: "Orders", exact: true })).toBeVisible();
