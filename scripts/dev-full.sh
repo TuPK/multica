@@ -840,12 +840,14 @@ start_multica() {
   DEV_PID=$!
   PLATFORM_PID=""
   trap 'kill "$DEV_PID" 2>/dev/null || true; [ -n "$PLATFORM_PID" ] && kill "$PLATFORM_PID" 2>/dev/null || true' EXIT
+  # The platform needs only the Multica API: the migrated database and the system admin's
+  # sign-in. The web app is awaited after it, so a slow web dev server does not hold it back.
   wait_for_url "Multica API" "http://localhost:${PORT}/health" "$DEV_PID" \
     || fail "Multica API did not answer. Read the make dev output above."
-  wait_for_url "Multica web" "http://localhost:${FRONTEND_PORT}/" "$DEV_PID" \
-    || fail "Multica web did not answer. Read the make dev output above."
   seed_system_admin
   start_platform
+  wait_for_url "Multica web" "http://localhost:${FRONTEND_PORT}/" "$DEV_PID" \
+    || fail "Multica web did not answer. Read the make dev output above."
   setup_multica_profile
   start_daemon
   print_summary

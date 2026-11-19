@@ -427,4 +427,31 @@ if grep -Fq "run -d" "$docker_log"; then
   fail "an existing Ollama container must be started, not created again"
 fi
 
+# ---------- Startup order ----------
+# The platform starts after the Multica API answers and before the web app is awaited: it needs
+# the migrated database and the system admin, not the web app.
+order_log="$tmp_dir/start-order"
+: >"$order_log"
+# `make dev` runs in the background, so its stub is not logged; only the steps that follow it are.
+make() { :; }
+wait_for_url() { echo "wait $1" >>"$order_log"; }
+seed_system_admin() { echo "seed" >>"$order_log"; }
+start_platform() { echo "platform" >>"$order_log"; }
+setup_multica_profile() { echo "profile" >>"$order_log"; }
+start_daemon() { echo "daemon" >>"$order_log"; }
+start_multica
+# start_multica sets its own EXIT trap; restore the temporary directory cleanup.
+trap 'rm -rf "$tmp_dir"' EXIT
+expected_order="wait Multica API
+seed
+platform
+wait Multica web
+profile
+daemon"
+if [ "$(cat "$order_log")" != "$expected_order" ]; then
+  echo "Startup order was:" >&2
+  sed 's/^/  /' "$order_log" >&2
+  fail "start_multica must wait for the API, start the platform, then await the web app"
+fi
+
 echo "dev-full.test.sh: all checks passed"
