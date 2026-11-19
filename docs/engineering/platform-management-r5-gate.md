@@ -305,3 +305,22 @@ These are spec 7b security rows, not acceptance criteria, so they do not block c
 | `pnpm lint` | exit 0, 7 of 7 tasks (turbo may have served cached results) |
 
 Gate verdict: every acceptance criterion in section 3 is now covered by a named test, and every check above is green except the two squad repro tests. The security rows in 8.2 and the items in 8.3 remain open and are listed with their reasons.
+
+## 9. Security rows of section 8.2 closed (2026-11-19)
+
+Each row of 8.2 and the Q9 removed-member write path now has a named test. Tests were run on `multica_platform_test` with `PLATFORM_TEST_DATABASE_URL` set to the same DSN (without it the DB tests skip). No production code changed. Result of each row:
+
+| Row (8.2 / 15.3 d) | Named test | Result |
+| --- | --- | --- |
+| MFA on the console price routes (7b.4) | `TestPriceWriteRoutesNeedAnMFASession` (new; schedule POST and cancel DELETE, the only write routes), with `TestScheduleNeedsAnMFASession` | pass |
+| MFA on the account-creation route (7b.5) | `TestAccountCreateDBRefusesAnAdminSessionWithoutMFA` | pass |
+| Debt bypass (7b.3, accepted in 15.3 e) | `TestFreeOwnerLimitRefusesAnOwnerWithAnUnpaidUsageInvoice` (handler, through workspace create), with `TestCheckOwnerLimitRefusesAnIndebtedOwner` | pass |
+| Removal of the profile copy (7b.5) | `TestFinalizeRemovesTheProfileCopyFromTheRequest` | pass |
+| Unused-account indicator (7b.5) | `TestAccountRequestDBShowsWhetherTheUserEverLoggedIn` (backend); console `Accounts.test.tsx` "shows Never logged in tag only when logged_in is false" | pass (backend, console UI) |
+| Welcome-link host (7b.5) | `TestWelcomeLinksAreOnlyTheAppHost`, `TestWelcomeLinkCheckComparesHosts`, `TestWelcomeTemplateHasNoSecrets` | pass |
+| Group audit privacy (7b.2) | `TestMemberGroupAuditRowsCarryNoGroupName` | pass |
+| Q9 removed-member gap (15.3 d): the removal writes `member_removal` in the same transaction as the member delete | `TestRevokeAndRemoveMemberRecordsRemovalInTheSameTransaction` (new), `TestRevokeAndRemoveMemberRollsBackRemovalWhenCommitFails` (new) | pass |
+
+Still open, as the spec accepts: 15.3 (d) `storage_bytes` for files deleted during the day (the count is taken when the job runs; the error favours the customer), and 15.3 (e) no per-user block on a new free workspace. The console `PUT /tenants/{id}/billing-profile` (8.3) is not part of these rows.
+
+Caveats: the console "Never logged in" vitest passed on one run after a first run that failed on an unseen assertion; it passed again on rerun, so treat it as possibly flaky until the first failure is seen. `go vet` on the handler package reports a syntax error in `platform-management/accountguard/accountguard.go`, which is outside this slice and has uncommitted changes by another session; the tests above compile and run without it.

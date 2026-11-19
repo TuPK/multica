@@ -211,6 +211,66 @@ func TestScheduleNeedsAnMFASession(t *testing.T) {
 	}
 }
 
+// Every staff route that writes under the price-change patterns: a session
+// without the mfa claim gets the 404 of an unknown route and changes nothing.
+func TestPriceWriteRoutesNeedAnMFASession(t *testing.T) {
+	authTime := t0.Add(-time.Minute)
+	noMFA, err := session.Sign(secret, adminUser, authTime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withMFA, err := platformauth.SignMFASession(secret, adminUser, authTime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name, method, path, body string
+		seed                     bool // schedule a change first so the route has something to act on
+	}{
+		{"schedule", "POST", changesPath, postBody, false},
+		{"cancel", "DELETE", scheduledPath, "", true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			e := newEnv(t)
+			if c.seed {
+				if rec := e.do(adminUser, "POST", changesPath, postBody); rec.Code != 201 {
+					t.Fatalf("seed: %d %s", rec.Code, rec.Body)
+				}
+			}
+			send := func(token string) *httptest.ResponseRecorder {
+				req := httptest.NewRequest(c.method, c.path, strings.NewReader(c.body))
+				req.AddCookie(&http.Cookie{Name: session.CookieName, Value: token})
+				req.Header.Set("Origin", origin)
+				rec := httptest.NewRecorder()
+				e.h.ServeHTTP(rec, req)
+				return rec
+			}
+			changes, audits := len(e.st.changes), len(e.st.audits)
+			e.st.mu.Lock()
+			before := append([]Change(nil), e.st.changes...)
+			e.st.mu.Unlock()
+			if rec := send(noMFA); rec.Code != 404 || len(e.st.changes) != changes || len(e.st.audits) != audits {
+				t.Fatalf("without mfa: status %d, %d changes (want %d), %d audits (want %d)", rec.Code, len(e.st.changes), changes, len(e.st.audits), audits)
+			}
+			e.st.mu.Lock()
+			same := len(before) == len(e.st.changes)
+			for i := range before {
+				if same && before[i].State != e.st.changes[i].State {
+					same = false
+				}
+			}
+			e.st.mu.Unlock()
+			if !same {
+				t.Fatal("without mfa: a stored change was modified")
+			}
+			if rec := send(withMFA); rec.Code == 404 {
+				t.Fatalf("with mfa: status 404, want the request to get past the MFA check: %s", rec.Body)
+			}
+		})
+	}
+}
+
 func TestScheduleHistoryAndCancelOverHTTP(t *testing.T) {
 	e := newEnv(t)
 	rec := e.do(adminUser, "POST", changesPath, postBody)
